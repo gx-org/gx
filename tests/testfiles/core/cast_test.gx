@@ -1,0 +1,91 @@
+package gx_test
+
+// Test options:
+// setStatic sameDim1 intlen 2
+// setStatic sameDim2 intlen 2
+
+var (
+	sameDim1 intlen
+	sameDim2 intlen
+)
+
+func TestCastScalar() float32 {
+	xI64 := int64(4)
+	xF32 := float32(xI64)
+	yF32 := float32(2)
+	return xF32 - yF32
+	// Want:
+	// float32(2)
+}
+
+func TestCastWithStatic() [sameDim2]float32 {
+	return [sameDim2]float32([sameDim1]float32{})
+	// Want:
+	// [2]float32{0, 0}
+}
+
+func TestCastToFloat64() [3]float64 {
+	return [3]float64([3]float32{-1, 2, -3})
+	// Want:
+	// [3]float64{-1, 2, -3}
+}
+
+func TestReshapeFloat64() [2][4]float64 {
+	return ([2][4]float64)([8]float64{1, 2, 3, 4, 5, 6, 7, 8})
+	// Want:
+	// [2][4]float64{
+	// 	{1, 2, 3, 4},
+	// 	{5, 6, 7, 8},
+	// }
+}
+
+func TestReshapeFloat32ToFloat64() [2][4]float64 {
+	return ([2][4]float64)([8]float32{1, 2, 3, 4, 5, 6, 7, 8})
+	// Want:
+	// [2][4]float64{
+	// 	{1, 2, 3, 4},
+	// 	{5, 6, 7, 8},
+	// }
+}
+
+func TestCastArrayToScalar() float64 {
+	return float64([1]float64{-5})
+	// Want:
+	// float64(-5)
+}
+
+func TestCastArrayShape() [2]float64 {
+	return [2]float64{1, 2} + [2]float64([2]int64{3, 4})
+	// Want:
+	// [2]float64{4, 6}
+}
+
+func TestCastAddAxis1() [3][1]float64 {
+	return ([3][1]float64)([3]float64{1, 2, 3})
+	// Want:
+	// [3][1]float64{
+	// 	{1},
+	// 	{2},
+	// 	{3},
+	// }
+}
+
+func TestCastAddAxis0() [1][3]float64 {
+	return ([1][3]float64)([3]float64{1, 2, 3})
+	// Want:
+	// [1][3]float64{
+	// 	{1, 2, 3},
+	// }
+}
+
+func TestCastAddAxis01() [1][3][1]float64 {
+	return ([1][3][1]float64)([3]float64{1, 2, 3})
+	// Want:
+	// [1][3][1]float64{
+	// 	{
+	// 		{1},
+	// 		{2},
+	// 		{3},
+	// 	},
+	// }
+}

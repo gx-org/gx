@@ -1,0 +1,111 @@
+package gx_test
+
+import "math"
+
+func TestInfFloat32() (float32, float32) {
+	return math.InfFloat32, math.NegInfFloat32
+	// Want:
+	// 0: float32(+Inf)
+	// 1: float32(-Inf)
+}
+
+func TestInfFloat64() (float64, float64) {
+	return math.InfFloat64, math.NegInfFloat64
+	// Want:
+	// 0: float64(+Inf)
+	// 1: float64(-Inf)
+}
+
+func TestExpScalar() float32 {
+	return math.Exp(1)
+	// Want:
+	// float32(2.718282)
+}
+
+func TestExpTensor() [2]float32 {
+	return math.Exp([...]float32{
+		0, 1,
+	})
+	// Want:
+	// [2]float32{1, 2.718282}
+}
+
+func TestPowScalarScalar() float32 {
+	return math.Pow(2, 4)
+	// Want:
+	// float32(16)
+}
+
+func TestPowScalarArrayFloat32() [2]float32 {
+	return math.Pow([2]float32{2, 3}, 2)
+	// Want:
+	// [2]float32{4, 9}
+}
+
+func TestPowScalarArrayInt() [2]int32 {
+	return math.Pow([2]int32{2, 3}, 2)
+	// Want:
+	// [2]int32{4, 9}
+}
+
+func TestPowArrayArrayInt() [2]int32 {
+	return math.Pow([2]int32{2, 3}, [2]int32{4, 5})
+	// Want:
+	// [2]int32{16, 243}
+}
+
+func TestMinScalarArrayFloat32() [2]float32 {
+	return math.Min([2]float32{-2, 3}, 2)
+	// Want:
+	// [2]float32{-2, 2}
+}
+
+func TestMinArrayArrayInt() [2]int32 {
+	return math.Min([2]int32{2, 3}, [2]int32{3, -2})
+	// Want:
+	// [2]int32{2, -2}
+}
+
+func TestMaxScalarArrayFloat32() [2]float32 {
+	return math.Max([2]float32{-2, 3}, 2)
+	// Want:
+	// [2]float32{2, 3}
+}
+
+func TestMaxArrayArrayInt() [2]int32 {
+	return math.Max([2]int32{2, -3}, [2]int32{3, -2})
+	// Want:
+	// [2]int32{3, -2}
+}
+
+func TestCosScalar() float32 {
+	return math.Cos(0)
+	// Want:
+	// float32(1)
+}
+
+func TestCosScalarArrayFloat32() [2]float32 {
+	return math.Cos([2]float32{0, 3.141592653589793})
+	// Want:
+	// [2]float32{1, -1}
+}
+
+func TestSinScalar() float32 {
+	return math.Sin(0)
+	// Want:
+	// float32(0)
+}
+
+func TestLogScalar() (float32, float32) {
+	return math.Log(1), math.Log(16) / math.Log(2)
+	// Want:
+	// 0: float32(0)
+	// 1: float32(4)
+}
+
+func TestLogSqrt() (float32, float32) {
+	return math.Sqrt(1), math.Sqrt(144)
+	// Want:
+	// 0: float32(1)
+	// 1: float32(12)
+}

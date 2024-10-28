@@ -1,0 +1,28 @@
+package imports_test
+
+import "testfiles/imports/pkg1"
+
+// Var is a static of an imported type.
+var Var pkg1.Int
+
+func TestCallFunc() int32 {
+	return pkg1.Const42()
+	// Want: int32(42)
+}
+
+func TestCallFuncWithLocalReferences() int32 {
+	return pkg1.CallConst42()
+	// Want: int32(42)
+}
+
+func TestABStruct() pkg1.AB {
+	return pkg1.AB{
+		A: 1,
+		B: 2.3,
+	}
+	// Want:
+	// pkg1.AB{
+	// 	A: int32(1),
+	// 	B: float32(2.3),
+	// }
+}

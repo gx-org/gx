@@ -1,0 +1,192 @@
+package stdlib_test
+
+import (
+	"num"
+	"shapes"
+)
+
+func testMatmul1Axis() float32 {
+	a := [2]float32{}
+	b := [3]float32{}
+	return num.MatMul(a, b) // ERROR: left argument (shape: [2]) not compatible with right argument (shape: [3]) in MatMul call
+}
+
+func testMatmul2Axis() float32 {
+	a := [2][4]float32{}
+	b := [3]float32{}
+	return num.MatMul(a, b) // ERROR: left argument (shape: [2][4]) not compatible with right argument (shape: [3]) in MatMul call
+}
+
+func testMatmulLeftMoreThan2Axis() float32 {
+	a := [3][2][4]float32{}
+	b := [4][3]float32{}
+	return num.MatMul(a, b) // ERROR: more than 2-axis for the left argument (shape: [3][2][4]) not supported in MatMul call
+}
+
+func testMatmulRightMoreThan2Axis() float32 {
+	a := [4][3]float32{}
+	b := [3][2][4]float32{}
+	return num.MatMul(a, b) // ERROR: more than 2-axis for the right argument (shape: [3][2][4]) not supported in MatMul call
+}
+
+var TestDim intlen
+
+func testMatMulExprAxisMismatch(x [2][TestDim]float64, y [2][2]float64) [2][2]float64 {
+	return num.MatMul(x, y) // ERROR: left argument (shape: [2][TestDim]) not compatible with right argument (shape: [2][2])
+}
+
+func testEinsumMissingArguments() [_]float32 {
+	a := [4]float32{}
+	return num.Einsum(a, []intidx{1}, []intidx{}, a) // ERROR: wrong number of arguments in call to Einsum
+}
+
+func testEinsumInvalidArguments() [_]float32 {
+	a := float32(1.0)
+	return num.Einsum(a, []intidx{}, []intidx{}, a, []intidx{}, []intidx{}) // ERROR: signature mismatch in call to Einsum
+}
+
+func testEinsumContractingDimRange() float32 {
+	a := [4]float32{}
+	b := [4]float32{}
+	return num.Einsum(a, []intidx{1}, []intidx{}, b, []intidx{1}, []intidx{}) // ERROR: axis 1 specified in argument 1 to Einsum is out-of-range: must be in [0, 1)
+}
+
+func testEinsumContractingDimUnpaired() [2]float32 {
+	a := [4][2]float32{}
+	b := [4][2]float32{}
+	return num.Einsum(a, []intidx{1}, []intidx{}, b, []intidx{}, []intidx{}) // ERROR: must specify the same number of lhs and rhs contracting dimensions for Einsum (got 1 and 0)
+}
+
+func testEinsumContractingDimIncompatible() [2]float32 {
+	a := [4][3]float32{}
+	b := [4][2]float32{}
+	return num.Einsum(a, []intidx{1}, []intidx{0}, b, []intidx{1}, []intidx{0}) // ERROR: left argument (shape: [4][3]) not compatible with right argument (shape: [4][2]) in Einsum call: cannot contract lhs dimension [3] with rhs dimension [2]
+}
+
+func testEinsumBatchingDimRange() float32 {
+	a := [4]float32{}
+	b := [4]float32{}
+	return num.Einsum(a, []intidx{}, []intidx{1}, b, []intidx{}, []intidx{0}) // ERROR: axis 1 specified in argument 2 to Einsum is out-of-range: must be in [0, 1)
+}
+
+func testEinsumBatchingDimUnpaired() [2]float32 {
+	a := [4][2]float32{}
+	b := [4][2]float32{}
+	return num.Einsum(a, []intidx{}, []intidx{0}, b, []intidx{}, []intidx{}) // ERROR: must specify the same number of lhs and rhs batching dimensions for Einsum (got 1 and 0)
+}
+
+func testEinsumBatchingDimIncompatible() [2]float32 {
+	a := [4][2]float32{}
+	b := [5][2]float32{}
+	return num.Einsum(a, []intidx{1}, []intidx{0}, b, []intidx{1}, []intidx{0}) // ERROR: left argument (shape: [4][2]) not compatible with right argument (shape: [5][2]) in Einsum call: cannot batch lhs dimension [4] with rhs dimension [5]
+}
+
+func testEinsumDimReused() [2]float32 {
+	a := [3][2]float32{}
+	b := [3][2]float32{}
+	return num.Einsum(a, []intidx{0}, []intidx{0}, b, []intidx{0}, []intidx{0}) // ERROR: axis 0 already specified in argument 2 to Einsum: axes may only be contracted or batched once
+}
+
+func testLenMissingArguments() int64 {
+	return shapes.Len() // ERROR: wrong number of arguments in call to Len
+}
+
+func testLenExtraArguments() int64 {
+	return shapes.Len([1]float32{0}, 100) // ERROR: wrong number of arguments in call to Len
+}
+
+func testLenNumber() int64 {
+	return shapes.Len(5) // ERROR: signature mismatch in call to Len
+}
+
+func testConcatWithInsufficientArgs() [3]float32 {
+	return shapes.Concat([3]float32{1, 2, 3}) // ERROR: wrong number of arguments in call to Concat
+}
+
+func testConcatWithNonArrayArg() [3]float32 {
+	return shapes.Concat(0, 5, [3]float32{1, 2, 3}) // ERROR: signature mismatch in call to Concat
+}
+
+func testConcatWithInconsistentDtypes() [3]float32 {
+	return shapes.Concat(0, [3]int32{1, 2, 3}, [3]float32{1, 2, 3}) // ERROR: expected arrays of the same data type in call to Concat, but inconsistent values, int32 vs float32
+}
+
+func testConcatWithInconsistentRanks() [][]float32 {
+	return shapes.Concat( // ERROR: expected all arguments to be arrays of the same rank in call to Concat, but inconsistent values, 1 vs 2
+		0,
+		[3]float32{1, 2, 3},
+		[2][2]float32{{3, 4}, {5, 6}},
+	)
+}
+
+func testConcatWithInconsistentSizeOnSecondaryAxis() [3][2]float32 {
+	return shapes.Concat( // ERROR: argument 2 (shape: [2][2]) incompatible with initial shape ([1][3]) in Concat call: dimension 1, 2 != 3
+		0,
+		[1][3]float32{{1, 2, 3}},
+		[2][2]float32{{3, 4}, {5, 6}},
+	)
+}
+
+func testConcatWithOutOfRangeAxis() [3][2]float32 {
+	return shapes.Concat( // ERROR: axis 2 is out of bounds for array of rank 2 in call to Concat
+		2,
+		[2][2]float32{{1, 2}, {3, 4}},
+		[2][2]float32{{5, 6}, {7, 8}},
+	)
+}
+
+func testSplitWithWrongArgCount() [3]float32 {
+	return shapes.Split([3]float32{1, 2, 3}) // ERROR: wrong number of arguments in call to Split
+}
+
+func testSplitWithNonDivisibleNumSplits() []float32 {
+	return shapes.Split(0, [3]float32{1, 2, 3}, 2) // ERROR: dimension size (3) of axis 0 in call to Split must be divisible by the number of splits (2)
+}
+
+func testSplitWithIntNumSplit(a int64) []float32 {
+	return shapes.Split(0, [3]float32{1, 2, 3}, a) // ERROR: signature mismatch in call to Split
+}
+
+func testSplitWithIntAxisIndex(a int64) []float32 {
+	return shapes.Split(a, [3]float32{1, 2, 3}, 2) // ERROR: signature mismatch in call to Split
+}
+
+func testIotaNumArgs() []int64 {
+	return num.Iota([]intlen{2, 3}, 4, 5) // ERROR: wrong number of arguments in call to Iota
+}
+
+func testIotaArgType() []int64 {
+	return num.Iota([]intlen{2, 3}, [2]int64{1, 2}) // ERROR: signature mismatch in call to Iota
+}
+
+func testIotaFull() []int64 {
+	return num.IotaFull([]intlen{2, 3}, 4) // ERROR: wrong number of arguments in call to IotaFull
+}
+
+func testReduceMaxWithMissingAxes() float64 {
+	return num.ReduceMax([4]float64{-1, 0, 2, -4}) // ERROR: wrong number of arguments in call to ReduceMax
+}
+
+func testReduceMaxWithNegativeAxis() float64 {
+	return num.ReduceMax([4]float64{-1, 0, 2, -4}, []intidx{-1}) // ERROR: invalid reduction axis in call to ReduceMax: axis -1 does not exist in input [4]float64
+}
+
+func testReduceMaxWithInvalidAxis() float64 {
+	return num.ReduceMax([4]float64{-1, 0, 2, -4}, []intidx{1}) // ERROR: invalid reduction axis in call to ReduceMax: axis 1 does not exist in input [4]float64
+}
+
+func testReduceMaxWithDuplicateAxes() float64 {
+	return num.ReduceMax([4]float64{-1, 0, 2, -4}, []intidx{0, 0}) // ERROR: axis index 0 specified more than once
+}
+
+func testArgmaxWithMissingAxis() int32 {
+	return num.Argmax([...]float32{1, 2, 3}) // ERROR: wrong number of arguments in call to Argmax
+}
+
+func testArgmaxWithNegativeAxis() int32 {
+	return num.Argmax([5]float32{-1, 2, -4, 8, -16}, -1) // ERROR: invalid reduction axis in call to Argmax: axis -1 does not exist in input [5]float32
+}
+
+func testArgmaxWithInvalidAxis() int32 {
+	return num.Argmax([5]float32{-1, 2, -4, 8, -16}, 1) // ERROR: invalid reduction axis in call to Argmax: axis 1 does not exist in input [5]float32
+}

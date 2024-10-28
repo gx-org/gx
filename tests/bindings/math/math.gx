@@ -1,0 +1,14 @@
+// Package math_test tests the math package.
+package math
+
+import "math"
+
+// ReturnMaxFloat32 returns the maximum float32.
+func ReturnMaxFloat32() float32 {
+	return math.MaxFloat32
+}
+
+// ReturnMaxFloat64 returns the maximum float64.
+func ReturnMaxFloat64() float64 {
+	return math.MaxFloat64
+}

@@ -1,0 +1,26 @@
+package nn_test
+
+import (
+	"math"
+	"num"
+)
+
+func softmax(x [3]float32) [3]float32 {
+	exps := math.Exp(x - float32(num.ReduceMax(x, []intidx{0})))
+	return exps / float32(num.Sum(exps, []intidx{0}))
+}
+
+func TestSoftmax() ([3]float32, [3]float32) {
+	x := [3]float32{1, 2, 3}
+	return softmax(x), softmax(x + 1)
+	// Want:
+	// 0: [3]float32{0.090031, 0.244728, 0.665241}
+	// 1: [3]float32{0.090031, 0.244728, 0.665241}
+}
+
+func TestSoftmaxIota() [3]float32 {
+	x := [3]float32(num.IotaFull([]intlen{3}))
+	return softmax(x)
+	// Want:
+	// [3]float32{0.090031, 0.244728, 0.665241}
+}

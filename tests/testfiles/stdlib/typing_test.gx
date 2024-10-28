@@ -1,0 +1,13 @@
+package gx_test
+
+import "num"
+
+func l2Squared(x [_]float32) float32 {
+	return num.MatMul(x, x)
+}
+
+func TestL2Squared() float32 {
+	return l2Squared([3]float32{1, 2, 3})
+	// Want:
+	// float32(14)
+}

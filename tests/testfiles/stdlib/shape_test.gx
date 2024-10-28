@@ -1,0 +1,17 @@
+package gx_test
+
+import (
+	"shapes"
+)
+
+func TestShape() shapes.Shape {
+	return shapes.Shape{
+		DType:      1,
+		Dimensions: []intlen{1, 2},
+	}
+	// Want:
+	// shapes.Shape{
+	// 	DType: int32(1),
+	// 	Dimensions: [int64(1),int64(2)],
+	// }
+}

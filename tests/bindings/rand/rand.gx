@@ -1,0 +1,20 @@
+// Package rand tests the rand package from the standard library.
+//
+// This package can be removed once calling GX builtin functions
+// from Go is supported.
+package rand
+
+import "rand"
+
+// New returns a new Rand instance given a seed.
+func New(seed int64) rand.Rand {
+	src := rand.NewSource(seed)
+	return rand.New(src)
+}
+
+// Sample the first few numbers from a number generator.
+func Sample(seed int64) [3]float32 {
+	rnd := rand.New(rand.NewSource(seed))
+	_, sample := rnd.Float32([]intlen{3})
+	return sample
+}

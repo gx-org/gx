@@ -1,0 +1,12 @@
+package rand
+
+// Philox generator introduced in the paper:
+// Parallel Random Numbers: As Easy as 1, 2, 3.
+type Philox struct {
+	state [3]uint64
+}
+
+// NewPhilox returns a new Philox source seeded with the given values.
+func NewPhilox(seed [3]uint64) Philox {
+	return Philox{state: seed}
+}

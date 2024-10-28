@@ -1,0 +1,47 @@
+package slices_test
+
+func testSliceFloatIndex() float32 {
+	return [2]float32{1, 2}[1.0] // ERROR: cannot use 1.0 (untyped FLOAT constant) as int64 value
+}
+
+func testAppendNotEnough() []float32 {
+	return append() // ERROR: wrong number of arguments
+}
+
+func testAppendNoValue() []float32 {
+	return append([]float32{}) // ERROR: wrong number of arguments
+}
+
+func testAppendCannotUse() []float32 {
+	return append([]float32{}, int32(3)) // ERROR: cannot use int32 as float32
+}
+
+func testSetDTypeMismatch() [2][2]int32 {
+	a := [2][2]int32{}
+	a = set(a, [2]float32{1, 2}, [1]int32{0}) // ERROR: cannot set a slice
+	return a
+}
+
+func testSetPositionsTooMany() [2][2]int32 {
+	a := [2][2]int32{}
+	a = set(a, [2][2]int32{}, [3]int32{0, 1, 2}) // ERROR: position (length 3) exceeds operand rank (2)
+	return a
+}
+
+func testSetIncorrectRankNotEnough() [2][2]int32 {
+	a := [2][2][2]int32{}
+	a = set(a, [2]int32{}, [1]int32{0}) // ERROR: cannot set array
+	return a
+}
+
+func testSetIncorrectRankTooMany() [2][2]int32 {
+	a := [2][2]int32{}
+	a = set(a, [2][2]int32{}, [1]int32{0}) // ERROR: cannot set array
+	return a
+}
+
+func testSetIncorrectAxisSize() [2][2]int32 {
+	a := [2][2]int32{}
+	a = set(a, [3]int32{}, [1]int32{0}) // ERROR: cannot set array
+	return a
+}

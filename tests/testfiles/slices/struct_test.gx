@@ -1,0 +1,38 @@
+package slices_test
+
+type inSlice struct {
+	a [2]float32
+}
+
+func TestSlice() []int32 {
+	return []int32{1, 2, 3}
+	// Want:
+	// 0: int32(1)
+	// 1: int32(2)
+	// 2: int32(3)
+}
+
+func TestSliceOfFloatIndexing() float32 {
+	return []float32{1, 2}[1]
+	// Want:
+	// float32(2)
+}
+
+func TestSliceOfStructIndexing() ([2]float32, [2]float32) {
+	out := []inSlice{
+		inSlice{a: [2]float32{0, 0}},
+		inSlice{a: [2]float32{1, 1}},
+	}
+	return out[0].a, out[1].a
+	// Want:
+	// 0: [2]float32{0, 0}
+	// 1: [2]float32{1, 1}
+}
+
+func TestSliceWithCast() float32 {
+	sl := []float32{1, 2, 3}
+	iFloat := float64(1)
+	return sl[int32(iFloat)]
+	// Want:
+	// float32(2)
+}

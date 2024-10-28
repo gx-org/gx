@@ -1,0 +1,20 @@
+package pkg1
+
+// Int is a named int type.
+type Int int32
+
+// AB is a struct with an A and B.
+type AB struct {
+	A int32
+	B float32
+}
+
+// Const42 always returns 42.
+func Const42() int32 {
+	return 42
+}
+
+// CallConst42 calls the Const42 functions.
+func CallConst42() int32 {
+	return Const42()
+}

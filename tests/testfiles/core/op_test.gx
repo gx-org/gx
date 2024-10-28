@@ -1,0 +1,290 @@
+package gx_test
+
+func TestUnaryMinus() float64 {
+	return -1
+	// Want:
+	// float64(-1)
+}
+
+func TestAddScalars() float64 {
+	return 1 + 2
+	// Want:
+	// float64(3)
+}
+
+func TestSubScalars() float64 {
+	return 7 - 4
+	// Want:
+	// float64(3)
+}
+
+func TestMulScalars() float32 {
+	return 3 * 4
+	// Want:
+	// float32(12)
+}
+
+func TestDivScalars() float32 {
+	return 12 / 4
+	// Want:
+	// float32(3)
+}
+
+func TestBinaryOpNumberFloat32() float32 {
+	return 3 * TestDivScalars()
+	// Want:
+	// float32(9)
+}
+
+func TestBinaryOpFloat32Number() float32 {
+	return TestDivScalars() * 3
+	// Want:
+	// float32(9)
+}
+
+func TestParenFloat32() float32 {
+	return 3 * (2 * 5)
+	// Want:
+	// float32(30)
+}
+
+func TestNegTensor3DFloat64() [2][2][2]float64 {
+	return -[2][2][2]float64{
+		{
+			{1, -2},
+			{3, 4},
+		},
+		{
+			{5, 6},
+			{-7, 8},
+		},
+	}
+	// Want:
+	// [2][2][2]float64{
+	// 	{
+	// 		{-1, 2},
+	// 		{-3, -4},
+	// 	},
+	// 	{
+	// 		{-5, -6},
+	// 		{7, -8},
+	// 	},
+	// }
+}
+
+func TestAddTensor3DFloat64() [2][2][2]float64 {
+	a := [2][2][2]float64{
+		{
+			{300, 301},
+			{310, 311},
+		},
+		{
+			{400, 401},
+			{410, 411},
+		},
+	}
+	b := [2][2][2]float64{
+		{
+			{100, 101},
+			{110, 111},
+		},
+		{
+			{200, 201},
+			{210, 211},
+		},
+	}
+	return a + b
+	// Want:
+	// [2][2][2]float64{
+	// 	{
+	// 		{400, 402},
+	// 		{420, 422},
+	// 	},
+	// 	{
+	// 		{600, 602},
+	// 		{620, 622},
+	// 	},
+	// }
+}
+
+func TestSubTensor3DFloat64() [2][2][2]float64 {
+	a := [2][2][2]float64{
+		{
+			{300, 301},
+			{310, 311},
+		},
+		{
+			{400, 401},
+			{410, 411},
+		},
+	}
+	b := [2][2][2]float64{
+		{
+			{100, 101},
+			{110, 111},
+		},
+		{
+			{200, 201},
+			{210, 211},
+		},
+	}
+	return a - b
+	// Want:
+	// [2][2][2]float64{
+	// 	{
+	// 		{200, 200},
+	// 		{200, 200},
+	// 	},
+	// 	{
+	// 		{200, 200},
+	// 		{200, 200},
+	// 	},
+	// }
+}
+
+func TestMulTensor3DFloat64() [2][2][2]float64 {
+	a := [2][2][2]float64{
+		{
+			{1, 2},
+			{3, 4},
+		},
+		{
+			{5, 6},
+			{7, 8},
+		},
+	}
+	b := [2][2][2]float64{
+		{
+			{8, 7},
+			{6, 5},
+		},
+		{
+			{4, 3},
+			{2, 1},
+		},
+	}
+	return a * b
+	// Want:
+	// [2][2][2]float64{
+	// 	{
+	// 		{8, 14},
+	// 		{18, 20},
+	// 	},
+	// 	{
+	// 		{20, 18},
+	// 		{14, 8},
+	// 	},
+	// }
+}
+
+func TestDivTensor3DFloat64() [2][2][2]float64 {
+	a := [2][2][2]float64{
+		{
+			{10, 20},
+			{30, 40},
+		},
+		{
+			{50, 60},
+			{70, 80},
+		},
+	}
+	b := [2][2][2]float64{
+		{
+			{5, 10},
+			{15, 20},
+		},
+		{
+			{25, 30},
+			{35, 40},
+		},
+	}
+	return a / b
+	// Want:
+	// [2][2][2]float64{
+	// 	{
+	// 		{2, 2},
+	// 		{2, 2},
+	// 	},
+	// 	{
+	// 		{2, 2},
+	// 		{2, 2},
+	// 	},
+	// }
+}
+
+func TestMulScalarTensor1DFloat32() [2]float32 {
+	return 2 * [2]float32{3, -5}
+	// Want:
+	// [2]float32{6, -10}
+}
+
+func TestMulTensor1DScalarFloat32() [2]float32 {
+	return [2]float32{3, -5} * -2
+	// Want:
+	// [2]float32{-6, 10}
+}
+
+func TestReAssignFloat32() float64 {
+	a := 2
+	a = 3
+	return a
+	// Want:
+	// float64(3)
+}
+
+func TestEqualScalar() bool {
+	return 5 == 5
+	// Want:
+	// bool(true)
+}
+
+func TestEqualScalarVariables() bool {
+	a := 6
+	return 5 == a
+	// Want:
+	// bool(false)
+}
+
+func TestEqualScalarArray() [3]bool {
+	return int32(2) == [...]int32{1, 2, 3}
+	// Want:
+	// [3]bool{false, true, false}
+}
+
+func TestEqualArrayScalar() [3]bool {
+	return [...]int32{1, 2, 3} == int32(2)
+	// Want:
+	// [3]bool{false, true, false}
+}
+
+func TestEqualArrayArray() [3]bool {
+	return [...]int32{1, 4, 3} == [...]int32{1, 2, 3}
+	// Want:
+	// [3]bool{true, false, true}
+}
+
+func TestCallBeforeFuncDefinition() [2][2]int64 {
+	return funcA() + funcB()
+	// Want:
+	// [2][2]int64{
+	// 	{124, 125},
+	// 	{126, 127},
+	// }
+}
+
+func funcA() int64 {
+	return 123
+}
+
+func funcB() [2][2]int64 {
+	return [2][2]int64{{1, 2}, {3, 4}}
+}
+
+func TestCallAfterFuncDefinition() [2][2]int64 {
+	return funcA() + funcB()
+	// Want:
+	// [2][2]int64{
+	// 	{124, 125},
+	// 	{126, 127},
+	// }
+}

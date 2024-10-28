@@ -1,0 +1,110 @@
+package gx_test
+
+type sample struct {
+	x [2]float32
+	y float32
+}
+
+func (s sample) X() [...]float32 {
+	return s.x
+}
+
+func (s sample) Y() float32 {
+	return s.y
+}
+
+func TestStructCall() ([...]float32, float32) {
+	mySample := sample{
+		x: [2]float32{2, 3},
+		y: 4,
+	}
+	return mySample.X(), mySample.Y()
+	// Want:
+	// 0: [2]float32{2, 3}
+	// 1: float32(4)
+}
+
+func (s sample) returnLiteral() sample {
+	return sample{
+		x: s.x * s.y,
+		y: s.y,
+	}
+}
+
+func TestSampleReturnLiteral() ([...]float32, float32) {
+	mySample := sample{
+		x: [2]float32{2, 3},
+		y: 4,
+	}
+	mySample = mySample.returnLiteral()
+	return mySample.X(), mySample.Y()
+	// Want:
+	// 0: [2]float32{8, 12}
+	// 1: float32(4)
+}
+
+func (s sample) returnCopy() sample {
+	s1 := s
+	return s1
+}
+
+func TestSampleReturnCopy() ([...]float32, float32) {
+	mySample := sample{
+		x: [2]float32{2, 3},
+		y: 4,
+	}
+	mySample = mySample.returnCopy()
+	return mySample.X(), mySample.Y()
+	// Want:
+	// 0: [2]float32{2, 3}
+	// 1: float32(4)
+}
+
+func (s sample) setField() sample {
+	s.x = s.x * s.y
+	return s
+}
+
+func TestSampleSetField() ([...]float32, float32, [...]float32, float32) {
+	before := sample{
+		x: [2]float32{2, 3},
+		y: 4,
+	}
+	after := before.setField()
+	return before.X(), before.Y(), after.X(), after.Y()
+	// Want:
+	// 0: [2]float32{2, 3}
+	// 1: float32(4)
+	// 2: [2]float32{8, 12}
+	// 3: float32(4)
+}
+
+func (s sample) namedReturnSetField() (s sample) {
+	s = s.setField()
+	return
+}
+
+func TestSampleNamedReturnSetField() ([...]float32, float32, [...]float32, float32) {
+	before := sample{
+		x: [2]float32{2, 3},
+		y: 4,
+	}
+	after := before.namedReturnSetField()
+	return before.X(), before.Y(), after.X(), after.Y()
+	// Want:
+	// 0: [2]float32{2, 3}
+	// 1: float32(4)
+	// 2: [2]float32{8, 12}
+	// 3: float32(4)
+}
+
+func TestCastToField() ([...]float32, float32) {
+	s := sample{
+		x: ([2]float32)([2]int32{2, 3}),
+		y: 4,
+	}
+	return s.x, s.y
+	// Want:
+	// 0: [2]float32{2, 3}
+	// 1: float32(4)
+}

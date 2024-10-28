@@ -1,0 +1,143 @@
+// Package parameters tests passing parameters to GX.
+package parameters
+
+import (
+	"num"
+	"shapes"
+)
+
+var Size intlen
+
+type (
+	// NotInSlice is a structure assigned to a field that is not
+	// in a slice.
+	NotInSlice struct {
+		Val int32
+	}
+
+	// InSlice is a structure in a slice.
+	InSlice struct {
+		Val int32
+	}
+
+	// Struct is a structure of stuff.
+	Struct struct {
+		A [2]float32
+		B []float32
+		C []InSlice
+		D NotInSlice
+
+		specialIndex int32
+		SpecialValue float32
+	}
+)
+
+// New returns a new structure.
+func NewStruct(offset float32) Struct {
+	return Struct{
+		A: [2]float32{0, offset},
+		B: []float32{offset, offset * 10, offset * 100},
+		C: []InSlice{
+			InSlice{Val: 0},
+			InSlice{Val: 1},
+			InSlice{Val: 2},
+		},
+		D: NotInSlice{
+			Val: int32(offset),
+		},
+		specialIndex: 1,
+		SpecialValue: 0,
+	}
+}
+
+func incArrayElement(a float32) float32 {
+	return a + 1
+}
+
+func incInSlice(is InSlice) int32 {
+	return is.Val + 1
+}
+
+// AddToStruct adds a scalar to the structure field.
+func AddToStruct(a Struct) Struct {
+	return Struct{
+		A: [2]float32{
+			// Check indexing over an array argument.
+			incArrayElement(a.A[0]),
+			incArrayElement(a.A[1]),
+		},
+		B: []float32{
+			// Check indexing over a slice of float32 argument.
+			a.B[0] + 1,
+			a.B[1] + 1,
+			a.B[2] + 1,
+		},
+		C: []InSlice{
+			// Check indexing over a slice of structures argument.
+			InSlice{Val: incInSlice(a.C[0])},
+			InSlice{Val: incInSlice(a.C[1])},
+			InSlice{Val: incInSlice(a.C[2])},
+		},
+		D: NotInSlice{
+			Val: a.D.Val+1,
+		},
+		specialIndex: a.specialIndex,
+		SpecialValue: a.A[a.specialIndex],
+	}
+}
+
+// AddFloat32 adds x and y.
+func AddFloat32(x, y float32) float32 {
+	return x + y
+}
+
+// AddInt adds x and y.
+func AddInt(x, y int64) int64 {
+	return x + y
+}
+
+// Add x and y.
+func AddFloat32s(x, y [_]float32) [_]float32 {
+	return x + y
+}
+
+// AddInts x and y.
+func AddInts(x, y [_]int64) [_]int64 {
+	return x + y
+}
+
+// Len returns the outmost dimension of x.
+func Len(x [_]float32) int64 {
+	return shapes.Len(x)
+}
+
+// Iota returns an array filled with numbers.
+func Iota() [Size + 1]int64 {
+	return num.IotaFull([]intlen{Size + 1})
+}
+
+// SliceArrayArg checks that we can slice an array type argument.
+func SliceArrayArgConstIndex(a [3][2]float32) ([2]float32, [2]float32, [2]float32) {
+	return a[0], a[1], a[2]
+}
+
+// SliceArrayArg checks that we can slice an array type argument.
+func SliceArrayArg(a [3][2]float32, i int32) [2]float32 {
+	return a[i]
+}
+
+// SliceSliceArg checks that we can slice a slice.
+func SliceSliceArg(a [][2]float32, i int32) [2]float32 {
+	return a[i]
+}
+
+// NewNotInSlice returns a NotInSlice instance with its Val attributes assigned to val.
+func NewNotInSlice(val int32) NotInSlice {
+	return NotInSlice{Val:val}
+}
+
+// SetNotInSlice tests setting a structure field with a structure.
+func (a Struct) SetNotInSlice(d NotInSlice) Struct {
+	a.D = d
+	return a
+}

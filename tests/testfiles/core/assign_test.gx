@@ -1,0 +1,9 @@
+package gx_test
+
+func TestAssignNumber() int32 {
+	a := int32(5)
+	a = 4
+	return a
+	// Want:
+	// int32(4)
+}

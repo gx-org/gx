@@ -1,0 +1,11 @@
+package math
+
+// Floating-point limit values.
+// Max is the largest finite value representable by the type.
+//
+// Source: Go src/math/const.go
+const (
+	MaxFloat32 = 0x1p127 * (1 + (1 - 0x1p-23)) // 3.40282346638528859811704183484516925440e+38
+
+	MaxFloat64 = 0x1p1023 * (1 + (1 - 0x1p-52)) // 1.79769313486231570814527423731704356798070e+308
+)

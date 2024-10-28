@@ -1,0 +1,31 @@
+// Package imports tests imports and
+package imports
+
+import "github.com/gx-org/gx/tests/bindings/basic"
+
+// Importer
+type Importer struct {
+	Basic basic.Basic
+}
+
+// NewBasic returns a new basic structure.
+func NewBasic() basic.Basic {
+	return basic.New()
+}
+
+// NewImported returns a new Imported structure.
+func NewImporter() Importer {
+	return Importer{
+		Basic: NewBasic(),
+	}
+}
+
+// Add returns the result from Basic.AddPrivate.
+func (imp Importer) Add() int32 {
+	return imp.Basic.AddPrivate()
+}
+
+// ReturnFromBasic returns a float from the basic package.
+func ReturnFromBasic() float32 {
+	return basic.ReturnFloat32()
+}

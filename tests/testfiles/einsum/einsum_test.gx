@@ -1,0 +1,131 @@
+package einsum_test
+
+func TestTensorCross() [2][2]int32 {
+	a, b := [2]int32{2, 4}, [2]int32{6, 8}
+	c{i, j} := einsum(a{i} * b{j})
+	return c
+	// Want:
+	// [2][2]int32{
+	// 	{12, 16},
+	// 	{24, 32},
+	// }
+}
+
+func TestTensorDot() int32 {
+	a, b := [2]int32{2, 4}, [2]int32{6, 8}
+	c := einsum(a{i} * b{i})
+	return c
+	// Want:
+	// int32(44)
+}
+
+func TestTensorMatVec() [2]int32 {
+	a, b := [2][2]int32{{2, 4}, {6, 8}}, [2]int32{1, 3}
+	c{i} := einsum(a{i, j} * b{j})
+	return c
+	// Want:
+	// [2]int32{14, 30}
+}
+
+func TestTensorMatMul() [2][2]int32 {
+	a := [2][2]int32{{2, 4}, {6, 8}}
+	b := [2][2]int32{{1, 3}, {5, 7}}
+	c{i, k} := einsum(a{i, j} * b{j, k})
+	return c
+	// Want:
+	// [2][2]int32{
+	// 	{22, 34},
+	// 	{46, 74},
+	// }
+}
+
+func TestTensorBatchMatMul() [1][2][2]int32 {
+	a := [1][2][2]int32{{{2, 4}, {6, 8}}}
+	b := [1][2][2]int32{{{1, 3}, {5, 7}}}
+	c{b, i, k} := einsum(a{b, i, j} * b{b, j, k})
+	return c
+	// Want:
+	// [1][2][2]int32{
+	// 	{
+	// 		{22, 34},
+	// 		{46, 74},
+	// 	},
+	// }
+}
+
+func TestReassignTensorMatMul() [2][2]int32 {
+	// Demonstrate that einsum() works with reassignment, too.
+	a := [2][2]int32{{2, 4}, {6, 8}}
+	b := [2][2]int32{{1, 3}, {5, 7}}
+	b{i, k} = einsum(a{i, j} * b{j, k})
+	return b
+	// Want:
+	// [2][2]int32{
+	// 	{22, 34},
+	// 	{46, 74},
+	// }
+}
+
+func TestTensorCross3() [2][2][2]int32 {
+	a, b, c := [2]int32{2, 4}, [2]int32{1, 3}, [2]int32{2, 1}
+	x{i, j, k} := einsum(a{i} * b{j} * c{k})
+	return x
+	// Want:
+	// [2][2][2]int32{
+	// 	{
+	// 		{4, 2},
+	// 		{12, 6},
+	// 	},
+	// 	{
+	// 		{8, 4},
+	// 		{24, 12},
+	// 	},
+	// }
+}
+
+func TestTensorBatch3() [2]int32 {
+	a, b, c := [2]int32{2, 4}, [2]int32{6, 8}, [2]int32{-1, 1}
+	x{i} := einsum(a{i} * b{i} * c{i})
+	return x
+	// Want:
+	// [2]int32{-12, 32}
+}
+
+func TestTensorVecCrossMatMul3() [2][2]int32 {
+	a, b := [2]int32{2, 4}, [2]int32{1, 3}
+	c := [2][2]int32{{0, 1}, {1, 0}}
+	x{i, k} := einsum(a{i} * b{j} * c{j, k})
+	return x
+	// Want:
+	// [2][2]int32{
+	// 	{6, 2},
+	// 	{12, 4},
+	// }
+}
+
+func TestTensorMatMul3() [2][2]int32 {
+	a := [2][2]int32{{2, 4}, {6, 8}}
+	b := [2][2]int32{{1, 3}, {5, 7}}
+	c := [2][2]int32{{0, 1}, {1, 0}}
+	x{i, l} := einsum(a{i, j} * b{j, k} * c{k, l})
+	return x
+	// Want:
+	// [2][2]int32{
+	// 	{34, 22},
+	// 	{74, 46},
+	// }
+}
+
+func TestTensorMatMul4() [2][2]int32 {
+	a := [2][2]int32{{2, 4}, {6, 8}}
+	b := [2][2]int32{{1, 3}, {5, 7}}
+	c := [2][2]int32{{0, 1}, {1, 0}}
+	d := [2][2]int32{{0, 1}, {1, 0}}
+	x{i, m} := einsum(a{i, j} * b{j, k} * c{k, l} * d{l, m})
+	return x
+	// Want:
+	// [2][2]int32{
+	// 	{22, 34},
+	// 	{46, 74},
+	// }
+}

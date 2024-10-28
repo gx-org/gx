@@ -1,0 +1,38 @@
+// Package encoding exports encoding function for testing bindings.
+package encoding
+
+// Scalars to encode and decode.
+type Scalars struct {
+	// Int value.
+	Int int32
+
+	// Float value.
+	Float32 float32
+	Float64 float64 `native:"f64"`
+}
+
+// GetTotal returns the sum of all fields.
+func (s Scalars) GetTotal() float32 {
+	return (float32(s.Int) +
+		s.Float32 +
+		float32(s.Float64))
+}
+
+// Arrays to encode and decode.
+type Arrays struct {
+	// Array value.
+	ArrayF32 [2]float32
+}
+
+// Encoding structure to test encode and decode.
+type Encoding struct {
+	Scalars      Scalars
+	DataAsSlices Arrays
+	DataAsArrays Arrays
+}
+
+// Slice tests encoding slice of structures.
+type Slice struct {
+	Instance Encoding
+	Slice    []Encoding
+}

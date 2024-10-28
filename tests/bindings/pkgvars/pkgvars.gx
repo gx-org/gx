@@ -1,0 +1,18 @@
+// Package pkgvars tests static package variables in GX.
+package pkgvars
+
+// Var1 is a simple integer variable.
+var Var1 int32
+
+// ReturnVar1 returns the value of the static variable Var1
+func ReturnVar1() int32 {
+	return Var1
+}
+
+// Size of an array
+var Size intlen
+
+// New 1-axis array of size Size.
+func NewTwiceSize() [Size * 2]float32 {
+	return [Size * 2]float32{} + 3
+}

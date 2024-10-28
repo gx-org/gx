@@ -1,0 +1,25 @@
+package gx_test
+
+func TestFalse() bool {
+	return false
+	// Want:
+	// bool(false)
+}
+
+func TestTrue() bool {
+	return true
+	// Want:
+	// bool(true)
+}
+
+func TestBoolArray() [2][3]bool {
+	return [2][3]bool{
+		{true, false, true},
+		{false, true, false},
+	}
+	// Want:
+	// [2][3]bool{
+	// 	{true, false, true},
+	// 	{false, true, false},
+	// }
+}

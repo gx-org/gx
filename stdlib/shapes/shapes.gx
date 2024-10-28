@@ -1,0 +1,10 @@
+package shapes
+
+// DType is the datatype of an array.
+type DType int32
+
+// Shape of an array.
+type Shape struct {
+	DType      DType
+	Dimensions []intlen
+}

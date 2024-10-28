@@ -1,0 +1,33 @@
+package process_test
+
+var (
+	errorVarValues = 4, 5 // ERROR cannot assign
+
+	errMore, errVars, errThanValues = 4, 5 // ERROR cannot assign
+)
+
+func testNoReturn() { // ERROR function testNoReturn does not return a value
+}
+
+func testNoSize() [4]float64 {
+	return [4][]float64{2, 3} // ERROR array of slices is not supported
+}
+
+func testAssignToNoName() float32 {
+	a.b := 2 // ERROR non-name
+	return 1
+}
+
+func testDuplicateNamesDeclare() float64 {
+	a, a, b := 1.1, 1.2, 1.3 // ERROR a repeated on left side of :=
+	return a + b
+}
+
+func testDuplicateNamesAssign() float64 {
+	a, a, b = 1.1, 1.2, 1.3 // ERROR a repeated on left side of =
+	return a + b
+}
+
+func (a, b someStruct) multipleReceivers() float32 { // ERROR method has multiple receivers
+	return 0
+}

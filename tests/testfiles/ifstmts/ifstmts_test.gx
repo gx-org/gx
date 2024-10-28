@@ -1,0 +1,79 @@
+package ifstmts_test
+
+func TestIfTrue() int32 {
+	a := int32(4)
+	if true {
+		a = 5
+	}
+	return a
+	// Want:
+	// int32(5)
+}
+
+func TestIfFalse() int32 {
+	a := int32(4)
+	if false {
+		a = 5
+	}
+	return a
+	// Want:
+	// int32(4)
+}
+
+func TestIfElseTrue() int32 {
+	if true {
+		return 5
+	} else {
+		return 4
+	}
+	// Want:
+	// int32(5)
+}
+
+func TestIfElseFalse() int32 {
+	if false {
+		return 5
+	} else {
+		return 4
+	}
+	// Want:
+	// int32(4)
+}
+
+func TestIfInitTrue() float64 {
+	if a := 5; a == 5 {
+		return a
+	}
+	return 4
+	// Want:
+	// float64(5)
+}
+
+func TestIfInitFalse() float64 {
+	if a := 5; a != 5 {
+		return a
+	}
+	return 4
+	// Want:
+	// float64(4)
+}
+
+func TestIfInitElseTrue() float64 {
+	if a := 5; a == 5 {
+		return a
+	} else {
+		return 4
+	}
+	// Want:
+	// float64(5)
+}
+
+func TestIfInitElseFalse() float64 {
+	if a := 5; a != 5 {
+		return a
+	} else {
+		return 4
+	}
+	// Want:
+	// float64(4)
+}

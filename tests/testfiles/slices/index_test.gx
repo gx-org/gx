@@ -1,0 +1,18 @@
+package slices_test
+
+type indexedArray struct {
+	array [3][2]float32
+	index int32
+}
+
+func TestIndexedArray() [2]float32 {
+	ia := indexedArray{
+		array: [3][2]float32{
+			{1, 2}, {3, 4}, {5, 6},
+		},
+		index: 1,
+	}
+	return ia.array[ia.index+1]
+	// Want:
+	// [2]float32{5, 6}
+}

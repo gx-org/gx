@@ -1,0 +1,29 @@
+package gx_test
+
+import "rand"
+
+type sampler struct {
+	rnd rand.Rand
+}
+
+func newSampler(seed int64) sampler {
+	return sampler{
+		rnd: rand.New(rand.NewSource(seed)),
+	}
+}
+
+func (s sampler) sample() (s sampler, smpl [2]float32) {
+	s.rnd, smpl = s.rnd.Float32([]intlen{2})
+	return
+}
+
+func TestDeterministic() (sample1, sample2 [2]float32) {
+	sampler1 := newSampler(42)
+	sampler2 := newSampler(42)
+	_, sample1 = sampler1.sample()
+	_, sample2 = sampler2.sample()
+	return
+	// Want:
+	// 0: [2]float32{0.135473, 0.505885}
+	// 1: [2]float32{0.135473, 0.505885}
+}

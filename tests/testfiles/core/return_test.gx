@@ -1,0 +1,311 @@
+package gx_test
+
+// Test options:
+// setStatic staticInt64One int64 1
+// setStatic staticInt64Two int64 2
+// setStatic staticIntTwo intlen 2
+
+func TestInt32() int32 {
+	return 5
+	// Want:
+	// int32(5)
+}
+
+func TestInt64() int64 {
+	return 5
+	// Want:
+	// int64(5)
+}
+
+func TestFloat32() float32 {
+	return 5.1
+	// Want:
+	// float32(5.1)
+}
+
+func TestFloat64() float64 {
+	return 5.1
+	// Want:
+	// float64(5.1)
+}
+
+func TestCallFunc() float64 {
+	return TestFloat64()
+	// Want:
+	// float64(5.1)
+}
+
+func argFloat64(a float64) float64 {
+	return a
+}
+
+func TestCallWithArgFloat64() float64 {
+	return argFloat64(6.2)
+	// Want:
+	// float64(6.2)
+}
+
+func TestWithVar() float64 {
+	a := 3.2
+	return a
+	// Want:
+	// float64(3.2)
+}
+
+func TestTensor1DUint32() [...]uint32 {
+	return [...]uint32{1, 2, 3, 4}
+	// Want:
+	// [4]uint32{1, 2, 3, 4}
+}
+
+func TestTensor1DUint64() [...]uint64 {
+	return [...]uint64{1, 2, 3, 4}
+	// Want:
+	// [4]uint64{1, 2, 3, 4}
+}
+
+func TestTensor1DInt32() [...]int32 {
+	return [...]int32{1, 2, 3, 4}
+	// Want:
+	// [4]int32{1, 2, 3, 4}
+}
+
+func TestTensor1DInt64() [...]int64 {
+	return [...]int64{1, 2, 3, 4}
+	// Want:
+	// [4]int64{1, 2, 3, 4}
+}
+
+func TestTensor1DFloat32() [...]float32 {
+	return [...]float32{1.5, 2, 3.5, 4}
+	// Want:
+	// [4]float32{1.5, 2, 3.5, 4}
+}
+
+func TestTensor1DFloat64() [...]float64 {
+	return [...]float64{1.5, 2, 3.5, 4}
+	// Want:
+	// [4]float64{1.5, 2, 3.5, 4}
+}
+
+func TestTensorDimWithExpr() [4]float64 {
+	return [2 + 2]float64{1.5, 2, 3.5, 4}
+	// Want:
+	// [4]float64{1.5, 2, 3.5, 4}
+}
+
+func TestTensor2DFloat64WithSubtypes() [_][_]float64 {
+	return [...]float64{
+		[...]float64{0, 1, 2, 3},
+		[...]float64{10, 11, 12, 13},
+		[...]float64{20, 21, 22, 23},
+		[...]float64{30, 31, 32, 33},
+	}
+	// Want:
+	// [4][4]float64{
+	// 	{0, 1, 2, 3},
+	// 	{10, 11, 12, 13},
+	// 	{20, 21, 22, 23},
+	// 	{30, 31, 32, 33},
+	// }
+}
+
+func TestTensor2DFloat64() [_][_]float64 {
+	return [...]float64{
+		{0, 1, 2, 3},
+		{10, 11, 12, 13},
+		{20, 21, 22, 23},
+		{30, 31, 32, 33},
+	}
+	// Want:
+	// [4][4]float64{
+	// 	{0, 1, 2, 3},
+	// 	{10, 11, 12, 13},
+	// 	{20, 21, 22, 23},
+	// 	{30, 31, 32, 33},
+	// }
+}
+
+func TestTensor3DFloat64() [_][_][_]float64 {
+	return [...]float64{
+		{
+			{0, 1},
+			{10, 11},
+		},
+		{
+			{100, 101},
+			{110, 111},
+		},
+	}
+	// Want:
+	// [2][2][2]float64{
+	// 	{
+	// 		{0, 1},
+	// 		{10, 11},
+	// 	},
+	// 	{
+	// 		{100, 101},
+	// 		{110, 111},
+	// 	},
+	// }
+}
+
+func TestWithBlanks() float64 {
+	a, _, _ := 1, 2, 3
+	return a
+	// Want:
+	// float64(1)
+}
+
+var (
+	staticInt64One int64
+	staticInt64Two int64
+
+	staticIntTwo intlen
+
+	staticUnassigned intlen
+)
+
+func testStaticUnassigned() [staticUnassigned + 1]float32 {
+	return [staticUnassigned + 1]float32{}
+}
+
+func TestStatic() (int64, int64) {
+	return staticInt64One, staticInt64Two
+	// Want:
+	// 0: int64(1)
+	// 1: int64(2)
+}
+
+func TestZero() [2]float32 {
+	return [2]float32{}
+	// Want:
+	// [2]float32{0, 0}
+}
+
+func returnTupleInt64Float32() (int64, float32) {
+	return 1, 2
+}
+
+func TestCallTuple() (int64, float32) {
+	return returnTupleInt64Float32()
+	// Want:
+	// 0: int64(1)
+	// 1: float32(2)
+}
+
+func TestSizeWithPackageVar() [...]float32 {
+	return [staticIntTwo]float32{}
+	// Want:
+	// [2]float32{0, 0}
+}
+
+func TestSizeWithOpAndPackageVar() [...]float32 {
+	return [staticIntTwo + 1]float32{}
+	// Want:
+	// [3]float32{0, 0, 0}
+}
+
+func TestTensorWithVars() [...]int64 {
+	return [...]int64{
+		staticInt64One,
+		staticInt64Two,
+		3,
+	}
+	// Want:
+	// [3]int64{1, 2, 3}
+}
+
+func TestTensorWithFuncCall() [...]float32 {
+	return [...]float32{
+		TestFloat32(),
+		TestFloat32(),
+	}
+	// Want:
+	// [2]float32{5.1, 5.1}
+}
+
+func TestTensorDynamic2DTensor() [_][_]float32 {
+	return [2][3]float32{
+		{TestFloat32(), 1, TestFloat32()},
+		{TestFloat32(), 2, TestFloat32()},
+	}
+	// Want:
+	// [2][3]float32{
+	// 	{5.1, 1, 5.1},
+	// 	{5.1, 2, 5.1},
+	// }
+}
+
+func TestRedefineVariable() (float64, float64) {
+	a := 4
+	a, b := 5, 6
+	return a, b
+	// Want:
+	// 0: float64(5)
+	// 1: float64(6)
+}
+
+const constant = 4.5
+
+func TestConstantFloat32() float32 {
+	return constant
+	// Want:
+	// float32(4.5)
+}
+
+const constantWithType int32 = 4
+
+func TestConstantInt() int32 {
+	return constantWithType
+	// Want:
+	// int32(4)
+}
+
+const constWithParen = 2 * (3 + 4)
+
+func TestConstantWithParen() int32 {
+	return constWithParen
+	// Want:
+	// int32(14)
+}
+
+func TestVariableWithParen() float64 {
+	a := 4
+	b := 5
+	return b * (a + b)
+	// Want:
+	// float64(45)
+}
+
+func TestNamedReturnX() (x float64) {
+	x = 5
+	return
+	// Want:
+	// float64(5)
+}
+
+func TestLens() []intlen {
+	return axlengths([3][4][5]float32{})
+	// Want:
+	// 0: int64(3)
+	// 1: int64(4)
+	// 2: int64(5)
+}
+
+const sizeA intlen = 3
+const sizeB intlen = 2
+
+func TestAddInDim() [sizeA + sizeB]float32 {
+	return [sizeA + sizeB]float32{}
+	// Want:
+	// [5]float32{0, 0, 0, 0, 0}
+}
+
+const noType = 2
+
+func TestConstNoTypeInDim() [noType]float32 {
+	return [noType]float32{}
+	// Want:
+	// [2]float32{0, 0}
+}

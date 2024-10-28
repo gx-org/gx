@@ -1,0 +1,46 @@
+package gx_test
+
+func TestTuple() (float32, [...]float64, [_][_]float64) {
+	return 3.2,
+		[...]float64{1, 2, 3, 4},
+		[_][_]float64{
+			{1, 2},
+			{3, 4},
+		}
+	// Want:
+	// 0: float32(3.2)
+	// 1: [4]float64{1, 2, 3, 4}
+	// 2: [2][2]float64{
+	// 	{1, 2},
+	// 	{3, 4},
+	// }
+}
+
+func TestTupleAssign() (float64, [...]float64, [_][_]float64) {
+	a, b, c := 3.2,
+		[...]float64{1, 2, 3, 4},
+		[...]float64{
+			{1, 2},
+			{3, 4},
+		}
+	return a, b, c
+	// Want:
+	// 0: float64(3.2)
+	// 1: [4]float64{1, 2, 3, 4}
+	// 2: [2][2]float64{
+	// 	{1, 2},
+	// 	{3, 4},
+	// }
+}
+
+func TestTupleAssignFuncCall() (float32, [...]float64, [_][_]float64) {
+	a, b, c := TestTuple()
+	return a, b, c
+	// Want:
+	// 0: float32(3.2)
+	// 1: [4]float64{1, 2, 3, 4}
+	// 2: [2][2]float64{
+	// 	{1, 2},
+	// 	{3, 4},
+	// }
+}

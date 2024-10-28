@@ -1,0 +1,10 @@
+package gx_test
+
+import "shapes"
+
+func TestEllipsisWithFunction() [...]float32 {
+	a := shapes.Concat(0, [2]float32{2, 3}, [2]float32{4, 5})
+	return a + [4]float32{6, 7, 8, 9}
+	// Want:
+	// [4]float32{8, 10, 12, 14}
+}

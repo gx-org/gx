@@ -1,0 +1,84 @@
+package gx_test
+
+import "rand"
+
+// Test options:
+// setStatic Size intlen 2
+
+func TestRandUniformUint64() ([2][3]uint64, [2][3]uint64) {
+	rnd := rand.New(rand.NewSource(0))
+	rnd, a := rnd.Uint64([]intlen{2, 3})
+	rnd, b := rnd.Uint64([]intlen{2, 3})
+	return a, b
+	// Want:
+	// 0: [2][3]uint64{
+	// 	{5593899049600577110, 15353157502835371651, 596190196732659588},
+	// 	{5614058057677614496, 9713047263490594073, 17857316907901081200},
+	// }
+	// 1: [2][3]uint64{
+	// 	{10826104460941062082, 13199785683230879330, 11346820297660219021},
+	// 	{5989968235824991032, 13384425856091111145, 3558705469962351023},
+	// }
+}
+
+func TestRandUniformFloat64() ([2][3]float64, [2][3]float64) {
+	rnd := rand.New(rand.NewSource(0))
+	rnd, a := rnd.Float64([]intlen{2, 3})
+	rnd, b := rnd.Float64([]intlen{2, 3})
+	return a, b
+	// Want:
+	// 0: [2][3]float64{
+	// 	{0.3032458751, 0.832296336, 0.0323195353},
+	// 	{0.3043386971, 0.5265453472, 0.9680470893},
+	// }
+	// 1: [2][3]float64{
+	// 	{0.5868842988, 0.7155618157, 0.6151123609},
+	// 	{0.3247168287, 0.7255711795, 0.1929178101},
+	// }
+}
+
+func TestRandUniformFloat32() ([2][3]float32, [2][3]float32) {
+	rnd := rand.New(rand.NewSource(0))
+	rnd, a := rnd.Float32([]intlen{2, 3})
+	rnd, b := rnd.Float32([]intlen{2, 3})
+	return a, b
+	// Want:
+	// 0: [2][3]float32{
+	// 	{0.303246, 0.832296, 0.03232},
+	// 	{0.304339, 0.526545, 0.968047},
+	// }
+	// 1: [2][3]float32{
+	// 	{0.586884, 0.715562, 0.615112},
+	// 	{0.324717, 0.725571, 0.192918},
+	// }
+}
+
+func TestFloat32Axis1() [2]float32 {
+	rnd := rand.New(rand.NewSource(0))
+	_, smpl := rnd.Float32([]intlen{2})
+	return smpl
+	// Want:
+	// [2]float32{0.303246, 0.832296}
+}
+
+func TestFloat32Axis2() [3][2]float32 {
+	rnd := rand.New(rand.NewSource(0))
+	_, smpl := rnd.Float32([]intlen{3, 2})
+	return smpl
+	// Want:
+	// [3][2]float32{
+	// 	{0.303246, 0.832296},
+	// 	{0.03232, 0.304339},
+	// 	{0.526545, 0.968047},
+	// }
+}
+
+var Size intlen
+
+func TestRandUniformFloat32WithSize() [Size]float32 {
+	rnd := rand.New(rand.NewSource(0))
+	_, a := rnd.Float32([]intlen{Size})
+	return a
+	// Want:
+	// [2]float32{0.303246, 0.832296}
+}

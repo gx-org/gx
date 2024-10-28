@@ -1,0 +1,85 @@
+package forloops_test
+
+func TestForLoopRangeInteger() int32 {
+	r := int32(10)
+	for i := range 3 {
+		r = r + int32(i)
+	}
+	return r
+	// Want:
+	// int32(13)
+}
+
+func TestForLoopRangeIntegerIgnoreKey() int32 {
+	r := int32(0)
+	for _ := range 3 {
+		r = r + 1
+	}
+	return r
+	// Want:
+	// int32(3)
+}
+
+func TestForLoopRangeAxisLength() int32 {
+	r := int32(10)
+	for i := range intlen(3) {
+		r = r + int32(i)
+	}
+	return r
+	// Want:
+	// int32(13)
+}
+
+func TestForLoopRangeArrayKey() int64 {
+	a := [3]float32{3, 5, 7}
+	sumI := int64(100)
+	for i := range a {
+		sumI = sumI + i
+	}
+	return sumI
+	// Want:
+	// int64(103)
+}
+
+func TestForLoopRangeArrayKeyValue() (int64, float32) {
+	a := [3]float32{3, 5, 7}
+	sumI := int64(100)
+	sumV := float32(1000)
+	for i, v := range a {
+		sumI = sumI + i
+		sumV = sumV + v
+	}
+	return sumI, sumV
+	// Want:
+	// 0: int64(103)
+	// 1: float32(1015)
+}
+
+func TestForLoopRangeArrayValue() float32 {
+	a := [3]float32{3, 5, 7}
+	sumV := float32(1000)
+	for _, v := range a {
+		sumV = sumV + v
+	}
+	return sumV
+	// Want:
+	// float32(1015)
+}
+
+func TestForLoopRangeArrayKeyValue2Axis() (int64, [2]float32) {
+	a := [3][2]float32{
+		{3, 5},
+		{7, 11},
+		{13, 17},
+	}
+	sumI := int64(100)
+	sumV := [2]float32{1000, 2000}
+	for i, v := range a {
+		sumI = sumI + i
+		sumV = sumV + v
+	}
+	return sumI, sumV
+	// Want:
+	// 0: int64(103)
+	// 1: [2]float32{1023, 2033}
+}

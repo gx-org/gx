@@ -1,0 +1,66 @@
+// Package basic exports basic function for testing bindings.
+package basic
+
+// Empty checks bindings error for structures with no field.
+type Empty struct {
+	// Please leave empty.
+}
+
+// Basic for exports.
+type Basic struct {
+	// Int value.
+	Int int32
+
+	// Float value.
+	Float float32
+
+	// Array value.
+	Array [2]float32
+
+	privateA int32
+	privateB int32
+
+	length intlen
+	index  intidx
+}
+
+// ReturnFloat32 returns a float32.
+func ReturnFloat32() float32 {
+	return 4.2
+}
+
+// ReturnArrayFloat32 returns a float32 tensor.
+func ReturnArrayFloat32() [...]float32 {
+	return [2]float32{4.2, 42}
+}
+
+// New returns a new instance of the basic structure.
+func New() Basic {
+	return Basic{
+		Int:   42,
+		Float: 4.2,
+		Array: [2]float32{4.2, 42},
+
+		privateA: 2,
+		privateB: 4,
+
+		length: 4,
+		index:  2,
+	}
+}
+
+// AddPrivate returns the sum of two private fields.
+func AddPrivate(b Basic) int32 {
+	return b.privateA + b.privateB
+}
+
+// AddPrivate returns the sum of two private fields.
+func (b Basic) AddPrivate() int32 {
+	return b.privateA + b.privateB
+}
+
+// SetFloat sets the Float field.
+func (b Basic) SetFloat(x float32) (b Basic) {
+	b.Float = x
+	return
+}

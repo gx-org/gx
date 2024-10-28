@@ -1,0 +1,344 @@
+package resolve_test
+
+import (
+	"math"
+	"num"
+	"shapes"
+)
+
+var errorVar undefined // ERROR undeclared
+
+func testDoesNotExist() int64 {
+	return doesnotexist.Unicorn() // ERROR undefined
+}
+
+func testReturnTooMany() int64 {
+	return 5.1, 5.2 // ERROR too many return values
+}
+
+func testReturnNotEnough() (int64, float64) {
+	return 5.1 // ERROR not enough return values
+}
+
+func testIncorrectSize1D() [_]float64 {
+	return [3]float64{2, 3} // ERROR cannot reconcile
+}
+
+func testIncorrectSize2D() [1][2]float64 {
+	return [1][2]float64{ // ERROR cannot reconcile
+		{2, 3},
+		{2, 3},
+	}
+}
+
+func testUnknownKind() [_]whatIsThis { // ERROR undeclared type identifier: whatIsThis
+	return [2]float64{1, 2}
+}
+
+func testTensorDeclarationCannotUseDataType() [_][_]float64 {
+	_ := [4][4]float64{
+		[4]float64{00, 01, 02, 03},
+		[4]float64{10, 11, 12, 13},
+		[4]float32{20, 21, 22, 23}, // ERROR cannot use data type
+		[4]float64{30, 31, 32, 33},
+	}
+}
+
+func testTensorDeclarationUnexpectedDim() [_][_]float64 {
+	return [4][4]float64{
+		{00, 01, 02, 03},
+		{10, 11, 12, 13},
+		{20, 21}, // ERROR cannot reconcile
+		{30, 31, 32, 33},
+	}
+}
+
+func testTensorIncorrectType() [_][_]float64 {
+	return [_][_][_]float64{} // ERROR cannot use
+}
+
+func testTensorDeclarationUnexpectedBasic() [_][_][_]float64 {
+	return [_][_][_]float64{
+		{00, 01, 02, 03}, // ERROR cannot reconcile
+	}
+}
+
+func testTensorDeclarationUntypeComposite() [_]float64 {
+	return [_]float64{
+		{00, 01, 02, 03}, // ERROR untyped composite literal
+	}
+}
+
+func testIncorrectReturnType() [_]float64 {
+	return [_]float32{00, 01, 02, 03} // ERROR cannot use [_=4]float32 as [_]float64
+}
+
+func testIncorrectArgType(v float32) float64 {
+	return v // ERROR cannot use float32
+}
+
+func tuples() (float32, [_]float64, [_][_]float64) {
+	return 3.2,
+		[_]float64{1, 2, 3, 4},
+		[_][_]float64{
+			{1, 2},
+			{3, 4},
+		}
+}
+
+func testTupleWrongNumber() (float32, [_]float64) {
+	a, b := tuples() // ERROR  assignment mismatch
+}
+
+func funcWith2Args(a, b float32) (float32, float32) {
+	return a, b
+}
+
+func testCallTooManyArgs() float32 {
+	c, d := funcWith2Args(1, 2, 3) // ERROR too many arguments
+	return 0
+}
+
+func testCallNotEnoughArgs() float32 {
+	c, d := funcWith2Args(1) // ERROR not enough arguments
+	return 0
+}
+
+func testCallWrongType(a, b float64) float32 {
+	c, d := funcWith2Args(a, b) // ERROR cannot use float64
+	return 0
+}
+
+type unknownType someType // ERROR undeclared type
+
+func testUnknownDType() float32 {
+	a := [_]unknown{1, 2} // ERROR undeclared type identifier: unknown
+}
+
+type someStruct struct {
+	a          int32
+	someMethod float64
+}
+
+func (someStruct) duplicateMethod() float32 {
+	return 0
+}
+
+func (someStruct) duplicateMethod() float32 { // ERROR method someStruct.duplicateMethod already declared
+	return 0
+}
+
+func (someStruct) someMethod() float64 { // ERROR field and method with the same name
+	return 0
+}
+
+func (float32) cannotDefineMethodOnNonLocal() float32 { // ERROR cannot define new methods on non-local type
+	return 0
+}
+
+func testStructFieldUndefined() float32 {
+	a := someStruct{
+		a:          1,
+		someMethod: 1,
+		c:          0, // ERROR has no field
+	}
+	return 0
+}
+
+func testStructFieldIncorrectType() float32 {
+	a := someStruct{ // ERROR field someMethod has not been assigned
+		a: [_]float64{1}, // ERROR cannot use type
+	}
+	return 0
+}
+
+func testMissingField() float32 {
+	return funcWith2Args.a // ERROR undefined: funcWith2Args.a
+}
+
+func testIncorrectSelectorType() float32 {
+	return doesNotExist.a // ERROR undefined: doesNotExist
+}
+
+func testIncorrectArgumentInvalidKindToConcat() float32 {
+	a := 3
+	return shapes.Concat(0, [_]float32{1, 2}, a) // ERROR signature mismatch in call to Concat
+}
+
+func testIncorrectArgumentInvalidRankToConcat() float32 {
+	a := 3
+	return shapes.Concat( // ERROR expected all arguments to be arrays of the same rank in call to Concat, but inconsistent values, 1 vs 2
+		0,
+		[_]float32{1, 2},
+		[_][_]float32{
+			{1, 2},
+			{3, 4},
+		})
+}
+
+func testIncorrectArgumentInvalidDTypeToConcat() float32 {
+	return shapes.Concat( // ERROR expected arrays of the same data type in call to Concat, but inconsistent values, float32 vs float64
+		0,
+		[_]float32{1, 2},
+		[_]float64{1, 2},
+	)
+}
+
+func testConcatInferredType() [_]float32 {
+	a := shapes.Concat(0, [_]float32{1, 2}, [_]float32{3, 4})
+	b := [_]float32{1, 2}
+	return a + b // ERROR mismatched types
+}
+
+func testMultipleValueError() float32 {
+	a := tuples() // ERROR multiple-value
+	return a
+}
+
+func testMultipleAssignmentsExpr() float32 {
+	a := 5
+	a := 4 // ERROR no new variables
+	_ := checkCompilerStop()
+	return a
+}
+
+func testMultipleAssignmentsCall() float32 {
+	a := 4
+	a, b := funcWith2Args(4, 5) // ERROR cannot use float32 as float64
+	_ := checkCompilerStop()
+	return a
+}
+
+func testImportIsUndefined() float32 {
+	return num.DoesNotExist // ERROR undefined: num.DoesNotExist
+}
+
+type myfloat float64
+
+var (
+	varMyFloat myfloat
+	varFloat64 float64
+)
+
+func testExplicitCastMyFloatToFloat64() float64 {
+	return varMyFloat // ERROR cannot use resolve_test.myfloat as float64 in return statement
+}
+
+func testExplicitCastFloat64ToMyFloat() myfloat {
+	return varFloat64 // ERROR cannot use float64 as resolve_test.myfloat in return statement
+}
+
+func testExpIntTensor() [2]float32 {
+	a := shapes.Shape{DType: 0, Dimensions: []intlen{}}
+	return math.Exp(a) // ERROR argument type shapes.Shape not supported
+}
+
+func testSliceIncorrectType() []int64 {
+	a := 2.3
+	return []int64{a} // ERROR cannot use float64 as int64
+}
+
+func testIncorrectCast() [_]float64 {
+	return [2]float64(2) // ERROR cannot convert type float64 to
+}
+
+func testIncorrectShape() [_]float64 {
+	return [3]float64([2]float32{1, 2}) // ERROR cannot convert type [2]float32 to type
+}
+
+func testIncorrectTypeBinaryOperator() float64 {
+	a := shapes.Shape{DType: 0, Dimensions: []intlen{}}
+	b := shapes.Shape{DType: 0, Dimensions: []intlen{}}
+	c := a + b // ERROR invalid
+	return c
+}
+
+func testMulScalarFloat64Tensor1DFlat32() [2]float32 {
+	a := 2
+	return a * [2]float32{1, 2} // ERROR mismatched types float64 and float32
+}
+
+func testReshape() [2]float32 {
+	return ([2][2]float32)([3]float32{1, 2, 3}) // ERROR cannot convert type
+}
+
+func testConcatShapeError() [_]float32 {
+	a := shapes.Concat(0, [2]float32{2, 3}, [2]float32{4, 5})
+	return a + [2]float32{6, 7} // ERROR mismatched types [2+2]float32 and [2]float32
+}
+
+func testArrayToScalarDTypeMismatched() float32 {
+	return [1]float64{1} // ERROR cannot use [1]float64 as float32 in return statement
+}
+
+func testScalarToArrayDTypeMismatched() [1]float32 {
+	return float64(1) // ERROR cannot use float64 as [1]float32 in return statement
+}
+
+func testScalarToArrayDimensionsMismatched() [2]float64 {
+	return float64(1) // ERROR cannot use float64 as [2]float64 in return statement
+}
+
+func testArrayToScalarDimensionsMismatched() float64 {
+	return [2]float64{} // ERROR cannot use [2]float64 as float64 in return statement
+}
+
+func testBoolOperator() bool {
+	return true + true // ERROR invalid operation: operator
+}
+
+func testExpandIncorrectNumberOfArgument() [4][3]float32 {
+	return shapes.Expand( // ERROR wrong number of arguments
+		[]intlen{4, 3},
+		[1][3]float32{{4, 5, 6}},
+		bool,
+	)
+}
+
+func testExpandIncorrectArgumentType() [4][3]float32 {
+	return shapes.Expand( // ERROR signature mismatch in call to Expand
+		[]intlen{4, 3},
+		[1][3]float32{{4, 5, 6}},
+	)
+}
+
+func testExpandIncorrectNumberOfAxes() [4][3][6]float32 {
+	return shapes.Expand( // ERROR cannot expand array with 2 axes to 3 axes
+		[1][3]float32{{4, 5, 6}},
+		[]intlen{4, 3, 6},
+	)
+}
+
+func testExpandIncorrectNumberOfAxisSize() [4][3]float32 {
+	return shapes.Expand(
+		[2][3]float32{ // ERROR cannot expand array with axis 0 of size 2
+			{1, 2, 3},
+			{4, 5, 6},
+		},
+		[]intlen{4, 3},
+	)
+}
+
+func testIncorrectIndexType() float32 {
+	return [2]float32{}[float32(1)] // ERROR invalid argument
+}
+
+func testCastToGenericFloat64() [_]float64 {
+	return ([_]float64)([3]float64{-1, 2, -3}) // ERROR missing axis length
+}
+
+func testArrayAsScalarFloat32() float32 {
+	return [1]float32{1.0} // ERROR cannot use [1]float32 as float32
+}
+
+func testScalarAsArrayFloat32() [1]float32 {
+	return 1.0 // ERROR cannot use float32 as [1]float32
+}
+
+func testForLoop(n int32) float32 {
+	r := 0
+	for i := range n { // ERROR cannot range over int32
+		r = r + 1
+	}
+	return r
+}
