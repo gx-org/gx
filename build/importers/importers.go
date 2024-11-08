@@ -12,19 +12,17 @@
 // See the License for the specific language governing permissions and
 // limitations under the License.
 
-// Package importers provide utilities for importers.
+// Package importers provide a package loader implementation.
 package importers
 
 import (
 	"github.com/gx-org/gx/build/builder"
 )
 
-// Find finds an importer given a filter. Returns nil if the importer is not found.
-func Find(importers []builder.Importer, filter func(imp builder.Importer) bool) builder.Importer {
-	for _, imp := range importers {
-		if filter(imp) {
-			return imp
-		}
-	}
-	return nil
+// Importer loads a package given its path.
+type Importer interface {
+	// Support checks if the importer supports the import path given its prefix.
+	Support(path string) bool
+	// Import a path.
+	Import(bld *builder.Builder, path string) (builder.Package, error)
 }

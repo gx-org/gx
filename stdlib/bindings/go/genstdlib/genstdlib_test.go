@@ -12,27 +12,28 @@
 // See the License for the specific language governing permissions and
 // limitations under the License.
 
-package stdlib_test
+package genstdlib_test
 
 import (
+	"io"
+	"strings"
 	"testing"
 
-	"github.com/gx-org/gx/build/builder"
-	"github.com/gx-org/gx/build/importers"
-	"github.com/gx-org/gx/stdlib"
-	gxtesting "github.com/gx-org/gx/tests/testing"
+	"github.com/gx-org/gx/build/ir"
+	"github.com/gx-org/gx/stdlib/bindings/go/genstdlib"
 )
 
-func TestStdlibValid(t *testing.T) {
-	lib := stdlib.Importer(nil)
-	bld := builder.New(importers.NewCacheLoader(lib))
-	for _, path := range lib.Paths() {
-		pkg, err := bld.Build(path)
-		if err != nil {
-			t.Fatalf("\n%+v", err)
-		}
-		if err := gxtesting.Validate(pkg, gxtesting.CheckSource); err != nil {
-			t.Errorf("\n%s:\n%+v", path, err)
-		}
+type writer struct {
+	strings.Builder
+}
+
+func (writer) Close() error { return nil }
+
+func TestGenerate(t *testing.T) {
+	if err := genstdlib.BuildAll(func(*ir.Package) (io.WriteCloser, error) {
+		return &writer{}, nil
+	}); err != nil {
+		t.Error(err)
 	}
+
 }

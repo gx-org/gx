@@ -63,7 +63,11 @@ func findBuilderPackage(scope scoper, irpkg *ir.Package) *bPackage {
 	if &pkg.repr == irpkg {
 		return pkg
 	}
-	return pkg.builder().packages[irpkg.FullName()]
+	pkg, err := pkg.builder().importPath(irpkg.FullName())
+	if err != nil {
+		return nil
+	}
+	return pkg
 }
 
 func toTypeNode(scope scoper, irType ir.Type) (typeNode, bool) {

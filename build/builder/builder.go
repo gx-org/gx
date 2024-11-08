@@ -51,65 +51,34 @@ type (
 		IR() *ir.Package
 	}
 
-	// Importer loads a package given its path.
-	Importer interface {
-		// Support checks if the importer supports the import path given its prefix.
-		Support(path string) bool
-		// Import a path.
-		Import(bld *Builder, path string) (Package, error)
+	// Loader loads packages given their import path.
+	Loader interface {
+		Load(bld *Builder, path string) (Package, error)
 	}
 
 	// Builder represents a build session from text to
 	// the intermediate representation.
 	Builder struct {
-		importers []Importer
-		packages  map[string]*bPackage
+		builtinPackages map[string]*bPackage
+		loader          Loader
 	}
 )
 
 // New returns a new build session.
-func New(importers []Importer) *Builder {
-	b := &Builder{
-		packages:  make(map[string]*bPackage),
-		importers: importers,
+func New(loader Loader) *Builder {
+	return &Builder{
+		builtinPackages: make(map[string]*bPackage),
+		loader:          loader,
 	}
-	return b
 }
 
 // Build a package given its path.
 func (b *Builder) Build(path string) (*ir.Package, error) {
-	pkg, err := b.importPath(path)
+	pkg, err := b.loader.Load(b, path)
 	if err != nil {
 		return nil, err
 	}
 	return pkg.IR(), nil
-}
-
-func (b *Builder) findImporter(path string) Importer {
-	for _, imp := range b.importers {
-		if imp.Support(path) {
-			return imp
-		}
-	}
-	return nil
-}
-
-func (b *Builder) importPath(path string) (*bPackage, error) {
-	built, ok := b.packages[path]
-	if ok {
-		return built, nil
-	}
-	imp := b.findImporter(path)
-	if imp == nil {
-		return nil, errors.Errorf("cannot find an importer for %s", path)
-	}
-	pkg, err := imp.Import(b, path)
-	if err != nil {
-		return nil, err
-	}
-	bPkg := pkg.(*bPackage)
-	b.packages[path] = bPkg
-	return bPkg, nil
 }
 
 // NewPackage returns a new builder package given the path of the package and its name.
@@ -118,13 +87,20 @@ func (b *Builder) NewPackage(path, name string) (Package, error) {
 		return nil, errors.Errorf("cannot create package at path %q with an empty name", path)
 	}
 	pkg := b.newPackage(path, name)
-	b.packages[pkg.IR().FullName()] = pkg
+	b.builtinPackages[pkg.IR().FullName()] = pkg
 	return pkg, nil
 }
 
-// Importers returns the importers used by the builder.
-func (b *Builder) Importers() []Importer {
-	return b.importers
+func (b *Builder) importPath(path string) (*bPackage, error) {
+	bPkg, ok := b.builtinPackages[path]
+	if ok {
+		return bPkg, nil
+	}
+	pkg, err := b.loader.Load(b, path)
+	if err != nil {
+		return nil, err
+	}
+	return pkg.(*bPackage), nil
 }
 
 // BuildFiles builds a package from a list of files.

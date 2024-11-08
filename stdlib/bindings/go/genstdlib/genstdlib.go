@@ -1,0 +1,66 @@
+// Copyright 2024 Google LLC
+//
+// Licensed under the Apache License, Version 2.0 (the "License");
+// you may not use this file except in compliance with the License.
+// You may obtain a copy of the License at
+//
+//     http://www.apache.org/licenses/LICENSE-2.0
+//
+// Unless required by applicable law or agreed to in writing, software
+// distributed under the License is distributed on an "AS IS" BASIS,
+// WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
+// See the License for the specific language governing permissions and
+// limitations under the License.
+
+// Package genstdlib provides helpers to build the bindings of the standard library packages.
+package genstdlib
+
+import (
+	"fmt"
+	"io"
+
+	"github.com/gx-org/gx/build/builder"
+	"github.com/gx-org/gx/build/importers"
+	"github.com/gx-org/gx/build/ir"
+	"github.com/gx-org/gx/golang/binder/gobindings"
+	"github.com/gx-org/gx/stdlib"
+)
+
+type stdlibImporter struct{}
+
+func (stdlibImporter) SourceImport(*ir.Package) string { return "" }
+
+func (stdlibImporter) StdlibDependencyImport(stdlibPath string) string { return "" }
+
+func (stdlibImporter) DependencyImport(path string) string { return "" }
+
+func (stdlibImporter) CallBuild(pkg *ir.Package) (string, error) {
+	return fmt.Sprintf(`irPackage, err := rtm.Builder().Build("%s")
+	if err != nil {
+		return nil, err
+	}
+`, pkg.FullName()), nil
+}
+
+var importer = stdlibImporter{}
+
+// BuildAll builds the bindings for the standard library package.
+func BuildAll(newWriter func(*ir.Package) (io.WriteCloser, error)) error {
+	libs := stdlib.Importer(nil)
+	bld := builder.New(importers.NewCacheLoader(libs))
+	for _, path := range libs.Paths() {
+		pkg, err := bld.Build(path)
+		if err != nil {
+			return err
+		}
+		w, err := newWriter(pkg)
+		if err != nil {
+			return err
+		}
+		defer w.Close()
+		if err := gobindings.Generate(importer, w, pkg); err != nil {
+			return fmt.Errorf("cannot generate source for %s: %v", pkg.Name.Name, err)
+		}
+	}
+	return nil
+}

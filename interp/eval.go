@@ -247,7 +247,7 @@ func evalAssignCallStmt(ctx *context, stmt *ir.AssignCallStmt) error {
 func evalReturnStmt(ctx *context, ret *ir.ReturnStmt) (state.Element, bool, error) {
 	if len(ret.Results) == 0 {
 		// Naked return.
-		fields := ctx.currentFrame().function.Type().Results.Fields()
+		fields := ctx.currentFrame().function.FType.Results.Fields()
 		nodes := make([]state.Element, len(fields))
 		for i, field := range fields {
 			var err error

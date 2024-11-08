@@ -35,11 +35,11 @@ func buildFuncs(b *binder) []*function {
 		if !ir.IsExported(gxFunc.Name()) {
 			continue
 		}
-		if gxFunc.Type() == nil {
+		if gxFunc.Type() == nil || gxFunc.FuncType() == nil {
 			// Skipping generic functions (not supported).
 			continue
 		}
-		if gxFunc.Type().Receiver != nil {
+		if gxFunc.FuncType().Receiver != nil {
 			continue
 		}
 		if !b.canBeOnDeviceFunc(gxFunc) {
@@ -96,7 +96,7 @@ func (b *binder) FuncsCompilerSetFields() (string, error) {
 
 func (f function) RunnerField() string {
 	fieldName := f.Name()
-	if receiver := f.Type().Receiver; receiver != nil {
+	if receiver := f.FuncType().Receiver; receiver != nil {
 		fieldName = "method" + receiver.NameT + fieldName
 	}
 	return fieldName
@@ -104,14 +104,14 @@ func (f function) RunnerField() string {
 
 func (f function) RunnerType() string {
 	runnerType := f.Name()
-	if receiver := f.Type().Receiver; receiver != nil {
+	if receiver := f.FuncType().Receiver; receiver != nil {
 		runnerType = "Method" + receiver.NameT + runnerType
 	}
 	return runnerType
 }
 
 func (f function) ReceiverField() string {
-	receiver := f.Type().Receiver
+	receiver := f.FuncType().Receiver
 	if receiver == nil {
 		return ""
 	}
@@ -123,7 +123,7 @@ func (b *binder) canBeOnDeviceFunc(gxFunc ir.Func) bool {
 	if !isGX {
 		return false
 	}
-	tp := gxFunc.Type()
+	tp := gxFunc.FuncType()
 	for _, arg := range tp.Params.Fields() {
 		if err := b.canBeOnDevice(arg.Type()); err != nil {
 			return false
@@ -197,7 +197,7 @@ func toKindSuffix(typ ir.Type) string {
 }
 
 func (f function) ReceiverValue() string {
-	receiver := f.Func.Type().Receiver
+	receiver := f.Func.FuncType().Receiver
 	if receiver == nil {
 		return "nil"
 	}
@@ -205,7 +205,7 @@ func (f function) ReceiverValue() string {
 }
 
 func (f function) DefineCompilerVariable() string {
-	for _, result := range f.Func.Type().Results.Fields() {
+	for _, result := range f.Func.FuncType().Results.Fields() {
 		if result.Type().Kind() == ir.StructKind {
 			return strings.Join([]string{
 				"cmpl := f.compiler",
@@ -216,7 +216,7 @@ func (f function) DefineCompilerVariable() string {
 }
 
 func (f function) ProcessDeviceOutput() (string, error) {
-	fields := f.Func.Type().Results.Fields()
+	fields := f.Func.FuncType().Results.Fields()
 	lines := []string{""}
 	for i, field := range fields {
 		fieldLines, err := f.setTargetFromSourceType(outputN(i), fmt.Sprintf("outputs[%d]", i), field.Type())
@@ -230,7 +230,7 @@ func (f function) ProcessDeviceOutput() (string, error) {
 }
 
 func (f function) BackendArguments() (string, error) {
-	fields := f.Func.Type().Params.Fields()
+	fields := f.Func.FuncType().Params.Fields()
 	if len(fields) == 0 {
 		return "nil", nil
 	}
@@ -249,7 +249,7 @@ func (f function) BackendArguments() (string, error) {
 }
 
 func (f function) Parameters() (string, error) {
-	fields := f.Func.Type().Params.Fields()
+	fields := f.Func.FuncType().Params.Fields()
 	params := make([]string, len(fields))
 	for i, field := range fields {
 		typeS, err := f.bridgerType(field.Group.Type)
@@ -262,7 +262,7 @@ func (f function) Parameters() (string, error) {
 }
 
 func (f function) Returns() (string, error) {
-	fields := f.Func.Type().Results.Fields()
+	fields := f.Func.FuncType().Results.Fields()
 	returns := make([]string, len(fields))
 	for i := range fields {
 		returns[i] = outputN(i)
@@ -271,7 +271,7 @@ func (f function) Returns() (string, error) {
 }
 
 func (f function) Results() (string, error) {
-	fields := f.Func.Type().Results.Fields()
+	fields := f.Func.FuncType().Results.Fields()
 	results := make([]string, len(fields))
 	for i, field := range fields {
 		typeS, err := f.binder.bridgerType(field.Group.Type)

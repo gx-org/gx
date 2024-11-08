@@ -22,6 +22,7 @@ import (
 	"path/filepath"
 
 	"github.com/gx-org/gx/build/builder"
+	"github.com/gx-org/gx/build/importers"
 	"github.com/gx-org/gx/build/importers/localfs"
 	"github.com/gx-org/gx/golang/binder"
 	"github.com/gx-org/gx/stdlib"
@@ -70,10 +71,10 @@ func main() {
 		exit("cannot create target file: %v", err)
 	}
 	defer f.Close()
-	bld := builder.New([]builder.Importer{
+	bld := builder.New(importers.NewCacheLoader(
 		stdlib.Importer(nil),
 		localImporter,
-	})
+	))
 	pkg, err := bld.Build(*gxPackage)
 	if err != nil {
 		exit("%+v", err)

@@ -27,6 +27,7 @@ import (
 	"golang.org/x/mod/modfile"
 	"github.com/gx-org/gx/build/builder"
 	"github.com/gx-org/gx/build/importers/fsimporter"
+	"github.com/gx-org/gx/build/importers"
 	"github.com/gx-org/gx/stdlib/impl"
 	"github.com/gx-org/gx/stdlib"
 )
@@ -116,7 +117,7 @@ type Importer struct {
 	imp *fsimporter.Importer
 }
 
-var _ builder.Importer = (*Importer)(nil)
+var _ importers.Importer = (*Importer)(nil)
 
 // New returns a new GX using the local filesystem and Go module.
 func New() (*Importer, error) {
@@ -143,10 +144,10 @@ func NewBuilder() (*builder.Builder, error) {
 	if err != nil {
 		return nil, err
 	}
-	return builder.New([]builder.Importer{
+	return builder.New(importers.NewCacheLoader(
 		stdlib.Importer(nil),
 		importer,
-	}), nil
+	)), nil
 }
 
 // Support returns if the package belongs to the module.
@@ -183,8 +184,8 @@ func StdlibBuilder(stdlibImpl *impl.Stdlib) (*builder.Builder, error) {
 	if err != nil {
 		return nil, err
 	}
-	return builder.New([]builder.Importer{
+	return builder.New(importers.NewCacheLoader(
 		stdlib.Importer(stdlibImpl),
 		importer,
-	}), nil
+	)), nil
 }

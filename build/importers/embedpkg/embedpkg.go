@@ -31,6 +31,7 @@ package embedpkg
 import (
 	"github.com/pkg/errors"
 	"github.com/gx-org/gx/build/builder"
+	"github.com/gx-org/gx/build/importers"
 )
 
 type (
@@ -39,34 +40,32 @@ type (
 
 	// Importer maps GX package path to a Build function defined
 	// by the Go library packaging the GX files.
-	Importer struct {
-		imports map[string]BuildFunc
-	}
+	Importer struct{}
 )
 
-var _ builder.Importer = (*Importer)(nil)
+var _ importers.Importer = (*Importer)(nil)
 
-// New returns a new importer.
-func New() builder.Importer {
-	return &Importer{
-		imports: make(map[string]BuildFunc),
-	}
-}
+var registered = make(map[string]BuildFunc)
 
 // RegisterPackage registers the build function of a package given its path.
-func (imp *Importer) RegisterPackage(path string, buildFunc BuildFunc) {
-	imp.imports[path] = buildFunc
+func RegisterPackage(path string, buildFunc BuildFunc) {
+	registered[path] = buildFunc
+}
+
+// New returns a new importer.
+func New() importers.Importer {
+	return &Importer{}
 }
 
 // Support returns true if path has been registered.
 func (imp *Importer) Support(path string) bool {
-	_, ok := imp.imports[path]
+	_, ok := registered[path]
 	return ok
 }
 
 // Import a package given its path.
 func (imp *Importer) Import(bld *builder.Builder, path string) (builder.Package, error) {
-	buildFunc, ok := imp.imports[path]
+	buildFunc, ok := registered[path]
 	if !ok {
 		return nil, errors.Errorf("cannot find package %s", path)
 	}

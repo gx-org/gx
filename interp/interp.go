@@ -106,11 +106,11 @@ func (itrp *Interpreter) Eval(fn *ir.FuncDecl, receiver values.Value, args []val
 	if err != nil {
 		return nil, nil, err
 	}
-	for _, resultName := range fieldNames(fn.Type().Results.List) {
+	for _, resultName := range fieldNames(fn.FType.Results.List) {
 		frame.define(resultName.Name, nil)
 	}
 	if receiver != nil {
-		receiverProxy, err := proxies.ToProxy(receiver, fn.Type().Receiver)
+		receiverProxy, err := proxies.ToProxy(receiver, fn.FType.Receiver)
 		if err != nil {
 			return nil, nil, err
 		}
@@ -123,9 +123,9 @@ func (itrp *Interpreter) Eval(fn *ir.FuncDecl, receiver values.Value, args []val
 	if err != nil {
 		return nil, nil, err
 	}
-	for i, param := range fn.Type().Params.Fields() {
+	for i, param := range fn.FType.Params.Fields() {
 		if i >= len(args) {
-			missingParams := fn.Type().Params.Fields()[len(args):]
+			missingParams := fn.FType.Params.Fields()[len(args):]
 			builder := strings.Builder{}
 			for n, param := range missingParams {
 				if n > 0 {

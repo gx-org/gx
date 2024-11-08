@@ -52,10 +52,8 @@ package {{.GoPackageName}}
 import (
 	"embed"
 
-	"google3/third_party/golang/errors/errors"
 	"github.com/gx-org/gx/build/builder"
 	"github.com/gx-org/gx/build/importers/embedpkg"
-	"github.com/gx-org/gx/build/importers"
 {{range $dep := .Dependencies}}
 	{{$dep.GoPackageName}} "{{$dep.GoPackagePath}}"
 {{end}}
@@ -82,21 +80,17 @@ var inputFiles = []string{
 {{end}}
 }
 
+func init() {
+	for _, dep := range dependencies {
+		embedpkg.RegisterPackage(dep.path, dep.buildFunc)
+	}
+	embedpkg.RegisterPackage("google3/{{.GXPackagePath}}/{{.GXPackageName}}", Build)
+}
+
 var _ embedpkg.BuildFunc = Build
 
 // Build GX package.
 func Build(bld *builder.Builder) (builder.Package, error) {
-	importer := importers.Find(bld.Importers(), func (imp builder.Importer) bool {
-		_, ok := imp.(*embedpkg.Importer)
-		return ok
-	})
-	if importer == nil {
-		return nil, errors.Errorf("cannot find an importer to register the dependencies")
-	}
-	importLoader := importer.(*embedpkg.Importer)
-	for _, dep := range dependencies {
-		importLoader.RegisterPackage(dep.path, dep.buildFunc)
-	}
 	return bld.BuildFiles("google3/{{.GXPackagePath}}", srcs, inputFiles)
 }
 
@@ -117,6 +111,9 @@ type (
 		// GoPackageName is the name of the Go package packaging GX files together.
 		GoPackageName string
 
+		// GXPackageName is the name of the GX package.
+		GXPackageName string
+
 		// GXPackagePath is the path of the GX package being packaged.
 		GXPackagePath string
 
@@ -132,6 +129,7 @@ func main() {
 	flag.Parse()
 	pkg := packager{
 		GoPackageName: *goPackageName,
+		GXPackageName: strings.TrimSuffix(*goPackageName, "_gx"),
 	}
 
 	// Build gx path

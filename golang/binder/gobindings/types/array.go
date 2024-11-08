@@ -106,29 +106,11 @@ func (array *HostArray[T]) toDeviceBridger(val *values.DeviceArray) ArrayBridge 
 	return NewDeviceArray[T](val)
 }
 
-func toType(kind ir.Kind, axesLengths []int) *ir.ArrayType {
-	axes := make([]ir.AxisLength, len(axesLengths))
-	for i, al := range axesLengths {
-		axes[i] = &ir.AxisExpr{
-			X: &ir.AtomicValueT[ir.Int]{
-				Val: ir.Int(al),
-				Typ: ir.AxisLengthType(),
-			},
-		}
-	}
-	return &ir.ArrayType{
-		DType: &ir.AtomicType{Knd: kind},
-		RankF: &ir.Rank{
-			Axes: axes,
-		},
-	}
-}
-
 func newAlgebraArray[T dtype.AlgebraType](dt ir.Kind, vals []T, dims []int) *HostArray[T] {
 	if dims == nil {
 		dims = []int{len(vals)}
 	}
-	typ := toType(dt, dims)
+	typ := ir.NewArrayType(dt, dims)
 	array := kernels.ToAlgebraicArray[T](vals, dims)
 	buffer := kernels.NewBuffer(array)
 	return NewHostArray[T](values.NewHostArray(typ, buffer))

@@ -22,6 +22,7 @@ import (
 	"github.com/pkg/errors"
 	"golang.org/x/exp/maps"
 	"github.com/gx-org/gx/build/builder"
+	"github.com/gx-org/gx/build/importers"
 	"github.com/gx-org/gx/stdlib/builtin"
 	"github.com/gx-org/gx/stdlib/impl"
 	"github.com/gx-org/gx/stdlib/math"
@@ -36,7 +37,7 @@ type Stdlib struct {
 	libs map[string]builtin.PackageBuilder
 }
 
-var _ builder.Importer = (*Stdlib)(nil)
+var _ importers.Importer = (*Stdlib)(nil)
 
 var packages = []builtin.PackageBuilder{
 	shapes.Package,

@@ -20,6 +20,7 @@ import (
 
 	"github.com/gx-org/gx/build/builder"
 	"github.com/gx-org/gx/build/importers/fsimporter"
+	"github.com/gx-org/gx/build/importers"
 	"github.com/gx-org/gx/stdlib/impl"
 	"github.com/gx-org/gx/stdlib"
 )
@@ -80,15 +81,13 @@ var All = appendAll(Language, Stdlib)
 
 // CoreBuilder returns the builder to run core tests.
 func CoreBuilder() *builder.Builder {
-	return builder.New([]builder.Importer{
-		fsimporter.New(FS),
-	})
+	return builder.New(importers.NewCacheLoader(fsimporter.New(FS)))
 }
 
 // StdlibBuilder returns the builder to run tests with the standard library.
 func StdlibBuilder(stdlibImpl *impl.Stdlib) *builder.Builder {
-	return builder.New([]builder.Importer{
+	return builder.New(importers.NewCacheLoader(
 		stdlib.Importer(stdlibImpl),
 		fsimporter.New(FS),
-	})
+	))
 }

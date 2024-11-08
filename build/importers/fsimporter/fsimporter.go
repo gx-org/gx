@@ -26,6 +26,7 @@ import (
 
 	"github.com/pkg/errors"
 	"github.com/gx-org/gx/build/builder"
+	"github.com/gx-org/gx/build/importers"
 )
 
 type (
@@ -36,7 +37,7 @@ type (
 	}
 )
 
-var _ builder.Importer = (*Importer)(nil)
+var _ importers.Importer = (*Importer)(nil)
 
 // New returns a new importer.
 func New(fs fs.ReadDirFS) *Importer {

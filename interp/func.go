@@ -66,7 +66,7 @@ func callFuncDecl(ctx *context, fn *state.Func, fnDecl *ir.FuncDecl, args []stat
 		return nil, err
 	}
 	defer ctx.popFrame()
-	for _, resultName := range fieldNames(fnDecl.Type().Results.List) {
+	for _, resultName := range fieldNames(fnDecl.FType.Results.List) {
 		funcFrame.define(resultName.Name, nil)
 	}
 	// Add the receiver name to the function frame if present.
@@ -80,7 +80,7 @@ func callFuncDecl(ctx *context, fn *state.Func, fnDecl *ir.FuncDecl, args []stat
 	}
 	// Go through each parameter of the function and
 	// assign their argument value to the frame.
-	names := fieldNames(fnDecl.Type().Params.List)
+	names := fieldNames(fnDecl.FType.Params.List)
 	for i, arg := range args {
 		copyable, ok := arg.(state.Copyable)
 		if ok {

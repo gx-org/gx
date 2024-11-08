@@ -143,6 +143,11 @@ type (
 	}
 )
 
+var (
+	_ owner = (*scopeFile)(nil)
+	_ owner = (*scopeBlock)(nil)
+)
+
 type evalFetcher struct {
 	scope scoper
 }

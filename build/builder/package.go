@@ -78,7 +78,7 @@ func (pkg *bPackage) BuildFiles(fs fs.FS, filenames []string) (err error) {
 func (pkg *bPackage) buildFile(fs fs.FS, filename string, errs *fmterr.Errors) {
 	file, err := fs.Open(filename)
 	if err != nil {
-		errs.Append(errors.Errorf("cannot open file %q: %v", file, err))
+		errs.Append(err)
 		return
 	}
 	src, err := io.ReadAll(file)

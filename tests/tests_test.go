@@ -20,16 +20,17 @@ import (
 
 	"github.com/gx-org/gx/build/builder"
 	"github.com/gx-org/gx/build/importers/fsimporter"
+	"github.com/gx-org/gx/build/importers"
 	"github.com/gx-org/gx/stdlib"
 	gxtesting "github.com/gx-org/gx/tests/testing"
 	"github.com/gx-org/gx/tests"
 )
 
 func TestCompilerErrors(t *testing.T) {
-	bld := builder.New([]builder.Importer{
+	bld := builder.New(importers.NewCacheLoader(
 		stdlib.Importer(nil),
 		fsimporter.New(tests.FS),
-	})
+	))
 	for _, path := range tests.Errors {
 		_, testName := filepath.Split(path)
 		t.Run(testName, func(t *testing.T) {

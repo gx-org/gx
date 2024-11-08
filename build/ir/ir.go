@@ -591,6 +591,25 @@ func (s *SliceType) String() string {
 	return rank + dtype
 }
 
+// NewArrayType creates an ArrayType given an underlying DType and shape.
+func NewArrayType(kind Kind, axesLengths []int) *ArrayType {
+	axes := make([]AxisLength, len(axesLengths))
+	for i, al := range axesLengths {
+		axes[i] = &AxisExpr{
+			X: &AtomicValueT[Int]{
+				Val: Int(al),
+				Typ: AxisLengthType(),
+			},
+		}
+	}
+	return &ArrayType{
+		DType: &AtomicType{Knd: kind},
+		RankF: &Rank{
+			Axes: axes,
+		},
+	}
+}
+
 func (*ArrayType) node() {}
 
 // Kind returns the tensor kind.
@@ -815,9 +834,17 @@ type (
 		File() *File
 
 		// Type of the function.
-		// If the function is generic, then the type will have
-		// been inferred by the compiler from the types passed as args.
-		Type() *FuncType
+		// If the function is generic, then the type will have been inferred by the compiler from the
+		// types passed as args. Note that both FuncType() and Type() must return the same underlying
+		// value, though FuncType returns the concrete type.
+		FuncType() *FuncType
+		Type() Type
+	}
+
+	// Statically assert that the Func and Expr interfaces are compatible.
+	_ interface {
+		Func
+		Expr
 	}
 
 	// FuncDecl is a GX function declared at the package level.
@@ -1005,7 +1032,7 @@ func (s *FuncDecl) ReceiverField() *Field {
 	field := &Field{
 		Group: &FieldGroup{
 			Src:  groupSrc,
-			Type: s.Type().Receiver,
+			Type: s.FType.Receiver,
 		},
 		Name: groupSrc.Names[0],
 	}
@@ -1014,7 +1041,12 @@ func (s *FuncDecl) ReceiverField() *Field {
 }
 
 // Type returns the type of the function.
-func (s *FuncDecl) Type() *FuncType {
+func (s *FuncDecl) Type() Type {
+	return s.FType
+}
+
+// FuncType returns the concrete type of the function.
+func (s *FuncDecl) FuncType() *FuncType {
 	return s.FType
 }
 
@@ -1043,7 +1075,12 @@ func (s *FuncBuiltin) File() *File {
 }
 
 // Type returns the type of the function.
-func (s *FuncBuiltin) Type() *FuncType {
+func (s *FuncBuiltin) Type() Type {
+	return s.FType
+}
+
+// FuncType returns the concrete type of the function.
+func (s *FuncBuiltin) FuncType() *FuncType {
 	return s.FType
 }
 
