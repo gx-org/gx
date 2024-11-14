@@ -20,6 +20,7 @@ import (
 	"strings"
 
 	"github.com/pkg/errors"
+	"github.com/gx-org/backend/platform"
 	"github.com/gx-org/gx/build/ir"
 )
 
@@ -49,6 +50,15 @@ func NewSlice(typ ir.Type, vals []Value) (*Slice, error) {
 }
 
 func (*Slice) value() {}
+
+// ToHost transfers all the elements of the slice to the host.
+func (s *Slice) ToHost(alloc platform.Allocator) (Value, error) {
+	vals, err := ToHost(alloc, s.vals)
+	if err != nil {
+		return nil, err
+	}
+	return NewSlice(s.Type(), vals)
+}
 
 // Allocate a slice of GX values given a size.
 func (s *Slice) Allocate(size int) {

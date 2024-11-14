@@ -32,6 +32,8 @@ import (
 	"github.com/pkg/errors"
 	"github.com/gx-org/gx/build/builder"
 	"github.com/gx-org/gx/build/importers"
+	"github.com/gx-org/gx/stdlib/impl"
+	"github.com/gx-org/gx/stdlib"
 )
 
 type (
@@ -70,4 +72,12 @@ func (imp *Importer) Import(bld *builder.Builder, path string) (builder.Package,
 		return nil, errors.Errorf("cannot find package %s", path)
 	}
 	return buildFunc(bld)
+}
+
+// NewBuilder returns a builder loading GX files from the files embedded in the binary.
+func NewBuilder(stdlibImpl *impl.Stdlib) *builder.Builder {
+	return builder.New(importers.NewCacheLoader(
+		stdlib.Importer(nil),
+		New(),
+	))
 }

@@ -1,4 +1,4 @@
-package ifstmts_test
+package ifstmts
 
 func TestIfTrue() int32 {
 	a := int32(4)

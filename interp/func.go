@@ -32,6 +32,8 @@ func callFunc(ctx *context, call *ir.CallExpr, fn *state.Func, args []state.Elem
 		output, err = callFuncDecl(ctx, fn, fnT, args)
 	case *ir.FuncBuiltin:
 		output, err = callFuncBuiltin(ctx, call, fn, fnT, args)
+	case *ir.FuncLit:
+		output, err = callFuncLiteral(ctx, fnT, args)
 	default:
 		err = errors.Errorf("calling function of type %T not supported", fnT)
 	}
@@ -78,18 +80,13 @@ func callFuncDecl(ctx *context, fn *state.Func, fnDecl *ir.FuncDecl, args []stat
 		}
 		funcFrame.define(recv.Ident.Name, recvNode)
 	}
-	// Go through each parameter of the function and
-	// assign their argument value to the frame.
-	names := fieldNames(fnDecl.FType.Params.List)
-	for i, arg := range args {
-		copyable, ok := arg.(state.Copyable)
-		if ok {
-			arg = copyable.Copy()
-		}
-		funcFrame.define(names[i].Name, arg)
-	}
+	assignArgumentValues(fnDecl.FType, funcFrame, args)
 	// Evaluate the function within the frame.
 	return evalFuncBody(ctx, fnDecl.Body)
+}
+
+func callFuncLiteral(ctx *context, fn *ir.FuncLit, args []state.Element) (state.Element, error) {
+	return evalFuncLitCall(ctx, fn, args)
 }
 
 func evalFuncBody(ctx *context, body *ir.BlockStmt) (state.Element, error) {
@@ -108,6 +105,18 @@ func fieldNames(fields []*ir.FieldGroup) (r []*ast.Ident) {
 		}
 	}
 	return
+}
+
+func assignArgumentValues(funcType *ir.FuncType, funcFrame *frame, args []state.Element) {
+	// For each parameter of the function, assign its argument value to the frame.
+	names := fieldNames(funcType.Params.List)
+	for i, arg := range args {
+		copyable, ok := arg.(state.Copyable)
+		if ok {
+			arg = copyable.Copy()
+		}
+		funcFrame.define(names[i].Name, arg)
+	}
 }
 
 func evalCallExpr(ctx *context, expr *ir.CallExpr) (state.Element, error) {

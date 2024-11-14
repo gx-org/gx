@@ -1,4 +1,4 @@
-package generics_test
+package generics
 
 func identity(a [___]float32) [...]float32 {
 	return a

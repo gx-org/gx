@@ -75,10 +75,10 @@ func New(loader Loader) *Builder {
 // Build a package given its path.
 func (b *Builder) Build(path string) (*ir.Package, error) {
 	pkg, err := b.loader.Load(b, path)
-	if err != nil {
+	if pkg == nil {
 		return nil, err
 	}
-	return pkg.IR(), nil
+	return pkg.IR(), err
 }
 
 // NewPackage returns a new builder package given the path of the package and its name.
@@ -105,7 +105,7 @@ func (b *Builder) importPath(path string) (*bPackage, error) {
 
 // BuildFiles builds a package from a list of files.
 // Note that the package is not registered by the builder.
-func (b *Builder) BuildFiles(path string, fs fs.FS, filenames []string) (Package, error) {
-	pkg := b.newPackage(path, "")
+func (b *Builder) BuildFiles(packagePath, packageName string, fs fs.FS, filenames []string) (Package, error) {
+	pkg := b.newPackage(packagePath, packageName)
 	return pkg, pkg.BuildFiles(fs, filenames)
 }

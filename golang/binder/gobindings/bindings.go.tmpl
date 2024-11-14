@@ -47,7 +47,7 @@ var (
 	_ = types.NewSlice[types.Bridger]
 )
 
-// Package is the GX package {{.Package.FullName}} built for a backend.
+// Package is the GX package built for a given backend.
 type Package struct {
 	Runtime *api.Runtime
 	IR      *ir.Package
@@ -59,7 +59,10 @@ type Package struct {
 
 // Load the GX package for a given backend.
 func Load(rtm *api.Runtime) (*Package, error) {
-	{{.BuildIRPackage}}
+	irPackage, err := rtm.Builder().Build("{{.Package.FullName}}")
+	if err != nil {
+		return nil, err
+	}
 	pkg := &Package{
 		Runtime: rtm,
 		IR: irPackage,

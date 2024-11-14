@@ -67,7 +67,7 @@ func (b *binder) namePackage(pkg *ir.Package) string {
 	if b.stdlib.Support(packagePath) {
 		packagePath = b.builder.StdlibDependencyImport(packagePath)
 	} else {
-		packagePath = b.builder.DependencyImport(packagePath)
+		packagePath = b.builder.DependencyImport(pkg)
 	}
 	return b.importPathToName(packagePath)
 }

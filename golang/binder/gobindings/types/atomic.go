@@ -56,7 +56,7 @@ func (atom *DeviceAtom[T]) Fetch() (*HostAtom[T], error) {
 
 // FetchWithAlloc the value from the device given a specific allocator.
 func (atom *DeviceAtom[T]) FetchWithAlloc(alloc platform.Allocator) (*HostAtom[T], error) {
-	val, err := atom.value.Fetch(alloc)
+	val, err := atom.value.ToHostArray(alloc)
 	if err != nil {
 		return nil, err
 	}

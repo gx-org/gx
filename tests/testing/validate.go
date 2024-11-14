@@ -82,9 +82,15 @@ func (v *validator) validate(node ir.Node) {
 			v.errs.Append(errors.Errorf("function %q has no body", nodeT.Name()))
 			return
 		}
-		for _, stmt := range nodeT.Body.List {
-			v.validate(stmt)
+		v.validate(nodeT.Body)
+	case *ir.FuncLit:
+		v.validate(nodeT.FFile)
+		v.validate(nodeT.FType)
+		if nodeT.Body == nil {
+			v.errs.Append(errors.Errorf("function literal has no body"))
+			return
 		}
+		v.validate(nodeT.Body)
 	case *ir.VarDecl:
 		v.validate(nodeT.TypeV)
 	case *ir.LocalVarAssign:

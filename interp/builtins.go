@@ -43,7 +43,7 @@ var (
 	)
 )
 
-func (ctx *context) newBuiltinFrame(fn *ir.FuncDecl) *frame {
+func (ctx *context) newBuiltinFrame(fn ir.Func) *frame {
 	builtins := map[string]state.Element{
 		"true":  ctx.state.Numerical(trueValue),
 		"false": ctx.state.Numerical(falseValue),

@@ -104,7 +104,7 @@ func fixTestOutput(rtm *api.Runtime, path string, f *ast.File) (fixed bool, err 
 	if err != nil {
 		return false, err
 	}
-	pkg, err := rtm.Builder().BuildFiles(path, fs, packageFiles)
+	pkg, err := rtm.Builder().BuildFiles(path, "", fs, packageFiles)
 	if err != nil {
 		return false, err
 	}

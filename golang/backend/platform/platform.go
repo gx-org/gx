@@ -28,7 +28,7 @@ type Platform struct {
 // New returns a Go native platform.
 func New() *Platform {
 	plat := &Platform{}
-	plat.dev = newDevice(plat)
+	plat.dev = newDevice(plat, 0)
 	return plat
 }
 

@@ -66,15 +66,11 @@ type (
 		SourceImport(*ir.Package) string
 
 		// DependencyImport generates the import to insert in the package source code.
-		DependencyImport(string) string
+		DependencyImport(*ir.Package) string
 
 		// StdlibDependencyImport returns the package path to a dependency on
 		// the standard library package.
 		StdlibDependencyImport(string) string
-
-		// CallBuild generates the source to define and set the irPackage variable
-		// used in the source code to return a Package structure.
-		CallBuild(*ir.Package) (string, error)
 	}
 
 	// binder generates the Go bindings for a GX package.
@@ -96,10 +92,6 @@ type (
 
 func (b *binder) GXImportBindedLibrary() string {
 	return b.builder.SourceImport(b.Package)
-}
-
-func (b *binder) BuildIRPackage() (string, error) {
-	return b.builder.CallBuild(b.Package)
 }
 
 var processNamedTypeOutputTmpl = template.Must(template.New("processNamedTypeOutputTMPL").Parse(

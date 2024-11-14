@@ -1,4 +1,4 @@
-package gx_test
+package core
 
 type myfloat float64
 
@@ -45,8 +45,8 @@ func TestStructField() parent {
 		a: 3,
 	}
 	// Want:
-	// gx_test.parent{
-	//	m: gx_test.child{
+	// core.parent{
+	//	m: core.child{
 	//		a: float64(5),
 	//		b: [3]float64{1, 2, 3},
 	//	},
@@ -61,8 +61,8 @@ func TestNewParent() parent {
 	}
 	return newParent(m, 3)
 	// Want:
-	// gx_test.parent{
-	// 	m: gx_test.child{
+	// core.parent{
+	// 	m: core.child{
 	// 		a: float64(5),
 	// 		b: [3]float64{1, 2, 3},
 	// 	},

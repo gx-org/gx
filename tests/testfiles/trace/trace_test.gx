@@ -1,4 +1,4 @@
-package trace_test
+package trace
 
 func TestTraceScalar() float64 {
 	a := 2

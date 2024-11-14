@@ -18,6 +18,7 @@ package values
 import (
 	"github.com/pkg/errors"
 	"github.com/gx-org/backend/dtype"
+	"github.com/gx-org/backend/platform"
 	"github.com/gx-org/gx/build/ir"
 	"github.com/gx-org/gx/golang/backend/kernels"
 )
@@ -29,6 +30,13 @@ type (
 
 		// Type returns the type of the value.
 		Type() ir.Type
+
+		// ToHost transfers the value to host given an allocator.
+		ToHost(platform.Allocator) (Value, error)
+
+		// String representation of the value.
+		// The returned string is a string reported to the user.
+		String() string
 	}
 	// Valuer is an instance able to produce a GX value.
 	Valuer interface {
@@ -81,4 +89,17 @@ func Zero(typ ir.Type) (Value, error) {
 	default:
 		return nil, errors.Errorf("cannot create a zero value of %s", kind.String())
 	}
+}
+
+// ToHost transfers all values recursirvely to the host.
+func ToHost(alloc platform.Allocator, vals []Value) ([]Value, error) {
+	out := make([]Value, len(vals))
+	for i, val := range vals {
+		var err error
+		out[i], err = val.ToHost(alloc)
+		if err != nil {
+			return nil, err
+		}
+	}
+	return out, nil
 }

@@ -25,9 +25,24 @@ import (
 	"github.com/gx-org/backend/platform"
 	"github.com/gx-org/gx/api"
 	"github.com/gx-org/gx/api/values"
+	"github.com/gx-org/gx/build/builder"
 	"github.com/gx-org/gx/build/fmterr"
+	"github.com/gx-org/gx/build/importers/embedpkg"
+	"github.com/gx-org/gx/build/importers"
 	"github.com/gx-org/gx/build/ir"
+	"github.com/gx-org/gx/golang/backend/kernels"
 	"github.com/gx-org/gx/interp"
+	"github.com/gx-org/gx/stdlib/impl"
+	"github.com/gx-org/gx/stdlib"
+
+	// Packages statically loaded for tests.
+	_ "github.com/gx-org/gx/tests/bindings/basic"
+	_ "github.com/gx-org/gx/tests/bindings/encoding"
+	_ "github.com/gx-org/gx/tests/bindings/imports"
+	_ "github.com/gx-org/gx/tests/bindings/math"
+	_ "github.com/gx-org/gx/tests/bindings/parameters"
+	_ "github.com/gx-org/gx/tests/bindings/pkgvars"
+	_ "github.com/gx-org/gx/tests/bindings/rand"
 )
 
 type (
@@ -42,6 +57,15 @@ type (
 		trace  strings.Builder
 	}
 )
+
+// NewBuilderStaticSource returns a builder using the embedpkg importer which
+// embeds GX testing source files into their corresponding Go package.
+func NewBuilderStaticSource(stdlibImpl *impl.Stdlib) *builder.Builder {
+	return builder.New(importers.NewCacheLoader(
+		stdlib.Importer(stdlibImpl),
+		embedpkg.New(),
+	))
+}
 
 // NewRunner returns a test runner given a device.
 func NewRunner(rtm *api.Runtime, devID int) (*Runner, error) {
@@ -68,16 +92,20 @@ func (r *Runner) Run(fn *ir.FuncDecl, options []interp.PackageOption) ([]values.
 	return values, all, nil
 }
 
-func (r *testTracer) Trace(fset *token.FileSet, call *ir.CallExpr, values []values.Value) error {
+func (r *testTracer) Trace(fset *token.FileSet, call *ir.CallExpr, vals []values.Value) error {
 	if r.nTrace == 0 {
 		r.trace.WriteString("\nTrace:\n")
+	}
+	vals, err := values.ToHost(kernels.Allocator(), vals)
+	if err != nil {
+		return err
 	}
 	pos := fset.Position(call.Src.Pos())
 	r.trace.WriteString(fmt.Sprintf("%s:%d", filepath.Base(pos.Filename), r.nTrace))
 	r.nTrace++
 	const indent = "  "
 	r.trace.WriteString("\n" + indent)
-	for _, val := range values {
+	for _, val := range vals {
 		valS := fmt.Sprint(val)
 		valS = strings.ReplaceAll(valS, "\n", "\n"+indent)
 		r.trace.WriteString(valS)
@@ -122,7 +150,10 @@ func flatten(out []values.Value) []values.Value {
 }
 
 func buildGot(out []values.Value) string {
-	out = flatten(out)
+	out, err := values.ToHost(kernels.Allocator(), flatten(out))
+	if err != nil {
+		return err.Error()
+	}
 	if len(out) == 0 {
 		return ""
 	}

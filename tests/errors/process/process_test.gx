@@ -1,4 +1,4 @@
-package process_test
+package process
 
 var (
 	errorVarValues = 4, 5 // ERROR cannot assign

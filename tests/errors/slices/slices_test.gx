@@ -1,4 +1,4 @@
-package slices_test
+package slices
 
 func testSliceFloatIndex() float32 {
 	return [2]float32{1, 2}[1.0] // ERROR: cannot use 1.0 (untyped FLOAT constant) as int64 value

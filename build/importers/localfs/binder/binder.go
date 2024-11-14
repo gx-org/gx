@@ -21,22 +21,24 @@ import (
 	"path/filepath"
 
 	"github.com/gx-org/gx/build/ir"
+	"github.com/gx-org/gx/golang/binder/gobindings"
 )
 
 // GenImports generates the source code to build GX packages
 // using the local filesystem.
 type GenImports struct{}
 
+var _ gobindings.DependenciesBuildCall = (*GenImports)(nil)
+
 // SourceImport generates the import when the GX source needs to be imported
 // from a Go module.
 func (GenImports) SourceImport(pkg *ir.Package) string {
-	return ""
+	return fmt.Sprintf(`_ "%s"`, pkg.Path)
 }
 
 // DependencyImport generates the import to insert in the package source code.
-func (GenImports) DependencyImport(path string) string {
-	dir, name := filepath.Split(path)
-	return fmt.Sprintf("%s%s/%s_go_gx", dir, name, name)
+func (GenImports) DependencyImport(pkg *ir.Package) string {
+	return fmt.Sprintf("%s/%s/%s_go_gx", pkg.Path, pkg.Name.Name, pkg.Name.Name)
 }
 
 // StdlibDependencyImport returns the path to the Go bindings of a GX standard library given
@@ -44,15 +46,4 @@ func (GenImports) DependencyImport(path string) string {
 func (GenImports) StdlibDependencyImport(path string) string {
 	dir, name := filepath.Split(path)
 	return fmt.Sprintf("github.com/gx-org/gx/stdlib/bindings/go/%s%s_go_gx", dir, name)
-}
-
-// CallBuild generates the source to define and set the irPackage variable
-// used in the source code to return a Package structure.
-func (GenImports) CallBuild(pkg *ir.Package) (string, error) {
-	return fmt.Sprintf(`
-	irPackage, err := rtm.Builder().Build("%s")
-	if err != nil {
-		return nil, err
-	}
-`, pkg.FullName()), nil
 }

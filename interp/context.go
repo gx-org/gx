@@ -59,7 +59,7 @@ type context struct {
 
 var _ Context = (*context)(nil)
 
-func newContext(itrp *Interpreter, g *state.State, fn *ir.FuncDecl, receiver values.Value, args []values.Value) *context {
+func newContext(itrp *Interpreter, g *state.State, fn ir.Func, receiver values.Value, args []values.Value) *context {
 	ctx := &context{
 		itrp:           itrp,
 		state:          g,
@@ -77,7 +77,7 @@ func (ctx *context) FileSet() fmterr.FileSet {
 	if len(ctx.stack) > 0 {
 		frame = ctx.currentFrame()
 	}
-	return fmterr.FileSet{FSet: frame.function.FFile.Package.FSet}
+	return fmterr.FileSet{FSet: frame.function.File().Package.FSet}
 }
 
 func (ctx *context) State() *state.State {
@@ -124,7 +124,7 @@ func (ctx *context) fileFrame(file *ir.File) (*frame, error) {
 	return fileFrame, nil
 }
 
-func (ctx *context) pushFuncFrame(fn *ir.FuncDecl) (*frame, error) {
+func (ctx *context) pushFuncFrame(fn ir.Func) (*frame, error) {
 	fileFrame, err := ctx.fileFrame(fn.File())
 	if err != nil {
 		return nil, err

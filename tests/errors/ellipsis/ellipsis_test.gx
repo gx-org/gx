@@ -1,4 +1,4 @@
-package ellipsis_test
+package ellipsis
 
 import "shapes"
 

@@ -1,4 +1,4 @@
-package slices_test
+package slices
 
 type indexedArray struct {
 	array [3][2]float32

@@ -52,9 +52,6 @@ func findTests(pkg *ir.Package) []*ir.FuncDecl {
 
 // FindTests finds all the tests at the top-level of a filesystem.
 func FindTests(pkg *ir.Package) ([]*ir.FuncDecl, error) {
-	if !strings.HasSuffix(pkg.Name.Name, "_test") {
-		return nil, fmterr.Errorf(pkg.FSet, pkg.Name, "cannot find test functions: package %s is not a test package", pkg.Name)
-	}
 	funs := findTests(pkg)
 	if len(funs) == 0 {
 		return nil, fmt.Errorf("no test found")

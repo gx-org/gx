@@ -19,7 +19,7 @@ import (
 	"testing"
 
 	"github.com/gx-org/gx/api"
-	"github.com/gx-org/gx/build/importers/fsimporter"
+	"github.com/gx-org/gx/build/importers/localfs"
 )
 
 // Session is a test session to a set of tests
@@ -37,7 +37,7 @@ func NewSession(rtm *api.Runtime, fs fs.ReadDirFS) *Session {
 // TestFolder run the tests in a folder.
 func (s *Session) TestFolder(t *testing.T, path string) {
 	bld := s.rtm.Builder()
-	pkg, err := fsimporter.CompileDir(bld, s.fs, path)
+	pkg, err := localfs.ImportAt(bld, s.fs, path, path)
 	if err != nil {
 		t.Fatalf("\n%s:\n%+v", path, err)
 	}

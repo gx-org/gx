@@ -1,4 +1,4 @@
-package slices_test
+package slices
 
 type inSlice struct {
 	a [2]float32

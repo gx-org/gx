@@ -59,7 +59,7 @@ type (
 	// State of a collection of nodes.
 	State struct {
 		backendGraph graph.Graph
-		fn           *ir.FuncDecl
+		fn           ir.Func
 		inits        []Initializer
 		args         []Argument
 
@@ -116,7 +116,7 @@ type (
 )
 
 // New XLA computation graph.
-func New(fn *ir.FuncDecl, backendGraph graph.Graph) *State {
+func New(fn ir.Func, backendGraph graph.Graph) *State {
 	return &State{fn: fn, backendGraph: backendGraph}
 }
 
@@ -209,7 +209,7 @@ func (g *CompiledGraph) Run(receiver values.Value, args []values.Value, tracer T
 func (g *CompiledGraph) handlesToValues(out []platform.DeviceHandle) ([]values.Value, error) {
 	reader := &handleParser{handles: out}
 	elements := []Element{g.out}
-	if g.state.fn.FType.Results.Len() > 1 {
+	if g.state.fn.FuncType().Results.Len() > 1 {
 		elements = g.out.(*Tuple).Unpack()
 	}
 	values := make([]values.Value, len(elements))

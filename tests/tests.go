@@ -19,8 +19,8 @@ import (
 	"embed"
 
 	"github.com/gx-org/gx/build/builder"
-	"github.com/gx-org/gx/build/importers/fsimporter"
 	"github.com/gx-org/gx/build/importers"
+	"github.com/gx-org/gx/build/importers/localfs"
 	"github.com/gx-org/gx/stdlib/impl"
 	"github.com/gx-org/gx/stdlib"
 )
@@ -76,18 +76,34 @@ func appendAll(paths ...[]string) []string {
 	return r
 }
 
+type importer struct {
+}
+
+// Support checks if the importer supports the import path given its prefix.
+func (imp importer) Support(path string) bool { return true }
+
+// Import a path.
+func (imp importer) Import(bld *builder.Builder, path string) (builder.Package, error) {
+	return localfs.ImportAt(bld, FS, path, path)
+}
+
+// Importer returns the importer for GX tests.
+func Importer() importers.Importer {
+	return importer{}
+}
+
 // All includes all paths.
 var All = appendAll(Language, Stdlib)
 
 // CoreBuilder returns the builder to run core tests.
 func CoreBuilder() *builder.Builder {
-	return builder.New(importers.NewCacheLoader(fsimporter.New(FS)))
+	return builder.New(importers.NewCacheLoader(Importer()))
 }
 
 // StdlibBuilder returns the builder to run tests with the standard library.
 func StdlibBuilder(stdlibImpl *impl.Stdlib) *builder.Builder {
 	return builder.New(importers.NewCacheLoader(
 		stdlib.Importer(stdlibImpl),
-		fsimporter.New(FS),
+		Importer(),
 	))
 }

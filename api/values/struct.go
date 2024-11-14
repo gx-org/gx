@@ -19,12 +19,13 @@ import (
 	"strings"
 
 	"github.com/pkg/errors"
+	"github.com/gx-org/backend/platform"
 	"github.com/gx-org/gx/build/ir"
 )
 
 // Struct stores the GX values of a structure.
 type Struct struct {
-	values     []Value
+	vals       []Value
 	typ        ir.Type
 	structType *ir.StructType
 }
@@ -34,8 +35,8 @@ var _ Value = (*Struct)(nil)
 // NewStruct returns a new structure given a set of values.
 func NewStruct(typ ir.Type, vals []Value) (*Struct, error) {
 	vs := &Struct{
-		typ:    typ,
-		values: vals,
+		typ:  typ,
+		vals: vals,
 	}
 	under := ir.Underlying(typ)
 	var ok bool
@@ -43,13 +44,22 @@ func NewStruct(typ ir.Type, vals []Value) (*Struct, error) {
 	if !ok {
 		return nil, errors.Errorf("cannot create a structure value for type %T", under)
 	}
-	if vs.values == nil {
-		vs.values = make([]Value, vs.structType.NumFields())
+	if vs.vals == nil {
+		vs.vals = make([]Value, vs.structType.NumFields())
 	}
 	return vs, nil
 }
 
 func (*Struct) value() {}
+
+// ToHost transfers all the elements of the slice to the host.
+func (vs *Struct) ToHost(alloc platform.Allocator) (Value, error) {
+	vals, err := ToHost(alloc, vs.vals)
+	if err != nil {
+		return nil, err
+	}
+	return NewStruct(vs.Type(), vals)
+}
 
 // Type of the structure.
 func (vs *Struct) Type() ir.Type {
@@ -58,12 +68,12 @@ func (vs *Struct) Type() ir.Type {
 
 // SetField sets a field value.
 func (vs *Struct) SetField(i int, val Value) {
-	vs.values[i] = val
+	vs.vals[i] = val
 }
 
 // FieldValue returns the value of the ith field.
 func (vs *Struct) FieldValue(i int) Value {
-	return vs.values[i]
+	return vs.vals[i]
 }
 
 // StructType returns the structure type of the structure.
@@ -87,7 +97,7 @@ func (vs *Struct) String() string {
 	fields := vs.structType.Fields.Fields()
 	fieldStrs := make([]string, len(fields))
 	for i, field := range fields {
-		childS := fmt.Sprint(vs.values[i])
+		childS := fmt.Sprint(vs.vals[i])
 		if strings.Index(childS, "\n") > 0 {
 			childS = indent(childS)
 		}

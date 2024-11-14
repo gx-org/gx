@@ -864,6 +864,14 @@ type (
 		Impl    FuncImpl
 	}
 
+	// FuncLit is a function literal.
+	FuncLit struct {
+		FFile *File
+		Src   *ast.FuncLit
+		FType *FuncType
+		Body  *BlockStmt
+	}
+
 	// ImportDecl imports a package.
 	ImportDecl struct {
 		Src     *ast.ImportSpec
@@ -900,6 +908,8 @@ var (
 	_ Node = (*ConstDecl)(nil)
 	_ Func = (*FuncDecl)(nil)
 	_ Func = (*FuncBuiltin)(nil)
+	_ Func = (*FuncLit)(nil)
+	_ Expr = (*FuncLit)(nil)
 )
 
 func (*Package) node() {}
@@ -1082,6 +1092,44 @@ func (s *FuncBuiltin) Type() Type {
 // FuncType returns the concrete type of the function.
 func (s *FuncBuiltin) FuncType() *FuncType {
 	return s.FType
+}
+
+func (*FuncLit) node() {}
+
+// Name of the function. Returns an empty string since literals are always anonymous.
+func (s *FuncLit) Name() string {
+	return ""
+}
+
+// Doc returns associated documentation or nil.
+func (s *FuncLit) Doc() *ast.CommentGroup {
+	return nil
+}
+
+// File declaring the function literal.
+func (s *FuncLit) File() *File {
+	return s.FFile
+}
+
+// Type returns the type of the function.
+func (s *FuncLit) Type() Type {
+	return s.FType
+}
+
+// FuncType returns the concrete type of the function.
+func (s *FuncLit) FuncType() *FuncType {
+	return s.FType
+}
+
+// Source returns the node in the AST tree.
+func (s *FuncLit) Source() ast.Node { return s.Src }
+
+// Expr returns the expression in the source code.
+func (s *FuncLit) Expr() ast.Expr { return s.Src }
+
+// String representation of the literal.
+func (s *FuncLit) String() string {
+	return "func {...}"
 }
 
 func (*ImportDecl) node() {}

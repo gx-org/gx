@@ -1,4 +1,4 @@
-package slices_test
+package slices
 
 func TestSliceLiteralOneElementOneAxis() float32 {
 	return [1]float32{3.14159}[0]

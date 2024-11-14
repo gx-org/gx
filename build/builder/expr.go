@@ -40,6 +40,8 @@ func processExpr(owner owner, expr ast.Expr) (exprNode, bool) {
 		return processSelectorReference(owner, exprT)
 	case *ast.IndexExpr:
 		return processIndexExpr(owner, exprT)
+	case *ast.FuncLit:
+		return processFuncLit(owner, exprT)
 	default:
 		owner.err().Appendf(expr, "expression of type %T not supported", expr)
 	}

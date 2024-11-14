@@ -280,3 +280,15 @@ func (g *Graph) NewSet(x, updates, index graph.Node) (graph.Node, error) {
 func (g *Graph) NewSlice(x graph.Node, index int) (graph.Node, error) {
 	return nil, errors.Errorf("not implemented")
 }
+
+// NewCall returns a node that invokes a subgraph with the given result node.
+func (g *Graph) NewCall(sg graph.Graph, resultNode graph.Node) (graph.Node, error) {
+	return resultNode, nil
+}
+
+// NewSubgraph returns a Graph instance that maps to a new subgraph.
+func (g *Graph) NewSubgraph(name string) (graph.Graph, error) {
+	// Note that this is a very incomplete implementation: it simply builds the subgraph within the
+	// current graph.
+	return g, nil
+}

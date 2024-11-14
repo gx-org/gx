@@ -26,7 +26,7 @@ import (
 
 type frame struct {
 	ctx      *context
-	function *ir.FuncDecl
+	function ir.Func
 
 	parent *frame
 	vars   map[string]state.Element
@@ -77,7 +77,7 @@ func (fr *frame) newFileFrame(file *ir.File) *frame {
 	return fileFrame
 }
 
-func (fr *frame) newFunctionFrame(fn *ir.FuncDecl) *frame {
+func (fr *frame) newFunctionFrame(fn ir.Func) *frame {
 	return &frame{
 		function: fn,
 		ctx:      fr.ctx,

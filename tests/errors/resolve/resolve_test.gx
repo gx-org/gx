@@ -1,4 +1,4 @@
-package resolve_test
+package resolve
 
 import (
 	"math"
@@ -221,11 +221,11 @@ var (
 )
 
 func testExplicitCastMyFloatToFloat64() float64 {
-	return varMyFloat // ERROR cannot use resolve_test.myfloat as float64 in return statement
+	return varMyFloat // ERROR cannot use resolve.myfloat as float64 in return statement
 }
 
 func testExplicitCastFloat64ToMyFloat() myfloat {
-	return varFloat64 // ERROR cannot use float64 as resolve_test.myfloat in return statement
+	return varFloat64 // ERROR cannot use float64 as resolve.myfloat in return statement
 }
 
 func testExpIntTensor() [2]float32 {
@@ -341,4 +341,19 @@ func testForLoop(n int32) float32 {
 		r = r + 1
 	}
 	return r
+}
+
+func testLambda_DisallowVariableCapture() int32 {
+	x := 0
+	return func() int32 {
+		return 1 + x // ERROR undefined: x
+	}()
+}
+
+func testLambda_DisallowVariableEscape() int32 {
+	f := func() int32 {
+		x := int32(42)
+		return x
+	}()
+	return 1 + x // ERROR undefined: x
 }

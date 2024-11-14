@@ -23,15 +23,21 @@ import (
 // Device is a device for the Go backend, that is a CPU.
 type Device struct {
 	plat *Platform
+	ord  int
 }
 
-func newDevice(plat *Platform) *Device {
+func newDevice(plat *Platform, ord int) *Device {
 	return &Device{plat: plat}
 }
 
 // Platform owning the device.
 func (dev *Device) Platform() platform.Platform {
 	return dev.plat
+}
+
+// Ordinal of the device on the platform.
+func (dev *Device) Ordinal() int {
+	return dev.ord
 }
 
 // Send raw data to the device. Return a handle from this package.

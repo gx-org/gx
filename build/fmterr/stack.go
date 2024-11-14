@@ -60,17 +60,17 @@ func ToStackTraceError(err error) error {
 	if err == nil {
 		return nil
 	}
-	return errorWithStackTrace{err: err}
+	return &errorWithStackTrace{err: err}
 }
 
-func (err errorWithStackTrace) Unwrap() error {
+func (err *errorWithStackTrace) Unwrap() error {
 	return err.err
 }
 
-func (err errorWithStackTrace) Format(s fmt.State, verb rune) {
+func (err *errorWithStackTrace) Format(s fmt.State, verb rune) {
 	format(err, s, verb)
 }
 
-func (err errorWithStackTrace) Error() string {
+func (err *errorWithStackTrace) Error() string {
 	return err.err.Error()
 }

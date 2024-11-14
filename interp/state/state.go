@@ -25,6 +25,7 @@ import (
 	"github.com/gx-org/backend/shape"
 	"github.com/gx-org/gx/api/values"
 	"github.com/gx-org/gx/build/ir"
+	"github.com/gx-org/gx/golang/backend/kernels"
 )
 
 type (
@@ -175,7 +176,7 @@ func HostValueFromContext(ctx Context, el Element) (*values.HostArray, error) {
 	if err != nil {
 		return nil, err
 	}
-	return array.ToHost()
+	return array.ToHostArray(kernels.Allocator())
 }
 
 type (

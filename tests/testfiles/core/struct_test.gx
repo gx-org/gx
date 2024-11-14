@@ -1,4 +1,4 @@
-package gx_test
+package core
 
 type sample struct {
 	x [2]float32

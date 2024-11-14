@@ -32,15 +32,7 @@ func (stdlibImporter) SourceImport(*ir.Package) string { return "" }
 
 func (stdlibImporter) StdlibDependencyImport(stdlibPath string) string { return "" }
 
-func (stdlibImporter) DependencyImport(path string) string { return "" }
-
-func (stdlibImporter) CallBuild(pkg *ir.Package) (string, error) {
-	return fmt.Sprintf(`irPackage, err := rtm.Builder().Build("%s")
-	if err != nil {
-		return nil, err
-	}
-`, pkg.FullName()), nil
-}
+func (stdlibImporter) DependencyImport(*ir.Package) string { return "" }
 
 var importer = stdlibImporter{}
 

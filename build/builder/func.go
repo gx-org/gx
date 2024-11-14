@@ -366,3 +366,55 @@ func (fn *funcBuiltin) kind() ir.Kind {
 func (fn *funcBuiltin) String() string {
 	return fn.ext.File().Package.Name.Name + "." + fn.ext.Name()
 }
+
+type funcLiteral struct {
+	ext   *ir.FuncLit
+	fdecl *funcDecl
+	ftype *funcType
+	body  *blockStmt
+}
+
+var _ exprNode = (*funcLiteral)(nil)
+
+func (fn *funcLiteral) resolveType(scope scoper) (typeNode, bool) {
+	ftype, ftypeOk := fn.ftype.resolveType(scope)
+	bodyOk := fn.body.resolveType(scope.block().scopeFunc(fn.fdecl, fn.fdecl.ns))
+	return ftype, ftypeOk && bodyOk
+}
+
+func (fn *funcLiteral) expr() ast.Expr {
+	return fn.ext.Src
+}
+
+func (fn *funcLiteral) source() ast.Node {
+	return fn.ext.Src
+}
+
+func (fn *funcLiteral) buildExpr() ir.Expr {
+	fn.ext.FFile = &fn.fdecl.bFile.repr
+	fn.ext.FType = fn.ftype.buildFuncType()
+	fn.ext.Body = fn.body.buildBlockStmt()
+	return fn.ext
+}
+
+func (fn *funcLiteral) String() string {
+	return "func {...}"
+}
+
+func processFuncLit(owner owner, src *ast.FuncLit) (*funcLiteral, bool) {
+	scope := owner.block()
+	fdecl := &funcDecl{
+		bFile: scope.file(),
+		ns:    scope.namespace().newChild(),
+		ext:   ir.FuncDecl{},
+	}
+	ftype, ftypeOk := processFuncType(scope, src.Type, fdecl)
+	body, bodyOk := processBlockStmt(scope, fdecl, src.Body)
+	fdecl.funcType = ftype
+	return &funcLiteral{
+		ext:   &ir.FuncLit{Src: src},
+		fdecl: fdecl,
+		ftype: ftype,
+		body:  body,
+	}, ftypeOk && bodyOk
+}

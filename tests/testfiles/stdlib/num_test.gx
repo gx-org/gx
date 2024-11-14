@@ -1,4 +1,4 @@
-package gx_test
+package stdlib
 
 import (
 	"num"

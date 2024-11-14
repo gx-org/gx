@@ -19,7 +19,6 @@ import (
 	"strings"
 	"testing"
 
-	"github.com/gx-org/gx/build/importers/localfs"
 	"github.com/gx-org/gx/build/builder"
 	"github.com/gx-org/gx/golang/binder"
 	gxtesting "github.com/gx-org/gx/tests/testing"
@@ -50,6 +49,7 @@ var tests = []struct {
 		path: "github.com/gx-org/gx/tests/bindings/imports",
 		wants: []string{
 			"NewBasic",
+			"bindings/basic/basic_go_gx",
 		},
 	},
 	{
@@ -102,10 +102,7 @@ func run(t *testing.T, bld *builder.Builder, path string, wants []string) {
 }
 
 func TestBindings(t *testing.T) {
-	builder, err := localfs.NewBuilder()
-	if err != nil {
-		t.Fatal(err)
-	}
+	builder := gxtesting.NewBuilderStaticSource(nil)
 	for _, test := range tests {
 		_, name := filepath.Split(test.path)
 		t.Run(name, func(t *testing.T) {

@@ -58,7 +58,7 @@ func (array *DeviceArray[T]) Shape() *shape.Shape {
 
 // FetchWithAlloc the value from the device given a specific allocator.
 func (array *DeviceArray[T]) FetchWithAlloc(alloc platform.Allocator) (*HostArray[T], error) {
-	val, err := array.value.Fetch(alloc)
+	val, err := array.value.ToHostArray(alloc)
 	if err != nil {
 		return nil, err
 	}

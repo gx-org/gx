@@ -30,6 +30,7 @@ import (
 	"sort"
 	"strings"
 
+	"github.com/gx-org/gx/golang/packager/pkginfo"
 	"github.com/gx-org/gx/golang/template"
 	"github.com/gx-org/gx/tools/gxflag"
 )
@@ -38,12 +39,17 @@ var (
 	targetName   = flag.String("target_name", "", "target filename")
 	targetFolder = flag.String("target_folder", "", "target folder location")
 
+	gxImportPath  = flag.String("gx_import_path", "", "import path of the GX package")
 	goPackageName = flag.String("go_package_name", "", "name of the Go package")
 	gxFiles       = gxflag.StringList("gx_files", "list of GX files to package")
 	dependencies  = gxflag.StringList("gx_deps", "list of GX dependencies")
+
+	gxPackageModule = flag.String("gx_package_module", "", "gx package path within the module")
 )
 
-const packagerGoSource = `// Package {{.GoPackageName}} encapsulates a GX package into a Go package.
+const packagerGoSource = `// Package {{.GoPackageName}} encapsulates GX source files
+// into a Go package.
+//
 // Automatically generated from google3/third_party/gxlang/gx/golang/packager/package.go.
 //
 // DO NOT EDIT
@@ -55,113 +61,119 @@ import (
 	"github.com/gx-org/gx/build/builder"
 	"github.com/gx-org/gx/build/importers/embedpkg"
 {{range $dep := .Dependencies}}
-	{{$dep.GoPackageName}} "{{$dep.GoPackagePath}}"
-{{end}}
+	_ "{{$dep}}"
+{{- end}}
 )
 
 //go:embed {{range $filename := .Embed}}{{$filename}} {{end}}
 var srcs embed.FS
 
-var dependencies = []struct{
-	path string
-	buildFunc embedpkg.BuildFunc
-}{
-{{range $dep := .Dependencies}}
-	{
-		path: "{{$dep.GXPackage}}",
-		buildFunc: {{$dep.GoPackageName}}.Build,
-	},
-{{end}}
-}
-
 var inputFiles = []string{
-{{range $dep := .Embed}}
+{{range $dep := .Embed -}}
 	"{{$dep}}",
-{{end}}
+{{- end}}
 }
 
 func init() {
-	for _, dep := range dependencies {
-		embedpkg.RegisterPackage(dep.path, dep.buildFunc)
-	}
-	embedpkg.RegisterPackage("google3/{{.GXPackagePath}}/{{.GXPackageName}}", Build)
+	embedpkg.RegisterPackage("{{.GXPackagePath}}/{{.GXPackageName}}", Build)
 }
 
 var _ embedpkg.BuildFunc = Build
 
 // Build GX package.
 func Build(bld *builder.Builder) (builder.Package, error) {
-	return bld.BuildFiles("google3/{{.GXPackagePath}}", srcs, inputFiles)
-}
-
-// Source of the package.
-func Source() embed.FS {
-	return srcs
+	return bld.BuildFiles("{{.GXPackagePath}}", "{{.GXPackageName}}", srcs, inputFiles)
 }
 `
 
-type (
-	dependency struct {
-		GoPackageName string
-		GoPackagePath string
-		GXPackage     string
+type packager struct {
+	// GoPackageName is the name of the Go package packaging GX files together.
+	GoPackageName string
+
+	// GXPackageName is the name of the GX package.
+	GXPackageName string
+
+	// GXPackagePath is the path to the GX package.
+	GXPackagePath string
+
+	// Embed is the list of GX files constituting the GX package.
+	Embed []string
+
+	// Dependencies is the list of dependencies in the package.
+	Dependencies []string
+}
+
+func setEmptyFlagsFromPackageModule() error {
+	pkgInfo, err := pkginfo.Load(*gxPackageModule)
+	if err != nil {
+		return fmt.Errorf("cannot load package %s: %v", *gxPackageModule, err)
 	}
-
-	packager struct {
-		// GoPackageName is the name of the Go package packaging GX files together.
-		GoPackageName string
-
-		// GXPackageName is the name of the GX package.
-		GXPackageName string
-
-		// GXPackagePath is the path of the GX package being packaged.
-		GXPackagePath string
-
-		// Embed is the list of GX files constituting the GX package.
-		Embed []string
-
-		// Dependencies is the list of dependencies in the package.
-		Dependencies []dependency
+	if *targetName == "" {
+		*targetName = pkgInfo.TargetFileName()
 	}
-)
+	if *targetFolder == "" {
+		*targetFolder = pkgInfo.TargetFolder()
+	}
+	if *goPackageName == "" {
+		*goPackageName = pkgInfo.GoPackageName()
+	}
+	if *gxImportPath == "" {
+		*gxImportPath = *gxPackageModule
+	}
+	if len(*gxFiles) == 0 {
+		*gxFiles, err = pkgInfo.SourceFiles()
+		if err != nil {
+			return fmt.Errorf("cannot list source files: %v", err)
+		}
+	}
+	if len(*dependencies) == 0 {
+		*dependencies, err = pkgInfo.Dependencies()
+		if err != nil {
+			return fmt.Errorf("cannot list dependencies: %v", err)
+		}
+	}
+	return nil
+}
 
 func main() {
 	flag.Parse()
+	if *gxPackageModule != "" {
+		if err := setEmptyFlagsFromPackageModule(); err != nil {
+			fmt.Fprintf(os.Stderr, "%+v\n", err)
+			os.Exit(1)
+		}
+	}
+	gxPackagePath, gxPackageName := filepath.Split(*gxImportPath)
+	gxPackagePath = strings.TrimSuffix(gxPackagePath, "/")
 	pkg := packager{
 		GoPackageName: *goPackageName,
-		GXPackageName: strings.TrimSuffix(*goPackageName, "_gx"),
+		GXPackageName: gxPackageName,
+		GXPackagePath: gxPackagePath,
+		Dependencies:  *dependencies,
 	}
 
 	// Build gx path
 	if len(*gxFiles) == 0 {
-		fmt.Fprint(os.Stderr, "no GX file to process")
+		fmt.Fprint(os.Stderr, "no GX file to process\n")
 		os.Exit(1)
 	}
-	pkg.GXPackagePath = (*gxFiles)[0]
-	pkg.GXPackagePath = strings.TrimSpace(pkg.GXPackagePath)
-	pkg.GXPackagePath = filepath.Dir(pkg.GXPackagePath)
 
 	// Build the set of source files.
 	for _, filename := range *gxFiles {
-		filename := "google3/" + filename
 		pkg.Embed = append(pkg.Embed, filename)
 	}
 	sort.Strings(pkg.Embed)
 
-	// Build the dependencies
-	sort.Strings(*dependencies)
-	for i, dep := range *dependencies {
-		pkg.Dependencies = append(pkg.Dependencies, dependency{
-			GoPackageName: fmt.Sprintf("gxdep%d", i),
-			GoPackagePath: "google3/" + dep + "_gx",
-			GXPackage:     "google3/" + dep,
-		})
+	// Create the target folder if necessary.
+	if err := os.MkdirAll(*targetFolder, os.ModePerm); err != nil {
+		fmt.Fprintf(os.Stderr, "%+v\n", err)
+		os.Exit(1)
 	}
 
 	// Generate the Go source file.
 	goTarget := filepath.Join(*targetFolder, *targetName)
 	if err := template.Exec(packagerGoSource, goTarget, pkg); err != nil {
-		fmt.Fprintf(os.Stderr, "%+v", err)
+		fmt.Fprintf(os.Stderr, "%+v\n", err)
 		os.Exit(1)
 	}
 }

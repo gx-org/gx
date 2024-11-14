@@ -24,6 +24,7 @@ import (
 	"github.com/gx-org/gx/build/builder"
 	"github.com/gx-org/gx/build/importers"
 	"github.com/gx-org/gx/build/importers/localfs"
+	"github.com/gx-org/gx/build/module"
 	"github.com/gx-org/gx/golang/binder"
 	"github.com/gx-org/gx/stdlib"
 )
@@ -40,11 +41,11 @@ func exit(format string, a ...any) {
 	os.Exit(1)
 }
 
-func adjustFlags(mod *localfs.Module) error {
+func adjustFlags(mod *module.Module) error {
 	if *targetFolder != "" {
 		return nil
 	}
-	folder, err := mod.FolderOf(*gxPackage)
+	folder, err := mod.ImportToOSPath(*gxPackage)
 	if err != nil {
 		return err
 	}

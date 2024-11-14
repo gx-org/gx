@@ -1,4 +1,4 @@
-package gx_test
+package core
 
 func TestFalse() bool {
 	return false

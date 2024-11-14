@@ -63,7 +63,7 @@ func (cl *CacheLoader) Load(bld *builder.Builder, path string) (builder.Package,
 	}
 	pkg, err := imp.Import(bld, path)
 	if err != nil {
-		return nil, err
+		return pkg, err
 	}
 	cl.packages[path] = pkg
 	return pkg, nil

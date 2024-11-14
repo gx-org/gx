@@ -41,10 +41,9 @@ type Array interface {
 	// It is a no-op if the data is already on the device.
 	ToDevice(dev platform.Device) (*DeviceArray, error)
 
-	// ToHost transfers the array on the host if it is not already
-	// there. It uses the Go allocator (where memory is managed by Go).
-	// Use Handle to specify a target memory buffer.
-	ToHost() (*HostArray, error)
+	// ToHostArray transfers the array on the host if it is not already.
+	// Use the Go allocator.
+	ToHostArray(alloc platform.Allocator) (*HostArray, error)
 }
 
 // DeviceArray managed by GX where the data is on a device.
@@ -62,8 +61,13 @@ func NewDeviceArray(typ ir.Type, handle platform.DeviceHandle) *DeviceArray {
 
 func (*DeviceArray) value() {}
 
-// Fetch a value from a device.
-func (a *DeviceArray) Fetch(alloc platform.Allocator) (*HostArray, error) {
+// ToHost transfers the value to the host.
+func (a *DeviceArray) ToHost(alloc platform.Allocator) (Value, error) {
+	return a.ToHostArray(alloc)
+}
+
+// ToHostArray transfers the array to the host using the Go allocator.
+func (a *DeviceArray) ToHostArray(alloc platform.Allocator) (*HostArray, error) {
 	hostBuffer, err := alloc.Allocate(a.Shape())
 	if err != nil {
 		return nil, err
@@ -107,27 +111,9 @@ func (a *DeviceArray) ToDevice(dev platform.Device) (*DeviceArray, error) {
 	return NewDeviceArray(a.typ, handle), nil
 }
 
-// ToHost transfers the array to the host using the Go allocator
-// (where memory is managed by Go).
-// Use Handle to specify a target memory buffer.
-func (a *DeviceArray) ToHost() (*HostArray, error) {
-	buffer, err := kernels.Allocator().Allocate(a.Shape())
-	if err != nil {
-		return nil, err
-	}
-	if err := a.handle.ToHost(buffer); err != nil {
-		return nil, err
-	}
-	return NewHostArray(a.typ, buffer), nil
-}
-
 // String representation of the array.
 func (a *DeviceArray) String() string {
-	host, err := a.Fetch(kernels.Allocator())
-	if err != nil {
-		return fmt.Sprintf("\nError fetching device data:\n%+v\n", err)
-	}
-	return host.String()
+	return fmt.Sprintf("DeviceArray{Shape: %s, Device: %d}", a.handle.Shape(), a.handle.Device().Ordinal())
 }
 
 // HostArray managed by GX where the data is on a device.
@@ -160,9 +146,13 @@ func (a *HostArray) Handle() platform.Handle {
 	return a.buffer
 }
 
-// ToHost returns the receiver.
-// Use Handle to transfer the memory from one buffer to another.
-func (a *HostArray) ToHost() (*HostArray, error) {
+// ToHost returns receiver. The allocator is ignored.
+func (a *HostArray) ToHost(platform.Allocator) (Value, error) {
+	return a, nil
+}
+
+// ToHostArray returns the receiver.
+func (a *HostArray) ToHostArray(platform.Allocator) (*HostArray, error) {
 	return a, nil
 }
 

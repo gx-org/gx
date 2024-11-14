@@ -247,7 +247,7 @@ func evalAssignCallStmt(ctx *context, stmt *ir.AssignCallStmt) error {
 func evalReturnStmt(ctx *context, ret *ir.ReturnStmt) (state.Element, bool, error) {
 	if len(ret.Results) == 0 {
 		// Naked return.
-		fields := ctx.currentFrame().function.FType.Results.Fields()
+		fields := ctx.currentFrame().function.FuncType().Results.Fields()
 		nodes := make([]state.Element, len(fields))
 		for i, field := range fields {
 			var err error
@@ -543,6 +543,8 @@ func evalExpr(ctx *context, expr ir.Expr) (state.Element, error) {
 		return evalValueRef(ctx, exprT)
 	case *ir.FieldSelectorExpr:
 		return evalFieldSelectorExpr(ctx, exprT)
+	case *ir.FuncLit:
+		return evalFuncLit(ctx, exprT)
 	case *ir.IndexExpr:
 		return evalIndexExpr(ctx, exprT)
 	case *ir.EinsumExpr:
@@ -570,6 +572,42 @@ func evalFieldSelectorExpr(ctx *context, ref *ir.FieldSelectorExpr) (state.Eleme
 		return nil, ctx.FileSet().Errorf(ref.Source(), "%T has no field %s", node, ref.Src.Sel.Name)
 	}
 	return slt.SelectField(ctx.exprAt(ref), ref.Field.ID)
+}
+
+func evalFuncLit(ctx *context, ref *ir.FuncLit) (state.Element, error) {
+	return ctx.state.Func(ref, nil), nil
+}
+
+func evalFuncLitCall(ctx *context, ref *ir.FuncLit, args []state.Element) (state.Element, error) {
+	graph := ctx.State().BackendGraph()
+	subgraph, err := graph.Core().NewSubgraph(ref.Name())
+	if err != nil {
+		return nil, err
+	}
+	subctx := newContext(ctx.itrp, state.New(ref, subgraph), ref, nil, nil)
+	funcFrame, err := subctx.pushFuncFrame(ref)
+	if err != nil {
+		return nil, err
+	}
+	defer subctx.popFrame()
+	assignArgumentValues(ref.FuncType(), funcFrame, args)
+	for _, resultName := range fieldNames(ref.FType.Results.List) {
+		funcFrame.define(resultName.Name, nil)
+	}
+
+	subresults, err := evalFuncBody(subctx, ref.Body)
+	if err != nil {
+		return nil, err
+	}
+	resultNode, shape, err := state.NodeFromElement(subresults)
+	if err != nil {
+		return nil, err
+	}
+	result, err := graph.Core().NewCall(subgraph, resultNode)
+	if err != nil {
+		return nil, err
+	}
+	return ctx.State().ElementFromNode(ctx.exprAt(ref), result, shape)
 }
 
 func evalIndexExpr(ctx *context, ref *ir.IndexExpr) (state.Element, error) {

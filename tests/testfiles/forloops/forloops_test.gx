@@ -1,4 +1,4 @@
-package forloops_test
+package forloops
 
 func TestForLoopRangeInteger() int32 {
 	r := int32(10)

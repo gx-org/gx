@@ -17,13 +17,13 @@ package bindings_test
 import (
 	"testing"
 
-	"github.com/gx-org/gx/build/importers/localfs"
 	"github.com/gx-org/gx/api"
 	"github.com/gx-org/gx/golang/backend"
 	"github.com/gx-org/gx/golang/tests/basictest"
 	"github.com/gx-org/gx/golang/tests/importtest"
 	"github.com/gx-org/gx/golang/tests/pkgvarstest"
 	bindingstests "github.com/gx-org/gx/golang/tests"
+	gxtesting "github.com/gx-org/gx/tests/testing"
 )
 
 var tests = []func(t *testing.T, rtm *api.Runtime){
@@ -33,10 +33,7 @@ var tests = []func(t *testing.T, rtm *api.Runtime){
 }
 
 func TestGoBindings(t *testing.T) {
-	bld, err := localfs.StdlibBuilder(nil)
-	if err != nil {
-		t.Fatal(err)
-	}
+	bld := gxtesting.NewBuilderStaticSource(nil)
 	rtm := backend.New(bld)
 	bindingstests.Run(t, rtm, tests)
 }

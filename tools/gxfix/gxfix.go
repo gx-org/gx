@@ -18,12 +18,10 @@ package gxfix
 import (
 	"flag"
 	"fmt"
-	"io/fs"
 	"path/filepath"
 
 	"github.com/gx-org/gx/api"
 	"github.com/gx-org/gx/build/builder"
-	"github.com/gx-org/gx/build/importers/fsimporter"
 	"github.com/gx-org/gx/build/importers"
 	"github.com/gx-org/gx/stdlib/impl"
 	"github.com/gx-org/gx/stdlib"
@@ -35,22 +33,10 @@ var (
 	dryRun = flag.Bool("dry_run", true, "output on the standard output if true")
 )
 
-type embedFS struct {
-}
-
-func (embedFS) ReadDir(name string) ([]fs.DirEntry, error) {
-	return nil, fmt.Errorf("ReadDir not implemented")
-}
-
-func (embedFS) Open(name string) (fs.File, error) {
-	return nil, fmt.Errorf("Open not implemented")
-}
-
 // NewBuilder returns a new builder given a standard library implementation.
 func NewBuilder(impl *impl.Stdlib) (*builder.Builder, error) {
 	return builder.New(importers.NewCacheLoader(
 		stdlib.Importer(impl),
-		fsimporter.New(&embedFS{}),
 	)), nil
 }
 

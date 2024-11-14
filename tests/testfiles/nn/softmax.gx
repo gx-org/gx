@@ -1,4 +1,4 @@
-package nn_test
+package nn
 
 import (
 	"math"

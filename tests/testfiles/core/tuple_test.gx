@@ -1,4 +1,4 @@
-package gx_test
+package core
 
 func TestTuple() (float32, [...]float64, [_][_]float64) {
 	return 3.2,
