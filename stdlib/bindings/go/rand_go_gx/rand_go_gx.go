@@ -44,7 +44,7 @@ var (
 	_ = types.NewSlice[types.Bridger]
 )
 
-// Package is the GX package rand built for a backend.
+// Package is the GX package built for a given backend.
 type Package struct {
 	Runtime *api.Runtime
 	IR      *ir.Package
@@ -57,7 +57,6 @@ func Load(rtm *api.Runtime) (*Package, error) {
 	if err != nil {
 		return nil, err
 	}
-
 	pkg := &Package{
 		Runtime: rtm,
 		IR:      irPackage,

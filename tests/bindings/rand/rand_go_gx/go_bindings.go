@@ -31,6 +31,7 @@ import (
 	"github.com/gx-org/gx/golang/binder/gobindings/types"
 	"github.com/gx-org/gx/interp"
 	"github.com/gx-org/gx/interp/state"
+	_ "github.com/gx-org/gx/tests/bindings"
 	"github.com/pkg/errors"
 
 	gxdep0 "github.com/gx-org/gx/stdlib/bindings/go/rand_go_gx"
@@ -46,7 +47,7 @@ var (
 	_ = types.NewSlice[types.Bridger]
 )
 
-// Package is the GX package github.com/gx-org/gx/tests/bindings/rand built for a backend.
+// Package is the GX package built for a given backend.
 type Package struct {
 	Runtime *api.Runtime
 	IR      *ir.Package
@@ -57,12 +58,10 @@ type Package struct {
 
 // Load the GX package for a given backend.
 func Load(rtm *api.Runtime) (*Package, error) {
-
 	irPackage, err := rtm.Builder().Build("github.com/gx-org/gx/tests/bindings/rand")
 	if err != nil {
 		return nil, err
 	}
-
 	pkg := &Package{
 		Runtime: rtm,
 		IR:      irPackage,
