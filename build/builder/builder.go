@@ -75,7 +75,7 @@ func New(loader Loader) *Builder {
 // Build a package given its path.
 func (b *Builder) Build(path string) (*ir.Package, error) {
 	pkg, err := b.loader.Load(b, path)
-	if pkg == nil {
+	if pkg == nil { // Even with an error, we return the package for developer tools (e.g. completion)
 		return nil, err
 	}
 	return pkg.IR(), err

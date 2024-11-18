@@ -62,9 +62,9 @@ func (cl *CacheLoader) Load(bld *builder.Builder, path string) (builder.Package,
 		return nil, errors.Errorf("cannot find an importer for %s", path)
 	}
 	pkg, err := imp.Import(bld, path)
-	if err != nil {
-		return pkg, err
+	if err == nil {
+		// Only save the package in the cache when no compilation error.
+		cl.packages[path] = pkg
 	}
-	cl.packages[path] = pkg
-	return pkg, nil
+	return pkg, err
 }

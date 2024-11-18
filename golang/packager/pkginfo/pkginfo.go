@@ -25,6 +25,7 @@ import (
 
 	"golang.org/x/exp/maps"
 	"github.com/gx-org/gx/build/module"
+	"github.com/gx-org/gx/stdlib"
 )
 
 // PkgInfo constructs information from a GX package path
@@ -35,11 +36,15 @@ type PkgInfo struct {
 	pkgPath    string
 	pkgName    string
 	srcs       []string
+	stdlib     *stdlib.Stdlib
 }
 
 // Load package information from a GX path in the module.
 func Load(importPath string) (*PkgInfo, error) {
-	inf := &PkgInfo{importPath: importPath}
+	inf := &PkgInfo{
+		importPath: importPath,
+		stdlib:     stdlib.Importer(nil),
+	}
 	var err error
 	inf.mod, err = module.Current()
 	if err != nil {
@@ -122,7 +127,8 @@ func (inf PkgInfo) Dependencies() ([]string, error) {
 			return nil, err
 		}
 		for _, dep := range srcDeps {
-			if !strings.HasPrefix(dep, "github.com") {
+			if inf.stdlib.Support(dep) {
+				// Skip Dependencies to the standard libraries.
 				continue
 			}
 			depSet[dep] = true
