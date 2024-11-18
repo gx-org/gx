@@ -75,11 +75,12 @@ func Current() (*Module, error) {
 	return current, currentErr
 }
 
-// New returns a new module.
+// New returns a new module given a directory.
+// If no go.mod can be find, returns a nil module with a nil error.
 func New(osPath string) (*Module, error) {
 	modRoot := findModuleRoot(osPath)
 	if modRoot == "" {
-		return nil, errors.Errorf("directory %q is not a Go module: cannot find go.mod", osPath)
+		return nil, nil
 	}
 	absModRoot, err := filepath.Abs(modRoot)
 	if err != nil {

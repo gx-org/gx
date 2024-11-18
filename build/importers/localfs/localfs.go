@@ -24,7 +24,6 @@ import (
 	"github.com/gx-org/gx/build/builder"
 	"github.com/gx-org/gx/build/importers"
 	"github.com/gx-org/gx/build/module"
-	"github.com/gx-org/gx/stdlib/impl"
 	"github.com/gx-org/gx/stdlib"
 )
 
@@ -36,14 +35,18 @@ type Importer struct {
 var _ importers.Importer = (*Importer)(nil)
 
 // New returns a new GX using the local filesystem and Go module.
+// If no Go module can be found, returns a nil importer and a nil error.
 func New() (*Importer, error) {
 	mod, err := module.Current()
-	if err != nil {
+	if mod == nil || err != nil {
 		return nil, err
 	}
-	return &Importer{
-		mod: mod,
-	}, nil
+	return NewWithModule(mod), nil
+}
+
+// NewWithModule returns an importer given a module.
+func NewWithModule(mod *module.Module) *Importer {
+	return &Importer{mod: mod}
 }
 
 // Module used by the importer.
@@ -83,19 +86,6 @@ func (imp *Importer) Import(bld *builder.Builder, importPath string) (builder.Pa
 		return nil, errors.Errorf("package %s has files with package name %s", importPath, packageName)
 	}
 	return pkg, nil
-}
-
-// StdlibBuilder returns the GX builder with the bindings package and the given standard library
-// registered in the importer.
-func StdlibBuilder(stdlibImpl *impl.Stdlib) (*builder.Builder, error) {
-	importer, err := New()
-	if err != nil {
-		return nil, err
-	}
-	return builder.New(importers.NewCacheLoader(
-		stdlib.Importer(stdlibImpl),
-		importer,
-	)), nil
 }
 
 // ImportAt imports a package given a path on the virtual file system.
