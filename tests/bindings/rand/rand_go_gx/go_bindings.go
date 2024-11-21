@@ -31,7 +31,7 @@ import (
 	"github.com/gx-org/gx/golang/binder/gobindings/types"
 	"github.com/gx-org/gx/interp"
 	"github.com/gx-org/gx/interp/state"
-	_ "github.com/gx-org/gx/tests/bindings"
+	_ "github.com/gx-org/gx/tests/bindings/rand"
 	"github.com/pkg/errors"
 
 	gxdep0 "github.com/gx-org/gx/stdlib/bindings/go/rand_go_gx"

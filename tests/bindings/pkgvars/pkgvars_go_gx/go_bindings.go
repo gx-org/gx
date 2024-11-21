@@ -31,7 +31,7 @@ import (
 	"github.com/gx-org/gx/golang/binder/gobindings/types"
 	"github.com/gx-org/gx/interp"
 	"github.com/gx-org/gx/interp/state"
-	_ "github.com/gx-org/gx/tests/bindings"
+	_ "github.com/gx-org/gx/tests/bindings/pkgvars"
 	"github.com/pkg/errors"
 )
 
