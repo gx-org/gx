@@ -78,7 +78,7 @@ func (n *sliceType) source() ast.Node {
 	return n.ext.Source()
 }
 
-func (n *sliceType) buildType() ir.Type {
+func (n *sliceType) irType() ir.Type {
 	return n.ext
 }
 
@@ -103,7 +103,7 @@ func (n *sliceType) resolveConcreteType(scope scoper) (typeNode, bool) {
 	if !ok {
 		return n, false
 	}
-	n.ext.DType = n.dtype.buildType()
+	n.ext.DType = n.dtype.irType()
 	return n, true
 }
 
@@ -158,30 +158,30 @@ func (n *sliceExpr) resolveType(scope scoper) (typeNode, bool) {
 	ok := true
 	n.ext.Vals = make([]ir.Expr, len(n.elements))
 	for i, elt := range n.elements {
-		eltTp, eltOk := elt.resolveType(scope)
+		eltType, eltOk := elt.resolveType(scope)
 		if !eltOk {
 			ok = false
 			continue
 		}
-		if eltTp.kind() == ir.NumberKind {
-			eltTp = n.typ.dtype
-			elt, _, eltOk := buildNumberNode(scope, elt, eltTp.buildType())
+		if ir.IsNumber(eltType.kind()) {
+			eltType = n.typ.dtype
+			elt, eltType, eltOk = castNumber(scope, elt, eltType.irType())
 			if !eltOk {
 				ok = false
 				continue
 			}
 			n.elements[i] = elt
 		}
-		_, eltOk, err := assignableTo(scope, n, eltTp, n.typ.dtype)
+		_, eltOk, err := assignableTo(scope, n, eltType, n.typ.dtype)
 		if err != nil {
 			ok = scope.err().AppendAt(elt.source(), err)
 		}
 		if !eltOk {
-			ok = scope.err().Appendf(elt.source(), "cannot use %s as %s in slice", eltTp.String(), n.typ.dtype.String())
+			ok = scope.err().Appendf(elt.source(), "cannot use %s as %s in slice", eltType.String(), n.typ.dtype.String())
 		}
 		n.ext.Vals[i] = elt.buildExpr()
 	}
-	n.ext.Typ = n.typ.buildType()
+	n.ext.Typ = n.typ.irType()
 	return n.typ, ok
 }
 
@@ -194,7 +194,7 @@ func (n *sliceExpr) expr() ast.Expr {
 }
 
 func (n *sliceExpr) buildExpr() ir.Expr {
-	n.ext.Typ = n.typ.buildType()
+	n.ext.Typ = n.typ.irType()
 	return &n.ext
 }
 

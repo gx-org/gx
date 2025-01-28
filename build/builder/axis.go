@@ -20,17 +20,16 @@ import (
 	"github.com/gx-org/gx/build/ir"
 )
 
-// arrayAxes defines the dimension of an array.
-type arrayAxes interface {
-	exprNode() exprNode
-	expr() ir.AxisLength
-	resolve(scoper) bool
-	reconcileWith(scoper, arrayAxes) (arrayAxes, bool)
+// axisLengthNode defines the dimension of an array.
+type axisLengthNode interface {
+	exprNode
+	axisLength() ir.AxisLength
+	reconcileWith(scoper, axisLengthNode) (axisLengthNode, bool)
 }
 
-func processArrayDimensionExpr(owner owner, array *ast.ArrayType) (axis arrayAxes, ok bool) {
+func processAxisLengthExpr(owner owner, array *ast.ArrayType) (axis axisLengthNode, ok bool) {
 	if array.Len == nil {
-		owner.err().Appendf(array, "array of slices is not supported. Please specify an array dimension using '[length]', '[_]', or '[...]' if the size is unknown, to specify a dense array")
+		owner.err().Appendf(array, "array of slices is not supported. Please specify an array axis length using '[length]', '[_]', or '[...]' if the size is unknown, to specify a dense array")
 		return nil, false
 	}
 	switch lenT := array.Len.(type) {
@@ -41,48 +40,48 @@ func processArrayDimensionExpr(owner owner, array *ast.ArrayType) (axis arrayAxe
 			return nil, true
 		}
 		if lenT.Name == "_" {
-			return &genericDimension{
+			return &genericAxisLength{
 				ext: &ir.AxisEllipsis{Src: lenT},
 			}, true
 		}
 		x, ok := processExpr(owner, array.Len)
-		return newExprDimension(x), ok
+		return newExprAxisLength(x), ok
 	case ast.Expr:
 		x, ok := processExpr(owner, array.Len)
-		return newExprDimension(x), ok
+		return newExprAxisLength(x), ok
 	default:
 		owner.err().Appendf(array, "array dimension type %T not supported", lenT)
 		return nil, false
 	}
 }
 
-func importAxis(scope scoper, irDim ir.AxisLength) (arrayAxes, bool) {
+func importAxis(scope scoper, irDim ir.AxisLength) (axisLengthNode, bool) {
 	switch irDimT := irDim.(type) {
 	case *ir.AxisEllipsis:
-		dim := &genericDimension{ext: irDimT}
+		dim := &genericAxisLength{ext: irDimT}
 		if irDimT.X == nil {
 			return dim, true
 		}
-		dim.x = newExprDimension(&irExprNode{x: irDimT.X.X})
+		dim.x = newExprAxisLength(&irExprNode{x: irDimT.X})
 		return dim, true
-
 	case *ir.AxisExpr:
-		dim := newExprDimension(&irExprNode{x: irDimT.X})
-		return dim, dim.resolve(scope)
+		dim := newExprAxisLength(&irExprNode{x: irDimT.X})
+		_, ok := dim.resolveType(scope)
+		return dim, ok
 	default:
 		scope.err().Appendf(irDim.Source(), "cannot import array axis: %T not supported", irDim)
 		return nil, false
 	}
 }
 
-func dimEquals(scope scoper, x, y []arrayAxes) bool {
+func lengthEquals(scope scoper, x, y []axisLengthNode) bool {
 	if len(x) != len(y) {
 		return false
 	}
 	for i, xi := range x {
-		eq, err := xi.expr().Equal(scope.evalFetcher(), y[i].expr())
+		eq, err := xi.axisLength().Equal(scope.evalFetcher(), y[i].axisLength())
 		if err != nil {
-			scope.err().Append(scope.err().FSet().Position(xi.exprNode().source(), err))
+			scope.err().Append(scope.err().FSet().Position(xi.source(), err))
 			return false
 		}
 		if !eq {
@@ -92,52 +91,64 @@ func dimEquals(scope scoper, x, y []arrayAxes) bool {
 	return true
 }
 
-// valueDimension computed from a literal.
-type valueDimension struct {
-	src *ast.CompositeLit
+// inferredFromLiteralAxisLength computed from a literal.
+type inferredFromLiteralAxisLength struct {
+	src ast.Expr // Point to the literal to report mismatch errors.
 	val int
 }
 
-var _ arrayAxes = (*valueDimension)(nil)
+var _ axisLengthNode = (*inferredFromLiteralAxisLength)(nil)
 
-func (dim *valueDimension) scalar() *ir.AtomicValueT[ir.Int] {
+func (dim *inferredFromLiteralAxisLength) scalar() *ir.AtomicValueT[ir.Int] {
 	return &ir.AtomicValueT[ir.Int]{
 		Src: dim.src,
 		Val: ir.Int(dim.val),
-		Typ: ir.AxisLengthType(),
+		Typ: ir.IntLenType(),
 	}
 }
 
-func (dim *valueDimension) exprNode() exprNode {
-	return &basicLit{
-		ext: dim.scalar(),
-		typ: axisLengthType,
-	}
-}
-
-func (dim *valueDimension) expr() ir.AxisLength {
+func (dim *inferredFromLiteralAxisLength) axisLength() ir.AxisLength {
 	return &ir.AxisExpr{
 		Src: dim.src,
 		X:   dim.scalar(),
 	}
 }
 
-func (dim *valueDimension) resolve(scoper) bool {
-	return true
+func (dim *inferredFromLiteralAxisLength) expr() ast.Expr {
+	return dim.src
 }
 
-func (dim *valueDimension) reconcileWith(scope scoper, other arrayAxes) (arrayAxes, bool) {
-	return dim, scope.err().Appendf(dim.src, "cannot reconcile a dimension computed from a literal with %T", other)
+func (dim *inferredFromLiteralAxisLength) buildExpr() ir.Expr {
+	return dim.axisLength()
 }
 
-// exprDimension is a dimension specified with an expression
-type exprDimension struct {
+func (dim *inferredFromLiteralAxisLength) String() string {
+	return "inferredAxisFromLiteral"
+}
+
+// resolveTypes recursively calls resolveTypes in the underlying subtree of nodes.
+func (dim *inferredFromLiteralAxisLength) resolveType(scoper) (typeNode, bool) {
+	return axisLengthType, true
+}
+
+func (dim *inferredFromLiteralAxisLength) reconcileWith(scope scoper, other axisLengthNode) (axisLengthNode, bool) {
+	return dim, false
+}
+
+func (dim *inferredFromLiteralAxisLength) source() ast.Node {
+	return dim.expr()
+}
+
+// exprAxisLength is a dimension specified with an expression
+type exprAxisLength struct {
 	ext *ir.AxisExpr
 	x   exprNode
 }
 
-func newExprDimension(x exprNode) *exprDimension {
-	return &exprDimension{
+var _ axisLengthNode = (*exprAxisLength)(nil)
+
+func newExprAxisLength(x exprNode) *exprAxisLength {
+	return &exprAxisLength{
 		ext: &ir.AxisExpr{
 			Src: x.expr(),
 		},
@@ -145,34 +156,34 @@ func newExprDimension(x exprNode) *exprDimension {
 	}
 }
 
-func (dim *exprDimension) exprNode() exprNode {
+func (dim *exprAxisLength) exprNode() exprNode {
 	return dim.x
 }
 
-func (dim *exprDimension) resolve(scope scoper) bool {
+func (dim *exprAxisLength) resolveType(scope scoper) (typeNode, bool) {
 	typ, ok := dim.x.resolveType(scope)
 	if !ok {
-		return false
+		return invalid, false
 	}
-	want := ir.AxisLengthType()
-	if typ.kind() == ir.NumberKind {
-		dim.x, typ, ok = buildNumberNode(scope, dim.x, want)
+	want := ir.IntLenType()
+	if ir.IsNumber(typ.kind()) {
+		dim.x, typ, ok = castNumber(scope, dim.x, want)
 		if !ok {
-			return false
+			return invalid, false
 		}
 	}
-	eq, err := typ.buildType().Equal(scope.evalFetcher(), want)
+	eq, err := typ.irType().Equal(scope.evalFetcher(), want)
 	if err != nil {
-		return scope.err().AppendAt(dim.ext.Src, err)
+		return invalid, scope.err().AppendAt(dim.ext.Src, err)
 	}
 	if !eq {
-		return scope.err().Appendf(dim.ext.Src, "cannot use %s as %s in axis length", typ.String(), want.String())
+		return invalid, scope.err().Appendf(dim.ext.Src, "cannot use %s as %s in axis length", typ.String(), want.String())
 	}
-	return eq
+	return typeNodeOk(typ)
 }
 
-func (dim *exprDimension) isEqual(scope scoper, other ir.AxisLength) bool {
-	eq, err := dim.expr().Equal(scope.evalFetcher(), other)
+func (dim *exprAxisLength) isEqual(scope scoper, other ir.AxisLength) bool {
+	eq, err := dim.axisLength().Equal(scope.evalFetcher(), other)
 	if err != nil {
 		scope.err().Append(err)
 		return false
@@ -182,13 +193,19 @@ func (dim *exprDimension) isEqual(scope scoper, other ir.AxisLength) bool {
 
 const cannotInferAxisLength = "cannot infer array axis length"
 
-func (dim *exprDimension) reconcileWith(scope scoper, other arrayAxes) (arrayAxes, bool) {
+func (dim *exprAxisLength) reconcileWith(scope scoper, other axisLengthNode) (axisLengthNode, bool) {
+	if _, ok := dim.resolveType(scope); !ok {
+		return dim, false
+	}
+	if _, ok := other.resolveType(scope); !ok {
+		return dim, false
+	}
 	switch otherT := other.(type) {
-	case *exprDimension:
-		return dim, dim.isEqual(scope, otherT.expr())
-	case *valueDimension:
-		return dim, dim.isEqual(scope, otherT.expr())
-	case *genericDimension:
+	case *exprAxisLength:
+		return dim, dim.isEqual(scope, otherT.axisLength())
+	case *inferredFromLiteralAxisLength:
+		return dim, dim.isEqual(scope, otherT.axisLength())
+	case *genericAxisLength:
 		if otherT.x == nil {
 			return dim, true
 		}
@@ -198,11 +215,15 @@ func (dim *exprDimension) reconcileWith(scope scoper, other arrayAxes) (arrayAxe
 	}
 }
 
-func (dim *exprDimension) String() string {
-	return dim.expr().String()
+func (dim *exprAxisLength) String() string {
+	return dim.x.String()
 }
 
-func (dim *exprDimension) dimExpr() *ir.AxisExpr {
+func (dim *exprAxisLength) buildExpr() ir.Expr {
+	return dim.axisLength()
+}
+
+func (dim *exprAxisLength) axisLength() ir.AxisLength {
 	if dim.ext.X != nil {
 		return dim.ext
 	}
@@ -210,33 +231,47 @@ func (dim *exprDimension) dimExpr() *ir.AxisExpr {
 	return dim.ext
 }
 
-func (dim *exprDimension) expr() ir.AxisLength {
-	return dim.dimExpr()
+func (dim *exprAxisLength) source() ast.Node {
+	return dim.expr()
 }
 
-// genericDimension is a dimension specified with _
-type genericDimension struct {
+func (dim *exprAxisLength) expr() ast.Expr {
+	return dim.x.expr()
+}
+
+// genericAxisLength is a dimension specified with _
+type genericAxisLength struct {
 	ext *ir.AxisEllipsis
-	x   *exprDimension
+	x   *exprAxisLength
 }
 
-func (dim *genericDimension) resolve(scope scoper) bool {
+var _ axisLengthNode = (*genericAxisLength)(nil)
+
+func (dim *genericAxisLength) source() ast.Node {
+	return dim.expr()
+}
+
+func (dim *genericAxisLength) expr() ast.Expr {
+	return dim.ext.Src
+}
+
+func (dim *genericAxisLength) resolveType(scope scoper) (typeNode, bool) {
 	if dim.x == nil {
-		return true
+		return axisLengthType, true
 	}
-	return dim.x.resolve(scope)
+	return dim.x.resolveType(scope)
 }
 
-func (dim *genericDimension) reconcileWithExpr(scope scoper, other *exprDimension) (arrayAxes, bool) {
+func (dim *genericAxisLength) reconcileWithExpr(scope scoper, other *exprAxisLength) (axisLengthNode, bool) {
 	if dim.x == nil {
-		return &genericDimension{ext: dim.ext, x: other}, true
+		return &genericAxisLength{ext: dim.ext, x: other}, true
 	}
-	return dim, dim.x.isEqual(scope, other.expr())
+	return dim, dim.x.isEqual(scope, other.axisLength())
 }
 
-func (dim *genericDimension) reconcileWith(scope scoper, other arrayAxes) (arrayAxes, bool) {
+func (dim *genericAxisLength) reconcileWith(scope scoper, other axisLengthNode) (axisLengthNode, bool) {
 	switch otherT := other.(type) {
-	case *genericDimension:
+	case *genericAxisLength:
 		if dim.x != nil && otherT.x == nil {
 			return dim, scope.err().Appendf(dim.ext.Src, "cannot reconcile a resolved axis length with an unresolved axis length")
 		}
@@ -244,10 +279,10 @@ func (dim *genericDimension) reconcileWith(scope scoper, other arrayAxes) (array
 			return dim, true
 		}
 		return dim.reconcileWithExpr(scope, otherT.x)
-	case *exprDimension:
+	case *exprAxisLength:
 		return dim.reconcileWithExpr(scope, otherT)
-	case *valueDimension:
-		exprDim := newExprDimension(otherT.exprNode())
+	case *inferredFromLiteralAxisLength:
+		exprDim := newExprAxisLength(otherT)
 		return dim.reconcileWith(scope, exprDim)
 	default:
 		scope.err().Appendf(dim.ext.Src, "dimension type %T not supported", otherT)
@@ -255,18 +290,18 @@ func (dim *genericDimension) reconcileWith(scope scoper, other arrayAxes) (array
 	}
 }
 
-func (dim *genericDimension) String() string {
-	return dim.expr().String()
+func (dim *genericAxisLength) String() string {
+	return dim.axisLength().String()
 }
 
-func (dim *genericDimension) exprNode() exprNode {
-	return dim.x.exprNode()
+func (dim *genericAxisLength) buildExpr() ir.Expr {
+	return dim.axisLength()
 }
 
-func (dim *genericDimension) expr() ir.AxisLength {
+func (dim *genericAxisLength) axisLength() ir.AxisLength {
 	if dim.x == nil {
 		return dim.ext
 	}
-	dim.ext.X = dim.x.dimExpr()
+	dim.ext.X = dim.x.axisLength()
 	return dim.ext
 }

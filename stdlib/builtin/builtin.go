@@ -30,7 +30,7 @@ type (
 		// Name of the builder (for debugging purpose only).
 		Name() string
 		// Build the given package.
-		Build(*builder.Builder, *impl.Stdlib, builder.Package) error
+		Build(*builder.Builder, *impl.Stdlib, *builder.FilePackage) error
 	}
 
 	// PackageBuilder builds a builtin package, that is a package composed of GX and Go code.

@@ -16,6 +16,7 @@ package builder
 
 import (
 	"go/ast"
+	"iter"
 	"strings"
 
 	"github.com/gx-org/gx/build/ir"
@@ -37,16 +38,18 @@ func processFieldList(owner owner, expr *ast.FieldList, assign func(*scopeFile, 
 	}
 	f.list = make([]*fieldGroup, len(expr.List))
 	ok := true
-	nextID := 0
 	for i, astField := range f.ext.Src.List {
 		var groupOk bool
-		f.list[i], nextID, groupOk = processFieldGroup(owner, astField, assign, nextID)
+		f.list[i], groupOk = processFieldGroup(owner, astField, assign)
 		ok = ok && groupOk
 	}
 	return f, ok
 }
 
 func importFieldList(scope scoper, fields *ir.FieldList) (*fieldList, bool) {
+	if fields == nil {
+		return nil, true
+	}
 	f := &fieldList{
 		ext:  fields,
 		list: make([]*fieldGroup, len(fields.List)),
@@ -60,7 +63,12 @@ func importFieldList(scope scoper, fields *ir.FieldList) (*fieldList, bool) {
 	return f, ok
 }
 
+// resolveType recursively calls resolveType in the underlying subtree of nodes, and returns the
+// results in a new fieldList.
 func (f *fieldList) resolveType(scope scoper) (*fieldList, bool) {
+	if f == nil {
+		return nil, true
+	}
 	ok := true
 	out := fieldList{
 		ext:  f.ext,
@@ -70,7 +78,13 @@ func (f *fieldList) resolveType(scope scoper) (*fieldList, bool) {
 		var fieldOk bool
 		out.list[i] = &fieldGroup{
 			ext:  group.ext,
-			list: group.list,
+			list: make([]*field, len(group.list)),
+		}
+		for j, fld := range group.list {
+			out.list[i].list[j] = &field{
+				ext:   fld.ext,
+				group: out.list[i],
+			}
 		}
 		out.list[i].typ, fieldOk = resolveType(scope, group, group.typ)
 		ok = fieldOk && ok
@@ -78,7 +92,7 @@ func (f *fieldList) resolveType(scope scoper) (*fieldList, bool) {
 	return &out, ok
 }
 
-func (f *fieldList) buildType() *ir.FieldList {
+func (f *fieldList) irType() *ir.FieldList {
 	if f == nil {
 		return nil
 	}
@@ -87,41 +101,79 @@ func (f *fieldList) buildType() *ir.FieldList {
 	}
 	f.ext.List = make([]*ir.FieldGroup, len(f.list))
 	for i, group := range f.list {
-		f.ext.List[i] = group.buildType()
+		f.ext.List[i] = group.irType()
 	}
 	return f.ext
 }
 
-func (f *fieldList) fields() []*field {
-	var flds []*field
-	for _, group := range f.list {
-		fields := group.list
-		if len(fields) == 0 {
-			fields = []*field{&field{
-				ext: &ir.Field{
-					Group: group.ext,
-				},
-				group: group,
-			}}
+func (f *fieldList) empty() bool {
+	return f == nil || len(f.list) == 0
+}
+
+func (f *fieldList) isGeneric() bool {
+	for _, field := range f.fields() {
+		if field.typ().isGeneric() {
+			return true
 		}
-		flds = append(flds, fields...)
+	}
+	return false
+}
+
+// fieldsSlice returns a newly-allocated slice containing all fields in the fieldList.
+func (f *fieldList) fieldsSlice() []*field {
+	var flds []*field
+	for _, field := range f.fields() {
+		flds = append(flds, field)
 	}
 	return flds
 }
 
+// fields returns an iterator over all fields in the fieldList. The iterator returns the index
+// of the field in the fieldList and the field itself, and can be used with range.
+func (f *fieldList) fields() iter.Seq2[int, *field] {
+	return func(yield func(int, *field) bool) {
+		if f == nil {
+			return
+		}
+		n := 0
+		for _, group := range f.list {
+			fields := group.list
+			if len(fields) == 0 {
+				fields = []*field{&field{
+					ext: &ir.Field{
+						Group: group.ext,
+					},
+					group: group,
+				}}
+			}
+			for _, field := range fields {
+				if !yield(n, field) {
+					return
+				}
+				n++
+			}
+		}
+	}
+}
+
 func (f *fieldList) numFields() int {
 	num := 0
-	for _, field := range f.list {
-		if field.ext.Src != nil && field.ext.Src.Names != nil {
-			num += len(field.ext.Src.Names)
-			continue
+	if f != nil {
+		for _, field := range f.list {
+			if field.ext.Src != nil && field.ext.Src.Names != nil {
+				num += len(field.ext.Src.Names)
+				continue
+			}
+			num++
 		}
-		num++
 	}
 	return num
 }
 
 func (f *fieldList) String() string {
+	if f == nil {
+		return ""
+	}
 	s := make([]string, len(f.list))
 	for i, field := range f.list {
 		s[i] = field.String()
@@ -142,7 +194,7 @@ type (
 	}
 )
 
-func processFieldGroup(owner owner, src *ast.Field, assign func(*scopeFile, *field) bool, nextID int) (*fieldGroup, int, bool) {
+func processFieldGroup(owner owner, src *ast.Field, assign func(*scopeFile, *field) bool) (*fieldGroup, bool) {
 	typ, ok := processTypeExpr(owner, src.Type)
 	grp := &fieldGroup{
 		ext: &ir.FieldGroup{
@@ -157,20 +209,14 @@ func processFieldGroup(owner owner, src *ast.Field, assign func(*scopeFile, *fie
 			ext: &ir.Field{
 				Name:  ident,
 				Group: grp.ext,
-				ID:    nextID,
 			},
 		}
-		assignOk := assign(owner.block(), field)
-		if assignOk {
-			nextID++
-		} else {
-			field.ext.ID = -1
-		}
+		assignOk := assign(owner.fileScope(), field)
 		ok = ok && assignOk
 		grp.ext.Fields[i] = field.ext
 		grp.list = append(grp.list, field)
 	}
-	return grp, nextID, ok
+	return grp, ok
 }
 
 func importFieldGroup(scope scoper, irGroup *ir.FieldGroup) (*fieldGroup, bool) {
@@ -184,8 +230,8 @@ func importFieldGroup(scope scoper, irGroup *ir.FieldGroup) (*fieldGroup, bool) 
 	return grp, ok
 }
 
-func (f *fieldGroup) buildType() *ir.FieldGroup {
-	f.ext.Type = f.typ.buildType()
+func (f *fieldGroup) irType() *ir.FieldGroup {
+	f.ext.Type = f.typ.irType()
 	return f.ext
 }
 
@@ -194,6 +240,9 @@ func (f *fieldGroup) source() ast.Node {
 }
 
 func (f *fieldGroup) String() string {
+	if len(f.ext.Src.Names) == 0 {
+		return f.typ.String()
+	}
 	names := make([]string, len(f.ext.Src.Names))
 	for i, name := range f.ext.Src.Names {
 		names[i] = name.Name
@@ -204,7 +253,7 @@ func (f *fieldGroup) String() string {
 func toIRTypes(tps []typeNode) []ir.Type {
 	irs := make([]ir.Type, len(tps))
 	for i, typ := range tps {
-		irs[i] = typ.buildType()
+		irs[i] = typ.irType()
 	}
 	return irs
 }

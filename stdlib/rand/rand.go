@@ -36,7 +36,7 @@ var Package = builtin.PackageBuilder{
 			value := &ir.AtomicValueT[float64]{
 				Src: pkg.Name,
 				Val: float64(1 << 64),
-				Typ: &ir.AtomicType{Knd: ir.Float64Kind},
+				Typ: ir.TypeFromKind(ir.Float64Kind),
 			}
 			return "rescaleRandFloat64", value, value.Type(), nil
 		}),
@@ -44,13 +44,14 @@ var Package = builtin.PackageBuilder{
 			value := &ir.AtomicValueT[float64]{
 				Src: pkg.Name,
 				Val: math.Nextafter(1, 0),
-				Typ: &ir.AtomicType{Knd: ir.Float64Kind},
+				Typ: ir.TypeFromKind(ir.Float64Kind),
 			}
 			return "maxFloat64BelowOne", value, value.Type(), nil
 		}),
 		builtin.BuildType(bootstrapGenerator{}),
 		builtin.BuildFunc(newBootstrapGenerator{}),
 		builtin.ParseSource(&fs, "philox.gx"),
+		builtin.BuildMethod("Philox", philoxUint32{}),
 		builtin.BuildMethod("Philox", philoxUint64{}),
 		builtin.ParseSource(&fs, "rand.gx"),
 	},
@@ -61,7 +62,7 @@ type bootstrapGeneratorNext struct {
 }
 
 func (bootstrapGeneratorNext) buildFuncIR(impl *impl.Stdlib, pkg *ir.Package, generatorType *ir.NamedType) *ir.FuncBuiltin {
-	resultType := &ir.AtomicType{Knd: ir.Uint64Kind}
+	resultType := ir.TypeFromKind(ir.Uint64Kind)
 	fn := &ir.FuncBuiltin{
 		FName: "next",
 		FType: &ir.FuncType{
@@ -124,7 +125,7 @@ func (newBootstrapGenerator) BuildFuncIR(impl *impl.Stdlib, pkg *ir.Package) (*i
 			Params: &ir.FieldList{
 				List: []*ir.FieldGroup{
 					&ir.FieldGroup{
-						Type: &ir.AtomicType{Knd: ir.Int64Kind},
+						Type: ir.TypeFromKind(ir.Int64Kind),
 					},
 				},
 			},

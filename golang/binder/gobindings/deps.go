@@ -16,10 +16,11 @@ package gobindings
 
 import (
 	"fmt"
+	"maps"
+	"slices"
 	"sort"
 	"strings"
 
-	"golang.org/x/exp/maps"
 	"github.com/gx-org/gx/build/ir"
 )
 
@@ -29,8 +30,7 @@ type dependency struct {
 }
 
 func (b *binder) Dependencies() []dependency {
-	keys := maps.Keys(b.dependencies)
-	sort.Strings(keys)
+	keys := slices.Sorted(maps.Keys(b.dependencies))
 	deps := make([]dependency, len(keys))
 	for i, depName := range keys {
 		deps[i] = b.dependencies[depName]

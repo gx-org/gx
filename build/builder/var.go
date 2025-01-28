@@ -27,33 +27,37 @@ type varDecl struct {
 	typ          typeNode
 }
 
-func processVarDecl(owner owner, decl *ast.GenDecl) bool {
+var _ irBuilder = (*varDecl)(nil)
+
+func processVarDecl(scope *scopeFile, decl *ast.GenDecl) bool {
 	ok := true
 	for _, spec := range decl.Specs {
-		ok = processVar(owner, spec.(*ast.ValueSpec)) && ok
+		ok = processVar(scope, spec.(*ast.ValueSpec)) && ok
 	}
 	return ok
 }
 
-func processVar(owner owner, spec *ast.ValueSpec) bool {
+func processVar(scope *scopeFile, spec *ast.ValueSpec) bool {
 	if len(spec.Values) > 0 {
-		owner.err().Appendf(spec, "cannot assign a value to a static variable")
+		scope.err().Appendf(spec, "cannot assign a value to a static variable")
 	}
 	var typ typeNode
 	tpOk := true
 	if spec.Type != nil {
-		typ, tpOk = processTypeExpr(owner, spec.Type)
+		typ, tpOk = processTypeExpr(scope, spec.Type)
 	}
 	ok := true
 	for _, name := range spec.Names {
 		decl := &varDecl{
 			ext: ir.VarDecl{
+				FFile: &scope.file().repr,
 				Src:   spec,
 				VName: name,
 			},
 			declaredType: typ,
 		}
-		ok = owner.block().file().declareStaticVar(owner.block(), name, decl) && ok
+		fScope := scope.fileScope()
+		ok = fScope.file().declareStaticVar(fScope, name, decl) && ok
 	}
 	return tpOk && ok
 }
@@ -75,10 +79,10 @@ func (vr *varDecl) resolveType(scope scoper) (typeNode, bool) {
 	return vr.typ, ok
 }
 
-func (vr *varDecl) buildStmt() *ir.VarDecl {
+func (vr *varDecl) buildIR(pkg *ir.Package) {
 	if vr.typ == nil {
 		vr.typ = invalid
 	}
-	vr.ext.TypeV = vr.typ.buildType()
-	return &vr.ext
+	vr.ext.TypeV = vr.typ.irType()
+	pkg.Vars = append(pkg.Vars, &vr.ext)
 }

@@ -88,17 +88,17 @@ func NewArrayFromRaw(data []byte, sh *shape.Shape) (Array, error) {
 	case dtype.Bool:
 		return ToBoolArray(dtype.ToSlice[bool](data), sh.AxisLengths), nil
 	case dtype.Float32:
-		return toAlgebraicArray(sh, dtype.ToSlice[float32](data)), nil
+		return toAlgebraicArray(dtype.ToSlice[float32](data), sh.AxisLengths), nil
 	case dtype.Float64:
-		return toAlgebraicArray(sh, dtype.ToSlice[float64](data)), nil
+		return toAlgebraicArray(dtype.ToSlice[float64](data), sh.AxisLengths), nil
 	case dtype.Uint32:
-		return toAlgebraicArray(sh, dtype.ToSlice[uint32](data)), nil
+		return toIntegerArray(dtype.ToSlice[uint32](data), sh.AxisLengths), nil
 	case dtype.Uint64:
-		return toAlgebraicArray(sh, dtype.ToSlice[uint64](data)), nil
+		return toIntegerArray(dtype.ToSlice[uint64](data), sh.AxisLengths), nil
 	case dtype.Int32:
-		return toAlgebraicArray(sh, dtype.ToSlice[int32](data)), nil
+		return toIntegerArray(dtype.ToSlice[int32](data), sh.AxisLengths), nil
 	case dtype.Int64:
-		return toAlgebraicArray(sh, dtype.ToSlice[int64](data)), nil
+		return toIntegerArray(dtype.ToSlice[int64](data), sh.AxisLengths), nil
 	default:
 		return nil, errors.Errorf("cannot create an array from raw data: %s not supported", sh.DType.String())
 	}
@@ -114,13 +114,13 @@ func FactoryFor(dt dtype.DataType) (Factory, error) {
 	case dtype.Float64:
 		return algebraicFactory[float64]{}, nil
 	case dtype.Uint32:
-		return algebraicFactory[uint32]{}, nil
+		return integerFactory[uint32]{}, nil
 	case dtype.Uint64:
-		return algebraicFactory[uint64]{}, nil
+		return integerFactory[uint64]{}, nil
 	case dtype.Int32:
-		return algebraicFactory[int32]{}, nil
+		return integerFactory[int32]{}, nil
 	case dtype.Int64:
-		return algebraicFactory[int64]{}, nil
+		return integerFactory[int64]{}, nil
 	default:
 		return nil, errors.Errorf("no factory for %s", dt.String())
 	}

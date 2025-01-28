@@ -24,7 +24,7 @@ import (
 	gxtesting "github.com/gx-org/gx/tests/testing"
 )
 
-var pkgvars *pkgvars_go_gx.Compiler
+var pkgvars *pkgvars_go_gx.Package
 
 var (
 	var1 int32 = 5
@@ -54,16 +54,12 @@ func TestNewTwiceSize(t *testing.T) {
 	}
 }
 
-func setupTest(rtm *api.Runtime) error {
-	gxPackage, err := pkgvars_go_gx.Load(rtm)
+func setupTest(dev *api.Device) error {
+	gxPackage, err := pkgvars_go_gx.Load(dev.Runtime())
 	if err != nil {
 		return err
 	}
-	dev, err := rtm.Platform().Device(0)
-	if err != nil {
-		return err
-	}
-	pkgvars = gxPackage.CompilerFor(
+	pkgvars = gxPackage.BuildFor(
 		dev,
 		pkgvars_go_gx.Var1.Set(var1),
 		pkgvars_go_gx.Size.Set(size),

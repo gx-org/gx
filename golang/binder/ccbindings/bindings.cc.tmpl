@@ -1,0 +1,72 @@
+// Copyright 2024 Google LLC
+//
+// Licensed under the Apache License, Version 2.0 (the "License");
+// you may not use this file except in compliance with the License.
+// You may obtain a copy of the License at
+//
+//     http://www.apache.org/licenses/LICENSE-2.0
+//
+// Unless required by applicable law or agreed to in writing, software
+// distributed under the License is distributed on an "AS IS" BASIS,
+// WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
+// See the License for the specific language governing permissions and
+// limitations under the License.
+
+#include "{{.HeaderPath}}"
+
+#include <utility>
+
+#include "third_party/absl/status/statusor.h"
+#include "third_party/gxlang/gx/golang/binder/cgx/cppgx.h"
+
+namespace {{.Namespace}} {
+
+// Function classes
+
+{{range $func := .Funcs }}
+
+{{$func.Name}}Func::{{$func.Name}}Func({{.Class}}& package): package_(package) {}
+
+{{$func.ReturnType}} {{$func.Name}}Func::operator()({{range $param := $func.Params}}const {{$param.Type}}& {{$param.Name}}{{$param.Separator}}{{end}}) {
+ // Extract values from the parameters.
+ std::vector<std::reference_wrapper<const ::gxlang::cppgx::Value>> args;
+{{- range $i, $param := .Params }}
+ args.push_back({{$param.Name}}.get_value());
+{{- end}}
+ absl::StatusOr<::gxlang::cppgx::Function> fn(package_.package_.FindFunction("{{$func.Name}}"));
+ if (!fn.ok()) {
+  return fn.status();
+ }
+ absl::StatusOr<::gxlang::cppgx::FunctionResult> fnr(fn->Run(args));
+ if (!fnr.ok()) {
+  return fnr.status();
+ }
+ std::vector<::gxlang::cppgx::Value>& return_values(fnr->mutable_values());
+{{- range $i, $result := .Results }}
+ {{$result.Type}} res{{$i}}(std::move(return_values[{{$i}}]));
+{{- end}}
+ return res0;
+}
+
+{{end}}
+
+// Package classes
+
+absl::StatusOr<{{.Class}}IR> {{.Class}}IR::Load(const ::gxlang::cppgx::Runtime& runtime) {
+  absl::StatusOr<::gxlang::cppgx::PackageIR>
+      result(runtime.Load("{{.Package.FullName}}"));
+  if (!result.ok()) return result.status();
+  return {{.Class}}IR(std::move(result).value());
+}
+
+{{.Class}} {{.Class}}IR::BuildFor(const ::gxlang::cppgx::Device& dev) {
+  return {{.Class}}(package_ir_.BuildFor(dev));
+}
+
+absl::StatusOr<{{.Class}}> {{.Class}}::BuildFor(const ::gxlang::cppgx::Device& device) {
+  auto result = {{.Class}}IR::Load(device.runtime());
+  if (!result.ok()) return result.status();
+  return result.value().BuildFor(device);
+}
+
+} // namespace {{.Namespace}}

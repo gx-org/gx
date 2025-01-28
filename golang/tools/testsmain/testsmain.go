@@ -73,9 +73,9 @@ var tests = []struct{
 {{.Tests}}
 }
 
-func Run(t *testing.T, rtm *api.Runtime) {
+func Run(t *testing.T, dev *api.Device) {
 	t.Helper()
-	err := setupTest(rtm)
+	err := setupTest(dev)
 	if err != nil {
 		t.Errorf("cannot run {{.GoPackageName}} tests: %+v", err)
 		return
@@ -101,7 +101,7 @@ func processSrcFile(fset *token.FileSet, name string) ([]string, error) {
 	if err != nil {
 		return nil, errors.Errorf("cannot read file: %v", err)
 	}
-	file, err := parser.ParseFile(fset, name, src, 0)
+	file, err := parser.ParseFile(fset, name, src, parser.SkipObjectResolution)
 	if err != nil {
 		return nil, errors.Errorf("cannot parser file: %v", err)
 	}

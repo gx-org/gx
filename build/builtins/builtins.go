@@ -27,16 +27,17 @@ import (
 
 var (
 	// GenericArrayType returns a generic array type.
-	GenericArrayType = &ir.ArrayType{RankF: &ir.GenericRank{}}
+	GenericArrayType = ir.NewArrayType(nil, ir.TypeFromKind(ir.UnknownKind), &ir.GenericRank{})
 
 	// GenericSliceType returns a generic slice type.
 	GenericSliceType = &ir.SliceType{}
 
 	// PositionsType returns a type for a slice of indices.
-	PositionsType = &ir.ArrayType{
-		DType: ir.DefaultIntType,
-		RankF: &ir.GenericRank{},
-	}
+	PositionsType = ir.NewArrayType(
+		nil,
+		ir.DefaultIntType,
+		&ir.GenericRank{},
+	)
 )
 
 // ToBinaryExpr returns a binary expression from two expressions.
@@ -49,7 +50,7 @@ func ToBinaryExpr(op token.Token, x, y ir.Expr) *ir.BinaryExpr {
 		},
 		X:   x,
 		Y:   y,
-		Typ: ir.AxisLengthType(),
+		Typ: ir.IntLenType(),
 	}
 }
 
@@ -70,17 +71,17 @@ func InferFromNumericalType(fetcher ir.Fetcher, call *ir.CallExpr, argNum int, n
 	arg := call.Args[argNum]
 	argType := arg.Type()
 	argKind := argType.Kind()
-	if argKind == ir.NumberKind {
+	if ir.IsNumber(argKind) {
 		target := numberTarget
 		if target == nil {
-			target = ir.DefaultFloatType
+			target = ir.DefaultNumberType(argKind)
 		}
 		return target, target, nil
 	}
 	if ir.IsDataType(argKind) {
 		return argType, argType, nil
 	}
-	arrayType, arrayOk := argType.(*ir.ArrayType)
+	arrayType, arrayOk := argType.(ir.ArrayType)
 	if !arrayOk {
 		return nil, nil, fmterr.Errorf(fetcher.FileSet(), call.Args[argNum].Source(), "argument type %s not supported", arg.Type().String())
 	}
@@ -128,8 +129,8 @@ func BuildFuncParams(fetcher ir.Fetcher, call *ir.CallExpr, name string, sig []i
 		params[i] = want
 		ok := false
 		switch want.Kind() {
-		case ir.TensorKind:
-			ok = got.Kind() == ir.TensorKind
+		case ir.ArrayKind:
+			ok = got.Kind() == ir.ArrayKind
 			params[i] = got
 		case ir.SliceKind:
 			ok = got.Kind() == ir.SliceKind
@@ -204,7 +205,7 @@ func EvalShape(fetcher ir.Fetcher, rank *ir.Rank) ([]int, bool, error) {
 	}
 	shape := make([]int, len(rank.Axes))
 	for i, axis := range rank.Axes {
-		val, unknowns, err := ir.Eval[ir.Int](fetcher, axis.Expr())
+		val, unknowns, err := ir.Eval[ir.Int](fetcher, axis)
 		if err != nil {
 			return nil, false, err
 		}
@@ -224,19 +225,16 @@ func RankFromExpr(src ast.Expr, expr ir.Expr) ir.ArrayRank {
 	}
 	axes := make([]ir.AxisLength, len(sliceExpr.Vals))
 	for i, val := range sliceExpr.Vals {
-		axes[i] = &ir.AxisExpr{
-			Src: src,
-			X:   val,
-		}
+		axes[i] = &ir.AxisExpr{X: val}
 	}
 	return &ir.Rank{Axes: axes}
 }
 
 // RankOf returns the list of axes of an array.
-func RankOf(fetcher ir.Fetcher, src ir.SourceNode, a *ir.ArrayType) (*ir.Rank, error) {
+func RankOf(fetcher ir.Fetcher, src ir.SourceNode, a ir.ArrayType) (*ir.Rank, error) {
 	rank, ok := a.Rank().(ir.ResolvedRank)
-	if !ok {
-		return nil, fmterr.Errorf(fetcher.FileSet(), src.Source(), "array axes have not been resolved")
+	if !ok || rank.Resolved() == nil {
+		return nil, fmterr.Internalf(fetcher.FileSet(), src.Source(), "array axes have not been resolved")
 	}
 	return rank.Resolved(), nil
 }

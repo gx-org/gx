@@ -25,6 +25,7 @@ import (
 
 	"github.com/pkg/errors"
 	"github.com/gx-org/gx/build/ir"
+	"github.com/gx-org/gx/golang/binder/bindings"
 	"github.com/gx-org/gx/stdlib"
 
 	_ "embed"
@@ -34,28 +35,6 @@ import (
 var goBindings string
 
 var goPackageTemplate = template.Must(template.New("GoBindingsTMPL").Parse(goBindings))
-
-func iterateFunc[T any](objs []T, f func(int, T) (string, error)) (string, error) {
-	var ss []string
-	for i, obj := range objs {
-		s, err := f(i, obj)
-		if err != nil {
-			return "", err
-		}
-		ss = append(ss, s)
-	}
-	return strings.Join(ss, "\n"), nil
-}
-
-func iterateTmpl[T any](objs []T, tmpl *template.Template) (string, error) {
-	buf := strings.Builder{}
-	for _, obj := range objs {
-		if err := tmpl.Execute(&buf, obj); err != nil {
-			return "", errors.Errorf("cannot generate code for %#v: %v", obj, err)
-		}
-	}
-	return buf.String(), nil
-}
 
 type (
 	// DependenciesBuildCall generates the source code to get the GX package
@@ -96,15 +75,15 @@ func (b *binder) GXImportBindedLibrary() string {
 
 var processNamedTypeOutputTmpl = template.Must(template.New("processNamedTypeOutputTMPL").Parse(
 	`var {{.Target}} {{.TypePointer}}
-{{.Target}}, err = {{.Compiler}}.Marshal{{.TypeName}}({{.Source}})
+{{.Target}}, err = {{.Package}}.Marshal{{.TypeName}}({{.Source}})
 if err != nil {
 	return
 }`))
 
 func (b *binder) processNamedTypeOutput(target, src string, typ *ir.NamedType) (res []string, err error) {
-	compiler := "cmpl"
+	pkg := "cmpl"
 	if typ.Package() != b.Package {
-		compiler += "." + b.namePackage(typ.Package())
+		pkg += "." + b.namePackage(typ.Package())
 	}
 	deviceType, err := b.gxValueTypePointer(typ)
 	if err != nil {
@@ -117,7 +96,7 @@ func (b *binder) processNamedTypeOutput(target, src string, typ *ir.NamedType) (
 		"Target":      target,
 		"TypeName":    fmt.Sprintf("%s", typ.NameT),
 		"TypePointer": deviceType,
-		"Compiler":    compiler,
+		"Package":     pkg,
 	}); err != nil {
 		return nil, err
 	}
@@ -205,9 +184,10 @@ func (b *binder) processArrayValue(target, src string, dataType ir.Type, goType 
 
 func (b *binder) setTargetFromSourceType(target, src string, typ ir.Type) ([]string, error) {
 	switch typT := typ.(type) {
-	case *ir.AtomicType:
-		return b.processArrayValue(target, src, typT, "Atom")
-	case *ir.ArrayType:
+	case ir.ArrayType:
+		if typT.Rank().IsAtomic() {
+			return b.processArrayValue(target, src, typT, "Atom")
+		}
 		return b.processArrayValue(target, src, typT.DataType(), "Array")
 	case *ir.NamedType:
 		return b.processNamedTypeOutput(target, src, typT)
@@ -226,33 +206,51 @@ func (b *binder) namedTypeFactory(typ *ir.NamedType) (string, error) {
 	return b.namePackage(typ.Package()) + "." + fac, nil
 }
 
-// Generate the bindings for Go.
-func Generate(builder DependenciesBuildCall, w io.Writer, pkg *ir.Package) error {
+// New returns a new Go bindings generator.
+func New(builder DependenciesBuildCall, pkg *ir.Package) (bindings.Binder, error) {
 	b := &binder{
 		Package:      pkg,
 		builder:      builder,
 		dependencies: make(map[string]dependency),
 		stdlib:       stdlib.Importer(nil),
 	}
-	b.funcs = buildFuncs(b)
 	var err error
+	b.funcs, err = bindings.BuildFuncs(pkg, b.newFunc)
+	if err != nil {
+		return nil, err
+	}
 	b.NamedTypes, err = buildTypes(b)
 	if err != nil {
-		return err
+		return nil, err
 	}
 
 	b.FuncRunners, err = b.funcRunners(b.funcs)
 	if err != nil {
-		return err
+		return nil, err
 	}
 	b.NamedTypeDefinitions, err = b.namedTypeDefinitions()
 	if err != nil {
-		return err
+		return nil, err
 	}
 	b.PkgVars, err = b.buildPkgVars()
 	if err != nil {
-		return err
+		return nil, err
 	}
+	return b, nil
+}
+
+// Files returns the list of files to generate.
+func (b *binder) Files() []bindings.File {
+	return []bindings.File{b}
+}
+
+// Extension returns the extension of the file being generated.
+func (b *binder) Extension() string {
+	return ".go"
+}
+
+// WriteBindings the bindings for Go.
+func (b *binder) WriteBindings(w io.Writer) error {
 	source := bytes.Buffer{}
 	if err := goPackageTemplate.Execute(&source, b); err != nil {
 		return err

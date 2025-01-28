@@ -20,10 +20,10 @@ import (
 	"go/parser"
 	"go/token"
 	"io/ioutil"
-	"sort"
+	"maps"
+	"slices"
 	"strings"
 
-	"golang.org/x/exp/maps"
 	"github.com/gx-org/gx/build/module"
 	"github.com/gx-org/gx/stdlib"
 )
@@ -134,7 +134,6 @@ func (inf PkgInfo) Dependencies() ([]string, error) {
 			depSet[dep] = true
 		}
 	}
-	deps := maps.Keys(depSet)
-	sort.Strings(deps)
+	deps := slices.Sorted(maps.Keys(depSet))
 	return deps, nil
 }

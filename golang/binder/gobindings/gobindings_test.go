@@ -42,7 +42,6 @@ var tests = []struct {
 		path: "github.com/gx-org/gx/tests/bindings/encoding",
 		wants: []string{
 			"field0",
-			"range fields",
 		},
 	},
 	{
@@ -81,16 +80,28 @@ var tests = []struct {
 			"Sample",
 		},
 	},
+	{
+		path: "github.com/gx-org/gx/tests/bindings/dtypes",
+		wants: []string{
+			"Bool",
+			"Float32",
+			"Float64",
+			"Int32",
+			"Int64",
+			"Uint32",
+			"Uint64",
+		},
+	},
 }
 
 func run(t *testing.T, bld *builder.Builder, path string, wants []string) {
 	pkg, err := bld.Build(path)
 	if err != nil {
-		t.Errorf("cannot get package %s builder: %v", path, err)
+		t.Errorf("cannot get package %s builder:\n%+v", path, err)
 		return
 	}
 	out := &strings.Builder{}
-	if err := binder.Bind(out, pkg); err != nil {
+	if err := binder.GoBindings(out, pkg.IR()); err != nil {
 		t.Fatalf("cannot generate bindings:\n%+v\n\nOutput generated:\n%s", err, gxtesting.NumberLines(out.String()))
 	}
 	got := out.String()
@@ -101,7 +112,7 @@ func run(t *testing.T, bld *builder.Builder, path string, wants []string) {
 	}
 }
 
-func TestBindings(t *testing.T) {
+func TestGoBindings(t *testing.T) {
 	builder := gxtesting.NewBuilderStaticSource(nil)
 	for _, test := range tests {
 		_, name := filepath.Split(test.path)

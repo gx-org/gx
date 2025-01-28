@@ -18,29 +18,25 @@ import (
 	"go/ast"
 
 	"github.com/pkg/errors"
-	"github.com/gx-org/gx/build/fmterr"
 	"github.com/gx-org/gx/build/ir"
 	"github.com/gx-org/gx/interp/state"
 )
 
-// Func defines a builtin XLA.
-type Func func(fmterr.FileSet, *ir.CallExpr, *state.State, []state.Element) (output state.Element, err error)
-
-func callFunc(ctx *context, call *ir.CallExpr, fn *state.Func, args []state.Element) (output state.Element, err error) {
+func callFunc(ctx Context, call *ir.CallExpr, fn *state.Func, args []state.Element) (output state.Element, err error) {
 	switch fnT := fn.Func().(type) {
 	case *ir.FuncDecl:
 		output, err = callFuncDecl(ctx, fn, fnT, args)
 	case *ir.FuncBuiltin:
 		output, err = callFuncBuiltin(ctx, call, fn, fnT, args)
 	case *ir.FuncLit:
-		output, err = callFuncLiteral(ctx, fnT, args)
+		output, err = ctx.Evaluator().CallFuncLit(ctx, fnT, args)
 	default:
 		err = errors.Errorf("calling function of type %T not supported", fnT)
 	}
 	return
 }
 
-func callFuncBuiltin(ctx *context, call *ir.CallExpr, fn *state.Func, irFunc *ir.FuncBuiltin, args []state.Element) (output state.Element, err error) {
+func callFuncBuiltin(ctx Context, call *ir.CallExpr, fn *state.Func, irFunc *ir.FuncBuiltin, args []state.Element) (output state.Element, err error) {
 	defer func() {
 		if err != nil {
 			err = ctx.FileSet().Position(call.Expr(), err)
@@ -58,18 +54,18 @@ func callFuncBuiltin(ctx *context, call *ir.CallExpr, fn *state.Func, irFunc *ir
 }
 
 // callFuncDecl calls a function implemented in GX.
-func callFuncDecl(ctx *context, fn *state.Func, fnDecl *ir.FuncDecl, args []state.Element) (state.Element, error) {
+func callFuncDecl(ctx Context, fn *state.Func, fnDecl *ir.FuncDecl, args []state.Element) (state.Element, error) {
 	if fnDecl.Body == nil {
 		return nil, ctx.FileSet().Errorf(fnDecl.Source(), "missing function body")
 	}
 	// Create a new function frame.
-	funcFrame, err := ctx.pushFuncFrame(fnDecl)
+	funcFrame, err := ctx.frame().pushFuncFrame(fnDecl)
 	if err != nil {
 		return nil, err
 	}
-	defer ctx.popFrame()
+	defer ctx.frame().popFrame()
 	for _, resultName := range fieldNames(fnDecl.FType.Results.List) {
-		funcFrame.define(resultName.Name, nil)
+		funcFrame.Define(resultName.Name, nil)
 	}
 	// Add the receiver name to the function frame if present.
 	if recv := fn.Recv(); recv != nil {
@@ -78,18 +74,14 @@ func callFuncDecl(ctx *context, fn *state.Func, fnDecl *ir.FuncDecl, args []stat
 		if ok {
 			recvNode = copyable.Copy()
 		}
-		funcFrame.define(recv.Ident.Name, recvNode)
+		funcFrame.Define(recv.Ident.Name, recvNode)
 	}
 	assignArgumentValues(fnDecl.FType, funcFrame, args)
 	// Evaluate the function within the frame.
 	return evalFuncBody(ctx, fnDecl.Body)
 }
 
-func callFuncLiteral(ctx *context, fn *ir.FuncLit, args []state.Element) (state.Element, error) {
-	return evalFuncLitCall(ctx, fn, args)
-}
-
-func evalFuncBody(ctx *context, body *ir.BlockStmt) (state.Element, error) {
+func evalFuncBody(ctx Context, body *ir.BlockStmt) (state.Element, error) {
 	element, stop, err := evalBlockStmt(ctx, body)
 	if !stop {
 		// No return statement was processed during the eval of the function.
@@ -115,11 +107,11 @@ func assignArgumentValues(funcType *ir.FuncType, funcFrame *frame, args []state.
 		if ok {
 			arg = copyable.Copy()
 		}
-		funcFrame.define(names[i].Name, arg)
+		funcFrame.Define(names[i].Name, arg)
 	}
 }
 
-func evalCallExpr(ctx *context, expr *ir.CallExpr) (state.Element, error) {
+func evalCallExpr(ctx Context, expr *ir.CallExpr) (state.Element, error) {
 	// Fetch the function and check that it is callable.
 	fnNode, err := evalExpr(ctx, expr.Func)
 	if err != nil {

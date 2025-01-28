@@ -22,23 +22,20 @@ import (
 	"github.com/gx-org/gx/stdlib/impl"
 )
 
-type philoxUint64 struct {
-	builtin.Func
-}
-
-func (f philoxUint64) BuildMethodIR(impl *impl.Stdlib, pkg builder.Package, tp *ir.NamedType) (*ir.FuncBuiltin, error) {
+func buildMethodIR(impl *impl.Stdlib, pkg builder.Package, tp *ir.NamedType, kind ir.Kind, name string) *ir.FuncBuiltin {
 	rankType := &ir.SliceType{
-		DType: ir.AxisLengthType(),
+		DType: ir.IntLenType(),
 		Rank:  1,
 	}
 	philoxType := tp
-	valueType := &ir.ArrayType{
-		DType: &ir.AtomicType{Knd: ir.Uint64Kind},
-		RankF: &ir.GenericRank{},
-	}
+	valueType := ir.NewArrayType(
+		nil,
+		ir.TypeFromKind(kind),
+		&ir.GenericRank{},
+	)
 	fn := &ir.FuncBuiltin{
 		Package: pkg.IR(),
-		FName:   "Uint64",
+		FName:   name,
 		FType: &ir.FuncType{
 			Receiver: tp,
 			Params: builtins.Fields(
@@ -50,6 +47,32 @@ func (f philoxUint64) BuildMethodIR(impl *impl.Stdlib, pkg builder.Package, tp *
 			),
 		},
 	}
+	return fn
+}
+
+type philoxUint32 struct {
+	builtin.Func
+}
+
+func (f philoxUint32) BuildMethodIR(impl *impl.Stdlib, pkg builder.Package, tp *ir.NamedType) (*ir.FuncBuiltin, error) {
+	fn := buildMethodIR(impl, pkg, tp, ir.Uint32Kind, "Uint32")
+	fn.Impl = bootstrapGeneratorNext{Func: builtin.Func{
+		Func: fn,
+		Impl: impl.Rand.PhiloxUint32,
+	}}
+	return fn, nil
+}
+
+func (f philoxUint32) BuildFuncType(fetcher ir.Fetcher, call *ir.CallExpr) (*ir.FuncType, error) {
+	return f.Func.Func.FType, nil
+}
+
+type philoxUint64 struct {
+	builtin.Func
+}
+
+func (f philoxUint64) BuildMethodIR(impl *impl.Stdlib, pkg builder.Package, tp *ir.NamedType) (*ir.FuncBuiltin, error) {
+	fn := buildMethodIR(impl, pkg, tp, ir.Uint64Kind, "Uint64")
 	fn.Impl = bootstrapGeneratorNext{Func: builtin.Func{
 		Func: fn,
 		Impl: impl.Rand.PhiloxUint64,

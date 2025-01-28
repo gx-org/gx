@@ -25,7 +25,7 @@ import (
 	gxtesting "github.com/gx-org/gx/tests/testing"
 )
 
-var parametersGX *parameters_go_gx.Compiler
+var parametersGX *parameters_go_gx.Package
 
 func TestAddInt(t *testing.T) {
 	x := types.Int64(3)
@@ -268,16 +268,12 @@ func TestSetNotInSlice(t *testing.T) {
 	}
 }
 
-func setupTest(rtm *api.Runtime) error {
-	gxPackage, err := parameters_go_gx.Load(rtm)
+func setupTest(dev *api.Device) error {
+	gxPackage, err := parameters_go_gx.Load(dev.Runtime())
 	if err != nil {
 		return err
 	}
-	dev, err := rtm.Platform().Device(0)
-	if err != nil {
-		return err
-	}
-	parametersGX = gxPackage.CompilerFor(
+	parametersGX = gxPackage.BuildFor(
 		dev,
 		parameters_go_gx.Size.Set(5),
 	)

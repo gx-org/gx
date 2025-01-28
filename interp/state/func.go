@@ -18,6 +18,7 @@ import (
 	"fmt"
 	"go/ast"
 
+	"github.com/gx-org/gx/api/values"
 	"github.com/gx-org/gx/build/ir"
 )
 
@@ -48,6 +49,11 @@ func (st *Func) Type() ir.Type {
 	return st.fn.Type()
 }
 
+// Flatten returns the element in a slice.
+func (st *Func) Flatten() ([]Element, error) {
+	return []Element{st}, nil
+}
+
 // Func returns the function represented by the node.
 func (st *Func) Func() ir.Func {
 	return st.fn
@@ -61,6 +67,10 @@ func (st *Func) Recv() *Receiver {
 // State owning the element.
 func (st *Func) State() *State {
 	return st.state
+}
+
+func (st *Func) valueFromHandle(handles *handleParser) (values.Value, error) {
+	return values.NewIRNode(st.fn)
 }
 
 // String representation of the node.

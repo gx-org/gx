@@ -18,3 +18,10 @@ func Sample(seed int64) [3]float32 {
 	_, sample := rnd.Float32([]intlen{3})
 	return sample
 }
+
+// Sample the first few booleans from a number generator.
+func SampleBool(seed int64) [100]bool {
+	rnd := rand.New(rand.NewSource(seed))
+	_, sample := rnd.Bool([]intlen{100})
+	return sample
+}

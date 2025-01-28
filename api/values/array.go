@@ -20,6 +20,7 @@ import (
 	"github.com/gx-org/backend/dtype"
 	"github.com/gx-org/backend/platform"
 	"github.com/gx-org/backend/shape"
+	"github.com/gx-org/gx/api"
 	"github.com/gx-org/gx/build/ir"
 	"github.com/gx-org/gx/golang/backend/kernels"
 )
@@ -39,7 +40,7 @@ type Array interface {
 
 	// ToDevice transfers the array to a device.
 	// It is a no-op if the data is already on the device.
-	ToDevice(dev platform.Device) (*DeviceArray, error)
+	ToDevice(dev *api.Device) (*DeviceArray, error)
 
 	// ToHostArray transfers the array on the host if it is not already.
 	// Use the Go allocator.
@@ -100,11 +101,11 @@ func (a *DeviceArray) DeviceHandle() platform.DeviceHandle {
 
 // ToDevice transfers the data to a device.
 // It is a no-op if the data is already on the device.
-func (a *DeviceArray) ToDevice(dev platform.Device) (*DeviceArray, error) {
-	if a.handle.Device() == dev {
+func (a *DeviceArray) ToDevice(dev *api.Device) (*DeviceArray, error) {
+	if a.handle.Device() == dev.PlatformDevice() {
 		return a, nil
 	}
-	handle, err := a.handle.ToDevice(dev)
+	handle, err := a.handle.ToDevice(dev.PlatformDevice())
 	if err != nil {
 		return nil, err
 	}
@@ -163,10 +164,10 @@ func (a *HostArray) Buffer() platform.HostBuffer {
 
 // ToDevice transfers the data to a device.
 // It is a no-op if the data is already on the device.
-func (a *HostArray) ToDevice(dev platform.Device) (*DeviceArray, error) {
+func (a *HostArray) ToDevice(dev *api.Device) (*DeviceArray, error) {
 	data := a.buffer.Acquire()
 	defer a.buffer.Release()
-	handle, err := dev.Send(data, a.buffer.Shape())
+	handle, err := dev.PlatformDevice().Send(data, a.buffer.Shape())
 	if err != nil {
 		return nil, err
 	}

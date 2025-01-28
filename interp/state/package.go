@@ -51,6 +51,11 @@ func (g *State) Package(errFmt fmterr.Pos, pkg *ir.Package) *Package {
 	return node
 }
 
+// Flatten returns the package in a slice of elements.
+func (pkg *Package) Flatten() ([]Element, error) {
+	return []Element{pkg}, nil
+}
+
 // ErrPos returns the error formatter for the position of the token representing the node in the graph.
 func (pkg *Package) ErrPos() fmterr.Pos {
 	return pkg.errFmt

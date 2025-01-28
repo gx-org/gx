@@ -16,6 +16,7 @@ package builder
 
 import (
 	"go/ast"
+	"strings"
 
 	"github.com/gx-org/gx/build/ir"
 )
@@ -25,19 +26,21 @@ type (
 		build() ir.ArrayRank
 		subRank() rankNode
 		reconcileWith(scoper, nodePos, rankNode) (rankNode, bool)
-		resolve(scope scoper) bool
+		resolve(scope scoper) (rankNode, bool)
 		numAxes() int
 		String() string
 	}
 
 	rank struct {
 		ext  ir.Rank
-		dims []arrayAxes
+		dims []axisLengthNode
 	}
 
 	genericRank struct {
 		ext ir.GenericRank
 		rnk *rank
+
+		name *ast.Ident
 	}
 
 	anyRank struct {
@@ -53,8 +56,35 @@ var (
 
 const cannotInfer = "cannot infer number of array axes"
 
+func isShapeParam(dimExpr ast.Expr) (*ast.Ident, bool) {
+	// Note that UnaryExpr is valid in this position, so alternative syntaxes are possible.
+	ident, ok := dimExpr.(*ast.Ident)
+	if !ok || len(ident.Name) <= 3 || !strings.HasPrefix(ident.Name, "___") {
+		return nil, false
+	}
+	return ident, true
+}
+
+func fetchArrayShape(owner owner, key *ast.Ident) *arrayType {
+	shapeIdent := owner.namespace().fetch(key.String())
+	if shapeIdent == nil {
+		return nil
+	}
+
+	typ, ok := shapeIdent.typeF(owner.scope())
+	if !ok {
+		return nil
+	}
+	result, ok := typ.(*arrayType)
+	if !ok {
+		owner.err().AppendInternalf(key, "cannot cast %T to *arrayType", typ)
+		return nil
+	}
+	return result
+}
+
 func processDTypeRank(owner owner, typ *ast.ArrayType) (rankNode, typeNode, bool) {
-	dims := []arrayAxes{}
+	dims := []axisLengthNode{}
 	var dtype typeNode
 	var rnk rankNode
 
@@ -71,10 +101,19 @@ func processDTypeRank(owner owner, typ *ast.ArrayType) (rankNode, typeNode, bool
 			}
 		case *ast.ArrayType:
 			if rnk != nil {
-				owner.err().Appendf(elt, "array type can only have one unknown axis")
+				owner.err().Appendf(elt, "array type may only specify unknown rank once")
 				return nil, invalid, false
 			}
-			dim, dimOk := processArrayDimensionExpr(owner, eltT)
+			if key, ok := isShapeParam(eltT.Len); ok {
+				rnk = &genericRank{
+					ext:  ir.GenericRank{Src: eltT, Name: key},
+					name: key,
+				}
+				elt = eltT.Elt
+				continue
+			}
+
+			dim, dimOk := processAxisLengthExpr(owner, eltT)
 			if !dimOk {
 				return nil, invalid, false
 			}
@@ -101,12 +140,12 @@ func importRank(scope scoper, ext ir.ArrayRank) (rankNode, bool) {
 	case *ir.AnyRank:
 		return &anyRank{ext: *extT}, true
 	case *ir.GenericRank:
-		return &genericRank{ext: *extT}, true
+		return &genericRank{ext: *extT, name: extT.Name}, true
 	case *ir.Rank:
 		r = &rank{ext: *extT}
 	}
 	ok := true
-	r.dims = make([]arrayAxes, len(r.ext.Axes))
+	r.dims = make([]axisLengthNode, len(r.ext.Axes))
 	for i, dim := range r.ext.Axes {
 		var dimOk bool
 		r.dims[i], dimOk = importAxis(scope, dim)
@@ -118,7 +157,7 @@ func importRank(scope scoper, ext ir.ArrayRank) (rankNode, bool) {
 func (r *rank) buildRank() *ir.Rank {
 	r.ext.Axes = make([]ir.AxisLength, len(r.dims))
 	for i, dim := range r.dims {
-		r.ext.Axes[i] = dim.expr()
+		r.ext.Axes[i] = dim.axisLength()
 	}
 	return &r.ext
 }
@@ -156,7 +195,7 @@ func reconcileRankWith(scope scoper, pos nodePos, src, other *rank) (*rank, bool
 	}
 	dst := &rank{
 		ext:  src.ext,
-		dims: make([]arrayAxes, len(src.dims)),
+		dims: make([]axisLengthNode, len(src.dims)),
 	}
 	ok := true
 	for i, dim := range src.dims {
@@ -186,12 +225,13 @@ func (r *rank) reconcileWith(scope scoper, pos nodePos, other rankNode) (rankNod
 	}
 }
 
-func (r *rank) resolve(scope scoper) bool {
+func (r *rank) resolve(scope scoper) (rankNode, bool) {
 	ok := true
 	for _, dim := range r.dims {
-		ok = dim.resolve(scope) && ok
+		_, dimOk := dim.resolveType(scope)
+		ok = dimOk && ok
 	}
-	return ok
+	return r, ok
 }
 
 func (r *rank) String() string {
@@ -215,8 +255,8 @@ func (r *anyRank) reconcileWith(scope scoper, pos nodePos, other rankNode) (rank
 	return r, false
 }
 
-func (r *anyRank) resolve(scope scoper) bool {
-	return true
+func (r *anyRank) resolve(scope scoper) (rankNode, bool) {
+	return r, true
 }
 
 func (r *anyRank) String() string {
@@ -248,10 +288,10 @@ func (r *genericRank) subRank() rankNode {
 func (r *genericRank) newResolvedRank(src *rank) *rank {
 	resolved := &rank{
 		ext:  ir.Rank{Src: src.ext.Src},
-		dims: make([]arrayAxes, len(src.dims)),
+		dims: make([]axisLengthNode, len(src.dims)),
 	}
 	for i := range resolved.dims {
-		resolved.dims[i] = &genericDimension{
+		resolved.dims[i] = &genericAxisLength{
 			ext: &ir.AxisEllipsis{Src: r.ext.Src.Elt.(*ast.Ident)},
 		}
 	}
@@ -264,13 +304,24 @@ func (r *genericRank) reconcileWith(scope scoper, pos nodePos, other rankNode) (
 		toReconcile := r.newResolvedRank(otherT)
 		rank, ok := reconcileRankWith(scope, pos, toReconcile, otherT)
 		rank.ext.Src = r.ext.Src
-		return &genericRank{
+		result := &genericRank{
 			ext: ir.GenericRank{
-				Src: r.ext.Src,
+				Src:  r.ext.Src,
+				Name: r.name,
 			},
-			rnk: rank,
-		}, ok
+			name: r.name,
+			rnk:  rank,
+		}
+		if r.name != nil {
+			// When a generic rank is reconciled with a concrete rank, save the concrete rank in the
+			// current scope so that it can be recovered later.
+			scope.namespace().assign(newIdent(r.name, &arrayType{dtyp: unknown, rnk: result}))
+		}
+		return result, ok
 	case *genericRank:
+		if r.name != nil && otherT.name != nil && r.name.Name != otherT.name.Name {
+			return r, false
+		}
 		if otherT.rnk == nil {
 			return r, true
 		}
@@ -282,8 +333,17 @@ func (r *genericRank) reconcileWith(scope scoper, pos nodePos, other rankNode) (
 	}
 }
 
-func (r *genericRank) resolve(scope scoper) bool {
-	return true
+func (r *genericRank) resolve(scope scoper) (rankNode, bool) {
+	if r.name == nil {
+		return r, true
+	}
+	if typ := fetchArrayShape(scope, r.name); typ != nil {
+		// When resolving a named generic rank, attempt to retrieve a concrete rank from the current
+		// scope. If found, that concrete rank has been inferred by a previous call to reconcileWith
+		// and it can be returned directly.
+		return typ.rank(), true
+	}
+	return r, true
 }
 
 func (r *genericRank) String() string {

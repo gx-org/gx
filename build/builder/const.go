@@ -30,11 +30,14 @@ type constDecl struct {
 	exprs []*constExpr
 }
 
+var _ irBuilder = (*constDecl)(nil)
+
 func importConstDecl(scope *scopeFile, irDecl *ir.ConstDecl) bool {
 	decl := &constDecl{
 		ext:   *irDecl,
 		exprs: make([]*constExpr, len(irDecl.Exprs)),
 	}
+	decl.ext.FFile = &scope.src.repr
 	ok := true
 	if irDecl.Type != nil {
 		decl.resolvedType, ok = toTypeNode(scope, irDecl.Type)
@@ -58,7 +61,8 @@ func processConstDecl(scope *scopeFile, decl *ast.GenDecl) bool {
 func processConst(scope *scopeFile, spec *ast.ValueSpec) bool {
 	decl := &constDecl{
 		ext: ir.ConstDecl{
-			Src: spec,
+			FFile: &scope.src.repr,
+			Src:   spec,
 		},
 	}
 	declaredTypeOk := true
@@ -83,14 +87,11 @@ func processConst(scope *scopeFile, spec *ast.ValueSpec) bool {
 	declareOk := true
 	for _, expr := range decl.exprs {
 		ident := expr.ext.VName
-		resolver := func(scope scoper) (exprNode, typeNode, bool) {
-			typ, ok := expr.resolveType(scope)
-			return expr, typ, ok
-		}
-		if prev := scope.file().pkg.ns.assignTypeF(ident.Name, ident, resolver); prev != nil {
-			appendRedeclaredError(scope.err(), ident, prev)
+		if !scope.pkg().checkIfDefined(scope, ident) {
 			declareOk = false
+			continue
 		}
+		scope.file().pkg.ns.assign(newIdentExpr(ident, expr), decl)
 	}
 	scope.file().consts = append(scope.file().consts, decl)
 
@@ -129,16 +130,16 @@ func (decl *constDecl) resolveType(scope scoper) (typeNode, bool) {
 	if !ok {
 		decl.resolvedType = invalid
 	}
+	decl.ext.Type = decl.resolvedType.irType()
 	return typeNodeOk(decl.resolvedType)
 }
 
-func (decl *constDecl) buildStmt() *ir.ConstDecl {
-	decl.ext.Type = decl.resolvedType.buildType()
+func (decl *constDecl) buildIR(pkg *ir.Package) {
 	decl.ext.Exprs = make([]*ir.ConstExpr, len(decl.exprs))
 	for i, expr := range decl.exprs {
 		decl.ext.Exprs[i] = expr.buildConstExpr()
 	}
-	return &decl.ext
+	pkg.Consts = append(pkg.Consts, &decl.ext)
 }
 
 func (decl *constDecl) wantType() ir.Type {
@@ -148,7 +149,7 @@ func (decl *constDecl) wantType() ir.Type {
 	if decl.declaredType.kind() == ir.InvalidKind {
 		return nil
 	}
-	return decl.declaredType.buildType()
+	return decl.declaredType.irType()
 }
 
 type constExpr struct {
@@ -159,7 +160,10 @@ type constExpr struct {
 	valueType typeNode
 }
 
-var _ exprNode = (*constExpr)(nil)
+var (
+	_ exprNode        = (*constExpr)(nil)
+	_ staticValueNode = (*constExpr)(nil)
+)
 
 func importConstExpr(scope *scopeFile, decl *constDecl, cstExpr *ir.ConstExpr) (*constExpr, bool) {
 	expr := &constExpr{
@@ -168,10 +172,10 @@ func importConstExpr(scope *scopeFile, decl *constDecl, cstExpr *ir.ConstExpr) (
 		value:     &irExprNode{x: cstExpr.Value},
 		valueType: decl.resolvedType,
 	}
-	prev := scope.pkg().ns.assign(cstExpr.VName, expr, decl.resolvedType)
-	if prev != nil {
+	if prev := scope.pkg().ns.fetch(cstExpr.VName.Name); prev != nil {
 		return expr, scope.err().Appendf(cstExpr.Source(), "%s has already been registered", cstExpr.VName.Name)
 	}
+	scope.pkg().ns.assign(newIdentExpr(cstExpr.VName, expr), decl)
 	scope.file().consts = append(scope.file().consts, decl)
 	return expr, true
 }
@@ -181,8 +185,8 @@ func (cst *constExpr) resolveType(scope scoper) (typeNode, bool) {
 	if !ok {
 		return invalid, false
 	}
-	if cst.valueType.kind() == ir.NumberKind && declType.kind() != ir.NumberKind {
-		cst.value, cst.valueType, ok = buildNumberNode(scope, cst.value, declType.buildType())
+	if ir.IsNumber(cst.valueType.kind()) && !ir.IsNumber(declType.kind()) {
+		cst.value, cst.valueType, ok = castNumber(scope, cst.value, declType.irType())
 	}
 	return declType, ok
 }
@@ -195,13 +199,13 @@ func (cst *constExpr) source() ast.Node {
 	return cst.ext.VName
 }
 
-func (cst *constExpr) castTo(eval evaluator) (exprScalar, []*ir.ValueRef, bool) {
-	return cst.value.(exprNumber).castTo(eval)
-}
-
 func (cst *constExpr) buildConstExpr() *ir.ConstExpr {
 	cst.ext.Value = cst.value.buildExpr()
 	return cst.ext
+}
+
+func (cst *constExpr) staticValue() ir.StaticValue {
+	return cst.buildConstExpr()
 }
 
 func (cst *constExpr) buildExpr() ir.Expr {

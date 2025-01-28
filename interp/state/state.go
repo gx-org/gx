@@ -15,114 +15,94 @@
 package state
 
 import (
-	"go/token"
-	"reflect"
-
 	"github.com/pkg/errors"
 	"github.com/gx-org/backend/dtype"
 	"github.com/gx-org/backend/graph"
 	"github.com/gx-org/backend/platform"
 	"github.com/gx-org/backend/shape"
+	"github.com/gx-org/gx/api"
 	"github.com/gx-org/gx/api/values"
 	"github.com/gx-org/gx/build/ir"
 	"github.com/gx-org/gx/golang/backend/kernels"
 )
 
 type (
-	// ExprFile is an expression with the file in which it is declared.
-	ExprFile[T ir.Expr] struct {
+	// NodeFile is a node located in a file.
+	NodeFile[T ir.Node] struct {
 		file *ir.File
 		node T
 	}
 
 	// ExprAt is a generic GX expression.
-	ExprAt = ExprFile[ir.Expr]
+	ExprAt = NodeFile[ir.Expr]
 
 	// CallAt is a function call GX expression.
-	CallAt = ExprFile[*ir.CallExpr]
+	CallAt = NodeFile[*ir.CallExpr]
 
 	// FieldAt is a typed field at a given position.
-	FieldAt = ExprFile[*ir.Field]
-
-	// Context is the current evaluation context.
-	Context interface {
-		// Receiver on which the function call was done.
-		// Can be nil.
-		Receiver() values.Value
-
-		// Args returns list of arguments passed to the interpreter at call time.
-		Args() []values.Value
-	}
+	FieldAt = NodeFile[*ir.Field]
 )
 
-// NewExprAt returns a new expression at a given position.
-func NewExprAt[T ir.Expr](file *ir.File, expr T) ExprFile[T] {
-	return ExprFile[T]{file: file, node: expr}
+// Context is the current evaluation context.
+type Context interface {
+	// Receiver on which the function call was done.
+	// Can be nil.
+	Receiver() values.Value
+
+	// Args returns list of arguments passed to the interpreter at call time.
+	Args() []values.Value
 }
 
-// FSet returns the fileset of the expression.
-func (ea ExprFile[T]) FSet() *token.FileSet {
-	return ea.file.Package.FSet
-}
-
-// ExprT returns the expression.
-func (ea ExprFile[T]) ExprT() T {
-	return ea.node
-}
-
-// ToExprAt converts a type position into a generic node position.
-func (ea ExprFile[T]) ToExprAt() ExprAt {
-	return NewExprAt[ir.Expr](ea.file, ea.node)
-}
-
-// Type of the expression.
-func (ea ExprFile[T]) Type() ir.Type {
-	return ea.node.Type()
-}
-
-// File returns the file in which the expression is declared.
-func (ea ExprFile[T]) File() *ir.File {
-	return ea.file
-}
-
-// NodeFromElement converts an element into a graph node.
-// Returns an error if the element is not a numerical element.
-func NodeFromElement(el Element) (graph.Node, *shape.Shape, error) {
-	nodes, err := OutputsFromElement(el)
-	if err != nil {
-		return nil, nil, err
-	}
-	if len(nodes) > 1 {
-		return nil, nil, errors.Errorf("element %T converted into more than one (%d) graph node", el, len(nodes))
-	}
-	return nodes[0].Node, nodes[0].Shape, nil
-}
-
-// OutputsFromElement returns a generic graph node from a state element.
-func OutputsFromElement(el Element) ([]*graph.OutputNode, error) {
-	bEl, ok := el.(backendElement)
-	if !ok {
-		return nil, errors.Errorf("cannot convert element %T to a backend element %s", el, reflect.TypeFor[backendElement]().Name())
-	}
-	return bEl.nodes()
-}
-
-// OutputsFromElements returns a list of backend graph node from a list of element.
-func OutputsFromElements(elements []Element) ([]*graph.OutputNode, error) {
-	all := []*graph.OutputNode{}
-	for _, el := range elements {
-		elNodes, err := OutputsFromElement(el)
+func flattenAll(elts []Element) ([]Element, error) {
+	var flat []Element
+	for _, elt := range elts {
+		subs, err := elt.Flatten()
 		if err != nil {
 			return nil, err
 		}
-		all = append(all, elNodes...)
+		flat = append(flat, subs...)
 	}
-	return all, nil
+	return flat, nil
+}
+
+// NodeFromElement converts an element into a graph node.
+// We unpack the value of *graph.OutputNode to prevent
+// from changing the output of Materialise accidently.
+// Returns an error if the element is not a numerical element.
+func NodeFromElement(el Element) (graph.Node, *shape.Shape, error) {
+	materialiser, ok := el.(Materialiser)
+	if !ok {
+		return nil, nil, errors.Errorf("cannot convert %T to a backend node graph: does not implement Materialiser", el)
+	}
+	out, err := materialiser.Materialise()
+	if err != nil {
+		return nil, nil, err
+	}
+	return out.Node, out.Shape, nil
+}
+
+// MaterialiseAll materialises a slice of elements into a slice of output graph nodes.
+func MaterialiseAll(els []Element) ([]graph.OutputNode, error) {
+	nodes := make([]graph.OutputNode, len(els))
+	for i, el := range els {
+		node, shape, err := NodeFromElement(el)
+		if err != nil {
+			return nil, err
+		}
+		nodes[i] = graph.OutputNode{
+			Node:  node,
+			Shape: shape,
+		}
+	}
+	return nodes, nil
 }
 
 // AxesFromElement returns a shape from a state element.
 func AxesFromElement(el Element) ([]int, error) {
-	dimElements := el.(*Slice).Elements()
+	dimElements, err := el.Flatten()
+	if err != nil {
+		return nil, err
+	}
 	dimensions := make([]int, len(dimElements))
 	for i, dimElement := range dimElements {
 		var err error
@@ -168,11 +148,11 @@ func ConstantFromElement(el Element) *values.HostArray {
 
 // HostValueFromContext returns a host value from the function call.
 func HostValueFromContext(ctx Context, el Element) (*values.HostArray, error) {
-	withValue, ok := el.(ElementWithValueContext)
+	withValue, ok := el.(ElementWithArrayFromContext)
 	if !ok {
 		return nil, errors.Errorf("state element %T does not support returning a value given a context", el)
 	}
-	array, err := withValue.ValueFromContext(ctx)
+	array, err := withValue.ArrayFromContext(ctx)
 	if err != nil {
 		return nil, err
 	}
@@ -181,8 +161,10 @@ func HostValueFromContext(ctx Context, el Element) (*values.HostArray, error) {
 
 type (
 	handleParser struct {
-		handles []platform.DeviceHandle
-		nextPos int
+		dev        *api.Device
+		ctx        Context
+		compOutput []platform.DeviceHandle
+		nextPos    int
 	}
 
 	handleProcessor interface {
@@ -190,14 +172,30 @@ type (
 	}
 )
 
+func newHandleParser(dev *api.Device, ctx Context, handles []platform.DeviceHandle) *handleParser {
+	return &handleParser{
+		dev:        dev,
+		ctx:        ctx,
+		compOutput: handles,
+	}
+}
+
 func (h *handleParser) next() platform.DeviceHandle {
-	n := h.handles[h.nextPos]
+	n := h.compOutput[h.nextPos]
 	h.nextPos++
 	return n
 }
 
+func (h *handleParser) context() Context {
+	return h.ctx
+}
+
 func (h *handleParser) size() int {
-	return len(h.handles)
+	return len(h.compOutput)
+}
+
+func (h *handleParser) device() *api.Device {
+	return h.dev
 }
 
 func (h *handleParser) parse(el Element) (values.Value, error) {
@@ -229,7 +227,7 @@ func (h *handleParser) parseComposite(ncv newCompValue, typ ir.Type, els []Eleme
 	return ncv(typ, vals)
 }
 
-func toDevice(dev platform.Device, arr values.Array) (platform.DeviceHandle, error) {
+func toDevice(dev *api.Device, arr values.Array) (platform.DeviceHandle, error) {
 	deviceArray, err := arr.ToDevice(dev)
 	if err != nil {
 		return nil, err

@@ -26,6 +26,12 @@ type errorWithStackTrace struct {
 }
 
 func formatVerbose(err error, s fmt.State, verb rune) {
+	var errs *Errors
+	if errors.As(err, &errs) {
+		for _, err := range errs.Errors() {
+			formatVerbose(err, s, verb)
+		}
+	}
 	fmt.Fprintf(s, "%s", err.Error())
 	var withSt interface {
 		StackTrace() errors.StackTrace

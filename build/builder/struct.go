@@ -83,29 +83,21 @@ func (n *structType) assign(block *scopeFile, fld *field) bool {
 		return false
 	}
 	n.nameToField[name] = fld
-	// Check that the ID assigned to the field matches the position in the list of field.
-	if fld.ext.ID != len(n.fields) {
-		block.err().AppendInternalf(
-			fld.ext.Name,
-			"field %s with ID=%d does not match the number of fields (%d) in the structure",
-			name, fld.ext.ID, len(n.fields))
-		return false
-	}
 	n.fields = append(n.fields, fld)
 	return true
 }
 
-func (n *structType) buildType() ir.Type {
-	n.ext.Fields = n.fieldList.buildType()
+func (n *structType) irType() ir.Type {
+	n.ext.Fields = n.fieldList.irType()
 	return n.ext
 }
 
 func (n *structType) convertibleTo(scope scoper, typ typeNode) (bool, error) {
-	return n.buildType().ConvertibleTo(scope.evalFetcher(), typ.buildType())
+	return n.irType().ConvertibleTo(scope.evalFetcher(), typ.irType())
 }
 
 func (n *structType) kind() ir.Kind {
-	return n.buildType().Kind()
+	return n.irType().Kind()
 }
 
 func (n *structType) source() ast.Node {
@@ -131,7 +123,7 @@ func (n *structType) resolveConcreteType(scope scoper) (typeNode, bool) {
 		return n.typ, false
 	}
 	// Build GX struct type.
-	n.ext.Fields = n.fieldList.buildType()
+	n.ext.Fields = n.fieldList.irType()
 	n.typ = n
 	return n.typ, true
 }
@@ -244,7 +236,7 @@ func (n *structLiteral) buildExpr() ir.Expr {
 		}
 		n.ext.Elts[i].Field = structField.ext
 	}
-	n.ext.Typ = n.typ.buildType()
+	n.ext.Typ = n.typ.irType()
 	return &n.ext
 }
 
@@ -270,9 +262,9 @@ func (n *structLiteral) resolveFieldTypes(scope scoper) bool {
 			ok = false
 			continue
 		}
-		if valueType.kind() == ir.NumberKind {
+		if ir.IsNumber(valueType.kind()) {
 			var valueExpr exprNode
-			valueExpr, valueType, valueOk = buildNumberNode(scope, valueField.expr, wantType.buildType())
+			valueExpr, valueType, valueOk = castNumber(scope, valueField.expr, wantType.irType())
 			if !valueOk {
 				ok = false
 				continue
@@ -312,7 +304,7 @@ func (n *structLiteral) resolveType(scope scoper) (typeNode, bool) {
 	}
 	underlying := findUnderlying(n.typ)
 	if n.structType, ok = underlying.(*structType); !ok {
-		scope.err().Appendf(n.source(), "%s (type %T) is not a structure type", n.typ.String(), n.typ.buildType())
+		scope.err().Appendf(n.source(), "%s (type %T) is not a structure type", n.typ.String(), n.typ.irType())
 		n.typ, _ = invalidType()
 		return n.typ, false
 	}

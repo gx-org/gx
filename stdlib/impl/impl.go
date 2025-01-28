@@ -20,10 +20,16 @@ import "github.com/gx-org/gx/interp"
 type (
 	// Stdlib is an implementation of the standard library functions by a backend.
 	Stdlib struct {
-		Math   Math
-		Num    Num
-		Rand   Rand
-		Shapes Shapes
+		Control Control
+		Math    Math
+		Num     Num
+		Rand    Rand
+		Shapes  Shapes
+	}
+
+	// Control is the implementation of the control package.
+	Control struct {
+		While interp.FuncBuiltin
 	}
 
 	// Math is the implementation of the math package.
@@ -37,6 +43,7 @@ type (
 		Sin  interp.FuncBuiltin
 		Sqrt interp.FuncBuiltin
 		Tanh interp.FuncBuiltin
+		Ceil interp.FuncBuiltin
 	}
 
 	// Num is the implementation of the num package.
@@ -55,6 +62,7 @@ type (
 	Rand struct {
 		BootstrapGeneratorNew  interp.FuncBuiltin
 		BootstrapGeneratorNext interp.FuncBuiltin
+		PhiloxUint32           interp.FuncBuiltin
 		PhiloxUint64           interp.FuncBuiltin
 	}
 

@@ -37,8 +37,8 @@ type (
 		typ ir.Type
 	}
 
-	// Numerical is the proxy for an atomic or an array value.
-	Numerical struct {
+	// Array is the proxy for an atomic or an array value.
+	Array struct {
 		base
 		shape *shape.Shape
 	}
@@ -47,7 +47,7 @@ type (
 	Struct struct {
 		base
 		strctType *ir.StructType
-		vals      []Value
+		vals      map[string]Value
 	}
 
 	// Slice is the proxy for a slice value.
@@ -66,8 +66,16 @@ func (pr *base) Type() ir.Type { return pr.typ }
 
 func (base) proxy() {}
 
+// NewArray returns a new proxy array.
+func NewArray(typ ir.Type, shape *shape.Shape) *Array {
+	return &Array{
+		base:  base{typ: typ},
+		shape: shape,
+	}
+}
+
 // Shape of the value.
-func (pr *Numerical) Shape() *shape.Shape {
+func (pr *Array) Shape() *shape.Shape {
 	return pr.shape
 }
 
@@ -76,14 +84,17 @@ func (pr *Struct) StructType() *ir.StructType {
 	return pr.strctType
 }
 
-// Values returns all the proxy values for all the field of the structure.
-func (pr *Struct) Values() []Value {
-	return pr.vals
+// Field returns the value of a field.
+func (pr *Struct) Field(name string) Value {
+	return pr.vals[name]
 }
 
 // Element return the ith element of the proxy value.
-func (pr *Slice) Element(i int) Value {
-	return pr.vals[i]
+func (pr *Slice) Element(i int) (Value, error) {
+	if i < 0 || i >= len(pr.vals) {
+		return nil, errors.Errorf("invalid argument: index %d out of bounds [0:%d]", i, len(pr.vals))
+	}
+	return pr.vals[i], nil
 }
 
 // Size returns the number of element in the slice.
@@ -107,7 +118,7 @@ func ToProxy(val values.Value, typ ir.Type) (Value, error) {
 	}
 	switch valT := val.(type) {
 	case values.Array:
-		return &Numerical{
+		return &Array{
 			base:  prBase(valT.Type()),
 			shape: valT.Shape(),
 		}, nil
@@ -149,12 +160,12 @@ func ToProxies(vals []values.Value, typs []*ir.Field) ([]Value, error) {
 	return pVals, nil
 }
 
-func structToProxyValues(st *values.Struct) ([]Value, error) {
+func structToProxyValues(st *values.Struct) (map[string]Value, error) {
 	fields := st.StructType().Fields.Fields()
-	prs := make([]Value, len(fields))
-	for i, field := range fields {
+	prs := make(map[string]Value, len(fields))
+	for _, field := range fields {
 		var err error
-		prs[i], err = ToProxy(st.FieldValue(i), field.Type())
+		prs[field.Name.Name], err = ToProxy(st.FieldValue(field.Name.Name), field.Type())
 		if err != nil {
 			return nil, fmt.Errorf("cannot set field %s in structure %s: %w", field.Name.Name, st.Type().String(), err)
 		}

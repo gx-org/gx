@@ -20,6 +20,7 @@ import (
 	"strings"
 	"text/template"
 
+	"github.com/gx-org/gx/base/tmpl"
 	"github.com/gx-org/gx/build/ir"
 )
 
@@ -29,29 +30,12 @@ type function struct {
 	FuncIndex int
 }
 
-func buildFuncs(b *binder) []*function {
-	funcs := []*function{}
-	for i, gxFunc := range b.Package.Funcs {
-		if !ir.IsExported(gxFunc.Name()) {
-			continue
-		}
-		if gxFunc.Type() == nil || gxFunc.FuncType() == nil {
-			// Skipping generic functions (not supported).
-			continue
-		}
-		if gxFunc.FuncType().Receiver != nil {
-			continue
-		}
-		if !b.canBeOnDeviceFunc(gxFunc) {
-			continue
-		}
-		funcs = append(funcs, &function{
-			binder:    b,
-			Func:      gxFunc,
-			FuncIndex: i,
-		})
-	}
-	return funcs
+func (b *binder) newFunc(f ir.Func, i int) (*function, error) {
+	return &function{
+		binder:    b,
+		Func:      f,
+		FuncIndex: i,
+	}, nil
 }
 
 func (b *binder) methods() []*function {
@@ -66,32 +50,32 @@ func (b *binder) functionsAndMethods() []*function {
 	return append(b.methods(), b.funcs...)
 }
 
-func (b *binder) FuncsCompilerFields() (string, error) {
-	return iterateFunc(b.funcs, func(_ int, f *function) (string, error) {
+func (b *binder) FuncsPackageFields() (string, error) {
+	return tmpl.IterateFunc(b.funcs, func(_ int, f *function) (string, error) {
 		fieldName := f.RunnerField()
 		fieldType := f.RunnerType()
 		return fmt.Sprintf("\t%s %s", fieldName, fieldType), nil
 	})
 }
 
-func (b *binder) MethodsCompilerFields() (string, error) {
-	return iterateFunc(b.methods(), func(_ int, f *function) (string, error) {
+func (b *binder) MethodsPackageFields() (string, error) {
+	return tmpl.IterateFunc(b.methods(), func(_ int, f *function) (string, error) {
 		fieldName := f.RunnerField()
 		const fieldType = "methodBase"
 		return fmt.Sprintf("\t%s %s", fieldName, fieldType), nil
 	})
 }
 
-var funcCompilerSetField = template.Must(template.New("funcCompilerSetFieldTMPL").Parse(`
+var funcPackageSetField = template.Must(template.New("funcPackageSetFieldTMPL").Parse(`
 	c.{{.RunnerField}} = {{.Name}}{
 		methodBase: methodBase{
-			compiler: c,
+			pkg: c,
 			function: c.Package.IR.Funcs[{{.FuncIndex}}].(*ir.FuncDecl),
 		},
 	}`))
 
-func (b *binder) FuncsCompilerSetFields() (string, error) {
-	return iterateTmpl(b.funcs, funcCompilerSetField)
+func (b *binder) FuncsPackageSetFields() (string, error) {
+	return tmpl.IterateTmpl(b.funcs, funcPackageSetField)
 }
 
 func (f function) RunnerField() string {
@@ -118,20 +102,6 @@ func (f function) ReceiverField() string {
 	return fmt.Sprintf("receiver handle%s", receiver.NameT)
 }
 
-func (b *binder) canBeOnDeviceFunc(gxFunc ir.Func) bool {
-	_, isGX := gxFunc.(*ir.FuncDecl)
-	if !isGX {
-		return false
-	}
-	tp := gxFunc.FuncType()
-	for _, arg := range tp.Params.Fields() {
-		if err := b.canBeOnDevice(arg.Type()); err != nil {
-			return false
-		}
-	}
-	return true
-}
-
 var funcStructTmpl = template.Must(template.New("funcStructTMPL").Parse(`
 // {{.RunnerType}} compiles and runs the GX function {{.Name}} for a device.
 {{with .Doc}}{{range .List -}}
@@ -144,11 +114,11 @@ type {{.RunnerType}} struct {
 `))
 
 func (b *binder) funcRunners(funcs []*function) (string, error) {
-	structS, err := iterateTmpl(funcs, funcStructTmpl)
+	structS, err := tmpl.IterateTmpl(funcs, funcStructTmpl)
 	if err != nil {
 		return "", err
 	}
-	compileRunS, err := iterateTmpl(funcs, funcRunnerTmpl)
+	compileRunS, err := tmpl.IterateTmpl(funcs, funcRunnerTmpl)
 	if err != nil {
 		return "", err
 	}
@@ -162,18 +132,18 @@ var funcRunnerTmpl = template.Must(template.New("funcRunnerTMPL").Parse(`
 func (f *{{.RunnerType}}) Run({{.Parameters}}) ({{.Results}}, err error) {
 	var args []values.Value = {{.BackendArguments}}
 	if f.runner == nil {
-		f.runner, err = f.compiler.Package.Runtime.Compile(f.compiler.Device, f.function, {{.ReceiverValue}}, args, f.compiler.options)
+		f.runner, err = interp.Compile(f.pkg.Device, f.function.(*ir.FuncDecl), {{.ReceiverValue}}, args, f.pkg.options)
 		if err != nil {
 			return
 		}
 	}
 	var outputs []values.Value
-	outputs, err = f.runner.Run({{.ReceiverValue}}, args, f.compiler.Package.Tracer)
+	outputs, err = f.runner.Run({{.ReceiverValue}}, args, f.pkg.Package.Tracer)
 	if err != nil {
 		return
 	}
 
-	{{.DefineCompilerVariable}}{{.ProcessDeviceOutput}}
+	{{.DefinePackageVariable}}{{.ProcessDeviceOutput}}
 	return {{.Returns}}, nil
 }
 `))
@@ -188,7 +158,7 @@ func argN(i int) string {
 
 func toKindSuffix(typ ir.Type) string {
 	kind := typ.Kind()
-	if kind == ir.AxisLengthKind || kind == ir.AxisIndexKind {
+	if kind == ir.IntLenKind || kind == ir.IntIdxKind {
 		return "DefaultInt" // Matches platform.Host.DefaultInt(ir.Int)
 	}
 	kindS := kind.String()
@@ -204,11 +174,11 @@ func (f function) ReceiverValue() string {
 	return "f.receiver.GXValue()"
 }
 
-func (f function) DefineCompilerVariable() string {
+func (f function) DefinePackageVariable() string {
 	for _, result := range f.Func.FuncType().Results.Fields() {
 		if result.Type().Kind() == ir.StructKind {
 			return strings.Join([]string{
-				"cmpl := f.compiler",
+				"cmpl := f.pkg",
 			}, "\n\t")
 		}
 	}

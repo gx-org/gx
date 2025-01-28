@@ -19,55 +19,31 @@ import (
 	"github.com/gx-org/backend/graph"
 	"github.com/gx-org/backend/shape"
 	"github.com/gx-org/gx/api/values"
+	"github.com/gx-org/gx/interp/elements"
 )
 
-type (
-	// BackendNodeTuple is a state element owning a node in the backend graph.
-	BackendNodeTuple struct {
-		state *State
-		nods  []graph.Node
-	}
-
-	// NodeWithShape is a node in the graph with a shape inferred by the backend.
-	NodeWithShape interface {
-		graph.Node
-
-		// BackendShape returns the shape inferred by the backend.
-		BackendShape() *shape.Shape
-	}
-)
-
-var _ Element = (*BackendNodeTuple)(nil)
-
-// ElementFromNodeTuple returns an element owning a tuple node in the backend graph.
-func (s *State) ElementFromNodeTuple(nods []graph.Node) *BackendNodeTuple {
-	return &BackendNodeTuple{state: s, nods: nods}
-}
-
-// State returns the state owning the element.
-func (n *BackendNodeTuple) State() *State {
-	return n.state
-}
-
-func (n *BackendNodeTuple) nodes() ([]graph.Node, error) {
-	return n.nods, nil
-}
-
-// BackendNodeNumerical is a state element owning a node in the backend graph.
-type BackendNodeNumerical struct {
+// BackendNode is a state element owning a node in the backend graph.
+type BackendNode struct {
 	state *State
 	nod   *graph.OutputNode
-	expr  ExprAt
+	expr  elements.ExprAt
 }
 
 var (
-	_ Slicer          = (*BackendNodeNumerical)(nil)
-	_ handleProcessor = (*BackendNodeNumerical)(nil)
-	_ backendElement  = (*BackendNodeNumerical)(nil)
+	_ Slicer          = (*BackendNode)(nil)
+	_ handleProcessor = (*BackendNode)(nil)
+	_ Materialiser    = (*BackendNode)(nil)
 )
 
-func checkShape(want *shape.Shape, backendNode graph.Node) error {
-	nodeWithShape, ok := backendNode.(NodeWithShape)
+// hasShape is a node in the graph with a shape inferred by the backend.
+type hasShape interface {
+	// BackendShape returns the shape inferred by the backend.
+	BackendShape() *shape.Shape
+}
+
+func checkShape(node *graph.OutputNode) error {
+	want := node.Shape
+	nodeWithShape, ok := node.Node.(hasShape)
 	if !ok {
 		return nil
 	}
@@ -81,47 +57,72 @@ func checkShape(want *shape.Shape, backendNode graph.Node) error {
 	return nil
 }
 
+// ElementFromTuple converts a backend tuple to a state.Tuple element.
+func (s *State) ElementFromTuple(expr elements.ExprAt, tpl graph.Tuple, shps []*shape.Shape) (*elements.Tuple, error) {
+	elts := make([]Element, tpl.Size())
+	for i := range tpl.Size() {
+		node, err := tpl.Element(i)
+		if err != nil {
+			return nil, err
+		}
+		elts[i], err = s.ElementFromNode(expr, &graph.OutputNode{
+			Node:  node,
+			Shape: shps[i],
+		})
+		if err != nil {
+			return nil, err
+		}
+	}
+	return elements.NewTuple(expr.File(), expr.Node(), elts), nil
+}
+
 // ElementFromNode returns an element owning a node in the backend graph.
-func (s *State) ElementFromNode(expr ExprAt, node graph.Node, sh *shape.Shape) (*BackendNodeNumerical, error) {
-	if err := checkShape(sh, node); err != nil {
+func (s *State) ElementFromNode(expr elements.ExprAt, node *graph.OutputNode) (*BackendNode, error) {
+	if err := checkShape(node); err != nil {
 		return nil, err
 	}
-	return &BackendNodeNumerical{
+	return &BackendNode{
 		state: s,
 		expr:  expr,
-		nod: &graph.OutputNode{
-			Node:  node,
-			Shape: sh,
-		},
+		nod:   node,
 	}, nil
 }
 
 // State returns the state owning the element.
-func (n *BackendNodeNumerical) State() *State {
+func (n *BackendNode) State() *State {
 	return n.state
 }
 
 // Slice of the value on the first axis given an index.
-func (n *BackendNodeNumerical) Slice(expr ExprAt, i int) (Element, error) {
+func (n *BackendNode) Slice(expr elements.ExprAt, i int) (Element, error) {
 	sliceNode, err := n.state.backendGraph.Core().NewSlice(n.nod.Node, i)
 	if err != nil {
 		return nil, err
 	}
-	return n.state.ElementFromNode(expr, sliceNode, &shape.Shape{
-		DType:       n.Shape().DType,
-		AxisLengths: n.Shape().AxisLengths[1:],
+	return n.state.ElementFromNode(expr, &graph.OutputNode{
+		Node: sliceNode,
+		Shape: &shape.Shape{
+			DType:       n.Shape().DType,
+			AxisLengths: n.Shape().AxisLengths[1:],
+		},
 	})
 }
 
-func (n *BackendNodeNumerical) nodes() ([]*graph.OutputNode, error) {
-	return []*graph.OutputNode{n.nod}, nil
+// Flatten returns the element in a slice.
+func (n *BackendNode) Flatten() ([]Element, error) {
+	return []Element{n}, nil
 }
 
-func (n *BackendNodeNumerical) valueFromHandle(handles *handleParser) (values.Value, error) {
-	return values.NewDeviceArray(n.expr.Type(), handles.next()), nil
+func (n *BackendNode) valueFromHandle(handles *handleParser) (values.Value, error) {
+	return values.NewDeviceArray(n.expr.Node().Type(), handles.next()), nil
 }
 
 // Shape returns the shape of the element.
-func (n *BackendNodeNumerical) Shape() *shape.Shape {
+func (n *BackendNode) Shape() *shape.Shape {
 	return n.nod.Shape
+}
+
+// Materialise returns itself.
+func (n *BackendNode) Materialise() (*graph.OutputNode, error) {
+	return n.nod, nil
 }

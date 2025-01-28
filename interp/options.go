@@ -46,7 +46,7 @@ func (p PackageVarSetValue) Package() string {
 	return p.Pkg
 }
 
-type packageOption func(ctx *context, pkg *ir.Package, fr *frame) error
+type packageOption func(ctx Context, pkg *ir.Package, fr *frame) error
 
 func (itrp *Interpreter) processOptions(options []PackageOption) error {
 	for _, option := range options {
@@ -79,17 +79,17 @@ func findVarDecl(pkg *ir.Package, name string) *ir.VarDecl {
 }
 
 func (itrp *Interpreter) processPackageVarSetValue(opt PackageVarSetValue) (packageOption, error) {
-	return func(ctx *context, pkg *ir.Package, fr *frame) error {
+	return func(ctx Context, pkg *ir.Package, fr *frame) error {
 		varDecl := findVarDecl(pkg, opt.Var)
 		if varDecl == nil {
 			return errors.Errorf("cannot find static variable %s in package %s", opt.Var, opt.Pkg)
 		}
 		ident := opt.Var
-		node, err := ctx.state.PkgVar(varDecl, opt.Value)
+		node, err := ctx.State().PkgVar(varDecl, opt.Value)
 		if err != nil {
 			return err
 		}
-		fr.define(ident, node)
+		fr.Define(ident, node)
 		return nil
 	}, nil
 }

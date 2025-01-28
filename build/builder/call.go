@@ -20,12 +20,23 @@ import (
 	"github.com/gx-org/gx/build/ir"
 )
 
+func unpackIndexedExpr(n ast.Node) (ast.Expr, []ast.Expr) {
+	switch e := n.(type) {
+	case *ast.IndexExpr:
+		return e.X, []ast.Expr{e.Index}
+	case *ast.IndexListExpr:
+		return e.X, e.Indices
+	}
+	return nil, nil
+}
+
 // callExpr represents a function call.
 type callExpr struct {
 	ext ir.Expr
 	src *ast.CallExpr
 
-	args []exprNode
+	typeArgs []typeNode
+	args     []exprNode
 
 	callee exprNode
 	cast   *castExpr
@@ -34,13 +45,35 @@ type callExpr struct {
 var _ exprNode = (*callExpr)(nil)
 
 func processCallExpr(owner owner, expr *ast.CallExpr) (exprNode, bool) {
-	callee, ok := processExpr(owner, expr.Fun)
+	fn, typeArgs := unpackIndexedExpr(expr.Fun)
+	if fn == nil {
+		fn = expr.Fun
+	}
+
+	callee, ok := processExpr(owner, fn)
 	if typCast := toTypeCast(callee); typCast != nil {
+		if len(typeArgs) > 0 {
+			// For completeness sake, warn if type arguments are somehow ignored here.
+			owner.err().Appendf(expr, "cast may not have type arguments")
+		}
 		return processCastExpr(owner, expr, typCast)
 	}
 	n := &callExpr{
 		src:    expr,
 		callee: callee,
+	}
+
+	n.typeArgs = make([]typeNode, len(typeArgs))
+	for i, expr := range typeArgs {
+		ident, identOk := expr.(*ast.Ident)
+		if !identOk {
+			owner.err().Appendf(expr, "expected identifier as type argument")
+			ok = false
+			continue
+		}
+		argI, okI := processIdentTypeExpr(owner, ident)
+		n.typeArgs[i] = argI
+		ok = ok && okI
 	}
 	n.args = make([]exprNode, len(expr.Args))
 	for i, expr := range expr.Args {
@@ -68,47 +101,47 @@ func (n *callExpr) String() string {
 	return n.callee.String()
 }
 
-func (n *callExpr) resolveArgs(scope scoper, ext *ir.CallExpr) ([]typeNode, bool) {
+func (n *callExpr) resolveArgs(scope scoper) ([]ir.Expr, []typeNode, bool) {
 	ok := true
-	ext.Args = make([]ir.Expr, len(n.args))
-	args := make([]typeNode, len(n.args))
+	argsExpr := make([]ir.Expr, len(n.args))
+	argsType := make([]typeNode, len(n.args))
 	for i, arg := range n.args {
 		var argOk bool
-		args[i], argOk = arg.resolveType(scope)
+		argsType[i], argOk = arg.resolveType(scope)
 		ok = ok && argOk
-		ext.Args[i] = arg.buildExpr()
+		argsExpr[i] = arg.buildExpr()
 	}
-	return args, ok
+	return argsExpr, argsType, ok
 }
 
 func (n *callExpr) resolveType(scope scoper) (typeNode, bool) {
-	ext := &ir.CallExpr{
-		Src: n.src,
-	}
-	n.ext = ext
-
 	// Resolve the type of the function being called.
 	calleeTp, ok := n.callee.resolveType(scope)
 	if !ok {
 		return invalid, false
 	}
+	if calleeTp.kind() != ir.FuncKind {
+		return n.resolveCast(scope)
+	}
+
+	ext := &ir.CallExpr{
+		Src: n.src,
+	}
+	n.ext = ext
 
 	// Resolve the arguments passed to the function.
-	argsType, ok := n.resolveArgs(scope, ext)
+	var argsType []typeNode
+	ext.Args, argsType, ok = n.resolveArgs(scope)
 	if !ok {
 		return invalid, false
 	}
-	var callType typeNode
-	if calleeTp.kind() == ir.FuncKind {
-		callType, ok = n.resolveFunctionCall(scope, ext, calleeTp, argsType)
-	} else {
-		callType, ok = n.resolveCast(scope, ext, calleeTp, argsType)
-	}
+
+	callType, ok := n.resolveFunctionCall(scope, ext, calleeTp, argsType)
 	ext.Func = n.callee.buildExpr()
 	return callType, ok
 }
 
-func (n *callExpr) resolveCast(scope scoper, ext *ir.CallExpr, calleeTp typeNode, argsType []typeNode) (typeNode, bool) {
+func (n *callExpr) resolveCast(scope scoper) (typeNode, bool) {
 	typeCast, ok := processCast(scope, n.callee.expr())
 	if !ok {
 		return invalid, false
@@ -127,9 +160,16 @@ func (n *callExpr) resolveCast(scope scoper, ext *ir.CallExpr, calleeTp typeNode
 
 func (n *callExpr) resolveFunctionCall(scope scoper, ext *ir.CallExpr, calleeTp typeNode, argsType []typeNode) (typeNode, bool) {
 	var ok bool
-	fnType, ok := resolveGenericCallType(scope, n.callee.String(), n.source(), calleeTp, scope.evalFetcher(), ext)
+	fnType, ok := resolveGenericCallType(scope, calleeTp, scope.evalFetcher(), n)
 	if !ok {
 		return invalid, false
+	}
+
+	if fnType.params.isGeneric() {
+		// When invoking a function with generic types (or generic shape parameters), create a new scope
+		// here so that the instantiated types are isolated from the caller.
+		// TODO: Pass in a valid *funcDecl to scopeFunc().
+		scope = scope.fileScope().scopeFunc(nil, scope.namespace().newChild())
 	}
 
 	// Check that the number of arguments matches with what the function expects.
@@ -144,28 +184,47 @@ func (n *callExpr) resolveFunctionCall(scope scoper, ext *ir.CallExpr, calleeTp 
 	}
 
 	// Check that the arguments match what the function expects.
-	wantArgs := fnType.params.fields()
 	ext.Args = make([]ir.Expr, len(n.args))
-	for i, arg := range n.args {
+	for i, wantArg := range fnType.params.fields() {
 		argOk := true
 		argType := argsType[i]
 		if _, argOk = typeNodeOk(argType); !argOk {
 			continue
 		}
-		if argType.kind() == ir.NumberKind {
-			arg, argType, argOk = buildNumberNode(scope, arg, wantArgs[i].typ().buildType())
+		arg := n.args[i]
+		if ir.IsNumber(argType.kind()) {
+			arg, argType, argOk = castNumber(scope, arg, wantArg.typ().irType())
 			ok = argOk && ok
 			n.args[i] = arg
 		}
 		if !ok {
 			return invalid, false
 		}
-		_, assignable := assignableToAt(scope, arg, argType, wantArgs[i].typ())
+		if wantArg.typ().isGeneric() {
+			// Re-resolve generic parameter types, since they may depend on previous arguments. For
+			// example: when calling func ([___X]int32, [___X]int32), both arguments must have the same
+			// shape.
+			wantArg.group.typ, argOk = resolveType(scope, wantArg.group, wantArg.typ())
+			ok = ok && argOk
+		}
+		newType, assignable := assignableToAt(scope, arg, argType, wantArg.typ())
 		if !assignable {
 			ok = false
 		}
+		wantArg.group.typ = newType
 		ext.Args[i] = arg.buildExpr()
 	}
+
+	for _, result := range fnType.results.fields() {
+		// Resolve any generic types in the result, since they may depend on the arguments.
+		if !result.typ().isGeneric() {
+			continue
+		}
+		var resultOk bool
+		result.group.typ, resultOk = resolveType(scope, result.group, result.typ())
+		ok = ok && resultOk
+	}
+
 	ext.FuncType = fnType.buildFuncType()
 	fnResult := fnType.resultTypes()
 	var typ typeNode

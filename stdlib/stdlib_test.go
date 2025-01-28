@@ -31,7 +31,7 @@ func TestStdlibValid(t *testing.T) {
 		if err != nil {
 			t.Fatalf("\n%+v", err)
 		}
-		if err := gxtesting.Validate(pkg, gxtesting.CheckSource); err != nil {
+		if err := gxtesting.Validate(pkg.IR(), gxtesting.CheckSource); err != nil {
 			t.Errorf("\n%s:\n%+v", path, err)
 		}
 	}

@@ -18,7 +18,9 @@ import (
 	"fmt"
 	"text/template"
 
+	"github.com/gx-org/gx/base/tmpl"
 	"github.com/gx-org/gx/build/ir"
+	"github.com/gx-org/gx/golang/binder/bindings"
 )
 
 type (
@@ -49,7 +51,7 @@ func (b *binder) buildMethods(r receiver) *methods {
 		if fun.Type() == nil {
 			continue
 		}
-		if !b.canBeOnDeviceFunc(fun) {
+		if !bindings.CanBeOnDeviceFunc(fun) {
 			continue
 		}
 		funcs = append(funcs, method{
@@ -67,7 +69,7 @@ func (b *binder) buildMethods(r receiver) *methods {
 }
 
 func (ms methods) Methods() (string, error) {
-	return iterateFunc(ms.methods, func(_ int, m method) (string, error) {
+	return tmpl.IterateFunc(ms.methods, func(_ int, m method) (string, error) {
 		return fmt.Sprintf("%s() *Method%s%s", m.Method.Name(), m.Receiver.named().Name(), m.Method.Name()), nil
 	})
 }
@@ -89,7 +91,7 @@ var handleMethodFieldTemplate = template.Must(template.New("handleMethodFieldTMP
 `))
 
 func (ms methods) HandleMethodFields() (string, error) {
-	return iterateTmpl(ms.methods, handleMethodFieldTemplate)
+	return tmpl.IterateTmpl(ms.methods, handleMethodFieldTemplate)
 }
 
 var methodReturnHandleTemplate = template.Must(template.New("methodReturnHandleTMPL").Parse(`
@@ -100,28 +102,28 @@ func (s {{.Receiver.Named.Name}}) {{.Method.Name}}() *{{.Method.RunnerType}} {
 `))
 
 func (ms methods) ReturnHandle() (string, error) {
-	return iterateTmpl(ms.methods, methodReturnHandleTemplate)
+	return tmpl.IterateTmpl(ms.methods, methodReturnHandleTemplate)
 }
 
 var methodInitRunnerTemplate = template.Must(template.New("methodInitRunnerTMPL").Parse(`
 	s.handle.runner{{.Method.Name}} = &{{.Method.RunnerType}}{
-		methodBase: s.handle.compiler.{{.Method.RunnerField}},
+		methodBase: s.handle.pkg.{{.Method.RunnerField}},
 		receiver: s.handle,
 	}
 `))
 
 func (ms methods) InitRunners() (string, error) {
-	return iterateTmpl(ms.methods, methodInitRunnerTemplate)
+	return tmpl.IterateTmpl(ms.methods, methodInitRunnerTemplate)
 }
 
-var methodCompilerSetField = template.Must(template.New("funcCompilerSetFieldTMPL").Parse(`
+var methodPackageSetField = template.Must(template.New("funcPackageSetFieldTMPL").Parse(`
 	c.{{.Method.RunnerField}} = methodBase{
-		compiler: c,
-		function: c.Package.IR.Types[{{.Receiver.Index}}].Methods[{{.Method.FuncIndex}}].(*ir.FuncDecl),
+		pkg: c,
+		function: c.Package.IR.Types[{{.Receiver.Index}}].Methods[{{.Method.FuncIndex}}],
 	}`))
 
-func (b *binder) MethodsCompilerSetFields() (string, error) {
-	return iterateFunc(b.NamedTypes, func(_ int, typ namedType) (string, error) {
-		return iterateTmpl(typ.Methods().methods, methodCompilerSetField)
+func (b *binder) MethodsPackageSetFields() (string, error) {
+	return tmpl.IterateFunc(b.NamedTypes, func(_ int, typ namedType) (string, error) {
+		return tmpl.IterateTmpl(typ.Methods().methods, methodPackageSetField)
 	})
 }

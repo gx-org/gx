@@ -68,14 +68,14 @@ func (n *indexExpr) String() string {
 func (n *indexExpr) buildExpr() ir.Expr {
 	n.ext.X = n.x.buildExpr()
 	n.ext.Index = n.index.buildExpr()
-	n.ext.Typ = n.typ.buildType()
+	n.ext.Typ = n.typ.irType()
 	return &n.ext
 }
 
 func (n *indexExpr) checkIndexType(scope scoper, typ typeNode) (ok bool) {
-	if typ.kind() == ir.NumberKind {
+	if ir.IsNumber(typ.kind()) {
 		// Coerce index type to a concrete integer type.
-		n.index, _, ok = buildNumberNode(scope, n.index, ir.DefaultIntType)
+		n.index, _, ok = castNumber(scope, n.index, ir.DefaultIntType)
 		return
 	}
 	if !ir.IsIndexKind(typ.kind()) {

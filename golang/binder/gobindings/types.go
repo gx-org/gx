@@ -20,41 +20,12 @@ import (
 
 	"github.com/pkg/errors"
 	"github.com/gx-org/gx/build/ir"
+	"github.com/gx-org/gx/golang/binder/bindings"
 )
 
 type pkgTypes struct {
 	*binder
 	ir.StructType
-}
-
-func (b *binder) canBeOnDeviceStruct(tp *ir.StructType) error {
-	for _, group := range tp.Fields.List {
-		if err := b.canBeOnDevice(group.Type); err != nil {
-			var fieldNames []string
-			for _, field := range group.Fields {
-				fieldNames = append(fieldNames, field.Name.Name)
-			}
-			return fmt.Errorf("cannot store on device fields %v: %v", fieldNames, err)
-		}
-	}
-	return nil
-}
-
-func (b *binder) canBeOnDevice(tp ir.Type) error {
-	switch typT := tp.(type) {
-	case *ir.NamedType:
-		return b.canBeOnDevice(typT.Underlying)
-	case *ir.AtomicType:
-		return nil
-	case *ir.StructType:
-		return b.canBeOnDeviceStruct(typT)
-	case *ir.SliceType:
-		return b.canBeOnDevice(typT.DType)
-	case *ir.ArrayType:
-		return nil
-	default:
-		return fmt.Errorf("type %T not supported", typT)
-	}
 }
 
 func (b *binder) packagePrefixNameOf(tp *ir.NamedType) string {
@@ -75,10 +46,11 @@ func (b *binder) nameSlice(tp *ir.SliceType) (string, error) {
 
 func (b *binder) bridgerType(tp ir.Type) (string, error) {
 	switch typT := tp.(type) {
-	case *ir.AtomicType:
-		goType, err := b.nameGoType(typT)
-		return fmt.Sprintf("types.Atom[%s]", goType), err
-	case *ir.ArrayType:
+	case ir.ArrayType:
+		if typT.Rank().IsAtomic() {
+			goType, err := b.nameGoType(typT)
+			return fmt.Sprintf("types.Atom[%s]", goType), err
+		}
 		goType, err := b.nameGoType(typT.DataType())
 		return fmt.Sprintf("types.Array[%s]", goType), err
 	case *ir.SliceType:
@@ -109,9 +81,7 @@ func (b *binder) gxValueTypePointer(tp ir.Type) (string, error) {
 
 func (b *binder) gxValueType(tp ir.Type) (string, error) {
 	switch typT := tp.(type) {
-	case *ir.AtomicType:
-		return "values.Array", nil
-	case *ir.ArrayType:
+	case ir.ArrayType:
 		return "values.Array", nil
 	case *ir.NamedType:
 		return b.packagePrefixNameOf(typT) + typT.NameT, nil
@@ -124,9 +94,12 @@ func (b *binder) gxValueType(tp ir.Type) (string, error) {
 
 func (b *binder) nameGoType(tp ir.Type) (string, error) {
 	switch typT := tp.(type) {
-	case *ir.AtomicType:
+	case ir.ArrayType:
+		if !typT.Rank().IsAtomic() {
+			return "", errors.Errorf("no Go type name for %T", typT)
+		}
 		kind := typT.Kind()
-		if kind == ir.AxisLengthKind || kind == ir.AxisIndexKind {
+		if bindings.IsDefaultInt(kind) {
 			return "ir.Int", nil
 		}
 		return kind.String(), nil
@@ -139,7 +112,10 @@ func (b *binder) nameGoType(tp ir.Type) (string, error) {
 
 func (b *binder) nameHostFuncType(tp ir.Type) (string, error) {
 	switch typT := tp.(type) {
-	case *ir.AtomicType:
+	case ir.ArrayType:
+		if !typT.Rank().IsAtomic() {
+			return "", errors.Errorf("no host function for %T", typT)
+		}
 		return toKindSuffix(typT), nil
 	case *ir.NamedType:
 		return b.nameHostFuncType(typT.Underlying)

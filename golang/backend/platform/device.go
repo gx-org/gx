@@ -15,6 +15,8 @@
 package platform
 
 import (
+	"github.com/pkg/errors"
+	"github.com/gx-org/backend/dtype"
 	"github.com/gx-org/backend/platform"
 	"github.com/gx-org/backend/shape"
 	"github.com/gx-org/gx/golang/backend/kernels"
@@ -42,6 +44,9 @@ func (dev *Device) Ordinal() int {
 
 // Send raw data to the device. Return a handle from this package.
 func (dev *Device) send(data []byte, sh *shape.Shape) (*Handle, error) {
+	if sh.DType == dtype.Invalid {
+		return nil, errors.Errorf("GX %s data type not supported", sh.DType.String())
+	}
 	array, err := kernels.NewArrayFromRaw(data, sh)
 	if err != nil {
 		return nil, err

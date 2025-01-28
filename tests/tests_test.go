@@ -34,7 +34,7 @@ func TestCompilerErrors(t *testing.T) {
 		_, testName := filepath.Split(path)
 		t.Run(testName, func(t *testing.T) {
 			pkg, err := bld.Build(path)
-			gxtesting.RunAll(t, nil, pkg, err)
+			gxtesting.RunAll(t, nil, pkg.IR(), err)
 		})
 	}
 }

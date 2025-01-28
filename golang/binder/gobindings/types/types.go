@@ -19,8 +19,8 @@ import (
 	"fmt"
 
 	"github.com/gx-org/backend/dtype"
-	"github.com/gx-org/backend/platform"
 	"github.com/gx-org/backend/shape"
+	"github.com/gx-org/gx/api"
 	"github.com/gx-org/gx/api/values"
 	"github.com/gx-org/gx/build/ir"
 )
@@ -48,7 +48,7 @@ type (
 		Shape() *shape.Shape
 
 		// ToDevice transfers the array to a device.
-		ToDevice(platform.Device) (ArrayBridge, error)
+		ToDevice(*api.Device) (ArrayBridge, error)
 	}
 
 	// Factory creates instances given a type.
@@ -107,7 +107,7 @@ func (bb *baseBridge[B, V]) Shape() *shape.Shape {
 }
 
 // ToDevice transfers the array to a device.
-func (bb *baseBridge[B, V]) ToDevice(dev platform.Device) (ArrayBridge, error) {
+func (bb *baseBridge[B, V]) ToDevice(dev *api.Device) (ArrayBridge, error) {
 	value, err := bb.value.ToDevice(dev)
 	if err != nil {
 		return nil, err

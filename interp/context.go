@@ -19,27 +19,86 @@ import (
 	"go/token"
 
 	"github.com/gx-org/backend"
+	"github.com/gx-org/backend/dtype"
 	"github.com/gx-org/backend/graph"
 	"github.com/gx-org/backend/shape"
 	"github.com/gx-org/gx/api/values"
 	"github.com/gx-org/gx/build/fmterr"
 	"github.com/gx-org/gx/build/ir"
+	"github.com/gx-org/gx/internal/base/scope"
+	"github.com/gx-org/gx/internal/tracer"
+	"github.com/gx-org/gx/interp/elements"
 	"github.com/gx-org/gx/interp/state"
 )
 
-// Context is the evaluation of the GX interpreter.
-type Context interface {
-	state.Context
+type (
+	frameI interface {
+		pushBlockFrame() *frame
+		pushFuncFrame(fn ir.Func) (*frame, error)
+		popFrame()
 
-	// FileSet returns the fileset of the context.
-	FileSet() fmterr.FileSet
+		set(tok token.Token, dest ir.Assignable, value state.Element) error
+		find(id *ast.Ident) (state.Element, error)
 
-	// Graph returns the current state of the interpreter.
-	State() *state.State
+		currentFile() *ir.File
+		currentFrame() *frame
+	}
 
-	// Backend returns the backend for which the interpreter is running.
-	Backend() backend.Backend
+	// Evaluator implements GX operators.
+	Evaluator interface {
+		// UnaryOp applies a unary operator on x.
+		UnaryOp(ctx tracer.Context, expr *ir.UnaryExpr, x state.Element) (state.Element, error)
+		// BinaryOp applies a binary operator to x and y.
+		BinaryOp(ctx tracer.Context, expr *ir.BinaryExpr, x, y state.Element) (state.Element, error)
+		// CallFuncLit calls a function literal.
+		CallFuncLit(ctx tracer.Context, ref *ir.FuncLit, args []state.Element) (state.Element, error)
+		// Einsum calls an einstein sum on x and y given the expression in ref.
+		Einsum(ctx tracer.Context, ref *ir.EinsumExpr, x, y state.Element) (state.Element, error)
+		// Reshape an element into a given shape.
+		Reshape(ctx tracer.Context, expr ir.Expr, x state.Element, axisLengths []int) (state.Element, error)
+		// Cast an element into a given data type.
+		Cast(ctx tracer.Context, expr ir.Expr, x state.Element, dtype dtype.DataType) (state.Element, error)
+		// Concat concatenates scalars elements into an array with one axis.
+		Concat(ctx tracer.Context, expr ir.Expr, xs []state.Element) (state.Element, error)
+		// Set a slice in an array.
+		Set(ctx tracer.Context, call *ir.CallExpr, x, updates, index state.Element) (state.Element, error)
+		// ElementFromValue returns an element from a GX value.
+		ElementFromValue(ctx tracer.Context, expr ir.Expr, val *values.HostArray) (state.NumericalElement, error)
+	}
+
+	// Context is the evaluation of the GX interpreter.
+	Context interface {
+		state.Context
+
+		// FileSet returns the fileset of the context.
+		FileSet() fmterr.FileSet
+
+		// Graph returns the current state of the interpreter.
+		State() *state.State
+
+		// Backend returns the backend for which the interpreter is running.
+		Backend() backend.Backend
+
+		// BuildGraph builds a function in the given graph within a new Context.
+		BuildGraph(fn ir.Func, g graph.Graph, args []state.Element) (state.Element, error)
+
+		// ExprAt returns an expression located in a file.
+		ExprAt(expr ir.Expr) elements.ExprAt
+
+		// Evaluator returns the evaluator used by the context.
+		Evaluator() Evaluator
+
+		frame() frameI
+	}
+)
+
+type frameState struct {
+	Context
+	file     *ir.File
+	function ir.Func
 }
+
+type frame = scope.Scope[frameState, state.Element]
 
 // context of an evaluation while running the interpreter.
 // It contains the current frame stack, values of variables,
@@ -55,11 +114,13 @@ type context struct {
 
 	builtin *frame
 	stack   []*frame
+
+	evaluator Evaluator
 }
 
 var _ Context = (*context)(nil)
 
-func newContext(itrp *Interpreter, g *state.State, fn ir.Func, receiver values.Value, args []values.Value) *context {
+func newContext(itrp *Interpreter, g *state.State, fn ir.Func, receiver values.Value, args []values.Value) (*context, error) {
 	ctx := &context{
 		itrp:           itrp,
 		state:          g,
@@ -67,9 +128,14 @@ func newContext(itrp *Interpreter, g *state.State, fn ir.Func, receiver values.V
 		receiver:       receiver,
 		packageToFrame: make(map[*ir.Package]*frame),
 		fileToFrame:    make(map[*ir.File]*frame),
+		evaluator:      tracer.NewEvaluator(g),
 	}
-	ctx.builtin = ctx.newBuiltinFrame(fn)
-	return ctx
+	return ctx, ctx.buildBuiltinFrame()
+}
+
+// Evaluator returns the evaluator used by the context.
+func (ctx *context) Evaluator() Evaluator {
+	return ctx.evaluator
 }
 
 func (ctx *context) FileSet() fmterr.FileSet {
@@ -77,7 +143,7 @@ func (ctx *context) FileSet() fmterr.FileSet {
 	if len(ctx.stack) > 0 {
 		frame = ctx.currentFrame()
 	}
-	return fmterr.FileSet{FSet: frame.function.File().Package.FSet}
+	return fmterr.FileSet{FSet: frame.Context().file.Package.FSet}
 }
 
 func (ctx *context) State() *state.State {
@@ -96,18 +162,94 @@ func (ctx *context) Args() []values.Value {
 	return ctx.args
 }
 
+func (ctx *context) frame() frameI {
+	return ctx
+}
+
+func (ctx *context) BuildGraph(fn ir.Func, g graph.Graph, args []state.Element) (state.Element, error) {
+	subctx, err := newContext(ctx.itrp, state.New(fn, g), fn, nil, nil)
+	if err != nil {
+		return nil, err
+	}
+	funcFrame, err := subctx.pushFuncFrame(fn)
+	if err != nil {
+		return nil, err
+	}
+
+	assignArgumentValues(fn.FuncType(), funcFrame, args)
+	for _, resultName := range fieldNames(fn.FuncType().Results.List) {
+		funcFrame.Define(resultName.Name, nil)
+	}
+	defer subctx.popFrame()
+
+	var body *ir.BlockStmt
+	switch fn := fn.(type) {
+	case *ir.FuncDecl:
+		body = fn.Body
+	case *ir.FuncLit:
+		body = fn.Body
+	}
+	return evalFuncBody(subctx, body)
+}
+
 func (ctx *context) packageFrame(pkg *ir.Package) (*frame, error) {
 	packageFrame := ctx.packageToFrame[pkg]
 	if packageFrame != nil {
 		return packageFrame, nil
 	}
-	var err error
-	packageFrame, err = ctx.newPackageFrame(pkg)
-	if err != nil {
-		return nil, err
+	packageFrame = ctx.builtin.NewChild(frameState{Context: ctx})
+	for _, f := range pkg.Funcs {
+		packageFrame.Define(f.Name(), ctx.state.Func(f, nil))
 	}
 	ctx.packageToFrame[pkg] = packageFrame
+	if err := ctx.evalPackageConsts(pkg, packageFrame); err != nil {
+		return nil, err
+	}
+	if err := ctx.evalPackageOptions(pkg, packageFrame); err != nil {
+		return nil, err
+	}
 	return packageFrame, nil
+}
+
+func (ctx *context) evalPackageConst(cst *ir.ConstDecl, fr *frame) error {
+	fileFrame, err := ctx.fileFrame(cst.FFile)
+	if err != nil {
+		return err
+	}
+	ctx.stack = append(ctx.stack, fileFrame)
+	defer ctx.popFrame()
+	for _, expr := range cst.Exprs {
+		var el state.Element
+		if ir.IsNumber(expr.Value.Type().Kind()) {
+			el = ctx.State().Number(expr.Value)
+		} else {
+			el, err = evalValue(ctx, expr.Value)
+		}
+		if err != nil {
+			return err
+		}
+		fr.Define(expr.VName.Name, el)
+	}
+	return nil
+}
+
+func (ctx *context) evalPackageConsts(pkg *ir.Package, fr *frame) error {
+	for _, cst := range pkg.Consts {
+		if err := ctx.evalPackageConst(cst, fr); err != nil {
+			return err
+		}
+	}
+	return nil
+}
+
+func (ctx *context) evalPackageOptions(pkg *ir.Package, fr *frame) error {
+	options := ctx.itrp.packageOptions[pkg.FullName()]
+	for _, option := range options {
+		if err := option(ctx, pkg, fr); err != nil {
+			return err
+		}
+	}
+	return nil
 }
 
 func (ctx *context) fileFrame(file *ir.File) (*frame, error) {
@@ -119,7 +261,11 @@ func (ctx *context) fileFrame(file *ir.File) (*frame, error) {
 	if err != nil {
 		return nil, err
 	}
-	fileFrame = packageFrame.newFileFrame(file)
+	fileFrame = packageFrame.NewChild(frameState{Context: ctx, file: file})
+	fset := fmterr.FileSet{FSet: file.Package.FSet}
+	for _, imp := range file.Imports {
+		fileFrame.Define(imp.Name().Name, ctx.state.Package(fset.Pos(imp.Source()), imp.Package))
+	}
 	ctx.fileToFrame[file] = fileFrame
 	return fileFrame, nil
 }
@@ -129,13 +275,14 @@ func (ctx *context) pushFuncFrame(fn ir.Func) (*frame, error) {
 	if err != nil {
 		return nil, err
 	}
-	frame := fileFrame.newFunctionFrame(fn)
+	frame := fileFrame.NewChild(frameState{Context: ctx, file: fn.File(), function: fn})
 	ctx.stack = append(ctx.stack, frame)
 	return frame, nil
 }
 
 func (ctx *context) pushBlockFrame() *frame {
-	frame := ctx.currentFrame().newBlockFrame()
+	parent := ctx.currentFrame()
+	frame := parent.NewChild(frameState{Context: parent.Context(), file: parent.Context().file, function: parent.Context().function})
 	ctx.stack = append(ctx.stack, frame)
 	return frame
 }
@@ -145,6 +292,9 @@ func (ctx *context) popFrame() {
 }
 
 func (ctx *context) currentFrame() *frame {
+	if len(ctx.stack) == 0 {
+		return ctx.builtin
+	}
 	return ctx.stack[len(ctx.stack)-1]
 }
 
@@ -152,8 +302,17 @@ func (ctx *context) set(tok token.Token, dest ir.Assignable, value state.Element
 	fr := ctx.currentFrame()
 	switch destT := dest.(type) {
 	case *ir.LocalVarAssign:
-		fr.set(tok, destT.Src, value)
-		return nil
+		if !ir.ValidIdent(destT.Src) {
+			return nil
+		}
+		if tok == token.ILLEGAL {
+			return nil
+		}
+		if tok == token.DEFINE {
+			fr.Define(destT.Src.Name, value)
+			return nil
+		}
+		return fr.Assign(destT.Src.Name, value)
 	case *ir.StructFieldAssign:
 		receiver, err := evalExpr(ctx, destT.X)
 		if err != nil {
@@ -163,7 +322,7 @@ func (ctx *context) set(tok token.Token, dest ir.Assignable, value state.Element
 		if !ok {
 			return ctx.FileSet().Errorf(dest.Source(), "cannot convert %T to %T", receiver, strt)
 		}
-		strt.SetField(destT.FieldID, value)
+		strt.SetField(destT.FieldName, value)
 		return nil
 	default:
 		return ctx.FileSet().Errorf(dest.Source(), "cannot assign %v to %T: not supported", value, destT)
@@ -171,10 +330,14 @@ func (ctx *context) set(tok token.Token, dest ir.Assignable, value state.Element
 }
 
 func (ctx *context) find(id *ast.Ident) (state.Element, error) {
-	return ctx.currentFrame().find(id)
+	value, exists := ctx.currentFrame().Find(id.Name)
+	if !exists {
+		return nil, ctx.FileSet().Errorf(id, "undefined: %s", id.Name)
+	}
+	return value, nil
 }
 
-func (ctx *context) evalNumericalExpr(x ir.Expr) (graph.Node, *shape.Shape, error) {
+func evalNumericalExpr(ctx Context, x ir.Expr) (graph.Node, *shape.Shape, error) {
 	el, err := evalExpr(ctx, x)
 	if err != nil {
 		return nil, nil, err
@@ -183,13 +346,14 @@ func (ctx *context) evalNumericalExpr(x ir.Expr) (graph.Node, *shape.Shape, erro
 }
 
 func (ctx *context) currentFile() *ir.File {
-	return ctx.currentFrame().function.File()
+	return ctx.currentFrame().Context().file
 }
 
-func (ctx *context) exprAt(expr ir.Expr) state.ExprAt {
+// ExprAt returns an expression located in a file.
+func (ctx *context) ExprAt(expr ir.Expr) elements.ExprAt {
 	return nodeAt(ctx, expr)
 }
 
-func nodeAt[T ir.Expr](ctx *context, node T) state.ExprFile[T] {
-	return state.NewExprAt(ctx.currentFile(), node)
+func nodeAt[T ir.Expr](ctx Context, node T) elements.NodeFile[T] {
+	return elements.NewNodeAt(ctx.frame().currentFile(), node)
 }

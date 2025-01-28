@@ -30,24 +30,33 @@ var (
 	_ function            = (*traceFunc)(nil)
 )
 
-func (f *traceFunc) resolveGenericCallType(scope scoper, src ast.Node, fetcher ir.Fetcher, call *ir.CallExpr) (*funcType, bool) {
-	params := make([]ir.Type, len(call.Args))
-	for i, arg := range call.Args {
+func (f *traceFunc) resolveGenericCallType(scope scoper, fetcher ir.Fetcher, call *callExpr) (*funcType, bool) {
+	irCall := call.buildExpr().(*ir.CallExpr)
+	params := make([]ir.Type, len(irCall.Args))
+	for i, arg := range irCall.Args {
 		params[i] = arg.Type()
 	}
 	return importFuncType(scope, &ir.FuncType{
-		Src:     &ast.FuncType{Func: call.Src.Pos()},
+		Src:     &ast.FuncType{Func: call.source().Pos()},
 		Params:  builtins.Fields(params...),
 		Results: builtins.Fields(),
 	})
 }
 
-func (f *traceFunc) typeNode() typeNode {
-	return f
+func (f *traceFunc) receiver() *fieldList {
+	return nil
+}
+
+func (f *traceFunc) resolveType(scoper) (typeNode, bool) {
+	return f, true
 }
 
 func (f *traceFunc) name() *ast.Ident {
 	return &ast.Ident{Name: f.ext.Name()}
+}
+
+func (f *traceFunc) staticValue() ir.StaticValue {
+	return &f.ext
 }
 
 func (f *traceFunc) kind() ir.Kind {
@@ -58,7 +67,7 @@ func (f *traceFunc) isGeneric() bool {
 	return false
 }
 
-func (f *traceFunc) buildType() ir.Type {
+func (f *traceFunc) irType() ir.Type {
 	return &ir.FuncType{}
 }
 

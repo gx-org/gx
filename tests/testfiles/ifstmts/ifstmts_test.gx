@@ -40,40 +40,40 @@ func TestIfElseFalse() int32 {
 	// int32(4)
 }
 
-func TestIfInitTrue() float64 {
+func TestIfInitTrue() int64 {
 	if a := 5; a == 5 {
 		return a
 	}
 	return 4
 	// Want:
-	// float64(5)
+	// int64(5)
 }
 
-func TestIfInitFalse() float64 {
+func TestIfInitFalse() int64 {
 	if a := 5; a != 5 {
 		return a
 	}
 	return 4
 	// Want:
-	// float64(4)
+	// int64(4)
 }
 
-func TestIfInitElseTrue() float64 {
+func TestIfInitElseTrue() int64 {
 	if a := 5; a == 5 {
 		return a
 	} else {
 		return 4
 	}
 	// Want:
-	// float64(5)
+	// int64(5)
 }
 
-func TestIfInitElseFalse() float64 {
+func TestIfInitElseFalse() int64 {
 	if a := 5; a != 5 {
 		return a
 	} else {
 		return 4
 	}
 	// Want:
-	// float64(4)
+	// int64(4)
 }

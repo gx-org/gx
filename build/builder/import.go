@@ -28,7 +28,7 @@ import (
 type importDecl struct {
 	ext ir.ImportDecl
 
-	pkg *bPackage
+	pkg *basePackage
 }
 
 func processImportDecl(block *scopeFile, decl *ast.GenDecl) bool {
@@ -57,7 +57,7 @@ func processImportDecl(block *scopeFile, decl *ast.GenDecl) bool {
 				Src:     imp,
 				Package: imported.IR(),
 			},
-			pkg: imported,
+			pkg: imported.base(),
 		}
 		importOk := block.file().declareImports(block, name, &packageRef{
 			ext: ir.PackageRef{
@@ -83,22 +83,22 @@ var (
 )
 
 func (n *packageRef) buildSelectNode(scope scoper, sel *ast.SelectorExpr) selectNode {
-	pkgIdentNode := n.decl.pkg.ns.fetchIdentNode(sel.Sel.Name)
+	pkgIdentNode := n.decl.pkg.base().ns.fetch(sel.Sel.Name)
 	if pkgIdentNode == nil {
 		scope.err().Appendf(sel, "undefined: %s.%s", n.ext.Src.Name, sel.Sel.Name)
 		return nil
 	}
-	expr, typ, ok := pkgIdentNode.typeF(scope)
+	typ, ok := pkgIdentNode.typeF(scope)
 	if !ok {
 		return nil
 	}
-	switch exprT := expr.(type) {
+	switch exprT := pkgIdentNode.expr.(type) {
+	case function:
+		return buildPackageFuncSelectorExpr(sel, n, exprT)
 	case *constExpr:
 		return buildPackageConstSelectorExpr(sel, n, exprT)
 	}
 	switch tpT := typ.(type) {
-	case function:
-		return buildPackageFuncSelectorExpr(sel, n, tpT)
 	case *builtinType[*ir.NamedType]:
 		return buildPackageTypeSelectorExpr(sel, n, tpT)
 	default:
@@ -107,7 +107,7 @@ func (n *packageRef) buildSelectNode(scope scoper, sel *ast.SelectorExpr) select
 	}
 }
 
-func (n *packageRef) buildType() ir.Type {
+func (n *packageRef) irType() ir.Type {
 	return &n.ext
 }
 
@@ -153,7 +153,7 @@ func buildPackageFuncSelectorExpr(expr *ast.SelectorExpr, ref *packageRef, fn fu
 }
 
 func (n *packageFuncSelectorExpr) buildExpr(exprNode) ir.Expr {
-	n.ext.Typ = n.typ.buildType()
+	n.ext.Typ = n.typ.irType()
 	n.ext.Func = n.fn.irFunc()
 	return &n.ext
 }
@@ -163,7 +163,7 @@ func (n *packageFuncSelectorExpr) resolveType(scope scoper) (typeNode, bool) {
 		return typeNodeOk(n.typ)
 	}
 	var ok bool
-	n.typ, ok = typeNodeOk(n.fn.typeNode())
+	n.typ, ok = n.fn.resolveType(scope)
 	return n.typ, ok
 }
 
@@ -209,20 +209,11 @@ func buildPackageConstSelectorExpr(expr *ast.SelectorExpr, ref *packageRef, cst 
 			Src:     expr,
 			Package: &ref.ext,
 			Const:   cst.ext,
+			X:       cst.ext.Value,
 		},
 		ref: ref,
 		cst: cst,
 	}
-}
-
-func (n *packageConstSelectorExpr) castTo(eval evaluator) (exprScalar, []*ir.ValueRef, bool) {
-	value, unknowns, err := eval.eval(n.cst.ext.Value)
-	if err != nil {
-		eval.scoper().err().Appendf(n.cst.source(), "cannot convert expression to %s: %v", eval.want().String(), err)
-		return nil, nil, false
-	}
-	n.ext.X = value
-	return toExprNode(value), unknowns, true
 }
 
 func (n *packageConstSelectorExpr) buildExpr(exprNode) ir.Expr {

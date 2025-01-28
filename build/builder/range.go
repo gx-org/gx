@@ -106,8 +106,8 @@ func (n *rangeStmt) resolveType(scope *scopeBlock) bool {
 	if !ok {
 		return false
 	}
-	if xType.kind() == ir.NumberKind {
-		n.x, xType, ok = buildNumberNode(scope, n.x, axisLengthType.buildType())
+	if ir.IsNumber(xType.kind()) {
+		n.x, xType, ok = castNumber(scope, n.x, axisLengthType.irType())
 		if !ok {
 			return false
 		}
@@ -115,7 +115,7 @@ func (n *rangeStmt) resolveType(scope *scopeBlock) bool {
 	if ir.IsRangeOk(xType.kind()) {
 		return n.resolveTypeOverScalar(scope, xType)
 	}
-	if xType.kind() == ir.TensorKind {
+	if xType.kind() == ir.ArrayKind {
 		return n.resolveTypeOverArray(scope, xType)
 	}
 	scope.err().Appendf(n.ext.Src, "cannot range over %s", xType.kind().String())

@@ -84,7 +84,7 @@ func (w *Walker) Fix(path string, info fs.FileInfo, err error) error {
 	}
 
 	fset := token.NewFileSet()
-	f, err := parser.ParseFile(fset, path, data, parser.ParseComments)
+	f, err := parser.ParseFile(fset, path, data, parser.ParseComments|parser.SkipObjectResolution)
 	if err != nil {
 		return err
 	}

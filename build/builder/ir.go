@@ -25,10 +25,30 @@ import (
 )
 
 // GX kinds internal to the compiler.
+const packageKind = iota + ir.StructKind
+
+type done int
+
 const (
-	packageKind = iota + ir.StructKind
-	tupleKind
+	notDone done = iota
+	doneOk
+	doneNotOk
 )
+
+func toDone(ok bool) done {
+	if ok {
+		return doneOk
+	}
+	return doneNotOk
+}
+
+func (d done) ok() bool {
+	return d == doneOk
+}
+
+func (d done) isDone() bool {
+	return d != notDone
+}
 
 type (
 	// node in the tree
@@ -63,7 +83,9 @@ type (
 		fmt.Stringer
 		node
 		kind() ir.Kind
-		buildType() ir.Type
+		// irType returns the current intermediate representation of the type.
+		// The type returned is in its current state and not explicitly built.
+		irType() ir.Type
 		isGeneric() bool
 	}
 
@@ -84,15 +106,25 @@ type (
 
 		// resolveGenericCallType recursively calls resolveTypes in the underlying subtree of nodes.
 		// The type returned by the function may depend on the parameters given to the function.
-		resolveGenericCallType(scoper, ast.Node, ir.Fetcher, *ir.CallExpr) (*funcType, bool)
+		resolveGenericCallType(scoper, ir.Fetcher, *callExpr) (*funcType, bool)
+	}
+
+	resolverNode interface {
+		node
+
+		// resolveType recursively calls resolveTypes in the underlying subtree of nodes.
+		resolveType(scoper) (typeNode, bool)
+	}
+
+	staticValueNode interface {
+		resolverNode
+		staticValue() ir.StaticValue
 	}
 
 	// exprNode builds a IR expression.
 	exprNode interface {
 		nodePos
-
-		// resolveTypes recursively calls resolveTypes in the underlying subtree of nodes.
-		resolveType(scoper) (typeNode, bool)
+		resolverNode
 
 		expr() ast.Expr
 
@@ -101,17 +133,10 @@ type (
 		String() string
 	}
 
-	// exprNumber is an expression representing a number in the code.
-	exprNumber interface {
-		exprNode
-		// castTo casts a number expression to a desired type.
-		castTo(eval evaluator) (exprScalar, []*ir.ValueRef, bool)
-	}
-
 	// exprScalar is an expression evaluating numbers.
 	exprScalar interface {
 		exprNode
-		scalar() ir.Atomic
+		scalar() ir.StaticExpr
 	}
 
 	// stmtNode is a GX statement.
@@ -161,7 +186,7 @@ func reconcileWith(scope scoper, pos nodePos, src, dst typeNode) (typeNode, bool
 }
 
 func assignableTo(scope scoper, pos nodePos, src, dst typeNode) (typeNode, bool, error) {
-	ok, err := src.buildType().AssignableTo(scope.evalFetcher(), dst.buildType())
+	ok, err := src.irType().AssignableTo(scope.evalFetcher(), dst.irType())
 	if err != nil {
 		return invalid, false, err
 	}
@@ -175,7 +200,7 @@ func assignableTo(scope scoper, pos nodePos, src, dst typeNode) (typeNode, bool,
 }
 
 func convertTo(scope scoper, pos nodePos, src, dst typeNode) (typeNode, bool) {
-	canConvert, err := src.buildType().ConvertibleTo(scope.evalFetcher(), dst.buildType())
+	canConvert, err := src.irType().ConvertibleTo(scope.evalFetcher(), dst.irType())
 	if err != nil {
 		return dst, scope.err().AppendAt(pos.source(), err)
 	}
@@ -194,7 +219,7 @@ type irExprNode struct {
 	x ir.Expr
 }
 
-var _ exprNumber = (*irExprNode)(nil)
+var _ exprNode = (*irExprNode)(nil)
 
 func toExprNode(expr ir.Expr) *irExprNode {
 	return &irExprNode{x: expr}
@@ -208,10 +233,6 @@ func (n *irExprNode) expr() ast.Expr {
 	return n.x.Expr()
 }
 
-func (n *irExprNode) castTo(eval evaluator) (exprScalar, []*ir.ValueRef, bool) {
-	return &irExprNode{x: eval.cast(n.x)}, nil, true
-}
-
 func (n *irExprNode) resolveType(scope scoper) (typeNode, bool) {
 	return toTypeNode(scope, n.x.Type())
 }
@@ -220,8 +241,8 @@ func (n *irExprNode) buildExpr() ir.Expr {
 	return n.x
 }
 
-func (n *irExprNode) scalar() ir.Atomic {
-	return n.x.(ir.Atomic)
+func (n *irExprNode) scalar() ir.StaticValue {
+	return n.x.(ir.StaticValue)
 }
 
 func (n *irExprNode) String() string {

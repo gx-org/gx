@@ -22,7 +22,7 @@ import (
 )
 
 // evalExprOnHost evaluates an expression on the host.
-func evalExprOnHost(ctx *context, expr ir.Expr) (*values.HostArray, error) {
+func evalExprOnHost(ctx Context, expr ir.Expr) (*values.HostArray, error) {
 	el, err := evalExpr(ctx, expr)
 	if err != nil {
 		return nil, err
@@ -40,7 +40,7 @@ func evalExprOnHost(ctx *context, expr ir.Expr) (*values.HostArray, error) {
 	return value, nil
 }
 
-func evalScalarCastOnHost(ctx *context, expr *ir.CastExpr, val *values.HostArray, target ir.Kind) (state.Element, error) {
+func evalScalarCastOnHost(ctx Context, expr *ir.CastExpr, val *values.HostArray, target ir.Kind) (state.Element, error) {
 	nativeHandle := val.Handle().(kernels.Handle).KernelValue()
 	kernelFactory := nativeHandle.Factory()
 	castOp, _, _, err := kernelFactory.Cast(target.DType(), nil)
@@ -50,14 +50,11 @@ func evalScalarCastOnHost(ctx *context, expr *ir.CastExpr, val *values.HostArray
 	return evalLocalKernel(ctx, expr, castOp, nativeHandle, target)
 }
 
-func evalLocalKernel(ctx *context, expr *ir.CastExpr, kernel kernels.Unary, handle kernels.Array, target ir.Kind) (state.Element, error) {
+func evalLocalKernel(ctx Context, expr *ir.CastExpr, kernel kernels.Unary, handle kernels.Array, target ir.Kind) (state.Element, error) {
 	outArray, err := kernel(handle)
 	if err != nil {
 		return nil, err
 	}
-	valuer, err := newValuer(ctx, expr, target)
-	if err != nil {
-		return nil, err
-	}
-	return valuer.toLiteral(ctx, expr.Type(), outArray)
+	value := values.NewHostArray(expr.Type(), kernels.NewBuffer(outArray))
+	return ctx.Evaluator().ElementFromValue(ctx, expr, value)
 }

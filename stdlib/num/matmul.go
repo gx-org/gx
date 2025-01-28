@@ -40,14 +40,14 @@ func (f matmul) resultsType(fetcher ir.Fetcher, call *ir.CallExpr) ([]ir.Type, i
 	if err != nil {
 		return nil, nil, err
 	}
-	arrays, err := builtins.NarrowTypes[*ir.ArrayType](fetcher, call, params)
+	arrays, err := builtins.NarrowTypes[ir.ArrayType](fetcher, call, params)
 	if err != nil {
 		return nil, nil, err
 	}
 	left := arrays[0]
 	right := arrays[1]
-	if left.DType.Kind() != right.DType.Kind() {
-		return nil, nil, fmterr.Errorf(fetcher.FileSet(), call.Source(), "mismatched argument types %s and %s in %s call", left.DType.String(), right.DType.String(), f.Name())
+	if left.DataType().Kind() != right.DataType().Kind() {
+		return nil, nil, fmterr.Errorf(fetcher.FileSet(), call.Source(), "mismatched argument types %s and %s in %s call", left.DataType().String(), right.DataType().String(), f.Name())
 	}
 	leftRank, err := builtins.RankOf(fetcher, call, left)
 	if err != nil {
@@ -63,15 +63,11 @@ func (f matmul) resultsType(fetcher ir.Fetcher, call *ir.CallExpr) ([]ir.Type, i
 	if len(rightRank.Axes) > 2 {
 		return nil, nil, fmterr.Errorf(fetcher.FileSet(), call.Source(), "more than 2-axis for the right argument (shape: %v) not supported in %s call", right.Rank(), f.Name())
 	}
-	funcResult := &ir.ArrayType{
-		DType: left.DataType(),
-	}
 	leftDims := leftRank.AxisLengths()
 	rightDims := rightRank.AxisLengths()
 	if len(leftDims) == 0 || len(rightDims) == 0 {
 		// If either argument has unknown rank, the result has unknown rank too.
-		funcResult.RankF = left.RankF
-		return params, funcResult, nil
+		return params, ir.NewArrayType(nil, left.DataType(), left.Rank()), nil
 	}
 	lastLeft := leftDims[len(leftDims)-1]
 	dotDimIndex := 0
@@ -87,7 +83,6 @@ func (f matmul) resultsType(fetcher ir.Fetcher, call *ir.CallExpr) ([]ir.Type, i
 		return nil, nil, fmterr.Errorf(fetcher.FileSet(), call.Source(), "left argument (shape: %v) not compatible with right argument (shape: %v) in %s call", left.Rank(), right.Rank(), f.Name())
 	}
 	resultRank := ir.Rank{}
-	funcResult.RankF = &resultRank
 	if len(leftDims) == 2 && len(rightDims) == 2 {
 		resultRank.Axes = []ir.AxisLength{leftDims[0], rightDims[1]}
 	} else if len(leftDims) == 2 {
@@ -95,7 +90,7 @@ func (f matmul) resultsType(fetcher ir.Fetcher, call *ir.CallExpr) ([]ir.Type, i
 	} else if len(rightDims) == 2 {
 		resultRank.Axes = []ir.AxisLength{rightDims[1]}
 	}
-	return params, funcResult, nil
+	return params, ir.NewArrayType(nil, left.DataType(), &resultRank), nil
 }
 
 func (f matmul) BuildFuncType(fetcher ir.Fetcher, call *ir.CallExpr) (*ir.FuncType, error) {
@@ -135,7 +130,11 @@ func (f einsum) validateAxisExpr(fetcher ir.Fetcher, call *ir.CallExpr, arg, max
 
 	axes := make([]int, len(axisExpr.Vals))
 	for n, val := range axisExpr.Vals {
-		axis := int(val.(*ir.AtomicValueT[ir.Int]).Val)
+		axisI64, _, err := ir.Eval[ir.Int](fetcher, val)
+		if err != nil {
+			return nil, err
+		}
+		axis := int(axisI64)
 		if _, exists := seen[axis]; exists {
 			return nil, fmterr.Errorf(fetcher.FileSet(), call.Source(), "axis %d already specified in argument %d to %s: axes may only be contracted or batched once", axis, arg, f.Name())
 		}
@@ -151,20 +150,20 @@ func (f einsum) validateAxisExpr(fetcher ir.Fetcher, call *ir.CallExpr, arg, max
 func (f einsum) resultsType(fetcher ir.Fetcher, call *ir.CallExpr) ([]ir.Type, ir.Type, error) {
 	params, err := builtins.BuildFuncParams(fetcher, call, f.Name(), []ir.Type{
 		builtins.GenericArrayType,
-		ir.AxisIndicesType(),
-		ir.AxisIndicesType(),
+		ir.IntIndexSliceType(),
+		ir.IntIndexSliceType(),
 		builtins.GenericArrayType,
-		ir.AxisIndicesType(),
-		ir.AxisIndicesType(),
+		ir.IntIndexSliceType(),
+		ir.IntIndexSliceType(),
 	})
 	if err != nil {
 		return nil, nil, err
 	}
 
-	left := params[0].(*ir.ArrayType)
-	right := params[3].(*ir.ArrayType)
-	if left.DType.Kind() != right.DType.Kind() {
-		return nil, nil, fmterr.Errorf(fetcher.FileSet(), call.Source(), "mismatched argument types %s and %s in %s call", left.DType.String(), right.DType.String(), f.Name())
+	left := params[0].(ir.ArrayType)
+	right := params[3].(ir.ArrayType)
+	if left.DataType().Kind() != right.DataType().Kind() {
+		return nil, nil, fmterr.Errorf(fetcher.FileSet(), call.Source(), "mismatched argument types %s and %s in %s call", left.DataType().String(), right.DataType().String(), f.Name())
 	}
 	leftRank, err := builtins.RankOf(fetcher, call, left)
 	if err != nil {
@@ -176,10 +175,7 @@ func (f einsum) resultsType(fetcher ir.Fetcher, call *ir.CallExpr) ([]ir.Type, i
 	}
 	if leftRank == nil || rightRank == nil {
 		// If either argument has unknown rank, the result has unknown rank too.
-		return params, &ir.ArrayType{
-			DType: left.DataType(),
-			RankF: &ir.GenericRank{},
-		}, nil
+		return params, ir.NewArrayType(nil, left.DataType(), &ir.GenericRank{}), nil
 	}
 	leftDims := leftRank.AxisLengths()
 	rightDims := rightRank.AxisLengths()
@@ -255,11 +251,7 @@ func (f einsum) resultsType(fetcher ir.Fetcher, call *ir.CallExpr) ([]ir.Type, i
 			outDims = append(outDims, rhsDim)
 		}
 	}
-	funcResult := &ir.ArrayType{
-		DType: left.DataType(),
-		RankF: &ir.Rank{Axes: outDims},
-	}
-	return params, funcResult, nil
+	return params, ir.NewArrayType(nil, left.DataType(), &ir.Rank{Axes: outDims}), nil
 }
 
 func (f einsum) BuildFuncType(fetcher ir.Fetcher, call *ir.CallExpr) (*ir.FuncType, error) {

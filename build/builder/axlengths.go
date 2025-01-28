@@ -26,16 +26,19 @@ type axlengthsFunc struct {
 
 var (
 	_ genericCallTypeNode = (*axlengthsFunc)(nil)
+	_ staticValueNode     = (*axlengthsFunc)(nil)
 	_ function            = (*axlengthsFunc)(nil)
 )
 
-func (f *axlengthsFunc) resolveGenericCallType(scope scoper, src ast.Node, fetcher ir.Fetcher, call *ir.CallExpr) (*funcType, bool) {
-	if len(call.Args) != 1 {
-		scope.err().Appendf(src, "wrong number of arguments to axlengths: expected 1, found %d", len(call.Args))
+func (f *axlengthsFunc) resolveGenericCallType(scope scoper, fetcher ir.Fetcher, call *callExpr) (*funcType, bool) {
+	src := call.source()
+	irCall := call.buildExpr().(*ir.CallExpr)
+	if len(irCall.Args) != 1 {
+		scope.err().Appendf(src, "wrong number of arguments to axlengths: expected 1, found %d", len(irCall.Args))
 		return nil, false
 	}
-	arg := call.Args[0]
-	if arg.Type().Kind() != ir.TensorKind {
+	arg := irCall.Args[0]
+	if arg.Type().Kind() != ir.ArrayKind {
 		scope.err().Appendf(src, "axlengths(%s) not supported", arg.Type().Kind())
 		return nil, false
 	}
@@ -48,7 +51,7 @@ func (f *axlengthsFunc) resolveGenericCallType(scope scoper, src ast.Node, fetch
 		scope.err().Appendf(src, "axlengths(%T) not supported", argType)
 		return nil, false
 	}
-	axes, ok := argArrayType.lengths(scope, call)
+	axes, ok := argArrayType.lengths(scope, irCall)
 	if !ok {
 		return nil, false
 	}
@@ -57,16 +60,16 @@ func (f *axlengthsFunc) resolveGenericCallType(scope scoper, src ast.Node, fetch
 		return nil, false
 	}
 
-	srcFieldList := &ast.FieldList{Opening: call.Src.Lparen, Closing: call.Src.Rparen}
+	srcFieldList := &ast.FieldList{Opening: irCall.Src.Lparen, Closing: irCall.Src.Rparen}
 
-	paramsGroup := &ir.FieldGroup{Type: argType.buildType()}
+	paramsGroup := &ir.FieldGroup{Type: argType.irType()}
 	paramsGroup.Fields = []*ir.Field{{Group: paramsGroup}}
 
-	resultsGroup := &ir.FieldGroup{Type: axesType.buildType()}
+	resultsGroup := &ir.FieldGroup{Type: axesType.irType()}
 	resultsGroup.Fields = []*ir.Field{{Group: resultsGroup}}
 
 	typ := ir.FuncType{
-		Src: &ast.FuncType{Func: call.Src.Pos()},
+		Src: &ast.FuncType{Func: irCall.Src.Pos()},
 		Params: &ir.FieldList{
 			Src:  srcFieldList,
 			List: []*ir.FieldGroup{paramsGroup},
@@ -79,8 +82,12 @@ func (f *axlengthsFunc) resolveGenericCallType(scope scoper, src ast.Node, fetch
 	return importFuncType(scope, &typ)
 }
 
-func (f *axlengthsFunc) typeNode() typeNode {
-	return f
+func (f *axlengthsFunc) resolveType(scoper) (typeNode, bool) {
+	return f, true
+}
+
+func (f *axlengthsFunc) receiver() *fieldList {
+	return nil
 }
 
 func (f *axlengthsFunc) name() *ast.Ident {
@@ -95,7 +102,11 @@ func (f *axlengthsFunc) isGeneric() bool {
 	return false
 }
 
-func (f *axlengthsFunc) buildType() ir.Type {
+func (f *axlengthsFunc) staticValue() ir.StaticValue {
+	return &f.ext
+}
+
+func (f *axlengthsFunc) irType() ir.Type {
 	return &ir.FuncType{}
 }
 

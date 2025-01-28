@@ -1,0 +1,70 @@
+/*
+ * Copyright 2024 Google LLC
+ *
+ * Licensed under the Apache License, Version 2.0 (the "License");
+ * you may not use this file except in compliance with the License.
+ * You may obtain a copy of the License at
+ *
+ *     http://www.apache.org/licenses/LICENSE-2.0
+ *
+ * Unless required by applicable law or agreed to in writing, software
+ * distributed under the License is distributed on an "AS IS" BASIS,
+ * WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
+ * See the License for the specific language governing permissions and
+ * limitations under the License.
+ */
+
+#ifndef {{.HeaderGuard}}
+#define {{.HeaderGuard}}
+
+#include "third_party/absl/status/statusor.h"
+#include "third_party/gxlang/gx/golang/binder/cgx/cppgx.h"
+
+namespace {{.Namespace}} {
+
+class {{.Class}};
+
+{{range $func := .Funcs }}
+class {{$func.Name}}Func {
+public:
+ friend class {{.Class}};
+ {{$func.ReturnType}} operator()({{range $param := $func.Params}}const {{$param.Type}}& {{$param.Name}}{{$param.Separator}}{{end}});
+private:
+ {{.Class}}& package_;
+ {{$func.Name}}Func({{.Class}}& package);
+};
+{{end}}
+
+
+class {{.Class}}IR {
+ public:
+  {{.Class}}IR(::gxlang::cppgx::PackageIR&& pkg): package_ir_(std::move(pkg)){};
+  static absl::StatusOr<{{.Class}}IR> Load(const ::gxlang::cppgx::Runtime& runtime);
+  {{.Class}} BuildFor(const ::gxlang::cppgx::Device& dev);
+
+ private:
+  ::gxlang::cppgx::PackageIR package_ir_;
+};
+
+class {{.Class}} {
+ public:
+  {{.Class}}(::gxlang::cppgx::Package&& pkg)
+    : package_(std::move(pkg)){{range $func := .Funcs }}, {{$func.Name}}(*this){{end}} {}
+  {{.Class}}({{.Class}}&& other) : {{.Class}}(std::move(other.package_)) {}
+
+  static absl::StatusOr<{{.Class}}> BuildFor(const ::gxlang::cppgx::Device& device);
+
+ private:
+  ::gxlang::cppgx::Package package_;
+
+ public:
+  // Functions of the package.
+{{- range $func := .Funcs }}
+  {{$func.Name}}Func {{$func.Name}};
+  friend class {{$func.Name}}Func;
+{{- end}}
+};
+
+} // namespace {{.Namespace}}
+
+#endif

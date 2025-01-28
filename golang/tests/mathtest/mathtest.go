@@ -24,7 +24,7 @@ import (
 	gxtesting "github.com/gx-org/gx/tests/testing"
 )
 
-var mathGX *math_go_gx.Compiler
+var mathGX *math_go_gx.Package
 
 func TestMathFloat32(t *testing.T) {
 	scalar, err := mathGX.ReturnMaxFloat32.Run()
@@ -50,15 +50,11 @@ func TestMathFloat64(t *testing.T) {
 	}
 }
 
-func setupTest(rtm *api.Runtime) error {
-	gxPackage, err := math_go_gx.Load(rtm)
+func setupTest(dev *api.Device) error {
+	gxPackage, err := math_go_gx.Load(dev.Runtime())
 	if err != nil {
 		return err
 	}
-	dev, err := gxPackage.Runtime.Platform().Device(0)
-	if err != nil {
-		return err
-	}
-	mathGX = gxPackage.CompilerFor(dev)
+	mathGX = gxPackage.BuildFor(dev)
 	return nil
 }

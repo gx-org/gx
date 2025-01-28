@@ -16,146 +16,91 @@ package builder
 
 import (
 	"go/ast"
-	"go/token"
-	"strconv"
 
-	"github.com/gx-org/backend/dtype"
 	"github.com/gx-org/gx/build/ir"
 )
 
-type (
-	evalType interface {
-		float64 | int64
-	}
-
-	evaluator interface {
-		scoper() scoper
-		parse(*ast.BasicLit) ir.Atomic
-		eval(expr ir.Expr) (ir.Atomic, []*ir.ValueRef, error)
-		cast(expr ir.Expr) ir.Atomic
-		want() ir.Type
-	}
-
-	evaluatorT[E evalType, T dtype.AlgebraType] struct {
-		scope scoper
-		tp    ir.Type
-	}
-)
-
-func newEvaluatorT[E evalType, T dtype.AlgebraType](scope scoper, want ir.Type) evaluator {
-	return &evaluatorT[E, T]{
-		scope: scope,
-		tp:    want,
-	}
-}
-
-func newEvaluator(scope scoper, node nodePos, want ir.Type) (evaluator, bool) {
-	switch want.Kind() {
-	case ir.AxisIndexKind:
-		return newEvaluatorT[int64, ir.Int](scope, want), true
-	case ir.AxisLengthKind:
-		return newEvaluatorT[int64, ir.Int](scope, want), true
-	case ir.Float32Kind:
-		return newEvaluatorT[float64, float32](scope, want), true
-	case ir.Float64Kind:
-		return newEvaluatorT[float64, float64](scope, want), true
-	case ir.Int32Kind:
-		return newEvaluatorT[int64, int32](scope, want), true
-	case ir.Int64Kind:
-		return newEvaluatorT[int64, int64](scope, want), true
-	case ir.Uint32Kind:
-		return newEvaluatorT[int64, uint32](scope, want), true
-	case ir.Uint64Kind:
-		return newEvaluatorT[int64, uint64](scope, want), true
-	default:
-		scope.err().Appendf(node.source(), "number cannot be casted to %s", want)
-		return nil, false
-	}
-}
-
-func (ev *evaluatorT[E, T]) want() ir.Type {
-	return ev.tp
-}
-
-func (ev *evaluatorT[E, T]) scoper() scoper {
-	return ev.scope
-}
-
-func (ev *evaluatorT[E, T]) parse(src *ast.BasicLit) ir.Atomic {
-	errF := ev.scoper().err()
-	// Check that we are not specifying an integer with a float.
-	want := ev.tp.Kind()
-	if src.Kind == token.FLOAT && (want != ir.Float32Kind && want != ir.Float64Kind) {
-		errF.Appendf(src, "cannot use %s (untyped %s constant) as %s value", src.Value, src.Kind, want)
-		return nil
-	}
-
-	var val T
-	switch src.Kind {
-	case token.INT:
-		valI, err := strconv.ParseInt(src.Value, 10, 0)
-		if err != nil {
-			errF.Appendf(src, "cannot parse %s: %v", src.Value, err)
-			return nil
-		}
-		val = T(valI)
-	case token.FLOAT:
-		valF, err := strconv.ParseFloat(src.Value, 64)
-		if err != nil {
-			errF.Appendf(src, "cannot parse %s: %v", src.Value, err)
-			return nil
-		}
-		val = T(valF)
-	default:
-		errF.Appendf(src, "cannot parse literal %s: token %q unknown", src.Value, src.Kind)
-	}
-	return &ir.AtomicValueT[T]{
-		Src: src,
-		Val: val,
-		Typ: ev.tp,
-	}
-}
-
-func (ev *evaluatorT[E, T]) eval(expr ir.Expr) (ir.Atomic, []*ir.ValueRef, error) {
-	val, unknowns, err := ir.Eval[T](ev.scope.evalFetcher(), expr)
-	if err != nil {
-		return nil, nil, err
-	}
-	if len(unknowns) > 0 {
-		return nil, unknowns, nil
-	}
-	return &ir.AtomicValueT[T]{Val: val, Src: expr.Expr(), Typ: ev.want()}, nil, nil
-}
-
-func (ev *evaluatorT[E, T]) cast(expr ir.Expr) ir.Atomic {
-	return &ir.AtomicExprT[T]{X: expr}
-}
-
-func castExprTo(eval evaluator, expr exprNode) (exprScalar, []*ir.ValueRef, bool) {
-	caster, ok := expr.(exprNumber)
+func defaultNumberType(scope scoper, expr exprNode) ir.Type {
+	typ, ok := expr.resolveType(scope)
 	if !ok {
-		eval.scoper().err().AppendInternalf(expr.source(), "type %T cannot be casted to exprNumber", expr)
-		return nil, nil, false
+		return invalid.irType()
 	}
-	return caster.castTo(eval)
+	irType := typ.irType()
+	defaultType := ir.DefaultNumberType(irType.Kind())
+	return defaultType
 }
 
-func buildNumberNode(scope scoper, expr exprNode, want ir.Type) (exprScalar, typeNode, bool) {
-	wantArray, wantArrayOk := want.(*ir.ArrayType)
-	if wantArrayOk {
-		want = wantArray.DataType()
-	}
-	eval, ok := newEvaluator(scope, expr, want)
-	if !ok {
-		return nil, invalid, false
-	}
-	evalNode, _, castOk := castExprTo(eval, expr)
-	typeNodeOut, typeNodeOk := toTypeNode(scope, eval.want())
-	return evalNode, typeNodeOut, castOk && typeNodeOk
+type numberCastExpr struct {
+	ext ir.NumberCastExpr
+	x   exprNode
+	typ typeNode
 }
 
-func buildDefaultNumberNode(scope scoper, expr exprNode) (exprNode, typeNode, bool) {
-	want := ir.ScalarTypeK(ir.Float64Kind)
-	// TODO(degris): all numbers are converted to float64. Convert integers to int64 instead.
-	return buildNumberNode(scope, expr, want)
+var _ exprScalar = (*numberCastExpr)(nil)
+
+func castNumber(scope scoper, expr exprNode, want ir.Type) (exprNode, typeNode, bool) {
+	if want.Kind() == ir.UnknownKind {
+		// No specification on what we want.
+		// For example:
+		//   a := 5.2
+		// Then we cast the number, 5.2 in this example, to a default type.
+		want = defaultNumberType(scope, expr)
+	}
+	if want.Kind() == ir.ArrayKind {
+		// The required type is an array. For example:
+		//   a := 5 * [2]float32{1, 2}
+		// We cast the number, 5 in this example, to the data type of the array.
+		underlying := ir.Underlying(want)
+		arrayType, ok := underlying.(ir.ArrayType)
+		if !ok {
+			scope.err().AppendInternalf(expr.source(), "type %T has TensorKind but is not an *ir.ArrayType", underlying)
+			return expr, invalid, false
+		}
+		want = arrayType.DataType()
+	}
+	if !ir.CanBeNumber(want.Kind()) {
+		scope.err().Appendf(expr.source(), "cannot use a number as %v", want)
+		return expr, invalid, false
+	}
+	typ, wantOk := toTypeNode(scope, want)
+	numberType, numberOk := expr.resolveType(scope)
+	if ir.IsFloat(numberType.kind()) && ir.IsInteger(typ.kind()) {
+		scope.err().Appendf(expr.source(), "cannot use %s (untyped FLOAT constant) as %s value", expr.String(), typ.String())
+
+	}
+	return &numberCastExpr{
+		ext: ir.NumberCastExpr{
+			Typ: want,
+		},
+		x:   expr,
+		typ: typ,
+	}, typ, typ.kind() != ir.InvalidKind && wantOk && numberOk
+}
+
+func (n *numberCastExpr) source() ast.Node {
+	return n.x.source()
+}
+
+func (n *numberCastExpr) scalar() ir.StaticExpr {
+	if n.ext.X != nil {
+		return &n.ext
+	}
+	n.ext.X = n.x.buildExpr()
+	return &n.ext
+}
+
+func (n *numberCastExpr) resolveType(scope scoper) (typeNode, bool) {
+	return typeNodeOk(n.typ)
+}
+
+func (n *numberCastExpr) expr() ast.Expr {
+	return n.x.expr()
+}
+
+func (n *numberCastExpr) buildExpr() ir.Expr {
+	return n.scalar()
+}
+
+func (n *numberCastExpr) String() string {
+	return "numberCastExpr"
 }

@@ -61,14 +61,12 @@ func runTestForResult(rtm *api.Runtime, pkg *ir.Package, funcDecl *ast.FuncDecl)
 	if err != nil {
 		return "", err
 	}
-	for _, irFunc := range pkg.Funcs {
-		if irFunc.Name() != funcDecl.Name.Name {
-			continue
-		}
-		_, res, err := runner.Run(irFunc.(*ir.FuncDecl), options)
-		return res, err
+	fun := pkg.FindFunc(funcDecl.Name.Name)
+	if fun == nil {
+		return "", fmt.Errorf("function %s not found", funcDecl.Name.Name)
 	}
-	return "", fmt.Errorf("function %s not found", funcDecl.Name.Name)
+	_, res, err := runner.Run(fun.(*ir.FuncDecl), options)
+	return res, err
 }
 
 func findPackageFiles(path string, f *ast.File) (fs.FS, []string, error) {
@@ -131,7 +129,7 @@ func fixTestOutput(rtm *api.Runtime, path string, f *ast.File) (fixed bool, err 
 				Text:  "// " + wantPrefix,
 			},
 		}
-		for _, line := range strings.Split(want, "\n") {
+		for line := range strings.SplitSeq(want, "\n") {
 			wantComment.List = append(wantComment.List,
 				&ast.Comment{
 					Slash: wantComment.End() + 2,

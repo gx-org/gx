@@ -25,7 +25,7 @@ import (
 	gxtesting "github.com/gx-org/gx/tests/testing"
 )
 
-var randGX *rand_go_gx.Compiler
+var randGX *rand_go_gx.Package
 
 func TestSample(t *testing.T) {
 	tests := []struct {
@@ -71,15 +71,42 @@ func TestSample(t *testing.T) {
 	}
 }
 
-func setupTest(rtm *api.Runtime) error {
-	gxPackage, err := rand_go_gx.Load(rtm)
+func TestSampleBool(t *testing.T) {
+	values, err := randGX.SampleBool.Run(types.Int64(3141))
+	if err != nil {
+		t.Fatalf("%+v", err)
+	}
+
+	ts, fs := 0, 0
+	got := gxtesting.FetchArray(t, values)
+	for _, value := range got {
+		if value {
+			ts++
+		} else {
+			fs++
+		}
+	}
+	if ts < 45 || fs < 45 {
+		t.Errorf("Expected roughly 50/50 distribution of true/false, got %d/%d", ts, fs)
+	}
+}
+
+func TestDeviceValueAsSeed(t *testing.T) {
+	seed := types.Int64(0)
+	seedDevice, err := seed.SendTo(randGX.Device)
+	if err != nil {
+		t.Fatal(err)
+	}
+	if _, err := randGX.New.Run(seedDevice); err != nil {
+		t.Error(err)
+	}
+}
+
+func setupTest(dev *api.Device) error {
+	gxPackage, err := rand_go_gx.Load(dev.Runtime())
 	if err != nil {
 		return err
 	}
-	dev, err := gxPackage.Runtime.Platform().Device(0)
-	if err != nil {
-		return err
-	}
-	randGX = gxPackage.CompilerFor(dev)
+	randGX = gxPackage.BuildFor(dev)
 	return nil
 }

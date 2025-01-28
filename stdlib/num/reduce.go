@@ -26,7 +26,7 @@ import (
 
 var reductionArgs = []ir.Type{
 	builtins.GenericArrayType,
-	ir.AxisIndicesType(),
+	ir.IntIndexSliceType(),
 }
 
 func reductionFuncSig(fetcher ir.Fetcher, f builtin.Func, call *ir.CallExpr) (*ir.FuncType, error) {
@@ -35,7 +35,7 @@ func reductionFuncSig(fetcher ir.Fetcher, f builtin.Func, call *ir.CallExpr) (*i
 	if err != nil {
 		return nil, err
 	}
-	arrayType := call.Args[0].Type().(*ir.ArrayType)
+	arrayType := call.Args[0].Type().(ir.ArrayType)
 	rank, err := builtins.RankOf(fetcher, call, arrayType)
 	if err != nil {
 		return nil, err
@@ -47,10 +47,7 @@ func reductionFuncSig(fetcher ir.Fetcher, f builtin.Func, call *ir.CallExpr) (*i
 
 	// Infer the result tensor shape by knocking out reduced axes.
 	resultRank := ir.Rank{}
-	result := &ir.ArrayType{
-		DType: arrayType.DataType(),
-		RankF: &resultRank,
-	}
+	result := ir.NewArrayType(nil, arrayType.DataType(), &resultRank)
 	var resultDims []ir.AxisLength
 	for axis := range reduceAxes {
 		if len(rank.Axes) > 0 && (axis < 0 || axis >= len(rank.Axes)) {
@@ -109,12 +106,12 @@ func (f argmax) BuildFuncType(fetcher ir.Fetcher, call *ir.CallExpr) (*ir.FuncTy
 	// Perform basic signature check; we know we have (tensor, slice) arguments afterwards.
 	params, err := builtins.BuildFuncParams(fetcher, call, f.Name(), []ir.Type{
 		builtins.GenericArrayType,
-		ir.AxisIndexType(),
+		ir.IntIndexType(),
 	})
 	if err != nil {
 		return nil, err
 	}
-	arrayType := call.Args[0].Type().(*ir.ArrayType)
+	arrayType := call.Args[0].Type().(ir.ArrayType)
 	rank, err := builtins.RankOf(fetcher, call, arrayType)
 	if err != nil {
 		return nil, err
@@ -129,10 +126,7 @@ func (f argmax) BuildFuncType(fetcher ir.Fetcher, call *ir.CallExpr) (*ir.FuncTy
 
 	// Infer the result tensor shape by knocking out reduced axis.
 	resultRank := ir.Rank{}
-	result := &ir.ArrayType{
-		DType: ir.ScalarTypeK(ir.DefaultIntKind),
-		RankF: &resultRank,
-	}
+	result := ir.NewArrayType(nil, ir.TypeFromKind(ir.DefaultIntKind), &resultRank)
 	if len(rank.Axes) > 0 && (reduceAxis < 0 || int(reduceAxis) >= len(rank.Axes)) {
 		return nil, fmterr.Errorf(fetcher.FileSet(), call.Source(),
 			"invalid reduction axis in call to %s: axis %d does not exist in input %s",

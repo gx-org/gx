@@ -106,42 +106,63 @@ func (array *HostArray[T]) toDeviceBridger(val *values.DeviceArray) ArrayBridge 
 	return NewDeviceArray[T](val)
 }
 
-func newAlgebraArray[T dtype.AlgebraType](dt ir.Kind, vals []T, dims []int) *HostArray[T] {
+// ArrayBool returns a new Go host array of bool.
+func ArrayBool(vals []bool, dims ...int) *HostArray[bool] {
 	if dims == nil {
 		dims = []int{len(vals)}
 	}
-	typ := ir.NewArrayType(dt, dims)
-	array := kernels.ToAlgebraicArray[T](vals, dims)
+	typ := ir.NewArrayType(nil, ir.TypeFromKind(ir.BoolKind), ir.NewRank(dims))
+	array := kernels.ToBoolArray(vals, dims)
+	buffer := kernels.NewBuffer(array)
+	return NewHostArray[bool](values.NewHostArray(typ, buffer))
+}
+
+func inferDims[T dtype.GoDataType](vals []T, dims []int) []int {
+	if dims != nil {
+		return dims
+	}
+	return []int{len(vals)}
+}
+
+func newArray[T dtype.AlgebraType](dtypeKind ir.Kind, array kernels.Array) *HostArray[T] {
+	dims := array.Shape().AxisLengths
+	typ := ir.NewArrayType(nil, ir.TypeFromKind(dtypeKind), ir.NewRank(dims))
 	buffer := kernels.NewBuffer(array)
 	return NewHostArray[T](values.NewHostArray(typ, buffer))
 }
 
 // ArrayFloat32 returns a new Go host array of float32.
 func ArrayFloat32(vals []float32, dims ...int) *HostArray[float32] {
-	return newAlgebraArray[float32](ir.Float32Kind, vals, dims)
+	dims = inferDims(vals, dims)
+	return newArray[float32](ir.Float32Kind, kernels.ToFloatArray(vals, dims))
 }
 
 // ArrayFloat64 returns a new Go host array of float64.
 func ArrayFloat64(vals []float64, dims ...int) *HostArray[float64] {
-	return newAlgebraArray[float64](ir.Float64Kind, vals, dims)
+	dims = inferDims(vals, dims)
+	return newArray[float64](ir.Float64Kind, kernels.ToFloatArray(vals, dims))
 }
 
 // ArrayInt32 returns a new Go host array of int32.
 func ArrayInt32(vals []int32, dims ...int) *HostArray[int32] {
-	return newAlgebraArray[int32](ir.Int32Kind, vals, dims)
+	dims = inferDims(vals, dims)
+	return newArray[int32](ir.Int32Kind, kernels.ToIntegerArray(vals, dims))
 }
 
 // ArrayInt64 returns a new Go host array of int64.
 func ArrayInt64(vals []int64, dims ...int) *HostArray[int64] {
-	return newAlgebraArray[int64](ir.Int64Kind, vals, dims)
+	dims = inferDims(vals, dims)
+	return newArray[int64](ir.Int64Kind, kernels.ToIntegerArray(vals, dims))
 }
 
 // ArrayUint32 returns a new Go host array of uint32.
 func ArrayUint32(vals []uint32, dims ...int) *HostArray[uint32] {
-	return newAlgebraArray[uint32](ir.Uint32Kind, vals, dims)
+	dims = inferDims(vals, dims)
+	return newArray[uint32](ir.Uint32Kind, kernels.ToIntegerArray(vals, dims))
 }
 
 // ArrayUint64 returns a new Go host array of uint64.
 func ArrayUint64(vals []uint64, dims ...int) *HostArray[uint64] {
-	return newAlgebraArray[uint64](ir.Uint64Kind, vals, dims)
+	dims = inferDims(vals, dims)
+	return newArray[uint64](ir.Uint64Kind, kernels.ToIntegerArray(vals, dims))
 }

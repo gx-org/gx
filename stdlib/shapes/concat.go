@@ -36,7 +36,7 @@ func (f concat) BuildFuncIR(impl *impl.Stdlib, pkg *ir.Package) (*ir.FuncBuiltin
 	return builtin.IRFuncBuiltin[concat]("Concat", impl.Shapes.Concat, pkg), nil
 }
 
-func checkConsistent[R any](values []*ir.ArrayType, extractFn func(v *ir.ArrayType) (R, error), equalityFn func(lhs R, rhs R) bool) (result R, err error) {
+func checkConsistent[R any](values []ir.ArrayType, extractFn func(v ir.ArrayType) (R, error), equalityFn func(lhs R, rhs R) bool) (result R, err error) {
 	var empty R
 	if len(values) == 0 {
 		return empty, errors.Errorf("must have at least one value")
@@ -57,8 +57,8 @@ func checkConsistent[R any](values []*ir.ArrayType, extractFn func(v *ir.ArrayTy
 	return result, nil
 }
 
-func numAxes(fetcher ir.Fetcher, call *ir.CallExpr) func(*ir.ArrayType) (int, error) {
-	return func(a *ir.ArrayType) (int, error) {
+func numAxes(fetcher ir.Fetcher, call *ir.CallExpr) func(ir.ArrayType) (int, error) {
+	return func(a ir.ArrayType) (int, error) {
 		rank, err := builtins.RankOf(fetcher, call, a)
 		if err != nil {
 			return -1, err
@@ -69,7 +69,7 @@ func numAxes(fetcher ir.Fetcher, call *ir.CallExpr) func(*ir.ArrayType) (int, er
 
 func (f concat) resultsType(fetcher ir.Fetcher, call *ir.CallExpr) (params []ir.Type, out ir.Type, err error) {
 	want := []ir.Type{
-		ir.AxisIndexType(),
+		ir.IntIndexType(),
 		builtins.GenericArrayType,
 		builtins.GenericArrayType,
 	}
@@ -89,11 +89,11 @@ func (f concat) resultsType(fetcher ir.Fetcher, call *ir.CallExpr) (params []ir.
 	if unknowns != nil {
 		return nil, nil, fmterr.Errorf(fetcher.FileSet(), call.Source(), "encountered unknowns (%s) for axis expression %s in call to Concat", unknowns, call.Args[0].Expr())
 	}
-	arrayTypes, err := builtins.NarrowTypes[*ir.ArrayType](fetcher, call, params[1:])
+	arrayTypes, err := builtins.NarrowTypes[ir.ArrayType](fetcher, call, params[1:])
 	if err != nil {
 		return nil, nil, fmterr.Errorf(fetcher.FileSet(), call.Source(), "expected all arguments but the first to be arrays in call to %s, but %s", f.Func.Name(), err)
 	}
-	arrayDataType := func(t *ir.ArrayType) (ir.Type, error) { return t.DataType(), nil }
+	arrayDataType := func(t ir.ArrayType) (ir.Type, error) { return t.DataType(), nil }
 	isSameKind := func(lhs, rhs ir.Type) bool { return lhs.Kind() == rhs.Kind() }
 	dtype, err := checkConsistent(arrayTypes, arrayDataType, isSameKind)
 	if err != nil {
@@ -116,7 +116,7 @@ func (f concat) resultsType(fetcher ir.Fetcher, call *ir.CallExpr) (params []ir.
 	}
 	var outputDims []ir.AxisLength = make([]ir.AxisLength, len(firstDims))
 	copy(outputDims, firstDims)
-	var outputExpr ir.Expr = firstDims[axis].Expr()
+	var outputExpr ir.Expr = firstDims[axis]
 
 	for i := 1; i < len(arrayTypes); i++ {
 		rank, err := builtins.RankOf(fetcher, call, arrayTypes[i])
@@ -138,18 +138,15 @@ func (f concat) resultsType(fetcher ir.Fetcher, call *ir.CallExpr) (params []ir.
 					i+1, arrayTypes[i].Rank(), arrayTypes[0].Rank(), f.Name(), j, rank.Axes[j], outputDims[j])
 			}
 		}
-		outputExpr = builtins.ToBinaryExpr(token.ADD, outputExpr, rank.Axes[axis].Expr())
+		outputExpr = builtins.ToBinaryExpr(token.ADD, outputExpr, rank.Axes[axis])
 	}
 	outputDims[axis] = &ir.AxisExpr{
 		Src: call.Expr(),
 		X:   outputExpr,
 	}
-	return params, &ir.ArrayType{
-		DType: dtype,
-		RankF: &ir.Rank{
-			Axes: outputDims,
-		},
-	}, nil
+	return params, ir.NewArrayType(nil, dtype, &ir.Rank{
+		Axes: outputDims,
+	}), nil
 }
 
 func (f concat) BuildFuncType(fetcher ir.Fetcher, call *ir.CallExpr) (*ir.FuncType, error) {

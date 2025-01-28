@@ -40,11 +40,11 @@ func (f gather) BuildFuncType(fetcher ir.Fetcher, call *ir.CallExpr) (*ir.FuncTy
 	if err != nil {
 		return nil, err
 	}
-	sourceArray, err := builtins.NarrowType[*ir.ArrayType](fetcher, call, call.Args[0].Type())
+	sourceArray, err := builtins.NarrowType[ir.ArrayType](fetcher, call, call.Args[0].Type())
 	if err != nil {
 		return nil, err
 	}
-	indexArray, err := builtins.NarrowType[*ir.ArrayType](fetcher, call, call.Args[1].Type())
+	indexArray, err := builtins.NarrowType[ir.ArrayType](fetcher, call, call.Args[1].Type())
 	if err != nil {
 		return nil, err
 	}
@@ -61,12 +61,12 @@ func (f gather) BuildFuncType(fetcher ir.Fetcher, call *ir.CallExpr) (*ir.FuncTy
 		return nil, err
 	}
 	indexDims := indicesRank.Axes[len(indicesRank.Axes)-1]
-	indexRank, unknowns, err := ir.Eval[ir.Int](fetcher, indexDims.Expr())
+	indexRank, unknowns, err := ir.Eval[ir.Int](fetcher, indexDims)
 	if err != nil {
 		return nil, err
 	}
 	if len(unknowns) > 0 {
-		return nil, fmterr.Errorf(fetcher.FileSet(), indexDims.Expr().Source(),
+		return nil, fmterr.Errorf(fetcher.FileSet(), indexDims.Source(),
 			"cannot evaluate expression %q: unknown value", indexDims)
 	}
 
@@ -74,13 +74,8 @@ func (f gather) BuildFuncType(fetcher ir.Fetcher, call *ir.CallExpr) (*ir.FuncTy
 	resultRank.Axes = append(resultRank.Axes, indicesRank.Axes[0:1]...)
 	resultRank.Axes = append(resultRank.Axes, sourceRank.Axes[indexRank:]...)
 	return &ir.FuncType{
-		Src:    &ast.FuncType{Func: call.Source().Pos()},
-		Params: builtins.Fields(params...),
-		Results: builtins.Fields(
-			&ir.ArrayType{
-				DType: sourceArray.DataType(),
-				RankF: resultRank,
-			},
-		),
+		Src:     &ast.FuncType{Func: call.Source().Pos()},
+		Params:  builtins.Fields(params...),
+		Results: builtins.Fields(ir.NewArrayType(nil, sourceArray.DataType(), resultRank)),
 	}, nil
 }

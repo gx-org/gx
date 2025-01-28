@@ -25,7 +25,7 @@ import (
 	gxtesting "github.com/gx-org/gx/tests/testing"
 )
 
-var basic *basic_go_gx.Compiler
+var basic *basic_go_gx.Package
 
 func TestReturnFloat32(t *testing.T) {
 	scalar, err := basic.ReturnFloat32.Run()
@@ -124,15 +124,11 @@ func TestSetFloat(t *testing.T) {
 	}
 }
 
-func setupTest(rtm *api.Runtime) error {
-	gxPackage, err := basic_go_gx.Load(rtm)
+func setupTest(dev *api.Device) error {
+	gxPackage, err := basic_go_gx.Load(dev.Runtime())
 	if err != nil {
 		return err
 	}
-	dev, err := gxPackage.Runtime.Platform().Device(0)
-	if err != nil {
-		return err
-	}
-	basic = gxPackage.CompilerFor(dev)
+	basic = gxPackage.BuildFor(dev)
 	return nil
 }

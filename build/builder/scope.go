@@ -25,31 +25,23 @@ import (
 )
 
 type scopePackage struct {
-	bpkg *bPackage
+	bpkg *basePackage
 	errs *fmterr.Appender
 }
 
-func newScopePackage(pkg *bPackage, errs *fmterr.Errors) *scopePackage {
+func newScopePackage(pkg *basePackage, errs *fmterr.Errors) *scopePackage {
 	return &scopePackage{
 		bpkg: pkg,
 		errs: errs.NewAppender(pkg.repr.FSet),
 	}
 }
 
-func (s *scopePackage) namespace() *namespace {
-	return s.bpkg.ns
-}
-
 func (s *scopePackage) err() *fmterr.Appender {
 	return s.errs
 }
 
-func (s *scopePackage) pkg() *bPackage {
+func (s *scopePackage) pkg() *basePackage {
 	return s.bpkg
-}
-
-func (s *scopePackage) block() *scopeFile {
-	return s.scopeFile(s.bpkg.irImports)
 }
 
 func (s *scopePackage) String() string {
@@ -69,11 +61,11 @@ func (s *scopeFile) file() *file {
 	return s.src
 }
 
-func (s *scopeFile) namespace() *namespace {
+func (s *scopeFile) namespace() namespace {
 	return s.src.ns
 }
 
-func (s *scopeFile) block() *scopeFile {
+func (s *scopeFile) fileScope() *scopeFile {
 	return s
 }
 
@@ -91,11 +83,11 @@ func (s *scopeFile) String() string {
 
 type scopeBlock struct {
 	*scopeFile
-	fn *funcDecl
-	ns *namespace
+	fn function
+	ns namespace
 }
 
-func (s *scopeFile) scopeFunc(fn *funcDecl, ns *namespace) *scopeBlock {
+func (s *scopeFile) scopeFunc(fn function, ns namespace) *scopeBlock {
 	return &scopeBlock{
 		scopeFile: s,
 		fn:        fn,
@@ -103,8 +95,16 @@ func (s *scopeFile) scopeFunc(fn *funcDecl, ns *namespace) *scopeBlock {
 	}
 }
 
-func (s *scopeBlock) namespace() *namespace {
+func (s *scopeBlock) namespace() namespace {
 	return s.ns
+}
+
+func (s *scopeBlock) scope() scoper {
+	return s
+}
+
+func (s *scopeBlock) evalFetcher() *evalFetcher {
+	return &evalFetcher{scope: s}
 }
 
 func (s *scopeBlock) scopeBlock() *scopeBlock {
@@ -116,14 +116,17 @@ func (s *scopeBlock) scopeBlock() *scopeBlock {
 }
 
 func (s *scopeBlock) String() string {
-	return fmt.Sprintf("%s\n%s", s.fn.ext.Name(), s.scopeFile.String())
+	if s.fn == nil {
+		return fmt.Sprintf("%s: <anonymous block>", s.scopeFile.String())
+	}
+	return fmt.Sprintf("%s: %s", s.scopeFile.String(), s.fn.name())
 }
 
 type (
 	owner interface {
 		err() *fmterr.Appender
-		block() *scopeFile
-		namespace() *namespace
+		fileScope() *scopeFile
+		namespace() namespace
 		scope() scoper
 		String() string
 	}
@@ -153,29 +156,21 @@ type evalFetcher struct {
 }
 
 func (ev *evalFetcher) FileSet() *token.FileSet {
-	return ev.scope.block().file().pkg.repr.FSet
+	return ev.scope.fileScope().file().pkg.repr.FSet
 }
 
-func (ev *evalFetcher) Fetch(ident *ast.Ident) (ir.Atomic, error) {
-	node := ev.scope.namespace().fetchIdentNode(ident.Name)
+func (ev *evalFetcher) Fetch(ident *ast.Ident) (ir.StaticValue, error) {
+	node := ev.scope.namespace().fetch(ident.Name)
 	if node == nil {
 		return nil, nil
 	}
-	expr, typ, ok := node.typeF(ev.scope)
-	if !ok {
+	if node.expr == nil {
 		return nil, nil
 	}
-	if !ir.IsAtomic(typ.kind()) {
-		return nil, errors.Errorf("%s of type %s is not a scalar", ident.Name, typ.String())
-	}
-	if expr == nil {
+	if _, ok := node.expr.resolveType(ev.scope); !ok {
 		return nil, nil
 	}
-	scalar, ok := expr.(ir.Atomic)
-	if !ok {
-		return nil, errors.Errorf("cannot cast %s:%T to %T", ident.Name, expr, scalar)
-	}
-	return scalar, nil
+	return node.expr.staticValue(), nil
 }
 
 func (ev *evalFetcher) ToGoValue(ir.RuntimeValue) (any, error) {

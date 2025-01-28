@@ -32,10 +32,10 @@ var (
 	_ selector         = (*identTypeExpr)(nil)
 )
 
-func processIdentTypeExpr(owner owner, ident *ast.Ident) (typeNode, bool) {
-	scalarType := ir.ScalarTypeS(ident.Name)
+func processIdentTypeExpr(_ owner, ident *ast.Ident) (typeNode, bool) {
+	scalarType := ir.AtomicFromString(ident.Name)
 	if scalarType.Kind() != ir.InvalidKind {
-		return &builtinType[*ir.AtomicType]{ext: scalarType}, true
+		return &builtinType[ir.Type]{ext: scalarType}, true
 	}
 	return &identTypeExpr{
 		ext: ir.TypeExpr{Src: ident},
@@ -48,7 +48,7 @@ func (n *identTypeExpr) source() ast.Node {
 	return n.ext.Source()
 }
 
-func (n *identTypeExpr) buildType() ir.Type {
+func (n *identTypeExpr) irType() ir.Type {
 	return n.ext.Typ
 }
 
@@ -57,10 +57,13 @@ func (n *identTypeExpr) isGeneric() bool {
 }
 
 func (n *identTypeExpr) kind() ir.Kind {
-	return n.buildType().Kind()
+	return n.irType().Kind()
 }
 
 func (n *identTypeExpr) String() string {
+	if n.typ == nil {
+		return "<unresolved type>"
+	}
 	return n.typ.String()
 }
 
@@ -68,12 +71,16 @@ func (n *identTypeExpr) resolveConcreteType(scope scoper) (typeNode, bool) {
 	if n.typ != nil {
 		return typeNodeOk(n.typ)
 	}
-	prev := scope.namespace().fetchIdentNode(n.src.Name)
+	prev := scope.namespace().fetch(n.src.Name)
 	if prev != nil {
 		// Type is defined in the package.
-		var ok bool
-		_, n.typ, ok = prev.typeF(scope)
-		n.ext.Typ = n.typ.buildType()
+		typ, ok := prev.typeF(scope)
+		if deferred, ok := typ.(*deferredType); ok {
+			// deferredType prevents caching of resolved concrete types.
+			return deferred.resolveConcreteType(scope)
+		}
+		n.typ = typ
+		n.ext.Typ = n.typ.irType()
 		return n.typ, ok
 	}
 	name := n.src.Name
@@ -84,7 +91,7 @@ func (n *identTypeExpr) resolveConcreteType(scope scoper) (typeNode, bool) {
 		n.typ, n.ext.Typ = invalidType()
 		return n.typ, false
 	}
-	n.ext.Typ = ir.ScalarTypeK(kind)
+	n.ext.Typ = ir.TypeFromKind(kind)
 	var ok bool
 	n.typ, ok = toTypeNode(scope, n.ext.Typ)
 	if n.ext.Typ.Kind() == ir.InvalidKind {
@@ -133,7 +140,7 @@ func (n *valueRef) buildExpr() ir.Expr {
 	if n.ext.Typ != nil {
 		return &n.ext
 	}
-	n.ext.Typ = n.typ.buildType()
+	n.ext.Typ = n.typ.irType()
 	return &n.ext
 }
 
@@ -142,20 +149,8 @@ func (n *valueRef) resolveType(scope scoper) (typeNode, bool) {
 		return typeNodeOk(n.typ)
 	}
 	var ok bool
-	_, n.typ, ok = scope.namespace().fetch(scope, n.ext.Src)
+	n.typ, ok = fetchType(scope, scope.namespace(), n.ext.Src)
 	return n.typ, ok
-}
-
-func (n *valueRef) castTo(eval evaluator) (exprScalar, []*ir.ValueRef, bool) {
-	expr, typ, ok := eval.scoper().namespace().fetch(eval.scoper(), n.ext.Src)
-	if !ok {
-		eval.scoper().err().Appendf(n.source(), "undefined: %s", n.ext.Src.Name)
-		return nil, nil, false
-	}
-	if expr == nil || expr == n {
-		eval.scoper().err().Appendf(n.source(), "identifier %s (type %s) cannot be casted to %s", n.ext.Src.Name, typ.String(), eval.want().String())
-	}
-	return castExprTo(eval, expr)
 }
 
 func (n *valueRef) String() string {

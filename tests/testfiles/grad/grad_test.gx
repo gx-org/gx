@@ -1,0 +1,42 @@
+package grad
+
+import "math/grad"
+
+func Constant(x [2]float32) [2]float32 {
+	return [...]float32{1.0, 2.0}
+}
+
+//gx:=grad.Func(Constant, "x")
+func ConstantGrad()
+
+func TestConstant() [2]float32 {
+	return Constant([2]float32{3.0, 4.0})
+	// Want:
+	// [2]float32{1, 2}
+}
+
+func TestConstantGrad() [2]float32 {
+	return ConstantGrad([2]float32{3.0, 4.0})
+	// Want:
+	// [2]float32{0, 0}
+}
+
+func XAsElement(x float32) [2]float32 {
+	return [...]float32{x, 2.0}
+}
+
+//gx:=grad.Func(XAsElement, "x")
+func XAsElementGrad()
+
+func TestXAsElementGrad() [2]float32 {
+	trace(XAsElementGrad)
+	return XAsElementGrad(2.0)
+	// Want:
+	// [2]float32{1, 0}
+        // Trace:
+        // grad_test.gx:0
+        //   func XAsElementGrad(x float32) [2]float32 {
+        //   	return [2]float32{(0+1), 0}
+        //   }
+}
+

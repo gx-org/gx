@@ -20,12 +20,13 @@ import (
 
 	"github.com/pkg/errors"
 	"github.com/gx-org/backend/platform"
+	"github.com/gx-org/gx/base/sync"
 	"github.com/gx-org/gx/build/ir"
 )
 
 // Struct stores the GX values of a structure.
 type Struct struct {
-	vals       []Value
+	vals       sync.Map[string, Value]
 	typ        ir.Type
 	structType *ir.StructType
 }
@@ -34,18 +35,25 @@ var _ Value = (*Struct)(nil)
 
 // NewStruct returns a new structure given a set of values.
 func NewStruct(typ ir.Type, vals []Value) (*Struct, error) {
-	vs := &Struct{
-		typ:  typ,
-		vals: vals,
-	}
 	under := ir.Underlying(typ)
 	var ok bool
-	vs.structType, ok = under.(*ir.StructType)
+	structType, ok := under.(*ir.StructType)
 	if !ok {
 		return nil, errors.Errorf("cannot create a structure value for type %T", under)
 	}
-	if vs.vals == nil {
-		vs.vals = make([]Value, vs.structType.NumFields())
+	vs := &Struct{
+		typ:        typ,
+		structType: structType,
+	}
+	if len(vals) == 0 {
+		return vs, nil
+	}
+	fields := structType.Fields.Fields()
+	if len(vals) != len(fields) {
+		return nil, errors.Errorf("incorrect number of values: got %d values to initialize %d fields", len(vals), len(fields))
+	}
+	for i, field := range fields {
+		vs.SetField(field.Name.Name, vals[i])
 	}
 	return vs, nil
 }
@@ -54,9 +62,14 @@ func (*Struct) value() {}
 
 // ToHost transfers all the elements of the slice to the host.
 func (vs *Struct) ToHost(alloc platform.Allocator) (Value, error) {
-	vals, err := ToHost(alloc, vs.vals)
-	if err != nil {
-		return nil, err
+	vals := make([]Value, vs.structType.NumFields())
+	for i, field := range vs.structType.Fields.Fields() {
+		v := vs.FieldValue(field.Name.Name)
+		vHost, err := v.ToHost(alloc)
+		if err != nil {
+			return nil, err
+		}
+		vals[i] = vHost
 	}
 	return NewStruct(vs.Type(), vals)
 }
@@ -67,13 +80,13 @@ func (vs *Struct) Type() ir.Type {
 }
 
 // SetField sets a field value.
-func (vs *Struct) SetField(i int, val Value) {
-	vs.vals[i] = val
+func (vs *Struct) SetField(name string, val Value) {
+	vs.vals.Store(name, val)
 }
 
 // FieldValue returns the value of the ith field.
-func (vs *Struct) FieldValue(i int) Value {
-	return vs.vals[i]
+func (vs *Struct) FieldValue(name string) Value {
+	return vs.vals.Load(name)
 }
 
 // StructType returns the structure type of the structure.
@@ -97,7 +110,7 @@ func (vs *Struct) String() string {
 	fields := vs.structType.Fields.Fields()
 	fieldStrs := make([]string, len(fields))
 	for i, field := range fields {
-		childS := fmt.Sprint(vs.vals[i])
+		childS := fmt.Sprint(vs.FieldValue(field.Name.Name))
 		if strings.Index(childS, "\n") > 0 {
 			childS = indent(childS)
 		}

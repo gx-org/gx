@@ -41,17 +41,22 @@ func BuildAll(newWriter func(*ir.Package) (io.WriteCloser, error)) error {
 	libs := stdlib.Importer(nil)
 	bld := builder.New(importers.NewCacheLoader(libs))
 	for _, path := range libs.Paths() {
-		pkg, err := bld.Build(path)
+		bpkg, err := bld.Build(path)
 		if err != nil {
 			return err
 		}
+		pkg := bpkg.IR()
 		w, err := newWriter(pkg)
 		if err != nil {
 			return err
 		}
 		defer w.Close()
-		if err := gobindings.Generate(importer, w, pkg); err != nil {
-			return fmt.Errorf("cannot generate source for %s: %v", pkg.Name.Name, err)
+		bnd, err := gobindings.New(importer, pkg)
+		if err != nil {
+			return fmt.Errorf("cannot create binder for %s: %w", pkg.Name.Name, err)
+		}
+		if err := bnd.Files()[0].WriteBindings(w); err != nil {
+			return fmt.Errorf("cannot generate source for %s: %w", pkg.Name.Name, err)
 		}
 	}
 	return nil

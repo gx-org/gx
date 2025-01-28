@@ -34,6 +34,7 @@ var FS embed.FS
 var Errors = []string{
 	"errors/einsum",
 	"errors/ellipsis",
+	"errors/meta",
 	"errors/process",
 	"errors/resolve",
 	"errors/slices",
@@ -63,6 +64,7 @@ var Language = appendAll(LanguageCore, []string{
 
 // Stdlib is a set of path testing the standard library or where a standard library implementation is required.
 var Stdlib = []string{
+	"testfiles/grad",
 	"testfiles/stdlib",
 	"testfiles/nn",
 	"testfiles/ellipsis",

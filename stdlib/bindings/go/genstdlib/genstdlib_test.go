@@ -19,6 +19,7 @@ import (
 	"strings"
 	"testing"
 
+	"github.com/gx-org/gx/build/fmterr"
 	"github.com/gx-org/gx/build/ir"
 	"github.com/gx-org/gx/stdlib/bindings/go/genstdlib"
 )
@@ -33,7 +34,7 @@ func TestGenerate(t *testing.T) {
 	if err := genstdlib.BuildAll(func(*ir.Package) (io.WriteCloser, error) {
 		return &writer{}, nil
 	}); err != nil {
-		t.Error(err)
+		t.Errorf("\n%+v", fmterr.ToStackTraceError(err))
 	}
 
 }

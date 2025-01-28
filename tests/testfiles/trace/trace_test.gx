@@ -1,18 +1,18 @@
 package trace
 
-func TestTraceScalar() float64 {
+func TestTraceScalar() int64 {
 	a := 2
 	trace(a)
 	a = a + 1
 	trace(a)
 	return a
 	// Want:
-	// float64(3)
+	// int64(3)
 	// Trace:
 	// trace_test.gx:0
-	//   float64(2)
+	//   int64(2)
 	// trace_test.gx:1
-	//   float64(3)
+	//   int64(3)
 }
 
 func TestTrace() [2]float64 {

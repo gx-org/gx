@@ -29,12 +29,17 @@ type boolFactory struct {
 var _ Factory = (*boolFactory)(nil)
 
 func (boolFactory) BinaryOp(op token.Token, x, y *shape.Shape) (Binary, *shape.Shape, error) {
-	return nil, nil, errors.Errorf("not implemented")
+	return nil, nil, errors.Errorf("operator %q not supported", op.String())
 }
 
 // UnaryOp creates a new kernel for a unary operator.
 func (boolFactory) UnaryOp(op token.Token, x *shape.Shape) (Unary, *shape.Shape, error) {
-	return nil, nil, errors.Errorf("operator %q supported", op.String())
+	switch op {
+	case token.NOT:
+		return boolNotArray, x, nil
+	default:
+		return nil, nil, errors.Errorf("operator %q not supported", op.String())
+	}
 }
 
 // Cast an array to another
@@ -46,7 +51,7 @@ func (boolFactory) Cast(dtype.DataType, []int) (Unary, *shape.Shape, Factory, er
 func ToBoolAtom(val bool) *ArrayT[bool] {
 	return &ArrayT[bool]{
 		factory: boolFactory{},
-		shape:   &shape.Shape{DType: dtype.Bool},
+		shape:   shape.Shape{DType: dtype.Bool},
 		values:  []bool{val},
 	}
 }
@@ -55,7 +60,7 @@ func ToBoolAtom(val bool) *ArrayT[bool] {
 func ToBoolArray(values []bool, dims []int) *ArrayT[bool] {
 	return &ArrayT[bool]{
 		factory: boolFactory{},
-		shape: &shape.Shape{
+		shape: shape.Shape{
 			DType:       dtype.Bool,
 			AxisLengths: dims,
 		},

@@ -18,9 +18,9 @@ import (
 	"go/ast"
 
 	"github.com/pkg/errors"
-	"github.com/gx-org/backend/graph"
 	"github.com/gx-org/gx/api/values"
 	"github.com/gx-org/gx/build/ir"
+	"github.com/gx-org/gx/interp/elements"
 )
 
 // Methods maintains a table of methods with a receiver.
@@ -30,9 +30,9 @@ type Methods struct {
 }
 
 var (
+	_ Element        = (*Methods)(nil)
 	_ FieldSelector  = (*Methods)(nil)
 	_ MethodSelector = (*Methods)(nil)
-	_ backendElement = (*Methods)(nil)
 )
 
 // Methods returns a new node representing a table of methods.
@@ -48,6 +48,11 @@ func receiverIdent(f ir.Func) *ast.Ident {
 	return funcDecl.Src.Recv.List[0].Names[0]
 }
 
+// Flatten returns the elements unpacked from the element supporting the methods.
+func (n *Methods) Flatten() ([]Element, error) {
+	return n.recv.Flatten()
+}
+
 // SelectMethod returns the method of a type given its IR.
 func (n *Methods) SelectMethod(fn ir.Func) (*Func, error) {
 	recv := &Receiver{
@@ -57,18 +62,14 @@ func (n *Methods) SelectMethod(fn ir.Func) (*Func, error) {
 	return n.state.Func(fn, recv), nil
 }
 
-func (n *Methods) nodes() ([]*graph.OutputNode, error) {
-	return OutputsFromElement(n.recv)
-}
-
 // SelectField returns the field given an index.
 // Returns nil if the receiver type cannot select fields.
-func (n *Methods) SelectField(expr ExprAt, i int) (Element, error) {
+func (n *Methods) SelectField(expr elements.ExprAt, name string) (Element, error) {
 	st, ok := n.recv.(FieldSelector)
 	if !ok {
 		return nil, errors.Errorf("%T cannot be converted to %T", n.recv, st)
 	}
-	return st.SelectField(expr, i)
+	return st.SelectField(expr, name)
 }
 
 // State owning the element.

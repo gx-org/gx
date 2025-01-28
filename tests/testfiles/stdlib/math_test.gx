@@ -16,10 +16,10 @@ func TestInfFloat64() (float64, float64) {
 	// 1: float64(-Inf)
 }
 
-func TestExpScalar() float32 {
-	return math.Exp(1)
+func TestExpScalar() float64 {
+	return math.Exp(1.0)
 	// Want:
-	// float32(2.718282)
+	// float64(2.7182818285)
 }
 
 func TestExpTensor() [2]float32 {
@@ -30,10 +30,10 @@ func TestExpTensor() [2]float32 {
 	// [2]float32{1, 2.718282}
 }
 
-func TestPowScalarScalar() float32 {
-	return math.Pow(2, 4)
+func TestPowScalarScalar() float64 {
+	return math.Pow(2.0, 4.0)
 	// Want:
-	// float32(16)
+	// float64(16)
 }
 
 func TestPowScalarArrayFloat32() [2]float32 {
@@ -78,10 +78,10 @@ func TestMaxArrayArrayInt() [2]int32 {
 	// [2]int32{3, -2}
 }
 
-func TestCosScalar() float32 {
-	return math.Cos(0)
+func TestCosScalar() float64 {
+	return math.Cos(0.0)
 	// Want:
-	// float32(1)
+	// float64(1)
 }
 
 func TestCosScalarArrayFloat32() [2]float32 {
@@ -90,22 +90,51 @@ func TestCosScalarArrayFloat32() [2]float32 {
 	// [2]float32{1, -1}
 }
 
-func TestSinScalar() float32 {
-	return math.Sin(0)
+func TestSinScalar() float64 {
+	return math.Sin(0.0)
 	// Want:
-	// float32(0)
+	// float64(0)
 }
 
-func TestLogScalar() (float32, float32) {
-	return math.Log(1), math.Log(16) / math.Log(2)
+func TestLogScalar() (float64, float64) {
+	return math.Log(1.0), math.Log(16.0) / math.Log(2.0)
 	// Want:
-	// 0: float32(0)
-	// 1: float32(4)
+	// 0: float64(0)
+	// 1: float64(4)
 }
 
-func TestLogSqrt() (float32, float32) {
-	return math.Sqrt(1), math.Sqrt(144)
+func TestLogSqrt() (float64, float64) {
+	return math.Sqrt(1.0), math.Sqrt(144.0)
 	// Want:
-	// 0: float32(1)
-	// 1: float32(12)
+	// 0: float64(1)
+	// 1: float64(12)
+}
+
+func TestCeilFloat32Scalar() float32 {
+	return math.Ceil[float32](1.75)
+	// Want:
+	// float32(2)
+}
+
+func TestCeilFloat64Scalar() float64 {
+	return math.Ceil[float64](1.75)
+	// Want:
+	// float64(2)
+}
+
+func TestCeilFloat32() [2]float32 {
+	return math.Ceil[float32]([2]float32{-0.5, 1.5})
+	// Want:
+	// [2]float32{-0, 2}
+}
+
+func TestCeilFloat64() [2][2]float64 {
+	data := [2][2]float64{{-0.5, 1.5}, {2.5, -3.5}}
+	data = math.Ceil[float64](data)
+	return data
+	// Want:
+	// [2][2]float64{
+	// 	{-0, 2},
+	// 	{3, -3},
+	// }
 }

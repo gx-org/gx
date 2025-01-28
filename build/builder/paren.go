@@ -26,13 +26,10 @@ type parenExpr struct {
 	typ typeNode
 	x   exprNode
 
-	val ir.Atomic
+	val ir.StaticExpr
 }
 
-var (
-	_ exprNumber = (*parenExpr)(nil)
-	_ exprScalar = (*parenExpr)(nil)
-)
+var _ exprScalar = (*parenExpr)(nil)
 
 func processParenExpr(owner owner, expr *ast.ParenExpr) (exprNode, bool) {
 	x, ok := processExpr(owner, expr.X)
@@ -52,25 +49,10 @@ func (n *parenExpr) buildExpr() ir.Expr {
 	if n.val != nil {
 		return n.val
 	}
-	n.ext.Typ = n.typ.buildType()
 	return &n.ext
 }
 
-func (n *parenExpr) castTo(eval evaluator) (exprScalar, []*ir.ValueRef, bool) {
-	xEval, _, ok := castExprTo(eval, n.x)
-	if !ok {
-		n.typ, _ = invalidType()
-		return nil, nil, false
-	}
-	n.x = xEval
-	n.typ, ok = toTypeNode(eval.scoper(), eval.want())
-	n.ext.Typ = n.typ.buildType()
-	n.ext.X = n.x.buildExpr()
-	n.val = eval.cast(&n.ext)
-	return n, nil, ok
-}
-
-func (n *parenExpr) scalar() ir.Atomic {
+func (n *parenExpr) scalar() ir.StaticExpr {
 	return n.val
 }
 

@@ -77,6 +77,9 @@ func (s *Slice) Size() int {
 
 // Element at the ith position.
 func (s *Slice) Element(i int) Value {
+	if i < 0 || i >= len(s.vals) {
+		return nil
+	}
 	var v any = s.vals[i]
 	if value, ok := v.(Value); ok {
 		return value

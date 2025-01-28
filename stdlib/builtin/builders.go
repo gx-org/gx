@@ -23,13 +23,14 @@ import (
 
 	"github.com/pkg/errors"
 	"github.com/gx-org/gx/build/builder"
+	"github.com/gx-org/gx/build/fmterr"
 	"github.com/gx-org/gx/build/ir"
 	"github.com/gx-org/gx/stdlib/impl"
 )
 
 type baseBuilder struct {
 	name  string
-	build func(*builder.Builder, *impl.Stdlib, builder.Package) error
+	build func(*builder.Builder, *impl.Stdlib, *builder.FilePackage) error
 }
 
 var _ Builder = (*baseBuilder)(nil)
@@ -38,7 +39,7 @@ func (fb baseBuilder) Name() string {
 	return fb.name
 }
 
-func (fb baseBuilder) Build(bld *builder.Builder, impl *impl.Stdlib, pkg builder.Package) error {
+func (fb baseBuilder) Build(bld *builder.Builder, impl *impl.Stdlib, pkg *builder.FilePackage) error {
 	return fb.build(bld, impl, pkg)
 }
 
@@ -63,7 +64,7 @@ func (b *sourceParser) Name() string {
 	return fmt.Sprintf("%T%v", b, b.names)
 }
 
-func (b *sourceParser) Build(bld *builder.Builder, _ *impl.Stdlib, pkg builder.Package) (err error) {
+func (b *sourceParser) Build(bld *builder.Builder, _ *impl.Stdlib, pkg *builder.FilePackage) (err error) {
 	if len(b.names) == 0 {
 		if b.names, err = topLevelNames(b.fs); err != nil {
 			return err
@@ -93,7 +94,7 @@ func funcName(f any) string {
 
 // BuildFunc builds a function in a package.
 func BuildFunc(f FuncBuilder) Builder {
-	buildFunc := func(bld *builder.Builder, impl *impl.Stdlib, pkg builder.Package) error {
+	buildFunc := func(_ *builder.Builder, impl *impl.Stdlib, pkg *builder.FilePackage) error {
 		irPkg := pkg.IR()
 		fn, err := f.BuildFuncIR(impl, irPkg)
 		if err != nil {
@@ -109,6 +110,41 @@ func BuildFunc(f FuncBuilder) Builder {
 	}
 }
 
+type stubFunc struct {
+	ftype *ir.FuncType
+	impl  any
+}
+
+var _ ir.FuncImpl = (*stubFunc)(nil)
+
+// BuildFuncType builds the type of a function given how it is called.
+func (s *stubFunc) BuildFuncType(fetcher ir.Fetcher, call *ir.CallExpr) (*ir.FuncType, error) {
+	return s.ftype, nil
+}
+
+// Implementation of the function, provided by the backend.
+func (s *stubFunc) Implementation() any {
+	return s.impl
+}
+
+// ImplementStubFunc replaces a function declaration with a stdlib-provided implementation, while
+// keeping the function's declared type.
+func ImplementStubFunc(name string, slotFn func(impl *impl.Stdlib) any) Builder {
+	return baseBuilder{
+		name: name,
+		build: func(bld *builder.Builder, impl *impl.Stdlib, pkg *builder.FilePackage) error {
+			for _, fn := range pkg.IR().Funcs {
+				if fn.Name() == name {
+					stub := fn.(*ir.FuncBuiltin)
+					stub.Impl = &stubFunc{ftype: fn.FuncType(), impl: slotFn(impl)}
+					return nil
+				}
+			}
+			return fmt.Errorf("failed to replace function stub %q", name)
+		},
+	}
+}
+
 // MethodBuilder builds a method for a package given its named type.
 type MethodBuilder interface {
 	BuildMethodIR(*impl.Stdlib, builder.Package, *ir.NamedType) (*ir.FuncBuiltin, error)
@@ -116,7 +152,7 @@ type MethodBuilder interface {
 
 // BuildMethod builds a method for a named type in a package.
 func BuildMethod(name string, f MethodBuilder) Builder {
-	buildMethod := func(bld *builder.Builder, impl *impl.Stdlib, pkg builder.Package) error {
+	buildMethod := func(bld *builder.Builder, impl *impl.Stdlib, pkg *builder.FilePackage) error {
 		irPkg := pkg.IR()
 		var namedType *ir.NamedType
 		for _, named := range irPkg.Types {
@@ -154,7 +190,7 @@ type TypeBuilder interface {
 
 // BuildType builds a function in a package.
 func BuildType(f TypeBuilder) Builder {
-	buildType := func(bld *builder.Builder, impl *impl.Stdlib, pkg builder.Package) error {
+	buildType := func(bld *builder.Builder, impl *impl.Stdlib, pkg *builder.FilePackage) error {
 		irPkg := pkg.IR()
 		tp, err := f.BuildNamedType(impl, irPkg)
 		if err != nil {
@@ -178,7 +214,7 @@ type ConstBuilder func(*ir.Package) (string, ir.Expr, ir.Type, error)
 
 // BuildConst builds a function in a package.
 func BuildConst(f ConstBuilder) Builder {
-	buildConst := func(bld *builder.Builder, _ *impl.Stdlib, pkg builder.Package) error {
+	buildConst := func(bld *builder.Builder, _ *impl.Stdlib, pkg *builder.FilePackage) error {
 		irPkg := pkg.IR()
 		name, expr, typ, err := f(irPkg)
 		if err != nil {
@@ -200,4 +236,40 @@ func BuildConst(f ConstBuilder) Builder {
 		name:  "ConstBuilder:" + funcName(f),
 		build: buildConst,
 	}
+}
+
+type registerMeta struct {
+	name string
+	impl ir.FuncMetaImpl
+}
+
+// RegisterMacro registers the implementation of a meta function.
+func RegisterMacro(name string, impl ir.MacroImpl) Builder {
+	return &registerMeta{
+		name: name,
+		impl: impl,
+	}
+}
+
+func (b *registerMeta) Build(bld *builder.Builder, _ *impl.Stdlib, pkg *builder.FilePackage) (err error) {
+	pkgIR := pkg.IR()
+	defer func() {
+		if err != nil {
+			err = fmterr.Internal(err, "cannot set the implementation of %s.%s", pkgIR.Name, b.name)
+		}
+	}()
+	fun := pkgIR.FindFunc(b.name)
+	if fun == nil {
+		return errors.Errorf("cannot find the function in the package IR")
+	}
+	metaFun, ok := fun.(*ir.FuncMeta)
+	if !ok {
+		return errors.Errorf("type %T is not %s", fun, reflect.TypeFor[*ir.FuncMeta]())
+	}
+	metaFun.Impl = b.impl
+	return nil
+}
+
+func (b *registerMeta) Name() string {
+	return fmt.Sprintf("%T:%s", b, b.name)
 }

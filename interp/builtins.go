@@ -15,55 +15,54 @@
 package interp
 
 import (
+	"go/ast"
 	"reflect"
 
 	"github.com/pkg/errors"
-	"github.com/gx-org/backend/dtype"
-	"github.com/gx-org/backend/shape"
 	"github.com/gx-org/gx/api/values"
 	"github.com/gx-org/gx/build/ir"
-	"github.com/gx-org/gx/golang/backend/kernels"
+	"github.com/gx-org/gx/internal/base/scope"
+	"github.com/gx-org/gx/interp/elements"
 	"github.com/gx-org/gx/interp/state"
 )
 
 var (
-	trueValue = values.NewHostArray(
-		ir.ToAtomic(ir.BoolKind),
-		kernels.ToBuffer(
-			[]bool{true},
-			&shape.Shape{DType: dtype.Bool},
-		),
-	)
-	falseValue = values.NewHostArray(
-		ir.ToAtomic(ir.BoolKind),
-		kernels.ToBuffer(
-			[]bool{false},
-			&shape.Shape{DType: dtype.Bool},
-		),
-	)
+	builtinFile = &ir.File{Package: &ir.Package{Name: &ast.Ident{Name: "<interp>"}}}
+	boolType    = ir.TypeFromKind(ir.BoolKind)
+	trueExpr    = elements.NewExprAt[ir.Expr](builtinFile, &ir.ValueRef{
+		Src: &ast.Ident{Name: "true"},
+		Typ: boolType,
+	})
+	falseExpr = elements.NewExprAt[ir.Expr](builtinFile, &ir.ValueRef{
+		Src: &ast.Ident{Name: "false"},
+		Typ: boolType,
+	})
 )
 
-func (ctx *context) newBuiltinFrame(fn ir.Func) *frame {
-	builtins := map[string]state.Element{
-		"true":  ctx.state.Numerical(trueValue),
-		"false": ctx.state.Numerical(falseValue),
+func (ctx *context) buildBuiltinFrame() error {
+	ctx.builtin = scope.NewScope[frameState, state.Element](frameState{Context: ctx}, nil)
+	trueElement, err := ctx.Evaluator().ElementFromValue(ctx, trueExpr.Node(), values.AtomBoolValue(boolType, true))
+	if err != nil {
+		return err
 	}
-	ctx.appendBuiltinFunc(builtins, "append", appendFunc{})
-	ctx.appendBuiltinFunc(builtins, "axlengths", axlengthsFunc{})
-	ctx.appendBuiltinFunc(builtins, "set", setFunc{})
-	ctx.appendBuiltinFunc(builtins, "trace", traceFunc{})
-	return &frame{
-		ctx:      ctx,
-		vars:     builtins,
-		function: fn,
+	ctx.builtin.Define("true", trueElement)
+	falseElement, err := ctx.Evaluator().ElementFromValue(ctx, falseExpr.Node(), values.AtomBoolValue(boolType, false))
+	if err != nil {
+		return err
 	}
+	ctx.builtin.Define("false", falseElement)
+	assignBuiltinFunc(ctx, ctx.builtin, "append", appendFunc{})
+	assignBuiltinFunc(ctx, ctx.builtin, "axlengths", axlengthsFunc{})
+	assignBuiltinFunc(ctx, ctx.builtin, "set", setFunc{})
+	assignBuiltinFunc(ctx, ctx.builtin, "trace", traceFunc{})
+	return nil
 }
 
-func (ctx *context) appendBuiltinFunc(vals map[string]state.Element, name string, impl ir.FuncImpl) {
-	vals[name] = ctx.state.Func(&ir.FuncBuiltin{
+func assignBuiltinFunc(ctx Context, f *frame, name string, impl ir.FuncImpl) {
+	f.Define(name, ctx.State().Func(&ir.FuncBuiltin{
 		FName: name,
 		Impl:  impl,
-	}, nil)
+	}, nil))
 }
 
 type appendFunc struct{}
@@ -78,7 +77,7 @@ func (appendFunc) Implementation() any {
 	return FuncBuiltin(appendImpl)
 }
 
-func appendImpl(ctx Context, call state.CallAt, fn *state.Func, irFunc *ir.FuncBuiltin, args []state.Element) (output state.Element, err error) {
+func appendImpl(ctx Context, call elements.CallAt, fn *state.Func, irFunc *ir.FuncBuiltin, args []state.Element) (output state.Element, err error) {
 	slice, ok := args[0].(*state.Slice)
 	if !ok {
 		return nil, errors.Errorf("cannot cast %T to %s", args[0], reflect.TypeFor[*state.Slice]())
@@ -100,18 +99,20 @@ func (axlengthsFunc) Implementation() any {
 	return FuncBuiltin(axlengthsImpl)
 }
 
-func axlengthsImpl(ctx Context, call state.CallAt, fn *state.Func, irFunc *ir.FuncBuiltin, args []state.Element) (output state.Element, err error) {
+func axlengthsImpl(ctx Context, call elements.CallAt, fn *state.Func, irFunc *ir.FuncBuiltin, args []state.Element) (output state.Element, err error) {
 	shape, err := state.ShapeFromElement(args[0])
 	if err != nil {
 		return nil, err
 	}
 	axes := make([]state.Element, len(shape.AxisLengths))
 	for i, axisSize := range shape.AxisLengths {
-		axes[i], err = state.NewAtomicLiteral[ir.Int](
-			ctx.State(),
-			ir.AxisLengthType(),
-			ir.Int(axisSize),
-		)
+		iExpr := &ir.AtomicValueT[ir.Int]{
+			Src: call.Node().Src,
+			Val: ir.Int(i),
+			Typ: ir.IntLenType(),
+		}
+		iValue := values.AtomIntegerValue[ir.Int](ir.IntLenType(), ir.Int(axisSize))
+		axes[i], err = ctx.Evaluator().ElementFromValue(ctx, iExpr, iValue)
 		if err != nil {
 			return nil, err
 		}
@@ -131,16 +132,8 @@ func (setFunc) Implementation() any {
 	return FuncBuiltin(setImpl)
 }
 
-func setImpl(ctx Context, call state.CallAt, fn *state.Func, irFunc *ir.FuncBuiltin, args []state.Element) (output state.Element, err error) {
-	nodes, err := state.OutputsFromElements(args)
-	if err != nil {
-		return nil, err
-	}
-	setNode, err := ctx.State().BackendGraph().Core().NewSet(nodes[0].Node, nodes[1].Node, nodes[2].Node)
-	if err != nil {
-		return nil, err
-	}
-	return ctx.State().ElementFromNode(call.ToExprAt(), setNode, nodes[0].Shape)
+func setImpl(ctx Context, call elements.CallAt, fn *state.Func, irFunc *ir.FuncBuiltin, args []state.Element) (output state.Element, err error) {
+	return ctx.Evaluator().Set(ctx, call.Node(), args[0], args[1], args[2])
 }
 
 type traceFunc struct{}
@@ -155,6 +148,6 @@ func (traceFunc) Implementation() any {
 	return FuncBuiltin(traceImpl)
 }
 
-func traceImpl(ctx Context, call state.CallAt, fn *state.Func, irFunc *ir.FuncBuiltin, args []state.Element) (output state.Element, err error) {
+func traceImpl(ctx Context, call elements.CallAt, fn *state.Func, irFunc *ir.FuncBuiltin, args []state.Element) (output state.Element, err error) {
 	return nil, ctx.State().Trace(call, fn, irFunc, args, ctx)
 }

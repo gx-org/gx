@@ -52,7 +52,7 @@ func processIfStmt(owner owner, fn *funcDecl, stmt *ast.IfStmt) (*ifStmt, bool) 
 }
 
 func (n *ifStmt) checkConditionType(scope scoper, typ typeNode) bool {
-	ok, err := typ.buildType().Equal(scope.evalFetcher(), boolType.buildType())
+	ok, err := typ.irType().Equal(scope.evalFetcher(), boolType.irType())
 	if err != nil {
 		scope.err().Appendf(n.cond.source(), "cannot evaluatate expression type: %v", err)
 		return false

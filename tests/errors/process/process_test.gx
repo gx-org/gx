@@ -13,6 +13,10 @@ func testNoSize() [4]float64 {
 	return [4][]float64{2, 3} // ERROR array of slices is not supported
 }
 
+func testMultipleUnknownAxes() [___]int32 {
+	return [___][___]int32{} // ERROR array type may only specify unknown rank once
+}
+
 func testAssignToNoName() float32 {
 	a.b := 2 // ERROR non-name
 	return 1
@@ -30,4 +34,22 @@ func testDuplicateNamesAssign() float64 {
 
 func (a, b someStruct) multipleReceivers() float32 { // ERROR method has multiple receivers
 	return 0
+}
+
+func testFuncTypeParameters_Redeclared[T int32, T int32]() int32 { // ERROR type parameter T redeclared
+	return 0
+}
+
+type testTypeParameters[T any] struct {} // ERROR type may not have type parameters
+
+func returnZero[T int32]() int32 {
+	return 0
+}
+
+func testCallTypeParameters_Invalid() int32 {
+	return returnZero[1 + 2]() // ERROR expected identifier as type argument
+}
+
+func testCastWrongNumberOfArguments() [2]int32 {
+	return [2]int32(2, 3) // ERROR too many arguments in conversion to [2]int32
 }

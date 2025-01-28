@@ -25,10 +25,34 @@ type Rand struct {
 	src Philox
 }
 
+// Bool returns pseudo-random boolean values as an array of bool.
+func (rnd Rand) Bool(dims []intlen) (Rand, [...]bool) {
+	src, vals := rnd.src.Uint32(dims)
+	return Rand{src: src}, [...]bool(vals > (math.MaxUint32 / 2))
+}
+
+// Uint32 returns pseudo-random 32-bit values as an array of uint32.
+func (rnd Rand) Uint32(dims []intlen) (Rand, [...]uint32) {
+	src, vals := rnd.src.Uint32(dims)
+	return Rand{src: src}, vals
+}
+
 // Uint64 returns pseudo-random 64-bit values as an array of uint64.
 func (rnd Rand) Uint64(dims []intlen) (Rand, [...]uint64) {
 	src, vals := rnd.src.Uint64(dims)
 	return Rand{src: src}, vals
+}
+
+// Int32 returns pseudo-random 32-bit values as an array of int32.
+func (rnd Rand) Int32(dims []intlen) (Rand, [...]int32) {
+	src, vals := rnd.src.Uint64(dims)
+	return Rand{src: src}, [...]int32(vals)
+}
+
+// Int64 returns pseudo-random 64-bit values as an array of int64.
+func (rnd Rand) Int64(dims []intlen) (Rand, [...]int64) {
+	src, vals := rnd.src.Uint64(dims)
+	return Rand{src: src}, [...]int64(vals)
 }
 
 // Float64 returns pseudo-random values as an array of float64

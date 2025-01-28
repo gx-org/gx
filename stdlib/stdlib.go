@@ -17,14 +17,16 @@
 package stdlib
 
 import (
-	"sort"
+	"maps"
+	"slices"
 
 	"github.com/pkg/errors"
-	"golang.org/x/exp/maps"
 	"github.com/gx-org/gx/build/builder"
 	"github.com/gx-org/gx/build/importers"
 	"github.com/gx-org/gx/stdlib/builtin"
+	"github.com/gx-org/gx/stdlib/control"
 	"github.com/gx-org/gx/stdlib/impl"
+	"github.com/gx-org/gx/stdlib/math/grad"
 	"github.com/gx-org/gx/stdlib/math"
 	"github.com/gx-org/gx/stdlib/num"
 	"github.com/gx-org/gx/stdlib/rand"
@@ -40,10 +42,12 @@ type Stdlib struct {
 var _ importers.Importer = (*Stdlib)(nil)
 
 var packages = []builtin.PackageBuilder{
-	shapes.Package,
+	control.Package,
+	grad.Package,
 	math.Package,
 	num.Package,
 	rand.Package,
+	shapes.Package,
 }
 
 // Importer returns the standard library importer.
@@ -79,7 +83,5 @@ func (l *Stdlib) Import(bld *builder.Builder, path string) (builder.Package, err
 // Paths returns all the paths in the standard library
 // (alphabetically ordered).
 func (l *Stdlib) Paths() []string {
-	paths := maps.Keys(l.libs)
-	sort.Strings(paths)
-	return paths
+	return slices.Sorted(maps.Keys(l.libs))
 }

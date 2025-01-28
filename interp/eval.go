@@ -15,15 +15,17 @@
 package interp
 
 import (
+	"reflect"
+
 	"github.com/pkg/errors"
 	"github.com/gx-org/backend/dtype"
-	"github.com/gx-org/backend/graph"
 	"github.com/gx-org/backend/shape"
 	"github.com/gx-org/gx/build/ir"
+	"github.com/gx-org/gx/interp/elements"
 	"github.com/gx-org/gx/interp/state"
 )
 
-func evalBlockStmt(ctx *context, body *ir.BlockStmt) (state.Element, bool, error) {
+func evalBlockStmt(ctx Context, body *ir.BlockStmt) (state.Element, bool, error) {
 	var output state.Element
 	var stop bool
 	for _, node := range body.List {
@@ -39,7 +41,7 @@ func evalBlockStmt(ctx *context, body *ir.BlockStmt) (state.Element, bool, error
 	return output, stop, nil
 }
 
-func evalStmt(ctx *context, node ir.Stmt) (state.Element, bool, error) {
+func evalStmt(ctx Context, node ir.Stmt) (state.Element, bool, error) {
 	switch nodeT := node.(type) {
 	case *ir.AssignCallStmt:
 		return nil, false, evalAssignCallStmt(ctx, nodeT)
@@ -61,9 +63,9 @@ func evalStmt(ctx *context, node ir.Stmt) (state.Element, bool, error) {
 	}
 }
 
-func evalRangeForLoopOverInteger[T dtype.AlgebraType](ctx *context, stmt *ir.RangeStmt, toValue valuer) (state.Element, bool, error) {
+func evalRangeForLoopOverInteger[T dtype.AlgebraType](ctx Context, stmt *ir.RangeStmt, toValue valuer) (state.Element, bool, error) {
 	toValueT := toValue.(valuerT[T])
-	indexType := &ir.AtomicType{Knd: toValueT.kind}
+	indexType := ir.TypeFromKind(toValueT.kind)
 	val, unknown, err := ir.Eval[T](fetcher[T]{kind: toValueT.kind, ctx: ctx}, stmt.X)
 	if err != nil {
 		return nil, true, err
@@ -71,14 +73,20 @@ func evalRangeForLoopOverInteger[T dtype.AlgebraType](ctx *context, stmt *ir.Ran
 	if len(unknown) > 0 {
 		return nil, true, ctx.FileSet().Errorf(stmt.Source(), "unknown variables in static expression")
 	}
-	ctx.pushBlockFrame()
-	defer ctx.popFrame()
+	ctx.frame().pushBlockFrame()
+	defer ctx.frame().popFrame()
 	for i := T(0); i < val; i++ {
-		iElement, err := state.NewAtomicLiteral(ctx.State(), indexType, i)
+		iExpr := &ir.AtomicValueT[T]{
+			Src: stmt.Key.Expr(),
+			Val: i,
+			Typ: indexType,
+		}
+		iValue := toValueT.toAtomValue(iExpr.Type(), i)
+		iElement, err := ctx.Evaluator().ElementFromValue(ctx, iExpr, iValue)
 		if err != nil {
 			return nil, true, err
 		}
-		if err := ctx.set(stmt.Src.Tok, stmt.Key, iElement); err != nil {
+		if err := ctx.frame().set(stmt.Src.Tok, stmt.Key, iElement); err != nil {
 			return nil, false, err
 		}
 		element, stop, err := evalBlockStmt(ctx, stmt.Body)
@@ -89,22 +97,22 @@ func evalRangeForLoopOverInteger[T dtype.AlgebraType](ctx *context, stmt *ir.Ran
 	return nil, false, nil
 }
 
-func evalRangeStmtInteger(ctx *context, stmt *ir.RangeStmt, xKind ir.Kind) (state.Element, bool, error) {
+func evalRangeStmtInteger(ctx Context, stmt *ir.RangeStmt, xKind ir.Kind) (state.Element, bool, error) {
 	toValue, err := newValuer(ctx, stmt.X, xKind)
 	if err != nil {
 		return nil, false, err
 	}
 	switch xKind {
-	case ir.AxisLengthKind:
+	case ir.IntLenKind:
 		return evalRangeForLoopOverInteger[ir.Int](ctx, stmt, toValue)
 	default:
 		return nil, true, ctx.FileSet().Errorf(stmt.Source(), "cannot range over %s", xKind.String())
 	}
 }
 
-func evalRangeStmtForLoopOverArray[T dtype.AlgebraType](ctx *context, stmt *ir.RangeStmt, toValue valuer) (state.Element, bool, error) {
+func evalRangeStmtForLoopOverArray[T dtype.AlgebraType](ctx Context, stmt *ir.RangeStmt, toValue valuer) (state.Element, bool, error) {
 	toValueT := toValue.(valuerT[T])
-	indexType := &ir.AtomicType{Knd: toValueT.kind}
+	indexType := ir.TypeFromKind(toValueT.kind)
 	x, err := evalExpr(ctx, stmt.X)
 	if err != nil {
 		return nil, false, err
@@ -115,36 +123,29 @@ func evalRangeStmtForLoopOverArray[T dtype.AlgebraType](ctx *context, stmt *ir.R
 	}
 	arrayShape := value.Shape()
 	for i := 0; i < arrayShape.AxisLengths[0]; i++ {
-		iElement, err := state.NewAtomicLiteral[T](ctx.State(), indexType, T(i))
+		iExpr := &ir.AtomicValueT[T]{
+			Src: stmt.Key.Expr(),
+			Val: T(i),
+			Typ: indexType,
+		}
+		iValue := toValueT.toAtomValue(iExpr.Type(), T(i))
+		iElement, err := ctx.Evaluator().ElementFromValue(ctx, iExpr, iValue)
 		if err != nil {
 			return nil, false, err
 		}
-		iExpr := iElement.ToExpr()
-		if err := ctx.set(stmt.Src.Tok, stmt.Key, iElement); err != nil {
+		if err := ctx.frame().set(stmt.Src.Tok, stmt.Key, iElement); err != nil {
 			return nil, false, err
 		}
 		if stmt.Value != nil {
-			elementI, err := value.Slice(ctx.exprAt(iExpr), i)
+			elementI, err := value.Slice(ctx.ExprAt(iExpr), i)
 			if err != nil {
 				return nil, false, err
 			}
-			sliceI, _, err := state.NodeFromElement(elementI)
+			reshapedElement, err := ctx.Evaluator().Reshape(ctx, iExpr, elementI, arrayShape.AxisLengths[1:])
 			if err != nil {
 				return nil, false, err
 			}
-			targetShape := &shape.Shape{
-				DType:       arrayShape.DType,
-				AxisLengths: arrayShape.AxisLengths[1:],
-			}
-			reshaped, err := ctx.state.BackendGraph().Core().NewReshape(sliceI, targetShape.AxisLengths)
-			if err != nil {
-				return nil, false, err
-			}
-			reshapedElement, err := ctx.state.ElementFromNode(ctx.exprAt(iExpr), reshaped, targetShape)
-			if err != nil {
-				return nil, false, err
-			}
-			if err := ctx.set(stmt.Src.Tok, stmt.Value, reshapedElement); err != nil {
+			if err := ctx.frame().set(stmt.Src.Tok, stmt.Value, reshapedElement); err != nil {
 				return nil, false, err
 			}
 		}
@@ -156,7 +157,7 @@ func evalRangeStmtForLoopOverArray[T dtype.AlgebraType](ctx *context, stmt *ir.R
 	return nil, false, nil
 }
 
-func evalRangeStmtArray(ctx *context, stmt *ir.RangeStmt) (state.Element, bool, error) {
+func evalRangeStmtArray(ctx Context, stmt *ir.RangeStmt) (state.Element, bool, error) {
 	keyKind := stmt.Key.Type().Kind()
 	toValue, err := newValuer(ctx, stmt.X, keyKind)
 	if err != nil {
@@ -170,20 +171,20 @@ func evalRangeStmtArray(ctx *context, stmt *ir.RangeStmt) (state.Element, bool, 
 	}
 }
 
-func evalRangeStmt(ctx *context, stmt *ir.RangeStmt) (state.Element, bool, error) {
+func evalRangeStmt(ctx Context, stmt *ir.RangeStmt) (state.Element, bool, error) {
 	kind := stmt.X.Type().Kind()
 	if ir.IsRangeOk(kind) {
 		return evalRangeStmtInteger(ctx, stmt, kind)
 	}
-	if kind == ir.TensorKind {
+	if kind == ir.ArrayKind {
 		return evalRangeStmtArray(ctx, stmt)
 	}
 	return nil, true, errors.Errorf("cannot range over %s", kind.String())
 }
 
-func evalIfStmt(ctx *context, stmt *ir.IfStmt) (state.Element, bool, error) {
-	ctx.pushBlockFrame()
-	defer ctx.popFrame()
+func evalIfStmt(ctx Context, stmt *ir.IfStmt) (state.Element, bool, error) {
+	ctx.frame().pushBlockFrame()
+	defer ctx.frame().popFrame()
 
 	if stmt.Init != nil {
 		if _, _, err := evalStmt(ctx, stmt.Init); err != nil {
@@ -207,7 +208,7 @@ func evalIfStmt(ctx *context, stmt *ir.IfStmt) (state.Element, bool, error) {
 	return evalStmt(ctx, stmt.Else)
 }
 
-func evalAssignExprStmt(ctx *context, stmt *ir.AssignExprStmt) error {
+func evalAssignExprStmt(ctx Context, stmt *ir.AssignExprStmt) error {
 	for _, asg := range stmt.List {
 		cNode, err := evalExpr(ctx, asg.Expr)
 		if err != nil {
@@ -216,14 +217,14 @@ func evalAssignExprStmt(ctx *context, stmt *ir.AssignExprStmt) error {
 		if cNode == nil {
 			continue
 		}
-		if err := ctx.set(stmt.Src.Tok, asg.Dest, cNode); err != nil {
+		if err := ctx.frame().set(stmt.Src.Tok, asg.Dest, cNode); err != nil {
 			return err
 		}
 	}
 	return nil
 }
 
-func evalAssignCallStmt(ctx *context, stmt *ir.AssignCallStmt) error {
+func evalAssignCallStmt(ctx Context, stmt *ir.AssignCallStmt) error {
 	node, err := evalCallExpr(ctx, stmt.Call)
 	if err != nil {
 		return err
@@ -232,26 +233,26 @@ func evalAssignCallStmt(ctx *context, stmt *ir.AssignCallStmt) error {
 	if len(stmt.List) == 1 {
 		nodes = []state.Element{node}
 	} else {
-		nodes = node.(*state.Tuple).Unpack()
+		nodes = node.(*elements.Tuple).Elements()
 	}
 	for i, dest := range stmt.List {
 		node := nodes[i]
 		if node == nil {
 			continue
 		}
-		ctx.set(stmt.Src.Tok, dest, node)
+		ctx.frame().set(stmt.Src.Tok, dest, node)
 	}
 	return nil
 }
 
-func evalReturnStmt(ctx *context, ret *ir.ReturnStmt) (state.Element, bool, error) {
+func evalReturnStmt(ctx Context, ret *ir.ReturnStmt) (state.Element, bool, error) {
 	if len(ret.Results) == 0 {
 		// Naked return.
-		fields := ctx.currentFrame().function.FuncType().Results.Fields()
+		fields := ctx.frame().currentFrame().Context().function.FuncType().Results.Fields()
 		nodes := make([]state.Element, len(fields))
 		for i, field := range fields {
 			var err error
-			nodes[i], err = ctx.find(field.Name)
+			nodes[i], err = ctx.frame().find(field.Name)
 			if err != nil {
 				return nil, false, err
 			}
@@ -261,70 +262,48 @@ func evalReturnStmt(ctx *context, ret *ir.ReturnStmt) (state.Element, bool, erro
 	}
 	returns := make([]state.Element, len(ret.Results))
 	for i, expr := range ret.Results {
-		ret, err := evalExpr(ctx, expr)
+		var err error
+		returns[i], err = evalExpr(ctx, expr)
 		if err != nil {
 			return nil, false, err
 		}
-		if ret == nil {
-			continue
-		}
-		returns[i] = ret
 	}
 	tuple := toSingleNode(ctx, ret, returns)
 	return tuple, true, nil
 }
 
-func evalValueRef(ctx *context, ref *ir.ValueRef) (state.Element, error) {
-	cNode, err := ctx.find(ref.Src)
+func evalValueRef(ctx Context, ref *ir.ValueRef) (state.Element, error) {
+	cNode, err := ctx.frame().find(ref.Src)
 	if err != nil {
 		return nil, err
 	}
 	return cNode, nil
 }
 
-func evalCastToScalarExpr(ctx *context, expr *ir.CastExpr, x state.Element, targetType *ir.AtomicType) (state.Element, error) {
+func evalCastToScalarExpr(ctx Context, expr *ir.CastExpr, x state.Element, targetType ir.ArrayType) (state.Element, error) {
 	constant := state.ConstantFromElement(x)
 	if constant != nil {
 		return evalScalarCastOnHost(ctx, expr, constant, targetType.Kind())
 	}
-	xNode, _, err := state.NodeFromElement(x)
-	if err != nil {
-		return nil, err
-	}
 	targetShape := &shape.Shape{
 		DType: targetType.Kind().DType(),
 	}
-	reshaped, err := ctx.state.BackendGraph().Core().NewReshape(xNode, nil)
+	reshaped, err := ctx.Evaluator().Reshape(ctx, expr, x, nil)
 	if err != nil {
 		return nil, err
 	}
-	castNode, err := ctx.state.BackendGraph().Core().NewCast(reshaped, targetShape.DType)
-	if err != nil {
-		return nil, err
-	}
-	return ctx.state.ElementFromNode(ctx.exprAt(expr), castNode, targetShape)
+	return ctx.Evaluator().Cast(ctx, expr, reshaped, targetShape.DType)
 }
 
-func evalCastToArrayExpr(ctx *context, expr *ir.CastExpr, x state.Element, targetType *ir.ArrayType) (state.Element, error) {
-	xNode, xShape, err := state.NodeFromElement(x)
-	if err != nil {
-		return nil, err
-	}
-	bckGraph := ctx.state.BackendGraph()
+func evalCastToArrayExpr(ctx Context, expr *ir.CastExpr, x state.Element, targetType ir.ArrayType) (state.Element, error) {
+	_, xDType := ir.Shape(expr.X.Type())
 	targetDType := targetType.DataType().Kind().DType()
 	if genericRank, isGeneric := targetType.Rank().(*ir.GenericRank); isGeneric && genericRank.IsGeneric() {
-		targetShape := &shape.Shape{
-			DType:       targetDType,
-			AxisLengths: xShape.AxisLengths,
-		}
-		castNode, err := ctx.state.BackendGraph().Core().NewCast(xNode, targetShape.DType)
-		if err != nil {
-			return nil, err
-		}
-		return ctx.state.ElementFromNode(ctx.exprAt(expr), castNode, targetShape)
+		return ctx.Evaluator().Cast(ctx, expr, x, targetDType)
 	}
-	if xShape.DType != targetDType {
-		xNode, err = bckGraph.Core().NewCast(xNode, targetDType)
+	if xDType.Kind().DType() != targetDType {
+		var err error
+		x, err = ctx.Evaluator().Cast(ctx, expr, x, targetDType)
 		if err != nil {
 			return nil, err
 		}
@@ -341,7 +320,7 @@ func evalCastToArrayExpr(ctx *context, expr *ir.CastExpr, x state.Element, targe
 		if dimExpr == nil {
 			return nil, ctx.FileSet().Errorf(expr.Src, "cannot reshape an array with an unknown axis length")
 		}
-		size, unknowns, err := ir.Eval[ir.Int](fetcher, dim.Expr())
+		size, unknowns, err := ir.Eval[ir.Int](fetcher, dim)
 		if err != nil {
 			return nil, err
 		}
@@ -350,43 +329,36 @@ func evalCastToArrayExpr(ctx *context, expr *ir.CastExpr, x state.Element, targe
 		}
 		dimensions[i] = int(size)
 	}
-	reshape, err := bckGraph.Core().NewReshape(xNode, dimensions)
+	reshape, err := ctx.Evaluator().Reshape(ctx, expr, x, dimensions)
 	if err != nil {
 		return nil, ctx.FileSet().Position(expr.Src, err)
 	}
-	sourceType, ok := expr.X.Type().(*ir.ArrayType)
+	sourceType, ok := expr.X.Type().(ir.ArrayType)
 	if !ok {
-		return nil, ctx.FileSet().Errorf(expr.Src, "cannot cast %T to *ir.ArrayType", sourceType)
+		return nil, ctx.FileSet().Errorf(expr.Src, "cannot cast %T to %s", sourceType, reflect.TypeFor[ir.ArrayType]().Name())
 	}
-	var resultNode graph.Node = reshape
-	if sourceType.DType.Kind().DType() != targetDType {
-		resultNode, err = bckGraph.Core().NewCast(reshape, targetDType)
-		if err != nil {
-			return nil, err
-		}
+	if sourceType.DataType().Kind().DType() == targetDType {
+		return reshape, nil
 	}
-	return ctx.state.ElementFromNode(ctx.exprAt(expr), resultNode, &shape.Shape{
-		DType:       targetDType,
-		AxisLengths: dimensions,
-	})
+	return ctx.Evaluator().Cast(ctx, expr, reshape, targetDType)
 }
 
-func evalCastExpr(ctx *context, expr *ir.CastExpr) (state.Element, error) {
+func evalCastExpr(ctx Context, expr *ir.CastExpr) (state.Element, error) {
 	x, err := evalExpr(ctx, expr.X)
 	if err != nil {
 		return nil, err
 	}
-	switch targetType := expr.Typ.(type) {
-	case *ir.ArrayType:
-		return evalCastToArrayExpr(ctx, expr, x, targetType)
-	case *ir.AtomicType:
-		return evalCastToScalarExpr(ctx, expr, x, targetType)
-	default:
-		return nil, ctx.FileSet().Errorf(expr.Src, "cast to %T not supported", targetType)
+	arrayType, ok := expr.Typ.(ir.ArrayType)
+	if !ok {
+		return nil, ctx.FileSet().Errorf(expr.Src, "cast to %s not supported", reflect.TypeFor[ir.ArrayType]().Name())
 	}
+	if arrayType.Rank().IsAtomic() {
+		return evalCastToScalarExpr(ctx, expr, x, arrayType)
+	}
+	return evalCastToArrayExpr(ctx, expr, x, arrayType)
 }
 
-func evalUnaryExpression(ctx *context, expr *ir.UnaryExpr) (state.Element, error) {
+func evalUnaryExpression(ctx Context, expr *ir.UnaryExpr) (state.Element, error) {
 	x, err := evalExpr(ctx, expr.X)
 	if err != nil {
 		return nil, err
@@ -394,18 +366,10 @@ func evalUnaryExpression(ctx *context, expr *ir.UnaryExpr) (state.Element, error
 	if ir.IsStatic(expr.Type()) {
 		return nil, errors.Errorf("not supported")
 	}
-	xNode, xShape, err := state.NodeFromElement(x)
-	if err != nil {
-		return nil, err
-	}
-	unaryNode, err := ctx.state.BackendGraph().Core().NewUnary(expr.Src, xNode)
-	if err != nil {
-		return nil, err
-	}
-	return ctx.state.ElementFromNode(ctx.exprAt(expr), unaryNode, xShape)
+	return ctx.Evaluator().UnaryOp(ctx, expr, x)
 }
 
-func atomicExprFromElement(ctx *context, el state.Element) ir.Expr {
+func atomicExprFromElement(ctx Context, el state.Element) ir.Expr {
 	array, ok := el.(state.ElementWithConstant)
 	if !ok {
 		return nil
@@ -416,7 +380,7 @@ func atomicExprFromElement(ctx *context, el state.Element) ir.Expr {
 	return array.ToExpr()
 }
 
-func evalBinaryExpression(ctx *context, expr *ir.BinaryExpr) (state.Element, error) {
+func evalBinaryExpression(ctx Context, expr *ir.BinaryExpr) (state.Element, error) {
 	x, err := evalExpr(ctx, expr.X)
 	if err != nil {
 		return nil, err
@@ -430,32 +394,10 @@ func evalBinaryExpression(ctx *context, expr *ir.BinaryExpr) (state.Element, err
 	if xHost != nil && yHost != nil {
 		return evalBinaryStaticExpression(ctx, expr, xHost, yHost)
 	}
-	xNode, xShape, err := state.NodeFromElement(x)
-	if err != nil {
-		return nil, err
-	}
-	yNode, yShape, err := state.NodeFromElement(y)
-	if err != nil {
-		return nil, err
-	}
-	binaryNode, err := ctx.state.BackendGraph().Core().NewBinary(expr.Src, xNode, yNode)
-	if err != nil {
-		return nil, err
-	}
-	targetShape := &shape.Shape{
-		DType:       xShape.DType,
-		AxisLengths: xShape.AxisLengths,
-	}
-	if ir.IsBoolOp(expr.Src.Op) {
-		targetShape.DType = dtype.Bool
-	}
-	if len(yShape.AxisLengths) > 0 {
-		targetShape.AxisLengths = yShape.AxisLengths
-	}
-	return ctx.state.ElementFromNode(ctx.exprAt(expr), binaryNode, targetShape)
+	return ctx.Evaluator().BinaryOp(ctx, expr, x, y)
 }
 
-func evalBinaryStaticExpression(ctx *context, expr *ir.BinaryExpr, x, y ir.Expr) (state.Element, error) {
+func evalBinaryStaticExpression(ctx Context, expr *ir.BinaryExpr, x, y ir.Expr) (state.Element, error) {
 	exprForEval := &ir.BinaryExpr{
 		Src: expr.Src,
 		X:   x,
@@ -469,28 +411,28 @@ func evalBinaryStaticExpression(ctx *context, expr *ir.BinaryExpr, x, y ir.Expr)
 	return valuer.eval(ctx, exprForEval)
 }
 
-func evalNamedType(ctx *context, tp *ir.NamedType, node state.Element) state.Element {
+func evalNamedType(ctx Context, tp *ir.NamedType, node state.Element) state.Element {
 	if len(tp.Methods) == 0 {
 		return node
 	}
-	return ctx.state.Methods(node)
+	return ctx.State().Methods(node)
 }
 
-func evalStructLiteral(ctx *context, expr *ir.StructLitExpr) (state.Element, error) {
+func evalStructLiteral(ctx Context, expr *ir.StructLitExpr) (state.Element, error) {
 	under := ir.Underlying(expr.Typ)
 	structType, ok := under.(*ir.StructType)
 	if !ok {
 		return nil, ctx.FileSet().Errorf(expr.Source(), "underlying type %T is not a structure", expr.Typ)
 	}
-	fields := make([]state.Element, structType.NumFields())
+	fields := make(map[string]state.Element, structType.NumFields())
 	for _, fieldLit := range expr.Elts {
 		node, err := evalExpr(ctx, fieldLit.X)
 		if err != nil {
 			return nil, err
 		}
-		fields[fieldLit.Field.ID] = node
+		fields[fieldLit.Field.Name.Name] = node
 	}
-	var node state.Element = ctx.state.Struct(structType, ctx.exprAt(expr), fields)
+	var node state.Element = ctx.State().Struct(structType, ctx.ExprAt(expr), fields)
 	var err error
 	switch tp := expr.Typ.(type) {
 	case *ir.NamedType:
@@ -504,7 +446,7 @@ func evalStructLiteral(ctx *context, expr *ir.StructLitExpr) (state.Element, err
 	return node, nil
 }
 
-func evalSliceLiteral(ctx *context, expr *ir.SliceExpr) (state.Element, error) {
+func evalSliceLiteral(ctx Context, expr *ir.SliceExpr) (state.Element, error) {
 	elements := make([]state.Element, len(expr.Vals))
 	for i, expr := range expr.Vals {
 		elt, err := evalExpr(ctx, expr)
@@ -513,18 +455,18 @@ func evalSliceLiteral(ctx *context, expr *ir.SliceExpr) (state.Element, error) {
 		}
 		elements[i] = elt
 	}
-	return ctx.state.ToSlice(ctx.exprAt(expr), elements), nil
+	return ctx.State().ToSlice(ctx.ExprAt(expr), elements), nil
 }
 
-func evalExpr(ctx *context, expr ir.Expr) (state.Element, error) {
+func evalExpr(ctx Context, expr ir.Expr) (state.Element, error) {
 	if expr == nil {
 		return nil, errors.Errorf("cannot evaluate a nil expression")
 	}
 	switch exprT := expr.(type) {
-	case ir.Atomic:
-		return evalScalarLiteral(ctx, exprT)
-	case ir.ArrayLitExpr:
+	case *ir.ArrayLitExpr:
 		return evalArrayLiteral(ctx, exprT)
+	case *ir.NumberCastExpr:
+		return evalScalarLiteral(ctx, exprT)
 	case *ir.SliceExpr:
 		return evalSliceLiteral(ctx, exprT)
 	case *ir.StructLitExpr:
@@ -557,12 +499,14 @@ func evalExpr(ctx *context, expr ir.Expr) (state.Element, error) {
 		return evalPackageTypeSelector(ctx, exprT)
 	case *ir.PackageConstSelectorExpr:
 		return evalPackageConstSelectorExpr(ctx, exprT)
+	case ir.StaticExpr:
+		return evalScalarLiteral(ctx, exprT)
 	default:
 		return nil, ctx.FileSet().Errorf(expr.Source(), "cannot evaluate GX expression: %T not supported", expr)
 	}
 }
 
-func evalFieldSelectorExpr(ctx *context, ref *ir.FieldSelectorExpr) (state.Element, error) {
+func evalFieldSelectorExpr(ctx Context, ref *ir.FieldSelectorExpr) (state.Element, error) {
 	node, err := evalExpr(ctx, ref.X)
 	if err != nil {
 		return nil, err
@@ -571,46 +515,14 @@ func evalFieldSelectorExpr(ctx *context, ref *ir.FieldSelectorExpr) (state.Eleme
 	if !ok {
 		return nil, ctx.FileSet().Errorf(ref.Source(), "%T has no field %s", node, ref.Src.Sel.Name)
 	}
-	return slt.SelectField(ctx.exprAt(ref), ref.Field.ID)
+	return slt.SelectField(ctx.ExprAt(ref), ref.Field.Name.Name)
 }
 
-func evalFuncLit(ctx *context, ref *ir.FuncLit) (state.Element, error) {
-	return ctx.state.Func(ref, nil), nil
+func evalFuncLit(ctx Context, ref *ir.FuncLit) (state.Element, error) {
+	return ctx.State().Func(ref, nil), nil
 }
 
-func evalFuncLitCall(ctx *context, ref *ir.FuncLit, args []state.Element) (state.Element, error) {
-	graph := ctx.State().BackendGraph()
-	subgraph, err := graph.Core().NewSubgraph(ref.Name())
-	if err != nil {
-		return nil, err
-	}
-	subctx := newContext(ctx.itrp, state.New(ref, subgraph), ref, nil, nil)
-	funcFrame, err := subctx.pushFuncFrame(ref)
-	if err != nil {
-		return nil, err
-	}
-	defer subctx.popFrame()
-	assignArgumentValues(ref.FuncType(), funcFrame, args)
-	for _, resultName := range fieldNames(ref.FType.Results.List) {
-		funcFrame.define(resultName.Name, nil)
-	}
-
-	subresults, err := evalFuncBody(subctx, ref.Body)
-	if err != nil {
-		return nil, err
-	}
-	resultNode, shape, err := state.NodeFromElement(subresults)
-	if err != nil {
-		return nil, err
-	}
-	result, err := graph.Core().NewCall(subgraph, resultNode)
-	if err != nil {
-		return nil, err
-	}
-	return ctx.State().ElementFromNode(ctx.exprAt(ref), result, shape)
-}
-
-func evalIndexExpr(ctx *context, ref *ir.IndexExpr) (state.Element, error) {
+func evalIndexExpr(ctx Context, ref *ir.IndexExpr) (state.Element, error) {
 	x, err := evalExpr(ctx, ref.X)
 	if err != nil {
 		return nil, err
@@ -627,36 +539,22 @@ func evalIndexExpr(ctx *context, ref *ir.IndexExpr) (state.Element, error) {
 	if err != nil {
 		return nil, ctx.FileSet().Errorf(ref.Source(), "cannot cast value %T to an index: %v", indexValue, err)
 	}
-	return slicer.Slice(ctx.exprAt(ref), index)
+	return slicer.Slice(ctx.ExprAt(ref), index)
 }
 
-func computeEinsumAxisLengths(ref *ir.EinsumExpr, xShape, yShape *shape.Shape, node graph.Node) []int {
-	// TODO(degris): hack to postpone computing einstein sum in the interpreter.
-	// We rely on PJRT for the moment.
-	return node.(interface{ PJRTDims() []int }).PJRTDims()
-}
-
-func evalEinsumExpr(ctx *context, ref *ir.EinsumExpr) (state.Element, error) {
-	x, xShape, err := ctx.evalNumericalExpr(ref.X)
+func evalEinsumExpr(ctx Context, ref *ir.EinsumExpr) (state.Element, error) {
+	x, err := evalExpr(ctx, ref.X)
 	if err != nil {
 		return nil, err
 	}
-	y, yShape, err := ctx.evalNumericalExpr(ref.Y)
+	y, err := evalExpr(ctx, ref.Y)
 	if err != nil {
 		return nil, err
 	}
-	dotNode, err := ctx.State().BackendGraph().Core().NewDotGeneral(x, y, ref.BatchAxes, ref.ReduceAxes)
-	if err != nil {
-		return nil, err
-	}
-	targetShape := &shape.Shape{
-		DType:       xShape.DType,
-		AxisLengths: computeEinsumAxisLengths(ref, xShape, yShape, dotNode),
-	}
-	return ctx.State().ElementFromNode(ctx.exprAt(ref), dotNode, targetShape)
+	return ctx.Evaluator().Einsum(ctx, ref, x, y)
 }
 
-func evalMethodSelectorExpr(ctx *context, ref *ir.MethodSelectorExpr) (state.Element, error) {
+func evalMethodSelectorExpr(ctx Context, ref *ir.MethodSelectorExpr) (state.Element, error) {
 	node, err := evalExpr(ctx, ref.X)
 	if err != nil {
 		return nil, err
@@ -668,9 +566,9 @@ func evalMethodSelectorExpr(ctx *context, ref *ir.MethodSelectorExpr) (state.Ele
 	return slt.SelectMethod(ref.Func)
 }
 
-func evalPackageFuncSelectorExpr(ctx *context, ref *ir.PackageFuncSelectorExpr) (state.Element, error) {
+func evalPackageFuncSelectorExpr(ctx Context, ref *ir.PackageFuncSelectorExpr) (state.Element, error) {
 	pkgIdent := ref.Package.Decl.Name()
-	node, err := ctx.find(pkgIdent)
+	node, err := ctx.frame().find(pkgIdent)
 	if err != nil {
 		return nil, err
 	}
@@ -681,9 +579,9 @@ func evalPackageFuncSelectorExpr(ctx *context, ref *ir.PackageFuncSelectorExpr) 
 	return pkg.SelectMethod(ref.Func)
 }
 
-func evalPackageTypeSelector(ctx *context, ref *ir.PackageTypeSelector) (state.Element, error) {
+func evalPackageTypeSelector(ctx Context, ref *ir.PackageTypeSelector) (state.Element, error) {
 	pkgIdent := ref.Package.Decl.Name()
-	node, err := ctx.find(pkgIdent)
+	node, err := ctx.frame().find(pkgIdent)
 	if err != nil {
 		return nil, err
 	}
@@ -694,6 +592,6 @@ func evalPackageTypeSelector(ctx *context, ref *ir.PackageTypeSelector) (state.E
 	return pkg.SelectType(ref.Typ), nil
 }
 
-func evalPackageConstSelectorExpr(ctx *context, ref *ir.PackageConstSelectorExpr) (state.Element, error) {
+func evalPackageConstSelectorExpr(ctx Context, ref *ir.PackageConstSelectorExpr) (state.Element, error) {
 	return evalExpr(ctx, ref.Const.Value)
 }

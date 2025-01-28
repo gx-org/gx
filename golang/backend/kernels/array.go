@@ -29,7 +29,7 @@ type (
 
 	// ArrayT is a multi-dimensional array stored by the host or the device.
 	ArrayT[T dtype.GoDataType] struct {
-		shape   *shape.Shape
+		shape   shape.Shape
 		values  []T
 		factory Factory
 	}
@@ -41,7 +41,7 @@ func (a *ArrayT[T]) arrayT() {}
 
 // Shape of the array.
 func (a *ArrayT[T]) Shape() *shape.Shape {
-	return a.shape
+	return &a.shape
 }
 
 // Flat values of the array.
@@ -92,24 +92,27 @@ func (a *ArrayT[T]) ScalarToArray(dims []int) *ArrayT[T] {
 		values[i] = a.values[0]
 	}
 	return &ArrayT[T]{
-		shape:   &shape,
+		shape:   shape,
 		values:  values,
 		factory: a.factory,
 	}
 }
 
-func (a *ArrayT[T]) reshapeArray(shape *shape.Shape) (Array, error) {
+func (a *ArrayT[T]) reshapeArray(dims []int) (Array, error) {
 	return &ArrayT[T]{
 		factory: a.factory,
-		shape:   shape,
-		values:  append([]T{}, a.values...),
+		shape: shape.Shape{
+			DType:       dtype.Generic[T](),
+			AxisLengths: dims,
+		},
+		values: append([]T{}, a.values...),
 	}, nil
 }
 
 // Reshape scalar kernel.
 func (f arrayFactory[T]) Reshape(x *shape.Shape, axisLengths []int) (Unary, *shape.Shape, error) {
-	shapeOut := &shape.Shape{
-		DType:       x.DType,
+	shapeOut := shape.Shape{
+		DType:       dtype.Generic[T](),
 		AxisLengths: axisLengths,
 	}
 	return func(a Array) (Array, error) {
@@ -119,7 +122,7 @@ func (f arrayFactory[T]) Reshape(x *shape.Shape, axisLengths []int) (Unary, *sha
 			shape:   shapeOut,
 			values:  aT.values,
 		}, nil
-	}, shapeOut, nil
+	}, &shapeOut, nil
 }
 
 func (arrayFactory[T]) Concat(dt dtype.DataType, n int) (NAry, *shape.Shape, error) {

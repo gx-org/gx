@@ -24,13 +24,10 @@ type unaryExpr struct {
 	ext ir.UnaryExpr
 	x   exprNode
 
-	val ir.Atomic
+	val ir.StaticExpr
 }
 
-var (
-	_ exprNumber = (*unaryExpr)(nil)
-	_ exprScalar = (*unaryExpr)(nil)
-)
+var _ exprScalar = (*unaryExpr)(nil)
 
 func processUnaryExpr(owner owner, expr *ast.UnaryExpr) (exprNode, bool) {
 	x, ok := processExpr(owner, expr.X)
@@ -50,18 +47,7 @@ func (n *unaryExpr) buildExpr() ir.Expr {
 	return &n.ext
 }
 
-func (n *unaryExpr) castTo(eval evaluator) (exprScalar, []*ir.ValueRef, bool) {
-	xEval, unknowns, ok := castExprTo(eval, n.x)
-	if !ok {
-		return nil, nil, false
-	}
-	n.x = xEval
-	n.ext.X = n.x.buildExpr()
-	n.val = eval.cast(&n.ext)
-	return n, unknowns, ok
-}
-
-func (n *unaryExpr) scalar() ir.Atomic {
+func (n *unaryExpr) scalar() ir.StaticExpr {
 	return n.val
 }
 

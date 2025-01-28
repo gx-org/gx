@@ -20,20 +20,26 @@ import (
 	"github.com/gx-org/gx/api"
 	"github.com/gx-org/gx/golang/backend"
 	"github.com/gx-org/gx/golang/tests/basictest"
+	"github.com/gx-org/gx/golang/tests/dtypestest"
 	"github.com/gx-org/gx/golang/tests/importtest"
 	"github.com/gx-org/gx/golang/tests/pkgvarstest"
 	bindingstests "github.com/gx-org/gx/golang/tests"
 	gxtesting "github.com/gx-org/gx/tests/testing"
 )
 
-var tests = []func(t *testing.T, rtm *api.Runtime){
+var tests = []func(t *testing.T, dev *api.Device){
 	basictest.Run,
 	importtest.Run,
 	pkgvarstest.Run,
+	dtypestest.Run,
 }
 
 func TestGoBindings(t *testing.T) {
 	bld := gxtesting.NewBuilderStaticSource(nil)
 	rtm := backend.New(bld)
-	bindingstests.Run(t, rtm, tests)
+	dev, err := rtm.Device(0)
+	if err != nil {
+		t.Fatal(err)
+	}
+	bindingstests.Run(t, dev, tests)
 }

@@ -18,7 +18,6 @@ import (
 	"fmt"
 	"go/ast"
 	"go/token"
-	"io"
 
 	"github.com/pkg/errors"
 )
@@ -53,38 +52,13 @@ func Errorf(fset *token.FileSet, src ast.Node, format string, a ...any) error {
 	return Position(fset, src, errors.Errorf(format, a...))
 }
 
-type internalError struct {
-	msg string
-	err error
-}
-
-func (e *internalError) prefix() string {
-	const internalPrefix = "GX internal error. This is a bug in GX. Please report it. Error:\n"
-	if e.msg == "" {
-		return internalPrefix
-	}
-	return fmt.Sprintf("%s%s\nOriginal error:\n", internalPrefix, e.msg)
-}
-
-func (e *internalError) Error() string {
-	return e.prefix() + e.err.Error()
-}
-
-func (e *internalError) Unwrap() error {
-	return e.err
-}
-
-func (e *internalError) Format(s fmt.State, verb rune) {
-	io.WriteString(s, e.prefix())
-	format(e.err, s, verb)
-}
-
 // Internal marks an error as internal, potentially adding additional information.
 func Internal(err error, format string, a ...any) error {
-	return &internalError{
-		msg: fmt.Sprintf(format, a...),
-		err: err,
+	info := ""
+	if format != "" {
+		info = fmt.Sprintf(format, a...) + "\n"
 	}
+	return fmt.Errorf("GX internal error. This is a bug in GX. Please report it. Error:\n%s%w", info, err)
 }
 
 // Internalf returns a formatted compiler error for the user.

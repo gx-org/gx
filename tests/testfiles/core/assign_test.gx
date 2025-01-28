@@ -47,3 +47,13 @@ func TestAssignLambda3() int64 {
 	// Want:
 	// int64(111)
 }
+
+func TestAssignLambda4() (int32, int64) {
+	fn := func() (int32, int64) {
+		return 12, 34
+	}
+	return fn()
+	// Want:
+	// 0: int32(12)
+	// 1: int64(34)
+}

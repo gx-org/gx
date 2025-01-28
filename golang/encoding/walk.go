@@ -21,7 +21,7 @@ import (
 	"strings"
 
 	"github.com/pkg/errors"
-	"github.com/gx-org/backend/platform"
+	"github.com/gx-org/gx/api"
 	"github.com/gx-org/gx/build/ir"
 	"github.com/gx-org/gx/golang/binder/gobindings/types"
 )
@@ -63,7 +63,7 @@ type (
 )
 
 // SendToDevice returns a bridge processor to send arrays to the device when they are loaded.
-func SendToDevice(dev platform.Device) BridgeProcessor {
+func SendToDevice(dev *api.Device) BridgeProcessor {
 	return func(arr types.ArrayBridge) (types.ArrayBridge, error) {
 		return arr.ToDevice(dev)
 	}
@@ -196,11 +196,6 @@ func Unmarshal(bProc BridgeProcessor, target types.Bridger, data Data) (err erro
 // IsValue returns true if the field is a value that can be set, as opposed
 // to a composite structure that needs to be filled recursively.
 func IsValue(typ ir.Type) bool {
-	switch typ.(type) {
-	case *ir.AtomicType:
-		return true
-	case *ir.ArrayType:
-		return true
-	}
-	return false
+	_, ok := typ.(ir.ArrayType)
+	return ok
 }

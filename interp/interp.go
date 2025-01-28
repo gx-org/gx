@@ -44,17 +44,19 @@ import (
 
 	"github.com/pkg/errors"
 	"github.com/gx-org/backend"
+	"github.com/gx-org/gx/api"
 	"github.com/gx-org/gx/api/values"
 	"github.com/gx-org/gx/build/fmterr"
 	"github.com/gx-org/gx/build/ir"
 	goplatform "github.com/gx-org/gx/golang/backend/platform"
+	"github.com/gx-org/gx/interp/elements"
 	"github.com/gx-org/gx/interp/state/proxies"
 	"github.com/gx-org/gx/interp/state"
 )
 
 type (
 	// FuncBuiltin of a builtin function by a backend.
-	FuncBuiltin func(ctx Context, call state.CallAt, fn *state.Func, irFunc *ir.FuncBuiltin, args []state.Element) (output state.Element, err error)
+	FuncBuiltin func(ctx Context, call elements.CallAt, fn *state.Func, irFunc *ir.FuncBuiltin, args []elements.Element) (output state.Element, err error)
 
 	// Interpreter evaluates GX to build a XLA graph.
 	Interpreter struct {
@@ -63,6 +65,19 @@ type (
 		localDevice    *goplatform.Device
 	}
 )
+
+// Compile a function and returns a runner to run the function on the device.
+func Compile(dev *api.Device, funcDecl *ir.FuncDecl, receiver values.Value, args []values.Value, options []PackageOption) (*state.CompiledGraph, error) {
+	itrp, err := New(dev.Runtime().Backend(), options)
+	if err != nil {
+		return nil, err
+	}
+	graph, outNode, err := itrp.Eval(funcDecl, receiver, args)
+	if err != nil {
+		return nil, err
+	}
+	return graph.Compile(dev, outNode)
+}
 
 // New returns a new interpreter.
 func New(bck backend.Backend, options []PackageOption) (*Interpreter, error) {
@@ -100,14 +115,17 @@ func (itrp *Interpreter) Eval(fn *ir.FuncDecl, receiver values.Value, args []val
 	funcName := fn.FullyQualifiedName()
 	bckGraph := itrp.backend.NewGraph(funcName)
 	stat = state.New(fn, bckGraph)
-	ctx := newContext(itrp, stat, fn, receiver, args)
+	ctx, err := newContext(itrp, stat, fn, receiver, args)
+	if err != nil {
+		return nil, nil, err
+	}
 	// Add the receiver and arguments to the context.
 	frame, err := ctx.pushFuncFrame(fn)
 	if err != nil {
 		return nil, nil, err
 	}
 	for _, resultName := range fieldNames(fn.FType.Results.List) {
-		frame.define(resultName.Name, nil)
+		frame.Define(resultName.Name, nil)
 	}
 	if receiver != nil {
 		receiverProxy, err := proxies.ToProxy(receiver, fn.FType.Receiver)
@@ -116,8 +134,11 @@ func (itrp *Interpreter) Eval(fn *ir.FuncDecl, receiver values.Value, args []val
 		}
 		field := fn.ReceiverField()
 		fieldAt := nodeAt[*ir.Field](ctx, field)
-		receiverNode := ctx.state.Receiver(fieldAt, receiverProxy)
-		frame.define(field.Name.Name, receiverNode)
+		receiverNode, err := ctx.State().Receiver(fieldAt, receiverProxy)
+		if err != nil {
+			return nil, nil, err
+		}
+		frame.Define(field.Name.Name, receiverNode)
 	}
 	proxyArgs, err := proxies.ToProxies(args, fn.FType.Params.Fields())
 	if err != nil {
@@ -136,23 +157,26 @@ func (itrp *Interpreter) Eval(fn *ir.FuncDecl, receiver values.Value, args []val
 			return nil, nil, errors.Errorf("missing parameter(s): %s", builder.String())
 		}
 		fieldAt := nodeAt[*ir.Field](ctx, param)
-		argNode := ctx.state.ArgGX(fieldAt, i, proxyArgs)
-		frame.define(param.Name.Name, argNode)
+		argNode, err := ctx.State().ArgGX(fieldAt, i, proxyArgs)
+		if err != nil {
+			return nil, nil, err
+		}
+		frame.Define(param.Name.Name, argNode)
 	}
 	defer ctx.popFrame()
 	out, err = evalFuncBody(ctx, fn.Body)
 	return
 }
 
-func toSingleNode(ctx *context, stmt *ir.ReturnStmt, elements []state.Element) state.Element {
-	if len(elements) == 1 {
-		return elements[0]
+func toSingleNode(ctx Context, stmt *ir.ReturnStmt, els []state.Element) state.Element {
+	if len(els) == 1 {
+		return els[0]
 	}
-	return ctx.state.Tuple(ctx.currentFile(), stmt, elements)
+	return elements.NewTuple(ctx.frame().currentFile(), stmt, els)
 }
 
-func rankOf(ctx *context, src ir.SourceNode, typ *ir.ArrayType) (*ir.Rank, error) {
-	switch rank := typ.RankF.(type) {
+func rankOf(ctx Context, src ir.SourceNode, typ ir.ArrayType) (*ir.Rank, error) {
+	switch rank := typ.Rank().(type) {
 	case *ir.Rank:
 		return rank, nil
 	case *ir.GenericRank:

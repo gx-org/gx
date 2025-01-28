@@ -253,3 +253,17 @@ func TestGather2b() [2]float32 {
 	// Want:
 	// [2]float32{5, 2}
 }
+
+const size = 3
+
+func TestExpandWithVar() [size][2]float32 {
+	return shapes.Expand([1][2]float32{
+		[2]float32{.5, .5},
+	}, []intlen{size, 2})
+	// Want:
+	// [3][2]float32{
+	// 	{0.5, 0.5},
+	// 	{0.5, 0.5},
+	// 	{0.5, 0.5},
+	// }
+}

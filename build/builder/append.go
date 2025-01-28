@@ -26,12 +26,15 @@ type appendFunc struct {
 }
 
 var (
-	_ genericCallTypeNode = (*appendFunc)(nil)
 	_ function            = (*appendFunc)(nil)
+	_ staticValueNode     = (*appendFunc)(nil)
+	_ genericCallTypeNode = (*appendFunc)(nil)
 )
 
-func (f *appendFunc) resolveGenericCallType(scope scoper, src ast.Node, fetcher ir.Fetcher, call *ir.CallExpr) (*funcType, bool) {
-	params, err := builtins.BuildFuncParams(fetcher, call, f.String(), []ir.Type{
+func (f *appendFunc) resolveGenericCallType(scope scoper, fetcher ir.Fetcher, call *callExpr) (*funcType, bool) {
+	src := call.source()
+	irCall := call.buildExpr().(*ir.CallExpr)
+	params, err := builtins.BuildFuncParams(fetcher, irCall, f.String(), []ir.Type{
 		builtins.GenericSliceType,
 		nil,
 	})
@@ -41,7 +44,7 @@ func (f *appendFunc) resolveGenericCallType(scope scoper, src ast.Node, fetcher 
 	}
 	container := params[0].(*ir.SliceType)
 	dtype := container.DType
-	for i, arg := range call.Args[1:] {
+	for i, arg := range irCall.Args[1:] {
 		argType := arg.Type()
 		eq, err := argType.AssignableTo(fetcher, container.DType)
 		if err != nil {
@@ -56,14 +59,14 @@ func (f *appendFunc) resolveGenericCallType(scope scoper, src ast.Node, fetcher 
 	containerGroup := &ir.FieldGroup{Type: params[0]}
 	containerGroup.Fields = []*ir.Field{&ir.Field{Group: containerGroup}}
 	elementsGroup := &ir.FieldGroup{Type: container.DType}
-	for range len(call.Args) - 1 {
+	for range len(irCall.Args) - 1 {
 		elementsGroup.Fields = append(elementsGroup.Fields, &ir.Field{
 			Group: elementsGroup,
 		})
 	}
-	srcFieldList := &ast.FieldList{Opening: call.Src.Lparen, Closing: call.Src.Rparen}
+	srcFieldList := &ast.FieldList{Opening: irCall.Src.Lparen, Closing: irCall.Src.Rparen}
 	typ := ir.FuncType{
-		Src: &ast.FuncType{Func: call.Src.Pos()},
+		Src: &ast.FuncType{Func: irCall.Src.Pos()},
 		Params: &ir.FieldList{
 			Src: srcFieldList,
 			List: []*ir.FieldGroup{
@@ -80,8 +83,12 @@ func (f *appendFunc) resolveGenericCallType(scope scoper, src ast.Node, fetcher 
 	return importFuncType(scope, &typ)
 }
 
-func (f *appendFunc) typeNode() typeNode {
-	return f
+func (f *appendFunc) receiver() *fieldList {
+	return nil
+}
+
+func (f *appendFunc) resolveType(scoper) (typeNode, bool) {
+	return f, true
 }
 
 func (f *appendFunc) name() *ast.Ident {
@@ -91,15 +98,20 @@ func (f *appendFunc) name() *ast.Ident {
 func (f *appendFunc) irFunc() ir.Func {
 	return &f.ext
 }
+
 func (f *appendFunc) isGeneric() bool {
 	return false
+}
+
+func (f *appendFunc) staticValue() ir.StaticValue {
+	return &f.ext
 }
 
 func (f *appendFunc) kind() ir.Kind {
 	return ir.FuncKind
 }
 
-func (f *appendFunc) buildType() ir.Type {
+func (f *appendFunc) irType() ir.Type {
 	return &ir.FuncType{}
 }
 

@@ -1,0 +1,38 @@
+package stdlib
+
+import "control"
+
+type countState struct {
+	count, limit int32
+}
+
+func TestWhile() int32 {
+	s := control.While(
+		countState{count: 0, limit: 10},
+		func(s countState) bool { return s.count != s.limit },
+		func(s countState) countState {
+			return countState{count: s.count + 1, limit: s.limit}
+		})
+	return s.count
+	// Want:
+	// int32(10)
+}
+
+type powState struct {
+	count, limit, out int32
+}
+
+func TestWhile2() powState {
+	return control.While(
+		powState{count: 0, limit: 10, out: 1},
+		func(s powState) bool { return s.count != s.limit },
+		func(s powState) powState {
+			return powState{count: s.count + 1, limit: s.limit, out: 2 * s.out}
+		})
+	// Want:
+	// stdlib.powState{
+	//	count: int32(10),
+	//	limit: int32(10),
+	//	out: int32(1024),
+	// }
+}

@@ -1,0 +1,19 @@
+package core
+
+func TestReturnStringLiteral() string {
+	return "Hello"
+	// Want:
+	// "Hello"
+}
+
+func TestReturnStringLiteralBackQuote() string {
+	return `Hello"`
+	// Want:
+	// "Hello\""
+}
+
+func TestReturnStringLiteralLineReturn() string {
+	return "Hello\nWorld"
+	// Want:
+	// "Hello\nWorld"
+}

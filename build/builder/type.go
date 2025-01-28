@@ -25,27 +25,29 @@ import (
 )
 
 var (
-	invalid        = &builtinType[ir.InvalidType]{ext: ir.InvalidType{}}
-	unknown        = &builtinType[ir.UnknownType]{ext: ir.UnknownType{}}
-	void           = &builtinType[ir.VoidType]{ext: ir.VoidType{}}
-	emptyInterface = &builtinType[ir.InterfaceType]{ext: ir.InterfaceType{}}
-	float64Type    = scalarType(ir.Float64Kind)
-	numberType     = &builtinType[ir.Type]{ext: (&ir.Number{}).Type()}
-	boolType       = scalarType(ir.BoolKind)
-	axisLengthType = &builtinType[*ir.AtomicType]{ext: ir.AxisLengthType()}
-	defaultIntType = &builtinType[*ir.AtomicType]{ext: ir.DefaultIntType}
+	invalid         = &builtinType[ir.InvalidType]{ext: ir.InvalidType{}}
+	unknown         = &builtinType[ir.UnknownType]{ext: ir.UnknownType{}}
+	void            = &builtinType[ir.VoidType]{ext: ir.VoidType{}}
+	emptyInterface  = &builtinType[ir.InterfaceType]{ext: ir.InterfaceType{}}
+	float64Type     = scalarType(ir.Float64Kind)
+	numberFloatType = &builtinType[ir.Type]{ext: ir.NumberFloatType()}
+	numberIntType   = &builtinType[ir.Type]{ext: ir.NumberIntType()}
+	stringType      = &builtinType[ir.Type]{ext: ir.StringType()}
+	boolType        = scalarType(ir.BoolKind)
+	axisLengthType  = &builtinType[ir.Type]{ext: ir.IntLenType()}
+	defaultIntType  = &builtinType[ir.Type]{ext: ir.DefaultIntType}
 )
 
 func invalidType() (typeNode, ir.Type) {
-	return invalid, invalid.buildType()
+	return invalid, invalid.irType()
 }
 
 func typeNodeOk(typ typeNode) (typeNode, bool) {
 	return typ, typ.kind() != ir.InvalidKind
 }
 
-func scalarType(knd ir.Kind) *builtinType[*ir.AtomicType] {
-	return &builtinType[*ir.AtomicType]{ext: &ir.AtomicType{Knd: knd}}
+func scalarType(knd ir.Kind) *builtinType[ir.Type] {
+	return &builtinType[ir.Type]{ext: ir.TypeFromKind(knd)}
 }
 
 // builtinType encapsulates a type defined in the intermediate representation.
@@ -54,20 +56,21 @@ type builtinType[T ir.Type] struct {
 }
 
 var (
-	_ concreteTypeNode = (*builtinType[*ir.AtomicType])(nil)
-	_ arrayTypeNode    = (*builtinType[*ir.AtomicType])(nil)
+	_ concreteTypeNode = (*builtinType[ir.Type])(nil)
+	_ arrayTypeNode    = (*builtinType[ir.Type])(nil)
+	_ reconciler       = (*builtinType[ir.Type])(nil)
 )
 
-func findBuilderPackage(scope scoper, irpkg *ir.Package) *bPackage {
-	pkg := scope.block().pkg()
+func findBuilderPackage(scope scoper, irpkg *ir.Package) *basePackage {
+	pkg := scope.fileScope().pkg()
 	if &pkg.repr == irpkg {
 		return pkg
 	}
-	pkg, err := pkg.builder().importPath(irpkg.FullName())
+	fPkg, err := pkg.builder().importPath(irpkg.FullName())
 	if err != nil {
 		return nil
 	}
-	return pkg
+	return fPkg.base()
 }
 
 func toTypeNode(scope scoper, irType ir.Type) (typeNode, bool) {
@@ -75,15 +78,18 @@ func toTypeNode(scope scoper, irType ir.Type) (typeNode, bool) {
 		scope.err().Append(errors.Errorf("cannot import a nil type"))
 		return invalid, false
 	}
+	arrayType, ok := irType.(ir.ArrayType)
+	if ok {
+		if arrayType.Rank().IsAtomic() {
+			return &builtinType[ir.ArrayType]{ext: arrayType}, true
+		}
+		return importArrayType(scope, arrayType)
+	}
 	switch tpT := irType.(type) {
 	case *ir.StructType:
 		return importStructType(scope, tpT)
-	case *ir.AtomicType:
-		return &builtinType[*ir.AtomicType]{ext: tpT}, true
 	case *ir.BuiltinType:
 		return &builtinType[*ir.BuiltinType]{ext: tpT}, true
-	case *ir.ArrayType:
-		return importArrayType(scope, tpT)
 	case *ir.SliceType:
 		return importSliceType(scope, tpT)
 	case *ir.NamedType:
@@ -93,18 +99,18 @@ func toTypeNode(scope scoper, irType ir.Type) (typeNode, bool) {
 			scope.err().Append(errors.Errorf("package %s not registered", typePackage))
 			return invalid, false
 		}
-		res := pkg.ns.fetchIdentNode(tpT.Name())
+		res := pkg.ns.fetch(tpT.Name())
 		if res == nil {
 			scope.err().Append(errors.Errorf("cannot import type %s: name not registered", tpT.Name()))
 			return invalid, false
 		}
-		_, typ, ok := res.typeF(scope)
+		typ, ok := res.typeF(scope)
 		return typ, ok
 	}
 	return &builtinType[ir.Type]{ext: irType}, true
 }
 
-func (n *builtinType[T]) buildType() ir.Type {
+func (n *builtinType[T]) irType() ir.Type {
 	return n.ext
 }
 
@@ -131,7 +137,7 @@ func (n *builtinType[T]) convertTo(scope scoper, pos nodePos, dstN typeNode) (ty
 }
 
 func (n *builtinType[T]) reconcileWith(scope scoper, pos nodePos, typ typeNode) (typeNode, bool) {
-	if n.kind() == ir.NumberKind {
+	if ir.IsNumber(n.kind()) {
 		return typ, true
 	}
 	return n, true
@@ -142,7 +148,7 @@ func (n *builtinType[T]) isGeneric() bool {
 }
 
 func (n *builtinType[T]) String() string {
-	return n.buildType().String()
+	return n.irType().String()
 }
 
 func (n *builtinType[T]) resolveConcreteType(scope scoper) (typeNode, bool) {
@@ -153,15 +159,15 @@ func (n *builtinType[T]) resolveConcreteType(scope scoper) (typeNode, bool) {
 type namedType struct {
 	repr ir.NamedType
 
-	ref          typeNode
-	file         *file
-	methods      map[ir.Func]function
-	nameToMethod map[string]function
+	ref     typeNode
+	file    *file
+	methods map[string]function
 }
 
 var (
 	_ selector         = (*namedType)(nil)
 	_ concreteTypeNode = (*namedType)(nil)
+	_ irBuilder        = (*namedType)(nil)
 )
 
 func processTypeDecl(scope *scopeFile, decl *ast.GenDecl) bool {
@@ -178,24 +184,26 @@ func processType(scope *scopeFile, spec *ast.TypeSpec) bool {
 			NameT: spec.Name.Name,
 			Src:   spec,
 		},
-		file:         scope.file(),
-		methods:      make(map[ir.Func]function),
-		nameToMethod: make(map[string]function),
+		file:    scope.file(),
+		methods: make(map[string]function),
 	}
 	var ok bool
 	n.ref, ok = processTypeExpr(scope, spec.Type)
 	if !ok {
 		return false
 	}
+	if spec.TypeParams.NumFields() > 0 {
+		scope.err().Appendf(spec, "type may not have type parameters")
+		ok = false
+	}
 	return scope.file().declareType(scope, spec.Name, n) && ok
 }
 
 func importType(scope *scopeFile, typ *ir.NamedType) (*namedType, bool) {
 	n := &namedType{
-		repr:         *typ,
-		file:         scope.file(),
-		methods:      make(map[ir.Func]function),
-		nameToMethod: make(map[string]function),
+		repr:    *typ,
+		file:    scope.file(),
+		methods: make(map[string]function),
 	}
 	ok := scope.file().declareType(scope, n.repr.Src.Name, n)
 	if !ok {
@@ -208,16 +216,19 @@ func importType(scope *scopeFile, typ *ir.NamedType) (*namedType, bool) {
 	return n, ok
 }
 
-func (n *namedType) registerMethod(method ir.Func, fn function) {
-	n.methods[method] = fn
-	n.nameToMethod[method.Name()] = fn
+func (n *namedType) registerMethod(scope scoper, method ir.Func, fn function) {
+	if method.FuncType() != nil && method.FuncType().Receiver == nil {
+		scope.err().Append(errors.Errorf("cannot register method %q for type %q: no receiver specified", method.Name(), n))
+		return
+	}
+	n.methods[method.Name()] = fn
 	n.repr.Methods = append(n.repr.Methods, method)
 }
 
 func (n *namedType) importMethods(block *scopeFile, methods []ir.Func) {
 	for _, method := range methods {
-		fn := importFuncBuiltin(block, method.(*ir.FuncBuiltin))
-		n.registerMethod(fn.irFunc(), fn)
+		fn, _ := importFuncBuiltin(block, method.(*ir.FuncBuiltin))
+		n.registerMethod(block, fn.irFunc(), fn)
 	}
 }
 
@@ -225,21 +236,25 @@ func (n *namedType) source() ast.Node {
 	return n.repr.Src
 }
 
-func (n *namedType) buildType() ir.Type {
-	return n.buildNamedType()
+func (n *namedType) irType() ir.Type {
+	return &n.repr
 }
 
-func (n *namedType) buildNamedType() *ir.NamedType {
+func (n *namedType) buildIR(pkg *ir.Package) {
+	for _, method := range n.methods {
+		method.irFunc()
+	}
 	sort.Slice(n.repr.Methods, func(i, j int) bool {
 		iName := n.repr.Methods[i].Name()
 		jName := n.repr.Methods[j].Name()
 		return iName < jName
 	})
-	return &n.repr
+	n.repr.ID = len(pkg.Types)
+	pkg.Types = append(pkg.Types, &n.repr)
 }
 
 func (n *namedType) convertibleTo(scope scoper, typ typeNode) (bool, error) {
-	return n.buildType().ConvertibleTo(scope.evalFetcher(), typ.buildType())
+	return n.irType().ConvertibleTo(scope.evalFetcher(), typ.irType())
 }
 
 func (n *namedType) isGeneric() bool {
@@ -251,7 +266,7 @@ func (n *namedType) kind() ir.Kind {
 }
 
 func (n *namedType) String() string {
-	return n.buildType().String()
+	return n.irType().String()
 }
 
 func funcPos(scope scoper, fn function) string {
@@ -267,11 +282,8 @@ func (n *namedType) assignMethod(scope scoper, fn *funcDecl) bool {
 	if !ir.ValidName(name) {
 		return true
 	}
-	if n.nameToMethod == nil {
-		n.nameToMethod = make(map[string]function)
-	}
 	// Check if a method has already been defined.
-	if prev, ok := n.nameToMethod[name]; ok {
+	if prev, ok := n.methods[name]; ok {
 		scope.err().Appendf(fn.source(), "method %s.%s already declared at %s", n.repr.Name(), name, funcPos(scope, prev))
 		return false
 	}
@@ -283,7 +295,7 @@ func (n *namedType) assignMethod(scope scoper, fn *funcDecl) bool {
 			return false
 		}
 	}
-	n.registerMethod(&fn.ext, fn)
+	n.registerMethod(scope, &fn.ext, fn)
 	return true
 }
 
@@ -296,12 +308,12 @@ func (n *namedType) resolveConcreteType(scope scoper) (typeNode, bool) {
 		_, n.repr.Underlying = invalidType()
 		return typeNodeOk(n)
 	}
-	n.repr.Underlying = underlying.buildType()
+	n.repr.Underlying = underlying.irType()
 	return n, true
 }
 
 func (n *namedType) buildSelectNode(scope scoper, expr *ast.SelectorExpr) selectNode {
-	if fn, ok := n.nameToMethod[expr.Sel.Name]; ok {
+	if fn, ok := n.methods[expr.Sel.Name]; ok {
 		return buildMethodSelectorExpr(expr, n, fn.irFunc())
 	}
 	underlying, ok := n.ref.(selector)
@@ -328,15 +340,15 @@ type tupleType struct {
 var _ typeNode = (*tupleType)(nil)
 
 func toTupleType(fn *funcType, fields *fieldList) *tupleType {
-	return &tupleType{fn: fn, fields: fields.fields()}
+	return &tupleType{fn: fn, fields: fields.fieldsSlice()}
 }
 
-func (tupleType) buildType() ir.Type {
+func (tupleType) irType() ir.Type {
 	return nil
 }
 
 func (tupleType) kind() ir.Kind {
-	return tupleKind
+	return ir.TupleKind
 }
 
 func (tupleType) isGeneric() bool {
@@ -376,17 +388,18 @@ func resolveType(scope scoper, src nodePos, typ typeNode) (out typeNode, ok bool
 	return concrete.resolveConcreteType(scope)
 }
 
-func resolveGenericCallType(scope scoper, calleeName string, src ast.Node, typ typeNode, fetcher ir.Fetcher, call *ir.CallExpr) (out *funcType, ok bool) {
+func resolveGenericCallType(scope scoper, typ typeNode, fetcher ir.Fetcher, call *callExpr) (out *funcType, ok bool) {
+	calleeName := call.callee.String()
 	if calleeName == einsum {
-		scope.err().Appendf(src, "%s can only be called in an assignment statement", calleeName)
+		scope.err().Appendf(call.source(), "%s can only be called in an assignment statement", calleeName)
 		return nil, false
 	}
 	generic, ok := typ.(genericCallTypeNode)
 	if !ok {
-		scope.err().Appendf(src, "cannot call non-generic call %s (of kind %s)", calleeName, nodeKindS(typ))
+		scope.err().Appendf(call.source(), "cannot call non-generic call %s (of kind %s)", calleeName, nodeKindS(typ))
 		return nil, false
 	}
-	return generic.resolveGenericCallType(scope, src, fetcher, call)
+	return generic.resolveGenericCallType(scope, fetcher, call)
 }
 
 func findUnderlying(typ typeNode) typeNode {
@@ -411,4 +424,42 @@ func toTypeCast(expr exprNode) *typeCast {
 		return nil
 	}
 	return caster.toTypeCast()
+}
+
+type deferredType struct {
+	src ast.Node
+	ref typeNode
+}
+
+var (
+	_ typeNode         = (*deferredType)(nil)
+	_ concreteTypeNode = (*deferredType)(nil)
+)
+
+func (n *deferredType) source() ast.Node {
+	return n.src
+}
+
+func (n *deferredType) irType() ir.Type {
+	return n.ref.irType()
+}
+
+func (n *deferredType) convertibleTo(scope scoper, typ typeNode) (bool, error) {
+	return n.irType().ConvertibleTo(scope.evalFetcher(), typ.irType())
+}
+
+func (n *deferredType) resolveConcreteType(scope scoper) (typeNode, bool) {
+	return typeNodeOk(n.ref)
+}
+
+func (n *deferredType) isGeneric() bool {
+	return true
+}
+
+func (n *deferredType) kind() ir.Kind {
+	return n.ref.kind()
+}
+
+func (n *deferredType) String() string {
+	return n.ref.String()
 }

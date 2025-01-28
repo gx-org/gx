@@ -20,19 +20,21 @@ import (
 	"github.com/gx-org/backend/shape"
 	"github.com/gx-org/gx/api/values"
 	"github.com/gx-org/gx/build/ir"
+	"github.com/gx-org/gx/interp/elements"
 )
 
 // pkgVar is package (static) variable).
 type pkgVar struct {
 	state *State
 	decl  *ir.VarDecl
+	expr  elements.ExprAt
 	value *values.HostArray
-	nods  []*graph.OutputNode
+	node  *graph.OutputNode
 }
 
 var (
-	_ backendElement      = (*pkgVar)(nil)
 	_ ElementWithConstant = (*pkgVar)(nil)
+	_ Materialiser        = (*pkgVar)(nil)
 )
 
 // PkgVar returns a new node representing a scalar value.
@@ -49,11 +51,15 @@ func (g *State) PkgVar(decl *ir.VarDecl, value values.Value) (NumericalElement, 
 	if err != nil {
 		return nil, err
 	}
-	elmt.nods = []*graph.OutputNode{&graph.OutputNode{
+	elmt.node = &graph.OutputNode{
 		Node:  nod,
 		Shape: hostValue.Shape(),
-	}}
+	}
 	return elmt, nil
+}
+
+func (n *pkgVar) Flatten() ([]Element, error) {
+	return []Element{n}, nil
 }
 
 func (n *pkgVar) Shape() *shape.Shape {
@@ -62,10 +68,6 @@ func (n *pkgVar) Shape() *shape.Shape {
 
 func (n *pkgVar) NumericalConstant() *values.HostArray {
 	return n.value
-}
-
-func (n *pkgVar) nodes() ([]*graph.OutputNode, error) {
-	return n.nods, nil
 }
 
 // State owning the element.
@@ -79,7 +81,12 @@ func (n *pkgVar) Type() ir.Type {
 }
 
 func (n *pkgVar) valueFromHandle(handles *handleParser) (values.Value, error) {
-	return values.NewDeviceArray(n.Type(), handles.next()), nil
+	// TODO(b/388207169): Always transfer the value to device because C++ bindings do not support HostValue.
+	return n.value.ToDevice(handles.device())
+}
+
+func (n *pkgVar) Materialise() (*graph.OutputNode, error) {
+	return n.node, nil
 }
 
 // ToExpr returns the value as a GX IR expression.

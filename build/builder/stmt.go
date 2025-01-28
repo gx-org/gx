@@ -90,7 +90,7 @@ func processExprStmt(owner owner, fn *funcDecl, stmt *ast.ExprStmt) (*exprStmt, 
 
 func (n *exprStmt) resolveType(scope *scopeBlock) bool {
 	typ, ok := n.x.resolveType(scope)
-	if !ok || !ir.IsValid(typ.buildType()) {
+	if !ok || !ir.IsValid(typ.irType()) {
 		return false
 	}
 	if typ.kind() != ir.VoidKind {

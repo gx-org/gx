@@ -20,6 +20,8 @@ import (
 
 	"github.com/gx-org/gx/api"
 	"github.com/gx-org/gx/golang/tests/basictest"
+	"github.com/gx-org/gx/golang/tests/cartpoletest"
+	"github.com/gx-org/gx/golang/tests/dtypestest"
 	"github.com/gx-org/gx/golang/tests/importtest"
 	"github.com/gx-org/gx/golang/tests/mathtest"
 	"github.com/gx-org/gx/golang/tests/parameterstest"
@@ -33,25 +35,33 @@ import (
 //go:generate go run ../../golang/tools/testsmain/testsmain.go --gx_test_folder=parameterstest
 //go:generate go run ../../golang/tools/testsmain/testsmain.go --gx_test_folder=pkgvarstest
 //go:generate go run ../../golang/tools/testsmain/testsmain.go --gx_test_folder=randtest
+//go:generate go run ../../golang/tools/testsmain/testsmain.go --gx_test_folder=dtypestest
+//go:generate go run ../../golang/tools/testsmain/testsmain.go --gx_test_folder=cartpoletest
 
-var all = []func(t *testing.T, rtm *api.Runtime){
+var all = []func(t *testing.T, dev *api.Device){
 	basictest.Run,
 	importtest.Run,
 	mathtest.Run,
 	parameterstest.Run,
 	pkgvarstest.Run,
 	randtest.Run,
+	dtypestest.Run,
+	cartpoletest.Run,
 }
 
 // RunAll runs all the bindings tests.
 func RunAll(t *testing.T, rtm *api.Runtime) {
-	Run(t, rtm, all)
+	dev, err := rtm.Device(0)
+	if err != nil {
+		t.Fatal(err)
+	}
+	Run(t, dev, all)
 }
 
 // Run all the Go binding tests.
-func Run(t *testing.T, rtm *api.Runtime, tests []func(t *testing.T, rtm *api.Runtime)) {
+func Run(t *testing.T, dev *api.Device, tests []func(t *testing.T, dev *api.Device)) {
 	t.Helper()
 	for _, funTest := range tests {
-		funTest(t, rtm)
+		funTest(t, dev)
 	}
 }

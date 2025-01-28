@@ -34,7 +34,7 @@ import (
 
 func findTests(pkg *ir.Package) []*ir.FuncDecl {
 	funs := []*ir.FuncDecl{}
-	for _, fn := range pkg.ExportedFuncs() {
+	for fn := range pkg.ExportedFuncs() {
 		if !strings.HasPrefix(fn.Name(), "Test") {
 			continue
 		}

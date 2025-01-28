@@ -30,8 +30,10 @@ import (
 	"github.com/gx-org/backend/graph"
 	"github.com/gx-org/backend/platform"
 	"github.com/gx-org/backend/shape"
+	"github.com/gx-org/gx/api"
 	"github.com/gx-org/gx/api/values"
 	"github.com/gx-org/gx/build/ir"
+	"github.com/gx-org/gx/interp/elements"
 )
 
 type (
@@ -49,7 +51,7 @@ type (
 	Argument interface {
 		Shape() *shape.Shape
 
-		ToDeviceHandle(platform.Device, Context) (platform.DeviceHandle, error)
+		ToDeviceHandle(*api.Device, Context) (platform.DeviceHandle, error)
 	}
 	// Tracer receives traced values from a run.
 	Tracer interface {
@@ -63,27 +65,25 @@ type (
 		inits        []Initializer
 		args         []Argument
 
-		tracer nodeTracer
+		traces traces
 	}
+
+	// Element is a value in the interpreter.
+	Element = elements.Element
 
 	// CompiledGraph is a graph compiled for a device.
 	CompiledGraph struct {
-		device platform.Device
+		device *api.Device
 		state  *State
 		runner graph.Runner
 		out    Element
 	}
 
-	// Element in the state.
-	Element interface {
-		State() *State
-	}
-
-	// backendElement is an element that can be converted into one or more graph nodes.
-	backendElement interface {
+	// Materialiser is an element that can return an instance of itself composed only of elements from the backend graph.
+	Materialiser interface {
 		Element
-
-		nodes() ([]*graph.OutputNode, error)
+		// Materialise returns the element with all its values from the graph.
+		Materialise() (*graph.OutputNode, error)
 	}
 
 	// Copyable is an interface implemented by nodes that need to be copied when passed to a function.
@@ -93,18 +93,18 @@ type (
 
 	// FieldSelector selects a field given its index.
 	FieldSelector interface {
-		SelectField(ExprAt, int) (Element, error)
+		SelectField(elements.ExprAt, string) (Element, error)
 	}
 
 	// Slicer is a state element that can be sliced.
 	Slicer interface {
-		Slice(ExprAt, int) (Element, error)
+		Slice(elements.ExprAt, int) (Element, error)
 	}
 
 	// ArraySlicer is a state element with an array that can be sliced.
 	ArraySlicer interface {
 		NumericalElement
-		Slice(ExprAt, int) (Element, error)
+		Slice(elements.ExprAt, int) (Element, error)
 	}
 
 	// MethodSelector selects a method given its index.
@@ -115,9 +115,11 @@ type (
 	emptyRunner struct{}
 )
 
-// New XLA computation graph.
+// New interpreter state.
 func New(fn ir.Func, backendGraph graph.Graph) *State {
-	return &State{fn: fn, backendGraph: backendGraph}
+	s := &State{fn: fn, backendGraph: backendGraph}
+	s.traces.state = s
+	return s
 }
 
 // BackendGraph returns the graph maintained by the backend.
@@ -138,28 +140,52 @@ func (g *State) RegisterArg(arg Argument) int {
 	return index
 }
 
+// ExtractGraphNodes extracts all the graph nodes from an element and its children.
+// It first flattens the element, then extracts all the BackendNodes (that is, any elements
+// representing a node in the backend graph).
+func ExtractGraphNodes(out Element) ([]*graph.OutputNode, error) {
+	flatten, err := out.Flatten()
+	if err != nil {
+		return nil, err
+	}
+	var graphNodes []*graph.OutputNode
+	for _, elt := range flatten {
+		node, ok := elt.(*BackendNode)
+		if !ok {
+			continue
+		}
+		graphNodes = append(graphNodes, node.nod)
+	}
+	return graphNodes, nil
+}
+
 // Compile a node given a set of parameters and using this node as an output.
 // Returns a function that will be run on a device given some inputs.
-func (g *State) Compile(dev platform.Device, out Element) (*CompiledGraph, error) {
+func (g *State) Compile(dev *api.Device, out Element) (*CompiledGraph, error) {
 	paramShapes := make([]*shape.Shape, len(g.args))
 	for i, arg := range g.args {
 		paramShapes[i] = arg.Shape()
-	}
-	outNodes, err := OutputsFromElement(out)
-	if err != nil {
-		return nil, err
 	}
 	cg := &CompiledGraph{
 		state:  g,
 		device: dev,
 		out:    out,
 	}
-	if len(outNodes) == 0 {
+	// Flatten out and get all the backend graph nodes from the list.
+	graphOutNodes, err := ExtractGraphNodes(out)
+	if err != nil {
+		return nil, err
+	}
+	graphAuxNodes, err := ExtractGraphNodes(g.traces.asTuple())
+	if err != nil {
+		return nil, err
+	}
+	if len(graphOutNodes) == 0 && len(graphAuxNodes) == 0 {
 		// Nothing to run in the graph.
 		// We do not need to compile and we leave cg.runner to nil.
 		return cg, nil
 	}
-	cg.runner, err = g.backendGraph.Compile(dev, outNodes, g.tracer.nodes, paramShapes)
+	cg.runner, err = g.backendGraph.Compile(dev.PlatformDevice(), graphOutNodes, graphAuxNodes, paramShapes)
 	return cg, err
 }
 
@@ -176,6 +202,22 @@ func (fc functionCall) Args() []values.Value {
 	return fc.args
 }
 
+func (g *CompiledGraph) run(ctx Context) (out, traces []platform.DeviceHandle, err error) {
+	if g.runner == nil {
+		// No runner: there is nothing to run in the graph.
+		return nil, nil, nil
+	}
+	handles := make([]platform.Handle, len(g.state.args))
+	for i, arg := range g.state.args {
+		var err error
+		handles[i], err = arg.ToDeviceHandle(g.device, ctx)
+		if err != nil {
+			return nil, nil, err
+		}
+	}
+	return g.runner.Run(handles)
+}
+
 // Run the graph.
 func (g *CompiledGraph) Run(receiver values.Value, args []values.Value, tracer Tracer) ([]values.Value, error) {
 	fc := functionCall{receiver: receiver, args: args}
@@ -184,36 +226,24 @@ func (g *CompiledGraph) Run(receiver values.Value, args []values.Value, tracer T
 			return nil, err
 		}
 	}
-	if g.runner == nil {
-		// No runner: there is nothing to run in the graph.
-		return g.handlesToValues(nil)
-	}
-	handles := make([]platform.Handle, len(g.state.args))
-	for i, arg := range g.state.args {
-		var err error
-		handles[i], err = arg.ToDeviceHandle(g.device, fc)
-		if err != nil {
-			return nil, err
-		}
-	}
-	out, traced, err := g.runner.Run(handles)
+	out, traced, err := g.run(fc)
 	if err != nil {
 		return nil, err
 	}
-	if err := g.state.tracer.process(tracer, traced); err != nil {
+	if err := g.state.traces.process(g.device, fc, tracer, traced); err != nil {
 		return nil, err
 	}
-	return g.handlesToValues(out)
+	return g.handlesToValues(fc, out)
 }
 
-func (g *CompiledGraph) handlesToValues(out []platform.DeviceHandle) ([]values.Value, error) {
-	reader := &handleParser{handles: out}
-	elements := []Element{g.out}
+func (g *CompiledGraph) handlesToValues(ctx Context, handles []platform.DeviceHandle) ([]values.Value, error) {
+	reader := newHandleParser(g.device, ctx, handles)
+	els := []Element{g.out}
 	if g.state.fn.FuncType().Results.Len() > 1 {
-		elements = g.out.(*Tuple).Unpack()
+		els = g.out.(*elements.Tuple).Elements()
 	}
-	values := make([]values.Value, len(elements))
-	for i, el := range elements {
+	values := make([]values.Value, len(els))
+	for i, el := range els {
 		val, err := reader.parse(el)
 		if err != nil {
 			return nil, err

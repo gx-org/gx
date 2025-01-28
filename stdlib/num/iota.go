@@ -31,21 +31,16 @@ func (f iotaWithAxis) BuildFuncIR(impl *impl.Stdlib, pkg *ir.Package) (*ir.FuncB
 
 func (f iotaWithAxis) BuildFuncType(fetcher ir.Fetcher, call *ir.CallExpr) (*ir.FuncType, error) {
 	params, err := builtins.BuildFuncParams(fetcher, call, f.Name(), []ir.Type{
-		ir.AxisLengthsType(),
-		ir.AxisIndexType(),
+		ir.IntLenSliceType(),
+		ir.IntIndexType(),
 	})
 	if err != nil {
 		return nil, err
 	}
 	rank := builtins.RankFromExpr(call.Src, call.Args[0])
 	return &ir.FuncType{
-		Params: builtins.Fields(params...),
-		Results: builtins.Fields(
-			&ir.ArrayType{
-				DType: ir.DefaultIntType,
-				RankF: rank,
-			},
-		),
+		Params:  builtins.Fields(params...),
+		Results: builtins.Fields(ir.NewArrayType(nil, ir.DefaultIntType, rank)),
 	}, nil
 }
 
@@ -59,19 +54,14 @@ func (f iotaFull) BuildFuncIR(impl *impl.Stdlib, pkg *ir.Package) (*ir.FuncBuilt
 
 func (f iotaFull) BuildFuncType(fetcher ir.Fetcher, call *ir.CallExpr) (*ir.FuncType, error) {
 	params, err := builtins.BuildFuncParams(fetcher, call, f.Name(), []ir.Type{
-		ir.AxisLengthsType(),
+		ir.IntLenSliceType(),
 	})
 	if err != nil {
 		return nil, err
 	}
 	rank := builtins.RankFromExpr(call.Src, call.Args[0])
 	return &ir.FuncType{
-		Params: builtins.Fields(params...),
-		Results: builtins.Fields(
-			&ir.ArrayType{
-				DType: ir.DefaultIntType,
-				RankF: rank,
-			},
-		),
+		Params:  builtins.Fields(params...),
+		Results: builtins.Fields(ir.NewArrayType(nil, ir.DefaultIntType, rank)),
 	}, nil
 }

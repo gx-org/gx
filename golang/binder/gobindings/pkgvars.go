@@ -20,6 +20,7 @@ import (
 	"text/template"
 
 	"github.com/pkg/errors"
+	"github.com/gx-org/gx/base/tmpl"
 	"github.com/gx-org/gx/build/ir"
 )
 
@@ -50,10 +51,10 @@ type pkgVar struct {
 
 func (v pkgVar) ToHostValue() (string, error) {
 	kind := v.TypeV.Kind()
-	if kind == ir.AxisLengthKind || kind == ir.AxisIndexKind {
+	if kind == ir.IntLenKind || kind == ir.IntIdxKind {
 		return "types.DefaultInt(value)", nil
 	}
-	if ir.IsAtomic(kind) {
+	if ir.SupportOperators(kind) {
 		return fmt.Sprintf("types.%s(value)", strings.Title(kind.String())), nil
 	}
 	return "", errors.Errorf("static variable of type %s not supported", kind.String())
@@ -68,7 +69,7 @@ func (v pkgVar) PackagePath() string {
 }
 
 func (b *binder) buildPkgVars() (string, error) {
-	return iterateFunc(b.Package.Vars, func(index int, decl *ir.VarDecl) (string, error) {
+	return tmpl.IterateFunc(b.Package.Vars, func(index int, decl *ir.VarDecl) (string, error) {
 		buf := strings.Builder{}
 		if err := pkgVarsTmpl.Execute(&buf, &pkgVar{
 			binder:   b,

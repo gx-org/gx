@@ -42,7 +42,7 @@ func newErrorInspector(pkg *ir.Package) (*errorInspector, bool) {
 	for name, file := range pkg.Files {
 		errs := make(map[int]fmterr.ErrorWithPos)
 		ei.collectPackageLevelErrors(errs, file)
-		ei.collectFunctionLevelErrors(errs, file)
+		ei.collectFuncBodyErrors(errs, file)
 		ei.fileToLineToErrors[name] = errs
 		ei.numExpected += len(errs)
 	}
@@ -51,44 +51,60 @@ func newErrorInspector(pkg *ir.Package) (*errorInspector, bool) {
 
 func (ei *errorInspector) collectPackageLevelErrors(errs map[int]fmterr.ErrorWithPos, file *ir.File) {
 	for _, decl := range file.Src.Decls {
-		genDecl, ok := decl.(*ast.GenDecl)
-		if !ok {
-			continue
-		}
-		for _, spec := range genDecl.Specs {
-			var comment *ast.CommentGroup
-			switch specT := spec.(type) {
-			case *ast.ValueSpec:
-				comment = specT.Comment
-			case *ast.TypeSpec:
-				comment = specT.Comment
-			case *ast.ImportSpec:
-				comment = specT.Comment
-			}
-			ei.commentToError(errs, comment)
+		switch declT := decl.(type) {
+		case *ast.GenDecl:
+			ei.collectGenDeclErrors(errs, declT)
+		case *ast.FuncDecl:
+			ei.commentGroupToError(errs, declT.Doc)
 		}
 	}
 }
 
-func (ei *errorInspector) collectFunctionLevelErrors(errs map[int]fmterr.ErrorWithPos, file *ir.File) {
+func (ei *errorInspector) collectGenDeclErrors(errs map[int]fmterr.ErrorWithPos, decl *ast.GenDecl) {
+	for _, spec := range decl.Specs {
+		var comment *ast.CommentGroup
+		switch specT := spec.(type) {
+		case *ast.ValueSpec:
+			comment = specT.Comment
+		case *ast.TypeSpec:
+			comment = specT.Comment
+		case *ast.ImportSpec:
+			comment = specT.Comment
+		}
+		ei.commentGroupToError(errs, comment)
+	}
+}
+
+func (ei *errorInspector) collectFuncBodyErrors(errs map[int]fmterr.ErrorWithPos, file *ir.File) {
 	for _, cmt := range file.Src.Comments {
+		ei.commentGroupToError(errs, cmt)
+	}
+}
+
+func (ei *errorInspector) commentGroupToError(errs map[int]fmterr.ErrorWithPos, group *ast.CommentGroup) {
+	if group == nil {
+		return
+	}
+	for _, cmt := range group.List {
 		ei.commentToError(errs, cmt)
 	}
 }
 
-func (ei *errorInspector) commentToError(errs map[int]fmterr.ErrorWithPos, cmt *ast.CommentGroup) {
-	text := strings.TrimSpace(cmt.Text())
-	if !strings.HasPrefix(text, errorPrefix) {
-		return
+func (ei *errorInspector) commentToError(errs map[int]fmterr.ErrorWithPos, cmt *ast.Comment) {
+	for text := range strings.SplitSeq(cmt.Text, "//") {
+		text = strings.TrimSpace(text)
+		if !strings.HasPrefix(text, errorPrefix) {
+			continue
+		}
+		text = strings.TrimPrefix(text, errorPrefix)
+		text = strings.TrimSpace(text)
+		cmtPos := ei.pkg.FSet.Position(cmt.Pos())
+		errs[cmtPos.Line] = fmterr.Position(
+			ei.pkg.FSet,
+			cmt,
+			errors.New(text),
+		)
 	}
-	text = strings.TrimPrefix(text, errorPrefix)
-	text = strings.TrimSpace(text)
-	cmtPos := ei.pkg.FSet.Position(cmt.Pos())
-	errs[cmtPos.Line] = fmterr.Position(
-		ei.pkg.FSet,
-		cmt,
-		errors.New(text),
-	)
 }
 
 func (ei *errorInspector) notFoundExpectedErrors() error {
@@ -114,8 +130,8 @@ func (ei *errorInspector) notFoundExpectedErrors() error {
 // If the same error is found, it is removed from the set of errors of the package
 // and from the set of expected errors.
 func (ei *errorInspector) processPackageErrors(err error) error {
-	errPos, ok := err.(fmterr.ErrorWithPos)
-	if !ok {
+	var errPos fmterr.ErrorWithPos
+	if !errors.As(err, &errPos) {
 		return err
 	}
 	pos := ei.pkg.FSet.Position(errPos.Src().Pos())
@@ -130,7 +146,7 @@ func (ei *errorInspector) processPackageErrors(err error) error {
 	// An expected error has been found on the same line.
 	// We can remove it from the set of expected errors.
 	delete(fileErrors, pos.Line)
-	compilerText := errPos.Error()
+	compilerText := err.Error()
 	expectedText := lineError.Err().Error()
 	// Check if the text of the generated error contains the string specified in the comments.
 	if strings.Contains(compilerText, expectedText) {
@@ -138,11 +154,11 @@ func (ei *errorInspector) processPackageErrors(err error) error {
 	}
 	// The error is expected but does not have the correct message.
 	// We transform the error to transform the report such finding.
-	return fmterr.Errorf(ei.pkg.FSet, lineError.Src(), fmt.Sprintf("incorrect compiler error:\n%s\nbut want an error message that contains %q", compilerText, expectedText))
+	return fmterr.Errorf(ei.pkg.FSet, lineError.Src(), "incorrect compiler error:\n%s\nbut want an error message that contains %q", compilerText, expectedText)
 }
 
 // CompareToExpectedErrors removes errors declared in the source code using:
-// ERROR: <sub string to search in the error message>
+// ERROR <sub string to search in the error message>
 // from a set of errors and returns the remaining errors if any.
 //
 // First, all expected errors are collected from the comments. Second, these errors

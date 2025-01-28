@@ -16,35 +16,32 @@ package state
 
 import (
 	"github.com/pkg/errors"
-	"github.com/gx-org/backend/graph"
 	"github.com/gx-org/gx/api/values"
+	"github.com/gx-org/gx/interp/elements"
 )
 
 // Slice value.
 type Slice struct {
-	state    *State
-	expr     ExprAt
-	values   []Element
-	selector FieldSelector
+	state  *State
+	expr   elements.ExprAt
+	values []Element
+	slicer Slicer
 }
 
-var (
-	_ Slicer         = (*Slice)(nil)
-	_ backendElement = (*Slice)(nil)
-)
+var _ Slicer = (*Slice)(nil)
 
 // Slice returns a new slice where elements are constructed on demand.
-func (g *State) Slice(expr ExprAt, selector FieldSelector, numFields int) *Slice {
+func (g *State) Slice(expr elements.ExprAt, selector Slicer, numFields int) *Slice {
 	return &Slice{
-		state:    g,
-		expr:     expr,
-		values:   make([]Element, numFields),
-		selector: selector,
+		state:  g,
+		expr:   expr,
+		values: make([]Element, numFields),
+		slicer: selector,
 	}
 }
 
 // ToSlice returns a slice from a slice of elements.
-func (g *State) ToSlice(expr ExprAt, elements []Element) *Slice {
+func (g *State) ToSlice(expr elements.ExprAt, elements []Element) *Slice {
 	return &Slice{
 		state:  g,
 		expr:   expr,
@@ -52,12 +49,13 @@ func (g *State) ToSlice(expr ExprAt, elements []Element) *Slice {
 	}
 }
 
-func (n *Slice) nodes() ([]*graph.OutputNode, error) {
-	return OutputsFromElements(n.values)
+// Flatten returns the elements of the slice.
+func (n *Slice) Flatten() ([]Element, error) {
+	return flattenAll(n.values)
 }
 
 // Slice of the tuple.
-func (n *Slice) Slice(expr ExprAt, i int) (Element, error) {
+func (n *Slice) Slice(expr elements.ExprAt, i int) (Element, error) {
 	if i < 0 || i >= len(n.values) {
 		return nil, errors.Errorf("invalid argument: index %d out of bounds [0:%d]", i, len(n.values))
 	}
@@ -65,7 +63,7 @@ func (n *Slice) Slice(expr ExprAt, i int) (Element, error) {
 		return n.values[i], nil
 	}
 	var err error
-	n.values[i], err = n.selector.SelectField(expr, i)
+	n.values[i], err = n.slicer.Slice(expr, i)
 	if err != nil {
 		return nil, err
 	}
@@ -73,7 +71,7 @@ func (n *Slice) Slice(expr ExprAt, i int) (Element, error) {
 }
 
 func (n *Slice) valueFromHandle(handles *handleParser) (values.Value, error) {
-	return handles.parseComposite(parseCompositeOf(values.NewSlice), n.expr.Type(), n.values)
+	return handles.parseComposite(parseCompositeOf(values.NewSlice), n.expr.Node().Type(), n.values)
 }
 
 // Elements stored in the slice.

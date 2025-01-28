@@ -281,9 +281,36 @@ func (g *Graph) NewSlice(x graph.Node, index int) (graph.Node, error) {
 	return nil, errors.Errorf("not implemented")
 }
 
-// NewCall returns a node that invokes a subgraph with the given result node.
-func (g *Graph) NewCall(sg graph.Graph, resultNode graph.Node) (graph.Node, error) {
-	return resultNode, nil
+type tuple struct {
+	g     graph.Graph
+	nodes []graph.Node
+}
+
+func (n *tuple) Graph() graph.Graph {
+	return n.g
+}
+
+// Element returns a node representing the ith element of the tuple.
+func (n *tuple) Element(i int) (graph.Node, error) {
+	return n.nodes[i], nil
+}
+
+func (n *tuple) Size() int {
+	return len(n.nodes)
+}
+
+func (n *tuple) Unpack() ([]graph.Node, error) {
+	return n.nodes, nil
+}
+
+// NewTuple returns a node grouping multiple nodes together.
+func (g *Graph) NewTuple(nodes []graph.Node) (graph.Tuple, error) {
+	return &tuple{g, nodes}, nil
+}
+
+// NewCall returns a node that invokes a subgraph.
+func (g *Graph) NewCall(sg graph.Subgraph, args ...graph.Node) (graph.Node, error) {
+	return sg.Result.Node, nil
 }
 
 // NewSubgraph returns a Graph instance that maps to a new subgraph.
@@ -291,4 +318,9 @@ func (g *Graph) NewSubgraph(name string) (graph.Graph, error) {
 	// Note that this is a very incomplete implementation: it simply builds the subgraph within the
 	// current graph.
 	return g, nil
+}
+
+// NewWhile returns a while loop node.
+func (g *Graph) NewWhile(cond, body graph.Subgraph, state graph.Node) (graph.Node, error) {
+	return nil, errors.Errorf("not implemented")
 }

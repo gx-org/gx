@@ -23,7 +23,7 @@ import (
 	gxtesting "github.com/gx-org/gx/tests/testing"
 )
 
-var imports *imports_go_gx.Compiler
+var imports *imports_go_gx.Package
 
 func TestImportsReturnScalar(t *testing.T) {
 	scalar, err := imports.ReturnFromBasic.Run()
@@ -53,15 +53,11 @@ func TestAddPrivate(t *testing.T) {
 	}
 }
 
-func setupTest(rtm *api.Runtime) error {
-	gxPackage, err := imports_go_gx.Load(rtm)
+func setupTest(dev *api.Device) error {
+	gxPackage, err := imports_go_gx.Load(dev.Runtime())
 	if err != nil {
 		return err
 	}
-	dev, err := gxPackage.Runtime.Platform().Device(0)
-	if err != nil {
-		return err
-	}
-	imports = gxPackage.CompilerFor(dev)
+	imports = gxPackage.BuildFor(dev)
 	return nil
 }

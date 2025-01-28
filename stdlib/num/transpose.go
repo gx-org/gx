@@ -39,7 +39,7 @@ func (f transpose) resultsType(fetcher ir.Fetcher, call *ir.CallExpr) (ir.Type, 
 	}
 	arg := call.Args[0]
 	argType := arg.Type()
-	arrayType, ok := argType.(*ir.ArrayType)
+	arrayType, ok := argType.(ir.ArrayType)
 	if !ok {
 		return nil, nil, fmterr.Errorf(fetcher.FileSet(), call.Source(), "argument type %s not supported in call to %s", arg.Type().String(), f.Name())
 	}
@@ -49,10 +49,11 @@ func (f transpose) resultsType(fetcher ir.Fetcher, call *ir.CallExpr) (ir.Type, 
 	}
 	inferredAxes := slices.Clone(rank.Axes)
 	slices.Reverse(inferredAxes)
-	return argType, &ir.ArrayType{
-		DType: arrayType.DataType(),
-		RankF: &ir.Rank{Axes: inferredAxes},
-	}, nil
+	return argType, ir.NewArrayType(
+		nil,
+		arrayType.DataType(),
+		&ir.Rank{Axes: inferredAxes},
+	), nil
 }
 
 func (f transpose) BuildFuncType(fetcher ir.Fetcher, call *ir.CallExpr) (*ir.FuncType, error) {

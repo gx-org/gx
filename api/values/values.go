@@ -38,15 +38,45 @@ type (
 		// The returned string is a string reported to the user.
 		String() string
 	}
+
 	// Valuer is an instance able to produce a GX value.
 	Valuer interface {
 		GXValue() Value
 	}
 )
 
-func atomZeroValue[T dtype.AlgebraType](typ ir.Type) Array {
-	handle := kernels.ToAlgebraicAtom[T](0)
-	return NewHostArray(typ, kernels.NewBuffer(handle))
+func toHostArray(typ ir.Type, h kernels.Array) *HostArray {
+	return NewHostArray(typ, kernels.NewBuffer(h))
+}
+
+// AtomFloatValue returns an array GX value given a Go value.
+func AtomFloatValue[T dtype.Float](typ ir.Type, val T) *HostArray {
+	return toHostArray(typ, kernels.ToFloatAtom[T](val))
+}
+
+// AtomBoolValue returns an array GX value given a boolean value.
+func AtomBoolValue(typ ir.Type, val bool) *HostArray {
+	return toHostArray(typ, kernels.ToBoolAtom(val))
+}
+
+// AtomIntegerValue returns an array GX value given a Go value.
+func AtomIntegerValue[T dtype.IntegerType](typ ir.Type, val T) *HostArray {
+	return toHostArray(typ, kernels.ToIntegerAtom[T](val))
+}
+
+// ArrayFloatValue returns an array GX value given a Go value.
+func ArrayFloatValue[T dtype.Float](typ ir.Type, vals []T, dims []int) *HostArray {
+	return toHostArray(typ, kernels.ToFloatArray[T](vals, dims))
+}
+
+// ArrayBoolValue returns an array GX value given a boolean value.
+func ArrayBoolValue(typ ir.Type, vals []bool, dims []int) *HostArray {
+	return toHostArray(typ, kernels.ToBoolArray(vals, dims))
+}
+
+// ArrayIntegerValue returns an array GX value given a Go value.
+func ArrayIntegerValue[T dtype.IntegerType](typ ir.Type, vals []T, dims []int) *HostArray {
+	return toHostArray(typ, kernels.ToIntegerArray[T](vals, dims))
 }
 
 func arrayZeroValue(typ ir.Type) (Array, error) {
@@ -64,25 +94,24 @@ func Zero(typ ir.Type) (Value, error) {
 	kind := typ.Kind()
 	switch kind {
 	case ir.BoolKind:
-		handle := kernels.ToBoolAtom(false)
-		return NewHostArray(typ, kernels.NewBuffer(handle)), nil
+		return AtomBoolValue(typ, false), nil
 	case ir.Float32Kind:
-		return atomZeroValue[float32](typ), nil
+		return AtomFloatValue[float32](typ, 0), nil
 	case ir.Float64Kind:
-		return atomZeroValue[float64](typ), nil
+		return AtomFloatValue[float64](typ, 0), nil
 	case ir.Int32Kind:
-		return atomZeroValue[int32](typ), nil
+		return AtomIntegerValue[int32](typ, 0), nil
 	case ir.Int64Kind:
-		return atomZeroValue[int64](typ), nil
+		return AtomIntegerValue[int64](typ, 0), nil
 	case ir.Uint32Kind:
-		return atomZeroValue[uint32](typ), nil
+		return AtomIntegerValue[uint32](typ, 0), nil
 	case ir.Uint64Kind:
-		return atomZeroValue[uint64](typ), nil
-	case ir.AxisLengthKind:
-		return atomZeroValue[ir.Int](typ), nil
-	case ir.AxisIndexKind:
-		return atomZeroValue[ir.Int](typ), nil
-	case ir.TensorKind:
+		return AtomIntegerValue[uint64](typ, 0), nil
+	case ir.IntLenKind:
+		return AtomIntegerValue[ir.Int](typ, 0), nil
+	case ir.IntIdxKind:
+		return AtomIntegerValue[ir.Int](typ, 0), nil
+	case ir.ArrayKind:
 		return arrayZeroValue(typ)
 	case ir.SliceKind:
 		return sliceZeroValue(typ)
@@ -91,7 +120,7 @@ func Zero(typ ir.Type) (Value, error) {
 	}
 }
 
-// ToHost transfers all values recursirvely to the host.
+// ToHost transfers all values recursively to the host.
 func ToHost(alloc platform.Allocator, vals []Value) ([]Value, error) {
 	out := make([]Value, len(vals))
 	for i, val := range vals {

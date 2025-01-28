@@ -23,7 +23,7 @@ import (
 func importNamedTypes(scope *scopeFile, types []*ir.NamedType) {
 	for _, typ := range types {
 		var nType *namedType
-		identNode := scope.pkg().ns.fetchIdentNode(typ.NameT)
+		identNode := scope.pkg().ns.fetch(typ.NameT)
 		if identNode == nil {
 			var ok bool
 			nType, ok = importType(scope, typ)
@@ -31,7 +31,7 @@ func importNamedTypes(scope *scopeFile, types []*ir.NamedType) {
 				continue
 			}
 		} else {
-			_, typeNode, ok := identNode.typeF(scope)
+			typeNode, ok := identNode.typeF(scope)
 			if !ok {
 				continue
 			}
@@ -47,8 +47,8 @@ func importNamedTypes(scope *scopeFile, types []*ir.NamedType) {
 
 func importFuncs(scope *scopeFile, funcs []ir.Func) {
 	for _, irFunc := range funcs {
-		fn := importFuncBuiltin(scope, irFunc.(*ir.FuncBuiltin))
-		scope.file().declareFunc(scope, fn)
+		fn, _ := importFuncBuiltin(scope, irFunc.(*ir.FuncBuiltin))
+		scope.file().declareFuncBuiltin(scope, fn)
 	}
 }
 

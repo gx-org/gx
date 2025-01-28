@@ -101,16 +101,25 @@ func evalDimExpr(fetcher Fetcher, x Expr) (int, string, error) {
 		return int(xT.Val), "", nil
 	case *BinaryExpr:
 		return evalDimBinaryExpr(fetcher, xT)
-	case *Number:
+	case *NumberInt:
 		num, err := strconv.Atoi(xT.Src.Value)
 		if err != nil {
 			return -1, "", fmterr.Errorf(fetcher.FileSet(), x.Source(), "cannot parse number %s", xT.Src.Value)
 		}
 		return num, "", nil
-	case *AtomicExprT[Int]:
+	case *StaticAtom:
 		return evalDimExpr(fetcher, xT.X)
 	case *ValueRef:
 		return 0, xT.Src.Name, nil
+	case *AxisEllipsis:
+		if err := checkEllipsis(fetcher, xT); err != nil {
+			return -1, "", err
+		}
+		return evalDimExpr(fetcher, xT.X)
+	case *AxisExpr:
+		return evalDimExpr(fetcher, xT.X)
+	case *NumberCastExpr:
+		return evalDimExpr(fetcher, xT.X)
 	default:
 		return -1, "", fmterr.Errorf(fetcher.FileSet(), x.Source(), "cannot evaluate dimension: %T not supported", xT)
 	}

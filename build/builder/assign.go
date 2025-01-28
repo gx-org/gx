@@ -40,16 +40,16 @@ var (
 )
 
 func (asg *identAssignable) canAssign(scope scoper, exprType typeNode) (newAssign, ok bool) {
-	defined := scope.namespace().fetchIdentNode(asg.target.ident().Name)
+	defined := scope.namespace().fetch(asg.target.ident().Name)
 	if defined == nil {
 		if asg.target.typ == nil {
 			asg.target.typ = exprType
 		}
-		scope.namespace().assign(asg.target.ident(), asg.target, exprType)
+		scope.namespace().assign(newIdent(asg.target.ident(), exprType))
 		return true, true
 	}
 	var targetTypeOk bool
-	_, asg.target.typ, targetTypeOk = defined.typeF(scope)
+	asg.target.typ, targetTypeOk = defined.typeF(scope)
 	if !targetTypeOk {
 		return false, false
 	}
@@ -58,11 +58,14 @@ func (asg *identAssignable) canAssign(scope scoper, exprType typeNode) (newAssig
 }
 
 func (asg *identAssignable) resolveType(scope scoper) (typeNode, bool) {
-	defined := scope.namespace().fetchIdentNode(asg.target.ident().Name)
+	defined := scope.namespace().fetch(asg.target.ident().Name)
 	if defined == nil {
 		return unknown, true
 	}
-	_, typ, ok := defined.typeF(scope)
+	typ, ok := defined.typeF(scope)
+	if !ok {
+		return typ, false
+	}
 	asg.target.typ, ok = assignableToAt(scope, asg, typ, asg.target.typ)
 	return typ, ok
 }
@@ -70,7 +73,7 @@ func (asg *identAssignable) resolveType(scope scoper) (typeNode, bool) {
 func (asg *identAssignable) buildAssignable() ir.Assignable {
 	return &ir.LocalVarAssign{
 		Src:   asg.target.ext.Src,
-		TypeF: asg.target.typ.buildType(),
+		TypeF: asg.target.typ.irType(),
 	}
 }
 
@@ -85,10 +88,10 @@ type selectorAssignable struct {
 
 func (asg *selectorAssignable) buildAssignable() ir.Assignable {
 	return &ir.StructFieldAssign{
-		Src:     asg.target.src,
-		X:       asg.target.x.buildExpr(),
-		TypeF:   asg.target.typ.buildType(),
-		FieldID: asg.field.field.ext.ID,
+		Src:       asg.target.src,
+		X:         asg.target.x.buildExpr(),
+		TypeF:     asg.target.typ.irType(),
+		FieldName: asg.field.field.ext.Name.Name,
 	}
 }
 
@@ -247,12 +250,8 @@ func (n *assignExprStmt) resolveType(scope *scopeBlock) bool {
 		if !targetTypOk {
 			ok = false
 		}
-		if targetTypOk && asgm.typ.kind() == ir.NumberKind {
-			if targetTyp.kind() == ir.UnknownKind {
-				asgm.expr, asgm.typ, exprOk = buildDefaultNumberNode(scope, asgm.expr)
-			} else {
-				asgm.expr, asgm.typ, exprOk = buildNumberNode(scope, asgm.expr, targetTyp.buildType())
-			}
+		if targetTypOk && ir.IsNumber(asgm.typ.kind()) {
+			asgm.expr, asgm.typ, exprOk = castNumber(scope, asgm.expr, targetTyp.irType())
 			ok = ok && exprOk
 		}
 		asgmNew, asgmOk := asgm.target.canAssign(scope, asgm.typ)

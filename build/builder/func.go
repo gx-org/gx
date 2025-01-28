@@ -22,10 +22,11 @@ import (
 )
 
 type funcType struct {
-	ext      *ir.FuncType
-	receiver *namedType
-	params   *fieldList
-	results  *fieldList
+	ext        *ir.FuncType
+	receiver   *namedType
+	typeParams *fieldList
+	params     *fieldList
+	results    *fieldList
 }
 
 func processFuncType(owner owner, src *ast.FuncType, decl *funcDecl) (*funcType, bool) {
@@ -34,21 +35,24 @@ func processFuncType(owner owner, src *ast.FuncType, decl *funcDecl) (*funcType,
 			Src: src,
 		},
 	}
+	var typesOk bool
+	n.typeParams, typesOk = processFieldList(owner, src.TypeParams, decl.assignTypeField)
 	var paramsOk bool
 	n.params, paramsOk = processFieldList(owner, src.Params, decl.assignArgField)
 	var resultsOk bool
 	n.results, resultsOk = processFieldList(owner, src.Results, decl.assignResultField)
-	return n, paramsOk && resultsOk
+	return n, typesOk && paramsOk && resultsOk
 }
 
 func importFuncType(scope scoper, ext *ir.FuncType) (*funcType, bool) {
 	n := &funcType{ext: ext}
-	paramsOk, resultsOk := true, true
+	typesOk, paramsOk, resultsOk := true, true, true
 	if ext != nil {
+		n.typeParams, typesOk = importFieldList(scope, ext.TypeParams)
 		n.params, paramsOk = importFieldList(scope, ext.Params)
 		n.results, resultsOk = importFieldList(scope, ext.Results)
 	}
-	return n, paramsOk && resultsOk
+	return n, typesOk && paramsOk && resultsOk
 }
 
 func importFuncBuiltinType(scope scoper, src ast.Node, fn *ir.FuncBuiltin, fetcher ir.Fetcher, call *ir.CallExpr) (*funcType, bool) {
@@ -65,20 +69,21 @@ func (n *funcType) source() ast.Node {
 }
 
 func (n *funcType) buildFuncType() *ir.FuncType {
-	n.ext.Params = n.params.buildType()
-	n.ext.Results = n.results.buildType()
+	n.ext.TypeParams = n.typeParams.irType()
+	n.ext.Params = n.params.irType()
+	n.ext.Results = n.results.irType()
 	if n.receiver != nil {
 		n.ext.Receiver = &n.receiver.repr
 	}
 	return n.ext
 }
 
-func (n *funcType) buildType() ir.Type {
+func (n *funcType) irType() ir.Type {
 	return n.buildFuncType()
 }
 
 func (n *funcType) convertibleTo(scope scoper, typ typeNode) (bool, error) {
-	return n.buildType().ConvertibleTo(scope.evalFetcher(), typ.buildType())
+	return n.irType().ConvertibleTo(scope.evalFetcher(), typ.irType())
 }
 
 func (n *funcType) kind() ir.Kind {
@@ -90,11 +95,16 @@ func (n *funcType) isGeneric() bool {
 }
 
 func (n *funcType) String() string {
+	typeParams := ""
+	if !n.typeParams.empty() {
+		typeParams = fmt.Sprintf("[%s]", n.typeParams.String())
+	}
+
 	results := n.results.String()
 	if n.results.numFields() > 1 {
 		results = fmt.Sprintf("(%s)", results)
 	}
-	return fmt.Sprintf("func(%s) %s", n.params.String(), results)
+	return fmt.Sprintf("func%s(%s) %s", typeParams, n.params.String(), results)
 }
 
 // resultTypes returns a slice of the GX types returned by the function.
@@ -103,19 +113,45 @@ func (n *funcType) resultTypes() *tupleType {
 }
 
 func (n *funcType) resolveType(scope scoper) (typeNode, bool) {
-	var paramsOk, resultsOk bool
+	receiverOk := true
+	if n.receiver != nil {
+		_, receiverOk = n.receiver.resolveConcreteType(scope)
+	}
+	var paramsOk, resultsOk, typesOk bool
+	n.typeParams, typesOk = n.typeParams.resolveType(scope)
 	n.params, paramsOk = n.params.resolveType(scope)
 	n.results, resultsOk = n.results.resolveType(scope)
-	return n, paramsOk && resultsOk
+	return n, typesOk && paramsOk && resultsOk && receiverOk
 }
 
-func (n *funcType) resolveGenericCallType(scope scoper, src ast.Node, _ ir.Fetcher, call *ir.CallExpr) (*funcType, bool) {
+func (n *funcType) resolveGenericCallType(scope scoper, _ ir.Fetcher, call *callExpr) (*funcType, bool) {
 	typ := funcType{
 		ext:      &ir.FuncType{Src: n.ext.Src},
 		receiver: n.receiver,
 	}
 
+	numTypeParams := n.typeParams.numFields()
+	if len(call.typeArgs) > numTypeParams {
+		scope.err().Appendf(call.source(), "too many type arguments in call to %s", call.callee)
+		return nil, false
+	}
+	if len(call.typeArgs) < numTypeParams {
+		if len(call.typeArgs) == 0 {
+			scope.err().Appendf(call.source(), "type parameter inference is not supported")
+		} else {
+			scope.err().Appendf(call.source(), "not enough type arguments in call to %s", call.callee)
+		}
+		return nil, false
+	}
+
+	for i, typeParam := range n.typeParams.fields() {
+		// Type parameters may change from call to call, so wrap the concrete type in deferredType to
+		// prevent caching.
+		scope.namespace().assign(newIdent(typeParam.ext.Name, &deferredType{src: call.source(), ref: call.typeArgs[i]}))
+	}
+
 	var paramsOk, resultsOk bool
+	typ.typeParams = n.typeParams // For now, just copy type parameters.
 	typ.params, paramsOk = n.params.resolveType(scope)
 	typ.results, resultsOk = n.results.resolveType(scope)
 	if !paramsOk || !resultsOk {
@@ -126,7 +162,7 @@ func (n *funcType) resolveGenericCallType(scope scoper, src ast.Node, _ ir.Fetch
 
 type (
 	function interface {
-		typeNode() typeNode
+		staticValueNode
 		name() *ast.Ident
 		irFunc() ir.Func
 	}
@@ -135,32 +171,57 @@ type (
 		bFile *file
 		ext   ir.FuncDecl
 
-		ns       *namespace
-		body     *blockStmt
+		ns       *blockNamespace
 		recv     *fieldList
 		funcType *funcType
 
+		meta *assignDirective
+		body *blockStmt
+
 		checkFirstResultWithReceiver bool
 
-		processOk, resolveTypeOk bool
+		processOk         bool
+		resolveTypeStatus done
 	}
 )
 
 var (
 	_ genericCallTypeNode = (*funcDecl)(nil)
+	_ staticValueNode     = (*funcDecl)(nil)
 	_ function            = (*funcDecl)(nil)
 )
 
 func (bFile *file) processFunc(fileScope *scopeFile, fn *ast.FuncDecl) bool {
+	dir, dirComment, dirOk := processFuncDirective(fileScope, fn)
+	var funOk bool
+	switch dir {
+	case none:
+		if fn.Body == nil {
+			funOk = bFile.processBuiltinFunc(fileScope, fn)
+		} else {
+			funOk = bFile.processFuncDecl(fileScope, fn)
+		}
+	case assign: // Function body assigned via gx:=
+		funOk = bFile.processAssignFunc(fileScope, fn, dirComment)
+	case irmacro: // IR Macro function that will be called by the compiler via gx:irmacro
+		funOk = bFile.processIRMacroFunc(fileScope, fn, dirComment)
+	default:
+		return fileScope.err().AppendInternalf(dirComment, "directive %d not supported", dir)
+	}
+	return dirOk && funOk
+}
+
+func newFuncDecl(fileScope *scopeFile, fn *ast.FuncDecl) (*funcDecl, *scopeBlock) {
+	bFile := fileScope.file()
 	f := &funcDecl{
 		bFile: bFile,
 		ext: ir.FuncDecl{
 			Src:   fn,
 			FFile: &bFile.repr,
 		},
+		ns: bFile.ns.newChild(),
 	}
-	f.ns = bFile.ns.newChild()
-	scope := fileScope.scopeFunc(f, f.ns)
+	scope := f.funcScope(fileScope)
 	var recvOk bool
 	f.recv, recvOk = processFieldList(scope, fn.Recv, f.assignArgField)
 	if f.recv != nil && f.recv.ext.Src.NumFields() > 1 {
@@ -168,34 +229,97 @@ func (bFile *file) processFunc(fileScope *scopeFile, fn *ast.FuncDecl) bool {
 	}
 	var typeOk bool
 	f.funcType, typeOk = processFuncType(scope, fn.Type, f)
-	if fn.Type.Results.NumFields() == 0 {
-		scope.err().Appendf(f.source(), "function %s does not return a value in its signature", f.ext.Name())
-		typeOk = false
+	f.processOk = typeOk && recvOk
+	return f, scope
+}
+
+func (bFile *file) processFuncDecl(fileScope *scopeFile, fn *ast.FuncDecl) bool {
+	f, scope := newFuncDecl(fileScope, fn)
+	if !fileScope.file().declareFuncDecl(fileScope, f) {
+		f.processOk = false
+	}
+	if !f.checkReturnValue(scope) {
+		f.processOk = false
+	}
+	if !f.processOk {
+		return false
+	}
+	f.processOk = f.processFuncDefinition(scope)
+	return f.processOk
+}
+
+func (bFile *file) processAssignFunc(fileScope *scopeFile, fn *ast.FuncDecl, comment *ast.Comment) bool {
+	f, scope := newFuncDecl(fileScope, fn)
+	if !fileScope.file().declareFuncDecl(fileScope, f) {
+		f.processOk = false
+	}
+	if !checkEmptyParamsResults(fileScope, fn, "assigned") {
+		f.processOk = false
+	}
+	var ok bool
+	if f.meta, ok = f.processFuncAssignDirective(scope, comment); !ok {
+		f.processOk = false
+	}
+	return f.processOk
+}
+
+func (f *funcDecl) processFuncDefinition(scope *scopeBlock) bool {
+	if !f.checkReturnValue(scope) {
+		f.processOk = false
 	}
 	var bodyOk bool
 	f.body, bodyOk = processBlockStmt(scope, f, f.ext.Src.Body)
-	f.processOk = typeOk && recvOk && bodyOk
-	declarationOk := true
-	if f.recv == nil {
-		declarationOk = bFile.declareFunc(fileScope, f)
-	} else {
-		bFile.declareMethod(fileScope, f)
-	}
-	return f.processOk && declarationOk
+	f.processOk = f.processOk && bodyOk
+	return f.processOk
 }
 
-func (f *funcDecl) assignArgField(block *scopeFile, fld *field) bool {
-	if prev := f.ns.assign(fld.ext.Name, nil, fld.group.typ); prev != nil {
-		appendRedeclaredError(block.err(), fld.ext.Name, prev)
+func (f *funcDecl) receiver() *fieldList {
+	return f.recv
+}
+
+func checkEmptyParamsResults(scope *scopeFile, fn *ast.FuncDecl, errPrefix string) bool {
+	ok := true
+	if fn.Type.Params.NumFields() != 0 {
+		ok = scope.err().Appendf(fn, "%s function has parameters", errPrefix)
+	}
+	if fn.Type.Results.NumFields() != 0 {
+		ok = scope.err().Appendf(fn, "%s function has return values", errPrefix)
+	}
+	return ok
+}
+
+func (f *funcDecl) checkReturnValue(scope *scopeBlock) bool {
+	if f.ext.Src.Type.Results.NumFields() == 0 {
+		scope.err().Appendf(f.source(), "function %s does not return a value in its signature", f.ext.Name())
 		return false
 	}
 	return true
 }
 
+func (f *funcDecl) assignTypeField(block *scopeFile, fld *field) bool {
+	if prev := f.ns.fetch(fld.ext.Name.Name); prev != nil {
+		block.err().Appendf(fld.ext.Name, "type parameter %s redeclared", fld.ext.Name.String())
+		return false
+	}
+	f.ns.assign(newIdent(fld.ext.Name, fld.typ()))
+	return true
+}
+
+func (f *funcDecl) assignArgField(block *scopeFile, fld *field) bool {
+	if prev := f.ns.fetch(fld.ext.Name.Name); prev != nil {
+		appendRedeclaredError(block.err(), fld.ext.Name, prev)
+		return false
+	}
+	f.ns.assign(newIdent(fld.ext.Name, fld.group.typ))
+	return true
+}
+
 func (f *funcDecl) assignResultField(block *scopeFile, fld *field) (ok bool) {
-	prev := f.ns.assign(fld.ext.Name, nil, fld.group.typ)
+	prev := f.ns.fetch(fld.ext.Name.Name)
 	if prev == nil {
 		return true
+	} else {
+		f.ns.assign(newIdent(fld.ext.Name, fld.group.typ))
 	}
 	defer func() {
 		if !ok {
@@ -237,14 +361,17 @@ func (f *funcDecl) resolveReceiver(scope scoper) bool {
 }
 
 func (f *funcDecl) checkReceiverWithResult(scope scoper) bool {
-	if !f.resolveTypeOk {
+	if f.resolveTypeStatus == doneNotOk {
 		return false
 	}
 	if !f.checkFirstResultWithReceiver {
 		return true
 	}
-	recvType := f.funcType.receiver.buildType()
-	firstResultType := f.funcType.resultTypes().elt(0).typ().buildType()
+	if f.funcType.receiver == nil {
+		return true
+	}
+	recvType := f.funcType.receiver.irType()
+	firstResultType := f.funcType.resultTypes().elt(0).typ().irType()
 	eq, err := recvType.Equal(scope.evalFetcher(), firstResultType)
 	if err != nil {
 		scope.err().Append(err)
@@ -257,25 +384,69 @@ func (f *funcDecl) checkReceiverWithResult(scope scoper) bool {
 	return true
 }
 
-func (f *funcDecl) recResolveTypes(parentScope *scopeFile) {
-	if !f.processOk {
-		return
+// funcScope returns a new function scope with access to the function's definitions (e.g. both type
+// and regular parameters); each returned scope is isolated from any others so that modifications to
+// that scope are not visible elsewhere.
+func (f *funcDecl) funcScope(parent owner) *scopeBlock {
+	return parent.fileScope().scopeFunc(f, f.ns.newChild())
+}
+
+func (f *funcDecl) resolveType(parentScope scoper) (typeNode, bool) {
+	if f.resolveTypeStatus.isDone() {
+		return typeNodeOk(f.funcType)
 	}
-	scope := parentScope.scopeFunc(f, f.ns)
-	f.resolveTypeOk = f.resolveReceiver(scope)
+	if !f.processOk {
+		return typeNodeOk(invalid)
+	}
+	scope := f.funcScope(parentScope)
+	resolveTypeOk := f.resolveReceiver(scope)
 	_, funcTypeOk := f.funcType.resolveType(scope)
 	recvResultOk := f.checkReceiverWithResult(scope)
-	bodyOk := f.body.resolveType(scope)
-	f.resolveTypeOk = funcTypeOk && f.resolveTypeOk && recvResultOk && bodyOk
+	f.resolveTypeStatus = toDone(funcTypeOk && resolveTypeOk && recvResultOk)
+	return f.funcType, f.resolveTypeStatus.ok()
+}
+
+func (f *funcDecl) resolveBody(parentScope *scopeFile) {
+	if !f.resolveTypeStatus.ok() {
+		return
+	}
+	scope := f.funcScope(parentScope)
+	if f.body == nil {
+		scope.err().Appendf(f.ext.Src, "function %s has no body", f.name().Name)
+		f.resolveTypeStatus = doneNotOk
+		return
+	}
+	f.resolveTypeStatus = toDone(f.body.resolveType(scope))
 	f.ext.FType = f.funcType.buildFuncType()
 }
 
-func (f *funcDecl) recBuildStmt() *ir.FuncDecl {
-	if !f.resolveTypeOk {
-		return &f.ext
+func (f *funcDecl) resolve(parentScope *scopeFile) {
+	if _, ok := f.resolveType(parentScope); !ok {
+		return
+	}
+	if f.meta == nil {
+		f.resolveBody(parentScope)
+	} else {
+		f.buildBodyWithMacro(parentScope)
+	}
+	if !f.resolveTypeStatus.ok() {
+		return
+	}
+	if f.ext.Body != nil {
+		return
 	}
 	f.ext.FType = f.funcType.buildFuncType()
 	f.ext.Body = f.body.buildBlockStmt()
+}
+
+func (f *funcDecl) buildBodyWithMacro(scope *scopeFile) {
+	if !f.resolveTypeStatus.ok() {
+		return
+	}
+	f.resolveTypeStatus = toDone(f.meta.buildIR(scope))
+}
+
+func (f *funcDecl) recBuildStmt() *ir.FuncDecl {
 	return &f.ext
 }
 
@@ -291,16 +462,16 @@ func (f *funcDecl) irFunc() ir.Func {
 	return f.recBuildStmt()
 }
 
+func (f *funcDecl) staticValue() ir.StaticValue {
+	return &f.ext
+}
+
 func (f *funcDecl) isGeneric() bool {
 	return false
 }
 
-func (f *funcDecl) buildType() ir.Type {
-	return f.funcType.buildType()
-}
-
-func (f *funcDecl) typeNode() typeNode {
-	return f
+func (f *funcDecl) irType() ir.Type {
+	return f.funcType.irType()
 }
 
 // Pos is the position of the function in the code.
@@ -313,13 +484,15 @@ func (f *funcDecl) String() string {
 	return f.ext.Name()
 }
 
-func (f *funcDecl) resolveGenericCallType(scope scoper, src ast.Node, fetcher ir.Fetcher, call *ir.CallExpr) (*funcType, bool) {
-	return f.funcType.resolveGenericCallType(scope, src, fetcher, call)
+func (f *funcDecl) resolveGenericCallType(scope scoper, fetcher ir.Fetcher, call *callExpr) (*funcType, bool) {
+	return f.funcType.resolveGenericCallType(f.funcScope(scope), fetcher, call)
 }
 
 // funcBuiltin is a function imported from a package.
 type funcBuiltin struct {
 	ext ir.FuncBuiltin
+
+	funcDecl *funcDecl
 }
 
 var (
@@ -327,20 +500,45 @@ var (
 	_ function            = (*funcBuiltin)(nil)
 )
 
-func importFuncBuiltin(scope *scopeFile, ext *ir.FuncBuiltin) *funcBuiltin {
-	return &funcBuiltin{ext: *ext}
+func importFuncBuiltin(scope *scopeFile, ext *ir.FuncBuiltin) (*funcBuiltin, bool) {
+	fn := &funcBuiltin{ext: *ext}
+	fn.ext.Package = &scope.pkg().repr
+	return fn, true
 }
 
-func (fn *funcBuiltin) buildType() ir.Type {
+func (bFile *file) processBuiltinFunc(fileScope *scopeFile, fn *ast.FuncDecl) bool {
+	f, scope := newFuncDecl(fileScope, fn)
+	if !f.checkReturnValue(scope) {
+		f.processOk = false
+	}
+	builtin, builtinOk := importFuncBuiltin(fileScope, &ir.FuncBuiltin{
+		FName: f.ext.Src.Name.String(),
+		FType: f.funcType.buildFuncType(),
+	})
+	builtin.funcDecl = f
+	declareOk := fileScope.file().declareFuncBuiltin(fileScope, builtin)
+	return f.processOk && builtinOk && declareOk
+}
+
+func (fn *funcBuiltin) irType() ir.Type {
 	return fn.ext.Type()
 }
 
-func (fn *funcBuiltin) resolveGenericCallType(scope scoper, src ast.Node, fetcher ir.Fetcher, call *ir.CallExpr) (*funcType, bool) {
-	typ, ok := importFuncBuiltinType(scope, src, &fn.ext, fetcher, call)
+func (fn *funcBuiltin) resolveGenericCallType(scope scoper, fetcher ir.Fetcher, call *callExpr) (*funcType, bool) {
+	if fn.ext.Impl == nil {
+		scope.err().Appendf(call.source(), "builtin function %s has no implementation", fn.ext.Name())
+		return nil, false
+	}
+	if fn.funcDecl != nil {
+		return fn.funcDecl.resolveGenericCallType(scope, fetcher, call)
+	}
+
+	irCall := call.buildExpr().(*ir.CallExpr)
+	typ, ok := importFuncBuiltinType(scope, call.source(), &fn.ext, fetcher, irCall)
 	if !ok {
 		return typ, ok
 	}
-	return typ.resolveGenericCallType(scope, src, fetcher, call)
+	return typ.resolveGenericCallType(scope, fetcher, call)
 }
 
 func (fn *funcBuiltin) irFunc() ir.Func {
@@ -355,8 +553,16 @@ func (fn *funcBuiltin) isGeneric() bool {
 	return false
 }
 
-func (fn *funcBuiltin) typeNode() typeNode {
-	return fn
+func (fn *funcBuiltin) receiver() *fieldList {
+	return nil
+}
+
+func (fn *funcBuiltin) staticValue() ir.StaticValue {
+	return &fn.ext
+}
+
+func (fn *funcBuiltin) resolveType(scoper) (typeNode, bool) {
+	return fn, true
 }
 
 func (fn *funcBuiltin) kind() ir.Kind {
@@ -378,7 +584,7 @@ var _ exprNode = (*funcLiteral)(nil)
 
 func (fn *funcLiteral) resolveType(scope scoper) (typeNode, bool) {
 	ftype, ftypeOk := fn.ftype.resolveType(scope)
-	bodyOk := fn.body.resolveType(scope.block().scopeFunc(fn.fdecl, fn.fdecl.ns))
+	bodyOk := fn.body.resolveType(fn.fdecl.funcScope(scope))
 	return ftype, ftypeOk && bodyOk
 }
 
@@ -402,12 +608,12 @@ func (fn *funcLiteral) String() string {
 }
 
 func processFuncLit(owner owner, src *ast.FuncLit) (*funcLiteral, bool) {
-	scope := owner.block()
 	fdecl := &funcDecl{
-		bFile: scope.file(),
-		ns:    scope.namespace().newChild(),
+		bFile: owner.fileScope().file(),
+		ns:    owner.fileScope().namespace().newChild(),
 		ext:   ir.FuncDecl{},
 	}
+	scope := fdecl.funcScope(owner)
 	ftype, ftypeOk := processFuncType(scope, src.Type, fdecl)
 	body, bodyOk := processBlockStmt(scope, fdecl, src.Body)
 	fdecl.funcType = ftype
@@ -417,4 +623,76 @@ func processFuncLit(owner owner, src *ast.FuncLit) (*funcLiteral, bool) {
 		ftype: ftype,
 		body:  body,
 	}, ftypeOk && bodyOk
+}
+
+type funcBuilder struct {
+	fn function
+}
+
+var _ irBuilder = funcBuilder{}
+
+func (b funcBuilder) buildIR(pkg *ir.Package) {
+	pkg.Funcs = append(pkg.Funcs, b.fn.irFunc())
+}
+
+type funcMacro struct {
+	ext       ir.FuncMeta
+	processOk bool
+	ftype     *funcType
+}
+
+var _ function = (*funcMacro)(nil)
+
+func fieldListAtomicIR() *ir.FieldList {
+	group := &ir.FieldGroup{
+		Type: ir.TypeFromKind(ir.IRKind),
+	}
+	group.Fields = []*ir.Field{&ir.Field{
+		Group: group,
+	}}
+	return &ir.FieldList{
+		List: []*ir.FieldGroup{group},
+	}
+}
+
+func (bFile *file) processIRMacroFunc(scope *scopeFile, fn *ast.FuncDecl, comment *ast.Comment) bool {
+	f := &funcMacro{
+		ext: ir.FuncMeta{
+			Src:   fn,
+			FFile: &bFile.repr,
+			FType: &ir.FuncType{
+				Params:  fieldListAtomicIR(),
+				Results: fieldListAtomicIR(),
+			},
+		},
+	}
+	f.processOk = checkEmptyParamsResults(scope, fn, "irmacro")
+	if fn.Recv.NumFields() != 0 {
+		f.processOk = scope.err().Appendf(fn, "irmacro function has a receiver")
+	}
+	var importOk bool
+	f.ftype, importOk = importFuncType(scope, f.ext.FType)
+	if !importOk {
+		f.processOk = false
+	}
+	if !bFile.declareFuncMacro(scope, f) {
+		f.processOk = false
+	}
+	return f.processOk
+}
+
+func (fn *funcMacro) staticValue() ir.StaticValue {
+	return &fn.ext
+}
+
+func (fn *funcMacro) resolveType(scope scoper) (typeNode, bool) {
+	return unknown, true
+}
+
+func (fn *funcMacro) name() *ast.Ident {
+	return fn.ext.Src.Name
+}
+
+func (fn *funcMacro) irFunc() ir.Func {
+	return &fn.ext
 }

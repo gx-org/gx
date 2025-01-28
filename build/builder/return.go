@@ -95,9 +95,9 @@ func (n *returnStmt) resolveType(scope *scopeBlock) bool {
 	// Check if the types being returned are assignable to the types declared by the signature.
 	for i, wantI := range want.types() {
 		gotI := resultTypes[i]
-		if gotI.kind() == ir.NumberKind {
+		if ir.IsNumber(gotI.kind()) {
 			var retOk bool
-			n.results[i], gotI, retOk = buildNumberNode(scope, n.results[i], wantI.buildType())
+			n.results[i], gotI, retOk = castNumber(scope, n.results[i], wantI.irType())
 			if !retOk {
 				ok = false
 				continue

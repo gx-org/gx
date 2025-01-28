@@ -27,6 +27,7 @@ import (
 	"github.com/gx-org/gx/build/fmterr"
 	"github.com/gx-org/gx/build/ir"
 	"github.com/gx-org/gx/stdlib/builtin"
+	"github.com/gx-org/gx/stdlib/impl"
 )
 
 //go:embed *.gx
@@ -36,15 +37,7 @@ var fs embed.FS
 var Package = builtin.PackageBuilder{
 	FullPath: "math",
 	Builders: []builtin.Builder{
-		builtin.BuildConst(func(*ir.Package) (string, ir.Expr, ir.Type, error) {
-			value := &ir.Number{
-				Src: &ast.BasicLit{
-					Kind:  token.INT,
-					Value: "4294967295",
-				},
-			}
-			return "MaxUint32", value, value.Type(), nil
-		}),
+		// Insert numeric constants that cannot be expressed as literals:
 		buildConstScalar("InfFloat32", float32(math.Inf(1))),
 		buildConstScalar("NegInfFloat32", float32(math.Inf(-1))),
 		buildConstScalar("InfFloat64", math.Inf(1)),
@@ -59,6 +52,7 @@ var Package = builtin.PackageBuilder{
 		builtin.BuildFunc(sin{}),
 		builtin.BuildFunc(sqrt{}),
 		builtin.BuildFunc(tanh{}),
+		builtin.ImplementStubFunc("Ceil", func(impl *impl.Stdlib) any { return impl.Math.Ceil }),
 	},
 }
 
@@ -85,8 +79,7 @@ func mainAuxArgsToTypes(funcName string, fetcher ir.Fetcher, call *ir.CallExpr) 
 	if !kindEq {
 		return nil, nil, nil, fmterr.Errorf(fetcher.FileSet(), call.Source(), "mismatch types %s and %s", baseType.String(), auxType.String())
 	}
-	_, auxArrayOk := auxType.(*ir.ArrayType)
-	if !auxArrayOk {
+	if auxType.(ir.ArrayType).Rank().IsAtomic() {
 		return baseType, auxType, baseType, nil
 	}
 	shapeEq, err := baseType.Equal(fetcher, auxType)
@@ -125,7 +118,7 @@ func buildConstScalar[T dtype.GoDataType](name string, value T) builtin.Builder 
 				Value: name,
 			},
 			Val: value,
-			Typ: ir.ScalarTypeK(kind),
+			Typ: ir.TypeFromKind(kind),
 		}
 		return name, value, value.Type(), nil
 	})

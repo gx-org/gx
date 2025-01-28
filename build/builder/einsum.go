@@ -107,10 +107,10 @@ func (r *tensorRef) String() string {
 
 func (r *tensorRef) resolveType(scope scoper) (typeNode, bool) {
 	typ, ok := r.exp.resolveType(scope)
-	if !ok || !ir.IsValid(typ.buildType()) {
+	if !ok || !ir.IsValid(typ.irType()) {
 		return nil, false
 	}
-	if typ.kind() != ir.TensorKind {
+	if typ.kind() != ir.ArrayKind {
 		scope.err().Appendf(r.base, "tensor statements must only reference tensors; %s is %s", r.base, typ)
 		return nil, false
 	}
@@ -185,7 +185,7 @@ func (s *tensorExpr) resolveType(scope scoper) (typeNode, bool) {
 
 	leftRank := s.lhs.typ.rnk.(*rank)
 	rightRank := s.rhs.typ.rnk.(*rank)
-	targetRank := &rank{ext: ir.Rank{}, dims: []arrayAxes{}}
+	targetRank := &rank{ext: ir.Rank{}, dims: []axisLengthNode{}}
 	targetTyp := &arrayType{
 		ast:  &ast.ArrayType{},
 		dtyp: s.lhs.typ.dtyp,
@@ -208,7 +208,7 @@ func (s *tensorExpr) resolveType(scope scoper) (typeNode, bool) {
 	}
 
 	// Bind the result to the target name in the enclosing scope.
-	s.ext.Typ = targetTyp.buildType()
+	s.ext.Typ = targetTyp.irType()
 	return targetTyp, true
 }
 

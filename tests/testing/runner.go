@@ -22,7 +22,7 @@ import (
 	"strings"
 	"testing"
 
-	"github.com/gx-org/backend/platform"
+	"github.com/google/go-cmp/cmp"
 	"github.com/gx-org/gx/api"
 	"github.com/gx-org/gx/api/values"
 	"github.com/gx-org/gx/build/builder"
@@ -37,6 +37,8 @@ import (
 
 	// Packages statically loaded for tests.
 	_ "github.com/gx-org/gx/tests/bindings/basic"
+	_ "github.com/gx-org/gx/tests/bindings/cartpole"
+	_ "github.com/gx-org/gx/tests/bindings/dtypes"
 	_ "github.com/gx-org/gx/tests/bindings/encoding"
 	_ "github.com/gx-org/gx/tests/bindings/imports"
 	_ "github.com/gx-org/gx/tests/bindings/math"
@@ -48,8 +50,7 @@ import (
 type (
 	// Runner runs test functions.
 	Runner struct {
-		rtm *api.Runtime
-		dev platform.Device
+		dev *api.Device
 	}
 
 	testTracer struct {
@@ -69,16 +70,21 @@ func NewBuilderStaticSource(stdlibImpl *impl.Stdlib) *builder.Builder {
 
 // NewRunner returns a test runner given a device.
 func NewRunner(rtm *api.Runtime, devID int) (*Runner, error) {
-	dev, err := rtm.Backend().Platform().Device(devID)
+	dev, err := rtm.Device(devID)
 	if err != nil {
 		return nil, err
 	}
-	return &Runner{rtm: rtm, dev: dev}, nil
+	return &Runner{dev: dev}, nil
 }
 
 // Run compiles a function into a XLA graph, runs it, and returns the result.
 func (r *Runner) Run(fn *ir.FuncDecl, options []interp.PackageOption) ([]values.Value, string, error) {
-	runner, err := r.rtm.Compile(r.dev, fn, nil, nil, options)
+	return r.RunWithArgs(fn, nil, nil, options)
+}
+
+// RunWithArgs compiles a function into a XLA graph, runs it, and returns the result.
+func (r *Runner) RunWithArgs(fn *ir.FuncDecl, recv values.Value, args []values.Value, options []interp.PackageOption) ([]values.Value, string, error) {
+	runner, err := interp.Compile(r.dev, fn, recv, args, options)
 	if err != nil {
 		return nil, "", err
 	}
@@ -218,7 +224,7 @@ func (r *Runner) run(t *testing.T, fn *ir.FuncDecl, options []interp.PackageOpti
 		for i, val := range values {
 			gotTypes[i] = fmt.Sprintf("%T", val)
 		}
-		t.Errorf("test run error:\n%s: incorrect output:\ngot (%s):\n%s\nwant:\n%s\n",
-			fmterr.PosString(fn.File().Package.FSet, wantOutCmt.Pos()), strings.Join(gotTypes, ","), got, want)
+		t.Errorf("test run error:\n%s: incorrect output:\ngot (%s):\n%s\nwant:\n%s\ndiff:\n%s\n",
+			fmterr.PosString(fn.File().Package.FSet, wantOutCmt.Pos()), strings.Join(gotTypes, ","), got, want, cmp.Diff(got, want))
 	}
 }

@@ -18,8 +18,10 @@ package main
 import (
 	"flag"
 	"fmt"
+	"maps"
 	"os"
 	"path/filepath"
+	"slices"
 
 	"github.com/gx-org/gx/build/builder"
 	"github.com/gx-org/gx/build/importers"
@@ -31,7 +33,8 @@ import (
 
 var (
 	targetFolder = flag.String("target_folder", "", "target location")
-	targetName   = flag.String("target_name", "go_bindings.go", "name of the file")
+	targetName   = flag.String("target_name", "", "name of the file")
+	language     = flag.String("language", "go", "Language for which to generate the bindings")
 	gxPackage    = flag.String("gx_package", "", "GX package to generate the bindings for")
 )
 
@@ -42,6 +45,11 @@ func exit(format string, a ...any) {
 }
 
 func adjustFlags(mod *module.Module) error {
+	_, name := filepath.Split(*gxPackage)
+	bindingsName := name + "_go_gx"
+	if *targetName == "" {
+		*targetName = bindingsName
+	}
 	if *targetFolder != "" {
 		return nil
 	}
@@ -49,8 +57,7 @@ func adjustFlags(mod *module.Module) error {
 	if err != nil {
 		return err
 	}
-	_, name := filepath.Split(*gxPackage)
-	*targetFolder = filepath.Join(folder, name+"_go_gx")
+	*targetFolder = filepath.Join(folder, bindingsName)
 	return nil
 }
 
@@ -67,11 +74,10 @@ func main() {
 	if err := os.MkdirAll(filepath.Dir(fullFilePath), os.ModePerm); err != nil {
 		exit("cannot create target directory: %v", err)
 	}
-	f, err := os.Create(fullFilePath)
-	if err != nil {
-		exit("cannot create target file: %v", err)
+	bndConstructor, ok := binder.Binders[*language]
+	if !ok {
+		exit("cannot create bindings for language %q: no binder available. Available binders are %v", *language, slices.Collect(maps.Keys(binder.Binders)))
 	}
-	defer f.Close()
 	bld := builder.New(importers.NewCacheLoader(
 		stdlib.Importer(nil),
 		localImporter,
@@ -80,7 +86,19 @@ func main() {
 	if err != nil {
 		exit("%+v", err)
 	}
-	if err := binder.Bind(f, pkg); err != nil {
+	bnd, err := bndConstructor(pkg.IR())
+	if err != nil {
 		exit("%+v", err)
+	}
+	for _, file := range bnd.Files() {
+		f, err := os.Create(fullFilePath + file.Extension())
+		if err != nil {
+			exit("cannot create target file: %v", err)
+		}
+		defer f.Close()
+
+		if err := file.WriteBindings(f); err != nil {
+			exit("%+v", err)
+		}
 	}
 }

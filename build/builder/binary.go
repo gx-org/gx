@@ -28,10 +28,10 @@ type binaryExpr struct {
 	typ  typeNode
 	x, y exprNode
 
-	val ir.Atomic
+	val ir.StaticExpr
 }
 
-var _ exprNumber = (*binaryExpr)(nil)
+var _ exprNode = (*binaryExpr)(nil)
 
 func processBinaryExpr(owner owner, expr *ast.BinaryExpr) (exprNode, bool) {
 	x, xOk := processExpr(owner, expr.X)
@@ -51,7 +51,7 @@ func (n *binaryExpr) buildExpr() ir.Expr {
 	}
 	n.ext.X = n.x.buildExpr()
 	n.ext.Y = n.y.buildExpr()
-	n.ext.Typ = n.typ.buildType()
+	n.ext.Typ = n.typ.irType()
 	return &n.ext
 }
 
@@ -63,41 +63,14 @@ func (n *binaryExpr) expr() ast.Expr {
 	return n.ext.Src
 }
 
-func (n *binaryExpr) castTo(eval evaluator) (exprScalar, []*ir.ValueRef, bool) {
-	xEval, unknownsX, okX := castExprTo(eval, n.x)
-	if !okX {
-		return nil, nil, false
-	}
-	yEval, unknownsY, okY := castExprTo(eval, n.y)
-	if !okY {
-		return nil, nil, false
-	}
-	ok := okX && okY
-	unknowns := append(unknownsX, unknownsY...)
-	if !ok {
-		return nil, unknowns, false
-	}
-	n.typ, ok = toTypeNode(eval.scoper(), eval.want())
-	n.ext.Typ = n.typ.buildType()
-	if !ok {
-		return nil, nil, false
-	}
-	n.x = xEval
-	n.y = yEval
-	n.ext.X = xEval.buildExpr()
-	n.ext.Y = yEval.buildExpr()
-	n.val = eval.cast(&n.ext)
-	return n, unknowns, ok
-}
-
-func (n *binaryExpr) scalar() ir.Atomic {
+func (n *binaryExpr) scalar() ir.StaticValue {
 	return n.val
 }
 
-func (n *binaryExpr) checkKind(scope scoper, x exprNode, typ ir.Type, appendErr bool) (isScalar bool, arrayType *ir.ArrayType, ok bool) {
-	isScalar = ir.IsAtomic(typ.Kind())
+func (n *binaryExpr) checkKind(scope scoper, x exprNode, typ ir.Type, appendErr bool) (isScalar bool, arrayType ir.ArrayType, ok bool) {
+	isScalar = ir.SupportOperators(typ.Kind())
 	var isArray bool
-	arrayType, isArray = typ.(*ir.ArrayType)
+	arrayType, isArray = typ.(ir.ArrayType)
 	if !isScalar && !isArray {
 		if appendErr {
 			scope.err().Appendf(x.source(), "invalid operation: operator %s not defined on type %s", n.ext.Src.Op.String(), typ.String())
@@ -109,7 +82,7 @@ func (n *binaryExpr) checkKind(scope scoper, x exprNode, typ ir.Type, appendErr 
 	return
 }
 
-func (n *binaryExpr) resolveOperator(scope scoper, ops typeNode) (result typeNode, castNumber, ok bool) {
+func (n *binaryExpr) resolveOperator(scope scoper, ops typeNode) (result typeNode, forceCastNumber, ok bool) {
 	result = ops
 	opsKind := ops.kind()
 	array, isArray := ops.(arrayTypeNode)
@@ -119,7 +92,9 @@ func (n *binaryExpr) resolveOperator(scope scoper, ops typeNode) (result typeNod
 	op := n.ext.Src.Op
 	switch op {
 	case token.ADD, token.MUL, token.SUB, token.QUO:
-		ok = ir.IsAtomic(opsKind)
+		ok = ir.SupportOperators(opsKind) && opsKind != ir.BoolKind
+	case token.REM:
+		ok = ir.SupportOperators(opsKind) && ir.IsInteger(opsKind)
 	case token.EQL, token.GTR, token.LSS, token.NEQ, token.LEQ, token.GEQ:
 		ok = true
 		result = &arrayType{
@@ -129,13 +104,14 @@ func (n *binaryExpr) resolveOperator(scope scoper, ops typeNode) (result typeNod
 		if isArray {
 			result, ok = array.convertTo(scope, n, result)
 		}
-		castNumber = true
+		// Force cast of the operands to a default type for an expression like: 3 == 3.
+		forceCastNumber = true
 	default:
 		scope.err().Appendf(n.ext.Src, "token %s not supported", n.ext.Src.Op.String())
 		return invalid, false, false
 	}
 	if !ok {
-		scope.err().Appendf(n.ext.Src, "invalid operation: operator %s not defined on %s", op.String(), ops.kind())
+		scope.err().Appendf(n.ext.Src, "operator %s not defined on %s", op.String(), ops.kind())
 		return invalid, false, false
 	}
 	return
@@ -147,31 +123,38 @@ func (n *binaryExpr) resolveOperands(scope scoper) (typeNode, bool) {
 	if !xOk || !yOk {
 		return invalid, false
 	}
+	xKind := xType.kind()
+	yKind := yType.kind()
 	// Both operands are numbers, so this binary expression becomes a number.
-	if xType.kind() == ir.NumberKind && yType.kind() == ir.NumberKind {
-		return numberType, true
+	if ir.IsNumber(xKind) && ir.IsNumber(yKind) {
+		// If either operand is a float, the result is a float number.
+		// For example: 3.2+4 is a float number.
+		if xKind == ir.NumberFloatKind || yKind == ir.NumberFloatKind {
+			return numberFloatType, true
+		}
+		return numberIntType, true
 	}
 	// Only one operand is a number, so we cast the number operand to the other type operand.
-	if xType.kind() == ir.NumberKind {
-		n.x, xType, xOk = buildNumberNode(scope, n.x, yType.buildType())
+	if ir.IsNumber(xKind) {
+		n.x, xType, xOk = castNumber(scope, n.x, yType.irType())
 	}
-	if yType.kind() == ir.NumberKind {
-		n.y, yType, yOk = buildNumberNode(scope, n.y, xType.buildType())
+	if ir.IsNumber(yKind) {
+		n.y, yType, yOk = castNumber(scope, n.y, xType.irType())
 	}
 	if !xOk || !yOk {
 		return invalid, false
 	}
 	// No operand is a number: check that we have a scalar or an array.
-	xGXType := xType.buildType()
+	xGXType := xType.irType()
 	xIsScalar, xArrayType, xOk := n.checkKind(scope, n.x, xGXType, true)
-	yGXType := yType.buildType()
+	yGXType := yType.irType()
 	yIsScalar, yArrayType, yOk := n.checkKind(scope, n.y, yGXType, xOk)
 	if !xOk || !yOk {
 		return invalid, false
 	}
 
 	var scalarType ir.Type
-	var arrayType *ir.ArrayType
+	var arrayType ir.ArrayType
 	var arrayTypeNode typeNode
 	if xIsScalar && yArrayType != nil {
 		scalarType = xGXType
@@ -225,22 +208,22 @@ func (n *binaryExpr) resolveType(scope scoper) (typeNode, bool) {
 		n.typ, n.ext.Typ = invalidType()
 		return typeNodeOk(n.typ)
 	}
-	opResult, castNumber, ok := n.resolveOperator(scope, n.typ)
+	opResult, forceCastNumber, ok := n.resolveOperator(scope, n.typ)
 	if !ok {
 		n.typ, n.ext.Typ = invalidType()
 		return typeNodeOk(n.typ)
 	}
-	if castNumber && n.typ.kind() == ir.NumberKind {
+	if forceCastNumber && ir.IsNumber(n.typ.kind()) {
 		var xOk, yOk bool
-		n.x, _, xOk = buildNumberNode(scope, n.x, float64Type.buildType())
-		n.y, _, yOk = buildNumberNode(scope, n.y, float64Type.buildType())
+		n.x, _, xOk = castNumber(scope, n.x, unknown.irType())
+		n.y, _, yOk = castNumber(scope, n.y, unknown.irType())
 		if !xOk || !yOk {
 			n.typ, n.ext.Typ = invalidType()
 			return typeNodeOk(n.typ)
 		}
 	}
 	n.typ = opResult
-	n.ext.Typ = n.typ.buildType()
+	n.ext.Typ = n.typ.irType()
 	return typeNodeOk(n.typ)
 }
 

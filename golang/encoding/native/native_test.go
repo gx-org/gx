@@ -33,7 +33,7 @@ import (
 	gxtesting "github.com/gx-org/gx/tests/testing"
 )
 
-var encodingGX *encoding_go_gx.Compiler
+var encodingGX *encoding_go_gx.Package
 
 func multiply[T dtype.AlgebraType](f int, x T) T {
 	return x * T(f)
@@ -181,19 +181,19 @@ func TestRunUnmarshalledScalarsStruct(t *testing.T) {
 }
 
 func TestMain(m *testing.M) {
-	bck := backend.New(builder.New(importers.NewCacheLoader(
+	rtm := backend.New(builder.New(importers.NewCacheLoader(
 		embedpkg.New(),
 	)))
-	gxPackage, err := encoding_go_gx.Load(bck)
+	gxPackage, err := encoding_go_gx.Load(rtm)
 	if err != nil {
 		fmt.Fprintf(os.Stderr, "%+v", fmterr.ToStackTraceError(err))
 		return
 	}
-	dev, err := bck.Platform().Device(0)
+	dev, err := rtm.Device(0)
 	if err != nil {
 		fmt.Fprintf(os.Stderr, "%+v", fmterr.ToStackTraceError(err))
 		return
 	}
-	encodingGX = gxPackage.CompilerFor(dev)
+	encodingGX = gxPackage.BuildFor(dev)
 	os.Exit(m.Run())
 }

@@ -29,7 +29,7 @@ func (sl *stringList) String() string {
 }
 
 func (sl *stringList) Set(values string) error {
-	for _, value := range strings.Split(values, ",") {
+	for value := range strings.SplitSeq(values, ",") {
 		value = strings.TrimSpace(value)
 		if value == "" {
 			continue

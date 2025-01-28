@@ -45,14 +45,14 @@ func processArrayType(owner owner, typ *ast.ArrayType) (*arrayType, bool) {
 	}, ok
 }
 
-func importArrayType(scope scoper, ext *ir.ArrayType) (*arrayType, bool) {
+func importArrayType(scope scoper, ext ir.ArrayType) (*arrayType, bool) {
 	typ := &arrayType{
-		ast: ext.Src,
+		ast: ext.ArrayType(),
 	}
 	var rankOk bool
 	typ.rnk, rankOk = importRank(scope, ext.Rank())
 	var dtypeOk bool
-	typ.dtyp, dtypeOk = toTypeNode(scope, ext.DType)
+	typ.dtyp, dtypeOk = toTypeNode(scope, ext.DataType())
 	return typ, rankOk && dtypeOk
 }
 
@@ -68,16 +68,12 @@ func (n *arrayType) source() ast.Node {
 	return n.ast
 }
 
-func (n *arrayType) buildType() ir.Type {
+func (n *arrayType) irType() ir.Type {
 	return n.buildArrayType()
 }
 
-func (n *arrayType) buildArrayType() *ir.ArrayType {
-	return &ir.ArrayType{
-		Src:   n.ast,
-		DType: n.dtyp.buildType(),
-		RankF: n.rnk.build(),
-	}
+func (n *arrayType) buildArrayType() ir.ArrayType {
+	return ir.NewArrayType(n.ast, n.dtyp.irType(), n.rnk.build())
 }
 
 func (n *arrayType) kind() ir.Kind {
@@ -87,7 +83,7 @@ func (n *arrayType) kind() ir.Kind {
 	if n.dtyp.kind() == ir.InvalidKind {
 		return ir.InvalidKind
 	}
-	return ir.TensorKind
+	return ir.ArrayKind
 }
 
 func (n *arrayType) rank() rankNode {
@@ -103,7 +99,7 @@ func (n *arrayType) reconcileDType(scope scoper, pos nodePos, other arrayTypeNod
 	if dtype.kind() == ir.UnknownKind {
 		return other.dtype(), true
 	}
-	eq, err := dtype.buildType().Equal(scope.evalFetcher(), other.dtype().buildType())
+	eq, err := dtype.irType().Equal(scope.evalFetcher(), other.dtype().irType())
 	if err != nil {
 		scope.err().Append(scope.err().FSet().Position(pos.source(), err))
 		return n.dtyp, false
@@ -158,7 +154,7 @@ func (n *arrayType) lengths(scope scoper, call *ir.CallExpr) (*sliceExpr, bool) 
 	}
 	exprs := make([]exprNode, len(rank.dims))
 	for i, axis := range rank.dims {
-		exprs[i] = axis.exprNode()
+		exprs[i] = axis
 	}
 	return toSliceExpr(scope, call.Expr(), axisLengthType, exprs), true
 }
@@ -168,17 +164,27 @@ func (n *arrayType) String() string {
 }
 
 func (n *arrayType) resolveConcreteType(scope scoper) (typeNode, bool) {
-	var ok bool
-	n.dtyp, ok = resolveType(scope, n, n.dtyp)
+	dtyp, ok := resolveType(scope, n, n.dtyp)
 	if !ok {
 		return typeNodeOk(invalid)
 	}
-	if !ir.IsDataType(n.dtyp.kind()) {
-		scope.err().Appendf(n.source(), "array of %s not supported", n.dtyp.String())
+	if !ir.IsDataType(dtyp.kind()) {
+		scope.err().Appendf(n.source(), "array of %s not supported", dtyp.String())
 		return typeNodeOk(invalid)
 	}
-	if rankOk := n.rnk.resolve(scope); !rankOk {
+	// Note that rank.resolve() may return a new concrete rankNode instance if the rank was generic.
+	// In that case, we return a new instance of arrayType (see below) and keep the generic arrayType
+	// and rank unchanged so they can be specialized again for the next call.
+	rank, rankOk := n.rnk.resolve(scope)
+	if !rankOk {
 		return typeNodeOk(invalid)
+	}
+	if dtyp != n.dtyp || rank != n.rank() {
+		return &arrayType{
+			ast:  n.ast,
+			dtyp: dtyp,
+			rnk:  rank,
+		}, true
 	}
 	return n, true
 }
@@ -187,22 +193,22 @@ type (
 	arrayLiteral interface {
 		source() ast.Node
 		dtype() ir.Type
-		buildExpr(*ir.ArrayType) ir.Expr
+		buildExpr(ir.ArrayType) ir.Expr
 		String() string
 	}
 
 	// tImplicitLiteral parses a tensor with implicit value declaration.
 	// For example: [2][3]float32{}
 	tImplicitLiteral[T dtype.GoDataType] struct {
-		ext       *ir.ArrayLitExprT[T]
+		ext       *ir.ArrayLitExpr
 		wantDType ir.Type
 	}
 )
 
 func newImplicitLiteral[T dtype.GoDataType](n *arrayLitExpr) arrayLiteral {
 	return &tImplicitLiteral[T]{
-		ext:       &ir.ArrayLitExprT[T]{Src: n.src},
-		wantDType: n.typ.dtype().buildType(),
+		ext:       &ir.ArrayLitExpr{Src: n.src},
+		wantDType: n.typ.dtype().irType(),
 	}
 }
 
@@ -214,7 +220,7 @@ func (arr *tImplicitLiteral[T]) dtype() ir.Type {
 	return arr.wantDType
 }
 
-func (arr *tImplicitLiteral[T]) buildExpr(tp *ir.ArrayType) ir.Expr {
+func (arr *tImplicitLiteral[T]) buildExpr(tp ir.ArrayType) ir.Expr {
 	arr.ext.Typ = tp
 	return arr.ext
 }
@@ -237,15 +243,15 @@ type (
 	}
 
 	tExplicitLiteral[T dtype.GoDataType] struct {
-		ext    *ir.ArrayLitExprT[T]
+		ext    *ir.ArrayLitExpr
 		dtypeF typeNode
-		dims   []*valueDimension
+		dims   []*inferredFromLiteralAxisLength
 	}
 )
 
 func newExplicitLiteral[T dtype.GoDataType](n *arrayLitExpr) explicitLiteral {
 	return &tExplicitLiteral[T]{
-		ext:    &ir.ArrayLitExprT[T]{Src: n.src},
+		ext:    &ir.ArrayLitExpr{Src: n.src},
 		dtypeF: n.typ.dtyp,
 	}
 }
@@ -255,13 +261,13 @@ func (arr *tExplicitLiteral[T]) appendVals(other explicitLiteral) {
 	arr.ext.Vals = append(arr.ext.Vals, otherVals...)
 }
 
-func (arr *tExplicitLiteral[T]) buildExpr(typ *ir.ArrayType) ir.Expr {
+func (arr *tExplicitLiteral[T]) buildExpr(typ ir.ArrayType) ir.Expr {
 	arr.ext.Typ = typ
 	return arr.ext
 }
 
 func (arr *tExplicitLiteral[T]) dtype() ir.Type {
-	return arr.dtypeF.buildType()
+	return arr.dtypeF.irType()
 }
 
 func (arr *tExplicitLiteral[T]) source() ast.Node {
@@ -270,7 +276,7 @@ func (arr *tExplicitLiteral[T]) source() ast.Node {
 
 func (arr *tExplicitLiteral[T]) rank() *rank {
 	rnk := &rank{
-		dims: make([]arrayAxes, len(arr.dims)),
+		dims: make([]axisLengthNode, len(arr.dims)),
 	}
 	for i, dim := range arr.dims {
 		rnk.dims[i] = dim
@@ -283,6 +289,11 @@ func (arr *tExplicitLiteral[T]) appendValue(scope scoper, expr exprNode) bool {
 	if !ok {
 		return false
 	}
+	if ir.IsNumber(exprType.kind()) {
+		if expr, exprType, ok = castNumber(scope, expr, arr.dtypeF.irType()); !ok {
+			return false
+		}
+	}
 	var canAssign bool
 	var err error
 	arr.dtypeF, canAssign, err = assignableTo(scope, arr, exprType, arr.dtypeF)
@@ -294,28 +305,23 @@ func (arr *tExplicitLiteral[T]) appendValue(scope scoper, expr exprNode) bool {
 		scope.err().Appendf(expr.source(), "cannot use value of type %v as value of type %v in array", exprType, arr.dtype())
 		return false
 	}
-	if exprType.kind() == ir.NumberKind {
-		if expr, _, ok = buildNumberNode(scope, expr, arr.dtypeF.buildType()); !ok {
-			return false
-		}
-	}
 	arr.ext.Vals = append(arr.ext.Vals, expr.buildExpr())
 	if len(arr.dims) == 0 {
-		arr.dims = []*valueDimension{&valueDimension{src: arr.ext.Src}}
+		arr.dims = []*inferredFromLiteralAxisLength{&inferredFromLiteralAxisLength{src: arr.ext.Src}}
 	}
 	arr.dims[0].val++
 	return true
 }
 
 func (arr *tExplicitLiteral[T]) addAxe(expr exprNode, dim int) explicitLiteral {
-	ldim := &valueDimension{src: arr.ext.Src, val: dim}
+	ldim := &inferredFromLiteralAxisLength{src: arr.ext.Src, val: dim}
 	return &tExplicitLiteral[T]{
-		ext: &ir.ArrayLitExprT[T]{
+		ext: &ir.ArrayLitExpr{
 			Src:  arr.ext.Src,
 			Vals: append([]ir.Expr{}, arr.ext.Vals...),
 		},
 		dtypeF: arr.dtypeF,
-		dims:   append([]*valueDimension{ldim}, arr.dims...),
+		dims:   append([]*inferredFromLiteralAxisLength{ldim}, arr.dims...),
 	}
 }
 
@@ -421,7 +427,7 @@ func (n *arrayLitExpr) parseValues(scope scoper) explicitLiteral {
 	return arr
 }
 
-func formatDims(dims []arrayAxes) string {
+func formatDims(dims []axisLengthNode) string {
 	s := strings.Builder{}
 	for _, dim := range dims {
 		s.WriteString(fmt.Sprintf("[%v]", dim))
@@ -504,7 +510,7 @@ func (n *arrayLitExpr) parseTensor(scope scoper) (res explicitLiteral) {
 	res = first.addAxe(n, len(arrays))
 	for _, arr := range arrays[1:] {
 		gotDims := arr.rank().dims
-		if !dimEquals(scope, gotDims, wantDims) {
+		if !lengthEquals(scope, gotDims, wantDims) {
 			return nil
 		}
 		res.appendVals(arr)

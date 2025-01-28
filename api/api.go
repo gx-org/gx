@@ -18,11 +18,7 @@ package api
 import (
 	"github.com/gx-org/backend"
 	"github.com/gx-org/backend/platform"
-	"github.com/gx-org/gx/api/values"
 	"github.com/gx-org/gx/build/builder"
-	"github.com/gx-org/gx/build/ir"
-	"github.com/gx-org/gx/interp"
-	"github.com/gx-org/gx/interp/state"
 )
 
 // Runtime encapsulates a GX builder and a backend.
@@ -43,9 +39,13 @@ func (rtm *Runtime) Backend() backend.Backend {
 	return rtm.bck
 }
 
-// Platform used by the runtime.
-func (rtm *Runtime) Platform() platform.Platform {
-	return rtm.bck.Platform()
+// Device returns a new device on the platform.
+func (rtm *Runtime) Device(ord int) (*Device, error) {
+	dev, err := rtm.bck.Platform().Device(ord)
+	if err != nil {
+		return nil, err
+	}
+	return &Device{rtm: rtm, dev: dev}, nil
 }
 
 // Builder returns the builder used to build GX source code into a GX intermediate representation.
@@ -53,15 +53,25 @@ func (rtm *Runtime) Builder() *builder.Builder {
 	return rtm.builder
 }
 
-// Compile a function and returns a runner to run the function on the device.
-func (rtm *Runtime) Compile(dev platform.Device, funcDecl *ir.FuncDecl, receiver values.Value, args []values.Value, options []interp.PackageOption) (*state.CompiledGraph, error) {
-	itrp, err := interp.New(rtm.bck, options)
-	if err != nil {
-		return nil, err
+type (
+	// PackageOption is an option specific to a package.
+	PackageOption interface {
+		Package() string
 	}
-	graph, outNode, err := itrp.Eval(funcDecl, receiver, args)
-	if err != nil {
-		return nil, err
+
+	// Device created by a runtime.
+	Device struct {
+		rtm *Runtime
+		dev platform.Device
 	}
-	return graph.Compile(dev, outNode)
+)
+
+// Runtime returns the device's parent runtime.
+func (dev *Device) Runtime() *Runtime {
+	return dev.rtm
+}
+
+// PlatformDevice returns the device used on the platform.
+func (dev *Device) PlatformDevice() platform.Device {
+	return dev.dev
 }

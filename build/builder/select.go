@@ -27,7 +27,10 @@ type selectorTypeExpr struct {
 	typ *namedType
 }
 
-var _ selector = (*selectorTypeExpr)(nil)
+var (
+	_ selector = (*selectorTypeExpr)(nil)
+	_ typeNode = (*selectorTypeExpr)(nil)
+)
 
 func processTypeSelectorReference(owner owner, expr *ast.SelectorExpr) (typeNode, bool) {
 	n := &selectorTypeExpr{
@@ -51,7 +54,7 @@ func (n *selectorTypeExpr) resolveConcreteType(scope scoper) (typeNode, bool) {
 		return invalid, false
 	}
 	pckRef := xType.(*packageRef)
-	_, typ, ok := pckRef.decl.pkg.ns.fetch(scope, n.src.Sel)
+	typ, ok := fetchType(scope, pckRef.decl.pkg.base().ns, n.src.Sel)
 	if !ok {
 		return invalid, false
 	}
@@ -71,11 +74,14 @@ func (n *selectorTypeExpr) kind() ir.Kind {
 }
 
 func (n *selectorTypeExpr) convertibleTo(scope scoper, other typeNode) (bool, error) {
-	return n.buildType().ConvertibleTo(scope.evalFetcher(), other.buildType())
+	return n.irType().ConvertibleTo(scope.evalFetcher(), other.irType())
 }
 
-func (n *selectorTypeExpr) buildType() ir.Type {
-	return n.typ.buildType()
+func (n *selectorTypeExpr) irType() ir.Type {
+	if n.typ == nil {
+		return invalid.irType()
+	}
+	return n.typ.irType()
 }
 
 func (n *selectorTypeExpr) isGeneric() bool {
@@ -117,7 +123,11 @@ type (
 	}
 )
 
-var _ exprNumber = (*selectorExpr)(nil)
+var (
+	_ exprNode   = (*selectorExpr)(nil)
+	_ selectNode = (*fieldSelectorExpr)(nil)
+	_ selectNode = (*methodSelectorExpr)(nil)
+)
 
 func processSelectorReference(owner owner, expr *ast.SelectorExpr) (*selectorExpr, bool) {
 	n := &selectorExpr{
@@ -146,12 +156,6 @@ func (n *selectorExpr) buildExpr() ir.Expr {
 	}
 	n.ext = n.sel.buildExpr(n.x)
 	return n.ext
-}
-
-func (n *selectorExpr) castTo(eval evaluator) (exprScalar, []*ir.ValueRef, bool) {
-	casted, unknowns, ok := n.sel.(*packageConstSelectorExpr).castTo(eval)
-	n.x = casted
-	return casted, unknowns, ok
 }
 
 func (n *selectorExpr) selectNode(scope scoper, typ typeNode) selectNode {
@@ -201,7 +205,7 @@ func buildFieldSelectorExpr(expr *ast.SelectorExpr, st *structType, field *field
 
 func (n *fieldSelectorExpr) buildExpr(x exprNode) ir.Expr {
 	n.ext.X = x.buildExpr()
-	n.ext.Typ = n.field.group.typ.buildType()
+	n.ext.Typ = n.field.group.typ.irType()
 	return &n.ext
 }
 
@@ -228,10 +232,10 @@ func buildMethodSelectorExpr(expr *ast.SelectorExpr, st *namedType, fn ir.Func) 
 
 func (n *methodSelectorExpr) buildExpr(x exprNode) ir.Expr {
 	n.ext.X = x.buildExpr()
-	n.ext.Typ = n.namedType.methods[n.ext.Func].typeNode().buildType()
+	n.ext.Typ = n.namedType.methods[n.ext.Func.Name()].irFunc().Type()
 	return &n.ext
 }
 
 func (n *methodSelectorExpr) resolveType(scope scoper) (typeNode, bool) {
-	return typeNodeOk(n.namedType.methods[n.ext.Func].typeNode())
+	return n.namedType.methods[n.ext.Func.Name()].resolveType(scope)
 }

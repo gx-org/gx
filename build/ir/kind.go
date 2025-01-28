@@ -33,8 +33,8 @@ const (
 	Float32Kind = Kind(dtype.Float32)
 	Float64Kind = Kind(dtype.Float64)
 
-	AxisIndexKind = iota + dtype.MaxDataType
-	AxisLengthKind
+	IntIdxKind = Kind(iota + dtype.MaxDataType)
+	IntLenKind
 
 	// UnknownKind is a proxy type used while a type is being inferred by the compiler.
 	UnknownKind
@@ -42,15 +42,19 @@ const (
 	VoidKind
 	// InterfaceKind is an interface.
 	InterfaceKind
-	// NumberKind is a proxy type when the type of a scalar is being inferred by the compiler.
-	NumberKind
+	// NumberFloatKind is a float number with no concrete type.
+	NumberFloatKind
+	// NumberIntKind is an integer number with no concrete type.
+	NumberIntKind
 
-	TensorKind
-	FuncKind
-	StructKind
-	SliceKind
-	TupleKind
+	ArrayKind
 	BuiltinKind
+	FuncKind
+	SliceKind
+	StringKind
+	StructKind
+	TupleKind
+	IRKind
 )
 
 // String returns a string representation of a kind.
@@ -62,11 +66,13 @@ func (k Kind) String() string {
 		return "void"
 	case InterfaceKind:
 		return "interface"
-	case NumberKind:
+	case NumberFloatKind:
 		return "number"
-	case AxisIndexKind:
+	case NumberIntKind:
+		return "number"
+	case IntIdxKind:
 		return "intidx"
-	case AxisLengthKind:
+	case IntLenKind:
 		return "intlen"
 	case BoolKind:
 		return "bool"
@@ -82,14 +88,16 @@ func (k Kind) String() string {
 		return "float32"
 	case Float64Kind:
 		return "float64"
-	case TensorKind:
-		return "tensor"
+	case ArrayKind:
+		return "array"
 	case FuncKind:
 		return "func"
-	case StructKind:
-		return "struct"
 	case SliceKind:
 		return "slice"
+	case StringKind:
+		return "string"
+	case StructKind:
+		return "struct"
 	case BuiltinKind:
 		return "builtin"
 	}
@@ -98,7 +106,7 @@ func (k Kind) String() string {
 
 // DType converts a GX kind into an array data type.
 func (k Kind) DType() dtype.DataType {
-	if k == AxisIndexKind || k == AxisLengthKind {
+	if k == IntIdxKind || k == IntLenKind {
 		return DefaultIntKind.DType()
 	}
 	if k >= dtype.MaxDataType {
@@ -117,9 +125,9 @@ func (k Kind) DType() dtype.DataType {
 func KindFromString(ident string) Kind {
 	switch ident {
 	case "intidx":
-		return AxisIndexKind
+		return IntIdxKind
 	case "intlen":
-		return AxisLengthKind
+		return IntLenKind
 	case "bool":
 		return BoolKind
 	case "float32":
@@ -130,6 +138,8 @@ func KindFromString(ident string) Kind {
 		return Int32Kind
 	case "int64":
 		return Int64Kind
+	case "string":
+		return StringKind
 	case "uint32":
 		return Uint32Kind
 	case "uint64":
@@ -162,16 +172,23 @@ func KindGeneric[T dtype.GoDataType]() Kind {
 	return InvalidKind
 }
 
-// IsAtomic returns true if the kind is a scalar kind.
-func IsAtomic(knd Kind) bool {
+// IsNumber returns true if the kind is a number.
+func IsNumber(knd Kind) bool {
+	return knd == NumberFloatKind || knd == NumberIntKind
+}
+
+// SupportOperators returns true if the kind supports unary or binary operators.
+func SupportOperators(knd Kind) bool {
 	switch knd {
-	case AxisIndexKind, AxisLengthKind:
+	case IntIdxKind, IntLenKind:
+		return true
+	case BoolKind:
 		return true
 	case Float32Kind, Float64Kind:
 		return true
 	case Int32Kind, Int64Kind:
 		return true
-	case NumberKind:
+	case NumberFloatKind, NumberIntKind:
 		return true
 	case Uint32Kind, Uint64Kind:
 		return true
@@ -200,7 +217,7 @@ func IsIndexKind(k Kind) bool {
 	case Int64Kind:
 	case Uint32Kind:
 	case Uint64Kind:
-	case AxisLengthKind:
+	case IntLenKind:
 	default:
 		return false
 	}
@@ -210,15 +227,95 @@ func IsIndexKind(k Kind) bool {
 // IsRangeOk returns true if the kind can be used to iterate in a for loop with a range statement.
 func IsRangeOk(k Kind) bool {
 	switch k {
-	case AxisLengthKind:
-	case NumberKind:
+	case IntLenKind:
+	case NumberIntKind:
 	default:
 		return false
 	}
 	return true
 }
 
-// ToAtomic returns an atomic type from a kind.
-func ToAtomic(kind Kind) *AtomicType {
-	return &AtomicType{Knd: kind}
+// IsInteger return true if kind is an integer.
+func IsInteger(kind Kind) bool {
+	switch kind {
+	case IntLenKind, IntIdxKind:
+		return true
+	case Int32Kind, Int64Kind, Uint32Kind, Uint64Kind:
+		return true
+	case NumberIntKind:
+		return true
+	}
+	return false
+}
+
+// IsFloat return true if kind is a float.
+func IsFloat(kind Kind) bool {
+	switch kind {
+	case Float32Kind, Float64Kind:
+		return true
+	case NumberFloatKind:
+		return true
+	}
+	return false
+}
+
+// CanBeNumber returns true if the value of a kind can be a number.
+func CanBeNumber(k Kind) bool {
+	switch k {
+	case IntLenKind, IntIdxKind:
+		return true
+	default:
+		return IsFloat(k) || IsInteger(k)
+	}
+}
+
+// DefaultNumberType returns the default GX type for a number.
+func DefaultNumberType(kind Kind) Type {
+	switch kind {
+	case NumberFloatKind:
+		return NumberFloat{}.DefaultType()
+	case NumberIntKind:
+		return NumberInt{}.DefaultType()
+	default:
+		return TypeFromKind(InvalidKind)
+	}
+}
+
+var invalid = InvalidType{}
+
+// TypeFromKind returns a type from a kind.
+func TypeFromKind(kind Kind) Type {
+	switch kind {
+	case IntIdxKind:
+		return IntIndexType()
+	case IntLenKind:
+		return IntLenType()
+	case BoolKind:
+		return BoolType()
+	case Float32Kind:
+		return Float32Type()
+	case Float64Kind:
+		return Float64Type()
+	case Int32Kind:
+		return Int32Type()
+	case Int64Kind:
+		return Int64Type()
+	case NumberFloatKind:
+		return NumberFloatType()
+	case NumberIntKind:
+		return NumberIntType()
+	case StringKind:
+		return StringType()
+	case Uint32Kind:
+		return Uint32Type()
+	case Uint64Kind:
+		return Uint64Type()
+	default:
+		return &invalid
+	}
+}
+
+// AtomicFromString returns a scalar type singleton from a string.
+func AtomicFromString(ident string) Type {
+	return TypeFromKind(KindFromString(ident))
 }

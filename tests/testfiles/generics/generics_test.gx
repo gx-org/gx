@@ -1,13 +1,23 @@
 package generics
 
-func identity(a [___]float32) [...]float32 {
+func identity(a [___X]float32) [___X]float32 {
 	return a
 }
 
-func TestIdentity01() [...]float32 {
-	return identity([2]float32{
-		1.0, 2.0,
-	})
+func TestIdentity() ([1]float32, [2]float32, [3]float32) {
+	return identity([1]float32{1}), identity([2]float32{1, 2}), identity([3]float32{1, 2, 3})
 	// Want:
-	// [2]float32{1, 2}
+	// 0: [1]float32{1}
+	// 1: [2]float32{1, 2}
+	// 2: [3]float32{1, 2, 3}
+}
+
+func add(a [___X]int32, b [___X]int32) [___X]int32 {
+	return a + b
+}
+
+func TestAdd() [2]int32 {
+	return add([...]int32{1, 2}, [...]int32{3, 4})
+	// Want:
+	// [2]int32{4, 6}
 }

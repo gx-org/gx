@@ -24,6 +24,21 @@ func TestStructCall() ([...]float32, float32) {
 	// 1: float32(4)
 }
 
+func NewSample() sample {
+	return sample{
+		x: [2]float32{1, 2},
+		y: 2,
+	}
+}
+
+func TestNewSample() ([...]float32, float32) {
+	s := NewSample()
+	return s.X(), s.Y()
+	// Want:
+	// 0: [2]float32{1, 2}
+	// 1: float32(2)
+}
+
 func (s sample) returnLiteral() sample {
 	return sample{
 		x: s.x * s.y,
@@ -107,4 +122,27 @@ func TestCastToField() ([...]float32, float32) {
 	// Want:
 	// 0: [2]float32{2, 3}
 	// 1: float32(4)
+}
+
+func (s sample) State() ([...]float32, float32) {
+	return s.X(), s.Y()
+}
+
+func TestMultipleSteps() ([...]float32, float32, [...]float32, float32, [...]float32, float32) {
+	s := NewSample().setField()
+	t := s.setField()
+	t.y = 3	
+	u := t.setField()
+
+	sx, sy := s.State()
+	tx, ty := t.State()
+	ux, uy := u.State()
+	return sx, sy, tx, ty, ux, uy
+	// Want:
+	// 0: [2]float32{2, 4}
+	// 1: float32(2)
+	// 2: [2]float32{4, 8}
+	// 3: float32(3)
+	// 4: [2]float32{12, 24}
+	// 5: float32(3)
 }

@@ -31,6 +31,11 @@ func (g *State) NamedType(errF fmterr.FileSet, typ *ir.NamedType) *NamedType {
 	return &NamedType{state: g, typ: typ}
 }
 
+// Flatten returns the named type in a slice of elements.
+func (n *NamedType) Flatten() ([]Element, error) {
+	return []Element{n}, nil
+}
+
 // ErrPos returns the error formatter for the position of the token representing the node in the graph.
 func (n *NamedType) ErrPos() fmterr.Pos {
 	return n.errFmt

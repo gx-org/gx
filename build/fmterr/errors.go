@@ -55,6 +55,11 @@ func (errs *Errors) Error() string {
 	return strings.Join(ss, "\n")
 }
 
+// Errors returns the list of all collected errors.
+func (errs *Errors) Errors() []error {
+	return errs.errs
+}
+
 // ToError returns the errors as an error interface.
 func (errs *Errors) ToError() error {
 	if errs == nil || errs.Empty() {

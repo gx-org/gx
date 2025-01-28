@@ -15,90 +15,65 @@
 package state
 
 import (
-	"github.com/pkg/errors"
-	"github.com/gx-org/backend/graph"
 	"github.com/gx-org/backend/platform"
+	"github.com/gx-org/gx/api"
 	"github.com/gx-org/gx/api/values"
-	"github.com/gx-org/gx/build/fmterr"
 	"github.com/gx-org/gx/build/ir"
+	"github.com/gx-org/gx/interp/elements"
 )
 
-type (
-	valueFetcher func(aux []platform.DeviceHandle) (values.Value, error)
+type trace struct {
+	call   elements.CallAt
+	traced []Element
+}
 
-	traceFetcher struct {
-		call     CallAt
-		fetchers []valueFetcher
+func (t *trace) parse(tracer Tracer, parser *handleParser) error {
+	vals := make([]values.Value, len(t.traced))
+	for i, tr := range t.traced {
+		var err error
+		vals[i], err = parser.parse(tr)
+		if err != nil {
+			return err
+		}
 	}
+	return tracer.Trace(t.call.FSet(), t.call.Node(), vals)
+}
 
-	nodeTracer struct {
-		cGraph *CompiledGraph
-		nodes  []*graph.OutputNode
-		traces []*traceFetcher
-	}
-)
+type traces struct {
+	state   *State
+	traces  []*trace
+	flatten []Element
+}
 
 // Trace a set of elements.
-func (s *State) Trace(call CallAt, fn *Func, irFunc *ir.FuncBuiltin, args []Element, ctx Context) error {
-	fetchers := make([]valueFetcher, len(args))
-	for i, arg := range args {
-		var f valueFetcher
-		switch argT := arg.(type) {
-		case backendElement:
-			node, sh, err := NodeFromElement(argT)
-			if err != nil {
-				return err
-			}
-			f = s.tracer.fetcher(arg, &graph.OutputNode{
-				Node:  node,
-				Shape: sh,
-			})
-		case ElementWithConstant:
-			f = func([]platform.DeviceHandle) (values.Value, error) { return ctx.Args()[i], nil }
-		default:
-			return fmterr.Position(call.FSet(), call.ExprT().Src, errors.Errorf("cannot trace element %d:%T", i, argT))
-		}
-		fetchers[i] = f
-	}
-	s.tracer.traces = append(s.tracer.traces, &traceFetcher{
-		call:     call,
-		fetchers: fetchers,
+func (s *State) Trace(call elements.CallAt, fn *Func, irFunc *ir.FuncBuiltin, args []Element, ctx Context) error {
+	s.traces.traces = append(s.traces.traces, &trace{
+		call:   call,
+		traced: args,
 	})
+	for _, arg := range args {
+		flatten, err := arg.Flatten()
+		if err != nil {
+			return err
+		}
+		s.traces.flatten = append(s.traces.flatten, flatten...)
+	}
 	return nil
 }
 
-func (t *nodeTracer) fetcher(el Element, node *graph.OutputNode) valueFetcher {
-	nodeID := len(t.nodes)
-	t.nodes = append(t.nodes, node)
-	return func(handles []platform.DeviceHandle) (values.Value, error) {
-		return (&handleParser{handles: handles[nodeID : nodeID+1]}).parse(el)
-	}
-}
-
-func (t *nodeTracer) process(tracer Tracer, aux []platform.DeviceHandle) error {
-	if tracer == nil || len(t.traces) == 0 {
+func (ts *traces) process(dev *api.Device, ctx Context, tracer Tracer, aux []platform.DeviceHandle) error {
+	if tracer == nil || len(ts.traces) == 0 {
 		return nil
 	}
-	for _, trace := range t.traces {
-		values, err := trace.fetchAll(aux)
-		if err != nil {
-			return err
-		}
-		if err := tracer.Trace(trace.call.FSet(), trace.call.ExprT(), values); err != nil {
+	parser := newHandleParser(dev, ctx, aux)
+	for _, trace := range ts.traces {
+		if err := trace.parse(tracer, parser); err != nil {
 			return err
 		}
 	}
 	return nil
 }
 
-func (f *traceFetcher) fetchAll(aux []platform.DeviceHandle) ([]values.Value, error) {
-	vals := make([]values.Value, len(f.fetchers))
-	for i, fetcher := range f.fetchers {
-		var err error
-		vals[i], err = fetcher(aux)
-		if err != nil {
-			return nil, err
-		}
-	}
-	return vals, nil
+func (ts *traces) asTuple() *elements.Tuple {
+	return elements.NewTuple(nil, nil, ts.flatten)
 }

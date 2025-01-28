@@ -83,6 +83,10 @@ func (v *validator) validate(node ir.Node) {
 			return
 		}
 		v.validate(nodeT.Body)
+	case *ir.FuncMeta:
+		if nodeT.FType != nil {
+			v.validate(nodeT.FType)
+		}
 	case *ir.FuncLit:
 		v.validate(nodeT.FFile)
 		v.validate(nodeT.FType)
@@ -116,9 +120,10 @@ func (v *validator) validate(node ir.Node) {
 		v.validate(nodeT.X)
 		v.validate(nodeT.TypeF)
 	// Types
-	case *ir.ArrayType:
-		v.validate(nodeT.DType)
-		v.validate(nodeT.RankF)
+	case *ir.InvalidType:
+	case ir.ArrayType:
+		v.validate(nodeT.DataType())
+		v.validate(nodeT.Rank())
 	case *ir.FuncType:
 		v.validate(nodeT.Params)
 		v.validate(nodeT.Results)
@@ -127,7 +132,6 @@ func (v *validator) validate(node ir.Node) {
 		}
 	case *ir.NamedType:
 		v.validate(nodeT.Underlying)
-	case *ir.AtomicType:
 	case *ir.SliceType:
 		v.validate(nodeT.DType)
 	case *ir.StructType:
@@ -150,7 +154,7 @@ func (v *validator) validate(node ir.Node) {
 		v.validate(nodeT.X)
 
 	// Expressions:
-	case ir.ArrayLitExpr:
+	case *ir.ArrayLitExpr:
 		for _, val := range nodeT.Values() {
 			v.validate(val)
 		}
@@ -187,8 +191,9 @@ func (v *validator) validate(node ir.Node) {
 		v.validate(nodeT.Decl)
 	case *ir.ParenExpr:
 		v.validate(nodeT.X)
-		v.validate(nodeT.Typ)
-	case ir.Atomic:
+	case ir.StaticValue:
+	case *ir.NumberInt:
+	case *ir.NumberFloat:
 	case ir.VoidType:
 	case *ir.SliceExpr:
 		for _, expr := range nodeT.Vals {
@@ -250,7 +255,7 @@ func (v *validator) validate(node ir.Node) {
 		if nodeT.Impl == nil {
 			v.errs.Append(errors.Errorf("builtin has no implementation"))
 		}
-
+	case ir.UnknownType:
 	default:
 		v.errs.Append(errors.Errorf("type %T not supported by gxtesting.Validate", nodeT))
 	}

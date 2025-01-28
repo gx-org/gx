@@ -57,7 +57,7 @@ func (n *typeCast) buildExpr() ir.Expr {
 }
 
 func (n *typeCast) String() string {
-	return fmt.Sprintf("cast(%s)", n.typ)
+	return n.typ.String()
 }
 
 type castExpr struct {
@@ -96,8 +96,8 @@ func (n *castExpr) expr() ast.Expr {
 func (n *castExpr) resolveType(scope scoper) (typeNode, bool) {
 	targetType, typeOk := n.typ.resolveType(scope)
 	origType, exprOk := n.x.resolveType(scope)
-	if origType.kind() == ir.NumberKind {
-		n.x, origType, exprOk = buildNumberNode(scope, n.x, targetType.buildType())
+	if ir.IsNumber(origType.kind()) {
+		n.x, origType, exprOk = castNumber(scope, n.x, targetType.irType())
 	}
 	if !typeOk || !exprOk {
 		return n.typ.typ, false
@@ -111,7 +111,7 @@ func (n *castExpr) resolveType(scope scoper) (typeNode, bool) {
 }
 
 func (n *castExpr) buildExpr() ir.Expr {
-	n.ext.Typ = n.typ.typ.buildType()
+	n.ext.Typ = n.typ.typ.irType()
 	n.ext.X = n.x.buildExpr()
 	return &n.ext
 }

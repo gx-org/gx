@@ -1,0 +1,84 @@
+package cartpole
+
+import "math"
+
+type Cartpole struct {
+	gravity               float32
+	massCart              float32
+	massPole              float32
+	totalMass             float32
+	length                float32
+	poleMassLength        float32
+	forceMag              float32
+	tau                   float32
+	thetaThresholdRadians float32
+	xThreshold            float32
+	x                     float32
+	xDot                  float32
+	theta                 float32
+	thetaDot              float32
+}
+
+func (cp Cartpole) Reset() Cartpole {
+	cp.x = 0.0
+	cp.xDot = 0.0
+	cp.theta = 0.0
+	cp.thetaDot = 0.0
+	return cp
+}
+
+func (cp Cartpole) Step(action float32) (Cartpole) {
+	force := cp.forceMag * action
+	cosTheta := math.Cos(cp.theta)
+	sinTheta := math.Sin(cp.theta)
+	temp := (force + cp.poleMassLength * math.Pow(cp.thetaDot, 2) * sinTheta) / cp.totalMass
+	thetaacc := (cp.gravity * sinTheta - cosTheta * temp) / (cp.length * (4.0 / 3.0 - cp.massPole * math.Pow(cosTheta, 2) / cp.totalMass))
+	xacc := temp - cp.poleMassLength * thetaacc * cosTheta / cp.totalMass
+	cp.x = cp.x + cp.tau * cp.xDot
+	cp.xDot = cp.xDot + cp.tau * xacc
+	cp.theta = cp.theta + cp.tau * cp.thetaDot
+	cp.thetaDot = cp.thetaDot + cp.tau * thetaacc
+	return cp
+}
+
+func (cp Cartpole) State() [...]float32 {
+	return [...]float32{cp.x, cp.xDot, cp.theta, cp.thetaDot}
+}
+
+func (cp Cartpole) FullState() [...]float32 {
+	return [...]float32{
+		cp.gravity,
+		cp.massCart,
+		cp.massPole,
+		cp.totalMass,
+		cp.length,
+		cp.poleMassLength,
+		cp.forceMag,
+		cp.tau,
+		cp.thetaThresholdRadians,
+		cp.xThreshold,
+		cp.x,
+		cp.xDot,
+		cp.theta,
+		cp.thetaDot,
+	}
+}
+
+func New() Cartpole {
+	return Cartpole{
+		gravity:               9.8,
+		massCart:              1.0,
+		massPole:              0.1,
+		totalMass:             1.1,
+		length:                0.5,
+		poleMassLength:        0.05,
+		forceMag:              10.0,
+		tau:                   0.02,
+		thetaThresholdRadians: 12 * 2 * 3.1415926536 / 360,
+		xThreshold:            2.4,
+		x:                     0.0,
+		xDot:                  0.0,
+		theta:                 0.0,
+		thetaDot:              0.0,
+	}
+}

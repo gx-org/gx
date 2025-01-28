@@ -52,6 +52,12 @@ func TestWithVar() float64 {
 	// float64(3.2)
 }
 
+func TestTensor0DInt32() [___]int32 {
+	return 11
+	// Want:
+	// int32(11)
+}
+
 func TestTensor1DUint32() [...]uint32 {
 	return [...]uint32{1, 2, 3, 4}
 	// Want:
@@ -150,11 +156,11 @@ func TestTensor3DFloat64() [_][_][_]float64 {
 	// }
 }
 
-func TestWithBlanks() float64 {
+func TestWithBlanks() int64 {
 	a, _, _ := 1, 2, 3
 	return a
 	// Want:
-	// float64(1)
+	// int64(1)
 }
 
 var (
@@ -237,13 +243,13 @@ func TestTensorDynamic2DTensor() [_][_]float32 {
 	// }
 }
 
-func TestRedefineVariable() (float64, float64) {
+func TestRedefineVariable() (int64, int64) {
 	a := 4
 	a, b := 5, 6
 	return a, b
 	// Want:
-	// 0: float64(5)
-	// 1: float64(6)
+	// 0: int64(5)
+	// 1: int64(6)
 }
 
 const constant = 4.5
@@ -270,19 +276,19 @@ func TestConstantWithParen() int32 {
 	// int32(14)
 }
 
-func TestVariableWithParen() float64 {
+func TestVariableWithParen() int64 {
 	a := 4
 	b := 5
 	return b * (a + b)
 	// Want:
-	// float64(45)
+	// int64(45)
 }
 
-func TestNamedReturnX() (x float64) {
+func TestNamedReturnX() (x int64) {
 	x = 5
 	return
 	// Want:
-	// float64(5)
+	// int64(5)
 }
 
 func TestLens() []intlen {

@@ -47,11 +47,11 @@ func checkExpandRanks(fetcher ir.Fetcher, call *ir.CallExpr, src *ir.Rank, targe
 	}
 
 	for i, targetExpr := range targetAxes {
-		valTarget, unknownsTarget, err := ir.Eval[ir.Int](fetcher, targetExpr.Expr())
+		valTarget, unknownsTarget, err := ir.Eval[ir.Int](fetcher, targetExpr)
 		if err != nil {
 			return err
 		}
-		valArray, unknownsArray, err := ir.Eval[ir.Int](fetcher, srcAxes[i].Expr())
+		valArray, unknownsArray, err := ir.Eval[ir.Int](fetcher, srcAxes[i])
 		if err != nil {
 			return err
 		}
@@ -68,12 +68,12 @@ func checkExpandRanks(fetcher ir.Fetcher, call *ir.CallExpr, src *ir.Rank, targe
 func (f expand) BuildFuncType(fetcher ir.Fetcher, call *ir.CallExpr) (*ir.FuncType, error) {
 	params, err := builtins.BuildFuncParams(fetcher, call, f.Name(), []ir.Type{
 		builtins.GenericArrayType,
-		ir.AxisLengthsType(),
+		ir.IntLenSliceType(),
 	})
 	if err != nil {
 		return nil, err
 	}
-	arrayType, err := builtins.NarrowType[*ir.ArrayType](fetcher, call, call.Args[0].Type())
+	arrayType, err := builtins.NarrowType[ir.ArrayType](fetcher, call, call.Args[0].Type())
 	if err != nil {
 		return nil, err
 	}
@@ -86,13 +86,8 @@ func (f expand) BuildFuncType(fetcher ir.Fetcher, call *ir.CallExpr) (*ir.FuncTy
 		return nil, err
 	}
 	return &ir.FuncType{
-		Src:    &ast.FuncType{Func: call.Source().Pos()},
-		Params: builtins.Fields(params...),
-		Results: builtins.Fields(
-			&ir.ArrayType{
-				DType: arrayType.DataType(),
-				RankF: targetRank,
-			},
-		),
+		Src:     &ast.FuncType{Func: call.Source().Pos()},
+		Params:  builtins.Fields(params...),
+		Results: builtins.Fields(ir.NewArrayType(nil, arrayType.DataType(), targetRank)),
 	}, nil
 }

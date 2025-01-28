@@ -224,12 +224,12 @@ func TestMulTensor1DScalarFloat32() [2]float32 {
 	// [2]float32{-6, 10}
 }
 
-func TestReAssignFloat32() float64 {
+func TestReAssignInt64() int64 {
 	a := 2
 	a = 3
 	return a
 	// Want:
-	// float64(3)
+	// int64(3)
 }
 
 func TestEqualScalar() bool {
@@ -287,4 +287,28 @@ func TestCallAfterFuncDefinition() [2][2]int64 {
 	// 	{124, 125},
 	// 	{126, 127},
 	// }
+}
+
+func TestModuloAtomicAtomic() int32 {
+	return 8 % 3
+	// Want:
+	// int32(2)
+}
+
+func TestModuloArrayArray() [3]int32 {
+	return [3]int32{6, 7, 8} % [3]int32{3, 3, 3}
+	// Want:
+	// [3]int32{0, 1, 2}
+}
+
+func TestModuloArrayAtomic() [3]int32 {
+	return [3]int32{6, 7, 8} % 3
+	// Want:
+	// [3]int32{0, 1, 2}
+}
+
+func TestModuloAtomicArray() [3]int32 {
+	return 20 % [3]int32{6, 7, 8}
+	// Want:
+	// [3]int32{2, 6, 4}
 }
