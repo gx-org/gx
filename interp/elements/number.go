@@ -12,35 +12,36 @@
 // See the License for the specific language governing permissions and
 // limitations under the License.
 
-package state
+package elements
 
 import (
 	"github.com/pkg/errors"
 	"github.com/gx-org/backend/dtype"
+	"github.com/gx-org/gx/api/values"
+	"github.com/gx-org/gx/build/fmterr"
 	"github.com/gx-org/gx/build/ir"
 )
 
 // Number is a GX number.
 type Number struct {
-	state  *State
 	number ir.Expr
 }
 
 var _ Element = (*Number)(nil)
 
-// Number returns a new float number state element.
-func (s *State) Number(nb ir.Expr) *Number {
-	return &Number{state: s, number: nb}
-}
-
-// State owning the element.
-func (n *Number) State() *State {
-	return n.state
+// NewNumber returns a new float number state element.
+func NewNumber(nb ir.Expr) *Number {
+	return &Number{number: nb}
 }
 
 // Flatten returns the number in a slice of elements.
 func (n *Number) Flatten() ([]Element, error) {
 	return []Element{n}, nil
+}
+
+// Unflatten creates a GX value from the next handles available in the Unflattener.
+func (n *Number) Unflatten(handles *Unflattener) (values.Value, error) {
+	return nil, fmterr.Internal(errors.Errorf("%T does not support converting device handles into GX values", n), "")
 }
 
 // Atomic returns the number as an ir.Atomic expression.

@@ -12,53 +12,53 @@
 // See the License for the specific language governing permissions and
 // limitations under the License.
 
-package state
+package tracer
 
 import (
 	"github.com/gx-org/backend/graph"
 	"github.com/gx-org/backend/shape"
 	"github.com/gx-org/gx/api/values"
+	"github.com/gx-org/gx/golang/backend/kernels"
 	"github.com/gx-org/gx/interp/elements"
+	"github.com/gx-org/gx/interp/state"
 )
 
-// ValueLiteral value literal specified in the code.
-type ValueLiteral struct {
-	state *State
-	expr  elements.ExprAt
+// valueElement is a GX value represented as a node in the graph.
+type valueElement struct {
+	state *state.State
+	expr  elements.NodeAt
 	value *values.HostArray
 	node  *graph.OutputNode
 }
 
 var (
-	_ ElementWithConstant = (*ValueLiteral)(nil)
-	_ Materialiser        = (*ValueLiteral)(nil)
+	_ elements.ElementWithConstant = (*valueElement)(nil)
+	_ state.Materialiser           = (*valueElement)(nil)
 )
 
-// NewValueLiteral returns a GX value as an element.
-func (s *State) NewValueLiteral(expr elements.ExprAt, value *values.HostArray) (*ValueLiteral, error) {
-	return &ValueLiteral{
-		expr:  expr,
+func newValueElement(s *state.State, src elements.NodeAt, value values.Array) (*valueElement, error) {
+	hostValue, err := value.ToHostArray(kernels.Allocator())
+	if err != nil {
+		return nil, err
+	}
+	return &valueElement{
+		expr:  src,
 		state: s,
-		value: value,
+		value: hostValue,
 	}, nil
 }
 
-// State returns the state owning the element.
-func (n *ValueLiteral) State() *State {
-	return n.state
-}
-
 // Shape of the value represented by the element.
-func (n *ValueLiteral) Shape() *shape.Shape {
+func (n *valueElement) Shape() *shape.Shape {
 	return n.value.Shape()
 }
 
 // Materialise the value into a node in the backend graph.
-func (n *ValueLiteral) Materialise() (*graph.OutputNode, error) {
+func (n *valueElement) Materialise() (*graph.OutputNode, error) {
 	if n.node != nil {
 		return n.node, nil
 	}
-	node, err := n.state.backendGraph.Core().NewConstant(n.value.Buffer())
+	node, err := n.state.BackendGraph().Core().NewConstant(n.value.Buffer())
 	if err != nil {
 		return nil, err
 	}
@@ -70,27 +70,28 @@ func (n *ValueLiteral) Materialise() (*graph.OutputNode, error) {
 }
 
 // Flatten returns the element in a slice.
-func (n *ValueLiteral) Flatten() ([]Element, error) {
-	return []Element{n}, nil
+func (n *valueElement) Flatten() ([]elements.Element, error) {
+	return []elements.Element{n}, nil
 }
 
 // NumericalConstant returns the value of a constant represented by a node.
-func (n *ValueLiteral) NumericalConstant() *values.HostArray {
+func (n *valueElement) NumericalConstant() *values.HostArray {
 	return n.value
 }
 
-func (n *ValueLiteral) valueFromHandle(handles *handleParser) (values.Value, error) {
+// Unflatten creates a GX value from the next handles available in the Unflattener.
+func (n *valueElement) Unflatten(handles *elements.Unflattener) (values.Value, error) {
 	// TODO(b/388207169): Always transfer the value to device because C++ bindings do not support HostValue.
-	return n.NumericalConstant().ToDevice(handles.device())
+	return n.NumericalConstant().ToDevice(handles.Device())
 }
 
 // Slice of the value on the first axis given an index.
-func (n *ValueLiteral) Slice(expr elements.ExprAt, i int) (Element, error) {
+func (n *valueElement) Slice(expr elements.ExprAt, i int) (elements.Element, error) {
 	x, err := n.Materialise()
 	if err != nil {
 		return nil, err
 	}
-	sliceNode, err := n.state.backendGraph.Core().NewSlice(x.Node, i)
+	sliceNode, err := n.state.BackendGraph().Core().NewSlice(x.Node, i)
 	if err != nil {
 		return nil, err
 	}
@@ -105,8 +106,8 @@ func (n *ValueLiteral) Slice(expr elements.ExprAt, i int) (Element, error) {
 }
 
 // ToExpr returns the value as a GX IR expression.
-func (n *ValueLiteral) ToExpr() *HostArrayExpr {
-	return &HostArrayExpr{
+func (n *valueElement) ToExpr() *elements.HostArrayExpr {
+	return &elements.HostArrayExpr{
 		Typ: n.value.Type(),
 		Val: n.NumericalConstant(),
 	}

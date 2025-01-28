@@ -18,29 +18,29 @@ import (
 	"github.com/gx-org/gx/api/values"
 	"github.com/gx-org/gx/build/ir"
 	"github.com/gx-org/gx/golang/backend/kernels"
-	"github.com/gx-org/gx/interp/state"
+	"github.com/gx-org/gx/interp/elements"
 )
 
 // evalExprOnHost evaluates an expression on the host.
-func evalExprOnHost(ctx Context, expr ir.Expr) (*values.HostArray, error) {
+func evalExprOnHost(ctx *context, expr ir.Expr) (*values.HostArray, error) {
 	el, err := evalExpr(ctx, expr)
 	if err != nil {
 		return nil, err
 	}
 	// First, check if the value is a static value.
-	value := state.ConstantFromElement(el)
+	value := elements.ConstantFromElement(el)
 	if value != nil {
 		return value, nil
 	}
 	// If not, check if it is an argument.
-	value, err = state.HostValueFromContext(ctx, el)
+	value, err = elements.HostValueFromContext(ctx.callInputs, el)
 	if err != nil {
 		return nil, err
 	}
 	return value, nil
 }
 
-func evalScalarCastOnHost(ctx Context, expr *ir.CastExpr, val *values.HostArray, target ir.Kind) (state.Element, error) {
+func evalScalarCastOnHost(ctx *context, expr *ir.CastExpr, val *values.HostArray, target ir.Kind) (elements.Element, error) {
 	nativeHandle := val.Handle().(kernels.Handle).KernelValue()
 	kernelFactory := nativeHandle.Factory()
 	castOp, _, _, err := kernelFactory.Cast(target.DType(), nil)
@@ -50,11 +50,11 @@ func evalScalarCastOnHost(ctx Context, expr *ir.CastExpr, val *values.HostArray,
 	return evalLocalKernel(ctx, expr, castOp, nativeHandle, target)
 }
 
-func evalLocalKernel(ctx Context, expr *ir.CastExpr, kernel kernels.Unary, handle kernels.Array, target ir.Kind) (state.Element, error) {
+func evalLocalKernel(ctx *context, expr *ir.CastExpr, kernel kernels.Unary, handle kernels.Array, target ir.Kind) (elements.Element, error) {
 	outArray, err := kernel(handle)
 	if err != nil {
 		return nil, err
 	}
 	value := values.NewHostArray(expr.Type(), kernels.NewBuffer(outArray))
-	return ctx.Evaluator().ElementFromValue(ctx, expr, value)
+	return ctx.Evaluator().ElementFromValue(nodeAt[ir.Node](ctx, expr), value)
 }

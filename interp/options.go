@@ -46,7 +46,7 @@ func (p PackageVarSetValue) Package() string {
 	return p.Pkg
 }
 
-type packageOption func(ctx Context, pkg *ir.Package, fr *frame) error
+type packageOption func(ctx *context, pkg *ir.Package, fr *frame) error
 
 func (itrp *Interpreter) processOptions(options []PackageOption) error {
 	for _, option := range options {
@@ -79,13 +79,17 @@ func findVarDecl(pkg *ir.Package, name string) *ir.VarDecl {
 }
 
 func (itrp *Interpreter) processPackageVarSetValue(opt PackageVarSetValue) (packageOption, error) {
-	return func(ctx Context, pkg *ir.Package, fr *frame) error {
+	return func(ctx *context, pkg *ir.Package, fr *frame) error {
 		varDecl := findVarDecl(pkg, opt.Var)
 		if varDecl == nil {
 			return errors.Errorf("cannot find static variable %s in package %s", opt.Var, opt.Pkg)
 		}
 		ident := opt.Var
-		node, err := ctx.State().PkgVar(varDecl, opt.Value)
+		array, ok := opt.Value.(values.Array)
+		if !ok {
+			return errors.Errorf("package variables of type %T (used in %s.%s) not supported", opt.Value, pkg.Name, opt.Var)
+		}
+		node, err := ctx.Evaluator().ElementFromValue(nodeAt[ir.Node](ctx, varDecl), array)
 		if err != nil {
 			return err
 		}

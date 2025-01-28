@@ -12,7 +12,7 @@
 // See the License for the specific language governing permissions and
 // limitations under the License.
 
-package state
+package elements
 
 import (
 	"fmt"
@@ -20,32 +20,28 @@ import (
 
 	"github.com/gx-org/gx/api/values"
 	"github.com/gx-org/gx/build/ir"
-	"github.com/gx-org/gx/interp/elements"
 )
 
 // Struct is an instance of a structure.
 type Struct struct {
-	state      *State
-	expr       elements.ExprAt
+	expr       ExprAt
 	fields     map[string]Element
 	fieldInit  FieldSelector
 	structType *ir.StructType
 }
 
 var (
-	_ Element         = (*Struct)(nil)
-	_ MethodSelector  = (*Struct)(nil)
-	_ FieldSelector   = (*Struct)(nil)
-	_ Copyable        = (*Struct)(nil)
-	_ handleProcessor = (*Struct)(nil)
+	_ Element        = (*Struct)(nil)
+	_ MethodSelector = (*Struct)(nil)
+	_ FieldSelector  = (*Struct)(nil)
+	_ Copyable       = (*Struct)(nil)
 )
 
-// StructWithInit returns a new node representing a structure instance where the field
+// NewStructWithInit returns a new node representing a structure instance where the field
 // will be constructed only on demand.
 // This is used for structures passed as arguments to GX.
-func (g *State) StructWithInit(structType *ir.StructType, expr elements.ExprAt, fieldInit FieldSelector) *Struct {
+func NewStructWithInit(structType *ir.StructType, expr ExprAt, fieldInit FieldSelector) *Struct {
 	return &Struct{
-		state:      g,
 		expr:       expr,
 		fieldInit:  fieldInit,
 		structType: structType,
@@ -53,20 +49,19 @@ func (g *State) StructWithInit(structType *ir.StructType, expr elements.ExprAt, 
 	}
 }
 
-// StructFromElements returns a new node representing a structure instance given a slice of elements.
-func (g *State) StructFromElements(structType *ir.StructType, expr elements.ExprAt, vals []Element) *Struct {
+// NewStructFromElements returns a new node representing a structure instance given a slice of
+func NewStructFromElements(structType *ir.StructType, expr ExprAt, vals []Element) *Struct {
 	fields := make(map[string]Element, len(vals))
 	for i, field := range structType.Fields.Fields() {
 		fields[field.Name.Name] = vals[i]
 	}
-	return g.Struct(structType, expr, fields)
+	return NewStruct(structType, expr, fields)
 }
 
-// Struct returns a new node representing a structure instance.
-func (g *State) Struct(structType *ir.StructType, expr elements.ExprAt, fields map[string]Element) *Struct {
+// NewStruct returns a new node representing a structure instance.
+func NewStruct(structType *ir.StructType, expr ExprAt, fields map[string]Element) *Struct {
 	return &Struct{
 		expr:       expr,
-		state:      g,
 		fields:     fields,
 		structType: structType,
 	}
@@ -75,11 +70,6 @@ func (g *State) Struct(structType *ir.StructType, expr elements.ExprAt, fields m
 // StructType returns the type of the structure.
 func (n *Struct) StructType() *ir.StructType {
 	return n.structType
-}
-
-// State owning the element.
-func (n *Struct) State() *State {
-	return n.state
 }
 
 func (n *Struct) orderedFieldValues() ([]Element, error) {
@@ -112,16 +102,17 @@ func (n *Struct) Flatten() ([]Element, error) {
 	return flattenAll(elts)
 }
 
-func (n *Struct) valueFromHandle(handles *handleParser) (values.Value, error) {
+// Unflatten consumes the next handles to return a GX value.
+func (n *Struct) Unflatten(handles *Unflattener) (values.Value, error) {
 	elts, err := n.orderedFieldValues()
 	if err != nil {
 		return nil, err
 	}
-	return handles.parseComposite(parseCompositeOf(values.NewStruct), n.expr.Node().Type(), elts)
+	return handles.ParseComposite(ParseCompositeOf(values.NewStruct), n.expr.Node().Type(), elts)
 }
 
 // SelectField returns the value of a field of a structure given its index.
-func (n *Struct) SelectField(expr elements.ExprAt, name string) (Element, error) {
+func (n *Struct) SelectField(expr ExprAt, name string) (Element, error) {
 	field := n.fields[name]
 	if field != nil {
 		return field, nil
@@ -141,13 +132,12 @@ func (n *Struct) SelectMethod(fn ir.Func) (*Func, error) {
 		Ident:   receiverIdent(fn),
 		Element: n,
 	}
-	return n.state.Func(fn, recv), nil
+	return NewFunc(fn, recv), nil
 }
 
 // Copy the structure to a new node.
 func (n *Struct) Copy() Element {
 	cp := &Struct{
-		state:      n.state,
 		fieldInit:  n.fieldInit,
 		structType: n.structType,
 		expr:       n.expr,

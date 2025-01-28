@@ -12,7 +12,7 @@
 // See the License for the specific language governing permissions and
 // limitations under the License.
 
-package state
+package elements
 
 import (
 	"go/ast"
@@ -20,13 +20,11 @@ import (
 	"github.com/pkg/errors"
 	"github.com/gx-org/gx/api/values"
 	"github.com/gx-org/gx/build/ir"
-	"github.com/gx-org/gx/interp/elements"
 )
 
 // Methods maintains a table of methods with a receiver.
 type Methods struct {
-	state *State
-	recv  Element
+	recv Element
 }
 
 var (
@@ -35,9 +33,9 @@ var (
 	_ MethodSelector = (*Methods)(nil)
 )
 
-// Methods returns a new node representing a table of methods.
-func (g *State) Methods(recv Element) *Methods {
-	return &Methods{state: g, recv: recv}
+// NewMethods returns a new node representing a table of methods.
+func NewMethods(recv Element) *Methods {
+	return &Methods{recv: recv}
 }
 
 func receiverIdent(f ir.Func) *ast.Ident {
@@ -59,12 +57,12 @@ func (n *Methods) SelectMethod(fn ir.Func) (*Func, error) {
 		Ident:   receiverIdent(fn),
 		Element: n.recv,
 	}
-	return n.state.Func(fn, recv), nil
+	return NewFunc(fn, recv), nil
 }
 
 // SelectField returns the field given an index.
 // Returns nil if the receiver type cannot select fields.
-func (n *Methods) SelectField(expr elements.ExprAt, name string) (Element, error) {
+func (n *Methods) SelectField(expr ExprAt, name string) (Element, error) {
 	st, ok := n.recv.(FieldSelector)
 	if !ok {
 		return nil, errors.Errorf("%T cannot be converted to %T", n.recv, st)
@@ -72,11 +70,7 @@ func (n *Methods) SelectField(expr elements.ExprAt, name string) (Element, error
 	return st.SelectField(expr, name)
 }
 
-// State owning the element.
-func (n *Methods) State() *State {
-	return n.state
-}
-
-func (n *Methods) valueFromHandle(handles *handleParser) (values.Value, error) {
-	return handles.parse(n.recv)
+// Unflatten consumes the next handles to return a GX value.
+func (n *Methods) Unflatten(handles *Unflattener) (values.Value, error) {
+	return handles.Unflatten(n.recv)
 }

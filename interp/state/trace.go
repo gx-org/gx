@@ -27,11 +27,11 @@ type trace struct {
 	traced []Element
 }
 
-func (t *trace) parse(tracer Tracer, parser *handleParser) error {
+func (t *trace) parse(tracer Tracer, parser *elements.Unflattener) error {
 	vals := make([]values.Value, len(t.traced))
 	for i, tr := range t.traced {
 		var err error
-		vals[i], err = parser.parse(tr)
+		vals[i], err = parser.Unflatten(tr)
 		if err != nil {
 			return err
 		}
@@ -46,7 +46,7 @@ type traces struct {
 }
 
 // Trace a set of elements.
-func (s *State) Trace(call elements.CallAt, fn *Func, irFunc *ir.FuncBuiltin, args []Element, ctx Context) error {
+func (s *State) Trace(call elements.CallAt, fn *elements.Func, irFunc *ir.FuncBuiltin, args []Element, ctx *elements.CallInputs) error {
 	s.traces.traces = append(s.traces.traces, &trace{
 		call:   call,
 		traced: args,
@@ -61,11 +61,11 @@ func (s *State) Trace(call elements.CallAt, fn *Func, irFunc *ir.FuncBuiltin, ar
 	return nil
 }
 
-func (ts *traces) process(dev *api.Device, ctx Context, tracer Tracer, aux []platform.DeviceHandle) error {
+func (ts *traces) process(dev *api.Device, ctx *elements.CallInputs, tracer Tracer, aux []platform.DeviceHandle) error {
 	if tracer == nil || len(ts.traces) == 0 {
 		return nil
 	}
-	parser := newHandleParser(dev, ctx, aux)
+	parser := elements.NewUnflattener(dev, ctx, aux)
 	for _, trace := range ts.traces {
 		if err := trace.parse(tracer, parser); err != nil {
 			return err

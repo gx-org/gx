@@ -18,16 +18,62 @@ package elements
 import (
 	"go/token"
 
+	"github.com/pkg/errors"
+	"github.com/gx-org/backend/dtype"
+	"github.com/gx-org/backend/shape"
+	"github.com/gx-org/gx/api/values"
 	"github.com/gx-org/gx/build/ir"
+	"github.com/gx-org/gx/golang/backend/kernels"
 )
 
-// Element in the state.
-type Element interface {
-	// Flatten the element, that is:
-	// returns itself if the element is atomic,
-	// returns its components if the element is a composite.
-	Flatten() ([]Element, error)
+// CallInputs is the receiver and arguments with which the function was called.
+type CallInputs struct {
+	// Receiver on which the function call was done.
+	// Can be nil.
+	Receiver values.Value
+
+	// Args returns list of arguments passed to the interpreter at call time.
+	Args []values.Value
 }
+
+type (
+	// Element in the state.
+	Element interface {
+		// Flatten the element, that is:
+		// returns itself if the element is atomic,
+		// returns its components if the element is a composite.
+		Flatten() ([]Element, error)
+
+		// Unflatten creates a GX value from the next handles available in the Unflattener.
+		Unflatten(handles *Unflattener) (values.Value, error)
+	}
+
+	// Copyable is an interface implemented by nodes that need to be copied when passed to a function.
+	Copyable interface {
+		Copy() Element
+	}
+
+	// FieldSelector selects a field given its index.
+	FieldSelector interface {
+		SelectField(ExprAt, string) (Element, error)
+	}
+
+	// Slicer is a state element that can be sliced.
+	Slicer interface {
+		Slice(ExprAt, int) (Element, error)
+	}
+
+	// ArraySlicer is a state element with an array that can be sliced.
+	ArraySlicer interface {
+		NumericalElement
+		Slice(ExprAt, int) (Element, error)
+	}
+
+	// MethodSelector selects a method given its index.
+	MethodSelector interface {
+		SelectMethod(ir.Func) (*Func, error)
+	}
+)
 
 type (
 	// NodeFile is an expression with the file in which it is declared.
@@ -54,11 +100,6 @@ func NewNodeAt[T ir.Node](file *ir.File, expr T) NodeFile[T] {
 	return NodeFile[T]{file: file, node: expr}
 }
 
-// NewExprAt returns a new expression at a given position.
-func NewExprAt[T ir.Expr](file *ir.File, expr T) ExprAt {
-	return ExprAt{file: file, node: expr}
-}
-
 // FSet returns the fileset of the expression.
 func (ea NodeFile[T]) FSet() *token.FileSet {
 	return ea.file.Package.FSet
@@ -83,4 +124,101 @@ func (ea NodeFile[T]) ToExprAt() ExprAt {
 // File returns the file in which the expression is declared.
 func (ea NodeFile[T]) File() *ir.File {
 	return ea.file
+}
+
+// AxesFromElement returns a shape from a state element.
+// An error is returned if a concrete shape cannot be returned.
+func AxesFromElement(el Element) ([]int, error) {
+	dimElements, err := el.Flatten()
+	if err != nil {
+		return nil, err
+	}
+	dimensions := make([]int, len(dimElements))
+	for i, dimElement := range dimElements {
+		var err error
+		dimScalarI, err := ConstantScalarFromElement[ir.Int](dimElement)
+		if err != nil {
+			return nil, err
+		}
+		dimensions[i] = int(dimScalarI)
+	}
+	return dimensions, nil
+}
+
+type (
+	// NumericalElement is a node representing a numerical value.
+	NumericalElement interface {
+		Element
+
+		// Shape of the value represented by the element.
+		Shape() *shape.Shape
+	}
+
+	// HostArrayExpr is a host array constant represented as a IR expression.
+	HostArrayExpr = ir.RuntimeValueExprT[*values.HostArray]
+
+	// ElementWithConstant is an element with a concrete value that is already known.
+	ElementWithConstant interface {
+		NumericalElement
+
+		// NumericalConstant returns the value of a constant represented by a node.
+		NumericalConstant() *values.HostArray
+
+		// ToExpr returns an IR expression representing the value.
+		ToExpr() *HostArrayExpr
+	}
+
+	// ElementWithArrayFromContext is an element able to return a concrete value from the current context.
+	// For example, a value passed as an argument to the function.
+	ElementWithArrayFromContext interface {
+		NumericalElement
+
+		// ArrayFromContext fetches an array from the argument.
+		ArrayFromContext(*CallInputs) (values.Array, error)
+	}
+)
+
+// ShapeFromElement returns the shape of a numerical element.
+func ShapeFromElement(node Element) (*shape.Shape, error) {
+	numerical, ok := node.(NumericalElement)
+	if !ok {
+		return nil, errors.Errorf("cannot cast %T to a numerical element", node)
+	}
+	return numerical.Shape(), nil
+}
+
+// ConstantScalarFromElement returns a scalar on a host given an element.
+func ConstantScalarFromElement[T dtype.GoDataType](el Element) (val T, err error) {
+	var hostArray *values.HostArray
+	hostArray = ConstantFromElement(el)
+	if hostArray == nil {
+		err = errors.Errorf("state element %T does not store a constant numerical value", el)
+		return
+	}
+	val = values.ToAtom[T](hostArray)
+	return
+}
+
+// ConstantFromElement returns the host value represented by an element.
+// The function returns (nil, nil) if the element does not host a numerical value.
+func ConstantFromElement(el Element) *values.HostArray {
+	numerical, ok := el.(ElementWithConstant)
+	if !ok {
+		return nil
+	}
+	return numerical.NumericalConstant()
+}
+
+// HostValueFromContext returns a host value from the function call.
+func HostValueFromContext(ci *CallInputs, el Element) (*values.HostArray, error) {
+	withValue, ok := el.(ElementWithArrayFromContext)
+	if !ok {
+		return nil, errors.Errorf("state element %T does not support returning a value given a context", el)
+	}
+	array, err := withValue.ArrayFromContext(ci)
+
+	if err != nil {
+		return nil, err
+	}
+	return array.ToHostArray(kernels.Allocator())
 }

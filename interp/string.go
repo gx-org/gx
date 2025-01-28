@@ -19,6 +19,7 @@ import (
 	"github.com/gx-org/gx/build/fmterr"
 	"github.com/gx-org/gx/build/ir"
 	"github.com/gx-org/gx/golang/backend/kernels"
+	"github.com/gx-org/gx/interp/elements"
 	"github.com/gx-org/gx/interp/state"
 )
 
@@ -38,23 +39,23 @@ func (v *stringValuer) evaluator(errfs fmterr.FileSet) evaluator {
 	return &stringEvaluator{errfs: errfs}
 }
 
-func (v *stringValuer) eval(ctx Context, expr ir.Expr) (state.Element, error) {
+func (v *stringValuer) eval(ctx *context, expr ir.Expr) (state.Element, error) {
 	return nil, errors.Errorf("expression %T not supported", expr)
 }
 
-func (v *stringValuer) toLiteral(ctx Context, expr ir.Expr, arr kernels.Array) (state.Element, error) {
+func (v *stringValuer) toLiteral(ctx *context, expr ir.Expr, arr kernels.Array) (state.Element, error) {
 	return nil, errors.Errorf("not supported")
 }
 
-func (e *stringEvaluator) scalar(ctx Context, expr ir.StaticExpr) (state.Element, error) {
+func (e *stringEvaluator) scalar(ctx *context, expr ir.StaticExpr) (state.Element, error) {
 	switch exprT := expr.(type) {
 	case *ir.StringLiteral:
-		return ctx.State().String(exprT), nil
+		return elements.NewString(exprT), nil
 	default:
 		return nil, errors.Errorf("string expression %T not supported", exprT)
 	}
 }
 
-func (e *stringEvaluator) array(ctx Context, expr *ir.ArrayLitExpr) (state.Element, error) {
+func (e *stringEvaluator) array(ctx *context, expr *ir.ArrayLitExpr) (state.Element, error) {
 	return nil, errors.Errorf("not supported")
 }

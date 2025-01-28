@@ -12,17 +12,17 @@
 // See the License for the specific language governing permissions and
 // limitations under the License.
 
-package state
+package elements
 
 import (
 	"github.com/pkg/errors"
+	"github.com/gx-org/gx/api/values"
 	"github.com/gx-org/gx/build/fmterr"
 	"github.com/gx-org/gx/build/ir"
 )
 
 // Package groups elements exported by a package.
 type Package struct {
-	state  *State
 	errFmt fmterr.Pos
 	pkg    *ir.Package
 	funcs  map[ir.Func]*Func
@@ -34,26 +34,31 @@ var (
 	_ MethodSelector = (*Package)(nil)
 )
 
-// Package returns a package grouping everything that a package exports.
-func (g *State) Package(errFmt fmterr.Pos, pkg *ir.Package) *Package {
+// NewPackage returns a package grouping everything that a package exports.
+func NewPackage(errFmt fmterr.Pos, pkg *ir.Package) *Package {
 	node := &Package{
 		errFmt: errFmt,
 		pkg:    pkg,
 	}
 	node.funcs = make(map[ir.Func]*Func, len(pkg.Funcs))
 	for _, fct := range pkg.Funcs {
-		node.funcs[fct] = g.Func(fct, nil)
+		node.funcs[fct] = NewFunc(fct, nil)
 	}
 	node.types = make(map[*ir.NamedType]*NamedType)
 	for _, tp := range pkg.Types {
-		node.types[tp] = g.NamedType(errFmt.FileSet, tp)
+		node.types[tp] = NewNamedType(errFmt.FileSet, tp)
 	}
 	return node
 }
 
-// Flatten returns the package in a slice of elements.
+// Flatten returns the package in a slice of
 func (pkg *Package) Flatten() ([]Element, error) {
 	return []Element{pkg}, nil
+}
+
+// Unflatten creates a GX value from the next handles available in the Unflattener.
+func (pkg *Package) Unflatten(handles *Unflattener) (values.Value, error) {
+	return nil, fmterr.Internal(errors.Errorf("%T does not support converting device handles into GX values", pkg), "")
 }
 
 // ErrPos returns the error formatter for the position of the token representing the node in the graph.
@@ -64,11 +69,6 @@ func (pkg *Package) ErrPos() fmterr.Pos {
 // Type of a package.
 func (pkg *Package) Type() ir.Type {
 	return nil
-}
-
-// State owning the element.
-func (pkg *Package) State() *State {
-	return pkg.state
 }
 
 // SelectMethod returns a functions given an index.

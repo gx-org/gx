@@ -44,14 +44,14 @@ type (
 	// Initializer is called at the beginning of a run before
 	// arguments for the backend are computed.
 	Initializer interface {
-		Init(Context) error
+		Init(*elements.CallInputs) error
 	}
 
 	// Argument provides an argument to pass to the backend.
 	Argument interface {
 		Shape() *shape.Shape
 
-		ToDeviceHandle(*api.Device, Context) (platform.DeviceHandle, error)
+		ToDeviceHandle(*api.Device, *elements.CallInputs) (platform.DeviceHandle, error)
 	}
 	// Tracer receives traced values from a run.
 	Tracer interface {
@@ -84,32 +84,6 @@ type (
 		Element
 		// Materialise returns the element with all its values from the graph.
 		Materialise() (*graph.OutputNode, error)
-	}
-
-	// Copyable is an interface implemented by nodes that need to be copied when passed to a function.
-	Copyable interface {
-		Copy() Element
-	}
-
-	// FieldSelector selects a field given its index.
-	FieldSelector interface {
-		SelectField(elements.ExprAt, string) (Element, error)
-	}
-
-	// Slicer is a state element that can be sliced.
-	Slicer interface {
-		Slice(elements.ExprAt, int) (Element, error)
-	}
-
-	// ArraySlicer is a state element with an array that can be sliced.
-	ArraySlicer interface {
-		NumericalElement
-		Slice(elements.ExprAt, int) (Element, error)
-	}
-
-	// MethodSelector selects a method given its index.
-	MethodSelector interface {
-		SelectMethod(ir.Func) (*Func, error)
 	}
 
 	emptyRunner struct{}
@@ -189,20 +163,7 @@ func (g *State) Compile(dev *api.Device, out Element) (*CompiledGraph, error) {
 	return cg, err
 }
 
-type functionCall struct {
-	receiver values.Value
-	args     []values.Value
-}
-
-func (fc functionCall) Receiver() values.Value {
-	return fc.receiver
-}
-
-func (fc functionCall) Args() []values.Value {
-	return fc.args
-}
-
-func (g *CompiledGraph) run(ctx Context) (out, traces []platform.DeviceHandle, err error) {
+func (g *CompiledGraph) run(ctx *elements.CallInputs) (out, traces []platform.DeviceHandle, err error) {
 	if g.runner == nil {
 		// No runner: there is nothing to run in the graph.
 		return nil, nil, nil
@@ -220,7 +181,7 @@ func (g *CompiledGraph) run(ctx Context) (out, traces []platform.DeviceHandle, e
 
 // Run the graph.
 func (g *CompiledGraph) Run(receiver values.Value, args []values.Value, tracer Tracer) ([]values.Value, error) {
-	fc := functionCall{receiver: receiver, args: args}
+	fc := &elements.CallInputs{Receiver: receiver, Args: args}
 	for _, init := range g.state.inits {
 		if err := init.Init(fc); err != nil {
 			return nil, err
@@ -236,15 +197,15 @@ func (g *CompiledGraph) Run(receiver values.Value, args []values.Value, tracer T
 	return g.handlesToValues(fc, out)
 }
 
-func (g *CompiledGraph) handlesToValues(ctx Context, handles []platform.DeviceHandle) ([]values.Value, error) {
-	reader := newHandleParser(g.device, ctx, handles)
+func (g *CompiledGraph) handlesToValues(ctx *elements.CallInputs, handles []platform.DeviceHandle) ([]values.Value, error) {
+	reader := elements.NewUnflattener(g.device, ctx, handles)
 	els := []Element{g.out}
 	if g.state.fn.FuncType().Results.Len() > 1 {
 		els = g.out.(*elements.Tuple).Elements()
 	}
 	values := make([]values.Value, len(els))
 	for i, el := range els {
-		val, err := reader.parse(el)
+		val, err := reader.Unflatten(el)
 		if err != nil {
 			return nil, err
 		}

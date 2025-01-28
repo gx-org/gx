@@ -50,13 +50,13 @@ import (
 	"github.com/gx-org/gx/build/ir"
 	goplatform "github.com/gx-org/gx/golang/backend/platform"
 	"github.com/gx-org/gx/interp/elements"
-	"github.com/gx-org/gx/interp/state/proxies"
+	"github.com/gx-org/gx/interp/proxies"
 	"github.com/gx-org/gx/interp/state"
 )
 
 type (
 	// FuncBuiltin of a builtin function by a backend.
-	FuncBuiltin func(ctx Context, call elements.CallAt, fn *state.Func, irFunc *ir.FuncBuiltin, args []elements.Element) (output state.Element, err error)
+	FuncBuiltin func(ctx Context, call elements.CallAt, fn *elements.Func, irFunc *ir.FuncBuiltin, args []elements.Element) (output state.Element, err error)
 
 	// Interpreter evaluates GX to build a XLA graph.
 	Interpreter struct {
@@ -168,14 +168,14 @@ func (itrp *Interpreter) Eval(fn *ir.FuncDecl, receiver values.Value, args []val
 	return
 }
 
-func toSingleNode(ctx Context, stmt *ir.ReturnStmt, els []state.Element) state.Element {
+func toSingleNode(ctx *context, stmt *ir.ReturnStmt, els []state.Element) state.Element {
 	if len(els) == 1 {
 		return els[0]
 	}
 	return elements.NewTuple(ctx.frame().currentFile(), stmt, els)
 }
 
-func rankOf(ctx Context, src ir.SourceNode, typ ir.ArrayType) (*ir.Rank, error) {
+func rankOf(ctx *context, src ir.SourceNode, typ ir.ArrayType) (*ir.Rank, error) {
 	switch rank := typ.Rank().(type) {
 	case *ir.Rank:
 		return rank, nil

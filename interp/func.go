@@ -19,10 +19,11 @@ import (
 
 	"github.com/pkg/errors"
 	"github.com/gx-org/gx/build/ir"
+	"github.com/gx-org/gx/interp/elements"
 	"github.com/gx-org/gx/interp/state"
 )
 
-func callFunc(ctx Context, call *ir.CallExpr, fn *state.Func, args []state.Element) (output state.Element, err error) {
+func callFunc(ctx *context, call *ir.CallExpr, fn *elements.Func, args []state.Element) (output state.Element, err error) {
 	switch fnT := fn.Func().(type) {
 	case *ir.FuncDecl:
 		output, err = callFuncDecl(ctx, fn, fnT, args)
@@ -36,7 +37,7 @@ func callFunc(ctx Context, call *ir.CallExpr, fn *state.Func, args []state.Eleme
 	return
 }
 
-func callFuncBuiltin(ctx Context, call *ir.CallExpr, fn *state.Func, irFunc *ir.FuncBuiltin, args []state.Element) (output state.Element, err error) {
+func callFuncBuiltin(ctx *context, call *ir.CallExpr, fn *elements.Func, irFunc *ir.FuncBuiltin, args []state.Element) (output state.Element, err error) {
 	defer func() {
 		if err != nil {
 			err = ctx.FileSet().Position(call.Expr(), err)
@@ -54,7 +55,7 @@ func callFuncBuiltin(ctx Context, call *ir.CallExpr, fn *state.Func, irFunc *ir.
 }
 
 // callFuncDecl calls a function implemented in GX.
-func callFuncDecl(ctx Context, fn *state.Func, fnDecl *ir.FuncDecl, args []state.Element) (state.Element, error) {
+func callFuncDecl(ctx *context, fn *elements.Func, fnDecl *ir.FuncDecl, args []state.Element) (state.Element, error) {
 	if fnDecl.Body == nil {
 		return nil, ctx.FileSet().Errorf(fnDecl.Source(), "missing function body")
 	}
@@ -70,7 +71,7 @@ func callFuncDecl(ctx Context, fn *state.Func, fnDecl *ir.FuncDecl, args []state
 	// Add the receiver name to the function frame if present.
 	if recv := fn.Recv(); recv != nil {
 		recvNode := recv.Element
-		copyable, ok := recvNode.(state.Copyable)
+		copyable, ok := recvNode.(elements.Copyable)
 		if ok {
 			recvNode = copyable.Copy()
 		}
@@ -81,7 +82,7 @@ func callFuncDecl(ctx Context, fn *state.Func, fnDecl *ir.FuncDecl, args []state
 	return evalFuncBody(ctx, fnDecl.Body)
 }
 
-func evalFuncBody(ctx Context, body *ir.BlockStmt) (state.Element, error) {
+func evalFuncBody(ctx *context, body *ir.BlockStmt) (state.Element, error) {
 	element, stop, err := evalBlockStmt(ctx, body)
 	if !stop {
 		// No return statement was processed during the eval of the function.
@@ -103,7 +104,7 @@ func assignArgumentValues(funcType *ir.FuncType, funcFrame *frame, args []state.
 	// For each parameter of the function, assign its argument value to the frame.
 	names := fieldNames(funcType.Params.List)
 	for i, arg := range args {
-		copyable, ok := arg.(state.Copyable)
+		copyable, ok := arg.(elements.Copyable)
 		if ok {
 			arg = copyable.Copy()
 		}
@@ -111,13 +112,13 @@ func assignArgumentValues(funcType *ir.FuncType, funcFrame *frame, args []state.
 	}
 }
 
-func evalCallExpr(ctx Context, expr *ir.CallExpr) (state.Element, error) {
+func evalCallExpr(ctx *context, expr *ir.CallExpr) (state.Element, error) {
 	// Fetch the function and check that it is callable.
 	fnNode, err := evalExpr(ctx, expr.Func)
 	if err != nil {
 		return nil, err
 	}
-	fn, ok := fnNode.(*state.Func)
+	fn, ok := fnNode.(*elements.Func)
 	if !ok {
 		return nil, ctx.FileSet().Errorf(expr.Source(), "%T is not callable", fnNode)
 	}

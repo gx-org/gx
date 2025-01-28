@@ -12,7 +12,7 @@
 // See the License for the specific language governing permissions and
 // limitations under the License.
 
-package state
+package elements
 
 import (
 	"strconv"
@@ -23,20 +23,14 @@ import (
 
 // String is a GX string.
 type String struct {
-	state *State
-	str   *ir.StringLiteral
+	str *ir.StringLiteral
 }
 
 var _ Element = (*String)(nil)
 
-// String returns a state element storing a string GX value.
-func (s *State) String(str *ir.StringLiteral) *String {
-	return &String{state: s, str: str}
-}
-
-// State owning the element.
-func (n *String) State() *State {
-	return n.state
+// NewString returns a state element storing a string GX value.
+func NewString(str *ir.StringLiteral) *String {
+	return &String{str: str}
 }
 
 // Flatten returns the element in a slice of elements.
@@ -44,7 +38,8 @@ func (n *String) Flatten() ([]Element, error) {
 	return []Element{n}, nil
 }
 
-func (n *String) valueFromHandle(handles *handleParser) (values.Value, error) {
+// Unflatten consumes the next handles to return a GX value.
+func (n *String) Unflatten(handles *Unflattener) (values.Value, error) {
 	val, err := strconv.Unquote(n.str.Src.Value)
 	if err != nil {
 		return nil, err

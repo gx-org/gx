@@ -14,7 +14,12 @@
 
 package elements
 
-import "github.com/gx-org/gx/build/ir"
+import (
+	"github.com/pkg/errors"
+	"github.com/gx-org/gx/api/values"
+	"github.com/gx-org/gx/build/fmterr"
+	"github.com/gx-org/gx/build/ir"
+)
 
 // Tuple value grouping multiple values together.
 type Tuple struct {
@@ -40,6 +45,11 @@ func (n *Tuple) Flatten() ([]Element, error) {
 // Elements returns the elements stored in the tuple.
 func (n *Tuple) Elements() []Element {
 	return n.elements
+}
+
+// Unflatten creates a GX value from the next handles available in the Unflattener.
+func (n *Tuple) Unflatten(handles *Unflattener) (values.Value, error) {
+	return nil, fmterr.Internal(errors.Errorf("%T does not support converting device handles into GX values", n), "")
 }
 
 func flattenAll(elts []Element) ([]Element, error) {

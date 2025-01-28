@@ -25,13 +25,13 @@ import (
 	"github.com/gx-org/gx/api/values"
 	"github.com/gx-org/gx/build/ir"
 	"github.com/gx-org/gx/interp/elements"
-	"github.com/gx-org/gx/interp/state/proxies"
+	"github.com/gx-org/gx/interp/proxies"
 )
 
 type (
 	argFetcher interface {
 		ValueProxy() proxies.Value
-		ValueFromContext(Context) (values.Value, error)
+		ValueFromContext(*elements.CallInputs) (values.Value, error)
 	}
 
 	parameterFetcher struct {
@@ -44,8 +44,8 @@ type (
 	}
 )
 
-func (f parameterFetcher) ValueFromContext(ctx Context) (values.Value, error) {
-	return ctx.Args()[f.paramIndex], nil
+func (f parameterFetcher) ValueFromContext(ctx *elements.CallInputs) (values.Value, error) {
+	return ctx.Args[f.paramIndex], nil
 }
 
 func (f parameterFetcher) ValueProxy() proxies.Value {
@@ -56,8 +56,8 @@ func (f parameterFetcher) String() string {
 	return fmt.Sprintf("GX argument %d", f.paramIndex)
 }
 
-func (f receiverFetcher) ValueFromContext(ctx Context) (values.Value, error) {
-	return ctx.Receiver(), nil
+func (f receiverFetcher) ValueFromContext(ctx *elements.CallInputs) (values.Value, error) {
+	return ctx.Receiver, nil
 }
 
 func (f receiverFetcher) ValueProxy() proxies.Value {
@@ -88,7 +88,7 @@ type (
 		State() *State
 		Name() string
 		ValueProxy() proxies.Value
-		ValueFromContext(Context) (values.Value, error)
+		ValueFromContext(*elements.CallInputs) (values.Value, error)
 	}
 
 	// rootArgument is an argument passed to the GX interpreter from the host language.
@@ -145,12 +145,12 @@ type (
 )
 
 var (
-	_ FieldSelector  = (*structArgument)(nil)
-	_ parentArgument = (*fieldSelectorArgument)(nil)
+	_ elements.FieldSelector = (*structArgument)(nil)
+	_ parentArgument         = (*fieldSelectorArgument)(nil)
 )
 
-func newStructArgument(parent parentArgument, expr elements.ExprAt, pValue *proxies.Struct) (*Struct, error) {
-	return parent.State().StructWithInit(pValue.StructType(), expr, &structArgument{
+func newStructArgument(parent parentArgument, expr elements.ExprAt, pValue *proxies.Struct) (*elements.Struct, error) {
+	return elements.NewStructWithInit(pValue.StructType(), expr, &structArgument{
 		parentArgument: parent,
 		pValue:         pValue,
 	}), nil
@@ -180,7 +180,7 @@ func (sel *fieldSelectorArgument) ValueProxy() proxies.Value {
 	return sel.pValue
 }
 
-func (sel *fieldSelectorArgument) ValueFromContext(ctx Context) (values.Value, error) {
+func (sel *fieldSelectorArgument) ValueFromContext(ctx *elements.CallInputs) (values.Value, error) {
 	el, err := sel.parent.ValueFromContext(ctx)
 	if err != nil {
 		return nil, err
@@ -209,8 +209,8 @@ type (
 	}
 )
 
-func newSliceArgument(parent parentArgument, expr elements.ExprAt, pValue *proxies.Slice) (*Slice, error) {
-	return parent.State().Slice(expr, &sliceArgument{
+func newSliceArgument(parent parentArgument, expr elements.ExprAt, pValue *proxies.Slice) (*elements.Slice, error) {
+	return elements.NewSlice(expr, &sliceArgument{
 		parentArgument: parent,
 		pValue:         pValue,
 	}, pValue.Size()), nil
@@ -240,7 +240,7 @@ func (sel *indexSelectorArgument) ValueProxy() proxies.Value {
 	return sel.pValue
 }
 
-func (sel *indexSelectorArgument) ValueFromContext(ctx Context) (values.Value, error) {
+func (sel *indexSelectorArgument) ValueFromContext(ctx *elements.CallInputs) (values.Value, error) {
 	el, err := sel.parent.ValueFromContext(ctx)
 	if err != nil {
 		return nil, err
@@ -257,8 +257,8 @@ func (sel *indexSelectorArgument) ValueFromContext(ctx Context) (values.Value, e
 }
 
 var (
-	_ Slicer         = (*sliceArgument)(nil)
-	_ parentArgument = (*indexSelectorArgument)(nil)
+	_ elements.Slicer = (*sliceArgument)(nil)
+	_ parentArgument  = (*indexSelectorArgument)(nil)
 )
 
 type arrayArgument struct {
@@ -270,13 +270,13 @@ type arrayArgument struct {
 }
 
 var (
-	_ Argument     = (*arrayArgument)(nil)
-	_ Materialiser = (*arrayArgument)(nil)
-	_ Slicer       = (*arrayArgument)(nil)
+	_ Argument        = (*arrayArgument)(nil)
+	_ Materialiser    = (*arrayArgument)(nil)
+	_ elements.Slicer = (*arrayArgument)(nil)
 )
 
 // NewArrayArgument creates a new argument element that the graph can also use as an argument.
-func NewArrayArgument(parent parentArgument, expr elements.ExprAt, pValue *proxies.Array) (ElementWithArrayFromContext, error) {
+func NewArrayArgument(parent parentArgument, expr elements.ExprAt, pValue *proxies.Array) (elements.ElementWithArrayFromContext, error) {
 	n := &arrayArgument{
 		parentArgument: parent,
 		expr:           expr,
@@ -306,7 +306,7 @@ func (n *arrayArgument) Shape() *shape.Shape {
 	return n.pValue.Shape()
 }
 
-func (n *arrayArgument) ToDeviceHandle(dev *api.Device, ctx Context) (platform.DeviceHandle, error) {
+func (n *arrayArgument) ToDeviceHandle(dev *api.Device, ctx *elements.CallInputs) (platform.DeviceHandle, error) {
 	array, err := n.ArrayFromContext(ctx)
 	if err != nil {
 		return nil, err
@@ -314,8 +314,16 @@ func (n *arrayArgument) ToDeviceHandle(dev *api.Device, ctx Context) (platform.D
 	return toDevice(dev, array)
 }
 
+func toDevice(dev *api.Device, arr values.Array) (platform.DeviceHandle, error) {
+	deviceArray, err := arr.ToDevice(dev)
+	if err != nil {
+		return nil, err
+	}
+	return deviceArray.DeviceHandle(), nil
+}
+
 // NumericalConstant returns the value of a constant represented by a node.
-func (n *arrayArgument) ArrayFromContext(ctx Context) (values.Array, error) {
+func (n *arrayArgument) ArrayFromContext(ctx *elements.CallInputs) (values.Array, error) {
 	value, err := n.parentArgument.ValueFromContext(ctx)
 	if err != nil {
 		return nil, err
@@ -341,6 +349,6 @@ func (n *arrayArgument) Slice(expr elements.ExprAt, i int) (Element, error) {
 	})
 }
 
-func (n *arrayArgument) valueFromHandle(handles *handleParser) (values.Value, error) {
-	return n.ArrayFromContext(handles.context())
+func (n *arrayArgument) Unflatten(handles *elements.Unflattener) (values.Value, error) {
+	return n.ArrayFromContext(handles.CallInputs())
 }

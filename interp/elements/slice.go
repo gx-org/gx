@@ -12,28 +12,25 @@
 // See the License for the specific language governing permissions and
 // limitations under the License.
 
-package state
+package elements
 
 import (
 	"github.com/pkg/errors"
 	"github.com/gx-org/gx/api/values"
-	"github.com/gx-org/gx/interp/elements"
 )
 
-// Slice value.
+// Slice element storing a slice of elements.
 type Slice struct {
-	state  *State
-	expr   elements.ExprAt
+	expr   ExprAt
 	values []Element
 	slicer Slicer
 }
 
 var _ Slicer = (*Slice)(nil)
 
-// Slice returns a new slice where elements are constructed on demand.
-func (g *State) Slice(expr elements.ExprAt, selector Slicer, numFields int) *Slice {
+// NewSlice returns a new slice where elements are constructed on demand.
+func NewSlice(expr ExprAt, selector Slicer, numFields int) *Slice {
 	return &Slice{
-		state:  g,
 		expr:   expr,
 		values: make([]Element, numFields),
 		slicer: selector,
@@ -41,9 +38,8 @@ func (g *State) Slice(expr elements.ExprAt, selector Slicer, numFields int) *Sli
 }
 
 // ToSlice returns a slice from a slice of elements.
-func (g *State) ToSlice(expr elements.ExprAt, elements []Element) *Slice {
+func ToSlice(expr ExprAt, elements []Element) *Slice {
 	return &Slice{
-		state:  g,
 		expr:   expr,
 		values: elements,
 	}
@@ -55,7 +51,7 @@ func (n *Slice) Flatten() ([]Element, error) {
 }
 
 // Slice of the tuple.
-func (n *Slice) Slice(expr elements.ExprAt, i int) (Element, error) {
+func (n *Slice) Slice(expr ExprAt, i int) (Element, error) {
 	if i < 0 || i >= len(n.values) {
 		return nil, errors.Errorf("invalid argument: index %d out of bounds [0:%d]", i, len(n.values))
 	}
@@ -70,16 +66,12 @@ func (n *Slice) Slice(expr elements.ExprAt, i int) (Element, error) {
 	return n.values[i], nil
 }
 
-func (n *Slice) valueFromHandle(handles *handleParser) (values.Value, error) {
-	return handles.parseComposite(parseCompositeOf(values.NewSlice), n.expr.Node().Type(), n.values)
+// Unflatten consumes the next handles to return a GX value.
+func (n *Slice) Unflatten(handles *Unflattener) (values.Value, error) {
+	return handles.ParseComposite(ParseCompositeOf(values.NewSlice), n.expr.Node().Type(), n.values)
 }
 
 // Elements stored in the slice.
 func (n *Slice) Elements() []Element {
 	return n.values
-}
-
-// State owning the element.
-func (n *Slice) State() *State {
-	return n.state
 }

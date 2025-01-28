@@ -12,28 +12,34 @@
 // See the License for the specific language governing permissions and
 // limitations under the License.
 
-package state
+package elements
 
 import (
+	"github.com/pkg/errors"
+	"github.com/gx-org/gx/api/values"
 	"github.com/gx-org/gx/build/fmterr"
 	"github.com/gx-org/gx/build/ir"
 )
 
 // NamedType references a type exported by an imported package.
 type NamedType struct {
-	state  *State
 	errFmt fmterr.Pos
 	typ    *ir.NamedType
 }
 
-// NamedType returns a new node representing an exported type.
-func (g *State) NamedType(errF fmterr.FileSet, typ *ir.NamedType) *NamedType {
-	return &NamedType{state: g, typ: typ}
+// NewNamedType returns a new node representing an exported type.
+func NewNamedType(errF fmterr.FileSet, typ *ir.NamedType) *NamedType {
+	return &NamedType{typ: typ}
 }
 
 // Flatten returns the named type in a slice of elements.
 func (n *NamedType) Flatten() ([]Element, error) {
 	return []Element{n}, nil
+}
+
+// Unflatten creates a GX value from the next handles available in the Unflattener.
+func (n *NamedType) Unflatten(handles *Unflattener) (values.Value, error) {
+	return nil, fmterr.Internal(errors.Errorf("%T does not support converting device handles into GX values", n), "")
 }
 
 // ErrPos returns the error formatter for the position of the token representing the node in the graph.
@@ -44,11 +50,6 @@ func (n *NamedType) ErrPos() fmterr.Pos {
 // Type of a package.
 func (n *NamedType) Type() ir.Type {
 	return n.typ
-}
-
-// State owning the element.
-func (n *NamedType) State() *State {
-	return n.state
 }
 
 // String returns a string representation of the node.

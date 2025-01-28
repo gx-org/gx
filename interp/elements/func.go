@@ -12,7 +12,7 @@
 // See the License for the specific language governing permissions and
 // limitations under the License.
 
-package state
+package elements
 
 import (
 	"fmt"
@@ -25,9 +25,8 @@ import (
 type (
 	// Func is an instance of a structure.
 	Func struct {
-		state *State
-		fn    ir.Func
-		recv  *Receiver
+		fn   ir.Func
+		recv *Receiver
 	}
 
 	// Receiver of a function.
@@ -39,9 +38,9 @@ type (
 
 var _ Element = (*Func)(nil)
 
-// Func returns a new node representing a structure instance.
-func (g *State) Func(fn ir.Func, recv *Receiver) *Func {
-	return &Func{state: g, fn: fn, recv: recv}
+// NewFunc returns a new function element.
+func NewFunc(fn ir.Func, recv *Receiver) *Func {
+	return &Func{fn: fn, recv: recv}
 }
 
 // Type of the function.
@@ -64,12 +63,8 @@ func (st *Func) Recv() *Receiver {
 	return st.recv
 }
 
-// State owning the element.
-func (st *Func) State() *State {
-	return st.state
-}
-
-func (st *Func) valueFromHandle(handles *handleParser) (values.Value, error) {
+// Unflatten creates a GX value from the next handles available in the Unflattener.
+func (st *Func) Unflatten(handles *Unflattener) (values.Value, error) {
 	return values.NewIRNode(st.fn)
 }
 

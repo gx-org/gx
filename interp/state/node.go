@@ -30,8 +30,7 @@ type BackendNode struct {
 }
 
 var (
-	_ Slicer          = (*BackendNode)(nil)
-	_ handleProcessor = (*BackendNode)(nil)
+	_ elements.Slicer = (*BackendNode)(nil)
 	_ Materialiser    = (*BackendNode)(nil)
 )
 
@@ -113,8 +112,9 @@ func (n *BackendNode) Flatten() ([]Element, error) {
 	return []Element{n}, nil
 }
 
-func (n *BackendNode) valueFromHandle(handles *handleParser) (values.Value, error) {
-	return values.NewDeviceArray(n.expr.Node().Type(), handles.next()), nil
+// Unflatten consumes the next handles to return a GX value.
+func (n *BackendNode) Unflatten(handles *elements.Unflattener) (values.Value, error) {
+	return values.NewDeviceArray(n.expr.Node().Type(), handles.Next()), nil
 }
 
 // Shape returns the shape of the element.
