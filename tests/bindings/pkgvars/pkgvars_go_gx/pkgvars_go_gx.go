@@ -43,37 +43,39 @@ var (
 	_ = values.Struct{}
 	_ = errors.Errorf
 	_ = types.NewSlice[types.Bridger]
+	_ = platform.HostTransfer
 )
 
-// Package is the GX package built for a given backend.
-type Package struct {
+// PackageIR is the GX package intermediate representation
+// built for a given runtime, but not yet for a specific device.
+type PackageIR struct {
 	Runtime *api.Runtime
 	IR      *ir.Package
 	Tracer  state.Tracer
 }
 
 // Load the GX package for a given backend.
-func Load(rtm *api.Runtime) (*Package, error) {
-	irPackage, err := rtm.Builder().Build("github.com/gx-org/gx/tests/bindings/pkgvars")
+func Load(rtm *api.Runtime) (*PackageIR, error) {
+	bpkg, err := rtm.Builder().Build("github.com/gx-org/gx/tests/bindings/pkgvars")
 	if err != nil {
 		return nil, err
 	}
-	pkg := &Package{
+	pkg := &PackageIR{
 		Runtime: rtm,
-		IR:      irPackage,
+		IR:      bpkg.IR(),
 	}
 
 	return pkg, nil
 }
 
-// CompilerFor loads the GX package github.com/gx-org/gx/tests/bindings/pkgvars
-// then returns the compiler for a given device and options.
-func CompilerFor(rtm *api.Runtime, dev platform.Device, options ...interp.PackageOptionFactory) (*Compiler, error) {
-	pkg, err := Load(rtm)
+// BuildFor loads the GX package github.com/gx-org/gx/tests/bindings/pkgvars
+// then returns that package for a given device and options.
+func BuildFor(dev *api.Device, options ...interp.PackageOptionFactory) (*Package, error) {
+	pkg, err := Load(dev.Runtime())
 	if err != nil {
 		return nil, err
 	}
-	return pkg.CompilerFor(dev, options...), nil
+	return pkg.BuildFor(dev, options...), nil
 }
 
 // Factory create new instance of types used in the package.
@@ -81,69 +83,53 @@ func CompilerFor(rtm *api.Runtime, dev platform.Device, options ...interp.Packag
 // device and with which options methods of the instances
 // created by the factory are compiled for.
 type Factory struct {
-	Compiler *Compiler
+	Package *Package
 }
 
-// Compiler compiles GX functions for a given device.
-type Compiler struct {
-	Package *Package
-	Device  platform.Device
+// Package is a GX package for a given device.
+// Functions and methods are compiled specifically for that device.
+type Package struct {
+	Package *PackageIR
+	Device  *api.Device
 	Factory *Factory
 
 	options []interp.PackageOption
 
-	ReturnVar1   ReturnVar1
 	NewTwiceSize NewTwiceSize
+	ReturnVar1   ReturnVar1
 }
 
 // AppendOptions appends options to the compiler.
-func (cmpl *Compiler) AppendOptions(options ...interp.PackageOptionFactory) {
-	plat := cmpl.Package.Runtime.Platform()
+func (cmpl *Package) AppendOptions(options ...interp.PackageOptionFactory) {
+	plat := cmpl.Package.Runtime.Backend().Platform()
 	for _, opt := range options {
 		cmpl.options = append(cmpl.options, opt(plat))
 	}
 }
 
-// CompilerFor returns a compiler for a device and options.
-func (pkg *Package) CompilerFor(dev platform.Device, options ...interp.PackageOptionFactory) *Compiler {
-	c := &Compiler{
+// BuildFor returns a package ready to compile for a device and options.
+func (pkg *PackageIR) BuildFor(dev *api.Device, options ...interp.PackageOptionFactory) *Package {
+	c := &Package{
 		Package: pkg,
 		Device:  dev,
 	}
-	c.Factory = &Factory{Compiler: c}
+	c.Factory = &Factory{Package: c}
 	c.AppendOptions(options...)
 
-	c.ReturnVar1 = ReturnVar1{
+	c.NewTwiceSize = NewTwiceSize{
 		methodBase: methodBase{
-			compiler: c,
+			pkg:      c,
 			function: c.Package.IR.Funcs[0].(*ir.FuncDecl),
 		},
 	}
-	c.NewTwiceSize = NewTwiceSize{
+	c.ReturnVar1 = ReturnVar1{
 		methodBase: methodBase{
-			compiler: c,
+			pkg:      c,
 			function: c.Package.IR.Funcs[1].(*ir.FuncDecl),
 		},
 	}
 
 	return c
-}
-
-var Var1 Var1Static
-
-type Var1Static struct {
-	value int32
-}
-
-func (Var1Static) Set(value int32) interp.PackageOptionFactory {
-	return func(plat platform.Platform) interp.PackageOption {
-		hostValue := types.Int32(value)
-		return interp.PackageVarSetValue{
-			Pkg:   "github.com/gx-org/gx/tests/bindings/pkgvars",
-			Var:   "Var1",
-			Value: hostValue.GXValue(),
-		}
-	}
 }
 
 var Size SizeStatic
@@ -163,16 +149,27 @@ func (SizeStatic) Set(value ir.Int) interp.PackageOptionFactory {
 	}
 }
 
-type methodBase struct {
-	compiler *Compiler
-	function *ir.FuncDecl
-	runner   *state.CompiledGraph
+var Var1 Var1Static
+
+type Var1Static struct {
+	value int32
 }
 
-// ReturnVar1 compiles and runs the GX function ReturnVar1 for a device.
-// ReturnVar1 returns the value of the static variable Var1
-type ReturnVar1 struct {
-	methodBase
+func (Var1Static) Set(value int32) interp.PackageOptionFactory {
+	return func(plat platform.Platform) interp.PackageOption {
+		hostValue := types.Int32(value)
+		return interp.PackageVarSetValue{
+			Pkg:   "github.com/gx-org/gx/tests/bindings/pkgvars",
+			Var:   "Var1",
+			Value: hostValue.GXValue(),
+		}
+	}
+}
+
+type methodBase struct {
+	pkg      *Package
+	function ir.Func
+	runner   *state.CompiledGraph
 }
 
 // NewTwiceSize compiles and runs the GX function NewTwiceSize for a device.
@@ -181,31 +178,10 @@ type NewTwiceSize struct {
 	methodBase
 }
 
-// Run first compiles ReturnVar1 for a given device and the given arguments.
-// Once compiled, the function is then run with these same arguments.
-// If the shape of the arguments change, the function will panic.
-func (f *ReturnVar1) Run() (_ types.Atom[int32], err error) {
-	var args []values.Value = nil
-	if f.runner == nil {
-		f.runner, err = f.compiler.Package.Runtime.Compile(f.compiler.Device, f.function, nil, args, f.compiler.options)
-		if err != nil {
-			return
-		}
-	}
-	var outputs []values.Value
-	outputs, err = f.runner.Run(nil, args, f.compiler.Package.Tracer)
-	if err != nil {
-		return
-	}
-
-	out0Value, ok := outputs[0].(values.Array)
-	if !ok {
-		err = errors.Errorf("cannot cast %T to %s", outputs[0], reflect.TypeFor[*values.DeviceArray]().Name())
-		return
-	}
-	out0 := types.NewAtom[int32](out0Value)
-
-	return out0, nil
+// ReturnVar1 compiles and runs the GX function ReturnVar1 for a device.
+// ReturnVar1 returns the value of the static variable Var1
+type ReturnVar1 struct {
+	methodBase
 }
 
 // Run first compiles NewTwiceSize for a given device and the given arguments.
@@ -214,13 +190,13 @@ func (f *ReturnVar1) Run() (_ types.Atom[int32], err error) {
 func (f *NewTwiceSize) Run() (_ types.Array[float32], err error) {
 	var args []values.Value = nil
 	if f.runner == nil {
-		f.runner, err = f.compiler.Package.Runtime.Compile(f.compiler.Device, f.function, nil, args, f.compiler.options)
+		f.runner, err = interp.Compile(f.pkg.Device, f.function.(*ir.FuncDecl), nil, args, f.pkg.options)
 		if err != nil {
 			return
 		}
 	}
 	var outputs []values.Value
-	outputs, err = f.runner.Run(nil, args, f.compiler.Package.Tracer)
+	outputs, err = f.runner.Run(nil, args, f.pkg.Package.Tracer)
 	if err != nil {
 		return
 	}
@@ -231,6 +207,33 @@ func (f *NewTwiceSize) Run() (_ types.Array[float32], err error) {
 		return
 	}
 	out0 := types.NewArray[float32](out0Value)
+
+	return out0, nil
+}
+
+// Run first compiles ReturnVar1 for a given device and the given arguments.
+// Once compiled, the function is then run with these same arguments.
+// If the shape of the arguments change, the function will panic.
+func (f *ReturnVar1) Run() (_ types.Atom[int32], err error) {
+	var args []values.Value = nil
+	if f.runner == nil {
+		f.runner, err = interp.Compile(f.pkg.Device, f.function.(*ir.FuncDecl), nil, args, f.pkg.options)
+		if err != nil {
+			return
+		}
+	}
+	var outputs []values.Value
+	outputs, err = f.runner.Run(nil, args, f.pkg.Package.Tracer)
+	if err != nil {
+		return
+	}
+
+	out0Value, ok := outputs[0].(values.Array)
+	if !ok {
+		err = errors.Errorf("cannot cast %T to %s", outputs[0], reflect.TypeFor[*values.DeviceArray]().Name())
+		return
+	}
+	out0 := types.NewAtom[int32](out0Value)
 
 	return out0, nil
 }

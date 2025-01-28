@@ -42,37 +42,39 @@ var (
 	_ = values.Struct{}
 	_ = errors.Errorf
 	_ = types.NewSlice[types.Bridger]
+	_ = platform.HostTransfer
 )
 
-// Package is the GX package built for a given backend.
-type Package struct {
+// PackageIR is the GX package intermediate representation
+// built for a given runtime, but not yet for a specific device.
+type PackageIR struct {
 	Runtime *api.Runtime
 	IR      *ir.Package
 	Tracer  state.Tracer
 }
 
 // Load the GX package for a given backend.
-func Load(rtm *api.Runtime) (*Package, error) {
-	irPackage, err := rtm.Builder().Build("num")
+func Load(rtm *api.Runtime) (*PackageIR, error) {
+	bpkg, err := rtm.Builder().Build("num")
 	if err != nil {
 		return nil, err
 	}
-	pkg := &Package{
+	pkg := &PackageIR{
 		Runtime: rtm,
-		IR:      irPackage,
+		IR:      bpkg.IR(),
 	}
 
 	return pkg, nil
 }
 
-// CompilerFor loads the GX package num
-// then returns the compiler for a given device and options.
-func CompilerFor(rtm *api.Runtime, dev platform.Device, options ...interp.PackageOptionFactory) (*Compiler, error) {
-	pkg, err := Load(rtm)
+// BuildFor loads the GX package num
+// then returns that package for a given device and options.
+func BuildFor(dev *api.Device, options ...interp.PackageOptionFactory) (*Package, error) {
+	pkg, err := Load(dev.Runtime())
 	if err != nil {
 		return nil, err
 	}
-	return pkg.CompilerFor(dev, options...), nil
+	return pkg.BuildFor(dev, options...), nil
 }
 
 // Factory create new instance of types used in the package.
@@ -80,40 +82,41 @@ func CompilerFor(rtm *api.Runtime, dev platform.Device, options ...interp.Packag
 // device and with which options methods of the instances
 // created by the factory are compiled for.
 type Factory struct {
-	Compiler *Compiler
+	Package *Package
 }
 
-// Compiler compiles GX functions for a given device.
-type Compiler struct {
-	Package *Package
-	Device  platform.Device
+// Package is a GX package for a given device.
+// Functions and methods are compiled specifically for that device.
+type Package struct {
+	Package *PackageIR
+	Device  *api.Device
 	Factory *Factory
 
 	options []interp.PackageOption
 }
 
 // AppendOptions appends options to the compiler.
-func (cmpl *Compiler) AppendOptions(options ...interp.PackageOptionFactory) {
-	plat := cmpl.Package.Runtime.Platform()
+func (cmpl *Package) AppendOptions(options ...interp.PackageOptionFactory) {
+	plat := cmpl.Package.Runtime.Backend().Platform()
 	for _, opt := range options {
 		cmpl.options = append(cmpl.options, opt(plat))
 	}
 }
 
-// CompilerFor returns a compiler for a device and options.
-func (pkg *Package) CompilerFor(dev platform.Device, options ...interp.PackageOptionFactory) *Compiler {
-	c := &Compiler{
+// BuildFor returns a package ready to compile for a device and options.
+func (pkg *PackageIR) BuildFor(dev *api.Device, options ...interp.PackageOptionFactory) *Package {
+	c := &Package{
 		Package: pkg,
 		Device:  dev,
 	}
-	c.Factory = &Factory{Compiler: c}
+	c.Factory = &Factory{Package: c}
 	c.AppendOptions(options...)
 
 	return c
 }
 
 type methodBase struct {
-	compiler *Compiler
-	function *ir.FuncDecl
+	pkg      *Package
+	function ir.Func
 	runner   *state.CompiledGraph
 }

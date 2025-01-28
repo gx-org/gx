@@ -43,37 +43,39 @@ var (
 	_ = values.Struct{}
 	_ = errors.Errorf
 	_ = types.NewSlice[types.Bridger]
+	_ = platform.HostTransfer
 )
 
-// Package is the GX package built for a given backend.
-type Package struct {
+// PackageIR is the GX package intermediate representation
+// built for a given runtime, but not yet for a specific device.
+type PackageIR struct {
 	Runtime *api.Runtime
 	IR      *ir.Package
 	Tracer  state.Tracer
 }
 
 // Load the GX package for a given backend.
-func Load(rtm *api.Runtime) (*Package, error) {
-	irPackage, err := rtm.Builder().Build("github.com/gx-org/gx/tests/bindings/basic")
+func Load(rtm *api.Runtime) (*PackageIR, error) {
+	bpkg, err := rtm.Builder().Build("github.com/gx-org/gx/tests/bindings/basic")
 	if err != nil {
 		return nil, err
 	}
-	pkg := &Package{
+	pkg := &PackageIR{
 		Runtime: rtm,
-		IR:      irPackage,
+		IR:      bpkg.IR(),
 	}
 
 	return pkg, nil
 }
 
-// CompilerFor loads the GX package github.com/gx-org/gx/tests/bindings/basic
-// then returns the compiler for a given device and options.
-func CompilerFor(rtm *api.Runtime, dev platform.Device, options ...interp.PackageOptionFactory) (*Compiler, error) {
-	pkg, err := Load(rtm)
+// BuildFor loads the GX package github.com/gx-org/gx/tests/bindings/basic
+// then returns that package for a given device and options.
+func BuildFor(dev *api.Device, options ...interp.PackageOptionFactory) (*Package, error) {
+	pkg, err := Load(dev.Runtime())
 	if err != nil {
 		return nil, err
 	}
-	return pkg.CompilerFor(dev, options...), nil
+	return pkg.BuildFor(dev, options...), nil
 }
 
 // Factory create new instance of types used in the package.
@@ -81,160 +83,85 @@ func CompilerFor(rtm *api.Runtime, dev platform.Device, options ...interp.Packag
 // device and with which options methods of the instances
 // created by the factory are compiled for.
 type Factory struct {
-	Compiler *Compiler
+	Package *Package
 }
 
-// Compiler compiles GX functions for a given device.
-type Compiler struct {
-	Package *Package
-	Device  platform.Device
+// Package is a GX package for a given device.
+// Functions and methods are compiled specifically for that device.
+type Package struct {
+	Package *PackageIR
+	Device  *api.Device
 	Factory *Factory
 
 	options []interp.PackageOption
 
-	ReturnFloat32         ReturnFloat32
-	ReturnArrayFloat32    ReturnArrayFloat32
-	New                   New
 	AddPrivate            AddPrivate
+	New                   New
+	ReturnArrayFloat32    ReturnArrayFloat32
+	ReturnFloat32         ReturnFloat32
 	methodBasicAddPrivate methodBase
 	methodBasicSetFloat   methodBase
 }
 
 // AppendOptions appends options to the compiler.
-func (cmpl *Compiler) AppendOptions(options ...interp.PackageOptionFactory) {
-	plat := cmpl.Package.Runtime.Platform()
+func (cmpl *Package) AppendOptions(options ...interp.PackageOptionFactory) {
+	plat := cmpl.Package.Runtime.Backend().Platform()
 	for _, opt := range options {
 		cmpl.options = append(cmpl.options, opt(plat))
 	}
 }
 
-// CompilerFor returns a compiler for a device and options.
-func (pkg *Package) CompilerFor(dev platform.Device, options ...interp.PackageOptionFactory) *Compiler {
-	c := &Compiler{
+// BuildFor returns a package ready to compile for a device and options.
+func (pkg *PackageIR) BuildFor(dev *api.Device, options ...interp.PackageOptionFactory) *Package {
+	c := &Package{
 		Package: pkg,
 		Device:  dev,
 	}
-	c.Factory = &Factory{Compiler: c}
+	c.Factory = &Factory{Package: c}
 	c.AppendOptions(options...)
 
-	c.ReturnFloat32 = ReturnFloat32{
+	c.AddPrivate = AddPrivate{
 		methodBase: methodBase{
-			compiler: c,
+			pkg:      c,
 			function: c.Package.IR.Funcs[0].(*ir.FuncDecl),
-		},
-	}
-	c.ReturnArrayFloat32 = ReturnArrayFloat32{
-		methodBase: methodBase{
-			compiler: c,
-			function: c.Package.IR.Funcs[1].(*ir.FuncDecl),
 		},
 	}
 	c.New = New{
 		methodBase: methodBase{
-			compiler: c,
+			pkg:      c,
+			function: c.Package.IR.Funcs[1].(*ir.FuncDecl),
+		},
+	}
+	c.ReturnArrayFloat32 = ReturnArrayFloat32{
+		methodBase: methodBase{
+			pkg:      c,
 			function: c.Package.IR.Funcs[2].(*ir.FuncDecl),
 		},
 	}
-	c.AddPrivate = AddPrivate{
+	c.ReturnFloat32 = ReturnFloat32{
 		methodBase: methodBase{
-			compiler: c,
+			pkg:      c,
 			function: c.Package.IR.Funcs[3].(*ir.FuncDecl),
 		},
 	}
 
 	c.methodBasicAddPrivate = methodBase{
-		compiler: c,
-		function: c.Package.IR.Types[1].Methods[0].(*ir.FuncDecl),
+		pkg:      c,
+		function: c.Package.IR.Types[0].Methods[0],
 	}
 	c.methodBasicSetFloat = methodBase{
-		compiler: c,
-		function: c.Package.IR.Types[1].Methods[1].(*ir.FuncDecl),
+		pkg:      c,
+		function: c.Package.IR.Types[0].Methods[1],
 	}
 
 	return c
 }
 
-// handleEmpty stores the backend handles of Empty.
-type handleEmpty struct {
-	compiler *Compiler
-	struc    *ir.NamedType
-	owner    *Empty
-}
-
-// Type of the value.
-func (h *handleEmpty) Type() ir.Type {
-	return h.struc
-}
-
-// NamedType returns the intermediate representation of the type.
-func (h *handleEmpty) NamedType() *ir.NamedType {
-	return h.struc
-}
-
-// Bridger returns the Go object owning this handle.
-func (h *handleEmpty) Bridger() types.Bridger {
-	return h.owner
-}
-
-// GXValue returns the GX value.
-func (h *handleEmpty) GXValue() values.Value {
-	return h.owner.value
-}
-
-// String representation of the handle.
-func (h *handleEmpty) String() string {
-	bld := strings.Builder{}
-	bld.WriteString("Empty{\n")
-
-	bld.WriteString("}")
-	return bld.String()
-}
-
-// Empty stores the handle of Empty on a device.
-type Empty struct {
-	handle handleEmpty
-	value  *values.Struct
-}
-
-var (
-	_ types.Bridger      = (*Empty)(nil)
-	_ types.StructBridge = (*handleEmpty)(nil)
-)
-
-// StructValue returns the GX value of the structure.
-func (h *handleEmpty) StructValue() *values.Struct {
-	return h.owner.value
-}
-
-// MarshalEmpty populates the receiver fields with device handles.
-func (cmpl *Compiler) MarshalEmpty(val values.Value) (s *Empty, err error) {
-	s = cmpl.Factory.NewEmpty()
-	var ok bool
-	s.value, ok = val.(*values.Struct)
-	if !ok {
-		err = fmt.Errorf("cannot use handle to set Empty: %T is not a %s", val, reflect.TypeFor[*values.Struct]().Name())
-		return
-	}
-	fields := make([]values.Value, s.value.StructType().NumFields())
-	for i := range fields {
-		fields[i] = s.value.FieldValue(i)
-	}
-
-	return
-}
-
-func (s Empty) String() string {
-	return s.handle.String()
-}
-
-// Bridge returns the bridge between the Go value and the GX value.
-func (s *Empty) Bridge() types.Bridge { return &s.handle }
-
 // handleBasic stores the backend handles of Basic.
 type handleBasic struct {
-	compiler *Compiler
-	struc    *ir.NamedType
-	owner    *Basic
+	pkg   *Package
+	struc *ir.NamedType
+	owner *Basic
 
 	runnerAddPrivate *MethodBasicAddPrivate
 
@@ -261,13 +188,13 @@ type MethodBasicSetFloat struct {
 func (f *MethodBasicAddPrivate) Run() (_ types.Atom[int32], err error) {
 	var args []values.Value = nil
 	if f.runner == nil {
-		f.runner, err = f.compiler.Package.Runtime.Compile(f.compiler.Device, f.function, f.receiver.GXValue(), args, f.compiler.options)
+		f.runner, err = interp.Compile(f.pkg.Device, f.function.(*ir.FuncDecl), f.receiver.GXValue(), args, f.pkg.options)
 		if err != nil {
 			return
 		}
 	}
 	var outputs []values.Value
-	outputs, err = f.runner.Run(f.receiver.GXValue(), args, f.compiler.Package.Tracer)
+	outputs, err = f.runner.Run(f.receiver.GXValue(), args, f.pkg.Package.Tracer)
 	if err != nil {
 		return
 	}
@@ -290,18 +217,18 @@ func (f *MethodBasicSetFloat) Run(arg0 types.Atom[float32]) (_ *Basic, err error
 		arg0.Bridge().GXValue(), // x float32
 	}
 	if f.runner == nil {
-		f.runner, err = f.compiler.Package.Runtime.Compile(f.compiler.Device, f.function, f.receiver.GXValue(), args, f.compiler.options)
+		f.runner, err = interp.Compile(f.pkg.Device, f.function.(*ir.FuncDecl), f.receiver.GXValue(), args, f.pkg.options)
 		if err != nil {
 			return
 		}
 	}
 	var outputs []values.Value
-	outputs, err = f.runner.Run(f.receiver.GXValue(), args, f.compiler.Package.Tracer)
+	outputs, err = f.runner.Run(f.receiver.GXValue(), args, f.pkg.Package.Tracer)
 	if err != nil {
 		return
 	}
 
-	cmpl := f.compiler
+	cmpl := f.pkg
 	var out0 *Basic
 	out0, err = cmpl.MarshalBasic(outputs[0])
 	if err != nil {
@@ -385,7 +312,7 @@ func (h *handleBasic) StructValue() *values.Struct {
 }
 
 // MarshalBasic populates the receiver fields with device handles.
-func (cmpl *Compiler) MarshalBasic(val values.Value) (s *Basic, err error) {
+func (cmpl *Package) MarshalBasic(val values.Value) (s *Basic, err error) {
 	s = cmpl.Factory.NewBasic()
 	var ok bool
 	s.value, ok = val.(*values.Struct)
@@ -394,8 +321,8 @@ func (cmpl *Compiler) MarshalBasic(val values.Value) (s *Basic, err error) {
 		return
 	}
 	fields := make([]values.Value, s.value.StructType().NumFields())
-	for i := range fields {
-		fields[i] = s.value.FieldValue(i)
+	for i, field := range s.value.StructType().Fields.Fields() {
+		fields[i] = s.value.FieldValue(field.Name.Name)
 	}
 
 	field0Value, ok := fields[0].(values.Array)
@@ -474,21 +401,91 @@ func (s Basic) SetFloat() *MethodBasicSetFloat {
 	return s.handle.runnerSetFloat
 }
 
+// handleEmpty stores the backend handles of Empty.
+type handleEmpty struct {
+	pkg   *Package
+	struc *ir.NamedType
+	owner *Empty
+}
+
+// Type of the value.
+func (h *handleEmpty) Type() ir.Type {
+	return h.struc
+}
+
+// NamedType returns the intermediate representation of the type.
+func (h *handleEmpty) NamedType() *ir.NamedType {
+	return h.struc
+}
+
+// Bridger returns the Go object owning this handle.
+func (h *handleEmpty) Bridger() types.Bridger {
+	return h.owner
+}
+
+// GXValue returns the GX value.
+func (h *handleEmpty) GXValue() values.Value {
+	return h.owner.value
+}
+
+// String representation of the handle.
+func (h *handleEmpty) String() string {
+	bld := strings.Builder{}
+	bld.WriteString("Empty{\n")
+
+	bld.WriteString("}")
+	return bld.String()
+}
+
+// Empty stores the handle of Empty on a device.
+type Empty struct {
+	handle handleEmpty
+	value  *values.Struct
+}
+
+var (
+	_ types.Bridger      = (*Empty)(nil)
+	_ types.StructBridge = (*handleEmpty)(nil)
+)
+
+// StructValue returns the GX value of the structure.
+func (h *handleEmpty) StructValue() *values.Struct {
+	return h.owner.value
+}
+
+// MarshalEmpty populates the receiver fields with device handles.
+func (cmpl *Package) MarshalEmpty(val values.Value) (s *Empty, err error) {
+	s = cmpl.Factory.NewEmpty()
+	var ok bool
+	s.value, ok = val.(*values.Struct)
+	if !ok {
+		err = fmt.Errorf("cannot use handle to set Empty: %T is not a %s", val, reflect.TypeFor[*values.Struct]().Name())
+		return
+	}
+	fields := make([]values.Value, s.value.StructType().NumFields())
+	for i, field := range s.value.StructType().Fields.Fields() {
+		fields[i] = s.value.FieldValue(field.Name.Name)
+	}
+
+	return
+}
+
+func (s Empty) String() string {
+	return s.handle.String()
+}
+
+// Bridge returns the bridge between the Go value and the GX value.
+func (s *Empty) Bridge() types.Bridge { return &s.handle }
+
 type methodBase struct {
-	compiler *Compiler
-	function *ir.FuncDecl
+	pkg      *Package
+	function ir.Func
 	runner   *state.CompiledGraph
 }
 
-// ReturnFloat32 compiles and runs the GX function ReturnFloat32 for a device.
-// ReturnFloat32 returns a float32.
-type ReturnFloat32 struct {
-	methodBase
-}
-
-// ReturnArrayFloat32 compiles and runs the GX function ReturnArrayFloat32 for a device.
-// ReturnArrayFloat32 returns a float32 tensor.
-type ReturnArrayFloat32 struct {
+// AddPrivate compiles and runs the GX function AddPrivate for a device.
+// AddPrivate returns the sum of two private fields.
+type AddPrivate struct {
 	methodBase
 }
 
@@ -498,91 +495,16 @@ type New struct {
 	methodBase
 }
 
-// AddPrivate compiles and runs the GX function AddPrivate for a device.
-// AddPrivate returns the sum of two private fields.
-type AddPrivate struct {
+// ReturnArrayFloat32 compiles and runs the GX function ReturnArrayFloat32 for a device.
+// ReturnArrayFloat32 returns a float32 tensor.
+type ReturnArrayFloat32 struct {
 	methodBase
 }
 
-// Run first compiles ReturnFloat32 for a given device and the given arguments.
-// Once compiled, the function is then run with these same arguments.
-// If the shape of the arguments change, the function will panic.
-func (f *ReturnFloat32) Run() (_ types.Atom[float32], err error) {
-	var args []values.Value = nil
-	if f.runner == nil {
-		f.runner, err = f.compiler.Package.Runtime.Compile(f.compiler.Device, f.function, nil, args, f.compiler.options)
-		if err != nil {
-			return
-		}
-	}
-	var outputs []values.Value
-	outputs, err = f.runner.Run(nil, args, f.compiler.Package.Tracer)
-	if err != nil {
-		return
-	}
-
-	out0Value, ok := outputs[0].(values.Array)
-	if !ok {
-		err = errors.Errorf("cannot cast %T to %s", outputs[0], reflect.TypeFor[*values.DeviceArray]().Name())
-		return
-	}
-	out0 := types.NewAtom[float32](out0Value)
-
-	return out0, nil
-}
-
-// Run first compiles ReturnArrayFloat32 for a given device and the given arguments.
-// Once compiled, the function is then run with these same arguments.
-// If the shape of the arguments change, the function will panic.
-func (f *ReturnArrayFloat32) Run() (_ types.Array[float32], err error) {
-	var args []values.Value = nil
-	if f.runner == nil {
-		f.runner, err = f.compiler.Package.Runtime.Compile(f.compiler.Device, f.function, nil, args, f.compiler.options)
-		if err != nil {
-			return
-		}
-	}
-	var outputs []values.Value
-	outputs, err = f.runner.Run(nil, args, f.compiler.Package.Tracer)
-	if err != nil {
-		return
-	}
-
-	out0Value, ok := outputs[0].(values.Array)
-	if !ok {
-		err = errors.Errorf("cannot cast %T to %s", outputs[0], reflect.TypeFor[*values.DeviceArray]().Name())
-		return
-	}
-	out0 := types.NewArray[float32](out0Value)
-
-	return out0, nil
-}
-
-// Run first compiles New for a given device and the given arguments.
-// Once compiled, the function is then run with these same arguments.
-// If the shape of the arguments change, the function will panic.
-func (f *New) Run() (_ *Basic, err error) {
-	var args []values.Value = nil
-	if f.runner == nil {
-		f.runner, err = f.compiler.Package.Runtime.Compile(f.compiler.Device, f.function, nil, args, f.compiler.options)
-		if err != nil {
-			return
-		}
-	}
-	var outputs []values.Value
-	outputs, err = f.runner.Run(nil, args, f.compiler.Package.Tracer)
-	if err != nil {
-		return
-	}
-
-	cmpl := f.compiler
-	var out0 *Basic
-	out0, err = cmpl.MarshalBasic(outputs[0])
-	if err != nil {
-		return
-	}
-
-	return out0, nil
+// ReturnFloat32 compiles and runs the GX function ReturnFloat32 for a device.
+// ReturnFloat32 returns a float32.
+type ReturnFloat32 struct {
+	methodBase
 }
 
 // Run first compiles AddPrivate for a given device and the given arguments.
@@ -593,13 +515,13 @@ func (f *AddPrivate) Run(arg0 *Basic) (_ types.Atom[int32], err error) {
 		arg0.Bridge().GXValue(), // b basic.Basic
 	}
 	if f.runner == nil {
-		f.runner, err = f.compiler.Package.Runtime.Compile(f.compiler.Device, f.function, nil, args, f.compiler.options)
+		f.runner, err = interp.Compile(f.pkg.Device, f.function.(*ir.FuncDecl), nil, args, f.pkg.options)
 		if err != nil {
 			return
 		}
 	}
 	var outputs []values.Value
-	outputs, err = f.runner.Run(nil, args, f.compiler.Package.Tracer)
+	outputs, err = f.runner.Run(nil, args, f.pkg.Package.Tracer)
 	if err != nil {
 		return
 	}
@@ -614,54 +536,95 @@ func (f *AddPrivate) Run(arg0 *Basic) (_ types.Atom[int32], err error) {
 	return out0, nil
 }
 
-// NewEmpty returns a handle on named type Empty.
-func (fac *Factory) NewEmpty() *Empty {
-	s := &Empty{}
-	typ := fac.Compiler.Package.IR.Types[0]
-	s.handle = handleEmpty{
-		compiler: fac.Compiler,
-		struc:    typ,
-		owner:    s,
+// Run first compiles New for a given device and the given arguments.
+// Once compiled, the function is then run with these same arguments.
+// If the shape of the arguments change, the function will panic.
+func (f *New) Run() (_ *Basic, err error) {
+	var args []values.Value = nil
+	if f.runner == nil {
+		f.runner, err = interp.Compile(f.pkg.Device, f.function.(*ir.FuncDecl), nil, args, f.pkg.options)
+		if err != nil {
+			return
+		}
 	}
-
-	var err error
-	s.value, err = values.NewStruct(typ, nil)
+	var outputs []values.Value
+	outputs, err = f.runner.Run(nil, args, f.pkg.Package.Tracer)
 	if err != nil {
-		panic(err)
+		return
 	}
 
-	return s
+	cmpl := f.pkg
+	var out0 *Basic
+	out0, err = cmpl.MarshalBasic(outputs[0])
+	if err != nil {
+		return
+	}
+
+	return out0, nil
 }
 
-var _ types.Bridge = (*handleEmpty)(nil)
-
-func (h *handleEmpty) NewFromField(field *ir.Field) (types.Bridge, error) {
-	name := field.Name.Name
-	switch name {
-
-	default:
-		return nil, errors.Errorf("structure Empty has no field %q", name)
+// Run first compiles ReturnArrayFloat32 for a given device and the given arguments.
+// Once compiled, the function is then run with these same arguments.
+// If the shape of the arguments change, the function will panic.
+func (f *ReturnArrayFloat32) Run() (_ types.Array[float32], err error) {
+	var args []values.Value = nil
+	if f.runner == nil {
+		f.runner, err = interp.Compile(f.pkg.Device, f.function.(*ir.FuncDecl), nil, args, f.pkg.options)
+		if err != nil {
+			return
+		}
 	}
+	var outputs []values.Value
+	outputs, err = f.runner.Run(nil, args, f.pkg.Package.Tracer)
+	if err != nil {
+		return
+	}
+
+	out0Value, ok := outputs[0].(values.Array)
+	if !ok {
+		err = errors.Errorf("cannot cast %T to %s", outputs[0], reflect.TypeFor[*values.DeviceArray]().Name())
+		return
+	}
+	out0 := types.NewArray[float32](out0Value)
+
+	return out0, nil
 }
 
-// SetField sets a field in the structure.
-func (h *handleEmpty) SetField(field *ir.Field, val types.Bridge) error {
-	name := field.Name.Name
-	switch name {
-
-	default:
-		return errors.Errorf("structure Empty has no field %q", name)
+// Run first compiles ReturnFloat32 for a given device and the given arguments.
+// Once compiled, the function is then run with these same arguments.
+// If the shape of the arguments change, the function will panic.
+func (f *ReturnFloat32) Run() (_ types.Atom[float32], err error) {
+	var args []values.Value = nil
+	if f.runner == nil {
+		f.runner, err = interp.Compile(f.pkg.Device, f.function.(*ir.FuncDecl), nil, args, f.pkg.options)
+		if err != nil {
+			return
+		}
 	}
+	var outputs []values.Value
+	outputs, err = f.runner.Run(nil, args, f.pkg.Package.Tracer)
+	if err != nil {
+		return
+	}
+
+	out0Value, ok := outputs[0].(values.Array)
+	if !ok {
+		err = errors.Errorf("cannot cast %T to %s", outputs[0], reflect.TypeFor[*values.DeviceArray]().Name())
+		return
+	}
+	out0 := types.NewAtom[float32](out0Value)
+
+	return out0, nil
 }
 
 // NewBasic returns a handle on named type Basic.
 func (fac *Factory) NewBasic() *Basic {
 	s := &Basic{}
-	typ := fac.Compiler.Package.IR.Types[1]
+	typ := fac.Package.Package.IR.Types[0]
 	s.handle = handleBasic{
-		compiler: fac.Compiler,
-		struc:    typ,
-		owner:    s,
+		pkg:   fac.Package,
+		struc: typ,
+		owner: s,
 	}
 
 	var err error
@@ -671,12 +634,12 @@ func (fac *Factory) NewBasic() *Basic {
 	}
 
 	s.handle.runnerAddPrivate = &MethodBasicAddPrivate{
-		methodBase: s.handle.compiler.methodBasicAddPrivate,
+		methodBase: s.handle.pkg.methodBasicAddPrivate,
 		receiver:   s.handle,
 	}
 
 	s.handle.runnerSetFloat = &MethodBasicSetFloat{
-		methodBase: s.handle.compiler.methodBasicSetFloat,
+		methodBase: s.handle.pkg.methodBasicSetFloat,
 		receiver:   s.handle,
 	}
 
@@ -727,7 +690,7 @@ func (h *handleBasic) SetField(field *ir.Field, val types.Bridge) error {
 			return errors.Errorf("cannot set field Int: cannot cast %T to types.Atom[int32]", bridger)
 		}
 		h.owner.Int = fieldValue
-		h.owner.value.SetField(field.ID, val.GXValue())
+		h.owner.value.SetField("Int", val.GXValue())
 		return nil
 
 	case "Float":
@@ -737,7 +700,7 @@ func (h *handleBasic) SetField(field *ir.Field, val types.Bridge) error {
 			return errors.Errorf("cannot set field Float: cannot cast %T to types.Atom[float32]", bridger)
 		}
 		h.owner.Float = fieldValue
-		h.owner.value.SetField(field.ID, val.GXValue())
+		h.owner.value.SetField("Float", val.GXValue())
 		return nil
 
 	case "Array":
@@ -747,7 +710,7 @@ func (h *handleBasic) SetField(field *ir.Field, val types.Bridge) error {
 			return errors.Errorf("cannot set field Array: cannot cast %T to types.Array[float32]", bridger)
 		}
 		h.owner.Array = fieldValue
-		h.owner.value.SetField(field.ID, val.GXValue())
+		h.owner.value.SetField("Array", val.GXValue())
 		return nil
 
 	case "privateA":
@@ -757,7 +720,7 @@ func (h *handleBasic) SetField(field *ir.Field, val types.Bridge) error {
 			return errors.Errorf("cannot set field privateA: cannot cast %T to types.Atom[int32]", bridger)
 		}
 		h.owner.privateA = fieldValue
-		h.owner.value.SetField(field.ID, val.GXValue())
+		h.owner.value.SetField("privateA", val.GXValue())
 		return nil
 
 	case "privateB":
@@ -767,7 +730,7 @@ func (h *handleBasic) SetField(field *ir.Field, val types.Bridge) error {
 			return errors.Errorf("cannot set field privateB: cannot cast %T to types.Atom[int32]", bridger)
 		}
 		h.owner.privateB = fieldValue
-		h.owner.value.SetField(field.ID, val.GXValue())
+		h.owner.value.SetField("privateB", val.GXValue())
 		return nil
 
 	case "length":
@@ -777,7 +740,7 @@ func (h *handleBasic) SetField(field *ir.Field, val types.Bridge) error {
 			return errors.Errorf("cannot set field length: cannot cast %T to types.Atom[ir.Int]", bridger)
 		}
 		h.owner.length = fieldValue
-		h.owner.value.SetField(field.ID, val.GXValue())
+		h.owner.value.SetField("length", val.GXValue())
 		return nil
 
 	case "index":
@@ -787,10 +750,50 @@ func (h *handleBasic) SetField(field *ir.Field, val types.Bridge) error {
 			return errors.Errorf("cannot set field index: cannot cast %T to types.Atom[ir.Int]", bridger)
 		}
 		h.owner.index = fieldValue
-		h.owner.value.SetField(field.ID, val.GXValue())
+		h.owner.value.SetField("index", val.GXValue())
 		return nil
 
 	default:
 		return errors.Errorf("structure Basic has no field %q", name)
+	}
+}
+
+// NewEmpty returns a handle on named type Empty.
+func (fac *Factory) NewEmpty() *Empty {
+	s := &Empty{}
+	typ := fac.Package.Package.IR.Types[1]
+	s.handle = handleEmpty{
+		pkg:   fac.Package,
+		struc: typ,
+		owner: s,
+	}
+
+	var err error
+	s.value, err = values.NewStruct(typ, nil)
+	if err != nil {
+		panic(err)
+	}
+
+	return s
+}
+
+var _ types.Bridge = (*handleEmpty)(nil)
+
+func (h *handleEmpty) NewFromField(field *ir.Field) (types.Bridge, error) {
+	name := field.Name.Name
+	switch name {
+
+	default:
+		return nil, errors.Errorf("structure Empty has no field %q", name)
+	}
+}
+
+// SetField sets a field in the structure.
+func (h *handleEmpty) SetField(field *ir.Field, val types.Bridge) error {
+	name := field.Name.Name
+	switch name {
+
+	default:
+		return errors.Errorf("structure Empty has no field %q", name)
 	}
 }

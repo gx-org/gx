@@ -42,37 +42,39 @@ var (
 	_ = values.Struct{}
 	_ = errors.Errorf
 	_ = types.NewSlice[types.Bridger]
+	_ = platform.HostTransfer
 )
 
-// Package is the GX package built for a given backend.
-type Package struct {
+// PackageIR is the GX package intermediate representation
+// built for a given runtime, but not yet for a specific device.
+type PackageIR struct {
 	Runtime *api.Runtime
 	IR      *ir.Package
 	Tracer  state.Tracer
 }
 
 // Load the GX package for a given backend.
-func Load(rtm *api.Runtime) (*Package, error) {
-	irPackage, err := rtm.Builder().Build("shapes")
+func Load(rtm *api.Runtime) (*PackageIR, error) {
+	bpkg, err := rtm.Builder().Build("shapes")
 	if err != nil {
 		return nil, err
 	}
-	pkg := &Package{
+	pkg := &PackageIR{
 		Runtime: rtm,
-		IR:      irPackage,
+		IR:      bpkg.IR(),
 	}
 
 	return pkg, nil
 }
 
-// CompilerFor loads the GX package shapes
-// then returns the compiler for a given device and options.
-func CompilerFor(rtm *api.Runtime, dev platform.Device, options ...interp.PackageOptionFactory) (*Compiler, error) {
-	pkg, err := Load(rtm)
+// BuildFor loads the GX package shapes
+// then returns that package for a given device and options.
+func BuildFor(dev *api.Device, options ...interp.PackageOptionFactory) (*Package, error) {
+	pkg, err := Load(dev.Runtime())
 	if err != nil {
 		return nil, err
 	}
-	return pkg.CompilerFor(dev, options...), nil
+	return pkg.BuildFor(dev, options...), nil
 }
 
 // Factory create new instance of types used in the package.
@@ -80,33 +82,34 @@ func CompilerFor(rtm *api.Runtime, dev platform.Device, options ...interp.Packag
 // device and with which options methods of the instances
 // created by the factory are compiled for.
 type Factory struct {
-	Compiler *Compiler
+	Package *Package
 }
 
-// Compiler compiles GX functions for a given device.
-type Compiler struct {
-	Package *Package
-	Device  platform.Device
+// Package is a GX package for a given device.
+// Functions and methods are compiled specifically for that device.
+type Package struct {
+	Package *PackageIR
+	Device  *api.Device
 	Factory *Factory
 
 	options []interp.PackageOption
 }
 
 // AppendOptions appends options to the compiler.
-func (cmpl *Compiler) AppendOptions(options ...interp.PackageOptionFactory) {
-	plat := cmpl.Package.Runtime.Platform()
+func (cmpl *Package) AppendOptions(options ...interp.PackageOptionFactory) {
+	plat := cmpl.Package.Runtime.Backend().Platform()
 	for _, opt := range options {
 		cmpl.options = append(cmpl.options, opt(plat))
 	}
 }
 
-// CompilerFor returns a compiler for a device and options.
-func (pkg *Package) CompilerFor(dev platform.Device, options ...interp.PackageOptionFactory) *Compiler {
-	c := &Compiler{
+// BuildFor returns a package ready to compile for a device and options.
+func (pkg *PackageIR) BuildFor(dev *api.Device, options ...interp.PackageOptionFactory) *Package {
+	c := &Package{
 		Package: pkg,
 		Device:  dev,
 	}
-	c.Factory = &Factory{Compiler: c}
+	c.Factory = &Factory{Package: c}
 	c.AppendOptions(options...)
 
 	return c
@@ -114,9 +117,9 @@ func (pkg *Package) CompilerFor(dev platform.Device, options ...interp.PackageOp
 
 // handleDType stores the backend handles of DType.
 type handleDType struct {
-	compiler *Compiler
-	struc    *ir.NamedType
-	owner    *DType
+	pkg   *Package
+	struc *ir.NamedType
+	owner *DType
 }
 
 // Type of the value.
@@ -167,7 +170,7 @@ func (val DType) String() string {
 func (val *DType) Bridge() types.Bridge { return &val.handle }
 
 // MarshalDType populates the receiver fields with device handles.
-func (cmpl *Compiler) MarshalDType(val values.Value) (s *DType, err error) {
+func (cmpl *Package) MarshalDType(val values.Value) (s *DType, err error) {
 	s = cmpl.Factory.NewDType()
 	if _, ok := val.(*values.Slice); ok {
 		err = fmt.Errorf("cannot use handle to set DType: got a tuple instead of a single value")
@@ -179,9 +182,9 @@ func (cmpl *Compiler) MarshalDType(val values.Value) (s *DType, err error) {
 
 // handleShape stores the backend handles of Shape.
 type handleShape struct {
-	compiler *Compiler
-	struc    *ir.NamedType
-	owner    *Shape
+	pkg   *Package
+	struc *ir.NamedType
+	owner *Shape
 }
 
 // Type of the value.
@@ -238,7 +241,7 @@ func (h *handleShape) StructValue() *values.Struct {
 }
 
 // MarshalShape populates the receiver fields with device handles.
-func (cmpl *Compiler) MarshalShape(val values.Value) (s *Shape, err error) {
+func (cmpl *Package) MarshalShape(val values.Value) (s *Shape, err error) {
 	s = cmpl.Factory.NewShape()
 	var ok bool
 	s.value, ok = val.(*values.Struct)
@@ -247,8 +250,8 @@ func (cmpl *Compiler) MarshalShape(val values.Value) (s *Shape, err error) {
 		return
 	}
 	fields := make([]values.Value, s.value.StructType().NumFields())
-	for i := range fields {
-		fields[i] = s.value.FieldValue(i)
+	for i, field := range s.value.StructType().Fields.Fields() {
+		fields[i] = s.value.FieldValue(field.Name.Name)
 	}
 	var field0 *DType
 	field0, err = cmpl.MarshalDType(fields[0])
@@ -295,19 +298,19 @@ func (s Shape) String() string {
 func (s *Shape) Bridge() types.Bridge { return &s.handle }
 
 type methodBase struct {
-	compiler *Compiler
-	function *ir.FuncDecl
+	pkg      *Package
+	function ir.Func
 	runner   *state.CompiledGraph
 }
 
 // NewDType returns a handle on named type DType.
 func (fac *Factory) NewDType() *DType {
 	s := &DType{}
-	typ := fac.Compiler.Package.IR.Types[0]
+	typ := fac.Package.Package.IR.Types[0]
 	s.handle = handleDType{
-		compiler: fac.Compiler,
-		struc:    typ,
-		owner:    s,
+		pkg:   fac.Package,
+		struc: typ,
+		owner: s,
 	}
 
 	return s
@@ -337,11 +340,11 @@ func (h *handleDType) SetField(field *ir.Field, val types.Bridge) error {
 // NewShape returns a handle on named type Shape.
 func (fac *Factory) NewShape() *Shape {
 	s := &Shape{}
-	typ := fac.Compiler.Package.IR.Types[1]
+	typ := fac.Package.Package.IR.Types[1]
 	s.handle = handleShape{
-		compiler: fac.Compiler,
-		struc:    typ,
-		owner:    s,
+		pkg:   fac.Package,
+		struc: typ,
+		owner: s,
 	}
 
 	var err error
@@ -360,7 +363,7 @@ func (h *handleShape) NewFromField(field *ir.Field) (types.Bridge, error) {
 	switch name {
 
 	case "DType":
-		return h.compiler.Factory.NewDType().Bridge(), nil
+		return h.pkg.Factory.NewDType().Bridge(), nil
 
 	case "Dimensions":
 		slice, err := types.NewEmptySlice[types.Atom[ir.Int]](field.Type(), nil)
@@ -386,7 +389,7 @@ func (h *handleShape) SetField(field *ir.Field, val types.Bridge) error {
 			return errors.Errorf("cannot set field DType: cannot cast %T to *DType", bridger)
 		}
 		h.owner.DType = fieldValue
-		h.owner.value.SetField(field.ID, val.GXValue())
+		h.owner.value.SetField("DType", val.GXValue())
 		return nil
 
 	case "Dimensions":
@@ -396,7 +399,7 @@ func (h *handleShape) SetField(field *ir.Field, val types.Bridge) error {
 			return errors.Errorf("cannot set field Dimensions: cannot cast %T to *types.Slice[types.Atom[ir.Int]]", bridger)
 		}
 		h.owner.Dimensions = fieldValue
-		h.owner.value.SetField(field.ID, val.GXValue())
+		h.owner.value.SetField("Dimensions", val.GXValue())
 		return nil
 
 	default:

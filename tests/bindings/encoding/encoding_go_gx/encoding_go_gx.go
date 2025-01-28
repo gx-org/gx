@@ -43,37 +43,39 @@ var (
 	_ = values.Struct{}
 	_ = errors.Errorf
 	_ = types.NewSlice[types.Bridger]
+	_ = platform.HostTransfer
 )
 
-// Package is the GX package built for a given backend.
-type Package struct {
+// PackageIR is the GX package intermediate representation
+// built for a given runtime, but not yet for a specific device.
+type PackageIR struct {
 	Runtime *api.Runtime
 	IR      *ir.Package
 	Tracer  state.Tracer
 }
 
 // Load the GX package for a given backend.
-func Load(rtm *api.Runtime) (*Package, error) {
-	irPackage, err := rtm.Builder().Build("github.com/gx-org/gx/tests/bindings/encoding")
+func Load(rtm *api.Runtime) (*PackageIR, error) {
+	bpkg, err := rtm.Builder().Build("github.com/gx-org/gx/tests/bindings/encoding")
 	if err != nil {
 		return nil, err
 	}
-	pkg := &Package{
+	pkg := &PackageIR{
 		Runtime: rtm,
-		IR:      irPackage,
+		IR:      bpkg.IR(),
 	}
 
 	return pkg, nil
 }
 
-// CompilerFor loads the GX package github.com/gx-org/gx/tests/bindings/encoding
-// then returns the compiler for a given device and options.
-func CompilerFor(rtm *api.Runtime, dev platform.Device, options ...interp.PackageOptionFactory) (*Compiler, error) {
-	pkg, err := Load(rtm)
+// BuildFor loads the GX package github.com/gx-org/gx/tests/bindings/encoding
+// then returns that package for a given device and options.
+func BuildFor(dev *api.Device, options ...interp.PackageOptionFactory) (*Package, error) {
+	pkg, err := Load(dev.Runtime())
 	if err != nil {
 		return nil, err
 	}
-	return pkg.CompilerFor(dev, options...), nil
+	return pkg.BuildFor(dev, options...), nil
 }
 
 // Factory create new instance of types used in the package.
@@ -81,13 +83,14 @@ func CompilerFor(rtm *api.Runtime, dev platform.Device, options ...interp.Packag
 // device and with which options methods of the instances
 // created by the factory are compiled for.
 type Factory struct {
-	Compiler *Compiler
+	Package *Package
 }
 
-// Compiler compiles GX functions for a given device.
-type Compiler struct {
-	Package *Package
-	Device  platform.Device
+// Package is a GX package for a given device.
+// Functions and methods are compiled specifically for that device.
+type Package struct {
+	Package *PackageIR
+	Device  *api.Device
 	Factory *Factory
 
 	options []interp.PackageOption
@@ -96,35 +99,228 @@ type Compiler struct {
 }
 
 // AppendOptions appends options to the compiler.
-func (cmpl *Compiler) AppendOptions(options ...interp.PackageOptionFactory) {
-	plat := cmpl.Package.Runtime.Platform()
+func (cmpl *Package) AppendOptions(options ...interp.PackageOptionFactory) {
+	plat := cmpl.Package.Runtime.Backend().Platform()
 	for _, opt := range options {
 		cmpl.options = append(cmpl.options, opt(plat))
 	}
 }
 
-// CompilerFor returns a compiler for a device and options.
-func (pkg *Package) CompilerFor(dev platform.Device, options ...interp.PackageOptionFactory) *Compiler {
-	c := &Compiler{
+// BuildFor returns a package ready to compile for a device and options.
+func (pkg *PackageIR) BuildFor(dev *api.Device, options ...interp.PackageOptionFactory) *Package {
+	c := &Package{
 		Package: pkg,
 		Device:  dev,
 	}
-	c.Factory = &Factory{Compiler: c}
+	c.Factory = &Factory{Package: c}
 	c.AppendOptions(options...)
 
 	c.methodScalarsGetTotal = methodBase{
-		compiler: c,
-		function: c.Package.IR.Types[0].Methods[0].(*ir.FuncDecl),
+		pkg:      c,
+		function: c.Package.IR.Types[2].Methods[0],
 	}
 
 	return c
 }
 
+// handleArrays stores the backend handles of Arrays.
+type handleArrays struct {
+	pkg   *Package
+	struc *ir.NamedType
+	owner *Arrays
+}
+
+// Type of the value.
+func (h *handleArrays) Type() ir.Type {
+	return h.struc
+}
+
+// NamedType returns the intermediate representation of the type.
+func (h *handleArrays) NamedType() *ir.NamedType {
+	return h.struc
+}
+
+// Bridger returns the Go object owning this handle.
+func (h *handleArrays) Bridger() types.Bridger {
+	return h.owner
+}
+
+// GXValue returns the GX value.
+func (h *handleArrays) GXValue() values.Value {
+	return h.owner.value
+}
+
+// String representation of the handle.
+func (h *handleArrays) String() string {
+	bld := strings.Builder{}
+	bld.WriteString("Arrays{\n")
+
+	bld.WriteString(fmt.Sprintf("%s:%s\n", "ArrayF32", any(h.owner.ArrayF32).(fmt.Stringer).String()))
+
+	bld.WriteString("}")
+	return bld.String()
+}
+
+// Arrays stores the handle of Arrays on a device.
+type Arrays struct {
+	handle handleArrays
+	value  *values.Struct
+
+	ArrayF32 types.Array[float32]
+}
+
+var (
+	_ types.Bridger      = (*Arrays)(nil)
+	_ types.StructBridge = (*handleArrays)(nil)
+)
+
+// StructValue returns the GX value of the structure.
+func (h *handleArrays) StructValue() *values.Struct {
+	return h.owner.value
+}
+
+// MarshalArrays populates the receiver fields with device handles.
+func (cmpl *Package) MarshalArrays(val values.Value) (s *Arrays, err error) {
+	s = cmpl.Factory.NewArrays()
+	var ok bool
+	s.value, ok = val.(*values.Struct)
+	if !ok {
+		err = fmt.Errorf("cannot use handle to set Arrays: %T is not a %s", val, reflect.TypeFor[*values.Struct]().Name())
+		return
+	}
+	fields := make([]values.Value, s.value.StructType().NumFields())
+	for i, field := range s.value.StructType().Fields.Fields() {
+		fields[i] = s.value.FieldValue(field.Name.Name)
+	}
+
+	field0Value, ok := fields[0].(values.Array)
+	if !ok {
+		err = errors.Errorf("cannot cast %T to %s", fields[0], reflect.TypeFor[*values.DeviceArray]().Name())
+		return
+	}
+	field0 := types.NewArray[float32](field0Value)
+
+	s.ArrayF32 = field0
+	return
+}
+
+func (s Arrays) String() string {
+	return s.handle.String()
+}
+
+// Bridge returns the bridge between the Go value and the GX value.
+func (s *Arrays) Bridge() types.Bridge { return &s.handle }
+
+// handleEncoding stores the backend handles of Encoding.
+type handleEncoding struct {
+	pkg   *Package
+	struc *ir.NamedType
+	owner *Encoding
+}
+
+// Type of the value.
+func (h *handleEncoding) Type() ir.Type {
+	return h.struc
+}
+
+// NamedType returns the intermediate representation of the type.
+func (h *handleEncoding) NamedType() *ir.NamedType {
+	return h.struc
+}
+
+// Bridger returns the Go object owning this handle.
+func (h *handleEncoding) Bridger() types.Bridger {
+	return h.owner
+}
+
+// GXValue returns the GX value.
+func (h *handleEncoding) GXValue() values.Value {
+	return h.owner.value
+}
+
+// String representation of the handle.
+func (h *handleEncoding) String() string {
+	bld := strings.Builder{}
+	bld.WriteString("Encoding{\n")
+
+	bld.WriteString(fmt.Sprintf("%s:%s\n", "Scalars", any(h.owner.Scalars).(fmt.Stringer).String()))
+
+	bld.WriteString(fmt.Sprintf("%s:%s\n", "DataAsSlices", any(h.owner.DataAsSlices).(fmt.Stringer).String()))
+
+	bld.WriteString(fmt.Sprintf("%s:%s\n", "DataAsArrays", any(h.owner.DataAsArrays).(fmt.Stringer).String()))
+
+	bld.WriteString("}")
+	return bld.String()
+}
+
+// Encoding stores the handle of Encoding on a device.
+type Encoding struct {
+	handle handleEncoding
+	value  *values.Struct
+
+	Scalars *Scalars
+
+	DataAsSlices *Arrays
+
+	DataAsArrays *Arrays
+}
+
+var (
+	_ types.Bridger      = (*Encoding)(nil)
+	_ types.StructBridge = (*handleEncoding)(nil)
+)
+
+// StructValue returns the GX value of the structure.
+func (h *handleEncoding) StructValue() *values.Struct {
+	return h.owner.value
+}
+
+// MarshalEncoding populates the receiver fields with device handles.
+func (cmpl *Package) MarshalEncoding(val values.Value) (s *Encoding, err error) {
+	s = cmpl.Factory.NewEncoding()
+	var ok bool
+	s.value, ok = val.(*values.Struct)
+	if !ok {
+		err = fmt.Errorf("cannot use handle to set Encoding: %T is not a %s", val, reflect.TypeFor[*values.Struct]().Name())
+		return
+	}
+	fields := make([]values.Value, s.value.StructType().NumFields())
+	for i, field := range s.value.StructType().Fields.Fields() {
+		fields[i] = s.value.FieldValue(field.Name.Name)
+	}
+	var field0 *Scalars
+	field0, err = cmpl.MarshalScalars(fields[0])
+	if err != nil {
+		return
+	}
+	var field1 *Arrays
+	field1, err = cmpl.MarshalArrays(fields[1])
+	if err != nil {
+		return
+	}
+	var field2 *Arrays
+	field2, err = cmpl.MarshalArrays(fields[2])
+	if err != nil {
+		return
+	}
+	s.Scalars = field0
+	s.DataAsSlices = field1
+	s.DataAsArrays = field2
+	return
+}
+
+func (s Encoding) String() string {
+	return s.handle.String()
+}
+
+// Bridge returns the bridge between the Go value and the GX value.
+func (s *Encoding) Bridge() types.Bridge { return &s.handle }
+
 // handleScalars stores the backend handles of Scalars.
 type handleScalars struct {
-	compiler *Compiler
-	struc    *ir.NamedType
-	owner    *Scalars
+	pkg   *Package
+	struc *ir.NamedType
+	owner *Scalars
 
 	runnerGetTotal *MethodScalarsGetTotal
 }
@@ -142,13 +338,13 @@ type MethodScalarsGetTotal struct {
 func (f *MethodScalarsGetTotal) Run() (_ types.Atom[float32], err error) {
 	var args []values.Value = nil
 	if f.runner == nil {
-		f.runner, err = f.compiler.Package.Runtime.Compile(f.compiler.Device, f.function, f.receiver.GXValue(), args, f.compiler.options)
+		f.runner, err = interp.Compile(f.pkg.Device, f.function.(*ir.FuncDecl), f.receiver.GXValue(), args, f.pkg.options)
 		if err != nil {
 			return
 		}
 	}
 	var outputs []values.Value
-	outputs, err = f.runner.Run(f.receiver.GXValue(), args, f.compiler.Package.Tracer)
+	outputs, err = f.runner.Run(f.receiver.GXValue(), args, f.pkg.Package.Tracer)
 	if err != nil {
 		return
 	}
@@ -221,7 +417,7 @@ func (h *handleScalars) StructValue() *values.Struct {
 }
 
 // MarshalScalars populates the receiver fields with device handles.
-func (cmpl *Compiler) MarshalScalars(val values.Value) (s *Scalars, err error) {
+func (cmpl *Package) MarshalScalars(val values.Value) (s *Scalars, err error) {
 	s = cmpl.Factory.NewScalars()
 	var ok bool
 	s.value, ok = val.(*values.Struct)
@@ -230,8 +426,8 @@ func (cmpl *Compiler) MarshalScalars(val values.Value) (s *Scalars, err error) {
 		return
 	}
 	fields := make([]values.Value, s.value.StructType().NumFields())
-	for i := range fields {
-		fields[i] = s.value.FieldValue(i)
+	for i, field := range s.value.StructType().Fields.Fields() {
+		fields[i] = s.value.FieldValue(field.Name.Name)
 	}
 
 	field0Value, ok := fields[0].(values.Array)
@@ -273,204 +469,11 @@ func (s Scalars) GetTotal() *MethodScalarsGetTotal {
 	return s.handle.runnerGetTotal
 }
 
-// handleArrays stores the backend handles of Arrays.
-type handleArrays struct {
-	compiler *Compiler
-	struc    *ir.NamedType
-	owner    *Arrays
-}
-
-// Type of the value.
-func (h *handleArrays) Type() ir.Type {
-	return h.struc
-}
-
-// NamedType returns the intermediate representation of the type.
-func (h *handleArrays) NamedType() *ir.NamedType {
-	return h.struc
-}
-
-// Bridger returns the Go object owning this handle.
-func (h *handleArrays) Bridger() types.Bridger {
-	return h.owner
-}
-
-// GXValue returns the GX value.
-func (h *handleArrays) GXValue() values.Value {
-	return h.owner.value
-}
-
-// String representation of the handle.
-func (h *handleArrays) String() string {
-	bld := strings.Builder{}
-	bld.WriteString("Arrays{\n")
-
-	bld.WriteString(fmt.Sprintf("%s:%s\n", "ArrayF32", any(h.owner.ArrayF32).(fmt.Stringer).String()))
-
-	bld.WriteString("}")
-	return bld.String()
-}
-
-// Arrays stores the handle of Arrays on a device.
-type Arrays struct {
-	handle handleArrays
-	value  *values.Struct
-
-	ArrayF32 types.Array[float32]
-}
-
-var (
-	_ types.Bridger      = (*Arrays)(nil)
-	_ types.StructBridge = (*handleArrays)(nil)
-)
-
-// StructValue returns the GX value of the structure.
-func (h *handleArrays) StructValue() *values.Struct {
-	return h.owner.value
-}
-
-// MarshalArrays populates the receiver fields with device handles.
-func (cmpl *Compiler) MarshalArrays(val values.Value) (s *Arrays, err error) {
-	s = cmpl.Factory.NewArrays()
-	var ok bool
-	s.value, ok = val.(*values.Struct)
-	if !ok {
-		err = fmt.Errorf("cannot use handle to set Arrays: %T is not a %s", val, reflect.TypeFor[*values.Struct]().Name())
-		return
-	}
-	fields := make([]values.Value, s.value.StructType().NumFields())
-	for i := range fields {
-		fields[i] = s.value.FieldValue(i)
-	}
-
-	field0Value, ok := fields[0].(values.Array)
-	if !ok {
-		err = errors.Errorf("cannot cast %T to %s", fields[0], reflect.TypeFor[*values.DeviceArray]().Name())
-		return
-	}
-	field0 := types.NewArray[float32](field0Value)
-
-	s.ArrayF32 = field0
-	return
-}
-
-func (s Arrays) String() string {
-	return s.handle.String()
-}
-
-// Bridge returns the bridge between the Go value and the GX value.
-func (s *Arrays) Bridge() types.Bridge { return &s.handle }
-
-// handleEncoding stores the backend handles of Encoding.
-type handleEncoding struct {
-	compiler *Compiler
-	struc    *ir.NamedType
-	owner    *Encoding
-}
-
-// Type of the value.
-func (h *handleEncoding) Type() ir.Type {
-	return h.struc
-}
-
-// NamedType returns the intermediate representation of the type.
-func (h *handleEncoding) NamedType() *ir.NamedType {
-	return h.struc
-}
-
-// Bridger returns the Go object owning this handle.
-func (h *handleEncoding) Bridger() types.Bridger {
-	return h.owner
-}
-
-// GXValue returns the GX value.
-func (h *handleEncoding) GXValue() values.Value {
-	return h.owner.value
-}
-
-// String representation of the handle.
-func (h *handleEncoding) String() string {
-	bld := strings.Builder{}
-	bld.WriteString("Encoding{\n")
-
-	bld.WriteString(fmt.Sprintf("%s:%s\n", "Scalars", any(h.owner.Scalars).(fmt.Stringer).String()))
-
-	bld.WriteString(fmt.Sprintf("%s:%s\n", "DataAsSlices", any(h.owner.DataAsSlices).(fmt.Stringer).String()))
-
-	bld.WriteString(fmt.Sprintf("%s:%s\n", "DataAsArrays", any(h.owner.DataAsArrays).(fmt.Stringer).String()))
-
-	bld.WriteString("}")
-	return bld.String()
-}
-
-// Encoding stores the handle of Encoding on a device.
-type Encoding struct {
-	handle handleEncoding
-	value  *values.Struct
-
-	Scalars *Scalars
-
-	DataAsSlices *Arrays
-
-	DataAsArrays *Arrays
-}
-
-var (
-	_ types.Bridger      = (*Encoding)(nil)
-	_ types.StructBridge = (*handleEncoding)(nil)
-)
-
-// StructValue returns the GX value of the structure.
-func (h *handleEncoding) StructValue() *values.Struct {
-	return h.owner.value
-}
-
-// MarshalEncoding populates the receiver fields with device handles.
-func (cmpl *Compiler) MarshalEncoding(val values.Value) (s *Encoding, err error) {
-	s = cmpl.Factory.NewEncoding()
-	var ok bool
-	s.value, ok = val.(*values.Struct)
-	if !ok {
-		err = fmt.Errorf("cannot use handle to set Encoding: %T is not a %s", val, reflect.TypeFor[*values.Struct]().Name())
-		return
-	}
-	fields := make([]values.Value, s.value.StructType().NumFields())
-	for i := range fields {
-		fields[i] = s.value.FieldValue(i)
-	}
-	var field0 *Scalars
-	field0, err = cmpl.MarshalScalars(fields[0])
-	if err != nil {
-		return
-	}
-	var field1 *Arrays
-	field1, err = cmpl.MarshalArrays(fields[1])
-	if err != nil {
-		return
-	}
-	var field2 *Arrays
-	field2, err = cmpl.MarshalArrays(fields[2])
-	if err != nil {
-		return
-	}
-	s.Scalars = field0
-	s.DataAsSlices = field1
-	s.DataAsArrays = field2
-	return
-}
-
-func (s Encoding) String() string {
-	return s.handle.String()
-}
-
-// Bridge returns the bridge between the Go value and the GX value.
-func (s *Encoding) Bridge() types.Bridge { return &s.handle }
-
 // handleSlice stores the backend handles of Slice.
 type handleSlice struct {
-	compiler *Compiler
-	struc    *ir.NamedType
-	owner    *Slice
+	pkg   *Package
+	struc *ir.NamedType
+	owner *Slice
 }
 
 // Type of the value.
@@ -527,7 +530,7 @@ func (h *handleSlice) StructValue() *values.Struct {
 }
 
 // MarshalSlice populates the receiver fields with device handles.
-func (cmpl *Compiler) MarshalSlice(val values.Value) (s *Slice, err error) {
+func (cmpl *Package) MarshalSlice(val values.Value) (s *Slice, err error) {
 	s = cmpl.Factory.NewSlice()
 	var ok bool
 	s.value, ok = val.(*values.Struct)
@@ -536,8 +539,8 @@ func (cmpl *Compiler) MarshalSlice(val values.Value) (s *Slice, err error) {
 		return
 	}
 	fields := make([]values.Value, s.value.StructType().NumFields())
-	for i := range fields {
-		fields[i] = s.value.FieldValue(i)
+	for i, field := range s.value.StructType().Fields.Fields() {
+		fields[i] = s.value.FieldValue(field.Name.Name)
 	}
 	var field0 *Encoding
 	field0, err = cmpl.MarshalEncoding(fields[0])
@@ -581,19 +584,151 @@ func (s Slice) String() string {
 func (s *Slice) Bridge() types.Bridge { return &s.handle }
 
 type methodBase struct {
-	compiler *Compiler
-	function *ir.FuncDecl
+	pkg      *Package
+	function ir.Func
 	runner   *state.CompiledGraph
+}
+
+// NewArrays returns a handle on named type Arrays.
+func (fac *Factory) NewArrays() *Arrays {
+	s := &Arrays{}
+	typ := fac.Package.Package.IR.Types[0]
+	s.handle = handleArrays{
+		pkg:   fac.Package,
+		struc: typ,
+		owner: s,
+	}
+
+	var err error
+	s.value, err = values.NewStruct(typ, nil)
+	if err != nil {
+		panic(err)
+	}
+
+	return s
+}
+
+var _ types.Bridge = (*handleArrays)(nil)
+
+func (h *handleArrays) NewFromField(field *ir.Field) (types.Bridge, error) {
+	name := field.Name.Name
+	switch name {
+
+	case "ArrayF32":
+		return nil, errors.Errorf("cannot create a new instance for field ArrayF32: type types.Array[float32] not supported")
+
+	default:
+		return nil, errors.Errorf("structure Arrays has no field %q", name)
+	}
+}
+
+// SetField sets a field in the structure.
+func (h *handleArrays) SetField(field *ir.Field, val types.Bridge) error {
+	name := field.Name.Name
+	switch name {
+
+	case "ArrayF32":
+		bridger := val.Bridger()
+		fieldValue, ok := bridger.(types.Array[float32])
+		if !ok {
+			return errors.Errorf("cannot set field ArrayF32: cannot cast %T to types.Array[float32]", bridger)
+		}
+		h.owner.ArrayF32 = fieldValue
+		h.owner.value.SetField("ArrayF32", val.GXValue())
+		return nil
+
+	default:
+		return errors.Errorf("structure Arrays has no field %q", name)
+	}
+}
+
+// NewEncoding returns a handle on named type Encoding.
+func (fac *Factory) NewEncoding() *Encoding {
+	s := &Encoding{}
+	typ := fac.Package.Package.IR.Types[1]
+	s.handle = handleEncoding{
+		pkg:   fac.Package,
+		struc: typ,
+		owner: s,
+	}
+
+	var err error
+	s.value, err = values.NewStruct(typ, nil)
+	if err != nil {
+		panic(err)
+	}
+
+	return s
+}
+
+var _ types.Bridge = (*handleEncoding)(nil)
+
+func (h *handleEncoding) NewFromField(field *ir.Field) (types.Bridge, error) {
+	name := field.Name.Name
+	switch name {
+
+	case "Scalars":
+		return h.pkg.Factory.NewScalars().Bridge(), nil
+
+	case "DataAsSlices":
+		return h.pkg.Factory.NewArrays().Bridge(), nil
+
+	case "DataAsArrays":
+		return h.pkg.Factory.NewArrays().Bridge(), nil
+
+	default:
+		return nil, errors.Errorf("structure Encoding has no field %q", name)
+	}
+}
+
+// SetField sets a field in the structure.
+func (h *handleEncoding) SetField(field *ir.Field, val types.Bridge) error {
+	name := field.Name.Name
+	switch name {
+
+	case "Scalars":
+		bridger := val.Bridger()
+		fieldValue, ok := bridger.(*Scalars)
+		if !ok {
+			return errors.Errorf("cannot set field Scalars: cannot cast %T to *Scalars", bridger)
+		}
+		h.owner.Scalars = fieldValue
+		h.owner.value.SetField("Scalars", val.GXValue())
+		return nil
+
+	case "DataAsSlices":
+		bridger := val.Bridger()
+		fieldValue, ok := bridger.(*Arrays)
+		if !ok {
+			return errors.Errorf("cannot set field DataAsSlices: cannot cast %T to *Arrays", bridger)
+		}
+		h.owner.DataAsSlices = fieldValue
+		h.owner.value.SetField("DataAsSlices", val.GXValue())
+		return nil
+
+	case "DataAsArrays":
+		bridger := val.Bridger()
+		fieldValue, ok := bridger.(*Arrays)
+		if !ok {
+			return errors.Errorf("cannot set field DataAsArrays: cannot cast %T to *Arrays", bridger)
+		}
+		h.owner.DataAsArrays = fieldValue
+		h.owner.value.SetField("DataAsArrays", val.GXValue())
+		return nil
+
+	default:
+		return errors.Errorf("structure Encoding has no field %q", name)
+	}
 }
 
 // NewScalars returns a handle on named type Scalars.
 func (fac *Factory) NewScalars() *Scalars {
 	s := &Scalars{}
-	typ := fac.Compiler.Package.IR.Types[0]
+	typ := fac.Package.Package.IR.Types[2]
 	s.handle = handleScalars{
-		compiler: fac.Compiler,
-		struc:    typ,
-		owner:    s,
+		pkg:   fac.Package,
+		struc: typ,
+		owner: s,
 	}
 
 	var err error
@@ -603,7 +738,7 @@ func (fac *Factory) NewScalars() *Scalars {
 	}
 
 	s.handle.runnerGetTotal = &MethodScalarsGetTotal{
-		methodBase: s.handle.compiler.methodScalarsGetTotal,
+		methodBase: s.handle.pkg.methodScalarsGetTotal,
 		receiver:   s.handle,
 	}
 
@@ -642,7 +777,7 @@ func (h *handleScalars) SetField(field *ir.Field, val types.Bridge) error {
 			return errors.Errorf("cannot set field Int: cannot cast %T to types.Atom[int32]", bridger)
 		}
 		h.owner.Int = fieldValue
-		h.owner.value.SetField(field.ID, val.GXValue())
+		h.owner.value.SetField("Int", val.GXValue())
 		return nil
 
 	case "Float32":
@@ -652,7 +787,7 @@ func (h *handleScalars) SetField(field *ir.Field, val types.Bridge) error {
 			return errors.Errorf("cannot set field Float32: cannot cast %T to types.Atom[float32]", bridger)
 		}
 		h.owner.Float32 = fieldValue
-		h.owner.value.SetField(field.ID, val.GXValue())
+		h.owner.value.SetField("Float32", val.GXValue())
 		return nil
 
 	case "Float64":
@@ -662,7 +797,7 @@ func (h *handleScalars) SetField(field *ir.Field, val types.Bridge) error {
 			return errors.Errorf("cannot set field Float64: cannot cast %T to types.Atom[float64]", bridger)
 		}
 		h.owner.Float64 = fieldValue
-		h.owner.value.SetField(field.ID, val.GXValue())
+		h.owner.value.SetField("Float64", val.GXValue())
 		return nil
 
 	default:
@@ -670,146 +805,14 @@ func (h *handleScalars) SetField(field *ir.Field, val types.Bridge) error {
 	}
 }
 
-// NewArrays returns a handle on named type Arrays.
-func (fac *Factory) NewArrays() *Arrays {
-	s := &Arrays{}
-	typ := fac.Compiler.Package.IR.Types[1]
-	s.handle = handleArrays{
-		compiler: fac.Compiler,
-		struc:    typ,
-		owner:    s,
-	}
-
-	var err error
-	s.value, err = values.NewStruct(typ, nil)
-	if err != nil {
-		panic(err)
-	}
-
-	return s
-}
-
-var _ types.Bridge = (*handleArrays)(nil)
-
-func (h *handleArrays) NewFromField(field *ir.Field) (types.Bridge, error) {
-	name := field.Name.Name
-	switch name {
-
-	case "ArrayF32":
-		return nil, errors.Errorf("cannot create a new instance for field ArrayF32: type types.Array[float32] not supported")
-
-	default:
-		return nil, errors.Errorf("structure Arrays has no field %q", name)
-	}
-}
-
-// SetField sets a field in the structure.
-func (h *handleArrays) SetField(field *ir.Field, val types.Bridge) error {
-	name := field.Name.Name
-	switch name {
-
-	case "ArrayF32":
-		bridger := val.Bridger()
-		fieldValue, ok := bridger.(types.Array[float32])
-		if !ok {
-			return errors.Errorf("cannot set field ArrayF32: cannot cast %T to types.Array[float32]", bridger)
-		}
-		h.owner.ArrayF32 = fieldValue
-		h.owner.value.SetField(field.ID, val.GXValue())
-		return nil
-
-	default:
-		return errors.Errorf("structure Arrays has no field %q", name)
-	}
-}
-
-// NewEncoding returns a handle on named type Encoding.
-func (fac *Factory) NewEncoding() *Encoding {
-	s := &Encoding{}
-	typ := fac.Compiler.Package.IR.Types[2]
-	s.handle = handleEncoding{
-		compiler: fac.Compiler,
-		struc:    typ,
-		owner:    s,
-	}
-
-	var err error
-	s.value, err = values.NewStruct(typ, nil)
-	if err != nil {
-		panic(err)
-	}
-
-	return s
-}
-
-var _ types.Bridge = (*handleEncoding)(nil)
-
-func (h *handleEncoding) NewFromField(field *ir.Field) (types.Bridge, error) {
-	name := field.Name.Name
-	switch name {
-
-	case "Scalars":
-		return h.compiler.Factory.NewScalars().Bridge(), nil
-
-	case "DataAsSlices":
-		return h.compiler.Factory.NewArrays().Bridge(), nil
-
-	case "DataAsArrays":
-		return h.compiler.Factory.NewArrays().Bridge(), nil
-
-	default:
-		return nil, errors.Errorf("structure Encoding has no field %q", name)
-	}
-}
-
-// SetField sets a field in the structure.
-func (h *handleEncoding) SetField(field *ir.Field, val types.Bridge) error {
-	name := field.Name.Name
-	switch name {
-
-	case "Scalars":
-		bridger := val.Bridger()
-		fieldValue, ok := bridger.(*Scalars)
-		if !ok {
-			return errors.Errorf("cannot set field Scalars: cannot cast %T to *Scalars", bridger)
-		}
-		h.owner.Scalars = fieldValue
-		h.owner.value.SetField(field.ID, val.GXValue())
-		return nil
-
-	case "DataAsSlices":
-		bridger := val.Bridger()
-		fieldValue, ok := bridger.(*Arrays)
-		if !ok {
-			return errors.Errorf("cannot set field DataAsSlices: cannot cast %T to *Arrays", bridger)
-		}
-		h.owner.DataAsSlices = fieldValue
-		h.owner.value.SetField(field.ID, val.GXValue())
-		return nil
-
-	case "DataAsArrays":
-		bridger := val.Bridger()
-		fieldValue, ok := bridger.(*Arrays)
-		if !ok {
-			return errors.Errorf("cannot set field DataAsArrays: cannot cast %T to *Arrays", bridger)
-		}
-		h.owner.DataAsArrays = fieldValue
-		h.owner.value.SetField(field.ID, val.GXValue())
-		return nil
-
-	default:
-		return errors.Errorf("structure Encoding has no field %q", name)
-	}
-}
-
 // NewSlice returns a handle on named type Slice.
 func (fac *Factory) NewSlice() *Slice {
 	s := &Slice{}
-	typ := fac.Compiler.Package.IR.Types[3]
+	typ := fac.Package.Package.IR.Types[3]
 	s.handle = handleSlice{
-		compiler: fac.Compiler,
-		struc:    typ,
-		owner:    s,
+		pkg:   fac.Package,
+		struc: typ,
+		owner: s,
 	}
 
 	var err error
@@ -828,11 +831,11 @@ func (h *handleSlice) NewFromField(field *ir.Field) (types.Bridge, error) {
 	switch name {
 
 	case "Instance":
-		return h.compiler.Factory.NewEncoding().Bridge(), nil
+		return h.pkg.Factory.NewEncoding().Bridge(), nil
 
 	case "Slice":
 		slice, err := types.NewEmptySlice[*Encoding](field.Type(), func() (types.Bridge, error) {
-			return h.compiler.Factory.NewEncoding().Bridge(), nil
+			return h.pkg.Factory.NewEncoding().Bridge(), nil
 		})
 		if err != nil {
 			return nil, err
@@ -856,7 +859,7 @@ func (h *handleSlice) SetField(field *ir.Field, val types.Bridge) error {
 			return errors.Errorf("cannot set field Instance: cannot cast %T to *Encoding", bridger)
 		}
 		h.owner.Instance = fieldValue
-		h.owner.value.SetField(field.ID, val.GXValue())
+		h.owner.value.SetField("Instance", val.GXValue())
 		return nil
 
 	case "Slice":
@@ -866,7 +869,7 @@ func (h *handleSlice) SetField(field *ir.Field, val types.Bridge) error {
 			return errors.Errorf("cannot set field Slice: cannot cast %T to *types.Slice[*Encoding]", bridger)
 		}
 		h.owner.Slice = fieldValue
-		h.owner.value.SetField(field.ID, val.GXValue())
+		h.owner.value.SetField("Slice", val.GXValue())
 		return nil
 
 	default:
