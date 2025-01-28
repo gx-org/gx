@@ -152,6 +152,10 @@ func processGoFiles(files []string) ([]string, error) {
 }
 
 func listGXSourceFiles(path string) ([]string, error) {
+	path, err := filepath.Abs(path)
+	if err != nil {
+		return nil, fmt.Errorf("cannot build the absolute path for path %s: %v", path, err)
+	}
 	files, err := ioutil.ReadDir(path)
 	if err != nil {
 		return nil, fmt.Errorf("cannot read directory %q: %v", path, err)
@@ -192,7 +196,11 @@ func main() {
 		GoPackageName: *goPackageName,
 		Tests:         tests,
 	}
-	goTarget := filepath.Join(*targetFolder, *targetName)
+	goTarget, err := filepath.Abs(filepath.Join(*targetFolder, *targetName))
+	if err != nil {
+		fmt.Fprint(os.Stderr, err)
+		os.Exit(1)
+	}
 	if err := template.Exec(mainSource, goTarget, pkg); err != nil {
 		fmt.Fprintln(os.Stderr, err)
 		os.Exit(1)

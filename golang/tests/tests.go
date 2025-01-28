@@ -29,15 +29,6 @@ import (
 	"github.com/gx-org/gx/golang/tests/randtest"
 )
 
-//go:generate go run ../../golang/tools/testsmain/testsmain.go --gx_test_folder=basictest
-//go:generate go run ../../golang/tools/testsmain/testsmain.go --gx_test_folder=importtest
-//go:generate go run ../../golang/tools/testsmain/testsmain.go --gx_test_folder=mathtest
-//go:generate go run ../../golang/tools/testsmain/testsmain.go --gx_test_folder=parameterstest
-//go:generate go run ../../golang/tools/testsmain/testsmain.go --gx_test_folder=pkgvarstest
-//go:generate go run ../../golang/tools/testsmain/testsmain.go --gx_test_folder=randtest
-//go:generate go run ../../golang/tools/testsmain/testsmain.go --gx_test_folder=dtypestest
-//go:generate go run ../../golang/tools/testsmain/testsmain.go --gx_test_folder=cartpoletest
-
 var all = []func(t *testing.T, dev *api.Device){
 	basictest.Run,
 	importtest.Run,
