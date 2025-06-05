@@ -1,0 +1,24 @@
+package redefined
+
+const (
+	constAlreadyRedefined = 1
+	constAlreadyRedefined = 2 // ERROR redeclared in this block
+)
+
+var (
+	varAlreadyRedefined intlen
+	varAlreadyRedefined intlen // ERROR redeclared in this block
+)
+
+func funcAlreadyDefined() float64 {
+	return 1
+}
+
+func funcAlreadyDefined() float64 { // ERROR redeclared in this block
+	return 1
+}
+
+type (
+	typeAlreadyDefined intlen
+	typeAlreadyDefined intlen // ERROR redeclared in this block
+)

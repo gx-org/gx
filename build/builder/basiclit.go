@@ -17,91 +17,54 @@ package builder
 import (
 	"go/ast"
 	"go/token"
+	"math/big"
 
 	"github.com/gx-org/gx/build/ir"
 )
 
-type baseLit struct {
-	src *ast.BasicLit
-	typ typeNode
-}
-
-func (n *baseLit) expr() ast.Expr {
-	return n.src
-}
-
-// Pos returns the position of the literal in the code.
-func (n *baseLit) source() ast.Node {
-	return n.src
-}
-
-// Type returns the GX type of the literal.
-func (n *baseLit) resolveType(scope scoper) (typeNode, bool) {
-	return typeNodeOk(n.typ)
-}
-
-func (n *baseLit) String() string {
-	return n.src.Value
-}
-
-func (n *baseLit) buildExpr() ir.Expr {
-	return nil
-}
-
-func processBasicLit(owner owner, expr *ast.BasicLit) (exprNode, bool) {
+func processBasicLit(pscope procScope, expr *ast.BasicLit) (exprNode, bool) {
 	switch expr.Kind {
 	case token.FLOAT:
+		val, _, err := new(big.Float).Parse(expr.Value, 0)
+		if err != nil {
+			pscope.err().Appendf(expr, "cannot parse float number literal %q: %v", expr.Value, err)
+		}
 		return &numberLit{
-			baseLit: baseLit{
-				src: expr,
-				typ: numberFloatType,
-			},
-			ext: &ir.NumberFloat{Src: expr},
-		}, true
+			ext: &ir.NumberFloat{Src: expr, Val: val},
+		}, err == nil
 	case token.INT:
+		val, ok := new(big.Int).SetString(expr.Value, 0)
+		if !ok {
+			pscope.err().Appendf(expr, "cannot parse int number literal %q", expr.Value)
+		}
 		return &numberLit{
-			baseLit: baseLit{
-				src: expr,
-				typ: numberIntType,
-			},
-			ext: &ir.NumberInt{Src: expr},
-		}, true
+			ext: &ir.NumberInt{Src: expr, Val: val},
+		}, ok
 	case token.STRING:
 		return &stringLit{
-			baseLit: baseLit{
-				src: expr,
-				typ: stringType,
-			},
 			ext: ir.StringLiteral{Src: expr},
 		}, true
 	default:
-		return &baseLit{
-			src: expr,
-			typ: invalid,
-		}, owner.err().Appendf(expr, "%s basic literal are not supported", expr.Kind)
+		return nil, pscope.err().Appendf(expr, "%s basic literal are not supported", expr.Kind)
 	}
-}
-
-// numberLit is the literal of a number.
-type numberLit struct {
-	baseLit
-	ext ir.Number
-}
-
-var _ exprNode = (*numberLit)(nil)
-
-func (n *numberLit) buildExpr() ir.Expr {
-	return n.ext
 }
 
 // stringLit is the literal of a string.
 type stringLit struct {
-	baseLit
 	ext ir.StringLiteral
 }
 
 var _ exprNode = (*stringLit)(nil)
 
-func (n *stringLit) buildExpr() ir.Expr {
-	return &n.ext
+func (n *stringLit) buildExpr(resolveScope) (ir.Expr, bool) {
+	return &n.ext, true
+}
+
+// Pos returns the position of the literal in the code.
+func (n *stringLit) source() ast.Node {
+	return n.ext.Source()
+}
+
+func (n *stringLit) String() string {
+	return n.ext.String()
 }

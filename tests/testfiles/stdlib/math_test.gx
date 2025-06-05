@@ -110,16 +110,11 @@ func TestLogSqrt() (float64, float64) {
 	// 1: float64(12)
 }
 
-func TestCeilFloat32Scalar() float32 {
-	return math.Ceil[float32](1.75)
+func TestCeilScalar() (float32, float64) {
+	return math.Ceil[float32](1.75), math.Ceil[float64](4)
 	// Want:
-	// float32(2)
-}
-
-func TestCeilFloat64Scalar() float64 {
-	return math.Ceil[float64](1.75)
-	// Want:
-	// float64(2)
+	// 0: float32(2)
+	// 1: float64(4)
 }
 
 func TestCeilFloat32() [2]float32 {
@@ -137,4 +132,19 @@ func TestCeilFloat64() [2][2]float64 {
 	// 	{-0, 2},
 	// 	{3, -3},
 	// }
+}
+
+func TestCeilAtomicInferred() (float32, float64, float64) {
+	return math.Ceil(float32(1.75)), math.Ceil(float64(4)), math.Ceil(1.0)
+	// Want:
+	// 0: float32(2)
+	// 1: float64(4)
+	// 2: float64(1)
+}
+
+func TestCeilArrayInferred() ([...]float32, [...]float64) {
+	return math.Ceil([2]float32{0.5, 1.5}), math.Ceil([2]float64{3.5, 7.5})
+	// Want:
+	// 0: [2]float32{1, 2}
+	// 1: [2]float64{4, 8}
 }

@@ -20,6 +20,7 @@ import (
 	"github.com/gx-org/gx/build/builtins"
 	"github.com/gx-org/gx/build/fmterr"
 	"github.com/gx-org/gx/build/ir"
+	"github.com/gx-org/gx/internal/interp/compeval"
 	"github.com/gx-org/gx/stdlib/builtin"
 	"github.com/gx-org/gx/stdlib/impl"
 )
@@ -48,34 +49,24 @@ func (f gather) BuildFuncType(fetcher ir.Fetcher, call *ir.CallExpr) (*ir.FuncTy
 	if err != nil {
 		return nil, err
 	}
-	if !ir.IsIndexKind(indexArray.DataType().Kind()) {
-		return nil, fmterr.Errorf(fetcher.FileSet(), call.Source(), "Gather requires indices to have an integer type, got shape %q instead", indexArray)
+	if !ir.IsIndexType(indexArray.DataType()) {
+		return nil, fmterr.Errorf(fetcher.File().FileSet(), call.Source(), "Gather requires indices to have an integer type, got shape %q instead", indexArray)
 	}
 
-	sourceRank, err := builtins.RankOf(fetcher, call, sourceArray)
+	sourceRank := sourceArray.Rank()
+	indicesRank := indexArray.Rank()
+	indexDims := indicesRank.Axes()[indicesRank.NumAxes()-1]
+	indexRank, err := compeval.EvalInt(fetcher, indexDims)
 	if err != nil {
 		return nil, err
-	}
-	indicesRank, err := builtins.RankOf(fetcher, call, indexArray)
-	if err != nil {
-		return nil, err
-	}
-	indexDims := indicesRank.Axes[len(indicesRank.Axes)-1]
-	indexRank, unknowns, err := ir.Eval[ir.Int](fetcher, indexDims)
-	if err != nil {
-		return nil, err
-	}
-	if len(unknowns) > 0 {
-		return nil, fmterr.Errorf(fetcher.FileSet(), indexDims.Source(),
-			"cannot evaluate expression %q: unknown value", indexDims)
 	}
 
 	resultRank := &ir.Rank{}
-	resultRank.Axes = append(resultRank.Axes, indicesRank.Axes[0:1]...)
-	resultRank.Axes = append(resultRank.Axes, sourceRank.Axes[indexRank:]...)
+	resultRank.Ax = append(resultRank.Ax, indicesRank.Axes()[0:1]...)
+	resultRank.Ax = append(resultRank.Ax, sourceRank.Axes()[indexRank:]...)
 	return &ir.FuncType{
-		Src:     &ast.FuncType{Func: call.Source().Pos()},
-		Params:  builtins.Fields(params...),
-		Results: builtins.Fields(ir.NewArrayType(nil, sourceArray.DataType(), resultRank)),
+		BaseType: ir.BaseType[*ast.FuncType]{Src: &ast.FuncType{Func: call.Source().Pos()}},
+		Params:   builtins.Fields(params...),
+		Results:  builtins.Fields(ir.NewArrayType(nil, sourceArray.DataType(), resultRank)),
 	}, nil
 }

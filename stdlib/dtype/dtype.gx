@@ -1,0 +1,20 @@
+package dtype
+
+type (
+	Floats interface {
+		bfloat16 | float32 | float64
+	}
+
+	Ints interface {
+		int32 | int64 | uint32 | uint64
+	}
+
+	Num interface {
+		Floats | Ints
+	}
+)
+
+
+// Source and target types must have the same size for now; different sizes requires calculating a
+// different result shape.
+func Reinterpret[T, S Num]([___M]S) [M___]T

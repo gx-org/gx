@@ -1,22 +1,12 @@
-// Copyright 2025 Google LLC
-//
-// Licensed under the Apache License, Version 2.0 (the "License");
-// you may not use this file except in compliance with the License.
-// You may obtain a copy of the License at
-//
-//     http://www.apache.org/licenses/LICENSE-2.0
-//
-// Unless required by applicable law or agreed to in writing, software
-// distributed under the License is distributed on an "AS IS" BASIS,
-// WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
-// See the License for the specific language governing permissions and
-// limitations under the License.
-
 package ir
 
 import (
 	"fmt"
+	"slices"
 	"strings"
+
+	gxfmt "github.com/gx-org/gx/base/fmt"
+	"github.com/gx-org/gx/base/stringseq"
 )
 
 type indentBuilder struct {
@@ -37,51 +27,62 @@ func (g *FieldGroup) String() string {
 }
 
 func (l *FieldList) String() string {
-	fields := make([]string, len(l.List))
-	for i, field := range l.List {
-		fields[i] = field.String()
-	}
-	return strings.Join(fields, ", ")
+	return stringseq.JoinStringer(slices.Values(l.List), ", ")
 }
 
 func (b *BlockStmt) String() string {
-	stmts := make([]string, len(b.List))
-	for i, stmt := range b.List {
-		stmts[i] = stmt.String()
-	}
-	return strings.Join(stmts, "\n") + "\n"
+	return stringseq.JoinStringer(slices.Values(b.List), "\n") + "\n"
 }
 
-func indent(s string) string {
-	var lines []string
-	for line := range strings.Lines(s) {
-		lines = append(lines, "\t"+line)
-	}
-	return strings.Join(lines, "\n")
+// String returns a string representation of the builtin function.
+func (s *FuncBuiltin) String() string {
+	return s.FType.String()
 }
 
 // String returns a string representation of the function.
 func (f *FuncDecl) String() string {
 	params := f.FType.Params.String()
 	results := f.FType.Results.String()
-	body := indent(f.Body.String())
+	body := gxfmt.Indent(f.Body.String())
 	return fmt.Sprintf("func %s(%s) %s {\n%s}", f.Src.Name.Name, params, results, body)
 }
 
-func (s *ReturnStmt) String() string {
-	exprs := make([]string, len(s.Results))
-	for i, expr := range s.Results {
-		exprs[i] = expr.String()
+// String representation of the type.
+func (s *FuncType) String() string {
+	var b strings.Builder
+	b.WriteString("func")
+	if s.Receiver != nil {
+		b.WriteString(fmt.Sprintf(" (%s) ", s.Receiver.String()))
 	}
-	return fmt.Sprintf("return %s", strings.Join(exprs, ", "))
+	if s.TypeParams != nil {
+		b.WriteString(fmt.Sprintf("[%s]", s.TypeParams.String()))
+	}
+	b.WriteString(s.Params.TupleType().String())
+	b.WriteRune(' ')
+	b.WriteString(s.Results.Type().String())
+	return b.String()
 }
 
-func (*AssignCallStmt) String() string {
-	return "AssignCallStmt"
+func (s *ReturnStmt) String() string {
+	return "return " + stringseq.JoinStringer(slices.Values(s.Results), ", ")
 }
 
-func (*AssignExprStmt) String() string {
-	return "AssignExprStmt"
+func (s *AssignCallStmt) String() string {
+	assigned := make([]string, len(s.List))
+	for i, v := range s.List {
+		assigned[i] = v.NameDef().Name
+	}
+	return fmt.Sprintf("%s := %s", strings.Join(assigned, ", "), s.Call.String())
+}
+
+func (s *AssignExprStmt) String() string {
+	assigned := make([]string, len(s.List))
+	exprs := make([]string, len(s.List))
+	for i, v := range s.List {
+		assigned[i] = v.NameDef().Name
+		exprs[i] = v.X.String()
+	}
+	return fmt.Sprintf("%s := %s", strings.Join(assigned, ", "), strings.Join(exprs, ", "))
 }
 
 func (*RangeStmt) String() string {
@@ -96,10 +97,133 @@ func (e *ExprStmt) String() string {
 	return e.X.String()
 }
 
-func (s *ArrayLitExpr) String() string {
-	vals := make([]string, len(s.Vals))
-	for i, val := range s.Vals {
-		vals[i] = val.String()
+// String representation.
+func (s *CallExpr) String() string {
+	var b strings.Builder
+	fmt.Fprintf(&b, "%s(", s.Callee.String())
+	stringseq.AppendStringer(&b, slices.Values(s.Args), ", ")
+	fmt.Fprintf(&b, ")")
+	return b.String()
+}
+
+func stringLiteral(elts []AssignableExpr) string {
+	ss := make([]string, len(elts))
+	for i, elt := range elts {
+		ss[i] = elt.String()
 	}
-	return fmt.Sprintf("%s{%s}", s.Type().String(), strings.Join(vals, ", "))
+	return fmt.Sprintf("{%s}", strings.Join(ss, ","))
+}
+
+func (s *ArrayLitExpr) String() string {
+	return fmt.Sprintf("%s%s", s.Typ.String(), stringLiteral(s.Elts))
+}
+
+// String representation.
+func (s *SliceLitExpr) String() string {
+	return fmt.Sprintf("%s%s", s.Typ.String(), stringLiteral(s.Elts))
+}
+
+func (e *CastExpr) String() string {
+	return fmt.Sprintf("(%s)(%s)", e.Typ.String(), e.X.String())
+}
+
+func (e *TypeAssertExpr) String() string {
+	return fmt.Sprintf("%s.(%s)", e.X.String(), e.Typ.String())
+}
+
+func (e *NumberFloat) String() string {
+	if e.Src != nil {
+		return e.Src.Value
+	}
+	return e.Val.String()
+}
+
+func (e *NumberInt) String() string {
+	if e.Src != nil && e.Src.Value != "" {
+		return e.Src.Value
+	}
+	return e.Val.String()
+}
+
+// String representation of the tuple.
+func (e *Tuple) String() string {
+	exprs := make([]string, len(e.Exprs))
+	for i, expr := range e.Exprs {
+		exprs[i] = expr.String()
+	}
+	return fmt.Sprintf("(%s)", strings.Join(exprs, ","))
+}
+
+// Type returns the type of an expression.
+func (e *ConstExpr) String() string {
+	return fmt.Sprintf("const %s", e.VName.Name)
+}
+
+func (dm *AxisInfer) axExprString() string {
+	return dm.X.axExprString()
+}
+
+// String representation of the dimension.
+func (dm *AxisInfer) String() string {
+	if dm.X == nil {
+		return "[_]"
+	}
+	return fmt.Sprintf("[%s]", dm.axExprString())
+}
+
+func (dm *AxisExpr) axExprString() string {
+	return dm.X.String()
+}
+
+// String representation of the dimension.
+func (dm *AxisExpr) String() string {
+	return fmt.Sprintf("[%s]", dm.axExprString())
+}
+
+func (dm *AxisGroup) axExprString() string {
+	return dm.Src.Name
+}
+
+// String representation of the dimension.
+func (dm *AxisGroup) String() string {
+	return fmt.Sprintf("[%s]", dm.axExprString())
+}
+
+func (dm *AxisLenName) axExprString() string {
+	return dm.Src.Name
+}
+
+// String representation of the dimension.
+func (dm *AxisLenName) String() string {
+	return fmt.Sprintf("[%s]", dm.axExprString())
+}
+
+// String returns a string representation of the rank.
+func (r *Rank) String() string {
+	if r == nil {
+		return ""
+	}
+	bld := strings.Builder{}
+	for _, dim := range r.Ax {
+		bld.WriteString(dim.String())
+	}
+	return bld.String()
+}
+
+// String returns a string representation of the rank.
+func (r *RankInfer) String() string {
+	if r.Rnk == nil {
+		return "[...]"
+	}
+	return r.Rnk.String()
+}
+
+// String representation.
+func (s *SelectorExpr) String() string {
+	return fmt.Sprintf("%s.%s", s.X.String(), s.Src.Sel.Name)
+}
+
+// String representation.
+func (s *IndexExpr) String() string {
+	return fmt.Sprintf("%s[%s]", s.X.String(), s.Index.String())
 }

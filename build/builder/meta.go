@@ -30,6 +30,7 @@ const (
 	none directive = iota
 	assign
 	irmacro
+	cpeval
 )
 
 const assignDirectivePrefix = "//gx:="
@@ -42,6 +43,7 @@ type directivePrefix struct {
 var directives = map[string]directivePrefix{
 	assignDirectivePrefix: directivePrefix{dir: assign, prefixOnly: false},
 	"//gx:irmacro":        directivePrefix{dir: irmacro, prefixOnly: true},
+	"//gx:compeval":       directivePrefix{dir: cpeval, prefixOnly: true},
 }
 
 type astErrorNode struct {
@@ -59,15 +61,15 @@ func (n astErrorNode) End() token.Pos {
 	return n.doc.End()
 }
 
-func processScannerError(scope *scopeBlock, doc *ast.Comment, errScanner error) bool {
+func processScannerError(pscope procScope, doc *ast.Comment, errScanner error) bool {
 	errList, ok := errScanner.(scanner.ErrorList)
 	if !ok {
 		// Unknown error: we build a new error at the comment position
 		// that includes the error type and its message.
-		return scope.err().Appendf(doc, "%T:%s", errScanner, errScanner.Error())
+		return pscope.err().Appendf(doc, "%T:%s", errScanner, errScanner.Error())
 	}
 	for _, err := range errList {
-		scope.err().Appendf(astErrorNode{doc: doc, err: err}, "%s", err.Msg)
+		pscope.err().Appendf(astErrorNode{doc: doc, err: err}, "%s", err.Msg)
 	}
 	return false
 }
@@ -88,7 +90,7 @@ func directiveFromComment(doc string) directive {
 	return none
 }
 
-func processFuncDirective(scope *scopeFile, fn *ast.FuncDecl) (directive, *ast.Comment, bool) {
+func processFuncDirective(pscope procScope, fn *ast.FuncDecl) (directive, *ast.Comment, bool) {
 	if fn.Doc == nil {
 		return none, nil, true
 	}
@@ -100,7 +102,7 @@ func processFuncDirective(scope *scopeFile, fn *ast.FuncDecl) (directive, *ast.C
 			continue
 		}
 		if dir != none {
-			return dir, doc, scope.err().Appendf(doc, "a function can only have one GX directive")
+			return dir, doc, pscope.err().Appendf(doc, "a function can only have one GX directive")
 		}
 		dir = docDir
 		comment = doc
@@ -113,22 +115,22 @@ type assignDirective struct {
 	call *callExpr
 }
 
-func (f *funcDecl) processFuncAssignDirective(scope *scopeBlock, doc *ast.Comment) (*assignDirective, bool) {
+func (f *funcDecl) processFuncAssignDirective(pscope procScope, doc *ast.Comment) (*assignDirective, bool) {
 	src := strings.TrimPrefix(doc.Text, assignDirectivePrefix)
-	astExpr, err := parser.ParseExprFrom(scope.pkg().repr.FSet, f.bFile.name+":"+f.name().Name, src, parser.SkipObjectResolution)
+	astExpr, err := parser.ParseExprFrom(pscope.pkgScope().pkg().fset, f.bFile.name+":"+f.name().Name, src, parser.SkipObjectResolution)
 	if err != nil {
-		return nil, processScannerError(scope, doc, err)
+		return nil, processScannerError(pscope, doc, err)
 	}
 	if f.meta != nil {
-		return nil, scope.err().Appendf(doc, "a function can only have one GX directive")
+		return nil, pscope.err().Appendf(doc, "a function can only have one GX directive")
 	}
-	expr, exprOk := processExpr(scope, astExpr)
+	expr, exprOk := processExpr(pscope, astExpr)
 	if !exprOk {
 		return nil, false
 	}
 	call, callOk := expr.(*callExpr)
 	if !callOk {
-		return nil, scope.err().Appendf(doc, "GX equal directive (gx:=) only accept function call expression")
+		return nil, pscope.err().Appendf(doc, "GX equal directive (gx:=) only accept function call expression")
 	}
 	return &assignDirective{
 		fun:  f,
@@ -136,56 +138,29 @@ func (f *funcDecl) processFuncAssignDirective(scope *scopeBlock, doc *ast.Commen
 	}, true
 }
 
-func fetchMacro(scope *scopeFile, call *callExpr) (ir.MacroImpl, bool) {
-	selector, ok := call.src.Fun.(*ast.SelectorExpr)
+func (m *assignDirective) buildExpr(scope *fileResolveScope) (*ir.FuncDecl, bool) {
+	ext := &ir.FuncDecl{
+		Src: m.fun.src,
+	}
+	args, ok := m.call.buildArgs(scope)
 	if !ok {
-		return nil, scope.err().Appendf(call.src, "%T expression not supported: want <package name>.<function name>(...)", call.src.Fun)
+		return ext, false
 	}
-	packageIdent, ok := selector.X.(*ast.Ident)
+	funcMetaExpr, ok := m.call.callee.buildExpr(scope)
 	if !ok {
-		return nil, scope.err().Appendf(call.src, "%T expression not supported: want <package name>.<function name>(...)", call.src.Fun)
+		return ext, false
 	}
-	pkgVal, ok := fetchType(scope, scope.namespace(), packageIdent)
+	funcMeta, ok := funcMetaExpr.(*ir.FuncMeta)
 	if !ok {
-		return nil, false
+		return ext, scope.err().Appendf(m.call.source(), "cannot use %s (%T) as a meta function", funcMeta.Name(), funcMetaExpr)
 	}
-	pkgRef, ok := pkgVal.(*packageRef)
-	if !ok {
-		return nil, scope.err().Appendf(call.src, "%T.<function name> not supported: want <package name>.<function name>(...)", call.src.Fun)
+	if funcMeta.Impl == nil {
+		return ext, scope.err().Appendf(m.call.source(), "meta function %s has no implementation", funcMeta.Name())
 	}
-	pkg, err := scope.file().pkg.builder().Build(pkgRef.ext.Decl.Package.FullName())
-	if err != nil {
-		return nil, scope.err().Append(err)
+	compEval, compEvalOk := scope.compEval()
+	if !compEvalOk {
+		return ext, false
 	}
-	funcName := selector.Sel.Name
-	fun := pkg.IR().FindFunc(funcName)
-	if fun == nil {
-		return nil, scope.err().Appendf(call.src, "%s.%s undefined", packageIdent, funcName)
-	}
-	mFunc, ok := fun.(*ir.FuncMeta)
-	if !ok {
-		return nil, scope.err().Appendf(call.src, "cannot use %s.%s as a meta function", packageIdent, funcName)
-	}
-	macro, ok := mFunc.Impl.(ir.MacroImpl)
-	if !ok {
-		return nil, scope.err().Appendf(call.src, "cannot use %s.%s as a macro", packageIdent, funcName)
-	}
-	return macro, true
-}
-
-func (m *assignDirective) buildIR(parentScope *scopeFile) bool {
-	args, _, ok := m.call.resolveArgs(parentScope)
-	if !ok {
-		return false
-	}
-	macro, ok := fetchMacro(parentScope, m.call)
-	if !ok {
-		return false
-	}
-	if err := macro(parentScope.evalFetcher(), &m.fun.ext, args); err != nil {
-		parentScope.err().AppendAt(m.fun.ext.Src, err)
-		return false
-	}
-	m.fun.funcType, ok = importFuncType(parentScope, m.fun.ext.FType)
-	return ok
+	ext, ok = funcMeta.Impl(compEval, ext, args)
+	return ext, ok
 }

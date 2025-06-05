@@ -1,176 +1,173 @@
-// Copyright 2025 Google LLC
-//
-// Licensed under the Apache License, Version 2.0 (the "License");
-// you may not use this file except in compliance with the License.
-// You may obtain a copy of the License at
-//
-//     http://www.apache.org/licenses/LICENSE-2.0
-//
-// Unless required by applicable law or agreed to in writing, software
-// distributed under the License is distributed on an "AS IS" BASIS,
-// WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
-// See the License for the specific language governing permissions and
-// limitations under the License.
-
 // Package scope provides types for modeling execution scopes, as well as simple namespaces.
 package scope
 
-import "github.com/pkg/errors"
+import (
+	"fmt"
+	"iter"
+	"strings"
 
-type scope[V any] interface {
-	Assign(string, V) error
-	Delete(string) error
-	Find(string) (V, bool)
+	"github.com/pkg/errors"
+	"github.com/gx-org/gx/base/ordered"
+)
+
+type (
+	// Scope provides a set of values that can be find given their name.
+	Scope[V any] interface {
+		CanAssign(string) bool
+		Find(string) (V, bool)
+	}
+
+	roScope[V any] struct {
+		parent Scope[V]
+		local  Scope[V]
+	}
+)
+
+// NewReadOnly returns a scope that can only be queried and not modified.
+func NewReadOnly[V any](parent, data Scope[V]) Scope[V] {
+	return &roScope[V]{
+		parent: parent,
+		local:  data,
+	}
 }
 
-// Map is a mapping from names to values.
-type Map[V any] map[string]V
-
-// Assign maps `key` to `value`, overwriting if necessary.
-func (m *Map[V]) Assign(key string, value V) {
-	(*m)[key] = value
-}
-
-// Delete removes the mapping for `key`.
-func (m *Map[V]) Delete(key string) {
-	delete(*m, key)
+func find[V any](key string, local Scope[V], parent Scope[V]) (value V, ok bool) {
+	value, ok = local.Find(key)
+	if ok || parent == nil {
+		return
+	}
+	return parent.Find(key)
 }
 
 // Find returns the value associated with `key`, if any.
 //
 // The second return value indicates whether any value was found.
-func (m *Map[V]) Find(key string) (V, bool) {
-	value, ok := (*m)[key]
-	return value, ok
+func (s *roScope[V]) Find(key string) (value V, ok bool) {
+	return find(key, s.local, s.parent)
 }
 
-// ImmutableScope defines a root-level immutable scope, suitable for defining core builtins.
-type ImmutableScope[C any, V any] struct {
-	data    Map[V]
-	context C
+func (s *roScope[V]) CanAssign(key string) bool {
+	return false
 }
 
-var _ scope[any] = (*ImmutableScope[any, any])(nil)
-
-// NewImmutableScope returns a new ImmutableScope. data must be non-nil, since it is immutable.
-func NewImmutableScope[C any, V any](context C, data map[string]V) ImmutableScope[C, V] {
-	return ImmutableScope[C, V]{data, context}
+func (s *roScope[V]) String() string {
+	return scopeString(s.local, s.parent)
 }
 
-// NewChild returns a new mutable child scope.
-//
-// The resulting scope inherits the current scope's definitions.
-func (s ImmutableScope[C, V]) NewChild(context C) *Scope[C, V] {
-	return &Scope[C, V]{
-		data:    make(Map[V]),
-		parent:  s,
-		context: context,
+type localScope[V any] struct {
+	data *ordered.Map[string, V]
+}
+
+// NewScopeWithValues returns a scope with predefined values.
+func NewScopeWithValues[V any](vals map[string]V) Scope[V] {
+	data := ordered.NewMap[string, V]()
+	for k, v := range vals {
+		data.Store(k, v)
 	}
+	return NewReadOnly(nil, &localScope[V]{data: data})
 }
 
-// Context returns a pointer to the scope's user-defined context. Note that the context cannot be modified.
-func (s ImmutableScope[C, V]) Context() *C {
-	return &s.context
+func (s *localScope[V]) Find(key string) (value V, ok bool) {
+	return s.data.Load(key)
 }
 
-// Assign returns an error, since an immutable scope cannot be modified.
-func (s ImmutableScope[C, V]) Assign(key string, _ V) error {
-	return errors.Errorf("cannot assign %s: immutable scope", key)
+func (s *localScope[V]) CanAssign(key string) bool {
+	_, ok := s.data.Load(key)
+	return ok
 }
 
-// Delete returns an error, since an immutable scope cannot be modified.
-func (s ImmutableScope[C, V]) Delete(key string) error {
-	return errors.Errorf("cannot delete %s: immutable scope", key)
-}
-
-// Find returns the value associated with `key`, if any.
-//
-// The second return value indicates whether any value was found.
-func (s ImmutableScope[C, V]) Find(key string) (V, bool) {
-	value, ok := s.data[key]
-	return value, ok
-}
-
-// Scope defines a set of nested namespaces. Each scope may carry user-defined context.
-type Scope[C any, V any] struct {
-	data    Map[V]
-	parent  scope[V]
-	context C
-}
-
-var _ scope[any] = (*Scope[any, any])(nil)
-
-// NewScope returns a new Scope with the provided user-defined context, and optional initial
-// contents.
-func NewScope[C any, V any](context C, data map[string]V) *Scope[C, V] {
-	if data == nil {
-		data = make(map[string]V)
+func (s *localScope[V]) String() string {
+	if s.data.Size() == 0 {
+		return "empty"
 	}
-	return &Scope[C, V]{
-		data:    data,
-		context: context,
+	var kvs []string
+	for k, v := range s.data.Iter() {
+		kvs = append(kvs, fmt.Sprintf("%s: %T", k, v))
 	}
+	return strings.Join(kvs, "\n")
 }
 
-// NewChild returns a new mutable child scope.
-//
-// The resulting scope holds a new empty namespace, while inheriting the current scope's definitions.
-func (s *Scope[C, V]) NewChild(context C) *Scope[C, V] {
-	return &Scope[C, V]{
-		data:    make(Map[V]),
-		parent:  s,
-		context: context,
+// RWScope stores key,value pairs and the Scope interface.
+// A key, value pair is always defined within the scope.
+// A value can retrieved from its key by querying the scope and,
+// if not found, its parents recursively.
+type RWScope[V any] struct {
+	parent Scope[V]
+	local  *localScope[V]
+}
+
+var _ Scope[any] = (*RWScope[any])(nil)
+
+// NewScope returns a new scope given a parent, which can be nil.
+func NewScope[V any](parent Scope[V]) *RWScope[V] {
+	return &RWScope[V]{
+		parent: parent,
+		local: &localScope[V]{
+			data: ordered.NewMap[string, V](),
+		},
 	}
-}
-
-// Map returns a pointer to the scope's innermost namespace.
-func (s *Scope[C, V]) Map() *Map[V] {
-	return &s.data
-}
-
-// Context returns a pointer to the scope's user-defined context.
-func (s *Scope[C, V]) Context() *C {
-	return &s.context
 }
 
 // Define maps `key` to `value`, overwriting if necessary.
-func (s *Scope[C, V]) Define(key string, value V) {
-	s.data[key] = value
+func (s *RWScope[V]) Define(k string, v V) {
+	s.local.data.Store(k, v)
 }
 
-// Delete removes the mapping for `key`.
-func (s *Scope[C, V]) Delete(key string) error {
-	if _, exists := s.data.Find(key); exists {
-		s.data.Delete(key)
-		return nil
+// CanAssign returns true if a key can be assigned.
+func (s *RWScope[V]) CanAssign(key string) bool {
+	if can := s.local.CanAssign(key); can || s.parent == nil {
+		return can
 	}
-	if s.parent == nil {
-		return errors.Errorf("cannot delete %s: not defined in scope", key)
-	}
-	return s.parent.Delete(key)
+	return s.parent.CanAssign(key)
+}
+
+// LocalKeys returns the keys of the local scope without the parent.
+func (s *RWScope[V]) LocalKeys() iter.Seq[string] {
+	return s.local.data.Keys()
+}
+
+// LocalFind returns true if the key is defined in the local scope.
+func (s *RWScope[V]) LocalFind(key string) bool {
+	_, ok := s.local.data.Load(key)
+	return ok
+}
+
+// Find a key in the scope and its parent.
+func (s *RWScope[V]) Find(key string) (value V, ok bool) {
+	return find[V](key, s.local, s.parent)
 }
 
 // Assign maps an existing `key` to `value`, failing if no matching mapping is found. The assignment
 // starts at the scope's innermost namespace and cascades upwards through successive parent scopes.
-func (s *Scope[C, V]) Assign(key string, value V) error {
-	if _, exists := s.data.Find(key); exists {
+func (s *RWScope[V]) Assign(key string, value V) error {
+	if _, exists := s.local.data.Load(key); exists {
 		s.Define(key, value)
 		return nil
 	}
 	if s.parent == nil {
 		return errors.Errorf("cannot assign %s: not defined in scope", key)
 	}
-	return s.parent.Assign(key, value)
+	rwParent, ok := s.parent.(*RWScope[V])
+	if !ok {
+		return errors.Errorf("cannot assign %s: scope parent of type %T does support assignment", key, s.parent)
+	}
+	return rwParent.Assign(key, value)
 }
 
-// Find returns the value associated with `key`, if any. The lookup starts at the scope's innermost
-// namespace and cascades upwards through successive parent scopes until a matching mapping is found.
-//
-// The second return value indicates whether any value was found.
-func (s *Scope[C, V]) Find(key string) (V, bool) {
-	value, ok := s.data.Find(key)
-	if ok || s.parent == nil {
-		return value, ok
+// ReadOnly returns a scope to which values cannot be assigned or defined.
+func (s *RWScope[V]) ReadOnly() Scope[V] {
+	return &roScope[V]{parent: s.parent, local: s.local}
+}
+
+func scopeString[V any](local any, parent Scope[V]) string {
+	parentS := "root"
+	if parent != nil {
+		parentS = fmt.Sprint(parent)
 	}
-	return s.parent.Find(key)
+	return fmt.Sprintf("%s\n-- %p --\n%v\n", parentS, local, local)
+}
+
+// String representation of the scope.
+func (s *RWScope[V]) String() string {
+	return scopeString(s.local, s.parent)
 }

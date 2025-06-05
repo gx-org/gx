@@ -36,7 +36,9 @@ var Errors = []string{
 	"errors/ellipsis",
 	"errors/meta",
 	"errors/process",
+	"errors/beforefunc",
 	"errors/resolve",
+	"errors/redefined",
 	"errors/slices",
 	"errors/stdlib",
 }
@@ -64,10 +66,20 @@ var Language = appendAll(LanguageCore, []string{
 
 // Stdlib is a set of path testing the standard library or where a standard library implementation is required.
 var Stdlib = []string{
+	"testfiles/bfloat16",
 	"testfiles/grad",
 	"testfiles/stdlib",
 	"testfiles/nn",
 	"testfiles/ellipsis",
+	"testfiles/compeval",
+}
+
+// Units tests each file in the folder as its own package.
+// It is used to facilitate debugging by isolating GX code for each file/package.
+// Tests by default should be added to folders defined above.
+// Only copy a test here to facilitate debugging.
+var Units = []string{
+	"testfiles/units",
 }
 
 func appendAll(paths ...[]string) []string {

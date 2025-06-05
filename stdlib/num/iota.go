@@ -15,8 +15,14 @@
 package num
 
 import (
+	"github.com/gx-org/backend/graph"
+	"github.com/gx-org/backend/shape"
 	"github.com/gx-org/gx/build/builtins"
 	"github.com/gx-org/gx/build/ir"
+	"github.com/gx-org/gx/internal/interp/compeval"
+	"github.com/gx-org/gx/interp/elements"
+	"github.com/gx-org/gx/interp/evaluator"
+	"github.com/gx-org/gx/interp/grapheval"
 	"github.com/gx-org/gx/stdlib/builtin"
 	"github.com/gx-org/gx/stdlib/impl"
 )
@@ -37,31 +43,39 @@ func (f iotaWithAxis) BuildFuncType(fetcher ir.Fetcher, call *ir.CallExpr) (*ir.
 	if err != nil {
 		return nil, err
 	}
-	rank := builtins.RankFromExpr(call.Src, call.Args[0])
-	return &ir.FuncType{
-		Params:  builtins.Fields(params...),
-		Results: builtins.Fields(ir.NewArrayType(nil, ir.DefaultIntType, rank)),
-	}, nil
-}
-
-type iotaFull struct {
-	builtin.Func
-}
-
-func (f iotaFull) BuildFuncIR(impl *impl.Stdlib, pkg *ir.Package) (*ir.FuncBuiltin, error) {
-	return builtin.IRFuncBuiltin[iotaFull]("IotaFull", impl.Num.IotaFull, pkg), nil
-}
-
-func (f iotaFull) BuildFuncType(fetcher ir.Fetcher, call *ir.CallExpr) (*ir.FuncType, error) {
-	params, err := builtins.BuildFuncParams(fetcher, call, f.Name(), []ir.Type{
-		ir.IntLenSliceType(),
-	})
+	rank, _, err := compeval.EvalRank(fetcher, call.Args[0])
 	if err != nil {
 		return nil, err
 	}
-	rank := builtins.RankFromExpr(call.Src, call.Args[0])
 	return &ir.FuncType{
 		Params:  builtins.Fields(params...),
 		Results: builtins.Fields(ir.NewArrayType(nil, ir.DefaultIntType, rank)),
 	}, nil
+}
+
+func evalIotaFull(ctx evaluator.Context, call elements.CallAt, fn elements.Func, irFunc *ir.FuncBuiltin, args []elements.Element) ([]elements.Element, error) {
+	axes, err := elements.AxesFromElement(args[0])
+	if err != nil {
+		return nil, err
+	}
+	targetShape := &shape.Shape{
+		DType:       ir.DefaultIntKind.DType(),
+		AxisLengths: axes,
+	}
+	gr := ctx.Evaluation().Evaluator().ArrayOps().Graph()
+	iotaOp, err := gr.Num().NewIota(&shape.Shape{
+		DType:       ir.DefaultIntKind.DType(),
+		AxisLengths: []int{targetShape.Size()},
+	}, 0)
+	if err != nil {
+		return nil, err
+	}
+	op, err := gr.Core().NewReshape(iotaOp, targetShape.AxisLengths)
+	if err != nil {
+		return nil, err
+	}
+	return grapheval.ElementsFromNode(call.ToExprAt(), &graph.OutputNode{
+		Node:  op,
+		Shape: targetShape,
+	})
 }

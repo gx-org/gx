@@ -44,12 +44,12 @@ func TestRandUniformFloat32() ([2][3]float32, [2][3]float32) {
 	return a, b
 	// Want:
 	// 0: [2][3]float32{
-	// 	{0.303246, 0.832296, 0.03232},
-	// 	{0.304339, 0.526545, 0.968047},
+	// 	{0.253272, 0.303246, 0.504397},
+	// 	{0.832296, 0.245392, 0.032319},
 	// }
 	// 1: [2][3]float32{
-	// 	{0.586884, 0.715562, 0.615112},
-	// 	{0.324717, 0.725571, 0.192918},
+	// 	{0.198972, 0.526545, 0.597738},
+	// 	{0.968047, 0.904937, 0.586884},
 	// }
 }
 
@@ -58,7 +58,7 @@ func TestFloat32Axis1() [2]float32 {
 	_, smpl := rnd.Float32([]intlen{2})
 	return smpl
 	// Want:
-	// [2]float32{0.303246, 0.832296}
+	// [2]float32{0.253272, 0.303246}
 }
 
 func TestFloat32Axis2() [3][2]float32 {
@@ -67,9 +67,9 @@ func TestFloat32Axis2() [3][2]float32 {
 	return smpl
 	// Want:
 	// [3][2]float32{
-	// 	{0.303246, 0.832296},
-	// 	{0.03232, 0.304339},
-	// 	{0.526545, 0.968047},
+	// 	{0.253272, 0.303246},
+	// 	{0.504397, 0.832296},
+	// 	{0.245392, 0.032319},
 	// }
 }
 
@@ -80,5 +80,21 @@ func TestRandUniformFloat32WithSize() [Size]float32 {
 	_, a := rnd.Float32([]intlen{Size})
 	return a
 	// Want:
-	// [2]float32{0.303246, 0.832296}
+	// [2]float32{0.253272, 0.303246}
+}
+
+func TestFloat32MinMax() [...]float32 {
+	rnd := rand.New(rand.NewSource(0))
+	_, a := rnd.Float32MinMax(-100.5, 100.75, []intlen{5})
+	return a
+	// Want:
+	// [5]float32{-49.529022, -39.471786, 1.009949, 66.999619, -51.114819}
+}
+
+func TestFloat64MinMax() [...]float64 {
+	rnd := rand.New(rand.NewSource(0))
+	_, a := rnd.Float64MinMax(-100, 100.75, []intlen{5})
+	return a
+	// Want:
+	// [5]float64{-39.1233905713, 67.0834894428, -93.5118532834, -38.9040065512, 5.7039784557}
 }

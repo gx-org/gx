@@ -69,6 +69,10 @@ func (array *DeviceArray[T]) toDeviceBridger(val *values.DeviceArray) ArrayBridg
 	return NewDeviceArray[T](val)
 }
 
+func (array *DeviceArray[T]) String() string {
+	return array.GXValue().String()
+}
+
 // HostArray is an array stored on a host.
 type HostArray[T dtype.GoDataType] struct {
 	baseBridge[*HostArray[T], *values.HostArray]
@@ -106,6 +110,10 @@ func (array *HostArray[T]) toDeviceBridger(val *values.DeviceArray) ArrayBridge 
 	return NewDeviceArray[T](val)
 }
 
+func (array *HostArray[T]) String() string {
+	return array.GXValue().String()
+}
+
 // ArrayBool returns a new Go host array of bool.
 func ArrayBool(vals []bool, dims ...int) *HostArray[bool] {
 	if dims == nil {
@@ -114,7 +122,14 @@ func ArrayBool(vals []bool, dims ...int) *HostArray[bool] {
 	typ := ir.NewArrayType(nil, ir.TypeFromKind(ir.BoolKind), ir.NewRank(dims))
 	array := kernels.ToBoolArray(vals, dims)
 	buffer := kernels.NewBuffer(array)
-	return NewHostArray[bool](values.NewHostArray(typ, buffer))
+	hostArray, err := values.NewHostArray(typ, buffer)
+	if err != nil {
+		// Should never happen.
+		// The only possible error is when an array is created with type
+		// not matching its shape. We construct both in these functions.
+		panic(err)
+	}
+	return NewHostArray[bool](hostArray)
 }
 
 func inferDims[T dtype.GoDataType](vals []T, dims []int) []int {
@@ -128,7 +143,14 @@ func newArray[T dtype.AlgebraType](dtypeKind ir.Kind, array kernels.Array) *Host
 	dims := array.Shape().AxisLengths
 	typ := ir.NewArrayType(nil, ir.TypeFromKind(dtypeKind), ir.NewRank(dims))
 	buffer := kernels.NewBuffer(array)
-	return NewHostArray[T](values.NewHostArray(typ, buffer))
+	hostArray, err := values.NewHostArray(typ, buffer)
+	if err != nil {
+		// Should never happen.
+		// The only possible error is when an array is created with type
+		// not matching its shape. We construct both in these functions.
+		panic(err)
+	}
+	return NewHostArray[T](hostArray)
 }
 
 // ArrayFloat32 returns a new Go host array of float32.

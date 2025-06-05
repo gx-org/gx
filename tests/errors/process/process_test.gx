@@ -17,6 +17,26 @@ func testMultipleUnknownAxes() [___]int32 {
 	return [___][___]int32{} // ERROR array type may only specify unknown rank once
 }
 
+func testMultipleAddAssign() bool {
+	x, y, z += 1 // ERROR unexpected +=, expected := or = or comma
+	return true
+}
+
+func testMultipleMulAssign() bool {
+	x, y, z *= 1 // ERROR unexpected *=, expected := or = or comma
+	return true
+}
+
+func testMultipleSubAssign() bool {
+	x, y, z -= 1 // ERROR unexpected -=, expected := or = or comma
+	return true
+}
+
+func testMultipleDivAssign() bool {
+	x, y, z /= 1 // ERROR unexpected /=, expected := or = or comma
+	return true
+}
+
 func testAssignToNoName() float32 {
 	a.b := 2 // ERROR non-name
 	return 1
@@ -52,4 +72,9 @@ func testCallTypeParameters_Invalid() int32 {
 
 func testCastWrongNumberOfArguments() [2]int32 {
 	return [2]int32(2, 3) // ERROR too many arguments in conversion to [2]int32
+}
+
+type testInterfaceMethods interface {
+	Print() // ERROR interface element not supported
+	String() string // ERROR interface element not supported
 }

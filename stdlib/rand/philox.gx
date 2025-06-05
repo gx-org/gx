@@ -10,3 +10,9 @@ type Philox struct {
 func NewPhilox(seed [3]uint64) Philox {
 	return Philox{state: seed}
 }
+
+// Uint32 generates random uint32 bits.
+func (Philox) Uint32(shape []intlen) (Philox, [shape___]uint32)
+
+// Uint64 generates random uint64 bits.
+func (Philox) Uint64(shape []intlen) (Philox, [shape___]uint64)

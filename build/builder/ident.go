@@ -20,139 +20,53 @@ import (
 	"github.com/gx-org/gx/build/ir"
 )
 
-// identTypeExpr is a reference to a type by an identifier.
-type identTypeExpr struct {
-	ext ir.TypeExpr
-	src *ast.Ident
-	typ typeNode
-}
-
-var (
-	_ concreteTypeNode = (*identTypeExpr)(nil)
-	_ selector         = (*identTypeExpr)(nil)
-)
-
-func processIdentTypeExpr(_ owner, ident *ast.Ident) (typeNode, bool) {
-	scalarType := ir.AtomicFromString(ident.Name)
-	if scalarType.Kind() != ir.InvalidKind {
-		return &builtinType[ir.Type]{ext: scalarType}, true
-	}
-	return &identTypeExpr{
-		ext: ir.TypeExpr{Src: ident},
-		src: ident,
-	}, true
-}
-
-// pos returns the position of the identifier in the code.
-func (n *identTypeExpr) source() ast.Node {
-	return n.ext.Source()
-}
-
-func (n *identTypeExpr) irType() ir.Type {
-	return n.ext.Typ
-}
-
-func (n *identTypeExpr) isGeneric() bool {
-	return n.typ.isGeneric()
-}
-
-func (n *identTypeExpr) kind() ir.Kind {
-	return n.irType().Kind()
-}
-
-func (n *identTypeExpr) String() string {
-	if n.typ == nil {
-		return "<unresolved type>"
-	}
-	return n.typ.String()
-}
-
-func (n *identTypeExpr) resolveConcreteType(scope scoper) (typeNode, bool) {
-	if n.typ != nil {
-		return typeNodeOk(n.typ)
-	}
-	prev := scope.namespace().fetch(n.src.Name)
-	if prev != nil {
-		// Type is defined in the package.
-		typ, ok := prev.typeF(scope)
-		if deferred, ok := typ.(*deferredType); ok {
-			// deferredType prevents caching of resolved concrete types.
-			return deferred.resolveConcreteType(scope)
-		}
-		n.typ = typ
-		n.ext.Typ = n.typ.irType()
-		return n.typ, ok
-	}
-	name := n.src.Name
-	kind := ir.KindFromString(name)
-	if kind == ir.InvalidKind {
-		// The name cannot be match to a builtin type.
-		scope.err().Appendf(n.source(), "undeclared type identifier: %s", name)
-		n.typ, n.ext.Typ = invalidType()
-		return n.typ, false
-	}
-	n.ext.Typ = ir.TypeFromKind(kind)
-	var ok bool
-	n.typ, ok = toTypeNode(scope, n.ext.Typ)
-	if n.ext.Typ.Kind() == ir.InvalidKind {
-		// Kind is not a scalar.
-		scope.err().Appendf(n.source(), "%s is not a scalar kind", name)
-		return n.typ, false
-	}
-	return n.typ, ok
-}
-
-func (n *identTypeExpr) buildSelectNode(scope scoper, sel *ast.SelectorExpr) selectNode {
-	selector, ok := n.typ.(selector)
-	if !ok {
-		return nil
-	}
-	return selector.buildSelectNode(scope, sel)
-}
-
 // valueRef is a reference to a value by an identifier.
 type valueRef struct {
-	ext ir.ValueRef
-	typ typeNode
+	src *ast.Ident
 }
 
-func processIdentExpr(ident *ast.Ident) *valueRef {
-	return &valueRef{
-		ext: ir.ValueRef{
-			Src: ident,
-		},
-	}
-}
+var _ exprNode = (*valueRef)(nil)
 
-func (n *valueRef) ident() *ast.Ident {
-	return n.ext.Src
+func processIdentExpr(pscope procScope, src *ast.Ident) (*valueRef, bool) {
+	return &valueRef{src: src}, pscope.checkIdent(src)
 }
 
 func (n *valueRef) source() ast.Node {
-	return n.expr()
+	return n.src
 }
 
-func (n *valueRef) expr() ast.Expr {
-	return n.ext.Expr()
-}
-
-func (n *valueRef) buildExpr() ir.Expr {
-	if n.ext.Typ != nil {
-		return &n.ext
+func (n *valueRef) buildValueRef(rscope resolveScope) (*ir.ValueRef, bool) {
+	name := n.src.Name
+	node, ok := rscope.ns().Find(name)
+	if !ok {
+		return nil, rscope.err().Appendf(n.src, "%s undefined", name)
 	}
-	n.ext.Typ = n.typ.irType()
-	return &n.ext
+	procOk := rscope.fileScope().process(node)
+	if !procOk {
+		return nil, false
+	}
+	irNode := node.ir()
+	if irNode == nil {
+		return nil, rscope.err().AppendInternalf(n.src, "%s:%s is defined but has not been built", name, node.token())
+	}
+	return &ir.ValueRef{
+		Src:  n.src,
+		Stor: node.ir(),
+	}, true
 }
 
-func (n *valueRef) resolveType(scope scoper) (typeNode, bool) {
-	if n.typ != nil {
-		return typeNodeOk(n.typ)
+func (n *valueRef) buildExpr(rscope resolveScope) (ir.Expr, bool) {
+	return n.buildValueRef(rscope)
+}
+
+func (n *valueRef) buildTypeExpr(rscope resolveScope) (*ir.TypeValExpr, bool) {
+	valueRef, ok := n.buildValueRef(rscope)
+	if !ok {
+		return nil, false
 	}
-	var ok bool
-	n.typ, ok = fetchType(scope, scope.namespace(), n.ext.Src)
-	return n.typ, ok
+	return typeFromStorage(rscope, valueRef, valueRef.Stor)
 }
 
 func (n *valueRef) String() string {
-	return n.ext.Src.Name
+	return n.src.Name
 }

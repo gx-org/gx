@@ -23,32 +23,34 @@ import (
 
 // Package groups elements exported by a package.
 type Package struct {
-	errFmt fmterr.Pos
-	pkg    *ir.Package
-	funcs  map[ir.Func]*Func
-	types  map[*ir.NamedType]*NamedType
+	pkg  *ir.Package
+	defs map[string]Element
 }
 
 var (
-	_ Element        = (*Package)(nil)
-	_ MethodSelector = (*Package)(nil)
+	_ Element  = (*Package)(nil)
+	_ Selector = (*Package)(nil)
 )
 
 // NewPackage returns a package grouping everything that a package exports.
-func NewPackage(errFmt fmterr.Pos, pkg *ir.Package) *Package {
+func NewPackage(pkg *ir.Package, newFunc NewFunc) *Package {
 	node := &Package{
-		errFmt: errFmt,
-		pkg:    pkg,
+		pkg:  pkg,
+		defs: make(map[string]Element),
 	}
-	node.funcs = make(map[ir.Func]*Func, len(pkg.Funcs))
-	for _, fct := range pkg.Funcs {
-		node.funcs[fct] = NewFunc(fct, nil)
+	for _, fct := range pkg.Decls.Funcs {
+		node.defs[fct.Name()] = newFunc(fct, nil)
 	}
-	node.types = make(map[*ir.NamedType]*NamedType)
-	for _, tp := range pkg.Types {
-		node.types[tp] = NewNamedType(errFmt.FileSet, tp)
+	for _, tp := range pkg.Decls.Types {
+		node.defs[tp.Name()] = NewNamedType(newFunc, tp, nil)
 	}
 	return node
+}
+
+// Define an element in the package
+// (used for consts)
+func (pkg *Package) Define(name string, el Element) {
+	pkg.defs[name] = el
 }
 
 // Flatten returns the package in a slice of
@@ -58,31 +60,22 @@ func (pkg *Package) Flatten() ([]Element, error) {
 
 // Unflatten creates a GX value from the next handles available in the Unflattener.
 func (pkg *Package) Unflatten(handles *Unflattener) (values.Value, error) {
-	return nil, fmterr.Internal(errors.Errorf("%T does not support converting device handles into GX values", pkg), "")
+	return nil, fmterr.Internal(errors.Errorf("%T does not support converting device handles into GX values", pkg))
 }
 
-// ErrPos returns the error formatter for the position of the token representing the node in the graph.
-func (pkg *Package) ErrPos() fmterr.Pos {
-	return pkg.errFmt
+// Kind of the element.
+func (pkg *Package) Kind() ir.Kind {
+	return ir.InvalidKind
 }
 
-// Type of a package.
-func (pkg *Package) Type() ir.Type {
-	return nil
-}
-
-// SelectMethod returns a functions given an index.
-func (pkg *Package) SelectMethod(fn ir.Func) (*Func, error) {
-	fun, ok := pkg.funcs[fn]
+// Select a member of the package.
+func (pkg *Package) Select(sel SelectAt) (Element, error) {
+	name := sel.Node().Stor.NameDef().Name
+	el, ok := pkg.defs[name]
 	if !ok {
-		return nil, errors.Errorf("cannot find function %q pointer in package %s", fn.Name(), pkg.pkg.FullName())
+		return nil, errors.Errorf("%s.%s undefined", pkg.pkg.Name, name)
 	}
-	return fun, nil
-}
-
-// SelectType returns a functions given an index.
-func (pkg *Package) SelectType(tp *ir.NamedType) Element {
-	return pkg.types[tp]
+	return el, nil
 }
 
 // String returns a string representation of the node.

@@ -119,7 +119,7 @@ func (ms methods) InitRunners() (string, error) {
 var methodPackageSetField = template.Must(template.New("funcPackageSetFieldTMPL").Parse(`
 	c.{{.Method.RunnerField}} = methodBase{
 		pkg: c,
-		function: c.Package.IR.Types[{{.Receiver.Index}}].Methods[{{.Method.FuncIndex}}],
+		function: c.Package.IR.Decls.Types[{{.Receiver.Index}}].Methods[{{.Method.FuncIndex}}],
 	}`))
 
 func (b *binder) MethodsPackageSetFields() (string, error) {

@@ -20,6 +20,7 @@ import (
 	"github.com/gx-org/gx/build/builtins"
 	"github.com/gx-org/gx/build/fmterr"
 	"github.com/gx-org/gx/build/ir"
+	"github.com/gx-org/gx/internal/interp/compeval"
 	"github.com/gx-org/gx/stdlib/builtin"
 	"github.com/gx-org/gx/stdlib/impl"
 )
@@ -36,10 +37,7 @@ func reductionFuncSig(fetcher ir.Fetcher, f builtin.Func, call *ir.CallExpr) (*i
 		return nil, err
 	}
 	arrayType := call.Args[0].Type().(ir.ArrayType)
-	rank, err := builtins.RankOf(fetcher, call, arrayType)
-	if err != nil {
-		return nil, err
-	}
+	rank := arrayType.Rank()
 	reduceAxes, err := builtins.UniqueAxesFromExpr(fetcher, call.Args[1])
 	if err != nil {
 		return nil, err
@@ -48,25 +46,25 @@ func reductionFuncSig(fetcher ir.Fetcher, f builtin.Func, call *ir.CallExpr) (*i
 	// Infer the result tensor shape by knocking out reduced axes.
 	resultRank := ir.Rank{}
 	result := ir.NewArrayType(nil, arrayType.DataType(), &resultRank)
-	var resultDims []ir.AxisLength
+	var resultDims []ir.AxisLengths
 	for axis := range reduceAxes {
-		if len(rank.Axes) > 0 && (axis < 0 || axis >= len(rank.Axes)) {
-			return nil, fmterr.Errorf(fetcher.FileSet(), call.Source(),
+		if rank.NumAxes() > 0 && (axis < 0 || axis >= rank.NumAxes()) {
+			return nil, fmterr.Errorf(fetcher.File().FileSet(), call.Source(),
 				"invalid reduction axis in call to %s: axis %d does not exist in input %s",
 				f.Name(), axis, arrayType)
 		}
 	}
 
-	for n, dim := range rank.Axes {
+	for n, dim := range rank.Axes() {
 		if _, reduce := reduceAxes[n]; !reduce {
 			resultDims = append(resultDims, dim)
 		}
 	}
-	resultRank.Axes = resultDims
+	resultRank.Ax = resultDims
 	return &ir.FuncType{
-		Src:     &ast.FuncType{Func: call.Source().Pos()},
-		Params:  builtins.Fields(params...),
-		Results: builtins.Fields(result),
+		BaseType: ir.BaseType[*ast.FuncType]{Src: &ast.FuncType{Func: call.Source().Pos()}},
+		Params:   builtins.Fields(params...),
+		Results:  builtins.Fields(result),
 	}, nil
 }
 
@@ -112,37 +110,31 @@ func (f argmax) BuildFuncType(fetcher ir.Fetcher, call *ir.CallExpr) (*ir.FuncTy
 		return nil, err
 	}
 	arrayType := call.Args[0].Type().(ir.ArrayType)
-	rank, err := builtins.RankOf(fetcher, call, arrayType)
+	rank := arrayType.Rank()
+	reduceAxis, err := compeval.EvalInt(fetcher, call.Args[1])
 	if err != nil {
 		return nil, err
-	}
-	reduceAxis, unknowns, err := ir.Eval[ir.Int](fetcher, call.Args[1])
-	if err != nil {
-		return nil, err
-	}
-	if unknowns != nil {
-		return nil, fmterr.Errorf(fetcher.FileSet(), call.Source(), "encountered unknowns (%s) for axis expression %s in call to Argmax", unknowns, call.Args[1].Expr())
 	}
 
 	// Infer the result tensor shape by knocking out reduced axis.
 	resultRank := ir.Rank{}
 	result := ir.NewArrayType(nil, ir.TypeFromKind(ir.DefaultIntKind), &resultRank)
-	if len(rank.Axes) > 0 && (reduceAxis < 0 || int(reduceAxis) >= len(rank.Axes)) {
-		return nil, fmterr.Errorf(fetcher.FileSet(), call.Source(),
+	if rank.NumAxes() > 0 && (reduceAxis < 0 || int(reduceAxis) >= rank.NumAxes()) {
+		return nil, fmterr.Errorf(fetcher.File().FileSet(), call.Source(),
 			"invalid reduction axis in call to %s: axis %d does not exist in input %s",
 			f.Name(), reduceAxis, arrayType)
 	}
 
-	var resultDims []ir.AxisLength
-	for n, dim := range rank.Axes {
+	var resultDims []ir.AxisLengths
+	for n, dim := range rank.Axes() {
 		if n != int(reduceAxis) {
 			resultDims = append(resultDims, dim)
 		}
 	}
-	resultRank.Axes = resultDims
+	resultRank.Ax = resultDims
 	return &ir.FuncType{
-		Src:     &ast.FuncType{Func: call.Source().Pos()},
-		Params:  builtins.Fields(params...),
-		Results: builtins.Fields(result),
+		BaseType: ir.BaseType[*ast.FuncType]{Src: &ast.FuncType{Func: call.Source().Pos()}},
+		Params:   builtins.Fields(params...),
+		Results:  builtins.Fields(result),
 	}, nil
 }

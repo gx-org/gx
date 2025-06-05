@@ -32,60 +32,27 @@ func unpackIndexedExpr(n ast.Node) (ast.Expr, []ast.Expr) {
 
 // callExpr represents a function call.
 type callExpr struct {
-	ext ir.Expr
 	src *ast.CallExpr
 
-	typeArgs []typeNode
-	args     []exprNode
+	args []exprNode
 
 	callee exprNode
-	cast   *castExpr
 }
 
 var _ exprNode = (*callExpr)(nil)
 
-func processCallExpr(owner owner, expr *ast.CallExpr) (exprNode, bool) {
-	fn, typeArgs := unpackIndexedExpr(expr.Fun)
-	if fn == nil {
-		fn = expr.Fun
+func processCallExpr(pscope procScope, src *ast.CallExpr) (exprNode, bool) {
+	n := &callExpr{src: src}
+	var calleeOk bool
+	n.callee, calleeOk = processExpr(pscope, src.Fun)
+	n.args = make([]exprNode, len(src.Args))
+	argsOk := true
+	for i, arg := range src.Args {
+		var argOk bool
+		n.args[i], argOk = processExpr(pscope, arg)
+		argsOk = argsOk && argOk
 	}
-
-	callee, ok := processExpr(owner, fn)
-	if typCast := toTypeCast(callee); typCast != nil {
-		if len(typeArgs) > 0 {
-			// For completeness sake, warn if type arguments are somehow ignored here.
-			owner.err().Appendf(expr, "cast may not have type arguments")
-		}
-		return processCastExpr(owner, expr, typCast)
-	}
-	n := &callExpr{
-		src:    expr,
-		callee: callee,
-	}
-
-	n.typeArgs = make([]typeNode, len(typeArgs))
-	for i, expr := range typeArgs {
-		ident, identOk := expr.(*ast.Ident)
-		if !identOk {
-			owner.err().Appendf(expr, "expected identifier as type argument")
-			ok = false
-			continue
-		}
-		argI, okI := processIdentTypeExpr(owner, ident)
-		n.typeArgs[i] = argI
-		ok = ok && okI
-	}
-	n.args = make([]exprNode, len(expr.Args))
-	for i, expr := range expr.Args {
-		argI, okI := processExpr(owner, expr)
-		n.args[i] = argI
-		ok = ok && okI
-	}
-	return n, ok
-}
-
-func (n *callExpr) expr() ast.Expr {
-	return n.src
+	return n, calleeOk && argsOk
 }
 
 // pos of the call in the code.
@@ -93,148 +60,123 @@ func (n *callExpr) source() ast.Node {
 	return n.src
 }
 
-func (n *callExpr) buildExpr() ir.Expr {
-	return n.ext
-}
-
 func (n *callExpr) String() string {
 	return n.callee.String()
 }
 
-func (n *callExpr) resolveArgs(scope scoper) ([]ir.Expr, []typeNode, bool) {
+func (n *callExpr) buildArgs(scope resolveScope) ([]ir.AssignableExpr, bool) {
 	ok := true
-	argsExpr := make([]ir.Expr, len(n.args))
-	argsType := make([]typeNode, len(n.args))
+	args := make([]ir.AssignableExpr, len(n.args))
 	for i, arg := range n.args {
 		var argOk bool
-		argsType[i], argOk = arg.resolveType(scope)
+		args[i], argOk = buildAExpr(scope, arg)
 		ok = ok && argOk
-		argsExpr[i] = arg.buildExpr()
 	}
-	return argsExpr, argsType, ok
+	return args, ok
 }
 
-func (n *callExpr) resolveType(scope scoper) (typeNode, bool) {
-	// Resolve the type of the function being called.
-	calleeTp, ok := n.callee.resolveType(scope)
+func (n *callExpr) buildTypeCast(rscope resolveScope, callee ir.AssignableExpr, store ir.Storage) (ir.Expr, bool) {
+	typRef, ok := typeFromStorage(rscope, callee, store)
 	if !ok {
-		return invalid, false
+		return nil, false
 	}
-	if calleeTp.kind() != ir.FuncKind {
-		return n.resolveCast(scope)
+	dst := rscope.processTypeRef(typRef.Typ)
+	ext := &ir.CastExpr{Src: n.src, Typ: dst}
+	args, argsOk := n.buildArgs(rscope)
+	if !argsOk {
+		return ext, false
 	}
-
-	ext := &ir.CallExpr{
-		Src: n.src,
+	if len(args) == 0 {
+		return ext, rscope.err().Appendf(n.src, "missing argument in conversion to %s", ext.Typ.String())
 	}
-	n.ext = ext
-
-	// Resolve the arguments passed to the function.
-	var argsType []typeNode
-	ext.Args, argsType, ok = n.resolveArgs(scope)
+	if len(args) > 1 {
+		return ext, rscope.err().Appendf(n.src, "too many arguments in conversion to %s", ext.Typ.String())
+	}
+	ext.X = args[0]
+	if ir.IsNumber(ext.X.Type().Kind()) {
+		ext.X, ok = castNumber(rscope, ext.X, ext.Typ)
+	}
 	if !ok {
-		return invalid, false
+		return ext, false
 	}
-
-	callType, ok := n.resolveFunctionCall(scope, ext, calleeTp, argsType)
-	ext.Func = n.callee.buildExpr()
-	return callType, ok
+	convertOk := convertToAt(rscope, n.src, ext.X.Type(), ext.Typ)
+	return ext, convertOk
 }
 
-func (n *callExpr) resolveCast(scope scoper) (typeNode, bool) {
-	typeCast, ok := processCast(scope, n.callee.expr())
-	if !ok {
-		return invalid, false
+func checkNumArgs(rscope resolveScope, callee *ir.FuncValExpr, numArgs int) bool {
+	numParams := callee.T.Params.Len()
+	if numArgs > numParams {
+		return rscope.err().Appendf(callee.Source(), "too many arguments in call to %s", callee.Name())
 	}
-	n.cast, ok = processCastExpr(scope, n.src, typeCast)
-	if !ok {
-		return invalid, false
+	if numArgs < numParams {
+		return rscope.err().Appendf(callee.Source(), "not enough arguments in call to %s", callee.Name())
 	}
-	typ, ok := n.cast.resolveType(scope)
-	if !ok {
-		return invalid, false
-	}
-	n.ext = n.cast.buildExpr()
-	return typeNodeOk(typ)
+	return true
 }
 
-func (n *callExpr) resolveFunctionCall(scope scoper, ext *ir.CallExpr, calleeTp typeNode, argsType []typeNode) (typeNode, bool) {
-	var ok bool
-	fnType, ok := resolveGenericCallType(scope, calleeTp, scope.evalFetcher(), n)
+func buildMissingFuncType(rscope resolveScope, callee *ir.FuncValExpr, call *ir.CallExpr) (*ir.FuncValExpr, bool) {
+	if callee.T != nil {
+		return callee, true
+	}
+	builtin, isBuiltin := callee.F.(*ir.FuncBuiltin)
+	if !isBuiltin {
+		return callee, rscope.err().AppendInternalf(callee.Source(), "missing function but function %s:%T is not a builtin function", callee.Name(), callee.T)
+	}
+	compEval, ok := rscope.compEval()
 	if !ok {
-		return invalid, false
+		return callee, false
 	}
+	ext := *callee
+	var err error
+	ext.T, err = builtin.Impl.BuildFuncType(compEval, call)
+	if err != nil {
+		return callee, rscope.err().AppendAt(callee.Source(), err)
+	}
+	return &ext, true
+}
 
-	if fnType.params.isGeneric() {
-		// When invoking a function with generic types (or generic shape parameters), create a new scope
-		// here so that the instantiated types are isolated from the caller.
-		// TODO: Pass in a valid *funcDecl to scopeFunc().
-		scope = scope.fileScope().scopeFunc(nil, scope.namespace().newChild())
+func (n *callExpr) buildFunctionCall(rscope resolveScope, callee *ir.FuncValExpr) (ir.Expr, bool) {
+	ext := &ir.CallExpr{Src: n.src, Callee: callee}
+	var argsOk bool
+	ext.Args, argsOk = n.buildArgs(rscope)
+	if !argsOk {
+		return ext, false
 	}
+	callee, ok := buildMissingFuncType(rscope, callee, ext)
+	if !ok {
+		return ext, false
+	}
+	if numArgsOk := checkNumArgs(rscope, callee, len(ext.Args)); !numArgsOk {
+		return ext, false
+	}
+	var callOk bool
+	ext.Callee, ext.Args, callOk = buildFuncForCall(rscope, callee, ext.Args)
+	return ext, callOk
+}
 
-	// Check that the number of arguments matches with what the function expects.
-	numFuncArgs := fnType.params.numFields()
-	if len(n.args) > numFuncArgs {
-		scope.err().Appendf(n.source(), "too many arguments in call to %s", n.callee.String())
-		return invalid, false
+func (n *callExpr) buildCallExpr(rscope resolveScope, callee ir.AssignableExpr) (ir.Expr, bool) {
+	store, ok := storageFromExpr(rscope, callee)
+	if !ok {
+		return nil, false
 	}
-	if len(n.args) < numFuncArgs {
-		scope.err().Appendf(n.source(), "not enough arguments in call to %s", n.callee.String())
-		return invalid, false
+	if store.Type().Kind() == ir.MetaTypeKind {
+		return n.buildTypeCast(rscope, callee, store)
 	}
+	val, ok := valueFromStorage(rscope, callee, store)
+	if !ok {
+		return nil, false
+	}
+	funcRef, ok := val.(*ir.FuncValExpr)
+	if !ok {
+		return nil, rscope.err().Appendf(n.callee.source(), "cannot call non-function %s (type %s)", callee.String(), callee.Type().String())
+	}
+	return n.buildFunctionCall(rscope, funcRef)
+}
 
-	// Check that the arguments match what the function expects.
-	ext.Args = make([]ir.Expr, len(n.args))
-	for i, wantArg := range fnType.params.fields() {
-		argOk := true
-		argType := argsType[i]
-		if _, argOk = typeNodeOk(argType); !argOk {
-			continue
-		}
-		arg := n.args[i]
-		if ir.IsNumber(argType.kind()) {
-			arg, argType, argOk = castNumber(scope, arg, wantArg.typ().irType())
-			ok = argOk && ok
-			n.args[i] = arg
-		}
-		if !ok {
-			return invalid, false
-		}
-		if wantArg.typ().isGeneric() {
-			// Re-resolve generic parameter types, since they may depend on previous arguments. For
-			// example: when calling func ([___X]int32, [___X]int32), both arguments must have the same
-			// shape.
-			wantArg.group.typ, argOk = resolveType(scope, wantArg.group, wantArg.typ())
-			ok = ok && argOk
-		}
-		newType, assignable := assignableToAt(scope, arg, argType, wantArg.typ())
-		if !assignable {
-			ok = false
-		}
-		wantArg.group.typ = newType
-		ext.Args[i] = arg.buildExpr()
+func (n *callExpr) buildExpr(rscope resolveScope) (ir.Expr, bool) {
+	callee, calleeOk := buildAExpr(rscope, n.callee)
+	if !calleeOk {
+		return nil, false
 	}
-
-	for _, result := range fnType.results.fields() {
-		// Resolve any generic types in the result, since they may depend on the arguments.
-		if !result.typ().isGeneric() {
-			continue
-		}
-		var resultOk bool
-		result.group.typ, resultOk = resolveType(scope, result.group, result.typ())
-		ok = ok && resultOk
-	}
-
-	ext.FuncType = fnType.buildFuncType()
-	fnResult := fnType.resultTypes()
-	var typ typeNode
-	switch fnResult.len() {
-	case 0:
-		typ = void
-	case 1:
-		typ = fnResult.elt(0).typ()
-	default:
-		typ = fnResult
-	}
-	return typ, ok
+	return n.buildCallExpr(rscope, callee)
 }

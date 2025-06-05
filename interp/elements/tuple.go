@@ -15,6 +15,9 @@
 package elements
 
 import (
+	"fmt"
+	"strings"
+
 	"github.com/pkg/errors"
 	"github.com/gx-org/gx/api/values"
 	"github.com/gx-org/gx/build/fmterr"
@@ -27,7 +30,10 @@ type Tuple struct {
 	elements []Element
 }
 
-var _ Element = (*Tuple)(nil)
+var (
+	_ Slicer  = (*Tuple)(nil)
+	_ Element = (*Tuple)(nil)
+)
 
 // NewTuple returns a tuple to store the result of a function returning more than one value.
 func NewTuple(file *ir.File, node ir.Node, values []Element) *Tuple {
@@ -39,7 +45,7 @@ func NewTuple(file *ir.File, node ir.Node, values []Element) *Tuple {
 
 // Flatten the tuple and all its elements.
 func (n *Tuple) Flatten() ([]Element, error) {
-	return flattenAll(n.elements)
+	return Flatten(n.elements...)
 }
 
 // Elements returns the elements stored in the tuple.
@@ -47,12 +53,31 @@ func (n *Tuple) Elements() []Element {
 	return n.elements
 }
 
-// Unflatten creates a GX value from the next handles available in the Unflattener.
-func (n *Tuple) Unflatten(handles *Unflattener) (values.Value, error) {
-	return nil, fmterr.Internal(errors.Errorf("%T does not support converting device handles into GX values", n), "")
+// Slice of the tuple.
+func (n *Tuple) Slice(ctx FileContext, expr ir.AssignableExpr, index NumericalElement) (Element, error) {
+	return slice(ctx, expr, index, n.elements)
 }
 
-func flattenAll(elts []Element) ([]Element, error) {
+// Unflatten creates a GX value from the next handles available in the Unflattener.
+func (n *Tuple) Unflatten(handles *Unflattener) (values.Value, error) {
+	return nil, fmterr.Internal(errors.Errorf("%T does not support converting device handles into GX values", n))
+}
+
+// Kind of the element.
+func (*Tuple) Kind() ir.Kind {
+	return ir.TupleKind
+}
+
+func (n *Tuple) String() string {
+	els := make([]string, len(n.elements))
+	for i, el := range n.elements {
+		els[i] = fmt.Sprint(el)
+	}
+	return fmt.Sprintf("(%s)", strings.Join(els, ", "))
+}
+
+// Flatten elements.
+func Flatten(elts ...Element) ([]Element, error) {
 	var flat []Element
 	for _, elt := range elts {
 		subs, err := elt.Flatten()

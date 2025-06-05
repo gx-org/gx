@@ -53,18 +53,11 @@ func (rtm *Runtime) Builder() *builder.Builder {
 	return rtm.builder
 }
 
-type (
-	// PackageOption is an option specific to a package.
-	PackageOption interface {
-		Package() string
-	}
-
-	// Device created by a runtime.
-	Device struct {
-		rtm *Runtime
-		dev platform.Device
-	}
-)
+// Device created by a runtime.
+type Device struct {
+	rtm *Runtime
+	dev platform.Device
+}
 
 // Runtime returns the device's parent runtime.
 func (dev *Device) Runtime() *Runtime {

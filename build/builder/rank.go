@@ -23,329 +23,101 @@ import (
 
 type (
 	rankNode interface {
-		build() ir.ArrayRank
-		subRank() rankNode
-		reconcileWith(scoper, nodePos, rankNode) (rankNode, bool)
-		resolve(scope scoper) (rankNode, bool)
-		numAxes() int
+		build(resolveScope) (ir.ArrayRank, bool)
 		String() string
 	}
 
 	rank struct {
-		ext  ir.Rank
+		src  *ast.ArrayType
 		dims []axisLengthNode
 	}
-
-	genericRank struct {
-		ext ir.GenericRank
-		rnk *rank
-
-		name *ast.Ident
-	}
-
-	anyRank struct {
-		ext ir.AnyRank
-	}
 )
 
-var (
-	_ rankNode = (*rank)(nil)
-	_ rankNode = (*genericRank)(nil)
-	_ rankNode = (*anyRank)(nil)
-)
+var _ rankNode = (*rank)(nil)
 
-const cannotInfer = "cannot infer number of array axes"
-
-func isShapeParam(dimExpr ast.Expr) (*ast.Ident, bool) {
-	// Note that UnaryExpr is valid in this position, so alternative syntaxes are possible.
-	ident, ok := dimExpr.(*ast.Ident)
-	if !ok || len(ident.Name) <= 3 || !strings.HasPrefix(ident.Name, "___") {
-		return nil, false
-	}
-	return ident, true
-}
-
-func fetchArrayShape(owner owner, key *ast.Ident) *arrayType {
-	shapeIdent := owner.namespace().fetch(key.String())
-	if shapeIdent == nil {
-		return nil
-	}
-
-	typ, ok := shapeIdent.typeF(owner.scope())
-	if !ok {
-		return nil
-	}
-	result, ok := typ.(*arrayType)
-	if !ok {
-		owner.err().AppendInternalf(key, "cannot cast %T to *arrayType", typ)
-		return nil
-	}
-	return result
-}
-
-func processDTypeRank(owner owner, typ *ast.ArrayType) (rankNode, typeNode, bool) {
-	dims := []axisLengthNode{}
-	var dtype typeNode
-	var rnk rankNode
+func processDTypeRank(pscope procScope, src *ast.ArrayType) (rankNode, typeExprNode, bool) {
+	var ranks []rankNode
+	var axes []axisLengthNode
+	var dtype typeExprNode
 
 	ok := true
-	var elt ast.Node = typ
+	var elt ast.Node = src
+	axscope := pscope.axisLengthScope()
 	for dtype == nil {
 		switch eltT := elt.(type) {
 		case *ast.Ident:
 			var dtypeOk bool
-			dtype, dtypeOk = processTypeExpr(owner, eltT)
+			dtype, dtypeOk = processTypeExpr(pscope, eltT)
 			ok = ok && dtypeOk && eltT != nil
-			if rnk != nil {
-				return rnk, dtype, ok
-			}
 		case *ast.ArrayType:
-			if rnk != nil {
-				owner.err().Appendf(elt, "array type may only specify unknown rank once")
-				return nil, invalid, false
+			axis, axisOk := processAxisLengthExpr(axscope, eltT)
+			if !axisOk {
+				return nil, nil, false
 			}
-			if key, ok := isShapeParam(eltT.Len); ok {
-				rnk = &genericRank{
-					ext:  ir.GenericRank{Src: eltT, Name: key},
-					name: key,
-				}
-				elt = eltT.Elt
-				continue
-			}
-
-			dim, dimOk := processAxisLengthExpr(owner, eltT)
-			if !dimOk {
-				return nil, invalid, false
-			}
-			if dim == nil {
-				rnk = &genericRank{ext: ir.GenericRank{Src: eltT}}
+			if axis == nil {
+				// Directive to infer the rank from the array.
+				ranks = append(ranks, &genericRank{src: eltT})
 			} else {
-				dims = append(dims, dim)
+				axes = append(axes, axis)
 			}
 			elt = eltT.Elt
 		default:
-			owner.err().Appendf(elt, "element type %T in array declaration not supported", elt)
-			return nil, invalid, false
+			return nil, nil, pscope.err().Appendf(elt, "element type %T in array declaration not supported", elt)
 		}
 	}
-	return &rank{
-		ext:  ir.Rank{Src: typ},
-		dims: dims,
-	}, dtype, ok
+	if len(ranks) == 0 {
+		return &rank{src: src, dims: axes}, dtype, ok
+	}
+	if len(axes) > 0 || len(ranks) > 1 {
+		ok = pscope.err().Appendf(src, "array with an inferred rank only support a single axis")
+	}
+	return ranks[0], dtype, ok
 }
 
-func importRank(scope scoper, ext ir.ArrayRank) (rankNode, bool) {
-	var r *rank
-	switch extT := ext.(type) {
-	case *ir.AnyRank:
-		return &anyRank{ext: *extT}, true
-	case *ir.GenericRank:
-		return &genericRank{ext: *extT, name: extT.Name}, true
-	case *ir.Rank:
-		r = &rank{ext: *extT}
+func (r *rank) build(rscope resolveScope) (ir.ArrayRank, bool) {
+	ext := &ir.Rank{
+		Src: r.src,
+		Ax:  make([]ir.AxisLengths, len(r.dims)),
 	}
 	ok := true
-	r.dims = make([]axisLengthNode, len(r.ext.Axes))
-	for i, dim := range r.ext.Axes {
-		var dimOk bool
-		r.dims[i], dimOk = importAxis(scope, dim)
-		ok = ok && dimOk
-	}
-	return r, ok
-}
-
-func (r *rank) buildRank() *ir.Rank {
-	r.ext.Axes = make([]ir.AxisLength, len(r.dims))
+	dScope := toDefineScope(rscope)
 	for i, dim := range r.dims {
-		r.ext.Axes[i] = dim.axisLength()
-	}
-	return &r.ext
-}
-
-func (r *rank) build() ir.ArrayRank {
-	return r.buildRank()
-}
-
-func (r *rank) subRankR() *rank {
-	return &rank{
-		ext:  ir.Rank{Src: r.ext.Src},
-		dims: r.dims[1:],
-	}
-}
-
-func (r *rank) subRank() rankNode {
-	return r.subRankR()
-}
-
-func (r *rank) numAxes() int {
-	return len(r.dims)
-}
-
-func lengthWord(r rankNode) string {
-	if r.numAxes() > 1 {
-		return "lengths"
-	}
-	return "length"
-}
-
-func reconcileRankWith(scope scoper, pos nodePos, src, other *rank) (*rank, bool) {
-	if len(src.dims) != len(other.dims) {
-		scope.err().Appendf(pos.source(), "cannot reconcile a %d-axis array with a %d-axis array", len(src.dims), len(other.dims))
-		return src, false
-	}
-	dst := &rank{
-		ext:  src.ext,
-		dims: make([]axisLengthNode, len(src.dims)),
-	}
-	ok := true
-	for i, dim := range src.dims {
 		var dimOk bool
-		dst.dims[i], dimOk = dim.reconcileWith(scope, other.dims[i])
-		ok = dimOk && ok
-	}
-	if !ok {
-		scope.err().Appendf(pos.source(), "cannot reconcile axis %s %s with axis %s %s", lengthWord(src), src.build().String(), lengthWord(other), other.build().String())
-	}
-	return dst, ok
-
-}
-
-func (r *rank) reconcileWith(scope scoper, pos nodePos, other rankNode) (rankNode, bool) {
-	switch otherT := other.(type) {
-	case *rank:
-		return reconcileRankWith(scope, pos, r, otherT)
-	case *genericRank:
-		if otherT.rnk == nil {
-			return r, true
+		ext.Ax[i], dimOk = dim.build(dScope)
+		ok = ok && dimOk
+		if !dimOk {
+			continue
 		}
-		return reconcileRankWith(scope, pos, r, otherT.rnk)
-	default:
-		scope.err().Appendf(pos.source(), "cannot reconcile rank with %T", other)
-		return r, false
+		switch axT := ext.Ax[i].(type) {
+		case *ir.AxisGroup:
+		default:
+			want := ir.IntLenType()
+			if !equalToAt(rscope, axT.Source(), axT.Type(), want) {
+				ok = rscope.err().Appendf(axT.Source(), "cannot use %s as %s in axis length", axT.Type().String(), want.String())
+			}
+		}
 	}
-}
-
-func (r *rank) resolve(scope scoper) (rankNode, bool) {
-	ok := true
-	for _, dim := range r.dims {
-		_, dimOk := dim.resolveType(scope)
-		ok = dimOk && ok
-	}
-	return r, ok
+	return ext, ok
 }
 
 func (r *rank) String() string {
-	return r.build().String()
-}
-
-func (r *anyRank) build() ir.ArrayRank {
-	return &r.ext
-}
-
-func (r *anyRank) numAxes() int {
-	return -1
-}
-
-func (r *anyRank) subRank() rankNode {
-	return r
-}
-
-func (r *anyRank) reconcileWith(scope scoper, pos nodePos, other rankNode) (rankNode, bool) {
-	scope.err().Appendf(pos.source(), "cannot reconcile an array with an unknown number of axes. Use [...] instead of [any].")
-	return r, false
-}
-
-func (r *anyRank) resolve(scope scoper) (rankNode, bool) {
-	return r, true
-}
-
-func (r *anyRank) String() string {
-	return r.build().String()
-}
-
-func (r *genericRank) build() ir.ArrayRank {
-	if r.rnk != nil {
-		r.ext.Rnk = r.rnk.buildRank()
+	s := strings.Builder{}
+	for _, axis := range r.dims {
+		s.WriteString(axis.String())
 	}
-	return &r.ext
+	return s.String()
 }
 
-func (r *genericRank) numAxes() int {
-	return -1
+type genericRank struct {
+	src *ast.ArrayType
 }
 
-func (r *genericRank) subRank() rankNode {
-	sub := &genericRank{
-		ext: ir.GenericRank{Src: r.ext.Src},
-	}
-	if r.rnk == nil {
-		return sub
-	}
-	sub.rnk = r.rnk.subRankR()
-	return sub
-}
+var _ rankNode = (*genericRank)(nil)
 
-func (r *genericRank) newResolvedRank(src *rank) *rank {
-	resolved := &rank{
-		ext:  ir.Rank{Src: src.ext.Src},
-		dims: make([]axisLengthNode, len(src.dims)),
-	}
-	for i := range resolved.dims {
-		resolved.dims[i] = &genericAxisLength{
-			ext: &ir.AxisEllipsis{Src: r.ext.Src.Elt.(*ast.Ident)},
-		}
-	}
-	return resolved
-}
-
-func (r *genericRank) reconcileWith(scope scoper, pos nodePos, other rankNode) (rankNode, bool) {
-	switch otherT := other.(type) {
-	case *rank:
-		toReconcile := r.newResolvedRank(otherT)
-		rank, ok := reconcileRankWith(scope, pos, toReconcile, otherT)
-		rank.ext.Src = r.ext.Src
-		result := &genericRank{
-			ext: ir.GenericRank{
-				Src:  r.ext.Src,
-				Name: r.name,
-			},
-			name: r.name,
-			rnk:  rank,
-		}
-		if r.name != nil {
-			// When a generic rank is reconciled with a concrete rank, save the concrete rank in the
-			// current scope so that it can be recovered later.
-			scope.namespace().assign(newIdent(r.name, &arrayType{dtyp: unknown, rnk: result}))
-		}
-		return result, ok
-	case *genericRank:
-		if r.name != nil && otherT.name != nil && r.name.Name != otherT.name.Name {
-			return r, false
-		}
-		if otherT.rnk == nil {
-			return r, true
-		}
-		return r.reconcileWith(scope, pos, otherT.rnk)
-	case *anyRank:
-		return otherT.reconcileWith(scope, pos, r)
-	default:
-		return r, scope.err().AppendInternalf(pos.source(), "cannot reconcile rank with %T", other)
-	}
-}
-
-func (r *genericRank) resolve(scope scoper) (rankNode, bool) {
-	if r.name == nil {
-		return r, true
-	}
-	if typ := fetchArrayShape(scope, r.name); typ != nil {
-		// When resolving a named generic rank, attempt to retrieve a concrete rank from the current
-		// scope. If found, that concrete rank has been inferred by a previous call to reconcileWith
-		// and it can be returned directly.
-		return typ.rank(), true
-	}
-	return r, true
+func (r *genericRank) build(rscope resolveScope) (ir.ArrayRank, bool) {
+	return &ir.RankInfer{Src: r.src}, true
 }
 
 func (r *genericRank) String() string {
-	return r.build().String()
+	return "[...]"
 }

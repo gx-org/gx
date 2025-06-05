@@ -1,17 +1,3 @@
-// Copyright 2025 Google LLC
-//
-// Licensed under the Apache License, Version 2.0 (the "License");
-// you may not use this file except in compliance with the License.
-// You may obtain a copy of the License at
-//
-//     http://www.apache.org/licenses/LICENSE-2.0
-//
-// Unless required by applicable law or agreed to in writing, software
-// distributed under the License is distributed on an "AS IS" BASIS,
-// WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
-// See the License for the specific language governing permissions and
-// limitations under the License.
-
 // Package bindings provides abstractions shared by all bindings generators.
 package bindings
 
@@ -59,7 +45,7 @@ func CanBeOnDeviceFunc(gxFunc ir.Func) bool {
 
 func canBeOnDeviceStruct(tp *ir.StructType) error {
 	for _, group := range tp.Fields.List {
-		if err := CanBeOnDevice(group.Type); err != nil {
+		if err := CanBeOnDevice(group.Type.Typ); err != nil {
 			var fieldNames []string
 			for _, field := range group.Fields {
 				fieldNames = append(fieldNames, field.Name.Name)
@@ -77,11 +63,11 @@ func CanBeOnDevice(tp ir.Type) error {
 	}
 	switch typT := tp.(type) {
 	case *ir.NamedType:
-		return CanBeOnDevice(typT.Underlying)
+		return CanBeOnDevice(typT.Underlying.Typ)
 	case *ir.StructType:
 		return canBeOnDeviceStruct(typT)
 	case *ir.SliceType:
-		return CanBeOnDevice(typT.DType)
+		return CanBeOnDevice(typT.DType.Typ)
 	default:
 		return fmt.Errorf("type %T not supported", typT)
 	}
@@ -90,7 +76,7 @@ func CanBeOnDevice(tp ir.Type) error {
 // BuildFuncs collects all the functions of a package for which bindings are generated.
 func BuildFuncs[T any](pkg *ir.Package, factory func(ir.Func, int) (*T, error)) ([]*T, error) {
 	funcs := []*T{}
-	for i, gxFunc := range pkg.Funcs {
+	for i, gxFunc := range pkg.Decls.Funcs {
 		if !ir.IsExported(gxFunc.Name()) {
 			continue
 		}

@@ -19,247 +19,379 @@ import (
 	"github.com/gx-org/backend/shape"
 )
 
-func toIntegerArray[T dtype.IntegerType](values []T, dims []int) *ArrayT[T] {
-	return &ArrayT[T]{
-		factory: integerFactory[T]{},
-		shape: shape.Shape{
-			DType:       dtype.Generic[T](),
-			AxisLengths: dims,
-		},
-		values: values,
-	}
-}
-
-func toAlgebraicArray[T dtype.AlgebraType](values []T, dims []int) *ArrayT[T] {
-	return &ArrayT[T]{
-		factory: algebraicFactory[T]{},
-		shape: shape.Shape{
-			DType:       dtype.Generic[T](),
-			AxisLengths: dims,
-		},
-		values: values,
-	}
-}
-
-func toBoolArray(values []bool, dims []int) *ArrayT[bool] {
-	return &ArrayT[bool]{
-		factory: boolFactory{},
-		shape: shape.Shape{
-			DType:       dtype.Bool,
-			AxisLengths: dims,
-		},
-		values: values,
-	}
-}
-
 // AtomicToAtomic
 
-func addAtomicToAtomic[T dtype.AlgebraType](xVal, yVal Array) (Array, error) {
-	x, y := xVal.(*ArrayT[T]), yVal.(*ArrayT[T])
-	return toAlgebraicArray[T]([]T{x.values[0] + y.values[0]}, nil), nil
+func addAtomicToAtomic[T goAlgebra](xVal, yVal Array) (Array, error) {
+	x, y := toArray[T](xVal), toArray[T](yVal)
+	return ToAlgebraicArray[T]([]T{x.values[0] + y.values[0]}, nil), nil
 }
 
-func subAtomicToAtomic[T dtype.AlgebraType](xVal, yVal Array) (Array, error) {
-	x, y := xVal.(*ArrayT[T]), yVal.(*ArrayT[T])
-	return toAlgebraicArray[T]([]T{x.values[0] - y.values[0]}, nil), nil
+func subAtomicToAtomic[T goAlgebra](xVal, yVal Array) (Array, error) {
+	x, y := toArray[T](xVal), toArray[T](yVal)
+	return ToAlgebraicArray[T]([]T{x.values[0] - y.values[0]}, nil), nil
 }
 
-func mulAtomicToAtomic[T dtype.AlgebraType](xVal, yVal Array) (Array, error) {
-	x, y := xVal.(*ArrayT[T]), yVal.(*ArrayT[T])
-	return toAlgebraicArray[T]([]T{x.values[0] * y.values[0]}, nil), nil
+func mulAtomicToAtomic[T goAlgebra](xVal, yVal Array) (Array, error) {
+	x, y := toArray[T](xVal), toArray[T](yVal)
+	return ToAlgebraicArray[T]([]T{x.values[0] * y.values[0]}, nil), nil
 }
 
-func quoAtomicToAtomic[T dtype.AlgebraType](xVal, yVal Array) (Array, error) {
-	x, y := xVal.(*ArrayT[T]), yVal.(*ArrayT[T])
-	return toAlgebraicArray[T]([]T{x.values[0] / y.values[0]}, nil), nil
+func quoAtomicToAtomic[T goAlgebra](xVal, yVal Array) (Array, error) {
+	x, y := toArray[T](xVal), toArray[T](yVal)
+	return ToAlgebraicArray[T]([]T{x.values[0] / y.values[0]}, nil), nil
 }
 
 func remAtomicToAtomic[T dtype.IntegerType](xVal, yVal Array) (Array, error) {
-	x, y := xVal.(*ArrayT[T]), yVal.(*ArrayT[T])
-	return toIntegerArray[T]([]T{x.values[0] % y.values[0]}, nil), nil
+	x, y := toArray[T](xVal), toArray[T](yVal)
+	return ToIntegerArray[T]([]T{x.values[0] % y.values[0]}, nil), nil
+}
+
+func shlAtomicToAtomic[T dtype.IntegerType](xVal, yVal Array) (Array, error) {
+	x, y := toArray[T](xVal), toArray[T](yVal)
+	return ToIntegerArray[T]([]T{x.values[0] << y.values[0]}, nil), nil
+}
+
+func shrAtomicToAtomic[T dtype.IntegerType](xVal, yVal Array) (Array, error) {
+	x, y := toArray[T](xVal), toArray[T](yVal)
+	return ToIntegerArray[T]([]T{x.values[0] >> y.values[0]}, nil), nil
+}
+
+func andAtomicToAtomic[T dtype.IntegerType](xVal, yVal Array) (Array, error) {
+	x, y := toArray[T](xVal), toArray[T](yVal)
+	return ToIntegerArray[T]([]T{x.values[0] & y.values[0]}, nil), nil
+}
+
+func orAtomicToAtomic[T dtype.IntegerType](xVal, yVal Array) (Array, error) {
+	x, y := toArray[T](xVal), toArray[T](yVal)
+	return ToIntegerArray[T]([]T{x.values[0] | y.values[0]}, nil), nil
+}
+
+func xorAtomicToAtomic[T dtype.IntegerType](xVal, yVal Array) (Array, error) {
+	x, y := toArray[T](xVal), toArray[T](yVal)
+	return ToIntegerArray[T]([]T{x.values[0] ^ y.values[0]}, nil), nil
 }
 
 func equalAtomicToAtomic[T dtype.AlgebraType](xVal, yVal Array) (Array, error) {
-	x, y := xVal.(*ArrayT[T]), yVal.(*ArrayT[T])
-	return toBoolArray([]bool{x.values[0] == y.values[0]}, nil), nil
+	x, y := toArray[T](xVal), toArray[T](yVal)
+	return ToBoolArray([]bool{x.values[0] == y.values[0]}, nil), nil
+}
+
+func notEqualAtomicToAtomic[T dtype.AlgebraType](xVal, yVal Array) (Array, error) {
+	x, y := toArray[T](xVal), toArray[T](yVal)
+	return ToBoolArray([]bool{x.values[0] != y.values[0]}, nil), nil
 }
 
 // AtomicToArray
 
-func addAtomicToArray[T dtype.AlgebraType](xVal, yVal Array) (Array, error) {
-	x, y := xVal.(*ArrayT[T]).values[0], yVal.(*ArrayT[T])
+func addAtomicToArray[T goAlgebra](xVal, yVal Array) (Array, error) {
+	x, y := toArray[T](xVal).values[0], toArray[T](yVal)
 	z := make([]T, y.shape.Size())
 	for i, yi := range y.values {
 		z[i] = x + yi
 	}
-	return toAlgebraicArray[T](z, y.shape.AxisLengths), nil
+	return ToAlgebraicArray[T](z, y.shape.AxisLengths), nil
 }
 
-func subAtomicToArray[T dtype.AlgebraType](xVal, yVal Array) (Array, error) {
-	x, y := xVal.(*ArrayT[T]).values[0], yVal.(*ArrayT[T])
+func subAtomicToArray[T goAlgebra](xVal, yVal Array) (Array, error) {
+	x, y := toArray[T](xVal).values[0], toArray[T](yVal)
 	z := make([]T, y.shape.Size())
 	for i, yi := range y.values {
 		z[i] = x - yi
 	}
-	return toAlgebraicArray[T](z, y.shape.AxisLengths), nil
+	return ToAlgebraicArray[T](z, y.shape.AxisLengths), nil
 }
 
-func mulAtomicToArray[T dtype.AlgebraType](xVal, yVal Array) (Array, error) {
-	x, y := xVal.(*ArrayT[T]).values[0], yVal.(*ArrayT[T])
+func mulAtomicToArray[T goAlgebra](xVal, yVal Array) (Array, error) {
+	x, y := toArray[T](xVal).values[0], toArray[T](yVal)
 	z := make([]T, y.shape.Size())
 	for i, yi := range y.values {
 		z[i] = x * yi
 	}
-	return toAlgebraicArray[T](z, y.shape.AxisLengths), nil
+	return ToAlgebraicArray[T](z, y.shape.AxisLengths), nil
 }
 
-func quoAtomicToArray[T dtype.AlgebraType](xVal, yVal Array) (Array, error) {
-	x, y := xVal.(*ArrayT[T]).values[0], yVal.(*ArrayT[T])
+func quoAtomicToArray[T goAlgebra](xVal, yVal Array) (Array, error) {
+	x, y := toArray[T](xVal).values[0], toArray[T](yVal)
 	z := make([]T, y.shape.Size())
 	for i, yi := range y.values {
 		z[i] = x / yi
 	}
-	return toAlgebraicArray[T](z, y.shape.AxisLengths), nil
+	return ToAlgebraicArray[T](z, y.shape.AxisLengths), nil
 }
 
 func remAtomicToArray[T dtype.IntegerType](xVal, yVal Array) (Array, error) {
-	x, y := xVal.(*ArrayT[T]).values[0], yVal.(*ArrayT[T])
+	x, y := toArray[T](xVal).values[0], toArray[T](yVal)
 	z := make([]T, y.shape.Size())
 	for i, yi := range y.values {
 		z[i] = x % yi
 	}
-	return toIntegerArray[T](z, y.shape.AxisLengths), nil
+	return ToIntegerArray[T](z, y.shape.AxisLengths), nil
+}
+
+func shlAtomicToArray[T dtype.IntegerType](xVal, yVal Array) (Array, error) {
+	x, y := toArray[T](xVal).values[0], toArray[T](yVal)
+	z := make([]T, y.shape.Size())
+	for i, yi := range y.values {
+		z[i] = x << yi
+	}
+	return ToIntegerArray[T](z, y.shape.AxisLengths), nil
+}
+
+func shrAtomicToArray[T dtype.IntegerType](xVal, yVal Array) (Array, error) {
+	x, y := toArray[T](xVal).values[0], toArray[T](yVal)
+	z := make([]T, y.shape.Size())
+	for i, yi := range y.values {
+		z[i] = x >> yi
+	}
+	return ToIntegerArray[T](z, y.shape.AxisLengths), nil
+}
+
+func andAtomicToArray[T dtype.IntegerType](xVal, yVal Array) (Array, error) {
+	x, y := toArray[T](xVal).values[0], toArray[T](yVal)
+	z := make([]T, y.shape.Size())
+	for i, yi := range y.values {
+		z[i] = x & yi
+	}
+	return ToIntegerArray[T](z, y.shape.AxisLengths), nil
+}
+
+func orAtomicToArray[T dtype.IntegerType](xVal, yVal Array) (Array, error) {
+	x, y := toArray[T](xVal).values[0], toArray[T](yVal)
+	z := make([]T, y.shape.Size())
+	for i, yi := range y.values {
+		z[i] = x | yi
+	}
+	return ToIntegerArray[T](z, y.shape.AxisLengths), nil
+}
+
+func xorAtomicToArray[T dtype.IntegerType](xVal, yVal Array) (Array, error) {
+	x, y := toArray[T](xVal).values[0], toArray[T](yVal)
+	z := make([]T, y.shape.Size())
+	for i, yi := range y.values {
+		z[i] = x ^ yi
+	}
+	return ToIntegerArray[T](z, y.shape.AxisLengths), nil
 }
 
 func equalAtomicToArray[T dtype.AlgebraType](xVal, yVal Array) (Array, error) {
-	x, y := xVal.(*ArrayT[T]).values[0], yVal.(*ArrayT[T])
+	x, y := toArray[T](xVal).values[0], toArray[T](yVal)
 	z := make([]bool, y.shape.Size())
 	for i, yi := range y.values {
 		z[i] = x == yi
 	}
-	return toBoolArray(z, y.shape.AxisLengths), nil
+	return ToBoolArray(z, y.shape.AxisLengths), nil
 }
 
 // ArrayToAtomic
 
-func addArrayToAtomic[T dtype.AlgebraType](xVal, yVal Array) (Array, error) {
+func addArrayToAtomic[T goAlgebra](xVal, yVal Array) (Array, error) {
 	return addAtomicToArray[T](yVal, xVal)
 }
 
-func subArrayToAtomic[T dtype.AlgebraType](xVal, yVal Array) (Array, error) {
-	x, y := xVal.(*ArrayT[T]), yVal.(*ArrayT[T]).values[0]
+func subArrayToAtomic[T goAlgebra](xVal, yVal Array) (Array, error) {
+	x, y := toArray[T](xVal), toArray[T](yVal).values[0]
 	z := make([]T, x.shape.Size())
 	for i, xi := range x.values {
 		z[i] = xi - y
 	}
-	return toAlgebraicArray[T](z, x.shape.AxisLengths), nil
+	return ToAlgebraicArray[T](z, x.shape.AxisLengths), nil
 }
 
-func mulArrayToAtomic[T dtype.AlgebraType](xVal, yVal Array) (Array, error) {
+func mulArrayToAtomic[T goAlgebra](xVal, yVal Array) (Array, error) {
 	return mulAtomicToArray[T](yVal, xVal)
 }
 
-func quoArrayToAtomic[T dtype.AlgebraType](xVal, yVal Array) (Array, error) {
-	x, y := xVal.(*ArrayT[T]), yVal.(*ArrayT[T]).values[0]
+func quoArrayToAtomic[T goAlgebra](xVal, yVal Array) (Array, error) {
+	x, y := toArray[T](xVal), toArray[T](yVal).values[0]
 	z := make([]T, x.shape.Size())
 	for i, xi := range x.values {
 		z[i] = xi / y
 	}
-	return toAlgebraicArray[T](z, x.shape.AxisLengths), nil
+	return ToAlgebraicArray[T](z, x.shape.AxisLengths), nil
 }
 
 func remArrayToAtomic[T dtype.IntegerType](xVal, yVal Array) (Array, error) {
-	x, y := xVal.(*ArrayT[T]), yVal.(*ArrayT[T]).values[0]
+	x, y := toArray[T](xVal), toArray[T](yVal).values[0]
 	z := make([]T, x.shape.Size())
 	for i, xi := range x.values {
 		z[i] = xi % y
 	}
-	return toIntegerArray[T](z, x.shape.AxisLengths), nil
+	return ToIntegerArray[T](z, x.shape.AxisLengths), nil
+}
+
+func shlArrayToAtomic[T dtype.IntegerType](xVal, yVal Array) (Array, error) {
+	x, y := toArray[T](xVal), toArray[T](yVal).values[0]
+	z := make([]T, x.shape.Size())
+	for i, xi := range x.values {
+		z[i] = xi << y
+	}
+	return ToIntegerArray[T](z, x.shape.AxisLengths), nil
+}
+
+func shrArrayToAtomic[T dtype.IntegerType](xVal, yVal Array) (Array, error) {
+	x, y := toArray[T](xVal), toArray[T](yVal).values[0]
+	z := make([]T, x.shape.Size())
+	for i, xi := range x.values {
+		z[i] = xi >> y
+	}
+	return ToIntegerArray[T](z, x.shape.AxisLengths), nil
+}
+
+func andArrayToAtomic[T dtype.IntegerType](xVal, yVal Array) (Array, error) {
+	x, y := toArray[T](xVal), toArray[T](yVal).values[0]
+	z := make([]T, x.shape.Size())
+	for i, xi := range x.values {
+		z[i] = xi & y
+	}
+	return ToIntegerArray[T](z, x.shape.AxisLengths), nil
+}
+
+func orArrayToAtomic[T dtype.IntegerType](xVal, yVal Array) (Array, error) {
+	x, y := toArray[T](xVal), toArray[T](yVal).values[0]
+	z := make([]T, x.shape.Size())
+	for i, xi := range x.values {
+		z[i] = xi | y
+	}
+	return ToIntegerArray[T](z, x.shape.AxisLengths), nil
+}
+
+func xorArrayToAtomic[T dtype.IntegerType](xVal, yVal Array) (Array, error) {
+	x, y := toArray[T](xVal), toArray[T](yVal).values[0]
+	z := make([]T, x.shape.Size())
+	for i, xi := range x.values {
+		z[i] = xi ^ y
+	}
+	return ToIntegerArray[T](z, x.shape.AxisLengths), nil
 }
 
 func equalArrayToAtomic[T dtype.AlgebraType](xVal, yVal Array) (Array, error) {
-	x, y := xVal.(*ArrayT[T]), yVal.(*ArrayT[T]).values[0]
+	x, y := toArray[T](xVal), toArray[T](yVal).values[0]
 	z := make([]bool, x.shape.Size())
 	for i, xi := range x.values {
 		z[i] = xi == y
 	}
-	return toBoolArray(z, x.shape.AxisLengths), nil
+	return ToBoolArray(z, x.shape.AxisLengths), nil
 }
 
 // ArrayToArray
 
-func subArrayToArray[T dtype.AlgebraType](xVal, yVal Array) (Array, error) {
-	x, y := xVal.(*ArrayT[T]), yVal.(*ArrayT[T])
+func subArrayToArray[T goAlgebra](xVal, yVal Array) (Array, error) {
+	x, y := toArray[T](xVal), toArray[T](yVal)
 	z := make([]T, y.shape.Size())
 	for i, xi := range x.values {
 		z[i] = xi - y.values[i]
 	}
-	return toAlgebraicArray[T](z, x.shape.AxisLengths), nil
+	return ToAlgebraicArray[T](z, x.shape.AxisLengths), nil
 }
 
-func addArrayToArray[T dtype.AlgebraType](xVal, yVal Array) (Array, error) {
-	x, y := xVal.(*ArrayT[T]), yVal.(*ArrayT[T])
+func addArrayToArray[T goAlgebra](xVal, yVal Array) (Array, error) {
+	x, y := toArray[T](xVal), toArray[T](yVal)
 	z := make([]T, y.shape.Size())
 	for i, xi := range x.values {
 		z[i] = xi + y.values[i]
 	}
-	return toAlgebraicArray[T](z, x.shape.AxisLengths), nil
+	return ToAlgebraicArray[T](z, x.shape.AxisLengths), nil
 }
 
-func mulArrayToArray[T dtype.AlgebraType](xVal, yVal Array) (Array, error) {
-	x, y := xVal.(*ArrayT[T]), yVal.(*ArrayT[T])
+func mulArrayToArray[T goAlgebra](xVal, yVal Array) (Array, error) {
+	x, y := toArray[T](xVal), toArray[T](yVal)
 	z := make([]T, y.shape.Size())
 	for i, xi := range x.values {
 		z[i] = xi * y.values[i]
 	}
-	return toAlgebraicArray[T](z, x.shape.AxisLengths), nil
+	return ToAlgebraicArray[T](z, x.shape.AxisLengths), nil
 }
 
-func quoArrayToArray[T dtype.AlgebraType](xVal, yVal Array) (Array, error) {
-	x, y := xVal.(*ArrayT[T]), yVal.(*ArrayT[T])
+func quoArrayToArray[T goAlgebra](xVal, yVal Array) (Array, error) {
+	x, y := toArray[T](xVal), toArray[T](yVal)
 	z := make([]T, y.shape.Size())
 	for i, xi := range x.values {
 		z[i] = xi / y.values[i]
 	}
-	return toAlgebraicArray[T](z, x.shape.AxisLengths), nil
+	return ToAlgebraicArray[T](z, x.shape.AxisLengths), nil
 }
 
 func remArrayToArray[T dtype.IntegerType](xVal, yVal Array) (Array, error) {
-	x, y := xVal.(*ArrayT[T]), yVal.(*ArrayT[T])
+	x, y := toArray[T](xVal), toArray[T](yVal)
 	z := make([]T, y.shape.Size())
 	for i, xi := range x.values {
 		z[i] = xi % y.values[i]
 	}
-	return toIntegerArray[T](z, x.shape.AxisLengths), nil
+	return ToIntegerArray[T](z, x.shape.AxisLengths), nil
+}
+
+func shlArrayToArray[T dtype.IntegerType](xVal, yVal Array) (Array, error) {
+	x, y := toArray[T](xVal), toArray[T](yVal)
+	z := make([]T, y.shape.Size())
+	for i, xi := range x.values {
+		z[i] = xi << y.values[i]
+	}
+	return ToIntegerArray[T](z, x.shape.AxisLengths), nil
+}
+
+func shrArrayToArray[T dtype.IntegerType](xVal, yVal Array) (Array, error) {
+	x, y := toArray[T](xVal), toArray[T](yVal)
+	z := make([]T, y.shape.Size())
+	for i, xi := range x.values {
+		z[i] = xi >> y.values[i]
+	}
+	return ToIntegerArray[T](z, x.shape.AxisLengths), nil
+}
+
+func andArrayToArray[T dtype.IntegerType](xVal, yVal Array) (Array, error) {
+	x, y := toArray[T](xVal), toArray[T](yVal)
+	z := make([]T, y.shape.Size())
+	for i, xi := range x.values {
+		z[i] = xi & y.values[i]
+	}
+	return ToIntegerArray[T](z, x.shape.AxisLengths), nil
+}
+
+func orArrayToArray[T dtype.IntegerType](xVal, yVal Array) (Array, error) {
+	x, y := toArray[T](xVal), toArray[T](yVal)
+	z := make([]T, y.shape.Size())
+	for i, xi := range x.values {
+		z[i] = xi | y.values[i]
+	}
+	return ToIntegerArray[T](z, x.shape.AxisLengths), nil
+}
+
+func xorArrayToArray[T dtype.IntegerType](xVal, yVal Array) (Array, error) {
+	x, y := toArray[T](xVal), toArray[T](yVal)
+	z := make([]T, y.shape.Size())
+	for i, xi := range x.values {
+		z[i] = xi ^ y.values[i]
+	}
+	return ToIntegerArray[T](z, x.shape.AxisLengths), nil
 }
 
 func equalArrayToArray[T dtype.AlgebraType](xVal, yVal Array) (Array, error) {
-	x, y := xVal.(*ArrayT[T]), yVal.(*ArrayT[T])
+	x, y := toArray[T](xVal), toArray[T](yVal)
 	z := make([]bool, y.shape.Size())
 	for i, xi := range x.values {
 		z[i] = xi == y.values[i]
 	}
-	return toBoolArray(z, x.shape.AxisLengths), nil
+	return ToBoolArray(z, x.shape.AxisLengths), nil
 }
 
 // Unary Operators
 
-func subArray[T dtype.AlgebraType](xVal Array) (Array, error) {
-	x := xVal.(*ArrayT[T])
+func subArray[T goAlgebra](xVal Array) (Array, error) {
+	x := toArray[T](xVal)
 	z := make([]T, x.shape.Size())
 	for i, xi := range x.values {
 		z[i] = -xi
 	}
-	return toAlgebraicArray[T](z, x.shape.AxisLengths), nil
+	return ToAlgebraicArray[T](z, x.shape.AxisLengths), nil
 }
 
-func castArrayWithShape[T dtype.AlgebraType, U dtype.AlgebraType](xVal Array, dims []int) (Array, error) {
-	x := xVal.(*ArrayT[T])
+func castArrayWithShape[T dtype.AlgebraType, U goAlgebra](xVal Array, dims []int) (Array, error) {
+	x := toArray[T](xVal)
 	z := make([]U, x.shape.Size())
 	for i, xi := range x.values {
 		z[i] = U(xi)
 	}
-	return toAlgebraicArray[U](z, dims), nil
+	return ToAlgebraicArray[U](z, dims), nil
 }
 
 // N-ary Operators
@@ -268,14 +400,14 @@ func concat[T dtype.GoDataType](xVals []Array) (Array, error) {
 	xVal0 := xVals[0]
 	z := make([]T, len(xVals))
 	for i, x := range xVals {
-		z[i] = x.(*ArrayT[T]).values[0]
+		z[i] = toArray[T](x).values[0]
 	}
-	return &ArrayT[T]{
+	return xVal0.newArray(&arrayT[T]{
 		factory: xVal0.Factory(),
 		shape: shape.Shape{
 			DType:       xVal0.Shape().DType,
 			AxisLengths: []int{len(xVals)},
 		},
 		values: z,
-	}, nil
+	}), nil
 }

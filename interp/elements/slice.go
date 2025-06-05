@@ -17,6 +17,9 @@ package elements
 import (
 	"github.com/pkg/errors"
 	"github.com/gx-org/gx/api/values"
+	gxfmt "github.com/gx-org/gx/base/fmt"
+	"github.com/gx-org/gx/build/ir"
+	"github.com/gx-org/gx/internal/interp/canonical"
 )
 
 // Slice element storing a slice of elements.
@@ -26,19 +29,15 @@ type Slice struct {
 	slicer Slicer
 }
 
-var _ Slicer = (*Slice)(nil)
+var (
+	_ Slicer              = (*Slice)(nil)
+	_ Element             = (*Slice)(nil)
+	_ ir.Canonical        = (*Slice)(nil)
+	_ canonical.Canonical = (*Slice)(nil)
+)
 
-// NewSlice returns a new slice where elements are constructed on demand.
-func NewSlice(expr ExprAt, selector Slicer, numFields int) *Slice {
-	return &Slice{
-		expr:   expr,
-		values: make([]Element, numFields),
-		slicer: selector,
-	}
-}
-
-// ToSlice returns a slice from a slice of elements.
-func ToSlice(expr ExprAt, elements []Element) *Slice {
+// NewSlice returns a slice from a slice of elements.
+func NewSlice(expr ExprAt, elements []Element) *Slice {
 	return &Slice{
 		expr:   expr,
 		values: elements,
@@ -47,23 +46,28 @@ func ToSlice(expr ExprAt, elements []Element) *Slice {
 
 // Flatten returns the elements of the slice.
 func (n *Slice) Flatten() ([]Element, error) {
-	return flattenAll(n.values)
+	return Flatten(n.values...)
 }
 
-// Slice of the tuple.
-func (n *Slice) Slice(expr ExprAt, i int) (Element, error) {
-	if i < 0 || i >= len(n.values) {
-		return nil, errors.Errorf("invalid argument: index %d out of bounds [0:%d]", i, len(n.values))
-	}
-	if n.values[i] != nil {
-		return n.values[i], nil
-	}
-	var err error
-	n.values[i], err = n.slicer.Slice(expr, i)
+func slice(ctx FileContext, expr ir.AssignableExpr, index NumericalElement, vals []Element) (Element, error) {
+	i, err := ConstantIntFromElement(index)
 	if err != nil {
 		return nil, err
 	}
-	return n.values[i], nil
+	if i < 0 || i >= len(vals) {
+		return nil, errors.Errorf("invalid argument: index %d out of bounds [0:%d]", i, len(vals))
+	}
+	return vals[i], nil
+}
+
+// Slice of the tuple.
+func (n *Slice) Slice(ctx FileContext, expr ir.AssignableExpr, index NumericalElement) (Element, error) {
+	return slice(ctx, expr, index, n.values)
+}
+
+// Kind of the element.
+func (*Slice) Kind() ir.Kind {
+	return ir.SliceKind
 }
 
 // Unflatten consumes the next handles to return a GX value.
@@ -71,7 +75,44 @@ func (n *Slice) Unflatten(handles *Unflattener) (values.Value, error) {
 	return handles.ParseComposite(ParseCompositeOf(values.NewSlice), n.expr.Node().Type(), n.values)
 }
 
+// Expr returns the IR expression representing the slice.
+func (n *Slice) Expr() ir.AssignableExpr {
+	return n.expr.node
+}
+
 // Elements stored in the slice.
 func (n *Slice) Elements() []Element {
 	return n.values
+}
+
+// Len returns the number of elements in the slice.
+func (n *Slice) Len() int {
+	return len(n.values)
+}
+
+// Compare the slice to another canonical value.
+func (n *Slice) Compare(x canonical.Comparable) bool {
+	other, ok := x.(*Slice)
+	if !ok {
+		return false
+	}
+	if len(n.values) != len(other.values) {
+		return false
+	}
+	for i, vi := range n.values {
+		xComp, xOk := vi.(canonical.Canonical)
+		yComp, yOk := other.values[i].(canonical.Canonical)
+		if !xOk || !yOk {
+			return false
+		}
+		if !xComp.Compare(yComp) {
+			return false
+		}
+	}
+	return true
+}
+
+// String returns a string representation of the slice.
+func (n *Slice) String() string {
+	return gxfmt.String(n.values)
 }

@@ -18,6 +18,7 @@ import (
 	"fmt"
 	"go/ast"
 	"go/token"
+	"runtime/debug"
 
 	"github.com/pkg/errors"
 )
@@ -34,6 +35,7 @@ type (
 	errorWithPos struct {
 		fset *token.FileSet
 		src  ast.Node
+		pos  token.Pos
 		err  error
 	}
 )
@@ -43,6 +45,7 @@ func Position(fset *token.FileSet, src ast.Node, err error) ErrorWithPos {
 	return errorWithPos{
 		fset: fset,
 		src:  src,
+		pos:  src.Pos(), // Cache the position to make sure src is valid.
 		err:  err,
 	}
 }
@@ -53,26 +56,29 @@ func Errorf(fset *token.FileSet, src ast.Node, format string, a ...any) error {
 }
 
 // Internal marks an error as internal, potentially adding additional information.
-func Internal(err error, format string, a ...any) error {
-	info := ""
-	if format != "" {
-		info = fmt.Sprintf(format, a...) + "\n"
-	}
-	return fmt.Errorf("GX internal error. This is a bug in GX. Please report it. Error:\n%s%w", info, err)
+func Internal(err error) error {
+	return fmt.Errorf("GX internal error. This is a bug in GX. Please report it. Error:\n%+v", err)
 }
 
 // Internalf returns a formatted compiler error for the user.
 func Internalf(fset *token.FileSet, src ast.Node, format string, a ...any) error {
 	err := Errorf(fset, src, format, a...)
-	return Internal(err, "")
+	return Internal(err)
 }
 
 // Error returns a string description of the error.
-func (err errorWithPos) Error() string {
-	if err.src == nil {
+func (err errorWithPos) Error() (s string) {
+	defer func() {
+		r := recover()
+		if r == nil {
+			return
+		}
+		s = fmt.Sprintf("recovered from panic when building error message: %T:\n%v", err.err, string(debug.Stack()))
+	}()
+	if err.fset == nil {
 		return err.err.Error()
 	}
-	return PosString(err.fset, err.src.Pos()) + " " + err.err.Error()
+	return PosString(err.fset, err.pos) + " " + err.err.Error()
 }
 
 // Unwrap the error.

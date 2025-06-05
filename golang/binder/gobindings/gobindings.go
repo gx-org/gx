@@ -94,7 +94,7 @@ func (b *binder) processNamedTypeOutput(target, src string, typ *ir.NamedType) (
 	if err := processNamedTypeOutputTmpl.Execute(&buf, map[string]string{
 		"Source":      src,
 		"Target":      target,
-		"TypeName":    fmt.Sprintf("%s", typ.NameT),
+		"TypeName":    fmt.Sprintf("%s", typ.NameDef().Name),
 		"TypePointer": deviceType,
 		"Package":     pkg,
 	}); err != nil {
@@ -131,13 +131,13 @@ func isNamedStruct(typ ir.Type) bool {
 }
 
 func (b *binder) processSliceOutput(target, src string, typ *ir.SliceType) ([]string, error) {
-	sliceDataType, err := b.bridgerType(typ.DType)
+	sliceDataType, err := b.bridgerType(typ.DType.Typ)
 	if err != nil {
 		return nil, err
 	}
 	elementSource := target + "HandleI"
 	elementTarget := target + "ElmtI"
-	setSliceElement, err := b.setTargetFromSourceType(elementTarget, elementSource, typ.DType)
+	setSliceElement, err := b.setTargetFromSourceType(elementTarget, elementSource, typ.DType.Typ)
 	if err != nil {
 		return nil, err
 	}
@@ -271,4 +271,11 @@ func tmplExecute(tmpl *template.Template, data any) (string, error) {
 		return "", err
 	}
 	return bld.String(), nil
+}
+
+func nameFromRecv(recv *ir.Field) string {
+	if recv == nil {
+		return ""
+	}
+	return recv.Type().(*ir.NamedType).NameDef().Name
 }

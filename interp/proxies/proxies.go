@@ -56,6 +56,13 @@ type (
 		sliceType *ir.SliceType
 		vals      []Value
 	}
+
+	// NamedType is the proxy for a named type.
+	NamedType struct {
+		base
+		under Value
+		nType *ir.NamedType
+	}
 )
 
 func prBase(typ ir.Type) base {
@@ -67,11 +74,19 @@ func (pr *base) Type() ir.Type { return pr.typ }
 func (base) proxy() {}
 
 // NewArray returns a new proxy array.
-func NewArray(typ ir.Type, shape *shape.Shape) *Array {
+func NewArray(typ ir.Type, shape *shape.Shape) (*Array, error) {
+	underlying := ir.Underlying(typ)
+	arrayType, ok := underlying.(ir.ArrayType)
+	if !ok {
+		return nil, errors.Errorf("cannot create proxy array: %s (underlying: %s) is not an array type", typ.String(), underlying.String())
+	}
+	if arrayType.DataType().Kind().DType() != shape.DType {
+		return nil, errors.Errorf("cannot create a proxy array with type %s and shape %s: data types do not match", typ, shape)
+	}
 	return &Array{
 		base:  base{typ: typ},
 		shape: shape,
-	}
+	}, nil
 }
 
 // Shape of the value.
@@ -107,6 +122,16 @@ func (pr *Slice) SliceType() *ir.SliceType {
 	return pr.sliceType
 }
 
+// NamedType returns the IR named type.
+func (pr *NamedType) NamedType() *ir.NamedType {
+	return pr.nType
+}
+
+// Under returns the underlying value.
+func (pr *NamedType) Under() Value {
+	return pr.under
+}
+
 // ToProxy returns the proxy value of a given value.
 func ToProxy(val values.Value, typ ir.Type) (Value, error) {
 	if val == nil {
@@ -118,10 +143,7 @@ func ToProxy(val values.Value, typ ir.Type) (Value, error) {
 	}
 	switch valT := val.(type) {
 	case values.Array:
-		return &Array{
-			base:  prBase(valT.Type()),
-			shape: valT.Shape(),
-		}, nil
+		return NewArray(valT.Type(), valT.Shape())
 	case *values.Struct:
 		vals, err := structToProxyValues(valT)
 		if err != nil {
@@ -141,6 +163,16 @@ func ToProxy(val values.Value, typ ir.Type) (Value, error) {
 			base:      prBase(valT.Type()),
 			sliceType: valT.SliceType(),
 			vals:      vals,
+		}, nil
+	case *values.NamedType:
+		val, err := ToProxy(valT.Underlying(), val.Type())
+		if err != nil {
+			return nil, err
+		}
+		return &NamedType{
+			base:  prBase(valT.Type()),
+			under: val,
+			nType: valT.NamedType(),
 		}, nil
 	default:
 		return nil, errors.Errorf("cannot convert %T to a proxy value", valT)
@@ -178,7 +210,7 @@ func sliceToProxyValues(sl *values.Slice) ([]Value, error) {
 	prs := make([]Value, sl.Size())
 	for i := range prs {
 		var err error
-		prs[i], err = ToProxy(sl.Element(i), elementType)
+		prs[i], err = ToProxy(sl.Element(i), elementType.Typ)
 		if err != nil {
 			return nil, err
 		}

@@ -17,6 +17,7 @@ package kernels
 
 import (
 	"go/token"
+	"math/big"
 
 	"github.com/pkg/errors"
 	"github.com/gx-org/backend/dtype"
@@ -26,8 +27,11 @@ import (
 type (
 	// Array is a value (tuple, atomic, or array) managed by the backend.
 	Array interface {
-		// arrayT makes sure only ArrayT implements this interface.
-		arrayT()
+		// newArray returns a new array implementation given a base array.
+		newArray(baseArray) Array
+
+		// base returns the base array supporting this array implementation.
+		base() baseArray
 
 		// Factory returns the kernels available for the value.
 		Factory() Factory
@@ -42,6 +46,11 @@ type (
 		// It returns an error if the value is not atomic, that is if the array
 		// contains more than one value.
 		ToAtom() (any, error)
+
+		// ToFloatNumber returns the atomic value as a float.
+		// It returns an error if the value is not atomic, that is if the array
+		// contains more than one value.
+		ToFloatNumber() (*big.Float, error)
 
 		// String representation of the array.
 		String() string
@@ -67,11 +76,15 @@ type (
 
 		Cast(target dtype.DataType, dims []int) (Unary, *shape.Shape, Factory, error)
 
+		Slice(*shape.Shape, int) (Unary, *shape.Shape, error)
+
 		Reshape(*shape.Shape, []int) (Unary, *shape.Shape, error)
 
 		UnaryOp(token.Token, *shape.Shape) (Unary, *shape.Shape, error)
 
 		BinaryOp(token.Token, *shape.Shape, *shape.Shape) (Binary, *shape.Shape, error)
+
+		Math() MathFactory
 	}
 )
 
@@ -87,18 +100,20 @@ func NewArrayFromRaw(data []byte, sh *shape.Shape) (Array, error) {
 	switch sh.DType {
 	case dtype.Bool:
 		return ToBoolArray(dtype.ToSlice[bool](data), sh.AxisLengths), nil
+	case dtype.Bfloat16:
+		return ToBfloat16Array(dtype.ToSlice[dtype.Bfloat16T](data), sh.AxisLengths), nil
 	case dtype.Float32:
-		return toAlgebraicArray(dtype.ToSlice[float32](data), sh.AxisLengths), nil
+		return ToFloatArray(dtype.ToSlice[float32](data), sh.AxisLengths), nil
 	case dtype.Float64:
-		return toAlgebraicArray(dtype.ToSlice[float64](data), sh.AxisLengths), nil
+		return ToFloatArray(dtype.ToSlice[float64](data), sh.AxisLengths), nil
 	case dtype.Uint32:
-		return toIntegerArray(dtype.ToSlice[uint32](data), sh.AxisLengths), nil
+		return ToIntegerArray(dtype.ToSlice[uint32](data), sh.AxisLengths), nil
 	case dtype.Uint64:
-		return toIntegerArray(dtype.ToSlice[uint64](data), sh.AxisLengths), nil
+		return ToIntegerArray(dtype.ToSlice[uint64](data), sh.AxisLengths), nil
 	case dtype.Int32:
-		return toIntegerArray(dtype.ToSlice[int32](data), sh.AxisLengths), nil
+		return ToIntegerArray(dtype.ToSlice[int32](data), sh.AxisLengths), nil
 	case dtype.Int64:
-		return toIntegerArray(dtype.ToSlice[int64](data), sh.AxisLengths), nil
+		return ToIntegerArray(dtype.ToSlice[int64](data), sh.AxisLengths), nil
 	default:
 		return nil, errors.Errorf("cannot create an array from raw data: %s not supported", sh.DType.String())
 	}
@@ -109,6 +124,8 @@ func FactoryFor(dt dtype.DataType) (Factory, error) {
 	switch dt {
 	case dtype.Bool:
 		return boolFactory{}, nil
+	case dtype.Bfloat16:
+		return bfloat16Factory{}, nil
 	case dtype.Float32:
 		return algebraicFactory[float32]{}, nil
 	case dtype.Float64:

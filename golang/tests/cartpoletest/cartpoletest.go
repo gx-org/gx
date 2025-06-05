@@ -29,11 +29,11 @@ var cartpole *cartpole_go_gx.Package
 func wantState(t *testing.T, fn func() (types.Array[float32], error), want []float32) {
 	state, err := fn()
 	if err != nil {
-		t.Fatal(err)
+		t.Fatalf("%+v", err)
 	}
 	hostState, err := state.Fetch()
 	if err != nil {
-		t.Fatal(err)
+		t.Fatalf("%+v", err)
 	}
 	got := hostState.CopyFlat()
 	if !cmp.Equal(got, want) {
@@ -43,8 +43,8 @@ func wantState(t *testing.T, fn func() (types.Array[float32], error), want []flo
 
 // TestStep runs a few cartpole steps.
 func TestStep(t *testing.T) {
-	var wantInitialFullState = []float32{9.8, 1, 0.1, 1.1, 0.5, 0.05, 10, 0.02, 0.20943952, 2.4, 0, 0, 0, 0}
-	var wantStateAfterStep = []float32{0, 0.19512196, 0, -0.29268292}
+	wantInitialFullState := []float32{9.8, 1, 0.1, 1.1, 0.5, 0.05, 10, 0.02, 0.20943952, 2.4, 0, 0, 0, 0}
+	wantStateAfterStep := []float32{0, 0.19512196, 0, -0.29268292}
 
 	cp, err := cartpole.New.Run()
 	if err != nil {

@@ -15,74 +15,103 @@
 package builder
 
 import (
+	"fmt"
 	"go/ast"
+	"go/token"
 
 	"github.com/gx-org/gx/build/ir"
 )
 
-type varDecl struct {
-	ext ir.VarDecl
-
-	declaredType typeNode
-	typ          typeNode
+type varSpec struct {
+	src   *ast.ValueSpec
+	bFile *file
+	exprs []*varExpr
+	typ   typeExprNode
 }
 
-var _ irBuilder = (*varDecl)(nil)
+var _ parentNodeBuilder = (*varSpec)(nil)
 
-func processVarDecl(scope *scopeFile, decl *ast.GenDecl) bool {
+func processVarDecl(pscope procScope, decl *ast.GenDecl) bool {
 	ok := true
 	for _, spec := range decl.Specs {
-		ok = processVar(scope, spec.(*ast.ValueSpec)) && ok
+		ok = processVarSpec(pscope.axisLengthScope(), spec.(*ast.ValueSpec)) && ok
 	}
 	return ok
 }
 
-func processVar(scope *scopeFile, spec *ast.ValueSpec) bool {
-	if len(spec.Values) > 0 {
-		scope.err().Appendf(spec, "cannot assign a value to a static variable")
+func processVarSpec(pscope procScope, src *ast.ValueSpec) bool {
+	if len(src.Values) > 0 {
+		pscope.err().Appendf(src, "cannot assign a value to a static variable")
 	}
-	var typ typeNode
-	tpOk := true
-	if spec.Type != nil {
-		typ, tpOk = processTypeExpr(scope, spec.Type)
+	spec := &varSpec{
+		src:   src,
+		bFile: pscope.file(),
 	}
-	ok := true
-	for _, name := range spec.Names {
-		decl := &varDecl{
-			ext: ir.VarDecl{
-				FFile: &scope.file().repr,
-				Src:   spec,
-				VName: name,
-			},
-			declaredType: typ,
+	var typeOk bool
+	spec.typ, typeOk = processTypeExpr(pscope, src.Type)
+	exprsOk := true
+	spec.exprs = make([]*varExpr, len(src.Names))
+	for i, name := range src.Names {
+		var exprOk bool
+		spec.exprs[i], exprOk = spec.processVarExpr(pscope, name, nil)
+		exprsOk = exprsOk && exprOk
+	}
+	return typeOk && exprsOk && pscope.decls().registerStaticVar(spec)
+}
+
+func (spec *varSpec) buildSpecNode(rscope resolveScope) (*ir.VarDecl, bool) {
+	typeExpr, typOk := spec.typ.buildTypeExpr(rscope)
+	return &ir.VarDecl{
+		Src:   spec.src,
+		TypeV: typeExpr.Typ,
+	}, typOk
+}
+
+func (spec *varSpec) buildParentNode(irb *irBuilder, decls *ir.Declarations) (ir.Node, bool) {
+	fscope, scopeOk := irb.pkgScope.newFileScope(spec.bFile, nil)
+	ext, specOk := spec.buildSpecNode(fscope)
+	var fileOk bool
+	ext.FFile, fileOk = buildParentNode[*ir.File](irb, decls, spec.bFile)
+	decls.Vars = append(decls.Vars, ext)
+	return ext, scopeOk && specOk && fileOk
+}
+
+func (spec *varSpec) file() *file {
+	return spec.bFile
+}
+
+type varExpr struct {
+	spec *varSpec
+	name *ast.Ident
+}
+
+func (spec *varSpec) processVarExpr(pscope procScope, name *ast.Ident, value ast.Expr) (*varExpr, bool) {
+	return &varExpr{spec: spec, name: name}, true
+}
+
+func (vr *varExpr) build(pkgScope *pkgResolveScope) (*ir.VarExpr, bool) {
+	fscope, scopeOk := pkgScope.newFileScope(vr.spec.bFile, nil)
+	spec, specOk := vr.spec.buildSpecNode(fscope)
+	return &ir.VarExpr{Decl: spec, VName: vr.name}, specOk && scopeOk
+}
+
+func (vr *varExpr) pNode() processNode {
+	return newProcessNode[*varExpr](token.VAR, vr.name, vr)
+}
+
+func varDeclarator(spec *varSpec) declarator {
+	return func(irb *irBuilder, decls *ir.Declarations, dNode *declNode) bool {
+		irSpec, ok := buildParentNode[*ir.VarDecl](irb, decls, spec)
+		if !ok {
+			return false
 		}
-		fScope := scope.fileScope()
-		ok = fScope.file().declareStaticVar(fScope, name, decl) && ok
+		expr := dNode.ir.(*ir.VarExpr)
+		expr.Decl = irSpec
+		irSpec.Exprs = append(irSpec.Exprs, expr)
+		return true
 	}
-	return tpOk && ok
 }
 
-func (vr *varDecl) source() ast.Node {
-	return vr.ext.Src
-}
-
-func (vr *varDecl) resolveType(scope scoper) (typeNode, bool) {
-	if vr.typ != nil {
-		return typeNodeOk(vr.typ)
-	}
-	if vr.declaredType == nil {
-		vr.typ = invalid
-		return vr.typ, false
-	}
-	var ok bool
-	vr.typ, ok = resolveType(scope, vr, vr.declaredType)
-	return vr.typ, ok
-}
-
-func (vr *varDecl) buildIR(pkg *ir.Package) {
-	if vr.typ == nil {
-		vr.typ = invalid
-	}
-	vr.ext.TypeV = vr.typ.irType()
-	pkg.Vars = append(pkg.Vars, &vr.ext)
+func (vr *varExpr) String() string {
+	return fmt.Sprintf("var %s", vr.name.Name)
 }

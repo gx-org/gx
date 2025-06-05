@@ -70,7 +70,7 @@ var funcPackageSetField = template.Must(template.New("funcPackageSetFieldTMPL").
 	c.{{.RunnerField}} = {{.Name}}{
 		methodBase: methodBase{
 			pkg: c,
-			function: c.Package.IR.Funcs[{{.FuncIndex}}].(*ir.FuncDecl),
+			function: c.Package.IR.Decls.Funcs[{{.FuncIndex}}],
 		},
 	}`))
 
@@ -80,26 +80,28 @@ func (b *binder) FuncsPackageSetFields() (string, error) {
 
 func (f function) RunnerField() string {
 	fieldName := f.Name()
-	if receiver := f.FuncType().Receiver; receiver != nil {
-		fieldName = "method" + receiver.NameT + fieldName
+	recvName := nameFromRecv(f.FuncType().ReceiverField())
+	if recvName != "" {
+		fieldName = "method" + recvName + fieldName
 	}
 	return fieldName
 }
 
 func (f function) RunnerType() string {
 	runnerType := f.Name()
-	if receiver := f.FuncType().Receiver; receiver != nil {
-		runnerType = "Method" + receiver.NameT + runnerType
+	recvName := nameFromRecv(f.FuncType().ReceiverField())
+	if recvName != "" {
+		runnerType = "Method" + recvName + runnerType
 	}
 	return runnerType
 }
 
-func (f function) ReceiverField() string {
-	receiver := f.FuncType().Receiver
-	if receiver == nil {
-		return ""
+func (f function) ReceiverField() (string, error) {
+	recvName := nameFromRecv(f.FuncType().ReceiverField())
+	if recvName == "" {
+		return "", nil
 	}
-	return fmt.Sprintf("receiver handle%s", receiver.NameT)
+	return fmt.Sprintf("receiver handle%s", recvName), nil
 }
 
 var funcStructTmpl = template.Must(template.New("funcStructTMPL").Parse(`
@@ -132,7 +134,7 @@ var funcRunnerTmpl = template.Must(template.New("funcRunnerTMPL").Parse(`
 func (f *{{.RunnerType}}) Run({{.Parameters}}) ({{.Results}}, err error) {
 	var args []values.Value = {{.BackendArguments}}
 	if f.runner == nil {
-		f.runner, err = interp.Compile(f.pkg.Device, f.function.(*ir.FuncDecl), {{.ReceiverValue}}, args, f.pkg.options)
+		f.runner, err = tracer.Trace(f.pkg.Device, f.function.(*ir.FuncDecl), {{.ReceiverValue}}, args, f.pkg.options)
 		if err != nil {
 			return
 		}
@@ -145,6 +147,10 @@ func (f *{{.RunnerType}}) Run({{.Parameters}}) ({{.Results}}, err error) {
 
 	{{.DefinePackageVariable}}{{.ProcessDeviceOutput}}
 	return {{.Returns}}, nil
+}
+
+func (f *{{.RunnerType}}) String() string {
+	return fmt.Sprint(f.function)
 }
 `))
 
@@ -222,7 +228,7 @@ func (f function) Parameters() (string, error) {
 	fields := f.Func.FuncType().Params.Fields()
 	params := make([]string, len(fields))
 	for i, field := range fields {
-		typeS, err := f.bridgerType(field.Group.Type)
+		typeS, err := f.bridgerType(field.Group.Type.Typ)
 		if err != nil {
 			return "", err
 		}
@@ -244,7 +250,7 @@ func (f function) Results() (string, error) {
 	fields := f.Func.FuncType().Results.Fields()
 	results := make([]string, len(fields))
 	for i, field := range fields {
-		typeS, err := f.binder.bridgerType(field.Group.Type)
+		typeS, err := f.binder.bridgerType(field.Group.Type.Typ)
 		if err != nil {
 			return "", err
 		}

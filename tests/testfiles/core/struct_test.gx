@@ -94,9 +94,9 @@ func TestSampleSetField() ([...]float32, float32, [...]float32, float32) {
 	// 3: float32(4)
 }
 
-func (s sample) namedReturnSetField() (s sample) {
+func (s sample) namedReturnSetField() sample {
 	s = s.setField()
-	return
+	return s
 }
 
 func TestSampleNamedReturnSetField() ([...]float32, float32, [...]float32, float32) {
@@ -145,4 +145,15 @@ func TestMultipleSteps() ([...]float32, float32, [...]float32, float32, [...]flo
 	// 3: float32(3)
 	// 4: [2]float32{12, 24}
 	// 5: float32(3)
+}
+
+func TestMethodCallBeforeDefinition() int32 {
+	// Ensure that methods can be called even if not defined yet.
+	return NewSample().getMagicInt()
+	// Want:
+	// int32(1024)
+}
+
+func (s sample) getMagicInt() int32 {
+	return 1024
 }

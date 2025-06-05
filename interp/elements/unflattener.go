@@ -15,25 +15,29 @@
 package elements
 
 import (
+	"fmt"
+	"strings"
+
 	"github.com/pkg/errors"
 	"github.com/gx-org/backend/platform"
-	"github.com/gx-org/gx/api"
 	"github.com/gx-org/gx/api/values"
+	gxfmt "github.com/gx-org/gx/base/fmt"
+	"github.com/gx-org/gx/build/fmterr"
 	"github.com/gx-org/gx/build/ir"
 )
 
 // Unflattener unflattens the output of a graph computation
 // into GX values.
 type Unflattener struct {
-	dev        *api.Device
-	callInputs *CallInputs
+	dev        platform.Device
+	callInputs *InputValues
 	// Handles to unflatten.
 	compOutput []platform.DeviceHandle
 	nextPos    int
 }
 
 // NewUnflattener returns a new Unflattener given the output of a graph computation.
-func NewUnflattener(dev *api.Device, callInputs *CallInputs, handles []platform.DeviceHandle) *Unflattener {
+func NewUnflattener(dev platform.Device, callInputs *InputValues, handles []platform.DeviceHandle) *Unflattener {
 	return &Unflattener{
 		dev:        dev,
 		callInputs: callInputs,
@@ -49,7 +53,7 @@ func (h *Unflattener) Next() platform.DeviceHandle {
 }
 
 // CallInputs returns the inputs with which the function was called.
-func (h *Unflattener) CallInputs() *CallInputs {
+func (h *Unflattener) CallInputs() *InputValues {
 	return h.callInputs
 }
 
@@ -59,7 +63,7 @@ func (h *Unflattener) size() int {
 
 // Device returns to which transfers the host value to.
 // TODO(b/388207169): Always transfer the value to device because C++ bindings do not support HostValue.
-func (h *Unflattener) Device() *api.Device {
+func (h *Unflattener) Device() platform.Device {
 	return h.dev
 }
 
@@ -77,6 +81,15 @@ func (h *Unflattener) Unflatten(el Element) (values.Value, error) {
 
 type newCompValue func(ir.Type, []values.Value) (values.Value, error)
 
+// ParseArray the next value as an array.
+func (h *Unflattener) ParseArray(expr ExprAt) (values.Array, error) {
+	val, err := values.NewDeviceArray(expr.Node().Type(), h.Next())
+	if err != nil {
+		return nil, fmterr.Position(expr.FSet(), expr.Node().Source(), err)
+	}
+	return val, nil
+}
+
 // ParseComposite unflatten a slice of elements into a single GX value.
 func (h *Unflattener) ParseComposite(ncv newCompValue, typ ir.Type, els []Element) (values.Value, error) {
 	vals := make([]values.Value, len(els))
@@ -88,6 +101,20 @@ func (h *Unflattener) ParseComposite(ncv newCompValue, typ ir.Type, els []Elemen
 		}
 	}
 	return ncv(typ, vals)
+}
+
+func (h *Unflattener) String() string {
+	var s strings.Builder
+	s.WriteString(fmt.Sprintf("%T{", h))
+	for i, hdl := range h.compOutput {
+		prefix := "  "
+		if i == h.nextPos {
+			prefix = "->"
+		}
+		s.WriteString(fmt.Sprintf("%s%d: %s\n", prefix, i, gxfmt.String(hdl)))
+	}
+	s.WriteString("}")
+	return s.String()
 }
 
 // ParseCompositeOf returns a function to unflatten a composite value.

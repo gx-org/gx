@@ -32,9 +32,11 @@ var tests = []struct {
 		path: "github.com/gx-org/gx/tests/bindings/basic",
 		wants: []string{
 			"ReturnFloat32",
+			"ReturnMultiple",
 			"Basic struct {",
 			"AddPrivate",
 			"MarshalEmpty",
+			"SetFloat",
 			"// New returns a new instance of the basic structure.",
 		},
 	},

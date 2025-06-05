@@ -17,7 +17,7 @@ package builder
 import (
 	"go/ast"
 	"path/filepath"
-	"strings"
+	"strconv"
 
 	"github.com/gx-org/gx/build/ir"
 )
@@ -31,195 +31,57 @@ type importDecl struct {
 	pkg *basePackage
 }
 
-func processImportDecl(block *scopeFile, decl *ast.GenDecl) bool {
+func processImportDecl(pscope procScope, decl *ast.GenDecl) bool {
 	ok := true
 	for _, spec := range decl.Specs {
-		imp := spec.(*ast.ImportSpec)
-		path := imp.Path.Value
-		path = strings.TrimPrefix(path, `"`)
-		path = strings.TrimSuffix(path, `"`)
-		imported, err := block.file().pkg.builder().importPath(path)
+		ext := &ir.ImportDecl{Src: spec.(*ast.ImportSpec)}
+		var err error
+		ext.Path, err = strconv.Unquote(ext.Src.Path.Value)
 		if err != nil {
-			block.err().Append(err)
-			ok = false
-			continue
+			ok = pscope.err().Appendf(ext.Src.Path, "malformed path: %s", ext.Src.Path.Value)
 		}
-		name := imp.Name
-		if name == nil {
-			name = &ast.Ident{
-				NamePos: imp.Path.Pos(),
-				Name:    filepath.Base(path),
+		ident := ext.Src.Name
+		if ident == nil {
+			// The import does not define a name for the package.
+			// Use the last element of the import path.
+			ident = &ast.Ident{
+				NamePos: ext.Src.Path.ValuePos,
+				Name:    filepath.Base(ext.Path),
 			}
 		}
-		imp.Name = name
-		decl := &importDecl{
-			ext: ir.ImportDecl{
-				Src:     imp,
-				Package: imported.IR(),
-			},
-			pkg: imported.base(),
-		}
-		importOk := block.file().declareImports(block, name, &packageRef{
-			ext: ir.PackageRef{
-				Src:  name,
-				Decl: &decl.ext,
-			},
-			decl: decl,
-		})
+		importOk := pscope.file().declareImports(pscope, ident, ext)
 		ok = importOk && ok
 	}
 	return ok
 }
 
-// packageRef is a reference to a package.
-type packageRef struct {
-	ext  ir.PackageRef
-	decl *importDecl
+type importedPackage struct {
+	pkg   *ir.Package
+	names map[string]ir.Storage
 }
 
-var (
-	_ selector = (*packageRef)(nil)
-	_ typeNode = (*packageRef)(nil)
-)
-
-func (n *packageRef) buildSelectNode(scope scoper, sel *ast.SelectorExpr) selectNode {
-	pkgIdentNode := n.decl.pkg.base().ns.fetch(sel.Sel.Name)
-	if pkgIdentNode == nil {
-		scope.err().Appendf(sel, "undefined: %s.%s", n.ext.Src.Name, sel.Sel.Name)
-		return nil
+func importPackage(pkgScope *pkgResolveScope, decl *ir.ImportDecl) (*importedPackage, bool) {
+	bPackage, err := pkgScope.pkg().builder().importPath(decl.Path)
+	ok := true
+	var irPackage *ir.Package
+	if err != nil {
+		ok = pkgScope.err().Append(err)
+		irPackage = &ir.Package{Decls: &ir.Declarations{}}
+	} else {
+		irPackage = bPackage.IR()
 	}
-	typ, ok := pkgIdentNode.typeF(scope)
-	if !ok {
-		return nil
+	imp := &importedPackage{
+		pkg:   irPackage,
+		names: make(map[string]ir.Storage),
 	}
-	switch exprT := pkgIdentNode.expr.(type) {
-	case function:
-		return buildPackageFuncSelectorExpr(sel, n, exprT)
-	case *constExpr:
-		return buildPackageConstSelectorExpr(sel, n, exprT)
+	for fun := range irPackage.ExportedFuncs() {
+		imp.names[fun.Name()] = fun
 	}
-	switch tpT := typ.(type) {
-	case *builtinType[*ir.NamedType]:
-		return buildPackageTypeSelectorExpr(sel, n, tpT)
-	default:
-		scope.err().Appendf(sel, "%T package selector not supported", tpT)
-		return nil
+	for _, typ := range irPackage.ExportedTypes() {
+		imp.names[typ.Name()] = typ
 	}
-}
-
-func (n *packageRef) irType() ir.Type {
-	return &n.ext
-}
-
-func (n *packageRef) convertibleTo(scope scoper, typ typeNode) (bool, []*ir.ValueRef, error) {
-	return false, nil, nil
-}
-
-func (n *packageRef) kind() ir.Kind {
-	return packageKind
-}
-
-func (n *packageRef) isGeneric() bool {
-	return false
-}
-
-func (n *packageRef) String() string {
-	return n.decl.ext.Package.String()
-}
-
-func (n *packageRef) resolveType(scope scoper) (typeNode, bool) {
-	return n, true
-}
-
-// packageMethodSelectorExpr references a function on an imported package.
-// The function needs to be exported.
-type packageFuncSelectorExpr struct {
-	ext ir.PackageFuncSelectorExpr
-	ref *packageRef
-
-	fn  function
-	typ typeNode
-}
-
-func buildPackageFuncSelectorExpr(expr *ast.SelectorExpr, ref *packageRef, fn function) selectNode {
-	return &packageFuncSelectorExpr{
-		ext: ir.PackageFuncSelectorExpr{
-			Src:     expr,
-			Package: &ref.ext,
-		},
-		fn:  fn,
-		ref: ref,
+	for _, cst := range irPackage.ExportedConsts() {
+		imp.names[cst.VName.Name] = cst
 	}
-}
-
-func (n *packageFuncSelectorExpr) buildExpr(exprNode) ir.Expr {
-	n.ext.Typ = n.typ.irType()
-	n.ext.Func = n.fn.irFunc()
-	return &n.ext
-}
-
-func (n *packageFuncSelectorExpr) resolveType(scope scoper) (typeNode, bool) {
-	if n.typ != nil {
-		return typeNodeOk(n.typ)
-	}
-	var ok bool
-	n.typ, ok = n.fn.resolveType(scope)
-	return n.typ, ok
-}
-
-// packageTypeSelectorExpr references a type on an imported package.
-type packageTypeSelectorExpr struct {
-	ext ir.PackageTypeSelector
-	ref *packageRef
-
-	*builtinType[*ir.NamedType]
-}
-
-func buildPackageTypeSelectorExpr(expr *ast.SelectorExpr, ref *packageRef, typ *builtinType[*ir.NamedType]) selectNode {
-	return &packageTypeSelectorExpr{
-		ext: ir.PackageTypeSelector{
-			Src:     expr,
-			Package: &ref.ext,
-			Typ:     typ.ext,
-		},
-		ref:         ref,
-		builtinType: typ,
-	}
-}
-
-func (n *packageTypeSelectorExpr) buildExpr(exprNode) ir.Expr {
-	return &n.ext
-}
-
-func (n *packageTypeSelectorExpr) resolveType(scope scoper) (typeNode, bool) {
-	return typeNodeOk(n.builtinType)
-}
-
-// packageConstSelectorExpr references a type on an imported package.
-type packageConstSelectorExpr struct {
-	ext ir.PackageConstSelectorExpr
-	ref *packageRef
-
-	cst *constExpr
-}
-
-func buildPackageConstSelectorExpr(expr *ast.SelectorExpr, ref *packageRef, cst *constExpr) selectNode {
-	return &packageConstSelectorExpr{
-		ext: ir.PackageConstSelectorExpr{
-			Src:     expr,
-			Package: &ref.ext,
-			Const:   cst.ext,
-			X:       cst.ext.Value,
-		},
-		ref: ref,
-		cst: cst,
-	}
-}
-
-func (n *packageConstSelectorExpr) buildExpr(exprNode) ir.Expr {
-	return &n.ext
-}
-
-func (n *packageConstSelectorExpr) resolveType(scope scoper) (typeNode, bool) {
-	return n.cst.resolveType(scope)
+	return imp, ok
 }

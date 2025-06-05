@@ -24,6 +24,7 @@ import (
 	"github.com/gx-org/gx/build/builtins"
 	"github.com/gx-org/gx/build/fmterr"
 	"github.com/gx-org/gx/build/ir"
+	"github.com/gx-org/gx/internal/interp/compeval"
 	"github.com/gx-org/gx/stdlib/builtin"
 	"github.com/gx-org/gx/stdlib/impl"
 )
@@ -59,11 +60,7 @@ func checkConsistent[R any](values []ir.ArrayType, extractFn func(v ir.ArrayType
 
 func numAxes(fetcher ir.Fetcher, call *ir.CallExpr) func(ir.ArrayType) (int, error) {
 	return func(a ir.ArrayType) (int, error) {
-		rank, err := builtins.RankOf(fetcher, call, a)
-		if err != nil {
-			return -1, err
-		}
-		return len(rank.Axes), nil
+		return a.Rank().NumAxes(), nil
 	}
 }
 
@@ -82,70 +79,60 @@ func (f concat) resultsType(fetcher ir.Fetcher, call *ir.CallExpr) (params []ir.
 	if err != nil {
 		return nil, nil, err
 	}
-	axis, unknowns, err := ir.Eval[ir.Int](fetcher, call.Args[0])
+	axis, err := compeval.EvalInt(fetcher, call.Args[0])
 	if err != nil {
 		return nil, nil, err
 	}
-	if unknowns != nil {
-		return nil, nil, fmterr.Errorf(fetcher.FileSet(), call.Source(), "encountered unknowns (%s) for axis expression %s in call to Concat", unknowns, call.Args[0].Expr())
-	}
 	arrayTypes, err := builtins.NarrowTypes[ir.ArrayType](fetcher, call, params[1:])
 	if err != nil {
-		return nil, nil, fmterr.Errorf(fetcher.FileSet(), call.Source(), "expected all arguments but the first to be arrays in call to %s, but %s", f.Func.Name(), err)
+		return nil, nil, fmterr.Errorf(fetcher.File().FileSet(), call.Source(), "expected all arguments but the first to be arrays in call to %s, but %s", f.Func.Name(), err)
 	}
 	arrayDataType := func(t ir.ArrayType) (ir.Type, error) { return t.DataType(), nil }
 	isSameKind := func(lhs, rhs ir.Type) bool { return lhs.Kind() == rhs.Kind() }
 	dtype, err := checkConsistent(arrayTypes, arrayDataType, isSameKind)
 	if err != nil {
-		return nil, nil, fmterr.Errorf(fetcher.FileSet(), call.Source(), "expected arrays of the same data type in call to %s, but %s", f.Func.Name(), err)
+		return nil, nil, fmterr.Errorf(fetcher.File().FileSet(), call.Source(), "expected arrays of the same data type in call to %s, but %s", f.Func.Name(), err)
 	}
 	isEqual := func(lhs, rhs int) bool { return lhs == rhs }
 	_, err = checkConsistent(arrayTypes, numAxes(fetcher, call), isEqual)
 	if err != nil {
-		return nil, nil, fmterr.Errorf(fetcher.FileSet(), call.Source(), "expected all arguments to be arrays of the same rank in call to %s, but %s", f.Func.Name(), err)
+		return nil, nil, fmterr.Errorf(fetcher.File().FileSet(), call.Source(), "expected all arguments to be arrays of the same rank in call to %s, but %s", f.Func.Name(), err)
 	}
 
 	// Check that all but the concatenated dimension match, determine dimensions after concat.
-	firstRank, err := builtins.RankOf(fetcher, call, arrayTypes[0])
-	if err != nil {
-		return nil, nil, err
-	}
-	firstDims := firstRank.Axes
+	firstDims := arrayTypes[0].Rank().Axes()
 	if axis < 0 || int(axis) >= len(firstDims) {
-		return nil, nil, fmterr.Errorf(fetcher.FileSet(), call.Source(), "axis %d is out of bounds for array of rank %d in call to Concat", axis, len(firstDims))
+		return nil, nil, fmterr.Errorf(fetcher.File().FileSet(), call.Source(), "axis %d is out of bounds for array of rank %d in call to Concat", axis, len(firstDims))
 	}
-	var outputDims []ir.AxisLength = make([]ir.AxisLength, len(firstDims))
+	var outputDims []ir.AxisLengths = make([]ir.AxisLengths, len(firstDims))
 	copy(outputDims, firstDims)
-	var outputExpr ir.Expr = firstDims[axis]
+	var outputExpr ir.AssignableExpr = firstDims[axis].AxisValue()
 
 	for i := 1; i < len(arrayTypes); i++ {
-		rank, err := builtins.RankOf(fetcher, call, arrayTypes[i])
-		if err != nil {
-			return nil, nil, err
-		}
-		for j := range rank.Axes {
+		rank := arrayTypes[i].Rank()
+		for j, axJ := range rank.Axes() {
 			if j == int(axis) {
 				// Ignore the concatenated dimension, it doesn't have to match.
 				continue
 			}
-			ok, err := rank.Axes[j].AssignableTo(fetcher, outputDims[j])
+			ok, err := axJ.AssignableTo(fetcher, outputDims[j])
 			if err != nil {
-				return nil, nil, fmterr.Position(fetcher.FileSet(), call.Source(), err)
+				return nil, nil, fmterr.Position(fetcher.File().FileSet(), call.Source(), err)
 			}
 			if !ok {
-				return nil, nil, fmterr.Errorf(fetcher.FileSet(), call.Source(),
+				return nil, nil, fmterr.Errorf(fetcher.File().FileSet(), call.Source(),
 					"argument %d (shape: %v) incompatible with initial shape (%v) in %s call: dimension %d, %s != %s",
-					i+1, arrayTypes[i].Rank(), arrayTypes[0].Rank(), f.Name(), j, rank.Axes[j], outputDims[j])
+					i+1, arrayTypes[i].Rank(), arrayTypes[0].Rank(), f.Name(), j, axJ, outputDims[j])
 			}
 		}
-		outputExpr = builtins.ToBinaryExpr(token.ADD, outputExpr, rank.Axes[axis])
+		outputExpr = builtins.ToBinaryExpr(token.ADD, outputExpr, rank.Axes()[axis].AxisValue())
 	}
 	outputDims[axis] = &ir.AxisExpr{
 		Src: call.Expr(),
 		X:   outputExpr,
 	}
 	return params, ir.NewArrayType(nil, dtype, &ir.Rank{
-		Axes: outputDims,
+		Ax: outputDims,
 	}), nil
 }
 
@@ -155,8 +142,8 @@ func (f concat) BuildFuncType(fetcher ir.Fetcher, call *ir.CallExpr) (*ir.FuncTy
 		return nil, err
 	}
 	return &ir.FuncType{
-		Src:     &ast.FuncType{Func: call.Source().Pos()},
-		Params:  builtins.Fields(params...),
-		Results: builtins.Fields(result),
+		BaseType: ir.BaseType[*ast.FuncType]{Src: &ast.FuncType{Func: call.Source().Pos()}},
+		Params:   builtins.Fields(params...),
+		Results:  builtins.Fields(result),
 	}, nil
 }

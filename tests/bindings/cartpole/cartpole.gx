@@ -41,11 +41,11 @@ func (cp Cartpole) Step(action float32) (Cartpole) {
 	return cp
 }
 
-func (cp Cartpole) State() [...]float32 {
+func (cp Cartpole) State() [4]float32 {
 	return [...]float32{cp.x, cp.xDot, cp.theta, cp.thetaDot}
 }
 
-func (cp Cartpole) FullState() [...]float32 {
+func (cp Cartpole) FullState() [14]float32 {
 	return [...]float32{
 		cp.gravity,
 		cp.massCart,

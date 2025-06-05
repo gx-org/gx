@@ -35,24 +35,21 @@ func (f transpose) BuildFuncIR(impl *impl.Stdlib, pkg *ir.Package) (*ir.FuncBuil
 
 func (f transpose) resultsType(fetcher ir.Fetcher, call *ir.CallExpr) (ir.Type, ir.Type, error) {
 	if len(call.Args) != 1 {
-		return nil, nil, fmterr.Errorf(fetcher.FileSet(), call.Source(), "wrong number of argument in call to %s: got %d but want 1", f.Name(), len(call.Args))
+		return nil, nil, fmterr.Errorf(fetcher.File().FileSet(), call.Source(), "wrong number of argument in call to %s: got %d but want 1", f.Name(), len(call.Args))
 	}
 	arg := call.Args[0]
 	argType := arg.Type()
 	arrayType, ok := argType.(ir.ArrayType)
 	if !ok {
-		return nil, nil, fmterr.Errorf(fetcher.FileSet(), call.Source(), "argument type %s not supported in call to %s", arg.Type().String(), f.Name())
+		return nil, nil, fmterr.Errorf(fetcher.File().FileSet(), call.Source(), "argument type %s not supported in call to %s", arg.Type().String(), f.Name())
 	}
-	rank, err := builtins.RankOf(fetcher, call, arrayType)
-	if err != nil {
-		return nil, nil, err
-	}
-	inferredAxes := slices.Clone(rank.Axes)
+	rank := arrayType.Rank()
+	inferredAxes := slices.Clone(rank.Axes())
 	slices.Reverse(inferredAxes)
 	return argType, ir.NewArrayType(
 		nil,
 		arrayType.DataType(),
-		&ir.Rank{Axes: inferredAxes},
+		&ir.Rank{Ax: inferredAxes},
 	), nil
 }
 
@@ -62,8 +59,8 @@ func (f transpose) BuildFuncType(fetcher ir.Fetcher, call *ir.CallExpr) (*ir.Fun
 		return nil, err
 	}
 	return &ir.FuncType{
-		Src:     &ast.FuncType{Func: call.Source().Pos()},
-		Params:  builtins.Fields(param),
-		Results: builtins.Fields(result),
+		BaseType: ir.BaseType[*ast.FuncType]{Src: &ast.FuncType{Func: call.Source().Pos()}},
+		Params:   builtins.Fields(param),
+		Results:  builtins.Fields(result),
 	}, nil
 }

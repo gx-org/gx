@@ -46,3 +46,8 @@ func (n *String) Unflatten(handles *Unflattener) (values.Value, error) {
 	}
 	return values.NewString(n.str.Type(), val)
 }
+
+// Kind of the element.
+func (*String) Kind() ir.Kind {
+	return ir.StringKind
+}

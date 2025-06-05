@@ -22,16 +22,16 @@ import (
 	"go/token"
 	"strings"
 
+	"github.com/gx-org/gx/api/trace"
 	"github.com/gx-org/gx/api/values"
 	"github.com/gx-org/gx/build/ir"
-	"github.com/gx-org/gx/interp/state"
 )
 
 // Tracer is a default tracer for GX code.
 type Tracer struct {
 }
 
-var _ state.Tracer = (*Tracer)(nil)
+var _ trace.Callback = (*Tracer)(nil)
 
 // Trace prints traced values on the standard output.
 func (Tracer) Trace(fset *token.FileSet, call *ir.CallExpr, values []values.Value) error {

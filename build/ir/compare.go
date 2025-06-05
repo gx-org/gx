@@ -14,113 +14,14 @@
 
 package ir
 
-import (
-	"fmt"
-	"go/token"
-	"strconv"
-
-	"github.com/pkg/errors"
-	"github.com/gx-org/gx/build/fmterr"
-)
-
 func areEqual(fetcher Fetcher, x, y Expr) (bool, error) {
-	xVal, xName, err := evalDimExpr(fetcher, x)
+	xExpr, err := fetcher.Eval(x)
 	if err != nil {
 		return false, err
 	}
-	yVal, yName, err := evalDimExpr(fetcher, y)
+	yExpr, err := fetcher.Eval(y)
 	if err != nil {
 		return false, err
 	}
-	// Two expressions are equal if the same value has been
-	// computed or/and they have the same string representation.
-	return xVal == yVal && xName == yName, nil
-}
-
-func areConvertible(fetcher Fetcher, x, y Expr) (bool, error) {
-	xVal, xName, err := evalDimExpr(fetcher, x)
-	if err != nil {
-		return false, err
-	}
-	yVal, yName, err := evalDimExpr(fetcher, y)
-	if err != nil {
-		return false, err
-	}
-	if xName != "" || yName != "" {
-		// One of the expression has a static variable,
-		// so it can always be converted.
-		return true, nil
-	}
-	// No static variable is used: check that we have computed
-	// the same value.
-	return xVal == yVal, nil
-}
-
-func evalDimBinaryExpr(fetcher Fetcher, x *BinaryExpr) (int, string, error) {
-	xInt, xStr, err := evalDimExpr(fetcher, x.X)
-	if err != nil {
-		return 0, "", err
-	}
-	yInt, yStr, err := evalDimExpr(fetcher, x.Y)
-	if err != nil {
-		return 0, "", err
-	}
-	var val int
-	switch x.Src.Op {
-	case token.ADD:
-		val = xInt + yInt
-	case token.SUB:
-		val = xInt - yInt
-	case token.MUL:
-		val = xInt * yInt
-	case token.QUO:
-		val = xInt / yInt
-	default:
-		return -1, "", fmterr.Errorf(fetcher.FileSet(), x.Source(), "cannot evaluate dimension: binary op %s not supported", x.Src.Op)
-	}
-	valStr := ""
-	if xStr != "" || yStr != "" {
-		if xStr == "" {
-			xStr = fmt.Sprint(xInt)
-		}
-		if yStr == "" {
-			yStr = fmt.Sprint(yInt)
-		}
-		valStr = xStr + x.Src.Op.String() + yStr
-		val = 0
-	}
-	return val, valStr, nil
-}
-
-func evalDimExpr(fetcher Fetcher, x Expr) (int, string, error) {
-	if x == nil {
-		return -1, "", errors.Errorf("cannot evaluate nil expression")
-	}
-	switch xT := x.(type) {
-	case *AtomicValueT[Int]:
-		return int(xT.Val), "", nil
-	case *BinaryExpr:
-		return evalDimBinaryExpr(fetcher, xT)
-	case *NumberInt:
-		num, err := strconv.Atoi(xT.Src.Value)
-		if err != nil {
-			return -1, "", fmterr.Errorf(fetcher.FileSet(), x.Source(), "cannot parse number %s", xT.Src.Value)
-		}
-		return num, "", nil
-	case *StaticAtom:
-		return evalDimExpr(fetcher, xT.X)
-	case *ValueRef:
-		return 0, xT.Src.Name, nil
-	case *AxisEllipsis:
-		if err := checkEllipsis(fetcher, xT); err != nil {
-			return -1, "", err
-		}
-		return evalDimExpr(fetcher, xT.X)
-	case *AxisExpr:
-		return evalDimExpr(fetcher, xT.X)
-	case *NumberCastExpr:
-		return evalDimExpr(fetcher, xT.X)
-	default:
-		return -1, "", fmterr.Errorf(fetcher.FileSet(), x.Source(), "cannot evaluate dimension: %T not supported", xT)
-	}
+	return xExpr.Compare(yExpr), nil
 }

@@ -32,20 +32,17 @@ func (app *Appender) Append(err error) bool {
 
 // AppendAt appends an existing error at a given position.
 func (app *Appender) AppendAt(node ast.Node, err error) bool {
-	app.Append(app.fset.Position(node, err))
-	return false
+	return app.Append(app.fset.Position(node, err))
 }
 
 // Appendf appends an error at a position.
 func (app *Appender) Appendf(node ast.Node, format string, a ...any) bool {
-	app.Append(app.fset.Errorf(node, format, a...))
-	return false
+	return app.Append(app.fset.Errorf(node, format, a...))
 }
 
 // AppendInternalf appends an internal error at a position.
 func (app *Appender) AppendInternalf(node ast.Node, format string, a ...any) bool {
-	app.Append(Internal(app.fset.Errorf(node, format, a...), ""))
-	return false
+	return app.Append(Internal(app.fset.Errorf(node, format, a...)))
 }
 
 // FSet returns the error fileset formatter.
@@ -89,5 +86,5 @@ func (app *PosAppender) Appendf(format string, a ...any) {
 
 // AppendInternalf appends an internal error at a position.
 func (app *PosAppender) AppendInternalf(format string, a ...any) {
-	app.Append(Internal(app.pos.Errorf(format, a...), ""))
+	app.Append(Internal(app.pos.Errorf(format, a...)))
 }

@@ -17,127 +17,74 @@ package builder
 import (
 	"go/ast"
 
+	"github.com/pkg/errors"
 	"github.com/gx-org/gx/build/builtins"
 	"github.com/gx-org/gx/build/ir"
+	"github.com/gx-org/gx/internal/interp/compeval"
 )
 
-type setFunc struct {
-	ext ir.FuncBuiltin
-}
+type setFunc struct{}
 
-var (
-	_ genericCallTypeNode = (*setFunc)(nil)
-	_ function            = (*setFunc)(nil)
-)
+var _ ir.FuncImpl = (*setFunc)(nil)
 
-func (f *setFunc) resolveGenericCallType(scope scoper, fetcher ir.Fetcher, call *callExpr) (*funcType, bool) {
-	src := call.source()
-	irCall := call.buildExpr().(*ir.CallExpr)
-	params, err := builtins.BuildFuncParams(fetcher, irCall, "set", []ir.Type{
+// BuildFuncType builds the type of a function given how it is called.
+func (f *setFunc) BuildFuncType(fetcher ir.Fetcher, call *ir.CallExpr) (*ir.FuncType, error) {
+	ext := &ir.FuncType{
+		BaseType: baseType(&ast.FuncType{Func: call.Src.Pos()}),
+	}
+	params, err := builtins.BuildFuncParams(fetcher, call, "set", []ir.Type{
 		builtins.GenericArrayType,
 		builtins.GenericArrayType,
 		builtins.PositionsType,
 	})
 	if err != nil {
-		scope.err().AppendAt(src, err)
-		return nil, false
+		return ext, err
 	}
-	arrayParams, err := builtins.NarrowTypes[ir.ArrayType](fetcher, irCall, params)
+	arrayParams, err := builtins.NarrowTypes[ir.ArrayType](fetcher, call, params)
 	if err != nil {
-		scope.err().Appendf(src, "cannot fetch array type: %v", err)
-		return nil, false
+		return ext, errors.Errorf("cannot fetch array type: %v", err)
 	}
+	ext.Results = builtins.Fields(arrayParams[0])
 	sameDType, err := arrayParams[0].DataType().Equal(fetcher, arrayParams[1].DataType())
 	if err != nil {
-		scope.err().Appendf(src, "cannot compare datatypes: %v", err)
-		return nil, false
+		return ext, errors.Errorf("cannot compare datatypes: %v", err)
 	}
 	if !sameDType {
-		scope.err().Appendf(src, "cannot set a slice of a [...]%s array with a [...]%s array", arrayParams[0].DataType().String(), arrayParams[1].DataType().String())
-		return nil, false
+		return ext, errors.Errorf("cannot set a slice of a [...]%s array with a [...]%s array", arrayParams[0].DataType().String(), arrayParams[1].DataType().String())
 	}
-	funcType, ok := importFuncType(scope, &ir.FuncType{
-		Src:     &ast.FuncType{Func: irCall.Src.Pos()},
-		Params:  builtins.Fields(params...),
-		Results: builtins.Fields(params[0]),
-	})
-	if !ok {
-		return funcType, ok
-	}
-	xResolver := arrayParams[0].Rank().(ir.ResolvedRank)
-	if !ok {
-		return nil, scope.err().Appendf(src, "cannot set a sub-array with an unresolved rank")
-	}
-	xRank := xResolver.Resolved()
+	ext.Params = builtins.Fields(params...)
+	xResolver := arrayParams[0].Rank()
+	xRank := xResolver
 	updateRank := arrayParams[1].Rank()
-	posResolver, ok := arrayParams[2].Rank().(ir.ResolvedRank)
-	if !ok {
-		return nil, scope.err().Appendf(src, "cannot set a sub-array at a position with an unresolved rank")
-	}
-	posRank := posResolver.Resolved()
+	posResolver := arrayParams[2].Rank()
+	posRank := posResolver
 	if xRank == nil || updateRank == nil || posRank == nil {
-		return funcType, true
+		return ext, nil
 	}
-	if len(posRank.Axes) != 1 {
-		return nil, scope.err().Appendf(src, "position has an invalid number of axes: got %d but want 1", len(posRank.Axes))
+	if posRank.NumAxes() != 1 {
+		return ext, errors.Errorf("position has an invalid number of axes: got %d but want 1", posRank.NumAxes())
 	}
-	posSize, unknows, err := ir.Eval[ir.Int](scope.evalFetcher(), posRank.Axes[0])
+	posSize, err := compeval.EvalInt(fetcher, posRank.Axes()[0])
 	if err != nil {
-		return nil, scope.err().AppendAt(src, err)
+		return ext, err
 	}
-	if unknows != nil {
-		return nil, scope.err().Appendf(src, "cannot evaluate axis lengths of the position because of unknowns variables %v", unknows)
-	}
-	if int(posSize) > len(xRank.Axes) {
-		return nil, scope.err().Appendf(src, "position (length %d) exceeds operand rank (%d)", posSize, len(xRank.Axes))
+	if int(posSize) > xRank.NumAxes() {
+		return ext, errors.Errorf("position (length %d) exceeds operand rank (%d)", posSize, xRank.NumAxes())
 	}
 	wantUpdate := ir.NewArrayType(nil, arrayParams[0].DataType(), &ir.Rank{
-		Axes: xRank.Axes[posSize:],
+		Ax: xRank.Axes()[posSize:],
 	})
-	ok, err = arrayParams[1].Equal(fetcher, wantUpdate)
+	ok, err := arrayParams[1].Equal(fetcher, wantUpdate)
 	if err != nil {
-		scope.err().Appendf(src, "cannot compare rank: %v", err)
-		return nil, false
+		return ext, errors.Errorf("cannot compare rank: %v", err)
 	}
 	if !ok {
-		scope.err().Appendf(src, "cannot set array: update slice is %s but requires %s", arrayParams[1], wantUpdate)
-		return nil, false
+		return ext, errors.Errorf("cannot set array: update slice is %s but requires %s", arrayParams[1], wantUpdate)
 	}
-	return funcType, true
+	return ext, nil
 }
 
-func (f *setFunc) resolveType(scoper) (typeNode, bool) {
-	return f, true
-}
-
-func (f *setFunc) receiver() *fieldList {
+// BuildFuncType builds the type of a function given how it is called.
+func (f *setFunc) Implementation() any {
 	return nil
-}
-
-func (f *setFunc) staticValue() ir.StaticValue {
-	return &f.ext
-}
-
-func (f *setFunc) name() *ast.Ident {
-	return &ast.Ident{Name: f.ext.Name()}
-}
-
-func (f *setFunc) isGeneric() bool {
-	return false
-}
-
-func (f *setFunc) kind() ir.Kind {
-	return ir.FuncKind
-}
-
-func (f *setFunc) irType() ir.Type {
-	return &ir.FuncType{}
-}
-
-func (f *setFunc) String() string {
-	return "set"
-}
-
-func (f *setFunc) irFunc() ir.Func {
-	return &f.ext
 }

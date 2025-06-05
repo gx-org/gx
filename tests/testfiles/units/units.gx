@@ -1,0 +1,7 @@
+// Package units tests running tests from a testing.UnitSession.
+package units
+
+func TestReturnConst() int32 {
+	return 1
+	// Want: int32(1)
+}

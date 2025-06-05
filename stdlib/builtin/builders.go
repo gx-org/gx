@@ -20,11 +20,13 @@ import (
 	"go/ast"
 	"reflect"
 	"runtime"
+	"strings"
 
 	"github.com/pkg/errors"
 	"github.com/gx-org/gx/build/builder"
 	"github.com/gx-org/gx/build/fmterr"
 	"github.com/gx-org/gx/build/ir"
+	"github.com/gx-org/gx/interp"
 	"github.com/gx-org/gx/stdlib/impl"
 )
 
@@ -100,8 +102,8 @@ func BuildFunc(f FuncBuilder) Builder {
 		if err != nil {
 			return err
 		}
-		return pkg.ImportIR(&ir.Package{
-			Funcs: []ir.Func{fn},
+		return pkg.ImportIR(&ir.Declarations{
+			Funcs: []ir.PkgFunc{fn},
 		})
 	}
 	return baseBuilder{
@@ -127,20 +129,87 @@ func (s *stubFunc) Implementation() any {
 	return s.impl
 }
 
+func findFunc(pkg *ir.Package, name string) (*ir.FuncBuiltin, error) {
+	fns := pkg.Decls.Funcs
+	if splt := strings.Split(name, "."); len(splt) == 2 {
+		typeName := splt[0]
+		name = splt[1]
+		typ := pkg.Decls.TypeByName(typeName)
+		if typ == nil {
+			return nil, errors.Errorf("cannot find type %s in package %s", typeName, pkg.FullName())
+		}
+		fns = typ.Methods
+	}
+	for _, fn := range fns {
+		if fn.Name() != name {
+			continue
+		}
+		builtin, ok := fn.(*ir.FuncBuiltin)
+		if !ok {
+			return nil, errors.Errorf("%s:%T is not a builtin function", name, fn)
+		}
+		return builtin, nil
+	}
+	return nil, nil
+}
+
 // ImplementStubFunc replaces a function declaration with a stdlib-provided implementation, while
 // keeping the function's declared type.
-func ImplementStubFunc(name string, slotFn func(impl *impl.Stdlib) any) Builder {
+func ImplementStubFunc(name string, slotFn func(impl *impl.Stdlib) interp.FuncBuiltin) Builder {
 	return baseBuilder{
 		name: name,
 		build: func(bld *builder.Builder, impl *impl.Stdlib, pkg *builder.FilePackage) error {
-			for _, fn := range pkg.IR().Funcs {
+			stub, err := findFunc(pkg.IR(), name)
+			if err != nil {
+				return err
+			}
+			if stub == nil {
+				return errors.Errorf("failed to replace function stub %q: builtin function declaration not found", name)
+			}
+			stub.Impl = &stubFunc{ftype: stub.FuncType(), impl: slotFn(impl)}
+			return nil
+		},
+	}
+}
+
+// ImplementBuiltin provides the implementation of a builtin function.
+func ImplementBuiltin(name string, fn interp.FuncBuiltin) Builder {
+	return ImplementStubFunc(name, func(*impl.Stdlib) interp.FuncBuiltin {
+		return fn
+	})
+}
+
+type graphFunc struct {
+	ftype *ir.FuncType
+	impl  interp.FuncBuiltin
+}
+
+var _ ir.FuncImpl = (*stubFunc)(nil)
+
+// BuildFuncType builds the type of a function given how it is called.
+func (s *graphFunc) BuildFuncType(fetcher ir.Fetcher, call *ir.CallExpr) (*ir.FuncType, error) {
+	return s.ftype, nil
+}
+
+// Implementation of the function, provided by the backend.
+func (s *graphFunc) Implementation() any {
+	return s.impl
+}
+
+// ImplementGraphFunc sets the implementation in a function declaration.
+// The function declared type does not change.
+func ImplementGraphFunc(name string, slotFn interp.FuncBuiltin) Builder {
+	return baseBuilder{
+		name: name,
+		build: func(bld *builder.Builder, impl *impl.Stdlib, pkg *builder.FilePackage) error {
+			for _, fn := range pkg.IR().Decls.Funcs {
 				if fn.Name() == name {
 					stub := fn.(*ir.FuncBuiltin)
-					stub.Impl = &stubFunc{ftype: fn.FuncType(), impl: slotFn(impl)}
+					stub.Impl = &stubFunc{ftype: fn.FuncType(), impl: slotFn}
 					return nil
 				}
 			}
-			return fmt.Errorf("failed to replace function stub %q", name)
+			return fmt.Errorf("cannot set function implementation: cannot find function %q in package %s", name, pkg.IR().Name)
 		},
 	}
 }
@@ -155,7 +224,7 @@ func BuildMethod(name string, f MethodBuilder) Builder {
 	buildMethod := func(bld *builder.Builder, impl *impl.Stdlib, pkg *builder.FilePackage) error {
 		irPkg := pkg.IR()
 		var namedType *ir.NamedType
-		for _, named := range irPkg.Types {
+		for _, named := range irPkg.Decls.Types {
 			if named.Name() == name {
 				namedType = named
 				break
@@ -168,11 +237,14 @@ func BuildMethod(name string, f MethodBuilder) Builder {
 		if err != nil {
 			return err
 		}
-		return pkg.ImportIR(&ir.Package{
+		fn.FFile = &ir.File{
+			Package: pkg.IR(),
+		}
+		return pkg.ImportIR(&ir.Declarations{
 			Types: []*ir.NamedType{
 				&ir.NamedType{
-					NameT:   namedType.NameT,
-					Methods: []ir.Func{fn},
+					Src:     namedType.Src,
+					Methods: []ir.PkgFunc{fn},
 				},
 			},
 		})
@@ -196,10 +268,7 @@ func BuildType(f TypeBuilder) Builder {
 		if err != nil {
 			return err
 		}
-		tp.Src = &ast.TypeSpec{
-			Name: &ast.Ident{Name: tp.NameT},
-		}
-		return pkg.ImportIR(&ir.Package{
+		return pkg.ImportIR(&ir.Declarations{
 			Types: []*ir.NamedType{tp},
 		})
 	}
@@ -210,7 +279,7 @@ func BuildType(f TypeBuilder) Builder {
 }
 
 // ConstBuilder builds a type for a package.
-type ConstBuilder func(*ir.Package) (string, ir.Expr, ir.Type, error)
+type ConstBuilder func(*ir.Package) (string, ir.AssignableExpr, ir.Type, error)
 
 // BuildConst builds a function in a package.
 func BuildConst(f ConstBuilder) Builder {
@@ -220,15 +289,15 @@ func BuildConst(f ConstBuilder) Builder {
 		if err != nil {
 			return err
 		}
-		constDecl := ir.ConstDecl{Type: typ}
+		constDecl := ir.ConstDecl{Type: &ir.TypeValExpr{Typ: typ}}
 		constDecl.Exprs = []*ir.ConstExpr{
 			&ir.ConstExpr{
 				Decl:  &constDecl,
 				VName: &ast.Ident{Name: name},
-				Value: expr,
+				Val:   expr,
 			},
 		}
-		return pkg.ImportIR(&ir.Package{
+		return pkg.ImportIR(&ir.Declarations{
 			Consts: []*ir.ConstDecl{&constDecl},
 		})
 	}
@@ -244,7 +313,7 @@ type registerMeta struct {
 }
 
 // RegisterMacro registers the implementation of a meta function.
-func RegisterMacro(name string, impl ir.MacroImpl) Builder {
+func RegisterMacro(name string, impl ir.FuncMetaImpl) Builder {
 	return &registerMeta{
 		name: name,
 		impl: impl,
@@ -255,7 +324,7 @@ func (b *registerMeta) Build(bld *builder.Builder, _ *impl.Stdlib, pkg *builder.
 	pkgIR := pkg.IR()
 	defer func() {
 		if err != nil {
-			err = fmterr.Internal(err, "cannot set the implementation of %s.%s", pkgIR.Name, b.name)
+			err = fmterr.Internal(errors.Errorf("cannot set the implementation of %s.%s: %v", pkgIR.Name, b.name, err))
 		}
 	}()
 	fun := pkgIR.FindFunc(b.name)

@@ -26,11 +26,14 @@ import (
 	"go/token"
 	"iter"
 	"maps"
+	"math/big"
+	"path/filepath"
 	"slices"
 	"strings"
 
 	"github.com/pkg/errors"
 	"github.com/gx-org/backend/dtype"
+	"github.com/gx-org/backend/shape"
 )
 
 // ----------------------------------------------------------------------------
@@ -49,6 +52,44 @@ type (
 		Node
 		Source() ast.Node
 	}
+
+	// Storage is a node that can store a value.
+	// (e.g. a field in a function)
+	Storage interface {
+		SourceNode
+		storage()
+		NameDef() *ast.Ident
+		Type() Type
+	}
+
+	// StorageWithValue is a storage to which a value has been assigned to.
+	// (e.g. a variable that has been defined)
+	StorageWithValue interface {
+		storageValue()
+		Storage
+		// Value returns the value stored given the expression pointing to the storage.
+		Value(Expr) AssignableExpr
+	}
+
+	// Value is a value used by the compiler. It can be any thing with a type (package, constant, ...).
+	// This is a superset of AssignableExpr.
+	Value interface {
+		SourceNode
+		Type() Type
+	}
+
+	// AssignableExpr is an expression which can be assigned to variable.
+	// This excludes package or types.
+	AssignableExpr interface {
+		assignable()
+		Expr
+	}
+
+	// WithStore is an expression which points to a storage.
+	WithStore interface {
+		Expr
+		Store() Storage
+	}
 )
 
 // ----------------------------------------------------------------------------
@@ -56,7 +97,7 @@ type (
 type (
 	// Type of a value.
 	Type interface {
-		Node
+		StorageWithValue
 
 		// Kind of the type.
 		Kind() Kind
@@ -78,13 +119,25 @@ type (
 	// Zeroer is a type able to create a zero value of the type as an expression.
 	Zeroer interface {
 		Type
-		Zero() Expr
+		Zero() AssignableExpr
+	}
+
+	// SlicerType is a type supporting slice operations:
+	// (e.g. slicerType[i])
+	SlicerType interface {
+		Type
+		// ElementType returns the type of an element, that is the type
+		// returned by a slice at the top level. For example:
+		// float32[2][3][4] returns float32[3][4]
+		// If the number of axis is 0, nil is returned.
+		ElementType() (Type, bool)
 	}
 
 	// ArrayType is a type with a rank.
 	ArrayType interface {
 		Zeroer
 		SourceNode
+		SlicerType
 
 		// ArrayType returns the source code defining the array type.
 		// May be nil.
@@ -100,18 +153,35 @@ type (
 		equalArray(Fetcher, ArrayType) (bool, error)
 	}
 
+	// assignsFrom allows types to control how they are assigned to; other types may opt to use this
+	// logic when present (but aren't currently required to).
+	assignsFrom interface {
+		// assignableFrom reports whether a value of some type can be assigned to the receiver.
+		assignableFrom(Fetcher, Type) (bool, error)
+	}
+
+	// convertsFrom allows types to control how they are converted to; other types may opt to use this
+	// logic when present (but aren't currently required to).
+	convertsFrom interface {
+		// convertibleFrom reports whether a value of some type can be converted to the receiver.
+		convertibleFrom(Fetcher, Type) (bool, error)
+	}
+
 	atomicType struct {
+		BaseType[ast.Expr]
+
 		Knd Kind
 	}
 
 	// NamedType defines a new type from an existing type.
 	NamedType struct {
-		NameT      string
+		BaseType[ast.Expr]
+
 		Src        *ast.TypeSpec
 		File       *File
-		Underlying Type
+		Underlying *TypeValExpr
 
-		Methods []Func
+		Methods []PkgFunc
 
 		// ID is the index of the NamedType in the package.
 		ID int
@@ -119,85 +189,87 @@ type (
 
 	// StructType defines the type of a structure.
 	StructType struct {
-		Src    *ast.StructType
+		BaseType[*ast.StructType]
+
 		Fields *FieldList
 	}
 
 	// InterfaceType defines the type of an interface.
-	InterfaceType struct{}
+	InterfaceType struct {
+		BaseType[ast.Expr]
+	}
+
+	// TypeParamValue assigns a type to a field of a more generic type.
+	TypeParamValue struct {
+		Field *Field
+		Typ   Type
+	}
 
 	// FuncType defines a function signature.
 	FuncType struct {
-		Src *ast.FuncType
+		BaseType[*ast.FuncType]
 
-		Receiver   *NamedType
+		Receiver   *FieldList
 		TypeParams *FieldList
 		Params     *FieldList
 		Results    *FieldList
+
+		TypeParamsValues []TypeParamValue
+
+		// CompEval is set to true if the function can be called at compilation time.
+		CompEval bool
 	}
 
 	// SliceType defines the type for a slice.
 	SliceType struct {
-		Src   *ast.ArrayType
-		DType Type
+		BaseType[*ast.ArrayType]
+
+		DType *TypeValExpr
 		Rank  int
 	}
 
 	// arrayType defines the type of an array from code.
 	arrayType struct {
-		Src    *ast.ArrayType
+		BaseType[*ast.ArrayType]
+
 		DTypeF Type
 		RankF  ArrayRank
-	}
-
-	// PackageRef is a reference to a package.
-	// PackageRef is an invalid type in GX.
-	PackageRef struct {
-		Src  *ast.Ident // Identifier of the package in the source.
-		Decl *ImportDecl
-	}
-
-	// PackageTypeSelector selects a type on an imported package.
-	PackageTypeSelector struct {
-		Src     *ast.SelectorExpr
-		Package *PackageRef
-		Typ     *NamedType
 	}
 
 	// BuiltinType is an opaque type maintained by the backend.
 	// These are the only atomic types that can have a state.
 	BuiltinType struct {
+		BaseType[ast.Expr]
+
 		Impl any
 	}
 
 	// TupleType is the type of the result of a function that returns more than one value.
 	TupleType struct {
+		BaseType[ast.Expr]
+
 		Types []Type
 	}
 
-	// InvalidType is a type assigned by the compiler because of a compiling error.
-	InvalidType struct{}
+	// TypeParam is a type mapping to a field name in a function type parameters.
+	TypeParam struct {
+		BaseType[ast.Expr]
 
-	// UnknownType is a temporary unknown type.
-	UnknownType struct{}
-
-	// VoidType is a type for representing an absence of value.
-	VoidType struct{}
+		Field *Field
+	}
 )
 
 var (
-	_ Type      = (*NamedType)(nil)
-	_ Type      = (*StructType)(nil)
-	_ Type      = (*InterfaceType)(nil)
-	_ Type      = (*FuncType)(nil)
-	_ Type      = (*SliceType)(nil)
-	_ Type      = (*PackageRef)(nil)
-	_ Type      = (*PackageTypeSelector)(nil)
-	_ Type      = (*TupleType)(nil)
-	_ Expr      = (*PackageTypeSelector)(nil)
-	_ Type      = (*InvalidType)(nil)
-	_ ArrayType = (*atomicType)(nil)
-	_ ArrayType = (*arrayType)(nil)
+	_ StorageWithValue = (*NamedType)(nil)
+	_ Type             = (*NamedType)(nil)
+	_ Type             = (*StructType)(nil)
+	_ Type             = (*InterfaceType)(nil)
+	_ Type             = (*FuncType)(nil)
+	_ SlicerType       = (*SliceType)(nil)
+	_ Type             = (*TupleType)(nil)
+	_ ArrayType        = (*atomicType)(nil)
+	_ ArrayType        = (*arrayType)(nil)
+	_ Type             = (*TypeParam)(nil)
 )
 
 // DefaultFloatType is the default type used for a scalar.
@@ -215,50 +287,12 @@ var (
 // It needs to match DefaultIntKind above
 type Int = int64
 
-func (InvalidType) node() {}
+func (*TupleType) node() {}
 
 // Kind returns the scalar kind.
-func (s InvalidType) Kind() Kind { return InvalidKind }
+func (s *TupleType) Kind() Kind { return TupleKind }
 
-// Equal returns true if other is the same type.
-func (s InvalidType) Equal(Fetcher, Type) (bool, error) { return false, nil }
-
-// AssignableTo reports whether a value of the type can be assigned to another.
-// Always returns false.
-func (s InvalidType) AssignableTo(Fetcher, Type) (bool, error) { return false, nil }
-
-// ConvertibleTo reports whether a value of the type can be converted to another
-// (using static type casting). Always returns false.
-func (s InvalidType) ConvertibleTo(Fetcher, Type) (bool, error) { return false, nil }
-
-// String representation of the type.
-func (s InvalidType) String() string { return s.Kind().String() }
-
-func (UnknownType) node() {}
-
-// Kind returns the unknown kind.
-func (s UnknownType) Kind() Kind { return UnknownKind }
-
-// Equal returns true if other is the same type.
-func (s UnknownType) Equal(Fetcher, Type) (bool, error) { return false, nil }
-
-// AssignableTo reports whether a value of the type can be assigned to another.
-// Always returns false.
-func (s UnknownType) AssignableTo(Fetcher, Type) (bool, error) { return false, nil }
-
-// ConvertibleTo reports whether a value of the type can be converted to another
-// (using static type casting). Always returns false.
-func (s UnknownType) ConvertibleTo(Fetcher, Type) (bool, error) { return false, nil }
-
-// String representation of the type.
-func (s UnknownType) String() string { return s.Kind().String() }
-
-func (TupleType) node() {}
-
-// Kind returns the scalar kind.
-func (s TupleType) Kind() Kind { return TupleKind }
-
-func (s TupleType) apply(fetcher Fetcher, target Type, f func(Type, Fetcher, Type) (bool, error)) (bool, error) {
+func (s *TupleType) apply(fetcher Fetcher, target Type, f func(Type, Fetcher, Type) (bool, error)) (bool, error) {
 	targetTuple, ok := target.(*TupleType)
 	if !ok {
 		return false, nil
@@ -275,23 +309,28 @@ func (s TupleType) apply(fetcher Fetcher, target Type, f func(Type, Fetcher, Typ
 }
 
 // Equal returns true if other is the same type.
-func (s TupleType) Equal(fetcher Fetcher, target Type) (bool, error) {
+func (s *TupleType) Equal(fetcher Fetcher, target Type) (bool, error) {
 	return s.apply(fetcher, target, (Type).Equal)
 }
 
 // AssignableTo reports whether a value of the type can be assigned to another.
-func (s TupleType) AssignableTo(fetcher Fetcher, target Type) (bool, error) {
+func (s *TupleType) AssignableTo(fetcher Fetcher, target Type) (bool, error) {
 	return s.apply(fetcher, target, (Type).AssignableTo)
 }
 
 // ConvertibleTo reports whether a value of the type can be converted to another
 // (using static type casting). Always returns false.
-func (s TupleType) ConvertibleTo(fetcher Fetcher, target Type) (bool, error) {
+func (s *TupleType) ConvertibleTo(fetcher Fetcher, target Type) (bool, error) {
 	return s.apply(fetcher, target, (Type).ConvertibleTo)
 }
 
+// Value returns a value pointing to the receiver.
+func (s *TupleType) Value(x Expr) AssignableExpr {
+	return &TypeValExpr{X: x, Typ: s}
+}
+
 // String representation of the type.
-func (s TupleType) String() string {
+func (s *TupleType) String() string {
 	ss := make([]string, len(s.Types))
 	for i, typ := range s.Types {
 		ss[i] = typ.String()
@@ -299,57 +338,43 @@ func (s TupleType) String() string {
 	return fmt.Sprintf("(%s)", strings.Join(ss, ","))
 }
 
-func (VoidType) node() {}
-
-// Kind returns the void kind.
-func (s VoidType) Kind() Kind { return VoidKind }
-
-// Equal returns true if other is the same type.
-func (s VoidType) Equal(Fetcher, Type) (bool, error) { return false, nil }
-
-// AssignableTo reports whether a value of the type can be assigned to another.
-// Always returns false.
-func (s VoidType) AssignableTo(Fetcher, Type) (bool, error) { return false, nil }
-
-// ConvertibleTo reports whether a value of the type can be converted to another
-// (using static type casting). Always returns false.
-func (s VoidType) ConvertibleTo(Fetcher, Type) (bool, error) { return false, nil }
-
-// String representation of the type.
-func (s VoidType) String() string { return s.Kind().String() }
-
-func (InterfaceType) node() {}
+func (*InterfaceType) node() {}
 
 // Kind returns the interface kind.
-func (s InterfaceType) Kind() Kind { return InterfaceKind }
+func (s *InterfaceType) Kind() Kind { return InterfaceKind }
 
 // Equal returns true if other is the same type.
-func (s InterfaceType) Equal(Fetcher, Type) (bool, error) { return false, nil }
+func (s *InterfaceType) Equal(Fetcher, Type) (bool, error) { return false, nil }
 
 // AssignableTo reports whether a value of the type can be assigned to another.
 // Always returns false.
-func (s InterfaceType) AssignableTo(Fetcher, Type) (bool, error) { return false, nil }
+func (s *InterfaceType) AssignableTo(Fetcher, Type) (bool, error) { return false, nil }
 
 // ConvertibleTo reports whether a value of the type can be converted to another
 // (using static type casting). Always returns false.
-func (s InterfaceType) ConvertibleTo(Fetcher, Type) (bool, error) { return false, nil }
+func (s *InterfaceType) ConvertibleTo(Fetcher, Type) (bool, error) { return false, nil }
+
+// Value returns a value pointing to the receiver.
+func (s *InterfaceType) Value(x Expr) AssignableExpr {
+	return &TypeValExpr{X: x, Typ: s}
+}
 
 // String representation of the type.
-func (s InterfaceType) String() string { return s.Kind().String() }
+func (s *InterfaceType) String() string { return s.Kind().String() }
 
 // IsValid returns true if the type is valid.
 func IsValid(tp Type) bool {
 	return tp.Kind() != InvalidKind
 }
 
-func (BuiltinType) node() {}
+func (*BuiltinType) node() {}
 
 // Kind returns the scalar kind.
-func (s BuiltinType) Kind() Kind { return BuiltinKind }
+func (s *BuiltinType) Kind() Kind { return BuiltinKind }
 
 // Equal returns true if other is the same type.
-func (s BuiltinType) Equal(_ Fetcher, other Type) (bool, error) {
-	otherT, ok := other.(BuiltinType)
+func (s *BuiltinType) Equal(_ Fetcher, other Type) (bool, error) {
+	otherT, ok := other.(*BuiltinType)
 	if !ok {
 		return false, nil
 	}
@@ -357,18 +382,23 @@ func (s BuiltinType) Equal(_ Fetcher, other Type) (bool, error) {
 }
 
 // AssignableTo reports if the type can be assigned to other.
-func (s BuiltinType) AssignableTo(fetcher Fetcher, target Type) (bool, error) {
+func (s *BuiltinType) AssignableTo(fetcher Fetcher, target Type) (bool, error) {
 	return s.Equal(fetcher, target)
 }
 
 // ConvertibleTo reports whether a value of the type can be converted to another
 // (using static type casting).
-func (s BuiltinType) ConvertibleTo(fetcher Fetcher, target Type) (bool, error) {
+func (s *BuiltinType) ConvertibleTo(fetcher Fetcher, target Type) (bool, error) {
 	return s.Equal(fetcher, target)
 }
 
+// Value returns a value pointing to the receiver.
+func (s *BuiltinType) Value(x Expr) AssignableExpr {
+	return &TypeValExpr{X: x, Typ: s}
+}
+
 // String representation of the type.
-func (s BuiltinType) String() string {
+func (s *BuiltinType) String() string {
 	return fmt.Sprint(s.Impl)
 }
 
@@ -409,16 +439,20 @@ func (s *atomicType) Rank() ArrayRank { return scalarRank }
 
 // AssignableTo reports if the type can be assigned to other.
 func (s *atomicType) AssignableTo(fetcher Fetcher, target Type) (bool, error) {
+	if assignFrom, ok := target.(assignsFrom); ok {
+		return assignFrom.assignableFrom(fetcher, s)
+	}
+
 	targetT, ok := target.(ArrayType)
 	if !ok {
 		return false, nil
 	}
 	if targetT.Rank().IsAtomic() {
-		if s.Knd == NumberIntKind && IsInteger(target.Kind()) {
+		if s.Knd == NumberIntKind && IsInteger(target) {
 			return true, nil
 		}
-		if s.Knd == NumberFloatKind && IsInteger(target.Kind()) {
-			return false, nil
+		if s.Knd == NumberFloatKind && IsFloat(target) {
+			return true, nil
 		}
 		return s.equalAtomic(targetT)
 	}
@@ -436,12 +470,16 @@ func (s *atomicType) AssignableTo(fetcher Fetcher, target Type) (bool, error) {
 // ConvertibleTo reports whether a value of the type can be converted to another
 // (using static type casting).
 func (s *atomicType) ConvertibleTo(fetcher Fetcher, target Type) (bool, error) {
+	if convertFrom, ok := target.(convertsFrom); ok {
+		return convertFrom.convertibleFrom(fetcher, s)
+	}
+
 	targetT, ok := target.(ArrayType)
 	if !ok {
 		return false, nil
 	}
 	if targetT.Rank().IsAtomic() {
-		return SupportOperators(target.Kind()), nil
+		return s.Kind() == target.Kind() || SupportOperators(s) == SupportOperators(target), nil
 	}
 	return s.Rank().Equal(fetcher, targetT.Rank())
 }
@@ -452,6 +490,16 @@ func (s *atomicType) Source() ast.Node {
 	return s.ArrayType()
 }
 
+// Value returns a value pointing to the receiver.
+func (s *atomicType) Value(x Expr) AssignableExpr {
+	return &TypeValExpr{X: x, Typ: s}
+}
+
+// ElementType returns an invalid type because an atomic type cannot be sliced.
+func (s *atomicType) ElementType() (Type, bool) {
+	return InvalidType(), false
+}
+
 // DataType returns the type of the element.
 func (s *atomicType) DataType() Type {
 	return s
@@ -460,13 +508,18 @@ func (s *atomicType) DataType() Type {
 // ArrayType returns the source code defining the type.
 // Always returns nil.
 func (s *atomicType) ArrayType() *ast.ArrayType {
-	return nil
+	return &ast.ArrayType{}
 }
 
+var (
+	zero      = &NumberInt{Src: &ast.BasicLit{Value: "0"}, Val: big.NewInt(0)}
+	zeroFloat = &NumberFloat{Src: &ast.BasicLit{Value: "0.0"}, Val: big.NewFloat(0)}
+)
+
 // Zero returns a zero expression of the same type.
-func (s *atomicType) Zero() Expr {
+func (s *atomicType) Zero() AssignableExpr {
 	return &NumberCastExpr{
-		X:   &NumberInt{Src: &ast.BasicLit{Value: "0"}},
+		X:   zero,
 		Typ: s,
 	}
 }
@@ -476,10 +529,8 @@ func (s *atomicType) String() string {
 	return s.Kind().String()
 }
 
-func (*NamedType) node() {}
-
 // MethodByName returns a method given its name, or nil if not method has that name.
-func (s *NamedType) MethodByName(name string) Func {
+func (s *NamedType) MethodByName(name string) PkgFunc {
 	for _, method := range s.Methods {
 		if method.Name() == name {
 			return method
@@ -489,7 +540,7 @@ func (s *NamedType) MethodByName(name string) Func {
 }
 
 // Kind of the underlying type.
-func (s *NamedType) Kind() Kind { return s.Underlying.Kind() }
+func (s *NamedType) Kind() Kind { return s.Underlying.Typ.Kind() }
 
 // Equal returns true if other is the same type.
 func (s *NamedType) Equal(fetcher Fetcher, other Type) (bool, error) {
@@ -503,7 +554,7 @@ func (s *NamedType) Equal(fetcher Fetcher, other Type) (bool, error) {
 	if s.FullName() != otherT.FullName() {
 		return false, nil
 	}
-	return s.Underlying.Equal(fetcher, otherT.Underlying)
+	return s.Underlying.Typ.Equal(fetcher, otherT.Underlying.Typ)
 }
 
 // AssignableTo reports if the type can be assigned to other.
@@ -511,10 +562,25 @@ func (s *NamedType) AssignableTo(fetcher Fetcher, target Type) (bool, error) {
 	return s.Equal(fetcher, target)
 }
 
+// AssignableFrom reports whether a given source type is assignable to a named type.
+func (s *NamedType) assignableFrom(fetcher Fetcher, source Type) (bool, error) {
+	if target, ok := s.Underlying.Typ.(assignsFrom); ok {
+		return target.assignableFrom(fetcher, source)
+	}
+	return s.Equal(fetcher, source)
+}
+
 // ConvertibleTo reports whether a value of the type can be converted to another
 // (using static type casting).
 func (s *NamedType) ConvertibleTo(fetcher Fetcher, target Type) (bool, error) {
-	return s.Underlying.Equal(fetcher, target)
+	if namedTarget, ok := target.(*NamedType); ok {
+		return s.Equal(fetcher, namedTarget)
+	}
+	return s.Underlying.Typ.ConvertibleTo(fetcher, target)
+}
+
+func (s *NamedType) convertibleFrom(fetcher Fetcher, source Type) (bool, error) {
+	return s.Underlying.Typ.Equal(fetcher, source)
 }
 
 // FullName returns the full name of the type, that is the full package path and the type name.
@@ -527,11 +593,32 @@ func (s *NamedType) Source() ast.Node { return s.Src }
 
 // Name of the type.
 func (s *NamedType) Name() string {
-	return s.NameT
+	return s.NameDef().Name
+}
+
+// NameDef returns the name defining the storage.
+func (s *NamedType) NameDef() *ast.Ident {
+	return s.Src.Name
+}
+
+// Type returns the type of an expression.
+func (s *NamedType) Type() Type {
+	return MetaType()
+}
+
+// Value assigned to the constant.
+func (s *NamedType) Value(x Expr) AssignableExpr {
+	return &TypeValExpr{
+		X:   x,
+		Typ: s,
+	}
 }
 
 // String representation of the type.
 func (s *NamedType) String() string {
+	if s.File == nil {
+		return s.Name()
+	}
 	return s.Package().Name.Name + "." + s.Name()
 }
 
@@ -541,12 +628,15 @@ func (s *NamedType) Package() *Package {
 }
 
 // Underlying returns the underlying type of a type.
-func Underlying(tp Type) Type {
-	named, ok := tp.(*NamedType)
-	if !ok {
-		return tp
+func Underlying(typ Type) Type {
+	switch typT := typ.(type) {
+	case *NamedType:
+		return Underlying(typT.Underlying.Typ)
+	case *TypeParam:
+		return Underlying(typT.Field.Type())
+	default:
+		return typ
 	}
-	return Underlying(named.Underlying)
 }
 
 func (*StructType) node() {}
@@ -577,6 +667,11 @@ func (s *StructType) ConvertibleTo(fetcher Fetcher, target Type) (bool, error) {
 // Source returns the node in the AST tree.
 func (s *StructType) Source() ast.Node { return s.Src }
 
+// Value returns a value pointing to the receiver.
+func (s *StructType) Value(x Expr) AssignableExpr {
+	return &TypeValExpr{X: x, Typ: s}
+}
+
 // String representation of the type.
 func (s *StructType) String() string {
 	return s.Kind().String()
@@ -605,7 +700,7 @@ func (s *FuncType) Equal(fetcher Fetcher, other Type) (bool, error) {
 	if s == otherT {
 		return true, nil
 	}
-	recvOk, err := s.Receiver.Equal(fetcher, otherT.Receiver)
+	recvOk, err := s.Receiver.Type().Equal(fetcher, otherT.Receiver.Type())
 	if err != nil {
 		return false, err
 	}
@@ -620,6 +715,18 @@ func (s *FuncType) Equal(fetcher Fetcher, other Type) (bool, error) {
 	return recvOk && paramsOk && resultsOk, nil
 }
 
+// ReceiverField returns a field representing the receiver of the function, or nil if the function has no receiver.
+func (s *FuncType) ReceiverField() *Field {
+	if s.Receiver == nil {
+		return nil
+	}
+	grp := s.Receiver.List[0]
+	if len(grp.Fields) == 0 {
+		return &Field{Group: grp}
+	}
+	return grp.Fields[0]
+}
+
 // AssignableTo reports if the type can be assigned to other.
 func (s *FuncType) AssignableTo(fetcher Fetcher, other Type) (bool, error) {
 	return s.Equal(fetcher, other)
@@ -631,23 +738,13 @@ func (s *FuncType) ConvertibleTo(fetcher Fetcher, target Type) (bool, error) {
 	return s.Equal(fetcher, target)
 }
 
+// Value returns a value pointing to the receiver.
+func (s *FuncType) Value(x Expr) AssignableExpr {
+	return &TypeValExpr{X: x, Typ: s}
+}
+
 // Source returns the node in the AST tree.
 func (s *FuncType) Source() ast.Node { return s.Src }
-
-// String representation of the type.
-func (s *FuncType) String() string {
-	var b strings.Builder
-	b.WriteString("func")
-	if s.Receiver != nil {
-		b.WriteString(" (")
-		b.WriteString(s.Receiver.Name())
-		b.WriteString(") ")
-	}
-	b.WriteString(s.Params.TupleType().String())
-	b.WriteRune(' ')
-	b.WriteString(s.Results.Type().String())
-	return b.String()
-}
 
 func (*SliceType) node() {}
 
@@ -663,7 +760,7 @@ func (s *SliceType) Equal(fetcher Fetcher, other Type) (bool, error) {
 	if s.Rank != otherT.Rank {
 		return false, nil
 	}
-	return otherT.DType.Equal(fetcher, s.DType)
+	return otherT.DType.Typ.Equal(fetcher, s.DType.Typ)
 }
 
 // AssignableTo reports if the type can be assigned to other.
@@ -677,8 +774,28 @@ func (s *SliceType) ConvertibleTo(fetcher Fetcher, target Type) (bool, error) {
 	return false, nil
 }
 
+// Value returns a value pointing to the receiver.
+func (s *SliceType) Value(x Expr) AssignableExpr {
+	return &TypeValExpr{X: x, Typ: s}
+}
+
 // Source returns the node in the AST tree.
 func (s *SliceType) Source() ast.Node { return s.Src }
+
+// ElementType returns the type of an element in that slice.
+func (s *SliceType) ElementType() (Type, bool) {
+	if s.Rank <= 0 {
+		return InvalidType(), false
+	}
+	if s.Rank == 1 {
+		return s.DType.Typ, true
+	}
+	return &SliceType{
+		BaseType: s.BaseType,
+		DType:    s.DType,
+		Rank:     s.Rank - 1,
+	}, true
+}
 
 // String representation of the type.
 func (s *SliceType) String() string {
@@ -698,15 +815,15 @@ func (*arrayType) node() {}
 // NewArrayType returns a new array from a data type and a rank.
 func NewArrayType(src *ast.ArrayType, dtype Type, rank ArrayRank) ArrayType {
 	if dtype == nil {
-		dtype = UnknownType{}
+		dtype = UnknownType()
 	}
 	if rank == nil {
-		rank = &GenericRank{}
+		rank = &RankInfer{}
 	}
 	return &arrayType{
-		Src:    src,
-		DTypeF: dtype,
-		RankF:  rank,
+		BaseType: BaseType[*ast.ArrayType]{Src: src},
+		DTypeF:   dtype,
+		RankF:    rank,
 	}
 }
 
@@ -719,6 +836,24 @@ func (s *arrayType) Kind() Kind {
 		return s.DTypeF.Kind()
 	}
 	return ArrayKind
+}
+
+// ElementType returns the type of the element with rank-1.
+func (s *arrayType) ElementType() (Type, bool) {
+	switch s.RankF.NumAxes() {
+	case 0:
+		return InvalidType(), false
+	case 1:
+		return s.DTypeF, true
+	default:
+		return &arrayType{
+			BaseType: BaseType[*ast.ArrayType]{
+				Src: &ast.ArrayType{},
+			},
+			DTypeF: s.DTypeF,
+			RankF:  s.RankF.SubRank(),
+		}, true
+	}
 }
 
 // DataType returns the type of the data stored in the array.
@@ -770,6 +905,7 @@ func (s *arrayType) AssignableTo(fetcher Fetcher, target Type) (bool, error) {
 // ConvertibleTo reports whether a value of the type can be converted to another
 // (using static type casting).
 func (s *arrayType) ConvertibleTo(fetcher Fetcher, target Type) (bool, error) {
+	target = Underlying(target)
 	targetT, ok := target.(ArrayType)
 	if !ok {
 		return false, nil
@@ -784,6 +920,11 @@ func (s *arrayType) ConvertibleTo(fetcher Fetcher, target Type) (bool, error) {
 	return s.RankF.ConvertibleTo(fetcher, targetT.Rank())
 }
 
+// Value returns a value pointing to the receiver.
+func (s *arrayType) Value(x Expr) AssignableExpr {
+	return &TypeValExpr{X: x, Typ: s}
+}
+
 // Source returns the node in the AST tree.
 func (s *arrayType) Source() ast.Node { return s.ArrayType() }
 
@@ -793,7 +934,7 @@ func (s *arrayType) ArrayType() *ast.ArrayType {
 }
 
 // Zero returns a zero literal of this type
-func (s *arrayType) Zero() Expr {
+func (s *arrayType) Zero() AssignableExpr {
 	return &ArrayLitExpr{Typ: s}
 }
 
@@ -810,83 +951,55 @@ func (s *arrayType) String() string {
 	return rank + dtype
 }
 
-func (s *PackageRef) node()          {}
-func (s *PackageRef) referenceNode() {}
+func (*TypeParam) node() {}
 
-// Source returns the node in the AST tree.
-func (s *PackageRef) Source() ast.Node { return s.Src }
-
-// Equal returns true if other is the same type.
-func (s *PackageRef) Equal(_ Fetcher, other Type) (bool, error) {
-	otherT, ok := other.(*PackageRef)
-	if !ok {
-		return false, nil
-	}
-	return s.Decl.Package.Path == otherT.Decl.Package.Path, nil
+// Kind of the type.
+func (s *TypeParam) Kind() Kind {
+	return s.Field.Type().Kind()
 }
 
-// AssignableTo reports if the type can be assigned to other.
-func (s *PackageRef) AssignableTo(Fetcher, Type) (bool, error) {
-	return false, nil
+// Equal returns true if other is the same type.
+func (s *TypeParam) Equal(fetcher Fetcher, typ Type) (bool, error) {
+	return s.Field.Type().Equal(fetcher, typ)
+}
+
+// AssignableTo reports whether a value of the type can be assigned to another.
+func (s *TypeParam) AssignableTo(fetcher Fetcher, typ Type) (bool, error) {
+	return s.Field.Type().AssignableTo(fetcher, typ)
 }
 
 // ConvertibleTo reports whether a value of the type can be converted to another
 // (using static type casting).
-func (s *PackageRef) ConvertibleTo(fetcher Fetcher, target Type) (bool, error) {
-	return false, nil
+func (s *TypeParam) ConvertibleTo(fetcher Fetcher, typ Type) (bool, error) {
+	return s.Field.Type().ConvertibleTo(fetcher, typ)
 }
 
-// Kind always return invalid. A package is not a valid GX type.
-func (s *PackageRef) Kind() Kind { return InvalidKind }
+// Source defining the type.
+func (s *TypeParam) Source() ast.Node {
+	return s.Field.Type().Source()
+}
 
-// Expr returns the expression in the source code.
-func (s *PackageRef) Expr() ast.Expr { return s.Src }
+// Type of the type.
+func (s *TypeParam) Type() Type {
+	return s.Field.Type().Type()
+}
+
+// Value returns a value pointing to the receiver.
+func (s *TypeParam) Value(x Expr) AssignableExpr {
+	return &TypeValExpr{X: x, Typ: s}
+}
 
 // String representation of the type.
-func (s *PackageRef) String() string {
-	return s.Decl.Package.String()
-}
-
-func (s *PackageTypeSelector) node()          {}
-func (s *PackageTypeSelector) referenceNode() {}
-
-// Source returns the node in the AST tree.
-func (s *PackageTypeSelector) Source() ast.Node { return s.Src }
-
-// Kind returns the kind of the type being referenced.
-func (s *PackageTypeSelector) Kind() Kind { return s.Typ.Kind() }
-
-// Equal returns true if other is the same type.
-func (s *PackageTypeSelector) Equal(fetcher Fetcher, other Type) (bool, error) {
-	return s.Typ.Equal(fetcher, other)
-}
-
-// AssignableTo reports if the type can be assigned to other.
-func (s *PackageTypeSelector) AssignableTo(fetcher Fetcher, other Type) (bool, error) {
-	return s.Typ.AssignableTo(fetcher, other)
-}
-
-// ConvertibleTo reports whether a value of the type can be converted to another
-// (using static type casting).
-func (s *PackageTypeSelector) ConvertibleTo(fetcher Fetcher, target Type) (bool, error) {
-	return false, nil
-}
-
-// Expr returns the expression in the source code.
-func (s *PackageTypeSelector) Expr() ast.Expr { return s.Src }
-
-// Type returns the type of the expression.
-func (s *PackageTypeSelector) Type() Type { return s }
-
-// String representation of the type.
-func (s *PackageTypeSelector) String() string {
-	return s.Typ.String()
+func (s *TypeParam) String() string {
+	return s.Field.Type().String()
 }
 
 // IsStatic return true if the type is static, that is if the instance of the type
 // can be evaluated when the graph is being constructed.
 func IsStatic(tp Type) bool {
 	switch tp.Kind() {
+	case SliceKind:
+		return IsStatic(tp.(*SliceType).DType.Typ)
 	case IntIdxKind, IntLenKind:
 		return true
 	}
@@ -904,8 +1017,15 @@ type (
 		Name *ast.Ident
 		Path string
 
+		Decls *Declarations
+	}
+
+	// Declarations in a package.
+	Declarations struct {
+		Package *Package
+
 		Consts []*ConstDecl
-		Funcs  []Func
+		Funcs  []PkgFunc
 		Types  []*NamedType
 		Vars   []*VarDecl
 	}
@@ -933,7 +1053,7 @@ type (
 
 	// Func is a callable GX function.
 	Func interface {
-		StaticValue
+		Expr
 
 		// Name of the function (without the package name).
 		Name() string
@@ -949,7 +1069,12 @@ type (
 		// types passed as args. Note that both FuncType() and Type() must return the same underlying
 		// value, though FuncType returns the concrete type.
 		FuncType() *FuncType
-		Type() Type
+	}
+
+	// PkgFunc is a function declared at the package level.
+	PkgFunc interface {
+		StorageWithValue
+		Func
 	}
 
 	// Statically assert that the Func and Expr interfaces are compatible.
@@ -969,18 +1094,14 @@ type (
 	// FuncBuiltin is a function provided by a backend.
 	// The implementation is opaque to GX.
 	FuncBuiltin struct {
-		Package *Package
-		FName   string
-		FType   *FuncType
-		Impl    FuncImpl
+		FFile *File
+		Src   *ast.FuncDecl
+		FType *FuncType
+		Impl  FuncImpl
 	}
 
 	// FuncMetaImpl is a builtin opaque function to produce an IR.
-	FuncMetaImpl any
-
-	// MacroImpl is a macro function, that is a function which builds
-	// a new function.
-	MacroImpl func(fetcher Fetcher, target *FuncDecl, args []Expr) error
+	FuncMetaImpl func(fetcher Fetcher, target *FuncDecl, args []AssignableExpr) (*FuncDecl, bool)
 
 	// FuncMeta is a function that takes a set of IR nodes as an input
 	// and returns a new set of IR nodes (or a compiler error).
@@ -989,7 +1110,6 @@ type (
 	FuncMeta struct {
 		FFile *File
 		Src   *ast.FuncDecl
-		FType *FuncType
 		Impl  FuncMetaImpl
 	}
 
@@ -1003,16 +1123,22 @@ type (
 
 	// ImportDecl imports a package.
 	ImportDecl struct {
-		Src     *ast.ImportSpec
-		Package *Package
+		Src  *ast.ImportSpec
+		Path string
+	}
+
+	// VarExpr is a name,expr static variable pair.
+	VarExpr struct {
+		Decl  *VarDecl
+		VName *ast.Ident
 	}
 
 	// VarDecl declares a static variable and, optionally, a default value.
 	VarDecl struct {
 		FFile *File
 		Src   *ast.ValueSpec
-		VName *ast.Ident
 		TypeV Type
+		Exprs []*VarExpr
 	}
 
 	// ConstExpr is a name,expr constant pair.
@@ -1020,29 +1146,31 @@ type (
 		Decl *ConstDecl
 
 		VName *ast.Ident
-		Value Expr
+		Val   AssignableExpr
 	}
 
 	// ConstDecl declares a package constant.
 	ConstDecl struct {
 		FFile *File
 		Src   *ast.ValueSpec
-		Type  Type
-
+		Type  *TypeValExpr
 		Exprs []*ConstExpr
 	}
 )
 
 var (
-	_ Node       = (*Package)(nil)
-	_ Node       = (*ImportDecl)(nil)
-	_ Node       = (*ConstDecl)(nil)
-	_ StaticExpr = (*ConstExpr)(nil)
-	_ Func       = (*FuncBuiltin)(nil)
-	_ Func       = (*FuncDecl)(nil)
-	_ Func       = (*FuncLit)(nil)
-	_ Func       = (*FuncMeta)(nil)
-	_ Expr       = (*FuncLit)(nil)
+	_ Node             = (*Package)(nil)
+	_ StorageWithValue = (*ImportDecl)(nil)
+	_ Node             = (*ConstDecl)(nil)
+	_ StorageWithValue = (*ConstExpr)(nil)
+	_ Node             = (*VarDecl)(nil)
+	_ Storage          = (*VarExpr)(nil)
+	_ PkgFunc          = (*FuncBuiltin)(nil)
+	_ PkgFunc          = (*FuncDecl)(nil)
+	_ Func             = (*FuncLit)(nil)
+	_ PkgFunc          = (*FuncMeta)(nil)
+	_ WithStore        = (*FuncLit)(nil)
+	_ StorageWithValue = (*FuncLit)(nil)
 )
 
 func (*Package) node() {}
@@ -1071,8 +1199,8 @@ func (pkg *Package) FullName() string {
 
 // TypeByName returns a type defined in the package given its name.
 // Returns nil if the type could not be found.
-func (pkg *Package) TypeByName(name string) *NamedType {
-	for _, tp := range pkg.Types {
+func (decls *Declarations) TypeByName(name string) *NamedType {
+	for _, tp := range decls.Types {
 		if tp.Name() == name {
 			return tp
 		}
@@ -1091,9 +1219,9 @@ func IsExported(name string) bool {
 }
 
 // ExportedFuncs returns the list of exported functions of a package.
-func (pkg *Package) ExportedFuncs() iter.Seq[Func] {
-	return func(yield func(Func) bool) {
-		for _, fn := range pkg.Funcs {
+func (pkg *Package) ExportedFuncs() iter.Seq[PkgFunc] {
+	return func(yield func(PkgFunc) bool) {
+		for _, fn := range pkg.Decls.Funcs {
 			if !IsExported(fn.Name()) {
 				continue
 			}
@@ -1105,8 +1233,8 @@ func (pkg *Package) ExportedFuncs() iter.Seq[Func] {
 }
 
 // FindFunc returns a function given its name or nil if not found.
-func (pkg *Package) FindFunc(name string) Func {
-	for _, fn := range pkg.Funcs {
+func (pkg *Package) FindFunc(name string) PkgFunc {
+	for _, fn := range pkg.Decls.Funcs {
 		if fn.Name() == name {
 			return fn
 		}
@@ -1116,8 +1244,8 @@ func (pkg *Package) FindFunc(name string) Func {
 
 // ExportedTypes returns the list of exported types of a package.
 func (pkg *Package) ExportedTypes() []*NamedType {
-	types := []*NamedType{}
-	for _, tp := range pkg.Types {
+	var types []*NamedType
+	for _, tp := range pkg.Decls.Types {
 		if !IsExported(tp.Name()) {
 			continue
 		}
@@ -1128,8 +1256,8 @@ func (pkg *Package) ExportedTypes() []*NamedType {
 
 // ExportedConsts returns the list of exported constants.
 func (pkg *Package) ExportedConsts() []*ConstExpr {
-	exprs := []*ConstExpr{}
-	for _, csts := range pkg.Consts {
+	var exprs []*ConstExpr
+	for _, csts := range pkg.Decls.Consts {
 		for _, cst := range csts.Exprs {
 			if !IsExported(cst.VName.Name) {
 				continue
@@ -1152,8 +1280,18 @@ func (f *File) Name() string {
 	return f.Package.FSet.Position(f.Src.Pos()).Filename
 }
 
-func (*FuncDecl) node()        {}
-func (*FuncDecl) staticValue() {}
+// FileSet returns the package fileset.
+func (f *File) FileSet() *token.FileSet {
+	if f == nil {
+		return nil
+	}
+	return f.Package.FSet
+}
+
+func (*FuncDecl) node()         {}
+func (*FuncDecl) staticValue()  {}
+func (*FuncDecl) storage()      {}
+func (*FuncDecl) storageValue() {}
 
 // Source returns the node in the AST tree.
 func (s *FuncDecl) Source() ast.Node { return s.Src }
@@ -1167,6 +1305,20 @@ func (s *FuncDecl) Name() string {
 	return id.Name
 }
 
+// NameDef is the name definition of the function.
+func (s *FuncDecl) NameDef() *ast.Ident {
+	return s.Src.Name
+}
+
+// Value returns a reference to the function.
+func (s *FuncDecl) Value(x Expr) AssignableExpr {
+	return &FuncValExpr{
+		X: x,
+		F: s,
+		T: s.FType,
+	}
+}
+
 // FullyQualifiedName returns a fully qualified function name, that is
 // the full package path and the name of the function.
 func (s *FuncDecl) FullyQualifiedName() string {
@@ -1176,23 +1328,6 @@ func (s *FuncDecl) FullyQualifiedName() string {
 // Doc returns associated documentation or nil.
 func (s *FuncDecl) Doc() *ast.CommentGroup {
 	return s.Src.Doc
-}
-
-// ReceiverField returns a field representing the receiver of the function, or nil if the function has no receiver.
-func (s *FuncDecl) ReceiverField() *Field {
-	if s.FType.Receiver == nil {
-		return nil
-	}
-	groupSrc := s.Src.Recv.List[0]
-	field := &Field{
-		Group: &FieldGroup{
-			Src:  groupSrc,
-			Type: s.FType.Receiver,
-		},
-		Name: groupSrc.Names[0],
-	}
-	field.Group.Fields = []*Field{field}
-	return field
 }
 
 // Type returns the type of the function.
@@ -1210,24 +1345,36 @@ func (s *FuncDecl) File() *File {
 	return s.FFile
 }
 
-func (*FuncBuiltin) node()        {}
-func (*FuncBuiltin) staticValue() {}
+func (*FuncBuiltin) node()         {}
+func (*FuncBuiltin) staticValue()  {}
+func (*FuncBuiltin) storage()      {}
+func (*FuncBuiltin) storageValue() {}
+
+// Source returns the node in the AST tree.
+func (s *FuncBuiltin) Source() ast.Node { return s.Src }
 
 // Name of the function. Returns an empty string if the function is anonymous.
 func (s *FuncBuiltin) Name() string {
-	return s.FName
+	return s.NameDef().Name
+}
+
+// NameDef is the name definition of the function.
+func (s *FuncBuiltin) NameDef() *ast.Ident {
+	return s.Src.Name
+}
+
+// Value returns a reference to the function.
+func (s *FuncBuiltin) Value(x Expr) AssignableExpr {
+	return &FuncValExpr{
+		X: x,
+		F: s,
+		T: s.FType,
+	}
 }
 
 // Doc returns associated documentation or nil.
 func (s *FuncBuiltin) Doc() *ast.CommentGroup {
 	return nil
-}
-
-// File declaring the builtin function.
-// By definition, the function has not been declared in a file.
-// Consequently, the file returned has no source file.
-func (s *FuncBuiltin) File() *File {
-	return &File{Package: s.Package}
 }
 
 // Type returns the type of the function.
@@ -1240,12 +1387,39 @@ func (s *FuncBuiltin) FuncType() *FuncType {
 	return s.FType
 }
 
-func (*FuncLit) node()        {}
-func (*FuncLit) staticValue() {}
+// File declaring the function.
+func (s *FuncBuiltin) File() *File {
+	return s.FFile
+}
+
+func (*FuncLit) node()         {}
+func (*FuncLit) staticValue()  {}
+func (*FuncLit) assignable()   {}
+func (*FuncLit) storage()      {}
+func (*FuncLit) storageValue() {}
 
 // Name of the function. Returns an empty string since literals are always anonymous.
 func (s *FuncLit) Name() string {
 	return ""
+}
+
+// Store returns the function literal as a store.
+func (s *FuncLit) Store() Storage {
+	return s
+}
+
+// NameDef returns nil because function literals are anonymous.
+func (s *FuncLit) NameDef() *ast.Ident {
+	return nil
+}
+
+// Value returns the function literal as an assignable expression.
+func (s *FuncLit) Value(x Expr) AssignableExpr {
+	return &FuncValExpr{
+		X: x,
+		F: s,
+		T: s.FType,
+	}
 }
 
 // Doc returns associated documentation or nil.
@@ -1279,12 +1453,28 @@ func (s *FuncLit) String() string {
 	return "func {...}"
 }
 
-func (*FuncMeta) node()        {}
-func (*FuncMeta) staticValue() {}
+func (*FuncMeta) node()         {}
+func (*FuncMeta) staticValue()  {}
+func (*FuncMeta) storage()      {}
+func (*FuncMeta) storageValue() {}
 
 // Name of the function.
 func (s *FuncMeta) Name() string {
 	return s.Src.Name.Name
+}
+
+// NameDef is the name definition of the function.
+func (s *FuncMeta) NameDef() *ast.Ident {
+	return s.Src.Name
+}
+
+// Value returns a reference to the function.
+func (s *FuncMeta) Value(x Expr) AssignableExpr {
+	return &FuncValExpr{
+		X: x,
+		F: s,
+		T: s.FuncType(),
+	}
 }
 
 // Doc returns associated documentation or nil.
@@ -1297,92 +1487,139 @@ func (s *FuncMeta) File() *File {
 	return s.FFile
 }
 
-// Type returns the type of the function.
-func (s *FuncMeta) Type() Type {
-	return s.FType
-}
-
 // FuncType returns the concrete type of the function.
 func (s *FuncMeta) FuncType() *FuncType {
-	return s.FType
+	return MetaFuncType()
+}
+
+// Type returns the type of the function.
+func (s *FuncMeta) Type() Type {
+	return s.FuncType()
 }
 
 // Source returns the node in the AST tree.
-func (s *FuncMeta) Source() ast.Node { return s.Src }
+func (s *FuncMeta) Source() ast.Node {
+	return s.Src
+}
 
 // String representation of the literal.
 func (s *FuncMeta) String() string {
-	return "func {...}"
+	return fmt.Sprintf("metafunc %s", s.Name())
 }
 
-func (*ImportDecl) node() {}
-
-// Name returns the identifier naming the package in the import.
-func (s *ImportDecl) Name() *ast.Ident {
-	return s.Src.Name
-}
+func (*ImportDecl) node()         {}
+func (*ImportDecl) staticValue()  {}
+func (*ImportDecl) storage()      {}
+func (*ImportDecl) storageValue() {}
 
 // Source returns the node in the AST tree.
 func (s *ImportDecl) Source() ast.Node {
 	return s.Src
 }
 
-func (*VarDecl) node() {}
-
-// Source returns the node in the AST tree.
-func (s *VarDecl) Source() ast.Node {
-	return s.Src
+// Name used to reference the package.
+func (s *ImportDecl) Name() string {
+	if s.Src.Name == nil {
+		return filepath.Base(s.Path)
+	}
+	return s.Src.Name.Name
 }
 
-// Name of the variable.
-func (s *VarDecl) Name() *ast.Ident {
-	return s.VName
+// NameDef is the name definition of the function.
+func (s *ImportDecl) NameDef() *ast.Ident {
+	if s.Src.Name != nil {
+		return s.Src.Name
+	}
+	return &ast.Ident{
+		NamePos: s.Src.Path.ValuePos,
+		Name:    s.Name(),
+	}
 }
 
-// Type of the variable.
-func (s *VarDecl) Type() Type {
-	return s.TypeV
+// Type returns the IR package type.
+func (*ImportDecl) Type() Type {
+	return PackageType()
+}
+
+// Value returns a reference to the function.
+func (s *ImportDecl) Value(x Expr) AssignableExpr {
+	return &PackageRef{
+		X:    x.(*ValueRef),
+		Decl: s,
+	}
+}
+
+func (s *ImportDecl) String() string {
+	return s.Path
 }
 
 func (*ConstDecl) node() {}
 
-func (*ConstExpr) node()        {}
-func (*ConstExpr) staticValue() {}
+func (*ConstExpr) node()         {}
+func (*ConstExpr) storage()      {}
+func (*ConstExpr) storageValue() {}
 
 // Source returns the node in the AST tree.
 func (cst *ConstExpr) Source() ast.Node {
 	return cst.VName
 }
 
+// NameDef returns the name defining the storage.
+func (cst *ConstExpr) NameDef() *ast.Ident {
+	return cst.VName
+}
+
 // Type returns the type of an expression.
 func (cst *ConstExpr) Type() Type {
-	return cst.Decl.Type
+	return cst.Val.Type()
 }
 
-// Expr returns the source of the expression.
-func (cst *ConstExpr) Expr() ast.Expr {
-	return cst.Value.Expr()
+// Value assigned to the constant.
+func (cst *ConstExpr) Value(Expr) AssignableExpr {
+	return cst.Val
 }
 
-// String representation of the constant.
-func (cst *ConstExpr) String() string {
-	return fmt.Sprintf("const(%s)", cst.VName)
+func (*VarDecl) node() {}
+
+func (*VarExpr) node()    {}
+func (*VarExpr) storage() {}
+
+// Source returns the node in the AST tree.
+func (vr *VarExpr) Source() ast.Node {
+	return vr.VName
+}
+
+// Type returns the type of an expression.
+func (vr *VarExpr) Type() Type {
+	return vr.Decl.TypeV
+}
+
+// NameDef returns the identifier for the static variable.
+func (vr *VarExpr) NameDef() *ast.Ident {
+	return vr.VName
 }
 
 // ----------------------------------------------------------------------------
 // Array axes specification
 
+const (
+	// DefineAxisGroup is the prefix used in parameters to define an axis group.
+	DefineAxisGroup = "___"
+	// DefineAxisLength is the prefix used in parameters to define an axis length.
+	DefineAxisLength = "_"
+)
+
 type (
 	// ArrayRank of an array.
 	ArrayRank interface {
-		Node
+		Expr
 		nodeRank()
-
-		// IsGeneric returns true if some axes are unknown.
-		IsGeneric() bool
 
 		// IsAtomic returns true if the rank has no axes.
 		IsAtomic() bool
+
+		// Axes returns all axis in the rank.
+		Axes() []AxisLengths
 
 		// NumAxes returns the number of axes or -1 if unknown.
 		NumAxes() int
@@ -1390,67 +1627,60 @@ type (
 		// Equal returns true if two ranks are equal.
 		Equal(Fetcher, ArrayRank) (bool, error)
 
-		// AssignableTo returns true if an array can be assigned to another.
+		// AssignableTo returns true if this rank can be assigned to the destination rank.
 		AssignableTo(Fetcher, ArrayRank) (bool, error)
 
-		// ConvertibleTo returns true if other can be converted to the receiver.
+		// ConvertibleTo returns true if this rank can be converted to the destination rank.
 		ConvertibleTo(Fetcher, ArrayRank) (bool, error)
+
+		// SubRank returns the rank with the top-axis removed.
+		SubRank() ArrayRank
 
 		// String representation of the rank.
 		String() string
 	}
 
-	// ResolvedRank is an ArrayRank that can or has been resolved by the compiler.
-	ResolvedRank interface {
-		ArrayRank
-		// Resolved returns the resolved rank or nil if the rank has not been resolved.
-		Resolved() *Rank
-	}
-
 	// Rank with a known number of axes.
 	// The length of some axes may still be unknown.
 	Rank struct {
-		Src  *ast.ArrayType
-		Axes []AxisLength
-	}
-
-	// GenericRank is a rank determined at compile time.
-	GenericRank struct {
 		Src *ast.ArrayType
-		Rnk *Rank
-
-		// Name is an optional rank parameter identifier.
-		Name *ast.Ident
+		Ax  []AxisLengths
 	}
 
-	// AnyRank is a rank that is determined at runtime and not checked by the compiler.
-	AnyRank struct {
+	// RankInfer is a rank determined at compile time
+	// (specified using ___ or ...).
+	RankInfer struct {
 		Src *ast.ArrayType
+		Rnk ArrayRank
 	}
 
-	// AxisLength specification of an array.
-	AxisLength interface {
-		alen()
+	// AxisLengths specification of an array.
+	AxisLengths interface {
+		axExprString() string
 		Expr
+
+		// AxisValue returns the value associated with the axis.
+		// Can return nil if the axis has not been resolved.
+		AxisValue() AssignableExpr
+
+		// NumAxes returns the number of axis represented by the group.
+		NumAxes() int
 
 		// Equal returns true if two axis lengths have been resolved and are equal.
 		// Returns an error if one of the axis has not been resolved.
-		Equal(Fetcher, AxisLength) (bool, error)
+		Equal(Fetcher, AxisLengths) (bool, error)
 
 		// AssignableTo returns true if this axis length can be assigned to another.
-		AssignableTo(Fetcher, AxisLength) (bool, error)
-
-		// IsGeneric returns true if the axis length is unknown.
-		IsGeneric() bool
+		AssignableTo(Fetcher, AxisLengths) (bool, error)
 
 		// String representation of the axis length.
 		String() string
 	}
 
-	// AxisEllipsis is an array axis specified as "_".
-	AxisEllipsis struct {
+	// AxisInfer is an array axis specified as "_" and inferred by the compiler.
+	AxisInfer struct {
 		Src *ast.Ident
-		X   AxisLength
+		X   AxisLengths
 	}
 
 	// AxisExpr is an array axis specified using an expression.
@@ -1460,16 +1690,34 @@ type (
 		// the expression is formed from a function call.
 		Src ast.Expr
 		// X computes the size of the axis.
-		X Expr
+		X AssignableExpr
+	}
+
+	// AxisLenName is an axis for which the length has been named.
+	AxisLenName struct {
+		Src  *ast.Ident
+		Name string
+	}
+
+	// AxisGroup is a group of axis defined by a name.
+	AxisGroup struct {
+		// Source of the axis expression.
+		// May be different from the source of the expression, for example
+		// the expression is formed from a function call.
+		Src  *ast.Ident
+		Name string
 	}
 )
 
 var (
-	_ ResolvedRank = (*Rank)(nil)
-	_ ResolvedRank = (*GenericRank)(nil)
-	_ ArrayRank    = (*AnyRank)(nil)
-	_ AxisLength   = (*AxisExpr)(nil)
-	_ AxisLength   = (*AxisEllipsis)(nil)
+	_ ArrayRank   = (*Rank)(nil)
+	_ ArrayRank   = (*RankInfer)(nil)
+	_ AxisLengths = (*AxisExpr)(nil)
+	_ AxisLengths = (*AxisInfer)(nil)
+	_ AxisLengths = (*AxisGroup)(nil)
+	_ Storage     = (*AxisGroup)(nil)
+	_ AxisLengths = (*AxisLenName)(nil)
+	_ Storage     = (*AxisLenName)(nil)
 )
 
 func (*Rank) node()     {}
@@ -1477,32 +1725,46 @@ func (*Rank) nodeRank() {}
 
 // NewRank returns a new rank from a slice of axis lengths.
 func NewRank(axlens []int) *Rank {
-	axes := make([]AxisLength, len(axlens))
+	axes := make([]AxisLengths, len(axlens))
 	for i, al := range axlens {
 		axes[i] = &AxisExpr{
-			X: &AtomicValueT[Int]{
-				Val: Int(al),
+			X: &NumberCastExpr{
+				X:   &NumberInt{Val: big.NewInt(int64(al))},
 				Typ: IntLenType(),
 			},
 		}
 	}
-	return &Rank{Axes: axes}
+	return &Rank{Ax: axes}
 }
+
+// Type returns the rank type.
+func (r *Rank) Type() Type { return RankType() }
 
 // Source returns the source node defining the rank.
 func (r *Rank) Source() ast.Node { return r.Src }
 
 // NumAxes returns the number of axes.
-func (r *Rank) NumAxes() int { return len(r.Axes) }
+func (r *Rank) NumAxes() int {
+	n := 0
+	for _, ax := range r.Ax {
+		ni := ax.NumAxes()
+		if ni < 0 {
+			return ni
+		}
+		n += ni
+	}
+	return n
+}
+
+// Axes returns all axis in the rank.
+func (r *Rank) Axes() []AxisLengths { return r.Ax }
 
 // Equal returns true if other has the same number of axes and each axis has the same length.
 func (r *Rank) Equal(fetcher Fetcher, other ArrayRank) (bool, error) {
 	switch otherT := other.(type) {
-	case *AnyRank:
-		return false, nil
-	case *GenericRank:
+	case *RankInfer:
 		if otherT.Rnk == nil {
-			return true, nil
+			return false, errors.Errorf("rank not inferred")
 		}
 		return r.equalRank(fetcher, otherT.Rnk)
 	case *Rank:
@@ -1512,14 +1774,15 @@ func (r *Rank) Equal(fetcher Fetcher, other ArrayRank) (bool, error) {
 	}
 }
 
-func (r *Rank) equalRank(fetcher Fetcher, other *Rank) (bool, error) {
+func (r *Rank) equalRank(fetcher Fetcher, other ArrayRank) (bool, error) {
 	// Check the number of axes.
-	if len(r.Axes) != len(other.Axes) {
+	otherAx := other.Axes()
+	if len(r.Ax) != len(otherAx) {
 		return false, nil
 	}
 	// Check each axis.
-	for i, dimX := range r.Axes {
-		dimEq, err := dimX.Equal(fetcher, other.Axes[i])
+	for i, dimX := range r.Ax {
+		dimEq, err := dimX.Equal(fetcher, otherAx[i])
 		if err != nil {
 			return false, err
 		}
@@ -1530,12 +1793,13 @@ func (r *Rank) equalRank(fetcher Fetcher, other *Rank) (bool, error) {
 	return true, nil
 }
 
-func (r *Rank) assignableTo(fetcher Fetcher, dst *Rank) (bool, error) {
-	if len(r.Axes) != len(dst.Axes) {
+func (r *Rank) assignableTo(fetcher Fetcher, dst ArrayRank) (bool, error) {
+	dstAx := dst.Axes()
+	if len(r.Ax) != len(dstAx) {
 		return false, nil
 	}
-	for i, dimThis := range r.Axes {
-		ok, err := dimThis.AssignableTo(fetcher, dst.Axes[i])
+	for i, dimThis := range r.Ax {
+		ok, err := dimThis.AssignableTo(fetcher, dstAx[i])
 		if !ok || err != nil {
 			return ok, err
 		}
@@ -1543,22 +1807,10 @@ func (r *Rank) assignableTo(fetcher Fetcher, dst *Rank) (bool, error) {
 	return true, nil
 }
 
-// IsGeneric returns true if the length of some axes are unknown.
-func (r *Rank) IsGeneric() bool {
-	for _, dim := range r.Axes {
-		if dim.IsGeneric() {
-			return true
-		}
-	}
-	return false
-}
-
-// AssignableTo returns true if other can be assigned to the receiver.
+// AssignableTo returns true if this rank can be assigned to the destination rank.
 func (r *Rank) AssignableTo(fetcher Fetcher, dst ArrayRank) (bool, error) {
 	switch dstT := dst.(type) {
-	case *AnyRank:
-		return true, nil
-	case *GenericRank:
+	case *RankInfer:
 		if dstT.Rnk == nil {
 			return true, nil
 		}
@@ -1570,13 +1822,11 @@ func (r *Rank) AssignableTo(fetcher Fetcher, dst ArrayRank) (bool, error) {
 	}
 }
 
-// ConvertibleTo returns true if other can be converted to the receiver.
+// ConvertibleTo returns true if this rank can be converted to the destination rank.
 func (r *Rank) ConvertibleTo(fetcher Fetcher, dst ArrayRank) (bool, error) {
-	var dstR *Rank
+	var dstR ArrayRank
 	switch dstT := dst.(type) {
-	case *AnyRank:
-		return true, nil
-	case *GenericRank:
+	case *RankInfer:
 		if dstT.Rnk == nil {
 			return true, nil
 		}
@@ -1586,37 +1836,44 @@ func (r *Rank) ConvertibleTo(fetcher Fetcher, dst ArrayRank) (bool, error) {
 	default:
 		return false, errors.Errorf("rank type %T not supported", dstT)
 	}
-	thisSize, err := r.Size(fetcher)
-	if err != nil {
-		return false, err
-	}
-	otherSize, err := dstR.Size(fetcher)
-	if err != nil {
-		return false, err
-	}
-	return areConvertible(fetcher, thisSize, otherSize)
+	thisSize := RankSize(r)
+	otherSize := RankSize(dstR)
+	return areEqual(fetcher, thisSize, otherSize)
 }
 
-// Size is the total number of elements across all axes.
-func (r *Rank) Size(fetcher Fetcher) (Expr, error) {
-	var expr Expr = &AtomicValueT[Int]{
-		Src: r.Src,
-		Val: 1,
-		Typ: IntLenSliceType(),
+var oneSize = &NumberCastExpr{
+	X:   &NumberInt{Val: big.NewInt(1)},
+	Typ: IntLenType(),
+}
+
+func exprSource(n SourceNode) ast.Expr {
+	if n == nil {
+		return nil
 	}
-	for _, dim := range r.Axes {
+	src := n.Source()
+	if src == nil {
+		return nil
+	}
+	expr, _ := src.(ast.Expr)
+	return expr
+}
+
+// RankSize is the total number of elements across all axes.
+func RankSize(r ArrayRank) Expr {
+	var expr AssignableExpr = oneSize
+	for _, axis := range r.Axes() {
 		expr = &BinaryExpr{
 			Src: &ast.BinaryExpr{
 				Op: token.MUL,
-				X:  expr.Expr(),
-				Y:  expr.Expr(),
+				X:  exprSource(expr),
+				Y:  exprSource(axis),
 			},
 			X:   expr,
-			Y:   dim,
-			Typ: IntLenSliceType(),
+			Y:   axis.AxisValue(),
+			Typ: IntLenType(),
 		}
 	}
-	return expr, nil
+	return expr
 }
 
 // IsAtomic returns true if the rank is equals to zero
@@ -1626,128 +1883,69 @@ func (r *Rank) IsAtomic() bool {
 }
 
 // AxisLengths of the rank.
-func (r *Rank) AxisLengths() []AxisLength {
-	return r.Axes
+func (r *Rank) AxisLengths() []AxisLengths {
+	return r.Ax
 }
 
-// Resolved returns itself.
-func (r *Rank) Resolved() *Rank {
-	return r
-}
-
-// String returns a string representation of the rank.
-func (r *Rank) String() string {
-	if r == nil {
-		return ""
+// SubRank returns the rank with the top-axis removed
+// or nil if the rank is already 0.
+func (r *Rank) SubRank() ArrayRank {
+	if len(r.Ax) == 0 {
+		return nil
 	}
-	bld := strings.Builder{}
-	for _, dim := range r.Axes {
-		bld.WriteString("[" + dim.String() + "]")
-	}
-	return bld.String()
+	return &Rank{Ax: append([]AxisLengths{}, r.Ax[1:]...)}
 }
 
-func (*AnyRank) node()     {}
-func (*AnyRank) nodeRank() {}
+func (*RankInfer) node()     {}
+func (*RankInfer) nodeRank() {}
 
 // NumAxes returns the number of axes.
-func (r *AnyRank) NumAxes() int { return -1 }
-
-// Equal returns true if other has the same rank and dimensions.
-func (r *AnyRank) Equal(fetcher Fetcher, other ArrayRank) (bool, error) {
-	switch otherT := other.(type) {
-	case *AnyRank:
-		return true, nil
-	case *GenericRank:
-		return false, errors.Errorf("cannot compare an unknown rank to a generic rank")
-	case *Rank:
-		return false, nil
-	default:
-		return false, errors.Errorf("rank type %T not supported", otherT)
-	}
-}
-
-// AssignableTo returns true if other can be assigned to the receiver.
-func (r *AnyRank) AssignableTo(fetcher Fetcher, dst ArrayRank) (bool, error) {
-	switch dstT := dst.(type) {
-	case *AnyRank:
-		return true, nil
-	case *GenericRank:
-		return false, errors.Errorf("cannot assign an unknown rank to a generic rank")
-	case *Rank:
-		return false, nil
-	default:
-		return false, errors.Errorf("rank type %T not supported", dstT)
-	}
-}
-
-// ConvertibleTo returns true if other can be converted to the receiver.
-func (r *AnyRank) ConvertibleTo(fetcher Fetcher, dst ArrayRank) (bool, error) {
-	switch dstT := dst.(type) {
-	case *AnyRank:
-		return true, nil
-	case *GenericRank:
-		return false, errors.Errorf("cannot convert a unknown rank to a generic rank")
-	case *Rank:
-		return true, nil
-	default:
-		return false, errors.Errorf("rank type %T not supported", dstT)
-	}
-}
-
-// IsAtomic returns true if the rank has no axes.
-func (r *AnyRank) IsAtomic() bool {
-	return false
-}
-
-// IsGeneric returns true if the dimension is unknown.
-func (r *AnyRank) IsGeneric() bool {
-	return false
-}
-
-// String returns a string representation of the rank.
-func (r *AnyRank) String() string {
-	return "[any]"
-}
-
-func (*GenericRank) node()     {}
-func (*GenericRank) nodeRank() {}
-
-// NumAxes returns the number of axes.
-func (r *GenericRank) NumAxes() int {
+func (r *RankInfer) NumAxes() int {
 	if r.Rnk == nil {
 		return -1
 	}
 	return r.Rnk.NumAxes()
 }
 
+// Source returns the node defining the rank.
+func (r *RankInfer) Source() ast.Node { return r.Src }
+
+// Type returns the rank type.
+func (r *RankInfer) Type() Type { return RankType() }
+
+// Axes returns all axis in the rank.
+func (r *RankInfer) Axes() []AxisLengths {
+	if r.Rnk == nil {
+		return nil
+	}
+	return r.Rnk.Axes()
+}
+
 // Equal returns true if other has the same rank and dimensions.
-func (r *GenericRank) Equal(fetcher Fetcher, other ArrayRank) (bool, error) {
+func (r *RankInfer) Equal(fetcher Fetcher, other ArrayRank) (bool, error) {
 	if r.Rnk != nil {
 		return r.Rnk.Equal(fetcher, other)
 	}
 	switch otherT := other.(type) {
-	case *AnyRank:
-		return false, nil
-	case *GenericRank:
-		return true, nil
+	case *RankInfer:
+		return otherT.Rnk == nil, nil
 	case *Rank:
-		return true, nil
+		return false, nil
 	default:
 		return false, errors.Errorf("rank type %T not supported", otherT)
 	}
 }
 
-// AssignableTo returns true if other can be assigned to the receiver.
-func (r *GenericRank) AssignableTo(fetcher Fetcher, dst ArrayRank) (bool, error) {
+// AssignableTo returns true if this rank can be assigned to the destination rank.
+func (r *RankInfer) AssignableTo(fetcher Fetcher, dst ArrayRank) (bool, error) {
 	if r.Rnk != nil {
 		return r.Rnk.AssignableTo(fetcher, dst)
 	}
 	return true, nil
 }
 
-// ConvertibleTo returns true if other can be converted to the receiver.
-func (r *GenericRank) ConvertibleTo(fetcher Fetcher, dst ArrayRank) (bool, error) {
+// ConvertibleTo returns true if this rank can be converted to the destination rank.
+func (r *RankInfer) ConvertibleTo(fetcher Fetcher, dst ArrayRank) (bool, error) {
 	if r.Rnk != nil {
 		return r.Rnk.ConvertibleTo(fetcher, dst)
 	}
@@ -1755,64 +1953,46 @@ func (r *GenericRank) ConvertibleTo(fetcher Fetcher, dst ArrayRank) (bool, error
 }
 
 // IsAtomic returns true if the rank has no axes.
-func (r *GenericRank) IsAtomic() bool {
+func (r *RankInfer) IsAtomic() bool {
 	return false
 }
 
-// IsGeneric returns true if the dimension is unknown.
-func (r *GenericRank) IsGeneric() bool {
+// SubRank returns the rank with the top-axis removed.
+func (r *RankInfer) SubRank() ArrayRank {
 	if r.Rnk == nil {
-		return true
+		return &RankInfer{}
 	}
-	return r.Rnk.IsGeneric()
+	return r.Rnk.SubRank()
 }
 
-// Resolved returns itself.
-func (r *GenericRank) Resolved() *Rank {
-	return r.Rnk
-}
-
-// String returns a string representation of the rank.
-func (r *GenericRank) String() string {
-	if r.Rnk != nil {
-		return fmt.Sprintf("%v", r.Rnk)
-	}
-	name := "..."
-	if r.Name != nil {
-		name = r.Name.String()
-	}
-	return fmt.Sprintf("[%s]", name)
-}
-
-func (*AxisEllipsis) alen() {}
-func (*AxisEllipsis) node() {}
+func (*AxisInfer) node() {}
 
 // Source returns the source expression specifying the dimension.
-func (dm *AxisEllipsis) Source() ast.Node { return dm.Src }
+func (dm *AxisInfer) Source() ast.Node { return dm.Src }
 
 // Type of the expression.
-func (dm *AxisEllipsis) Type() Type { return IntLenType() }
+func (dm *AxisInfer) Type() Type { return IntLenType() }
 
 // Expr returns how to compute the dimension as an expression.
-func (dm *AxisEllipsis) Expr() ast.Expr { return dm.Src }
+func (dm *AxisInfer) Expr() ast.Expr { return dm.Src }
 
-// IsGeneric returns true if the dimension is unknown.
-func (dm *AxisEllipsis) IsGeneric() bool {
+// NumAxes returns the number of axis represented by the group.
+func (dm *AxisInfer) NumAxes() int {
 	if dm.X == nil {
-		return true
+		return -1
 	}
-	return dm.X.IsGeneric()
+	return dm.X.NumAxes()
 }
 
 // Equal returns true if other has the axis length.
-func (dm *AxisEllipsis) Equal(fetcher Fetcher, other AxisLength) (bool, error) {
+func (dm *AxisInfer) Equal(fetcher Fetcher, other AxisLengths) (bool, error) {
 	switch otherT := other.(type) {
 	case *AxisExpr:
 		if dm.X == nil {
 			return false, errors.Errorf("unresolved axis length")
 		}
 		return dm.X.Equal(fetcher, otherT)
-	case *AxisEllipsis:
+	case *AxisInfer:
 		if dm.X == nil && otherT.X == nil {
 			return true, nil
 		}
@@ -1826,45 +2006,40 @@ func (dm *AxisEllipsis) Equal(fetcher Fetcher, other AxisLength) (bool, error) {
 }
 
 // AssignableTo returns true if a dimension can be assigned to another.
-func (dm *AxisEllipsis) AssignableTo(fetcher Fetcher, dst AxisLength) (bool, error) {
+func (dm *AxisInfer) AssignableTo(fetcher Fetcher, dst AxisLengths) (bool, error) {
 	if dm.X != nil {
 		return dm.X.AssignableTo(fetcher, dst)
 	}
 	return true, nil
 }
 
-// String representation of the dimension.
-func (dm *AxisEllipsis) String() string {
-	const s = "_"
+// AxisValue returns the value assigned to the axis.
+func (dm *AxisInfer) AxisValue() AssignableExpr {
 	if dm.X == nil {
-		return s
+		return nil
 	}
-	return dm.X.String()
+	return dm.X.AxisValue()
 }
 
-func (*AxisExpr) alen() {}
+// Value of the axis.
+func (dm *AxisInfer) Value(Expr) AssignableExpr {
+	return dm.AxisValue()
+}
+
 func (*AxisExpr) node() {}
 
 // Source returns the source expression specifying the dimension.
 func (dm *AxisExpr) Source() ast.Node { return dm.X.Source() }
 
-// IsGeneric returns true if the dimension is unknown.
-func (dm *AxisExpr) IsGeneric() bool {
-	return false
-}
-
-// Eval returns an evaluation of the dimension.
-func (dm *AxisExpr) Eval(fetcher Fetcher) (int, []*ValueRef, error) {
-	val, refs, err := Eval[Int](fetcher, dm.X)
-	return int(val), refs, err
-}
+// NumAxes returns the number of axis represented by the group.
+func (dm *AxisExpr) NumAxes() int { return 1 }
 
 // AssignableTo returns true if a dimension can be assigned to another.
-func (dm *AxisExpr) AssignableTo(fetcher Fetcher, dst AxisLength) (bool, error) {
+func (dm *AxisExpr) AssignableTo(fetcher Fetcher, dst AxisLengths) (bool, error) {
 	switch dstT := dst.(type) {
 	case *AxisExpr:
 		return dm.Equal(fetcher, dst)
-	case *AxisEllipsis:
+	case *AxisInfer:
 		if dstT.X == nil {
 			return true, nil
 		}
@@ -1875,11 +2050,11 @@ func (dm *AxisExpr) AssignableTo(fetcher Fetcher, dst AxisLength) (bool, error) 
 }
 
 // Equal returns true if other has the axis length.
-func (dm *AxisExpr) Equal(fetcher Fetcher, other AxisLength) (bool, error) {
+func (dm *AxisExpr) Equal(fetcher Fetcher, other AxisLengths) (bool, error) {
 	switch otherT := other.(type) {
 	case *AxisExpr:
 		return areEqual(fetcher, dm.X, otherT.X)
-	case *AxisEllipsis:
+	case *AxisInfer:
 		if otherT.X == nil {
 			return false, errors.Errorf("cannot compare with an unresolved axis length")
 		}
@@ -1889,14 +2064,116 @@ func (dm *AxisExpr) Equal(fetcher Fetcher, other AxisLength) (bool, error) {
 	}
 }
 
+// AxisValue returns the value assigned to the axis.
+func (dm *AxisExpr) AxisValue() AssignableExpr { return dm.X }
+
+// Value of the axis.
+func (dm *AxisExpr) Value(Expr) AssignableExpr { return dm.AxisValue() }
+
 // Type of the expression.
 func (dm *AxisExpr) Type() Type { return IntLenType() }
 
-// Expr returns how to compute the dimension as an expression.
-func (dm *AxisExpr) Expr() ast.Expr { return dm.X.Expr() }
+func (*AxisGroup) node()    {}
+func (*AxisGroup) storage() {}
 
-// String representation of the dimension.
-func (dm *AxisExpr) String() string { return dm.X.String() }
+// Source returns the source expression specifying the dimension.
+func (dm *AxisGroup) Source() ast.Node { return dm.Src }
+
+// NumAxes returns the number of axis represented by the group.
+func (dm *AxisGroup) NumAxes() int { return -1 }
+
+// AssignableTo returns true if a dimension can be assigned to another.
+func (dm *AxisGroup) AssignableTo(fetcher Fetcher, dst AxisLengths) (bool, error) {
+	other, ok := dst.(*AxisGroup)
+	if !ok {
+		return false, nil
+	}
+	return dm.Name == other.Name, nil
+}
+
+// Equal returns true if other has the axis length.
+func (dm *AxisGroup) Equal(fetcher Fetcher, other AxisLengths) (bool, error) {
+	gr, ok := other.(*AxisGroup)
+	if !ok {
+		return false, nil
+	}
+	return gr.Src.Name == dm.Src.Name, nil
+}
+
+// AxisValue returns the value assigned to the axis.
+func (dm *AxisGroup) AxisValue() AssignableExpr {
+	return &ValueRef{
+		Src:  dm.NameDef(),
+		Stor: dm,
+	}
+}
+
+// Value of the axis.
+func (dm *AxisGroup) Value(Expr) AssignableExpr {
+	return dm.AxisValue()
+}
+
+// NameDef returns the name of the storage as an identifier.
+func (dm *AxisGroup) NameDef() *ast.Ident {
+	return &ast.Ident{
+		NamePos: dm.Src.NamePos,
+		Name:    dm.Name,
+	}
+}
+
+// Type of the expression.
+func (dm *AxisGroup) Type() Type { return IntLenSliceType() }
+
+func (*AxisLenName) node()    {}
+func (*AxisLenName) storage() {}
+
+// Source returns the source expression specifying the dimension.
+func (dm *AxisLenName) Source() ast.Node { return dm.Src }
+
+// NumAxes returns the number of axis represented by the group.
+func (dm *AxisLenName) NumAxes() int { return -1 }
+
+// AssignableTo returns true if a dimension can be assigned to another.
+func (dm *AxisLenName) AssignableTo(fetcher Fetcher, dst AxisLengths) (bool, error) {
+	other, ok := dst.(*AxisLenName)
+	if !ok {
+		return false, nil
+	}
+	return dm.Name == other.Name, nil
+}
+
+// Equal returns true if other has the axis length.
+func (dm *AxisLenName) Equal(fetcher Fetcher, other AxisLengths) (bool, error) {
+	gr, ok := other.(*AxisLenName)
+	if !ok {
+		return false, nil
+	}
+	return gr.Src.Name == dm.Src.Name, nil
+}
+
+// AxisValue returns the value assigned to the axis.
+func (dm *AxisLenName) AxisValue() AssignableExpr {
+	return &ValueRef{
+		Src:  dm.NameDef(),
+		Stor: dm,
+	}
+}
+
+// Value of the axis.
+func (dm *AxisLenName) Value(Expr) AssignableExpr {
+	return dm.AxisValue()
+}
+
+// NameDef returns the name of the storage as an identifier.
+func (dm *AxisLenName) NameDef() *ast.Ident {
+	return &ast.Ident{
+		NamePos: dm.Src.NamePos,
+		Name:    dm.Name,
+	}
+}
+
+// Type of the expression.
+func (dm *AxisLenName) Type() Type { return IntLenType() }
 
 // ----------------------------------------------------------------------------
 // Fields in function arguments, results, and structures.
@@ -1912,7 +2189,7 @@ type (
 	FieldGroup struct {
 		Src    *ast.Field
 		Fields []*Field
-		Type   Type
+		Type   *TypeValExpr
 	}
 
 	// Field is a field belonging to a field group.
@@ -1939,7 +2216,10 @@ func (s *FieldList) Source() ast.Node {
 // Fields returns a list of all the fields in the structure
 // in a consistent order which can be used as a reference.
 func (s *FieldList) Fields() []*Field {
-	fields := []*Field{}
+	if s == nil {
+		return nil
+	}
+	var fields []*Field
 	for _, grp := range s.List {
 		if len(grp.Fields) == 0 {
 			fields = append(fields, &Field{
@@ -1955,8 +2235,23 @@ func (s *FieldList) Fields() []*Field {
 	return fields
 }
 
+// FindField returns the field matching the given name or nil if not found.
+func (s *FieldList) FindField(name string) *Field {
+	for _, grp := range s.List {
+		for _, field := range grp.Fields {
+			if field.Name.Name == name {
+				return field
+			}
+		}
+	}
+	return nil
+}
+
 // Len returns the total number of fields in the list.
 func (s *FieldList) Len() int {
+	if s == nil {
+		return 0
+	}
 	r := 0
 	for _, grp := range s.List {
 		r += grp.NumFields()
@@ -1966,12 +2261,11 @@ func (s *FieldList) Len() int {
 
 // Type returns the fields as a type.
 func (s *FieldList) Type() Type {
-	fields := s.Fields()
-	switch len(fields) {
+	switch s.Len() {
 	case 0:
-		return VoidType{}
+		return VoidType()
 	case 1:
-		return fields[0].Type()
+		return s.Fields()[0].Type()
 	}
 	return s.TupleType()
 }
@@ -1991,7 +2285,12 @@ func (s *FieldList) TupleType() *TupleType {
 func (*FieldGroup) node() {}
 
 // Source returns the node in the AST tree.
-func (s *FieldGroup) Source() ast.Node { return s.Src }
+func (s *FieldGroup) Source() ast.Node {
+	if len(s.Src.Names) > 0 {
+		return s.Src.Names[0]
+	}
+	return s.Src.Type
+}
 
 // NumFields returns the number of field in the group.
 func (s *FieldGroup) NumFields() int {
@@ -2010,12 +2309,20 @@ func (s *Field) Expr() ast.Expr {
 
 // Source returns the source defining the field.
 func (s *Field) Source() ast.Node {
+	if s.Name == nil {
+		return s.Group.Source()
+	}
 	return s.Name
+}
+
+// Storage returns a storage pointing to the field.
+func (s *Field) Storage() *FieldStorage {
+	return &FieldStorage{Field: s}
 }
 
 // Type returns the type of the field.
 func (s *Field) Type() Type {
-	return s.Group.Type
+	return s.Group.Type.Typ
 }
 
 // String returns a string representation of the field.
@@ -2029,23 +2336,8 @@ type (
 	// Expr is an expression that returns a (typed) result.
 	Expr interface {
 		SourceNode
-		Expr() ast.Expr
 		Type() Type
 		String() string
-	}
-
-	// StaticValue is a generic expression representing a value defined at compile time.
-	StaticValue interface {
-		Node
-		staticValue()
-		Type() Type
-	}
-
-	// StaticExpr is a static value represented by an expression
-	// (as opposed to a function declaration for example).
-	StaticExpr interface {
-		Expr
-		StaticValue
 	}
 
 	// StringLiteral is a string defined by a literal.
@@ -2059,19 +2351,16 @@ type (
 		numberExpr()
 	}
 
-	// AtomicT is an expression computing a scalar value.
-	AtomicT[T dtype.GoDataType] interface {
-		StaticValue
-	}
-
 	// NumberFloat is a float number for which the type has not been inferred yet.
 	NumberFloat struct {
 		Src *ast.BasicLit
+		Val *big.Float
 	}
 
 	// NumberInt is an integer number for which the type has not been inferred yet.
 	NumberInt struct {
 		Src *ast.BasicLit
+		Val *big.Int
 	}
 
 	// NumberCastExpr casts a number to a given type.
@@ -2080,12 +2369,13 @@ type (
 		Typ Type
 	}
 
-	// StaticAtom is an atom (e.g. a scalar) represented as an expression to be evaluated at compile time.
-	StaticAtom struct {
-		X Expr
+	// AtomicValue is implemented by all atomic values.
+	AtomicValue interface {
+		AssignableExpr
+		atomicValue()
 	}
 
-	// AtomicValueT is an array literal.
+	// AtomicValueT is a builtin constant.
 	AtomicValueT[T dtype.GoDataType] struct {
 		Src ast.Expr
 		Val T
@@ -2096,33 +2386,33 @@ type (
 	ArrayLitExpr struct {
 		Src  *ast.CompositeLit
 		Typ  ArrayType
-		Vals []Expr
+		Elts []AssignableExpr
 	}
 
-	// SliceExpr is a slice literal.
-	SliceExpr struct {
+	// SliceLitExpr is a slice literal.
+	SliceLitExpr struct {
 		Src  ast.Expr
 		Typ  Type
-		Vals []Expr
+		Elts []AssignableExpr
 	}
 
 	// FieldLit assigns a value to a field in a structure literal.
 	FieldLit struct {
-		Field *Field
-		X     Expr
+		*FieldStorage
+		X AssignableExpr
 	}
 
 	// StructLitExpr is a structure literal.
 	StructLitExpr struct {
 		Src  *ast.CompositeLit
-		Elts []FieldLit
+		Elts []*FieldLit
 		Typ  Type
 	}
 
 	// UnaryExpr is an operator with a single argument.
 	UnaryExpr struct {
 		Src *ast.UnaryExpr
-		X   Expr
+		X   AssignableExpr
 	}
 
 	// ParenExpr is a parenthesized expression.
@@ -2134,22 +2424,42 @@ type (
 	// BinaryExpr is an operator with two arguments.
 	BinaryExpr struct {
 		Src  *ast.BinaryExpr
-		X, Y Expr
+		X, Y AssignableExpr
 		Typ  Type
+	}
+
+	// TypeValExpr is an expression pointing to a type.
+	TypeValExpr struct {
+		X   Expr
+		Typ Type
+	}
+
+	// FuncValExpr is an expression pointing to a function.
+	FuncValExpr struct {
+		X Expr
+		F Storage
+		// T is the function type if the function has been specialised by the call
+		// (in the context of generic functions).
+		T *FuncType
 	}
 
 	// CallExpr is an expression calling a function.
 	CallExpr struct {
-		Src      *ast.CallExpr
-		Args     []Expr
-		Func     Expr
-		FuncType *FuncType
+		Src    *ast.CallExpr
+		Args   []AssignableExpr
+		Callee *FuncValExpr
 	}
 
 	// CallResultExpr represents the ith result of a function call as an expression.
 	CallResultExpr struct {
 		Index int
 		Call  *CallExpr
+	}
+
+	// TypeCastExpr is an abstract type conversion.
+	TypeCastExpr interface {
+		AssignableExpr
+		Orig() Expr
 	}
 
 	// CastExpr casts a type to another.
@@ -2160,19 +2470,32 @@ type (
 		X Expr
 	}
 
-	// ValueRef is a reference to a value.
-	ValueRef struct {
-		Src *ast.Ident
+	// TypeAssertExpr casts a type to another while disabling compiler checks on array dimensions.
+	// Dimension checks are postponed from compilation time to run time.
+	TypeAssertExpr struct {
+		Src *ast.TypeAssertExpr
 		Typ Type
+
+		X Expr
 	}
 
-	// FieldSelectorExpr selects a field on a structure.
-	FieldSelectorExpr struct {
-		Src    *ast.SelectorExpr
-		X      Expr
-		Struct *StructType
-		Typ    Type
-		Field  *Field
+	// ValueRef is a reference to a value.
+	ValueRef struct {
+		Src  *ast.Ident
+		Stor Storage
+	}
+
+	// PackageRef is a reference to a package.
+	PackageRef struct {
+		X    *ValueRef
+		Decl *ImportDecl
+	}
+
+	// SelectorExpr selects a field on a structure.
+	SelectorExpr struct {
+		Src  *ast.SelectorExpr
+		X    Expr
+		Stor Storage
 	}
 
 	// IndexExpr selects an index on a indexable type.
@@ -2183,6 +2506,14 @@ type (
 		Typ   Type
 	}
 
+	// IndexListExpr selects an index on a indexable type.
+	IndexListExpr struct {
+		Src     *ast.IndexListExpr
+		X       Expr
+		Indices Expr
+		Typ     Type
+	}
+
 	// EinsumExpr represents an einsum expression.
 	EinsumExpr struct {
 		Src        ast.Expr
@@ -2190,39 +2521,6 @@ type (
 		BatchAxes  [2][]int
 		ReduceAxes [2][]int
 		Typ        Type
-	}
-
-	// MethodSelectorExpr selects a method on a type defined within the package.
-	MethodSelectorExpr struct {
-		Src   *ast.SelectorExpr
-		X     Expr
-		Named *NamedType
-		Typ   Type
-		Func  Func
-	}
-
-	// PackageFuncSelectorExpr selects a method on a package.
-	PackageFuncSelectorExpr struct {
-		Src     *ast.SelectorExpr
-		Package *PackageRef
-		Typ     Type
-		Func    Func
-	}
-
-	// PackageConstSelectorExpr selects a const on a package.
-	PackageConstSelectorExpr struct {
-		Src     *ast.SelectorExpr
-		Package *PackageRef
-		Const   *ConstExpr
-
-		X   Expr
-		Typ Type
-	}
-
-	// TypeExpr is a reference to a type.
-	TypeExpr struct {
-		Src ast.Expr
-		Typ Type
 	}
 
 	// RuntimeValue is a value that only exists at runtime, that is
@@ -2237,7 +2535,7 @@ type (
 	// as an expression.
 	RuntimeValueExpr interface {
 		Expr
-		Value() RuntimeValue
+		Value(Expr) RuntimeValue
 	}
 
 	// RuntimeValueExprT is a runtime expression specialised for a value type.
@@ -2248,42 +2546,59 @@ type (
 		Typ Type
 		Val T
 	}
+
+	// Tuple is a group of expression.
+	Tuple struct {
+		Exprs []Expr
+	}
 )
 
 var (
 	_ Number           = (*NumberFloat)(nil)
 	_ Number           = (*NumberInt)(nil)
-	_ StaticValue      = (*NumberCastExpr)(nil)
-	_ StaticValue      = (*StaticAtom)(nil)
-	_ StaticValue      = (*AtomicValueT[int32])(nil)
-	_ StaticValue      = (*StringLiteral)(nil)
-	_ Expr             = (*ArrayLitExpr)(nil)
-	_ Expr             = (*SliceExpr)(nil)
-	_ Expr             = (*StructLitExpr)(nil)
-	_ Node             = (*FieldLit)(nil)
-	_ Expr             = (*UnaryExpr)(nil)
-	_ Expr             = (*ParenExpr)(nil)
-	_ Expr             = (*BinaryExpr)(nil)
-	_ Expr             = (*CallExpr)(nil)
-	_ Expr             = (*CallResultExpr)(nil)
-	_ Expr             = (*CastExpr)(nil)
-	_ Expr             = (*ValueRef)(nil)
-	_ Expr             = (*FieldSelectorExpr)(nil)
-	_ Expr             = (*IndexExpr)(nil)
+	_ AssignableExpr   = (*NumberCastExpr)(nil)
+	_ AtomicValue      = (*AtomicValueT[int32])(nil)
+	_ AssignableExpr   = (*StringLiteral)(nil)
+	_ AssignableExpr   = (*ArrayLitExpr)(nil)
+	_ AssignableExpr   = (*SliceLitExpr)(nil)
+	_ AssignableExpr   = (*StructLitExpr)(nil)
+	_ StorageWithValue = (*FieldLit)(nil)
+	_ AssignableExpr   = (*UnaryExpr)(nil)
+	_ AssignableExpr   = (*ParenExpr)(nil)
+	_ WithStore        = (*ParenExpr)(nil)
+	_ AssignableExpr   = (*BinaryExpr)(nil)
+	_ AssignableExpr   = (*CallExpr)(nil)
+	_ AssignableExpr   = (*CallResultExpr)(nil)
+	_ TypeCastExpr     = (*CastExpr)(nil)
+	_ TypeCastExpr     = (*TypeAssertExpr)(nil)
+	_ AssignableExpr   = (*ValueRef)(nil)
+	_ WithStore        = (*ValueRef)(nil)
+	_ AssignableExpr   = (*PackageRef)(nil)
+	_ AssignableExpr   = (*SelectorExpr)(nil)
+	_ WithStore        = (*SelectorExpr)(nil)
+	_ AssignableExpr   = (*IndexExpr)(nil)
+	_ AssignableExpr   = (*IndexListExpr)(nil)
 	_ Expr             = (*EinsumExpr)(nil)
-	_ Expr             = (*MethodSelectorExpr)(nil)
-	_ Expr             = (*PackageFuncSelectorExpr)(nil)
-	_ Expr             = (*PackageConstSelectorExpr)(nil)
-	_ Expr             = (*TypeExpr)(nil)
 	_ RuntimeValueExpr = (*RuntimeValueExprT[RuntimeValue])(nil)
+	_ Expr             = (*Tuple)(nil)
+
+	_ AssignableExpr = (*FuncValExpr)(nil)
+	_ WithStore      = (*FuncValExpr)(nil)
+	_ AssignableExpr = (*TypeValExpr)(nil) // Use AssignableExpr to store a type in a field (in function type params).
+	_ WithStore      = (*TypeValExpr)(nil)
 )
 
 func (s *NumberFloat) node()       {}
 func (s *NumberFloat) numberExpr() {}
 
+// assignable: a number is not assignable
+// (i.e. it cannot be assigned to a value without a cast)
+// but it still supports the AssignableExpr interface to use numbers in binary expressions.
+func (s *NumberFloat) assignable() {}
+
 // Zero returns a zero float number.
-func (s *NumberFloat) Zero() Expr {
-	return &NumberFloat{Src: &ast.BasicLit{Value: "0.0"}}
+func (s *NumberFloat) Zero() AssignableExpr {
+	return zeroFloat
 }
 
 // Expr returns the AST expression.
@@ -2298,15 +2613,17 @@ func (s *NumberFloat) Type() Type { return NumberFloatType() }
 // DefaultType returns the default type of the number.
 func (s NumberFloat) DefaultType() Type { return TypeFromKind(Float64Kind) }
 
-// String representation of the number.
-func (s *NumberFloat) String() string { return fmt.Sprintf("%s", s.Src.Value) }
-
 func (s *NumberInt) node()       {}
 func (s *NumberInt) numberExpr() {}
 
+// assignable: a number is not assignable
+// (i.e. it cannot be assigned to a value without a cast)
+// but it still supports the AssignableExpr interface to use numbers in binary expressions.
+func (s *NumberInt) assignable() {}
+
 // Zero returns a zero float number.
-func (s *NumberInt) Zero() Expr {
-	return &NumberInt{Src: &ast.BasicLit{Value: "0"}}
+func (s *NumberInt) Zero() AssignableExpr {
+	return zero
 }
 
 // Expr returns the AST expression.
@@ -2321,14 +2638,9 @@ func (s *NumberInt) Type() Type { return NumberIntType() }
 // DefaultType returns the default type of the number.
 func (s NumberInt) DefaultType() Type { return TypeFromKind(Int64Kind) }
 
-// String representation of the number.
-func (s *NumberInt) String() string { return fmt.Sprintf("%s", s.Src.Value) }
-
 func (s *NumberCastExpr) node()        {}
 func (s *NumberCastExpr) staticValue() {}
-
-// Expr returns the AST expression.
-func (s *NumberCastExpr) Expr() ast.Expr { return s.X.Expr() }
+func (s *NumberCastExpr) assignable()  {}
 
 // Source returns the node in the AST tree.
 func (s *NumberCastExpr) Source() ast.Node { return s.X.Source() }
@@ -2341,6 +2653,7 @@ func (s *NumberCastExpr) String() string { return s.X.String() }
 
 func (s *StringLiteral) node()        {}
 func (s *StringLiteral) staticValue() {}
+func (s *StringLiteral) assignable()  {}
 
 // Expr returns the AST expression.
 func (s *StringLiteral) Expr() ast.Expr { return s.Src }
@@ -2355,7 +2668,8 @@ func (s *StringLiteral) Type() Type { return StringType() }
 func (s *StringLiteral) String() string { return s.Src.Value }
 
 func (s *AtomicValueT[T]) node()        {}
-func (s *AtomicValueT[T]) staticValue() {}
+func (s *AtomicValueT[T]) atomicValue() {}
+func (s *AtomicValueT[T]) assignable()  {}
 
 // Expr returns the AST expression.
 func (s *AtomicValueT[T]) Expr() ast.Expr { return s.Src }
@@ -2369,23 +2683,8 @@ func (s *AtomicValueT[T]) Type() Type { return s.Typ }
 // String representation.
 func (s *AtomicValueT[T]) String() string { return fmt.Sprint(s.Val) }
 
-func (s *StaticAtom) node()        {}
-func (s *StaticAtom) staticValue() {}
-
-// Expr returns the AST expression.
-func (s *StaticAtom) Expr() ast.Expr { return s.X.Expr() }
-
-// Type returns the type returned by the function call.
-func (s *StaticAtom) Type() Type { return s.X.Type() }
-
-// Source returns the node in the AST tree.
-func (s *StaticAtom) Source() ast.Node { return s.X.Source() }
-
-// String representation.
-func (s *StaticAtom) String() string { return s.X.String() }
-
-func (s *ArrayLitExpr) node()      {}
-func (s *ArrayLitExpr) arrayExpr() {}
+func (s *ArrayLitExpr) node()       {}
+func (s *ArrayLitExpr) assignable() {}
 
 // Source returns the node in the AST tree.
 func (s *ArrayLitExpr) Source() ast.Node {
@@ -2399,14 +2698,18 @@ func (s *ArrayLitExpr) Type() Type { return s.Typ }
 func (s *ArrayLitExpr) Expr() ast.Expr { return s.Src }
 
 // Values returns the expressions defining the values of the array.
-func (s *ArrayLitExpr) Values() []Expr { return s.Vals }
+func (s *ArrayLitExpr) Values() []AssignableExpr { return s.Elts }
 
 // NewFromValues returns a new literal of the same type from a slice of values.
-func (s *ArrayLitExpr) NewFromValues(vals []Expr) *ArrayLitExpr {
-	return &ArrayLitExpr{Typ: s.Typ, Vals: vals}
+func (s *ArrayLitExpr) NewFromValues(elts []AssignableExpr) *ArrayLitExpr {
+	return &ArrayLitExpr{
+		Typ:  s.Typ,
+		Elts: elts,
+	}
 }
 
-func (s *StructLitExpr) node() {}
+func (s *StructLitExpr) node()       {}
+func (s *StructLitExpr) assignable() {}
 
 // Source returns the node in the AST tree.
 func (s *StructLitExpr) Source() ast.Node { return s.Src }
@@ -2418,23 +2721,22 @@ func (s *StructLitExpr) Type() Type { return s.Typ }
 func (s *StructLitExpr) Expr() ast.Expr { return s.Src }
 
 // String representation.
-func (s *StructLitExpr) String() string { return fmt.Sprintf("%T", s) }
+func (s *StructLitExpr) String() string { return s.Type().String() }
 
-func (s *SliceExpr) node() {}
+func (s *SliceLitExpr) node()       {}
+func (s *SliceLitExpr) assignable() {}
 
 // Source returns the node in the AST tree.
-func (s *SliceExpr) Source() ast.Node { return s.Src }
+func (s *SliceLitExpr) Source() ast.Node { return s.Src }
 
 // Type returns the type returned by the function call.
-func (s *SliceExpr) Type() Type { return s.Typ }
+func (s *SliceLitExpr) Type() Type { return s.Typ }
 
 // Expr returns the AST expression.
-func (s *SliceExpr) Expr() ast.Expr { return s.Src }
+func (s *SliceLitExpr) Expr() ast.Expr { return s.Src }
 
-// String representation.
-func (s *SliceExpr) String() string { return fmt.Sprintf("%T", s) }
-
-func (s *UnaryExpr) node() {}
+func (s *UnaryExpr) node()       {}
+func (s *UnaryExpr) assignable() {}
 
 // Source returns the node in the AST tree.
 func (s *UnaryExpr) Source() ast.Node { return s.Src }
@@ -2448,7 +2750,8 @@ func (s *UnaryExpr) Expr() ast.Expr { return s.Src }
 // String representation.
 func (s *UnaryExpr) String() string { return s.Src.Op.String() + s.X.String() }
 
-func (s *ParenExpr) node() {}
+func (s *ParenExpr) node()       {}
+func (s *ParenExpr) assignable() {}
 
 // Source returns the node in the AST tree.
 func (s *ParenExpr) Source() ast.Node { return s.Src }
@@ -2459,16 +2762,25 @@ func (s *ParenExpr) Type() Type { return s.X.Type() }
 // Expr returns the expression in the source code.
 func (s *ParenExpr) Expr() ast.Expr { return s.Src }
 
+// Store returns the storage referenced by this expression.
+func (s *ParenExpr) Store() Storage {
+	withStore, ok := s.X.(WithStore)
+	if !ok {
+		return nil
+	}
+	return withStore.Store()
+}
+
 // String representation.
 func (s *ParenExpr) String() string { return "(" + s.X.String() + ")" }
 
-func (s *BinaryExpr) node() {}
+func (s *BinaryExpr) node()       {}
+func (s *BinaryExpr) assignable() {}
 
 // Source returns the node in the AST tree.
 func (s *BinaryExpr) Source() ast.Node { return s.Src }
 
-// Type returns the type returned by the expression.
-// Use CallExpr.Func.Type to get the type of the function being called.
+// Type returned by the expression.
 func (s *BinaryExpr) Type() Type { return s.Typ }
 
 // Expr returns the expression in the source code.
@@ -2479,14 +2791,62 @@ func (s *BinaryExpr) String() string {
 	return s.X.String() + s.Src.Op.String() + s.Y.String()
 }
 
-func (s *CallExpr) node() {}
+func (s *TypeValExpr) node()       {}
+func (s *TypeValExpr) typeExpr()   {}
+func (s *TypeValExpr) assignable() {}
+
+// Source returns the node in the AST tree.
+func (s *TypeValExpr) Source() ast.Node { return s.X.Source() }
+
+// Type of the function being called.
+func (s *TypeValExpr) Type() Type {
+	// The value of the reference is stored in the Typ field.
+	// The type of that value is a meta-type.
+	return MetaType()
+}
+
+// Store storing the type.
+func (s *TypeValExpr) Store() Storage { return s.Typ }
+
+// String representation.
+func (s *TypeValExpr) String() string { return s.Typ.String() }
+
+func (s *FuncValExpr) node()       {}
+func (s *FuncValExpr) assignable() {}
+
+// Name returns the name of a function
+func (s *FuncValExpr) Name() string {
+	return s.F.NameDef().Name
+}
+
+// Source returns the node in the AST tree.
+func (s *FuncValExpr) Source() ast.Node {
+	if s.X != nil {
+		return s.X.Source()
+	}
+	return s.F.Source()
+}
+
+// Type of the function being called.
+func (s *FuncValExpr) Type() Type {
+	return s.T
+}
+
+// Store storing the type.
+func (s *FuncValExpr) Store() Storage { return s.F }
+
+// String representation.
+func (s *FuncValExpr) String() string { return s.X.String() }
+
+func (s *CallExpr) node()       {}
+func (s *CallExpr) assignable() {}
 
 // Source returns the node in the AST tree.
 func (s *CallExpr) Source() ast.Node { return s.Src }
 
 // Type returns the type returned by the function call.
 // Use CallExpr.Func.Type to get the type of the function being called.
-func (s *CallExpr) Type() Type { return s.FuncType.Results.Type() }
+func (s *CallExpr) Type() Type { return s.Callee.T.Results.Type() }
 
 // Expr returns the expression in the source code.
 func (s *CallExpr) Expr() ast.Expr { return s.Src }
@@ -2499,17 +2859,17 @@ func (s *CallExpr) ExprFromResult(i int) *CallResultExpr {
 	}
 }
 
-// String representation.
-func (s *CallExpr) String() string { return fmt.Sprintf("%T", s) }
-
-func (s *CallResultExpr) node() {}
+func (s *CallResultExpr) node()       {}
+func (s *CallResultExpr) assignable() {}
 
 // Source returns the node in the AST tree.
 func (s *CallResultExpr) Source() ast.Node { return s.Call.Source() }
 
 // Type returns the type returned by the function call.
 // Use CallExpr.Func.Type to get the type of the function being called.
-func (s *CallResultExpr) Type() Type { return s.Call.FuncType.Results.Fields()[s.Index].Type() }
+func (s *CallResultExpr) Type() Type {
+	return s.Call.Callee.T.Results.Fields()[s.Index].Type()
+}
 
 // Expr returns the expression in the source code.
 func (s *CallResultExpr) Expr() ast.Expr { return s.Call.Expr() }
@@ -2517,7 +2877,8 @@ func (s *CallResultExpr) Expr() ast.Expr { return s.Call.Expr() }
 // String representation.
 func (s *CallResultExpr) String() string { return fmt.Sprintf("%T", s) }
 
-func (s *CastExpr) node() {}
+func (s *CastExpr) node()       {}
+func (s *CastExpr) assignable() {}
 
 // Source returns the node in the AST tree.
 func (s *CastExpr) Source() ast.Node { return s.Src }
@@ -2528,42 +2889,100 @@ func (s *CastExpr) Type() Type { return s.Typ }
 // Expr returns the expression in the source code.
 func (s *CastExpr) Expr() ast.Expr { return s.Src }
 
-// String representation.
-func (s *CastExpr) String() string { return fmt.Sprintf("%T", s) }
+// Orig returns the expression being casted.
+func (s *CastExpr) Orig() Expr { return s.X }
 
-func (s *ValueRef) node() {}
+func (s *TypeAssertExpr) node()       {}
+func (s *TypeAssertExpr) assignable() {}
+
+// Source returns the node in the AST tree.
+func (s *TypeAssertExpr) Source() ast.Node { return s.Src }
+
+// Type returns the target type of the cast.
+func (s *TypeAssertExpr) Type() Type { return s.Typ }
+
+// Expr returns the expression in the source code.
+func (s *TypeAssertExpr) Expr() ast.Expr { return s.Src }
+
+// Orig returns the expression being casted.
+func (s *TypeAssertExpr) Orig() Expr { return s.X }
+
+func (s *ValueRef) node()       {}
+func (s *ValueRef) assignable() {}
 
 // Source returns the node in the AST tree.
 func (s *ValueRef) Source() ast.Node { return s.Src }
 
 // Type returns the type returned by the function call.
 // Use CallExpr.Func.Type to get the type of the function being called.
-func (s *ValueRef) Type() Type { return s.Typ }
+func (s *ValueRef) Type() Type { return s.Stor.Type() }
 
 // Expr returns the expression in the source code.
 func (s *ValueRef) Expr() ast.Expr { return s.Src }
 
+// Store returns the storage referenced by this expression.
+func (s *ValueRef) Store() Storage { return s.Stor }
+
 // String representation.
 func (s *ValueRef) String() string { return s.Src.Name }
 
-func (FieldLit) node() {}
-
-func (s *FieldSelectorExpr) node() {}
+func (s *PackageRef) node()       {}
+func (s *PackageRef) assignable() {}
 
 // Source returns the node in the AST tree.
-func (s *FieldSelectorExpr) Source() ast.Node { return s.Src }
+func (s *PackageRef) Source() ast.Node { return s.X.Source() }
 
-// Type returns the type returned by the function call.
-// Use CallExpr.Func.Type to get the type of the function being called.
-func (s *FieldSelectorExpr) Type() Type { return s.Typ }
-
-// Expr returns the AST expression.
-func (s *FieldSelectorExpr) Expr() ast.Expr { return s.Src }
+// Type returns the package type.
+func (s *PackageRef) Type() Type { return PackageType() }
 
 // String representation.
-func (s *FieldSelectorExpr) String() string { return fmt.Sprintf("%T", s) }
+func (s *PackageRef) String() string { return s.X.String() }
 
-func (s *IndexExpr) node() {}
+func (*FieldLit) node()         {}
+func (*FieldLit) storageValue() {}
+
+// Value returns the value stored in the field.
+func (lit *FieldLit) Value(Expr) AssignableExpr {
+	return lit.X
+}
+
+func (s *SelectorExpr) node()       {}
+func (s *SelectorExpr) assignable() {}
+
+// Source returns the node in the AST tree.
+func (s *SelectorExpr) Source() ast.Node { return s.Src }
+
+// Type returns the type returned after the selection.
+func (s *SelectorExpr) Type() Type { return s.Stor.Type() }
+
+// Expr returns the AST expression.
+func (s *SelectorExpr) Expr() ast.Expr { return s.Src }
+
+// Select finds a method on a named type or a field in a structure.
+func (s *SelectorExpr) Select(typ Type) (method PkgFunc, field *Field) {
+	named, ok := typ.(*NamedType)
+	if ok {
+		method = named.MethodByName(s.Src.Sel.Name)
+	}
+	if method != nil {
+		return
+	}
+	under := Underlying(typ)
+	strct, ok := under.(*StructType)
+	if ok {
+		field = strct.Fields.FindField(s.Src.Sel.Name)
+		return
+	}
+	return
+}
+
+// Store returns the storage referenced by this expression.
+func (s *SelectorExpr) Store() Storage {
+	return s.Stor
+}
+
+func (s *IndexExpr) node()       {}
+func (s *IndexExpr) assignable() {}
 
 // Source returns the node in the AST tree.
 func (s *IndexExpr) Source() ast.Node { return s.Src }
@@ -2574,10 +2993,23 @@ func (s *IndexExpr) Type() Type { return s.Typ }
 // Expr returns the AST expression.
 func (s *IndexExpr) Expr() ast.Expr { return s.Src }
 
-// String representation.
-func (s *IndexExpr) String() string { return fmt.Sprintf("%T", s) }
+func (s *IndexListExpr) node()       {}
+func (s *IndexListExpr) assignable() {}
 
-func (s *EinsumExpr) node() {}
+// Source returns the node in the AST tree.
+func (s *IndexListExpr) Source() ast.Node { return s.Src }
+
+// Type returns the type of the indexed element.
+func (s *IndexListExpr) Type() Type { return s.Typ }
+
+// Expr returns the AST expression.
+func (s *IndexListExpr) Expr() ast.Expr { return s.Src }
+
+// String representation.
+func (s *IndexListExpr) String() string { return fmt.Sprintf("%T", s) }
+
+func (s *EinsumExpr) node()       {}
+func (s *EinsumExpr) assignable() {}
 
 // Source returns the node in the AST tree.
 func (s *EinsumExpr) Source() ast.Node { return s.Src }
@@ -2591,66 +3023,6 @@ func (s *EinsumExpr) Expr() ast.Expr { return s.Src }
 // String representation.
 func (s *EinsumExpr) String() string { return fmt.Sprintf("%T", s) }
 
-func (s *MethodSelectorExpr) node() {}
-
-// Source returns the node in the AST tree.
-func (s *MethodSelectorExpr) Source() ast.Node { return s.Src }
-
-// Type returns the type returned by the function call.
-// Use CallExpr.Func.Type to get the type of the function being called.
-func (s *MethodSelectorExpr) Type() Type { return s.Typ }
-
-// Expr returns the AST expression.
-func (s *MethodSelectorExpr) Expr() ast.Expr { return s.Src }
-
-// String representation.
-func (s *MethodSelectorExpr) String() string { return fmt.Sprintf("%T", s) }
-
-func (s *PackageFuncSelectorExpr) node() {}
-
-// Source returns the node in the AST tree.
-func (s *PackageFuncSelectorExpr) Source() ast.Node { return s.Src }
-
-// Type returns the type returned by the function call.
-// Use CallExpr.Func.Type to get the type of the function being called.
-func (s *PackageFuncSelectorExpr) Type() Type { return s.Typ }
-
-// Expr returns the AST expression.
-func (s *PackageFuncSelectorExpr) Expr() ast.Expr { return s.Src }
-
-// String representation.
-func (s *PackageFuncSelectorExpr) String() string { return fmt.Sprintf("%T", s) }
-
-func (s *PackageConstSelectorExpr) node() {}
-
-// Source returns the node in the AST tree.
-func (s *PackageConstSelectorExpr) Source() ast.Node { return s.Src }
-
-// Type of the constant.
-func (s *PackageConstSelectorExpr) Type() Type { return s.Typ }
-
-// Expr returns the AST expression.
-func (s *PackageConstSelectorExpr) Expr() ast.Expr { return s.Src }
-
-// String representation.
-func (s *PackageConstSelectorExpr) String() string { return fmt.Sprintf("%T", s) }
-
-func (s *TypeExpr) node() {}
-
-// Source returns the node in the AST tree.
-func (s *TypeExpr) Source() ast.Node { return s.Src }
-
-// Expr returns the expression in the source code.
-func (s *TypeExpr) Expr() ast.Expr { return s.Src }
-
-// Type returns the type referenced by the expression.
-func (s *TypeExpr) Type() Type { return s.Typ }
-
-// String representation of the type.
-func (s *TypeExpr) String() string {
-	return s.Typ.String()
-}
-
 func (s *RuntimeValueExprT[T]) node() {}
 
 // Source returns the node in the AST tree.
@@ -2663,65 +3035,163 @@ func (s *RuntimeValueExprT[T]) Expr() ast.Expr { return s.Src }
 func (s *RuntimeValueExprT[T]) Type() Type { return s.Typ }
 
 // Value returns the runtime value stored in the expression.
-func (s *RuntimeValueExprT[T]) Value() RuntimeValue { return s.Val }
+func (s *RuntimeValueExprT[T]) Value(Expr) RuntimeValue { return s.Val }
 
 // String representation of the type.
 func (s *RuntimeValueExprT[T]) String() string {
 	return fmt.Sprintf("runtime(%T)", s.Val)
 }
 
+func (s *Tuple) node() {}
+
+// Type returns the tuple type.
+func (s *Tuple) Type() Type {
+	typs := make([]Type, len(s.Exprs))
+	for i, expr := range s.Exprs {
+		typs[i] = expr.Type()
+	}
+	var src ast.Expr
+	if len(s.Exprs) > 0 {
+		src = s.Exprs[0].Source().(ast.Expr)
+	}
+	return &TupleType{
+		BaseType: BaseType[ast.Expr]{Src: src},
+		Types:    typs,
+	}
+}
+
+// Source returns the node in the AST tree.
+func (s *Tuple) Source() ast.Node {
+	if len(s.Exprs) == 0 {
+		return nil
+	}
+	return s.Exprs[0].Source()
+}
+
 // ----------------------------------------------------------------------------
 // Storage.
 
 type (
-	// LocalVarAssign is a local variable to which values can be assigned to.
-	LocalVarAssign struct {
-		Src   *ast.Ident
-		TypeF Type
+	// AnonymousStorage stores values that have not been labelled
+	// (for example, the axis length in [_]float32).
+	AnonymousStorage struct {
+		Src *ast.Ident
+		Typ Type
 	}
-	// StructFieldAssign is a field in a structure.
-	StructFieldAssign struct {
-		Src       *ast.SelectorExpr
-		X         Expr
-		TypeF     Type
-		FieldName string
+
+	// LocalVarStorage is a local variable to which values can be assigned to.
+	LocalVarStorage struct {
+		Src *ast.Ident
+		Typ Type
+	}
+	// StructFieldStorage is a field in a structure.
+	StructFieldStorage struct {
+		Sel *SelectorExpr
+	}
+
+	// FieldStorage is a field to which values can be assigned to.
+	FieldStorage struct {
+		Field *Field
+	}
+
+	// SpecialisedFunc is a storage for a function that has been specialised
+	SpecialisedFunc struct {
+		X Expr
+		F *FuncValExpr
+		T *FuncType
 	}
 )
 
 var (
-	_ Assignable = (*LocalVarAssign)(nil)
-	_ Assignable = (*StructFieldAssign)(nil)
+	_ Storage          = (*AnonymousStorage)(nil)
+	_ Storage          = (*LocalVarStorage)(nil)
+	_ Storage          = (*StructFieldStorage)(nil)
+	_ Storage          = (*FieldStorage)(nil)
+	_ StorageWithValue = (*SpecialisedFunc)(nil)
 )
 
-func (*LocalVarAssign) assignableNode() {}
-func (*LocalVarAssign) node()           {}
+func (*AnonymousStorage) node()    {}
+func (*AnonymousStorage) storage() {}
 
 // Source returns the node in the AST tree.
-func (s *LocalVarAssign) Source() ast.Node { return s.Src }
+func (s *AnonymousStorage) Source() ast.Node { return s.Src }
 
 // Expr returns the expression in the AST tree.
-func (s *LocalVarAssign) Expr() ast.Expr { return s.Src }
+func (s *AnonymousStorage) Expr() ast.Expr { return s.Src }
 
 // Type of the destination of the assignment.
-func (s *LocalVarAssign) Type() Type { return s.TypeF }
+func (s *AnonymousStorage) Type() Type { return s.Typ }
 
-// String representation of the assignment.
-func (s *LocalVarAssign) String() string { return fmt.Sprint(s.Src) }
+// NameDef returns the identifier identifying the storage.
+func (s *AnonymousStorage) NameDef() *ast.Ident { return s.Src }
 
-func (*StructFieldAssign) assignableNode() {}
-func (*StructFieldAssign) node()           {}
+func (*LocalVarStorage) node()    {}
+func (*LocalVarStorage) storage() {}
 
 // Source returns the node in the AST tree.
-func (s *StructFieldAssign) Source() ast.Node { return s.Src }
+func (s *LocalVarStorage) Source() ast.Node { return s.Src }
 
 // Expr returns the expression in the AST tree.
-func (s *StructFieldAssign) Expr() ast.Expr { return s.Src }
+func (s *LocalVarStorage) Expr() ast.Expr { return s.Src }
 
 // Type of the destination of the assignment.
-func (s *StructFieldAssign) Type() Type { return s.TypeF }
+func (s *LocalVarStorage) Type() Type { return s.Typ }
 
-// String representation of the assignment.
-func (s *StructFieldAssign) String() string { return fmt.Sprint(s.Src) }
+// NameDef returns the identifier identifying the storage.
+func (s *LocalVarStorage) NameDef() *ast.Ident { return s.Src }
+
+func (*StructFieldStorage) node()    {}
+func (*StructFieldStorage) storage() {}
+
+// Source returns the node in the AST tree.
+func (s *StructFieldStorage) Source() ast.Node { return s.Expr() }
+
+// Expr returns the expression in the AST tree.
+func (s *StructFieldStorage) Expr() ast.Expr { return s.Sel.Expr() }
+
+// Type of the destination of the assignment.
+func (s *StructFieldStorage) Type() Type { return s.Sel.Type() }
+
+// NameDef returns the identifier identifying the storage.
+func (s *StructFieldStorage) NameDef() *ast.Ident { return s.Sel.Src.Sel }
+
+func (*FieldStorage) node()    {}
+func (*FieldStorage) storage() {}
+
+// Source returns the node in the AST tree.
+func (s *FieldStorage) Source() ast.Node {
+	return s.Field.Source()
+}
+
+// Type of the destination of the assignment.
+func (s *FieldStorage) Type() Type { return s.Field.Type() }
+
+// NameDef returns the identifier identifying the storage.
+func (s *FieldStorage) NameDef() *ast.Ident { return s.Field.Name }
+
+func (*SpecialisedFunc) node()         {}
+func (*SpecialisedFunc) storage()      {}
+func (*SpecialisedFunc) storageValue() {}
+
+// Source returns the node in the AST tree.
+func (s *SpecialisedFunc) Source() ast.Node {
+	return s.X.Source()
+}
+
+// Type of the destination of the assignment.
+func (s *SpecialisedFunc) Type() Type { return s.T }
+
+// NameDef returns the identifier identifying the storage.
+func (s *SpecialisedFunc) NameDef() *ast.Ident { return s.F.F.NameDef() }
+
+// Value returns the function as a value.
+func (s *SpecialisedFunc) Value(x Expr) AssignableExpr {
+	return &FuncValExpr{
+		X: x,
+		F: s,
+		T: s.T,
+	}
+}
 
 // ----------------------------------------------------------------------------
 // Statements.
@@ -2747,37 +3217,37 @@ type (
 		Results []Expr
 	}
 
-	// Assignable is a variable or a field to which a value can be assigned to.
-	Assignable interface {
-		Expr
-		// assignableNode marks a structure as Assignable.
-		assignableNode()
-	}
-
 	// AssignCallStmt assigns the results of a function call returning more than one value to variables.
 	AssignCallStmt struct {
 		Src  *ast.AssignStmt
 		Call *CallExpr
-		List []Assignable
+		List []*AssignCallResult
 	}
 
 	// AssignExpr assigns an expression to a Assignable node.
 	AssignExpr struct {
-		Expr Expr
-		Dest Assignable
+		Storage
+		X AssignableExpr
+	}
+
+	// AssignCallResult assigns the result of a function call.
+	AssignCallResult struct {
+		Storage
+		Call        *CallExpr
+		ResultIndex int
 	}
 
 	// AssignExprStmt assigns the results of expressions (possibly functions returning one value) to variables.
 	AssignExprStmt struct {
 		Src  *ast.AssignStmt
-		List []AssignExpr
+		List []*AssignExpr
 	}
 
 	// RangeStmt is a range statement in for loops.
 	RangeStmt struct {
 		Src        *ast.RangeStmt
-		Key, Value Assignable
-		X          Expr
+		Key, Value Storage
+		X          AssignableExpr
 		Body       *BlockStmt
 	}
 
@@ -2785,7 +3255,7 @@ type (
 	IfStmt struct {
 		Src  *ast.IfStmt
 		Init Stmt
-		Cond Expr
+		Cond AssignableExpr
 		Body *BlockStmt
 		Else Stmt
 	}
@@ -2805,6 +3275,9 @@ var (
 	_ Stmt = (*RangeStmt)(nil)
 	_ Stmt = (*IfStmt)(nil)
 	_ Stmt = (*ExprStmt)(nil)
+
+	_ StorageWithValue = (*AssignExpr)(nil)
+	_ StorageWithValue = (*AssignCallResult)(nil)
 )
 
 func (*BlockStmt) stmtNode() {}
@@ -2825,7 +3298,10 @@ func (s *ReturnStmt) Type() Type {
 	for i, expr := range s.Results {
 		types[i] = expr.Type()
 	}
-	return TupleType{Types: types}
+	return &TupleType{
+		BaseType: BaseType[ast.Expr]{},
+		Types:    types,
+	}
 }
 
 func (*AssignCallStmt) stmtNode() {}
@@ -2858,6 +3334,29 @@ func (*ExprStmt) node()     {}
 // Source returns the node in the AST tree.
 func (s *ExprStmt) Source() ast.Node { return s.Src }
 
+func (*AssignExpr) storageValue() {}
+
+// Value returns the expression stored in the storage.
+func (a *AssignExpr) Value(Expr) AssignableExpr {
+	return a.X
+}
+
+func (*AssignCallResult) storageValue() {}
+
+// Value returns the expression stored in the storage.
+func (a *AssignCallResult) Value(Expr) AssignableExpr {
+	return &IndexExpr{
+		Src: &ast.IndexExpr{X: a.Call.Src},
+		X:   a.Call,
+		Typ: a.Type(),
+		Index: &AtomicValueT[int64]{
+			Src: &ast.BasicLit{},
+			Val: int64(a.ResultIndex),
+			Typ: Int64Type(),
+		},
+	}
+}
+
 // Blank characters when an identifier is not needed.
 const Blank = "_"
 
@@ -2873,17 +3372,17 @@ func ValidIdent(ident *ast.Ident) bool {
 
 // Shape returns the data type and axes of an array.
 // An invalid data type is returned if the type is not a container.
-// A slice returns an nil rank.
+// A slice returns a nil rank.
 func Shape(tp Type) (ArrayRank, Type) {
 	switch tpT := tp.(type) {
 	case ArrayType:
 		return tpT.Rank(), tpT.DataType()
 	case *NamedType:
-		return Shape(tpT.Underlying)
+		return Shape(tpT.Underlying.Typ)
 	case *SliceType:
-		return nil, tpT.DType
+		return nil, tpT.DType.Typ
 	default:
-		return nil, InvalidType{}
+		return nil, InvalidType()
 	}
 }
 
@@ -2894,4 +3393,40 @@ func IsBoolOp(op token.Token) bool {
 		return true
 	}
 	return false
+}
+
+// TODO(b/400359274): disable for now because of a bug in type inference.
+const enforceArrayChecks = false
+
+// ToArrayTypeGivenShape converts a type to the underlying array type.
+// Returns an error with the array type does not match the shape.
+func ToArrayTypeGivenShape(typ Type, sh *shape.Shape) (ArrayType, error) {
+	under := Underlying(typ)
+	array, ok := under.(ArrayType)
+	if !ok {
+		return nil, errors.Errorf("cannot create array value: type %s has underlying type %s but want array type", typ.String(), under.String())
+	}
+	if !enforceArrayChecks {
+		return array, nil
+	}
+	arrayElementKind := array.DataType().Kind()
+	if arrayElementKind == UnknownKind {
+		// TODO(396628508): result of a generic that has not been resolved by the compiler. Temporary until will support generics correctly.
+		return array, nil
+	}
+	dt := arrayElementKind.DType()
+	if dt != sh.DType {
+		return array, errors.Errorf("cannot create array value: type %s has data type %s but shape has data type %s", typ.String(), dt, sh.DType.String())
+	}
+	return array, nil
+}
+
+// NewSliceOfAxisLengths returns a new slice of expression typed as
+// a slice of axis length static integers.
+func NewSliceOfAxisLengths(src ast.Expr, elts []AssignableExpr) *SliceLitExpr {
+	return &SliceLitExpr{
+		Src:  src,
+		Elts: elts,
+		Typ:  IntLenSliceType(),
+	}
 }

@@ -25,6 +25,7 @@ import (
 	"github.com/gx-org/gx/build/importers"
 	"github.com/gx-org/gx/stdlib/builtin"
 	"github.com/gx-org/gx/stdlib/control"
+	"github.com/gx-org/gx/stdlib/dtype"
 	"github.com/gx-org/gx/stdlib/impl"
 	"github.com/gx-org/gx/stdlib/math/grad"
 	"github.com/gx-org/gx/stdlib/math"
@@ -43,6 +44,7 @@ var _ importers.Importer = (*Stdlib)(nil)
 
 var packages = []builtin.PackageBuilder{
 	control.Package,
+	dtype.Package,
 	grad.Package,
 	math.Package,
 	num.Package,

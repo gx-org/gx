@@ -30,7 +30,7 @@ type ifStmt struct {
 
 var _ stmtNode = (*ifStmt)(nil)
 
-func processIfStmt(owner owner, fn *funcDecl, stmt *ast.IfStmt) (*ifStmt, bool) {
+func processIfStmt(pscope procScope, stmt *ast.IfStmt) (*ifStmt, bool) {
 	n := &ifStmt{
 		ext: ir.IfStmt{
 			Src: stmt,
@@ -38,63 +38,58 @@ func processIfStmt(owner owner, fn *funcDecl, stmt *ast.IfStmt) (*ifStmt, bool) 
 	}
 	initOk := true
 	if stmt.Init != nil {
-		n.init, initOk = processStmt(owner, fn, stmt.Init)
+		n.init, initOk = processStmt(pscope, stmt.Init)
 	}
 	var condOk bool
-	n.cond, condOk = processExpr(owner, stmt.Cond)
+	n.cond, condOk = processExpr(pscope, stmt.Cond)
 	var bodyOk bool
-	n.body, bodyOk = processBlockStmt(owner, fn, stmt.Body)
+	n.body, bodyOk = processBlockStmt(pscope, stmt.Body)
 	elseOk := true
 	if stmt.Else != nil {
-		n.elseStmt, elseOk = processStmt(owner, fn, stmt.Else)
+		n.elseStmt, elseOk = processStmt(pscope, stmt.Else)
 	}
 	return n, initOk && condOk && bodyOk && elseOk
 }
 
-func (n *ifStmt) checkConditionType(scope scoper, typ typeNode) bool {
-	ok, err := typ.irType().Equal(scope.evalFetcher(), boolType.irType())
-	if err != nil {
-		scope.err().Appendf(n.cond.source(), "cannot evaluatate expression type: %v", err)
+func (n *ifStmt) checkConditionType(scope resolveScope, typ ir.Type) bool {
+	compEval, compEvalOk := scope.compEval()
+	if !compEvalOk {
 		return false
 	}
+	ok, err := typ.Equal(compEval, ir.BoolType())
+	if err != nil {
+		return scope.err().Appendf(n.cond.source(), "cannot evaluatate expression type: %v", err)
+	}
 	if !ok {
-		scope.err().Appendf(n.cond.source(), "non-boolean condition in if statement")
-		return false
+		return scope.err().Appendf(n.cond.source(), "non-boolean condition in if statement")
 	}
 	return true
 }
 
-func (n *ifStmt) resolveType(scope *scopeBlock) bool {
-	block := scope.scopeBlock()
+func (n *ifStmt) buildStmt(rscope funResolveScope) (ir.Stmt, bool) {
+	bScope, ok := newBlockScope(rscope)
+	if !ok {
+		return nil, false
+	}
+	var init ir.Stmt
 	initOk := true
 	if n.init != nil {
-		initOk = n.init.resolveType(block)
+		init, initOk = n.init.buildStmt(bScope)
 	}
-	condTyp, condOk := n.cond.resolveType(block)
+	cond, condOk := buildAExpr(bScope, n.cond)
 	if condOk {
-		condOk = n.checkConditionType(block, condTyp)
+		condOk = n.checkConditionType(bScope, cond.Type())
 	}
-	bodyOk := n.body.resolveType(block)
+	body, bodyOk := n.body.buildBlockStmt(bScope)
+	var els ir.Stmt
 	elseOk := true
 	if n.elseStmt != nil {
-		elseOk = n.elseStmt.resolveType(block)
+		els, elseOk = n.elseStmt.buildStmt(bScope)
 	}
-	return initOk && condOk && bodyOk && elseOk
-}
-
-func (n *ifStmt) buildStmt() ir.Stmt {
-	if n.init != nil {
-		n.ext.Init = n.init.buildStmt()
-	}
-	n.ext.Cond = n.cond.buildExpr()
-	n.ext.Body = n.body.buildBlockStmt()
-	if n.elseStmt != nil {
-		n.ext.Else = n.elseStmt.buildStmt()
-	}
-	return &n.ext
-}
-
-// source is the position of the if statement in the code.
-func (n *ifStmt) source() ast.Node {
-	return n.ext.Source()
+	return &ir.IfStmt{
+		Init: init,
+		Cond: cond,
+		Body: body,
+		Else: els,
+	}, initOk && condOk && bodyOk && elseOk
 }

@@ -16,6 +16,7 @@
 package graph
 
 import (
+	"fmt"
 	"go/ast"
 
 	"github.com/pkg/errors"
@@ -109,6 +110,18 @@ func (n *constant) exec(exec *executor) (kernels.Array, error) {
 	return n.value, nil
 }
 
+func (n *constant) String() string {
+	return n.value.String()
+}
+
+func toString(x any) string {
+	s, ok := x.(fmt.Stringer)
+	if ok {
+		return s.String()
+	}
+	return fmt.Sprintf("%T", x)
+}
+
 type binary struct {
 	node
 	x, y   execNode
@@ -149,6 +162,10 @@ func (n binary) exec(exec *executor) (kernels.Array, error) {
 	return n.kernel(x, y)
 }
 
+func (n binary) String() string {
+	return fmt.Sprintf("%s(%s,%s)", toString(n.kernel), toString(n.x), toString(n.y))
+}
+
 type unary struct {
 	node
 	x      execNode
@@ -181,6 +198,10 @@ func (g *Graph) newUnary(op *ast.UnaryExpr, x execNode) (graph.Node, error) {
 		x:      x,
 		kernel: kernel,
 	}, nil
+}
+
+func (n unary) String() string {
+	return fmt.Sprintf("%s(%s)", toString(n.kernel), toString(n.x))
 }
 
 // NewCast returns a cast/convert operator node.
@@ -278,7 +299,17 @@ func (g *Graph) NewSet(x, updates, index graph.Node) (graph.Node, error) {
 
 // NewSlice returns a slice on a node.
 func (g *Graph) NewSlice(x graph.Node, index int) (graph.Node, error) {
-	return nil, errors.Errorf("not implemented")
+	node := x.(execNode)
+	xShape := node.shape()
+	kernel, shape, err := node.kernelFactory().Slice(xShape, index)
+	if err != nil {
+		return nil, err
+	}
+	return &unary{
+		node:   g.node(shape, node.kernelFactory()),
+		x:      node,
+		kernel: kernel,
+	}, nil
 }
 
 type tuple struct {

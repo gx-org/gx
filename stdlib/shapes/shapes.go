@@ -18,7 +18,9 @@ package shapes
 import (
 	"embed"
 
+	"github.com/gx-org/gx/interp"
 	"github.com/gx-org/gx/stdlib/builtin"
+	"github.com/gx-org/gx/stdlib/impl"
 )
 
 //go:embed *.gx
@@ -30,9 +32,9 @@ var Package = builtin.PackageBuilder{
 	Builders: []builtin.Builder{
 		builtin.ParseSource(&fs),
 		builtin.BuildFunc(concat{}),
-		builtin.BuildFunc(lenFunc{}),
 		builtin.BuildFunc(split{}),
 		builtin.BuildFunc(expand{}),
 		builtin.BuildFunc(gather{}),
+		builtin.ImplementStubFunc("Len", func(impl *impl.Stdlib) interp.FuncBuiltin { return impl.Shapes.Len }),
 	},
 }

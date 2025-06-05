@@ -26,14 +26,14 @@ import (
 	"github.com/pkg/errors"
 	"github.com/gx-org/backend/dtype"
 	"github.com/gx-org/gx/api"
+	"github.com/gx-org/gx/api/options"
 	"github.com/gx-org/gx/build/fmterr"
 	"github.com/gx-org/gx/build/ir"
 	"github.com/gx-org/gx/golang/binder/gobindings/types"
-	"github.com/gx-org/gx/interp"
 )
 
 func findTests(pkg *ir.Package) []*ir.FuncDecl {
-	funs := []*ir.FuncDecl{}
+	var funs []*ir.FuncDecl
 	for fn := range pkg.ExportedFuncs() {
 		if !strings.HasPrefix(fn.Name(), "Test") {
 			continue
@@ -63,16 +63,18 @@ const (
 	setStatic = "setStatic"
 )
 
-func findVarDecl(pkg *ir.Package, name string) (*ir.VarDecl, error) {
-	for _, decl := range pkg.Vars {
-		if decl.VName.Name == name {
-			return decl, nil
+func findVarDecl(pkg *ir.Package, name string) (*ir.VarExpr, error) {
+	for _, decl := range pkg.Decls.Vars {
+		for _, vr := range decl.Exprs {
+			if vr.VName.Name == name {
+				return vr, nil
+			}
 		}
 	}
 	return nil, errors.Errorf("cannot find variable %s in package %s", name, pkg.FullName())
 }
 
-func buildSetStaticOption(rtm *api.Runtime, pkg *ir.Package, cmdS []string) (interp.PackageOption, error) {
+func buildSetStaticOption(rtm *api.Runtime, pkg *ir.Package, cmdS []string) (options.PackageOption, error) {
 	cmdS = cmdS[1:]
 	const numArgs = 3
 	if len(cmdS) != numArgs {
@@ -110,14 +112,14 @@ func buildSetStaticOption(rtm *api.Runtime, pkg *ir.Package, cmdS []string) (int
 	default:
 		return nil, errors.Errorf("type %q not supported", valType)
 	}
-	return interp.PackageVarSetValue{
+	return options.PackageVarSetValue{
 		Pkg:   pkg.FullName(),
 		Var:   valName,
 		Value: val.Bridge().GXValue(),
 	}, nil
 }
 
-func buildOption(rtm *api.Runtime, pkg *ir.Package, cmd string) (interp.PackageOption, error) {
+func buildOption(rtm *api.Runtime, pkg *ir.Package, cmd string) (options.PackageOption, error) {
 	cmdS := strings.Split(cmd, " ")
 	if len(cmdS) == 0 {
 		return nil, nil
@@ -131,8 +133,8 @@ func buildOption(rtm *api.Runtime, pkg *ir.Package, cmd string) (interp.PackageO
 }
 
 // BuildCompileOptions from the source code of the package.
-func BuildCompileOptions(rtm *api.Runtime, pkg *ir.Package) ([]interp.PackageOption, error) {
-	var options []interp.PackageOption
+func BuildCompileOptions(rtm *api.Runtime, pkg *ir.Package) ([]options.PackageOption, error) {
+	var options []options.PackageOption
 	for _, file := range pkg.Files {
 		for _, grp := range file.Src.Comments {
 			if !strings.HasPrefix(grp.Text(), "Test options:") {
@@ -157,7 +159,8 @@ func BuildCompileOptions(rtm *api.Runtime, pkg *ir.Package) ([]interp.PackageOpt
 }
 
 // RunAll compiles and runs all the test at a specified path.
-func RunAll(t *testing.T, rtm *api.Runtime, pkg *ir.Package, err error) {
+// Returns the number of tests that have been run.
+func RunAll(t *testing.T, rtm *api.Runtime, pkg *ir.Package, err error) (numTests int) {
 	var errs *fmterr.Errors
 	if err != nil {
 		var ok bool
@@ -195,9 +198,11 @@ func RunAll(t *testing.T, rtm *api.Runtime, pkg *ir.Package, err error) {
 	for _, fn := range fns {
 		name := fn.File().Package.Name.Name + "." + fn.Name()
 		t.Run(name, func(t *testing.T) {
+			numTests++
 			tRunner.run(t, fn, options)
 		})
 	}
+	return
 }
 
 // NumberLines returns a string where lines are prefixed by their number.

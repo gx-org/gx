@@ -15,36 +15,28 @@
 package builder
 
 import (
+	"fmt"
 	"go/ast"
+	"strings"
 
 	"github.com/gx-org/gx/build/ir"
 )
 
 // sliceType defines an slice (which only stays on host).
 type sliceType struct {
-	ext   *ir.SliceType
-	dtype typeNode
-	typ   typeNode
+	src   *ast.ArrayType
+	rank  int
+	dtype typeExprNode
 }
 
 var (
-	_ concreteTypeNode = (*sliceType)(nil)
-	_ indexableType    = (*sliceType)(nil)
+	_ exprNode     = (*sliceType)(nil)
+	_ typeExprNode = (*sliceType)(nil)
 )
 
-func importSliceType(scope scoper, typ *ir.SliceType) (*sliceType, bool) {
-	tp := &sliceType{
-		ext: typ,
-	}
-	var dtypeOk bool
-	tp.dtype, dtypeOk = toTypeNode(scope, typ.DType)
-	tp.typ = tp
-	return tp, dtypeOk
-}
-
-func processSliceType(owner owner, typ *ast.ArrayType) (*sliceType, bool) {
+func processSliceType(pscope procScope, src *ast.ArrayType) (*sliceType, bool) {
 	rank := 0
-	var elt ast.Node = typ
+	var elt ast.Node = src
 	for {
 
 		if eltT, ok := elt.(*ast.ArrayType); ok && eltT.Len == nil {
@@ -54,150 +46,71 @@ func processSliceType(owner owner, typ *ast.ArrayType) (*sliceType, bool) {
 			continue
 		}
 		// Process the data type of the slice.
-		dtype, ok := processTypeExpr(owner, elt)
+		dtype, ok := processTypeExpr(pscope, elt)
 		return &sliceType{
-			ext: &ir.SliceType{
-				Src:  typ,
-				Rank: rank,
-			},
+			src:   src,
+			rank:  rank,
 			dtype: dtype,
 		}, ok
 	}
 }
 
-func (n *sliceType) subsliceType() (*sliceType, bool) {
-	return &sliceType{
-		ext: &ir.SliceType{
-			Rank: n.ext.Rank - 1,
-		},
-		dtype: n.dtype,
-	}, n.dtype != nil
-}
-
 func (n *sliceType) source() ast.Node {
-	return n.ext.Source()
+	return n.src
 }
 
-func (n *sliceType) irType() ir.Type {
-	return n.ext
-}
-
-func (n *sliceType) kind() ir.Kind {
-	return ir.SliceKind
-}
-
-func (n *sliceType) convertibleTo(scope scoper, typ typeNode) (bool, []*ir.ValueRef, error) {
-	return false, nil, nil
-}
-
-func (n *sliceType) isGeneric() bool {
-	return false
-}
-
-func (n *sliceType) resolveConcreteType(scope scoper) (typeNode, bool) {
-	if n.typ != nil {
-		return typeNodeOk(n.typ)
+func (n *sliceType) buildTypeExpr(rscope resolveScope) (*ir.TypeValExpr, bool) {
+	dtypeExpr, ok := n.dtype.buildTypeExpr(rscope)
+	expr := &ir.SliceType{
+		BaseType: baseType(n.src),
+		Rank:     n.rank,
+		DType:    dtypeExpr,
 	}
-	n.typ = n
-	_, ok := resolveType(scope, n, n.dtype)
-	if !ok {
-		return n, false
-	}
-	n.ext.DType = n.dtype.irType()
-	return n, true
+	return &ir.TypeValExpr{X: expr, Typ: expr}, ok
 }
 
-func (n *sliceType) elementType() (typeNode, error) {
-	return n.dtype, nil
+func (n *sliceType) buildExpr(rscope resolveScope) (ir.Expr, bool) {
+	return n.buildTypeExpr(rscope)
 }
 
 func (n *sliceType) String() string {
-	return n.ext.String()
+	return fmt.Sprintf("%s%s", n.dtype.String(), strings.Repeat("[]", n.rank))
 
 }
 
-// sliceExpr defines a slice with its content.
-type sliceExpr struct {
-	ext      ir.SliceExpr
-	typ      *sliceType
-	elements []exprNode
+// sliceLitExpr defines a slice with its content.
+type sliceLitExpr struct {
+	src *ast.CompositeLit
+	typ *sliceType
+	lit *compositeLit
 }
 
-func toSliceExpr(scope scoper, expr ast.Expr, dtype typeNode, elements []exprNode) *sliceExpr {
-	return &sliceExpr{
-		ext: ir.SliceExpr{Src: expr},
-		typ: &sliceType{
-			ext:   &ir.SliceType{Rank: 1},
-			dtype: dtype,
-		},
-		elements: elements,
-	}
-}
+var _ exprNode = (*sliceLitExpr)(nil)
 
-func (n *sliceType) toExprNode(owner owner, src *ast.CompositeLit) (exprNode, bool) {
-	expr := &sliceExpr{
-		ext: ir.SliceExpr{Src: src},
-		typ: n,
-	}
-	ok := true
-	for _, eltSrc := range src.Elts {
-		eltExpr, eltOk := processExpr(owner, eltSrc)
-		ok = eltOk && ok
-		expr.elements = append(expr.elements, eltExpr)
-	}
+func (n *sliceType) processLiteralExpr(pscope procScope, src *ast.CompositeLit) (exprNode, bool) {
+	expr := &sliceLitExpr{src: src, typ: n}
+	var ok bool
+	expr.lit, ok = processUntypedCompositeLit(pscope, src)
 	return expr, ok
 }
 
-func (n *sliceExpr) resolveType(scope scoper) (typeNode, bool) {
-	if n.typ.typ != nil {
-		return typeNodeOk(n.typ.typ)
+func (n *sliceLitExpr) source() ast.Node {
+	return n.src
+}
+
+func (n *sliceLitExpr) buildExpr(rscope resolveScope) (ir.Expr, bool) {
+	typ, typOk := buildSliceType(rscope, n.typ)
+	if !typOk {
+		return &ir.SliceLitExpr{Src: n.src, Typ: ir.InvalidType()}, false
 	}
-	if _, ok := resolveType(scope, n, n.typ); !ok {
-		return n.typ, false
+	under := ir.Underlying(typ)
+	sliceType, ok := under.(*ir.SliceType)
+	if !ok {
+		return &ir.SliceLitExpr{Src: n.src, Typ: ir.InvalidType()}, rscope.err().AppendInternalf(n.src, "%T is not a slice type", under)
 	}
-	ok := true
-	n.ext.Vals = make([]ir.Expr, len(n.elements))
-	for i, elt := range n.elements {
-		eltType, eltOk := elt.resolveType(scope)
-		if !eltOk {
-			ok = false
-			continue
-		}
-		if ir.IsNumber(eltType.kind()) {
-			eltType = n.typ.dtype
-			elt, eltType, eltOk = castNumber(scope, elt, eltType.irType())
-			if !eltOk {
-				ok = false
-				continue
-			}
-			n.elements[i] = elt
-		}
-		_, eltOk, err := assignableTo(scope, n, eltType, n.typ.dtype)
-		if err != nil {
-			ok = scope.err().AppendAt(elt.source(), err)
-		}
-		if !eltOk {
-			ok = scope.err().Appendf(elt.source(), "cannot use %s as %s in slice", eltType.String(), n.typ.dtype.String())
-		}
-		n.ext.Vals[i] = elt.buildExpr()
-	}
-	n.ext.Typ = n.typ.irType()
-	return n.typ, ok
+	return n.lit.buildExpr(newSliceLitScope(rscope, sliceType))
 }
 
-func (n *sliceExpr) source() ast.Node {
-	return n.expr()
-}
-
-func (n *sliceExpr) expr() ast.Expr {
-	return n.ext.Expr()
-}
-
-func (n *sliceExpr) buildExpr() ir.Expr {
-	n.ext.Typ = n.typ.irType()
-	return &n.ext
-}
-
-func (n *sliceExpr) String() string {
-	return n.ext.String()
+func (n *sliceLitExpr) String() string {
+	return n.typ.String() + n.lit.String()
 }

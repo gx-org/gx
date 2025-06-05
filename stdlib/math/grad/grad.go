@@ -17,12 +17,11 @@ package grad
 
 import (
 	"embed"
-	"fmt"
 	"go/ast"
 	"go/token"
+	"math/big"
 	"strconv"
 
-	"github.com/pkg/errors"
 	"github.com/gx-org/gx/build/fmterr"
 	"github.com/gx-org/gx/build/ir"
 	"github.com/gx-org/gx/stdlib/builtin"
@@ -40,36 +39,37 @@ var Package = builtin.PackageBuilder{
 	},
 }
 
-func computeGrad(fetcher ir.Fetcher, target *ir.FuncDecl, args []ir.Expr) error {
+func computeGrad(fetcher ir.Fetcher, target *ir.FuncDecl, args []ir.AssignableExpr) (*ir.FuncDecl, bool) {
+	ext := *target
 	if len(args) != 2 {
-		return errors.Errorf("%d argument(s) given to grad.Func, want 2", len(args))
+		return &ext, fetcher.Err().Appendf(target.Src, "%d argument(s) given to grad.Func, want 2", len(args))
 	}
 	funcRef, ok := args[0].(*ir.ValueRef)
 	if !ok {
-		return errors.Errorf("%T not supported, want a function name", args[0])
+		return &ext, fetcher.Err().Appendf(target.Src, "%T not supported, want a function name", args[0])
 	}
-	funcAtomic, err := fetcher.Fetch(funcRef.Src)
-	if err != nil {
-		return err
-	}
-	funcSrc, ok := funcAtomic.(*ir.FuncDecl)
+	funcExpr, ok := fetcher.BuildExpr(funcRef.Src)
 	if !ok {
-		return errors.Errorf("cannot compute the gradient of %T function, want a GX declared function", funcAtomic)
+		return &ext, false
+	}
+	funcSrc, ok := funcExpr.(*ir.FuncDecl)
+	if !ok {
+		return &ext, fetcher.Err().Appendf(target.Src, "cannot compute the gradient of %s, want a GX declared function", funcExpr.Type().String())
 	}
 	argName, ok := args[1].(*ir.StringLiteral)
 	if !ok {
-		return errors.Errorf("%T not supported, want a string literal", args[1])
+		return &ext, fetcher.Err().Appendf(target.Src, "%s not supported, want a string literal", args[1].Type().String())
 	}
 	argValue, err := strconv.Unquote(argName.Src.Value)
 	if err != nil {
-		return err
+		return &ext, fetcher.Err().Appendf(target.Src, "%v", err)
 	}
-	target.FType = funcSrc.FType
-	target.Body, err = gradBlock(fetcher, target, funcSrc.Body, argValue)
+	ext.FType = funcSrc.FType
+	ext.Body, err = gradBlock(fetcher, target, funcSrc.Body, argValue)
 	if err != nil {
-		err = fmt.Errorf("\n%+v", err)
+		return &ext, fetcher.Err().AppendAt(target.Src, err)
 	}
-	return err
+	return &ext, true
 }
 
 func gradBlock(fetcher ir.Fetcher, target *ir.FuncDecl, src *ir.BlockStmt, argName string) (*ir.BlockStmt, error) {
@@ -89,7 +89,7 @@ func gradStmt(fetcher ir.Fetcher, src ir.Stmt, argName string) (ir.Stmt, error) 
 	case *ir.ReturnStmt:
 		return gradReturnStmt(fetcher, srcT, argName)
 	default:
-		return nil, fmterr.Errorf(fetcher.FileSet(), src.Source(), "gradient of %T statement not supported", srcT)
+		return nil, fmterr.Errorf(fetcher.File().FileSet(), src.Source(), "gradient of %T statement not supported", srcT)
 	}
 }
 
@@ -115,7 +115,7 @@ func gradReturnStmt(fetcher ir.Fetcher, src *ir.ReturnStmt, argName string) (*ir
 	return stmt, nil
 }
 
-func gradExpr(fetcher ir.Fetcher, src ir.Expr, argName string) (ir.Expr, error) {
+func gradExpr(fetcher ir.Fetcher, src ir.Expr, argName string) (ir.AssignableExpr, error) {
 	switch srcT := src.(type) {
 	case *ir.ArrayLitExpr:
 		return gradArrayLitExpr(fetcher, srcT, argName)
@@ -123,14 +123,15 @@ func gradExpr(fetcher ir.Fetcher, src ir.Expr, argName string) (ir.Expr, error) 
 		return gradNumberCastExpr(fetcher, srcT, argName)
 	case *ir.ValueRef:
 		return gradValueRef(fetcher, srcT, argName)
+
 	case *ir.NumberFloat:
 		return nil, nil
 	default:
-		return nil, fmterr.Errorf(fetcher.FileSet(), src.Source(), "gradient of %T expression not supported", srcT)
+		return nil, fmterr.Errorf(fetcher.File().FileSet(), src.Source(), "gradient of %T expression not supported", srcT)
 	}
 }
 
-func gradNumberCastExpr(fetcher ir.Fetcher, src *ir.NumberCastExpr, argName string) (ir.Expr, error) {
+func gradNumberCastExpr(fetcher ir.Fetcher, src *ir.NumberCastExpr, argName string) (ir.AssignableExpr, error) {
 	gExpr, err := gradExpr(fetcher, src.X, argName)
 	if err != nil {
 		return nil, err
@@ -141,7 +142,7 @@ func gradNumberCastExpr(fetcher ir.Fetcher, src *ir.NumberCastExpr, argName stri
 	return &ir.NumberCastExpr{Typ: src.Typ, X: gExpr}, nil
 }
 
-func gradValueRef(fetcher ir.Fetcher, src *ir.ValueRef, argName string) (ir.Expr, error) {
+func gradValueRef(fetcher ir.Fetcher, src *ir.ValueRef, argName string) (ir.AssignableExpr, error) {
 	if src.Src.Name != argName {
 		// The ident does not correspond to the variable
 		// for which we are differentiating: return zero.
@@ -150,9 +151,9 @@ func gradValueRef(fetcher ir.Fetcher, src *ir.ValueRef, argName string) (ir.Expr
 	return oneValueOf(fetcher, src.Source(), src.Type())
 }
 
-func gradArrayLitExpr(fetcher ir.Fetcher, src *ir.ArrayLitExpr, argName string) (ir.Expr, error) {
+func gradArrayLitExpr(fetcher ir.Fetcher, src *ir.ArrayLitExpr, argName string) (ir.AssignableExpr, error) {
 	allZero := true
-	gValues := make([]ir.Expr, len(src.Values()))
+	gValues := make([]ir.AssignableExpr, len(src.Values()))
 	for i, expr := range src.Values() {
 		var err error
 		gValues[i], err = gradExpr(fetcher, expr, argName)
@@ -174,15 +175,17 @@ func gradArrayLitExpr(fetcher ir.Fetcher, src *ir.ArrayLitExpr, argName string) 
 	return src.NewFromValues(gValues), nil
 }
 
-func zeroValueOf(fetcher ir.Fetcher, node ast.Node, typ ir.Type) (ir.Expr, error) {
+func zeroValueOf(fetcher ir.Fetcher, node ast.Node, typ ir.Type) (ir.AssignableExpr, error) {
 	zero, ok := typ.(ir.Zeroer)
 	if !ok {
-		return nil, fmterr.Errorf(fetcher.FileSet(), node, "zero expression of %T not supported", typ)
+		return nil, fmterr.Errorf(fetcher.File().FileSet(), node, "zero expression of %T not supported", typ)
 	}
 	return zero.Zero(), nil
 }
 
-func oneValueOf(fetcher ir.Fetcher, node ast.Node, typ ir.Type) (ir.Expr, error) {
+var one = &ir.NumberInt{Src: &ast.BasicLit{Value: "1"}, Val: big.NewInt(1)}
+
+func oneValueOf(fetcher ir.Fetcher, node ast.Node, typ ir.Type) (ir.AssignableExpr, error) {
 	zero, err := zeroValueOf(fetcher, node, typ)
 	if err != nil {
 		return nil, err
@@ -192,7 +195,7 @@ func oneValueOf(fetcher ir.Fetcher, node ast.Node, typ ir.Type) (ir.Expr, error)
 			Src: &ast.BinaryExpr{Op: token.ADD},
 			X:   zero,
 			Y: &ir.NumberCastExpr{
-				X:   &ir.NumberInt{Src: &ast.BasicLit{Value: "1"}},
+				X:   one,
 				Typ: ir.TypeFromKind(typ.Kind()),
 			},
 			Typ: typ,

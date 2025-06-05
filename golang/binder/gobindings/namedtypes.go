@@ -38,8 +38,9 @@ type namedType interface {
 
 func buildTypes(b *binder) ([]namedType, error) {
 	var types []namedType
-	for i, gxType := range b.Package.Types {
-		if !ir.IsExported(gxType.Name()) {
+	for i, gxType := range b.Package.Decls.Types {
+		_, ok := gxType.Underlying.Typ.(*ir.BuiltinType)
+		if ok && !ir.IsExported(gxType.Name()) {
 			continue
 		}
 		typ, err := b.buildType(i, gxType)
@@ -62,7 +63,7 @@ func (b *binder) namedTypeDefinitions() (string, error) {
 }
 
 func (b *binder) buildType(index int, gxType *ir.NamedType) (namedType, error) {
-	switch typT := gxType.Underlying.(type) {
+	switch typT := gxType.Underlying.Typ.(type) {
 	case ir.ArrayType:
 		if !typT.Rank().IsAtomic() {
 			return nil, errors.Errorf("array named type %s:%T not supported", gxType.Name(), typT)
@@ -275,7 +276,7 @@ var (
 )
 
 func (s *structType) sliceElementFactory(typ *ir.SliceType) (string, error) {
-	namedType, ok := typ.DType.(*ir.NamedType)
+	namedType, ok := typ.DType.Typ.(*ir.NamedType)
 	if !ok {
 		return "nil", nil
 	}
@@ -285,14 +286,14 @@ func (s *structType) sliceElementFactory(typ *ir.SliceType) (string, error) {
 	}
 	return fmt.Sprintf(`func () (types.Bridge, error) {
 		return h.pkg.%s.New%s().Bridge(), nil
-	}`, factory, namedType.NameT), nil
+	}`, factory, namedType.Name()), nil
 }
 
 func (s *structType) buildFields() ([]structField, error) {
 	fields := s.typ.Fields.Fields()
 	var structFields []structField
 	for _, field := range fields {
-		goType, err := s.binder.bridgerType(field.Group.Type)
+		goType, err := s.binder.bridgerType(field.Group.Type.Typ)
 		if err != nil {
 			return nil, err
 		}
@@ -313,7 +314,7 @@ func (s *structType) buildFields() ([]structField, error) {
 
 		case *ir.SliceType:
 			sField.constructor = fieldSliceType
-			sField.SliceElementBridgerType, err = s.bridgerType(typT.DType)
+			sField.SliceElementBridgerType, err = s.bridgerType(typT.DType.Typ)
 			if err != nil {
 				return nil, err
 			}
@@ -336,7 +337,7 @@ var (
 // {{.Named.Name}} stores the handle of {{.Named.Name}} on a device.
 type {{.Named.Name}} struct {
 	handle handle{{.Named.Name}}
-	value *values.Struct
+	value *values.NamedType
 {{range $field := .Fields}}
 	{{$field.Name}} {{$field.BridgerType}}
 {{end}}
@@ -349,21 +350,26 @@ var (
 
 // StructValue returns the GX value of the structure.
 func (h *handle{{.Named.Name}}) StructValue() *values.Struct {
-	return h.owner.value
+	return h.owner.value.Underlying().(*values.Struct)
 }
 
 // Marshal{{.Named.Name}} populates the receiver fields with device handles.
 func (cmpl *Package) Marshal{{.Named.Name}}(val values.Value) (s *{{.Named.Name}}, err error) {
 	s = cmpl.Factory.New{{.Named.Name}}()
 	var ok bool
-	s.value, ok = val.(*values.Struct)
+	s.value, ok = val.(*values.NamedType)
 	if !ok {
-		err = fmt.Errorf("cannot use handle to set {{.Named.Name}}: %T is not a %s", val, reflect.TypeFor[*values.Struct]().Name())
+		err = errors.Errorf("cannot use handle to set {{.Named.Name}}: %T is not a %s", val, reflect.TypeFor[*values.NamedType]())
 		return
 	}
-	fields := make([]values.Value, s.value.StructType().NumFields())
-	for i, field := range s.value.StructType().Fields.Fields() {
-		fields[i] = s.value.FieldValue(field.Name.Name)
+	structVal, ok := s.value.Underlying().(*values.Struct)
+	if !ok {
+		err = errors.Errorf("incorrect underlying value for named type {{.Named.Name}}: %T is not a %s", val, reflect.TypeFor[*values.Struct]().Name())
+		return
+	}
+	fields := make([]values.Value, structVal.StructType().NumFields())
+	for i, field := range structVal.StructType().Fields.Fields() {
+		fields[i] = structVal.FieldValue(field.Name.Name)
 	}
 	{{.SetDeviceFieldsFromSliceValue}}
 	return
@@ -457,11 +463,11 @@ func (s structType) Fields() []structField {
 }
 
 var initStructGXValueTemplate = template.Must(template.New("initStructGXValueTMPL").Parse(`
-	var err error
-	s.value, err = values.NewStruct(typ, nil)
+	structVal, err := values.NewStruct(typ, nil)
 	if err != nil {
 		panic(err)
 	}
+	s.value = values.NewNamedType(structVal, typ)
 `))
 
 func (s structType) InitGXValue() (string, error) {

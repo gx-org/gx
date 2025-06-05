@@ -28,8 +28,19 @@ type boolFactory struct {
 
 var _ Factory = (*boolFactory)(nil)
 
+func (boolFactory) Math() MathFactory {
+	return nil
+}
+
 func (boolFactory) BinaryOp(op token.Token, x, y *shape.Shape) (Binary, *shape.Shape, error) {
-	return nil, nil, errors.Errorf("operator %q not supported", op.String())
+	switch op {
+	case token.LAND:
+		return boolAndArray, x, nil
+	case token.LOR:
+		return boolOrArray, x, nil
+	default:
+		return nil, nil, errors.Errorf("operator %q not supported", op.String())
+	}
 }
 
 // UnaryOp creates a new kernel for a unary operator.
@@ -48,22 +59,24 @@ func (boolFactory) Cast(dtype.DataType, []int) (Unary, *shape.Shape, Factory, er
 }
 
 // ToBoolAtom converts a value into an atom owned by a backend.
-func ToBoolAtom(val bool) *ArrayT[bool] {
-	return &ArrayT[bool]{
+func ToBoolAtom(val bool) Array {
+	return &nonAlgebraArray[bool]{&arrayT[bool]{
 		factory: boolFactory{},
 		shape:   shape.Shape{DType: dtype.Bool},
 		values:  []bool{val},
-	}
+	}}
 }
 
 // ToBoolArray converts values and a shape into a native multi-dimensional array owned by a backend.
-func ToBoolArray(values []bool, dims []int) *ArrayT[bool] {
-	return &ArrayT[bool]{
-		factory: boolFactory{},
-		shape: shape.Shape{
-			DType:       dtype.Bool,
-			AxisLengths: dims,
+func ToBoolArray(values []bool, dims []int) Array {
+	return &nonAlgebraArray[bool]{
+		arrayT: &arrayT[bool]{
+			factory: boolFactory{},
+			shape: shape.Shape{
+				DType:       dtype.Bool,
+				AxisLengths: dims,
+			},
+			values: values,
 		},
-		values: values,
 	}
 }

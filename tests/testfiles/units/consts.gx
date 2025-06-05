@@ -1,0 +1,10 @@
+package consts
+
+const cstB = cstA
+const cstA = 5
+
+func TestCst() float32 {
+	return cstB
+	// Want:
+	// float32(5)
+}

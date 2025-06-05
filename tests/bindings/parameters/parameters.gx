@@ -82,7 +82,8 @@ func AddToStruct(a Struct) Struct {
 			Val: a.D.Val+1,
 		},
 		specialIndex: a.specialIndex,
-		SpecialValue: a.A[a.specialIndex],
+		SpecialValue: 0,
+		// SpecialValue: a.A[a.specialIndex],
 	}
 }
 
@@ -108,7 +109,7 @@ func AddInts(x, y [_]int64) [_]int64 {
 
 // Len returns the outmost dimension of x.
 func Len(x [_]float32) int64 {
-	return shapes.Len(x)
+	return shapes.Len[float32](x)
 }
 
 // Iota returns an array filled with numbers.

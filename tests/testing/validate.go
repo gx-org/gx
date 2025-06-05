@@ -71,7 +71,7 @@ func (v *validator) validate(node ir.Node) {
 			v.validate(expr)
 		}
 	case *ir.ConstExpr:
-		v.validate(nodeT.Value)
+		v.validate(nodeT.Val)
 	case *ir.FuncBuiltin:
 		if nodeT.FType != nil {
 			v.validate(nodeT.FType)
@@ -84,9 +84,6 @@ func (v *validator) validate(node ir.Node) {
 		}
 		v.validate(nodeT.Body)
 	case *ir.FuncMeta:
-		if nodeT.FType != nil {
-			v.validate(nodeT.FType)
-		}
 	case *ir.FuncLit:
 		v.validate(nodeT.FFile)
 		v.validate(nodeT.FType)
@@ -97,10 +94,9 @@ func (v *validator) validate(node ir.Node) {
 		v.validate(nodeT.Body)
 	case *ir.VarDecl:
 		v.validate(nodeT.TypeV)
-	case *ir.LocalVarAssign:
-		v.validate(nodeT.TypeF)
+	case *ir.LocalVarStorage:
+		v.validate(nodeT.Typ)
 	case *ir.ImportDecl:
-		v.validate(nodeT.Package)
 
 	// Fields
 	case *ir.FieldList:
@@ -113,14 +109,12 @@ func (v *validator) validate(node ir.Node) {
 			v.validate(field)
 		}
 	case *ir.Field:
-	case ir.FieldLit:
+	case *ir.FieldLit:
 		v.validate(nodeT.Field)
 		v.validate(nodeT.X)
-	case *ir.StructFieldAssign:
-		v.validate(nodeT.X)
-		v.validate(nodeT.TypeF)
+	case *ir.StructFieldStorage:
+		v.validate(nodeT.Sel)
 	// Types
-	case *ir.InvalidType:
 	case ir.ArrayType:
 		v.validate(nodeT.DataType())
 		v.validate(nodeT.Rank())
@@ -136,21 +130,19 @@ func (v *validator) validate(node ir.Node) {
 		v.validate(nodeT.DType)
 	case *ir.StructType:
 		v.validate(nodeT.Fields)
-	case *ir.TypeExpr:
-		v.validate(nodeT.Typ)
 
 	// Dimensions
 	case *ir.Rank:
-		for _, axis := range nodeT.Axes {
+		for _, axis := range nodeT.Ax {
 			v.validate(axis)
 		}
-	case *ir.GenericRank:
+	case *ir.RankInfer:
 		if nodeT.Rnk != nil {
 			v.validate(nodeT.Rnk)
 		}
 	case *ir.AxisExpr:
 		v.validate(nodeT.X)
-	case *ir.AxisEllipsis:
+	case *ir.AxisInfer:
 		v.validate(nodeT.X)
 
 	// Expressions:
@@ -162,18 +154,23 @@ func (v *validator) validate(node ir.Node) {
 		v.validate(nodeT.Typ)
 		v.validate(nodeT.X)
 		v.validate(nodeT.Y)
+	case *ir.FuncValExpr:
+		v.validate(nodeT.X)
+		v.validate(nodeT.F)
+		v.validate(nodeT.T)
 	case *ir.CallExpr:
-		v.validate(nodeT.Func)
-		v.validate(nodeT.FuncType)
+		v.validate(nodeT.Callee)
 		for _, arg := range nodeT.Args {
 			v.validate(arg)
 		}
 	case *ir.CastExpr:
 		v.validate(nodeT.Typ)
 		v.validate(nodeT.X)
-	case *ir.FieldSelectorExpr:
-		v.validate(nodeT.Field)
+	case *ir.TypeAssertExpr:
 		v.validate(nodeT.Typ)
+		v.validate(nodeT.X)
+	case *ir.SelectorExpr:
+		v.validate(nodeT.Stor)
 		v.validate(nodeT.X)
 	case *ir.IndexExpr:
 		v.validate(nodeT.X)
@@ -183,20 +180,17 @@ func (v *validator) validate(node ir.Node) {
 		v.validate(nodeT.X)
 		v.validate(nodeT.Y)
 		v.validate(nodeT.Typ)
-	case *ir.MethodSelectorExpr:
-		v.validate(nodeT.Func)
-		v.validate(nodeT.Typ)
-		v.validate(nodeT.X)
 	case *ir.PackageRef:
 		v.validate(nodeT.Decl)
 	case *ir.ParenExpr:
 		v.validate(nodeT.X)
-	case ir.StaticValue:
 	case *ir.NumberInt:
 	case *ir.NumberFloat:
-	case ir.VoidType:
-	case *ir.SliceExpr:
-		for _, expr := range nodeT.Vals {
+	case *ir.NumberCastExpr:
+		v.validate(nodeT.X)
+		v.validate(nodeT.Typ)
+	case *ir.SliceLitExpr:
+		for _, expr := range nodeT.Elts {
 			v.validate(expr)
 		}
 	case *ir.StructLitExpr:
@@ -207,14 +201,10 @@ func (v *validator) validate(node ir.Node) {
 	case *ir.UnaryExpr:
 		v.validate(nodeT.X)
 	case *ir.ValueRef:
-		v.validate(nodeT.Typ)
-	case *ir.PackageFuncSelectorExpr:
-		v.validate(nodeT.Package)
-		v.validate(nodeT.Func)
-	case *ir.PackageConstSelectorExpr:
-		v.validate(nodeT.Package)
-		v.validate(nodeT.Const)
+		v.validate(nodeT.Stor)
+	case *ir.TypeValExpr:
 		v.validate(nodeT.X)
+		v.validate(nodeT.Typ)
 
 	// Statements
 	case *ir.ReturnStmt:
@@ -223,8 +213,8 @@ func (v *validator) validate(node ir.Node) {
 		}
 	case *ir.AssignExprStmt:
 		for _, assign := range nodeT.List {
-			v.validate(assign.Expr)
-			v.validate(assign.Dest)
+			v.validate(assign.X)
+			v.validate(assign.Storage)
 		}
 	case *ir.AssignCallStmt:
 		v.validate(nodeT.Call)
@@ -255,8 +245,11 @@ func (v *validator) validate(node ir.Node) {
 		if nodeT.Impl == nil {
 			v.errs.Append(errors.Errorf("builtin has no implementation"))
 		}
-	case ir.UnknownType:
+	case ir.Type:
 	default:
+		if !ir.IsExported(reflect.TypeOf(node).Name()) {
+			return
+		}
 		v.errs.Append(errors.Errorf("type %T not supported by gxtesting.Validate", nodeT))
 	}
 }
@@ -279,27 +272,29 @@ func (v *validator) validatePackage(pkg *ir.Package) {
 		v.validate(file)
 	}
 	unique := checkUnique{v: v, declared: make(map[string]string)}
-	for _, cst := range pkg.Consts {
+	for _, cst := range pkg.Decls.Consts {
 		for _, expr := range cst.Exprs {
 			unique.checkName("constant", expr.VName.Name)
 		}
 		v.validate(cst)
 	}
-	for _, fct := range pkg.Funcs {
+	for _, fct := range pkg.Decls.Funcs {
 		unique.checkName("function", fct.Name())
 		v.validate(fct)
 	}
-	for _, typ := range pkg.Types {
-		unique.checkName("type", typ.NameT)
+	for _, typ := range pkg.Decls.Types {
+		unique.checkName("type", typ.Name())
 		v.validate(typ)
 	}
-	for _, vr := range pkg.Vars {
-		unique.checkName("variable", vr.VName.Name)
-		v.validate(vr)
+	for _, vr := range pkg.Decls.Vars {
+		for _, expr := range vr.Exprs {
+			unique.checkName("variable", expr.VName.Name)
+			v.validate(expr)
+		}
 	}
 }
 
-// CheckSource checks that Source, Expr, and File return non-nil values.
+// CheckSource checks that Source and File return non-nil values.
 func CheckSource(errs *fmterr.Errors, node ir.Node) {
 	src, ok := node.(ir.SourceNode)
 	if !ok {
@@ -307,12 +302,5 @@ func CheckSource(errs *fmterr.Errors, node ir.Node) {
 	}
 	if src.Source() == nil {
 		errs.Append(fmt.Errorf("%v:%T.Source() returns nil", src, src))
-	}
-	expr, ok := src.(ir.Expr)
-	if !ok {
-		return
-	}
-	if expr.Expr() == nil {
-		errs.Append(fmt.Errorf("%v:%T.Expr() returns nil", expr, expr))
 	}
 }

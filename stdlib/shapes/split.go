@@ -18,11 +18,10 @@ import (
 	"go/ast"
 	"go/token"
 
-	"github.com/pkg/errors"
-
 	"github.com/gx-org/gx/build/builtins"
 	"github.com/gx-org/gx/build/fmterr"
 	"github.com/gx-org/gx/build/ir"
+	"github.com/gx-org/gx/internal/interp/compeval"
 	"github.com/gx-org/gx/stdlib/builtin"
 	"github.com/gx-org/gx/stdlib/impl"
 )
@@ -35,35 +34,6 @@ func (f split) BuildFuncIR(impl *impl.Stdlib, pkg *ir.Package) (*ir.FuncBuiltin,
 	return builtin.IRFuncBuiltin[split]("Split", impl.Shapes.Split, pkg), nil
 }
 
-func evaluateIntegerExpression(fetcher ir.Fetcher, expr ir.Expr) (int, error) {
-	num, unknowns, err := ir.Eval[ir.Int](fetcher, expr)
-	if err != nil {
-		return 0, err
-	}
-	if len(unknowns) != 0 {
-		return 0, errors.Errorf("unable to evaluate integer expression due to unknowns %s", unknowns)
-	}
-	return int(num), nil
-}
-
-func (f split) checkSplitDimensionSize(fetcher ir.Fetcher, call *ir.CallExpr, axis int, rank *ir.Rank) error {
-	numSplits, err := evaluateIntegerExpression(fetcher, call.Args[2])
-	if err != nil {
-		return fmterr.Errorf(fetcher.FileSet(), call.Source(), "unable to evaluate splits argument to %s: %s", f.Func.Name(), err)
-	}
-
-	// Check that the split count divides the dimension.
-	splitAxisSize, err := evaluateIntegerExpression(fetcher, rank.Axes[axis])
-	if err != nil {
-		// We cannot evaluate the axis length. So, the test is skipped.
-		return nil
-	}
-	if splitAxisSize%numSplits != 0 {
-		return fmterr.Errorf(fetcher.FileSet(), call.Source(), "dimension size (%d) of axis %d in call to %s must be divisible by the number of splits (%d)", splitAxisSize, axis, f.Func.Name(), numSplits)
-	}
-	return nil
-}
-
 func (f split) BuildFuncType(fetcher ir.Fetcher, call *ir.CallExpr) (*ir.FuncType, error) {
 	params, err := builtins.BuildFuncParams(fetcher, call, f.Name(), []ir.Type{
 		ir.IntIndexType(),
@@ -74,34 +44,37 @@ func (f split) BuildFuncType(fetcher ir.Fetcher, call *ir.CallExpr) (*ir.FuncTyp
 		return nil, err
 	}
 
-	// Check, if possible, if we can divide the length of the selected axis.
-	axis, err := evaluateIntegerExpression(fetcher, call.Args[0])
+	axis, err := compeval.EvalInt(fetcher, call.Args[0])
 	if err != nil {
-		return nil, fmterr.Errorf(fetcher.FileSet(), call.Source(), "unable to evaluate axis argument to %s: %s", f.Func.Name(), err)
+		return nil, fmterr.Errorf(fetcher.File().FileSet(), call.Source(), "unable to evaluate axis argument to %s: %s", f.Func.Name(), err)
 	}
 	arrayType, ok := params[1].(ir.ArrayType)
 	if !ok {
-		return nil, fmterr.Errorf(fetcher.FileSet(), call.Source(), "expected second argument to be an array in call to %s, but got %s", f.Func.Name(), call.Args[0].Type().String())
+		return nil, fmterr.Errorf(fetcher.File().FileSet(), call.Source(), "expected second argument to be an array in call to %s, but got %s", f.Func.Name(), call.Args[0].Type().String())
 	}
-	rank, err := builtins.RankOf(fetcher, call, arrayType)
-	if err != nil {
-		return nil, err
-	}
-	if err := f.checkSplitDimensionSize(fetcher, call, axis, rank); err != nil {
-		return nil, err
-	}
-
+	rank := arrayType.Rank()
 	// Determine dimensions after split.
-	dims := rank.Axes
-	outputDims := append([]ir.AxisLength{&ir.AxisExpr{Src: call.Expr(), X: call.Args[2]}}, dims...)
+	dims := rank.Axes()
+	numSplit := call.Args[2]
+	if ir.IsNumber(numSplit.Type().Kind()) {
+		numSplit = &ir.NumberCastExpr{
+			X:   numSplit,
+			Typ: ir.IntLenType(),
+		}
+	}
+	outputDims := append([]ir.AxisLengths{&ir.AxisExpr{Src: call.Expr(), X: numSplit}}, dims...)
+	splitDimExpr, ok := dims[axis].(*ir.AxisExpr)
+	if !ok {
+		return nil, fmterr.Internalf(fetcher.File().FileSet(), call.Source(), "cannot split axis %s (%T)", dims[axis], dims[axis])
+	}
 	outputDims[axis+1] = &ir.AxisExpr{
 		Src: call.Expr(),
-		X:   builtins.ToBinaryExpr(token.QUO, dims[axis], call.Args[2]),
+		X:   builtins.ToBinaryExpr(token.QUO, splitDimExpr.X, numSplit),
 	}
-	out := ir.NewArrayType(nil, arrayType.DataType(), &ir.Rank{Axes: outputDims})
+	out := ir.NewArrayType(nil, arrayType.DataType(), &ir.Rank{Ax: outputDims})
 	return &ir.FuncType{
-		Src:     &ast.FuncType{Func: call.Source().Pos()},
-		Params:  builtins.Fields(params...),
-		Results: builtins.Fields(out),
+		BaseType: ir.BaseType[*ast.FuncType]{Src: &ast.FuncType{Func: call.Source().Pos()}},
+		Params:   builtins.Fields(params...),
+		Results:  builtins.Fields(out),
 	}, nil
 }

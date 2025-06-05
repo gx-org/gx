@@ -1,0 +1,7 @@
+package beforefunc
+
+
+var errorVar undefined // ERROR undeclared
+
+type unknownType someType // ERROR undeclared type
+

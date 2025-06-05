@@ -12,6 +12,12 @@ func TestTrue() bool {
 	// bool(true)
 }
 
+func TestScalarLogic() bool {
+	return ((false && true) || true)
+	// Want:
+	// bool(true)
+}
+
 func TestBoolArray() [2][3]bool {
 	return [2][3]bool{
 		{true, false, true},
@@ -22,4 +28,16 @@ func TestBoolArray() [2][3]bool {
 	// 	{true, false, true},
 	// 	{false, true, false},
 	// }
+}
+
+func TestBoolAnd() [2]bool {
+	return [2]bool{true, true} && [2]bool{true, false}
+	// Want:
+	// [2]bool{true, false}
+}
+
+func TestBoolOr() [2]bool {
+	return [2]bool{true, false} || [2]bool{false, true}
+	// Want:
+	// [2]bool{true, true}
 }

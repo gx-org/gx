@@ -23,61 +23,35 @@ import (
 
 // structType represents a structure type.
 type structType struct {
-	ext *ir.StructType
+	src *ast.StructType
 
 	nameToField map[string]*field
 	fields      []*field
 	fieldList   *fieldList
-	typ         typeNode
 }
 
-var (
-	_ selector         = (*structType)(nil)
-	_ concreteTypeNode = (*structType)(nil)
-)
+var _ typeExprNode = (*structType)(nil)
 
-func processStructType(own owner, expr *ast.StructType) (*structType, bool) {
+func processStructType(own procScope, src *ast.StructType) (*structType, bool) {
 	n := &structType{
-		ext: &ir.StructType{
-			Src: expr,
-			Fields: &ir.FieldList{
-				Src: expr.Fields,
-			},
-		},
+		src:         src,
 		nameToField: make(map[string]*field),
 	}
 	var ok bool
-	n.fieldList, ok = processFieldList(own, expr.Fields, func(block *scopeFile, field *field) bool {
+	n.fieldList, ok = processFieldList(own, src.Fields, func(block procScope, field *field) bool {
 		return n.assign(block, field)
 	})
 	return n, ok
 }
 
-func importStructType(scope scoper, ext *ir.StructType) (*structType, bool) {
-	fieldList, ok := importFieldList(scope, ext.Fields)
-	n := &structType{
-		ext:         ext,
-		nameToField: make(map[string]*field),
-		fieldList:   fieldList,
-	}
-	for _, group := range n.fieldList.list {
-		for _, field := range group.list {
-			n.nameToField[field.ext.Name.Name] = field
-			n.fields = append(n.fields, field)
-		}
-	}
-	n.typ = n
-	return n, ok
-}
-
-func (n *structType) assign(block *scopeFile, fld *field) bool {
-	name := fld.ext.Name.Name
+func (n *structType) assign(block procScope, fld *field) bool {
+	name := fld.src.Name
 	if prev, ok := n.nameToField[name]; ok {
 		block.err().Appendf(
-			fld.ext.Name,
+			fld.src,
 			"%s redeclared in this block\n\t%s: other declaration of %s",
 			name,
-			fmterr.PosString(block.err().FSet().FSet, prev.ext.Name.Pos()),
+			fmterr.PosString(block.err().FSet().FSet, prev.src.Pos()),
 			name,
 		)
 		return false
@@ -87,57 +61,19 @@ func (n *structType) assign(block *scopeFile, fld *field) bool {
 	return true
 }
 
-func (n *structType) irType() ir.Type {
-	n.ext.Fields = n.fieldList.irType()
-	return n.ext
-}
-
-func (n *structType) convertibleTo(scope scoper, typ typeNode) (bool, error) {
-	return n.irType().ConvertibleTo(scope.evalFetcher(), typ.irType())
-}
-
-func (n *structType) kind() ir.Kind {
-	return n.irType().Kind()
-}
-
 func (n *structType) source() ast.Node {
-	return n.ext.Source()
+	return n.src
 }
 
-func (n *structType) isGeneric() bool {
-	return false
+func (n *structType) buildTypeExpr(scope resolveScope) (*ir.TypeValExpr, bool) {
+	ext := &ir.StructType{BaseType: baseType(n.src)}
+	var fieldsOk bool
+	ext.Fields, fieldsOk = n.fieldList.buildFieldList(scope)
+	return &ir.TypeValExpr{X: ext, Typ: ext}, fieldsOk
 }
 
 func (n *structType) String() string {
-	return n.ext.String()
-}
-
-func (n *structType) resolveConcreteType(scope scoper) (typeNode, bool) {
-	if n.typ != nil {
-		return typeNodeOk(n.typ)
-	}
-	var ok bool
-	n.fieldList, ok = n.fieldList.resolveType(scope)
-	if !ok {
-		n.typ, _ = invalidType()
-		return n.typ, false
-	}
-	// Build GX struct type.
-	n.ext.Fields = n.fieldList.irType()
-	n.typ = n
-	return n.typ, true
-}
-
-func (n *structType) selectField(ident *ast.Ident) *field {
-	return n.nameToField[ident.Name]
-}
-
-func (n *structType) buildSelectNode(scope scoper, expr *ast.SelectorExpr) selectNode {
-	field := n.selectField(expr.Sel)
-	if field == nil {
-		return nil
-	}
-	return buildFieldSelectorExpr(expr, n, field)
+	return "struct"
 }
 
 // ----------------------------------------------------------------------------
@@ -151,38 +87,35 @@ type (
 	}
 
 	structLiteral struct {
-		ext        ir.StructLitExpr
-		nameToElt  map[string]int
-		typeExpr   typeNode
-		structType *structType
-		fields     []fieldExpr
-		typ        typeNode
+		src       *ast.CompositeLit
+		nameToElt map[string]int
+		typ       typeExprNode
+		fields    []fieldExpr
 	}
 )
 
-func processCompositeLitStruct(owner owner, lit *ast.CompositeLit, typeExpr ast.Expr) (exprNode, bool) {
-	typeRef, ok := processTypeExpr(owner, typeExpr)
+func processCompositeLitStruct(pscope procScope, src *ast.CompositeLit, typeExpr ast.Expr) (exprNode, bool) {
 	n := &structLiteral{
-		ext: ir.StructLitExpr{
-			Src: lit,
-		},
-		typeExpr:  typeRef,
-		fields:    make([]fieldExpr, len(lit.Elts)),
+		src:       src,
+		fields:    make([]fieldExpr, len(src.Elts)),
 		nameToElt: make(map[string]int),
 	}
-	for i, elt := range n.ext.Src.Elts {
+	var typOk bool
+	n.typ, typOk = processTypeExpr(pscope, typeExpr)
+	eltsOk := true
+	for i, elt := range src.Elts {
 		switch eltT := elt.(type) {
 		case *ast.KeyValueExpr:
-			field, fieldOk := n.processKeyValueField(owner, eltT)
-			ok = fieldOk && ok
+			field, fieldOk := n.processKeyValueField(pscope, eltT)
+			eltsOk = fieldOk && eltsOk
 			if prevIndex, prevOk := n.nameToElt[field.ident.Name]; prevOk {
-				ok = false
+				eltsOk = false
 				prev := n.fields[prevIndex]
-				owner.err().Appendf(
+				pscope.err().Appendf(
 					field.ident,
 					"%s redefined in this literal\n\t%s: other declaration of %s",
 					field.ident.Name,
-					fmterr.PosString(owner.err().FSet().FSet, prev.ident.Pos()),
+					fmterr.PosString(pscope.err().FSet().FSet, prev.ident.Pos()),
 					field.ident.Name,
 				)
 				continue
@@ -190,123 +123,80 @@ func processCompositeLitStruct(owner owner, lit *ast.CompositeLit, typeExpr ast.
 			n.nameToElt[field.ident.Name] = i
 			n.fields[i] = field
 		default:
-			owner.err().Appendf(elt, "literal element type %T not supported", elt)
-			ok = false
+			pscope.err().Appendf(elt, "literal element type %T not supported", elt)
+			eltsOk = false
 		}
 	}
-	return n, ok
+	return n, typOk && eltsOk
 }
 
-func (n *structLiteral) processKeyValueField(owner owner, expr *ast.KeyValueExpr) (fieldExpr, bool) {
+func (n *structLiteral) processKeyValueField(pscope procScope, expr *ast.KeyValueExpr) (fieldExpr, bool) {
 	field := fieldExpr{}
 	var ok bool
-	field.expr, ok = processExpr(owner, expr.Value)
+	field.expr, ok = processExpr(pscope, expr.Value)
 	key := expr.Key
 	switch keyT := key.(type) {
 	case *ast.Ident:
 		field.ident = keyT
 	default:
-		owner.err().Appendf(key, "literal element key %T not supported", key)
+		pscope.err().Appendf(key, "literal element key %T not supported", key)
 		ok = false
 	}
 	return field, ok
 }
 
 func (n *structLiteral) source() ast.Node {
-	return n.expr()
+	return n.src
 }
 
-func (n *structLiteral) expr() ast.Expr {
-	return n.ext.Expr()
+func (n *structLiteral) buildExpr(rscope resolveScope) (ir.Expr, bool) {
+	ext := &ir.StructLitExpr{Src: n.src, Typ: ir.InvalidType()}
+	typeExpr, typOk := n.typ.buildTypeExpr(rscope)
+	if !typOk {
+		return ext, false
+	}
+	ext.Typ = typeExpr.Typ
+	underlying := ir.Underlying(ext.Typ)
+	structType, ok := underlying.(*ir.StructType)
+	if !ok {
+		return ext, rscope.err().Appendf(n.source(), "%s (type %T) is not a structure type", ext.Typ.String(), underlying.Type().String())
+	}
+	ext.Elts = make([]*ir.FieldLit, structType.Fields.Len())
+	fieldsOk := true
+	for i, field := range structType.Fields.Fields() {
+		name := field.Name.Name
+		valueFieldIndex, valueOk := n.nameToElt[name]
+		if !valueOk {
+			fieldsOk = rscope.err().Appendf(ext.Src, "field %s has not been assigned", name)
+			continue
+		}
+		fieldLit := &ir.FieldLit{FieldStorage: field.Storage()}
+		ext.Elts[i] = fieldLit
+		fieldNameExpr := n.fields[valueFieldIndex]
+		fieldLit.X, valueOk = buildAExpr(rscope, fieldNameExpr.expr)
+		if !valueOk {
+			fieldsOk = false
+			continue
+		}
+		if ir.IsNumber(fieldLit.X.Type().Kind()) {
+			fieldLit.X, valueOk = castNumber(rscope, fieldLit.X, field.Type())
+			if !valueOk {
+				fieldsOk = false
+				continue
+			}
+		}
+		valueOk = assignableToAt(rscope, fieldNameExpr.ident, fieldLit.X.Type(), field.Type())
+		fieldsOk = valueOk && fieldsOk
+	}
+	for _, fieldNameExpr := range n.fields {
+		if field := structType.Fields.FindField(fieldNameExpr.ident.Name); field == nil {
+			return ext, rscope.err().Appendf(fieldNameExpr.ident, "type %s has no field or method %s", ext.Typ.String(), fieldNameExpr.ident.Name)
+		}
+	}
+	return ext, fieldsOk
+
 }
 
 func (n *structLiteral) String() string {
 	return n.typ.String()
-}
-
-func (n *structLiteral) buildExpr() ir.Expr {
-	n.ext.Elts = make([]ir.FieldLit, len(n.fields))
-	for i, field := range n.fields {
-		n.ext.Elts[i] = ir.FieldLit{
-			X: field.expr.buildExpr(),
-		}
-		structField := n.structType.selectField(field.ident)
-		if structField == nil {
-			continue
-		}
-		n.ext.Elts[i].Field = structField.ext
-	}
-	n.ext.Typ = n.typ.irType()
-	return &n.ext
-}
-
-func (n *structLiteral) resolveFieldTypes(scope scoper) bool {
-	ok := true
-	for _, field := range n.structType.fields {
-		var wantType typeNode
-		wantType, ok = resolveType(scope, field.group, field.group.typ)
-		if !ok {
-			ok = false
-			continue
-		}
-		name := field.ext.Name.Name
-		valueFieldIndex, valueOk := n.nameToElt[name]
-		if !valueOk {
-			scope.err().Appendf(n.ext.Src, "field %s has not been assigned", name)
-			ok = false
-			continue
-		}
-		valueField := n.fields[valueFieldIndex]
-		valueType, valueOk := valueField.expr.resolveType(scope)
-		if !valueOk {
-			ok = false
-			continue
-		}
-		if ir.IsNumber(valueType.kind()) {
-			var valueExpr exprNode
-			valueExpr, valueType, valueOk = castNumber(scope, valueField.expr, wantType.irType())
-			if !valueOk {
-				ok = false
-				continue
-			}
-			valueField = fieldExpr{ident: valueField.ident, expr: valueExpr}
-			n.fields[valueFieldIndex] = valueField
-		}
-		posI := valueField.expr
-		_, okI, err := assignableTo(scope, posI, valueType, wantType)
-		if err != nil {
-			scope.err().Append(err)
-			ok = false
-			continue
-		}
-		if !okI {
-			scope.err().Appendf(valueField.expr.source(), "cannot use type %s as %s value", valueType, wantType)
-			ok = false
-			continue
-		}
-	}
-	for _, valueField := range n.fields {
-		if field := n.structType.selectField(valueField.ident); field == nil {
-			scope.err().Appendf(valueField.ident, "type %s has no field or method %s", n.structType.String(), valueField.ident.Name)
-			return false
-		}
-	}
-	return ok
-}
-
-func (n *structLiteral) resolveType(scope scoper) (typeNode, bool) {
-	if n.typ != nil {
-		return typeNodeOk(n.typ)
-	}
-	var ok bool
-	if n.typ, ok = resolveType(scope, n, n.typeExpr); !ok {
-		return n.typ, false
-	}
-	underlying := findUnderlying(n.typ)
-	if n.structType, ok = underlying.(*structType); !ok {
-		scope.err().Appendf(n.source(), "%s (type %T) is not a structure type", n.typ.String(), n.typ.irType())
-		n.typ, _ = invalidType()
-		return n.typ, false
-	}
-	return n.typ, n.resolveFieldTypes(scope)
 }

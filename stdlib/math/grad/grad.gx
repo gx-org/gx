@@ -1,5 +1,6 @@
 package grad
 
+// Func computes the gradient of a GX function.
 //gx:irmacro
 func Func()
 

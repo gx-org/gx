@@ -22,59 +22,24 @@ import (
 )
 
 type traceFunc struct {
-	ext ir.FuncBuiltin
 }
 
-var (
-	_ genericCallTypeNode = (*traceFunc)(nil)
-	_ function            = (*traceFunc)(nil)
-)
+var _ ir.FuncImpl = (*traceFunc)(nil)
 
-func (f *traceFunc) resolveGenericCallType(scope scoper, fetcher ir.Fetcher, call *callExpr) (*funcType, bool) {
-	irCall := call.buildExpr().(*ir.CallExpr)
-	params := make([]ir.Type, len(irCall.Args))
-	for i, arg := range irCall.Args {
+// BuildFuncType builds the type of a function given how it is called.
+func (f *traceFunc) BuildFuncType(fetcher ir.Fetcher, call *ir.CallExpr) (*ir.FuncType, error) {
+	params := make([]ir.Type, len(call.Args))
+	for i, arg := range call.Args {
 		params[i] = arg.Type()
 	}
-	return importFuncType(scope, &ir.FuncType{
-		Src:     &ast.FuncType{Func: call.source().Pos()},
-		Params:  builtins.Fields(params...),
-		Results: builtins.Fields(),
-	})
+	return &ir.FuncType{
+		BaseType: baseType(&ast.FuncType{Func: call.Src.Pos()}),
+		Params:   builtins.Fields(params...),
+		Results:  builtins.Fields(),
+	}, nil
 }
 
-func (f *traceFunc) receiver() *fieldList {
+// BuildFuncType builds the type of a function given how it is called.
+func (f *traceFunc) Implementation() any {
 	return nil
-}
-
-func (f *traceFunc) resolveType(scoper) (typeNode, bool) {
-	return f, true
-}
-
-func (f *traceFunc) name() *ast.Ident {
-	return &ast.Ident{Name: f.ext.Name()}
-}
-
-func (f *traceFunc) staticValue() ir.StaticValue {
-	return &f.ext
-}
-
-func (f *traceFunc) kind() ir.Kind {
-	return ir.FuncKind
-}
-
-func (f *traceFunc) isGeneric() bool {
-	return false
-}
-
-func (f *traceFunc) irType() ir.Type {
-	return &ir.FuncType{}
-}
-
-func (f *traceFunc) String() string {
-	return "trace"
-}
-
-func (f *traceFunc) irFunc() ir.Func {
-	return &f.ext
 }

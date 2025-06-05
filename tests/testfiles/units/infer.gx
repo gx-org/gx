@@ -1,0 +1,11 @@
+// Package infer tests look for a bug in inference.
+package infer
+
+import "math"
+
+func TestInferCos() (float32, float64) {
+	return math.Cos(float32(1.0)), math.Cos(float64(1.0))
+	// Want:
+        // 0: float32(0.540302)
+        // 1: float64(0.5403023059)
+}

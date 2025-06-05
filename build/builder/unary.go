@@ -21,48 +21,26 @@ import (
 )
 
 type unaryExpr struct {
-	ext ir.UnaryExpr
+	src *ast.UnaryExpr
 	x   exprNode
-
-	val ir.StaticExpr
 }
 
-var _ exprScalar = (*unaryExpr)(nil)
+var _ exprNode = (*unaryExpr)(nil)
 
-func processUnaryExpr(owner owner, expr *ast.UnaryExpr) (exprNode, bool) {
-	x, ok := processExpr(owner, expr.X)
-	return &unaryExpr{
-		ext: ir.UnaryExpr{
-			Src: expr,
-		},
-		x: x,
-	}, ok
-}
-
-func (n *unaryExpr) buildExpr() ir.Expr {
-	if n.val != nil {
-		return n.val
-	}
-	n.ext.X = n.x.buildExpr()
-	return &n.ext
-}
-
-func (n *unaryExpr) scalar() ir.StaticExpr {
-	return n.val
+func processUnaryExpr(pscope procScope, expr *ast.UnaryExpr) (exprNode, bool) {
+	x, ok := processExpr(pscope, expr.X)
+	return &unaryExpr{src: expr, x: x}, ok
 }
 
 func (n *unaryExpr) source() ast.Node {
-	return n.expr()
+	return n.src
 }
 
-func (n *unaryExpr) expr() ast.Expr {
-	return n.ext.Src
-}
-
-func (n *unaryExpr) resolveType(scope scoper) (typeNode, bool) {
-	return n.x.resolveType(scope)
+func (n *unaryExpr) buildExpr(scope resolveScope) (ir.Expr, bool) {
+	x, ok := buildAExpr(scope, n.x)
+	return &ir.UnaryExpr{Src: n.src, X: x}, ok
 }
 
 func (n *unaryExpr) String() string {
-	return n.ext.Src.Op.String() + n.x.String()
+	return n.src.Op.String() + n.x.String()
 }

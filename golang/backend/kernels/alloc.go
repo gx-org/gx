@@ -120,18 +120,20 @@ func ToBuffer[T dtype.GoDataType](vals []T, sh *shape.Shape) *Buffer {
 	switch sh.DType {
 	case dtype.Bool:
 		array = ToBoolArray(any(vals).([]bool), sh.AxisLengths)
+	case dtype.Bfloat16:
+		array = ToBfloat16Array(any(vals).([]dtype.Bfloat16T), sh.AxisLengths)
 	case dtype.Float32:
-		array = toAlgebraicArray[float32](any(vals).([]float32), sh.AxisLengths)
+		array = ToFloatArray[float32](any(vals).([]float32), sh.AxisLengths)
 	case dtype.Float64:
-		array = toAlgebraicArray[float64](any(vals).([]float64), sh.AxisLengths)
+		array = ToFloatArray[float64](any(vals).([]float64), sh.AxisLengths)
 	case dtype.Int32:
-		array = toIntegerArray[int32](any(vals).([]int32), sh.AxisLengths)
+		array = ToIntegerArray[int32](any(vals).([]int32), sh.AxisLengths)
 	case dtype.Int64:
-		array = toIntegerArray[int64](any(vals).([]int64), sh.AxisLengths)
+		array = ToIntegerArray[int64](any(vals).([]int64), sh.AxisLengths)
 	case dtype.Uint32:
-		array = toIntegerArray[uint32](any(vals).([]uint32), sh.AxisLengths)
+		array = ToIntegerArray[uint32](any(vals).([]uint32), sh.AxisLengths)
 	case dtype.Uint64:
-		array = toIntegerArray[uint64](any(vals).([]uint64), sh.AxisLengths)
+		array = ToIntegerArray[uint64](any(vals).([]uint64), sh.AxisLengths)
 	default:
 		panic(fmt.Sprintf("cannot convert data type %s to a %s %s", sh.DType.String(), reflect.TypeFor[[]T]().String(), reflect.TypeFor[*Buffer]()))
 	}

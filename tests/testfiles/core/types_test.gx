@@ -8,6 +8,31 @@ func TestMyFloat() myfloat {
 	// float64(-1)
 }
 
+func TestMyFloatUnaryOp() myfloat {
+	return -myfloat(4.2)
+	// Want:
+	// float64(-4.2)
+}
+
+func TestMyFloatBinaryOp() myfloat {
+	m := myfloat(4.2)
+	return m + m
+	// Want:
+	// float64(8.4)
+}
+
+func TestConvertToNamedType() myfloat {
+	return myfloat(float64(1.0))
+	// Want:
+	// float64(1)
+}
+
+func TestConvertFromNamedType() float64 {
+	return float64(myfloat(1.0))
+	// Want:
+	// float64(1)
+}
+
 type (
 	child struct {
 		a myfloat
@@ -99,7 +124,7 @@ func TestFunctionWithReceiverOnStruct() myfloat {
 	// float64(5)
 }
 
-func add(a, b [_][_]float32) [...]float32 {
+func add(a, b [_][_]float32) [_][_]float32 {
 	return a + b
 }
 
@@ -113,4 +138,21 @@ func TestGenericDimensionsFloat32() [_][_]float32 {
 	// 	{7, 7, 7},
 	// 	{7, 7, 7},
 	// }
+}
+
+type matrix [2][3]float32
+
+func (x matrix) top() [3]float32 {
+   return x[0]
+}
+
+func TestNamedTypeIndexing() [3]float32 {
+	m := matrix([2][3]float32{{1, 2, 3}, {4, 5, 6}})
+	return m.top()
+	// Want:
+	// [3]float32{1, 2, 3}
+}
+
+type floats interface {
+  bfloat16 | float32 | float64
 }

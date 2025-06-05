@@ -91,15 +91,15 @@ func testEinsumDimReused() [2]float32 {
 }
 
 func testLenMissingArguments() int64 {
-	return shapes.Len() // ERROR wrong number of arguments in call to Len
+	return shapes.Len() // ERROR not enough arguments in call to Len
 }
 
 func testLenExtraArguments() int64 {
-	return shapes.Len([1]float32{0}, 100) // ERROR wrong number of arguments in call to Len
+	return shapes.Len([1]float32{0}, 100) // ERROR too many arguments in call to Len
 }
 
-func testLenNumber() int64 {
-	return shapes.Len(5) // ERROR signature mismatch in call to Len
+func testLenMismatchedType() int64 {
+	return shapes.Len[int64]([]float64{1.75}) // ERROR cannot use []float64 as [___M]int64 value in assignment
 }
 
 func testConcatWithInsufficientArgs() [3]float32 {
@@ -242,7 +242,8 @@ func testControlWithMismatchedState() loopState {
 	return control.While(
 		s,
 		func(s loopState) bool { return false }, // ERROR cannot use func(s stdlib.loopState) bool as func(float64) bool value in assignment
-		func(s loopState) loopState { return loopState{} })
+		func(s loopState) loopState { return loopState{} }, // ERROR cannot use func(s stdlib.loopState) stdlib.loopState as func(float64) float64 value in assignment
+	)
 }
 
 func testControlWithInvalidCondType() loopState {

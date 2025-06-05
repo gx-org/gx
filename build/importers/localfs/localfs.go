@@ -98,10 +98,7 @@ func ImportAt(bld *builder.Builder, vfs fs.ReadDirFS, importPath, fsPath string)
 	}
 	var inputFiles []string
 	for _, entry := range entries {
-		if entry.IsDir() {
-			continue
-		}
-		if !strings.HasSuffix(entry.Name(), ".gx") {
+		if !IsGXFile(entry) {
 			continue
 		}
 		entryPath := filepath.Join(fsPath, entry.Name())
@@ -115,4 +112,9 @@ func ImportAt(bld *builder.Builder, vfs fs.ReadDirFS, importPath, fsPath string)
 		strings.Join(packagePathS[:len(packagePathS)-1], "/"),
 		packagePathS[len(packagePathS)-1],
 		vfs, inputFiles)
+}
+
+// IsGXFile returns true if a directory entry is a GX source file.
+func IsGXFile(entry fs.DirEntry) bool {
+	return !entry.IsDir() && strings.HasSuffix(entry.Name(), ".gx")
 }

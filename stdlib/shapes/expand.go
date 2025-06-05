@@ -16,10 +16,15 @@ package shapes
 
 import (
 	"go/ast"
+	"math/big"
 
 	"github.com/gx-org/gx/build/builtins"
 	"github.com/gx-org/gx/build/fmterr"
 	"github.com/gx-org/gx/build/ir"
+	"github.com/gx-org/gx/internal/interp/canonical"
+	"github.com/gx-org/gx/internal/interp/compeval"
+	"github.com/gx-org/gx/interp/elements"
+	"github.com/gx-org/gx/interp/numbers"
 	"github.com/gx-org/gx/stdlib/builtin"
 	"github.com/gx-org/gx/stdlib/impl"
 )
@@ -32,34 +37,24 @@ func (f expand) BuildFuncIR(impl *impl.Stdlib, pkg *ir.Package) (*ir.FuncBuiltin
 	return builtin.IRFuncBuiltin[expand]("Expand", impl.Shapes.Expand, pkg), nil
 }
 
-func checkExpandRanks(fetcher ir.Fetcher, call *ir.CallExpr, src *ir.Rank, target ir.ArrayRank) error {
+var oneAxisLength = numbers.NewInt(elements.NewExprAt(nil, &ir.NumberInt{}), big.NewInt(1))
+
+func checkExpandRanks(fetcher ir.Fetcher, call *ir.CallExpr, src ir.ArrayRank, target ir.ArrayRank, targetElmts []canonical.Canonical) error {
 	if src == nil || target == nil {
 		return nil
 	}
-	srcAxes := src.Axes
-	targetRank, ok := target.(*ir.Rank)
-	if !ok {
-		return nil
-	}
-	targetAxes := targetRank.Axes
-	if len(srcAxes) != len(targetRank.Axes) {
-		return fmterr.Errorf(fetcher.FileSet(), call.Source(), "cannot expand array with %d axes to %d axes: the same number of axes is required", len(srcAxes), len(targetAxes))
+	srcAxes := src.Axes()
+	if len(srcAxes) != len(targetElmts) {
+		return fmterr.Errorf(fetcher.File().FileSet(), call.Source(), "cannot expand array with %d axes to %d axes: the same number of axes is required", len(srcAxes), len(targetElmts))
 	}
 
-	for i, targetExpr := range targetAxes {
-		valTarget, unknownsTarget, err := ir.Eval[ir.Int](fetcher, targetExpr)
+	for i, targetElt := range targetElmts {
+		srcElt, err := fetcher.Eval(srcAxes[i])
 		if err != nil {
 			return err
 		}
-		valArray, unknownsArray, err := ir.Eval[ir.Int](fetcher, srcAxes[i])
-		if err != nil {
-			return err
-		}
-		if unknownsArray != nil || unknownsTarget != nil {
-			continue
-		}
-		if valArray != valTarget && valArray != 1 {
-			return fmterr.Errorf(fetcher.FileSet(), srcAxes[i].Source(), "cannot expand array with axis %d of size %d: size of 1 or %d required", i, valArray, valTarget)
+		if !srcElt.Compare(targetElt) && !oneAxisLength.Compare(srcElt) {
+			return fmterr.Errorf(fetcher.File().FileSet(), srcAxes[i].Source(), "cannot expand array with axis %d of size %d: size of 1 or %d required", i, srcElt, targetElt)
 		}
 	}
 	return nil
@@ -77,17 +72,16 @@ func (f expand) BuildFuncType(fetcher ir.Fetcher, call *ir.CallExpr) (*ir.FuncTy
 	if err != nil {
 		return nil, err
 	}
-	targetRank := builtins.RankFromExpr(call.Src, call.Args[1])
-	srcRank, err := builtins.RankOf(fetcher, call, arrayType)
+	targetRank, targetElmts, err := compeval.EvalRank(fetcher, call.Args[1])
 	if err != nil {
 		return nil, err
 	}
-	if err := checkExpandRanks(fetcher, call, srcRank, targetRank); err != nil {
+	if err := checkExpandRanks(fetcher, call, arrayType.Rank(), targetRank, targetElmts); err != nil {
 		return nil, err
 	}
 	return &ir.FuncType{
-		Src:     &ast.FuncType{Func: call.Source().Pos()},
-		Params:  builtins.Fields(params...),
-		Results: builtins.Fields(ir.NewArrayType(nil, arrayType.DataType(), targetRank)),
+		BaseType: ir.BaseType[*ast.FuncType]{Src: &ast.FuncType{Func: call.Source().Pos()}},
+		Params:   builtins.Fields(params...),
+		Results:  builtins.Fields(ir.NewArrayType(nil, arrayType.DataType(), targetRank)),
 	}, nil
 }

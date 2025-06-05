@@ -79,10 +79,6 @@ func (pb *packageBuilder) build(bld *builder.Builder, path string) (builder.Pack
 
 	pb.done.Store(true)
 	pb.pkg, pb.err = Load(bld, pb.cl.importers, path)
-	if pb.pkg != nil {
-		// Force building the IR to avoid concurrent construction.
-		pb.pkg.IR()
-	}
 	return pb.pkg, pb.err
 }
 

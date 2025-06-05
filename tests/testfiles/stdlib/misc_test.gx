@@ -1,8 +1,8 @@
 package stdlib
 
 import (
-	"rand"
 	"num"
+	"rand"
 )
 
 func TestReduceShapeInferenceError() [3]int64 {
@@ -10,5 +10,5 @@ func TestReduceShapeInferenceError() [3]int64 {
 	rnd, samples := rnd.Float32([]intlen{3, 2})
 	return num.Argmax(([3][2]float32)(samples), 1)
 	// Want:
-	// [3]int64{1, 1, 1}
+	// [3]int64{1, 1, 0}
 }

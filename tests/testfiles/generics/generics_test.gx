@@ -21,3 +21,31 @@ func TestAdd() [2]int32 {
 	// Want:
 	// [2]int32{4, 6}
 }
+
+type ints interface {
+	int32 | int64
+}
+
+func addT[T ints](a, b T) T {
+	return a + b
+}
+
+func TestAddT() (int32, int64) {
+	// For now, these extra casts are required to work around bugs in function resolution.
+	return int32(addT[int32](int32(2), int32(4))), int64(addT[int64](int64(3), int64(5)))
+	// Want:
+	// 0: int32(6)
+	// 1: int64(8)
+}
+
+func negate[T ints](x T) T {
+	return -x
+}
+
+func TestNegate() (int32, int64) {
+	// For now, these extra casts are required to work around bugs in function resolution.
+	return int32(negate[int32](int32(2))), int64(negate[int64](int64(3)))
+	// Want:
+	// 0: int32(-2)
+	// 1: int64(-3)
+}

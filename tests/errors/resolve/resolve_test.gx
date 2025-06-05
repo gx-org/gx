@@ -1,12 +1,11 @@
 package resolve
 
 import (
+	"dtype"
 	"math"
 	"num"
 	"shapes"
 )
-
-var errorVar undefined // ERROR undeclared
 
 func testDoesNotExist() int64 {
 	return doesnotexist.Unicorn() // ERROR undefined
@@ -18,6 +17,10 @@ func testReturnTooMany() int64 {
 
 func testReturnNotEnough() (int64, float64) {
 	return 5.1 // ERROR not enough return values
+}
+
+func testMissingReturnValues() int32 {
+	return // ERROR not enough return values
 }
 
 func testReturnIncorrectShape() [_][_]float64 {
@@ -98,6 +101,14 @@ func testTensorDeclarationUntypeComposite() [_]float64 {
 	}
 }
 
+func testTensorAccessPastBounds() int64 {
+	return [2]int64{1, 2}[2] // ERROR index out of range: 2 >= 2
+}
+
+func testTensorAccessPastBounds2D() int64 {
+	return [2][1]int64{{1}, {2}}[1][3] // ERROR index out of range: 3 >= 1
+}
+
 func tuples() (float32, [_]float64, [_][_]float64) {
 	return 3.2,
 		[_]float64{1, 2, 3, 4},
@@ -125,12 +136,10 @@ func testCallNotEnoughArgs() float32 {
 	return 0
 }
 
-func testCallWrongType(a, b float64) float32 {
+func testCallWrongType(a float32, b float64) float32 {
 	c, d := funcWith2Args(a, b) // ERROR cannot use float64
 	return 0
 }
-
-type unknownType someType // ERROR undeclared type
 
 func testUnknownDType() float32 {
 	a := [_]unknown{1, 2} // ERROR undeclared type identifier: unknown
@@ -208,6 +217,22 @@ func testMultipleAssignmentsCall() float32 {
 	return a
 }
 
+func testAssignUndefined() int32 {
+	bogus = int32(5) // ERROR undefined: bogus
+	return bogus
+}
+
+func testAssignBuiltin() bool {
+	true = false // ERROR cannot assign to true
+	return true
+}
+
+func testAddAssignOperandMismatch() int64 {
+	x := 1
+	x += 2.5 // ERROR cannot use 2.5 (untyped FLOAT constant) as int64 value
+	return x
+}
+
 func testImportIsUndefined() float32 {
 	return num.DoesNotExist // ERROR undefined: num.DoesNotExist
 }
@@ -229,7 +254,7 @@ func testExplicitCastFloat64ToMyFloat() myfloat {
 
 func testExpIntTensor() [2]float32 {
 	a := shapes.Shape{DType: 0, Dimensions: []intlen{}}
-	return math.Exp(a) // ERROR argument type shapes.Shape not supported
+	return math.Exp(a) // ERROR failed to unify parameter type [___M]<unresolved type T> and shapes.Shape
 }
 
 func testSliceIncorrectType() []int64 {
@@ -267,6 +292,10 @@ func testIncorrectTypeBinaryOperator() float64 {
 	return c
 }
 
+func testIncorrectTypeBinaryOperator2() bool {
+	return 1 && 2 // ERROR operator && not defined on number
+}
+
 func testMulScalarFloat64Tensor1DFlat32() [2]float32 {
 	a := 2
 	return a * [2]float32{1, 2} // ERROR mismatched types int64 and float32
@@ -296,12 +325,17 @@ func testBoolOperator() bool {
 	return true + true // ERROR operator + not defined on bool
 }
 
-func testIncorrectIndexType() float32 {
-	return [2]float32{}[float32(1)] // ERROR invalid argument
+func testIncorrectIndexTarget() float32 {
+	return 5[0] // ERROR indexing unsupported on
 }
 
-func testCastToGenericFloat64() [_]float64 {
-	return ([_]float64)([3]float64{-1, 2, -3}) // ERROR missing axis length
+func testIncorrectIndexTarget2() float32 {
+	v := someStruct{a: 1, someMethod: 1}
+	return v[0] // ERROR indexing unsupported on
+}
+
+func testIncorrectIndexType() float32 {
+	return [2]float32{}[float32(1)] // ERROR invalid argument
 }
 
 func testArrayAsScalarFloat32() float32 {
@@ -343,21 +377,31 @@ func returnZero[T int32, U int64]() int32 {
 	return 0
 }
 
-func testCallTypeParameters_Missing() int32 {
-	return returnZero() // ERROR type parameter inference is not supported
-}
-
-func testCallTypeParameters_TooFew() int32 {
-	return returnZero[int32]() // ERROR not enough type arguments in call to returnZero
+func testCallTypeParameters_InferenceFailed() int32 {
+	return returnZero[int32]() // ERROR cannot infer U
 }
 
 func testCallTypeParameters_TooMany() int32 {
 	return returnZero[int32, int32, int64]() // ERROR too many type arguments in call to returnZero
 }
 
+func testCallTypeParameters_Unknown() int32 {
+	return returnZero[int32, fakeType]() // ERROR undeclared type identifier: fakeType
+}
+
 func moduloFloat() float32 {
 	a := float32(5.2)
 	return a % 5 // ERROR operator % not defined on float32
+}
+
+func shiftFloat() float32 {
+	a := float32(5.2)
+	return a >> 1 // ERROR operator >> not defined on float32
+}
+
+func shiftNamedType() myfloat {
+	a := myfloat(5.2)
+	return a >> 1 // ERROR operator >> not defined on resolve.myfloat
 }
 
 func noBody() float32
@@ -403,6 +447,10 @@ func invalidReturnShape4() [...]int32 {
 	return [___X]int32{} // TODO: ERROR TBD
 }
 
+func invalidReturnShape5(a [___X]int32) int32 {
+  return a // ERROR cannot use [___X]int32 as int32 in return statement
+}
+
 func repeatedShapeParameters(a, b [___X]int32) int32 {
 	return 0
 }
@@ -425,4 +473,20 @@ func testReturnNumberAsString() string {
 
 func testReturnArrayAsString() string {
 	return [1]float32{1} // ERROR cannot use [1]float32 as string in return statement
+}
+
+func typeArgumentConstrained[T interface { int32 }](T) int32 {
+	return 0
+}
+
+func testFunctionTypeConstraint() int32 {
+	typeArgumentConstrained[int64](1) // ERROR type argument int64 does not satisfy interface { int32 }
+}
+
+func testFunctionTypeConstraint2() int32 {
+	typeArgumentConstrained(int64(1)) // ERROR failed to unify parameter type interface { int32 } and int64
+}
+
+func testInvalidShr[T dtype.Floats](a, b T) T {
+	return a >> b // ERROR operator >> not defined on dtype.Floats
 }

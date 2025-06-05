@@ -1,0 +1,53 @@
+package bfloat16
+
+import "math"
+
+func TestBfloat16AtomicLiteral() bfloat16 {
+	return bfloat16(42)
+	// Want:
+	// bfloat16(42)
+}
+
+func TestBfloat16ArrayLiteral() [...]bfloat16 {
+	return [...]bfloat16{0, 0.5, 1, 2, 2.75}
+	// Want:
+	// [5]bfloat16{0, 0.5, 1, 2, 2.75}
+}
+
+func TestBfloat16ToFloat32Cast() float32 {
+	x := bfloat16(42)
+	return float32(x)
+	// Want:
+	// float32(42)
+}
+
+func TestBfloat16ToFloat64Cast() float64 {
+	x := bfloat16(42)
+	return float64(x)
+	// Want:
+	// float64(42)
+}
+
+func TestBfloat16ArrayAtomicAdd() [...]bfloat16 {
+	return [...]bfloat16{0, 0.5, 1, 2, 2.75} + 1
+	// Want:
+	// [5]bfloat16{1, 1.5, 2, 3, 3.75}
+}
+
+func TestBfloat16ArrayAtomicMul() [...]bfloat16 {
+	return [...]bfloat16{0, 0.5, 1, 2, 2.75} * 4
+	// Want:
+	// [5]bfloat16{0, 2, 4, 8, 11}
+}
+
+func TestBfloat16AtomicCos() bfloat16 {
+	return math.Cos(bfloat16(42.0))
+	// Want:
+	// bfloat16(-0.40039062)
+}
+
+func TestBfloat16ArrayCos() [...]bfloat16 {
+	return math.Cos([...]bfloat16{0, 3.15159})
+	// Want:
+	// [2]bfloat16{1, -1}
+}

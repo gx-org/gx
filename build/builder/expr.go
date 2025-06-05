@@ -18,63 +18,55 @@ import (
 	"go/ast"
 )
 
-func processExpr(owner owner, expr ast.Expr) (exprNode, bool) {
+func processExpr(pscope procScope, expr ast.Expr) (exprNode, bool) {
 	switch exprT := expr.(type) {
 	case *ast.Ident:
-		return processIdentExpr(exprT), true
+		return processIdentExpr(pscope, exprT)
 	case *ast.BasicLit:
-		return processBasicLit(owner, exprT)
+		return processBasicLit(pscope, exprT)
 	case *ast.ArrayType:
-		return processCast(owner, exprT)
+		return processArrayType(pscope, exprT)
 	case *ast.CompositeLit:
-		return processCompositeLit(owner, exprT)
+		return processCompositeLit(pscope, exprT)
 	case *ast.CallExpr:
-		return processCallExpr(owner, exprT)
+		return processCallExpr(pscope, exprT)
 	case *ast.ParenExpr:
-		return processParenExpr(owner, exprT)
+		return processParenExpr(pscope, exprT)
 	case *ast.UnaryExpr:
-		return processUnaryExpr(owner, exprT)
+		return processUnaryExpr(pscope, exprT)
 	case *ast.BinaryExpr:
-		return processBinaryExpr(owner, exprT)
+		return processBinaryExpr(pscope, exprT)
 	case *ast.SelectorExpr:
-		return processSelectorReference(owner, exprT)
+		return processSelectorExpr(pscope, exprT)
 	case *ast.IndexExpr:
-		return processIndexExpr(owner, exprT)
+		return processIndexExpr(pscope, exprT)
+	case *ast.IndexListExpr:
+		return processIndexListExpr(pscope, exprT)
 	case *ast.FuncLit:
-		return processFuncLit(owner, exprT)
+		return processFuncLit(pscope, exprT)
+	case *ast.TypeAssertExpr:
+		return processTypeAssertExpr(pscope, exprT)
 	default:
-		owner.err().Appendf(expr, "expression of type %T not supported", expr)
+		pscope.err().Appendf(expr, "expression of type %T not supported", expr)
 	}
 	return nil, false
 }
 
 // processTypeExpr processes an expr in the context of defining a type.
-func processTypeExpr(owner owner, expr ast.Node) (typeNode, bool) {
+func processTypeExpr(pscope procScope, expr ast.Node) (typeExprNode, bool) {
 	switch exprT := expr.(type) {
 	case *ast.Ident:
-		return processIdentTypeExpr(owner, exprT)
+		return processIdentExpr(pscope, exprT)
 	case *ast.ArrayType:
-		return processArraySliceType(owner, exprT)
+		return processArraySliceType(pscope, exprT)
 	case *ast.StructType:
-		return processStructType(owner, exprT)
+		return processStructType(pscope, exprT)
 	case *ast.SelectorExpr:
-		return processTypeSelectorReference(owner, exprT)
+		return processSelectorExpr(pscope, exprT)
+	case *ast.InterfaceType:
+		return processInterfaceType(pscope, exprT)
 	default:
-		owner.err().Appendf(expr, "expression of type %T not supported", expr)
+		pscope.err().Appendf(expr, "type expression %T not supported", expr)
 	}
 	return nil, false
-}
-
-func processCompositeLit(owner owner, expr *ast.CompositeLit) (exprNode, bool) {
-	if expr.Type == nil {
-		owner.err().Appendf(expr, "untyped composite literal")
-		return nil, false
-	}
-	switch exprT := expr.Type.(type) {
-	case *ast.ArrayType:
-		return processArraySliceTypeWithValue(owner, expr, exprT)
-	case *ast.CompositeLit:
-		return processCompositeLit(owner, exprT)
-	}
-	return processCompositeLitStruct(owner, expr, expr.Type)
 }

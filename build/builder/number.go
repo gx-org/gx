@@ -16,91 +16,63 @@ package builder
 
 import (
 	"go/ast"
+	"reflect"
 
 	"github.com/gx-org/gx/build/ir"
 )
 
-func defaultNumberType(scope scoper, expr exprNode) ir.Type {
-	typ, ok := expr.resolveType(scope)
-	if !ok {
-		return invalid.irType()
+// numberLit is the literal of a number.
+type numberLit struct {
+	ext ir.Number
+}
+
+var _ exprNode = (*numberLit)(nil)
+
+func (n *numberLit) buildExpr(resolveScope) (ir.Expr, bool) {
+	return n.ext, true
+}
+
+// Pos returns the position of the literal in the code.
+func (n *numberLit) source() ast.Node {
+	return n.ext.Source()
+}
+
+func (n *numberLit) String() string {
+	return n.ext.String()
+}
+
+func castNumber(scope resolveScope, expr ir.Expr, target ir.Type) (*ir.NumberCastExpr, bool) {
+	target = scope.processTypeRef(target)
+	cast := &ir.NumberCastExpr{
+		X:   expr,
+		Typ: target,
 	}
-	irType := typ.irType()
-	defaultType := ir.DefaultNumberType(irType.Kind())
-	return defaultType
-}
-
-type numberCastExpr struct {
-	ext ir.NumberCastExpr
-	x   exprNode
-	typ typeNode
-}
-
-var _ exprScalar = (*numberCastExpr)(nil)
-
-func castNumber(scope scoper, expr exprNode, want ir.Type) (exprNode, typeNode, bool) {
-	if want.Kind() == ir.UnknownKind {
+	if cast.Typ.Kind() == ir.UnknownKind {
 		// No specification on what we want.
 		// For example:
 		//   a := 5.2
 		// Then we cast the number, 5.2 in this example, to a default type.
-		want = defaultNumberType(scope, expr)
+		cast.Typ = ir.DefaultNumberType(expr.Type().Kind())
 	}
-	if want.Kind() == ir.ArrayKind {
+	if cast.Typ.Kind() == ir.ArrayKind {
 		// The required type is an array. For example:
 		//   a := 5 * [2]float32{1, 2}
 		// We cast the number, 5 in this example, to the data type of the array.
-		underlying := ir.Underlying(want)
+		underlying := ir.Underlying(cast.Typ)
 		arrayType, ok := underlying.(ir.ArrayType)
 		if !ok {
-			scope.err().AppendInternalf(expr.source(), "type %T has TensorKind but is not an *ir.ArrayType", underlying)
-			return expr, invalid, false
+			scope.err().AppendInternalf(expr.Source(), "type %T has %s but does not implement %s", underlying, ir.ArrayKind.String(), reflect.TypeFor[ir.ArrayType]().Name())
+			return cast, false
 		}
-		want = arrayType.DataType()
+		cast.Typ = arrayType.DataType()
 	}
-	if !ir.CanBeNumber(want.Kind()) {
-		scope.err().Appendf(expr.source(), "cannot use a number as %v", want)
-		return expr, invalid, false
+	if !ir.CanBeNumber(cast.Typ) {
+		scope.err().Appendf(expr.Source(), "cannot use a number as %v", cast.Typ)
+		return cast, false
 	}
-	typ, wantOk := toTypeNode(scope, want)
-	numberType, numberOk := expr.resolveType(scope)
-	if ir.IsFloat(numberType.kind()) && ir.IsInteger(typ.kind()) {
-		scope.err().Appendf(expr.source(), "cannot use %s (untyped FLOAT constant) as %s value", expr.String(), typ.String())
-
+	if ir.IsFloat(expr.Type()) && ir.IsInteger(cast.Typ) {
+		scope.err().Appendf(expr.Source(), "cannot use %s (untyped FLOAT constant) as %s value", expr.String(), cast.Typ.String())
+		return cast, false
 	}
-	return &numberCastExpr{
-		ext: ir.NumberCastExpr{
-			Typ: want,
-		},
-		x:   expr,
-		typ: typ,
-	}, typ, typ.kind() != ir.InvalidKind && wantOk && numberOk
-}
-
-func (n *numberCastExpr) source() ast.Node {
-	return n.x.source()
-}
-
-func (n *numberCastExpr) scalar() ir.StaticExpr {
-	if n.ext.X != nil {
-		return &n.ext
-	}
-	n.ext.X = n.x.buildExpr()
-	return &n.ext
-}
-
-func (n *numberCastExpr) resolveType(scope scoper) (typeNode, bool) {
-	return typeNodeOk(n.typ)
-}
-
-func (n *numberCastExpr) expr() ast.Expr {
-	return n.x.expr()
-}
-
-func (n *numberCastExpr) buildExpr() ir.Expr {
-	return n.scalar()
-}
-
-func (n *numberCastExpr) String() string {
-	return "numberCastExpr"
+	return cast, true
 }

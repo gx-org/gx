@@ -37,9 +37,9 @@ func (f minFunc) BuildFuncType(fetcher ir.Fetcher, call *ir.CallExpr) (*ir.FuncT
 		return nil, err
 	}
 	return &ir.FuncType{
-		Src:     &ast.FuncType{Func: call.Source().Pos()},
-		Params:  builtins.Fields(mainParam, auxParam),
-		Results: builtins.Fields(result),
+		BaseType: ir.BaseType[*ast.FuncType]{Src: &ast.FuncType{Func: call.Source().Pos()}},
+		Params:   builtins.Fields(mainParam, auxParam),
+		Results:  builtins.Fields(result),
 	}, nil
 }
 
@@ -57,8 +57,8 @@ func (f maxFunc) BuildFuncType(fetcher ir.Fetcher, call *ir.CallExpr) (*ir.FuncT
 		return nil, err
 	}
 	return &ir.FuncType{
-		Src:     &ast.FuncType{Func: call.Source().Pos()},
-		Params:  builtins.Fields(mainParam, auxParam),
-		Results: builtins.Fields(result),
+		BaseType: ir.BaseType[*ast.FuncType]{Src: &ast.FuncType{Func: call.Source().Pos()}},
+		Params:   builtins.Fields(mainParam, auxParam),
+		Results:  builtins.Fields(result),
 	}, nil
 }

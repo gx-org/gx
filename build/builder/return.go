@@ -21,109 +21,125 @@ import (
 )
 
 type returnStmt struct {
-	ext     ir.ReturnStmt
-	fn      *funcDecl
+	src     *ast.ReturnStmt
 	results []exprNode
 }
 
-func processReturnStmt(owner owner, fn *funcDecl, ret *ast.ReturnStmt) (*returnStmt, bool) {
+var _ stmtNode = (*returnStmt)(nil)
+
+func processReturnStmt(pscope procScope, src *ast.ReturnStmt) (*returnStmt, bool) {
 	n := &returnStmt{
-		ext: ir.ReturnStmt{
-			Src: ret,
-		},
-		fn:      fn,
-		results: make([]exprNode, len(ret.Results)),
+		src:     src,
+		results: make([]exprNode, len(src.Results)),
 	}
 	ok := true
-	for i, stmt := range ret.Results {
-		expr, okE := processExpr(owner, stmt)
+	for i, stmt := range src.Results {
+		expr, exprOk := processExpr(pscope, stmt)
 		n.results[i] = expr
-		ok = ok && okE
+		ok = ok && exprOk
 	}
 	return n, ok
 }
 
 // source is the position of the return statement in the code.
 func (n *returnStmt) source() ast.Node {
-	return n.ext.Source()
+	return n.src
 }
 
-func (n *returnStmt) buildStmt() ir.Stmt {
-	n.ext.Results = make([]ir.Expr, len(n.results))
-	for i, expr := range n.results {
-		n.ext.Results[i] = expr.buildExpr()
+func hasNamedResult(fields []*ir.Field) bool {
+	for _, field := range fields {
+		if field.Name == nil {
+			return false
+		}
 	}
-	return &n.ext
+	return true
 }
 
-func (n *returnStmt) resolveType(scope *scopeBlock) bool {
-	if len(n.results) == 0 {
-		// Naked return: nothing to check.
-		return true
+func allTypes[T ir.Value](list []T) []ir.Type {
+	types := make([]ir.Type, len(list))
+	for i, val := range list {
+		types[i] = val.Type()
+	}
+	return types
+}
+
+func resultTypes(exprs []ir.Expr) ([]ir.Type, bool) {
+	if len(exprs) == 1 {
+		if callExpr, ok := exprs[0].(*ir.CallExpr); ok {
+			return allTypes(callExpr.Callee.T.Results.Fields()), true
+		}
+	}
+	return allTypes(exprs), false
+}
+
+func returnAs(rscope resolveScope, pos ast.Node, src, dst ir.Type) bool {
+	assignable, err := assignableTo(rscope, src, dst)
+	if err != nil {
+		return rscope.err().AppendAt(pos, err)
+	}
+	if !assignable {
+		return rscope.err().Appendf(pos, "cannot use %s as %s value in return statement", src.String(), dst.String())
+	}
+	return true
+}
+
+func (n *returnStmt) buildStmt(scope funResolveScope) (ir.Stmt, bool) {
+	ext := &ir.ReturnStmt{Src: n.src}
+	fType := scope.funcType()
+	if fType == nil {
+		return ext, scope.err().AppendInternalf(n.src, "return statement without a function context")
+	}
+	wants := fType.Results.Fields()
+	if hasNamedResult(wants) && len(n.results) == 0 {
+		// Naked return with named results: nothing else to check.
+		return ext, true
 	}
 	// Resolve all the expressions composing the return.
 	ok := true
-	resultTypes := make([]typeNode, len(n.results))
+	ext.Results = make([]ir.Expr, len(n.results))
 	for i, expr := range n.results {
 		var exprOk bool
-		resultTypes[i], exprOk = expr.resolveType(scope)
+		ext.Results[i], exprOk = expr.buildExpr(scope)
 		ok = exprOk && ok
 	}
-	var isTuple = false
-	if len(resultTypes) == 1 {
-		// Expand the results if a function call is returned.
-		var tuple *tupleType
-		tuple, isTuple = resultTypes[0].(*tupleType)
-		if isTuple {
-			resultTypes = tuple.types()
-		}
+	if !ok {
+		return ext, false
 	}
-	want := n.fn.funcType.resultTypes()
+	rTypes, isTuple := resultTypes(ext.Results)
 	// Compare the number of values being returned to the function results.
-	if len(resultTypes) > want.len() {
-		scope.err().Appendf(n.source(), "too many return values")
-		ok = false
+	if len(rTypes) > len(wants) {
+		ok = scope.err().Appendf(n.source(), "too many return values")
 	}
-	if len(resultTypes) < want.len() {
-		scope.err().Appendf(n.source(), "not enough return values")
-		ok = false
+	if len(rTypes) < len(wants) {
+		ok = scope.err().Appendf(n.source(), "not enough return values")
 	}
 	if !ok {
-		return false
+		return ext, false
 	}
-	resultPos := n.results[0]
+	resultPos := ext.Results[0].Source()
 	// Check if the types being returned are assignable to the types declared by the signature.
-	for i, wantI := range want.types() {
-		gotI := resultTypes[i]
-		if ir.IsNumber(gotI.kind()) {
+	for i, wantI := range wants {
+		if ir.IsNumber(rTypes[i].Kind()) {
 			var retOk bool
-			n.results[i], gotI, retOk = castNumber(scope, n.results[i], wantI.irType())
+			ext.Results[i], retOk = castNumber(scope, ext.Results[i], wantI.Type())
+			rTypes[i] = ext.Results[i].Type()
 			if !retOk {
 				ok = false
 				continue
 			}
 		}
-		if gotI.kind() == ir.InvalidKind || wantI.kind() == ir.InvalidKind {
+		gotType := rTypes[i]
+		wantType := scope.processTypeRef(wantI.Group.Type.Typ)
+		if gotType.Kind() == ir.InvalidKind || wantType.Kind() == ir.InvalidKind {
 			ok = false
 			continue
 		}
 		posI := resultPos
 		if !isTuple {
-			posI = n.results[i]
+			posI = ext.Results[i].Source()
 		}
-		var okI bool
-		var err error
-		want.fields[i].group.typ, okI, err = assignableTo(scope, posI, gotI, wantI)
-		if err != nil {
-			scope.err().AppendAt(n.results[i].source(), err)
-			ok = false
-			continue
-		}
-		if !okI {
-			ok = false
-			scope.err().Appendf(posI.source(), "cannot use %s as %s in return statement", gotI.String(), wantI.String())
-			continue
-		}
+		okI := returnAs(scope, posI, gotType, wantType)
+		ok = ok && okI
 	}
-	return ok
+	return ext, ok
 }

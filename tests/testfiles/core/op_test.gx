@@ -6,6 +6,12 @@ func TestUnaryMinus() float64 {
 	// float64(-1)
 }
 
+func TestUnaryPlus() float64 {
+	return +1
+	// Want:
+	// float64(1)
+}
+
 func TestAddScalars() float64 {
 	return 1 + 2
 	// Want:
@@ -40,6 +46,13 @@ func TestBinaryOpFloat32Number() float32 {
 	return TestDivScalars() * 3
 	// Want:
 	// float32(9)
+}
+
+func TestBinaryAddSelf() int64 {
+	x := 1
+	return x + x
+	// Want:
+	// int64(2)
 }
 
 func TestParenFloat32() float32 {
@@ -311,4 +324,76 @@ func TestModuloAtomicArray() [3]int32 {
 	return 20 % [3]int32{6, 7, 8}
 	// Want:
 	// [3]int32{2, 6, 4}
+}
+
+func TestShiftLeftAtomicAtomic() int32 {
+	return 8 << 1
+	// Want:
+	// int32(16)
+}
+
+func TestShiftLeftArrayArray() [3]int32 {
+	return [3]int32{6, 7, 8} << [3]int32{3, 2, 1}
+	// Want:
+	// [3]int32{48, 28, 16}
+}
+
+func TestShiftLeftArrayAtomic() [3]int32 {
+	return [3]int32{6, 7, 8} << 1
+	// Want:
+	// [3]int32{12, 14, 16}
+}
+
+func TestShiftLeftAtomicArray() [3]int32 {
+	return 20 << [3]int32{1, 2, 3}
+	// Want:
+	// [3]int32{40, 80, 160}
+}
+
+func TestShiftRightAtomicAtomic() int32 {
+	return 8 >> 1
+	// Want:
+	// int32(4)
+}
+
+func TestShiftRightArrayArray() [3]int32 {
+	return [3]int32{512, 256, 128} >> [3]int32{3, 2, 1}
+	// Want:
+	// [3]int32{64, 64, 64}
+}
+
+func TestShiftRightArrayAtomic() [6]int32 {
+	return [6]int32{6, 7, 8, -1, -2, -4} >> 1
+	// Want:
+	// [6]int32{3, 3, 4, -1, -1, -2}
+}
+
+func TestShiftRightArrayAtomicUnsigned() [3]uint32 {
+	return [3]uint32{4294967295, 2147483648, 1073741824} >> 1
+	// Want:
+	// [3]uint32{2147483647, 1073741824, 536870912}
+}
+
+func TestShiftRightAtomicArray() [3]int32 {
+	return 1024 >> [3]int32{3, 2, 1}
+	// Want:
+	// [3]int32{128, 256, 512}
+}
+
+func TestBitwiseAndAtomicAtomic() int32 {
+	return 15 & 3
+	// Want:
+	// int32(3)
+}
+
+func TestBitwiseOrAtomicAtomic() int32 {
+	return 112 | 7
+	// Want:
+	// int32(119)
+}
+
+func TestBitwiseXorAtomicAtomic() int32 {
+	return 6^3
+	// Want:
+	// int32(5)
 }

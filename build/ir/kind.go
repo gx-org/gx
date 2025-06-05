@@ -25,13 +25,14 @@ type Kind uint
 const (
 	InvalidKind = Kind(dtype.Invalid)
 
-	BoolKind    = Kind(dtype.Bool)
-	Int32Kind   = Kind(dtype.Int32)
-	Int64Kind   = Kind(dtype.Int64)
-	Uint32Kind  = Kind(dtype.Uint32)
-	Uint64Kind  = Kind(dtype.Uint64)
-	Float32Kind = Kind(dtype.Float32)
-	Float64Kind = Kind(dtype.Float64)
+	BoolKind     = Kind(dtype.Bool)
+	Int32Kind    = Kind(dtype.Int32)
+	Int64Kind    = Kind(dtype.Int64)
+	Uint32Kind   = Kind(dtype.Uint32)
+	Uint64Kind   = Kind(dtype.Uint64)
+	Bfloat16Kind = Kind(dtype.Bfloat16)
+	Float32Kind  = Kind(dtype.Float32)
+	Float64Kind  = Kind(dtype.Float64)
 
 	IntIdxKind = Kind(iota + dtype.MaxDataType)
 	IntLenKind
@@ -50,11 +51,17 @@ const (
 	ArrayKind
 	BuiltinKind
 	FuncKind
+	RankKind
 	SliceKind
 	StringKind
 	StructKind
 	TupleKind
 	IRKind
+	PackageKind
+	MetaTypeKind
+
+	// Maximum value for a Kind constant.
+	MaxKind
 )
 
 // String returns a string representation of a kind.
@@ -84,6 +91,8 @@ func (k Kind) String() string {
 		return "uint32"
 	case Uint64Kind:
 		return "uint64"
+	case Bfloat16Kind:
+		return "bfloat16"
 	case Float32Kind:
 		return "float32"
 	case Float64Kind:
@@ -92,6 +101,8 @@ func (k Kind) String() string {
 		return "array"
 	case FuncKind:
 		return "func"
+	case RankKind:
+		return "rank"
 	case SliceKind:
 		return "slice"
 	case StringKind:
@@ -100,6 +111,8 @@ func (k Kind) String() string {
 		return "struct"
 	case BuiltinKind:
 		return "builtin"
+	case MetaTypeKind:
+		return "metatype"
 	}
 	return "invalid"
 }
@@ -130,6 +143,8 @@ func KindFromString(ident string) Kind {
 		return IntLenKind
 	case "bool":
 		return BoolKind
+	case "bfloat16":
+		return Bfloat16Kind
 	case "float32":
 		return Float32Kind
 	case "float64":
@@ -152,24 +167,7 @@ func KindFromString(ident string) Kind {
 // KindGeneric returns the kind of a variable from its generic type.
 // If the type is not supported, an invalid type is returned.
 func KindGeneric[T dtype.GoDataType]() Kind {
-	var t T
-	switch (any(t)).(type) {
-	case bool:
-		return BoolKind
-	case float32:
-		return Float32Kind
-	case float64:
-		return Float64Kind
-	case int32:
-		return Int32Kind
-	case int64:
-		return Int64Kind
-	case uint32:
-		return Uint32Kind
-	case uint64:
-		return Uint64Kind
-	}
-	return InvalidKind
+	return Kind(dtype.Generic[T]())
 }
 
 // IsNumber returns true if the kind is a number.
@@ -177,14 +175,19 @@ func IsNumber(knd Kind) bool {
 	return knd == NumberFloatKind || knd == NumberIntKind
 }
 
-// SupportOperators returns true if the kind supports unary or binary operators.
-func SupportOperators(knd Kind) bool {
-	switch knd {
+func toTypeSet(typ Type) (*TypeSet, bool) {
+	typSet, ok := Underlying(typ).(*TypeSet)
+	return typSet, ok
+}
+
+// SupportOperators returns true if the type supports unary or binary operators.
+func SupportOperators(typ Type) bool {
+	switch typ.Kind() {
 	case IntIdxKind, IntLenKind:
 		return true
 	case BoolKind:
 		return true
-	case Float32Kind, Float64Kind:
+	case Bfloat16Kind, Float32Kind, Float64Kind:
 		return true
 	case Int32Kind, Int64Kind:
 		return true
@@ -192,36 +195,67 @@ func SupportOperators(knd Kind) bool {
 		return true
 	case Uint32Kind, Uint64Kind:
 		return true
+	case InterfaceKind:
+		if typSet, ok := toTypeSet(typ); ok {
+			return typSet.hasCapability(SupportOperators)
+		}
+		return false
 	default:
 		return false
 	}
 }
 
-// IsDataType returns true if the kind can be stored in an array.
-func IsDataType(k Kind) bool {
-	switch k {
+// IsDataType returns true if the type can be stored in an array.
+func IsDataType(typ Type) bool {
+	switch typ.Kind() {
 	case BoolKind:
+	case Bfloat16Kind:
 	case Float32Kind, Float64Kind:
 	case Int32Kind, Int64Kind:
 	case Uint32Kind, Uint64Kind:
+	case InterfaceKind:
+		if typSet, ok := toTypeSet(typ); ok {
+			return typSet.hasCapability(IsDataType)
+		}
+		return false
 	default:
 		return false
 	}
 	return true
 }
 
-// IsIndexKind returns true if the kind is a supported array index type.
-func IsIndexKind(k Kind) bool {
-	switch k {
+// IsIndexType returns true if the kind is a supported array index type.
+func IsIndexType(typ Type) bool {
+	switch typ.Kind() {
 	case Int32Kind:
 	case Int64Kind:
 	case Uint32Kind:
 	case Uint64Kind:
 	case IntLenKind:
+	case InterfaceKind:
+		if typSet, ok := toTypeSet(typ); ok {
+			return typSet.hasCapability(IsIndexType)
+		}
+		return false
 	default:
 		return false
 	}
 	return true
+}
+
+// IsSlicingOk returns true if the type supports slicing,
+// (that is value_of_type[i]).
+func IsSlicingOk(typ Type) bool {
+	switch typ.Kind() {
+	case SliceKind, ArrayKind:
+		return true
+	case InterfaceKind:
+		if typSet, ok := toTypeSet(typ); ok {
+			return typSet.hasCapability(IsSlicingOk)
+		}
+		return false
+	}
+	return false
 }
 
 // IsRangeOk returns true if the kind can be used to iterate in a for loop with a range statement.
@@ -235,8 +269,8 @@ func IsRangeOk(k Kind) bool {
 	return true
 }
 
-// IsInteger return true if kind is an integer.
-func IsInteger(kind Kind) bool {
+// IsIntegerKind return true if kind is an integer.
+func IsIntegerKind(kind Kind) bool {
 	switch kind {
 	case IntLenKind, IntIdxKind:
 		return true
@@ -248,9 +282,22 @@ func IsInteger(kind Kind) bool {
 	return false
 }
 
-// IsFloat return true if kind is a float.
-func IsFloat(kind Kind) bool {
+// IsInteger return true if kind is an integer.
+func IsInteger(typ Type) bool {
+	if typ.Kind() == InterfaceKind {
+		if typSet, ok := toTypeSet(typ); ok {
+			return typSet.hasCapability(IsInteger)
+		}
+		return false
+	}
+	return IsIntegerKind(typ.Kind())
+}
+
+// IsFloatKind returns true if kind is a float.
+func IsFloatKind(kind Kind) bool {
 	switch kind {
+	case Bfloat16Kind:
+		return true
 	case Float32Kind, Float64Kind:
 		return true
 	case NumberFloatKind:
@@ -259,13 +306,29 @@ func IsFloat(kind Kind) bool {
 	return false
 }
 
+// IsFloat return true if type is a float.
+func IsFloat(typ Type) bool {
+	if typ.Kind() == InterfaceKind {
+		if typSet, ok := toTypeSet(typ); ok {
+			return typSet.hasCapability(IsFloat)
+		}
+		return false
+	}
+	return IsFloatKind(typ.Kind())
+}
+
 // CanBeNumber returns true if the value of a kind can be a number.
-func CanBeNumber(k Kind) bool {
-	switch k {
+func CanBeNumber(typ Type) bool {
+	switch typ.Kind() {
 	case IntLenKind, IntIdxKind:
 		return true
+	case InterfaceKind:
+		if typSet, ok := toTypeSet(typ); ok {
+			return typSet.hasCapability(CanBeNumber)
+		}
+		return false
 	default:
-		return IsFloat(k) || IsInteger(k)
+		return IsFloat(typ) || IsInteger(typ)
 	}
 }
 
@@ -277,11 +340,9 @@ func DefaultNumberType(kind Kind) Type {
 	case NumberIntKind:
 		return NumberInt{}.DefaultType()
 	default:
-		return TypeFromKind(InvalidKind)
+		return InvalidType()
 	}
 }
-
-var invalid = InvalidType{}
 
 // TypeFromKind returns a type from a kind.
 func TypeFromKind(kind Kind) Type {
@@ -292,6 +353,8 @@ func TypeFromKind(kind Kind) Type {
 		return IntLenType()
 	case BoolKind:
 		return BoolType()
+	case Bfloat16Kind:
+		return Bfloat16Type()
 	case Float32Kind:
 		return Float32Type()
 	case Float64Kind:
@@ -311,7 +374,7 @@ func TypeFromKind(kind Kind) Type {
 	case Uint64Kind:
 		return Uint64Type()
 	default:
-		return &invalid
+		return InvalidType()
 	}
 }
 

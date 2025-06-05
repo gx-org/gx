@@ -1,6 +1,8 @@
 // Source: Go src/math/const.go
 package math
 
+import "dtype"
+
 // Mathematical constants.
 const (
 	E   = 2.71828182845904523536028747135266249775724709369995957496696763 // https://oeis.org/A001113
@@ -42,4 +44,20 @@ const (
 )
 
 // Declare built-ins: these are typechecked like normal GX functions.
-func Ceil[T any]([___M]T) [___M]T
+func Abs[T dtype.Num]([___M]T) [M___]T
+func Ceil[T dtype.Num]([___M]T) [M___]T
+func Cos[T dtype.Num]([___M]T) [M___]T
+func Erf[T dtype.Num]([___M]T) [M___]T
+func Expm1[T dtype.Num]([___M]T) [M___]T
+func Exp[T dtype.Num]([___M]T) [M___]T
+func Floor[T dtype.Num]([___M]T) [M___]T
+func Log1p[T dtype.Num]([___M]T) [M___]T
+func Logistic[T dtype.Num]([___M]T) [M___]T
+func Log[T dtype.Num]([___M]T) [M___]T
+func Round[T dtype.Num]([___M]T) [M___]T
+func Rsqrt[T dtype.Num]([___M]T) [M___]T
+func Sign[T dtype.Num]([___M]T) [M___]T
+func Sin[T dtype.Num]([___M]T) [M___]T
+func Sqrt[T dtype.Num]([___M]T) [M___]T
+func Tanh[T dtype.Num]([___M]T) [M___]T
+

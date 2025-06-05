@@ -1,0 +1,13 @@
+package method
+
+type s struct{}
+
+func (s) val() float32 {
+	return 2
+}
+
+func TestMethod() float32 {
+	a := s{}	
+	return a.val()
+	// Want: float32(2)
+}

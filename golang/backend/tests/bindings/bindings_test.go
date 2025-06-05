@@ -22,6 +22,7 @@ import (
 	"github.com/gx-org/gx/golang/tests/basictest"
 	"github.com/gx-org/gx/golang/tests/dtypestest"
 	"github.com/gx-org/gx/golang/tests/importtest"
+	"github.com/gx-org/gx/golang/tests/mathtest"
 	"github.com/gx-org/gx/golang/tests/pkgvarstest"
 	bindingstests "github.com/gx-org/gx/golang/tests"
 	gxtesting "github.com/gx-org/gx/tests/testing"
@@ -32,6 +33,7 @@ var tests = []func(t *testing.T, dev *api.Device){
 	importtest.Run,
 	pkgvarstest.Run,
 	dtypestest.Run,
+	mathtest.Run,
 }
 
 func TestGoBindings(t *testing.T) {

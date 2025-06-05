@@ -17,103 +17,47 @@ package builder
 import (
 	"go/ast"
 
+	"github.com/pkg/errors"
 	"github.com/gx-org/gx/build/ir"
 )
 
-type axlengthsFunc struct {
-	ext ir.FuncBuiltin
-}
+type axlengthsFunc struct{}
 
-var (
-	_ genericCallTypeNode = (*axlengthsFunc)(nil)
-	_ staticValueNode     = (*axlengthsFunc)(nil)
-	_ function            = (*axlengthsFunc)(nil)
-)
+var _ ir.FuncImpl = (*appendFunc)(nil)
 
-func (f *axlengthsFunc) resolveGenericCallType(scope scoper, fetcher ir.Fetcher, call *callExpr) (*funcType, bool) {
-	src := call.source()
-	irCall := call.buildExpr().(*ir.CallExpr)
-	if len(irCall.Args) != 1 {
-		scope.err().Appendf(src, "wrong number of arguments to axlengths: expected 1, found %d", len(irCall.Args))
-		return nil, false
+// BuildFuncType builds the type of a function given how it is called.
+func (f *axlengthsFunc) BuildFuncType(fetcher ir.Fetcher, call *ir.CallExpr) (*ir.FuncType, error) {
+	ext := &ir.FuncType{
+		BaseType: baseType(&ast.FuncType{Func: call.Src.Pos()}),
 	}
-	arg := irCall.Args[0]
+	if len(call.Args) != 1 {
+		return ext, errors.Errorf("wrong number of arguments to axlengths: expected 1, found %d", len(call.Args))
+	}
+	arg := call.Args[0]
 	if arg.Type().Kind() != ir.ArrayKind {
-		scope.err().Appendf(src, "axlengths(%s) not supported", arg.Type().Kind())
-		return nil, false
-	}
-	argType, ok := toTypeNode(scope, arg.Type())
-	if !ok {
-		return nil, false
-	}
-	argArrayType, ok := argType.(*arrayType)
-	if !ok {
-		scope.err().Appendf(src, "axlengths(%T) not supported", argType)
-		return nil, false
-	}
-	axes, ok := argArrayType.lengths(scope, irCall)
-	if !ok {
-		return nil, false
-	}
-	axesType, ok := axes.resolveType(scope)
-	if !ok {
-		return nil, false
+		return ext, errors.Errorf("axlengths(%s) not supported", arg.Type().Kind())
 	}
 
-	srcFieldList := &ast.FieldList{Opening: irCall.Src.Lparen, Closing: irCall.Src.Rparen}
+	srcFieldList := &ast.FieldList{Opening: call.Src.Lparen, Closing: call.Src.Rparen}
 
-	paramsGroup := &ir.FieldGroup{Type: argType.irType()}
+	paramsGroup := &ir.FieldGroup{Type: &ir.TypeValExpr{Typ: arg.Type()}}
 	paramsGroup.Fields = []*ir.Field{{Group: paramsGroup}}
 
-	resultsGroup := &ir.FieldGroup{Type: axesType.irType()}
+	resultsGroup := &ir.FieldGroup{Type: &ir.TypeValExpr{Typ: ir.IntLenSliceType()}}
 	resultsGroup.Fields = []*ir.Field{{Group: resultsGroup}}
 
-	typ := ir.FuncType{
-		Src: &ast.FuncType{Func: irCall.Src.Pos()},
-		Params: &ir.FieldList{
-			Src:  srcFieldList,
-			List: []*ir.FieldGroup{paramsGroup},
-		},
-		Results: &ir.FieldList{
-			Src:  srcFieldList,
-			List: []*ir.FieldGroup{resultsGroup},
-		},
+	ext.Params = &ir.FieldList{
+		Src:  srcFieldList,
+		List: []*ir.FieldGroup{paramsGroup},
 	}
-	return importFuncType(scope, &typ)
+	ext.Results = &ir.FieldList{
+		Src:  srcFieldList,
+		List: []*ir.FieldGroup{resultsGroup},
+	}
+	return ext, nil
 }
 
-func (f *axlengthsFunc) resolveType(scoper) (typeNode, bool) {
-	return f, true
-}
-
-func (f *axlengthsFunc) receiver() *fieldList {
+// BuildFuncType builds the type of a function given how it is called.
+func (f *axlengthsFunc) Implementation() any {
 	return nil
-}
-
-func (f *axlengthsFunc) name() *ast.Ident {
-	return &ast.Ident{Name: f.ext.Name()}
-}
-
-func (f *axlengthsFunc) kind() ir.Kind {
-	return ir.FuncKind
-}
-
-func (f *axlengthsFunc) isGeneric() bool {
-	return false
-}
-
-func (f *axlengthsFunc) staticValue() ir.StaticValue {
-	return &f.ext
-}
-
-func (f *axlengthsFunc) irType() ir.Type {
-	return &ir.FuncType{}
-}
-
-func (f *axlengthsFunc) String() string {
-	return "axlengths"
-}
-
-func (f *axlengthsFunc) irFunc() ir.Func {
-	return &f.ext
 }

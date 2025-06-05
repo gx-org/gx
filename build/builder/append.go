@@ -17,104 +17,70 @@ package builder
 import (
 	"go/ast"
 
+	"github.com/pkg/errors"
 	"github.com/gx-org/gx/build/builtins"
 	"github.com/gx-org/gx/build/ir"
 )
 
-type appendFunc struct {
-	ext ir.FuncBuiltin
-}
+type appendFunc struct{}
 
-var (
-	_ function            = (*appendFunc)(nil)
-	_ staticValueNode     = (*appendFunc)(nil)
-	_ genericCallTypeNode = (*appendFunc)(nil)
-)
+const appendName = "append"
 
-func (f *appendFunc) resolveGenericCallType(scope scoper, fetcher ir.Fetcher, call *callExpr) (*funcType, bool) {
-	src := call.source()
-	irCall := call.buildExpr().(*ir.CallExpr)
-	params, err := builtins.BuildFuncParams(fetcher, irCall, f.String(), []ir.Type{
+var _ ir.FuncImpl = (*appendFunc)(nil)
+
+// BuildFuncType builds the type of a function given how it is called.
+func (f *appendFunc) BuildFuncType(fetcher ir.Fetcher, call *ir.CallExpr) (*ir.FuncType, error) {
+	ext := &ir.FuncType{
+		BaseType: baseType(&ast.FuncType{Func: call.Src.Pos()}),
+	}
+	params, err := builtins.BuildFuncParams(fetcher, call, appendName, []ir.Type{
 		builtins.GenericSliceType,
 		nil,
 	})
 	if err != nil {
-		scope.err().Append(err)
-		return nil, false
+		return ext, err
 	}
 	container := params[0].(*ir.SliceType)
 	dtype := container.DType
-	for i, arg := range irCall.Args[1:] {
+	for i, arg := range call.Args[1:] {
 		argType := arg.Type()
-		eq, err := argType.AssignableTo(fetcher, container.DType)
+		eq, err := argType.AssignableTo(fetcher, container.DType.Typ)
 		if err != nil {
-			scope.err().Appendf(src, "cannot evaluate the type of argument %d to append", i)
-			return nil, false
+			return ext, errors.Errorf("cannot evaluate the type of argument %d to append", i)
 		}
 		if !eq {
-			scope.err().Appendf(src, "cannot use %v as %v in argument to append", argType, dtype)
-			return nil, false
+			return ext, errors.Errorf("cannot use %v as %v in argument %d to append", argType, dtype, i)
 		}
 	}
-	containerGroup := &ir.FieldGroup{Type: params[0]}
+	containerGroup := &ir.FieldGroup{
+		Type: &ir.TypeValExpr{Typ: params[0]},
+	}
 	containerGroup.Fields = []*ir.Field{&ir.Field{Group: containerGroup}}
-	elementsGroup := &ir.FieldGroup{Type: container.DType}
-	for range len(irCall.Args) - 1 {
+	elementsGroup := &ir.FieldGroup{
+		Type: &ir.TypeValExpr{Typ: container.DType.Typ},
+	}
+	for range len(call.Args) - 1 {
 		elementsGroup.Fields = append(elementsGroup.Fields, &ir.Field{
 			Group: elementsGroup,
 		})
 	}
-	srcFieldList := &ast.FieldList{Opening: irCall.Src.Lparen, Closing: irCall.Src.Rparen}
-	typ := ir.FuncType{
-		Src: &ast.FuncType{Func: irCall.Src.Pos()},
-		Params: &ir.FieldList{
-			Src: srcFieldList,
-			List: []*ir.FieldGroup{
-				containerGroup,
-				elementsGroup,
-			}},
-		Results: &ir.FieldList{
-			Src: srcFieldList,
-			List: []*ir.FieldGroup{
-				containerGroup,
-			},
+	srcFieldList := &ast.FieldList{Opening: call.Src.Lparen, Closing: call.Src.Rparen}
+	ext.Params = &ir.FieldList{
+		Src: srcFieldList,
+		List: []*ir.FieldGroup{
+			containerGroup,
+			elementsGroup,
+		}}
+	ext.Results = &ir.FieldList{
+		Src: srcFieldList,
+		List: []*ir.FieldGroup{
+			containerGroup,
 		},
 	}
-	return importFuncType(scope, &typ)
+	return ext, nil
 }
 
-func (f *appendFunc) receiver() *fieldList {
+// BuildFuncType builds the type of a function given how it is called.
+func (f *appendFunc) Implementation() any {
 	return nil
-}
-
-func (f *appendFunc) resolveType(scoper) (typeNode, bool) {
-	return f, true
-}
-
-func (f *appendFunc) name() *ast.Ident {
-	return &ast.Ident{Name: f.ext.Name()}
-}
-
-func (f *appendFunc) irFunc() ir.Func {
-	return &f.ext
-}
-
-func (f *appendFunc) isGeneric() bool {
-	return false
-}
-
-func (f *appendFunc) staticValue() ir.StaticValue {
-	return &f.ext
-}
-
-func (f *appendFunc) kind() ir.Kind {
-	return ir.FuncKind
-}
-
-func (f *appendFunc) irType() ir.Type {
-	return &ir.FuncType{}
-}
-
-func (f *appendFunc) String() string {
-	return "append"
 }

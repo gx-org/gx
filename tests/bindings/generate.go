@@ -24,6 +24,7 @@ package bindings
 //go:generate go run ../../golang/packager --gx_package_module=github.com/gx-org/gx/tests/bindings/rand
 //go:generate go run ../../golang/packager --gx_package_module=github.com/gx-org/gx/tests/bindings/cartpole
 //go:generate go run ../../golang/packager --gx_package_module=github.com/gx-org/gx/tests/bindings/dtypes
+//go:generate go run ../../golang/packager --gx_package_module=github.com/gx-org/gx/tests/bindings/unexported
 
 //go:generate go run ../../golang/binder/genbind --gx_package=github.com/gx-org/gx/tests/bindings/basic
 //go:generate go run ../../golang/binder/genbind --gx_package=github.com/gx-org/gx/tests/bindings/encoding
@@ -34,6 +35,7 @@ package bindings
 //go:generate go run ../../golang/binder/genbind --gx_package=github.com/gx-org/gx/tests/bindings/rand
 //go:generate go run ../../golang/binder/genbind --gx_package=github.com/gx-org/gx/tests/bindings/cartpole
 //go:generate go run ../../golang/binder/genbind --gx_package=github.com/gx-org/gx/tests/bindings/dtypes
+//go:generate go run ../../golang/binder/genbind --gx_package=github.com/gx-org/gx/tests/bindings/unexported
 
 //go:generate go run ../../golang/tools/testsmain/testsmain.go --gx_test_folder=../../golang/tests/basictest
 //go:generate go run ../../golang/tools/testsmain/testsmain.go --gx_test_folder=../../golang/tests/importtest
@@ -43,3 +45,4 @@ package bindings
 //go:generate go run ../../golang/tools/testsmain/testsmain.go --gx_test_folder=../../golang/tests/randtest
 //go:generate go run ../../golang/tools/testsmain/testsmain.go --gx_test_folder=../../golang/tests/dtypestest
 //go:generate go run ../../golang/tools/testsmain/testsmain.go --gx_test_folder=../../golang/tests/cartpoletest
+//go:generate go run ../../golang/tools/testsmain/testsmain.go --gx_test_folder=../../golang/tests/unexportedtest

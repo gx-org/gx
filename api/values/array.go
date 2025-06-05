@@ -16,11 +16,12 @@ package values
 
 import (
 	"fmt"
+	"math/big"
 
+	"github.com/pkg/errors"
 	"github.com/gx-org/backend/dtype"
 	"github.com/gx-org/backend/platform"
 	"github.com/gx-org/backend/shape"
-	"github.com/gx-org/gx/api"
 	"github.com/gx-org/gx/build/ir"
 	"github.com/gx-org/gx/golang/backend/kernels"
 )
@@ -40,24 +41,44 @@ type Array interface {
 
 	// ToDevice transfers the array to a device.
 	// It is a no-op if the data is already on the device.
-	ToDevice(dev *api.Device) (*DeviceArray, error)
+	ToDevice(dev platform.Device) (*DeviceArray, error)
 
 	// ToHostArray transfers the array on the host if it is not already.
 	// Use the Go allocator.
 	ToHostArray(alloc platform.Allocator) (*HostArray, error)
 }
 
+type baseArray struct {
+	typ       ir.Type
+	arrayType ir.ArrayType
+}
+
+func newBaseArray(typ ir.Type, sh *shape.Shape) (*baseArray, error) {
+	arrayType, err := ir.ToArrayTypeGivenShape(typ, sh)
+	if err != nil {
+		return nil, err
+	}
+	return &baseArray{typ: typ, arrayType: arrayType}, nil
+}
+
 // DeviceArray managed by GX where the data is on a device.
 type DeviceArray struct {
-	typ    ir.Type
+	*baseArray
 	handle platform.DeviceHandle
 }
 
 var _ Array = (*DeviceArray)(nil)
 
 // NewDeviceArray returns a new array managed by GX.
-func NewDeviceArray(typ ir.Type, handle platform.DeviceHandle) *DeviceArray {
-	return &DeviceArray{typ: typ, handle: handle}
+func NewDeviceArray(typ ir.Type, handle platform.DeviceHandle) (*DeviceArray, error) {
+	base, err := newBaseArray(typ, handle.Shape())
+	if err != nil {
+		return nil, err
+	}
+	return &DeviceArray{
+		baseArray: base,
+		handle:    handle,
+	}, nil
 }
 
 func (*DeviceArray) value() {}
@@ -76,7 +97,7 @@ func (a *DeviceArray) ToHostArray(alloc platform.Allocator) (*HostArray, error) 
 	if err := a.handle.ToHost(hostBuffer); err != nil {
 		return nil, err
 	}
-	return NewHostArray(a.typ, hostBuffer), nil
+	return NewHostArray(a.typ, hostBuffer)
 }
 
 // Type of the array.
@@ -101,33 +122,44 @@ func (a *DeviceArray) DeviceHandle() platform.DeviceHandle {
 
 // ToDevice transfers the data to a device.
 // It is a no-op if the data is already on the device.
-func (a *DeviceArray) ToDevice(dev *api.Device) (*DeviceArray, error) {
-	if a.handle.Device() == dev.PlatformDevice() {
+func (a *DeviceArray) ToDevice(dev platform.Device) (*DeviceArray, error) {
+	if a.handle.Device() == dev {
 		return a, nil
 	}
-	handle, err := a.handle.ToDevice(dev.PlatformDevice())
+	handle, err := a.handle.ToDevice(dev)
 	if err != nil {
 		return nil, err
 	}
-	return NewDeviceArray(a.typ, handle), nil
+	return NewDeviceArray(a.typ, handle)
 }
 
 // String representation of the array.
 func (a *DeviceArray) String() string {
-	return fmt.Sprintf("DeviceArray{Shape: %s, Device: %d}", a.handle.Shape(), a.handle.Device().Ordinal())
+	host, err := a.ToHost(kernels.Allocator())
+	var hostS string
+	if err != nil {
+		hostS = err.Error()
+	} else {
+		hostS = host.String()
+	}
+	return fmt.Sprintf("DeviceArray{DeviceID: %d}: %s", a.handle.Device().Ordinal(), hostS)
 }
 
 // HostArray managed by GX where the data is on a device.
 type HostArray struct {
-	typ    ir.Type
+	*baseArray
 	buffer platform.HostBuffer
 }
 
 var _ Array = (*HostArray)(nil)
 
 // NewHostArray returns a new array managed by GX.
-func NewHostArray(typ ir.Type, handle platform.HostBuffer) *HostArray {
-	return &HostArray{typ: typ, buffer: handle}
+func NewHostArray(typ ir.Type, handle platform.HostBuffer) (*HostArray, error) {
+	base, err := newBaseArray(typ, handle.Shape())
+	if err != nil {
+		return nil, err
+	}
+	return &HostArray{baseArray: base, buffer: handle}, nil
 }
 
 func (*HostArray) value() {}
@@ -164,14 +196,14 @@ func (a *HostArray) Buffer() platform.HostBuffer {
 
 // ToDevice transfers the data to a device.
 // It is a no-op if the data is already on the device.
-func (a *HostArray) ToDevice(dev *api.Device) (*DeviceArray, error) {
+func (a *HostArray) ToDevice(dev platform.Device) (*DeviceArray, error) {
 	data := a.buffer.Acquire()
 	defer a.buffer.Release()
-	handle, err := dev.PlatformDevice().Send(data, a.buffer.Shape())
+	handle, err := dev.Send(data, a.buffer.Shape())
 	if err != nil {
 		return nil, err
 	}
-	return NewDeviceArray(a.typ, handle), nil
+	return NewDeviceArray(a.typ, handle)
 }
 
 // ToAtom returns the value as an atomic value.
@@ -186,6 +218,18 @@ func (a *HostArray) ToAtom() (any, error) {
 	return array.ToAtom()
 }
 
+// ToFloatNumber returns the value as a float number.
+// An error is returned if the array contains more than one value.
+func (a *HostArray) ToFloatNumber() (*big.Float, error) {
+	data := a.Buffer().Acquire()
+	defer a.Buffer().Release()
+	array, err := kernels.NewArrayFromRaw(data, a.Shape())
+	if err != nil {
+		return nil, err
+	}
+	return array.ToFloatNumber()
+}
+
 // String representation of the array.
 func (a *HostArray) String() string {
 	data := a.Buffer().Acquire()
@@ -198,12 +242,13 @@ func (a *HostArray) String() string {
 }
 
 // ToAtom converts an array on the host into a Go atom value.
-func ToAtom[T dtype.GoDataType](a *HostArray) T {
+func ToAtom[T dtype.GoDataType](a *HostArray) (T, error) {
 	data := a.Buffer().Acquire()
 	defer a.Buffer().Release()
 	slice := dtype.ToSlice[T](data)
 	if len(slice) != 1 {
-		panic(fmt.Sprintf("array (length=%d) is not an atom", len(slice)))
+		var zero T
+		return zero, errors.Errorf("array (length=%d) is not an atom", len(slice))
 	}
-	return slice[0]
+	return slice[0], nil
 }

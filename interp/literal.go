@@ -15,242 +15,133 @@
 package interp
 
 import (
-	"go/ast"
-	"go/token"
-	"reflect"
-
 	"github.com/pkg/errors"
 	"github.com/gx-org/backend/dtype"
-	"github.com/gx-org/backend/shape"
 	"github.com/gx-org/gx/api/values"
 	"github.com/gx-org/gx/build/fmterr"
 	"github.com/gx-org/gx/build/ir"
+	"github.com/gx-org/gx/golang/backend/kernels"
+	"github.com/gx-org/gx/internal/interp/compeval/cpevelements"
 	"github.com/gx-org/gx/interp/elements"
-	"github.com/gx-org/gx/interp/state"
 )
 
 type (
 	valuer interface {
-		evaluator(errfs fmterr.FileSet) evaluator
-		eval(*context, ir.Expr) (state.Element, error)
+		array(ctx *context, expr *ir.ArrayLitExpr) (elements.Element, error)
 	}
 
 	valuerT[T dtype.GoDataType] struct {
 		kind         ir.Kind
-		toAtomValue  func(tp ir.Type, val T) *values.HostArray
-		toArrayValue func(tp ir.Type, val []T, dims []int) *values.HostArray
+		toAtomValue  func(tp ir.Type, val T) (*values.HostArray, error)
+		toArrayValue func(tp ir.Type, val []T, dims []int) (*values.HostArray, error)
 	}
 )
 
-type (
-	evaluator interface {
-		scalar(ctx *context, expr ir.StaticExpr) (state.Element, error)
-		array(ctx *context, expr *ir.ArrayLitExpr) (state.Element, error)
-	}
-
-	evaluatorT[T dtype.GoDataType] struct {
-		errfs  fmterr.FileSet
-		valuer valuerT[T]
-	}
-
-	fetcher[T dtype.GoDataType] struct {
-		kind ir.Kind
-		ctx  Context
-	}
-)
-
-func (v valuerT[T]) eval(ctx *context, expr ir.Expr) (el state.Element, err error) {
-	val, unknowns, err := v.valueOf(ctx, expr)
-	if err != nil {
-		return nil, err
-	}
-	if len(unknowns) > 0 {
-		names := make([]string, len(unknowns))
-		return nil, errors.Errorf("%v are unknowns", names)
-	}
-	gxValue := v.toAtomValue(expr.Type(), val)
-	return ctx.Evaluator().ElementFromValue(nodeAt[ir.Node](ctx, expr), gxValue)
-}
-
-func (v valuerT[T]) evaluator(errfs fmterr.FileSet) evaluator {
-	return evaluatorT[T]{errfs: errfs, valuer: v}
-}
-
-func (v valuerT[T]) valueOf(ctx *context, expr ir.Expr) (T, []*ir.ValueRef, error) {
-	return ir.Eval[T](fetcher[T]{kind: ir.Kind(v.kind.DType()), ctx: ctx}, expr)
-}
-
-func (f fetcher[T]) ToGoValue(val ir.RuntimeValue) (any, error) {
-	hostVal, ok := val.(*values.HostArray)
+func goValueFromElement[T dtype.GoDataType](el elements.NumericalElement) (T, bool, error) {
+	var t T
+	canonicalElt, ok := el.(elements.ElementWithConstant)
 	if !ok {
-		return nil, errors.Errorf("cannot convert %T to a Go value", val)
+		return t, false, nil
 	}
-	return hostVal.ToAtom()
+	var err error
+	t, err = values.ToAtom[T](canonicalElt.NumericalConstant())
+	return t, err == nil, err
 }
 
-func (f fetcher[T]) Fetch(ident *ast.Ident) (atom ir.StaticValue, err error) {
-	defer func() {
-		if err != nil {
-			err = f.ctx.FileSet().Errorf(ident, "cannot fetch %s: %v", ident.Name, err)
-		}
-	}()
-	el, err := f.ctx.frame().find(ident)
-	if err != nil {
-		return
-	}
-	if number, ok := el.(*elements.Number); ok {
-		return number.Atomic(f)
-	}
-	val, err := elements.ConstantScalarFromElement[T](el)
-	if err != nil {
-		return nil, err
-	}
-	return &ir.AtomicValueT[T]{
-		Src: ident,
-		Typ: ir.TypeFromKind(f.kind),
-		Val: val,
-	}, nil
-}
-
-func (f fetcher[T]) FileSet() *token.FileSet {
-	return f.ctx.FileSet().FSet
-}
-
-func (e evaluatorT[T]) scalar(ctx *context, val ir.StaticExpr) (state.Element, error) {
-	value, _, err := e.valuer.valueOf(ctx, val)
-	if err != nil {
-		return nil, err
-	}
-	atom := e.valuer.toAtomValue(val.Type(), value)
-	return ctx.Evaluator().ElementFromValue(nodeAt[ir.Node](ctx, val), atom)
-}
-
-func toGoInt(val *values.HostArray) (int, error) {
-	valT := val.Shape().DType
-	switch valT {
-	case dtype.Int32:
-		return int(values.ToAtom[int32](val)), nil
-	case dtype.Int64:
-		return int(values.ToAtom[int64](val)), nil
-	default:
-		return -1, errors.Errorf("cannot cast type %s to int", valT.String())
-	}
-}
-
-func (e evaluatorT[T]) evalIntExpr(ctx *context, expr ir.Expr) (int, []*ir.ValueRef, error) {
-	valuer, err := newValuer(ctx, expr, expr.Type().Kind())
-	if err != nil {
-		return -1, nil, err
-	}
-	element, err := valuer.eval(ctx, expr)
-	if err != nil {
-		return -1, nil, err
-	}
-	elWithConstant, ok := element.(elements.ElementWithConstant)
+func goSliceFromArrayElement[T dtype.GoDataType](el elements.NumericalElement) ([]T, bool, error) {
+	canonicalElt, ok := el.(elements.ElementWithConstant)
 	if !ok {
-		return -1, nil, errors.Errorf("cannot cast %T to %s", element, reflect.TypeFor[elements.ElementWithConstant]())
+		return nil, false, nil
 	}
-	elConstant := elWithConstant.NumericalConstant()
-	valInt, err := toGoInt(elConstant)
-	return valInt, nil, err
+	array := canonicalElt.NumericalConstant().Handle().(*kernels.Buffer).KernelValue().(interface{ Flat() []T })
+	return array.Flat(), true, nil
 }
 
-func (e evaluatorT[T]) evalDim(ctx *context, dim ir.AxisLength) (int, []*ir.ValueRef, error) {
-	switch dimT := dim.(type) {
-	case *ir.AxisExpr:
-		return e.evalIntExpr(ctx, dimT.X)
-	case *ir.AxisEllipsis:
-		return e.evalIntExpr(ctx, dimT.X)
-	default:
-		return 0, nil, ctx.FileSet().Errorf(dim.Source(), "dimension of type %T not supported", dimT)
-
-	}
-}
-
-func (e evaluatorT[T]) evalArrayElementsDims(ctx *context, scalars []ir.StaticExpr) ([]T, error) {
-	vals := make([]T, len(scalars))
-	for i, val := range scalars {
+func goSliceFromElements[T dtype.GoDataType](els []elements.NumericalElement) ([]T, bool, error) {
+	var vals []T
+	for _, el := range els {
+		var subVals []T
+		var ok bool
 		var err error
-		vals[i], _, err = e.valuer.valueOf(ctx, val)
-		if err != nil {
-			return nil, err
+		if el.Kind() == ir.ArrayKind {
+			subVals, ok, err = goSliceFromArrayElement[T](el)
+		} else {
+			subVals = make([]T, 1)
+			subVals[0], ok, err = goValueFromElement[T](el)
 		}
-	}
-	return vals, nil
-}
-
-func (e evaluatorT[T]) evalArrayDims(ctx *context, typ ir.ArrayType) (int, []int, error) {
-	rank, err := rankOf(ctx, typ, typ)
-	if err != nil {
-		return -1, nil, err
-	}
-	dims := make([]int, len(rank.Axes))
-	size := 1
-	for i, dim := range rank.Axes {
-		dimInt64, _, err := e.evalDim(ctx, dim)
 		if err != nil {
-			return -1, nil, err
+			return nil, false, err
 		}
-		dims[i] = int(dimInt64)
-		size *= dims[i]
-	}
-	return size, dims, nil
-}
-
-func elementsToStaticScalars(exprs []ir.Expr) []ir.StaticExpr {
-	scalars := make([]ir.StaticExpr, len(exprs))
-	for i, expr := range exprs {
-		// TODO(degris): some expression are not ir.Scalar but can still be evaluated
-		// as scalars at JIT time (e.g. static variables).
-		// At the moment, we fall back to concatenation which is suboptimal.
-		scalar, ok := expr.(ir.StaticExpr)
 		if !ok {
-			return nil
+			return nil, false, nil
 		}
-		scalars[i] = scalar
+		vals = append(vals, subVals...)
 	}
-	return scalars
+	return vals, true, nil
 }
 
-func (e evaluatorT[T]) array(ctx *context, val *ir.ArrayLitExpr) (state.Element, error) {
-	size, dims, err := e.evalArrayDims(ctx, val.Typ)
+func (v valuerT[T]) buildStaticArray(ctx *context, lit *ir.ArrayLitExpr, axes, vals []elements.NumericalElement) (elements.Element, bool, error) {
+	axesI64, ok, err := goSliceFromElements[int64](axes)
+	if !ok || err != nil {
+		return nil, false, err
+	}
+	valsT, ok, err := goSliceFromElements[T](vals)
+	if !ok || err != nil {
+		return nil, false, err
+	}
+	size := 1
+	for _, axis := range axesI64 {
+		size *= int(axis)
+	}
+	if len(vals) > 0 && len(valsT) != size {
+		return nil, false, errors.Errorf("tensor has dimensions %v (size=%d) but has %d elements", axes, size, len(vals))
+	}
+	axesI := make([]int, len(axesI64))
+	for i, ax := range axesI64 {
+		axesI[i] = int(ax)
+	}
+	if len(valsT) == 0 {
+		valsT = make([]T, size)
+	}
+	array, err := v.toArrayValue(lit.Type(), valsT, axesI)
+	if err != nil {
+		return nil, false, err
+	}
+	// All elements of the literal are scalars already known.
+	node, err := ctx.eval.evaluator.ArrayOps().ElementFromArray(elements.NewExprAt(ctx.File(), lit), array)
+	if err != nil {
+		return nil, false, err
+	}
+	return node, true, nil
+}
+
+func (v valuerT[T]) array(ctx *context, lit *ir.ArrayLitExpr) (elements.Element, error) {
+	axes, err := evalArrayAxes(ctx, lit, lit.Typ)
 	if err != nil {
 		return nil, err
 	}
-	if len(val.Vals) > 0 && len(val.Vals) != size {
-		return nil, errors.Errorf("tensor has dimensions %v (size=%d) but has %d elements", dims, size, len(val.Vals))
-	}
-	if scalars := elementsToStaticScalars(val.Vals); scalars != nil {
-		// All elements of the literal are scalars already known.
-		// We can pack them into an array, build a local tensor
-		// and send everything at once to the device.
-		vals, err := e.evalArrayElementsDims(ctx, scalars)
+	irVals := lit.Values()
+	elVals := make([]elements.NumericalElement, len(irVals))
+	for i, expr := range irVals {
+		elVals[i], err = evalNumExpr(ctx, expr)
 		if err != nil {
 			return nil, err
 		}
-		if len(vals) == 0 {
-			vals = make([]T, shape.Size(dims))
-		}
-		arrayValue := e.valuer.toArrayValue(val.Type(), vals, dims)
-		return ctx.Evaluator().ElementFromValue(nodeAt[ir.Node](ctx, val), arrayValue)
+	}
+	staticArray, staticOk, err := v.buildStaticArray(ctx, lit, axes, elVals)
+	if staticOk || err != nil {
+		return staticArray, err
 	}
 	// Some values will be known at runtime. We create one node for each element
 	// and concatenates everything into an array.
-	els := make([]state.Element, len(val.Vals))
-	for i, expr := range val.Vals {
-		els[i], err = evalExpr(ctx, expr)
-		if err != nil {
-			return nil, err
-		}
-	}
-	array1d, err := ctx.Evaluator().Concat(ctx, val, els)
+	array1d, err := ctx.eval.evaluator.ArrayOps().Concat(elements.NewExprAt(ctx.File(), lit), elVals)
 	if err != nil {
 		return nil, err
 	}
-	if len(dims) == 1 {
+	if len(axes) == 1 {
 		return array1d, nil
 	}
-	return ctx.Evaluator().Reshape(ctx, val, array1d, dims)
+	return ctx.eval.evaluator.ArrayOps().Reshape(elements.NewExprAt(ctx.File(), lit), array1d, axes)
 }
 
 func newValuer(ctx *context, expr ir.Expr, kind ir.Kind) (v valuer, err error) {
@@ -261,6 +152,8 @@ func newValuer(ctx *context, expr ir.Expr, kind ir.Kind) (v valuer, err error) {
 		v = valuerT[ir.Int]{kind: kind, toAtomValue: values.AtomIntegerValue[ir.Int], toArrayValue: values.ArrayIntegerValue[ir.Int]}
 	case ir.BoolKind:
 		v = valuerT[bool]{kind: kind, toAtomValue: values.AtomBoolValue, toArrayValue: values.ArrayBoolValue}
+	case ir.Bfloat16Kind:
+		v = valuerT[dtype.Bfloat16T]{kind: kind, toAtomValue: values.AtomBfloat16Value, toArrayValue: values.ArrayBfloat16Value}
 	case ir.Float32Kind:
 		v = valuerT[float32]{kind: kind, toAtomValue: values.AtomFloatValue[float32], toArrayValue: values.ArrayFloatValue[float32]}
 	case ir.Float64Kind:
@@ -276,57 +169,67 @@ func newValuer(ctx *context, expr ir.Expr, kind ir.Kind) (v valuer, err error) {
 	case ir.Uint64Kind:
 		v = valuerT[uint64]{kind: kind, toAtomValue: values.AtomIntegerValue[uint64], toArrayValue: values.ArrayIntegerValue[uint64]}
 	default:
-		err = ctx.FileSet().Errorf(expr.Source(), "%s cannot be converted to backend numerical: not supported", kind)
+		err = fmterr.Errorf(ctx.File().FileSet(), expr.Source(), "%s cannot be converted to backend numerical: not supported", kind)
 	}
 	return
 }
 
-func toLocalTensor(
-	ctx *context,
-	expr ir.Expr,
-	kind ir.Kind,
-	toNode func(evaluator) (state.Element, error),
-) (state.Element, error) {
-	toValue, err := newValuer(ctx, expr, kind)
+func evalArrayLiteral(ctx *context, expr *ir.ArrayLitExpr) (elements.Element, error) {
+	_, dtype := ir.Shape(expr.Type())
+	valuer, err := newValuer(ctx, expr, dtype.Kind())
 	if err != nil {
 		return nil, err
 	}
-	return toNode(toValue.evaluator(ctx.FileSet()))
+	return valuer.array(ctx, expr)
 }
 
-func evalScalarLiteral(ctx *context, expr ir.StaticExpr) (state.Element, error) {
-	return toLocalTensor(
-		ctx, expr, expr.Type().Kind(),
-		func(eval evaluator) (state.Element, error) {
-			return eval.scalar(ctx, expr)
-		})
-}
-
-func evalArrayLiteral(ctx *context, expr *ir.ArrayLitExpr) (state.Element, error) {
-	_, dtype := ir.Shape(expr.Type())
-	return toLocalTensor(
-		ctx, expr, dtype.Kind(),
-		func(eval evaluator) (state.Element, error) {
-			return eval.array(ctx, expr)
-		})
-}
-
-func evalValue(ctx *context, val ir.Expr) (state.Element, error) {
-	switch valT := val.(type) {
-	case ir.StaticExpr:
-		return toLocalTensor(
-			ctx, valT, valT.Type().Kind(),
-			func(eval evaluator) (state.Element, error) {
-				return eval.scalar(ctx, valT)
-			})
-
-	case *ir.ArrayLitExpr:
-		_, dtype := ir.Shape(val.Type())
-		return toLocalTensor(
-			ctx, valT, dtype.Kind(),
-			func(eval evaluator) (state.Element, error) {
-				return eval.array(ctx, valT)
-			})
+func toAtomElementInt[T dtype.IntegerType](src elements.ExprAt, val T) (elements.NumericalElement, error) {
+	hostVal, err := values.AtomIntegerValue(src.Node().Type(), val)
+	if err != nil {
+		return nil, err
 	}
-	return nil, ctx.FileSet().Pos(val.Source()).Errorf("cannot evaluate %T into a XLA node: type not supported", val.Type())
+	return cpevelements.NewAtom(src, hostVal)
+}
+
+func toAtomElementFloat[T dtype.Float](src elements.ExprAt, val T) (elements.NumericalElement, error) {
+	hostVal, err := values.AtomFloatValue(src.Node().Type(), val)
+	if err != nil {
+		return nil, err
+	}
+	return cpevelements.NewAtom(src, hostVal)
+}
+
+func toAtomElementBool(src elements.ExprAt, val bool) (elements.NumericalElement, error) {
+	hostVal, err := values.AtomBoolValue(src.Node().Type(), val)
+	if err != nil {
+		return nil, err
+	}
+	return cpevelements.NewAtom(src, hostVal)
+}
+
+func evalAtomicValue(ctx *context, expr ir.AtomicValue) (elements.NumericalElement, error) {
+	kind := expr.Type().Kind()
+	exprAt := elements.NewExprAt(ctx.File(), expr)
+	switch kind {
+	case ir.IntIdxKind:
+		return toAtomElementInt(exprAt, expr.(*ir.AtomicValueT[ir.Int]).Val)
+	case ir.IntLenKind:
+		return toAtomElementInt(exprAt, expr.(*ir.AtomicValueT[ir.Int]).Val)
+	case ir.BoolKind:
+		return toAtomElementBool(exprAt, expr.(*ir.AtomicValueT[bool]).Val)
+	case ir.Float32Kind:
+		return toAtomElementFloat(exprAt, expr.(*ir.AtomicValueT[float32]).Val)
+	case ir.Float64Kind:
+		return toAtomElementFloat(exprAt, expr.(*ir.AtomicValueT[float64]).Val)
+	case ir.Int32Kind:
+		return toAtomElementInt(exprAt, expr.(*ir.AtomicValueT[int32]).Val)
+	case ir.Int64Kind:
+		return toAtomElementInt(exprAt, expr.(*ir.AtomicValueT[int64]).Val)
+	case ir.Uint32Kind:
+		return toAtomElementInt(exprAt, expr.(*ir.AtomicValueT[uint32]).Val)
+	case ir.Uint64Kind:
+		return toAtomElementInt(exprAt, expr.(*ir.AtomicValueT[uint64]).Val)
+	default:
+		return nil, fmterr.Errorf(ctx.File().FileSet(), expr.Source(), "%s cannot be converted to backend numerical: not supported", kind)
+	}
 }

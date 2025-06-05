@@ -16,6 +16,8 @@
 package randtest
 
 import (
+	"math"
+	"slices"
 	"testing"
 
 	"github.com/google/go-cmp/cmp"
@@ -36,27 +38,27 @@ func TestSample(t *testing.T) {
 		{
 			desc: "first call to seed value",
 			seed: 0,
-			want: []float32{0.30324587, 0.8322963, 0.032319535},
+			want: []float32{0.25327194, 0.30324578, 0.5043973},
 		},
 		{
 			desc: "second call with the same seed value: should return the same values",
 			seed: 0,
-			want: []float32{0.30324587, 0.8322963, 0.032319535},
+			want: []float32{0.25327194, 0.30324578, 0.5043973},
 		},
 		{
 			desc: "call with a different seed: values should be different",
 			seed: 1,
-			want: []float32{0.35960966, 0.5141481, 0.86482173},
+			want: []float32{0.7208755, 0.3596096, 0.6699227},
 		},
 		{
 			desc: "call with the same last seed: values should be identical",
 			seed: 1,
-			want: []float32{0.35960966, 0.5141481, 0.86482173},
+			want: []float32{0.7208755, 0.3596096, 0.6699227},
 		},
 		{
 			desc: "back to the first seed",
 			seed: 0,
-			want: []float32{0.30324587, 0.8322963, 0.032319535},
+			want: []float32{0.25327194, 0.30324578, 0.5043973},
 		},
 	}
 	for _, test := range tests {
@@ -88,6 +90,38 @@ func TestSampleBool(t *testing.T) {
 	}
 	if ts < 45 || fs < 45 {
 		t.Errorf("Expected roughly 50/50 distribution of true/false, got %d/%d", ts, fs)
+	}
+}
+
+func kolmogorovSmirnov(values []float64) float64 {
+	n := len(values)
+	slices.Sort(values)
+
+	// Find the maximum absolute difference between the empirical and theoretical CDFs.
+	var result float64
+	for i := 0; i < n; i++ {
+		empiricalCDF := float64(i+1) / float64(n)
+		theoreticalCDF := float64(values[i]-values[0]) / (values[n-1] - values[0])
+		diff := math.Abs(empiricalCDF - theoreticalCDF)
+		if diff > result {
+			result = diff
+		}
+	}
+	return result
+}
+
+func TestSampleUniformFloat64(t *testing.T) {
+	values, err := randGX.SampleUniformFloat64.Run(types.Int64(0))
+	if err != nil {
+		t.Fatalf("%+v", err)
+	}
+	got := gxtesting.FetchArray(t, values)
+
+	// Set the critical value for the Kolmogorov-Smirnov test using a significance level of 0.05.
+	//   https://people.cs.pitt.edu/~lipschultz/cs1538/prob-table_KS.pdf
+	criticalValue := 1.35810 / math.Sqrt(float64(len(got)))
+	if ksStatistic := kolmogorovSmirnov(got); ksStatistic > criticalValue {
+		t.Errorf("Kolmogorov-Smirnoff statistic: %f > critical value %f", ksStatistic, criticalValue)
 	}
 }
 

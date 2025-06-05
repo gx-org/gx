@@ -1,17 +1,3 @@
-// Copyright 2025 Google LLC
-//
-// Licensed under the Apache License, Version 2.0 (the "License");
-// you may not use this file except in compliance with the License.
-// You may obtain a copy of the License at
-//
-//     http://www.apache.org/licenses/LICENSE-2.0
-//
-// Unless required by applicable law or agreed to in writing, software
-// distributed under the License is distributed on an "AS IS" BASIS,
-// WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
-// See the License for the specific language governing permissions and
-// limitations under the License.
-
 // Package incbld_test tests building a GX package incrementally.
 package incbld_test
 
@@ -51,17 +37,6 @@ func checkError(t *testing.T, prefix string, err error, want string) error {
 	if !strings.Contains(got, want) {
 		t.Errorf("got %q error but want an error that contains %q", got, want)
 		return nil
-	}
-	return nil
-}
-
-func findFunc(pkg *ir.Package, name string) *ir.FuncDecl {
-	for f := range pkg.ExportedFuncs() {
-		if f.Name() != name {
-			continue
-		}
-		fDecl, _ := f.(*ir.FuncDecl)
-		return fDecl
 	}
 	return nil
 }
@@ -106,7 +81,7 @@ func testCellsWithRunner(t *testing.T, cells []cellTest, pkg *builder.Incrementa
 		if cell.runFunc == "" {
 			continue
 		}
-		fn := findFunc(pkg.IR(), cell.runFunc)
+		fn := pkg.IR().FindFunc(cell.runFunc).(*ir.FuncDecl)
 		if fn == nil {
 			t.Errorf("cannot find function %s after evaluating cell %d", cell.runFunc, id)
 			continue
@@ -120,8 +95,10 @@ func testCellsWithRunner(t *testing.T, cells []cellTest, pkg *builder.Incrementa
 			t.Errorf("\n%+v", err)
 			continue
 		}
-		if got != cell.want {
-			t.Errorf("cell [%d] %s:\ngot:\n%s\nwant:\n%s", id, cell.runFunc, got, cell.want)
+		want := strings.TrimPrefix(cell.want, "\n")
+		want = strings.TrimSuffix(want, "\n")
+		if got != want {
+			t.Errorf("cell [%d] %s:\ngot:\n%s\nwant:\n%s", id, cell.runFunc, got, want)
 		}
 	}
 }
@@ -189,7 +166,7 @@ func New() S {
 `),
 		},
 	})
-	fNew := findFunc(pkg.IR(), "New")
+	fNew := pkg.IR().FindFunc("New").(*ir.FuncDecl)
 	if fNew == nil {
 		t.Fatalf("cannot find function New after defining it")
 	}
@@ -208,12 +185,12 @@ func F2(s S) float32 {
 	return s.f2
 }
 `),
-		want: runError + "no field f2 in structure instance",
+		want: runError + "field f2 undefined",
 	}
 	if err = pkg.Build(cTest.src); err != nil {
 		t.Fatal(err)
 	}
-	fF2 := findFunc(pkg.IR(), "F2")
+	fF2 := pkg.IR().FindFunc("F2").(*ir.FuncDecl)
 	if fF2 == nil {
 		t.Fatalf("cannot find function F2 after defining it")
 	}
@@ -242,6 +219,36 @@ func A() float32 {
 			src: packagePrefix(`
 const a = 4
 `),
+		},
+	})
+}
+
+func TestStructOverCell(t *testing.T) {
+	testCells(t, []cellTest{
+		{
+			runFunc: "New",
+			want: `
+S{test.S{
+	A: float32(5),
+}}
+`,
+			src: packagePrefix(`
+type S struct {
+	A float32
+}
+
+func New() S {
+	return S{A:5}
+}
+`),
+		},
+		{
+			src: packagePrefix(`
+func (s S) Add(b float32) float32 {
+	return s.a+b
+}
+`),
+			want: buildError + "not supported",
 		},
 	})
 }

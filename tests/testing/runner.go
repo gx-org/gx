@@ -24,6 +24,8 @@ import (
 
 	"github.com/google/go-cmp/cmp"
 	"github.com/gx-org/gx/api"
+	"github.com/gx-org/gx/api/options"
+	"github.com/gx-org/gx/api/tracer"
 	"github.com/gx-org/gx/api/values"
 	"github.com/gx-org/gx/build/builder"
 	"github.com/gx-org/gx/build/fmterr"
@@ -31,7 +33,6 @@ import (
 	"github.com/gx-org/gx/build/importers"
 	"github.com/gx-org/gx/build/ir"
 	"github.com/gx-org/gx/golang/backend/kernels"
-	"github.com/gx-org/gx/interp"
 	"github.com/gx-org/gx/stdlib/impl"
 	"github.com/gx-org/gx/stdlib"
 
@@ -45,6 +46,7 @@ import (
 	_ "github.com/gx-org/gx/tests/bindings/parameters"
 	_ "github.com/gx-org/gx/tests/bindings/pkgvars"
 	_ "github.com/gx-org/gx/tests/bindings/rand"
+	_ "github.com/gx-org/gx/tests/bindings/unexported"
 )
 
 type (
@@ -78,13 +80,13 @@ func NewRunner(rtm *api.Runtime, devID int) (*Runner, error) {
 }
 
 // Run compiles a function into a XLA graph, runs it, and returns the result.
-func (r *Runner) Run(fn *ir.FuncDecl, options []interp.PackageOption) ([]values.Value, string, error) {
+func (r *Runner) Run(fn *ir.FuncDecl, options []options.PackageOption) ([]values.Value, string, error) {
 	return r.RunWithArgs(fn, nil, nil, options)
 }
 
 // RunWithArgs compiles a function into a XLA graph, runs it, and returns the result.
-func (r *Runner) RunWithArgs(fn *ir.FuncDecl, recv values.Value, args []values.Value, options []interp.PackageOption) ([]values.Value, string, error) {
-	runner, err := interp.Compile(r.dev, fn, recv, args, options)
+func (r *Runner) RunWithArgs(fn *ir.FuncDecl, recv values.Value, args []values.Value, options []options.PackageOption) ([]values.Value, string, error) {
+	runner, err := tracer.Trace(r.dev, fn, recv, args, options)
 	if err != nil {
 		return nil, "", err
 	}
@@ -201,7 +203,7 @@ func textFromComment(cmt *ast.CommentGroup, prefix string) string {
 	return strings.TrimSpace(text)
 }
 
-func (r *Runner) run(t *testing.T, fn *ir.FuncDecl, options []interp.PackageOption) {
+func (r *Runner) run(t *testing.T, fn *ir.FuncDecl, options []options.PackageOption) {
 	t.Parallel()
 	values, got, err := r.Run(fn, options)
 	if err != nil {

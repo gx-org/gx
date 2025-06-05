@@ -1,23 +1,8 @@
-// Copyright 2025 Google LLC
-//
-// Licensed under the Apache License, Version 2.0 (the "License");
-// you may not use this file except in compliance with the License.
-// You may obtain a copy of the License at
-//
-//     http://www.apache.org/licenses/LICENSE-2.0
-//
-// Unless required by applicable law or agreed to in writing, software
-// distributed under the License is distributed on an "AS IS" BASIS,
-// WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
-// See the License for the specific language governing permissions and
-// limitations under the License.
-
 package ccbindings
 
 import (
 	"fmt"
 
-	"github.com/pkg/errors"
 	"github.com/gx-org/gx/build/ir"
 )
 
@@ -63,7 +48,7 @@ func (f function) processFields(fieldList *ir.FieldList, prefix string) ([]funcF
 	var fFields []funcField
 	fields := fieldList.Fields()
 	for i, field := range fields {
-		typ, err := f.binder.ccTypeFromIR(field.Group.Type)
+		typ, err := f.binder.ccTypeFromIR(field.Group.Type.Typ)
 		if err != nil {
 			return nil, err
 		}
@@ -84,12 +69,5 @@ func (f function) processFields(fieldList *ir.FieldList, prefix string) ([]funcF
 }
 
 func (f function) returnType() (string, error) {
-	res := f.FuncType().Results
-	if res.Len() == 0 {
-		return "void", nil
-	}
-	if res.Len() == 1 {
-		return f.binder.ccReturnTypeFromIR(res.List[0].Type)
-	}
-	return "", errors.Errorf("returning more than one result not supported for C++ bindings")
+	return f.binder.ccReturnTypeFromIR(f.FuncType().Results.Type())
 }

@@ -23,9 +23,14 @@ import (
 	"math"
 
 	"github.com/gx-org/backend/dtype"
+	"github.com/gx-org/backend/graph"
 	"github.com/gx-org/gx/build/builtins"
 	"github.com/gx-org/gx/build/fmterr"
 	"github.com/gx-org/gx/build/ir"
+	"github.com/gx-org/gx/interp/elements"
+	"github.com/gx-org/gx/interp/evaluator"
+	"github.com/gx-org/gx/interp/grapheval"
+	"github.com/gx-org/gx/interp"
 	"github.com/gx-org/gx/stdlib/builtin"
 	"github.com/gx-org/gx/stdlib/impl"
 )
@@ -43,16 +48,25 @@ var Package = builtin.PackageBuilder{
 		buildConstScalar("InfFloat64", math.Inf(1)),
 		buildConstScalar("NegInfFloat64", math.Inf(-1)),
 		builtin.ParseSource(&fs),
-		builtin.BuildFunc(exp{}),
 		builtin.BuildFunc(pow{}),
-		builtin.BuildFunc(log{}),
 		builtin.BuildFunc(minFunc{}),
 		builtin.BuildFunc(maxFunc{}),
-		builtin.BuildFunc(cos{}),
-		builtin.BuildFunc(sin{}),
-		builtin.BuildFunc(sqrt{}),
-		builtin.BuildFunc(tanh{}),
-		builtin.ImplementStubFunc("Ceil", func(impl *impl.Stdlib) any { return impl.Math.Ceil }),
+		builtin.ImplementStubFunc("Abs", func(impl *impl.Stdlib) interp.FuncBuiltin { return impl.Math.Abs }),
+		builtin.ImplementStubFunc("Ceil", func(impl *impl.Stdlib) interp.FuncBuiltin { return impl.Math.Ceil }),
+		buildUnary("Cos", func(g graph.Graph) unaryFunc { return g.Math().NewCos }),
+		builtin.ImplementStubFunc("Erf", func(impl *impl.Stdlib) interp.FuncBuiltin { return impl.Math.Erf }),
+		builtin.ImplementStubFunc("Expm1", func(impl *impl.Stdlib) interp.FuncBuiltin { return impl.Math.Expm1 }),
+		builtin.ImplementStubFunc("Exp", func(impl *impl.Stdlib) interp.FuncBuiltin { return impl.Math.Exp }),
+		builtin.ImplementStubFunc("Floor", func(impl *impl.Stdlib) interp.FuncBuiltin { return impl.Math.Floor }),
+		builtin.ImplementStubFunc("Log1p", func(impl *impl.Stdlib) interp.FuncBuiltin { return impl.Math.Log1p }),
+		builtin.ImplementStubFunc("Logistic", func(impl *impl.Stdlib) interp.FuncBuiltin { return impl.Math.Logistic }),
+		builtin.ImplementStubFunc("Log", func(impl *impl.Stdlib) interp.FuncBuiltin { return impl.Math.Log }),
+		builtin.ImplementStubFunc("Round", func(impl *impl.Stdlib) interp.FuncBuiltin { return impl.Math.Round }),
+		builtin.ImplementStubFunc("Rsqrt", func(impl *impl.Stdlib) interp.FuncBuiltin { return impl.Math.Rsqrt }),
+		builtin.ImplementStubFunc("Sign", func(impl *impl.Stdlib) interp.FuncBuiltin { return impl.Math.Sign }),
+		buildUnary("Sin", func(g graph.Graph) unaryFunc { return g.Math().NewSin }),
+		builtin.ImplementStubFunc("Sqrt", func(impl *impl.Stdlib) interp.FuncBuiltin { return impl.Math.Sqrt }),
+		buildUnary("Tanh", func(g graph.Graph) unaryFunc { return g.Math().NewTanh }),
 	},
 }
 
@@ -62,7 +76,7 @@ var Package = builtin.PackageBuilder{
 // or an array which needs to be of the same shape than the first argument.
 func mainAuxArgsToTypes(funcName string, fetcher ir.Fetcher, call *ir.CallExpr) (main, aux ir.Type, result ir.Type, err error) {
 	if len(call.Args) != 2 {
-		return nil, nil, nil, fmterr.Errorf(fetcher.FileSet(), call.Source(), "wrong number of arguments in call to %s: got %d but want 2", funcName, len(call.Args))
+		return nil, nil, nil, fmterr.Errorf(fetcher.File().FileSet(), call.Source(), "wrong number of arguments in call to %s: got %d but want 2", funcName, len(call.Args))
 	}
 	baseType, baseNumType, err := builtins.InferFromNumericalType(fetcher, call, 0, nil)
 	if err != nil {
@@ -74,44 +88,27 @@ func mainAuxArgsToTypes(funcName string, fetcher ir.Fetcher, call *ir.CallExpr) 
 	}
 	kindEq, err := baseNumType.Equal(fetcher, auxNumTyp)
 	if err != nil {
-		return nil, nil, nil, fmterr.Internalf(fetcher.FileSet(), call.Source(), "cannot compare arguments type: %v", err)
+		return nil, nil, nil, fmterr.Internalf(fetcher.File().FileSet(), call.Source(), "cannot compare arguments type: %v", err)
 	}
 	if !kindEq {
-		return nil, nil, nil, fmterr.Errorf(fetcher.FileSet(), call.Source(), "mismatch types %s and %s", baseType.String(), auxType.String())
+		return nil, nil, nil, fmterr.Errorf(fetcher.File().FileSet(), call.Source(), "mismatch types %s and %s", baseType.String(), auxType.String())
 	}
 	if auxType.(ir.ArrayType).Rank().IsAtomic() {
 		return baseType, auxType, baseType, nil
 	}
 	shapeEq, err := baseType.Equal(fetcher, auxType)
 	if err != nil {
-		return nil, nil, nil, fmterr.Internalf(fetcher.FileSet(), call.Source(), "cannot compare arguments type: %v", err)
+		return nil, nil, nil, fmterr.Internalf(fetcher.File().FileSet(), call.Source(), "cannot compare arguments type: %v", err)
 	}
 	if !shapeEq {
-		return nil, nil, nil, fmterr.Errorf(fetcher.FileSet(), call.Source(), "mismatch types %s and %s", baseType.String(), auxType.String())
+		return nil, nil, nil, fmterr.Errorf(fetcher.File().FileSet(), call.Source(), "mismatch types %s and %s", baseType.String(), auxType.String())
 	}
 	return baseType, auxType, baseType, nil
 }
 
-// buildUnaryFuncType computes the signature of a function with one argument and returning the same
-// type.
-func buildUnaryFuncType(funcName string, fetcher ir.Fetcher, call *ir.CallExpr) (*ir.FuncType, error) {
-	if len(call.Args) != 1 {
-		return nil, fmterr.Errorf(fetcher.FileSet(), call.Source(), "wrong number of arguments in call to %s: got %d but want 1", funcName, len(call.Args))
-	}
-	inferredType, _, err := builtins.InferFromNumericalType(fetcher, call, 0, nil)
-	if err != nil {
-		return nil, err
-	}
-	return &ir.FuncType{
-		Src:     &ast.FuncType{Func: call.Source().Pos()},
-		Params:  builtins.Fields(inferredType),
-		Results: builtins.Fields(inferredType),
-	}, nil
-}
-
 func buildConstScalar[T dtype.GoDataType](name string, value T) builtin.Builder {
 	kind := ir.KindGeneric[T]()
-	return builtin.BuildConst(func(*ir.Package) (string, ir.Expr, ir.Type, error) {
+	return builtin.BuildConst(func(*ir.Package) (string, ir.AssignableExpr, ir.Type, error) {
 		value := &ir.AtomicValueT[T]{
 			Src: &ast.BasicLit{
 				Kind:  token.IDENT,
@@ -121,5 +118,26 @@ func buildConstScalar[T dtype.GoDataType](name string, value T) builtin.Builder 
 			Typ: ir.TypeFromKind(kind),
 		}
 		return name, value, value.Type(), nil
+	})
+}
+
+type unaryFunc = func(graph.Node) (graph.Node, error)
+
+func buildUnary(name string, f func(graph graph.Graph) unaryFunc) builtin.Builder {
+	return builtin.ImplementGraphFunc(name, func(ctx evaluator.Context, call elements.CallAt, fn elements.Func, irFunc *ir.FuncBuiltin, args []elements.Element) ([]elements.Element, error) {
+		ao := ctx.Evaluation().Evaluator().ArrayOps()
+		x, xShape, err := grapheval.NodeFromElement(ao, args[0])
+		if err != nil {
+			return nil, err
+		}
+		unaryF := f(ctx.Evaluation().Evaluator().ArrayOps().Graph())
+		node, err := unaryF(x)
+		if err != nil {
+			return nil, err
+		}
+		return grapheval.ElementsFromNode(call.ToExprAt(), &graph.OutputNode{
+			Node:  node,
+			Shape: xShape,
+		})
 	})
 }

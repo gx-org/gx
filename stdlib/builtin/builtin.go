@@ -16,6 +16,7 @@
 package builtin
 
 import (
+	"go/ast"
 	"path/filepath"
 
 	"github.com/gx-org/gx/build/builder"
@@ -87,7 +88,7 @@ type builtinFuncImpl interface {
 // The type of the function is computed at compile time from the call to the function.
 func IRFuncBuiltin[T builtinFuncImpl](name string, fnBuiltin interp.FuncBuiltin, pkg *ir.Package) *ir.FuncBuiltin {
 	fn := &ir.FuncBuiltin{
-		FName: name,
+		Src: &ast.FuncDecl{Name: &ast.Ident{Name: name}},
 	}
 	fn.Impl = T{Func: Func{
 		Func: fn,

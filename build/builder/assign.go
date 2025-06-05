@@ -23,313 +23,329 @@ import (
 
 type (
 	assignable interface {
-		nodePos
-		canAssign(scope scoper, exprType typeNode) (newAssign, ok bool)
-		buildAssignable() ir.Assignable
-		resolveType(scope scoper) (typeNode, bool)
+		buildStorage(scope resolveScope, typ ir.Type) (_ ir.Storage, newAssign, ok bool)
 	}
 
-	identAssignable struct {
+	identStorage struct {
 		target *valueRef
+		tok    token.Token
 	}
 )
 
-var (
-	_ assignable = (*identAssignable)(nil)
-	_ assignable = (*selectorAssignable)(nil)
-)
+var _ assignable = (*identStorage)(nil)
 
-func (asg *identAssignable) canAssign(scope scoper, exprType typeNode) (newAssign, ok bool) {
-	defined := scope.namespace().fetch(asg.target.ident().Name)
-	if defined == nil {
-		if asg.target.typ == nil {
-			asg.target.typ = exprType
-		}
-		scope.namespace().assign(newIdent(asg.target.ident(), exprType))
-		return true, true
+func (asg *identStorage) assign(rscope resolveScope, typ ir.Type) (_ ir.Storage, newName, ok bool) {
+	name := asg.target.src.Name
+	defined, isDefined := rscope.ns().Find(name)
+	if !isDefined {
+		return nil, false, rscope.err().Appendf(asg.source(), "undefined: %s", name)
 	}
-	var targetTypeOk bool
-	asg.target.typ, targetTypeOk = defined.typeF(scope)
-	if !targetTypeOk {
-		return false, false
+	assignable, assignableOk := defined.ir().(ir.Storage)
+	isStorage := rscope.ns().CanAssign(name)
+	if !assignableOk || !isStorage {
+		return nil, false, rscope.err().Appendf(asg.source(), "cannot assign a value to %s", name)
 	}
-	asg.target.typ, ok = assignableToAt(scope, asg, exprType, asg.target.typ)
-	return false, ok
+	return assignable, false, true
 }
 
-func (asg *identAssignable) resolveType(scope scoper) (typeNode, bool) {
-	defined := scope.namespace().fetch(asg.target.ident().Name)
-	if defined == nil {
-		return unknown, true
+func (asg *identStorage) define(rscope resolveScope, typ ir.Type) (_ ir.Storage, newName, ok bool) {
+	name := asg.target.src.Name
+	_, isDefined := rscope.ns().Find(name)
+	if irBuiltins[name] != nil {
+		// If the name is a builtin, it will already be defined in one of the parent scope.
+		// Check if that builtin is defined in the local scope instead.
+		isDefined = rscope.ns().LocalFind(name)
 	}
-	typ, ok := defined.typeF(scope)
-	if !ok {
-		return typ, false
+	if ir.IsNumber(typ.Kind()) {
+		typ = ir.DefaultNumberType(typ.Kind())
 	}
-	asg.target.typ, ok = assignableToAt(scope, asg, typ, asg.target.typ)
-	return typ, ok
+	ext := &ir.LocalVarStorage{Src: asg.target.src, Typ: typ}
+	if !ir.ValidName(name) {
+		return ext, !isDefined, true
+	}
+	return ext, !isDefined, true
 }
 
-func (asg *identAssignable) buildAssignable() ir.Assignable {
-	return &ir.LocalVarAssign{
-		Src:   asg.target.ext.Src,
-		TypeF: asg.target.typ.irType(),
+func (asg *identStorage) buildStorage(rscope resolveScope, typ ir.Type) (_ ir.Storage, newName, ok bool) {
+	if asg.tok == token.ASSIGN {
+		return asg.assign(rscope, typ)
 	}
+	return asg.define(rscope, typ)
 }
 
-func (asg *identAssignable) source() ast.Node {
+func (asg *identStorage) source() ast.Node {
 	return asg.target.source()
 }
 
-type selectorAssignable struct {
+type selectorStorage struct {
 	target *selectorExpr
-	field  *fieldSelectorExpr
 }
 
-func (asg *selectorAssignable) buildAssignable() ir.Assignable {
-	return &ir.StructFieldAssign{
-		Src:       asg.target.src,
-		X:         asg.target.x.buildExpr(),
-		TypeF:     asg.target.typ.irType(),
-		FieldName: asg.field.field.ext.Name.Name,
-	}
-}
+var _ assignable = (*selectorStorage)(nil)
 
-func (asg *selectorAssignable) source() ast.Node {
+func (asg *selectorStorage) source() ast.Node {
 	return asg.target.source()
 }
 
-func (asg *selectorAssignable) canAssign(scope scoper, origType typeNode) (newAssign, ok bool) {
-	targetType, ok := asg.target.resolveType(scope)
+func (asg *selectorStorage) buildStorage(scope resolveScope, typ ir.Type) (_ ir.Storage, newName, ok bool) {
+	ext := &ir.StructFieldStorage{}
+	ext.Sel, ok = asg.target.buildSelectorExpr(scope)
 	if !ok {
-		scope.err().Appendf(asg.source(), "undefined: %s", asg.target.String())
-		return false, false
+		return ext, false, false
 	}
-	asg.field, ok = asg.target.sel.(*fieldSelectorExpr)
-	if !ok {
-		scope.err().Appendf(asg.source(), "cannot assign a value to %s", asg.target.sel)
-		return false, false
+	if ext.Sel.Type().Kind() == ir.FuncKind {
+		return ext, false, scope.err().Appendf(asg.source(), "cannot assign to method %s", ext.Sel.Stor.NameDef().Name)
 	}
-	_, ok = assignableToAt(scope, asg, origType, targetType)
-	return false, ok
+	return ext, false, assignableToAt(scope, asg.target.src, typ, ext.Sel.Type())
 }
 
-func (asg *selectorAssignable) resolveType(scope scoper) (typeNode, bool) {
-	return asg.target.resolveType(scope)
+type assignment struct {
+	target assignable
+	expr   exprNode
 }
 
-type (
-	assignment struct {
-		target assignable
-		expr   exprNode
-		typ    typeNode
-	}
+type assignExprStmt struct {
+	src *ast.AssignStmt
 
-	// assignExprStmt is a statement assigning expression values to variables.
-	assignExprStmt struct {
-		ext ir.AssignExprStmt
+	assigns []*assignment
+}
 
-		assigns []*assignment
-	}
-)
-
-func processRightExprs(owner owner, stmt *ast.AssignStmt) ([]exprNode, bool) {
+func processRightExprs(pscope procScope, stmt *ast.AssignStmt) ([]exprNode, bool) {
 	rhsExprs := make([]exprNode, len(stmt.Rhs))
 	ok := true
 	for i, expr := range stmt.Rhs {
 		var eOk bool
 		if einsumCall := toEinsumCall(expr); einsumCall != nil {
-			rhsExprs[i], eOk = processEinsumExpr(owner, stmt.Lhs[i], einsumCall)
+			rhsExprs[i], eOk = processEinsumExpr(pscope, stmt.Lhs[i], einsumCall)
 		} else {
-			rhsExprs[i], eOk = processExpr(owner, expr)
+			rhsExprs[i], eOk = processExpr(pscope, expr)
 		}
 		ok = ok && eOk
 	}
 	return rhsExprs, ok
 }
 
-func processAssign(owner owner, stmt *ast.AssignStmt) (stmtNode, bool) {
-	rhsExprs, ok := processRightExprs(owner, stmt)
+func processOpAssignStmt(pscope procScope, stmt *ast.AssignStmt) (stmtNode, bool) {
+	if len(stmt.Lhs) > 1 {
+		pscope.err().Appendf(stmt, "unexpected %s, expected := or = or comma", stmt.Tok)
+		return nil, false
+	}
+	if len(stmt.Rhs) != 1 {
+		pscope.err().Appendf(stmt, "unexpected comma at end of statement")
+		return nil, false
+	}
+
+	var op token.Token
+	switch stmt.Tok {
+	case token.ADD_ASSIGN:
+		op = token.ADD
+	case token.MUL_ASSIGN:
+		op = token.MUL
+	case token.SUB_ASSIGN:
+		op = token.SUB
+	case token.QUO_ASSIGN:
+		op = token.QUO
+	case token.REM_ASSIGN:
+		op = token.REM
+	case token.AND_ASSIGN:
+		op = token.AND
+	case token.OR_ASSIGN:
+		op = token.OR
+	case token.XOR_ASSIGN:
+		op = token.XOR
+	case token.SHL_ASSIGN:
+		op = token.SHL
+	case token.SHR_ASSIGN:
+		op = token.SHR
+	default:
+		return nil, pscope.err().Appendf(stmt, "%s not supported in assignment", stmt.Tok)
+	}
+
+	target, targetOk := leftExprToTarget(pscope, stmt, stmt.Lhs[0], make(map[string]bool))
+	expr, exprOk := processBinaryExpr(pscope, &ast.BinaryExpr{X: stmt.Lhs[0], Y: stmt.Rhs[0], OpPos: stmt.TokPos, Op: op})
+	n := assignExprStmt{
+		src:     stmt,
+		assigns: []*assignment{&assignment{target: target, expr: expr}},
+	}
+	return &n, targetOk && exprOk
+}
+
+func processAssign(pscope procScope, stmt *ast.AssignStmt) (stmtNode, bool) {
+	if stmt.Tok != token.ASSIGN && stmt.Tok != token.DEFINE {
+		return processOpAssignStmt(pscope, stmt)
+	}
+
+	rhsExprs, ok := processRightExprs(pscope, stmt)
 	if !ok || len(stmt.Lhs) == 1 || len(stmt.Rhs) > 1 {
-		return processAssignStmt(owner, stmt, rhsExprs)
+		return processAssignStmt(pscope, stmt, rhsExprs)
 	}
 	// We have multiple elements on the left and only one on the right.
 	// We check that we call a function (and it is not a type cast) on the right
 	// to expand the function return tuple.
 	call, ok := rhsExprs[0].(*callExpr)
 	if ok {
-		return processAssignCall(owner, stmt, call)
+		return processAssignCall(pscope, stmt, call)
 	}
-	return processAssignStmt(owner, stmt, rhsExprs)
+	return processAssignStmt(pscope, stmt, rhsExprs)
 }
 
-func leftExprToTarget(owner owner, stmt *ast.AssignStmt, expr ast.Expr, done map[string]bool) (assignable, bool) {
+func leftExprToTarget(pscope procScope, stmt *ast.AssignStmt, expr ast.Expr, done map[string]bool) (assignable, bool) {
 	ok := true
 	switch exprT := expr.(type) {
 	case *ast.Ident:
 		if done[exprT.Name] {
-			ok = owner.err().Appendf(exprT, "%s repeated on left side of %s", exprT.Name, stmt.Tok.String())
+			ok = pscope.err().Appendf(exprT, "%s repeated on left side of %s", exprT.Name, stmt.Tok.String())
 		}
 		if ir.ValidIdent(exprT) {
 			done[exprT.Name] = true
 		}
-		return &identAssignable{target: processIdentExpr(exprT)}, ok
+		identExpr, identExprOk := processIdentExpr(pscope, exprT)
+		return &identStorage{target: identExpr, tok: stmt.Tok}, identExprOk && ok
 	case *ast.SelectorExpr:
-		if stmt.Tok.String() == ":=" {
-			ok = owner.err().Appendf(exprT, "non-name %s on left side of :=", toString(exprT))
-		}
-		target := &selectorAssignable{}
+		target := &selectorStorage{}
 		var exprOk bool
-		target.target, exprOk = processSelectorReference(owner, exprT)
+		target.target, exprOk = processSelectorExpr(pscope, exprT)
+		if stmt.Tok == token.DEFINE {
+			ok = pscope.err().Appendf(exprT, "non-name %s on left side of :=", target.target.String())
+		}
 		return target, ok && exprOk
 	case *ast.CompositeLit:
-		return leftExprToTarget(owner, stmt, exprT.Type, done)
+		return leftExprToTarget(pscope, stmt, exprT.Type, done)
 	default:
-		return nil, owner.err().Appendf(expr, "%T not supported on left-side of assignment", exprT)
+		return nil, pscope.err().Appendf(expr, "%T not supported on left-side of assignment", exprT)
 	}
 }
 
-func leftToTargets(owner owner, stmt *ast.AssignStmt) ([]assignable, bool) {
+func leftToTargets(pscope procScope, stmt *ast.AssignStmt) ([]assignable, bool) {
 	targets := make([]assignable, len(stmt.Lhs))
 	done := make(map[string]bool)
 	ok := true
 	for i, expr := range stmt.Lhs {
 		var exprOk bool
-		targets[i], exprOk = leftExprToTarget(owner, stmt, expr, done)
+		targets[i], exprOk = leftExprToTarget(pscope, stmt, expr, done)
 		ok = ok && exprOk
 	}
 	return targets, ok
 }
 
-func processAssignStmt(owner owner, stmt *ast.AssignStmt, rhsExprs []exprNode) (stmtNode, bool) {
-	n := assignExprStmt{
-		ext: ir.AssignExprStmt{
-			Src: stmt,
-		},
+func processAssignStmt(pscope procScope, src *ast.AssignStmt, rhsExprs []exprNode) (stmtNode, bool) {
+	n := assignExprStmt{src: src}
+	lenLeft := len(src.Lhs)
+	lenRight := len(rhsExprs)
+	equalOk := true
+	if lenLeft != lenRight {
+		equalOk = pscope.err().Appendf(src, "assignment mismatch: %d variable(s) but %d value(s)", lenLeft, lenRight)
 	}
-	if len(stmt.Lhs) != len(rhsExprs) {
-		owner.err().Appendf(stmt, "assignment mismatch: %d variable(s) but %d value(s)", len(stmt.Lhs), len(stmt.Rhs))
-		return nil, false
-	}
-	targets, ok := leftToTargets(owner, stmt)
-	n.assigns = make([]*assignment, len(targets))
-	for i, expr := range rhsExprs {
+	total := min(lenLeft, lenRight)
+	targets, targetsOk := leftToTargets(pscope, src)
+	n.assigns = make([]*assignment, total)
+	for i := range total {
 		n.assigns[i] = &assignment{
 			target: targets[i],
-			expr:   expr,
+			expr:   rhsExprs[i],
 		}
 	}
-	return &n, ok
+	return &n, equalOk && targetsOk
 }
 
-func checkNewVariables(scope scoper, stmt *ast.AssignStmt, newVariables bool) bool {
-	if !newVariables && stmt.Tok != token.ASSIGN {
+func checkNewVariables(scope resolveScope, stmt *ast.AssignStmt, newVariables bool) bool {
+	if !newVariables && stmt.Tok == token.DEFINE {
 		return scope.err().Appendf(stmt, "no new variables on left side of :=")
 	}
 	return true
 }
 
-func (n *assignExprStmt) resolveType(scope *scopeBlock) bool {
+func buildAssignExpr(rscope resolveScope, asgm *assignment) (*ir.AssignExpr, bool, bool) {
+	expr, exprOk := buildAExpr(rscope, asgm.expr)
+	if !exprOk {
+		return &ir.AssignExpr{}, false, false
+	}
+	if tpl, isTuple := expr.Type().(*ir.TupleType); exprOk && isTuple {
+		if len(tpl.Types) != 1 {
+			rscope.err().Appendf(asgm.expr.source(), "multiple-value (value of type %s) in single-value context", tpl.String())
+			exprOk = false
+		}
+	}
+	target, newAsgm, targetOk := asgm.target.buildStorage(rscope, expr.Type())
+	if exprOk && targetOk && ir.IsNumber(expr.Type().Kind()) {
+		expr, exprOk = castNumber(rscope, expr, target.Type())
+	}
+	ext := &ir.AssignExpr{
+		Storage: target,
+		X:       expr,
+	}
+	definedOk := defineLocalVar(rscope, ext)
+	return ext, newAsgm, exprOk && targetOk && definedOk
+}
+
+func (n *assignExprStmt) buildStmt(scope funResolveScope) (ir.Stmt, bool) {
+	ext := &ir.AssignExprStmt{Src: n.src, List: make([]*ir.AssignExpr, len(n.assigns))}
 	ok := true
 	newVariables := false
-	for _, asgm := range n.assigns {
-		var exprOk bool
-		if asgm.typ, exprOk = asgm.expr.resolveType(scope); !exprOk {
-			ok = false
-			continue
-		}
-		if tpl, tplOk := asgm.typ.(*tupleType); tplOk {
-			if tpl.len() != 1 {
-				scope.err().Appendf(n.source(), "multiple-value (value of type %s) in single-value context", tpl.String())
-				ok = false
-				continue
-			}
-			asgm.typ = tpl.elt(0).typ()
-		}
-		targetTyp, targetTypOk := asgm.target.resolveType(scope)
-		if !targetTypOk {
-			ok = false
-		}
-		if targetTypOk && ir.IsNumber(asgm.typ.kind()) {
-			asgm.expr, asgm.typ, exprOk = castNumber(scope, asgm.expr, targetTyp.irType())
-			ok = ok && exprOk
-		}
-		asgmNew, asgmOk := asgm.target.canAssign(scope, asgm.typ)
+	for i, asgm := range n.assigns {
+		var asgmNew, asgmOk bool
+		ext.List[i], asgmNew, asgmOk = buildAssignExpr(scope, asgm)
 		newVariables = newVariables || asgmNew
 		ok = ok && asgmOk
 	}
-	return ok && checkNewVariables(scope, n.ext.Src, newVariables)
-}
-
-func (n *assignExprStmt) buildStmt() ir.Stmt {
-	n.ext.List = make([]ir.AssignExpr, len(n.assigns))
-	for i, asg := range n.assigns {
-		n.ext.List[i] = ir.AssignExpr{
-			Expr: asg.expr.buildExpr(),
-			Dest: asg.target.buildAssignable(),
-		}
-	}
-	return &n.ext
+	return ext, ok && checkNewVariables(scope, n.src, newVariables)
 }
 
 func (n *assignExprStmt) source() ast.Node {
-	return n.ext.Source()
+	return n.src
 }
 
 // assignCallStmt is a statement assigning the results of a function call to one or more variables.
 type assignCallStmt struct {
-	ext        ir.AssignCallStmt
-	call       exprNode
-	calleeType *funcType
-	targets    []assignable
+	src     *ast.AssignStmt
+	call    exprNode
+	targets []assignable
 }
 
-func processAssignCall(owner owner, stmt *ast.AssignStmt, call *callExpr) (stmtNode, bool) {
-	targets, ok := leftToTargets(owner, stmt)
-	n := &assignCallStmt{
-		ext: ir.AssignCallStmt{
-			Src: stmt,
-		},
+func processAssignCall(pscope procScope, src *ast.AssignStmt, call *callExpr) (stmtNode, bool) {
+	targets, ok := leftToTargets(pscope, src)
+	return &assignCallStmt{
+		src:     src,
 		call:    call,
 		targets: targets,
-	}
-	return n, ok
+	}, ok
 }
 
-func (n *assignCallStmt) buildStmt() ir.Stmt {
-	n.ext.Call = n.call.buildExpr().(*ir.CallExpr)
-	n.ext.List = make([]ir.Assignable, len(n.targets))
-	for i, target := range n.targets {
-		n.ext.List[i] = target.buildAssignable()
+func (n *assignCallStmt) buildStmt(rscope funResolveScope) (ir.Stmt, bool) {
+	ext := &ir.AssignCallStmt{Src: n.src}
+	var callOk bool
+	ext.Call, callOk = buildCall(rscope, n.call)
+	if !callOk {
+		return ext, false
 	}
-	return &n.ext
-}
-
-func (n *assignCallStmt) resolveType(scope *scopeBlock) bool {
-	typ, ok := n.call.resolveType(scope)
-	if !ok {
-		return false
+	lenTargets := len(n.targets)
+	funType := ext.Call.Callee.T
+	lenCallResults := funType.Results.Len()
+	if lenTargets != funType.Results.Len() {
+		return ext, rscope.err().Appendf(n.source(), "assignment mismatch: %d variable(s) but %s returns %d values", lenTargets, ext.Call.String(), lenCallResults)
 	}
-	callResults, ok := typ.(*tupleType)
-	if !ok {
-		scope.err().AppendInternalf(n.source(), "cannot call non-function %s (variable of type %s)", n.call.String(), typ.String())
-		return false
-	}
-	n.calleeType = callResults.fn
-	if len(n.targets) != callResults.len() {
-		scope.err().Appendf(n.source(), "assignment mismatch: %d variable(s) but %s returns %d values", len(n.targets), n.call.String(), callResults.len())
-		return false
-	}
+	ext.List = make([]*ir.AssignCallResult, lenCallResults)
+	total := min(lenTargets, lenCallResults)
+	ok := true
 	newVariables := false
-	for i, target := range n.targets {
-		asgmNew, asgmOk := target.canAssign(scope, callResults.elt(i).typ())
+	results := funType.Results.Fields()
+	for i := range total {
+		storage, asgmNew, asgmOk := n.targets[i].buildStorage(rscope, results[i].Type())
+		ext.List[i] = &ir.AssignCallResult{
+			Storage:     storage,
+			Call:        ext.Call,
+			ResultIndex: i,
+		}
+		if !defineLocalVar(rscope, ext.List[i]) {
+			ok = false
+		}
 		newVariables = newVariables || asgmNew
 		ok = ok && asgmOk
 	}
-	return ok && checkNewVariables(scope, n.ext.Src, newVariables)
+	return ext, ok && checkNewVariables(rscope, n.src, newVariables)
 }
 
 // Pos returns the position of the statement in the file.
 func (n *assignCallStmt) source() ast.Node {
-	return n.ext.Source()
+	return n.src
 }

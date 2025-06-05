@@ -1,18 +1,156 @@
-// Copyright 2025 Google LLC
-//
-// Licensed under the Apache License, Version 2.0 (the "License");
-// you may not use this file except in compliance with the License.
-// You may obtain a copy of the License at
-//
-//     http://www.apache.org/licenses/LICENSE-2.0
-//
-// Unless required by applicable law or agreed to in writing, software
-// distributed under the License is distributed on an "AS IS" BASIS,
-// WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
-// See the License for the specific language governing permissions and
-// limitations under the License.
-
 package ir
+
+import (
+	"fmt"
+	"go/ast"
+	"slices"
+	"strings"
+
+	"github.com/gx-org/gx/base/stringseq"
+)
+
+// BaseType is the base of all types.
+type BaseType[T ast.Expr] struct {
+	Src T
+}
+
+func (BaseType[T]) node()         {}
+func (BaseType[T]) storage()      {}
+func (BaseType[T]) storageValue() {}
+
+// NameDef of the base type always returns a nil name definition.
+func (BaseType[T]) NameDef() *ast.Ident { return nil }
+
+// Source returns the source node defining the type.
+func (m *BaseType[T]) Source() ast.Node {
+	return m.Src
+}
+
+// Value returns nil.
+func (BaseType[T]) Value(Expr) AssignableExpr {
+	return nil
+}
+
+// Type of a type: always return metatype.
+func (BaseType[T]) Type() Type {
+	return MetaType()
+}
+
+type metaType struct {
+	BaseType[*ast.Ident]
+}
+
+func (*metaType) node() {}
+
+func (*metaType) Equal(Fetcher, Type) (bool, error) {
+	return false, nil
+}
+
+func (*metaType) AssignableTo(Fetcher, Type) (bool, error) {
+	return false, nil
+}
+
+func (*metaType) ConvertibleTo(fetcher Fetcher, target Type) (bool, error) {
+	return false, nil
+}
+
+func (t *metaType) Kind() Kind { return MetaTypeKind }
+
+func (t *metaType) String() string {
+	return MetaTypeKind.String()
+}
+
+var metaTypeT = &metaType{
+	BaseType: BaseType[*ast.Ident]{Src: &ast.Ident{Name: MetaTypeKind.String()}},
+}
+
+// MetaType returns the meta type shared across all types.
+func MetaType() Type {
+	return metaTypeT
+}
+
+type distinctType struct {
+	BaseType[ast.Expr]
+	kind Kind
+}
+
+func (*distinctType) node() {}
+
+func (*distinctType) Equal(Fetcher, Type) (bool, error) {
+	return false, nil
+}
+
+func (*distinctType) AssignableTo(Fetcher, Type) (bool, error) {
+	return false, nil
+}
+
+func (*distinctType) ConvertibleTo(fetcher Fetcher, target Type) (bool, error) {
+	return false, nil
+}
+
+func (t *distinctType) Kind() Kind { return t.kind }
+
+func (t *distinctType) String() string {
+	return t.kind.String()
+}
+
+// unknownType is the type returned by function with no results.
+type unknownType struct {
+	distinctType
+}
+
+var unknownT = &unknownType{distinctType: distinctType{kind: UnknownKind}}
+
+// UnknownType returns the unknown type.
+func UnknownType() Type {
+	return unknownT
+}
+
+// voidType is the type returned by function with no results.
+type voidType struct {
+	distinctType
+}
+
+var voidT = &voidType{distinctType: distinctType{kind: VoidKind}}
+
+// VoidType returns the void type.
+func VoidType() Type {
+	return voidT
+}
+
+type packageType struct {
+	distinctType
+}
+
+var packageT = &packageType{distinctType: distinctType{kind: PackageKind}}
+
+// PackageType returns the package type.
+func PackageType() Type {
+	return packageT
+}
+
+type invalidType struct {
+	distinctType
+}
+
+var invalidT = &invalidType{distinctType: distinctType{kind: InvalidKind}}
+
+// InvalidType returns an invalid type.
+// Often used as a placeholder when an error occurred.
+func InvalidType() Type {
+	return invalidT
+}
+
+type rankType struct {
+	atomicType
+}
+
+var rankT = &rankType{atomicType: atomicType{Knd: RankKind}}
+
+// RankType returns the rank type.
+func RankType() Type {
+	return rankT
+}
 
 type boolType struct {
 	atomicType
@@ -23,6 +161,17 @@ var boolT = &boolType{atomicType: atomicType{Knd: BoolKind}}
 // BoolType returns the type for a boolean.
 func BoolType() Type {
 	return boolT
+}
+
+type bfloat16Type struct {
+	atomicType
+}
+
+var bfloat16T = &bfloat16Type{atomicType: atomicType{Knd: Bfloat16Kind}}
+
+// Bfloat16Type returns the type for a bfloat16.
+func Bfloat16Type() Type {
+	return bfloat16T
 }
 
 type float32Type struct {
@@ -81,7 +230,10 @@ type intidxType struct {
 
 var (
 	intidxT         = &intidxType{atomicType: atomicType{Knd: IntIdxKind}}
-	axisIndicesType = &SliceType{DType: IntIndexType(), Rank: 1}
+	axisIndicesType = &SliceType{
+		DType: &TypeValExpr{Typ: IntIndexType()},
+		Rank:  1,
+	}
 )
 
 // IntIndexType returns the type for intidx, that is the length of an axis.
@@ -100,7 +252,14 @@ type intlenType struct {
 
 var (
 	intlenT         = &intlenType{atomicType: atomicType{Knd: IntLenKind}}
-	axisLengthsType = &SliceType{DType: IntLenType(), Rank: 1}
+	axisLengthsType = &SliceType{
+		BaseType: BaseType[*ast.ArrayType]{Src: &ast.ArrayType{}},
+		DType: &TypeValExpr{
+			X:   IntLenType(),
+			Typ: IntLenType(),
+		},
+		Rank: 1,
+	}
 )
 
 // IntLenType returns the type for intlen, that is the length of an axis.
@@ -160,4 +319,256 @@ var uint64T = &uint64Type{atomicType: atomicType{Knd: Uint64Kind}}
 // Uint64Type returns the type for a uint64.
 func Uint64Type() Type {
 	return uint64T
+}
+
+// TypeSet represents a set of types.
+type TypeSet struct {
+	BaseType[*ast.InterfaceType]
+	Typs []Type
+}
+
+var (
+	anyType           = &TypeSet{}
+	_       Type      = (*TypeSet)(nil)
+	_       ArrayType = (*TypeSet)(nil)
+)
+
+// AnyType returns the type for the keyword any.
+func AnyType() Type {
+	return anyType
+}
+
+func (*TypeSet) node() {}
+
+// Rank of the array.
+func (*TypeSet) Rank() ArrayRank { return scalarRank }
+
+// DataType returns the type of the element.
+func (s *TypeSet) DataType() Type {
+	return s
+}
+
+// ArrayType returns the source code defining the type.
+// Always returns nil.
+func (s *TypeSet) ArrayType() *ast.ArrayType {
+	return nil
+}
+
+// Kind returns the scalar kind.
+func (s *TypeSet) Kind() Kind { return InterfaceKind }
+
+// Equal returns true if other is the exact same type set.
+func (s *TypeSet) Equal(fetcher Fetcher, target Type) (bool, error) {
+	targetSet, ok := target.(*TypeSet)
+	if !ok {
+		return false, nil
+	}
+	if s == targetSet {
+		return true, nil
+	}
+	if len(s.Typs) != len(targetSet.Typs) {
+		return false, nil
+	}
+	for i, typ := range s.Typs {
+		if ok, err := typ.Equal(fetcher, targetSet.Typs[i]); !ok {
+			if err != nil {
+				err = fmt.Errorf("type set %q not equal to %q: %w", s, targetSet, err)
+			}
+			return false, err
+		}
+	}
+	return true, nil
+}
+
+// AssignableTo reports whether a value of the type can be assigned to another.
+func (s *TypeSet) AssignableTo(fetcher Fetcher, target Type) (bool, error) {
+	if targetSet, ok := target.(*TypeSet); ok {
+		return targetSet.assignableFrom(fetcher, s)
+	}
+	for _, typ := range s.Typs {
+		if ok, _ := typ.AssignableTo(fetcher, target); !ok {
+			return false, nil
+		}
+	}
+	return len(s.Typs) > 0, nil
+}
+
+// AssignableFrom reports whether a given source type is assignable to any members of the set.
+func (s *TypeSet) assignableFrom(fetcher Fetcher, source Type) (bool, error) {
+	if len(s.Typs) == 0 {
+		return true, nil
+	}
+
+	if sourceSet, ok := source.(*TypeSet); ok {
+		return s.containsTypes(fetcher, sourceSet), nil
+	}
+	for _, typ := range s.Typs {
+		if ok, _ := source.AssignableTo(fetcher, typ); ok {
+			return true, nil
+		}
+	}
+	return false, nil
+}
+
+// ConvertibleTo reports whether a value of the type can be converted to another
+// (using static type casting).
+func (s *TypeSet) ConvertibleTo(fetcher Fetcher, target Type) (bool, error) {
+	if _, ok := target.(*TypeSet); ok {
+		return s.Equal(fetcher, target)
+	}
+	for _, typ := range s.Typs {
+		if ok, _ := typ.ConvertibleTo(fetcher, target); ok {
+			return true, nil
+		}
+	}
+	return false, nil
+}
+
+// TypeInclude returns if a typ is included in a type or not.
+func TypeInclude(fetcher Fetcher, set Type, typ Type) (bool, error) {
+	set = Underlying(set)
+	typeSet, typeSetOk := set.(*TypeSet)
+	if !typeSetOk {
+		return set.Equal(fetcher, typ)
+	}
+	for _, sub := range typeSet.Typs {
+		in, err := TypeInclude(fetcher, sub, typ)
+		if err != nil {
+			return false, err
+		}
+		if in {
+			return true, nil
+		}
+	}
+	return false, nil
+}
+
+// Source returns the source code defining the type.
+// Always returns nil.
+func (s *TypeSet) Source() ast.Node { return s.ArrayType() }
+
+// Zero returns a zero expression of the same type.
+func (s *TypeSet) Zero() AssignableExpr {
+	panic("unimplemented")
+}
+
+// ElementType returns the type of an element.
+func (s *TypeSet) ElementType() (Type, bool) {
+	sub := &TypeSet{}
+	ok := true
+	for _, typ := range s.Typs {
+		aType, eltOk := typ.(SlicerType)
+		if !eltOk {
+			ok = false
+			continue
+		}
+		sType, eltOk := aType.ElementType()
+		if !eltOk {
+			ok = false
+			continue
+		}
+		sub.Typs = append(sub.Typs, sType)
+	}
+	return sub, ok
+}
+
+// Value returns a value pointing to the receiver.
+func (s *TypeSet) Value(x Expr) AssignableExpr {
+	return &TypeValExpr{X: x, Typ: s}
+}
+
+// String representation of the type.
+func (s *TypeSet) String() string {
+	if len(s.Typs) == 0 {
+		return "any"
+	}
+	var b strings.Builder
+	b.WriteString("interface { ")
+	stringseq.AppendStringer(&b, slices.Values(s.Typs), "|")
+	b.WriteString(" }")
+	return b.String()
+}
+
+func (s *TypeSet) equalArray(fetcher Fetcher, target ArrayType) (bool, error) {
+	return s.Equal(fetcher, target)
+}
+
+// hasCapability returns true if and only if the capability applies to all types in the set.
+// Returns false if the type set is empty.
+func (s *TypeSet) hasCapability(f func(Type) bool) bool {
+	for _, typ := range s.Typs {
+		if !f(typ) {
+			return false
+		}
+	}
+	return len(s.Typs) > 0
+}
+
+// containsType returns true if the given type is present in the set.
+func (s *TypeSet) containsType(fetcher Fetcher, wantType Type) bool {
+	for _, typ := range s.Typs {
+		if eq, _ := wantType.Equal(fetcher, typ); eq {
+			return true
+		}
+	}
+	return false
+}
+
+// containsTypes returns true if all the given types are present in the set.
+func (s *TypeSet) containsTypes(fetcher Fetcher, types *TypeSet) bool {
+	for _, wantType := range types.Typs {
+		if !s.containsType(fetcher, wantType) {
+			return false
+		}
+	}
+	return true
+}
+
+func fieldListAtomicIR() *FieldList {
+	group := &FieldGroup{
+		Type: &TypeValExpr{
+			Typ: TypeFromKind(IRKind),
+		},
+	}
+	group.Fields = []*Field{&Field{
+		Group: group,
+	}}
+	return &FieldList{
+		List: []*FieldGroup{group},
+	}
+}
+
+var metaFuncType = &FuncType{
+	Params:  fieldListAtomicIR(),
+	Results: fieldListAtomicIR(),
+}
+
+// MetaFuncType returns the type of a meta function.
+func MetaFuncType() *FuncType {
+	return metaFuncType
+}
+
+// AtomTypeExpr returns a type expression for an atomic type.
+func AtomTypeExpr(typ Type) *TypeValExpr {
+	return &TypeValExpr{
+		X:   typ,
+		Typ: typ,
+	}
+}
+
+// ToArrayType converts a type into an array type.
+// Returns nil if the conversion is not possible
+func ToArrayType(typ Type) ArrayType {
+	switch typT := typ.(type) {
+	case *NamedType:
+		return ToArrayType(typT.Underlying.Typ)
+	case *TypeSet:
+		if !typT.hasCapability(IsDataType) {
+			return nil
+		}
+		return typT
+	case ArrayType:
+		return typT
+	}
+	return nil
 }

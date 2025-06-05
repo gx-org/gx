@@ -15,46 +15,25 @@
 package interp
 
 import (
-	"github.com/gx-org/gx/api/values"
+	"github.com/gx-org/backend/dtype"
 	"github.com/gx-org/gx/build/ir"
-	"github.com/gx-org/gx/golang/backend/kernels"
 	"github.com/gx-org/gx/interp/elements"
 )
 
-// evalExprOnHost evaluates an expression on the host.
-func evalExprOnHost(ctx *context, expr ir.Expr) (*values.HostArray, error) {
-	el, err := evalExpr(ctx, expr)
+// evalAtom evaluates an expression on the host and returns its result as an array.
+func evalAtom[T dtype.GoDataType](ctx *context, expr ir.Expr) (val T, err error) {
+	el, err := ctx.evalExpr(expr)
 	if err != nil {
-		return nil, err
+		var zero T
+		return zero, err
 	}
-	// First, check if the value is a static value.
-	value := elements.ConstantFromElement(el)
-	if value != nil {
-		return value, nil
-	}
-	// If not, check if it is an argument.
-	value, err = elements.HostValueFromContext(ctx.callInputs, el)
-	if err != nil {
-		return nil, err
-	}
-	return value, nil
+	return elements.ConstantScalarFromElement[T](el)
 }
 
-func evalScalarCastOnHost(ctx *context, expr *ir.CastExpr, val *values.HostArray, target ir.Kind) (elements.Element, error) {
-	nativeHandle := val.Handle().(kernels.Handle).KernelValue()
-	kernelFactory := nativeHandle.Factory()
-	castOp, _, _, err := kernelFactory.Cast(target.DType(), nil)
+func evalAtomInt(ctx *context, expr ir.Expr) (int, error) {
+	el, err := ctx.evalExpr(expr)
 	if err != nil {
-		return nil, err
+		return 0, err
 	}
-	return evalLocalKernel(ctx, expr, castOp, nativeHandle, target)
-}
-
-func evalLocalKernel(ctx *context, expr *ir.CastExpr, kernel kernels.Unary, handle kernels.Array, target ir.Kind) (elements.Element, error) {
-	outArray, err := kernel(handle)
-	if err != nil {
-		return nil, err
-	}
-	value := values.NewHostArray(expr.Type(), kernels.NewBuffer(outArray))
-	return ctx.Evaluator().ElementFromValue(nodeAt[ir.Node](ctx, expr), value)
+	return elements.ConstantIntFromElement(el)
 }

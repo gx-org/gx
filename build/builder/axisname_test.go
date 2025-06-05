@@ -1,0 +1,325 @@
+package builder_test
+
+import (
+	"go/ast"
+	"testing"
+
+	"github.com/gx-org/gx/build/ir"
+	irh "github.com/gx-org/gx/build/ir/irhelper"
+)
+
+func TestAxisName(t *testing.T) {
+	arrayType := irh.ArrayType(ir.Float32Type(), irh.AxisGroup("shape"))
+	sliceLiteral := &ir.SliceLitExpr{
+		Typ: ir.IntLenSliceType(),
+		Elts: []ir.AssignableExpr{
+			irh.IntNumberAs(2, ir.IntLenType()),
+			irh.IntNumberAs(3, ir.IntLenType()),
+		},
+	}
+	newArrayFunc := &ir.FuncBuiltin{
+		Src: &ast.FuncDecl{Name: &ast.Ident{Name: "newArray"}},
+		FType: irh.FuncType(
+			nil, nil,
+			irh.Fields("shape", ir.IntLenSliceType()),
+			irh.Fields(arrayType),
+		),
+	}
+	castFunc := &ir.FuncBuiltin{
+		Src: &ast.FuncDecl{Name: &ast.Ident{Name: "cast"}},
+		FType: irh.FuncType(
+			nil, nil,
+			irh.Fields(irh.ArrayType(ir.Float32Type(), irh.Axis("___S"))),
+			irh.Fields(irh.ArrayType(ir.Float64Type(), irh.Axis("S___"))),
+		),
+	}
+	dimsField := irh.Field("dims", ir.IntLenSliceType(), nil)
+	aStorage := &ir.LocalVarStorage{
+		Src: &ast.Ident{Name: "a"},
+		Typ: irh.ArrayType(ir.Float32Type(), irh.Axis("dims___")),
+	}
+	aAssignment := &ir.AssignExpr{
+		Storage: aStorage,
+		X: &ir.CallExpr{
+			Args: []ir.AssignableExpr{irh.ValueRef(dimsField.Storage())},
+			Callee: &ir.FuncValExpr{
+				X: irh.ValueRef(newArrayFunc),
+				F: newArrayFunc,
+				T: irh.FuncType(
+					nil, nil,
+					irh.Fields("dims", irh.TypeRef(ir.IntLenSliceType())),
+					irh.Fields(irh.TypeRef(
+						irh.ArrayType(ir.Float32Type(), irh.Axis("dims___")),
+					)),
+				),
+			},
+		},
+	}
+	testAll(t,
+		irDeclTest{
+			src: `
+func newArray(shape []intlen) [shape___]float32
+`,
+			want: []ir.Node{newArrayFunc},
+		},
+		irDeclTest{
+			src: `
+func newArray(shape []intlen) [shape___]float32
+
+func f(dims []intlen) [dims___]float32 {
+	return newArray(dims)
+}
+`,
+			want: []ir.Node{
+				newArrayFunc,
+				&ir.FuncDecl{
+					FType: irh.FuncType(
+						nil, nil,
+						irh.Fields(dimsField),
+						irh.Fields(irh.TypeRef(irh.ArrayType(
+							ir.Float32Type(),
+							irh.Axis("dims___"),
+						))),
+					),
+					Body: &ir.BlockStmt{List: []ir.Stmt{
+						&ir.ReturnStmt{Results: []ir.Expr{
+							&ir.CallExpr{
+								Args: []ir.AssignableExpr{irh.ValueRef(dimsField.Storage())},
+								Callee: &ir.FuncValExpr{
+									X: irh.ValueRef(newArrayFunc),
+									F: newArrayFunc,
+									T: irh.FuncType(
+										nil, nil,
+										irh.Fields("dims", ir.IntLenSliceType()),
+										irh.Fields(irh.ArrayType(
+											ir.Float32Type(),
+											irh.Axis("dims___")),
+										),
+									),
+								},
+							},
+						}},
+					}},
+				},
+			},
+		},
+		irDeclTest{
+			src: `
+func newArray(shape []intlen) [shape___]float32
+
+func f(dims []intlen) [dims___]float32 {
+	a := newArray(dims)
+	return a
+}
+
+`,
+			want: []ir.Node{
+				newArrayFunc,
+				&ir.FuncDecl{
+					FType: irh.FuncType(
+						nil, nil,
+						irh.Fields(dimsField),
+						irh.Fields(irh.ArrayType(
+							ir.Float32Type(),
+							irh.Axis("dims___"),
+						)),
+					),
+					Body: &ir.BlockStmt{List: []ir.Stmt{
+						&ir.AssignExprStmt{List: []*ir.AssignExpr{
+							aAssignment,
+						}},
+						&ir.ReturnStmt{Results: []ir.Expr{
+							irh.ValueRef(aAssignment),
+						}},
+					}},
+				},
+			},
+		},
+		irDeclTest{
+			src: `
+func newArray(shape []intlen) [shape___]float32
+
+func f() [2][3]float32 {
+	return newArray([]intlen{2,3})
+}
+`,
+			want: []ir.Node{
+				newArrayFunc,
+				&ir.FuncDecl{
+					FType: irh.FuncType(
+						nil, nil,
+						irh.Fields(),
+						irh.Fields(irh.ArrayType(ir.Float32Type(), 2, 3)),
+					),
+					Body: &ir.BlockStmt{List: []ir.Stmt{
+						&ir.ReturnStmt{Results: []ir.Expr{
+							&ir.CallExpr{
+								Args: []ir.AssignableExpr{sliceLiteral},
+								Callee: &ir.FuncValExpr{
+									X: irh.ValueRef(newArrayFunc),
+									F: newArrayFunc,
+									T: irh.FuncType(
+										nil, nil,
+										irh.Fields("dims", ir.IntLenSliceType()),
+										irh.Fields(irh.ArrayType(ir.Float32Type(), 2, 3)),
+									),
+								},
+							},
+						}},
+					}},
+				},
+			},
+		},
+		irDeclTest{
+			src: `
+func cast([___S]float32) [S___]float64
+
+func f() [2]float64 {
+	return cast([2]float32{3, 4})
+}
+`,
+			want: []ir.Node{
+				castFunc,
+				&ir.FuncDecl{
+					FType: irh.FuncType(
+						nil, nil,
+						irh.Fields(),
+						irh.Fields(irh.ArrayType(ir.Float64Type(), 2)),
+					),
+					Body: &ir.BlockStmt{List: []ir.Stmt{
+						&ir.ReturnStmt{Results: []ir.Expr{
+							&ir.CallExpr{
+								Args: []ir.AssignableExpr{&ir.ArrayLitExpr{
+									Typ: irh.ArrayType(ir.Float32Type(), 2),
+									Elts: []ir.AssignableExpr{
+										irh.IntNumberAs(3, ir.Float32Type()),
+										irh.IntNumberAs(4, ir.Float32Type()),
+									},
+								}},
+								Callee: &ir.FuncValExpr{
+									X: irh.ValueRef(castFunc),
+									F: castFunc,
+									T: irh.FuncType(
+										nil, nil,
+										irh.Fields(irh.ArrayType(ir.Float32Type(), "___S")),
+										irh.Fields(irh.ArrayType(ir.Float64Type(), 2)),
+									),
+								},
+							},
+						}},
+					}},
+				},
+			},
+		},
+		irDeclTest{
+			src: `
+func cast([___S]float32) [S___]float64
+
+func f() float64 {
+	return cast(float32(1))
+}
+`,
+			want: []ir.Node{
+				castFunc,
+				&ir.FuncDecl{
+					FType: irh.FuncType(
+						nil, nil,
+						irh.Fields(),
+						irh.Fields(ir.Float64Type()),
+					),
+					Body: &ir.BlockStmt{List: []ir.Stmt{
+						&ir.ReturnStmt{Results: []ir.Expr{
+							&ir.CallExpr{
+								Args: []ir.AssignableExpr{irh.IntNumberAs(1, ir.Float32Type())},
+								Callee: &ir.FuncValExpr{
+									X: irh.ValueRef(castFunc),
+									F: castFunc,
+									T: irh.FuncType(
+										nil, nil,
+										irh.Fields(irh.ArrayType(ir.Float32Type(), "___S")),
+										irh.Fields(irh.ArrayType(ir.Float64Type())),
+									),
+								},
+							},
+						}},
+					}},
+				},
+			},
+		},
+	)
+	fDims := &ir.LocalVarStorage{
+		Src: irh.Ident("fDims"),
+		Typ: ir.IntLenSliceType(),
+	}
+	fDimsAssignment := &ir.AssignExpr{
+		Storage: fDims,
+		X: &ir.SliceLitExpr{
+			Typ: ir.IntLenSliceType(),
+			Elts: []ir.AssignableExpr{
+				irh.IntNumberAs(2, ir.IntLenType()),
+				irh.IntNumberAs(3, ir.IntLenType()),
+			},
+		},
+	}
+	testAll(t,
+		irDeclTest{
+			src: `
+func newArray(shape []intlen) [shape___]float32
+
+func f() [2][3]float32  {
+	fDims := []intlen{2, 3}
+	return newArray(fDims)
+}
+`,
+			want: []ir.Node{
+				newArrayFunc,
+				&ir.FuncDecl{
+					FType: irh.FuncType(
+						nil, nil,
+						irh.Fields(),
+						irh.Fields(irh.ArrayType(ir.Float32Type(), 2, 3)),
+					),
+					Body: &ir.BlockStmt{List: []ir.Stmt{
+						&ir.AssignExprStmt{
+							List: []*ir.AssignExpr{fDimsAssignment},
+						},
+						&ir.ReturnStmt{Results: []ir.Expr{
+							&ir.CallExpr{
+								Args: []ir.AssignableExpr{irh.ValueRef(fDimsAssignment)},
+								Callee: &ir.FuncValExpr{
+									X: irh.ValueRef(newArrayFunc),
+									F: newArrayFunc,
+									T: newArrayFunc.FType,
+								},
+							},
+						}},
+					}},
+				},
+			},
+		},
+	)
+}
+
+func TestAxisGroupOrigin(t *testing.T) {
+	testAll(t,
+		irDeclTest{
+			src: `
+func f([___M]int32) [M___]int32
+
+func g(a [___dims]int32) [dims___]int32 {
+	return a + f(a)
+}
+`,
+			want: []ir.Node{},
+		},
+		irDeclTest{
+			src: `
+func sum([___M]int32) int64
+
+func callCast(x [_]int32) int64 {
+	return sum(x)
+}
+`,
+		},
+	)
+}

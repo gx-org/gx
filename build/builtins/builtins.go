@@ -23,11 +23,12 @@ import (
 
 	"github.com/gx-org/gx/build/fmterr"
 	"github.com/gx-org/gx/build/ir"
+	"github.com/gx-org/gx/internal/interp/compeval"
 )
 
 var (
 	// GenericArrayType returns a generic array type.
-	GenericArrayType = ir.NewArrayType(nil, ir.TypeFromKind(ir.UnknownKind), &ir.GenericRank{})
+	GenericArrayType = ir.NewArrayType(nil, ir.TypeFromKind(ir.UnknownKind), &ir.RankInfer{})
 
 	// GenericSliceType returns a generic slice type.
 	GenericSliceType = &ir.SliceType{}
@@ -36,16 +37,16 @@ var (
 	PositionsType = ir.NewArrayType(
 		nil,
 		ir.DefaultIntType,
-		&ir.GenericRank{},
+		&ir.RankInfer{},
 	)
 )
 
 // ToBinaryExpr returns a binary expression from two expressions.
-func ToBinaryExpr(op token.Token, x, y ir.Expr) *ir.BinaryExpr {
+func ToBinaryExpr(op token.Token, x, y ir.AssignableExpr) *ir.BinaryExpr {
 	return &ir.BinaryExpr{
 		Src: &ast.BinaryExpr{
-			X:  x.Expr(),
-			Y:  y.Expr(),
+			X:  x.Source().(ast.Expr),
+			Y:  y.Source().(ast.Expr),
 			Op: op,
 		},
 		X:   x,
@@ -60,7 +61,7 @@ func Fields(types ...ir.Type) *ir.FieldList {
 		List: make([]*ir.FieldGroup, len(types)),
 	}
 	for i, tp := range types {
-		l.List[i] = &ir.FieldGroup{Type: tp}
+		l.List[i] = &ir.FieldGroup{Type: &ir.TypeValExpr{Typ: tp}}
 	}
 	return l
 }
@@ -78,12 +79,12 @@ func InferFromNumericalType(fetcher ir.Fetcher, call *ir.CallExpr, argNum int, n
 		}
 		return target, target, nil
 	}
-	if ir.IsDataType(argKind) {
+	if ir.IsDataType(argType) {
 		return argType, argType, nil
 	}
 	arrayType, arrayOk := argType.(ir.ArrayType)
 	if !arrayOk {
-		return nil, nil, fmterr.Errorf(fetcher.FileSet(), call.Args[argNum].Source(), "argument type %s not supported", arg.Type().String())
+		return nil, nil, fmterr.Errorf(fetcher.File().FileSet(), call.Args[argNum].Source(), "argument type %s not supported", arg.Type().String())
 	}
 	return arrayType, arrayType.DataType(), nil
 }
@@ -107,7 +108,7 @@ func fmtType(typ ir.Type) string {
 	return typ.String()
 }
 
-func fmtExprType(e ir.Expr) string { return fmtType(e.Type()) }
+func fmtExprType(e ir.AssignableExpr) string { return fmtType(e.Type()) }
 
 // BuildFuncParams takes a function call and list of required argument types
 // and returns a list of parameters for the function.
@@ -115,9 +116,9 @@ func fmtExprType(e ir.Expr) string { return fmtType(e.Type()) }
 // It returns an error if a call's arguments don't match the given signature.
 func BuildFuncParams(fetcher ir.Fetcher, call *ir.CallExpr, name string, sig []ir.Type) ([]ir.Type, error) {
 	if len(sig) != len(call.Args) {
-		actual := joinSignature[ir.Expr](call.Args, fmtExprType)
+		actual := joinSignature[ir.AssignableExpr](call.Args, fmtExprType)
 		wanted := joinSignature[ir.Type](sig, fmtType)
-		return nil, fmterr.Errorf(fetcher.FileSet(), call.Source(), "wrong number of arguments in call to %s: got %s but want %s", name, actual, wanted)
+		return nil, fmterr.Errorf(fetcher.File().FileSet(), call.Source(), "wrong number of arguments in call to %s: got %s but want %s", name, actual, wanted)
 	}
 	params := make([]ir.Type, len(sig))
 	for i, want := range sig {
@@ -143,9 +144,9 @@ func BuildFuncParams(fetcher ir.Fetcher, call *ir.CallExpr, name string, sig []i
 			ok = assignable
 		}
 		if !ok {
-			actual := joinSignature[ir.Expr](call.Args, fmtExprType)
+			actual := joinSignature[ir.AssignableExpr](call.Args, fmtExprType)
 			wanted := joinSignature[ir.Type](sig, fmtType)
-			return nil, fmterr.Errorf(fetcher.FileSet(), call.Source(), "signature mismatch in call to %s: got %s but want %s", name, actual, wanted)
+			return nil, fmterr.Errorf(fetcher.File().FileSet(), call.Source(), "signature mismatch in call to %s: got %s but want %s", name, actual, wanted)
 		}
 	}
 	return params, nil
@@ -156,7 +157,7 @@ func NarrowType[T ir.Type](fetcher ir.Fetcher, call *ir.CallExpr, arg ir.Type) (
 	var ok bool
 	t, ok = arg.(T)
 	if !ok {
-		err = fmterr.Errorf(fetcher.FileSet(), call.Source(), "cannot convert %T to %s", arg, reflect.TypeFor[T]().String())
+		err = fmterr.Errorf(fetcher.File().FileSet(), call.Source(), "cannot convert %T to %s", arg, reflect.TypeFor[T]().String())
 	}
 	return
 }
@@ -176,65 +177,21 @@ func NarrowTypes[T ir.Type](fetcher ir.Fetcher, call *ir.CallExpr, args []ir.Typ
 
 // UniqueAxesFromExpr returns the set of unique axis indices found in a slice literal.
 func UniqueAxesFromExpr(fetcher ir.Fetcher, expr ir.Expr) (map[int]struct{}, error) {
-	sliceExpr, ok := expr.(*ir.SliceExpr)
+	sliceExpr, ok := expr.(*ir.SliceLitExpr)
 	if !ok {
-		return nil, fmterr.Errorf(fetcher.FileSet(), expr.Source(), "expected axes slice literal, but got %s", expr.String())
+		return nil, fmterr.Errorf(fetcher.File().FileSet(), expr.Source(), "expected axes slice literal, but got %s", expr.String())
 	}
 
 	axes := map[int]struct{}{}
-	for _, val := range sliceExpr.Vals {
-		axis, unknown, err := ir.Eval[ir.Int](fetcher, val)
+	for _, val := range sliceExpr.Elts {
+		axis, err := compeval.EvalInt(fetcher, val)
 		if err != nil {
-			return nil, err
+			return nil, fmterr.Position(fetcher.File().FileSet(), expr.Source(), err)
 		}
-		if len(unknown) > 0 {
-			return nil, fmterr.Errorf(fetcher.FileSet(), expr.Source(), "expected axis literals, but got un-evalable expression %s", expr.String())
+		if _, exists := axes[axis]; exists {
+			return nil, fmterr.Errorf(fetcher.File().FileSet(), expr.Source(), "axis index %d specified more than once", axis)
 		}
-		if _, exists := axes[int(axis)]; exists {
-			return nil, fmterr.Errorf(fetcher.FileSet(), expr.Source(), "axis index %d specified more than once", axis)
-		}
-		axes[int(axis)] = struct{}{}
+		axes[axis] = struct{}{}
 	}
 	return axes, nil
-}
-
-// EvalShape computes a shape given a rank.
-func EvalShape(fetcher ir.Fetcher, rank *ir.Rank) ([]int, bool, error) {
-	if rank == nil || len(rank.Axes) == 0 {
-		return nil, false, nil
-	}
-	shape := make([]int, len(rank.Axes))
-	for i, axis := range rank.Axes {
-		val, unknowns, err := ir.Eval[ir.Int](fetcher, axis)
-		if err != nil {
-			return nil, false, err
-		}
-		if len(unknowns) > 0 {
-			return nil, false, nil
-		}
-		shape[i] = int(val)
-	}
-	return shape, true, nil
-}
-
-// RankFromExpr returns a rank if it can be computed from the expression.
-func RankFromExpr(src ast.Expr, expr ir.Expr) ir.ArrayRank {
-	sliceExpr, ok := expr.(*ir.SliceExpr)
-	if !ok {
-		return &ir.GenericRank{}
-	}
-	axes := make([]ir.AxisLength, len(sliceExpr.Vals))
-	for i, val := range sliceExpr.Vals {
-		axes[i] = &ir.AxisExpr{X: val}
-	}
-	return &ir.Rank{Axes: axes}
-}
-
-// RankOf returns the list of axes of an array.
-func RankOf(fetcher ir.Fetcher, src ir.SourceNode, a ir.ArrayType) (*ir.Rank, error) {
-	rank, ok := a.Rank().(ir.ResolvedRank)
-	if !ok || rank.Resolved() == nil {
-		return nil, fmterr.Internalf(fetcher.FileSet(), src.Source(), "array axes have not been resolved")
-	}
-	return rank.Resolved(), nil
 }

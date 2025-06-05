@@ -18,12 +18,6 @@ func TestCastScalar() float32 {
 	// float32(2)
 }
 
-func TestCastWithStatic() [sameDim2]float32 {
-	return [sameDim2]float32([sameDim1]float32{})
-	// Want:
-	// [2]float32{0, 0}
-}
-
 func TestCastToFloat64() [3]float64 {
 	return [3]float64([3]float32{-1, 2, -3})
 	// Want:

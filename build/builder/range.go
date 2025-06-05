@@ -21,103 +21,98 @@ import (
 )
 
 type rangeStmt struct {
-	ext        ir.RangeStmt
-	key, value *identAssignable
+	src        *ast.RangeStmt
+	key, value *identStorage
 	x          exprNode
 	body       *blockStmt
 }
 
 var _ stmtNode = (*rangeStmt)(nil)
 
-func processLoopAssignable(owner owner, expr ast.Expr) (*identAssignable, bool) {
+func processRangeStmt(pscope procScope, src *ast.RangeStmt) (*rangeStmt, bool) {
+	n := &rangeStmt{src: src}
+	var keyOk bool
+	n.key, keyOk = processLoopAssignable(pscope, src.Key)
+	var valueOk bool
+	n.value, valueOk = processLoopAssignable(pscope, src.Value)
+	var rangeOk bool
+	n.x, rangeOk = processExpr(pscope, src.X)
+	var bodyOk bool
+	n.body, bodyOk = processBlockStmt(pscope, src.Body)
+	return n, keyOk && valueOk && rangeOk && bodyOk
+}
+
+func processLoopAssignable(pscope procScope, expr ast.Expr) (*identStorage, bool) {
 	if expr == nil {
 		return nil, true
 	}
 	switch exprT := expr.(type) {
 	case *ast.Ident:
-		return &identAssignable{target: processIdentExpr(exprT)}, true
+		target, targetOk := processIdentExpr(pscope, exprT)
+		return &identStorage{target: target}, targetOk
 	default:
-		owner.err().Appendf(expr, "%T not supported", expr)
+		pscope.err().Appendf(expr, "%T not supported", expr)
 		return nil, false
 	}
 }
 
-func processRangeStmt(owner owner, fn *funcDecl, stmt *ast.RangeStmt) (*rangeStmt, bool) {
-	n := &rangeStmt{
-		ext: ir.RangeStmt{
-			Src: stmt,
-		},
-	}
-	var keyOk bool
-	n.key, keyOk = processLoopAssignable(owner, stmt.Key)
-	var valueOk bool
-	n.value, valueOk = processLoopAssignable(owner, stmt.Value)
-	var rangeOk bool
-	n.x, rangeOk = processExpr(owner, stmt.X)
-	var bodyOk bool
-	n.body, bodyOk = processBlockStmt(owner, fn, stmt.Body)
-	return n, keyOk && valueOk && rangeOk && bodyOk
+func (n *rangeStmt) buildBodyOverScalar(rscope resolveScope, x ir.Expr) (ir.Storage, ir.Storage, bool) {
+	key, _, keyOk := n.key.buildStorage(rscope, x.Type())
+	return key, nil, keyOk
 }
 
-func (n *rangeStmt) source() ast.Node {
-	return n.ext.Src
-}
-
-func (n *rangeStmt) buildStmt() ir.Stmt {
-	n.ext.Key = n.key.buildAssignable()
-	if n.value != nil {
-		n.ext.Value = n.value.buildAssignable()
+func (n *rangeStmt) buildBodyOverArray(rscope resolveScope, x ir.Expr) (ir.Storage, ir.Storage, bool) {
+	key, _, keyOk := n.key.buildStorage(rscope, x.Type())
+	if n.value == nil {
+		return key, nil, keyOk
 	}
-	n.ext.X = n.x.buildExpr()
-	n.ext.Body = n.body.buildBlockStmt()
-	return &n.ext
-}
-
-func (n *rangeStmt) resolveTypeOverScalar(scope *scopeBlock, xType typeNode) bool {
-	bodyScope := scope.scopeBlock()
-	if _, ok := n.key.canAssign(bodyScope, xType); !ok {
-		return false
-	}
-	return n.body.resolveType(bodyScope)
-}
-
-func (n *rangeStmt) resolveTypeOverArray(scope *scopeBlock, xType typeNode) bool {
-	bodyScope := scope.scopeBlock()
-	// xType is an array. So, the key is an integer and the value is the type of the sub-array.
-	if _, ok := n.key.canAssign(bodyScope, defaultIntType); !ok {
-		return false
-	}
-	if n.value != nil {
-		xArrayType, ok := xType.(*arrayType)
-		if !ok {
-			scope.err().Appendf(n.ext.Src, "cannot cast %T to *arrayType", xType)
-			return false
-		}
-		valueType, _ := xArrayType.elementType()
-		if _, ok := n.value.canAssign(bodyScope, valueType); !ok {
-			return false
-		}
-	}
-	return n.body.resolveType(bodyScope)
-}
-
-func (n *rangeStmt) resolveType(scope *scopeBlock) bool {
-	xType, ok := n.x.resolveType(scope)
+	xUnder := ir.Underlying(x.Type())
+	xArrayType, ok := xUnder.(ir.ArrayType)
 	if !ok {
-		return false
+		return key, nil, rscope.err().Appendf(n.x.source(), "%s is not an array type", x.Type().String())
 	}
-	if ir.IsNumber(xType.kind()) {
-		n.x, xType, ok = castNumber(scope, n.x, axisLengthType.irType())
-		if !ok {
-			return false
+	valueType, ok := xArrayType.ElementType()
+	if !ok {
+		return key, nil, rscope.err().Appendf(n.x.source(), "cannot range over array %s with 0 axis", x.Type().String())
+	}
+	value, _, valueOk := n.value.buildStorage(rscope, valueType)
+	return key, value, keyOk && valueOk
+}
+
+func (n *rangeStmt) buildStmt(parent funResolveScope) (ir.Stmt, bool) {
+	ext := &ir.RangeStmt{Src: n.src}
+	rscope, ok := newBlockScope(parent)
+	if !ok {
+		return ext, false
+	}
+	ext.X, ok = buildAExpr(rscope, n.x)
+	if !ok {
+		return ext, false
+	}
+	if ir.IsNumber(ext.X.Type().Kind()) {
+		ext.X, ok = castNumber(rscope, ext.X, ir.IntLenType())
+	}
+	if !ok {
+		return ext, false
+	}
+	if ir.IsRangeOk(ext.X.Type().Kind()) {
+		ext.Key, ext.Value, ok = n.buildBodyOverScalar(rscope, ext.X)
+	} else if ext.X.Type().Kind() == ir.ArrayKind {
+		ext.Key, ext.Value, ok = n.buildBodyOverArray(rscope, ext.X)
+	} else {
+		return ext, rscope.err().Appendf(n.src, "cannot range over %s", ext.X.Type().String())
+	}
+	if !ok {
+		return ext, false
+	}
+	if ok = defineLocalVar(rscope, ext.Key); !ok {
+		return ext, false
+	}
+	if ext.Value != nil {
+		if ok = defineLocalVar(rscope, ext.Value); !ok {
+			return ext, false
 		}
 	}
-	if ir.IsRangeOk(xType.kind()) {
-		return n.resolveTypeOverScalar(scope, xType)
-	}
-	if xType.kind() == ir.ArrayKind {
-		return n.resolveTypeOverArray(scope, xType)
-	}
-	scope.err().Appendf(n.ext.Src, "cannot range over %s", xType.kind().String())
-	return false
+	ext.Body, ok = n.body.buildBlockStmt(rscope)
+	return ext, ok
 }

@@ -17,201 +17,146 @@ package builder
 import (
 	"fmt"
 	"go/ast"
+	"go/token"
 
 	"github.com/gx-org/gx/build/ir"
 )
 
-type constDecl struct {
-	ext ir.ConstDecl
-
-	resolvedType typeNode
-	declaredType typeNode
-
-	exprs []*constExpr
+type constSpec struct {
+	src          *ast.ValueSpec
+	declaredType typeExprNode
+	bFile        *file
+	exprs        []*constExpr
 }
 
-var _ irBuilder = (*constDecl)(nil)
+var _ parentNodeBuilder = (*constSpec)(nil)
 
-func importConstDecl(scope *scopeFile, irDecl *ir.ConstDecl) bool {
-	decl := &constDecl{
-		ext:   *irDecl,
-		exprs: make([]*constExpr, len(irDecl.Exprs)),
-	}
-	decl.ext.FFile = &scope.src.repr
-	ok := true
-	if irDecl.Type != nil {
-		decl.resolvedType, ok = toTypeNode(scope, irDecl.Type)
-	}
-	for i, irExpr := range irDecl.Exprs {
-		var exprOk bool
-		decl.exprs[i], exprOk = importConstExpr(scope, decl, irExpr)
-		ok = ok && exprOk
-	}
-	return ok
-}
-
-func processConstDecl(scope *scopeFile, decl *ast.GenDecl) bool {
+func processConstDecl(pscope procScope, decl *ast.GenDecl) bool {
 	ok := true
 	for _, spec := range decl.Specs {
-		ok = processConst(scope, spec.(*ast.ValueSpec)) && ok
+		ok = processConstSpec(pscope, spec.(*ast.ValueSpec)) && ok
 	}
 	return ok
 }
 
-func processConst(scope *scopeFile, spec *ast.ValueSpec) bool {
-	decl := &constDecl{
-		ext: ir.ConstDecl{
-			FFile: &scope.src.repr,
-			Src:   spec,
-		},
+func processConstSpec(pscope procScope, src *ast.ValueSpec) bool {
+	spec := &constSpec{
+		src:   src,
+		bFile: pscope.file(),
 	}
 	declaredTypeOk := true
-	if spec.Type != nil {
-		decl.declaredType, declaredTypeOk = processTypeExpr(scope, spec.Type)
+	if src.Type != nil {
+		spec.declaredType, declaredTypeOk = processTypeExpr(pscope, src.Type)
 	}
-	valuesOk := true
-	decl.exprs = make([]*constExpr, len(spec.Names))
-	for i, name := range spec.Names {
-		value, valueOk := processExpr(scope, spec.Values[i])
-		valuesOk = valueOk && valuesOk
-		decl.exprs[i] = &constExpr{
-			ext: &ir.ConstExpr{
-				Decl:  &decl.ext,
-				VName: name,
-			},
-			decl:  decl,
-			value: value,
-		}
+	numOk := true
+	if len(src.Values) > len(src.Names) {
+		pscope.err().Appendf(src.Values[len(src.Names)], "extra init expr")
+		numOk = false
 	}
-
-	declareOk := true
-	for _, expr := range decl.exprs {
-		ident := expr.ext.VName
-		if !scope.pkg().checkIfDefined(scope, ident) {
-			declareOk = false
-			continue
-		}
-		scope.file().pkg.ns.assign(newIdentExpr(ident, expr), decl)
+	names := src.Names
+	if len(src.Values) < len(names) {
+		name := names[len(src.Values)]
+		pscope.err().Appendf(name, "missing init expr for %s", name.Name)
+		numOk = false
+		names = src.Names[:len(src.Values)]
 	}
-	scope.file().consts = append(scope.file().consts, decl)
-
-	return declaredTypeOk && valuesOk && declareOk
-}
-
-func (decl *constDecl) source() ast.Node {
-	return decl.ext.Src
-}
-
-func (decl *constDecl) resolveType(scope scoper) (typeNode, bool) {
-	if decl.resolvedType != nil {
-		return typeNodeOk(decl.resolvedType)
-	}
-	ok := true
-	if decl.declaredType != nil {
-		decl.resolvedType, ok = resolveType(scope, decl, decl.declaredType)
-	}
-	if !ok {
-		return typeNodeOk(decl.resolvedType)
-	}
-	for _, expr := range decl.exprs {
+	exprsOk := true
+	spec.exprs = make([]*constExpr, len(src.Names))
+	for i, name := range names {
 		var exprOk bool
-		expr.valueType, exprOk = expr.value.resolveType(scope)
-		if !exprOk {
-			ok = false
-			continue
-		}
-		assignType, assignOk := assignableToAt(scope, expr, expr.valueType, decl.resolvedType)
-		if !assignOk {
-			ok = false
-			continue
-		}
-		decl.resolvedType = assignType
+		spec.exprs[i], exprOk = spec.processConstExpr(pscope, name, src.Values[i])
+		exprsOk = exprsOk && exprOk
 	}
-	if !ok {
-		decl.resolvedType = invalid
-	}
-	decl.ext.Type = decl.resolvedType.irType()
-	return typeNodeOk(decl.resolvedType)
+	return declaredTypeOk && numOk && exprsOk && pscope.decls().registerConst(spec)
 }
 
-func (decl *constDecl) buildIR(pkg *ir.Package) {
-	decl.ext.Exprs = make([]*ir.ConstExpr, len(decl.exprs))
-	for i, expr := range decl.exprs {
-		decl.ext.Exprs[i] = expr.buildConstExpr()
+func (spec *constSpec) buildSpecNode(rscope resolveScope) (*ir.ConstDecl, bool) {
+	ext := &ir.ConstDecl{Src: spec.src}
+	ok := true
+	if spec.declaredType != nil {
+		ext.Type, ok = spec.declaredType.buildTypeExpr(rscope)
 	}
-	pkg.Consts = append(pkg.Consts, &decl.ext)
+	return ext, ok
 }
 
-func (decl *constDecl) wantType() ir.Type {
-	if decl.declaredType == nil {
-		return nil
-	}
-	if decl.declaredType.kind() == ir.InvalidKind {
-		return nil
-	}
-	return decl.declaredType.irType()
+func (spec *constSpec) buildParentNode(irb *irBuilder, decls *ir.Declarations) (ir.Node, bool) {
+	fscope, ok := irb.pkgScope.newFileScope(spec.bFile, nil)
+	ext, specOk := spec.buildSpecNode(fscope)
+	var fileOk bool
+	ext.FFile, fileOk = buildParentNode[*ir.File](irb, decls, spec.bFile)
+	decls.Consts = append(decls.Consts, ext)
+	return ext, ok && specOk && fileOk
+}
+
+func (spec *constSpec) file() *file {
+	return spec.bFile
 }
 
 type constExpr struct {
-	ext  *ir.ConstExpr
-	decl *constDecl
+	spec *constSpec
 
-	value     exprNode
-	valueType typeNode
+	name  *ast.Ident
+	value exprNode
 }
 
-var (
-	_ exprNode        = (*constExpr)(nil)
-	_ staticValueNode = (*constExpr)(nil)
-)
-
-func importConstExpr(scope *scopeFile, decl *constDecl, cstExpr *ir.ConstExpr) (*constExpr, bool) {
-	expr := &constExpr{
-		decl:      decl,
-		ext:       cstExpr,
-		value:     &irExprNode{x: cstExpr.Value},
-		valueType: decl.resolvedType,
-	}
-	if prev := scope.pkg().ns.fetch(cstExpr.VName.Name); prev != nil {
-		return expr, scope.err().Appendf(cstExpr.Source(), "%s has already been registered", cstExpr.VName.Name)
-	}
-	scope.pkg().ns.assign(newIdentExpr(cstExpr.VName, expr), decl)
-	scope.file().consts = append(scope.file().consts, decl)
-	return expr, true
+func (spec *constSpec) processConstExpr(pscope procScope, name *ast.Ident, value ast.Expr) (*constExpr, bool) {
+	val, ok := processExpr(pscope, value)
+	return &constExpr{
+		spec:  spec,
+		name:  name,
+		value: val,
+	}, ok
 }
 
-func (cst *constExpr) resolveType(scope scoper) (typeNode, bool) {
-	declType, ok := cst.decl.resolveType(scope)
+func (cst *constExpr) build(pkgScope *pkgResolveScope) (*ir.ConstExpr, bool) {
+	rscope, scopeOk := newConstResolveScope(pkgScope, cst.spec.bFile)
+	expr, exprOk := cst.buildExpr(rscope)
+	return expr, scopeOk && exprOk
+}
+
+func (cst *constExpr) buildExpr(rscope resolveScope) (*ir.ConstExpr, bool) {
+	spec, specOk := cst.spec.buildSpecNode(rscope)
+	x, ok := buildAExpr(rscope, cst.value)
+	expr := &ir.ConstExpr{
+		Decl:  spec,
+		VName: cst.name,
+		Val:   x,
+	}
 	if !ok {
-		return invalid, false
+		return expr, false
 	}
-	if ir.IsNumber(cst.valueType.kind()) && !ir.IsNumber(declType.kind()) {
-		cst.value, cst.valueType, ok = castNumber(scope, cst.value, declType.irType())
+	if cst.spec.declaredType == nil {
+		return expr, specOk
 	}
-	return declType, ok
+	typeExpr, typeOk := cst.spec.declaredType.buildTypeExpr(rscope)
+	if !typeOk {
+		return expr, false
+	}
+	typ := typeExpr.Typ
+	if ir.IsNumber(typ.Kind()) {
+		expr.Val, ok = castNumber(rscope, x, typ)
+	}
+	typeOk = assignableToAt(rscope, expr.Val.Source(), expr.Val.Type(), typ)
+	return expr, ok && specOk && typeOk
 }
 
-func (cst *constExpr) expr() ast.Expr {
-	return cst.value.expr()
+func (cst *constExpr) pNode() processNode {
+	return newProcessNode[*constExpr](token.CONST, cst.name, cst)
 }
 
-func (cst *constExpr) source() ast.Node {
-	return cst.ext.VName
-}
-
-func (cst *constExpr) buildConstExpr() *ir.ConstExpr {
-	cst.ext.Value = cst.value.buildExpr()
-	return cst.ext
-}
-
-func (cst *constExpr) staticValue() ir.StaticValue {
-	return cst.buildConstExpr()
-}
-
-func (cst *constExpr) buildExpr() ir.Expr {
-	return cst.buildConstExpr().Value
+func constDeclarator(constSpec parentNodeBuilder) declarator {
+	return func(irb *irBuilder, decls *ir.Declarations, dNode *declNode) bool {
+		irSpec, ok := buildParentNode[*ir.ConstDecl](irb, decls, constSpec)
+		if !ok {
+			return false
+		}
+		expr := dNode.ir.(*ir.ConstExpr)
+		expr.Decl = irSpec
+		irSpec.Exprs = append(irSpec.Exprs, expr)
+		return true
+	}
 }
 
 func (cst *constExpr) String() string {
-	return fmt.Sprintf("const %s", cst.ext.String())
+	return fmt.Sprintf("const %s %s", cst.name.Name, cst.value.String())
 }

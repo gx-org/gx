@@ -15,68 +15,31 @@
 package builder
 
 import (
+	"fmt"
 	"go/ast"
 
 	"github.com/gx-org/gx/build/ir"
 )
 
 type parenExpr struct {
-	ext ir.ParenExpr
-
-	typ typeNode
+	src *ast.ParenExpr
 	x   exprNode
-
-	val ir.StaticExpr
 }
 
-var _ exprScalar = (*parenExpr)(nil)
-
-func processParenExpr(owner owner, expr *ast.ParenExpr) (exprNode, bool) {
-	x, ok := processExpr(owner, expr.X)
-	return &parenExpr{
-		ext: ir.ParenExpr{
-			Src: expr,
-		},
-		x: x,
-	}, ok
-}
-
-func (n *parenExpr) toTypeCast() *typeCast {
-	return toTypeCast(n.x)
-}
-
-func (n *parenExpr) buildExpr() ir.Expr {
-	if n.val != nil {
-		return n.val
-	}
-	return &n.ext
-}
-
-func (n *parenExpr) scalar() ir.StaticExpr {
-	return n.val
+func processParenExpr(pscope procScope, src *ast.ParenExpr) (exprNode, bool) {
+	x, ok := processExpr(pscope, src.X)
+	return &parenExpr{src: src, x: x}, ok
 }
 
 func (n *parenExpr) source() ast.Node {
-	return n.expr()
+	return n.src
 }
 
-func (n *parenExpr) expr() ast.Expr {
-	return n.ext.Src
-}
-
-func (n *parenExpr) resolveType(scope scoper) (typeNode, bool) {
-	if n.typ != nil {
-		return typeNodeOk(n.typ)
-	}
-	var ok bool
-	n.typ, ok = n.x.resolveType(scope)
-	n.ext.X = n.x.buildExpr()
-	if !ok {
-		return n.typ, ok
-	}
-	return typeNodeOk(n.typ)
+func (n *parenExpr) buildExpr(rscope resolveScope) (ir.Expr, bool) {
+	x, ok := n.x.buildExpr(rscope)
+	return &ir.ParenExpr{Src: n.src, X: x}, ok
 }
 
 func (n *parenExpr) String() string {
-	return n.typ.String()
+	return fmt.Sprintf("(%s)", n.x.String())
 }

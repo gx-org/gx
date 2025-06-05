@@ -18,161 +18,153 @@ import (
 	"fmt"
 	"go/ast"
 	"go/token"
+	"reflect"
 
 	"github.com/pkg/errors"
+	gxfmt "github.com/gx-org/gx/base/fmt"
 	"github.com/gx-org/gx/build/fmterr"
 	"github.com/gx-org/gx/build/ir"
+	"github.com/gx-org/gx/internal/base/scope"
+	"github.com/gx-org/gx/internal/interp/canonical"
+	"github.com/gx-org/gx/internal/interp/compeval/cpevelements"
+	"github.com/gx-org/gx/interp/elements"
+	"github.com/gx-org/gx/interp/evaluator"
+	"github.com/gx-org/gx/interp"
 )
 
-type scopePackage struct {
+type pkgScope struct {
 	bpkg *basePackage
 	errs *fmterr.Appender
 }
 
-func newScopePackage(pkg *basePackage, errs *fmterr.Errors) *scopePackage {
-	return &scopePackage{
-		bpkg: pkg,
-		errs: errs.NewAppender(pkg.repr.FSet),
-	}
-}
-
-func (s *scopePackage) err() *fmterr.Appender {
+func (s *pkgScope) err() *fmterr.Appender {
 	return s.errs
 }
 
-func (s *scopePackage) pkg() *basePackage {
+func (s *pkgScope) pkg() *basePackage {
 	return s.bpkg
 }
 
-func (s *scopePackage) String() string {
-	return fmt.Sprintf("%s\nerrors:%s", s.bpkg.repr.Name.Name, s.errs.String())
+func (s *pkgScope) String() string {
+	return fmt.Sprintf("%s\nerrors:%s", s.bpkg.name.Name, s.errs.String())
 }
 
-type scopeFile struct {
-	*scopePackage
-	src *file
+type compileEvaluator struct {
+	scope resolveScope
+	irb   *irBuilder
+	ev    evaluator.Context
+
+	file *ir.File
 }
 
-func (s *scopePackage) scopeFile(src *file) *scopeFile {
-	return &scopeFile{scopePackage: s, src: src}
+var _ ir.Fetcher = (*compileEvaluator)(nil)
+
+func newEvaluator(scope resolveScope, irb *irBuilder, ctx evaluator.Context) (*compileEvaluator, bool) {
+	file, ok := buildParentNode[*ir.File](irb, nil, scope.fileScope().bFile)
+	return &compileEvaluator{
+		scope: scope,
+		irb:   irb,
+		ev:    ctx,
+		file:  file,
+	}, ok
 }
 
-func (s *scopeFile) file() *file {
-	return s.src
-}
-
-func (s *scopeFile) namespace() namespace {
-	return s.src.ns
-}
-
-func (s *scopeFile) fileScope() *scopeFile {
-	return s
-}
-
-func (s *scopeFile) scope() scoper {
-	return s
-}
-
-func (s *scopeFile) evalFetcher() *evalFetcher {
-	return &evalFetcher{scope: s}
-}
-
-func (s *scopeFile) String() string {
-	return fmt.Sprintf("%s\n%s", s.src.repr.Name(), s.scopePackage.String())
-}
-
-type scopeBlock struct {
-	*scopeFile
-	fn function
-	ns namespace
-}
-
-func (s *scopeFile) scopeFunc(fn function, ns namespace) *scopeBlock {
-	return &scopeBlock{
-		scopeFile: s,
-		fn:        fn,
-		ns:        ns,
+func (ev *compileEvaluator) update(rscope resolveScope, store ir.Storage, el elements.Element) (*compileEvaluator, bool) {
+	name := store.NameDef().Name
+	subEval, err := ev.ev.Sub(map[string]elements.Element{name: el})
+	if err != nil {
+		return ev, rscope.err().AppendInternalf(store.Source(), "cannot create compilation evaluation context: %v", err)
 	}
+	return newEvaluator(rscope, ev.irb, subEval)
 }
 
-func (s *scopeBlock) namespace() namespace {
-	return s.ns
-}
-
-func (s *scopeBlock) scope() scoper {
-	return s
-}
-
-func (s *scopeBlock) evalFetcher() *evalFetcher {
-	return &evalFetcher{scope: s}
-}
-
-func (s *scopeBlock) scopeBlock() *scopeBlock {
-	return &scopeBlock{
-		scopeFile: s.scopeFile,
-		fn:        s.fn,
-		ns:        s.ns.newChild(),
+func (ev *compileEvaluator) sub(src ast.Node, vals map[string]elements.Element) (*compileEvaluator, bool) {
+	ctx, err := ev.ev.Sub(vals)
+	if err != nil {
+		return nil, ev.scope.err().AppendInternalf(src, "cannot create subcontext: %v", err)
 	}
+	return newEvaluator(ev.scope, ev.irb, ctx)
 }
 
-func (s *scopeBlock) String() string {
-	if s.fn == nil {
-		return fmt.Sprintf("%s: <anonymous block>", s.scopeFile.String())
-	}
-	return fmt.Sprintf("%s: %s", s.scopeFile.String(), s.fn.name())
+func (ev *compileEvaluator) File() *ir.File {
+	return ev.file
 }
 
-type (
-	owner interface {
-		err() *fmterr.Appender
-		fileScope() *scopeFile
-		namespace() namespace
-		scope() scoper
-		String() string
+func (ev *compileEvaluator) BuildExpr(src ast.Expr) (ir.Expr, bool) {
+	file := ev.scope.fileScope().bFile
+	pscope := ev.scope.fileScope().pkgProcScope.newScope(file)
+	expr, ok := processExpr(pscope, src)
+	if !ok {
+		return nil, false
 	}
-
-	// fetcher fetches a type given an identifier.
-	fetcher interface {
-		fetch(scoper, *ast.Ident) (typeNode, bool)
-		fetchIdentNode(name string) *identNode
-	}
-
-	// scope fetches a type for a given AST block such as
-	// a package or a function (represented by the owner).
-	scoper interface {
-		owner
-		// evalFetcher returns a fetcher for evaluating expression.
-		evalFetcher() *evalFetcher
-	}
-)
-
-var (
-	_ owner = (*scopeFile)(nil)
-	_ owner = (*scopeBlock)(nil)
-)
-
-type evalFetcher struct {
-	scope scoper
+	return expr.buildExpr(ev.scope)
 }
 
-func (ev *evalFetcher) FileSet() *token.FileSet {
-	return ev.scope.fileScope().file().pkg.repr.FSet
+func (ev *compileEvaluator) Eval(expr ir.Expr) (canonical.Canonical, error) {
+	val, err := interp.EvalExprInContext(ev.ev, expr)
+	if err != nil {
+		return nil, err
+	}
+	canonicalVal, ok := val.(canonical.Canonical)
+	if !ok {
+		return nil, errors.Errorf("cannot cast %T to %s", val, reflect.TypeFor[canonical.Canonical]().String())
+	}
+	return canonicalVal, nil
 }
 
-func (ev *evalFetcher) Fetch(ident *ast.Ident) (ir.StaticValue, error) {
-	node := ev.scope.namespace().fetch(ident.Name)
-	if node == nil {
-		return nil, nil
-	}
-	if node.expr == nil {
-		return nil, nil
-	}
-	if _, ok := node.expr.resolveType(ev.scope); !ok {
-		return nil, nil
-	}
-	return node.expr.staticValue(), nil
+func (ev *compileEvaluator) Err() *fmterr.Appender {
+	return ev.scope.err()
 }
 
-func (ev *evalFetcher) ToGoValue(ir.RuntimeValue) (any, error) {
-	return nil, errors.Errorf("GX compiler does not support runtime values")
+func (ev *compileEvaluator) String() string {
+	return gxfmt.String(ev.ev)
+}
+
+func defineGlobal(s *scope.RWScope[processNode], tok token.Token, name string, node ir.Storage) {
+	s.Define(name, pNodeFromIR(tok, name, node, nil))
+}
+
+func elementFromStorage(scope resolveScope, ev *compileEvaluator, node ir.Storage) (elements.Element, bool) {
+	el, err := cpevelements.NewRuntimeValue(ev.ev, &ir.ValueRef{Src: node.NameDef(), Stor: node})
+	if err != nil {
+		return el, scope.err().Append(err)
+	}
+	return el, true
+}
+
+func elementFromStorageWithValue(ev *compileEvaluator, node ir.StorageWithValue) (elements.Element, bool) {
+	value := node.Value(&ir.ValueRef{
+		Src:  node.NameDef(),
+		Stor: node,
+	})
+	if _, isType := value.(*ir.TypeValExpr); isType {
+		return nil, true
+	}
+	el, err := interp.EvalExprInContext(ev.ev, value)
+	if err != nil {
+		return nil, ev.scope.err().Appendf(node.Source(), "cannot evaluate expression %s. Original error:\n%+v", value.String(), err)
+	}
+	return el, true
+}
+
+func defineLocalVar(scope resolveScope, storage ir.Storage) bool {
+	lScope, ok := scope.(localScope)
+	if !ok {
+		return scope.err().AppendInternalf(storage.Source(), "%T is not a local scope", scope)
+	}
+	ev, ok := scope.compEval()
+	if !ok {
+		return false
+	}
+	var el elements.Element
+	var elOk bool
+	if withValue, hasValue := storage.(ir.StorageWithValue); hasValue {
+		el, elOk = elementFromStorageWithValue(ev, withValue)
+	} else {
+		el, elOk = elementFromStorage(scope, ev, storage)
+	}
+	if !elOk {
+		return false
+	}
+	return lScope.update(storage, el)
 }

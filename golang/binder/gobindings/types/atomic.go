@@ -79,6 +79,10 @@ func (atom *DeviceAtom[T]) toDeviceBridger(val *values.DeviceArray) ArrayBridge 
 	return NewDeviceAtom[T](val)
 }
 
+func (atom *DeviceAtom[T]) String() string {
+	return atom.GXValue().String()
+}
+
 // HostAtom is an array stored on a host.
 type HostAtom[T dtype.GoDataType] struct {
 	baseBridge[*HostAtom[T], *values.HostArray]
@@ -113,7 +117,7 @@ func (atom *HostAtom[T]) FetchValue() (val T, err error) {
 
 // SendTo sends the value to a device.
 func (atom *HostAtom[T]) SendTo(dev *api.Device) (*DeviceAtom[T], error) {
-	devArray, err := atom.value.ToDevice(dev)
+	devArray, err := atom.value.ToDevice(dev.PlatformDevice())
 	if err != nil {
 		return nil, err
 	}
@@ -124,10 +128,21 @@ func (atom *HostAtom[T]) toDeviceBridger(val *values.DeviceArray) ArrayBridge {
 	return NewDeviceAtom[T](val)
 }
 
+func (atom *HostAtom[T]) String() string {
+	return atom.GXValue().String()
+}
+
 func newAtom[T dtype.GoDataType](dt ir.Kind, array kernels.Array) *HostAtom[T] {
 	typ := ir.TypeFromKind(dt)
 	buffer := kernels.NewBuffer(array)
-	return NewHostAtom[T](values.NewHostArray(typ, buffer))
+	hostArray, err := values.NewHostArray(typ, buffer)
+	if err != nil {
+		// Should never happen.
+		// The only possible error is when an array is created with type
+		// not matching its shape. We construct both in these functions.
+		panic(err)
+	}
+	return NewHostAtom[T](hostArray)
 }
 
 // Bool returns a new Go host atom of bool.

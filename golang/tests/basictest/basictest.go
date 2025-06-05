@@ -19,6 +19,7 @@ import (
 	"testing"
 
 	"github.com/google/go-cmp/cmp"
+	"google3/third_party/golang/cmp/cmpopts/cmpopts"
 	"github.com/gx-org/gx/api"
 	"github.com/gx-org/gx/golang/binder/gobindings/types"
 	"github.com/gx-org/gx/tests/bindings/basic/basic_go_gx"
@@ -48,6 +49,17 @@ func TestReturnTensorFloat32(t *testing.T) {
 	want := []float32{4.2, 42}
 	if !cmp.Equal(got, want) {
 		t.Errorf("got %v but want %v", got, want)
+	}
+}
+
+func TestReturnMultiple(t *testing.T) {
+	a, b, c, err := basic.ReturnMultiple.Run()
+	if err != nil {
+		t.Fatalf("%+v", err)
+	}
+	gotA, gotB, gotC := gxtesting.FetchAtom(t, a), gxtesting.FetchAtom(t, b), gxtesting.FetchAtom(t, c)
+	if gotA != 0 || gotB != 1 || !cmp.Equal(gotC, 2.71828, cmpopts.EquateApprox(0, 0.000001)) {
+		t.Errorf("got (%v, %v, %v) but want (0, 1, 2.71828)", gotA, gotB, gotC)
 	}
 }
 

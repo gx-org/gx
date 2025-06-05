@@ -19,38 +19,25 @@ import (
 	"strings"
 
 	"github.com/gx-org/gx/api/values"
+	gxfmt "github.com/gx-org/gx/base/fmt"
+	"github.com/gx-org/gx/build/fmterr"
 	"github.com/gx-org/gx/build/ir"
 )
 
 // Struct is an instance of a structure.
 type Struct struct {
-	expr       ExprAt
+	expr       ValueAt
 	fields     map[string]Element
-	fieldInit  FieldSelector
 	structType *ir.StructType
 }
 
 var (
-	_ Element        = (*Struct)(nil)
-	_ MethodSelector = (*Struct)(nil)
-	_ FieldSelector  = (*Struct)(nil)
-	_ Copyable       = (*Struct)(nil)
+	_ Copier   = (*Struct)(nil)
+	_ Selector = (*Struct)(nil)
 )
 
-// NewStructWithInit returns a new node representing a structure instance where the field
-// will be constructed only on demand.
-// This is used for structures passed as arguments to GX.
-func NewStructWithInit(structType *ir.StructType, expr ExprAt, fieldInit FieldSelector) *Struct {
-	return &Struct{
-		expr:       expr,
-		fieldInit:  fieldInit,
-		structType: structType,
-		fields:     make(map[string]Element, structType.NumFields()),
-	}
-}
-
 // NewStructFromElements returns a new node representing a structure instance given a slice of
-func NewStructFromElements(structType *ir.StructType, expr ExprAt, vals []Element) *Struct {
+func NewStructFromElements(structType *ir.StructType, expr ValueAt, vals []Element) *Struct {
 	fields := make(map[string]Element, len(vals))
 	for i, field := range structType.Fields.Fields() {
 		fields[field.Name.Name] = vals[i]
@@ -59,7 +46,7 @@ func NewStructFromElements(structType *ir.StructType, expr ExprAt, vals []Elemen
 }
 
 // NewStruct returns a new node representing a structure instance.
-func NewStruct(structType *ir.StructType, expr ExprAt, fields map[string]Element) *Struct {
+func NewStruct(structType *ir.StructType, expr ValueAt, fields map[string]Element) *Struct {
 	return &Struct{
 		expr:       expr,
 		fields:     fields,
@@ -72,79 +59,50 @@ func (n *Struct) StructType() *ir.StructType {
 	return n.structType
 }
 
-func (n *Struct) orderedFieldValues() ([]Element, error) {
+func (n *Struct) orderedFieldValues() []Element {
 	fields := n.structType.Fields.Fields()
 	ordered := make([]Element, len(fields))
 	for i, field := range fields {
-		name := field.Name.Name
-		fieldVal := n.fields[name]
-		var err error
-		if fieldVal == nil {
-			// If a field has not been assigned before,
-			// then forces a select now so that the missing
-			// value is created.
-			fieldVal, err = n.SelectField(n.expr, field.Name.Name)
-			if err != nil {
-				return nil, err
-			}
-		}
-		ordered[i] = fieldVal
+		ordered[i] = n.fields[field.Name.Name]
 	}
-	return ordered, nil
+	return ordered
 }
 
 // Flatten returns a flat list of all the elements stored in the structure.
 func (n *Struct) Flatten() ([]Element, error) {
-	elts, err := n.orderedFieldValues()
-	if err != nil {
-		return nil, err
-	}
-	return flattenAll(elts)
+	return Flatten(n.orderedFieldValues()...)
 }
 
 // Unflatten consumes the next handles to return a GX value.
 func (n *Struct) Unflatten(handles *Unflattener) (values.Value, error) {
-	elts, err := n.orderedFieldValues()
-	if err != nil {
-		return nil, err
-	}
+	elts := n.orderedFieldValues()
 	return handles.ParseComposite(ParseCompositeOf(values.NewStruct), n.expr.Node().Type(), elts)
 }
 
-// SelectField returns the value of a field of a structure given its index.
-func (n *Struct) SelectField(expr ExprAt, name string) (Element, error) {
-	field := n.fields[name]
-	if field != nil {
-		return field, nil
+// Select returns the value of a field of a structure given its index.
+func (n *Struct) Select(expr SelectAt) (Element, error) {
+	name := expr.Node().Stor.NameDef().Name
+	val, ok := n.fields[name]
+	if !ok {
+		return nil, fmterr.Errorf(expr.FSet(), expr.Node().Source(), "field %s undefined", name)
 	}
-	var err error
-	field, err = n.fieldInit.SelectField(expr, name)
-	if err != nil {
-		return nil, err
-	}
-	n.fields[name] = field
-	return field, nil
+	return val, nil
 }
 
-// SelectMethod returns the method of a type given its IR.
-func (n *Struct) SelectMethod(fn ir.Func) (*Func, error) {
-	recv := &Receiver{
-		Ident:   receiverIdent(fn),
-		Element: n,
-	}
-	return NewFunc(fn, recv), nil
+// Kind of the element.
+func (*Struct) Kind() ir.Kind {
+	return ir.StructKind
 }
 
 // Copy the structure to a new node.
-func (n *Struct) Copy() Element {
+func (n *Struct) Copy() Copier {
 	cp := &Struct{
-		fieldInit:  n.fieldInit,
 		structType: n.structType,
 		expr:       n.expr,
 	}
 	cp.fields = make(map[string]Element, len(n.fields))
 	for name, field := range n.fields {
-		copyable, ok := field.(Copyable)
+		copyable, ok := field.(Copier)
 		if ok {
 			field = copyable.Copy()
 		}
@@ -161,9 +119,10 @@ func (n *Struct) SetField(name string, value Element) {
 func (n *Struct) String() string {
 	var b strings.Builder
 	b.WriteString(n.StructType().String())
-	b.WriteString(":\n")
+	b.WriteString("{\n")
 	for i, fld := range n.structType.Fields.Fields() {
-		b.WriteString(fmt.Sprintf(" Field %d (%s): %v\n", i, fld.Name.Name, n.fields[fld.Name.Name]))
+		b.WriteString(gxfmt.Indent(fmt.Sprintf("%d: %s %s = %v\n", i, fld.Name.Name, fld.Type().String(), gxfmt.String(n.fields[fld.Name.Name]))))
 	}
+	b.WriteString("}")
 	return b.String()
 }

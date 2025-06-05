@@ -19,6 +19,7 @@ import (
 
 	"github.com/pkg/errors"
 	"github.com/gx-org/gx/api/values"
+	gxfmt "github.com/gx-org/gx/base/fmt"
 	"github.com/gx-org/gx/build/ir"
 )
 
@@ -113,6 +114,10 @@ func (s *Slice[T]) At(i int) T {
 	return s.vals[i]
 }
 
+func (s *Slice[T]) String() string {
+	return gxfmt.String(s.vals)
+}
+
 // SliceBridge is the bridge between Go and GX values for a slice.
 type SliceBridge struct {
 	goSlice interface {
@@ -152,5 +157,5 @@ func (b *SliceBridge) GXValue() values.Value {
 
 // DType returns the data type of the slice.
 func (b *SliceBridge) DType() ir.Type {
-	return b.gxSlice.SliceType().DType
+	return b.gxSlice.SliceType().DType.Typ
 }

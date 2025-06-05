@@ -27,3 +27,18 @@ func All[T any](slices ...[]T) func(yield func(T) bool) {
 		}
 	}
 }
+
+// Filter iterates over the element of multiple slices
+// and excludes elements for which the filter returns false.
+func Filter[T any](f func(T) bool, slices ...[]T) func(yield func(T) bool) {
+	return func(yield func(T) bool) {
+		for el := range All(slices...) {
+			if !f(el) {
+				continue
+			}
+			if !yield(el) {
+				return
+			}
+		}
+	}
+}

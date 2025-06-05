@@ -1,0 +1,17 @@
+package core
+
+func TestTypeAssert() [sameDim1][sameDim2]float32 {
+	return [4]float32{1, 2, 3, 4}.([sameDim1][sameDim2]float32)
+	// Want:
+	// [2][2]float32{
+        // 	{1, 2},
+        // 	{3, 4},
+        // }
+}
+
+func TestCastWithStatic() [sameDim2]float32 {
+	return [sameDim1]float32{}.([sameDim2]float32)
+	// Want:
+	// [2]float32{0, 0}
+}
+

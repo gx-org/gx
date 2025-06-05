@@ -1,0 +1,13 @@
+package unexported
+
+type unexported struct {
+	a float32
+}
+
+func New() unexported {
+	return unexported{a:42}
+}
+
+func (u unexported) A() float32 {
+	return u.a
+}

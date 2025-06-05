@@ -38,6 +38,7 @@ import (
 
 	"github.com/pkg/errors"
 	"github.com/gx-org/gx/build/ir"
+	"github.com/gx-org/gx/interp/evaluator"
 )
 
 type (
@@ -64,6 +65,8 @@ type (
 		loader Loader
 	}
 )
+
+var _ evaluator.Importer = (*Builder)(nil)
 
 // New returns a new build session.
 func New(loader Loader) *Builder {
@@ -94,6 +97,15 @@ func (b *Builder) importPath(path string) (bPackage, error) {
 		return nil, err
 	}
 	return pkg.(bPackage), nil
+}
+
+// Import a package from its path using the builder.
+func (b *Builder) Import(path string) (*ir.Package, error) {
+	pkg, err := b.loader.Load(b, path)
+	if err != nil {
+		return nil, err
+	}
+	return pkg.IR(), nil
 }
 
 // BuildFiles builds a package from a list of files.

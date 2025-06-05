@@ -21,9 +21,15 @@ import (
 	"github.com/pkg/errors"
 )
 
-type errorWithStackTrace struct {
-	err error
-}
+type (
+	errorWithStackTrace struct {
+		err error
+	}
+
+	withStackTrace interface {
+		StackTrace() errors.StackTrace
+	}
+)
 
 func formatVerbose(err error, s fmt.State, verb rune) {
 	var errs *Errors
@@ -33,9 +39,7 @@ func formatVerbose(err error, s fmt.State, verb rune) {
 		}
 	}
 	fmt.Fprintf(s, "%s", err.Error())
-	var withSt interface {
-		StackTrace() errors.StackTrace
-	}
+	var withSt withStackTrace
 	if !errors.As(err, &withSt) {
 		return
 	}

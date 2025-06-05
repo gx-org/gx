@@ -19,8 +19,8 @@ import (
 	"embed"
 	"math"
 
-	"github.com/pkg/errors"
 	"github.com/gx-org/gx/build/ir"
+	"github.com/gx-org/gx/interp"
 	"github.com/gx-org/gx/stdlib/builtin"
 	"github.com/gx-org/gx/stdlib/impl"
 )
@@ -32,7 +32,7 @@ var fs embed.FS
 var Package = builtin.PackageBuilder{
 	FullPath: "rand",
 	Builders: []builtin.Builder{
-		builtin.BuildConst(func(pkg *ir.Package) (string, ir.Expr, ir.Type, error) {
+		builtin.BuildConst(func(pkg *ir.Package) (string, ir.AssignableExpr, ir.Type, error) {
 			value := &ir.AtomicValueT[float64]{
 				Src: pkg.Name,
 				Val: float64(1 << 64),
@@ -40,7 +40,7 @@ var Package = builtin.PackageBuilder{
 			}
 			return "rescaleRandFloat64", value, value.Type(), nil
 		}),
-		builtin.BuildConst(func(pkg *ir.Package) (string, ir.Expr, ir.Type, error) {
+		builtin.BuildConst(func(pkg *ir.Package) (string, ir.AssignableExpr, ir.Type, error) {
 			value := &ir.AtomicValueT[float64]{
 				Src: pkg.Name,
 				Val: math.Nextafter(1, 0),
@@ -48,103 +48,11 @@ var Package = builtin.PackageBuilder{
 			}
 			return "maxFloat64BelowOne", value, value.Type(), nil
 		}),
-		builtin.BuildType(bootstrapGenerator{}),
-		builtin.BuildFunc(newBootstrapGenerator{}),
 		builtin.ParseSource(&fs, "philox.gx"),
-		builtin.BuildMethod("Philox", philoxUint32{}),
-		builtin.BuildMethod("Philox", philoxUint64{}),
 		builtin.ParseSource(&fs, "rand.gx"),
+		builtin.ImplementBuiltin("newBootstrapGenerator", evalNewBootstrapGenerator),
+		builtin.ImplementBuiltin("bootstrapGenerator.next", evalBootstrapGeneratorNext),
+		builtin.ImplementStubFunc("Philox.Uint32", func(impl *impl.Stdlib) interp.FuncBuiltin { return impl.Rand.PhiloxUint32 }),
+		builtin.ImplementStubFunc("Philox.Uint64", func(impl *impl.Stdlib) interp.FuncBuiltin { return impl.Rand.PhiloxUint64 }),
 	},
-}
-
-type bootstrapGeneratorNext struct {
-	builtin.Func
-}
-
-func (bootstrapGeneratorNext) buildFuncIR(impl *impl.Stdlib, pkg *ir.Package, generatorType *ir.NamedType) *ir.FuncBuiltin {
-	resultType := ir.TypeFromKind(ir.Uint64Kind)
-	fn := &ir.FuncBuiltin{
-		FName: "next",
-		FType: &ir.FuncType{
-			Receiver: generatorType,
-			Params:   &ir.FieldList{},
-			Results: &ir.FieldList{
-				List: []*ir.FieldGroup{
-					&ir.FieldGroup{
-						Type: resultType,
-					},
-				},
-			},
-		},
-	}
-	fn.Impl = bootstrapGeneratorNext{Func: builtin.Func{
-		Func: fn,
-		Impl: impl.Rand.BootstrapGeneratorNext,
-	}}
-	return fn
-}
-
-func (f bootstrapGeneratorNext) BuildFuncType(fetcher ir.Fetcher, call *ir.CallExpr) (*ir.FuncType, error) {
-	return f.Func.Func.FType, nil
-}
-
-type bootstrapGenerator struct {
-	builtin *ir.BuiltinType
-	typ     *ir.NamedType
-}
-
-const bootstrapGeneratorTypeName = "bootstrapGenerator"
-
-func (bootstrapGenerator) BuildNamedType(impl *impl.Stdlib, pkg *ir.Package) (*ir.NamedType, error) {
-	builtin := &ir.BuiltinType{}
-	generatorType := &ir.NamedType{
-		NameT:      bootstrapGeneratorTypeName,
-		Underlying: builtin,
-	}
-	builtin.Impl = bootstrapGenerator{
-		builtin: builtin,
-		typ:     generatorType,
-	}
-	next := bootstrapGeneratorNext{}.buildFuncIR(impl, pkg, generatorType)
-	generatorType.Methods = append(generatorType.Methods, next)
-	return generatorType, nil
-}
-
-type newBootstrapGenerator struct {
-	builtin.Func
-}
-
-func (newBootstrapGenerator) BuildFuncIR(impl *impl.Stdlib, pkg *ir.Package) (*ir.FuncBuiltin, error) {
-	generatorType := pkg.TypeByName(bootstrapGeneratorTypeName)
-	if generatorType == nil {
-		return nil, errors.Errorf("builtin type %s undefined", bootstrapGeneratorTypeName)
-	}
-	fn := &ir.FuncBuiltin{
-		FName: "newBootstrapGenerator",
-		FType: &ir.FuncType{
-			Params: &ir.FieldList{
-				List: []*ir.FieldGroup{
-					&ir.FieldGroup{
-						Type: ir.TypeFromKind(ir.Int64Kind),
-					},
-				},
-			},
-			Results: &ir.FieldList{
-				List: []*ir.FieldGroup{
-					&ir.FieldGroup{
-						Type: generatorType,
-					},
-				},
-			},
-		},
-	}
-	fn.Impl = newBootstrapGenerator{Func: builtin.Func{
-		Func: fn,
-		Impl: impl.Rand.BootstrapGeneratorNew,
-	}}
-	return fn, nil
-}
-
-func (f newBootstrapGenerator) BuildFuncType(fetcher ir.Fetcher, call *ir.CallExpr) (*ir.FuncType, error) {
-	return f.Func.Func.FType, nil
 }

@@ -1,0 +1,12 @@
+package compeval
+
+//gx:compeval
+func returnTwo() intlen {
+	return 2
+}
+
+func TestFunctionAsAxisLength() [returnTwo()]int32 {
+	return [2]int32{1, 2}
+	// Want:
+	// [2]int32{1, 2}
+}

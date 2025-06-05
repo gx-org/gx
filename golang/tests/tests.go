@@ -27,6 +27,7 @@ import (
 	"github.com/gx-org/gx/golang/tests/parameterstest"
 	"github.com/gx-org/gx/golang/tests/pkgvarstest"
 	"github.com/gx-org/gx/golang/tests/randtest"
+	"github.com/gx-org/gx/golang/tests/unexportedtest"
 )
 
 var all = []func(t *testing.T, dev *api.Device){
@@ -38,6 +39,7 @@ var all = []func(t *testing.T, dev *api.Device){
 	randtest.Run,
 	dtypestest.Run,
 	cartpoletest.Run,
+	unexportedtest.Run,
 }
 
 // RunAll runs all the bindings tests.

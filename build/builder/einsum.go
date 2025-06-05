@@ -77,64 +77,37 @@ func (s *identMap) mergeInto(result *identMap) {
 	}
 }
 
-type (
-	tensorRef struct {
-		base     ast.Expr
-		exp      exprNode
-		indices  []*ast.Ident
-		indexMap *identMap
-		typ      *arrayType
-	}
-
-	tensorExpr struct {
-		ext ir.EinsumExpr
-
-		target   *tensorRef
-		lhs, rhs *tensorRef
-
-		others []*tensorRef
-	}
-)
-
-var (
-	_ exprNode = (*tensorExpr)(nil)
-	_ exprNode = (*tensorRef)(nil)
-)
+type tensorRef struct {
+	base     ast.Expr
+	exp      exprNode
+	indices  []*ast.Ident
+	indexMap *identMap
+}
 
 func (r *tensorRef) String() string {
 	return fmt.Sprintf("%s%s", r.base, r.indices)
 }
 
-func (r *tensorRef) resolveType(scope scoper) (typeNode, bool) {
-	typ, ok := r.exp.resolveType(scope)
-	if !ok || !ir.IsValid(typ.irType()) {
-		return nil, false
+func (r *tensorRef) buildExpr(rscope resolveScope) (ir.Expr, bool) {
+	x, ok := r.exp.buildExpr(rscope)
+	if !ok {
+		return x, false
 	}
-	if typ.kind() != ir.ArrayKind {
-		scope.err().Appendf(r.base, "tensor statements must only reference tensors; %s is %s", r.base, typ)
-		return nil, false
+	if x.Type().Kind() != ir.ArrayKind {
+		return x, rscope.err().Appendf(r.base, "tensor statements must only reference tensors; %s is %s", r.base, x.Type().String())
 	}
-	r.typ = typ.(*arrayType)
-	return typ, true
-}
-
-func (r *tensorRef) expr() ast.Expr {
-	return r.base
+	return x, true
 }
 
 func (r *tensorRef) source() ast.Node {
 	return r.base
 }
 
-func (r *tensorRef) buildExpr() ir.Expr {
-	return r.exp.buildExpr()
-}
-
-func processTensorRef(owner owner, target *tensorRef, expr ast.Expr, others ...*tensorRef) (*tensorRef, bool) {
+func processTensorRef(pscope procScope, target *tensorRef, expr ast.Expr, others ...*tensorRef) (*tensorRef, bool) {
 	if binExp, ok := expr.(*ast.BinaryExpr); ok {
 		// Handle tensor expressions with more than two operands: process the subexpression and convert
 		// its result type into a synthetic tensorRef.
-		subExp, ok := processTensorExpr(owner, target, binExp, others...)
+		subExp, ok := processTensorExpr(pscope, target, binExp, others...)
 		if !ok {
 			return nil, false
 		}
@@ -149,25 +122,25 @@ func processTensorRef(owner owner, target *tensorRef, expr ast.Expr, others ...*
 	case *ast.Ident:
 	case *ast.IndexExpr:
 	default:
-		owner.err().Appendf(expr, "invalid tensor reference base: %T", expr)
+		pscope.err().Appendf(expr, "invalid tensor reference base: %T", expr)
 		return nil, false
 	}
 
-	exp, ok := processExpr(owner, expr)
+	exp, ok := processExpr(pscope, expr)
 	if !ok || exp == nil {
 		return nil, false
 	}
 
-	indices := []*ast.Ident{}
+	var indices []*ast.Ident
 	idents := &identMap{}
 	for i, elt := range elts {
 		ident, ok := elt.(*ast.Ident)
 		if !ok {
-			owner.err().Appendf(elt, "expected tensor reference to index using bare variable, got %T", elt)
+			pscope.err().Appendf(elt, "expected tensor reference to index using bare variable, got %T", elt)
 			return nil, false
 		}
 		if idents.contains(ident) {
-			owner.err().Appendf(elt, "tensor reference includes axis %q more than once", ident)
+			pscope.err().Appendf(elt, "tensor reference includes axis %q more than once", ident)
 			return nil, false
 		}
 		indices = append(indices, ident)
@@ -176,45 +149,92 @@ func processTensorRef(owner owner, target *tensorRef, expr ast.Expr, others ...*
 	return &tensorRef{base: expr, exp: exp, indices: indices, indexMap: idents}, true
 }
 
-func (s *tensorExpr) resolveType(scope scoper) (typeNode, bool) {
-	_, lOk := s.lhs.resolveType(scope)
-	_, rOk := s.rhs.resolveType(scope)
-	if !lOk || !rOk {
+type tensorExpr struct {
+	src *ast.BinaryExpr
+
+	target   *tensorRef
+	lhs, rhs *tensorRef
+
+	others []*tensorRef
+}
+
+var _ exprNode = (*tensorExpr)(nil)
+
+func processEinsumExpr(pscope procScope, left ast.Expr, right *ast.CallExpr) (exprNode, bool) {
+	target, ok := processTensorRef(pscope, nil, left)
+	if !ok {
+		return nil, false
+	}
+	return processTensorExpr(pscope, target, right.Args[0])
+}
+
+func processTensorExpr(pscope procScope, target *tensorRef, expr ast.Expr, others ...*tensorRef) (*tensorExpr, bool) {
+	binExp, ok := expr.(*ast.BinaryExpr)
+	if !ok {
+		pscope.err().Appendf(expr, "expected a binary expression, got %T", expr)
+		return nil, false
+	}
+	if binExp.Op != token.MUL {
+		pscope.err().Appendf(expr, "expected a multiply operation, got %q", binExp.Op.String())
 		return nil, false
 	}
 
-	leftRank := s.lhs.typ.rnk.(*rank)
-	rightRank := s.rhs.typ.rnk.(*rank)
-	targetRank := &rank{ext: ir.Rank{}, dims: []axisLengthNode{}}
-	targetTyp := &arrayType{
-		ast:  &ast.ArrayType{},
-		dtyp: s.lhs.typ.dtyp,
-		rnk:  targetRank,
+	rhs, ok := processTensorRef(pscope, target, binExp.Y)
+	if !ok {
+		return nil, false
 	}
+	lhs, ok := processTensorRef(pscope, target, binExp.X, append(append(([]*tensorRef)(nil), others...), rhs)...)
+	if !ok {
+		return nil, false
+	}
+	return &tensorExpr{
+		src:    binExp,
+		target: target,
+		others: others,
+		lhs:    lhs,
+		rhs:    rhs,
+	}, true
+}
 
+func (s *tensorExpr) buildExpr(scope resolveScope) (ir.Expr, bool) {
+	lhs, xOk := s.lhs.buildExpr(scope)
+	rhs, yOk := s.rhs.buildExpr(scope)
+	ext := &ir.EinsumExpr{Src: s.src, X: lhs, Y: rhs}
+	if !xOk || !yOk {
+		return ext, false
+	}
+	lhsTyp, xOk := lhs.Type().(ir.ArrayType)
+	if !xOk {
+		return ext, scope.err().AppendInternalf(lhs.Source(), "%s:%s:%T is not an array type", lhs.String(), lhs.Type().String(), lhs.Type())
+	}
+	rhsTyp, yOk := rhs.Type().(ir.ArrayType)
+	if !yOk {
+		return ext, scope.err().AppendInternalf(rhs.Source(), "%s:%s:%T is not an array type", rhs.String(), rhs.Type().String(), rhs.Type())
+	}
+	leftRank := lhsTyp.Rank()
+	rightRank := rhsTyp.Rank()
+	targetRank := &ir.Rank{}
 	// TODO: Enforce correct output axis ordering: batch dimensions (in LHS order), then LHS cross
 	// followed by RHS cross dimensions.
-	s.ext.BatchAxes = findBatchAxes(s.target, s.lhs, s.rhs, s.others...)
-	s.ext.ReduceAxes = findReduceAxes(s.target, s.lhs, s.rhs, s.others...)
-	for _, lhsAxis := range s.ext.BatchAxes[0] {
-		targetRank.dims = append(targetRank.dims, leftRank.dims[lhsAxis])
+	ext.BatchAxes = findBatchAxes(s.target, s.lhs, s.rhs, s.others...)
+	ext.ReduceAxes = findReduceAxes(s.target, s.lhs, s.rhs, s.others...)
+	for _, lhsAxis := range ext.BatchAxes[0] {
+		targetRank.Ax = append(targetRank.Ax, leftRank.Axes()[lhsAxis])
 	}
 	crossAxes := findCrossAxes(s.target, s.lhs, s.rhs, s.others...)
 	for _, axis := range crossAxes[0] {
-		targetRank.dims = append(targetRank.dims, leftRank.dims[axis])
+		targetRank.Ax = append(targetRank.Ax, leftRank.Axes()[axis])
 	}
 	for _, axis := range crossAxes[1] {
-		targetRank.dims = append(targetRank.dims, rightRank.dims[axis])
+		targetRank.Ax = append(targetRank.Ax, rightRank.Axes()[axis])
 	}
-
-	// Bind the result to the target name in the enclosing scope.
-	s.ext.Typ = targetTyp.irType()
-	return targetTyp, true
+	ext.Typ = ir.NewArrayType(&ast.ArrayType{}, lhsTyp.DataType(), targetRank)
+	return ext, true
 }
 
 func (s *tensorExpr) getResultTensorRef() *tensorRef {
 	i := 0
-	indices := []*ast.Ident{}
+	var indices []*ast.Ident
 	idents := &identMap{}
 
 	batchAxes := findBatchAxes(s.target, s.lhs, s.rhs, s.others...)
@@ -235,21 +255,11 @@ func (s *tensorExpr) getResultTensorRef() *tensorRef {
 		idents.add(s.rhs.indices[axis], i)
 		i++
 	}
-	return &tensorRef{base: s.ext.Src, exp: s, indices: indices, indexMap: idents}
-}
-
-func (s *tensorExpr) expr() ast.Expr {
-	return s.ext.Src
+	return &tensorRef{base: s.src, exp: s, indices: indices, indexMap: idents}
 }
 
 func (s *tensorExpr) source() ast.Node {
-	return s.ext.Src
-}
-
-func (s *tensorExpr) buildExpr() ir.Expr {
-	s.ext.X = s.lhs.buildExpr()
-	s.ext.Y = s.rhs.buildExpr()
-	return &s.ext
+	return s.src
 }
 
 func (s *tensorExpr) String() string {
@@ -331,42 +341,4 @@ func toEinsumCall(expr ast.Expr) *ast.CallExpr {
 		return nil
 	}
 	return call
-}
-
-func processTensorExpr(owner owner, target *tensorRef, expr ast.Expr, others ...*tensorRef) (*tensorExpr, bool) {
-	binExp, ok := expr.(*ast.BinaryExpr)
-	if !ok {
-		owner.err().Appendf(expr, "expected a binary expression, got %T", expr)
-		return nil, false
-	}
-	if binExp.Op != token.MUL {
-		owner.err().Appendf(expr, "expected a multiply operation, got %q", binExp.Op.String())
-		return nil, false
-	}
-
-	rhs, ok := processTensorRef(owner, target, binExp.Y)
-	if !ok {
-		return nil, false
-	}
-	lhs, ok := processTensorRef(owner, target, binExp.X, append(append(([]*tensorRef)(nil), others...), rhs)...)
-	if !ok {
-		return nil, false
-	}
-	return &tensorExpr{
-		ext: ir.EinsumExpr{
-			Src: binExp,
-		},
-		target: target,
-		others: others,
-		lhs:    lhs,
-		rhs:    rhs,
-	}, true
-}
-
-func processEinsumExpr(owner owner, left ast.Expr, right *ast.CallExpr) (exprNode, bool) {
-	target, ok := processTensorRef(owner, nil, left)
-	if !ok {
-		return nil, false
-	}
-	return processTensorExpr(owner, target, right.Args[0])
 }

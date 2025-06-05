@@ -15,78 +15,64 @@
 package builder
 
 import (
+	"fmt"
 	"go/ast"
 	"go/parser"
 	"go/token"
 	"io"
 	"io/fs"
-	"maps"
-	"slices"
 	"sort"
 	"strconv"
+	"strings"
+	"sync"
 
 	"github.com/pkg/errors"
+	"github.com/gx-org/gx/base/ordered"
 	"github.com/gx-org/gx/build/fmterr"
 	"github.com/gx-org/gx/build/ir"
 )
 
-type (
-	topLevelIdent struct {
-		node    *identNode
-		builder irBuilder
-	}
-
-	packageNamespace struct {
-		idents map[string]*topLevelIdent
-		pkg    *basePackage
-	}
-
-	irBuilder interface {
-		buildIR(pkg *ir.Package)
-	}
-)
-
-var _ namespaceFetcher = (*packageNamespace)(nil)
-
-func (ns *packageNamespace) fetchIdent(name string) (*identNode, bool) {
-	tpIdent, ok := ns.idents[name]
-	if !ok {
-		return nil, false
-	}
-	return tpIdent.node, true
+type lastBuild struct {
+	decls *ordered.Map[string, *declNode]
+	pkg   *ir.Package
 }
 
-func (ns *packageNamespace) fetch(name string) *identNode {
-	return fetch(ns.fetchIdent, nil, name)
-}
-
-func (ns *packageNamespace) assign(node *identNode, b irBuilder) {
-	ns.idents[node.ident.Name] = &topLevelIdent{
-		node:    node,
-		builder: b,
+func (lb *lastBuild) String() string {
+	s := &strings.Builder{}
+	fmt.Fprintln(s, "Declarations:")
+	for k, v := range lb.decls.Iter() {
+		fmt.Fprintf(s, "  %s: %T\n", k, v)
 	}
+	fmt.Fprintln(s, "Package:")
+	for _, cDecl := range lb.pkg.Decls.Consts {
+		for _, cExpr := range cDecl.Exprs {
+			fmt.Fprintf(s, "  const %s\n", cExpr.VName)
+		}
+	}
+	return s.String()
 }
 
 type basePackage struct {
-	override bool
-	bld      *Builder
-	repr     ir.Package
-	ns       *packageNamespace
+	bld *Builder
+
+	name  *ast.Ident
+	path  string
+	fset  *token.FileSet
+	files *ordered.Map[string, *file]
+	last  *lastBuild
 }
 
-func newBasePackage(b *Builder, path string, override bool) *basePackage {
+func newBasePackage(b *Builder, path string) *basePackage {
 	pkg := &basePackage{
-		bld:      b,
-		override: override,
-		ns: &packageNamespace{
-			idents: make(map[string]*topLevelIdent),
-		},
-		repr: ir.Package{
-			FSet: token.NewFileSet(),
-			Path: path,
-		},
+		bld:   b,
+		path:  path,
+		fset:  token.NewFileSet(),
+		files: ordered.NewMap[string, *file](),
 	}
-	pkg.ns.pkg = pkg
+	pkg.last = &lastBuild{
+		decls: ordered.NewMap[string, *declNode](),
+		pkg:   pkg.newPackageIR(),
+	}
 	return pkg
 }
 
@@ -95,44 +81,53 @@ func (pkg *basePackage) base() *basePackage {
 }
 
 func (pkg *basePackage) setOrCheckName(name *ast.Ident) error {
-	if pkg.repr.Name == nil {
-		pkg.repr.Name = name
+	if pkg.name == nil {
+		pkg.name = name
 		return nil
 	}
-	if pkg.repr.Name.Name != name.Name {
-		return errors.Errorf("package has already name %q", pkg.repr.Name)
+	if pkg.name.Name != name.Name {
+		return errors.Errorf("package has already name %q", pkg.name)
 	}
 	return nil
-}
-
-func (pkg *basePackage) cleanIR() {
-	pkg.repr.Files = nil
-	pkg.repr.Funcs = nil
-	pkg.repr.Vars = nil
-	pkg.repr.Consts = nil
-	pkg.repr.Types = nil
 }
 
 func (pkg *basePackage) builder() *Builder {
 	return pkg.bld
 }
 
-func (pkg *basePackage) buildIdentIRs() {
-	for _, name := range slices.Sorted(maps.Keys(pkg.ns.idents)) {
-		node := pkg.ns.idents[name]
-		node.builder.buildIR(&pkg.repr)
+func (pkg *basePackage) resolveBuild(pscope *pkgProcScope) bool {
+	pkgScope := newPackageResolveScope(pscope)
+	if ok := pscope.dcls.resolveAll(pkgScope); !ok {
+		return false
+	}
+	irb := pkgScope.newIRBuilder()
+	last := &lastBuild{pkg: irb.irPkg()}
+	var ok bool
+	last.decls, last.pkg.Decls, ok = pkg.buildDeclarations(irb)
+	if !ok {
+		return false
+	}
+	pkg.last = last
+	return true
+}
+
+func (pkg *basePackage) newPackageIR() *ir.Package {
+	return &ir.Package{
+		FSet:  pkg.fset,
+		Name:  pkg.name,
+		Path:  pkg.path,
+		Files: make(map[string]*ir.File),
+		Decls: &ir.Declarations{},
 	}
 }
 
-func (pkg *basePackage) checkIfDefined(block *scopeFile, ident *ast.Ident) bool {
-	if pkg.override {
-		return true
+func (pkg *basePackage) buildDeclarations(irb *irBuilder) (*ordered.Map[string, *declNode], *ir.Declarations, bool) {
+	decls, ok := irb.pkgScope.decls().collectDeclNodes()
+	if !ok {
+		return nil, nil, false
 	}
-	if prev := pkg.ns.fetch(ident.Name); prev != nil {
-		appendRedeclaredError(block.err(), ident, prev)
-		return false
-	}
-	return true
+	irDecls, ok := buildDeclarations(irb, decls)
+	return decls, irDecls, ok
 }
 
 // FilePackage builds GX package from GX source files
@@ -148,9 +143,9 @@ var _ Package = (*FilePackage)(nil)
 
 func (b *Builder) newFilePackage(path, name string) *FilePackage {
 	pkg := &FilePackage{
-		basePackage: newBasePackage(b, path, false),
+		basePackage: newBasePackage(b, path),
 	}
-	pkg.irImports = newFile(pkg.basePackage, "")
+	pkg.irImports = newFile(pkg.basePackage, "", &ast.File{})
 	if name != "" {
 		pkg.setOrCheckName(&ast.Ident{Name: name})
 	}
@@ -159,7 +154,6 @@ func (b *Builder) newFilePackage(path, name string) *FilePackage {
 
 // BuildFiles complete the package definitions from a list of source files.
 func (pkg *FilePackage) BuildFiles(fs fs.FS, filenames []string) (err error) {
-	pkg.cleanIR()
 	if fs == nil {
 		return errors.Errorf("no file system to load files from")
 	}
@@ -168,85 +162,68 @@ func (pkg *FilePackage) BuildFiles(fs fs.FS, filenames []string) (err error) {
 	}
 	sort.Strings(filenames)
 	errs := fmterr.Errors{}
+	pscope := newPackageProcScope(false, pkg.basePackage, &errs)
+	ok := true
 	for _, filename := range filenames {
-		pkg.buildFile(fs, filename, &errs)
+		fileOk := pkg.buildFile(pscope, fs, filename)
+		ok = ok && fileOk
 	}
-	if !errs.Empty() {
-		return errs.ToError()
+	if !ok {
+		return &errs
 	}
-	pkg.resolve(&errs)
-	return errs.ToError()
-}
-
-// buildFile processes a file. Returned false if the file could not be parsed.
-// Process errors are accumulated in the package and functions.
-func (pkg *FilePackage) buildFile(fs fs.FS, filename string, errs *fmterr.Errors) {
-	file, err := fs.Open(filename)
-	if err != nil {
-		errs.Append(err)
-		return
-	}
-	src, err := io.ReadAll(file)
-	if err != nil {
-		errs.Append(errors.Errorf("cannot read file %q: %v", file, err))
-		return
-	}
-
-	fileDecl, err := parser.ParseFile(pkg.repr.FSet, filename, src, parser.ParseComments|parser.SkipObjectResolution)
-	if err != nil {
-		errs.Append(errors.Errorf("cannot parse file %s:\n\t%v", filename, err))
-		return
-	}
-	pkg.process(filename, fileDecl, errs)
-}
-
-// ImportIR imports package definitions from a GX intermediate representation.
-func (pkg *FilePackage) ImportIR(repr *ir.Package) error {
-	pkg.cleanIR()
-	errs := &fmterr.Errors{}
-	scope := newScopePackage(pkg.basePackage, errs).scopeFile(pkg.irImports)
-	if importNamedTypes(scope, repr.Types); !errs.Empty() {
-		return errs.ToError()
-	}
-	if importFuncs(scope, repr.Funcs); !errs.Empty() {
-		return errs.ToError()
-	}
-	if importConstDecls(scope, repr.Consts); !errs.Empty() {
-		return errs.ToError()
+	if !pkg.resolveBuild(pscope) {
+		return &errs
 	}
 	return nil
 }
 
-func (pkg *FilePackage) process(name string, src *ast.File, errs *fmterr.Errors) {
-	pkg.cleanIR()
-	scope := newScopePackage(pkg.basePackage, errs)
-	file := processFile(scope, name, src)
-	pkg.files = append(pkg.files, file)
+// buildFile processes a file. Returned false if the file could not be parsed.
+// Process errors are accumulated in the package and functions.
+func (pkg *FilePackage) buildFile(pscope *pkgProcScope, fs fs.FS, filename string) bool {
+	file, err := fs.Open(filename)
+	if err != nil {
+		return pscope.err().Append(err)
+	}
+	src, err := io.ReadAll(file)
+	if err != nil {
+		return pscope.err().Append(errors.Errorf("cannot read file %q: %v", file, err))
+	}
+
+	fileDecl, err := parser.ParseFile(pkg.fset, filename, src, parser.ParseComments|parser.SkipObjectResolution)
+	if err != nil {
+		return pscope.err().Append(errors.Errorf("cannot parse file %s:\n\t%v", filename, err))
+	}
+	fileB, fileOk := processFile(pscope, filename, fileDecl)
+	pkg.files = append(pkg.files, fileB)
+	return fileOk
 }
 
-func (pkg *FilePackage) resolve(errs *fmterr.Errors) {
-	scope := newScopePackage(pkg.basePackage, errs)
-	pkg.irImports.resolveAll(scope)
-	for _, file := range pkg.files {
-		file.resolveAll(scope)
+// ImportIR imports package definitions from a GX intermediate representation.
+func (pkg *FilePackage) ImportIR(decls *ir.Declarations) error {
+	errs := &fmterr.Errors{}
+	scope := newPackageProcScope(false, pkg.basePackage, errs)
+	if !importNamedTypes(scope, pkg.irImports, decls.Types) {
+		return errs
 	}
-}
-
-func (pkg *FilePackage) buildIR() {
-	pkg.repr.Files = make(map[string]*ir.File)
-	pkg.irImports.buildIR(&pkg.repr)
-	for _, file := range pkg.files {
-		file.buildIR(&pkg.repr)
+	if !importFuncs(scope, pkg.irImports, decls.Funcs) {
+		return errs
 	}
-	pkg.buildIdentIRs()
+	if !importConstDecls(scope, pkg.irImports, decls.Consts) {
+		return errs
+	}
+	rscope := newPackageResolveScope(scope)
+	irb := rscope.newIRBuilder()
+	pkg.last = &lastBuild{pkg: irb.irPkg()}
+	var ok bool
+	if pkg.last.decls, pkg.last.pkg.Decls, ok = pkg.buildDeclarations(irb); !ok {
+		return errs
+	}
+	return nil
 }
 
 // IR returns the package GX intermediate representation.
 func (pkg *FilePackage) IR() *ir.Package {
-	if pkg.repr.Files == nil {
-		pkg.buildIR()
-	}
-	return &pkg.repr
+	return pkg.last.pkg
 }
 
 // IncrementalPackage builds GX package from an AST.
@@ -254,6 +231,7 @@ func (pkg *FilePackage) IR() *ir.Package {
 // Any name in the package can be reassigned without triggering an error.
 // The main use case is for GX in a notebook.
 type IncrementalPackage struct {
+	mut sync.Mutex
 	*basePackage
 
 	next  int
@@ -265,9 +243,9 @@ var _ Package = (*IncrementalPackage)(nil)
 // NewIncrementalPackage creates a new incremental package.
 func (b *Builder) NewIncrementalPackage(name string) *IncrementalPackage {
 	pkg := &IncrementalPackage{
-		basePackage: newBasePackage(b, "", true),
+		basePackage: newBasePackage(b, ""),
 	}
-	pkg.basePackage.repr.Name = &ast.Ident{
+	pkg.basePackage.name = &ast.Ident{
 		Name: name,
 	}
 	return pkg
@@ -275,26 +253,61 @@ func (b *Builder) NewIncrementalPackage(name string) *IncrementalPackage {
 
 // Build a AST source file. Definitions are added to the package or replace existing definitions.
 func (pkg *IncrementalPackage) Build(src string) error {
+	pkg.mut.Lock()
+	defer pkg.mut.Unlock()
+
 	name := strconv.Itoa(pkg.next)
-	astFile, err := parser.ParseFile(pkg.repr.FSet, name, src, parser.ParseComments)
+	astFile, err := parser.ParseFile(pkg.fset, name, src, parser.ParseComments)
 	if err != nil {
 		return err
 	}
 	errs := &fmterr.Errors{}
-	scope := newScopePackage(pkg.basePackage, errs)
-	file := processFile(scope, name, astFile)
+	pscope := newPackageProcScope(true, pkg.basePackage, errs)
+	file, fileOk := processFile(pscope, name, astFile)
 	pkg.files = append(pkg.files, file)
-	file.resolveAll(scope)
-	return errs.ToError()
+	if !fileOk {
+		return errs
+	}
+	if !pkg.resolveBuild(pscope) {
+		return errs
+	}
+	return nil
+}
+
+// BuildExpr builds an expression.
+func (pkg *IncrementalPackage) BuildExpr(src string) (ir.Expr, error) {
+	const fileName = "expression"
+	fset := &token.FileSet{}
+	fset.AddFile(fileName, -1, len(src))
+	astExpr, err := parser.ParseExprFrom(fset, fileName, src, parser.SkipObjectResolution)
+	if err != nil {
+		return nil, err
+	}
+	errs := &fmterr.Errors{}
+	pkgScope := newPackageProcScope(false, pkg.basePackage, errs)
+	file := newFile(pkg.basePackage, fileName, &ast.File{})
+	pscope := pkgScope.newScope(file)
+	expr, _ := processExpr(pscope, astExpr)
+	if !errs.Empty() {
+		return nil, errs
+	}
+	pkgRScope := newPackageResolveScope(pscope.pkgProcScope)
+	rScope, scopeOk := pkgRScope.newFileScope(file, nil)
+	if !scopeOk {
+		return nil, errs
+	}
+	fScope := newFuncScope(rScope, &ir.FuncType{})
+	irExpr, ok := expr.buildExpr(fScope)
+	if !ok {
+		return nil, errs
+	}
+	return irExpr, nil
 }
 
 // IR returns the package GX intermediate representation.
 func (pkg *IncrementalPackage) IR() *ir.Package {
-	pkg.cleanIR()
-	pkg.repr.Files = make(map[string]*ir.File)
-	for _, file := range pkg.files {
-		file.buildIR(&pkg.repr)
-	}
-	pkg.buildIdentIRs()
-	return &pkg.repr
+	pkg.mut.Lock()
+	defer pkg.mut.Unlock()
+
+	return pkg.last.pkg
 }

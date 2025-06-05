@@ -108,7 +108,7 @@ func (bb *baseBridge[B, V]) Shape() *shape.Shape {
 
 // ToDevice transfers the array to a device.
 func (bb *baseBridge[B, V]) ToDevice(dev *api.Device) (ArrayBridge, error) {
-	value, err := bb.value.ToDevice(dev)
+	value, err := bb.value.ToDevice(dev.PlatformDevice())
 	if err != nil {
 		return nil, err
 	}

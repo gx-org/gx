@@ -28,24 +28,31 @@ namespace {{.Namespace}} {
 {{$func.Name}}Func::{{$func.Name}}Func({{.Class}}& package): package_(package) {}
 
 {{$func.ReturnType}} {{$func.Name}}Func::operator()({{range $param := $func.Params}}const {{$param.Type}}& {{$param.Name}}{{$param.Separator}}{{end}}) {
- // Extract values from the parameters.
- std::vector<std::reference_wrapper<const ::gxlang::cppgx::Value>> args;
-{{- range $i, $param := .Params }}
- args.push_back({{$param.Name}}.get_value());
-{{- end}}
- absl::StatusOr<::gxlang::cppgx::Function> fn(package_.package_.FindFunction("{{$func.Name}}"));
+ const absl::StatusOr<::gxlang::cppgx::Function> fn(package_.package_.FindFunction("{{$func.Name}}"));
  if (!fn.ok()) {
   return fn.status();
  }
+ // Extract values from the parameters.
+ const std::vector<std::reference_wrapper<const ::gxlang::cppgx::Value>> args = {
+{{- range $i, $param := .Params }}
+  {{$param.Name}}.get_value(),
+{{- end}}
+ };
  absl::StatusOr<::gxlang::cppgx::FunctionResult> fnr(fn->Run(args));
  if (!fnr.ok()) {
   return fnr.status();
  }
  std::vector<::gxlang::cppgx::Value>& return_values(fnr->mutable_values());
-{{- range $i, $result := .Results }}
- {{$result.Type}} res{{$i}}(std::move(return_values[{{$i}}]));
+{{- if $func.ReturnTuple}}
+ {{$func.ReturnType}} result({
+ {{- range $i, $result := .Results }}
+  {{if gt $i 0}}, {{end}}std::move(return_values[{{$i}}])
+ {{- end}}
+});
+ return result;
+{{- else}}
+ return std::move(return_values[0]);
 {{- end}}
- return res0;
 }
 
 {{end}}

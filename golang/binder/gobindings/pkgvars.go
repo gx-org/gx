@@ -31,10 +31,10 @@ type {{.VName.Name}}Static struct {
 	value {{.GoType}}
 }
 
-func ({{.VName.Name}}Static) Set(value {{.GoType}}) interp.PackageOptionFactory {
-	return func(plat platform.Platform) interp.PackageOption {
+func ({{.VName.Name}}Static) Set(value {{.GoType}}) options.PackageOptionFactory {
+	return func(plat platform.Platform) options.PackageOption {
 		hostValue := {{.ToHostValue}}
-		return interp.PackageVarSetValue{
+		return options.PackageVarSetValue{
 			Pkg: "{{.PackagePath}}",
 			Var: "{{.VName.Name}}",
 			Value: hostValue.GXValue(),
@@ -45,23 +45,23 @@ func ({{.VName.Name}}Static) Set(value {{.GoType}}) interp.PackageOptionFactory 
 
 type pkgVar struct {
 	*binder
-	*ir.VarDecl
+	*ir.VarExpr
 	VarIndex int
 }
 
 func (v pkgVar) ToHostValue() (string, error) {
-	kind := v.TypeV.Kind()
+	kind := v.Type().Kind()
 	if kind == ir.IntLenKind || kind == ir.IntIdxKind {
 		return "types.DefaultInt(value)", nil
 	}
-	if ir.SupportOperators(kind) {
+	if ir.SupportOperators(v.Type()) {
 		return fmt.Sprintf("types.%s(value)", strings.Title(kind.String())), nil
 	}
 	return "", errors.Errorf("static variable of type %s not supported", kind.String())
 }
 
 func (v pkgVar) GoType() (string, error) {
-	return v.nameGoType(v.TypeV)
+	return v.nameGoType(v.Type())
 }
 
 func (v pkgVar) PackagePath() string {
@@ -69,14 +69,16 @@ func (v pkgVar) PackagePath() string {
 }
 
 func (b *binder) buildPkgVars() (string, error) {
-	return tmpl.IterateFunc(b.Package.Vars, func(index int, decl *ir.VarDecl) (string, error) {
+	return tmpl.IterateFunc(b.Package.Decls.Vars, func(index int, decl *ir.VarDecl) (string, error) {
 		buf := strings.Builder{}
-		if err := pkgVarsTmpl.Execute(&buf, &pkgVar{
-			binder:   b,
-			VarDecl:  decl,
-			VarIndex: index,
-		}); err != nil {
-			return "", errors.Errorf("cannot generate %s static variable declaration: %v", decl.VName.Name, err)
+		for _, expr := range decl.Exprs {
+			if err := pkgVarsTmpl.Execute(&buf, &pkgVar{
+				binder:   b,
+				VarExpr:  expr,
+				VarIndex: index,
+			}); err != nil {
+				return "", errors.Errorf("cannot generate %s static variable declaration: %v", expr.VName.Name, err)
+			}
 		}
 		return buf.String(), nil
 	})

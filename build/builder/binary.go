@@ -15,65 +15,41 @@
 package builder
 
 import (
+	"fmt"
 	"go/ast"
 	"go/token"
 
-	"github.com/gx-org/gx/build/fmterr"
 	"github.com/gx-org/gx/build/ir"
 )
 
 type binaryExpr struct {
-	ext ir.BinaryExpr
-
-	typ  typeNode
+	src  *ast.BinaryExpr
 	x, y exprNode
-
-	val ir.StaticExpr
 }
 
 var _ exprNode = (*binaryExpr)(nil)
 
-func processBinaryExpr(owner owner, expr *ast.BinaryExpr) (exprNode, bool) {
-	x, xOk := processExpr(owner, expr.X)
-	y, yOk := processExpr(owner, expr.Y)
+func processBinaryExpr(pscope procScope, expr *ast.BinaryExpr) (exprNode, bool) {
+	x, xOk := processExpr(pscope, expr.X)
+	y, yOk := processExpr(pscope, expr.Y)
 	return &binaryExpr{
-		ext: ir.BinaryExpr{
-			Src: expr,
-		},
-		x: x,
-		y: y,
+		src: expr,
+		x:   x,
+		y:   y,
 	}, xOk && yOk
 }
 
-func (n *binaryExpr) buildExpr() ir.Expr {
-	if n.val != nil {
-		return n.val
-	}
-	n.ext.X = n.x.buildExpr()
-	n.ext.Y = n.y.buildExpr()
-	n.ext.Typ = n.typ.irType()
-	return &n.ext
-}
-
 func (n *binaryExpr) source() ast.Node {
-	return n.expr()
+	return n.src
 }
 
-func (n *binaryExpr) expr() ast.Expr {
-	return n.ext.Src
-}
-
-func (n *binaryExpr) scalar() ir.StaticValue {
-	return n.val
-}
-
-func (n *binaryExpr) checkKind(scope scoper, x exprNode, typ ir.Type, appendErr bool) (isScalar bool, arrayType ir.ArrayType, ok bool) {
-	isScalar = ir.SupportOperators(typ.Kind())
+func (n *binaryExpr) checkKind(scope resolveScope, x exprNode, typ ir.Type, appendErr bool) (isScalar bool, arrayType ir.ArrayType, ok bool) {
+	isScalar = ir.SupportOperators(typ)
 	var isArray bool
 	arrayType, isArray = typ.(ir.ArrayType)
 	if !isScalar && !isArray {
 		if appendErr {
-			scope.err().Appendf(x.source(), "invalid operation: operator %s not defined on type %s", n.ext.Src.Op.String(), typ.String())
+			scope.err().Appendf(x.source(), "invalid operation: operator %s not defined on type %s", n.src.Op.String(), typ.String())
 		}
 		ok = false
 		return
@@ -82,151 +58,141 @@ func (n *binaryExpr) checkKind(scope scoper, x exprNode, typ ir.Type, appendErr 
 	return
 }
 
-func (n *binaryExpr) resolveOperator(scope scoper, ops typeNode) (result typeNode, forceCastNumber, ok bool) {
+func (n *binaryExpr) determineOutputType(scope resolveScope, ops ir.Type) (result ir.Type, forceCastNumber, ok bool) {
 	result = ops
-	opsKind := ops.kind()
-	array, isArray := ops.(arrayTypeNode)
+	array, isArray := ops.(ir.ArrayType)
 	if isArray {
-		opsKind = array.dtype().kind()
+		ops = array.DataType()
 	}
-	op := n.ext.Src.Op
+	opsKind := ops.Kind()
+	op := n.src.Op
 	switch op {
 	case token.ADD, token.MUL, token.SUB, token.QUO:
-		ok = ir.SupportOperators(opsKind) && opsKind != ir.BoolKind
-	case token.REM:
-		ok = ir.SupportOperators(opsKind) && ir.IsInteger(opsKind)
+		ok = ir.SupportOperators(ops) && opsKind != ir.BoolKind
+	case token.REM, token.SHL, token.SHR, token.AND, token.OR, token.XOR:
+		ok = ir.SupportOperators(ops) && ir.IsInteger(ops)
 	case token.EQL, token.GTR, token.LSS, token.NEQ, token.LEQ, token.GEQ:
-		ok = true
-		result = &arrayType{
-			dtyp: boolType,
-			rnk:  array.rank(),
-		}
 		if isArray {
-			result, ok = array.convertTo(scope, n, result)
+			result = ir.NewArrayType(&ast.ArrayType{}, ir.BoolType(), array.Rank())
+		} else {
+			result = ir.BoolType()
 		}
+		ok = true
 		// Force cast of the operands to a default type for an expression like: 3 == 3.
 		forceCastNumber = true
+	case token.LAND, token.LOR:
+		ok = ir.SupportOperators(ops) && opsKind == ir.BoolKind
 	default:
-		scope.err().Appendf(n.ext.Src, "token %s not supported", n.ext.Src.Op.String())
-		return invalid, false, false
+		scope.err().Appendf(n.src, "token %s not supported", n.src.Op.String())
+		return ir.InvalidType(), false, false
 	}
 	if !ok {
-		scope.err().Appendf(n.ext.Src, "operator %s not defined on %s", op.String(), ops.kind())
-		return invalid, false, false
+		scope.err().Appendf(n.src, "operator %s not defined on %s", op.String(), ops)
+		return ir.InvalidType(), false, false
 	}
 	return
 }
 
-func (n *binaryExpr) resolveOperands(scope scoper) (typeNode, bool) {
-	xType, xOk := n.x.resolveType(scope)
-	yType, yOk := n.y.resolveType(scope)
+func (n *binaryExpr) buildOperands(scope resolveScope) (ir.AssignableExpr, ir.AssignableExpr, ir.Type) {
+	xExpr, xOk := buildAExpr(scope, n.x)
+	yExpr, yOk := buildAExpr(scope, n.y)
 	if !xOk || !yOk {
-		return invalid, false
+		return xExpr, yExpr, ir.InvalidType()
 	}
-	xKind := xType.kind()
-	yKind := yType.kind()
+	xKind := xExpr.Type().Kind()
+	yKind := yExpr.Type().Kind()
 	// Both operands are numbers, so this binary expression becomes a number.
 	if ir.IsNumber(xKind) && ir.IsNumber(yKind) {
+		typ := ir.NumberIntType()
 		// If either operand is a float, the result is a float number.
 		// For example: 3.2+4 is a float number.
 		if xKind == ir.NumberFloatKind || yKind == ir.NumberFloatKind {
-			return numberFloatType, true
+			typ = ir.NumberFloatType()
 		}
-		return numberIntType, true
+		return xExpr, yExpr, typ
 	}
 	// Only one operand is a number, so we cast the number operand to the other type operand.
 	if ir.IsNumber(xKind) {
-		n.x, xType, xOk = castNumber(scope, n.x, yType.irType())
+		xExpr, xOk = castNumber(scope, xExpr, yExpr.Type())
 	}
 	if ir.IsNumber(yKind) {
-		n.y, yType, yOk = castNumber(scope, n.y, xType.irType())
+		yExpr, yOk = castNumber(scope, yExpr, xExpr.Type())
 	}
 	if !xOk || !yOk {
-		return invalid, false
+		return xExpr, yExpr, ir.InvalidType()
 	}
 	// No operand is a number: check that we have a scalar or an array.
-	xGXType := xType.irType()
-	xIsScalar, xArrayType, xOk := n.checkKind(scope, n.x, xGXType, true)
-	yGXType := yType.irType()
-	yIsScalar, yArrayType, yOk := n.checkKind(scope, n.y, yGXType, xOk)
+	xType := xExpr.Type()
+	xIsScalar, xArrayType, xOk := n.checkKind(scope, n.x, xType, true)
+	yType := yExpr.Type()
+	yIsScalar, yArrayType, yOk := n.checkKind(scope, n.y, yType, xOk)
 	if !xOk || !yOk {
-		return invalid, false
+		return xExpr, yExpr, ir.InvalidType()
 	}
 
 	var scalarType ir.Type
 	var arrayType ir.ArrayType
-	var arrayTypeNode typeNode
 	if xIsScalar && yArrayType != nil {
-		scalarType = xGXType
+		scalarType = xType
 		arrayType = yArrayType
-		arrayTypeNode = yType
 	}
 	if yIsScalar && xArrayType != nil {
-		scalarType = yGXType
+		scalarType = yType
 		arrayType = xArrayType
-		arrayTypeNode = xType
+	}
+	compEval, compEvalOk := scope.compEval()
+	if !compEvalOk {
+		return xExpr, yExpr, ir.InvalidType()
 	}
 	if scalarType != nil && arrayType != nil {
 		// We have a scalar and an array:
 		// check that the scalar matches with the array data type.
 		dtype := arrayType.DataType()
-		eq, err := dtype.Equal(scope.evalFetcher(), scalarType)
+		eq, err := dtype.Equal(compEval, scalarType)
 		if err != nil {
-			scope.err().AppendInternalf(n.source(), "cannot compare %s and %s: %v", xType.String(), yType.String(), err)
-			n.typ, n.ext.Typ = invalidType()
-			return typeNodeOk(n.typ)
+			scope.err().Append(err)
+			return xExpr, yExpr, ir.InvalidType()
 		}
 		if !eq {
 			scope.err().Appendf(n.source(), "mismatched types %s and %s", scalarType.String(), dtype.String())
-			n.typ, n.ext.Typ = invalidType()
-			return typeNodeOk(n.typ)
+			return xExpr, yExpr, ir.InvalidType()
 		}
-		return arrayTypeNode, true
+		return xExpr, yExpr, arrayType
 	}
 
 	// Default case: check that both sides have the same type.
-	eq, err := xGXType.Equal(scope.evalFetcher(), yGXType)
+	eq, err := xType.Equal(compEval, yType)
 	if err != nil {
-		scope.err().AppendAt(n.ext.Src, fmterr.Internal(err, "cannot compare %s and %s", xType.String(), yType.String()))
-		return invalid, false
+		scope.err().Append(err)
+		return xExpr, yExpr, ir.InvalidType()
 	}
 	if !eq {
 		scope.err().Appendf(n.source(), "mismatched types %s and %s", xType.String(), yType.String())
-		return invalid, false
+		return xExpr, yExpr, ir.InvalidType()
 	}
-	return xType, true
+	return xExpr, yExpr, xType
 }
 
-func (n *binaryExpr) resolveType(scope scoper) (typeNode, bool) {
-	if n.typ != nil {
-		return typeNodeOk(n.typ)
+func (n *binaryExpr) buildExpr(scope resolveScope) (ir.Expr, bool) {
+	expr := &ir.BinaryExpr{Src: n.src}
+	expr.X, expr.Y, expr.Typ = n.buildOperands(scope)
+	if isInvalid(expr.Typ) {
+		return expr, false
 	}
-
-	var ok bool
-	n.typ, ok = n.resolveOperands(scope)
+	var forceCastNumber, ok bool
+	expr.Typ, forceCastNumber, ok = n.determineOutputType(scope, expr.Typ)
 	if !ok {
-		n.typ, n.ext.Typ = invalidType()
-		return typeNodeOk(n.typ)
+		return expr, false
 	}
-	opResult, forceCastNumber, ok := n.resolveOperator(scope, n.typ)
-	if !ok {
-		n.typ, n.ext.Typ = invalidType()
-		return typeNodeOk(n.typ)
-	}
-	if forceCastNumber && ir.IsNumber(n.typ.kind()) {
+	if forceCastNumber && ir.IsNumber(expr.Typ.Kind()) {
 		var xOk, yOk bool
-		n.x, _, xOk = castNumber(scope, n.x, unknown.irType())
-		n.y, _, yOk = castNumber(scope, n.y, unknown.irType())
-		if !xOk || !yOk {
-			n.typ, n.ext.Typ = invalidType()
-			return typeNodeOk(n.typ)
-		}
+		expr.X, xOk = castNumber(scope, expr.X, ir.UnknownType())
+		expr.Y, yOk = castNumber(scope, expr.Y, ir.UnknownType())
+		ok = xOk && yOk
 	}
-	n.typ = opResult
-	n.ext.Typ = n.typ.irType()
-	return typeNodeOk(n.typ)
+	return expr, ok
 }
 
 func (n *binaryExpr) String() string {
-	return n.typ.String()
+	return fmt.Sprintf("%s %s %s", n.x.String(), n.src.Op.String(), n.y.String())
 }

@@ -30,8 +30,13 @@ func ReturnFloat32() float32 {
 }
 
 // ReturnArrayFloat32 returns a float32 tensor.
-func ReturnArrayFloat32() [...]float32 {
+func ReturnArrayFloat32() [2]float32 {
 	return [2]float32{4.2, 42}
+}
+
+// ReturnMultiple returns multiple values.
+func ReturnMultiple() (int32, float32, float64) {
+	return 0, 1.0, 2.71828
 }
 
 // New returns a new instance of the basic structure.
@@ -60,7 +65,7 @@ func (b Basic) AddPrivate() int32 {
 }
 
 // SetFloat sets the Float field.
-func (b Basic) SetFloat(x float32) (b Basic) {
+func (b Basic) SetFloat(x float32) Basic {
 	b.Float = x
-	return
+	return b
 }

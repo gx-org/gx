@@ -21,6 +21,7 @@ type (
 	// Stdlib is an implementation of the standard library functions by a backend.
 	Stdlib struct {
 		Control Control
+		Dtype   Dtype
 		Math    Math
 		Num     Num
 		Rand    Rand
@@ -32,24 +33,34 @@ type (
 		While interp.FuncBuiltin
 	}
 
+	// Dtype is the implementation of the dtype package.
+	Dtype struct {
+		Reinterpret interp.FuncBuiltin
+	}
+
 	// Math is the implementation of the math package.
 	Math struct {
-		Pow  interp.FuncBuiltin
-		Exp  interp.FuncBuiltin
-		Log  interp.FuncBuiltin
-		Min  interp.FuncBuiltin
-		Max  interp.FuncBuiltin
-		Cos  interp.FuncBuiltin
-		Sin  interp.FuncBuiltin
-		Sqrt interp.FuncBuiltin
-		Tanh interp.FuncBuiltin
-		Ceil interp.FuncBuiltin
+		Abs      interp.FuncBuiltin
+		Ceil     interp.FuncBuiltin
+		Erf      interp.FuncBuiltin
+		Expm1    interp.FuncBuiltin
+		Exp      interp.FuncBuiltin
+		Floor    interp.FuncBuiltin
+		Log1p    interp.FuncBuiltin
+		Logistic interp.FuncBuiltin
+		Log      interp.FuncBuiltin
+		Max      interp.FuncBuiltin
+		Min      interp.FuncBuiltin
+		Pow      interp.FuncBuiltin
+		Round    interp.FuncBuiltin
+		Rsqrt    interp.FuncBuiltin
+		Sign     interp.FuncBuiltin
+		Sqrt     interp.FuncBuiltin
 	}
 
 	// Num is the implementation of the num package.
 	Num struct {
 		Iota      interp.FuncBuiltin
-		IotaFull  interp.FuncBuiltin
 		Einsum    interp.FuncBuiltin
 		MatMul    interp.FuncBuiltin
 		Sum       interp.FuncBuiltin
@@ -60,10 +71,8 @@ type (
 
 	// Rand of the rand package
 	Rand struct {
-		BootstrapGeneratorNew  interp.FuncBuiltin
-		BootstrapGeneratorNext interp.FuncBuiltin
-		PhiloxUint32           interp.FuncBuiltin
-		PhiloxUint64           interp.FuncBuiltin
+		PhiloxUint32 interp.FuncBuiltin
+		PhiloxUint64 interp.FuncBuiltin
 	}
 
 	// Shapes is the implementation of the shapes package.

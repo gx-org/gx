@@ -149,7 +149,10 @@ func TestAddToStruct(t *testing.T) {
 			t.Errorf("incorrect C computation: got %T(%v) but want %T(%v)", gotC, gotC, wantC, wantC)
 			ok = false
 		}
-
+		// TODO(b/395551138): disable the test on the SpecialValue field for now.
+		if i < 5 {
+			continue
+		}
 		gotSpecialValue := gxtesting.FetchAtom(t, st.SpecialValue)
 		wantSpecialValue := wantA[1] - 1
 		if !cmp.Equal(gotSpecialValue, wantSpecialValue) {

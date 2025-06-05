@@ -21,19 +21,17 @@ import (
 )
 
 type blockStmt struct {
-	ext   ir.BlockStmt
+	src   *ast.BlockStmt
 	stmts []stmtNode
 }
 
-func processBlockStmt(owner owner, fn *funcDecl, block *ast.BlockStmt) (*blockStmt, bool) {
-	n := &blockStmt{
-		ext: ir.BlockStmt{
-			Src: block,
-		},
-	}
+var _ stmtNode = (*blockStmt)(nil)
+
+func processBlockStmt(pscope procScope, src *ast.BlockStmt) (*blockStmt, bool) {
+	n := &blockStmt{src: src}
 	ok := true
-	for _, stmt := range block.List {
-		node, nOk := processStmt(owner, fn, stmt)
+	for _, stmt := range src.List {
+		node, nOk := processStmt(pscope, stmt)
 		if node != nil {
 			n.stmts = append(n.stmts, node)
 		}
@@ -42,89 +40,69 @@ func processBlockStmt(owner owner, fn *funcDecl, block *ast.BlockStmt) (*blockSt
 	return n, ok
 }
 
-func (n *blockStmt) resolveType(scope *scopeBlock) bool {
-	for _, stmt := range n.stmts {
-		if !stmt.resolveType(scope) {
-			// resolveType is expected to report an explicit error in the event of failure, so if none is
-			// found here, return a generic error for completeness.
-			if scope.err().Errors().Empty() {
-				scope.err().Appendf(stmt.source(), "failed to typecheck statement; probably a compiler bug")
-			}
-			return false
+func (n *blockStmt) buildStmt(scope funResolveScope) (ir.Stmt, bool) {
+	return n.buildBlockStmt(scope)
+}
+
+func (n *blockStmt) buildBlockStmt(scope funResolveScope) (*ir.BlockStmt, bool) {
+	block := &ir.BlockStmt{
+		Src:  n.src,
+		List: make([]ir.Stmt, len(n.stmts)),
+	}
+	ok := true
+	for i, node := range n.stmts {
+		var stmtOk bool
+		block.List[i], stmtOk = node.buildStmt(scope)
+		ok = ok && stmtOk
+	}
+	if !ok && scope.err().Errors().Empty() {
+		// an error occurred but no explicit error has been added to the list of error.
+		// report an error now to help with debugging.
+		if scope.err().Errors().Empty() {
+			scope.err().AppendInternalf(n.src, "failed to build statement but no error reported to the user")
 		}
 	}
-	return true
-}
-
-func (n *blockStmt) buildBlockStmt() *ir.BlockStmt {
-	n.ext.List = make([]ir.Stmt, len(n.stmts))
-	for i, node := range n.stmts {
-		n.ext.List[i] = node.buildStmt()
-	}
-	return &n.ext
-}
-
-func (n *blockStmt) buildStmt() ir.Stmt {
-	return n.buildBlockStmt()
-}
-
-func (n *blockStmt) source() ast.Node {
-	return n.ext.Source()
+	return block, ok
 }
 
 type exprStmt struct {
-	ext ir.ExprStmt
+	src *ast.ExprStmt
 	x   exprNode
 }
 
-func processExprStmt(owner owner, fn *funcDecl, stmt *ast.ExprStmt) (*exprStmt, bool) {
-	n := &exprStmt{
-		ext: ir.ExprStmt{
-			Src: stmt,
-		},
-	}
+var _ stmtNode = (*exprStmt)(nil)
+
+func processExprStmt(pscope procScope, src *ast.ExprStmt) (*exprStmt, bool) {
+	n := &exprStmt{src: src}
 	var ok bool
-	n.x, ok = processExpr(owner, stmt.X)
+	n.x, ok = processExpr(pscope, src.X)
 	return n, ok
 }
 
-func (n *exprStmt) resolveType(scope *scopeBlock) bool {
-	typ, ok := n.x.resolveType(scope)
-	if !ok || !ir.IsValid(typ.irType()) {
-		return false
+func (n *exprStmt) buildStmt(scope funResolveScope) (ir.Stmt, bool) {
+	x, ok := n.x.buildExpr(scope)
+	if ok && x.Type().Kind() != ir.VoidKind {
+		scope.err().Appendf(n.src, "cannot use an expression returning a value as a statement")
 	}
-	if typ.kind() != ir.VoidKind {
-		scope.err().Appendf(n.ext.Src, "cannot use an expression returning a value as a statement")
-		return false
-	}
-	return true
+	return &ir.ExprStmt{Src: n.src, X: x}, ok
 }
 
-func (n *exprStmt) buildStmt() ir.Stmt {
-	n.ext.X = n.x.buildExpr()
-	return &n.ext
-}
-
-func (n *exprStmt) source() ast.Node {
-	return n.ext.Source()
-}
-
-func processStmt(owner owner, fn *funcDecl, stmt ast.Stmt) (node stmtNode, ok bool) {
+func processStmt(pscope procScope, stmt ast.Stmt) (node stmtNode, ok bool) {
 	switch s := stmt.(type) {
 	case *ast.AssignStmt:
-		node, ok = processAssign(owner, s)
+		node, ok = processAssign(pscope, s)
 	case *ast.RangeStmt:
-		node, ok = processRangeStmt(owner, fn, s)
+		node, ok = processRangeStmt(pscope, s)
 	case *ast.ReturnStmt:
-		node, ok = processReturnStmt(owner, fn, s)
+		node, ok = processReturnStmt(pscope, s)
 	case *ast.IfStmt:
-		node, ok = processIfStmt(owner, fn, s)
+		node, ok = processIfStmt(pscope, s)
 	case *ast.BlockStmt:
-		node, ok = processBlockStmt(owner, fn, s)
+		node, ok = processBlockStmt(pscope, s)
 	case *ast.ExprStmt:
-		node, ok = processExprStmt(owner, fn, s)
+		node, ok = processExprStmt(pscope, s)
 	default:
-		owner.err().Appendf(stmt, "statement type not supported: %T", stmt)
+		pscope.err().Appendf(stmt, "statement type not supported: %T", stmt)
 		ok = false
 	}
 	return

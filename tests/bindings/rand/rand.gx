@@ -25,3 +25,10 @@ func SampleBool(seed int64) [100]bool {
 	_, sample := rnd.Bool([]intlen{100})
 	return sample
 }
+
+// Sample a million uniform float64s from a number generator.
+func SampleUniformFloat64(seed int64) [1000000]float64 {
+  rnd := rand.New(rand.NewSource(seed))
+  _, sample := rnd.Float64MinMax(0, 1000, []intlen{1000000})
+  return sample
+}

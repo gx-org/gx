@@ -1,0 +1,5 @@
+// Package num provides core numerical functions operating on arrays.
+package num
+
+// IotaFull generates an array given a shape where elements starts from 0 and are incremented by 1.
+func IotaFull(shape []intlen) [shape___]int64

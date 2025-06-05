@@ -12,141 +12,100 @@
 // See the License for the specific language governing permissions and
 // limitations under the License.
 
-// Package interp evaluates GX code to build a computation graph.
+// Package interp evaluates GX code given an evaluator.
 //
-// The GX Interpreter evaluates GX code represented as an
+// All values in the interpreter are represented in elements.
+// The GX Context evaluates GX code represented as an
 // intermediate representation (IR) tree
 // (see [google3/third_party/gxlang/gx/build/ir/ir]),
-// evaluates a function given a backend and static parameters.
-//
-// The operation of the GX interpreter are implemented in this package,
-// excluding backend operations. The operations of the GX interpreter operates on the state of
-// the interpreter provided by the
-// [google3/third_party/gxlang/gx/interp/state/state] package.
-// The state is composed of elements of type [google3/third_party/gxlang/gx/interp/state/state.Element]
-// which can be anything that a value can be (scalars, arrays,
-// instance of a structure, ...)
-//
-// Backend operations include the +, -, *, / operators or functions
-// provided by the graph constructor (see [google3/third_party/gxlang/backend/graph.Graph]).
-// The interpreter will call these function during the interpretation phase
-// which, typically, will construct a backend compute graph composed
-// of compute node of type [google3/third_party/gxlang/backend/graph.Node].
-//
-// Some state elements can encapsulate graph nodes (see [google3/third_party/gxlang/gx/interp/state/state.BackendNode])
-// or can be converted to graph nodes (e.g. [google3/third_party/gxlang/gx/interp/state/state.Tuple]) but other
-// state element cannot be stored in a compute graph (e.g. [google3/third_party/gxlang/gx/interp/state/state.Function]).
+// evaluates a function given a receiver and arguments passed as interpreter elements.
 package interp
 
 import (
-	"fmt"
 	"strings"
 
 	"github.com/pkg/errors"
-	"github.com/gx-org/backend"
-	"github.com/gx-org/gx/api"
+	"github.com/gx-org/gx/api/options"
 	"github.com/gx-org/gx/api/values"
 	"github.com/gx-org/gx/build/fmterr"
 	"github.com/gx-org/gx/build/ir"
-	goplatform "github.com/gx-org/gx/golang/backend/platform"
 	"github.com/gx-org/gx/interp/elements"
-	"github.com/gx-org/gx/interp/proxies"
-	"github.com/gx-org/gx/interp/state"
+	"github.com/gx-org/gx/interp/evaluator"
 )
 
-type (
-	// FuncBuiltin of a builtin function by a backend.
-	FuncBuiltin func(ctx Context, call elements.CallAt, fn *elements.Func, irFunc *ir.FuncBuiltin, args []elements.Element) (output state.Element, err error)
+// FuncBuiltin of a builtin function by a backend.
+type FuncBuiltin func(ctx evaluator.Context, call elements.CallAt, fn elements.Func, irFunc *ir.FuncBuiltin, args []elements.Element) ([]elements.Element, error)
 
-	// Interpreter evaluates GX to build a XLA graph.
-	Interpreter struct {
-		backend        backend.Backend
-		packageOptions map[string][]packageOption
-		localDevice    *goplatform.Device
-	}
-)
-
-// Compile a function and returns a runner to run the function on the device.
-func Compile(dev *api.Device, funcDecl *ir.FuncDecl, receiver values.Value, args []values.Value, options []PackageOption) (*state.CompiledGraph, error) {
-	itrp, err := New(dev.Runtime().Backend(), options)
+// EvalFunctionToElement evaluates a function such as it becomes an element.
+func (ctx *context) EvalFunctionToElement(eval evaluator.Evaluator, fn ir.Func, args []elements.Element) ([]elements.Element, error) {
+	subctx, err := ctx.eval.newFileContext(fn.File())
 	if err != nil {
 		return nil, err
 	}
-	graph, outNode, err := itrp.Eval(funcDecl, receiver, args)
+	funcFrame, err := subctx.pushFuncFrame(fn)
 	if err != nil {
 		return nil, err
 	}
-	return graph.Compile(dev, outNode)
+
+	assignArgumentValues(fn.FuncType(), funcFrame, args)
+	for _, resultName := range fieldNames(fn.FuncType().Results.List) {
+		funcFrame.Define(resultName.Name, nil)
+	}
+	defer subctx.popFrame()
+
+	var body *ir.BlockStmt
+	switch fn := fn.(type) {
+	case *ir.FuncDecl:
+		body = fn.Body
+	case *ir.FuncLit:
+		body = fn.Body
+	}
+	return evalFuncBody(subctx, body)
 }
 
-// New returns a new interpreter.
-func New(bck backend.Backend, options []PackageOption) (*Interpreter, error) {
-	plat := goplatform.New()
-	itrp := &Interpreter{
-		backend:        bck,
-		packageOptions: make(map[string][]packageOption),
-	}
-	var err error
-	if itrp.localDevice, err = plat.GoDevice(0); err != nil {
-		return nil, errors.Errorf("cannot create local evaluator: %v", err)
-	}
-	if err := itrp.processOptions(options); err != nil {
-		return nil, err
-	}
-	return itrp, nil
+// EvalExprInContext uses an evaluator to evaluation an IR expression.
+func EvalExprInContext(ctx evaluator.Context, expr ir.Expr) (elements.Element, error) {
+	return ctx.(*context).evalExpr(expr)
 }
 
-// Eval evaluates a function.
-func (itrp *Interpreter) Eval(fn *ir.FuncDecl, receiver values.Value, args []values.Value) (stat *state.State, out state.Element, err error) {
+// EvalFunc evaluates a function.
+func EvalFunc(eval evaluator.Evaluator, fn *ir.FuncDecl, in *elements.InputElements, options []options.PackageOption) (outs []elements.Element, err error) {
 	if fn.Body == nil {
-		return nil, nil, errors.Errorf("%s: missing function body", fn.Name())
+		return nil, errors.Errorf("%s: missing function body", fn.Name())
 	}
-	defer func() {
-		if err != nil {
-			recvName := ""
-			recv := fn.FType.Receiver
-			if recv != nil {
-				recvName = recv.NameT + "."
-			}
-			err = fmt.Errorf("%s.%s%s evaluation error:\n%w", fn.File().Package.FullName(), recvName, fn.Name(), err)
-		}
-		err = fmterr.ToStackTraceError(err)
-	}()
-	funcName := fn.FullyQualifiedName()
-	bckGraph := itrp.backend.NewGraph(funcName)
-	stat = state.New(fn, bckGraph)
-	ctx, err := newContext(itrp, stat, fn, receiver, args)
+	ectx, err := NewInterpContext(eval, options)
 	if err != nil {
-		return nil, nil, err
+		return nil, err
 	}
-	// Add the receiver and arguments to the context.
+	ctx, err := ectx.newFileContext(fn.File())
+	if err != nil {
+		return nil, err
+	}
+	// Set the function inputs in the context.
+	ctx.callInputs = in
+	// Create a frame for the function to evaluate.
 	frame, err := ctx.pushFuncFrame(fn)
 	if err != nil {
-		return nil, nil, err
+		return nil, err
 	}
+	defer ctx.popFrame()
+	// Add the result names to the context.
 	for _, resultName := range fieldNames(fn.FType.Results.List) {
 		frame.Define(resultName.Name, nil)
 	}
-	if receiver != nil {
-		receiverProxy, err := proxies.ToProxy(receiver, fn.FType.Receiver)
-		if err != nil {
-			return nil, nil, err
+	// Add the receiver to the context.
+	recv := fn.FType.ReceiverField()
+	if recv != nil {
+		if in.Receiver == nil {
+			return nil, errors.Errorf("function has a receiver but a nil value has been passed as a receiver value")
 		}
-		field := fn.ReceiverField()
-		fieldAt := nodeAt[*ir.Field](ctx, field)
-		receiverNode, err := ctx.State().Receiver(fieldAt, receiverProxy)
-		if err != nil {
-			return nil, nil, err
-		}
-		frame.Define(field.Name.Name, receiverNode)
+		frame.Define(recv.Name.Name, in.Receiver)
 	}
-	proxyArgs, err := proxies.ToProxies(args, fn.FType.Params.Fields())
-	if err != nil {
-		return nil, nil, err
-	}
-	for i, param := range fn.FType.Params.Fields() {
-		if i >= len(args) {
-			missingParams := fn.FType.Params.Fields()[len(args):]
+	// Add the parameters to the context.
+	paramFields := fn.FType.Params.Fields()
+	for i, param := range paramFields {
+		if i >= len(in.Args) {
+			missingParams := paramFields[len(in.Args):]
 			builder := strings.Builder{}
 			for n, param := range missingParams {
 				if n > 0 {
@@ -154,37 +113,54 @@ func (itrp *Interpreter) Eval(fn *ir.FuncDecl, receiver values.Value, args []val
 				}
 				builder.WriteString(param.Name.String())
 			}
-			return nil, nil, errors.Errorf("missing parameter(s): %s", builder.String())
+			return nil, errors.Errorf("missing parameter(s): %s", builder.String())
 		}
-		fieldAt := nodeAt[*ir.Field](ctx, param)
-		argNode, err := ctx.State().ArgGX(fieldAt, i, proxyArgs)
-		if err != nil {
-			return nil, nil, err
-		}
-		frame.Define(param.Name.Name, argNode)
+		frame.Define(param.Name.Name, in.Args[i])
 	}
-	defer ctx.popFrame()
-	out, err = evalFuncBody(ctx, fn.Body)
+	// Evaluate the function body.
+	outs, err = evalFuncBody(ctx, fn.Body)
 	return
 }
 
-func toSingleNode(ctx *context, stmt *ir.ReturnStmt, els []state.Element) state.Element {
-	if len(els) == 1 {
-		return els[0]
+func dimsAsElements(ctx *context, expr ir.AssignableExpr, dims []int) ([]elements.NumericalElement, error) {
+	els := make([]elements.NumericalElement, len(dims))
+	for i, di := range dims {
+		val, err := values.AtomIntegerValue[int64](ir.IntLenType(), int64(di))
+		if err != nil {
+			return nil, err
+		}
+		els[i], err = ctx.eval.evaluator.ElementFromAtom(elements.NewExprAt(ctx.File(), expr), val)
+		if err != nil {
+			return nil, err
+		}
 	}
-	return elements.NewTuple(ctx.frame().currentFile(), stmt, els)
+	return els, nil
 }
 
-func rankOf(ctx *context, src ir.SourceNode, typ ir.ArrayType) (*ir.Rank, error) {
+func rankOf(ctx evaluator.Context, src ir.SourceNode, typ ir.ArrayType) (ir.ArrayRank, error) {
 	switch rank := typ.Rank().(type) {
 	case *ir.Rank:
 		return rank, nil
-	case *ir.GenericRank:
+	case *ir.RankInfer:
 		if rank.Rnk == nil {
-			return nil, ctx.FileSet().Errorf(src.Source(), "array rank has not been resolved")
+			return nil, fmterr.Errorf(ctx.File().FileSet(), src.Source(), "array rank has not been resolved")
 		}
 		return rank.Rnk, nil
 	default:
-		return nil, ctx.FileSet().Errorf(src.Source(), "rank %T not supported", rank)
+		return nil, fmterr.Errorf(ctx.File().FileSet(), src.Source(), "rank %T not supported", rank)
 	}
+}
+
+// ToSingleElement packs multiple elements into a tuple.
+// If the slice els contains only one element, this element is returned.
+func ToSingleElement(ctx elements.FileContext, node ir.SourceNode, els []elements.Element) (elements.Element, error) {
+	switch len(els) {
+	case 0:
+		return nil, nil
+	case 1:
+		return els[0], nil
+	default:
+		return elements.NewTuple(ctx.File(), node, els), nil
+	}
+
 }
