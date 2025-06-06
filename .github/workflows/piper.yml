@@ -45,6 +45,15 @@ jobs:
     - name: Generating code
       run: go generate ./...
 
+    - name: Commit generated files
+      run: |
+        if output=$(git status --porcelain) && [ -z "$output" ]; then
+          exit 0
+        else
+          git add .
+          git commit -a -m "Auto-commit after Go file generation."
+        fi
+
     - name: Tidy
       run: go mod tidy
 
