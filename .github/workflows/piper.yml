@@ -36,6 +36,9 @@ jobs:
       with:
         go-version: '1.23'
 
+    - name: Setup an identity
+      run: git config user.email "noreply@github.com" && git config user.name "Github Action"
+
     - name: Move to the latest version
       run: go get -u github.com/gx-org/backend@latest
 
@@ -68,9 +71,6 @@ jobs:
 
     - name: Test the main branch
       run: go test -v ./...
-
-    - name: Setup an identity
-      run: git config user.email "noreply@github.com" && git config user.name "Github Action"
 
     - name: Merge piper into main
       run: git merge --no-edit piper
