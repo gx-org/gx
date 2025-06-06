@@ -36,6 +36,9 @@ jobs:
       with:
         go-version: '1.23'
 
+    - name: Move to the latest version
+      run: go get -u
+
     - name: Tidy (best effort)
       run: go mod tidy || true
 
