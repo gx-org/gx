@@ -36,7 +36,13 @@ jobs:
       with:
         go-version: '1.23'
 
-    - name: Tidy 
+    - name: Tidy (best effort)
+      run: go mod tidy || true
+
+    - name: Generating code
+      run: go generate ./...
+
+    - name: Tidy
       run: go mod tidy
 
     - name: Build
