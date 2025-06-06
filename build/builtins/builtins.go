@@ -152,7 +152,7 @@ func BuildFuncParams(fetcher ir.Fetcher, call *ir.CallExpr, name string, sig []i
 	return params, nil
 }
 
-// NarrowType converts an abstract type into more concrete type, typically *google3/third_party/gxlang/gx/build/ir/ir.ArrayType.
+// NarrowType converts an abstract type into more concrete type, typically *github.com/gx-org/gx/build/ir.ArrayType.
 func NarrowType[T ir.Type](fetcher ir.Fetcher, call *ir.CallExpr, arg ir.Type) (t T, err error) {
 	var ok bool
 	t, ok = arg.(T)

@@ -140,30 +140,30 @@ var typeToProcess = map[string]debugFunc{
 	"math/big.Int": debugOk(func(done map[any]bool, val reflect.Value, proc processor) string {
 		return val.Interface().(*big.Int).String()
 	}),
-	"google3/third_party/gxlang/gx/build/ir/ir.atomicType":      debugOk(valueToString),
-	"google3/third_party/gxlang/gx/build/ir/ir.int32Type":       debugOk(valueToString),
-	"google3/third_party/gxlang/gx/build/ir/ir.int64Type":       debugOk(valueToString),
-	"google3/third_party/gxlang/gx/build/ir/ir.intlenType":      debugOk(valueToString),
-	"google3/third_party/gxlang/gx/build/ir/ir.float32Type":     debugOk(valueToString),
-	"google3/third_party/gxlang/gx/build/ir/ir.float64Type":     debugOk(valueToString),
-	"google3/third_party/gxlang/gx/build/ir/ir.numberIntType":   debugOk(valueToString),
-	"google3/third_party/gxlang/gx/build/ir/ir.numberFloatType": debugOk(valueToString),
-	"google3/third_party/gxlang/gx/build/ir/ir.ValueRef":        debugOk(valueRefToString),
-	"google3/third_party/gxlang/gx/build/ir/ir.TypeSet":         notOnDebug(valueToString),
-	"google3/third_party/gxlang/gx/build/ir/ir.Rank":            notOnDebug(rank),
-	"google3/third_party/gxlang/gx/build/ir/ir.FuncValExpr":     notOnDebug(skip),
-	"google3/third_party/gxlang/gx/build/ir/ir.File": debugOk(func(map[any]bool, reflect.Value, processor) string {
+	"github.com/gx-org/gx/build/ir.atomicType":      debugOk(valueToString),
+	"github.com/gx-org/gx/build/ir.int32Type":       debugOk(valueToString),
+	"github.com/gx-org/gx/build/ir.int64Type":       debugOk(valueToString),
+	"github.com/gx-org/gx/build/ir.intlenType":      debugOk(valueToString),
+	"github.com/gx-org/gx/build/ir.float32Type":     debugOk(valueToString),
+	"github.com/gx-org/gx/build/ir.float64Type":     debugOk(valueToString),
+	"github.com/gx-org/gx/build/ir.numberIntType":   debugOk(valueToString),
+	"github.com/gx-org/gx/build/ir.numberFloatType": debugOk(valueToString),
+	"github.com/gx-org/gx/build/ir.ValueRef":        debugOk(valueRefToString),
+	"github.com/gx-org/gx/build/ir.TypeSet":         notOnDebug(valueToString),
+	"github.com/gx-org/gx/build/ir.Rank":            notOnDebug(rank),
+	"github.com/gx-org/gx/build/ir.FuncValExpr":     notOnDebug(skip),
+	"github.com/gx-org/gx/build/ir.File": debugOk(func(map[any]bool, reflect.Value, processor) string {
 		return ""
 	}),
 }
 
 func init() {
 	// Not in the map initialisation to prevent a cycle.
-	typeToProcess["google3/third_party/gxlang/gx/build/ir/ir.FieldList"] = notOnDebug(fieldList)
-	typeToProcess["google3/third_party/gxlang/gx/build/ir/ir.arrayType"] = notOnDebug(arrayType)
-	typeToProcess["google3/third_party/gxlang/gx/build/ir/ir.TypeParam"] = notOnDebug(typeParam)
-	typeToProcess["google3/third_party/gxlang/gx/build/ir/ir.ConstExpr"] = debugOk(constExpr)
-	typeToProcess["google3/third_party/gxlang/gx/build/ir/ir.TypeValExpr"] = debugOk(typeValExpr)
+	typeToProcess["github.com/gx-org/gx/build/ir.FieldList"] = notOnDebug(fieldList)
+	typeToProcess["github.com/gx-org/gx/build/ir.arrayType"] = notOnDebug(arrayType)
+	typeToProcess["github.com/gx-org/gx/build/ir.TypeParam"] = notOnDebug(typeParam)
+	typeToProcess["github.com/gx-org/gx/build/ir.ConstExpr"] = debugOk(constExpr)
+	typeToProcess["github.com/gx-org/gx/build/ir.TypeValExpr"] = debugOk(typeValExpr)
 }
 
 func reflectStructString(done map[any]bool, val reflect.Value, proc processor) string {

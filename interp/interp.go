@@ -17,7 +17,7 @@
 // All values in the interpreter are represented in elements.
 // The GX Context evaluates GX code represented as an
 // intermediate representation (IR) tree
-// (see [google3/third_party/gxlang/gx/build/ir/ir]),
+// (see [github.com/gx-org/gx/build/ir]),
 // evaluates a function given a receiver and arguments passed as interpreter elements.
 package interp
 
