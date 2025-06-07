@@ -48,7 +48,7 @@ jobs:
     - name: Generating code
       run: go generate ./...
 
-    - name: Tidy
+    - name: Tidy (required)
       run: go mod tidy
 
     - name: Commit generated and modified files
