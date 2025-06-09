@@ -59,10 +59,7 @@ func check[T ir.Node](nextWant *int, pkg *ir.Package, wants []ir.Node, gots []T)
 }
 
 func checkAll(wants []ir.Node, decls *ir.Declarations) error {
-	if irstring.ReflectStringOutput == irstring.SilentStringType {
-		return nil
-	}
-	if len(wants) == 0 && decls == nil {
+	if len(wants) == 0 {
 		return nil
 	}
 	if decls == nil {
@@ -212,7 +209,6 @@ type (
 )
 
 func testAll(t *testing.T, tests ...irTest) {
-	irstring.ReflectStringOutput = irstring.SilentStringType // TODO(degris): remove.
 	t.Helper()
 	ctx := &testContext{
 		imp: localImporter{pkgs: make(map[string]builder.Package)},

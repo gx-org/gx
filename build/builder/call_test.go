@@ -2,9 +2,6 @@ package builder_test
 
 import (
 	"testing"
-
-	"github.com/gx-org/gx/build/ir"
-	irh "github.com/gx-org/gx/build/ir/irhelper"
 )
 
 func TestCallOperators(t *testing.T) {
@@ -34,20 +31,6 @@ func fail(x [A][B][1]float32) float32 {
 	return float32(f[int32](x, []intidx{0}))
 }
 `,
-			want: []ir.Node{
-				&ir.FuncDecl{
-					FType: irh.CompEvalFuncType(
-						irh.Fields(),
-						irh.Fields(ir.Float32Type()),
-					),
-					Body: irh.Block(
-						&ir.ReturnStmt{
-							Results: []ir.Expr{
-								irh.IntNumberAs(2, ir.Float32Type()),
-							},
-						},
-					)},
-			},
 		},
 	)
 }

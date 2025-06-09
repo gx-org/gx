@@ -68,19 +68,6 @@ func f() [a]int32 {
 	return x
 }
 			`,
-			want: []ir.Node{
-				aVarDecl,
-				&ir.FuncDecl{
-					FType: irh.FuncType(
-						nil, nil,
-						irh.Fields(xField),
-						irh.Fields(int32ArrayType),
-					),
-					Body: irh.SingleReturn(
-						irh.ValueRef(xField.Storage()),
-					),
-				},
-			},
 		},
 	)
 }

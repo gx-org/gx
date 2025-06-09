@@ -1,6 +1,7 @@
 package builder_test
 
 import (
+	"go/ast"
 	"testing"
 
 	"github.com/gx-org/gx/build/ir"
@@ -58,6 +59,14 @@ func TestCast(t *testing.T) {
 
 func TestCastStaticVar(t *testing.T) {
 	aVarDecl := irh.VarSpec("a")
+	xFunc := &ir.FuncBuiltin{
+		Src: &ast.FuncDecl{Name: &ast.Ident{Name: "x"}},
+		FType: irh.FuncType(
+			nil, nil,
+			irh.Fields(ir.Float32Type()),
+			irh.Fields(ir.Float32Type()),
+		),
+	}
 	testAll(t,
 		irDeclTest{
 			src: `
@@ -71,6 +80,26 @@ func f() float32 {
 `,
 			want: []ir.Node{
 				aVarDecl,
+				xFunc,
+				&ir.FuncDecl{
+					Src: &ast.FuncDecl{Name: &ast.Ident{Name: "f"}},
+					FType: irh.FuncType(
+						nil, nil,
+						irh.Fields(),
+						irh.Fields(ir.Float32Type()),
+					),
+					Body: irh.SingleReturn(&ir.CallExpr{
+						Args: []ir.AssignableExpr{&ir.CastExpr{
+							X:   irh.ValueRef(aVarDecl.Exprs[0]),
+							Typ: ir.Float32Type(),
+						}},
+						Callee: &ir.FuncValExpr{
+							X: xFunc,
+							F: xFunc,
+							T: xFunc.FuncType(),
+						},
+					}),
+				},
 			},
 		},
 		irDeclTest{
@@ -84,9 +113,6 @@ func f() float32 {
 	return id(([a]float32)(newArray()))
 }
 `,
-			want: []ir.Node{
-				aVarDecl,
-			},
 		},
 	)
 }

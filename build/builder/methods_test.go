@@ -10,23 +10,24 @@ import (
 
 func TestMethods(t *testing.T) {
 	fieldI := irh.Field("i", ir.Int32Type(), nil)
-	fieldF := irh.Field("f", ir.Int32Type(), fieldI.Group)
+	fieldF := irh.Field("f", ir.Float32Type(), nil)
 	structA := irh.StructType(fieldI, fieldF)
 	typeA := &ir.NamedType{
 		Src:        &ast.TypeSpec{Name: &ast.Ident{Name: "A"}},
 		File:       wantFile,
 		Underlying: irh.TypeExpr(structA),
 	}
+	aRecv := irh.Fields("a", typeA)
 	fI := &ir.FuncDecl{
 		FType: irh.FuncType(nil,
-			irh.Fields("a", typeA),
+			aRecv,
 			irh.Fields(),
 			irh.Fields(ir.Int32Type()),
 		),
 		Body: irh.Block(
 			&ir.ReturnStmt{
 				Results: []ir.Expr{&ir.SelectorExpr{
-					X:    irh.ValueRef(typeA),
+					X:    irh.ValueRef(aRecv.Fields()[0].Storage()),
 					Stor: fieldI.Storage(),
 				}},
 			},
@@ -105,9 +106,10 @@ func TestMethodOnNamedTypes(t *testing.T) {
 		Src:        &ast.TypeSpec{Name: irh.Ident("A")},
 		Underlying: ir.AtomTypeExpr(ir.Int32Type()),
 	}
+	aRecv := irh.Fields("a", typeA)
 	val := &ir.FuncDecl{
 		FType: irh.FuncType(nil,
-			irh.Fields("a", typeA),
+			aRecv,
 			irh.Fields(),
 			irh.Fields(ir.Int32Type()),
 		),
@@ -115,7 +117,7 @@ func TestMethodOnNamedTypes(t *testing.T) {
 			&ir.ReturnStmt{
 				Results: []ir.Expr{&ir.CastExpr{
 					Typ: ir.Int32Type(),
-					X:   irh.ValueRef(typeA),
+					X:   irh.ValueRef(aRecv.Fields()[0].Storage()),
 				}},
 			},
 		)}
@@ -145,7 +147,10 @@ func call() int32 {
 					),
 					Body: irh.Block(
 						&ir.AssignExprStmt{List: []*ir.AssignExpr{{
-							X:       irh.IntNumberAs(2, typeA),
+							X: &ir.CastExpr{
+								X:   irh.IntNumberAs(2, typeA),
+								Typ: typeA,
+							},
 							Storage: &ir.LocalVarStorage{Src: irh.Ident("a"), Typ: typeA},
 						}}},
 						&ir.ReturnStmt{

@@ -15,23 +15,12 @@ func TestConst(t *testing.T) {
 		VName: irh.Ident("cstA"),
 		Val:   &ir.NumberInt{Val: big.NewInt(5)},
 	}
-	cstIntA := &ir.ConstExpr{
-		Decl:  &ir.ConstDecl{},
-		VName: irh.Ident("cstA"),
-		Val:   irh.IntNumberAs(5, ir.Int32Type()),
-	}
 	cstA.Decl.Exprs = append(cstA.Decl.Exprs, cstA)
 	testAll(t,
 		irDeclTest{
 			src: `const cstA = 5`,
 			want: []ir.Node{
 				cstA.Decl,
-			},
-		},
-		irDeclTest{
-			src: `const cstIntA int32 = 5`,
-			want: []ir.Node{
-				cstIntA.Decl,
 			},
 		},
 		irDeclTest{
@@ -66,6 +55,23 @@ const cstA = 5
 					},
 				),
 				irh.ConstSpec(nil, cstA),
+			},
+		},
+	)
+}
+
+func TestConstWithType(t *testing.T) {
+	cstIntA := &ir.ConstExpr{
+		Decl:  &ir.ConstDecl{Type: irh.TypeRef(ir.Int32Type())},
+		VName: irh.Ident("cstIntA"),
+		Val:   &ir.NumberInt{Val: big.NewInt(5)},
+	}
+	cstIntA.Decl.Exprs = append(cstIntA.Decl.Exprs, cstIntA)
+	testAll(t,
+		irDeclTest{
+			src: `const cstIntA int32 = 5`,
+			want: []ir.Node{
+				cstIntA.Decl,
 			},
 		},
 	)
