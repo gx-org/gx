@@ -63,6 +63,7 @@ func TestResolveType(t *testing.T) {
 		{"x[0]", false, "invalid"},
 		{"x()", false, "invalid"},
 		{"x(1)", false, "invalid"},
+		{"[2]flo", false, "invalid"},
 
 		{"func(int32) bool {}(true)", false, "bool"},
 	}

@@ -49,6 +49,9 @@ func (n *arrayType) buildTypeExpr(rscope resolveScope) (*ir.TypeValExpr, bool) {
 		rscope.err().Appendf(n.source(), "array of %s not supported", dtyp.String())
 		dtypeOk = false
 	}
+	if !dtypeOk {
+		return nil, false
+	}
 	// Note that rank.resolve() may return a new concrete rankNode instance if the rank was generic.
 	// In that case, we return a new instance of arrayType (see below) and keep the generic arrayType
 	// and rank unchanged so they can be specialized again for the next call.
