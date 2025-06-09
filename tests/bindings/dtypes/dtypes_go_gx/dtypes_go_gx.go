@@ -26,11 +26,12 @@ import (
 
 	"github.com/gx-org/backend/platform"
 	"github.com/gx-org/gx/api"
+	"github.com/gx-org/gx/api/options"
+	"github.com/gx-org/gx/api/trace"
+	"github.com/gx-org/gx/api/tracer"
 	"github.com/gx-org/gx/api/values"
 	"github.com/gx-org/gx/build/ir"
 	"github.com/gx-org/gx/golang/binder/gobindings/types"
-	"github.com/gx-org/gx/interp"
-	"github.com/gx-org/gx/interp/state"
 	_ "github.com/gx-org/gx/tests/bindings/dtypes"
 	"github.com/pkg/errors"
 )
@@ -51,7 +52,7 @@ var (
 type PackageIR struct {
 	Runtime *api.Runtime
 	IR      *ir.Package
-	Tracer  state.Tracer
+	Tracer  trace.Callback
 }
 
 // Load the GX package for a given backend.
@@ -70,7 +71,7 @@ func Load(rtm *api.Runtime) (*PackageIR, error) {
 
 // BuildFor loads the GX package github.com/gx-org/gx/tests/bindings/dtypes
 // then returns that package for a given device and options.
-func BuildFor(dev *api.Device, options ...interp.PackageOptionFactory) (*Package, error) {
+func BuildFor(dev *api.Device, options ...options.PackageOptionFactory) (*Package, error) {
 	pkg, err := Load(dev.Runtime())
 	if err != nil {
 		return nil, err
@@ -93,15 +94,8 @@ type Package struct {
 	Device  *api.Device
 	Factory *Factory
 
-	options []interp.PackageOption
+	options []options.PackageOption
 
-	ArrayBool    ArrayBool
-	ArrayFloat32 ArrayFloat32
-	ArrayFloat64 ArrayFloat64
-	ArrayInt32   ArrayInt32
-	ArrayInt64   ArrayInt64
-	ArrayUint32  ArrayUint32
-	ArrayUint64  ArrayUint64
 	Bool         Bool
 	Float32      Float32
 	Float64      Float64
@@ -109,10 +103,17 @@ type Package struct {
 	Int64        Int64
 	Uint32       Uint32
 	Uint64       Uint64
+	ArrayBool    ArrayBool
+	ArrayFloat32 ArrayFloat32
+	ArrayFloat64 ArrayFloat64
+	ArrayInt32   ArrayInt32
+	ArrayInt64   ArrayInt64
+	ArrayUint32  ArrayUint32
+	ArrayUint64  ArrayUint64
 }
 
 // AppendOptions appends options to the compiler.
-func (cmpl *Package) AppendOptions(options ...interp.PackageOptionFactory) {
+func (cmpl *Package) AppendOptions(options ...options.PackageOptionFactory) {
 	plat := cmpl.Package.Runtime.Backend().Platform()
 	for _, opt := range options {
 		cmpl.options = append(cmpl.options, opt(plat))
@@ -120,7 +121,7 @@ func (cmpl *Package) AppendOptions(options ...interp.PackageOptionFactory) {
 }
 
 // BuildFor returns a package ready to compile for a device and options.
-func (pkg *PackageIR) BuildFor(dev *api.Device, options ...interp.PackageOptionFactory) *Package {
+func (pkg *PackageIR) BuildFor(dev *api.Device, options ...options.PackageOptionFactory) *Package {
 	c := &Package{
 		Package: pkg,
 		Device:  dev,
@@ -128,88 +129,88 @@ func (pkg *PackageIR) BuildFor(dev *api.Device, options ...interp.PackageOptionF
 	c.Factory = &Factory{Package: c}
 	c.AppendOptions(options...)
 
-	c.ArrayBool = ArrayBool{
-		methodBase: methodBase{
-			pkg:      c,
-			function: c.Package.IR.Funcs[0].(*ir.FuncDecl),
-		},
-	}
-	c.ArrayFloat32 = ArrayFloat32{
-		methodBase: methodBase{
-			pkg:      c,
-			function: c.Package.IR.Funcs[1].(*ir.FuncDecl),
-		},
-	}
-	c.ArrayFloat64 = ArrayFloat64{
-		methodBase: methodBase{
-			pkg:      c,
-			function: c.Package.IR.Funcs[2].(*ir.FuncDecl),
-		},
-	}
-	c.ArrayInt32 = ArrayInt32{
-		methodBase: methodBase{
-			pkg:      c,
-			function: c.Package.IR.Funcs[3].(*ir.FuncDecl),
-		},
-	}
-	c.ArrayInt64 = ArrayInt64{
-		methodBase: methodBase{
-			pkg:      c,
-			function: c.Package.IR.Funcs[4].(*ir.FuncDecl),
-		},
-	}
-	c.ArrayUint32 = ArrayUint32{
-		methodBase: methodBase{
-			pkg:      c,
-			function: c.Package.IR.Funcs[5].(*ir.FuncDecl),
-		},
-	}
-	c.ArrayUint64 = ArrayUint64{
-		methodBase: methodBase{
-			pkg:      c,
-			function: c.Package.IR.Funcs[6].(*ir.FuncDecl),
-		},
-	}
 	c.Bool = Bool{
 		methodBase: methodBase{
 			pkg:      c,
-			function: c.Package.IR.Funcs[7].(*ir.FuncDecl),
+			function: c.Package.IR.Decls.Funcs[0],
 		},
 	}
 	c.Float32 = Float32{
 		methodBase: methodBase{
 			pkg:      c,
-			function: c.Package.IR.Funcs[8].(*ir.FuncDecl),
+			function: c.Package.IR.Decls.Funcs[1],
 		},
 	}
 	c.Float64 = Float64{
 		methodBase: methodBase{
 			pkg:      c,
-			function: c.Package.IR.Funcs[9].(*ir.FuncDecl),
+			function: c.Package.IR.Decls.Funcs[2],
 		},
 	}
 	c.Int32 = Int32{
 		methodBase: methodBase{
 			pkg:      c,
-			function: c.Package.IR.Funcs[10].(*ir.FuncDecl),
+			function: c.Package.IR.Decls.Funcs[3],
 		},
 	}
 	c.Int64 = Int64{
 		methodBase: methodBase{
 			pkg:      c,
-			function: c.Package.IR.Funcs[11].(*ir.FuncDecl),
+			function: c.Package.IR.Decls.Funcs[4],
 		},
 	}
 	c.Uint32 = Uint32{
 		methodBase: methodBase{
 			pkg:      c,
-			function: c.Package.IR.Funcs[12].(*ir.FuncDecl),
+			function: c.Package.IR.Decls.Funcs[5],
 		},
 	}
 	c.Uint64 = Uint64{
 		methodBase: methodBase{
 			pkg:      c,
-			function: c.Package.IR.Funcs[13].(*ir.FuncDecl),
+			function: c.Package.IR.Decls.Funcs[6],
+		},
+	}
+	c.ArrayBool = ArrayBool{
+		methodBase: methodBase{
+			pkg:      c,
+			function: c.Package.IR.Decls.Funcs[7],
+		},
+	}
+	c.ArrayFloat32 = ArrayFloat32{
+		methodBase: methodBase{
+			pkg:      c,
+			function: c.Package.IR.Decls.Funcs[8],
+		},
+	}
+	c.ArrayFloat64 = ArrayFloat64{
+		methodBase: methodBase{
+			pkg:      c,
+			function: c.Package.IR.Decls.Funcs[9],
+		},
+	}
+	c.ArrayInt32 = ArrayInt32{
+		methodBase: methodBase{
+			pkg:      c,
+			function: c.Package.IR.Decls.Funcs[10],
+		},
+	}
+	c.ArrayInt64 = ArrayInt64{
+		methodBase: methodBase{
+			pkg:      c,
+			function: c.Package.IR.Decls.Funcs[11],
+		},
+	}
+	c.ArrayUint32 = ArrayUint32{
+		methodBase: methodBase{
+			pkg:      c,
+			function: c.Package.IR.Decls.Funcs[12],
+		},
+	}
+	c.ArrayUint64 = ArrayUint64{
+		methodBase: methodBase{
+			pkg:      c,
+			function: c.Package.IR.Decls.Funcs[13],
 		},
 	}
 
@@ -219,42 +220,7 @@ func (pkg *PackageIR) BuildFor(dev *api.Device, options ...interp.PackageOptionF
 type methodBase struct {
 	pkg      *Package
 	function ir.Func
-	runner   *state.CompiledGraph
-}
-
-// ArrayBool compiles and runs the GX function ArrayBool for a device.
-type ArrayBool struct {
-	methodBase
-}
-
-// ArrayFloat32 compiles and runs the GX function ArrayFloat32 for a device.
-type ArrayFloat32 struct {
-	methodBase
-}
-
-// ArrayFloat64 compiles and runs the GX function ArrayFloat64 for a device.
-type ArrayFloat64 struct {
-	methodBase
-}
-
-// ArrayInt32 compiles and runs the GX function ArrayInt32 for a device.
-type ArrayInt32 struct {
-	methodBase
-}
-
-// ArrayInt64 compiles and runs the GX function ArrayInt64 for a device.
-type ArrayInt64 struct {
-	methodBase
-}
-
-// ArrayUint32 compiles and runs the GX function ArrayUint32 for a device.
-type ArrayUint32 struct {
-	methodBase
-}
-
-// ArrayUint64 compiles and runs the GX function ArrayUint64 for a device.
-type ArrayUint64 struct {
-	methodBase
+	runner   tracer.CompiledFunc
 }
 
 // Bool compiles and runs the GX function Bool for a device.
@@ -292,207 +258,39 @@ type Uint64 struct {
 	methodBase
 }
 
-// Run first compiles ArrayBool for a given device and the given arguments.
-// Once compiled, the function is then run with these same arguments.
-// If the shape of the arguments change, the function will panic.
-func (f *ArrayBool) Run(arg0 types.Array[bool]) (_ types.Array[bool], err error) {
-	var args []values.Value = []values.Value{
-		arg0.Bridge().GXValue(), // x [2][3]bool
-	}
-	if f.runner == nil {
-		f.runner, err = interp.Compile(f.pkg.Device, f.function.(*ir.FuncDecl), nil, args, f.pkg.options)
-		if err != nil {
-			return
-		}
-	}
-	var outputs []values.Value
-	outputs, err = f.runner.Run(nil, args, f.pkg.Package.Tracer)
-	if err != nil {
-		return
-	}
-
-	out0Value, ok := outputs[0].(values.Array)
-	if !ok {
-		err = errors.Errorf("cannot cast %T to %s", outputs[0], reflect.TypeFor[*values.DeviceArray]().Name())
-		return
-	}
-	out0 := types.NewArray[bool](out0Value)
-
-	return out0, nil
+// ArrayBool compiles and runs the GX function ArrayBool for a device.
+type ArrayBool struct {
+	methodBase
 }
 
-// Run first compiles ArrayFloat32 for a given device and the given arguments.
-// Once compiled, the function is then run with these same arguments.
-// If the shape of the arguments change, the function will panic.
-func (f *ArrayFloat32) Run(arg0 types.Array[float32]) (_ types.Array[float32], err error) {
-	var args []values.Value = []values.Value{
-		arg0.Bridge().GXValue(), // x [2][3]float32
-	}
-	if f.runner == nil {
-		f.runner, err = interp.Compile(f.pkg.Device, f.function.(*ir.FuncDecl), nil, args, f.pkg.options)
-		if err != nil {
-			return
-		}
-	}
-	var outputs []values.Value
-	outputs, err = f.runner.Run(nil, args, f.pkg.Package.Tracer)
-	if err != nil {
-		return
-	}
-
-	out0Value, ok := outputs[0].(values.Array)
-	if !ok {
-		err = errors.Errorf("cannot cast %T to %s", outputs[0], reflect.TypeFor[*values.DeviceArray]().Name())
-		return
-	}
-	out0 := types.NewArray[float32](out0Value)
-
-	return out0, nil
+// ArrayFloat32 compiles and runs the GX function ArrayFloat32 for a device.
+type ArrayFloat32 struct {
+	methodBase
 }
 
-// Run first compiles ArrayFloat64 for a given device and the given arguments.
-// Once compiled, the function is then run with these same arguments.
-// If the shape of the arguments change, the function will panic.
-func (f *ArrayFloat64) Run(arg0 types.Array[float64]) (_ types.Array[float64], err error) {
-	var args []values.Value = []values.Value{
-		arg0.Bridge().GXValue(), // x [2][3]float64
-	}
-	if f.runner == nil {
-		f.runner, err = interp.Compile(f.pkg.Device, f.function.(*ir.FuncDecl), nil, args, f.pkg.options)
-		if err != nil {
-			return
-		}
-	}
-	var outputs []values.Value
-	outputs, err = f.runner.Run(nil, args, f.pkg.Package.Tracer)
-	if err != nil {
-		return
-	}
-
-	out0Value, ok := outputs[0].(values.Array)
-	if !ok {
-		err = errors.Errorf("cannot cast %T to %s", outputs[0], reflect.TypeFor[*values.DeviceArray]().Name())
-		return
-	}
-	out0 := types.NewArray[float64](out0Value)
-
-	return out0, nil
+// ArrayFloat64 compiles and runs the GX function ArrayFloat64 for a device.
+type ArrayFloat64 struct {
+	methodBase
 }
 
-// Run first compiles ArrayInt32 for a given device and the given arguments.
-// Once compiled, the function is then run with these same arguments.
-// If the shape of the arguments change, the function will panic.
-func (f *ArrayInt32) Run(arg0 types.Array[int32]) (_ types.Array[int32], err error) {
-	var args []values.Value = []values.Value{
-		arg0.Bridge().GXValue(), // x [2][3]int32
-	}
-	if f.runner == nil {
-		f.runner, err = interp.Compile(f.pkg.Device, f.function.(*ir.FuncDecl), nil, args, f.pkg.options)
-		if err != nil {
-			return
-		}
-	}
-	var outputs []values.Value
-	outputs, err = f.runner.Run(nil, args, f.pkg.Package.Tracer)
-	if err != nil {
-		return
-	}
-
-	out0Value, ok := outputs[0].(values.Array)
-	if !ok {
-		err = errors.Errorf("cannot cast %T to %s", outputs[0], reflect.TypeFor[*values.DeviceArray]().Name())
-		return
-	}
-	out0 := types.NewArray[int32](out0Value)
-
-	return out0, nil
+// ArrayInt32 compiles and runs the GX function ArrayInt32 for a device.
+type ArrayInt32 struct {
+	methodBase
 }
 
-// Run first compiles ArrayInt64 for a given device and the given arguments.
-// Once compiled, the function is then run with these same arguments.
-// If the shape of the arguments change, the function will panic.
-func (f *ArrayInt64) Run(arg0 types.Array[int64]) (_ types.Array[int64], err error) {
-	var args []values.Value = []values.Value{
-		arg0.Bridge().GXValue(), // x [2][3]int64
-	}
-	if f.runner == nil {
-		f.runner, err = interp.Compile(f.pkg.Device, f.function.(*ir.FuncDecl), nil, args, f.pkg.options)
-		if err != nil {
-			return
-		}
-	}
-	var outputs []values.Value
-	outputs, err = f.runner.Run(nil, args, f.pkg.Package.Tracer)
-	if err != nil {
-		return
-	}
-
-	out0Value, ok := outputs[0].(values.Array)
-	if !ok {
-		err = errors.Errorf("cannot cast %T to %s", outputs[0], reflect.TypeFor[*values.DeviceArray]().Name())
-		return
-	}
-	out0 := types.NewArray[int64](out0Value)
-
-	return out0, nil
+// ArrayInt64 compiles and runs the GX function ArrayInt64 for a device.
+type ArrayInt64 struct {
+	methodBase
 }
 
-// Run first compiles ArrayUint32 for a given device and the given arguments.
-// Once compiled, the function is then run with these same arguments.
-// If the shape of the arguments change, the function will panic.
-func (f *ArrayUint32) Run(arg0 types.Array[uint32]) (_ types.Array[uint32], err error) {
-	var args []values.Value = []values.Value{
-		arg0.Bridge().GXValue(), // x [2][3]uint32
-	}
-	if f.runner == nil {
-		f.runner, err = interp.Compile(f.pkg.Device, f.function.(*ir.FuncDecl), nil, args, f.pkg.options)
-		if err != nil {
-			return
-		}
-	}
-	var outputs []values.Value
-	outputs, err = f.runner.Run(nil, args, f.pkg.Package.Tracer)
-	if err != nil {
-		return
-	}
-
-	out0Value, ok := outputs[0].(values.Array)
-	if !ok {
-		err = errors.Errorf("cannot cast %T to %s", outputs[0], reflect.TypeFor[*values.DeviceArray]().Name())
-		return
-	}
-	out0 := types.NewArray[uint32](out0Value)
-
-	return out0, nil
+// ArrayUint32 compiles and runs the GX function ArrayUint32 for a device.
+type ArrayUint32 struct {
+	methodBase
 }
 
-// Run first compiles ArrayUint64 for a given device and the given arguments.
-// Once compiled, the function is then run with these same arguments.
-// If the shape of the arguments change, the function will panic.
-func (f *ArrayUint64) Run(arg0 types.Array[uint64]) (_ types.Array[uint64], err error) {
-	var args []values.Value = []values.Value{
-		arg0.Bridge().GXValue(), // x [2][3]uint64
-	}
-	if f.runner == nil {
-		f.runner, err = interp.Compile(f.pkg.Device, f.function.(*ir.FuncDecl), nil, args, f.pkg.options)
-		if err != nil {
-			return
-		}
-	}
-	var outputs []values.Value
-	outputs, err = f.runner.Run(nil, args, f.pkg.Package.Tracer)
-	if err != nil {
-		return
-	}
-
-	out0Value, ok := outputs[0].(values.Array)
-	if !ok {
-		err = errors.Errorf("cannot cast %T to %s", outputs[0], reflect.TypeFor[*values.DeviceArray]().Name())
-		return
-	}
-	out0 := types.NewArray[uint64](out0Value)
-
-	return out0, nil
+// ArrayUint64 compiles and runs the GX function ArrayUint64 for a device.
+type ArrayUint64 struct {
+	methodBase
 }
 
 // Run first compiles Bool for a given device and the given arguments.
@@ -503,7 +301,7 @@ func (f *Bool) Run(arg0 types.Atom[bool]) (_ types.Atom[bool], err error) {
 		arg0.Bridge().GXValue(), // x bool
 	}
 	if f.runner == nil {
-		f.runner, err = interp.Compile(f.pkg.Device, f.function.(*ir.FuncDecl), nil, args, f.pkg.options)
+		f.runner, err = tracer.Trace(f.pkg.Device, f.function.(*ir.FuncDecl), nil, args, f.pkg.options)
 		if err != nil {
 			return
 		}
@@ -524,6 +322,10 @@ func (f *Bool) Run(arg0 types.Atom[bool]) (_ types.Atom[bool], err error) {
 	return out0, nil
 }
 
+func (f *Bool) String() string {
+	return fmt.Sprint(f.function)
+}
+
 // Run first compiles Float32 for a given device and the given arguments.
 // Once compiled, the function is then run with these same arguments.
 // If the shape of the arguments change, the function will panic.
@@ -532,7 +334,7 @@ func (f *Float32) Run(arg0 types.Atom[float32]) (_ types.Atom[float32], err erro
 		arg0.Bridge().GXValue(), // x float32
 	}
 	if f.runner == nil {
-		f.runner, err = interp.Compile(f.pkg.Device, f.function.(*ir.FuncDecl), nil, args, f.pkg.options)
+		f.runner, err = tracer.Trace(f.pkg.Device, f.function.(*ir.FuncDecl), nil, args, f.pkg.options)
 		if err != nil {
 			return
 		}
@@ -553,6 +355,10 @@ func (f *Float32) Run(arg0 types.Atom[float32]) (_ types.Atom[float32], err erro
 	return out0, nil
 }
 
+func (f *Float32) String() string {
+	return fmt.Sprint(f.function)
+}
+
 // Run first compiles Float64 for a given device and the given arguments.
 // Once compiled, the function is then run with these same arguments.
 // If the shape of the arguments change, the function will panic.
@@ -561,7 +367,7 @@ func (f *Float64) Run(arg0 types.Atom[float64]) (_ types.Atom[float64], err erro
 		arg0.Bridge().GXValue(), // x float64
 	}
 	if f.runner == nil {
-		f.runner, err = interp.Compile(f.pkg.Device, f.function.(*ir.FuncDecl), nil, args, f.pkg.options)
+		f.runner, err = tracer.Trace(f.pkg.Device, f.function.(*ir.FuncDecl), nil, args, f.pkg.options)
 		if err != nil {
 			return
 		}
@@ -582,6 +388,10 @@ func (f *Float64) Run(arg0 types.Atom[float64]) (_ types.Atom[float64], err erro
 	return out0, nil
 }
 
+func (f *Float64) String() string {
+	return fmt.Sprint(f.function)
+}
+
 // Run first compiles Int32 for a given device and the given arguments.
 // Once compiled, the function is then run with these same arguments.
 // If the shape of the arguments change, the function will panic.
@@ -590,7 +400,7 @@ func (f *Int32) Run(arg0 types.Atom[int32]) (_ types.Atom[int32], err error) {
 		arg0.Bridge().GXValue(), // x int32
 	}
 	if f.runner == nil {
-		f.runner, err = interp.Compile(f.pkg.Device, f.function.(*ir.FuncDecl), nil, args, f.pkg.options)
+		f.runner, err = tracer.Trace(f.pkg.Device, f.function.(*ir.FuncDecl), nil, args, f.pkg.options)
 		if err != nil {
 			return
 		}
@@ -611,6 +421,10 @@ func (f *Int32) Run(arg0 types.Atom[int32]) (_ types.Atom[int32], err error) {
 	return out0, nil
 }
 
+func (f *Int32) String() string {
+	return fmt.Sprint(f.function)
+}
+
 // Run first compiles Int64 for a given device and the given arguments.
 // Once compiled, the function is then run with these same arguments.
 // If the shape of the arguments change, the function will panic.
@@ -619,7 +433,7 @@ func (f *Int64) Run(arg0 types.Atom[int64]) (_ types.Atom[int64], err error) {
 		arg0.Bridge().GXValue(), // x int64
 	}
 	if f.runner == nil {
-		f.runner, err = interp.Compile(f.pkg.Device, f.function.(*ir.FuncDecl), nil, args, f.pkg.options)
+		f.runner, err = tracer.Trace(f.pkg.Device, f.function.(*ir.FuncDecl), nil, args, f.pkg.options)
 		if err != nil {
 			return
 		}
@@ -640,6 +454,10 @@ func (f *Int64) Run(arg0 types.Atom[int64]) (_ types.Atom[int64], err error) {
 	return out0, nil
 }
 
+func (f *Int64) String() string {
+	return fmt.Sprint(f.function)
+}
+
 // Run first compiles Uint32 for a given device and the given arguments.
 // Once compiled, the function is then run with these same arguments.
 // If the shape of the arguments change, the function will panic.
@@ -648,7 +466,7 @@ func (f *Uint32) Run(arg0 types.Atom[uint32]) (_ types.Atom[uint32], err error) 
 		arg0.Bridge().GXValue(), // x uint32
 	}
 	if f.runner == nil {
-		f.runner, err = interp.Compile(f.pkg.Device, f.function.(*ir.FuncDecl), nil, args, f.pkg.options)
+		f.runner, err = tracer.Trace(f.pkg.Device, f.function.(*ir.FuncDecl), nil, args, f.pkg.options)
 		if err != nil {
 			return
 		}
@@ -669,6 +487,10 @@ func (f *Uint32) Run(arg0 types.Atom[uint32]) (_ types.Atom[uint32], err error) 
 	return out0, nil
 }
 
+func (f *Uint32) String() string {
+	return fmt.Sprint(f.function)
+}
+
 // Run first compiles Uint64 for a given device and the given arguments.
 // Once compiled, the function is then run with these same arguments.
 // If the shape of the arguments change, the function will panic.
@@ -677,7 +499,7 @@ func (f *Uint64) Run(arg0 types.Atom[uint64]) (_ types.Atom[uint64], err error) 
 		arg0.Bridge().GXValue(), // x uint64
 	}
 	if f.runner == nil {
-		f.runner, err = interp.Compile(f.pkg.Device, f.function.(*ir.FuncDecl), nil, args, f.pkg.options)
+		f.runner, err = tracer.Trace(f.pkg.Device, f.function.(*ir.FuncDecl), nil, args, f.pkg.options)
 		if err != nil {
 			return
 		}
@@ -696,4 +518,239 @@ func (f *Uint64) Run(arg0 types.Atom[uint64]) (_ types.Atom[uint64], err error) 
 	out0 := types.NewAtom[uint64](out0Value)
 
 	return out0, nil
+}
+
+func (f *Uint64) String() string {
+	return fmt.Sprint(f.function)
+}
+
+// Run first compiles ArrayBool for a given device and the given arguments.
+// Once compiled, the function is then run with these same arguments.
+// If the shape of the arguments change, the function will panic.
+func (f *ArrayBool) Run(arg0 types.Array[bool]) (_ types.Array[bool], err error) {
+	var args []values.Value = []values.Value{
+		arg0.Bridge().GXValue(), // x [2][3]bool
+	}
+	if f.runner == nil {
+		f.runner, err = tracer.Trace(f.pkg.Device, f.function.(*ir.FuncDecl), nil, args, f.pkg.options)
+		if err != nil {
+			return
+		}
+	}
+	var outputs []values.Value
+	outputs, err = f.runner.Run(nil, args, f.pkg.Package.Tracer)
+	if err != nil {
+		return
+	}
+
+	out0Value, ok := outputs[0].(values.Array)
+	if !ok {
+		err = errors.Errorf("cannot cast %T to %s", outputs[0], reflect.TypeFor[*values.DeviceArray]().Name())
+		return
+	}
+	out0 := types.NewArray[bool](out0Value)
+
+	return out0, nil
+}
+
+func (f *ArrayBool) String() string {
+	return fmt.Sprint(f.function)
+}
+
+// Run first compiles ArrayFloat32 for a given device and the given arguments.
+// Once compiled, the function is then run with these same arguments.
+// If the shape of the arguments change, the function will panic.
+func (f *ArrayFloat32) Run(arg0 types.Array[float32]) (_ types.Array[float32], err error) {
+	var args []values.Value = []values.Value{
+		arg0.Bridge().GXValue(), // x [2][3]float32
+	}
+	if f.runner == nil {
+		f.runner, err = tracer.Trace(f.pkg.Device, f.function.(*ir.FuncDecl), nil, args, f.pkg.options)
+		if err != nil {
+			return
+		}
+	}
+	var outputs []values.Value
+	outputs, err = f.runner.Run(nil, args, f.pkg.Package.Tracer)
+	if err != nil {
+		return
+	}
+
+	out0Value, ok := outputs[0].(values.Array)
+	if !ok {
+		err = errors.Errorf("cannot cast %T to %s", outputs[0], reflect.TypeFor[*values.DeviceArray]().Name())
+		return
+	}
+	out0 := types.NewArray[float32](out0Value)
+
+	return out0, nil
+}
+
+func (f *ArrayFloat32) String() string {
+	return fmt.Sprint(f.function)
+}
+
+// Run first compiles ArrayFloat64 for a given device and the given arguments.
+// Once compiled, the function is then run with these same arguments.
+// If the shape of the arguments change, the function will panic.
+func (f *ArrayFloat64) Run(arg0 types.Array[float64]) (_ types.Array[float64], err error) {
+	var args []values.Value = []values.Value{
+		arg0.Bridge().GXValue(), // x [2][3]float64
+	}
+	if f.runner == nil {
+		f.runner, err = tracer.Trace(f.pkg.Device, f.function.(*ir.FuncDecl), nil, args, f.pkg.options)
+		if err != nil {
+			return
+		}
+	}
+	var outputs []values.Value
+	outputs, err = f.runner.Run(nil, args, f.pkg.Package.Tracer)
+	if err != nil {
+		return
+	}
+
+	out0Value, ok := outputs[0].(values.Array)
+	if !ok {
+		err = errors.Errorf("cannot cast %T to %s", outputs[0], reflect.TypeFor[*values.DeviceArray]().Name())
+		return
+	}
+	out0 := types.NewArray[float64](out0Value)
+
+	return out0, nil
+}
+
+func (f *ArrayFloat64) String() string {
+	return fmt.Sprint(f.function)
+}
+
+// Run first compiles ArrayInt32 for a given device and the given arguments.
+// Once compiled, the function is then run with these same arguments.
+// If the shape of the arguments change, the function will panic.
+func (f *ArrayInt32) Run(arg0 types.Array[int32]) (_ types.Array[int32], err error) {
+	var args []values.Value = []values.Value{
+		arg0.Bridge().GXValue(), // x [2][3]int32
+	}
+	if f.runner == nil {
+		f.runner, err = tracer.Trace(f.pkg.Device, f.function.(*ir.FuncDecl), nil, args, f.pkg.options)
+		if err != nil {
+			return
+		}
+	}
+	var outputs []values.Value
+	outputs, err = f.runner.Run(nil, args, f.pkg.Package.Tracer)
+	if err != nil {
+		return
+	}
+
+	out0Value, ok := outputs[0].(values.Array)
+	if !ok {
+		err = errors.Errorf("cannot cast %T to %s", outputs[0], reflect.TypeFor[*values.DeviceArray]().Name())
+		return
+	}
+	out0 := types.NewArray[int32](out0Value)
+
+	return out0, nil
+}
+
+func (f *ArrayInt32) String() string {
+	return fmt.Sprint(f.function)
+}
+
+// Run first compiles ArrayInt64 for a given device and the given arguments.
+// Once compiled, the function is then run with these same arguments.
+// If the shape of the arguments change, the function will panic.
+func (f *ArrayInt64) Run(arg0 types.Array[int64]) (_ types.Array[int64], err error) {
+	var args []values.Value = []values.Value{
+		arg0.Bridge().GXValue(), // x [2][3]int64
+	}
+	if f.runner == nil {
+		f.runner, err = tracer.Trace(f.pkg.Device, f.function.(*ir.FuncDecl), nil, args, f.pkg.options)
+		if err != nil {
+			return
+		}
+	}
+	var outputs []values.Value
+	outputs, err = f.runner.Run(nil, args, f.pkg.Package.Tracer)
+	if err != nil {
+		return
+	}
+
+	out0Value, ok := outputs[0].(values.Array)
+	if !ok {
+		err = errors.Errorf("cannot cast %T to %s", outputs[0], reflect.TypeFor[*values.DeviceArray]().Name())
+		return
+	}
+	out0 := types.NewArray[int64](out0Value)
+
+	return out0, nil
+}
+
+func (f *ArrayInt64) String() string {
+	return fmt.Sprint(f.function)
+}
+
+// Run first compiles ArrayUint32 for a given device and the given arguments.
+// Once compiled, the function is then run with these same arguments.
+// If the shape of the arguments change, the function will panic.
+func (f *ArrayUint32) Run(arg0 types.Array[uint32]) (_ types.Array[uint32], err error) {
+	var args []values.Value = []values.Value{
+		arg0.Bridge().GXValue(), // x [2][3]uint32
+	}
+	if f.runner == nil {
+		f.runner, err = tracer.Trace(f.pkg.Device, f.function.(*ir.FuncDecl), nil, args, f.pkg.options)
+		if err != nil {
+			return
+		}
+	}
+	var outputs []values.Value
+	outputs, err = f.runner.Run(nil, args, f.pkg.Package.Tracer)
+	if err != nil {
+		return
+	}
+
+	out0Value, ok := outputs[0].(values.Array)
+	if !ok {
+		err = errors.Errorf("cannot cast %T to %s", outputs[0], reflect.TypeFor[*values.DeviceArray]().Name())
+		return
+	}
+	out0 := types.NewArray[uint32](out0Value)
+
+	return out0, nil
+}
+
+func (f *ArrayUint32) String() string {
+	return fmt.Sprint(f.function)
+}
+
+// Run first compiles ArrayUint64 for a given device and the given arguments.
+// Once compiled, the function is then run with these same arguments.
+// If the shape of the arguments change, the function will panic.
+func (f *ArrayUint64) Run(arg0 types.Array[uint64]) (_ types.Array[uint64], err error) {
+	var args []values.Value = []values.Value{
+		arg0.Bridge().GXValue(), // x [2][3]uint64
+	}
+	if f.runner == nil {
+		f.runner, err = tracer.Trace(f.pkg.Device, f.function.(*ir.FuncDecl), nil, args, f.pkg.options)
+		if err != nil {
+			return
+		}
+	}
+	var outputs []values.Value
+	outputs, err = f.runner.Run(nil, args, f.pkg.Package.Tracer)
+	if err != nil {
+		return
+	}
+
+	out0Value, ok := outputs[0].(values.Array)
+	if !ok {
+		err = errors.Errorf("cannot cast %T to %s", outputs[0], reflect.TypeFor[*values.DeviceArray]().Name())
+		return
+	}
+	out0 := types.NewArray[uint64](out0Value)
+
+	return out0, nil
+}
+
+func (f *ArrayUint64) String() string {
+	return fmt.Sprint(f.function)
 }
