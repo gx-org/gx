@@ -26,11 +26,12 @@ import (
 
 	"github.com/gx-org/backend/platform"
 	"github.com/gx-org/gx/api"
+	"github.com/gx-org/gx/api/options"
+	"github.com/gx-org/gx/api/trace"
+	"github.com/gx-org/gx/api/tracer"
 	"github.com/gx-org/gx/api/values"
 	"github.com/gx-org/gx/build/ir"
 	"github.com/gx-org/gx/golang/binder/gobindings/types"
-	"github.com/gx-org/gx/interp"
-	"github.com/gx-org/gx/interp/state"
 	"github.com/pkg/errors"
 )
 
@@ -50,7 +51,7 @@ var (
 type PackageIR struct {
 	Runtime *api.Runtime
 	IR      *ir.Package
-	Tracer  state.Tracer
+	Tracer  trace.Callback
 }
 
 // Load the GX package for a given backend.
@@ -69,7 +70,7 @@ func Load(rtm *api.Runtime) (*PackageIR, error) {
 
 // BuildFor loads the GX package shapes
 // then returns that package for a given device and options.
-func BuildFor(dev *api.Device, options ...interp.PackageOptionFactory) (*Package, error) {
+func BuildFor(dev *api.Device, options ...options.PackageOptionFactory) (*Package, error) {
 	pkg, err := Load(dev.Runtime())
 	if err != nil {
 		return nil, err
@@ -92,11 +93,11 @@ type Package struct {
 	Device  *api.Device
 	Factory *Factory
 
-	options []interp.PackageOption
+	options []options.PackageOption
 }
 
 // AppendOptions appends options to the compiler.
-func (cmpl *Package) AppendOptions(options ...interp.PackageOptionFactory) {
+func (cmpl *Package) AppendOptions(options ...options.PackageOptionFactory) {
 	plat := cmpl.Package.Runtime.Backend().Platform()
 	for _, opt := range options {
 		cmpl.options = append(cmpl.options, opt(plat))
@@ -104,7 +105,7 @@ func (cmpl *Package) AppendOptions(options ...interp.PackageOptionFactory) {
 }
 
 // BuildFor returns a package ready to compile for a device and options.
-func (pkg *PackageIR) BuildFor(dev *api.Device, options ...interp.PackageOptionFactory) *Package {
+func (pkg *PackageIR) BuildFor(dev *api.Device, options ...options.PackageOptionFactory) *Package {
 	c := &Package{
 		Package: pkg,
 		Device:  dev,
@@ -223,7 +224,7 @@ func (h *handleShape) String() string {
 // Shape stores the handle of Shape on a device.
 type Shape struct {
 	handle handleShape
-	value  *values.Struct
+	value  *values.NamedType
 
 	DType *DType
 
@@ -237,21 +238,26 @@ var (
 
 // StructValue returns the GX value of the structure.
 func (h *handleShape) StructValue() *values.Struct {
-	return h.owner.value
+	return h.owner.value.Underlying().(*values.Struct)
 }
 
 // MarshalShape populates the receiver fields with device handles.
 func (cmpl *Package) MarshalShape(val values.Value) (s *Shape, err error) {
 	s = cmpl.Factory.NewShape()
 	var ok bool
-	s.value, ok = val.(*values.Struct)
+	s.value, ok = val.(*values.NamedType)
 	if !ok {
-		err = fmt.Errorf("cannot use handle to set Shape: %T is not a %s", val, reflect.TypeFor[*values.Struct]().Name())
+		err = errors.Errorf("cannot use handle to set Shape: %T is not a %s", val, reflect.TypeFor[*values.NamedType]())
 		return
 	}
-	fields := make([]values.Value, s.value.StructType().NumFields())
-	for i, field := range s.value.StructType().Fields.Fields() {
-		fields[i] = s.value.FieldValue(field.Name.Name)
+	structVal, ok := s.value.Underlying().(*values.Struct)
+	if !ok {
+		err = errors.Errorf("incorrect underlying value for named type Shape: %T is not a %s", val, reflect.TypeFor[*values.Struct]().Name())
+		return
+	}
+	fields := make([]values.Value, structVal.StructType().NumFields())
+	for i, field := range structVal.StructType().Fields.Fields() {
+		fields[i] = structVal.FieldValue(field.Name.Name)
 	}
 	var field0 *DType
 	field0, err = cmpl.MarshalDType(fields[0])
@@ -300,13 +306,13 @@ func (s *Shape) Bridge() types.Bridge { return &s.handle }
 type methodBase struct {
 	pkg      *Package
 	function ir.Func
-	runner   *state.CompiledGraph
+	runner   tracer.CompiledFunc
 }
 
 // NewDType returns a handle on named type DType.
 func (fac *Factory) NewDType() *DType {
 	s := &DType{}
-	typ := fac.Package.Package.IR.Types[0]
+	typ := fac.Package.Package.IR.Decls.Types[0]
 	s.handle = handleDType{
 		pkg:   fac.Package,
 		struc: typ,
@@ -329,29 +335,26 @@ func (h *handleDType) NewFromField(field *ir.Field) (types.Bridge, error) {
 
 // SetField sets a field in the structure.
 func (h *handleDType) SetField(field *ir.Field, val types.Bridge) error {
-	name := field.Name.Name
-	switch name {
 
-	default:
-		return errors.Errorf("structure DType has no field %q", name)
-	}
+	return errors.Errorf("type DType has no field")
+
 }
 
 // NewShape returns a handle on named type Shape.
 func (fac *Factory) NewShape() *Shape {
 	s := &Shape{}
-	typ := fac.Package.Package.IR.Types[1]
+	typ := fac.Package.Package.IR.Decls.Types[1]
 	s.handle = handleShape{
 		pkg:   fac.Package,
 		struc: typ,
 		owner: s,
 	}
 
-	var err error
-	s.value, err = values.NewStruct(typ, nil)
+	structVal, err := values.NewStruct(typ, nil)
 	if err != nil {
 		panic(err)
 	}
+	s.value = values.NewNamedType(structVal, typ)
 
 	return s
 }
@@ -379,7 +382,12 @@ func (h *handleShape) NewFromField(field *ir.Field) (types.Bridge, error) {
 
 // SetField sets a field in the structure.
 func (h *handleShape) SetField(field *ir.Field, val types.Bridge) error {
+
 	name := field.Name.Name
+	structVal, ok := h.owner.value.Underlying().(*values.Struct)
+	if !ok {
+		return fmt.Errorf("incorrect underlying value for named type Shape: %T is not a %s", val, reflect.TypeFor[*values.Struct]().Name())
+	}
 	switch name {
 
 	case "DType":
@@ -389,7 +397,7 @@ func (h *handleShape) SetField(field *ir.Field, val types.Bridge) error {
 			return errors.Errorf("cannot set field DType: cannot cast %T to *DType", bridger)
 		}
 		h.owner.DType = fieldValue
-		h.owner.value.SetField("DType", val.GXValue())
+		structVal.SetField("DType", val.GXValue())
 		return nil
 
 	case "Dimensions":
@@ -399,10 +407,11 @@ func (h *handleShape) SetField(field *ir.Field, val types.Bridge) error {
 			return errors.Errorf("cannot set field Dimensions: cannot cast %T to *types.Slice[types.Atom[ir.Int]]", bridger)
 		}
 		h.owner.Dimensions = fieldValue
-		h.owner.value.SetField("Dimensions", val.GXValue())
+		structVal.SetField("Dimensions", val.GXValue())
 		return nil
 
 	default:
 		return errors.Errorf("structure Shape has no field %q", name)
 	}
+
 }
