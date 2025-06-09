@@ -479,7 +479,10 @@ func (s *arrayResolveScope) newInferCompositeType(src *ast.CompositeLit, exprs [
 			s.parent.appendAxisToInferredRanks(toInfer)
 		}
 	}
-	return ext, axisEqual(s, src, axis, got)
+	if !axisEqual(s, src, axis, got) {
+		return ext, s.err().Appendf(src, "cannot assign %d element(s) to axis length %s", numExprs, axis.String())
+	}
+	return ext, true
 }
 
 type sliceResolveScope struct {
