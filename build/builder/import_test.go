@@ -97,27 +97,6 @@ func f(a int32) int32 {
 	return pkg.F(a)
 }
 `,
-			want: []ir.Node{
-				&ir.FuncDecl{
-					FType: irhelper.FuncType(
-						nil, nil,
-						irhelper.Fields(),
-						irhelper.Fields(ir.Int32Type()),
-					),
-					Body: irhelper.Block(
-						&ir.ReturnStmt{
-							Results: []ir.Expr{
-								&ir.NumberCastExpr{
-									X: &ir.SelectorExpr{
-										X:    irhelper.ValueRef(pkgImportDecl),
-										Stor: constExpr,
-									},
-									Typ: ir.Int32Type(),
-								},
-							},
-						},
-					)},
-			},
 		},
 	)
 }

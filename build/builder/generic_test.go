@@ -131,7 +131,10 @@ func TestGenericCall(t *testing.T) {
 		),
 		Body: &ir.BlockStmt{List: []ir.Stmt{
 			&ir.ReturnStmt{Results: []ir.Expr{
-				irhelper.IntNumberAs(2, someInt),
+				&ir.CastExpr{
+					X:   irhelper.IntNumberAs(2, someInt),
+					Typ: someInt,
+				},
 			}},
 		}},
 	}
@@ -400,7 +403,10 @@ func callCast() int32 {
 								),
 							},
 							Args: []ir.AssignableExpr{
-								irhelper.IntNumberAs(2, ir.Int64Type()),
+								&ir.CastExpr{
+									X:   irhelper.IntNumberAs(2, ir.Int64Type()),
+									Typ: ir.Int64Type(),
+								},
 							},
 						}}},
 					}},

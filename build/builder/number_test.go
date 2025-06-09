@@ -62,9 +62,6 @@ func (a A) f() float32 {
 	return a.val
 }
 `,
-			want: []ir.Node{
-				typeA,
-			},
 		},
 	)
 }

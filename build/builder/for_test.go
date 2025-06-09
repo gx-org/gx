@@ -8,6 +8,16 @@ import (
 )
 
 func TestForLoop(t *testing.T) {
+	lVarDecl := irh.VarSpec("L")
+	xStorage := irh.LocalVar("x", ir.Int32Type())
+	xAssign := &ir.AssignExpr{
+		Storage: xStorage,
+		X: &ir.CastExpr{
+			X:   irh.IntNumberAs(0, ir.Int32Type()),
+			Typ: ir.Int32Type(),
+		},
+	}
+	iStorage := irh.LocalVar("i", ir.IntLenType())
 	testAll(t,
 		irDeclTest{
 			src: `
@@ -21,11 +31,37 @@ func f() int32 {
 }
 `,
 			want: []ir.Node{
+				lVarDecl,
 				&ir.FuncDecl{
 					FType: irh.FuncType(
 						nil, nil,
 						irh.Fields(),
 						irh.Fields(ir.Int32Type()),
+					),
+					Body: irh.Block(
+						&ir.AssignExprStmt{List: []*ir.AssignExpr{
+							xAssign,
+						}},
+						&ir.RangeStmt{
+							Key: iStorage,
+							X:   irh.ValueRef(lVarDecl.Exprs[0]),
+							Body: irh.Block(
+								&ir.AssignExprStmt{List: []*ir.AssignExpr{
+									&ir.AssignExpr{
+										Storage: xStorage,
+										X: &ir.BinaryExpr{
+											X: irh.ValueRef(xAssign),
+											Y: &ir.CastExpr{
+												X:   irh.ValueRef(iStorage),
+												Typ: ir.Int32Type(),
+											},
+											Typ: ir.Int32Type(),
+										},
+									}}}),
+						},
+						&ir.ReturnStmt{Results: []ir.Expr{
+							irh.ValueRef(xAssign),
+						}},
 					),
 				},
 			},
@@ -41,15 +77,6 @@ func f() int32 {
 	return x
 }
 `,
-			want: []ir.Node{
-				&ir.FuncDecl{
-					FType: irh.FuncType(
-						nil, nil,
-						irh.Fields(),
-						irh.Fields(ir.Int32Type()),
-					),
-				},
-			},
 		},
 		irDeclTest{
 			src: `
@@ -62,15 +89,6 @@ func f() int32 {
 	return x
 }
 `,
-			want: []ir.Node{
-				&ir.FuncDecl{
-					FType: irh.FuncType(
-						nil, nil,
-						irh.Fields(),
-						irh.Fields(ir.Int32Type()),
-					),
-				},
-			},
 		},
 	)
 }

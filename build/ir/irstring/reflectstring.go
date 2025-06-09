@@ -108,7 +108,8 @@ func typeValExpr(done map[any]bool, val reflect.Value, proc processor) string {
 func valueRefToString(done map[any]bool, val reflect.Value, proc processor) string {
 	ref := val.Interface().(*ir.ValueRef)
 	typeOf := reflect.TypeOf(ref.Stor).Elem()
-	return fmt.Sprintf("%s->%s[%s]", ref.Stor.NameDef().Name, typeOf.Name(), ref.Type().String())
+	typeS := reflectString(done, reflect.ValueOf(ref.Type()), proc)
+	return fmt.Sprintf("%s->%s[%s]", ref.Stor.NameDef().Name, typeOf.Name(), typeS)
 }
 
 type (
@@ -133,29 +134,7 @@ func notOnDebug(stringer stringerFunc) debugFunc {
 	}
 }
 
-var typeToProcess = map[string]debugFunc{
-	"go/ast.Ident": debugOk(func(done map[any]bool, val reflect.Value, proc processor) string {
-		return val.Interface().(*ast.Ident).Name
-	}),
-	"math/big.Int": debugOk(func(done map[any]bool, val reflect.Value, proc processor) string {
-		return val.Interface().(*big.Int).String()
-	}),
-	"github.com/gx-org/gx/build/ir.atomicType":      debugOk(valueToString),
-	"github.com/gx-org/gx/build/ir.int32Type":       debugOk(valueToString),
-	"github.com/gx-org/gx/build/ir.int64Type":       debugOk(valueToString),
-	"github.com/gx-org/gx/build/ir.intlenType":      debugOk(valueToString),
-	"github.com/gx-org/gx/build/ir.float32Type":     debugOk(valueToString),
-	"github.com/gx-org/gx/build/ir.float64Type":     debugOk(valueToString),
-	"github.com/gx-org/gx/build/ir.numberIntType":   debugOk(valueToString),
-	"github.com/gx-org/gx/build/ir.numberFloatType": debugOk(valueToString),
-	"github.com/gx-org/gx/build/ir.ValueRef":        debugOk(valueRefToString),
-	"github.com/gx-org/gx/build/ir.TypeSet":         notOnDebug(valueToString),
-	"github.com/gx-org/gx/build/ir.Rank":            notOnDebug(rank),
-	"github.com/gx-org/gx/build/ir.FuncValExpr":     notOnDebug(skip),
-	"github.com/gx-org/gx/build/ir.File": debugOk(func(map[any]bool, reflect.Value, processor) string {
-		return ""
-	}),
-}
+var typeToProcess = map[string]debugFunc{}
 
 func init() {
 	// Not in the map initialisation to prevent a cycle.
@@ -164,6 +143,27 @@ func init() {
 	typeToProcess["github.com/gx-org/gx/build/ir.TypeParam"] = notOnDebug(typeParam)
 	typeToProcess["github.com/gx-org/gx/build/ir.ConstExpr"] = debugOk(constExpr)
 	typeToProcess["github.com/gx-org/gx/build/ir.TypeValExpr"] = debugOk(typeValExpr)
+	typeToProcess["go/ast.Ident"] = debugOk(func(done map[any]bool, val reflect.Value, proc processor) string {
+		return val.Interface().(*ast.Ident).Name
+	})
+	typeToProcess["math/big.Int"] = debugOk(func(done map[any]bool, val reflect.Value, proc processor) string {
+		return val.Interface().(*big.Int).String()
+	})
+	typeToProcess["github.com/gx-org/gx/build/ir.atomicType"] = debugOk(valueToString)
+	typeToProcess["github.com/gx-org/gx/build/ir.int32Type"] = debugOk(valueToString)
+	typeToProcess["github.com/gx-org/gx/build/ir.int64Type"] = debugOk(valueToString)
+	typeToProcess["github.com/gx-org/gx/build/ir.intlenType"] = debugOk(valueToString)
+	typeToProcess["github.com/gx-org/gx/build/ir.float32Type"] = debugOk(valueToString)
+	typeToProcess["github.com/gx-org/gx/build/ir.float64Type"] = debugOk(valueToString)
+	typeToProcess["github.com/gx-org/gx/build/ir.numberIntType"] = debugOk(valueToString)
+	typeToProcess["github.com/gx-org/gx/build/ir.numberFloatType"] = debugOk(valueToString)
+	typeToProcess["github.com/gx-org/gx/build/ir.ValueRef"] = debugOk(valueRefToString)
+	typeToProcess["github.com/gx-org/gx/build/ir.TypeSet"] = notOnDebug(valueToString)
+	typeToProcess["github.com/gx-org/gx/build/ir.Rank"] = notOnDebug(rank)
+	typeToProcess["github.com/gx-org/gx/build/ir.FuncValExpr"] = notOnDebug(skip)
+	typeToProcess["github.com/gx-org/gx/build/ir.File"] = debugOk(func(map[any]bool, reflect.Value, processor) string {
+		return ""
+	})
 }
 
 func reflectStructString(done map[any]bool, val reflect.Value, proc processor) string {
@@ -246,7 +246,7 @@ func toPointer(val reflect.Value) any {
 
 func reflectString(done map[any]bool, val reflect.Value, proc processor) string {
 	if done[val] {
-		return fmt.Sprintf("<ref>")
+		return fmt.Sprintf("<ref:%s>", val.Type().Name())
 	}
 	ptr := toPointer(val)
 	done[ptr] = true

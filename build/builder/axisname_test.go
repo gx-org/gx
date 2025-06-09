@@ -230,7 +230,10 @@ func f() float64 {
 					Body: &ir.BlockStmt{List: []ir.Stmt{
 						&ir.ReturnStmt{Results: []ir.Expr{
 							&ir.CallExpr{
-								Args: []ir.AssignableExpr{irh.IntNumberAs(1, ir.Float32Type())},
+								Args: []ir.AssignableExpr{&ir.CastExpr{
+									X:   irh.IntNumberAs(1, ir.Float32Type()),
+									Typ: ir.Float32Type(),
+								}},
 								Callee: &ir.FuncValExpr{
 									X: irh.ValueRef(castFunc),
 									F: castFunc,

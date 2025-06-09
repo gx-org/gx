@@ -11,11 +11,17 @@ import (
 func TestAssign(t *testing.T) {
 	aStorage := &ir.AssignExpr{
 		Storage: irh.LocalVar("a", ir.Float32Type()),
-		X:       irh.IntNumberAs(2, ir.Float32Type()),
+		X: &ir.CastExpr{
+			X:   irh.IntNumberAs(2, ir.Float32Type()),
+			Typ: ir.Float32Type(),
+		},
 	}
 	bStorage := &ir.AssignExpr{
 		Storage: irh.LocalVar("b", ir.Float32Type()),
-		X:       irh.IntNumberAs(3, ir.Float32Type()),
+		X: &ir.CastExpr{
+			X:   irh.IntNumberAs(3, ir.Float32Type()),
+			Typ: ir.Float32Type(),
+		},
 	}
 	cStorage := irh.LocalVar("c", ir.Float32Type())
 	dStorage := irh.LocalVar("d", ir.Float32Type())
