@@ -26,11 +26,12 @@ import (
 
 	"github.com/gx-org/backend/platform"
 	"github.com/gx-org/gx/api"
+	"github.com/gx-org/gx/api/options"
+	"github.com/gx-org/gx/api/trace"
+	"github.com/gx-org/gx/api/tracer"
 	"github.com/gx-org/gx/api/values"
 	"github.com/gx-org/gx/build/ir"
 	"github.com/gx-org/gx/golang/binder/gobindings/types"
-	"github.com/gx-org/gx/interp"
-	"github.com/gx-org/gx/interp/state"
 	_ "github.com/gx-org/gx/tests/bindings/cartpole"
 	"github.com/pkg/errors"
 )
@@ -51,7 +52,7 @@ var (
 type PackageIR struct {
 	Runtime *api.Runtime
 	IR      *ir.Package
-	Tracer  state.Tracer
+	Tracer  trace.Callback
 }
 
 // Load the GX package for a given backend.
@@ -70,7 +71,7 @@ func Load(rtm *api.Runtime) (*PackageIR, error) {
 
 // BuildFor loads the GX package github.com/gx-org/gx/tests/bindings/cartpole
 // then returns that package for a given device and options.
-func BuildFor(dev *api.Device, options ...interp.PackageOptionFactory) (*Package, error) {
+func BuildFor(dev *api.Device, options ...options.PackageOptionFactory) (*Package, error) {
 	pkg, err := Load(dev.Runtime())
 	if err != nil {
 		return nil, err
@@ -93,17 +94,17 @@ type Package struct {
 	Device  *api.Device
 	Factory *Factory
 
-	options []interp.PackageOption
+	options []options.PackageOption
 
 	New                     New
-	methodCartpoleFullState methodBase
 	methodCartpoleReset     methodBase
-	methodCartpoleState     methodBase
 	methodCartpoleStep      methodBase
+	methodCartpoleState     methodBase
+	methodCartpoleFullState methodBase
 }
 
 // AppendOptions appends options to the compiler.
-func (cmpl *Package) AppendOptions(options ...interp.PackageOptionFactory) {
+func (cmpl *Package) AppendOptions(options ...options.PackageOptionFactory) {
 	plat := cmpl.Package.Runtime.Backend().Platform()
 	for _, opt := range options {
 		cmpl.options = append(cmpl.options, opt(plat))
@@ -111,7 +112,7 @@ func (cmpl *Package) AppendOptions(options ...interp.PackageOptionFactory) {
 }
 
 // BuildFor returns a package ready to compile for a device and options.
-func (pkg *PackageIR) BuildFor(dev *api.Device, options ...interp.PackageOptionFactory) *Package {
+func (pkg *PackageIR) BuildFor(dev *api.Device, options ...options.PackageOptionFactory) *Package {
 	c := &Package{
 		Package: pkg,
 		Device:  dev,
@@ -122,25 +123,25 @@ func (pkg *PackageIR) BuildFor(dev *api.Device, options ...interp.PackageOptionF
 	c.New = New{
 		methodBase: methodBase{
 			pkg:      c,
-			function: c.Package.IR.Funcs[0].(*ir.FuncDecl),
+			function: c.Package.IR.Decls.Funcs[0],
 		},
 	}
 
-	c.methodCartpoleFullState = methodBase{
-		pkg:      c,
-		function: c.Package.IR.Types[0].Methods[0],
-	}
 	c.methodCartpoleReset = methodBase{
 		pkg:      c,
-		function: c.Package.IR.Types[0].Methods[1],
-	}
-	c.methodCartpoleState = methodBase{
-		pkg:      c,
-		function: c.Package.IR.Types[0].Methods[2],
+		function: c.Package.IR.Decls.Types[0].Methods[0],
 	}
 	c.methodCartpoleStep = methodBase{
 		pkg:      c,
-		function: c.Package.IR.Types[0].Methods[3],
+		function: c.Package.IR.Decls.Types[0].Methods[1],
+	}
+	c.methodCartpoleState = methodBase{
+		pkg:      c,
+		function: c.Package.IR.Decls.Types[0].Methods[2],
+	}
+	c.methodCartpoleFullState = methodBase{
+		pkg:      c,
+		function: c.Package.IR.Decls.Types[0].Methods[3],
 	}
 
 	return c
@@ -152,29 +153,17 @@ type handleCartpole struct {
 	struc *ir.NamedType
 	owner *Cartpole
 
-	runnerFullState *MethodCartpoleFullState
-
 	runnerReset *MethodCartpoleReset
+
+	runnerStep *MethodCartpoleStep
 
 	runnerState *MethodCartpoleState
 
-	runnerStep *MethodCartpoleStep
-}
-
-// MethodCartpoleFullState compiles and runs the GX function FullState for a device.
-type MethodCartpoleFullState struct {
-	methodBase
-	receiver handleCartpole
+	runnerFullState *MethodCartpoleFullState
 }
 
 // MethodCartpoleReset compiles and runs the GX function Reset for a device.
 type MethodCartpoleReset struct {
-	methodBase
-	receiver handleCartpole
-}
-
-// MethodCartpoleState compiles and runs the GX function State for a device.
-type MethodCartpoleState struct {
 	methodBase
 	receiver handleCartpole
 }
@@ -185,31 +174,16 @@ type MethodCartpoleStep struct {
 	receiver handleCartpole
 }
 
-// Run first compiles FullState for a given device and the given arguments.
-// Once compiled, the function is then run with these same arguments.
-// If the shape of the arguments change, the function will panic.
-func (f *MethodCartpoleFullState) Run() (_ types.Array[float32], err error) {
-	var args []values.Value = nil
-	if f.runner == nil {
-		f.runner, err = interp.Compile(f.pkg.Device, f.function.(*ir.FuncDecl), f.receiver.GXValue(), args, f.pkg.options)
-		if err != nil {
-			return
-		}
-	}
-	var outputs []values.Value
-	outputs, err = f.runner.Run(f.receiver.GXValue(), args, f.pkg.Package.Tracer)
-	if err != nil {
-		return
-	}
+// MethodCartpoleState compiles and runs the GX function State for a device.
+type MethodCartpoleState struct {
+	methodBase
+	receiver handleCartpole
+}
 
-	out0Value, ok := outputs[0].(values.Array)
-	if !ok {
-		err = errors.Errorf("cannot cast %T to %s", outputs[0], reflect.TypeFor[*values.DeviceArray]().Name())
-		return
-	}
-	out0 := types.NewArray[float32](out0Value)
-
-	return out0, nil
+// MethodCartpoleFullState compiles and runs the GX function FullState for a device.
+type MethodCartpoleFullState struct {
+	methodBase
+	receiver handleCartpole
 }
 
 // Run first compiles Reset for a given device and the given arguments.
@@ -218,7 +192,7 @@ func (f *MethodCartpoleFullState) Run() (_ types.Array[float32], err error) {
 func (f *MethodCartpoleReset) Run() (_ *Cartpole, err error) {
 	var args []values.Value = nil
 	if f.runner == nil {
-		f.runner, err = interp.Compile(f.pkg.Device, f.function.(*ir.FuncDecl), f.receiver.GXValue(), args, f.pkg.options)
+		f.runner, err = tracer.Trace(f.pkg.Device, f.function.(*ir.FuncDecl), f.receiver.GXValue(), args, f.pkg.options)
 		if err != nil {
 			return
 		}
@@ -239,31 +213,8 @@ func (f *MethodCartpoleReset) Run() (_ *Cartpole, err error) {
 	return out0, nil
 }
 
-// Run first compiles State for a given device and the given arguments.
-// Once compiled, the function is then run with these same arguments.
-// If the shape of the arguments change, the function will panic.
-func (f *MethodCartpoleState) Run() (_ types.Array[float32], err error) {
-	var args []values.Value = nil
-	if f.runner == nil {
-		f.runner, err = interp.Compile(f.pkg.Device, f.function.(*ir.FuncDecl), f.receiver.GXValue(), args, f.pkg.options)
-		if err != nil {
-			return
-		}
-	}
-	var outputs []values.Value
-	outputs, err = f.runner.Run(f.receiver.GXValue(), args, f.pkg.Package.Tracer)
-	if err != nil {
-		return
-	}
-
-	out0Value, ok := outputs[0].(values.Array)
-	if !ok {
-		err = errors.Errorf("cannot cast %T to %s", outputs[0], reflect.TypeFor[*values.DeviceArray]().Name())
-		return
-	}
-	out0 := types.NewArray[float32](out0Value)
-
-	return out0, nil
+func (f *MethodCartpoleReset) String() string {
+	return fmt.Sprint(f.function)
 }
 
 // Run first compiles Step for a given device and the given arguments.
@@ -274,7 +225,7 @@ func (f *MethodCartpoleStep) Run(arg0 types.Atom[float32]) (_ *Cartpole, err err
 		arg0.Bridge().GXValue(), // action float32
 	}
 	if f.runner == nil {
-		f.runner, err = interp.Compile(f.pkg.Device, f.function.(*ir.FuncDecl), f.receiver.GXValue(), args, f.pkg.options)
+		f.runner, err = tracer.Trace(f.pkg.Device, f.function.(*ir.FuncDecl), f.receiver.GXValue(), args, f.pkg.options)
 		if err != nil {
 			return
 		}
@@ -293,6 +244,72 @@ func (f *MethodCartpoleStep) Run(arg0 types.Atom[float32]) (_ *Cartpole, err err
 	}
 
 	return out0, nil
+}
+
+func (f *MethodCartpoleStep) String() string {
+	return fmt.Sprint(f.function)
+}
+
+// Run first compiles State for a given device and the given arguments.
+// Once compiled, the function is then run with these same arguments.
+// If the shape of the arguments change, the function will panic.
+func (f *MethodCartpoleState) Run() (_ types.Array[float32], err error) {
+	var args []values.Value = nil
+	if f.runner == nil {
+		f.runner, err = tracer.Trace(f.pkg.Device, f.function.(*ir.FuncDecl), f.receiver.GXValue(), args, f.pkg.options)
+		if err != nil {
+			return
+		}
+	}
+	var outputs []values.Value
+	outputs, err = f.runner.Run(f.receiver.GXValue(), args, f.pkg.Package.Tracer)
+	if err != nil {
+		return
+	}
+
+	out0Value, ok := outputs[0].(values.Array)
+	if !ok {
+		err = errors.Errorf("cannot cast %T to %s", outputs[0], reflect.TypeFor[*values.DeviceArray]().Name())
+		return
+	}
+	out0 := types.NewArray[float32](out0Value)
+
+	return out0, nil
+}
+
+func (f *MethodCartpoleState) String() string {
+	return fmt.Sprint(f.function)
+}
+
+// Run first compiles FullState for a given device and the given arguments.
+// Once compiled, the function is then run with these same arguments.
+// If the shape of the arguments change, the function will panic.
+func (f *MethodCartpoleFullState) Run() (_ types.Array[float32], err error) {
+	var args []values.Value = nil
+	if f.runner == nil {
+		f.runner, err = tracer.Trace(f.pkg.Device, f.function.(*ir.FuncDecl), f.receiver.GXValue(), args, f.pkg.options)
+		if err != nil {
+			return
+		}
+	}
+	var outputs []values.Value
+	outputs, err = f.runner.Run(f.receiver.GXValue(), args, f.pkg.Package.Tracer)
+	if err != nil {
+		return
+	}
+
+	out0Value, ok := outputs[0].(values.Array)
+	if !ok {
+		err = errors.Errorf("cannot cast %T to %s", outputs[0], reflect.TypeFor[*values.DeviceArray]().Name())
+		return
+	}
+	out0 := types.NewArray[float32](out0Value)
+
+	return out0, nil
+}
+
+func (f *MethodCartpoleFullState) String() string {
+	return fmt.Sprint(f.function)
 }
 
 // Type of the value.
@@ -355,7 +372,7 @@ func (h *handleCartpole) String() string {
 // Cartpole stores the handle of Cartpole on a device.
 type Cartpole struct {
 	handle handleCartpole
-	value  *values.Struct
+	value  *values.NamedType
 
 	gravity types.Atom[float32]
 
@@ -393,21 +410,26 @@ var (
 
 // StructValue returns the GX value of the structure.
 func (h *handleCartpole) StructValue() *values.Struct {
-	return h.owner.value
+	return h.owner.value.Underlying().(*values.Struct)
 }
 
 // MarshalCartpole populates the receiver fields with device handles.
 func (cmpl *Package) MarshalCartpole(val values.Value) (s *Cartpole, err error) {
 	s = cmpl.Factory.NewCartpole()
 	var ok bool
-	s.value, ok = val.(*values.Struct)
+	s.value, ok = val.(*values.NamedType)
 	if !ok {
-		err = fmt.Errorf("cannot use handle to set Cartpole: %T is not a %s", val, reflect.TypeFor[*values.Struct]().Name())
+		err = errors.Errorf("cannot use handle to set Cartpole: %T is not a %s", val, reflect.TypeFor[*values.NamedType]())
 		return
 	}
-	fields := make([]values.Value, s.value.StructType().NumFields())
-	for i, field := range s.value.StructType().Fields.Fields() {
-		fields[i] = s.value.FieldValue(field.Name.Name)
+	structVal, ok := s.value.Underlying().(*values.Struct)
+	if !ok {
+		err = errors.Errorf("incorrect underlying value for named type Cartpole: %T is not a %s", val, reflect.TypeFor[*values.Struct]().Name())
+		return
+	}
+	fields := make([]values.Value, structVal.StructType().NumFields())
+	for i, field := range structVal.StructType().Fields.Fields() {
+		fields[i] = structVal.FieldValue(field.Name.Name)
 	}
 
 	field0Value, ok := fields[0].(values.Array)
@@ -532,19 +554,9 @@ func (s Cartpole) String() string {
 // Bridge returns the bridge between the Go value and the GX value.
 func (s *Cartpole) Bridge() types.Bridge { return &s.handle }
 
-// FullState returns a handle to compile method FullState for a device.
-func (s Cartpole) FullState() *MethodCartpoleFullState {
-	return s.handle.runnerFullState
-}
-
 // Reset returns a handle to compile method Reset for a device.
 func (s Cartpole) Reset() *MethodCartpoleReset {
 	return s.handle.runnerReset
-}
-
-// State returns a handle to compile method State for a device.
-func (s Cartpole) State() *MethodCartpoleState {
-	return s.handle.runnerState
 }
 
 // Step returns a handle to compile method Step for a device.
@@ -552,10 +564,20 @@ func (s Cartpole) Step() *MethodCartpoleStep {
 	return s.handle.runnerStep
 }
 
+// State returns a handle to compile method State for a device.
+func (s Cartpole) State() *MethodCartpoleState {
+	return s.handle.runnerState
+}
+
+// FullState returns a handle to compile method FullState for a device.
+func (s Cartpole) FullState() *MethodCartpoleFullState {
+	return s.handle.runnerFullState
+}
+
 type methodBase struct {
 	pkg      *Package
 	function ir.Func
-	runner   *state.CompiledGraph
+	runner   tracer.CompiledFunc
 }
 
 // New compiles and runs the GX function New for a device.
@@ -569,7 +591,7 @@ type New struct {
 func (f *New) Run() (_ *Cartpole, err error) {
 	var args []values.Value = nil
 	if f.runner == nil {
-		f.runner, err = interp.Compile(f.pkg.Device, f.function.(*ir.FuncDecl), nil, args, f.pkg.options)
+		f.runner, err = tracer.Trace(f.pkg.Device, f.function.(*ir.FuncDecl), nil, args, f.pkg.options)
 		if err != nil {
 			return
 		}
@@ -590,29 +612,33 @@ func (f *New) Run() (_ *Cartpole, err error) {
 	return out0, nil
 }
 
+func (f *New) String() string {
+	return fmt.Sprint(f.function)
+}
+
 // NewCartpole returns a handle on named type Cartpole.
 func (fac *Factory) NewCartpole() *Cartpole {
 	s := &Cartpole{}
-	typ := fac.Package.Package.IR.Types[0]
+	typ := fac.Package.Package.IR.Decls.Types[0]
 	s.handle = handleCartpole{
 		pkg:   fac.Package,
 		struc: typ,
 		owner: s,
 	}
 
-	var err error
-	s.value, err = values.NewStruct(typ, nil)
+	structVal, err := values.NewStruct(typ, nil)
 	if err != nil {
 		panic(err)
 	}
-
-	s.handle.runnerFullState = &MethodCartpoleFullState{
-		methodBase: s.handle.pkg.methodCartpoleFullState,
-		receiver:   s.handle,
-	}
+	s.value = values.NewNamedType(structVal, typ)
 
 	s.handle.runnerReset = &MethodCartpoleReset{
 		methodBase: s.handle.pkg.methodCartpoleReset,
+		receiver:   s.handle,
+	}
+
+	s.handle.runnerStep = &MethodCartpoleStep{
+		methodBase: s.handle.pkg.methodCartpoleStep,
 		receiver:   s.handle,
 	}
 
@@ -621,8 +647,8 @@ func (fac *Factory) NewCartpole() *Cartpole {
 		receiver:   s.handle,
 	}
 
-	s.handle.runnerStep = &MethodCartpoleStep{
-		methodBase: s.handle.pkg.methodCartpoleStep,
+	s.handle.runnerFullState = &MethodCartpoleFullState{
+		methodBase: s.handle.pkg.methodCartpoleFullState,
 		receiver:   s.handle,
 	}
 
@@ -684,7 +710,12 @@ func (h *handleCartpole) NewFromField(field *ir.Field) (types.Bridge, error) {
 
 // SetField sets a field in the structure.
 func (h *handleCartpole) SetField(field *ir.Field, val types.Bridge) error {
+
 	name := field.Name.Name
+	structVal, ok := h.owner.value.Underlying().(*values.Struct)
+	if !ok {
+		return fmt.Errorf("incorrect underlying value for named type Cartpole: %T is not a %s", val, reflect.TypeFor[*values.Struct]().Name())
+	}
 	switch name {
 
 	case "gravity":
@@ -694,7 +725,7 @@ func (h *handleCartpole) SetField(field *ir.Field, val types.Bridge) error {
 			return errors.Errorf("cannot set field gravity: cannot cast %T to types.Atom[float32]", bridger)
 		}
 		h.owner.gravity = fieldValue
-		h.owner.value.SetField("gravity", val.GXValue())
+		structVal.SetField("gravity", val.GXValue())
 		return nil
 
 	case "massCart":
@@ -704,7 +735,7 @@ func (h *handleCartpole) SetField(field *ir.Field, val types.Bridge) error {
 			return errors.Errorf("cannot set field massCart: cannot cast %T to types.Atom[float32]", bridger)
 		}
 		h.owner.massCart = fieldValue
-		h.owner.value.SetField("massCart", val.GXValue())
+		structVal.SetField("massCart", val.GXValue())
 		return nil
 
 	case "massPole":
@@ -714,7 +745,7 @@ func (h *handleCartpole) SetField(field *ir.Field, val types.Bridge) error {
 			return errors.Errorf("cannot set field massPole: cannot cast %T to types.Atom[float32]", bridger)
 		}
 		h.owner.massPole = fieldValue
-		h.owner.value.SetField("massPole", val.GXValue())
+		structVal.SetField("massPole", val.GXValue())
 		return nil
 
 	case "totalMass":
@@ -724,7 +755,7 @@ func (h *handleCartpole) SetField(field *ir.Field, val types.Bridge) error {
 			return errors.Errorf("cannot set field totalMass: cannot cast %T to types.Atom[float32]", bridger)
 		}
 		h.owner.totalMass = fieldValue
-		h.owner.value.SetField("totalMass", val.GXValue())
+		structVal.SetField("totalMass", val.GXValue())
 		return nil
 
 	case "length":
@@ -734,7 +765,7 @@ func (h *handleCartpole) SetField(field *ir.Field, val types.Bridge) error {
 			return errors.Errorf("cannot set field length: cannot cast %T to types.Atom[float32]", bridger)
 		}
 		h.owner.length = fieldValue
-		h.owner.value.SetField("length", val.GXValue())
+		structVal.SetField("length", val.GXValue())
 		return nil
 
 	case "poleMassLength":
@@ -744,7 +775,7 @@ func (h *handleCartpole) SetField(field *ir.Field, val types.Bridge) error {
 			return errors.Errorf("cannot set field poleMassLength: cannot cast %T to types.Atom[float32]", bridger)
 		}
 		h.owner.poleMassLength = fieldValue
-		h.owner.value.SetField("poleMassLength", val.GXValue())
+		structVal.SetField("poleMassLength", val.GXValue())
 		return nil
 
 	case "forceMag":
@@ -754,7 +785,7 @@ func (h *handleCartpole) SetField(field *ir.Field, val types.Bridge) error {
 			return errors.Errorf("cannot set field forceMag: cannot cast %T to types.Atom[float32]", bridger)
 		}
 		h.owner.forceMag = fieldValue
-		h.owner.value.SetField("forceMag", val.GXValue())
+		structVal.SetField("forceMag", val.GXValue())
 		return nil
 
 	case "tau":
@@ -764,7 +795,7 @@ func (h *handleCartpole) SetField(field *ir.Field, val types.Bridge) error {
 			return errors.Errorf("cannot set field tau: cannot cast %T to types.Atom[float32]", bridger)
 		}
 		h.owner.tau = fieldValue
-		h.owner.value.SetField("tau", val.GXValue())
+		structVal.SetField("tau", val.GXValue())
 		return nil
 
 	case "thetaThresholdRadians":
@@ -774,7 +805,7 @@ func (h *handleCartpole) SetField(field *ir.Field, val types.Bridge) error {
 			return errors.Errorf("cannot set field thetaThresholdRadians: cannot cast %T to types.Atom[float32]", bridger)
 		}
 		h.owner.thetaThresholdRadians = fieldValue
-		h.owner.value.SetField("thetaThresholdRadians", val.GXValue())
+		structVal.SetField("thetaThresholdRadians", val.GXValue())
 		return nil
 
 	case "xThreshold":
@@ -784,7 +815,7 @@ func (h *handleCartpole) SetField(field *ir.Field, val types.Bridge) error {
 			return errors.Errorf("cannot set field xThreshold: cannot cast %T to types.Atom[float32]", bridger)
 		}
 		h.owner.xThreshold = fieldValue
-		h.owner.value.SetField("xThreshold", val.GXValue())
+		structVal.SetField("xThreshold", val.GXValue())
 		return nil
 
 	case "x":
@@ -794,7 +825,7 @@ func (h *handleCartpole) SetField(field *ir.Field, val types.Bridge) error {
 			return errors.Errorf("cannot set field x: cannot cast %T to types.Atom[float32]", bridger)
 		}
 		h.owner.x = fieldValue
-		h.owner.value.SetField("x", val.GXValue())
+		structVal.SetField("x", val.GXValue())
 		return nil
 
 	case "xDot":
@@ -804,7 +835,7 @@ func (h *handleCartpole) SetField(field *ir.Field, val types.Bridge) error {
 			return errors.Errorf("cannot set field xDot: cannot cast %T to types.Atom[float32]", bridger)
 		}
 		h.owner.xDot = fieldValue
-		h.owner.value.SetField("xDot", val.GXValue())
+		structVal.SetField("xDot", val.GXValue())
 		return nil
 
 	case "theta":
@@ -814,7 +845,7 @@ func (h *handleCartpole) SetField(field *ir.Field, val types.Bridge) error {
 			return errors.Errorf("cannot set field theta: cannot cast %T to types.Atom[float32]", bridger)
 		}
 		h.owner.theta = fieldValue
-		h.owner.value.SetField("theta", val.GXValue())
+		structVal.SetField("theta", val.GXValue())
 		return nil
 
 	case "thetaDot":
@@ -824,10 +855,11 @@ func (h *handleCartpole) SetField(field *ir.Field, val types.Bridge) error {
 			return errors.Errorf("cannot set field thetaDot: cannot cast %T to types.Atom[float32]", bridger)
 		}
 		h.owner.thetaDot = fieldValue
-		h.owner.value.SetField("thetaDot", val.GXValue())
+		structVal.SetField("thetaDot", val.GXValue())
 		return nil
 
 	default:
 		return errors.Errorf("structure Cartpole has no field %q", name)
 	}
+
 }
