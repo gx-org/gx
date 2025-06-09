@@ -26,7 +26,6 @@ import (
 )
 
 func TestCompilerErrors(t *testing.T) {
-	t.Skip("FIX ASAP")
 	bld := builder.New(importers.NewCacheLoader(
 		stdlib.Importer(nil),
 		tests.Importer(),

@@ -59,11 +59,11 @@ func TestResolveType(t *testing.T) {
 		{code: "2 >= [_]int32{1, 2}", typ: "[2]bool"},
 
 		// Failure cases
-		{code: "x", err: "x undefined"},
-		{code: "x[0]", err: "x undefined"},
-		{code: "x()", err: "x undefined"},
-		{code: "x(1)", err: "x undefined"},
-		{code: "[2]float", err: "float undefined"},
+		{code: "x", err: "undefined: x"},
+		{code: "x[0]", err: "undefined: x"},
+		{code: "x()", err: "undefined: x"},
+		{code: "x(1)", err: "undefined: x"},
+		{code: "[2]float", err: "undefined: float"},
 		{code: "[2][3]float32{{1, 2, 3}}", err: "cannot assign"},
 		{code: "func(int32) bool {}(true)", err: "cannot use bool as int32"},
 	}

@@ -1,40 +1,40 @@
 package einsum
 
-func f() int {
+func f() int32 {
 	return 42
 }
 
-func testTensorExpressionInvalid() [...]float32 {
+func testTensorExpressionInvalid() [2]float32 {
 	x{i} := einsum(a{i})  // ERROR: expected a binary expression, got *ast.CompositeLit
 	return x
 }
 
-func testTensorExpressionOperandInvalid() [...]float32 {
+func testTensorExpressionOperandInvalid() [2]float32 {
 	x := einsum(a{i} - b{i})  // ERROR: expected a multiply operation, got "-"
 	return x
 }
 
-func testTargetTensorReferenceInvalidAxes() [...]float32 {
+func testTargetTensorReferenceInvalidAxes() [2]float32 {
 	x{i * i} := einsum(a{i} * b{j})  // ERROR: expected tensor reference to index using bare variable, got *ast.BinaryExpr
 	return x
 }
 
-func testTargetTensorReferenceRepeatedAxes() [...]float32 {
+func testTargetTensorReferenceRepeatedAxes() [2]float32 {
 	x{i, i} := einsum(a{i} * b{j})  // ERROR: tensor reference includes axis "i" more than once
 	return x
 }
 
-func testLeftTensorReferenceRepeatedAxes() [...]float32 {
+func testLeftTensorReferenceRepeatedAxes() [2]float32 {
 	x{i} := einsum(a{i, i} * b{j})  // ERROR: tensor reference includes axis "i" more than once
 	return x
 }
 
-func testLeftTensorReferenceInvalidBase() [...]float32 {
+func testLeftTensorReferenceInvalidBase() [2]float32 {
 	x{i} := einsum(f() * b{j})  // ERROR: invalid tensor reference base: *ast.CallExpr
 	return x
 }
 
-func testRightTensorReferenceRepeatedAxes() [...]float32 {
+func testRightTensorReferenceRepeatedAxes() [2]float32 {
 	x{i} := einsum(a{i} * b{j, j})  // ERROR: tensor reference includes axis "j" more than once
 	return x
 }

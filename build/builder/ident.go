@@ -39,7 +39,7 @@ func (n *valueRef) buildValueRef(rscope resolveScope) (*ir.ValueRef, bool) {
 	name := n.src.Name
 	node, ok := rscope.ns().Find(name)
 	if !ok {
-		return nil, rscope.err().Appendf(n.src, "%s undefined", name)
+		return nil, rscope.err().Appendf(n.src, "undefined: %s", name)
 	}
 	procOk := rscope.fileScope().process(node)
 	if !procOk {

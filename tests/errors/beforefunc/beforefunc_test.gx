@@ -1,7 +1,7 @@
 package beforefunc
 
 
-var errorVar undefined // ERROR undeclared
+var errorVar undefined // ERROR undefined
 
-type unknownType someType // ERROR undeclared type
+type unknownType someType // ERROR undefined
 

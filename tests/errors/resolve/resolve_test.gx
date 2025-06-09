@@ -58,7 +58,7 @@ func testIncorrectArgumentRank() [_]float32 {
 	return identityFloatArray(32) // ERROR cannot use float32 as [_]float32 value in assignment
 }
 
-func testUnknownKind() [_]whatIsThis { // ERROR undeclared type identifier: whatIsThis
+func testUnknownKind() [_]whatIsThis { // ERROR undefined: whatIsThis
 	return [2]float64{1, 2}
 }
 
@@ -369,7 +369,7 @@ func testLambda_DisallowVariableEscape() int32 {
 	return 1 + x // ERROR undefined: x
 }
 
-func testFuncTypeParameters_Invalid[T invalid]() int32 { // ERROR undeclared type identifier: invalid
+func testFuncTypeParameters_Invalid[T invalid]() int32 { // ERROR undefined: invalid
 	return 0
 }
 
@@ -386,7 +386,7 @@ func testCallTypeParameters_TooMany() int32 {
 }
 
 func testCallTypeParameters_Unknown() int32 {
-	return returnZero[int32, fakeType]() // ERROR undeclared type identifier: fakeType
+	return returnZero[int32, fakeType]() // ERROR fakeType undefined
 }
 
 func moduloFloat() float32 {
@@ -410,7 +410,7 @@ func callNoBody() float32 {
 	return noBody() // ERROR builtin function noBody has no implementation
 }
 
-func identity(a [___X]int32) [___X]int32 {
+func identity(a [___X]int32) [X___]int32 {
 	return a
 }
 
@@ -431,20 +431,16 @@ func testIdentityInference3() [2]int32 {
 	return a
 }
 
-func invalidReturnShape(a [___X]int32) [___Y]int32 {
+func invalidReturnShape(a [___X]int32) [Y___]int32 {
 	return a // ERROR: cannot use [___X]int32 as [___Y]int32 in return statement
 }
 
-func invalidReturnShape2() [___X]int32 {
+func invalidReturnShape2() [X___]int32 {
 	return [5]int32{} // TODO: ERROR TBD
 }
 
 func invalidReturnShape3() [5]int32 {
-	return [___X]int32{} // TODO: ERROR TBD
-}
-
-func invalidReturnShape4() [...]int32 {
-	return [___X]int32{} // TODO: ERROR TBD
+	return [X]int32{} // TODO: ERROR TBD
 }
 
 func invalidReturnShape5(a [___X]int32) int32 {

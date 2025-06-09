@@ -176,7 +176,10 @@ func processAssign(pscope procScope, stmt *ast.AssignStmt) (stmtNode, bool) {
 	}
 
 	rhsExprs, ok := processRightExprs(pscope, stmt)
-	if !ok || len(stmt.Lhs) == 1 || len(stmt.Rhs) > 1 {
+	if !ok {
+		return nil, false
+	}
+	if len(stmt.Lhs) == 1 || len(stmt.Rhs) > 1 {
 		return processAssignStmt(pscope, stmt, rhsExprs)
 	}
 	// We have multiple elements on the left and only one on the right.
@@ -256,23 +259,24 @@ func checkNewVariables(scope resolveScope, stmt *ast.AssignStmt, newVariables bo
 }
 
 func buildAssignExpr(rscope resolveScope, asgm *assignment) (*ir.AssignExpr, bool, bool) {
-	expr, exprOk := buildAExpr(rscope, asgm.expr)
+	ext := &ir.AssignExpr{}
+	var exprOk bool
+	ext.X, exprOk = buildAExpr(rscope, asgm.expr)
 	if !exprOk {
-		return &ir.AssignExpr{}, false, false
+		return ext, false, false
 	}
-	if tpl, isTuple := expr.Type().(*ir.TupleType); exprOk && isTuple {
+	if tpl, isTuple := ext.X.Type().(*ir.TupleType); exprOk && isTuple {
 		if len(tpl.Types) != 1 {
-			rscope.err().Appendf(asgm.expr.source(), "multiple-value (value of type %s) in single-value context", tpl.String())
-			exprOk = false
+			exprOk = rscope.err().Appendf(asgm.expr.source(), "multiple-value (value of type %s) in single-value context", tpl.String())
 		}
 	}
-	target, newAsgm, targetOk := asgm.target.buildStorage(rscope, expr.Type())
-	if exprOk && targetOk && ir.IsNumber(expr.Type().Kind()) {
-		expr, exprOk = castNumber(rscope, expr, target.Type())
+	var newAsgm, targetOk bool
+	ext.Storage, newAsgm, targetOk = asgm.target.buildStorage(rscope, ext.X.Type())
+	if !exprOk || !targetOk {
+		return ext, false, false
 	}
-	ext := &ir.AssignExpr{
-		Storage: target,
-		X:       expr,
+	if ir.IsNumber(ext.X.Type().Kind()) {
+		ext.X, exprOk = castNumber(rscope, ext.X, ext.Storage.Type())
 	}
 	definedOk := defineLocalVar(rscope, ext)
 	return ext, newAsgm, exprOk && targetOk && definedOk
