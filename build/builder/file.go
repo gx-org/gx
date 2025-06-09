@@ -38,13 +38,12 @@ func newFile(pkg *basePackage, name string, src *ast.File) *file {
 	return f
 }
 
-func processFile(pkgctx *pkgProcScope, name string, src *ast.File) (*file, bool) {
+func processFile(pkgctx *pkgProcScope, name string, src *ast.File) bool {
 	f := newFile(pkgctx.pkg(), name, src)
 	if err := f.pkg.setOrCheckName(src.Name); err != nil {
 		pkgctx.err().Appendf(src.Name, "%q is an invalid package name: %v", src.Name, err)
 	}
-	ok := f.processDecls(pkgctx.newScope(f), src.Decls)
-	return f, ok
+	return f.processDecls(pkgctx.newScope(f), src.Decls)
 }
 
 func (f *file) processDecls(pscope procScope, decls []ast.Decl) bool {
@@ -88,16 +87,13 @@ func (f *file) file() *file {
 	return f
 }
 
-func (f *file) buildFile() *ir.File {
-	return &ir.File{
+func (f *file) buildParentNode(irb *irBuilder, decls *ir.Declarations) (ir.Node, bool) {
+	pkg := irb.irPkg()
+	file := &ir.File{
 		Src:     f.src,
 		Imports: f.imports,
+		Package: pkg,
 	}
-}
-
-func (f *file) buildParentNode(irb *irBuilder, decls *ir.Declarations) (ir.Node, bool) {
-	file := f.buildFile()
-	file.Package = irb.irPkg()
-	irb.irPkg().Files[f.name] = file
+	pkg.Files[f.name] = file
 	return file, true
 }
