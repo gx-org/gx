@@ -26,11 +26,12 @@ import (
 
 	"github.com/gx-org/backend/platform"
 	"github.com/gx-org/gx/api"
+	"github.com/gx-org/gx/api/options"
+	"github.com/gx-org/gx/api/trace"
+	"github.com/gx-org/gx/api/tracer"
 	"github.com/gx-org/gx/api/values"
 	"github.com/gx-org/gx/build/ir"
 	"github.com/gx-org/gx/golang/binder/gobindings/types"
-	"github.com/gx-org/gx/interp"
-	"github.com/gx-org/gx/interp/state"
 	_ "github.com/gx-org/gx/tests/bindings/imports"
 	"github.com/pkg/errors"
 
@@ -53,7 +54,7 @@ var (
 type PackageIR struct {
 	Runtime *api.Runtime
 	IR      *ir.Package
-	Tracer  state.Tracer
+	Tracer  trace.Callback
 
 	gxdep0 *gxdep0.PackageIR
 }
@@ -78,7 +79,7 @@ func Load(rtm *api.Runtime) (*PackageIR, error) {
 
 // BuildFor loads the GX package github.com/gx-org/gx/tests/bindings/imports
 // then returns that package for a given device and options.
-func BuildFor(dev *api.Device, options ...interp.PackageOptionFactory) (*Package, error) {
+func BuildFor(dev *api.Device, options ...options.PackageOptionFactory) (*Package, error) {
 	pkg, err := Load(dev.Runtime())
 	if err != nil {
 		return nil, err
@@ -101,7 +102,7 @@ type Package struct {
 	Device  *api.Device
 	Factory *Factory
 
-	options []interp.PackageOption
+	options []options.PackageOption
 
 	gxdep0 *gxdep0.Package
 
@@ -112,7 +113,7 @@ type Package struct {
 }
 
 // AppendOptions appends options to the compiler.
-func (cmpl *Package) AppendOptions(options ...interp.PackageOptionFactory) {
+func (cmpl *Package) AppendOptions(options ...options.PackageOptionFactory) {
 	plat := cmpl.Package.Runtime.Backend().Platform()
 	for _, opt := range options {
 		cmpl.options = append(cmpl.options, opt(plat))
@@ -120,7 +121,7 @@ func (cmpl *Package) AppendOptions(options ...interp.PackageOptionFactory) {
 }
 
 // BuildFor returns a package ready to compile for a device and options.
-func (pkg *PackageIR) BuildFor(dev *api.Device, options ...interp.PackageOptionFactory) *Package {
+func (pkg *PackageIR) BuildFor(dev *api.Device, options ...options.PackageOptionFactory) *Package {
 	c := &Package{
 		Package: pkg,
 		Device:  dev,
@@ -131,25 +132,25 @@ func (pkg *PackageIR) BuildFor(dev *api.Device, options ...interp.PackageOptionF
 	c.NewBasic = NewBasic{
 		methodBase: methodBase{
 			pkg:      c,
-			function: c.Package.IR.Funcs[0].(*ir.FuncDecl),
+			function: c.Package.IR.Decls.Funcs[0],
 		},
 	}
 	c.NewImporter = NewImporter{
 		methodBase: methodBase{
 			pkg:      c,
-			function: c.Package.IR.Funcs[1].(*ir.FuncDecl),
+			function: c.Package.IR.Decls.Funcs[1],
 		},
 	}
 	c.ReturnFromBasic = ReturnFromBasic{
 		methodBase: methodBase{
 			pkg:      c,
-			function: c.Package.IR.Funcs[2].(*ir.FuncDecl),
+			function: c.Package.IR.Decls.Funcs[2],
 		},
 	}
 
 	c.methodImporterAdd = methodBase{
 		pkg:      c,
-		function: c.Package.IR.Types[0].Methods[0],
+		function: c.Package.IR.Decls.Types[0].Methods[0],
 	}
 
 	c.gxdep0 = c.Package.gxdep0.BuildFor(dev, options...)
@@ -179,7 +180,7 @@ type MethodImporterAdd struct {
 func (f *MethodImporterAdd) Run() (_ types.Atom[int32], err error) {
 	var args []values.Value = nil
 	if f.runner == nil {
-		f.runner, err = interp.Compile(f.pkg.Device, f.function.(*ir.FuncDecl), f.receiver.GXValue(), args, f.pkg.options)
+		f.runner, err = tracer.Trace(f.pkg.Device, f.function.(*ir.FuncDecl), f.receiver.GXValue(), args, f.pkg.options)
 		if err != nil {
 			return
 		}
@@ -198,6 +199,10 @@ func (f *MethodImporterAdd) Run() (_ types.Atom[int32], err error) {
 	out0 := types.NewAtom[int32](out0Value)
 
 	return out0, nil
+}
+
+func (f *MethodImporterAdd) String() string {
+	return fmt.Sprint(f.function)
 }
 
 // Type of the value.
@@ -234,7 +239,7 @@ func (h *handleImporter) String() string {
 // Importer stores the handle of Importer on a device.
 type Importer struct {
 	handle handleImporter
-	value  *values.Struct
+	value  *values.NamedType
 
 	Basic *gxdep0.Basic
 }
@@ -246,21 +251,26 @@ var (
 
 // StructValue returns the GX value of the structure.
 func (h *handleImporter) StructValue() *values.Struct {
-	return h.owner.value
+	return h.owner.value.Underlying().(*values.Struct)
 }
 
 // MarshalImporter populates the receiver fields with device handles.
 func (cmpl *Package) MarshalImporter(val values.Value) (s *Importer, err error) {
 	s = cmpl.Factory.NewImporter()
 	var ok bool
-	s.value, ok = val.(*values.Struct)
+	s.value, ok = val.(*values.NamedType)
 	if !ok {
-		err = fmt.Errorf("cannot use handle to set Importer: %T is not a %s", val, reflect.TypeFor[*values.Struct]().Name())
+		err = errors.Errorf("cannot use handle to set Importer: %T is not a %s", val, reflect.TypeFor[*values.NamedType]())
 		return
 	}
-	fields := make([]values.Value, s.value.StructType().NumFields())
-	for i, field := range s.value.StructType().Fields.Fields() {
-		fields[i] = s.value.FieldValue(field.Name.Name)
+	structVal, ok := s.value.Underlying().(*values.Struct)
+	if !ok {
+		err = errors.Errorf("incorrect underlying value for named type Importer: %T is not a %s", val, reflect.TypeFor[*values.Struct]().Name())
+		return
+	}
+	fields := make([]values.Value, structVal.StructType().NumFields())
+	for i, field := range structVal.StructType().Fields.Fields() {
+		fields[i] = structVal.FieldValue(field.Name.Name)
 	}
 	var field0 *gxdep0.Basic
 	field0, err = cmpl.gxdep0.MarshalBasic(fields[0])
@@ -286,7 +296,7 @@ func (s Importer) Add() *MethodImporterAdd {
 type methodBase struct {
 	pkg      *Package
 	function ir.Func
-	runner   *state.CompiledGraph
+	runner   tracer.CompiledFunc
 }
 
 // NewBasic compiles and runs the GX function NewBasic for a device.
@@ -313,7 +323,7 @@ type ReturnFromBasic struct {
 func (f *NewBasic) Run() (_ *gxdep0.Basic, err error) {
 	var args []values.Value = nil
 	if f.runner == nil {
-		f.runner, err = interp.Compile(f.pkg.Device, f.function.(*ir.FuncDecl), nil, args, f.pkg.options)
+		f.runner, err = tracer.Trace(f.pkg.Device, f.function.(*ir.FuncDecl), nil, args, f.pkg.options)
 		if err != nil {
 			return
 		}
@@ -334,13 +344,17 @@ func (f *NewBasic) Run() (_ *gxdep0.Basic, err error) {
 	return out0, nil
 }
 
+func (f *NewBasic) String() string {
+	return fmt.Sprint(f.function)
+}
+
 // Run first compiles NewImporter for a given device and the given arguments.
 // Once compiled, the function is then run with these same arguments.
 // If the shape of the arguments change, the function will panic.
 func (f *NewImporter) Run() (_ *Importer, err error) {
 	var args []values.Value = nil
 	if f.runner == nil {
-		f.runner, err = interp.Compile(f.pkg.Device, f.function.(*ir.FuncDecl), nil, args, f.pkg.options)
+		f.runner, err = tracer.Trace(f.pkg.Device, f.function.(*ir.FuncDecl), nil, args, f.pkg.options)
 		if err != nil {
 			return
 		}
@@ -361,13 +375,17 @@ func (f *NewImporter) Run() (_ *Importer, err error) {
 	return out0, nil
 }
 
+func (f *NewImporter) String() string {
+	return fmt.Sprint(f.function)
+}
+
 // Run first compiles ReturnFromBasic for a given device and the given arguments.
 // Once compiled, the function is then run with these same arguments.
 // If the shape of the arguments change, the function will panic.
 func (f *ReturnFromBasic) Run() (_ types.Atom[float32], err error) {
 	var args []values.Value = nil
 	if f.runner == nil {
-		f.runner, err = interp.Compile(f.pkg.Device, f.function.(*ir.FuncDecl), nil, args, f.pkg.options)
+		f.runner, err = tracer.Trace(f.pkg.Device, f.function.(*ir.FuncDecl), nil, args, f.pkg.options)
 		if err != nil {
 			return
 		}
@@ -388,21 +406,25 @@ func (f *ReturnFromBasic) Run() (_ types.Atom[float32], err error) {
 	return out0, nil
 }
 
+func (f *ReturnFromBasic) String() string {
+	return fmt.Sprint(f.function)
+}
+
 // NewImporter returns a handle on named type Importer.
 func (fac *Factory) NewImporter() *Importer {
 	s := &Importer{}
-	typ := fac.Package.Package.IR.Types[0]
+	typ := fac.Package.Package.IR.Decls.Types[0]
 	s.handle = handleImporter{
 		pkg:   fac.Package,
 		struc: typ,
 		owner: s,
 	}
 
-	var err error
-	s.value, err = values.NewStruct(typ, nil)
+	structVal, err := values.NewStruct(typ, nil)
 	if err != nil {
 		panic(err)
 	}
+	s.value = values.NewNamedType(structVal, typ)
 
 	s.handle.runnerAdd = &MethodImporterAdd{
 		methodBase: s.handle.pkg.methodImporterAdd,
@@ -428,7 +450,12 @@ func (h *handleImporter) NewFromField(field *ir.Field) (types.Bridge, error) {
 
 // SetField sets a field in the structure.
 func (h *handleImporter) SetField(field *ir.Field, val types.Bridge) error {
+
 	name := field.Name.Name
+	structVal, ok := h.owner.value.Underlying().(*values.Struct)
+	if !ok {
+		return fmt.Errorf("incorrect underlying value for named type Importer: %T is not a %s", val, reflect.TypeFor[*values.Struct]().Name())
+	}
 	switch name {
 
 	case "Basic":
@@ -438,10 +465,11 @@ func (h *handleImporter) SetField(field *ir.Field, val types.Bridge) error {
 			return errors.Errorf("cannot set field Basic: cannot cast %T to *gxdep0.Basic", bridger)
 		}
 		h.owner.Basic = fieldValue
-		h.owner.value.SetField("Basic", val.GXValue())
+		structVal.SetField("Basic", val.GXValue())
 		return nil
 
 	default:
 		return errors.Errorf("structure Importer has no field %q", name)
 	}
+
 }
