@@ -97,7 +97,10 @@ func newPackageResolveScope(pscope *pkgProcScope) *pkgResolveScope {
 
 func (s *pkgResolveScope) packageContext() (*irBuilder, evaluator.EvaluationContext) {
 	hostEval := compeval.NewHostEvaluator(s.bpkg.builder())
-	irb := s.newIRBuilder()
+	irb, ok := s.newIRBuilder()
+	if !ok {
+		return nil, nil
+	}
 	pkg := irb.irPkg()
 	decls, ok := s.dcls.collectDeclNodes(hasIR)
 	if !ok {

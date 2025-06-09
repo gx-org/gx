@@ -100,9 +100,11 @@ func (pkg *basePackage) resolveBuild(pscope *pkgProcScope) bool {
 	if ok := pscope.dcls.resolveAll(pkgScope); !ok {
 		return false
 	}
-	irb := pkgScope.newIRBuilder()
+	irb, ok := pkgScope.newIRBuilder()
+	if !ok {
+		return false
+	}
 	last := &lastBuild{pkg: irb.irPkg()}
-	var ok bool
 	last.decls, last.pkg.Decls, ok = pkg.buildDeclarations(irb)
 	if !ok {
 		return false
@@ -135,7 +137,6 @@ func (pkg *basePackage) buildDeclarations(irb *irBuilder) (*ordered.Map[string, 
 type FilePackage struct {
 	*basePackage
 
-	files     []*file
 	irImports *file
 }
 
@@ -150,6 +151,18 @@ func (b *Builder) newFilePackage(path, name string) *FilePackage {
 		pkg.setOrCheckName(&ast.Ident{Name: name})
 	}
 	return pkg
+}
+
+func (pkg *FilePackage) updateLastForErrors(pscope *pkgProcScope, err error) error {
+	irb, ok := newPackageResolveScope(pscope).newIRBuilder()
+	if !ok {
+		return err
+	}
+	pkg.last = &lastBuild{
+		pkg:   irb.irPkg(),
+		decls: ordered.NewMap[string, *declNode](),
+	}
+	return err
 }
 
 // BuildFiles complete the package definitions from a list of source files.
@@ -169,10 +182,10 @@ func (pkg *FilePackage) BuildFiles(fs fs.FS, filenames []string) (err error) {
 		ok = ok && fileOk
 	}
 	if !ok {
-		return &errs
+		return pkg.updateLastForErrors(pscope, &errs)
 	}
 	if !pkg.resolveBuild(pscope) {
-		return &errs
+		return pkg.updateLastForErrors(pscope, &errs)
 	}
 	return nil
 }
@@ -193,9 +206,7 @@ func (pkg *FilePackage) buildFile(pscope *pkgProcScope, fs fs.FS, filename strin
 	if err != nil {
 		return pscope.err().Append(errors.Errorf("cannot parse file %s:\n\t%v", filename, err))
 	}
-	fileB, fileOk := processFile(pscope, filename, fileDecl)
-	pkg.files = append(pkg.files, fileB)
-	return fileOk
+	return processFile(pscope, filename, fileDecl)
 }
 
 // ImportIR imports package definitions from a GX intermediate representation.
@@ -212,9 +223,11 @@ func (pkg *FilePackage) ImportIR(decls *ir.Declarations) error {
 		return errs
 	}
 	rscope := newPackageResolveScope(scope)
-	irb := rscope.newIRBuilder()
+	irb, ok := rscope.newIRBuilder()
+	if !ok {
+		return errs
+	}
 	pkg.last = &lastBuild{pkg: irb.irPkg()}
-	var ok bool
 	if pkg.last.decls, pkg.last.pkg.Decls, ok = pkg.buildDeclarations(irb); !ok {
 		return errs
 	}
@@ -234,8 +247,7 @@ type IncrementalPackage struct {
 	mut sync.Mutex
 	*basePackage
 
-	next  int
-	files []*file
+	next int
 }
 
 var _ Package = (*IncrementalPackage)(nil)
@@ -263,9 +275,7 @@ func (pkg *IncrementalPackage) Build(src string) error {
 	}
 	errs := &fmterr.Errors{}
 	pscope := newPackageProcScope(true, pkg.basePackage, errs)
-	file, fileOk := processFile(pscope, name, astFile)
-	pkg.files = append(pkg.files, file)
-	if !fileOk {
+	if !processFile(pscope, name, astFile) {
 		return errs
 	}
 	if !pkg.resolveBuild(pscope) {

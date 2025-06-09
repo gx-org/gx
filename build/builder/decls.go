@@ -40,12 +40,18 @@ type (
 	}
 )
 
-func (s *pkgResolveScope) newIRBuilder() *irBuilder {
-	return &irBuilder{
+func (s *pkgResolveScope) newIRBuilder() (*irBuilder, bool) {
+	irb := &irBuilder{
 		pkgScope: s,
 		built:    make(map[parentNodeBuilder]ir.Node),
 		pkg:      s.bpkg.newPackageIR(),
 	}
+	ok := true
+	for file := range s.bpkg.files.Values() {
+		_, fileOk := buildParentNode[*ir.File](irb, irb.pkg.Decls, file)
+		ok = ok && fileOk
+	}
+	return irb, ok
 }
 
 func (irb *irBuilder) irPkg() *ir.Package {
