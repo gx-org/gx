@@ -28,7 +28,7 @@ func testSetPositionsTooMany() [2][2]int32 {
 	return a
 }
 
-func testSetIncorrectRankNotEnough() [2][2]int32 {
+func testSetIncorrectRankNotEnough() [2][2][2]int32 {
 	a := [2][2][2]int32{}
 	a = set(a, [2]int32{}, [1]int32{0}) // ERROR: cannot set array
 	return a

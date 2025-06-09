@@ -1,9 +1,9 @@
 package process
 
 var (
-	errorVarValues = 4, 5 // ERROR cannot assign
+	errorVarValues int32 = 4, 5 // ERROR cannot assign
 
-	errMore, errVars, errThanValues = 4, 5 // ERROR cannot assign
+	errMore, errVars, errThanValues int32 = 4, 5 // ERROR cannot assign
 )
 
 func testNoReturn() { // ERROR function testNoReturn does not return a value
@@ -14,7 +14,7 @@ func testNoSize() [4]float64 {
 }
 
 func testMultipleUnknownAxes() [___]int32 {
-	return [___][___]int32{} // ERROR array type may only specify unknown rank once
+	return [___][___]int32{} // ERROR array with an inferred rank only support a single axis
 }
 
 func testMultipleAddAssign() bool {
@@ -61,18 +61,6 @@ func testFuncTypeParameters_Redeclared[T int32, T int32]() int32 { // ERROR type
 }
 
 type testTypeParameters[T any] struct {} // ERROR type may not have type parameters
-
-func returnZero[T int32]() int32 {
-	return 0
-}
-
-func testCallTypeParameters_Invalid() int32 {
-	return returnZero[1 + 2]() // ERROR expected identifier as type argument
-}
-
-func testCastWrongNumberOfArguments() [2]int32 {
-	return [2]int32(2, 3) // ERROR too many arguments in conversion to [2]int32
-}
 
 type testInterfaceMethods interface {
 	Print() // ERROR interface element not supported

@@ -171,12 +171,10 @@ func processEinsumExpr(pscope procScope, left ast.Expr, right *ast.CallExpr) (ex
 func processTensorExpr(pscope procScope, target *tensorRef, expr ast.Expr, others ...*tensorRef) (*tensorExpr, bool) {
 	binExp, ok := expr.(*ast.BinaryExpr)
 	if !ok {
-		pscope.err().Appendf(expr, "expected a binary expression, got %T", expr)
-		return nil, false
+		return nil, pscope.err().Appendf(expr, "expected a binary expression, got %T", expr)
 	}
 	if binExp.Op != token.MUL {
-		pscope.err().Appendf(expr, "expected a multiply operation, got %q", binExp.Op.String())
-		return nil, false
+		return nil, pscope.err().Appendf(expr, "expected a multiply operation, got %q", binExp.Op.String())
 	}
 
 	rhs, ok := processTensorRef(pscope, target, binExp.Y)

@@ -201,7 +201,7 @@ func (f einsum) resultsType(fetcher ir.Fetcher, call *ir.CallExpr) ([]ir.Type, i
 		}
 		if !ok {
 			return nil, nil, fmterr.Errorf(fetcher.File().FileSet(), call.Source(),
-				"left argument (shape: %v) not compatible with right argument (shape: %v) in %s call: cannot contract lhs dimension [%s] with rhs dimension [%s]",
+				"left argument (shape: %v) not compatible with right argument (shape: %v) in %s call: cannot contract lhs dimension %s with rhs dimension %s",
 				left.Rank(), right.Rank(), f.Name(), lhsDim, rhsDim)
 		}
 	}
@@ -219,7 +219,7 @@ func (f einsum) resultsType(fetcher ir.Fetcher, call *ir.CallExpr) ([]ir.Type, i
 		}
 		if !ok {
 			return nil, nil, fmterr.Errorf(fetcher.File().FileSet(), call.Source(),
-				"left argument (shape: %v) not compatible with right argument (shape: %v) in %s call: cannot batch lhs dimension [%s] with rhs dimension [%s]",
+				"left argument (shape: %v) not compatible with right argument (shape: %v) in %s call: cannot batch lhs dimension %s with rhs dimension %s",
 				left.Rank(), right.Rank(), f.Name(), lhsDim, rhsDim)
 		}
 	}

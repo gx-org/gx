@@ -48,7 +48,11 @@ func processVarSpec(pscope procScope, src *ast.ValueSpec) bool {
 		bFile: pscope.file(),
 	}
 	var typeOk bool
-	spec.typ, typeOk = processTypeExpr(pscope, src.Type)
+	if src.Type != nil {
+		spec.typ, typeOk = processTypeExpr(pscope, src.Type)
+	} else {
+		typeOk = pscope.err().Appendf(src, "static variable has no type")
+	}
 	exprsOk := true
 	spec.exprs = make([]*varExpr, len(src.Names))
 	for i, name := range src.Names {
@@ -60,11 +64,18 @@ func processVarSpec(pscope procScope, src *ast.ValueSpec) bool {
 }
 
 func (spec *varSpec) buildSpecNode(rscope resolveScope) (*ir.VarDecl, bool) {
-	typeExpr, typOk := spec.typ.buildTypeExpr(rscope)
+	ext := &ir.VarDecl{Src: spec.src}
+	if spec.typ == nil {
+		return ext, false
+	}
+	typeRef, ok := spec.typ.buildTypeExpr(rscope)
+	if !ok {
+		return ext, false
+	}
 	return &ir.VarDecl{
 		Src:   spec.src,
-		TypeV: typeExpr.Typ,
-	}, typOk
+		TypeV: typeRef.Typ,
+	}, true
 }
 
 func (spec *varSpec) buildParentNode(irb *irBuilder, decls *ir.Declarations) (ir.Node, bool) {
