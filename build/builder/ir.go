@@ -32,7 +32,7 @@ type (
 		name() *ast.Ident
 		receiver() *fieldList
 		compEval() bool
-		buildSignature(*pkgResolveScope) (ir.Func, *funcResolveScope, bool)
+		buildSignature(*pkgResolveScope) (ir.Func, iFuncResolveScope, bool)
 		buildBody(iFuncResolveScope, ir.Func) bool
 	}
 

@@ -22,7 +22,7 @@ func (bFile *file) processIRMacroFunc(pscope procScope, src *ast.FuncDecl, comme
 	return argsOk && recvOk && declareOk
 }
 
-func (f *funcMacro) buildSignature(pkgScope *pkgResolveScope) (ir.Func, *funcResolveScope, bool) {
+func (f *funcMacro) buildSignature(pkgScope *pkgResolveScope) (ir.Func, iFuncResolveScope, bool) {
 	fScope, ok := pkgScope.newFileScope(f.bFile, nil)
 	return &ir.FuncMeta{
 		Src: f.src,

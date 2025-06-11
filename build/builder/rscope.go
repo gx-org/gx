@@ -246,6 +246,7 @@ type (
 	iFuncResolveScope interface {
 		resolveScope
 		funcType() *ir.FuncType
+		declarator(fn function) declarator
 	}
 
 	funcResolveScope struct {
