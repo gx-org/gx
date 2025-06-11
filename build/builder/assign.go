@@ -282,7 +282,7 @@ func buildAssignExpr(rscope resolveScope, asgm *assignment) (*ir.AssignExpr, boo
 	return ext, newAsgm, exprOk && targetOk && definedOk
 }
 
-func (n *assignExprStmt) buildStmt(scope funResolveScope) (ir.Stmt, bool) {
+func (n *assignExprStmt) buildStmt(scope iFuncResolveScope) (ir.Stmt, bool) {
 	ext := &ir.AssignExprStmt{Src: n.src, List: make([]*ir.AssignExpr, len(n.assigns))}
 	ok := true
 	newVariables := false
@@ -315,7 +315,7 @@ func processAssignCall(pscope procScope, src *ast.AssignStmt, call *callExpr) (s
 	}, ok
 }
 
-func (n *assignCallStmt) buildStmt(rscope funResolveScope) (ir.Stmt, bool) {
+func (n *assignCallStmt) buildStmt(rscope iFuncResolveScope) (ir.Stmt, bool) {
 	ext := &ir.AssignCallStmt{Src: n.src}
 	var callOk bool
 	ext.Call, callOk = buildCall(rscope, n.call)

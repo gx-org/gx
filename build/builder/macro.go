@@ -37,7 +37,7 @@ func (f *funcMacro) name() *ast.Ident {
 	return f.src.Name
 }
 
-func (f *funcMacro) buildBody(fScope funResolveScope, extF ir.Func) bool {
+func (f *funcMacro) buildBody(fScope iFuncResolveScope, extF ir.Func) bool {
 	return true
 }
 

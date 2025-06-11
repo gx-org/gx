@@ -40,11 +40,11 @@ func processBlockStmt(pscope procScope, src *ast.BlockStmt) (*blockStmt, bool) {
 	return n, ok
 }
 
-func (n *blockStmt) buildStmt(scope funResolveScope) (ir.Stmt, bool) {
+func (n *blockStmt) buildStmt(scope iFuncResolveScope) (ir.Stmt, bool) {
 	return n.buildBlockStmt(scope)
 }
 
-func (n *blockStmt) buildBlockStmt(scope funResolveScope) (*ir.BlockStmt, bool) {
+func (n *blockStmt) buildBlockStmt(scope iFuncResolveScope) (*ir.BlockStmt, bool) {
 	block := &ir.BlockStmt{
 		Src:  n.src,
 		List: make([]ir.Stmt, len(n.stmts)),
@@ -79,7 +79,7 @@ func processExprStmt(pscope procScope, src *ast.ExprStmt) (*exprStmt, bool) {
 	return n, ok
 }
 
-func (n *exprStmt) buildStmt(scope funResolveScope) (ir.Stmt, bool) {
+func (n *exprStmt) buildStmt(scope iFuncResolveScope) (ir.Stmt, bool) {
 	x, ok := n.x.buildExpr(scope)
 	if ok && x.Type().Kind() != ir.VoidKind {
 		scope.err().Appendf(n.src, "cannot use an expression returning a value as a statement")

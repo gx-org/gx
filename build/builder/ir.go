@@ -33,7 +33,7 @@ type (
 		receiver() *fieldList
 		compEval() bool
 		buildSignature(*pkgResolveScope) (ir.Func, *funcResolveScope, bool)
-		buildBody(funResolveScope, ir.Func) bool
+		buildBody(iFuncResolveScope, ir.Func) bool
 	}
 
 	// exprNode builds a IR expression.
@@ -55,7 +55,7 @@ type (
 
 	// stmtNode is a GX statement.
 	stmtNode interface {
-		buildStmt(funResolveScope) (ir.Stmt, bool)
+		buildStmt(iFuncResolveScope) (ir.Stmt, bool)
 	}
 
 	cloner interface {

@@ -248,7 +248,7 @@ func (d *decls) resolveAll(pkgScope *pkgResolveScope) bool {
 
 type irFunc struct {
 	bFunc     function
-	scopeFunc funResolveScope
+	scopeFunc iFuncResolveScope
 	irFunc    ir.Func
 }
 

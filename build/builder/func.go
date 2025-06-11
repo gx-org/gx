@@ -270,7 +270,7 @@ func (f *funcDecl) buildSignature(pkgScope *pkgResolveScope) (ir.Func, *funcReso
 	return ext, funcScope, ok
 }
 
-func (f *funcDecl) buildBody(fScope funResolveScope, extF ir.Func) bool {
+func (f *funcDecl) buildBody(fScope iFuncResolveScope, extF ir.Func) bool {
 	ext := extF.(*ir.FuncDecl)
 	scope, ok := newBlockScope(fScope)
 	if !ok {
@@ -320,7 +320,7 @@ func (f *funcBuiltin) buildSignature(pkgScope *pkgResolveScope) (ir.Func, *funcR
 	return ext, fScope, ok
 }
 
-func (f *funcBuiltin) buildBody(funResolveScope, ir.Func) bool {
+func (f *funcBuiltin) buildBody(iFuncResolveScope, ir.Func) bool {
 	return true
 }
 

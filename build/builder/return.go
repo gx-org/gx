@@ -83,7 +83,7 @@ func returnAs(rscope resolveScope, pos ast.Node, src, dst ir.Type) bool {
 	return true
 }
 
-func (n *returnStmt) buildStmt(scope funResolveScope) (ir.Stmt, bool) {
+func (n *returnStmt) buildStmt(scope iFuncResolveScope) (ir.Stmt, bool) {
 	ext := &ir.ReturnStmt{Src: n.src}
 	fType := scope.funcType()
 	if fType == nil {
