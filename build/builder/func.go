@@ -257,7 +257,7 @@ func (f *funcDecl) source() ast.Node {
 	return f.src
 }
 
-func (f *funcDecl) buildSignature(pkgScope *pkgResolveScope) (ir.Func, *funcResolveScope, bool) {
+func (f *funcDecl) buildSignature(pkgScope *pkgResolveScope) (ir.Func, iFuncResolveScope, bool) {
 	fileScope, ok := pkgScope.newFileScope(f.bFile, nil)
 	ext := &ir.FuncDecl{
 		Src: f.src,
@@ -306,7 +306,7 @@ func (bFile *file) processBuiltinFunc(scope procScope, src *ast.FuncDecl, compEv
 	return fDeclOk && returnOk && declareOk
 }
 
-func (f *funcBuiltin) buildSignature(pkgScope *pkgResolveScope) (ir.Func, *funcResolveScope, bool) {
+func (f *funcBuiltin) buildSignature(pkgScope *pkgResolveScope) (ir.Func, iFuncResolveScope, bool) {
 	ext := &ir.FuncBuiltin{
 		Src: f.src,
 	}
