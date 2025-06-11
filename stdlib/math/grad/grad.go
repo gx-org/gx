@@ -20,10 +20,12 @@ import (
 	"go/ast"
 	"go/token"
 	"math/big"
-	"strconv"
 
+	"github.com/pkg/errors"
 	"github.com/gx-org/gx/build/fmterr"
 	"github.com/gx-org/gx/build/ir"
+	"github.com/gx-org/gx/internal/interp/compeval/cpevelements"
+	"github.com/gx-org/gx/interp/elements"
 	"github.com/gx-org/gx/stdlib/builtin"
 )
 
@@ -39,37 +41,40 @@ var Package = builtin.PackageBuilder{
 	},
 }
 
-func computeGrad(fetcher ir.Fetcher, target *ir.FuncDecl, args []ir.AssignableExpr) (*ir.FuncDecl, bool) {
-	ext := *target
-	if len(args) != 2 {
-		return &ext, fetcher.Err().Appendf(target.Src, "%d argument(s) given to grad.Func, want 2", len(args))
-	}
-	funcRef, ok := args[0].(*ir.ValueRef)
-	if !ok {
-		return &ext, fetcher.Err().Appendf(target.Src, "%T not supported, want a function name", args[0])
-	}
-	funcExpr, ok := fetcher.BuildExpr(funcRef.Src)
-	if !ok {
-		return &ext, false
-	}
-	funcSrc, ok := funcExpr.(*ir.FuncDecl)
-	if !ok {
-		return &ext, fetcher.Err().Appendf(target.Src, "cannot compute the gradient of %s, want a GX declared function", funcExpr.Type().String())
-	}
-	argName, ok := args[1].(*ir.StringLiteral)
-	if !ok {
-		return &ext, fetcher.Err().Appendf(target.Src, "%s not supported, want a string literal", args[1].Type().String())
-	}
-	argValue, err := strconv.Unquote(argName.Src.Value)
-	if err != nil {
-		return &ext, fetcher.Err().Appendf(target.Src, "%v", err)
-	}
-	ext.FType = funcSrc.FType
-	ext.Body, err = gradBlock(fetcher, target, funcSrc.Body, argValue)
-	if err != nil {
-		return &ext, fetcher.Err().AppendAt(target.Src, err)
-	}
-	return &ext, true
+func computeGrad(call elements.CallAt, macro *cpevelements.Macro, args []elements.Element) (*cpevelements.SyntheticFunc, error) {
+	return nil, errors.Errorf("not implemented")
+	/*
+		ext := *target
+		if len(args) != 2 {
+			return &ext, fetcher.Err().Appendf(target.Src, "%d argument(s) given to grad.Func, want 2", len(args))
+		}
+		funcRef, ok := args[0].(*ir.ValueRef)
+		if !ok {
+			return &ext, fetcher.Err().Appendf(target.Src, "%T not supported, want a function name", args[0])
+		}
+		funcExpr, ok := fetcher.BuildExpr(funcRef.Src)
+		if !ok {
+			return &ext, false
+		}
+		funcSrc, ok := funcExpr.(*ir.FuncDecl)
+		if !ok {
+			return &ext, fetcher.Err().Appendf(target.Src, "cannot compute the gradient of %s, want a GX declared function", funcExpr.Type().String())
+		}
+		argName, ok := args[1].(*ir.StringLiteral)
+		if !ok {
+			return &ext, fetcher.Err().Appendf(target.Src, "%s not supported, want a string literal", args[1].Type().String())
+		}
+		argValue, err := strconv.Unquote(argName.Src.Value)
+		if err != nil {
+			return &ext, fetcher.Err().Appendf(target.Src, "%v", err)
+		}
+		ext.FType = funcSrc.FType
+		ext.Body, err = gradBlock(fetcher, target, funcSrc.Body, argValue)
+		if err != nil {
+			return &ext, fetcher.Err().AppendAt(target.Src, err)
+		}
+		return &ext, true
+	*/
 }
 
 func gradBlock(fetcher ir.Fetcher, target *ir.FuncDecl, src *ir.BlockStmt, argName string) (*ir.BlockStmt, error) {

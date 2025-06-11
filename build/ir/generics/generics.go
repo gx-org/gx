@@ -83,6 +83,8 @@ func extractTypeParamName(field *ir.FieldGroup) genericType {
 	switch typT := field.Type.Typ.(type) {
 	case *ir.TypeParam:
 		return &ident{set: typT.Field.Type(), typName: typT.Field.Name.Name}
+	case *ir.TypeSet:
+		return nil
 	case ir.ArrayType:
 		dtype := typT.DataType()
 		gType := &array{src: typT.ArrayType(), typ: typT}

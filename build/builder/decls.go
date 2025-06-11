@@ -19,6 +19,7 @@ import (
 	"go/ast"
 	"go/token"
 	"slices"
+	"sort"
 	"strings"
 
 	"github.com/gx-org/gx/base/iter"
@@ -252,31 +253,43 @@ type irFunc struct {
 	irFunc    ir.Func
 }
 
+func (d *decls) buildFuncType(pkgScope *pkgResolveScope, pNode *processNodeT[function]) (*irFunc, bool) {
+	irFn, fScope, fnOk := pNode.node.buildSignature(pkgScope)
+	if !fnOk {
+		return nil, false
+	}
+	recvOk := true
+	pNode.decl = pNode.setDeclNode(irFn.(ir.Storage), fScope.declarator(pNode.node))
+	if recv := pNode.node.receiver(); recv != nil {
+		recvOk = d.registerMethodToType(fScope.fileScope(), recv, pNode)
+	}
+	if !recvOk || !fnOk {
+		return nil, false
+	}
+	return &irFunc{
+		bFunc:     pNode.node,
+		scopeFunc: fScope,
+		irFunc:    irFn,
+	}, true
+}
+
 func (d *decls) buildFunctions(pkgScope *pkgResolveScope, filter func(f *processNodeT[function]) bool) bool {
 	ok := true
 	var funcs []*irFunc
 	packageFuncs := slices.Collect(iterToken[function](d.declarations, filterTok(token.FUNC), filterToBuild))
-	for pNode := range iter.Filter(filter, packageFuncs, d.methods) {
-		irFn, fScope, fnOk := pNode.node.buildSignature(pkgScope)
+	filteredFuncs := slices.Collect(iter.Filter(filter, packageFuncs, d.methods))
+	sort.Slice(filteredFuncs, func(i, j int) bool {
+		return filteredFuncs[i].node.resolveOrder() < filteredFuncs[j].node.resolveOrder()
+	})
+	for _, pNode := range filteredFuncs {
+		irF, fnOk := d.buildFuncType(pkgScope, pNode)
 		if !fnOk {
 			ok = false
 			continue
 		}
-		recvOk := true
-		pNode.decl = pNode.setDeclNode(irFn.(ir.Storage), fScope.declarator(pNode.node))
-		if recv := pNode.node.receiver(); recv != nil {
-			recvOk = d.registerMethodToType(fScope.fileScope(), recv, pNode)
-		}
-		if !recvOk || !fnOk {
-			ok = false
-			continue
-		}
-		funcs = append(funcs, &irFunc{
-			bFunc:     pNode.node,
-			scopeFunc: fScope,
-			irFunc:    irFn,
-		})
+		funcs = append(funcs, irF)
 	}
+	// Build the body of the functions.
 	for _, fn := range funcs {
 		fnOk := fn.bFunc.buildBody(fn.scopeFunc, fn.irFunc)
 		ok = ok && fnOk

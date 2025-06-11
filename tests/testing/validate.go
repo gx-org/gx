@@ -83,7 +83,7 @@ func (v *validator) validate(node ir.Node) {
 			return
 		}
 		v.validate(nodeT.Body)
-	case *ir.FuncMeta:
+	case *ir.Macro:
 	case *ir.FuncLit:
 		v.validate(nodeT.FFile)
 		v.validate(nodeT.FType)

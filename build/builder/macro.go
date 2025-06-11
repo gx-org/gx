@@ -7,26 +7,31 @@ import (
 )
 
 type funcMacro struct {
-	src   *ast.FuncDecl
-	bFile *file
+	*funcDecl
 }
 
-func (bFile *file) processIRMacroFunc(pscope procScope, src *ast.FuncDecl, comment *ast.Comment) bool {
-	f := &funcMacro{src: src, bFile: pscope.file()}
-	argsOk := checkEmptyParamsResults(pscope, src, "irmacro")
-	recvOk := src.Recv.NumFields() == 0
-	if !recvOk {
-		pscope.err().Appendf(src, "irmacro function has a receiver")
+func (bFile *file) processIRMacroFunc(scope procScope, src *ast.FuncDecl, comment *ast.Comment) bool {
+	fDecl, fDeclOk := newFuncDecl(scope, src, false)
+	fn := &funcMacro{
+		funcDecl: fDecl,
 	}
-	declareOk := pscope.decls().registerFunc(f)
-	return argsOk && recvOk && declareOk
+	returnOk := fn.funcDecl.checkReturnValue(scope)
+	declareOk := scope.decls().registerFunc(fn)
+	return fDeclOk && returnOk && declareOk
 }
 
 func (f *funcMacro) buildSignature(pkgScope *pkgResolveScope) (ir.Func, iFuncResolveScope, bool) {
-	fScope, ok := pkgScope.newFileScope(f.bFile, nil)
-	return &ir.FuncMeta{
+	ext := &ir.Macro{
 		Src: f.src,
-	}, newFuncScope(fScope, &ir.FuncType{}), ok
+	}
+	fileScope, scopeOk := pkgScope.newFileScope(f.bFile, nil)
+	if !scopeOk {
+		return ext, nil, false
+	}
+	var ok bool
+	var fScope *funcResolveScope
+	ext.FType, fScope, ok = f.fType.buildFuncType(fileScope)
+	return ext, fScope, ok
 }
 
 func (f *funcMacro) source() ast.Node {
@@ -47,4 +52,9 @@ func (f *funcMacro) receiver() *fieldList {
 
 func (f *funcMacro) compEval() bool {
 	return true
+}
+
+func (f *funcMacro) resolveOrder() int {
+	// Macro needs to be resolved first before any other functions.
+	return -1
 }

@@ -85,7 +85,8 @@ func checkAll(wants []ir.Node, decls *ir.Declarations) error {
 }
 
 type declarePackage struct {
-	src string
+	src  string
+	post func(*ir.Package)
 }
 
 func (tt declarePackage) source() string {
@@ -96,6 +97,9 @@ func (tt declarePackage) run(ctx *testContext) error {
 	pkg, err := buildSource(ctx, tt.src)
 	if err != nil {
 		return err
+	}
+	if tt.post != nil {
+		tt.post(pkg.IR())
 	}
 	ctx.imp.pkgs[pkg.IR().Name.Name] = pkg
 	return nil

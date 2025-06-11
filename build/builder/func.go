@@ -154,11 +154,8 @@ func (n *funcType) String() string {
 type funcDecl struct {
 	bFile *file
 	src   *ast.FuncDecl
-
 	fType *funcType
-
-	meta *assignDirective
-	body *blockStmt
+	body  *blockStmt
 }
 
 var _ function = (*funcDecl)(nil)
@@ -170,7 +167,7 @@ func (bFile *file) processFunc(fileScope procScope, src *ast.FuncDecl) bool {
 	case none:
 		funOk = bFile.processDeclaredFunc(fileScope, src, false)
 	case assign: // Function body assigned via gx:=
-		funOk = bFile.processAssignFunc(fileScope, src, dirComment)
+		funOk = bFile.processSyntheticFunc(fileScope, src, dirComment)
 	case irmacro: // IR Macro function that will be called by the compiler via gx:irmacro
 		funOk = bFile.processIRMacroFunc(fileScope, src, dirComment)
 	case cpeval:
@@ -211,21 +208,6 @@ func (bFile *file) processFuncDecl(pscope procScope, src *ast.FuncDecl, compEval
 	return processOk && bodyOk
 }
 
-func (bFile *file) processAssignFunc(pscope procScope, src *ast.FuncDecl, comment *ast.Comment) bool {
-	f, processOk := newFuncDecl(pscope, src, false)
-	if !pscope.decls().registerFunc(f) {
-		processOk = false
-	}
-	if !checkEmptyParamsResults(pscope, src, "assigned") {
-		processOk = false
-	}
-	var ok bool
-	if f.meta, ok = f.processFuncAssignDirective(pscope, comment); !ok {
-		processOk = false
-	}
-	return processOk
-}
-
 func checkEmptyParamsResults(scope procScope, fn *ast.FuncDecl, errPrefix string) bool {
 	ok := true
 	if fn.Type.Params.NumFields() != 0 {
@@ -255,6 +237,10 @@ func (f *funcDecl) compEval() bool {
 
 func (f *funcDecl) source() ast.Node {
 	return f.src
+}
+
+func (f *funcDecl) resolveOrder() int {
+	return 0
 }
 
 func (f *funcDecl) buildSignature(pkgScope *pkgResolveScope) (ir.Func, iFuncResolveScope, bool) {
@@ -494,7 +480,7 @@ func setFuncFileField(irb *irBuilder, file *ir.File, store ir.Storage) (ir.PkgFu
 	case *ir.FuncBuiltin:
 		nodeT.FFile = file
 		return nodeT, true
-	case *ir.FuncMeta:
+	case *ir.Macro:
 		nodeT.FFile = file
 		return nodeT, true
 	default:

@@ -328,9 +328,10 @@ type TypeSet struct {
 }
 
 var (
-	anyType           = &TypeSet{}
-	_       Type      = (*TypeSet)(nil)
-	_       ArrayType = (*TypeSet)(nil)
+	anyType             = &TypeSet{}
+	_       Type        = (*TypeSet)(nil)
+	_       ArrayType   = (*TypeSet)(nil)
+	_       assignsFrom = (*TypeSet)(nil)
 )
 
 // AnyType returns the type for the keyword any.
