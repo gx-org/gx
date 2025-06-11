@@ -697,18 +697,23 @@ func (s *FuncType) Equal(fetcher Fetcher, other Type) (bool, error) {
 	if !ok {
 		return false, nil
 	}
-	if s == otherT {
+	return s.equal(fetcher, otherT)
+}
+
+// Equal returns true if other is the same type.
+func (s *FuncType) equal(fetcher Fetcher, other *FuncType) (bool, error) {
+	if s == other {
 		return true, nil
 	}
-	recvOk, err := s.Receiver.Type().Equal(fetcher, otherT.Receiver.Type())
+	recvOk, err := s.Receiver.Type().Equal(fetcher, other.Receiver.Type())
 	if err != nil {
 		return false, err
 	}
-	paramsOk, err := s.Params.Type().Equal(fetcher, otherT.Params.Type())
+	paramsOk, err := s.Params.Type().Equal(fetcher, other.Params.Type())
 	if err != nil {
 		return false, err
 	}
-	resultsOk, err := s.Results.Type().Equal(fetcher, otherT.Results.Type())
+	resultsOk, err := s.Results.Type().Equal(fetcher, other.Results.Type())
 	if err != nil {
 		return false, err
 	}
@@ -729,7 +734,15 @@ func (s *FuncType) ReceiverField() *Field {
 
 // AssignableTo reports if the type can be assigned to other.
 func (s *FuncType) AssignableTo(fetcher Fetcher, other Type) (bool, error) {
-	return s.Equal(fetcher, other)
+	otherT, ok := other.(*FuncType)
+	if ok {
+		return s.equal(fetcher, otherT)
+	}
+	aFrom, ok := other.(assignsFrom)
+	if !ok {
+		return false, nil
+	}
+	return aFrom.assignableFrom(fetcher, s)
 }
 
 // ConvertibleTo reports whether a value of the type can be converted to another
@@ -1100,17 +1113,16 @@ type (
 		Impl  FuncImpl
 	}
 
-	// FuncMetaImpl is a builtin opaque function to produce an IR.
-	FuncMetaImpl func(fetcher Fetcher, target *FuncDecl, args []AssignableExpr) (*FuncDecl, bool)
-
-	// FuncMeta is a function that takes a set of IR nodes as an input
+	// Macro is a function that takes a set of IR nodes as an input
 	// and returns a new set of IR nodes (or a compiler error).
 	// An example of such function is math/graph.Grad.
 	// The implementation is opaque to GX.
-	FuncMeta struct {
+	Macro struct {
 		FFile *File
 		Src   *ast.FuncDecl
-		Impl  FuncMetaImpl
+		FType *FuncType
+
+		BuildSynthetic any
 	}
 
 	// FuncLit is a function literal.
@@ -1168,7 +1180,7 @@ var (
 	_ PkgFunc          = (*FuncBuiltin)(nil)
 	_ PkgFunc          = (*FuncDecl)(nil)
 	_ Func             = (*FuncLit)(nil)
-	_ PkgFunc          = (*FuncMeta)(nil)
+	_ PkgFunc          = (*Macro)(nil)
 	_ WithStore        = (*FuncLit)(nil)
 	_ StorageWithValue = (*FuncLit)(nil)
 )
@@ -1453,23 +1465,23 @@ func (s *FuncLit) String() string {
 	return "func {...}"
 }
 
-func (*FuncMeta) node()         {}
-func (*FuncMeta) staticValue()  {}
-func (*FuncMeta) storage()      {}
-func (*FuncMeta) storageValue() {}
+func (*Macro) node()         {}
+func (*Macro) staticValue()  {}
+func (*Macro) storage()      {}
+func (*Macro) storageValue() {}
 
 // Name of the function.
-func (s *FuncMeta) Name() string {
+func (s *Macro) Name() string {
 	return s.Src.Name.Name
 }
 
 // NameDef is the name definition of the function.
-func (s *FuncMeta) NameDef() *ast.Ident {
+func (s *Macro) NameDef() *ast.Ident {
 	return s.Src.Name
 }
 
 // Value returns a reference to the function.
-func (s *FuncMeta) Value(x Expr) AssignableExpr {
+func (s *Macro) Value(x Expr) AssignableExpr {
 	return &FuncValExpr{
 		X: x,
 		F: s,
@@ -1478,32 +1490,32 @@ func (s *FuncMeta) Value(x Expr) AssignableExpr {
 }
 
 // Doc returns associated documentation or nil.
-func (s *FuncMeta) Doc() *ast.CommentGroup {
+func (s *Macro) Doc() *ast.CommentGroup {
 	return nil
 }
 
 // File declaring the function literal.
-func (s *FuncMeta) File() *File {
+func (s *Macro) File() *File {
 	return s.FFile
 }
 
 // FuncType returns the concrete type of the function.
-func (s *FuncMeta) FuncType() *FuncType {
-	return MetaFuncType()
+func (s *Macro) FuncType() *FuncType {
+	return s.FType
 }
 
 // Type returns the type of the function.
-func (s *FuncMeta) Type() Type {
+func (s *Macro) Type() Type {
 	return s.FuncType()
 }
 
 // Source returns the node in the AST tree.
-func (s *FuncMeta) Source() ast.Node {
+func (s *Macro) Source() ast.Node {
 	return s.Src
 }
 
 // String representation of the literal.
-func (s *FuncMeta) String() string {
+func (s *Macro) String() string {
 	return fmt.Sprintf("metafunc %s", s.Name())
 }
 

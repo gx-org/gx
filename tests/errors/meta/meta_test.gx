@@ -15,12 +15,3 @@ func assignedNoParam(shouldnotbehere) // ERROR: assigned function has parameters
 
 //gx:=expr01()
 func assignedNoResult() shouldnotbehere // ERROR: assigned function has return values
-
-//gx:irmacro
-func (*shouldnotbehere) irmacroNoReceiver() // ERROR: irmacro function has a receiver
-
-//gx:irmacro
-func irmacroNoParam(shouldnotbehere) // ERROR: irmacro function has parameters
-
-//gx:irmacro
-func irmacroNoResult() shouldnotbehere // ERROR: irmacro function has return values

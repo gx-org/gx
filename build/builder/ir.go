@@ -32,6 +32,7 @@ type (
 		name() *ast.Ident
 		receiver() *fieldList
 		compEval() bool
+		resolveOrder() int
 		buildSignature(*pkgResolveScope) (ir.Func, iFuncResolveScope, bool)
 		buildBody(iFuncResolveScope, ir.Func) bool
 	}
@@ -163,13 +164,13 @@ func buildCall(rscope resolveScope, eNode exprNode) (*ir.CallExpr, bool) {
 	return call, true
 }
 
-func assignableToAt(rscope resolveScope, pos ast.Node, orig, target ir.Type) bool {
-	assignable, err := assignableTo(rscope, orig, target)
+func assignableToAt(rscope resolveScope, pos ast.Node, src, dst ir.Type) bool {
+	assignable, err := assignableTo(rscope, src, dst)
 	if err != nil {
 		return rscope.err().AppendAt(pos, err)
 	}
 	if !assignable {
-		return rscope.err().Appendf(pos, "cannot use %s as %s value in assignment", orig.String(), target.String())
+		return rscope.err().Appendf(pos, "cannot use %s as %s value in assignment", src.String(), dst.String())
 	}
 	return true
 }
@@ -187,13 +188,13 @@ func assignableTo(rscope resolveScope, src, dst ir.Type) (bool, error) {
 	return src.AssignableTo(compEval, dst)
 }
 
-func convertToAt(rscope resolveScope, pos ast.Node, orig, target ir.Type) bool {
-	convertOk, err := convertTo(rscope, orig, target)
+func convertToAt(rscope resolveScope, pos ast.Node, src, dst ir.Type) bool {
+	convertOk, err := convertTo(rscope, src, dst)
 	if err != nil {
 		return rscope.err().AppendAt(pos, err)
 	}
 	if !convertOk {
-		return rscope.err().Appendf(pos, "cannot convert %s to %s", orig.String(), target.String())
+		return rscope.err().Appendf(pos, "cannot convert %s to %s", src.String(), dst.String())
 	}
 	return true
 }

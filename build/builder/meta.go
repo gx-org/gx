@@ -19,9 +19,12 @@ import (
 	"go/parser"
 	"go/scanner"
 	"go/token"
+	"reflect"
 	"strings"
 
 	"github.com/gx-org/gx/build/ir"
+	"github.com/gx-org/gx/internal/interp/compeval/cpevelements"
+	"github.com/gx-org/gx/interp"
 )
 
 type directive int
@@ -110,57 +113,119 @@ func processFuncDirective(pscope procScope, fn *ast.FuncDecl) (directive, *ast.C
 	return dir, comment, true
 }
 
-type assignDirective struct {
-	fun  *funcDecl
-	call *callExpr
+type syntheticFunc struct {
+	bFile *file
+	src   *ast.FuncDecl
+	macro *callExpr
 }
 
-func (f *funcDecl) processFuncAssignDirective(pscope procScope, doc *ast.Comment) (*assignDirective, bool) {
+func (bFile *file) processSyntheticFunc(pscope procScope, src *ast.FuncDecl, comment *ast.Comment) bool {
+	f := &syntheticFunc{
+		bFile: pscope.file(),
+		src:   src,
+	}
+	ok := true
+	if !pscope.decls().registerFunc(f) {
+		ok = false
+	}
+	if !checkEmptyParamsResults(pscope, src, "assigned") {
+		ok = false
+	}
+	if !ok {
+		return false
+	}
+	return f.processFuncAssignDirective(pscope, comment)
+}
+
+func (f *syntheticFunc) processFuncAssignDirective(pscope procScope, doc *ast.Comment) bool {
 	src := strings.TrimPrefix(doc.Text, assignDirectivePrefix)
 	astExpr, err := parser.ParseExprFrom(pscope.pkgScope().pkg().fset, f.bFile.name+":"+f.name().Name, src, parser.SkipObjectResolution)
 	if err != nil {
-		return nil, processScannerError(pscope, doc, err)
+		return processScannerError(pscope, doc, err)
 	}
-	if f.meta != nil {
-		return nil, pscope.err().Appendf(doc, "a function can only have one GX directive")
+	if f.macro != nil {
+		return pscope.err().Appendf(doc, "a function can only have one GX directive")
 	}
-	expr, exprOk := processExpr(pscope, astExpr)
-	if !exprOk {
-		return nil, false
+	expr, ok := processExpr(pscope, astExpr)
+	if !ok {
+		return false
 	}
-	call, callOk := expr.(*callExpr)
-	if !callOk {
-		return nil, pscope.err().Appendf(doc, "GX equal directive (gx:=) only accept function call expression")
+	f.macro, ok = expr.(*callExpr)
+	if !ok {
+		return pscope.err().Appendf(doc, "GX equal directive (gx:=) only accept function call expression")
 	}
-	return &assignDirective{
-		fun:  f,
-		call: call,
-	}, true
+	return true
 }
 
-func (m *assignDirective) buildExpr(scope *fileResolveScope) (*ir.FuncDecl, bool) {
-	ext := &ir.FuncDecl{
-		Src: m.fun.src,
-	}
-	args, ok := m.call.buildArgs(scope)
+func (f *syntheticFunc) source() ast.Node {
+	return f.src
+}
+
+func (f *syntheticFunc) name() *ast.Ident {
+	return f.src.Name
+}
+
+func (f *syntheticFunc) receiver() *fieldList {
+	return nil
+}
+
+func (f *syntheticFunc) compEval() bool {
+	return false
+}
+
+type macroResolveScope struct {
+	iFuncResolveScope
+	sFunc *cpevelements.SyntheticFunc
+}
+
+func (f *syntheticFunc) buildSignature(pkgScope *pkgResolveScope) (ir.Func, iFuncResolveScope, bool) {
+	fScope, ok := pkgScope.newFileScope(f.bFile, nil)
+	callExpr, ok := f.macro.buildExpr(fScope)
 	if !ok {
-		return ext, false
+		return nil, nil, false
 	}
-	funcMetaExpr, ok := m.call.callee.buildExpr(scope)
+	fCallExpr, ok := callExpr.(*ir.CallExpr)
 	if !ok {
-		return ext, false
+		return nil, nil, fScope.err().Appendf(f.macro.source(), "expect a function")
 	}
-	funcMeta, ok := funcMetaExpr.(*ir.FuncMeta)
-	if !ok {
-		return ext, scope.err().Appendf(m.call.source(), "cannot use %s (%T) as a meta function", funcMeta.Name(), funcMetaExpr)
+	if _, ok := fCallExpr.Callee.F.(*ir.Macro); !ok {
+		return nil, nil, fScope.err().Appendf(f.macro.source(), "cannot use %s as a macro", fCallExpr.Callee.F.NameDef().Name)
 	}
-	if funcMeta.Impl == nil {
-		return ext, scope.err().Appendf(m.call.source(), "meta function %s has no implementation", funcMeta.Name())
-	}
-	compEval, compEvalOk := scope.compEval()
+	compEval, compEvalOk := fScope.compEval()
 	if !compEvalOk {
-		return ext, false
+		return nil, nil, false
 	}
-	ext, ok = funcMeta.Impl(compEval, ext, args)
-	return ext, ok
+	macro, err := interp.EvalExprInContext(compEval.ev, fCallExpr)
+	if err != nil {
+		return nil, nil, fScope.err().AppendAt(f.macro.source(), err)
+	}
+	ext := &ir.FuncDecl{Src: f.src}
+	sFunc, ok := macro.(*cpevelements.SyntheticFunc)
+	if !ok {
+		return nil, nil, fScope.err().AppendInternalf(f.macro.source(), "cannot convert %T to %s", macro, reflect.TypeFor[*cpevelements.SyntheticFunc]())
+	}
+	ext.FType, err = sFunc.Builder().BuildType()
+	if err != nil {
+		return ext, nil, fScope.err().AppendAt(f.macro.source(), err)
+	}
+	return ext, &macroResolveScope{
+		iFuncResolveScope: newFuncScope(fScope, ext.FType),
+		sFunc:             sFunc,
+	}, ok
+}
+
+func (f *syntheticFunc) buildBody(fScope iFuncResolveScope, extF ir.Func) bool {
+	mScope := fScope.(*macroResolveScope)
+	ext := extF.(*ir.FuncDecl)
+	var err error
+	ext.Body, err = mScope.sFunc.Builder().BuildBody()
+	if err != nil {
+		return fScope.err().AppendAt(f.macro.source(), err)
+	}
+	return true
+}
+
+func (f *syntheticFunc) resolveOrder() int {
+	// Synthetic functions need to be resolved last.
+	return 1
 }
