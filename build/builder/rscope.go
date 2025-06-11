@@ -243,7 +243,7 @@ func (s *constResolveScope) proc(pNode processNode) bool {
 }
 
 type (
-	funResolveScope interface {
+	iFuncResolveScope interface {
 		resolveScope
 		funcType() *ir.FuncType
 	}
@@ -302,7 +302,7 @@ type (
 	}
 
 	blockResolveScope struct {
-		funResolveScope
+		iFuncResolveScope
 		nspace   *scope.RWScope[processNode]
 		compeval *compileEvaluator
 	}
@@ -310,16 +310,16 @@ type (
 
 var _ localScope = (*blockResolveScope)(nil)
 
-func newBlockScope(rscope funResolveScope) (*blockResolveScope, bool) {
+func newBlockScope(rscope iFuncResolveScope) (*blockResolveScope, bool) {
 	s := &blockResolveScope{
-		funResolveScope: rscope,
-		nspace:          scope.NewScope(rscope.ns()),
+		iFuncResolveScope: rscope,
+		nspace:            scope.NewScope(rscope.ns()),
 	}
-	parentCompEval, ok := s.funResolveScope.compEval()
+	parentCompEval, ok := s.iFuncResolveScope.compEval()
 	if !ok {
 		return s, false
 	}
-	s.compeval, ok = parentCompEval.sub(s.funResolveScope.funcType().Src, nil)
+	s.compeval, ok = parentCompEval.sub(s.iFuncResolveScope.funcType().Src, nil)
 	return s, ok
 }
 
