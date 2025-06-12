@@ -4,6 +4,7 @@ import (
 	"go/ast"
 	"testing"
 
+	"github.com/gx-org/gx/build/builder/testbuild"
 	"github.com/gx-org/gx/build/ir"
 	irh "github.com/gx-org/gx/build/ir/irhelper"
 )
@@ -55,22 +56,22 @@ func TestAxisName(t *testing.T) {
 			},
 		},
 	}
-	testAll(t,
-		irDeclTest{
-			src: `
+	testbuild.Run(t,
+		testbuild.DeclTest{
+			Src: `
 func newArray(shape []intlen) [shape___]float32
 `,
-			want: []ir.Node{newArrayFunc},
+			Want: []ir.Node{newArrayFunc},
 		},
-		irDeclTest{
-			src: `
+		testbuild.DeclTest{
+			Src: `
 func newArray(shape []intlen) [shape___]float32
 
 func f(dims []intlen) [dims___]float32 {
 	return newArray(dims)
 }
 `,
-			want: []ir.Node{
+			Want: []ir.Node{
 				newArrayFunc,
 				&ir.FuncDecl{
 					FType: irh.FuncType(
@@ -103,8 +104,8 @@ func f(dims []intlen) [dims___]float32 {
 				},
 			},
 		},
-		irDeclTest{
-			src: `
+		testbuild.DeclTest{
+			Src: `
 func newArray(shape []intlen) [shape___]float32
 
 func f(dims []intlen) [dims___]float32 {
@@ -113,7 +114,7 @@ func f(dims []intlen) [dims___]float32 {
 }
 
 `,
-			want: []ir.Node{
+			Want: []ir.Node{
 				newArrayFunc,
 				&ir.FuncDecl{
 					FType: irh.FuncType(
@@ -135,15 +136,15 @@ func f(dims []intlen) [dims___]float32 {
 				},
 			},
 		},
-		irDeclTest{
-			src: `
+		testbuild.DeclTest{
+			Src: `
 func newArray(shape []intlen) [shape___]float32
 
 func f() [2][3]float32 {
 	return newArray([]intlen{2,3})
 }
 `,
-			want: []ir.Node{
+			Want: []ir.Node{
 				newArrayFunc,
 				&ir.FuncDecl{
 					FType: irh.FuncType(
@@ -170,15 +171,15 @@ func f() [2][3]float32 {
 				},
 			},
 		},
-		irDeclTest{
-			src: `
+		testbuild.DeclTest{
+			Src: `
 func cast([___S]float32) [S___]float64
 
 func f() [2]float64 {
 	return cast([2]float32{3, 4})
 }
 `,
-			want: []ir.Node{
+			Want: []ir.Node{
 				castFunc,
 				&ir.FuncDecl{
 					FType: irh.FuncType(
@@ -211,15 +212,15 @@ func f() [2]float64 {
 				},
 			},
 		},
-		irDeclTest{
-			src: `
+		testbuild.DeclTest{
+			Src: `
 func cast([___S]float32) [S___]float64
 
 func f() float64 {
 	return cast(float32(1))
 }
 `,
-			want: []ir.Node{
+			Want: []ir.Node{
 				castFunc,
 				&ir.FuncDecl{
 					FType: irh.FuncType(
@@ -264,9 +265,9 @@ func f() float64 {
 			},
 		},
 	}
-	testAll(t,
-		irDeclTest{
-			src: `
+	testbuild.Run(t,
+		testbuild.DeclTest{
+			Src: `
 func newArray(shape []intlen) [shape___]float32
 
 func f() [2][3]float32  {
@@ -274,7 +275,7 @@ func f() [2][3]float32  {
 	return newArray(fDims)
 }
 `,
-			want: []ir.Node{
+			Want: []ir.Node{
 				newArrayFunc,
 				&ir.FuncDecl{
 					FType: irh.FuncType(
@@ -304,19 +305,19 @@ func f() [2][3]float32  {
 }
 
 func TestAxisGroupOrigin(t *testing.T) {
-	testAll(t,
-		irDeclTest{
-			src: `
+	testbuild.Run(t,
+		testbuild.DeclTest{
+			Src: `
 func f([___M]int32) [M___]int32
 
 func g(a [___dims]int32) [dims___]int32 {
 	return a + f(a)
 }
 `,
-			want: []ir.Node{},
+			Want: []ir.Node{},
 		},
-		irDeclTest{
-			src: `
+		testbuild.DeclTest{
+			Src: `
 func sum([___M]int32) int64
 
 func callCast(x [_]int32) int64 {

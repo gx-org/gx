@@ -4,20 +4,21 @@ import (
 	"go/ast"
 	"testing"
 
+	"github.com/gx-org/gx/build/builder/testbuild"
 	"github.com/gx-org/gx/build/ir"
 	irh "github.com/gx-org/gx/build/ir/irhelper"
 )
 
 func TestCompEval(t *testing.T) {
-	testAll(t,
-		irDeclTest{
-			src: `
+	testbuild.Run(t,
+		testbuild.DeclTest{
+			Src: `
 //gx:compeval
 func returnTwo() float32 {
 	return 2
 }
 `,
-			want: []ir.Node{
+			Want: []ir.Node{
 				&ir.FuncDecl{
 					FType: irh.CompEvalFuncType(
 						irh.Fields(),
@@ -36,10 +37,10 @@ func returnTwo() float32 {
 }
 
 func TestBuiltin(t *testing.T) {
-	testAll(t,
-		irDeclTest{
-			src: `func returnTwo() float32`,
-			want: []ir.Node{
+	testbuild.Run(t,
+		testbuild.DeclTest{
+			Src: `func returnTwo() float32`,
+			Want: []ir.Node{
 				&ir.FuncBuiltin{
 					FType: irh.FuncType(
 						nil, nil,
@@ -67,13 +68,13 @@ func TestBuiltinMethods(t *testing.T) {
 		),
 	}
 	typeA.Methods = []ir.PkgFunc{funF}
-	testAll(t,
-		irDeclTest{
-			src: `
+	testbuild.Run(t,
+		testbuild.DeclTest{
+			Src: `
 type A uint32
 func (A) F(uint32) uint32
 `,
-			want: []ir.Node{
+			Want: []ir.Node{
 				typeA,
 			},
 		},
@@ -96,17 +97,17 @@ func TestFuncDecl(t *testing.T) {
 				},
 			},
 		)}
-	testAll(t,
-		irDeclTest{
-			src: `
+	testbuild.Run(t,
+		testbuild.DeclTest{
+			Src: `
 func returnTwo() float32 {
 	return 2
 }
 `,
-			want: []ir.Node{returnTwoFunc},
+			Want: []ir.Node{returnTwoFunc},
 		},
-		irDeclTest{
-			src: `
+		testbuild.DeclTest{
+			Src: `
 func returnTwo() float32 {
 	return 2
 }
@@ -115,7 +116,7 @@ func call() float32 {
 	return returnTwo()
 }
 `,
-			want: []ir.Node{
+			Want: []ir.Node{
 				returnTwoFunc,
 				&ir.FuncDecl{
 					FType: irh.FuncType(nil, nil, irh.Fields(), irh.Fields(ir.Float32Type())),
@@ -133,13 +134,13 @@ func call() float32 {
 				},
 			},
 		},
-		irDeclTest{
-			src: `
+		testbuild.DeclTest{
+			Src: `
 func withArgs(a int32) int32 {
 	return a
 }
 `,
-			want: []ir.Node{
+			Want: []ir.Node{
 				&ir.FuncDecl{
 					FType: irh.FuncType(
 						nil, nil,
@@ -155,14 +156,14 @@ func withArgs(a int32) int32 {
 					)},
 			},
 		},
-		irDeclTest{
-			src: `
+		testbuild.DeclTest{
+			Src: `
 func namedReturn() (a int32) {
 	a = 2
 	return
 }
 `,
-			want: []ir.Node{
+			Want: []ir.Node{
 				&ir.FuncDecl{
 					FType: irh.FuncType(
 						nil, nil, irh.Fields(),
@@ -195,9 +196,9 @@ func namedReturn() (a int32) {
 				},
 			},
 		)}
-	testAll(t,
-		irDeclTest{
-			src: `
+	testbuild.Run(t,
+		testbuild.DeclTest{
+			Src: `
 func returnTuple() (float32, int32) {
 	return 2, 3
 }
@@ -206,7 +207,7 @@ func call() (float32, int32) {
 	return returnTuple()
 }
 `,
-			want: []ir.Node{
+			Want: []ir.Node{
 				returnTupleFunc,
 				&ir.FuncDecl{
 					FType: irh.FuncType(
@@ -249,16 +250,16 @@ func TestCallWithLiterals(t *testing.T) {
 			irh.Fields(ir.Float32Type()),
 		),
 	}
-	testAll(t,
-		irDeclTest{
-			src: `
+	testbuild.Run(t,
+		testbuild.DeclTest{
+			Src: `
 func f([1][1]float32) float32
 
 func call() float32 {
 	return f([1][1]float32{{2}})
 }
 `,
-			want: []ir.Node{
+			Want: []ir.Node{
 				fDef,
 				&ir.FuncDecl{
 					FType: irh.FuncType(nil, nil, irh.Fields(), irh.Fields(ir.Float32Type())),

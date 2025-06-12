@@ -3,6 +3,7 @@ package builder_test
 import (
 	"testing"
 
+	"github.com/gx-org/gx/build/builder/testbuild"
 	"github.com/gx-org/gx/build/ir"
 	irh "github.com/gx-org/gx/build/ir/irhelper"
 	"github.com/gx-org/gx/internal/interp/compeval/cpevelements"
@@ -30,21 +31,21 @@ func (m *idMacro) BuildBody() (*ir.BlockStmt, error) {
 }
 
 func TestMacro(t *testing.T) {
-	testAll(t,
-		declarePackage{
-			src: `
+	testbuild.Run(t,
+		testbuild.DeclarePackage{
+			Src: `
 package macro 
 
 //gx:irmacro
 func ID(any) any
 `,
-			post: func(pkg *ir.Package) {
+			Post: func(pkg *ir.Package) {
 				id := pkg.FindFunc("ID").(*ir.Macro)
 				id.BuildSynthetic = cpevelements.MacroImpl(newIDMacro)
 			},
 		},
-		irDeclTest{
-			src: `
+		testbuild.DeclTest{
+			Src: `
 import "macro"
 
 //gx:=macro.ID(f)
@@ -54,7 +55,7 @@ func f() int32 {
 	return 2
 }
 `,
-			want: []ir.Node{
+			Want: []ir.Node{
 				&ir.FuncDecl{
 					FType: irh.FuncType(
 						nil, nil,

@@ -4,6 +4,7 @@ import (
 	"go/ast"
 	"testing"
 
+	"github.com/gx-org/gx/build/builder/testbuild"
 	"github.com/gx-org/gx/build/ir"
 	irh "github.com/gx-org/gx/build/ir/irhelper"
 )
@@ -19,16 +20,16 @@ func TestLocalAssignment(t *testing.T) {
 	}
 	xField := irh.Field("x", ir.Float32Type(), nil)
 	yField := irh.Field("y", ir.Float32Type(), nil)
-	testAll(t,
-		irDeclTest{
-			src: `
+	testbuild.Run(t,
+		testbuild.DeclTest{
+			Src: `
 func id(x float32) float32
 
 func call(x float32, y float32) float32 {
 	return id(x/y)
 }
 `,
-			want: []ir.Node{
+			Want: []ir.Node{
 				idFunc,
 				&ir.FuncDecl{
 					FType: irh.FuncType(

@@ -3,15 +3,16 @@ package builder_test
 import (
 	"testing"
 
+	"github.com/gx-org/gx/build/builder/testbuild"
 	"github.com/gx-org/gx/build/ir"
 	irh "github.com/gx-org/gx/build/ir/irhelper"
 )
 
 func TestBinaryOp(t *testing.T) {
-	testAll(t,
-		irExprTest{
-			src: `[2]int64{3, 4} > 2`,
-			want: &ir.BinaryExpr{
+	testbuild.Run(t,
+		testbuild.ExprTest{
+			Src: `[2]int64{3, 4} > 2`,
+			Want: &ir.BinaryExpr{
 				X: &ir.ArrayLitExpr{
 					Typ: irh.ArrayType(ir.Int64Type(), 2),
 					Elts: []ir.AssignableExpr{
@@ -22,7 +23,7 @@ func TestBinaryOp(t *testing.T) {
 				Y:   irh.IntNumberAs(2, ir.Int64Type()),
 				Typ: irh.ArrayType(ir.BoolType(), 2),
 			},
-			wantType: "[2]bool",
+			WantType: "[2]bool",
 		},
 	)
 }

@@ -4,6 +4,7 @@ import (
 	"go/ast"
 	"testing"
 
+	"github.com/gx-org/gx/build/builder/testbuild"
 	"github.com/gx-org/gx/build/ir"
 	irh "github.com/gx-org/gx/build/ir/irhelper"
 )
@@ -17,9 +18,9 @@ func TestStruct(t *testing.T) {
 		Src:        &ast.TypeSpec{Name: irh.Ident("A")},
 		Underlying: irh.TypeExpr(structA),
 	}
-	testAll(t,
-		irDeclTest{
-			src: `
+	testbuild.Run(t,
+		testbuild.DeclTest{
+			Src: `
 type A struct {
 	a int32
 	b float32
@@ -32,7 +33,7 @@ func a() A {
 	}
 }
 `,
-			want: []ir.Node{
+			Want: []ir.Node{
 				typeA,
 				&ir.FuncDecl{
 					FType: irh.FuncType(

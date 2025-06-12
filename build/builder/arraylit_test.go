@@ -4,26 +4,27 @@ import (
 	"go/ast"
 	"testing"
 
+	"github.com/gx-org/gx/build/builder/testbuild"
 	"github.com/gx-org/gx/build/ir"
 	irh "github.com/gx-org/gx/build/ir/irhelper"
 )
 
 func TestArrayLit(t *testing.T) {
-	testAll(t,
-		irExprTest{
-			src: `[2]float32{3, 4}`,
-			want: &ir.ArrayLitExpr{
+	testbuild.Run(t,
+		testbuild.ExprTest{
+			Src: `[2]float32{3, 4}`,
+			Want: &ir.ArrayLitExpr{
 				Typ: irh.ArrayType(ir.Float32Type(), 2),
 				Elts: []ir.AssignableExpr{
 					irh.IntNumberAs(3, ir.Float32Type()),
 					irh.IntNumberAs(4, ir.Float32Type()),
 				},
 			},
-			wantType: "[2]float32",
+			WantType: "[2]float32",
 		},
-		irExprTest{
-			src: `[_]float32{3, 4}`,
-			want: &ir.ArrayLitExpr{
+		testbuild.ExprTest{
+			Src: `[_]float32{3, 4}`,
+			Want: &ir.ArrayLitExpr{
 				Typ: irh.ArrayType(
 					ir.Float32Type(),
 					&ir.AxisInfer{
@@ -36,11 +37,11 @@ func TestArrayLit(t *testing.T) {
 					irh.IntNumberAs(4, ir.Float32Type()),
 				},
 			},
-			wantType: "[2]float32",
+			WantType: "[2]float32",
 		},
-		irExprTest{
-			src: `[2][3]float32{{1, 2, 3}, {4, 5, 6}}`,
-			want: &ir.ArrayLitExpr{
+		testbuild.ExprTest{
+			Src: `[2][3]float32{{1, 2, 3}, {4, 5, 6}}`,
+			Want: &ir.ArrayLitExpr{
 				Typ: irh.ArrayType(ir.Float32Type(), 2, 3),
 				Elts: []ir.AssignableExpr{
 					&ir.ArrayLitExpr{
@@ -61,22 +62,22 @@ func TestArrayLit(t *testing.T) {
 					},
 				},
 			},
-			wantType: "[2][3]float32",
+			WantType: "[2][3]float32",
 		},
-		irExprTest{
-			src: `[2]float32{}`,
-			want: &ir.ArrayLitExpr{
+		testbuild.ExprTest{
+			Src: `[2]float32{}`,
+			Want: &ir.ArrayLitExpr{
 				Typ: irh.ArrayType(ir.Float32Type(), 2),
 			},
-			wantType: "[2]float32",
+			WantType: "[2]float32",
 		},
-		irExprTest{
-			src: `[...]float32{}`,
-			err: "cannot infer rank: empty literal",
+		testbuild.ExprTest{
+			Src: `[...]float32{}`,
+			Err: "cannot infer rank: empty literal",
 		},
-		irExprTest{
-			src: `[...]int32{1, 2, 3}`,
-			want: &ir.ArrayLitExpr{
+		testbuild.ExprTest{
+			Src: `[...]int32{1, 2, 3}`,
+			Want: &ir.ArrayLitExpr{
 				Typ: irh.InferArrayType(ir.Int32Type(), 3),
 				Elts: []ir.AssignableExpr{
 					irh.IntNumberAs(1, ir.Int32Type()),
@@ -84,11 +85,11 @@ func TestArrayLit(t *testing.T) {
 					irh.IntNumberAs(3, ir.Int32Type()),
 				},
 			},
-			wantType: "[3]int32",
+			WantType: "[3]int32",
 		},
-		irExprTest{
-			src: `[...]int32{{1, 2, 3}, {4, 5, 6}}`,
-			want: &ir.ArrayLitExpr{
+		testbuild.ExprTest{
+			Src: `[...]int32{{1, 2, 3}, {4, 5, 6}}`,
+			Want: &ir.ArrayLitExpr{
 				Typ: irh.InferArrayType(ir.Int32Type(), 2, 3),
 				Elts: []ir.AssignableExpr{
 					&ir.ArrayLitExpr{
@@ -109,11 +110,11 @@ func TestArrayLit(t *testing.T) {
 					},
 				},
 			},
-			wantType: "[2][3]int32",
+			WantType: "[2][3]int32",
 		},
-		irExprTest{
-			src: `[1][1]int32{{2}}`,
-			want: &ir.ArrayLitExpr{
+		testbuild.ExprTest{
+			Src: `[1][1]int32{{2}}`,
+			Want: &ir.ArrayLitExpr{
 				Typ: irh.ArrayType(ir.Int32Type(), 1, 1),
 				Elts: []ir.AssignableExpr{
 					&ir.ArrayLitExpr{

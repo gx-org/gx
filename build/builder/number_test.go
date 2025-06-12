@@ -4,6 +4,7 @@ import (
 	"go/ast"
 	"testing"
 
+	"github.com/gx-org/gx/build/builder/testbuild"
 	"github.com/gx-org/gx/build/ir"
 	irh "github.com/gx-org/gx/build/ir/irhelper"
 )
@@ -40,9 +41,9 @@ func TestNumber(t *testing.T) {
 			),
 		},
 	}
-	testAll(t,
-		irDeclTest{
-			src: `
+	testbuild.Run(t,
+		testbuild.DeclTest{
+			Src: `
 func id(int64) int64
 
 func f() int64 {
@@ -51,8 +52,8 @@ func f() int64 {
 }
 `,
 		},
-		irDeclTest{
-			src: `
+		testbuild.DeclTest{
+			Src: `
 type A struct {
 	val float32
 }
