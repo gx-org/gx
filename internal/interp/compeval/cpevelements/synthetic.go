@@ -25,7 +25,7 @@ type (
 	// SyntheticBuilder builds a synthetic function.
 	SyntheticBuilder interface {
 		BuildType() (*ir.FuncType, error)
-		BuildBody() (*ir.BlockStmt, error)
+		BuildBody(ir.Fetcher) (*ir.BlockStmt, bool)
 	}
 
 	// SyntheticFunc is a GX string.
