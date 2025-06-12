@@ -162,8 +162,6 @@ func newValuer(ctx *context, expr ir.Expr, kind ir.Kind) (v valuer, err error) {
 		v = valuerT[int32]{kind: kind, toAtomValue: values.AtomIntegerValue[int32], toArrayValue: values.ArrayIntegerValue[int32]}
 	case ir.Int64Kind:
 		v = valuerT[int64]{kind: kind, toAtomValue: values.AtomIntegerValue[int64], toArrayValue: values.ArrayIntegerValue[int64]}
-	case ir.StringKind:
-		v = &stringValuer{}
 	case ir.Uint32Kind:
 		v = valuerT[uint32]{kind: kind, toAtomValue: values.AtomIntegerValue[uint32], toArrayValue: values.ArrayIntegerValue[uint32]}
 	case ir.Uint64Kind:

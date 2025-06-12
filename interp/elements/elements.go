@@ -69,7 +69,7 @@ type (
 		Kind() ir.Kind
 	}
 
-	// Copyable is an interface implemented by nodes that need to be copied when passed to a function.
+	// Copier is an interface implemented by nodes that need to be copied when passed to a function.
 	Copier interface {
 		Element
 		Copy() Copier
@@ -340,4 +340,27 @@ func Underlying(val Element) Element {
 		return val
 	}
 	return Underlying(named.under)
+}
+
+// FuncDeclFromElement extracts a function declaration from an element.
+func FuncDeclFromElement(el Element) (*ir.FuncDecl, error) {
+	fEl, ok := el.(Func)
+	if !ok {
+		return nil, errors.Errorf("cannot convert element %T to a function", el)
+	}
+	fun := fEl.Func()
+	fDecl, ok := fun.(*ir.FuncDecl)
+	if !ok {
+		return nil, errors.Errorf("%s is not a GX user function", fun.Name())
+	}
+	return fDecl, nil
+}
+
+// StringFromElement returns the string value stored in a element.
+func StringFromElement(el Element) (string, error) {
+	sEl, ok := el.(*String)
+	if !ok {
+		return "", errors.Errorf("cannot convert element %T is not a string literal", el)
+	}
+	return sEl.StringValue().String(), nil
 }

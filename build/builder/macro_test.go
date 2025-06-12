@@ -11,7 +11,7 @@ import (
 )
 
 func newIDMacro(call elements.CallAt, macro *cpevelements.Macro, args []elements.Element) (*cpevelements.SyntheticFunc, error) {
-	fn, err := cpevelements.FuncDeclFromElement(args[0])
+	fn, err := elements.FuncDeclFromElement(args[0])
 	if err != nil {
 		return nil, err
 	}
