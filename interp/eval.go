@@ -471,6 +471,8 @@ func (ctx *context) evalExpr(expr ir.Expr) (elements.Element, error) {
 		return evalIndexExpr(ctx, exprT)
 	case *ir.EinsumExpr:
 		return evalEinsumExpr(ctx, exprT)
+	case *ir.StringLiteral:
+		return elements.NewString(exprT), nil
 	case *ir.NumberFloat:
 		return numbers.NewFloat(elements.NewExprAt(ctx.File(), exprT), exprT.Val), nil
 	case *ir.NumberInt:
