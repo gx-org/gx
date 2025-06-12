@@ -216,13 +216,13 @@ func (f *syntheticFunc) buildSignature(pkgScope *pkgResolveScope) (ir.Func, iFun
 
 func (f *syntheticFunc) buildBody(fScope iFuncResolveScope, extF ir.Func) bool {
 	mScope := fScope.(*macroResolveScope)
-	ext := extF.(*ir.FuncDecl)
-	var err error
-	ext.Body, err = mScope.sFunc.Builder().BuildBody()
-	if err != nil {
-		return fScope.err().AppendAt(f.macro.source(), err)
+	compEval, ok := fScope.compEval()
+	if !ok {
+		return false
 	}
-	return true
+	ext := extF.(*ir.FuncDecl)
+	ext.Body, ok = mScope.sFunc.Builder().BuildBody(compEval)
+	return ok
 }
 
 func (f *syntheticFunc) resolveOrder() int {

@@ -26,8 +26,8 @@ func (m *idMacro) BuildType() (*ir.FuncType, error) {
 	return m.fn.FType, nil
 }
 
-func (m *idMacro) BuildBody() (*ir.BlockStmt, error) {
-	return m.fn.Body, nil
+func (m *idMacro) BuildBody(fetcher ir.Fetcher) (*ir.BlockStmt, bool) {
+	return m.fn.Body, true
 }
 
 func TestMacro(t *testing.T) {
