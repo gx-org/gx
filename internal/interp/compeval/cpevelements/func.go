@@ -55,17 +55,3 @@ func (f *fun) Unflatten(handles *elements.Unflattener) (values.Value, error) {
 func (f *fun) Kind() ir.Kind {
 	return ir.FuncKind
 }
-
-// FuncDeclFromElement extracts a function declaration from an element.
-func FuncDeclFromElement(el elements.Element) (*ir.FuncDecl, error) {
-	fEl, ok := el.(elements.Func)
-	if !ok {
-		return nil, errors.Errorf("cannot convert element %T to a function", el)
-	}
-	fun := fEl.Func()
-	fDecl, ok := fun.(*ir.FuncDecl)
-	if !ok {
-		return nil, errors.Errorf("%s is not a GX user function", fun.Name())
-	}
-	return fDecl, nil
-}

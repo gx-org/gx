@@ -472,7 +472,7 @@ func (ctx *context) evalExpr(expr ir.Expr) (elements.Element, error) {
 	case *ir.EinsumExpr:
 		return evalEinsumExpr(ctx, exprT)
 	case *ir.StringLiteral:
-		return elements.NewString(exprT), nil
+		return elements.NewString(exprT)
 	case *ir.NumberFloat:
 		return numbers.NewFloat(elements.NewExprAt(ctx.File(), exprT), exprT.Val), nil
 	case *ir.NumberInt:
