@@ -4,6 +4,7 @@ import (
 	"go/ast"
 	"testing"
 
+	"github.com/gx-org/gx/build/builder/testbuild"
 	"github.com/gx-org/gx/build/ir"
 	irh "github.com/gx-org/gx/build/ir/irhelper"
 )
@@ -12,40 +13,40 @@ func TestNamedTypes(t *testing.T) {
 	aField := irh.Field("a", ir.Int32Type(), nil)
 	bField := irh.Field("b", ir.Float32Type(), nil)
 	cField := irh.Field("c", ir.Float64Type(), nil)
-	testAll(t,
-		irDeclTest{
-			src: `type A intlen`,
-			want: []ir.Node{&ir.NamedType{
+	testbuild.Run(t,
+		testbuild.DeclTest{
+			Src: `type A intlen`,
+			Want: []ir.Node{&ir.NamedType{
 				Src:        &ast.TypeSpec{Name: irh.Ident("A")},
 				Underlying: ir.AtomTypeExpr(ir.IntLenType()),
 			}},
 		},
-		irDeclTest{
-			src: `type B interface {
+		testbuild.DeclTest{
+			Src: `type B interface {
 				float32 | float64
 			}`,
-			want: []ir.Node{&ir.NamedType{
+			Want: []ir.Node{&ir.NamedType{
 				Src: &ast.TypeSpec{Name: irh.Ident("B")},
 				Underlying: irh.TypeExpr(irh.TypeSet(
 					ir.Float32Type(),
 					ir.Float64Type(),
 				))}},
 		},
-		irDeclTest{
-			src: `type A struct {
+		testbuild.DeclTest{
+			Src: `type A struct {
 				a int32
 				b float32
 				c float64
 			}`,
-			want: []ir.Node{&ir.NamedType{
+			Want: []ir.Node{&ir.NamedType{
 				Src: &ast.TypeSpec{Name: irh.Ident("A")},
 				Underlying: irh.TypeExpr(irh.StructType(
 					aField, bField, cField,
 				))}},
 		},
-		irDeclTest{
-			src: `type A [2][3]float32`,
-			want: []ir.Node{&ir.NamedType{
+		testbuild.DeclTest{
+			Src: `type A [2][3]float32`,
+			Want: []ir.Node{&ir.NamedType{
 				Src: &ast.TypeSpec{Name: irh.Ident("A")},
 				Underlying: irh.TypeExpr(irh.ArrayType(
 					ir.Float32Type(),
@@ -60,14 +61,14 @@ func TestNamedTypes(t *testing.T) {
 		Src:        &ast.TypeSpec{Name: irh.Ident("A")},
 		Underlying: ir.AtomTypeExpr(ir.Float32Type()),
 	}
-	testAll(t,
-		irDeclTest{
-			src: `
+	testbuild.Run(t,
+		testbuild.DeclTest{
+			Src: `
 type A float32
 
 func f() [2][3]A
 `,
-			want: []ir.Node{
+			Want: []ir.Node{
 				typeA,
 				&ir.FuncBuiltin{
 					FType: irh.FuncType(

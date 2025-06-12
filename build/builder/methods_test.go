@@ -4,6 +4,7 @@ import (
 	"go/ast"
 	"testing"
 
+	"github.com/gx-org/gx/build/builder/testbuild"
 	"github.com/gx-org/gx/build/ir"
 	irh "github.com/gx-org/gx/build/ir/irhelper"
 )
@@ -33,9 +34,9 @@ func TestMethods(t *testing.T) {
 			},
 		)}
 	typeA.Methods = []ir.PkgFunc{fI}
-	testAll(t,
-		irDeclTest{
-			src: `
+	testbuild.Run(t,
+		testbuild.DeclTest{
+			Src: `
 type A struct {
 	i int32
 	f float32
@@ -45,10 +46,10 @@ func (a A) fI() int32 {
 	return a.i
 }
 `,
-			want: []ir.Node{typeA},
+			Want: []ir.Node{typeA},
 		},
-		irDeclTest{
-			src: `
+		testbuild.DeclTest{
+			Src: `
 type A struct {
 	i int32
 	f float32
@@ -63,7 +64,7 @@ func call() int32 {
 	return a.fI()
 }
 `,
-			want: []ir.Node{
+			Want: []ir.Node{
 				typeA,
 				&ir.FuncDecl{
 					FType: irh.FuncType(
@@ -122,10 +123,9 @@ func TestMethodOnNamedTypes(t *testing.T) {
 			},
 		)}
 	typeA.Methods = []ir.PkgFunc{val}
-	testAll(t,
-
-		irDeclTest{
-			src: `
+	testbuild.Run(t,
+		testbuild.DeclTest{
+			Src: `
 type A int32
 
 func (a A) val() int32 {
@@ -137,7 +137,7 @@ func call() int32 {
 	return a.val()
 }
 `,
-			want: []ir.Node{
+			Want: []ir.Node{
 				typeA,
 				&ir.FuncDecl{
 					FType: irh.FuncType(

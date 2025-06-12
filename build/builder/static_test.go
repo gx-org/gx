@@ -3,6 +3,7 @@ package builder_test
 import (
 	"testing"
 
+	"github.com/gx-org/gx/build/builder/testbuild"
 	"github.com/gx-org/gx/build/ir"
 	irh "github.com/gx-org/gx/build/ir/irhelper"
 )
@@ -14,38 +15,38 @@ func TestStaticVar(t *testing.T) {
 		&ir.AxisExpr{X: irh.ValueRef(aVarDecl.Exprs[0])},
 	)
 	xField := irh.Field("x", int32ArrayType, nil)
-	testAll(t,
-		irDeclTest{
-			src: `var a intlen`,
-			want: []ir.Node{
+	testbuild.Run(t,
+		testbuild.DeclTest{
+			Src: `var a intlen`,
+			Want: []ir.Node{
 				irh.VarSpec("a"),
 			},
 		},
-		irDeclTest{
-			src: `var a, b intlen`,
-			want: []ir.Node{
+		testbuild.DeclTest{
+			Src: `var a, b intlen`,
+			Want: []ir.Node{
 				irh.VarSpec("a", "b"),
 			},
 		},
-		irDeclTest{
-			src: `
+		testbuild.DeclTest{
+			Src: `
 var a, b intlen
 var c, d intlen
 			`,
-			want: []ir.Node{
+			Want: []ir.Node{
 				irh.VarSpec("a", "b"),
 				irh.VarSpec("c", "d"),
 			},
 		},
-		irDeclTest{
-			src: `
+		testbuild.DeclTest{
+			Src: `
 var a intlen
 
 func f(x [a]int32) [a]int32 {
 	return x
 }
 			`,
-			want: []ir.Node{
+			Want: []ir.Node{
 				aVarDecl,
 				&ir.FuncDecl{
 					FType: irh.FuncType(
@@ -59,8 +60,8 @@ func f(x [a]int32) [a]int32 {
 				},
 			},
 		},
-		irDeclTest{
-			src: `
+		testbuild.DeclTest{
+			Src: `
 var a intlen
 
 func f() [a]int32 {

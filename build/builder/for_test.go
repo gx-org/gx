@@ -3,6 +3,7 @@ package builder_test
 import (
 	"testing"
 
+	"github.com/gx-org/gx/build/builder/testbuild"
 	"github.com/gx-org/gx/build/ir"
 	irh "github.com/gx-org/gx/build/ir/irhelper"
 )
@@ -18,9 +19,9 @@ func TestForLoop(t *testing.T) {
 		},
 	}
 	iStorage := irh.LocalVar("i", ir.IntLenType())
-	testAll(t,
-		irDeclTest{
-			src: `
+	testbuild.Run(t,
+		testbuild.DeclTest{
+			Src: `
 var L intlen
 func f() int32 {
 	x := int32(0)
@@ -30,7 +31,7 @@ func f() int32 {
 	return x
 }
 `,
-			want: []ir.Node{
+			Want: []ir.Node{
 				lVarDecl,
 				&ir.FuncDecl{
 					FType: irh.FuncType(
@@ -66,8 +67,8 @@ func f() int32 {
 				},
 			},
 		},
-		irDeclTest{
-			src: `
+		testbuild.DeclTest{
+			Src: `
 func f() int32 {
 	a := [2]int32{2, 3}
 	x := int32(0)
@@ -78,8 +79,8 @@ func f() int32 {
 }
 `,
 		},
-		irDeclTest{
-			src: `
+		testbuild.DeclTest{
+			Src: `
 func f() int32 {
 	a := [2]int32{2, 3}
 	x := int32(0)

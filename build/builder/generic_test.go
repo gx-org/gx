@@ -4,6 +4,7 @@ import (
 	"go/ast"
 	"testing"
 
+	"github.com/gx-org/gx/build/builder/testbuild"
 	"github.com/gx-org/gx/build/ir"
 	"github.com/gx-org/gx/build/ir/irhelper"
 )
@@ -15,10 +16,10 @@ func TestGenericSignature(t *testing.T) {
 	intsT := irhelper.Field("T", intTypeSet, nil)
 	xAxLen := irhelper.AxisLenName("X")
 	yAxLen := irhelper.AxisLenName("Y")
-	testAll(t,
-		irDeclTest{
-			src: `func f[S any](S) S`,
-			want: []ir.Node{
+	testbuild.Run(t,
+		testbuild.DeclTest{
+			Src: `func f[S any](S) S`,
+			Want: []ir.Node{
 				&ir.FuncBuiltin{
 					FType: irhelper.FuncType(
 						irhelper.Fields(anyS),
@@ -29,9 +30,9 @@ func TestGenericSignature(t *testing.T) {
 				},
 			},
 		},
-		irDeclTest{
-			src: `func f[T interface{int32|int64}](T) T`,
-			want: []ir.Node{
+		testbuild.DeclTest{
+			Src: `func f[T interface{int32|int64}](T) T`,
+			Want: []ir.Node{
 				&ir.FuncBuiltin{
 					FType: irhelper.FuncType(
 						irhelper.Fields(intsT),
@@ -42,9 +43,9 @@ func TestGenericSignature(t *testing.T) {
 				},
 			},
 		},
-		irDeclTest{
-			src: `func f[S any, T interface{int32|int64}](S) T`,
-			want: []ir.Node{
+		testbuild.DeclTest{
+			Src: `func f[S any, T interface{int32|int64}](S) T`,
+			Want: []ir.Node{
 				&ir.FuncBuiltin{
 					FType: irhelper.FuncType(
 						irhelper.Fields(anyS, intsT),
@@ -55,9 +56,9 @@ func TestGenericSignature(t *testing.T) {
 				},
 			},
 		},
-		irDeclTest{
-			src: `func f(x [_X][_Y]int32) ([X]int32, [Y]int32)`,
-			want: []ir.Node{
+		testbuild.DeclTest{
+			Src: `func f(x [_X][_Y]int32) ([X]int32, [Y]int32)`,
+			Want: []ir.Node{
 				&ir.FuncBuiltin{
 					FType: irhelper.FuncType(
 						nil, nil,
@@ -84,13 +85,13 @@ func TestGenericSignature(t *testing.T) {
 				},
 			},
 		},
-		irDeclTest{
-			src: `func f(x [_X][_X]int32) [X]int32`,
-			err: "axis length _X assignment repeated",
+		testbuild.DeclTest{
+			Src: `func f(x [_X][_X]int32) [X]int32`,
+			Err: "axis length _X assignment repeated",
 		},
-		irDeclTest{
-			src: `func f([___X]int32) [X___]int32`,
-			want: []ir.Node{
+		testbuild.DeclTest{
+			Src: `func f([___X]int32) [X___]int32`,
+			Want: []ir.Node{
 				&ir.FuncBuiltin{
 					FType: irhelper.FuncType(
 						nil, nil,
@@ -138,9 +139,9 @@ func TestGenericCall(t *testing.T) {
 			}},
 		}},
 	}
-	testAll(t,
-		irDeclTest{
-			src: `
+	testbuild.Run(t,
+		testbuild.DeclTest{
+			Src: `
 type someInt interface{ int32 | int64 }
 
 func cast[T someInt]() T {
@@ -151,7 +152,7 @@ func callCast() int32 {
 	return cast[int32]()
 }
 `,
-			want: []ir.Node{
+			Want: []ir.Node{
 				someInt,
 				castNoArgFunc,
 				&ir.FuncDecl{
@@ -225,9 +226,9 @@ func callCast() int32 {
 			}}},
 		}},
 	}
-	testAll(t,
-		irDeclTest{
-			src: `
+	testbuild.Run(t,
+		testbuild.DeclTest{
+			Src: `
 type someInt interface{ int32 | int64 }
 
 func new2x3Array[T someInt]() [2][3]T {
@@ -238,7 +239,7 @@ func callCast() [2][3]int32 {
 	return new2x3Array[int32]()
 }
 `,
-			want: []ir.Node{
+			Want: []ir.Node{
 				someInt,
 				new2x3ArrayFunc,
 				&ir.FuncDecl{
@@ -283,8 +284,8 @@ func callCast() [2][3]int32 {
 				},
 			},
 		},
-		irDeclTest{
-			src: `
+		testbuild.DeclTest{
+			Src: `
 type someInt interface{ int32 | int64 }
 
 func cast[T someInt]() T {
@@ -295,10 +296,10 @@ func callCast() int32 {
 	return cast[cast]()
 }
 `,
-			err: "cast not a type",
+			Err: "cast not a type",
 		},
-		irDeclTest{
-			src: `
+		testbuild.DeclTest{
+			Src: `
 type someInt interface{ int32 | int64 }
 
 func cast[T someInt]() T {
@@ -309,7 +310,7 @@ func callCast() int32 {
 	return cast[float32]()
 }
 `,
-			err: "float32 does not satisfy test.someInt",
+			Err: "float32 does not satisfy test.someInt",
 		},
 	)
 	someIntT = irhelper.Field("T", someInt, nil)
@@ -329,9 +330,9 @@ func callCast() int32 {
 			}},
 		}},
 	}
-	testAll(t,
-		irDeclTest{
-			src: `
+	testbuild.Run(t,
+		testbuild.DeclTest{
+			Src: `
 type someInt interface{ int32 | int64 }
 
 func cast[T, S someInt](val S) T {
@@ -342,7 +343,7 @@ func callCast() int32 {
 	return cast[int32, int64](2)
 }
 `,
-			want: []ir.Node{
+			Want: []ir.Node{
 				someInt,
 				castAtomFunc,
 				&ir.FuncDecl{
@@ -370,8 +371,8 @@ func callCast() int32 {
 				},
 			},
 		},
-		irDeclTest{
-			src: `
+		testbuild.DeclTest{
+			Src: `
 type someInt interface{ int32 | int64 }
 
 func cast[T, S someInt](val S) T {
@@ -382,7 +383,7 @@ func callCast() int32 {
 	return cast[int32](int64(2))
 }
 `,
-			want: []ir.Node{
+			Want: []ir.Node{
 				someInt,
 				castAtomFunc,
 				&ir.FuncDecl{
@@ -424,9 +425,9 @@ func callCast() int32 {
 		),
 	}
 	xField := irhelper.Field("x", irhelper.ArrayType(ir.Int64Type(), 2), nil)
-	testAll(t,
-		irDeclTest{
-			src: `
+	testbuild.Run(t,
+		testbuild.DeclTest{
+			Src: `
 type someInt interface{ int32 | int64 }
 
 func cast[T, S someInt]([___M]S) [M___]T
@@ -435,7 +436,7 @@ func callCast(x [2]int64) [2]int32 {
 	return cast[int32, int64](x)
 }
 `,
-			want: []ir.Node{
+			Want: []ir.Node{
 				someInt,
 				castArrayFunc,
 				&ir.FuncDecl{
@@ -463,8 +464,8 @@ func callCast(x [2]int64) [2]int32 {
 				},
 			},
 		},
-		irDeclTest{
-			src: `
+		testbuild.DeclTest{
+			Src: `
 type someInt interface{ int32 | int64 }
 
 func cast[T someInt](val T) T {
@@ -475,7 +476,7 @@ func callCast() int32 {
 	return cast(float32(2))
 }
 `,
-			err: "float32 does not satisfy test.someInt",
+			Err: "float32 does not satisfy test.someInt",
 		},
 	)
 

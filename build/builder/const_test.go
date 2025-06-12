@@ -5,6 +5,7 @@ import (
 	"math/big"
 	"testing"
 
+	"github.com/gx-org/gx/build/builder/testbuild"
 	"github.com/gx-org/gx/build/ir"
 	irh "github.com/gx-org/gx/build/ir/irhelper"
 )
@@ -16,19 +17,19 @@ func TestConst(t *testing.T) {
 		Val:   &ir.NumberInt{Val: big.NewInt(5)},
 	}
 	cstA.Decl.Exprs = append(cstA.Decl.Exprs, cstA)
-	testAll(t,
-		irDeclTest{
-			src: `const cstA = 5`,
-			want: []ir.Node{
+	testbuild.Run(t,
+		testbuild.DeclTest{
+			Src: `const cstA = 5`,
+			Want: []ir.Node{
 				cstA.Decl,
 			},
 		},
-		irDeclTest{
-			src: `
+		testbuild.DeclTest{
+			Src: `
 const cstA = 5
 type Array [cstA]float32
 `,
-			want: []ir.Node{
+			Want: []ir.Node{
 				&ir.NamedType{
 					Src: &ast.TypeSpec{Name: irh.Ident("Array")},
 					Underlying: irh.TypeExpr(irh.ArrayType(
@@ -42,12 +43,12 @@ type Array [cstA]float32
 				irh.ConstSpec(nil, cstA),
 			},
 		},
-		irDeclTest{
-			src: `
+		testbuild.DeclTest{
+			Src: `
 const cstB = cstA
 const cstA = 5
 `,
-			want: []ir.Node{
+			Want: []ir.Node{
 				irh.ConstSpec(nil,
 					&ir.ConstExpr{
 						VName: irh.Ident("cstB"),
@@ -67,10 +68,10 @@ func TestConstWithType(t *testing.T) {
 		Val:   &ir.NumberInt{Val: big.NewInt(5)},
 	}
 	cstIntA.Decl.Exprs = append(cstIntA.Decl.Exprs, cstIntA)
-	testAll(t,
-		irDeclTest{
-			src: `const cstIntA int32 = 5`,
-			want: []ir.Node{
+	testbuild.Run(t,
+		testbuild.DeclTest{
+			Src: `const cstIntA int32 = 5`,
+			Want: []ir.Node{
 				cstIntA.Decl,
 			},
 		},

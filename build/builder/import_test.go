@@ -5,6 +5,7 @@ import (
 	"math/big"
 	"testing"
 
+	"github.com/gx-org/gx/build/builder/testbuild"
 	"github.com/gx-org/gx/build/ir"
 	"github.com/gx-org/gx/build/ir/irhelper"
 )
@@ -15,19 +16,20 @@ func TestImportType(t *testing.T) {
 		Src:        &ast.TypeSpec{Name: irhelper.Ident("Int")},
 		Underlying: irhelper.TypeExpr(ir.Int32Type()),
 	}
-	testAll(t,
-		declarePackage{src: `
+	testbuild.Run(t,
+		testbuild.DeclarePackage{
+			Src: `
 package dtype
 
 type Int int32
 `},
-		irDeclTest{
-			src: `
+		testbuild.DeclTest{
+			Src: `
 import "dtype"
 
 func bla() dtype.Int
 `,
-			want: []ir.Node{
+			Want: []ir.Node{
 				&ir.FuncBuiltin{
 					FType: irhelper.FuncType(
 						nil, nil,
@@ -51,23 +53,24 @@ func TestImportConst(t *testing.T) {
 		Val:   &ir.NumberInt{Val: big.NewInt(42)},
 	}
 	constExpr.Decl.Exprs = []*ir.ConstExpr{constExpr}
-	testAll(t,
-		declarePackage{src: `
+	testbuild.Run(t,
+		testbuild.DeclarePackage{
+			Src: `
 package pkg
 
 const MyConst = 42
 
 func F(int32) int32
 `},
-		irDeclTest{
-			src: `
+		testbuild.DeclTest{
+			Src: `
 import "pkg"
 
 func returnMyConst() int32 {
 	return pkg.MyConst
 }
 `,
-			want: []ir.Node{
+			Want: []ir.Node{
 				&ir.FuncDecl{
 					FType: irhelper.FuncType(
 						nil, nil,
@@ -89,8 +92,8 @@ func returnMyConst() int32 {
 					)},
 			},
 		},
-		irDeclTest{
-			src: `
+		testbuild.DeclTest{
+			Src: `
 import "pkg"
 
 func f(a int32) int32 {

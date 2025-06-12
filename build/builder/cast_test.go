@@ -4,15 +4,16 @@ import (
 	"go/ast"
 	"testing"
 
+	"github.com/gx-org/gx/build/builder/testbuild"
 	"github.com/gx-org/gx/build/ir"
 	irh "github.com/gx-org/gx/build/ir/irhelper"
 )
 
 func TestCast(t *testing.T) {
-	testAll(t,
-		irExprTest{
-			src: `[2]float32([2]int64{3, 4})`,
-			want: &ir.CastExpr{
+	testbuild.Run(t,
+		testbuild.ExprTest{
+			Src: `[2]float32([2]int64{3, 4})`,
+			Want: &ir.CastExpr{
 				X: &ir.ArrayLitExpr{
 					Typ: irh.ArrayType(ir.Int64Type(), 2),
 					Elts: []ir.AssignableExpr{
@@ -22,11 +23,11 @@ func TestCast(t *testing.T) {
 				},
 				Typ: irh.ArrayType(ir.Float32Type(), 2),
 			},
-			wantType: "[2]float32",
+			WantType: "[2]float32",
 		},
-		irExprTest{
-			src: `([2]float32)([2]int64{3, 4})`,
-			want: &ir.CastExpr{
+		testbuild.ExprTest{
+			Src: `([2]float32)([2]int64{3, 4})`,
+			Want: &ir.CastExpr{
 				X: &ir.ArrayLitExpr{
 					Typ: irh.ArrayType(ir.Int64Type(), 2),
 					Elts: []ir.AssignableExpr{
@@ -36,11 +37,11 @@ func TestCast(t *testing.T) {
 				},
 				Typ: irh.ArrayType(ir.Float32Type(), 2),
 			},
-			wantType: "[2]float32",
+			WantType: "[2]float32",
 		},
-		irExprTest{
-			src: `[___]float32([2]int64{3, 4})`,
-			want: &ir.CastExpr{
+		testbuild.ExprTest{
+			Src: `[___]float32([2]int64{3, 4})`,
+			Want: &ir.CastExpr{
 				X: &ir.ArrayLitExpr{
 					Typ: irh.ArrayType(ir.Int64Type(), 2),
 					Elts: []ir.AssignableExpr{
@@ -52,7 +53,7 @@ func TestCast(t *testing.T) {
 					Rnk: &ir.Rank{Ax: []ir.AxisLengths{irh.Axis(2)}},
 				}),
 			},
-			wantType: "[2]float32",
+			WantType: "[2]float32",
 		},
 	)
 }
@@ -67,9 +68,9 @@ func TestCastStaticVar(t *testing.T) {
 			irh.Fields(ir.Float32Type()),
 		),
 	}
-	testAll(t,
-		irDeclTest{
-			src: `
+	testbuild.Run(t,
+		testbuild.DeclTest{
+			Src: `
 var a intlen
 
 func x(float32) float32
@@ -78,7 +79,7 @@ func f() float32 {
 	return x(float32(a))
 }
 `,
-			want: []ir.Node{
+			Want: []ir.Node{
 				aVarDecl,
 				xFunc,
 				&ir.FuncDecl{
@@ -102,8 +103,8 @@ func f() float32 {
 				},
 			},
 		},
-		irDeclTest{
-			src: `
+		testbuild.DeclTest{
+			Src: `
 var a intlen
 
 func newArray() [a]int32

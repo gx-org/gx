@@ -4,6 +4,7 @@ import (
 	"go/ast"
 	"testing"
 
+	"github.com/gx-org/gx/build/builder/testbuild"
 	"github.com/gx-org/gx/build/ir"
 	irh "github.com/gx-org/gx/build/ir/irhelper"
 )
@@ -60,18 +61,18 @@ func TestAssign(t *testing.T) {
 		Call:        callToAssign,
 		ResultIndex: 1,
 	}
-	testAll(t,
-		irDeclTest{
-			src: `
+	testbuild.Run(t,
+		testbuild.DeclTest{
+			Src: `
 func assign() (float32, float32) {
 	a, b := float32(2), float32(3)
 	return a, b
 }
 `,
-			want: []ir.Node{assign},
+			Want: []ir.Node{assign},
 		},
-		irDeclTest{
-			src: `
+		testbuild.DeclTest{
+			Src: `
 func assign() (float32, float32) {
 	a, b := float32(2), float32(3)
 	return a, b
@@ -82,7 +83,7 @@ func callAssign() (float32, float32) {
 	return c, d
 }
 `,
-			want: []ir.Node{
+			Want: []ir.Node{
 				assign,
 				&ir.FuncDecl{
 					FType: irh.FuncType(
@@ -107,8 +108,8 @@ func callAssign() (float32, float32) {
 					)},
 			},
 		},
-		irDeclTest{
-			src: `
+		testbuild.DeclTest{
+			Src: `
 func id(int64) int64
 
 func f() int64 {
@@ -118,8 +119,8 @@ func f() int64 {
 }
 `,
 		},
-		irDeclTest{
-			src: `
+		testbuild.DeclTest{
+			Src: `
 func f() uint32 {
 	a, b := 2, 3
 	c := uint32(a+b)
@@ -127,8 +128,8 @@ func f() uint32 {
 }
 `,
 		},
-		irDeclTest{
-			src: `
+		testbuild.DeclTest{
+			Src: `
 func g(uint32) uint32
 func f() uint32 {
 	a := uint32(2)
@@ -137,8 +138,8 @@ func f() uint32 {
 }
 `,
 		},
-		irDeclTest{
-			src: `
+		testbuild.DeclTest{
+			Src: `
 func f() int64 {
 	true := 3
 	return true

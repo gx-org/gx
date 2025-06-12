@@ -3,15 +3,16 @@ package builder_test
 import (
 	"testing"
 
+	"github.com/gx-org/gx/build/builder/testbuild"
 	"github.com/gx-org/gx/build/ir"
 	"github.com/gx-org/gx/build/ir/irhelper"
 )
 
 func TestSlice(t *testing.T) {
-	testAll(t,
-		irExprTest{
-			src: `[]int32{1, 2, 3}`,
-			want: &ir.SliceLitExpr{
+	testbuild.Run(t,
+		testbuild.ExprTest{
+			Src: `[]int32{1, 2, 3}`,
+			Want: &ir.SliceLitExpr{
 				Typ: irhelper.SliceType(ir.AtomTypeExpr(ir.Int32Type()), 1),
 				Elts: []ir.AssignableExpr{
 					irhelper.IntNumberAs(1, ir.Int32Type()),

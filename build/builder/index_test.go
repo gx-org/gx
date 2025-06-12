@@ -3,15 +3,16 @@ package builder_test
 import (
 	"testing"
 
+	"github.com/gx-org/gx/build/builder/testbuild"
 	"github.com/gx-org/gx/build/ir"
 	irh "github.com/gx-org/gx/build/ir/irhelper"
 )
 
 func TestIndex(t *testing.T) {
-	testAll(t,
-		irExprTest{
-			src: `[2]float32{3, 4}[1]`,
-			want: &ir.IndexExpr{
+	testbuild.Run(t,
+		testbuild.ExprTest{
+			Src: `[2]float32{3, 4}[1]`,
+			Want: &ir.IndexExpr{
 				X: &ir.ArrayLitExpr{
 					Typ: irh.ArrayType(ir.Float32Type(), 2),
 					Elts: []ir.AssignableExpr{
@@ -22,7 +23,7 @@ func TestIndex(t *testing.T) {
 				Index: irh.IntNumberAs(1, ir.Int64Type()),
 				Typ:   ir.Float32Type(),
 			},
-			wantType: "float32",
+			WantType: "float32",
 		},
 	)
 }
