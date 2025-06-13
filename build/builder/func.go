@@ -343,7 +343,11 @@ func (fn *funcLiteral) buildExpr(rscope resolveScope) (ir.Expr, bool) {
 		return lit, false
 	}
 	lit.Body, ok = fn.body.buildBlockStmt(bScope)
-	return lit, ok
+	return &ir.FuncValExpr{
+		X: lit,
+		F: lit,
+		T: lit.FType,
+	}, ok
 }
 
 func (fn *funcLiteral) source() ast.Node {
