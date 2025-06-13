@@ -62,5 +62,29 @@ func gradF(x float32) [2]float32 {
 }
 `,
 		},
+		testgrad.Func{
+			GradOf: `
+func F(x [2]float32) [2]float32 {
+	return 2+x
+}
+`,
+			Want: `
+func gradF(x [2]float32) [2]float32 {
+	return 0+([2]float32{}+1)
+}
+`,
+		},
+		testgrad.Func{
+			GradOf: `
+func F(x [2]float32) [2]float32 {
+	return 2-x
+}
+`,
+			Want: `
+func gradF(x [2]float32) [2]float32 {
+	return 0-([2]float32{}+1)
+}
+`,
+		},
 	)
 }

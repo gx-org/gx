@@ -116,26 +116,30 @@ func gradExpr(fetcher ir.Fetcher, src ir.Expr, argName string) (ir.AssignableExp
 	case *ir.ArrayLitExpr:
 		return gradArrayLitExpr(fetcher, srcT, argName)
 	case *ir.NumberCastExpr:
-		return gradNumberCastExpr(fetcher, srcT, argName)
+		return zeroValueOf(fetcher, src.Source(), src.Type())
 	case *ir.ValueRef:
 		return gradValueRef(fetcher, srcT, argName)
-
-	case *ir.NumberFloat:
-		return nil, true
+	case *ir.BinaryExpr:
+		return gradBinaryExpr(fetcher, srcT, argName)
 	default:
 		return nil, fetcher.Err().Appendf(src.Source(), "gradient of %T expression not supported", srcT)
 	}
 }
 
-func gradNumberCastExpr(fetcher ir.Fetcher, src *ir.NumberCastExpr, argName string) (ir.AssignableExpr, bool) {
-	gExpr, ok := gradExpr(fetcher, src.X, argName)
-	if !ok {
-		return nil, ok
+func gradBinaryExpr(fetcher ir.Fetcher, src *ir.BinaryExpr, argName string) (ir.AssignableExpr, bool) {
+	switch src.Src.Op {
+	case token.ADD, token.SUB:
+		xGrad, xOk := gradExpr(fetcher, src.X, argName)
+		yGrad, yOk := gradExpr(fetcher, src.Y, argName)
+		return &ir.BinaryExpr{
+			Src: src.Src,
+			Typ: src.Typ,
+			X:   xGrad,
+			Y:   yGrad,
+		}, xOk && yOk
+	default:
+		return nil, fetcher.Err().Appendf(src.Source(), "gradient of binary expression %s not supported", src.Src.Op)
 	}
-	if gExpr == nil {
-		return nil, true
-	}
-	return &ir.NumberCastExpr{Typ: src.Typ, X: gExpr}, true
 }
 
 func gradValueRef(fetcher ir.Fetcher, src *ir.ValueRef, argName string) (ir.AssignableExpr, bool) {
