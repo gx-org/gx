@@ -34,7 +34,7 @@ func TestForLoop(t *testing.T) {
 	}
 	iStorage := irh.LocalVar("i", ir.IntLenType())
 	testbuild.Run(t,
-		testbuild.DeclTest{
+		testbuild.Decl{
 			Src: `
 var L intlen
 func f() int32 {
@@ -81,7 +81,7 @@ func f() int32 {
 				},
 			},
 		},
-		testbuild.DeclTest{
+		testbuild.Decl{
 			Src: `
 func f() int32 {
 	a := [2]int32{2, 3}
@@ -93,7 +93,7 @@ func f() int32 {
 }
 `,
 		},
-		testbuild.DeclTest{
+		testbuild.Decl{
 			Src: `
 func f() int32 {
 	a := [2]int32{2, 3}

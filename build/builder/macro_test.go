@@ -58,7 +58,7 @@ func ID(any) any
 				id.BuildSynthetic = cpevelements.MacroImpl(newIDMacro)
 			},
 		},
-		testbuild.DeclTest{
+		testbuild.Decl{
 			Src: `
 import "macro"
 

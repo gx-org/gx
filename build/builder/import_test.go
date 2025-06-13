@@ -37,7 +37,7 @@ package dtype
 
 type Int int32
 `},
-		testbuild.DeclTest{
+		testbuild.Decl{
 			Src: `
 import "dtype"
 
@@ -76,7 +76,7 @@ const MyConst = 42
 
 func F(int32) int32
 `},
-		testbuild.DeclTest{
+		testbuild.Decl{
 			Src: `
 import "pkg"
 
@@ -106,7 +106,7 @@ func returnMyConst() int32 {
 					)},
 			},
 		},
-		testbuild.DeclTest{
+		testbuild.Decl{
 			Src: `
 import "pkg"
 

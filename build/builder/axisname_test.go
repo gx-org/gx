@@ -71,13 +71,13 @@ func TestAxisName(t *testing.T) {
 		},
 	}
 	testbuild.Run(t,
-		testbuild.DeclTest{
+		testbuild.Decl{
 			Src: `
 func newArray(shape []intlen) [shape___]float32
 `,
 			Want: []ir.Node{newArrayFunc},
 		},
-		testbuild.DeclTest{
+		testbuild.Decl{
 			Src: `
 func newArray(shape []intlen) [shape___]float32
 
@@ -118,7 +118,7 @@ func f(dims []intlen) [dims___]float32 {
 				},
 			},
 		},
-		testbuild.DeclTest{
+		testbuild.Decl{
 			Src: `
 func newArray(shape []intlen) [shape___]float32
 
@@ -150,7 +150,7 @@ func f(dims []intlen) [dims___]float32 {
 				},
 			},
 		},
-		testbuild.DeclTest{
+		testbuild.Decl{
 			Src: `
 func newArray(shape []intlen) [shape___]float32
 
@@ -185,7 +185,7 @@ func f() [2][3]float32 {
 				},
 			},
 		},
-		testbuild.DeclTest{
+		testbuild.Decl{
 			Src: `
 func cast([___S]float32) [S___]float64
 
@@ -226,7 +226,7 @@ func f() [2]float64 {
 				},
 			},
 		},
-		testbuild.DeclTest{
+		testbuild.Decl{
 			Src: `
 func cast([___S]float32) [S___]float64
 
@@ -280,7 +280,7 @@ func f() float64 {
 		},
 	}
 	testbuild.Run(t,
-		testbuild.DeclTest{
+		testbuild.Decl{
 			Src: `
 func newArray(shape []intlen) [shape___]float32
 
@@ -320,7 +320,7 @@ func f() [2][3]float32  {
 
 func TestAxisGroupOrigin(t *testing.T) {
 	testbuild.Run(t,
-		testbuild.DeclTest{
+		testbuild.Decl{
 			Src: `
 func f([___M]int32) [M___]int32
 
@@ -330,7 +330,7 @@ func g(a [___dims]int32) [dims___]int32 {
 `,
 			Want: []ir.Node{},
 		},
-		testbuild.DeclTest{
+		testbuild.Decl{
 			Src: `
 func sum([___M]int32) int64
 

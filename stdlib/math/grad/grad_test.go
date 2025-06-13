@@ -38,7 +38,7 @@ func TestGradFunc(t *testing.T) {
 				id.BuildSynthetic = cpevelements.MacroImpl(grad.FuncGrad)
 			},
 		},
-		testbuild.DeclTest{
+		testbuild.Decl{
 			Src: `
 import "grad"
 

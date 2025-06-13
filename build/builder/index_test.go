@@ -24,7 +24,7 @@ import (
 
 func TestIndex(t *testing.T) {
 	testbuild.Run(t,
-		testbuild.ExprTest{
+		testbuild.Expr{
 			Src: `[2]float32{3, 4}[1]`,
 			Want: &ir.IndexExpr{
 				X: &ir.ArrayLitExpr{

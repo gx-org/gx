@@ -56,7 +56,7 @@ func TestNumber(t *testing.T) {
 		},
 	}
 	testbuild.Run(t,
-		testbuild.DeclTest{
+		testbuild.Decl{
 			Src: `
 func id(int64) int64
 
@@ -66,7 +66,7 @@ func f() int64 {
 }
 `,
 		},
-		testbuild.DeclTest{
+		testbuild.Decl{
 			Src: `
 type A struct {
 	val float32

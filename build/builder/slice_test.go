@@ -24,7 +24,7 @@ import (
 
 func TestSlice(t *testing.T) {
 	testbuild.Run(t,
-		testbuild.ExprTest{
+		testbuild.Expr{
 			Src: `[]int32{1, 2, 3}`,
 			Want: &ir.SliceLitExpr{
 				Typ: irhelper.SliceType(ir.AtomTypeExpr(ir.Int32Type()), 1),

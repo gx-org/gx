@@ -31,16 +31,6 @@ import (
 	"github.com/gx-org/gx/build/ir/irstring"
 )
 
-func buildSource(ctx *testContext, src string) (builder.Package, error) {
-	fileDecl, err := parser.ParseFile(token.NewFileSet(), "", src, parser.ParseComments|parser.SkipObjectResolution)
-	if err != nil {
-		return nil, err
-	}
-	bld := builder.New(&ctx.imp)
-	pkg := bld.NewIncrementalPackage(fileDecl.Name.Name)
-	return pkg, pkg.Build(src)
-}
-
 func compare(done map[any]bool, got, want ir.Node) error {
 	gotS := irstring.ReflectString(done, got)
 	wantS := irstring.ReflectString(done, want)
@@ -102,24 +92,26 @@ type DeclarePackage struct {
 	Post func(*ir.Package)
 }
 
-func (tt DeclarePackage) source() string {
+// Source code of the package.
+func (tt DeclarePackage) Source() string {
 	return tt.Src
 }
 
-func (tt DeclarePackage) run(ctx *testContext) error {
-	pkg, err := buildSource(ctx, tt.Src)
+// Run the source code to declare it as an importable package.
+func (tt DeclarePackage) Run(b *Builder) error {
+	pkg, err := b.Build(tt.Src)
 	if err != nil {
 		return err
 	}
 	if tt.Post != nil {
 		tt.Post(pkg.IR())
 	}
-	ctx.imp.pkgs[pkg.IR().Name.Name] = pkg
+	b.imp.pkgs[pkg.IR().Name.Name] = pkg
 	return nil
 }
 
-// DeclTest specifies a test with GX code declarations.
-type DeclTest struct {
+// Decl specifies a test with GX code declarations.
+type Decl struct {
 	// Src is the GX source code.
 	Src string
 	// Want is the set of nodes that is expected from the compiler to build.
@@ -129,12 +121,14 @@ type DeclTest struct {
 	Err string
 }
 
-func (tt DeclTest) source() string {
+// Source code of the declarations.
+func (tt Decl) Source() string {
 	return tt.Src
 }
 
-func (tt DeclTest) run(ctx *testContext) error {
-	pkg, err := buildSource(ctx, fmt.Sprintf(`
+// Run builds the declarations as a package, then compare to an expected outcome.
+func (tt Decl) Run(b *Builder) error {
+	pkg, err := b.Build(fmt.Sprintf(`
 package test
 
 %s
@@ -148,8 +142,8 @@ package test
 	return nil
 }
 
-// ExprTest specifies a test of a GX expression.
-type ExprTest struct {
+// Expr specifies a test of a GX expression.
+type Expr struct {
 	// Src is the source code of the expression.
 	Src string
 	// Want is the expression expected to be built by the compiler.
@@ -187,7 +181,8 @@ func checkError(want string, err error) error {
 	return nil
 }
 
-func (tt ExprTest) run(ctx *testContext) error {
+// Run the expression test.
+func (tt Expr) Run(ctx *Builder) error {
 	done := map[any]bool{}
 	bld := builder.New(&ctx.imp)
 	pkg := bld.NewIncrementalPackage("test")
@@ -208,7 +203,8 @@ func (tt ExprTest) run(ctx *testContext) error {
 	return nil
 }
 
-func (tt ExprTest) source() string {
+// Source code of the expression.
+func (tt Expr) Source() string {
 	return tt.Src
 }
 
@@ -224,33 +220,44 @@ func (imp *localImporter) Load(bld *builder.Builder, path string) (builder.Packa
 	return pkg, nil
 }
 
-type (
-	testContext struct {
-		imp localImporter
-	}
+// Builder builds test source code.
+type Builder struct {
+	imp localImporter
+}
 
-	irTest interface {
-		source() string
-		run(*testContext) error
+// Build test source code.
+func (b *Builder) Build(src string) (builder.Package, error) {
+	fileDecl, err := parser.ParseFile(token.NewFileSet(), "", src, parser.ParseComments|parser.SkipObjectResolution)
+	if err != nil {
+		return nil, err
 	}
-)
+	bld := builder.New(&b.imp)
+	pkg := bld.NewIncrementalPackage(fileDecl.Name.Name)
+	return pkg, pkg.Build(src)
+}
+
+// Test to run.
+type Test interface {
+	Source() string
+	Run(*Builder) error
+}
 
 // Run all the test.
-func Run(t *testing.T, tests ...irTest) {
+func Run(t *testing.T, tests ...Test) {
 	t.Helper()
-	ctx := &testContext{
+	ctx := &Builder{
 		imp: localImporter{pkgs: make(map[string]builder.Package)},
 	}
 	for i, test := range tests {
 		if _, ok := test.(DeclarePackage); ok {
-			if err := test.run(ctx); err != nil {
+			if err := test.Run(ctx); err != nil {
 				t.Fatal(err)
 			}
 		}
 		t.Run(fmt.Sprintf("test%d", i), func(t *testing.T) {
 			t.Helper()
-			if err := test.run(ctx); err != nil {
-				t.Errorf("\n%s\n%+v", test.source(), fmterr.ToStackTraceError(err))
+			if err := test.Run(ctx); err != nil {
+				t.Errorf("\n%s\n%+v", test.Source(), fmterr.ToStackTraceError(err))
 			}
 		})
 	}

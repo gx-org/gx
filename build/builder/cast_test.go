@@ -25,7 +25,7 @@ import (
 
 func TestCast(t *testing.T) {
 	testbuild.Run(t,
-		testbuild.ExprTest{
+		testbuild.Expr{
 			Src: `[2]float32([2]int64{3, 4})`,
 			Want: &ir.CastExpr{
 				X: &ir.ArrayLitExpr{
@@ -39,7 +39,7 @@ func TestCast(t *testing.T) {
 			},
 			WantType: "[2]float32",
 		},
-		testbuild.ExprTest{
+		testbuild.Expr{
 			Src: `([2]float32)([2]int64{3, 4})`,
 			Want: &ir.CastExpr{
 				X: &ir.ArrayLitExpr{
@@ -53,7 +53,7 @@ func TestCast(t *testing.T) {
 			},
 			WantType: "[2]float32",
 		},
-		testbuild.ExprTest{
+		testbuild.Expr{
 			Src: `[___]float32([2]int64{3, 4})`,
 			Want: &ir.CastExpr{
 				X: &ir.ArrayLitExpr{
@@ -83,7 +83,7 @@ func TestCastStaticVar(t *testing.T) {
 		),
 	}
 	testbuild.Run(t,
-		testbuild.DeclTest{
+		testbuild.Decl{
 			Src: `
 var a intlen
 
@@ -117,7 +117,7 @@ func f() float32 {
 				},
 			},
 		},
-		testbuild.DeclTest{
+		testbuild.Decl{
 			Src: `
 var a intlen
 

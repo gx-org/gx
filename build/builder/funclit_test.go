@@ -8,7 +8,7 @@ import (
 
 func TestFunctionLiteral(t *testing.T) {
 	testbuild.Run(t,
-		testbuild.DeclTest{
+		testbuild.Decl{
 			Src: `
 func f() int32 {
 	fn := func() int32 {

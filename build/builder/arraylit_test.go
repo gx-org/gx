@@ -25,7 +25,7 @@ import (
 
 func TestArrayLit(t *testing.T) {
 	testbuild.Run(t,
-		testbuild.ExprTest{
+		testbuild.Expr{
 			Src: `[2]float32{3, 4}`,
 			Want: &ir.ArrayLitExpr{
 				Typ: irh.ArrayType(ir.Float32Type(), 2),
@@ -36,7 +36,7 @@ func TestArrayLit(t *testing.T) {
 			},
 			WantType: "[2]float32",
 		},
-		testbuild.ExprTest{
+		testbuild.Expr{
 			Src: `[_]float32{3, 4}`,
 			Want: &ir.ArrayLitExpr{
 				Typ: irh.ArrayType(
@@ -53,7 +53,7 @@ func TestArrayLit(t *testing.T) {
 			},
 			WantType: "[2]float32",
 		},
-		testbuild.ExprTest{
+		testbuild.Expr{
 			Src: `[2][3]float32{{1, 2, 3}, {4, 5, 6}}`,
 			Want: &ir.ArrayLitExpr{
 				Typ: irh.ArrayType(ir.Float32Type(), 2, 3),
@@ -78,18 +78,18 @@ func TestArrayLit(t *testing.T) {
 			},
 			WantType: "[2][3]float32",
 		},
-		testbuild.ExprTest{
+		testbuild.Expr{
 			Src: `[2]float32{}`,
 			Want: &ir.ArrayLitExpr{
 				Typ: irh.ArrayType(ir.Float32Type(), 2),
 			},
 			WantType: "[2]float32",
 		},
-		testbuild.ExprTest{
+		testbuild.Expr{
 			Src: `[...]float32{}`,
 			Err: "cannot infer rank: empty literal",
 		},
-		testbuild.ExprTest{
+		testbuild.Expr{
 			Src: `[...]int32{1, 2, 3}`,
 			Want: &ir.ArrayLitExpr{
 				Typ: irh.InferArrayType(ir.Int32Type(), 3),
@@ -101,7 +101,7 @@ func TestArrayLit(t *testing.T) {
 			},
 			WantType: "[3]int32",
 		},
-		testbuild.ExprTest{
+		testbuild.Expr{
 			Src: `[...]int32{{1, 2, 3}, {4, 5, 6}}`,
 			Want: &ir.ArrayLitExpr{
 				Typ: irh.InferArrayType(ir.Int32Type(), 2, 3),
@@ -126,7 +126,7 @@ func TestArrayLit(t *testing.T) {
 			},
 			WantType: "[2][3]int32",
 		},
-		testbuild.ExprTest{
+		testbuild.Expr{
 			Src: `[1][1]int32{{2}}`,
 			Want: &ir.ArrayLitExpr{
 				Typ: irh.ArrayType(ir.Int32Type(), 1, 1),

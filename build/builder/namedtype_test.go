@@ -28,14 +28,14 @@ func TestNamedTypes(t *testing.T) {
 	bField := irh.Field("b", ir.Float32Type(), nil)
 	cField := irh.Field("c", ir.Float64Type(), nil)
 	testbuild.Run(t,
-		testbuild.DeclTest{
+		testbuild.Decl{
 			Src: `type A intlen`,
 			Want: []ir.Node{&ir.NamedType{
 				Src:        &ast.TypeSpec{Name: irh.Ident("A")},
 				Underlying: ir.AtomTypeExpr(ir.IntLenType()),
 			}},
 		},
-		testbuild.DeclTest{
+		testbuild.Decl{
 			Src: `type B interface {
 				float32 | float64
 			}`,
@@ -46,7 +46,7 @@ func TestNamedTypes(t *testing.T) {
 					ir.Float64Type(),
 				))}},
 		},
-		testbuild.DeclTest{
+		testbuild.Decl{
 			Src: `type A struct {
 				a int32
 				b float32
@@ -58,7 +58,7 @@ func TestNamedTypes(t *testing.T) {
 					aField, bField, cField,
 				))}},
 		},
-		testbuild.DeclTest{
+		testbuild.Decl{
 			Src: `type A [2][3]float32`,
 			Want: []ir.Node{&ir.NamedType{
 				Src: &ast.TypeSpec{Name: irh.Ident("A")},
@@ -76,7 +76,7 @@ func TestNamedTypes(t *testing.T) {
 		Underlying: ir.AtomTypeExpr(ir.Float32Type()),
 	}
 	testbuild.Run(t,
-		testbuild.DeclTest{
+		testbuild.Decl{
 			Src: `
 type A float32
 

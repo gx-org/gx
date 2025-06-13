@@ -33,7 +33,7 @@ func TestStruct(t *testing.T) {
 		Underlying: irh.TypeExpr(structA),
 	}
 	testbuild.Run(t,
-		testbuild.DeclTest{
+		testbuild.Decl{
 			Src: `
 type A struct {
 	a int32

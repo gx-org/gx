@@ -31,7 +31,7 @@ func TestGenericSignature(t *testing.T) {
 	xAxLen := irhelper.AxisLenName("X")
 	yAxLen := irhelper.AxisLenName("Y")
 	testbuild.Run(t,
-		testbuild.DeclTest{
+		testbuild.Decl{
 			Src: `func f[S any](S) S`,
 			Want: []ir.Node{
 				&ir.FuncBuiltin{
@@ -44,7 +44,7 @@ func TestGenericSignature(t *testing.T) {
 				},
 			},
 		},
-		testbuild.DeclTest{
+		testbuild.Decl{
 			Src: `func f[T interface{int32|int64}](T) T`,
 			Want: []ir.Node{
 				&ir.FuncBuiltin{
@@ -57,7 +57,7 @@ func TestGenericSignature(t *testing.T) {
 				},
 			},
 		},
-		testbuild.DeclTest{
+		testbuild.Decl{
 			Src: `func f[S any, T interface{int32|int64}](S) T`,
 			Want: []ir.Node{
 				&ir.FuncBuiltin{
@@ -70,7 +70,7 @@ func TestGenericSignature(t *testing.T) {
 				},
 			},
 		},
-		testbuild.DeclTest{
+		testbuild.Decl{
 			Src: `func f(x [_X][_Y]int32) ([X]int32, [Y]int32)`,
 			Want: []ir.Node{
 				&ir.FuncBuiltin{
@@ -99,11 +99,11 @@ func TestGenericSignature(t *testing.T) {
 				},
 			},
 		},
-		testbuild.DeclTest{
+		testbuild.Decl{
 			Src: `func f(x [_X][_X]int32) [X]int32`,
 			Err: "axis length _X assignment repeated",
 		},
-		testbuild.DeclTest{
+		testbuild.Decl{
 			Src: `func f([___X]int32) [X___]int32`,
 			Want: []ir.Node{
 				&ir.FuncBuiltin{
@@ -154,7 +154,7 @@ func TestGenericCall(t *testing.T) {
 		}},
 	}
 	testbuild.Run(t,
-		testbuild.DeclTest{
+		testbuild.Decl{
 			Src: `
 type someInt interface{ int32 | int64 }
 
@@ -241,7 +241,7 @@ func callCast() int32 {
 		}},
 	}
 	testbuild.Run(t,
-		testbuild.DeclTest{
+		testbuild.Decl{
 			Src: `
 type someInt interface{ int32 | int64 }
 
@@ -298,7 +298,7 @@ func callCast() [2][3]int32 {
 				},
 			},
 		},
-		testbuild.DeclTest{
+		testbuild.Decl{
 			Src: `
 type someInt interface{ int32 | int64 }
 
@@ -312,7 +312,7 @@ func callCast() int32 {
 `,
 			Err: "cast not a type",
 		},
-		testbuild.DeclTest{
+		testbuild.Decl{
 			Src: `
 type someInt interface{ int32 | int64 }
 
@@ -345,7 +345,7 @@ func callCast() int32 {
 		}},
 	}
 	testbuild.Run(t,
-		testbuild.DeclTest{
+		testbuild.Decl{
 			Src: `
 type someInt interface{ int32 | int64 }
 
@@ -385,7 +385,7 @@ func callCast() int32 {
 				},
 			},
 		},
-		testbuild.DeclTest{
+		testbuild.Decl{
 			Src: `
 type someInt interface{ int32 | int64 }
 
@@ -440,7 +440,7 @@ func callCast() int32 {
 	}
 	xField := irhelper.Field("x", irhelper.ArrayType(ir.Int64Type(), 2), nil)
 	testbuild.Run(t,
-		testbuild.DeclTest{
+		testbuild.Decl{
 			Src: `
 type someInt interface{ int32 | int64 }
 
@@ -478,7 +478,7 @@ func callCast(x [2]int64) [2]int32 {
 				},
 			},
 		},
-		testbuild.DeclTest{
+		testbuild.Decl{
 			Src: `
 type someInt interface{ int32 | int64 }
 

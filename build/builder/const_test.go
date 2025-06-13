@@ -32,13 +32,13 @@ func TestConst(t *testing.T) {
 	}
 	cstA.Decl.Exprs = append(cstA.Decl.Exprs, cstA)
 	testbuild.Run(t,
-		testbuild.DeclTest{
+		testbuild.Decl{
 			Src: `const cstA = 5`,
 			Want: []ir.Node{
 				cstA.Decl,
 			},
 		},
-		testbuild.DeclTest{
+		testbuild.Decl{
 			Src: `
 const cstA = 5
 type Array [cstA]float32
@@ -57,7 +57,7 @@ type Array [cstA]float32
 				irh.ConstSpec(nil, cstA),
 			},
 		},
-		testbuild.DeclTest{
+		testbuild.Decl{
 			Src: `
 const cstB = cstA
 const cstA = 5
@@ -83,7 +83,7 @@ func TestConstWithType(t *testing.T) {
 	}
 	cstIntA.Decl.Exprs = append(cstIntA.Decl.Exprs, cstIntA)
 	testbuild.Run(t,
-		testbuild.DeclTest{
+		testbuild.Decl{
 			Src: `const cstIntA int32 = 5`,
 			Want: []ir.Node{
 				cstIntA.Decl,

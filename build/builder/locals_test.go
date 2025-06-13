@@ -35,7 +35,7 @@ func TestLocalAssignment(t *testing.T) {
 	xField := irh.Field("x", ir.Float32Type(), nil)
 	yField := irh.Field("y", ir.Float32Type(), nil)
 	testbuild.Run(t,
-		testbuild.DeclTest{
+		testbuild.Decl{
 			Src: `
 func id(x float32) float32
 

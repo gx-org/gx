@@ -76,7 +76,7 @@ func TestAssign(t *testing.T) {
 		ResultIndex: 1,
 	}
 	testbuild.Run(t,
-		testbuild.DeclTest{
+		testbuild.Decl{
 			Src: `
 func assign() (float32, float32) {
 	a, b := float32(2), float32(3)
@@ -85,7 +85,7 @@ func assign() (float32, float32) {
 `,
 			Want: []ir.Node{assign},
 		},
-		testbuild.DeclTest{
+		testbuild.Decl{
 			Src: `
 func assign() (float32, float32) {
 	a, b := float32(2), float32(3)
@@ -122,7 +122,7 @@ func callAssign() (float32, float32) {
 					)},
 			},
 		},
-		testbuild.DeclTest{
+		testbuild.Decl{
 			Src: `
 func id(int64) int64
 
@@ -133,7 +133,7 @@ func f() int64 {
 }
 `,
 		},
-		testbuild.DeclTest{
+		testbuild.Decl{
 			Src: `
 func f() uint32 {
 	a, b := 2, 3
@@ -142,7 +142,7 @@ func f() uint32 {
 }
 `,
 		},
-		testbuild.DeclTest{
+		testbuild.Decl{
 			Src: `
 func g(uint32) uint32
 func f() uint32 {
@@ -152,7 +152,7 @@ func f() uint32 {
 }
 `,
 		},
-		testbuild.DeclTest{
+		testbuild.Decl{
 			Src: `
 func f() int64 {
 	true := 3
@@ -160,7 +160,7 @@ func f() int64 {
 }
 `,
 		},
-		testbuild.DeclTest{
+		testbuild.Decl{
 			Src: `
 type st struct {
 	a float32
@@ -171,7 +171,7 @@ func a() st {
 }
 `,
 		},
-		testbuild.DeclTest{
+		testbuild.Decl{
 			Src: `
 type st struct {
 	a float32
@@ -184,7 +184,7 @@ func a() st {
 }
 `,
 		},
-		testbuild.DeclTest{
+		testbuild.Decl{
 			Src: `
 type st struct {
 	a float32

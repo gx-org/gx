@@ -22,7 +22,7 @@ import (
 
 func TestCallOperators(t *testing.T) {
 	testbuild.Run(t,
-		testbuild.DeclTest{
+		testbuild.Decl{
 			Src: `
 func cast[S interface{float64}](S) uint64
 
@@ -37,7 +37,7 @@ func f() uint64 {
 
 func TestCallSliceArgs(t *testing.T) {
 	testbuild.Run(t,
-		testbuild.DeclTest{
+		testbuild.Decl{
 			Src: `
 var A, B intlen
 

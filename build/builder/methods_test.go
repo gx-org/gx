@@ -49,7 +49,7 @@ func TestMethods(t *testing.T) {
 		)}
 	typeA.Methods = []ir.PkgFunc{fI}
 	testbuild.Run(t,
-		testbuild.DeclTest{
+		testbuild.Decl{
 			Src: `
 type A struct {
 	i int32
@@ -62,7 +62,7 @@ func (a A) fI() int32 {
 `,
 			Want: []ir.Node{typeA},
 		},
-		testbuild.DeclTest{
+		testbuild.Decl{
 			Src: `
 type A struct {
 	i int32
@@ -138,7 +138,7 @@ func TestMethodOnNamedTypes(t *testing.T) {
 		)}
 	typeA.Methods = []ir.PkgFunc{val}
 	testbuild.Run(t,
-		testbuild.DeclTest{
+		testbuild.Decl{
 			Src: `
 type A int32
 

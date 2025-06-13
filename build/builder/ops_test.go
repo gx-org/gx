@@ -24,7 +24,7 @@ import (
 
 func TestBinaryOp(t *testing.T) {
 	testbuild.Run(t,
-		testbuild.ExprTest{
+		testbuild.Expr{
 			Src: `[2]int64{3, 4} > 2`,
 			Want: &ir.BinaryExpr{
 				X: &ir.ArrayLitExpr{

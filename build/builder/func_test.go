@@ -25,7 +25,7 @@ import (
 
 func TestCompEval(t *testing.T) {
 	testbuild.Run(t,
-		testbuild.DeclTest{
+		testbuild.Decl{
 			Src: `
 //gx:compeval
 func returnTwo() float32 {
@@ -52,7 +52,7 @@ func returnTwo() float32 {
 
 func TestBuiltin(t *testing.T) {
 	testbuild.Run(t,
-		testbuild.DeclTest{
+		testbuild.Decl{
 			Src: `func returnTwo() float32`,
 			Want: []ir.Node{
 				&ir.FuncBuiltin{
@@ -83,7 +83,7 @@ func TestBuiltinMethods(t *testing.T) {
 	}
 	typeA.Methods = []ir.PkgFunc{funF}
 	testbuild.Run(t,
-		testbuild.DeclTest{
+		testbuild.Decl{
 			Src: `
 type A uint32
 func (A) F(uint32) uint32
@@ -112,7 +112,7 @@ func TestFuncDecl(t *testing.T) {
 			},
 		)}
 	testbuild.Run(t,
-		testbuild.DeclTest{
+		testbuild.Decl{
 			Src: `
 func returnTwo() float32 {
 	return 2
@@ -120,7 +120,7 @@ func returnTwo() float32 {
 `,
 			Want: []ir.Node{returnTwoFunc},
 		},
-		testbuild.DeclTest{
+		testbuild.Decl{
 			Src: `
 func returnTwo() float32 {
 	return 2
@@ -148,7 +148,7 @@ func call() float32 {
 				},
 			},
 		},
-		testbuild.DeclTest{
+		testbuild.Decl{
 			Src: `
 func withArgs(a int32) int32 {
 	return a
@@ -170,7 +170,7 @@ func withArgs(a int32) int32 {
 					)},
 			},
 		},
-		testbuild.DeclTest{
+		testbuild.Decl{
 			Src: `
 func namedReturn() (a int32) {
 	a = 2
@@ -211,7 +211,7 @@ func namedReturn() (a int32) {
 			},
 		)}
 	testbuild.Run(t,
-		testbuild.DeclTest{
+		testbuild.Decl{
 			Src: `
 func returnTuple() (float32, int32) {
 	return 2, 3
@@ -265,7 +265,7 @@ func TestCallWithLiterals(t *testing.T) {
 		),
 	}
 	testbuild.Run(t,
-		testbuild.DeclTest{
+		testbuild.Decl{
 			Src: `
 func f([1][1]float32) float32
 
