@@ -80,7 +80,6 @@ type (
 		Concat interp.FuncBuiltin
 		Len    interp.FuncBuiltin
 		Split  interp.FuncBuiltin
-		Expand interp.FuncBuiltin
 		Gather interp.FuncBuiltin
 	}
 )

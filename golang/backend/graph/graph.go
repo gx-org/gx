@@ -355,3 +355,8 @@ func (g *Graph) NewSubgraph(name string) (graph.Graph, error) {
 func (g *Graph) NewWhile(cond, body graph.Subgraph, state graph.Node) (graph.Node, error) {
 	return nil, errors.Errorf("not implemented")
 }
+
+// NewBroadcastInDim broadcasts data across a given set of axis.
+func (g *Graph) NewBroadcastInDim(x graph.Node, shape *shape.Shape, broadcastAxes []int) (graph.Node, error) {
+	return nil, errors.Errorf("not implemented")
+}
