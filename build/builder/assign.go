@@ -96,7 +96,7 @@ func (asg *selectorStorage) buildStorage(scope resolveScope, typ ir.Type) (_ ir.
 	if ext.Sel.Type().Kind() == ir.FuncKind {
 		return ext, false, scope.err().Appendf(asg.source(), "cannot assign to method %s", ext.Sel.Stor.NameDef().Name)
 	}
-	return ext, false, assignableToAt(scope, asg.target.src, typ, ext.Sel.Type())
+	return ext, false, true
 }
 
 type assignment struct {
@@ -278,8 +278,9 @@ func buildAssignExpr(rscope resolveScope, asgm *assignment) (*ir.AssignExpr, boo
 	if ir.IsNumber(ext.X.Type().Kind()) {
 		ext.X, exprOk = castNumber(rscope, ext.X, ext.Storage.Type())
 	}
+	assignOk := assignableToAt(rscope, asgm.expr.source(), ext.X.Type(), ext.Storage.Type())
 	definedOk := defineLocalVar(rscope, ext)
-	return ext, newAsgm, exprOk && targetOk && definedOk
+	return ext, newAsgm, exprOk && targetOk && definedOk && assignOk
 }
 
 func (n *assignExprStmt) buildStmt(scope iFuncResolveScope) (ir.Stmt, bool) {

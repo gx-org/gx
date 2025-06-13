@@ -160,5 +160,43 @@ func f() int64 {
 }
 `,
 		},
+		testbuild.DeclTest{
+			Src: `
+type st struct {
+	a float32
+}
+
+func a() st {
+	return st{a:2}
+}
+`,
+		},
+		testbuild.DeclTest{
+			Src: `
+type st struct {
+	a float32
+}
+
+func a() st {
+	r := st{a:2}
+	r.a = 3
+	return r
+}
+`,
+		},
+		testbuild.DeclTest{
+			Src: `
+type st struct {
+	a float32
+}
+
+func a() st {
+	r := st{a:2}
+	r.a = int32(3)
+	return r
+}
+`,
+			Err: "cannot use int32 as float32",
+		},
 	)
 }
