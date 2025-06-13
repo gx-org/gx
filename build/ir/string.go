@@ -125,7 +125,7 @@ func stringLiteral(elts []AssignableExpr) string {
 	for i, elt := range elts {
 		ss[i] = elt.String()
 	}
-	return fmt.Sprintf("{%s}", strings.Join(ss, ","))
+	return fmt.Sprintf("{%s}", strings.Join(ss, ", "))
 }
 
 func (s *ArrayLitExpr) String() string {

@@ -15,8 +15,6 @@
 package values
 
 import (
-	"strconv"
-
 	"github.com/pkg/errors"
 	"github.com/gx-org/backend/platform"
 	"github.com/gx-org/gx/build/ir"
@@ -53,5 +51,5 @@ func (s *String) ToHost(platform.Allocator) (Value, error) {
 // String representation of the value.
 // The returned string is a string reported to the user.
 func (s *String) String() string {
-	return strconv.Quote(s.str)
+	return s.str
 }

@@ -31,16 +31,20 @@ import (
 	"github.com/gx-org/gx/build/ir/irstring"
 )
 
+// CompareString compares two string and build an error message if the strings do not match.
+func CompareString(got, want string) error {
+	got = strings.TrimSpace(got)
+	want = strings.TrimSpace(want)
+	if got == want {
+		return nil
+	}
+	return fmt.Errorf("diff:\n%s\ngot:\n%s\nwant:\n%s", cmp.Diff(got, want), gxfmt.Number(got), gxfmt.Number(want))
+}
+
 func compare(done map[any]bool, got, want ir.Node) error {
 	gotS := irstring.ReflectString(done, got)
 	wantS := irstring.ReflectString(done, want)
-	if gotS != wantS {
-		if irstring.ReflectStringOutput == irstring.SilentStringType {
-			return fmt.Errorf("got IR not matching expectation")
-		}
-		return fmt.Errorf("diff:\n%s\ngot:\n%s\nwant:\n%s", cmp.Diff(gotS, wantS), gxfmt.Number(gotS), gxfmt.Number(wantS))
-	}
-	return nil
+	return CompareString(gotS, wantS)
 }
 
 func check[T ir.Node](nextWant *int, pkg *ir.Package, wants []ir.Node, gots []T) error {

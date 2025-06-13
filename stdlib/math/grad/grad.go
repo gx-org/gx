@@ -166,7 +166,7 @@ func gradArrayLitExpr(fetcher ir.Fetcher, src *ir.ArrayLitExpr, argName string) 
 		}
 	}
 	if allZero {
-		return nil, false
+		return nil, true
 	}
 	return src.NewFromValues(gValues), true
 }
