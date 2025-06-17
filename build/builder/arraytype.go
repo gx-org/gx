@@ -97,7 +97,7 @@ func (n *arrayLitExpr) buildExpr(rscope resolveScope) (ir.Expr, bool) {
 	if !ok {
 		return &ir.SliceLitExpr{Src: n.src, Typ: ir.InvalidType()}, rscope.err().AppendInternalf(n.src, "%T is not an array type", under)
 	}
-	return n.lit.buildExpr(newArrayLitScope(rscope, arrayType))
+	return n.lit.buildExpr(toArrayLitScope(rscope, arrayType))
 }
 
 func (n *arrayLitExpr) String() string {

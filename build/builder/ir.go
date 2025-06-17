@@ -275,14 +275,14 @@ func baseType[T ast.Expr](src T) ir.BaseType[T] {
 	return ir.BaseType[T]{Src: src}
 }
 
-func buildAExpr(scope resolveScope, expr exprNode) (ir.AssignableExpr, bool) {
-	ext, ok := expr.buildExpr(scope)
+func buildAExpr(rscope resolveScope, expr exprNode) (ir.AssignableExpr, bool) {
+	ext, ok := expr.buildExpr(rscope)
 	if !ok {
 		return nil, false
 	}
 	asExt, ok := ext.(ir.AssignableExpr)
 	if !ok {
-		return nil, scope.err().Appendf(expr.source(), "%s %s is not assignable", ext.String(), ext.Type().Kind().String())
+		return nil, rscope.err().Appendf(expr.source(), "%s %s is not assignable", ext.String(), ext.Type().Kind().String())
 	}
 	return asExt, true
 }

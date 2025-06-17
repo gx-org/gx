@@ -374,11 +374,18 @@ type (
 
 var _ compositeLitResolveScope = (*arrayResolveScope)(nil)
 
-func newArrayLitScope(rscope resolveScope, want ir.ArrayType) *arrayResolveScope {
-	return &arrayResolveScope{
-		resolveScope: rscope,
-		current:      want,
+func toArrayLitScope(rscope resolveScope, want ir.ArrayType) *arrayResolveScope {
+	ascope, ok := rscope.(*arrayResolveScope)
+	if !ok {
+		// Top-level of parsing a literal: create a new array scope.
+		return &arrayResolveScope{
+			resolveScope: rscope,
+			current:      want,
+		}
 	}
+	// We are parsing a sub-rank literal: nothing to do.
+	// The correct scope was already created with the arrayResolveScope.sub method.
+	return ascope
 }
 
 func (s *arrayResolveScope) dtype() ir.Type {
