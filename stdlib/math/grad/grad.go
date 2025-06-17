@@ -186,19 +186,11 @@ func zeroValueOf(fetcher ir.Fetcher, node ast.Node, typ ir.Type) (ir.AssignableE
 var one = &ir.NumberInt{Src: &ast.BasicLit{Value: "1"}, Val: big.NewInt(1)}
 
 func oneValueOf(fetcher ir.Fetcher, node ast.Node, typ ir.Type) (ir.AssignableExpr, bool) {
-	zero, ok := zeroValueOf(fetcher, node, typ)
-	if !ok {
-		return nil, false
-	}
-	return &ir.ParenExpr{
-		X: &ir.BinaryExpr{
-			Src: &ast.BinaryExpr{Op: token.ADD},
-			X:   zero,
-			Y: &ir.NumberCastExpr{
-				X:   one,
-				Typ: ir.TypeFromKind(typ.Kind()),
-			},
-			Typ: typ,
+	return &ir.CastExpr{
+		X: &ir.NumberCastExpr{
+			X:   one,
+			Typ: ir.TypeFromKind(typ.Kind()),
 		},
+		Typ: typ,
 	}, true
 }

@@ -58,7 +58,7 @@ func F(x float32) [2]float32 {
 `,
 			Want: `
 func gradF(x float32) [2]float32 {
-	return [2]float32{(0+1), 0}
+	return [2]float32{(float32)(1), 0}
 }
 `,
 		},
@@ -70,7 +70,7 @@ func F(x [2]float32) [2]float32 {
 `,
 			Want: `
 func gradF(x [2]float32) [2]float32 {
-	return 0+([2]float32{}+1)
+	return 0+([2]float32)(1)
 }
 `,
 		},
@@ -82,7 +82,7 @@ func F(x [2]float32) [2]float32 {
 `,
 			Want: `
 func gradF(x [2]float32) [2]float32 {
-	return 0-([2]float32{}+1)
+	return 0-([2]float32)(1)
 }
 `,
 		},
