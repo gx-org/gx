@@ -114,6 +114,14 @@ func NewRuntimeValue(ctx evaluator.Context, src ir.AssignableExpr) (elements.Ele
 }
 
 func newRuntimeValue(ctx evaluator.Context, src ir.AssignableExpr, typ ir.Type) (elements.Element, error) {
+	if typ.Kind() == ir.IntLenKind {
+		valueRef, ok := src.(*ir.ValueRef)
+		if !ok {
+			return nil, errors.Errorf("cannot create variable to represent an axis length: %T is not %s", src, reflect.TypeFor[*ir.ValueRef]().Name())
+		}
+		return NewVariable(elements.NewNodeAt(ctx.File(), valueRef.Stor)), nil
+	}
+
 	switch typT := typ.(type) {
 	case *ir.TypeParam:
 		return newTypeParam(elements.NewExprAt(ctx.File(), src), typT), nil

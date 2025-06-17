@@ -341,3 +341,19 @@ func callCast(x [_]int32) int64 {
 		},
 	)
 }
+
+func TestSingleAxisName(t *testing.T) {
+	testbuild.Run(t,
+		testbuild.Decl{
+			Src: `
+func add(x, y [_ax1][_ax2]float32) [ax1][ax2]float32 {
+	return x + y
+}
+
+func callAdd(x, y [2][3]float32) [2][3]float32 {
+	return add(x, y)
+}
+`,
+		},
+	)
+}

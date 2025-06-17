@@ -394,19 +394,25 @@ func assignArgValueToName(rscope resolveScope, compEval *compileEvaluator, param
 	if !ok {
 		return true
 	}
-	for _, axis := range arrayType.Rank().Axes() {
+	arrayElement, axOk := argVal.(cpevelements.IRArrayElement)
+	if !axOk {
+		return true
+	}
+	axes, err := arrayElement.Axes(compEval)
+	if err != nil {
+		return rscope.err().AppendInternalf(param.Source(), "cannot get axes from element %T to unify with parameter %s: %v", argVal, param.String(), err)
+	}
+	for i, axis := range arrayType.Rank().Axes() {
 		switch axisT := axis.(type) {
-		case *ir.AxisGroup:
-			arrayElement, axOk := argVal.(cpevelements.IRArrayElement)
-			if !axOk {
-				ok = rscope.err().AppendInternalf(param.Source(), "cannot assign compeval element %T to axis group %s", argVal, axisT.Name)
+		case *ir.AxisExpr:
+			ident, ok := axisT.X.(*ir.ValueRef)
+			if !ok {
 				continue
 			}
-			axes, err := arrayElement.Axes(compEval)
-			if err != nil {
-				return rscope.err().AppendInternalf(param.Source(), "cannot assign %T to axis group %s: %v", argVal, axisT.Name, err)
-			}
+			params[ident.Src.Name] = axes.Elements()[i]
+		case *ir.AxisGroup:
 			params[axisT.Name] = axes
+			return ok
 		}
 	}
 	return ok

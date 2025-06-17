@@ -21,8 +21,22 @@ import (
 )
 
 func instantiateAxisExpr(fetcher ir.Fetcher, axis *ir.AxisExpr) ([]ir.AxisLengths, bool) {
+	valueRef, isValueRef := axis.X.(*ir.ValueRef)
+	if !isValueRef {
+		return []ir.AxisLengths{
+			&ir.AxisExpr{Src: axis.Src, X: axis.X},
+		}, true
+	}
+	canonical, err := fetcher.Eval(valueRef)
+	if err != nil {
+		return nil, fetcher.Err().AppendInternalf(axis.X.Source(), "cannot evaluate %s", axis.X.String())
+	}
+	withExpr, ok := canonical.(ir.Canonical)
+	if !ok {
+		return nil, fetcher.Err().AppendInternalf(axis.X.Source(), "expression %T:%s cannot be converted to an IR expression", canonical, canonical.String())
+	}
 	return []ir.AxisLengths{
-		&ir.AxisExpr{Src: axis.Src, X: axis.X},
+		&ir.AxisExpr{Src: axis.Src, X: withExpr.Expr()},
 	}, true
 }
 
