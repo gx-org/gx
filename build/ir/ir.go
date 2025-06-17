@@ -2798,11 +2798,6 @@ func (s *BinaryExpr) Type() Type { return s.Typ }
 // Expr returns the expression in the source code.
 func (s *BinaryExpr) Expr() ast.Expr { return s.Src }
 
-// String representation.
-func (s *BinaryExpr) String() string {
-	return s.X.String() + s.Src.Op.String() + s.Y.String()
-}
-
 func (s *TypeValExpr) node()       {}
 func (s *TypeValExpr) typeExpr()   {}
 func (s *TypeValExpr) assignable() {}

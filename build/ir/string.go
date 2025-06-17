@@ -16,6 +16,7 @@ package ir
 
 import (
 	"fmt"
+	"go/token"
 	"slices"
 	"strings"
 
@@ -240,4 +241,23 @@ func (s *SelectorExpr) String() string {
 // String representation.
 func (s *IndexExpr) String() string {
 	return fmt.Sprintf("%s[%s]", s.X.String(), s.Index.String())
+}
+
+func (s *BinaryExpr) binaryElementString(x Expr) string {
+	bx, isXBinary := x.(*BinaryExpr)
+	if !isXBinary {
+		return x.String()
+	}
+	if (s.Src.Op == token.SUB || s.Src.Op == token.ADD) &&
+		(bx.Src.Op == token.MUL || bx.Src.Op == token.QUO) {
+		return x.String()
+	}
+	return fmt.Sprintf("(%s)", x.String())
+}
+
+// String representation.
+func (s *BinaryExpr) String() string {
+	return (s.binaryElementString(s.X) +
+		s.Src.Op.String() +
+		s.binaryElementString(s.Y))
 }

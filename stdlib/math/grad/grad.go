@@ -127,15 +127,31 @@ func gradExpr(fetcher ir.Fetcher, src ir.Expr, argName string) (ir.AssignableExp
 }
 
 func gradBinaryExpr(fetcher ir.Fetcher, src *ir.BinaryExpr, argName string) (ir.AssignableExpr, bool) {
+	u := src.X
+	v := src.Y
+	uGrad, xOk := gradExpr(fetcher, src.X, argName)
+	vGrad, yOk := gradExpr(fetcher, src.Y, argName)
 	switch src.Src.Op {
 	case token.ADD, token.SUB:
-		xGrad, xOk := gradExpr(fetcher, src.X, argName)
-		yGrad, yOk := gradExpr(fetcher, src.Y, argName)
 		return &ir.BinaryExpr{
 			Src: src.Src,
 			Typ: src.Typ,
-			X:   xGrad,
-			Y:   yGrad,
+			X:   uGrad,
+			Y:   vGrad,
+		}, xOk && yOk
+	case token.MUL:
+		return &ir.BinaryExpr{
+			Src: &ast.BinaryExpr{Op: token.ADD},
+			X: &ir.BinaryExpr{
+				Src: &ast.BinaryExpr{Op: token.MUL},
+				X:   uGrad,
+				Y:   v,
+			},
+			Y: &ir.BinaryExpr{
+				Src: &ast.BinaryExpr{Op: token.MUL},
+				X:   u,
+				Y:   vGrad,
+			},
 		}, xOk && yOk
 	default:
 		return nil, fetcher.Err().Appendf(src.Source(), "gradient of binary expression %s not supported", src.Src.Op)
