@@ -358,5 +358,17 @@ func (g *Graph) NewWhile(cond, body graph.Subgraph, state graph.Node) (graph.Nod
 
 // NewBroadcastInDim broadcasts data across a given set of axis.
 func (g *Graph) NewBroadcastInDim(x graph.Node, shape *shape.Shape, broadcastAxes []int) (graph.Node, error) {
-	return nil, errors.Errorf("not implemented")
+	node := x.(execNode)
+	if node.shape().Size() > 1 {
+		return nil, errors.Errorf("cannot broadcast shape %v: this backend only supports the broadcast of atomic shapes", shape)
+	}
+	kernel, shape, err := node.kernelFactory().BroadcastInDim(shape, broadcastAxes)
+	if err != nil {
+		return nil, err
+	}
+	return &unary{
+		node:   g.node(shape, node.kernelFactory()),
+		x:      node,
+		kernel: kernel,
+	}, nil
 }

@@ -138,7 +138,6 @@ func (f arrayFactory[T]) Slice(x *shape.Shape, index int) (Unary, *shape.Shape, 
 	}, &shapeOut, nil
 }
 
-// Reshape scalar kernel.
 func (f arrayFactory[T]) Reshape(x *shape.Shape, axisLengths []int) (Unary, *shape.Shape, error) {
 	shapeOut := shape.Shape{
 		DType:       dtype.Generic[T](),
@@ -152,6 +151,32 @@ func (f arrayFactory[T]) Reshape(x *shape.Shape, axisLengths []int) (Unary, *sha
 			values:  aT.values,
 		}), nil
 	}, &shapeOut, nil
+}
+
+func broadcast[T dtype.GoDataType](vals []T, target int) ([]T, error) {
+	if len(vals) != 1 {
+		return nil, errors.Errorf("cannot broadcast more than one value")
+	}
+	out := make([]T, target)
+	for i := range out {
+		out[i] = vals[0]
+	}
+	return out, nil
+}
+
+func (f arrayFactory[T]) BroadcastInDim(targetShape *shape.Shape, broadcastAxes []int) (Unary, *shape.Shape, error) {
+	return func(a Array) (Array, error) {
+		aT := toArray[T](a)
+		vals, err := broadcast(aT.values, targetShape.Size())
+		if err != nil {
+			return nil, err
+		}
+		return a.newArray(&arrayT[T]{
+			factory: aT.factory,
+			shape:   *targetShape,
+			values:  vals,
+		}), nil
+	}, targetShape, nil
 }
 
 func (arrayFactory[T]) Concat(dt dtype.DataType, n int) (NAry, *shape.Shape, error) {

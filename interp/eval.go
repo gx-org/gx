@@ -20,6 +20,7 @@ import (
 
 	"github.com/pkg/errors"
 	"github.com/gx-org/backend/dtype"
+	"github.com/gx-org/gx/api/values"
 	"github.com/gx-org/gx/build/fmterr"
 	"github.com/gx-org/gx/build/ir"
 	"github.com/gx-org/gx/interp/elements"
@@ -317,9 +318,29 @@ func evalArrayAxes(ctx *context, src ir.SourceNode, typ ir.ArrayType) ([]element
 	return axes, nil
 }
 
+var one, _ = values.AtomIntegerValue(ir.IntLenType(), ir.Int(1))
+
+func evalCastAtomToArrayExpr(ctx *context, expr ir.TypeCastExpr, x elements.NumericalElement, axes []elements.NumericalElement) (elements.Element, error) {
+	srcExpr := elements.NewExprAt(ctx.File(), expr)
+	arrayOps := ctx.eval.evaluator.ArrayOps()
+	shapeOfOnes := make([]elements.NumericalElement, len(axes))
+	for i := range axes {
+		var err error
+		shapeOfOnes[i], err = ctx.eval.evaluator.ElementFromAtom(srcExpr, one)
+		if err != nil {
+			return nil, err
+		}
+	}
+	reshaped, err := arrayOps.Reshape(srcExpr, x, shapeOfOnes)
+	if err != nil {
+		return nil, err
+	}
+	return arrayOps.BroadcastInDim(srcExpr, reshaped, axes)
+}
+
 func evalCastToArrayExpr(ctx *context, expr ir.TypeCastExpr, x elements.NumericalElement, targetType ir.ArrayType) (elements.Element, error) {
 	origType := expr.Orig().Type()
-	_, xDType := ir.Shape(origType)
+	origRank, xDType := ir.Shape(origType)
 	targetDType := targetType.DataType()
 	targetKind := targetDType.Kind().DType()
 	if xDType.Kind().DType() != targetKind {
@@ -333,7 +354,12 @@ func evalCastToArrayExpr(ctx *context, expr ir.TypeCastExpr, x elements.Numerica
 	if err != nil {
 		return nil, err
 	}
-	reshape, err := ctx.eval.evaluator.ArrayOps().Reshape(elements.NewExprAt(ctx.File(), expr), x, axes)
+	if origRank.IsAtomic() {
+		return evalCastAtomToArrayExpr(ctx, expr, x, axes)
+	}
+	srcExpr := elements.NewExprAt(ctx.File(), expr)
+	arrayOps := ctx.eval.evaluator.ArrayOps()
+	reshape, err := arrayOps.Reshape(srcExpr, x, axes)
 	if err != nil {
 		return nil, fmterr.Position(ctx.File().FileSet(), expr.Source(), err)
 	}

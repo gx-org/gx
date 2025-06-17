@@ -61,6 +61,10 @@ func TestResolveType(t *testing.T) {
 		{code: "func(interface{bool}) bool {}", typ: "func(interface { bool }) bool"},
 		{code: "func(interface{bfloat16|float32|float64}) bool {}", typ: "func(interface { bfloat16|float32|float64 }) bool"},
 
+		// Static cast of numbers
+		{code: "[2]int32(1)", typ: "[2]int32"},
+		{code: "[2][3]int32(1)", typ: "[2][3]int32"},
+
 		// Dynamic cast
 		{code: "[2]int32{1, 2}.([3]int32)", typ: "[3]int32"},
 

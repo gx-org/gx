@@ -42,6 +42,11 @@ func (compArrayOps) Einsum(expr elements.NodeFile[*ir.EinsumExpr], x, y elements
 	return cpevelements.NewArray(expr.ToExprAt(), expr.Node().Type().(ir.ArrayType)), nil
 }
 
+// BroadcastInDim the data of an array across dimensions.
+func (compArrayOps) BroadcastInDim(expr elements.ExprAt, x elements.NumericalElement, axisLengths []elements.NumericalElement) (elements.NumericalElement, error) {
+	return cpevelements.NewArray(expr.ToExprAt(), expr.Node().Type().(ir.ArrayType)), nil
+}
+
 // Reshape an element into a given shape.
 func (compArrayOps) Reshape(expr elements.ExprAt, x elements.NumericalElement, axisLengths []elements.NumericalElement) (elements.NumericalElement, error) {
 	return cpevelements.NewArray(expr.ToExprAt(), expr.Node().Type().(ir.ArrayType)), nil

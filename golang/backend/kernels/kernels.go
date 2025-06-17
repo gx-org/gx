@@ -80,6 +80,8 @@ type (
 
 		Reshape(*shape.Shape, []int) (Unary, *shape.Shape, error)
 
+		BroadcastInDim(*shape.Shape, []int) (Unary, *shape.Shape, error)
+
 		UnaryOp(token.Token, *shape.Shape) (Unary, *shape.Shape, error)
 
 		BinaryOp(token.Token, *shape.Shape, *shape.Shape) (Binary, *shape.Shape, error)

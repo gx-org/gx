@@ -1,0 +1,21 @@
+// Package castnumber tests casting a number into an array.
+package castnumber
+
+import "math"
+
+func TestCastNumber() [2][3][4]float32 {
+	return [2][3][4]float32(1)
+	// Want:
+        // [2][3][4]float32{
+        // 	{
+        // 		{1, 1, 1, 1},
+        // 		{1, 1, 1, 1},
+        // 		{1, 1, 1, 1},
+        // 	},
+        // 	{
+        // 		{1, 1, 1, 1},
+        // 		{1, 1, 1, 1},
+        // 		{1, 1, 1, 1},
+        // 	},
+        // }
+}

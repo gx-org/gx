@@ -42,6 +42,9 @@ type (
 		// Reshape an element into a given shape.
 		Reshape(expr ExprAt, x NumericalElement, axisLengths []NumericalElement) (NumericalElement, error)
 
+		// BroadcastInDim the data of an array across dimensions.
+		BroadcastInDim(expr ExprAt, x NumericalElement, axisLengths []NumericalElement) (NumericalElement, error)
+
 		// Concat concatenates scalars elements into an array with one axis.
 		Concat(expr ExprAt, xs []NumericalElement) (NumericalElement, error)
 

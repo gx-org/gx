@@ -103,6 +103,51 @@ func (ao *arrayOps) Reshape(expr elements.ExprAt, x elements.NumericalElement, a
 		})
 }
 
+func elementsToInt(els []elements.NumericalElement) ([]int, error) {
+	axes := make([]int, len(els))
+	for i, el := range els {
+		var err error
+		axes[i], err = elements.ConstantIntFromElement(el)
+		if err != nil {
+			return nil, err
+		}
+	}
+	return axes, nil
+}
+
+// BroadcastInDim the data of an array across dimensions.
+func (ao *arrayOps) BroadcastInDim(expr elements.ExprAt, x elements.NumericalElement, axisLengths []elements.NumericalElement) (elements.NumericalElement, error) {
+	axes, err := elementsToInt(axisLengths)
+	if err != nil {
+		return nil, err
+	}
+	xNode, xShape, err := NodeFromElement(ao, x)
+	if err != nil {
+		return nil, err
+	}
+	broadcastAxes := make([]int, 0)
+	for i, xAxis := range xShape.AxisLengths {
+		if xAxis > 1 {
+			continue
+		}
+		broadcastAxes = append(broadcastAxes, i)
+	}
+	targetShape := &shape.Shape{
+		DType:       xShape.DType,
+		AxisLengths: axes,
+	}
+	reshaped, err := ao.graph.Core().NewBroadcastInDim(xNode, targetShape, broadcastAxes)
+	if err != nil {
+		return nil, err
+	}
+	return ElementFromNode(
+		expr.ToExprAt(),
+		&graph.OutputNode{
+			Node:  reshaped,
+			Shape: targetShape,
+		})
+}
+
 // Concat concatenates scalars elements into an array with one axis.
 func (ao *arrayOps) Concat(expr elements.ExprAt, xs []elements.NumericalElement) (elements.NumericalElement, error) {
 	nodes := make([]graph.Node, len(xs))
