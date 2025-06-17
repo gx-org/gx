@@ -143,30 +143,30 @@ func testConcatWithOutOfRangeAxis() [3][2]float32 {
 	)
 }
 
-func testExpandIncorrectNumberOfArgument() [4][3]float32 {
-	return shapes.Expand( // ERROR wrong number of arguments
+func testBroadcastIncorrectNumberOfArgument() [4][3]float32 {
+	return shapes.Broadcast( // ERROR wrong number of arguments
 		[]intlen{4, 3},
 		[1][3]float32{{4, 5, 6}},
 		bool,
 	)
 }
 
-func testExpandIncorrectArgumentType() [4][3]float32 {
-	return shapes.Expand( // ERROR signature mismatch in call to Expand
+func testBroadcastIncorrectArgumentType() [4][3]float32 {
+	return shapes.Broadcast( // ERROR signature mismatch in call to Broadcast
 		[]intlen{4, 3},
 		[1][3]float32{{4, 5, 6}},
 	)
 }
 
-func testExpandIncorrectNumberOfAxes() [4][3][6]float32 {
-	return shapes.Expand( // ERROR cannot expand array with 2 axes to 3 axes
+func testBroadcastIncorrectNumberOfAxes() [4][3][6]float32 {
+	return shapes.Broadcast( // ERROR cannot expand array with 2 axes to 3 axes
 		[1][3]float32{{4, 5, 6}},
 		[]intlen{4, 3, 6},
 	)
 }
 
-func testExpandIncorrectNumberOfAxisSize() [4][3]float32 {
-	return shapes.Expand(
+func testBroadcastIncorrectNumberOfAxisSize() [4][3]float32 {
+	return shapes.Broadcast(
 		[2][3]float32{ // ERROR cannot expand array with axis 0 of size 2
 			{1, 2, 3},
 			{4, 5, 6},

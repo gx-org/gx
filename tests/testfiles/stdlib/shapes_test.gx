@@ -203,8 +203,8 @@ func TestSplit2Db() [4][4][1]float32 {
 	// }
 }
 
-func TestExpand1DTo2D() [4][3]float32 {
-	return shapes.Expand(
+func TestBroadcast1DTo2D() [4][3]float32 {
+	return shapes.Broadcast(
 		[1][3]float32{{4, 5, 6}},
 		[]intlen{4, 3},
 	)
@@ -217,8 +217,8 @@ func TestExpand1DTo2D() [4][3]float32 {
 	// }
 }
 
-func TestExpand1To2() [3][4]float32 {
-	return shapes.Expand(
+func TestBroadcast1To2() [3][4]float32 {
+	return shapes.Broadcast(
 		[3][1]float32{{4}, {5}, {6}},
 		[]intlen{3, 4},
 	)
@@ -256,8 +256,8 @@ func TestGather2b() [2]float32 {
 
 const size = 3
 
-func TestExpandWithVar() [size][2]float32 {
-	return shapes.Expand([1][2]float32{
+func TestBroadcastWithVar() [size][2]float32 {
+	return shapes.Broadcast([1][2]float32{
 		[2]float32{.5, .5},
 	}, []intlen{size, 2})
 	// Want:

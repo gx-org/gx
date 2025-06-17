@@ -33,23 +33,23 @@ import (
 	"github.com/gx-org/gx/stdlib/impl"
 )
 
-type expand struct {
+type broadcast struct {
 	builtin.Func
 }
 
-func (f expand) BuildFuncIR(impl *impl.Stdlib, pkg *ir.Package) (*ir.FuncBuiltin, error) {
-	return builtin.IRFuncBuiltin[expand]("Expand", evalExpand, pkg), nil
+func (f broadcast) BuildFuncIR(impl *impl.Stdlib, pkg *ir.Package) (*ir.FuncBuiltin, error) {
+	return builtin.IRFuncBuiltin[broadcast]("Broadcast", evalBroadcast, pkg), nil
 }
 
 var oneAxisLength = numbers.NewInt(elements.NewExprAt(nil, &ir.NumberInt{}), big.NewInt(1))
 
-func checkExpandRanks(fetcher ir.Fetcher, call *ir.CallExpr, src ir.ArrayRank, target ir.ArrayRank, targetElmts []canonical.Canonical) error {
+func checkBroadcastRanks(fetcher ir.Fetcher, call *ir.CallExpr, src ir.ArrayRank, target ir.ArrayRank, targetElmts []canonical.Canonical) error {
 	if src == nil || target == nil {
 		return nil
 	}
 	srcAxes := src.Axes()
 	if len(srcAxes) != len(targetElmts) {
-		return fmterr.Errorf(fetcher.File().FileSet(), call.Source(), "cannot expand array with %d axes to %d axes: the same number of axes is required", len(srcAxes), len(targetElmts))
+		return fmterr.Errorf(fetcher.File().FileSet(), call.Source(), "cannot broadcast array with %d axes to %d axes: the same number of axes is required", len(srcAxes), len(targetElmts))
 	}
 
 	for i, targetElt := range targetElmts {
@@ -58,13 +58,13 @@ func checkExpandRanks(fetcher ir.Fetcher, call *ir.CallExpr, src ir.ArrayRank, t
 			return err
 		}
 		if !srcElt.Compare(targetElt) && !oneAxisLength.Compare(srcElt) {
-			return fmterr.Errorf(fetcher.File().FileSet(), srcAxes[i].Source(), "cannot expand array with axis %d of size %d: size of 1 or %d required", i, srcElt, targetElt)
+			return fmterr.Errorf(fetcher.File().FileSet(), srcAxes[i].Source(), "cannot broadcast array with axis %d of size %d: size of 1 or %d required", i, srcElt, targetElt)
 		}
 	}
 	return nil
 }
 
-func (f expand) BuildFuncType(fetcher ir.Fetcher, call *ir.CallExpr) (*ir.FuncType, error) {
+func (f broadcast) BuildFuncType(fetcher ir.Fetcher, call *ir.CallExpr) (*ir.FuncType, error) {
 	params, err := builtins.BuildFuncParams(fetcher, call, f.Name(), []ir.Type{
 		builtins.GenericArrayType,
 		ir.IntLenSliceType(),
@@ -80,7 +80,7 @@ func (f expand) BuildFuncType(fetcher ir.Fetcher, call *ir.CallExpr) (*ir.FuncTy
 	if err != nil {
 		return nil, err
 	}
-	if err := checkExpandRanks(fetcher, call, arrayType.Rank(), targetRank, targetElmts); err != nil {
+	if err := checkBroadcastRanks(fetcher, call, arrayType.Rank(), targetRank, targetElmts); err != nil {
 		return nil, err
 	}
 	return &ir.FuncType{
@@ -90,14 +90,14 @@ func (f expand) BuildFuncType(fetcher ir.Fetcher, call *ir.CallExpr) (*ir.FuncTy
 	}, nil
 }
 
-func evalExpand(ctx evaluator.Context, call elements.CallAt, fn elements.Func, irFunc *ir.FuncBuiltin, args []elements.Element) ([]elements.Element, error) {
+func evalBroadcast(ctx evaluator.Context, call elements.CallAt, fn elements.Func, irFunc *ir.FuncBuiltin, args []elements.Element) ([]elements.Element, error) {
 	targetAxes, err := elements.AxesFromElement(args[1])
 	if err != nil {
 		return nil, err
 	}
-	expandAxes := make([]int, len(targetAxes))
+	broadcastAxes := make([]int, len(targetAxes))
 	for i := range targetAxes {
-		expandAxes[i] = i
+		broadcastAxes[i] = i
 	}
 	ao := ctx.Evaluation().Evaluator().ArrayOps()
 	x, xShape, err := grapheval.NodeFromElement(ao, args[0])
@@ -108,7 +108,7 @@ func evalExpand(ctx evaluator.Context, call elements.CallAt, fn elements.Func, i
 		DType:       xShape.DType,
 		AxisLengths: targetAxes,
 	}
-	op, err := ao.Graph().Core().BroadcastInDim(x, targetShape, expandAxes)
+	op, err := ao.Graph().Core().BroadcastInDim(x, targetShape, broadcastAxes)
 	if err != nil {
 		return nil, err
 	}

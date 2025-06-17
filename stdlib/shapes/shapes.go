@@ -33,7 +33,7 @@ var Package = builtin.PackageBuilder{
 		builtin.ParseSource(&fs),
 		builtin.BuildFunc(concat{}),
 		builtin.BuildFunc(split{}),
-		builtin.BuildFunc(expand{}),
+		builtin.BuildFunc(broadcast{}),
 		builtin.BuildFunc(gather{}),
 		builtin.ImplementStubFunc("Len", func(impl *impl.Stdlib) interp.FuncBuiltin { return impl.Shapes.Len }),
 	},
