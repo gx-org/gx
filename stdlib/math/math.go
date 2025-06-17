@@ -53,7 +53,7 @@ var Package = builtin.PackageBuilder{
 		builtin.BuildFunc(maxFunc{}),
 		builtin.ImplementStubFunc("Abs", func(impl *impl.Stdlib) interp.FuncBuiltin { return impl.Math.Abs }),
 		builtin.ImplementStubFunc("Ceil", func(impl *impl.Stdlib) interp.FuncBuiltin { return impl.Math.Ceil }),
-		buildUnary("Cos", func(g graph.Graph) unaryFunc { return g.Math().NewCos }),
+		buildUnary("Cos", func(g graph.Graph) unaryFunc { return g.Math().Cos }),
 		builtin.ImplementStubFunc("Erf", func(impl *impl.Stdlib) interp.FuncBuiltin { return impl.Math.Erf }),
 		builtin.ImplementStubFunc("Expm1", func(impl *impl.Stdlib) interp.FuncBuiltin { return impl.Math.Expm1 }),
 		builtin.ImplementStubFunc("Exp", func(impl *impl.Stdlib) interp.FuncBuiltin { return impl.Math.Exp }),
@@ -64,9 +64,9 @@ var Package = builtin.PackageBuilder{
 		builtin.ImplementStubFunc("Round", func(impl *impl.Stdlib) interp.FuncBuiltin { return impl.Math.Round }),
 		builtin.ImplementStubFunc("Rsqrt", func(impl *impl.Stdlib) interp.FuncBuiltin { return impl.Math.Rsqrt }),
 		builtin.ImplementStubFunc("Sign", func(impl *impl.Stdlib) interp.FuncBuiltin { return impl.Math.Sign }),
-		buildUnary("Sin", func(g graph.Graph) unaryFunc { return g.Math().NewSin }),
+		buildUnary("Sin", func(g graph.Graph) unaryFunc { return g.Math().Sin }),
 		builtin.ImplementStubFunc("Sqrt", func(impl *impl.Stdlib) interp.FuncBuiltin { return impl.Math.Sqrt }),
-		buildUnary("Tanh", func(g graph.Graph) unaryFunc { return g.Math().NewTanh }),
+		buildUnary("Tanh", func(g graph.Graph) unaryFunc { return g.Math().Tanh }),
 	},
 }
 

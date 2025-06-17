@@ -63,14 +63,14 @@ func evalIotaFull(ctx evaluator.Context, call elements.CallAt, fn elements.Func,
 		AxisLengths: axes,
 	}
 	gr := ctx.Evaluation().Evaluator().ArrayOps().Graph()
-	iotaOp, err := gr.Num().NewIota(&shape.Shape{
+	iotaOp, err := gr.Num().Iota(&shape.Shape{
 		DType:       ir.DefaultIntKind.DType(),
 		AxisLengths: []int{targetShape.Size()},
 	}, 0)
 	if err != nil {
 		return nil, err
 	}
-	op, err := gr.Core().NewReshape(iotaOp, targetShape.AxisLengths)
+	op, err := gr.Core().Reshape(iotaOp, targetShape.AxisLengths)
 	if err != nil {
 		return nil, err
 	}

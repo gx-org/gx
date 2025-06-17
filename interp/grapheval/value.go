@@ -41,7 +41,7 @@ func newValueElement(ev *Evaluator, src elements.ExprAt, value values.Array) (*v
 	if err != nil {
 		return nil, err
 	}
-	cstNode, err := ev.ao.graph.Core().NewConstant(hostValue.Buffer())
+	cstNode, err := ev.ao.graph.Core().Constant(hostValue.Buffer())
 	if err != nil {
 		return nil, err
 	}

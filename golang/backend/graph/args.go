@@ -32,8 +32,8 @@ type argument struct {
 
 var _ execNode = (*argument)(nil)
 
-// NewArgument returns a node set by a caller when calling the function.
-func (g *Graph) NewArgument(name string, sh *shape.Shape, index int) (graph.Node, error) {
+// Argument returns a node set by a caller when calling the function.
+func (g *Graph) Argument(name string, sh *shape.Shape, index int) (graph.Node, error) {
 	factory, err := kernels.FactoryFor(sh.DType)
 	if err != nil {
 		return nil, err

@@ -344,7 +344,7 @@ func (ev *Evaluator) NewArrayArgument(parent parentArgument, expr elements.ExprA
 		pValue:         pValue,
 	}
 	n.graphCallIndex = ev.Processor().RegisterArg(n)
-	op, err := ev.ArrayOps().Graph().Core().NewArgument(n.Name(), n.pValue.Shape(), n.graphCallIndex)
+	op, err := ev.ArrayOps().Graph().Core().Argument(n.Name(), n.pValue.Shape(), n.graphCallIndex)
 	if err != nil {
 		return nil, err
 	}

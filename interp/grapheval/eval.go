@@ -88,7 +88,7 @@ func (ev *Evaluator) CallFuncLit(ctx evaluator.Context, ref *ir.FuncLit, args []
 	if name == "" {
 		name = "<lambda>"
 	}
-	subgraph, err := core.NewSubgraph(name)
+	subgraph, err := core.Subgraph(name)
 	if err != nil {
 		return nil, err
 	}
@@ -111,13 +111,13 @@ func (ev *Evaluator) CallFuncLit(ctx evaluator.Context, ref *ir.FuncLit, args []
 	// values, and we also transparently unpack the tuple below.
 	graphSingleOutput := outputGraphNodes[0]
 	if len(outputGraphNodes) > 1 {
-		tpl, err := subgraph.Core().NewTuple(subresultNodes)
+		tpl, err := subgraph.Core().Tuple(subresultNodes)
 		if err != nil {
 			return nil, err
 		}
 		graphSingleOutput = &graph.OutputNode{Node: tpl}
 	}
-	result, err := core.NewCall(graph.Subgraph{Graph: subgraph, Result: *graphSingleOutput})
+	result, err := core.Call(graph.Subgraph{Graph: subgraph, Result: *graphSingleOutput})
 	if err != nil {
 		return nil, err
 	}

@@ -50,17 +50,17 @@ func newMathUnaryNode(g *Graph, x graph.Node, f func(float64) float64) (graph.No
 	}, nil
 }
 
-// NewCos returns a node computing the cosine.
-func (g *Graph) NewCos(x graph.Node) (graph.Node, error) {
+// Cos returns a node computing the cosine.
+func (g *Graph) Cos(x graph.Node) (graph.Node, error) {
 	return newMathUnaryNode(g, x, math.Cos)
 }
 
-// NewSin returns a node computing the sine.
-func (g *Graph) NewSin(x graph.Node) (graph.Node, error) {
+// Sin returns a node computing the sine.
+func (g *Graph) Sin(x graph.Node) (graph.Node, error) {
 	return newMathUnaryNode(g, x, math.Sin)
 }
 
-// NewTanh returns a node computing the hyperbolic tangent.
-func (g *Graph) NewTanh(x graph.Node) (graph.Node, error) {
+// Tanh returns a node computing the hyperbolic tangent.
+func (g *Graph) Tanh(x graph.Node) (graph.Node, error) {
 	return newMathUnaryNode(g, x, math.Tanh)
 }

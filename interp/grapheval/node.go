@@ -88,7 +88,7 @@ func (n *BackendNode) BinaryOp(ctx elements.FileContext, expr *ir.BinaryExpr, x,
 	if err != nil {
 		return nil, err
 	}
-	binaryNode, err := ao.Graph().Core().NewBinary(expr.Src, xNode, yNode)
+	binaryNode, err := ao.Graph().Core().Binary(expr.Src, xNode, yNode)
 	if err != nil {
 		return nil, err
 	}
@@ -113,7 +113,7 @@ func (n *BackendNode) BinaryOp(ctx elements.FileContext, expr *ir.BinaryExpr, x,
 // UnaryOp applies a unary operator on x.
 func (n *BackendNode) UnaryOp(ctx elements.FileContext, expr *ir.UnaryExpr) (elements.NumericalElement, error) {
 	ao := evalFromContext(ctx).ArrayOps()
-	unaryNode, err := ao.Graph().Core().NewUnary(expr.Src, n.nod.Node)
+	unaryNode, err := ao.Graph().Core().Unary(expr.Src, n.nod.Node)
 	if err != nil {
 		return nil, err
 	}
@@ -129,7 +129,7 @@ func (n *BackendNode) UnaryOp(ctx elements.FileContext, expr *ir.UnaryExpr) (ele
 func (n *BackendNode) Cast(ctx elements.FileContext, expr ir.AssignableExpr, target ir.Type) (elements.NumericalElement, error) {
 	ao := evalFromContext(ctx).ArrayOps()
 	targetKind := target.Kind().DType()
-	casted, err := ao.Graph().Core().NewCast(n.nod.Node, targetKind)
+	casted, err := ao.Graph().Core().Cast(n.nod.Node, targetKind)
 	if err != nil {
 		return nil, err
 	}
@@ -155,7 +155,7 @@ func (n *BackendNode) SliceArray(ctx elements.FileContext, expr ir.AssignableExp
 	if err != nil {
 		return nil, err
 	}
-	sliceNode, err := evalFromContext(ctx).ArrayOps().Graph().Core().NewSlice(n.nod.Node, i)
+	sliceNode, err := evalFromContext(ctx).ArrayOps().Graph().Core().Slice(n.nod.Node, i)
 	if err != nil {
 		return nil, err
 	}

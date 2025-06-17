@@ -25,7 +25,7 @@ func (g *Graph) Num() graph.NumBuilder {
 	return g
 }
 
-// NewIota returns a node filling an array with values from 0 to number of elements-1.
-func (g *Graph) NewIota(sh *shape.Shape, iotaAxis int) (graph.Node, error) {
+// Iota returns a node filling an array with values from 0 to number of elements-1.
+func (g *Graph) Iota(sh *shape.Shape, iotaAxis int) (graph.Node, error) {
 	return nil, errors.Errorf("not implemented")
 }

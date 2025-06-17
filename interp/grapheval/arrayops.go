@@ -41,7 +41,7 @@ func computeEinsumAxisLengths(ref *ir.EinsumExpr, xShape, yShape *shape.Shape, n
 
 // SubGraph returns a new graph builder.
 func (ao *arrayOps) SubGraph(name string) (elements.ArrayOps, error) {
-	sub, err := ao.graph.Core().NewSubgraph(name)
+	sub, err := ao.graph.Core().Subgraph(name)
 	if err != nil {
 		return nil, err
 	}
@@ -58,7 +58,7 @@ func (ao *arrayOps) Einsum(ref elements.NodeFile[*ir.EinsumExpr], x, y elements.
 	if err != nil {
 		return nil, err
 	}
-	dotNode, err := ao.graph.Core().NewDotGeneral(xNode, yNode, ref.Node().BatchAxes, ref.Node().ReduceAxes)
+	dotNode, err := ao.graph.Core().DotGeneral(xNode, yNode, ref.Node().BatchAxes, ref.Node().ReduceAxes)
 	if err != nil {
 		return nil, err
 	}
@@ -88,7 +88,7 @@ func (ao *arrayOps) Reshape(expr elements.ExprAt, x elements.NumericalElement, a
 	if err != nil {
 		return nil, err
 	}
-	reshaped, err := ao.graph.Core().NewReshape(xNode, axes)
+	reshaped, err := ao.graph.Core().Reshape(xNode, axes)
 	if err != nil {
 		return nil, err
 	}
@@ -136,7 +136,7 @@ func (ao *arrayOps) BroadcastInDim(expr elements.ExprAt, x elements.NumericalEle
 		DType:       xShape.DType,
 		AxisLengths: axes,
 	}
-	reshaped, err := ao.graph.Core().NewBroadcastInDim(xNode, targetShape, broadcastAxes)
+	reshaped, err := ao.graph.Core().BroadcastInDim(xNode, targetShape, broadcastAxes)
 	if err != nil {
 		return nil, err
 	}
@@ -159,13 +159,13 @@ func (ao *arrayOps) Concat(expr elements.ExprAt, xs []elements.NumericalElement)
 		}
 		dtype = iShape.DType
 		// Reshape scalars to 1-element array to work with Concat.
-		iNodeArray, err := ao.graph.Core().NewReshape(iNode, []int{1})
+		iNodeArray, err := ao.graph.Core().Reshape(iNode, []int{1})
 		if err != nil {
 			return nil, err
 		}
 		nodes[i] = iNodeArray
 	}
-	array1d, err := ao.graph.Core().NewConcat(0, nodes)
+	array1d, err := ao.graph.Core().Concat(0, nodes)
 	if err != nil {
 		return nil, err
 	}
@@ -186,7 +186,7 @@ func (ao *arrayOps) Set(call elements.NodeFile[*ir.CallExpr], x, updates, index 
 	if err != nil {
 		return nil, err
 	}
-	setNode, err := ao.graph.Core().NewSet(nodes[0].Node, nodes[1].Node, nodes[2].Node)
+	setNode, err := ao.graph.Core().Set(nodes[0].Node, nodes[1].Node, nodes[2].Node)
 	if err != nil {
 		return nil, err
 	}

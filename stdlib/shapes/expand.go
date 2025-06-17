@@ -108,7 +108,7 @@ func evalExpand(ctx evaluator.Context, call elements.CallAt, fn elements.Func, i
 		DType:       xShape.DType,
 		AxisLengths: targetAxes,
 	}
-	op, err := ao.Graph().Core().NewBroadcastInDim(x, targetShape, expandAxes)
+	op, err := ao.Graph().Core().BroadcastInDim(x, targetShape, expandAxes)
 	if err != nil {
 		return nil, err
 	}
