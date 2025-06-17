@@ -69,6 +69,15 @@ func TestNamedTypes(t *testing.T) {
 				)),
 			}},
 		},
+		testbuild.Decl{
+			Src: `
+type matrix [2][3]float32
+
+func (x matrix) top() [3]float32 {
+   return x[0]
+}
+`,
+		},
 	)
 	typeA := &ir.NamedType{
 		File:       wantFile,

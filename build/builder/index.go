@@ -141,7 +141,7 @@ func (n *indexExpr) buildExpr(rscope resolveScope) (ir.Expr, bool) {
 	if !ir.IsSlicingOk(xType) {
 		return ext, rscope.err().Appendf(n.source(), "cannot index %s (type: %s)", ext.X, xType)
 	}
-	slicerType, ok := xType.(ir.SlicerType)
+	slicerType, ok := ir.Underlying(xType).(ir.SlicerType)
 	if !ok {
 		return ext, rscope.err().AppendInternalf(n.source(), "type %T with kind %s supports slicing but does not implement %s", xType, xType.Kind().String(), reflect.TypeFor[ir.SlicerType]())
 	}
