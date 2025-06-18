@@ -1,3 +1,4 @@
+
 // Copyright 2024 Google LLC
 //
 // Licensed under the Apache License, Version 2.0 (the "License");
@@ -12,19 +13,34 @@
 // See the License for the specific language governing permissions and
 // limitations under the License.
 
-// Package embed exposes a builder loading GX files from the files embedded in the binary.
-package embed
+// Package main generates a main function to run all the GX tests of a file.
+// Automatically generated from google3/third_party/gxlang/gx/golang/tools/testsmain.go.
+//
+// DO NOT EDIT
+package cartpoletest
 
 import (
-	"github.com/gx-org/gx/build/builder"
-	"github.com/gx-org/gx/build/importers/embedpkg"
-	"github.com/gx-org/gx/golang/binder/cgx"
+	"testing"
+	"github.com/gx-org/gx/api"
 )
 
-// #include "../cgx.h"
-import "C"
+var tests = []struct{
+  name string
+  test func(*testing.T)
+}{
+	{name: "TestStep", test: TestStep},
 
-//export cgx_new_embed_builder
-func cgx_new_embed_builder() C.cgx_builder {
-	return C.cgx_builder(cgx.Wrap[*builder.Builder](embedpkg.NewBuilder(nil)))
 }
+
+func Run(t *testing.T, dev *api.Device) {
+	t.Helper()
+	err := setupTest(dev)
+	if err != nil {
+		t.Errorf("cannot run cartpoletest tests: %+v", err)
+		return
+	}
+	for _, test := range tests {
+		t.Run("cartpoletest."+test.name, test.test)
+	}
+}
+

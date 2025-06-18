@@ -12,7 +12,7 @@
 // See the License for the specific language governing permissions and
 // limitations under the License.
 
-package cgx
+package cgx_test
 
 import (
 	"bytes"
@@ -21,6 +21,7 @@ import (
 	"testing"
 
 	"github.com/google/go-cmp/cmp"
+	"github.com/gx-org/gx/golang/binder/cgx"
 )
 
 type item struct {
@@ -31,71 +32,71 @@ type item struct {
 // checkHandleCount compares the current handle count to a reference.
 // Cannot use the cgx/testing.CheckHandleCount because of dependency cycle.
 func checkHandleCount(t *testing.T, startCount int) {
-	endCount := HandleCount()
+	endCount := cgx.HandleCount()
 	if endCount != startCount {
 		t.Errorf("handles are leaking: started with %d and ended with %d", startCount, endCount)
 	}
 }
 
 func TestWrapIntrinsicPointer(t *testing.T) {
-	defer checkHandleCount(t, HandleCount())
+	defer checkHandleCount(t, cgx.HandleCount())
 	var want float32 = 0.42
-	w := Wrap[*float32](&want)
-	v := Unwrap[*float32](w)
+	w := cgx.Wrap[*float32](&want)
+	v := cgx.Unwrap[*float32](w)
 	if *v != want {
 		t.Errorf("wrong value: got %v, want %v", *v, want)
 	}
-	Release(w)
+	cgx.Release(w)
 }
 
 func TestWrapStructPointer(t *testing.T) {
-	defer checkHandleCount(t, HandleCount())
+	defer checkHandleCount(t, cgx.HandleCount())
 	type test struct {
 		A int32
 		B string
 	}
 	want := &test{A: 42, B: "more data"}
-	w := Wrap[*test](want)
-	v := Unwrap[*test](w)
+	w := cgx.Wrap[*test](want)
+	v := cgx.Unwrap[*test](w)
 	if !cmp.Equal(*v, *want) {
 		t.Errorf("wrong value: got %v, want %v", *v, *want)
 	}
-	Release(w)
+	cgx.Release(w)
 }
 
 func TestWrapInterface(t *testing.T) {
-	defer checkHandleCount(t, HandleCount())
+	defer checkHandleCount(t, cgx.HandleCount())
 	buffer := bytes.NewBufferString("the quick brown fox")
 	want := buffer.Bytes()
-	w := Wrap[io.Reader](buffer)
-	v := Unwrap[io.Reader](w)
+	w := cgx.Wrap[io.Reader](buffer)
+	v := cgx.Unwrap[io.Reader](w)
 	if got, err := io.ReadAll(v); err != nil {
 		t.Error(err)
 	} else if !cmp.Equal(got, want) {
 		t.Errorf("wrong value: got %s, want %s", got, want)
 	}
-	Release(w)
+	cgx.Release(w)
 }
 
 func TestWrapInterfacesSlice(t *testing.T) {
-	defer checkHandleCount(t, HandleCount())
+	defer checkHandleCount(t, cgx.HandleCount())
 	readers := []io.Reader{
 		bytes.NewBufferString("the"),
 		bytes.NewBufferString("quick"),
 		bytes.NewBufferString("brown"),
 		bytes.NewBufferString("fox"),
 	}
-	w := wrapSlice[io.Reader](readers)
+	w := cgx.WrapSlice[io.Reader](readers)
 	gotText := []string{}
 	for _, rw := range w {
-		reader := Unwrap[io.Reader](rw)
+		reader := cgx.Unwrap[io.Reader](rw)
 		got, err := io.ReadAll(reader)
 		if err != nil {
 			t.Error(err)
 			continue
 		}
 		gotText = append(gotText, string(got))
-		Release(rw)
+		cgx.Release(rw)
 	}
 
 	const want = "the quick brown fox"
@@ -110,14 +111,14 @@ func BenchmarkWrap(b *testing.B) {
 	value := &fake{}
 	b.ReportAllocs()
 	for range b.N {
-		_ = Wrap(value)
+		_ = cgx.Wrap(value)
 	}
 }
 
 func BenchmarkUnwrap(b *testing.B) {
-	handle := Wrap(&fake{})
+	handle := cgx.Wrap(&fake{})
 	b.ReportAllocs()
 	for range b.N {
-		_ = Unwrap[*fake](handle)
+		_ = cgx.Unwrap[*fake](handle)
 	}
 }

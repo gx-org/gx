@@ -26,11 +26,12 @@ import (
 
 	"github.com/gx-org/backend/platform"
 	"github.com/gx-org/gx/api"
+	"github.com/gx-org/gx/api/options"
+	"github.com/gx-org/gx/api/trace"
+	"github.com/gx-org/gx/api/tracer"
 	"github.com/gx-org/gx/api/values"
 	"github.com/gx-org/gx/build/ir"
 	"github.com/gx-org/gx/golang/binder/gobindings/types"
-	"github.com/gx-org/gx/interp"
-	"github.com/gx-org/gx/interp/state"
 	_ "github.com/gx-org/gx/tests/bindings/math"
 	"github.com/pkg/errors"
 )
@@ -51,7 +52,7 @@ var (
 type PackageIR struct {
 	Runtime *api.Runtime
 	IR      *ir.Package
-	Tracer  state.Tracer
+	Tracer  trace.Callback
 }
 
 // Load the GX package for a given backend.
@@ -70,7 +71,7 @@ func Load(rtm *api.Runtime) (*PackageIR, error) {
 
 // BuildFor loads the GX package github.com/gx-org/gx/tests/bindings/math
 // then returns that package for a given device and options.
-func BuildFor(dev *api.Device, options ...interp.PackageOptionFactory) (*Package, error) {
+func BuildFor(dev *api.Device, options ...options.PackageOptionFactory) (*Package, error) {
 	pkg, err := Load(dev.Runtime())
 	if err != nil {
 		return nil, err
@@ -93,14 +94,14 @@ type Package struct {
 	Device  *api.Device
 	Factory *Factory
 
-	options []interp.PackageOption
+	options []options.PackageOption
 
 	ReturnMaxFloat32 ReturnMaxFloat32
 	ReturnMaxFloat64 ReturnMaxFloat64
 }
 
 // AppendOptions appends options to the compiler.
-func (cmpl *Package) AppendOptions(options ...interp.PackageOptionFactory) {
+func (cmpl *Package) AppendOptions(options ...options.PackageOptionFactory) {
 	plat := cmpl.Package.Runtime.Backend().Platform()
 	for _, opt := range options {
 		cmpl.options = append(cmpl.options, opt(plat))
@@ -108,7 +109,7 @@ func (cmpl *Package) AppendOptions(options ...interp.PackageOptionFactory) {
 }
 
 // BuildFor returns a package ready to compile for a device and options.
-func (pkg *PackageIR) BuildFor(dev *api.Device, options ...interp.PackageOptionFactory) *Package {
+func (pkg *PackageIR) BuildFor(dev *api.Device, options ...options.PackageOptionFactory) *Package {
 	c := &Package{
 		Package: pkg,
 		Device:  dev,
@@ -119,13 +120,13 @@ func (pkg *PackageIR) BuildFor(dev *api.Device, options ...interp.PackageOptionF
 	c.ReturnMaxFloat32 = ReturnMaxFloat32{
 		methodBase: methodBase{
 			pkg:      c,
-			function: c.Package.IR.Funcs[0].(*ir.FuncDecl),
+			function: c.Package.IR.Decls.Funcs[0],
 		},
 	}
 	c.ReturnMaxFloat64 = ReturnMaxFloat64{
 		methodBase: methodBase{
 			pkg:      c,
-			function: c.Package.IR.Funcs[1].(*ir.FuncDecl),
+			function: c.Package.IR.Decls.Funcs[1],
 		},
 	}
 
@@ -135,7 +136,7 @@ func (pkg *PackageIR) BuildFor(dev *api.Device, options ...interp.PackageOptionF
 type methodBase struct {
 	pkg      *Package
 	function ir.Func
-	runner   *state.CompiledGraph
+	runner   tracer.CompiledFunc
 }
 
 // ReturnMaxFloat32 compiles and runs the GX function ReturnMaxFloat32 for a device.
@@ -156,7 +157,7 @@ type ReturnMaxFloat64 struct {
 func (f *ReturnMaxFloat32) Run() (_ types.Atom[float32], err error) {
 	var args []values.Value = nil
 	if f.runner == nil {
-		f.runner, err = interp.Compile(f.pkg.Device, f.function.(*ir.FuncDecl), nil, args, f.pkg.options)
+		f.runner, err = tracer.Trace(f.pkg.Device, f.function.(*ir.FuncDecl), nil, args, f.pkg.options)
 		if err != nil {
 			return
 		}
@@ -177,13 +178,17 @@ func (f *ReturnMaxFloat32) Run() (_ types.Atom[float32], err error) {
 	return out0, nil
 }
 
+func (f *ReturnMaxFloat32) String() string {
+	return fmt.Sprint(f.function)
+}
+
 // Run first compiles ReturnMaxFloat64 for a given device and the given arguments.
 // Once compiled, the function is then run with these same arguments.
 // If the shape of the arguments change, the function will panic.
 func (f *ReturnMaxFloat64) Run() (_ types.Atom[float64], err error) {
 	var args []values.Value = nil
 	if f.runner == nil {
-		f.runner, err = interp.Compile(f.pkg.Device, f.function.(*ir.FuncDecl), nil, args, f.pkg.options)
+		f.runner, err = tracer.Trace(f.pkg.Device, f.function.(*ir.FuncDecl), nil, args, f.pkg.options)
 		if err != nil {
 			return
 		}
@@ -202,4 +207,8 @@ func (f *ReturnMaxFloat64) Run() (_ types.Atom[float64], err error) {
 	out0 := types.NewAtom[float64](out0Value)
 
 	return out0, nil
+}
+
+func (f *ReturnMaxFloat64) String() string {
+	return fmt.Sprint(f.function)
 }

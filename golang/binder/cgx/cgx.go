@@ -22,7 +22,6 @@ import (
 	"sync/atomic"
 	"unsafe"
 
-	"github.com/pkg/errors"
 	"github.com/gx-org/backend/dtype"
 	"github.com/gx-org/backend/platform"
 	"github.com/gx-org/backend/shape"
@@ -35,6 +34,7 @@ import (
 	"github.com/gx-org/gx/build/ir"
 	"github.com/gx-org/gx/golang/backend/kernels"
 	"github.com/gx-org/gx/golang/binder/gobindings/types"
+	"github.com/pkg/errors"
 )
 
 /*
@@ -42,7 +42,7 @@ import (
 #include <stdint.h>
 #include <stdlib.h>
 
-#include "third_party/gxlang/gx/golang/binder/cgx/cgx.h"
+#include "cgx.h"
 
 // cgx_device_get_result is the return value for cgx_device_get().
 struct cgx_device_get_result {
@@ -226,7 +226,8 @@ func cgx_release_references(ptr *C.cgx_handle, size C.uint32_t) uintptr {
 	return 0
 }
 
-func wrapSlice[T comparable](vs []T) []C.cgx_handle {
+// WrapSlice wraps all the elements of a slice into C handles.
+func WrapSlice[T comparable](vs []T) []C.cgx_handle {
 	if len(vs) == 0 {
 		return nil
 	}
@@ -405,7 +406,7 @@ func cgx_package_list_functions(cgxPackage C.cgx_package) C.struct_cgx_list_func
 		funcs = append(funcs, newFunctionHandle(cpkg.dev, fn))
 	}
 	return C.struct_cgx_list_functions_result{
-		funcs:         (*C.cgx_function)(pinSliceData(wrapSlice(funcs))),
+		funcs:         (*C.cgx_function)(pinSliceData(WrapSlice(funcs))),
 		num_functions: C.int(len(funcs)),
 	}
 }
@@ -500,7 +501,7 @@ func cgx_function_run(cgxFunction C.cgx_function, cgxReceiver C.cgx_value, argCo
 		return C.struct_cgx_function_run_result{error: (C.cgx_error)(Wrap[error](err))}
 	}
 	return C.struct_cgx_function_run_result{
-		values:     (*C.cgx_value)(pinSliceData(wrapSlice(results))),
+		values:     (*C.cgx_value)(pinSliceData(WrapSlice(results))),
 		value_size: C.uint32_t(len(results)),
 	}
 }
@@ -967,7 +968,7 @@ func cgx_interface_list_methods(cgxIFace C.cgx_interface) C.struct_cgx_list_func
 		funcs = append(funcs, newFunctionHandle(iface.device, fn))
 	}
 	return C.struct_cgx_list_functions_result{
-		funcs:         (*C.cgx_function)(pinSliceData(wrapSlice(funcs))),
+		funcs:         (*C.cgx_function)(pinSliceData(WrapSlice(funcs))),
 		num_functions: C.int(len(funcs)),
 	}
 }
