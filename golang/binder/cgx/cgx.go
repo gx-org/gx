@@ -22,6 +22,7 @@ import (
 	"sync/atomic"
 	"unsafe"
 
+	"github.com/pkg/errors"
 	"github.com/gx-org/backend/dtype"
 	"github.com/gx-org/backend/platform"
 	"github.com/gx-org/backend/shape"
@@ -34,7 +35,6 @@ import (
 	"github.com/gx-org/gx/build/ir"
 	"github.com/gx-org/gx/golang/backend/kernels"
 	"github.com/gx-org/gx/golang/binder/gobindings/types"
-	"github.com/pkg/errors"
 )
 
 /*
@@ -42,7 +42,7 @@ import (
 #include <stdint.h>
 #include <stdlib.h>
 
-#include "cgx.h"
+#include <gx/golang/binder/cgx/cgx.h>
 
 // cgx_device_get_result is the return value for cgx_device_get().
 struct cgx_device_get_result {
@@ -226,7 +226,7 @@ func cgx_release_references(ptr *C.cgx_handle, size C.uint32_t) uintptr {
 	return 0
 }
 
-// WrapSlice wraps all the elements of a slice into C handles.
+// WrapSlice wraps all the element of a slice.
 func WrapSlice[T comparable](vs []T) []C.cgx_handle {
 	if len(vs) == 0 {
 		return nil

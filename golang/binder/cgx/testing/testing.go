@@ -26,7 +26,7 @@ import (
 	gxtesting "github.com/gx-org/gx/tests/testing"
 )
 
-// #include "../cgx.h"
+// #include <gx/golang/binder/cgx/cgx.h>
 import "C"
 
 //export cgx_testing_builder
