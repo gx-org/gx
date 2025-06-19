@@ -17,9 +17,6 @@ package grad
 
 import (
 	"embed"
-	"go/ast"
-	"go/token"
-	"math/big"
 
 	"github.com/gx-org/gx/build/ir"
 	"github.com/gx-org/gx/internal/interp/compeval/cpevelements"
@@ -98,7 +95,7 @@ func gradReturnStmt(fetcher ir.Fetcher, src *ir.ReturnStmt, argName string) (*ir
 		}
 		if res != nil {
 			// The expression depends on arg: nothing left to do.
-			stmt.Results[i] = res
+			stmt.Results[i] = res.x
 			continue
 		}
 		// The expression does not depend on arg: replace it with a zero value.
@@ -106,107 +103,7 @@ func gradReturnStmt(fetcher ir.Fetcher, src *ir.ReturnStmt, argName string) (*ir
 		if !ok {
 			return nil, false
 		}
-		stmt.Results[i] = res
+		stmt.Results[i] = res.x
 	}
 	return stmt, true
-}
-
-func gradExpr(fetcher ir.Fetcher, src ir.Expr, argName string) (ir.AssignableExpr, bool) {
-	switch srcT := src.(type) {
-	case *ir.ArrayLitExpr:
-		return gradArrayLitExpr(fetcher, srcT, argName)
-	case *ir.NumberCastExpr:
-		return zeroValueOf(fetcher, src.Source(), src.Type())
-	case *ir.ValueRef:
-		return gradValueRef(fetcher, srcT, argName)
-	case *ir.BinaryExpr:
-		return gradBinaryExpr(fetcher, srcT, argName)
-	default:
-		return nil, fetcher.Err().Appendf(src.Source(), "gradient of %T expression not supported", srcT)
-	}
-}
-
-func gradBinaryExpr(fetcher ir.Fetcher, src *ir.BinaryExpr, argName string) (ir.AssignableExpr, bool) {
-	u := src.X
-	v := src.Y
-	uGrad, xOk := gradExpr(fetcher, src.X, argName)
-	vGrad, yOk := gradExpr(fetcher, src.Y, argName)
-	switch src.Src.Op {
-	case token.ADD, token.SUB:
-		return &ir.BinaryExpr{
-			Src: src.Src,
-			Typ: src.Typ,
-			X:   uGrad,
-			Y:   vGrad,
-		}, xOk && yOk
-	case token.MUL:
-		return &ir.BinaryExpr{
-			Src: &ast.BinaryExpr{Op: token.ADD},
-			X: &ir.BinaryExpr{
-				Src: &ast.BinaryExpr{Op: token.MUL},
-				X:   uGrad,
-				Y:   v,
-			},
-			Y: &ir.BinaryExpr{
-				Src: &ast.BinaryExpr{Op: token.MUL},
-				X:   u,
-				Y:   vGrad,
-			},
-		}, xOk && yOk
-	default:
-		return nil, fetcher.Err().Appendf(src.Source(), "gradient of binary expression %s not supported", src.Src.Op)
-	}
-}
-
-func gradValueRef(fetcher ir.Fetcher, src *ir.ValueRef, argName string) (ir.AssignableExpr, bool) {
-	if src.Src.Name != argName {
-		// The ident does not correspond to the variable
-		// for which we are differentiating: return zero.
-		return nil, true
-	}
-	return oneValueOf(fetcher, src.Source(), src.Type())
-}
-
-func gradArrayLitExpr(fetcher ir.Fetcher, src *ir.ArrayLitExpr, argName string) (ir.AssignableExpr, bool) {
-	allZero := true
-	gValues := make([]ir.AssignableExpr, len(src.Values()))
-	for i, expr := range src.Values() {
-		var ok bool
-		gValues[i], ok = gradExpr(fetcher, expr, argName)
-		if !ok {
-			return nil, false
-		}
-		if gValues[i] != nil {
-			allZero = false
-			continue
-		}
-		gValues[i], ok = zeroValueOf(fetcher, expr.Source(), expr.Type())
-		if !ok {
-			return nil, false
-		}
-	}
-	if allZero {
-		return nil, true
-	}
-	return src.NewFromValues(gValues), true
-}
-
-func zeroValueOf(fetcher ir.Fetcher, node ast.Node, typ ir.Type) (ir.AssignableExpr, bool) {
-	zero, ok := typ.(ir.Zeroer)
-	if !ok {
-		return nil, fetcher.Err().Appendf(node, "zero expression of %T not supported", typ)
-	}
-	return zero.Zero(), true
-}
-
-var one = &ir.NumberInt{Src: &ast.BasicLit{Value: "1"}, Val: big.NewInt(1)}
-
-func oneValueOf(fetcher ir.Fetcher, node ast.Node, typ ir.Type) (ir.AssignableExpr, bool) {
-	return &ir.CastExpr{
-		X: &ir.NumberCastExpr{
-			X:   one,
-			Typ: ir.TypeFromKind(typ.Kind()),
-		},
-		Typ: typ,
-	}, true
 }

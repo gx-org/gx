@@ -1,4 +1,4 @@
-// Copyright 2024 Google LLC
+// Copyright 2025 Google LLC
 //
 // Licensed under the Apache License, Version 2.0 (the "License");
 // you may not use this file except in compliance with the License.
@@ -12,19 +12,21 @@
 // See the License for the specific language governing permissions and
 // limitations under the License.
 
-// Package embed exposes a builder loading GX files from the files embedded in the binary.
-package embed
+#include "third_party/gxlang/gx/golang/binder/cgx/testing/testing.h"
 
-import (
-	"github.com/gx-org/gx/build/builder"
-	"github.com/gx-org/gx/build/importers/embedpkg"
-	"github.com/gx-org/gx/golang/binder/cgx"
-)
+#include "third_party/absl/status/statusor.h"
+#include "third_party/gxlang/gx/golang/binder/cgx/cppgx.h"
 
-// #include "third_party/gxlang/gx/golang/binder/cgx/cgx.h"
-import "C"
+namespace gxlang {
+namespace cppgx {
 
-//export cgx_new_embed_builder
-func cgx_new_embed_builder() C.cgx_builder {
-	return C.cgx_builder(cgx.Wrap[*builder.Builder](embedpkg.NewBuilder(nil)))
+absl::StatusOr<Runtime> TestRuntime() {
+  const auto result = cgx_testing_runtime();
+  if (result.error != cgx_error{}) {
+    return ToErrorStatus(result.error);
+  }
+  return Runtime(result.runtime);
 }
+
+}  // namespace cppgx
+}  // namespace gxlang

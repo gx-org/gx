@@ -25,17 +25,17 @@ import (
 
 	"github.com/gx-org/gx/api"
 	"github.com/gx-org/gx/build/builder"
-	"github.com/gx-org/gx/build/importers"
 	"github.com/gx-org/gx/build/importers/embedpkg"
+	"github.com/gx-org/gx/build/importers"
 	"github.com/gx-org/gx/golang/binder/cgx"
 	cgxtesting "github.com/gx-org/gx/golang/binder/cgx/testing"
 	"github.com/gx-org/gx/stdlib"
 )
 
 // #include <stdlib.h>
-// #include "../../cgx.h"
-// #include "../../cgx.cgo.h"
-// #include "../../testing/testing.cgo.h"
+// #include "third_party/gxlang/gx/golang/binder/cgx/cgx.h"
+// #include "third_party/gxlang/gx/golang/binder/cgx/cgx.cgo.h"
+// #include "third_party/gxlang/gx/golang/binder/cgx/testing/testing.cgo.h"
 import "C"
 
 const (
