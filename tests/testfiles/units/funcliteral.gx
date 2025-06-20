@@ -1,0 +1,12 @@
+// Package funcliteral tests calling a function literal.
+package funcliteral
+
+func TestAssignLambda() int32 {
+	fn := func() int32 {
+		return 10
+	}
+	return fn()
+	// Want:
+	// int32(10)
+}
+

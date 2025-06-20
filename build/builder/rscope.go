@@ -134,7 +134,7 @@ func (s *pkgResolveScope) String() string {
 
 type (
 	resolveScope interface {
-		fileScope() *fileResolveScope
+		fileScope() *fileResolveScope // TODO(degris): replace this method with irBuilder.
 		ns() *scope.RWScope[processNode]
 		err() *fmterr.Appender
 		compEval() (*compileEvaluator, bool)
@@ -149,7 +149,7 @@ type (
 		ev     *compileEvaluator
 		nspace *scope.RWScope[processNode]
 		deps   map[string]*importedPackage
-		proc   pNodeProcessor
+		proc   pNodeProcessor // TODO(degris): remove this by running two passes for constants.
 	}
 )
 

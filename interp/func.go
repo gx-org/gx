@@ -156,6 +156,8 @@ type funcLit struct {
 
 func (f *funcLit) Call(fctx elements.FileContext, call *ir.CallExpr, args []elements.Element) (outs []elements.Element, err error) {
 	ctx := fctx.(*context)
+	// TODO(degris): remove this hack.
+	f.fnT.FFile = fctx.File()
 	return ctx.eval.evaluator.CallFuncLit(ctx, f.fnT, args)
 }
 
