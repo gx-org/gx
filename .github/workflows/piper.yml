@@ -20,6 +20,9 @@ on:
   push:
     branches: ["piper"]
 
+env:
+  CGO_CFLAGS: -I ${{ github.workspace }}
+
 jobs:
 
   MergeToMain:
@@ -44,6 +47,9 @@ jobs:
 
     - name: Tidy (best effort)
       run: go mod tidy || true
+
+    - name: Echo 
+      run: echo "$CGO_CFLAGS"
 
     - name: Generating code
       run: go generate ./...
