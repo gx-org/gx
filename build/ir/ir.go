@@ -951,7 +951,17 @@ func (s *arrayType) ArrayType() *ast.ArrayType {
 
 // Zero returns a zero literal of this type
 func (s *arrayType) Zero() AssignableExpr {
-	return &ArrayLitExpr{Typ: s}
+	cst := &NumberCastExpr{
+		X:   zero,
+		Typ: s.DataType(),
+	}
+	if s.RankF.IsAtomic() {
+		return cst
+	}
+	return &CastExpr{
+		Typ: s,
+		X:   cst,
+	}
 }
 
 // String representation of the tensor type.

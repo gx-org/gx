@@ -29,14 +29,16 @@ import (
 //go:embed grad.gx
 var gradSrc []byte
 
-func TestGradFunc(t *testing.T) {
+func setGradImplementation(pkg *ir.Package) {
+	id := pkg.FindFunc("Func").(*ir.Macro)
+	id.BuildSynthetic = cpevelements.MacroImpl(grad.FuncGrad)
+}
+
+func TestGradOps(t *testing.T) {
 	testbuild.Run(t,
 		testbuild.DeclarePackage{
-			Src: string(gradSrc),
-			Post: func(pkg *ir.Package) {
-				id := pkg.FindFunc("Func").(*ir.Macro)
-				id.BuildSynthetic = cpevelements.MacroImpl(grad.FuncGrad)
-			},
+			Src:  string(gradSrc),
+			Post: setGradImplementation,
 		},
 		testgrad.Func{
 			GradOf: `
@@ -179,6 +181,63 @@ func F(x [2]float32) [2]float32 {
 			Want: `
 func gradF(x [2]float32) [2]float32 {
 	return ((2)*((x+1)*(x+1))-(2*x)*((x+1)+(x+1)))/(((x+1)*(x+1))*((x+1)*(x+1)))
+}
+`,
+		},
+	)
+}
+
+func TestGradFunc(t *testing.T) {
+	testbuild.Run(t,
+		testbuild.DeclarePackage{
+			Src:  string(gradSrc),
+			Post: setGradImplementation,
+		},
+		testgrad.Func{
+			GradOf: `
+func g() float32 {
+	return 2
+}
+
+func F(x float32) float32 {
+	return g()
+}
+`,
+			Want: `
+func gradF(x float32) float32 {
+	return 0
+}
+`,
+		},
+		testgrad.Func{
+			GradOf: `
+func g(x float32) float32 {
+	return x	
+}
+
+func F(x float32) float32 {
+	return g(x)
+}
+`,
+			Want: `
+func gradF(x float32) float32 {
+	return gradg(x)
+}
+`,
+		},
+		testgrad.Func{
+			GradOf: `
+func g(x float32) float32 {
+	return x	
+}
+
+func F(x float32) float32 {
+	return g(x*x)
+}
+`,
+			Want: `
+func gradF(x float32) float32 {
+	return gradg(x*x)*(x+x)
 }
 `,
 		},

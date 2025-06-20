@@ -37,8 +37,9 @@ var Package = builtin.PackageBuilder{
 }
 
 type gradMacro struct {
-	fn  *ir.FuncDecl
-	wrt string
+	macro *cpevelements.Macro
+	fn    *ir.FuncDecl
+	wrt   string
 }
 
 // FuncGrad computes the gradient of a function.
@@ -51,10 +52,17 @@ func FuncGrad(call elements.CallAt, macro *cpevelements.Macro, args []elements.E
 	if err != nil {
 		return nil, err
 	}
-	return cpevelements.NewSyntheticFunc(macro, &gradMacro{
-		fn:  fn,
-		wrt: wrt,
-	}), nil
+	return cpevelements.NewSyntheticFunc(macro, (&gradMacro{
+		macro: macro,
+	}).newMacro(fn, wrt)), nil
+}
+
+func (m *gradMacro) newMacro(fn *ir.FuncDecl, wrt string) *gradMacro {
+	return &gradMacro{
+		macro: m.macro,
+		fn:    fn,
+		wrt:   wrt,
+	}
 }
 
 func (m *gradMacro) BuildType() (*ir.FuncType, error) {
@@ -62,14 +70,14 @@ func (m *gradMacro) BuildType() (*ir.FuncType, error) {
 }
 
 func (m *gradMacro) BuildBody(fetcher ir.Fetcher) (*ir.BlockStmt, bool) {
-	return gradBlock(fetcher, m.fn.Body, m.wrt)
+	return m.gradBlock(fetcher, m.fn.Body, m.wrt)
 }
 
-func gradBlock(fetcher ir.Fetcher, src *ir.BlockStmt, argName string) (*ir.BlockStmt, bool) {
+func (m *gradMacro) gradBlock(fetcher ir.Fetcher, src *ir.BlockStmt, argName string) (*ir.BlockStmt, bool) {
 	block := &ir.BlockStmt{List: make([]ir.Stmt, len(src.List))}
 	for i, stmt := range src.List {
 		var ok bool
-		block.List[i], ok = gradStmt(fetcher, stmt, argName)
+		block.List[i], ok = m.gradStmt(fetcher, stmt, argName)
 		if !ok {
 			return nil, false
 		}
@@ -77,19 +85,19 @@ func gradBlock(fetcher ir.Fetcher, src *ir.BlockStmt, argName string) (*ir.Block
 	return block, true
 }
 
-func gradStmt(fetcher ir.Fetcher, src ir.Stmt, argName string) (ir.Stmt, bool) {
+func (m *gradMacro) gradStmt(fetcher ir.Fetcher, src ir.Stmt, argName string) (ir.Stmt, bool) {
 	switch srcT := src.(type) {
 	case *ir.ReturnStmt:
-		return gradReturnStmt(fetcher, srcT, argName)
+		return m.gradReturnStmt(fetcher, srcT, argName)
 	default:
 		return nil, fetcher.Err().Appendf(src.Source(), "gradient of %T statement not supported", srcT)
 	}
 }
 
-func gradReturnStmt(fetcher ir.Fetcher, src *ir.ReturnStmt, argName string) (*ir.ReturnStmt, bool) {
+func (m *gradMacro) gradReturnStmt(fetcher ir.Fetcher, src *ir.ReturnStmt, argName string) (*ir.ReturnStmt, bool) {
 	stmt := &ir.ReturnStmt{Results: make([]ir.Expr, len(src.Results))}
 	for i, expr := range src.Results {
-		res, ok := gradExpr(fetcher, expr, argName)
+		res, ok := m.gradExpr(fetcher, expr, argName)
 		if !ok {
 			return nil, false
 		}

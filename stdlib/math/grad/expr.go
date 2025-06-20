@@ -35,18 +35,18 @@ type gradExprResult struct {
 	expr ir.AssignableExpr
 }
 
-func gradExpr(fetcher ir.Fetcher, src ir.Expr, argName string) (*gradExprResult, bool) {
+func (m *gradMacro) gradExpr(fetcher ir.Fetcher, src ir.Expr, argName string) (*gradExprResult, bool) {
 	switch srcT := src.(type) {
 	case *ir.ArrayLitExpr:
-		return gradArrayLitExpr(fetcher, srcT, argName)
+		return m.gradArrayLitExpr(fetcher, srcT, argName)
 	case *ir.NumberCastExpr:
 		return zeroValueOf(fetcher, src.Source(), src.Type())
 	case *ir.ValueRef:
 		return gradValueRef(fetcher, srcT, argName)
 	case *ir.BinaryExpr:
-		return gradBinaryExpr(fetcher, srcT, argName)
+		return m.gradBinaryExpr(fetcher, srcT, argName)
 	case *ir.ParenExpr:
-		expr, ok := gradExpr(fetcher, srcT.X, argName)
+		expr, ok := m.gradExpr(fetcher, srcT.X, argName)
 		if !ok {
 			return expr, false
 		}
@@ -56,6 +56,8 @@ func gradExpr(fetcher ir.Fetcher, src ir.Expr, argName string) (*gradExprResult,
 		return &gradExprResult{
 			expr: &ir.ParenExpr{X: expr.expr},
 		}, true
+	case *ir.CallExpr:
+		return m.gradCall(fetcher, srcT, argName)
 	default:
 		return nil, fetcher.Err().Appendf(src.Source(), "gradient of %T expression not supported", srcT)
 	}
@@ -142,11 +144,11 @@ func buildQuo(x, y *gradExprResult) *gradExprResult {
 	}
 }
 
-func gradBinaryExpr(fetcher ir.Fetcher, src *ir.BinaryExpr, argName string) (*gradExprResult, bool) {
+func (m *gradMacro) gradBinaryExpr(fetcher ir.Fetcher, src *ir.BinaryExpr, argName string) (*gradExprResult, bool) {
 	u := &gradExprResult{expr: src.X}
 	v := &gradExprResult{expr: src.Y}
-	uGrad, xOk := gradExpr(fetcher, u.expr, argName)
-	vGrad, yOk := gradExpr(fetcher, v.expr, argName)
+	uGrad, xOk := m.gradExpr(fetcher, u.expr, argName)
+	vGrad, yOk := m.gradExpr(fetcher, v.expr, argName)
 	if !xOk || !yOk {
 		return nil, false
 	}
@@ -182,11 +184,11 @@ func gradValueRef(fetcher ir.Fetcher, src *ir.ValueRef, argName string) (*gradEx
 	return oneValueOf(fetcher, src.Source(), src.Type())
 }
 
-func gradArrayLitExpr(fetcher ir.Fetcher, src *ir.ArrayLitExpr, argName string) (*gradExprResult, bool) {
+func (m *gradMacro) gradArrayLitExpr(fetcher ir.Fetcher, src *ir.ArrayLitExpr, argName string) (*gradExprResult, bool) {
 	allZero := true
 	gValues := make([]ir.AssignableExpr, len(src.Values()))
 	for i, expr := range src.Values() {
-		gExpr, ok := gradExpr(fetcher, expr, argName)
+		gExpr, ok := m.gradExpr(fetcher, expr, argName)
 		if !ok {
 			return nil, false
 		}
