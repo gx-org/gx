@@ -53,7 +53,7 @@ jobs:
       run: |
         echo "$CGO_CFLAGS" 
         ls -l "$ROOT/gx/golang/binder/cgx/cgx.h"
-        cd gx/golang/binder/cgx
+        cd golang/binder/cgx
         go tool cgo -debug-gcc -exportheader cgx.cgo.h -- $CGO_CFLAGS cgx.go
 
     - name: Generating code
