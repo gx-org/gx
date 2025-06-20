@@ -50,7 +50,11 @@ jobs:
       run: go mod tidy || true
 
     - name: Echo 
-      run: echo "$CGO_CFLAGS" ; ls -l "$ROOT/gx/golang/binder/cgx/cgx.h"
+      run: |
+        echo "$CGO_CFLAGS" 
+        ls -l "$ROOT/gx/golang/binder/cgx/cgx.h"
+        cd gx/golang/binder/cgx
+        go tool cgo -debug-gcc -exportheader cgx.cgo.h -- $CGO_CFLAGS cgx.go
 
     - name: Generating code
       run: go generate ./...
