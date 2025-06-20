@@ -129,7 +129,7 @@ func (n *returnStmt) buildStmt(scope iFuncResolveScope) (ir.Stmt, bool) {
 			}
 		}
 		gotType := rTypes[i]
-		wantType := scope.processTypeRef(wantI.Group.Type.Typ)
+		wantType := wantI.Group.Type.Typ
 		if gotType.Kind() == ir.InvalidKind || wantType.Kind() == ir.InvalidKind {
 			ok = false
 			continue

@@ -138,7 +138,6 @@ type (
 		ns() *scope.RWScope[processNode]
 		err() *fmterr.Appender
 		compEval() (*compileEvaluator, bool)
-		processTypeRef(ir.Type) ir.Type
 	}
 
 	pNodeProcessor func(processNode) bool
@@ -180,10 +179,6 @@ func (s *fileResolveScope) process(pNode processNode) bool {
 		return true
 	}
 	return s.proc(pNode)
-}
-
-func (s *fileResolveScope) processTypeRef(typ ir.Type) ir.Type {
-	return typ
 }
 
 func (s *fileResolveScope) compEval() (*compileEvaluator, bool) {
@@ -340,21 +335,6 @@ func (s *blockResolveScope) compEval() (*compileEvaluator, bool) {
 	return s.compeval, true
 }
 
-func (s *blockResolveScope) processTypeRef(typ ir.Type) ir.Type {
-	switch typT := typ.(type) {
-	case *ir.TypeParam:
-		return typT.Field.Type()
-	case ir.ArrayType:
-		dtypeParam, isTypeParam := typT.DataType().(*ir.TypeParam)
-		if !isTypeParam {
-			return typ
-		}
-		return ir.NewArrayType(typT.ArrayType(), dtypeParam.Field.Type(), typT.Rank())
-	default:
-		return typ
-	}
-}
-
 type (
 	compositeLitResolveScope interface {
 		resolveScope
@@ -414,7 +394,7 @@ func (s *arrayResolveScope) sub(src ast.Node) (compositeLitResolveScope, bool) {
 	if !ok {
 		return s, s.err().AppendInternalf(src, "unexpected literal for type %s ", s.current.String())
 	}
-	eltArray := ir.ToArrayType(s.processTypeRef(elt))
+	eltArray := ir.ToArrayType(elt)
 	if eltArray == nil {
 		return s, s.err().AppendInternalf(src, "invalid element type %s ", elt.String())
 	}

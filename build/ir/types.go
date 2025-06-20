@@ -575,6 +575,8 @@ func AtomTypeExpr(typ Type) *TypeValExpr {
 // Returns nil if the conversion is not possible
 func ToArrayType(typ Type) ArrayType {
 	switch typT := typ.(type) {
+	case *TypeParam:
+		return ToArrayType(typT.Field.Group.Type.Typ)
 	case *NamedType:
 		return ToArrayType(typT.Underlying.Typ)
 	case *TypeSet:

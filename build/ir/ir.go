@@ -573,8 +573,11 @@ func (s *NamedType) assignableFrom(fetcher Fetcher, source Type) (bool, error) {
 // ConvertibleTo reports whether a value of the type can be converted to another
 // (using static type casting).
 func (s *NamedType) ConvertibleTo(fetcher Fetcher, target Type) (bool, error) {
-	if namedTarget, ok := target.(*NamedType); ok {
-		return s.Equal(fetcher, namedTarget)
+	switch targetT := target.(type) {
+	case *NamedType:
+		return s.Equal(fetcher, targetT)
+	case *TypeParam:
+		return s.ConvertibleTo(fetcher, targetT.Field.Group.Type.Typ)
 	}
 	return s.Underlying.Typ.ConvertibleTo(fetcher, target)
 }
@@ -973,12 +976,16 @@ func (s *TypeParam) Kind() Kind {
 
 // Equal returns true if other is the same type.
 func (s *TypeParam) Equal(fetcher Fetcher, typ Type) (bool, error) {
-	return s.Field.Type().Equal(fetcher, typ)
+	typT, ok := typ.(*TypeParam)
+	if !ok {
+		return false, nil
+	}
+	return typT == s, nil
 }
 
 // AssignableTo reports whether a value of the type can be assigned to another.
 func (s *TypeParam) AssignableTo(fetcher Fetcher, typ Type) (bool, error) {
-	return s.Field.Type().AssignableTo(fetcher, typ)
+	return s.Equal(fetcher, typ)
 }
 
 // ConvertibleTo reports whether a value of the type can be converted to another
@@ -994,7 +1001,7 @@ func (s *TypeParam) Source() ast.Node {
 
 // Type of the type.
 func (s *TypeParam) Type() Type {
-	return s.Field.Type().Type()
+	return s
 }
 
 // Value returns a value pointing to the receiver.

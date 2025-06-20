@@ -42,7 +42,6 @@ func (n *numberLit) String() string {
 }
 
 func castNumber(scope resolveScope, expr ir.Expr, target ir.Type) (*ir.NumberCastExpr, bool) {
-	target = scope.processTypeRef(target)
 	cast := &ir.NumberCastExpr{
 		X:   expr,
 		Typ: target,

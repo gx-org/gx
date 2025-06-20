@@ -136,19 +136,20 @@ func TestGenericCall(t *testing.T) {
 		Underlying: irhelper.TypeExpr(irhelper.TypeSet(ir.Int32Type(), ir.Int64Type())),
 	}
 	someIntT := irhelper.Field("T", someInt, nil)
+	someIntTP := &ir.TypeParam{Field: someIntT}
 	castNoArgFunc := &ir.FuncDecl{
 		Src: &ast.FuncDecl{Name: &ast.Ident{Name: "cast"}},
 		FType: irhelper.FuncType(
 			irhelper.Fields(someIntT),
 			nil,
 			irhelper.Fields(),
-			irhelper.Fields(&ir.TypeParam{Field: someIntT}),
+			irhelper.Fields(someIntTP),
 		),
 		Body: &ir.BlockStmt{List: []ir.Stmt{
 			&ir.ReturnStmt{Results: []ir.Expr{
 				&ir.CastExpr{
-					X:   irhelper.IntNumberAs(2, someInt),
-					Typ: someInt,
+					X:   irhelper.IntNumberAs(2, someIntTP),
+					Typ: someIntTP,
 				},
 			}},
 		}},
@@ -208,6 +209,14 @@ func callCast() int32 {
 			},
 		},
 	)
+}
+
+func TestGenericArray(t *testing.T) {
+	someInt := &ir.NamedType{
+		Src:        &ast.TypeSpec{Name: irhelper.Ident("someInt")},
+		File:       wantFile,
+		Underlying: irhelper.TypeExpr(irhelper.TypeSet(ir.Int32Type(), ir.Int64Type())),
+	}
 	new2x3ArrayFunc := &ir.FuncDecl{
 		Src: &ast.FuncDecl{Name: &ast.Ident{Name: "new2x3Array"}},
 		FType: irhelper.FuncType(
@@ -327,7 +336,16 @@ func callCast() int32 {
 			Err: "float32 does not satisfy test.someInt",
 		},
 	)
-	someIntT = irhelper.Field("T", someInt, nil)
+}
+
+func TestGenericConvert(t *testing.T) {
+	someInt := &ir.NamedType{
+		Src:        &ast.TypeSpec{Name: irhelper.Ident("someInt")},
+		File:       wantFile,
+		Underlying: irhelper.TypeExpr(irhelper.TypeSet(ir.Int32Type(), ir.Int64Type())),
+	}
+	someIntT := irhelper.Field("T", someInt, nil)
+	someIntTP := &ir.TypeParam{Field: someIntT}
 	someIntS := irhelper.Field("S", someInt, someIntT.Group)
 	valField := irhelper.Field("val", &ir.TypeParam{Field: someIntS}, nil)
 	castAtomFunc := &ir.FuncDecl{
@@ -336,11 +354,11 @@ func callCast() int32 {
 			irhelper.Fields(someIntT.Group),
 			nil,
 			irhelper.Fields("val", &ir.TypeParam{Field: someIntS}),
-			irhelper.Fields(&ir.TypeParam{Field: someIntT}),
+			irhelper.Fields(someIntTP),
 		),
 		Body: &ir.BlockStmt{List: []ir.Stmt{
 			&ir.ReturnStmt{Results: []ir.Expr{
-				&ir.CastExpr{Typ: someInt, X: irhelper.ValueRef(valField.Storage())},
+				&ir.CastExpr{Typ: someIntTP, X: irhelper.ValueRef(valField.Storage())},
 			}},
 		}},
 	}
@@ -429,6 +447,14 @@ func callCast() int32 {
 			},
 		},
 	)
+}
+
+func TestGenericCastArray(t *testing.T) {
+	someInt := &ir.NamedType{
+		Src:        &ast.TypeSpec{Name: irhelper.Ident("someInt")},
+		File:       wantFile,
+		Underlying: irhelper.TypeExpr(irhelper.TypeSet(ir.Int32Type(), ir.Int64Type())),
+	}
 	castArrayFunc := &ir.FuncBuiltin{
 		Src: &ast.FuncDecl{Name: &ast.Ident{Name: "cast"}},
 		FType: irhelper.FuncType(
@@ -508,4 +534,20 @@ type Floats interface {
 		},
 	)
 
+}
+
+func TestGenericExpression(t *testing.T) {
+	testbuild.Run(t,
+		testbuild.Decl{
+			Src: `
+type Floats interface {
+	float32 | float64
+}
+
+func F[T Floats](x T) T {
+	return 2*x
+}
+`,
+		},
+	)
 }

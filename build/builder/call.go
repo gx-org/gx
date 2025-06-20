@@ -80,7 +80,7 @@ func (n *callExpr) buildTypeCast(rscope resolveScope, callee ir.AssignableExpr, 
 	if !ok {
 		return nil, false
 	}
-	dst := rscope.processTypeRef(typRef.Typ)
+	dst := typRef.Typ
 	ext := &ir.CastExpr{Src: n.src, Typ: dst}
 	args, argsOk := n.buildArgs(rscope)
 	if !argsOk {
