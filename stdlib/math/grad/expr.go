@@ -45,6 +45,17 @@ func gradExpr(fetcher ir.Fetcher, src ir.Expr, argName string) (*gradExprResult,
 		return gradValueRef(fetcher, srcT, argName)
 	case *ir.BinaryExpr:
 		return gradBinaryExpr(fetcher, srcT, argName)
+	case *ir.ParenExpr:
+		expr, ok := gradExpr(fetcher, srcT.X, argName)
+		if !ok {
+			return expr, false
+		}
+		if expr.kind != notSpecial {
+			return expr, true
+		}
+		return &gradExprResult{
+			expr: &ir.ParenExpr{X: expr.expr},
+		}, true
 	default:
 		return nil, fetcher.Err().Appendf(src.Source(), "gradient of %T expression not supported", srcT)
 	}
@@ -117,6 +128,20 @@ func buildSub(x, y *gradExprResult) *gradExprResult {
 	}
 }
 
+func buildQuo(x, y *gradExprResult) *gradExprResult {
+	if y.kind == oneSpecial {
+		return x
+	}
+	return &gradExprResult{
+		expr: &ir.BinaryExpr{
+			Src: &ast.BinaryExpr{Op: token.QUO},
+			Typ: x.expr.Type(),
+			X:   x.expr,
+			Y:   y.expr,
+		},
+	}
+}
+
 func gradBinaryExpr(fetcher ir.Fetcher, src *ir.BinaryExpr, argName string) (*gradExprResult, bool) {
 	u := &gradExprResult{expr: src.X}
 	v := &gradExprResult{expr: src.Y}
@@ -134,6 +159,14 @@ func gradBinaryExpr(fetcher ir.Fetcher, src *ir.BinaryExpr, argName string) (*gr
 		return buildAdd(
 			buildMul(uGrad, v),
 			buildMul(u, vGrad),
+		), true
+	case token.QUO:
+		return buildQuo(
+			buildSub(
+				buildMul(uGrad, v),
+				buildMul(u, vGrad),
+			),
+			buildMul(v, v),
 		), true
 	default:
 		return nil, fetcher.Err().Appendf(src.Source(), "gradient of binary expression %s not supported", src.Src.Op)
