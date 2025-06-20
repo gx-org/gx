@@ -495,3 +495,17 @@ func callCast() int32 {
 	)
 
 }
+
+func TestGenericErrors(t *testing.T) {
+	testbuild.Run(t,
+		testbuild.Decl{
+			Src: `
+type Floats interface {
+	float32 | float
+}
+`,
+			Err: "undefined: float",
+		},
+	)
+
+}

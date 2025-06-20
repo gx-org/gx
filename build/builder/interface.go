@@ -65,11 +65,11 @@ func (s *typeSet) buildTypeExpr(rscope resolveScope) (*ir.TypeValExpr, bool) {
 	rtypeNames := map[string]ir.Type{}
 	for i, typ := range s.typs {
 		typeExpr, typOk := typ.buildTypeExpr(rscope)
-		ext.Typs[i] = typeExpr.Typ
 		if !typOk {
 			ok = false
 			continue
 		}
+		ext.Typs[i] = typeExpr.Typ
 		if prev, exists := rtypeNames[s.typs[i].String()]; exists {
 			ok = rscope.err().Appendf(s.source(), "overlapping terms %s and %s", prev, typeExpr)
 		}
