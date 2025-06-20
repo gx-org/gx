@@ -1,4 +1,4 @@
-// Copyright 2024 Google LLC
+// Copyright 2025 Google LLC
 //
 // Licensed under the Apache License, Version 2.0 (the "License");
 // you may not use this file except in compliance with the License.
@@ -12,19 +12,36 @@
 // See the License for the specific language governing permissions and
 // limitations under the License.
 
-// Package embed exposes a builder loading GX files from the files embedded in the binary.
-package embed
+// Package math encapsulates GX source files
+// into a Go package.
+//
+// Automatically generated from google3/third_party/gxlang/gx/golang/packager/package.go.
+//
+// DO NOT EDIT
+package math
 
 import (
+	"embed"
+
 	"github.com/gx-org/gx/build/builder"
 	"github.com/gx-org/gx/build/importers/embedpkg"
-	"github.com/gx-org/gx/golang/binder/cgx"
+
 )
 
-// #include <gx/golang/binder/cgx/cgx.h>
-import "C"
+//go:embed math.gx 
+var srcs embed.FS
 
-//export cgx_new_embed_builder
-func cgx_new_embed_builder() C.cgx_builder {
-	return C.cgx_builder(cgx.Wrap[*builder.Builder](embedpkg.NewBuilder(nil)))
+var inputFiles = []string{
+"math.gx",
+}
+
+func init() {
+	embedpkg.RegisterPackage("github.com/gx-org/gx/tests/bindings/math", Build)
+}
+
+var _ embedpkg.BuildFunc = Build
+
+// Build GX package.
+func Build(bld *builder.Builder) (builder.Package, error) {
+	return bld.BuildFiles("github.com/gx-org/gx/tests/bindings", "math", srcs, inputFiles)
 }

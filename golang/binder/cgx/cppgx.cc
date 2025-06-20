@@ -12,7 +12,7 @@
 // See the License for the specific language governing permissions and
 // limitations under the License.
 
-#include "third_party/gxlang/gx/golang/binder/cgx/cppgx.h"
+#include <gx/golang/binder/cgx/cppgx.h>
 
 #include <stdlib.h>
 
@@ -24,10 +24,10 @@
 #include <utility>
 #include <vector>
 
-#include "third_party/absl/status/status.h"
-#include "third_party/absl/status/statusor.h"
-#include "third_party/absl/types/span.h"
-#include "third_party/gxlang/gx/golang/binder/cgx/cgx.h"
+#include <absl/status/status.h>
+#include <absl/status/statusor.h>
+#include <absl/types/span.h>
+#include <gx/golang/binder/cgx/cgx.h>
 
 namespace gxlang {
 namespace cppgx {
@@ -325,6 +325,41 @@ std::optional<Interface> Value::interface_type(const Device& device) const {
     return std::nullopt;
   }
   return std::optional<Interface>(Interface(iface));
+}
+
+template <>
+bool Value::get<bool>() const {
+  return bool_value();
+}
+
+template <>
+float Value::get<float>() const {
+  return float32_value();
+}
+
+template <>
+double Value::get<double>() const {
+  return float64_value();
+}
+
+template <>
+int32_t Value::get<int32_t>() const {
+  return int32_value();
+}
+
+template <>
+int64_t Value::get<int64_t>() const {
+  return int64_value();
+}
+
+template <>
+uint32_t Value::get<uint32_t>() const {
+  return uint32_value();
+}
+
+template <>
+uint64_t Value::get<uint64_t>() const {
+  return uint64_value();
 }
 
 /* Shape */

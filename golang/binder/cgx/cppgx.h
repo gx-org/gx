@@ -24,11 +24,11 @@
 #include <utility>
 #include <vector>
 
-#include "third_party/absl/status/status.h"
-#include "third_party/absl/status/statusor.h"
-#include "third_party/absl/types/span.h"
-#include "third_party/gxlang/gx/golang/binder/cgx/cgx.cgo.h"
-#include "third_party/gxlang/gx/golang/binder/cgx/cgx.h"
+#include <absl/status/status.h>
+#include <absl/status/statusor.h>
+#include <absl/types/span.h>
+#include <gx/golang/binder/cgx/cgx.cgo.h>
+#include <gx/golang/binder/cgx/cgx.h>
 
 namespace gxlang {
 namespace cppgx {
@@ -206,41 +206,6 @@ class Value {
 
   template <typename T>
   T get() const;
-
-  template <>
-  bool get<bool>() const {
-    return bool_value();
-  }
-
-  template <>
-  float get<float>() const {
-    return float32_value();
-  }
-
-  template <>
-  double get<double>() const {
-    return float64_value();
-  }
-
-  template <>
-  int32_t get<int32_t>() const {
-    return int32_value();
-  }
-
-  template <>
-  int64_t get<int64_t>() const {
-    return int64_value();
-  }
-
-  template <>
-  uint32_t get<uint32_t>() const {
-    return uint32_value();
-  }
-
-  template <>
-  uint64_t get<uint64_t>() const {
-    return uint64_value();
-  }
 
   bool bool_value() const { return cgx_value_get_bool(*value_); }
   float float32_value() const { return cgx_value_get_float32(*value_); }

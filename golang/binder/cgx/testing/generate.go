@@ -1,4 +1,4 @@
-// Copyright 2025 Google LLC
+// Copyright 2024 Google LLC
 //
 // Licensed under the Apache License, Version 2.0 (the "License");
 // you may not use this file except in compliance with the License.
@@ -12,21 +12,6 @@
 // See the License for the specific language governing permissions and
 // limitations under the License.
 
-#include <gx/golang/binder/cgx/testing/testing.h>
+package testing
 
-#include <absl/status/statusor.h>
-#include <gx/golang/binder/cgx/cppgx.h>
-
-namespace gxlang {
-namespace cppgx {
-
-absl::StatusOr<Runtime> TestRuntime() {
-  const auto result = cgx_testing_runtime();
-  if (result.error != cgx_error{}) {
-    return ToErrorStatus(result.error);
-  }
-  return Runtime(result.runtime);
-}
-
-}  // namespace cppgx
-}  // namespace gxlang
+//go:generate go tool cgo -exportheader testing.cgo.h -- $CGO_CFLAGS testing.go

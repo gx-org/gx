@@ -17,12 +17,12 @@
 #include <cstdint>
 #include <limits>
 
-#include "testing/base/public/gmock.h"
-#include "testing/base/public/gunit.h"
-#include "third_party/absl/types/span.h"
-#include "third_party/gxlang/gx/golang/binder/cgx/cgx.h"
-#include "third_party/gxlang/gx/golang/binder/cgx/cppgx.h"
-#include "third_party/gxlang/gx/golang/binder/cgx/testing/testing.h"
+#include <gmock/gmock.h>
+#include <gtest/gtest.h>
+#include <absl/types/span.h>
+#include <gx/golang/binder/cgx/cgx.h>
+#include <gx/golang/binder/cgx/cppgx.h>
+#include <gx/golang/binder/cgx/testing/testing.h>
 
 using gxlang::cppgx::Array;
 using gxlang::cppgx::Atomic;

@@ -33,9 +33,9 @@ import (
 )
 
 // #include <stdlib.h>
-// #include "third_party/gxlang/gx/golang/binder/cgx/cgx.h"
-// #include "third_party/gxlang/gx/golang/binder/cgx/cgx.cgo.h"
-// #include "third_party/gxlang/gx/golang/binder/cgx/testing/testing.cgo.h"
+// #include <gx/golang/binder/cgx/cgx.h>
+// #include <gx/golang/binder/cgx/cgx.cgo.h>
+// #include <gx/golang/binder/cgx/testing/testing.cgo.h>
 import "C"
 
 const (

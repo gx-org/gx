@@ -42,7 +42,7 @@ import (
 #include <stdint.h>
 #include <stdlib.h>
 
-#include "third_party/gxlang/gx/golang/binder/cgx/cgx.h"
+#include <gx/golang/binder/cgx/cgx.h>
 
 // cgx_device_get_result is the return value for cgx_device_get().
 struct cgx_device_get_result {
@@ -226,7 +226,8 @@ func cgx_release_references(ptr *C.cgx_handle, size C.uint32_t) uintptr {
 	return 0
 }
 
-func wrapSlice[T comparable](vs []T) []C.cgx_handle {
+// WrapSlice wraps all the element of a slice.
+func WrapSlice[T comparable](vs []T) []C.cgx_handle {
 	if len(vs) == 0 {
 		return nil
 	}
