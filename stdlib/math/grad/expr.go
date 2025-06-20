@@ -32,7 +32,7 @@ const (
 
 type gradExprResult struct {
 	kind specialValue
-	x    ir.AssignableExpr
+	expr ir.AssignableExpr
 }
 
 func gradExpr(fetcher ir.Fetcher, src ir.Expr, argName string) (*gradExprResult, bool) {
@@ -50,37 +50,91 @@ func gradExpr(fetcher ir.Fetcher, src ir.Expr, argName string) (*gradExprResult,
 	}
 }
 
+func buildAdd(x, y *gradExprResult) *gradExprResult {
+	if x.kind == zeroSpecial {
+		return y
+	}
+	if y.kind == zeroSpecial {
+		return x
+	}
+	return &gradExprResult{
+		expr: &ir.BinaryExpr{
+			Src: &ast.BinaryExpr{Op: token.ADD},
+			Typ: x.expr.Type(),
+			X:   x.expr,
+			Y:   y.expr,
+		},
+	}
+}
+
+func buildMul(x, y *gradExprResult) *gradExprResult {
+	// Multiplication by 0.
+	if x.kind == zeroSpecial {
+		return x
+	}
+	if y.kind == zeroSpecial {
+		return y
+	}
+	// Multiplication by 1.
+	if x.kind == oneSpecial {
+		return y
+	}
+	if y.kind == oneSpecial {
+		return x
+	}
+	// All other cases.
+	return &gradExprResult{
+		expr: &ir.BinaryExpr{
+			Src: &ast.BinaryExpr{Op: token.MUL},
+			Typ: x.expr.Type(),
+			X:   x.expr,
+			Y:   y.expr,
+		},
+	}
+}
+
+func buildSub(x, y *gradExprResult) *gradExprResult {
+	// Substraction by 0.
+	if y.kind == zeroSpecial {
+		return x
+	}
+	// Substraction from 0.
+	if x.kind == zeroSpecial {
+		return &gradExprResult{
+			expr: &ir.UnaryExpr{
+				Src: &ast.UnaryExpr{Op: token.SUB},
+				X:   y.expr,
+			},
+		}
+	}
+	return &gradExprResult{
+		expr: &ir.BinaryExpr{
+			Src: &ast.BinaryExpr{Op: token.SUB},
+			Typ: x.expr.Type(),
+			X:   x.expr,
+			Y:   y.expr,
+		},
+	}
+}
+
 func gradBinaryExpr(fetcher ir.Fetcher, src *ir.BinaryExpr, argName string) (*gradExprResult, bool) {
-	u := src.X
-	v := src.Y
-	uGrad, xOk := gradExpr(fetcher, u, argName)
-	vGrad, yOk := gradExpr(fetcher, v, argName)
+	u := &gradExprResult{expr: src.X}
+	v := &gradExprResult{expr: src.Y}
+	uGrad, xOk := gradExpr(fetcher, u.expr, argName)
+	vGrad, yOk := gradExpr(fetcher, v.expr, argName)
+	if !xOk || !yOk {
+		return nil, false
+	}
 	switch src.Src.Op {
-	case token.ADD, token.SUB:
-		return &gradExprResult{
-			x: &ir.BinaryExpr{
-				Src: src.Src,
-				Typ: src.Typ,
-				X:   uGrad.x,
-				Y:   vGrad.x,
-			},
-		}, xOk && yOk
+	case token.ADD:
+		return buildAdd(uGrad, vGrad), true
+	case token.SUB:
+		return buildSub(uGrad, vGrad), true
 	case token.MUL:
-		return &gradExprResult{
-			x: &ir.BinaryExpr{
-				Src: &ast.BinaryExpr{Op: token.ADD},
-				X: &ir.BinaryExpr{
-					Src: &ast.BinaryExpr{Op: token.MUL},
-					X:   uGrad.x,
-					Y:   v,
-				},
-				Y: &ir.BinaryExpr{
-					Src: &ast.BinaryExpr{Op: token.MUL},
-					X:   u,
-					Y:   vGrad.x,
-				},
-			},
-		}, xOk && yOk
+		return buildAdd(
+			buildMul(uGrad, v),
+			buildMul(u, vGrad),
+		), true
 	default:
 		return nil, fetcher.Err().Appendf(src.Source(), "gradient of binary expression %s not supported", src.Src.Op)
 	}
@@ -103,7 +157,7 @@ func gradArrayLitExpr(fetcher ir.Fetcher, src *ir.ArrayLitExpr, argName string) 
 		if !ok {
 			return nil, false
 		}
-		gValues[i] = gExpr.x
+		gValues[i] = gExpr.expr
 		if gExpr.kind != zeroSpecial {
 			allZero = false
 			continue
@@ -112,14 +166,14 @@ func gradArrayLitExpr(fetcher ir.Fetcher, src *ir.ArrayLitExpr, argName string) 
 		if !ok {
 			return nil, false
 		}
-		gValues[i] = gExpr.x
+		gValues[i] = gExpr.expr
 	}
 	if allZero {
 		return zeroValueOf(fetcher, src.Source(), src.Type())
 	}
 	return &gradExprResult{
 		kind: notSpecial,
-		x:    src.NewFromValues(gValues),
+		expr: src.NewFromValues(gValues),
 	}, true
 }
 
@@ -130,7 +184,7 @@ func zeroValueOf(fetcher ir.Fetcher, node ast.Node, typ ir.Type) (*gradExprResul
 	}
 	return &gradExprResult{
 		kind: zeroSpecial,
-		x:    zero.Zero(),
+		expr: zero.Zero(),
 	}, true
 }
 
@@ -139,7 +193,7 @@ var one = &ir.NumberInt{Src: &ast.BasicLit{Value: "1"}, Val: big.NewInt(1)}
 func oneValueOf(fetcher ir.Fetcher, node ast.Node, typ ir.Type) (*gradExprResult, bool) {
 	return &gradExprResult{
 		kind: oneSpecial,
-		x: &ir.CastExpr{
+		expr: &ir.CastExpr{
 			X: &ir.NumberCastExpr{
 				X:   one,
 				Typ: ir.TypeFromKind(typ.Kind()),

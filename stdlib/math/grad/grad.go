@@ -95,7 +95,7 @@ func gradReturnStmt(fetcher ir.Fetcher, src *ir.ReturnStmt, argName string) (*ir
 		}
 		if res != nil {
 			// The expression depends on arg: nothing left to do.
-			stmt.Results[i] = res.x
+			stmt.Results[i] = res.expr
 			continue
 		}
 		// The expression does not depend on arg: replace it with a zero value.
@@ -103,7 +103,7 @@ func gradReturnStmt(fetcher ir.Fetcher, src *ir.ReturnStmt, argName string) (*ir
 		if !ok {
 			return nil, false
 		}
-		stmt.Results[i] = res.x
+		stmt.Results[i] = res.expr
 	}
 	return stmt, true
 }

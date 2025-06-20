@@ -406,7 +406,7 @@ func cgx_package_list_functions(cgxPackage C.cgx_package) C.struct_cgx_list_func
 		funcs = append(funcs, newFunctionHandle(cpkg.dev, fn))
 	}
 	return C.struct_cgx_list_functions_result{
-		funcs:         (*C.cgx_function)(pinSliceData(wrapSlice(funcs))),
+		funcs:         (*C.cgx_function)(pinSliceData(WrapSlice(funcs))),
 		num_functions: C.int(len(funcs)),
 	}
 }
@@ -501,7 +501,7 @@ func cgx_function_run(cgxFunction C.cgx_function, cgxReceiver C.cgx_value, argCo
 		return C.struct_cgx_function_run_result{error: (C.cgx_error)(Wrap[error](err))}
 	}
 	return C.struct_cgx_function_run_result{
-		values:     (*C.cgx_value)(pinSliceData(wrapSlice(results))),
+		values:     (*C.cgx_value)(pinSliceData(WrapSlice(results))),
 		value_size: C.uint32_t(len(results)),
 	}
 }
@@ -968,7 +968,7 @@ func cgx_interface_list_methods(cgxIFace C.cgx_interface) C.struct_cgx_list_func
 		funcs = append(funcs, newFunctionHandle(iface.device, fn))
 	}
 	return C.struct_cgx_list_functions_result{
-		funcs:         (*C.cgx_function)(pinSliceData(wrapSlice(funcs))),
+		funcs:         (*C.cgx_function)(pinSliceData(WrapSlice(funcs))),
 		num_functions: C.int(len(funcs)),
 	}
 }

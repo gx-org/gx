@@ -70,7 +70,19 @@ func F(x [2]float32) [2]float32 {
 `,
 			Want: `
 func gradF(x [2]float32) [2]float32 {
-	return 0+([2]float32)(1)
+	return ([2]float32)(1)
+}
+`,
+		},
+		testgrad.Func{
+			GradOf: `
+func F(x [2]float32) [2]float32 {
+	return x+2
+}
+`,
+			Want: `
+func gradF(x [2]float32) [2]float32 {
+	return ([2]float32)(1)
 }
 `,
 		},
@@ -82,7 +94,19 @@ func F(x [2]float32) [2]float32 {
 `,
 			Want: `
 func gradF(x [2]float32) [2]float32 {
-	return 0-([2]float32)(1)
+	return -([2]float32)(1)
+}
+`,
+		},
+		testgrad.Func{
+			GradOf: `
+func F(x [2]float32) [2]float32 {
+	return x-2
+}
+`,
+			Want: `
+func gradF(x [2]float32) [2]float32 {
+	return ([2]float32)(1)
 }
 `,
 		},
@@ -94,7 +118,7 @@ func F(x [2]float32) [2]float32 {
 `,
 			Want: `
 func gradF(x [2]float32) [2]float32 {
-	return 0*x+2*([2]float32)(1)
+	return 2
 }
 `,
 		},
@@ -106,7 +130,7 @@ func F(x [2]float32) [2]float32 {
 `,
 			Want: `
 func gradF(x [2]float32) [2]float32 {
-	return ([2]float32)(1)*x+x*([2]float32)(1)
+	return x+x
 }
 `,
 		},
@@ -118,7 +142,7 @@ func F(x [2]float32) [2]float32 {
 `,
 			Want: `
 func gradF(x [2]float32) [2]float32 {
-	return (([2]float32)(1)*x+x*([2]float32)(1))*x+(x*x)*([2]float32)(1)
+	return (x+x)*x+x*x
 }
 `,
 		},
