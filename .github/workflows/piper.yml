@@ -21,7 +21,7 @@ on:
     branches: ["piper"]
 
 env:
-  CGO_CFLAGS: -I ${{ github.workspace }}/..
+  CGO_CFLAGS: -I${{ github.workspace }}/..
   ROOT: ${{ github.workspace }}/..
 
 jobs:
