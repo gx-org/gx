@@ -126,6 +126,9 @@ func (n *funcType) buildFuncType(rscope resolveScope) (*ir.FuncType, *funcResolv
 	}
 	paramScope := newDefineScope(fScope, defineLocalVar, defineLocalVar)
 	ext.Params, paramsOk = n.params.buildFieldList(paramScope)
+	if !paramsOk {
+		return ext, fScope, false
+	}
 	resultScope := newDefineScope(fScope, defineLocalVar, nil)
 	ext.Results, resultsOk = n.results.buildFieldList(resultScope)
 	if resultsOk {

@@ -118,10 +118,13 @@ func (f *fieldGroup) build(dscope *defineLocalScope) (*ir.FieldGroup, bool) {
 		Type:   typeExpr,
 		Fields: make([]*ir.Field, len(f.list)),
 	}
+	if !ok {
+		return grp, false
+	}
 	for i, field := range f.list {
 		grp.Fields[i] = field.build(dscope, grp)
 	}
-	return grp, ok
+	return grp, true
 }
 
 func (f *fieldGroup) String() string {

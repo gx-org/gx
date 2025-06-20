@@ -532,6 +532,12 @@ type Floats interface {
 `,
 			Err: "undefined: float",
 		},
+		testbuild.Decl{
+			Src: `
+func F[t interface{}](a [BatchSize]T) [BatchSize]T
+`,
+			Err: "undefined: T",
+		},
 	)
 
 }
