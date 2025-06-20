@@ -29,6 +29,10 @@ type Func struct {
 	// Want stores the source code of the expected gradient of the function
 	Want string
 
+	// GradImportName is the name of the import of the grad package.
+	// If empty, then the default import name is used.
+	GradImportName string
+
 	// Err is the substring expected if the compiler returns an error.
 	Err string
 }
@@ -40,16 +44,23 @@ func (tt Func) Source() string {
 
 // Run builds the declarations as a package, then compare to an expected outcome.
 func (tt Func) Run(b *testbuild.Builder) error {
-	pkg, err := b.Build(fmt.Sprintf(`
+	declImportName := ""
+	callImportName := "grad"
+	if tt.GradImportName != "" {
+		declImportName = tt.GradImportName
+		callImportName = tt.GradImportName
+	}
+	src := fmt.Sprintf(`
 package test
 
-import "grad"
+import %s"grad"
 
-//gx:=grad.Func(F, "x")
+//gx:=%s.Func(F, "x")
 func gradF()
 
 %s
-`, tt.GradOf))
+`, declImportName+" ", callImportName, tt.GradOf)
+	pkg, err := b.Build(src)
 	if err != nil {
 		return err
 	}

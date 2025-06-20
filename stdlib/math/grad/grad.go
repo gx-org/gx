@@ -17,6 +17,8 @@ package grad
 
 import (
 	"embed"
+	"fmt"
+	"go/ast"
 
 	"github.com/gx-org/gx/build/ir"
 	"github.com/gx-org/gx/internal/interp/compeval/cpevelements"
@@ -37,9 +39,10 @@ var Package = builtin.PackageBuilder{
 }
 
 type gradMacro struct {
-	macro *cpevelements.Macro
-	fn    *ir.FuncDecl
-	wrt   string
+	macro    *cpevelements.Macro
+	callSite elements.CallAt
+	fn       *ir.FuncDecl
+	wrt      string
 }
 
 // FuncGrad computes the gradient of a function.
@@ -53,16 +56,29 @@ func FuncGrad(call elements.CallAt, macro *cpevelements.Macro, args []elements.E
 		return nil, err
 	}
 	return cpevelements.NewSyntheticFunc(macro, (&gradMacro{
-		macro: macro,
+		callSite: call,
+		macro:    macro,
 	}).newMacro(fn, wrt)), nil
 }
 
 func (m *gradMacro) newMacro(fn *ir.FuncDecl, wrt string) *gradMacro {
 	return &gradMacro{
-		macro: m.macro,
-		fn:    fn,
-		wrt:   wrt,
+		macro:    m.macro,
+		callSite: m.callSite,
+		fn:       fn,
+		wrt:      wrt,
 	}
+}
+
+func (m *gradMacro) autoBuildSyntheticFuncName(fetcher ir.Fetcher, name string) (*ast.Ident, bool) {
+	callee := m.callSite.Node().Callee
+	funcName := callee.Name()
+	macroPackage := callee.F.(*ir.Macro).File().Package
+	imp := m.callSite.File().FindImport(macroPackage.FullName())
+	if imp == nil {
+		return nil, fetcher.Err().AppendInternalf(callee.Source(), "cannot find import name %s", macroPackage.FullName())
+	}
+	return &ast.Ident{Name: fmt.Sprintf("__%s_%s_%s_%s", imp.Name(), funcName, name, m.wrt)}, true
 }
 
 func (m *gradMacro) BuildType() (*ir.FuncType, error) {

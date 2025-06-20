@@ -30,8 +30,9 @@ func (m *gradMacro) gradFunc(fetcher ir.Fetcher, src *ir.FuncValExpr, wrt string
 }
 
 func (m *gradMacro) gradFuncDecl(fetcher ir.Fetcher, src *ir.FuncValExpr) (*ir.FuncValExpr, bool) {
-	name := &ast.Ident{
-		Name: "grad" + m.fn.Name(),
+	name, ok := m.autoBuildSyntheticFuncName(fetcher, m.fn.Name())
+	if !ok {
+		return nil, false
 	}
 	gradF := &ir.FuncDecl{
 		FFile: m.fn.FFile,
@@ -44,7 +45,6 @@ func (m *gradMacro) gradFuncDecl(fetcher ir.Fetcher, src *ir.FuncValExpr) (*ir.F
 	if err != nil {
 		return nil, fetcher.Err().AppendAt(src.Source(), err)
 	}
-	var ok bool
 	gradF.Body, ok = m.BuildBody(fetcher)
 	if !ok {
 		return nil, false

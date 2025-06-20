@@ -1309,6 +1309,17 @@ func (f *File) Name() string {
 	return f.Package.FSet.Position(f.Src.Pos()).Filename
 }
 
+// FindImport returns an import declaration given a package full path.
+// Returns nil if the path cannot be found.
+func (f *File) FindImport(path string) *ImportDecl {
+	for _, imp := range f.Imports {
+		if imp.Path == path {
+			return imp
+		}
+	}
+	return nil
+}
+
 // FileSet returns the package fileset.
 func (f *File) FileSet() *token.FileSet {
 	if f == nil {

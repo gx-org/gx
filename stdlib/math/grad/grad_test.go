@@ -221,7 +221,7 @@ func F(x float32) float32 {
 `,
 			Want: `
 func gradF(x float32) float32 {
-	return gradg(x)
+	return __grad_Func_g_x(x)
 }
 `,
 		},
@@ -237,7 +237,24 @@ func F(x float32) float32 {
 `,
 			Want: `
 func gradF(x float32) float32 {
-	return gradg(x*x)*(x+x)
+	return __grad_Func_g_x(x*x)*(x+x)
+}
+`,
+		},
+		testgrad.Func{
+			GradImportName: "other",
+			GradOf: `
+func g(x float32) float32 {
+	return x	
+}
+
+func F(x float32) float32 {
+	return g(x*x)
+}
+`,
+			Want: `
+func gradF(x float32) float32 {
+	return __other_Func_g_x(x*x)*(x+x)
 }
 `,
 		},
