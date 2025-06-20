@@ -22,6 +22,7 @@ on:
 
 env:
   CGO_CFLAGS: -I ${{ github.workspace }}/..
+  ROOT: ${{ github.workspace }}/..
 
 jobs:
 
@@ -49,7 +50,7 @@ jobs:
       run: go mod tidy || true
 
     - name: Echo 
-      run: echo "$CGO_CFLAGS"
+      run: echo "$CGO_CFLAGS" ; ls -l "$ROOT/gx/golang/binder/cgx/cgx.h"
 
     - name: Generating code
       run: go generate ./...
