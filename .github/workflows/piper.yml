@@ -44,6 +44,9 @@ jobs:
     - name: Setup an identity
       run: git config user.email "noreply@github.com" && git config user.name "Github Action"
 
+    -name Install C++ dependencies
+      run: sudo apt install -y libabsl-dev
+
     - name: Move to the latest version
       run: go get -u github.com/gx-org/backend@latest
 
