@@ -24,6 +24,7 @@ env:
   CGO_CFLAGS: -I${{ github.workspace }}/..
   CGO_CPPFLAGS: -I${{ github.workspace }}/..
   CGO_CXXFLAGS: -I${{ github.workspace }}/..
+  CGO_LDFLAGS: -L{{ github.workspace }} -labsl_status -labsl_statusor
 
 jobs:
 
