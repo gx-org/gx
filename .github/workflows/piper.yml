@@ -64,7 +64,9 @@ jobs:
         fi
 
     - name: Build
-      run: go build -v ./...
+      run: |
+        echo $CGO_CFLAGS
+        go build -v ./...
 
     - name: Test the piper branch
       run: go test -v ./...
