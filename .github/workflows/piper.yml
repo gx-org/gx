@@ -22,7 +22,8 @@ on:
 
 env:
   CGO_CFLAGS: -I${{ github.workspace }}/..
-  CFLAGS: -I${{ github.workspace }}/..
+  CGO_CPPFLAGS: -I${{ github.workspace }}/..
+  CGO_CXXFLAGS: -I${{ github.workspace }}/..
 
 jobs:
 
@@ -66,8 +67,6 @@ jobs:
 
     - name: Build
       run: |
-        echo $CGO_CFLAGS
-        echo $CFLAGS
         go build -v ./...
 
     - name: Test the piper branch
