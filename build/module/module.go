@@ -28,13 +28,15 @@ import (
 	"golang.org/x/mod/modfile"
 )
 
+const moduleFileName = "go.mod"
+
 func findModuleRoot(dir string) (roots string) {
 	dir = filepath.Clean(dir)
 	if dir == "" {
 		return ""
 	}
 	for {
-		if fi, err := os.Stat(filepath.Join(dir, "go.mod")); err == nil && !fi.IsDir() {
+		if fi, err := os.Stat(filepath.Join(dir, moduleFileName)); err == nil && !fi.IsDir() {
 			return dir
 		}
 		d := filepath.Dir(dir)
@@ -80,7 +82,7 @@ func Current() (*Module, error) {
 func New(osPath string) (*Module, error) {
 	modRoot := findModuleRoot(osPath)
 	if modRoot == "" {
-		return nil, nil
+		return nil, errors.Errorf("module file %s not found", moduleFileName)
 	}
 	absModRoot, err := filepath.Abs(modRoot)
 	if err != nil {

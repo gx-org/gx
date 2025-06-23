@@ -14,4 +14,4 @@
 
 package testing
 
-//go:generate go tool cgo -exportheader testing.cgo.h -- $CGO_CFLAGS testing.go
+//go:generate bash -c "go tool cgo -exportheader testing.cgo.h -- $CGO_CFLAGS testing.go"
