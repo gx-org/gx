@@ -1,0 +1,80 @@
+// Copyright 2025 Google LLC
+//
+// Licensed under the Apache License, Version 2.0 (the "License");
+// you may not use this file except in compliance with the License.
+// You may obtain a copy of the License at
+//
+//     http://www.apache.org/licenses/LICENSE-2.0
+//
+// Unless required by applicable law or agreed to in writing, software
+// distributed under the License is distributed on an "AS IS" BASIS,
+// WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
+// See the License for the specific language governing permissions and
+// limitations under the License.
+
+// Package fmtpath formats paths for C++ generated files.
+package fmtpath
+
+import (
+	"path/filepath"
+	"strings"
+
+	"github.com/gx-org/gx/build/module"
+)
+
+var setModName string
+
+// SetModuleName sets the module name so that go.mod is not used.
+// Should be used only for testing.
+func SetModuleName(name string) {
+	setModName = name
+}
+
+func modName() (string, error) {
+	if setModName != "" {
+		return setModName, nil
+	}
+	mod, err := module.Current()
+	if err != nil {
+		return "", err
+	}
+	return mod.Name(), nil
+}
+
+func trimPrefix(path string) (string, error) {
+	mName, err := modName()
+	if err != nil {
+		return "", err
+	}
+	path = strings.TrimPrefix(path, mName)
+	path = strings.TrimPrefix(path, "/")
+	return path, nil
+}
+
+// HeaderPath formats the string for header guards.
+func HeaderPath(path string) (string, error) {
+	return filepath.Base(path) + ".h", nil
+}
+
+// HeaderGuard formats the string for header guards.
+func HeaderGuard(guard string) (string, error) {
+	guard, err := trimPrefix(guard)
+	if err != nil {
+		return "", err
+	}
+	guard = strings.ReplaceAll(guard, "/", "_")
+	guard = strings.ReplaceAll(guard, "-", "_")
+	guard = strings.ReplaceAll(guard, ".", "_")
+	guard = strings.ToUpper(guard)
+	return guard + "_H", nil
+}
+
+// Namespace returns the C++ namespace.
+func Namespace(path string) (string, error) {
+	namespace, err := trimPrefix(path)
+	if err != nil {
+		return "", err
+	}
+	namespace = strings.ReplaceAll(namespace, "/", "::")
+	return namespace, nil
+}

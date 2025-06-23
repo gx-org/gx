@@ -20,6 +20,7 @@ import (
 	"strings"
 	"text/template"
 
+	"github.com/gx-org/gx/golang/binder/ccbindings/fmtpath"
 	"github.com/gx-org/gx/build/ir"
 	"github.com/gx-org/gx/golang/binder/bindings"
 
@@ -37,9 +38,8 @@ var (
 )
 
 type binder struct {
-	Package   *ir.Package
-	Class     string
-	Namespace string
+	Package *ir.Package
+	Class   string
 
 	Funcs []*function
 }
@@ -47,12 +47,9 @@ type binder struct {
 // New C++ binder.
 func New(pkg *ir.Package) (bindings.Binder, error) {
 	name := pkg.Name.Name
-	namespace := strings.ReplaceAll(pkg.FullName(), "/", "::")
-	namespace = strings.TrimPrefix(namespace, "google3::")
 	b := &binder{
-		Package:   pkg,
-		Class:     strings.ToUpper(name[:1]) + name[1:],
-		Namespace: namespace,
+		Package: pkg,
+		Class:   strings.ToUpper(name[:1]) + name[1:],
 	}
 	var err error
 	b.Funcs, err = bindings.BuildFuncs(pkg, b.newFunc)
@@ -70,6 +67,10 @@ func (b *binder) Files() []bindings.File {
 	}
 }
 
+func (b *binder) Namespace() (string, error) {
+	return fmtpath.Namespace(b.Package.FullName())
+}
+
 type headerFile struct {
 	*binder
 }
@@ -82,11 +83,8 @@ func (f headerFile) WriteBindings(w io.Writer) error {
 	return hTemplate.Execute(w, f)
 }
 
-func (f headerFile) HeaderGuard() string {
-	hg := f.Package.FullName()
-	hg = strings.Replace(hg, "/", "_", -1)
-	hg = strings.ToUpper(hg)
-	return hg + "_H"
+func (f headerFile) HeaderGuard() (string, error) {
+	return fmtpath.HeaderGuard(f.Package.FullName())
 }
 
 type sourceFile struct {
@@ -101,8 +99,6 @@ func (f sourceFile) WriteBindings(w io.Writer) error {
 	return ccTemplate.Execute(w, f)
 }
 
-func (f sourceFile) HeaderPath() string {
-	hg := f.Package.FullName()
-	hg = strings.TrimPrefix(hg, "google3/")
-	return hg + ".h"
+func (f sourceFile) HeaderPath() (string, error) {
+	return fmtpath.HeaderPath(f.Package.FullName())
 }
