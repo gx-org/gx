@@ -18,7 +18,7 @@ package embed
 import (
 	"github.com/gx-org/gx/build/builder"
 	"github.com/gx-org/gx/build/importers/embedpkg"
-	"github.com/gx-org/gx/golang/binder/cgx"
+	"github.com/gx-org/gx/cgx/handle"
 )
 
 // #include <gx/golang/binder/cgx/cgx.h>
@@ -26,5 +26,5 @@ import "C"
 
 //export cgx_new_embed_builder
 func cgx_new_embed_builder() C.cgx_builder {
-	return C.cgx_builder(cgx.Wrap[*builder.Builder](embedpkg.NewBuilder(nil)))
+	return C.cgx_builder(handle.Wrap[*builder.Builder](embedpkg.NewBuilder(nil)))
 }
