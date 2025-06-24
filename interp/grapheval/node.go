@@ -32,6 +32,7 @@ type BackendNode struct {
 
 var (
 	_ elements.Slicer           = (*BackendNode)(nil)
+	_ elements.Copier           = (*BackendNode)(nil)
 	_ elements.Materialiser     = (*BackendNode)(nil)
 	_ elements.NumericalElement = (*BackendNode)(nil)
 )
@@ -202,6 +203,11 @@ func (n *BackendNode) Flatten() ([]elements.Element, error) {
 // Unflatten consumes the next handles to return a GX value.
 func (n *BackendNode) Unflatten(handles *elements.Unflattener) (values.Value, error) {
 	return handles.ParseArray(n.expr.ToExprAt())
+}
+
+// Copy the node by returning itself.
+func (n *BackendNode) Copy() elements.Copier {
+	return n
 }
 
 // Shape returns the shape of the element.

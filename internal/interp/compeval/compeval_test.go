@@ -268,26 +268,28 @@ func TestExprEval(t *testing.T) {
 		},
 	}
 	for i, test := range tests {
-		element, err := compeval.EvalExpr(ctx, test.expr)
-		if err != nil {
-			t.Fatalf("\n%+v", err)
-		}
-		got := element.(fmt.Stringer).String()
-		if got != test.want {
-			t.Errorf("test %d: %s: got %q but want %q", i, test.desc, got, test.want)
-		}
-		if !test.value.eval {
-			continue
-		}
-		value := element.(elements.ElementWithConstant).NumericalConstant()
-		gotValue, err := values.ToAtom[int32](value)
-		if err != nil {
-			t.Errorf("test %d: %s: atom conversion error:\n%+v", i, test.desc, fmterr.ToStackTraceError(err))
-		}
-		wantValue := test.value.value
-		if gotValue != wantValue {
-			t.Errorf("test %d: %s: got value %d but want %d", i, test.desc, gotValue, wantValue)
-		}
+		t.Run(fmt.Sprintf("Test%d", i), func(t *testing.T) {
+			element, err := compeval.EvalExpr(ctx, test.expr)
+			if err != nil {
+				t.Fatalf("\n%+v", err)
+			}
+			got := element.(fmt.Stringer).String()
+			if got != test.want {
+				t.Errorf("%s: got %q but want %q", test.desc, got, test.want)
+			}
+			if !test.value.eval {
+				return
+			}
+			value := element.(elements.ElementWithConstant).NumericalConstant()
+			gotValue, err := values.ToAtom[int32](value)
+			if err != nil {
+				t.Errorf("%s: atom conversion error:\n%+v", test.desc, fmterr.ToStackTraceError(err))
+			}
+			wantValue := test.value.value
+			if gotValue != wantValue {
+				t.Errorf("%s: got value %d but want %d", test.desc, gotValue, wantValue)
+			}
+		})
 	}
 }
 

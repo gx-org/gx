@@ -3,17 +3,18 @@ package core
 func TestReturnStringLiteral() string {
 	return "Hello"
 	// Want:
-	// "Hello"
+	// Hello
 }
 
 func TestReturnStringLiteralBackQuote() string {
 	return `Hello"`
 	// Want:
-	// "Hello\""
+	// Hello"
 }
 
 func TestReturnStringLiteralLineReturn() string {
 	return "Hello\nWorld"
 	// Want:
-	// "Hello\nWorld"
+	// Hello
+	// World
 }

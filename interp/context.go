@@ -139,6 +139,8 @@ func (ctx *context) set(tok token.Token, dest ir.Storage, value elements.Element
 		return nil
 	case *ir.FieldStorage:
 		return fr.Assign(destT.Field.Name.Name, value)
+	case *ir.AssignExpr:
+		return fr.Assign(destT.NameDef().Name, value)
 	default:
 		return fmterr.Errorf(ctx.File().FileSet(), dest.Source(), "cannot assign %v to %T: not supported", value, destT)
 	}

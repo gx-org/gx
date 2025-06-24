@@ -52,43 +52,43 @@ func TestWithVar() float64 {
 	// float64(3.2)
 }
 
-func TestTensor0DInt32() [___]int32 {
+func TestTensor0DInt32() int32 {
 	return 11
 	// Want:
 	// int32(11)
 }
 
-func TestTensor1DUint32() [...]uint32 {
+func TestTensor1DUint32() [4]uint32 {
 	return [...]uint32{1, 2, 3, 4}
 	// Want:
 	// [4]uint32{1, 2, 3, 4}
 }
 
-func TestTensor1DUint64() [...]uint64 {
+func TestTensor1DUint64() [4]uint64 {
 	return [...]uint64{1, 2, 3, 4}
 	// Want:
 	// [4]uint64{1, 2, 3, 4}
 }
 
-func TestTensor1DInt32() [...]int32 {
+func TestTensor1DInt32() [4]int32 {
 	return [...]int32{1, 2, 3, 4}
 	// Want:
 	// [4]int32{1, 2, 3, 4}
 }
 
-func TestTensor1DInt64() [...]int64 {
+func TestTensor1DInt64() [4]int64 {
 	return [...]int64{1, 2, 3, 4}
 	// Want:
 	// [4]int64{1, 2, 3, 4}
 }
 
-func TestTensor1DFloat32() [...]float32 {
+func TestTensor1DFloat32() [4]float32 {
 	return [...]float32{1.5, 2, 3.5, 4}
 	// Want:
 	// [4]float32{1.5, 2, 3.5, 4}
 }
 
-func TestTensor1DFloat64() [...]float64 {
+func TestTensor1DFloat64() [4]float64 {
 	return [...]float64{1.5, 2, 3.5, 4}
 	// Want:
 	// [4]float64{1.5, 2, 3.5, 4}
@@ -100,7 +100,7 @@ func TestTensorDimWithExpr() [4]float64 {
 	// [4]float64{1.5, 2, 3.5, 4}
 }
 
-func TestTensor2DFloat64WithSubtypes() [_][_]float64 {
+func TestTensor2DFloat64WithSubtypes() [4][4]float64 {
 	return [...]float64{
 		[...]float64{0, 1, 2, 3},
 		[...]float64{10, 11, 12, 13},
@@ -116,7 +116,7 @@ func TestTensor2DFloat64WithSubtypes() [_][_]float64 {
 	// }
 }
 
-func TestTensor2DFloat64() [_][_]float64 {
+func TestTensor2DFloat64() [4][4]float64 {
 	return [...]float64{
 		{0, 1, 2, 3},
 		{10, 11, 12, 13},
@@ -132,7 +132,7 @@ func TestTensor2DFloat64() [_][_]float64 {
 	// }
 }
 
-func TestTensor3DFloat64() [_][_][_]float64 {
+func TestTensor3DFloat64() [2][2][2]float64 {
 	return [...]float64{
 		{
 			{0, 1},
@@ -200,19 +200,19 @@ func TestCallTuple() (int64, float32) {
 	// 1: float32(2)
 }
 
-func TestSizeWithPackageVar() [...]float32 {
+func TestSizeWithPackageVar() [staticIntTwo]float32 {
 	return [staticIntTwo]float32{}
 	// Want:
 	// [2]float32{0, 0}
 }
 
-func TestSizeWithOpAndPackageVar() [...]float32 {
+func TestSizeWithOpAndPackageVar() [staticIntTwo + 1]float32 {
 	return [staticIntTwo + 1]float32{}
 	// Want:
 	// [3]float32{0, 0, 0}
 }
 
-func TestTensorWithVars() [...]int64 {
+func TestTensorWithVars() [3]int64 {
 	return [...]int64{
 		staticInt64One,
 		staticInt64Two,
@@ -222,7 +222,7 @@ func TestTensorWithVars() [...]int64 {
 	// [3]int64{1, 2, 3}
 }
 
-func TestTensorWithFuncCall() [...]float32 {
+func TestTensorWithFuncCall() [2]float32 {
 	return [...]float32{
 		TestFloat32(),
 		TestFloat32(),
@@ -231,7 +231,7 @@ func TestTensorWithFuncCall() [...]float32 {
 	// [2]float32{5.1, 5.1}
 }
 
-func TestTensorDynamic2DTensor() [_][_]float32 {
+func TestTensorDynamic2DTensor() [2][3]float32 {
 	return [2][3]float32{
 		{TestFloat32(), 1, TestFloat32()},
 		{TestFloat32(), 2, TestFloat32()},

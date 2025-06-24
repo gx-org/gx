@@ -34,6 +34,7 @@ var (
 	_ elements.Slicer              = (*valueElement)(nil)
 	_ elements.Materialiser        = (*valueElement)(nil)
 	_ elements.Node                = (*valueElement)(nil)
+	_ elements.Copier              = (*valueElement)(nil)
 )
 
 func newValueElement(ev *Evaluator, src elements.ExprAt, value values.Array) (*valueElement, error) {
@@ -66,6 +67,11 @@ func (n *valueElement) NumericalConstant() *values.HostArray {
 // Unflatten creates a GX value from the next handles available in the Unflattener.
 func (n *valueElement) Unflatten(handles *elements.Unflattener) (values.Value, error) {
 	return values.NewDeviceArray(n.value.Type(), handles.Next())
+}
+
+// Copy the graph node by returning itself.
+func (n *valueElement) Copy() elements.Copier {
+	return n
 }
 
 func (n *valueElement) Type() ir.Type {

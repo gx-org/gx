@@ -387,6 +387,10 @@ func (n *arrayArgument) ArrayFromContext(in *elements.InputValues) (values.Array
 	return array, nil
 }
 
+func (n *arrayArgument) Copy() elements.Copier {
+	return n
+}
+
 func (*arrayArgument) Kind() ir.Kind {
 	return ir.ArrayKind
 }

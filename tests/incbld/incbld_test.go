@@ -242,9 +242,9 @@ func TestStructOverCell(t *testing.T) {
 		{
 			runFunc: "New",
 			want: `
-S{test.S{
+test.S{
 	A: float32(5),
-}}
+}
 `,
 			src: packagePrefix(`
 type S struct {

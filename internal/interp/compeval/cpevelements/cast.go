@@ -34,6 +34,7 @@ type cast struct {
 
 var (
 	_ elements.Materialiser        = (*cast)(nil)
+	_ elements.Copier              = (*cast)(nil)
 	_ elements.ElementWithConstant = (*cast)(nil)
 	_ fmt.Stringer                 = (*cast)(nil)
 )
@@ -129,6 +130,11 @@ func (a *cast) Unflatten(handles *elements.Unflattener) (values.Value, error) {
 // NumericalConstant returns the value of a constant represented by a node.
 func (a *cast) NumericalConstant() *values.HostArray {
 	return a.val
+}
+
+// Copy the element by returning itself.
+func (a *cast) Copy() elements.Copier {
+	return a
 }
 
 // Materialise returns the element with all its values from the graph.

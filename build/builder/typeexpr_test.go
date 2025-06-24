@@ -36,7 +36,7 @@ func TestResolveType(t *testing.T) {
 		{code: `"a"`, typ: "string"},
 		{code: "int32(1)", typ: "int32"},
 		{code: "float64(-1)", typ: "float64"},
-
+		{code: "float64([1]float64{-5})", typ: "float64"},
 		{code: "[1]int32{1}", typ: "[1]int32"},
 		{code: "[_]int32{1}", typ: "[1]int32"},
 		{code: "[...]int32{1}", typ: "[1]int32"},
@@ -44,13 +44,20 @@ func TestResolveType(t *testing.T) {
 		{code: "[...]int32{1, 2, 3}[1]", typ: "int32"},
 		{code: "[...]int32{{1, 2}, {3, 4}}[1]", typ: "[2]int32"},
 		{code: "[]int32{1, 2, 3}", typ: "[]int32"},
-		{code: `[...]float64{
-			[...]float64{0, 1, 2, 3},
-			[...]float64{10, 11, 12, 13},
-			[...]float64{20, 21, 22, 23},
-			[...]float64{30, 31, 32, 33},
-		}`, typ: "[4][4]float64"},
-
+		{code: `
+[...]float64{
+	[...]float64{0, 1, 2, 3},
+	[...]float64{10, 11, 12, 13},
+	[...]float64{20, 21, 22, 23},
+	[...]float64{30, 31, 32, 33},
+}`, typ: "[4][4]float64"},
+		{code: `
+[4][4]float64{
+	{0, 1, 2, 3},
+	{10, 11, 12, 13},
+	{20, 21, 22, 23},
+	{30, 31, 32, 33},
+}`, typ: "[4][4]float64"},
 		{code: "struct{}{}", typ: "struct"},
 		{code: "struct{x int32}{x: 1}", typ: "struct"},
 

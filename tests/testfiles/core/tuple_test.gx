@@ -1,6 +1,6 @@
 package core
 
-func TestTuple() (float32, [...]float64, [_][_]float64) {
+func TestTuple() (float32, [4]float64, [2][2]float64) {
 	return 3.2,
 		[...]float64{1, 2, 3, 4},
 		[_][_]float64{
@@ -16,7 +16,7 @@ func TestTuple() (float32, [...]float64, [_][_]float64) {
 	// }
 }
 
-func TestTupleAssign() (float64, [...]float64, [_][_]float64) {
+func TestTupleAssign() (float64, [4]float64, [2][2]float64) {
 	a, b, c := 3.2,
 		[...]float64{1, 2, 3, 4},
 		[...]float64{
@@ -33,7 +33,7 @@ func TestTupleAssign() (float64, [...]float64, [_][_]float64) {
 	// }
 }
 
-func TestTupleAssignFuncCall() (float32, [...]float64, [_][_]float64) {
+func TestTupleAssignFuncCall() (float32, [4]float64, [2][2]float64) {
 	a, b, c := TestTuple()
 	return a, b, c
 	// Want:

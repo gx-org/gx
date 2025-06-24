@@ -141,7 +141,7 @@ func wantOutput(fn *ir.FuncDecl) (*ast.CommentGroup, error) {
 }
 
 func flatten(out []values.Value) []values.Value {
-	flat := []values.Value{}
+	var flat []values.Value
 	for _, v := range out {
 		slice, ok := v.(*values.Slice)
 		if !ok {
@@ -181,7 +181,7 @@ func commentsInFunc(fn *ir.FuncDecl, prefix string) []*ast.CommentGroup {
 	fileName := pkg.FSet.Position(startFunc).Filename
 	fileDecl := pkg.File(fileName)
 	endFunc := fn.Src.End()
-	cmts := []*ast.CommentGroup{}
+	var cmts []*ast.CommentGroup
 	for _, cmt := range fileDecl.Src.Comments {
 		pos := cmt.Pos()
 		if pos < startFunc || pos > endFunc {

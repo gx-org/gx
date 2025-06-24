@@ -1144,9 +1144,9 @@ type (
 
 	// FuncLit is a function literal.
 	FuncLit struct {
-		FFile *File
 		Src   *ast.FuncLit
 		FType *FuncType
+		FFile *File
 		Body  *BlockStmt
 	}
 

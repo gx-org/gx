@@ -384,7 +384,7 @@ func evalCastExpr(ctx *context, expr ir.TypeCastExpr) (elements.Element, error) 
 	if !ok {
 		return nil, fmterr.Errorf(ctx.File().FileSet(), expr.Source(), "cast to %s not supported", target.String())
 	}
-	xNum, ok := x.(elements.NumericalElement)
+	xNum, ok := elements.Underlying(x).(elements.NumericalElement)
 	if !ok {
 		return nil, fmterr.Errorf(ctx.File().FileSet(), expr.Source(), "cannot cast element of type %T to %s", x, reflect.TypeFor[elements.NumericalElement]().Name())
 	}
@@ -515,7 +515,7 @@ func evalNumExpr(ctx *context, expr ir.Expr) (elements.NumericalElement, error) 
 	if err != nil {
 		return nil, err
 	}
-	numEl, ok := el.(elements.NumericalElement)
+	numEl, ok := elements.Underlying(el).(elements.NumericalElement)
 	if !ok {
 		return nil, errors.Errorf("cannot cast %T to %s", el, reflect.TypeFor[elements.NumericalElement]())
 	}
@@ -551,6 +551,7 @@ func evalIndexExpr(ctx *context, ref *ir.IndexExpr) (elements.Element, error) {
 	if err != nil {
 		return nil, err
 	}
+	x = elements.Underlying(x)
 	slicer, ok := x.(elements.Slicer)
 	if !ok {
 		return nil, fmterr.Errorf(ctx.File().FileSet(), ref.Source(), "cannot index over %T", x)
