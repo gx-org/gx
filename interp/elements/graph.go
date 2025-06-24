@@ -39,9 +39,6 @@ type (
 		// Einsum calls an einstein sum on x and y given the expression in ref.
 		Einsum(ref NodeFile[*ir.EinsumExpr], x, y NumericalElement) (NumericalElement, error)
 
-		// Reshape an element into a given shape.
-		Reshape(expr ExprAt, x NumericalElement, axisLengths []NumericalElement) (NumericalElement, error)
-
 		// BroadcastInDim the data of an array across dimensions.
 		BroadcastInDim(expr ExprAt, x NumericalElement, axisLengths []NumericalElement) (NumericalElement, error)
 

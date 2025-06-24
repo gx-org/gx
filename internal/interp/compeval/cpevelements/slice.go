@@ -59,6 +59,10 @@ func (f *slice) Cast(ctx elements.FileContext, expr ir.AssignableExpr, target ir
 	return newCast(ctx, expr, f, target)
 }
 
+func (f *slice) Reshape(ctx elements.FileContext, expr ir.AssignableExpr, axisLengths []elements.NumericalElement) (elements.NumericalElement, error) {
+	return nil, errors.Errorf("cannot reshape a slice")
+}
+
 func (f *slice) Shape() *shape.Shape {
 	return nil
 }

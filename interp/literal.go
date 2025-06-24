@@ -141,7 +141,7 @@ func (v valuerT[T]) array(ctx *context, lit *ir.ArrayLitExpr) (elements.Element,
 	if len(axes) == 1 {
 		return array1d, nil
 	}
-	return ctx.eval.evaluator.ArrayOps().Reshape(elements.NewExprAt(ctx.File(), lit), array1d, axes)
+	return array1d.Reshape(ctx, lit, axes)
 }
 
 func newValuer(ctx *context, expr ir.Expr, kind ir.Kind) (v valuer, err error) {

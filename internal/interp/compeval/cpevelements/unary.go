@@ -84,6 +84,10 @@ func newUnary(ctx elements.FileContext, expr *ir.UnaryExpr, xEl Element) (_ *una
 
 }
 
+func (a *unary) Reshape(ctx elements.FileContext, expr ir.AssignableExpr, axisLengths []elements.NumericalElement) (elements.NumericalElement, error) {
+	return newReshape(ctx, expr, a, axisLengths)
+}
+
 // UnaryOp applies a unary operator on x.
 func (a *unary) UnaryOp(ctx elements.FileContext, expr *ir.UnaryExpr) (elements.NumericalElement, error) {
 	return newUnary(ctx, expr, a)

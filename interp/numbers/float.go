@@ -97,6 +97,15 @@ func (n *Float) Cast(ctx elements.FileContext, expr ir.AssignableExpr, target ir
 	return ctx.(evaluator.Context).Evaluation().Evaluator().ElementFromAtom(elements.NewExprAt(ctx.File(), expr), val)
 }
 
+// Reshape the number into an array.
+func (n *Float) Reshape(ctx elements.FileContext, expr ir.AssignableExpr, axisLengths []elements.NumericalElement) (elements.NumericalElement, error) {
+	val, err := values.AtomNumberFloat(n.val, expr.Type())
+	if err != nil {
+		return nil, err
+	}
+	return ctx.(evaluator.Context).Evaluation().Evaluator().ElementFromAtom(elements.NewExprAt(ctx.File(), expr), val)
+}
+
 // Shape of the value represented by the element.
 func (n *Float) Shape() *shape.Shape {
 	return numberShape

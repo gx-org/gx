@@ -144,6 +144,32 @@ func (n *BackendNode) Cast(ctx elements.FileContext, expr ir.AssignableExpr, tar
 		})
 }
 
+// Reshape an element into a given shape.
+func (n *BackendNode) Reshape(ctx elements.FileContext, expr ir.AssignableExpr, axisLengths []elements.NumericalElement) (elements.NumericalElement, error) {
+	axes := make([]int, len(axisLengths))
+	for i, el := range axisLengths {
+		var err error
+		axes[i], err = elements.ConstantIntFromElement(el)
+		if err != nil {
+			return nil, err
+		}
+	}
+	ao := evalFromContext(ctx).ArrayOps()
+	reshaped, err := ao.Graph().Core().Reshape(n.nod.Node, axes)
+	if err != nil {
+		return nil, err
+	}
+	return ElementFromNode(
+		elements.NewExprAt(ctx.File(), expr),
+		&graph.OutputNode{
+			Node: reshaped,
+			Shape: &shape.Shape{
+				DType:       n.nod.Shape.DType,
+				AxisLengths: axes,
+			},
+		})
+}
+
 // Slice of the value on the first axis given an index.
 func (n *BackendNode) Slice(ctx elements.FileContext, expr ir.AssignableExpr, index elements.NumericalElement) (elements.Element, error) {
 	return n.SliceArray(ctx, expr, index)

@@ -74,35 +74,6 @@ func (ao *arrayOps) Einsum(ref elements.NodeFile[*ir.EinsumExpr], x, y elements.
 		})
 }
 
-// Reshape an element into a given shape.
-func (ao *arrayOps) Reshape(expr elements.ExprAt, x elements.NumericalElement, axisLengths []elements.NumericalElement) (elements.NumericalElement, error) {
-	axes := make([]int, len(axisLengths))
-	for i, el := range axisLengths {
-		var err error
-		axes[i], err = elements.ConstantIntFromElement(el)
-		if err != nil {
-			return nil, err
-		}
-	}
-	xNode, xShape, err := NodeFromElement(ao, x)
-	if err != nil {
-		return nil, err
-	}
-	reshaped, err := ao.graph.Core().Reshape(xNode, axes)
-	if err != nil {
-		return nil, err
-	}
-	return ElementFromNode(
-		expr.ToExprAt(),
-		&graph.OutputNode{
-			Node: reshaped,
-			Shape: &shape.Shape{
-				DType:       xShape.DType,
-				AxisLengths: axes,
-			},
-		})
-}
-
 func elementsToInt(els []elements.NumericalElement) ([]int, error) {
 	axes := make([]int, len(els))
 	for i, el := range els {

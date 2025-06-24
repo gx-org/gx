@@ -130,6 +130,11 @@ func (a *binary) Cast(ctx elements.FileContext, expr ir.AssignableExpr, target i
 	return newCast(ctx, expr, a, target)
 }
 
+// Reshape the element into a new shape.
+func (a *binary) Reshape(ctx elements.FileContext, expr ir.AssignableExpr, axisLengths []elements.NumericalElement) (elements.NumericalElement, error) {
+	return newReshape(ctx, expr, a, axisLengths)
+}
+
 // Shape of the value represented by the element.
 func (a *binary) Shape() *shape.Shape {
 	return a.val.Shape()

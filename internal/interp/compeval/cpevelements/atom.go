@@ -79,6 +79,10 @@ func (a *atom) Cast(ctx elements.FileContext, expr ir.AssignableExpr, dtype ir.T
 	return newCast(ctx, expr, a, dtype)
 }
 
+func (a *atom) Reshape(ctx elements.FileContext, expr ir.AssignableExpr, axisLengths []elements.NumericalElement) (elements.NumericalElement, error) {
+	return newReshape(ctx, expr, a, axisLengths)
+}
+
 // Shape of the value represented by the element.
 func (a *atom) Shape() *shape.Shape {
 	return a.val.Shape()

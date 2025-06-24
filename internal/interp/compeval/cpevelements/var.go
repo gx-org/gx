@@ -56,6 +56,11 @@ func (a *variable) Cast(ctx elements.FileContext, expr ir.AssignableExpr, target
 	return newCast(ctx, expr, a, target)
 }
 
+// Reshape the variable into a different shape.
+func (a *variable) Reshape(ctx elements.FileContext, expr ir.AssignableExpr, axisLengths []elements.NumericalElement) (elements.NumericalElement, error) {
+	return newReshape(ctx, expr, a, axisLengths)
+}
+
 // Shape of the value represented by the element.
 func (a *variable) Shape() *shape.Shape {
 	return &shape.Shape{}
