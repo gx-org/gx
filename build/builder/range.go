@@ -62,7 +62,7 @@ func (n *rangeStmt) buildBodyOverScalar(rscope resolveScope, x ir.Expr) (ir.Stor
 }
 
 func (n *rangeStmt) buildBodyOverArray(rscope resolveScope, x ir.Expr) (ir.Storage, ir.Storage, bool) {
-	key, _, keyOk := n.key.buildStorage(rscope, x.Type())
+	key, _, keyOk := n.key.buildStorage(rscope, ir.DefaultIntType)
 	if n.value == nil {
 		return key, nil, keyOk
 	}
