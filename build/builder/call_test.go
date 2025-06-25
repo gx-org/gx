@@ -20,6 +20,51 @@ import (
 	"github.com/gx-org/gx/build/builder/testbuild"
 )
 
+func TestCallMultipleReturns(t *testing.T) {
+	testbuild.Run(t,
+		testbuild.Decl{
+			Src: `
+func g() (uint64, uint32)
+
+func f() (uint64, uint32) {
+	a, b := g()
+	return a, b
+}
+`,
+		},
+		testbuild.Decl{
+			Src: `
+func g() (uint64, uint32)
+
+func f() (uint64, uint32) {
+	a, _ := g()
+	return a, uint32(a)
+}
+`,
+		},
+		testbuild.Decl{
+			Src: `
+func g() (uint64, uint32)
+
+func f() (a uint64, b uint32) {
+	a, b = g()
+	return
+}
+`,
+		},
+		testbuild.Decl{
+			Src: `
+func g() (int32, [2]float32)
+
+func f() (a, b [2]float32) {
+	_, a = g()
+	_, b = g()
+	return
+}`,
+		},
+	)
+}
+
 func TestCallOperators(t *testing.T) {
 	testbuild.Run(t,
 		testbuild.Decl{
