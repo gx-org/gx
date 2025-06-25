@@ -15,6 +15,9 @@
 package cpevelements
 
 import (
+	"go/ast"
+	"reflect"
+
 	"github.com/pkg/errors"
 	"github.com/gx-org/gx/api/values"
 	"github.com/gx-org/gx/build/ir"
@@ -40,7 +43,19 @@ func (f *fun) Recv() *elements.Receiver {
 	return f.recv
 }
 
+func (f *fun) callAtCompEval(fctx elements.FileContext, call *ir.CallExpr, args []elements.Element) ([]elements.Element, error) {
+	fnContext, ok := fctx.(elements.FuncEvaluator)
+	if !ok {
+		return nil, errors.Errorf("cannot evaluate function %s: context %T does not implement %s", f.fn.Name(), fctx, reflect.TypeFor[elements.FuncEvaluator]().String())
+	}
+	return fnContext.EvalFunc(f.fn, call, args)
+}
+
 func (f *fun) Call(fctx elements.FileContext, call *ir.CallExpr, args []elements.Element) ([]elements.Element, error) {
+	fType := f.fn.FuncType() // Some builtin functions have not type at the moment.
+	if fType != nil && fType.CompEval {
+		return f.callAtCompEval(fctx, call, args)
+	}
 	ctx := fctx.(evaluator.Context)
 	res := call.Callee.T.Results.Fields()
 	els := make([]elements.Element, len(res))
@@ -48,6 +63,7 @@ func (f *fun) Call(fctx elements.FileContext, call *ir.CallExpr, args []elements
 		var err error
 		els[i], err = NewRuntimeValue(ctx, &ir.ValueRef{
 			Stor: &ir.LocalVarStorage{
+				Src: &ast.Ident{},
 				Typ: ri.Type(),
 			},
 		})

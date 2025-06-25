@@ -27,6 +27,11 @@ type (
 		File() *ir.File
 	}
 
+	// FuncEvaluator is a context able to evaluate a function.
+	FuncEvaluator interface {
+		EvalFunc(f ir.Func, call *ir.CallExpr, args []Element) ([]Element, error)
+	}
+
 	// NumericalElement is a node representing a numerical value.
 	NumericalElement interface {
 		Element

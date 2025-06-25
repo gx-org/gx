@@ -88,6 +88,11 @@ func (eval *EvalContext) newFileContext(file *ir.File) (*context, error) {
 	return ctx, nil
 }
 
+func (ctx *context) EvalFunc(f ir.Func, call *ir.CallExpr, args []elements.Element) ([]elements.Element, error) {
+	fnEl := NewRunFunc(f, nil)
+	return fnEl.Call(ctx, call, args)
+}
+
 // Evaluator returns the evaluator used by the context.
 func (ctx *context) Evaluation() evaluator.EvaluationContext {
 	return ctx.eval
