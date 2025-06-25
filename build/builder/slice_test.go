@@ -35,5 +35,17 @@ func TestSlice(t *testing.T) {
 				},
 			},
 		},
+		testbuild.Decl{
+			Src: `
+func f() [][2]int32 {
+	a := [][2]int32{}
+	for il := range 3 {
+		i := int32(il)
+		a = append(a, [2]int32{i, i * 2})
+	}
+	return a
+}
+`,
+		},
 	)
 }

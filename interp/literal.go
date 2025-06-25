@@ -43,8 +43,12 @@ func goValueFromElement[T dtype.GoDataType](el elements.NumericalElement) (T, bo
 	if !ok {
 		return t, false, nil
 	}
+	cst := canonicalElt.NumericalConstant()
+	if cst == nil {
+		return t, false, nil
+	}
 	var err error
-	t, err = values.ToAtom[T](canonicalElt.NumericalConstant())
+	t, err = values.ToAtom[T](cst)
 	return t, err == nil, err
 }
 
