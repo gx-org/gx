@@ -99,6 +99,8 @@ func instantiateAxis(fetcher ir.Fetcher, axis ir.AxisLengths) ([]ir.AxisLengths,
 		return instantiateAxisExpr(fetcher, axisT)
 	case *ir.AxisGroup:
 		return instantiateAxisGroup(fetcher, axisT)
+	case *ir.AxisInfer:
+		return instantiateAxis(fetcher, axisT.X)
 	default:
 		return []ir.AxisLengths{axisT}, false
 	}

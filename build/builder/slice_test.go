@@ -47,5 +47,20 @@ func f() [][2]int32 {
 }
 `,
 		},
+		testbuild.Decl{
+			Src: `
+func f() [5][4][3][2]int32 {
+	a := [5][4][3][2]int32{}
+	for il := range 5 {
+		i := int32(il)
+		for jl := range 4 {
+			j := int32(jl)
+			a = set(a, [3][2]int32{}+(i+1)*(j+1), [...]int32{i, j})
+		}
+	}
+	return a
+}
+`,
+		},
 	)
 }
