@@ -22,7 +22,6 @@ import (
 )
 
 func TestStdlib(t *testing.T) {
-	t.SkipNow() // TODO(degris): FIX ASAP
 	bck := backend.New(tests.StdlibBuilder(nil))
 	session := gxtesting.NewSession(bck, tests.FS)
 	for _, path := range []string{
