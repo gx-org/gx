@@ -143,7 +143,7 @@ func (f concat) BuildFuncType(fetcher ir.Fetcher, call *ir.CallExpr) (*ir.FuncTy
 	}
 	return &ir.FuncType{
 		BaseType: ir.BaseType[*ast.FuncType]{Src: &ast.FuncType{Func: call.Source().Pos()}},
-		Params:   builtins.Fields(params...),
-		Results:  builtins.Fields(result),
+		Params:   builtins.Fields(call, params...),
+		Results:  builtins.Fields(call, result),
 	}, nil
 }

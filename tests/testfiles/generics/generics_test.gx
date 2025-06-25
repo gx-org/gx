@@ -1,6 +1,6 @@
 package generics
 
-func identity(a [___X]float32) [___X]float32 {
+func identity(a [___X]float32) [X___]float32 {
 	return a
 }
 
@@ -12,7 +12,7 @@ func TestIdentity() ([1]float32, [2]float32, [3]float32) {
 	// 2: [3]float32{1, 2, 3}
 }
 
-func add(a [___X]int32, b [___X]int32) [___X]int32 {
+func add(a [___X]int32, b [___X]int32) [X___]int32 {
 	return a + b
 }
 
@@ -31,8 +31,7 @@ func addT[T ints](a, b T) T {
 }
 
 func TestAddT() (int32, int64) {
-	// For now, these extra casts are required to work around bugs in function resolution.
-	return int32(addT[int32](int32(2), int32(4))), int64(addT[int64](int64(3), int64(5)))
+	return addT(int32(2), int32(4)), addT(int64(3), int64(5))
 	// Want:
 	// 0: int32(6)
 	// 1: int64(8)
@@ -43,8 +42,7 @@ func negate[T ints](x T) T {
 }
 
 func TestNegate() (int32, int64) {
-	// For now, these extra casts are required to work around bugs in function resolution.
-	return int32(negate[int32](int32(2))), int64(negate[int64](int64(3)))
+	return negate(int32(2)), negate(int64(3))
 	// Want:
 	// 0: int32(-2)
 	// 1: int64(-3)

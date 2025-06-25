@@ -34,8 +34,8 @@ func (f *traceFunc) BuildFuncType(fetcher ir.Fetcher, call *ir.CallExpr) (*ir.Fu
 	}
 	return &ir.FuncType{
 		BaseType: baseType(&ast.FuncType{Func: call.Src.Pos()}),
-		Params:   builtins.Fields(params...),
-		Results:  builtins.Fields(),
+		Params:   builtins.Fields(call, params...),
+		Results:  builtins.Fields(call),
 	}, nil
 }
 

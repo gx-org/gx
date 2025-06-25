@@ -48,8 +48,8 @@ func (f iotaWithAxis) BuildFuncType(fetcher ir.Fetcher, call *ir.CallExpr) (*ir.
 		return nil, err
 	}
 	return &ir.FuncType{
-		Params:  builtins.Fields(params...),
-		Results: builtins.Fields(ir.NewArrayType(nil, ir.DefaultIntType, rank)),
+		Params:  builtins.Fields(call, params...),
+		Results: builtins.Fields(call, ir.NewArrayType(nil, ir.DefaultIntType, rank)),
 	}, nil
 }
 

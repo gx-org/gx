@@ -50,17 +50,17 @@ func (f while) BuildFuncType(fetcher ir.Fetcher, call *ir.CallExpr) (*ir.FuncTyp
 	stateType := call.Args[0].Type()
 	condType := &ir.FuncType{ // `func(state T) bool`
 		BaseType: ir.BaseType[*ast.FuncType]{Src: &ast.FuncType{Func: call.Source().Pos()}},
-		Params:   builtins.Fields(stateType),
-		Results:  builtins.Fields(boolType),
+		Params:   builtins.Fields(call, stateType),
+		Results:  builtins.Fields(call, boolType),
 	}
 	bodyType := &ir.FuncType{ // `func(state T) T`
 		BaseType: ir.BaseType[*ast.FuncType]{Src: &ast.FuncType{Func: call.Source().Pos()}},
-		Params:   builtins.Fields(stateType),
-		Results:  builtins.Fields(stateType),
+		Params:   builtins.Fields(call, stateType),
+		Results:  builtins.Fields(call, stateType),
 	}
 	return &ir.FuncType{
 		BaseType: ir.BaseType[*ast.FuncType]{Src: &ast.FuncType{Func: call.Source().Pos()}},
-		Params:   builtins.Fields(stateType, condType, bodyType),
-		Results:  builtins.Fields(stateType),
+		Params:   builtins.Fields(call, stateType, condType, bodyType),
+		Results:  builtins.Fields(call, stateType),
 	}, nil
 }

@@ -63,8 +63,8 @@ func reductionFuncSig(fetcher ir.Fetcher, f builtin.Func, call *ir.CallExpr) (*i
 	resultRank.Ax = resultDims
 	return &ir.FuncType{
 		BaseType: ir.BaseType[*ast.FuncType]{Src: &ast.FuncType{Func: call.Source().Pos()}},
-		Params:   builtins.Fields(params...),
-		Results:  builtins.Fields(result),
+		Params:   builtins.Fields(call, params...),
+		Results:  builtins.Fields(call, result),
 	}, nil
 }
 
@@ -134,7 +134,7 @@ func (f argmax) BuildFuncType(fetcher ir.Fetcher, call *ir.CallExpr) (*ir.FuncTy
 	resultRank.Ax = resultDims
 	return &ir.FuncType{
 		BaseType: ir.BaseType[*ast.FuncType]{Src: &ast.FuncType{Func: call.Source().Pos()}},
-		Params:   builtins.Fields(params...),
-		Results:  builtins.Fields(result),
+		Params:   builtins.Fields(call, params...),
+		Results:  builtins.Fields(call, result),
 	}, nil
 }

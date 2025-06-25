@@ -85,8 +85,8 @@ func (f broadcast) BuildFuncType(fetcher ir.Fetcher, call *ir.CallExpr) (*ir.Fun
 	}
 	return &ir.FuncType{
 		BaseType: ir.BaseType[*ast.FuncType]{Src: &ast.FuncType{Func: call.Source().Pos()}},
-		Params:   builtins.Fields(params...),
-		Results:  builtins.Fields(ir.NewArrayType(nil, arrayType.DataType(), targetRank)),
+		Params:   builtins.Fields(call, params...),
+		Results:  builtins.Fields(call, ir.NewArrayType(nil, arrayType.DataType(), targetRank)),
 	}, nil
 }
 

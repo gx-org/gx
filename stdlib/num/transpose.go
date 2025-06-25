@@ -60,7 +60,7 @@ func (f transpose) BuildFuncType(fetcher ir.Fetcher, call *ir.CallExpr) (*ir.Fun
 	}
 	return &ir.FuncType{
 		BaseType: ir.BaseType[*ast.FuncType]{Src: &ast.FuncType{Func: call.Source().Pos()}},
-		Params:   builtins.Fields(param),
-		Results:  builtins.Fields(result),
+		Params:   builtins.Fields(call, param),
+		Results:  builtins.Fields(call, result),
 	}, nil
 }
