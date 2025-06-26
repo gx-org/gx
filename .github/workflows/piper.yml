@@ -16,6 +16,7 @@
 
 name: Piper
 
+on: workflow_dispatch
 on:
   push:
     branches: ["piper"]
