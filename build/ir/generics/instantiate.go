@@ -21,23 +21,21 @@ import (
 )
 
 func instantiateAxisExpr(fetcher ir.Fetcher, axis *ir.AxisExpr) ([]ir.AxisLengths, bool) {
-	valueRef, isValueRef := axis.X.(*ir.ValueRef)
-	if !isValueRef {
-		return []ir.AxisLengths{
-			&ir.AxisExpr{Src: axis.Src, X: axis.X},
-		}, true
+	ext := []ir.AxisLengths{
+		&ir.AxisExpr{Src: axis.Src, X: axis.X},
 	}
-	canonical, err := fetcher.Eval(valueRef)
-	if err != nil {
-		return nil, fetcher.Err().AppendInternalf(axis.X.Source(), "cannot evaluate %s", axis.X.String())
-	}
-	withExpr, ok := canonical.(ir.Canonical)
+	val, ok := instantiateExpr(fetcher, axis.X)
 	if !ok {
-		return nil, fetcher.Err().AppendInternalf(axis.X.Source(), "expression %T:%s cannot be converted to an IR expression", canonical, canonical.String())
+		return ext, false
+
+	}
+	expr, ok := val.(ir.AssignableExpr)
+	if !ok {
+		return ext, false
 	}
 	return []ir.AxisLengths{
-		&ir.AxisExpr{Src: axis.Src, X: withExpr.Expr()},
-	}, true
+		&ir.AxisExpr{Src: axis.Src, X: expr},
+	}, ok
 }
 
 func exprSource(e ir.Expr) ast.Expr {
@@ -62,7 +60,7 @@ func extractAxisGroup(elts []ir.AssignableExpr) *ir.AxisGroup {
 }
 
 func instantiateAxisGroup(fetcher ir.Fetcher, axis *ir.AxisGroup) ([]ir.AxisLengths, bool) {
-	expr, ok := instantiatExpr(fetcher, &ir.ValueRef{
+	expr, ok := instantiateExpr(fetcher, &ir.ValueRef{
 		Src: &ast.Ident{
 			NamePos: axis.Source().Pos(),
 			Name:    axis.Name,
