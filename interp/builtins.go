@@ -49,18 +49,25 @@ func (ectx *EvalContext) buildBuiltinFrame() error {
 	if err := ectx.defineBoolConstant(ir.TrueStorage()); err != nil {
 		return err
 	}
-	defineBuiltinFunc(ectx, ectx.builtin, "append", appendFunc{})
-	defineBuiltinFunc(ectx, ectx.builtin, "axlengths", axlengthsFunc{})
-	defineBuiltinFunc(ectx, ectx.builtin, "set", setFunc{})
-	defineBuiltinFunc(ectx, ectx.builtin, "trace", traceFunc{})
+	for name, impl := range map[string]ir.FuncImpl{
+		"append":    appendFunc{},
+		"axlengths": axlengthsFunc{},
+		"set":       setFunc{},
+		"trace":     traceFunc{},
+	} {
+		irFunc := &ir.FuncBuiltin{
+			Src:  &ast.FuncDecl{Name: &ast.Ident{Name: name}},
+			Impl: impl,
+		}
+		var err error
+		irFunc.FType, err = impl.BuildFuncType(nil, nil)
+		if err != nil {
+			return err
+		}
+		elFunc := ectx.evaluator.NewFunc(irFunc, nil)
+		ectx.builtin.scope.Define(name, elFunc)
+	}
 	return nil
-}
-
-func defineBuiltinFunc(ectx *EvalContext, f *baseFrame, name string, impl ir.FuncImpl) {
-	f.scope.Define(name, ectx.evaluator.NewFunc(&ir.FuncBuiltin{
-		Src:  &ast.FuncDecl{Name: &ast.Ident{Name: name}},
-		Impl: impl,
-	}, nil))
 }
 
 type appendFunc struct{}
@@ -68,7 +75,7 @@ type appendFunc struct{}
 var _ ir.FuncImpl = (*appendFunc)(nil)
 
 func (appendFunc) BuildFuncType(fetcher ir.Fetcher, call *ir.CallExpr) (*ir.FuncType, error) {
-	return nil, errors.Errorf("not implemented")
+	return &ir.FuncType{CompEval: true}, nil
 }
 
 func (appendFunc) Implementation() any {
@@ -90,7 +97,7 @@ type axlengthsFunc struct{}
 var _ ir.FuncImpl = (*axlengthsFunc)(nil)
 
 func (axlengthsFunc) BuildFuncType(fetcher ir.Fetcher, call *ir.CallExpr) (*ir.FuncType, error) {
-	return nil, errors.Errorf("not implemented")
+	return nil, nil
 }
 
 func (axlengthsFunc) Implementation() any {
@@ -126,7 +133,7 @@ type setFunc struct{}
 var _ ir.FuncImpl = (*setFunc)(nil)
 
 func (setFunc) BuildFuncType(fetcher ir.Fetcher, call *ir.CallExpr) (*ir.FuncType, error) {
-	return nil, errors.Errorf("not implemented")
+	return nil, nil
 }
 
 func (setFunc) Implementation() any {
@@ -146,7 +153,7 @@ type traceFunc struct{}
 var _ ir.FuncImpl = (*traceFunc)(nil)
 
 func (traceFunc) BuildFuncType(fetcher ir.Fetcher, call *ir.CallExpr) (*ir.FuncType, error) {
-	return nil, errors.Errorf("not implemented")
+	return nil, nil
 }
 
 func (traceFunc) Implementation() any {

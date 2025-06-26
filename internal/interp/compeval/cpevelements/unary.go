@@ -135,8 +135,8 @@ func (a *unary) Materialise(ao elements.ArrayOps) (elements.Node, error) {
 	return ao.ElementFromArray(a.src.ToExprAt(), a.val)
 }
 
-func (a *unary) Expr() ir.AssignableExpr {
-	return a.src.Node()
+func (a *unary) Expr() (ir.AssignableExpr, error) {
+	return a.src.Node(), nil
 }
 
 // Compare to another element.

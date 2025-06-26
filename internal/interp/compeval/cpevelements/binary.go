@@ -191,8 +191,8 @@ func (a *binary) CanonicalExpr() canonical.Canonical {
 }
 
 // Expr returns the IR expression represented by the variable.
-func (a *binary) Expr() ir.AssignableExpr {
-	return a.src.Node()
+func (a *binary) Expr() (ir.AssignableExpr, error) {
+	return a.src.Node(), nil
 }
 
 func (a *binary) String() string {

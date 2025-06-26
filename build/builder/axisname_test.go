@@ -187,6 +187,17 @@ func f() [2][3]float32 {
 		},
 		testbuild.Decl{
 			Src: `
+func newArray(shape []intlen) [shape___]float32
+
+func f() [4][3]float32 {
+	oneAxis := []intlen{4}
+	twoAxis := append(oneAxis, 3)
+	return newArray(twoAxis)
+}
+`,
+		},
+		testbuild.Decl{
+			Src: `
 func cast([___S]float32) [S___]float64
 
 func f() [2]float64 {

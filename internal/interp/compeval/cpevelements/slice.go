@@ -75,8 +75,8 @@ func (f *slice) Slice(ctx elements.FileContext, expr ir.AssignableExpr, index el
 	return NewRuntimeValue(ctx.(evaluator.Context), expr)
 }
 
-func (f *slice) Expr() ir.AssignableExpr {
-	return f.src.Node()
+func (f *slice) Expr() (ir.AssignableExpr, error) {
+	return f.src.Node(), nil
 }
 
 func (f *slice) Kind() ir.Kind {

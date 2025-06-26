@@ -62,6 +62,7 @@ func (f *fun) Call(fctx elements.FileContext, call *ir.CallExpr, args []elements
 	for i, ri := range res {
 		var err error
 		els[i], err = NewRuntimeValue(ctx, &ir.ValueRef{
+			Src: &ast.Ident{},
 			Stor: &ir.LocalVarStorage{
 				Src: &ast.Ident{},
 				Typ: ri.Type(),
