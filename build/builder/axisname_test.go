@@ -187,6 +187,17 @@ func f() [2][3]float32 {
 		},
 		testbuild.Decl{
 			Src: `
+func newArray(shape []intlen) [shape___]float32
+
+func f() [4][3]float32 {
+	oneAxis := []intlen{4}
+	twoAxis := append(oneAxis, 3)
+	return newArray(twoAxis)
+}
+`,
+		},
+		testbuild.Decl{
+			Src: `
 func cast([___S]float32) [S___]float64
 
 func f() [2]float64 {
@@ -352,6 +363,15 @@ func add(x, y [_ax1][_ax2]float32) [ax1][ax2]float32 {
 
 func callAdd(x, y [2][3]float32) [2][3]float32 {
 	return add(x, y)
+}
+`,
+		},
+		testbuild.Decl{
+			Src: `
+func g(x [_]float32) int64
+
+func f() int64 {
+	return g([...]float32{1, 2, 3})
 }
 `,
 		},

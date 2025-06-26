@@ -15,8 +15,6 @@
 package values
 
 import (
-	"fmt"
-
 	"github.com/gx-org/backend/platform"
 	"github.com/gx-org/gx/build/ir"
 )
@@ -63,5 +61,5 @@ func (n *NamedType) ToHost(alloc platform.Allocator) (Value, error) {
 // String representation of the value.
 // The returned string is a string reported to the user.
 func (n *NamedType) String() string {
-	return fmt.Sprintf("%s{%s}", n.typ.Name(), n.val.String())
+	return n.val.String()
 }

@@ -44,7 +44,7 @@ func (f *setFunc) BuildFuncType(fetcher ir.Fetcher, call *ir.CallExpr) (*ir.Func
 	if err != nil {
 		return ext, errors.Errorf("cannot fetch array type: %v", err)
 	}
-	ext.Results = builtins.Fields(arrayParams[0])
+	ext.Results = builtins.Fields(call, arrayParams[0])
 	sameDType, err := arrayParams[0].DataType().Equal(fetcher, arrayParams[1].DataType())
 	if err != nil {
 		return ext, errors.Errorf("cannot compare datatypes: %v", err)
@@ -52,7 +52,7 @@ func (f *setFunc) BuildFuncType(fetcher ir.Fetcher, call *ir.CallExpr) (*ir.Func
 	if !sameDType {
 		return ext, errors.Errorf("cannot set a slice of a [...]%s array with a [...]%s array", arrayParams[0].DataType().String(), arrayParams[1].DataType().String())
 	}
-	ext.Params = builtins.Fields(params...)
+	ext.Params = builtins.Fields(call, params...)
 	xResolver := arrayParams[0].Rank()
 	xRank := xResolver
 	updateRank := arrayParams[1].Rank()

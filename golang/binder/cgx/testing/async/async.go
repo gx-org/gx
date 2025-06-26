@@ -27,9 +27,11 @@ import (
 	"github.com/gx-org/gx/build/builder"
 	"github.com/gx-org/gx/build/importers/embedpkg"
 	"github.com/gx-org/gx/build/importers"
-	"github.com/gx-org/gx/golang/binder/cgx"
+	"github.com/gx-org/gx/cgx/handle"
 	cgxtesting "github.com/gx-org/gx/golang/binder/cgx/testing"
 	"github.com/gx-org/gx/stdlib"
+
+	_ "github.com/gx-org/gx/golang/binder/cgx" // C dependency
 )
 
 // #include <stdlib.h>
@@ -62,7 +64,7 @@ func setup(rtm *api.Runtime) (C.cgx_runtime, C.cgx_device, error) {
 	if C.cgx_handle_count() != 0 {
 		return empty, empty, fmt.Errorf("memory handle count is not 0")
 	}
-	crtm := C.cgx_runtime(cgx.Wrap[*api.Runtime](rtm))
+	crtm := C.cgx_runtime(handle.Wrap[*api.Runtime](rtm))
 	deviceResult := C.cgx_device_get(crtm, 0)
 	if deviceResult.error != empty {
 		return empty, empty, cError(deviceResult.error)
@@ -79,7 +81,7 @@ func NewBuilder() *builder.Builder {
 }
 
 func clearLoaderCache(cdev C.cgx_device) {
-	dev := cgx.Unwrap[*api.Device](cgx.ToHandle(uintptr(cdev)))
+	dev := handle.Unwrap[*api.Device](handle.Handle(cdev))
 	loader := dev.Runtime().Builder().Loader()
 	cache, ok := loader.(*importers.CacheLoader)
 	if !ok {
@@ -228,7 +230,7 @@ func RunTestAsyncCGX(t *testing.T, rtm *api.Runtime, testCalls ...TestCall) {
 	if len(testCalls) == 0 {
 		testCalls = allTests
 	}
-	defer cgxtesting.CheckHandleCount(t, cgx.HandleCount())
+	defer cgxtesting.CheckHandleCount(t, handle.Count())
 	crtm, dev, err := setup(rtm)
 	if err != nil {
 		t.Fatal(err)

@@ -34,6 +34,7 @@ type cast struct {
 
 var (
 	_ elements.Materialiser        = (*cast)(nil)
+	_ elements.Copier              = (*cast)(nil)
 	_ elements.ElementWithConstant = (*cast)(nil)
 	_ fmt.Stringer                 = (*cast)(nil)
 )
@@ -74,19 +75,37 @@ func newCast(ctx elements.FileContext, expr ir.AssignableExpr, xEl Element, targ
 
 }
 
-// UnaryOp applies a unary operator on x.
+func newReshape(ctx elements.FileContext, expr ir.AssignableExpr, xEl Element, axisLengths []elements.NumericalElement) (Element, error) {
+	x := elements.ConstantFromElement(xEl)
+	if x == nil {
+		return xEl, nil
+	}
+	val, err := values.NewHostArray(expr.Type(), x.Buffer())
+	if err != nil {
+		return nil, err
+	}
+	return &cast{
+		src:    elements.NewValueAt(ctx.File(), expr),
+		target: expr.Type(),
+		x:      xEl,
+		val:    val,
+	}, nil
+}
+
 func (a *cast) UnaryOp(ctx elements.FileContext, expr *ir.UnaryExpr) (elements.NumericalElement, error) {
 	return newUnary(ctx, expr, a)
 }
 
-// BinaryOp applies a binary operator to x and y.
 func (a *cast) BinaryOp(ctx elements.FileContext, expr *ir.BinaryExpr, x, y elements.NumericalElement) (elements.NumericalElement, error) {
 	return newBinary(ctx, expr, x, y)
 }
 
-// Cast an element into a given data type.
 func (a *cast) Cast(ctx elements.FileContext, expr ir.AssignableExpr, target ir.Type) (elements.NumericalElement, error) {
 	return newCast(ctx, expr, a, target)
+}
+
+func (a *cast) Reshape(ctx elements.FileContext, expr ir.AssignableExpr, axisLengths []elements.NumericalElement) (elements.NumericalElement, error) {
+	return newReshape(ctx, expr, a, axisLengths)
 }
 
 // Shape of the value represented by the element.
@@ -111,6 +130,11 @@ func (a *cast) Unflatten(handles *elements.Unflattener) (values.Value, error) {
 // NumericalConstant returns the value of a constant represented by a node.
 func (a *cast) NumericalConstant() *values.HostArray {
 	return a.val
+}
+
+// Copy the element by returning itself.
+func (a *cast) Copy() elements.Copier {
+	return a
 }
 
 // Materialise returns the element with all its values from the graph.

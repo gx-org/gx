@@ -111,6 +111,15 @@ func (n *Int) Cast(ctx elements.FileContext, expr ir.AssignableExpr, target ir.T
 	return ctx.(evaluator.Context).Evaluation().Evaluator().ElementFromAtom(elements.NewExprAt(ctx.File(), expr), val)
 }
 
+// Reshape the number into an array.
+func (n *Int) Reshape(ctx elements.FileContext, expr ir.AssignableExpr, axisLengths []elements.NumericalElement) (elements.NumericalElement, error) {
+	val, err := values.AtomNumberInt(n.val, expr.Type())
+	if err != nil {
+		return nil, err
+	}
+	return ctx.(evaluator.Context).Evaluation().Evaluator().ElementFromAtom(elements.NewExprAt(ctx.File(), expr), val)
+}
+
 // Shape of the value represented by the element.
 func (n *Int) Shape() *shape.Shape {
 	return numberShape

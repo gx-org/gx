@@ -1144,9 +1144,9 @@ type (
 
 	// FuncLit is a function literal.
 	FuncLit struct {
-		FFile *File
 		Src   *ast.FuncLit
 		FType *FuncType
+		FFile *File
 		Body  *BlockStmt
 	}
 
@@ -2084,6 +2084,8 @@ func (dm *AxisExpr) AssignableTo(fetcher Fetcher, dst AxisLengths) (bool, error)
 			return true, nil
 		}
 		return dm.Equal(fetcher, dstT.X)
+	case *AxisGroup:
+		return true, nil
 	default:
 		return false, errors.Errorf("assigning an axis to an axis type %T not supported", dstT)
 	}
@@ -2124,20 +2126,22 @@ func (dm *AxisGroup) NumAxes() int { return -1 }
 
 // AssignableTo returns true if a dimension can be assigned to another.
 func (dm *AxisGroup) AssignableTo(fetcher Fetcher, dst AxisLengths) (bool, error) {
-	other, ok := dst.(*AxisGroup)
-	if !ok {
-		return false, nil
-	}
-	return dm.Name == other.Name, nil
+	return dm.Equal(fetcher, dst)
 }
 
 // Equal returns true if other has the axis length.
-func (dm *AxisGroup) Equal(fetcher Fetcher, other AxisLengths) (bool, error) {
-	gr, ok := other.(*AxisGroup)
-	if !ok {
-		return false, nil
+func (dm *AxisGroup) Equal(fetcher Fetcher, dst AxisLengths) (bool, error) {
+	switch dstT := dst.(type) {
+	case *AxisGroup:
+		return dm.Name == dstT.Name, nil
+	case *AxisExpr:
+		valueRef, ok := dstT.X.(*ValueRef)
+		if !ok {
+			return false, nil
+		}
+		return dm.Name == valueRef.Store().NameDef().Name, nil
 	}
-	return gr.Src.Name == dm.Src.Name, nil
+	return false, nil
 }
 
 // AxisValue returns the value assigned to the axis.

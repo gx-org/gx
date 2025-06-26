@@ -43,8 +43,12 @@ func goValueFromElement[T dtype.GoDataType](el elements.NumericalElement) (T, bo
 	if !ok {
 		return t, false, nil
 	}
+	cst := canonicalElt.NumericalConstant()
+	if cst == nil {
+		return t, false, nil
+	}
 	var err error
-	t, err = values.ToAtom[T](canonicalElt.NumericalConstant())
+	t, err = values.ToAtom[T](cst)
 	return t, err == nil, err
 }
 
@@ -141,7 +145,7 @@ func (v valuerT[T]) array(ctx *context, lit *ir.ArrayLitExpr) (elements.Element,
 	if len(axes) == 1 {
 		return array1d, nil
 	}
-	return ctx.eval.evaluator.ArrayOps().Reshape(elements.NewExprAt(ctx.File(), lit), array1d, axes)
+	return array1d.Reshape(ctx, lit, axes)
 }
 
 func newValuer(ctx *context, expr ir.Expr, kind ir.Kind) (v valuer, err error) {

@@ -1,4 +1,4 @@
-// Copyright 2024 Google LLC
+// Copyright 2025 Google LLC
 //
 // Licensed under the Apache License, Version 2.0 (the "License");
 // you may not use this file except in compliance with the License.
@@ -12,20 +12,29 @@
 // See the License for the specific language governing permissions and
 // limitations under the License.
 
-package graph
+package builder_test
 
 import (
-	"github.com/pkg/errors"
-	"github.com/gx-org/backend/ops"
-	"github.com/gx-org/backend/shape"
+	"testing"
+
+	"github.com/gx-org/gx/build/builder/testbuild"
 )
 
-// Num returns the builder for the num package.
-func (g *Graph) Num() ops.NumBuilder {
-	return g
+func TestCompeval(t *testing.T) {
+	testbuild.Run(t,
+		testbuild.Decl{
+			Src: `
+//gx:compeval
+func returnTwo() intlen {
+	return 2
 }
 
-// Iota returns a node filling an array with values from 0 to number of elements-1.
-func (g *Graph) Iota(sh *shape.Shape, iotaAxis int) (ops.Node, error) {
-	return nil, errors.Errorf("not implemented")
+func TestFunctionAsAxisLength() [returnTwo()]int32 {
+	return [2]int32{1, 2}
+	// Want:
+	// [2]int32{1, 2}
+}
+`,
+		},
+	)
 }

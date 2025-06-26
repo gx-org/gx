@@ -66,7 +66,20 @@ func (asg *identStorage) define(rscope resolveScope, typ ir.Type) (_ ir.Storage,
 	return ext, !isDefined, true
 }
 
+func (asg *identStorage) anonymousStorage(rscope resolveScope, typ ir.Type) (_ ir.Storage, newName, ok bool) {
+	if ir.IsNumber(typ.Kind()) {
+		typ = ir.DefaultNumberType(typ.Kind())
+	}
+	return &ir.LocalVarStorage{
+		Src: asg.target.src,
+		Typ: typ,
+	}, false, true
+}
+
 func (asg *identStorage) buildStorage(rscope resolveScope, typ ir.Type) (_ ir.Storage, newName, ok bool) {
+	if !ir.ValidIdent(asg.target.src) {
+		return asg.anonymousStorage(rscope, typ)
+	}
 	if asg.tok == token.ASSIGN {
 		return asg.assign(rscope, typ)
 	}
@@ -336,6 +349,10 @@ func (n *assignCallStmt) buildStmt(rscope iFuncResolveScope) (ir.Stmt, bool) {
 	results := funType.Results.Fields()
 	for i := range total {
 		storage, asgmNew, asgmOk := n.targets[i].buildStorage(rscope, results[i].Type())
+		ok = ok && asgmOk
+		if !asgmOk {
+			continue
+		}
 		ext.List[i] = &ir.AssignCallResult{
 			Storage:     storage,
 			Call:        ext.Call,
@@ -345,7 +362,6 @@ func (n *assignCallStmt) buildStmt(rscope iFuncResolveScope) (ir.Stmt, bool) {
 			ok = false
 		}
 		newVariables = newVariables || asgmNew
-		ok = ok && asgmOk
 	}
 	return ext, ok && checkNewVariables(rscope, n.src, newVariables)
 }

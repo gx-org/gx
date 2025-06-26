@@ -113,7 +113,7 @@ func extractTypeParamName(field *ir.FieldGroup) genericType {
 	return nil
 }
 
-func instantiatExpr(fetcher ir.Fetcher, expr ir.Expr) (ir.Value, bool) {
+func instantiateExpr(fetcher ir.Fetcher, expr ir.Expr) (ir.Value, bool) {
 	val, err := fetcher.Eval(expr)
 	if err != nil {
 		return expr, fetcher.Err().Appendf(expr.Source(), "cannot evaluate expression %q: %v", expr.String(), err)
@@ -122,5 +122,9 @@ func instantiatExpr(fetcher ir.Fetcher, expr ir.Expr) (ir.Value, bool) {
 	if !ok {
 		return expr, fetcher.Err().AppendInternalf(expr.Source(), "cannot convert %T to %s", val, reflect.TypeFor[ir.Canonical]())
 	}
-	return irVal.Expr(), true
+	irExpr, err := irVal.Expr()
+	if err != nil {
+		return expr, fetcher.Err().AppendAt(expr.Source(), err)
+	}
+	return irExpr, true
 }

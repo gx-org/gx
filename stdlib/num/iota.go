@@ -15,7 +15,7 @@
 package num
 
 import (
-	"github.com/gx-org/backend/graph"
+	"github.com/gx-org/backend/ops"
 	"github.com/gx-org/backend/shape"
 	"github.com/gx-org/gx/build/builtins"
 	"github.com/gx-org/gx/build/ir"
@@ -48,8 +48,8 @@ func (f iotaWithAxis) BuildFuncType(fetcher ir.Fetcher, call *ir.CallExpr) (*ir.
 		return nil, err
 	}
 	return &ir.FuncType{
-		Params:  builtins.Fields(params...),
-		Results: builtins.Fields(ir.NewArrayType(nil, ir.DefaultIntType, rank)),
+		Params:  builtins.Fields(call, params...),
+		Results: builtins.Fields(call, ir.NewArrayType(nil, ir.DefaultIntType, rank)),
 	}, nil
 }
 
@@ -74,7 +74,7 @@ func evalIotaFull(ctx evaluator.Context, call elements.CallAt, fn elements.Func,
 	if err != nil {
 		return nil, err
 	}
-	return grapheval.ElementsFromNode(call.ToExprAt(), &graph.OutputNode{
+	return grapheval.ElementsFromNode(call.ToExprAt(), &ops.OutputNode{
 		Node:  op,
 		Shape: targetShape,
 	})

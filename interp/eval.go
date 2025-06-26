@@ -154,7 +154,7 @@ func evalRangeStmtForLoopOverArray[T dtype.AlgebraType](ctx *context, stmt *ir.R
 			if err != nil {
 				return nil, false, err
 			}
-			reshapedElement, err := ctx.eval.evaluator.ArrayOps().Reshape(elements.NewExprAt(ctx.File(), valueExpr), elementI, dims)
+			reshapedElement, err := elementI.Reshape(ctx, valueExpr, dims)
 			if err != nil {
 				return nil, false, err
 			}
@@ -292,12 +292,8 @@ func evalValueRef(ctx *context, ref *ir.ValueRef) (elements.Element, error) {
 }
 
 func evalCastToScalarExpr(ctx *context, expr ir.TypeCastExpr, x elements.NumericalElement, targetType ir.ArrayType) (elements.Element, error) {
-	if targetType.Rank().NumAxes() > 0 {
-		var err error
-		x, err = ctx.eval.evaluator.ArrayOps().Reshape(elements.NewExprAt(ctx.File(), expr), x, nil)
-		if err != nil {
-			return nil, err
-		}
+	if targetType.Rank().NumAxes() != len(x.Shape().AxisLengths) {
+		return x.Reshape(ctx, expr, nil)
 	}
 	return x.Cast(ctx, expr, targetType)
 }
@@ -331,7 +327,7 @@ func evalCastAtomToArrayExpr(ctx *context, expr ir.TypeCastExpr, x elements.Nume
 			return nil, err
 		}
 	}
-	reshaped, err := arrayOps.Reshape(srcExpr, x, shapeOfOnes)
+	reshaped, err := x.Reshape(ctx, srcExpr.ToExprAt().Node(), shapeOfOnes)
 	if err != nil {
 		return nil, err
 	}
@@ -357,9 +353,7 @@ func evalCastToArrayExpr(ctx *context, expr ir.TypeCastExpr, x elements.Numerica
 	if origRank.IsAtomic() {
 		return evalCastAtomToArrayExpr(ctx, expr, x, axes)
 	}
-	srcExpr := elements.NewExprAt(ctx.File(), expr)
-	arrayOps := ctx.eval.evaluator.ArrayOps()
-	reshape, err := arrayOps.Reshape(srcExpr, x, axes)
+	reshape, err := x.Reshape(ctx, expr, axes)
 	if err != nil {
 		return nil, fmterr.Position(ctx.File().FileSet(), expr.Source(), err)
 	}
@@ -390,7 +384,7 @@ func evalCastExpr(ctx *context, expr ir.TypeCastExpr) (elements.Element, error) 
 	if !ok {
 		return nil, fmterr.Errorf(ctx.File().FileSet(), expr.Source(), "cast to %s not supported", target.String())
 	}
-	xNum, ok := x.(elements.NumericalElement)
+	xNum, ok := elements.Underlying(x).(elements.NumericalElement)
 	if !ok {
 		return nil, fmterr.Errorf(ctx.File().FileSet(), expr.Source(), "cannot cast element of type %T to %s", x, reflect.TypeFor[elements.NumericalElement]().Name())
 	}
@@ -521,7 +515,7 @@ func evalNumExpr(ctx *context, expr ir.Expr) (elements.NumericalElement, error) 
 	if err != nil {
 		return nil, err
 	}
-	numEl, ok := el.(elements.NumericalElement)
+	numEl, ok := elements.Underlying(el).(elements.NumericalElement)
 	if !ok {
 		return nil, errors.Errorf("cannot cast %T to %s", el, reflect.TypeFor[elements.NumericalElement]())
 	}
@@ -557,6 +551,7 @@ func evalIndexExpr(ctx *context, ref *ir.IndexExpr) (elements.Element, error) {
 	if err != nil {
 		return nil, err
 	}
+	x = elements.Underlying(x)
 	slicer, ok := x.(elements.Slicer)
 	if !ok {
 		return nil, fmterr.Errorf(ctx.File().FileSet(), ref.Source(), "cannot index over %T", x)

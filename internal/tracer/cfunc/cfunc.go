@@ -16,7 +16,7 @@
 package cfunc
 
 import (
-	"github.com/gx-org/backend/graph"
+	"github.com/gx-org/backend/ops"
 	"github.com/gx-org/backend/platform"
 	"github.com/gx-org/backend/shape"
 	"github.com/gx-org/gx/api"
@@ -32,16 +32,16 @@ type CompiledFunc struct {
 	fn      ir.Func
 	process *processor.Processor
 	device  *api.Device
-	runner  graph.Runner
+	runner  ops.Runner
 	outs    []elements.Element
 }
 
-func extractGraphNodes(ao elements.ArrayOps, els []elements.Element) ([]*graph.OutputNode, error) {
+func extractGraphNodes(ao elements.ArrayOps, els []elements.Element) ([]*ops.OutputNode, error) {
 	flatten, err := elements.Flatten(els...)
 	if err != nil {
 		return nil, err
 	}
-	var nodes []*graph.OutputNode
+	var nodes []*ops.OutputNode
 	for _, el := range flatten {
 		mat, ok := el.(elements.Materialiser)
 		if !ok {

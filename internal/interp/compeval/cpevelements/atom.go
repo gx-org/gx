@@ -79,6 +79,10 @@ func (a *atom) Cast(ctx elements.FileContext, expr ir.AssignableExpr, dtype ir.T
 	return newCast(ctx, expr, a, dtype)
 }
 
+func (a *atom) Reshape(ctx elements.FileContext, expr ir.AssignableExpr, axisLengths []elements.NumericalElement) (elements.NumericalElement, error) {
+	return newReshape(ctx, expr, a, axisLengths)
+}
+
 // Shape of the value represented by the element.
 func (a *atom) Shape() *shape.Shape {
 	return a.val.Shape()
@@ -129,8 +133,8 @@ func (a *atom) Axes(ir.Fetcher) (*elements.Slice, error) {
 }
 
 // Expr returns the IR expression represented by the variable.
-func (a *atom) Expr() ir.AssignableExpr {
-	return a.src.Node()
+func (a *atom) Expr() (ir.AssignableExpr, error) {
+	return a.src.Node(), nil
 }
 
 func (a *atom) CanonicalExpr() canonical.Canonical {

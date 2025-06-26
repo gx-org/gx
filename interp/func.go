@@ -143,7 +143,7 @@ func (f *funcBuiltin) Call(fctx elements.FileContext, call *ir.CallExpr, args []
 		impl = f.fnT.Impl.Implementation().(FuncBuiltin)
 	}
 	if impl == nil {
-		err = errors.Errorf("function %s has no backend implementation", f.fn.Name())
+		err = errors.Errorf("function %s has no implementation", f.fn.Name())
 		return
 	}
 	return impl(ctx, elements.NewNodeAt[*ir.CallExpr](ctx.File(), call), f, f.fnT, args)

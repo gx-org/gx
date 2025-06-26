@@ -25,7 +25,7 @@ import (
 
 // Canonical is a canonical value with a IR representation.
 type Canonical interface {
-	Expr() AssignableExpr
+	Expr() (AssignableExpr, error)
 }
 
 // Fetcher fetches scalar value from identifiers in the code.

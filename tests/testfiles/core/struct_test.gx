@@ -5,7 +5,7 @@ type sample struct {
 	y float32
 }
 
-func (s sample) X() [...]float32 {
+func (s sample) X() [2]float32 {
 	return s.x
 }
 
@@ -13,7 +13,7 @@ func (s sample) Y() float32 {
 	return s.y
 }
 
-func TestStructCall() ([...]float32, float32) {
+func TestStructCall() ([2]float32, float32) {
 	mySample := sample{
 		x: [2]float32{2, 3},
 		y: 4,
@@ -31,7 +31,7 @@ func NewSample() sample {
 	}
 }
 
-func TestNewSample() ([...]float32, float32) {
+func TestNewSample() ([2]float32, float32) {
 	s := NewSample()
 	return s.X(), s.Y()
 	// Want:
@@ -46,7 +46,7 @@ func (s sample) returnLiteral() sample {
 	}
 }
 
-func TestSampleReturnLiteral() ([...]float32, float32) {
+func TestSampleReturnLiteral() ([2]float32, float32) {
 	mySample := sample{
 		x: [2]float32{2, 3},
 		y: 4,
@@ -63,7 +63,7 @@ func (s sample) returnCopy() sample {
 	return s1
 }
 
-func TestSampleReturnCopy() ([...]float32, float32) {
+func TestSampleReturnCopy() ([2]float32, float32) {
 	mySample := sample{
 		x: [2]float32{2, 3},
 		y: 4,
@@ -80,7 +80,7 @@ func (s sample) setField() sample {
 	return s
 }
 
-func TestSampleSetField() ([...]float32, float32, [...]float32, float32) {
+func TestSampleSetField() ([2]float32, float32, [2]float32, float32) {
 	before := sample{
 		x: [2]float32{2, 3},
 		y: 4,
@@ -99,7 +99,7 @@ func (s sample) namedReturnSetField() sample {
 	return s
 }
 
-func TestSampleNamedReturnSetField() ([...]float32, float32, [...]float32, float32) {
+func TestSampleNamedReturnSetField() ([2]float32, float32, [2]float32, float32) {
 	before := sample{
 		x: [2]float32{2, 3},
 		y: 4,
@@ -113,7 +113,7 @@ func TestSampleNamedReturnSetField() ([...]float32, float32, [...]float32, float
 	// 3: float32(4)
 }
 
-func TestCastToField() ([...]float32, float32) {
+func TestCastToField() ([2]float32, float32) {
 	s := sample{
 		x: ([2]float32)([2]int32{2, 3}),
 		y: 4,
@@ -124,11 +124,11 @@ func TestCastToField() ([...]float32, float32) {
 	// 1: float32(4)
 }
 
-func (s sample) State() ([...]float32, float32) {
+func (s sample) State() ([2]float32, float32) {
 	return s.X(), s.Y()
 }
 
-func TestMultipleSteps() ([...]float32, float32, [...]float32, float32, [...]float32, float32) {
+func TestMultipleSteps() ([2]float32, float32, [2]float32, float32, [2]float32, float32) {
 	s := NewSample().setField()
 	t := s.setField()
 	t.y = 3	

@@ -38,7 +38,6 @@ func NewSession(rtm *api.Runtime, fs fs.ReadDirFS) *Session {
 
 // TestFolder run the tests in a folder.
 func (s *Session) TestFolder(t *testing.T, path string) {
-	t.Skip("FIX ASAP")
 	bld := s.rtm.Builder()
 	pkg, err := localfs.ImportAt(bld, s.fs, path, path)
 	if err != nil {
