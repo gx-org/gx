@@ -21,7 +21,7 @@ import (
 	"strings"
 
 	"github.com/pkg/errors"
-	"github.com/gx-org/backend/graph"
+	"github.com/gx-org/backend/ops"
 	"github.com/gx-org/gx/api"
 	"github.com/gx-org/gx/api/options"
 	"github.com/gx-org/gx/api/trace"
@@ -40,7 +40,7 @@ type (
 	// tracer interprets GX code to build a backend graph.
 	// The graph is then compiled to return a compiled function.
 	tracer struct {
-		graph graph.Graph
+		graph ops.Graph
 	}
 
 	// CompiledFunc is a function compiled for a given receiver and argument shapes
@@ -114,7 +114,7 @@ func Trace(dev *api.Device, fn *ir.FuncDecl, receiver values.Value, args []value
 	}()
 	// Create a new evaluator for the interpreter.
 	proc := &processor.Processor{}
-	graph := dev.Runtime().Backend().NewGraph(fn.FullyQualifiedName())
+	graph := dev.Runtime().Backend().NewOps(fn.FullyQualifiedName())
 	tr := &tracer{
 		graph: graph,
 	}

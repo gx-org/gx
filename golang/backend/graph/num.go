@@ -16,16 +16,16 @@ package graph
 
 import (
 	"github.com/pkg/errors"
-	"github.com/gx-org/backend/graph"
+	"github.com/gx-org/backend/ops"
 	"github.com/gx-org/backend/shape"
 )
 
 // Num returns the builder for the num package.
-func (g *Graph) Num() graph.NumBuilder {
+func (g *Graph) Num() ops.NumBuilder {
 	return g
 }
 
 // Iota returns a node filling an array with values from 0 to number of elements-1.
-func (g *Graph) Iota(sh *shape.Shape, iotaAxis int) (graph.Node, error) {
+func (g *Graph) Iota(sh *shape.Shape, iotaAxis int) (ops.Node, error) {
 	return nil, errors.Errorf("not implemented")
 }

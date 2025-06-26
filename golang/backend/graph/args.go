@@ -18,7 +18,7 @@ import (
 	"reflect"
 
 	"github.com/pkg/errors"
-	"github.com/gx-org/backend/graph"
+	"github.com/gx-org/backend/ops"
 	"github.com/gx-org/backend/shape"
 	"github.com/gx-org/gx/golang/backend/kernels"
 	goplatform "github.com/gx-org/gx/golang/backend/platform"
@@ -33,7 +33,7 @@ type argument struct {
 var _ execNode = (*argument)(nil)
 
 // Argument returns a node set by a caller when calling the function.
-func (g *Graph) Argument(name string, sh *shape.Shape, index int) (graph.Node, error) {
+func (g *Graph) Argument(name string, sh *shape.Shape, index int) (ops.Node, error) {
 	factory, err := kernels.FactoryFor(sh.DType)
 	if err != nil {
 		return nil, err

@@ -19,7 +19,7 @@ import (
 	"go/ast"
 
 	"github.com/pkg/errors"
-	"github.com/gx-org/backend/graph"
+	"github.com/gx-org/backend/ops"
 	"github.com/gx-org/backend/platform"
 	"github.com/gx-org/gx/api/values"
 	"github.com/gx-org/gx/build/ir"
@@ -348,7 +348,7 @@ func (ev *Evaluator) NewArrayArgument(parent parentArgument, expr elements.ExprA
 	if err != nil {
 		return nil, err
 	}
-	n.BackendNode, err = ElementFromNode(expr, &graph.OutputNode{
+	n.BackendNode, err = ElementFromNode(expr, &ops.OutputNode{
 		Node:  op,
 		Shape: pValue.Shape(),
 	})

@@ -16,7 +16,7 @@ package grapheval
 
 import (
 	"github.com/gx-org/backend/dtype"
-	"github.com/gx-org/backend/graph"
+	"github.com/gx-org/backend/ops"
 	"github.com/gx-org/backend/shape"
 	"github.com/gx-org/gx/api/values"
 	"github.com/gx-org/gx/build/ir"
@@ -25,15 +25,15 @@ import (
 
 type arrayOps struct {
 	ev    *Evaluator
-	graph graph.Graph
+	graph ops.Graph
 }
 
 // Graph where nodes are being added to.
-func (ao *arrayOps) Graph() graph.Graph {
+func (ao *arrayOps) Graph() ops.Graph {
 	return ao.graph
 }
 
-func computeEinsumAxisLengths(ref *ir.EinsumExpr, xShape, yShape *shape.Shape, node graph.Node) []int {
+func computeEinsumAxisLengths(ref *ir.EinsumExpr, xShape, yShape *shape.Shape, node ops.Node) []int {
 	// TODO(degris): hack to postpone computing einstein sum in the interpreter.
 	// We rely on PJRT for the moment.
 	return node.(interface{ PJRTDims() []int }).PJRTDims()
@@ -68,7 +68,7 @@ func (ao *arrayOps) Einsum(ref elements.NodeFile[*ir.EinsumExpr], x, y elements.
 	}
 	return ElementFromNode(
 		ref.ToExprAt(),
-		&graph.OutputNode{
+		&ops.OutputNode{
 			Node:  dotNode,
 			Shape: targetShape,
 		})
@@ -113,7 +113,7 @@ func (ao *arrayOps) BroadcastInDim(expr elements.ExprAt, x elements.NumericalEle
 	}
 	return ElementFromNode(
 		expr.ToExprAt(),
-		&graph.OutputNode{
+		&ops.OutputNode{
 			Node:  reshaped,
 			Shape: targetShape,
 		})
@@ -121,7 +121,7 @@ func (ao *arrayOps) BroadcastInDim(expr elements.ExprAt, x elements.NumericalEle
 
 // Concat concatenates scalars elements into an array with one axis.
 func (ao *arrayOps) Concat(expr elements.ExprAt, xs []elements.NumericalElement) (elements.NumericalElement, error) {
-	nodes := make([]graph.Node, len(xs))
+	nodes := make([]ops.Node, len(xs))
 	var dtype dtype.DataType
 	for i, x := range xs {
 		iNode, iShape, err := NodeFromElement(ao, x)
@@ -142,7 +142,7 @@ func (ao *arrayOps) Concat(expr elements.ExprAt, xs []elements.NumericalElement)
 	}
 	return ElementFromNode(
 		expr.ToExprAt(),
-		&graph.OutputNode{
+		&ops.OutputNode{
 			Node: array1d,
 			Shape: &shape.Shape{
 				DType:       dtype,
@@ -163,14 +163,14 @@ func (ao *arrayOps) Set(call elements.NodeFile[*ir.CallExpr], x, updates, index 
 	}
 	return ElementFromNode(
 		call.ToExprAt(),
-		&graph.OutputNode{
+		&ops.OutputNode{
 			Node:  setNode,
 			Shape: nodes[0].Shape,
 		})
 }
 
-func unpackOutputs(outputs []*graph.OutputNode) (nodes []graph.Node, shapes []*shape.Shape) {
-	nodes, shapes = make([]graph.Node, len(outputs)), make([]*shape.Shape, len(outputs))
+func unpackOutputs(outputs []*ops.OutputNode) (nodes []ops.Node, shapes []*shape.Shape) {
+	nodes, shapes = make([]ops.Node, len(outputs)), make([]*shape.Shape, len(outputs))
 	for i, output := range outputs {
 		nodes[i] = output.Node
 		shapes[i] = output.Shape

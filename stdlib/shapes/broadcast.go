@@ -18,7 +18,7 @@ import (
 	"go/ast"
 	"math/big"
 
-	"github.com/gx-org/backend/graph"
+	"github.com/gx-org/backend/ops"
 	"github.com/gx-org/backend/shape"
 	"github.com/gx-org/gx/build/builtins"
 	"github.com/gx-org/gx/build/fmterr"
@@ -112,7 +112,7 @@ func evalBroadcast(ctx evaluator.Context, call elements.CallAt, fn elements.Func
 	if err != nil {
 		return nil, err
 	}
-	return grapheval.ElementsFromNode(call.ToExprAt(), &graph.OutputNode{
+	return grapheval.ElementsFromNode(call.ToExprAt(), &ops.OutputNode{
 		Node:  op,
 		Shape: targetShape,
 	})

@@ -15,7 +15,7 @@
 package grapheval
 
 import (
-	"github.com/gx-org/backend/graph"
+	"github.com/gx-org/backend/ops"
 	"github.com/gx-org/gx/api/values"
 	"github.com/gx-org/gx/build/ir"
 	"github.com/gx-org/gx/golang/backend/kernels"
@@ -46,7 +46,7 @@ func newValueElement(ev *Evaluator, src elements.ExprAt, value values.Array) (*v
 	if err != nil {
 		return nil, err
 	}
-	node, err := ElementFromNode(src.ToExprAt(), &graph.OutputNode{
+	node, err := ElementFromNode(src.ToExprAt(), &ops.OutputNode{
 		Node:  cstNode,
 		Shape: value.Shape(),
 	})

@@ -16,7 +16,7 @@ package compeval
 
 import (
 	"github.com/pkg/errors"
-	"github.com/gx-org/backend/graph"
+	"github.com/gx-org/backend/ops"
 	"github.com/gx-org/gx/api/values"
 	"github.com/gx-org/gx/build/ir"
 	"github.com/gx-org/gx/internal/interp/compeval/cpevelements"
@@ -28,7 +28,7 @@ type compArrayOps struct{}
 var hostArrayOps elements.ArrayOps = &compArrayOps{}
 
 // Graph returns the graph to which new nodes are being added.
-func (compArrayOps) Graph() graph.Graph {
+func (compArrayOps) Graph() ops.Graph {
 	return nil
 }
 

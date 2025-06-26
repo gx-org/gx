@@ -16,7 +16,7 @@ package cpevelements
 
 import (
 	"github.com/pkg/errors"
-	"github.com/gx-org/backend/graph"
+	"github.com/gx-org/backend/ops"
 	"github.com/gx-org/backend/shape"
 	"github.com/gx-org/gx/api/values"
 	"github.com/gx-org/gx/build/ir"
@@ -94,7 +94,7 @@ func (a *array) Shape() *shape.Shape {
 	return a.shape
 }
 
-func (a *array) Graph() graph.Graph {
+func (a *array) Graph() ops.Graph {
 	return nil
 }
 
@@ -106,8 +106,8 @@ func (a *array) CanonicalExpr() canonical.Canonical {
 	return a
 }
 
-func (a *array) OutNode() *graph.OutputNode {
-	return &graph.OutputNode{Node: a}
+func (a *array) OutNode() *ops.OutputNode {
+	return &ops.OutputNode{Node: a}
 }
 
 func (a *array) String() string {

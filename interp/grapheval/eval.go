@@ -16,7 +16,7 @@
 package grapheval
 
 import (
-	"github.com/gx-org/backend/graph"
+	"github.com/gx-org/backend/ops"
 	"github.com/gx-org/backend/shape"
 	"github.com/gx-org/gx/api/values"
 	"github.com/gx-org/gx/build/ir"
@@ -39,7 +39,7 @@ type Evaluator struct {
 var _ evaluator.Evaluator = (*Evaluator)(nil)
 
 // New returns a new evaluator given a elements.
-func New(importer evaluator.Importer, pr *processor.Processor, gr graph.Graph, newFunc elements.NewFunc) *Evaluator {
+func New(importer evaluator.Importer, pr *processor.Processor, gr ops.Graph, newFunc elements.NewFunc) *Evaluator {
 	ev := &Evaluator{
 		process:  pr,
 		hostEval: compeval.NewHostEvaluator(importer),
@@ -115,14 +115,14 @@ func (ev *Evaluator) CallFuncLit(ctx evaluator.Context, ref *ir.FuncLit, args []
 		if err != nil {
 			return nil, err
 		}
-		graphSingleOutput = &graph.OutputNode{Node: tpl}
+		graphSingleOutput = &ops.OutputNode{Node: tpl}
 	}
-	result, err := core.Call(graph.Subgraph{Graph: subgraph, Result: *graphSingleOutput})
+	result, err := core.Call(ops.Subgraph{Graph: subgraph, Result: *graphSingleOutput})
 	if err != nil {
 		return nil, err
 	}
 
-	if resultTpl, ok := result.(graph.Tuple); ok {
+	if resultTpl, ok := result.(ops.Tuple); ok {
 		return ElementsFromTupleNode(
 			ev.ao.graph,
 			ctx.File(),
@@ -133,7 +133,7 @@ func (ev *Evaluator) CallFuncLit(ctx evaluator.Context, ref *ir.FuncLit, args []
 	}
 	el, err := ElementFromNode(
 		elements.NewExprAt(ctx.File(), ref),
-		&graph.OutputNode{
+		&ops.OutputNode{
 			Node:  result,
 			Shape: shapes[0],
 		})
@@ -144,14 +144,14 @@ func (ev *Evaluator) CallFuncLit(ctx evaluator.Context, ref *ir.FuncLit, args []
 }
 
 // ElementsFromTupleNode converts the graph nodes of a tuple node into elements.
-func ElementsFromTupleNode(g graph.Graph, file *ir.File, expr ir.Expr, tpl graph.Tuple, elExprs []ir.AssignableExpr, shps []*shape.Shape) ([]elements.Element, error) {
+func ElementsFromTupleNode(g ops.Graph, file *ir.File, expr ir.Expr, tpl ops.Tuple, elExprs []ir.AssignableExpr, shps []*shape.Shape) ([]elements.Element, error) {
 	elts := make([]elements.Element, tpl.Size())
 	for i := range tpl.Size() {
 		node, err := tpl.Element(i)
 		if err != nil {
 			return nil, err
 		}
-		elts[i], err = ElementFromNode(elements.NewExprAt(file, elExprs[i]), &graph.OutputNode{
+		elts[i], err = ElementFromNode(elements.NewExprAt(file, elExprs[i]), &ops.OutputNode{
 			Node:  node,
 			Shape: shps[i],
 		})
