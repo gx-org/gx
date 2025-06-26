@@ -15,7 +15,7 @@
 package elements
 
 import (
-	"github.com/gx-org/backend/graph"
+	"github.com/gx-org/backend/ops"
 	"github.com/gx-org/gx/api/values"
 	"github.com/gx-org/gx/build/ir"
 )
@@ -25,22 +25,19 @@ type (
 	// Node is an element representing a numerical node in a compute graph.
 	Node interface {
 		Element
-		OutNode() *graph.OutputNode
+		OutNode() *ops.OutputNode
 	}
 
 	// ArrayOps are the operator implementations for arrays.
 	ArrayOps interface {
 		// Graph returns the graph to which new nodes are being added.
-		Graph() graph.Graph
+		Graph() ops.Graph
 
 		// SubGraph returns a new graph builder.
 		SubGraph(name string) (ArrayOps, error)
 
 		// Einsum calls an einstein sum on x and y given the expression in ref.
 		Einsum(ref NodeFile[*ir.EinsumExpr], x, y NumericalElement) (NumericalElement, error)
-
-		// Reshape an element into a given shape.
-		Reshape(expr ExprAt, x NumericalElement, axisLengths []NumericalElement) (NumericalElement, error)
 
 		// BroadcastInDim the data of an array across dimensions.
 		BroadcastInDim(expr ExprAt, x NumericalElement, axisLengths []NumericalElement) (NumericalElement, error)
@@ -55,7 +52,7 @@ type (
 		ElementFromArray(expr ExprAt, val values.Array) (Node, error)
 	}
 
-	// Materialiser is an element that can return an instance of itself composed only of elements from the backend graph.
+	// Materialiser is an element that can return an instance of itself composed only of elements from the backend ops.
 	Materialiser interface {
 		Element
 

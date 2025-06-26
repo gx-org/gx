@@ -86,8 +86,12 @@ func EvalRank(fetcher ir.Fetcher, expr ir.Expr) (ir.ArrayRank, []canonical.Canon
 		if !ok {
 			return nil, nil, fmterr.Internalf(fetcher.File().FileSet(), expr.Source(), "cannot build an axis expression from element %T: not supported", el)
 		}
+		irExpr, err := ex.Expr()
+		if err != nil {
+			return nil, nil, err
+		}
 		axes[i] = &ir.AxisExpr{
-			X: ex.Expr(),
+			X: irExpr,
 		}
 		cans[i] = el.(canonical.Canonical)
 	}

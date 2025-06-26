@@ -85,7 +85,6 @@ func (v *validator) validate(node ir.Node) {
 		v.validate(nodeT.Body)
 	case *ir.Macro:
 	case *ir.FuncLit:
-		v.validate(nodeT.FFile)
 		v.validate(nodeT.FType)
 		if nodeT.Body == nil {
 			v.errs.Append(errors.Errorf("function literal has no body"))
@@ -301,6 +300,6 @@ func CheckSource(errs *fmterr.Errors, node ir.Node) {
 		return
 	}
 	if src.Source() == nil {
-		errs.Append(fmt.Errorf("%v:%T.Source() returns nil", src, src))
+		errs.Append(fmt.Errorf("validator: %T.Source() returns nil", src))
 	}
 }

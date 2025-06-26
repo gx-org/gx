@@ -133,7 +133,7 @@ func (n *funcType) buildFuncType(rscope resolveScope) (*ir.FuncType, *funcResolv
 	ext.Results, resultsOk = n.results.buildFieldList(resultScope)
 	if resultsOk {
 		for _, field := range ext.Results.Fields() {
-			if !rankInferOk(rscope, field.Source(), field.Type()) {
+			if !rankInferOk(rscope, field.Type().Source(), field.Type()) {
 				resultsOk = false
 			}
 		}

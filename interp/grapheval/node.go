@@ -17,7 +17,7 @@ package grapheval
 import (
 	"github.com/pkg/errors"
 	"github.com/gx-org/backend/dtype"
-	"github.com/gx-org/backend/graph"
+	"github.com/gx-org/backend/ops"
 	"github.com/gx-org/backend/shape"
 	"github.com/gx-org/gx/api/values"
 	"github.com/gx-org/gx/build/ir"
@@ -26,12 +26,13 @@ import (
 
 // BackendNode is a state element owning a node in the backend graph.
 type BackendNode struct {
-	nod  *graph.OutputNode
+	nod  *ops.OutputNode
 	expr elements.ExprAt
 }
 
 var (
 	_ elements.Slicer           = (*BackendNode)(nil)
+	_ elements.Copier           = (*BackendNode)(nil)
 	_ elements.Materialiser     = (*BackendNode)(nil)
 	_ elements.NumericalElement = (*BackendNode)(nil)
 )
@@ -42,7 +43,7 @@ type hasShape interface {
 	BackendShape() *shape.Shape
 }
 
-func checkShape(node *graph.OutputNode) error {
+func checkShape(node *ops.OutputNode) error {
 	want := node.Shape
 	nodeWithShape, ok := node.Node.(hasShape)
 	if !ok {
@@ -59,14 +60,14 @@ func checkShape(node *graph.OutputNode) error {
 }
 
 // elementFromTuple converts a backend tuple to a Tuple element.
-func (ev *Evaluator) elementFromTuple(src elements.ExprAt, tpl graph.Tuple, shps []*shape.Shape) (*elements.Tuple, error) {
+func (ev *Evaluator) elementFromTuple(src elements.ExprAt, tpl ops.Tuple, shps []*shape.Shape) (*elements.Tuple, error) {
 	elts := make([]elements.Element, tpl.Size())
 	for i := range tpl.Size() {
 		node, err := tpl.Element(i)
 		if err != nil {
 			return nil, err
 		}
-		elts[i], err = ElementFromNode(src.ToExprAt(), &graph.OutputNode{
+		elts[i], err = ElementFromNode(src.ToExprAt(), &ops.OutputNode{
 			Node:  node,
 			Shape: shps[i],
 		})
@@ -104,7 +105,7 @@ func (n *BackendNode) BinaryOp(ctx elements.FileContext, expr *ir.BinaryExpr, x,
 	}
 	return ElementFromNode(
 		elements.NewExprAt(ctx.File(), expr),
-		&graph.OutputNode{
+		&ops.OutputNode{
 			Node:  binaryNode,
 			Shape: targetShape,
 		})
@@ -119,7 +120,7 @@ func (n *BackendNode) UnaryOp(ctx elements.FileContext, expr *ir.UnaryExpr) (ele
 	}
 	return ElementFromNode(
 		elements.NewExprAt(ctx.File(), expr),
-		&graph.OutputNode{
+		&ops.OutputNode{
 			Node:  unaryNode,
 			Shape: n.nod.Shape,
 		})
@@ -135,11 +136,37 @@ func (n *BackendNode) Cast(ctx elements.FileContext, expr ir.AssignableExpr, tar
 	}
 	return ElementFromNode(
 		elements.NewExprAt(ctx.File(), expr),
-		&graph.OutputNode{
+		&ops.OutputNode{
 			Node: casted,
 			Shape: &shape.Shape{
 				DType:       targetKind,
 				AxisLengths: n.nod.Shape.AxisLengths,
+			},
+		})
+}
+
+// Reshape an element into a given shape.
+func (n *BackendNode) Reshape(ctx elements.FileContext, expr ir.AssignableExpr, axisLengths []elements.NumericalElement) (elements.NumericalElement, error) {
+	axes := make([]int, len(axisLengths))
+	for i, el := range axisLengths {
+		var err error
+		axes[i], err = elements.ConstantIntFromElement(el)
+		if err != nil {
+			return nil, err
+		}
+	}
+	ao := evalFromContext(ctx).ArrayOps()
+	reshaped, err := ao.Graph().Core().Reshape(n.nod.Node, axes)
+	if err != nil {
+		return nil, err
+	}
+	return ElementFromNode(
+		elements.NewExprAt(ctx.File(), expr),
+		&ops.OutputNode{
+			Node: reshaped,
+			Shape: &shape.Shape{
+				DType:       n.nod.Shape.DType,
+				AxisLengths: axes,
 			},
 		})
 }
@@ -159,7 +186,7 @@ func (n *BackendNode) SliceArray(ctx elements.FileContext, expr ir.AssignableExp
 	if err != nil {
 		return nil, err
 	}
-	return ElementFromNode(elements.NewExprAt(ctx.File(), expr), &graph.OutputNode{
+	return ElementFromNode(elements.NewExprAt(ctx.File(), expr), &ops.OutputNode{
 		Node: sliceNode,
 		Shape: &shape.Shape{
 			DType:       n.Shape().DType,
@@ -178,6 +205,11 @@ func (n *BackendNode) Unflatten(handles *elements.Unflattener) (values.Value, er
 	return handles.ParseArray(n.expr.ToExprAt())
 }
 
+// Copy the node by returning itself.
+func (n *BackendNode) Copy() elements.Copier {
+	return n
+}
+
 // Shape returns the shape of the element.
 func (n *BackendNode) Shape() *shape.Shape {
 	return n.nod.Shape
@@ -194,7 +226,7 @@ func (n *BackendNode) Materialise(elements.ArrayOps) (elements.Node, error) {
 }
 
 // OutNode returns the graph node.
-func (n *BackendNode) OutNode() *graph.OutputNode {
+func (n *BackendNode) OutNode() *ops.OutputNode {
 	return n.nod
 }
 
@@ -204,10 +236,10 @@ func (n *BackendNode) String() string {
 }
 
 // NodeFromElement converts an element into a graph node.
-// We unpack the value of *graph.OutputNode to prevent
+// We unpack the value of *ops.OutputNode to prevent
 // from changing the output of Materialise accidentally.
 // Returns an error if the element is not a numerical element.
-func NodeFromElement(ao elements.ArrayOps, el elements.Element) (graph.Node, *shape.Shape, error) {
+func NodeFromElement(ao elements.ArrayOps, el elements.Element) (ops.Node, *shape.Shape, error) {
 	materialiser, ok := el.(elements.Materialiser)
 	if !ok {
 		return nil, nil, errors.Errorf("cannot convert %T to a backend node graph: does not implement Materialiser", el)
@@ -221,7 +253,7 @@ func NodeFromElement(ao elements.ArrayOps, el elements.Element) (graph.Node, *sh
 }
 
 // ElementFromNode returns an element representing a node in the backend graph.
-func ElementFromNode(expr elements.ExprAt, node *graph.OutputNode) (*BackendNode, error) {
+func ElementFromNode(expr elements.ExprAt, node *ops.OutputNode) (*BackendNode, error) {
 	if err := checkShape(node); err != nil {
 		return nil, err
 	}
@@ -235,7 +267,7 @@ func ElementFromNode(expr elements.ExprAt, node *graph.OutputNode) (*BackendNode
 }
 
 // ElementsFromNode returns a slice of element from a graph node.
-func ElementsFromNode(expr elements.ExprAt, node *graph.OutputNode) ([]elements.Element, error) {
+func ElementsFromNode(expr elements.ExprAt, node *ops.OutputNode) ([]elements.Element, error) {
 	el, err := ElementFromNode(expr, node)
 	if err != nil {
 		return nil, err
@@ -246,12 +278,12 @@ func ElementsFromNode(expr elements.ExprAt, node *graph.OutputNode) ([]elements.
 // extractGraphNodes extracts all the graph nodes from an element and its children.
 // It first flattens the element, then extracts all the BackendNodes (that is, any elements
 // representing a node in the backend graph).
-func extractGraphNodes(els []elements.Element) ([]ir.AssignableExpr, []*graph.OutputNode, error) {
+func extractGraphNodes(els []elements.Element) ([]ir.AssignableExpr, []*ops.OutputNode, error) {
 	flatten, err := elements.Flatten(els...)
 	if err != nil {
 		return nil, nil, err
 	}
-	var graphNodes []*graph.OutputNode
+	var graphNodes []*ops.OutputNode
 	var exprs []ir.AssignableExpr
 	for _, elt := range flatten {
 		node, ok := elt.(*BackendNode)
@@ -265,14 +297,14 @@ func extractGraphNodes(els []elements.Element) ([]ir.AssignableExpr, []*graph.Ou
 }
 
 // MaterialiseAll materialises a slice of elements into a slice of output graph nodes.
-func MaterialiseAll(ao elements.ArrayOps, els []elements.Element) ([]*graph.OutputNode, error) {
-	nodes := make([]*graph.OutputNode, len(els))
+func MaterialiseAll(ao elements.ArrayOps, els []elements.Element) ([]*ops.OutputNode, error) {
+	nodes := make([]*ops.OutputNode, len(els))
 	for i, el := range els {
 		node, shape, err := NodeFromElement(ao, el)
 		if err != nil {
 			return nil, err
 		}
-		nodes[i] = &graph.OutputNode{
+		nodes[i] = &ops.OutputNode{
 			Node:  node,
 			Shape: shape,
 		}

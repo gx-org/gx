@@ -49,7 +49,7 @@ func newParent(m child, a float32) parent {
 	return parent{m: m, a: a}
 }
 
-func TestMyStruct() (myfloat, [...]float64) {
+func TestMyStruct() (myfloat, [3]float64) {
 	m := child{
 		a: 5.0,
 		b: [3]float64{1.0, 2.0, 3.0},
@@ -95,7 +95,7 @@ func TestNewParent() parent {
 	// }
 }
 
-func TestMultipleSelector() (float32, myfloat, [...]float64) {
+func TestMultipleSelector() (float32, myfloat, [3]float64) {
 	o := parent{
 		a: 3,
 		m: child{
@@ -124,11 +124,11 @@ func TestFunctionWithReceiverOnStruct() myfloat {
 	// float64(5)
 }
 
-func add(a, b [_][_]float32) [_][_]float32 {
+func add(a, b [_ax0][_ax1]float32) [ax0][ax1]float32 {
 	return a + b
 }
 
-func TestGenericDimensionsFloat32() [_][_]float32 {
+func TestGenericDimensionsFloat32() [2][3]float32 {
 	return add(
 		[2][3]float32{{1, 2, 3}, {4, 5, 6}},
 		[2][3]float32{{6, 5, 4}, {3, 2, 1}},

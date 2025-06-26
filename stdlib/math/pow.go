@@ -38,7 +38,7 @@ func (f pow) BuildFuncType(fetcher ir.Fetcher, call *ir.CallExpr) (*ir.FuncType,
 	}
 	return &ir.FuncType{
 		BaseType: ir.BaseType[*ast.FuncType]{Src: &ast.FuncType{Func: call.Source().Pos()}},
-		Params:   builtins.Fields(baseParam, exponentParam),
-		Results:  builtins.Fields(result),
+		Params:   builtins.Fields(call, baseParam, exponentParam),
+		Results:  builtins.Fields(call, result),
 	}, nil
 }

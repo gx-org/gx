@@ -35,7 +35,7 @@ var (
 
 	// PositionsType returns a type for a slice of indices.
 	PositionsType = ir.NewArrayType(
-		nil,
+		&ast.ArrayType{},
 		ir.DefaultIntType,
 		&ir.RankInfer{},
 	)
@@ -56,12 +56,18 @@ func ToBinaryExpr(op token.Token, x, y ir.AssignableExpr) *ir.BinaryExpr {
 }
 
 // Fields returns a list of fields to specify parameters or results.
-func Fields(types ...ir.Type) *ir.FieldList {
+func Fields(expr ir.Expr, types ...ir.Type) *ir.FieldList {
 	l := &ir.FieldList{
 		List: make([]*ir.FieldGroup, len(types)),
 	}
 	for i, tp := range types {
-		l.List[i] = &ir.FieldGroup{Type: &ir.TypeValExpr{Typ: tp}}
+		l.List[i] = &ir.FieldGroup{
+			Src: &ast.Field{Type: expr.Source().(ast.Expr)},
+			Type: &ir.TypeValExpr{
+				X:   expr,
+				Typ: tp,
+			},
+		}
 	}
 	return l
 }

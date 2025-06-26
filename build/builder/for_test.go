@@ -105,5 +105,17 @@ func f() int32 {
 }
 `,
 		},
+		testbuild.Decl{
+			Src: `
+func f() int64 {
+	a := [3]float32{3, 5, 7}
+	x := int64(100)
+	for i := range a {
+		x = x + i
+	}
+	return x
+}
+`,
+		},
 	)
 }

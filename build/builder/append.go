@@ -53,11 +53,13 @@ func (f *appendFunc) BuildFuncType(fetcher ir.Fetcher, call *ir.CallExpr) (*ir.F
 		}
 	}
 	containerGroup := &ir.FieldGroup{
-		Type: &ir.TypeValExpr{Typ: params[0]},
+		Src:  &ast.Field{Type: call.Src},
+		Type: &ir.TypeValExpr{X: call, Typ: params[0]},
 	}
 	containerGroup.Fields = []*ir.Field{&ir.Field{Group: containerGroup}}
 	elementsGroup := &ir.FieldGroup{
-		Type: &ir.TypeValExpr{Typ: container.DType.Typ},
+		Src:  &ast.Field{Type: call.Src},
+		Type: &ir.TypeValExpr{X: call, Typ: container.DType.Typ},
 	}
 	for range len(call.Args) - 1 {
 		elementsGroup.Fields = append(elementsGroup.Fields, &ir.Field{

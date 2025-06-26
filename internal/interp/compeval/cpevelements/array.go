@@ -16,7 +16,7 @@ package cpevelements
 
 import (
 	"github.com/pkg/errors"
-	"github.com/gx-org/backend/graph"
+	"github.com/gx-org/backend/ops"
 	"github.com/gx-org/backend/shape"
 	"github.com/gx-org/gx/api/values"
 	"github.com/gx-org/gx/build/ir"
@@ -26,8 +26,9 @@ import (
 
 // array element storing a GX value array.
 type array struct {
-	src elements.ExprAt
-	typ ir.ArrayType
+	src   elements.ExprAt
+	typ   ir.ArrayType
+	shape *shape.Shape
 }
 
 var (
@@ -40,7 +41,13 @@ var (
 
 // NewArray returns a new array from a code position and a type.
 func NewArray(src elements.ExprAt, typ ir.ArrayType) elements.NumericalElement {
-	return &array{src: src, typ: typ}
+	shape := &shape.Shape{
+		DType: typ.DataType().Kind().DType(),
+	}
+	if typ.Rank().NumAxes() > 0 {
+		shape.AxisLengths = make([]int, typ.Rank().NumAxes())
+	}
+	return &array{src: src, shape: shape, typ: typ}
 }
 
 func (a *array) Flatten() ([]elements.Element, error) {
@@ -71,6 +78,10 @@ func (a *array) Cast(ctx elements.FileContext, expr ir.AssignableExpr, target ir
 	return NewArray(elements.NewExprAt(ctx.File(), expr), expr.Type().(ir.ArrayType)), nil
 }
 
+func (a *array) Reshape(ctx elements.FileContext, expr ir.AssignableExpr, axisLengths []elements.NumericalElement) (elements.NumericalElement, error) {
+	return NewArray(elements.NewExprAt(ctx.File(), expr), expr.Type().(ir.ArrayType)), nil
+}
+
 func (a *array) Slice(ctx elements.FileContext, expr ir.AssignableExpr, index elements.NumericalElement) (elements.Element, error) {
 	return NewArray(elements.NewExprAt(ctx.File(), expr), expr.Type().(ir.ArrayType)), nil
 }
@@ -80,10 +91,10 @@ func (a *array) Copy() elements.Copier {
 }
 
 func (a *array) Shape() *shape.Shape {
-	return nil
+	return a.shape
 }
 
-func (a *array) Graph() graph.Graph {
+func (a *array) Graph() ops.Graph {
 	return nil
 }
 
@@ -95,8 +106,8 @@ func (a *array) CanonicalExpr() canonical.Canonical {
 	return a
 }
 
-func (a *array) OutNode() *graph.OutputNode {
-	return &graph.OutputNode{Node: a}
+func (a *array) OutNode() *ops.OutputNode {
+	return &ops.OutputNode{Node: a}
 }
 
 func (a *array) String() string {

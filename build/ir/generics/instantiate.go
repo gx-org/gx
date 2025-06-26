@@ -21,23 +21,21 @@ import (
 )
 
 func instantiateAxisExpr(fetcher ir.Fetcher, axis *ir.AxisExpr) ([]ir.AxisLengths, bool) {
-	valueRef, isValueRef := axis.X.(*ir.ValueRef)
-	if !isValueRef {
-		return []ir.AxisLengths{
-			&ir.AxisExpr{Src: axis.Src, X: axis.X},
-		}, true
+	ext := []ir.AxisLengths{
+		&ir.AxisExpr{Src: axis.Src, X: axis.X},
 	}
-	canonical, err := fetcher.Eval(valueRef)
-	if err != nil {
-		return nil, fetcher.Err().AppendInternalf(axis.X.Source(), "cannot evaluate %s", axis.X.String())
-	}
-	withExpr, ok := canonical.(ir.Canonical)
+	val, ok := instantiateExpr(fetcher, axis.X)
 	if !ok {
-		return nil, fetcher.Err().AppendInternalf(axis.X.Source(), "expression %T:%s cannot be converted to an IR expression", canonical, canonical.String())
+		return ext, false
+
+	}
+	expr, ok := val.(ir.AssignableExpr)
+	if !ok {
+		return ext, false
 	}
 	return []ir.AxisLengths{
-		&ir.AxisExpr{Src: axis.Src, X: withExpr.Expr()},
-	}, true
+		&ir.AxisExpr{Src: axis.Src, X: expr},
+	}, ok
 }
 
 func exprSource(e ir.Expr) ast.Expr {
@@ -62,7 +60,7 @@ func extractAxisGroup(elts []ir.AssignableExpr) *ir.AxisGroup {
 }
 
 func instantiateAxisGroup(fetcher ir.Fetcher, axis *ir.AxisGroup) ([]ir.AxisLengths, bool) {
-	expr, ok := instantiatExpr(fetcher, &ir.ValueRef{
+	expr, ok := instantiateExpr(fetcher, &ir.ValueRef{
 		Src: &ast.Ident{
 			NamePos: axis.Source().Pos(),
 			Name:    axis.Name,
@@ -93,12 +91,26 @@ func instantiateAxisGroup(fetcher ir.Fetcher, axis *ir.AxisGroup) ([]ir.AxisLeng
 	}
 }
 
+func instantiateAxisInfer(fetcher ir.Fetcher, axis *ir.AxisInfer) ([]ir.AxisLengths, bool) {
+	switch axis.Src.Name {
+	case "_":
+		return []ir.AxisLengths{axis}, true
+	default:
+		return []ir.AxisLengths{axis}, fetcher.Err().AppendInternalf(axis.Src, "unknown inference token %s", axis.Src.Name)
+	}
+}
+
 func instantiateAxis(fetcher ir.Fetcher, axis ir.AxisLengths) ([]ir.AxisLengths, bool) {
 	switch axisT := axis.(type) {
 	case *ir.AxisExpr:
 		return instantiateAxisExpr(fetcher, axisT)
 	case *ir.AxisGroup:
 		return instantiateAxisGroup(fetcher, axisT)
+	case *ir.AxisInfer:
+		if axisT.X != nil {
+			return instantiateAxis(fetcher, axisT.X)
+		}
+		return instantiateAxisInfer(fetcher, axisT)
 	default:
 		return []ir.AxisLengths{axisT}, false
 	}

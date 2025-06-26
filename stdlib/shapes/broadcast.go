@@ -18,7 +18,7 @@ import (
 	"go/ast"
 	"math/big"
 
-	"github.com/gx-org/backend/graph"
+	"github.com/gx-org/backend/ops"
 	"github.com/gx-org/backend/shape"
 	"github.com/gx-org/gx/build/builtins"
 	"github.com/gx-org/gx/build/fmterr"
@@ -85,8 +85,8 @@ func (f broadcast) BuildFuncType(fetcher ir.Fetcher, call *ir.CallExpr) (*ir.Fun
 	}
 	return &ir.FuncType{
 		BaseType: ir.BaseType[*ast.FuncType]{Src: &ast.FuncType{Func: call.Source().Pos()}},
-		Params:   builtins.Fields(params...),
-		Results:  builtins.Fields(ir.NewArrayType(nil, arrayType.DataType(), targetRank)),
+		Params:   builtins.Fields(call, params...),
+		Results:  builtins.Fields(call, ir.NewArrayType(nil, arrayType.DataType(), targetRank)),
 	}, nil
 }
 
@@ -112,7 +112,7 @@ func evalBroadcast(ctx evaluator.Context, call elements.CallAt, fn elements.Func
 	if err != nil {
 		return nil, err
 	}
-	return grapheval.ElementsFromNode(call.ToExprAt(), &graph.OutputNode{
+	return grapheval.ElementsFromNode(call.ToExprAt(), &ops.OutputNode{
 		Node:  op,
 		Shape: targetShape,
 	})

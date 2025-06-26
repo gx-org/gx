@@ -169,6 +169,7 @@ func init() {
 	typeToProcess["github.com/gx-org/gx/build/ir.intlenType"] = debugOk(valueToString)
 	typeToProcess["github.com/gx-org/gx/build/ir.float32Type"] = debugOk(valueToString)
 	typeToProcess["github.com/gx-org/gx/build/ir.float64Type"] = debugOk(valueToString)
+	typeToProcess["github.com/gx-org/gx/build/ir.boolType"] = debugOk(valueToString)
 	typeToProcess["github.com/gx-org/gx/build/ir.numberIntType"] = debugOk(valueToString)
 	typeToProcess["github.com/gx-org/gx/build/ir.numberFloatType"] = debugOk(valueToString)
 	typeToProcess["github.com/gx-org/gx/build/ir.ValueRef"] = debugOk(valueRefToString)

@@ -84,6 +84,10 @@ func newUnary(ctx elements.FileContext, expr *ir.UnaryExpr, xEl Element) (_ *una
 
 }
 
+func (a *unary) Reshape(ctx elements.FileContext, expr ir.AssignableExpr, axisLengths []elements.NumericalElement) (elements.NumericalElement, error) {
+	return newReshape(ctx, expr, a, axisLengths)
+}
+
 // UnaryOp applies a unary operator on x.
 func (a *unary) UnaryOp(ctx elements.FileContext, expr *ir.UnaryExpr) (elements.NumericalElement, error) {
 	return newUnary(ctx, expr, a)
@@ -131,8 +135,8 @@ func (a *unary) Materialise(ao elements.ArrayOps) (elements.Node, error) {
 	return ao.ElementFromArray(a.src.ToExprAt(), a.val)
 }
 
-func (a *unary) Expr() ir.AssignableExpr {
-	return a.src.Node()
+func (a *unary) Expr() (ir.AssignableExpr, error) {
+	return a.src.Node(), nil
 }
 
 // Compare to another element.

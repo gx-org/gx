@@ -16,7 +16,7 @@ package graph
 
 import (
 	"github.com/pkg/errors"
-	"github.com/gx-org/backend/graph"
+	"github.com/gx-org/backend/ops"
 	"github.com/gx-org/backend/platform"
 	"github.com/gx-org/backend/shape"
 	"github.com/gx-org/gx/golang/backend/kernels"
@@ -32,7 +32,7 @@ type (
 	}
 
 	execNode interface {
-		graph.Node
+		ops.Node
 		shape() *shape.Shape
 		kernelFactory() kernels.Factory
 		exec(*executor) (kernels.Array, error)
@@ -44,7 +44,7 @@ type (
 	}
 )
 
-func toExecNodes(outs []*graph.OutputNode) ([]execNode, error) {
+func toExecNodes(outs []*ops.OutputNode) ([]execNode, error) {
 	execs := make([]execNode, len(outs))
 	for i, out := range outs {
 		var ok bool
@@ -58,7 +58,7 @@ func toExecNodes(outs []*graph.OutputNode) ([]execNode, error) {
 
 // Compile the graph for a given device.
 // The graph is not supposed to be modified once it has been compiled.
-func (g *Graph) Compile(dev platform.Device, output, traced []*graph.OutputNode, params []*shape.Shape) (graph.Runner, error) {
+func (g *Graph) Compile(dev platform.Device, output, traced []*ops.OutputNode, params []*shape.Shape) (ops.Runner, error) {
 	nr := &nodeRunner{
 		graph:  g,
 		device: dev.(*goplatform.Device),

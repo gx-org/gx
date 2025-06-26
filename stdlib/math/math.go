@@ -23,7 +23,7 @@ import (
 	"math"
 
 	"github.com/gx-org/backend/dtype"
-	"github.com/gx-org/backend/graph"
+	"github.com/gx-org/backend/ops"
 	"github.com/gx-org/gx/build/builtins"
 	"github.com/gx-org/gx/build/fmterr"
 	"github.com/gx-org/gx/build/ir"
@@ -53,7 +53,7 @@ var Package = builtin.PackageBuilder{
 		builtin.BuildFunc(maxFunc{}),
 		builtin.ImplementStubFunc("Abs", func(impl *impl.Stdlib) interp.FuncBuiltin { return impl.Math.Abs }),
 		builtin.ImplementStubFunc("Ceil", func(impl *impl.Stdlib) interp.FuncBuiltin { return impl.Math.Ceil }),
-		buildUnary("Cos", func(g graph.Graph) unaryFunc { return g.Math().Cos }),
+		buildUnary("Cos", func(g ops.Graph) unaryFunc { return g.Math().Cos }),
 		builtin.ImplementStubFunc("Erf", func(impl *impl.Stdlib) interp.FuncBuiltin { return impl.Math.Erf }),
 		builtin.ImplementStubFunc("Expm1", func(impl *impl.Stdlib) interp.FuncBuiltin { return impl.Math.Expm1 }),
 		builtin.ImplementStubFunc("Exp", func(impl *impl.Stdlib) interp.FuncBuiltin { return impl.Math.Exp }),
@@ -64,9 +64,9 @@ var Package = builtin.PackageBuilder{
 		builtin.ImplementStubFunc("Round", func(impl *impl.Stdlib) interp.FuncBuiltin { return impl.Math.Round }),
 		builtin.ImplementStubFunc("Rsqrt", func(impl *impl.Stdlib) interp.FuncBuiltin { return impl.Math.Rsqrt }),
 		builtin.ImplementStubFunc("Sign", func(impl *impl.Stdlib) interp.FuncBuiltin { return impl.Math.Sign }),
-		buildUnary("Sin", func(g graph.Graph) unaryFunc { return g.Math().Sin }),
+		buildUnary("Sin", func(g ops.Graph) unaryFunc { return g.Math().Sin }),
 		builtin.ImplementStubFunc("Sqrt", func(impl *impl.Stdlib) interp.FuncBuiltin { return impl.Math.Sqrt }),
-		buildUnary("Tanh", func(g graph.Graph) unaryFunc { return g.Math().Tanh }),
+		buildUnary("Tanh", func(g ops.Graph) unaryFunc { return g.Math().Tanh }),
 	},
 }
 
@@ -121,9 +121,9 @@ func buildConstScalar[T dtype.GoDataType](name string, value T) builtin.Builder 
 	})
 }
 
-type unaryFunc = func(graph.Node) (graph.Node, error)
+type unaryFunc = func(ops.Node) (ops.Node, error)
 
-func buildUnary(name string, f func(graph graph.Graph) unaryFunc) builtin.Builder {
+func buildUnary(name string, f func(graph ops.Graph) unaryFunc) builtin.Builder {
 	return builtin.ImplementGraphFunc(name, func(ctx evaluator.Context, call elements.CallAt, fn elements.Func, irFunc *ir.FuncBuiltin, args []elements.Element) ([]elements.Element, error) {
 		ao := ctx.Evaluation().Evaluator().ArrayOps()
 		x, xShape, err := grapheval.NodeFromElement(ao, args[0])
@@ -135,7 +135,7 @@ func buildUnary(name string, f func(graph graph.Graph) unaryFunc) builtin.Builde
 		if err != nil {
 			return nil, err
 		}
-		return grapheval.ElementsFromNode(call.ToExprAt(), &graph.OutputNode{
+		return grapheval.ElementsFromNode(call.ToExprAt(), &ops.OutputNode{
 			Node:  node,
 			Shape: xShape,
 		})

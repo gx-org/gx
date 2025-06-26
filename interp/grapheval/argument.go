@@ -19,7 +19,7 @@ import (
 	"go/ast"
 
 	"github.com/pkg/errors"
-	"github.com/gx-org/backend/graph"
+	"github.com/gx-org/backend/ops"
 	"github.com/gx-org/backend/platform"
 	"github.com/gx-org/gx/api/values"
 	"github.com/gx-org/gx/build/ir"
@@ -348,7 +348,7 @@ func (ev *Evaluator) NewArrayArgument(parent parentArgument, expr elements.ExprA
 	if err != nil {
 		return nil, err
 	}
-	n.BackendNode, err = ElementFromNode(expr, &graph.OutputNode{
+	n.BackendNode, err = ElementFromNode(expr, &ops.OutputNode{
 		Node:  op,
 		Shape: pValue.Shape(),
 	})
@@ -385,6 +385,10 @@ func (n *arrayArgument) ArrayFromContext(in *elements.InputValues) (values.Array
 		return nil, errors.Errorf("%s:%T is not an assigned numerical value", n.parentArgument.Name(), value)
 	}
 	return array, nil
+}
+
+func (n *arrayArgument) Copy() elements.Copier {
+	return n
 }
 
 func (*arrayArgument) Kind() ir.Kind {

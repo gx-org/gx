@@ -88,6 +88,11 @@ func (eval *EvalContext) newFileContext(file *ir.File) (*context, error) {
 	return ctx, nil
 }
 
+func (ctx *context) EvalFunc(f ir.Func, call *ir.CallExpr, args []elements.Element) ([]elements.Element, error) {
+	fnEl := NewRunFunc(f, nil)
+	return fnEl.Call(ctx, call, args)
+}
+
 // Evaluator returns the evaluator used by the context.
 func (ctx *context) Evaluation() evaluator.EvaluationContext {
 	return ctx.eval
@@ -139,6 +144,8 @@ func (ctx *context) set(tok token.Token, dest ir.Storage, value elements.Element
 		return nil
 	case *ir.FieldStorage:
 		return fr.Assign(destT.Field.Name.Name, value)
+	case *ir.AssignExpr:
+		return fr.Assign(destT.NameDef().Name, value)
 	default:
 		return fmterr.Errorf(ctx.File().FileSet(), dest.Source(), "cannot assign %v to %T: not supported", value, destT)
 	}

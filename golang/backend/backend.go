@@ -16,7 +16,7 @@
 package backend
 
 import (
-	"github.com/gx-org/backend/graph"
+	"github.com/gx-org/backend/ops"
 	"github.com/gx-org/backend/platform"
 	"github.com/gx-org/gx/api"
 	"github.com/gx-org/gx/build/builder"
@@ -41,6 +41,6 @@ func (bck *backend) Platform() platform.Platform {
 }
 
 // NewGraph returns a graph builder for native Go operations.
-func (bck *backend) NewGraph(funcName string) graph.Graph {
+func (bck *backend) NewOps(funcName string) ops.Graph {
 	return gograph.New(bck.plat, funcName)
 }

@@ -39,5 +39,14 @@ func TestBinaryOp(t *testing.T) {
 			},
 			WantType: "[2]bool",
 		},
+		testbuild.Expr{
+			Src: `5 == 5`,
+			Want: &ir.BinaryExpr{
+				X:   irh.IntNumberAs(5, ir.Int64Type()),
+				Y:   irh.IntNumberAs(5, ir.Int64Type()),
+				Typ: ir.BoolType(),
+			},
+			WantType: "bool",
+		},
 	)
 }

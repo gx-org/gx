@@ -18,16 +18,16 @@ import (
 	"math"
 
 	"github.com/pkg/errors"
-	"github.com/gx-org/backend/graph"
+	"github.com/gx-org/backend/ops"
 	"github.com/gx-org/gx/golang/backend/kernels"
 )
 
 // Math returns the builder for the math package.
-func (g *Graph) Math() graph.MathBuilder {
+func (g *Graph) Math() ops.MathBuilder {
 	return g
 }
 
-func mathFactory(x graph.Node) (execNode, kernels.MathFactory, error) {
+func mathFactory(x ops.Node) (execNode, kernels.MathFactory, error) {
 	xT := x.(execNode)
 	fac := xT.kernelFactory().Math()
 	if fac == nil {
@@ -38,7 +38,7 @@ func mathFactory(x graph.Node) (execNode, kernels.MathFactory, error) {
 
 type mathFunc = func(kernels.MathFactory) kernels.Unary
 
-func newMathUnaryNode(g *Graph, x graph.Node, f func(float64) float64) (graph.Node, error) {
+func newMathUnaryNode(g *Graph, x ops.Node, f func(float64) float64) (ops.Node, error) {
 	xT, mth, err := mathFactory(x)
 	if err != nil {
 		return nil, err
@@ -51,16 +51,16 @@ func newMathUnaryNode(g *Graph, x graph.Node, f func(float64) float64) (graph.No
 }
 
 // Cos returns a node computing the cosine.
-func (g *Graph) Cos(x graph.Node) (graph.Node, error) {
+func (g *Graph) Cos(x ops.Node) (ops.Node, error) {
 	return newMathUnaryNode(g, x, math.Cos)
 }
 
 // Sin returns a node computing the sine.
-func (g *Graph) Sin(x graph.Node) (graph.Node, error) {
+func (g *Graph) Sin(x ops.Node) (ops.Node, error) {
 	return newMathUnaryNode(g, x, math.Sin)
 }
 
 // Tanh returns a node computing the hyperbolic tangent.
-func (g *Graph) Tanh(x graph.Node) (graph.Node, error) {
+func (g *Graph) Tanh(x ops.Node) (ops.Node, error) {
 	return newMathUnaryNode(g, x, math.Tanh)
 }

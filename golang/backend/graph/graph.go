@@ -21,7 +21,7 @@ import (
 
 	"github.com/pkg/errors"
 	"github.com/gx-org/backend/dtype"
-	"github.com/gx-org/backend/graph"
+	"github.com/gx-org/backend/ops"
 	"github.com/gx-org/backend/platform"
 	"github.com/gx-org/backend/shape"
 	"github.com/gx-org/gx/golang/backend/kernels"
@@ -33,7 +33,7 @@ type Graph struct {
 	funcName string
 }
 
-var _ graph.Graph = (*Graph)(nil)
+var _ ops.Graph = (*Graph)(nil)
 
 // New graph running operations implemented in Go.
 func New(plat platform.Platform, funcName string) *Graph {
@@ -49,12 +49,12 @@ func (g *Graph) Platform() platform.Platform {
 }
 
 // Core returns the builder to build core operations.
-func (g *Graph) Core() graph.CoreBuilder {
+func (g *Graph) Core() ops.CoreBuilder {
 	return g
 }
 
 // Graph returns the graph in which the nodes are created into.
-func (g *Graph) Graph() graph.Graph {
+func (g *Graph) Graph() ops.Graph {
 	return g
 }
 
@@ -64,7 +64,7 @@ type node struct {
 	sh *shape.Shape
 }
 
-var _ graph.Node = (*node)(nil)
+var _ ops.Node = (*node)(nil)
 
 func (g *Graph) node(shape *shape.Shape, k kernels.Factory) node {
 	return node{g: g, sh: shape, k: k}
@@ -74,7 +74,7 @@ func (n *node) shape() *shape.Shape {
 	return n.sh
 }
 
-func (n *node) Graph() graph.Graph {
+func (n *node) Graph() ops.Graph {
 	return n.g
 }
 
@@ -98,7 +98,7 @@ type constant struct {
 var _ execNode = (*constant)(nil)
 
 // Constant returns a node representing a numerical constant value in the graph.
-func (g *Graph) Constant(value platform.HostBuffer) (graph.Node, error) {
+func (g *Graph) Constant(value platform.HostBuffer) (ops.Node, error) {
 	array := value.(*kernels.Buffer).KernelValue()
 	return &constant{
 		node:  g.node(value.Shape(), array.Factory()),
@@ -131,11 +131,11 @@ type binary struct {
 var _ execNode = (*binary)(nil)
 
 // Binary returns a node applying a binary operator between two nodes.
-func (g *Graph) Binary(op *ast.BinaryExpr, x, y graph.Node) (graph.Node, error) {
+func (g *Graph) Binary(op *ast.BinaryExpr, x, y ops.Node) (ops.Node, error) {
 	return g.newBinary(op, x.(execNode), y.(execNode))
 }
 
-func (g *Graph) newBinary(op *ast.BinaryExpr, x, y execNode) (graph.Node, error) {
+func (g *Graph) newBinary(op *ast.BinaryExpr, x, y execNode) (ops.Node, error) {
 	xShape := x.shape()
 	yShape := y.shape()
 	kernel, shape, err := x.kernelFactory().BinaryOp(op.Op, xShape, yShape)
@@ -183,11 +183,11 @@ func (n unary) exec(exec *executor) (kernels.Array, error) {
 }
 
 // Unary returns a node applying a unary operator to a node.
-func (g *Graph) Unary(op *ast.UnaryExpr, x graph.Node) (graph.Node, error) {
+func (g *Graph) Unary(op *ast.UnaryExpr, x ops.Node) (ops.Node, error) {
 	return g.newUnary(op, x.(execNode))
 }
 
-func (g *Graph) newUnary(op *ast.UnaryExpr, x execNode) (graph.Node, error) {
+func (g *Graph) newUnary(op *ast.UnaryExpr, x execNode) (ops.Node, error) {
 	xShape := x.shape()
 	kernel, shape, err := x.kernelFactory().UnaryOp(op.Op, xShape)
 	if err != nil {
@@ -205,11 +205,11 @@ func (n unary) String() string {
 }
 
 // Cast returns a cast/convert operator node.
-func (g *Graph) Cast(x graph.Node, dt dtype.DataType) (graph.Node, error) {
+func (g *Graph) Cast(x ops.Node, dt dtype.DataType) (ops.Node, error) {
 	return g.newCast(x.(execNode), dt)
 }
 
-func (g *Graph) newCast(x execNode, dt dtype.DataType) (graph.Node, error) {
+func (g *Graph) newCast(x execNode, dt dtype.DataType) (ops.Node, error) {
 	xShape := x.shape()
 	kernel, shape, factory, err := x.kernelFactory().Cast(dt, xShape.AxisLengths)
 	if err != nil {
@@ -223,11 +223,11 @@ func (g *Graph) newCast(x execNode, dt dtype.DataType) (graph.Node, error) {
 }
 
 // Reshape returns a reshape operator node.
-func (g *Graph) Reshape(x graph.Node, axisLengths []int) (graph.Node, error) {
+func (g *Graph) Reshape(x ops.Node, axisLengths []int) (ops.Node, error) {
 	return g.newReshape(x.(execNode), axisLengths)
 }
 
-func (g *Graph) newReshape(x execNode, axisLengths []int) (graph.Node, error) {
+func (g *Graph) newReshape(x execNode, axisLengths []int) (ops.Node, error) {
 	kernel, shap, err := x.kernelFactory().Reshape(x.shape(), axisLengths)
 	if err != nil {
 		return nil, err
@@ -258,7 +258,7 @@ func (n nAry) exec(exec *executor) (kernels.Array, error) {
 }
 
 // Concat concatenates multiple arrays into a single array.
-func (g *Graph) Concat(axis int, nodes []graph.Node) (graph.Node, error) {
+func (g *Graph) Concat(axis int, nodes []ops.Node) (ops.Node, error) {
 	eNodes := make([]execNode, len(nodes))
 	for i, n := range nodes {
 		eNodes[i] = n.(execNode)
@@ -266,7 +266,7 @@ func (g *Graph) Concat(axis int, nodes []graph.Node) (graph.Node, error) {
 	return g.newConcat(axis, eNodes)
 }
 
-func (g *Graph) newConcat(axis int, nodes []execNode) (graph.Node, error) {
+func (g *Graph) newConcat(axis int, nodes []execNode) (ops.Node, error) {
 	if axis != 0 {
 		return nil, errors.Errorf("axis != 0 not supported")
 	}
@@ -288,17 +288,17 @@ func (g *Graph) newConcat(axis int, nodes []execNode) (graph.Node, error) {
 }
 
 // DotGeneral returns a general dot operator node.
-func (g *Graph) DotGeneral(x, y graph.Node, batchAxes, reduceAxes [2][]int) (graph.Node, error) {
+func (g *Graph) DotGeneral(x, y ops.Node, batchAxes, reduceAxes [2][]int) (ops.Node, error) {
 	return nil, errors.Errorf("not implemented")
 }
 
 // Set returns a node to set a slice in an array.
-func (g *Graph) Set(x, updates, index graph.Node) (graph.Node, error) {
+func (g *Graph) Set(x, updates, index ops.Node) (ops.Node, error) {
 	return nil, errors.Errorf("not implemented")
 }
 
 // Slice returns a slice on a node.
-func (g *Graph) Slice(x graph.Node, index int) (graph.Node, error) {
+func (g *Graph) Slice(x ops.Node, index int) (ops.Node, error) {
 	node := x.(execNode)
 	xShape := node.shape()
 	kernel, shape, err := node.kernelFactory().Slice(xShape, index)
@@ -313,16 +313,16 @@ func (g *Graph) Slice(x graph.Node, index int) (graph.Node, error) {
 }
 
 type tuple struct {
-	g     graph.Graph
-	nodes []graph.Node
+	g     ops.Graph
+	nodes []ops.Node
 }
 
-func (n *tuple) Graph() graph.Graph {
+func (n *tuple) Graph() ops.Graph {
 	return n.g
 }
 
 // Element returns a node representing the ith element of the tuple.
-func (n *tuple) Element(i int) (graph.Node, error) {
+func (n *tuple) Element(i int) (ops.Node, error) {
 	return n.nodes[i], nil
 }
 
@@ -330,34 +330,34 @@ func (n *tuple) Size() int {
 	return len(n.nodes)
 }
 
-func (n *tuple) Unpack() ([]graph.Node, error) {
+func (n *tuple) Unpack() ([]ops.Node, error) {
 	return n.nodes, nil
 }
 
 // Tuple returns a node grouping multiple nodes together.
-func (g *Graph) Tuple(nodes []graph.Node) (graph.Tuple, error) {
+func (g *Graph) Tuple(nodes []ops.Node) (ops.Tuple, error) {
 	return &tuple{g, nodes}, nil
 }
 
 // Call returns a node that invokes a subgraph.
-func (g *Graph) Call(sg graph.Subgraph, args ...graph.Node) (graph.Node, error) {
+func (g *Graph) Call(sg ops.Subgraph, args ...ops.Node) (ops.Node, error) {
 	return sg.Result.Node, nil
 }
 
 // Subgraph returns a Graph instance that maps to a new subgraph.
-func (g *Graph) Subgraph(name string) (graph.Graph, error) {
+func (g *Graph) Subgraph(name string) (ops.Graph, error) {
 	// Note that this is a very incomplete implementation: it simply builds the subgraph within the
 	// current graph.
 	return g, nil
 }
 
 // While returns a while loop node.
-func (g *Graph) While(cond, body graph.Subgraph, state graph.Node) (graph.Node, error) {
+func (g *Graph) While(cond, body ops.Subgraph, state ops.Node) (ops.Node, error) {
 	return nil, errors.Errorf("not implemented")
 }
 
 // BroadcastInDim broadcasts data across a given set of axis.
-func (g *Graph) BroadcastInDim(x graph.Node, shape *shape.Shape, broadcastAxes []int) (graph.Node, error) {
+func (g *Graph) BroadcastInDim(x ops.Node, shape *shape.Shape, broadcastAxes []int) (ops.Node, error) {
 	node := x.(execNode)
 	if node.shape().Size() > 1 {
 		return nil, errors.Errorf("cannot broadcast shape %v: this backend only supports the broadcast of atomic shapes", shape)

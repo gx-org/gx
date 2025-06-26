@@ -179,8 +179,7 @@ func (n *binaryExpr) buildExpr(scope resolveScope) (ir.Expr, bool) {
 	if isInvalid(expr.Typ) {
 		return expr, false
 	}
-	var forceCastNumber, ok bool
-	expr.Typ, forceCastNumber, ok = n.determineOutputType(scope, expr.Typ)
+	outTyp, forceCastNumber, ok := n.determineOutputType(scope, expr.Typ)
 	if !ok {
 		return expr, false
 	}
@@ -190,6 +189,7 @@ func (n *binaryExpr) buildExpr(scope resolveScope) (ir.Expr, bool) {
 		expr.Y, yOk = castNumber(scope, expr.Y, ir.UnknownType())
 		ok = xOk && yOk
 	}
+	expr.Typ = outTyp
 	return expr, ok
 }
 

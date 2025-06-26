@@ -74,7 +74,7 @@ func (f split) BuildFuncType(fetcher ir.Fetcher, call *ir.CallExpr) (*ir.FuncTyp
 	out := ir.NewArrayType(nil, arrayType.DataType(), &ir.Rank{Ax: outputDims})
 	return &ir.FuncType{
 		BaseType: ir.BaseType[*ast.FuncType]{Src: &ast.FuncType{Func: call.Source().Pos()}},
-		Params:   builtins.Fields(params...),
-		Results:  builtins.Fields(out),
+		Params:   builtins.Fields(call, params...),
+		Results:  builtins.Fields(call, out),
 	}, nil
 }

@@ -56,6 +56,11 @@ func (a *variable) Cast(ctx elements.FileContext, expr ir.AssignableExpr, target
 	return newCast(ctx, expr, a, target)
 }
 
+// Reshape the variable into a different shape.
+func (a *variable) Reshape(ctx elements.FileContext, expr ir.AssignableExpr, axisLengths []elements.NumericalElement) (elements.NumericalElement, error) {
+	return newReshape(ctx, expr, a, axisLengths)
+}
+
 // Shape of the value represented by the element.
 func (a *variable) Shape() *shape.Shape {
 	return &shape.Shape{}
@@ -91,13 +96,13 @@ func (a *variable) Compare(x canonical.Comparable) bool {
 }
 
 // Expr returns the IR expression represented by the variable.
-func (a *variable) Expr() ir.AssignableExpr {
+func (a *variable) Expr() (ir.AssignableExpr, error) {
 	return &ir.ValueRef{
 		Src: &ast.Ident{
 			Name: a.name,
 		},
 		Stor: a.src.Node(),
-	}
+	}, nil
 }
 
 func (a *variable) CanonicalExpr() canonical.Canonical {

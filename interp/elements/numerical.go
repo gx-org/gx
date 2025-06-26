@@ -27,6 +27,11 @@ type (
 		File() *ir.File
 	}
 
+	// FuncEvaluator is a context able to evaluate a function.
+	FuncEvaluator interface {
+		EvalFunc(f ir.Func, call *ir.CallExpr, args []Element) ([]Element, error)
+	}
+
 	// NumericalElement is a node representing a numerical value.
 	NumericalElement interface {
 		Element
@@ -40,6 +45,9 @@ type (
 
 		// Cast an element into a given data type.
 		Cast(ctx FileContext, expr ir.AssignableExpr, target ir.Type) (NumericalElement, error)
+
+		// Reshape an element.
+		Reshape(ctx FileContext, expr ir.AssignableExpr, axisLengths []NumericalElement) (NumericalElement, error)
 
 		// Shape of the value represented by the element.
 		Shape() *shape.Shape
