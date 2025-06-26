@@ -366,5 +366,14 @@ func callAdd(x, y [2][3]float32) [2][3]float32 {
 }
 `,
 		},
+		testbuild.Decl{
+			Src: `
+func g(x [_]float32) int64
+
+func f() int64 {
+	return g([...]float32{1, 2, 3})
+}
+`,
+		},
 	)
 }

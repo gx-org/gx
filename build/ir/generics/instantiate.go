@@ -91,6 +91,15 @@ func instantiateAxisGroup(fetcher ir.Fetcher, axis *ir.AxisGroup) ([]ir.AxisLeng
 	}
 }
 
+func instantiateAxisInfer(fetcher ir.Fetcher, axis *ir.AxisInfer) ([]ir.AxisLengths, bool) {
+	switch axis.Src.Name {
+	case "_":
+		return []ir.AxisLengths{axis}, true
+	default:
+		return []ir.AxisLengths{axis}, fetcher.Err().AppendInternalf(axis.Src, "unknown inference token %s", axis.Src.Name)
+	}
+}
+
 func instantiateAxis(fetcher ir.Fetcher, axis ir.AxisLengths) ([]ir.AxisLengths, bool) {
 	switch axisT := axis.(type) {
 	case *ir.AxisExpr:
@@ -98,7 +107,10 @@ func instantiateAxis(fetcher ir.Fetcher, axis ir.AxisLengths) ([]ir.AxisLengths,
 	case *ir.AxisGroup:
 		return instantiateAxisGroup(fetcher, axisT)
 	case *ir.AxisInfer:
-		return instantiateAxis(fetcher, axisT.X)
+		if axisT.X != nil {
+			return instantiateAxis(fetcher, axisT.X)
+		}
+		return instantiateAxisInfer(fetcher, axisT)
 	default:
 		return []ir.AxisLengths{axisT}, false
 	}
