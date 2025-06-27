@@ -61,7 +61,7 @@ func slice(ctx FileContext, expr ir.AssignableExpr, index NumericalElement, vals
 }
 
 // Slice of the tuple.
-func (n *Slice) Slice(ctx FileContext, expr ir.AssignableExpr, index NumericalElement) (Element, error) {
+func (n *Slice) Slice(ctx FileContext, expr *ir.IndexExpr, index NumericalElement) (Element, error) {
 	return slice(ctx, expr, index, n.values)
 }
 

@@ -71,7 +71,7 @@ func (f *slice) Compare(x canonical.Comparable) bool {
 	return f == x
 }
 
-func (f *slice) Slice(ctx elements.FileContext, expr ir.AssignableExpr, index elements.NumericalElement) (elements.Element, error) {
+func (f *slice) Slice(ctx elements.FileContext, expr *ir.IndexExpr, index elements.NumericalElement) (elements.Element, error) {
 	return NewRuntimeValue(ctx.(evaluator.Context), expr)
 }
 

@@ -172,7 +172,7 @@ func (n *BackendNode) Reshape(ctx elements.FileContext, expr ir.AssignableExpr, 
 }
 
 // Slice of the value on the first axis given an index.
-func (n *BackendNode) Slice(ctx elements.FileContext, expr ir.AssignableExpr, index elements.NumericalElement) (elements.Element, error) {
+func (n *BackendNode) Slice(ctx elements.FileContext, expr *ir.IndexExpr, index elements.NumericalElement) (elements.Element, error) {
 	return n.SliceArray(ctx, expr, index)
 }
 

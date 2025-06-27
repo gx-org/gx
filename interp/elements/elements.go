@@ -82,7 +82,7 @@ type (
 
 	// Slicer is a state element that can be sliced.
 	Slicer interface {
-		Slice(ctx FileContext, expr ir.AssignableExpr, index NumericalElement) (Element, error)
+		Slice(ctx FileContext, expr *ir.IndexExpr, index NumericalElement) (Element, error)
 	}
 
 	// ArraySlicer is a state element with an array that can be sliced.

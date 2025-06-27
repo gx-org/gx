@@ -82,7 +82,7 @@ func (a *array) Reshape(ctx elements.FileContext, expr ir.AssignableExpr, axisLe
 	return NewArray(elements.NewExprAt(ctx.File(), expr), expr.Type().(ir.ArrayType)), nil
 }
 
-func (a *array) Slice(ctx elements.FileContext, expr ir.AssignableExpr, index elements.NumericalElement) (elements.Element, error) {
+func (a *array) Slice(ctx elements.FileContext, expr *ir.IndexExpr, index elements.NumericalElement) (elements.Element, error) {
 	return NewArray(elements.NewExprAt(ctx.File(), expr), expr.Type().(ir.ArrayType)), nil
 }
 
