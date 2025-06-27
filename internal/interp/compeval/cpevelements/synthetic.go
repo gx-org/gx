@@ -25,26 +25,26 @@ type (
 	// SyntheticBuilder builds a synthetic function.
 	SyntheticBuilder interface {
 		BuildType() (*ir.FuncType, error)
-		BuildBody(ir.Fetcher) (*ir.BlockStmt, bool)
+		BuildBody(ir.Fetcher) (*ir.BlockStmt, []*SyntheticFuncDecl, bool)
 	}
 
 	// SyntheticFunc is a GX string.
 	SyntheticFunc struct {
-		macro   *Macro
 		builder SyntheticBuilder
+	}
+
+	// SyntheticFuncDecl is a synthetic package function declaration.
+	SyntheticFuncDecl struct {
+		*SyntheticFunc
+		F *ir.FuncDecl
 	}
 )
 
 var _ elements.Element = (*SyntheticFunc)(nil)
 
 // NewSyntheticFunc returns a state element storing a string GX value.
-func NewSyntheticFunc(macro *Macro, builder SyntheticBuilder) *SyntheticFunc {
-	return &SyntheticFunc{macro: macro, builder: builder}
-}
-
-// Macro returns the macro element that generated this synthetic function.
-func (n *SyntheticFunc) Macro() *Macro {
-	return n.macro
+func NewSyntheticFunc(builder SyntheticBuilder) *SyntheticFunc {
+	return &SyntheticFunc{builder: builder}
 }
 
 // Builder returns the builder responsible for building the synthetic function.

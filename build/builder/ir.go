@@ -19,6 +19,7 @@ import (
 
 	"github.com/gx-org/gx/build/fmterr"
 	"github.com/gx-org/gx/build/ir"
+	"github.com/gx-org/gx/internal/interp/compeval/cpevelements"
 )
 
 type (
@@ -34,7 +35,7 @@ type (
 		compEval() bool
 		resolveOrder() int
 		buildSignature(*pkgResolveScope) (ir.Func, iFuncResolveScope, bool)
-		buildBody(iFuncResolveScope, ir.Func) bool
+		buildBody(iFuncResolveScope, ir.Func) ([]*cpevelements.SyntheticFuncDecl, bool)
 	}
 
 	// exprNode builds a IR expression.

@@ -18,6 +18,7 @@ import (
 	"go/ast"
 
 	"github.com/gx-org/gx/build/ir"
+	"github.com/gx-org/gx/internal/interp/compeval/cpevelements"
 )
 
 type funcMacro struct {
@@ -30,7 +31,7 @@ func (bFile *file) processIRMacroFunc(scope procScope, src *ast.FuncDecl, commen
 		funcDecl: fDecl,
 	}
 	returnOk := fn.funcDecl.checkReturnValue(scope)
-	declareOk := scope.decls().registerFunc(fn)
+	_, declareOk := scope.decls().registerFunc(fn)
 	return fDeclOk && returnOk && declareOk
 }
 
@@ -56,8 +57,8 @@ func (f *funcMacro) name() *ast.Ident {
 	return f.src.Name
 }
 
-func (f *funcMacro) buildBody(fScope iFuncResolveScope, extF ir.Func) bool {
-	return true
+func (f *funcMacro) buildBody(fScope iFuncResolveScope, extF ir.Func) ([]*cpevelements.SyntheticFuncDecl, bool) {
+	return nil, true
 }
 
 func (f *funcMacro) receiver() *fieldList {

@@ -224,6 +224,13 @@ func gradF(x float32) float32 {
 	return __grad_Func_g_x(x)
 }
 `,
+			WantAuxs: map[string]string{
+				"__grad_Func_g_x": `
+func __grad_Func_g_x(x float32) float32 {
+	return (float32)(1)
+}
+`,
+			},
 		},
 		testgrad.Func{
 			GradOf: `
@@ -240,6 +247,13 @@ func gradF(x float32) float32 {
 	return __grad_Func_g_x(x*x)*(x+x)
 }
 `,
+			WantAuxs: map[string]string{
+				"__grad_Func_g_x": `
+func __grad_Func_g_x(x float32) float32 {
+	return (float32)(1)
+}
+`,
+			},
 		},
 		testgrad.Func{
 			GradImportName: "other",
@@ -257,6 +271,13 @@ func gradF(x float32) float32 {
 	return __other_Func_g_x(x*x)*(x+x)
 }
 `,
+			WantAuxs: map[string]string{
+				"__other_Func_g_x": `
+func __other_Func_g_x(x float32) float32 {
+	return (float32)(1)
+}
+`,
+			},
 		},
 	)
 }

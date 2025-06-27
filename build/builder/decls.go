@@ -26,6 +26,7 @@ import (
 	"github.com/gx-org/gx/base/ordered"
 	"github.com/gx-org/gx/build/ir"
 	"github.com/gx-org/gx/internal/base/scope"
+	"github.com/gx-org/gx/internal/interp/compeval/cpevelements"
 )
 
 type (
@@ -128,13 +129,13 @@ func (d *decls) declarePackageName(node processNode) (ok bool) {
 	return true
 }
 
-func (d *decls) registerFunc(fun function) bool {
+func (d *decls) registerFunc(fun function) (*processNodeT[function], bool) {
 	pNode := newProcessNode[function](token.FUNC, fun.name(), fun)
 	if fun.receiver() != nil {
 		d.methods = append(d.methods, pNode)
-		return true
+		return pNode, true
 	}
-	return d.declarePackageName(pNode)
+	return pNode, d.declarePackageName(pNode)
 }
 
 func (d *decls) registerStaticVar(spec *varSpec) bool {
@@ -273,6 +274,32 @@ func (d *decls) buildFuncType(pkgScope *pkgResolveScope, pNode *processNodeT[fun
 	}, true
 }
 
+func (d *decls) registerAuxFunc(pkgScope *pkgResolveScope, aux *cpevelements.SyntheticFuncDecl) (*irFunc, bool) {
+	bFile := newFile(pkgScope.pkg(), aux.F.Name()+".syn.gx", &ast.File{})
+	fScope, ok := pkgScope.newFileScope(bFile, nil)
+	if !ok {
+		return nil, false
+	}
+	fnScope := newFuncScope(fScope, aux.F.FType)
+	irf := irFunc{
+		bFunc: &syntheticFunc{
+			bFile: bFile,
+			src:   aux.F.Src,
+		},
+		scopeFunc: &macroResolveScope{
+			iFuncResolveScope: fnScope,
+			sFunc:             aux.SyntheticFunc,
+		},
+		irFunc: aux.F,
+	}
+	pNode, ok := d.registerFunc(irf.bFunc)
+	if !ok {
+		return nil, false
+	}
+	pNode.decl = pNode.setDeclNode(aux.F, fnScope.declarator(pNode.node))
+	return &irf, true
+}
+
 func (d *decls) buildFunctions(pkgScope *pkgResolveScope, filter func(f *processNodeT[function]) bool) bool {
 	ok := true
 	var funcs []*irFunc
@@ -289,12 +316,34 @@ func (d *decls) buildFunctions(pkgScope *pkgResolveScope, filter func(f *process
 		}
 		funcs = append(funcs, irF)
 	}
-	// Build the body of the functions.
-	for _, fn := range funcs {
-		fnOk := fn.bFunc.buildBody(fn.scopeFunc, fn.irFunc)
-		ok = ok && fnOk
+	if !ok {
+		return false
+	}
+	for len(funcs) > 0 {
+		funcs, ok = d.buildFunctionBodies(pkgScope, funcs)
+		if !ok {
+			return false
+		}
 	}
 	return ok
+}
+
+func (d *decls) buildFunctionBodies(pkgScope *pkgResolveScope, funcs []*irFunc) ([]*irFunc, bool) {
+	var todoNext []*irFunc
+	ok := true
+	for _, fn := range funcs {
+		auxs, fnOk := fn.bFunc.buildBody(fn.scopeFunc, fn.irFunc)
+		for _, aux := range auxs {
+			todo, auxOk := d.registerAuxFunc(pkgScope, aux)
+			ok = ok && auxOk
+			if !auxOk {
+				continue
+			}
+			todoNext = append(todoNext, todo)
+		}
+		ok = ok && fnOk
+	}
+	return todoNext, ok
 }
 
 func (d *decls) registerMethodToType(rscope *fileResolveScope, recv *fieldList, fnNode *processNodeT[function]) bool {
