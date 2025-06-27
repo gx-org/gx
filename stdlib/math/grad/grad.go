@@ -19,7 +19,9 @@ import (
 	"embed"
 	"fmt"
 	"go/ast"
+	"slices"
 
+	"github.com/gx-org/gx/base/ordered"
 	"github.com/gx-org/gx/build/ir"
 	"github.com/gx-org/gx/internal/interp/compeval/cpevelements"
 	"github.com/gx-org/gx/interp/elements"
@@ -41,8 +43,10 @@ var Package = builtin.PackageBuilder{
 type gradMacro struct {
 	macro    *cpevelements.Macro
 	callSite elements.CallAt
-	fn       *ir.FuncDecl
-	wrt      string
+	aux      *ordered.Map[string, *cpevelements.SyntheticFuncDecl]
+
+	fn  *ir.FuncDecl
+	wrt string
 }
 
 // FuncGrad computes the gradient of a function.
@@ -55,19 +59,22 @@ func FuncGrad(call elements.CallAt, macro *cpevelements.Macro, args []elements.E
 	if err != nil {
 		return nil, err
 	}
-	return cpevelements.NewSyntheticFunc(macro, (&gradMacro{
+	return cpevelements.NewSyntheticFunc(gradMacro{
 		callSite: call,
 		macro:    macro,
-	}).newMacro(fn, wrt)), nil
+	}.newMacro(fn, wrt)), nil
 }
 
-func (m *gradMacro) newMacro(fn *ir.FuncDecl, wrt string) *gradMacro {
-	return &gradMacro{
-		macro:    m.macro,
-		callSite: m.callSite,
-		fn:       fn,
-		wrt:      wrt,
-	}
+func (m gradMacro) newMacro(fn *ir.FuncDecl, wrt string) *gradMacro {
+	var n gradMacro = m
+	n.fn = fn
+	n.wrt = wrt
+	n.aux = ordered.NewMap[string, *cpevelements.SyntheticFuncDecl]()
+	return &n
+}
+
+func (m gradMacro) clone() *gradMacro {
+	return m.newMacro(m.fn, m.wrt)
 }
 
 func (m *gradMacro) autoBuildSyntheticFuncName(fetcher ir.Fetcher, name string) (*ast.Ident, bool) {
@@ -85,8 +92,12 @@ func (m *gradMacro) BuildType() (*ir.FuncType, error) {
 	return m.fn.FType, nil
 }
 
-func (m *gradMacro) BuildBody(fetcher ir.Fetcher) (*ir.BlockStmt, bool) {
-	return m.gradBlock(fetcher, m.fn.Body, m.wrt)
+func (m *gradMacro) BuildBody(fetcher ir.Fetcher) (*ir.BlockStmt, []*cpevelements.SyntheticFuncDecl, bool) {
+	body, ok := m.gradBlock(fetcher, m.fn.Body, m.wrt)
+	if !ok {
+		return nil, nil, false
+	}
+	return body, slices.Collect(m.aux.Values()), true
 }
 
 func (m *gradMacro) gradBlock(fetcher ir.Fetcher, src *ir.BlockStmt, argName string) (*ir.BlockStmt, bool) {

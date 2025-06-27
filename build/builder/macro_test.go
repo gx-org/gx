@@ -29,7 +29,7 @@ func newIDMacro(call elements.CallAt, macro *cpevelements.Macro, args []elements
 	if err != nil {
 		return nil, err
 	}
-	return cpevelements.NewSyntheticFunc(macro, &idMacro{fn: fn}), nil
+	return cpevelements.NewSyntheticFunc(&idMacro{fn: fn}), nil
 }
 
 type idMacro struct {
@@ -40,8 +40,8 @@ func (m *idMacro) BuildType() (*ir.FuncType, error) {
 	return m.fn.FType, nil
 }
 
-func (m *idMacro) BuildBody(fetcher ir.Fetcher) (*ir.BlockStmt, bool) {
-	return m.fn.Body, true
+func (m *idMacro) BuildBody(fetcher ir.Fetcher) (*ir.BlockStmt, []*cpevelements.SyntheticFuncDecl, bool) {
+	return m.fn.Body, nil, true
 }
 
 func TestMacro(t *testing.T) {

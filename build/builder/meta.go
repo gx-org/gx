@@ -125,7 +125,7 @@ func (bFile *file) processSyntheticFunc(pscope procScope, src *ast.FuncDecl, com
 		src:   src,
 	}
 	ok := true
-	if !pscope.decls().registerFunc(f) {
+	if _, regOk := pscope.decls().registerFunc(f); !regOk {
 		ok = false
 	}
 	if !checkEmptyParamsResults(pscope, src, "assigned") {
@@ -214,15 +214,16 @@ func (f *syntheticFunc) buildSignature(pkgScope *pkgResolveScope) (ir.Func, iFun
 	}, ok
 }
 
-func (f *syntheticFunc) buildBody(fScope iFuncResolveScope, extF ir.Func) bool {
+func (f *syntheticFunc) buildBody(fScope iFuncResolveScope, extF ir.Func) ([]*cpevelements.SyntheticFuncDecl, bool) {
 	mScope := fScope.(*macroResolveScope)
 	compEval, ok := fScope.compEval()
 	if !ok {
-		return false
+		return nil, false
 	}
 	ext := extF.(*ir.FuncDecl)
-	ext.Body, ok = mScope.sFunc.Builder().BuildBody(compEval)
-	return ok
+	var aux []*cpevelements.SyntheticFuncDecl
+	ext.Body, aux, ok = mScope.sFunc.Builder().BuildBody(compEval)
+	return aux, ok
 }
 
 func (f *syntheticFunc) resolveOrder() int {
