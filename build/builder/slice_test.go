@@ -37,6 +37,15 @@ func TestSlice(t *testing.T) {
 		},
 		testbuild.Decl{
 			Src: `
+func g(a int32) int32
+
+func f(s []int32) int32 {
+	return g(s[0])
+}
+`,
+		},
+		testbuild.Decl{
+			Src: `
 func f() [][2]int32 {
 	a := [][2]int32{}
 	for il := range 3 {

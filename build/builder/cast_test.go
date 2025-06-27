@@ -119,6 +119,49 @@ func f() float32 {
 		},
 		testbuild.Decl{
 			Src: `
+func f() [2][3]float64 {
+	return ([2][3]float64)([6]float32{1, 2, 3, 4, 5, 6})
+}
+`,
+			Want: []ir.Node{
+				&ir.FuncDecl{
+					Src: &ast.FuncDecl{Name: &ast.Ident{Name: "f"}},
+					FType: irh.FuncType(
+						nil, nil,
+						irh.Fields(),
+						irh.Fields(irh.ArrayType(ir.Float64Type(), 2, 3)),
+					),
+					Body: irh.SingleReturn(&ir.CastExpr{
+						Typ: irh.ArrayType(ir.Float64Type(), 2, 3),
+						X: &ir.ArrayLitExpr{
+							Typ: irh.ArrayType(ir.Float32Type(), 6),
+							Elts: []ir.AssignableExpr{
+								irh.IntNumberAs(1, ir.Float32Type()),
+								irh.IntNumberAs(2, ir.Float32Type()),
+								irh.IntNumberAs(3, ir.Float32Type()),
+								irh.IntNumberAs(4, ir.Float32Type()),
+								irh.IntNumberAs(5, ir.Float32Type()),
+								irh.IntNumberAs(6, ir.Float32Type()),
+							},
+						},
+					}),
+				},
+			},
+		},
+		testbuild.Decl{
+			Src: `
+var a intlen
+
+func newArray() [a]float32
+func id([a]float32) float32
+
+func f() float32 {
+	return id(newArray())
+}
+`,
+		},
+		testbuild.Decl{
+			Src: `
 var a intlen
 
 func newArray() [a]int32

@@ -52,7 +52,7 @@ func (f *fun) callAtCompEval(fctx elements.FileContext, call *ir.CallExpr, args 
 }
 
 func (f *fun) Call(fctx elements.FileContext, call *ir.CallExpr, args []elements.Element) ([]elements.Element, error) {
-	fType := f.fn.FuncType() // Some builtin functions have not type at the moment.
+	fType := f.fn.FuncType() // Some builtin functions have no type at the moment.
 	if fType != nil && fType.CompEval {
 		return f.callAtCompEval(fctx, call, args)
 	}
@@ -61,12 +61,9 @@ func (f *fun) Call(fctx elements.FileContext, call *ir.CallExpr, args []elements
 	els := make([]elements.Element, len(res))
 	for i, ri := range res {
 		var err error
-		els[i], err = NewRuntimeValue(ctx, &ir.ValueRef{
+		els[i], err = NewRuntimeValue(ctx, &ir.LocalVarStorage{
 			Src: &ast.Ident{},
-			Stor: &ir.LocalVarStorage{
-				Src: &ast.Ident{},
-				Typ: ri.Type(),
-			},
+			Typ: ri.Type(),
 		})
 		if err != nil {
 			return nil, err
