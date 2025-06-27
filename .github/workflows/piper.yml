@@ -92,15 +92,3 @@ jobs:
       run: git push origin main
       env:
         GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
-
-    - name: Tag a new version
-      run: |
-        go run golang.org/x/exp/cmd/gorelease@latest
-        export VERSION=$(go run golang.org/x/exp/cmd/gorelease@latest | grep Suggested | awk '{print $NF}')
-        git tag $VERSION
-
-    - name: Push tags
-      run: git push --tags origin
-      env:
-        GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
-
