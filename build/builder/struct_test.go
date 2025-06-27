@@ -68,5 +68,39 @@ func a() A {
 					)},
 			},
 		},
+		testbuild.Decl{
+			Src: `
+type S struct {
+	Field int32
+}
+
+func g(a int32) int32
+
+func f(s []S) int32 {
+	return g(s[0].Field)
+}
+`,
+		},
+		testbuild.Decl{
+			Src: `
+type (
+	Container struct {
+		els []Element
+	}
+	
+	Element struct {
+		field int32
+	}
+)
+
+
+
+func g(a int32) int32
+
+func f(s []Container) int32 {
+	return g(s[0].els[0].field)	
+}
+`,
+		},
 	)
 }

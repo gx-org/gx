@@ -3123,6 +3123,7 @@ type (
 		Src *ast.Ident
 		Typ Type
 	}
+
 	// StructFieldStorage is a field in a structure.
 	StructFieldStorage struct {
 		Sel *SelectorExpr
