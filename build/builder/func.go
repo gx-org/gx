@@ -200,7 +200,7 @@ func newFuncDecl(scope procScope, fn *ast.FuncDecl, compEval bool) (*funcDecl, b
 
 func (bFile *file) processFuncDecl(pscope procScope, src *ast.FuncDecl, compEval bool) bool {
 	f, processOk := newFuncDecl(pscope, src, compEval)
-	if !pscope.decls().registerFunc(f) {
+	if _, regOk := pscope.decls().registerFunc(f); !regOk {
 		processOk = false
 	}
 	if !f.checkReturnValue(pscope) {
@@ -259,14 +259,14 @@ func (f *funcDecl) buildSignature(pkgScope *pkgResolveScope) (ir.Func, iFuncReso
 	return ext, funcScope, ok
 }
 
-func (f *funcDecl) buildBody(fScope iFuncResolveScope, extF ir.Func) bool {
+func (f *funcDecl) buildBody(fScope iFuncResolveScope, extF ir.Func) ([]*cpevelements.SyntheticFuncDecl, bool) {
 	ext := extF.(*ir.FuncDecl)
 	scope, ok := newBlockScope(fScope)
 	if !ok {
-		return false
+		return nil, false
 	}
 	ext.Body, ok = f.body.buildBlockStmt(scope)
-	return ok
+	return nil, ok
 }
 
 func (f *funcDecl) name() *ast.Ident {
@@ -291,7 +291,7 @@ func (bFile *file) processBuiltinFunc(scope procScope, src *ast.FuncDecl, compEv
 		funcDecl: fDecl,
 	}
 	returnOk := fn.funcDecl.checkReturnValue(scope)
-	declareOk := scope.decls().registerFunc(fn)
+	_, declareOk := scope.decls().registerFunc(fn)
 	return fDeclOk && returnOk && declareOk
 }
 
@@ -309,8 +309,8 @@ func (f *funcBuiltin) buildSignature(pkgScope *pkgResolveScope) (ir.Func, iFuncR
 	return ext, fScope, ok
 }
 
-func (f *funcBuiltin) buildBody(iFuncResolveScope, ir.Func) bool {
-	return true
+func (f *funcBuiltin) buildBody(iFuncResolveScope, ir.Func) ([]*cpevelements.SyntheticFuncDecl, bool) {
+	return nil, true
 }
 
 type funcLiteral struct {

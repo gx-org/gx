@@ -18,7 +18,9 @@ package testgrad
 import (
 	"fmt"
 
+	"github.com/pkg/errors"
 	"github.com/gx-org/gx/build/builder/testbuild"
+	"github.com/gx-org/gx/build/ir"
 )
 
 // Func tests the computation of the gradient of a function.
@@ -32,6 +34,9 @@ type Func struct {
 	// GradImportName is the name of the import of the grad package.
 	// If empty, then the default import name is used.
 	GradImportName string
+
+	// WantAuxs stores the source code of the expected synthetic auxiliary functions.
+	WantAuxs map[string]string
 
 	// Err is the substring expected if the compiler returns an error.
 	Err string
@@ -64,9 +69,34 @@ func gradF()
 	if err != nil {
 		return err
 	}
-	gotF := pkg.IR().FindFunc("gradF")
-	if err := testbuild.CompareString(gotF.String(), tt.Want); err != nil {
+	pkgIR := pkg.IR()
+	if err := checkFunc(pkgIR, "gradF", tt.Want); err != nil {
 		return err
 	}
+	if tt.WantAuxs == nil {
+		return nil
+	}
+	for name, src := range tt.WantAuxs {
+		if err := checkFunc(pkgIR, name, src); err != nil {
+			return err
+		}
+	}
 	return nil
+}
+
+func listFunc(pkg *ir.Package) []string {
+	fns := pkg.Decls.Funcs
+	ss := make([]string, len(fns))
+	for i, fn := range pkg.Decls.Funcs {
+		ss[i] = fn.Name()
+	}
+	return ss
+}
+
+func checkFunc(pkg *ir.Package, name string, want string) error {
+	gotF := pkg.FindFunc(name)
+	if gotF == nil {
+		return errors.Errorf("cannot find function %s. Available functions are %v", name, listFunc(pkg))
+	}
+	return testbuild.CompareString(gotF.String(), want)
 }

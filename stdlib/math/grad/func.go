@@ -18,21 +18,30 @@ import (
 	"go/ast"
 
 	"github.com/gx-org/gx/build/ir"
+	"github.com/gx-org/gx/internal/interp/compeval/cpevelements"
 )
 
 func (m *gradMacro) gradFunc(fetcher ir.Fetcher, src *ir.FuncValExpr, wrt string) (*ir.FuncValExpr, bool) {
 	switch fT := src.F.(type) {
 	case *ir.FuncDecl:
-		return m.newMacro(fT, wrt).gradFuncDecl(fetcher, src)
+		return m.gradFuncDecl(fetcher, src, fT, wrt)
 	default:
 		return nil, fetcher.Err().Appendf(src.Source(), "cannot compute the gradient of function %T", fT)
 	}
 }
 
-func (m *gradMacro) gradFuncDecl(fetcher ir.Fetcher, src *ir.FuncValExpr) (*ir.FuncValExpr, bool) {
-	name, ok := m.autoBuildSyntheticFuncName(fetcher, m.fn.Name())
+func (m *gradMacro) gradFuncDecl(fetcher ir.Fetcher, src *ir.FuncValExpr, fn *ir.FuncDecl, wrt string) (*ir.FuncValExpr, bool) {
+	name, ok := m.autoBuildSyntheticFuncName(fetcher, fn.Name())
 	if !ok {
 		return nil, false
+	}
+	cached, ok := m.aux.Load(name.Name)
+	if ok {
+		return &ir.FuncValExpr{
+			X: &ir.ValueRef{Src: name, Stor: cached.F},
+			T: src.T,
+			F: cached.F,
+		}, true
 	}
 	gradF := &ir.FuncDecl{
 		FFile: m.fn.FFile,
@@ -45,10 +54,11 @@ func (m *gradMacro) gradFuncDecl(fetcher ir.Fetcher, src *ir.FuncValExpr) (*ir.F
 	if err != nil {
 		return nil, fetcher.Err().AppendAt(src.Source(), err)
 	}
-	gradF.Body, ok = m.BuildBody(fetcher)
-	if !ok {
-		return nil, false
-	}
+	grader := m.newMacro(fn, wrt)
+	m.aux.Store(name.Name, &cpevelements.SyntheticFuncDecl{
+		SyntheticFunc: cpevelements.NewSyntheticFunc(grader),
+		F:             gradF,
+	})
 	return &ir.FuncValExpr{
 		X: &ir.ValueRef{Src: name, Stor: gradF},
 		T: src.T,
