@@ -73,11 +73,11 @@ func (n *indexExpr) checkIndexBounds(rscope resolveScope, axLen ir.AxisLengths, 
 	if !compEvalOk {
 		return false
 	}
-	axisValue, err := compEval.Eval(axLen)
+	axisValue, err := compEval.EvalExpr(axLen)
 	if err != nil {
 		return rscope.err().AppendInternalf(axLen.Source(), "cannot evaluate axis length expression: %v", err)
 	}
-	indexValue, err := compEval.Eval(index)
+	indexValue, err := compEval.EvalExpr(index)
 	if err != nil {
 		return rscope.err().AppendInternalf(axLen.Source(), "cannot evaluate slice index expression: %v", err)
 	}

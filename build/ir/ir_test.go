@@ -191,7 +191,7 @@ func (f *fetcherTesting) File() *ir.File {
 	return f.file
 }
 
-func (f *fetcherTesting) Eval(expr ir.Expr) (canonical.Canonical, error) {
+func (f *fetcherTesting) EvalExpr(expr ir.Expr) (canonical.Canonical, error) {
 	return compeval.EvalExpr(f.ctx, expr)
 }
 

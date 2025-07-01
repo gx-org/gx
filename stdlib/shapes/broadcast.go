@@ -53,7 +53,7 @@ func checkBroadcastRanks(fetcher ir.Fetcher, call *ir.CallExpr, src ir.ArrayRank
 	}
 
 	for i, targetElt := range targetElmts {
-		srcElt, err := fetcher.Eval(srcAxes[i])
+		srcElt, err := fetcher.EvalExpr(srcAxes[i])
 		if err != nil {
 			return err
 		}

@@ -100,7 +100,7 @@ func (ev *compileEvaluator) BuildExpr(src ast.Expr) (ir.Expr, bool) {
 	return expr.buildExpr(ev.scope)
 }
 
-func (ev *compileEvaluator) Eval(expr ir.Expr) (canonical.Canonical, error) {
+func (ev *compileEvaluator) EvalExpr(expr ir.Expr) (canonical.Canonical, error) {
 	val, err := interp.EvalExprInContext(ev.ev, expr)
 	if err != nil {
 		return nil, err

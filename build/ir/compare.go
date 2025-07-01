@@ -15,11 +15,11 @@
 package ir
 
 func areEqual(fetcher Fetcher, x, y Expr) (bool, error) {
-	xExpr, err := fetcher.Eval(x)
+	xExpr, err := fetcher.EvalExpr(x)
 	if err != nil {
 		return false, err
 	}
-	yExpr, err := fetcher.Eval(y)
+	yExpr, err := fetcher.EvalExpr(y)
 	if err != nil {
 		return false, err
 	}

@@ -54,7 +54,7 @@ func NewOptionVariable(vr *ir.VarExpr) options.PackageOption {
 
 // EvalInt evaluates an expression to return an int.
 func EvalInt(fetcher ir.Fetcher, expr ir.Expr) (int, error) {
-	cVal, err := fetcher.Eval(expr)
+	cVal, err := fetcher.EvalExpr(expr)
 	if err != nil {
 		return 0, err
 	}
@@ -71,7 +71,7 @@ func EvalInt(fetcher ir.Fetcher, expr ir.Expr) (int, error) {
 
 // EvalRank evaluates an expression to build the rank of an array.
 func EvalRank(fetcher ir.Fetcher, expr ir.Expr) (ir.ArrayRank, []canonical.Canonical, error) {
-	rankVal, err := fetcher.Eval(expr)
+	rankVal, err := fetcher.EvalExpr(expr)
 	if err != nil {
 		return nil, nil, err
 	}
