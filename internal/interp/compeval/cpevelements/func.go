@@ -43,7 +43,7 @@ func (f *fun) Recv() *elements.Receiver {
 	return f.recv
 }
 
-func (f *fun) callAtCompEval(fctx elements.FileContext, call *ir.CallExpr, args []elements.Element) ([]elements.Element, error) {
+func (f *fun) callAtCompEval(fctx ir.Evaluator, call *ir.CallExpr, args []elements.Element) ([]elements.Element, error) {
 	fnContext, ok := fctx.(elements.FuncEvaluator)
 	if !ok {
 		return nil, errors.Errorf("cannot evaluate function %s: context %T does not implement %s", f.fn.Name(), fctx, reflect.TypeFor[elements.FuncEvaluator]().String())
@@ -51,7 +51,7 @@ func (f *fun) callAtCompEval(fctx elements.FileContext, call *ir.CallExpr, args 
 	return fnContext.EvalFunc(f.fn, call, args)
 }
 
-func (f *fun) Call(fctx elements.FileContext, call *ir.CallExpr, args []elements.Element) ([]elements.Element, error) {
+func (f *fun) Call(fctx ir.Evaluator, call *ir.CallExpr, args []elements.Element) ([]elements.Element, error) {
 	fType := f.fn.FuncType() // Some builtin functions have no type at the moment.
 	if fType != nil && fType.CompEval {
 		return f.callAtCompEval(fctx, call, args)

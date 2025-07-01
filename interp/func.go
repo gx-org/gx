@@ -86,7 +86,7 @@ func (*funcBase) Kind() ir.Kind {
 }
 
 // Call the function.
-func (st *funcBase) Call(ctx elements.FileContext, call *ir.CallExpr, args []elements.Element) ([]elements.Element, error) {
+func (st *funcBase) Call(ctx ir.Evaluator, call *ir.CallExpr, args []elements.Element) ([]elements.Element, error) {
 	return nil, fmterr.Internalf(ctx.File().FileSet(), st.fn.Source(), "function type %T not supported", st.fn)
 }
 
@@ -100,7 +100,7 @@ type funcDecl struct {
 	fnT *ir.FuncDecl
 }
 
-func (f *funcDecl) Call(fctx elements.FileContext, call *ir.CallExpr, args []elements.Element) (outs []elements.Element, err error) {
+func (f *funcDecl) Call(fctx ir.Evaluator, call *ir.CallExpr, args []elements.Element) (outs []elements.Element, err error) {
 	ctx := fctx.(*context)
 	if f.fnT.Body == nil {
 		return nil, fmterr.Errorf(ctx.File().FileSet(), f.fnT.Source(), "missing function body")
@@ -131,7 +131,7 @@ type funcBuiltin struct {
 	fnT *ir.FuncBuiltin
 }
 
-func (f *funcBuiltin) Call(fctx elements.FileContext, call *ir.CallExpr, args []elements.Element) (outs []elements.Element, err error) {
+func (f *funcBuiltin) Call(fctx ir.Evaluator, call *ir.CallExpr, args []elements.Element) (outs []elements.Element, err error) {
 	defer func() {
 		if err != nil {
 			err = fmterr.Position(fctx.File().FileSet(), call.Expr(), err)
@@ -154,7 +154,7 @@ type funcLit struct {
 	fnT *ir.FuncLit
 }
 
-func (f *funcLit) Call(fctx elements.FileContext, call *ir.CallExpr, args []elements.Element) (outs []elements.Element, err error) {
+func (f *funcLit) Call(fctx ir.Evaluator, call *ir.CallExpr, args []elements.Element) (outs []elements.Element, err error) {
 	ctx := fctx.(*context)
 	// TODO(degris): remove this hack.
 	f.fnT.FFile = fctx.File()

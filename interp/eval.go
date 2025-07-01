@@ -23,6 +23,7 @@ import (
 	"github.com/gx-org/gx/api/values"
 	"github.com/gx-org/gx/build/fmterr"
 	"github.com/gx-org/gx/build/ir"
+	"github.com/gx-org/gx/internal/interp/canonical"
 	"github.com/gx-org/gx/interp/elements"
 	"github.com/gx-org/gx/interp/numbers"
 )
@@ -449,6 +450,18 @@ func evalSliceLiteral(ctx *context, expr *ir.SliceLitExpr) (elements.Element, er
 		els[i] = elt
 	}
 	return elements.NewSlice(expr.Type(), els), nil
+}
+
+func (ctx *context) EvalExpr(expr ir.Expr) (canonical.Canonical, error) {
+	el, err := ctx.evalExpr(expr)
+	if err != nil {
+		return nil, err
+	}
+	can, ok := el.(canonical.Canonical)
+	if !ok {
+		return nil, fmterr.Internalf(ctx.File().FileSet(), expr.Source(), "cannot convert %T to %s", el, reflect.TypeFor[canonical.Canonical]())
+	}
+	return can, nil
 }
 
 // evalExpr evaluates an expression within the context.

@@ -79,7 +79,7 @@ func (ev *Evaluator) elementFromTuple(src elements.ExprAt, tpl ops.Tuple, shps [
 }
 
 // BinaryOp applies a binary operator to x and y.
-func (n *BackendNode) BinaryOp(ctx elements.FileContext, expr *ir.BinaryExpr, x, y elements.NumericalElement) (elements.NumericalElement, error) {
+func (n *BackendNode) BinaryOp(ctx ir.Evaluator, expr *ir.BinaryExpr, x, y elements.NumericalElement) (elements.NumericalElement, error) {
 	ao := evalFromContext(ctx).ArrayOps()
 	xNode, xShape, err := NodeFromElement(ao, x)
 	if err != nil {
@@ -112,7 +112,7 @@ func (n *BackendNode) BinaryOp(ctx elements.FileContext, expr *ir.BinaryExpr, x,
 }
 
 // UnaryOp applies a unary operator on x.
-func (n *BackendNode) UnaryOp(ctx elements.FileContext, expr *ir.UnaryExpr) (elements.NumericalElement, error) {
+func (n *BackendNode) UnaryOp(ctx ir.Evaluator, expr *ir.UnaryExpr) (elements.NumericalElement, error) {
 	ao := evalFromContext(ctx).ArrayOps()
 	unaryNode, err := ao.Graph().Core().Unary(expr.Src, n.nod.Node)
 	if err != nil {
@@ -127,7 +127,7 @@ func (n *BackendNode) UnaryOp(ctx elements.FileContext, expr *ir.UnaryExpr) (ele
 }
 
 // Cast an element into a given data type.
-func (n *BackendNode) Cast(ctx elements.FileContext, expr ir.AssignableExpr, target ir.Type) (elements.NumericalElement, error) {
+func (n *BackendNode) Cast(ctx ir.Evaluator, expr ir.AssignableExpr, target ir.Type) (elements.NumericalElement, error) {
 	ao := evalFromContext(ctx).ArrayOps()
 	targetKind := target.Kind().DType()
 	casted, err := ao.Graph().Core().Cast(n.nod.Node, targetKind)
@@ -146,7 +146,7 @@ func (n *BackendNode) Cast(ctx elements.FileContext, expr ir.AssignableExpr, tar
 }
 
 // Reshape an element into a given shape.
-func (n *BackendNode) Reshape(ctx elements.FileContext, expr ir.AssignableExpr, axisLengths []elements.NumericalElement) (elements.NumericalElement, error) {
+func (n *BackendNode) Reshape(ctx ir.Evaluator, expr ir.AssignableExpr, axisLengths []elements.NumericalElement) (elements.NumericalElement, error) {
 	axes := make([]int, len(axisLengths))
 	for i, el := range axisLengths {
 		var err error
@@ -172,12 +172,12 @@ func (n *BackendNode) Reshape(ctx elements.FileContext, expr ir.AssignableExpr, 
 }
 
 // Slice of the value on the first axis given an index.
-func (n *BackendNode) Slice(ctx elements.FileContext, expr *ir.IndexExpr, index elements.NumericalElement) (elements.Element, error) {
+func (n *BackendNode) Slice(ctx ir.Evaluator, expr *ir.IndexExpr, index elements.NumericalElement) (elements.Element, error) {
 	return n.SliceArray(ctx, expr, index)
 }
 
 // SliceArray of the value on the first axis given an index.
-func (n *BackendNode) SliceArray(ctx elements.FileContext, expr ir.AssignableExpr, index elements.NumericalElement) (elements.NumericalElement, error) {
+func (n *BackendNode) SliceArray(ctx ir.Evaluator, expr ir.AssignableExpr, index elements.NumericalElement) (elements.NumericalElement, error) {
 	i, err := elements.ConstantIntFromElement(index)
 	if err != nil {
 		return nil, err

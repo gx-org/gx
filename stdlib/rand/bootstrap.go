@@ -89,7 +89,7 @@ func (rb *randBootstrap) nextConstant() (elements.NumericalElement, error) {
 
 type randBootstrapArg struct {
 	seed   elements.ElementWithArrayFromContext
-	ctx    elements.FileContext
+	ctx    ir.Evaluator
 	rb     *randBootstrap
 	pValue *proxies.Array
 }

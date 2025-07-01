@@ -82,13 +82,13 @@ type (
 
 	// Slicer is a state element that can be sliced.
 	Slicer interface {
-		Slice(ctx FileContext, expr *ir.IndexExpr, index NumericalElement) (Element, error)
+		Slice(ctx ir.Evaluator, expr *ir.IndexExpr, index NumericalElement) (Element, error)
 	}
 
 	// ArraySlicer is a state element with an array that can be sliced.
 	ArraySlicer interface {
 		NumericalElement
-		SliceArray(ctx FileContext, expr ir.AssignableExpr, index NumericalElement) (NumericalElement, error)
+		SliceArray(ctx ir.Evaluator, expr ir.AssignableExpr, index NumericalElement) (NumericalElement, error)
 		Type() ir.Type
 	}
 )
@@ -314,7 +314,7 @@ type (
 		Element
 		Func() ir.Func
 		Recv() *Receiver
-		Call(ctx FileContext, call *ir.CallExpr, args []Element) ([]Element, error)
+		Call(ctx ir.Evaluator, call *ir.CallExpr, args []Element) ([]Element, error)
 	}
 
 	// NewFunc creates function elements from function IRs.

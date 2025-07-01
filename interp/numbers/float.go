@@ -46,7 +46,7 @@ func NewFloat(expr elements.ExprAt, val *big.Float) *Float {
 }
 
 // UnaryOp applies a unary operator on x.
-func (n *Float) UnaryOp(ctx elements.FileContext, expr *ir.UnaryExpr) (elements.NumericalElement, error) {
+func (n *Float) UnaryOp(ctx ir.Evaluator, expr *ir.UnaryExpr) (elements.NumericalElement, error) {
 	var val *big.Float
 	switch expr.Src.Op {
 	case token.ADD:
@@ -61,7 +61,7 @@ func (n *Float) UnaryOp(ctx elements.FileContext, expr *ir.UnaryExpr) (elements.
 
 // BinaryOp applies a binary operator to x and y.
 // Note that the receiver can be either the left or right argument.
-func (n *Float) BinaryOp(ctx elements.FileContext, expr *ir.BinaryExpr, x, y elements.NumericalElement) (elements.NumericalElement, error) {
+func (n *Float) BinaryOp(ctx ir.Evaluator, expr *ir.BinaryExpr, x, y elements.NumericalElement) (elements.NumericalElement, error) {
 	switch yT := y.(type) {
 	case *Float:
 		return binaryFloat(ctx, expr, n.val, yT.val)
@@ -71,7 +71,7 @@ func (n *Float) BinaryOp(ctx elements.FileContext, expr *ir.BinaryExpr, x, y ele
 	return nil, fmterr.Errorf(ctx.File().FileSet(), expr.Src, "number int operator not implemented for %T%s%T", x, expr.Src.Op, y)
 }
 
-func binaryFloat(ctx elements.FileContext, expr *ir.BinaryExpr, x, y *big.Float) (elements.NumericalElement, error) {
+func binaryFloat(ctx ir.Evaluator, expr *ir.BinaryExpr, x, y *big.Float) (elements.NumericalElement, error) {
 	var val *big.Float
 	switch expr.Src.Op {
 	case token.ADD:
@@ -89,7 +89,7 @@ func binaryFloat(ctx elements.FileContext, expr *ir.BinaryExpr, x, y *big.Float)
 }
 
 // Cast an element into a given data type.
-func (n *Float) Cast(ctx elements.FileContext, expr ir.AssignableExpr, target ir.Type) (elements.NumericalElement, error) {
+func (n *Float) Cast(ctx ir.Evaluator, expr ir.AssignableExpr, target ir.Type) (elements.NumericalElement, error) {
 	val, err := values.AtomNumberFloat(n.val, target)
 	if err != nil {
 		return nil, err
@@ -98,7 +98,7 @@ func (n *Float) Cast(ctx elements.FileContext, expr ir.AssignableExpr, target ir
 }
 
 // Reshape the number into an array.
-func (n *Float) Reshape(ctx elements.FileContext, expr ir.AssignableExpr, axisLengths []elements.NumericalElement) (elements.NumericalElement, error) {
+func (n *Float) Reshape(ctx ir.Evaluator, expr ir.AssignableExpr, axisLengths []elements.NumericalElement) (elements.NumericalElement, error) {
 	val, err := values.AtomNumberFloat(n.val, expr.Type())
 	if err != nil {
 		return nil, err

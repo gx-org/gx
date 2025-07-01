@@ -40,7 +40,7 @@ var (
 	_ fmt.Stringer                 = (*binary)(nil)
 )
 
-func newBinary(ctx elements.FileContext, expr *ir.BinaryExpr, xEl, yEl elements.NumericalElement) (_ elements.NumericalElement, err error) {
+func newBinary(ctx ir.Evaluator, expr *ir.BinaryExpr, xEl, yEl elements.NumericalElement) (_ elements.NumericalElement, err error) {
 	// If the other element is not a compeval element,
 	// we are not in compeval mode, so forward the binary operation to the other element.
 	x, xOk := xEl.(Element)
@@ -116,22 +116,22 @@ func buildBinaryVal(expr *ir.BinaryExpr, cx, cy *values.HostArray) (*values.Host
 }
 
 // UnaryOp applies a unary operator on x.
-func (a *binary) UnaryOp(ctx elements.FileContext, expr *ir.UnaryExpr) (elements.NumericalElement, error) {
+func (a *binary) UnaryOp(ctx ir.Evaluator, expr *ir.UnaryExpr) (elements.NumericalElement, error) {
 	return newUnary(ctx, expr, a)
 }
 
 // BinaryOp applies a binary operator to x and y.
-func (a *binary) BinaryOp(ctx elements.FileContext, expr *ir.BinaryExpr, x, y elements.NumericalElement) (elements.NumericalElement, error) {
+func (a *binary) BinaryOp(ctx ir.Evaluator, expr *ir.BinaryExpr, x, y elements.NumericalElement) (elements.NumericalElement, error) {
 	return newBinary(ctx, expr, x, y)
 }
 
 // Cast an element into a given data type.
-func (a *binary) Cast(ctx elements.FileContext, expr ir.AssignableExpr, target ir.Type) (elements.NumericalElement, error) {
+func (a *binary) Cast(ctx ir.Evaluator, expr ir.AssignableExpr, target ir.Type) (elements.NumericalElement, error) {
 	return newCast(ctx, expr, a, target)
 }
 
 // Reshape the element into a new shape.
-func (a *binary) Reshape(ctx elements.FileContext, expr ir.AssignableExpr, axisLengths []elements.NumericalElement) (elements.NumericalElement, error) {
+func (a *binary) Reshape(ctx ir.Evaluator, expr ir.AssignableExpr, axisLengths []elements.NumericalElement) (elements.NumericalElement, error) {
 	return newReshape(ctx, expr, a, axisLengths)
 }
 
