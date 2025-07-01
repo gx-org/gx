@@ -461,7 +461,7 @@ func assignArgValueToName(rscope resolveScope, compEval *compileEvaluator, param
 		return true
 	}
 	axisValues, ok := axisValuesFromArgumentValue(rscope, compEval, param, argVal)
-	if axisValues == nil || !ok {
+	if !ok {
 		return ok
 	}
 	for _, axis := range paramArrayType.Rank().Axes() {
