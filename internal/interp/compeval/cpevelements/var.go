@@ -32,10 +32,10 @@ type variable struct {
 }
 
 var (
-	_ Element         = (*variable)(nil)
-	_ IRArrayElement  = (*variable)(nil)
-	_ ir.Canonical    = (*variable)(nil)
-	_ elements.Slicer = (*variable)(nil)
+	_ Element           = (*variable)(nil)
+	_ elements.WithAxes = (*variable)(nil)
+	_ ir.Canonical      = (*variable)(nil)
+	_ elements.Slicer   = (*variable)(nil)
 )
 
 // NewVariable returns a new variable element given a GX variable name.
@@ -84,8 +84,8 @@ func (a *variable) Kind() ir.Kind {
 }
 
 // Axes returns the axes of the value as a slice element.
-func (a *variable) Axes(fetcher ir.Fetcher) (*elements.Slice, error) {
-	return sliceElementFromIRType(fetcher, a.src.Node().Type())
+func (a *variable) Axes(ev ir.Evaluator) (*elements.Slice, error) {
+	return axesFromType(ev, a.src.Node().Type())
 }
 
 // Slice computes a slice from the variable.

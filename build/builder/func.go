@@ -406,7 +406,7 @@ func axisExprFrom(rscope resolveScope, ax ir.AxisLengths) (*ir.AxisExpr, bool) {
 }
 
 func axisValuesFromArgumentValue(rscope resolveScope, compEval *compileEvaluator, src *ir.Field, val elements.Element) ([]elements.Element, bool) {
-	arrayElement, axOk := val.(cpevelements.IRArrayElement)
+	arrayElement, axOk := val.(elements.WithAxes)
 	if !axOk {
 		return nil, true
 	}

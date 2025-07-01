@@ -27,22 +27,15 @@ import (
 	"github.com/gx-org/gx/interp/evaluator"
 )
 
-type (
-	// Element returned after an evaluation at compeval.
-	Element interface {
-		elements.NumericalElement
-		canonical.Comparable
-		fmt.Stringer
+// Element returned after an evaluation at compeval.
+type Element interface {
+	elements.NumericalElement
+	canonical.Comparable
+	fmt.Stringer
 
-		// CanonicalExpr returns the canonical expression used for comparison.
-		CanonicalExpr() canonical.Canonical
-	}
-
-	// IRArrayElement is an array with a IR representation of its axes.
-	IRArrayElement interface {
-		Axes(ir.Fetcher) (*elements.Slice, error)
-	}
-)
+	// CanonicalExpr returns the canonical expression used for comparison.
+	CanonicalExpr() canonical.Canonical
+}
 
 func toElement(x elements.NumericalElement) (Element, error) {
 	el, ok := x.(Element)
@@ -64,7 +57,7 @@ func valEqual(x, y Element) bool {
 	return equalArray(xEl, yEl)
 }
 
-func sliceElementFromIRType(fetcher ir.Fetcher, typ ir.Type) (*elements.Slice, error) {
+func axesFromType(ev ir.Evaluator, typ ir.Type) (*elements.Slice, error) {
 	aTyp, ok := typ.(ir.ArrayType)
 	if !ok {
 		return nil, nil
@@ -73,7 +66,7 @@ func sliceElementFromIRType(fetcher ir.Fetcher, typ ir.Type) (*elements.Slice, e
 	axes := rank.Axes()
 	elts := make([]elements.Element, len(axes))
 	for i, ax := range axes {
-		cVal, err := fetcher.EvalExpr(ax)
+		cVal, err := ev.EvalExpr(ax)
 		if err != nil {
 			return nil, err
 		}

@@ -198,6 +198,18 @@ func f() [4][3]float32 {
 		},
 		testbuild.Decl{
 			Src: `
+var numClasses intlen
+
+func newArray(shape []intlen) [shape___]float32
+
+func f(x [___axes]float32) [axes___][numClasses]float32 {
+	ax := append(axlengths(x), numClasses)
+	return newArray(ax)
+}
+`,
+		},
+		testbuild.Decl{
+			Src: `
 func cast([___S]float32) [S___]float64
 
 func f() [2]float64 {
@@ -274,6 +286,15 @@ func f() float64 {
 					}},
 				},
 			},
+		},
+		testbuild.Decl{
+			Src: `
+func cast([___S]float32) [S___]float64
+
+func f(a [2][2]float32) [2][2]float64 {
+	return cast(a+a)
+}
+`,
 		},
 	)
 }

@@ -34,6 +34,7 @@ type cast struct {
 
 var (
 	_ elements.Materialiser        = (*cast)(nil)
+	_ elements.WithAxes            = (*cast)(nil)
 	_ elements.Copier              = (*cast)(nil)
 	_ elements.ElementWithConstant = (*cast)(nil)
 	_ fmt.Stringer                 = (*cast)(nil)
@@ -143,8 +144,8 @@ func (a *cast) Materialise(ao elements.ArrayOps) (elements.Node, error) {
 }
 
 // Axes of the result of the cast.
-func (a *cast) Axes(fetcher ir.Fetcher) (*elements.Slice, error) {
-	return sliceElementFromIRType(fetcher, a.target)
+func (a *cast) Axes(ev ir.Evaluator) (*elements.Slice, error) {
+	return axesFromType(ev, a.target)
 }
 
 // Compare to another element.

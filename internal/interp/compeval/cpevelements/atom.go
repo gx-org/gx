@@ -38,7 +38,7 @@ var (
 	_ Element                      = (*atom)(nil)
 	_ elements.Copier              = (*atom)(nil)
 	_ canonical.Evaluable          = (*atom)(nil)
-	_ IRArrayElement               = (*atom)(nil)
+	_ elements.WithAxes            = (*atom)(nil)
 	_ ir.Canonical                 = (*atom)(nil)
 )
 
@@ -125,11 +125,8 @@ func (a *atom) Compare(x canonical.Comparable) bool {
 	return equalArray(a.val, cx)
 }
 
-func (a *atom) Axes(ir.Fetcher) (*elements.Slice, error) {
-	return elements.NewSlice(
-		ir.IntLenSliceType(),
-		nil,
-	), nil
+func (a *atom) Axes(ir.Evaluator) (*elements.Slice, error) {
+	return elements.NewSlice(ir.IntLenSliceType(), nil), nil
 }
 
 // Expr returns the IR expression represented by the variable.
