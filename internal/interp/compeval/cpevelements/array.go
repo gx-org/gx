@@ -31,11 +31,11 @@ type array struct {
 }
 
 var (
-	_ elements.Node   = (*array)(nil)
-	_ IRArrayElement  = (*array)(nil)
-	_ Element         = (*array)(nil)
-	_ elements.Slicer = (*array)(nil)
-	_ elements.Copier = (*array)(nil)
+	_ elements.Node     = (*array)(nil)
+	_ elements.WithAxes = (*array)(nil)
+	_ Element           = (*array)(nil)
+	_ elements.Slicer   = (*array)(nil)
+	_ elements.Copier   = (*array)(nil)
 )
 
 // NewArray returns a new array from a code position and a type.
@@ -61,8 +61,8 @@ func (a *array) Kind() ir.Kind {
 	return ir.ArrayKind
 }
 
-func (a *array) Axes(fetcher ir.Fetcher) (*elements.Slice, error) {
-	return sliceElementFromIRType(fetcher, a.typ)
+func (a *array) Axes(fetcher ir.Evaluator) (*elements.Slice, error) {
+	return axesFromType(fetcher, a.typ)
 }
 
 func (a *array) UnaryOp(ctx ir.Evaluator, expr *ir.UnaryExpr) (elements.NumericalElement, error) {

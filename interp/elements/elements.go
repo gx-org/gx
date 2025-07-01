@@ -91,6 +91,11 @@ type (
 		SliceArray(ctx ir.Evaluator, expr ir.AssignableExpr, index NumericalElement) (NumericalElement, error)
 		Type() ir.Type
 	}
+
+	// WithAxes is an element able to return its axes as a slice of element.
+	WithAxes interface {
+		Axes(ev ir.Evaluator) (*Slice, error)
+	}
 )
 
 type (

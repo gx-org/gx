@@ -38,6 +38,7 @@ var (
 	_ ir.Canonical                 = (*binary)(nil)
 	_ elements.ElementWithConstant = (*binary)(nil)
 	_ fmt.Stringer                 = (*binary)(nil)
+	_ elements.WithAxes            = (*cast)(nil)
 )
 
 func newBinary(ctx ir.Evaluator, expr *ir.BinaryExpr, xEl, yEl elements.NumericalElement) (_ elements.NumericalElement, err error) {
@@ -141,8 +142,8 @@ func (a *binary) Shape() *shape.Shape {
 }
 
 // Axes returns the axes of the value as a slice element.
-func (a *binary) Axes(fetcher ir.Fetcher) (*elements.Slice, error) {
-	return sliceElementFromIRType(fetcher, a.src.Node().Type())
+func (a *binary) Axes(ev ir.Evaluator) (*elements.Slice, error) {
+	return axesFromType(ev, a.src.Node().Type())
 }
 
 func (a *binary) Value() ir.AssignableExpr {

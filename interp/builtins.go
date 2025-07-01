@@ -20,6 +20,7 @@ import (
 
 	"github.com/pkg/errors"
 	"github.com/gx-org/gx/api/values"
+	"github.com/gx-org/gx/build/fmterr"
 	"github.com/gx-org/gx/build/ir"
 	"github.com/gx-org/gx/internal/base/scope"
 	"github.com/gx-org/gx/interp/elements"
@@ -97,7 +98,7 @@ type axlengthsFunc struct{}
 var _ ir.FuncImpl = (*axlengthsFunc)(nil)
 
 func (axlengthsFunc) BuildFuncType(fetcher ir.Fetcher, call *ir.CallExpr) (*ir.FuncType, error) {
-	return nil, nil
+	return &ir.FuncType{CompEval: true}, nil
 }
 
 func (axlengthsFunc) Implementation() any {
@@ -105,27 +106,15 @@ func (axlengthsFunc) Implementation() any {
 }
 
 func axlengthsImpl(ctx evaluator.Context, call elements.CallAt, fn elements.Func, irFunc *ir.FuncBuiltin, args []elements.Element) ([]elements.Element, error) {
-	shape, err := elements.ShapeFromElement(args[0])
+	array, ok := args[0].(elements.WithAxes)
+	if !ok {
+		return nil, fmterr.Internalf(ctx.File().FileSet(), call.Node().Src, "cannot get the shape of %T: not supported", args[0])
+	}
+	shape, err := array.Axes(ctx)
 	if err != nil {
-		return nil, err
+		return nil, fmterr.Position(ctx.File().FileSet(), call.Node().Src, err)
 	}
-	axes := make([]elements.Element, len(shape.AxisLengths))
-	for i, axisSize := range shape.AxisLengths {
-		iExpr := &ir.AtomicValueT[ir.Int]{
-			Src: call.Node().Src,
-			Val: ir.Int(i),
-			Typ: ir.IntLenType(),
-		}
-		iValue, err := values.AtomIntegerValue[ir.Int](ir.IntLenType(), ir.Int(axisSize))
-		if err != nil {
-			return nil, err
-		}
-		axes[i], err = ctx.Evaluation().Evaluator().ElementFromAtom(elements.NewExprAt(ctx.File(), iExpr), iValue)
-		if err != nil {
-			return nil, err
-		}
-	}
-	return []elements.Element{elements.NewSlice(ir.IntLenSliceType(), axes)}, nil
+	return []elements.Element{shape}, nil
 }
 
 type setFunc struct{}

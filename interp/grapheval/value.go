@@ -20,6 +20,7 @@ import (
 	"github.com/gx-org/gx/build/ir"
 	"github.com/gx-org/gx/golang/backend/kernels"
 	"github.com/gx-org/gx/interp/elements"
+	"github.com/gx-org/gx/interp/evaluator"
 )
 
 // valueElement is a GX value represented as a node in the graph.
@@ -35,6 +36,7 @@ var (
 	_ elements.Materialiser        = (*valueElement)(nil)
 	_ elements.Node                = (*valueElement)(nil)
 	_ elements.Copier              = (*valueElement)(nil)
+	_ elements.WithAxes            = (*valueElement)(nil)
 )
 
 func newValueElement(ev *Evaluator, src elements.ExprAt, value values.Array) (*valueElement, error) {
@@ -72,6 +74,27 @@ func (n *valueElement) Unflatten(handles *elements.Unflattener) (values.Value, e
 // Copy the graph node by returning itself.
 func (n *valueElement) Copy() elements.Copier {
 	return n
+}
+
+func (n *valueElement) Axes(ev ir.Evaluator) (*elements.Slice, error) {
+	shape := n.value.Shape()
+	ctx := ev.(evaluator.Context)
+	axes := make([]elements.Element, len(shape.AxisLengths))
+	for i, axisSize := range shape.AxisLengths {
+		iExpr := &ir.AtomicValueT[ir.Int]{
+			Val: ir.Int(i),
+			Typ: ir.IntLenType(),
+		}
+		iValue, err := values.AtomIntegerValue[ir.Int](ir.IntLenType(), ir.Int(axisSize))
+		if err != nil {
+			return nil, err
+		}
+		axes[i], err = ctx.Evaluation().Evaluator().ElementFromAtom(elements.NewExprAt(ctx.File(), iExpr), iValue)
+		if err != nil {
+			return nil, err
+		}
+	}
+	return elements.NewSlice(ir.IntLenSliceType(), axes), nil
 }
 
 func (n *valueElement) Type() ir.Type {
