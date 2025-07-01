@@ -432,9 +432,7 @@ var (
 	}
 	zeroValue, _ = values.AtomNumberInt(&big.Int{}, zeroExpr.Type())
 	zeroLen, _   = cpevelements.NewAtom(elements.NewExprAt(cstFile, zeroExpr), zeroValue)
-	emptySlice   = elements.NewSlice(elements.NewExprAt(cstFile, &ir.SliceLitExpr{
-		Typ: ir.IntLenSliceType(),
-	}), nil)
+	emptySlice   = elements.NewSlice(ir.IntLenSliceType(), nil)
 )
 
 func buildAtomicAxisValue(rscope resolveScope, arg ir.AssignableExpr, elts []elements.Element) (ax elements.Element, todo []elements.Element) {
@@ -448,7 +446,7 @@ func buildSliceAxisValue(rscope resolveScope, arg ir.AssignableExpr, elts []elem
 	if len(elts) == 0 {
 		return emptySlice, nil
 	}
-	return elements.NewSlice(elements.NewExprAt(cstFile, arg), elts), nil
+	return elements.NewSlice(arg.Type(), elts), nil
 }
 
 func assignArgValueToName(rscope resolveScope, compEval *compileEvaluator, params map[string]elements.Element, param *ir.Field, arg ir.AssignableExpr, argVal elements.Element) bool {

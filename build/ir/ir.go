@@ -3326,13 +3326,3 @@ func ToArrayTypeGivenShape(typ Type, sh *shape.Shape) (ArrayType, error) {
 	}
 	return array, nil
 }
-
-// NewSliceOfAxisLengths returns a new slice of expression typed as
-// a slice of axis length static integers.
-func NewSliceOfAxisLengths(src ast.Expr, elts []AssignableExpr) *SliceLitExpr {
-	return &SliceLitExpr{
-		Src:  src,
-		Elts: elts,
-		Typ:  IntLenSliceType(),
-	}
-}

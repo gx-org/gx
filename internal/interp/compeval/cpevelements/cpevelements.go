@@ -73,26 +73,8 @@ func sliceElementFromIRType(fetcher ir.Fetcher, src ast.Expr, typ ir.Type) (*ele
 	rank := aTyp.Rank()
 	axes := rank.Axes()
 	elts := make([]elements.Element, len(axes))
-	exprs := make([]ir.AssignableExpr, len(axes))
 	for i, ax := range axes {
-		exprs[i] = ax.AxisValue()
-		if exprs[i] == nil {
-			infer, inferOk := ax.(*ir.AxisInfer)
-			if !inferOk {
-				return nil, fmterr.Internalf(fetcher.File().FileSet(), src, "%T is not %s", ax, reflect.TypeFor[*ir.AxisInfer]())
-			}
-			store := &ir.AnonymousStorage{
-				Src: infer.Src,
-				Typ: ir.IntLenType(),
-			}
-			exprs[i] = &ir.ValueRef{
-				Src:  infer.Src,
-				Stor: store,
-			}
-			elts[i] = NewVariable(elements.NewNodeAt[ir.Storage](fetcher.File(), store))
-			continue
-		}
-		cVal, err := fetcher.Eval(exprs[i])
+		cVal, err := fetcher.Eval(ax)
 		if err != nil {
 			return nil, err
 		}
@@ -101,11 +83,7 @@ func sliceElementFromIRType(fetcher ir.Fetcher, src ast.Expr, typ ir.Type) (*ele
 			return nil, fmterr.Internalf(fetcher.File().FileSet(), src, "%T is not %s", cVal, reflect.TypeFor[elements.Element]())
 		}
 	}
-	sliceSrc := elements.NewExprAt(
-		fetcher.File(),
-		ir.NewSliceOfAxisLengths(src, exprs),
-	)
-	return elements.NewSlice(sliceSrc, elts), nil
+	return elements.NewSlice(ir.IntLenSliceType(), elts), nil
 }
 
 // NewRuntimeValue creates a new runtime value given an expression in a file.
