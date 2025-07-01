@@ -17,7 +17,6 @@ package cpevelements
 
 import (
 	"fmt"
-	"go/ast"
 	"reflect"
 
 	"github.com/pkg/errors"
@@ -65,7 +64,7 @@ func valEqual(x, y Element) bool {
 	return equalArray(xEl, yEl)
 }
 
-func sliceElementFromIRType(fetcher ir.Fetcher, src ast.Expr, typ ir.Type) (*elements.Slice, error) {
+func sliceElementFromIRType(fetcher ir.Fetcher, typ ir.Type) (*elements.Slice, error) {
 	aTyp, ok := typ.(ir.ArrayType)
 	if !ok {
 		return nil, nil
@@ -80,7 +79,7 @@ func sliceElementFromIRType(fetcher ir.Fetcher, src ast.Expr, typ ir.Type) (*ele
 		}
 		elts[i], ok = cVal.(elements.Element)
 		if !ok {
-			return nil, fmterr.Internalf(fetcher.File().FileSet(), src, "%T is not %s", cVal, reflect.TypeFor[elements.Element]())
+			return nil, fmterr.Internal(errors.Errorf("%T is not %s", cVal, reflect.TypeFor[elements.Element]()))
 		}
 	}
 	return elements.NewSlice(ir.IntLenSliceType(), elts), nil
@@ -115,7 +114,7 @@ func NewRuntimeValue(ctx evaluator.Context, store ir.Storage) (elements.Element,
 		return elements.NewNamedType(ctx.Evaluation().Evaluator().NewFunc, typT, under.(elements.Copier)), nil
 	case ir.ArrayType:
 		if !ir.IsStatic(typT.DataType()) {
-			return NewArray(elements.NewExprAt(ctx.File(), ref), typT), nil
+			return NewArray(typT), nil
 		}
 	}
 	return NewVariable(elements.NewNodeAt(ctx.File(), store)), nil

@@ -85,7 +85,7 @@ func (a *variable) Kind() ir.Kind {
 
 // Axes returns the axes of the value as a slice element.
 func (a *variable) Axes(fetcher ir.Fetcher) (*elements.Slice, error) {
-	return sliceElementFromIRType(fetcher, a.src.ExprSrc(), a.src.Node().Type())
+	return sliceElementFromIRType(fetcher, a.src.Node().Type())
 }
 
 // Slice computes a slice from the variable.

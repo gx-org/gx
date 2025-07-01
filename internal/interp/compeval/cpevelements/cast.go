@@ -144,7 +144,7 @@ func (a *cast) Materialise(ao elements.ArrayOps) (elements.Node, error) {
 
 // Axes of the result of the cast.
 func (a *cast) Axes(fetcher ir.Fetcher) (*elements.Slice, error) {
-	return sliceElementFromIRType(fetcher, a.src.ExprSrc(), a.target)
+	return sliceElementFromIRType(fetcher, a.target)
 }
 
 // Compare to another element.
