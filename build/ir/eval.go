@@ -28,14 +28,19 @@ type Canonical interface {
 	Expr() (AssignableExpr, error)
 }
 
+// Evaluator evaluates IR expressions into canonical values.
+type Evaluator interface {
+	File() *File
+	EvalExpr(Expr) (canonical.Canonical, error)
+}
+
 // Fetcher fetches scalar value from identifiers in the code.
 // A fetcher is required to sample tensor dimensions and,
 // consequently, to compare one type to another.
 type Fetcher interface {
-	File() *File
-	BuildExpr(ast.Expr) (Expr, bool)
-	EvalExpr(Expr) (canonical.Canonical, error)
+	Evaluator
 	Err() *fmterr.Appender
+	BuildExpr(ast.Expr) (Expr, bool)
 }
 
 func appendIdent(done map[string]bool, ids []*ValueRef, id *ValueRef) []*ValueRef {

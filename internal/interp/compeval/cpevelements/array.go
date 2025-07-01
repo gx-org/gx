@@ -65,23 +65,23 @@ func (a *array) Axes(fetcher ir.Fetcher) (*elements.Slice, error) {
 	return sliceElementFromIRType(fetcher, a.typ)
 }
 
-func (a *array) UnaryOp(ctx elements.FileContext, expr *ir.UnaryExpr) (elements.NumericalElement, error) {
+func (a *array) UnaryOp(ctx ir.Evaluator, expr *ir.UnaryExpr) (elements.NumericalElement, error) {
 	return NewArray(expr.Type().(ir.ArrayType)), nil
 }
 
-func (a *array) BinaryOp(ctx elements.FileContext, expr *ir.BinaryExpr, x, y elements.NumericalElement) (elements.NumericalElement, error) {
+func (a *array) BinaryOp(ctx ir.Evaluator, expr *ir.BinaryExpr, x, y elements.NumericalElement) (elements.NumericalElement, error) {
 	return NewArray(expr.Type().(ir.ArrayType)), nil
 }
 
-func (a *array) Cast(ctx elements.FileContext, expr ir.AssignableExpr, target ir.Type) (elements.NumericalElement, error) {
+func (a *array) Cast(ctx ir.Evaluator, expr ir.AssignableExpr, target ir.Type) (elements.NumericalElement, error) {
 	return NewArray(expr.Type().(ir.ArrayType)), nil
 }
 
-func (a *array) Reshape(ctx elements.FileContext, expr ir.AssignableExpr, axisLengths []elements.NumericalElement) (elements.NumericalElement, error) {
+func (a *array) Reshape(ctx ir.Evaluator, expr ir.AssignableExpr, axisLengths []elements.NumericalElement) (elements.NumericalElement, error) {
 	return NewArray(expr.Type().(ir.ArrayType)), nil
 }
 
-func (a *array) Slice(ctx elements.FileContext, expr *ir.IndexExpr, index elements.NumericalElement) (elements.Element, error) {
+func (a *array) Slice(ctx ir.Evaluator, expr *ir.IndexExpr, index elements.NumericalElement) (elements.Element, error) {
 	return NewArray(expr.Type().(ir.ArrayType)), nil
 }
 

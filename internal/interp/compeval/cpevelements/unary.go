@@ -41,7 +41,7 @@ var (
 	_ fmt.Stringer                 = (*unary)(nil)
 )
 
-func newUnary(ctx elements.FileContext, expr *ir.UnaryExpr, xEl Element) (_ *unary, err error) {
+func newUnary(ctx ir.Evaluator, expr *ir.UnaryExpr, xEl Element) (_ *unary, err error) {
 	defer func() {
 		if err != nil {
 			err = fmterr.Position(ctx.File().FileSet(), expr.Src, err)
@@ -84,22 +84,22 @@ func newUnary(ctx elements.FileContext, expr *ir.UnaryExpr, xEl Element) (_ *una
 
 }
 
-func (a *unary) Reshape(ctx elements.FileContext, expr ir.AssignableExpr, axisLengths []elements.NumericalElement) (elements.NumericalElement, error) {
+func (a *unary) Reshape(ctx ir.Evaluator, expr ir.AssignableExpr, axisLengths []elements.NumericalElement) (elements.NumericalElement, error) {
 	return newReshape(ctx, expr, a, axisLengths)
 }
 
 // UnaryOp applies a unary operator on x.
-func (a *unary) UnaryOp(ctx elements.FileContext, expr *ir.UnaryExpr) (elements.NumericalElement, error) {
+func (a *unary) UnaryOp(ctx ir.Evaluator, expr *ir.UnaryExpr) (elements.NumericalElement, error) {
 	return newUnary(ctx, expr, a)
 }
 
 // BinaryOp applies a binary operator to x and y.
-func (a *unary) BinaryOp(ctx elements.FileContext, expr *ir.BinaryExpr, x, y elements.NumericalElement) (elements.NumericalElement, error) {
+func (a *unary) BinaryOp(ctx ir.Evaluator, expr *ir.BinaryExpr, x, y elements.NumericalElement) (elements.NumericalElement, error) {
 	return newBinary(ctx, expr, x, y)
 }
 
 // Cast an element into a given data type.
-func (a *unary) Cast(ctx elements.FileContext, expr ir.AssignableExpr, target ir.Type) (elements.NumericalElement, error) {
+func (a *unary) Cast(ctx ir.Evaluator, expr ir.AssignableExpr, target ir.Type) (elements.NumericalElement, error) {
 	return newCast(ctx, expr, a, target)
 }
 

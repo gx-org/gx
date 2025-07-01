@@ -49,7 +49,7 @@ func (n *Slice) Flatten() ([]Element, error) {
 	return Flatten(n.values...)
 }
 
-func slice(ctx FileContext, expr ir.AssignableExpr, index NumericalElement, vals []Element) (Element, error) {
+func slice(ctx ir.Evaluator, expr ir.AssignableExpr, index NumericalElement, vals []Element) (Element, error) {
 	i, err := ConstantIntFromElement(index)
 	if err != nil {
 		return nil, err
@@ -61,7 +61,7 @@ func slice(ctx FileContext, expr ir.AssignableExpr, index NumericalElement, vals
 }
 
 // Slice of the tuple.
-func (n *Slice) Slice(ctx FileContext, expr *ir.IndexExpr, index NumericalElement) (Element, error) {
+func (n *Slice) Slice(ctx ir.Evaluator, expr *ir.IndexExpr, index NumericalElement) (Element, error) {
 	return slice(ctx, expr, index, n.values)
 }
 

@@ -34,7 +34,7 @@ type (
 
 	// Context in which an operator is being executed.
 	Context interface {
-		elements.FileContext
+		ir.Evaluator
 
 		// Evaluation returns the context in which the evaluation is done.
 		Evaluation() EvaluationContext

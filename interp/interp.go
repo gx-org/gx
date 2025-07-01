@@ -153,7 +153,7 @@ func rankOf(ctx evaluator.Context, src ir.SourceNode, typ ir.ArrayType) (ir.Arra
 
 // ToSingleElement packs multiple elements into a tuple.
 // If the slice els contains only one element, this element is returned.
-func ToSingleElement(ctx elements.FileContext, node ir.SourceNode, els []elements.Element) (elements.Element, error) {
+func ToSingleElement(ctx ir.Evaluator, node ir.SourceNode, els []elements.Element) (elements.Element, error) {
 	switch len(els) {
 	case 0:
 		return nil, nil

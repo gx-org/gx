@@ -167,6 +167,6 @@ func (ev *Evaluator) Trace(call elements.CallAt, fn elements.Func, irFunc *ir.Fu
 	return ev.process.RegisterTrace(call, fn, irFunc, args, fc)
 }
 
-func evalFromContext(ctx elements.FileContext) *Evaluator {
+func evalFromContext(ctx ir.Evaluator) *Evaluator {
 	return ctx.(evaluator.Context).Evaluation().Evaluator().(*Evaluator)
 }

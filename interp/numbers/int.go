@@ -43,7 +43,7 @@ func NewInt(expr elements.ExprAt, val *big.Int) Number {
 }
 
 // UnaryOp applies a unary operator on x.
-func (n *Int) UnaryOp(ctx elements.FileContext, expr *ir.UnaryExpr) (elements.NumericalElement, error) {
+func (n *Int) UnaryOp(ctx ir.Evaluator, expr *ir.UnaryExpr) (elements.NumericalElement, error) {
 	var val *big.Int
 	switch expr.Src.Op {
 	case token.ADD:
@@ -58,7 +58,7 @@ func (n *Int) UnaryOp(ctx elements.FileContext, expr *ir.UnaryExpr) (elements.Nu
 
 // BinaryOp applies a binary operator to x and y.
 // Note that the receiver can be either the left or right argument.
-func (n *Int) BinaryOp(ctx elements.FileContext, expr *ir.BinaryExpr, x, y elements.NumericalElement) (elements.NumericalElement, error) {
+func (n *Int) BinaryOp(ctx ir.Evaluator, expr *ir.BinaryExpr, x, y elements.NumericalElement) (elements.NumericalElement, error) {
 	switch yT := y.(type) {
 	case *Float:
 		return binaryFloat(ctx, expr, n.Float(), yT.val)
@@ -73,7 +73,7 @@ func (n *Int) Float() *big.Float {
 	return new(big.Float).SetInt(n.val)
 }
 
-func binaryInt(ctx elements.FileContext, expr *ir.BinaryExpr, x, y *big.Int) (elements.NumericalElement, error) {
+func binaryInt(ctx ir.Evaluator, expr *ir.BinaryExpr, x, y *big.Int) (elements.NumericalElement, error) {
 	var val *big.Int
 	switch expr.Src.Op {
 	case token.ADD:
@@ -103,7 +103,7 @@ func binaryInt(ctx elements.FileContext, expr *ir.BinaryExpr, x, y *big.Int) (el
 }
 
 // Cast an element into a given data type.
-func (n *Int) Cast(ctx elements.FileContext, expr ir.AssignableExpr, target ir.Type) (elements.NumericalElement, error) {
+func (n *Int) Cast(ctx ir.Evaluator, expr ir.AssignableExpr, target ir.Type) (elements.NumericalElement, error) {
 	val, err := values.AtomNumberInt(n.val, target)
 	if err != nil {
 		return nil, err
@@ -112,7 +112,7 @@ func (n *Int) Cast(ctx elements.FileContext, expr ir.AssignableExpr, target ir.T
 }
 
 // Reshape the number into an array.
-func (n *Int) Reshape(ctx elements.FileContext, expr ir.AssignableExpr, axisLengths []elements.NumericalElement) (elements.NumericalElement, error) {
+func (n *Int) Reshape(ctx ir.Evaluator, expr ir.AssignableExpr, axisLengths []elements.NumericalElement) (elements.NumericalElement, error) {
 	val, err := values.AtomNumberInt(n.val, expr.Type())
 	if err != nil {
 		return nil, err

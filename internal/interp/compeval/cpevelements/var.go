@@ -44,22 +44,22 @@ func NewVariable(src elements.StorageAt) elements.Element {
 }
 
 // UnaryOp applies a unary operator on x.
-func (a *variable) UnaryOp(ctx elements.FileContext, expr *ir.UnaryExpr) (elements.NumericalElement, error) {
+func (a *variable) UnaryOp(ctx ir.Evaluator, expr *ir.UnaryExpr) (elements.NumericalElement, error) {
 	return newUnary(ctx, expr, a)
 }
 
 // BinaryOp applies a binary operator to x and y.
-func (a *variable) BinaryOp(ctx elements.FileContext, expr *ir.BinaryExpr, x, y elements.NumericalElement) (elements.NumericalElement, error) {
+func (a *variable) BinaryOp(ctx ir.Evaluator, expr *ir.BinaryExpr, x, y elements.NumericalElement) (elements.NumericalElement, error) {
 	return newBinary(ctx, expr, x, y)
 }
 
 // Cast an element into a given data type.
-func (a *variable) Cast(ctx elements.FileContext, expr ir.AssignableExpr, target ir.Type) (elements.NumericalElement, error) {
+func (a *variable) Cast(ctx ir.Evaluator, expr ir.AssignableExpr, target ir.Type) (elements.NumericalElement, error) {
 	return newCast(ctx, expr, a, target)
 }
 
 // Reshape the variable into a different shape.
-func (a *variable) Reshape(ctx elements.FileContext, expr ir.AssignableExpr, axisLengths []elements.NumericalElement) (elements.NumericalElement, error) {
+func (a *variable) Reshape(ctx ir.Evaluator, expr ir.AssignableExpr, axisLengths []elements.NumericalElement) (elements.NumericalElement, error) {
 	return newReshape(ctx, expr, a, axisLengths)
 }
 
@@ -89,7 +89,7 @@ func (a *variable) Axes(fetcher ir.Fetcher) (*elements.Slice, error) {
 }
 
 // Slice computes a slice from the variable.
-func (a *variable) Slice(ctx elements.FileContext, expr *ir.IndexExpr, index elements.NumericalElement) (elements.Element, error) {
+func (a *variable) Slice(ctx ir.Evaluator, expr *ir.IndexExpr, index elements.NumericalElement) (elements.Element, error) {
 	store := &ir.LocalVarStorage{Src: &ast.Ident{}, Typ: expr.Type()}
 	return NewRuntimeValue(ctx.(evaluator.Context), store)
 }

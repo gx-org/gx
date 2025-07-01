@@ -54,7 +54,7 @@ func (n *Tuple) Elements() []Element {
 }
 
 // Slice of the tuple.
-func (n *Tuple) Slice(ctx FileContext, expr *ir.IndexExpr, index NumericalElement) (Element, error) {
+func (n *Tuple) Slice(ctx ir.Evaluator, expr *ir.IndexExpr, index NumericalElement) (Element, error) {
 	return slice(ctx, expr, index, n.elements)
 }
 

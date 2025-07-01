@@ -56,7 +56,7 @@ func NewAtom(src elements.ExprAt, val *values.HostArray) (Element, error) {
 }
 
 // UnaryOp applies a unary operator on x.
-func (a *atom) UnaryOp(ctx elements.FileContext, expr *ir.UnaryExpr) (elements.NumericalElement, error) {
+func (a *atom) UnaryOp(ctx ir.Evaluator, expr *ir.UnaryExpr) (elements.NumericalElement, error) {
 	return newUnary(ctx, expr, a)
 }
 
@@ -70,16 +70,16 @@ func (a *atom) Copy() elements.Copier {
 }
 
 // BinaryOp applies a binary operator to x and y.
-func (a *atom) BinaryOp(ctx elements.FileContext, expr *ir.BinaryExpr, x, y elements.NumericalElement) (elements.NumericalElement, error) {
+func (a *atom) BinaryOp(ctx ir.Evaluator, expr *ir.BinaryExpr, x, y elements.NumericalElement) (elements.NumericalElement, error) {
 	return newBinary(ctx, expr, x, y)
 }
 
 // Cast an element into a given data type.
-func (a *atom) Cast(ctx elements.FileContext, expr ir.AssignableExpr, dtype ir.Type) (elements.NumericalElement, error) {
+func (a *atom) Cast(ctx ir.Evaluator, expr ir.AssignableExpr, dtype ir.Type) (elements.NumericalElement, error) {
 	return newCast(ctx, expr, a, dtype)
 }
 
-func (a *atom) Reshape(ctx elements.FileContext, expr ir.AssignableExpr, axisLengths []elements.NumericalElement) (elements.NumericalElement, error) {
+func (a *atom) Reshape(ctx ir.Evaluator, expr ir.AssignableExpr, axisLengths []elements.NumericalElement) (elements.NumericalElement, error) {
 	return newReshape(ctx, expr, a, axisLengths)
 }
 
