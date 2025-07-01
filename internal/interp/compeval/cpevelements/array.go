@@ -26,7 +26,6 @@ import (
 
 // array element storing a GX value array.
 type array struct {
-	src   elements.ExprAt
 	typ   ir.ArrayType
 	shape *shape.Shape
 }
@@ -40,14 +39,14 @@ var (
 )
 
 // NewArray returns a new array from a code position and a type.
-func NewArray(src elements.ExprAt, typ ir.ArrayType) elements.NumericalElement {
+func NewArray(typ ir.ArrayType) elements.NumericalElement {
 	shape := &shape.Shape{
 		DType: typ.DataType().Kind().DType(),
 	}
 	if !typ.Rank().IsAtomic() {
 		shape.AxisLengths = make([]int, len(typ.Rank().Axes()))
 	}
-	return &array{src: src, shape: shape, typ: typ}
+	return &array{shape: shape, typ: typ}
 }
 
 func (a *array) Flatten() ([]elements.Element, error) {
@@ -63,27 +62,27 @@ func (a *array) Kind() ir.Kind {
 }
 
 func (a *array) Axes(fetcher ir.Fetcher) (*elements.Slice, error) {
-	return sliceElementFromIRType(fetcher, a.src.ExprSrc(), a.typ)
+	return sliceElementFromIRType(fetcher, a.typ)
 }
 
 func (a *array) UnaryOp(ctx elements.FileContext, expr *ir.UnaryExpr) (elements.NumericalElement, error) {
-	return NewArray(elements.NewExprAt(ctx.File(), expr), expr.Type().(ir.ArrayType)), nil
+	return NewArray(expr.Type().(ir.ArrayType)), nil
 }
 
 func (a *array) BinaryOp(ctx elements.FileContext, expr *ir.BinaryExpr, x, y elements.NumericalElement) (elements.NumericalElement, error) {
-	return NewArray(elements.NewExprAt(ctx.File(), expr), expr.Type().(ir.ArrayType)), nil
+	return NewArray(expr.Type().(ir.ArrayType)), nil
 }
 
 func (a *array) Cast(ctx elements.FileContext, expr ir.AssignableExpr, target ir.Type) (elements.NumericalElement, error) {
-	return NewArray(elements.NewExprAt(ctx.File(), expr), expr.Type().(ir.ArrayType)), nil
+	return NewArray(expr.Type().(ir.ArrayType)), nil
 }
 
 func (a *array) Reshape(ctx elements.FileContext, expr ir.AssignableExpr, axisLengths []elements.NumericalElement) (elements.NumericalElement, error) {
-	return NewArray(elements.NewExprAt(ctx.File(), expr), expr.Type().(ir.ArrayType)), nil
+	return NewArray(expr.Type().(ir.ArrayType)), nil
 }
 
 func (a *array) Slice(ctx elements.FileContext, expr *ir.IndexExpr, index elements.NumericalElement) (elements.Element, error) {
-	return NewArray(elements.NewExprAt(ctx.File(), expr), expr.Type().(ir.ArrayType)), nil
+	return NewArray(expr.Type().(ir.ArrayType)), nil
 }
 
 func (a *array) Copy() elements.Copier {

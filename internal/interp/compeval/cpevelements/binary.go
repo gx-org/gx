@@ -142,7 +142,7 @@ func (a *binary) Shape() *shape.Shape {
 
 // Axes returns the axes of the value as a slice element.
 func (a *binary) Axes(fetcher ir.Fetcher) (*elements.Slice, error) {
-	return sliceElementFromIRType(fetcher, a.src.ExprSrc(), a.src.Node().Type())
+	return sliceElementFromIRType(fetcher, a.src.Node().Type())
 }
 
 func (a *binary) Value() ir.AssignableExpr {
