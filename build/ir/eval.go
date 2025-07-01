@@ -34,7 +34,7 @@ type Canonical interface {
 type Fetcher interface {
 	File() *File
 	BuildExpr(ast.Expr) (Expr, bool)
-	Eval(Expr) (canonical.Canonical, error)
+	EvalExpr(Expr) (canonical.Canonical, error)
 	Err() *fmterr.Appender
 }
 

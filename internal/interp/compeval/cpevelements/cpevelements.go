@@ -73,7 +73,7 @@ func sliceElementFromIRType(fetcher ir.Fetcher, typ ir.Type) (*elements.Slice, e
 	axes := rank.Axes()
 	elts := make([]elements.Element, len(axes))
 	for i, ax := range axes {
-		cVal, err := fetcher.Eval(ax)
+		cVal, err := fetcher.EvalExpr(ax)
 		if err != nil {
 			return nil, err
 		}
