@@ -416,6 +416,15 @@ func callCast(x [_]int32) int64 {
 }
 `,
 		},
+		testbuild.Decl{
+			Src: `
+func g([___M]int32) [M___]int32 
+
+func f() int32 {
+	return g(int32(1))
+}
+`,
+		},
 	)
 }
 
