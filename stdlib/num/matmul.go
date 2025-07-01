@@ -51,11 +51,11 @@ func (f matmul) resultsType(fetcher ir.Fetcher, call *ir.CallExpr) ([]ir.Type, i
 		return nil, nil, fmterr.Errorf(fetcher.File().FileSet(), call.Source(), "mismatched argument types %s and %s in %s call", left.DataType().String(), right.DataType().String(), f.Name())
 	}
 	leftRank := left.Rank()
-	if leftRank.NumAxes() > 2 {
+	if len(leftRank.Axes()) > 2 {
 		return nil, nil, fmterr.Errorf(fetcher.File().FileSet(), call.Source(), "more than 2-axis for the left argument (shape: %v) not supported in %s call", left.Rank(), f.Name())
 	}
 	rightRank := right.Rank()
-	if rightRank.NumAxes() > 2 {
+	if len(rightRank.Axes()) > 2 {
 		return nil, nil, fmterr.Errorf(fetcher.File().FileSet(), call.Source(), "more than 2-axis for the right argument (shape: %v) not supported in %s call", right.Rank(), f.Name())
 	}
 	leftDims := leftRank.Axes()

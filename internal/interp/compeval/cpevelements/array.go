@@ -44,8 +44,8 @@ func NewArray(src elements.ExprAt, typ ir.ArrayType) elements.NumericalElement {
 	shape := &shape.Shape{
 		DType: typ.DataType().Kind().DType(),
 	}
-	if typ.Rank().NumAxes() > 0 {
-		shape.AxisLengths = make([]int, typ.Rank().NumAxes())
+	if !typ.Rank().IsAtomic() {
+		shape.AxisLengths = make([]int, len(typ.Rank().Axes()))
 	}
 	return &array{src: src, shape: shape, typ: typ}
 }

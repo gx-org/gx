@@ -61,15 +61,15 @@ func (f *setFunc) BuildFuncType(fetcher ir.Fetcher, call *ir.CallExpr) (*ir.Func
 	if xRank == nil || updateRank == nil || posRank == nil {
 		return ext, nil
 	}
-	if posRank.NumAxes() != 1 {
-		return ext, errors.Errorf("position has an invalid number of axes: got %d but want 1", posRank.NumAxes())
+	if len(posRank.Axes()) != 1 {
+		return ext, errors.Errorf("position has an invalid number of axes: got %d but want 1", len(posRank.Axes()))
 	}
 	posSize, err := compeval.EvalInt(fetcher, posRank.Axes()[0])
 	if err != nil {
 		return ext, err
 	}
-	if int(posSize) > xRank.NumAxes() {
-		return ext, errors.Errorf("position (length %d) exceeds operand rank (%d)", posSize, xRank.NumAxes())
+	if int(posSize) > len(xRank.Axes()) {
+		return ext, errors.Errorf("position (length %d) exceeds operand rank (%d)", posSize, len(xRank.Axes()))
 	}
 	wantUpdate := ir.NewArrayType(nil, arrayParams[0].DataType(), &ir.Rank{
 		Ax: xRank.Axes()[posSize:],

@@ -27,9 +27,9 @@ type axisLengthNode interface {
 	String() string
 }
 
-func processAxisLengthExpr(axScope axLenPScope, array *ast.ArrayType) (axis axisLengthNode, ok bool) {
+func processAxisLengthExpr(axScope procAxLenScope, array *ast.ArrayType) (axis axisLengthNode, ok bool) {
 	if array.Len == nil {
-		return nil, axScope.err().Appendf(array, "array of slices is not supported. Please specify an array axis length using '[length]', '[_]', or '[...]' if the size is unknown, to specify a dense array")
+		return nil, axScope.err().Appendf(array, "array of slices is not supported. Please specify an array axis length using '[length]' or '[...]'")
 	}
 	switch lenT := array.Len.(type) {
 	case *ast.Ellipsis:
@@ -38,10 +38,7 @@ func processAxisLengthExpr(axScope axLenPScope, array *ast.ArrayType) (axis axis
 		if lenT.Name == ir.DefineAxisGroup {
 			return nil, true
 		}
-		if lenT.Name == ir.DefineAxisLength {
-			return &genericAxisLength{src: lenT}, true
-		}
-		return axScope.processIdent(lenT)
+		return processExprAxisLength(axScope, lenT)
 	case ast.Expr:
 		return processExprAxisLength(axScope, lenT)
 	default:
@@ -82,7 +79,7 @@ type exprAxisLength struct {
 
 var _ axisLengthNode = (*exprAxisLength)(nil)
 
-func processExprAxisLength(pscope axLenPScope, src ast.Expr) (*exprAxisLength, bool) {
+func processExprAxisLength(pscope procAxLenScope, src ast.Expr) (*exprAxisLength, bool) {
 	x, ok := processExpr(pscope, src)
 	return &exprAxisLength{src: src, x: x}, ok
 }
@@ -96,6 +93,10 @@ func (dim *exprAxisLength) build(rscope *defineLocalScope) (ir.AxisLengths, bool
 	}
 	if ir.IsNumber(ext.X.Type().Kind()) {
 		ext.X, xOk = castNumber(rscope, ext.X, ir.IntLenType())
+	}
+	xType := ext.X.Type()
+	if !ir.IsAxisLengthType(xType) {
+		xOk = rscope.err().Appendf(dim.src, "cannot use type %s as axis length: want type intlen or []intlen", xType.String())
 	}
 	return ext, xOk
 }
@@ -111,60 +112,30 @@ func (dim *exprAxisLength) String() string {
 type defineAxisLength struct {
 	src  *ast.Ident
 	name string
-	x    *exprAxisLength
+	typ  ir.Type
 }
 
-var _ axisLengthNode = (*defineAxisLength)(nil)
+var _ exprNode = (*defineAxisLength)(nil)
 
-func (dim *defineAxisLength) build(rscope *defineLocalScope) (ir.AxisLengths, bool) {
-	rscope.defineAxis(
-		&ast.Ident{
-			NamePos: dim.src.NamePos,
-			Name:    dim.name,
-		},
-		ir.IntLenType())
-	return dim.x.build(rscope)
+func (dim *defineAxisLength) source() ast.Node {
+	return dim.src
+}
+
+func (dim *defineAxisLength) buildExpr(rscope resolveScope) (ir.Expr, bool) {
+	axScope := rscope.(*defineLocalScope)
+	src := *dim.src
+	src.Name = dim.name
+	stor := &ir.AxLengthName{
+		Src: &src,
+		Typ: dim.typ,
+	}
+	axScope.defineAxis(stor)
+	return &ir.ValueRef{
+		Src:  stor.Src,
+		Stor: stor,
+	}, true
 }
 
 func (dim *defineAxisLength) String() string {
 	return dim.src.Name
-}
-
-// genericAxisLength is a dimension specified with _ and that needs to be inferred.
-type genericAxisLength struct {
-	src *ast.Ident
-}
-
-var _ axisLengthNode = (*genericAxisLength)(nil)
-
-func (dim *genericAxisLength) String() string {
-	return dim.src.Name
-}
-
-func (dim *genericAxisLength) build(rscope *defineLocalScope) (ir.AxisLengths, bool) {
-	return &ir.AxisInfer{Src: dim.src}, true
-}
-
-// axisGroup is a group of axis with a name.
-type axisGroup struct {
-	src  *ast.Ident
-	name string
-}
-
-var _ axisLengthNode = (*axisGroup)(nil)
-
-func (dim *axisGroup) String() string {
-	return dim.src.Name
-}
-
-func (dim *axisGroup) build(rscope *defineLocalScope) (ir.AxisLengths, bool) {
-	grp := &ir.AxisGroup{Src: dim.src, Name: dim.name}
-	rscope.defineAxis(
-		&ast.Ident{
-			NamePos: dim.src.NamePos,
-			Name:    dim.name,
-		},
-		ir.IntLenSliceType(),
-	)
-	return grp, true
 }

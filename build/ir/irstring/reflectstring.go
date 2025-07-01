@@ -99,11 +99,13 @@ func rank(done map[any]bool, val reflect.Value, proc processor) string {
 	rnk := val.Interface().(*ir.Rank)
 	axes := make([]string, len(rnk.Ax))
 	for i, ax := range rnk.Ax {
-		switch axT := ax.(type) {
-		case *ir.AxisGroup:
-			axes[i] = fmt.Sprintf("[group<%s>]", axT.Name)
-		default:
+		switch ax.Type().Kind() {
+		case ir.SliceKind:
+			axes[i] = fmt.Sprintf("[group<%s>]", ax.String())
+		case ir.IntLenKind:
 			axes[i] = ax.String()
+		default:
+			axes[i] = "invalid"
 		}
 	}
 	return strings.Join(axes, "")

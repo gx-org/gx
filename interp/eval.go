@@ -292,7 +292,7 @@ func evalValueRef(ctx *context, ref *ir.ValueRef) (elements.Element, error) {
 }
 
 func evalCastToScalarExpr(ctx *context, expr ir.TypeCastExpr, x elements.NumericalElement, targetType ir.ArrayType) (elements.Element, error) {
-	if targetType.Rank().NumAxes() != len(x.Shape().AxisLengths) {
+	if len(x.Shape().AxisLengths) > 0 {
 		return x.Reshape(ctx, expr, nil)
 	}
 	return x.Cast(ctx, expr, targetType)
@@ -303,7 +303,7 @@ func evalArrayAxes(ctx *context, src ir.SourceNode, typ ir.ArrayType) ([]element
 	if err != nil {
 		return nil, err
 	}
-	axes := make([]elements.NumericalElement, rank.NumAxes())
+	axes := make([]elements.NumericalElement, len(rank.Axes()))
 	for i, axis := range rank.Axes() {
 		var err error
 		axes[i], err = evalNumExpr(ctx, axis)
@@ -501,8 +501,6 @@ func (ctx *context) evalExpr(expr ir.Expr) (elements.Element, error) {
 		return evalAtomicValue(ctx, exprT)
 	case *ir.PackageRef:
 		return ctx.find(exprT.X.Src)
-	case *ir.AxisGroup:
-		return ctx.find(&ast.Ident{NamePos: exprT.Src.NamePos, Name: exprT.Name})
 	case *ir.FuncValExpr:
 		return ctx.evalExpr(exprT.X)
 	default:

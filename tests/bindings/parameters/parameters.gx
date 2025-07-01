@@ -98,12 +98,12 @@ func AddInt(x, y int64) int64 {
 }
 
 // Add x and y.
-func AddFloat32s(x, y [_]float32) [_]float32 {
+func AddFloat32s(x, y [_a]float32) [a]float32 {
 	return x + y
 }
 
 // AddInts x and y.
-func AddInts(x, y [_]int64) [_]int64 {
+func AddInts(x, y [_a]int64) [a]int64 {
 	return x + y
 }
 

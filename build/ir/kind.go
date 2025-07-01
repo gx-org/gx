@@ -282,6 +282,26 @@ func IsIntegerKind(kind Kind) bool {
 	return false
 }
 
+// IsAxisLengthType returns true if a type is the type for an array axis length.
+func IsAxisLengthType(typ Type) bool {
+	switch typ.Kind() {
+	case IntLenKind:
+		return true
+	case SliceKind:
+		sliceType, ok := Underlying(typ).(*SliceType)
+		if !ok {
+			return false
+		}
+		return sliceType.DType.Typ.Kind() == IntLenKind
+	case InterfaceKind:
+		if typSet, ok := toTypeSet(typ); ok {
+			return typSet.hasCapability(IsInteger)
+		}
+		return false
+	}
+	return false
+}
+
 // IsInteger return true if kind is an integer.
 func IsInteger(typ Type) bool {
 	if typ.Kind() == InterfaceKind {

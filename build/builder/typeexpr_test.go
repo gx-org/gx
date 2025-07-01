@@ -38,7 +38,7 @@ func TestResolveType(t *testing.T) {
 		{code: "float64(-1)", typ: "float64"},
 		{code: "float64([1]float64{-5})", typ: "float64"},
 		{code: "[1]int32{1}", typ: "[1]int32"},
-		{code: "[_]int32{1}", typ: "[1]int32"},
+		{code: "[_]int32{1}", err: "cannot use _"},
 		{code: "[...]int32{1}", typ: "[1]int32"},
 		{code: "[...]int32{{1, 2}, {3, 4}}", typ: "[2][2]int32"},
 		{code: "[...]int32{1, 2, 3}[1]", typ: "int32"},
@@ -78,16 +78,16 @@ func TestResolveType(t *testing.T) {
 		// Binary ops
 		{code: "int32(1) + int32(1)", typ: "int32"},
 		{code: "float32(1) + float32(1)", typ: "float32"},
-		{code: "[_]int32{1, 2} + int32(1)", typ: "[2]int32"},
-		{code: "int32(1) + [_]int32{1, 2}", typ: "[2]int32"},
+		{code: "[...]int32{1, 2} + int32(1)", typ: "[2]int32"},
+		{code: "int32(1) + [...]int32{1, 2}", typ: "[2]int32"},
 		{code: "float32(1) + 1", typ: "float32"},
 		{code: "intlen(1) + 1", typ: "intlen"},
 
 		{code: "1 > 2", typ: "bool"},
 		{code: "int32(1) > 2", typ: "bool"},
-		{code: "[_]int32{1, 2} >= 2", typ: "[2]bool"},
-		{code: "[_]int32{1, 2} >= [_]int32{1, 2}", typ: "[2]bool"},
-		{code: "2 >= [_]int32{1, 2}", typ: "[2]bool"},
+		{code: "[...]int32{1, 2} >= 2", typ: "[2]bool"},
+		{code: "[...]int32{1, 2} >= [...]int32{1, 2}", typ: "[2]bool"},
+		{code: "2 >= [...]int32{1, 2}", typ: "[2]bool"},
 
 		// Failure cases
 		{code: "x", err: "undefined: x"},
@@ -123,7 +123,7 @@ func TestResolveType(t *testing.T) {
 
 			// Check the type of the expression.
 			if err != nil {
-				t.Errorf("unexpected error: %+v", err)
+				t.Errorf("unexpected error for expression %q: %+v", test.code, err)
 				return
 			}
 			got := gxfmt.String(node.Type())

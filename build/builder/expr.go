@@ -21,7 +21,7 @@ import (
 func processExpr(pscope procScope, expr ast.Expr) (exprNode, bool) {
 	switch exprT := expr.(type) {
 	case *ast.Ident:
-		return processIdentExpr(pscope, exprT)
+		return pscope.processIdent(exprT)
 	case *ast.BasicLit:
 		return processBasicLit(pscope, exprT)
 	case *ast.ArrayType:
