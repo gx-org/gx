@@ -119,9 +119,9 @@ type (
 		file() *file
 		decls() *decls
 		err() *fmterr.Appender
-		checkIdent(*ast.Ident) bool
+		processIdent(*ast.Ident) (exprNode, bool)
 		pkgScope() *pkgProcScope
-		axisLengthScope() axLenPScope
+		axisLengthScope() procAxLenScope
 	}
 
 	fileScope struct {
@@ -162,8 +162,8 @@ func (s *fileScope) decls() *decls {
 	return s.dcls
 }
 
-func (s *fileScope) checkIdent(*ast.Ident) bool {
-	return true
+func (s *fileScope) processIdent(src *ast.Ident) (exprNode, bool) {
+	return processIdentExpr(s, src)
 }
 
 func (s *fileScope) String() string {
@@ -171,9 +171,9 @@ func (s *fileScope) String() string {
 }
 
 type (
-	axLenPScope interface {
+	procAxLenScope interface {
+		axlenScope()
 		procScope
-		processIdent(ident *ast.Ident) (axisLengthNode, bool)
 	}
 
 	// axLenDefaultScope is the process scope used inside all axis length expressions,
@@ -185,7 +185,7 @@ type (
 	}
 )
 
-func (s *fileScope) axisLengthScope() axLenPScope {
+func (s *fileScope) axisLengthScope() procAxLenScope {
 	return &axLenDefaultScope{procScope: s}
 }
 
@@ -196,18 +196,22 @@ func checkAxisLengthIdent(pscope procScope, ident *ast.Ident) bool {
 	return true
 }
 
+func (*axLenDefaultScope) axlenScope() {}
+
 func (s *axLenDefaultScope) checkIdent(ident *ast.Ident) bool {
 	return checkAxisLengthIdent(s, ident)
 }
 
-func (s *axLenDefaultScope) processIdent(ident *ast.Ident) (axisLengthNode, bool) {
+func (s *axLenDefaultScope) processIdent(ident *ast.Ident) (exprNode, bool) {
 	if strings.HasSuffix(ident.Name, ir.DefineAxisGroup) {
-		return &axisGroup{
-			src:  ident,
-			name: ident.Name[:len(ident.Name)-len(ir.DefineAxisGroup)],
-		}, true
+		grpIdent := *ident
+		grpIdent.Name = strings.TrimSuffix(grpIdent.Name, ir.DefineAxisGroup)
+		return processIdentExpr(s, &grpIdent)
 	}
-	return processExprAxisLength(s, ident)
+	if ident.Name == ir.DefineAxisLength {
+		return nil, s.err().Appendf(ident, "cannot use %s as an axis identifier", ident.Name)
+	}
+	return processIdentExpr(s, ident)
 }
 
 type (
@@ -215,50 +219,49 @@ type (
 		procScope
 	}
 
-	// axLenParamScope is a process scope used inside all axis length expressions.
-	// It checks that no identifier starts with _.
-	// Expressions are processed like any other expressions.
+	// axLenParamScope is a process scope used inside all axis length expressions
+	// in the parameters section of a function signature.
+	// It returns axis length name definition when _ and ___ prefixes identifiers.
+	// Also checks that names are not defined twice.
 	axLenParamScope struct {
 		procScope
 		defined map[string]bool
 	}
 )
 
-func (s *funcParamScope) axisLengthScope() axLenPScope {
+func (s *funcParamScope) axisLengthScope() procAxLenScope {
 	return &axLenParamScope{
 		procScope: s,
 		defined:   make(map[string]bool),
 	}
 }
 
-func (s *axLenParamScope) checkIdent(ident *ast.Ident) bool {
-	return checkAxisLengthIdent(s, ident)
-}
+func (*axLenParamScope) axlenScope() {}
 
-func (s *axLenParamScope) checkIfAlreadyDefine(ident *ast.Ident) bool {
-	if s.defined[ident.Name] {
-		return s.err().Appendf(ident, "axis length %s assignment repeated", ident.Name)
+func (s *axLenParamScope) checkIfAlreadyDefine(src ast.Node, name string) bool {
+	if s.defined[name] {
+		return s.err().Appendf(src, "axis length %s assignment repeated", name)
 	}
-	s.defined[ident.Name] = true
+	s.defined[name] = true
 	return true
 }
 
-func (s *axLenParamScope) processIdent(ident *ast.Ident) (axisLengthNode, bool) {
+func (s *axLenParamScope) processIdent(ident *ast.Ident) (exprNode, bool) {
 	if strings.HasPrefix(ident.Name, ir.DefineAxisGroup) {
 		name := strings.TrimPrefix(ident.Name, ir.DefineAxisGroup)
-		return &axisGroup{
+		return &defineAxisLength{
 			src:  ident,
 			name: name,
-		}, s.checkIfAlreadyDefine(ident)
+			typ:  ir.IntLenSliceType(),
+		}, s.checkIfAlreadyDefine(ident, name)
 	}
 	if strings.HasPrefix(ident.Name, ir.DefineAxisLength) {
 		name := strings.TrimPrefix(ident.Name, ir.DefineAxisLength)
-		x, ok := processExprAxisLength(s, &ast.Ident{
-			NamePos: ident.NamePos,
-			Name:    name,
-		})
-		definedOk := s.checkIfAlreadyDefine(ident)
-		return &defineAxisLength{src: ident, x: x, name: name}, ok && definedOk
+		return &defineAxisLength{
+			src:  ident,
+			name: name,
+			typ:  ir.IntLenType(),
+		}, s.checkIfAlreadyDefine(ident, name)
 	}
-	return processExprAxisLength(s, ident)
+	return processIdentExpr(s, ident)
 }

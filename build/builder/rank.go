@@ -85,17 +85,6 @@ func (r *rank) build(rscope resolveScope) (ir.ArrayRank, bool) {
 		var dimOk bool
 		ext.Ax[i], dimOk = dim.build(dScope)
 		ok = ok && dimOk
-		if !dimOk {
-			continue
-		}
-		switch axT := ext.Ax[i].(type) {
-		case *ir.AxisGroup:
-		default:
-			want := ir.IntLenType()
-			if !equalToAt(rscope, axT.Source(), axT.Type(), want) {
-				ok = rscope.err().Appendf(axT.Source(), "cannot use %s as %s in axis length", axT.Type().String(), want.String())
-			}
-		}
 	}
 	return ext, ok
 }

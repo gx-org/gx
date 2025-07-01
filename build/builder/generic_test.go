@@ -101,7 +101,7 @@ func TestGenericSignature(t *testing.T) {
 		},
 		testbuild.Decl{
 			Src: `func f(x [_X][_X]int32) [X]int32`,
-			Err: "axis length _X assignment repeated",
+			Err: "axis length X assignment repeated",
 		},
 		testbuild.Decl{
 			Src: `func f([___X]int32) [X___]int32`,
@@ -217,10 +217,12 @@ func TestGenericArray(t *testing.T) {
 		File:       wantFile,
 		Underlying: irhelper.TypeExpr(irhelper.TypeSet(ir.Int32Type(), ir.Int64Type())),
 	}
+	typeParamFieldT := irhelper.Field("T", someInt, nil)
+	typeParamT := &ir.TypeParam{Field: typeParamFieldT}
 	new2x3ArrayFunc := &ir.FuncDecl{
 		Src: &ast.FuncDecl{Name: &ast.Ident{Name: "new2x3Array"}},
 		FType: irhelper.FuncType(
-			irhelper.Fields("T", someInt),
+			irhelper.Fields(typeParamFieldT),
 			nil,
 			irhelper.Fields(),
 			irhelper.Fields(irhelper.ArrayType(someInt, 2, 3)),
@@ -232,17 +234,17 @@ func TestGenericArray(t *testing.T) {
 					&ir.ArrayLitExpr{
 						Typ: irhelper.ArrayType(someInt, 3),
 						Elts: []ir.AssignableExpr{
-							irhelper.IntNumberAs(1, someInt.Underlying.Typ),
-							irhelper.IntNumberAs(2, someInt.Underlying.Typ),
-							irhelper.IntNumberAs(3, someInt.Underlying.Typ),
+							irhelper.IntNumberAs(1, typeParamT),
+							irhelper.IntNumberAs(2, typeParamT),
+							irhelper.IntNumberAs(3, typeParamT),
 						},
 					},
 					&ir.ArrayLitExpr{
 						Typ: irhelper.ArrayType(someInt, 3),
 						Elts: []ir.AssignableExpr{
-							irhelper.IntNumberAs(4, someInt.Underlying.Typ),
-							irhelper.IntNumberAs(5, someInt.Underlying.Typ),
-							irhelper.IntNumberAs(6, someInt.Underlying.Typ),
+							irhelper.IntNumberAs(4, typeParamT),
+							irhelper.IntNumberAs(5, typeParamT),
+							irhelper.IntNumberAs(6, typeParamT),
 						},
 					},
 				},

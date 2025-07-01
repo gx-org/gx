@@ -23,7 +23,7 @@ import (
 	irh "github.com/gx-org/gx/build/ir/irhelper"
 )
 
-func TestAxisName(t *testing.T) {
+func TestAxisName01(t *testing.T) {
 	arrayType := irh.ArrayType(ir.Float32Type(), irh.AxisGroup("shape"))
 	sliceLiteral := &ir.SliceLitExpr{
 		Typ: ir.IntLenSliceType(),
@@ -276,6 +276,18 @@ func f() float64 {
 			},
 		},
 	)
+}
+
+func TestAxisName02(t *testing.T) {
+	arrayType := irh.ArrayType(ir.Float32Type(), irh.AxisGroup("shape"))
+	newArrayFunc := &ir.FuncBuiltin{
+		Src: &ast.FuncDecl{Name: &ast.Ident{Name: "newArray"}},
+		FType: irh.FuncType(
+			nil, nil,
+			irh.Fields("shape", ir.IntLenSliceType()),
+			irh.Fields(arrayType),
+		),
+	}
 	fDims := &ir.LocalVarStorage{
 		Src: irh.Ident("fDims"),
 		Typ: ir.IntLenSliceType(),
@@ -325,6 +337,39 @@ func f() [2][3]float32  {
 					}},
 				},
 			},
+		},
+		testbuild.Decl{
+			Src: `
+var A, B intlen
+
+func g([___M]float32) [M___]float32
+
+func f(x [A][B]float32) [A][B]float32 {
+	return g(x) 
+}
+`,
+		},
+		testbuild.Decl{
+			Src: `
+var A, B intlen
+
+func h(x [___]int32, shape []intlen) [shape___]int32
+
+func f(a [A]int32) [A][B][1]int32 {
+	return h(a, []intlen{A, B, 1})
+}
+`,
+		},
+		testbuild.Decl{
+			Src: `
+var A, B intlen
+
+func h(x [1][A]int32, shape []intlen) [shape___]int32
+
+func f(a [A]int32) [A][B][1]int32 {
+	return h([1][A]int32(a), []intlen{A, B, 1})
+}
+`,
 		},
 	)
 }

@@ -848,7 +848,7 @@ func (s *arrayType) Kind() Kind {
 	if s.RankF == nil {
 		return InvalidKind
 	}
-	if s.RankF.NumAxes() == 0 {
+	if s.RankF.IsAtomic() {
 		return s.DTypeF.Kind()
 	}
 	return ArrayKind
@@ -856,20 +856,20 @@ func (s *arrayType) Kind() Kind {
 
 // ElementType returns the type of the element with rank-1.
 func (s *arrayType) ElementType() (Type, bool) {
-	switch s.RankF.NumAxes() {
-	case 0:
+	subRank, ok := s.RankF.SubRank()
+	if !ok {
 		return InvalidType(), false
-	case 1:
-		return s.DTypeF, true
-	default:
-		return &arrayType{
-			BaseType: BaseType[*ast.ArrayType]{
-				Src: &ast.ArrayType{},
-			},
-			DTypeF: s.DTypeF,
-			RankF:  s.RankF.SubRank(),
-		}, true
 	}
+	if s.RankF.IsAtomic() {
+		return s.DTypeF, true
+	}
+	return &arrayType{
+		BaseType: BaseType[*ast.ArrayType]{
+			Src: &ast.ArrayType{},
+		},
+		DTypeF: s.DTypeF,
+		RankF:  subRank,
+	}, true
 }
 
 // DataType returns the type of the data stored in the array.
@@ -986,11 +986,16 @@ func (s *TypeParam) Kind() Kind {
 
 // Equal returns true if other is the same type.
 func (s *TypeParam) Equal(fetcher Fetcher, typ Type) (bool, error) {
-	typT, ok := typ.(*TypeParam)
-	if !ok {
-		return false, nil
+	switch typT := typ.(type) {
+	case *TypeParam:
+		return typT == s, nil
+	case ArrayType:
+		if !typT.Rank().IsAtomic() {
+			return false, nil
+		}
+		return s.Equal(fetcher, typT.DataType())
 	}
-	return typT == s, nil
+	return false, nil
 }
 
 // AssignableTo reports whether a value of the type can be assigned to another.
@@ -1661,9 +1666,6 @@ type (
 		// Axes returns all axis in the rank.
 		Axes() []AxisLengths
 
-		// NumAxes returns the number of axes or -1 if unknown.
-		NumAxes() int
-
 		// Equal returns true if two ranks are equal.
 		Equal(Fetcher, ArrayRank) (bool, error)
 
@@ -1674,7 +1676,7 @@ type (
 		ConvertibleTo(Fetcher, ArrayRank) (bool, error)
 
 		// SubRank returns the rank with the top-axis removed.
-		SubRank() ArrayRank
+		SubRank() (ArrayRank, bool)
 
 		// String representation of the rank.
 		String() string
@@ -1703,9 +1705,6 @@ type (
 		// Can return nil if the axis has not been resolved.
 		AxisValue() AssignableExpr
 
-		// NumAxes returns the number of axis represented by the group.
-		NumAxes() int
-
 		// Equal returns true if two axis lengths have been resolved and are equal.
 		// Returns an error if one of the axis has not been resolved.
 		Equal(Fetcher, AxisLengths) (bool, error)
@@ -1732,21 +1731,6 @@ type (
 		// X computes the size of the axis.
 		X AssignableExpr
 	}
-
-	// AxisLenName is an axis for which the length has been named.
-	AxisLenName struct {
-		Src  *ast.Ident
-		Name string
-	}
-
-	// AxisGroup is a group of axis defined by a name.
-	AxisGroup struct {
-		// Source of the axis expression.
-		// May be different from the source of the expression, for example
-		// the expression is formed from a function call.
-		Src  *ast.Ident
-		Name string
-	}
 )
 
 var (
@@ -1754,10 +1738,6 @@ var (
 	_ ArrayRank   = (*RankInfer)(nil)
 	_ AxisLengths = (*AxisExpr)(nil)
 	_ AxisLengths = (*AxisInfer)(nil)
-	_ AxisLengths = (*AxisGroup)(nil)
-	_ Storage     = (*AxisGroup)(nil)
-	_ AxisLengths = (*AxisLenName)(nil)
-	_ Storage     = (*AxisLenName)(nil)
 )
 
 func (*Rank) node()     {}
@@ -1782,19 +1762,6 @@ func (r *Rank) Type() Type { return RankType() }
 
 // Source returns the source node defining the rank.
 func (r *Rank) Source() ast.Node { return r.Src }
-
-// NumAxes returns the number of axes.
-func (r *Rank) NumAxes() int {
-	n := 0
-	for _, ax := range r.Ax {
-		ni := ax.NumAxes()
-		if ni < 0 {
-			return ni
-		}
-		n += ni
-	}
-	return n
-}
 
 // Axes returns all axis in the rank.
 func (r *Rank) Axes() []AxisLengths { return r.Ax }
@@ -1919,7 +1886,7 @@ func RankSize(r ArrayRank) Expr {
 // IsAtomic returns true if the rank is equals to zero
 // (that is it has no axes).
 func (r *Rank) IsAtomic() bool {
-	return r.NumAxes() == 0
+	return len(r.Ax) == 0
 }
 
 // AxisLengths of the rank.
@@ -1929,23 +1896,15 @@ func (r *Rank) AxisLengths() []AxisLengths {
 
 // SubRank returns the rank with the top-axis removed
 // or nil if the rank is already 0.
-func (r *Rank) SubRank() ArrayRank {
+func (r *Rank) SubRank() (ArrayRank, bool) {
 	if len(r.Ax) == 0 {
-		return nil
+		return nil, false
 	}
-	return &Rank{Ax: append([]AxisLengths{}, r.Ax[1:]...)}
+	return &Rank{Ax: append([]AxisLengths{}, r.Ax[1:]...)}, true
 }
 
 func (*RankInfer) node()     {}
 func (*RankInfer) nodeRank() {}
-
-// NumAxes returns the number of axes.
-func (r *RankInfer) NumAxes() int {
-	if r.Rnk == nil {
-		return -1
-	}
-	return r.Rnk.NumAxes()
-}
 
 // Source returns the node defining the rank.
 func (r *RankInfer) Source() ast.Node { return r.Src }
@@ -1998,9 +1957,9 @@ func (r *RankInfer) IsAtomic() bool {
 }
 
 // SubRank returns the rank with the top-axis removed.
-func (r *RankInfer) SubRank() ArrayRank {
+func (r *RankInfer) SubRank() (ArrayRank, bool) {
 	if r.Rnk == nil {
-		return &RankInfer{}
+		return &RankInfer{}, true
 	}
 	return r.Rnk.SubRank()
 }
@@ -2015,14 +1974,6 @@ func (dm *AxisInfer) Type() Type { return IntLenType() }
 
 // Expr returns how to compute the dimension as an expression.
 func (dm *AxisInfer) Expr() ast.Expr { return dm.Src }
-
-// NumAxes returns the number of axis represented by the group.
-func (dm *AxisInfer) NumAxes() int {
-	if dm.X == nil {
-		return -1
-	}
-	return dm.X.NumAxes()
-}
 
 // Equal returns true if other has the axis length.
 func (dm *AxisInfer) Equal(fetcher Fetcher, other AxisLengths) (bool, error) {
@@ -2084,8 +2035,6 @@ func (dm *AxisExpr) AssignableTo(fetcher Fetcher, dst AxisLengths) (bool, error)
 			return true, nil
 		}
 		return dm.Equal(fetcher, dstT.X)
-	case *AxisGroup:
-		return true, nil
 	default:
 		return false, errors.Errorf("assigning an axis to an axis type %T not supported", dstT)
 	}
@@ -2113,111 +2062,7 @@ func (dm *AxisExpr) AxisValue() AssignableExpr { return dm.X }
 func (dm *AxisExpr) Value(Expr) AssignableExpr { return dm.AxisValue() }
 
 // Type of the expression.
-func (dm *AxisExpr) Type() Type { return IntLenType() }
-
-func (*AxisGroup) node()    {}
-func (*AxisGroup) storage() {}
-
-// Source returns the source expression specifying the dimension.
-func (dm *AxisGroup) Source() ast.Node { return dm.Src }
-
-// NumAxes returns the number of axis represented by the group.
-func (dm *AxisGroup) NumAxes() int { return -1 }
-
-// AssignableTo returns true if a dimension can be assigned to another.
-func (dm *AxisGroup) AssignableTo(fetcher Fetcher, dst AxisLengths) (bool, error) {
-	return dm.Equal(fetcher, dst)
-}
-
-// Equal returns true if other has the axis length.
-func (dm *AxisGroup) Equal(fetcher Fetcher, dst AxisLengths) (bool, error) {
-	switch dstT := dst.(type) {
-	case *AxisGroup:
-		return dm.Name == dstT.Name, nil
-	case *AxisExpr:
-		valueRef, ok := dstT.X.(*ValueRef)
-		if !ok {
-			return false, nil
-		}
-		return dm.Name == valueRef.Store().NameDef().Name, nil
-	}
-	return false, nil
-}
-
-// AxisValue returns the value assigned to the axis.
-func (dm *AxisGroup) AxisValue() AssignableExpr {
-	return &ValueRef{
-		Src:  dm.NameDef(),
-		Stor: dm,
-	}
-}
-
-// Value of the axis.
-func (dm *AxisGroup) Value(Expr) AssignableExpr {
-	return dm.AxisValue()
-}
-
-// NameDef returns the name of the storage as an identifier.
-func (dm *AxisGroup) NameDef() *ast.Ident {
-	return &ast.Ident{
-		NamePos: dm.Src.NamePos,
-		Name:    dm.Name,
-	}
-}
-
-// Type of the expression.
-func (dm *AxisGroup) Type() Type { return IntLenSliceType() }
-
-func (*AxisLenName) node()    {}
-func (*AxisLenName) storage() {}
-
-// Source returns the source expression specifying the dimension.
-func (dm *AxisLenName) Source() ast.Node { return dm.Src }
-
-// NumAxes returns the number of axis represented by the group.
-func (dm *AxisLenName) NumAxes() int { return -1 }
-
-// AssignableTo returns true if a dimension can be assigned to another.
-func (dm *AxisLenName) AssignableTo(fetcher Fetcher, dst AxisLengths) (bool, error) {
-	other, ok := dst.(*AxisLenName)
-	if !ok {
-		return false, nil
-	}
-	return dm.Name == other.Name, nil
-}
-
-// Equal returns true if other has the axis length.
-func (dm *AxisLenName) Equal(fetcher Fetcher, other AxisLengths) (bool, error) {
-	gr, ok := other.(*AxisLenName)
-	if !ok {
-		return false, nil
-	}
-	return gr.Src.Name == dm.Src.Name, nil
-}
-
-// AxisValue returns the value assigned to the axis.
-func (dm *AxisLenName) AxisValue() AssignableExpr {
-	return &ValueRef{
-		Src:  dm.NameDef(),
-		Stor: dm,
-	}
-}
-
-// Value of the axis.
-func (dm *AxisLenName) Value(Expr) AssignableExpr {
-	return dm.AxisValue()
-}
-
-// NameDef returns the name of the storage as an identifier.
-func (dm *AxisLenName) NameDef() *ast.Ident {
-	return &ast.Ident{
-		NamePos: dm.Src.NamePos,
-		Name:    dm.Name,
-	}
-}
-
-// Type of the expression.
-func (dm *AxisLenName) Type() Type { return IntLenType() }
+func (dm *AxisExpr) Type() Type { return dm.X.Type() }
 
 // ----------------------------------------------------------------------------
 // Fields in function arguments, results, and structures.
@@ -3140,6 +2985,12 @@ type (
 		F *FuncValExpr
 		T *FuncType
 	}
+
+	// AxLengthName defines a name for the length of an axis or a group of axes.
+	AxLengthName struct {
+		Src *ast.Ident
+		Typ Type
+	}
 )
 
 var (
@@ -3147,6 +2998,7 @@ var (
 	_ Storage          = (*LocalVarStorage)(nil)
 	_ Storage          = (*StructFieldStorage)(nil)
 	_ Storage          = (*FieldStorage)(nil)
+	_ Storage          = (*AxLengthName)(nil)
 	_ StorageWithValue = (*SpecialisedFunc)(nil)
 )
 
@@ -3208,6 +3060,20 @@ func (s *FieldStorage) Type() Type { return s.Field.Type() }
 
 // NameDef returns the identifier identifying the storage.
 func (s *FieldStorage) NameDef() *ast.Ident { return s.Field.Name }
+
+func (*AxLengthName) node()    {}
+func (*AxLengthName) storage() {}
+
+// Source returns the node in the AST tree.
+func (s *AxLengthName) Source() ast.Node {
+	return s.Src
+}
+
+// Type of the destination of the assignment.
+func (s *AxLengthName) Type() Type { return s.Typ }
+
+// NameDef returns the identifier identifying the storage.
+func (s *AxLengthName) NameDef() *ast.Ident { return s.Src }
 
 func (*SpecialisedFunc) node()         {}
 func (*SpecialisedFunc) storage()      {}

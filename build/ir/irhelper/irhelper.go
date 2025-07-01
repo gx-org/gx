@@ -132,12 +132,30 @@ func FieldLit(fields *ir.FieldList, name string, val ir.AssignableExpr) *ir.Fiel
 
 // AxisLenName returns a new axis group given a name.
 func AxisLenName(name string) ir.AxisLengths {
-	return &ir.AxisLenName{Src: &ast.Ident{Name: name}, Name: name}
+	stor := &ir.AxLengthName{
+		Src: &ast.Ident{Name: name},
+		Typ: ir.IntLenType(),
+	}
+	return &ir.AxisExpr{
+		X: &ir.ValueRef{
+			Src:  stor.Src,
+			Stor: stor,
+		},
+	}
 }
 
 // AxisGroup returns a new axis group given a name.
 func AxisGroup(name string) ir.AxisLengths {
-	return &ir.AxisGroup{Src: &ast.Ident{Name: name}, Name: name}
+	stor := &ir.AxLengthName{
+		Src: &ast.Ident{Name: name},
+		Typ: ir.IntLenSliceType(),
+	}
+	return &ir.AxisExpr{
+		X: &ir.ValueRef{
+			Src:  stor.Src,
+			Stor: stor,
+		},
+	}
 }
 
 // Axis builds an array axis length.
@@ -155,7 +173,7 @@ func Axis(ax any) ir.AxisLengths {
 		if strings.HasPrefix(axisT, ir.DefineAxisGroup) || strings.HasSuffix(axisT, ir.DefineAxisGroup) {
 			name := strings.TrimPrefix(axisT, ir.DefineAxisGroup)
 			name = strings.TrimSuffix(name, ir.DefineAxisGroup)
-			return &ir.AxisGroup{Src: &ast.Ident{Name: axisT}, Name: name}
+			return AxisGroup(name)
 		}
 		panic(fmt.Sprintf("axis string %q not supported: pass a storage", axisT))
 	}

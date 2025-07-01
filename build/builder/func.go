@@ -17,8 +17,12 @@ package builder
 import (
 	"fmt"
 	"go/ast"
+	"math/big"
 	"strings"
 
+	"github.com/pkg/errors"
+	"github.com/gx-org/gx/api/values"
+	"github.com/gx-org/gx/build/fmterr"
 	"github.com/gx-org/gx/build/ir/generics"
 	"github.com/gx-org/gx/build/ir"
 	"github.com/gx-org/gx/internal/interp/compeval/cpevelements"
@@ -388,35 +392,99 @@ func convertArgNumbers(rscope resolveScope, fType *ir.FuncType, args []ir.Assign
 	return args, argsOk
 }
 
-func assignArgValueToName(rscope resolveScope, compEval *compileEvaluator, params map[string]elements.Element, param *ir.Field, argVal elements.Element) bool {
+func axisExprFrom(rscope resolveScope, ax ir.AxisLengths) (*ir.AxisExpr, bool) {
+	if ax == nil {
+		return nil, rscope.err().Append(fmterr.Internal(errors.Errorf("axis length is nil")))
+	}
+	switch axisT := ax.(type) {
+	case *ir.AxisExpr:
+		return axisT, true
+	case *ir.AxisInfer:
+		return axisExprFrom(rscope, axisT.X)
+	}
+	return nil, rscope.err().AppendInternalf(ax.Source(), "unknown axis length type: %T", ax)
+}
+
+func axisValuesFromArgumentValue(rscope resolveScope, compEval *compileEvaluator, src *ir.Field, val elements.Element) ([]elements.Element, bool) {
+	arrayElement, axOk := val.(cpevelements.IRArrayElement)
+	if !axOk {
+		return nil, true
+	}
+	axes, err := arrayElement.Axes(compEval)
+	if err != nil {
+		return nil, rscope.err().AppendInternalf(src.Source(), "cannot get axes from element %T to assign to parameter %s: %v", val, src.Name, err)
+	}
+	return axes.Elements(), true
+}
+
+var (
+	cstFile = &ir.File{
+		Package: &ir.Package{
+			Name: &ast.Ident{Name: "__gx_builder_package"},
+		},
+		Src: &ast.File{Name: &ast.Ident{Name: "__gx_builder_file"}},
+	}
+	zeroExpr = &ir.NumberCastExpr{
+		X: &ir.NumberInt{
+			Val: &big.Int{},
+		},
+		Typ: ir.IntLenType(),
+	}
+	zeroValue, _ = values.AtomNumberInt(&big.Int{}, zeroExpr.Type())
+	zeroLen, _   = cpevelements.NewAtom(elements.NewExprAt(cstFile, zeroExpr), zeroValue)
+	emptySlice   = elements.NewSlice(elements.NewExprAt(cstFile, &ir.SliceLitExpr{
+		Typ: ir.IntLenSliceType(),
+	}), nil)
+)
+
+func buildAtomicAxisValue(rscope resolveScope, arg ir.AssignableExpr, elts []elements.Element) (ax elements.Element, todo []elements.Element) {
+	if len(elts) == 0 {
+		return zeroLen, nil
+	}
+	return elts[0], elts[1:]
+}
+
+func buildSliceAxisValue(rscope resolveScope, arg ir.AssignableExpr, elts []elements.Element) (ax elements.Element, todo []elements.Element) {
+	if len(elts) == 0 {
+		return emptySlice, nil
+	}
+	return elements.NewSlice(elements.NewExprAt(cstFile, arg), elts), nil
+}
+
+func assignArgValueToName(rscope resolveScope, compEval *compileEvaluator, params map[string]elements.Element, param *ir.Field, arg ir.AssignableExpr, argVal elements.Element) bool {
 	name := param.Name.Name
 	if ir.ValidName(name) {
 		params[name] = argVal
 	}
-	arrayType, ok := param.Type().(ir.ArrayType)
+	paramArrayType, ok := param.Type().(ir.ArrayType)
 	if !ok {
+		// The parameter type is not an array: nothing is left to assign,
+		// we can return.
 		return true
 	}
-	arrayElement, axOk := argVal.(cpevelements.IRArrayElement)
-	if !axOk {
-		return true
+	axisValues, ok := axisValuesFromArgumentValue(rscope, compEval, param, argVal)
+	if axisValues == nil || !ok {
+		return ok
 	}
-	axes, err := arrayElement.Axes(compEval)
-	if err != nil {
-		return rscope.err().AppendInternalf(param.Source(), "cannot get axes from element %T to unify with parameter %s: %v", argVal, param.String(), err)
-	}
-	for i, axis := range arrayType.Rank().Axes() {
-		switch axisT := axis.(type) {
-		case *ir.AxisExpr:
-			ident, ok := axisT.X.(*ir.ValueRef)
-			if !ok {
-				continue
-			}
-			params[ident.Src.Name] = axes.Elements()[i]
-		case *ir.AxisGroup:
-			params[axisT.Name] = axes
-			return ok
+	for _, axis := range paramArrayType.Rank().Axes() {
+		axExpr, ok := axisExprFrom(rscope, axis)
+		if !ok {
+			continue
 		}
+		ident, ok := axExpr.X.(*ir.ValueRef)
+		if !ok {
+			continue
+		}
+		if _, ok := ident.Stor.(*ir.AxLengthName); !ok {
+			continue
+		}
+		var buildAxisValue func(resolveScope, ir.AssignableExpr, []elements.Element) (elements.Element, []elements.Element)
+		if axExpr.Type().Kind() == ir.IntLenKind {
+			buildAxisValue = buildAtomicAxisValue
+		} else {
+			buildAxisValue = buildSliceAxisValue
+		}
+		params[ident.Src.Name], axisValues = buildAxisValue(rscope, arg, axisValues)
 	}
 	return ok
 }
@@ -431,7 +499,7 @@ func assignArgValueToParamName(rscope resolveScope, compEval *compileEvaluator, 
 		if err != nil {
 			return nil, rscope.err().AppendAt(fExpr.Source(), err)
 		}
-		if !assignArgValueToName(rscope, compEval, params, param, argVal) {
+		if !assignArgValueToName(rscope, compEval, params, param, args[i], argVal) {
 			return nil, false
 		}
 	}

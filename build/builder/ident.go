@@ -28,7 +28,7 @@ type valueRef struct {
 var _ exprNode = (*valueRef)(nil)
 
 func processIdentExpr(pscope procScope, src *ast.Ident) (*valueRef, bool) {
-	return &valueRef{src: src}, pscope.checkIdent(src)
+	return &valueRef{src: src}, true
 }
 
 func (n *valueRef) source() ast.Node {

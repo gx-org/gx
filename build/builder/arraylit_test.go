@@ -15,7 +15,6 @@
 package builder_test
 
 import (
-	"go/ast"
 	"testing"
 
 	"github.com/gx-org/gx/build/builder/testbuild"
@@ -37,21 +36,19 @@ func TestArrayLit(t *testing.T) {
 			WantType: "[2]float32",
 		},
 		testbuild.Expr{
-			Src: `[_]float32{3, 4}`,
+			Src: `[...]float32{3, 4}`,
 			Want: &ir.ArrayLitExpr{
-				Typ: irh.ArrayType(
-					ir.Float32Type(),
-					&ir.AxisInfer{
-						Src: &ast.Ident{Name: "_"},
-						X:   irh.Axis(2),
-					},
-				),
+				Typ: irh.InferArrayType(ir.Float32Type(), 2),
 				Elts: []ir.AssignableExpr{
 					irh.IntNumberAs(3, ir.Float32Type()),
 					irh.IntNumberAs(4, ir.Float32Type()),
 				},
 			},
 			WantType: "[2]float32",
+		},
+		testbuild.Expr{
+			Src: `[_]float32{3, 4}`,
+			Err: "cannot use _ as an axis identifier",
 		},
 		testbuild.Expr{
 			Src: `[2][3]float32{{1, 2, 3}, {4, 5, 6}}`,

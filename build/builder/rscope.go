@@ -549,14 +549,11 @@ func newDefineScope(scope localScope, def defineLocalF, defAxis defineLocalF) *d
 	return &defineLocalScope{localScope: scope, def: def, defAxis: defAxis}
 }
 
-func (s *defineLocalScope) defineAxis(name *ast.Ident, typ ir.Type) {
+func (s *defineLocalScope) defineAxis(storage *ir.AxLengthName) {
 	if s.defAxis == nil {
 		return
 	}
-	s.defAxis(s, &ir.LocalVarStorage{
-		Src: name,
-		Typ: typ,
-	})
+	s.defAxis(s, storage)
 }
 
 func (s *defineLocalScope) define(storage ir.Storage) {

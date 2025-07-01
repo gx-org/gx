@@ -195,21 +195,12 @@ func (dm *AxisExpr) String() string {
 	return fmt.Sprintf("[%s]", dm.axExprString())
 }
 
-func (dm *AxisGroup) axExprString() string {
+func (dm *AxLengthName) axExprString() string {
 	return dm.Src.Name
 }
 
 // String representation of the dimension.
-func (dm *AxisGroup) String() string {
-	return fmt.Sprintf("[%s]", dm.axExprString())
-}
-
-func (dm *AxisLenName) axExprString() string {
-	return dm.Src.Name
-}
-
-// String representation of the dimension.
-func (dm *AxisLenName) String() string {
+func (dm *AxLengthName) String() string {
 	return fmt.Sprintf("[%s]", dm.axExprString())
 }
 

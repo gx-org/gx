@@ -60,7 +60,7 @@ func checkConsistent[R any](values []ir.ArrayType, extractFn func(v ir.ArrayType
 
 func numAxes(fetcher ir.Fetcher, call *ir.CallExpr) func(ir.ArrayType) (int, error) {
 	return func(a ir.ArrayType) (int, error) {
-		return a.Rank().NumAxes(), nil
+		return len(a.Rank().Axes()), nil
 	}
 }
 

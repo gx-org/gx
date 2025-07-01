@@ -3,7 +3,7 @@ package core
 func TestTuple() (float32, [4]float64, [2][2]float64) {
 	return 3.2,
 		[...]float64{1, 2, 3, 4},
-		[_][_]float64{
+		[...]float64{
 			{1, 2},
 			{3, 4},
 		}

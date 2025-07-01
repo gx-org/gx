@@ -16,26 +16,42 @@ package generics
 
 import (
 	"go/ast"
+	"math/big"
 
 	"github.com/gx-org/gx/build/ir"
 )
 
-func instantiateAxisExpr(fetcher ir.Fetcher, axis *ir.AxisExpr) ([]ir.AxisLengths, bool) {
-	ext := []ir.AxisLengths{
-		&ir.AxisExpr{Src: axis.Src, X: axis.X},
+func isZeroExpr(expr ir.Value) bool {
+	switch exprT := expr.(type) {
+	case *ir.NumberInt:
+		return big.NewInt(0).Cmp(exprT.Val) == 0
+	case *ir.NumberCastExpr:
+		return isZeroExpr(exprT.X)
+	default:
+		return false
 	}
+}
+
+func instantiateAxisExpr(fetcher ir.Fetcher, axis *ir.AxisExpr) ([]ir.AxisLengths, bool) {
 	val, ok := instantiateExpr(fetcher, axis.X)
 	if !ok {
-		return ext, false
-
+		return nil, false
 	}
-	expr, ok := val.(ir.AssignableExpr)
-	if !ok {
-		return ext, false
+	if isZeroExpr(val) {
+		return nil, true
 	}
-	return []ir.AxisLengths{
-		&ir.AxisExpr{Src: axis.Src, X: expr},
-	}, ok
+	switch valT := val.(type) {
+	case *ir.SliceLitExpr:
+		axes := make([]ir.AxisLengths, len(valT.Elts))
+		for i, el := range valT.Elts {
+			axes[i] = &ir.AxisExpr{Src: axis.Src, X: el}
+		}
+		return axes, true
+	case ir.AssignableExpr:
+		return []ir.AxisLengths{&ir.AxisExpr{Src: axis.Src, X: valT}}, true
+	default:
+		return nil, fetcher.Err().AppendInternalf(axis.Src, "cannot instantiate axis %s: value type %T not supported", axis.String(), valT)
+	}
 }
 
 func exprSource(e ir.Expr) ast.Expr {
@@ -45,50 +61,6 @@ func exprSource(e ir.Expr) ast.Expr {
 	}
 	srcE, _ := src.(ast.Expr)
 	return srcE
-}
-
-func extractAxisGroup(elts []ir.AssignableExpr) *ir.AxisGroup {
-	if len(elts) != 1 {
-		return nil
-	}
-	valRef, ok := elts[0].(*ir.ValueRef)
-	if !ok {
-		return nil
-	}
-	group, _ := valRef.Stor.(*ir.AxisGroup)
-	return group
-}
-
-func instantiateAxisGroup(fetcher ir.Fetcher, axis *ir.AxisGroup) ([]ir.AxisLengths, bool) {
-	expr, ok := instantiateExpr(fetcher, &ir.ValueRef{
-		Src: &ast.Ident{
-			NamePos: axis.Source().Pos(),
-			Name:    axis.Name,
-		},
-		Stor: axis,
-	})
-	if !ok {
-		return []ir.AxisLengths{axis}, false
-	}
-	switch exprT := expr.(type) {
-	case *ir.AxisGroup:
-		return []ir.AxisLengths{exprT}, true
-	case *ir.SliceLitExpr:
-		if group := extractAxisGroup(exprT.Elts); group != nil {
-			return []ir.AxisLengths{group}, true
-		}
-		ext := make([]ir.AxisLengths, len(exprT.Elts))
-		for i, elt := range exprT.Elts {
-			ext[i] = &ir.AxisExpr{Src: exprSource(elt), X: elt}
-		}
-		return ext, true
-	case *ir.Rank:
-		return exprT.Ax, true
-	case *ir.ValueRef:
-		return []ir.AxisLengths{&ir.AxisGroup{Src: exprT.Src, Name: exprT.Src.Name}}, true
-	default:
-		return []ir.AxisLengths{axis}, fetcher.Err().AppendInternalf(axis.Src, "cannot process expression %v as axis group: %T not supported", exprT, exprT)
-	}
 }
 
 func instantiateAxisInfer(fetcher ir.Fetcher, axis *ir.AxisInfer) ([]ir.AxisLengths, bool) {
@@ -104,8 +76,6 @@ func instantiateAxis(fetcher ir.Fetcher, axis ir.AxisLengths) ([]ir.AxisLengths,
 	switch axisT := axis.(type) {
 	case *ir.AxisExpr:
 		return instantiateAxisExpr(fetcher, axisT)
-	case *ir.AxisGroup:
-		return instantiateAxisGroup(fetcher, axisT)
 	case *ir.AxisInfer:
 		if axisT.X != nil {
 			return instantiateAxis(fetcher, axisT.X)
@@ -117,6 +87,9 @@ func instantiateAxis(fetcher ir.Fetcher, axis ir.AxisLengths) ([]ir.AxisLengths,
 }
 
 func (i *array) instantiateRank(fetcher ir.Fetcher, rank ir.ArrayRank) (ir.ArrayRank, bool) {
+	if _, ok := rank.(*ir.RankInfer); ok {
+		return &ir.RankInfer{}, true
+	}
 	var axes []ir.AxisLengths
 	ok := true
 	for _, axis := range rank.Axes() {
