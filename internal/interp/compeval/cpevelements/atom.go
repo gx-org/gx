@@ -126,10 +126,10 @@ func (a *atom) Compare(x canonical.Comparable) bool {
 }
 
 func (a *atom) Axes(ir.Fetcher) (*elements.Slice, error) {
-	return elements.NewSlice(elements.NewExprAt(
-		a.src.File(),
-		ir.NewSliceOfAxisLengths(a.src.ExprSrc(), nil),
-	), nil), nil
+	return elements.NewSlice(
+		ir.IntLenSliceType(),
+		nil,
+	), nil
 }
 
 // Expr returns the IR expression represented by the variable.

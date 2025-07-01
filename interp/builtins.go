@@ -89,7 +89,7 @@ func appendImpl(ctx evaluator.Context, call elements.CallAt, fn elements.Func, i
 	}
 	els := append([]elements.Element{}, slice.Elements()...)
 	els = append(els, args[1:]...)
-	return []elements.Element{elements.NewSlice(call.ToExprAt(), els)}, nil
+	return []elements.Element{elements.NewSlice(slice.Type(), els)}, nil
 }
 
 type axlengthsFunc struct{}
@@ -125,7 +125,7 @@ func axlengthsImpl(ctx evaluator.Context, call elements.CallAt, fn elements.Func
 			return nil, err
 		}
 	}
-	return []elements.Element{elements.NewSlice(call.ToExprAt(), axes)}, nil
+	return []elements.Element{elements.NewSlice(ir.IntLenSliceType(), axes)}, nil
 }
 
 type setFunc struct{}

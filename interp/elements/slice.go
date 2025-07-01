@@ -24,7 +24,7 @@ import (
 
 // Slice element storing a slice of elements.
 type Slice struct {
-	expr   ExprAt
+	typ    ir.Type
 	values []Element
 	slicer Slicer
 }
@@ -37,9 +37,9 @@ var (
 )
 
 // NewSlice returns a slice from a slice of elements.
-func NewSlice(expr ExprAt, elements []Element) *Slice {
+func NewSlice(typ ir.Type, elements []Element) *Slice {
 	return &Slice{
-		expr:   expr,
+		typ:    typ,
 		values: elements,
 	}
 }
@@ -65,6 +65,11 @@ func (n *Slice) Slice(ctx FileContext, expr *ir.IndexExpr, index NumericalElemen
 	return slice(ctx, expr, index, n.values)
 }
 
+// Type of the slice.
+func (n *Slice) Type() ir.Type {
+	return n.typ
+}
+
 // Kind of the element.
 func (*Slice) Kind() ir.Kind {
 	return ir.SliceKind
@@ -72,14 +77,13 @@ func (*Slice) Kind() ir.Kind {
 
 // Unflatten consumes the next handles to return a GX value.
 func (n *Slice) Unflatten(handles *Unflattener) (values.Value, error) {
-	return handles.ParseComposite(ParseCompositeOf(values.NewSlice), n.expr.Node().Type(), n.values)
+	return handles.ParseComposite(ParseCompositeOf(values.NewSlice), n.typ, n.values)
 }
 
 // Expr returns the IR expression representing the slice.
 func (n *Slice) Expr() (ir.AssignableExpr, error) {
 	ext := &ir.SliceLitExpr{
-		Src:  n.expr.ExprSrc(),
-		Typ:  n.expr.Node().Type(),
+		Typ:  n.typ,
 		Elts: make([]ir.AssignableExpr, n.Len()),
 	}
 	for i, el := range n.values {

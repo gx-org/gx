@@ -295,7 +295,7 @@ func (ev *Evaluator) newSliceArgument(parent parentArgument, expr elements.ExprA
 		}
 
 	}
-	return elements.NewSlice(expr, vals), nil
+	return elements.NewSlice(expr.Node().Type(), vals), nil
 }
 
 func (sel *indexSelectorArgument) Name() string {

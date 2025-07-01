@@ -448,7 +448,7 @@ func evalSliceLiteral(ctx *context, expr *ir.SliceLitExpr) (elements.Element, er
 		}
 		els[i] = elt
 	}
-	return elements.NewSlice(elements.NewExprAt(ctx.File(), expr), els), nil
+	return elements.NewSlice(expr.Type(), els), nil
 }
 
 // evalExpr evaluates an expression within the context.
