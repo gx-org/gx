@@ -290,7 +290,7 @@ func BuildConst(f ConstBuilder) Builder {
 		if err != nil {
 			return err
 		}
-		constDecl := ir.ConstDecl{Type: &ir.TypeValExpr{Typ: typ}}
+		constDecl := ir.ConstSpec{Type: &ir.TypeValExpr{Typ: typ}}
 		constDecl.Exprs = []*ir.ConstExpr{
 			&ir.ConstExpr{
 				Decl:  &constDecl,
@@ -299,7 +299,7 @@ func BuildConst(f ConstBuilder) Builder {
 			},
 		}
 		return pkg.ImportIR(&ir.Declarations{
-			Consts: []*ir.ConstDecl{&constDecl},
+			Consts: []*ir.ConstSpec{&constDecl},
 		})
 	}
 	return baseBuilder{

@@ -70,8 +70,8 @@ func processConstSpec(pscope procScope, src *ast.ValueSpec) bool {
 	return declaredTypeOk && numOk && exprsOk && pscope.decls().registerConst(spec)
 }
 
-func (spec *constSpec) buildSpecNode(rscope resolveScope) (*ir.ConstDecl, bool) {
-	ext := &ir.ConstDecl{Src: spec.src}
+func (spec *constSpec) buildSpecNode(rscope resolveScope) (*ir.ConstSpec, bool) {
+	ext := &ir.ConstSpec{Src: spec.src}
 	ok := true
 	if spec.declaredType != nil {
 		ext.Type, ok = spec.declaredType.buildTypeExpr(rscope)
@@ -146,7 +146,7 @@ func (cst *constExpr) pNode() processNode {
 
 func constDeclarator(constSpec parentNodeBuilder) declarator {
 	return func(irb *irBuilder, decls *ir.Declarations, dNode *declNode) bool {
-		irSpec, ok := buildParentNode[*ir.ConstDecl](irb, decls, constSpec)
+		irSpec, ok := buildParentNode[*ir.ConstSpec](irb, decls, constSpec)
 		if !ok {
 			return false
 		}

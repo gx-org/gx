@@ -66,7 +66,7 @@ func (v *validator) validate(node ir.Node) {
 		for _, imp := range nodeT.Imports {
 			v.validate(imp)
 		}
-	case *ir.ConstDecl:
+	case *ir.ConstSpec:
 		for _, expr := range nodeT.Exprs {
 			v.validate(expr)
 		}

@@ -26,7 +26,7 @@ import (
 
 func TestConst(t *testing.T) {
 	cstA := &ir.ConstExpr{
-		Decl:  &ir.ConstDecl{},
+		Decl:  &ir.ConstSpec{},
 		VName: irh.Ident("cstA"),
 		Val:   &ir.NumberInt{Val: big.NewInt(5)},
 	}
@@ -77,7 +77,7 @@ const cstA = 5
 
 func TestConstWithType(t *testing.T) {
 	cstIntA := &ir.ConstExpr{
-		Decl:  &ir.ConstDecl{Type: irh.TypeRef(ir.Int32Type())},
+		Decl:  &ir.ConstSpec{Type: irh.TypeRef(ir.Int32Type())},
 		VName: irh.Ident("cstIntA"),
 		Val:   &ir.NumberInt{Val: big.NewInt(5)},
 	}
