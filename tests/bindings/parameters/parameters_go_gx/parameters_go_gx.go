@@ -863,8 +863,8 @@ func (f *AddInt) String() string {
 // If the shape of the arguments change, the function will panic.
 func (f *AddFloat32s) Run(arg0 types.Array[float32], arg1 types.Array[float32]) (_ types.Array[float32], err error) {
 	var args []values.Value = []values.Value{
-		arg0.Bridge().GXValue(), // x [_]float32
-		arg1.Bridge().GXValue(), // y [_]float32
+		arg0.Bridge().GXValue(), // x [a]float32
+		arg1.Bridge().GXValue(), // y [a]float32
 	}
 	if f.runner == nil {
 		f.runner, err = tracer.Trace(f.pkg.Device, f.function.(*ir.FuncDecl), nil, args, f.pkg.options)
@@ -897,8 +897,8 @@ func (f *AddFloat32s) String() string {
 // If the shape of the arguments change, the function will panic.
 func (f *AddInts) Run(arg0 types.Array[int64], arg1 types.Array[int64]) (_ types.Array[int64], err error) {
 	var args []values.Value = []values.Value{
-		arg0.Bridge().GXValue(), // x [_]int64
-		arg1.Bridge().GXValue(), // y [_]int64
+		arg0.Bridge().GXValue(), // x [a]int64
+		arg1.Bridge().GXValue(), // y [a]int64
 	}
 	if f.runner == nil {
 		f.runner, err = tracer.Trace(f.pkg.Device, f.function.(*ir.FuncDecl), nil, args, f.pkg.options)
@@ -931,7 +931,7 @@ func (f *AddInts) String() string {
 // If the shape of the arguments change, the function will panic.
 func (f *Len) Run(arg0 types.Array[float32]) (_ types.Atom[int64], err error) {
 	var args []values.Value = []values.Value{
-		arg0.Bridge().GXValue(), // x [_]float32
+		arg0.Bridge().GXValue(), // x []float32
 	}
 	if f.runner == nil {
 		f.runner, err = tracer.Trace(f.pkg.Device, f.function.(*ir.FuncDecl), nil, args, f.pkg.options)
