@@ -57,7 +57,7 @@ func importFuncs(pkgScope *pkgProcScope, bFile *file, funcs []ir.PkgFunc) bool {
 
 type importedConstDecl struct {
 	bFile *file
-	decl  *ir.ConstDecl
+	decl  *ir.ConstSpec
 }
 
 func (b *importedConstDecl) buildParentNode(irb *irBuilder, decls *ir.Declarations) (ir.Node, bool) {
@@ -72,10 +72,10 @@ func (b *importedConstDecl) file() *file {
 	return b.bFile
 }
 
-func importConstDecls(pkgScope *pkgProcScope, file *file, cstDecls []*ir.ConstDecl) bool {
+func importConstDecls(pkgScope *pkgProcScope, file *file, cstDecls []*ir.ConstSpec) bool {
 	ok := true
 	for _, cstDecl := range cstDecls {
-		impDecl := &importedConstDecl{bFile: file, decl: &ir.ConstDecl{
+		impDecl := &importedConstDecl{bFile: file, decl: &ir.ConstSpec{
 			Src:  cstDecl.Src,
 			Type: cstDecl.Type,
 		}}

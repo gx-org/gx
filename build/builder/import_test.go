@@ -62,7 +62,7 @@ func TestImportConst(t *testing.T) {
 		Path: "pkg",
 	}
 	constExpr := &ir.ConstExpr{
-		Decl:  &ir.ConstDecl{},
+		Decl:  &ir.ConstSpec{},
 		VName: irhelper.Ident("MyConst"),
 		Val:   &ir.NumberInt{Val: big.NewInt(42)},
 	}

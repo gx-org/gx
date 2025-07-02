@@ -1059,7 +1059,7 @@ type (
 	Declarations struct {
 		Package *Package
 
-		Consts []*ConstDecl
+		Consts []*ConstSpec
 		Funcs  []PkgFunc
 		Types  []*NamedType
 		Vars   []*VarDecl
@@ -1177,14 +1177,14 @@ type (
 
 	// ConstExpr is a name,expr constant pair.
 	ConstExpr struct {
-		Decl *ConstDecl
+		Decl *ConstSpec
 
 		VName *ast.Ident
 		Val   AssignableExpr
 	}
 
-	// ConstDecl declares a package constant.
-	ConstDecl struct {
+	// ConstSpec declares a package constant.
+	ConstSpec struct {
 		FFile *File
 		Src   *ast.ValueSpec
 		Type  *TypeValExpr
@@ -1195,7 +1195,7 @@ type (
 var (
 	_ Node             = (*Package)(nil)
 	_ StorageWithValue = (*ImportDecl)(nil)
-	_ Node             = (*ConstDecl)(nil)
+	_ Node             = (*ConstSpec)(nil)
 	_ StorageWithValue = (*ConstExpr)(nil)
 	_ Node             = (*VarDecl)(nil)
 	_ Storage          = (*VarExpr)(nil)
@@ -1598,7 +1598,7 @@ func (s *ImportDecl) String() string {
 	return s.Path
 }
 
-func (*ConstDecl) node() {}
+func (*ConstSpec) node() {}
 
 func (*ConstExpr) node()         {}
 func (*ConstExpr) storage()      {}

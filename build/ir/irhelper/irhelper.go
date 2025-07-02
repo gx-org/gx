@@ -259,12 +259,12 @@ func VarSpec(names ...string) *ir.VarDecl {
 }
 
 // ConstSpec returns the specification given an optional type and constant expressions.
-func ConstSpec(typ ir.Type, exprs ...*ir.ConstExpr) *ir.ConstDecl {
+func ConstSpec(typ ir.Type, exprs ...*ir.ConstExpr) *ir.ConstSpec {
 	var typeExpr *ir.TypeValExpr
 	if typ != nil {
 		typeExpr = &ir.TypeValExpr{X: typ, Typ: typ}
 	}
-	spec := &ir.ConstDecl{
+	spec := &ir.ConstSpec{
 		Type:  typeExpr,
 		Exprs: exprs,
 	}

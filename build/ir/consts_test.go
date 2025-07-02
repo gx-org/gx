@@ -37,8 +37,8 @@ func cExpr(name string, expr ir.AssignableExpr) *ir.ConstExpr {
 	}
 }
 
-func newDecl(file *ir.File, exprs ...*ir.ConstExpr) *ir.ConstDecl {
-	decl := &ir.ConstDecl{
+func newDecl(file *ir.File, exprs ...*ir.ConstExpr) *ir.ConstSpec {
+	decl := &ir.ConstSpec{
 		FFile: file,
 		Exprs: exprs,
 	}
@@ -52,7 +52,7 @@ func TestConstsDeps(t *testing.T) {
 	pkg := &ir.Package{}
 	file := &ir.File{Package: pkg}
 	pkg.Decls = &ir.Declarations{
-		Consts: []*ir.ConstDecl{
+		Consts: []*ir.ConstSpec{
 			newDecl(file,
 				cExpr("a", valRef("b")),
 				cExpr("b", valRef("c")),
