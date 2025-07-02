@@ -1062,7 +1062,7 @@ type (
 		Consts []*ConstSpec
 		Funcs  []PkgFunc
 		Types  []*NamedType
-		Vars   []*VarDecl
+		Vars   []*VarSpec
 	}
 
 	// File represents a GX source file.
@@ -1163,12 +1163,12 @@ type (
 
 	// VarExpr is a name,expr static variable pair.
 	VarExpr struct {
-		Decl  *VarDecl
+		Decl  *VarSpec
 		VName *ast.Ident
 	}
 
-	// VarDecl declares a static variable and, optionally, a default value.
-	VarDecl struct {
+	// VarSpec declares a static variable and, optionally, a default value.
+	VarSpec struct {
 		FFile *File
 		Src   *ast.ValueSpec
 		TypeV Type
@@ -1197,7 +1197,7 @@ var (
 	_ StorageWithValue = (*ImportDecl)(nil)
 	_ Node             = (*ConstSpec)(nil)
 	_ StorageWithValue = (*ConstExpr)(nil)
-	_ Node             = (*VarDecl)(nil)
+	_ Node             = (*VarSpec)(nil)
 	_ Storage          = (*VarExpr)(nil)
 	_ PkgFunc          = (*FuncBuiltin)(nil)
 	_ PkgFunc          = (*FuncDecl)(nil)
@@ -1624,7 +1624,7 @@ func (cst *ConstExpr) Value(Expr) AssignableExpr {
 	return cst.Val
 }
 
-func (*VarDecl) node() {}
+func (*VarSpec) node() {}
 
 func (*VarExpr) node()    {}
 func (*VarExpr) storage() {}

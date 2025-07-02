@@ -63,8 +63,8 @@ func processVarSpec(pscope procScope, src *ast.ValueSpec) bool {
 	return typeOk && exprsOk && pscope.decls().registerStaticVar(spec)
 }
 
-func (spec *varSpec) buildSpecNode(rscope resolveScope) (*ir.VarDecl, bool) {
-	ext := &ir.VarDecl{Src: spec.src}
+func (spec *varSpec) buildSpecNode(rscope resolveScope) (*ir.VarSpec, bool) {
+	ext := &ir.VarSpec{Src: spec.src}
 	if spec.typ == nil {
 		return ext, false
 	}
@@ -72,7 +72,7 @@ func (spec *varSpec) buildSpecNode(rscope resolveScope) (*ir.VarDecl, bool) {
 	if !ok {
 		return ext, false
 	}
-	return &ir.VarDecl{
+	return &ir.VarSpec{
 		Src:   spec.src,
 		TypeV: typeRef.Typ,
 	}, true
@@ -112,7 +112,7 @@ func (vr *varExpr) pNode() processNode {
 
 func varDeclarator(spec *varSpec) declarator {
 	return func(irb *irBuilder, decls *ir.Declarations, dNode *declNode) bool {
-		irSpec, ok := buildParentNode[*ir.VarDecl](irb, decls, spec)
+		irSpec, ok := buildParentNode[*ir.VarSpec](irb, decls, spec)
 		if !ok {
 			return false
 		}

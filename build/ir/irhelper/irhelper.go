@@ -244,8 +244,8 @@ func IntNumberAs(val int64, typ ir.Type) ir.AssignableExpr {
 }
 
 // VarSpec returns the specification for static variables.
-func VarSpec(names ...string) *ir.VarDecl {
-	spec := &ir.VarDecl{
+func VarSpec(names ...string) *ir.VarSpec {
+	spec := &ir.VarSpec{
 		TypeV: ir.IntLenType(),
 		Exprs: make([]*ir.VarExpr, len(names)),
 	}
