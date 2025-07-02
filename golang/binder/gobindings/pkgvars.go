@@ -69,7 +69,7 @@ func (v pkgVar) PackagePath() string {
 }
 
 func (b *binder) buildPkgVars() (string, error) {
-	return tmpl.IterateFunc(b.Package.Decls.Vars, func(index int, decl *ir.VarDecl) (string, error) {
+	return tmpl.IterateFunc(b.Package.Decls.Vars, func(index int, decl *ir.VarSpec) (string, error) {
 		buf := strings.Builder{}
 		for _, expr := range decl.Exprs {
 			if err := pkgVarsTmpl.Execute(&buf, &pkgVar{

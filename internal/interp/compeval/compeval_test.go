@@ -45,7 +45,7 @@ var (
 )
 
 func staticVariable(opts []options.PackageOption, name string) []options.PackageOption {
-	decl := &ir.VarDecl{
+	decl := &ir.VarSpec{
 		FFile: file,
 		TypeV: exprType,
 	}

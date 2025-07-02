@@ -129,7 +129,7 @@ func newSymbol(name string) *ir.ValueRef {
 }
 
 func declareVariable(file *ir.File, name string, opts []options.PackageOption) []options.PackageOption {
-	decl := &ir.VarDecl{
+	decl := &ir.VarSpec{
 		FFile: file,
 		TypeV: ir.IntLenType(),
 	}

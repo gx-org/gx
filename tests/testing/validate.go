@@ -91,7 +91,7 @@ func (v *validator) validate(node ir.Node) {
 			return
 		}
 		v.validate(nodeT.Body)
-	case *ir.VarDecl:
+	case *ir.VarSpec:
 		v.validate(nodeT.TypeV)
 	case *ir.LocalVarStorage:
 		v.validate(nodeT.Typ)
