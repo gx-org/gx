@@ -58,13 +58,6 @@ func (ev *Evaluator) NewFunc(fn ir.Func, recv *elements.Receiver) elements.Func 
 	return ev.newFunc(fn, recv)
 }
 
-// NewSub returns a new evaluator given a new array operator implementations.
-func (ev *Evaluator) NewSub(ao elements.ArrayOps) evaluator.Evaluator {
-	sub := &Evaluator{process: ev.process, ao: ao.(*arrayOps)}
-	sub.ao.ev = sub
-	return sub
-}
-
 // Processor returns the processor where init and debug traces are registered.
 func (ev *Evaluator) Processor() *processor.Processor {
 	return ev.process

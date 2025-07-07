@@ -51,9 +51,6 @@ type (
 		// NewFunc creates a new function given its definition and a receiver.
 		NewFunc(fn ir.Func, recv *elements.Receiver) elements.Func
 
-		// NewSub returns a new evaluator given a new array operator implementations.
-		NewSub(elements.ArrayOps) Evaluator
-
 		// Importer returns an importer to import package.
 		Importer() Importer
 
