@@ -12,7 +12,7 @@
 // See the License for the specific language governing permissions and
 // limitations under the License.
 
-package builder
+package builtins
 
 import (
 	"go/ast"
@@ -31,7 +31,9 @@ var _ ir.FuncImpl = (*appendFunc)(nil)
 // BuildFuncType builds the type of a function given how it is called.
 func (f *appendFunc) BuildFuncType(fetcher ir.Fetcher, call *ir.CallExpr) (*ir.FuncType, error) {
 	ext := &ir.FuncType{
-		BaseType: baseType(&ast.FuncType{Func: call.Src.Pos()}),
+		BaseType: ir.BaseType[*ast.FuncType]{
+			Src: &ast.FuncType{Func: call.Src.Pos()},
+		},
 	}
 	params, err := builtins.BuildFuncParams(fetcher, call, appendName, []ir.Type{
 		builtins.GenericSliceType,

@@ -249,6 +249,9 @@ func stmtProc(done map[any]bool, val reflect.Value) string {
 }
 
 func toPointer(val reflect.Value) any {
+	if !val.IsValid() || val.IsZero() {
+		return nil
+	}
 	switch val.Kind() {
 	case reflect.Struct:
 		return val
@@ -266,8 +269,12 @@ func reflectString(done map[any]bool, val reflect.Value, proc processor) string 
 		return fmt.Sprintf("<ref:%s>", val.Type().Name())
 	}
 	ptr := toPointer(val)
-	done[ptr] = true
-	defer delete(done, ptr)
+	if ptr != nil {
+		done[ptr] = true
+		defer delete(done, ptr)
+	} else {
+		return ""
+	}
 	// Register the value in the stack.
 	// Build a string representation of the value.
 	kind := val.Type().Kind()

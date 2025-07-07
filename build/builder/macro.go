@@ -36,17 +36,18 @@ func (bFile *file) processIRMacroFunc(scope procScope, src *ast.FuncDecl, commen
 }
 
 func (f *funcMacro) buildSignature(pkgScope *pkgResolveScope) (ir.Func, iFuncResolveScope, bool) {
-	ext := &ir.Macro{
-		Src: f.src,
-	}
-	fileScope, scopeOk := pkgScope.newFileScope(f.bFile, nil)
+	fScope, scopeOk := pkgScope.newFileScope(f.bFile)
 	if !scopeOk {
-		return ext, nil, false
+		return nil, nil, false
+	}
+	ext := &ir.Macro{
+		Src:   f.src,
+		FFile: fScope.irFile(),
 	}
 	var ok bool
-	var fScope *funcResolveScope
-	ext.FType, fScope, ok = f.fType.buildFuncType(fileScope)
-	return ext, fScope, ok
+	var fnScope *funcResolveScope
+	ext.FType, fnScope, ok = f.fType.buildFuncType(fScope)
+	return ext, fnScope, ok
 }
 
 func (f *funcMacro) source() ast.Node {

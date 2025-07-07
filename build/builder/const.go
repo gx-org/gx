@@ -19,6 +19,7 @@ import (
 	"go/ast"
 	"go/token"
 
+	"github.com/gx-org/gx/build/builder/irb"
 	"github.com/gx-org/gx/build/ir"
 )
 
@@ -29,7 +30,7 @@ type constSpec struct {
 	exprs        []*constExpr
 }
 
-var _ parentNodeBuilder = (*constSpec)(nil)
+var _ irb.Node[*pkgResolveScope] = (*constSpec)(nil)
 
 func processConstDecl(pscope procScope, decl *ast.GenDecl) bool {
 	ok := true
@@ -70,34 +71,35 @@ func processConstSpec(pscope procScope, src *ast.ValueSpec) bool {
 	return declaredTypeOk && numOk && exprsOk && pscope.decls().registerConst(spec)
 }
 
-func (spec *constSpec) buildSpecNode(rscope resolveScope) (*ir.ConstSpec, bool) {
-	ext := &ir.ConstSpec{Src: spec.src}
-	ok := true
-	if spec.declaredType != nil {
-		ext.Type, ok = spec.declaredType.buildTypeExpr(rscope)
+func (spec *constSpec) Build(irb irBuilder) (ir.Node, bool) {
+	fScope, ok := irb.Scope().newFileScope(spec.bFile)
+	if !ok {
+		return nil, false
 	}
-	return ext, ok
+	ext := &ir.ConstSpec{Src: spec.src, FFile: fScope.irFile()}
+	typeOk := true
+	if spec.declaredType != nil {
+		ext.Type, typeOk = spec.declaredType.buildTypeExpr(fScope)
+	}
+	irb.Register(constDeclarator(ext))
+	return ext, ok && typeOk
 }
 
-func (spec *constSpec) buildParentNode(irb *irBuilder, decls *ir.Declarations) (ir.Node, bool) {
-	fscope, ok := irb.pkgScope.newFileScope(spec.bFile, nil)
-	ext, specOk := spec.buildSpecNode(fscope)
-	var fileOk bool
-	ext.FFile, fileOk = buildParentNode[*ir.File](irb, decls, spec.bFile)
-	decls.Consts = append(decls.Consts, ext)
-	return ext, ok && specOk && fileOk
-}
+type (
+	constExpr struct {
+		spec *constSpec
 
-func (spec *constSpec) file() *file {
-	return spec.bFile
-}
+		name  *ast.Ident
+		value exprNode
+	}
 
-type constExpr struct {
-	spec *constSpec
+	iConstExpr interface {
+		buildDeclaration(irBuilder) (*ir.ConstExpr, bool)
+		buildExpression(irBuilder, *ir.ConstExpr) bool
+	}
+)
 
-	name  *ast.Ident
-	value exprNode
-}
+var _ irb.Node[*pkgResolveScope] = (*constSpec)(nil)
 
 func (spec *constSpec) processConstExpr(pscope procScope, name *ast.Ident, value ast.Expr) (*constExpr, bool) {
 	val, ok := processExpr(pscope, value)
@@ -108,52 +110,46 @@ func (spec *constSpec) processConstExpr(pscope procScope, name *ast.Ident, value
 	}, ok
 }
 
-func (cst *constExpr) build(pkgScope *pkgResolveScope) (*ir.ConstExpr, bool) {
-	rscope, scopeOk := newConstResolveScope(pkgScope, cst.spec.bFile)
-	expr, exprOk := cst.buildExpr(rscope)
-	return expr, scopeOk && exprOk
+func (cst *constExpr) buildDeclaration(ibld irBuilder) (*ir.ConstExpr, bool) {
+	ext := &ir.ConstExpr{VName: cst.name}
+	var ok bool
+	ext.Decl, ok = irBuild[*ir.ConstSpec](ibld, cst.spec)
+	if !ok {
+		return ext, false
+	}
+	ext.Decl.Exprs = append(ext.Decl.Exprs, ext)
+	return ext, true
 }
 
-func (cst *constExpr) buildExpr(rscope resolveScope) (*ir.ConstExpr, bool) {
-	spec, specOk := cst.spec.buildSpecNode(rscope)
-	x, ok := buildAExpr(rscope, cst.value)
-	expr := &ir.ConstExpr{
-		Decl:  spec,
-		VName: cst.name,
-		Val:   x,
+func (cst *constExpr) buildExpression(ibld irBuilder, ext *ir.ConstExpr) bool {
+	fScope, ok := ibld.Scope().newFileScope(cst.spec.bFile)
+	if !ok {
+		return false
+	}
+	ext.Val, ok = buildAExpr(fScope, cst.value)
+	if !ok {
+		return false
+	}
+	if ext.Decl.Type == nil {
+		return true
+	}
+	targetType := ext.Decl.Type.Typ
+	if ir.IsNumber(ext.Val.Type().Kind()) {
+		ext.Val, ok = castNumber(fScope, ext.Val, targetType)
 	}
 	if !ok {
-		return expr, false
+		return false
 	}
-	if cst.spec.declaredType == nil {
-		return expr, specOk
-	}
-	typeExpr, typeOk := cst.spec.declaredType.buildTypeExpr(rscope)
-	if !typeOk {
-		return expr, false
-	}
-	typ := typeExpr.Typ
-	if ir.IsNumber(typ.Kind()) {
-		expr.Val, ok = castNumber(rscope, x, typ)
-	}
-	typeOk = assignableToAt(rscope, expr.Val.Source(), expr.Val.Type(), typ)
-	return expr, ok && specOk && typeOk
+	return assignableToAt(fScope, ext.Val.Source(), ext.Val.Type(), targetType)
 }
 
 func (cst *constExpr) pNode() processNode {
-	return newProcessNode[*constExpr](token.CONST, cst.name, cst)
+	return newProcessNode[iConstExpr](token.CONST, cst.name, cst)
 }
 
-func constDeclarator(constSpec parentNodeBuilder) declarator {
-	return func(irb *irBuilder, decls *ir.Declarations, dNode *declNode) bool {
-		irSpec, ok := buildParentNode[*ir.ConstSpec](irb, decls, constSpec)
-		if !ok {
-			return false
-		}
-		expr := dNode.ir.(*ir.ConstExpr)
-		expr.Decl = irSpec
-		irSpec.Exprs = append(irSpec.Exprs, expr)
-		return true
+func constDeclarator(ext *ir.ConstSpec) irb.Declarator {
+	return func(decls *ir.Declarations) {
+		decls.Consts = append(decls.Consts, ext)
 	}
 }
 

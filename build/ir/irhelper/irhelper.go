@@ -87,7 +87,7 @@ func Field(name string, typ ir.Type, grp *ir.FieldGroup) *ir.Field {
 
 // Fields returns a list of fields.
 func Fields(vals ...any) *ir.FieldList {
-	list := &ir.FieldList{}
+	list := &ir.FieldList{Src: &ast.FieldList{}}
 	var fields []*ir.Field
 	for _, val := range vals {
 		switch valT := val.(type) {

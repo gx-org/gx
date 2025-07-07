@@ -19,6 +19,7 @@ import (
 	"go/token"
 
 	"github.com/gx-org/gx/base/ordered"
+	"github.com/gx-org/gx/build/builder/irb"
 	"github.com/gx-org/gx/build/fmterr"
 	"github.com/gx-org/gx/build/ir"
 )
@@ -26,9 +27,8 @@ import (
 // namedType is a node representing a named type declaration in GX source code.
 type namedType struct {
 	src        *ast.TypeSpec
-	underlying typeExprNode
 	file       *file
-	methods    *ordered.Map[string, *processNodeT[function]]
+	underlying typeExprNode
 }
 
 func processTypeDecl(scope procScope, decl *ast.GenDecl) bool {
@@ -41,9 +41,8 @@ func processTypeDecl(scope procScope, decl *ast.GenDecl) bool {
 
 func processType(pscope procScope, src *ast.TypeSpec) bool {
 	n := &namedType{
-		src:     src,
-		file:    pscope.file(),
-		methods: ordered.NewMap[string, *processNodeT[function]](),
+		src:  src,
+		file: pscope.file(),
 	}
 	var ok bool
 	n.underlying, ok = processTypeExpr(pscope, src.Type)
@@ -62,17 +61,27 @@ func (n *namedType) source() ast.Node {
 	return n.src
 }
 
-func (n *namedType) build(pkgScope *pkgResolveScope) (*irNamedType, declarator) {
-	return &irNamedType{
+type irNamedType struct {
+	bType *namedType
+	ext   *ir.NamedType
+}
+
+func (n *namedType) build(ibld irBuilder) (*irNamedType, bool) {
+	ext := &ir.NamedType{
+		Src: n.src,
+	}
+	var ok bool
+	ext.File, ok = irBuild[*ir.File](ibld, n.file)
+	nType := &irNamedType{
 		bType: n,
-		irType: &ir.NamedType{
-			Src: n.src,
-		},
-	}, namedTypeDeclarator(n.file)
+		ext:   ext,
+	}
+	ibld.Register(namedTypeDeclarator(ibld.Scope(), ext))
+	return nType, ok
 }
 
 func (n *namedType) buildUnderlying(pkgScope *pkgResolveScope, nType *ir.NamedType) bool {
-	rscope, scopeOk := pkgScope.newFileScope(n.file, nil)
+	rscope, scopeOk := pkgScope.newFileScope(n.file)
 	if !scopeOk {
 		return false
 	}
@@ -81,26 +90,39 @@ func (n *namedType) buildUnderlying(pkgScope *pkgResolveScope, nType *ir.NamedTy
 	return underOk
 }
 
-func (n *namedType) assignMethod(scope *fileResolveScope, pNode *processNodeT[function], ext *ir.NamedType) bool {
+func assignMethod(scope *fileResolveScope, ext *ir.NamedType, fn *irFunc) bool {
 	underlying := ir.Underlying(ext)
-	fn := pNode.node
-	name := fn.name().Name
-	if !ir.ValidName(name) {
-		return true
-	}
-	// Check if a method has already been defined.
-	if prev, exist := n.methods.Load(name); exist {
-		return scope.err().Appendf(fn.source(), "method %s.%s already declared at %s", n.src.Name, name, funcPos(scope, prev.node))
-	}
 	// Check if a field with the same name has already been defined.
 	structType, ok := underlying.(*ir.StructType)
 	if ok {
-		if defined := structType.Fields.FindField(name); defined != nil {
-			return scope.err().Appendf(fn.source(), "field and method with the same name %s", name)
+		if defined := structType.Fields.FindField(fn.irFunc.Name()); defined != nil {
+			return scope.err().Appendf(fn.irFunc.Source(), "field and method with the same name %s", fn.irFunc.Name())
 		}
 	}
-	n.methods.Store(name, pNode)
+	// Check if a method has already been defined.
+	methods, exist := scope.methods.Load(ext)
+	if !exist {
+		methods = ordered.NewMap[string, *irFunc]()
+		scope.methods.Store(ext, methods)
+	}
+	if prev, hasPrev := methods.Load(ext.Name()); hasPrev {
+		return scope.err().Appendf(fn.irFunc.Source(), "method %s.%s already declared at %s", ext.Name(), fn.irFunc.Name(), funcPos(scope, prev.bFunc))
+	}
+	methods.Store(fn.irFunc.Name(), fn)
+	ext.Methods = updateMethods(scope.pkgResolveScope, ext)
 	return true
+}
+
+func updateMethods(scope *pkgResolveScope, ext *ir.NamedType) []ir.PkgFunc {
+	methods, exist := scope.methods.Load(ext)
+	if !exist {
+		return nil
+	}
+	var irMethods []ir.PkgFunc
+	for method := range methods.Values() {
+		irMethods = append(irMethods, method.irFunc)
+	}
+	return irMethods
 }
 
 func funcPos(scope *fileResolveScope, fn function) string {
@@ -115,21 +137,8 @@ func (n *namedType) String() string {
 	return n.src.Name.Name
 }
 
-func namedTypeDeclarator(bFile *file) declarator {
-	return func(irb *irBuilder, decls *ir.Declarations, node *declNode) bool {
-		file, ok := buildParentNode[*ir.File](irb, decls, bFile)
-		if !ok {
-			return false
-		}
-		nType := node.ir.(*ir.NamedType)
-		nType.ID = len(decls.Types)
-		nType.File = file
-		decls.Types = append(decls.Types, nType)
-		for _, method := range nType.Methods {
-			if _, ok := setFuncFileField(irb, file, method); !ok {
-				return false
-			}
-		}
-		return true
+func namedTypeDeclarator(scope *pkgResolveScope, ext *ir.NamedType) irb.Declarator {
+	return func(decls *ir.Declarations) {
+		decls.Types = append(decls.Types, ext)
 	}
 }

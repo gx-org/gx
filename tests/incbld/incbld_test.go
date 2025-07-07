@@ -39,6 +39,7 @@ package %s
 }
 
 func checkError(t *testing.T, prefix string, err error, want string) error {
+	t.Helper()
 	if !strings.HasPrefix(want, prefix) {
 		return err
 	}
@@ -75,6 +76,7 @@ type cellTest struct {
 }
 
 func testCells(t *testing.T, cells []cellTest) (*gxtesting.Runner, *builder.IncrementalPackage) {
+	t.Helper()
 	rtm := backend.New(tests.CoreBuilder())
 	pkg := rtm.Builder().NewIncrementalPackage(packageName)
 	runner, err := gxtesting.NewRunner(rtm, 0)
@@ -86,6 +88,7 @@ func testCells(t *testing.T, cells []cellTest) (*gxtesting.Runner, *builder.Incr
 }
 
 func testCellsWithRunner(t *testing.T, cells []cellTest, pkg *builder.IncrementalPackage, runner *gxtesting.Runner) {
+	t.Helper()
 	for id, cell := range cells {
 		err := pkg.Build(cell.src)
 		err = checkError(t, buildError, err, cell.want)
@@ -195,11 +198,15 @@ type S struct {
 	f2 float32
 }
 
+func New() S {
+	return S{f1:1.0, f2: 2.0}
+}
+
 func F2(s S) float32 {
 	return s.f2
 }
 `),
-		want: runError + "field f2 undefined",
+		want: runError + "f2 undefined",
 	}
 	if err = pkg.Build(cTest.src); err != nil {
 		t.Fatal(err)
@@ -259,10 +266,9 @@ func New() S {
 		{
 			src: packagePrefix(`
 func (s S) Add(b float32) float32 {
-	return s.a+b
+	return s.A+b
 }
 `),
-			want: buildError + "not supported",
 		},
 	})
 }

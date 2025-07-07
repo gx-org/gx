@@ -18,72 +18,144 @@ import (
 	"go/ast"
 	"go/token"
 
+	"github.com/gx-org/gx/build/builder/irb"
 	"github.com/gx-org/gx/build/ir"
+	"github.com/gx-org/gx/internal/interp/compeval/cpevelements"
 )
 
-func pNodeFromIR[T ir.Storage](tok token.Token, name string, node T, decl declarator) processNode {
-	pNode := newProcessNode[T](
-		tok,
-		&ast.Ident{Name: name},
-		node)
-	pNode.decl = pNode.setDeclNode(node, decl)
-	return pNode
+type importedFunc struct {
+	file *file
+	fn   *ir.FuncBuiltin
+}
+
+var _ irb.Node[*pkgResolveScope] = (*importedFunc)(nil)
+
+func (f *importedFunc) source() ast.Node {
+	return f.fn.Source()
+}
+
+func (f *importedFunc) name() *ast.Ident {
+	return f.fn.NameDef()
+}
+
+func (f *importedFunc) isMethod() bool {
+	return f.fn.FType.ReceiverField() != nil
+}
+
+func (f *importedFunc) compEval() bool {
+	return false
+}
+
+func (f *importedFunc) resolveOrder() int {
+	return -1
+}
+
+func (f *importedFunc) buildSignature(pkgScope *pkgResolveScope) (ir.Func, iFuncResolveScope, bool) {
+	fScope, ok := pkgScope.newFileScope(f.file)
+	if !ok {
+		return f.fn, nil, false
+	}
+	return f.fn, newFuncScope(fScope, f.fn.FType), true
+}
+
+func (f *importedFunc) buildBody(iFuncResolveScope, ir.Func) ([]*cpevelements.SyntheticFuncDecl, bool) {
+	return nil, true
+}
+
+func (f *importedFunc) Build(ibld irBuilder) (ir.Node, bool) {
+	fn := *(f.fn)
+	var ok bool
+	fn.FFile, ok = irCache[*ir.File](ibld, f.fn.Src, f.file)
+	return &fn, ok
+}
+
+func pNodeFromFunc(pkgScope *pkgProcScope, file *file, fn ir.PkgFunc) (*processNodeT[function], bool) {
+	fnT, ok := fn.(*ir.FuncBuiltin)
+	if !ok {
+		return nil, pkgScope.err().AppendInternalf(fn.Source(), "cannot import function %T: not supported", fn)
+	}
+	return newProcessNode[function](token.FUNC, fnT.Src.Name, &importedFunc{
+		file: file,
+		fn:   fnT,
+	}), true
 }
 
 func importNamedTypes(pkgScope *pkgProcScope, bFile *file, types []*ir.NamedType) bool {
-	ok := true
 	for _, typ := range types {
-		if pNode, exist := pkgScope.decls().declarations.Load(typ.Name()); exist {
-			// The type has already been imported. Only add the methods.
-			namedTyp := pNode.ir().(*ir.NamedType)
-			namedTyp.Methods = append(namedTyp.Methods, typ.Methods...)
+		if _, exist := pkgScope.decls().declarations.Load(typ.Name()); exist {
+			for _, method := range typ.Methods {
+				if !importFunc(pkgScope, bFile, method) {
+					return false
+				}
+			}
 			continue
 		}
 		namedTyp := *typ
-		pNode := pNodeFromIR(token.TYPE, namedTyp.Name(), &namedTyp, namedTypeDeclarator(bFile))
-		ok = pkgScope.decls().declarePackageName(pNode) && ok
+		pNode := newProcessNode(token.TYPE, namedTyp.Src.Name, &namedTyp)
+		if !pkgScope.decls().declarePackageName(pNode) {
+			return false
+		}
 	}
-	return ok
+	return true
+}
+
+func importFunc(pkgScope *pkgProcScope, bFile *file, fn ir.PkgFunc) bool {
+	fNode, ok := pNodeFromFunc(pkgScope, bFile, fn)
+	if !ok {
+		return false
+	}
+	if !pkgScope.decls().declarePackageName(fNode) {
+		return false
+	}
+	return true
 }
 
 func importFuncs(pkgScope *pkgProcScope, bFile *file, funcs []ir.PkgFunc) bool {
-	ok := true
-	for _, fun := range funcs {
-		pNode := pNodeFromIR(token.FUNC, fun.Name(), fun, funcDeclarator(bFile, nil))
-		ok = pkgScope.decls().declarePackageName(pNode) && ok
+	for _, fn := range funcs {
+		if !importFunc(pkgScope, bFile, fn) {
+			return false
+		}
 	}
-	return ok
+	return true
 }
 
-type importedConstDecl struct {
+type importedConstExpr struct {
 	bFile *file
-	decl  *ir.ConstSpec
+	expr  *ir.ConstExpr
 }
 
-func (b *importedConstDecl) buildParentNode(irb *irBuilder, decls *ir.Declarations) (ir.Node, bool) {
-	ext := *b.decl
+var _ iConstExpr = (*importedConstExpr)(nil)
+
+func (b *importedConstExpr) buildDeclaration(ibld irBuilder) (*ir.ConstExpr, bool) {
+	extSpec := *b.expr.Decl
+	extSpec.Exprs = []*ir.ConstExpr{{
+		Decl:  &extSpec,
+		VName: b.expr.VName,
+		Val:   b.expr.Val,
+	}}
 	var ok bool
-	ext.FFile, ok = buildParentNode[*ir.File](irb, decls, b.bFile)
-	decls.Consts = append(decls.Consts, &ext)
-	return &ext, ok
+	extSpec.FFile, ok = irBuild[*ir.File](ibld, b.bFile)
+	ibld.Register(constDeclarator(&extSpec))
+	return extSpec.Exprs[0], ok
 }
 
-func (b *importedConstDecl) file() *file {
-	return b.bFile
+func (b *importedConstExpr) buildExpression(ibld irBuilder, ext *ir.ConstExpr) bool {
+	return true
 }
 
 func importConstDecls(pkgScope *pkgProcScope, file *file, cstDecls []*ir.ConstSpec) bool {
-	ok := true
 	for _, cstDecl := range cstDecls {
-		impDecl := &importedConstDecl{bFile: file, decl: &ir.ConstSpec{
-			Src:  cstDecl.Src,
-			Type: cstDecl.Type,
-		}}
-		declarator := constDeclarator(impDecl)
-		for _, expr := range cstDecl.Exprs {
-			pNode := pNodeFromIR(token.CONST, expr.VName.Name, expr, declarator)
-			ok = pkgScope.decls().declarePackageName(pNode) && ok
+		if len(cstDecl.Exprs) != 1 {
+			return pkgScope.err().AppendInternalf(cstDecl.Src, "constant specification got %d expressions but want 1", len(cstDecl.Exprs))
+		}
+		cstExpr := cstDecl.Exprs[0]
+		pNode := newProcessNode[iConstExpr](token.CONST, cstExpr.VName, &importedConstExpr{
+			bFile: file,
+			expr:  cstExpr,
+		})
+		if !pkgScope.decls().declarePackageName(pNode) {
+			return false
 		}
 	}
-	return ok
+	return true
 }

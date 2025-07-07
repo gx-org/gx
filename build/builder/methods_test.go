@@ -112,6 +112,23 @@ func call() int32 {
 					)},
 			},
 		},
+		testbuild.Decl{
+			Src: `
+type (
+	A struct {}
+	
+	B struct {
+		a A
+	}
+)
+
+func (A) f() int32
+
+func (b B) f() int32 {
+	return b.a.f()
+}
+`,
+		},
 	)
 }
 

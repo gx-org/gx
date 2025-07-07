@@ -140,8 +140,8 @@ func (s *RWScope[V]) LocalKeys() iter.Seq[string] {
 	return s.local.data.Keys()
 }
 
-// LocalFind returns true if the key is defined in the local scope.
-func (s *RWScope[V]) LocalFind(key string) bool {
+// IsLocal returns true if the key is defined in the local scope.
+func (s *RWScope[V]) IsLocal(key string) bool {
 	_, ok := s.local.data.Load(key)
 	return ok
 }

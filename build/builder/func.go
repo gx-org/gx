@@ -22,6 +22,7 @@ import (
 
 	"github.com/pkg/errors"
 	"github.com/gx-org/gx/api/values"
+	"github.com/gx-org/gx/build/builder/irb"
 	"github.com/gx-org/gx/build/fmterr"
 	"github.com/gx-org/gx/build/ir/generics"
 	"github.com/gx-org/gx/build/ir"
@@ -116,15 +117,17 @@ func defineTypeParam(s resolveScope, storage ir.Storage) bool {
 }
 
 func (n *funcType) buildFuncType(rscope resolveScope) (*ir.FuncType, *funcResolveScope, bool) {
-	ext := &ir.FuncType{BaseType: baseType(n.src), CompEval: n.compEval}
+	ext := &ir.FuncType{
+		BaseType: ir.BaseType[*ast.FuncType]{Src: n.src},
+		CompEval: n.compEval,
+	}
 	var tParamsOk, recvOk, paramsOk, resultsOk bool
 	fScope := newFuncScope(rscope, ext)
 	typeParamsScope := newDefineScope(fScope, defineTypeParam, nil)
 	ext.TypeParams, tParamsOk = n.typeParams.buildFieldList(typeParamsScope)
 	ext.Receiver, recvOk = n.recv.buildFieldList(fScope)
-	if ext.Receiver != nil {
-		field := ext.ReceiverField()
-		if field.Name != nil {
+	if recvOk && ext.Receiver != nil {
+		if field := ext.ReceiverField(); field.Name != nil {
 			defineLocalVar(fScope, field.Storage())
 		}
 	}
@@ -234,8 +237,8 @@ func (f *funcDecl) checkReturnValue(scope procScope) bool {
 	return true
 }
 
-func (f *funcDecl) receiver() *fieldList {
-	return f.fType.recv
+func (f *funcDecl) isMethod() bool {
+	return f.fType.recv != nil
 }
 
 func (f *funcDecl) compEval() bool {
@@ -251,15 +254,13 @@ func (f *funcDecl) resolveOrder() int {
 }
 
 func (f *funcDecl) buildSignature(pkgScope *pkgResolveScope) (ir.Func, iFuncResolveScope, bool) {
-	fileScope, ok := pkgScope.newFileScope(f.bFile, nil)
-	ext := &ir.FuncDecl{
-		Src: f.src,
-	}
+	fScope, ok := pkgScope.newFileScope(f.bFile)
 	if !ok {
-		return ext, nil, false
+		return nil, nil, false
 	}
+	ext := &ir.FuncDecl{Src: f.src, FFile: fScope.irFile()}
 	var funcScope *funcResolveScope
-	ext.FType, funcScope, ok = f.fType.buildFuncType(fileScope)
+	ext.FType, funcScope, ok = f.fType.buildFuncType(fScope)
 	return ext, funcScope, ok
 }
 
@@ -303,7 +304,7 @@ func (f *funcBuiltin) buildSignature(pkgScope *pkgResolveScope) (ir.Func, iFuncR
 	ext := &ir.FuncBuiltin{
 		Src: f.src,
 	}
-	fileScope, scopeOk := pkgScope.newFileScope(f.bFile, nil)
+	fileScope, scopeOk := pkgScope.newFileScope(f.bFile)
 	if !scopeOk {
 		return ext, nil, false
 	}
@@ -338,9 +339,12 @@ func processFuncLit(pscope procScope, src *ast.FuncLit) (*funcLiteral, bool) {
 }
 
 func (fn *funcLiteral) buildExpr(rscope resolveScope) (ir.Expr, bool) {
-	lit := &ir.FuncLit{Src: fn.src}
-	var fScope *funcResolveScope
+	lit := &ir.FuncLit{
+		Src:   fn.src,
+		FFile: rscope.fileScope().irFile(),
+	}
 	var ok bool
+	var fScope *funcResolveScope
 	lit.FType, fScope, ok = fn.ftype.buildFuncType(rscope)
 	if !ok {
 		return lit, false
@@ -363,18 +367,6 @@ func (fn *funcLiteral) source() ast.Node {
 
 func (fn *funcLiteral) String() string {
 	return fmt.Sprintf("func %s{...}", fn.ftype.String())
-}
-
-func declareMethod(fn function, recv *fieldList) declarator {
-	return func(rib *irBuilder, decls *ir.Declarations, node *declNode) bool {
-		recvName := recv.list[0].typ.source().(*ast.Ident).Name
-		tp := decls.TypeByName(recvName)
-		if tp == nil {
-			return rib.pkgScope.err().AppendInternalf(fn.source(), "cannot find register method %s for type %s: type declarations not found", fn.name().Name, recvName)
-		}
-		tp.Methods = append(tp.Methods, node.ir.(ir.PkgFunc))
-		return true
-	}
 }
 
 func convertArgNumbers(rscope resolveScope, fType *ir.FuncType, args []ir.AssignableExpr) ([]ir.AssignableExpr, bool) {
@@ -551,38 +543,8 @@ func buildFuncForCall(rscope resolveScope, fExpr *ir.FuncValExpr, args []ir.Assi
 	return fExpr, args, ok && checkArgsForCall(rscope, fExpr, args)
 }
 
-func setFuncFileField(irb *irBuilder, file *ir.File, store ir.Storage) (ir.PkgFunc, bool) {
-	switch nodeT := store.(type) {
-	case *ir.FuncDecl:
-		nodeT.FFile = file
-		return nodeT, true
-	case *ir.FuncBuiltin:
-		nodeT.FFile = file
-		return nodeT, true
-	case *ir.Macro:
-		nodeT.FFile = file
-		return nodeT, true
-	default:
-		return nil, irb.pkgScope.err().AppendInternalf(store.Source(), "cannot declare %T as a function: not supported", nodeT)
-	}
-}
-
-func funcDeclarator(bFile *file, fn function) declarator {
-	if fn != nil {
-		if recv := fn.receiver(); recv != nil {
-			return nil
-		}
-	}
-	return func(irb *irBuilder, decls *ir.Declarations, node *declNode) bool {
-		file, ok := buildParentNode[*ir.File](irb, decls, bFile)
-		if !ok {
-			return false
-		}
-		fn, ok := setFuncFileField(irb, file, node.ir)
-		if !ok {
-			return false
-		}
+func funcDeclarator(fn ir.PkgFunc) irb.Declarator {
+	return func(decls *ir.Declarations) {
 		decls.Funcs = append(decls.Funcs, fn)
-		return true
 	}
 }

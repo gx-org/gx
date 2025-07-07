@@ -190,7 +190,7 @@ func namedReturn() (a int32) {
 								X:       irh.IntNumberAs(2, ir.Int32Type()),
 							},
 						}},
-						&ir.ReturnStmt{},
+						&ir.ReturnStmt{Src: &ast.ReturnStmt{}},
 					)},
 			},
 		},

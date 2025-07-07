@@ -182,9 +182,6 @@ type (
 		Underlying *TypeValExpr
 
 		Methods []PkgFunc
-
-		// ID is the index of the NamedType in the package.
-		ID int
 	}
 
 	// StructType defines the type of a structure.
@@ -725,7 +722,7 @@ func (s *FuncType) equal(fetcher Fetcher, other *FuncType) (bool, error) {
 
 // ReceiverField returns a field representing the receiver of the function, or nil if the function has no receiver.
 func (s *FuncType) ReceiverField() *Field {
-	if s.Receiver == nil {
+	if s == nil || s.Receiver == nil { // The function type can be nil for builtin functions.
 		return nil
 	}
 	grp := s.Receiver.List[0]

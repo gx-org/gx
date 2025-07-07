@@ -19,6 +19,7 @@ import (
 	"go/ast"
 	"go/token"
 
+	"github.com/gx-org/gx/build/builder/irb"
 	"github.com/gx-org/gx/build/ir"
 )
 
@@ -29,7 +30,7 @@ type varSpec struct {
 	typ   typeExprNode
 }
 
-var _ parentNodeBuilder = (*varSpec)(nil)
+var _ irb.Node[*pkgResolveScope] = (*varSpec)(nil)
 
 func processVarDecl(pscope procScope, decl *ast.GenDecl) bool {
 	ok := true
@@ -63,32 +64,27 @@ func processVarSpec(pscope procScope, src *ast.ValueSpec) bool {
 	return typeOk && exprsOk && pscope.decls().registerStaticVar(spec)
 }
 
-func (spec *varSpec) buildSpecNode(rscope resolveScope) (*ir.VarSpec, bool) {
+func (spec *varSpec) Build(ibld irBuilder) (ir.Node, bool) {
 	ext := &ir.VarSpec{Src: spec.src}
-	if spec.typ == nil {
-		return ext, false
-	}
-	typeRef, ok := spec.typ.buildTypeExpr(rscope)
+	ibld.Register(varDeclarator(ext))
+	var ok bool
+	ext.FFile, ok = irBuild[*ir.File](ibld, spec.bFile)
 	if !ok {
 		return ext, false
 	}
-	return &ir.VarSpec{
-		Src:   spec.src,
-		TypeV: typeRef.Typ,
-	}, true
-}
-
-func (spec *varSpec) buildParentNode(irb *irBuilder, decls *ir.Declarations) (ir.Node, bool) {
-	fscope, scopeOk := irb.pkgScope.newFileScope(spec.bFile, nil)
-	ext, specOk := spec.buildSpecNode(fscope)
-	var fileOk bool
-	ext.FFile, fileOk = buildParentNode[*ir.File](irb, decls, spec.bFile)
-	decls.Vars = append(decls.Vars, ext)
-	return ext, scopeOk && specOk && fileOk
-}
-
-func (spec *varSpec) file() *file {
-	return spec.bFile
+	if spec.typ == nil {
+		return ext, false
+	}
+	fScope, ok := ibld.Scope().newFileScope(spec.bFile)
+	if !ok {
+		return nil, false
+	}
+	typeRef, ok := spec.typ.buildTypeExpr(fScope)
+	if !ok {
+		return ext, false
+	}
+	ext.TypeV = typeRef.Typ
+	return ext, true
 }
 
 type varExpr struct {
@@ -100,26 +96,21 @@ func (spec *varSpec) processVarExpr(pscope procScope, name *ast.Ident, value ast
 	return &varExpr{spec: spec, name: name}, true
 }
 
-func (vr *varExpr) build(pkgScope *pkgResolveScope) (*ir.VarExpr, bool) {
-	fscope, scopeOk := pkgScope.newFileScope(vr.spec.bFile, nil)
-	spec, specOk := vr.spec.buildSpecNode(fscope)
-	return &ir.VarExpr{Decl: spec, VName: vr.name}, specOk && scopeOk
+func (vr *varExpr) build(ibld irBuilder) (*ir.VarExpr, bool) {
+	ext := &ir.VarExpr{VName: vr.name}
+	var ok bool
+	ext.Decl, ok = irBuild[*ir.VarSpec](ibld, vr.spec)
+	ext.Decl.Exprs = append(ext.Decl.Exprs, ext)
+	return ext, ok
 }
 
 func (vr *varExpr) pNode() processNode {
 	return newProcessNode[*varExpr](token.VAR, vr.name, vr)
 }
 
-func varDeclarator(spec *varSpec) declarator {
-	return func(irb *irBuilder, decls *ir.Declarations, dNode *declNode) bool {
-		irSpec, ok := buildParentNode[*ir.VarSpec](irb, decls, spec)
-		if !ok {
-			return false
-		}
-		expr := dNode.ir.(*ir.VarExpr)
-		expr.Decl = irSpec
-		irSpec.Exprs = append(irSpec.Exprs, expr)
-		return true
+func varDeclarator(spec *ir.VarSpec) irb.Declarator {
+	return func(decls *ir.Declarations) {
+		decls.Vars = append(decls.Vars, spec)
 	}
 }
 
