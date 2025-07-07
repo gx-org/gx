@@ -24,7 +24,6 @@ import (
 
 	"github.com/gx-org/gx/build/ir"
 	"github.com/gx-org/gx/internal/interp/compeval/cpevelements"
-	"github.com/gx-org/gx/interp"
 )
 
 type directive int
@@ -198,7 +197,7 @@ func (f *syntheticFunc) buildSignature(pkgScope *pkgResolveScope) (ir.Func, iFun
 	if !compEvalOk {
 		return nil, nil, false
 	}
-	macro, err := interp.EvalExprInContext(compEval.ev, fCallExpr)
+	macro, err := compEval.ev.EvalExpr(fCallExpr)
 	if err != nil {
 		return nil, nil, fScope.err().AppendAt(f.macro.source(), err)
 	}

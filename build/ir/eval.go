@@ -20,28 +20,32 @@ import (
 
 	"github.com/pkg/errors"
 	"github.com/gx-org/gx/build/fmterr"
-	"github.com/gx-org/gx/internal/interp/canonical"
 )
 
-// Canonical is a canonical value with a IR representation.
-type Canonical interface {
-	Expr() (AssignableExpr, error)
-}
+type (
+	// Canonical is a canonical value with a IR representation.
+	Canonical interface {
+		Expr() (AssignableExpr, error)
+	}
 
-// Evaluator evaluates IR expressions into canonical values.
-type Evaluator interface {
-	File() *File
-	EvalExpr(Expr) (canonical.Canonical, error)
-}
+	// Element is a value returned by the evaluator.
+	Element any
 
-// Fetcher fetches scalar value from identifiers in the code.
-// A fetcher is required to sample tensor dimensions and,
-// consequently, to compare one type to another.
-type Fetcher interface {
-	Evaluator
-	Err() *fmterr.Appender
-	BuildExpr(ast.Expr) (Expr, bool)
-}
+	// Evaluator evaluates IR expressions into canonical values.
+	Evaluator interface {
+		File() *File
+		EvalExpr(Expr) (Element, error)
+	}
+
+	// Fetcher fetches scalar value from identifiers in the code.
+	// A fetcher is required to sample tensor dimensions and,
+	// consequently, to compare one type to another.
+	Fetcher interface {
+		Evaluator
+		Err() *fmterr.Appender
+		BuildExpr(ast.Expr) (Expr, bool)
+	}
+)
 
 func appendIdent(done map[string]bool, ids []*ValueRef, id *ValueRef) []*ValueRef {
 	if done[id.Src.Name] {

@@ -18,18 +18,13 @@ import (
 	"fmt"
 	"go/ast"
 	"go/token"
-	"reflect"
 
-	"github.com/pkg/errors"
 	gxfmt "github.com/gx-org/gx/base/fmt"
 	"github.com/gx-org/gx/build/fmterr"
 	"github.com/gx-org/gx/build/ir"
 	"github.com/gx-org/gx/internal/base/scope"
-	"github.com/gx-org/gx/internal/interp/canonical"
 	"github.com/gx-org/gx/internal/interp/compeval/cpevelements"
-	"github.com/gx-org/gx/interp/elements"
 	"github.com/gx-org/gx/interp/evaluator"
-	"github.com/gx-org/gx/interp"
 )
 
 type pkgScope struct {
@@ -64,16 +59,16 @@ func newEvaluator(scope resolveScope, ctx evaluator.Context) *compileEvaluator {
 	}
 }
 
-func (ev *compileEvaluator) update(rscope resolveScope, store ir.Storage, el elements.Element) (*compileEvaluator, bool) {
+func (ev *compileEvaluator) update(rscope resolveScope, store ir.Storage, el ir.Element) (*compileEvaluator, bool) {
 	name := store.NameDef().Name
-	subEval, err := ev.ev.Sub(map[string]elements.Element{name: el})
+	subEval, err := ev.ev.Sub(map[string]ir.Element{name: el})
 	if err != nil {
 		return ev, rscope.err().AppendInternalf(store.Source(), "cannot create compilation evaluation context: %v", err)
 	}
 	return newEvaluator(rscope, subEval), true
 }
 
-func (ev *compileEvaluator) sub(src ast.Node, vals map[string]elements.Element) (*compileEvaluator, bool) {
+func (ev *compileEvaluator) sub(src ast.Node, vals map[string]ir.Element) (*compileEvaluator, bool) {
 	ctx, err := ev.ev.Sub(vals)
 	if err != nil {
 		return nil, ev.scope.err().AppendInternalf(src, "cannot create subcontext: %v", err)
@@ -95,16 +90,8 @@ func (ev *compileEvaluator) BuildExpr(src ast.Expr) (ir.Expr, bool) {
 	return expr.buildExpr(ev.scope)
 }
 
-func (ev *compileEvaluator) EvalExpr(expr ir.Expr) (canonical.Canonical, error) {
-	val, err := interp.EvalExprInContext(ev.ev, expr)
-	if err != nil {
-		return nil, err
-	}
-	canonicalVal, ok := val.(canonical.Canonical)
-	if !ok {
-		return nil, errors.Errorf("cannot cast %T to %s", val, reflect.TypeFor[canonical.Canonical]().String())
-	}
-	return canonicalVal, nil
+func (ev *compileEvaluator) EvalExpr(expr ir.Expr) (ir.Element, error) {
+	return ev.ev.EvalExpr(expr)
 }
 
 func (ev *compileEvaluator) Err() *fmterr.Appender {
@@ -119,7 +106,7 @@ func defineGlobal(s *scope.RWScope[processNode], tok token.Token, name *ast.Iden
 	s.Define(name.Name, newProcessNode(tok, name, node))
 }
 
-func elementFromStorage(scope resolveScope, ev *compileEvaluator, node ir.Storage) (elements.Element, bool) {
+func elementFromStorage(scope resolveScope, ev *compileEvaluator, node ir.Storage) (ir.Element, bool) {
 	el, err := cpevelements.NewRuntimeValue(ev.ev, node)
 	if err != nil {
 		return el, scope.err().Append(err)
@@ -127,7 +114,7 @@ func elementFromStorage(scope resolveScope, ev *compileEvaluator, node ir.Storag
 	return el, true
 }
 
-func elementFromStorageWithValue(ev *compileEvaluator, node ir.StorageWithValue) (elements.Element, bool) {
+func elementFromStorageWithValue(ev *compileEvaluator, node ir.StorageWithValue) (ir.Element, bool) {
 	value := node.Value(&ir.ValueRef{
 		Src:  node.NameDef(),
 		Stor: node,
@@ -135,7 +122,7 @@ func elementFromStorageWithValue(ev *compileEvaluator, node ir.StorageWithValue)
 	if _, isType := value.(*ir.TypeValExpr); isType {
 		return nil, true
 	}
-	el, err := interp.EvalExprInContext(ev.ev, value)
+	el, err := ev.ev.EvalExpr(value)
 	if err != nil {
 		return nil, ev.scope.err().Appendf(node.Source(), "cannot evaluate expression %s. Original error:\n%+v", value.String(), err)
 	}
@@ -151,7 +138,7 @@ func defineLocalVar(scope resolveScope, storage ir.Storage) bool {
 	if !ok {
 		return false
 	}
-	var el elements.Element
+	var el ir.Element
 	var elOk bool
 	if withValue, hasValue := storage.(ir.StorageWithValue); hasValue {
 		el, elOk = elementFromStorageWithValue(ev, withValue)

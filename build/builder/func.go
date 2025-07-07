@@ -28,7 +28,6 @@ import (
 	"github.com/gx-org/gx/build/ir"
 	"github.com/gx-org/gx/internal/interp/compeval/cpevelements"
 	"github.com/gx-org/gx/interp/elements"
-	"github.com/gx-org/gx/interp"
 )
 
 type signatureNamespace struct {
@@ -397,7 +396,7 @@ func axisExprFrom(rscope resolveScope, ax ir.AxisLengths) (*ir.AxisExpr, bool) {
 	return nil, rscope.err().AppendInternalf(ax.Source(), "unknown axis length type: %T", ax)
 }
 
-func axisValuesFromArgumentValue(rscope resolveScope, compEval *compileEvaluator, src *ir.Field, val elements.Element) ([]elements.Element, bool) {
+func axisValuesFromArgumentValue(rscope resolveScope, compEval *compileEvaluator, src *ir.Field, val ir.Element) ([]elements.Element, bool) {
 	arrayElement, axOk := val.(elements.WithAxes)
 	if !axOk {
 		return nil, true
@@ -441,7 +440,7 @@ func buildSliceAxisValue(rscope resolveScope, arg ir.AssignableExpr, elts []elem
 	return elements.NewSlice(arg.Type(), elts), nil
 }
 
-func assignArgValueToName(rscope resolveScope, compEval *compileEvaluator, params map[string]elements.Element, param *ir.Field, arg ir.AssignableExpr, argVal elements.Element) bool {
+func assignArgValueToName(rscope resolveScope, compEval *compileEvaluator, params map[string]ir.Element, param *ir.Field, arg ir.AssignableExpr, argVal ir.Element) bool {
 	name := param.Name.Name
 	if ir.ValidName(name) {
 		params[name] = argVal
@@ -479,13 +478,13 @@ func assignArgValueToName(rscope resolveScope, compEval *compileEvaluator, param
 	return ok
 }
 
-func assignArgValueToParamName(rscope resolveScope, compEval *compileEvaluator, fExpr *ir.FuncValExpr, args []ir.AssignableExpr) (map[string]elements.Element, bool) {
-	params := make(map[string]elements.Element)
+func assignArgValueToParamName(rscope resolveScope, compEval *compileEvaluator, fExpr *ir.FuncValExpr, args []ir.AssignableExpr) (map[string]ir.Element, bool) {
+	params := make(map[string]ir.Element)
 	for i, param := range fExpr.T.Params.Fields() {
 		if param.Name == nil {
 			continue
 		}
-		argVal, err := interp.EvalExprInContext(compEval.ev, args[i])
+		argVal, err := compEval.ev.EvalExpr(args[i])
 		if err != nil {
 			return nil, rscope.err().AppendAt(fExpr.Source(), err)
 		}

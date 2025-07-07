@@ -29,7 +29,6 @@ import (
 	"github.com/gx-org/gx/build/ir"
 	"github.com/gx-org/gx/internal/base/scope"
 	"github.com/gx-org/gx/internal/interp/compeval"
-	"github.com/gx-org/gx/interp/elements"
 	"github.com/gx-org/gx/interp/evaluator"
 	"github.com/gx-org/gx/interp"
 )
@@ -261,7 +260,7 @@ type (
 		resolveScope
 		fType *ir.FuncType
 		nspc  *scope.RWScope[processNode]
-		names map[string]elements.Element
+		names map[string]ir.Element
 	}
 )
 
@@ -273,7 +272,7 @@ func newFuncScope(rscope resolveScope, fType *ir.FuncType) *funcResolveScope {
 		resolveScope: rscope,
 		fType:        fType,
 		nspc:         scope.NewScope(ns.ReadOnly()),
-		names:        make(map[string]elements.Element),
+		names:        make(map[string]ir.Element),
 	}
 }
 
@@ -289,7 +288,7 @@ func (s *funcResolveScope) find(key string) (processNode, bool) {
 	return s.nspc.Find(key)
 }
 
-func (s *funcResolveScope) update(store ir.Storage, el elements.Element) bool {
+func (s *funcResolveScope) update(store ir.Storage, el ir.Element) bool {
 	nameDef := store.NameDef()
 	s.nspc.Define(nameDef.Name, newProcessNode(token.VAR, nameDef, store))
 	s.names[nameDef.Name] = el
@@ -307,7 +306,7 @@ func (s *funcResolveScope) compEval() (*compileEvaluator, bool) {
 type (
 	localScope interface {
 		resolveScope
-		update(s ir.Storage, el elements.Element) bool
+		update(s ir.Storage, el ir.Element) bool
 	}
 
 	blockResolveScope struct {
@@ -340,7 +339,7 @@ func (s *blockResolveScope) find(key string) (processNode, bool) {
 	return s.nspc.Find(key)
 }
 
-func (s *blockResolveScope) update(store ir.Storage, el elements.Element) bool {
+func (s *blockResolveScope) update(store ir.Storage, el ir.Element) bool {
 	nameDef := store.NameDef()
 	pNode := newProcessNode(token.VAR, nameDef, store)
 	s.nspc.Define(nameDef.Name, pNode)

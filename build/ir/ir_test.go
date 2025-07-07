@@ -25,7 +25,6 @@ import (
 	"github.com/gx-org/gx/build/fmterr"
 	"github.com/gx-org/gx/build/ir"
 	"github.com/gx-org/gx/build/ir/irhelper"
-	"github.com/gx-org/gx/internal/interp/canonical"
 	"github.com/gx-org/gx/internal/interp/compeval"
 	"github.com/gx-org/gx/interp/evaluator"
 	"github.com/gx-org/gx/interp"
@@ -190,7 +189,7 @@ func (f *fetcherTesting) File() *ir.File {
 	return f.file
 }
 
-func (f *fetcherTesting) EvalExpr(expr ir.Expr) (canonical.Canonical, error) {
+func (f *fetcherTesting) EvalExpr(expr ir.Expr) (ir.Element, error) {
 	return compeval.EvalExpr(f.ctx, expr)
 }
 

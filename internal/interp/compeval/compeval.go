@@ -26,12 +26,11 @@ import (
 	"github.com/gx-org/gx/internal/interp/compeval/cpevelements"
 	"github.com/gx-org/gx/interp/elements"
 	"github.com/gx-org/gx/interp/evaluator"
-	"github.com/gx-org/gx/interp"
 )
 
 // EvalExpr evaluates a GX expression into an interpreter element.
 func EvalExpr(ctx evaluator.Context, expr ir.Expr) (cpevelements.Element, error) {
-	val, err := interp.EvalExprInContext(ctx, expr)
+	val, err := ctx.EvalExpr(expr)
 	if err != nil {
 		return nil, err
 	}
@@ -54,11 +53,11 @@ func NewOptionVariable(vr *ir.VarExpr) options.PackageOption {
 
 // EvalInt evaluates an expression to return an int.
 func EvalInt(fetcher ir.Fetcher, expr ir.Expr) (int, error) {
-	cVal, err := fetcher.EvalExpr(expr)
+	el, err := fetcher.EvalExpr(expr)
 	if err != nil {
 		return 0, err
 	}
-	val := canonical.ToValue(cVal)
+	val := canonical.ToValue(el)
 	if val == nil {
 		return 0, fmterr.Errorf(fetcher.File().FileSet(), expr.Source(), "expected axis literals, but expression %s cannot be evaluated at compile time", expr.String())
 	}
@@ -77,7 +76,7 @@ func EvalRank(fetcher ir.Fetcher, expr ir.Expr) (ir.ArrayRank, []canonical.Canon
 	}
 	slice, ok := rankVal.(*elements.Slice)
 	if !ok {
-		return nil, nil, fmterr.Internalf(fetcher.File().FileSet(), expr.Source(), "cannot build a rank from %s (%T): not supported", rankVal.String(), rankVal)
+		return nil, nil, fmterr.Internalf(fetcher.File().FileSet(), expr.Source(), "cannot build a rank from %s (%T): not supported", expr.String(), rankVal)
 	}
 	axes := make([]ir.AxisLengths, slice.Len())
 	cans := make([]canonical.Canonical, slice.Len())
