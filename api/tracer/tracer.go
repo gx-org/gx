@@ -18,9 +18,7 @@ package tracer
 
 import (
 	"fmt"
-	"strings"
 
-	"github.com/pkg/errors"
 	"github.com/gx-org/backend/ops"
 	"github.com/gx-org/gx/api"
 	"github.com/gx-org/gx/api/options"
@@ -30,10 +28,8 @@ import (
 	"github.com/gx-org/gx/build/ir"
 	"github.com/gx-org/gx/internal/tracer/cfunc"
 	"github.com/gx-org/gx/internal/tracer/processor"
-	"github.com/gx-org/gx/interp/elements"
 	"github.com/gx-org/gx/interp/grapheval"
 	"github.com/gx-org/gx/interp"
-	"github.com/gx-org/gx/interp/proxies"
 )
 
 type (
@@ -50,55 +46,6 @@ type (
 		Run(receiver values.Value, args []values.Value, tracer trace.Callback) ([]values.Value, error)
 	}
 )
-
-func funcInputsToElements(ev *grapheval.Evaluator, fn *ir.FuncDecl, receiver values.Value, args []values.Value) (*elements.InputElements, error) {
-	var recvEl elements.Element
-	if receiver != nil {
-		recvField := fn.FuncType().ReceiverField()
-		receiverProxy, err := proxies.ToProxy(receiver, recvField.Type())
-		if err != nil {
-			return nil, err
-		}
-		recvAt := elements.NewNodeAt(fn.File(), recvField)
-		if recvEl, err = ev.Receiver(recvAt, receiverProxy); err != nil {
-			return nil, err
-		}
-	}
-
-	paramFields := fn.FType.Params.Fields()
-	proxyArgs, err := proxies.ToProxies(args, paramFields)
-	if err != nil {
-		return nil, err
-	}
-	argsEl := make([]elements.Element, len(args))
-	for i, param := range paramFields {
-		if i >= len(args) {
-			missingParams := paramFields[len(args):]
-			builder := strings.Builder{}
-			for n, param := range missingParams {
-				if n > 0 {
-					builder.WriteString(", ")
-				}
-				builder.WriteString(param.Name.String())
-			}
-			return nil, errors.Errorf("missing parameter(s): %s", builder.String())
-		}
-		paramAt := elements.NewNodeAt(fn.File(), param)
-		argNode, err := ev.ArgGX(paramAt, i, proxyArgs)
-		if err != nil {
-			return nil, err
-		}
-		argsEl[i] = argNode
-	}
-	return &elements.InputElements{
-		Values: elements.InputValues{
-			Receiver: receiver,
-			Args:     args,
-		},
-		Receiver: recvEl,
-		Args:     argsEl,
-	}, nil
-}
 
 // Trace a function and returns a runner to run the function on the device.
 func Trace(dev *api.Device, fn *ir.FuncDecl, receiver values.Value, args []values.Value, options []options.PackageOption) (_ CompiledFunc, err error) {
@@ -121,7 +68,7 @@ func Trace(dev *api.Device, fn *ir.FuncDecl, receiver values.Value, args []value
 	ev := grapheval.New(dev.Runtime().Builder(), proc, tr.graph, interp.NewRunFunc)
 
 	// Transform the receiver and arguments values into elements for the interpreter.
-	in, err := funcInputsToElements(ev, fn, receiver, args)
+	in, err := ev.FuncInputsToElements(fn.File(), fn.FuncType(), receiver, args)
 	if err != nil {
 		return nil, err
 	}
