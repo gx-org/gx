@@ -48,7 +48,7 @@ type packageFrame struct {
 }
 
 func (ctx *Context) importPackage(imp *ir.ImportDecl) (*elements.Package, error) {
-	pkg, err := ctx.eval.evaluator.Importer().Import(imp.Path)
+	pkg, err := ctx.evaluator.Importer().Import(imp.Path)
 	if err != nil {
 		return nil, err
 	}
@@ -60,27 +60,27 @@ func (ctx *Context) importPackage(imp *ir.ImportDecl) (*elements.Package, error)
 }
 
 func (ctx *Context) packageFrame(pkg *ir.Package) (*packageFrame, error) {
-	pkgFrame := ctx.eval.packageToFrame[pkg]
+	pkgFrame := ctx.packageToFrame[pkg]
 	if pkgFrame != nil {
 		return pkgFrame, nil
 	}
 	pkgFrame = &packageFrame{
 		baseFrame: baseFrame{
-			scope: scope.NewScope(ctx.eval.builtin.scope),
+			scope: scope.NewScope(ctx.builtin.scope),
 		},
 		pkg:         pkg,
-		el:          elements.NewPackage(pkg, ctx.eval.evaluator.NewFunc),
+		el:          elements.NewPackage(pkg, ctx.evaluator.NewFunc),
 		fileToFrame: make(map[*ir.File]*fileFrame),
 	}
-	ctx.eval.packageToFrame[pkg] = pkgFrame
+	ctx.packageToFrame[pkg] = pkgFrame
 	for _, f := range pkgFrame.pkg.Decls.Funcs {
-		pkgFrame.Define(f.Name(), ctx.eval.evaluator.NewFunc(f, nil))
+		pkgFrame.Define(f.Name(), ctx.evaluator.NewFunc(f, nil))
 	}
 	if err := pkgFrame.evalPackageConsts(ctx); err != nil {
 		return nil, err
 	}
-	options := ctx.eval.packageOptions[pkg.FullName()]
-	if err := pkgFrame.evalPackageOptions(ctx.eval, options); err != nil {
+	options := ctx.packageOptions[pkg.FullName()]
+	if err := pkgFrame.evalPackageOptions(ctx, options); err != nil {
 		return nil, err
 	}
 	return pkgFrame, nil
@@ -113,9 +113,9 @@ func (fr *packageFrame) evalPackageConsts(ctx *Context) error {
 	return nil
 }
 
-func (fr *packageFrame) evalPackageOptions(ectx *evalContext, options []packageOption) error {
+func (fr *packageFrame) evalPackageOptions(ctx *Context, options []packageOption) error {
 	for _, option := range options {
-		if err := option(ectx, fr); err != nil {
+		if err := option(ctx, fr); err != nil {
 			return err
 		}
 	}

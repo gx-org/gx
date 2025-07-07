@@ -29,25 +29,25 @@ import (
 
 var builtinFile = &ir.File{Package: &ir.Package{Name: &ast.Ident{Name: "<interp>"}}}
 
-func (ectx *evalContext) defineBoolConstant(val ir.StorageWithValue) error {
+func (ctx *Context) defineBoolConstant(val ir.StorageWithValue) error {
 	gxValue, err := values.AtomBoolValue(ir.BoolType(), val.Value(nil).(*ir.AtomicValueT[bool]).Val)
 	if err != nil {
 		return err
 	}
-	el, err := ectx.evaluator.ElementFromAtom(elements.NewExprAt(builtinFile, val.Value(nil)), gxValue)
+	el, err := ctx.evaluator.ElementFromAtom(elements.NewExprAt(builtinFile, val.Value(nil)), gxValue)
 	if err != nil {
 		return err
 	}
-	ectx.builtin.scope.Define(val.NameDef().Name, el)
+	ctx.builtin.scope.Define(val.NameDef().Name, el)
 	return nil
 }
 
-func (ectx *evalContext) buildBuiltinFrame() error {
-	ectx.builtin = &baseFrame{scope: scope.NewScope[elements.Element](nil)}
-	if err := ectx.defineBoolConstant(ir.FalseStorage()); err != nil {
+func (ctx *Context) buildBuiltinFrame() error {
+	ctx.builtin = &baseFrame{scope: scope.NewScope[elements.Element](nil)}
+	if err := ctx.defineBoolConstant(ir.FalseStorage()); err != nil {
 		return err
 	}
-	if err := ectx.defineBoolConstant(ir.TrueStorage()); err != nil {
+	if err := ctx.defineBoolConstant(ir.TrueStorage()); err != nil {
 		return err
 	}
 	for name, impl := range map[string]ir.FuncImpl{
@@ -65,8 +65,8 @@ func (ectx *evalContext) buildBuiltinFrame() error {
 		if err != nil {
 			return err
 		}
-		elFunc := ectx.evaluator.NewFunc(irFunc, nil)
-		ectx.builtin.scope.Define(name, elFunc)
+		elFunc := ctx.evaluator.NewFunc(irFunc, nil)
+		ctx.builtin.scope.Define(name, elFunc)
 	}
 	return nil
 }
@@ -151,5 +151,5 @@ func (traceFunc) Implementation() any {
 
 func traceImpl(ctx evaluator.Context, call elements.CallAt, fn elements.Func, irFunc *ir.FuncBuiltin, args []elements.Element) ([]elements.Element, error) {
 	ctxT := ctx.(*Context)
-	return nil, ctxT.eval.evaluator.Trace(call, fn, irFunc, args, &ctxT.CallInputs().Values)
+	return nil, ctxT.evaluator.Trace(call, fn, irFunc, args, &ctxT.CallInputs().Values)
 }

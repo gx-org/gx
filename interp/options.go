@@ -22,9 +22,9 @@ import (
 	"github.com/gx-org/gx/interp/elements"
 )
 
-type packageOption func(ectx *evalContext, fr *packageFrame) error
+type packageOption func(ctx *Context, fr *packageFrame) error
 
-func (ectx *evalContext) processOptions(opts []options.PackageOption) error {
+func (ectx *Context) processOptions(opts []options.PackageOption) error {
 	for _, option := range opts {
 		var optFunc packageOption
 		var err error
@@ -59,7 +59,7 @@ func findVarExpr(pkg *ir.Package, name string) (*ir.VarExpr, error) {
 }
 
 func processPackageVarSetGXValue(opt options.PackageVarSetValue) (packageOption, error) {
-	return func(ctx *evalContext, fr *packageFrame) error {
+	return func(ctx *Context, fr *packageFrame) error {
 		vrExpr, err := findVarExpr(fr.pkg, opt.Var)
 		if err != nil {
 			return err
@@ -82,7 +82,7 @@ func processPackageVarSetGXValue(opt options.PackageVarSetValue) (packageOption,
 }
 
 func processPackageVarSetElement(opt elements.PackageVarSetElement) (packageOption, error) {
-	return func(ctx *evalContext, fr *packageFrame) error {
+	return func(ctx *Context, fr *packageFrame) error {
 		varExpr, err := findVarExpr(fr.pkg, opt.Var)
 		if err != nil {
 			return err

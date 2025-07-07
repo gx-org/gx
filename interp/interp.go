@@ -129,7 +129,7 @@ func dimsAsElements(ctx *Context, expr ir.AssignableExpr, dims []int) ([]element
 		if err != nil {
 			return nil, err
 		}
-		els[i], err = ctx.eval.evaluator.ElementFromAtom(elements.NewExprAt(ctx.File(), expr), val)
+		els[i], err = ctx.evaluator.ElementFromAtom(elements.NewExprAt(ctx.File(), expr), val)
 		if err != nil {
 			return nil, err
 		}

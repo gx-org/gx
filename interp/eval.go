@@ -85,7 +85,7 @@ func evalRangeForLoopOverInteger[T dtype.AlgebraType](ctx *Context, stmt *ir.Ran
 		if err != nil {
 			return nil, true, err
 		}
-		iElement, err := ctx.eval.evaluator.ElementFromAtom(elements.NewExprAt(ctx.File(), iExpr), iValue)
+		iElement, err := ctx.evaluator.ElementFromAtom(elements.NewExprAt(ctx.File(), iExpr), iValue)
 		if err != nil {
 			return nil, true, err
 		}
@@ -135,7 +135,7 @@ func evalRangeStmtForLoopOverArray[T dtype.AlgebraType](ctx *Context, stmt *ir.R
 		if err != nil {
 			return nil, false, err
 		}
-		iElement, err := ctx.eval.evaluator.ElementFromAtom(elements.NewExprAt(ctx.File(), iExpr), iValue)
+		iElement, err := ctx.evaluator.ElementFromAtom(elements.NewExprAt(ctx.File(), iExpr), iValue)
 		if err != nil {
 			return nil, false, err
 		}
@@ -319,11 +319,11 @@ var one, _ = values.AtomIntegerValue(ir.IntLenType(), ir.Int(1))
 
 func evalCastAtomToArrayExpr(ctx *Context, expr ir.TypeCastExpr, x elements.NumericalElement, axes []elements.NumericalElement) (elements.Element, error) {
 	srcExpr := elements.NewExprAt(ctx.File(), expr)
-	arrayOps := ctx.eval.evaluator.ArrayOps()
+	arrayOps := ctx.evaluator.ArrayOps()
 	shapeOfOnes := make([]elements.NumericalElement, len(axes))
 	for i := range axes {
 		var err error
-		shapeOfOnes[i], err = ctx.eval.evaluator.ElementFromAtom(srcExpr, one)
+		shapeOfOnes[i], err = ctx.evaluator.ElementFromAtom(srcExpr, one)
 		if err != nil {
 			return nil, err
 		}
@@ -379,7 +379,7 @@ func evalCastExpr(ctx *Context, expr ir.TypeCastExpr) (elements.Element, error) 
 		if !ok {
 			return nil, errors.Errorf("element %T cannot be copied", x)
 		}
-		return elements.NewNamedType(ctx.eval.evaluator.NewFunc, named, recv), nil
+		return elements.NewNamedType(ctx.evaluator.NewFunc, named, recv), nil
 	}
 	arrayType, ok := target.(ir.ArrayType)
 	if !ok {
@@ -437,7 +437,7 @@ func evalStructLiteral(ctx *Context, expr *ir.StructLitExpr) (elements.Element, 
 	if !ok {
 		return strct, nil
 	}
-	return elements.NewNamedType(ctx.eval.evaluator.NewFunc, nType, strct), nil
+	return elements.NewNamedType(ctx.evaluator.NewFunc, nType, strct), nil
 }
 
 func evalSliceLiteral(ctx *Context, expr *ir.SliceLitExpr) (elements.Element, error) {
@@ -452,6 +452,7 @@ func evalSliceLiteral(ctx *Context, expr *ir.SliceLitExpr) (elements.Element, er
 	return elements.NewSlice(expr.Type(), els), nil
 }
 
+// EvalExpr evaluates an IR expression.
 func (ctx *Context) EvalExpr(expr ir.Expr) (canonical.Canonical, error) {
 	el, err := ctx.evalExpr(expr)
 	if err != nil {
@@ -554,7 +555,7 @@ func evalSelectorExpr(ctx *Context, ref *ir.SelectorExpr) (elements.Element, err
 }
 
 func evalFuncLit(ctx *Context, ref *ir.FuncLit) (elements.Element, error) {
-	return ctx.eval.evaluator.NewFunc(ref, nil), nil
+	return ctx.evaluator.NewFunc(ref, nil), nil
 }
 
 func evalIndexExpr(ctx *Context, ref *ir.IndexExpr) (elements.Element, error) {
@@ -583,5 +584,5 @@ func evalEinsumExpr(ctx *Context, ref *ir.EinsumExpr) (elements.Element, error) 
 	if err != nil {
 		return nil, err
 	}
-	return ctx.eval.evaluator.ArrayOps().Einsum(elements.NewNodeAt(ctx.File(), ref), x, y)
+	return ctx.evaluator.ArrayOps().Einsum(elements.NewNodeAt(ctx.File(), ref), x, y)
 }
