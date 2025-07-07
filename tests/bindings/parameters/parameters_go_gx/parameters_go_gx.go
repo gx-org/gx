@@ -1141,7 +1141,7 @@ func (f *NewNotInSlice) String() string {
 // NewNotInSlice returns a handle on named type NotInSlice.
 func (fac *Factory) NewNotInSlice() *NotInSlice {
 	s := &NotInSlice{}
-	typ := fac.Package.Package.IR.Decls.Types[0]
+	typ := fac.Package.Package.IR.Decls.TypeByName("NotInSlice")
 	s.handle = handleNotInSlice{
 		pkg:   fac.Package,
 		struc: typ,
@@ -1200,7 +1200,7 @@ func (h *handleNotInSlice) SetField(field *ir.Field, val types.Bridge) error {
 // NewInSlice returns a handle on named type InSlice.
 func (fac *Factory) NewInSlice() *InSlice {
 	s := &InSlice{}
-	typ := fac.Package.Package.IR.Decls.Types[1]
+	typ := fac.Package.Package.IR.Decls.TypeByName("InSlice")
 	s.handle = handleInSlice{
 		pkg:   fac.Package,
 		struc: typ,
@@ -1259,7 +1259,7 @@ func (h *handleInSlice) SetField(field *ir.Field, val types.Bridge) error {
 // NewStruct returns a handle on named type Struct.
 func (fac *Factory) NewStruct() *Struct {
 	s := &Struct{}
-	typ := fac.Package.Package.IR.Decls.Types[2]
+	typ := fac.Package.Package.IR.Decls.TypeByName("Struct")
 	s.handle = handleStruct{
 		pkg:   fac.Package,
 		struc: typ,

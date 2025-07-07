@@ -18,9 +18,13 @@ import (
 	"go/ast"
 	"go/token"
 	"math/big"
+	"reflect"
 
 	"github.com/gx-org/gx/api/options"
 	gxfmt "github.com/gx-org/gx/base/fmt"
+	"github.com/gx-org/gx/base/ordered"
+	"github.com/gx-org/gx/build/builder/builtins"
+	"github.com/gx-org/gx/build/builder/irb"
 	"github.com/gx-org/gx/build/fmterr"
 	"github.com/gx-org/gx/build/ir"
 	"github.com/gx-org/gx/internal/base/scope"
@@ -30,85 +34,125 @@ import (
 	"github.com/gx-org/gx/interp"
 )
 
-var irBuiltins = map[string]processNode{}
-
-func init() {
-	// Builtin types.
-	registerBuiltinType("any", ir.AnyType())
-	registerBuiltinType("bool", ir.BoolType())
-	registerBuiltinType("bfloat16", ir.Bfloat16Type())
-	registerBuiltinType("float32", ir.Float32Type())
-	registerBuiltinType("float64", ir.Float64Type())
-	registerBuiltinType("int32", ir.Int32Type())
-	registerBuiltinType("int64", ir.Int64Type())
-	registerBuiltinType("string", ir.StringType())
-	registerBuiltinType("uint32", ir.Uint32Type())
-	registerBuiltinType("uint64", ir.Uint64Type())
-	registerBuiltinType("intlen", ir.IntLenType())
-	registerBuiltinType("intidx", ir.IntIndexType())
-
-	// Builtin values.
-	registerBuiltin(ir.FalseStorage())
-	registerBuiltin(ir.TrueStorage())
-
-	// Builtin functions.
-	registerFuncBuiltin(appendName, &appendFunc{})
-	registerFuncBuiltin("axlengths", &axlengthsFunc{})
-	registerFuncBuiltin("set", &setFunc{})
-	registerFuncBuiltin("trace", &traceFunc{})
-}
-
-func registerBuiltin(store ir.Storage) {
-	name := store.NameDef().Name
-	irBuiltins[name] = pNodeFromIR(token.CONST, name, store, nil)
-}
-
-func registerBuiltinType(name string, node ir.Type) {
-	registerBuiltin(ir.BuiltinStorage(name, &ir.TypeValExpr{Typ: node}))
-}
-
-func registerFuncBuiltin(name string, impl ir.FuncImpl) {
-	irBuiltins[name] = pNodeFromIR(token.FUNC, name, &ir.FuncBuiltin{
-		Src:  &ast.FuncDecl{Name: &ast.Ident{Name: name}},
-		Impl: impl,
-	}, nil)
-}
-
 type (
-	// pkgResolveScope is a package and its namespace with an error accumulator.
-	// This context is used in the resolve phase.
-	pkgResolveScope struct {
-		*pkgProcScope
-		// namedTypes maps build named types to IR named types.
-		namedTypes map[*namedType]*ir.NamedType
-		// Package namespace. Includes all the builtins as well as all package declarations.
-		nspace scope.Scope[processNode]
+	irBuilder = *irb.Builder[*pkgResolveScope]
+
+	cachedIR interface {
+		ir() ir.Node
 	}
 )
 
-func newPackageResolveScope(pscope *pkgProcScope) *pkgResolveScope {
-	ns := scope.NewScopeWithValues(irBuiltins)
-	ns = scope.NewReadOnly[processNode](ns, pscope.decls())
-	return &pkgResolveScope{
-		pkgProcScope: pscope,
-		nspace:       ns,
+func irBuild[N ir.Node](irs irBuilder, bNode irb.Node[*pkgResolveScope]) (N, bool) {
+	n, ok := irs.Build(bNode)
+	var nT N
+	if n != nil {
+		nT = n.(N)
 	}
+	return nT, ok
 }
 
-func (s *pkgResolveScope) packageContext() (*irBuilder, evaluator.EvaluationContext) {
+func irCache[N ir.Node](irs irBuilder, src ast.Node, bNode irb.Node[*pkgResolveScope]) (N, bool) {
+	var n ir.Node
+	if cached, isCached := bNode.(cachedIR); isCached {
+		n = cached.ir()
+	}
+	ok := true
+	if n == nil {
+		n, ok = irs.Cache(bNode)
+	}
+	var nT N
+	if !ok {
+		return nT, irs.Scope().err().AppendInternalf(src, "%T has not been built yet", bNode)
+	}
+	nT, ok = n.(N)
+	if !ok {
+		return nT, irs.Scope().err().AppendInternalf(src, "cannot cast %T to %s", n, reflect.TypeFor[N]().Name())
+	}
+	return nT, ok
+}
+
+// pkgResolveScope is a package and its namespace with an error accumulator.
+// This context is used in the resolve phase.
+type pkgResolveScope struct {
+	*pkgProcScope
+	// namedTypes maps build named types to IR named types.
+	namedTypes map[*namedType]*ir.NamedType
+	// methods is a mapping from type name to method name to method
+	methods *ordered.Map[*ir.NamedType, *ordered.Map[string, *irFunc]]
+	// nspcpace is the package namespace.
+	// Includes all the builtins as well as all package declarations.
+	nspc scope.Scope[processNode]
+	// ibld keeps track of all IR that have been built until now.
+	ibld irBuilder
+}
+
+func newPackageResolveScope(pscope *pkgProcScope) (*pkgResolveScope, bool) {
+	s := &pkgResolveScope{
+		pkgProcScope: pscope,
+		methods:      ordered.NewMap[*ir.NamedType, *ordered.Map[string, *irFunc]](),
+	}
+	pkg := pscope.bpkg.newPackageIR()
+	s.ibld = irb.New(s, pkg)
+	ok := true
+	for bFile := range pscope.bpkg.files.Values() {
+		irFile, fileOk := irBuild[*ir.File](s.ibld, bFile)
+		ok = ok && fileOk
+		pkg.Files[irFile.Name()] = irFile
+	}
+	irBuiltins := make(map[string]processNode)
+	builtinFile := newFile(s.bpkg, "", &ast.File{})
+	_, builtinFileOk := irBuild[*ir.File](s.ibld, builtinFile)
+	ok = ok && builtinFileOk
+	builtins.Register(func(tok token.Token, stor ir.Storage) {
+		var bOk bool
+		var pNode processNode
+		if tok == token.FUNC {
+			pNode, bOk = s.buildFuncProcessNode(builtinFile, stor)
+		} else {
+			pNode, bOk = s.buildStorageProcessNode(tok, stor)
+		}
+		ok = ok && bOk
+		irBuiltins[stor.NameDef().Name] = pNode
+	})
+	builtinNS := scope.NewScopeWithValues(irBuiltins)
+	s.nspc = scope.NewReadOnly[processNode](builtinNS, pscope.decls())
+	return s, ok
+}
+
+func (s *pkgResolveScope) buildFuncProcessNode(bFile *file, store ir.Storage) (processNode, bool) {
+	fn := store.(*ir.FuncBuiltin)
+	pNode := newProcessNode[function](token.FUNC, fn.Src.Name, &importedFunc{
+		file: bFile,
+		fn:   fn,
+	})
+	_, ok := irBuild[*ir.FuncBuiltin](s.ibld, pNode)
+	return pNode, ok
+}
+
+func (s *pkgResolveScope) buildStorageProcessNode(tok token.Token, store ir.Storage) (processNode, bool) {
+	pNode := newProcessNode(tok, store.NameDef(), store)
+	s.ibld.Set(pNode, store)
+	return pNode, true
+}
+
+func (s *pkgResolveScope) lastBuild() *lastBuild {
+	last := &lastBuild{
+		pkg:   s.ibld.Pkg(),
+		decls: s.dcls.declarations,
+	}
+	for methods := range s.methods.Values() {
+		for method := range methods.Values() {
+			last.methods = append(last.methods, method.pNode)
+		}
+	}
+	last.pkg.Decls = s.ibld.Decls()
+	return last
+}
+
+func (s *pkgResolveScope) packageContext() evaluator.EvaluationContext {
 	hostEval := compeval.NewHostEvaluator(s.bpkg.builder())
-	irb, ok := s.newIRBuilder()
-	if !ok {
-		return nil, nil
-	}
-	pkg := irb.irPkg()
-	decls, ok := s.dcls.collectDeclNodes(hasIR)
-	if !ok {
-		return nil, nil
-	}
-	if pkg.Decls, ok = buildDeclarations(irb, decls); !ok {
-		return nil, nil
-	}
+	pkg := s.ibld.Pkg()
+	pkg.Decls = s.ibld.Decls()
 	var opts []options.PackageOption
 	for _, decl := range pkg.Decls.Vars {
 		for _, vr := range decl.Exprs {
@@ -119,9 +163,9 @@ func (s *pkgResolveScope) packageContext() (*irBuilder, evaluator.EvaluationCont
 	ectx, err := interp.NewInterpContext(hostEval, opts)
 	if err != nil {
 		s.err().Append(err)
-		return nil, nil
+		return nil
 	}
-	return irb, ectx
+	return ectx
 }
 
 func (s *pkgResolveScope) namedTypeIR(nType *namedType) *ir.NamedType {
@@ -129,137 +173,106 @@ func (s *pkgResolveScope) namedTypeIR(nType *namedType) *ir.NamedType {
 }
 
 func (s *pkgResolveScope) String() string {
-	return gxfmt.String(s.nspace)
+	return gxfmt.String(s.nspc)
 }
 
 type (
 	resolveScope interface {
-		fileScope() *fileResolveScope // TODO(degris): replace this method with irBuilder.
-		ns() *scope.RWScope[processNode]
+		nspace() *scope.RWScope[processNode]
+		find(name string) (processNode, bool)
+		fileScope() *fileResolveScope
 		err() *fmterr.Appender
 		compEval() (*compileEvaluator, bool)
+		irBuilder() irBuilder
 	}
-
-	pNodeProcessor func(processNode) bool
 
 	fileResolveScope struct {
 		*pkgResolveScope
 
-		bFile  *file
-		ev     *compileEvaluator
-		nspace *scope.RWScope[processNode]
-		deps   map[string]*importedPackage
-		proc   pNodeProcessor // TODO(degris): remove this by running two passes for constants.
+		bF   *file
+		irF  *ir.File
+		ev   *compileEvaluator
+		nspc *scope.RWScope[processNode]
+		deps map[string]*importedPackage
 	}
 )
 
 var _ resolveScope = (*fileResolveScope)(nil)
 
-func (s *pkgResolveScope) newFileScope(f *file, proc pNodeProcessor) (*fileResolveScope, bool) {
+func (s *pkgResolveScope) newFileScope(f *file) (*fileResolveScope, bool) {
 	fScope := &fileResolveScope{
 		pkgResolveScope: s,
-		bFile:           f,
-		nspace:          scope.NewScope(s.nspace),
+		bF:              f,
+		nspc:            scope.NewScope(s.nspc),
 		deps:            make(map[string]*importedPackage),
-		proc:            proc,
 	}
 	ok := true
 	for _, decl := range f.imports {
 		dep, depOk := importPackage(s, decl)
-		name := decl.Name()
-		defineGlobal(fScope.nspace, token.IMPORT, name, decl)
-		fScope.deps[name] = dep
+		defineGlobal(fScope.nspc, token.IMPORT, decl.NameDef(), decl)
+		fScope.deps[decl.Name()] = dep
 		ok = ok && depOk
 	}
-	return fScope, ok
-}
-
-func (s *fileResolveScope) process(pNode processNode) bool {
-	if s.proc == nil {
-		return true
-	}
-	return s.proc(pNode)
+	var fileOk bool
+	fScope.irF, fileOk = irBuild[*ir.File](s.ibld, fScope.bFile())
+	return fScope, ok && fileOk
 }
 
 func (s *fileResolveScope) compEval() (*compileEvaluator, bool) {
-	irb, pkgctx := s.pkgResolveScope.packageContext()
-	if pkgctx == nil {
-		return nil, false
-	}
-	ctx, err := pkgctx.NewFileContext(&ir.File{
-		Package: irb.pkg,
-		Src:     s.bFile.src,
-		Imports: s.bFile.imports,
-	})
+	pkgctx := s.pkgResolveScope.packageContext()
+	ctx, err := pkgctx.NewFileContext(s.irFile())
 	if err != nil {
 		return nil, s.err().Append(err)
 	}
-	return newEvaluator(s, irb, ctx)
+	return newEvaluator(s, ctx), true
 }
 
 func (s *fileResolveScope) fileScope() *fileResolveScope {
 	return s
 }
 
-func (s *fileResolveScope) ns() *scope.RWScope[processNode] {
-	return s.nspace
+func (s *fileResolveScope) bFile() *file {
+	return s.bF
 }
 
-func (s *fileResolveScope) File() *file {
-	return s.bFile
+func (s *fileResolveScope) irFile() *ir.File {
+	return s.irF
 }
 
-func (s *fileResolveScope) funcType() *ir.FuncType {
-	return nil
+func (s *fileResolveScope) irBuilder() irBuilder {
+	return s.pkgResolveScope.ibld
 }
 
-type constResolveScope struct {
-	resolveScope
+func (s *fileResolveScope) find(name string) (processNode, bool) {
+	return s.nspc.Find(name)
 }
 
-func newConstResolveScope(pkgScope *pkgResolveScope, f *file) (*constResolveScope, bool) {
-	s := &constResolveScope{}
-	var ok bool
-	s.resolveScope, ok = pkgScope.newFileScope(f, s.proc)
-	return s, ok
-}
-
-func (s *constResolveScope) proc(pNode processNode) bool {
-	if pNode.token() != token.CONST {
-		return s.err().Appendf(pNode.ident(), "%s:%s is not constant", pNode.ident().Name, pNode.token())
-	}
-	if pNode.ir() != nil {
-		return true
-	}
-	cstNode := pNode.(*processNodeT[*constExpr])
-	cst, cstOk := cstNode.node.buildExpr(s)
-	cstNode.setDeclNode(cst, constDeclarator(cstNode.node.spec))
-	return cstOk
+func (s *fileResolveScope) nspace() *scope.RWScope[processNode] {
+	return s.nspc
 }
 
 type (
 	iFuncResolveScope interface {
 		resolveScope
 		funcType() *ir.FuncType
-		declarator(fn function) declarator
 	}
 
 	funcResolveScope struct {
 		resolveScope
-		fType  *ir.FuncType
-		nspace *scope.RWScope[processNode]
-		names  map[string]elements.Element
+		fType *ir.FuncType
+		nspc  *scope.RWScope[processNode]
+		names map[string]elements.Element
 	}
 )
 
 var _ localScope = (*funcResolveScope)(nil)
 
 func newFuncScope(rscope resolveScope, fType *ir.FuncType) *funcResolveScope {
-	ns := scope.NewScope(rscope.ns())
+	ns := scope.NewScope(rscope.nspace())
 	return &funcResolveScope{
 		resolveScope: rscope,
 		fType:        fType,
-		nspace:       scope.NewScope(ns.ReadOnly()),
+		nspc:         scope.NewScope(ns.ReadOnly()),
 		names:        make(map[string]elements.Element),
 	}
 }
@@ -268,14 +281,18 @@ func (s *funcResolveScope) funcType() *ir.FuncType {
 	return s.fType
 }
 
-func (s *funcResolveScope) ns() *scope.RWScope[processNode] {
-	return s.nspace
+func (s *funcResolveScope) nspace() *scope.RWScope[processNode] {
+	return s.nspc
+}
+
+func (s *funcResolveScope) find(key string) (processNode, bool) {
+	return s.nspc.Find(key)
 }
 
 func (s *funcResolveScope) update(store ir.Storage, el elements.Element) bool {
-	name := store.NameDef().Name
-	s.nspace.Define(name, pNodeFromIR(token.VAR, name, store, nil))
-	s.names[name] = el
+	nameDef := store.NameDef()
+	s.nspc.Define(nameDef.Name, newProcessNode(token.VAR, nameDef, store))
+	s.names[nameDef.Name] = el
 	return true
 }
 
@@ -287,10 +304,6 @@ func (s *funcResolveScope) compEval() (*compileEvaluator, bool) {
 	return fileCEval.sub(s.fType.Source(), s.names)
 }
 
-func (s *funcResolveScope) declarator(fn function) declarator {
-	return funcDeclarator(s.resolveScope.fileScope().bFile, fn)
-}
-
 type (
 	localScope interface {
 		resolveScope
@@ -299,7 +312,7 @@ type (
 
 	blockResolveScope struct {
 		iFuncResolveScope
-		nspace   *scope.RWScope[processNode]
+		nspc     *scope.RWScope[processNode]
 		compeval *compileEvaluator
 	}
 )
@@ -309,7 +322,7 @@ var _ localScope = (*blockResolveScope)(nil)
 func newBlockScope(rscope iFuncResolveScope) (*blockResolveScope, bool) {
 	s := &blockResolveScope{
 		iFuncResolveScope: rscope,
-		nspace:            scope.NewScope(rscope.ns()),
+		nspc:              scope.NewScope(rscope.nspace()),
 	}
 	parentCompEval, ok := s.iFuncResolveScope.compEval()
 	if !ok {
@@ -319,13 +332,19 @@ func newBlockScope(rscope iFuncResolveScope) (*blockResolveScope, bool) {
 	return s, ok
 }
 
-func (s *blockResolveScope) ns() *scope.RWScope[processNode] {
-	return s.nspace
+func (s *blockResolveScope) nspace() *scope.RWScope[processNode] {
+	return s.nspc
+}
+
+func (s *blockResolveScope) find(key string) (processNode, bool) {
+	return s.nspc.Find(key)
 }
 
 func (s *blockResolveScope) update(store ir.Storage, el elements.Element) bool {
-	name := store.NameDef().Name
-	s.nspace.Define(name, pNodeFromIR(token.VAR, name, store, nil))
+	nameDef := store.NameDef()
+	pNode := newProcessNode(token.VAR, nameDef, store)
+	s.nspc.Define(nameDef.Name, pNode)
+	s.irBuilder().Set(pNode, store)
 	var ok bool
 	s.compeval, ok = s.compeval.update(s, store, el)
 	return ok

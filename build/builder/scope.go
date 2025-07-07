@@ -53,20 +53,15 @@ type compileEvaluator struct {
 	scope resolveScope
 	irb   *irBuilder
 	ev    evaluator.Context
-
-	file *ir.File
 }
 
 var _ ir.Fetcher = (*compileEvaluator)(nil)
 
-func newEvaluator(scope resolveScope, irb *irBuilder, ctx evaluator.Context) (*compileEvaluator, bool) {
-	file, ok := buildParentNode[*ir.File](irb, nil, scope.fileScope().bFile)
+func newEvaluator(scope resolveScope, ctx evaluator.Context) *compileEvaluator {
 	return &compileEvaluator{
 		scope: scope,
-		irb:   irb,
 		ev:    ctx,
-		file:  file,
-	}, ok
+	}
 }
 
 func (ev *compileEvaluator) update(rscope resolveScope, store ir.Storage, el elements.Element) (*compileEvaluator, bool) {
@@ -75,7 +70,7 @@ func (ev *compileEvaluator) update(rscope resolveScope, store ir.Storage, el ele
 	if err != nil {
 		return ev, rscope.err().AppendInternalf(store.Source(), "cannot create compilation evaluation context: %v", err)
 	}
-	return newEvaluator(rscope, ev.irb, subEval)
+	return newEvaluator(rscope, subEval), true
 }
 
 func (ev *compileEvaluator) sub(src ast.Node, vals map[string]elements.Element) (*compileEvaluator, bool) {
@@ -83,15 +78,15 @@ func (ev *compileEvaluator) sub(src ast.Node, vals map[string]elements.Element) 
 	if err != nil {
 		return nil, ev.scope.err().AppendInternalf(src, "cannot create subcontext: %v", err)
 	}
-	return newEvaluator(ev.scope, ev.irb, ctx)
+	return newEvaluator(ev.scope, ctx), true
 }
 
 func (ev *compileEvaluator) File() *ir.File {
-	return ev.file
+	return ev.ev.File()
 }
 
 func (ev *compileEvaluator) BuildExpr(src ast.Expr) (ir.Expr, bool) {
-	file := ev.scope.fileScope().bFile
+	file := ev.scope.fileScope().bFile()
 	pscope := ev.scope.fileScope().pkgProcScope.newScope(file)
 	expr, ok := processExpr(pscope, src)
 	if !ok {
@@ -120,8 +115,8 @@ func (ev *compileEvaluator) String() string {
 	return gxfmt.String(ev.ev)
 }
 
-func defineGlobal(s *scope.RWScope[processNode], tok token.Token, name string, node ir.Storage) {
-	s.Define(name, pNodeFromIR(tok, name, node, nil))
+func defineGlobal(s *scope.RWScope[processNode], tok token.Token, name *ast.Ident, node ir.Storage) {
+	s.Define(name.Name, newProcessNode(tok, name, node))
 }
 
 func elementFromStorage(scope resolveScope, ev *compileEvaluator, node ir.Storage) (elements.Element, bool) {

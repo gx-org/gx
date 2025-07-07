@@ -62,7 +62,7 @@ func (n *sliceType) source() ast.Node {
 func (n *sliceType) buildTypeExpr(rscope resolveScope) (*ir.TypeValExpr, bool) {
 	dtypeExpr, ok := n.dtype.buildTypeExpr(rscope)
 	expr := &ir.SliceType{
-		BaseType: baseType(n.src),
+		BaseType: ir.BaseType[*ast.ArrayType]{Src: n.src},
 		Rank:     n.rank,
 		DType:    dtypeExpr,
 	}

@@ -79,7 +79,10 @@ func TestConstWithType(t *testing.T) {
 	cstIntA := &ir.ConstExpr{
 		Decl:  &ir.ConstSpec{Type: irh.TypeRef(ir.Int32Type())},
 		VName: irh.Ident("cstIntA"),
-		Val:   &ir.NumberInt{Val: big.NewInt(5)},
+		Val: &ir.NumberCastExpr{
+			X:   &ir.NumberInt{Val: big.NewInt(5)},
+			Typ: ir.Int32Type(),
+		},
 	}
 	cstIntA.Decl.Exprs = append(cstIntA.Decl.Exprs, cstIntA)
 	testbuild.Run(t,

@@ -18,19 +18,20 @@ import (
 	"fmt"
 	"go/ast"
 	"go/token"
+	"reflect"
 	"strings"
 
+	"github.com/pkg/errors"
+	"github.com/gx-org/gx/build/builder/irb"
 	"github.com/gx-org/gx/build/fmterr"
 	"github.com/gx-org/gx/build/ir"
 )
 
 type (
 	processNode interface {
+		irb.Node[*pkgResolveScope]
 		ident() *ast.Ident
-		declNode() *declNode
-		ir() ir.Storage
 		token() token.Token
-		clone() processNode
 		bNode() any
 	}
 
@@ -41,12 +42,14 @@ type (
 
 	processNodeT[T any] struct {
 		id   nodeID
-		decl *declNode
 		node T
 	}
 )
 
-var _ processNode = (*processNodeT[bool])(nil)
+var (
+	_ processNode = (*processNodeT[bool])(nil)
+	_ cachedIR    = (*processNodeT[bool])(nil)
+)
 
 func newProcessNode[T any](tok token.Token, id *ast.Ident, node T) *processNodeT[T] {
 	return &processNodeT[T]{
@@ -58,19 +61,16 @@ func newProcessNode[T any](tok token.Token, id *ast.Ident, node T) *processNodeT
 	}
 }
 
-func (p *processNodeT[T]) ident() *ast.Ident {
-	return p.id.ident
-}
-
-func (p *processNodeT[T]) declNode() *declNode {
-	return p.decl
-}
-
-func (p *processNodeT[T]) ir() ir.Storage {
-	if p.decl == nil {
+func (p *processNodeT[T]) ir() ir.Node {
+	node, ok := any(p.node).(ir.Node)
+	if !ok {
 		return nil
 	}
-	return p.decl.ir
+	return node
+}
+
+func (p *processNodeT[T]) ident() *ast.Ident {
+	return p.id.ident
 }
 
 func (p *processNodeT[T]) token() token.Token {
@@ -81,12 +81,12 @@ func (p *processNodeT[T]) bNode() any {
 	return p.node
 }
 
-func (p *processNodeT[T]) clone() processNode {
-	cloner, ok := any(p.node).(cloner)
+func (p *processNodeT[T]) Build(ibld irBuilder) (ir.Node, bool) {
+	iNode, ok := any(p.node).(irb.Node[*pkgResolveScope])
 	if !ok {
-		return pNodeFromIR(p.decl.id.tok, p.decl.id.ident.Name, p.decl.ir, p.decl.declare)
+		return nil, ibld.Scope().err().Append(fmterr.Internal(errors.Errorf("cannot cast %T to %s", p.node, reflect.TypeFor[irb.Node[*pkgResolveScope]]().Name())))
 	}
-	return newProcessNode[T](p.id.tok, p.id.ident, cloner.clone().(T))
+	return ibld.Build(iNode)
 }
 
 // pkgProcScope is a package and its namespace with an error accumulator.
@@ -105,8 +105,9 @@ func newPackageProcScope(overwriteOk bool, pkg *basePackage, errs *fmterr.Errors
 	}
 	scope.dcls = newDecls(overwriteOk, scope)
 	for node := range pkg.last.decls.Values() {
-		scope.dcls.declarePackageName(node.clone())
+		scope.dcls.declarePackageName(node)
 	}
+	scope.dcls.methods = append([]*processNodeT[function]{}, pkg.last.methods...)
 	return scope
 }
 

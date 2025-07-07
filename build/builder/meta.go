@@ -165,8 +165,8 @@ func (f *syntheticFunc) name() *ast.Ident {
 	return f.src.Name
 }
 
-func (f *syntheticFunc) receiver() *fieldList {
-	return nil
+func (f *syntheticFunc) isMethod() bool {
+	return false
 }
 
 func (f *syntheticFunc) compEval() bool {
@@ -179,7 +179,10 @@ type macroResolveScope struct {
 }
 
 func (f *syntheticFunc) buildSignature(pkgScope *pkgResolveScope) (ir.Func, iFuncResolveScope, bool) {
-	fScope, ok := pkgScope.newFileScope(f.bFile, nil)
+	fScope, ok := pkgScope.newFileScope(f.bFile)
+	if !ok {
+		return nil, nil, false
+	}
 	callExpr, ok := f.macro.buildExpr(fScope)
 	if !ok {
 		return nil, nil, false
@@ -199,7 +202,7 @@ func (f *syntheticFunc) buildSignature(pkgScope *pkgResolveScope) (ir.Func, iFun
 	if err != nil {
 		return nil, nil, fScope.err().AppendAt(f.macro.source(), err)
 	}
-	ext := &ir.FuncDecl{Src: f.src}
+	ext := &ir.FuncDecl{Src: f.src, FFile: fScope.irFile()}
 	sFunc, ok := macro.(*cpevelements.SyntheticFunc)
 	if !ok {
 		return nil, nil, fScope.err().AppendInternalf(f.macro.source(), "cannot convert %T to %s", macro, reflect.TypeFor[*cpevelements.SyntheticFunc]())

@@ -18,6 +18,7 @@ import (
 	"go/ast"
 	"go/token"
 
+	"github.com/gx-org/gx/build/builder/builtins"
 	"github.com/gx-org/gx/build/ir"
 )
 
@@ -36,12 +37,12 @@ var _ assignable = (*identStorage)(nil)
 
 func (asg *identStorage) assign(rscope resolveScope, typ ir.Type) (_ ir.Storage, newName, ok bool) {
 	name := asg.target.src.Name
-	defined, isDefined := rscope.ns().Find(name)
+	defined, isDefined := rscope.find(name)
 	if !isDefined {
 		return nil, false, rscope.err().Appendf(asg.source(), "undefined: %s", name)
 	}
-	assignable, assignableOk := defined.ir().(ir.Storage)
-	isStorage := rscope.ns().CanAssign(name)
+	assignable, assignableOk := irCache[ir.Storage](rscope.irBuilder(), asg.source(), defined)
+	isStorage := rscope.nspace().CanAssign(name)
 	if !assignableOk || !isStorage {
 		return nil, false, rscope.err().Appendf(asg.source(), "cannot assign a value to %s", name)
 	}
@@ -50,11 +51,11 @@ func (asg *identStorage) assign(rscope resolveScope, typ ir.Type) (_ ir.Storage,
 
 func (asg *identStorage) define(rscope resolveScope, typ ir.Type) (_ ir.Storage, newName, ok bool) {
 	name := asg.target.src.Name
-	_, isDefined := rscope.ns().Find(name)
-	if irBuiltins[name] != nil {
+	_, isDefined := rscope.find(name)
+	if builtins.Is(name) {
 		// If the name is a builtin, it will already be defined in one of the parent scope.
 		// Check if that builtin is defined in the local scope instead.
-		isDefined = rscope.ns().LocalFind(name)
+		isDefined = rscope.nspace().IsLocal(name)
 	}
 	if ir.IsNumber(typ.Kind()) {
 		typ = ir.DefaultNumberType(typ.Kind())

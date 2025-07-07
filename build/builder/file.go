@@ -18,6 +18,7 @@ import (
 	"go/ast"
 	"go/token"
 
+	"github.com/gx-org/gx/build/builder/irb"
 	"github.com/gx-org/gx/build/ir"
 )
 
@@ -27,6 +28,8 @@ type file struct {
 	name    string
 	imports []*ir.ImportDecl
 }
+
+var _ irb.Node[*pkgResolveScope] = (*file)(nil)
 
 func newFile(pkg *basePackage, name string, src *ast.File) *file {
 	f := &file{
@@ -87,13 +90,10 @@ func (f *file) file() *file {
 	return f
 }
 
-func (f *file) buildParentNode(irb *irBuilder, decls *ir.Declarations) (ir.Node, bool) {
-	pkg := irb.irPkg()
-	file := &ir.File{
+func (f *file) Build(irb irBuilder) (ir.Node, bool) {
+	return &ir.File{
 		Src:     f.src,
 		Imports: f.imports,
-		Package: pkg,
-	}
-	pkg.Files[f.name] = file
-	return file, true
+		Package: irb.Pkg(),
+	}, true
 }

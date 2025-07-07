@@ -18,6 +18,7 @@ import (
 	"fmt"
 	"go/ast"
 	"go/token"
+	"reflect"
 	"slices"
 	"sort"
 	"strings"
@@ -28,72 +29,6 @@ import (
 	"github.com/gx-org/gx/internal/base/scope"
 	"github.com/gx-org/gx/internal/interp/compeval/cpevelements"
 )
-
-type (
-	parentNodeBuilder interface {
-		buildParentNode(*irBuilder, *ir.Declarations) (ir.Node, bool)
-		file() *file
-	}
-
-	irBuilder struct {
-		pkgScope *pkgResolveScope
-		built    map[parentNodeBuilder]ir.Node
-		pkg      *ir.Package
-	}
-)
-
-func (s *pkgResolveScope) newIRBuilder() (*irBuilder, bool) {
-	irb := &irBuilder{
-		pkgScope: s,
-		built:    make(map[parentNodeBuilder]ir.Node),
-		pkg:      s.bpkg.newPackageIR(),
-	}
-	ok := true
-	for file := range s.bpkg.files.Values() {
-		_, fileOk := buildParentNode[*ir.File](irb, irb.pkg.Decls, file)
-		ok = ok && fileOk
-	}
-	return irb, ok
-}
-
-func (irb *irBuilder) irPkg() *ir.Package {
-	return irb.pkg
-}
-
-type (
-	declarator func(*irBuilder, *ir.Declarations, *declNode) bool
-
-	declNode struct {
-		pNode   processNode
-		id      nodeID
-		ir      ir.Storage
-		declare declarator
-	}
-)
-
-func (d *declNode) clone() processNode {
-	return d.pNode.clone()
-}
-
-func (p *processNodeT[T]) setDeclNode(ir ir.Storage, declare declarator) *declNode {
-	p.decl = &declNode{pNode: p, id: p.id, ir: ir, declare: declare}
-	return p.decl
-}
-
-// buildParentNode builds a IR node if it has not been done before.
-// Use for *ir.ConstDecl and *ir.VarDecl
-func buildParentNode[T ir.Node](irb *irBuilder, decls *ir.Declarations, bld parentNodeBuilder) (t T, ok bool) {
-	node, ok := irb.built[bld]
-	if ok {
-		return node.(T), true
-	}
-	node, ok = bld.buildParentNode(irb, decls)
-	if !ok {
-		return node.(T), false
-	}
-	irb.built[bld] = node
-	return node.(T), true
-}
 
 type decls struct {
 	pkgScope *pkgProcScope
@@ -131,7 +66,7 @@ func (d *decls) declarePackageName(node processNode) (ok bool) {
 
 func (d *decls) registerFunc(fun function) (*processNodeT[function], bool) {
 	pNode := newProcessNode[function](token.FUNC, fun.name(), fun)
-	if fun.receiver() != nil {
+	if fun.isMethod() {
 		d.methods = append(d.methods, pNode)
 		return pNode, true
 	}
@@ -152,11 +87,6 @@ func (d *decls) registerConst(spec *constSpec) bool {
 		ok = d.declarePackageName(expr.pNode()) && ok
 	}
 	return ok
-}
-
-type irNamedType struct {
-	bType  *namedType
-	irType *ir.NamedType
 }
 
 type nodeFilter func(processNode) bool
@@ -201,37 +131,43 @@ func filterTok(tokens ...token.Token) func(processNode) bool {
 	}
 }
 
-func filterToBuild(n processNode) bool {
-	return n.declNode() == nil
-}
-
-func hasIR(n processNode) bool {
-	dNode := n.declNode()
-	if dNode == nil {
-		return false
-	}
-	return dNode.ir != nil
+type bConstExpr struct {
+	bConst iConstExpr
+	ext    *ir.ConstExpr
 }
 
 func (d *decls) resolveAll(pkgScope *pkgResolveScope) bool {
-	// Build named types header. The underlying types are not being resolved yet.
-	var namedTypes []*irNamedType
-	for pNode := range iterToken[*namedType](d.declarations, filterTok(token.TYPE), filterToBuild) {
-		namedType, declarator := pNode.node.build(pkgScope)
-		namedTypes = append(namedTypes, namedType)
-		pNode.setDeclNode(namedType.irType, declarator)
-	}
 	ok := true
+	// Build named types header. The underlying types are not being resolved yet.
+	var nTypes []*irNamedType
+	for pNode := range iterToken[*namedType](d.declarations, filterTok(token.TYPE)) {
+		nType, nTypeOk := pNode.node.build(pkgScope.ibld)
+		pkgScope.ibld.Set(pNode, nType.ext)
+		nTypes = append(nTypes, nType)
+		ok = ok && nTypeOk
+	}
 	// Build all variables.
-	for pNode := range iterToken[*varExpr](d.declarations, filterTok(token.VAR), filterToBuild) {
-		vr, vrOk := pNode.node.build(pkgScope)
-		pNode.setDeclNode(vr, varDeclarator(pNode.node.spec))
+	for pNode := range iterToken[*varExpr](d.declarations, filterTok(token.VAR)) {
+		ext, vrOk := pNode.node.build(pkgScope.ibld)
+		pkgScope.ibld.Set(pNode, ext)
 		ok = ok && vrOk
 	}
 	// Build all constants.
-	for pNode := range iterToken[*constExpr](d.declarations, filterTok(token.CONST), filterToBuild) {
-		cst, cstOk := pNode.node.build(pkgScope)
-		pNode.setDeclNode(cst, constDeclarator(pNode.node.spec))
+	var consts []bConstExpr
+	for pNode := range iterToken[iConstExpr](d.declarations, filterTok(token.CONST)) {
+		ext, cstOk := pNode.node.buildDeclaration(pkgScope.ibld)
+		consts = append(consts, bConstExpr{
+			bConst: pNode.node,
+			ext:    ext,
+		})
+		pkgScope.ibld.Set(pNode, ext)
+		ok = ok && cstOk
+	}
+	if !ok {
+		return false
+	}
+	for _, cst := range consts {
+		cstOk := cst.bConst.buildExpression(pkgScope.ibld, cst.ext)
 		ok = ok && cstOk
 	}
 	// Build compeval function signature.
@@ -239,8 +175,8 @@ func (d *decls) resolveAll(pkgScope *pkgResolveScope) bool {
 		return false
 	}
 	// Resolve underlying types.
-	for _, namedType := range namedTypes {
-		underOk := namedType.bType.buildUnderlying(pkgScope, namedType.irType)
+	for _, namedType := range nTypes {
+		underOk := namedType.bType.buildUnderlying(pkgScope, namedType.ext)
 		ok = ok && underOk
 	}
 	// Build functions and methods.
@@ -249,34 +185,44 @@ func (d *decls) resolveAll(pkgScope *pkgResolveScope) bool {
 }
 
 type irFunc struct {
+	pNode     *processNodeT[function]
 	bFunc     function
 	scopeFunc iFuncResolveScope
-	irFunc    ir.Func
+	irFunc    ir.PkgFunc
 }
 
 func (d *decls) buildFuncType(pkgScope *pkgResolveScope, pNode *processNodeT[function]) (*irFunc, bool) {
-	irFn, fScope, fnOk := pNode.node.buildSignature(pkgScope)
+	irFn, fnScope, fnOk := pNode.node.buildSignature(pkgScope)
 	if !fnOk {
 		return nil, false
 	}
-	recvOk := true
-	pNode.decl = pNode.setDeclNode(irFn.(ir.Storage), fScope.declarator(pNode.node))
-	if recv := pNode.node.receiver(); recv != nil {
-		recvOk = d.registerMethodToType(fScope.fileScope(), recv, pNode)
+	pkgFn, fnOk := irFn.(ir.PkgFunc)
+	if !fnOk {
+		return nil, pkgScope.err().AppendInternalf(irFn.Source(), "cannot cast %T to %s", irFn, reflect.TypeFor[*ir.PkgFunc]().Name())
 	}
-	if !recvOk || !fnOk {
-		return nil, false
-	}
-	return &irFunc{
+	pkgScope.ibld.Set(pNode, pkgFn)
+	irf := &irFunc{
+		pNode:     pNode,
 		bFunc:     pNode.node,
-		scopeFunc: fScope,
-		irFunc:    irFn,
-	}, true
+		scopeFunc: fnScope,
+		irFunc:    pkgFn,
+	}
+	recv := irf.scopeFunc.funcType().ReceiverField()
+	if recv == nil {
+		pkgScope.ibld.Register(funcDeclarator(irf.irFunc))
+		return irf, fnOk
+	}
+	nType, ok := recv.Type().(*ir.NamedType)
+	if !ok {
+		return irf, pkgScope.err().AppendInternalf(recv.Source(), "cannot cast %T to %s", recv.Type(), reflect.TypeFor[*ir.NamedType]().Name())
+	}
+	assignMethod(fnScope.fileScope(), nType, irf)
+	return irf, true
 }
 
 func (d *decls) registerAuxFunc(pkgScope *pkgResolveScope, aux *cpevelements.SyntheticFuncDecl) (*irFunc, bool) {
-	bFile := newFile(pkgScope.pkg(), aux.F.Name()+".syn.gx", &ast.File{})
-	fScope, ok := pkgScope.newFileScope(bFile, nil)
+	bFile := newFile(pkgScope.pkg(), aux.F.Name()+"_synt.gx", &ast.File{})
+	fScope, ok := pkgScope.newFileScope(bFile)
 	if !ok {
 		return nil, false
 	}
@@ -292,18 +238,16 @@ func (d *decls) registerAuxFunc(pkgScope *pkgResolveScope, aux *cpevelements.Syn
 		},
 		irFunc: aux.F,
 	}
-	pNode, ok := d.registerFunc(irf.bFunc)
-	if !ok {
-		return nil, false
-	}
-	pNode.decl = pNode.setDeclNode(aux.F, fnScope.declarator(pNode.node))
+	pkgScope.ibld.Register(func(decls *ir.Declarations) {
+		decls.Funcs = append(decls.Funcs, aux.F)
+	})
 	return &irf, true
 }
 
 func (d *decls) buildFunctions(pkgScope *pkgResolveScope, filter func(f *processNodeT[function]) bool) bool {
 	ok := true
 	var funcs []*irFunc
-	packageFuncs := slices.Collect(iterToken[function](d.declarations, filterTok(token.FUNC), filterToBuild))
+	packageFuncs := slices.Collect(iterToken[function](d.declarations, filterTok(token.FUNC)))
 	filteredFuncs := slices.Collect(iter.Filter(filter, packageFuncs, d.methods))
 	sort.Slice(filteredFuncs, func(i, j int) bool {
 		return filteredFuncs[i].node.resolveOrder() < filteredFuncs[j].node.resolveOrder()
@@ -346,44 +290,6 @@ func (d *decls) buildFunctionBodies(pkgScope *pkgResolveScope, funcs []*irFunc) 
 	return todoNext, ok
 }
 
-func (d *decls) registerMethodToType(rscope *fileResolveScope, recv *fieldList, fnNode *processNodeT[function]) bool {
-	src := recv.list[0].typ.source()
-	recvTypeName := src.(*ast.Ident).Name
-	pNode, exist := d.declarations.Load(recvTypeName)
-	if !exist {
-		return d.pkgScope.err().Appendf(src, "undefined: %s", recvTypeName)
-	}
-	switch nodeT := pNode.bNode().(type) {
-	case *namedType:
-		namedTypeIR := pNode.ir().(*ir.NamedType)
-		if ok := nodeT.assignMethod(rscope, fnNode, namedTypeIR); !ok {
-			return false
-		}
-		namedTypeIR.Methods = append(namedTypeIR.Methods, fnNode.ir().(ir.PkgFunc))
-	case *ir.NamedType:
-		return d.pkgScope.err().Appendf(src, "adding methods to a structure in a different cell not supported yet")
-	default:
-		return d.pkgScope.err().Appendf(src, "%s is not a type", recvTypeName)
-	}
-	return true
-}
-
-func (d *decls) collectDeclNodes(filters ...nodeFilter) (*ordered.Map[string, *declNode], bool) {
-	pkgDecls := ordered.NewMap[string, *declNode]()
-	ok := true
-	for name, node := range d.declarations.Iter() {
-		if !filterNode(filters, node) {
-			continue
-		}
-		decl := node.declNode()
-		if decl == nil {
-			ok = d.pkgScope.err().AppendInternalf(node.ident(), "process node %s:%s has not been built", node.ident().Name, node.token().String())
-		}
-		pkgDecls.Store(name, decl)
-	}
-	return pkgDecls, ok
-}
-
 func (d *decls) Find(key string) (processNode, bool) {
 	return d.declarations.Load(key)
 }
@@ -398,14 +304,4 @@ func (d *decls) String() string {
 		kvs = append(kvs, fmt.Sprintf("%s: %T", k, v))
 	}
 	return strings.Join(kvs, "\n")
-}
-
-func buildDeclarations(irb *irBuilder, declarations *ordered.Map[string, *declNode]) (*ir.Declarations, bool) {
-	decls := &ir.Declarations{Package: irb.irPkg()}
-	ok := true
-	for decl := range declarations.Values() {
-		declOk := decl.declare(irb, decls, decl)
-		ok = ok && declOk
-	}
-	return decls, ok
 }

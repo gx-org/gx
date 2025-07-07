@@ -66,7 +66,7 @@ func (n *structType) source() ast.Node {
 }
 
 func (n *structType) buildTypeExpr(scope resolveScope) (*ir.TypeValExpr, bool) {
-	ext := &ir.StructType{BaseType: baseType(n.src)}
+	ext := &ir.StructType{BaseType: ir.BaseType[*ast.StructType]{Src: n.src}}
 	var fieldsOk bool
 	ext.Fields, fieldsOk = n.fieldList.buildFieldList(scope)
 	return &ir.TypeValExpr{X: ext, Typ: ext}, fieldsOk

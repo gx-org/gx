@@ -37,21 +37,17 @@ func (n *valueRef) source() ast.Node {
 
 func (n *valueRef) buildValueRef(rscope resolveScope) (*ir.ValueRef, bool) {
 	name := n.src.Name
-	node, ok := rscope.ns().Find(name)
+	node, ok := rscope.find(name)
 	if !ok {
 		return nil, rscope.err().Appendf(n.src, "undefined: %s", name)
 	}
-	procOk := rscope.fileScope().process(node)
-	if !procOk {
+	irNode, ok := irCache[ir.Storage](rscope.irBuilder(), n.src, node)
+	if !ok {
 		return nil, false
-	}
-	irNode := node.ir()
-	if irNode == nil {
-		return nil, rscope.err().AppendInternalf(n.src, "%s:%s is defined but has not been built", name, node.token())
 	}
 	return &ir.ValueRef{
 		Src:  n.src,
-		Stor: node.ir(),
+		Stor: irNode,
 	}, true
 }
 

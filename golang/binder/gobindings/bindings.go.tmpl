@@ -158,7 +158,7 @@ type methodBase struct {
 // New{{.Named.Name}} returns a handle on named type {{.Named.Name}}.
 func (fac *Factory) New{{.Named.Name}}() *{{.Named.Name}} {
 	s := &{{.Named.Name}}{}
-	typ := fac.Package.Package.IR.Decls.Types[{{.Named.ID}}]
+	typ := fac.Package.Package.IR.Decls.TypeByName("{{.Named.Name}}")
 	s.handle = handle{{.Named.Name}}{
 		pkg: fac.Package,
 		struc:  typ,

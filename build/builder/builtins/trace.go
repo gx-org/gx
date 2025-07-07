@@ -12,7 +12,7 @@
 // See the License for the specific language governing permissions and
 // limitations under the License.
 
-package builder
+package builtins
 
 import (
 	"go/ast"
@@ -33,9 +33,11 @@ func (f *traceFunc) BuildFuncType(fetcher ir.Fetcher, call *ir.CallExpr) (*ir.Fu
 		params[i] = arg.Type()
 	}
 	return &ir.FuncType{
-		BaseType: baseType(&ast.FuncType{Func: call.Src.Pos()}),
-		Params:   builtins.Fields(call, params...),
-		Results:  builtins.Fields(call),
+		BaseType: ir.BaseType[*ast.FuncType]{
+			Src: &ast.FuncType{Func: call.Src.Pos()},
+		},
+		Params:  builtins.Fields(call, params...),
+		Results: builtins.Fields(call),
 	}, nil
 }
 

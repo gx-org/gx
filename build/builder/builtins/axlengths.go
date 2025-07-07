@@ -12,7 +12,7 @@
 // See the License for the specific language governing permissions and
 // limitations under the License.
 
-package builder
+package builtins
 
 import (
 	"go/ast"
@@ -28,7 +28,9 @@ var _ ir.FuncImpl = (*appendFunc)(nil)
 // BuildFuncType builds the type of a function given how it is called.
 func (f *axlengthsFunc) BuildFuncType(fetcher ir.Fetcher, call *ir.CallExpr) (*ir.FuncType, error) {
 	ext := &ir.FuncType{
-		BaseType: baseType(&ast.FuncType{Func: call.Src.Pos()}),
+		BaseType: ir.BaseType[*ast.FuncType]{
+			Src: &ast.FuncType{Func: call.Src.Pos()},
+		},
 	}
 	if len(call.Args) != 1 {
 		return ext, errors.Errorf("wrong number of arguments to axlengths: expected 1, found %d", len(call.Args))

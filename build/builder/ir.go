@@ -31,7 +31,7 @@ type (
 	function interface {
 		nodePos
 		name() *ast.Ident
-		receiver() *fieldList
+		isMethod() bool
 		compEval() bool
 		resolveOrder() int
 		buildSignature(*pkgResolveScope) (ir.Func, iFuncResolveScope, bool)
@@ -270,10 +270,6 @@ func appendRedeclaredError(errF *fmterr.Appender, name string, cur ast.Node, pre
 
 func isInvalid(typ ir.Type) bool {
 	return typ == nil || typ.Kind() == ir.InvalidKind
-}
-
-func baseType[T ast.Expr](src T) ir.BaseType[T] {
-	return ir.BaseType[T]{Src: src}
 }
 
 func buildAExpr(rscope resolveScope, expr exprNode) (ir.AssignableExpr, bool) {

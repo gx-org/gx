@@ -33,8 +33,9 @@ import (
 )
 
 type lastBuild struct {
-	decls *ordered.Map[string, *declNode]
-	pkg   *ir.Package
+	decls   *ordered.Map[string, processNode]
+	methods []*processNodeT[function]
+	pkg     *ir.Package
 }
 
 func (lb *lastBuild) String() string {
@@ -70,7 +71,7 @@ func newBasePackage(b *Builder, path string) *basePackage {
 		files: ordered.NewMap[string, *file](),
 	}
 	pkg.last = &lastBuild{
-		decls: ordered.NewMap[string, *declNode](),
+		decls: ordered.NewMap[string, processNode](),
 		pkg:   pkg.newPackageIR(),
 	}
 	return pkg
@@ -96,20 +97,14 @@ func (pkg *basePackage) builder() *Builder {
 }
 
 func (pkg *basePackage) resolveBuild(pscope *pkgProcScope) bool {
-	pkgScope := newPackageResolveScope(pscope)
+	pkgScope, ok := newPackageResolveScope(pscope)
+	if !ok {
+		return false
+	}
 	if ok := pscope.dcls.resolveAll(pkgScope); !ok {
 		return false
 	}
-	irb, ok := pkgScope.newIRBuilder()
-	if !ok {
-		return false
-	}
-	last := &lastBuild{pkg: irb.irPkg()}
-	last.decls, last.pkg.Decls, ok = pkg.buildDeclarations(irb)
-	if !ok {
-		return false
-	}
-	pkg.last = last
+	pkg.last = pkgScope.lastBuild()
 	return true
 }
 
@@ -121,15 +116,6 @@ func (pkg *basePackage) newPackageIR() *ir.Package {
 		Files: make(map[string]*ir.File),
 		Decls: &ir.Declarations{},
 	}
-}
-
-func (pkg *basePackage) buildDeclarations(irb *irBuilder) (*ordered.Map[string, *declNode], *ir.Declarations, bool) {
-	decls, ok := irb.pkgScope.decls().collectDeclNodes()
-	if !ok {
-		return nil, nil, false
-	}
-	irDecls, ok := buildDeclarations(irb, decls)
-	return decls, irDecls, ok
 }
 
 // FilePackage builds GX package from GX source files
@@ -153,18 +139,6 @@ func (b *Builder) newFilePackage(path, name string) *FilePackage {
 	return pkg
 }
 
-func (pkg *FilePackage) updateLastForErrors(pscope *pkgProcScope, err error) error {
-	irb, ok := newPackageResolveScope(pscope).newIRBuilder()
-	if !ok {
-		return err
-	}
-	pkg.last = &lastBuild{
-		pkg:   irb.irPkg(),
-		decls: ordered.NewMap[string, *declNode](),
-	}
-	return err
-}
-
 // BuildFiles complete the package definitions from a list of source files.
 func (pkg *FilePackage) BuildFiles(fs fs.FS, filenames []string) (err error) {
 	if fs == nil {
@@ -182,10 +156,10 @@ func (pkg *FilePackage) BuildFiles(fs fs.FS, filenames []string) (err error) {
 		ok = ok && fileOk
 	}
 	if !ok {
-		return pkg.updateLastForErrors(pscope, &errs)
+		return &errs
 	}
 	if !pkg.resolveBuild(pscope) {
-		return pkg.updateLastForErrors(pscope, &errs)
+		return &errs
 	}
 	return nil
 }
@@ -212,23 +186,17 @@ func (pkg *FilePackage) buildFile(pscope *pkgProcScope, fs fs.FS, filename strin
 // ImportIR imports package definitions from a GX intermediate representation.
 func (pkg *FilePackage) ImportIR(decls *ir.Declarations) error {
 	errs := &fmterr.Errors{}
-	scope := newPackageProcScope(false, pkg.basePackage, errs)
-	if !importNamedTypes(scope, pkg.irImports, decls.Types) {
+	pscope := newPackageProcScope(false, pkg.basePackage, errs)
+	if !importNamedTypes(pscope, pkg.irImports, decls.Types) {
 		return errs
 	}
-	if !importFuncs(scope, pkg.irImports, decls.Funcs) {
+	if !importFuncs(pscope, pkg.irImports, decls.Funcs) {
 		return errs
 	}
-	if !importConstDecls(scope, pkg.irImports, decls.Consts) {
+	if !importConstDecls(pscope, pkg.irImports, decls.Consts) {
 		return errs
 	}
-	rscope := newPackageResolveScope(scope)
-	irb, ok := rscope.newIRBuilder()
-	if !ok {
-		return errs
-	}
-	pkg.last = &lastBuild{pkg: irb.irPkg()}
-	if pkg.last.decls, pkg.last.pkg.Decls, ok = pkg.buildDeclarations(irb); !ok {
+	if !pkg.resolveBuild(pscope) {
 		return errs
 	}
 	return nil
@@ -301,9 +269,12 @@ func (pkg *IncrementalPackage) BuildExpr(src string) (ir.Expr, error) {
 	if !errs.Empty() {
 		return nil, errs
 	}
-	pkgRScope := newPackageResolveScope(pscope.pkgProcScope)
-	rScope, scopeOk := pkgRScope.newFileScope(file, nil)
-	if !scopeOk {
+	pkgRScope, ok := newPackageResolveScope(pscope.pkgProcScope)
+	if !ok {
+		return nil, errs
+	}
+	rScope, ok := pkgRScope.newFileScope(file)
+	if !ok {
 		return nil, errs
 	}
 	fScope := newFuncScope(rScope, &ir.FuncType{})
