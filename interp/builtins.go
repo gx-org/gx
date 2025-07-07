@@ -130,7 +130,7 @@ func (setFunc) Implementation() any {
 }
 
 func setImpl(ctx evaluator.Context, call elements.CallAt, fn elements.Func, irFunc *ir.FuncBuiltin, args []elements.Element) ([]elements.Element, error) {
-	out, err := ctx.Evaluation().Evaluator().ArrayOps().Set(call, args[0], args[1], args[2])
+	out, err := ctx.Evaluator().ArrayOps().Set(call, args[0], args[1], args[2])
 	if err != nil {
 		return nil, err
 	}

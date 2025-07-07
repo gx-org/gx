@@ -97,11 +97,6 @@ func (ctx *Context) EvalFunc(f ir.Func, call *ir.CallExpr, args []elements.Eleme
 	return fnEl.Call(ctx, call, args)
 }
 
-// Evaluation returns the evaluator used by the context.
-func (ctx *Context) Evaluation() evaluator.EvaluationContext {
-	return ctx
-}
-
 // CallInputs returns the value with which a function has been called.
 func (ctx *Context) CallInputs() *elements.InputElements {
 	return ctx.callInputs

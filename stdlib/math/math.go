@@ -125,12 +125,12 @@ type unaryFunc = func(ops.Node) (ops.Node, error)
 
 func buildUnary(name string, f func(graph ops.Graph) unaryFunc) builtin.Builder {
 	return builtin.ImplementGraphFunc(name, func(ctx evaluator.Context, call elements.CallAt, fn elements.Func, irFunc *ir.FuncBuiltin, args []elements.Element) ([]elements.Element, error) {
-		ao := ctx.Evaluation().Evaluator().ArrayOps()
+		ao := ctx.Evaluator().ArrayOps()
 		x, xShape, err := grapheval.NodeFromElement(ao, args[0])
 		if err != nil {
 			return nil, err
 		}
-		unaryF := f(ctx.Evaluation().Evaluator().ArrayOps().Graph())
+		unaryF := f(ctx.Evaluator().ArrayOps().Graph())
 		node, err := unaryF(x)
 		if err != nil {
 			return nil, err

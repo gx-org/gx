@@ -84,7 +84,7 @@ func (rb *randBootstrap) nextConstant() (elements.NumericalElement, error) {
 	if err != nil {
 		return nil, err
 	}
-	return rb.context.Evaluation().Evaluator().ElementFromAtom(elements.NewExprAt(rb.context.File(), expr), value)
+	return rb.context.Evaluator().ElementFromAtom(elements.NewExprAt(rb.context.File(), expr), value)
 }
 
 type randBootstrapArg struct {
@@ -107,12 +107,12 @@ func newRandBootstrapArg(ctx evaluator.Context, rb *randBootstrap, seed elements
 		seed:   seed,
 		pValue: pValue,
 	}
-	ctx.Evaluation().Evaluator().Processor().RegisterInit(argFactory)
+	ctx.Evaluator().Processor().RegisterInit(argFactory)
 	return argFactory, nil
 }
 
 func (arg *randBootstrapArg) next() (elements.NumericalElement, error) {
-	ev := arg.ctx.(evaluator.Context).Evaluation().Evaluator().(*grapheval.Evaluator)
+	ev := arg.ctx.(evaluator.Context).Evaluator().(*grapheval.Evaluator)
 	src := &ast.Ident{
 		Name:    fmt.Sprintf("%T", arg),
 		NamePos: arg.rb.call.Node().Source().Pos(),
@@ -180,7 +180,7 @@ func evalNewBootstrapGenerator(ctx evaluator.Context, call elements.CallAt, fn e
 		return nil, err
 	}
 	return []elements.Element{elements.NewNamedType(
-		ctx.Evaluation().Evaluator().NewFunc,
+		ctx.Evaluator().NewFunc,
 		call.Node().Type().(*ir.NamedType),
 		bootstrap,
 	)}, nil

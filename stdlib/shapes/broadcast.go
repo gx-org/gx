@@ -99,7 +99,7 @@ func evalBroadcast(ctx evaluator.Context, call elements.CallAt, fn elements.Func
 	for i := range targetAxes {
 		broadcastAxes[i] = i
 	}
-	ao := ctx.Evaluation().Evaluator().ArrayOps()
+	ao := ctx.Evaluator().ArrayOps()
 	x, xShape, err := grapheval.NodeFromElement(ao, args[0])
 	if err != nil {
 		return nil, err
