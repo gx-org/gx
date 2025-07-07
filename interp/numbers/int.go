@@ -135,9 +135,9 @@ func (n *Int) Unflatten(handles *elements.Unflattener) (values.Value, error) {
 	return nil, fmterr.Internal(errors.Errorf("%T does not support converting device handles into GX values", n))
 }
 
-// Kind of the element.
-func (n *Int) Kind() ir.Kind {
-	return ir.NumberIntKind
+// Type of the element.
+func (n *Int) Type() ir.Type {
+	return n.expr.Node().Type()
 }
 
 // Compare with another number.

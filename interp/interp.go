@@ -155,7 +155,7 @@ func ToSingleElement(ctx ir.Evaluator, node ir.SourceNode, els []elements.Elemen
 	case 1:
 		return els[0], nil
 	default:
-		return elements.NewTuple(ctx.File(), node, els), nil
+		return elements.NewTuple(els), nil
 	}
 
 }

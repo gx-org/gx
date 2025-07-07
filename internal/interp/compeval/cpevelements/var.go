@@ -78,9 +78,9 @@ func (a *variable) Unflatten(handles *elements.Unflattener) (values.Value, error
 	return nil, errors.Errorf("not implemented")
 }
 
-// Kind of the element.
-func (a *variable) Kind() ir.Kind {
-	return a.src.Node().Type().Kind()
+// Type of the element.
+func (a *variable) Type() ir.Type {
+	return a.src.Node().Type()
 }
 
 // Axes returns the axes of the value as a slice element.

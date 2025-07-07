@@ -39,7 +39,7 @@ func (tp *typeParam) Unflatten(handles *elements.Unflattener) (values.Value, err
 	return nil, errors.Errorf("not implemented")
 }
 
-// Kind returns the kind of the element being stored.
-func (tp *typeParam) Kind() ir.Kind {
-	return tp.typ.Kind()
+// Type returns the type of the element.
+func (tp *typeParam) Type() ir.Type {
+	return tp.typ
 }

@@ -65,8 +65,8 @@ type (
 		// Unflatten creates a GX value from the next handles available in the Unflattener.
 		Unflatten(handles *Unflattener) (values.Value, error)
 
-		// Kind returns the kind of the element being stored.
-		Kind() ir.Kind
+		// Type of the element.
+		Type() ir.Type
 	}
 
 	// Copier is an interface implemented by nodes that need to be copied when passed to a function.

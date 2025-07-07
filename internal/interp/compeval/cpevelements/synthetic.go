@@ -62,7 +62,7 @@ func (n *SyntheticFunc) Unflatten(handles *elements.Unflattener) (values.Value, 
 	return nil, errors.Errorf("not implemented")
 }
 
-// Kind of the element.
-func (*SyntheticFunc) Kind() ir.Kind {
-	return ir.FuncKind
+// Type of the element.
+func (n *SyntheticFunc) Type() ir.Type {
+	return ir.UnknownType()
 }

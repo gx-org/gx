@@ -80,6 +80,6 @@ func (f *fun) Unflatten(handles *elements.Unflattener) (values.Value, error) {
 	return nil, errors.Errorf("not implemented")
 }
 
-func (f *fun) Kind() ir.Kind {
-	return ir.FuncKind
+func (f *fun) Type() ir.Type {
+	return f.fn.Type()
 }

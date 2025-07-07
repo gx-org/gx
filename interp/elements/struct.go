@@ -89,9 +89,9 @@ func (n *Struct) Select(expr SelectAt) (Element, error) {
 	return val, nil
 }
 
-// Kind of the element.
-func (*Struct) Kind() ir.Kind {
-	return ir.StructKind
+// Type of the element.
+func (n *Struct) Type() ir.Type {
+	return n.structType
 }
 
 // Copy the structure to a new node.

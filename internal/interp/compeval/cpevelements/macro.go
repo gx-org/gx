@@ -70,7 +70,7 @@ func (f *Macro) Unflatten(handles *elements.Unflattener) (values.Value, error) {
 	return nil, errors.Errorf("not implemented")
 }
 
-// Kind returns the function kind.
-func (f *Macro) Kind() ir.Kind {
-	return ir.FuncKind
+// Type returns the type of the function.
+func (f *Macro) Type() ir.Type {
+	return f.macro.Type()
 }
