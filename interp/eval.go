@@ -28,7 +28,7 @@ import (
 	"github.com/gx-org/gx/interp/numbers"
 )
 
-func evalBlockStmt(ctx *context, body *ir.BlockStmt) ([]elements.Element, bool, error) {
+func evalBlockStmt(ctx *Context, body *ir.BlockStmt) ([]elements.Element, bool, error) {
 	var outs []elements.Element
 	var stop bool
 	for _, node := range body.List {
@@ -44,7 +44,7 @@ func evalBlockStmt(ctx *context, body *ir.BlockStmt) ([]elements.Element, bool, 
 	return outs, stop, nil
 }
 
-func evalStmt(ctx *context, node ir.Stmt) ([]elements.Element, bool, error) {
+func evalStmt(ctx *Context, node ir.Stmt) ([]elements.Element, bool, error) {
 	switch nodeT := node.(type) {
 	case *ir.AssignCallStmt:
 		return nil, false, evalAssignCallStmt(ctx, nodeT)
@@ -66,7 +66,7 @@ func evalStmt(ctx *context, node ir.Stmt) ([]elements.Element, bool, error) {
 	}
 }
 
-func evalRangeForLoopOverInteger[T dtype.AlgebraType](ctx *context, stmt *ir.RangeStmt, toValue valuer) ([]elements.Element, bool, error) {
+func evalRangeForLoopOverInteger[T dtype.AlgebraType](ctx *Context, stmt *ir.RangeStmt, toValue valuer) ([]elements.Element, bool, error) {
 	toValueT := toValue.(valuerT[T])
 	indexType := ir.TypeFromKind(toValueT.kind)
 	val, err := evalAtom[T](ctx, stmt.X)
@@ -100,7 +100,7 @@ func evalRangeForLoopOverInteger[T dtype.AlgebraType](ctx *context, stmt *ir.Ran
 	return nil, false, nil
 }
 
-func evalRangeStmtInteger(ctx *context, stmt *ir.RangeStmt, xKind ir.Kind) ([]elements.Element, bool, error) {
+func evalRangeStmtInteger(ctx *Context, stmt *ir.RangeStmt, xKind ir.Kind) ([]elements.Element, bool, error) {
 	toValue, err := newValuer(ctx, stmt.X, xKind)
 	if err != nil {
 		return nil, false, err
@@ -113,7 +113,7 @@ func evalRangeStmtInteger(ctx *context, stmt *ir.RangeStmt, xKind ir.Kind) ([]el
 	}
 }
 
-func evalRangeStmtForLoopOverArray[T dtype.AlgebraType](ctx *context, stmt *ir.RangeStmt, toValue valuer) ([]elements.Element, bool, error) {
+func evalRangeStmtForLoopOverArray[T dtype.AlgebraType](ctx *Context, stmt *ir.RangeStmt, toValue valuer) ([]elements.Element, bool, error) {
 	toValueT := toValue.(valuerT[T])
 	indexType := ir.TypeFromKind(toValueT.kind)
 	x, err := ctx.evalExpr(stmt.X)
@@ -171,7 +171,7 @@ func evalRangeStmtForLoopOverArray[T dtype.AlgebraType](ctx *context, stmt *ir.R
 	return nil, false, nil
 }
 
-func evalRangeStmtArray(ctx *context, stmt *ir.RangeStmt) ([]elements.Element, bool, error) {
+func evalRangeStmtArray(ctx *Context, stmt *ir.RangeStmt) ([]elements.Element, bool, error) {
 	keyKind := stmt.Key.Type().Kind()
 	toValue, err := newValuer(ctx, stmt.X, keyKind)
 	if err != nil {
@@ -185,7 +185,7 @@ func evalRangeStmtArray(ctx *context, stmt *ir.RangeStmt) ([]elements.Element, b
 	}
 }
 
-func evalRangeStmt(ctx *context, stmt *ir.RangeStmt) ([]elements.Element, bool, error) {
+func evalRangeStmt(ctx *Context, stmt *ir.RangeStmt) ([]elements.Element, bool, error) {
 	kind := stmt.X.Type().Kind()
 	if ir.IsRangeOk(kind) {
 		return evalRangeStmtInteger(ctx, stmt, kind)
@@ -196,7 +196,7 @@ func evalRangeStmt(ctx *context, stmt *ir.RangeStmt) ([]elements.Element, bool, 
 	return nil, true, errors.Errorf("cannot range over %s", kind.String())
 }
 
-func evalIfStmt(ctx *context, stmt *ir.IfStmt) ([]elements.Element, bool, error) {
+func evalIfStmt(ctx *Context, stmt *ir.IfStmt) ([]elements.Element, bool, error) {
 	ctx.pushBlockFrame()
 	defer ctx.popFrame()
 
@@ -218,7 +218,7 @@ func evalIfStmt(ctx *context, stmt *ir.IfStmt) ([]elements.Element, bool, error)
 	return evalStmt(ctx, stmt.Else)
 }
 
-func evalAssignExprStmt(ctx *context, stmt *ir.AssignExprStmt) error {
+func evalAssignExprStmt(ctx *Context, stmt *ir.AssignExprStmt) error {
 	for _, asg := range stmt.List {
 		cNode, err := ctx.evalExpr(asg.X)
 		if err != nil {
@@ -234,7 +234,7 @@ func evalAssignExprStmt(ctx *context, stmt *ir.AssignExprStmt) error {
 	return nil
 }
 
-func evalAssignCallStmt(ctx *context, stmt *ir.AssignCallStmt) error {
+func evalAssignCallStmt(ctx *Context, stmt *ir.AssignCallStmt) error {
 	nodes, err := evalCall(ctx, stmt.Call)
 	if err != nil {
 		return err
@@ -259,7 +259,7 @@ func unpackIfTuple(el elements.Element) []elements.Element {
 	return tpl.Elements()
 }
 
-func evalReturnStmt(ctx *context, ret *ir.ReturnStmt) ([]elements.Element, bool, error) {
+func evalReturnStmt(ctx *Context, ret *ir.ReturnStmt) ([]elements.Element, bool, error) {
 	if len(ret.Results) == 0 {
 		// Naked return.
 		fields := ctx.currentFrame().owner.function.FuncType().Results.Fields()
@@ -284,7 +284,7 @@ func evalReturnStmt(ctx *context, ret *ir.ReturnStmt) ([]elements.Element, bool,
 	return returns, true, nil
 }
 
-func evalValueRef(ctx *context, ref *ir.ValueRef) (elements.Element, error) {
+func evalValueRef(ctx *Context, ref *ir.ValueRef) (elements.Element, error) {
 	cNode, err := ctx.find(ref.Src)
 	if err != nil {
 		return nil, err
@@ -292,14 +292,14 @@ func evalValueRef(ctx *context, ref *ir.ValueRef) (elements.Element, error) {
 	return cNode, nil
 }
 
-func evalCastToScalarExpr(ctx *context, expr ir.TypeCastExpr, x elements.NumericalElement, targetType ir.ArrayType) (elements.Element, error) {
+func evalCastToScalarExpr(ctx *Context, expr ir.TypeCastExpr, x elements.NumericalElement, targetType ir.ArrayType) (elements.Element, error) {
 	if len(x.Shape().AxisLengths) > 0 {
 		return x.Reshape(ctx, expr, nil)
 	}
 	return x.Cast(ctx, expr, targetType)
 }
 
-func evalArrayAxes(ctx *context, src ir.SourceNode, typ ir.ArrayType) ([]elements.NumericalElement, error) {
+func evalArrayAxes(ctx *Context, src ir.SourceNode, typ ir.ArrayType) ([]elements.NumericalElement, error) {
 	rank, err := rankOf(ctx, src, typ)
 	if err != nil {
 		return nil, err
@@ -317,7 +317,7 @@ func evalArrayAxes(ctx *context, src ir.SourceNode, typ ir.ArrayType) ([]element
 
 var one, _ = values.AtomIntegerValue(ir.IntLenType(), ir.Int(1))
 
-func evalCastAtomToArrayExpr(ctx *context, expr ir.TypeCastExpr, x elements.NumericalElement, axes []elements.NumericalElement) (elements.Element, error) {
+func evalCastAtomToArrayExpr(ctx *Context, expr ir.TypeCastExpr, x elements.NumericalElement, axes []elements.NumericalElement) (elements.Element, error) {
 	srcExpr := elements.NewExprAt(ctx.File(), expr)
 	arrayOps := ctx.eval.evaluator.ArrayOps()
 	shapeOfOnes := make([]elements.NumericalElement, len(axes))
@@ -335,7 +335,7 @@ func evalCastAtomToArrayExpr(ctx *context, expr ir.TypeCastExpr, x elements.Nume
 	return arrayOps.BroadcastInDim(srcExpr, reshaped, axes)
 }
 
-func evalCastToArrayExpr(ctx *context, expr ir.TypeCastExpr, x elements.NumericalElement, targetType ir.ArrayType) (elements.Element, error) {
+func evalCastToArrayExpr(ctx *Context, expr ir.TypeCastExpr, x elements.NumericalElement, targetType ir.ArrayType) (elements.Element, error) {
 	origType := expr.Orig().Type()
 	origRank, xDType := ir.Shape(origType)
 	targetDType := targetType.DataType()
@@ -368,7 +368,7 @@ func evalCastToArrayExpr(ctx *context, expr ir.TypeCastExpr, x elements.Numerica
 	return reshape.Cast(ctx, expr, targetDType)
 }
 
-func evalCastExpr(ctx *context, expr ir.TypeCastExpr) (elements.Element, error) {
+func evalCastExpr(ctx *Context, expr ir.TypeCastExpr) (elements.Element, error) {
 	x, err := ctx.evalExpr(expr.Orig())
 	if err != nil {
 		return nil, err
@@ -395,7 +395,7 @@ func evalCastExpr(ctx *context, expr ir.TypeCastExpr) (elements.Element, error) 
 	return evalCastToArrayExpr(ctx, expr, xNum, arrayType)
 }
 
-func evalUnaryExpression(ctx *context, expr *ir.UnaryExpr) (elements.Element, error) {
+func evalUnaryExpression(ctx *Context, expr *ir.UnaryExpr) (elements.Element, error) {
 	x, err := evalNumExpr(ctx, expr.X)
 	if err != nil {
 		return nil, err
@@ -406,7 +406,7 @@ func evalUnaryExpression(ctx *context, expr *ir.UnaryExpr) (elements.Element, er
 	return x.UnaryOp(ctx, expr)
 }
 
-func evalBinaryExpression(ctx *context, expr *ir.BinaryExpr) (elements.Element, error) {
+func evalBinaryExpression(ctx *Context, expr *ir.BinaryExpr) (elements.Element, error) {
 	x, err := evalNumExpr(ctx, expr.X)
 	if err != nil {
 		return nil, err
@@ -418,7 +418,7 @@ func evalBinaryExpression(ctx *context, expr *ir.BinaryExpr) (elements.Element, 
 	return x.BinaryOp(ctx, expr, x, y)
 }
 
-func evalStructLiteral(ctx *context, expr *ir.StructLitExpr) (elements.Element, error) {
+func evalStructLiteral(ctx *Context, expr *ir.StructLitExpr) (elements.Element, error) {
 	under := ir.Underlying(expr.Typ)
 	structType, ok := under.(*ir.StructType)
 	if !ok {
@@ -440,7 +440,7 @@ func evalStructLiteral(ctx *context, expr *ir.StructLitExpr) (elements.Element, 
 	return elements.NewNamedType(ctx.eval.evaluator.NewFunc, nType, strct), nil
 }
 
-func evalSliceLiteral(ctx *context, expr *ir.SliceLitExpr) (elements.Element, error) {
+func evalSliceLiteral(ctx *Context, expr *ir.SliceLitExpr) (elements.Element, error) {
 	els := make([]elements.Element, len(expr.Elts))
 	for i, expr := range expr.Elts {
 		elt, err := ctx.evalExpr(expr)
@@ -452,7 +452,7 @@ func evalSliceLiteral(ctx *context, expr *ir.SliceLitExpr) (elements.Element, er
 	return elements.NewSlice(expr.Type(), els), nil
 }
 
-func (ctx *context) EvalExpr(expr ir.Expr) (canonical.Canonical, error) {
+func (ctx *Context) EvalExpr(expr ir.Expr) (canonical.Canonical, error) {
 	el, err := ctx.evalExpr(expr)
 	if err != nil {
 		return nil, err
@@ -464,8 +464,8 @@ func (ctx *context) EvalExpr(expr ir.Expr) (canonical.Canonical, error) {
 	return can, nil
 }
 
-// evalExpr evaluates an expression within the context.
-func (ctx *context) evalExpr(expr ir.Expr) (elements.Element, error) {
+// evalExpr evaluates an expression within the Context.
+func (ctx *Context) evalExpr(expr ir.Expr) (elements.Element, error) {
 	if expr == nil {
 		return nil, errors.Errorf("cannot evaluate a nil expression")
 	}
@@ -521,7 +521,7 @@ func (ctx *context) evalExpr(expr ir.Expr) (elements.Element, error) {
 	}
 }
 
-func evalNumExpr(ctx *context, expr ir.Expr) (elements.NumericalElement, error) {
+func evalNumExpr(ctx *Context, expr ir.Expr) (elements.NumericalElement, error) {
 	el, err := ctx.evalExpr(expr)
 	if err != nil {
 		return nil, err
@@ -533,7 +533,7 @@ func evalNumExpr(ctx *context, expr ir.Expr) (elements.NumericalElement, error) 
 	return numEl, nil
 }
 
-func evalNumberCastExpr(ctx *context, expr *ir.NumberCastExpr) (elements.NumericalElement, error) {
+func evalNumberCastExpr(ctx *Context, expr *ir.NumberCastExpr) (elements.NumericalElement, error) {
 	number, err := evalNumExpr(ctx, expr.X)
 	if err != nil {
 		return nil, err
@@ -541,7 +541,7 @@ func evalNumberCastExpr(ctx *context, expr *ir.NumberCastExpr) (elements.Numeric
 	return number.Cast(ctx, expr, expr.Typ)
 }
 
-func evalSelectorExpr(ctx *context, ref *ir.SelectorExpr) (elements.Element, error) {
+func evalSelectorExpr(ctx *Context, ref *ir.SelectorExpr) (elements.Element, error) {
 	node, err := ctx.evalExpr(ref.X)
 	if err != nil {
 		return nil, err
@@ -553,11 +553,11 @@ func evalSelectorExpr(ctx *context, ref *ir.SelectorExpr) (elements.Element, err
 	return slt.Select(elements.NewNodeAt(ctx.File(), ref))
 }
 
-func evalFuncLit(ctx *context, ref *ir.FuncLit) (elements.Element, error) {
+func evalFuncLit(ctx *Context, ref *ir.FuncLit) (elements.Element, error) {
 	return ctx.eval.evaluator.NewFunc(ref, nil), nil
 }
 
-func evalIndexExpr(ctx *context, ref *ir.IndexExpr) (elements.Element, error) {
+func evalIndexExpr(ctx *Context, ref *ir.IndexExpr) (elements.Element, error) {
 	x, err := ctx.evalExpr(ref.X)
 	if err != nil {
 		return nil, err
@@ -574,7 +574,7 @@ func evalIndexExpr(ctx *context, ref *ir.IndexExpr) (elements.Element, error) {
 	return slicer.Slice(ctx, ref, index)
 }
 
-func evalEinsumExpr(ctx *context, ref *ir.EinsumExpr) (elements.Element, error) {
+func evalEinsumExpr(ctx *Context, ref *ir.EinsumExpr) (elements.Element, error) {
 	x, err := evalNumExpr(ctx, ref.X)
 	if err != nil {
 		return nil, err

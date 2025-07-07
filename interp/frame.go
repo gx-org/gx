@@ -151,7 +151,7 @@ func (fr *packageFrame) fileFrame(ectx *EvalContext, file *ir.File) (*fileFrame,
 	return flFrame, nil
 }
 
-func (flFrame *fileFrame) pushFuncFrame(ctx *context, fn ir.Func) *blockFrame {
+func (flFrame *fileFrame) pushFuncFrame(ctx *Context, fn ir.Func) *blockFrame {
 	fnFrame := &functionFrame{
 		parent:   flFrame,
 		function: fn,
@@ -169,7 +169,7 @@ type functionFrame struct {
 	function ir.Func
 }
 
-func (ctx *context) fileFrame(file *ir.File) (*fileFrame, error) {
+func (ctx *Context) fileFrame(file *ir.File) (*fileFrame, error) {
 	pkgFrame, err := ctx.eval.packageFrame(file.Package)
 	if err != nil {
 		return nil, err
@@ -177,7 +177,7 @@ func (ctx *context) fileFrame(file *ir.File) (*fileFrame, error) {
 	return pkgFrame.fileFrame(ctx.eval, file)
 }
 
-func (ctx *context) pushFuncFrame(fn ir.Func) (*blockFrame, error) {
+func (ctx *Context) pushFuncFrame(fn ir.Func) (*blockFrame, error) {
 	flFrame, err := ctx.fileFrame(fn.File())
 	if err != nil {
 		return nil, err
@@ -191,7 +191,7 @@ type blockFrame struct {
 	owner  *functionFrame
 }
 
-func (ctx *context) pushBlockFrame() *blockFrame {
+func (ctx *Context) pushBlockFrame() *blockFrame {
 	parent := ctx.currentFrame()
 	return ctx.pushFrame(&blockFrame{
 		baseFrame: baseFrame{

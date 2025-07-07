@@ -150,6 +150,6 @@ func (traceFunc) Implementation() any {
 }
 
 func traceImpl(ctx evaluator.Context, call elements.CallAt, fn elements.Func, irFunc *ir.FuncBuiltin, args []elements.Element) ([]elements.Element, error) {
-	ctxT := ctx.(*context)
+	ctxT := ctx.(*Context)
 	return nil, ctxT.eval.evaluator.Trace(call, fn, irFunc, args, &ctxT.CallInputs().Values)
 }

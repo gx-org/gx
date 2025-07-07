@@ -37,7 +37,7 @@ import (
 type FuncBuiltin func(ctx evaluator.Context, call elements.CallAt, fn elements.Func, irFunc *ir.FuncBuiltin, args []elements.Element) ([]elements.Element, error)
 
 // EvalFunctionToElement evaluates a function such as it becomes an element.
-func (ctx *context) EvalFunctionToElement(eval evaluator.Evaluator, fn ir.Func, args []elements.Element) ([]elements.Element, error) {
+func (ctx *Context) EvalFunctionToElement(eval evaluator.Evaluator, fn ir.Func, args []elements.Element) ([]elements.Element, error) {
 	subctx, err := ctx.eval.newFileContext(fn.File())
 	if err != nil {
 		return nil, err
@@ -65,7 +65,7 @@ func (ctx *context) EvalFunctionToElement(eval evaluator.Evaluator, fn ir.Func, 
 
 // EvalExprInContext uses an evaluator to evaluation an IR expression.
 func EvalExprInContext(ctx evaluator.Context, expr ir.Expr) (elements.Element, error) {
-	return ctx.(*context).evalExpr(expr)
+	return ctx.(*Context).evalExpr(expr)
 }
 
 // EvalFunc evaluates a function.
@@ -81,7 +81,7 @@ func EvalFunc(eval evaluator.Evaluator, fn *ir.FuncDecl, in *elements.InputEleme
 	if err != nil {
 		return nil, err
 	}
-	// Set the function inputs in the context.
+	// Set the function inputs in the Context.
 	ctx.callInputs = in
 	// Create a frame for the function to evaluate.
 	frame, err := ctx.pushFuncFrame(fn)
@@ -89,11 +89,11 @@ func EvalFunc(eval evaluator.Evaluator, fn *ir.FuncDecl, in *elements.InputEleme
 		return nil, err
 	}
 	defer ctx.popFrame()
-	// Add the result names to the context.
+	// Add the result names to the Context.
 	for _, resultName := range fieldNames(fn.FType.Results.List) {
 		frame.Define(resultName.Name, nil)
 	}
-	// Add the receiver to the context.
+	// Add the receiver to the Context.
 	recv := fn.FType.ReceiverField()
 	if recv != nil {
 		if in.Receiver == nil {
@@ -101,7 +101,7 @@ func EvalFunc(eval evaluator.Evaluator, fn *ir.FuncDecl, in *elements.InputEleme
 		}
 		frame.Define(recv.Name.Name, in.Receiver)
 	}
-	// Add the parameters to the context.
+	// Add the parameters to the Context.
 	paramFields := fn.FType.Params.Fields()
 	for i, param := range paramFields {
 		if i >= len(in.Args) {
@@ -122,7 +122,7 @@ func EvalFunc(eval evaluator.Evaluator, fn *ir.FuncDecl, in *elements.InputEleme
 	return
 }
 
-func dimsAsElements(ctx *context, expr ir.AssignableExpr, dims []int) ([]elements.NumericalElement, error) {
+func dimsAsElements(ctx *Context, expr ir.AssignableExpr, dims []int) ([]elements.NumericalElement, error) {
 	els := make([]elements.NumericalElement, len(dims))
 	for i, di := range dims {
 		val, err := values.AtomIntegerValue[int64](ir.IntLenType(), int64(di))

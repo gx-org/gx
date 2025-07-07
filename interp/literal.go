@@ -27,7 +27,7 @@ import (
 
 type (
 	valuer interface {
-		array(ctx *context, expr *ir.ArrayLitExpr) (elements.Element, error)
+		array(ctx *Context, expr *ir.ArrayLitExpr) (elements.Element, error)
 	}
 
 	valuerT[T dtype.GoDataType] struct {
@@ -84,7 +84,7 @@ func goSliceFromElements[T dtype.GoDataType](els []elements.NumericalElement) ([
 	return vals, true, nil
 }
 
-func (v valuerT[T]) buildStaticArray(ctx *context, lit *ir.ArrayLitExpr, axes, vals []elements.NumericalElement) (elements.Element, bool, error) {
+func (v valuerT[T]) buildStaticArray(ctx *Context, lit *ir.ArrayLitExpr, axes, vals []elements.NumericalElement) (elements.Element, bool, error) {
 	axesI64, ok, err := goSliceFromElements[int64](axes)
 	if !ok || err != nil {
 		return nil, false, err
@@ -119,7 +119,7 @@ func (v valuerT[T]) buildStaticArray(ctx *context, lit *ir.ArrayLitExpr, axes, v
 	return node, true, nil
 }
 
-func (v valuerT[T]) array(ctx *context, lit *ir.ArrayLitExpr) (elements.Element, error) {
+func (v valuerT[T]) array(ctx *Context, lit *ir.ArrayLitExpr) (elements.Element, error) {
 	axes, err := evalArrayAxes(ctx, lit, lit.Typ)
 	if err != nil {
 		return nil, err
@@ -148,7 +148,7 @@ func (v valuerT[T]) array(ctx *context, lit *ir.ArrayLitExpr) (elements.Element,
 	return array1d.Reshape(ctx, lit, axes)
 }
 
-func newValuer(ctx *context, expr ir.Expr, kind ir.Kind) (v valuer, err error) {
+func newValuer(ctx *Context, expr ir.Expr, kind ir.Kind) (v valuer, err error) {
 	switch kind {
 	case ir.IntIdxKind:
 		v = valuerT[ir.Int]{kind: kind, toAtomValue: values.AtomIntegerValue[ir.Int], toArrayValue: values.ArrayIntegerValue[ir.Int]}
@@ -176,7 +176,7 @@ func newValuer(ctx *context, expr ir.Expr, kind ir.Kind) (v valuer, err error) {
 	return
 }
 
-func evalArrayLiteral(ctx *context, expr *ir.ArrayLitExpr) (elements.Element, error) {
+func evalArrayLiteral(ctx *Context, expr *ir.ArrayLitExpr) (elements.Element, error) {
 	_, dtype := ir.Shape(expr.Type())
 	valuer, err := newValuer(ctx, expr, dtype.Kind())
 	if err != nil {
@@ -209,7 +209,7 @@ func toAtomElementBool(src elements.ExprAt, val bool) (elements.NumericalElement
 	return cpevelements.NewAtom(src, hostVal)
 }
 
-func evalAtomicValue(ctx *context, expr ir.AtomicValue) (elements.NumericalElement, error) {
+func evalAtomicValue(ctx *Context, expr ir.AtomicValue) (elements.NumericalElement, error) {
 	kind := expr.Type().Kind()
 	exprAt := elements.NewExprAt(ctx.File(), expr)
 	switch kind {

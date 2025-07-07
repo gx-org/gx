@@ -101,7 +101,7 @@ type funcDecl struct {
 }
 
 func (f *funcDecl) Call(fctx ir.Evaluator, call *ir.CallExpr, args []elements.Element) (outs []elements.Element, err error) {
-	ctx := fctx.(*context)
+	ctx := fctx.(*Context)
 	if f.fnT.Body == nil {
 		return nil, fmterr.Errorf(ctx.File().FileSet(), f.fnT.Source(), "missing function body")
 	}
@@ -137,7 +137,7 @@ func (f *funcBuiltin) Call(fctx ir.Evaluator, call *ir.CallExpr, args []elements
 			err = fmterr.Position(fctx.File().FileSet(), call.Expr(), err)
 		}
 	}()
-	ctx := fctx.(*context)
+	ctx := fctx.(*Context)
 	var impl FuncBuiltin
 	if f.fnT.Impl != nil {
 		impl = f.fnT.Impl.Implementation().(FuncBuiltin)
@@ -155,13 +155,13 @@ type funcLit struct {
 }
 
 func (f *funcLit) Call(fctx ir.Evaluator, call *ir.CallExpr, args []elements.Element) (outs []elements.Element, err error) {
-	ctx := fctx.(*context)
+	ctx := fctx.(*Context)
 	// TODO(degris): remove this hack.
 	f.fnT.FFile = fctx.File()
 	return ctx.eval.evaluator.CallFuncLit(ctx, f.fnT, args)
 }
 
-func evalFuncBody(ctx *context, body *ir.BlockStmt) ([]elements.Element, error) {
+func evalFuncBody(ctx *Context, body *ir.BlockStmt) ([]elements.Element, error) {
 	outs, stop, err := evalBlockStmt(ctx, body)
 	if !stop {
 		// No return statement was processed during the eval of the function.
@@ -191,7 +191,7 @@ func assignArgumentValues(funcType *ir.FuncType, funcFrame *blockFrame, args []e
 	}
 }
 
-func evalCallExpr(ctx *context, expr *ir.CallExpr) (elements.Element, error) {
+func evalCallExpr(ctx *Context, expr *ir.CallExpr) (elements.Element, error) {
 	outs, err := evalCall(ctx, expr)
 	if err != nil {
 		return nil, err
@@ -199,7 +199,7 @@ func evalCallExpr(ctx *context, expr *ir.CallExpr) (elements.Element, error) {
 	return ToSingleElement(ctx, expr, outs)
 }
 
-func evalCall(ctx *context, expr *ir.CallExpr) ([]elements.Element, error) {
+func evalCall(ctx *Context, expr *ir.CallExpr) ([]elements.Element, error) {
 	// Fetch the function and check that it is callable.
 	fnNode, err := ctx.evalExpr(expr.Callee.X)
 	if err != nil {
