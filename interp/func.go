@@ -158,7 +158,7 @@ func (f *funcLit) Call(fctx ir.Evaluator, call *ir.CallExpr, args []elements.Ele
 	ctx := fctx.(*Context)
 	// TODO(degris): remove this hack.
 	f.fnT.FFile = fctx.File()
-	return ctx.eval.evaluator.CallFuncLit(ctx, f.fnT, args)
+	return ctx.evaluator.CallFuncLit(ctx, f.fnT, args)
 }
 
 func evalFuncBody(ctx *Context, body *ir.BlockStmt) ([]elements.Element, error) {

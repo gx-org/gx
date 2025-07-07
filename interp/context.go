@@ -28,56 +28,61 @@ import (
 	"github.com/gx-org/gx/interp/evaluator"
 )
 
-// evalContext returns the context for the interpreter.
-type evalContext struct {
-	options        []options.PackageOption
-	packageOptions map[string][]packageOption
-	evaluator      evaluator.Evaluator
-	builtin        *baseFrame
-
-	packageToFrame map[*ir.Package]*packageFrame
-}
-
-// NewInterpContext returns a new interpreter context.
-func NewInterpContext(eval evaluator.Evaluator, options []options.PackageOption) (*Context, error) {
-	pkgctx := &evalContext{
-		options:        options,
-		packageToFrame: make(map[*ir.Package]*packageFrame),
-		packageOptions: make(map[string][]packageOption),
-		evaluator:      eval,
-	}
-	if err := pkgctx.buildBuiltinFrame(); err != nil {
-		return nil, err
-	}
-	if err := pkgctx.processOptions(options); err != nil {
-		return nil, err
-	}
-	return &Context{eval: pkgctx}, nil
-}
-
-// Evaluator returns the evaluator used by in evaluations.
-func (ctx *Context) Evaluator() evaluator.Evaluator {
-	return ctx.eval.evaluator
-}
-
 // Context of an evaluation while running the interpreter.
 // It contains the current frame stack, values of variables,
 // and the evaluator to execute operations.
 type Context struct {
-	eval       *evalContext
+	options        []options.PackageOption
+	packageOptions map[string][]packageOption
+	evaluator      evaluator.Evaluator
+	builtin        *baseFrame
+	packageToFrame map[*ir.Package]*packageFrame
+
 	callInputs *elements.InputElements
 	stack      []*blockFrame
 }
 
 var _ evaluator.Context = (*Context)(nil)
 
+// NewInterpContext returns a new interpreter context.
+func NewInterpContext(eval evaluator.Evaluator, options []options.PackageOption) (*Context, error) {
+	ctx := &Context{
+		options:        options,
+		packageToFrame: make(map[*ir.Package]*packageFrame),
+		packageOptions: make(map[string][]packageOption),
+		evaluator:      eval,
+	}
+	if err := ctx.buildBuiltinFrame(); err != nil {
+		return nil, err
+	}
+	if err := ctx.processOptions(options); err != nil {
+		return nil, err
+	}
+	return ctx, nil
+}
+
+// Evaluator returns the evaluator used by in evaluations.
+func (ctx *Context) Evaluator() evaluator.Evaluator {
+	return ctx.evaluator
+}
+
 // NewFileContext returns a context for a given file.
 func (ctx *Context) NewFileContext(file *ir.File) (evaluator.Context, error) {
 	return ctx.newFileContext(file)
 }
 
+func (ctx *Context) branch() *Context {
+	return &Context{
+		options:        ctx.options,
+		packageOptions: ctx.packageOptions,
+		evaluator:      ctx.evaluator,
+		builtin:        ctx.builtin,
+		packageToFrame: ctx.packageToFrame,
+	}
+}
+
 func (ctx *Context) newFileContext(file *ir.File) (*Context, error) {
-	n := &Context{eval: ctx.eval}
+	n := ctx.branch()
 	flFrame, err := n.fileFrame(file)
 	if err != nil {
 		return nil, err
@@ -92,7 +97,7 @@ func (ctx *Context) EvalFunc(f ir.Func, call *ir.CallExpr, args []elements.Eleme
 	return fnEl.Call(ctx, call, args)
 }
 
-// Evaluator returns the evaluator used by the context.
+// Evaluation returns the evaluator used by the context.
 func (ctx *Context) Evaluation() evaluator.EvaluationContext {
 	return ctx
 }
@@ -170,11 +175,9 @@ func (ctx *Context) valueOf(s string) string {
 
 // Sub returns a child context given a set of elements.
 func (ctx *Context) Sub(elts map[string]elements.Element) (evaluator.Context, error) {
-	sub := &Context{
-		eval:       ctx.eval,
-		callInputs: ctx.callInputs,
-		stack:      append([]*blockFrame{}, ctx.stack...),
-	}
+	sub := ctx.branch()
+	sub.callInputs = ctx.callInputs
+	sub.stack = append([]*blockFrame{}, ctx.stack...)
 	bFrame := sub.pushBlockFrame()
 	for n, elt := range elts {
 		bFrame.Define(n, elt)
