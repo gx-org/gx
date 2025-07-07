@@ -34,8 +34,8 @@ var Package = builtin.PackageBuilder{
 		builtin.BuildFunc(einsum{}),
 		builtin.BuildFunc(matmul{}),
 		builtin.BuildFunc(iotaWithAxis{}),
-		builtin.ImplementGraphFunc("IotaFull", evalIotaFull),
 		builtin.BuildFunc(reduceMax{}),
 		builtin.BuildFunc(argmax{}),
+		builtin.ImplementGraphFunc("IotaFull", evalIotaFull),
 	},
 }
