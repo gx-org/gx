@@ -104,7 +104,7 @@ func NewRuntimeValue(ctx evaluator.Context, store ir.Storage) (elements.Element,
 		if err != nil {
 			return nil, err
 		}
-		return elements.NewNamedType(ctx.Evaluation().Evaluator().NewFunc, typT, under.(elements.Copier)), nil
+		return elements.NewNamedType(ctx.Evaluator().NewFunc, typT, under.(elements.Copier)), nil
 	case ir.ArrayType:
 		if !ir.IsStatic(typT.DataType()) {
 			return NewArray(typT), nil

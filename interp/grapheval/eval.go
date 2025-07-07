@@ -172,7 +172,7 @@ func (ev *Evaluator) Trace(call elements.CallAt, fn elements.Func, irFunc *ir.Fu
 }
 
 func evalFromContext(ctx ir.Evaluator) *Evaluator {
-	return ctx.(evaluator.Context).Evaluation().Evaluator().(*Evaluator)
+	return ctx.(evaluator.Context).Evaluator().(*Evaluator)
 }
 
 // FuncInputsToElements converts values to a function input.

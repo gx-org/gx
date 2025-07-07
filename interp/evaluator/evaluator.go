@@ -23,21 +23,15 @@ import (
 )
 
 type (
-	// EvaluationContext is the global state in which an evaluator runs.
-	EvaluationContext interface {
+	// Context in which an operator is being executed.
+	Context interface {
+		ir.Evaluator
+
 		// NewFileContext returns a context for a given file.
 		NewFileContext(*ir.File) (Context, error)
 
 		// Evaluator returns the evaluator used by the interpreter.
 		Evaluator() Evaluator
-	}
-
-	// Context in which an operator is being executed.
-	Context interface {
-		ir.Evaluator
-
-		// Evaluation returns the context in which the evaluation is done.
-		Evaluation() EvaluationContext
 
 		// Sub returns a new context with additional variables being defined.
 		Sub(map[string]elements.Element) (Context, error)
