@@ -391,6 +391,6 @@ func (n *arrayArgument) Copy() elements.Copier {
 	return n
 }
 
-func (*arrayArgument) Kind() ir.Kind {
-	return ir.ArrayKind
+func (n *arrayArgument) Type() ir.Type {
+	return n.expr.Node().Type()
 }

@@ -102,9 +102,9 @@ func (a *atom) Unflatten(handles *elements.Unflattener) (values.Value, error) {
 	return handles.ParseArray(a.src)
 }
 
-// Kind of the element.
-func (a *atom) Kind() ir.Kind {
-	return a.val.Type().Kind()
+// Type of the element.
+func (a *atom) Type() ir.Type {
+	return a.val.Type()
 }
 
 // Materialise the value into a node in the backend graph.

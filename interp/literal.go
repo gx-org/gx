@@ -67,7 +67,7 @@ func goSliceFromElements[T dtype.GoDataType](els []elements.NumericalElement) ([
 		var subVals []T
 		var ok bool
 		var err error
-		if el.Kind() == ir.ArrayKind {
+		if el.Type().Kind() == ir.ArrayKind {
 			subVals, ok, err = goSliceFromArrayElement[T](el)
 		} else {
 			subVals = make([]T, 1)

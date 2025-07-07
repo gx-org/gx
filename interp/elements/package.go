@@ -64,8 +64,8 @@ func (pkg *Package) Unflatten(handles *Unflattener) (values.Value, error) {
 }
 
 // Kind of the element.
-func (pkg *Package) Kind() ir.Kind {
-	return ir.InvalidKind
+func (pkg *Package) Type() ir.Type {
+	return ir.InvalidType()
 }
 
 // Select a member of the package.

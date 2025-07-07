@@ -57,8 +57,8 @@ func (a *array) Unflatten(handles *elements.Unflattener) (values.Value, error) {
 	return nil, errors.Errorf("not implemented")
 }
 
-func (a *array) Kind() ir.Kind {
-	return ir.ArrayKind
+func (a *array) Type() ir.Type {
+	return a.typ
 }
 
 func (a *array) Axes(fetcher ir.Evaluator) (*elements.Slice, error) {

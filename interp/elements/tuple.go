@@ -26,8 +26,8 @@ import (
 
 // Tuple value grouping multiple values together.
 type Tuple struct {
-	node     NodeAt
 	elements []Element
+	typ      *ir.TupleType
 }
 
 var (
@@ -36,9 +36,8 @@ var (
 )
 
 // NewTuple returns a tuple to store the result of a function returning more than one value.
-func NewTuple(file *ir.File, node ir.Node, values []Element) *Tuple {
+func NewTuple(values []Element) *Tuple {
 	return &Tuple{
-		node:     NewNodeAt(file, node),
 		elements: values,
 	}
 }
@@ -63,9 +62,18 @@ func (n *Tuple) Unflatten(handles *Unflattener) (values.Value, error) {
 	return nil, fmterr.Internal(errors.Errorf("%T does not support converting device handles into GX values", n))
 }
 
-// Kind of the element.
-func (*Tuple) Kind() ir.Kind {
-	return ir.TupleKind
+// Type of the element.
+func (n *Tuple) Type() ir.Type {
+	if n.typ != nil {
+		return n.typ
+	}
+	n.typ = &ir.TupleType{
+		Types: make([]ir.Type, len(n.elements)),
+	}
+	for i, el := range n.elements {
+		n.typ.Types[i] = el.Type()
+	}
+	return n.typ
 }
 
 func (n *Tuple) String() string {

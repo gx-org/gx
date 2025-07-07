@@ -61,6 +61,6 @@ func (n *String) StringValue() *values.String {
 }
 
 // Kind of the element.
-func (*String) Kind() ir.Kind {
-	return ir.StringKind
+func (n *String) Type() ir.Type {
+	return n.str.Type()
 }

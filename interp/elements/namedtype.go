@@ -81,8 +81,8 @@ func (n *NamedType) Unflatten(handles *Unflattener) (values.Value, error) {
 }
 
 // Kind of the element..
-func (n *NamedType) Kind() ir.Kind {
-	return n.typ.Kind()
+func (n *NamedType) Type() ir.Type {
+	return n.typ
 }
 
 // String returns a string representation of the node.

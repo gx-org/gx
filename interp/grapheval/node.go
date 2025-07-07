@@ -75,7 +75,7 @@ func (ev *Evaluator) elementFromTuple(src elements.ExprAt, tpl ops.Tuple, shps [
 			return nil, err
 		}
 	}
-	return elements.NewTuple(src.File(), src.Node(), elts), nil
+	return elements.NewTuple(elts), nil
 }
 
 // BinaryOp applies a binary operator to x and y.
@@ -215,9 +215,9 @@ func (n *BackendNode) Shape() *shape.Shape {
 	return n.nod.Shape
 }
 
-// Kind of the element.
-func (*BackendNode) Kind() ir.Kind {
-	return ir.ArrayKind
+// Type of the element.
+func (n *BackendNode) Type() ir.Type {
+	return n.expr.Node().Type()
 }
 
 // Materialise returns itself.

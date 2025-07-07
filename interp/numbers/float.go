@@ -121,9 +121,9 @@ func (n *Float) Unflatten(handles *elements.Unflattener) (values.Value, error) {
 	return nil, fmterr.Internal(errors.Errorf("%T does not support converting device handles into GX values", n))
 }
 
-// Kind of the element.
-func (n *Float) Kind() ir.Kind {
-	return ir.NumberFloatKind
+// Type of the element.
+func (n *Float) Type() ir.Type {
+	return n.expr.Node().Type()
 }
 
 // Float value of the number.

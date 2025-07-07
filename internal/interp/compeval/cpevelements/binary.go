@@ -154,9 +154,9 @@ func (a *binary) Flatten() ([]elements.Element, error) {
 	return []elements.Element{a}, nil
 }
 
-// Kind of the element.
-func (a *binary) Kind() ir.Kind {
-	return a.src.Node().Type().Kind()
+// Type of the element.
+func (a *binary) Type() ir.Type {
+	return a.src.Node().Type()
 }
 
 // Unflatten creates a GX value from the next handles available in the Unflattener.
