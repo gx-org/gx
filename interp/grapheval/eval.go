@@ -16,6 +16,9 @@
 package grapheval
 
 import (
+	"strings"
+
+	"github.com/pkg/errors"
 	"github.com/gx-org/backend/ops"
 	"github.com/gx-org/backend/shape"
 	"github.com/gx-org/gx/api/values"
@@ -24,6 +27,7 @@ import (
 	"github.com/gx-org/gx/internal/tracer/processor"
 	"github.com/gx-org/gx/interp/elements"
 	"github.com/gx-org/gx/interp/evaluator"
+	"github.com/gx-org/gx/interp/proxies"
 )
 
 // Evaluator evaluates GX operations by adding the corresponding
@@ -169,4 +173,54 @@ func (ev *Evaluator) Trace(call elements.CallAt, fn elements.Func, irFunc *ir.Fu
 
 func evalFromContext(ctx ir.Evaluator) *Evaluator {
 	return ctx.(evaluator.Context).Evaluation().Evaluator().(*Evaluator)
+}
+
+// FuncInputsToElements converts values to a function input.
+func (ev *Evaluator) FuncInputsToElements(file *ir.File, fType *ir.FuncType, receiver values.Value, args []values.Value) (*elements.InputElements, error) {
+	var recvEl elements.Element
+	if receiver != nil {
+		recvField := fType.ReceiverField()
+		receiverProxy, err := proxies.ToProxy(receiver, recvField.Type())
+		if err != nil {
+			return nil, err
+		}
+		recvAt := elements.NewNodeAt(file, recvField)
+		if recvEl, err = ev.Receiver(recvAt, receiverProxy); err != nil {
+			return nil, err
+		}
+	}
+
+	paramFields := fType.Params.Fields()
+	proxyArgs, err := proxies.ToProxies(args, paramFields)
+	if err != nil {
+		return nil, err
+	}
+	argsEl := make([]elements.Element, len(args))
+	for i, param := range paramFields {
+		if i >= len(args) {
+			missingParams := paramFields[len(args):]
+			builder := strings.Builder{}
+			for n, param := range missingParams {
+				if n > 0 {
+					builder.WriteString(", ")
+				}
+				builder.WriteString(param.Name.String())
+			}
+			return nil, errors.Errorf("missing parameter(s): %s", builder.String())
+		}
+		paramAt := elements.NewNodeAt(file, param)
+		argNode, err := ev.ArgGX(paramAt, i, proxyArgs)
+		if err != nil {
+			return nil, err
+		}
+		argsEl[i] = argNode
+	}
+	return &elements.InputElements{
+		Values: elements.InputValues{
+			Receiver: receiver,
+			Args:     args,
+		},
+		Receiver: recvEl,
+		Args:     argsEl,
+	}, nil
 }
