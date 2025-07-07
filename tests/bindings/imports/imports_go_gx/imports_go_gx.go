@@ -413,7 +413,7 @@ func (f *ReturnFromBasic) String() string {
 // NewImporter returns a handle on named type Importer.
 func (fac *Factory) NewImporter() *Importer {
 	s := &Importer{}
-	typ := fac.Package.Package.IR.Decls.Types[0]
+	typ := fac.Package.Package.IR.Decls.TypeByName("Importer")
 	s.handle = handleImporter{
 		pkg:   fac.Package,
 		struc: typ,
