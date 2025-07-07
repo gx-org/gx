@@ -28,8 +28,8 @@ import (
 	"github.com/gx-org/gx/interp/evaluator"
 )
 
-// EvalContext returns the context for the interpreter.
-type EvalContext struct {
+// evalContext returns the context for the interpreter.
+type evalContext struct {
 	options        []options.PackageOption
 	packageOptions map[string][]packageOption
 	evaluator      evaluator.Evaluator
@@ -38,11 +38,9 @@ type EvalContext struct {
 	packageToFrame map[*ir.Package]*packageFrame
 }
 
-var _ evaluator.EvaluationContext = (*EvalContext)(nil)
-
 // NewInterpContext returns a new interpreter context.
-func NewInterpContext(eval evaluator.Evaluator, options []options.PackageOption) (*EvalContext, error) {
-	pkgctx := &EvalContext{
+func NewInterpContext(eval evaluator.Evaluator, options []options.PackageOption) (*Context, error) {
+	pkgctx := &evalContext{
 		options:        options,
 		packageToFrame: make(map[*ir.Package]*packageFrame),
 		packageOptions: make(map[string][]packageOption),
@@ -54,19 +52,19 @@ func NewInterpContext(eval evaluator.Evaluator, options []options.PackageOption)
 	if err := pkgctx.processOptions(options); err != nil {
 		return nil, err
 	}
-	return pkgctx, nil
+	return &Context{eval: pkgctx}, nil
 }
 
 // Evaluator returns the evaluator used by in evaluations.
-func (eval *EvalContext) Evaluator() evaluator.Evaluator {
-	return eval.evaluator
+func (ctx *Context) Evaluator() evaluator.Evaluator {
+	return ctx.eval.evaluator
 }
 
 // Context of an evaluation while running the interpreter.
 // It contains the current frame stack, values of variables,
 // and the evaluator to execute operations.
 type Context struct {
-	eval       *EvalContext
+	eval       *evalContext
 	callInputs *elements.InputElements
 	stack      []*blockFrame
 }
@@ -74,20 +72,21 @@ type Context struct {
 var _ evaluator.Context = (*Context)(nil)
 
 // NewFileContext returns a context for a given file.
-func (eval *EvalContext) NewFileContext(file *ir.File) (evaluator.Context, error) {
-	return eval.newFileContext(file)
+func (ctx *Context) NewFileContext(file *ir.File) (evaluator.Context, error) {
+	return ctx.newFileContext(file)
 }
 
-func (eval *EvalContext) newFileContext(file *ir.File) (*Context, error) {
-	ctx := &Context{eval: eval}
-	flFrame, err := ctx.fileFrame(file)
+func (ctx *Context) newFileContext(file *ir.File) (*Context, error) {
+	n := &Context{eval: ctx.eval}
+	flFrame, err := n.fileFrame(file)
 	if err != nil {
 		return nil, err
 	}
-	flFrame.pushFuncFrame(ctx, nil)
-	return ctx, nil
+	flFrame.pushFuncFrame(n, nil)
+	return n, nil
 }
 
+// EvalFunc evaluates a function.
 func (ctx *Context) EvalFunc(f ir.Func, call *ir.CallExpr, args []elements.Element) ([]elements.Element, error) {
 	fnEl := NewRunFunc(f, nil)
 	return fnEl.Call(ctx, call, args)
@@ -95,7 +94,7 @@ func (ctx *Context) EvalFunc(f ir.Func, call *ir.CallExpr, args []elements.Eleme
 
 // Evaluator returns the evaluator used by the context.
 func (ctx *Context) Evaluation() evaluator.EvaluationContext {
-	return ctx.eval
+	return ctx
 }
 
 // CallInputs returns the value with which a function has been called.

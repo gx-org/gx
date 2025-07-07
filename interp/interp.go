@@ -38,7 +38,7 @@ type FuncBuiltin func(ctx evaluator.Context, call elements.CallAt, fn elements.F
 
 // EvalFunctionToElement evaluates a function such as it becomes an element.
 func (ctx *Context) EvalFunctionToElement(eval evaluator.Evaluator, fn ir.Func, args []elements.Element) ([]elements.Element, error) {
-	subctx, err := ctx.eval.newFileContext(fn.File())
+	subctx, err := ctx.newFileContext(fn.File())
 	if err != nil {
 		return nil, err
 	}
