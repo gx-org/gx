@@ -312,7 +312,7 @@ type methodBase struct {
 // NewDType returns a handle on named type DType.
 func (fac *Factory) NewDType() *DType {
 	s := &DType{}
-	typ := fac.Package.Package.IR.Decls.Types[0]
+	typ := fac.Package.Package.IR.Decls.TypeByName("DType")
 	s.handle = handleDType{
 		pkg:   fac.Package,
 		struc: typ,
@@ -343,7 +343,7 @@ func (h *handleDType) SetField(field *ir.Field, val types.Bridge) error {
 // NewShape returns a handle on named type Shape.
 func (fac *Factory) NewShape() *Shape {
 	s := &Shape{}
-	typ := fac.Package.Package.IR.Decls.Types[1]
+	typ := fac.Package.Package.IR.Decls.TypeByName("Shape")
 	s.handle = handleShape{
 		pkg:   fac.Package,
 		struc: typ,
