@@ -169,13 +169,17 @@ func (ctx *Context) valueOf(s string) string {
 }
 
 // Sub returns a child context given a set of elements.
-func (ctx *Context) Sub(elts map[string]elements.Element) (evaluator.Context, error) {
+func (ctx *Context) Sub(elts map[string]ir.Element) (evaluator.Context, error) {
 	sub := ctx.branch()
 	sub.callInputs = ctx.callInputs
 	sub.stack = append([]*blockFrame{}, ctx.stack...)
 	bFrame := sub.pushBlockFrame()
 	for n, elt := range elts {
-		bFrame.Define(n, elt)
+		var el elements.Element
+		if elt != nil {
+			el = elt.(elements.Element)
+		}
+		bFrame.Define(n, el)
 	}
 	return sub, nil
 }

@@ -353,8 +353,8 @@ func (pe unknown) String() string {
 
 // ToValue returns a float value if the canonical expression is evaluable,
 // that is if it contains only known values and no symbol.
-func ToValue(can Canonical) *big.Float {
-	eval, ok := can.(Evaluable)
+func ToValue(el any) *big.Float {
+	eval, ok := el.(Evaluable)
 	if !ok {
 		return nil
 	}

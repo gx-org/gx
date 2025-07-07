@@ -471,7 +471,7 @@ func TestSubContext(t *testing.T) {
 	if err != nil {
 		t.Fatal(err)
 	}
-	sub, err := ctx.Sub(map[string]elements.Element{
+	sub, err := ctx.Sub(map[string]ir.Element{
 		"b": bValue,
 	})
 	if err != nil {

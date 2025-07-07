@@ -14,14 +14,24 @@
 
 package ir
 
+import "github.com/gx-org/gx/internal/interp/canonical"
+
 func areEqual(fetcher Fetcher, x, y Expr) (bool, error) {
 	xExpr, err := fetcher.EvalExpr(x)
 	if err != nil {
 		return false, err
 	}
+	xCan, ok := xExpr.(canonical.Canonical)
+	if !ok {
+		return false, nil
+	}
 	yExpr, err := fetcher.EvalExpr(y)
 	if err != nil {
 		return false, err
 	}
-	return xExpr.Compare(yExpr), nil
+	yCan, ok := yExpr.(canonical.Canonical)
+	if !ok {
+		return false, nil
+	}
+	return xCan.Compare(yCan), nil
 }

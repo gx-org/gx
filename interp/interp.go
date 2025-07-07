@@ -63,11 +63,6 @@ func (ctx *Context) EvalFunctionToElement(eval evaluator.Evaluator, fn ir.Func, 
 	return evalFuncBody(subctx, body)
 }
 
-// EvalExprInContext uses an evaluator to evaluation an IR expression.
-func EvalExprInContext(ctx evaluator.Context, expr ir.Expr) (elements.Element, error) {
-	return ctx.(*Context).evalExpr(expr)
-}
-
 // EvalFunc evaluates a function.
 func EvalFunc(eval evaluator.Evaluator, fn *ir.FuncDecl, in *elements.InputElements, options []options.PackageOption) (outs []elements.Element, err error) {
 	if fn.Body == nil {
