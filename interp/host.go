@@ -21,7 +21,7 @@ import (
 )
 
 // evalAtom evaluates an expression on the host and returns its result as an array.
-func evalAtom[T dtype.GoDataType](ctx *context, expr ir.Expr) (val T, err error) {
+func evalAtom[T dtype.GoDataType](ctx *Context, expr ir.Expr) (val T, err error) {
 	el, err := ctx.evalExpr(expr)
 	if err != nil {
 		var zero T
@@ -30,7 +30,7 @@ func evalAtom[T dtype.GoDataType](ctx *context, expr ir.Expr) (val T, err error)
 	return elements.ConstantScalarFromElement[T](el)
 }
 
-func evalAtomInt(ctx *context, expr ir.Expr) (int, error) {
+func evalAtomInt(ctx *Context, expr ir.Expr) (int, error) {
 	el, err := ctx.evalExpr(expr)
 	if err != nil {
 		return 0, err
