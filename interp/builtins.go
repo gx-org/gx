@@ -29,7 +29,7 @@ import (
 
 var builtinFile = &ir.File{Package: &ir.Package{Name: &ast.Ident{Name: "<interp>"}}}
 
-func (ectx *EvalContext) defineBoolConstant(val ir.StorageWithValue) error {
+func (ectx *evalContext) defineBoolConstant(val ir.StorageWithValue) error {
 	gxValue, err := values.AtomBoolValue(ir.BoolType(), val.Value(nil).(*ir.AtomicValueT[bool]).Val)
 	if err != nil {
 		return err
@@ -42,7 +42,7 @@ func (ectx *EvalContext) defineBoolConstant(val ir.StorageWithValue) error {
 	return nil
 }
 
-func (ectx *EvalContext) buildBuiltinFrame() error {
+func (ectx *evalContext) buildBuiltinFrame() error {
 	ectx.builtin = &baseFrame{scope: scope.NewScope[elements.Element](nil)}
 	if err := ectx.defineBoolConstant(ir.FalseStorage()); err != nil {
 		return err
