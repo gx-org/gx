@@ -1067,7 +1067,7 @@ func (f *NewSource) String() string {
 // NewPhilox returns a handle on named type Philox.
 func (fac *Factory) NewPhilox() *Philox {
 	s := &Philox{}
-	typ := fac.Package.Package.IR.Decls.Types[0]
+	typ := fac.Package.Package.IR.Decls.TypeByName("Philox")
 	s.handle = handlePhilox{
 		pkg:   fac.Package,
 		struc: typ,
@@ -1126,7 +1126,7 @@ func (h *handlePhilox) SetField(field *ir.Field, val types.Bridge) error {
 // NewbootstrapGenerator returns a handle on named type bootstrapGenerator.
 func (fac *Factory) NewbootstrapGenerator() *bootstrapGenerator {
 	s := &bootstrapGenerator{}
-	typ := fac.Package.Package.IR.Decls.Types[1]
+	typ := fac.Package.Package.IR.Decls.TypeByName("bootstrapGenerator")
 	s.handle = handlebootstrapGenerator{
 		pkg:   fac.Package,
 		struc: typ,
@@ -1163,7 +1163,7 @@ func (h *handlebootstrapGenerator) SetField(field *ir.Field, val types.Bridge) e
 // NewRand returns a handle on named type Rand.
 func (fac *Factory) NewRand() *Rand {
 	s := &Rand{}
-	typ := fac.Package.Package.IR.Decls.Types[2]
+	typ := fac.Package.Package.IR.Decls.TypeByName("Rand")
 	s.handle = handleRand{
 		pkg:   fac.Package,
 		struc: typ,
