@@ -12,7 +12,7 @@
 // See the License for the specific language governing permissions and
 // limitations under the License.
 
-package interp
+package context
 
 import (
 	"github.com/gx-org/gx/build/ir"
@@ -91,7 +91,7 @@ func (fr *packageFrame) evalPackageConstExpr(ctx *Context, expr *ir.ConstExpr) e
 	if err != nil {
 		return err
 	}
-	el, err := fCtx.evalExpr(expr.Val)
+	el, err := fCtx.EvalExpr(expr.Val)
 	if err != nil {
 		return err
 	}
@@ -191,7 +191,8 @@ type blockFrame struct {
 	owner  *functionFrame
 }
 
-func (ctx *Context) pushBlockFrame() *blockFrame {
+// PushBlockFrame pushes an empty new frame on the stack.
+func (ctx *Context) PushBlockFrame() *blockFrame {
 	parent := ctx.currentFrame()
 	return ctx.pushFrame(&blockFrame{
 		baseFrame: baseFrame{

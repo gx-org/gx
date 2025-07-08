@@ -12,7 +12,7 @@
 // See the License for the specific language governing permissions and
 // limitations under the License.
 
-package interp
+package context
 
 import (
 	"fmt"
@@ -28,25 +28,36 @@ import (
 	"github.com/gx-org/gx/interp/evaluator"
 )
 
-// Context of an evaluation while running the interpreter.
-// It contains the current frame stack, values of variables,
-// and the evaluator to execute operations.
-type Context struct {
-	options        []options.PackageOption
-	packageOptions map[string][]packageOption
-	evaluator      evaluator.Evaluator
-	builtin        *baseFrame
-	packageToFrame map[*ir.Package]*packageFrame
+type (
+	// Interpreter evaluates expressions and statements given the context.
+	Interpreter interface {
+		EvalExpr(*Context, ir.Expr) (ir.Element, error)
+		EvalStmt(*Context, *ir.BlockStmt) ([]ir.Element, bool, error)
+	}
 
-	callInputs *elements.InputElements
-	stack      []*blockFrame
-}
+	// Context of an evaluation while running the interpreter.
+	// It contains the current frame stack, values of variables,
+	// and the evaluator to execute operations.
+	Context struct {
+		interp Interpreter
+
+		options        []options.PackageOption
+		packageOptions map[string][]packageOption
+		evaluator      evaluator.Evaluator
+		builtin        *baseFrame
+		packageToFrame map[*ir.Package]*packageFrame
+
+		callInputs *elements.InputElements
+		stack      []*blockFrame
+	}
+)
 
 var _ evaluator.Context = (*Context)(nil)
 
-// NewInterpContext returns a new interpreter context.
-func NewInterpContext(eval evaluator.Evaluator, options []options.PackageOption) (*Context, error) {
+// New returns a new interpreter context.
+func New(interp Interpreter, eval evaluator.Evaluator, options []options.PackageOption) (*Context, error) {
 	ctx := &Context{
+		interp:         interp,
 		options:        options,
 		packageToFrame: make(map[*ir.Package]*packageFrame),
 		packageOptions: make(map[string][]packageOption),
@@ -73,6 +84,7 @@ func (ctx *Context) NewFileContext(file *ir.File) (evaluator.Context, error) {
 
 func (ctx *Context) branch() *Context {
 	return &Context{
+		interp:         ctx.interp,
 		options:        ctx.options,
 		packageOptions: ctx.packageOptions,
 		evaluator:      ctx.evaluator,
@@ -97,6 +109,11 @@ func (ctx *Context) EvalFunc(f ir.Func, call *ir.CallExpr, args []ir.Element) ([
 	return fnEl.Call(ctx, call, args)
 }
 
+// EvalExpr evaluates an expression in this context.
+func (ctx *Context) EvalExpr(expr ir.Expr) (ir.Element, error) {
+	return ctx.interp.EvalExpr(ctx, expr)
+}
+
 // CallInputs returns the value with which a function has been called.
 func (ctx *Context) CallInputs() *elements.InputElements {
 	return ctx.callInputs
@@ -107,7 +124,8 @@ func (ctx *Context) pushFrame(fr *blockFrame) *blockFrame {
 	return fr
 }
 
-func (ctx *Context) popFrame() {
+// PopFrame pops the current frame from the stack.
+func (ctx *Context) PopFrame() {
 	ctx.stack = ctx.stack[:len(ctx.stack)-1]
 }
 
@@ -115,7 +133,8 @@ func (ctx *Context) currentFrame() *blockFrame {
 	return ctx.stack[len(ctx.stack)-1]
 }
 
-func (ctx *Context) set(tok token.Token, dest ir.Storage, value ir.Element) error {
+// Set the value of a given storage.
+func (ctx *Context) Set(tok token.Token, dest ir.Storage, value ir.Element) error {
 	fr := ctx.currentFrame()
 	switch destT := dest.(type) {
 	case *ir.LocalVarStorage:
@@ -131,7 +150,7 @@ func (ctx *Context) set(tok token.Token, dest ir.Storage, value ir.Element) erro
 		}
 		return fr.Assign(destT.Src.Name, value)
 	case *ir.StructFieldStorage:
-		receiver, err := ctx.evalExpr(destT.Sel.X)
+		receiver, err := ctx.EvalExpr(destT.Sel.X)
 		if err != nil {
 			return err
 		}
@@ -150,7 +169,13 @@ func (ctx *Context) set(tok token.Token, dest ir.Storage, value ir.Element) erro
 	}
 }
 
-func (ctx *Context) find(id *ast.Ident) (ir.Element, error) {
+// CurrentFunc returns the current function being run.
+func (ctx *Context) CurrentFunc() ir.Func {
+	return ctx.currentFrame().owner.function
+}
+
+// Find the element in the stack of frame given its identifier.
+func (ctx *Context) Find(id *ast.Ident) (ir.Element, error) {
 	value, exists := ctx.currentFrame().Find(id.Name)
 	if !exists {
 		return nil, fmterr.Errorf(ctx.File().FileSet(), id, "undefined: %s", id.Name)
@@ -173,7 +198,7 @@ func (ctx *Context) Sub(elts map[string]ir.Element) (evaluator.Context, error) {
 	sub := ctx.branch()
 	sub.callInputs = ctx.callInputs
 	sub.stack = append([]*blockFrame{}, ctx.stack...)
-	bFrame := sub.pushBlockFrame()
+	bFrame := sub.PushBlockFrame()
 	for n, elt := range elts {
 		bFrame.Define(n, elt)
 	}
@@ -183,6 +208,33 @@ func (ctx *Context) Sub(elts map[string]ir.Element) (evaluator.Context, error) {
 // File returns the current file the interpreter is running code from.
 func (ctx *Context) File() *ir.File {
 	return ctx.currentFrame().owner.parent.file
+}
+
+// EvalFunctionToElement evaluates a function such as it becomes an element.
+func (ctx *Context) EvalFunctionToElement(eval evaluator.Evaluator, fn ir.Func, args []ir.Element) ([]ir.Element, error) {
+	subctx, err := ctx.newFileContext(fn.File())
+	if err != nil {
+		return nil, err
+	}
+	funcFrame, err := subctx.pushFuncFrame(fn)
+	if err != nil {
+		return nil, err
+	}
+
+	assignArgumentValues(fn.FuncType(), funcFrame, args)
+	for _, resultName := range fieldNames(fn.FuncType().Results.List) {
+		funcFrame.Define(resultName.Name, nil)
+	}
+	defer subctx.PopFrame()
+
+	var body *ir.BlockStmt
+	switch fn := fn.(type) {
+	case *ir.FuncDecl:
+		body = fn.Body
+	case *ir.FuncLit:
+		body = fn.Body
+	}
+	return evalFuncBody(subctx, body)
 }
 
 func (ctx *Context) String() string {

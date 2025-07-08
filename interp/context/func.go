@@ -12,18 +12,21 @@
 // See the License for the specific language governing permissions and
 // limitations under the License.
 
-package interp
+package context
 
 import (
 	"fmt"
 	"go/ast"
+	"strings"
 
 	"github.com/pkg/errors"
+	"github.com/gx-org/gx/api/options"
 	"github.com/gx-org/gx/api/values"
 	"github.com/gx-org/gx/build/fmterr"
 	"github.com/gx-org/gx/build/ir"
 	"github.com/gx-org/gx/internal/interp/flatten"
 	"github.com/gx-org/gx/interp/elements"
+	"github.com/gx-org/gx/interp/evaluator"
 )
 
 type funcBase struct {
@@ -71,7 +74,7 @@ func (st *funcBase) Recv() *elements.Receiver {
 	return st.recv
 }
 
-// Unflatten creates a GX value from the next handles available in the Unflattener.
+// Unflatten creates a GX value from the next handles available in the parser.
 func (st *funcBase) Unflatten(handles *flatten.Parser) (values.Value, error) {
 	return values.NewIRNode(st.fn)
 }
@@ -106,7 +109,7 @@ func (f *funcDecl) Call(fctx ir.Evaluator, call *ir.CallExpr, args []ir.Element)
 	if err != nil {
 		return nil, err
 	}
-	defer ctx.popFrame()
+	defer ctx.PopFrame()
 	for _, resultName := range fieldNames(f.fnT.FType.Results.List) {
 		funcFrame.Define(resultName.Name, nil)
 	}
@@ -158,7 +161,7 @@ func (f *funcLit) Call(fctx ir.Evaluator, call *ir.CallExpr, args []ir.Element) 
 }
 
 func evalFuncBody(ctx *Context, body *ir.BlockStmt) ([]ir.Element, error) {
-	outs, stop, err := evalBlockStmt(ctx, body)
+	outs, stop, err := ctx.interp.EvalStmt(ctx, body)
 	if !stop {
 		// No return statement was processed during the eval of the function.
 		return nil, fmterr.Errorf(ctx.File().FileSet(), body.Src, "missing return")
@@ -187,33 +190,56 @@ func assignArgumentValues(funcType *ir.FuncType, funcFrame *blockFrame, args []i
 	}
 }
 
-func evalCallExpr(ctx *Context, expr *ir.CallExpr) (ir.Element, error) {
-	outs, err := evalCall(ctx, expr)
+// EvalFunc evaluates a function.
+func EvalFunc(interp Interpreter, eval evaluator.Evaluator, fn *ir.FuncDecl, in *elements.InputElements, options []options.PackageOption) (outs []ir.Element, err error) {
+	if fn.Body == nil {
+		return nil, errors.Errorf("%s: missing function body", fn.Name())
+	}
+	ectx, err := New(interp, eval, options)
 	if err != nil {
 		return nil, err
 	}
-	return ToSingleElement(ctx, expr, outs)
-}
-
-func evalCall(ctx *Context, expr *ir.CallExpr) ([]ir.Element, error) {
-	// Fetch the function and check that it is callable.
-	fnNode, err := ctx.evalExpr(expr.Callee.X)
+	ctx, err := ectx.newFileContext(fn.File())
 	if err != nil {
 		return nil, err
 	}
-	fn, ok := fnNode.(elements.Func)
-	if !ok {
-		return nil, fmterr.Errorf(ctx.File().FileSet(), expr.Source(), "%T is not callable", fnNode)
+	// Set the function inputs in the Context.
+	ctx.callInputs = in
+	// Create a frame for the function to evaluate.
+	frame, err := ctx.pushFuncFrame(fn)
+	if err != nil {
+		return nil, err
 	}
-
-	// Evaluate the arguments to pass to the function.
-	args := make([]ir.Element, len(expr.Args))
-	for i, arg := range expr.Args {
-		el, err := ctx.evalExpr(arg)
-		if err != nil {
-			return nil, err
+	defer ctx.PopFrame()
+	// Add the result names to the Context.
+	for _, resultName := range fieldNames(fn.FType.Results.List) {
+		frame.Define(resultName.Name, nil)
+	}
+	// Add the receiver to the Context.
+	recv := fn.FType.ReceiverField()
+	if recv != nil {
+		if in.Receiver == nil {
+			return nil, errors.Errorf("function has a receiver but a nil value has been passed as a receiver value")
 		}
-		args[i] = el
+		frame.Define(recv.Name.Name, in.Receiver)
 	}
-	return fn.Call(ctx, expr, args)
+	// Add the parameters to the Context.
+	paramFields := fn.FType.Params.Fields()
+	for i, param := range paramFields {
+		if i >= len(in.Args) {
+			missingParams := paramFields[len(in.Args):]
+			builder := strings.Builder{}
+			for n, param := range missingParams {
+				if n > 0 {
+					builder.WriteString(", ")
+				}
+				builder.WriteString(param.Name.String())
+			}
+			return nil, errors.Errorf("missing parameter(s): %s", builder.String())
+		}
+		frame.Define(param.Name.Name, in.Args[i])
+	}
+	// Evaluate the function body.
+	outs, err = evalFuncBody(ctx, fn.Body)
+	return
 }

@@ -12,7 +12,7 @@
 // See the License for the specific language governing permissions and
 // limitations under the License.
 
-package interp
+package context
 
 import (
 	"go/ast"
@@ -28,6 +28,9 @@ import (
 )
 
 var builtinFile = &ir.File{Package: &ir.Package{Name: &ast.Ident{Name: "<interp>"}}}
+
+// FuncBuiltin defines a builtin function provided by a backend.
+type FuncBuiltin func(ctx evaluator.Context, call elements.CallAt, fn elements.Func, irFunc *ir.FuncBuiltin, args []ir.Element) ([]ir.Element, error)
 
 func (ctx *Context) defineBoolConstant(val ir.StorageWithValue) error {
 	gxValue, err := values.AtomBoolValue(ir.BoolType(), val.Value(nil).(*ir.AtomicValueT[bool]).Val)

@@ -159,7 +159,7 @@ func (s *pkgResolveScope) packageContext() evaluator.Context {
 			opts = append(opts, opt)
 		}
 	}
-	ectx, err := interp.NewInterpContext(hostEval, opts)
+	ectx, err := interp.New(hostEval, opts)
 	if err != nil {
 		s.err().Append(err)
 		return nil
