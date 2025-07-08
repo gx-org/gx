@@ -87,7 +87,7 @@ func Compile(dev *api.Device, fn ir.Func, p *processor.Processor, ao elements.Ar
 	return cg, err
 }
 
-func (g *CompiledFunc) run(ctx *elements.InputValues) (out, traces []platform.DeviceHandle, err error) {
+func (g *CompiledFunc) run(ctx *values.FuncInputs) (out, traces []platform.DeviceHandle, err error) {
 	if g.runner == nil {
 		// No runner: there is nothing to run in the graph.
 		return nil, nil, nil
@@ -106,7 +106,7 @@ func (g *CompiledFunc) run(ctx *elements.InputValues) (out, traces []platform.De
 
 // Run the graph.
 func (g *CompiledFunc) Run(receiver values.Value, args []values.Value, tracer trace.Callback) ([]values.Value, error) {
-	fc := &elements.InputValues{Receiver: receiver, Args: args}
+	fc := &values.FuncInputs{Receiver: receiver, Args: args}
 	if err := g.process.ProcessInits(fc); err != nil {
 		return nil, err
 	}
@@ -120,7 +120,7 @@ func (g *CompiledFunc) Run(receiver values.Value, args []values.Value, tracer tr
 	return g.handlesToValues(fc, out)
 }
 
-func (g *CompiledFunc) handlesToValues(in *elements.InputValues, handles []platform.DeviceHandle) ([]values.Value, error) {
+func (g *CompiledFunc) handlesToValues(in *values.FuncInputs, handles []platform.DeviceHandle) ([]values.Value, error) {
 	reader := elements.NewUnflattener(g.device.PlatformDevice(), in, handles)
 	values := make([]values.Value, len(g.outs))
 	for i, el := range g.outs {

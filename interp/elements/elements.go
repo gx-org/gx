@@ -34,7 +34,7 @@ import (
 type InputElements struct {
 	// Values are the initial input GX values passed to the function call
 	// before they were encapsulated in elements for the interpreter.
-	Values InputValues
+	Values values.FuncInputs
 
 	// Receiver on which the function call was done.
 	// Can be nil.
@@ -42,16 +42,6 @@ type InputElements struct {
 
 	// Args returns list of arguments passed to the interpreter at call time.
 	Args []Element
-}
-
-// InputValues are GX values passed to the function call.
-type InputValues struct {
-	// Receiver on which the function call was done.
-	// Can be nil.
-	Receiver values.Value
-
-	// Args returns list of arguments passed to the interpreter at call time.
-	Args []values.Value
 }
 
 type (
@@ -279,7 +269,7 @@ func ConstantFromElement(el Element) *values.HostArray {
 }
 
 // HostValueFromContext returns a host value from the function call.
-func HostValueFromContext(ci *InputValues, el Element) (*values.HostArray, error) {
+func HostValueFromContext(ci *values.FuncInputs, el Element) (*values.HostArray, error) {
 	withValue, ok := el.(ElementWithArrayFromContext)
 	if !ok {
 		return nil, errors.Errorf("state element %T does not support returning a value given a context", el)

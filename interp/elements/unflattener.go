@@ -30,14 +30,14 @@ import (
 // into GX values.
 type Unflattener struct {
 	dev        platform.Device
-	callInputs *InputValues
+	callInputs *values.FuncInputs
 	// Handles to unflatten.
 	compOutput []platform.DeviceHandle
 	nextPos    int
 }
 
 // NewUnflattener returns a new Unflattener given the output of a graph computation.
-func NewUnflattener(dev platform.Device, callInputs *InputValues, handles []platform.DeviceHandle) *Unflattener {
+func NewUnflattener(dev platform.Device, callInputs *values.FuncInputs, handles []platform.DeviceHandle) *Unflattener {
 	return &Unflattener{
 		dev:        dev,
 		callInputs: callInputs,
@@ -53,7 +53,7 @@ func (h *Unflattener) Next() platform.DeviceHandle {
 }
 
 // CallInputs returns the inputs with which the function was called.
-func (h *Unflattener) CallInputs() *InputValues {
+func (h *Unflattener) CallInputs() *values.FuncInputs {
 	return h.callInputs
 }
 

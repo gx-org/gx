@@ -45,7 +45,7 @@ type traces struct {
 }
 
 // Trace a set of elements.
-func (ts *traces) Trace(call elements.CallAt, fn *elements.Func, irFunc *ir.FuncBuiltin, args []elements.Element, ctx *elements.InputValues) error {
+func (ts *traces) Trace(call elements.CallAt, fn *elements.Func, irFunc *ir.FuncBuiltin, args []elements.Element, ctx *values.FuncInputs) error {
 	ts.traces = append(ts.traces, &traceProcessor{
 		call:   call,
 		traced: args,
@@ -61,7 +61,7 @@ func (ts *traces) Trace(call elements.CallAt, fn *elements.Func, irFunc *ir.Func
 }
 
 // RegisterTrace registers a call to the trace builtin.
-func (ts *traces) RegisterTrace(call elements.CallAt, fn elements.Func, irFunc *ir.FuncBuiltin, args []elements.Element, ctx *elements.InputValues) error {
+func (ts *traces) RegisterTrace(call elements.CallAt, fn elements.Func, irFunc *ir.FuncBuiltin, args []elements.Element, ctx *values.FuncInputs) error {
 	ts.traces = append(ts.traces, &traceProcessor{
 		call:   call,
 		traced: args,
@@ -77,7 +77,7 @@ func (ts *traces) RegisterTrace(call elements.CallAt, fn elements.Func, irFunc *
 }
 
 // ProcessTraces processes the graph outputs related to traces.
-func (ts *traces) ProcessTraces(dev platform.Device, in *elements.InputValues, tracer trace.Callback, aux []platform.DeviceHandle) error {
+func (ts *traces) ProcessTraces(dev platform.Device, in *values.FuncInputs, tracer trace.Callback, aux []platform.DeviceHandle) error {
 	if tracer == nil || len(ts.traces) == 0 {
 		return nil
 	}

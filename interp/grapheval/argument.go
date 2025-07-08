@@ -31,7 +31,7 @@ import (
 type (
 	argFetcher interface {
 		ValueProxy() proxies.Value
-		ValueFromContext(*elements.InputValues) (values.Value, error)
+		ValueFromContext(*values.FuncInputs) (values.Value, error)
 	}
 
 	parameterFetcher struct {
@@ -44,7 +44,7 @@ type (
 	}
 )
 
-func (f parameterFetcher) ValueFromContext(in *elements.InputValues) (values.Value, error) {
+func (f parameterFetcher) ValueFromContext(in *values.FuncInputs) (values.Value, error) {
 	return in.Args[f.paramIndex], nil
 }
 
@@ -56,7 +56,7 @@ func (f parameterFetcher) String() string {
 	return fmt.Sprintf("GX argument %d", f.paramIndex)
 }
 
-func (f receiverFetcher) ValueFromContext(in *elements.InputValues) (values.Value, error) {
+func (f receiverFetcher) ValueFromContext(in *values.FuncInputs) (values.Value, error) {
 	return in.Receiver, nil
 }
 
@@ -87,7 +87,7 @@ type (
 	parentArgument interface {
 		Name() string
 		ValueProxy() proxies.Value
-		ValueFromContext(*elements.InputValues) (values.Value, error)
+		ValueFromContext(*values.FuncInputs) (values.Value, error)
 	}
 
 	// rootArgument is an argument passed to the GX interpreter from the host language.
@@ -158,7 +158,7 @@ func (arg *namedTypeArgument) ValueProxy() proxies.Value {
 	return arg.pValue.Under()
 }
 
-func (arg *namedTypeArgument) ValueFromContext(ctx *elements.InputValues) (values.Value, error) {
+func (arg *namedTypeArgument) ValueFromContext(ctx *values.FuncInputs) (values.Value, error) {
 	return arg.parent.ValueFromContext(ctx)
 }
 
@@ -219,7 +219,7 @@ func (sel *fieldSelectorArgument) ValueProxy() proxies.Value {
 	return sel.pValue
 }
 
-func (sel *fieldSelectorArgument) ValueFromContext(ctx *elements.InputValues) (values.Value, error) {
+func (sel *fieldSelectorArgument) ValueFromContext(ctx *values.FuncInputs) (values.Value, error) {
 	val, err := sel.parent.ValueFromContext(ctx)
 	if err != nil {
 		return nil, err
@@ -306,7 +306,7 @@ func (sel *indexSelectorArgument) ValueProxy() proxies.Value {
 	return sel.pValue
 }
 
-func (sel *indexSelectorArgument) ValueFromContext(ctx *elements.InputValues) (values.Value, error) {
+func (sel *indexSelectorArgument) ValueFromContext(ctx *values.FuncInputs) (values.Value, error) {
 	el, err := sel.parent.ValueFromContext(ctx)
 	if err != nil {
 		return nil, err
@@ -358,7 +358,7 @@ func (ev *Evaluator) NewArrayArgument(parent parentArgument, expr elements.ExprA
 	return n, nil
 }
 
-func (n *arrayArgument) ToDeviceHandle(dev platform.Device, in *elements.InputValues) (platform.DeviceHandle, error) {
+func (n *arrayArgument) ToDeviceHandle(dev platform.Device, in *values.FuncInputs) (platform.DeviceHandle, error) {
 	array, err := n.ArrayFromContext(in)
 	if err != nil {
 		return nil, err
@@ -375,7 +375,7 @@ func toDevice(dev platform.Device, arr values.Array) (platform.DeviceHandle, err
 }
 
 // NumericalConstant returns the value of a constant represented by a node.
-func (n *arrayArgument) ArrayFromContext(in *elements.InputValues) (values.Array, error) {
+func (n *arrayArgument) ArrayFromContext(in *values.FuncInputs) (values.Array, error) {
 	value, err := n.parentArgument.ValueFromContext(in)
 	if err != nil {
 		return nil, err

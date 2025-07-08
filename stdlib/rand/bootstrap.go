@@ -126,7 +126,7 @@ func (arg *randBootstrapArg) next() (elements.NumericalElement, error) {
 	}), arg.pValue)
 }
 
-func (arg *randBootstrapArg) Init(ctx *elements.InputValues) error {
+func (arg *randBootstrapArg) Init(ctx *values.FuncInputs) error {
 	value, err := arg.seed.ArrayFromContext(ctx)
 	if err != nil {
 		return nil
@@ -150,7 +150,7 @@ func (arg randBootstrapArg) ValueProxy() proxies.Value {
 	return arg.pValue
 }
 
-func (arg randBootstrapArg) ValueFromContext(ctx *elements.InputValues) (values.Value, error) {
+func (arg randBootstrapArg) ValueFromContext(ctx *values.FuncInputs) (values.Value, error) {
 	val := arg.rb.rand.Uint64()
 	return values.AtomIntegerValue[uint64](arg.ValueProxy().Type(), val)
 }
