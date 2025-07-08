@@ -28,6 +28,7 @@ import (
 	"github.com/gx-org/gx/build/ir"
 	"github.com/gx-org/gx/internal/tracer/cfunc"
 	"github.com/gx-org/gx/internal/tracer/processor"
+	"github.com/gx-org/gx/interp/context"
 	"github.com/gx-org/gx/interp/grapheval"
 	"github.com/gx-org/gx/interp"
 )
@@ -65,7 +66,7 @@ func Trace(dev *api.Device, fn *ir.FuncDecl, receiver values.Value, args []value
 	tr := &tracer{
 		graph: graph,
 	}
-	ev := grapheval.New(dev.Runtime().Builder(), proc, tr.graph, interp.NewRunFunc)
+	ev := grapheval.New(dev.Runtime().Builder(), proc, tr.graph, context.NewRunFunc)
 
 	// Transform the receiver and arguments values into elements for the interpreter.
 	in, err := ev.FuncInputsToElements(fn.File(), fn.FuncType(), receiver, args)

@@ -22,12 +22,13 @@ import (
 	"github.com/gx-org/gx/build/ir"
 	"github.com/gx-org/gx/golang/backend/kernels"
 	"github.com/gx-org/gx/internal/interp/compeval/cpevelements"
+	"github.com/gx-org/gx/interp/context"
 	"github.com/gx-org/gx/interp/elements"
 )
 
 type (
 	valuer interface {
-		array(ctx *Context, expr *ir.ArrayLitExpr) (ir.Element, error)
+		array(ctx *context.Context, expr *ir.ArrayLitExpr) (ir.Element, error)
 	}
 
 	valuerT[T dtype.GoDataType] struct {
@@ -84,7 +85,7 @@ func goSliceFromElements[T dtype.GoDataType](els []elements.NumericalElement) ([
 	return vals, true, nil
 }
 
-func (v valuerT[T]) buildStaticArray(ctx *Context, lit *ir.ArrayLitExpr, axes, vals []elements.NumericalElement) (ir.Element, bool, error) {
+func (v valuerT[T]) buildStaticArray(ctx *context.Context, lit *ir.ArrayLitExpr, axes, vals []elements.NumericalElement) (ir.Element, bool, error) {
 	axesI64, ok, err := goSliceFromElements[int64](axes)
 	if !ok || err != nil {
 		return nil, false, err
@@ -112,14 +113,14 @@ func (v valuerT[T]) buildStaticArray(ctx *Context, lit *ir.ArrayLitExpr, axes, v
 		return nil, false, err
 	}
 	// All elements of the literal are scalars already known.
-	node, err := ctx.evaluator.ArrayOps().ElementFromArray(elements.NewExprAt(ctx.File(), lit), array)
+	node, err := ctx.Evaluator().ArrayOps().ElementFromArray(elements.NewExprAt(ctx.File(), lit), array)
 	if err != nil {
 		return nil, false, err
 	}
 	return node, true, nil
 }
 
-func (v valuerT[T]) array(ctx *Context, lit *ir.ArrayLitExpr) (ir.Element, error) {
+func (v valuerT[T]) array(ctx *context.Context, lit *ir.ArrayLitExpr) (ir.Element, error) {
 	axes, err := evalArrayAxes(ctx, lit, lit.Typ)
 	if err != nil {
 		return nil, err
@@ -138,7 +139,7 @@ func (v valuerT[T]) array(ctx *Context, lit *ir.ArrayLitExpr) (ir.Element, error
 	}
 	// Some values will be known at runtime. We create one node for each element
 	// and concatenates everything into an array.
-	array1d, err := ctx.evaluator.ArrayOps().Concat(elements.NewExprAt(ctx.File(), lit), elVals)
+	array1d, err := ctx.Evaluator().ArrayOps().Concat(elements.NewExprAt(ctx.File(), lit), elVals)
 	if err != nil {
 		return nil, err
 	}
@@ -148,7 +149,7 @@ func (v valuerT[T]) array(ctx *Context, lit *ir.ArrayLitExpr) (ir.Element, error
 	return array1d.Reshape(ctx, lit, axes)
 }
 
-func newValuer(ctx *Context, expr ir.Expr, kind ir.Kind) (v valuer, err error) {
+func newValuer(ctx *context.Context, expr ir.Expr, kind ir.Kind) (v valuer, err error) {
 	switch kind {
 	case ir.IntIdxKind:
 		v = valuerT[ir.Int]{kind: kind, toAtomValue: values.AtomIntegerValue[ir.Int], toArrayValue: values.ArrayIntegerValue[ir.Int]}
@@ -176,7 +177,7 @@ func newValuer(ctx *Context, expr ir.Expr, kind ir.Kind) (v valuer, err error) {
 	return
 }
 
-func evalArrayLiteral(ctx *Context, expr *ir.ArrayLitExpr) (ir.Element, error) {
+func evalArrayLiteral(ctx *context.Context, expr *ir.ArrayLitExpr) (ir.Element, error) {
 	_, dtype := ir.Shape(expr.Type())
 	valuer, err := newValuer(ctx, expr, dtype.Kind())
 	if err != nil {
@@ -209,7 +210,7 @@ func toAtomElementBool(src elements.ExprAt, val bool) (elements.NumericalElement
 	return cpevelements.NewAtom(src, hostVal)
 }
 
-func evalAtomicValue(ctx *Context, expr ir.AtomicValue) (elements.NumericalElement, error) {
+func evalAtomicValue(ctx *context.Context, expr ir.AtomicValue) (elements.NumericalElement, error) {
 	kind := expr.Type().Kind()
 	exprAt := elements.NewExprAt(ctx.File(), expr)
 	switch kind {

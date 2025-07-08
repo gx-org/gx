@@ -128,7 +128,7 @@ func value(x int32) wantValue {
 }
 
 func newContext(opts []options.PackageOption) (evaluator.Context, error) {
-	ectx, err := interp.NewInterpContext(compeval.NewHostEvaluator(nil), opts)
+	ectx, err := interp.New(compeval.NewHostEvaluator(nil), opts)
 	if err != nil {
 		return nil, err
 	}
