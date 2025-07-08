@@ -22,12 +22,13 @@ import (
 	gxfmt "github.com/gx-org/gx/base/fmt"
 	"github.com/gx-org/gx/build/fmterr"
 	"github.com/gx-org/gx/build/ir"
+	"github.com/gx-org/gx/internal/interp/flatten"
 )
 
 // Struct is an instance of a structure.
 type Struct struct {
 	expr       ValueAt
-	fields     map[string]Element
+	fields     map[string]ir.Element
 	structType *ir.StructType
 }
 
@@ -37,8 +38,8 @@ var (
 )
 
 // NewStructFromElements returns a new node representing a structure instance given a slice of
-func NewStructFromElements(structType *ir.StructType, expr ValueAt, vals []Element) *Struct {
-	fields := make(map[string]Element, len(vals))
+func NewStructFromElements(structType *ir.StructType, expr ValueAt, vals []ir.Element) *Struct {
+	fields := make(map[string]ir.Element, len(vals))
 	for i, field := range structType.Fields.Fields() {
 		fields[field.Name.Name] = vals[i]
 	}
@@ -46,7 +47,7 @@ func NewStructFromElements(structType *ir.StructType, expr ValueAt, vals []Eleme
 }
 
 // NewStruct returns a new node representing a structure instance.
-func NewStruct(structType *ir.StructType, expr ValueAt, fields map[string]Element) *Struct {
+func NewStruct(structType *ir.StructType, expr ValueAt, fields map[string]ir.Element) *Struct {
 	return &Struct{
 		expr:       expr,
 		fields:     fields,
@@ -59,9 +60,9 @@ func (n *Struct) StructType() *ir.StructType {
 	return n.structType
 }
 
-func (n *Struct) orderedFieldValues() []Element {
+func (n *Struct) orderedFieldValues() []ir.Element {
 	fields := n.structType.Fields.Fields()
-	ordered := make([]Element, len(fields))
+	ordered := make([]ir.Element, len(fields))
 	for i, field := range fields {
 		ordered[i] = n.fields[field.Name.Name]
 	}
@@ -69,18 +70,18 @@ func (n *Struct) orderedFieldValues() []Element {
 }
 
 // Flatten returns a flat list of all the elements stored in the structure.
-func (n *Struct) Flatten() ([]Element, error) {
-	return Flatten(n.orderedFieldValues()...)
+func (n *Struct) Flatten() ([]ir.Element, error) {
+	return flatten.Flatten(n.orderedFieldValues()...)
 }
 
 // Unflatten consumes the next handles to return a GX value.
-func (n *Struct) Unflatten(handles *Unflattener) (values.Value, error) {
+func (n *Struct) Unflatten(handles *flatten.Parser) (values.Value, error) {
 	elts := n.orderedFieldValues()
-	return handles.ParseComposite(ParseCompositeOf(values.NewStruct), n.expr.Node().Type(), elts)
+	return handles.ParseComposite(flatten.ParseCompositeOf(values.NewStruct), n.expr.Node().Type(), elts)
 }
 
 // Select returns the value of a field of a structure given its index.
-func (n *Struct) Select(expr SelectAt) (Element, error) {
+func (n *Struct) Select(expr SelectAt) (ir.Element, error) {
 	name := expr.Node().Stor.NameDef().Name
 	val, ok := n.fields[name]
 	if !ok {
@@ -100,7 +101,7 @@ func (n *Struct) Copy() Copier {
 		structType: n.structType,
 		expr:       n.expr,
 	}
-	cp.fields = make(map[string]Element, len(n.fields))
+	cp.fields = make(map[string]ir.Element, len(n.fields))
 	for name, field := range n.fields {
 		copyable, ok := field.(Copier)
 		if ok {
@@ -112,7 +113,7 @@ func (n *Struct) Copy() Copier {
 }
 
 // SetField sets the field in the structure.
-func (n *Struct) SetField(name string, value Element) {
+func (n *Struct) SetField(name string, value ir.Element) {
 	n.fields[name] = value
 }
 

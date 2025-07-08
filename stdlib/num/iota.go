@@ -53,7 +53,7 @@ func (f iotaWithAxis) BuildFuncType(fetcher ir.Fetcher, call *ir.CallExpr) (*ir.
 	}, nil
 }
 
-func evalIotaFull(ctx evaluator.Context, call elements.CallAt, fn elements.Func, irFunc *ir.FuncBuiltin, args []elements.Element) ([]elements.Element, error) {
+func evalIotaFull(ctx evaluator.Context, call elements.CallAt, fn elements.Func, irFunc *ir.FuncBuiltin, args []ir.Element) ([]ir.Element, error) {
 	axes, err := elements.AxesFromElement(args[0])
 	if err != nil {
 		return nil, err

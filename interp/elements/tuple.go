@@ -22,11 +22,12 @@ import (
 	"github.com/gx-org/gx/api/values"
 	"github.com/gx-org/gx/build/fmterr"
 	"github.com/gx-org/gx/build/ir"
+	"github.com/gx-org/gx/internal/interp/flatten"
 )
 
 // Tuple value grouping multiple values together.
 type Tuple struct {
-	elements []Element
+	elements []ir.Element
 	typ      *ir.TupleType
 }
 
@@ -36,29 +37,29 @@ var (
 )
 
 // NewTuple returns a tuple to store the result of a function returning more than one value.
-func NewTuple(values []Element) *Tuple {
+func NewTuple(values []ir.Element) *Tuple {
 	return &Tuple{
 		elements: values,
 	}
 }
 
 // Flatten the tuple and all its elements.
-func (n *Tuple) Flatten() ([]Element, error) {
-	return Flatten(n.elements...)
+func (n *Tuple) Flatten() ([]ir.Element, error) {
+	return flatten.Flatten(n.elements...)
 }
 
 // Elements returns the elements stored in the tuple.
-func (n *Tuple) Elements() []Element {
+func (n *Tuple) Elements() []ir.Element {
 	return n.elements
 }
 
 // Slice of the tuple.
-func (n *Tuple) Slice(ctx ir.Evaluator, expr *ir.IndexExpr, index NumericalElement) (Element, error) {
+func (n *Tuple) Slice(ctx ir.Evaluator, expr *ir.IndexExpr, index NumericalElement) (ir.Element, error) {
 	return slice(ctx, expr, index, n.elements)
 }
 
-// Unflatten creates a GX value from the next handles available in the Unflattener.
-func (n *Tuple) Unflatten(handles *Unflattener) (values.Value, error) {
+// Unflatten creates a GX value from the next handles available in the parser.
+func (n *Tuple) Unflatten(handles *flatten.Parser) (values.Value, error) {
 	return nil, fmterr.Internal(errors.Errorf("%T does not support converting device handles into GX values", n))
 }
 
@@ -82,17 +83,4 @@ func (n *Tuple) String() string {
 		els[i] = fmt.Sprint(el)
 	}
 	return fmt.Sprintf("(%s)", strings.Join(els, ", "))
-}
-
-// Flatten elements.
-func Flatten(elts ...Element) ([]Element, error) {
-	var flat []Element
-	for _, elt := range elts {
-		subs, err := elt.Flatten()
-		if err != nil {
-			return nil, err
-		}
-		flat = append(flat, subs...)
-	}
-	return flat, nil
 }

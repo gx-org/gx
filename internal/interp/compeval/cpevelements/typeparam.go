@@ -18,6 +18,7 @@ import (
 	"github.com/pkg/errors"
 	"github.com/gx-org/gx/api/values"
 	"github.com/gx-org/gx/build/ir"
+	"github.com/gx-org/gx/internal/interp/flatten"
 	"github.com/gx-org/gx/interp/elements"
 )
 
@@ -30,12 +31,12 @@ func newTypeParam(src elements.ExprAt, typ *ir.TypeParam) elements.Element {
 	return &typeParam{src: src, typ: typ}
 }
 
-func (tp *typeParam) Flatten() ([]elements.Element, error) {
-	return []elements.Element{tp}, nil
+func (tp *typeParam) Flatten() ([]ir.Element, error) {
+	return []ir.Element{tp}, nil
 }
 
-// Unflatten creates a GX value from the next handles available in the Unflattener.
-func (tp *typeParam) Unflatten(handles *elements.Unflattener) (values.Value, error) {
+// Unflatten creates a GX value from the next handles available in the parser.
+func (tp *typeParam) Unflatten(handles *flatten.Parser) (values.Value, error) {
 	return nil, errors.Errorf("not implemented")
 }
 

@@ -21,6 +21,7 @@ import (
 	"github.com/pkg/errors"
 	"github.com/gx-org/gx/api/values"
 	"github.com/gx-org/gx/build/ir"
+	"github.com/gx-org/gx/internal/interp/flatten"
 	"github.com/gx-org/gx/interp/elements"
 	"github.com/gx-org/gx/interp/evaluator"
 )
@@ -43,7 +44,7 @@ func (f *fun) Recv() *elements.Receiver {
 	return f.recv
 }
 
-func (f *fun) callAtCompEval(fctx ir.Evaluator, call *ir.CallExpr, args []elements.Element) ([]elements.Element, error) {
+func (f *fun) callAtCompEval(fctx ir.Evaluator, call *ir.CallExpr, args []ir.Element) ([]ir.Element, error) {
 	fnContext, ok := fctx.(elements.FuncEvaluator)
 	if !ok {
 		return nil, errors.Errorf("cannot evaluate function %s: context %T does not implement %s", f.fn.Name(), fctx, reflect.TypeFor[elements.FuncEvaluator]().String())
@@ -51,14 +52,14 @@ func (f *fun) callAtCompEval(fctx ir.Evaluator, call *ir.CallExpr, args []elemen
 	return fnContext.EvalFunc(f.fn, call, args)
 }
 
-func (f *fun) Call(fctx ir.Evaluator, call *ir.CallExpr, args []elements.Element) ([]elements.Element, error) {
+func (f *fun) Call(fctx ir.Evaluator, call *ir.CallExpr, args []ir.Element) ([]ir.Element, error) {
 	fType := f.fn.FuncType() // Some builtin functions have no type at the moment.
 	if fType != nil && fType.CompEval {
 		return f.callAtCompEval(fctx, call, args)
 	}
 	ctx := fctx.(evaluator.Context)
 	res := call.Callee.T.Results.Fields()
-	els := make([]elements.Element, len(res))
+	els := make([]ir.Element, len(res))
 	for i, ri := range res {
 		var err error
 		els[i], err = NewRuntimeValue(ctx, &ir.LocalVarStorage{
@@ -72,11 +73,11 @@ func (f *fun) Call(fctx ir.Evaluator, call *ir.CallExpr, args []elements.Element
 	return els, nil
 }
 
-func (f *fun) Flatten() ([]elements.Element, error) {
-	return []elements.Element{f}, nil
+func (f *fun) Flatten() ([]ir.Element, error) {
+	return []ir.Element{f}, nil
 }
 
-func (f *fun) Unflatten(handles *elements.Unflattener) (values.Value, error) {
+func (f *fun) Unflatten(handles *flatten.Parser) (values.Value, error) {
 	return nil, errors.Errorf("not implemented")
 }
 

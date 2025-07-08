@@ -20,12 +20,13 @@ import (
 	gxfmt "github.com/gx-org/gx/base/fmt"
 	"github.com/gx-org/gx/build/ir"
 	"github.com/gx-org/gx/internal/interp/canonical"
+	"github.com/gx-org/gx/internal/interp/flatten"
 )
 
 // Slice element storing a slice of elements.
 type Slice struct {
 	typ    ir.Type
-	values []Element
+	values []ir.Element
 	slicer Slicer
 }
 
@@ -37,7 +38,7 @@ var (
 )
 
 // NewSlice returns a slice from a slice of elements.
-func NewSlice(typ ir.Type, elements []Element) *Slice {
+func NewSlice(typ ir.Type, elements []ir.Element) *Slice {
 	return &Slice{
 		typ:    typ,
 		values: elements,
@@ -45,11 +46,11 @@ func NewSlice(typ ir.Type, elements []Element) *Slice {
 }
 
 // Flatten returns the elements of the slice.
-func (n *Slice) Flatten() ([]Element, error) {
-	return Flatten(n.values...)
+func (n *Slice) Flatten() ([]ir.Element, error) {
+	return flatten.Flatten(n.values...)
 }
 
-func slice(ctx ir.Evaluator, expr ir.AssignableExpr, index NumericalElement, vals []Element) (Element, error) {
+func slice(ctx ir.Evaluator, expr ir.AssignableExpr, index NumericalElement, vals []ir.Element) (ir.Element, error) {
 	i, err := ConstantIntFromElement(index)
 	if err != nil {
 		return nil, err
@@ -61,7 +62,7 @@ func slice(ctx ir.Evaluator, expr ir.AssignableExpr, index NumericalElement, val
 }
 
 // Slice of the tuple.
-func (n *Slice) Slice(ctx ir.Evaluator, expr *ir.IndexExpr, index NumericalElement) (Element, error) {
+func (n *Slice) Slice(ctx ir.Evaluator, expr *ir.IndexExpr, index NumericalElement) (ir.Element, error) {
 	return slice(ctx, expr, index, n.values)
 }
 
@@ -76,8 +77,8 @@ func (*Slice) Kind() ir.Kind {
 }
 
 // Unflatten consumes the next handles to return a GX value.
-func (n *Slice) Unflatten(handles *Unflattener) (values.Value, error) {
-	return handles.ParseComposite(ParseCompositeOf(values.NewSlice), n.typ, n.values)
+func (n *Slice) Unflatten(handles *flatten.Parser) (values.Value, error) {
+	return handles.ParseComposite(flatten.ParseCompositeOf(values.NewSlice), n.typ, n.values)
 }
 
 // Expr returns the IR expression representing the slice.
@@ -101,7 +102,7 @@ func (n *Slice) Expr() (ir.AssignableExpr, error) {
 }
 
 // Elements stored in the slice.
-func (n *Slice) Elements() []Element {
+func (n *Slice) Elements() []ir.Element {
 	return n.values
 }
 

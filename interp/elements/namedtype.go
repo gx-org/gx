@@ -18,6 +18,7 @@ import (
 	"github.com/pkg/errors"
 	"github.com/gx-org/gx/api/values"
 	"github.com/gx-org/gx/build/ir"
+	"github.com/gx-org/gx/internal/interp/flatten"
 )
 
 // NamedType references a type exported by an imported package.
@@ -44,7 +45,7 @@ func NewNamedType(newFunc NewFunc, typ *ir.NamedType, under Copier) *NamedType {
 
 // Select returns the field given an index.
 // Returns nil if the receiver type cannot select fields.
-func (n *NamedType) Select(expr SelectAt) (Element, error) {
+func (n *NamedType) Select(expr SelectAt) (ir.Element, error) {
 	name := expr.node.Stor.NameDef().Name
 	if fn := n.funcs[name]; fn != nil {
 		return n.newFunc(fn, NewReceiver(n, fn)), nil
@@ -62,7 +63,7 @@ func (n *NamedType) RecvCopy() *NamedType {
 }
 
 // Flatten returns the named type in a slice of elements.
-func (n *NamedType) Flatten() ([]Element, error) {
+func (n *NamedType) Flatten() ([]ir.Element, error) {
 	return n.under.Flatten()
 }
 
@@ -72,7 +73,7 @@ func (n *NamedType) NamedType() *ir.NamedType {
 }
 
 // Unflatten consumes the next handles to return a GX value.
-func (n *NamedType) Unflatten(handles *Unflattener) (values.Value, error) {
+func (n *NamedType) Unflatten(handles *flatten.Parser) (values.Value, error) {
 	val, err := handles.Unflatten(n.under)
 	if err != nil {
 		return nil, err
@@ -80,7 +81,7 @@ func (n *NamedType) Unflatten(handles *Unflattener) (values.Value, error) {
 	return values.NewNamedType(val, n.typ), nil
 }
 
-// Kind of the element..
+// Type of the element.
 func (n *NamedType) Type() ir.Type {
 	return n.typ
 }

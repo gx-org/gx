@@ -23,6 +23,7 @@ import (
 	"github.com/gx-org/gx/build/ir"
 	"github.com/gx-org/gx/golang/backend/kernels"
 	"github.com/gx-org/gx/internal/interp/canonical"
+	"github.com/gx-org/gx/internal/interp/flatten"
 	"github.com/gx-org/gx/interp/elements"
 )
 
@@ -93,13 +94,13 @@ func (a *atom) NumericalConstant() *values.HostArray {
 	return a.val
 }
 
-func (a *atom) Flatten() ([]elements.Element, error) {
-	return []elements.Element{a}, nil
+func (a *atom) Flatten() ([]ir.Element, error) {
+	return []ir.Element{a}, nil
 }
 
-// Unflatten creates a GX value from the next handles available in the Unflattener.
-func (a *atom) Unflatten(handles *elements.Unflattener) (values.Value, error) {
-	return handles.ParseArray(a.src)
+// Unflatten creates a GX value from the next handles available in the parser.
+func (a *atom) Unflatten(handles *flatten.Parser) (values.Value, error) {
+	return handles.ParseArray(a.src.Node().Type())
 }
 
 // Type of the element.

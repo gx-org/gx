@@ -46,7 +46,7 @@ type (
 		Concat(expr ExprAt, xs []NumericalElement) (NumericalElement, error)
 
 		// Set a slice in an array.
-		Set(call NodeFile[*ir.CallExpr], x, updates, index Element) (Element, error)
+		Set(call NodeFile[*ir.CallExpr], x, updates, index ir.Element) (ir.Element, error)
 
 		// ElementFromArray returns an element from an array GX value.
 		ElementFromArray(expr ExprAt, val values.Array) (Node, error)

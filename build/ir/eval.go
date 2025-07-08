@@ -29,7 +29,9 @@ type (
 	}
 
 	// Element is a value returned by the evaluator.
-	Element any
+	Element interface {
+		Type() Type
+	}
 
 	// Evaluator evaluates IR expressions into canonical values.
 	Evaluator interface {

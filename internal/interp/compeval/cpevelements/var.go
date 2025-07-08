@@ -22,6 +22,7 @@ import (
 	"github.com/gx-org/gx/api/values"
 	"github.com/gx-org/gx/build/ir"
 	"github.com/gx-org/gx/internal/interp/canonical"
+	"github.com/gx-org/gx/internal/interp/flatten"
 	"github.com/gx-org/gx/interp/elements"
 	"github.com/gx-org/gx/interp/evaluator"
 )
@@ -69,12 +70,12 @@ func (a *variable) Shape() *shape.Shape {
 }
 
 // Flatten the variable into a slice of elements.
-func (a *variable) Flatten() ([]elements.Element, error) {
-	return []elements.Element{a}, nil
+func (a *variable) Flatten() ([]ir.Element, error) {
+	return []ir.Element{a}, nil
 }
 
-// Unflatten creates a GX value from the next handles available in the Unflattener.
-func (a *variable) Unflatten(handles *elements.Unflattener) (values.Value, error) {
+// Unflatten creates a GX value from the next handles available in the parser.
+func (a *variable) Unflatten(handles *flatten.Parser) (values.Value, error) {
 	return nil, errors.Errorf("not implemented")
 }
 
@@ -89,7 +90,7 @@ func (a *variable) Axes(ev ir.Evaluator) (*elements.Slice, error) {
 }
 
 // Slice computes a slice from the variable.
-func (a *variable) Slice(ctx ir.Evaluator, expr *ir.IndexExpr, index elements.NumericalElement) (elements.Element, error) {
+func (a *variable) Slice(ctx ir.Evaluator, expr *ir.IndexExpr, index elements.NumericalElement) (ir.Element, error) {
 	store := &ir.LocalVarStorage{Src: &ast.Ident{}, Typ: expr.Type()}
 	return NewRuntimeValue(ctx.(evaluator.Context), store)
 }

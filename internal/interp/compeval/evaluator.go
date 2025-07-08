@@ -73,11 +73,11 @@ func (ev *CompEval) ElementFromAtom(src elements.ExprAt, val values.Array) (elem
 }
 
 // CallFuncLit calls a function literal.
-func (ev *CompEval) CallFuncLit(ctx evaluator.Context, ref *ir.FuncLit, args []elements.Element) ([]elements.Element, error) {
+func (ev *CompEval) CallFuncLit(ctx evaluator.Context, ref *ir.FuncLit, args []ir.Element) ([]ir.Element, error) {
 	return nil, errors.Errorf("not implemented")
 }
 
 // Trace register a call to the trace builtin function.
-func (ev *CompEval) Trace(call elements.CallAt, fn elements.Func, irFunc *ir.FuncBuiltin, args []elements.Element, fc *values.FuncInputs) error {
+func (ev *CompEval) Trace(call elements.CallAt, fn elements.Func, irFunc *ir.FuncBuiltin, args []ir.Element, fc *values.FuncInputs) error {
 	return errors.Errorf("not implemented")
 }

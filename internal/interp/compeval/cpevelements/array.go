@@ -21,6 +21,7 @@ import (
 	"github.com/gx-org/gx/api/values"
 	"github.com/gx-org/gx/build/ir"
 	"github.com/gx-org/gx/internal/interp/canonical"
+	"github.com/gx-org/gx/internal/interp/flatten"
 	"github.com/gx-org/gx/interp/elements"
 )
 
@@ -49,11 +50,11 @@ func NewArray(typ ir.ArrayType) elements.NumericalElement {
 	return &array{shape: shape, typ: typ}
 }
 
-func (a *array) Flatten() ([]elements.Element, error) {
-	return []elements.Element{a}, nil
+func (a *array) Flatten() ([]ir.Element, error) {
+	return []ir.Element{a}, nil
 }
 
-func (a *array) Unflatten(handles *elements.Unflattener) (values.Value, error) {
+func (a *array) Unflatten(handles *flatten.Parser) (values.Value, error) {
 	return nil, errors.Errorf("not implemented")
 }
 
@@ -81,7 +82,7 @@ func (a *array) Reshape(ctx ir.Evaluator, expr ir.AssignableExpr, axisLengths []
 	return NewArray(expr.Type().(ir.ArrayType)), nil
 }
 
-func (a *array) Slice(ctx ir.Evaluator, expr *ir.IndexExpr, index elements.NumericalElement) (elements.Element, error) {
+func (a *array) Slice(ctx ir.Evaluator, expr *ir.IndexExpr, index elements.NumericalElement) (ir.Element, error) {
 	return NewArray(expr.Type().(ir.ArrayType)), nil
 }
 

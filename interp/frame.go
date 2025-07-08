@@ -21,18 +21,18 @@ import (
 )
 
 type baseFrame struct {
-	scope *scope.RWScope[elements.Element]
+	scope *scope.RWScope[ir.Element]
 }
 
-func (fr *baseFrame) Define(name string, value elements.Element) {
+func (fr *baseFrame) Define(name string, value ir.Element) {
 	fr.scope.Define(name, value)
 }
 
-func (fr *baseFrame) Assign(name string, value elements.Element) error {
+func (fr *baseFrame) Assign(name string, value ir.Element) error {
 	return fr.scope.Assign(name, value)
 }
 
-func (fr *baseFrame) Find(key string) (value elements.Element, ok bool) {
+func (fr *baseFrame) Find(key string) (value ir.Element, ok bool) {
 	return fr.scope.Find(key)
 }
 

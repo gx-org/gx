@@ -19,6 +19,7 @@ import (
 
 	"github.com/gx-org/gx/api/values"
 	"github.com/gx-org/gx/build/ir"
+	"github.com/gx-org/gx/internal/interp/flatten"
 )
 
 // String is a GX string.
@@ -46,12 +47,12 @@ func NewString(str *ir.StringLiteral) (*String, error) {
 }
 
 // Flatten returns the element in a slice of elements.
-func (n *String) Flatten() ([]Element, error) {
-	return []Element{n}, nil
+func (n *String) Flatten() ([]ir.Element, error) {
+	return []ir.Element{n}, nil
 }
 
 // Unflatten consumes the next handles to return a GX value.
-func (n *String) Unflatten(handles *Unflattener) (values.Value, error) {
+func (n *String) Unflatten(handles *flatten.Parser) (values.Value, error) {
 	return n.val, nil
 }
 
@@ -60,7 +61,7 @@ func (n *String) StringValue() *values.String {
 	return n.val
 }
 
-// Kind of the element.
+// Type of the element.
 func (n *String) Type() ir.Type {
 	return n.str.Type()
 }
