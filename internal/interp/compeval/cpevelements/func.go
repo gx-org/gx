@@ -19,9 +19,7 @@ import (
 	"reflect"
 
 	"github.com/pkg/errors"
-	"github.com/gx-org/gx/api/values"
 	"github.com/gx-org/gx/build/ir"
-	"github.com/gx-org/gx/internal/interp/flatten"
 	"github.com/gx-org/gx/interp/elements"
 	"github.com/gx-org/gx/interp/evaluator"
 )
@@ -71,14 +69,6 @@ func (f *fun) Call(fctx ir.Evaluator, call *ir.CallExpr, args []ir.Element) ([]i
 		}
 	}
 	return els, nil
-}
-
-func (f *fun) Flatten() ([]ir.Element, error) {
-	return []ir.Element{f}, nil
-}
-
-func (f *fun) Unflatten(handles *flatten.Parser) (values.Value, error) {
-	return nil, errors.Errorf("not implemented")
 }
 
 func (f *fun) Type() ir.Type {

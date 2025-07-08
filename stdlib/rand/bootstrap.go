@@ -27,7 +27,6 @@ import (
 	"github.com/gx-org/gx/build/ir"
 	"github.com/gx-org/gx/golang/backend/kernels"
 	"github.com/gx-org/gx/golang/binder/gobindings/types"
-	"github.com/gx-org/gx/internal/interp/flatten"
 	"github.com/gx-org/gx/interp/elements"
 	"github.com/gx-org/gx/interp/evaluator"
 	"github.com/gx-org/gx/interp/grapheval"
@@ -48,14 +47,6 @@ var _ elements.Copier = (*randBootstrap)(nil)
 
 func (rb *randBootstrap) Type() ir.Type {
 	return &ir.BuiltinType{Impl: rb}
-}
-
-func (rb *randBootstrap) Flatten() ([]ir.Element, error) {
-	return []ir.Element{rb}, nil
-}
-
-func (rb *randBootstrap) Unflatten(handles *flatten.Parser) (values.Value, error) {
-	return nil, fmterr.Internal(errors.Errorf("%T does not support converting device handles into GX values", rb))
 }
 
 func (*randBootstrap) Kind() ir.Kind {

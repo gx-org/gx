@@ -40,7 +40,12 @@ type (
 func Flatten(elts ...ir.Element) ([]ir.Element, error) {
 	var flat []ir.Element
 	for _, elt := range elts {
-		subs, err := elt.(Flattener).Flatten()
+		flt, ok := elt.(Flattener)
+		if !ok {
+			flat = append(flat, elt)
+			continue
+		}
+		subs, err := flt.Flatten()
 		if err != nil {
 			return nil, err
 		}

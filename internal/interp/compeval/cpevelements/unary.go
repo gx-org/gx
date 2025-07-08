@@ -112,10 +112,6 @@ func (a *unary) Shape() *shape.Shape {
 	return nil
 }
 
-func (a *unary) Flatten() ([]ir.Element, error) {
-	return []ir.Element{a}, nil
-}
-
 // Type of the element.
 func (a *unary) Type() ir.Type {
 	return a.src.Node().Type()

@@ -19,13 +19,11 @@ import (
 	"go/token"
 	"math/big"
 
-	"github.com/pkg/errors"
 	"github.com/gx-org/backend/shape"
 	"github.com/gx-org/gx/api/values"
 	"github.com/gx-org/gx/build/fmterr"
 	"github.com/gx-org/gx/build/ir"
 	"github.com/gx-org/gx/internal/interp/canonical"
-	"github.com/gx-org/gx/internal/interp/flatten"
 	"github.com/gx-org/gx/interp/elements"
 	"github.com/gx-org/gx/interp/evaluator"
 )
@@ -110,16 +108,6 @@ func (n *Float) Reshape(ctx ir.Evaluator, expr ir.AssignableExpr, axisLengths []
 // Shape of the value represented by the element.
 func (n *Float) Shape() *shape.Shape {
 	return numberShape
-}
-
-// Flatten returns the number in a slice of elements.
-func (n *Float) Flatten() ([]ir.Element, error) {
-	return []ir.Element{n}, nil
-}
-
-// Unflatten creates a GX value from the next handles available in the parser.
-func (n *Float) Unflatten(handles *flatten.Parser) (values.Value, error) {
-	return nil, fmterr.Internal(errors.Errorf("%T does not support converting device handles into GX values", n))
 }
 
 // Type of the element.

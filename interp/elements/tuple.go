@@ -18,9 +18,6 @@ import (
 	"fmt"
 	"strings"
 
-	"github.com/pkg/errors"
-	"github.com/gx-org/gx/api/values"
-	"github.com/gx-org/gx/build/fmterr"
 	"github.com/gx-org/gx/build/ir"
 	"github.com/gx-org/gx/internal/interp/flatten"
 )
@@ -56,11 +53,6 @@ func (n *Tuple) Elements() []ir.Element {
 // Slice of the tuple.
 func (n *Tuple) Slice(ctx ir.Evaluator, expr *ir.IndexExpr, index NumericalElement) (ir.Element, error) {
 	return slice(ctx, expr, index, n.elements)
-}
-
-// Unflatten creates a GX value from the next handles available in the parser.
-func (n *Tuple) Unflatten(handles *flatten.Parser) (values.Value, error) {
-	return nil, fmterr.Internal(errors.Errorf("%T does not support converting device handles into GX values", n))
 }
 
 // Type of the element.

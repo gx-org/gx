@@ -15,10 +15,7 @@
 package cpevelements
 
 import (
-	"github.com/pkg/errors"
-	"github.com/gx-org/gx/api/values"
 	"github.com/gx-org/gx/build/ir"
-	"github.com/gx-org/gx/internal/interp/flatten"
 	"github.com/gx-org/gx/interp/elements"
 )
 
@@ -29,15 +26,6 @@ type typeParam struct {
 
 func newTypeParam(src elements.ExprAt, typ *ir.TypeParam) ir.Element {
 	return &typeParam{src: src, typ: typ}
-}
-
-func (tp *typeParam) Flatten() ([]ir.Element, error) {
-	return []ir.Element{tp}, nil
-}
-
-// Unflatten creates a GX value from the next handles available in the parser.
-func (tp *typeParam) Unflatten(handles *flatten.Parser) (values.Value, error) {
-	return nil, errors.Errorf("not implemented")
 }
 
 // Type returns the type of the element.

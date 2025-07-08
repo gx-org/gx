@@ -196,11 +196,6 @@ func (n *BackendNode) SliceArray(ctx ir.Evaluator, expr ir.AssignableExpr, index
 	})
 }
 
-// Flatten returns the element in a slice.
-func (n *BackendNode) Flatten() ([]ir.Element, error) {
-	return []ir.Element{n}, nil
-}
-
 // Unflatten consumes the next handles to return a GX value.
 func (n *BackendNode) Unflatten(handles *flatten.Parser) (values.Value, error) {
 	return handles.ParseArray(n.expr.Node().Type())

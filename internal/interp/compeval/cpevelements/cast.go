@@ -115,10 +115,6 @@ func (a *cast) Shape() *shape.Shape {
 	return a.val.Shape()
 }
 
-func (a *cast) Flatten() ([]ir.Element, error) {
-	return []ir.Element{a}, nil
-}
-
 // Type of the element.
 func (a *cast) Type() ir.Type {
 	return a.src.Node().Type()
