@@ -27,7 +27,6 @@ import (
 	gxfmt "github.com/gx-org/gx/base/fmt"
 	"github.com/gx-org/gx/build/fmterr"
 	"github.com/gx-org/gx/build/ir"
-	"github.com/gx-org/gx/golang/backend/kernels"
 	"github.com/gx-org/gx/internal/interp/flatten"
 )
 
@@ -39,24 +38,16 @@ type InputElements struct {
 
 	// Receiver on which the function call was done.
 	// Can be nil.
-	Receiver Element
+	Receiver ir.Element
 
 	// Args returns list of arguments passed to the interpreter at call time.
-	Args []Element
+	Args []ir.Element
 }
 
 type (
-	// Element in the state.
-	Element interface {
-		flatten.Flattener
-		flatten.Unflattener
-		// Type of the element.
-		Type() ir.Type
-	}
-
 	// Copier is an interface implemented by nodes that need to be copied when passed to a function.
 	Copier interface {
-		Element
+		ir.Element
 		Copy() Copier
 	}
 
@@ -263,20 +254,6 @@ func ConstantFromElement(el ir.Element) *values.HostArray {
 	return numerical.NumericalConstant()
 }
 
-// HostValueFromContext returns a host value from the function call.
-func HostValueFromContext(ci *values.FuncInputs, el Element) (*values.HostArray, error) {
-	withValue, ok := el.(ElementWithArrayFromContext)
-	if !ok {
-		return nil, errors.Errorf("state element %T does not support returning a value given a context", el)
-	}
-	array, err := withValue.ArrayFromContext(ci)
-
-	if err != nil {
-		return nil, err
-	}
-	return array.ToHostArray(kernels.Allocator())
-}
-
 // PackageVarSetElement is an option to set a package variable to an element.
 type PackageVarSetElement struct {
 	// Pck is the package owning the variable.
@@ -284,7 +261,7 @@ type PackageVarSetElement struct {
 	// Index of the variable in the package definition.
 	Var string
 	// Value of the static variable for the compiler.
-	Value Element
+	Value ir.Element
 }
 
 // Package for which the option has been built.
@@ -301,7 +278,7 @@ type (
 
 	// Func is an element owning a callable function.
 	Func interface {
-		Element
+		ir.Element
 		Func() ir.Func
 		Recv() *Receiver
 		Call(ctx ir.Evaluator, call *ir.CallExpr, args []ir.Element) ([]ir.Element, error)

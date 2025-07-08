@@ -28,7 +28,7 @@ type (
 
 	// NumericalElement is a node representing a numerical value.
 	NumericalElement interface {
-		Element
+		ir.Element
 
 		// UnaryOp applies a unary operator on x.
 		UnaryOp(ctx ir.Evaluator, expr *ir.UnaryExpr) (NumericalElement, error)

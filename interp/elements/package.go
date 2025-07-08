@@ -29,8 +29,8 @@ type Package struct {
 }
 
 var (
-	_ Element  = (*Package)(nil)
-	_ Selector = (*Package)(nil)
+	_ ir.Element = (*Package)(nil)
+	_ Selector   = (*Package)(nil)
 )
 
 // NewPackage returns a package grouping everything that a package exports.

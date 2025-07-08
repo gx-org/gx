@@ -69,7 +69,7 @@ func (f receiverFetcher) String() string {
 }
 
 // ArgGX represents a GX argument.
-func (ev *Evaluator) ArgGX(field elements.FieldAt, index int, args []proxies.Value) (elements.Element, error) {
+func (ev *Evaluator) ArgGX(field elements.FieldAt, index int, args []proxies.Value) (ir.Element, error) {
 	return ev.newRootArg(field, parameterFetcher{
 		paramIndex: index,
 		pValue:     args[index],
@@ -77,7 +77,7 @@ func (ev *Evaluator) ArgGX(field elements.FieldAt, index int, args []proxies.Val
 }
 
 // Receiver represents a GX function call receiver.
-func (ev *Evaluator) Receiver(field elements.FieldAt, recv proxies.Value) (elements.Element, error) {
+func (ev *Evaluator) Receiver(field elements.FieldAt, recv proxies.Value) (ir.Element, error) {
 	return ev.newRootArg(field, receiverFetcher{
 		pValue: recv,
 	})
@@ -99,7 +99,7 @@ type (
 
 var _ parentArgument = (*rootArgument)(nil)
 
-func (ev *Evaluator) newRootArg(field elements.FieldAt, fetcher argFetcher) (elements.Element, error) {
+func (ev *Evaluator) newRootArg(field elements.FieldAt, fetcher argFetcher) (ir.Element, error) {
 	n := &rootArgument{
 		argFetcher: fetcher,
 		field:      field,
@@ -110,7 +110,7 @@ func (ev *Evaluator) newRootArg(field elements.FieldAt, fetcher argFetcher) (ele
 	}))
 }
 
-func (ev *Evaluator) newArg(parent parentArgument, expr elements.ExprAt) (elements.Element, error) {
+func (ev *Evaluator) newArg(parent parentArgument, expr elements.ExprAt) (ir.Element, error) {
 	switch pValueT := parent.ValueProxy().(type) {
 	case *proxies.Array:
 		return ev.NewArrayArgument(parent, expr, pValueT)

@@ -170,7 +170,7 @@ func evalFromContext(ctx ir.Evaluator) *Evaluator {
 
 // FuncInputsToElements converts values to a function input.
 func (ev *Evaluator) FuncInputsToElements(file *ir.File, fType *ir.FuncType, receiver values.Value, args []values.Value) (*elements.InputElements, error) {
-	var recvEl elements.Element
+	var recvEl ir.Element
 	if receiver != nil {
 		recvField := fType.ReceiverField()
 		receiverProxy, err := proxies.ToProxy(receiver, recvField.Type())
@@ -188,7 +188,7 @@ func (ev *Evaluator) FuncInputsToElements(file *ir.File, fType *ir.FuncType, rec
 	if err != nil {
 		return nil, err
 	}
-	argsEl := make([]elements.Element, len(args))
+	argsEl := make([]ir.Element, len(args))
 	for i, param := range paramFields {
 		if i >= len(args) {
 			missingParams := paramFields[len(args):]

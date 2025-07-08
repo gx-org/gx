@@ -27,7 +27,7 @@ type typeParam struct {
 	typ *ir.TypeParam
 }
 
-func newTypeParam(src elements.ExprAt, typ *ir.TypeParam) elements.Element {
+func newTypeParam(src elements.ExprAt, typ *ir.TypeParam) ir.Element {
 	return &typeParam{src: src, typ: typ}
 }
 

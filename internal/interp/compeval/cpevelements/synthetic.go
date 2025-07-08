@@ -19,7 +19,6 @@ import (
 	"github.com/gx-org/gx/api/values"
 	"github.com/gx-org/gx/build/ir"
 	"github.com/gx-org/gx/internal/interp/flatten"
-	"github.com/gx-org/gx/interp/elements"
 )
 
 type (
@@ -41,7 +40,7 @@ type (
 	}
 )
 
-var _ elements.Element = (*SyntheticFunc)(nil)
+var _ ir.Element = (*SyntheticFunc)(nil)
 
 // NewSyntheticFunc returns a state element storing a string GX value.
 func NewSyntheticFunc(builder SyntheticBuilder) *SyntheticFunc {
