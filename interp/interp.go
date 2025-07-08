@@ -34,10 +34,10 @@ import (
 )
 
 // FuncBuiltin of a builtin function by a backend.
-type FuncBuiltin func(ctx evaluator.Context, call elements.CallAt, fn elements.Func, irFunc *ir.FuncBuiltin, args []elements.Element) ([]elements.Element, error)
+type FuncBuiltin func(ctx evaluator.Context, call elements.CallAt, fn elements.Func, irFunc *ir.FuncBuiltin, args []ir.Element) ([]ir.Element, error)
 
 // EvalFunctionToElement evaluates a function such as it becomes an element.
-func (ctx *Context) EvalFunctionToElement(eval evaluator.Evaluator, fn ir.Func, args []elements.Element) ([]elements.Element, error) {
+func (ctx *Context) EvalFunctionToElement(eval evaluator.Evaluator, fn ir.Func, args []ir.Element) ([]ir.Element, error) {
 	subctx, err := ctx.newFileContext(fn.File())
 	if err != nil {
 		return nil, err
@@ -64,7 +64,7 @@ func (ctx *Context) EvalFunctionToElement(eval evaluator.Evaluator, fn ir.Func, 
 }
 
 // EvalFunc evaluates a function.
-func EvalFunc(eval evaluator.Evaluator, fn *ir.FuncDecl, in *elements.InputElements, options []options.PackageOption) (outs []elements.Element, err error) {
+func EvalFunc(eval evaluator.Evaluator, fn *ir.FuncDecl, in *elements.InputElements, options []options.PackageOption) (outs []ir.Element, err error) {
 	if fn.Body == nil {
 		return nil, errors.Errorf("%s: missing function body", fn.Name())
 	}
@@ -148,7 +148,7 @@ func rankOf(ctx evaluator.Context, src ir.SourceNode, typ ir.ArrayType) (ir.Arra
 
 // ToSingleElement packs multiple elements into a tuple.
 // If the slice els contains only one element, this element is returned.
-func ToSingleElement(ctx ir.Evaluator, node ir.SourceNode, els []elements.Element) (elements.Element, error) {
+func ToSingleElement(ctx ir.Evaluator, node ir.SourceNode, els []ir.Element) (ir.Element, error) {
 	switch len(els) {
 	case 0:
 		return nil, nil

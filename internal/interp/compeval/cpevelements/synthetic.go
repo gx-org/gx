@@ -18,6 +18,7 @@ import (
 	"github.com/pkg/errors"
 	"github.com/gx-org/gx/api/values"
 	"github.com/gx-org/gx/build/ir"
+	"github.com/gx-org/gx/internal/interp/flatten"
 	"github.com/gx-org/gx/interp/elements"
 )
 
@@ -53,12 +54,12 @@ func (n *SyntheticFunc) Builder() SyntheticBuilder {
 }
 
 // Flatten returns the element in a slice of elements.
-func (n *SyntheticFunc) Flatten() ([]elements.Element, error) {
-	return []elements.Element{n}, nil
+func (n *SyntheticFunc) Flatten() ([]ir.Element, error) {
+	return []ir.Element{n}, nil
 }
 
 // Unflatten consumes the next handles to return a GX value.
-func (n *SyntheticFunc) Unflatten(handles *elements.Unflattener) (values.Value, error) {
+func (n *SyntheticFunc) Unflatten(handles *flatten.Parser) (values.Value, error) {
 	return nil, errors.Errorf("not implemented")
 }
 

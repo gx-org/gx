@@ -27,6 +27,7 @@ import (
 	"github.com/gx-org/gx/build/ir"
 	"github.com/gx-org/gx/golang/backend/kernels"
 	"github.com/gx-org/gx/golang/binder/gobindings/types"
+	"github.com/gx-org/gx/internal/interp/flatten"
 	"github.com/gx-org/gx/interp/elements"
 	"github.com/gx-org/gx/interp/evaluator"
 	"github.com/gx-org/gx/interp/grapheval"
@@ -49,11 +50,11 @@ func (rb *randBootstrap) Type() ir.Type {
 	return &ir.BuiltinType{Impl: rb}
 }
 
-func (rb *randBootstrap) Flatten() ([]elements.Element, error) {
-	return []elements.Element{rb}, nil
+func (rb *randBootstrap) Flatten() ([]ir.Element, error) {
+	return []ir.Element{rb}, nil
 }
 
-func (rb *randBootstrap) Unflatten(handles *elements.Unflattener) (values.Value, error) {
+func (rb *randBootstrap) Unflatten(handles *flatten.Parser) (values.Value, error) {
 	return nil, fmterr.Internal(errors.Errorf("%T does not support converting device handles into GX values", rb))
 }
 
@@ -155,7 +156,7 @@ func (arg randBootstrapArg) ValueFromContext(ctx *values.FuncInputs) (values.Val
 	return values.AtomIntegerValue[uint64](arg.ValueProxy().Type(), val)
 }
 
-func evalNewBootstrapGenerator(ctx evaluator.Context, call elements.CallAt, fn elements.Func, irFunc *ir.FuncBuiltin, args []elements.Element) ([]elements.Element, error) {
+func evalNewBootstrapGenerator(ctx evaluator.Context, call elements.CallAt, fn elements.Func, irFunc *ir.FuncBuiltin, args []ir.Element) ([]ir.Element, error) {
 	bootstrap := &randBootstrap{
 		context: ctx,
 		call:    call,
@@ -179,18 +180,18 @@ func evalNewBootstrapGenerator(ctx evaluator.Context, call elements.CallAt, fn e
 	if err != nil {
 		return nil, err
 	}
-	return []elements.Element{elements.NewNamedType(
+	return []ir.Element{elements.NewNamedType(
 		ctx.Evaluator().NewFunc,
 		call.Node().Type().(*ir.NamedType),
 		bootstrap,
 	)}, nil
 }
 
-func evalBootstrapGeneratorNext(ctx evaluator.Context, call elements.CallAt, fn elements.Func, irFunc *ir.FuncBuiltin, args []elements.Element) ([]elements.Element, error) {
+func evalBootstrapGeneratorNext(ctx evaluator.Context, call elements.CallAt, fn elements.Func, irFunc *ir.FuncBuiltin, args []ir.Element) ([]ir.Element, error) {
 	bootStrap := elements.Underlying(fn.Recv().Element).(*randBootstrap)
 	el, err := bootStrap.next()
 	if err != nil {
 		return nil, err
 	}
-	return []elements.Element{el}, nil
+	return []ir.Element{el}, nil
 }

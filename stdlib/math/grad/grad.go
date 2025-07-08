@@ -50,7 +50,7 @@ type gradMacro struct {
 }
 
 // FuncGrad computes the gradient of a function.
-func FuncGrad(call elements.CallAt, macro *cpevelements.Macro, args []elements.Element) (*cpevelements.SyntheticFunc, error) {
+func FuncGrad(call elements.CallAt, macro *cpevelements.Macro, args []ir.Element) (*cpevelements.SyntheticFunc, error) {
 	fn, err := elements.FuncDeclFromElement(args[0])
 	if err != nil {
 		return nil, err

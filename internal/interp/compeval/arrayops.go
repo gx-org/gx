@@ -58,7 +58,7 @@ func (compArrayOps) Concat(expr elements.ExprAt, xs []elements.NumericalElement)
 }
 
 // Set a slice in an array.
-func (compArrayOps) Set(call elements.NodeFile[*ir.CallExpr], x, updates, index elements.Element) (elements.Element, error) {
+func (compArrayOps) Set(call elements.NodeFile[*ir.CallExpr], x, updates, index ir.Element) (ir.Element, error) {
 	return cpevelements.NewArray(call.Node().Type().(ir.ArrayType)), nil
 }
 

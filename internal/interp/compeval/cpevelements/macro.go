@@ -20,11 +20,12 @@ import (
 	"github.com/pkg/errors"
 	"github.com/gx-org/gx/api/values"
 	"github.com/gx-org/gx/build/ir"
+	"github.com/gx-org/gx/internal/interp/flatten"
 	"github.com/gx-org/gx/interp/elements"
 )
 
 // MacroImpl is a builtin opaque function to produce an IR.
-type MacroImpl func(call elements.CallAt, fn *Macro, args []elements.Element) (*SyntheticFunc, error)
+type MacroImpl func(call elements.CallAt, fn *Macro, args []ir.Element) (*SyntheticFunc, error)
 
 // Macro is a macro function to build synthetic functions.
 type Macro struct {
@@ -48,7 +49,7 @@ func (f *Macro) Recv() *elements.Receiver {
 }
 
 // Call the macro to build the synthetic element.
-func (f *Macro) Call(fctx ir.Evaluator, call *ir.CallExpr, args []elements.Element) ([]elements.Element, error) {
+func (f *Macro) Call(fctx ir.Evaluator, call *ir.CallExpr, args []ir.Element) ([]ir.Element, error) {
 	if f.macro.BuildSynthetic == nil {
 		return nil, errors.Errorf("macro %s.%s has no implementation to build the synthetic function type", f.macro.FFile.Package.Name.Name, f.macro.Name())
 	}
@@ -57,16 +58,16 @@ func (f *Macro) Call(fctx ir.Evaluator, call *ir.CallExpr, args []elements.Eleme
 		return nil, errors.Errorf("%T cannot converted to %s", f.macro.BuildSynthetic, reflect.TypeFor[MacroImpl]())
 	}
 	el, err := buildSynthetic(elements.NewNodeAt(fctx.File(), call), f, args)
-	return []elements.Element{el}, err
+	return []ir.Element{el}, err
 }
 
 // Flatten the macro.
-func (f *Macro) Flatten() ([]elements.Element, error) {
-	return []elements.Element{f}, nil
+func (f *Macro) Flatten() ([]ir.Element, error) {
+	return []ir.Element{f}, nil
 }
 
 // Unflatten the macro.
-func (f *Macro) Unflatten(handles *elements.Unflattener) (values.Value, error) {
+func (f *Macro) Unflatten(handles *flatten.Parser) (values.Value, error) {
 	return nil, errors.Errorf("not implemented")
 }
 

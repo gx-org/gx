@@ -27,8 +27,8 @@ import (
 	"github.com/gx-org/gx/interp/numbers"
 )
 
-func evalBlockStmt(ctx *Context, body *ir.BlockStmt) ([]elements.Element, bool, error) {
-	var outs []elements.Element
+func evalBlockStmt(ctx *Context, body *ir.BlockStmt) ([]ir.Element, bool, error) {
+	var outs []ir.Element
 	var stop bool
 	for _, node := range body.List {
 		var err error
@@ -43,7 +43,7 @@ func evalBlockStmt(ctx *Context, body *ir.BlockStmt) ([]elements.Element, bool, 
 	return outs, stop, nil
 }
 
-func evalStmt(ctx *Context, node ir.Stmt) ([]elements.Element, bool, error) {
+func evalStmt(ctx *Context, node ir.Stmt) ([]ir.Element, bool, error) {
 	switch nodeT := node.(type) {
 	case *ir.AssignCallStmt:
 		return nil, false, evalAssignCallStmt(ctx, nodeT)
@@ -65,7 +65,7 @@ func evalStmt(ctx *Context, node ir.Stmt) ([]elements.Element, bool, error) {
 	}
 }
 
-func evalRangeForLoopOverInteger[T dtype.AlgebraType](ctx *Context, stmt *ir.RangeStmt, toValue valuer) ([]elements.Element, bool, error) {
+func evalRangeForLoopOverInteger[T dtype.AlgebraType](ctx *Context, stmt *ir.RangeStmt, toValue valuer) ([]ir.Element, bool, error) {
 	toValueT := toValue.(valuerT[T])
 	indexType := ir.TypeFromKind(toValueT.kind)
 	val, err := evalAtom[T](ctx, stmt.X)
@@ -99,7 +99,7 @@ func evalRangeForLoopOverInteger[T dtype.AlgebraType](ctx *Context, stmt *ir.Ran
 	return nil, false, nil
 }
 
-func evalRangeStmtInteger(ctx *Context, stmt *ir.RangeStmt, xKind ir.Kind) ([]elements.Element, bool, error) {
+func evalRangeStmtInteger(ctx *Context, stmt *ir.RangeStmt, xKind ir.Kind) ([]ir.Element, bool, error) {
 	toValue, err := newValuer(ctx, stmt.X, xKind)
 	if err != nil {
 		return nil, false, err
@@ -112,7 +112,7 @@ func evalRangeStmtInteger(ctx *Context, stmt *ir.RangeStmt, xKind ir.Kind) ([]el
 	}
 }
 
-func evalRangeStmtForLoopOverArray[T dtype.AlgebraType](ctx *Context, stmt *ir.RangeStmt, toValue valuer) ([]elements.Element, bool, error) {
+func evalRangeStmtForLoopOverArray[T dtype.AlgebraType](ctx *Context, stmt *ir.RangeStmt, toValue valuer) ([]ir.Element, bool, error) {
 	toValueT := toValue.(valuerT[T])
 	indexType := ir.TypeFromKind(toValueT.kind)
 	x, err := ctx.evalExpr(stmt.X)
@@ -170,7 +170,7 @@ func evalRangeStmtForLoopOverArray[T dtype.AlgebraType](ctx *Context, stmt *ir.R
 	return nil, false, nil
 }
 
-func evalRangeStmtArray(ctx *Context, stmt *ir.RangeStmt) ([]elements.Element, bool, error) {
+func evalRangeStmtArray(ctx *Context, stmt *ir.RangeStmt) ([]ir.Element, bool, error) {
 	keyKind := stmt.Key.Type().Kind()
 	toValue, err := newValuer(ctx, stmt.X, keyKind)
 	if err != nil {
@@ -184,7 +184,7 @@ func evalRangeStmtArray(ctx *Context, stmt *ir.RangeStmt) ([]elements.Element, b
 	}
 }
 
-func evalRangeStmt(ctx *Context, stmt *ir.RangeStmt) ([]elements.Element, bool, error) {
+func evalRangeStmt(ctx *Context, stmt *ir.RangeStmt) ([]ir.Element, bool, error) {
 	kind := stmt.X.Type().Kind()
 	if ir.IsRangeOk(kind) {
 		return evalRangeStmtInteger(ctx, stmt, kind)
@@ -195,7 +195,7 @@ func evalRangeStmt(ctx *Context, stmt *ir.RangeStmt) ([]elements.Element, bool, 
 	return nil, true, errors.Errorf("cannot range over %s", kind.String())
 }
 
-func evalIfStmt(ctx *Context, stmt *ir.IfStmt) ([]elements.Element, bool, error) {
+func evalIfStmt(ctx *Context, stmt *ir.IfStmt) ([]ir.Element, bool, error) {
 	ctx.pushBlockFrame()
 	defer ctx.popFrame()
 
@@ -250,19 +250,19 @@ func evalAssignCallStmt(ctx *Context, stmt *ir.AssignCallStmt) error {
 	return nil
 }
 
-func unpackIfTuple(el elements.Element) []elements.Element {
+func unpackIfTuple(el ir.Element) []ir.Element {
 	tpl, ok := el.(*elements.Tuple)
 	if !ok {
-		return []elements.Element{el}
+		return []ir.Element{el}
 	}
 	return tpl.Elements()
 }
 
-func evalReturnStmt(ctx *Context, ret *ir.ReturnStmt) ([]elements.Element, bool, error) {
+func evalReturnStmt(ctx *Context, ret *ir.ReturnStmt) ([]ir.Element, bool, error) {
 	if len(ret.Results) == 0 {
 		// Naked return.
 		fields := ctx.currentFrame().owner.function.FuncType().Results.Fields()
-		nodes := make([]elements.Element, len(fields))
+		nodes := make([]ir.Element, len(fields))
 		for i, field := range fields {
 			var err error
 			nodes[i], err = ctx.find(field.Name)
@@ -272,7 +272,7 @@ func evalReturnStmt(ctx *Context, ret *ir.ReturnStmt) ([]elements.Element, bool,
 		}
 		return nodes, true, nil
 	}
-	var returns []elements.Element
+	var returns []ir.Element
 	for _, expr := range ret.Results {
 		exprI, err := ctx.evalExpr(expr)
 		if err != nil {
@@ -283,7 +283,7 @@ func evalReturnStmt(ctx *Context, ret *ir.ReturnStmt) ([]elements.Element, bool,
 	return returns, true, nil
 }
 
-func evalValueRef(ctx *Context, ref *ir.ValueRef) (elements.Element, error) {
+func evalValueRef(ctx *Context, ref *ir.ValueRef) (ir.Element, error) {
 	cNode, err := ctx.find(ref.Src)
 	if err != nil {
 		return nil, err
@@ -423,7 +423,7 @@ func evalStructLiteral(ctx *Context, expr *ir.StructLitExpr) (elements.Element, 
 	if !ok {
 		return nil, fmterr.Errorf(ctx.File().FileSet(), expr.Source(), "underlying type %T is not a structure", expr.Typ)
 	}
-	fields := make(map[string]elements.Element, structType.NumFields())
+	fields := make(map[string]ir.Element, structType.NumFields())
 	for _, fieldLit := range expr.Elts {
 		node, err := ctx.evalExpr(fieldLit.X)
 		if err != nil {
@@ -439,8 +439,8 @@ func evalStructLiteral(ctx *Context, expr *ir.StructLitExpr) (elements.Element, 
 	return elements.NewNamedType(ctx.evaluator.NewFunc, nType, strct), nil
 }
 
-func evalSliceLiteral(ctx *Context, expr *ir.SliceLitExpr) (elements.Element, error) {
-	els := make([]elements.Element, len(expr.Elts))
+func evalSliceLiteral(ctx *Context, expr *ir.SliceLitExpr) (ir.Element, error) {
+	els := make([]ir.Element, len(expr.Elts))
 	for i, expr := range expr.Elts {
 		elt, err := ctx.evalExpr(expr)
 		if err != nil {
@@ -457,7 +457,7 @@ func (ctx *Context) EvalExpr(expr ir.Expr) (ir.Element, error) {
 }
 
 // evalExpr evaluates an expression within the Context.
-func (ctx *Context) evalExpr(expr ir.Expr) (elements.Element, error) {
+func (ctx *Context) evalExpr(expr ir.Expr) (ir.Element, error) {
 	if expr == nil {
 		return nil, errors.Errorf("cannot evaluate a nil expression")
 	}
@@ -533,7 +533,7 @@ func evalNumberCastExpr(ctx *Context, expr *ir.NumberCastExpr) (elements.Numeric
 	return number.Cast(ctx, expr, expr.Typ)
 }
 
-func evalSelectorExpr(ctx *Context, ref *ir.SelectorExpr) (elements.Element, error) {
+func evalSelectorExpr(ctx *Context, ref *ir.SelectorExpr) (ir.Element, error) {
 	node, err := ctx.evalExpr(ref.X)
 	if err != nil {
 		return nil, err
@@ -549,7 +549,7 @@ func evalFuncLit(ctx *Context, ref *ir.FuncLit) (elements.Element, error) {
 	return ctx.evaluator.NewFunc(ref, nil), nil
 }
 
-func evalIndexExpr(ctx *Context, ref *ir.IndexExpr) (elements.Element, error) {
+func evalIndexExpr(ctx *Context, ref *ir.IndexExpr) (ir.Element, error) {
 	x, err := ctx.evalExpr(ref.X)
 	if err != nil {
 		return nil, err

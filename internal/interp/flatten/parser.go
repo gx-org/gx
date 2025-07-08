@@ -12,7 +12,7 @@
 // See the License for the specific language governing permissions and
 // limitations under the License.
 
-package elements
+package flatten
 
 import (
 	"fmt"
@@ -22,13 +22,12 @@ import (
 	"github.com/gx-org/backend/platform"
 	"github.com/gx-org/gx/api/values"
 	gxfmt "github.com/gx-org/gx/base/fmt"
-	"github.com/gx-org/gx/build/fmterr"
 	"github.com/gx-org/gx/build/ir"
 )
 
-// Unflattener unflattens the output of a graph computation
+// Parser unflattens the output of a graph computation
 // into GX values.
-type Unflattener struct {
+type Parser struct {
 	dev        platform.Device
 	callInputs *values.FuncInputs
 	// Handles to unflatten.
@@ -36,9 +35,9 @@ type Unflattener struct {
 	nextPos    int
 }
 
-// NewUnflattener returns a new Unflattener given the output of a graph computation.
-func NewUnflattener(dev platform.Device, callInputs *values.FuncInputs, handles []platform.DeviceHandle) *Unflattener {
-	return &Unflattener{
+// NewParser returns a new parser given the output of a graph computation.
+func NewParser(dev platform.Device, callInputs *values.FuncInputs, handles []platform.DeviceHandle) *Parser {
+	return &Parser{
 		dev:        dev,
 		callInputs: callInputs,
 		compOutput: handles,
@@ -46,30 +45,30 @@ func NewUnflattener(dev platform.Device, callInputs *values.FuncInputs, handles 
 }
 
 // Next returns a the next handle and moves the cursor to the succeeding handle.
-func (h *Unflattener) Next() platform.DeviceHandle {
+func (h *Parser) Next() platform.DeviceHandle {
 	n := h.compOutput[h.nextPos]
 	h.nextPos++
 	return n
 }
 
 // CallInputs returns the inputs with which the function was called.
-func (h *Unflattener) CallInputs() *values.FuncInputs {
+func (h *Parser) CallInputs() *values.FuncInputs {
 	return h.callInputs
 }
 
-func (h *Unflattener) size() int {
+func (h *Parser) size() int {
 	return len(h.compOutput)
 }
 
 // Device returns to which transfers the host value to.
 // TODO(b/388207169): Always transfer the value to device because C++ bindings do not support HostValue.
-func (h *Unflattener) Device() platform.Device {
+func (h *Parser) Device() platform.Device {
 	return h.dev
 }
 
 // Unflatten consumes the next available handles and returns a GX value matching the given element.
-func (h *Unflattener) Unflatten(el Element) (values.Value, error) {
-	val, err := el.Unflatten(h)
+func (h *Parser) Unflatten(el ir.Element) (values.Value, error) {
+	val, err := el.(Unflattener).Unflatten(h)
 	if err != nil {
 		return nil, err
 	}
@@ -82,16 +81,12 @@ func (h *Unflattener) Unflatten(el Element) (values.Value, error) {
 type newCompValue func(ir.Type, []values.Value) (values.Value, error)
 
 // ParseArray the next value as an array.
-func (h *Unflattener) ParseArray(expr ExprAt) (values.Array, error) {
-	val, err := values.NewDeviceArray(expr.Node().Type(), h.Next())
-	if err != nil {
-		return nil, fmterr.Position(expr.FSet(), expr.Node().Source(), err)
-	}
-	return val, nil
+func (h *Parser) ParseArray(typ ir.Type) (values.Array, error) {
+	return values.NewDeviceArray(typ, h.Next())
 }
 
 // ParseComposite unflatten a slice of elements into a single GX value.
-func (h *Unflattener) ParseComposite(ncv newCompValue, typ ir.Type, els []Element) (values.Value, error) {
+func (h *Parser) ParseComposite(ncv newCompValue, typ ir.Type, els []ir.Element) (values.Value, error) {
 	vals := make([]values.Value, len(els))
 	for i, el := range els {
 		var err error
@@ -103,7 +98,7 @@ func (h *Unflattener) ParseComposite(ncv newCompValue, typ ir.Type, els []Elemen
 	return ncv(typ, vals)
 }
 
-func (h *Unflattener) String() string {
+func (h *Parser) String() string {
 	var s strings.Builder
 	s.WriteString(fmt.Sprintf("%T{", h))
 	for i, hdl := range h.compOutput {

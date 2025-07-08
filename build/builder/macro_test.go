@@ -24,7 +24,7 @@ import (
 	"github.com/gx-org/gx/interp/elements"
 )
 
-func newIDMacro(call elements.CallAt, macro *cpevelements.Macro, args []elements.Element) (*cpevelements.SyntheticFunc, error) {
+func newIDMacro(call elements.CallAt, macro *cpevelements.Macro, args []ir.Element) (*cpevelements.SyntheticFunc, error) {
 	fn, err := elements.FuncDeclFromElement(args[0])
 	if err != nil {
 		return nil, err

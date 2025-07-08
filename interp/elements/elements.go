@@ -28,6 +28,7 @@ import (
 	"github.com/gx-org/gx/build/fmterr"
 	"github.com/gx-org/gx/build/ir"
 	"github.com/gx-org/gx/golang/backend/kernels"
+	"github.com/gx-org/gx/internal/interp/flatten"
 )
 
 // InputElements is the receiver and arguments with which the function was called.
@@ -47,14 +48,8 @@ type InputElements struct {
 type (
 	// Element in the state.
 	Element interface {
-		// Flatten the element, that is:
-		// returns itself if the element is atomic,
-		// returns its components if the element is a composite.
-		Flatten() ([]Element, error)
-
-		// Unflatten creates a GX value from the next handles available in the Unflattener.
-		Unflatten(handles *Unflattener) (values.Value, error)
-
+		flatten.Flattener
+		flatten.Unflattener
 		// Type of the element.
 		Type() ir.Type
 	}
@@ -67,12 +62,12 @@ type (
 
 	// Selector selects a field given its index.
 	Selector interface {
-		Select(SelectAt) (Element, error)
+		Select(SelectAt) (ir.Element, error)
 	}
 
 	// Slicer is a state element that can be sliced.
 	Slicer interface {
-		Slice(ctx ir.Evaluator, expr *ir.IndexExpr, index NumericalElement) (Element, error)
+		Slice(ctx ir.Evaluator, expr *ir.IndexExpr, index NumericalElement) (ir.Element, error)
 	}
 
 	// ArraySlicer is a state element with an array that can be sliced.
@@ -190,8 +185,8 @@ func (ea NodeFile[T]) String() string {
 
 // AxesFromElement returns a shape from a state element.
 // An error is returned if a concrete shape cannot be returned.
-func AxesFromElement(el Element) ([]int, error) {
-	dimElements, err := el.Flatten()
+func AxesFromElement(el ir.Element) ([]int, error) {
+	dimElements, err := flatten.Flatten(el)
 	if err != nil {
 		return nil, err
 	}
@@ -208,7 +203,7 @@ func AxesFromElement(el Element) ([]int, error) {
 }
 
 // ShapeFromElement returns the shape of a numerical element.
-func ShapeFromElement(node Element) (*shape.Shape, error) {
+func ShapeFromElement(node ir.Element) (*shape.Shape, error) {
 	numerical, ok := node.(NumericalElement)
 	if !ok {
 		return nil, errors.Errorf("cannot cast %T to a numerical element", node)
@@ -217,7 +212,7 @@ func ShapeFromElement(node Element) (*shape.Shape, error) {
 }
 
 // ConstantScalarFromElement returns a scalar on a host given an element.
-func ConstantScalarFromElement[T dtype.GoDataType](el Element) (val T, err error) {
+func ConstantScalarFromElement[T dtype.GoDataType](el ir.Element) (val T, err error) {
 	var hostArray *values.HostArray
 	hostArray = ConstantFromElement(el)
 	if hostArray == nil {
@@ -228,7 +223,7 @@ func ConstantScalarFromElement[T dtype.GoDataType](el Element) (val T, err error
 }
 
 // ConstantIntFromElement returns a scalar on a host given an element.
-func ConstantIntFromElement(el Element) (val int, err error) {
+func ConstantIntFromElement(el ir.Element) (val int, err error) {
 	var hostArray *values.HostArray
 	hostArray = ConstantFromElement(el)
 	if hostArray == nil {
@@ -260,7 +255,7 @@ func toGoInt(val *values.HostArray) (int, error) {
 
 // ConstantFromElement returns the host value represented by an element.
 // The function returns (nil, nil) if the element does not host a numerical value.
-func ConstantFromElement(el Element) *values.HostArray {
+func ConstantFromElement(el ir.Element) *values.HostArray {
 	numerical, ok := el.(ElementWithConstant)
 	if !ok {
 		return nil
@@ -309,7 +304,7 @@ type (
 		Element
 		Func() ir.Func
 		Recv() *Receiver
-		Call(ctx ir.Evaluator, call *ir.CallExpr, args []Element) ([]Element, error)
+		Call(ctx ir.Evaluator, call *ir.CallExpr, args []ir.Element) ([]ir.Element, error)
 	}
 
 	// NewFunc creates function elements from function IRs.
@@ -333,7 +328,7 @@ func NewReceiver(el *NamedType, fn ir.Func) *Receiver {
 }
 
 // Underlying returns the underlying element.
-func Underlying(val Element) Element {
+func Underlying(val ir.Element) ir.Element {
 	named, ok := val.(*NamedType)
 	if !ok {
 		return val
@@ -342,7 +337,7 @@ func Underlying(val Element) Element {
 }
 
 // FuncDeclFromElement extracts a function declaration from an element.
-func FuncDeclFromElement(el Element) (*ir.FuncDecl, error) {
+func FuncDeclFromElement(el ir.Element) (*ir.FuncDecl, error) {
 	fEl, ok := el.(Func)
 	if !ok {
 		return nil, errors.Errorf("cannot convert element %T to a function", el)
@@ -356,7 +351,7 @@ func FuncDeclFromElement(el Element) (*ir.FuncDecl, error) {
 }
 
 // StringFromElement returns the string value stored in a element.
-func StringFromElement(el Element) (string, error) {
+func StringFromElement(el ir.Element) (string, error) {
 	sEl, ok := el.(*String)
 	if !ok {
 		return "", errors.Errorf("cannot convert element %T is not a string literal", el)

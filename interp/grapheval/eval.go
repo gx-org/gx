@@ -79,7 +79,7 @@ func (ev *Evaluator) ElementFromAtom(src elements.ExprAt, val values.Array) (ele
 }
 
 // CallFuncLit calls a function literal.
-func (ev *Evaluator) CallFuncLit(ctx evaluator.Context, ref *ir.FuncLit, args []elements.Element) ([]elements.Element, error) {
+func (ev *Evaluator) CallFuncLit(ctx evaluator.Context, ref *ir.FuncLit, args []ir.Element) ([]ir.Element, error) {
 	core := ev.ao.graph.Core()
 	name := ref.Name()
 	if name == "" {
@@ -137,12 +137,12 @@ func (ev *Evaluator) CallFuncLit(ctx evaluator.Context, ref *ir.FuncLit, args []
 	if err != nil {
 		return nil, err
 	}
-	return []elements.Element{el}, nil
+	return []ir.Element{el}, nil
 }
 
 // ElementsFromTupleNode converts the graph nodes of a tuple node into elements.
-func ElementsFromTupleNode(g ops.Graph, file *ir.File, expr ir.Expr, tpl ops.Tuple, elExprs []ir.AssignableExpr, shps []*shape.Shape) ([]elements.Element, error) {
-	elts := make([]elements.Element, tpl.Size())
+func ElementsFromTupleNode(g ops.Graph, file *ir.File, expr ir.Expr, tpl ops.Tuple, elExprs []ir.AssignableExpr, shps []*shape.Shape) ([]ir.Element, error) {
+	elts := make([]ir.Element, tpl.Size())
 	for i := range tpl.Size() {
 		node, err := tpl.Element(i)
 		if err != nil {
@@ -160,7 +160,7 @@ func ElementsFromTupleNode(g ops.Graph, file *ir.File, expr ir.Expr, tpl ops.Tup
 }
 
 // Trace a set of elements.
-func (ev *Evaluator) Trace(call elements.CallAt, fn elements.Func, irFunc *ir.FuncBuiltin, args []elements.Element, fc *values.FuncInputs) error {
+func (ev *Evaluator) Trace(call elements.CallAt, fn elements.Func, irFunc *ir.FuncBuiltin, args []ir.Element, fc *values.FuncInputs) error {
 	return ev.process.RegisterTrace(call, fn, irFunc, args, fc)
 }
 

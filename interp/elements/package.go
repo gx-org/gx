@@ -19,12 +19,13 @@ import (
 	"github.com/gx-org/gx/api/values"
 	"github.com/gx-org/gx/build/fmterr"
 	"github.com/gx-org/gx/build/ir"
+	"github.com/gx-org/gx/internal/interp/flatten"
 )
 
 // Package groups elements exported by a package.
 type Package struct {
 	pkg  *ir.Package
-	defs map[string]Element
+	defs map[string]ir.Element
 }
 
 var (
@@ -36,7 +37,7 @@ var (
 func NewPackage(pkg *ir.Package, newFunc NewFunc) *Package {
 	node := &Package{
 		pkg:  pkg,
-		defs: make(map[string]Element),
+		defs: make(map[string]ir.Element),
 	}
 	for _, fct := range pkg.Decls.Funcs {
 		node.defs[fct.Name()] = newFunc(fct, nil)
@@ -49,27 +50,27 @@ func NewPackage(pkg *ir.Package, newFunc NewFunc) *Package {
 
 // Define an element in the package
 // (used for consts)
-func (pkg *Package) Define(name string, el Element) {
+func (pkg *Package) Define(name string, el ir.Element) {
 	pkg.defs[name] = el
 }
 
 // Flatten returns the package in a slice of
-func (pkg *Package) Flatten() ([]Element, error) {
-	return []Element{pkg}, nil
+func (pkg *Package) Flatten() ([]ir.Element, error) {
+	return []ir.Element{pkg}, nil
 }
 
-// Unflatten creates a GX value from the next handles available in the Unflattener.
-func (pkg *Package) Unflatten(handles *Unflattener) (values.Value, error) {
+// Unflatten creates a GX value from the next handles available in the parser.
+func (pkg *Package) Unflatten(handles *flatten.Parser) (values.Value, error) {
 	return nil, fmterr.Internal(errors.Errorf("%T does not support converting device handles into GX values", pkg))
 }
 
-// Kind of the element.
+// Type of the element.
 func (pkg *Package) Type() ir.Type {
 	return ir.InvalidType()
 }
 
 // Select a member of the package.
-func (pkg *Package) Select(sel SelectAt) (Element, error) {
+func (pkg *Package) Select(sel SelectAt) (ir.Element, error) {
 	name := sel.Node().Stor.NameDef().Name
 	el, ok := pkg.defs[name]
 	if !ok {

@@ -23,6 +23,7 @@ import (
 	"github.com/gx-org/gx/api/trace"
 	"github.com/gx-org/gx/api/values"
 	"github.com/gx-org/gx/build/ir"
+	"github.com/gx-org/gx/internal/interp/flatten"
 	"github.com/gx-org/gx/internal/tracer/processor"
 	"github.com/gx-org/gx/interp/elements"
 )
@@ -33,11 +34,11 @@ type CompiledFunc struct {
 	process *processor.Processor
 	device  *api.Device
 	runner  ops.Runner
-	outs    []elements.Element
+	outs    []ir.Element
 }
 
-func extractGraphNodes(ao elements.ArrayOps, els []elements.Element) ([]*ops.OutputNode, error) {
-	flatten, err := elements.Flatten(els...)
+func extractGraphNodes(ao elements.ArrayOps, els []ir.Element) ([]*ops.OutputNode, error) {
+	flatten, err := flatten.Flatten(els...)
 	if err != nil {
 		return nil, err
 	}
@@ -57,7 +58,7 @@ func extractGraphNodes(ao elements.ArrayOps, els []elements.Element) ([]*ops.Out
 }
 
 // Compile a function that will be run on a device given some inputs.
-func Compile(dev *api.Device, fn ir.Func, p *processor.Processor, ao elements.ArrayOps, outs []elements.Element) (*CompiledFunc, error) {
+func Compile(dev *api.Device, fn ir.Func, p *processor.Processor, ao elements.ArrayOps, outs []ir.Element) (*CompiledFunc, error) {
 	args := p.Args()
 	paramShapes := make([]*shape.Shape, len(args))
 	for i, arg := range args {
@@ -121,7 +122,7 @@ func (g *CompiledFunc) Run(receiver values.Value, args []values.Value, tracer tr
 }
 
 func (g *CompiledFunc) handlesToValues(in *values.FuncInputs, handles []platform.DeviceHandle) ([]values.Value, error) {
-	reader := elements.NewUnflattener(g.device.PlatformDevice(), in, handles)
+	reader := flatten.NewParser(g.device.PlatformDevice(), in, handles)
 	values := make([]values.Value, len(g.outs))
 	for i, el := range g.outs {
 		val, err := reader.Unflatten(el)

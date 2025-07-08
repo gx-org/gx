@@ -396,7 +396,7 @@ func axisExprFrom(rscope resolveScope, ax ir.AxisLengths) (*ir.AxisExpr, bool) {
 	return nil, rscope.err().AppendInternalf(ax.Source(), "unknown axis length type: %T", ax)
 }
 
-func axisValuesFromArgumentValue(rscope resolveScope, compEval *compileEvaluator, src *ir.Field, val ir.Element) ([]elements.Element, bool) {
+func axisValuesFromArgumentValue(rscope resolveScope, compEval *compileEvaluator, src *ir.Field, val ir.Element) ([]ir.Element, bool) {
 	arrayElement, axOk := val.(elements.WithAxes)
 	if !axOk {
 		return nil, true
@@ -426,14 +426,14 @@ var (
 	emptySlice   = elements.NewSlice(ir.IntLenSliceType(), nil)
 )
 
-func buildAtomicAxisValue(rscope resolveScope, arg ir.AssignableExpr, elts []elements.Element) (ax elements.Element, todo []elements.Element) {
+func buildAtomicAxisValue(rscope resolveScope, arg ir.AssignableExpr, elts []ir.Element) (ax ir.Element, todo []ir.Element) {
 	if len(elts) == 0 {
 		return zeroLen, nil
 	}
 	return elts[0], elts[1:]
 }
 
-func buildSliceAxisValue(rscope resolveScope, arg ir.AssignableExpr, elts []elements.Element) (ax elements.Element, todo []elements.Element) {
+func buildSliceAxisValue(rscope resolveScope, arg ir.AssignableExpr, elts []ir.Element) (ax ir.Element, todo []ir.Element) {
 	if len(elts) == 0 {
 		return emptySlice, nil
 	}
@@ -467,7 +467,7 @@ func assignArgValueToName(rscope resolveScope, compEval *compileEvaluator, param
 		if _, ok := ident.Stor.(*ir.AxLengthName); !ok {
 			continue
 		}
-		var buildAxisValue func(resolveScope, ir.AssignableExpr, []elements.Element) (elements.Element, []elements.Element)
+		var buildAxisValue func(resolveScope, ir.AssignableExpr, []ir.Element) (ir.Element, []ir.Element)
 		if axExpr.Type().Kind() == ir.IntLenKind {
 			buildAxisValue = buildAtomicAxisValue
 		} else {

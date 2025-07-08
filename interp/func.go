@@ -22,6 +22,7 @@ import (
 	"github.com/gx-org/gx/api/values"
 	"github.com/gx-org/gx/build/fmterr"
 	"github.com/gx-org/gx/build/ir"
+	"github.com/gx-org/gx/internal/interp/flatten"
 	"github.com/gx-org/gx/interp/elements"
 )
 
@@ -61,8 +62,8 @@ func (st *funcBase) Type() ir.Type {
 }
 
 // Flatten returns the element in a slice.
-func (st *funcBase) Flatten() ([]elements.Element, error) {
-	return []elements.Element{st}, nil
+func (st *funcBase) Flatten() ([]ir.Element, error) {
+	return []ir.Element{st}, nil
 }
 
 // Func returns the function represented by the node.
@@ -76,7 +77,7 @@ func (st *funcBase) Recv() *elements.Receiver {
 }
 
 // Unflatten creates a GX value from the next handles available in the Unflattener.
-func (st *funcBase) Unflatten(handles *elements.Unflattener) (values.Value, error) {
+func (st *funcBase) Unflatten(handles *flatten.Parser) (values.Value, error) {
 	return values.NewIRNode(st.fn)
 }
 
@@ -86,7 +87,7 @@ func (*funcBase) Kind() ir.Kind {
 }
 
 // Call the function.
-func (st *funcBase) Call(ctx ir.Evaluator, call *ir.CallExpr, args []elements.Element) ([]elements.Element, error) {
+func (st *funcBase) Call(ctx ir.Evaluator, call *ir.CallExpr, args []ir.Element) ([]ir.Element, error) {
 	return nil, fmterr.Internalf(ctx.File().FileSet(), st.fn.Source(), "function type %T not supported", st.fn)
 }
 
@@ -100,7 +101,7 @@ type funcDecl struct {
 	fnT *ir.FuncDecl
 }
 
-func (f *funcDecl) Call(fctx ir.Evaluator, call *ir.CallExpr, args []elements.Element) (outs []elements.Element, err error) {
+func (f *funcDecl) Call(fctx ir.Evaluator, call *ir.CallExpr, args []ir.Element) (outs []ir.Element, err error) {
 	ctx := fctx.(*Context)
 	if f.fnT.Body == nil {
 		return nil, fmterr.Errorf(ctx.File().FileSet(), f.fnT.Source(), "missing function body")
@@ -131,7 +132,7 @@ type funcBuiltin struct {
 	fnT *ir.FuncBuiltin
 }
 
-func (f *funcBuiltin) Call(fctx ir.Evaluator, call *ir.CallExpr, args []elements.Element) (outs []elements.Element, err error) {
+func (f *funcBuiltin) Call(fctx ir.Evaluator, call *ir.CallExpr, args []ir.Element) (outs []ir.Element, err error) {
 	defer func() {
 		if err != nil {
 			err = fmterr.Position(fctx.File().FileSet(), call.Expr(), err)
@@ -154,14 +155,14 @@ type funcLit struct {
 	fnT *ir.FuncLit
 }
 
-func (f *funcLit) Call(fctx ir.Evaluator, call *ir.CallExpr, args []elements.Element) (outs []elements.Element, err error) {
+func (f *funcLit) Call(fctx ir.Evaluator, call *ir.CallExpr, args []ir.Element) (outs []ir.Element, err error) {
 	ctx := fctx.(*Context)
 	// TODO(degris): remove this hack.
 	f.fnT.FFile = fctx.File()
 	return ctx.evaluator.CallFuncLit(ctx, f.fnT, args)
 }
 
-func evalFuncBody(ctx *Context, body *ir.BlockStmt) ([]elements.Element, error) {
+func evalFuncBody(ctx *Context, body *ir.BlockStmt) ([]ir.Element, error) {
 	outs, stop, err := evalBlockStmt(ctx, body)
 	if !stop {
 		// No return statement was processed during the eval of the function.
@@ -179,7 +180,7 @@ func fieldNames(fields []*ir.FieldGroup) (r []*ast.Ident) {
 	return
 }
 
-func assignArgumentValues(funcType *ir.FuncType, funcFrame *blockFrame, args []elements.Element) {
+func assignArgumentValues(funcType *ir.FuncType, funcFrame *blockFrame, args []ir.Element) {
 	// For each parameter of the function, assign its argument value to the frame.
 	names := fieldNames(funcType.Params.List)
 	for i, arg := range args {
@@ -191,7 +192,7 @@ func assignArgumentValues(funcType *ir.FuncType, funcFrame *blockFrame, args []e
 	}
 }
 
-func evalCallExpr(ctx *Context, expr *ir.CallExpr) (elements.Element, error) {
+func evalCallExpr(ctx *Context, expr *ir.CallExpr) (ir.Element, error) {
 	outs, err := evalCall(ctx, expr)
 	if err != nil {
 		return nil, err
@@ -199,7 +200,7 @@ func evalCallExpr(ctx *Context, expr *ir.CallExpr) (elements.Element, error) {
 	return ToSingleElement(ctx, expr, outs)
 }
 
-func evalCall(ctx *Context, expr *ir.CallExpr) ([]elements.Element, error) {
+func evalCall(ctx *Context, expr *ir.CallExpr) ([]ir.Element, error) {
 	// Fetch the function and check that it is callable.
 	fnNode, err := ctx.evalExpr(expr.Callee.X)
 	if err != nil {
@@ -211,7 +212,7 @@ func evalCall(ctx *Context, expr *ir.CallExpr) ([]elements.Element, error) {
 	}
 
 	// Evaluate the arguments to pass to the function.
-	args := make([]elements.Element, len(expr.Args))
+	args := make([]ir.Element, len(expr.Args))
 	for i, arg := range expr.Args {
 		el, err := ctx.evalExpr(arg)
 		if err != nil {

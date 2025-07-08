@@ -19,15 +19,16 @@ import (
 	"github.com/gx-org/gx/api/trace"
 	"github.com/gx-org/gx/api/values"
 	"github.com/gx-org/gx/build/ir"
+	"github.com/gx-org/gx/internal/interp/flatten"
 	"github.com/gx-org/gx/interp/elements"
 )
 
 type traceProcessor struct {
 	call   elements.CallAt
-	traced []elements.Element
+	traced []ir.Element
 }
 
-func (t *traceProcessor) parse(tracer trace.Callback, parser *elements.Unflattener) error {
+func (t *traceProcessor) parse(tracer trace.Callback, parser *flatten.Parser) error {
 	vals := make([]values.Value, len(t.traced))
 	for i, tr := range t.traced {
 		var err error
@@ -41,17 +42,17 @@ func (t *traceProcessor) parse(tracer trace.Callback, parser *elements.Unflatten
 
 type traces struct {
 	traces  []*traceProcessor
-	flatten []elements.Element
+	flatten []ir.Element
 }
 
 // Trace a set of elements.
-func (ts *traces) Trace(call elements.CallAt, fn *elements.Func, irFunc *ir.FuncBuiltin, args []elements.Element, ctx *values.FuncInputs) error {
+func (ts *traces) Trace(call elements.CallAt, fn *elements.Func, irFunc *ir.FuncBuiltin, args []ir.Element, ctx *values.FuncInputs) error {
 	ts.traces = append(ts.traces, &traceProcessor{
 		call:   call,
 		traced: args,
 	})
 	for _, arg := range args {
-		flatten, err := arg.Flatten()
+		flatten, err := flatten.Flatten(arg)
 		if err != nil {
 			return err
 		}
@@ -61,13 +62,13 @@ func (ts *traces) Trace(call elements.CallAt, fn *elements.Func, irFunc *ir.Func
 }
 
 // RegisterTrace registers a call to the trace builtin.
-func (ts *traces) RegisterTrace(call elements.CallAt, fn elements.Func, irFunc *ir.FuncBuiltin, args []elements.Element, ctx *values.FuncInputs) error {
+func (ts *traces) RegisterTrace(call elements.CallAt, fn elements.Func, irFunc *ir.FuncBuiltin, args []ir.Element, ctx *values.FuncInputs) error {
 	ts.traces = append(ts.traces, &traceProcessor{
 		call:   call,
 		traced: args,
 	})
 	for _, arg := range args {
-		flatten, err := arg.Flatten()
+		flatten, err := flatten.Flatten(arg)
 		if err != nil {
 			return err
 		}
@@ -81,7 +82,7 @@ func (ts *traces) ProcessTraces(dev platform.Device, in *values.FuncInputs, trac
 	if tracer == nil || len(ts.traces) == 0 {
 		return nil
 	}
-	parser := elements.NewUnflattener(dev, in, aux)
+	parser := flatten.NewParser(dev, in, aux)
 	for _, trace := range ts.traces {
 		if err := trace.parse(tracer, parser); err != nil {
 			return err
@@ -91,6 +92,6 @@ func (ts *traces) ProcessTraces(dev platform.Device, in *values.FuncInputs, trac
 }
 
 // Traces returns a tuple of all the trace nodes.
-func (ts *traces) Traces() []elements.Element {
+func (ts *traces) Traces() []ir.Element {
 	return ts.flatten
 }

@@ -183,7 +183,7 @@ func (ev *Evaluator) newStructArgument(parent parentArgument, expr elements.Expr
 		parentArgument: parent,
 		pValue:         pValue,
 	}
-	fields := make(map[string]elements.Element, structType.NumFields())
+	fields := make(map[string]ir.Element, structType.NumFields())
 	for _, field := range structType.Fields.Fields() {
 		name := field.Name.Name
 		fieldValue := pValue.Field(name)
@@ -253,7 +253,7 @@ func (ev *Evaluator) newSliceArgument(parent parentArgument, expr elements.ExprA
 		parentArgument: parent,
 		pValue:         pValue,
 	}
-	vals := make([]elements.Element, pValue.Size())
+	vals := make([]ir.Element, pValue.Size())
 	slicerType, ok := expr.Node().Type().(ir.SlicerType)
 	if !ok {
 		return nil, errors.Errorf("type %s cannot be indexed", expr.Node().Type().String())

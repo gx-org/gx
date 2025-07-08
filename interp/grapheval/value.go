@@ -19,6 +19,7 @@ import (
 	"github.com/gx-org/gx/api/values"
 	"github.com/gx-org/gx/build/ir"
 	"github.com/gx-org/gx/golang/backend/kernels"
+	"github.com/gx-org/gx/internal/interp/flatten"
 	"github.com/gx-org/gx/interp/elements"
 	"github.com/gx-org/gx/interp/evaluator"
 )
@@ -66,8 +67,8 @@ func (n *valueElement) NumericalConstant() *values.HostArray {
 	return n.value
 }
 
-// Unflatten creates a GX value from the next handles available in the Unflattener.
-func (n *valueElement) Unflatten(handles *elements.Unflattener) (values.Value, error) {
+// Unflatten creates a GX value from the next handles available in the parser.
+func (n *valueElement) Unflatten(handles *flatten.Parser) (values.Value, error) {
 	return values.NewDeviceArray(n.value.Type(), handles.Next())
 }
 
@@ -79,7 +80,7 @@ func (n *valueElement) Copy() elements.Copier {
 func (n *valueElement) Axes(ev ir.Evaluator) (*elements.Slice, error) {
 	shape := n.value.Shape()
 	ctx := ev.(evaluator.Context)
-	axes := make([]elements.Element, len(shape.AxisLengths))
+	axes := make([]ir.Element, len(shape.AxisLengths))
 	for i, axisSize := range shape.AxisLengths {
 		iExpr := &ir.AtomicValueT[ir.Int]{
 			Val: ir.Int(i),

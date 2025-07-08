@@ -37,7 +37,7 @@ type (
 		Sub(map[string]ir.Element) (Context, error)
 
 		// EvalFunctionToElement evaluates a function literal into an interpreter element.
-		EvalFunctionToElement(eval Evaluator, fn ir.Func, args []elements.Element) ([]elements.Element, error)
+		EvalFunctionToElement(eval Evaluator, fn ir.Func, args []ir.Element) ([]ir.Element, error)
 	}
 
 	// Importer imports packages given their path.
@@ -64,9 +64,9 @@ type (
 		ElementFromAtom(src elements.ExprAt, val values.Array) (elements.NumericalElement, error)
 
 		// CallFuncLit calls a function literal.
-		CallFuncLit(ctx Context, ref *ir.FuncLit, args []elements.Element) ([]elements.Element, error)
+		CallFuncLit(ctx Context, ref *ir.FuncLit, args []ir.Element) ([]ir.Element, error)
 
 		// Trace register a call to the trace builtin function.
-		Trace(call elements.CallAt, fn elements.Func, irFunc *ir.FuncBuiltin, args []elements.Element, fc *values.FuncInputs) error
+		Trace(call elements.CallAt, fn elements.Func, irFunc *ir.FuncBuiltin, args []ir.Element, fc *values.FuncInputs) error
 	}
 )

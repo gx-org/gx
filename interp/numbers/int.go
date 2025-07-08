@@ -25,6 +25,7 @@ import (
 	"github.com/gx-org/gx/build/fmterr"
 	"github.com/gx-org/gx/build/ir"
 	"github.com/gx-org/gx/internal/interp/canonical"
+	"github.com/gx-org/gx/internal/interp/flatten"
 	"github.com/gx-org/gx/interp/elements"
 	"github.com/gx-org/gx/interp/evaluator"
 )
@@ -126,12 +127,12 @@ func (n *Int) Shape() *shape.Shape {
 }
 
 // Flatten returns the number in a slice of elements.
-func (n *Int) Flatten() ([]elements.Element, error) {
-	return []elements.Element{n}, nil
+func (n *Int) Flatten() ([]ir.Element, error) {
+	return []ir.Element{n}, nil
 }
 
-// Unflatten creates a GX value from the next handles available in the Unflattener.
-func (n *Int) Unflatten(handles *elements.Unflattener) (values.Value, error) {
+// Unflatten creates a GX value from the next handles available in the parser.
+func (n *Int) Unflatten(handles *flatten.Parser) (values.Value, error) {
 	return nil, fmterr.Internal(errors.Errorf("%T does not support converting device handles into GX values", n))
 }
 

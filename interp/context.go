@@ -92,7 +92,7 @@ func (ctx *Context) newFileContext(file *ir.File) (*Context, error) {
 }
 
 // EvalFunc evaluates a function.
-func (ctx *Context) EvalFunc(f ir.Func, call *ir.CallExpr, args []elements.Element) ([]elements.Element, error) {
+func (ctx *Context) EvalFunc(f ir.Func, call *ir.CallExpr, args []ir.Element) ([]ir.Element, error) {
 	fnEl := NewRunFunc(f, nil)
 	return fnEl.Call(ctx, call, args)
 }
@@ -115,7 +115,7 @@ func (ctx *Context) currentFrame() *blockFrame {
 	return ctx.stack[len(ctx.stack)-1]
 }
 
-func (ctx *Context) set(tok token.Token, dest ir.Storage, value elements.Element) error {
+func (ctx *Context) set(tok token.Token, dest ir.Storage, value ir.Element) error {
 	fr := ctx.currentFrame()
 	switch destT := dest.(type) {
 	case *ir.LocalVarStorage:
@@ -150,7 +150,7 @@ func (ctx *Context) set(tok token.Token, dest ir.Storage, value elements.Element
 	}
 }
 
-func (ctx *Context) find(id *ast.Ident) (elements.Element, error) {
+func (ctx *Context) find(id *ast.Ident) (ir.Element, error) {
 	value, exists := ctx.currentFrame().Find(id.Name)
 	if !exists {
 		return nil, fmterr.Errorf(ctx.File().FileSet(), id, "undefined: %s", id.Name)

@@ -152,8 +152,8 @@ func (ao *arrayOps) Concat(expr elements.ExprAt, xs []elements.NumericalElement)
 }
 
 // Set a slice in an array.
-func (ao *arrayOps) Set(call elements.NodeFile[*ir.CallExpr], x, updates, index elements.Element) (elements.Element, error) {
-	nodes, err := MaterialiseAll(ao, []elements.Element{x, updates, index})
+func (ao *arrayOps) Set(call elements.NodeFile[*ir.CallExpr], x, updates, index ir.Element) (ir.Element, error) {
+	nodes, err := MaterialiseAll(ao, []ir.Element{x, updates, index})
 	if err != nil {
 		return nil, err
 	}

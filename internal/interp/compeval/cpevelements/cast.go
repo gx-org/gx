@@ -22,6 +22,7 @@ import (
 	"github.com/gx-org/gx/build/ir"
 	"github.com/gx-org/gx/golang/backend/kernels"
 	"github.com/gx-org/gx/internal/interp/canonical"
+	"github.com/gx-org/gx/internal/interp/flatten"
 	"github.com/gx-org/gx/interp/elements"
 )
 
@@ -114,8 +115,8 @@ func (a *cast) Shape() *shape.Shape {
 	return a.val.Shape()
 }
 
-func (a *cast) Flatten() ([]elements.Element, error) {
-	return []elements.Element{a}, nil
+func (a *cast) Flatten() ([]ir.Element, error) {
+	return []ir.Element{a}, nil
 }
 
 // Type of the element.
@@ -123,8 +124,8 @@ func (a *cast) Type() ir.Type {
 	return a.src.Node().Type()
 }
 
-// Unflatten creates a GX value from the next handles available in the Unflattener.
-func (a *cast) Unflatten(handles *elements.Unflattener) (values.Value, error) {
+// Unflatten creates a GX value from the next handles available in the parser.
+func (a *cast) Unflatten(handles *flatten.Parser) (values.Value, error) {
 	return a.val, nil
 }
 

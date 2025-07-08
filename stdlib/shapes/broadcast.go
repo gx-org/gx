@@ -94,7 +94,7 @@ func (f broadcast) BuildFuncType(fetcher ir.Fetcher, call *ir.CallExpr) (*ir.Fun
 	}, nil
 }
 
-func evalBroadcast(ctx evaluator.Context, call elements.CallAt, fn elements.Func, irFunc *ir.FuncBuiltin, args []elements.Element) ([]elements.Element, error) {
+func evalBroadcast(ctx evaluator.Context, call elements.CallAt, fn elements.Func, irFunc *ir.FuncBuiltin, args []ir.Element) ([]ir.Element, error) {
 	targetAxes, err := elements.AxesFromElement(args[1])
 	if err != nil {
 		return nil, err
