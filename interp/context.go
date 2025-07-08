@@ -175,11 +175,7 @@ func (ctx *Context) Sub(elts map[string]ir.Element) (evaluator.Context, error) {
 	sub.stack = append([]*blockFrame{}, ctx.stack...)
 	bFrame := sub.pushBlockFrame()
 	for n, elt := range elts {
-		var el elements.Element
-		if elt != nil {
-			el = elt.(elements.Element)
-		}
-		bFrame.Define(n, el)
+		bFrame.Define(n, elt)
 	}
 	return sub, nil
 }

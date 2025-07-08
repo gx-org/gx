@@ -40,7 +40,7 @@ var (
 )
 
 // NewVariable returns a new variable element given a GX variable name.
-func NewVariable(src elements.StorageAt) elements.Element {
+func NewVariable(src elements.StorageAt) ir.Element {
 	return &variable{src: src, name: src.Node().NameDef().Name}
 }
 

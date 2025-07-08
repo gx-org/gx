@@ -27,7 +27,7 @@ import (
 
 type (
 	valuer interface {
-		array(ctx *Context, expr *ir.ArrayLitExpr) (elements.Element, error)
+		array(ctx *Context, expr *ir.ArrayLitExpr) (ir.Element, error)
 	}
 
 	valuerT[T dtype.GoDataType] struct {
@@ -84,7 +84,7 @@ func goSliceFromElements[T dtype.GoDataType](els []elements.NumericalElement) ([
 	return vals, true, nil
 }
 
-func (v valuerT[T]) buildStaticArray(ctx *Context, lit *ir.ArrayLitExpr, axes, vals []elements.NumericalElement) (elements.Element, bool, error) {
+func (v valuerT[T]) buildStaticArray(ctx *Context, lit *ir.ArrayLitExpr, axes, vals []elements.NumericalElement) (ir.Element, bool, error) {
 	axesI64, ok, err := goSliceFromElements[int64](axes)
 	if !ok || err != nil {
 		return nil, false, err
@@ -119,7 +119,7 @@ func (v valuerT[T]) buildStaticArray(ctx *Context, lit *ir.ArrayLitExpr, axes, v
 	return node, true, nil
 }
 
-func (v valuerT[T]) array(ctx *Context, lit *ir.ArrayLitExpr) (elements.Element, error) {
+func (v valuerT[T]) array(ctx *Context, lit *ir.ArrayLitExpr) (ir.Element, error) {
 	axes, err := evalArrayAxes(ctx, lit, lit.Typ)
 	if err != nil {
 		return nil, err
@@ -176,7 +176,7 @@ func newValuer(ctx *Context, expr ir.Expr, kind ir.Kind) (v valuer, err error) {
 	return
 }
 
-func evalArrayLiteral(ctx *Context, expr *ir.ArrayLitExpr) (elements.Element, error) {
+func evalArrayLiteral(ctx *Context, expr *ir.ArrayLitExpr) (ir.Element, error) {
 	_, dtype := ir.Shape(expr.Type())
 	valuer, err := newValuer(ctx, expr, dtype.Kind())
 	if err != nil {

@@ -291,7 +291,7 @@ func evalValueRef(ctx *Context, ref *ir.ValueRef) (ir.Element, error) {
 	return cNode, nil
 }
 
-func evalCastToScalarExpr(ctx *Context, expr ir.TypeCastExpr, x elements.NumericalElement, targetType ir.ArrayType) (elements.Element, error) {
+func evalCastToScalarExpr(ctx *Context, expr ir.TypeCastExpr, x elements.NumericalElement, targetType ir.ArrayType) (ir.Element, error) {
 	if len(x.Shape().AxisLengths) > 0 {
 		return x.Reshape(ctx, expr, nil)
 	}
@@ -316,7 +316,7 @@ func evalArrayAxes(ctx *Context, src ir.SourceNode, typ ir.ArrayType) ([]element
 
 var one, _ = values.AtomIntegerValue(ir.IntLenType(), ir.Int(1))
 
-func evalCastAtomToArrayExpr(ctx *Context, expr ir.TypeCastExpr, x elements.NumericalElement, axes []elements.NumericalElement) (elements.Element, error) {
+func evalCastAtomToArrayExpr(ctx *Context, expr ir.TypeCastExpr, x elements.NumericalElement, axes []elements.NumericalElement) (ir.Element, error) {
 	srcExpr := elements.NewExprAt(ctx.File(), expr)
 	arrayOps := ctx.evaluator.ArrayOps()
 	shapeOfOnes := make([]elements.NumericalElement, len(axes))
@@ -334,7 +334,7 @@ func evalCastAtomToArrayExpr(ctx *Context, expr ir.TypeCastExpr, x elements.Nume
 	return arrayOps.BroadcastInDim(srcExpr, reshaped, axes)
 }
 
-func evalCastToArrayExpr(ctx *Context, expr ir.TypeCastExpr, x elements.NumericalElement, targetType ir.ArrayType) (elements.Element, error) {
+func evalCastToArrayExpr(ctx *Context, expr ir.TypeCastExpr, x elements.NumericalElement, targetType ir.ArrayType) (ir.Element, error) {
 	origType := expr.Orig().Type()
 	origRank, xDType := ir.Shape(origType)
 	targetDType := targetType.DataType()
@@ -367,7 +367,7 @@ func evalCastToArrayExpr(ctx *Context, expr ir.TypeCastExpr, x elements.Numerica
 	return reshape.Cast(ctx, expr, targetDType)
 }
 
-func evalCastExpr(ctx *Context, expr ir.TypeCastExpr) (elements.Element, error) {
+func evalCastExpr(ctx *Context, expr ir.TypeCastExpr) (ir.Element, error) {
 	x, err := ctx.evalExpr(expr.Orig())
 	if err != nil {
 		return nil, err
@@ -394,7 +394,7 @@ func evalCastExpr(ctx *Context, expr ir.TypeCastExpr) (elements.Element, error) 
 	return evalCastToArrayExpr(ctx, expr, xNum, arrayType)
 }
 
-func evalUnaryExpression(ctx *Context, expr *ir.UnaryExpr) (elements.Element, error) {
+func evalUnaryExpression(ctx *Context, expr *ir.UnaryExpr) (ir.Element, error) {
 	x, err := evalNumExpr(ctx, expr.X)
 	if err != nil {
 		return nil, err
@@ -405,7 +405,7 @@ func evalUnaryExpression(ctx *Context, expr *ir.UnaryExpr) (elements.Element, er
 	return x.UnaryOp(ctx, expr)
 }
 
-func evalBinaryExpression(ctx *Context, expr *ir.BinaryExpr) (elements.Element, error) {
+func evalBinaryExpression(ctx *Context, expr *ir.BinaryExpr) (ir.Element, error) {
 	x, err := evalNumExpr(ctx, expr.X)
 	if err != nil {
 		return nil, err
@@ -417,7 +417,7 @@ func evalBinaryExpression(ctx *Context, expr *ir.BinaryExpr) (elements.Element, 
 	return x.BinaryOp(ctx, expr, x, y)
 }
 
-func evalStructLiteral(ctx *Context, expr *ir.StructLitExpr) (elements.Element, error) {
+func evalStructLiteral(ctx *Context, expr *ir.StructLitExpr) (ir.Element, error) {
 	under := ir.Underlying(expr.Typ)
 	structType, ok := under.(*ir.StructType)
 	if !ok {
@@ -545,7 +545,7 @@ func evalSelectorExpr(ctx *Context, ref *ir.SelectorExpr) (ir.Element, error) {
 	return slt.Select(elements.NewNodeAt(ctx.File(), ref))
 }
 
-func evalFuncLit(ctx *Context, ref *ir.FuncLit) (elements.Element, error) {
+func evalFuncLit(ctx *Context, ref *ir.FuncLit) (ir.Element, error) {
 	return ctx.evaluator.NewFunc(ref, nil), nil
 }
 
@@ -566,7 +566,7 @@ func evalIndexExpr(ctx *Context, ref *ir.IndexExpr) (ir.Element, error) {
 	return slicer.Slice(ctx, ref, index)
 }
 
-func evalEinsumExpr(ctx *Context, ref *ir.EinsumExpr) (elements.Element, error) {
+func evalEinsumExpr(ctx *Context, ref *ir.EinsumExpr) (ir.Element, error) {
 	x, err := evalNumExpr(ctx, ref.X)
 	if err != nil {
 		return nil, err

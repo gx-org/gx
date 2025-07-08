@@ -36,7 +36,7 @@ func EvalExpr(ctx evaluator.Context, expr ir.Expr) (cpevelements.Element, error)
 	}
 	el, ok := val.(cpevelements.Element)
 	if !ok {
-		return nil, errors.Errorf("cannot cast %T to %s", val, reflect.TypeFor[elements.Element]().String())
+		return nil, errors.Errorf("cannot cast %T to %s", val, reflect.TypeFor[cpevelements.Element]().String())
 	}
 	return el, nil
 }

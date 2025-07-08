@@ -64,7 +64,7 @@ func (n *NamedType) RecvCopy() *NamedType {
 
 // Flatten returns the named type in a slice of elements.
 func (n *NamedType) Flatten() ([]ir.Element, error) {
-	return n.under.Flatten()
+	return flatten.Flatten(n.under)
 }
 
 // NamedType returns the type of the element.

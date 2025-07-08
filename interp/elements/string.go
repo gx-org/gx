@@ -28,7 +28,7 @@ type String struct {
 	val *values.String
 }
 
-var _ Element = (*String)(nil)
+var _ ir.Element = (*String)(nil)
 
 // NewString returns a state element storing a string GX value.
 func NewString(str *ir.StringLiteral) (*String, error) {

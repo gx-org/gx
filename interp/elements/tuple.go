@@ -32,8 +32,8 @@ type Tuple struct {
 }
 
 var (
-	_ Slicer  = (*Tuple)(nil)
-	_ Element = (*Tuple)(nil)
+	_ Slicer     = (*Tuple)(nil)
+	_ ir.Element = (*Tuple)(nil)
 )
 
 // NewTuple returns a tuple to store the result of a function returning more than one value.

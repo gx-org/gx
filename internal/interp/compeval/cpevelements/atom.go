@@ -115,7 +115,7 @@ func (a *atom) Materialise(ao elements.ArrayOps) (elements.Node, error) {
 
 // Compare to another element.
 func (a *atom) Compare(x canonical.Comparable) bool {
-	xEl, ok := x.(elements.Element)
+	xEl, ok := x.(ir.Element)
 	if !ok {
 		return false
 	}

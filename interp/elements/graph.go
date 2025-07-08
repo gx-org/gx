@@ -24,7 +24,7 @@ type (
 
 	// Node is an element representing a numerical node in a compute graph.
 	Node interface {
-		Element
+		ir.Element
 		OutNode() *ops.OutputNode
 	}
 
@@ -54,7 +54,7 @@ type (
 
 	// Materialiser is an element that can return an instance of itself composed only of elements from the backend ops.
 	Materialiser interface {
-		Element
+		ir.Element
 
 		// Materialise returns the element with all its values from the graph.
 		Materialise(ArrayOps) (Node, error)
