@@ -67,6 +67,6 @@ type (
 		CallFuncLit(ctx Context, ref *ir.FuncLit, args []elements.Element) ([]elements.Element, error)
 
 		// Trace register a call to the trace builtin function.
-		Trace(call elements.CallAt, fn elements.Func, irFunc *ir.FuncBuiltin, args []elements.Element, fc *elements.InputValues) error
+		Trace(call elements.CallAt, fn elements.Func, irFunc *ir.FuncBuiltin, args []elements.Element, fc *values.FuncInputs) error
 	}
 )

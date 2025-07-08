@@ -45,6 +45,16 @@ type (
 	Valuer interface {
 		GXValue() Value
 	}
+
+	// FuncInputs are GX values passed to the function call.
+	FuncInputs struct {
+		// Receiver on which the function call was done.
+		// Can be nil.
+		Receiver Value
+
+		// Args returns list of arguments passed to the interpreter at call time.
+		Args []Value
+	}
 )
 
 func toHostArray(typ ir.Type, h kernels.Array) (*HostArray, error) {

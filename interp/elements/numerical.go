@@ -61,6 +61,6 @@ type (
 		NumericalElement
 
 		// ArrayFromContext fetches an array from the argument.
-		ArrayFromContext(*InputValues) (values.Array, error)
+		ArrayFromContext(*values.FuncInputs) (values.Array, error)
 	}
 )

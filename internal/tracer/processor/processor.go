@@ -19,8 +19,8 @@ package processor
 import (
 	"github.com/gx-org/backend/platform"
 	"github.com/gx-org/backend/shape"
+	"github.com/gx-org/gx/api/values"
 	"github.com/gx-org/gx/build/ir"
-	"github.com/gx-org/gx/interp/elements"
 )
 
 type (
@@ -37,14 +37,14 @@ type (
 	// Initializer is called at the beginning of a run before
 	// arguments for the backend are computed.
 	Initializer interface {
-		Init(*elements.InputValues) error
+		Init(*values.FuncInputs) error
 	}
 
 	// Argument provides an argument to pass to the backend.
 	Argument interface {
 		Shape() *shape.Shape
 
-		ToDeviceHandle(platform.Device, *elements.InputValues) (platform.DeviceHandle, error)
+		ToDeviceHandle(platform.Device, *values.FuncInputs) (platform.DeviceHandle, error)
 	}
 )
 
@@ -72,7 +72,7 @@ func (p *Processor) Args() []Argument {
 }
 
 // ProcessInits calls all the initializers callbacks.
-func (p *Processor) ProcessInits(fc *elements.InputValues) error {
+func (p *Processor) ProcessInits(fc *values.FuncInputs) error {
 	for _, init := range p.inits {
 		if err := init.Init(fc); err != nil {
 			return err
