@@ -151,10 +151,6 @@ func (a *binary) Value() ir.AssignableExpr {
 	return a.src.Node()
 }
 
-func (a *binary) Flatten() ([]ir.Element, error) {
-	return []ir.Element{a}, nil
-}
-
 // Type of the element.
 func (a *binary) Type() ir.Type {
 	return a.src.Node().Type()

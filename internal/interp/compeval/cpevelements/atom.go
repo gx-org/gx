@@ -94,10 +94,6 @@ func (a *atom) NumericalConstant() *values.HostArray {
 	return a.val
 }
 
-func (a *atom) Flatten() ([]ir.Element, error) {
-	return []ir.Element{a}, nil
-}
-
 // Unflatten creates a GX value from the next handles available in the parser.
 func (a *atom) Unflatten(handles *flatten.Parser) (values.Value, error) {
 	return handles.ParseArray(a.src.Node().Type())

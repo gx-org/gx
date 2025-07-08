@@ -18,9 +18,7 @@ import (
 	"reflect"
 
 	"github.com/pkg/errors"
-	"github.com/gx-org/gx/api/values"
 	"github.com/gx-org/gx/build/ir"
-	"github.com/gx-org/gx/internal/interp/flatten"
 	"github.com/gx-org/gx/interp/elements"
 )
 
@@ -59,16 +57,6 @@ func (f *Macro) Call(fctx ir.Evaluator, call *ir.CallExpr, args []ir.Element) ([
 	}
 	el, err := buildSynthetic(elements.NewNodeAt(fctx.File(), call), f, args)
 	return []ir.Element{el}, err
-}
-
-// Flatten the macro.
-func (f *Macro) Flatten() ([]ir.Element, error) {
-	return []ir.Element{f}, nil
-}
-
-// Unflatten the macro.
-func (f *Macro) Unflatten(handles *flatten.Parser) (values.Value, error) {
-	return nil, errors.Errorf("not implemented")
 }
 
 // Type returns the type of the function.

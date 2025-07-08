@@ -15,10 +15,7 @@
 package cpevelements
 
 import (
-	"github.com/pkg/errors"
-	"github.com/gx-org/gx/api/values"
 	"github.com/gx-org/gx/build/ir"
-	"github.com/gx-org/gx/internal/interp/flatten"
 )
 
 type (
@@ -50,16 +47,6 @@ func NewSyntheticFunc(builder SyntheticBuilder) *SyntheticFunc {
 // Builder returns the builder responsible for building the synthetic function.
 func (n *SyntheticFunc) Builder() SyntheticBuilder {
 	return n.builder
-}
-
-// Flatten returns the element in a slice of elements.
-func (n *SyntheticFunc) Flatten() ([]ir.Element, error) {
-	return []ir.Element{n}, nil
-}
-
-// Unflatten consumes the next handles to return a GX value.
-func (n *SyntheticFunc) Unflatten(handles *flatten.Parser) (values.Value, error) {
-	return nil, errors.Errorf("not implemented")
 }
 
 // Type of the element.

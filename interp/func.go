@@ -61,11 +61,6 @@ func (st *funcBase) Type() ir.Type {
 	return st.fn.FuncType()
 }
 
-// Flatten returns the element in a slice.
-func (st *funcBase) Flatten() ([]ir.Element, error) {
-	return []ir.Element{st}, nil
-}
-
 // Func returns the function represented by the node.
 func (st *funcBase) Func() ir.Func {
 	return st.fn

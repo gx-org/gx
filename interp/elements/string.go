@@ -46,11 +46,6 @@ func NewString(str *ir.StringLiteral) (*String, error) {
 	}, nil
 }
 
-// Flatten returns the element in a slice of elements.
-func (n *String) Flatten() ([]ir.Element, error) {
-	return []ir.Element{n}, nil
-}
-
 // Unflatten consumes the next handles to return a GX value.
 func (n *String) Unflatten(handles *flatten.Parser) (values.Value, error) {
 	return n.val, nil

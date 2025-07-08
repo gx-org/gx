@@ -17,12 +17,9 @@ package cpevelements
 import (
 	"go/ast"
 
-	"github.com/pkg/errors"
 	"github.com/gx-org/backend/shape"
-	"github.com/gx-org/gx/api/values"
 	"github.com/gx-org/gx/build/ir"
 	"github.com/gx-org/gx/internal/interp/canonical"
-	"github.com/gx-org/gx/internal/interp/flatten"
 	"github.com/gx-org/gx/interp/elements"
 	"github.com/gx-org/gx/interp/evaluator"
 )
@@ -67,16 +64,6 @@ func (a *variable) Reshape(ctx ir.Evaluator, expr ir.AssignableExpr, axisLengths
 // Shape of the value represented by the element.
 func (a *variable) Shape() *shape.Shape {
 	return &shape.Shape{}
-}
-
-// Flatten the variable into a slice of elements.
-func (a *variable) Flatten() ([]ir.Element, error) {
-	return []ir.Element{a}, nil
-}
-
-// Unflatten creates a GX value from the next handles available in the parser.
-func (a *variable) Unflatten(handles *flatten.Parser) (values.Value, error) {
-	return nil, errors.Errorf("not implemented")
 }
 
 // Type of the element.

@@ -16,10 +16,7 @@ package elements
 
 import (
 	"github.com/pkg/errors"
-	"github.com/gx-org/gx/api/values"
-	"github.com/gx-org/gx/build/fmterr"
 	"github.com/gx-org/gx/build/ir"
-	"github.com/gx-org/gx/internal/interp/flatten"
 )
 
 // Package groups elements exported by a package.
@@ -52,16 +49,6 @@ func NewPackage(pkg *ir.Package, newFunc NewFunc) *Package {
 // (used for consts)
 func (pkg *Package) Define(name string, el ir.Element) {
 	pkg.defs[name] = el
-}
-
-// Flatten returns the package in a slice of
-func (pkg *Package) Flatten() ([]ir.Element, error) {
-	return []ir.Element{pkg}, nil
-}
-
-// Unflatten creates a GX value from the next handles available in the parser.
-func (pkg *Package) Unflatten(handles *flatten.Parser) (values.Value, error) {
-	return nil, fmterr.Internal(errors.Errorf("%T does not support converting device handles into GX values", pkg))
 }
 
 // Type of the element.
