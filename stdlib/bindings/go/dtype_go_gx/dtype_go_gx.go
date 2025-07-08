@@ -320,7 +320,7 @@ type methodBase struct {
 // NewFloats returns a handle on named type Floats.
 func (fac *Factory) NewFloats() *Floats {
 	s := &Floats{}
-	typ := fac.Package.Package.IR.Decls.Types[0]
+	typ := fac.Package.Package.IR.Decls.TypeByName("Floats")
 	s.handle = handleFloats{
 		pkg:   fac.Package,
 		struc: typ,
@@ -351,7 +351,7 @@ func (h *handleFloats) SetField(field *ir.Field, val types.Bridge) error {
 // NewInts returns a handle on named type Ints.
 func (fac *Factory) NewInts() *Ints {
 	s := &Ints{}
-	typ := fac.Package.Package.IR.Decls.Types[1]
+	typ := fac.Package.Package.IR.Decls.TypeByName("Ints")
 	s.handle = handleInts{
 		pkg:   fac.Package,
 		struc: typ,
@@ -382,7 +382,7 @@ func (h *handleInts) SetField(field *ir.Field, val types.Bridge) error {
 // NewNum returns a handle on named type Num.
 func (fac *Factory) NewNum() *Num {
 	s := &Num{}
-	typ := fac.Package.Package.IR.Decls.Types[2]
+	typ := fac.Package.Package.IR.Decls.TypeByName("Num")
 	s.handle = handleNum{
 		pkg:   fac.Package,
 		struc: typ,
