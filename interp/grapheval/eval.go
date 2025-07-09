@@ -43,7 +43,7 @@ type Evaluator struct {
 var _ evaluator.Evaluator = (*Evaluator)(nil)
 
 // New returns a new evaluator given a elements.
-func New(importer evaluator.Importer, pr *processor.Processor, gr ops.Graph, newFunc elements.NewFunc) *Evaluator {
+func New(importer ir.Importer, pr *processor.Processor, gr ops.Graph, newFunc elements.NewFunc) *Evaluator {
 	ev := &Evaluator{
 		process:  pr,
 		hostEval: compeval.NewHostEvaluator(importer),
@@ -64,7 +64,7 @@ func (ev *Evaluator) Processor() *processor.Processor {
 }
 
 // Importer returns the importer used by the evaluator.
-func (ev *Evaluator) Importer() evaluator.Importer {
+func (ev *Evaluator) Importer() ir.Importer {
 	return ev.hostEval.Importer()
 }
 
