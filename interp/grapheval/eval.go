@@ -74,6 +74,11 @@ func (ev *Evaluator) ArrayOps() elements.ArrayOps {
 	return ev.ao
 }
 
+// Materialiser returns an array materialiser.
+func (ev *Evaluator) Materialiser() elements.ArrayMaterialiser {
+	return ev.ao
+}
+
 // ElementFromAtom returns an element from a GX value.
 func (ev *Evaluator) ElementFromAtom(ctx ir.Evaluator, src ir.AssignableExpr, val values.Array) (elements.NumericalElement, error) {
 	return ev.hostEval.ElementFromAtom(ctx, src, val)
@@ -165,8 +170,8 @@ func (ev *Evaluator) Trace(ctx ir.Evaluator, call *ir.CallExpr, args []ir.Elemen
 	return ev.process.RegisterTrace(elements.NewNodeAt(ctx.File(), call), args)
 }
 
-func evalFromContext(ctx ir.Evaluator) *Evaluator {
-	return ctx.(evaluator.Context).Evaluator().(*Evaluator)
+func opsFromContext(ctx ir.Evaluator) *arrayOps {
+	return ctx.(evaluator.Context).Evaluator().(*Evaluator).ArrayOps().(*arrayOps)
 }
 
 // FuncInputsToElements converts values to a function input.

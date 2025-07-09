@@ -37,7 +37,7 @@ type CompiledFunc struct {
 	outs    []ir.Element
 }
 
-func extractGraphNodes(ao elements.ArrayOps, els []ir.Element) ([]*ops.OutputNode, error) {
+func extractGraphNodes(ao elements.ArrayMaterialiser, els []ir.Element) ([]*ops.OutputNode, error) {
 	flatten, err := flatten.Flatten(els...)
 	if err != nil {
 		return nil, err
@@ -58,7 +58,7 @@ func extractGraphNodes(ao elements.ArrayOps, els []ir.Element) ([]*ops.OutputNod
 }
 
 // Compile a function that will be run on a device given some inputs.
-func Compile(dev *api.Device, fn ir.Func, p *processor.Processor, ao elements.ArrayOps, outs []ir.Element) (*CompiledFunc, error) {
+func Compile(dev *api.Device, fn ir.Func, p *processor.Processor, ao elements.ArrayMaterialiser, outs []ir.Element) (*CompiledFunc, error) {
 	args := p.Args()
 	paramShapes := make([]*shape.Shape, len(args))
 	for i, arg := range args {

@@ -128,8 +128,8 @@ func (a *unary) NumericalConstant() *values.HostArray {
 }
 
 // Materialise returns the element with all its values from the graph.
-func (a *unary) Materialise(ao elements.ArrayOps) (elements.Node, error) {
-	return ao.ElementFromArray(a.src.ToExprAt(), a.val)
+func (a *unary) Materialise(ao elements.ArrayMaterialiser) (elements.Node, error) {
+	return ao.NodeFromArray(a.src.ToExprAt(), a.val)
 }
 
 func (a *unary) Expr() (ir.AssignableExpr, error) {
