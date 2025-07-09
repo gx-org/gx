@@ -24,7 +24,7 @@ import (
 	"github.com/gx-org/gx/build/ir"
 	"github.com/gx-org/gx/internal/base/scope"
 	"github.com/gx-org/gx/internal/interp/compeval/cpevelements"
-	"github.com/gx-org/gx/interp/evaluator"
+	"github.com/gx-org/gx/interp/context"
 )
 
 type pkgScope struct {
@@ -47,12 +47,12 @@ func (s *pkgScope) String() string {
 type compileEvaluator struct {
 	scope resolveScope
 	irb   *irBuilder
-	ev    evaluator.Context
+	ev    *context.Context
 }
 
 var _ ir.Fetcher = (*compileEvaluator)(nil)
 
-func newEvaluator(scope resolveScope, ctx evaluator.Context) *compileEvaluator {
+func newEvaluator(scope resolveScope, ctx *context.Context) *compileEvaluator {
 	return &compileEvaluator{
 		scope: scope,
 		ev:    ctx,

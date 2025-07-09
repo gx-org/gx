@@ -29,8 +29,8 @@ import (
 	"github.com/gx-org/gx/build/ir/irhelper"
 	"github.com/gx-org/gx/internal/interp/compeval"
 	"github.com/gx-org/gx/internal/interp/compeval/cpevelements"
+	"github.com/gx-org/gx/interp/context"
 	"github.com/gx-org/gx/interp/elements"
-	"github.com/gx-org/gx/interp/evaluator"
 	"github.com/gx-org/gx/interp"
 )
 
@@ -127,7 +127,7 @@ func value(x int32) wantValue {
 	return wantValue{eval: true, value: x}
 }
 
-func newContext(opts []options.PackageOption) (evaluator.Context, error) {
+func newContext(opts []options.PackageOption) (*context.Context, error) {
 	ectx, err := interp.New(compeval.NewHostEvaluator(nil), opts)
 	if err != nil {
 		return nil, err

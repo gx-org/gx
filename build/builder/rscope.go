@@ -29,7 +29,7 @@ import (
 	"github.com/gx-org/gx/build/ir"
 	"github.com/gx-org/gx/internal/base/scope"
 	"github.com/gx-org/gx/internal/interp/compeval"
-	"github.com/gx-org/gx/interp/evaluator"
+	"github.com/gx-org/gx/interp/context"
 	"github.com/gx-org/gx/interp"
 )
 
@@ -148,7 +148,7 @@ func (s *pkgResolveScope) lastBuild() *lastBuild {
 	return last
 }
 
-func (s *pkgResolveScope) packageContext() evaluator.Context {
+func (s *pkgResolveScope) packageContext() *context.Context {
 	hostEval := compeval.NewHostEvaluator(s.bpkg.builder())
 	pkg := s.ibld.Pkg()
 	pkg.Decls = s.ibld.Decls()
