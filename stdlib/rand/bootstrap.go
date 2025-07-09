@@ -27,6 +27,7 @@ import (
 	"github.com/gx-org/gx/build/ir"
 	"github.com/gx-org/gx/golang/backend/kernels"
 	"github.com/gx-org/gx/golang/binder/gobindings/types"
+	"github.com/gx-org/gx/interp/context"
 	"github.com/gx-org/gx/interp/elements"
 	"github.com/gx-org/gx/interp/evaluator"
 	"github.com/gx-org/gx/interp/grapheval"
@@ -172,7 +173,7 @@ func evalNewBootstrapGenerator(ctx evaluator.Context, call elements.CallAt, fn e
 		return nil, err
 	}
 	return []ir.Element{elements.NewNamedType(
-		ctx.Evaluator().NewFunc,
+		ctx.(*context.Context).NewFunc,
 		call.Node().Type().(*ir.NamedType),
 		bootstrap,
 	)}, nil

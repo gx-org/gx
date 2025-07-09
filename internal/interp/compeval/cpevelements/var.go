@@ -20,8 +20,8 @@ import (
 	"github.com/gx-org/backend/shape"
 	"github.com/gx-org/gx/build/ir"
 	"github.com/gx-org/gx/internal/interp/canonical"
+	"github.com/gx-org/gx/interp/context"
 	"github.com/gx-org/gx/interp/elements"
-	"github.com/gx-org/gx/interp/evaluator"
 )
 
 type variable struct {
@@ -79,7 +79,7 @@ func (a *variable) Axes(ev ir.Evaluator) (*elements.Slice, error) {
 // Slice computes a slice from the variable.
 func (a *variable) Slice(ctx ir.Evaluator, expr *ir.IndexExpr, index elements.NumericalElement) (ir.Element, error) {
 	store := &ir.LocalVarStorage{Src: &ast.Ident{}, Typ: expr.Type()}
-	return NewRuntimeValue(ctx.(evaluator.Context), store)
+	return NewRuntimeValue(ctx.(*context.Context), store)
 }
 
 // Compare to another element.

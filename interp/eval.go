@@ -379,7 +379,7 @@ func evalCastExpr(ctx *context.Context, expr ir.TypeCastExpr) (ir.Element, error
 		if !ok {
 			return nil, errors.Errorf("element %T cannot be copied", x)
 		}
-		return elements.NewNamedType(ctx.Evaluator().NewFunc, named, recv), nil
+		return elements.NewNamedType(ctx.NewFunc, named, recv), nil
 	}
 	arrayType, ok := target.(ir.ArrayType)
 	if !ok {
@@ -437,7 +437,7 @@ func evalStructLiteral(ctx *context.Context, expr *ir.StructLitExpr) (ir.Element
 	if !ok {
 		return strct, nil
 	}
-	return elements.NewNamedType(ctx.Evaluator().NewFunc, nType, strct), nil
+	return elements.NewNamedType(ctx.NewFunc, nType, strct), nil
 }
 
 func evalSliceLiteral(ctx *context.Context, expr *ir.SliceLitExpr) (ir.Element, error) {
@@ -542,7 +542,7 @@ func evalSelectorExpr(ctx *context.Context, ref *ir.SelectorExpr) (ir.Element, e
 }
 
 func evalFuncLit(ctx *context.Context, ref *ir.FuncLit) (ir.Element, error) {
-	return ctx.Evaluator().NewFunc(ref, nil), nil
+	return ctx.NewFunc(ref, nil), nil
 }
 
 func evalIndexExpr(ctx *context.Context, ref *ir.IndexExpr) (ir.Element, error) {

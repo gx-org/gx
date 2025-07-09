@@ -20,8 +20,8 @@ import (
 
 	"github.com/pkg/errors"
 	"github.com/gx-org/gx/build/ir"
+	"github.com/gx-org/gx/interp/context"
 	"github.com/gx-org/gx/interp/elements"
-	"github.com/gx-org/gx/interp/evaluator"
 )
 
 type fun struct {
@@ -55,7 +55,7 @@ func (f *fun) Call(fctx ir.Evaluator, call *ir.CallExpr, args []ir.Element) ([]i
 	if fType != nil && fType.CompEval {
 		return f.callAtCompEval(fctx, call, args)
 	}
-	ctx := fctx.(evaluator.Context)
+	ctx := fctx.(*context.Context)
 	res := call.Callee.T.Results.Fields()
 	els := make([]ir.Element, len(res))
 	for i, ri := range res {

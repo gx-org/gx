@@ -33,9 +33,6 @@ type (
 
 	// Evaluator implements GX operators.
 	Evaluator interface {
-		// NewFunc creates a new function given its definition and a receiver.
-		NewFunc(fn ir.Func, recv *elements.Receiver) elements.Func
-
 		// Importer returns an importer to import package.
 		Importer() ir.Importer
 
