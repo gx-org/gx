@@ -31,8 +31,18 @@ import (
 type (
 	// Interpreter evaluates expressions and statements given the context.
 	Interpreter interface {
+		// EvalExpr runs an expression through the evaluator.
 		EvalExpr(*Context, ir.Expr) (ir.Element, error)
+		// EvalStmt runs a block of statements through the evaluator.
 		EvalStmt(*Context, *ir.BlockStmt) ([]ir.Element, bool, error)
+	}
+
+	// Evaluator provides core primitives for the interpreter.
+	Evaluator interface {
+		evaluator.Evaluator
+
+		// CallFuncLit calls a function literal.
+		CallFuncLit(ctx *Context, ref *ir.FuncLit, args []ir.Element) ([]ir.Element, error)
 	}
 
 	// Context of an evaluation while running the interpreter.
@@ -43,7 +53,7 @@ type (
 
 		options        []options.PackageOption
 		packageOptions map[string][]packageOption
-		evaluator      evaluator.Evaluator
+		evaluator      Evaluator
 		builtin        *baseFrame
 		packageToFrame map[*ir.Package]*packageFrame
 
@@ -54,7 +64,7 @@ type (
 var _ evaluator.Context = (*Context)(nil)
 
 // New returns a new interpreter context.
-func New(interp Interpreter, eval evaluator.Evaluator, options []options.PackageOption) (*Context, error) {
+func New(interp Interpreter, eval Evaluator, options []options.PackageOption) (*Context, error) {
 	ctx := &Context{
 		interp:         interp,
 		options:        options,

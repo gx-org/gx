@@ -45,12 +45,12 @@ func (interp) EvalStmt(ctx *context.Context, block *ir.BlockStmt) ([]ir.Element,
 }
 
 // New returns a new interpreter.
-func New(eval evaluator.Evaluator, options []options.PackageOption) (*context.Context, error) {
+func New(eval context.Evaluator, options []options.PackageOption) (*context.Context, error) {
 	return context.New(interp{}, eval, options)
 }
 
 // EvalFunc evaluates a function.
-func EvalFunc(eval evaluator.Evaluator, fn *ir.FuncDecl, in *elements.InputElements, options []options.PackageOption) (outs []ir.Element, err error) {
+func EvalFunc(eval context.Evaluator, fn *ir.FuncDecl, in *elements.InputElements, options []options.PackageOption) (outs []ir.Element, err error) {
 	return context.EvalFunc(interp{}, eval, fn, in, options)
 }
 

@@ -41,7 +41,7 @@ type Evaluator struct {
 	hostEval evaluator.Evaluator
 }
 
-var _ evaluator.Evaluator = (*Evaluator)(nil)
+var _ context.Evaluator = (*Evaluator)(nil)
 
 // New returns a new evaluator given a elements.
 func New(importer ir.Importer, pr *processor.Processor, gr ops.Graph, newFunc elements.NewFunc) *Evaluator {
@@ -80,8 +80,7 @@ func (ev *Evaluator) ElementFromAtom(src elements.ExprAt, val values.Array) (ele
 }
 
 // CallFuncLit calls a function literal.
-func (ev *Evaluator) CallFuncLit(ectx evaluator.Context, ref *ir.FuncLit, args []ir.Element) ([]ir.Element, error) {
-	ctx := ectx.(*context.Context)
+func (ev *Evaluator) CallFuncLit(ctx *context.Context, ref *ir.FuncLit, args []ir.Element) ([]ir.Element, error) {
 	core := ev.ao.graph.Core()
 	name := ref.Name()
 	if name == "" {

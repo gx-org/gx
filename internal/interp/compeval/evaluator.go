@@ -21,6 +21,7 @@ import (
 	"github.com/gx-org/gx/golang/backend/kernels"
 	"github.com/gx-org/gx/internal/interp/compeval/cpevelements"
 	"github.com/gx-org/gx/internal/tracer/processor"
+	"github.com/gx-org/gx/interp/context"
 	"github.com/gx-org/gx/interp/elements"
 	"github.com/gx-org/gx/interp/evaluator"
 )
@@ -29,6 +30,8 @@ import (
 type CompEval struct {
 	importer ir.Importer
 }
+
+var _ context.Evaluator = (*CompEval)(nil)
 
 // NewHostEvaluator returns a new evaluator for the host.
 func NewHostEvaluator(importer ir.Importer) *CompEval {
@@ -73,7 +76,7 @@ func (ev *CompEval) ElementFromAtom(src elements.ExprAt, val values.Array) (elem
 }
 
 // CallFuncLit calls a function literal.
-func (ev *CompEval) CallFuncLit(ctx evaluator.Context, ref *ir.FuncLit, args []ir.Element) ([]ir.Element, error) {
+func (ev *CompEval) CallFuncLit(ctx *context.Context, ref *ir.FuncLit, args []ir.Element) ([]ir.Element, error) {
 	return nil, errors.Errorf("not implemented")
 }
 

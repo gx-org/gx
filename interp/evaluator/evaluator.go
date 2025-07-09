@@ -48,9 +48,6 @@ type (
 		// ElementFromAtom returns an element from an atomic GX value.
 		ElementFromAtom(src elements.ExprAt, val values.Array) (elements.NumericalElement, error)
 
-		// CallFuncLit calls a function literal.
-		CallFuncLit(ctx Context, ref *ir.FuncLit, args []ir.Element) ([]ir.Element, error)
-
 		// Trace register a call to the trace builtin function.
 		Trace(call elements.CallAt, args []ir.Element) error
 	}

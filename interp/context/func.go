@@ -26,7 +26,6 @@ import (
 	"github.com/gx-org/gx/build/ir"
 	"github.com/gx-org/gx/internal/interp/flatten"
 	"github.com/gx-org/gx/interp/elements"
-	"github.com/gx-org/gx/interp/evaluator"
 )
 
 type funcBase struct {
@@ -191,7 +190,7 @@ func assignArgumentValues(funcType *ir.FuncType, funcFrame *blockFrame, args []i
 }
 
 // EvalFunc evaluates a function.
-func EvalFunc(interp Interpreter, eval evaluator.Evaluator, fn *ir.FuncDecl, in *elements.InputElements, options []options.PackageOption) (outs []ir.Element, err error) {
+func EvalFunc(interp Interpreter, eval Evaluator, fn *ir.FuncDecl, in *elements.InputElements, options []options.PackageOption) (outs []ir.Element, err error) {
 	if fn.Body == nil {
 		return nil, errors.Errorf("%s: missing function body", fn.Name())
 	}
