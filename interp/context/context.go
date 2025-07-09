@@ -78,7 +78,7 @@ func (ctx *Context) Evaluator() evaluator.Evaluator {
 }
 
 // NewFileContext returns a context for a given file.
-func (ctx *Context) NewFileContext(file *ir.File) (evaluator.Context, error) {
+func (ctx *Context) NewFileContext(file *ir.File) (*Context, error) {
 	return ctx.newFileContext(file)
 }
 
@@ -194,7 +194,7 @@ func (ctx *Context) valueOf(s string) string {
 }
 
 // Sub returns a child context given a set of elements.
-func (ctx *Context) Sub(elts map[string]ir.Element) (evaluator.Context, error) {
+func (ctx *Context) Sub(elts map[string]ir.Element) (*Context, error) {
 	sub := ctx.branch()
 	sub.callInputs = ctx.callInputs
 	sub.stack = append([]*blockFrame{}, ctx.stack...)

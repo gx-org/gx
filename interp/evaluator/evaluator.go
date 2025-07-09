@@ -27,14 +27,8 @@ type (
 	Context interface {
 		ir.Evaluator
 
-		// NewFileContext returns a context for a given file.
-		NewFileContext(*ir.File) (Context, error)
-
 		// Evaluator returns the evaluator used by the interpreter.
 		Evaluator() Evaluator
-
-		// Sub returns a new context with additional variables being defined.
-		Sub(map[string]ir.Element) (Context, error)
 	}
 
 	// Evaluator implements GX operators.
