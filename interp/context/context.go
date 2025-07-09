@@ -42,7 +42,7 @@ type (
 		evaluator.Evaluator
 
 		// NewFunc creates a new function given its definition and a receiver.
-		NewFunc(fn ir.Func, recv *elements.Receiver) elements.Func
+		NewFunc(ctx *Context, fn ir.Func, recv *elements.Receiver) elements.Func
 
 		// CallFuncLit calls a function literal.
 		CallFuncLit(ctx *Context, ref *ir.FuncLit, args []ir.Element) ([]ir.Element, error)
@@ -142,7 +142,7 @@ func (ctx *Context) currentFrame() *blockFrame {
 
 // NewFunc creates a new function given its definition and a receiver.
 func (ctx *Context) NewFunc(fn ir.Func, recv *elements.Receiver) elements.Func {
-	return ctx.evaluator.NewFunc(fn, recv)
+	return ctx.evaluator.NewFunc(ctx, fn, recv)
 }
 
 // Set the value of a given storage.

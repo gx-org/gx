@@ -68,7 +68,7 @@ func (ctx *Context) buildBuiltinFrame() error {
 		if err != nil {
 			return err
 		}
-		elFunc := ctx.evaluator.NewFunc(irFunc, nil)
+		elFunc := ctx.evaluator.NewFunc(ctx, irFunc, nil)
 		ctx.builtin.scope.Define(name, elFunc)
 	}
 	return nil

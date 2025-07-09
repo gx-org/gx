@@ -55,7 +55,7 @@ func New(importer ir.Importer, pr *processor.Processor, gr ops.Graph, newFunc el
 }
 
 // NewFunc creates a new function given its definition and a receiver.
-func (ev *Evaluator) NewFunc(fn ir.Func, recv *elements.Receiver) elements.Func {
+func (ev *Evaluator) NewFunc(ctx *context.Context, fn ir.Func, recv *elements.Receiver) elements.Func {
 	return ev.newFunc(fn, recv)
 }
 
@@ -170,7 +170,7 @@ func evalFromContext(ctx ir.Evaluator) *Evaluator {
 }
 
 // FuncInputsToElements converts values to a function input.
-func (ev *Evaluator) FuncInputsToElements(file *ir.File, fType *ir.FuncType, receiver values.Value, args []values.Value) (*elements.InputElements, error) {
+func (ev *Evaluator) FuncInputsToElements(ctx *context.Context, file *ir.File, fType *ir.FuncType, receiver values.Value, args []values.Value) (*elements.InputElements, error) {
 	var recvEl ir.Element
 	if receiver != nil {
 		recvField := fType.ReceiverField()
@@ -179,7 +179,7 @@ func (ev *Evaluator) FuncInputsToElements(file *ir.File, fType *ir.FuncType, rec
 			return nil, err
 		}
 		recvAt := elements.NewNodeAt(file, recvField)
-		if recvEl, err = ev.Receiver(recvAt, receiverProxy); err != nil {
+		if recvEl, err = ev.Receiver(ctx, recvAt, receiverProxy); err != nil {
 			return nil, err
 		}
 	}
@@ -203,7 +203,7 @@ func (ev *Evaluator) FuncInputsToElements(file *ir.File, fType *ir.FuncType, rec
 			return nil, errors.Errorf("missing parameter(s): %s", builder.String())
 		}
 		paramAt := elements.NewNodeAt(file, param)
-		argNode, err := ev.ArgGX(paramAt, i, proxyArgs)
+		argNode, err := ev.ArgGX(ctx, paramAt, i, proxyArgs)
 		if err != nil {
 			return nil, err
 		}

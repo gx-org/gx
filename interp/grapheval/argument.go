@@ -24,6 +24,7 @@ import (
 	"github.com/gx-org/gx/api/values"
 	"github.com/gx-org/gx/build/ir"
 	"github.com/gx-org/gx/internal/tracer/processor"
+	"github.com/gx-org/gx/interp/context"
 	"github.com/gx-org/gx/interp/elements"
 	"github.com/gx-org/gx/interp/proxies"
 )
@@ -69,16 +70,16 @@ func (f receiverFetcher) String() string {
 }
 
 // ArgGX represents a GX argument.
-func (ev *Evaluator) ArgGX(field elements.FieldAt, index int, args []proxies.Value) (ir.Element, error) {
-	return ev.newRootArg(field, parameterFetcher{
+func (ev *Evaluator) ArgGX(ctx *context.Context, field elements.FieldAt, index int, args []proxies.Value) (ir.Element, error) {
+	return ev.newRootArg(ctx, field, parameterFetcher{
 		paramIndex: index,
 		pValue:     args[index],
 	})
 }
 
 // Receiver represents a GX function call receiver.
-func (ev *Evaluator) Receiver(field elements.FieldAt, recv proxies.Value) (ir.Element, error) {
-	return ev.newRootArg(field, receiverFetcher{
+func (ev *Evaluator) Receiver(ctx *context.Context, field elements.FieldAt, recv proxies.Value) (ir.Element, error) {
+	return ev.newRootArg(ctx, field, receiverFetcher{
 		pValue: recv,
 	})
 }
@@ -99,27 +100,27 @@ type (
 
 var _ parentArgument = (*rootArgument)(nil)
 
-func (ev *Evaluator) newRootArg(field elements.FieldAt, fetcher argFetcher) (ir.Element, error) {
+func (ev *Evaluator) newRootArg(ctx *context.Context, field elements.FieldAt, fetcher argFetcher) (ir.Element, error) {
 	n := &rootArgument{
 		argFetcher: fetcher,
 		field:      field,
 	}
-	return ev.newArg(n, elements.NewExprAt(field.File(), &ir.ValueRef{
+	return ev.newArg(ctx, n, elements.NewExprAt(field.File(), &ir.ValueRef{
 		Src:  field.Node().Name,
 		Stor: field.Node().Storage(),
 	}))
 }
 
-func (ev *Evaluator) newArg(parent parentArgument, expr elements.ExprAt) (ir.Element, error) {
+func (ev *Evaluator) newArg(ctx *context.Context, parent parentArgument, expr elements.ExprAt) (ir.Element, error) {
 	switch pValueT := parent.ValueProxy().(type) {
 	case *proxies.Array:
 		return ev.NewArrayArgument(parent, expr, pValueT)
 	case *proxies.NamedType:
-		return ev.newNamedTypeArgument(parent, expr, pValueT)
+		return ev.newNamedTypeArgument(ctx, parent, expr, pValueT)
 	case *proxies.Struct:
-		return ev.newStructArgument(parent, expr, pValueT)
+		return ev.newStructArgument(ctx, parent, expr, pValueT)
 	case *proxies.Slice:
-		return ev.newSliceArgument(parent, expr, pValueT)
+		return ev.newSliceArgument(ctx, parent, expr, pValueT)
 	default:
 		return nil, errors.Errorf("argument type %T not supported", pValueT)
 	}
@@ -134,12 +135,12 @@ type namedTypeArgument struct {
 	pValue *proxies.NamedType
 }
 
-func (ev *Evaluator) newNamedTypeArgument(parent parentArgument, expr elements.ExprAt, pValue *proxies.NamedType) (*elements.NamedType, error) {
+func (ev *Evaluator) newNamedTypeArgument(ctx *context.Context, parent parentArgument, expr elements.ExprAt, pValue *proxies.NamedType) (*elements.NamedType, error) {
 	arg := &namedTypeArgument{
 		parent: parent,
 		pValue: pValue,
 	}
-	recv, err := ev.newArg(arg, expr)
+	recv, err := ev.newArg(ctx, arg, expr)
 	if err != nil {
 		return nil, err
 	}
@@ -147,7 +148,7 @@ func (ev *Evaluator) newNamedTypeArgument(parent parentArgument, expr elements.E
 	if !ok {
 		return nil, errors.Errorf("element %T cannot be used as a receiver", recv)
 	}
-	return elements.NewNamedType(ev.NewFunc, arg.pValue.NamedType(), recvCopier), nil
+	return elements.NewNamedType(ctx.NewFunc, arg.pValue.NamedType(), recvCopier), nil
 }
 
 func (arg *namedTypeArgument) Name() string {
@@ -177,7 +178,7 @@ type (
 
 var _ parentArgument = (*fieldSelectorArgument)(nil)
 
-func (ev *Evaluator) newStructArgument(parent parentArgument, expr elements.ExprAt, pValue *proxies.Struct) (*elements.Struct, error) {
+func (ev *Evaluator) newStructArgument(ctx *context.Context, parent parentArgument, expr elements.ExprAt, pValue *proxies.Struct) (*elements.Struct, error) {
 	structType := pValue.StructType()
 	structArg := &structArgument{
 		parentArgument: parent,
@@ -202,7 +203,7 @@ func (ev *Evaluator) newStructArgument(parent parentArgument, expr elements.Expr
 			},
 			Stor: &ir.FieldStorage{Field: field},
 		})
-		field, err := ev.newArg(selector, fieldExpr)
+		field, err := ev.newArg(ctx, selector, fieldExpr)
 		if err != nil {
 			return nil, err
 		}
@@ -248,7 +249,7 @@ type (
 	}
 )
 
-func (ev *Evaluator) newSliceArgument(parent parentArgument, expr elements.ExprAt, pValue *proxies.Slice) (*elements.Slice, error) {
+func (ev *Evaluator) newSliceArgument(ctx *context.Context, parent parentArgument, expr elements.ExprAt, pValue *proxies.Slice) (*elements.Slice, error) {
 	sliceArg := &sliceArgument{
 		parentArgument: parent,
 		pValue:         pValue,
@@ -289,7 +290,7 @@ func (ev *Evaluator) newSliceArgument(parent parentArgument, expr elements.ExprA
 			},
 			Typ: elType,
 		})
-		vals[i], err = ev.newArg(selector, valExpr)
+		vals[i], err = ev.newArg(ctx, selector, valExpr)
 		if err != nil {
 			return nil, err
 		}

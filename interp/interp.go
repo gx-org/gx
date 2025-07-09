@@ -50,8 +50,8 @@ func New(eval context.Evaluator, options []options.PackageOption) (*context.Cont
 }
 
 // EvalFunc evaluates a function.
-func EvalFunc(eval context.Evaluator, fn *ir.FuncDecl, in *elements.InputElements, options []options.PackageOption) (outs []ir.Element, err error) {
-	return context.EvalFunc(interp{}, eval, fn, in, options)
+func EvalFunc(ctx *context.Context, fn *ir.FuncDecl, in *elements.InputElements) (outs []ir.Element, err error) {
+	return context.EvalFunc(ctx, fn, in)
 }
 
 func dimsAsElements(ctx *context.Context, expr ir.AssignableExpr, dims []int) ([]elements.NumericalElement, error) {
