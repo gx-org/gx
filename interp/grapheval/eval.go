@@ -25,6 +25,7 @@ import (
 	"github.com/gx-org/gx/build/ir"
 	"github.com/gx-org/gx/internal/interp/compeval"
 	"github.com/gx-org/gx/internal/tracer/processor"
+	"github.com/gx-org/gx/interp/context"
 	"github.com/gx-org/gx/interp/elements"
 	"github.com/gx-org/gx/interp/evaluator"
 	"github.com/gx-org/gx/interp/proxies"
@@ -79,7 +80,8 @@ func (ev *Evaluator) ElementFromAtom(src elements.ExprAt, val values.Array) (ele
 }
 
 // CallFuncLit calls a function literal.
-func (ev *Evaluator) CallFuncLit(ctx evaluator.Context, ref *ir.FuncLit, args []ir.Element) ([]ir.Element, error) {
+func (ev *Evaluator) CallFuncLit(ectx evaluator.Context, ref *ir.FuncLit, args []ir.Element) ([]ir.Element, error) {
+	ctx := ectx.(*context.Context)
 	core := ev.ao.graph.Core()
 	name := ref.Name()
 	if name == "" {
