@@ -90,7 +90,7 @@ func (n *valueElement) Axes(ev ir.Evaluator) (*elements.Slice, error) {
 		if err != nil {
 			return nil, err
 		}
-		axes[i], err = ctx.Evaluator().ElementFromAtom(elements.NewExprAt(ctx.File(), iExpr), iValue)
+		axes[i], err = ctx.Evaluator().ElementFromAtom(ctx, iExpr, iValue)
 		if err != nil {
 			return nil, err
 		}

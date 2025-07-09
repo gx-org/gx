@@ -69,10 +69,14 @@ func processPackageVarSetGXValue(opt options.PackageVarSetValue) (packageOption,
 		if !ok {
 			return errors.Errorf("package variables of type %T (used in %s.%s) not supported", opt.Value, fr.pkg.Name, opt.Var)
 		}
-		node, err := core.evaluator.ElementFromAtom(elements.NewExprAt(vrExpr.Decl.FFile, &ir.ValueRef{
+		ctx, err := core.NewFileContext(vrExpr.Decl.FFile)
+		if err != nil {
+			return err
+		}
+		node, err := core.evaluator.ElementFromAtom(ctx, &ir.ValueRef{
 			Src:  vrExpr.VName,
 			Stor: vrExpr,
-		}), array)
+		}, array)
 		if err != nil {
 			return err
 		}

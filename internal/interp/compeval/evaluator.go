@@ -67,12 +67,12 @@ func (ev *CompEval) ArrayOps() elements.ArrayOps {
 }
 
 // ElementFromAtom returns an element from a GX value.
-func (ev *CompEval) ElementFromAtom(src elements.ExprAt, val values.Array) (elements.NumericalElement, error) {
+func (ev *CompEval) ElementFromAtom(ctx ir.Evaluator, src ir.AssignableExpr, val values.Array) (elements.NumericalElement, error) {
 	hostValue, err := val.ToHostArray(kernels.Allocator())
 	if err != nil {
 		return nil, err
 	}
-	return cpevelements.NewAtom(src, hostValue)
+	return cpevelements.NewAtom(elements.NewExprAt(ctx.File(), src), hostValue)
 }
 
 // CallFuncLit calls a function literal.
@@ -81,6 +81,6 @@ func (ev *CompEval) CallFuncLit(ctx *context.Context, ref *ir.FuncLit, args []ir
 }
 
 // Trace register a call to the trace builtin function.
-func (ev *CompEval) Trace(call elements.CallAt, args []ir.Element) error {
+func (ev *CompEval) Trace(ctx ir.Evaluator, call *ir.CallExpr, args []ir.Element) error {
 	return errors.Errorf("not implemented")
 }

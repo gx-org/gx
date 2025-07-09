@@ -75,8 +75,8 @@ func (ev *Evaluator) ArrayOps() elements.ArrayOps {
 }
 
 // ElementFromAtom returns an element from a GX value.
-func (ev *Evaluator) ElementFromAtom(src elements.ExprAt, val values.Array) (elements.NumericalElement, error) {
-	return ev.hostEval.ElementFromAtom(src, val)
+func (ev *Evaluator) ElementFromAtom(ctx ir.Evaluator, src ir.AssignableExpr, val values.Array) (elements.NumericalElement, error) {
+	return ev.hostEval.ElementFromAtom(ctx, src, val)
 }
 
 // CallFuncLit calls a function literal.
@@ -161,8 +161,8 @@ func ElementsFromTupleNode(g ops.Graph, file *ir.File, expr ir.Expr, tpl ops.Tup
 }
 
 // Trace a set of elements.
-func (ev *Evaluator) Trace(call elements.CallAt, args []ir.Element) error {
-	return ev.process.RegisterTrace(call, args)
+func (ev *Evaluator) Trace(ctx ir.Evaluator, call *ir.CallExpr, args []ir.Element) error {
+	return ev.process.RegisterTrace(elements.NewNodeAt(ctx.File(), call), args)
 }
 
 func evalFromContext(ctx ir.Evaluator) *Evaluator {
