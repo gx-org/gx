@@ -16,13 +16,10 @@ package context
 
 import (
 	"fmt"
-	"go/ast"
-	"go/token"
 	"strings"
 
 	"github.com/gx-org/gx/api/options"
 	gxfmt "github.com/gx-org/gx/base/fmt"
-	"github.com/gx-org/gx/build/fmterr"
 	"github.com/gx-org/gx/build/ir"
 	"github.com/gx-org/gx/interp/elements"
 	"github.com/gx-org/gx/interp/evaluator"
@@ -136,6 +133,11 @@ func (ctx *Context) PopFrame() {
 	ctx.stack = ctx.stack[:len(ctx.stack)-1]
 }
 
+// CurrentFrame returns the current frame.
+func (ctx *Context) CurrentFrame() *Frame {
+	return &Frame{file: ctx.File(), current: ctx.currentFrame()}
+}
+
 func (ctx *Context) currentFrame() *blockFrame {
 	return ctx.stack[len(ctx.stack)-1]
 }
@@ -145,64 +147,9 @@ func (ctx *Context) NewFunc(fn ir.Func, recv *elements.Receiver) elements.Func {
 	return ctx.evaluator.NewFunc(ctx, fn, recv)
 }
 
-// Set the value of a given storage.
-func (ctx *Context) Set(tok token.Token, dest ir.Storage, value ir.Element) error {
-	fr := ctx.currentFrame()
-	switch destT := dest.(type) {
-	case *ir.LocalVarStorage:
-		if !ir.ValidIdent(destT.Src) {
-			return nil
-		}
-		if tok == token.ILLEGAL {
-			return nil
-		}
-		if tok == token.DEFINE {
-			fr.Define(destT.Src.Name, value)
-			return nil
-		}
-		return fr.Assign(destT.Src.Name, value)
-	case *ir.StructFieldStorage:
-		receiver, err := ctx.EvalExpr(destT.Sel.X)
-		if err != nil {
-			return err
-		}
-		strt, ok := elements.Underlying(receiver).(*elements.Struct)
-		if !ok {
-			return fmterr.Errorf(ctx.File().FileSet(), dest.Source(), "cannot convert %T to %T", receiver, strt)
-		}
-		strt.SetField(destT.Sel.Src.Sel.Name, value)
-		return nil
-	case *ir.FieldStorage:
-		return fr.Assign(destT.Field.Name.Name, value)
-	case *ir.AssignExpr:
-		return fr.Assign(destT.NameDef().Name, value)
-	default:
-		return fmterr.Errorf(ctx.File().FileSet(), dest.Source(), "cannot assign %v to %T: not supported", value, destT)
-	}
-}
-
 // CurrentFunc returns the current function being run.
 func (ctx *Context) CurrentFunc() ir.Func {
 	return ctx.currentFrame().owner.function
-}
-
-// Find the element in the stack of frame given its identifier.
-func (ctx *Context) Find(id *ast.Ident) (ir.Element, error) {
-	value, exists := ctx.currentFrame().Find(id.Name)
-	if !exists {
-		return nil, fmterr.Errorf(ctx.File().FileSet(), id, "undefined: %s", id.Name)
-	}
-	return value, nil
-}
-
-// valueOf is a convenient function only used for debugging.
-// It returns a string representation of a given variable name.
-func (ctx *Context) valueOf(s string) string {
-	val, ok := ctx.currentFrame().Find(s)
-	if !ok {
-		return fmt.Sprintf("undefined: %s", s)
-	}
-	return fmt.Sprint(val)
 }
 
 // Sub returns a child context given a set of elements.
