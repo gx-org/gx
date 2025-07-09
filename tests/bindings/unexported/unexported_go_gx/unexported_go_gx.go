@@ -314,7 +314,7 @@ func (f *New) String() string {
 // Newunexported returns a handle on named type unexported.
 func (fac *Factory) Newunexported() *unexported {
 	s := &unexported{}
-	typ := fac.Package.Package.IR.Decls.Types[0]
+	typ := fac.Package.Package.IR.Decls.TypeByName("unexported")
 	s.handle = handleunexported{
 		pkg:   fac.Package,
 		struc: typ,
