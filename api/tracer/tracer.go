@@ -67,16 +67,19 @@ func Trace(dev *api.Device, fn *ir.FuncDecl, receiver values.Value, args []value
 		graph: graph,
 	}
 	ev := grapheval.New(dev.Runtime().Builder(), proc, tr.graph, context.NewRunFunc)
-
+	ctx, err := interp.New(ev, options)
+	if err != nil {
+		return nil, err
+	}
 	// Transform the receiver and arguments values into elements for the interpreter.
-	in, err := ev.FuncInputsToElements(fn.File(), fn.FuncType(), receiver, args)
+	in, err := ev.FuncInputsToElements(ctx, fn.File(), fn.FuncType(), receiver, args)
 	if err != nil {
 		return nil, err
 	}
 
 	// Interpret the function with the evaluator to build the graph.
 	// The evaluation returns a single output element.
-	outs, err := interp.EvalFunc(ev, fn, in, options)
+	outs, err := interp.EvalFunc(ctx, fn, in)
 	if err != nil {
 		return nil, err
 	}

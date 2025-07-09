@@ -69,12 +69,12 @@ func (ctx *Context) packageFrame(pkg *ir.Package) (*packageFrame, error) {
 			scope: scope.NewScope(ctx.builtin.scope),
 		},
 		pkg:         pkg,
-		el:          elements.NewPackage(pkg, ctx.evaluator.NewFunc),
+		el:          elements.NewPackage(pkg, ctx.NewFunc),
 		fileToFrame: make(map[*ir.File]*fileFrame),
 	}
 	ctx.packageToFrame[pkg] = pkgFrame
 	for _, f := range pkgFrame.pkg.Decls.Funcs {
-		pkgFrame.Define(f.Name(), ctx.evaluator.NewFunc(f, nil))
+		pkgFrame.Define(f.Name(), ctx.evaluator.NewFunc(ctx, f, nil))
 	}
 	if err := pkgFrame.evalPackageConsts(ctx); err != nil {
 		return nil, err

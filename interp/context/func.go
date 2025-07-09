@@ -20,7 +20,6 @@ import (
 	"strings"
 
 	"github.com/pkg/errors"
-	"github.com/gx-org/gx/api/options"
 	"github.com/gx-org/gx/api/values"
 	"github.com/gx-org/gx/build/fmterr"
 	"github.com/gx-org/gx/build/ir"
@@ -190,13 +189,9 @@ func assignArgumentValues(funcType *ir.FuncType, funcFrame *blockFrame, args []i
 }
 
 // EvalFunc evaluates a function.
-func EvalFunc(interp Interpreter, eval Evaluator, fn *ir.FuncDecl, in *elements.InputElements, options []options.PackageOption) (outs []ir.Element, err error) {
+func EvalFunc(ectx *Context, fn *ir.FuncDecl, in *elements.InputElements) (outs []ir.Element, err error) {
 	if fn.Body == nil {
 		return nil, errors.Errorf("%s: missing function body", fn.Name())
-	}
-	ectx, err := New(interp, eval, options)
-	if err != nil {
-		return nil, err
 	}
 	ctx, err := ectx.newFileContext(fn.File())
 	if err != nil {

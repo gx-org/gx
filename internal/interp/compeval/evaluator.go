@@ -44,7 +44,7 @@ func (ev *CompEval) NewSub(elements.ArrayOps) evaluator.Evaluator {
 }
 
 // NewFunc creates a new function given its definition and a receiver.
-func (ev *CompEval) NewFunc(fn ir.Func, recv *elements.Receiver) elements.Func {
+func (ev *CompEval) NewFunc(ctx *context.Context, fn ir.Func, recv *elements.Receiver) elements.Func {
 	if macro, ok := fn.(*ir.Macro); ok {
 		return cpevelements.NewMacro(macro, recv)
 	}
