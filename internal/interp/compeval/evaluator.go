@@ -78,6 +78,6 @@ func (ev *CompEval) CallFuncLit(ctx evaluator.Context, ref *ir.FuncLit, args []i
 }
 
 // Trace register a call to the trace builtin function.
-func (ev *CompEval) Trace(call elements.CallAt, fn elements.Func, irFunc *ir.FuncBuiltin, args []ir.Element, fc *values.FuncInputs) error {
+func (ev *CompEval) Trace(call elements.CallAt, args []ir.Element) error {
 	return errors.Errorf("not implemented")
 }

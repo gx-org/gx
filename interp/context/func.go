@@ -203,8 +203,6 @@ func EvalFunc(interp Interpreter, eval evaluator.Evaluator, fn *ir.FuncDecl, in 
 	if err != nil {
 		return nil, err
 	}
-	// Set the function inputs in the Context.
-	ctx.callInputs = in
 	// Create a frame for the function to evaluate.
 	frame, err := ctx.pushFuncFrame(fn)
 	if err != nil {

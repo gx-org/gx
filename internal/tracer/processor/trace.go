@@ -62,7 +62,7 @@ func (ts *traces) Trace(call elements.CallAt, fn *elements.Func, irFunc *ir.Func
 }
 
 // RegisterTrace registers a call to the trace builtin.
-func (ts *traces) RegisterTrace(call elements.CallAt, fn elements.Func, irFunc *ir.FuncBuiltin, args []ir.Element, ctx *values.FuncInputs) error {
+func (ts *traces) RegisterTrace(call elements.CallAt, args []ir.Element) error {
 	ts.traces = append(ts.traces, &traceProcessor{
 		call:   call,
 		traced: args,

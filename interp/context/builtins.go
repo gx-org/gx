@@ -154,5 +154,5 @@ func (traceFunc) Implementation() any {
 
 func traceImpl(ctx evaluator.Context, call elements.CallAt, fn elements.Func, irFunc *ir.FuncBuiltin, args []ir.Element) ([]ir.Element, error) {
 	ctxT := ctx.(*Context)
-	return nil, ctxT.evaluator.Trace(call, fn, irFunc, args, &ctxT.CallInputs().Values)
+	return nil, ctxT.evaluator.Trace(call, args)
 }
