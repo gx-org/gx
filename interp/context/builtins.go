@@ -32,25 +32,25 @@ var builtinFile = &ir.File{Package: &ir.Package{Name: &ast.Ident{Name: "<interp>
 // FuncBuiltin defines a builtin function provided by a backend.
 type FuncBuiltin func(ctx evaluator.Context, call elements.CallAt, fn elements.Func, irFunc *ir.FuncBuiltin, args []ir.Element) ([]ir.Element, error)
 
-func (ctx *Context) defineBoolConstant(val ir.StorageWithValue) error {
+func (core *Core) defineBoolConstant(val ir.StorageWithValue) error {
 	gxValue, err := values.AtomBoolValue(ir.BoolType(), val.Value(nil).(*ir.AtomicValueT[bool]).Val)
 	if err != nil {
 		return err
 	}
-	el, err := ctx.evaluator.ElementFromAtom(elements.NewExprAt(builtinFile, val.Value(nil)), gxValue)
+	el, err := core.evaluator.ElementFromAtom(elements.NewExprAt(builtinFile, val.Value(nil)), gxValue)
 	if err != nil {
 		return err
 	}
-	ctx.builtin.scope.Define(val.NameDef().Name, el)
+	core.builtin.scope.Define(val.NameDef().Name, el)
 	return nil
 }
 
-func (ctx *Context) buildBuiltinFrame() error {
-	ctx.builtin = &baseFrame{scope: scope.NewScope[ir.Element](nil)}
-	if err := ctx.defineBoolConstant(ir.FalseStorage()); err != nil {
+func (core *Core) buildBuiltinFrame() error {
+	core.builtin = &baseFrame{scope: scope.NewScope[ir.Element](nil)}
+	if err := core.defineBoolConstant(ir.FalseStorage()); err != nil {
 		return err
 	}
-	if err := ctx.defineBoolConstant(ir.TrueStorage()); err != nil {
+	if err := core.defineBoolConstant(ir.TrueStorage()); err != nil {
 		return err
 	}
 	for name, impl := range map[string]ir.FuncImpl{
@@ -68,8 +68,8 @@ func (ctx *Context) buildBuiltinFrame() error {
 		if err != nil {
 			return err
 		}
-		elFunc := ctx.evaluator.NewFunc(ctx, irFunc, nil)
-		ctx.builtin.scope.Define(name, elFunc)
+		elFunc := core.evaluator.NewFunc(core, irFunc, nil)
+		core.builtin.scope.Define(name, elFunc)
 	}
 	return nil
 }
@@ -154,5 +154,5 @@ func (traceFunc) Implementation() any {
 
 func traceImpl(ctx evaluator.Context, call elements.CallAt, fn elements.Func, irFunc *ir.FuncBuiltin, args []ir.Element) ([]ir.Element, error) {
 	ctxT := ctx.(*Context)
-	return nil, ctxT.evaluator.Trace(call, args)
+	return nil, ctxT.core.evaluator.Trace(call, args)
 }

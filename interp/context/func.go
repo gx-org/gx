@@ -153,13 +153,11 @@ type funcLit struct {
 
 func (f *funcLit) Call(fctx ir.Evaluator, call *ir.CallExpr, args []ir.Element) (outs []ir.Element, err error) {
 	ctx := fctx.(*Context)
-	// TODO(degris): remove this hack.
-	f.fnT.FFile = fctx.File()
-	return ctx.evaluator.CallFuncLit(ctx, f.fnT, args)
+	return ctx.core.evaluator.CallFuncLit(ctx, f.fnT, args)
 }
 
 func evalFuncBody(ctx *Context, body *ir.BlockStmt) ([]ir.Element, error) {
-	outs, stop, err := ctx.interp.EvalStmt(ctx, body)
+	outs, stop, err := ctx.core.interp.EvalStmt(ctx, body)
 	if !stop {
 		// No return statement was processed during the eval of the function.
 		return nil, fmterr.Errorf(ctx.File().FileSet(), body.Src, "missing return")
@@ -189,11 +187,11 @@ func assignArgumentValues(funcType *ir.FuncType, funcFrame *blockFrame, args []i
 }
 
 // EvalFunc evaluates a function.
-func EvalFunc(ectx *Context, fn *ir.FuncDecl, in *elements.InputElements) (outs []ir.Element, err error) {
+func EvalFunc(core *Core, fn *ir.FuncDecl, in *elements.InputElements) (outs []ir.Element, err error) {
 	if fn.Body == nil {
 		return nil, errors.Errorf("%s: missing function body", fn.Name())
 	}
-	ctx, err := ectx.newFileContext(fn.File())
+	ctx, err := core.NewFileContext(fn.File())
 	if err != nil {
 		return nil, err
 	}

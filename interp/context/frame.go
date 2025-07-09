@@ -75,47 +75,47 @@ type packageFrame struct {
 	fileToFrame map[*ir.File]*fileFrame
 }
 
-func (ctx *Context) importPackage(imp *ir.ImportDecl) (*elements.Package, error) {
-	pkg, err := ctx.evaluator.Importer().Import(imp.Path)
+func (core *Core) importPackage(imp *ir.ImportDecl) (*elements.Package, error) {
+	pkg, err := core.evaluator.Importer().Import(imp.Path)
 	if err != nil {
 		return nil, err
 	}
-	pFrame, err := ctx.packageFrame(pkg)
+	pFrame, err := core.packageFrame(pkg)
 	if err != nil {
 		return nil, err
 	}
 	return pFrame.el, nil
 }
 
-func (ctx *Context) packageFrame(pkg *ir.Package) (*packageFrame, error) {
-	pkgFrame := ctx.packageToFrame[pkg]
+func (core *Core) packageFrame(pkg *ir.Package) (*packageFrame, error) {
+	pkgFrame := core.packageToFrame[pkg]
 	if pkgFrame != nil {
 		return pkgFrame, nil
 	}
 	pkgFrame = &packageFrame{
 		baseFrame: baseFrame{
-			scope: scope.NewScope(ctx.builtin.scope),
+			scope: scope.NewScope(core.builtin.scope),
 		},
 		pkg:         pkg,
-		el:          elements.NewPackage(pkg, ctx.NewFunc),
+		el:          elements.NewPackage(pkg, core.NewFunc),
 		fileToFrame: make(map[*ir.File]*fileFrame),
 	}
-	ctx.packageToFrame[pkg] = pkgFrame
+	core.packageToFrame[pkg] = pkgFrame
 	for _, f := range pkgFrame.pkg.Decls.Funcs {
-		pkgFrame.Define(f.Name(), ctx.evaluator.NewFunc(ctx, f, nil))
+		pkgFrame.Define(f.Name(), core.evaluator.NewFunc(core, f, nil))
 	}
-	if err := pkgFrame.evalPackageConsts(ctx); err != nil {
+	if err := pkgFrame.evalPackageConsts(core); err != nil {
 		return nil, err
 	}
-	options := ctx.packageOptions[pkg.FullName()]
-	if err := pkgFrame.evalPackageOptions(ctx, options); err != nil {
+	options := core.packageOptions[pkg.FullName()]
+	if err := pkgFrame.evalPackageOptions(core, options); err != nil {
 		return nil, err
 	}
 	return pkgFrame, nil
 }
 
-func (fr *packageFrame) evalPackageConstExpr(ctx *Context, expr *ir.ConstExpr) error {
-	fCtx, err := ctx.newFileContext(expr.Decl.FFile)
+func (fr *packageFrame) evalPackageConstExpr(core *Core, expr *ir.ConstExpr) error {
+	fCtx, err := core.NewFileContext(expr.Decl.FFile)
 	if err != nil {
 		return err
 	}
@@ -128,22 +128,22 @@ func (fr *packageFrame) evalPackageConstExpr(ctx *Context, expr *ir.ConstExpr) e
 	return nil
 }
 
-func (fr *packageFrame) evalPackageConsts(ctx *Context) error {
+func (fr *packageFrame) evalPackageConsts(core *Core) error {
 	exprs, err := fr.pkg.Decls.ConstExprs()
 	if err != nil {
 		return err
 	}
 	for _, expr := range exprs {
-		if err := fr.evalPackageConstExpr(ctx, expr); err != nil {
+		if err := fr.evalPackageConstExpr(core, expr); err != nil {
 			return err
 		}
 	}
 	return nil
 }
 
-func (fr *packageFrame) evalPackageOptions(ctx *Context, options []packageOption) error {
+func (fr *packageFrame) evalPackageOptions(core *Core, options []packageOption) error {
 	for _, option := range options {
-		if err := option(ctx, fr); err != nil {
+		if err := option(core, fr); err != nil {
 			return err
 		}
 	}
@@ -156,7 +156,7 @@ type fileFrame struct {
 	file   *ir.File
 }
 
-func (fr *packageFrame) fileFrame(ctx *Context, file *ir.File) (*fileFrame, error) {
+func (fr *packageFrame) fileFrame(core *Core, file *ir.File) (*fileFrame, error) {
 	flFrame := fr.fileToFrame[file]
 	if flFrame != nil {
 		return flFrame, nil
@@ -169,7 +169,7 @@ func (fr *packageFrame) fileFrame(ctx *Context, file *ir.File) (*fileFrame, erro
 		file:   file,
 	}
 	for _, imp := range file.Imports {
-		pkg, err := ctx.importPackage(imp)
+		pkg, err := core.importPackage(imp)
 		if err != nil {
 			return nil, err
 		}
@@ -197,16 +197,16 @@ type functionFrame struct {
 	function ir.Func
 }
 
-func (ctx *Context) fileFrame(file *ir.File) (*fileFrame, error) {
-	pkgFrame, err := ctx.packageFrame(file.Package)
+func (core *Core) fileFrame(file *ir.File) (*fileFrame, error) {
+	pkgFrame, err := core.packageFrame(file.Package)
 	if err != nil {
 		return nil, err
 	}
-	return pkgFrame.fileFrame(ctx, file)
+	return pkgFrame.fileFrame(core, file)
 }
 
 func (ctx *Context) pushFuncFrame(fn ir.Func) (*blockFrame, error) {
-	flFrame, err := ctx.fileFrame(fn.File())
+	flFrame, err := ctx.core.fileFrame(fn.File())
 	if err != nil {
 		return nil, err
 	}

@@ -45,13 +45,13 @@ func (interp) EvalStmt(ctx *context.Context, block *ir.BlockStmt) ([]ir.Element,
 }
 
 // New returns a new interpreter.
-func New(eval context.Evaluator, options []options.PackageOption) (*context.Context, error) {
+func New(eval context.Evaluator, options []options.PackageOption) (*context.Core, error) {
 	return context.New(interp{}, eval, options)
 }
 
 // EvalFunc evaluates a function.
-func EvalFunc(ctx *context.Context, fn *ir.FuncDecl, in *elements.InputElements) (outs []ir.Element, err error) {
-	return context.EvalFunc(ctx, fn, in)
+func EvalFunc(core *context.Core, fn *ir.FuncDecl, in *elements.InputElements) (outs []ir.Element, err error) {
+	return context.EvalFunc(core, fn, in)
 }
 
 func dimsAsElements(ctx *context.Context, expr ir.AssignableExpr, dims []int) ([]elements.NumericalElement, error) {

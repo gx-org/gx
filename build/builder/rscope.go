@@ -148,7 +148,7 @@ func (s *pkgResolveScope) lastBuild() *lastBuild {
 	return last
 }
 
-func (s *pkgResolveScope) packageContext() *context.Context {
+func (s *pkgResolveScope) packageContext() *context.Core {
 	hostEval := compeval.NewHostEvaluator(s.bpkg.builder())
 	pkg := s.ibld.Pkg()
 	pkg.Decls = s.ibld.Decls()
