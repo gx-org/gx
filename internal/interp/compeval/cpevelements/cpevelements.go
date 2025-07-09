@@ -22,8 +22,8 @@ import (
 	"github.com/pkg/errors"
 	"github.com/gx-org/gx/build/ir"
 	"github.com/gx-org/gx/internal/interp/canonical"
+	"github.com/gx-org/gx/interp/context"
 	"github.com/gx-org/gx/interp/elements"
-	"github.com/gx-org/gx/interp/evaluator"
 )
 
 // Element returned after an evaluation at compeval.
@@ -75,7 +75,7 @@ func axesFromType(ev ir.Evaluator, typ ir.Type) (*elements.Slice, error) {
 }
 
 // NewRuntimeValue creates a new runtime value given an expression in a file.
-func NewRuntimeValue(ctx evaluator.Context, store ir.Storage) (ir.Element, error) {
+func NewRuntimeValue(ctx *context.Context, store ir.Storage) (ir.Element, error) {
 	ref := &ir.ValueRef{Src: store.NameDef(), Stor: store}
 	typ, ok := store.(ir.Type)
 	if !ok { // Check if storage is a type itself.
@@ -100,7 +100,7 @@ func NewRuntimeValue(ctx evaluator.Context, store ir.Storage) (ir.Element, error
 		if err != nil {
 			return nil, err
 		}
-		return elements.NewNamedType(ctx.Evaluator().NewFunc, typT, under.(elements.Copier)), nil
+		return elements.NewNamedType(ctx.NewFunc, typT, under.(elements.Copier)), nil
 	case ir.ArrayType:
 		if !ir.IsStatic(typT.DataType()) {
 			return NewArray(typT), nil
