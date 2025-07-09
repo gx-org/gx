@@ -40,19 +40,13 @@ type (
 		EvalFunctionToElement(eval Evaluator, fn ir.Func, args []ir.Element) ([]ir.Element, error)
 	}
 
-	// Importer imports packages given their path.
-	Importer interface {
-		// Import a package given its path.
-		Import(pkgPath string) (*ir.Package, error)
-	}
-
 	// Evaluator implements GX operators.
 	Evaluator interface {
 		// NewFunc creates a new function given its definition and a receiver.
 		NewFunc(fn ir.Func, recv *elements.Receiver) elements.Func
 
 		// Importer returns an importer to import package.
-		Importer() Importer
+		Importer() ir.Importer
 
 		// ArrayOps returns the operator implementations for arrays.
 		ArrayOps() elements.ArrayOps

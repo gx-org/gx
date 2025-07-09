@@ -28,6 +28,12 @@ type (
 		Expr() (AssignableExpr, error)
 	}
 
+	// Importer imports packages given their path.
+	Importer interface {
+		// Import a package given its path.
+		Import(pkgPath string) (*Package, error)
+	}
+
 	// Element is a value returned by the evaluator.
 	Element interface {
 		Type() Type

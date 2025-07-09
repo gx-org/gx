@@ -38,7 +38,6 @@ import (
 
 	"github.com/pkg/errors"
 	"github.com/gx-org/gx/build/ir"
-	"github.com/gx-org/gx/interp/evaluator"
 )
 
 type (
@@ -66,7 +65,7 @@ type (
 	}
 )
 
-var _ evaluator.Importer = (*Builder)(nil)
+var _ ir.Importer = (*Builder)(nil)
 
 // New returns a new build session.
 func New(loader Loader) *Builder {
