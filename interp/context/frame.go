@@ -15,10 +15,38 @@
 package context
 
 import (
+	"go/ast"
+
+	"github.com/gx-org/gx/build/fmterr"
 	"github.com/gx-org/gx/build/ir"
 	"github.com/gx-org/gx/internal/base/scope"
 	"github.com/gx-org/gx/interp/elements"
 )
+
+// Frame in the context.
+type Frame struct {
+	file    *ir.File
+	current *blockFrame
+}
+
+// Define a new variable in the frame.
+func (fr *Frame) Define(name string, value ir.Element) {
+	fr.current.Define(name, value)
+}
+
+// Assign a value to an existing name in the frame owning the value.
+func (fr *Frame) Assign(name string, value ir.Element) error {
+	return fr.current.Assign(name, value)
+}
+
+// Find the element in the stack of frame given its identifier.
+func (fr *Frame) Find(id *ast.Ident) (ir.Element, error) {
+	value, exists := fr.current.Find(id.Name)
+	if !exists {
+		return nil, fmterr.Errorf(fr.file.FileSet(), id, "undefined: %s", id.Name)
+	}
+	return value, nil
+}
 
 type baseFrame struct {
 	scope *scope.RWScope[ir.Element]

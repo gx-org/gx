@@ -16,6 +16,7 @@ package interp
 
 import (
 	"go/ast"
+	"go/token"
 	"reflect"
 
 	"github.com/pkg/errors"
@@ -89,7 +90,7 @@ func evalRangeForLoopOverInteger[T dtype.AlgebraType](ctx *context.Context, stmt
 		if err != nil {
 			return nil, true, err
 		}
-		if err := ctx.Set(stmt.Src.Tok, stmt.Key, iElement); err != nil {
+		if err := set(ctx, stmt.Src.Tok, stmt.Key, iElement); err != nil {
 			return nil, false, err
 		}
 		element, stop, err := evalBlockStmt(ctx, stmt.Body)
@@ -139,7 +140,7 @@ func evalRangeStmtForLoopOverArray[T dtype.AlgebraType](ctx *context.Context, st
 		if err != nil {
 			return nil, false, err
 		}
-		if err := ctx.Set(stmt.Src.Tok, stmt.Key, iElement); err != nil {
+		if err := set(ctx, stmt.Src.Tok, stmt.Key, iElement); err != nil {
 			return nil, false, err
 		}
 		if stmt.Value != nil {
@@ -159,7 +160,7 @@ func evalRangeStmtForLoopOverArray[T dtype.AlgebraType](ctx *context.Context, st
 			if err != nil {
 				return nil, false, err
 			}
-			if err := ctx.Set(stmt.Src.Tok, stmt.Value, reshapedElement); err != nil {
+			if err := set(ctx, stmt.Src.Tok, stmt.Value, reshapedElement); err != nil {
 				return nil, false, err
 			}
 		}
@@ -227,7 +228,7 @@ func evalAssignExprStmt(ctx *context.Context, stmt *ir.AssignExprStmt) error {
 		if cNode == nil {
 			continue
 		}
-		if err := ctx.Set(stmt.Src.Tok, asg.Storage, cNode); err != nil {
+		if err := set(ctx, stmt.Src.Tok, asg.Storage, cNode); err != nil {
 			return err
 		}
 	}
@@ -244,7 +245,7 @@ func evalAssignCallStmt(ctx *context.Context, stmt *ir.AssignCallStmt) error {
 		if node == nil {
 			continue
 		}
-		if err := ctx.Set(stmt.Src.Tok, dest.Storage, node); err != nil {
+		if err := set(ctx, stmt.Src.Tok, dest.Storage, node); err != nil {
 			return err
 		}
 	}
@@ -264,9 +265,10 @@ func evalReturnStmt(ctx *context.Context, ret *ir.ReturnStmt) ([]ir.Element, boo
 		// Naked return.
 		fields := ctx.CurrentFunc().FuncType().Results.Fields()
 		nodes := make([]ir.Element, len(fields))
+		fr := ctx.CurrentFrame()
 		for i, field := range fields {
 			var err error
-			nodes[i], err = ctx.Find(field.Name)
+			nodes[i], err = fr.Find(field.Name)
 			if err != nil {
 				return nil, false, err
 			}
@@ -282,14 +284,6 @@ func evalReturnStmt(ctx *context.Context, ret *ir.ReturnStmt) ([]ir.Element, boo
 		returns = append(returns, unpackIfTuple(exprI)...)
 	}
 	return returns, true, nil
-}
-
-func evalValueRef(ctx *context.Context, ref *ir.ValueRef) (ir.Element, error) {
-	cNode, err := ctx.Find(ref.Src)
-	if err != nil {
-		return nil, err
-	}
-	return cNode, nil
 }
 
 func evalCastToScalarExpr(ctx *context.Context, expr ir.TypeCastExpr, x elements.NumericalElement, targetType ir.ArrayType) (ir.Element, error) {
@@ -483,7 +477,7 @@ func evalExpr(ctx *context.Context, expr ir.Expr) (ir.Element, error) {
 	case *ir.BinaryExpr:
 		return evalBinaryExpression(ctx, exprT)
 	case *ir.ValueRef:
-		return evalValueRef(ctx, exprT)
+		return ctx.CurrentFrame().Find(exprT.Src)
 	case *ir.SelectorExpr:
 		return evalSelectorExpr(ctx, exprT)
 	case *ir.FuncLit:
@@ -501,7 +495,7 @@ func evalExpr(ctx *context.Context, expr ir.Expr) (ir.Element, error) {
 	case ir.AtomicValue:
 		return evalAtomicValue(ctx, exprT)
 	case *ir.PackageRef:
-		return ctx.Find(exprT.X.Src)
+		return ctx.CurrentFrame().Find(exprT.X.Src)
 	case *ir.FuncValExpr:
 		return evalExpr(ctx, exprT.X)
 	default:
@@ -612,6 +606,40 @@ func evalCall(ctx *context.Context, expr *ir.CallExpr) ([]ir.Element, error) {
 		args[i] = el
 	}
 	return fn.Call(ctx, expr, args)
+}
+
+func set(ctx *context.Context, tok token.Token, dest ir.Storage, value ir.Element) error {
+	switch destT := dest.(type) {
+	case *ir.LocalVarStorage:
+		if !ir.ValidIdent(destT.Src) {
+			return nil
+		}
+		if tok == token.ILLEGAL {
+			return nil
+		}
+		if tok == token.DEFINE {
+			ctx.CurrentFrame().Define(destT.Src.Name, value)
+			return nil
+		}
+		return ctx.CurrentFrame().Assign(destT.Src.Name, value)
+	case *ir.StructFieldStorage:
+		receiver, err := evalExpr(ctx, destT.Sel.X)
+		if err != nil {
+			return err
+		}
+		strt, ok := elements.Underlying(receiver).(*elements.Struct)
+		if !ok {
+			return fmterr.Errorf(ctx.File().FileSet(), dest.Source(), "cannot convert %T to %T", receiver, strt)
+		}
+		strt.SetField(destT.Sel.Src.Sel.Name, value)
+		return nil
+	case *ir.FieldStorage:
+		return ctx.CurrentFrame().Assign(destT.Field.Name.Name, value)
+	case *ir.AssignExpr:
+		return ctx.CurrentFrame().Assign(destT.NameDef().Name, value)
+	default:
+		return fmterr.Errorf(ctx.File().FileSet(), dest.Source(), "cannot assign %v to %T: not supported", value, destT)
+	}
 }
 
 // ToSingleElement packs multiple elements into a tuple.
