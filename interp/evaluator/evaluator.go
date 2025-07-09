@@ -43,9 +43,9 @@ type (
 		Processor() *processor.Processor
 
 		// ElementFromAtom returns an element from an atomic GX value.
-		ElementFromAtom(src elements.ExprAt, val values.Array) (elements.NumericalElement, error)
+		ElementFromAtom(ctx ir.Evaluator, expr ir.AssignableExpr, val values.Array) (elements.NumericalElement, error)
 
 		// Trace register a call to the trace builtin function.
-		Trace(call elements.CallAt, args []ir.Element) error
+		Trace(ctx ir.Evaluator, call *ir.CallExpr, args []ir.Element) error
 	}
 )

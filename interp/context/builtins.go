@@ -27,30 +27,39 @@ import (
 	"github.com/gx-org/gx/interp/evaluator"
 )
 
-var builtinFile = &ir.File{Package: &ir.Package{Name: &ast.Ident{Name: "<interp>"}}}
+var builtinFile = &ir.File{
+	Package: &ir.Package{
+		Name:  &ast.Ident{Name: "<interp>"},
+		Decls: &ir.Declarations{},
+	},
+}
 
 // FuncBuiltin defines a builtin function provided by a backend.
 type FuncBuiltin func(ctx evaluator.Context, call elements.CallAt, fn elements.Func, irFunc *ir.FuncBuiltin, args []ir.Element) ([]ir.Element, error)
 
-func (core *Core) defineBoolConstant(val ir.StorageWithValue) error {
+func (ctx *Context) defineBoolConstant(val ir.StorageWithValue) error {
 	gxValue, err := values.AtomBoolValue(ir.BoolType(), val.Value(nil).(*ir.AtomicValueT[bool]).Val)
 	if err != nil {
 		return err
 	}
-	el, err := core.evaluator.ElementFromAtom(elements.NewExprAt(builtinFile, val.Value(nil)), gxValue)
+	el, err := ctx.core.evaluator.ElementFromAtom(ctx, val.Value(nil), gxValue)
 	if err != nil {
 		return err
 	}
-	core.builtin.scope.Define(val.NameDef().Name, el)
+	ctx.core.builtin.scope.Define(val.NameDef().Name, el)
 	return nil
 }
 
 func (core *Core) buildBuiltinFrame() error {
 	core.builtin = &baseFrame{scope: scope.NewScope[ir.Element](nil)}
-	if err := core.defineBoolConstant(ir.FalseStorage()); err != nil {
+	ctx, err := core.NewFileContext(builtinFile)
+	if err != nil {
 		return err
 	}
-	if err := core.defineBoolConstant(ir.TrueStorage()); err != nil {
+	if err := ctx.defineBoolConstant(ir.FalseStorage()); err != nil {
+		return err
+	}
+	if err := ctx.defineBoolConstant(ir.TrueStorage()); err != nil {
 		return err
 	}
 	for name, impl := range map[string]ir.FuncImpl{
@@ -154,5 +163,5 @@ func (traceFunc) Implementation() any {
 
 func traceImpl(ctx evaluator.Context, call elements.CallAt, fn elements.Func, irFunc *ir.FuncBuiltin, args []ir.Element) ([]ir.Element, error) {
 	ctxT := ctx.(*Context)
-	return nil, ctxT.core.evaluator.Trace(call, args)
+	return nil, ctxT.core.evaluator.Trace(ctx, call.Node(), args)
 }

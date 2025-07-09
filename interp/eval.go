@@ -86,7 +86,7 @@ func evalRangeForLoopOverInteger[T dtype.AlgebraType](ctx *context.Context, stmt
 		if err != nil {
 			return nil, true, err
 		}
-		iElement, err := ctx.Evaluator().ElementFromAtom(elements.NewExprAt(ctx.File(), iExpr), iValue)
+		iElement, err := ctx.Evaluator().ElementFromAtom(ctx, iExpr, iValue)
 		if err != nil {
 			return nil, true, err
 		}
@@ -136,7 +136,7 @@ func evalRangeStmtForLoopOverArray[T dtype.AlgebraType](ctx *context.Context, st
 		if err != nil {
 			return nil, false, err
 		}
-		iElement, err := ctx.Evaluator().ElementFromAtom(elements.NewExprAt(ctx.File(), iExpr), iValue)
+		iElement, err := ctx.Evaluator().ElementFromAtom(ctx, iExpr, iValue)
 		if err != nil {
 			return nil, false, err
 		}
@@ -317,7 +317,7 @@ func evalCastAtomToArrayExpr(ctx *context.Context, expr ir.TypeCastExpr, x eleme
 	shapeOfOnes := make([]elements.NumericalElement, len(axes))
 	for i := range axes {
 		var err error
-		shapeOfOnes[i], err = ctx.Evaluator().ElementFromAtom(srcExpr, one)
+		shapeOfOnes[i], err = ctx.Evaluator().ElementFromAtom(ctx, expr, one)
 		if err != nil {
 			return nil, err
 		}

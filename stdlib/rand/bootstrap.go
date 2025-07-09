@@ -77,7 +77,7 @@ func (rb *randBootstrap) nextConstant() (elements.NumericalElement, error) {
 	if err != nil {
 		return nil, err
 	}
-	return rb.context.Evaluator().ElementFromAtom(elements.NewExprAt(rb.context.File(), expr), value)
+	return rb.context.Evaluator().ElementFromAtom(rb.context, expr, value)
 }
 
 type randBootstrapArg struct {
