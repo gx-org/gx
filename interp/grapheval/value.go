@@ -111,6 +111,6 @@ func (n *valueElement) String() string {
 }
 
 // Materialise returns itself.
-func (n *valueElement) Materialise(elements.ArrayOps) (elements.Node, error) {
+func (n *valueElement) Materialise(elements.ArrayMaterialiser) (elements.Node, error) {
 	return n, nil
 }

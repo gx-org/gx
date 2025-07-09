@@ -28,6 +28,11 @@ type arrayOps struct {
 	graph ops.Graph
 }
 
+var (
+	_ elements.ArrayOps          = (*arrayOps)(nil)
+	_ elements.ArrayMaterialiser = (*arrayOps)(nil)
+)
+
 // Graph where nodes are being added to.
 func (ao *arrayOps) Graph() ops.Graph {
 	return ao.graph
@@ -49,25 +54,25 @@ func (ao *arrayOps) SubGraph(name string) (elements.ArrayOps, error) {
 }
 
 // Einsum calls an einstein sum on x and y given the expression in ref.
-func (ao *arrayOps) Einsum(ref elements.NodeFile[*ir.EinsumExpr], x, y elements.NumericalElement) (elements.NumericalElement, error) {
-	xNode, xShape, err := NodeFromElement(ao, x)
+func (ao *arrayOps) Einsum(ctx ir.Evaluator, ref *ir.EinsumExpr, x, y elements.NumericalElement) (elements.NumericalElement, error) {
+	xNode, xShape, err := NodeFromElement(ctx, x)
 	if err != nil {
 		return nil, err
 	}
-	yNode, yShape, err := NodeFromElement(ao, y)
+	yNode, yShape, err := NodeFromElement(ctx, y)
 	if err != nil {
 		return nil, err
 	}
-	dotNode, err := ao.graph.Core().DotGeneral(xNode, yNode, ref.Node().BatchAxes, ref.Node().ReduceAxes)
+	dotNode, err := ao.graph.Core().DotGeneral(xNode, yNode, ref.BatchAxes, ref.ReduceAxes)
 	if err != nil {
 		return nil, err
 	}
 	targetShape := &shape.Shape{
 		DType:       xShape.DType,
-		AxisLengths: computeEinsumAxisLengths(ref.Node(), xShape, yShape, dotNode),
+		AxisLengths: computeEinsumAxisLengths(ref, xShape, yShape, dotNode),
 	}
 	return ElementFromNode(
-		ref.ToExprAt(),
+		elements.NewExprAt(ctx.File(), ref),
 		&ops.OutputNode{
 			Node:  dotNode,
 			Shape: targetShape,
@@ -87,12 +92,12 @@ func elementsToInt(els []elements.NumericalElement) ([]int, error) {
 }
 
 // BroadcastInDim the data of an array across dimensions.
-func (ao *arrayOps) BroadcastInDim(expr elements.ExprAt, x elements.NumericalElement, axisLengths []elements.NumericalElement) (elements.NumericalElement, error) {
+func (ao *arrayOps) BroadcastInDim(ctx ir.Evaluator, expr ir.AssignableExpr, x elements.NumericalElement, axisLengths []elements.NumericalElement) (elements.NumericalElement, error) {
 	axes, err := elementsToInt(axisLengths)
 	if err != nil {
 		return nil, err
 	}
-	xNode, xShape, err := NodeFromElement(ao, x)
+	xNode, xShape, err := NodeFromElement(ctx, x)
 	if err != nil {
 		return nil, err
 	}
@@ -112,7 +117,7 @@ func (ao *arrayOps) BroadcastInDim(expr elements.ExprAt, x elements.NumericalEle
 		return nil, err
 	}
 	return ElementFromNode(
-		expr.ToExprAt(),
+		elements.NewExprAt(ctx.File(), expr),
 		&ops.OutputNode{
 			Node:  reshaped,
 			Shape: targetShape,
@@ -120,11 +125,11 @@ func (ao *arrayOps) BroadcastInDim(expr elements.ExprAt, x elements.NumericalEle
 }
 
 // Concat concatenates scalars elements into an array with one axis.
-func (ao *arrayOps) Concat(expr elements.ExprAt, xs []elements.NumericalElement) (elements.NumericalElement, error) {
+func (ao *arrayOps) Concat(ctx ir.Evaluator, expr ir.AssignableExpr, xs []elements.NumericalElement) (elements.NumericalElement, error) {
 	nodes := make([]ops.Node, len(xs))
 	var dtype dtype.DataType
 	for i, x := range xs {
-		iNode, iShape, err := NodeFromElement(ao, x)
+		iNode, iShape, err := NodeFromElement(ctx, x)
 		if err != nil {
 			return nil, err
 		}
@@ -141,7 +146,7 @@ func (ao *arrayOps) Concat(expr elements.ExprAt, xs []elements.NumericalElement)
 		return nil, err
 	}
 	return ElementFromNode(
-		expr.ToExprAt(),
+		elements.NewExprAt(ctx.File(), expr),
 		&ops.OutputNode{
 			Node: array1d,
 			Shape: &shape.Shape{
@@ -152,8 +157,8 @@ func (ao *arrayOps) Concat(expr elements.ExprAt, xs []elements.NumericalElement)
 }
 
 // Set a slice in an array.
-func (ao *arrayOps) Set(call elements.NodeFile[*ir.CallExpr], x, updates, index ir.Element) (ir.Element, error) {
-	nodes, err := MaterialiseAll(ao, []ir.Element{x, updates, index})
+func (ao *arrayOps) Set(ctx ir.Evaluator, expr *ir.CallExpr, x, updates, index ir.Element) (ir.Element, error) {
+	nodes, err := MaterialiseAll(ctx, []ir.Element{x, updates, index})
 	if err != nil {
 		return nil, err
 	}
@@ -162,7 +167,7 @@ func (ao *arrayOps) Set(call elements.NodeFile[*ir.CallExpr], x, updates, index 
 		return nil, err
 	}
 	return ElementFromNode(
-		call.ToExprAt(),
+		elements.NewExprAt(ctx.File(), expr),
 		&ops.OutputNode{
 			Node:  setNode,
 			Shape: nodes[0].Shape,
@@ -179,6 +184,11 @@ func unpackOutputs(outputs []*ops.OutputNode) (nodes []ops.Node, shapes []*shape
 }
 
 // ElementFromArray returns an element from an array GX value.
-func (ao *arrayOps) ElementFromArray(expr elements.ExprAt, val values.Array) (elements.Node, error) {
+func (ao *arrayOps) ElementFromArray(ctx ir.Evaluator, expr ir.AssignableExpr, val values.Array) (elements.NumericalElement, error) {
+	return newValueElement(ao.ev, elements.NewExprAt(ctx.File(), expr), val)
+}
+
+// ElementFromArray returns an element from an array GX value.
+func (ao *arrayOps) NodeFromArray(expr elements.ExprAt, val values.Array) (elements.Node, error) {
 	return newValueElement(ao.ev, expr, val)
 }

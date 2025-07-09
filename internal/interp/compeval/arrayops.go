@@ -38,13 +38,13 @@ func (compArrayOps) SubGraph(name string) (elements.ArrayOps, error) {
 }
 
 // Einsum calls an einstein sum on x and y given the expression in ref.
-func (compArrayOps) Einsum(expr elements.NodeFile[*ir.EinsumExpr], x, y elements.NumericalElement) (elements.NumericalElement, error) {
-	return cpevelements.NewArray(expr.Node().Type().(ir.ArrayType)), nil
+func (compArrayOps) Einsum(ctx ir.Evaluator, expr *ir.EinsumExpr, x, y elements.NumericalElement) (elements.NumericalElement, error) {
+	return cpevelements.NewArray(expr.Type().(ir.ArrayType)), nil
 }
 
 // BroadcastInDim the data of an array across dimensions.
-func (compArrayOps) BroadcastInDim(expr elements.ExprAt, x elements.NumericalElement, axisLengths []elements.NumericalElement) (elements.NumericalElement, error) {
-	return cpevelements.NewArray(expr.Node().Type().(ir.ArrayType)), nil
+func (compArrayOps) BroadcastInDim(ctx ir.Evaluator, expr ir.AssignableExpr, x elements.NumericalElement, axisLengths []elements.NumericalElement) (elements.NumericalElement, error) {
+	return cpevelements.NewArray(expr.Type().(ir.ArrayType)), nil
 }
 
 // Reshape an element into a given shape.
@@ -53,16 +53,16 @@ func (compArrayOps) Reshape(expr elements.ExprAt, x elements.NumericalElement, a
 }
 
 // Concat concatenates scalars elements into an array with one axis.
-func (compArrayOps) Concat(expr elements.ExprAt, xs []elements.NumericalElement) (elements.NumericalElement, error) {
-	return cpevelements.NewArray(expr.Node().Type().(ir.ArrayType)), nil
+func (compArrayOps) Concat(ctx ir.Evaluator, expr ir.AssignableExpr, xs []elements.NumericalElement) (elements.NumericalElement, error) {
+	return cpevelements.NewArray(expr.Type().(ir.ArrayType)), nil
 }
 
 // Set a slice in an array.
-func (compArrayOps) Set(call elements.NodeFile[*ir.CallExpr], x, updates, index ir.Element) (ir.Element, error) {
-	return cpevelements.NewArray(call.Node().Type().(ir.ArrayType)), nil
+func (compArrayOps) Set(ctx ir.Evaluator, expr *ir.CallExpr, x, updates, index ir.Element) (ir.Element, error) {
+	return cpevelements.NewArray(expr.Type().(ir.ArrayType)), nil
 }
 
 // ElementFromArray returns an element from an array GX value.
-func (compArrayOps) ElementFromArray(expr elements.ExprAt, val values.Array) (elements.Node, error) {
-	return cpevelements.NewArray(val.Type().(ir.ArrayType)).(elements.Node), nil
+func (compArrayOps) ElementFromArray(ctx ir.Evaluator, expr ir.AssignableExpr, val values.Array) (elements.NumericalElement, error) {
+	return cpevelements.NewArray(val.Type().(ir.ArrayType)), nil
 }

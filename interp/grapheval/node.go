@@ -23,6 +23,7 @@ import (
 	"github.com/gx-org/gx/build/ir"
 	"github.com/gx-org/gx/internal/interp/flatten"
 	"github.com/gx-org/gx/interp/elements"
+	"github.com/gx-org/gx/interp/evaluator"
 )
 
 // BackendNode is a state element owning a node in the backend graph.
@@ -81,12 +82,12 @@ func (ev *Evaluator) elementFromTuple(src elements.ExprAt, tpl ops.Tuple, shps [
 
 // BinaryOp applies a binary operator to x and y.
 func (n *BackendNode) BinaryOp(ctx ir.Evaluator, expr *ir.BinaryExpr, x, y elements.NumericalElement) (elements.NumericalElement, error) {
-	ao := evalFromContext(ctx).ArrayOps()
-	xNode, xShape, err := NodeFromElement(ao, x)
+	ao := opsFromContext(ctx)
+	xNode, xShape, err := NodeFromElement(ctx, x)
 	if err != nil {
 		return nil, err
 	}
-	yNode, yShape, err := NodeFromElement(ao, y)
+	yNode, yShape, err := NodeFromElement(ctx, y)
 	if err != nil {
 		return nil, err
 	}
@@ -114,7 +115,7 @@ func (n *BackendNode) BinaryOp(ctx ir.Evaluator, expr *ir.BinaryExpr, x, y eleme
 
 // UnaryOp applies a unary operator on x.
 func (n *BackendNode) UnaryOp(ctx ir.Evaluator, expr *ir.UnaryExpr) (elements.NumericalElement, error) {
-	ao := evalFromContext(ctx).ArrayOps()
+	ao := opsFromContext(ctx)
 	unaryNode, err := ao.Graph().Core().Unary(expr.Src, n.nod.Node)
 	if err != nil {
 		return nil, err
@@ -129,7 +130,7 @@ func (n *BackendNode) UnaryOp(ctx ir.Evaluator, expr *ir.UnaryExpr) (elements.Nu
 
 // Cast an element into a given data type.
 func (n *BackendNode) Cast(ctx ir.Evaluator, expr ir.AssignableExpr, target ir.Type) (elements.NumericalElement, error) {
-	ao := evalFromContext(ctx).ArrayOps()
+	ao := opsFromContext(ctx)
 	targetKind := target.Kind().DType()
 	casted, err := ao.Graph().Core().Cast(n.nod.Node, targetKind)
 	if err != nil {
@@ -156,7 +157,7 @@ func (n *BackendNode) Reshape(ctx ir.Evaluator, expr ir.AssignableExpr, axisLeng
 			return nil, err
 		}
 	}
-	ao := evalFromContext(ctx).ArrayOps()
+	ao := opsFromContext(ctx)
 	reshaped, err := ao.Graph().Core().Reshape(n.nod.Node, axes)
 	if err != nil {
 		return nil, err
@@ -183,7 +184,7 @@ func (n *BackendNode) SliceArray(ctx ir.Evaluator, expr ir.AssignableExpr, index
 	if err != nil {
 		return nil, err
 	}
-	sliceNode, err := evalFromContext(ctx).ArrayOps().Graph().Core().Slice(n.nod.Node, i)
+	sliceNode, err := opsFromContext(ctx).Graph().Core().Slice(n.nod.Node, i)
 	if err != nil {
 		return nil, err
 	}
@@ -217,7 +218,7 @@ func (n *BackendNode) Type() ir.Type {
 }
 
 // Materialise returns itself.
-func (n *BackendNode) Materialise(elements.ArrayOps) (elements.Node, error) {
+func (n *BackendNode) Materialise(elements.ArrayMaterialiser) (elements.Node, error) {
 	return n, nil
 }
 
@@ -235,12 +236,13 @@ func (n *BackendNode) String() string {
 // We unpack the value of *ops.OutputNode to prevent
 // from changing the output of Materialise accidentally.
 // Returns an error if the element is not a numerical element.
-func NodeFromElement(ao elements.ArrayOps, el ir.Element) (ops.Node, *shape.Shape, error) {
+func NodeFromElement(ctx ir.Evaluator, el ir.Element) (ops.Node, *shape.Shape, error) {
 	materialiser, ok := el.(elements.Materialiser)
 	if !ok {
 		return nil, nil, errors.Errorf("cannot convert %T to a backend node graph: does not implement Materialiser", el)
 	}
-	outEl, err := materialiser.Materialise(ao)
+	ev := ctx.(evaluator.Context).Evaluator().(*Evaluator)
+	outEl, err := materialiser.Materialise(ev.Materialiser())
 	if err != nil {
 		return nil, nil, err
 	}
@@ -293,10 +295,10 @@ func extractGraphNodes(els []ir.Element) ([]ir.AssignableExpr, []*ops.OutputNode
 }
 
 // MaterialiseAll materialises a slice of elements into a slice of output graph nodes.
-func MaterialiseAll(ao elements.ArrayOps, els []ir.Element) ([]*ops.OutputNode, error) {
+func MaterialiseAll(ctx ir.Evaluator, els []ir.Element) ([]*ops.OutputNode, error) {
 	nodes := make([]*ops.OutputNode, len(els))
 	for i, el := range els {
-		node, shape, err := NodeFromElement(ao, el)
+		node, shape, err := NodeFromElement(ctx, el)
 		if err != nil {
 			return nil, err
 		}

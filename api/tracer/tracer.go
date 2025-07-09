@@ -84,5 +84,5 @@ func Trace(dev *api.Device, fn *ir.FuncDecl, receiver values.Value, args []value
 		return nil, err
 	}
 	// Compile the resulting graph given the output element.
-	return cfunc.Compile(dev, fn, proc, ev.ArrayOps(), outs)
+	return cfunc.Compile(dev, fn, proc, ev.Materialiser(), outs)
 }

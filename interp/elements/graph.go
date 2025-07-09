@@ -37,19 +37,28 @@ type (
 		SubGraph(name string) (ArrayOps, error)
 
 		// Einsum calls an einstein sum on x and y given the expression in ref.
-		Einsum(ref NodeFile[*ir.EinsumExpr], x, y NumericalElement) (NumericalElement, error)
+		Einsum(ctx ir.Evaluator, expr *ir.EinsumExpr, x, y NumericalElement) (NumericalElement, error)
 
 		// BroadcastInDim the data of an array across dimensions.
-		BroadcastInDim(expr ExprAt, x NumericalElement, axisLengths []NumericalElement) (NumericalElement, error)
+		BroadcastInDim(ctx ir.Evaluator, expr ir.AssignableExpr, x NumericalElement, axisLengths []NumericalElement) (NumericalElement, error)
 
 		// Concat concatenates scalars elements into an array with one axis.
-		Concat(expr ExprAt, xs []NumericalElement) (NumericalElement, error)
+		Concat(ctx ir.Evaluator, expr ir.AssignableExpr, xs []NumericalElement) (NumericalElement, error)
 
 		// Set a slice in an array.
-		Set(call NodeFile[*ir.CallExpr], x, updates, index ir.Element) (ir.Element, error)
+		Set(ctx ir.Evaluator, expr *ir.CallExpr, x, updates, index ir.Element) (ir.Element, error)
 
 		// ElementFromArray returns an element from an array GX value.
-		ElementFromArray(expr ExprAt, val values.Array) (Node, error)
+		ElementFromArray(ctx ir.Evaluator, expr ir.AssignableExpr, val values.Array) (NumericalElement, error)
+	}
+
+	// ArrayMaterialiser materialises an array.
+	ArrayMaterialiser interface {
+		// Graph returns the graph to which new nodes are being added.
+		Graph() ops.Graph
+
+		// Materialise returns the element with all its values from the graph.
+		NodeFromArray(expr ExprAt, val values.Array) (Node, error)
 	}
 
 	// Materialiser is an element that can return an instance of itself composed only of elements from the backend ops.
@@ -57,6 +66,6 @@ type (
 		ir.Element
 
 		// Materialise returns the element with all its values from the graph.
-		Materialise(ArrayOps) (Node, error)
+		Materialise(ArrayMaterialiser) (Node, error)
 	}
 )

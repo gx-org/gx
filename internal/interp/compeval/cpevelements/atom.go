@@ -105,8 +105,8 @@ func (a *atom) Type() ir.Type {
 }
 
 // Materialise the value into a node in the backend graph.
-func (a *atom) Materialise(ao elements.ArrayOps) (elements.Node, error) {
-	return ao.ElementFromArray(a.src, a.val)
+func (a *atom) Materialise(ao elements.ArrayMaterialiser) (elements.Node, error) {
+	return ao.NodeFromArray(a.src, a.val)
 }
 
 // Compare to another element.

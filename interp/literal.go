@@ -113,7 +113,7 @@ func (v valuerT[T]) buildStaticArray(ctx *context.Context, lit *ir.ArrayLitExpr,
 		return nil, false, err
 	}
 	// All elements of the literal are scalars already known.
-	node, err := ctx.Evaluator().ArrayOps().ElementFromArray(elements.NewExprAt(ctx.File(), lit), array)
+	node, err := ctx.Evaluator().ArrayOps().ElementFromArray(ctx, lit, array)
 	if err != nil {
 		return nil, false, err
 	}
@@ -139,7 +139,7 @@ func (v valuerT[T]) array(ctx *context.Context, lit *ir.ArrayLitExpr) (ir.Elemen
 	}
 	// Some values will be known at runtime. We create one node for each element
 	// and concatenates everything into an array.
-	array1d, err := ctx.Evaluator().ArrayOps().Concat(elements.NewExprAt(ctx.File(), lit), elVals)
+	array1d, err := ctx.Evaluator().ArrayOps().Concat(ctx, lit, elVals)
 	if err != nil {
 		return nil, err
 	}

@@ -104,7 +104,7 @@ func evalBroadcast(ctx evaluator.Context, call elements.CallAt, fn elements.Func
 		broadcastAxes[i] = i
 	}
 	ao := ctx.Evaluator().ArrayOps()
-	x, xShape, err := grapheval.NodeFromElement(ao, args[0])
+	x, xShape, err := grapheval.NodeFromElement(ctx, args[0])
 	if err != nil {
 		return nil, err
 	}

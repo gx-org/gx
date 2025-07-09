@@ -136,8 +136,8 @@ func (a *cast) Copy() elements.Copier {
 }
 
 // Materialise returns the element with all its values from the graph.
-func (a *cast) Materialise(ao elements.ArrayOps) (elements.Node, error) {
-	return ao.ElementFromArray(a.src.ToExprAt(), a.val)
+func (a *cast) Materialise(ao elements.ArrayMaterialiser) (elements.Node, error) {
+	return ao.NodeFromArray(a.src.ToExprAt(), a.val)
 }
 
 // Axes of the result of the cast.

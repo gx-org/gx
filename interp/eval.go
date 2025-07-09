@@ -326,7 +326,7 @@ func evalCastAtomToArrayExpr(ctx *context.Context, expr ir.TypeCastExpr, x eleme
 	if err != nil {
 		return nil, err
 	}
-	return arrayOps.BroadcastInDim(srcExpr, reshaped, axes)
+	return arrayOps.BroadcastInDim(ctx, expr, reshaped, axes)
 }
 
 func evalCastToArrayExpr(ctx *context.Context, expr ir.TypeCastExpr, x elements.NumericalElement, targetType ir.ArrayType) (ir.Element, error) {
@@ -565,7 +565,7 @@ func evalEinsumExpr(ctx *context.Context, ref *ir.EinsumExpr) (ir.Element, error
 	if err != nil {
 		return nil, err
 	}
-	return ctx.Evaluator().ArrayOps().Einsum(elements.NewNodeAt(ctx.File(), ref), x, y)
+	return ctx.Evaluator().ArrayOps().Einsum(ctx, ref, x, y)
 }
 
 func evalAtom[T dtype.GoDataType](ctx *context.Context, expr ir.Expr) (val T, err error) {
