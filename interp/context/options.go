@@ -22,9 +22,9 @@ import (
 	"github.com/gx-org/gx/interp/elements"
 )
 
-type packageOption func(ctx *Context, fr *packageFrame) error
+type packageOption func(core *Core, fr *packageFrame) error
 
-func (ectx *Context) processOptions(opts []options.PackageOption) error {
+func (core *Core) processOptions(opts []options.PackageOption) error {
 	for _, option := range opts {
 		var optFunc packageOption
 		var err error
@@ -40,9 +40,9 @@ func (ectx *Context) processOptions(opts []options.PackageOption) error {
 			return err
 		}
 		pkg := option.Package()
-		options := ectx.packageOptions[pkg]
+		options := core.packageOptions[pkg]
 		options = append(options, optFunc)
-		ectx.packageOptions[pkg] = options
+		core.packageOptions[pkg] = options
 	}
 	return nil
 }
@@ -59,7 +59,7 @@ func findVarExpr(pkg *ir.Package, name string) (*ir.VarExpr, error) {
 }
 
 func processPackageVarSetGXValue(opt options.PackageVarSetValue) (packageOption, error) {
-	return func(ctx *Context, fr *packageFrame) error {
+	return func(core *Core, fr *packageFrame) error {
 		vrExpr, err := findVarExpr(fr.pkg, opt.Var)
 		if err != nil {
 			return err
@@ -69,7 +69,7 @@ func processPackageVarSetGXValue(opt options.PackageVarSetValue) (packageOption,
 		if !ok {
 			return errors.Errorf("package variables of type %T (used in %s.%s) not supported", opt.Value, fr.pkg.Name, opt.Var)
 		}
-		node, err := ctx.evaluator.ElementFromAtom(elements.NewExprAt(vrExpr.Decl.FFile, &ir.ValueRef{
+		node, err := core.evaluator.ElementFromAtom(elements.NewExprAt(vrExpr.Decl.FFile, &ir.ValueRef{
 			Src:  vrExpr.VName,
 			Stor: vrExpr,
 		}), array)
@@ -82,7 +82,7 @@ func processPackageVarSetGXValue(opt options.PackageVarSetValue) (packageOption,
 }
 
 func processPackageVarSetElement(opt elements.PackageVarSetElement) (packageOption, error) {
-	return func(ctx *Context, fr *packageFrame) error {
+	return func(core *Core, fr *packageFrame) error {
 		varExpr, err := findVarExpr(fr.pkg, opt.Var)
 		if err != nil {
 			return err

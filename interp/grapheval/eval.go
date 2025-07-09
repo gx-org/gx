@@ -55,7 +55,7 @@ func New(importer ir.Importer, pr *processor.Processor, gr ops.Graph, newFunc el
 }
 
 // NewFunc creates a new function given its definition and a receiver.
-func (ev *Evaluator) NewFunc(ctx *context.Context, fn ir.Func, recv *elements.Receiver) elements.Func {
+func (ev *Evaluator) NewFunc(ctx *context.Core, fn ir.Func, recv *elements.Receiver) elements.Func {
 	return ev.newFunc(fn, recv)
 }
 
@@ -170,7 +170,7 @@ func evalFromContext(ctx ir.Evaluator) *Evaluator {
 }
 
 // FuncInputsToElements converts values to a function input.
-func (ev *Evaluator) FuncInputsToElements(ctx *context.Context, file *ir.File, fType *ir.FuncType, receiver values.Value, args []values.Value) (*elements.InputElements, error) {
+func (ev *Evaluator) FuncInputsToElements(ctx *context.Core, file *ir.File, fType *ir.FuncType, receiver values.Value, args []values.Value) (*elements.InputElements, error) {
 	var recvEl ir.Element
 	if receiver != nil {
 		recvField := fType.ReceiverField()

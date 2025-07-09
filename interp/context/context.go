@@ -39,16 +39,14 @@ type (
 		evaluator.Evaluator
 
 		// NewFunc creates a new function given its definition and a receiver.
-		NewFunc(ctx *Context, fn ir.Func, recv *elements.Receiver) elements.Func
+		NewFunc(*Core, ir.Func, *elements.Receiver) elements.Func
 
 		// CallFuncLit calls a function literal.
 		CallFuncLit(ctx *Context, ref *ir.FuncLit, args []ir.Element) ([]ir.Element, error)
 	}
 
-	// Context of an evaluation while running the interpreter.
-	// It contains the current frame stack, values of variables,
-	// and the evaluator to execute operations.
-	Context struct {
+	// Core contains everything in the context independent of code location.
+	Core struct {
 		interp Interpreter
 
 		options        []options.PackageOption
@@ -56,16 +54,14 @@ type (
 		evaluator      Evaluator
 		builtin        *baseFrame
 		packageToFrame map[*ir.Package]*packageFrame
-
-		stack []*blockFrame
 	}
 )
 
 var _ evaluator.Context = (*Context)(nil)
 
 // New returns a new interpreter context.
-func New(interp Interpreter, eval Evaluator, options []options.PackageOption) (*Context, error) {
-	ctx := &Context{
+func New(interp Interpreter, eval Evaluator, options []options.PackageOption) (*Core, error) {
+	ctx := &Core{
 		interp:         interp,
 		options:        options,
 		packageToFrame: make(map[*ir.Package]*packageFrame),
@@ -81,35 +77,33 @@ func New(interp Interpreter, eval Evaluator, options []options.PackageOption) (*
 	return ctx, nil
 }
 
-// Evaluator returns the evaluator used by in evaluations.
-func (ctx *Context) Evaluator() evaluator.Evaluator {
-	return ctx.evaluator
+// NewFunc creates a new function given its definition and a receiver.
+func (core *Core) NewFunc(fn ir.Func, recv *elements.Receiver) elements.Func {
+	return core.evaluator.NewFunc(core, fn, recv)
+}
+
+// Context of an evaluation while running the interpreter.
+// It contains the current frame stack, values of variables,
+// and the evaluator to execute operations.
+type Context struct {
+	core  *Core
+	stack []*blockFrame
 }
 
 // NewFileContext returns a context for a given file.
-func (ctx *Context) NewFileContext(file *ir.File) (*Context, error) {
-	return ctx.newFileContext(file)
-}
-
-func (ctx *Context) branch() *Context {
-	return &Context{
-		interp:         ctx.interp,
-		options:        ctx.options,
-		packageOptions: ctx.packageOptions,
-		evaluator:      ctx.evaluator,
-		builtin:        ctx.builtin,
-		packageToFrame: ctx.packageToFrame,
-	}
-}
-
-func (ctx *Context) newFileContext(file *ir.File) (*Context, error) {
-	n := ctx.branch()
-	flFrame, err := n.fileFrame(file)
+func (core *Core) NewFileContext(file *ir.File) (*Context, error) {
+	n := &Context{core: core}
+	flFrame, err := n.core.fileFrame(file)
 	if err != nil {
 		return nil, err
 	}
 	flFrame.pushFuncFrame(n, nil)
 	return n, nil
+}
+
+// Evaluator returns the evaluator used by in evaluations.
+func (ctx *Context) Evaluator() evaluator.Evaluator {
+	return ctx.core.evaluator
 }
 
 // EvalFunc evaluates a function.
@@ -120,7 +114,7 @@ func (ctx *Context) EvalFunc(f ir.Func, call *ir.CallExpr, args []ir.Element) ([
 
 // EvalExpr evaluates an expression in this context.
 func (ctx *Context) EvalExpr(expr ir.Expr) (ir.Element, error) {
-	return ctx.interp.EvalExpr(ctx, expr)
+	return ctx.core.interp.EvalExpr(ctx, expr)
 }
 
 func (ctx *Context) pushFrame(fr *blockFrame) *blockFrame {
@@ -142,19 +136,19 @@ func (ctx *Context) currentFrame() *blockFrame {
 	return ctx.stack[len(ctx.stack)-1]
 }
 
-// NewFunc creates a new function given its definition and a receiver.
-func (ctx *Context) NewFunc(fn ir.Func, recv *elements.Receiver) elements.Func {
-	return ctx.evaluator.NewFunc(ctx, fn, recv)
-}
-
 // CurrentFunc returns the current function being run.
 func (ctx *Context) CurrentFunc() ir.Func {
 	return ctx.currentFrame().owner.function
 }
 
+// NewFunc creates a new function given its definition and a receiver.
+func (ctx *Context) NewFunc(fn ir.Func, recv *elements.Receiver) elements.Func {
+	return ctx.core.NewFunc(fn, recv)
+}
+
 // Sub returns a child context given a set of elements.
 func (ctx *Context) Sub(elts map[string]ir.Element) (*Context, error) {
-	sub := ctx.branch()
+	sub := &Context{core: ctx.core}
 	sub.stack = append([]*blockFrame{}, ctx.stack...)
 	bFrame := sub.PushBlockFrame()
 	for n, elt := range elts {
@@ -170,7 +164,7 @@ func (ctx *Context) File() *ir.File {
 
 // EvalFunctionToElement evaluates a function such as it becomes an element.
 func (ctx *Context) EvalFunctionToElement(eval evaluator.Evaluator, fn ir.Func, args []ir.Element) ([]ir.Element, error) {
-	subctx, err := ctx.newFileContext(fn.File())
+	subctx, err := ctx.core.NewFileContext(fn.File())
 	if err != nil {
 		return nil, err
 	}
