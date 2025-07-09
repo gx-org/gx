@@ -47,8 +47,7 @@ type (
 		builtin        *baseFrame
 		packageToFrame map[*ir.Package]*packageFrame
 
-		callInputs *elements.InputElements
-		stack      []*blockFrame
+		stack []*blockFrame
 	}
 )
 
@@ -112,11 +111,6 @@ func (ctx *Context) EvalFunc(f ir.Func, call *ir.CallExpr, args []ir.Element) ([
 // EvalExpr evaluates an expression in this context.
 func (ctx *Context) EvalExpr(expr ir.Expr) (ir.Element, error) {
 	return ctx.interp.EvalExpr(ctx, expr)
-}
-
-// CallInputs returns the value with which a function has been called.
-func (ctx *Context) CallInputs() *elements.InputElements {
-	return ctx.callInputs
 }
 
 func (ctx *Context) pushFrame(fr *blockFrame) *blockFrame {
@@ -196,7 +190,6 @@ func (ctx *Context) valueOf(s string) string {
 // Sub returns a child context given a set of elements.
 func (ctx *Context) Sub(elts map[string]ir.Element) (*Context, error) {
 	sub := ctx.branch()
-	sub.callInputs = ctx.callInputs
 	sub.stack = append([]*blockFrame{}, ctx.stack...)
 	bFrame := sub.PushBlockFrame()
 	for n, elt := range elts {

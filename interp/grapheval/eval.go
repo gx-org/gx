@@ -162,8 +162,8 @@ func ElementsFromTupleNode(g ops.Graph, file *ir.File, expr ir.Expr, tpl ops.Tup
 }
 
 // Trace a set of elements.
-func (ev *Evaluator) Trace(call elements.CallAt, fn elements.Func, irFunc *ir.FuncBuiltin, args []ir.Element, fc *values.FuncInputs) error {
-	return ev.process.RegisterTrace(call, fn, irFunc, args, fc)
+func (ev *Evaluator) Trace(call elements.CallAt, args []ir.Element) error {
+	return ev.process.RegisterTrace(call, args)
 }
 
 func evalFromContext(ctx ir.Evaluator) *Evaluator {
