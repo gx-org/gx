@@ -35,9 +35,6 @@ type (
 
 		// Sub returns a new context with additional variables being defined.
 		Sub(map[string]ir.Element) (Context, error)
-
-		// EvalFunctionToElement evaluates a function literal into an interpreter element.
-		EvalFunctionToElement(eval Evaluator, fn ir.Func, args []ir.Element) ([]ir.Element, error)
 	}
 
 	// Evaluator implements GX operators.
