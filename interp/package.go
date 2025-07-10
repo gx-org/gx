@@ -20,13 +20,17 @@ import (
 	"github.com/gx-org/gx/interp/elements"
 )
 
+func (itn *intern) NewFunc(fn ir.Func, recv *elements.Receiver) elements.Func {
+	return itn.itp.eval.NewFunc(itn.itp, fn, recv)
+}
+
 func (itn *intern) InitPkgScope(pkg *ir.Package, scope *scope.RWScope[ir.Element]) (ir.Element, error) {
 	itp := itn.itp
 	for _, f := range pkg.Decls.Funcs {
-		scope.Define(f.Name(), itp.eval.NewFunc(itp.core, f, nil))
+		scope.Define(f.Name(), itp.eval.NewFunc(itp, f, nil))
 	}
 	for _, tp := range pkg.Decls.Types {
-		scope.Define(tp.Name(), elements.NewNamedType(itp.core.NewFunc, tp, nil))
+		scope.Define(tp.Name(), elements.NewNamedType(itn.NewFunc, tp, nil))
 	}
 	if err := itp.evalPackageConsts(pkg, scope); err != nil {
 		return nil, err
@@ -34,7 +38,7 @@ func (itn *intern) InitPkgScope(pkg *ir.Package, scope *scope.RWScope[ir.Element
 	if err := itn.itp.evalOptions(pkg, scope); err != nil {
 		return nil, err
 	}
-	return elements.NewPackage(pkg, scope, itp.core.NewFunc), nil
+	return elements.NewPackage(pkg, scope, itn.NewFunc), nil
 }
 
 func (itp *Interpreter) evalPackageConsts(pkg *ir.Package, scope *scope.RWScope[ir.Element]) error {

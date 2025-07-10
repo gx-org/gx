@@ -23,18 +23,11 @@ import (
 	gxfmt "github.com/gx-org/gx/base/fmt"
 	"github.com/gx-org/gx/build/ir"
 	"github.com/gx-org/gx/internal/base/scope"
-	"github.com/gx-org/gx/interp/elements"
-	"github.com/gx-org/gx/interp/evaluator"
 )
 
 type (
 	// Interpreter evaluates expressions and statements given the context.
 	Interpreter interface {
-		// EvalExpr runs an expression through the evaluator.
-		EvalExpr(*Context, ir.Expr) (ir.Element, error)
-		// EvalStmt runs a block of statements through the evaluator.
-		EvalStmt(*Context, *ir.BlockStmt) ([]ir.Element, bool, error)
-
 		// InitPkgScope initialises the namespace of a package.
 		InitPkgScope(pkg *ir.Package, scope *scope.RWScope[ir.Element]) (ir.Element, error)
 
@@ -42,35 +35,22 @@ type (
 		InitBuiltins(ctx *Context, scope *scope.RWScope[ir.Element]) error
 	}
 
-	// Evaluator provides core primitives for the interpreter.
-	Evaluator interface {
-		evaluator.Evaluator
-
-		// NewFunc creates a new function given its definition and a receiver.
-		NewFunc(*Core, ir.Func, *elements.Receiver) elements.Func
-
-		// CallFuncLit calls a function literal.
-		CallFuncLit(ctx *Context, ref *ir.FuncLit, args []ir.Element) ([]ir.Element, error)
-	}
-
 	// Core contains everything in the context independent of code location.
 	Core struct {
 		interp Interpreter
 
-		evaluator      Evaluator
 		builtin        *baseFrame
 		packageToFrame map[*ir.Package]*packageFrame
+		importer       ir.Importer
 	}
 )
 
-var _ evaluator.Context = (*Context)(nil)
-
 // New returns a new interpreter context.
-func New(interp Interpreter, eval Evaluator) (*Core, error) {
+func New(interp Interpreter, importer ir.Importer) (*Core, error) {
 	core := &Core{
 		interp:         interp,
 		packageToFrame: make(map[*ir.Package]*packageFrame),
-		evaluator:      eval,
+		importer:       importer,
 	}
 	core.builtin = &baseFrame{scope: scope.NewScope[ir.Element](nil)}
 	ctx, err := core.NewFileContext(&ir.File{
@@ -83,11 +63,6 @@ func New(interp Interpreter, eval Evaluator) (*Core, error) {
 		return nil, err
 	}
 	return core, interp.InitBuiltins(ctx, core.builtin.scope)
-}
-
-// NewFunc creates a new function given its definition and a receiver.
-func (core *Core) NewFunc(fn ir.Func, recv *elements.Receiver) elements.Func {
-	return core.evaluator.NewFunc(core, fn, recv)
 }
 
 // Context of an evaluation while running the interpreter.
@@ -109,22 +84,6 @@ func (core *Core) NewFileContext(file *ir.File) (*Context, error) {
 	return n, nil
 }
 
-// Evaluator returns the evaluator used by in evaluations.
-func (ctx *Context) Evaluator() evaluator.Evaluator {
-	return ctx.core.evaluator
-}
-
-// Core returns the context core.
-// TODO(degris): remove ASAP.
-func (ctx *Context) Core() *Core {
-	return ctx.core
-}
-
-// EvalExpr evaluates an expression in this context.
-func (ctx *Context) EvalExpr(expr ir.Expr) (ir.Element, error) {
-	return ctx.core.interp.EvalExpr(ctx, expr)
-}
-
 func (ctx *Context) pushFrame(fr *blockFrame) *blockFrame {
 	ctx.stack = append(ctx.stack, fr)
 	return fr
@@ -140,6 +99,11 @@ func (ctx *Context) CurrentFrame() *Frame {
 	return &Frame{file: ctx.File(), scope: ctx.currentFrame().scope}
 }
 
+// Core context used by this context.
+func (ctx *Context) Core() *Core {
+	return ctx.core
+}
+
 func (ctx *Context) currentFrame() *blockFrame {
 	return ctx.stack[len(ctx.stack)-1]
 }
@@ -147,11 +111,6 @@ func (ctx *Context) currentFrame() *blockFrame {
 // CurrentFunc returns the current function being run.
 func (ctx *Context) CurrentFunc() ir.Func {
 	return ctx.currentFrame().owner.function
-}
-
-// NewFunc creates a new function given its definition and a receiver.
-func (ctx *Context) NewFunc(fn ir.Func, recv *elements.Receiver) elements.Func {
-	return ctx.core.NewFunc(fn, recv)
 }
 
 // Sub returns a child context given a set of elements.
@@ -168,33 +127,6 @@ func (ctx *Context) Sub(elts map[string]ir.Element) *Context {
 // File returns the current file the interpreter is running code from.
 func (ctx *Context) File() *ir.File {
 	return ctx.currentFrame().owner.parent.file
-}
-
-// EvalFunctionToElement evaluates a function such as it becomes an element.
-func (ctx *Context) EvalFunctionToElement(eval evaluator.Evaluator, fn ir.Func, args []ir.Element) ([]ir.Element, error) {
-	subctx, err := ctx.core.NewFileContext(fn.File())
-	if err != nil {
-		return nil, err
-	}
-	funcFrame, err := subctx.pushFuncFrame(fn)
-	if err != nil {
-		return nil, err
-	}
-
-	assignArgumentValues(fn.FuncType(), funcFrame, args)
-	for _, resultName := range fieldNames(fn.FuncType().Results.List) {
-		funcFrame.Define(resultName.Name, nil)
-	}
-	defer subctx.PopFrame()
-
-	var body *ir.BlockStmt
-	switch fn := fn.(type) {
-	case *ir.FuncDecl:
-		body = fn.Body
-	case *ir.FuncLit:
-		body = fn.Body
-	}
-	return evalFuncBody(subctx, body)
 }
 
 func (ctx *Context) String() string {

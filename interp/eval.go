@@ -373,7 +373,7 @@ func evalCastExpr(fitp *FileScope, expr ir.TypeCastExpr) (ir.Element, error) {
 		if !ok {
 			return nil, errors.Errorf("element %T cannot be copied", x)
 		}
-		return elements.NewNamedType(fitp.ctx.NewFunc, named, recv), nil
+		return elements.NewNamedType(fitp.NewFunc, named, recv), nil
 	}
 	arrayType, ok := target.(ir.ArrayType)
 	if !ok {
@@ -431,7 +431,7 @@ func evalStructLiteral(fitp *FileScope, expr *ir.StructLitExpr) (ir.Element, err
 	if !ok {
 		return strct, nil
 	}
-	return elements.NewNamedType(fitp.ctx.NewFunc, nType, strct), nil
+	return elements.NewNamedType(fitp.NewFunc, nType, strct), nil
 }
 
 func evalSliceLiteral(fitp *FileScope, expr *ir.SliceLitExpr) (ir.Element, error) {
@@ -536,7 +536,7 @@ func evalSelectorExpr(fitp *FileScope, ref *ir.SelectorExpr) (ir.Element, error)
 }
 
 func evalFuncLit(fitp *FileScope, ref *ir.FuncLit) (ir.Element, error) {
-	return fitp.ctx.NewFunc(ref, nil), nil
+	return fitp.NewFunc(ref, nil), nil
 }
 
 func evalIndexExpr(fitp *FileScope, ref *ir.IndexExpr) (ir.Element, error) {

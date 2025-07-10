@@ -197,7 +197,7 @@ func (f *syntheticFunc) buildSignature(pkgScope *pkgResolveScope) (ir.Func, iFun
 	if !compEvalOk {
 		return nil, nil, false
 	}
-	macro, err := compEval.ev.EvalExpr(fCallExpr)
+	macro, err := compEval.fitp.EvalExpr(fCallExpr)
 	if err != nil {
 		return nil, nil, fScope.err().AppendAt(f.macro.source(), err)
 	}

@@ -21,9 +21,9 @@ import (
 	"github.com/gx-org/gx/golang/backend/kernels"
 	"github.com/gx-org/gx/internal/interp/compeval/cpevelements"
 	"github.com/gx-org/gx/internal/tracer/processor"
-	"github.com/gx-org/gx/interp/context"
 	"github.com/gx-org/gx/interp/elements"
 	"github.com/gx-org/gx/interp/evaluator"
+	"github.com/gx-org/gx/interp"
 )
 
 // CompEval is the evaluator used for compilation evaluation.
@@ -31,7 +31,7 @@ type CompEval struct {
 	importer ir.Importer
 }
 
-var _ context.Evaluator = (*CompEval)(nil)
+var _ interp.Evaluator = (*CompEval)(nil)
 
 // NewHostEvaluator returns a new evaluator for the host.
 func NewHostEvaluator(importer ir.Importer) *CompEval {
@@ -44,7 +44,7 @@ func (ev *CompEval) NewSub(evaluator.ArrayOps) evaluator.Evaluator {
 }
 
 // NewFunc creates a new function given its definition and a receiver.
-func (ev *CompEval) NewFunc(ctx *context.Core, fn ir.Func, recv *elements.Receiver) elements.Func {
+func (ev *CompEval) NewFunc(itp *interp.Interpreter, fn ir.Func, recv *elements.Receiver) elements.Func {
 	if macro, ok := fn.(*ir.Macro); ok {
 		return cpevelements.NewMacro(macro, recv)
 	}
@@ -76,7 +76,7 @@ func (ev *CompEval) ElementFromAtom(ctx ir.Evaluator, src ir.AssignableExpr, val
 }
 
 // CallFuncLit calls a function literal.
-func (ev *CompEval) CallFuncLit(ctx *context.Context, ref *ir.FuncLit, args []ir.Element) ([]ir.Element, error) {
+func (ev *CompEval) CallFuncLit(fitp *interp.FileScope, ref *ir.FuncLit, args []ir.Element) ([]ir.Element, error) {
 	return nil, errors.Errorf("not implemented")
 }
 

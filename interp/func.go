@@ -12,7 +12,7 @@
 // See the License for the specific language governing permissions and
 // limitations under the License.
 
-package context
+package interp
 
 import (
 	"fmt"
@@ -24,9 +24,13 @@ import (
 	"github.com/gx-org/gx/build/fmterr"
 	"github.com/gx-org/gx/build/ir"
 	"github.com/gx-org/gx/internal/interp/flatten"
+	"github.com/gx-org/gx/interp/context"
 	"github.com/gx-org/gx/interp/elements"
 	"github.com/gx-org/gx/interp/evaluator"
 )
+
+// FuncBuiltin defines a builtin function provided by a backend.
+type FuncBuiltin func(ctx evaluator.Context, call elements.CallAt, fn elements.Func, irFunc *ir.FuncBuiltin, args []ir.Element) ([]ir.Element, error)
 
 type funcBase struct {
 	fn   ir.Func
@@ -34,9 +38,6 @@ type funcBase struct {
 }
 
 var _ elements.Func = (*funcBase)(nil)
-
-// FuncBuiltin defines a builtin function provided by a backend.
-type FuncBuiltin func(ctx evaluator.Context, call elements.CallAt, fn elements.Func, irFunc *ir.FuncBuiltin, args []ir.Element) ([]ir.Element, error)
 
 // NewRunFunc creates a function given an IR and a receiver.
 // The function is run when being called.
@@ -101,17 +102,17 @@ type funcDecl struct {
 	fnT *ir.FuncDecl
 }
 
-func (f *funcDecl) Call(fitp elements.Evaluator, call *ir.CallExpr, args []ir.Element) (outs []ir.Element, err error) {
-	ctx := fitp.(interface{ Context() *Context }).Context()
+func (f *funcDecl) Call(ev elements.Evaluator, call *ir.CallExpr, args []ir.Element) (outs []ir.Element, err error) {
+	fitp := ev.(*FileScope)
 	if f.fnT.Body == nil {
-		return nil, fmterr.Errorf(ctx.File().FileSet(), f.fnT.Source(), "missing function body")
+		return nil, fmterr.Errorf(fitp.File().FileSet(), f.fnT.Source(), "missing function body")
 	}
 	// Create a new function frame.
-	funcFrame, err := ctx.pushFuncFrame(f.fnT)
+	funcFrame, err := fitp.ctx.PushFuncFrame(f.fnT)
 	if err != nil {
 		return nil, err
 	}
-	defer ctx.PopFrame()
+	defer fitp.ctx.PopFrame()
 	for _, resultName := range fieldNames(f.fnT.FType.Results.List) {
 		funcFrame.Define(resultName.Name, nil)
 	}
@@ -124,7 +125,7 @@ func (f *funcDecl) Call(fitp elements.Evaluator, call *ir.CallExpr, args []ir.El
 	}
 	assignArgumentValues(f.fnT.FType, funcFrame, args)
 	// Evaluate the function within the frame.
-	return evalFuncBody(ctx, f.fnT.Body)
+	return evalFuncBody(fitp, f.fnT.Body)
 }
 
 type funcBuiltin struct {
@@ -132,13 +133,13 @@ type funcBuiltin struct {
 	fnT *ir.FuncBuiltin
 }
 
-func (f *funcBuiltin) Call(fitp elements.Evaluator, call *ir.CallExpr, args []ir.Element) (outs []ir.Element, err error) {
+func (f *funcBuiltin) Call(ev elements.Evaluator, call *ir.CallExpr, args []ir.Element) (outs []ir.Element, err error) {
+	fitp := ev.(*FileScope)
 	defer func() {
 		if err != nil {
 			err = fmterr.Position(fitp.File().FileSet(), call.Expr(), err)
 		}
 	}()
-	ctx := fitp.(interface{ Context() *Context }).Context()
 	var impl FuncBuiltin
 	if f.fnT.Impl != nil {
 		impl = f.fnT.Impl.Implementation().(FuncBuiltin)
@@ -147,7 +148,7 @@ func (f *funcBuiltin) Call(fitp elements.Evaluator, call *ir.CallExpr, args []ir
 		err = errors.Errorf("function %s has no implementation", f.fn.Name())
 		return
 	}
-	return impl(ctx, elements.NewNodeAt[*ir.CallExpr](ctx.File(), call), f, f.fnT, args)
+	return impl(fitp, elements.NewNodeAt[*ir.CallExpr](fitp.File(), call), f, f.fnT, args)
 }
 
 type funcLit struct {
@@ -156,15 +157,15 @@ type funcLit struct {
 }
 
 func (f *funcLit) Call(fitp elements.Evaluator, call *ir.CallExpr, args []ir.Element) (outs []ir.Element, err error) {
-	ctx := fitp.(interface{ Context() *Context }).Context()
-	return ctx.core.evaluator.CallFuncLit(ctx, f.fnT, args)
+	fitpT := fitp.(*FileScope)
+	return fitpT.itp.eval.CallFuncLit(fitpT, f.fnT, args)
 }
 
-func evalFuncBody(ctx *Context, body *ir.BlockStmt) ([]ir.Element, error) {
-	outs, stop, err := ctx.core.interp.EvalStmt(ctx, body)
+func evalFuncBody(fitp *FileScope, body *ir.BlockStmt) ([]ir.Element, error) {
+	outs, stop, err := evalBlockStmt(fitp, body)
 	if !stop {
 		// No return statement was processed during the eval of the function.
-		return nil, fmterr.Errorf(ctx.File().FileSet(), body.Src, "missing return")
+		return nil, fmterr.Errorf(fitp.File().FileSet(), body.Src, "missing return")
 	}
 	return outs, err
 }
@@ -178,7 +179,7 @@ func fieldNames(fields []*ir.FieldGroup) (r []*ast.Ident) {
 	return
 }
 
-func assignArgumentValues(funcType *ir.FuncType, funcFrame *blockFrame, args []ir.Element) {
+func assignArgumentValues(funcType *ir.FuncType, funcFrame *context.Frame, args []ir.Element) {
 	// For each parameter of the function, assign its argument value to the frame.
 	names := fieldNames(funcType.Params.List)
 	for i, arg := range args {
@@ -191,20 +192,20 @@ func assignArgumentValues(funcType *ir.FuncType, funcFrame *blockFrame, args []i
 }
 
 // EvalFunc evaluates a function.
-func EvalFunc(core *Core, fn *ir.FuncDecl, in *elements.InputElements) (outs []ir.Element, err error) {
+func (itp *Interpreter) EvalFunc(fn *ir.FuncDecl, in *elements.InputElements) (outs []ir.Element, err error) {
 	if fn.Body == nil {
 		return nil, errors.Errorf("%s: missing function body", fn.Name())
 	}
-	ctx, err := core.NewFileContext(fn.File())
+	fitp, err := itp.ForFile(fn.File())
 	if err != nil {
 		return nil, err
 	}
 	// Create a frame for the function to evaluate.
-	frame, err := ctx.pushFuncFrame(fn)
+	frame, err := fitp.ctx.PushFuncFrame(fn)
 	if err != nil {
 		return nil, err
 	}
-	defer ctx.PopFrame()
+	defer fitp.ctx.PopFrame()
 	// Add the result names to the Context.
 	for _, resultName := range fieldNames(fn.FType.Results.List) {
 		frame.Define(resultName.Name, nil)
@@ -234,6 +235,29 @@ func EvalFunc(core *Core, fn *ir.FuncDecl, in *elements.InputElements) (outs []i
 		frame.Define(param.Name.Name, in.Args[i])
 	}
 	// Evaluate the function body.
-	outs, err = evalFuncBody(ctx, fn.Body)
+	outs, err = evalFuncBody(fitp, fn.Body)
 	return
+}
+
+// EvalFunctionToElement evaluates a function such as it becomes an element.
+func (fitp *FileScope) EvalFunctionToElement(eval evaluator.Evaluator, fn ir.Func, args []ir.Element) ([]ir.Element, error) {
+	funcFrame, err := fitp.ctx.PushFuncFrame(fn)
+	if err != nil {
+		return nil, err
+	}
+
+	assignArgumentValues(fn.FuncType(), funcFrame, args)
+	for _, resultName := range fieldNames(fn.FuncType().Results.List) {
+		funcFrame.Define(resultName.Name, nil)
+	}
+	defer fitp.ctx.PopFrame()
+
+	var body *ir.BlockStmt
+	switch fn := fn.(type) {
+	case *ir.FuncDecl:
+		body = fn.Body
+	case *ir.FuncLit:
+		body = fn.Body
+	}
+	return evalFuncBody(fitp, body)
 }
