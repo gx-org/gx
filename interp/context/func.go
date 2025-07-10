@@ -25,6 +25,7 @@ import (
 	"github.com/gx-org/gx/build/ir"
 	"github.com/gx-org/gx/internal/interp/flatten"
 	"github.com/gx-org/gx/interp/elements"
+	"github.com/gx-org/gx/interp/evaluator"
 )
 
 type funcBase struct {
@@ -33,6 +34,9 @@ type funcBase struct {
 }
 
 var _ elements.Func = (*funcBase)(nil)
+
+// FuncBuiltin defines a builtin function provided by a backend.
+type FuncBuiltin func(ctx evaluator.Context, call elements.CallAt, fn elements.Func, irFunc *ir.FuncBuiltin, args []ir.Element) ([]ir.Element, error)
 
 // NewRunFunc creates a function given an IR and a receiver.
 // The function is run when being called.

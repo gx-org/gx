@@ -91,9 +91,13 @@ func (core *Core) packageFrame(pkg *ir.Package) (*packageFrame, error) {
 	if pkgFrame != nil {
 		return pkgFrame, nil
 	}
+	var parent scope.Scope[ir.Element]
+	if core.builtin != nil {
+		parent = core.builtin.scope
+	}
 	pkgFrame = &packageFrame{
 		baseFrame: baseFrame{
-			scope: scope.NewScope(core.builtin.scope),
+			scope: scope.NewScope(parent),
 		},
 		pkg:         pkg,
 		fileToFrame: make(map[*ir.File]*fileFrame),
