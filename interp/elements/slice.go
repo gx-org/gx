@@ -21,6 +21,7 @@ import (
 	"github.com/gx-org/gx/build/ir"
 	"github.com/gx-org/gx/internal/interp/canonical"
 	"github.com/gx-org/gx/internal/interp/flatten"
+	"github.com/gx-org/gx/interp/evaluator"
 )
 
 // Slice element storing a slice of elements.
@@ -50,7 +51,7 @@ func (n *Slice) Flatten() ([]ir.Element, error) {
 	return flatten.Flatten(n.values...)
 }
 
-func slice(ctx ir.Evaluator, expr ir.AssignableExpr, index NumericalElement, vals []ir.Element) (ir.Element, error) {
+func slice(ctx ir.Evaluator, expr ir.AssignableExpr, index evaluator.NumericalElement, vals []ir.Element) (ir.Element, error) {
 	i, err := ConstantIntFromElement(index)
 	if err != nil {
 		return nil, err
@@ -62,7 +63,7 @@ func slice(ctx ir.Evaluator, expr ir.AssignableExpr, index NumericalElement, val
 }
 
 // Slice of the tuple.
-func (n *Slice) Slice(ctx ir.Evaluator, expr *ir.IndexExpr, index NumericalElement) (ir.Element, error) {
+func (n *Slice) Slice(ctx ir.Evaluator, expr *ir.IndexExpr, index evaluator.NumericalElement) (ir.Element, error) {
 	return slice(ctx, expr, index, n.values)
 }
 

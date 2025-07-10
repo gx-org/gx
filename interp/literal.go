@@ -24,6 +24,7 @@ import (
 	"github.com/gx-org/gx/internal/interp/compeval/cpevelements"
 	"github.com/gx-org/gx/interp/context"
 	"github.com/gx-org/gx/interp/elements"
+	"github.com/gx-org/gx/interp/evaluator"
 )
 
 type (
@@ -38,7 +39,7 @@ type (
 	}
 )
 
-func goValueFromElement[T dtype.GoDataType](el elements.NumericalElement) (T, bool, error) {
+func goValueFromElement[T dtype.GoDataType](el evaluator.NumericalElement) (T, bool, error) {
 	var t T
 	canonicalElt, ok := el.(elements.ElementWithConstant)
 	if !ok {
@@ -53,7 +54,7 @@ func goValueFromElement[T dtype.GoDataType](el elements.NumericalElement) (T, bo
 	return t, err == nil, err
 }
 
-func goSliceFromArrayElement[T dtype.GoDataType](el elements.NumericalElement) ([]T, bool, error) {
+func goSliceFromArrayElement[T dtype.GoDataType](el evaluator.NumericalElement) ([]T, bool, error) {
 	canonicalElt, ok := el.(elements.ElementWithConstant)
 	if !ok {
 		return nil, false, nil
@@ -62,7 +63,7 @@ func goSliceFromArrayElement[T dtype.GoDataType](el elements.NumericalElement) (
 	return array.Flat(), true, nil
 }
 
-func goSliceFromElements[T dtype.GoDataType](els []elements.NumericalElement) ([]T, bool, error) {
+func goSliceFromElements[T dtype.GoDataType](els []evaluator.NumericalElement) ([]T, bool, error) {
 	var vals []T
 	for _, el := range els {
 		var subVals []T
@@ -85,7 +86,7 @@ func goSliceFromElements[T dtype.GoDataType](els []elements.NumericalElement) ([
 	return vals, true, nil
 }
 
-func (v valuerT[T]) buildStaticArray(ctx *context.Context, lit *ir.ArrayLitExpr, axes, vals []elements.NumericalElement) (ir.Element, bool, error) {
+func (v valuerT[T]) buildStaticArray(ctx *context.Context, lit *ir.ArrayLitExpr, axes, vals []evaluator.NumericalElement) (ir.Element, bool, error) {
 	axesI64, ok, err := goSliceFromElements[int64](axes)
 	if !ok || err != nil {
 		return nil, false, err
@@ -126,7 +127,7 @@ func (v valuerT[T]) array(ctx *context.Context, lit *ir.ArrayLitExpr) (ir.Elemen
 		return nil, err
 	}
 	irVals := lit.Values()
-	elVals := make([]elements.NumericalElement, len(irVals))
+	elVals := make([]evaluator.NumericalElement, len(irVals))
 	for i, expr := range irVals {
 		elVals[i], err = evalNumExpr(ctx, expr)
 		if err != nil {
@@ -186,7 +187,7 @@ func evalArrayLiteral(ctx *context.Context, expr *ir.ArrayLitExpr) (ir.Element, 
 	return valuer.array(ctx, expr)
 }
 
-func toAtomElementInt[T dtype.IntegerType](src elements.ExprAt, val T) (elements.NumericalElement, error) {
+func toAtomElementInt[T dtype.IntegerType](src elements.ExprAt, val T) (evaluator.NumericalElement, error) {
 	hostVal, err := values.AtomIntegerValue(src.Node().Type(), val)
 	if err != nil {
 		return nil, err
@@ -194,7 +195,7 @@ func toAtomElementInt[T dtype.IntegerType](src elements.ExprAt, val T) (elements
 	return cpevelements.NewAtom(src, hostVal)
 }
 
-func toAtomElementFloat[T dtype.Float](src elements.ExprAt, val T) (elements.NumericalElement, error) {
+func toAtomElementFloat[T dtype.Float](src elements.ExprAt, val T) (evaluator.NumericalElement, error) {
 	hostVal, err := values.AtomFloatValue(src.Node().Type(), val)
 	if err != nil {
 		return nil, err
@@ -202,7 +203,7 @@ func toAtomElementFloat[T dtype.Float](src elements.ExprAt, val T) (elements.Num
 	return cpevelements.NewAtom(src, hostVal)
 }
 
-func toAtomElementBool(src elements.ExprAt, val bool) (elements.NumericalElement, error) {
+func toAtomElementBool(src elements.ExprAt, val bool) (evaluator.NumericalElement, error) {
 	hostVal, err := values.AtomBoolValue(src.Node().Type(), val)
 	if err != nil {
 		return nil, err
@@ -210,7 +211,7 @@ func toAtomElementBool(src elements.ExprAt, val bool) (elements.NumericalElement
 	return cpevelements.NewAtom(src, hostVal)
 }
 
-func evalAtomicValue(ctx *context.Context, expr ir.AtomicValue) (elements.NumericalElement, error) {
+func evalAtomicValue(ctx *context.Context, expr ir.AtomicValue) (evaluator.NumericalElement, error) {
 	kind := expr.Type().Kind()
 	exprAt := elements.NewExprAt(ctx.File(), expr)
 	switch kind {

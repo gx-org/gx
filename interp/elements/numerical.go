@@ -15,9 +15,9 @@
 package elements
 
 import (
-	"github.com/gx-org/backend/shape"
 	"github.com/gx-org/gx/api/values"
 	"github.com/gx-org/gx/build/ir"
+	"github.com/gx-org/gx/interp/evaluator"
 )
 
 type (
@@ -26,30 +26,9 @@ type (
 		EvalFunc(f ir.Func, call *ir.CallExpr, args []ir.Element) ([]ir.Element, error)
 	}
 
-	// NumericalElement is a node representing a numerical value.
-	NumericalElement interface {
-		ir.Element
-
-		// UnaryOp applies a unary operator on x.
-		UnaryOp(ctx ir.Evaluator, expr *ir.UnaryExpr) (NumericalElement, error)
-
-		// BinaryOp applies a binary operator to x and y.
-		// Note that the receiver can be either the left or right argument.
-		BinaryOp(ctx ir.Evaluator, expr *ir.BinaryExpr, x, y NumericalElement) (NumericalElement, error)
-
-		// Cast an element into a given data type.
-		Cast(ctx ir.Evaluator, expr ir.AssignableExpr, target ir.Type) (NumericalElement, error)
-
-		// Reshape an element.
-		Reshape(ctx ir.Evaluator, expr ir.AssignableExpr, axisLengths []NumericalElement) (NumericalElement, error)
-
-		// Shape of the value represented by the element.
-		Shape() *shape.Shape
-	}
-
 	// ElementWithConstant is an element with a concrete value that is already known.
 	ElementWithConstant interface {
-		NumericalElement
+		evaluator.NumericalElement
 
 		// NumericalConstant returns the value of a constant represented by a node.
 		NumericalConstant() *values.HostArray
@@ -58,7 +37,7 @@ type (
 	// ElementWithArrayFromContext is an element able to return a concrete value from the current context.
 	// For example, a value passed as an argument to the function.
 	ElementWithArrayFromContext interface {
-		NumericalElement
+		evaluator.NumericalElement
 
 		// ArrayFromContext fetches an array from the argument.
 		ArrayFromContext(*values.FuncInputs) (values.Array, error)

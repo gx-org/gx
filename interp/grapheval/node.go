@@ -33,10 +33,10 @@ type BackendNode struct {
 }
 
 var (
-	_ elements.Slicer           = (*BackendNode)(nil)
-	_ elements.Copier           = (*BackendNode)(nil)
-	_ elements.Materialiser     = (*BackendNode)(nil)
-	_ elements.NumericalElement = (*BackendNode)(nil)
+	_ elements.Slicer            = (*BackendNode)(nil)
+	_ elements.Copier            = (*BackendNode)(nil)
+	_ elements.Materialiser      = (*BackendNode)(nil)
+	_ evaluator.NumericalElement = (*BackendNode)(nil)
 )
 
 // hasShape is a node in the graph with a shape inferred by the backend.
@@ -81,7 +81,7 @@ func (ev *Evaluator) elementFromTuple(src elements.ExprAt, tpl ops.Tuple, shps [
 }
 
 // BinaryOp applies a binary operator to x and y.
-func (n *BackendNode) BinaryOp(ctx ir.Evaluator, expr *ir.BinaryExpr, x, y elements.NumericalElement) (elements.NumericalElement, error) {
+func (n *BackendNode) BinaryOp(ctx ir.Evaluator, expr *ir.BinaryExpr, x, y evaluator.NumericalElement) (evaluator.NumericalElement, error) {
 	ao := opsFromContext(ctx)
 	xNode, xShape, err := NodeFromElement(ctx, x)
 	if err != nil {
@@ -114,7 +114,7 @@ func (n *BackendNode) BinaryOp(ctx ir.Evaluator, expr *ir.BinaryExpr, x, y eleme
 }
 
 // UnaryOp applies a unary operator on x.
-func (n *BackendNode) UnaryOp(ctx ir.Evaluator, expr *ir.UnaryExpr) (elements.NumericalElement, error) {
+func (n *BackendNode) UnaryOp(ctx ir.Evaluator, expr *ir.UnaryExpr) (evaluator.NumericalElement, error) {
 	ao := opsFromContext(ctx)
 	unaryNode, err := ao.Graph().Core().Unary(expr.Src, n.nod.Node)
 	if err != nil {
@@ -129,7 +129,7 @@ func (n *BackendNode) UnaryOp(ctx ir.Evaluator, expr *ir.UnaryExpr) (elements.Nu
 }
 
 // Cast an element into a given data type.
-func (n *BackendNode) Cast(ctx ir.Evaluator, expr ir.AssignableExpr, target ir.Type) (elements.NumericalElement, error) {
+func (n *BackendNode) Cast(ctx ir.Evaluator, expr ir.AssignableExpr, target ir.Type) (evaluator.NumericalElement, error) {
 	ao := opsFromContext(ctx)
 	targetKind := target.Kind().DType()
 	casted, err := ao.Graph().Core().Cast(n.nod.Node, targetKind)
@@ -148,7 +148,7 @@ func (n *BackendNode) Cast(ctx ir.Evaluator, expr ir.AssignableExpr, target ir.T
 }
 
 // Reshape an element into a given shape.
-func (n *BackendNode) Reshape(ctx ir.Evaluator, expr ir.AssignableExpr, axisLengths []elements.NumericalElement) (elements.NumericalElement, error) {
+func (n *BackendNode) Reshape(ctx ir.Evaluator, expr ir.AssignableExpr, axisLengths []evaluator.NumericalElement) (evaluator.NumericalElement, error) {
 	axes := make([]int, len(axisLengths))
 	for i, el := range axisLengths {
 		var err error
@@ -174,12 +174,12 @@ func (n *BackendNode) Reshape(ctx ir.Evaluator, expr ir.AssignableExpr, axisLeng
 }
 
 // Slice of the value on the first axis given an index.
-func (n *BackendNode) Slice(ctx ir.Evaluator, expr *ir.IndexExpr, index elements.NumericalElement) (ir.Element, error) {
+func (n *BackendNode) Slice(ctx ir.Evaluator, expr *ir.IndexExpr, index evaluator.NumericalElement) (ir.Element, error) {
 	return n.SliceArray(ctx, expr, index)
 }
 
 // SliceArray of the value on the first axis given an index.
-func (n *BackendNode) SliceArray(ctx ir.Evaluator, expr ir.AssignableExpr, index elements.NumericalElement) (elements.NumericalElement, error) {
+func (n *BackendNode) SliceArray(ctx ir.Evaluator, expr ir.AssignableExpr, index evaluator.NumericalElement) (evaluator.NumericalElement, error) {
 	i, err := elements.ConstantIntFromElement(index)
 	if err != nil {
 		return nil, err

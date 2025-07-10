@@ -21,6 +21,7 @@ import (
 	"github.com/gx-org/gx/api/values"
 	"github.com/gx-org/gx/build/ir"
 	"github.com/gx-org/gx/interp/elements"
+	"github.com/gx-org/gx/interp/evaluator"
 )
 
 type arrayOps struct {
@@ -29,7 +30,7 @@ type arrayOps struct {
 }
 
 var (
-	_ elements.ArrayOps          = (*arrayOps)(nil)
+	_ evaluator.ArrayOps         = (*arrayOps)(nil)
 	_ elements.ArrayMaterialiser = (*arrayOps)(nil)
 )
 
@@ -45,7 +46,7 @@ func computeEinsumAxisLengths(ref *ir.EinsumExpr, xShape, yShape *shape.Shape, n
 }
 
 // SubGraph returns a new graph builder.
-func (ao *arrayOps) SubGraph(name string) (elements.ArrayOps, error) {
+func (ao *arrayOps) SubGraph(name string) (evaluator.ArrayOps, error) {
 	sub, err := ao.graph.Core().Subgraph(name)
 	if err != nil {
 		return nil, err
@@ -54,7 +55,7 @@ func (ao *arrayOps) SubGraph(name string) (elements.ArrayOps, error) {
 }
 
 // Einsum calls an einstein sum on x and y given the expression in ref.
-func (ao *arrayOps) Einsum(ctx ir.Evaluator, ref *ir.EinsumExpr, x, y elements.NumericalElement) (elements.NumericalElement, error) {
+func (ao *arrayOps) Einsum(ctx ir.Evaluator, ref *ir.EinsumExpr, x, y evaluator.NumericalElement) (evaluator.NumericalElement, error) {
 	xNode, xShape, err := NodeFromElement(ctx, x)
 	if err != nil {
 		return nil, err
@@ -79,7 +80,7 @@ func (ao *arrayOps) Einsum(ctx ir.Evaluator, ref *ir.EinsumExpr, x, y elements.N
 		})
 }
 
-func elementsToInt(els []elements.NumericalElement) ([]int, error) {
+func elementsToInt(els []evaluator.NumericalElement) ([]int, error) {
 	axes := make([]int, len(els))
 	for i, el := range els {
 		var err error
@@ -92,7 +93,7 @@ func elementsToInt(els []elements.NumericalElement) ([]int, error) {
 }
 
 // BroadcastInDim the data of an array across dimensions.
-func (ao *arrayOps) BroadcastInDim(ctx ir.Evaluator, expr ir.AssignableExpr, x elements.NumericalElement, axisLengths []elements.NumericalElement) (elements.NumericalElement, error) {
+func (ao *arrayOps) BroadcastInDim(ctx ir.Evaluator, expr ir.AssignableExpr, x evaluator.NumericalElement, axisLengths []evaluator.NumericalElement) (evaluator.NumericalElement, error) {
 	axes, err := elementsToInt(axisLengths)
 	if err != nil {
 		return nil, err
@@ -125,7 +126,7 @@ func (ao *arrayOps) BroadcastInDim(ctx ir.Evaluator, expr ir.AssignableExpr, x e
 }
 
 // Concat concatenates scalars elements into an array with one axis.
-func (ao *arrayOps) Concat(ctx ir.Evaluator, expr ir.AssignableExpr, xs []elements.NumericalElement) (elements.NumericalElement, error) {
+func (ao *arrayOps) Concat(ctx ir.Evaluator, expr ir.AssignableExpr, xs []evaluator.NumericalElement) (evaluator.NumericalElement, error) {
 	nodes := make([]ops.Node, len(xs))
 	var dtype dtype.DataType
 	for i, x := range xs {
@@ -184,7 +185,7 @@ func unpackOutputs(outputs []*ops.OutputNode) (nodes []ops.Node, shapes []*shape
 }
 
 // ElementFromArray returns an element from an array GX value.
-func (ao *arrayOps) ElementFromArray(ctx ir.Evaluator, expr ir.AssignableExpr, val values.Array) (elements.NumericalElement, error) {
+func (ao *arrayOps) ElementFromArray(ctx ir.Evaluator, expr ir.AssignableExpr, val values.Array) (evaluator.NumericalElement, error) {
 	return newValueElement(ao.ev, elements.NewExprAt(ctx.File(), expr), val)
 }
 

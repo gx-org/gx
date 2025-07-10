@@ -17,7 +17,6 @@ package testing
 import (
 	"fmt"
 	"go/ast"
-	"go/token"
 	"path/filepath"
 	"strings"
 	"testing"
@@ -100,7 +99,7 @@ func (r *Runner) RunWithArgs(fn *ir.FuncDecl, recv values.Value, args []values.V
 	return values, all, nil
 }
 
-func (r *testTracer) Trace(fset *token.FileSet, call *ir.CallExpr, vals []values.Value) error {
+func (r *testTracer) Trace(file *ir.File, call *ir.CallExpr, vals []values.Value) error {
 	if r.nTrace == 0 {
 		r.trace.WriteString("\nTrace:\n")
 	}
@@ -108,7 +107,7 @@ func (r *testTracer) Trace(fset *token.FileSet, call *ir.CallExpr, vals []values
 	if err != nil {
 		return err
 	}
-	pos := fset.Position(call.Src.Pos())
+	pos := file.FileSet().Position(call.Src.Pos())
 	r.trace.WriteString(fmt.Sprintf("%s:%d", filepath.Base(pos.Filename), r.nTrace))
 	r.nTrace++
 	const indent = "  "

@@ -28,6 +28,7 @@ import (
 	"github.com/gx-org/gx/build/fmterr"
 	"github.com/gx-org/gx/build/ir"
 	"github.com/gx-org/gx/internal/interp/flatten"
+	"github.com/gx-org/gx/interp/evaluator"
 )
 
 // InputElements is the receiver and arguments with which the function was called.
@@ -58,13 +59,13 @@ type (
 
 	// Slicer is a state element that can be sliced.
 	Slicer interface {
-		Slice(ctx ir.Evaluator, expr *ir.IndexExpr, index NumericalElement) (ir.Element, error)
+		Slice(ctx ir.Evaluator, expr *ir.IndexExpr, index evaluator.NumericalElement) (ir.Element, error)
 	}
 
 	// ArraySlicer is a state element with an array that can be sliced.
 	ArraySlicer interface {
-		NumericalElement
-		SliceArray(ctx ir.Evaluator, expr ir.AssignableExpr, index NumericalElement) (NumericalElement, error)
+		evaluator.NumericalElement
+		SliceArray(ctx ir.Evaluator, expr ir.AssignableExpr, index evaluator.NumericalElement) (evaluator.NumericalElement, error)
 		Type() ir.Type
 	}
 
@@ -195,7 +196,7 @@ func AxesFromElement(el ir.Element) ([]int, error) {
 
 // ShapeFromElement returns the shape of a numerical element.
 func ShapeFromElement(node ir.Element) (*shape.Shape, error) {
-	numerical, ok := node.(NumericalElement)
+	numerical, ok := node.(evaluator.NumericalElement)
 	if !ok {
 		return nil, errors.Errorf("cannot cast %T to a numerical element", node)
 	}

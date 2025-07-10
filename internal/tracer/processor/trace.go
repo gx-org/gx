@@ -20,11 +20,11 @@ import (
 	"github.com/gx-org/gx/api/values"
 	"github.com/gx-org/gx/build/ir"
 	"github.com/gx-org/gx/internal/interp/flatten"
-	"github.com/gx-org/gx/interp/elements"
 )
 
 type traceProcessor struct {
-	call   elements.CallAt
+	file   *ir.File
+	call   *ir.CallExpr
 	traced []ir.Element
 }
 
@@ -37,7 +37,7 @@ func (t *traceProcessor) parse(tracer trace.Callback, parser *flatten.Parser) er
 			return err
 		}
 	}
-	return tracer.Trace(t.call.FSet(), t.call.Node(), vals)
+	return tracer.Trace(t.file, t.call, vals)
 }
 
 type traces struct {
@@ -45,25 +45,10 @@ type traces struct {
 	flatten []ir.Element
 }
 
-// Trace a set of elements.
-func (ts *traces) Trace(call elements.CallAt, fn *elements.Func, irFunc *ir.FuncBuiltin, args []ir.Element, ctx *values.FuncInputs) error {
-	ts.traces = append(ts.traces, &traceProcessor{
-		call:   call,
-		traced: args,
-	})
-	for _, arg := range args {
-		flatten, err := flatten.Flatten(arg)
-		if err != nil {
-			return err
-		}
-		ts.flatten = append(ts.flatten, flatten...)
-	}
-	return nil
-}
-
 // RegisterTrace registers a call to the trace builtin.
-func (ts *traces) RegisterTrace(call elements.CallAt, args []ir.Element) error {
+func (ts *traces) RegisterTrace(ctx ir.Evaluator, call *ir.CallExpr, args []ir.Element) error {
 	ts.traces = append(ts.traces, &traceProcessor{
+		file:   ctx.File(),
 		call:   call,
 		traced: args,
 	})

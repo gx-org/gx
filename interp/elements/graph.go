@@ -28,30 +28,6 @@ type (
 		OutNode() *ops.OutputNode
 	}
 
-	// ArrayOps are the operator implementations for arrays.
-	ArrayOps interface {
-		// Graph returns the graph to which new nodes are being added.
-		Graph() ops.Graph
-
-		// SubGraph returns a new graph builder.
-		SubGraph(name string) (ArrayOps, error)
-
-		// Einsum calls an einstein sum on x and y given the expression in ref.
-		Einsum(ctx ir.Evaluator, expr *ir.EinsumExpr, x, y NumericalElement) (NumericalElement, error)
-
-		// BroadcastInDim the data of an array across dimensions.
-		BroadcastInDim(ctx ir.Evaluator, expr ir.AssignableExpr, x NumericalElement, axisLengths []NumericalElement) (NumericalElement, error)
-
-		// Concat concatenates scalars elements into an array with one axis.
-		Concat(ctx ir.Evaluator, expr ir.AssignableExpr, xs []NumericalElement) (NumericalElement, error)
-
-		// Set a slice in an array.
-		Set(ctx ir.Evaluator, expr *ir.CallExpr, x, updates, index ir.Element) (ir.Element, error)
-
-		// ElementFromArray returns an element from an array GX value.
-		ElementFromArray(ctx ir.Evaluator, expr ir.AssignableExpr, val values.Array) (NumericalElement, error)
-	}
-
 	// ArrayMaterialiser materialises an array.
 	ArrayMaterialiser interface {
 		// Graph returns the graph to which new nodes are being added.

@@ -70,7 +70,7 @@ func (ev *Evaluator) Importer() ir.Importer {
 }
 
 // ArrayOps returns the array operators implementation.
-func (ev *Evaluator) ArrayOps() elements.ArrayOps {
+func (ev *Evaluator) ArrayOps() evaluator.ArrayOps {
 	return ev.ao
 }
 
@@ -80,7 +80,7 @@ func (ev *Evaluator) Materialiser() elements.ArrayMaterialiser {
 }
 
 // ElementFromAtom returns an element from a GX value.
-func (ev *Evaluator) ElementFromAtom(ctx ir.Evaluator, src ir.AssignableExpr, val values.Array) (elements.NumericalElement, error) {
+func (ev *Evaluator) ElementFromAtom(ctx ir.Evaluator, src ir.AssignableExpr, val values.Array) (evaluator.NumericalElement, error) {
 	return ev.hostEval.ElementFromAtom(ctx, src, val)
 }
 
@@ -167,7 +167,7 @@ func ElementsFromTupleNode(g ops.Graph, file *ir.File, expr ir.Expr, tpl ops.Tup
 
 // Trace a set of elements.
 func (ev *Evaluator) Trace(ctx ir.Evaluator, call *ir.CallExpr, args []ir.Element) error {
-	return ev.process.RegisterTrace(elements.NewNodeAt(ctx.File(), call), args)
+	return ev.process.RegisterTrace(ctx, call, args)
 }
 
 func opsFromContext(ctx ir.Evaluator) *arrayOps {

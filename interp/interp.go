@@ -54,8 +54,8 @@ func EvalFunc(core *context.Core, fn *ir.FuncDecl, in *elements.InputElements) (
 	return context.EvalFunc(core, fn, in)
 }
 
-func dimsAsElements(ctx *context.Context, expr ir.AssignableExpr, dims []int) ([]elements.NumericalElement, error) {
-	els := make([]elements.NumericalElement, len(dims))
+func dimsAsElements(ctx *context.Context, expr ir.AssignableExpr, dims []int) ([]evaluator.NumericalElement, error) {
+	els := make([]evaluator.NumericalElement, len(dims))
 	for i, di := range dims {
 		val, err := values.AtomIntegerValue[int64](ir.IntLenType(), int64(di))
 		if err != nil {
