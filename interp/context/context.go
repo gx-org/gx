@@ -12,6 +12,7 @@
 // See the License for the specific language governing permissions and
 // limitations under the License.
 
+// Package context maintains the namespaces and stack for the interpreter.
 package context
 
 import (
@@ -32,7 +33,9 @@ type (
 		EvalExpr(*Context, ir.Expr) (ir.Element, error)
 		// EvalStmt runs a block of statements through the evaluator.
 		EvalStmt(*Context, *ir.BlockStmt) ([]ir.Element, bool, error)
-		EvalOptions(pkg *ir.Package, scope *scope.RWScope[ir.Element]) error
+
+		// InitPkgScope initialises the namespace of a package.
+		InitPkgScope(pkg *ir.Package, scope *scope.RWScope[ir.Element]) (ir.Element, error)
 	}
 
 	// Evaluator provides core primitives for the interpreter.

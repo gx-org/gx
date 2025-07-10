@@ -20,7 +20,6 @@ import (
 	"github.com/gx-org/gx/build/fmterr"
 	"github.com/gx-org/gx/build/ir"
 	"github.com/gx-org/gx/internal/base/scope"
-	"github.com/gx-org/gx/interp/elements"
 )
 
 // Frame in the context.
@@ -71,11 +70,11 @@ func (fr *baseFrame) String() string {
 type packageFrame struct {
 	baseFrame
 	pkg         *ir.Package
-	el          *elements.Package
+	el          ir.Element
 	fileToFrame map[*ir.File]*fileFrame
 }
 
-func (core *Core) importPackage(imp *ir.ImportDecl) (*elements.Package, error) {
+func (core *Core) importPackage(imp *ir.ImportDecl) (ir.Element, error) {
 	pkg, err := core.evaluator.Importer().Import(imp.Path)
 	if err != nil {
 		return nil, err
@@ -97,44 +96,15 @@ func (core *Core) packageFrame(pkg *ir.Package) (*packageFrame, error) {
 			scope: scope.NewScope(core.builtin.scope),
 		},
 		pkg:         pkg,
-		el:          elements.NewPackage(pkg, core.NewFunc),
 		fileToFrame: make(map[*ir.File]*fileFrame),
 	}
 	core.packageToFrame[pkg] = pkgFrame
-	for _, f := range pkgFrame.pkg.Decls.Funcs {
-		pkgFrame.Define(f.Name(), core.evaluator.NewFunc(core, f, nil))
-	}
-	if err := pkgFrame.evalPackageConsts(core); err != nil {
+	var err error
+	pkgFrame.el, err = core.interp.InitPkgScope(pkg, pkgFrame.scope)
+	if err != nil {
 		return nil, err
 	}
-	return pkgFrame, core.interp.EvalOptions(pkg, pkgFrame.scope)
-}
-
-func (fr *packageFrame) evalPackageConstExpr(core *Core, expr *ir.ConstExpr) error {
-	fCtx, err := core.NewFileContext(expr.Decl.FFile)
-	if err != nil {
-		return err
-	}
-	el, err := fCtx.EvalExpr(expr.Val)
-	if err != nil {
-		return err
-	}
-	fr.Define(expr.VName.Name, el)
-	fr.el.Define(expr.VName.Name, el)
-	return nil
-}
-
-func (fr *packageFrame) evalPackageConsts(core *Core) error {
-	exprs, err := fr.pkg.Decls.ConstExprs()
-	if err != nil {
-		return err
-	}
-	for _, expr := range exprs {
-		if err := fr.evalPackageConstExpr(core, expr); err != nil {
-			return err
-		}
-	}
-	return nil
+	return pkgFrame, nil
 }
 
 type fileFrame struct {
