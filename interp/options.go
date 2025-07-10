@@ -25,10 +25,10 @@ import (
 
 type packageOption func(itp *Interpreter, pkg *ir.Package, scope *scope.RWScope[ir.Element]) error
 
-func (itn *intern) EvalOptions(pkg *ir.Package, scope *scope.RWScope[ir.Element]) error {
-	options := itn.itp.packageOptions[pkg.FullName()]
+func (itp *Interpreter) evalOptions(pkg *ir.Package, scope *scope.RWScope[ir.Element]) error {
+	options := itp.packageOptions[pkg.FullName()]
 	for _, option := range options {
-		if err := option(itn.itp, pkg, scope); err != nil {
+		if err := option(itp, pkg, scope); err != nil {
 			return err
 		}
 	}

@@ -17,12 +17,13 @@ package elements
 import (
 	"github.com/pkg/errors"
 	"github.com/gx-org/gx/build/ir"
+	"github.com/gx-org/gx/internal/base/scope"
 )
 
 // Package groups elements exported by a package.
 type Package struct {
 	pkg  *ir.Package
-	defs map[string]ir.Element
+	defs scope.Scope[ir.Element]
 }
 
 var (
@@ -31,35 +32,19 @@ var (
 )
 
 // NewPackage returns a package grouping everything that a package exports.
-func NewPackage(pkg *ir.Package, newFunc NewFunc) *Package {
-	node := &Package{
-		pkg:  pkg,
-		defs: make(map[string]ir.Element),
-	}
-	for _, fct := range pkg.Decls.Funcs {
-		node.defs[fct.Name()] = newFunc(fct, nil)
-	}
-	for _, tp := range pkg.Decls.Types {
-		node.defs[tp.Name()] = NewNamedType(newFunc, tp, nil)
-	}
-	return node
-}
-
-// Define an element in the package
-// (used for consts)
-func (pkg *Package) Define(name string, el ir.Element) {
-	pkg.defs[name] = el
+func NewPackage(pkg *ir.Package, defs scope.Scope[ir.Element], newFunc NewFunc) *Package {
+	return &Package{pkg: pkg, defs: defs}
 }
 
 // Type of the element.
 func (pkg *Package) Type() ir.Type {
-	return ir.InvalidType()
+	return ir.PackageType()
 }
 
 // Select a member of the package.
 func (pkg *Package) Select(sel SelectAt) (ir.Element, error) {
 	name := sel.Node().Stor.NameDef().Name
-	el, ok := pkg.defs[name]
+	el, ok := pkg.defs.Find(name)
 	if !ok {
 		return nil, errors.Errorf("%s.%s undefined", pkg.pkg.Name, name)
 	}
