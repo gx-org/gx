@@ -22,7 +22,6 @@ import (
 	"github.com/pkg/errors"
 	"github.com/gx-org/gx/build/ir"
 	"github.com/gx-org/gx/internal/interp/canonical"
-	"github.com/gx-org/gx/interp/context"
 	"github.com/gx-org/gx/interp/elements"
 	"github.com/gx-org/gx/interp/evaluator"
 )
@@ -76,7 +75,7 @@ func axesFromType(ev ir.Evaluator, typ ir.Type) (*elements.Slice, error) {
 }
 
 // NewRuntimeValue creates a new runtime value given an expression in a file.
-func NewRuntimeValue(ctx *context.Context, store ir.Storage) (ir.Element, error) {
+func NewRuntimeValue(file *ir.File, newFunc elements.NewFunc, store ir.Storage) (ir.Element, error) {
 	ref := &ir.ValueRef{Src: store.NameDef(), Stor: store}
 	typ, ok := store.(ir.Type)
 	if !ok { // Check if storage is a type itself.
@@ -85,27 +84,27 @@ func NewRuntimeValue(ctx *context.Context, store ir.Storage) (ir.Element, error)
 	}
 	switch typT := typ.(type) {
 	case *ir.TypeParam:
-		return newTypeParam(elements.NewExprAt(ctx.File(), ref), typT), nil
+		return newTypeParam(elements.NewExprAt(file, ref), typT), nil
 	case *ir.StructType:
 		fields := make(map[string]ir.Element)
 		for _, field := range typT.Fields.Fields() {
 			var err error
-			fields[field.Name.Name], err = NewRuntimeValue(ctx, field.Storage())
+			fields[field.Name.Name], err = NewRuntimeValue(file, newFunc, field.Storage())
 			if err != nil {
 				return nil, err
 			}
 		}
-		return elements.NewStruct(typT, elements.NewValueAt(ctx.File(), ref), fields), nil
+		return elements.NewStruct(typT, elements.NewValueAt(file, ref), fields), nil
 	case *ir.NamedType:
-		under, err := NewRuntimeValue(ctx, typT.Underlying.Typ)
+		under, err := NewRuntimeValue(file, newFunc, typT.Underlying.Typ)
 		if err != nil {
 			return nil, err
 		}
-		return elements.NewNamedType(ctx.NewFunc, typT, under.(elements.Copier)), nil
+		return elements.NewNamedType(newFunc, typT, under.(elements.Copier)), nil
 	case ir.ArrayType:
 		if !ir.IsStatic(typT.DataType()) {
 			return NewArray(typT), nil
 		}
 	}
-	return NewVariable(elements.NewNodeAt(ctx.File(), store)), nil
+	return NewVariable(elements.NewNodeAt(file, store)), nil
 }

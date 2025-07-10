@@ -147,14 +147,14 @@ func (ctx *Context) NewFunc(fn ir.Func, recv *elements.Receiver) elements.Func {
 }
 
 // Sub returns a child context given a set of elements.
-func (ctx *Context) Sub(elts map[string]ir.Element) (*Context, error) {
+func (ctx *Context) Sub(elts map[string]ir.Element) *Context {
 	sub := &Context{core: ctx.core}
 	sub.stack = append([]*blockFrame{}, ctx.stack...)
 	bFrame := sub.PushBlockFrame()
 	for n, elt := range elts {
 		bFrame.Define(n, elt)
 	}
-	return sub, nil
+	return sub
 }
 
 // File returns the current file the interpreter is running code from.

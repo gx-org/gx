@@ -172,11 +172,11 @@ func newFetcherTesting() (*fetcherTesting, error) {
 	for symbol := range symbolicAxisNames {
 		packageOptions = declareVariable(file, symbol, packageOptions)
 	}
-	ectx, err := interp.New(compeval.NewHostEvaluator(nil), packageOptions)
+	itp, err := interp.New(compeval.NewHostEvaluator(nil), packageOptions)
 	if err != nil {
 		return nil, err
 	}
-	ctx, err := ectx.NewFileContext(file)
+	ctx, err := itp.ForFile(file)
 	if err != nil {
 		return nil, err
 	}

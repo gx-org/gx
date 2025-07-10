@@ -656,3 +656,32 @@ func ToSingleElement(ctx ir.Evaluator, node ir.SourceNode, els []ir.Element) (ir
 	}
 
 }
+
+func dimsAsElements(ctx *context.Context, expr ir.AssignableExpr, dims []int) ([]evaluator.NumericalElement, error) {
+	els := make([]evaluator.NumericalElement, len(dims))
+	for i, di := range dims {
+		val, err := values.AtomIntegerValue[int64](ir.IntLenType(), int64(di))
+		if err != nil {
+			return nil, err
+		}
+		els[i], err = ctx.Evaluator().ElementFromAtom(ctx, expr, val)
+		if err != nil {
+			return nil, err
+		}
+	}
+	return els, nil
+}
+
+func rankOf(ctx evaluator.Context, src ir.SourceNode, typ ir.ArrayType) (ir.ArrayRank, error) {
+	switch rank := typ.Rank().(type) {
+	case *ir.Rank:
+		return rank, nil
+	case *ir.RankInfer:
+		if rank.Rnk == nil {
+			return nil, fmterr.Errorf(ctx.File().FileSet(), src.Source(), "array rank has not been resolved")
+		}
+		return rank.Rnk, nil
+	default:
+		return nil, fmterr.Errorf(ctx.File().FileSet(), src.Source(), "rank %T not supported", rank)
+	}
+}

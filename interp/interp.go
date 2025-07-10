@@ -23,8 +23,6 @@ package interp
 
 import (
 	"github.com/gx-org/gx/api/options"
-	"github.com/gx-org/gx/api/values"
-	"github.com/gx-org/gx/build/fmterr"
 	"github.com/gx-org/gx/build/ir"
 	"github.com/gx-org/gx/interp/context"
 	"github.com/gx-org/gx/interp/elements"
@@ -34,51 +32,100 @@ import (
 // FuncBuiltin defines a builtin function provided by a backend.
 type FuncBuiltin = context.FuncBuiltin
 
-type interp struct{}
+type (
+	// intern is an internal interpreter for the context.
+	intern struct {
+		itp *Interpreter
+	}
 
-func (interp) EvalExpr(ctx *context.Context, expr ir.Expr) (ir.Element, error) {
+	// Interpreter runs GX code given an evaluator and package options.
+	Interpreter struct {
+		core *context.Core
+	}
+)
+
+// EvalExpr evaluates an expression for a given context.
+func (itn *intern) EvalExpr(ctx *context.Context, expr ir.Expr) (ir.Element, error) {
 	return evalExpr(ctx, expr)
 }
 
-func (interp) EvalStmt(ctx *context.Context, block *ir.BlockStmt) ([]ir.Element, bool, error) {
+func (itn *intern) EvalStmt(ctx *context.Context, block *ir.BlockStmt) ([]ir.Element, bool, error) {
 	return evalBlockStmt(ctx, block)
 }
 
 // New returns a new interpreter.
-func New(eval context.Evaluator, options []options.PackageOption) (*context.Core, error) {
-	return context.New(interp{}, eval, options)
+func New(eval context.Evaluator, options []options.PackageOption) (*Interpreter, error) {
+	itp := &Interpreter{}
+	var err error
+	itp.core, err = context.New(&intern{itp: itp}, eval, options)
+	if err != nil {
+		return nil, err
+	}
+	return itp, nil
+}
+
+// Core returns the core context.
+func (itp *Interpreter) Core() *context.Core {
+	return itp.core
 }
 
 // EvalFunc evaluates a function.
-func EvalFunc(core *context.Core, fn *ir.FuncDecl, in *elements.InputElements) (outs []ir.Element, err error) {
-	return context.EvalFunc(core, fn, in)
+func (itp *Interpreter) EvalFunc(fn *ir.FuncDecl, in *elements.InputElements) (outs []ir.Element, err error) {
+	return context.EvalFunc(itp.core, fn, in)
 }
 
-func dimsAsElements(ctx *context.Context, expr ir.AssignableExpr, dims []int) ([]evaluator.NumericalElement, error) {
-	els := make([]evaluator.NumericalElement, len(dims))
-	for i, di := range dims {
-		val, err := values.AtomIntegerValue[int64](ir.IntLenType(), int64(di))
-		if err != nil {
-			return nil, err
-		}
-		els[i], err = ctx.Evaluator().ElementFromAtom(ctx, expr, val)
-		if err != nil {
-			return nil, err
-		}
-	}
-	return els, nil
+// FileScope returns an interpreter given the scope of a file from within a package.
+type FileScope struct {
+	itp       *Interpreter
+	initScope *ir.File
+
+	ctx *context.Context
 }
 
-func rankOf(ctx evaluator.Context, src ir.SourceNode, typ ir.ArrayType) (ir.ArrayRank, error) {
-	switch rank := typ.Rank().(type) {
-	case *ir.Rank:
-		return rank, nil
-	case *ir.RankInfer:
-		if rank.Rnk == nil {
-			return nil, fmterr.Errorf(ctx.File().FileSet(), src.Source(), "array rank has not been resolved")
-		}
-		return rank.Rnk, nil
-	default:
-		return nil, fmterr.Errorf(ctx.File().FileSet(), src.Source(), "rank %T not supported", rank)
+var _ evaluator.Context = (*FileScope)(nil)
+
+// ForFile returns an interpreter for a file context.
+func (itp *Interpreter) ForFile(file *ir.File) (*FileScope, error) {
+	ctx, err := itp.core.NewFileContext(file)
+	if err != nil {
+		return nil, err
 	}
+	return itp.ForContext(ctx), nil
+}
+
+// ForContext returns a new file interpreter given a context.
+func (itp *Interpreter) ForContext(ctx *context.Context) *FileScope {
+	return &FileScope{itp: itp, ctx: ctx}
+}
+
+// EvalExpr evaluates an expression for a given context.
+func (fitp *FileScope) EvalExpr(expr ir.Expr) (ir.Element, error) {
+	return evalExpr(fitp.ctx, expr)
+}
+
+// InitScope returns the initial file scope (as opposed to the file of the current context).
+func (fitp *FileScope) InitScope() *ir.File {
+	return fitp.initScope
+}
+
+// Evaluator returns the evaluator used by the interpreter
+func (fitp *FileScope) Evaluator() evaluator.Evaluator {
+	return fitp.ctx.Evaluator()
+}
+
+// Sub returns a new interpreter with additional values defined in the context.
+func (fitp *FileScope) Sub(vals map[string]ir.Element) *FileScope {
+	sub := *fitp
+	sub.ctx = fitp.ctx.Sub(vals)
+	return &sub
+}
+
+// Context used by the interpreter.
+func (fitp *FileScope) Context() *context.Context {
+	return fitp.ctx
+}
+
+// File returns the current file of the current execution.
+func (fitp *FileScope) File() *ir.File {
+	return fitp.ctx.File()
 }

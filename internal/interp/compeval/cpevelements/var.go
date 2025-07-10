@@ -78,9 +78,10 @@ func (a *variable) Axes(ev ir.Evaluator) (*elements.Slice, error) {
 }
 
 // Slice computes a slice from the variable.
-func (a *variable) Slice(ctx ir.Evaluator, expr *ir.IndexExpr, index evaluator.NumericalElement) (ir.Element, error) {
+func (a *variable) Slice(ectx ir.Evaluator, expr *ir.IndexExpr, index evaluator.NumericalElement) (ir.Element, error) {
 	store := &ir.LocalVarStorage{Src: &ast.Ident{}, Typ: expr.Type()}
-	return NewRuntimeValue(ctx.(*context.Context), store)
+	ctx := ectx.(*context.Context)
+	return NewRuntimeValue(ctx.File(), ctx.NewFunc, store)
 }
 
 // Compare to another element.

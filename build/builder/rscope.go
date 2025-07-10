@@ -29,7 +29,6 @@ import (
 	"github.com/gx-org/gx/build/ir"
 	"github.com/gx-org/gx/internal/base/scope"
 	"github.com/gx-org/gx/internal/interp/compeval"
-	"github.com/gx-org/gx/interp/context"
 	"github.com/gx-org/gx/interp"
 )
 
@@ -148,7 +147,7 @@ func (s *pkgResolveScope) lastBuild() *lastBuild {
 	return last
 }
 
-func (s *pkgResolveScope) packageContext() *context.Core {
+func (s *pkgResolveScope) packageInterpreter() *interp.Interpreter {
 	hostEval := compeval.NewHostEvaluator(s.bpkg.builder())
 	pkg := s.ibld.Pkg()
 	pkg.Decls = s.ibld.Decls()
@@ -159,12 +158,12 @@ func (s *pkgResolveScope) packageContext() *context.Core {
 			opts = append(opts, opt)
 		}
 	}
-	ectx, err := interp.New(hostEval, opts)
+	itp, err := interp.New(hostEval, opts)
 	if err != nil {
 		s.err().Append(err)
 		return nil
 	}
-	return ectx
+	return itp
 }
 
 func (s *pkgResolveScope) namedTypeIR(nType *namedType) *ir.NamedType {
@@ -218,12 +217,12 @@ func (s *pkgResolveScope) newFileScope(f *file) (*fileResolveScope, bool) {
 }
 
 func (s *fileResolveScope) compEval() (*compileEvaluator, bool) {
-	pkgctx := s.pkgResolveScope.packageContext()
-	ctx, err := pkgctx.NewFileContext(s.irFile())
+	pkgitp := s.pkgResolveScope.packageInterpreter()
+	fitp, err := pkgitp.ForFile(s.irFile())
 	if err != nil {
 		return nil, s.err().Append(err)
 	}
-	return newEvaluator(s, ctx), true
+	return newEvaluator(s, fitp), true
 }
 
 func (s *fileResolveScope) fileScope() *fileResolveScope {

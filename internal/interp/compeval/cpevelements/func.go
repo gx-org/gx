@@ -60,7 +60,7 @@ func (f *fun) Call(fctx ir.Evaluator, call *ir.CallExpr, args []ir.Element) ([]i
 	els := make([]ir.Element, len(res))
 	for i, ri := range res {
 		var err error
-		els[i], err = NewRuntimeValue(ctx, &ir.LocalVarStorage{
+		els[i], err = NewRuntimeValue(ctx.File(), ctx.NewFunc, &ir.LocalVarStorage{
 			Src: &ast.Ident{},
 			Typ: ri.Type(),
 		})
