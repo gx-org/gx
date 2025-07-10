@@ -713,7 +713,7 @@ func (f *AddPrivate) String() string {
 // NewEmpty returns a handle on named type Empty.
 func (fac *Factory) NewEmpty() *Empty {
 	s := &Empty{}
-	typ := fac.Package.Package.IR.Decls.Types[0]
+	typ := fac.Package.Package.IR.Decls.TypeByName("Empty")
 	s.handle = handleEmpty{
 		pkg:   fac.Package,
 		struc: typ,
@@ -750,7 +750,7 @@ func (h *handleEmpty) SetField(field *ir.Field, val types.Bridge) error {
 // NewBasic returns a handle on named type Basic.
 func (fac *Factory) NewBasic() *Basic {
 	s := &Basic{}
-	typ := fac.Package.Package.IR.Decls.Types[1]
+	typ := fac.Package.Package.IR.Decls.TypeByName("Basic")
 	s.handle = handleBasic{
 		pkg:   fac.Package,
 		struc: typ,
