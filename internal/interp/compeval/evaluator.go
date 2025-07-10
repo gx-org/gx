@@ -39,7 +39,7 @@ func NewHostEvaluator(importer ir.Importer) *CompEval {
 }
 
 // NewSub returns a new evaluator given a new array operator implementations.
-func (ev *CompEval) NewSub(elements.ArrayOps) evaluator.Evaluator {
+func (ev *CompEval) NewSub(evaluator.ArrayOps) evaluator.Evaluator {
 	return ev
 }
 
@@ -62,12 +62,12 @@ func (ev *CompEval) Importer() ir.Importer {
 }
 
 // ArrayOps returns the implementation used for array operations.
-func (ev *CompEval) ArrayOps() elements.ArrayOps {
+func (ev *CompEval) ArrayOps() evaluator.ArrayOps {
 	return hostArrayOps
 }
 
 // ElementFromAtom returns an element from a GX value.
-func (ev *CompEval) ElementFromAtom(ctx ir.Evaluator, src ir.AssignableExpr, val values.Array) (elements.NumericalElement, error) {
+func (ev *CompEval) ElementFromAtom(ctx ir.Evaluator, src ir.AssignableExpr, val values.Array) (evaluator.NumericalElement, error) {
 	hostValue, err := val.ToHostArray(kernels.Allocator())
 	if err != nil {
 		return nil, err

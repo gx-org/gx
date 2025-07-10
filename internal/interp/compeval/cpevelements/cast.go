@@ -24,6 +24,7 @@ import (
 	"github.com/gx-org/gx/internal/interp/canonical"
 	"github.com/gx-org/gx/internal/interp/flatten"
 	"github.com/gx-org/gx/interp/elements"
+	"github.com/gx-org/gx/interp/evaluator"
 )
 
 type cast struct {
@@ -77,7 +78,7 @@ func newCast(ctx ir.Evaluator, expr ir.AssignableExpr, xEl Element, target ir.Ty
 
 }
 
-func newReshape(ctx ir.Evaluator, expr ir.AssignableExpr, xEl Element, axisLengths []elements.NumericalElement) (Element, error) {
+func newReshape(ctx ir.Evaluator, expr ir.AssignableExpr, xEl Element, axisLengths []evaluator.NumericalElement) (Element, error) {
 	x := elements.ConstantFromElement(xEl)
 	if x == nil {
 		return xEl, nil
@@ -94,19 +95,19 @@ func newReshape(ctx ir.Evaluator, expr ir.AssignableExpr, xEl Element, axisLengt
 	}, nil
 }
 
-func (a *cast) UnaryOp(ctx ir.Evaluator, expr *ir.UnaryExpr) (elements.NumericalElement, error) {
+func (a *cast) UnaryOp(ctx ir.Evaluator, expr *ir.UnaryExpr) (evaluator.NumericalElement, error) {
 	return newUnary(ctx, expr, a)
 }
 
-func (a *cast) BinaryOp(ctx ir.Evaluator, expr *ir.BinaryExpr, x, y elements.NumericalElement) (elements.NumericalElement, error) {
+func (a *cast) BinaryOp(ctx ir.Evaluator, expr *ir.BinaryExpr, x, y evaluator.NumericalElement) (evaluator.NumericalElement, error) {
 	return newBinary(ctx, expr, x, y)
 }
 
-func (a *cast) Cast(ctx ir.Evaluator, expr ir.AssignableExpr, target ir.Type) (elements.NumericalElement, error) {
+func (a *cast) Cast(ctx ir.Evaluator, expr ir.AssignableExpr, target ir.Type) (evaluator.NumericalElement, error) {
 	return newCast(ctx, expr, a, target)
 }
 
-func (a *cast) Reshape(ctx ir.Evaluator, expr ir.AssignableExpr, axisLengths []elements.NumericalElement) (elements.NumericalElement, error) {
+func (a *cast) Reshape(ctx ir.Evaluator, expr ir.AssignableExpr, axisLengths []evaluator.NumericalElement) (evaluator.NumericalElement, error) {
 	return newReshape(ctx, expr, a, axisLengths)
 }
 

@@ -39,9 +39,9 @@ type randBootstrap struct {
 	call    elements.CallAt
 	errF    fmterr.FileSet
 
-	seed elements.NumericalElement
+	seed evaluator.NumericalElement
 	rand *rand.Rand
-	next func() (elements.NumericalElement, error)
+	next func() (evaluator.NumericalElement, error)
 }
 
 var _ elements.Copier = (*randBootstrap)(nil)
@@ -66,7 +66,7 @@ func (rb *randBootstrap) initRand(seed *values.HostArray) error {
 
 var uint64Type = ir.TypeFromKind(ir.Uint64Kind)
 
-func (rb *randBootstrap) nextConstant() (elements.NumericalElement, error) {
+func (rb *randBootstrap) nextConstant() (evaluator.NumericalElement, error) {
 	next := rb.rand.Uint64()
 	expr := &ir.AtomicValueT[uint64]{
 		Src: rb.call.Node().Expr(),
@@ -104,7 +104,7 @@ func newRandBootstrapArg(ctx evaluator.Context, rb *randBootstrap, seed elements
 	return argFactory, nil
 }
 
-func (arg *randBootstrapArg) next() (elements.NumericalElement, error) {
+func (arg *randBootstrapArg) next() (evaluator.NumericalElement, error) {
 	ev := arg.ctx.(evaluator.Context).Evaluator().(*grapheval.Evaluator)
 	src := &ast.Ident{
 		Name:    fmt.Sprintf("%T", arg),

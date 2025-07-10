@@ -26,6 +26,7 @@ import (
 	"github.com/gx-org/gx/build/ir"
 	"github.com/gx-org/gx/interp/context"
 	"github.com/gx-org/gx/interp/elements"
+	"github.com/gx-org/gx/interp/evaluator"
 	"github.com/gx-org/gx/interp/numbers"
 )
 
@@ -286,19 +287,19 @@ func evalReturnStmt(ctx *context.Context, ret *ir.ReturnStmt) ([]ir.Element, boo
 	return returns, true, nil
 }
 
-func evalCastToScalarExpr(ctx *context.Context, expr ir.TypeCastExpr, x elements.NumericalElement, targetType ir.ArrayType) (ir.Element, error) {
+func evalCastToScalarExpr(ctx *context.Context, expr ir.TypeCastExpr, x evaluator.NumericalElement, targetType ir.ArrayType) (ir.Element, error) {
 	if len(x.Shape().AxisLengths) > 0 {
 		return x.Reshape(ctx, expr, nil)
 	}
 	return x.Cast(ctx, expr, targetType)
 }
 
-func evalArrayAxes(ctx *context.Context, src ir.SourceNode, typ ir.ArrayType) ([]elements.NumericalElement, error) {
+func evalArrayAxes(ctx *context.Context, src ir.SourceNode, typ ir.ArrayType) ([]evaluator.NumericalElement, error) {
 	rank, err := rankOf(ctx, src, typ)
 	if err != nil {
 		return nil, err
 	}
-	axes := make([]elements.NumericalElement, len(rank.Axes()))
+	axes := make([]evaluator.NumericalElement, len(rank.Axes()))
 	for i, axis := range rank.Axes() {
 		var err error
 		axes[i], err = evalNumExpr(ctx, axis)
@@ -311,10 +312,10 @@ func evalArrayAxes(ctx *context.Context, src ir.SourceNode, typ ir.ArrayType) ([
 
 var one, _ = values.AtomIntegerValue(ir.IntLenType(), ir.Int(1))
 
-func evalCastAtomToArrayExpr(ctx *context.Context, expr ir.TypeCastExpr, x elements.NumericalElement, axes []elements.NumericalElement) (ir.Element, error) {
+func evalCastAtomToArrayExpr(ctx *context.Context, expr ir.TypeCastExpr, x evaluator.NumericalElement, axes []evaluator.NumericalElement) (ir.Element, error) {
 	srcExpr := elements.NewExprAt(ctx.File(), expr)
 	arrayOps := ctx.Evaluator().ArrayOps()
-	shapeOfOnes := make([]elements.NumericalElement, len(axes))
+	shapeOfOnes := make([]evaluator.NumericalElement, len(axes))
 	for i := range axes {
 		var err error
 		shapeOfOnes[i], err = ctx.Evaluator().ElementFromAtom(ctx, expr, one)
@@ -329,7 +330,7 @@ func evalCastAtomToArrayExpr(ctx *context.Context, expr ir.TypeCastExpr, x eleme
 	return arrayOps.BroadcastInDim(ctx, expr, reshaped, axes)
 }
 
-func evalCastToArrayExpr(ctx *context.Context, expr ir.TypeCastExpr, x elements.NumericalElement, targetType ir.ArrayType) (ir.Element, error) {
+func evalCastToArrayExpr(ctx *context.Context, expr ir.TypeCastExpr, x evaluator.NumericalElement, targetType ir.ArrayType) (ir.Element, error) {
 	origType := expr.Orig().Type()
 	origRank, xDType := ir.Shape(origType)
 	targetDType := targetType.DataType()
@@ -379,9 +380,9 @@ func evalCastExpr(ctx *context.Context, expr ir.TypeCastExpr) (ir.Element, error
 	if !ok {
 		return nil, fmterr.Errorf(ctx.File().FileSet(), expr.Source(), "cast to %s not supported", target.String())
 	}
-	xNum, ok := elements.Underlying(x).(elements.NumericalElement)
+	xNum, ok := elements.Underlying(x).(evaluator.NumericalElement)
 	if !ok {
-		return nil, fmterr.Errorf(ctx.File().FileSet(), expr.Source(), "cannot cast element of type %T to %s", x, reflect.TypeFor[elements.NumericalElement]().Name())
+		return nil, fmterr.Errorf(ctx.File().FileSet(), expr.Source(), "cannot cast element of type %T to %s", x, reflect.TypeFor[evaluator.NumericalElement]().Name())
 	}
 	if arrayType.Rank().IsAtomic() {
 		return evalCastToScalarExpr(ctx, expr, xNum, arrayType)
@@ -503,19 +504,19 @@ func evalExpr(ctx *context.Context, expr ir.Expr) (ir.Element, error) {
 	}
 }
 
-func evalNumExpr(ctx *context.Context, expr ir.Expr) (elements.NumericalElement, error) {
+func evalNumExpr(ctx *context.Context, expr ir.Expr) (evaluator.NumericalElement, error) {
 	el, err := evalExpr(ctx, expr)
 	if err != nil {
 		return nil, err
 	}
-	numEl, ok := elements.Underlying(el).(elements.NumericalElement)
+	numEl, ok := elements.Underlying(el).(evaluator.NumericalElement)
 	if !ok {
-		return nil, errors.Errorf("cannot cast %T to %s", el, reflect.TypeFor[elements.NumericalElement]())
+		return nil, errors.Errorf("cannot cast %T to %s", el, reflect.TypeFor[evaluator.NumericalElement]())
 	}
 	return numEl, nil
 }
 
-func evalNumberCastExpr(ctx *context.Context, expr *ir.NumberCastExpr) (elements.NumericalElement, error) {
+func evalNumberCastExpr(ctx *context.Context, expr *ir.NumberCastExpr) (evaluator.NumericalElement, error) {
 	number, err := evalNumExpr(ctx, expr.X)
 	if err != nil {
 		return nil, err

@@ -19,7 +19,6 @@ package golang
 
 import (
 	"fmt"
-	"go/token"
 	"strings"
 
 	"github.com/gx-org/gx/api/trace"
@@ -34,8 +33,8 @@ type Tracer struct {
 var _ trace.Callback = (*Tracer)(nil)
 
 // Trace prints traced values on the standard output.
-func (Tracer) Trace(fset *token.FileSet, call *ir.CallExpr, values []values.Value) error {
-	pos := fset.Position(call.Src.Pos())
+func (Tracer) Trace(file *ir.File, call *ir.CallExpr, values []values.Value) error {
+	pos := file.FileSet().Position(call.Src.Pos())
 	fmt.Println(pos.String())
 	for _, val := range values {
 		valS := strings.ReplaceAll(fmt.Sprint(val), "\n", "\n  ")

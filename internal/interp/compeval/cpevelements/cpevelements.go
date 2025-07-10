@@ -24,11 +24,12 @@ import (
 	"github.com/gx-org/gx/internal/interp/canonical"
 	"github.com/gx-org/gx/interp/context"
 	"github.com/gx-org/gx/interp/elements"
+	"github.com/gx-org/gx/interp/evaluator"
 )
 
 // Element returned after an evaluation at compeval.
 type Element interface {
-	elements.NumericalElement
+	evaluator.NumericalElement
 	canonical.Comparable
 	fmt.Stringer
 
@@ -36,7 +37,7 @@ type Element interface {
 	CanonicalExpr() canonical.Canonical
 }
 
-func toElement(x elements.NumericalElement) (Element, error) {
+func toElement(x evaluator.NumericalElement) (Element, error) {
 	el, ok := x.(Element)
 	if !ok {
 		return nil, errors.Errorf("cannot build static element: type %T does not implement %s", x, reflect.TypeFor[Element]().String())

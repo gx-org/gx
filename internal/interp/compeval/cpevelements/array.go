@@ -20,6 +20,7 @@ import (
 	"github.com/gx-org/gx/build/ir"
 	"github.com/gx-org/gx/internal/interp/canonical"
 	"github.com/gx-org/gx/interp/elements"
+	"github.com/gx-org/gx/interp/evaluator"
 )
 
 // array element storing a GX value array.
@@ -37,7 +38,7 @@ var (
 )
 
 // NewArray returns a new array from a code position and a type.
-func NewArray(typ ir.ArrayType) elements.NumericalElement {
+func NewArray(typ ir.ArrayType) evaluator.NumericalElement {
 	shape := &shape.Shape{
 		DType: typ.DataType().Kind().DType(),
 	}
@@ -55,23 +56,23 @@ func (a *array) Axes(fetcher ir.Evaluator) (*elements.Slice, error) {
 	return axesFromType(fetcher, a.typ)
 }
 
-func (a *array) UnaryOp(ctx ir.Evaluator, expr *ir.UnaryExpr) (elements.NumericalElement, error) {
+func (a *array) UnaryOp(ctx ir.Evaluator, expr *ir.UnaryExpr) (evaluator.NumericalElement, error) {
 	return NewArray(expr.Type().(ir.ArrayType)), nil
 }
 
-func (a *array) BinaryOp(ctx ir.Evaluator, expr *ir.BinaryExpr, x, y elements.NumericalElement) (elements.NumericalElement, error) {
+func (a *array) BinaryOp(ctx ir.Evaluator, expr *ir.BinaryExpr, x, y evaluator.NumericalElement) (evaluator.NumericalElement, error) {
 	return NewArray(expr.Type().(ir.ArrayType)), nil
 }
 
-func (a *array) Cast(ctx ir.Evaluator, expr ir.AssignableExpr, target ir.Type) (elements.NumericalElement, error) {
+func (a *array) Cast(ctx ir.Evaluator, expr ir.AssignableExpr, target ir.Type) (evaluator.NumericalElement, error) {
 	return NewArray(expr.Type().(ir.ArrayType)), nil
 }
 
-func (a *array) Reshape(ctx ir.Evaluator, expr ir.AssignableExpr, axisLengths []elements.NumericalElement) (elements.NumericalElement, error) {
+func (a *array) Reshape(ctx ir.Evaluator, expr ir.AssignableExpr, axisLengths []evaluator.NumericalElement) (evaluator.NumericalElement, error) {
 	return NewArray(expr.Type().(ir.ArrayType)), nil
 }
 
-func (a *array) Slice(ctx ir.Evaluator, expr *ir.IndexExpr, index elements.NumericalElement) (ir.Element, error) {
+func (a *array) Slice(ctx ir.Evaluator, expr *ir.IndexExpr, index evaluator.NumericalElement) (ir.Element, error) {
 	return NewArray(expr.Type().(ir.ArrayType)), nil
 }
 

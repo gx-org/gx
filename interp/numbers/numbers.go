@@ -19,14 +19,14 @@ import (
 	"github.com/gx-org/backend/shape"
 	"github.com/gx-org/gx/internal/interp/canonical"
 	"github.com/gx-org/gx/internal/interp/compeval/cpevelements"
-	"github.com/gx-org/gx/interp/elements"
+	"github.com/gx-org/gx/interp/evaluator"
 )
 
 var numberShape = &shape.Shape{}
 
 // Number value in GX.
 type Number interface {
-	elements.NumericalElement
+	evaluator.NumericalElement
 	canonical.Comparable
 	canonical.Evaluable
 	cpevelements.Element
