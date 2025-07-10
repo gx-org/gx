@@ -83,7 +83,7 @@ func (*funcBase) Kind() ir.Kind {
 }
 
 // Call the function.
-func (st *funcBase) Call(ctx ir.Evaluator, call *ir.CallExpr, args []ir.Element) ([]ir.Element, error) {
+func (st *funcBase) Call(ctx elements.Evaluator, call *ir.CallExpr, args []ir.Element) ([]ir.Element, error) {
 	return nil, fmterr.Internalf(ctx.File().FileSet(), st.fn.Source(), "function type %T not supported", st.fn)
 }
 
@@ -97,8 +97,8 @@ type funcDecl struct {
 	fnT *ir.FuncDecl
 }
 
-func (f *funcDecl) Call(fctx ir.Evaluator, call *ir.CallExpr, args []ir.Element) (outs []ir.Element, err error) {
-	ctx := fctx.(*Context)
+func (f *funcDecl) Call(fitp elements.Evaluator, call *ir.CallExpr, args []ir.Element) (outs []ir.Element, err error) {
+	ctx := fitp.(interface{ Context() *Context }).Context()
 	if f.fnT.Body == nil {
 		return nil, fmterr.Errorf(ctx.File().FileSet(), f.fnT.Source(), "missing function body")
 	}
@@ -128,13 +128,13 @@ type funcBuiltin struct {
 	fnT *ir.FuncBuiltin
 }
 
-func (f *funcBuiltin) Call(fctx ir.Evaluator, call *ir.CallExpr, args []ir.Element) (outs []ir.Element, err error) {
+func (f *funcBuiltin) Call(fitp elements.Evaluator, call *ir.CallExpr, args []ir.Element) (outs []ir.Element, err error) {
 	defer func() {
 		if err != nil {
-			err = fmterr.Position(fctx.File().FileSet(), call.Expr(), err)
+			err = fmterr.Position(fitp.File().FileSet(), call.Expr(), err)
 		}
 	}()
-	ctx := fctx.(*Context)
+	ctx := fitp.(interface{ Context() *Context }).Context()
 	var impl FuncBuiltin
 	if f.fnT.Impl != nil {
 		impl = f.fnT.Impl.Implementation().(FuncBuiltin)
@@ -151,8 +151,8 @@ type funcLit struct {
 	fnT *ir.FuncLit
 }
 
-func (f *funcLit) Call(fctx ir.Evaluator, call *ir.CallExpr, args []ir.Element) (outs []ir.Element, err error) {
-	ctx := fctx.(*Context)
+func (f *funcLit) Call(fitp elements.Evaluator, call *ir.CallExpr, args []ir.Element) (outs []ir.Element, err error) {
+	ctx := fitp.(interface{ Context() *Context }).Context()
 	return ctx.core.evaluator.CallFuncLit(ctx, f.fnT, args)
 }
 

@@ -16,16 +16,10 @@ package elements
 
 import (
 	"github.com/gx-org/gx/api/values"
-	"github.com/gx-org/gx/build/ir"
 	"github.com/gx-org/gx/interp/evaluator"
 )
 
 type (
-	// FuncEvaluator is a context able to evaluate a function.
-	FuncEvaluator interface {
-		EvalFunc(f ir.Func, call *ir.CallExpr, args []ir.Element) ([]ir.Element, error)
-	}
-
 	// ElementWithConstant is an element with a concrete value that is already known.
 	ElementWithConstant interface {
 		evaluator.NumericalElement

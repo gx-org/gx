@@ -82,7 +82,7 @@ func (ev *Evaluator) elementFromTuple(src elements.ExprAt, tpl ops.Tuple, shps [
 
 // BinaryOp applies a binary operator to x and y.
 func (n *BackendNode) BinaryOp(ctx ir.Evaluator, expr *ir.BinaryExpr, x, y evaluator.NumericalElement) (evaluator.NumericalElement, error) {
-	ao := opsFromContext(ctx)
+	ao := opsFromContext(ctx.(elements.Evaluator))
 	xNode, xShape, err := NodeFromElement(ctx, x)
 	if err != nil {
 		return nil, err
@@ -115,7 +115,7 @@ func (n *BackendNode) BinaryOp(ctx ir.Evaluator, expr *ir.BinaryExpr, x, y evalu
 
 // UnaryOp applies a unary operator on x.
 func (n *BackendNode) UnaryOp(ctx ir.Evaluator, expr *ir.UnaryExpr) (evaluator.NumericalElement, error) {
-	ao := opsFromContext(ctx)
+	ao := opsFromContext(ctx.(elements.Evaluator))
 	unaryNode, err := ao.Graph().Core().Unary(expr.Src, n.nod.Node)
 	if err != nil {
 		return nil, err
@@ -130,7 +130,7 @@ func (n *BackendNode) UnaryOp(ctx ir.Evaluator, expr *ir.UnaryExpr) (evaluator.N
 
 // Cast an element into a given data type.
 func (n *BackendNode) Cast(ctx ir.Evaluator, expr ir.AssignableExpr, target ir.Type) (evaluator.NumericalElement, error) {
-	ao := opsFromContext(ctx)
+	ao := opsFromContext(ctx.(elements.Evaluator))
 	targetKind := target.Kind().DType()
 	casted, err := ao.Graph().Core().Cast(n.nod.Node, targetKind)
 	if err != nil {
@@ -157,7 +157,7 @@ func (n *BackendNode) Reshape(ctx ir.Evaluator, expr ir.AssignableExpr, axisLeng
 			return nil, err
 		}
 	}
-	ao := opsFromContext(ctx)
+	ao := opsFromContext(ctx.(elements.Evaluator))
 	reshaped, err := ao.Graph().Core().Reshape(n.nod.Node, axes)
 	if err != nil {
 		return nil, err
@@ -174,12 +174,12 @@ func (n *BackendNode) Reshape(ctx ir.Evaluator, expr ir.AssignableExpr, axisLeng
 }
 
 // Slice of the value on the first axis given an index.
-func (n *BackendNode) Slice(ctx ir.Evaluator, expr *ir.IndexExpr, index evaluator.NumericalElement) (ir.Element, error) {
+func (n *BackendNode) Slice(ctx elements.Evaluator, expr *ir.IndexExpr, index evaluator.NumericalElement) (ir.Element, error) {
 	return n.SliceArray(ctx, expr, index)
 }
 
 // SliceArray of the value on the first axis given an index.
-func (n *BackendNode) SliceArray(ctx ir.Evaluator, expr ir.AssignableExpr, index evaluator.NumericalElement) (evaluator.NumericalElement, error) {
+func (n *BackendNode) SliceArray(ctx elements.Evaluator, expr ir.AssignableExpr, index evaluator.NumericalElement) (evaluator.NumericalElement, error) {
 	i, err := elements.ConstantIntFromElement(index)
 	if err != nil {
 		return nil, err

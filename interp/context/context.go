@@ -106,10 +106,10 @@ func (ctx *Context) Evaluator() evaluator.Evaluator {
 	return ctx.core.evaluator
 }
 
-// EvalFunc evaluates a function.
-func (ctx *Context) EvalFunc(f ir.Func, call *ir.CallExpr, args []ir.Element) ([]ir.Element, error) {
-	fnEl := NewRunFunc(f, nil)
-	return fnEl.Call(ctx, call, args)
+// Core returns the context core.
+// TODO(degris): remove ASAP.
+func (ctx *Context) Core() *Core {
+	return ctx.core
 }
 
 // EvalExpr evaluates an expression in this context.

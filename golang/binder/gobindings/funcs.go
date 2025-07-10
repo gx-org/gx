@@ -210,7 +210,7 @@ func (f function) BackendArguments() (string, error) {
 	if len(fields) == 0 {
 		return "nil", nil
 	}
-	var args = []string{
+	args := []string{
 		"[]values.Value{",
 	}
 	for i, field := range fields {

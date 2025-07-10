@@ -29,35 +29,41 @@ import (
 	"github.com/gx-org/gx/interp/evaluator"
 )
 
+type intern struct{}
+
+// EvalExpr evaluates an expression block.
+func (intern) EvalExpr(ctx *context.Context, expr ir.Expr) (ir.Element, error) {
+	fitp := &FileScope{
+		itp:       &Interpreter{core: ctx.Core()},
+		initScope: ctx.File(),
+		ctx:       ctx,
+	}
+	return evalExpr(fitp, expr)
+}
+
+// EvalStmt evaluates a statement block.
+func (intern) EvalStmt(ctx *context.Context, stmt *ir.BlockStmt) ([]ir.Element, bool, error) {
+	fitp := &FileScope{
+		itp:       &Interpreter{core: ctx.Core()},
+		initScope: ctx.File(),
+		ctx:       ctx,
+	}
+	return evalBlockStmt(fitp, stmt)
+}
+
 // FuncBuiltin defines a builtin function provided by a backend.
 type FuncBuiltin = context.FuncBuiltin
 
-type (
-	// intern is an internal interpreter for the context.
-	intern struct {
-		itp *Interpreter
-	}
-
-	// Interpreter runs GX code given an evaluator and package options.
-	Interpreter struct {
-		core *context.Core
-	}
-)
-
-// EvalExpr evaluates an expression for a given context.
-func (itn *intern) EvalExpr(ctx *context.Context, expr ir.Expr) (ir.Element, error) {
-	return evalExpr(ctx, expr)
-}
-
-func (itn *intern) EvalStmt(ctx *context.Context, block *ir.BlockStmt) ([]ir.Element, bool, error) {
-	return evalBlockStmt(ctx, block)
+// Interpreter runs GX code given an evaluator and package options.
+type Interpreter struct {
+	core *context.Core
 }
 
 // New returns a new interpreter.
 func New(eval context.Evaluator, options []options.PackageOption) (*Interpreter, error) {
 	itp := &Interpreter{}
 	var err error
-	itp.core, err = context.New(&intern{itp: itp}, eval, options)
+	itp.core, err = context.New(intern{}, eval, options)
 	if err != nil {
 		return nil, err
 	}
@@ -82,25 +88,22 @@ type FileScope struct {
 	ctx *context.Context
 }
 
-var _ evaluator.Context = (*FileScope)(nil)
+var _ elements.Evaluator = (*FileScope)(nil)
 
 // ForFile returns an interpreter for a file context.
 func (itp *Interpreter) ForFile(file *ir.File) (*FileScope, error) {
-	ctx, err := itp.core.NewFileContext(file)
+	fitp := &FileScope{itp: itp, initScope: file}
+	var err error
+	fitp.ctx, err = itp.core.NewFileContext(file)
 	if err != nil {
 		return nil, err
 	}
-	return itp.ForContext(ctx), nil
-}
-
-// ForContext returns a new file interpreter given a context.
-func (itp *Interpreter) ForContext(ctx *context.Context) *FileScope {
-	return &FileScope{itp: itp, ctx: ctx}
+	return fitp, nil
 }
 
 // EvalExpr evaluates an expression for a given context.
 func (fitp *FileScope) EvalExpr(expr ir.Expr) (ir.Element, error) {
-	return evalExpr(fitp.ctx, expr)
+	return evalExpr(fitp, expr)
 }
 
 // InitScope returns the initial file scope (as opposed to the file of the current context).
@@ -118,6 +121,17 @@ func (fitp *FileScope) Sub(vals map[string]ir.Element) *FileScope {
 	sub := *fitp
 	sub.ctx = fitp.ctx.Sub(vals)
 	return &sub
+}
+
+// NewFunc creates function elements from function IRs.
+func (fitp *FileScope) NewFunc(fn ir.Func, recv *elements.Receiver) elements.Func {
+	return fitp.ctx.NewFunc(fn, recv)
+}
+
+// EvalFunc evaluates a function.
+func (fitp *FileScope) EvalFunc(f ir.Func, call *ir.CallExpr, args []ir.Element) ([]ir.Element, error) {
+	fnEl := context.NewRunFunc(f, nil)
+	return fnEl.Call(fitp, call, args)
 }
 
 // Context used by the interpreter.
