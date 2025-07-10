@@ -25,23 +25,23 @@ import (
 
 // Frame in the context.
 type Frame struct {
-	file    *ir.File
-	current *blockFrame
+	file  *ir.File
+	scope *scope.RWScope[ir.Element]
 }
 
 // Define a new variable in the frame.
 func (fr *Frame) Define(name string, value ir.Element) {
-	fr.current.Define(name, value)
+	fr.scope.Define(name, value)
 }
 
 // Assign a value to an existing name in the frame owning the value.
 func (fr *Frame) Assign(name string, value ir.Element) error {
-	return fr.current.Assign(name, value)
+	return fr.scope.Assign(name, value)
 }
 
 // Find the element in the stack of frame given its identifier.
 func (fr *Frame) Find(id *ast.Ident) (ir.Element, error) {
-	value, exists := fr.current.Find(id.Name)
+	value, exists := fr.scope.Find(id.Name)
 	if !exists {
 		return nil, fmterr.Errorf(fr.file.FileSet(), id, "undefined: %s", id.Name)
 	}
@@ -107,11 +107,7 @@ func (core *Core) packageFrame(pkg *ir.Package) (*packageFrame, error) {
 	if err := pkgFrame.evalPackageConsts(core); err != nil {
 		return nil, err
 	}
-	options := core.packageOptions[pkg.FullName()]
-	if err := pkgFrame.evalPackageOptions(core, options); err != nil {
-		return nil, err
-	}
-	return pkgFrame, nil
+	return pkgFrame, core.interp.EvalOptions(pkg, pkgFrame.scope)
 }
 
 func (fr *packageFrame) evalPackageConstExpr(core *Core, expr *ir.ConstExpr) error {
@@ -135,15 +131,6 @@ func (fr *packageFrame) evalPackageConsts(core *Core) error {
 	}
 	for _, expr := range exprs {
 		if err := fr.evalPackageConstExpr(core, expr); err != nil {
-			return err
-		}
-	}
-	return nil
-}
-
-func (fr *packageFrame) evalPackageOptions(core *Core, options []packageOption) error {
-	for _, option := range options {
-		if err := option(core, fr); err != nil {
 			return err
 		}
 	}
