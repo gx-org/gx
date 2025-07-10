@@ -17,6 +17,7 @@ package context
 
 import (
 	"fmt"
+	"go/ast"
 	"strings"
 
 	gxfmt "github.com/gx-org/gx/base/fmt"
@@ -36,6 +37,9 @@ type (
 
 		// InitPkgScope initialises the namespace of a package.
 		InitPkgScope(pkg *ir.Package, scope *scope.RWScope[ir.Element]) (ir.Element, error)
+
+		// InitBuiltins initialises a namespace with GX builtins implementation.
+		InitBuiltins(ctx *Context, scope *scope.RWScope[ir.Element]) error
 	}
 
 	// Evaluator provides core primitives for the interpreter.
@@ -63,15 +67,22 @@ var _ evaluator.Context = (*Context)(nil)
 
 // New returns a new interpreter context.
 func New(interp Interpreter, eval Evaluator) (*Core, error) {
-	ctx := &Core{
+	core := &Core{
 		interp:         interp,
 		packageToFrame: make(map[*ir.Package]*packageFrame),
 		evaluator:      eval,
 	}
-	if err := ctx.buildBuiltinFrame(); err != nil {
+	core.builtin = &baseFrame{scope: scope.NewScope[ir.Element](nil)}
+	ctx, err := core.NewFileContext(&ir.File{
+		Package: &ir.Package{
+			Name:  &ast.Ident{Name: "<interp>"},
+			Decls: &ir.Declarations{},
+		},
+	})
+	if err != nil {
 		return nil, err
 	}
-	return ctx, nil
+	return core, interp.InitBuiltins(ctx, core.builtin.scope)
 }
 
 // NewFunc creates a new function given its definition and a receiver.

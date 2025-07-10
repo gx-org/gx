@@ -53,9 +53,6 @@ func (itn *intern) EvalStmt(ctx *context.Context, stmt *ir.BlockStmt) ([]ir.Elem
 	return evalBlockStmt(fitp, stmt)
 }
 
-// FuncBuiltin defines a builtin function provided by a backend.
-type FuncBuiltin = context.FuncBuiltin
-
 // Interpreter runs GX code given an evaluator and package options.
 type Interpreter struct {
 	eval context.Evaluator

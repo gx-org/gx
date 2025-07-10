@@ -12,7 +12,7 @@
 // See the License for the specific language governing permissions and
 // limitations under the License.
 
-package context
+package interp
 
 import (
 	"go/ast"
@@ -23,43 +23,19 @@ import (
 	"github.com/gx-org/gx/build/fmterr"
 	"github.com/gx-org/gx/build/ir"
 	"github.com/gx-org/gx/internal/base/scope"
+	"github.com/gx-org/gx/interp/context"
 	"github.com/gx-org/gx/interp/elements"
 	"github.com/gx-org/gx/interp/evaluator"
 )
 
-var builtinFile = &ir.File{
-	Package: &ir.Package{
-		Name:  &ast.Ident{Name: "<interp>"},
-		Decls: &ir.Declarations{},
-	},
-}
-
 // FuncBuiltin defines a builtin function provided by a backend.
-type FuncBuiltin func(ctx evaluator.Context, call elements.CallAt, fn elements.Func, irFunc *ir.FuncBuiltin, args []ir.Element) ([]ir.Element, error)
+type FuncBuiltin = context.FuncBuiltin
 
-func (ctx *Context) defineBoolConstant(val ir.StorageWithValue) error {
-	gxValue, err := values.AtomBoolValue(ir.BoolType(), val.Value(nil).(*ir.AtomicValueT[bool]).Val)
-	if err != nil {
+func (itn *intern) InitBuiltins(ctx *context.Context, scope *scope.RWScope[ir.Element]) error {
+	if err := itn.itp.defineBoolConstant(scope, ctx, ir.FalseStorage()); err != nil {
 		return err
 	}
-	el, err := ctx.core.evaluator.ElementFromAtom(ctx, val.Value(nil), gxValue)
-	if err != nil {
-		return err
-	}
-	ctx.core.builtin.scope.Define(val.NameDef().Name, el)
-	return nil
-}
-
-func (core *Core) buildBuiltinFrame() error {
-	core.builtin = &baseFrame{scope: scope.NewScope[ir.Element](nil)}
-	ctx, err := core.NewFileContext(builtinFile)
-	if err != nil {
-		return err
-	}
-	if err := ctx.defineBoolConstant(ir.FalseStorage()); err != nil {
-		return err
-	}
-	if err := ctx.defineBoolConstant(ir.TrueStorage()); err != nil {
+	if err := itn.itp.defineBoolConstant(scope, ctx, ir.TrueStorage()); err != nil {
 		return err
 	}
 	for name, impl := range map[string]ir.FuncImpl{
@@ -77,9 +53,22 @@ func (core *Core) buildBuiltinFrame() error {
 		if err != nil {
 			return err
 		}
-		elFunc := core.evaluator.NewFunc(core, irFunc, nil)
-		core.builtin.scope.Define(name, elFunc)
+		elFunc := itn.itp.eval.NewFunc(ctx.Core(), irFunc, nil)
+		scope.Define(name, elFunc)
 	}
+	return nil
+}
+
+func (itp *Interpreter) defineBoolConstant(scope *scope.RWScope[ir.Element], ctx *context.Context, val ir.StorageWithValue) error {
+	gxValue, err := values.AtomBoolValue(ir.BoolType(), val.Value(nil).(*ir.AtomicValueT[bool]).Val)
+	if err != nil {
+		return err
+	}
+	el, err := itp.eval.ElementFromAtom(ctx, val.Value(nil), gxValue)
+	if err != nil {
+		return err
+	}
+	scope.Define(val.NameDef().Name, el)
 	return nil
 }
 
@@ -162,6 +151,5 @@ func (traceFunc) Implementation() any {
 }
 
 func traceImpl(ctx evaluator.Context, call elements.CallAt, fn elements.Func, irFunc *ir.FuncBuiltin, args []ir.Element) ([]ir.Element, error) {
-	ctxT := ctx.(*Context)
-	return nil, ctxT.core.evaluator.Trace(ctx, call.Node(), args)
+	return nil, ctx.Evaluator().Trace(ctx, call.Node(), args)
 }
