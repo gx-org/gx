@@ -24,7 +24,7 @@ import (
 	"github.com/gx-org/gx/build/ir"
 	"github.com/gx-org/gx/internal/base/scope"
 	"github.com/gx-org/gx/internal/interp/compeval/cpevelements"
-	"github.com/gx-org/gx/interp/context"
+	"github.com/gx-org/gx/interp"
 )
 
 type pkgScope struct {
@@ -47,12 +47,12 @@ func (s *pkgScope) String() string {
 type compileEvaluator struct {
 	scope resolveScope
 	irb   *irBuilder
-	ev    *context.Context
+	ev    *interp.FileScope
 }
 
 var _ ir.Fetcher = (*compileEvaluator)(nil)
 
-func newEvaluator(scope resolveScope, ctx *context.Context) *compileEvaluator {
+func newEvaluator(scope resolveScope, ctx *interp.FileScope) *compileEvaluator {
 	return &compileEvaluator{
 		scope: scope,
 		ev:    ctx,
@@ -61,23 +61,17 @@ func newEvaluator(scope resolveScope, ctx *context.Context) *compileEvaluator {
 
 func (ev *compileEvaluator) update(rscope resolveScope, store ir.Storage, el ir.Element) (*compileEvaluator, bool) {
 	name := store.NameDef().Name
-	subEval, err := ev.ev.Sub(map[string]ir.Element{name: el})
-	if err != nil {
-		return ev, rscope.err().AppendInternalf(store.Source(), "cannot create compilation evaluation context: %v", err)
-	}
+	subEval := ev.ev.Sub(map[string]ir.Element{name: el})
 	return newEvaluator(rscope, subEval), true
 }
 
 func (ev *compileEvaluator) sub(src ast.Node, vals map[string]ir.Element) (*compileEvaluator, bool) {
-	ctx, err := ev.ev.Sub(vals)
-	if err != nil {
-		return nil, ev.scope.err().AppendInternalf(src, "cannot create subcontext: %v", err)
-	}
+	ctx := ev.ev.Sub(vals)
 	return newEvaluator(ev.scope, ctx), true
 }
 
 func (ev *compileEvaluator) File() *ir.File {
-	return ev.ev.File()
+	return ev.ev.InitScope()
 }
 
 func (ev *compileEvaluator) BuildExpr(src ast.Expr) (ir.Expr, bool) {
@@ -107,7 +101,7 @@ func defineGlobal(s *scope.RWScope[processNode], tok token.Token, name *ast.Iden
 }
 
 func elementFromStorage(scope resolveScope, ev *compileEvaluator, node ir.Storage) (ir.Element, bool) {
-	el, err := cpevelements.NewRuntimeValue(ev.ev, node)
+	el, err := cpevelements.NewRuntimeValue(ev.ev.File(), ev.ev.Context().NewFunc, node)
 	if err != nil {
 		return el, scope.err().Append(err)
 	}

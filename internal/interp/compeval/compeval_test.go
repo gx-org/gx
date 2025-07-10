@@ -29,7 +29,6 @@ import (
 	"github.com/gx-org/gx/build/ir/irhelper"
 	"github.com/gx-org/gx/internal/interp/compeval"
 	"github.com/gx-org/gx/internal/interp/compeval/cpevelements"
-	"github.com/gx-org/gx/interp/context"
 	"github.com/gx-org/gx/interp/elements"
 	"github.com/gx-org/gx/interp"
 )
@@ -127,19 +126,19 @@ func value(x int32) wantValue {
 	return wantValue{eval: true, value: x}
 }
 
-func newContext(opts []options.PackageOption) (*context.Context, error) {
-	ectx, err := interp.New(compeval.NewHostEvaluator(nil), opts)
+func newInterpreter(opts []options.PackageOption) (*interp.FileScope, error) {
+	itp, err := interp.New(compeval.NewHostEvaluator(nil), opts)
 	if err != nil {
 		return nil, err
 	}
-	return ectx.NewFileContext(file)
+	return itp.ForFile(file)
 }
 
 func TestExprEval(t *testing.T) {
 	var opts []options.PackageOption
 	opts = staticVariable(opts, "a")
 	opts = staticVariable(opts, "b")
-	ctx, err := newContext(opts)
+	fitp, err := newInterpreter(opts)
 	if err != nil {
 		t.Fatal(err)
 	}
@@ -269,7 +268,7 @@ func TestExprEval(t *testing.T) {
 	}
 	for i, test := range tests {
 		t.Run(fmt.Sprintf("Test%d", i), func(t *testing.T) {
-			element, err := compeval.EvalExpr(ctx, test.expr)
+			element, err := compeval.EvalExpr(fitp, test.expr)
 			if err != nil {
 				t.Fatalf("\n%+v", err)
 			}
@@ -420,16 +419,16 @@ func TestExprEvalAndCompare(t *testing.T) {
 			isNot: valueRef("a"),
 		},
 	}
-	ctx, err := newContext(opts)
+	itp, err := newInterpreter(opts)
 	if err != nil {
 		t.Fatal(err)
 	}
 	for i, test := range tests {
-		xEl, err := compeval.EvalExpr(ctx, test.x)
+		xEl, err := compeval.EvalExpr(itp, test.x)
 		if err != nil {
 			t.Fatalf("\n%+v", err)
 		}
-		isEl, err := compeval.EvalExpr(ctx, test.is)
+		isEl, err := compeval.EvalExpr(itp, test.is)
 		if err != nil {
 			t.Fatalf("\n%+v", err)
 		}
@@ -437,7 +436,7 @@ func TestExprEvalAndCompare(t *testing.T) {
 			t.Errorf("test %d:%s: %s == %s is false", i, test.desc, xEl, isEl)
 			continue
 		}
-		isNotEl, err := compeval.EvalExpr(ctx, test.isNot)
+		isNotEl, err := compeval.EvalExpr(itp, test.isNot)
 		if err != nil {
 			t.Fatalf("\n%+v", err)
 		}
@@ -451,12 +450,12 @@ func TestExprEvalAndCompare(t *testing.T) {
 func TestSubContext(t *testing.T) {
 	var opts []options.PackageOption
 	opts = staticVariable(opts, "a")
-	ctx, err := newContext(opts)
+	itp, err := newInterpreter(opts)
 	if err != nil {
 		t.Fatal(err)
 	}
 	expr := binaryExpr(token.SUB, valueRef("a"), valueRef("b"))
-	_, err = compeval.EvalExpr(ctx, expr)
+	_, err = compeval.EvalExpr(itp, expr)
 	if err == nil {
 		t.Errorf("expected an error but got nil")
 	}
@@ -471,12 +470,9 @@ func TestSubContext(t *testing.T) {
 	if err != nil {
 		t.Fatal(err)
 	}
-	sub, err := ctx.Sub(map[string]ir.Element{
+	sub := itp.Sub(map[string]ir.Element{
 		"b": bValue,
 	})
-	if err != nil {
-		t.Fatal(err)
-	}
 	val, err := compeval.EvalExpr(sub, expr)
 	if err != nil {
 		t.Error(err)
