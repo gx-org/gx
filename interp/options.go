@@ -12,19 +12,31 @@
 // See the License for the specific language governing permissions and
 // limitations under the License.
 
-package context
+package interp
 
 import (
 	"github.com/pkg/errors"
 	"github.com/gx-org/gx/api/options"
 	"github.com/gx-org/gx/api/values"
 	"github.com/gx-org/gx/build/ir"
+	"github.com/gx-org/gx/internal/base/scope"
 	"github.com/gx-org/gx/interp/elements"
 )
 
-type packageOption func(core *Core, fr *packageFrame) error
+type packageOption func(itp *Interpreter, pkg *ir.Package, scope *scope.RWScope[ir.Element]) error
 
-func (core *Core) processOptions(opts []options.PackageOption) error {
+func (itn *intern) EvalOptions(pkg *ir.Package, scope *scope.RWScope[ir.Element]) error {
+	options := itn.itp.packageOptions[pkg.FullName()]
+	for _, option := range options {
+		if err := option(itn.itp, pkg, scope); err != nil {
+			return err
+		}
+	}
+	return nil
+}
+
+func processOptions(opts []options.PackageOption) (map[string][]packageOption, error) {
+	packageOptions := make(map[string][]packageOption)
 	for _, option := range opts {
 		var optFunc packageOption
 		var err error
@@ -37,14 +49,14 @@ func (core *Core) processOptions(opts []options.PackageOption) error {
 			err = errors.Errorf("option of type %T not supported", optionT)
 		}
 		if err != nil {
-			return err
+			return nil, err
 		}
 		pkg := option.Package()
-		options := core.packageOptions[pkg]
+		options := packageOptions[pkg]
 		options = append(options, optFunc)
-		core.packageOptions[pkg] = options
+		packageOptions[pkg] = options
 	}
-	return nil
+	return packageOptions, nil
 }
 
 func findVarExpr(pkg *ir.Package, name string) (*ir.VarExpr, error) {
@@ -59,39 +71,39 @@ func findVarExpr(pkg *ir.Package, name string) (*ir.VarExpr, error) {
 }
 
 func processPackageVarSetGXValue(opt options.PackageVarSetValue) (packageOption, error) {
-	return func(core *Core, fr *packageFrame) error {
-		vrExpr, err := findVarExpr(fr.pkg, opt.Var)
+	return func(itp *Interpreter, pkg *ir.Package, scope *scope.RWScope[ir.Element]) error {
+		vrExpr, err := findVarExpr(pkg, opt.Var)
 		if err != nil {
 			return err
 		}
 		ident := opt.Var
 		array, ok := opt.Value.(values.Array)
 		if !ok {
-			return errors.Errorf("package variables of type %T (used in %s.%s) not supported", opt.Value, fr.pkg.Name, opt.Var)
+			return errors.Errorf("package variables of type %T (used in %s.%s) not supported", opt.Value, pkg.Name, opt.Var)
 		}
-		ctx, err := core.NewFileContext(vrExpr.Decl.FFile)
+		ctx, err := itp.core.NewFileContext(vrExpr.Decl.FFile)
 		if err != nil {
 			return err
 		}
-		node, err := core.evaluator.ElementFromAtom(ctx, &ir.ValueRef{
+		node, err := itp.eval.ElementFromAtom(ctx, &ir.ValueRef{
 			Src:  vrExpr.VName,
 			Stor: vrExpr,
 		}, array)
 		if err != nil {
 			return err
 		}
-		fr.Define(ident, node)
+		scope.Define(ident, node)
 		return nil
 	}, nil
 }
 
 func processPackageVarSetElement(opt elements.PackageVarSetElement) (packageOption, error) {
-	return func(core *Core, fr *packageFrame) error {
-		varExpr, err := findVarExpr(fr.pkg, opt.Var)
+	return func(itp *Interpreter, pkg *ir.Package, scope *scope.RWScope[ir.Element]) error {
+		varExpr, err := findVarExpr(pkg, opt.Var)
 		if err != nil {
 			return err
 		}
-		fr.Define(varExpr.VName.Name, opt.Value)
+		scope.Define(varExpr.VName.Name, opt.Value)
 		return nil
 	}, nil
 }

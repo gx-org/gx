@@ -18,9 +18,9 @@ import (
 	"fmt"
 	"strings"
 
-	"github.com/gx-org/gx/api/options"
 	gxfmt "github.com/gx-org/gx/base/fmt"
 	"github.com/gx-org/gx/build/ir"
+	"github.com/gx-org/gx/internal/base/scope"
 	"github.com/gx-org/gx/interp/elements"
 	"github.com/gx-org/gx/interp/evaluator"
 )
@@ -32,6 +32,7 @@ type (
 		EvalExpr(*Context, ir.Expr) (ir.Element, error)
 		// EvalStmt runs a block of statements through the evaluator.
 		EvalStmt(*Context, *ir.BlockStmt) ([]ir.Element, bool, error)
+		EvalOptions(pkg *ir.Package, scope *scope.RWScope[ir.Element]) error
 	}
 
 	// Evaluator provides core primitives for the interpreter.
@@ -49,8 +50,6 @@ type (
 	Core struct {
 		interp Interpreter
 
-		options        []options.PackageOption
-		packageOptions map[string][]packageOption
 		evaluator      Evaluator
 		builtin        *baseFrame
 		packageToFrame map[*ir.Package]*packageFrame
@@ -60,18 +59,13 @@ type (
 var _ evaluator.Context = (*Context)(nil)
 
 // New returns a new interpreter context.
-func New(interp Interpreter, eval Evaluator, options []options.PackageOption) (*Core, error) {
+func New(interp Interpreter, eval Evaluator) (*Core, error) {
 	ctx := &Core{
 		interp:         interp,
-		options:        options,
 		packageToFrame: make(map[*ir.Package]*packageFrame),
-		packageOptions: make(map[string][]packageOption),
 		evaluator:      eval,
 	}
 	if err := ctx.buildBuiltinFrame(); err != nil {
-		return nil, err
-	}
-	if err := ctx.processOptions(options); err != nil {
 		return nil, err
 	}
 	return ctx, nil
@@ -129,7 +123,7 @@ func (ctx *Context) PopFrame() {
 
 // CurrentFrame returns the current frame.
 func (ctx *Context) CurrentFrame() *Frame {
-	return &Frame{file: ctx.File(), current: ctx.currentFrame()}
+	return &Frame{file: ctx.File(), scope: ctx.currentFrame().scope}
 }
 
 func (ctx *Context) currentFrame() *blockFrame {

@@ -29,12 +29,14 @@ import (
 	"github.com/gx-org/gx/interp/evaluator"
 )
 
-type intern struct{}
+type intern struct {
+	itp *Interpreter
+}
 
 // EvalExpr evaluates an expression block.
-func (intern) EvalExpr(ctx *context.Context, expr ir.Expr) (ir.Element, error) {
+func (itn *intern) EvalExpr(ctx *context.Context, expr ir.Expr) (ir.Element, error) {
 	fitp := &FileScope{
-		itp:       &Interpreter{core: ctx.Core()},
+		itp:       itn.itp,
 		initScope: ctx.File(),
 		ctx:       ctx,
 	}
@@ -42,9 +44,9 @@ func (intern) EvalExpr(ctx *context.Context, expr ir.Expr) (ir.Element, error) {
 }
 
 // EvalStmt evaluates a statement block.
-func (intern) EvalStmt(ctx *context.Context, stmt *ir.BlockStmt) ([]ir.Element, bool, error) {
+func (itn *intern) EvalStmt(ctx *context.Context, stmt *ir.BlockStmt) ([]ir.Element, bool, error) {
 	fitp := &FileScope{
-		itp:       &Interpreter{core: ctx.Core()},
+		itp:       itn.itp,
 		initScope: ctx.File(),
 		ctx:       ctx,
 	}
@@ -56,15 +58,26 @@ type FuncBuiltin = context.FuncBuiltin
 
 // Interpreter runs GX code given an evaluator and package options.
 type Interpreter struct {
+	eval context.Evaluator
 	core *context.Core
+
+	options        []options.PackageOption
+	packageOptions map[string][]packageOption
 }
 
 // New returns a new interpreter.
 func New(eval context.Evaluator, options []options.PackageOption) (*Interpreter, error) {
-	itp := &Interpreter{}
+	itp := &Interpreter{
+		eval:           eval,
+		options:        options,
+		packageOptions: make(map[string][]packageOption),
+	}
 	var err error
-	itp.core, err = context.New(intern{}, eval, options)
+	itp.core, err = context.New(&intern{itp: itp}, eval)
 	if err != nil {
+		return nil, err
+	}
+	if itp.packageOptions, err = processOptions(options); err != nil {
 		return nil, err
 	}
 	return itp, nil
