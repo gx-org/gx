@@ -24,13 +24,12 @@ import (
 	"github.com/gx-org/gx/api/values"
 	"github.com/gx-org/gx/build/fmterr"
 	"github.com/gx-org/gx/build/ir"
-	"github.com/gx-org/gx/interp/context"
 	"github.com/gx-org/gx/interp/elements"
 	"github.com/gx-org/gx/interp/evaluator"
 	"github.com/gx-org/gx/interp/numbers"
 )
 
-func evalBlockStmt(ctx *context.Context, body *ir.BlockStmt) ([]ir.Element, bool, error) {
+func evalBlockStmt(ctx *FileScope, body *ir.BlockStmt) ([]ir.Element, bool, error) {
 	var outs []ir.Element
 	var stop bool
 	for _, node := range body.List {
@@ -46,37 +45,37 @@ func evalBlockStmt(ctx *context.Context, body *ir.BlockStmt) ([]ir.Element, bool
 	return outs, stop, nil
 }
 
-func evalStmt(ctx *context.Context, node ir.Stmt) ([]ir.Element, bool, error) {
+func evalStmt(fitp *FileScope, node ir.Stmt) ([]ir.Element, bool, error) {
 	switch nodeT := node.(type) {
 	case *ir.AssignCallStmt:
-		return nil, false, evalAssignCallStmt(ctx, nodeT)
+		return nil, false, evalAssignCallStmt(fitp, nodeT)
 	case *ir.AssignExprStmt:
-		return nil, false, evalAssignExprStmt(ctx, nodeT)
+		return nil, false, evalAssignExprStmt(fitp, nodeT)
 	case *ir.RangeStmt:
-		return evalRangeStmt(ctx, nodeT)
+		return evalRangeStmt(fitp, nodeT)
 	case *ir.IfStmt:
-		return evalIfStmt(ctx, nodeT)
+		return evalIfStmt(fitp, nodeT)
 	case *ir.ReturnStmt:
-		return evalReturnStmt(ctx, nodeT)
+		return evalReturnStmt(fitp, nodeT)
 	case *ir.BlockStmt:
-		return evalBlockStmt(ctx, nodeT)
+		return evalBlockStmt(fitp, nodeT)
 	case *ir.ExprStmt:
-		_, err := evalExpr(ctx, nodeT.X)
+		_, err := evalExpr(fitp, nodeT.X)
 		return nil, false, err
 	default:
-		return nil, false, fmterr.Errorf(ctx.File().FileSet(), node.Source(), "cannot evaluate GX node: %T not supported", node)
+		return nil, false, fmterr.Errorf(fitp.File().FileSet(), node.Source(), "cannot evaluate GX node: %T not supported", node)
 	}
 }
 
-func evalRangeForLoopOverInteger[T dtype.AlgebraType](ctx *context.Context, stmt *ir.RangeStmt, toValue valuer) ([]ir.Element, bool, error) {
+func evalRangeForLoopOverInteger[T dtype.AlgebraType](fitp *FileScope, stmt *ir.RangeStmt, toValue valuer) ([]ir.Element, bool, error) {
 	toValueT := toValue.(valuerT[T])
 	indexType := ir.TypeFromKind(toValueT.kind)
-	val, err := evalAtom[T](ctx, stmt.X)
+	val, err := evalAtom[T](fitp, stmt.X)
 	if err != nil {
 		return nil, true, err
 	}
-	ctx.PushBlockFrame()
-	defer ctx.PopFrame()
+	fitp.ctx.PushBlockFrame()
+	defer fitp.ctx.PopFrame()
 	for i := T(0); i < val; i++ {
 		iExpr := &ir.AtomicValueT[T]{
 			Src: stmt.Key.Source().(ast.Expr),
@@ -87,14 +86,14 @@ func evalRangeForLoopOverInteger[T dtype.AlgebraType](ctx *context.Context, stmt
 		if err != nil {
 			return nil, true, err
 		}
-		iElement, err := ctx.Evaluator().ElementFromAtom(ctx, iExpr, iValue)
+		iElement, err := fitp.Evaluator().ElementFromAtom(fitp, iExpr, iValue)
 		if err != nil {
 			return nil, true, err
 		}
-		if err := set(ctx, stmt.Src.Tok, stmt.Key, iElement); err != nil {
+		if err := set(fitp, stmt.Src.Tok, stmt.Key, iElement); err != nil {
 			return nil, false, err
 		}
-		element, stop, err := evalBlockStmt(ctx, stmt.Body)
+		element, stop, err := evalBlockStmt(fitp, stmt.Body)
 		if stop || err != nil {
 			return element, stop, err
 		}
@@ -102,29 +101,29 @@ func evalRangeForLoopOverInteger[T dtype.AlgebraType](ctx *context.Context, stmt
 	return nil, false, nil
 }
 
-func evalRangeStmtInteger(ctx *context.Context, stmt *ir.RangeStmt, xKind ir.Kind) ([]ir.Element, bool, error) {
-	toValue, err := newValuer(ctx, stmt.X, xKind)
+func evalRangeStmtInteger(fitp *FileScope, stmt *ir.RangeStmt, xKind ir.Kind) ([]ir.Element, bool, error) {
+	toValue, err := newValuer(fitp, stmt.X, xKind)
 	if err != nil {
 		return nil, false, err
 	}
 	switch xKind {
 	case ir.IntLenKind:
-		return evalRangeForLoopOverInteger[ir.Int](ctx, stmt, toValue)
+		return evalRangeForLoopOverInteger[ir.Int](fitp, stmt, toValue)
 	default:
-		return nil, true, fmterr.Errorf(ctx.File().FileSet(), stmt.Source(), "cannot range over %s", xKind.String())
+		return nil, true, fmterr.Errorf(fitp.File().FileSet(), stmt.Source(), "cannot range over %s", xKind.String())
 	}
 }
 
-func evalRangeStmtForLoopOverArray[T dtype.AlgebraType](ctx *context.Context, stmt *ir.RangeStmt, toValue valuer) ([]ir.Element, bool, error) {
+func evalRangeStmtForLoopOverArray[T dtype.AlgebraType](fitp *FileScope, stmt *ir.RangeStmt, toValue valuer) ([]ir.Element, bool, error) {
 	toValueT := toValue.(valuerT[T])
 	indexType := ir.TypeFromKind(toValueT.kind)
-	x, err := evalExpr(ctx, stmt.X)
+	x, err := evalExpr(fitp, stmt.X)
 	if err != nil {
 		return nil, false, err
 	}
 	value, ok := x.(elements.ArraySlicer)
 	if !ok {
-		return nil, false, fmterr.Errorf(ctx.File().FileSet(), stmt.Source(), "cannot range over %T", x)
+		return nil, false, fmterr.Errorf(fitp.File().FileSet(), stmt.Source(), "cannot range over %T", x)
 	}
 	arrayShape := value.Shape()
 	for i := 0; i < arrayShape.AxisLengths[0]; i++ {
@@ -137,11 +136,11 @@ func evalRangeStmtForLoopOverArray[T dtype.AlgebraType](ctx *context.Context, st
 		if err != nil {
 			return nil, false, err
 		}
-		iElement, err := ctx.Evaluator().ElementFromAtom(ctx, iExpr, iValue)
+		iElement, err := fitp.Evaluator().ElementFromAtom(fitp, iExpr, iValue)
 		if err != nil {
 			return nil, false, err
 		}
-		if err := set(ctx, stmt.Src.Tok, stmt.Key, iElement); err != nil {
+		if err := set(fitp, stmt.Src.Tok, stmt.Key, iElement); err != nil {
 			return nil, false, err
 		}
 		if stmt.Value != nil {
@@ -149,23 +148,23 @@ func evalRangeStmtForLoopOverArray[T dtype.AlgebraType](ctx *context.Context, st
 				Src: stmt.Src.X,
 				Typ: value.Type(), // TODO(396633820): compute the correct type (the dtype will be correct but not the shape)
 			}
-			elementI, err := value.SliceArray(ctx, valueExpr, iElement)
+			elementI, err := value.SliceArray(fitp, valueExpr, iElement)
 			if err != nil {
 				return nil, false, err
 			}
-			dims, err := dimsAsElements(ctx, valueExpr, arrayShape.AxisLengths[1:])
+			dims, err := dimsAsElements(fitp, valueExpr, arrayShape.AxisLengths[1:])
 			if err != nil {
 				return nil, false, err
 			}
-			reshapedElement, err := elementI.Reshape(ctx, valueExpr, dims)
+			reshapedElement, err := elementI.Reshape(fitp, valueExpr, dims)
 			if err != nil {
 				return nil, false, err
 			}
-			if err := set(ctx, stmt.Src.Tok, stmt.Value, reshapedElement); err != nil {
+			if err := set(fitp, stmt.Src.Tok, stmt.Value, reshapedElement); err != nil {
 				return nil, false, err
 			}
 		}
-		outs, stop, err := evalBlockStmt(ctx, stmt.Body)
+		outs, stop, err := evalBlockStmt(fitp, stmt.Body)
 		if stop || err != nil {
 			return outs, stop, err
 		}
@@ -173,71 +172,71 @@ func evalRangeStmtForLoopOverArray[T dtype.AlgebraType](ctx *context.Context, st
 	return nil, false, nil
 }
 
-func evalRangeStmtArray(ctx *context.Context, stmt *ir.RangeStmt) ([]ir.Element, bool, error) {
+func evalRangeStmtArray(fitp *FileScope, stmt *ir.RangeStmt) ([]ir.Element, bool, error) {
 	keyKind := stmt.Key.Type().Kind()
-	toValue, err := newValuer(ctx, stmt.X, keyKind)
+	toValue, err := newValuer(fitp, stmt.X, keyKind)
 	if err != nil {
 		return nil, false, err
 	}
 	switch keyKind {
 	case ir.Int64Kind:
-		return evalRangeStmtForLoopOverArray[ir.Int](ctx, stmt, toValue)
+		return evalRangeStmtForLoopOverArray[ir.Int](fitp, stmt, toValue)
 	default:
-		return nil, true, fmterr.Errorf(ctx.File().FileSet(), stmt.Source(), "cannot range over %s", keyKind.String())
+		return nil, true, fmterr.Errorf(fitp.File().FileSet(), stmt.Source(), "cannot range over %s", keyKind.String())
 	}
 }
 
-func evalRangeStmt(ctx *context.Context, stmt *ir.RangeStmt) ([]ir.Element, bool, error) {
+func evalRangeStmt(fitp *FileScope, stmt *ir.RangeStmt) ([]ir.Element, bool, error) {
 	kind := stmt.X.Type().Kind()
 	if ir.IsRangeOk(kind) {
-		return evalRangeStmtInteger(ctx, stmt, kind)
+		return evalRangeStmtInteger(fitp, stmt, kind)
 	}
 	if kind == ir.ArrayKind {
-		return evalRangeStmtArray(ctx, stmt)
+		return evalRangeStmtArray(fitp, stmt)
 	}
 	return nil, true, errors.Errorf("cannot range over %s", kind.String())
 }
 
-func evalIfStmt(ctx *context.Context, stmt *ir.IfStmt) ([]ir.Element, bool, error) {
-	ctx.PushBlockFrame()
-	defer ctx.PopFrame()
+func evalIfStmt(fitp *FileScope, stmt *ir.IfStmt) ([]ir.Element, bool, error) {
+	fitp.ctx.PushBlockFrame()
+	defer fitp.ctx.PopFrame()
 
 	if stmt.Init != nil {
-		if _, _, err := evalStmt(ctx, stmt.Init); err != nil {
+		if _, _, err := evalStmt(fitp, stmt.Init); err != nil {
 			return nil, true, err
 		}
 	}
-	condValue, err := evalAtom[bool](ctx, stmt.Cond)
+	condValue, err := evalAtom[bool](fitp, stmt.Cond)
 	if err != nil {
 		return nil, true, err
 	}
 	if condValue {
-		return evalBlockStmt(ctx, stmt.Body)
+		return evalBlockStmt(fitp, stmt.Body)
 	}
 	if stmt.Else == nil {
 		return nil, false, nil
 	}
-	return evalStmt(ctx, stmt.Else)
+	return evalStmt(fitp, stmt.Else)
 }
 
-func evalAssignExprStmt(ctx *context.Context, stmt *ir.AssignExprStmt) error {
+func evalAssignExprStmt(fitp *FileScope, stmt *ir.AssignExprStmt) error {
 	for _, asg := range stmt.List {
-		cNode, err := evalExpr(ctx, asg.X)
+		cNode, err := evalExpr(fitp, asg.X)
 		if err != nil {
 			return err
 		}
 		if cNode == nil {
 			continue
 		}
-		if err := set(ctx, stmt.Src.Tok, asg.Storage, cNode); err != nil {
+		if err := set(fitp, stmt.Src.Tok, asg.Storage, cNode); err != nil {
 			return err
 		}
 	}
 	return nil
 }
 
-func evalAssignCallStmt(ctx *context.Context, stmt *ir.AssignCallStmt) error {
-	nodes, err := evalCall(ctx, stmt.Call)
+func evalAssignCallStmt(fitp *FileScope, stmt *ir.AssignCallStmt) error {
+	nodes, err := evalCall(fitp, stmt.Call)
 	if err != nil {
 		return err
 	}
@@ -246,7 +245,7 @@ func evalAssignCallStmt(ctx *context.Context, stmt *ir.AssignCallStmt) error {
 		if node == nil {
 			continue
 		}
-		if err := set(ctx, stmt.Src.Tok, dest.Storage, node); err != nil {
+		if err := set(fitp, stmt.Src.Tok, dest.Storage, node); err != nil {
 			return err
 		}
 	}
@@ -261,12 +260,12 @@ func unpackIfTuple(el ir.Element) []ir.Element {
 	return tpl.Elements()
 }
 
-func evalReturnStmt(ctx *context.Context, ret *ir.ReturnStmt) ([]ir.Element, bool, error) {
+func evalReturnStmt(fitp *FileScope, ret *ir.ReturnStmt) ([]ir.Element, bool, error) {
 	if len(ret.Results) == 0 {
 		// Naked return.
-		fields := ctx.CurrentFunc().FuncType().Results.Fields()
+		fields := fitp.ctx.CurrentFunc().FuncType().Results.Fields()
 		nodes := make([]ir.Element, len(fields))
-		fr := ctx.CurrentFrame()
+		fr := fitp.ctx.CurrentFrame()
 		for i, field := range fields {
 			var err error
 			nodes[i], err = fr.Find(field.Name)
@@ -278,7 +277,7 @@ func evalReturnStmt(ctx *context.Context, ret *ir.ReturnStmt) ([]ir.Element, boo
 	}
 	var returns []ir.Element
 	for _, expr := range ret.Results {
-		exprI, err := evalExpr(ctx, expr)
+		exprI, err := evalExpr(fitp, expr)
 		if err != nil {
 			return nil, false, err
 		}
@@ -287,22 +286,22 @@ func evalReturnStmt(ctx *context.Context, ret *ir.ReturnStmt) ([]ir.Element, boo
 	return returns, true, nil
 }
 
-func evalCastToScalarExpr(ctx *context.Context, expr ir.TypeCastExpr, x evaluator.NumericalElement, targetType ir.ArrayType) (ir.Element, error) {
+func evalCastToScalarExpr(fitp *FileScope, expr ir.TypeCastExpr, x evaluator.NumericalElement, targetType ir.ArrayType) (ir.Element, error) {
 	if len(x.Shape().AxisLengths) > 0 {
-		return x.Reshape(ctx, expr, nil)
+		return x.Reshape(fitp, expr, nil)
 	}
-	return x.Cast(ctx, expr, targetType)
+	return x.Cast(fitp, expr, targetType)
 }
 
-func evalArrayAxes(ctx *context.Context, src ir.SourceNode, typ ir.ArrayType) ([]evaluator.NumericalElement, error) {
-	rank, err := rankOf(ctx, src, typ)
+func evalArrayAxes(fitp *FileScope, src ir.SourceNode, typ ir.ArrayType) ([]evaluator.NumericalElement, error) {
+	rank, err := rankOf(fitp, src, typ)
 	if err != nil {
 		return nil, err
 	}
 	axes := make([]evaluator.NumericalElement, len(rank.Axes()))
 	for i, axis := range rank.Axes() {
 		var err error
-		axes[i], err = evalNumExpr(ctx, axis)
+		axes[i], err = evalNumExpr(fitp, axis)
 		if err != nil {
 			return nil, err
 		}
@@ -312,59 +311,59 @@ func evalArrayAxes(ctx *context.Context, src ir.SourceNode, typ ir.ArrayType) ([
 
 var one, _ = values.AtomIntegerValue(ir.IntLenType(), ir.Int(1))
 
-func evalCastAtomToArrayExpr(ctx *context.Context, expr ir.TypeCastExpr, x evaluator.NumericalElement, axes []evaluator.NumericalElement) (ir.Element, error) {
-	srcExpr := elements.NewExprAt(ctx.File(), expr)
-	arrayOps := ctx.Evaluator().ArrayOps()
+func evalCastAtomToArrayExpr(fitp *FileScope, expr ir.TypeCastExpr, x evaluator.NumericalElement, axes []evaluator.NumericalElement) (ir.Element, error) {
+	srcExpr := elements.NewExprAt(fitp.File(), expr)
+	arrayOps := fitp.Evaluator().ArrayOps()
 	shapeOfOnes := make([]evaluator.NumericalElement, len(axes))
 	for i := range axes {
 		var err error
-		shapeOfOnes[i], err = ctx.Evaluator().ElementFromAtom(ctx, expr, one)
+		shapeOfOnes[i], err = fitp.Evaluator().ElementFromAtom(fitp, expr, one)
 		if err != nil {
 			return nil, err
 		}
 	}
-	reshaped, err := x.Reshape(ctx, srcExpr.ToExprAt().Node(), shapeOfOnes)
+	reshaped, err := x.Reshape(fitp, srcExpr.ToExprAt().Node(), shapeOfOnes)
 	if err != nil {
 		return nil, err
 	}
-	return arrayOps.BroadcastInDim(ctx, expr, reshaped, axes)
+	return arrayOps.BroadcastInDim(fitp, expr, reshaped, axes)
 }
 
-func evalCastToArrayExpr(ctx *context.Context, expr ir.TypeCastExpr, x evaluator.NumericalElement, targetType ir.ArrayType) (ir.Element, error) {
+func evalCastToArrayExpr(fitp *FileScope, expr ir.TypeCastExpr, x evaluator.NumericalElement, targetType ir.ArrayType) (ir.Element, error) {
 	origType := expr.Orig().Type()
 	origRank, xDType := ir.Shape(origType)
 	targetDType := targetType.DataType()
 	targetKind := targetDType.Kind().DType()
 	if xDType.Kind().DType() != targetKind {
 		var err error
-		x, err = x.Cast(ctx, expr, targetDType)
+		x, err = x.Cast(fitp, expr, targetDType)
 		if err != nil {
 			return nil, err
 		}
 	}
-	axes, err := evalArrayAxes(ctx, expr, targetType)
+	axes, err := evalArrayAxes(fitp, expr, targetType)
 	if err != nil {
 		return nil, err
 	}
 	if origRank.IsAtomic() {
-		return evalCastAtomToArrayExpr(ctx, expr, x, axes)
+		return evalCastAtomToArrayExpr(fitp, expr, x, axes)
 	}
-	reshape, err := x.Reshape(ctx, expr, axes)
+	reshape, err := x.Reshape(fitp, expr, axes)
 	if err != nil {
-		return nil, fmterr.Position(ctx.File().FileSet(), expr.Source(), err)
+		return nil, fmterr.Position(fitp.File().FileSet(), expr.Source(), err)
 	}
 	sourceType, ok := origType.(ir.ArrayType)
 	if !ok {
-		return nil, fmterr.Errorf(ctx.File().FileSet(), expr.Source(), "cannot cast %T to %s", origType, reflect.TypeFor[ir.ArrayType]().Name())
+		return nil, fmterr.Errorf(fitp.File().FileSet(), expr.Source(), "cannot cast %T to %s", origType, reflect.TypeFor[ir.ArrayType]().Name())
 	}
 	if sourceType.DataType().Kind().DType() == targetKind {
 		return reshape, nil
 	}
-	return reshape.Cast(ctx, expr, targetDType)
+	return reshape.Cast(fitp, expr, targetDType)
 }
 
-func evalCastExpr(ctx *context.Context, expr ir.TypeCastExpr) (ir.Element, error) {
-	x, err := evalExpr(ctx, expr.Orig())
+func evalCastExpr(fitp *FileScope, expr ir.TypeCastExpr) (ir.Element, error) {
+	x, err := evalExpr(fitp, expr.Orig())
 	if err != nil {
 		return nil, err
 	}
@@ -374,71 +373,71 @@ func evalCastExpr(ctx *context.Context, expr ir.TypeCastExpr) (ir.Element, error
 		if !ok {
 			return nil, errors.Errorf("element %T cannot be copied", x)
 		}
-		return elements.NewNamedType(ctx.NewFunc, named, recv), nil
+		return elements.NewNamedType(fitp.ctx.NewFunc, named, recv), nil
 	}
 	arrayType, ok := target.(ir.ArrayType)
 	if !ok {
-		return nil, fmterr.Errorf(ctx.File().FileSet(), expr.Source(), "cast to %s not supported", target.String())
+		return nil, fmterr.Errorf(fitp.File().FileSet(), expr.Source(), "cast to %s not supported", target.String())
 	}
 	xNum, ok := elements.Underlying(x).(evaluator.NumericalElement)
 	if !ok {
-		return nil, fmterr.Errorf(ctx.File().FileSet(), expr.Source(), "cannot cast element of type %T to %s", x, reflect.TypeFor[evaluator.NumericalElement]().Name())
+		return nil, fmterr.Errorf(fitp.File().FileSet(), expr.Source(), "cannot cast element of type %T to %s", x, reflect.TypeFor[evaluator.NumericalElement]().Name())
 	}
 	if arrayType.Rank().IsAtomic() {
-		return evalCastToScalarExpr(ctx, expr, xNum, arrayType)
+		return evalCastToScalarExpr(fitp, expr, xNum, arrayType)
 	}
-	return evalCastToArrayExpr(ctx, expr, xNum, arrayType)
+	return evalCastToArrayExpr(fitp, expr, xNum, arrayType)
 }
 
-func evalUnaryExpression(ctx *context.Context, expr *ir.UnaryExpr) (ir.Element, error) {
-	x, err := evalNumExpr(ctx, expr.X)
+func evalUnaryExpression(fitp *FileScope, expr *ir.UnaryExpr) (ir.Element, error) {
+	x, err := evalNumExpr(fitp, expr.X)
 	if err != nil {
 		return nil, err
 	}
 	if ir.IsStatic(expr.Type()) {
 		return nil, errors.Errorf("not supported")
 	}
-	return x.UnaryOp(ctx, expr)
+	return x.UnaryOp(fitp, expr)
 }
 
-func evalBinaryExpression(ctx *context.Context, expr *ir.BinaryExpr) (ir.Element, error) {
-	x, err := evalNumExpr(ctx, expr.X)
+func evalBinaryExpression(fitp *FileScope, expr *ir.BinaryExpr) (ir.Element, error) {
+	x, err := evalNumExpr(fitp, expr.X)
 	if err != nil {
 		return nil, err
 	}
-	y, err := evalNumExpr(ctx, expr.Y)
+	y, err := evalNumExpr(fitp, expr.Y)
 	if err != nil {
 		return nil, err
 	}
-	return x.BinaryOp(ctx, expr, x, y)
+	return x.BinaryOp(fitp, expr, x, y)
 }
 
-func evalStructLiteral(ctx *context.Context, expr *ir.StructLitExpr) (ir.Element, error) {
+func evalStructLiteral(fitp *FileScope, expr *ir.StructLitExpr) (ir.Element, error) {
 	under := ir.Underlying(expr.Typ)
 	structType, ok := under.(*ir.StructType)
 	if !ok {
-		return nil, fmterr.Errorf(ctx.File().FileSet(), expr.Source(), "underlying type %T is not a structure", expr.Typ)
+		return nil, fmterr.Errorf(fitp.File().FileSet(), expr.Source(), "underlying type %T is not a structure", expr.Typ)
 	}
 	fields := make(map[string]ir.Element, structType.NumFields())
 	for _, fieldLit := range expr.Elts {
-		node, err := evalExpr(ctx, fieldLit.X)
+		node, err := evalExpr(fitp, fieldLit.X)
 		if err != nil {
 			return nil, err
 		}
 		fields[fieldLit.Field.Name.Name] = node
 	}
-	strct := elements.NewStruct(structType, elements.NewValueAt(ctx.File(), expr), fields)
+	strct := elements.NewStruct(structType, elements.NewValueAt(fitp.File(), expr), fields)
 	nType, ok := expr.Typ.(*ir.NamedType)
 	if !ok {
 		return strct, nil
 	}
-	return elements.NewNamedType(ctx.NewFunc, nType, strct), nil
+	return elements.NewNamedType(fitp.ctx.NewFunc, nType, strct), nil
 }
 
-func evalSliceLiteral(ctx *context.Context, expr *ir.SliceLitExpr) (ir.Element, error) {
+func evalSliceLiteral(fitp *FileScope, expr *ir.SliceLitExpr) (ir.Element, error) {
 	els := make([]ir.Element, len(expr.Elts))
 	for i, expr := range expr.Elts {
-		elt, err := evalExpr(ctx, expr)
+		elt, err := evalExpr(fitp, expr)
 		if err != nil {
 			return nil, err
 		}
@@ -448,64 +447,64 @@ func evalSliceLiteral(ctx *context.Context, expr *ir.SliceLitExpr) (ir.Element, 
 }
 
 // evalExpr evaluates an expression within the Context.
-func evalExpr(ctx *context.Context, expr ir.Expr) (ir.Element, error) {
+func evalExpr(fitp *FileScope, expr ir.Expr) (ir.Element, error) {
 	if expr == nil {
 		return nil, errors.Errorf("cannot evaluate a nil expression")
 	}
 	switch exprT := expr.(type) {
 	case *ir.ArrayLitExpr:
-		return evalArrayLiteral(ctx, exprT)
+		return evalArrayLiteral(fitp, exprT)
 	case *ir.AxisExpr:
-		return evalExpr(ctx, exprT.X)
+		return evalExpr(fitp, exprT.X)
 	case *ir.AxisInfer:
-		return evalExpr(ctx, exprT.X)
+		return evalExpr(fitp, exprT.X)
 	case *ir.NumberCastExpr:
-		return evalNumberCastExpr(ctx, exprT)
+		return evalNumberCastExpr(fitp, exprT)
 	case *ir.SliceLitExpr:
-		return evalSliceLiteral(ctx, exprT)
+		return evalSliceLiteral(fitp, exprT)
 	case *ir.StructLitExpr:
-		return evalStructLiteral(ctx, exprT)
+		return evalStructLiteral(fitp, exprT)
 	case *ir.CastExpr:
-		return evalCastExpr(ctx, exprT)
+		return evalCastExpr(fitp, exprT)
 	case *ir.TypeAssertExpr:
-		return evalCastExpr(ctx, exprT)
+		return evalCastExpr(fitp, exprT)
 	case *ir.CallExpr:
-		return evalCallExpr(ctx, exprT)
+		return evalCallExpr(fitp, exprT)
 	case *ir.UnaryExpr:
-		return evalUnaryExpression(ctx, exprT)
+		return evalUnaryExpression(fitp, exprT)
 	case *ir.ParenExpr:
-		return evalExpr(ctx, exprT.X)
+		return evalExpr(fitp, exprT.X)
 	case *ir.BinaryExpr:
-		return evalBinaryExpression(ctx, exprT)
+		return evalBinaryExpression(fitp, exprT)
 	case *ir.ValueRef:
-		return ctx.CurrentFrame().Find(exprT.Src)
+		return fitp.ctx.CurrentFrame().Find(exprT.Src)
 	case *ir.SelectorExpr:
-		return evalSelectorExpr(ctx, exprT)
+		return evalSelectorExpr(fitp, exprT)
 	case *ir.FuncLit:
-		return evalFuncLit(ctx, exprT)
+		return evalFuncLit(fitp, exprT)
 	case *ir.IndexExpr:
-		return evalIndexExpr(ctx, exprT)
+		return evalIndexExpr(fitp, exprT)
 	case *ir.EinsumExpr:
-		return evalEinsumExpr(ctx, exprT)
+		return evalEinsumExpr(fitp, exprT)
 	case *ir.StringLiteral:
 		return elements.NewString(exprT)
 	case *ir.NumberFloat:
-		return numbers.NewFloat(elements.NewExprAt(ctx.File(), exprT), exprT.Val), nil
+		return numbers.NewFloat(elements.NewExprAt(fitp.File(), exprT), exprT.Val), nil
 	case *ir.NumberInt:
-		return numbers.NewInt(elements.NewExprAt(ctx.File(), exprT), exprT.Val), nil
+		return numbers.NewInt(elements.NewExprAt(fitp.File(), exprT), exprT.Val), nil
 	case ir.AtomicValue:
-		return evalAtomicValue(ctx, exprT)
+		return evalAtomicValue(fitp, exprT)
 	case *ir.PackageRef:
-		return ctx.CurrentFrame().Find(exprT.X.Src)
+		return fitp.ctx.CurrentFrame().Find(exprT.X.Src)
 	case *ir.FuncValExpr:
-		return evalExpr(ctx, exprT.X)
+		return evalExpr(fitp, exprT.X)
 	default:
-		return nil, fmterr.Errorf(ctx.File().FileSet(), expr.Source(), "cannot evaluate GX expression: %T not supported", expr)
+		return nil, fmterr.Errorf(fitp.File().FileSet(), expr.Source(), "cannot evaluate GX expression: %T not supported", expr)
 	}
 }
 
-func evalNumExpr(ctx *context.Context, expr ir.Expr) (evaluator.NumericalElement, error) {
-	el, err := evalExpr(ctx, expr)
+func evalNumExpr(fitp *FileScope, expr ir.Expr) (evaluator.NumericalElement, error) {
+	el, err := evalExpr(fitp, expr)
 	if err != nil {
 		return nil, err
 	}
@@ -516,61 +515,61 @@ func evalNumExpr(ctx *context.Context, expr ir.Expr) (evaluator.NumericalElement
 	return numEl, nil
 }
 
-func evalNumberCastExpr(ctx *context.Context, expr *ir.NumberCastExpr) (evaluator.NumericalElement, error) {
-	number, err := evalNumExpr(ctx, expr.X)
+func evalNumberCastExpr(fitp *FileScope, expr *ir.NumberCastExpr) (evaluator.NumericalElement, error) {
+	number, err := evalNumExpr(fitp, expr.X)
 	if err != nil {
 		return nil, err
 	}
-	return number.Cast(ctx, expr, expr.Typ)
+	return number.Cast(fitp, expr, expr.Typ)
 }
 
-func evalSelectorExpr(ctx *context.Context, ref *ir.SelectorExpr) (ir.Element, error) {
-	node, err := evalExpr(ctx, ref.X)
+func evalSelectorExpr(fitp *FileScope, ref *ir.SelectorExpr) (ir.Element, error) {
+	node, err := evalExpr(fitp, ref.X)
 	if err != nil {
 		return nil, err
 	}
 	slt, ok := node.(elements.Selector)
 	if !ok {
-		return nil, fmterr.Internalf(ctx.File().FileSet(), ref.Source(), "%T does not implement %s: cannot fetch member %s", node, reflect.TypeFor[elements.Selector](), ref.Src.Sel.Name)
+		return nil, fmterr.Internalf(fitp.File().FileSet(), ref.Source(), "%T does not implement %s: cannot fetch member %s", node, reflect.TypeFor[elements.Selector](), ref.Src.Sel.Name)
 	}
-	return slt.Select(elements.NewNodeAt(ctx.File(), ref))
+	return slt.Select(elements.NewNodeAt(fitp.File(), ref))
 }
 
-func evalFuncLit(ctx *context.Context, ref *ir.FuncLit) (ir.Element, error) {
-	return ctx.NewFunc(ref, nil), nil
+func evalFuncLit(fitp *FileScope, ref *ir.FuncLit) (ir.Element, error) {
+	return fitp.ctx.NewFunc(ref, nil), nil
 }
 
-func evalIndexExpr(ctx *context.Context, ref *ir.IndexExpr) (ir.Element, error) {
-	x, err := evalExpr(ctx, ref.X)
+func evalIndexExpr(fitp *FileScope, ref *ir.IndexExpr) (ir.Element, error) {
+	x, err := evalExpr(fitp, ref.X)
 	if err != nil {
 		return nil, err
 	}
 	x = elements.Underlying(x)
 	slicer, ok := x.(elements.Slicer)
 	if !ok {
-		return nil, fmterr.Errorf(ctx.File().FileSet(), ref.Source(), "cannot index over %T", x)
+		return nil, fmterr.Errorf(fitp.File().FileSet(), ref.Source(), "cannot index over %T", x)
 	}
-	index, err := evalNumExpr(ctx, ref.Index)
+	index, err := evalNumExpr(fitp, ref.Index)
 	if err != nil {
 		return nil, err
 	}
-	return slicer.Slice(ctx, ref, index)
+	return slicer.Slice(fitp, ref, index)
 }
 
-func evalEinsumExpr(ctx *context.Context, ref *ir.EinsumExpr) (ir.Element, error) {
-	x, err := evalNumExpr(ctx, ref.X)
+func evalEinsumExpr(fitp *FileScope, ref *ir.EinsumExpr) (ir.Element, error) {
+	x, err := evalNumExpr(fitp, ref.X)
 	if err != nil {
 		return nil, err
 	}
-	y, err := evalNumExpr(ctx, ref.Y)
+	y, err := evalNumExpr(fitp, ref.Y)
 	if err != nil {
 		return nil, err
 	}
-	return ctx.Evaluator().ArrayOps().Einsum(ctx, ref, x, y)
+	return fitp.Evaluator().ArrayOps().Einsum(fitp, ref, x, y)
 }
 
-func evalAtom[T dtype.GoDataType](ctx *context.Context, expr ir.Expr) (val T, err error) {
-	el, err := evalExpr(ctx, expr)
+func evalAtom[T dtype.GoDataType](fitp *FileScope, expr ir.Expr) (val T, err error) {
+	el, err := evalExpr(fitp, expr)
 	if err != nil {
 		var zero T
 		return zero, err
@@ -578,38 +577,38 @@ func evalAtom[T dtype.GoDataType](ctx *context.Context, expr ir.Expr) (val T, er
 	return elements.ConstantScalarFromElement[T](el)
 }
 
-func evalCallExpr(ctx *context.Context, expr *ir.CallExpr) (ir.Element, error) {
-	outs, err := evalCall(ctx, expr)
+func evalCallExpr(fitp *FileScope, expr *ir.CallExpr) (ir.Element, error) {
+	outs, err := evalCall(fitp, expr)
 	if err != nil {
 		return nil, err
 	}
-	return ToSingleElement(ctx, expr, outs)
+	return ToSingleElement(fitp, expr, outs)
 }
 
-func evalCall(ctx *context.Context, expr *ir.CallExpr) ([]ir.Element, error) {
+func evalCall(fitp *FileScope, expr *ir.CallExpr) ([]ir.Element, error) {
 	// Fetch the function and check that it is callable.
-	fnNode, err := ctx.EvalExpr(expr.Callee.X)
+	fnNode, err := fitp.EvalExpr(expr.Callee.X)
 	if err != nil {
 		return nil, err
 	}
 	fn, ok := fnNode.(elements.Func)
 	if !ok {
-		return nil, fmterr.Errorf(ctx.File().FileSet(), expr.Source(), "%T is not callable", fnNode)
+		return nil, fmterr.Errorf(fitp.File().FileSet(), expr.Source(), "%T is not callable", fnNode)
 	}
 
 	// Evaluate the arguments to pass to the function.
 	args := make([]ir.Element, len(expr.Args))
 	for i, arg := range expr.Args {
-		el, err := ctx.EvalExpr(arg)
+		el, err := fitp.EvalExpr(arg)
 		if err != nil {
 			return nil, err
 		}
 		args[i] = el
 	}
-	return fn.Call(ctx, expr, args)
+	return fn.Call(fitp, expr, args)
 }
 
-func set(ctx *context.Context, tok token.Token, dest ir.Storage, value ir.Element) error {
+func set(fitp *FileScope, tok token.Token, dest ir.Storage, value ir.Element) error {
 	switch destT := dest.(type) {
 	case *ir.LocalVarStorage:
 		if !ir.ValidIdent(destT.Src) {
@@ -619,27 +618,27 @@ func set(ctx *context.Context, tok token.Token, dest ir.Storage, value ir.Elemen
 			return nil
 		}
 		if tok == token.DEFINE {
-			ctx.CurrentFrame().Define(destT.Src.Name, value)
+			fitp.ctx.CurrentFrame().Define(destT.Src.Name, value)
 			return nil
 		}
-		return ctx.CurrentFrame().Assign(destT.Src.Name, value)
+		return fitp.ctx.CurrentFrame().Assign(destT.Src.Name, value)
 	case *ir.StructFieldStorage:
-		receiver, err := evalExpr(ctx, destT.Sel.X)
+		receiver, err := evalExpr(fitp, destT.Sel.X)
 		if err != nil {
 			return err
 		}
 		strt, ok := elements.Underlying(receiver).(*elements.Struct)
 		if !ok {
-			return fmterr.Errorf(ctx.File().FileSet(), dest.Source(), "cannot convert %T to %T", receiver, strt)
+			return fmterr.Errorf(fitp.File().FileSet(), dest.Source(), "cannot convert %T to %T", receiver, strt)
 		}
 		strt.SetField(destT.Sel.Src.Sel.Name, value)
 		return nil
 	case *ir.FieldStorage:
-		return ctx.CurrentFrame().Assign(destT.Field.Name.Name, value)
+		return fitp.ctx.CurrentFrame().Assign(destT.Field.Name.Name, value)
 	case *ir.AssignExpr:
-		return ctx.CurrentFrame().Assign(destT.NameDef().Name, value)
+		return fitp.ctx.CurrentFrame().Assign(destT.NameDef().Name, value)
 	default:
-		return fmterr.Errorf(ctx.File().FileSet(), dest.Source(), "cannot assign %v to %T: not supported", value, destT)
+		return fmterr.Errorf(fitp.File().FileSet(), dest.Source(), "cannot assign %v to %T: not supported", value, destT)
 	}
 }
 
@@ -657,14 +656,14 @@ func ToSingleElement(ctx ir.Evaluator, node ir.SourceNode, els []ir.Element) (ir
 
 }
 
-func dimsAsElements(ctx *context.Context, expr ir.AssignableExpr, dims []int) ([]evaluator.NumericalElement, error) {
+func dimsAsElements(fitp *FileScope, expr ir.AssignableExpr, dims []int) ([]evaluator.NumericalElement, error) {
 	els := make([]evaluator.NumericalElement, len(dims))
 	for i, di := range dims {
 		val, err := values.AtomIntegerValue[int64](ir.IntLenType(), int64(di))
 		if err != nil {
 			return nil, err
 		}
-		els[i], err = ctx.Evaluator().ElementFromAtom(ctx, expr, val)
+		els[i], err = fitp.Evaluator().ElementFromAtom(fitp, expr, val)
 		if err != nil {
 			return nil, err
 		}

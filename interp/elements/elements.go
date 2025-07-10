@@ -59,13 +59,13 @@ type (
 
 	// Slicer is a state element that can be sliced.
 	Slicer interface {
-		Slice(ctx ir.Evaluator, expr *ir.IndexExpr, index evaluator.NumericalElement) (ir.Element, error)
+		Slice(ctx Evaluator, expr *ir.IndexExpr, index evaluator.NumericalElement) (ir.Element, error)
 	}
 
 	// ArraySlicer is a state element with an array that can be sliced.
 	ArraySlicer interface {
 		evaluator.NumericalElement
-		SliceArray(ctx ir.Evaluator, expr ir.AssignableExpr, index evaluator.NumericalElement) (evaluator.NumericalElement, error)
+		SliceArray(ctx Evaluator, expr ir.AssignableExpr, index evaluator.NumericalElement) (evaluator.NumericalElement, error)
 		Type() ir.Type
 	}
 
@@ -271,6 +271,18 @@ func (p PackageVarSetElement) Package() string {
 }
 
 type (
+	// Evaluator represent the interpreter.
+	// TODO(degris): remove ASAP.
+	Evaluator interface {
+		File() *ir.File
+
+		NewFunc(ir.Func, *Receiver) Func
+
+		EvalFunc(f ir.Func, call *ir.CallExpr, args []ir.Element) ([]ir.Element, error)
+
+		Evaluator() evaluator.Evaluator
+	}
+
 	// Receiver of a function.
 	Receiver struct {
 		Ident   *ast.Ident
@@ -282,7 +294,7 @@ type (
 		ir.Element
 		Func() ir.Func
 		Recv() *Receiver
-		Call(ctx ir.Evaluator, call *ir.CallExpr, args []ir.Element) ([]ir.Element, error)
+		Call(ctx Evaluator, call *ir.CallExpr, args []ir.Element) ([]ir.Element, error)
 	}
 
 	// NewFunc creates function elements from function IRs.

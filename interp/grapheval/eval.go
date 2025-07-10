@@ -171,8 +171,8 @@ func (ev *Evaluator) Trace(ctx ir.Evaluator, call *ir.CallExpr, args []ir.Elemen
 	return ev.process.RegisterTrace(ctx, call, args)
 }
 
-func opsFromContext(ctx ir.Evaluator) *arrayOps {
-	return ctx.(evaluator.Context).Evaluator().(*Evaluator).ArrayOps().(*arrayOps)
+func opsFromContext(ctx elements.Evaluator) *arrayOps {
+	return ctx.Evaluator().(*Evaluator).ao
 }
 
 // FuncInputsToElements converts values to a function input.

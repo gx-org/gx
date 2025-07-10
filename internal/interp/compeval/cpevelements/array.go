@@ -72,7 +72,7 @@ func (a *array) Reshape(ctx ir.Evaluator, expr ir.AssignableExpr, axisLengths []
 	return NewArray(expr.Type().(ir.ArrayType)), nil
 }
 
-func (a *array) Slice(ctx ir.Evaluator, expr *ir.IndexExpr, index evaluator.NumericalElement) (ir.Element, error) {
+func (a *array) Slice(ctx elements.Evaluator, expr *ir.IndexExpr, index evaluator.NumericalElement) (ir.Element, error) {
 	return NewArray(expr.Type().(ir.ArrayType)), nil
 }
 

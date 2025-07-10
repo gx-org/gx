@@ -22,14 +22,13 @@ import (
 	"github.com/gx-org/gx/build/ir"
 	"github.com/gx-org/gx/golang/backend/kernels"
 	"github.com/gx-org/gx/internal/interp/compeval/cpevelements"
-	"github.com/gx-org/gx/interp/context"
 	"github.com/gx-org/gx/interp/elements"
 	"github.com/gx-org/gx/interp/evaluator"
 )
 
 type (
 	valuer interface {
-		array(ctx *context.Context, expr *ir.ArrayLitExpr) (ir.Element, error)
+		array(fitp *FileScope, expr *ir.ArrayLitExpr) (ir.Element, error)
 	}
 
 	valuerT[T dtype.GoDataType] struct {
@@ -86,7 +85,7 @@ func goSliceFromElements[T dtype.GoDataType](els []evaluator.NumericalElement) (
 	return vals, true, nil
 }
 
-func (v valuerT[T]) buildStaticArray(ctx *context.Context, lit *ir.ArrayLitExpr, axes, vals []evaluator.NumericalElement) (ir.Element, bool, error) {
+func (v valuerT[T]) buildStaticArray(fitp *FileScope, lit *ir.ArrayLitExpr, axes, vals []evaluator.NumericalElement) (ir.Element, bool, error) {
 	axesI64, ok, err := goSliceFromElements[int64](axes)
 	if !ok || err != nil {
 		return nil, false, err
@@ -114,43 +113,43 @@ func (v valuerT[T]) buildStaticArray(ctx *context.Context, lit *ir.ArrayLitExpr,
 		return nil, false, err
 	}
 	// All elements of the literal are scalars already known.
-	node, err := ctx.Evaluator().ArrayOps().ElementFromArray(ctx, lit, array)
+	node, err := fitp.Evaluator().ArrayOps().ElementFromArray(fitp, lit, array)
 	if err != nil {
 		return nil, false, err
 	}
 	return node, true, nil
 }
 
-func (v valuerT[T]) array(ctx *context.Context, lit *ir.ArrayLitExpr) (ir.Element, error) {
-	axes, err := evalArrayAxes(ctx, lit, lit.Typ)
+func (v valuerT[T]) array(fitp *FileScope, lit *ir.ArrayLitExpr) (ir.Element, error) {
+	axes, err := evalArrayAxes(fitp, lit, lit.Typ)
 	if err != nil {
 		return nil, err
 	}
 	irVals := lit.Values()
 	elVals := make([]evaluator.NumericalElement, len(irVals))
 	for i, expr := range irVals {
-		elVals[i], err = evalNumExpr(ctx, expr)
+		elVals[i], err = evalNumExpr(fitp, expr)
 		if err != nil {
 			return nil, err
 		}
 	}
-	staticArray, staticOk, err := v.buildStaticArray(ctx, lit, axes, elVals)
+	staticArray, staticOk, err := v.buildStaticArray(fitp, lit, axes, elVals)
 	if staticOk || err != nil {
 		return staticArray, err
 	}
 	// Some values will be known at runtime. We create one node for each element
 	// and concatenates everything into an array.
-	array1d, err := ctx.Evaluator().ArrayOps().Concat(ctx, lit, elVals)
+	array1d, err := fitp.Evaluator().ArrayOps().Concat(fitp, lit, elVals)
 	if err != nil {
 		return nil, err
 	}
 	if len(axes) == 1 {
 		return array1d, nil
 	}
-	return array1d.Reshape(ctx, lit, axes)
+	return array1d.Reshape(fitp, lit, axes)
 }
 
-func newValuer(ctx *context.Context, expr ir.Expr, kind ir.Kind) (v valuer, err error) {
+func newValuer(fitp *FileScope, expr ir.Expr, kind ir.Kind) (v valuer, err error) {
 	switch kind {
 	case ir.IntIdxKind:
 		v = valuerT[ir.Int]{kind: kind, toAtomValue: values.AtomIntegerValue[ir.Int], toArrayValue: values.ArrayIntegerValue[ir.Int]}
@@ -173,18 +172,18 @@ func newValuer(ctx *context.Context, expr ir.Expr, kind ir.Kind) (v valuer, err 
 	case ir.Uint64Kind:
 		v = valuerT[uint64]{kind: kind, toAtomValue: values.AtomIntegerValue[uint64], toArrayValue: values.ArrayIntegerValue[uint64]}
 	default:
-		err = fmterr.Errorf(ctx.File().FileSet(), expr.Source(), "%s cannot be converted to backend numerical: not supported", kind)
+		err = fmterr.Errorf(fitp.File().FileSet(), expr.Source(), "%s cannot be converted to backend numerical: not supported", kind)
 	}
 	return
 }
 
-func evalArrayLiteral(ctx *context.Context, expr *ir.ArrayLitExpr) (ir.Element, error) {
+func evalArrayLiteral(fitp *FileScope, expr *ir.ArrayLitExpr) (ir.Element, error) {
 	_, dtype := ir.Shape(expr.Type())
-	valuer, err := newValuer(ctx, expr, dtype.Kind())
+	valuer, err := newValuer(fitp, expr, dtype.Kind())
 	if err != nil {
 		return nil, err
 	}
-	return valuer.array(ctx, expr)
+	return valuer.array(fitp, expr)
 }
 
 func toAtomElementInt[T dtype.IntegerType](src elements.ExprAt, val T) (evaluator.NumericalElement, error) {
@@ -211,9 +210,9 @@ func toAtomElementBool(src elements.ExprAt, val bool) (evaluator.NumericalElemen
 	return cpevelements.NewAtom(src, hostVal)
 }
 
-func evalAtomicValue(ctx *context.Context, expr ir.AtomicValue) (evaluator.NumericalElement, error) {
+func evalAtomicValue(fitp *FileScope, expr ir.AtomicValue) (evaluator.NumericalElement, error) {
 	kind := expr.Type().Kind()
-	exprAt := elements.NewExprAt(ctx.File(), expr)
+	exprAt := elements.NewExprAt(fitp.File(), expr)
 	switch kind {
 	case ir.IntIdxKind:
 		return toAtomElementInt(exprAt, expr.(*ir.AtomicValueT[ir.Int]).Val)
@@ -234,6 +233,6 @@ func evalAtomicValue(ctx *context.Context, expr ir.AtomicValue) (evaluator.Numer
 	case ir.Uint64Kind:
 		return toAtomElementInt(exprAt, expr.(*ir.AtomicValueT[uint64]).Val)
 	default:
-		return nil, fmterr.Errorf(ctx.File().FileSet(), expr.Source(), "%s cannot be converted to backend numerical: not supported", kind)
+		return nil, fmterr.Errorf(fitp.File().FileSet(), expr.Source(), "%s cannot be converted to backend numerical: not supported", kind)
 	}
 }
