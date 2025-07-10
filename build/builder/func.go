@@ -484,7 +484,7 @@ func assignArgValueToParamName(rscope resolveScope, compEval *compileEvaluator, 
 		if param.Name == nil {
 			continue
 		}
-		argVal, err := compEval.ev.EvalExpr(args[i])
+		argVal, err := compEval.fitp.EvalExpr(args[i])
 		if err != nil {
 			return nil, rscope.err().AppendAt(fExpr.Source(), err)
 		}

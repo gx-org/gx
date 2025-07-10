@@ -29,6 +29,19 @@ import (
 	"github.com/gx-org/gx/interp/evaluator"
 )
 
+type (
+	// Evaluator provides core primitives for the interpreter.
+	Evaluator interface {
+		evaluator.Evaluator
+
+		// NewFunc creates a new function given its definition and a receiver.
+		NewFunc(*Interpreter, ir.Func, *elements.Receiver) elements.Func
+
+		// CallFuncLit calls a function literal.
+		CallFuncLit(fitp *FileScope, ref *ir.FuncLit, args []ir.Element) ([]ir.Element, error)
+	}
+)
+
 type intern struct {
 	itp *Interpreter
 }
@@ -55,7 +68,7 @@ func (itn *intern) EvalStmt(ctx *context.Context, stmt *ir.BlockStmt) ([]ir.Elem
 
 // Interpreter runs GX code given an evaluator and package options.
 type Interpreter struct {
-	eval context.Evaluator
+	eval Evaluator
 	core *context.Core
 
 	options        []options.PackageOption
@@ -63,14 +76,14 @@ type Interpreter struct {
 }
 
 // New returns a new interpreter.
-func New(eval context.Evaluator, options []options.PackageOption) (*Interpreter, error) {
+func New(eval Evaluator, options []options.PackageOption) (*Interpreter, error) {
 	itp := &Interpreter{
 		eval:           eval,
 		options:        options,
 		packageOptions: make(map[string][]packageOption),
 	}
 	var err error
-	itp.core, err = context.New(&intern{itp: itp}, eval)
+	itp.core, err = context.New(&intern{itp: itp}, eval.Importer())
 	if err != nil {
 		return nil, err
 	}
@@ -85,9 +98,9 @@ func (itp *Interpreter) Core() *context.Core {
 	return itp.core
 }
 
-// EvalFunc evaluates a function.
-func (itp *Interpreter) EvalFunc(fn *ir.FuncDecl, in *elements.InputElements) (outs []ir.Element, err error) {
-	return context.EvalFunc(itp.core, fn, in)
+// NewFunc creates function elements from function IRs.
+func (itp *Interpreter) NewFunc(fn ir.Func, recv *elements.Receiver) elements.Func {
+	return itp.eval.NewFunc(itp, fn, recv)
 }
 
 // FileScope returns an interpreter given the scope of a file from within a package.
@@ -123,7 +136,7 @@ func (fitp *FileScope) InitScope() *ir.File {
 
 // Evaluator returns the evaluator used by the interpreter
 func (fitp *FileScope) Evaluator() evaluator.Evaluator {
-	return fitp.ctx.Evaluator()
+	return fitp.itp.eval
 }
 
 // Sub returns a new interpreter with additional values defined in the context.
@@ -135,12 +148,12 @@ func (fitp *FileScope) Sub(vals map[string]ir.Element) *FileScope {
 
 // NewFunc creates function elements from function IRs.
 func (fitp *FileScope) NewFunc(fn ir.Func, recv *elements.Receiver) elements.Func {
-	return fitp.ctx.NewFunc(fn, recv)
+	return fitp.itp.NewFunc(fn, recv)
 }
 
 // EvalFunc evaluates a function.
 func (fitp *FileScope) EvalFunc(f ir.Func, call *ir.CallExpr, args []ir.Element) ([]ir.Element, error) {
-	fnEl := context.NewRunFunc(f, nil)
+	fnEl := NewRunFunc(f, nil)
 	return fnEl.Call(fitp, call, args)
 }
 

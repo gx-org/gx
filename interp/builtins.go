@@ -28,14 +28,12 @@ import (
 	"github.com/gx-org/gx/interp/evaluator"
 )
 
-// FuncBuiltin defines a builtin function provided by a backend.
-type FuncBuiltin = context.FuncBuiltin
-
 func (itn *intern) InitBuiltins(ctx *context.Context, scope *scope.RWScope[ir.Element]) error {
-	if err := itn.itp.defineBoolConstant(scope, ctx, ir.FalseStorage()); err != nil {
+	fitp := &FileScope{itp: itn.itp, initScope: ctx.File(), ctx: ctx}
+	if err := fitp.defineBoolConstant(scope, ctx, ir.FalseStorage()); err != nil {
 		return err
 	}
-	if err := itn.itp.defineBoolConstant(scope, ctx, ir.TrueStorage()); err != nil {
+	if err := fitp.defineBoolConstant(scope, ctx, ir.TrueStorage()); err != nil {
 		return err
 	}
 	for name, impl := range map[string]ir.FuncImpl{
@@ -53,18 +51,18 @@ func (itn *intern) InitBuiltins(ctx *context.Context, scope *scope.RWScope[ir.El
 		if err != nil {
 			return err
 		}
-		elFunc := itn.itp.eval.NewFunc(ctx.Core(), irFunc, nil)
+		elFunc := itn.itp.eval.NewFunc(itn.itp, irFunc, nil)
 		scope.Define(name, elFunc)
 	}
 	return nil
 }
 
-func (itp *Interpreter) defineBoolConstant(scope *scope.RWScope[ir.Element], ctx *context.Context, val ir.StorageWithValue) error {
+func (fitp *FileScope) defineBoolConstant(scope *scope.RWScope[ir.Element], ctx *context.Context, val ir.StorageWithValue) error {
 	gxValue, err := values.AtomBoolValue(ir.BoolType(), val.Value(nil).(*ir.AtomicValueT[bool]).Val)
 	if err != nil {
 		return err
 	}
-	el, err := itp.eval.ElementFromAtom(ctx, val.Value(nil), gxValue)
+	el, err := fitp.itp.eval.ElementFromAtom(fitp, val.Value(nil), gxValue)
 	if err != nil {
 		return err
 	}

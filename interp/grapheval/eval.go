@@ -25,7 +25,6 @@ import (
 	"github.com/gx-org/gx/build/ir"
 	"github.com/gx-org/gx/internal/interp/compeval"
 	"github.com/gx-org/gx/internal/tracer/processor"
-	"github.com/gx-org/gx/interp/context"
 	"github.com/gx-org/gx/interp/elements"
 	"github.com/gx-org/gx/interp/evaluator"
 	"github.com/gx-org/gx/interp"
@@ -42,7 +41,7 @@ type Evaluator struct {
 	hostEval evaluator.Evaluator
 }
 
-var _ context.Evaluator = (*Evaluator)(nil)
+var _ interp.Evaluator = (*Evaluator)(nil)
 
 // New returns a new evaluator given a elements.
 func New(importer ir.Importer, pr *processor.Processor, gr ops.Graph, newFunc elements.NewFunc) *Evaluator {
@@ -56,7 +55,7 @@ func New(importer ir.Importer, pr *processor.Processor, gr ops.Graph, newFunc el
 }
 
 // NewFunc creates a new function given its definition and a receiver.
-func (ev *Evaluator) NewFunc(ctx *context.Core, fn ir.Func, recv *elements.Receiver) elements.Func {
+func (ev *Evaluator) NewFunc(itp *interp.Interpreter, fn ir.Func, recv *elements.Receiver) elements.Func {
 	return ev.newFunc(fn, recv)
 }
 
@@ -86,7 +85,7 @@ func (ev *Evaluator) ElementFromAtom(ctx ir.Evaluator, src ir.AssignableExpr, va
 }
 
 // CallFuncLit calls a function literal.
-func (ev *Evaluator) CallFuncLit(ctx *context.Context, ref *ir.FuncLit, args []ir.Element) ([]ir.Element, error) {
+func (ev *Evaluator) CallFuncLit(fitp *interp.FileScope, ref *ir.FuncLit, args []ir.Element) ([]ir.Element, error) {
 	core := ev.ao.graph.Core()
 	name := ref.Name()
 	if name == "" {
@@ -97,7 +96,7 @@ func (ev *Evaluator) CallFuncLit(ctx *context.Context, ref *ir.FuncLit, args []i
 		return nil, err
 	}
 	subeval := New(ev.Importer(), ev.process, subgraph, ev.newFunc)
-	outs, err := ctx.EvalFunctionToElement(subeval, ref, args)
+	outs, err := fitp.EvalFunctionToElement(subeval, ref, args)
 	if err != nil {
 		return nil, err
 	}
@@ -129,14 +128,14 @@ func (ev *Evaluator) CallFuncLit(ctx *context.Context, ref *ir.FuncLit, args []i
 	if resultTpl, ok := result.(ops.Tuple); ok {
 		return ElementsFromTupleNode(
 			ev.ao.graph,
-			ctx.File(),
+			fitp.File(),
 			ref,
 			resultTpl,
 			outputExprs,
 			shapes)
 	}
 	el, err := ElementFromNode(
-		elements.NewExprAt(ctx.File(), ref),
+		elements.NewExprAt(fitp.File(), ref),
 		&ops.OutputNode{
 			Node:  result,
 			Shape: shapes[0],
@@ -185,7 +184,7 @@ func (ev *Evaluator) FuncInputsToElements(itp *interp.Interpreter, file *ir.File
 			return nil, err
 		}
 		recvAt := elements.NewNodeAt(file, recvField)
-		if recvEl, err = ev.Receiver(itp.Core(), recvAt, receiverProxy); err != nil {
+		if recvEl, err = ev.Receiver(itp, recvAt, receiverProxy); err != nil {
 			return nil, err
 		}
 	}
@@ -209,7 +208,7 @@ func (ev *Evaluator) FuncInputsToElements(itp *interp.Interpreter, file *ir.File
 			return nil, errors.Errorf("missing parameter(s): %s", builder.String())
 		}
 		paramAt := elements.NewNodeAt(file, param)
-		argNode, err := ev.ArgGX(itp.Core(), paramAt, i, proxyArgs)
+		argNode, err := ev.ArgGX(itp, paramAt, i, proxyArgs)
 		if err != nil {
 			return nil, err
 		}

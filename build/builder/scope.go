@@ -47,7 +47,7 @@ func (s *pkgScope) String() string {
 type compileEvaluator struct {
 	scope resolveScope
 	irb   *irBuilder
-	ev    *interp.FileScope
+	fitp  *interp.FileScope
 }
 
 var _ ir.Fetcher = (*compileEvaluator)(nil)
@@ -55,23 +55,23 @@ var _ ir.Fetcher = (*compileEvaluator)(nil)
 func newEvaluator(scope resolveScope, ctx *interp.FileScope) *compileEvaluator {
 	return &compileEvaluator{
 		scope: scope,
-		ev:    ctx,
+		fitp:  ctx,
 	}
 }
 
 func (ev *compileEvaluator) update(rscope resolveScope, store ir.Storage, el ir.Element) (*compileEvaluator, bool) {
 	name := store.NameDef().Name
-	subEval := ev.ev.Sub(map[string]ir.Element{name: el})
+	subEval := ev.fitp.Sub(map[string]ir.Element{name: el})
 	return newEvaluator(rscope, subEval), true
 }
 
 func (ev *compileEvaluator) sub(src ast.Node, vals map[string]ir.Element) (*compileEvaluator, bool) {
-	ctx := ev.ev.Sub(vals)
+	ctx := ev.fitp.Sub(vals)
 	return newEvaluator(ev.scope, ctx), true
 }
 
 func (ev *compileEvaluator) File() *ir.File {
-	return ev.ev.InitScope()
+	return ev.fitp.InitScope()
 }
 
 func (ev *compileEvaluator) BuildExpr(src ast.Expr) (ir.Expr, bool) {
@@ -85,7 +85,7 @@ func (ev *compileEvaluator) BuildExpr(src ast.Expr) (ir.Expr, bool) {
 }
 
 func (ev *compileEvaluator) EvalExpr(expr ir.Expr) (ir.Element, error) {
-	return ev.ev.EvalExpr(expr)
+	return ev.fitp.EvalExpr(expr)
 }
 
 func (ev *compileEvaluator) Err() *fmterr.Appender {
@@ -93,7 +93,7 @@ func (ev *compileEvaluator) Err() *fmterr.Appender {
 }
 
 func (ev *compileEvaluator) String() string {
-	return gxfmt.String(ev.ev)
+	return gxfmt.String(ev.fitp)
 }
 
 func defineGlobal(s *scope.RWScope[processNode], tok token.Token, name *ast.Ident, node ir.Storage) {
@@ -101,7 +101,7 @@ func defineGlobal(s *scope.RWScope[processNode], tok token.Token, name *ast.Iden
 }
 
 func elementFromStorage(scope resolveScope, ev *compileEvaluator, node ir.Storage) (ir.Element, bool) {
-	el, err := cpevelements.NewRuntimeValue(ev.ev.File(), ev.ev.Context().NewFunc, node)
+	el, err := cpevelements.NewRuntimeValue(ev.fitp.File(), ev.fitp.NewFunc, node)
 	if err != nil {
 		return el, scope.err().Append(err)
 	}
@@ -116,7 +116,7 @@ func elementFromStorageWithValue(ev *compileEvaluator, node ir.StorageWithValue)
 	if _, isType := value.(*ir.TypeValExpr); isType {
 		return nil, true
 	}
-	el, err := ev.ev.EvalExpr(value)
+	el, err := ev.fitp.EvalExpr(value)
 	if err != nil {
 		return nil, ev.scope.err().Appendf(node.Source(), "cannot evaluate expression %s. Original error:\n%+v", value.String(), err)
 	}

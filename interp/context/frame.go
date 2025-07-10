@@ -75,7 +75,7 @@ type packageFrame struct {
 }
 
 func (core *Core) importPackage(imp *ir.ImportDecl) (ir.Element, error) {
-	pkg, err := core.evaluator.Importer().Import(imp.Path)
+	pkg, err := core.importer.Import(imp.Path)
 	if err != nil {
 		return nil, err
 	}
@@ -166,12 +166,14 @@ func (core *Core) fileFrame(file *ir.File) (*fileFrame, error) {
 	return pkgFrame.fileFrame(core, file)
 }
 
-func (ctx *Context) pushFuncFrame(fn ir.Func) (*blockFrame, error) {
+// PushFuncFrame pushes a function frame to the stack.
+func (ctx *Context) PushFuncFrame(fn ir.Func) (*Frame, error) {
 	flFrame, err := ctx.core.fileFrame(fn.File())
 	if err != nil {
 		return nil, err
 	}
-	return flFrame.pushFuncFrame(ctx, fn), nil
+	fnFrame := flFrame.pushFuncFrame(ctx, fn)
+	return &Frame{file: fn.File(), scope: fnFrame.scope}, nil
 }
 
 type blockFrame struct {
@@ -181,12 +183,13 @@ type blockFrame struct {
 }
 
 // PushBlockFrame pushes an empty new frame on the stack.
-func (ctx *Context) PushBlockFrame() *blockFrame {
+func (ctx *Context) PushBlockFrame() *Frame {
 	parent := ctx.currentFrame()
-	return ctx.pushFrame(&blockFrame{
+	bFrame := ctx.pushFrame(&blockFrame{
 		baseFrame: baseFrame{
 			scope: scope.NewScope(parent.scope),
 		},
 		owner: parent.owner,
 	})
+	return &Frame{file: ctx.File(), scope: bFrame.scope}
 }
