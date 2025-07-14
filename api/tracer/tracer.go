@@ -65,7 +65,7 @@ func Trace(dev *api.Device, fn *ir.FuncDecl, receiver values.Value, args []value
 	tr := &tracer{
 		graph: graph,
 	}
-	ev := grapheval.New(dev.Runtime().Builder(), proc, tr.graph, interp.NewRunFunc)
+	ev := grapheval.New(dev.Runtime().Builder(), proc, tr.graph)
 	itp, err := interp.New(ev, options)
 	if err != nil {
 		return nil, err
