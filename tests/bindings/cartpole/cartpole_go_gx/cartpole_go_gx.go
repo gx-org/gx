@@ -619,7 +619,7 @@ func (f *New) String() string {
 // NewCartpole returns a handle on named type Cartpole.
 func (fac *Factory) NewCartpole() *Cartpole {
 	s := &Cartpole{}
-	typ := fac.Package.Package.IR.Decls.Types[0]
+	typ := fac.Package.Package.IR.Decls.TypeByName("Cartpole")
 	s.handle = handleCartpole{
 		pkg:   fac.Package,
 		struc: typ,
