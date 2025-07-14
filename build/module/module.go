@@ -137,8 +137,7 @@ func (mod *Module) Split(importPath string) (packagePath, packageName string, er
 	}
 	pkgWithName := strings.TrimPrefix(importPath, mod.Name())
 	if pkgWithName == "" {
-		err = fmt.Errorf("empty package path after module name %s", mod.Name())
-		return
+		return "", mod.Name(), nil
 	}
 	pkgWithNameElmts := strings.Split(pkgWithName, "/")
 	packagePath = strings.Join(pkgWithNameElmts, "/")
