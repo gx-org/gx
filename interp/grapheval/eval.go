@@ -36,7 +36,6 @@ import (
 type Evaluator struct {
 	process *processor.Processor
 	ao      *arrayOps
-	newFunc interp.NewFunc
 
 	hostEval evaluator.Evaluator
 }
@@ -44,11 +43,10 @@ type Evaluator struct {
 var _ interp.Evaluator = (*Evaluator)(nil)
 
 // New returns a new evaluator given a elements.
-func New(importer ir.Importer, pr *processor.Processor, gr ops.Graph, newFunc interp.NewFunc) *Evaluator {
+func New(importer ir.Importer, pr *processor.Processor, gr ops.Graph) *Evaluator {
 	ev := &Evaluator{
 		process:  pr,
 		hostEval: compeval.NewHostEvaluator(importer),
-		newFunc:  newFunc,
 	}
 	ev.ao = &arrayOps{graph: gr, ev: ev}
 	return ev
@@ -56,7 +54,7 @@ func New(importer ir.Importer, pr *processor.Processor, gr ops.Graph, newFunc in
 
 // NewFunc creates a new function given its definition and a receiver.
 func (ev *Evaluator) NewFunc(itp *interp.Interpreter, fn ir.PkgFunc, recv *interp.Receiver) interp.Func {
-	return ev.newFunc(fn, recv)
+	return interp.NewRunFunc(fn, recv)
 }
 
 // Processor returns the processor where init and debug traces are registered.
@@ -95,7 +93,7 @@ func (ev *Evaluator) CallFuncLit(fitp *interp.FileScope, ref *ir.FuncLit, args [
 	if err != nil {
 		return nil, err
 	}
-	subeval := New(ev.Importer(), ev.process, subgraph, ev.newFunc)
+	subeval := New(ev.Importer(), ev.process, subgraph)
 	outs, err := fitp.EvalFunctionToElement(subeval, ref, args)
 	if err != nil {
 		return nil, err
