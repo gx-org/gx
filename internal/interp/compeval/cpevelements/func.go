@@ -18,16 +18,16 @@ import (
 	"go/ast"
 
 	"github.com/gx-org/gx/build/ir"
-	"github.com/gx-org/gx/interp/elements"
+	"github.com/gx-org/gx/interp"
 )
 
 type fun struct {
-	fn   ir.Func
-	recv *elements.Receiver
+	fn   ir.PkgFunc
+	recv *interp.Receiver
 }
 
 // NewFunc creates a new function given its definition and a receiver.
-func NewFunc(fn ir.Func, recv *elements.Receiver) elements.Func {
+func NewFunc(fn ir.PkgFunc, recv *interp.Receiver) interp.Func {
 	return &fun{fn: fn, recv: recv}
 }
 
@@ -35,15 +35,15 @@ func (f *fun) Func() ir.Func {
 	return f.fn
 }
 
-func (f *fun) Recv() *elements.Receiver {
+func (f *fun) Recv() *interp.Receiver {
 	return f.recv
 }
 
-func (f *fun) callAtCompEval(fitp elements.Evaluator, call *ir.CallExpr, args []ir.Element) ([]ir.Element, error) {
+func (f *fun) callAtCompEval(fitp *interp.FileScope, call *ir.CallExpr, args []ir.Element) ([]ir.Element, error) {
 	return fitp.EvalFunc(f.fn, call, args)
 }
 
-func (f *fun) Call(fitp elements.Evaluator, call *ir.CallExpr, args []ir.Element) ([]ir.Element, error) {
+func (f *fun) Call(fitp *interp.FileScope, call *ir.CallExpr, args []ir.Element) ([]ir.Element, error) {
 	fType := f.fn.FuncType() // Some builtin functions have no type at the moment.
 	if fType != nil && fType.CompEval {
 		return f.callAtCompEval(fitp, call, args)

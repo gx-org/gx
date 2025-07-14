@@ -21,7 +21,6 @@ import (
 	"github.com/gx-org/gx/build/fmterr"
 	"github.com/gx-org/gx/build/ir"
 	"github.com/gx-org/gx/golang/backend/kernels"
-	"github.com/gx-org/gx/internal/interp/compeval/cpevelements"
 	"github.com/gx-org/gx/interp/elements"
 	"github.com/gx-org/gx/interp/evaluator"
 )
@@ -186,28 +185,28 @@ func evalArrayLiteral(fitp *FileScope, expr *ir.ArrayLitExpr) (ir.Element, error
 	return valuer.array(fitp, expr)
 }
 
-func toAtomElementInt[T dtype.IntegerType](src elements.ExprAt, val T) (evaluator.NumericalElement, error) {
+func toAtomElementInt[T dtype.IntegerType](fitp *FileScope, src elements.ExprAt, val T) (evaluator.NumericalElement, error) {
 	hostVal, err := values.AtomIntegerValue(src.Node().Type(), val)
 	if err != nil {
 		return nil, err
 	}
-	return cpevelements.NewAtom(src, hostVal)
+	return fitp.Evaluator().ElementFromAtom(fitp, src.Node(), hostVal)
 }
 
-func toAtomElementFloat[T dtype.Float](src elements.ExprAt, val T) (evaluator.NumericalElement, error) {
+func toAtomElementFloat[T dtype.Float](fitp *FileScope, src elements.ExprAt, val T) (evaluator.NumericalElement, error) {
 	hostVal, err := values.AtomFloatValue(src.Node().Type(), val)
 	if err != nil {
 		return nil, err
 	}
-	return cpevelements.NewAtom(src, hostVal)
+	return fitp.Evaluator().ElementFromAtom(fitp, src.Node(), hostVal)
 }
 
-func toAtomElementBool(src elements.ExprAt, val bool) (evaluator.NumericalElement, error) {
+func toAtomElementBool(fitp *FileScope, src elements.ExprAt, val bool) (evaluator.NumericalElement, error) {
 	hostVal, err := values.AtomBoolValue(src.Node().Type(), val)
 	if err != nil {
 		return nil, err
 	}
-	return cpevelements.NewAtom(src, hostVal)
+	return fitp.Evaluator().ElementFromAtom(fitp, src.Node(), hostVal)
 }
 
 func evalAtomicValue(fitp *FileScope, expr ir.AtomicValue) (evaluator.NumericalElement, error) {
@@ -215,23 +214,23 @@ func evalAtomicValue(fitp *FileScope, expr ir.AtomicValue) (evaluator.NumericalE
 	exprAt := elements.NewExprAt(fitp.File(), expr)
 	switch kind {
 	case ir.IntIdxKind:
-		return toAtomElementInt(exprAt, expr.(*ir.AtomicValueT[ir.Int]).Val)
+		return toAtomElementInt(fitp, exprAt, expr.(*ir.AtomicValueT[ir.Int]).Val)
 	case ir.IntLenKind:
-		return toAtomElementInt(exprAt, expr.(*ir.AtomicValueT[ir.Int]).Val)
+		return toAtomElementInt(fitp, exprAt, expr.(*ir.AtomicValueT[ir.Int]).Val)
 	case ir.BoolKind:
-		return toAtomElementBool(exprAt, expr.(*ir.AtomicValueT[bool]).Val)
+		return toAtomElementBool(fitp, exprAt, expr.(*ir.AtomicValueT[bool]).Val)
 	case ir.Float32Kind:
-		return toAtomElementFloat(exprAt, expr.(*ir.AtomicValueT[float32]).Val)
+		return toAtomElementFloat(fitp, exprAt, expr.(*ir.AtomicValueT[float32]).Val)
 	case ir.Float64Kind:
-		return toAtomElementFloat(exprAt, expr.(*ir.AtomicValueT[float64]).Val)
+		return toAtomElementFloat(fitp, exprAt, expr.(*ir.AtomicValueT[float64]).Val)
 	case ir.Int32Kind:
-		return toAtomElementInt(exprAt, expr.(*ir.AtomicValueT[int32]).Val)
+		return toAtomElementInt(fitp, exprAt, expr.(*ir.AtomicValueT[int32]).Val)
 	case ir.Int64Kind:
-		return toAtomElementInt(exprAt, expr.(*ir.AtomicValueT[int64]).Val)
+		return toAtomElementInt(fitp, exprAt, expr.(*ir.AtomicValueT[int64]).Val)
 	case ir.Uint32Kind:
-		return toAtomElementInt(exprAt, expr.(*ir.AtomicValueT[uint32]).Val)
+		return toAtomElementInt(fitp, exprAt, expr.(*ir.AtomicValueT[uint32]).Val)
 	case ir.Uint64Kind:
-		return toAtomElementInt(exprAt, expr.(*ir.AtomicValueT[uint64]).Val)
+		return toAtomElementInt(fitp, exprAt, expr.(*ir.AtomicValueT[uint64]).Val)
 	default:
 		return nil, fmterr.Errorf(fitp.File().FileSet(), expr.Source(), "%s cannot be converted to backend numerical: not supported", kind)
 	}

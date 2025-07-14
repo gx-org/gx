@@ -21,6 +21,7 @@ import (
 	"github.com/gx-org/gx/internal/interp/canonical"
 	"github.com/gx-org/gx/interp/elements"
 	"github.com/gx-org/gx/interp/evaluator"
+	"github.com/gx-org/gx/interp"
 )
 
 // array element storing a GX value array.
@@ -30,11 +31,11 @@ type array struct {
 }
 
 var (
-	_ elements.Node     = (*array)(nil)
-	_ elements.WithAxes = (*array)(nil)
-	_ Element           = (*array)(nil)
-	_ elements.Slicer   = (*array)(nil)
-	_ elements.Copier   = (*array)(nil)
+	_ elements.Node   = (*array)(nil)
+	_ interp.WithAxes = (*array)(nil)
+	_ Element         = (*array)(nil)
+	_ interp.Slicer   = (*array)(nil)
+	_ interp.Copier   = (*array)(nil)
 )
 
 // NewArray returns a new array from a code position and a type.
@@ -52,7 +53,7 @@ func (a *array) Type() ir.Type {
 	return a.typ
 }
 
-func (a *array) Axes(fetcher ir.Evaluator) (*elements.Slice, error) {
+func (a *array) Axes(fetcher ir.Evaluator) (*interp.Slice, error) {
 	return axesFromType(fetcher, a.typ)
 }
 
@@ -72,11 +73,11 @@ func (a *array) Reshape(ctx ir.Evaluator, expr ir.AssignableExpr, axisLengths []
 	return NewArray(expr.Type().(ir.ArrayType)), nil
 }
 
-func (a *array) Slice(ctx elements.Evaluator, expr *ir.IndexExpr, index evaluator.NumericalElement) (ir.Element, error) {
+func (a *array) Slice(ctx *interp.FileScope, expr *ir.IndexExpr, index evaluator.NumericalElement) (ir.Element, error) {
 	return NewArray(expr.Type().(ir.ArrayType)), nil
 }
 
-func (a *array) Copy() elements.Copier {
+func (a *array) Copy() interp.Copier {
 	return a
 }
 

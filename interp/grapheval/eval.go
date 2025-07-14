@@ -36,7 +36,7 @@ import (
 type Evaluator struct {
 	process *processor.Processor
 	ao      *arrayOps
-	newFunc elements.NewFunc
+	newFunc interp.NewFunc
 
 	hostEval evaluator.Evaluator
 }
@@ -44,7 +44,7 @@ type Evaluator struct {
 var _ interp.Evaluator = (*Evaluator)(nil)
 
 // New returns a new evaluator given a elements.
-func New(importer ir.Importer, pr *processor.Processor, gr ops.Graph, newFunc elements.NewFunc) *Evaluator {
+func New(importer ir.Importer, pr *processor.Processor, gr ops.Graph, newFunc interp.NewFunc) *Evaluator {
 	ev := &Evaluator{
 		process:  pr,
 		hostEval: compeval.NewHostEvaluator(importer),
@@ -55,7 +55,7 @@ func New(importer ir.Importer, pr *processor.Processor, gr ops.Graph, newFunc el
 }
 
 // NewFunc creates a new function given its definition and a receiver.
-func (ev *Evaluator) NewFunc(itp *interp.Interpreter, fn ir.Func, recv *elements.Receiver) elements.Func {
+func (ev *Evaluator) NewFunc(itp *interp.Interpreter, fn ir.PkgFunc, recv *interp.Receiver) interp.Func {
 	return ev.newFunc(fn, recv)
 }
 
@@ -170,7 +170,7 @@ func (ev *Evaluator) Trace(ctx ir.Evaluator, call *ir.CallExpr, args []ir.Elemen
 	return ev.process.RegisterTrace(ctx, call, args)
 }
 
-func opsFromContext(ctx elements.Evaluator) *arrayOps {
+func opsFromContext(ctx *interp.FileScope) *arrayOps {
 	return ctx.Evaluator().(*Evaluator).ao
 }
 

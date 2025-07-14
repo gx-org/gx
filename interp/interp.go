@@ -25,7 +25,6 @@ import (
 	"github.com/gx-org/gx/api/options"
 	"github.com/gx-org/gx/build/ir"
 	"github.com/gx-org/gx/interp/context"
-	"github.com/gx-org/gx/interp/elements"
 	"github.com/gx-org/gx/interp/evaluator"
 )
 
@@ -35,7 +34,7 @@ type (
 		evaluator.Evaluator
 
 		// NewFunc creates a new function given its definition and a receiver.
-		NewFunc(*Interpreter, ir.Func, *elements.Receiver) elements.Func
+		NewFunc(*Interpreter, ir.PkgFunc, *Receiver) Func
 
 		// CallFuncLit calls a function literal.
 		CallFuncLit(fitp *FileScope, ref *ir.FuncLit, args []ir.Element) ([]ir.Element, error)
@@ -99,7 +98,7 @@ func (itp *Interpreter) Core() *context.Core {
 }
 
 // NewFunc creates function elements from function IRs.
-func (itp *Interpreter) NewFunc(fn ir.Func, recv *elements.Receiver) elements.Func {
+func (itp *Interpreter) NewFunc(fn ir.PkgFunc, recv *Receiver) Func {
 	return itp.eval.NewFunc(itp, fn, recv)
 }
 
@@ -110,8 +109,6 @@ type FileScope struct {
 
 	ctx *context.Context
 }
-
-var _ elements.Evaluator = (*FileScope)(nil)
 
 // ForFile returns an interpreter for a file context.
 func (itp *Interpreter) ForFile(file *ir.File) (*FileScope, error) {
@@ -147,12 +144,12 @@ func (fitp *FileScope) Sub(vals map[string]ir.Element) *FileScope {
 }
 
 // NewFunc creates function elements from function IRs.
-func (fitp *FileScope) NewFunc(fn ir.Func, recv *elements.Receiver) elements.Func {
+func (fitp *FileScope) NewFunc(fn ir.PkgFunc, recv *Receiver) Func {
 	return fitp.itp.NewFunc(fn, recv)
 }
 
 // EvalFunc evaluates a function.
-func (fitp *FileScope) EvalFunc(f ir.Func, call *ir.CallExpr, args []ir.Element) ([]ir.Element, error) {
+func (fitp *FileScope) EvalFunc(f ir.PkgFunc, call *ir.CallExpr, args []ir.Element) ([]ir.Element, error) {
 	fnEl := NewRunFunc(f, nil)
 	return fnEl.Call(fitp, call, args)
 }

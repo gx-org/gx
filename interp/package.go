@@ -15,14 +15,10 @@
 package interp
 
 import (
+	"github.com/pkg/errors"
 	"github.com/gx-org/gx/build/ir"
 	"github.com/gx-org/gx/internal/base/scope"
-	"github.com/gx-org/gx/interp/elements"
 )
-
-func (itn *intern) NewFunc(fn ir.Func, recv *elements.Receiver) elements.Func {
-	return itn.itp.eval.NewFunc(itn.itp, fn, recv)
-}
 
 func (itn *intern) InitPkgScope(pkg *ir.Package, scope *scope.RWScope[ir.Element]) (ir.Element, error) {
 	itp := itn.itp
@@ -30,7 +26,7 @@ func (itn *intern) InitPkgScope(pkg *ir.Package, scope *scope.RWScope[ir.Element
 		scope.Define(f.Name(), itp.eval.NewFunc(itp, f, nil))
 	}
 	for _, tp := range pkg.Decls.Types {
-		scope.Define(tp.Name(), elements.NewNamedType(itn.NewFunc, tp, nil))
+		scope.Define(tp.Name(), NewNamedType(itn.itp.NewFunc, tp, nil))
 	}
 	if err := itp.evalPackageConsts(pkg, scope); err != nil {
 		return nil, err
@@ -38,7 +34,7 @@ func (itn *intern) InitPkgScope(pkg *ir.Package, scope *scope.RWScope[ir.Element
 	if err := itn.itp.evalOptions(pkg, scope); err != nil {
 		return nil, err
 	}
-	return elements.NewPackage(pkg, scope, itn.NewFunc), nil
+	return NewPackage(pkg, scope, itn.itp.NewFunc), nil
 }
 
 func (itp *Interpreter) evalPackageConsts(pkg *ir.Package, scope *scope.RWScope[ir.Element]) error {
@@ -53,6 +49,7 @@ func (itp *Interpreter) evalPackageConsts(pkg *ir.Package, scope *scope.RWScope[
 	}
 	return nil
 }
+
 func (itp *Interpreter) evalPackageConstExpr(scope *scope.RWScope[ir.Element], expr *ir.ConstExpr) error {
 	fCtx, err := itp.ForFile(expr.Decl.FFile)
 	if err != nil {
@@ -64,4 +61,40 @@ func (itp *Interpreter) evalPackageConstExpr(scope *scope.RWScope[ir.Element], e
 	}
 	scope.Define(expr.VName.Name, el)
 	return nil
+}
+
+// Package groups elements exported by a package.
+type Package struct {
+	pkg  *ir.Package
+	defs scope.Scope[ir.Element]
+}
+
+var (
+	_ ir.Element = (*Package)(nil)
+	_ Selector   = (*Package)(nil)
+)
+
+// NewPackage returns a package grouping everything that a package exports.
+func NewPackage(pkg *ir.Package, defs scope.Scope[ir.Element], newFunc NewFunc) *Package {
+	return &Package{pkg: pkg, defs: defs}
+}
+
+// Type of the element.
+func (pkg *Package) Type() ir.Type {
+	return ir.PackageType()
+}
+
+// Select a member of the package.
+func (pkg *Package) Select(fitp *FileScope, expr *ir.SelectorExpr) (ir.Element, error) {
+	name := expr.Stor.NameDef().Name
+	el, ok := pkg.defs.Find(name)
+	if !ok {
+		return nil, errors.Errorf("%s.%s undefined", pkg.pkg.Name, name)
+	}
+	return el, nil
+}
+
+// String returns a string representation of the node.
+func (pkg *Package) String() string {
+	return "package"
 }

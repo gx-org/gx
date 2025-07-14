@@ -26,6 +26,7 @@ import (
 	"github.com/gx-org/gx/internal/interp/flatten"
 	"github.com/gx-org/gx/interp/elements"
 	"github.com/gx-org/gx/interp/evaluator"
+	"github.com/gx-org/gx/interp"
 )
 
 type binary struct {
@@ -40,7 +41,7 @@ var (
 	_ ir.Canonical                 = (*binary)(nil)
 	_ elements.ElementWithConstant = (*binary)(nil)
 	_ fmt.Stringer                 = (*binary)(nil)
-	_ elements.WithAxes            = (*cast)(nil)
+	_ interp.WithAxes              = (*cast)(nil)
 )
 
 func newBinary(ctx ir.Evaluator, expr *ir.BinaryExpr, xEl, yEl evaluator.NumericalElement) (_ evaluator.NumericalElement, err error) {
@@ -144,7 +145,7 @@ func (a *binary) Shape() *shape.Shape {
 }
 
 // Axes returns the axes of the value as a slice element.
-func (a *binary) Axes(ev ir.Evaluator) (*elements.Slice, error) {
+func (a *binary) Axes(ev ir.Evaluator) (*interp.Slice, error) {
 	return axesFromType(ev, a.src.Node().Type())
 }
 

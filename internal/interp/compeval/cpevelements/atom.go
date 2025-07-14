@@ -26,6 +26,7 @@ import (
 	"github.com/gx-org/gx/internal/interp/flatten"
 	"github.com/gx-org/gx/interp/elements"
 	"github.com/gx-org/gx/interp/evaluator"
+	"github.com/gx-org/gx/interp"
 )
 
 type atom struct {
@@ -38,9 +39,9 @@ var (
 	_ elements.ElementWithConstant = (*atom)(nil)
 	_ elements.Materialiser        = (*atom)(nil)
 	_ Element                      = (*atom)(nil)
-	_ elements.Copier              = (*atom)(nil)
+	_ interp.Copier                = (*atom)(nil)
 	_ canonical.Evaluable          = (*atom)(nil)
-	_ elements.WithAxes            = (*atom)(nil)
+	_ interp.WithAxes              = (*atom)(nil)
 	_ ir.Canonical                 = (*atom)(nil)
 )
 
@@ -63,7 +64,7 @@ func (a *atom) UnaryOp(ctx ir.Evaluator, expr *ir.UnaryExpr) (evaluator.Numerica
 }
 
 // Copy the atom.
-func (a *atom) Copy() elements.Copier {
+func (a *atom) Copy() interp.Copier {
 	return &atom{
 		src:   a.src,
 		val:   a.val,
@@ -123,8 +124,8 @@ func (a *atom) Compare(x canonical.Comparable) bool {
 	return equalArray(a.val, cx)
 }
 
-func (a *atom) Axes(ir.Evaluator) (*elements.Slice, error) {
-	return elements.NewSlice(ir.IntLenSliceType(), nil), nil
+func (a *atom) Axes(ir.Evaluator) (*interp.Slice, error) {
+	return interp.NewSlice(ir.IntLenSliceType(), nil), nil
 }
 
 // Expr returns the IR expression represented by the variable.

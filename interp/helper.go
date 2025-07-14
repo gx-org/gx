@@ -1,4 +1,4 @@
-// Copyright 2024 Google LLC
+// Copyright 2025 Google LLC
 //
 // Licensed under the Apache License, Version 2.0 (the "License");
 // you may not use this file except in compliance with the License.
@@ -12,20 +12,23 @@
 // See the License for the specific language governing permissions and
 // limitations under the License.
 
-// Package numbers implement elements representing numbers for the interpreter.
-package numbers
+package interp
 
 import (
-	"github.com/gx-org/backend/shape"
-	"github.com/gx-org/gx/internal/interp/canonical"
-	"github.com/gx-org/gx/interp/evaluator"
+	"github.com/pkg/errors"
+	"github.com/gx-org/gx/build/ir"
 )
 
-var numberShape = &shape.Shape{}
-
-// Number value in GX.
-type Number interface {
-	evaluator.NumericalElement
-	canonical.Comparable
-	canonical.Evaluable
+// FuncDeclFromElement extracts a function declaration from an element.
+func FuncDeclFromElement(el ir.Element) (*ir.FuncDecl, error) {
+	fEl, ok := el.(Func)
+	if !ok {
+		return nil, errors.Errorf("cannot convert element %T to a function", el)
+	}
+	fun := fEl.Func()
+	fDecl, ok := fun.(*ir.FuncDecl)
+	if !ok {
+		return nil, errors.Errorf("%s is not a GX user function", fun.Name())
+	}
+	return fDecl, nil
 }

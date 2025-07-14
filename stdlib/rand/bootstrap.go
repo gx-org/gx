@@ -44,7 +44,7 @@ type randBootstrap struct {
 	next func() (evaluator.NumericalElement, error)
 }
 
-var _ elements.Copier = (*randBootstrap)(nil)
+var _ interp.Copier = (*randBootstrap)(nil)
 
 func (rb *randBootstrap) Type() ir.Type {
 	return &ir.BuiltinType{Impl: rb}
@@ -54,7 +54,7 @@ func (*randBootstrap) Kind() ir.Kind {
 	return ir.InterfaceKind
 }
 
-func (rb *randBootstrap) Copy() elements.Copier {
+func (rb *randBootstrap) Copy() interp.Copier {
 	return rb
 }
 
@@ -148,7 +148,7 @@ func (arg randBootstrapArg) ValueFromContext(ctx *values.FuncInputs) (values.Val
 	return values.AtomIntegerValue[uint64](arg.ValueProxy().Type(), val)
 }
 
-func evalNewBootstrapGenerator(ctx evaluator.Context, call elements.CallAt, fn elements.Func, irFunc *ir.FuncBuiltin, args []ir.Element) ([]ir.Element, error) {
+func evalNewBootstrapGenerator(ctx evaluator.Context, call elements.CallAt, fn interp.Func, irFunc *ir.FuncBuiltin, args []ir.Element) ([]ir.Element, error) {
 	bootstrap := &randBootstrap{
 		context: ctx,
 		call:    call,
@@ -172,15 +172,15 @@ func evalNewBootstrapGenerator(ctx evaluator.Context, call elements.CallAt, fn e
 	if err != nil {
 		return nil, err
 	}
-	return []ir.Element{elements.NewNamedType(
+	return []ir.Element{interp.NewNamedType(
 		ctx.(*interp.FileScope).NewFunc,
 		call.Node().Type().(*ir.NamedType),
 		bootstrap,
 	)}, nil
 }
 
-func evalBootstrapGeneratorNext(ctx evaluator.Context, call elements.CallAt, fn elements.Func, irFunc *ir.FuncBuiltin, args []ir.Element) ([]ir.Element, error) {
-	bootStrap := elements.Underlying(fn.Recv().Element).(*randBootstrap)
+func evalBootstrapGeneratorNext(ctx evaluator.Context, call elements.CallAt, fn interp.Func, irFunc *ir.FuncBuiltin, args []ir.Element) ([]ir.Element, error) {
+	bootStrap := interp.Underlying(fn.Recv().Element).(*randBootstrap)
 	el, err := bootStrap.next()
 	if err != nil {
 		return nil, err

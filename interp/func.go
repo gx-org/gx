@@ -29,19 +29,32 @@ import (
 	"github.com/gx-org/gx/interp/evaluator"
 )
 
+type (
+	// Func is an element owning a callable function.
+	Func interface {
+		ir.Element
+		Func() ir.Func
+		Recv() *Receiver
+		Call(fitp *FileScope, call *ir.CallExpr, args []ir.Element) ([]ir.Element, error)
+	}
+
+	// NewFunc creates function elements from function IRs.
+	NewFunc func(ir.PkgFunc, *Receiver) Func
+)
+
 // FuncBuiltin defines a builtin function provided by a backend.
-type FuncBuiltin func(ctx evaluator.Context, call elements.CallAt, fn elements.Func, irFunc *ir.FuncBuiltin, args []ir.Element) ([]ir.Element, error)
+type FuncBuiltin func(ctx evaluator.Context, call elements.CallAt, fn Func, irFunc *ir.FuncBuiltin, args []ir.Element) ([]ir.Element, error)
 
 type funcBase struct {
 	fn   ir.Func
-	recv *elements.Receiver
+	recv *Receiver
 }
 
-var _ elements.Func = (*funcBase)(nil)
+var _ Func = (*funcBase)(nil)
 
 // NewRunFunc creates a function given an IR and a receiver.
 // The function is run when being called.
-func NewRunFunc(fn ir.Func, recv *elements.Receiver) elements.Func {
+func NewRunFunc(fn ir.PkgFunc, recv *Receiver) Func {
 	switch fnT := fn.(type) {
 	case *ir.FuncDecl:
 		return &funcDecl{
@@ -73,7 +86,7 @@ func (st *funcBase) Func() ir.Func {
 }
 
 // Recv returns the receiver of the function or nil if the function has no receiver.
-func (st *funcBase) Recv() *elements.Receiver {
+func (st *funcBase) Recv() *Receiver {
 	return st.recv
 }
 
@@ -88,7 +101,7 @@ func (*funcBase) Kind() ir.Kind {
 }
 
 // Call the function.
-func (st *funcBase) Call(ctx elements.Evaluator, call *ir.CallExpr, args []ir.Element) ([]ir.Element, error) {
+func (st *funcBase) Call(ctx *FileScope, call *ir.CallExpr, args []ir.Element) ([]ir.Element, error) {
 	return nil, fmterr.Internalf(ctx.File().FileSet(), st.fn.Source(), "function type %T not supported", st.fn)
 }
 
@@ -102,8 +115,7 @@ type funcDecl struct {
 	fnT *ir.FuncDecl
 }
 
-func (f *funcDecl) Call(ev elements.Evaluator, call *ir.CallExpr, args []ir.Element) (outs []ir.Element, err error) {
-	fitp := ev.(*FileScope)
+func (f *funcDecl) Call(fitp *FileScope, call *ir.CallExpr, args []ir.Element) (outs []ir.Element, err error) {
 	if f.fnT.Body == nil {
 		return nil, fmterr.Errorf(fitp.File().FileSet(), f.fnT.Source(), "missing function body")
 	}
@@ -133,8 +145,7 @@ type funcBuiltin struct {
 	fnT *ir.FuncBuiltin
 }
 
-func (f *funcBuiltin) Call(ev elements.Evaluator, call *ir.CallExpr, args []ir.Element) (outs []ir.Element, err error) {
-	fitp := ev.(*FileScope)
+func (f *funcBuiltin) Call(fitp *FileScope, call *ir.CallExpr, args []ir.Element) (outs []ir.Element, err error) {
 	defer func() {
 		if err != nil {
 			err = fmterr.Position(fitp.File().FileSet(), call.Expr(), err)
@@ -156,9 +167,8 @@ type funcLit struct {
 	fnT *ir.FuncLit
 }
 
-func (f *funcLit) Call(fitp elements.Evaluator, call *ir.CallExpr, args []ir.Element) (outs []ir.Element, err error) {
-	fitpT := fitp.(*FileScope)
-	return fitpT.itp.eval.CallFuncLit(fitpT, f.fnT, args)
+func (f *funcLit) Call(fitp *FileScope, call *ir.CallExpr, args []ir.Element) (outs []ir.Element, err error) {
+	return fitp.itp.eval.CallFuncLit(fitp, f.fnT, args)
 }
 
 func evalFuncBody(fitp *FileScope, body *ir.BlockStmt) ([]ir.Element, error) {
@@ -183,7 +193,7 @@ func assignArgumentValues(funcType *ir.FuncType, funcFrame *context.Frame, args 
 	// For each parameter of the function, assign its argument value to the frame.
 	names := fieldNames(funcType.Params.List)
 	for i, arg := range args {
-		copyable, ok := arg.(elements.Copier)
+		copyable, ok := arg.(Copier)
 		if ok {
 			arg = copyable.Copy()
 		}

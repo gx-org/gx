@@ -12,7 +12,7 @@
 // See the License for the specific language governing permissions and
 // limitations under the License.
 
-package elements
+package interp
 
 import (
 	"fmt"
@@ -52,8 +52,8 @@ func (n *Tuple) Elements() []ir.Element {
 }
 
 // Slice of the tuple.
-func (n *Tuple) Slice(ctx Evaluator, expr *ir.IndexExpr, index evaluator.NumericalElement) (ir.Element, error) {
-	return slice(ctx, expr, index, n.elements)
+func (n *Tuple) Slice(fitp *FileScope, expr *ir.IndexExpr, index evaluator.NumericalElement) (ir.Element, error) {
+	return slice(fitp, expr, index, n.elements)
 }
 
 // Type of the element.

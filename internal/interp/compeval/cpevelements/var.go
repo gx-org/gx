@@ -22,6 +22,7 @@ import (
 	"github.com/gx-org/gx/internal/interp/canonical"
 	"github.com/gx-org/gx/interp/elements"
 	"github.com/gx-org/gx/interp/evaluator"
+	"github.com/gx-org/gx/interp"
 )
 
 type variable struct {
@@ -30,10 +31,10 @@ type variable struct {
 }
 
 var (
-	_ Element           = (*variable)(nil)
-	_ elements.WithAxes = (*variable)(nil)
-	_ ir.Canonical      = (*variable)(nil)
-	_ elements.Slicer   = (*variable)(nil)
+	_ Element         = (*variable)(nil)
+	_ interp.WithAxes = (*variable)(nil)
+	_ ir.Canonical    = (*variable)(nil)
+	_ interp.Slicer   = (*variable)(nil)
 )
 
 // NewVariable returns a new variable element given a GX variable name.
@@ -72,12 +73,12 @@ func (a *variable) Type() ir.Type {
 }
 
 // Axes returns the axes of the value as a slice element.
-func (a *variable) Axes(ev ir.Evaluator) (*elements.Slice, error) {
+func (a *variable) Axes(ev ir.Evaluator) (*interp.Slice, error) {
 	return axesFromType(ev, a.src.Node().Type())
 }
 
 // Slice computes a slice from the variable.
-func (a *variable) Slice(fitp elements.Evaluator, expr *ir.IndexExpr, index evaluator.NumericalElement) (ir.Element, error) {
+func (a *variable) Slice(fitp *interp.FileScope, expr *ir.IndexExpr, index evaluator.NumericalElement) (ir.Element, error) {
 	store := &ir.LocalVarStorage{Src: &ast.Ident{}, Typ: expr.Type()}
 	return NewRuntimeValue(fitp.File(), fitp.NewFunc, store)
 }
