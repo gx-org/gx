@@ -22,10 +22,11 @@ import (
 	irh "github.com/gx-org/gx/build/ir/irhelper"
 	"github.com/gx-org/gx/internal/interp/compeval/cpevelements"
 	"github.com/gx-org/gx/interp/elements"
+	"github.com/gx-org/gx/interp"
 )
 
 func newIDMacro(call elements.CallAt, macro *cpevelements.Macro, args []ir.Element) (*cpevelements.SyntheticFunc, error) {
-	fn, err := elements.FuncDeclFromElement(args[0])
+	fn, err := interp.FuncDeclFromElement(args[0])
 	if err != nil {
 		return nil, err
 	}

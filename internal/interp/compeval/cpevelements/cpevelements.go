@@ -24,6 +24,7 @@ import (
 	"github.com/gx-org/gx/internal/interp/canonical"
 	"github.com/gx-org/gx/interp/elements"
 	"github.com/gx-org/gx/interp/evaluator"
+	"github.com/gx-org/gx/interp"
 )
 
 // Element returned after an evaluation at compeval.
@@ -56,7 +57,7 @@ func valEqual(x, y Element) bool {
 	return equalArray(xEl, yEl)
 }
 
-func axesFromType(ev ir.Evaluator, typ ir.Type) (*elements.Slice, error) {
+func axesFromType(ev ir.Evaluator, typ ir.Type) (*interp.Slice, error) {
 	aTyp, ok := typ.(ir.ArrayType)
 	if !ok {
 		return nil, nil
@@ -71,11 +72,11 @@ func axesFromType(ev ir.Evaluator, typ ir.Type) (*elements.Slice, error) {
 			return nil, err
 		}
 	}
-	return elements.NewSlice(ir.IntLenSliceType(), elts), nil
+	return interp.NewSlice(ir.IntLenSliceType(), elts), nil
 }
 
 // NewRuntimeValue creates a new runtime value given an expression in a file.
-func NewRuntimeValue(file *ir.File, newFunc elements.NewFunc, store ir.Storage) (ir.Element, error) {
+func NewRuntimeValue(file *ir.File, newFunc interp.NewFunc, store ir.Storage) (ir.Element, error) {
 	ref := &ir.ValueRef{Src: store.NameDef(), Stor: store}
 	typ, ok := store.(ir.Type)
 	if !ok { // Check if storage is a type itself.
@@ -94,13 +95,13 @@ func NewRuntimeValue(file *ir.File, newFunc elements.NewFunc, store ir.Storage) 
 				return nil, err
 			}
 		}
-		return elements.NewStruct(typT, elements.NewValueAt(file, ref), fields), nil
+		return interp.NewStruct(typT, elements.NewValueAt(file, ref), fields), nil
 	case *ir.NamedType:
 		under, err := NewRuntimeValue(file, newFunc, typT.Underlying.Typ)
 		if err != nil {
 			return nil, err
 		}
-		return elements.NewNamedType(newFunc, typT, under.(elements.Copier)), nil
+		return interp.NewNamedType(newFunc, typT, under.(interp.Copier)), nil
 	case ir.ArrayType:
 		if !ir.IsStatic(typT.DataType()) {
 			return NewArray(typT), nil

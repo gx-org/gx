@@ -135,7 +135,7 @@ type namedTypeArgument struct {
 	pValue *proxies.NamedType
 }
 
-func (ev *Evaluator) newNamedTypeArgument(itp *interp.Interpreter, parent parentArgument, expr elements.ExprAt, pValue *proxies.NamedType) (*elements.NamedType, error) {
+func (ev *Evaluator) newNamedTypeArgument(itp *interp.Interpreter, parent parentArgument, expr elements.ExprAt, pValue *proxies.NamedType) (*interp.NamedType, error) {
 	arg := &namedTypeArgument{
 		parent: parent,
 		pValue: pValue,
@@ -144,11 +144,11 @@ func (ev *Evaluator) newNamedTypeArgument(itp *interp.Interpreter, parent parent
 	if err != nil {
 		return nil, err
 	}
-	recvCopier, ok := recv.(elements.Copier)
+	recvCopier, ok := recv.(interp.Copier)
 	if !ok {
 		return nil, errors.Errorf("element %T cannot be used as a receiver", recv)
 	}
-	return elements.NewNamedType(itp.NewFunc, arg.pValue.NamedType(), recvCopier), nil
+	return interp.NewNamedType(itp.NewFunc, arg.pValue.NamedType(), recvCopier), nil
 }
 
 func (arg *namedTypeArgument) Name() string {
@@ -178,7 +178,7 @@ type (
 
 var _ parentArgument = (*fieldSelectorArgument)(nil)
 
-func (ev *Evaluator) newStructArgument(itp *interp.Interpreter, parent parentArgument, expr elements.ExprAt, pValue *proxies.Struct) (*elements.Struct, error) {
+func (ev *Evaluator) newStructArgument(itp *interp.Interpreter, parent parentArgument, expr elements.ExprAt, pValue *proxies.Struct) (*interp.Struct, error) {
 	structType := pValue.StructType()
 	structArg := &structArgument{
 		parentArgument: parent,
@@ -209,7 +209,7 @@ func (ev *Evaluator) newStructArgument(itp *interp.Interpreter, parent parentArg
 		}
 		fields[name] = field
 	}
-	return elements.NewStruct(pValue.StructType(), expr.ToValueAt(), fields), nil
+	return interp.NewStruct(pValue.StructType(), expr.ToValueAt(), fields), nil
 }
 
 func (sel *fieldSelectorArgument) Name() string {
@@ -249,7 +249,7 @@ type (
 	}
 )
 
-func (ev *Evaluator) newSliceArgument(itp *interp.Interpreter, parent parentArgument, expr elements.ExprAt, pValue *proxies.Slice) (*elements.Slice, error) {
+func (ev *Evaluator) newSliceArgument(itp *interp.Interpreter, parent parentArgument, expr elements.ExprAt, pValue *proxies.Slice) (*interp.Slice, error) {
 	sliceArg := &sliceArgument{
 		parentArgument: parent,
 		pValue:         pValue,
@@ -296,7 +296,7 @@ func (ev *Evaluator) newSliceArgument(itp *interp.Interpreter, parent parentArgu
 		}
 
 	}
-	return elements.NewSlice(expr.Node().Type(), vals), nil
+	return interp.NewSlice(expr.Node().Type(), vals), nil
 }
 
 func (sel *indexSelectorArgument) Name() string {
@@ -388,7 +388,7 @@ func (n *arrayArgument) ArrayFromContext(in *values.FuncInputs) (values.Array, e
 	return array, nil
 }
 
-func (n *arrayArgument) Copy() elements.Copier {
+func (n *arrayArgument) Copy() interp.Copier {
 	return n
 }
 

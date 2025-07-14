@@ -12,9 +12,11 @@
 // See the License for the specific language governing permissions and
 // limitations under the License.
 
-package elements
+package interp
 
 import (
+	"go/ast"
+
 	"github.com/pkg/errors"
 	"github.com/gx-org/gx/api/values"
 	"github.com/gx-org/gx/build/ir"
@@ -25,13 +27,13 @@ import (
 type NamedType struct {
 	newFunc NewFunc
 	typ     *ir.NamedType
-	funcs   map[string]ir.Func
+	funcs   map[string]ir.PkgFunc
 	under   Copier
 }
 
 // NewNamedType returns a new node representing an exported type.
 func NewNamedType(newFunc NewFunc, typ *ir.NamedType, under Copier) *NamedType {
-	funcs := make(map[string]ir.Func)
+	funcs := make(map[string]ir.PkgFunc)
 	for _, fun := range typ.Methods {
 		funcs[fun.Name()] = fun
 	}
@@ -45,8 +47,8 @@ func NewNamedType(newFunc NewFunc, typ *ir.NamedType, under Copier) *NamedType {
 
 // Select returns the field given an index.
 // Returns nil if the receiver type cannot select fields.
-func (n *NamedType) Select(expr SelectAt) (ir.Element, error) {
-	name := expr.node.Stor.NameDef().Name
+func (n *NamedType) Select(fitp *FileScope, expr *ir.SelectorExpr) (ir.Element, error) {
+	name := expr.Stor.NameDef().Name
 	if fn := n.funcs[name]; fn != nil {
 		return n.newFunc(fn, NewReceiver(n, fn)), nil
 	}
@@ -54,7 +56,7 @@ func (n *NamedType) Select(expr SelectAt) (ir.Element, error) {
 	if !ok {
 		return nil, errors.Errorf("%s is undefined", name)
 	}
-	return under.Select(expr)
+	return under.Select(fitp, expr)
 }
 
 // RecvCopy copies the underlying element and returns the element encapsulated in this named type.
@@ -89,4 +91,35 @@ func (n *NamedType) Type() ir.Type {
 // String returns a string representation of the node.
 func (n *NamedType) String() string {
 	return n.typ.FullName()
+}
+
+// Receiver of a function.
+type Receiver struct {
+	Ident   *ast.Ident
+	Element *NamedType
+}
+
+// NewReceiver returns a new receiver given a function definition and the element representing the receiver.
+func NewReceiver(el *NamedType, fn ir.Func) *Receiver {
+	if el == nil {
+		return nil
+	}
+	names := fn.FuncType().Receiver.Src.List[0].Names
+	var name *ast.Ident
+	if len(names) > 0 {
+		name = names[0]
+	}
+	return &Receiver{
+		Ident:   name,
+		Element: el,
+	}
+}
+
+// Underlying returns the underlying element.
+func Underlying(val ir.Element) ir.Element {
+	named, ok := val.(*NamedType)
+	if !ok {
+		return val
+	}
+	return Underlying(named.under)
 }

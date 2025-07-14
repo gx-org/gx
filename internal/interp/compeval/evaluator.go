@@ -38,13 +38,8 @@ func NewHostEvaluator(importer ir.Importer) *CompEval {
 	return &CompEval{importer: importer}
 }
 
-// NewSub returns a new evaluator given a new array operator implementations.
-func (ev *CompEval) NewSub(evaluator.ArrayOps) evaluator.Evaluator {
-	return ev
-}
-
 // NewFunc creates a new function given its definition and a receiver.
-func (ev *CompEval) NewFunc(itp *interp.Interpreter, fn ir.Func, recv *elements.Receiver) elements.Func {
+func (ev *CompEval) NewFunc(itp *interp.Interpreter, fn ir.PkgFunc, recv *interp.Receiver) interp.Func {
 	if macro, ok := fn.(*ir.Macro); ok {
 		return cpevelements.NewMacro(macro, recv)
 	}

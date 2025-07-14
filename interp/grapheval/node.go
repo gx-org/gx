@@ -24,6 +24,7 @@ import (
 	"github.com/gx-org/gx/internal/interp/flatten"
 	"github.com/gx-org/gx/interp/elements"
 	"github.com/gx-org/gx/interp/evaluator"
+	"github.com/gx-org/gx/interp"
 )
 
 // BackendNode is a state element owning a node in the backend graph.
@@ -33,8 +34,8 @@ type BackendNode struct {
 }
 
 var (
-	_ elements.Slicer            = (*BackendNode)(nil)
-	_ elements.Copier            = (*BackendNode)(nil)
+	_ interp.Slicer              = (*BackendNode)(nil)
+	_ interp.Copier              = (*BackendNode)(nil)
 	_ elements.Materialiser      = (*BackendNode)(nil)
 	_ evaluator.NumericalElement = (*BackendNode)(nil)
 )
@@ -62,7 +63,7 @@ func checkShape(node *ops.OutputNode) error {
 }
 
 // elementFromTuple converts a backend tuple to a Tuple element.
-func (ev *Evaluator) elementFromTuple(src elements.ExprAt, tpl ops.Tuple, shps []*shape.Shape) (*elements.Tuple, error) {
+func (ev *Evaluator) elementFromTuple(src elements.ExprAt, tpl ops.Tuple, shps []*shape.Shape) (*interp.Tuple, error) {
 	elts := make([]ir.Element, tpl.Size())
 	for i := range tpl.Size() {
 		node, err := tpl.Element(i)
@@ -77,12 +78,12 @@ func (ev *Evaluator) elementFromTuple(src elements.ExprAt, tpl ops.Tuple, shps [
 			return nil, err
 		}
 	}
-	return elements.NewTuple(elts), nil
+	return interp.NewTuple(elts), nil
 }
 
 // BinaryOp applies a binary operator to x and y.
 func (n *BackendNode) BinaryOp(ctx ir.Evaluator, expr *ir.BinaryExpr, x, y evaluator.NumericalElement) (evaluator.NumericalElement, error) {
-	ao := opsFromContext(ctx.(elements.Evaluator))
+	ao := opsFromContext(ctx.(*interp.FileScope))
 	xNode, xShape, err := NodeFromElement(ctx, x)
 	if err != nil {
 		return nil, err
@@ -115,7 +116,7 @@ func (n *BackendNode) BinaryOp(ctx ir.Evaluator, expr *ir.BinaryExpr, x, y evalu
 
 // UnaryOp applies a unary operator on x.
 func (n *BackendNode) UnaryOp(ctx ir.Evaluator, expr *ir.UnaryExpr) (evaluator.NumericalElement, error) {
-	ao := opsFromContext(ctx.(elements.Evaluator))
+	ao := opsFromContext(ctx.(*interp.FileScope))
 	unaryNode, err := ao.Graph().Core().Unary(expr.Src, n.nod.Node)
 	if err != nil {
 		return nil, err
@@ -130,7 +131,7 @@ func (n *BackendNode) UnaryOp(ctx ir.Evaluator, expr *ir.UnaryExpr) (evaluator.N
 
 // Cast an element into a given data type.
 func (n *BackendNode) Cast(ctx ir.Evaluator, expr ir.AssignableExpr, target ir.Type) (evaluator.NumericalElement, error) {
-	ao := opsFromContext(ctx.(elements.Evaluator))
+	ao := opsFromContext(ctx.(*interp.FileScope))
 	targetKind := target.Kind().DType()
 	casted, err := ao.Graph().Core().Cast(n.nod.Node, targetKind)
 	if err != nil {
@@ -157,7 +158,7 @@ func (n *BackendNode) Reshape(ctx ir.Evaluator, expr ir.AssignableExpr, axisLeng
 			return nil, err
 		}
 	}
-	ao := opsFromContext(ctx.(elements.Evaluator))
+	ao := opsFromContext(ctx.(*interp.FileScope))
 	reshaped, err := ao.Graph().Core().Reshape(n.nod.Node, axes)
 	if err != nil {
 		return nil, err
@@ -174,21 +175,21 @@ func (n *BackendNode) Reshape(ctx ir.Evaluator, expr ir.AssignableExpr, axisLeng
 }
 
 // Slice of the value on the first axis given an index.
-func (n *BackendNode) Slice(ctx elements.Evaluator, expr *ir.IndexExpr, index evaluator.NumericalElement) (ir.Element, error) {
-	return n.SliceArray(ctx, expr, index)
+func (n *BackendNode) Slice(fitp *interp.FileScope, expr *ir.IndexExpr, index evaluator.NumericalElement) (ir.Element, error) {
+	return n.SliceArray(fitp, expr, index)
 }
 
 // SliceArray of the value on the first axis given an index.
-func (n *BackendNode) SliceArray(ctx elements.Evaluator, expr ir.AssignableExpr, index evaluator.NumericalElement) (evaluator.NumericalElement, error) {
+func (n *BackendNode) SliceArray(fitp *interp.FileScope, expr ir.AssignableExpr, index evaluator.NumericalElement) (evaluator.NumericalElement, error) {
 	i, err := elements.ConstantIntFromElement(index)
 	if err != nil {
 		return nil, err
 	}
-	sliceNode, err := opsFromContext(ctx).Graph().Core().Slice(n.nod.Node, i)
+	sliceNode, err := opsFromContext(fitp).Graph().Core().Slice(n.nod.Node, i)
 	if err != nil {
 		return nil, err
 	}
-	return ElementFromNode(elements.NewExprAt(ctx.File(), expr), &ops.OutputNode{
+	return ElementFromNode(elements.NewExprAt(fitp.File(), expr), &ops.OutputNode{
 		Node: sliceNode,
 		Shape: &shape.Shape{
 			DType:       n.Shape().DType,
@@ -203,7 +204,7 @@ func (n *BackendNode) Unflatten(handles *flatten.Parser) (values.Value, error) {
 }
 
 // Copy the node by returning itself.
-func (n *BackendNode) Copy() elements.Copier {
+func (n *BackendNode) Copy() interp.Copier {
 	return n
 }
 

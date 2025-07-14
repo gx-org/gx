@@ -22,6 +22,7 @@ import (
 	"github.com/gx-org/gx/internal/interp/flatten"
 	"github.com/gx-org/gx/interp/elements"
 	"github.com/gx-org/gx/interp/evaluator"
+	"github.com/gx-org/gx/interp"
 )
 
 // valueElement is a GX value represented as a node in the graph.
@@ -32,12 +33,12 @@ type valueElement struct {
 
 var (
 	_ elements.ElementWithConstant = (*valueElement)(nil)
-	_ elements.ArraySlicer         = (*valueElement)(nil)
-	_ elements.Slicer              = (*valueElement)(nil)
+	_ interp.ArraySlicer           = (*valueElement)(nil)
+	_ interp.Slicer                = (*valueElement)(nil)
 	_ elements.Materialiser        = (*valueElement)(nil)
 	_ elements.Node                = (*valueElement)(nil)
-	_ elements.Copier              = (*valueElement)(nil)
-	_ elements.WithAxes            = (*valueElement)(nil)
+	_ interp.Copier                = (*valueElement)(nil)
+	_ interp.WithAxes              = (*valueElement)(nil)
 )
 
 func newValueElement(ev *Evaluator, src elements.ExprAt, value values.Array) (*valueElement, error) {
@@ -73,11 +74,11 @@ func (n *valueElement) Unflatten(handles *flatten.Parser) (values.Value, error) 
 }
 
 // Copy the graph node by returning itself.
-func (n *valueElement) Copy() elements.Copier {
+func (n *valueElement) Copy() interp.Copier {
 	return n
 }
 
-func (n *valueElement) Axes(ev ir.Evaluator) (*elements.Slice, error) {
+func (n *valueElement) Axes(ev ir.Evaluator) (*interp.Slice, error) {
 	shape := n.value.Shape()
 	ctx := ev.(evaluator.Context)
 	axes := make([]ir.Element, len(shape.AxisLengths))
@@ -95,7 +96,7 @@ func (n *valueElement) Axes(ev ir.Evaluator) (*elements.Slice, error) {
 			return nil, err
 		}
 	}
-	return elements.NewSlice(ir.IntLenSliceType(), axes), nil
+	return interp.NewSlice(ir.IntLenSliceType(), axes), nil
 }
 
 func (n *valueElement) Type() ir.Type {

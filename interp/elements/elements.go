@@ -46,36 +46,6 @@ type InputElements struct {
 }
 
 type (
-	// Copier is an interface implemented by nodes that need to be copied when passed to a function.
-	Copier interface {
-		ir.Element
-		Copy() Copier
-	}
-
-	// Selector selects a field given its index.
-	Selector interface {
-		Select(SelectAt) (ir.Element, error)
-	}
-
-	// Slicer is a state element that can be sliced.
-	Slicer interface {
-		Slice(ctx Evaluator, expr *ir.IndexExpr, index evaluator.NumericalElement) (ir.Element, error)
-	}
-
-	// ArraySlicer is a state element with an array that can be sliced.
-	ArraySlicer interface {
-		evaluator.NumericalElement
-		SliceArray(ctx Evaluator, expr ir.AssignableExpr, index evaluator.NumericalElement) (evaluator.NumericalElement, error)
-		Type() ir.Type
-	}
-
-	// WithAxes is an element able to return its axes as a slice of element.
-	WithAxes interface {
-		Axes(ev ir.Evaluator) (*Slice, error)
-	}
-)
-
-type (
 	// NodeFile is an expression with the file in which it is declared.
 	NodeFile[T ir.Node] struct {
 		file *ir.File
@@ -268,76 +238,6 @@ type PackageVarSetElement struct {
 // Package for which the option has been built.
 func (p PackageVarSetElement) Package() string {
 	return p.Pkg
-}
-
-type (
-	// Evaluator represent the interpreter.
-	// TODO(degris): remove ASAP.
-	Evaluator interface {
-		File() *ir.File
-
-		NewFunc(ir.Func, *Receiver) Func
-
-		EvalFunc(f ir.Func, call *ir.CallExpr, args []ir.Element) ([]ir.Element, error)
-
-		Evaluator() evaluator.Evaluator
-	}
-
-	// Receiver of a function.
-	Receiver struct {
-		Ident   *ast.Ident
-		Element *NamedType
-	}
-
-	// Func is an element owning a callable function.
-	Func interface {
-		ir.Element
-		Func() ir.Func
-		Recv() *Receiver
-		Call(ctx Evaluator, call *ir.CallExpr, args []ir.Element) ([]ir.Element, error)
-	}
-
-	// NewFunc creates function elements from function IRs.
-	NewFunc func(ir.Func, *Receiver) Func
-)
-
-// NewReceiver returns a new receiver given a function definition and the element representing the receiver.
-func NewReceiver(el *NamedType, fn ir.Func) *Receiver {
-	if el == nil {
-		return nil
-	}
-	names := fn.FuncType().Receiver.Src.List[0].Names
-	var name *ast.Ident
-	if len(names) > 0 {
-		name = names[0]
-	}
-	return &Receiver{
-		Ident:   name,
-		Element: el,
-	}
-}
-
-// Underlying returns the underlying element.
-func Underlying(val ir.Element) ir.Element {
-	named, ok := val.(*NamedType)
-	if !ok {
-		return val
-	}
-	return Underlying(named.under)
-}
-
-// FuncDeclFromElement extracts a function declaration from an element.
-func FuncDeclFromElement(el ir.Element) (*ir.FuncDecl, error) {
-	fEl, ok := el.(Func)
-	if !ok {
-		return nil, errors.Errorf("cannot convert element %T to a function", el)
-	}
-	fun := fEl.Func()
-	fDecl, ok := fun.(*ir.FuncDecl)
-	if !ok {
-		return nil, errors.Errorf("%s is not a GX user function", fun.Name())
-	}
-	return fDecl, nil
 }
 
 // StringFromElement returns the string value stored in a element.

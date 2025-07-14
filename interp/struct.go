@@ -12,7 +12,7 @@
 // See the License for the specific language governing permissions and
 // limitations under the License.
 
-package elements
+package interp
 
 import (
 	"fmt"
@@ -23,11 +23,12 @@ import (
 	"github.com/gx-org/gx/build/fmterr"
 	"github.com/gx-org/gx/build/ir"
 	"github.com/gx-org/gx/internal/interp/flatten"
+	"github.com/gx-org/gx/interp/elements"
 )
 
 // Struct is an instance of a structure.
 type Struct struct {
-	expr       ValueAt
+	expr       elements.ValueAt
 	fields     map[string]ir.Element
 	structType *ir.StructType
 }
@@ -38,7 +39,7 @@ var (
 )
 
 // NewStructFromElements returns a new node representing a structure instance given a slice of
-func NewStructFromElements(structType *ir.StructType, expr ValueAt, vals []ir.Element) *Struct {
+func NewStructFromElements(structType *ir.StructType, expr elements.ValueAt, vals []ir.Element) *Struct {
 	fields := make(map[string]ir.Element, len(vals))
 	for i, field := range structType.Fields.Fields() {
 		fields[field.Name.Name] = vals[i]
@@ -47,7 +48,7 @@ func NewStructFromElements(structType *ir.StructType, expr ValueAt, vals []ir.El
 }
 
 // NewStruct returns a new node representing a structure instance.
-func NewStruct(structType *ir.StructType, expr ValueAt, fields map[string]ir.Element) *Struct {
+func NewStruct(structType *ir.StructType, expr elements.ValueAt, fields map[string]ir.Element) *Struct {
 	return &Struct{
 		expr:       expr,
 		fields:     fields,
@@ -81,11 +82,11 @@ func (n *Struct) Unflatten(handles *flatten.Parser) (values.Value, error) {
 }
 
 // Select returns the value of a field of a structure given its index.
-func (n *Struct) Select(expr SelectAt) (ir.Element, error) {
-	name := expr.Node().Stor.NameDef().Name
+func (n *Struct) Select(fitp *FileScope, expr *ir.SelectorExpr) (ir.Element, error) {
+	name := expr.Stor.NameDef().Name
 	val, ok := n.fields[name]
 	if !ok {
-		return nil, fmterr.Errorf(expr.FSet(), expr.Node().Source(), "field %s undefined", name)
+		return nil, fmterr.Errorf(fitp.File().FileSet(), expr.Src, "field %s undefined", name)
 	}
 	return val, nil
 }

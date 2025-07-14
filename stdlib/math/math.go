@@ -124,7 +124,7 @@ func buildConstScalar[T dtype.GoDataType](name string, value T) builtin.Builder 
 type unaryFunc = func(ops.Node) (ops.Node, error)
 
 func buildUnary(name string, f func(graph ops.Graph) unaryFunc) builtin.Builder {
-	return builtin.ImplementGraphFunc(name, func(ctx evaluator.Context, call elements.CallAt, fn elements.Func, irFunc *ir.FuncBuiltin, args []ir.Element) ([]ir.Element, error) {
+	return builtin.ImplementGraphFunc(name, func(ctx evaluator.Context, call elements.CallAt, fn interp.Func, irFunc *ir.FuncBuiltin, args []ir.Element) ([]ir.Element, error) {
 		ao := ctx.Evaluator().ArrayOps()
 		x, xShape, err := grapheval.NodeFromElement(ctx, args[0])
 		if err != nil {

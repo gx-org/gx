@@ -12,7 +12,7 @@
 // See the License for the specific language governing permissions and
 // limitations under the License.
 
-package elements
+package interp
 
 import (
 	"github.com/pkg/errors"
@@ -21,6 +21,7 @@ import (
 	"github.com/gx-org/gx/build/ir"
 	"github.com/gx-org/gx/internal/interp/canonical"
 	"github.com/gx-org/gx/internal/interp/flatten"
+	"github.com/gx-org/gx/interp/elements"
 	"github.com/gx-org/gx/interp/evaluator"
 )
 
@@ -28,7 +29,6 @@ import (
 type Slice struct {
 	typ    ir.Type
 	values []ir.Element
-	slicer Slicer
 }
 
 var (
@@ -51,8 +51,8 @@ func (n *Slice) Flatten() ([]ir.Element, error) {
 	return flatten.Flatten(n.values...)
 }
 
-func slice(ctx Evaluator, expr ir.AssignableExpr, index evaluator.NumericalElement, vals []ir.Element) (ir.Element, error) {
-	i, err := ConstantIntFromElement(index)
+func slice(fitp *FileScope, expr ir.AssignableExpr, index evaluator.NumericalElement, vals []ir.Element) (ir.Element, error) {
+	i, err := elements.ConstantIntFromElement(index)
 	if err != nil {
 		return nil, err
 	}
@@ -63,8 +63,8 @@ func slice(ctx Evaluator, expr ir.AssignableExpr, index evaluator.NumericalEleme
 }
 
 // Slice of the tuple.
-func (n *Slice) Slice(ctx Evaluator, expr *ir.IndexExpr, index evaluator.NumericalElement) (ir.Element, error) {
-	return slice(ctx, expr, index, n.values)
+func (n *Slice) Slice(fitp *FileScope, expr *ir.IndexExpr, index evaluator.NumericalElement) (ir.Element, error) {
+	return slice(fitp, expr, index, n.values)
 }
 
 // Type of the slice.

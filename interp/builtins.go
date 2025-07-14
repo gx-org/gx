@@ -82,14 +82,14 @@ func (appendFunc) Implementation() any {
 	return FuncBuiltin(appendImpl)
 }
 
-func appendImpl(ctx evaluator.Context, call elements.CallAt, fn elements.Func, irFunc *ir.FuncBuiltin, args []ir.Element) ([]ir.Element, error) {
-	slice, ok := args[0].(*elements.Slice)
+func appendImpl(ctx evaluator.Context, call elements.CallAt, fn Func, irFunc *ir.FuncBuiltin, args []ir.Element) ([]ir.Element, error) {
+	slice, ok := args[0].(*Slice)
 	if !ok {
-		return nil, errors.Errorf("cannot cast %T to %s", args[0], reflect.TypeFor[*elements.Slice]())
+		return nil, errors.Errorf("cannot cast %T to %s", args[0], reflect.TypeFor[*Slice]())
 	}
 	els := append([]ir.Element{}, slice.Elements()...)
 	els = append(els, args[1:]...)
-	return []ir.Element{elements.NewSlice(slice.Type(), els)}, nil
+	return []ir.Element{NewSlice(slice.Type(), els)}, nil
 }
 
 type axlengthsFunc struct{}
@@ -104,8 +104,8 @@ func (axlengthsFunc) Implementation() any {
 	return FuncBuiltin(axlengthsImpl)
 }
 
-func axlengthsImpl(ctx evaluator.Context, call elements.CallAt, fn elements.Func, irFunc *ir.FuncBuiltin, args []ir.Element) ([]ir.Element, error) {
-	array, ok := args[0].(elements.WithAxes)
+func axlengthsImpl(ctx evaluator.Context, call elements.CallAt, fn Func, irFunc *ir.FuncBuiltin, args []ir.Element) ([]ir.Element, error) {
+	array, ok := args[0].(WithAxes)
 	if !ok {
 		return nil, fmterr.Internalf(ctx.File().FileSet(), call.Node().Src, "cannot get the shape of %T: not supported", args[0])
 	}
@@ -128,7 +128,7 @@ func (setFunc) Implementation() any {
 	return FuncBuiltin(setImpl)
 }
 
-func setImpl(ctx evaluator.Context, call elements.CallAt, fn elements.Func, irFunc *ir.FuncBuiltin, args []ir.Element) ([]ir.Element, error) {
+func setImpl(ctx evaluator.Context, call elements.CallAt, fn Func, irFunc *ir.FuncBuiltin, args []ir.Element) ([]ir.Element, error) {
 	out, err := ctx.Evaluator().ArrayOps().Set(ctx, call.Node(), args[0], args[1], args[2])
 	if err != nil {
 		return nil, err
@@ -148,6 +148,6 @@ func (traceFunc) Implementation() any {
 	return FuncBuiltin(traceImpl)
 }
 
-func traceImpl(ctx evaluator.Context, call elements.CallAt, fn elements.Func, irFunc *ir.FuncBuiltin, args []ir.Element) ([]ir.Element, error) {
+func traceImpl(ctx evaluator.Context, call elements.CallAt, fn Func, irFunc *ir.FuncBuiltin, args []ir.Element) ([]ir.Element, error) {
 	return nil, ctx.Evaluator().Trace(ctx, call.Node(), args)
 }

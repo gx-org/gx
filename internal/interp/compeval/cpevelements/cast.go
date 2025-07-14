@@ -25,6 +25,7 @@ import (
 	"github.com/gx-org/gx/internal/interp/flatten"
 	"github.com/gx-org/gx/interp/elements"
 	"github.com/gx-org/gx/interp/evaluator"
+	"github.com/gx-org/gx/interp"
 )
 
 type cast struct {
@@ -36,8 +37,8 @@ type cast struct {
 
 var (
 	_ elements.Materialiser        = (*cast)(nil)
-	_ elements.WithAxes            = (*cast)(nil)
-	_ elements.Copier              = (*cast)(nil)
+	_ interp.WithAxes              = (*cast)(nil)
+	_ interp.Copier                = (*cast)(nil)
 	_ elements.ElementWithConstant = (*cast)(nil)
 	_ fmt.Stringer                 = (*cast)(nil)
 )
@@ -132,7 +133,7 @@ func (a *cast) NumericalConstant() *values.HostArray {
 }
 
 // Copy the element by returning itself.
-func (a *cast) Copy() elements.Copier {
+func (a *cast) Copy() interp.Copier {
 	return a
 }
 
@@ -142,7 +143,7 @@ func (a *cast) Materialise(ao elements.ArrayMaterialiser) (elements.Node, error)
 }
 
 // Axes of the result of the cast.
-func (a *cast) Axes(ev ir.Evaluator) (*elements.Slice, error) {
+func (a *cast) Axes(ev ir.Evaluator) (*interp.Slice, error) {
 	return axesFromType(ev, a.target)
 }
 
