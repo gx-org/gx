@@ -18,9 +18,9 @@ import (
 	"fmt"
 	"strings"
 
+	"github.com/pkg/errors"
 	"github.com/gx-org/gx/api/values"
 	gxfmt "github.com/gx-org/gx/base/fmt"
-	"github.com/gx-org/gx/build/fmterr"
 	"github.com/gx-org/gx/build/ir"
 	"github.com/gx-org/gx/internal/interp/flatten"
 	"github.com/gx-org/gx/interp/elements"
@@ -28,9 +28,9 @@ import (
 
 // Struct is an instance of a structure.
 type Struct struct {
-	expr       elements.ValueAt
-	fields     map[string]ir.Element
-	structType *ir.StructType
+	expr   elements.ValueAt
+	fields map[string]ir.Element
+	typ    *ir.StructType
 }
 
 var (
@@ -39,30 +39,29 @@ var (
 )
 
 // NewStructFromElements returns a new node representing a structure instance given a slice of
-func NewStructFromElements(structType *ir.StructType, expr elements.ValueAt, vals []ir.Element) *Struct {
+func NewStructFromElements(typ *ir.StructType, vals []ir.Element) *Struct {
 	fields := make(map[string]ir.Element, len(vals))
-	for i, field := range structType.Fields.Fields() {
+	for i, field := range typ.Fields.Fields() {
 		fields[field.Name.Name] = vals[i]
 	}
-	return NewStruct(structType, expr, fields)
+	return NewStruct(typ, fields)
 }
 
 // NewStruct returns a new node representing a structure instance.
-func NewStruct(structType *ir.StructType, expr elements.ValueAt, fields map[string]ir.Element) *Struct {
+func NewStruct(typ *ir.StructType, fields map[string]ir.Element) *Struct {
 	return &Struct{
-		expr:       expr,
-		fields:     fields,
-		structType: structType,
+		fields: fields,
+		typ:    typ,
 	}
 }
 
 // StructType returns the type of the structure.
 func (n *Struct) StructType() *ir.StructType {
-	return n.structType
+	return n.typ
 }
 
 func (n *Struct) orderedFieldValues() []ir.Element {
-	fields := n.structType.Fields.Fields()
+	fields := n.typ.Fields.Fields()
 	ordered := make([]ir.Element, len(fields))
 	for i, field := range fields {
 		ordered[i] = n.fields[field.Name.Name]
@@ -78,29 +77,28 @@ func (n *Struct) Flatten() ([]ir.Element, error) {
 // Unflatten consumes the next handles to return a GX value.
 func (n *Struct) Unflatten(handles *flatten.Parser) (values.Value, error) {
 	elts := n.orderedFieldValues()
-	return handles.ParseComposite(flatten.ParseCompositeOf(values.NewStruct), n.expr.Node().Type(), elts)
+	return handles.ParseComposite(flatten.ParseCompositeOf(values.NewStruct), n.typ, elts)
 }
 
 // Select returns the value of a field of a structure given its index.
-func (n *Struct) Select(fitp *FileScope, expr *ir.SelectorExpr) (ir.Element, error) {
+func (n *Struct) Select(expr *ir.SelectorExpr) (ir.Element, error) {
 	name := expr.Stor.NameDef().Name
 	val, ok := n.fields[name]
 	if !ok {
-		return nil, fmterr.Errorf(fitp.File().FileSet(), expr.Src, "field %s undefined", name)
+		return nil, errors.Errorf("field %s undefined", name)
 	}
 	return val, nil
 }
 
 // Type of the element.
 func (n *Struct) Type() ir.Type {
-	return n.structType
+	return n.typ
 }
 
 // Copy the structure to a new node.
 func (n *Struct) Copy() Copier {
 	cp := &Struct{
-		structType: n.structType,
-		expr:       n.expr,
+		typ: n.typ,
 	}
 	cp.fields = make(map[string]ir.Element, len(n.fields))
 	for name, field := range n.fields {
@@ -122,7 +120,7 @@ func (n *Struct) String() string {
 	var b strings.Builder
 	b.WriteString(n.StructType().String())
 	b.WriteString("{\n")
-	for i, fld := range n.structType.Fields.Fields() {
+	for i, fld := range n.typ.Fields.Fields() {
 		b.WriteString(gxfmt.Indent(fmt.Sprintf("%d: %s %s = %v\n", i, fld.Name.Name, fld.Type().String(), gxfmt.String(n.fields[fld.Name.Name]))))
 	}
 	b.WriteString("}")

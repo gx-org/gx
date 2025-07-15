@@ -207,7 +207,7 @@ func structToProxyValues(st *values.Struct) (map[string]Value, error) {
 
 func sliceToProxyValues(sl *values.Slice) ([]Value, error) {
 	elementType := sl.SliceType().DType
-	prs := make([]Value, sl.Size())
+	prs := make([]Value, sl.Len())
 	for i := range prs {
 		var err error
 		prs[i], err = ToProxy(sl.Element(i), elementType.Typ)

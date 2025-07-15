@@ -84,6 +84,11 @@ func (vs *Struct) SetField(name string, val Value) {
 	vs.vals.Store(name, val)
 }
 
+// Select a field in the structure.
+func (vs *Struct) Select(expr *ir.SelectorExpr) (ir.Element, error) {
+	return vs.FieldValue(expr.Src.Sel.Name), nil
+}
+
 // FieldValue returns the value of the ith field.
 func (vs *Struct) FieldValue(name string) Value {
 	return vs.vals.Load(name)
@@ -105,8 +110,7 @@ func indent(s string) string {
 	return strings.Join(ss, "\n")
 }
 
-// String representation of the structure.
-func (vs *Struct) String() string {
+func (vs *Struct) toString(prefix string) string {
 	fields := vs.structType.Fields.Fields()
 	fieldStrs := make([]string, len(fields))
 	for i, field := range fields {
@@ -117,5 +121,10 @@ func (vs *Struct) String() string {
 		fieldStrs[i] = fmt.Sprintf("\t%s: %s,\n", field.Name.Name, childS)
 	}
 	fieldsStr := "\n" + strings.Join(fieldStrs, "")
-	return fmt.Sprintf("%s{%s}", vs.Type().String(), fieldsStr)
+	return fmt.Sprintf("%s{%s}", prefix, fieldsStr)
+}
+
+// String representation of the structure.
+func (vs *Struct) String() string {
+	return vs.toString("struct")
 }

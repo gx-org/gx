@@ -24,7 +24,7 @@ func TestMyFloatBinaryOp() myfloat {
 func TestConvertToNamedType() myfloat {
 	return myfloat(float64(1.0))
 	// Want:
-	// float64(1)
+	// myfloat(float64(1))
 }
 
 func TestConvertFromNamedType() float64 {

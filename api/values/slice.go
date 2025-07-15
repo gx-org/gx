@@ -70,9 +70,18 @@ func (s *Slice) Set(i int, val Value) {
 	s.vals[i] = val
 }
 
-// Size of the slice.
-func (s *Slice) Size() int {
+// Len returns the size of the slice.
+func (s *Slice) Len() int {
 	return len(s.vals)
+}
+
+// Elements returns all the element of the slice
+func (s *Slice) Elements() []ir.Element {
+	els := make([]ir.Element, s.Len())
+	for i, vi := range s.vals {
+		els[i] = vi
+	}
+	return els
 }
 
 // Element at the ith position.

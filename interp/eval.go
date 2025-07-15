@@ -433,7 +433,7 @@ func evalStructLiteral(fitp *FileScope, expr *ir.StructLitExpr) (ir.Element, err
 		}
 		fields[fieldLit.Field.Name.Name] = node
 	}
-	strct := NewStruct(structType, elements.NewValueAt(fitp.File(), expr), fields)
+	strct := NewStruct(structType, fields)
 	nType, ok := expr.Typ.(*ir.NamedType)
 	if !ok {
 		return strct, nil
@@ -539,7 +539,7 @@ func evalSelectorExpr(fitp *FileScope, ref *ir.SelectorExpr) (ir.Element, error)
 	if !ok {
 		return nil, fmterr.Internalf(fitp.File().FileSet(), ref.Source(), "%T does not implement %s: cannot fetch member %s", node, reflect.TypeFor[Selector](), ref.Src.Sel.Name)
 	}
-	return slt.Select(fitp, ref)
+	return slt.Select(ref)
 }
 
 func evalFuncLit(fitp *FileScope, ref *ir.FuncLit) (ir.Element, error) {

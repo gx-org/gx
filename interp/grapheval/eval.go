@@ -28,7 +28,6 @@ import (
 	"github.com/gx-org/gx/interp/elements"
 	"github.com/gx-org/gx/interp/evaluator"
 	"github.com/gx-org/gx/interp"
-	"github.com/gx-org/gx/interp/proxies"
 )
 
 // Evaluator evaluates GX operations by adding the corresponding
@@ -173,25 +172,17 @@ func opsFromContext(ctx *interp.FileScope) *arrayOps {
 }
 
 // FuncInputsToElements converts values to a function input.
-func (ev *Evaluator) FuncInputsToElements(itp *interp.Interpreter, file *ir.File, fType *ir.FuncType, receiver values.Value, args []values.Value) (*elements.InputElements, error) {
+func (ev *Evaluator) FuncInputsToElements(fitp *interp.FileScope, fType *ir.FuncType, receiver ir.Element, args []ir.Element) (*elements.InputElements, error) {
 	var recvEl ir.Element
 	if receiver != nil {
 		recvField := fType.ReceiverField()
-		receiverProxy, err := proxies.ToProxy(receiver, recvField.Type())
-		if err != nil {
-			return nil, err
-		}
-		recvAt := elements.NewNodeAt(file, recvField)
-		if recvEl, err = ev.Receiver(itp, recvAt, receiverProxy); err != nil {
+		var err error
+		if recvEl, err = ev.Receiver(fitp, recvField, receiver); err != nil {
 			return nil, err
 		}
 	}
 
 	paramFields := fType.Params.Fields()
-	proxyArgs, err := proxies.ToProxies(args, paramFields)
-	if err != nil {
-		return nil, err
-	}
 	argsEl := make([]ir.Element, len(args))
 	for i, param := range paramFields {
 		if i >= len(args) {
@@ -205,8 +196,7 @@ func (ev *Evaluator) FuncInputsToElements(itp *interp.Interpreter, file *ir.File
 			}
 			return nil, errors.Errorf("missing parameter(s): %s", builder.String())
 		}
-		paramAt := elements.NewNodeAt(file, param)
-		argNode, err := ev.ArgGX(itp, paramAt, i, proxyArgs)
+		argNode, err := ev.ArgGX(fitp, param, i, args[i])
 		if err != nil {
 			return nil, err
 		}

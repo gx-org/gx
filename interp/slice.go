@@ -33,6 +33,7 @@ type Slice struct {
 
 var (
 	_ Slicer              = (*Slice)(nil)
+	_ FixedSlice          = (*Slice)(nil)
 	_ ir.Element          = (*Slice)(nil)
 	_ ir.Canonical        = (*Slice)(nil)
 	_ canonical.Canonical = (*Slice)(nil)

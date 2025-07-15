@@ -561,8 +561,8 @@ func (cmpl *Package) MarshalStruct(val values.Value) (s *Struct, err error) {
 		err = fmt.Errorf("cannot use value %T to set []<no value>: not a slice", fields[1])
 		return
 	}
-	field1Elements := make([]types.Atom[float32], field1Slice.Size())
-	for i := 0; i < field1Slice.Size(); i++ {
+	field1Elements := make([]types.Atom[float32], field1Slice.Len())
+	for i := 0; i < field1Slice.Len(); i++ {
 		field1HandleI := field1Slice.Element(i)
 
 		field1ElmtIValue, ok := field1HandleI.(values.Array)
@@ -587,8 +587,8 @@ func (cmpl *Package) MarshalStruct(val values.Value) (s *Struct, err error) {
 		err = fmt.Errorf("cannot use value %T to set []<no value>: not a slice", fields[2])
 		return
 	}
-	field2Elements := make([]*InSlice, field2Slice.Size())
-	for i := 0; i < field2Slice.Size(); i++ {
+	field2Elements := make([]*InSlice, field2Slice.Len())
+	for i := 0; i < field2Slice.Len(); i++ {
 		field2HandleI := field2Slice.Element(i)
 		var field2ElmtI *InSlice
 		field2ElmtI, err = cmpl.MarshalInSlice(field2HandleI)

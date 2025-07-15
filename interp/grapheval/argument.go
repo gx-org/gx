@@ -17,6 +17,7 @@ package grapheval
 import (
 	"fmt"
 	"go/ast"
+	"reflect"
 
 	"github.com/pkg/errors"
 	"github.com/gx-org/backend/ops"
@@ -26,121 +27,103 @@ import (
 	"github.com/gx-org/gx/internal/tracer/processor"
 	"github.com/gx-org/gx/interp/elements"
 	"github.com/gx-org/gx/interp"
-	"github.com/gx-org/gx/interp/proxies"
 )
 
 type (
 	argFetcher interface {
-		ValueProxy() proxies.Value
-		ValueFromContext(*values.FuncInputs) (values.Value, error)
+		ValueFromContext(*values.FuncInputs) (ir.Element, error)
 	}
 
 	parameterFetcher struct {
-		pValue     proxies.Value
 		paramIndex int
 	}
 
-	receiverFetcher struct {
-		pValue proxies.Value
-	}
+	receiverFetcher struct{}
 )
 
-func (f parameterFetcher) ValueFromContext(in *values.FuncInputs) (values.Value, error) {
+func (f parameterFetcher) ValueFromContext(in *values.FuncInputs) (ir.Element, error) {
 	return in.Args[f.paramIndex], nil
 }
 
-func (f parameterFetcher) ValueProxy() proxies.Value {
-	return f.pValue
-}
-
-func (f parameterFetcher) String() string {
-	return fmt.Sprintf("GX argument %d", f.paramIndex)
-}
-
-func (f receiverFetcher) ValueFromContext(in *values.FuncInputs) (values.Value, error) {
+func (f receiverFetcher) ValueFromContext(in *values.FuncInputs) (ir.Element, error) {
 	return in.Receiver, nil
 }
 
-func (f receiverFetcher) ValueProxy() proxies.Value {
-	return f.pValue
-}
-
-func (f receiverFetcher) String() string {
-	return "GX receiver"
-}
-
 // ArgGX represents a GX argument.
-func (ev *Evaluator) ArgGX(itp *interp.Interpreter, field elements.FieldAt, index int, args []proxies.Value) (ir.Element, error) {
-	return ev.newRootArg(itp, field, parameterFetcher{
+func (ev *Evaluator) ArgGX(fitp *interp.FileScope, field *ir.Field, index int, proxy ir.Element) (ir.Element, error) {
+	return ev.newRootArg(fitp, field, parameterFetcher{
 		paramIndex: index,
-		pValue:     args[index],
-	})
+	}, proxy)
 }
 
 // Receiver represents a GX function call receiver.
-func (ev *Evaluator) Receiver(itp *interp.Interpreter, field elements.FieldAt, recv proxies.Value) (ir.Element, error) {
-	return ev.newRootArg(itp, field, receiverFetcher{
-		pValue: recv,
-	})
+func (ev *Evaluator) Receiver(fitp *interp.FileScope, field *ir.Field, proxy ir.Element) (ir.Element, error) {
+	return ev.newRootArg(fitp, field, receiverFetcher{}, proxy)
 }
 
 type (
 	parentArgument interface {
 		Name() string
-		ValueProxy() proxies.Value
-		ValueFromContext(*values.FuncInputs) (values.Value, error)
+		ValueFromContext(*values.FuncInputs) (ir.Element, error)
 	}
 
 	// rootArgument is an argument passed to the GX interpreter from the host language.
 	rootArgument struct {
 		argFetcher
-		field elements.NodeFile[*ir.Field]
+		name string
+		typ  ir.Type
 	}
 )
 
 var _ parentArgument = (*rootArgument)(nil)
 
-func (ev *Evaluator) newRootArg(itp *interp.Interpreter, field elements.FieldAt, fetcher argFetcher) (ir.Element, error) {
+func (ev *Evaluator) newRootArg(fitp *interp.FileScope, field *ir.Field, fetcher argFetcher, proxy ir.Element) (ir.Element, error) {
 	n := &rootArgument{
 		argFetcher: fetcher,
-		field:      field,
+		name:       field.Name.Name,
+		typ:        field.Type(),
 	}
-	return ev.newArg(itp, n, elements.NewExprAt(field.File(), &ir.ValueRef{
-		Src:  field.Node().Name,
-		Stor: field.Node().Storage(),
-	}))
-}
-
-func (ev *Evaluator) newArg(itp *interp.Interpreter, parent parentArgument, expr elements.ExprAt) (ir.Element, error) {
-	switch pValueT := parent.ValueProxy().(type) {
-	case *proxies.Array:
-		return ev.NewArrayArgument(parent, expr, pValueT)
-	case *proxies.NamedType:
-		return ev.newNamedTypeArgument(itp, parent, expr, pValueT)
-	case *proxies.Struct:
-		return ev.newStructArgument(itp, parent, expr, pValueT)
-	case *proxies.Slice:
-		return ev.newSliceArgument(itp, parent, expr, pValueT)
-	default:
-		return nil, errors.Errorf("argument type %T not supported", pValueT)
-	}
+	return ev.newArg(fitp, n, field.Type(), proxy)
 }
 
 func (a *rootArgument) Name() string {
-	return a.field.Node().Name.Name
+	return a.name
+}
+
+func (a *rootArgument) Type() ir.Type {
+	return a.typ
+}
+
+func (ev *Evaluator) newArg(fitp *interp.FileScope, parent parentArgument, typ ir.Type, proxy ir.Element) (ir.Element, error) {
+	switch typT := typ.(type) {
+	case *ir.NamedType:
+		return ev.newNamedTypeArgument(fitp, parent, typT, proxy)
+	case *ir.StructType:
+		return ev.newStructArgument(fitp, parent, typT, proxy)
+	case *ir.SliceType:
+		return ev.newSliceArgument(fitp, parent, typT, proxy)
+	case ir.ArrayType:
+		return ev.NewArrayArgument(fitp, parent, typT, proxy)
+	default:
+		return nil, errors.Errorf("argument type %T not supported", typT)
+	}
 }
 
 type namedTypeArgument struct {
 	parent parentArgument
-	pValue *proxies.NamedType
+	typ    *ir.NamedType
 }
 
-func (ev *Evaluator) newNamedTypeArgument(itp *interp.Interpreter, parent parentArgument, expr elements.ExprAt, pValue *proxies.NamedType) (*interp.NamedType, error) {
+func (ev *Evaluator) newNamedTypeArgument(fitp *interp.FileScope, parent parentArgument, typ *ir.NamedType, el ir.Element) (*interp.NamedType, error) {
 	arg := &namedTypeArgument{
 		parent: parent,
-		pValue: pValue,
+		typ:    typ,
 	}
-	recv, err := ev.newArg(itp, arg, expr)
+	named, ok := el.(interp.NType)
+	if !ok {
+		return nil, errors.Errorf("element %T is not a named type element", el)
+	}
+	recv, err := ev.newArg(fitp, arg, typ.Underlying.Typ, named.Under())
 	if err != nil {
 		return nil, err
 	}
@@ -148,90 +131,94 @@ func (ev *Evaluator) newNamedTypeArgument(itp *interp.Interpreter, parent parent
 	if !ok {
 		return nil, errors.Errorf("element %T cannot be used as a receiver", recv)
 	}
-	return interp.NewNamedType(itp.NewFunc, arg.pValue.NamedType(), recvCopier), nil
+	return interp.NewNamedType(fitp.NewFunc, arg.typ, recvCopier), nil
 }
 
 func (arg *namedTypeArgument) Name() string {
-	return arg.parent.Name() + "." + arg.pValue.NamedType().Name()
+	return arg.parent.Name() + "." + arg.typ.Name()
 }
 
-func (arg *namedTypeArgument) ValueProxy() proxies.Value {
-	return arg.pValue.Under()
-}
-
-func (arg *namedTypeArgument) ValueFromContext(ctx *values.FuncInputs) (values.Value, error) {
+func (arg *namedTypeArgument) ValueFromContext(ctx *values.FuncInputs) (ir.Element, error) {
 	return arg.parent.ValueFromContext(ctx)
 }
 
 type (
 	structArgument struct {
 		parentArgument
-		pValue *proxies.Struct
+		typ   *ir.StructType
+		proxy interp.Selector
 	}
 
 	fieldSelectorArgument struct {
 		parent    *structArgument
 		fieldName string
-		pValue    proxies.Value
+		field     *ir.Field
 	}
 )
 
 var _ parentArgument = (*fieldSelectorArgument)(nil)
 
-func (ev *Evaluator) newStructArgument(itp *interp.Interpreter, parent parentArgument, expr elements.ExprAt, pValue *proxies.Struct) (*interp.Struct, error) {
-	structType := pValue.StructType()
+func (ev *Evaluator) newStructArgument(fitp *interp.FileScope, parent parentArgument, typ *ir.StructType, proxy ir.Element) (*interp.Struct, error) {
+	sel, ok := proxy.(interp.Selector)
+	if !ok {
+		return nil, errors.Errorf("%T does not support %s", proxy, reflect.TypeFor[interp.Selector]().Name())
+	}
 	structArg := &structArgument{
 		parentArgument: parent,
-		pValue:         pValue,
+		typ:            typ,
+		proxy:          sel,
 	}
-	fields := make(map[string]ir.Element, structType.NumFields())
-	for _, field := range structType.Fields.Fields() {
+	fields := make(map[string]ir.Element, typ.NumFields())
+	for _, field := range typ.Fields.Fields() {
 		name := field.Name.Name
-		fieldValue := pValue.Field(name)
-		if fieldValue == nil {
-			return nil, errors.Errorf("no field %s in structure instance passed as argument %s (type %s)", name, parent.Name(), pValue.Type().String())
-		}
 		selector := &fieldSelectorArgument{
 			parent:    structArg,
 			fieldName: name,
-			pValue:    fieldValue,
+			field:     field,
 		}
-		fieldExpr := elements.NewExprAt(expr.File(), &ir.ValueRef{
-			Src: &ast.Ident{
-				NamePos: expr.Node().Source().Pos(),
-				Name:    selector.Name(),
+		fieldExpr := &ir.SelectorExpr{
+			Src: &ast.SelectorExpr{
+				Sel: &ast.Ident{Name: name},
 			},
 			Stor: &ir.FieldStorage{Field: field},
-		})
-		field, err := ev.newArg(itp, selector, fieldExpr)
+		}
+		fieldProxy, err := sel.Select(fieldExpr)
+		if err != nil {
+			return nil, err
+		}
+		if fieldProxy == nil {
+			return nil, errors.Errorf("field %s has no value", name)
+		}
+		field, err := ev.newArg(fitp, selector, field.Type(), fieldProxy)
 		if err != nil {
 			return nil, err
 		}
 		fields[name] = field
 	}
-	return interp.NewStruct(pValue.StructType(), expr.ToValueAt(), fields), nil
+	return interp.NewStruct(typ, fields), nil
 }
 
 func (sel *fieldSelectorArgument) Name() string {
 	return sel.parent.Name() + "." + sel.fieldName
 }
 
-func (sel *fieldSelectorArgument) ValueProxy() proxies.Value {
-	return sel.pValue
-}
-
-func (sel *fieldSelectorArgument) ValueFromContext(ctx *values.FuncInputs) (values.Value, error) {
+func (sel *fieldSelectorArgument) ValueFromContext(ctx *values.FuncInputs) (ir.Element, error) {
 	val, err := sel.parent.ValueFromContext(ctx)
 	if err != nil {
 		return nil, err
 	}
-	structValue, ok := values.Underlying(val).(*values.Struct)
+	structValue, ok := val.(interp.Selector)
 	if !ok {
-		return nil, errors.Errorf("%s is not a structure instance (type %s)", sel.parent.Name(), sel.parent.pValue.Type().String())
+		return nil, errors.Errorf("%s is not a structure instance (type %s)", sel.parent.Name(), sel.parent.typ.String())
 	}
-	fieldVal := structValue.FieldValue(sel.fieldName)
+	fieldVal, err := structValue.Select(&ir.SelectorExpr{
+		Src: &ast.SelectorExpr{Sel: &ast.Ident{Name: sel.fieldName}},
+	})
+	if err != nil {
+		return nil, err
+	}
 	if fieldVal == nil {
-		return nil, errors.Errorf("no field %s in structure instance passed as argument %s (type %s)", sel.fieldName, sel.parent.Name(), sel.parent.pValue.Type().String())
+		return nil, errors.Errorf("no field %s in structure instance passed as argument %s (type %s)", sel.fieldName, sel.parent.Name(), sel.parent.typ.String())
 	}
 	return fieldVal, nil
 }
@@ -239,86 +226,64 @@ func (sel *fieldSelectorArgument) ValueFromContext(ctx *values.FuncInputs) (valu
 type (
 	sliceArgument struct {
 		parentArgument
-		pValue *proxies.Slice
+		typ   *ir.SliceType
+		proxy interp.FixedSlice
 	}
 
 	indexSelectorArgument struct {
 		parent *sliceArgument
 		index  int
-		pValue proxies.Value
+		proxy  ir.Element
 	}
 )
 
-func (ev *Evaluator) newSliceArgument(itp *interp.Interpreter, parent parentArgument, expr elements.ExprAt, pValue *proxies.Slice) (*interp.Slice, error) {
+func (ev *Evaluator) newSliceArgument(fitp *interp.FileScope, parent parentArgument, typ *ir.SliceType, proxy ir.Element) (*interp.Slice, error) {
+	fixed, ok := proxy.(interp.FixedSlice)
+	if !ok {
+		return nil, errors.Errorf("%T does not support %s", proxy, reflect.TypeFor[interp.FixedSlice]().Name())
+	}
 	sliceArg := &sliceArgument{
 		parentArgument: parent,
-		pValue:         pValue,
+		typ:            typ,
+		proxy:          fixed,
 	}
-	vals := make([]ir.Element, pValue.Size())
-	slicerType, ok := expr.Node().Type().(ir.SlicerType)
+	elType, ok := typ.ElementType()
 	if !ok {
-		return nil, errors.Errorf("type %s cannot be indexed", expr.Node().Type().String())
+		return nil, errors.Errorf("atomic type %s cannot be indexed", typ.String())
 	}
-	elType, ok := slicerType.ElementType()
-	if !ok {
-		return nil, errors.Errorf("atomic type %s cannot be indexed", slicerType.String())
-	}
-	for i := range vals {
-		valI, err := pValue.Element(i)
-		if err != nil {
-			return nil, err
-		}
-		selector := &indexSelectorArgument{
+	args := make([]ir.Element, fixed.Len())
+	for i, iProxy := range fixed.Elements() {
+		idxSel := &indexSelectorArgument{
 			parent: sliceArg,
 			index:  i,
-			pValue: valI,
+			proxy:  iProxy,
 		}
-		src := &ast.Ident{
-			NamePos: expr.Node().Source().Pos(),
-			Name:    fmt.Sprintf("[%d]", i),
-		}
-		valExpr := elements.NewExprAt(expr.File(), &ir.IndexExpr{
-			Src: &ast.IndexExpr{
-				X:     expr.Node().Source().(ast.Expr),
-				Index: src,
-			},
-			X: expr.ToExprAt().Node(),
-			Index: &ir.AtomicValueT[ir.Int]{
-				Src: src,
-				Val: ir.Int(i),
-				Typ: ir.DefaultIntType,
-			},
-			Typ: elType,
-		})
-		vals[i], err = ev.newArg(itp, selector, valExpr)
+		var err error
+		args[i], err = ev.newArg(fitp, idxSel, elType, iProxy)
 		if err != nil {
 			return nil, err
 		}
 
 	}
-	return interp.NewSlice(expr.Node().Type(), vals), nil
+	return interp.NewSlice(typ, args), nil
 }
 
 func (sel *indexSelectorArgument) Name() string {
 	return sel.parent.Name() + "." + fmt.Sprintf("[%d]", sel.index)
 }
 
-func (sel *indexSelectorArgument) ValueProxy() proxies.Value {
-	return sel.pValue
-}
-
-func (sel *indexSelectorArgument) ValueFromContext(ctx *values.FuncInputs) (values.Value, error) {
+func (sel *indexSelectorArgument) ValueFromContext(ctx *values.FuncInputs) (ir.Element, error) {
 	el, err := sel.parent.ValueFromContext(ctx)
 	if err != nil {
 		return nil, err
 	}
 	sliceValue, ok := el.(*values.Slice)
 	if !ok {
-		return nil, errors.Errorf("%s is not a structure instance (type %s)", sel.parent.Name(), sel.parent.pValue.Type().String())
+		return nil, errors.Errorf("%s is not a structure instance (type %s)", sel.parent.Name(), sel.parent.typ.String())
 	}
 	val := sliceValue.Element(sel.index)
 	if val == nil {
-		return nil, errors.Errorf("no element at %d in slice instance passed as argument %s (type %s)", sel.index, sel.parent.Name(), sel.parent.pValue.Type().String())
+		return nil, errors.Errorf("no element at %d in slice instance passed as argument %s (type %s)", sel.index, sel.parent.Name(), sel.parent.typ.String())
 	}
 	return val, nil
 }
@@ -328,9 +293,9 @@ var _ parentArgument = (*indexSelectorArgument)(nil)
 type arrayArgument struct {
 	*BackendNode
 	parentArgument
-	pValue         *proxies.Array
+	typ ir.ArrayType
+
 	graphCallIndex int
-	expr           elements.ExprAt
 }
 
 var (
@@ -338,21 +303,31 @@ var (
 )
 
 // NewArrayArgument creates a new argument element that the graph can also use as an argument.
-func (ev *Evaluator) NewArrayArgument(parent parentArgument, expr elements.ExprAt, pValue *proxies.Array) (elements.ElementWithArrayFromContext, error) {
+func (ev *Evaluator) NewArrayArgument(fitp *interp.FileScope, parent parentArgument, typ ir.ArrayType, proxy ir.Element) (elements.ElementWithArrayFromContext, error) {
+	fixed, ok := proxy.(interp.FixedShape)
+	if !ok {
+		return nil, errors.Errorf("%T does not support %s", proxy, reflect.TypeFor[interp.FixedShape]().Name())
+	}
 	n := &arrayArgument{
 		parentArgument: parent,
-		expr:           expr,
-		pValue:         pValue,
+		typ:            typ,
 	}
 	n.graphCallIndex = ev.Processor().RegisterArg(n)
-	op, err := ev.ArrayOps().Graph().Core().Argument(n.Name(), n.pValue.Shape(), n.graphCallIndex)
+	op, err := ev.ArrayOps().Graph().Core().Argument(n.Name(), fixed.Shape(), n.graphCallIndex)
 	if err != nil {
 		return nil, err
 	}
-	n.BackendNode, err = ElementFromNode(expr, &ops.OutputNode{
-		Node:  op,
-		Shape: pValue.Shape(),
-	})
+	n.BackendNode, err = ElementFromNode(
+		elements.NewExprAt(fitp.File(),
+			&ir.ValueRef{Stor: &ir.LocalVarStorage{
+				Src: &ast.Ident{Name: parent.Name()},
+				Typ: typ,
+			}},
+		),
+		&ops.OutputNode{
+			Node:  op,
+			Shape: fixed.Shape(),
+		})
 	if err != nil {
 		return nil, err
 	}

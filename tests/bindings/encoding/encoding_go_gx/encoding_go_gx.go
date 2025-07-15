@@ -578,8 +578,8 @@ func (cmpl *Package) MarshalSlice(val values.Value) (s *Slice, err error) {
 		err = fmt.Errorf("cannot use value %T to set []<no value>: not a slice", fields[1])
 		return
 	}
-	field1Elements := make([]*Encoding, field1Slice.Size())
-	for i := 0; i < field1Slice.Size(); i++ {
+	field1Elements := make([]*Encoding, field1Slice.Len())
+	for i := 0; i < field1Slice.Len(); i++ {
 		field1HandleI := field1Slice.Element(i)
 		var field1ElmtI *Encoding
 		field1ElmtI, err = cmpl.MarshalEncoding(field1HandleI)

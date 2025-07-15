@@ -147,8 +147,8 @@ func flatten(out []values.Value) []values.Value {
 			flat = append(flat, v)
 			continue
 		}
-		vals := make([]values.Value, slice.Size())
-		for i := 0; i < slice.Size(); i++ {
+		vals := make([]values.Value, slice.Len())
+		for i := 0; i < slice.Len(); i++ {
 			vals[i] = slice.Element(i)
 		}
 		flat = append(flat, flatten(vals)...)

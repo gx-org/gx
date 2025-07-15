@@ -110,8 +110,8 @@ var setSliceTmpl = template.Must(template.New("setSliceOutputTMPL").Parse(
 		err = fmt.Errorf("cannot use value %T to set []{{.SliceDType}}: not a slice", {{.Source}})
 		return
 	}
-	{{.Target}}Elements := make([]{{.SliceDataType}}, {{.Target}}Slice.Size())
-	for i := 0; i < {{.Target}}Slice.Size(); i++ {
+	{{.Target}}Elements := make([]{{.SliceDataType}}, {{.Target}}Slice.Len())
+	for i := 0; i < {{.Target}}Slice.Len(); i++ {
 		{{.ElementSource}} := {{.Target}}Slice.Element(i)
 		{{.UnmarshalElement}}
 		{{.Target}}Elements[i] = {{.ElementTarget}}

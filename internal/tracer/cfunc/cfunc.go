@@ -107,7 +107,7 @@ func (g *CompiledFunc) run(ctx *values.FuncInputs) (out, traces []platform.Devic
 
 // Run the graph.
 func (g *CompiledFunc) Run(receiver values.Value, args []values.Value, tracer trace.Callback) ([]values.Value, error) {
-	fc := &values.FuncInputs{Receiver: receiver, Args: args}
+	fc := &values.FuncInputs{Receiver: receiver, Args: values.ToElements(args)}
 	if err := g.process.ProcessInits(fc); err != nil {
 		return nil, err
 	}

@@ -70,8 +70,12 @@ func Trace(dev *api.Device, fn *ir.FuncDecl, receiver values.Value, args []value
 	if err != nil {
 		return nil, err
 	}
+	fitp, err := itp.ForFile(fn.File())
+	if err != nil {
+		return nil, err
+	}
 	// Transform the receiver and arguments values into elements for the interpreter.
-	in, err := ev.FuncInputsToElements(itp, fn.File(), fn.FuncType(), receiver, args)
+	in, err := ev.FuncInputsToElements(fitp, fn.FuncType(), receiver, values.ToElements(args))
 	if err != nil {
 		return nil, err
 	}

@@ -50,10 +50,10 @@ type (
 	FuncInputs struct {
 		// Receiver on which the function call was done.
 		// Can be nil.
-		Receiver Value
+		Receiver ir.Element
 
 		// Args returns list of arguments passed to the interpreter at call time.
-		Args []Value
+		Args []ir.Element
 	}
 )
 
@@ -235,4 +235,13 @@ func Underlying(val Value) Value {
 		return val
 	}
 	return Underlying(named.Underlying())
+}
+
+// ToElements converts a slice of values into a slice of elements.
+func ToElements(vals []Value) []ir.Element {
+	els := make([]ir.Element, len(vals))
+	for i, arg := range vals {
+		els[i] = arg
+	}
+	return els
 }

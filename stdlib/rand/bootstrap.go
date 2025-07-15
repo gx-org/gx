@@ -15,23 +15,19 @@
 package rand
 
 import (
-	"fmt"
-	"go/ast"
 	"math/rand"
 
 	"github.com/pkg/errors"
-	"github.com/gx-org/backend/dtype"
-	"github.com/gx-org/backend/shape"
 	"github.com/gx-org/gx/api/values"
 	"github.com/gx-org/gx/build/fmterr"
 	"github.com/gx-org/gx/build/ir"
 	"github.com/gx-org/gx/golang/backend/kernels"
 	"github.com/gx-org/gx/golang/binder/gobindings/types"
+	"github.com/gx-org/gx/internal/interp/compeval/cpevelements"
 	"github.com/gx-org/gx/interp/elements"
 	"github.com/gx-org/gx/interp/evaluator"
 	"github.com/gx-org/gx/interp/grapheval"
 	"github.com/gx-org/gx/interp"
-	"github.com/gx-org/gx/interp/proxies"
 )
 
 type randBootstrap struct {
@@ -41,7 +37,7 @@ type randBootstrap struct {
 
 	seed evaluator.NumericalElement
 	rand *rand.Rand
-	next func() (evaluator.NumericalElement, error)
+	next func(*interp.FileScope) (evaluator.NumericalElement, error)
 }
 
 var _ interp.Copier = (*randBootstrap)(nil)
@@ -66,7 +62,7 @@ func (rb *randBootstrap) initRand(seed *values.HostArray) error {
 
 var uint64Type = ir.TypeFromKind(ir.Uint64Kind)
 
-func (rb *randBootstrap) nextConstant() (evaluator.NumericalElement, error) {
+func (rb *randBootstrap) nextConstant(*interp.FileScope) (evaluator.NumericalElement, error) {
 	next := rb.rand.Uint64()
 	expr := &ir.AtomicValueT[uint64]{
 		Src: rb.call.Node().Expr(),
@@ -81,42 +77,28 @@ func (rb *randBootstrap) nextConstant() (evaluator.NumericalElement, error) {
 }
 
 type randBootstrapArg struct {
-	seed   elements.ElementWithArrayFromContext
-	ctx    ir.Evaluator
-	rb     *randBootstrap
-	pValue *proxies.Array
+	seed  elements.ElementWithArrayFromContext
+	ctx   ir.Evaluator
+	rb    *randBootstrap
+	proxy ir.Element
 }
 
+var seedType = ir.Uint64Type()
+
 func newRandBootstrapArg(ctx evaluator.Context, rb *randBootstrap, seed elements.ElementWithArrayFromContext) (*randBootstrapArg, error) {
-	typ := ir.TypeFromKind(ir.Uint64Kind)
-	shape := &shape.Shape{DType: dtype.Uint64}
-	pValue, err := proxies.NewArray(typ, shape)
-	if err != nil {
-		return nil, err
-	}
 	argFactory := &randBootstrapArg{
-		rb:     rb,
-		ctx:    ctx,
-		seed:   seed,
-		pValue: pValue,
+		rb:    rb,
+		ctx:   ctx,
+		seed:  seed,
+		proxy: cpevelements.NewArray(seedType),
 	}
 	ctx.Evaluator().Processor().RegisterInit(argFactory)
 	return argFactory, nil
 }
 
-func (arg *randBootstrapArg) next() (evaluator.NumericalElement, error) {
+func (arg *randBootstrapArg) next(fitp *interp.FileScope) (evaluator.NumericalElement, error) {
 	ev := arg.ctx.(evaluator.Context).Evaluator().(*grapheval.Evaluator)
-	src := &ast.Ident{
-		Name:    fmt.Sprintf("%T", arg),
-		NamePos: arg.rb.call.Node().Source().Pos(),
-	}
-	return ev.NewArrayArgument(arg, elements.NewExprAt(arg.rb.call.File(), &ir.ValueRef{
-		Src: src,
-		Stor: &ir.LocalVarStorage{
-			Src: src,
-			Typ: arg.pValue.Type(),
-		},
-	}), arg.pValue)
+	return ev.NewArrayArgument(fitp, arg, seedType, arg.proxy)
 }
 
 func (arg *randBootstrapArg) Init(ctx *values.FuncInputs) error {
@@ -139,13 +121,9 @@ func (arg randBootstrapArg) Name() string {
 	return "randBootstrapArg.next()"
 }
 
-func (arg randBootstrapArg) ValueProxy() proxies.Value {
-	return arg.pValue
-}
-
-func (arg randBootstrapArg) ValueFromContext(ctx *values.FuncInputs) (values.Value, error) {
+func (arg randBootstrapArg) ValueFromContext(ctx *values.FuncInputs) (ir.Element, error) {
 	val := arg.rb.rand.Uint64()
-	return values.AtomIntegerValue[uint64](arg.ValueProxy().Type(), val)
+	return values.AtomIntegerValue[uint64](seedType, val)
 }
 
 func evalNewBootstrapGenerator(ctx evaluator.Context, call elements.CallAt, fn interp.Func, irFunc *ir.FuncBuiltin, args []ir.Element) ([]ir.Element, error) {
@@ -181,7 +159,7 @@ func evalNewBootstrapGenerator(ctx evaluator.Context, call elements.CallAt, fn i
 
 func evalBootstrapGeneratorNext(ctx evaluator.Context, call elements.CallAt, fn interp.Func, irFunc *ir.FuncBuiltin, args []ir.Element) ([]ir.Element, error) {
 	bootStrap := interp.Underlying(fn.Recv().Element).(*randBootstrap)
-	el, err := bootStrap.next()
+	el, err := bootStrap.next(ctx.(*interp.FileScope))
 	if err != nil {
 		return nil, err
 	}
