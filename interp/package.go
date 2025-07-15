@@ -85,7 +85,7 @@ func (pkg *Package) Type() ir.Type {
 }
 
 // Select a member of the package.
-func (pkg *Package) Select(fitp *FileScope, expr *ir.SelectorExpr) (ir.Element, error) {
+func (pkg *Package) Select(expr *ir.SelectorExpr) (ir.Element, error) {
 	name := expr.Stor.NameDef().Name
 	el, ok := pkg.defs.Find(name)
 	if !ok {

@@ -331,7 +331,7 @@ type uint64Type struct {
 var uint64T = &uint64Type{atomicType: atomicType{Knd: Uint64Kind}}
 
 // Uint64Type returns the type for a uint64.
-func Uint64Type() Type {
+func Uint64Type() ArrayType {
 	return uint64T
 }
 

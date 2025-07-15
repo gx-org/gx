@@ -95,7 +95,7 @@ func NewRuntimeValue(file *ir.File, newFunc interp.NewFunc, store ir.Storage) (i
 				return nil, err
 			}
 		}
-		return interp.NewStruct(typT, elements.NewValueAt(file, ref), fields), nil
+		return interp.NewStruct(typT, fields), nil
 	case *ir.NamedType:
 		under, err := NewRuntimeValue(file, newFunc, typT.Underlying.Typ)
 		if err != nil {

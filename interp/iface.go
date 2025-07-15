@@ -45,6 +45,18 @@ type (
 		Shape() *shape.Shape
 	}
 
+	// FixedSlice is a slice
+	FixedSlice interface {
+		ir.Element
+		Elements() []ir.Element
+		Len() int
+	}
+
+	// NType is a named type.
+	NType interface {
+		Under() ir.Element
+	}
+
 	// Copier is an interface implemented by nodes that need to be copied when passed to a function.
 	Copier interface {
 		ir.Element
@@ -53,7 +65,8 @@ type (
 
 	// Selector selects a field given its index.
 	Selector interface {
-		Select(fitp *FileScope, expr *ir.SelectorExpr) (ir.Element, error)
+		ir.Element
+		Select(expr *ir.SelectorExpr) (ir.Element, error)
 	}
 )
 

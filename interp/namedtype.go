@@ -31,6 +31,8 @@ type NamedType struct {
 	under   Copier
 }
 
+var _ Selector = (*NamedType)(nil)
+
 // NewNamedType returns a new node representing an exported type.
 func NewNamedType(newFunc NewFunc, typ *ir.NamedType, under Copier) *NamedType {
 	funcs := make(map[string]ir.PkgFunc)
@@ -47,7 +49,7 @@ func NewNamedType(newFunc NewFunc, typ *ir.NamedType, under Copier) *NamedType {
 
 // Select returns the field given an index.
 // Returns nil if the receiver type cannot select fields.
-func (n *NamedType) Select(fitp *FileScope, expr *ir.SelectorExpr) (ir.Element, error) {
+func (n *NamedType) Select(expr *ir.SelectorExpr) (ir.Element, error) {
 	name := expr.Stor.NameDef().Name
 	if fn := n.funcs[name]; fn != nil {
 		return n.newFunc(fn, NewReceiver(n, fn)), nil
@@ -56,12 +58,17 @@ func (n *NamedType) Select(fitp *FileScope, expr *ir.SelectorExpr) (ir.Element, 
 	if !ok {
 		return nil, errors.Errorf("%s is undefined", name)
 	}
-	return under.Select(fitp, expr)
+	return under.Select(expr)
 }
 
 // RecvCopy copies the underlying element and returns the element encapsulated in this named type.
 func (n *NamedType) RecvCopy() *NamedType {
 	return NewNamedType(n.newFunc, n.typ, n.under.Copy())
+}
+
+// Under returns the underlying element of the named type.
+func (n *NamedType) Under() Copier {
+	return n.under
 }
 
 // Flatten returns the named type in a slice of elements.

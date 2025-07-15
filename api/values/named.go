@@ -15,6 +15,9 @@
 package values
 
 import (
+	"fmt"
+
+	"github.com/pkg/errors"
 	"github.com/gx-org/backend/platform"
 	"github.com/gx-org/gx/build/ir"
 )
@@ -44,6 +47,22 @@ func (n *NamedType) Underlying() Value {
 	return n.val
 }
 
+// Under returns the element stored by this type.
+func (n *NamedType) Under() ir.Element {
+	return n.val
+}
+
+// Select a field in the structure.
+func (n *NamedType) Select(expr *ir.SelectorExpr) (ir.Element, error) {
+	sel, ok := n.val.(interface {
+		Select(expr *ir.SelectorExpr) (ir.Element, error)
+	}) // TODO(degris): avoid creating a dependency cycle.
+	if !ok {
+		return nil, errors.Errorf("cannot select field %s from type %T", expr.Src.Sel.Name, n.val)
+	}
+	return sel.Select(expr)
+}
+
 // NamedType returns the IR named type of the value.
 func (n *NamedType) NamedType() *ir.NamedType {
 	return n.typ
@@ -61,5 +80,10 @@ func (n *NamedType) ToHost(alloc platform.Allocator) (Value, error) {
 // String representation of the value.
 // The returned string is a string reported to the user.
 func (n *NamedType) String() string {
-	return n.val.String()
+	underStruct, ok := n.val.(*Struct)
+	if ok {
+		typName := fmt.Sprintf("%s.%s", n.typ.Package().Name, n.typ.Name())
+		return underStruct.toString(typName)
+	}
+	return fmt.Sprintf("%s(%s)", n.typ.Name(), n.val.String())
 }

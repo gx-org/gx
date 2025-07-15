@@ -50,7 +50,7 @@ func checkError(t *testing.T, prefix string, err error, want string) error {
 	}
 	got := err.Error()
 	if !strings.Contains(got, want) {
-		t.Errorf("got %q error but want an error that contains %q", got, want)
+		t.Errorf("got the following error:\n%+v\nbut want an error that contains %q", got, want)
 		return nil
 	}
 	return nil
@@ -206,7 +206,7 @@ func F2(s S) float32 {
 	return s.f2
 }
 `),
-		want: runError + "f2 undefined",
+		want: runError + "field f2 has no value",
 	}
 	if err = pkg.Build(cTest.src); err != nil {
 		t.Fatal(err)
