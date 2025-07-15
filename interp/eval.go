@@ -125,7 +125,10 @@ func evalRangeStmtForLoopOverArray[T dtype.AlgebraType](fitp *FileScope, stmt *i
 	if !ok {
 		return nil, false, fmterr.Errorf(fitp.File().FileSet(), stmt.Source(), "cannot range over %T", x)
 	}
-	arrayShape := value.Shape()
+	arrayShape, err := ShapeFromElement(value)
+	if err != nil {
+		return nil, false, fmterr.Position(fitp.File().FileSet(), stmt.Source(), err)
+	}
 	for i := 0; i < arrayShape.AxisLengths[0]; i++ {
 		iExpr := &ir.AtomicValueT[T]{
 			Src: stmt.Key.Source().(ast.Expr),
@@ -287,7 +290,11 @@ func evalReturnStmt(fitp *FileScope, ret *ir.ReturnStmt) ([]ir.Element, bool, er
 }
 
 func evalCastToScalarExpr(fitp *FileScope, expr ir.TypeCastExpr, x evaluator.NumericalElement, targetType ir.ArrayType) (ir.Element, error) {
-	if len(x.Shape().AxisLengths) > 0 {
+	xShape, err := ShapeFromElement(x)
+	if err != nil {
+		return nil, fmterr.Position(fitp.File().FileSet(), expr.Source(), err)
+	}
+	if len(xShape.AxisLengths) > 0 {
 		return x.Reshape(fitp, expr, nil)
 	}
 	return x.Cast(fitp, expr, targetType)

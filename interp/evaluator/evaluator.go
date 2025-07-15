@@ -17,7 +17,6 @@ package evaluator
 
 import (
 	"github.com/gx-org/backend/ops"
-	"github.com/gx-org/backend/shape"
 	"github.com/gx-org/gx/api/values"
 	"github.com/gx-org/gx/build/ir"
 	"github.com/gx-org/gx/internal/tracer/processor"
@@ -66,9 +65,6 @@ type (
 
 		// Reshape an element.
 		Reshape(ctx ir.Evaluator, expr ir.AssignableExpr, axisLengths []NumericalElement) (NumericalElement, error)
-
-		// Shape of the value represented by the element.
-		Shape() *shape.Shape
 	}
 
 	// ArrayOps are the operator implementations for arrays.
