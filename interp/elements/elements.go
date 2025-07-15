@@ -22,13 +22,11 @@ import (
 
 	"github.com/pkg/errors"
 	"github.com/gx-org/backend/dtype"
-	"github.com/gx-org/backend/shape"
 	"github.com/gx-org/gx/api/values"
 	gxfmt "github.com/gx-org/gx/base/fmt"
 	"github.com/gx-org/gx/build/fmterr"
 	"github.com/gx-org/gx/build/ir"
 	"github.com/gx-org/gx/internal/interp/flatten"
-	"github.com/gx-org/gx/interp/evaluator"
 )
 
 // InputElements is the receiver and arguments with which the function was called.
@@ -162,15 +160,6 @@ func AxesFromElement(el ir.Element) ([]int, error) {
 		dimensions[i] = dimScalarI
 	}
 	return dimensions, nil
-}
-
-// ShapeFromElement returns the shape of a numerical element.
-func ShapeFromElement(node ir.Element) (*shape.Shape, error) {
-	numerical, ok := node.(evaluator.NumericalElement)
-	if !ok {
-		return nil, errors.Errorf("cannot cast %T to a numerical element", node)
-	}
-	return numerical.Shape(), nil
 }
 
 // ConstantScalarFromElement returns a scalar on a host given an element.

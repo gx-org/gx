@@ -15,6 +15,8 @@
 package interp
 
 import (
+	"github.com/pkg/errors"
+	"github.com/gx-org/backend/shape"
 	"github.com/gx-org/gx/build/ir"
 	"github.com/gx-org/gx/interp/evaluator"
 )
@@ -37,6 +39,12 @@ type (
 		Axes(ev ir.Evaluator) (*Slice, error)
 	}
 
+	// FixedShape is an (array) element from which the shape has been fully determined.
+	FixedShape interface {
+		ir.Element
+		Shape() *shape.Shape
+	}
+
 	// Copier is an interface implemented by nodes that need to be copied when passed to a function.
 	Copier interface {
 		ir.Element
@@ -48,3 +56,12 @@ type (
 		Select(fitp *FileScope, expr *ir.SelectorExpr) (ir.Element, error)
 	}
 )
+
+// ShapeFromElement returns the shape of a numerical element.
+func ShapeFromElement(node ir.Element) (*shape.Shape, error) {
+	numerical, ok := node.(FixedShape)
+	if !ok {
+		return nil, errors.Errorf("cannot cast %T to a numerical element", node)
+	}
+	return numerical.Shape(), nil
+}
