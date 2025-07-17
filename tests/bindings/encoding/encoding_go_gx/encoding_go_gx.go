@@ -578,8 +578,8 @@ func (cmpl *Package) MarshalSlice(val values.Value) (s *Slice, err error) {
 		err = fmt.Errorf("cannot use value %T to set []<no value>: not a slice", fields[1])
 		return
 	}
-	field1Elements := make([]*Encoding, field1Slice.Size())
-	for i := 0; i < field1Slice.Size(); i++ {
+	field1Elements := make([]*Encoding, field1Slice.Len())
+	for i := 0; i < field1Slice.Len(); i++ {
 		field1HandleI := field1Slice.Element(i)
 		var field1ElmtI *Encoding
 		field1ElmtI, err = cmpl.MarshalEncoding(field1HandleI)
@@ -617,7 +617,7 @@ type methodBase struct {
 // NewScalars returns a handle on named type Scalars.
 func (fac *Factory) NewScalars() *Scalars {
 	s := &Scalars{}
-	typ := fac.Package.Package.IR.Decls.Types[0]
+	typ := fac.Package.Package.IR.Decls.TypeByName("Scalars")
 	s.handle = handleScalars{
 		pkg:   fac.Package,
 		struc: typ,
@@ -707,7 +707,7 @@ func (h *handleScalars) SetField(field *ir.Field, val types.Bridge) error {
 // NewArrays returns a handle on named type Arrays.
 func (fac *Factory) NewArrays() *Arrays {
 	s := &Arrays{}
-	typ := fac.Package.Package.IR.Decls.Types[1]
+	typ := fac.Package.Package.IR.Decls.TypeByName("Arrays")
 	s.handle = handleArrays{
 		pkg:   fac.Package,
 		struc: typ,
@@ -766,7 +766,7 @@ func (h *handleArrays) SetField(field *ir.Field, val types.Bridge) error {
 // NewEncoding returns a handle on named type Encoding.
 func (fac *Factory) NewEncoding() *Encoding {
 	s := &Encoding{}
-	typ := fac.Package.Package.IR.Decls.Types[2]
+	typ := fac.Package.Package.IR.Decls.TypeByName("Encoding")
 	s.handle = handleEncoding{
 		pkg:   fac.Package,
 		struc: typ,
@@ -851,7 +851,7 @@ func (h *handleEncoding) SetField(field *ir.Field, val types.Bridge) error {
 // NewSlice returns a handle on named type Slice.
 func (fac *Factory) NewSlice() *Slice {
 	s := &Slice{}
-	typ := fac.Package.Package.IR.Decls.Types[3]
+	typ := fac.Package.Package.IR.Decls.TypeByName("Slice")
 	s.handle = handleSlice{
 		pkg:   fac.Package,
 		struc: typ,

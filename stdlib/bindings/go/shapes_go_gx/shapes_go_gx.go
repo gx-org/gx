@@ -270,8 +270,8 @@ func (cmpl *Package) MarshalShape(val values.Value) (s *Shape, err error) {
 		err = fmt.Errorf("cannot use value %T to set []<no value>: not a slice", fields[1])
 		return
 	}
-	field1Elements := make([]types.Atom[ir.Int], field1Slice.Size())
-	for i := 0; i < field1Slice.Size(); i++ {
+	field1Elements := make([]types.Atom[ir.Int], field1Slice.Len())
+	for i := 0; i < field1Slice.Len(); i++ {
 		field1HandleI := field1Slice.Element(i)
 
 		field1ElmtIValue, ok := field1HandleI.(values.Array)
@@ -312,7 +312,7 @@ type methodBase struct {
 // NewDType returns a handle on named type DType.
 func (fac *Factory) NewDType() *DType {
 	s := &DType{}
-	typ := fac.Package.Package.IR.Decls.Types[0]
+	typ := fac.Package.Package.IR.Decls.TypeByName("DType")
 	s.handle = handleDType{
 		pkg:   fac.Package,
 		struc: typ,
@@ -343,7 +343,7 @@ func (h *handleDType) SetField(field *ir.Field, val types.Bridge) error {
 // NewShape returns a handle on named type Shape.
 func (fac *Factory) NewShape() *Shape {
 	s := &Shape{}
-	typ := fac.Package.Package.IR.Decls.Types[1]
+	typ := fac.Package.Package.IR.Decls.TypeByName("Shape")
 	s.handle = handleShape{
 		pkg:   fac.Package,
 		struc: typ,

@@ -561,8 +561,8 @@ func (cmpl *Package) MarshalStruct(val values.Value) (s *Struct, err error) {
 		err = fmt.Errorf("cannot use value %T to set []<no value>: not a slice", fields[1])
 		return
 	}
-	field1Elements := make([]types.Atom[float32], field1Slice.Size())
-	for i := 0; i < field1Slice.Size(); i++ {
+	field1Elements := make([]types.Atom[float32], field1Slice.Len())
+	for i := 0; i < field1Slice.Len(); i++ {
 		field1HandleI := field1Slice.Element(i)
 
 		field1ElmtIValue, ok := field1HandleI.(values.Array)
@@ -587,8 +587,8 @@ func (cmpl *Package) MarshalStruct(val values.Value) (s *Struct, err error) {
 		err = fmt.Errorf("cannot use value %T to set []<no value>: not a slice", fields[2])
 		return
 	}
-	field2Elements := make([]*InSlice, field2Slice.Size())
-	for i := 0; i < field2Slice.Size(); i++ {
+	field2Elements := make([]*InSlice, field2Slice.Len())
+	for i := 0; i < field2Slice.Len(); i++ {
 		field2HandleI := field2Slice.Element(i)
 		var field2ElmtI *InSlice
 		field2ElmtI, err = cmpl.MarshalInSlice(field2HandleI)
@@ -863,8 +863,8 @@ func (f *AddInt) String() string {
 // If the shape of the arguments change, the function will panic.
 func (f *AddFloat32s) Run(arg0 types.Array[float32], arg1 types.Array[float32]) (_ types.Array[float32], err error) {
 	var args []values.Value = []values.Value{
-		arg0.Bridge().GXValue(), // x [_]float32
-		arg1.Bridge().GXValue(), // y [_]float32
+		arg0.Bridge().GXValue(), // x [a]float32
+		arg1.Bridge().GXValue(), // y [a]float32
 	}
 	if f.runner == nil {
 		f.runner, err = tracer.Trace(f.pkg.Device, f.function.(*ir.FuncDecl), nil, args, f.pkg.options)
@@ -897,8 +897,8 @@ func (f *AddFloat32s) String() string {
 // If the shape of the arguments change, the function will panic.
 func (f *AddInts) Run(arg0 types.Array[int64], arg1 types.Array[int64]) (_ types.Array[int64], err error) {
 	var args []values.Value = []values.Value{
-		arg0.Bridge().GXValue(), // x [_]int64
-		arg1.Bridge().GXValue(), // y [_]int64
+		arg0.Bridge().GXValue(), // x [a]int64
+		arg1.Bridge().GXValue(), // y [a]int64
 	}
 	if f.runner == nil {
 		f.runner, err = tracer.Trace(f.pkg.Device, f.function.(*ir.FuncDecl), nil, args, f.pkg.options)
@@ -931,7 +931,7 @@ func (f *AddInts) String() string {
 // If the shape of the arguments change, the function will panic.
 func (f *Len) Run(arg0 types.Array[float32]) (_ types.Atom[int64], err error) {
 	var args []values.Value = []values.Value{
-		arg0.Bridge().GXValue(), // x [_]float32
+		arg0.Bridge().GXValue(), // x []float32
 	}
 	if f.runner == nil {
 		f.runner, err = tracer.Trace(f.pkg.Device, f.function.(*ir.FuncDecl), nil, args, f.pkg.options)
@@ -1141,7 +1141,7 @@ func (f *NewNotInSlice) String() string {
 // NewNotInSlice returns a handle on named type NotInSlice.
 func (fac *Factory) NewNotInSlice() *NotInSlice {
 	s := &NotInSlice{}
-	typ := fac.Package.Package.IR.Decls.Types[0]
+	typ := fac.Package.Package.IR.Decls.TypeByName("NotInSlice")
 	s.handle = handleNotInSlice{
 		pkg:   fac.Package,
 		struc: typ,
@@ -1200,7 +1200,7 @@ func (h *handleNotInSlice) SetField(field *ir.Field, val types.Bridge) error {
 // NewInSlice returns a handle on named type InSlice.
 func (fac *Factory) NewInSlice() *InSlice {
 	s := &InSlice{}
-	typ := fac.Package.Package.IR.Decls.Types[1]
+	typ := fac.Package.Package.IR.Decls.TypeByName("InSlice")
 	s.handle = handleInSlice{
 		pkg:   fac.Package,
 		struc: typ,
@@ -1259,7 +1259,7 @@ func (h *handleInSlice) SetField(field *ir.Field, val types.Bridge) error {
 // NewStruct returns a handle on named type Struct.
 func (fac *Factory) NewStruct() *Struct {
 	s := &Struct{}
-	typ := fac.Package.Package.IR.Decls.Types[2]
+	typ := fac.Package.Package.IR.Decls.TypeByName("Struct")
 	s.handle = handleStruct{
 		pkg:   fac.Package,
 		struc: typ,
