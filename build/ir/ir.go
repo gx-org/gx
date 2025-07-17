@@ -1105,6 +1105,7 @@ type (
 
 	// PkgFunc is a function declared at the package level.
 	PkgFunc interface {
+		pkgFunc()
 		StorageWithValue
 		Func
 	}
@@ -1334,6 +1335,7 @@ func (*FuncDecl) node()         {}
 func (*FuncDecl) staticValue()  {}
 func (*FuncDecl) storage()      {}
 func (*FuncDecl) storageValue() {}
+func (*FuncDecl) pkgFunc()      {}
 
 // Source returns the node in the AST tree.
 func (s *FuncDecl) Source() ast.Node { return s.Src }
@@ -1391,6 +1393,7 @@ func (*FuncBuiltin) node()         {}
 func (*FuncBuiltin) staticValue()  {}
 func (*FuncBuiltin) storage()      {}
 func (*FuncBuiltin) storageValue() {}
+func (*FuncBuiltin) pkgFunc()      {}
 
 // Source returns the node in the AST tree.
 func (s *FuncBuiltin) Source() ast.Node { return s.Src }
@@ -1499,6 +1502,7 @@ func (*Macro) node()         {}
 func (*Macro) staticValue()  {}
 func (*Macro) storage()      {}
 func (*Macro) storageValue() {}
+func (*Macro) pkgFunc()      {}
 
 // Name of the function.
 func (s *Macro) Name() string {

@@ -340,7 +340,7 @@ func (g *Graph) Tuple(nodes []ops.Node) (ops.Tuple, error) {
 }
 
 // Call returns a node that invokes a subgraph.
-func (g *Graph) Call(sg ops.Subgraph, args ...ops.Node) (ops.Node, error) {
+func (g *Graph) Call(sg *ops.Subgraph, args ...ops.Node) (ops.Node, error) {
 	return sg.Result.Node, nil
 }
 
@@ -352,7 +352,7 @@ func (g *Graph) Subgraph(name string) (ops.Graph, error) {
 }
 
 // While returns a while loop node.
-func (g *Graph) While(cond, body ops.Subgraph, state ops.Node) (ops.Node, error) {
+func (g *Graph) While(cond, body *ops.Subgraph, state ops.Node) (ops.Node, error) {
 	return nil, errors.Errorf("not implemented")
 }
 

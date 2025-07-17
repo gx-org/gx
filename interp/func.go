@@ -66,11 +66,6 @@ func NewRunFunc(fn ir.PkgFunc, recv *Receiver) Func {
 			funcBase: funcBase{fn: fnT, recv: recv},
 			fnT:      fnT,
 		}
-	case *ir.FuncLit:
-		return &funcLit{
-			funcBase: funcBase{fn: fnT, recv: recv},
-			fnT:      fnT,
-		}
 	}
 	return &funcBase{fn: fn, recv: recv}
 }
@@ -162,15 +157,6 @@ func (f *funcBuiltin) Call(fitp *FileScope, call *ir.CallExpr, args []ir.Element
 	return impl(fitp, elements.NewNodeAt[*ir.CallExpr](fitp.File(), call), f, f.fnT, args)
 }
 
-type funcLit struct {
-	funcBase
-	fnT *ir.FuncLit
-}
-
-func (f *funcLit) Call(fitp *FileScope, call *ir.CallExpr, args []ir.Element) (outs []ir.Element, err error) {
-	return fitp.itp.eval.CallFuncLit(fitp, f.fnT, args)
-}
-
 func evalFuncBody(fitp *FileScope, body *ir.BlockStmt) ([]ir.Element, error) {
 	outs, stop, err := evalBlockStmt(fitp, body)
 	if !stop {
@@ -247,27 +233,4 @@ func (itp *Interpreter) EvalFunc(fn *ir.FuncDecl, in *elements.InputElements) (o
 	// Evaluate the function body.
 	outs, err = evalFuncBody(fitp, fn.Body)
 	return
-}
-
-// EvalFunctionToElement evaluates a function such as it becomes an element.
-func (fitp *FileScope) EvalFunctionToElement(eval evaluator.Evaluator, fn ir.Func, args []ir.Element) ([]ir.Element, error) {
-	funcFrame, err := fitp.ctx.PushFuncFrame(fn)
-	if err != nil {
-		return nil, err
-	}
-
-	assignArgumentValues(fn.FuncType(), funcFrame, args)
-	for _, resultName := range fieldNames(fn.FuncType().Results.List) {
-		funcFrame.Define(resultName.Name, nil)
-	}
-	defer fitp.ctx.PopFrame()
-
-	var body *ir.BlockStmt
-	switch fn := fn.(type) {
-	case *ir.FuncDecl:
-		body = fn.Body
-	case *ir.FuncLit:
-		body = fn.Body
-	}
-	return evalFuncBody(fitp, body)
 }

@@ -46,6 +46,11 @@ func (ev *CompEval) NewFunc(itp *interp.Interpreter, fn ir.PkgFunc, recv *interp
 	return cpevelements.NewFunc(fn, recv)
 }
 
+// NewFuncLit creates a new function literal.
+func (ev *CompEval) NewFuncLit(fitp *interp.FileScope, fn *ir.FuncLit) (interp.Func, error) {
+	return cpevelements.NewFunc(fn, nil), nil
+}
+
 // Processor returns the processor used to process inits and traces for compiled function.
 func (ev *CompEval) Processor() *processor.Processor {
 	return nil
@@ -68,11 +73,6 @@ func (ev *CompEval) ElementFromAtom(ctx ir.Evaluator, src ir.AssignableExpr, val
 		return nil, err
 	}
 	return cpevelements.NewAtom(elements.NewExprAt(ctx.File(), src), hostValue)
-}
-
-// CallFuncLit calls a function literal.
-func (ev *CompEval) CallFuncLit(fitp *interp.FileScope, ref *ir.FuncLit, args []ir.Element) ([]ir.Element, error) {
-	return nil, errors.Errorf("not implemented")
 }
 
 // Trace register a call to the trace builtin function.

@@ -24,11 +24,17 @@ import (
 	"github.com/gx-org/gx/api/values"
 	"github.com/gx-org/gx/build/ir"
 	"github.com/gx-org/gx/internal/interp/compeval"
+	"github.com/gx-org/gx/internal/interp/compeval/cpevelements"
 	"github.com/gx-org/gx/internal/tracer/processor"
 	"github.com/gx-org/gx/interp/elements"
 	"github.com/gx-org/gx/interp/evaluator"
 	"github.com/gx-org/gx/interp"
 )
+
+// SubGrapher is an element (e.g. a function) that can be represented by a sub-graph.
+type SubGrapher interface {
+	SubGraph() (*ops.Subgraph, error)
+}
 
 // Evaluator evaluates GX operations by adding the corresponding
 // node in the backend graph.
@@ -81,70 +87,68 @@ func (ev *Evaluator) ElementFromAtom(ctx ir.Evaluator, src ir.AssignableExpr, va
 	return ev.hostEval.ElementFromAtom(ctx, src, val)
 }
 
-// CallFuncLit calls a function literal.
-func (ev *Evaluator) CallFuncLit(fitp *interp.FileScope, ref *ir.FuncLit, args []ir.Element) ([]ir.Element, error) {
-	core := ev.ao.graph.Core()
-	name := ref.Name()
-	if name == "" {
-		name = "<lambda>"
-	}
-	subgraph, err := core.Subgraph(name)
-	if err != nil {
-		return nil, err
-	}
-	subeval := New(ev.Importer(), ev.process, subgraph)
-	outs, err := fitp.EvalFunctionToElement(subeval, ref, args)
-	if err != nil {
-		return nil, err
-	}
-	outputExprs, outputGraphNodes, err := extractGraphNodes(outs)
-	if err != nil {
-		return nil, err
-	}
-	if len(outputGraphNodes) == 0 {
-		// The sub-function does not need the graph.
-		// Returns its output element.
-		return outs, nil
-	}
-	subresultNodes, shapes := unpackOutputs(outputGraphNodes)
-	// If the function has multiple return values, we alter the graph so that it returns a tuple of
-	// values, and we also transparently unpack the tuple below.
-	graphSingleOutput := outputGraphNodes[0]
-	if len(outputGraphNodes) > 1 {
-		tpl, err := subgraph.Core().Tuple(subresultNodes)
+func buildProxyArguments(litp *interp.FuncLitScope, args []*ir.Field) ([]ir.Element, error) {
+	els := make([]ir.Element, len(args))
+	file := litp.FileScope().File()
+	newFunc := litp.FileScope().NewFunc
+	for i, arg := range args {
+		var err error
+		els[i], err = cpevelements.NewRuntimeValue(file, newFunc, &ir.FieldStorage{
+			Field: arg,
+		})
 		if err != nil {
 			return nil, err
 		}
-		graphSingleOutput = &ops.OutputNode{Node: tpl}
 	}
-	result, err := core.Call(ops.Subgraph{Graph: subgraph, Result: *graphSingleOutput})
-	if err != nil {
-		return nil, err
-	}
+	return els, nil
+}
 
-	if resultTpl, ok := result.(ops.Tuple); ok {
-		return ElementsFromTupleNode(
-			ev.ao.graph,
-			fitp.File(),
-			ref,
-			resultTpl,
-			outputExprs,
-			shapes)
-	}
-	el, err := ElementFromNode(
-		elements.NewExprAt(fitp.File(), ref),
-		&ops.OutputNode{
-			Node:  result,
-			Shape: shapes[0],
-		})
+func (ev *Evaluator) outputNodesFromElements(fileScope *interp.FileScope, fType *ir.FuncType, out []ir.Element) (processCallResults, *ops.OutputNode, error) {
+	outNodes, err := MaterialiseAll(fileScope, out)
 	if err != nil {
-		return nil, err
+		return nil, nil, err
 	}
-	return []ir.Element{el}, nil
+	if len(out) == 0 {
+		return nil, nil, errors.Errorf("literal has no output")
+	}
+	results := fType.Results
+	if len(out) != results.Len() {
+		return nil, nil, errors.Errorf("got %d out elements but want %d from function type", len(out), results.Len())
+	}
+	if results.Len() == 1 {
+		return func(outputNode ops.Node) ([]ir.Element, error) {
+			expr := elements.NewExprAt(fileScope.File(), &ir.ValueRef{
+				Stor: &ir.FieldStorage{Field: results.Fields()[0]},
+			})
+			return ElementsFromNode(expr, outNodes[0])
+		}, outNodes[0], nil
+	}
+	nodes := make([]ops.Node, len(outNodes))
+	shapes := make([]*shape.Shape, len(outNodes))
+	exprs := make([]ir.AssignableExpr, len(outNodes))
+	for i, outNode := range outNodes {
+		nodes[i] = outNode.Node
+		shapes[i] = outNode.Shape
+		exprs[i] = &ir.ValueRef{
+			Stor: &ir.FieldStorage{Field: results.Fields()[0]},
+		}
+	}
+	tupleNode, err := ev.ao.Graph().Core().Tuple(nodes)
+	if err != nil {
+		return nil, nil, err
+	}
+	return func(outputNode ops.Node) ([]ir.Element, error) {
+		return ElementsFromTupleNode(fileScope.File(), tupleNode, exprs, shapes)
+	}, &ops.OutputNode{Node: tupleNode}, nil
+}
+
+// NewFuncLit creates a new function literal.
+func (ev *Evaluator) NewFuncLit(fitp *interp.FileScope, lit *ir.FuncLit) (interp.Func, error) {
+	return ev.newFuncLit(lit, fitp.NewFuncLitScope(ev)), nil
 }
 
 // ElementsFromTupleNode converts the graph nodes of a tuple node into elements.
-func ElementsFromTupleNode(g ops.Graph, file *ir.File, expr ir.Expr, tpl ops.Tuple, elExprs []ir.AssignableExpr, shps []*shape.Shape) ([]ir.Element, error) {
+func ElementsFromTupleNode(file *ir.File, tpl ops.Tuple, elExprs []ir.AssignableExpr, shps []*shape.Shape) ([]ir.Element, error) {
 	elts := make([]ir.Element, tpl.Size())
 	for i := range tpl.Size() {
 		node, err := tpl.Element(i)
@@ -160,6 +164,14 @@ func ElementsFromTupleNode(g ops.Graph, file *ir.File, expr ir.Expr, tpl ops.Tup
 		}
 	}
 	return elts, nil
+}
+
+func (ev *Evaluator) subEval(name string) (*Evaluator, error) {
+	subGraph, err := ev.ao.SubGraph(name)
+	if err != nil {
+		return nil, err
+	}
+	return New(ev.Importer(), ev.process, subGraph.Graph()), nil
 }
 
 // Trace a set of elements.
@@ -210,4 +222,13 @@ func (ev *Evaluator) FuncInputsToElements(fitp *interp.FileScope, fType *ir.Func
 		Receiver: recvEl,
 		Args:     argsEl,
 	}, nil
+}
+
+// GraphFromElement returns a graph given an element.
+func GraphFromElement(el ir.Element) (*ops.Subgraph, error) {
+	grapher, ok := el.(SubGrapher)
+	if !ok {
+		return nil, errors.Errorf("cannot get a graph from %T", el)
+	}
+	return grapher.SubGraph()
 }

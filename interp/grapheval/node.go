@@ -233,24 +233,6 @@ func (n *BackendNode) String() string {
 	return n.nod.String()
 }
 
-// NodeFromElement converts an element into a graph node.
-// We unpack the value of *ops.OutputNode to prevent
-// from changing the output of Materialise accidentally.
-// Returns an error if the element is not a numerical element.
-func NodeFromElement(ctx ir.Evaluator, el ir.Element) (ops.Node, *shape.Shape, error) {
-	materialiser, ok := el.(elements.Materialiser)
-	if !ok {
-		return nil, nil, errors.Errorf("cannot convert %T to a backend node graph: does not implement Materialiser", el)
-	}
-	ev := ctx.(evaluator.Context).Evaluator().(*Evaluator)
-	outEl, err := materialiser.Materialise(ev.Materialiser())
-	if err != nil {
-		return nil, nil, err
-	}
-	outNode := outEl.OutNode()
-	return outNode.Node, outNode.Shape, nil
-}
-
 // ElementFromNode returns an element representing a node in the backend graph.
 func ElementFromNode(expr elements.ExprAt, node *ops.OutputNode) (*BackendNode, error) {
 	if err := checkShape(node); err != nil {
@@ -293,6 +275,24 @@ func extractGraphNodes(els []ir.Element) ([]ir.AssignableExpr, []*ops.OutputNode
 		exprs = append(exprs, node.expr.Node())
 	}
 	return exprs, graphNodes, nil
+}
+
+// NodeFromElement converts an element into a graph node.
+// We unpack the value of *ops.OutputNode to prevent
+// from changing the output of Materialise accidentally.
+// Returns an error if the element is not a numerical element.
+func NodeFromElement(ctx ir.Evaluator, el ir.Element) (ops.Node, *shape.Shape, error) {
+	materialiser, ok := el.(elements.Materialiser)
+	if !ok {
+		return nil, nil, errors.Errorf("cannot convert %T to a backend node graph: does not implement Materialiser", el)
+	}
+	ev := ctx.(evaluator.Context).Evaluator().(*Evaluator)
+	outEl, err := materialiser.Materialise(ev.Materialiser())
+	if err != nil {
+		return nil, nil, err
+	}
+	outNode := outEl.OutNode()
+	return outNode.Node, outNode.Shape, nil
 }
 
 // MaterialiseAll materialises a slice of elements into a slice of output graph nodes.

@@ -31,7 +31,10 @@ type NamedType struct {
 	under   Copier
 }
 
-var _ Selector = (*NamedType)(nil)
+var (
+	_ Selector = (*NamedType)(nil)
+	_ NType    = (*NamedType)(nil)
+)
 
 // NewNamedType returns a new node representing an exported type.
 func NewNamedType(newFunc NewFunc, typ *ir.NamedType, under Copier) *NamedType {
@@ -67,7 +70,7 @@ func (n *NamedType) RecvCopy() *NamedType {
 }
 
 // Under returns the underlying element of the named type.
-func (n *NamedType) Under() Copier {
+func (n *NamedType) Under() ir.Element {
 	return n.under
 }
 

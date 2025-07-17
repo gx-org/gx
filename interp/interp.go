@@ -36,8 +36,8 @@ type (
 		// NewFunc creates a new function given its definition and a receiver.
 		NewFunc(*Interpreter, ir.PkgFunc, *Receiver) Func
 
-		// CallFuncLit calls a function literal.
-		CallFuncLit(fitp *FileScope, ref *ir.FuncLit, args []ir.Element) ([]ir.Element, error)
+		// NewFuncLit calls a function literal.
+		NewFuncLit(fitp *FileScope, ref *ir.FuncLit) (Func, error)
 	}
 )
 
