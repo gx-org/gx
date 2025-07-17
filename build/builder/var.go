@@ -100,6 +100,9 @@ func (vr *varExpr) build(ibld irBuilder) (*ir.VarExpr, bool) {
 	ext := &ir.VarExpr{VName: vr.name}
 	var ok bool
 	ext.Decl, ok = irBuild[*ir.VarSpec](ibld, vr.spec)
+	if !ok {
+		return ext, false
+	}
 	ext.Decl.Exprs = append(ext.Decl.Exprs, ext)
 	return ext, ok
 }
