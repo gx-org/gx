@@ -19,6 +19,12 @@ name: Build release
 on:
   workflow_dispatch:
 
+env:
+  CGO_CFLAGS: -I${{ github.workspace }}/..
+  CGO_CPPFLAGS: -I${{ github.workspace }}/..
+  CGO_CXXFLAGS: -I${{ github.workspace }}/..
+  CGO_LDFLAGS: -labsl_status -labsl_statusor
+
 jobs:
   BuildRelease:
     permissions:
@@ -36,6 +42,9 @@ jobs:
 
     - name: Setup an identity
       run: git config user.email "noreply@github.com" && git config user.name "Github Action"
+
+    - name: Install C++ dependencies
+      run: sudo apt install -y libabsl-dev
 
     - name: Update all the dependencies to the latest release
       run: |
