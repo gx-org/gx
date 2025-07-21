@@ -21,43 +21,59 @@ import (
 	"strings"
 
 	"github.com/pkg/errors"
+	"google3/third_party/golang/go_mod/module/module"
 	"github.com/gx-org/gx/build/builder"
 	"github.com/gx-org/gx/build/importers"
-	"github.com/gx-org/gx/build/module"
+	gxmodule "github.com/gx-org/gx/build/module"
 	"github.com/gx-org/gx/stdlib"
 )
 
 // Importer imports GX packages from the local file system.
 type Importer struct {
-	mod *module.Module
+	mod *gxmodule.Module
+
+	goCachePath string
+	deps        map[string]*module.Version
 }
 
 var _ importers.Importer = (*Importer)(nil)
 
 // New returns a new GX using the local filesystem and Go module.
 // If no Go module can be found, returns a nil importer and a nil error.
-func New() (*Importer, error) {
-	mod, err := module.Current()
+func New(path string) (*Importer, error) {
+	mod, err := gxmodule.New(path)
 	if mod == nil || err != nil {
 		return nil, err
 	}
-	return NewWithModule(mod), nil
+	return NewWithModule(mod)
 }
 
 // NewWithModule returns an importer given a module.
-func NewWithModule(mod *module.Module) *Importer {
-	return &Importer{mod: mod}
+func NewWithModule(mod *gxmodule.Module) (*Importer, error) {
+	imp := &Importer{
+		mod:  mod,
+		deps: make(map[string]*module.Version),
+	}
+	for _, req := range mod.File().Require {
+		imp.deps[req.Mod.Path] = &req.Mod
+	}
+	var err error
+	imp.goCachePath, err = modCachePath()
+	if err != nil {
+		return nil, err
+	}
+	return imp, nil
 }
 
 // Module used by the importer.
-func (imp *Importer) Module() *module.Module {
+func (imp *Importer) Module() *gxmodule.Module {
 	return imp.mod
 }
 
 // NewBuilder returns a builder using the local filesystem to find package.
 // This function should only be used to generate bindings.
 func NewBuilder() (*builder.Builder, error) {
-	importer, err := New()
+	importer, err := New("")
 	if err != nil {
 		return nil, err
 	}
@@ -67,13 +83,36 @@ func NewBuilder() (*builder.Builder, error) {
 	)), nil
 }
 
+func (imp *Importer) findDep(path string) *module.Version {
+	for dep, v := range imp.deps {
+		if strings.HasPrefix(path, dep) {
+			return v
+		}
+	}
+	return nil
+}
+
 // Support returns if the package belongs to the module.
 func (imp *Importer) Support(path string) bool {
-	return imp.mod.Belongs(path)
+	if imp.mod.Belongs(path) {
+		return true
+	}
+	return imp.findDep(path) != nil
 }
 
 // Import a package given its path.
 func (imp *Importer) Import(bld *builder.Builder, importPath string) (builder.Package, error) {
+	if imp.mod.Belongs(importPath) {
+		return imp.importModuleFile(bld, importPath)
+	}
+	dep := imp.findDep(importPath)
+	if dep == nil {
+		return nil, errors.Errorf("package %s unknown", importPath)
+	}
+	return imp.importFromGoCache(bld, importPath, dep)
+}
+
+func (imp *Importer) importModuleFile(bld *builder.Builder, importPath string) (builder.Package, error) {
 	packagePath, packageName, err := imp.mod.Split(importPath)
 	if err != nil {
 		return nil, errors.Errorf("cannot import path %s: %v", importPath, err)
@@ -92,6 +131,9 @@ func (imp *Importer) Import(bld *builder.Builder, importPath string) (builder.Pa
 // The last element of the import path needs to match the package names in all the GX source files
 // present in the folder on the file system.
 func ImportAt(bld *builder.Builder, vfs fs.ReadDirFS, importPath, fsPath string) (builder.Package, error) {
+	if fsPath == "" {
+		fsPath = "."
+	}
 	entries, err := fs.ReadDir(vfs, fsPath)
 	if err != nil {
 		return nil, err

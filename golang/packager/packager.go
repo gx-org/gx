@@ -30,6 +30,7 @@ import (
 	"sort"
 	"strings"
 
+	"github.com/gx-org/gx/build/module"
 	"github.com/gx-org/gx/golang/packager/pkginfo"
 	"github.com/gx-org/gx/golang/template"
 	"github.com/gx-org/gx/tools/gxflag"
@@ -45,6 +46,7 @@ var (
 	dependencies  = gxflag.StringList("gx_deps", "list of GX dependencies")
 
 	gxPackageModule = flag.String("gx_package_module", "", "gx package path within the module")
+	modfile         = flag.String("modfile", "", "folder containing go.mod")
 )
 
 const packagerGoSource = `// Package {{.GoPackageName}} encapsulates GX source files
@@ -104,7 +106,11 @@ type packager struct {
 }
 
 func setEmptyFlagsFromPackageModule() error {
-	pkgInfo, err := pkginfo.Load(*gxPackageModule)
+	mod, err := module.New(*modfile)
+	if err != nil {
+		return err
+	}
+	pkgInfo, err := pkginfo.Load(mod, *gxPackageModule)
 	if err != nil {
 		return fmt.Errorf("cannot load package %s: %v", *gxPackageModule, err)
 	}
