@@ -1,0 +1,66 @@
+# Copyright 2025 Google LLC
+#
+# Licensed under the Apache License, Version 2.0 (the "License");
+# you may not use this file except in compliance with the License.
+# You may obtain a copy of the License at
+#
+#     http://www.apache.org/licenses/LICENSE-2.0
+#
+# Unless required by applicable law or agreed to in writing, software
+# distributed under the License is distributed on an "AS IS" BASIS,
+# WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
+# See the License for the specific language governing permissions and
+# limitations under the License.
+
+# Run a release from a branch.
+
+name: Build release
+
+on:
+  workflow_dispatch:
+
+jobs:
+  BuildRelease:
+    permissions:
+      contents: write
+    runs-on: ubuntu-latest
+    steps:
+    - uses: actions/checkout@v4
+      with:
+        fetch-depth: 0
+
+    - name: Set up Go
+      uses: actions/setup-go@v4
+      with:
+        go-version: '1.24'
+
+    - name: Setup an identity
+      run: git config user.email "noreply@github.com" && git config user.name "Github Action"
+
+    - name: Update all the dependencies to the latest release
+      run: |
+        go get -u ./...
+        go mod tidy
+
+    - name: Run all the tests
+      run: go test ./...
+
+    - name: Commit changes if required
+      run: git diff --quiet && git diff --staged --quiet || git commit -am 'Update dependencies.'
+
+    - name: Push to origin
+      run: git push
+      env:
+        GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }} 
+
+    - name: Build a release tag
+      run: |
+        go run golang.org/x/exp/cmd/gorelease@latest
+        export VERSION=$(go run golang.org/x/exp/cmd/gorelease@latest | grep Suggested | awk '{print $NF}')
+        echo "VERSION: $VERSION"
+        git tag $VERSION
+
+    - name: Push tags
+      run: git push --tags origin
+      env:
+        GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
