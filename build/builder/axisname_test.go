@@ -296,6 +296,21 @@ func f(a [2][2]float32) [2][2]float64 {
 }
 `,
 		},
+		testbuild.Decl{
+			Src: `
+type floats interface {
+	float32 | float64
+}
+
+func g[T floats]([___S]T) [S___]T
+
+func f() [2]float32 {
+	return g[float32]([...]float32{
+		0, 1,
+	})
+}
+`,
+		},
 	)
 }
 

@@ -16,8 +16,8 @@ func TestReinterpretFloat64Uint64() uint64 {
 	// uint64(4607182418800017408)
 }
 
-func TestReinterpretUint32Int32Array() [...]int32 {
-	return dtype.Reinterpret[int32]([...]uint32{0, 2147483647, 2147483648, 2147483649})
+func TestReinterpretUint32Int32Array() [4]int32 {
+	return dtype.Reinterpret[int32, uint32]([4]uint32{0, 2147483647, 2147483648, 2147483649})
 	// Want:
 	// [4]int32{0, 2147483647, -2147483648, -2147483647}
 }

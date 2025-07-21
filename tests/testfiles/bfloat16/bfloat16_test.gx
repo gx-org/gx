@@ -8,7 +8,7 @@ func TestBfloat16AtomicLiteral() bfloat16 {
 	// bfloat16(42)
 }
 
-func TestBfloat16ArrayLiteral() [...]bfloat16 {
+func TestBfloat16ArrayLiteral() [5]bfloat16 {
 	return [...]bfloat16{0, 0.5, 1, 2, 2.75}
 	// Want:
 	// [5]bfloat16{0, 0.5, 1, 2, 2.75}
@@ -28,13 +28,13 @@ func TestBfloat16ToFloat64Cast() float64 {
 	// float64(42)
 }
 
-func TestBfloat16ArrayAtomicAdd() [...]bfloat16 {
+func TestBfloat16ArrayAtomicAdd() [5]bfloat16 {
 	return [...]bfloat16{0, 0.5, 1, 2, 2.75} + 1
 	// Want:
 	// [5]bfloat16{1, 1.5, 2, 3, 3.75}
 }
 
-func TestBfloat16ArrayAtomicMul() [...]bfloat16 {
+func TestBfloat16ArrayAtomicMul() [5]bfloat16 {
 	return [...]bfloat16{0, 0.5, 1, 2, 2.75} * 4
 	// Want:
 	// [5]bfloat16{0, 2, 4, 8, 11}
@@ -46,8 +46,8 @@ func TestBfloat16AtomicCos() bfloat16 {
 	// bfloat16(-0.40039062)
 }
 
-func TestBfloat16ArrayCos() [...]bfloat16 {
-	return math.Cos([...]bfloat16{0, 3.15159})
+func TestBfloat16ArrayCos() [2]bfloat16 {
+	return math.Cos[bfloat16]([...]bfloat16{0, 3.15159})
 	// Want:
 	// [2]bfloat16{1, -1}
 }

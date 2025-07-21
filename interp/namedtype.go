@@ -34,6 +34,7 @@ type NamedType struct {
 var (
 	_ Selector = (*NamedType)(nil)
 	_ NType    = (*NamedType)(nil)
+	_ Copier   = (*NamedType)(nil)
 )
 
 // NewNamedType returns a new node representing an exported type.
@@ -62,6 +63,11 @@ func (n *NamedType) Select(expr *ir.SelectorExpr) (ir.Element, error) {
 		return nil, errors.Errorf("%s is undefined", name)
 	}
 	return under.Select(expr)
+}
+
+// Copy the element.
+func (n *NamedType) Copy() Copier {
+	return n.RecvCopy()
 }
 
 // RecvCopy copies the underlying element and returns the element encapsulated in this named type.

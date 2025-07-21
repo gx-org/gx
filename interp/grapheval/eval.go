@@ -22,6 +22,7 @@ import (
 	"github.com/gx-org/backend/ops"
 	"github.com/gx-org/backend/shape"
 	"github.com/gx-org/gx/api/values"
+	"github.com/gx-org/gx/build/fmterr"
 	"github.com/gx-org/gx/build/ir"
 	"github.com/gx-org/gx/internal/interp/compeval"
 	"github.com/gx-org/gx/internal/interp/compeval/cpevelements"
@@ -134,7 +135,7 @@ func (ev *Evaluator) outputNodesFromElements(fileScope *interp.FileScope, fType 
 		return nil, nil, err
 	}
 	return func(outputNode ops.Node) ([]ir.Element, error) {
-		return ev.ElementsFromTupleNode(fileScope.File(), tupleNode, exprs, shapes)
+		return ev.elementsFromTupleNode(fileScope.File(), tupleNode, exprs, shapes)
 	}, &ops.OutputNode{Node: tupleNode}, nil
 }
 
@@ -143,8 +144,7 @@ func (ev *Evaluator) NewFuncLit(fitp *interp.FileScope, lit *ir.FuncLit) (interp
 	return ev.newFuncLit(lit, fitp.NewFuncLitScope(ev)), nil
 }
 
-// ElementsFromTupleNode converts the graph nodes of a tuple node into elements.
-func (ev *Evaluator) ElementsFromTupleNode(file *ir.File, tpl ops.Tuple, elExprs []ir.AssignableExpr, shps []*shape.Shape) ([]ir.Element, error) {
+func (ev *Evaluator) elementsFromTupleNode(file *ir.File, tpl ops.Tuple, elExprs []ir.AssignableExpr, shps []*shape.Shape) ([]ir.Element, error) {
 	elts := make([]ir.Element, tpl.Size())
 	for i := range tpl.Size() {
 		node, err := tpl.Element(i)
@@ -160,6 +160,48 @@ func (ev *Evaluator) ElementsFromTupleNode(file *ir.File, tpl ops.Tuple, elExprs
 		}
 	}
 	return elts, nil
+}
+
+func unpackTypes(file *ir.File, src ir.SourceNode, tp ir.Type) (*ir.StructType, []*ir.NamedType, error) {
+	switch tpT := tp.(type) {
+	case *ir.NamedType:
+		sType, nTypes, err := unpackTypes(file, src, tpT.Underlying.Typ)
+		if err != nil {
+			return nil, nil, err
+		}
+		nTypes = append(nTypes, tpT)
+		return sType, nTypes, nil
+	case *ir.StructType:
+		return tpT, nil, nil
+	default:
+		return nil, nil, fmterr.Internalf(file.FileSet(), src.Source(), "cannot unpack a tuple to type %T: not supported", tp)
+	}
+}
+
+// ElementFromTuple creates an interpreter element of a given type from a graph tuple.
+func (ev *Evaluator) ElementFromTuple(file *ir.File, expr ir.AssignableExpr, tpl ops.Tuple, shapes []*shape.Shape, targetType ir.Type) (ir.Element, error) {
+	structTyp, namedTypes, err := unpackTypes(file, expr, targetType)
+	if err != nil {
+		return nil, err
+	}
+	// Construct dummy expressions for all the fields of the structure to keep track of the value types.
+	fieldExprs := make([]ir.AssignableExpr, structTyp.NumFields())
+	for i, field := range structTyp.Fields.Fields() {
+		fieldExprs[i] = &ir.ValueRef{
+			Src:  field.Name,
+			Stor: field.Storage(),
+		}
+	}
+	els, err := ev.elementsFromTupleNode(file, tpl, fieldExprs, shapes)
+	if err != nil {
+		return nil, err
+	}
+	var el interp.Copier
+	el = interp.NewStructFromElements(structTyp, els)
+	for _, nType := range namedTypes {
+		el = interp.NewNamedType(interp.NewRunFunc, nType, el)
+	}
+	return el, nil
 }
 
 func (ev *Evaluator) subEval(proc *processor.Processor, name string) (*Evaluator, error) {

@@ -17,13 +17,13 @@ func TestInfFloat64() (float64, float64) {
 }
 
 func TestExpScalar() float64 {
-	return math.Exp(1.0)
+	return math.Exp[float64](1.0)
 	// Want:
 	// float64(2.7182818285)
 }
 
 func TestExpTensor() [2]float32 {
-	return math.Exp([...]float32{
+	return math.Exp[float32]([...]float32{
 		0, 1,
 	})
 	// Want:
@@ -79,32 +79,32 @@ func TestMaxArrayArrayInt() [2]int32 {
 }
 
 func TestCosScalar() float64 {
-	return math.Cos(0.0)
+	return math.Cos[float64](0.0)
 	// Want:
 	// float64(1)
 }
 
 func TestCosScalarArrayFloat32() [2]float32 {
-	return math.Cos([2]float32{0, 3.141592653589793})
+	return math.Cos[float32]([2]float32{0, 3.141592653589793})
 	// Want:
 	// [2]float32{1, -1}
 }
 
 func TestSinScalar() float64 {
-	return math.Sin(0.0)
+	return math.Sin[float64](0.0)
 	// Want:
 	// float64(0)
 }
 
 func TestLogScalar() (float64, float64) {
-	return math.Log(1.0), math.Log(16.0) / math.Log(2.0)
+	return math.Log[float64](1.0), math.Log[float64](16.0) / math.Log[float64](2.0)
 	// Want:
 	// 0: float64(0)
 	// 1: float64(4)
 }
 
 func TestLogSqrt() (float64, float64) {
-	return math.Sqrt(1.0), math.Sqrt(144.0)
+	return math.Sqrt[float64](1.0), math.Sqrt[float64](144.0)
 	// Want:
 	// 0: float64(1)
 	// 1: float64(12)
@@ -135,15 +135,15 @@ func TestCeilFloat64() [2][2]float64 {
 }
 
 func TestCeilAtomicInferred() (float32, float64, float64) {
-	return math.Ceil(float32(1.75)), math.Ceil(float64(4)), math.Ceil(1.0)
+	return math.Ceil(float32(1.75)), math.Ceil(float64(4)), math.Ceil[float64](1.0)
 	// Want:
 	// 0: float32(2)
 	// 1: float64(4)
 	// 2: float64(1)
 }
 
-func TestCeilArrayInferred() ([...]float32, [...]float64) {
-	return math.Ceil([2]float32{0.5, 1.5}), math.Ceil([2]float64{3.5, 7.5})
+func TestCeilArrayInferred() ([2]float32, [2]float64) {
+	return math.Ceil[float32]([2]float32{0.5, 1.5}), math.Ceil[float64]([2]float64{3.5, 7.5})
 	// Want:
 	// 0: [2]float32{1, 2}
 	// 1: [2]float64{4, 8}

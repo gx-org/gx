@@ -98,17 +98,17 @@ func TestConcat3D() [4][2][2]float32 {
 }
 
 func LenUnknownRank(x [_]float32) int64 {
-	return shapes.Len(x)
+	return shapes.Len[float32](x)
 }
 
 func TestLen1a() int64 {
-	return shapes.Len([3]float32{1, 2, 3})
+	return shapes.Len[float32]([3]float32{1, 2, 3})
 	// Want:
 	// int64(3)
 }
 
 func TestLen1b() int64 {
-	return shapes.Len([...]float32{1, 2, 3})
+	return shapes.Len[float32]([...]float32{1, 2, 3})
 	// Want:
 	// int64(3)
 }
@@ -123,13 +123,13 @@ func TestLen1c() int64 {
 //   LenUnknownRank([...]float32{1, 2, 3, 4, 5, 6})
 
 func TestLen2a() int64 {
-	return shapes.Len([2][3]float32{{1, 2, 3}, {4, 5, 6}})
+	return shapes.Len[float32]([2][3]float32{{1, 2, 3}, {4, 5, 6}})
 	// Want:
 	// int64(2)
 }
 
 func TestLen2b() int64 {
-	return shapes.Len([...]float32{{1, 2, 3}, {4, 5, 6}})
+	return shapes.Len[float32]([...]float32{{1, 2, 3}, {4, 5, 6}})
 	// Want:
 	// int64(2)
 }
