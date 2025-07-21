@@ -49,6 +49,7 @@ jobs:
     - name: Update all the dependencies to the latest release
       run: |
         go get -u ./...
+        go get github.com/gx-org/backend@latest
         go mod tidy
 
     - name: Run all the tests
