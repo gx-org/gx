@@ -176,12 +176,18 @@ func (m *gradMacro) gradBinaryExpr(fetcher ir.Fetcher, src *ir.BinaryExpr, argNa
 }
 
 func gradValueRef(fetcher ir.Fetcher, src *ir.ValueRef, argName string) (*gradExprResult, bool) {
-	if src.Src.Name != argName {
-		// The ident does not correspond to the variable
-		// for which we are differentiating: return zero.
-		return nil, true
+	if src.Src.Name == argName {
+		return oneValueOf(fetcher, src.Source(), src.Type())
 	}
-	return oneValueOf(fetcher, src.Source(), src.Type())
+	gIdent := gradIdent(src.Stor.NameDef())
+	gStore := &ir.LocalVarStorage{
+		Src: gIdent,
+		Typ: src.Type(),
+	}
+	return &gradExprResult{expr: &ir.ValueRef{
+		Src:  gIdent,
+		Stor: gStore,
+	}}, true
 }
 
 func (m *gradMacro) gradArrayLitExpr(fetcher ir.Fetcher, src *ir.ArrayLitExpr, argName string) (*gradExprResult, bool) {

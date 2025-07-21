@@ -34,7 +34,7 @@ func setGradImplementation(pkg *ir.Package) {
 	id.BuildSynthetic = cpevelements.MacroImpl(grad.FuncGrad)
 }
 
-func TestGradOps(t *testing.T) {
+func TestGradExpressions(t *testing.T) {
 	testbuild.Run(t,
 		testbuild.DeclarePackage{
 			Src:  string(gradSrc),
@@ -278,6 +278,63 @@ func __other_Func_g_x(x float32) float32 {
 }
 `,
 			},
+		},
+	)
+}
+
+func TestGradStatements(t *testing.T) {
+	testbuild.Run(t,
+		testbuild.DeclarePackage{
+			Src:  string(gradSrc),
+			Post: setGradImplementation,
+		},
+		testgrad.Func{
+			GradOf: `
+func F(x float32) float32 {
+	a := x*x
+	return a
+}
+`,
+			Want: `
+func gradF(x float32) float32 {
+	a := x*x
+	__grad_a := x+x
+	return __grad_a
+}
+`,
+		},
+		testgrad.Func{
+			GradOf: `
+func F(x float32) float32 {
+	a := 2*x
+	b := 3*x
+	return a*b
+}
+`,
+			Want: `
+func gradF(x float32) float32 {
+	a := 2*x
+	__grad_a := 2
+	b := 3*x
+	__grad_b := 3
+	return __grad_a*b+a*__grad_b
+}
+`,
+		},
+		testgrad.Func{
+			GradOf: `
+func F(x float32) float32 {
+	a, b := 2*x, 3*x
+	return a*b
+}
+`,
+			Want: `
+func gradF(x float32) float32 {
+	a, b := 2*x, 3*x
+	__grad_a, __grad_b := 2, 3
+	return __grad_a*b+a*__grad_b
+}
+`,
 		},
 	)
 }

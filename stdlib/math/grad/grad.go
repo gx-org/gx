@@ -102,21 +102,28 @@ func (m *gradMacro) BuildBody(fetcher ir.Fetcher) (*ir.BlockStmt, []*cpevelement
 }
 
 func (m *gradMacro) gradBlock(fetcher ir.Fetcher, src *ir.BlockStmt, argName string) (*ir.BlockStmt, bool) {
-	block := &ir.BlockStmt{List: make([]ir.Stmt, len(src.List))}
-	for i, stmt := range src.List {
+	var block []ir.Stmt
+	for _, stmt := range src.List {
 		var ok bool
-		block.List[i], ok = m.gradStmt(fetcher, stmt, argName)
+		stmts, ok := m.gradStmt(fetcher, stmt, argName)
 		if !ok {
 			return nil, false
 		}
+		block = append(block, stmts...)
 	}
-	return block, true
+	return &ir.BlockStmt{
+		Src:  src.Src,
+		List: block,
+	}, true
 }
 
-func (m *gradMacro) gradStmt(fetcher ir.Fetcher, src ir.Stmt, argName string) (ir.Stmt, bool) {
+func (m *gradMacro) gradStmt(fetcher ir.Fetcher, src ir.Stmt, argName string) ([]ir.Stmt, bool) {
 	switch srcT := src.(type) {
 	case *ir.ReturnStmt:
-		return m.gradReturnStmt(fetcher, srcT, argName)
+		ret, ok := m.gradReturnStmt(fetcher, srcT, argName)
+		return []ir.Stmt{ret}, ok
+	case *ir.AssignExprStmt:
+		return m.gradAssignExprStmt(fetcher, srcT, argName)
 	default:
 		return nil, fetcher.Err().Appendf(src.Source(), "gradient of %T statement not supported", srcT)
 	}
@@ -142,4 +149,45 @@ func (m *gradMacro) gradReturnStmt(fetcher ir.Fetcher, src *ir.ReturnStmt, argNa
 		stmt.Results[i] = res.expr
 	}
 	return stmt, true
+}
+
+func gradIdent(src *ast.Ident) *ast.Ident {
+	return &ast.Ident{
+		NamePos: src.NamePos,
+		Name:    "__grad_" + src.Name,
+	}
+}
+
+func (m *gradMacro) gradStorage(fetcher ir.Fetcher, src ir.SourceNode, store ir.Storage) (ir.Storage, bool) {
+	switch storeT := store.(type) {
+	case *ir.LocalVarStorage:
+		return &ir.LocalVarStorage{
+			Src: gradIdent(storeT.Src),
+			Typ: storeT.Typ,
+		}, true
+	default:
+		return nil, fetcher.Err().Appendf(store.Source(), "gradient of %T storage not supported", storeT)
+	}
+}
+
+func (m *gradMacro) gradAssignExprStmt(fetcher ir.Fetcher, src *ir.AssignExprStmt, argName string) ([]ir.Stmt, bool) {
+	gradStmt := &ir.AssignExprStmt{
+		Src:  src.Src,
+		List: make([]*ir.AssignExpr, len(src.List)),
+	}
+	for i, aexpr := range src.List {
+		gExpr, ok := m.gradExpr(fetcher, aexpr.X, argName)
+		if !ok {
+			return nil, false
+		}
+		gStorage, ok := m.gradStorage(fetcher, aexpr.X, aexpr.Storage)
+		if !ok {
+			return nil, false
+		}
+		gradStmt.List[i] = &ir.AssignExpr{
+			Storage: gStorage,
+			X:       gExpr.expr,
+		}
+	}
+	return []ir.Stmt{src, gradStmt}, true
 }
