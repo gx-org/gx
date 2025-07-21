@@ -17,6 +17,7 @@ package testgrad
 
 import (
 	"fmt"
+	"strings"
 
 	"github.com/pkg/errors"
 	"github.com/gx-org/gx/build/builder/testbuild"
@@ -47,6 +48,18 @@ func (tt Func) Source() string {
 	return tt.GradOf
 }
 
+func (tt Func) checkError(err error) error {
+	if tt.Err == "" {
+		// No error expected
+		return err
+	}
+	msg := err.Error()
+	if strings.Contains(msg, tt.Err) {
+		return nil
+	}
+	return errors.Errorf("got error:\n%s\nbut want an expected error which contains %q", err, tt.Err)
+}
+
 // Run builds the declarations as a package, then compare to an expected outcome.
 func (tt Func) Run(b *testbuild.Builder) error {
 	declImportName := ""
@@ -67,7 +80,7 @@ func gradF()
 `, declImportName+" ", callImportName, tt.GradOf)
 	pkg, err := b.Build(src)
 	if err != nil {
-		return err
+		return tt.checkError(err)
 	}
 	pkgIR := pkg.IR()
 	if err := checkFunc(pkgIR, "gradF", tt.Want); err != nil {

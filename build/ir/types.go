@@ -50,6 +50,11 @@ func (BaseType[T]) Type() Type {
 	return MetaType()
 }
 
+// Same returns true if the other storage is this storage.
+func (m *BaseType[T]) Same(o Storage) bool {
+	return Storage(m) == o
+}
+
 type metaType struct {
 	BaseType[*ast.Ident]
 }

@@ -24,18 +24,23 @@ import (
 func (m *gradMacro) gradFunc(fetcher ir.Fetcher, src *ir.FuncValExpr, wrt string) (*ir.FuncValExpr, bool) {
 	switch fT := src.F.(type) {
 	case *ir.FuncDecl:
-		return m.gradFuncDecl(fetcher, src, fT, wrt)
+		return gradFuncDecl(fetcher, m, src, fT, wrt)
 	default:
 		return nil, fetcher.Err().Appendf(src.Source(), "cannot compute the gradient of function %T", fT)
 	}
 }
 
-func (m *gradMacro) gradFuncDecl(fetcher ir.Fetcher, src *ir.FuncValExpr, fn *ir.FuncDecl, wrt string) (*ir.FuncValExpr, bool) {
-	name, ok := m.autoBuildSyntheticFuncName(fetcher, fn.Name())
+func gradFuncDecl(fetcher ir.Fetcher, parent *gradMacro, src *ir.FuncValExpr, fn *ir.FuncDecl, wrt string) (*ir.FuncValExpr, bool) {
+	wrtF, err := findParamStorage(fetcher.File(), src, fn, wrt)
+	if err != nil {
+		return nil, fetcher.Err().Append(err)
+	}
+	grader := parent.newMacro(fn, wrtF)
+	name, ok := grader.autoBuildSyntheticFuncName(fetcher, fn.Name())
 	if !ok {
 		return nil, false
 	}
-	cached, ok := m.aux.Load(name.Name)
+	cached, ok := grader.aux.Load(name.Name)
 	if ok {
 		return &ir.FuncValExpr{
 			X: &ir.ValueRef{Src: name, Stor: cached.F},
@@ -44,18 +49,16 @@ func (m *gradMacro) gradFuncDecl(fetcher ir.Fetcher, src *ir.FuncValExpr, fn *ir
 		}, true
 	}
 	gradF := &ir.FuncDecl{
-		FFile: m.fn.FFile,
+		FFile: grader.fn.FFile,
 		Src: &ast.FuncDecl{
 			Name: name,
 		},
 	}
-	var err error
-	gradF.FType, err = m.BuildType()
+	gradF.FType, err = grader.BuildType()
 	if err != nil {
 		return nil, fetcher.Err().AppendAt(src.Source(), err)
 	}
-	grader := m.newMacro(fn, wrt)
-	m.aux.Store(name.Name, &cpevelements.SyntheticFuncDecl{
+	grader.aux.Store(name.Name, &cpevelements.SyntheticFuncDecl{
 		SyntheticFunc: cpevelements.NewSyntheticFunc(grader),
 		F:             gradF,
 	})
@@ -66,7 +69,7 @@ func (m *gradMacro) gradFuncDecl(fetcher ir.Fetcher, src *ir.FuncValExpr, fn *ir
 	}, true
 }
 
-func (m *gradMacro) gradCall(fetcher ir.Fetcher, src *ir.CallExpr, argName string) (*gradExprResult, bool) {
+func (m *gradMacro) gradCall(fetcher ir.Fetcher, src *ir.CallExpr) (*gradExprResult, bool) {
 	if len(src.Args) == 0 {
 		return zeroValueOf(fetcher, src.Source(), src.Type())
 	}
@@ -76,7 +79,7 @@ func (m *gradMacro) gradCall(fetcher ir.Fetcher, src *ir.CallExpr, argName strin
 		if !ok {
 			return nil, false
 		}
-		gradArg, ok := m.gradExpr(fetcher, argI, argName)
+		gradArg, ok := m.gradExpr(fetcher, argI)
 		if !ok {
 			return nil, false
 		}

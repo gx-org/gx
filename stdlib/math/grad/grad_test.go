@@ -211,8 +211,8 @@ func gradF(x float32) float32 {
 		},
 		testgrad.Func{
 			GradOf: `
-func g(x float32) float32 {
-	return x	
+func g(y float32) float32 {
+	return y	
 }
 
 func F(x float32) float32 {
@@ -221,12 +221,12 @@ func F(x float32) float32 {
 `,
 			Want: `
 func gradF(x float32) float32 {
-	return __grad_Func_g_x(x)
+	return __grad_Func_g_y(x)
 }
 `,
 			WantAuxs: map[string]string{
-				"__grad_Func_g_x": `
-func __grad_Func_g_x(x float32) float32 {
+				"__grad_Func_g_y": `
+func __grad_Func_g_y(y float32) float32 {
 	return (float32)(1)
 }
 `,
@@ -335,6 +335,23 @@ func gradF(x float32) float32 {
 	return __grad_a*b+a*__grad_b
 }
 `,
+		},
+	)
+}
+
+func TestGradErrors(t *testing.T) {
+	testbuild.Run(t,
+		testbuild.DeclarePackage{
+			Src:  string(gradSrc),
+			Post: setGradImplementation,
+		},
+		testgrad.Func{
+			GradOf: `
+func F(y float32) float32 {
+	return y
+}
+`,
+			Err: "no parameter named x in F",
 		},
 	)
 }
