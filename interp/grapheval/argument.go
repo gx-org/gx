@@ -317,7 +317,8 @@ func (ev *Evaluator) NewArrayArgument(fitp *interp.FileScope, parent parentArgum
 	if err != nil {
 		return nil, err
 	}
-	n.BackendNode, err = ElementFromNode(
+	n.BackendNode, err = NewBackendNode(
+		ev,
 		elements.NewExprAt(fitp.File(),
 			&ir.ValueRef{Stor: &ir.LocalVarStorage{
 				Src: &ast.Ident{Name: parent.Name()},

@@ -22,6 +22,7 @@ import (
 	"github.com/gx-org/gx/build/ir"
 	"github.com/gx-org/gx/interp/elements"
 	"github.com/gx-org/gx/interp/evaluator"
+	"github.com/gx-org/gx/interp/materialise"
 )
 
 type arrayOps struct {
@@ -30,8 +31,8 @@ type arrayOps struct {
 }
 
 var (
-	_ evaluator.ArrayOps         = (*arrayOps)(nil)
-	_ elements.ArrayMaterialiser = (*arrayOps)(nil)
+	_ evaluator.ArrayOps       = (*arrayOps)(nil)
+	_ materialise.Materialiser = (*arrayOps)(nil)
 )
 
 // Graph where nodes are being added to.
@@ -56,11 +57,11 @@ func (ao *arrayOps) SubGraph(name string) (evaluator.ArrayOps, error) {
 
 // Einsum calls an einstein sum on x and y given the expression in ref.
 func (ao *arrayOps) Einsum(ctx ir.Evaluator, ref *ir.EinsumExpr, x, y evaluator.NumericalElement) (evaluator.NumericalElement, error) {
-	xNode, xShape, err := NodeFromElement(ctx, x)
+	xNode, xShape, err := materialise.Element(ao, x)
 	if err != nil {
 		return nil, err
 	}
-	yNode, yShape, err := NodeFromElement(ctx, y)
+	yNode, yShape, err := materialise.Element(ao, y)
 	if err != nil {
 		return nil, err
 	}
@@ -72,7 +73,8 @@ func (ao *arrayOps) Einsum(ctx ir.Evaluator, ref *ir.EinsumExpr, x, y evaluator.
 		DType:       xShape.DType,
 		AxisLengths: computeEinsumAxisLengths(ref, xShape, yShape, dotNode),
 	}
-	return ElementFromNode(
+	return NewBackendNode(
+		ao.ev,
 		elements.NewExprAt(ctx.File(), ref),
 		&ops.OutputNode{
 			Node:  dotNode,
@@ -98,7 +100,7 @@ func (ao *arrayOps) BroadcastInDim(ctx ir.Evaluator, expr ir.AssignableExpr, x e
 	if err != nil {
 		return nil, err
 	}
-	xNode, xShape, err := NodeFromElement(ctx, x)
+	xNode, xShape, err := materialise.Element(ao, x)
 	if err != nil {
 		return nil, err
 	}
@@ -117,7 +119,8 @@ func (ao *arrayOps) BroadcastInDim(ctx ir.Evaluator, expr ir.AssignableExpr, x e
 	if err != nil {
 		return nil, err
 	}
-	return ElementFromNode(
+	return NewBackendNode(
+		ao.ev,
 		elements.NewExprAt(ctx.File(), expr),
 		&ops.OutputNode{
 			Node:  reshaped,
@@ -130,7 +133,7 @@ func (ao *arrayOps) Concat(ctx ir.Evaluator, expr ir.AssignableExpr, xs []evalua
 	nodes := make([]ops.Node, len(xs))
 	var dtype dtype.DataType
 	for i, x := range xs {
-		iNode, iShape, err := NodeFromElement(ctx, x)
+		iNode, iShape, err := materialise.Element(ao, x)
 		if err != nil {
 			return nil, err
 		}
@@ -146,7 +149,8 @@ func (ao *arrayOps) Concat(ctx ir.Evaluator, expr ir.AssignableExpr, xs []evalua
 	if err != nil {
 		return nil, err
 	}
-	return ElementFromNode(
+	return NewBackendNode(
+		ao.ev,
 		elements.NewExprAt(ctx.File(), expr),
 		&ops.OutputNode{
 			Node: array1d,
@@ -159,7 +163,7 @@ func (ao *arrayOps) Concat(ctx ir.Evaluator, expr ir.AssignableExpr, xs []evalua
 
 // Set a slice in an array.
 func (ao *arrayOps) Set(ctx ir.Evaluator, expr *ir.CallExpr, x, updates, index ir.Element) (ir.Element, error) {
-	nodes, err := MaterialiseAll(ctx, []ir.Element{x, updates, index})
+	nodes, err := materialise.AllWithShapes(ao, []ir.Element{x, updates, index})
 	if err != nil {
 		return nil, err
 	}
@@ -167,7 +171,8 @@ func (ao *arrayOps) Set(ctx ir.Evaluator, expr *ir.CallExpr, x, updates, index i
 	if err != nil {
 		return nil, err
 	}
-	return ElementFromNode(
+	return NewBackendNode(
+		ao.ev,
 		elements.NewExprAt(ctx.File(), expr),
 		&ops.OutputNode{
 			Node:  setNode,
@@ -185,11 +190,36 @@ func unpackOutputs(outputs []*ops.OutputNode) (nodes []ops.Node, shapes []*shape
 }
 
 // ElementFromArray returns an element from an array GX value.
-func (ao *arrayOps) ElementFromArray(ctx ir.Evaluator, expr ir.AssignableExpr, val values.Array) (evaluator.NumericalElement, error) {
-	return newValueElement(ao.ev, elements.NewExprAt(ctx.File(), expr), val)
+func (ao *arrayOps) NodeFromArray(file *ir.File, expr ir.AssignableExpr, val values.Array) (materialise.Node, error) {
+	return newValueElement(ao.ev, elements.NewExprAt(file, expr), val)
+}
+
+// ElementsFromNodes returns a slice of elements from nodes
+func (ao *arrayOps) ElementsFromNodes(file *ir.File, expr ir.AssignableExpr, nodes ...*ops.OutputNode) ([]ir.Element, error) {
+	els := make([]ir.Element, len(nodes))
+	for i, node := range nodes {
+		var err error
+		els[i], err = NewBackendNode(ao.ev, elements.NewExprAt(file, expr), node)
+		if err != nil {
+			return nil, err
+		}
+	}
+	return els, nil
+}
+
+// Tuple packs multiple nodes into a single tuple node.
+func (ao *arrayOps) Tuple(nodes []ops.Node) (materialise.Node, error) {
+	node, err := ao.graph.Core().Tuple(nodes)
+	if err != nil {
+		return nil, err
+	}
+	return NewBackendNode(ao.ev,
+		elements.NewExprAt(nil, nil),
+		&ops.OutputNode{Node: node},
+	)
 }
 
 // ElementFromArray returns an element from an array GX value.
-func (ao *arrayOps) NodeFromArray(expr elements.ExprAt, val values.Array) (elements.Node, error) {
-	return newValueElement(ao.ev, expr, val)
+func (ao *arrayOps) ElementFromArray(ctx ir.Evaluator, expr ir.AssignableExpr, val values.Array) (evaluator.NumericalElement, error) {
+	return newValueElement(ao.ev, elements.NewExprAt(ctx.File(), expr), val)
 }

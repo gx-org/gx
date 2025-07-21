@@ -20,7 +20,6 @@ import (
 	"github.com/gx-org/backend/platform"
 	"github.com/gx-org/backend/shape"
 	"github.com/gx-org/gx/api/values"
-	"github.com/gx-org/gx/build/ir"
 )
 
 type (
@@ -29,7 +28,6 @@ type (
 	// after calling a compiled function.
 	Processor struct {
 		traces
-		fn    ir.Func
 		inits []Initializer
 		args  []Argument
 	}

@@ -27,6 +27,7 @@ import (
 	"github.com/gx-org/gx/interp/elements"
 	"github.com/gx-org/gx/interp/evaluator"
 	"github.com/gx-org/gx/interp"
+	"github.com/gx-org/gx/interp/materialise"
 )
 
 type atom struct {
@@ -36,13 +37,13 @@ type atom struct {
 }
 
 var (
-	_ elements.ElementWithConstant = (*atom)(nil)
-	_ elements.Materialiser        = (*atom)(nil)
-	_ Element                      = (*atom)(nil)
-	_ interp.Copier                = (*atom)(nil)
-	_ canonical.Evaluable          = (*atom)(nil)
-	_ interp.WithAxes              = (*atom)(nil)
-	_ ir.Canonical                 = (*atom)(nil)
+	_ elements.ElementWithConstant    = (*atom)(nil)
+	_ materialise.ElementMaterialiser = (*atom)(nil)
+	_ Element                         = (*atom)(nil)
+	_ interp.Copier                   = (*atom)(nil)
+	_ canonical.Evaluable             = (*atom)(nil)
+	_ interp.WithAxes                 = (*atom)(nil)
+	_ ir.Canonical                    = (*atom)(nil)
 )
 
 // NewAtom returns a new atom element given a GX atom value.
@@ -107,8 +108,8 @@ func (a *atom) Type() ir.Type {
 }
 
 // Materialise the value into a node in the backend graph.
-func (a *atom) Materialise(ao elements.ArrayMaterialiser) (elements.Node, error) {
-	return ao.NodeFromArray(a.src, a.val)
+func (a *atom) Materialise(ao materialise.Materialiser) (materialise.Node, error) {
+	return ao.NodeFromArray(a.src.File(), a.src.Node(), a.val)
 }
 
 // Compare to another element.

@@ -23,12 +23,10 @@ import (
 	gxfmt "github.com/gx-org/gx/base/fmt"
 	"github.com/gx-org/gx/build/ir"
 	"github.com/gx-org/gx/internal/interp/flatten"
-	"github.com/gx-org/gx/interp/elements"
 )
 
 // Struct is an instance of a structure.
 type Struct struct {
-	expr   elements.ValueAt
 	fields map[string]ir.Element
 	typ    *ir.StructType
 }

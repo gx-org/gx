@@ -26,26 +26,27 @@ import (
 	"github.com/gx-org/gx/interp/elements"
 	"github.com/gx-org/gx/interp/evaluator"
 	"github.com/gx-org/gx/interp"
+	"github.com/gx-org/gx/interp/materialise"
 )
 
 type cast struct {
-	src    elements.ValueAt
+	src    elements.ExprAt
 	target ir.Type
 	x      Element
 	val    *values.HostArray
 }
 
 var (
-	_ elements.Materialiser        = (*cast)(nil)
-	_ interp.WithAxes              = (*cast)(nil)
-	_ interp.Copier                = (*cast)(nil)
-	_ elements.ElementWithConstant = (*cast)(nil)
-	_ fmt.Stringer                 = (*cast)(nil)
+	_ materialise.ElementMaterialiser = (*cast)(nil)
+	_ interp.WithAxes                 = (*cast)(nil)
+	_ interp.Copier                   = (*cast)(nil)
+	_ elements.ElementWithConstant    = (*cast)(nil)
+	_ fmt.Stringer                    = (*cast)(nil)
 )
 
 func newCast(ctx ir.Evaluator, expr ir.AssignableExpr, xEl Element, target ir.Type) (*cast, error) {
 	opEl := &cast{
-		src:    elements.NewNodeAt[ir.Value](ctx.File(), expr),
+		src:    elements.NewNodeAt(ctx.File(), expr),
 		target: target,
 		x:      xEl,
 	}
@@ -89,7 +90,7 @@ func newReshape(ctx ir.Evaluator, expr ir.AssignableExpr, xEl Element, axisLengt
 		return nil, err
 	}
 	return &cast{
-		src:    elements.NewValueAt(ctx.File(), expr),
+		src:    elements.NewExprAt(ctx.File(), expr),
 		target: expr.Type(),
 		x:      xEl,
 		val:    val,
@@ -138,8 +139,8 @@ func (a *cast) Copy() interp.Copier {
 }
 
 // Materialise returns the element with all its values from the graph.
-func (a *cast) Materialise(ao elements.ArrayMaterialiser) (elements.Node, error) {
-	return ao.NodeFromArray(a.src.ToExprAt(), a.val)
+func (a *cast) Materialise(ao materialise.Materialiser) (materialise.Node, error) {
+	return ao.NodeFromArray(a.src.File(), a.src.Node(), a.val)
 }
 
 // Axes of the result of the cast.

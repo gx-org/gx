@@ -25,7 +25,7 @@ import (
 	"github.com/gx-org/gx/build/ir"
 	"github.com/gx-org/gx/internal/interp/flatten"
 	"github.com/gx-org/gx/internal/tracer/processor"
-	"github.com/gx-org/gx/interp/elements"
+	"github.com/gx-org/gx/interp/materialise"
 )
 
 // CompiledFunc is a graph compiled for a device.
@@ -37,14 +37,14 @@ type CompiledFunc struct {
 	outs    []ir.Element
 }
 
-func extractGraphNodes(ao elements.ArrayMaterialiser, els []ir.Element) ([]*ops.OutputNode, error) {
+func extractGraphNodes(ao materialise.Materialiser, els []ir.Element) ([]*ops.OutputNode, error) {
 	flatten, err := flatten.Flatten(els...)
 	if err != nil {
 		return nil, err
 	}
 	var nodes []*ops.OutputNode
 	for _, el := range flatten {
-		mat, ok := el.(elements.Materialiser)
+		mat, ok := el.(materialise.ElementMaterialiser)
 		if !ok {
 			continue
 		}
@@ -58,7 +58,7 @@ func extractGraphNodes(ao elements.ArrayMaterialiser, els []ir.Element) ([]*ops.
 }
 
 // Compile a function that will be run on a device given some inputs.
-func Compile(dev *api.Device, fn ir.Func, p *processor.Processor, ao elements.ArrayMaterialiser, outs []ir.Element) (*CompiledFunc, error) {
+func Compile(dev *api.Device, fn ir.Func, p *processor.Processor, ao materialise.Materialiser, outs []ir.Element) (*CompiledFunc, error) {
 	args := p.Args()
 	paramShapes := make([]*shape.Shape, len(args))
 	for i, arg := range args {

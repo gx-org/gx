@@ -23,6 +23,7 @@ import (
 	"github.com/gx-org/gx/interp/elements"
 	"github.com/gx-org/gx/interp/evaluator"
 	"github.com/gx-org/gx/interp"
+	"github.com/gx-org/gx/interp/materialise"
 )
 
 // valueElement is a GX value represented as a node in the graph.
@@ -32,13 +33,13 @@ type valueElement struct {
 }
 
 var (
-	_ elements.ElementWithConstant = (*valueElement)(nil)
-	_ interp.ArraySlicer           = (*valueElement)(nil)
-	_ interp.Slicer                = (*valueElement)(nil)
-	_ elements.Materialiser        = (*valueElement)(nil)
-	_ elements.Node                = (*valueElement)(nil)
-	_ interp.Copier                = (*valueElement)(nil)
-	_ interp.WithAxes              = (*valueElement)(nil)
+	_ elements.ElementWithConstant    = (*valueElement)(nil)
+	_ interp.ArraySlicer              = (*valueElement)(nil)
+	_ interp.Slicer                   = (*valueElement)(nil)
+	_ materialise.ElementMaterialiser = (*valueElement)(nil)
+	_ materialise.Node                = (*valueElement)(nil)
+	_ interp.Copier                   = (*valueElement)(nil)
+	_ interp.WithAxes                 = (*valueElement)(nil)
 )
 
 func newValueElement(ev *Evaluator, src elements.ExprAt, value values.Array) (*valueElement, error) {
@@ -50,7 +51,7 @@ func newValueElement(ev *Evaluator, src elements.ExprAt, value values.Array) (*v
 	if err != nil {
 		return nil, err
 	}
-	node, err := ElementFromNode(src.ToExprAt(), &ops.OutputNode{
+	node, err := NewBackendNode(ev, src.ToExprAt(), &ops.OutputNode{
 		Node:  cstNode,
 		Shape: value.Shape(),
 	})
@@ -112,6 +113,6 @@ func (n *valueElement) String() string {
 }
 
 // Materialise returns itself.
-func (n *valueElement) Materialise(elements.ArrayMaterialiser) (elements.Node, error) {
+func (n *valueElement) Materialise(materialise.Materialiser) (materialise.Node, error) {
 	return n, nil
 }

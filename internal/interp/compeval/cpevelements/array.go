@@ -19,9 +19,9 @@ import (
 	"github.com/gx-org/backend/shape"
 	"github.com/gx-org/gx/build/ir"
 	"github.com/gx-org/gx/internal/interp/canonical"
-	"github.com/gx-org/gx/interp/elements"
 	"github.com/gx-org/gx/interp/evaluator"
 	"github.com/gx-org/gx/interp"
+	"github.com/gx-org/gx/interp/materialise"
 )
 
 // array element storing a GX value array.
@@ -31,11 +31,11 @@ type array struct {
 }
 
 var (
-	_ elements.Node   = (*array)(nil)
-	_ interp.WithAxes = (*array)(nil)
-	_ Element         = (*array)(nil)
-	_ interp.Slicer   = (*array)(nil)
-	_ interp.Copier   = (*array)(nil)
+	_ materialise.Node = (*array)(nil)
+	_ interp.WithAxes  = (*array)(nil)
+	_ Element          = (*array)(nil)
+	_ interp.Slicer    = (*array)(nil)
+	_ interp.Copier    = (*array)(nil)
 )
 
 // NewArray returns a new array from a code position and a type.

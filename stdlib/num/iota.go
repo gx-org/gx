@@ -63,7 +63,8 @@ func evalIotaFull(ctx evaluator.Context, call elements.CallAt, fn interp.Func, i
 		DType:       ir.DefaultIntKind.DType(),
 		AxisLengths: axes,
 	}
-	gr := ctx.Evaluator().ArrayOps().Graph()
+	ev := ctx.Evaluator().(*grapheval.Evaluator)
+	gr := ev.ArrayOps().Graph()
 	iotaOp, err := gr.Num().Iota(&shape.Shape{
 		DType:       ir.DefaultIntKind.DType(),
 		AxisLengths: []int{targetShape.Size()},
@@ -75,7 +76,7 @@ func evalIotaFull(ctx evaluator.Context, call elements.CallAt, fn interp.Func, i
 	if err != nil {
 		return nil, err
 	}
-	return grapheval.ElementsFromNode(call.ToExprAt(), &ops.OutputNode{
+	return ctx.Materialiser().ElementsFromNodes(call.File(), call.Node(), &ops.OutputNode{
 		Node:  op,
 		Shape: targetShape,
 	})

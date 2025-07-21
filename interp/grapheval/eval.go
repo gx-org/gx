@@ -29,11 +29,12 @@ import (
 	"github.com/gx-org/gx/interp/elements"
 	"github.com/gx-org/gx/interp/evaluator"
 	"github.com/gx-org/gx/interp"
+	"github.com/gx-org/gx/interp/materialise"
 )
 
 // SubGrapher is an element (e.g. a function) that can be represented by a sub-graph.
 type SubGrapher interface {
-	SubGraph() (*ops.Subgraph, error)
+	SubGraph(name string) (*ops.Subgraph, error)
 }
 
 // Evaluator evaluates GX operations by adding the corresponding
@@ -78,7 +79,7 @@ func (ev *Evaluator) ArrayOps() evaluator.ArrayOps {
 }
 
 // Materialiser returns an array materialiser.
-func (ev *Evaluator) Materialiser() elements.ArrayMaterialiser {
+func (ev *Evaluator) Materialiser() materialise.Materialiser {
 	return ev.ao
 }
 
@@ -104,31 +105,28 @@ func buildProxyArguments(litp *interp.FuncLitScope, args []*ir.Field) ([]ir.Elem
 }
 
 func (ev *Evaluator) outputNodesFromElements(fileScope *interp.FileScope, fType *ir.FuncType, out []ir.Element) (processCallResults, *ops.OutputNode, error) {
-	outNodes, err := MaterialiseAll(fileScope, out)
-	if err != nil {
-		return nil, nil, err
-	}
 	if len(out) == 0 {
 		return nil, nil, errors.Errorf("literal has no output")
+	}
+	nodes, shapes, err := materialise.Flatten(ev.ao, out...)
+	if err != nil {
+		return nil, nil, err
 	}
 	results := fType.Results
 	if len(out) != results.Len() {
 		return nil, nil, errors.Errorf("got %d out elements but want %d from function type", len(out), results.Len())
 	}
-	if results.Len() == 1 {
+	if len(nodes) == 1 {
+		out := &ops.OutputNode{Node: nodes[0], Shape: shapes[0]}
 		return func(outputNode ops.Node) ([]ir.Element, error) {
-			expr := elements.NewExprAt(fileScope.File(), &ir.ValueRef{
+			expr := &ir.ValueRef{
 				Stor: &ir.FieldStorage{Field: results.Fields()[0]},
-			})
-			return ElementsFromNode(expr, outNodes[0])
-		}, outNodes[0], nil
+			}
+			return ev.ao.ElementsFromNodes(fileScope.File(), expr, out)
+		}, out, nil
 	}
-	nodes := make([]ops.Node, len(outNodes))
-	shapes := make([]*shape.Shape, len(outNodes))
-	exprs := make([]ir.AssignableExpr, len(outNodes))
-	for i, outNode := range outNodes {
-		nodes[i] = outNode.Node
-		shapes[i] = outNode.Shape
+	exprs := make([]ir.AssignableExpr, len(nodes))
+	for i := range nodes {
 		exprs[i] = &ir.ValueRef{
 			Stor: &ir.FieldStorage{Field: results.Fields()[0]},
 		}
@@ -138,7 +136,7 @@ func (ev *Evaluator) outputNodesFromElements(fileScope *interp.FileScope, fType 
 		return nil, nil, err
 	}
 	return func(outputNode ops.Node) ([]ir.Element, error) {
-		return ElementsFromTupleNode(fileScope.File(), tupleNode, exprs, shapes)
+		return ev.ElementsFromTupleNode(fileScope.File(), tupleNode, exprs, shapes)
 	}, &ops.OutputNode{Node: tupleNode}, nil
 }
 
@@ -148,14 +146,14 @@ func (ev *Evaluator) NewFuncLit(fitp *interp.FileScope, lit *ir.FuncLit) (interp
 }
 
 // ElementsFromTupleNode converts the graph nodes of a tuple node into elements.
-func ElementsFromTupleNode(file *ir.File, tpl ops.Tuple, elExprs []ir.AssignableExpr, shps []*shape.Shape) ([]ir.Element, error) {
+func (ev *Evaluator) ElementsFromTupleNode(file *ir.File, tpl ops.Tuple, elExprs []ir.AssignableExpr, shps []*shape.Shape) ([]ir.Element, error) {
 	elts := make([]ir.Element, tpl.Size())
 	for i := range tpl.Size() {
 		node, err := tpl.Element(i)
 		if err != nil {
 			return nil, err
 		}
-		elts[i], err = ElementFromNode(elements.NewExprAt(file, elExprs[i]), &ops.OutputNode{
+		elts[i], err = NewBackendNode(ev, elements.NewExprAt(file, elExprs[i]), &ops.OutputNode{
 			Node:  node,
 			Shape: shps[i],
 		})
@@ -171,7 +169,7 @@ func (ev *Evaluator) subEval(name string) (*Evaluator, error) {
 	if err != nil {
 		return nil, err
 	}
-	return New(ev.Importer(), ev.process, subGraph.Graph()), nil
+	return New(ev.Importer(), &processor.Processor{}, subGraph.Graph()), nil
 }
 
 // Trace a set of elements.
@@ -225,10 +223,10 @@ func (ev *Evaluator) FuncInputsToElements(fitp *interp.FileScope, fType *ir.Func
 }
 
 // GraphFromElement returns a graph given an element.
-func GraphFromElement(el ir.Element) (*ops.Subgraph, error) {
+func GraphFromElement(name string, el ir.Element) (*ops.Subgraph, error) {
 	grapher, ok := el.(SubGrapher)
 	if !ok {
 		return nil, errors.Errorf("cannot get a graph from %T", el)
 	}
-	return grapher.SubGraph()
+	return grapher.SubGraph(name)
 }

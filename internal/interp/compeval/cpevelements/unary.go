@@ -27,6 +27,7 @@ import (
 	"github.com/gx-org/gx/internal/interp/flatten"
 	"github.com/gx-org/gx/interp/elements"
 	"github.com/gx-org/gx/interp/evaluator"
+	"github.com/gx-org/gx/interp/materialise"
 )
 
 type unary struct {
@@ -37,10 +38,10 @@ type unary struct {
 }
 
 var (
-	_ elements.Materialiser        = (*unary)(nil)
-	_ elements.ElementWithConstant = (*unary)(nil)
-	_ ir.Canonical                 = (*unary)(nil)
-	_ fmt.Stringer                 = (*unary)(nil)
+	_ materialise.ElementMaterialiser = (*unary)(nil)
+	_ elements.ElementWithConstant    = (*unary)(nil)
+	_ ir.Canonical                    = (*unary)(nil)
+	_ fmt.Stringer                    = (*unary)(nil)
 )
 
 func newUnary(ctx ir.Evaluator, expr *ir.UnaryExpr, xEl Element) (_ *unary, err error) {
@@ -129,8 +130,8 @@ func (a *unary) NumericalConstant() *values.HostArray {
 }
 
 // Materialise returns the element with all its values from the graph.
-func (a *unary) Materialise(ao elements.ArrayMaterialiser) (elements.Node, error) {
-	return ao.NodeFromArray(a.src.ToExprAt(), a.val)
+func (a *unary) Materialise(ao materialise.Materialiser) (materialise.Node, error) {
+	return ao.NodeFromArray(a.src.File(), a.src.Node(), a.val)
 }
 
 func (a *unary) Expr() (ir.AssignableExpr, error) {

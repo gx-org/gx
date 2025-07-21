@@ -52,8 +52,8 @@ func (sg *funcLit) Recv() *interp.Receiver {
 }
 
 // SubGraph represents the graph implementing the function.
-func (sg *funcLit) SubGraph() (*ops.Subgraph, error) {
-	subeval, err := sg.eval.subEval("literal")
+func (sg *funcLit) SubGraph(name string) (*ops.Subgraph, error) {
+	subeval, err := sg.eval.subEval(name)
 	if err != nil {
 		return nil, err
 	}

@@ -20,6 +20,7 @@ import (
 	"github.com/gx-org/gx/api/values"
 	"github.com/gx-org/gx/build/ir"
 	"github.com/gx-org/gx/internal/tracer/processor"
+	"github.com/gx-org/gx/interp/materialise"
 )
 
 type (
@@ -29,6 +30,9 @@ type (
 
 		// Evaluator returns the evaluator used by the interpreter.
 		Evaluator() Evaluator
+
+		// Materialiser returns the materialiser to convert elements into graph nodes.
+		Materialiser() materialise.Materialiser
 	}
 
 	// Evaluator implements GX operators.
