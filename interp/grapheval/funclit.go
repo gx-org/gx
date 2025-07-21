@@ -19,6 +19,7 @@ import (
 	"github.com/gx-org/gx/api/values"
 	"github.com/gx-org/gx/build/ir"
 	"github.com/gx-org/gx/internal/interp/flatten"
+	"github.com/gx-org/gx/internal/tracer/processor"
 	"github.com/gx-org/gx/interp"
 )
 
@@ -53,19 +54,21 @@ func (sg *funcLit) Recv() *interp.Receiver {
 
 // SubGraph represents the graph implementing the function.
 func (sg *funcLit) SubGraph(name string) (*ops.Subgraph, error) {
-	subeval, err := sg.eval.subEval(name)
+	file := sg.litp.FileScope().File()
+	proxyArgs, err := buildProxyArguments(file, sg.lit.FType.Params.Fields())
+	if err != nil {
+		return nil, err
+	}
+	proc := &processor.Processor{}
+	fnInputs, err := FuncInputsToElements(file, proc, sg.lit.FType, nil, proxyArgs)
+	if err != nil {
+		return nil, err
+	}
+	subeval, err := sg.eval.subEval(proc, name)
 	if err != nil {
 		return nil, err
 	}
 	litp := sg.litp.FileScope().NewFuncLitScope(subeval)
-	proxyArgs, err := buildProxyArguments(litp, sg.lit.FType.Params.Fields())
-	if err != nil {
-		return nil, err
-	}
-	fnInputs, err := subeval.FuncInputsToElements(litp.FileScope(), sg.lit.FType, nil, proxyArgs)
-	if err != nil {
-		return nil, err
-	}
 	outElts, err := litp.RunFuncLit(subeval, sg.lit, fnInputs.Args)
 	if err != nil {
 		return nil, err

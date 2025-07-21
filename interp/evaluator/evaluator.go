@@ -17,6 +17,7 @@ package evaluator
 
 import (
 	"github.com/gx-org/backend/ops"
+	"github.com/gx-org/backend/shape"
 	"github.com/gx-org/gx/api/values"
 	"github.com/gx-org/gx/build/ir"
 	"github.com/gx-org/gx/internal/tracer/processor"
@@ -77,7 +78,7 @@ type (
 		Graph() ops.Graph
 
 		// SubGraph returns a new graph builder.
-		SubGraph(name string) (ArrayOps, error)
+		SubGraph(name string, args []*shape.Shape) (ArrayOps, error)
 
 		// Einsum calls an einstein sum on x and y given the expression in ref.
 		Einsum(ctx ir.Evaluator, expr *ir.EinsumExpr, x, y NumericalElement) (NumericalElement, error)

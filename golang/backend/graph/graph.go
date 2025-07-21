@@ -345,7 +345,7 @@ func (g *Graph) Call(sg *ops.Subgraph, args ...ops.Node) (ops.Node, error) {
 }
 
 // Subgraph returns a Graph instance that maps to a new subgraph.
-func (g *Graph) Subgraph(name string) (ops.Graph, error) {
+func (g *Graph) Subgraph(name string, args []*shape.Shape) (ops.Graph, error) {
 	// Note that this is a very incomplete implementation: it simply builds the subgraph within the
 	// current graph.
 	return g, nil

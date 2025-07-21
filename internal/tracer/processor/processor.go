@@ -20,6 +20,7 @@ import (
 	"github.com/gx-org/backend/platform"
 	"github.com/gx-org/backend/shape"
 	"github.com/gx-org/gx/api/values"
+	"github.com/gx-org/gx/build/ir"
 )
 
 type (
@@ -40,6 +41,8 @@ type (
 
 	// Argument provides an argument to pass to the backend.
 	Argument interface {
+		ir.Element
+
 		Shape() *shape.Shape
 
 		ToDeviceHandle(platform.Device, *values.FuncInputs) (platform.DeviceHandle, error)
@@ -67,6 +70,15 @@ func (p *Processor) Inits() []Initializer {
 // Args returns the graph arguments.
 func (p *Processor) Args() []Argument {
 	return p.args
+}
+
+// ElementArgs returns the graph arguments as interpreter elements.
+func (p *Processor) ElementArgs() []ir.Element {
+	els := make([]ir.Element, len(p.args))
+	for i, arg := range p.args {
+		els[i] = arg
+	}
+	return els
 }
 
 // ProcessInits calls all the initializers callbacks.

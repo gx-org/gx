@@ -47,8 +47,8 @@ func computeEinsumAxisLengths(ref *ir.EinsumExpr, xShape, yShape *shape.Shape, n
 }
 
 // SubGraph returns a new graph builder.
-func (ao *arrayOps) SubGraph(name string) (evaluator.ArrayOps, error) {
-	sub, err := ao.graph.Core().Subgraph(name)
+func (ao *arrayOps) SubGraph(name string, args []*shape.Shape) (evaluator.ArrayOps, error) {
+	sub, err := ao.graph.Core().Subgraph(name, args)
 	if err != nil {
 		return nil, err
 	}

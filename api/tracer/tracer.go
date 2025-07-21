@@ -30,6 +30,7 @@ import (
 	"github.com/gx-org/gx/internal/tracer/processor"
 	"github.com/gx-org/gx/interp/grapheval"
 	"github.com/gx-org/gx/interp"
+	"github.com/gx-org/gx/interp/materialise"
 )
 
 type (
@@ -61,21 +62,22 @@ func Trace(dev *api.Device, fn *ir.FuncDecl, receiver values.Value, args []value
 	}()
 	// Create a new evaluator for the interpreter.
 	proc := &processor.Processor{}
+	// Visit the receiver and arguments values to create elements for the interpreter.
+	in, err := grapheval.FuncInputsToElements(fn.File(), proc, fn.FuncType(), receiver, values.ToElements(args))
+	if err != nil {
+		return nil, err
+	}
 	graph := dev.Runtime().Backend().NewOps(fn.FullyQualifiedName())
 	tr := &tracer{
 		graph: graph,
 	}
 	ev := grapheval.New(dev.Runtime().Builder(), proc, tr.graph)
+	// Add all the arguments to the graph.
+	if _, err := materialise.All(ev.Materialiser(), proc.ElementArgs()); err != nil {
+		return nil, err
+	}
+	// Create the interpreter.
 	itp, err := interp.New(ev, options)
-	if err != nil {
-		return nil, err
-	}
-	fitp, err := itp.ForFile(fn.File())
-	if err != nil {
-		return nil, err
-	}
-	// Transform the receiver and arguments values into elements for the interpreter.
-	in, err := ev.FuncInputsToElements(fitp, fn.FuncType(), receiver, values.ToElements(args))
 	if err != nil {
 		return nil, err
 	}

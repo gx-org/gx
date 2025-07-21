@@ -88,13 +88,11 @@ func (ev *Evaluator) ElementFromAtom(ctx ir.Evaluator, src ir.AssignableExpr, va
 	return ev.hostEval.ElementFromAtom(ctx, src, val)
 }
 
-func buildProxyArguments(litp *interp.FuncLitScope, args []*ir.Field) ([]ir.Element, error) {
+func buildProxyArguments(file *ir.File, args []*ir.Field) ([]ir.Element, error) {
 	els := make([]ir.Element, len(args))
-	file := litp.FileScope().File()
-	newFunc := litp.FileScope().NewFunc
 	for i, arg := range args {
 		var err error
-		els[i], err = cpevelements.NewRuntimeValue(file, newFunc, &ir.FieldStorage{
+		els[i], err = cpevelements.NewRuntimeValue(file, interp.NewRunFunc, &ir.FieldStorage{
 			Field: arg,
 		})
 		if err != nil {
@@ -164,12 +162,12 @@ func (ev *Evaluator) ElementsFromTupleNode(file *ir.File, tpl ops.Tuple, elExprs
 	return elts, nil
 }
 
-func (ev *Evaluator) subEval(name string) (*Evaluator, error) {
-	subGraph, err := ev.ao.SubGraph(name)
+func (ev *Evaluator) subEval(proc *processor.Processor, name string) (*Evaluator, error) {
+	subGraph, err := ev.ao.SubGraph(name, nil)
 	if err != nil {
 		return nil, err
 	}
-	return New(ev.Importer(), &processor.Processor{}, subGraph.Graph()), nil
+	return New(ev.Importer(), proc, subGraph.Graph()), nil
 }
 
 // Trace a set of elements.
@@ -182,12 +180,13 @@ func opsFromContext(ctx *interp.FileScope) *arrayOps {
 }
 
 // FuncInputsToElements converts values to a function input.
-func (ev *Evaluator) FuncInputsToElements(fitp *interp.FileScope, fType *ir.FuncType, receiver ir.Element, args []ir.Element) (*elements.InputElements, error) {
+func FuncInputsToElements(file *ir.File, processor *processor.Processor, fType *ir.FuncType, receiver ir.Element, args []ir.Element) (*elements.InputElements, error) {
+	vis := newInputVisitor(file, processor)
 	var recvEl ir.Element
 	if receiver != nil {
 		recvField := fType.ReceiverField()
 		var err error
-		if recvEl, err = ev.Receiver(fitp, recvField, receiver); err != nil {
+		if recvEl, err = vis.visitReceiver(recvField, receiver); err != nil {
 			return nil, err
 		}
 	}
@@ -206,7 +205,7 @@ func (ev *Evaluator) FuncInputsToElements(fitp *interp.FileScope, fType *ir.Func
 			}
 			return nil, errors.Errorf("missing parameter(s): %s", builder.String())
 		}
-		argNode, err := ev.ArgGX(fitp, param, i, args[i])
+		argNode, err := vis.visitArg(param, i, args[i])
 		if err != nil {
 			return nil, err
 		}
