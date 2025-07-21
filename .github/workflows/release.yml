@@ -48,7 +48,8 @@ jobs:
 
     - name: Update all the dependencies to the latest release
       run: |
-        go list -m -u all | grep "gx-org" | grep "\[v" | awk '{print $1}' | xargs -n 1 go get -u
+        export DEPS=$(go list -m -u all | grep "gx-org" | grep "\[v")
+        [ "$DEPS" != "" ] && go list -m -u all | grep "gx-org" | grep "\[v" | awk '{print $1}' | xargs -n 1 go get -u
         go mod tidy
 
     - name: Run all the tests
