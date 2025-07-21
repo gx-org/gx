@@ -8,8 +8,8 @@ import (
 	"path/filepath"
 	"strings"
 
-	"google3/third_party/golang/go_mod/module/module"
 	"github.com/gx-org/gx/build/builder"
+	"golang.org/x/mod/module"
 )
 
 const goModCache = "GOMODCACHE"
