@@ -48,8 +48,7 @@ jobs:
 
     - name: Update all the dependencies to the latest release
       run: |
-        go get -u ./...
-        go get github.com/gx-org/backend@latest
+        go list -m -u all | grep "gx-org" | awk '{print $1}' | xargs -n 1 go get -u
         go mod tidy
 
     - name: Run all the tests
