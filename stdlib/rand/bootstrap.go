@@ -98,7 +98,7 @@ func newRandBootstrapArg(ctx evaluator.Context, rb *randBootstrap, seed elements
 
 func (arg *randBootstrapArg) next(fitp *interp.FileScope) (evaluator.NumericalElement, error) {
 	ev := arg.ctx.(evaluator.Context).Evaluator().(*grapheval.Evaluator)
-	return ev.NewArrayArgument(fitp, arg, seedType, arg.proxy)
+	return ev.NewArrayArgument(fitp.File(), arg, seedType, arg.proxy)
 }
 
 func (arg *randBootstrapArg) Init(ctx *values.FuncInputs) error {

@@ -26,6 +26,7 @@ import (
 	"github.com/gx-org/gx/build/ir"
 	"github.com/gx-org/gx/interp/context"
 	"github.com/gx-org/gx/interp/evaluator"
+	"github.com/gx-org/gx/interp/materialise"
 )
 
 type (
@@ -36,8 +37,8 @@ type (
 		// NewFunc creates a new function given its definition and a receiver.
 		NewFunc(*Interpreter, ir.PkgFunc, *Receiver) Func
 
-		// CallFuncLit calls a function literal.
-		CallFuncLit(fitp *FileScope, ref *ir.FuncLit, args []ir.Element) ([]ir.Element, error)
+		// NewFuncLit calls a function literal.
+		NewFuncLit(fitp *FileScope, ref *ir.FuncLit) (Func, error)
 	}
 )
 
@@ -134,6 +135,11 @@ func (fitp *FileScope) InitScope() *ir.File {
 // Evaluator returns the evaluator used by the interpreter
 func (fitp *FileScope) Evaluator() evaluator.Evaluator {
 	return fitp.itp.eval
+}
+
+// Materialiser returns the materialiser to convert elements into graph nodes.
+func (fitp *FileScope) Materialiser() materialise.Materialiser {
+	return fitp.itp.eval.ArrayOps().(materialise.Materialiser)
 }
 
 // Sub returns a new interpreter with additional values defined in the context.

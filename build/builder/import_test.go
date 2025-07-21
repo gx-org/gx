@@ -117,3 +117,47 @@ func f(a int32) int32 {
 		},
 	)
 }
+
+func TestImportGeneric(t *testing.T) {
+	testbuild.Run(t,
+		testbuild.DeclarePackage{
+			Src: `
+package dtype
+
+type (
+	Floats interface {
+		bfloat16 | float32 | float64
+	}
+
+	Ints interface {
+		int32 | int64 | uint32 | uint64
+	}
+
+	Num interface {
+		Floats | Ints
+	}
+)
+`,
+		},
+		testbuild.DeclarePackage{
+			Src: `
+package math
+
+import "dtype"
+
+func Exp[T dtype.Num]([___M]T) [M___]T
+`,
+		},
+		testbuild.Decl{
+			Src: `
+import "math"
+
+func f() [2]float32 {
+	return math.Exp[float32]([...]float32{
+		0, 1,
+	})
+}
+`,
+		},
+	)
+}

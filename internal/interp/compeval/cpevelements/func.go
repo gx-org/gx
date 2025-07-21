@@ -17,17 +17,18 @@ package cpevelements
 import (
 	"go/ast"
 
+	"github.com/pkg/errors"
 	"github.com/gx-org/gx/build/ir"
 	"github.com/gx-org/gx/interp"
 )
 
 type fun struct {
-	fn   ir.PkgFunc
+	fn   ir.Func
 	recv *interp.Receiver
 }
 
 // NewFunc creates a new function given its definition and a receiver.
-func NewFunc(fn ir.PkgFunc, recv *interp.Receiver) interp.Func {
+func NewFunc(fn ir.Func, recv *interp.Receiver) interp.Func {
 	return &fun{fn: fn, recv: recv}
 }
 
@@ -40,12 +41,16 @@ func (f *fun) Recv() *interp.Receiver {
 }
 
 func (f *fun) callAtCompEval(fitp *interp.FileScope, call *ir.CallExpr, args []ir.Element) ([]ir.Element, error) {
-	return fitp.EvalFunc(f.fn, call, args)
+	pkgFunc, ok := f.fn.(ir.PkgFunc)
+	if !ok {
+		return nil, errors.Errorf("cannot evaluate a non compeval function (e.g. a function literal) at compile time")
+	}
+	return fitp.EvalFunc(pkgFunc, call, args)
 }
 
 func (f *fun) Call(fitp *interp.FileScope, call *ir.CallExpr, args []ir.Element) ([]ir.Element, error) {
-	fType := f.fn.FuncType() // Some builtin functions have no type at the moment.
-	if fType != nil && fType.CompEval {
+	fType := f.fn.FuncType()
+	if fType != nil && fType.CompEval { // Some builtin functions have no type at the moment.
 		return f.callAtCompEval(fitp, call, args)
 	}
 	res := call.Callee.T.Results.Fields()

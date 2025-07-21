@@ -83,7 +83,7 @@ func TestRandUniformFloat32WithSize() [Size]float32 {
 	// [2]float32{0.253272, 0.303246}
 }
 
-func TestFloat32MinMax() [...]float32 {
+func TestFloat32MinMax() [5]float32 {
 	rnd := rand.New(rand.NewSource(0))
 	_, a := rnd.Float32MinMax(-100.5, 100.75, []intlen{5})
 	return a
@@ -91,7 +91,7 @@ func TestFloat32MinMax() [...]float32 {
 	// [5]float32{-49.529022, -39.471786, 1.009949, 66.999619, -51.114819}
 }
 
-func TestFloat64MinMax() [...]float64 {
+func TestFloat64MinMax() [5]float64 {
 	rnd := rand.New(rand.NewSource(0))
 	_, a := rnd.Float64MinMax(-100, 100.75, []intlen{5})
 	return a

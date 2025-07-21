@@ -340,19 +340,19 @@ func (g *Graph) Tuple(nodes []ops.Node) (ops.Tuple, error) {
 }
 
 // Call returns a node that invokes a subgraph.
-func (g *Graph) Call(sg ops.Subgraph, args ...ops.Node) (ops.Node, error) {
+func (g *Graph) Call(sg *ops.Subgraph, args ...ops.Node) (ops.Node, error) {
 	return sg.Result.Node, nil
 }
 
 // Subgraph returns a Graph instance that maps to a new subgraph.
-func (g *Graph) Subgraph(name string) (ops.Graph, error) {
+func (g *Graph) Subgraph(name string, args []*shape.Shape) (ops.Graph, error) {
 	// Note that this is a very incomplete implementation: it simply builds the subgraph within the
 	// current graph.
 	return g, nil
 }
 
 // While returns a while loop node.
-func (g *Graph) While(cond, body ops.Subgraph, state ops.Node) (ops.Node, error) {
+func (g *Graph) While(cond, body *ops.Subgraph, state ops.Node) (ops.Node, error) {
 	return nil, errors.Errorf("not implemented")
 }
 

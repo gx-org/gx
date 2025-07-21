@@ -40,16 +40,13 @@ type PkgInfo struct {
 }
 
 // Load package information from a GX path in the module.
-func Load(importPath string) (*PkgInfo, error) {
+func Load(mod *module.Module, importPath string) (*PkgInfo, error) {
 	inf := &PkgInfo{
 		importPath: importPath,
 		stdlib:     stdlib.Importer(nil),
+		mod:        mod,
 	}
 	var err error
-	inf.mod, err = module.Current()
-	if err != nil {
-		return nil, err
-	}
 	inf.pkgPath, inf.pkgName, err = inf.mod.Split(inf.importPath)
 	if err != nil {
 		return nil, err

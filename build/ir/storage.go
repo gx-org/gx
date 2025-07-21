@@ -45,6 +45,11 @@ func (s *builtinStorage) Value(Expr) AssignableExpr {
 	return s.val
 }
 
+// Same returns true if the other storage is this storage.
+func (s *builtinStorage) Same(o Storage) bool {
+	return Storage(s) == o
+}
+
 // BuiltinStorage stores a value in a builtin storage.
 func BuiltinStorage(name string, val AssignableExpr) StorageWithValue {
 	return &builtinStorage{

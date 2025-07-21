@@ -29,7 +29,6 @@ type (
 	// after calling a compiled function.
 	Processor struct {
 		traces
-		fn    ir.Func
 		inits []Initializer
 		args  []Argument
 	}
@@ -42,6 +41,8 @@ type (
 
 	// Argument provides an argument to pass to the backend.
 	Argument interface {
+		ir.Element
+
 		Shape() *shape.Shape
 
 		ToDeviceHandle(platform.Device, *values.FuncInputs) (platform.DeviceHandle, error)
@@ -69,6 +70,15 @@ func (p *Processor) Inits() []Initializer {
 // Args returns the graph arguments.
 func (p *Processor) Args() []Argument {
 	return p.args
+}
+
+// ElementArgs returns the graph arguments as interpreter elements.
+func (p *Processor) ElementArgs() []ir.Element {
+	els := make([]ir.Element, len(p.args))
+	for i, arg := range p.args {
+		els[i] = arg
+	}
+	return els
 }
 
 // ProcessInits calls all the initializers callbacks.

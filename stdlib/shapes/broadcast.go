@@ -27,8 +27,8 @@ import (
 	"github.com/gx-org/gx/internal/interp/compeval"
 	"github.com/gx-org/gx/interp/elements"
 	"github.com/gx-org/gx/interp/evaluator"
-	"github.com/gx-org/gx/interp/grapheval"
 	"github.com/gx-org/gx/interp"
+	"github.com/gx-org/gx/interp/materialise"
 	"github.com/gx-org/gx/interp/numbers"
 	"github.com/gx-org/gx/stdlib/builtin"
 	"github.com/gx-org/gx/stdlib/impl"
@@ -104,8 +104,7 @@ func evalBroadcast(ctx evaluator.Context, call elements.CallAt, fn interp.Func, 
 	for i := range targetAxes {
 		broadcastAxes[i] = i
 	}
-	ao := ctx.Evaluator().ArrayOps()
-	x, xShape, err := grapheval.NodeFromElement(ctx, args[0])
+	x, xShape, err := materialise.Element(ctx.Materialiser(), args[0])
 	if err != nil {
 		return nil, err
 	}
@@ -113,11 +112,11 @@ func evalBroadcast(ctx evaluator.Context, call elements.CallAt, fn interp.Func, 
 		DType:       xShape.DType,
 		AxisLengths: targetAxes,
 	}
-	op, err := ao.Graph().Core().BroadcastInDim(x, targetShape, broadcastAxes)
+	op, err := ctx.Evaluator().ArrayOps().Graph().Core().BroadcastInDim(x, targetShape, broadcastAxes)
 	if err != nil {
 		return nil, err
 	}
-	return grapheval.ElementsFromNode(call.ToExprAt(), &ops.OutputNode{
+	return ctx.Materialiser().ElementsFromNodes(call.File(), call.Node(), &ops.OutputNode{
 		Node:  op,
 		Shape: targetShape,
 	})

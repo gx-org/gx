@@ -488,7 +488,7 @@ func evalExpr(fitp *FileScope, expr ir.Expr) (ir.Element, error) {
 	case *ir.SelectorExpr:
 		return evalSelectorExpr(fitp, exprT)
 	case *ir.FuncLit:
-		return evalFuncLit(fitp, exprT)
+		return fitp.itp.eval.NewFuncLit(fitp, exprT)
 	case *ir.IndexExpr:
 		return evalIndexExpr(fitp, exprT)
 	case *ir.EinsumExpr:
@@ -540,10 +540,6 @@ func evalSelectorExpr(fitp *FileScope, ref *ir.SelectorExpr) (ir.Element, error)
 		return nil, fmterr.Internalf(fitp.File().FileSet(), ref.Source(), "%T does not implement %s: cannot fetch member %s", node, reflect.TypeFor[Selector](), ref.Src.Sel.Name)
 	}
 	return slt.Select(ref)
-}
-
-func evalFuncLit(fitp *FileScope, ref *ir.FuncLit) (ir.Element, error) {
-	return fitp.NewFunc(ref, nil), nil
 }
 
 func evalIndexExpr(fitp *FileScope, ref *ir.IndexExpr) (ir.Element, error) {

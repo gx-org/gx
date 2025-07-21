@@ -17,6 +17,7 @@ package compeval
 import (
 	"github.com/pkg/errors"
 	"github.com/gx-org/backend/ops"
+	"github.com/gx-org/backend/shape"
 	"github.com/gx-org/gx/api/values"
 	"github.com/gx-org/gx/build/ir"
 	"github.com/gx-org/gx/internal/interp/compeval/cpevelements"
@@ -34,7 +35,7 @@ func (compArrayOps) Graph() ops.Graph {
 }
 
 // SubGraph returns a new graph builder.
-func (compArrayOps) SubGraph(name string) (evaluator.ArrayOps, error) {
+func (compArrayOps) SubGraph(name string, args []*shape.Shape) (evaluator.ArrayOps, error) {
 	return nil, errors.Errorf("not implemented")
 }
 

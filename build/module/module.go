@@ -67,19 +67,22 @@ var (
 // Current returns the module of the current working directory.
 func Current() (*Module, error) {
 	currentOnce.Do(func() {
-		var wd string
-		wd, currentErr = os.Getwd()
-		if currentErr != nil {
-			return
-		}
-		current, currentErr = New(wd)
+		current, currentErr = New("")
 	})
 	return current, currentErr
 }
 
 // New returns a new module given a directory.
+// If no directory is given (i.e. empty string), then the current working directory is used.
 // If no go.mod can be find, returns a nil module with a nil error.
 func New(osPath string) (*Module, error) {
+	if osPath == "" {
+		var err error
+		osPath, err = os.Getwd()
+		if err != nil {
+			return nil, errors.Errorf("cannot get current directory: %v", err)
+		}
+	}
 	modRoot := findModuleRoot(osPath)
 	if modRoot == "" {
 		return nil, errors.Errorf("module file %s not found", moduleFileName)
@@ -116,6 +119,11 @@ func New(osPath string) (*Module, error) {
 		break
 	}
 	return &info, nil
+}
+
+// File returns the module go.mod file.
+func (mod *Module) File() *modfile.File {
+	return mod.mod
 }
 
 // Belongs returns true if a package, given its path, belongs to the module.

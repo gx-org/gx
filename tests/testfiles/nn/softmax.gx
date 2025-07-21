@@ -6,7 +6,7 @@ import (
 )
 
 func softmax(x [3]float32) [3]float32 {
-	exps := math.Exp(x - float32(num.ReduceMax(x, []intidx{0})))
+	exps := math.Exp[float32](x - float32(num.ReduceMax(x, []intidx{0})))
 	return exps / float32(num.Sum(exps, []intidx{0}))
 }
 

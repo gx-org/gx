@@ -17,9 +17,11 @@ package evaluator
 
 import (
 	"github.com/gx-org/backend/ops"
+	"github.com/gx-org/backend/shape"
 	"github.com/gx-org/gx/api/values"
 	"github.com/gx-org/gx/build/ir"
 	"github.com/gx-org/gx/internal/tracer/processor"
+	"github.com/gx-org/gx/interp/materialise"
 )
 
 type (
@@ -29,6 +31,9 @@ type (
 
 		// Evaluator returns the evaluator used by the interpreter.
 		Evaluator() Evaluator
+
+		// Materialiser returns the materialiser to convert elements into graph nodes.
+		Materialiser() materialise.Materialiser
 	}
 
 	// Evaluator implements GX operators.
@@ -73,7 +78,7 @@ type (
 		Graph() ops.Graph
 
 		// SubGraph returns a new graph builder.
-		SubGraph(name string) (ArrayOps, error)
+		SubGraph(name string, args []*shape.Shape) (ArrayOps, error)
 
 		// Einsum calls an einstein sum on x and y given the expression in ref.
 		Einsum(ctx ir.Evaluator, expr *ir.EinsumExpr, x, y NumericalElement) (NumericalElement, error)

@@ -29,8 +29,8 @@ import (
 	"github.com/gx-org/gx/build/ir"
 	"github.com/gx-org/gx/interp/elements"
 	"github.com/gx-org/gx/interp/evaluator"
-	"github.com/gx-org/gx/interp/grapheval"
 	"github.com/gx-org/gx/interp"
+	"github.com/gx-org/gx/interp/materialise"
 	"github.com/gx-org/gx/stdlib/builtin"
 	"github.com/gx-org/gx/stdlib/impl"
 )
@@ -125,17 +125,16 @@ type unaryFunc = func(ops.Node) (ops.Node, error)
 
 func buildUnary(name string, f func(graph ops.Graph) unaryFunc) builtin.Builder {
 	return builtin.ImplementGraphFunc(name, func(ctx evaluator.Context, call elements.CallAt, fn interp.Func, irFunc *ir.FuncBuiltin, args []ir.Element) ([]ir.Element, error) {
-		ao := ctx.Evaluator().ArrayOps()
-		x, xShape, err := grapheval.NodeFromElement(ctx, args[0])
+		x, xShape, err := materialise.Element(ctx.Materialiser(), args[0])
 		if err != nil {
 			return nil, err
 		}
-		unaryF := f(ao.Graph())
+		unaryF := f(ctx.Evaluator().ArrayOps().Graph())
 		node, err := unaryF(x)
 		if err != nil {
 			return nil, err
 		}
-		return grapheval.ElementsFromNode(call.ToExprAt(), &ops.OutputNode{
+		return ctx.Materialiser().ElementsFromNodes(call.File(), call.Node(), &ops.OutputNode{
 			Node:  node,
 			Shape: xShape,
 		})

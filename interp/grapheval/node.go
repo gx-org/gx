@@ -20,25 +20,43 @@ import (
 	"github.com/gx-org/backend/ops"
 	"github.com/gx-org/backend/shape"
 	"github.com/gx-org/gx/api/values"
+	"github.com/gx-org/gx/build/fmterr"
 	"github.com/gx-org/gx/build/ir"
 	"github.com/gx-org/gx/internal/interp/flatten"
 	"github.com/gx-org/gx/interp/elements"
 	"github.com/gx-org/gx/interp/evaluator"
 	"github.com/gx-org/gx/interp"
+	"github.com/gx-org/gx/interp/materialise"
 )
 
 // BackendNode is a state element owning a node in the backend graph.
 type BackendNode struct {
+	ev   *Evaluator
 	nod  *ops.OutputNode
 	expr elements.ExprAt
 }
 
 var (
-	_ interp.Slicer              = (*BackendNode)(nil)
-	_ interp.Copier              = (*BackendNode)(nil)
-	_ elements.Materialiser      = (*BackendNode)(nil)
-	_ evaluator.NumericalElement = (*BackendNode)(nil)
+	_ interp.Slicer                   = (*BackendNode)(nil)
+	_ interp.Copier                   = (*BackendNode)(nil)
+	_ materialise.ElementMaterialiser = (*BackendNode)(nil)
+	_ evaluator.NumericalElement      = (*BackendNode)(nil)
 )
+
+// NewBackendNode returns an element representing a node in the backend graph.
+func NewBackendNode(ev *Evaluator, expr elements.ExprAt, node *ops.OutputNode) (*BackendNode, error) {
+	if err := checkShape(node); err != nil {
+		return nil, err
+	}
+	if _, err := ir.ToArrayTypeGivenShape(expr.Node().Type(), node.Shape); err != nil {
+		return nil, errors.Errorf("cannot create a backend node: %v", err)
+	}
+	return &BackendNode{
+		ev:   ev,
+		expr: expr,
+		nod:  node,
+	}, nil
+}
 
 // hasShape is a node in the graph with a shape inferred by the backend.
 type hasShape interface {
@@ -70,7 +88,7 @@ func (ev *Evaluator) elementFromTuple(src elements.ExprAt, tpl ops.Tuple, shps [
 		if err != nil {
 			return nil, err
 		}
-		elts[i], err = ElementFromNode(src.ToExprAt(), &ops.OutputNode{
+		elts[i], err = NewBackendNode(ev, src.ToExprAt(), &ops.OutputNode{
 			Node:  node,
 			Shape: shps[i],
 		})
@@ -84,17 +102,17 @@ func (ev *Evaluator) elementFromTuple(src elements.ExprAt, tpl ops.Tuple, shps [
 // BinaryOp applies a binary operator to x and y.
 func (n *BackendNode) BinaryOp(ctx ir.Evaluator, expr *ir.BinaryExpr, x, y evaluator.NumericalElement) (evaluator.NumericalElement, error) {
 	ao := opsFromContext(ctx.(*interp.FileScope))
-	xNode, xShape, err := NodeFromElement(ctx, x)
+	xNode, xShape, err := materialise.Element(n.ev.ao, x)
 	if err != nil {
 		return nil, err
 	}
-	yNode, yShape, err := NodeFromElement(ctx, y)
+	yNode, yShape, err := materialise.Element(n.ev.ao, y)
 	if err != nil {
 		return nil, err
 	}
 	binaryNode, err := ao.Graph().Core().Binary(expr.Src, xNode, yNode)
 	if err != nil {
-		return nil, err
+		return nil, fmterr.Errorf(ctx.File().FileSet(), expr.Src, "cannot create binary operation for %v%s%v: %v", x, expr.Src.Op, y, err)
 	}
 	targetShape := &shape.Shape{
 		DType:       xShape.DType,
@@ -106,7 +124,8 @@ func (n *BackendNode) BinaryOp(ctx ir.Evaluator, expr *ir.BinaryExpr, x, y evalu
 	if len(yShape.AxisLengths) > 0 {
 		targetShape.AxisLengths = yShape.AxisLengths
 	}
-	return ElementFromNode(
+	return NewBackendNode(
+		n.ev,
 		elements.NewExprAt(ctx.File(), expr),
 		&ops.OutputNode{
 			Node:  binaryNode,
@@ -121,7 +140,8 @@ func (n *BackendNode) UnaryOp(ctx ir.Evaluator, expr *ir.UnaryExpr) (evaluator.N
 	if err != nil {
 		return nil, err
 	}
-	return ElementFromNode(
+	return NewBackendNode(
+		n.ev,
 		elements.NewExprAt(ctx.File(), expr),
 		&ops.OutputNode{
 			Node:  unaryNode,
@@ -137,7 +157,8 @@ func (n *BackendNode) Cast(ctx ir.Evaluator, expr ir.AssignableExpr, target ir.T
 	if err != nil {
 		return nil, err
 	}
-	return ElementFromNode(
+	return NewBackendNode(
+		n.ev,
 		elements.NewExprAt(ctx.File(), expr),
 		&ops.OutputNode{
 			Node: casted,
@@ -163,7 +184,8 @@ func (n *BackendNode) Reshape(ctx ir.Evaluator, expr ir.AssignableExpr, axisLeng
 	if err != nil {
 		return nil, err
 	}
-	return ElementFromNode(
+	return NewBackendNode(
+		n.ev,
 		elements.NewExprAt(ctx.File(), expr),
 		&ops.OutputNode{
 			Node: reshaped,
@@ -189,7 +211,7 @@ func (n *BackendNode) SliceArray(fitp *interp.FileScope, expr ir.AssignableExpr,
 	if err != nil {
 		return nil, err
 	}
-	return ElementFromNode(elements.NewExprAt(fitp.File(), expr), &ops.OutputNode{
+	return NewBackendNode(n.ev, elements.NewExprAt(fitp.File(), expr), &ops.OutputNode{
 		Node: sliceNode,
 		Shape: &shape.Shape{
 			DType:       n.Shape().DType,
@@ -219,7 +241,7 @@ func (n *BackendNode) Type() ir.Type {
 }
 
 // Materialise returns itself.
-func (n *BackendNode) Materialise(elements.ArrayMaterialiser) (elements.Node, error) {
+func (n *BackendNode) Materialise(materialise.Materialiser) (materialise.Node, error) {
 	return n, nil
 }
 
@@ -231,47 +253,6 @@ func (n *BackendNode) OutNode() *ops.OutputNode {
 // String representation of the backend node.
 func (n *BackendNode) String() string {
 	return n.nod.String()
-}
-
-// NodeFromElement converts an element into a graph node.
-// We unpack the value of *ops.OutputNode to prevent
-// from changing the output of Materialise accidentally.
-// Returns an error if the element is not a numerical element.
-func NodeFromElement(ctx ir.Evaluator, el ir.Element) (ops.Node, *shape.Shape, error) {
-	materialiser, ok := el.(elements.Materialiser)
-	if !ok {
-		return nil, nil, errors.Errorf("cannot convert %T to a backend node graph: does not implement Materialiser", el)
-	}
-	ev := ctx.(evaluator.Context).Evaluator().(*Evaluator)
-	outEl, err := materialiser.Materialise(ev.Materialiser())
-	if err != nil {
-		return nil, nil, err
-	}
-	outNode := outEl.OutNode()
-	return outNode.Node, outNode.Shape, nil
-}
-
-// ElementFromNode returns an element representing a node in the backend graph.
-func ElementFromNode(expr elements.ExprAt, node *ops.OutputNode) (*BackendNode, error) {
-	if err := checkShape(node); err != nil {
-		return nil, err
-	}
-	if _, err := ir.ToArrayTypeGivenShape(expr.Node().Type(), node.Shape); err != nil {
-		return nil, errors.Errorf("cannot create a backend node: %v", err)
-	}
-	return &BackendNode{
-		expr: expr,
-		nod:  node,
-	}, nil
-}
-
-// ElementsFromNode returns a slice of element from a graph node.
-func ElementsFromNode(expr elements.ExprAt, node *ops.OutputNode) ([]ir.Element, error) {
-	el, err := ElementFromNode(expr, node)
-	if err != nil {
-		return nil, err
-	}
-	return []ir.Element{el}, nil
 }
 
 // extractGraphNodes extracts all the graph nodes from an element and its children.
@@ -293,20 +274,4 @@ func extractGraphNodes(els []ir.Element) ([]ir.AssignableExpr, []*ops.OutputNode
 		exprs = append(exprs, node.expr.Node())
 	}
 	return exprs, graphNodes, nil
-}
-
-// MaterialiseAll materialises a slice of elements into a slice of output graph nodes.
-func MaterialiseAll(ctx ir.Evaluator, els []ir.Element) ([]*ops.OutputNode, error) {
-	nodes := make([]*ops.OutputNode, len(els))
-	for i, el := range els {
-		node, shape, err := NodeFromElement(ctx, el)
-		if err != nil {
-			return nil, err
-		}
-		nodes[i] = &ops.OutputNode{
-			Node:  node,
-			Shape: shape,
-		}
-	}
-	return nodes, nil
 }

@@ -32,6 +32,7 @@ import (
 )
 
 var (
+	modfile      = flag.String("modfile", "", "folder containing go.mod")
 	targetFolder = flag.String("target_folder", "", "target location")
 	targetName   = flag.String("target_name", "", "name of the file")
 	language     = flag.String("language", "go", "Language for which to generate the bindings")
@@ -63,7 +64,7 @@ func adjustFlags(mod *module.Module) error {
 
 func main() {
 	flag.Parse()
-	localImporter, err := localfs.New()
+	localImporter, err := localfs.New(*modfile)
 	if err != nil {
 		exit("cannot create local importer: %v", err)
 	}

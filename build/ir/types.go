@@ -50,6 +50,11 @@ func (BaseType[T]) Type() Type {
 	return MetaType()
 }
 
+// Same returns true if the other storage is this storage.
+func (m *BaseType[T]) Same(o Storage) bool {
+	return Storage(m) == o
+}
+
 type metaType struct {
 	BaseType[*ast.Ident]
 }
@@ -90,16 +95,16 @@ type distinctType struct {
 
 func (*distinctType) node() {}
 
-func (*distinctType) Equal(Fetcher, Type) (bool, error) {
-	return false, nil
+func (t *distinctType) Equal(_ Fetcher, target Type) (bool, error) {
+	return t.kind == target.Kind(), nil
 }
 
-func (*distinctType) AssignableTo(Fetcher, Type) (bool, error) {
-	return false, nil
+func (t *distinctType) AssignableTo(fetcher Fetcher, target Type) (bool, error) {
+	return t.Equal(fetcher, target)
 }
 
-func (*distinctType) ConvertibleTo(fetcher Fetcher, target Type) (bool, error) {
-	return false, nil
+func (t *distinctType) ConvertibleTo(fetcher Fetcher, target Type) (bool, error) {
+	return t.Equal(fetcher, target)
 }
 
 func (t *distinctType) Kind() Kind { return t.kind }

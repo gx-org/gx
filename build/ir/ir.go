@@ -59,6 +59,7 @@ type (
 		SourceNode
 		storage()
 		NameDef() *ast.Ident
+		Same(Storage) bool
 		Type() Type
 	}
 
@@ -614,6 +615,11 @@ func (s *NamedType) Value(x Expr) AssignableExpr {
 	}
 }
 
+// Same returns true if the other storage is this storage.
+func (s *NamedType) Same(o Storage) bool {
+	return Storage(s) == o
+}
+
 // String representation of the type.
 func (s *NamedType) String() string {
 	if s.File == nil {
@@ -1016,6 +1022,11 @@ func (s *TypeParam) Type() Type {
 	return s
 }
 
+// Same returns true if the other storage is this storage.
+func (s *TypeParam) Same(o Storage) bool {
+	return Storage(s) == o
+}
+
 // Value returns a value pointing to the receiver.
 func (s *TypeParam) Value(x Expr) AssignableExpr {
 	return &TypeValExpr{X: x, Typ: s}
@@ -1105,6 +1116,7 @@ type (
 
 	// PkgFunc is a function declared at the package level.
 	PkgFunc interface {
+		pkgFunc()
 		StorageWithValue
 		Func
 	}
@@ -1334,6 +1346,7 @@ func (*FuncDecl) node()         {}
 func (*FuncDecl) staticValue()  {}
 func (*FuncDecl) storage()      {}
 func (*FuncDecl) storageValue() {}
+func (*FuncDecl) pkgFunc()      {}
 
 // Source returns the node in the AST tree.
 func (s *FuncDecl) Source() ast.Node { return s.Src }
@@ -1382,6 +1395,11 @@ func (s *FuncDecl) FuncType() *FuncType {
 	return s.FType
 }
 
+// Same returns true if the other storage is this storage.
+func (s *FuncDecl) Same(o Storage) bool {
+	return Storage(s) == o
+}
+
 // File declaring the function.
 func (s *FuncDecl) File() *File {
 	return s.FFile
@@ -1391,6 +1409,7 @@ func (*FuncBuiltin) node()         {}
 func (*FuncBuiltin) staticValue()  {}
 func (*FuncBuiltin) storage()      {}
 func (*FuncBuiltin) storageValue() {}
+func (*FuncBuiltin) pkgFunc()      {}
 
 // Source returns the node in the AST tree.
 func (s *FuncBuiltin) Source() ast.Node { return s.Src }
@@ -1427,6 +1446,11 @@ func (s *FuncBuiltin) Type() Type {
 // FuncType returns the concrete type of the function.
 func (s *FuncBuiltin) FuncType() *FuncType {
 	return s.FType
+}
+
+// Same returns true if the other storage is this storage.
+func (s *FuncBuiltin) Same(o Storage) bool {
+	return Storage(s) == o
 }
 
 // File declaring the function.
@@ -1484,6 +1508,11 @@ func (s *FuncLit) FuncType() *FuncType {
 	return s.FType
 }
 
+// Same returns true if the other storage is this storage.
+func (s *FuncLit) Same(o Storage) bool {
+	return Storage(s) == o
+}
+
 // Source returns the node in the AST tree.
 func (s *FuncLit) Source() ast.Node { return s.Src }
 
@@ -1499,6 +1528,7 @@ func (*Macro) node()         {}
 func (*Macro) staticValue()  {}
 func (*Macro) storage()      {}
 func (*Macro) storageValue() {}
+func (*Macro) pkgFunc()      {}
 
 // Name of the function.
 func (s *Macro) Name() string {
@@ -1542,6 +1572,11 @@ func (s *Macro) Type() Type {
 // Source returns the node in the AST tree.
 func (s *Macro) Source() ast.Node {
 	return s.Src
+}
+
+// Same returns true if the other storage is this storage.
+func (s *Macro) Same(o Storage) bool {
+	return Storage(s) == o
 }
 
 // String representation of the literal.
@@ -1591,6 +1626,11 @@ func (s *ImportDecl) Value(x Expr) AssignableExpr {
 	}
 }
 
+// Same returns true if the other storage is this storage.
+func (s *ImportDecl) Same(o Storage) bool {
+	return Storage(s) == o
+}
+
 func (s *ImportDecl) String() string {
 	return s.Path
 }
@@ -1604,6 +1644,11 @@ func (*ConstExpr) storageValue() {}
 // Source returns the node in the AST tree.
 func (cst *ConstExpr) Source() ast.Node {
 	return cst.VName
+}
+
+// Same returns true if the other storage is this storage.
+func (cst *ConstExpr) Same(o Storage) bool {
+	return Storage(cst) == o
 }
 
 // NameDef returns the name defining the storage.
@@ -1629,6 +1674,11 @@ func (*VarExpr) storage() {}
 // Source returns the node in the AST tree.
 func (vr *VarExpr) Source() ast.Node {
 	return vr.VName
+}
+
+// Same returns true if the other storage is this storage.
+func (vr *VarExpr) Same(o Storage) bool {
+	return Storage(vr) == o
 }
 
 // Type returns the type of an expression.
@@ -2827,6 +2877,11 @@ func (lit *FieldLit) Value(Expr) AssignableExpr {
 	return lit.X
 }
 
+// Same returns true if the other storage is this storage.
+func (lit *FieldLit) Same(o Storage) bool {
+	return Storage(lit) == o
+}
+
 func (s *SelectorExpr) node()       {}
 func (s *SelectorExpr) assignable() {}
 
@@ -3014,6 +3069,11 @@ func (s *AnonymousStorage) Type() Type { return s.Typ }
 // NameDef returns the identifier identifying the storage.
 func (s *AnonymousStorage) NameDef() *ast.Ident { return s.Src }
 
+// Same returns true if the other storage is this storage.
+func (s *AnonymousStorage) Same(o Storage) bool {
+	return Storage(s) == o
+}
+
 func (*LocalVarStorage) node()    {}
 func (*LocalVarStorage) storage() {}
 
@@ -3028,6 +3088,11 @@ func (s *LocalVarStorage) Type() Type { return s.Typ }
 
 // NameDef returns the identifier identifying the storage.
 func (s *LocalVarStorage) NameDef() *ast.Ident { return s.Src }
+
+// Same returns true if the other storage is this storage.
+func (s *LocalVarStorage) Same(o Storage) bool {
+	return Storage(s) == o
+}
 
 func (*StructFieldStorage) node()    {}
 func (*StructFieldStorage) storage() {}
@@ -3044,6 +3109,11 @@ func (s *StructFieldStorage) Type() Type { return s.Sel.Type() }
 // NameDef returns the identifier identifying the storage.
 func (s *StructFieldStorage) NameDef() *ast.Ident { return s.Sel.Src.Sel }
 
+// Same returns true if the other storage is this storage.
+func (s *StructFieldStorage) Same(o Storage) bool {
+	return Storage(s) == o
+}
+
 func (*FieldStorage) node()    {}
 func (*FieldStorage) storage() {}
 
@@ -3058,6 +3128,15 @@ func (s *FieldStorage) Type() Type { return s.Field.Type() }
 // NameDef returns the identifier identifying the storage.
 func (s *FieldStorage) NameDef() *ast.Ident { return s.Field.Name }
 
+// Same returns true if the other storage is this storage.
+func (s *FieldStorage) Same(o Storage) bool {
+	oT, ok := o.(*FieldStorage)
+	if !ok {
+		return false
+	}
+	return s.Field == oT.Field
+}
+
 func (*AxLengthName) node()    {}
 func (*AxLengthName) storage() {}
 
@@ -3071,6 +3150,11 @@ func (s *AxLengthName) Type() Type { return s.Typ }
 
 // NameDef returns the identifier identifying the storage.
 func (s *AxLengthName) NameDef() *ast.Ident { return s.Src }
+
+// Same returns true if the other storage is this storage.
+func (s *AxLengthName) Same(o Storage) bool {
+	return Storage(s) == o
+}
 
 func (*SpecialisedFunc) node()         {}
 func (*SpecialisedFunc) storage()      {}
@@ -3094,6 +3178,11 @@ func (s *SpecialisedFunc) Value(x Expr) AssignableExpr {
 		F: s,
 		T: s.T,
 	}
+}
+
+// Same returns true if the other storage is this storage.
+func (s *SpecialisedFunc) Same(o Storage) bool {
+	return Storage(s) == o
 }
 
 // ----------------------------------------------------------------------------

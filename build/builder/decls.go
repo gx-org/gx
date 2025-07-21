@@ -272,22 +272,32 @@ func (d *decls) buildFunctions(pkgScope *pkgResolveScope, filter func(f *process
 	return ok
 }
 
+func (d *decls) registerAuxFuncs(pkgScope *pkgResolveScope, auxs []*cpevelements.SyntheticFuncDecl) ([]*irFunc, bool) {
+	var todos []*irFunc
+	for _, aux := range auxs {
+		todo, auxOk := d.registerAuxFunc(pkgScope, aux)
+		if !auxOk {
+			return nil, false
+		}
+		todos = append(todos, todo)
+	}
+	return todos, true
+}
+
 func (d *decls) buildFunctionBodies(pkgScope *pkgResolveScope, funcs []*irFunc) ([]*irFunc, bool) {
 	var todoNext []*irFunc
-	ok := true
 	for _, fn := range funcs {
-		auxs, fnOk := fn.bFunc.buildBody(fn.scopeFunc, fn.irFunc)
-		for _, aux := range auxs {
-			todo, auxOk := d.registerAuxFunc(pkgScope, aux)
-			ok = ok && auxOk
-			if !auxOk {
-				continue
-			}
-			todoNext = append(todoNext, todo)
+		auxs, ok := fn.bFunc.buildBody(fn.scopeFunc, fn.irFunc)
+		if !ok {
+			return nil, false
 		}
-		ok = ok && fnOk
+		todos, ok := d.registerAuxFuncs(pkgScope, auxs)
+		if !ok {
+			return nil, false
+		}
+		todoNext = append(todoNext, todos...)
 	}
-	return todoNext, ok
+	return todoNext, true
 }
 
 func (d *decls) Find(key string) (processNode, bool) {

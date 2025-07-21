@@ -27,6 +27,7 @@ import (
 	"github.com/gx-org/gx/interp/elements"
 	"github.com/gx-org/gx/interp/evaluator"
 	"github.com/gx-org/gx/interp"
+	"github.com/gx-org/gx/interp/materialise"
 )
 
 type binary struct {
@@ -37,11 +38,11 @@ type binary struct {
 }
 
 var (
-	_ elements.Materialiser        = (*binary)(nil)
-	_ ir.Canonical                 = (*binary)(nil)
-	_ elements.ElementWithConstant = (*binary)(nil)
-	_ fmt.Stringer                 = (*binary)(nil)
-	_ interp.WithAxes              = (*cast)(nil)
+	_ materialise.ElementMaterialiser = (*binary)(nil)
+	_ ir.Canonical                    = (*binary)(nil)
+	_ elements.ElementWithConstant    = (*binary)(nil)
+	_ fmt.Stringer                    = (*binary)(nil)
+	_ interp.WithAxes                 = (*cast)(nil)
 )
 
 func newBinary(ctx ir.Evaluator, expr *ir.BinaryExpr, xEl, yEl evaluator.NumericalElement) (_ evaluator.NumericalElement, err error) {
@@ -169,8 +170,8 @@ func (a *binary) NumericalConstant() *values.HostArray {
 }
 
 // Materialise returns the element with all its values from the graph.
-func (a *binary) Materialise(ao elements.ArrayMaterialiser) (elements.Node, error) {
-	return ao.NodeFromArray(a.src.ToExprAt(), a.val)
+func (a *binary) Materialise(ao materialise.Materialiser) (materialise.Node, error) {
+	return ao.NodeFromArray(a.src.File(), a.src.Node(), a.val)
 }
 
 // Compare to another element.
