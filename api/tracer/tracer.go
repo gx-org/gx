@@ -67,7 +67,10 @@ func Trace(dev *api.Device, fn *ir.FuncDecl, receiver values.Value, args []value
 	if err != nil {
 		return nil, err
 	}
-	graph := dev.Runtime().Backend().NewOps(fn.FullyQualifiedName())
+	graph, err := dev.Runtime().Backend().NewOps(fn.FullyQualifiedName())
+	if err != nil {
+		return nil, err
+	}
 	tr := &tracer{
 		graph: graph,
 	}

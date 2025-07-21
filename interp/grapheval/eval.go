@@ -163,7 +163,12 @@ func (ev *Evaluator) ElementsFromTupleNode(file *ir.File, tpl ops.Tuple, elExprs
 }
 
 func (ev *Evaluator) subEval(proc *processor.Processor, name string) (*Evaluator, error) {
-	subGraph, err := ev.ao.SubGraph(name, nil)
+	args := proc.Args()
+	shapes := make([]*shape.Shape, len(args))
+	for i, arg := range args {
+		shapes[i] = arg.Shape()
+	}
+	subGraph, err := ev.ao.SubGraph(name, shapes)
 	if err != nil {
 		return nil, err
 	}
