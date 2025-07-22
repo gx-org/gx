@@ -52,7 +52,9 @@ jobs:
       run: go mod tidy || true
 
     - name: Generating code
-      run: go generate ./...
+      run:  |
+        go generate ./...
+        git add .
 
     - name: Tidy (required)
       run: go mod tidy
