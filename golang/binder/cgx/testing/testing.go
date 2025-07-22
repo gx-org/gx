@@ -26,7 +26,8 @@ import (
 	gxtesting "github.com/gx-org/gx/tests/testing"
 )
 
-// #include <gx/golang/binder/cgx/cgx.h>
+// #cgo CFLAGS: -I ../../../..
+// #include <gxdeps/github.com/gx-org/gx/golang/binder/cgx/cgx.h>
 import "C"
 
 //export cgx_testing_builder

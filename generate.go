@@ -12,6 +12,10 @@
 // See the License for the specific language governing permissions and
 // limitations under the License.
 
-package cgx
+// Package gx is only used to generate C source code.
+package gx
 
-//go:generate bash -c "go tool cgo -exportheader cgx.cgo.h -- $CGO_CFLAGS cgx.go"
+//go:generate mkdir -p gxdeps/github.com/gx-org
+//go:generate ln -sf ../../.. gxdeps/github.com/gx-org/gx
+//go:generate bash -c "go tool cgo -exportheader golang/binder/cgx/cgx.cgo.h -- $CGO_CFLAGS golang/binder/cgx/cgx.go"
+//go:generate bash -c "go tool cgo -exportheader golang/binder/cgx/testing/testing.cgo.h -- $CGO_CFLAGS golang/binder/cgx/testing/testing.go"
