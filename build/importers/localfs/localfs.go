@@ -20,12 +20,12 @@ import (
 	"path/filepath"
 	"strings"
 
+	"github.com/pkg/errors"
+	"golang.org/x/mod/module"
 	"github.com/gx-org/gx/build/builder"
 	"github.com/gx-org/gx/build/importers"
 	gxmodule "github.com/gx-org/gx/build/module"
 	"github.com/gx-org/gx/stdlib"
-	"github.com/pkg/errors"
-	"golang.org/x/mod/module"
 )
 
 // Importer imports GX packages from the local file system.

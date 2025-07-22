@@ -52,19 +52,18 @@ jobs:
       run: go mod tidy || true
 
     - name: Generating code
-      run: go generate ./...
+      run:  |
+        go generate ./...
+        git add .
 
     - name: Tidy (required)
       run: go mod tidy
 
-    - name: Commit generated and modified files
+    - name: Update all the dependencies to the latest release
       run: |
-        if output=$(git status --porcelain) && [ -z "$output" ]; then
-          exit 0
-        else
-          git add .
-          git commit -a -m "Auto-commit after Go file generation."
-        fi
+        export DEPS=$(go list -m -u all | grep "gx-org" | grep "\[v")
+        [ "$DEPS" != "" ] && go list -m -u all | grep "gx-org" | grep "\[v" | awk '{print $1}' | xargs -n 1 go get -u
+        go mod tidy
 
     - name: Build
       run: |
@@ -73,14 +72,14 @@ jobs:
     - name: Test the piper branch
       run: go test -v ./...
 
-    - name: Checkout the main branch
-      run: git fetch origin ; git checkout -b main origin/main
+    - name: Commit changes if required
+      run: git diff --quiet && git diff --staged --quiet || git commit -am 'Update dependencies.'
 
-    - name: Test the main branch
-      run: go test -v ./...
+    - name: Checkout the main branch
+      run: git checkout --track origin/main
 
     - name: Merge piper into main
-      run: git merge --no-edit piper
+      run: git merge -Xtheirs --no-edit piper
 
     - name: Test after piper merged into main
       run: go test -v ./...

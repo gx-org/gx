@@ -18,8 +18,8 @@
 #define THIRD_PARTY_GXLANG_GX_GOLANG_BINDER_CGX_TESTING_TESTING_H_
 
 #include <absl/status/statusor.h>
-#include <gx/golang/binder/cgx/cppgx.h>
-#include <gx/golang/binder/cgx/testing/testing.cgo.h>
+#include <gxdeps/github.com/gx-org/gx/golang/binder/ccgx/cppgx.h>
+#include <gxdeps/github.com/gx-org/gx/golang/binder/cgx/testing/testing.cgo.h>
 
 namespace gxlang {
 namespace cppgx {

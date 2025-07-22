@@ -35,11 +35,13 @@ import (
 )
 
 /*
+#cgo CFLAGS: -I ../../..
+
 #include <stdbool.h>
 #include <stdint.h>
 #include <stdlib.h>
 
-#include <gx/golang/binder/cgx/cgx.h>
+#include <gxdeps/github.com/gx-org/gx/golang/binder/cgx/cgx.h>
 
 // cgx_device_get_result is the return value for cgx_device_get().
 struct cgx_device_get_result {

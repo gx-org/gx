@@ -34,10 +34,11 @@ import (
 	_ "github.com/gx-org/gx/golang/binder/cgx" // C dependency
 )
 
+// #cgo CFLAGS: -I ../../../../..
 // #include <stdlib.h>
-// #include <gx/golang/binder/cgx/cgx.h>
-// #include <gx/golang/binder/cgx/cgx.cgo.h>
-// #include <gx/golang/binder/cgx/testing/testing.cgo.h>
+// #include <gxdeps/github.com/gx-org/gx/golang/binder/cgx/cgx.h>
+// #include <gxdeps/github.com/gx-org/gx/golang/binder/cgx/cgx.cgo.h>
+// #include <gxdeps/github.com/gx-org/gx/golang/binder/cgx/testing/testing.cgo.h>
 import "C"
 
 const (
