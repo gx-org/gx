@@ -41,7 +41,7 @@ func TestGradExpressions(t *testing.T) {
 			Post: setGradImplementation,
 		},
 		testgrad.Func{
-			GradOf: `
+			Src: `
 func F(x float32) float32 {
 	return 2.0
 }
@@ -53,7 +53,7 @@ func gradF(x float32) float32 {
 `,
 		},
 		testgrad.Func{
-			GradOf: `
+			Src: `
 func F(x float32) [2]float32 {
 	return [...]float32{x, 2.0}
 }
@@ -65,7 +65,7 @@ func gradF(x float32) [2]float32 {
 `,
 		},
 		testgrad.Func{
-			GradOf: `
+			Src: `
 func F(x [2]float32) [2]float32 {
 	return 2+x
 }
@@ -77,7 +77,7 @@ func gradF(x [2]float32) [2]float32 {
 `,
 		},
 		testgrad.Func{
-			GradOf: `
+			Src: `
 func F(x [2]float32) [2]float32 {
 	return x+2
 }
@@ -89,7 +89,7 @@ func gradF(x [2]float32) [2]float32 {
 `,
 		},
 		testgrad.Func{
-			GradOf: `
+			Src: `
 func F(x [2]float32) [2]float32 {
 	return 2-x
 }
@@ -101,7 +101,7 @@ func gradF(x [2]float32) [2]float32 {
 `,
 		},
 		testgrad.Func{
-			GradOf: `
+			Src: `
 func F(x [2]float32) [2]float32 {
 	return x-2
 }
@@ -113,7 +113,7 @@ func gradF(x [2]float32) [2]float32 {
 `,
 		},
 		testgrad.Func{
-			GradOf: `
+			Src: `
 func F(x float32) float32 {
 	return 2*x
 }
@@ -125,7 +125,7 @@ func gradF(x float32) float32 {
 `,
 		},
 		testgrad.Func{
-			GradOf: `
+			Src: `
 func F(x [2]float32) [2]float32 {
 	return 2*x
 }
@@ -137,7 +137,7 @@ func gradF(x [2]float32) [2]float32 {
 `,
 		},
 		testgrad.Func{
-			GradOf: `
+			Src: `
 func F(x [2]float32) [2]float32 {
 	return x*x
 }
@@ -149,7 +149,7 @@ func gradF(x [2]float32) [2]float32 {
 `,
 		},
 		testgrad.Func{
-			GradOf: `
+			Src: `
 func F(x [2]float32) [2]float32 {
 	return x*x*x
 }
@@ -161,7 +161,7 @@ func gradF(x [2]float32) [2]float32 {
 `,
 		},
 		testgrad.Func{
-			GradOf: `
+			Src: `
 func F(x [2]float32) [2]float32 {
 	return 1/x
 }
@@ -173,7 +173,7 @@ func gradF(x [2]float32) [2]float32 {
 `,
 		},
 		testgrad.Func{
-			GradOf: `
+			Src: `
 func F(x [2]float32) [2]float32 {
 	return 1/(x*x)
 }
@@ -185,7 +185,7 @@ func gradF(x [2]float32) [2]float32 {
 `,
 		},
 		testgrad.Func{
-			GradOf: `
+			Src: `
 func F(x [2]float32) [2]float32 {
 	return (2*x)/((x+1)*(x+1))
 }
@@ -206,7 +206,7 @@ func TestGradFunc(t *testing.T) {
 			Post: setGradImplementation,
 		},
 		testgrad.Func{
-			GradOf: `
+			Src: `
 func g() float32 {
 	return 2
 }
@@ -222,7 +222,7 @@ func gradF(x float32) float32 {
 `,
 		},
 		testgrad.Func{
-			GradOf: `
+			Src: `
 func g(y float32) float32 {
 	return y	
 }
@@ -236,7 +236,7 @@ func gradF(x float32) float32 {
 	return __grad_Func_g_y(x)
 }
 `,
-			WantAuxs: map[string]string{
+			Wants: map[string]string{
 				"__grad_Func_g_y": `
 func __grad_Func_g_y(y float32) float32 {
 	return 1
@@ -245,7 +245,7 @@ func __grad_Func_g_y(y float32) float32 {
 			},
 		},
 		testgrad.Func{
-			GradOf: `
+			Src: `
 func g(x float32) float32 {
 	return x	
 }
@@ -259,7 +259,7 @@ func gradF(x float32) float32 {
 	return __grad_Func_g_x(x*x)*(x+x)
 }
 `,
-			WantAuxs: map[string]string{
+			Wants: map[string]string{
 				"__grad_Func_g_x": `
 func __grad_Func_g_x(x float32) float32 {
 	return 1
@@ -269,7 +269,7 @@ func __grad_Func_g_x(x float32) float32 {
 		},
 		testgrad.Func{
 			GradImportName: "other",
-			GradOf: `
+			Src: `
 func g(x float32) float32 {
 	return x	
 }
@@ -283,7 +283,7 @@ func gradF(x float32) float32 {
 	return __other_Func_g_x(x*x)*(x+x)
 }
 `,
-			WantAuxs: map[string]string{
+			Wants: map[string]string{
 				"__other_Func_g_x": `
 func __other_Func_g_x(x float32) float32 {
 	return 1
@@ -301,7 +301,7 @@ func TestGradStatements(t *testing.T) {
 			Post: setGradImplementation,
 		},
 		testgrad.Func{
-			GradOf: `
+			Src: `
 func F(x float32) float32 {
 	a := x*x
 	return a
@@ -316,7 +316,7 @@ func gradF(x float32) float32 {
 `,
 		},
 		testgrad.Func{
-			GradOf: `
+			Src: `
 func F(x float32) float32 {
 	a := 2*x
 	b := 3*x
@@ -334,7 +334,7 @@ func gradF(x float32) float32 {
 `,
 		},
 		testgrad.Func{
-			GradOf: `
+			Src: `
 func F(x float32) float32 {
 	a, b := 2*x, 3*x
 	return a*b
@@ -349,7 +349,7 @@ func gradF(x float32) float32 {
 `,
 		},
 		testgrad.Func{
-			GradOf: `
+			Src: `
 func F(x float32) float32 {
 	x = 2
 	return x
@@ -364,7 +364,7 @@ func gradF(x float32) float32 {
 `,
 		},
 		testgrad.Func{
-			GradOf: `
+			Src: `
 func F(x float32) (float32, float32) {
 	x = x*x
 	x1 := x
@@ -397,7 +397,7 @@ func TestGradErrors(t *testing.T) {
 			Post: setGradImplementation,
 		},
 		testgrad.Func{
-			GradOf: `
+			Src: `
 func F(y float32) float32 {
 	return y
 }

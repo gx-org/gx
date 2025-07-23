@@ -26,8 +26,8 @@ import (
 
 // Func tests the computation of the gradient of a function.
 type Func struct {
-	// GradOf declares the function (which must be named `F`) to compute the gradient of.
-	GradOf string
+	// Src declares the function (which must be named `F`) to compute the gradient of.
+	Src string
 
 	// Want stores the source code of the expected gradient of the function
 	Want string
@@ -36,8 +36,8 @@ type Func struct {
 	// If empty, then the default import name is used.
 	GradImportName string
 
-	// WantAuxs stores the source code of the expected synthetic auxiliary functions.
-	WantAuxs map[string]string
+	// Wants stores the source code of the expected synthetic auxiliary functions.
+	Wants map[string]string
 
 	// Err is the substring expected if the compiler returns an error.
 	Err string
@@ -45,7 +45,7 @@ type Func struct {
 
 // Source code of the declarations.
 func (tt Func) Source() string {
-	return tt.GradOf
+	return tt.Src
 }
 
 func (tt Func) checkError(err error) error {
@@ -77,7 +77,7 @@ import %s"grad"
 func gradF()
 
 %s
-`, declImportName+" ", callImportName, tt.GradOf)
+`, declImportName+" ", callImportName, tt.Src)
 	pkg, err := b.Build(src)
 	if err != nil {
 		return tt.checkError(err)
@@ -86,10 +86,7 @@ func gradF()
 	if err := checkFunc(pkgIR, "gradF", tt.Want); err != nil {
 		return err
 	}
-	if tt.WantAuxs == nil {
-		return nil
-	}
-	for name, src := range tt.WantAuxs {
+	for name, src := range tt.Wants {
 		if err := checkFunc(pkgIR, name, src); err != nil {
 			return err
 		}
