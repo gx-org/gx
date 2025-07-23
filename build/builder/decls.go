@@ -220,30 +220,6 @@ func (d *decls) buildFuncType(pkgScope *pkgResolveScope, pNode *processNodeT[fun
 	return irf, true
 }
 
-func (d *decls) registerAuxFunc(pkgScope *pkgResolveScope, aux *cpevelements.SyntheticFuncDecl) (*irFunc, bool) {
-	bFile := newFile(pkgScope.pkg(), aux.F.Name()+"_synt.gx", &ast.File{})
-	fScope, ok := pkgScope.newFileScope(bFile)
-	if !ok {
-		return nil, false
-	}
-	fnScope := newFuncScope(fScope, aux.F.FType)
-	irf := irFunc{
-		bFunc: &syntheticFunc{
-			bFile: bFile,
-			src:   aux.F.Src,
-		},
-		scopeFunc: &macroResolveScope{
-			iFuncResolveScope: fnScope,
-			sFunc:             aux.SyntheticFunc,
-		},
-		irFunc: aux.F,
-	}
-	pkgScope.ibld.Register(func(decls *ir.Declarations) {
-		decls.Funcs = append(decls.Funcs, aux.F)
-	})
-	return &irf, true
-}
-
 func (d *decls) buildFunctions(pkgScope *pkgResolveScope, filter func(f *processNodeT[function]) bool) bool {
 	ok := true
 	var funcs []*irFunc
@@ -272,14 +248,26 @@ func (d *decls) buildFunctions(pkgScope *pkgResolveScope, filter func(f *process
 	return ok
 }
 
-func (d *decls) registerAuxFuncs(pkgScope *pkgResolveScope, auxs []*cpevelements.SyntheticFuncDecl) ([]*irFunc, bool) {
-	var todos []*irFunc
+func (d *decls) registerAuxFuncs(mScope *macroResolveScope, auxs []*cpevelements.SyntheticFuncDecl) (todos []*irFunc, ok bool) {
+	fScope := mScope.fileScope()
 	for _, aux := range auxs {
-		todo, auxOk := d.registerAuxFunc(pkgScope, aux)
-		if !auxOk {
+		bFile := newFile(fScope.pkg(), aux.F.Name.Name+"_synt.gx", &ast.File{})
+		pNode, ok := d.registerFunc(&syntheticFunc{
+			coreSyntheticFunc: coreSyntheticFunc{
+				bFile: bFile,
+				src:   aux.F,
+			},
+			fnBuilder: aux.SyntheticFunc,
+		})
+		if !ok {
 			return nil, false
 		}
-		todos = append(todos, todo)
+		irF, fnOk := d.buildFuncType(fScope.pkgResolveScope, pNode)
+		if !fnOk {
+			ok = false
+			continue
+		}
+		todos = append(todos, irF)
 	}
 	return todos, true
 }
@@ -287,11 +275,7 @@ func (d *decls) registerAuxFuncs(pkgScope *pkgResolveScope, auxs []*cpevelements
 func (d *decls) buildFunctionBodies(pkgScope *pkgResolveScope, funcs []*irFunc) ([]*irFunc, bool) {
 	var todoNext []*irFunc
 	for _, fn := range funcs {
-		auxs, ok := fn.bFunc.buildBody(fn.scopeFunc, fn.irFunc)
-		if !ok {
-			return nil, false
-		}
-		todos, ok := d.registerAuxFuncs(pkgScope, auxs)
+		todos, ok := fn.bFunc.buildBody(fn.scopeFunc, fn)
 		if !ok {
 			return nil, false
 		}

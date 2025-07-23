@@ -18,7 +18,6 @@ import (
 	"go/ast"
 
 	"github.com/gx-org/gx/build/ir"
-	"github.com/gx-org/gx/internal/interp/compeval/cpevelements"
 )
 
 type funcMacro struct {
@@ -58,7 +57,7 @@ func (f *funcMacro) name() *ast.Ident {
 	return f.src.Name
 }
 
-func (f *funcMacro) buildBody(fScope iFuncResolveScope, extF ir.Func) ([]*cpevelements.SyntheticFuncDecl, bool) {
+func (f *funcMacro) buildBody(iFuncResolveScope, *irFunc) ([]*irFunc, bool) {
 	return nil, true
 }
 

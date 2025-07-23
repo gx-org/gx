@@ -139,7 +139,14 @@ func (s *SliceLitExpr) String() string {
 }
 
 func (e *CastExpr) String() string {
-	return fmt.Sprintf("(%s)(%s)", e.Typ.String(), e.X.String())
+	switch e.Typ.(type) {
+	case *NamedType:
+		return fmt.Sprintf("%s(%s)", e.Typ.String(), e.X.String())
+	case ArrayType:
+		return fmt.Sprintf("%s(%s)", e.Typ.String(), e.X.String())
+	default:
+		return fmt.Sprintf("(%s)(%s)", e.Typ.String(), e.X.String())
+	}
 }
 
 func (e *TypeAssertExpr) String() string {

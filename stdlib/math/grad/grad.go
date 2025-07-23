@@ -19,6 +19,7 @@ import (
 	"embed"
 	"fmt"
 	"go/ast"
+	"go/token"
 	"slices"
 
 	"github.com/gx-org/gx/base/ordered"
@@ -90,22 +91,22 @@ func (m gradMacro) clone() *gradMacro {
 	return m.newMacro(m.fn, m.wrt)
 }
 
-func (m *gradMacro) autoBuildSyntheticFuncName(fetcher ir.Fetcher, name string) (*ast.Ident, bool) {
+func (m *gradMacro) syntheticFuncName(fetcher ir.Fetcher, fn ir.Func) (string, bool) {
 	callee := m.callSite.Node().Callee
 	funcName := callee.Name()
 	macroPackage := callee.F.(*ir.Macro).File().Package
 	imp := m.callSite.File().FindImport(macroPackage.FullName())
 	if imp == nil {
-		return nil, fetcher.Err().AppendInternalf(callee.Source(), "cannot find import name %s", macroPackage.FullName())
+		return "", fetcher.Err().AppendInternalf(callee.Source(), "cannot find import name %s", macroPackage.FullName())
 	}
-	return &ast.Ident{Name: fmt.Sprintf("__%s_%s_%s_%s", imp.Name(), funcName, name, m.wrt.Field.Name)}, true
+	return fmt.Sprintf("__%s_%s_%s_%s", imp.Name(), funcName, fn.Name(), m.wrt.Field.Name), true
 }
 
-func (m *gradMacro) BuildType() (*ir.FuncType, error) {
-	return m.fn.FType, nil
+func (m *gradMacro) BuildType() (*ast.FuncDecl, error) {
+	return &ast.FuncDecl{Type: m.fn.Src.Type, Recv: m.fn.Src.Recv}, nil
 }
 
-func (m *gradMacro) BuildBody(fetcher ir.Fetcher) (*ir.BlockStmt, []*cpevelements.SyntheticFuncDecl, bool) {
+func (m *gradMacro) BuildBody(fetcher ir.Fetcher) (*ast.BlockStmt, []*cpevelements.SyntheticFuncDecl, bool) {
 	m.aux = ordered.NewMap[string, *cpevelements.SyntheticFuncDecl]()
 	body, ok := m.gradBlock(fetcher, m.fn.Body)
 	if !ok {
@@ -114,8 +115,8 @@ func (m *gradMacro) BuildBody(fetcher ir.Fetcher) (*ir.BlockStmt, []*cpevelement
 	return body, slices.Collect(m.aux.Values()), true
 }
 
-func (m *gradMacro) gradBlock(fetcher ir.Fetcher, src *ir.BlockStmt) (*ir.BlockStmt, bool) {
-	var block []ir.Stmt
+func (m *gradMacro) gradBlock(fetcher ir.Fetcher, src *ir.BlockStmt) (*ast.BlockStmt, bool) {
+	var block []ast.Stmt
 	for _, stmt := range src.List {
 		var ok bool
 		stmts, ok := m.gradStmt(fetcher, stmt)
@@ -124,17 +125,16 @@ func (m *gradMacro) gradBlock(fetcher ir.Fetcher, src *ir.BlockStmt) (*ir.BlockS
 		}
 		block = append(block, stmts...)
 	}
-	return &ir.BlockStmt{
-		Src:  src.Src,
+	return &ast.BlockStmt{
 		List: block,
 	}, true
 }
 
-func (m *gradMacro) gradStmt(fetcher ir.Fetcher, src ir.Stmt) ([]ir.Stmt, bool) {
+func (m *gradMacro) gradStmt(fetcher ir.Fetcher, src ir.Stmt) ([]ast.Stmt, bool) {
 	switch srcT := src.(type) {
 	case *ir.ReturnStmt:
 		ret, ok := m.gradReturnStmt(fetcher, srcT)
-		return []ir.Stmt{ret}, ok
+		return []ast.Stmt{ret}, ok
 	case *ir.AssignExprStmt:
 		return m.gradAssignExprStmt(fetcher, srcT)
 	default:
@@ -142,10 +142,11 @@ func (m *gradMacro) gradStmt(fetcher ir.Fetcher, src ir.Stmt) ([]ir.Stmt, bool) 
 	}
 }
 
-func (m *gradMacro) gradReturnStmt(fetcher ir.Fetcher, src *ir.ReturnStmt) (*ir.ReturnStmt, bool) {
-	stmt := &ir.ReturnStmt{Results: make([]ir.Expr, len(src.Results))}
+func (m *gradMacro) gradReturnStmt(fetcher ir.Fetcher, src *ir.ReturnStmt) (*ast.ReturnStmt, bool) {
+	stmt := &ast.ReturnStmt{Results: make([]ast.Expr, len(src.Results))}
+	ge := m.newExprGrader(fetcher, false)
 	for i, expr := range src.Results {
-		res, ok := m.gradExpr(fetcher, expr)
+		res, ok := ge.gradExpr(expr)
 		if !ok {
 			return nil, false
 		}
@@ -155,10 +156,7 @@ func (m *gradMacro) gradReturnStmt(fetcher ir.Fetcher, src *ir.ReturnStmt) (*ir.
 			continue
 		}
 		// The expression does not depend on arg: replace it with a zero value.
-		res, ok = zeroValueOf(fetcher, expr.Source(), expr.Type())
-		if !ok {
-			return nil, false
-		}
+		res = zeroValueOf(expr.Source())
 		stmt.Results[i] = res.expr
 	}
 	return stmt, true
@@ -171,36 +169,20 @@ func gradIdent(src *ast.Ident) *ast.Ident {
 	}
 }
 
-func (m *gradMacro) gradStorage(fetcher ir.Fetcher, src ir.SourceNode, store ir.Storage) (ir.Storage, bool) {
-	switch storeT := store.(type) {
-	case *ir.LocalVarStorage:
-		return &ir.LocalVarStorage{
-			Src: gradIdent(storeT.Src),
-			Typ: storeT.Typ,
-		}, true
-	default:
-		return nil, fetcher.Err().Appendf(store.Source(), "gradient of %T storage not supported", storeT)
+func (m *gradMacro) gradAssignExprStmt(fetcher ir.Fetcher, src *ir.AssignExprStmt) ([]ast.Stmt, bool) {
+	gradStmt := &ast.AssignStmt{
+		Tok: token.DEFINE,
+		Lhs: make([]ast.Expr, len(src.List)),
+		Rhs: make([]ast.Expr, len(src.List)),
 	}
-}
-
-func (m *gradMacro) gradAssignExprStmt(fetcher ir.Fetcher, src *ir.AssignExprStmt) ([]ir.Stmt, bool) {
-	gradStmt := &ir.AssignExprStmt{
-		Src:  src.Src,
-		List: make([]*ir.AssignExpr, len(src.List)),
-	}
+	ge := m.newExprGrader(fetcher, true)
 	for i, aexpr := range src.List {
-		gExpr, ok := m.gradExpr(fetcher, aexpr.X)
+		gExpr, ok := ge.gradExpr(aexpr.X)
 		if !ok {
 			return nil, false
 		}
-		gStorage, ok := m.gradStorage(fetcher, aexpr.X, aexpr.Storage)
-		if !ok {
-			return nil, false
-		}
-		gradStmt.List[i] = &ir.AssignExpr{
-			Storage: gStorage,
-			X:       gExpr.expr,
-		}
+		gradStmt.Lhs[i] = gradIdent(aexpr.Storage.NameDef())
+		gradStmt.Rhs[i] = gExpr.expr
 	}
-	return []ir.Stmt{src, gradStmt}, true
+	return []ast.Stmt{src.Src, gradStmt}, true
 }
