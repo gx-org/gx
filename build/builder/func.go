@@ -264,8 +264,8 @@ func (f *funcDecl) buildSignature(pkgScope *pkgResolveScope) (ir.Func, iFuncReso
 	return ext, funcScope, ok
 }
 
-func (f *funcDecl) buildBody(fScope iFuncResolveScope, extF ir.Func) ([]*cpevelements.SyntheticFuncDecl, bool) {
-	ext := extF.(*ir.FuncDecl)
+func (f *funcDecl) buildBody(fScope iFuncResolveScope, extF *irFunc) ([]*irFunc, bool) {
+	ext := extF.irFunc.(*ir.FuncDecl)
 	scope, ok := newBlockScope(fScope)
 	if !ok {
 		return nil, false
@@ -314,7 +314,7 @@ func (f *funcBuiltin) buildSignature(pkgScope *pkgResolveScope) (ir.Func, iFuncR
 	return ext, fScope, ok
 }
 
-func (f *funcBuiltin) buildBody(iFuncResolveScope, ir.Func) ([]*cpevelements.SyntheticFuncDecl, bool) {
+func (f *funcBuiltin) buildBody(iFuncResolveScope, *irFunc) ([]*irFunc, bool) {
 	return nil, true
 }
 

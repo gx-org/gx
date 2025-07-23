@@ -15,14 +15,16 @@
 package cpevelements
 
 import (
+	"go/ast"
+
 	"github.com/gx-org/gx/build/ir"
 )
 
 type (
 	// SyntheticBuilder builds a synthetic function.
 	SyntheticBuilder interface {
-		BuildType() (*ir.FuncType, error)
-		BuildBody(ir.Fetcher) (*ir.BlockStmt, []*SyntheticFuncDecl, bool)
+		BuildType() (*ast.FuncDecl, error)
+		BuildBody(ir.Fetcher) (*ast.BlockStmt, []*SyntheticFuncDecl, bool)
 	}
 
 	// SyntheticFunc is a GX string.
@@ -33,7 +35,7 @@ type (
 	// SyntheticFuncDecl is a synthetic package function declaration.
 	SyntheticFuncDecl struct {
 		*SyntheticFunc
-		F *ir.FuncDecl
+		F *ast.FuncDecl
 	}
 )
 

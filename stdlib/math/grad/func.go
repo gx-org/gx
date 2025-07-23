@@ -21,7 +21,7 @@ import (
 	"github.com/gx-org/gx/internal/interp/compeval/cpevelements"
 )
 
-func (m *gradMacro) gradFunc(fetcher ir.Fetcher, src *ir.FuncValExpr, wrt string) (*ir.FuncValExpr, bool) {
+func (m *gradMacro) gradFunc(fetcher ir.Fetcher, src *ir.FuncValExpr, wrt string) (ast.Expr, bool) {
 	switch fT := src.F.(type) {
 	case *ir.FuncDecl:
 		return gradFuncDecl(fetcher, m, src, fT, wrt)
@@ -30,64 +30,60 @@ func (m *gradMacro) gradFunc(fetcher ir.Fetcher, src *ir.FuncValExpr, wrt string
 	}
 }
 
-func gradFuncDecl(fetcher ir.Fetcher, parent *gradMacro, src *ir.FuncValExpr, fn *ir.FuncDecl, wrt string) (*ir.FuncValExpr, bool) {
+func gradFuncDecl(fetcher ir.Fetcher, parent *gradMacro, src *ir.FuncValExpr, fn *ir.FuncDecl, wrt string) (ast.Expr, bool) {
 	wrtF, err := findParamStorage(fetcher.File(), src, fn, wrt)
 	if err != nil {
 		return nil, fetcher.Err().Append(err)
 	}
 	grader := parent.newMacro(fn, wrtF)
-	name, ok := grader.autoBuildSyntheticFuncName(fetcher, fn.Name())
+	synthName, ok := grader.syntheticFuncName(fetcher, fn)
 	if !ok {
 		return nil, false
 	}
-	cached, ok := grader.aux.Load(name.Name)
-	if ok {
-		return &ir.FuncValExpr{
-			X: &ir.ValueRef{Src: name, Stor: cached.F},
-			T: src.T,
-			F: cached.F,
-		}, true
+	ident := &ast.Ident{Name: synthName}
+	if _, ok := grader.aux.Load(synthName); ok {
+		return ident, true
 	}
-	gradF := &ir.FuncDecl{
-		FFile: grader.fn.FFile,
-		Src: &ast.FuncDecl{
-			Name: name,
-		},
-	}
-	gradF.FType, err = grader.BuildType()
+	gradF, err := grader.BuildType()
+	gradF.Name = ident
 	if err != nil {
 		return nil, fetcher.Err().AppendAt(src.Source(), err)
 	}
-	grader.aux.Store(name.Name, &cpevelements.SyntheticFuncDecl{
+	grader.aux.Store(synthName, &cpevelements.SyntheticFuncDecl{
 		SyntheticFunc: cpevelements.NewSyntheticFunc(grader),
 		F:             gradF,
 	})
-	return &ir.FuncValExpr{
-		X: &ir.ValueRef{Src: name, Stor: gradF},
-		T: src.T,
-		F: gradF,
-	}, true
+	return ident, true
+}
+
+func astExprs(exprs []ir.AssignableExpr) []ast.Expr {
+	as := make([]ast.Expr, len(exprs))
+	for i, expr := range exprs {
+		as[i] = expr.Source().(ast.Expr)
+	}
+	return as
 }
 
 func (m *gradMacro) gradCall(fetcher ir.Fetcher, src *ir.CallExpr) (*gradExprResult, bool) {
 	if len(src.Args) == 0 {
-		return zeroValueOf(fetcher, src.Source(), src.Type())
+		return zeroValueOf(src.Source()), true
 	}
 	var gExpr *gradExprResult
+	ge := m.newExprGrader(fetcher, false)
 	for i, argI := range src.Args {
 		gradCallee, ok := m.gradFunc(fetcher, src.Callee, src.Callee.T.Params.Fields()[i].Name.Name)
 		if !ok {
 			return nil, false
 		}
-		gradArg, ok := m.gradExpr(fetcher, argI)
+		gradArg, ok := ge.gradExpr(argI)
 		if !ok {
 			return nil, false
 		}
 		gradI := buildMul(
 			&gradExprResult{
-				expr: &ir.CallExpr{
-					Args:   src.Args,
-					Callee: gradCallee,
+				expr: &ast.CallExpr{
+					Fun:  gradCallee,
+					Args: astExprs(src.Args),
 				},
 			},
 			gradArg,

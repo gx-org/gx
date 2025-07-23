@@ -20,7 +20,6 @@ import (
 
 	"github.com/gx-org/gx/build/builder/irb"
 	"github.com/gx-org/gx/build/ir"
-	"github.com/gx-org/gx/internal/interp/compeval/cpevelements"
 )
 
 type importedFunc struct {
@@ -58,7 +57,7 @@ func (f *importedFunc) buildSignature(pkgScope *pkgResolveScope) (ir.Func, iFunc
 	return f.fn, newFuncScope(fScope, f.fn.FType), true
 }
 
-func (f *importedFunc) buildBody(iFuncResolveScope, ir.Func) ([]*cpevelements.SyntheticFuncDecl, bool) {
+func (f *importedFunc) buildBody(iFuncResolveScope, *irFunc) ([]*irFunc, bool) {
 	return nil, true
 }
 

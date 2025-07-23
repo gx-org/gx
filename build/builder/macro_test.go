@@ -15,6 +15,7 @@
 package builder_test
 
 import (
+	"go/ast"
 	"testing"
 
 	"github.com/gx-org/gx/build/builder/testbuild"
@@ -37,12 +38,12 @@ type idMacro struct {
 	fn *ir.FuncDecl
 }
 
-func (m *idMacro) BuildType() (*ir.FuncType, error) {
-	return m.fn.FType, nil
+func (m *idMacro) BuildType() (*ast.FuncDecl, error) {
+	return &ast.FuncDecl{Type: m.fn.FType.Src}, nil
 }
 
-func (m *idMacro) BuildBody(fetcher ir.Fetcher) (*ir.BlockStmt, []*cpevelements.SyntheticFuncDecl, bool) {
-	return m.fn.Body, nil, true
+func (m *idMacro) BuildBody(fetcher ir.Fetcher) (*ast.BlockStmt, []*cpevelements.SyntheticFuncDecl, bool) {
+	return m.fn.Body.Src, nil, true
 }
 
 func TestMacro(t *testing.T) {
@@ -98,6 +99,18 @@ func f() int32 {
 						},
 					)},
 			},
+		},
+		testbuild.Decl{
+			Src: `
+import "macro"
+
+//gx:=macro.ID(f)
+func synthetic()
+
+func f(x int32) int32 {
+	return x
+}
+`,
 		},
 	)
 }
