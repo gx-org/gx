@@ -235,6 +235,7 @@ func oneValueOf(fetcher ir.Fetcher, node ast.Node, typ ir.Type) (*gradExprResult
 	return &gradExprResult{
 		kind: oneSpecial,
 		expr: &ir.CastExpr{
+			Src: &ast.CallExpr{},
 			X: &ir.NumberCastExpr{
 				X:   one,
 				Typ: ir.TypeFromKind(typ.Kind()),

@@ -78,5 +78,12 @@ func (a A) f() float32 {
 }
 `,
 		},
+		testbuild.Decl{
+			Src: `
+func f() [2]float32 {
+	return 0
+}
+`,
+		},
 	)
 }

@@ -45,7 +45,7 @@ func reductionFuncSig(fetcher ir.Fetcher, f builtin.Func, call *ir.CallExpr) (*i
 
 	// Infer the result tensor shape by knocking out reduced axes.
 	resultRank := ir.Rank{}
-	result := ir.NewArrayType(nil, arrayType.DataType(), &resultRank)
+	result := ir.NewArrayType(&ast.ArrayType{}, arrayType.DataType(), &resultRank)
 	var resultDims []ir.AxisLengths
 	for axis := range reduceAxes {
 		if len(rank.Axes()) > 0 && (axis < 0 || axis >= len(rank.Axes())) {
@@ -118,7 +118,7 @@ func (f argmax) BuildFuncType(fetcher ir.Fetcher, call *ir.CallExpr) (*ir.FuncTy
 
 	// Infer the result tensor shape by knocking out reduced axis.
 	resultRank := ir.Rank{}
-	result := ir.NewArrayType(nil, ir.TypeFromKind(ir.DefaultIntKind), &resultRank)
+	result := ir.NewArrayType(&ast.ArrayType{}, ir.TypeFromKind(ir.DefaultIntKind), &resultRank)
 	if len(rank.Axes()) > 0 && (reduceAxis < 0 || int(reduceAxis) >= len(rank.Axes())) {
 		return nil, fmterr.Errorf(fetcher.File().FileSet(), call.Source(),
 			"invalid reduction axis in call to %s: axis %d does not exist in input %s",

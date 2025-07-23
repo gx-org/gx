@@ -15,6 +15,8 @@
 package types
 
 import (
+	"go/ast"
+
 	"github.com/gx-org/backend/dtype"
 	"github.com/gx-org/backend/platform"
 	"github.com/gx-org/backend/shape"
@@ -119,7 +121,7 @@ func ArrayBool(vals []bool, dims ...int) *HostArray[bool] {
 	if dims == nil {
 		dims = []int{len(vals)}
 	}
-	typ := ir.NewArrayType(nil, ir.TypeFromKind(ir.BoolKind), ir.NewRank(dims))
+	typ := ir.NewArrayType(&ast.ArrayType{}, ir.TypeFromKind(ir.BoolKind), ir.NewRank(dims))
 	array := kernels.ToBoolArray(vals, dims)
 	buffer := kernels.NewBuffer(array)
 	hostArray, err := values.NewHostArray(typ, buffer)
@@ -141,7 +143,7 @@ func inferDims[T dtype.GoDataType](vals []T, dims []int) []int {
 
 func newArray[T dtype.AlgebraType](dtypeKind ir.Kind, array kernels.Array) *HostArray[T] {
 	dims := array.Shape().AxisLengths
-	typ := ir.NewArrayType(nil, ir.TypeFromKind(dtypeKind), ir.NewRank(dims))
+	typ := ir.NewArrayType(&ast.ArrayType{}, ir.TypeFromKind(dtypeKind), ir.NewRank(dims))
 	buffer := kernels.NewBuffer(array)
 	hostArray, err := values.NewHostArray(typ, buffer)
 	if err != nil {

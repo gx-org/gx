@@ -85,7 +85,7 @@ func (f matmul) resultsType(fetcher ir.Fetcher, call *ir.CallExpr) ([]ir.Type, i
 	} else if len(rightDims) == 2 {
 		resultRank.Ax = []ir.AxisLengths{rightDims[1]}
 	}
-	return params, ir.NewArrayType(nil, left.DataType(), &resultRank), nil
+	return params, ir.NewArrayType(&ast.ArrayType{}, left.DataType(), &resultRank), nil
 }
 
 func (f matmul) BuildFuncType(fetcher ir.Fetcher, call *ir.CallExpr) (*ir.FuncType, error) {
@@ -240,7 +240,7 @@ func (f einsum) resultsType(fetcher ir.Fetcher, call *ir.CallExpr) ([]ir.Type, i
 			outDims = append(outDims, rhsDim)
 		}
 	}
-	return params, ir.NewArrayType(nil, left.DataType(), &ir.Rank{Ax: outDims}), nil
+	return params, ir.NewArrayType(&ast.ArrayType{}, left.DataType(), &ir.Rank{Ax: outDims}), nil
 }
 
 func (f einsum) BuildFuncType(fetcher ir.Fetcher, call *ir.CallExpr) (*ir.FuncType, error) {

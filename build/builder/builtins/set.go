@@ -73,7 +73,7 @@ func (f *setFunc) BuildFuncType(fetcher ir.Fetcher, call *ir.CallExpr) (*ir.Func
 	if int(posSize) > len(xRank.Axes()) {
 		return ext, errors.Errorf("position (length %d) exceeds operand rank (%d)", posSize, len(xRank.Axes()))
 	}
-	wantUpdate := ir.NewArrayType(nil, arrayParams[0].DataType(), &ir.Rank{
+	wantUpdate := ir.NewArrayType(&ast.ArrayType{}, arrayParams[0].DataType(), &ir.Rank{
 		Ax: xRank.Axes()[posSize:],
 	})
 	ok, err := arrayParams[1].Equal(fetcher, wantUpdate)

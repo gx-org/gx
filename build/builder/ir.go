@@ -122,7 +122,7 @@ func buildTypeExpr(rscope resolveScope, node exprNode) (*ir.TypeValExpr, bool) {
 	return typeFromExpr(rscope, expr)
 }
 
-var invalidArrayType = ir.NewArrayType(nil, ir.InvalidType(), nil)
+var invalidArrayType = ir.NewArrayType(&ast.ArrayType{}, ir.InvalidType(), nil)
 
 func buildArrayType(rscope resolveScope, eNode typeExprNode) (ir.ArrayType, bool) {
 	typeExpr, ok := eNode.buildTypeExpr(rscope)

@@ -28,7 +28,7 @@ import (
 
 var (
 	// GenericArrayType returns a generic array type.
-	GenericArrayType = ir.NewArrayType(nil, ir.TypeFromKind(ir.UnknownKind), &ir.RankInfer{})
+	GenericArrayType = ir.NewArrayType(&ast.ArrayType{}, ir.TypeFromKind(ir.UnknownKind), &ir.RankInfer{})
 
 	// GenericSliceType returns a generic slice type.
 	GenericSliceType = &ir.SliceType{}

@@ -243,6 +243,15 @@ func TestTensorDynamic2DTensor() [2][3]float32 {
 	// }
 }
 
+func TestNumberCastToArray() [2][3]float32 {
+	return 0
+	// Want:
+	// [2][3]float32{
+	// 	{0, 0, 0},
+	// 	{0, 0, 0},
+	// }
+}
+
 func TestRedefineVariable() (int64, int64) {
 	a := 4
 	a, b := 5, 6
