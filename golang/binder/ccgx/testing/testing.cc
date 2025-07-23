@@ -12,10 +12,10 @@
 // See the License for the specific language governing permissions and
 // limitations under the License.
 
-#include <gxdeps/github.com/gx-org/gx/golang/binder/ccgx/testing/testing.h>
+#include <golang/binder/ccgx/testing/testing.h>
 
 #include <absl/status/statusor.h>
-#include <gxdeps/github.com/gx-org/gx/golang/binder/ccgx/cppgx.h>
+#include <golang/binder/ccgx/cppgx.h>
 
 namespace gxlang {
 namespace cppgx {

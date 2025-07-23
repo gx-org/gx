@@ -22,7 +22,7 @@ import (
 )
 
 // #cgo CFLAGS: -I ../../../..
-// #include <gxdeps/github.com/gx-org/gx/golang/binder/cgx/cgx.h>
+// #include <golang/binder/cgx/cgx.h>
 import "C"
 
 //export cgx_new_embed_builder
