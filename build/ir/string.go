@@ -58,6 +58,9 @@ func (s *FuncBuiltin) String() string {
 func (f *FuncDecl) String() string {
 	params := f.FType.Params.String()
 	results := f.FType.Results.String()
+	if f.FType.Results.Len() > 1 {
+		results = fmt.Sprintf("(%s)", results)
+	}
 	body := gxfmt.Indent(f.Body.String())
 	return fmt.Sprintf("func %s(%s) %s {\n%s}", f.Src.Name.Name, params, results, body)
 }

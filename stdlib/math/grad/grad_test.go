@@ -363,6 +363,30 @@ func gradF(x float32) float32 {
 }
 `,
 		},
+		testgrad.Func{
+			GradOf: `
+func F(x float32) (float32, float32) {
+	x = x*x
+	x1 := x
+	x = x+x
+	x2 := x
+	return x1, x2
+}
+`,
+			Want: `
+func gradF(x float32) (float32, float32) {
+	__grad_x := x+x
+	x = x*x
+	__grad_x1 := __grad_x
+	x1 := x
+	__grad_x = __grad_x+__grad_x
+	x = x+x
+	__grad_x2 := __grad_x
+	x2 := x
+	return __grad_x1, __grad_x2
+}
+`,
+		},
 	)
 }
 
