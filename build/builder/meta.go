@@ -345,10 +345,3 @@ func (f *syntheticFunc) buildSignatureFScope(fScope *fileResolveScope) (ir.Func,
 		fnBuilder:         f.fnBuilder,
 	}, ok
 }
-
-func (f *syntheticFunc) buildBody(fnScope iFuncResolveScope, fn *irFunc) ([]*irFunc, bool) {
-	fnScope.fileScope().pkgResolveScope.ibld.Register(func(decls *ir.Declarations) {
-		decls.Funcs = append(decls.Funcs, fn.irFunc)
-	})
-	return f.coreSyntheticFunc.buildBody(fnScope, fn)
-}
