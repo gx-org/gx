@@ -184,5 +184,5 @@ func (m *gradMacro) gradAssignExprStmt(fetcher ir.Fetcher, src *ir.AssignExprStm
 		gradStmt.Lhs[i] = gradIdent(aexpr.Storage.NameDef())
 		gradStmt.Rhs[i] = gExpr.expr
 	}
-	return []ast.Stmt{src.Src, gradStmt}, true
+	return []ast.Stmt{gradStmt, src.Src}, true
 }
