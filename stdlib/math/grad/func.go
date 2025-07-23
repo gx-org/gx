@@ -64,14 +64,14 @@ func astExprs(exprs []ir.AssignableExpr) []ast.Expr {
 	return as
 }
 
-func (m *gradMacro) gradCall(fetcher ir.Fetcher, src *ir.CallExpr) (*gradExprResult, bool) {
+func (m *stmtGrader) gradCall(fetcher ir.Fetcher, src *ir.CallExpr) (*gradExprResult, bool) {
 	if len(src.Args) == 0 {
 		return zeroValueOf(src.Source()), true
 	}
 	var gExpr *gradExprResult
-	ge := m.newExprGrader(fetcher, false)
+	ge := m.newExprGrader(false)
 	for i, argI := range src.Args {
-		gradCallee, ok := m.gradFunc(fetcher, src.Callee, src.Callee.T.Params.Fields()[i].Name.Name)
+		gradCallee, ok := m.macro.gradFunc(fetcher, src.Callee, src.Callee.T.Params.Fields()[i].Name.Name)
 		if !ok {
 			return nil, false
 		}

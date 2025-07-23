@@ -40,3 +40,21 @@ func TestXAsElementGrad() [2]float32 {
         //   }
 }
 
+
+func OverShadow(x float32) (float32, float32) {
+	x = x*x
+	x1 := x // Gradient of x*x: should be 2*x
+	x = x+x
+	x2 := x // Gradient of (x*x)+(x*x): should be 4*x
+	return x1, x2
+}
+
+//gx:=grad.Func(OverShadow, "x")
+func OverShadowGrad()
+
+func TestOverShadowGrad() (float32, float32) {
+	return OverShadowGrad(3)
+	// Want:
+	// 0: float32(6)
+	// 1: float32(12)
+}

@@ -19,7 +19,6 @@ import (
 	"embed"
 	"fmt"
 	"go/ast"
-	"go/token"
 	"slices"
 
 	"github.com/gx-org/gx/base/ordered"
@@ -108,58 +107,15 @@ func (m *gradMacro) BuildType() (*ast.FuncDecl, error) {
 
 func (m *gradMacro) BuildBody(fetcher ir.Fetcher) (*ast.BlockStmt, []*cpevelements.SyntheticFuncDecl, bool) {
 	m.aux = ordered.NewMap[string, *cpevelements.SyntheticFuncDecl]()
-	body, ok := m.gradBlock(fetcher, m.fn.Body)
+	sg := m.newStmtGrader(fetcher, nil)
+	sg.registerFieldNames(m.fn.FType.Receiver)
+	sg.registerFieldNames(m.fn.FType.Params)
+	sg.registerFieldNames(m.fn.FType.Results)
+	body, ok := sg.gradBlock(fetcher, m.fn.Body)
 	if !ok {
 		return nil, nil, false
 	}
 	return body, slices.Collect(m.aux.Values()), true
-}
-
-func (m *gradMacro) gradBlock(fetcher ir.Fetcher, src *ir.BlockStmt) (*ast.BlockStmt, bool) {
-	var block []ast.Stmt
-	for _, stmt := range src.List {
-		var ok bool
-		stmts, ok := m.gradStmt(fetcher, stmt)
-		if !ok {
-			return nil, false
-		}
-		block = append(block, stmts...)
-	}
-	return &ast.BlockStmt{
-		List: block,
-	}, true
-}
-
-func (m *gradMacro) gradStmt(fetcher ir.Fetcher, src ir.Stmt) ([]ast.Stmt, bool) {
-	switch srcT := src.(type) {
-	case *ir.ReturnStmt:
-		ret, ok := m.gradReturnStmt(fetcher, srcT)
-		return []ast.Stmt{ret}, ok
-	case *ir.AssignExprStmt:
-		return m.gradAssignExprStmt(fetcher, srcT)
-	default:
-		return nil, fetcher.Err().Appendf(src.Source(), "gradient of %T statement not supported", srcT)
-	}
-}
-
-func (m *gradMacro) gradReturnStmt(fetcher ir.Fetcher, src *ir.ReturnStmt) (*ast.ReturnStmt, bool) {
-	stmt := &ast.ReturnStmt{Results: make([]ast.Expr, len(src.Results))}
-	ge := m.newExprGrader(fetcher, false)
-	for i, expr := range src.Results {
-		res, ok := ge.gradExpr(expr)
-		if !ok {
-			return nil, false
-		}
-		if res != nil {
-			// The expression depends on arg: nothing left to do.
-			stmt.Results[i] = res.expr
-			continue
-		}
-		// The expression does not depend on arg: replace it with a zero value.
-		res = zeroValueOf(expr.Source())
-		stmt.Results[i] = res.expr
-	}
-	return stmt, true
 }
 
 func gradIdent(src *ast.Ident) *ast.Ident {
@@ -167,22 +123,4 @@ func gradIdent(src *ast.Ident) *ast.Ident {
 		NamePos: src.NamePos,
 		Name:    "__grad_" + src.Name,
 	}
-}
-
-func (m *gradMacro) gradAssignExprStmt(fetcher ir.Fetcher, src *ir.AssignExprStmt) ([]ast.Stmt, bool) {
-	gradStmt := &ast.AssignStmt{
-		Tok: token.DEFINE,
-		Lhs: make([]ast.Expr, len(src.List)),
-		Rhs: make([]ast.Expr, len(src.List)),
-	}
-	ge := m.newExprGrader(fetcher, true)
-	for i, aexpr := range src.List {
-		gExpr, ok := ge.gradExpr(aexpr.X)
-		if !ok {
-			return nil, false
-		}
-		gradStmt.Lhs[i] = gradIdent(aexpr.Storage.NameDef())
-		gradStmt.Rhs[i] = gExpr.expr
-	}
-	return []ast.Stmt{gradStmt, src.Src}, true
 }

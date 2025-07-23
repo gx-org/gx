@@ -57,15 +57,13 @@ func (r *gradExprResult) Print() {
 
 // exprGrader computes the gradient of expression.
 type exprGrader struct {
-	m           *gradMacro
-	fetcher     ir.Fetcher
+	*stmtGrader
 	castNumbers bool
 }
 
-func (m *gradMacro) newExprGrader(fetcher ir.Fetcher, castNumbers bool) *exprGrader {
+func (m *stmtGrader) newExprGrader(castNumbers bool) *exprGrader {
 	return &exprGrader{
-		m:           m,
-		fetcher:     fetcher,
+		stmtGrader:  m,
 		castNumbers: castNumbers,
 	}
 }
@@ -89,7 +87,7 @@ func (m *exprGrader) gradExpr(src ir.Expr) (r *gradExprResult, ok bool) {
 	case *ir.ParenExpr:
 		return m.gradParenExpr(srcT)
 	case *ir.CallExpr:
-		return m.m.gradCall(m.fetcher, srcT)
+		return m.gradCall(m.fetcher, srcT)
 	default:
 		return nil, m.fetcher.Err().Appendf(src.Source(), "gradient of %T expression not supported", srcT)
 	}
@@ -217,7 +215,7 @@ func (m *exprGrader) gradParenExpr(src *ir.ParenExpr) (*gradExprResult, bool) {
 }
 
 func (m *exprGrader) gradValueRef(src *ir.ValueRef) (*gradExprResult, bool) {
-	if m.m.wrt.Same(src.Stor) {
+	if m.macro.wrt.Same(src.Stor) {
 		return oneValueOf(src.Source()), true
 	}
 	gIdent := gradIdent(src.Stor.NameDef())
