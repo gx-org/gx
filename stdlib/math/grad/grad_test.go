@@ -309,8 +309,8 @@ func F(x float32) float32 {
 `,
 			Want: `
 func gradF(x float32) float32 {
-	a := x*x
 	__grad_a := x+x
+	a := x*x
 	return __grad_a
 }
 `,
@@ -325,10 +325,10 @@ func F(x float32) float32 {
 `,
 			Want: `
 func gradF(x float32) float32 {
-	a := 2*x
 	__grad_a := float32(2)
-	b := 3*x
+	a := 2*x
 	__grad_b := float32(3)
+	b := 3*x
 	return __grad_a*b+a*__grad_b
 }
 `,
@@ -342,9 +342,24 @@ func F(x float32) float32 {
 `,
 			Want: `
 func gradF(x float32) float32 {
-	a, b := 2*x, 3*x
 	__grad_a, __grad_b := float32(2), float32(3)
+	a, b := 2*x, 3*x
 	return __grad_a*b+a*__grad_b
+}
+`,
+		},
+		testgrad.Func{
+			GradOf: `
+func F(x float32) float32 {
+	x = 2
+	return x
+}
+`,
+			Want: `
+func gradF(x float32) float32 {
+	__grad_x := float32(0)
+	x = 2
+	return __grad_x
 }
 `,
 		},

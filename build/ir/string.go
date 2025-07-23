@@ -97,7 +97,7 @@ func (s *AssignExprStmt) String() string {
 		assigned[i] = v.NameDef().Name
 		exprs[i] = v.X.String()
 	}
-	return fmt.Sprintf("%s := %s", strings.Join(assigned, ", "), strings.Join(exprs, ", "))
+	return fmt.Sprintf("%s %s %s", strings.Join(assigned, ", "), s.Src.Tok, strings.Join(exprs, ", "))
 }
 
 func (*RangeStmt) String() string {
