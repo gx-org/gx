@@ -67,6 +67,6 @@ func (f gather) BuildFuncType(fetcher ir.Fetcher, call *ir.CallExpr) (*ir.FuncTy
 	return &ir.FuncType{
 		BaseType: ir.BaseType[*ast.FuncType]{Src: &ast.FuncType{Func: call.Source().Pos()}},
 		Params:   builtins.Fields(call, params...),
-		Results:  builtins.Fields(call, ir.NewArrayType(nil, sourceArray.DataType(), resultRank)),
+		Results:  builtins.Fields(call, ir.NewArrayType(&ast.ArrayType{}, sourceArray.DataType(), resultRank)),
 	}, nil
 }

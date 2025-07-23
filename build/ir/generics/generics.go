@@ -60,7 +60,7 @@ func (i *ident) instantiate(ir.Fetcher) ir.Type {
 }
 
 type array struct {
-	src     *ast.ArrayType
+	src     ast.Expr
 	typ     ir.ArrayType
 	typName string
 	set     ir.Type

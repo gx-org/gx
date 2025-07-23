@@ -370,8 +370,8 @@ func (s *TypeSet) DataType() Type {
 
 // ArrayType returns the source code defining the type.
 // Always returns nil.
-func (s *TypeSet) ArrayType() *ast.ArrayType {
-	return nil
+func (s *TypeSet) ArrayType() ast.Expr {
+	return s.BaseType.Src
 }
 
 // Kind returns the scalar kind.

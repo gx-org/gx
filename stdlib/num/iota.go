@@ -15,6 +15,8 @@
 package num
 
 import (
+	"go/ast"
+
 	"github.com/gx-org/backend/ops"
 	"github.com/gx-org/backend/shape"
 	"github.com/gx-org/gx/build/builtins"
@@ -50,7 +52,7 @@ func (f iotaWithAxis) BuildFuncType(fetcher ir.Fetcher, call *ir.CallExpr) (*ir.
 	}
 	return &ir.FuncType{
 		Params:  builtins.Fields(call, params...),
-		Results: builtins.Fields(call, ir.NewArrayType(nil, ir.DefaultIntType, rank)),
+		Results: builtins.Fields(call, ir.NewArrayType(&ast.ArrayType{}, ir.DefaultIntType, rank)),
 	}, nil
 }
 

@@ -83,6 +83,25 @@ func returnAs(rscope resolveScope, pos ast.Node, src, dst ir.Type) bool {
 	return true
 }
 
+func (n *returnStmt) castNumber(scope iFuncResolveScope, expr ir.Expr, want ir.Type) (ir.Expr, bool) {
+	ret, ok := castNumber(scope, expr, want)
+	if !ok {
+		return expr, false
+	}
+	arrayWant := ir.Underlying(want).(ir.ArrayType)
+	if arrayWant.Rank().IsAtomic() {
+		return ret, true
+	}
+	return &ir.CastExpr{
+		Src: &ast.CallExpr{
+			Fun:  arrayWant.Source().(ast.Expr),
+			Args: []ast.Expr{expr.Source().(ast.Expr)},
+		},
+		X:   ret,
+		Typ: arrayWant,
+	}, true
+}
+
 func (n *returnStmt) buildStmt(scope iFuncResolveScope) (ir.Stmt, bool) {
 	ext := &ir.ReturnStmt{Src: n.src}
 	fType := scope.funcType()
@@ -119,14 +138,13 @@ func (n *returnStmt) buildStmt(scope iFuncResolveScope) (ir.Stmt, bool) {
 	resultPos := ext.Results[0].Source()
 	// Check if the types being returned are assignable to the types declared by the signature.
 	for i, wantI := range wants {
+		retOk := true
 		if ir.IsNumber(rTypes[i].Kind()) {
-			var retOk bool
-			ext.Results[i], retOk = castNumber(scope, ext.Results[i], wantI.Type())
+			ext.Results[i], retOk = n.castNumber(scope, ext.Results[i], wantI.Type())
 			rTypes[i] = ext.Results[i].Type()
-			if !retOk {
-				ok = false
-				continue
-			}
+		}
+		if !retOk {
+			continue
 		}
 		gotType := rTypes[i]
 		wantType := wantI.Group.Type.Typ

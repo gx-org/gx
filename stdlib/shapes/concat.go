@@ -131,7 +131,7 @@ func (f concat) resultsType(fetcher ir.Fetcher, call *ir.CallExpr) (params []ir.
 		Src: call.Expr(),
 		X:   outputExpr,
 	}
-	return params, ir.NewArrayType(nil, dtype, &ir.Rank{
+	return params, ir.NewArrayType(&ast.ArrayType{}, dtype, &ir.Rank{
 		Ax: outputDims,
 	}), nil
 }

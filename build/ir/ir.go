@@ -142,7 +142,7 @@ type (
 
 		// ArrayType returns the source code defining the array type.
 		// May be nil.
-		ArrayType() *ast.ArrayType
+		ArrayType() ast.Expr
 
 		// Rank returns the rank of the array,
 		// that is, a list of the array's axes.
@@ -228,7 +228,7 @@ type (
 
 	// arrayType defines the type of an array from code.
 	arrayType struct {
-		BaseType[*ast.ArrayType]
+		BaseType[ast.Expr]
 
 		DTypeF Type
 		RankF  ArrayRank
@@ -505,8 +505,8 @@ func (s *atomicType) DataType() Type {
 
 // ArrayType returns the source code defining the type.
 // Always returns nil.
-func (s *atomicType) ArrayType() *ast.ArrayType {
-	return &ast.ArrayType{}
+func (s *atomicType) ArrayType() ast.Expr {
+	return &ast.Ident{Name: s.Knd.String()}
 }
 
 var (
@@ -832,7 +832,7 @@ func (s *SliceType) String() string {
 func (*arrayType) node() {}
 
 // NewArrayType returns a new array from a data type and a rank.
-func NewArrayType(src *ast.ArrayType, dtype Type, rank ArrayRank) ArrayType {
+func NewArrayType(src ast.Expr, dtype Type, rank ArrayRank) ArrayType {
 	if dtype == nil {
 		dtype = UnknownType()
 	}
@@ -840,7 +840,7 @@ func NewArrayType(src *ast.ArrayType, dtype Type, rank ArrayRank) ArrayType {
 		rank = &RankInfer{}
 	}
 	return &arrayType{
-		BaseType: BaseType[*ast.ArrayType]{Src: src},
+		BaseType: BaseType[ast.Expr]{Src: src},
 		DTypeF:   dtype,
 		RankF:    rank,
 	}
@@ -867,7 +867,7 @@ func (s *arrayType) ElementType() (Type, bool) {
 		return s.DTypeF, true
 	}
 	return &arrayType{
-		BaseType: BaseType[*ast.ArrayType]{
+		BaseType: BaseType[ast.Expr]{
 			Src: &ast.ArrayType{},
 		},
 		DTypeF: s.DTypeF,
@@ -948,7 +948,7 @@ func (s *arrayType) Value(x Expr) AssignableExpr {
 func (s *arrayType) Source() ast.Node { return s.ArrayType() }
 
 // ArrayType returns the source code defining the type.
-func (s *arrayType) ArrayType() *ast.ArrayType {
+func (s *arrayType) ArrayType() ast.Expr {
 	return s.Src
 }
 
@@ -962,6 +962,7 @@ func (s *arrayType) Zero() AssignableExpr {
 		return cst
 	}
 	return &CastExpr{
+		Src: &ast.CallExpr{},
 		Typ: s,
 		X:   cst,
 	}
@@ -2400,7 +2401,7 @@ type (
 
 	// CastExpr casts a type to another.
 	CastExpr struct {
-		Src *ast.CallExpr
+		Src ast.Expr
 		Typ Type
 
 		X Expr

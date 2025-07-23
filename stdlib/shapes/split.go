@@ -71,7 +71,7 @@ func (f split) BuildFuncType(fetcher ir.Fetcher, call *ir.CallExpr) (*ir.FuncTyp
 		Src: call.Expr(),
 		X:   builtins.ToBinaryExpr(token.QUO, splitDimExpr.X, numSplit),
 	}
-	out := ir.NewArrayType(nil, arrayType.DataType(), &ir.Rank{Ax: outputDims})
+	out := ir.NewArrayType(&ast.ArrayType{}, arrayType.DataType(), &ir.Rank{Ax: outputDims})
 	return &ir.FuncType{
 		BaseType: ir.BaseType[*ast.FuncType]{Src: &ast.FuncType{Func: call.Source().Pos()}},
 		Params:   builtins.Fields(call, params...),

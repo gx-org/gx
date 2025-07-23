@@ -47,7 +47,7 @@ func (f transpose) resultsType(fetcher ir.Fetcher, call *ir.CallExpr) (ir.Type, 
 	inferredAxes := slices.Clone(rank.Axes())
 	slices.Reverse(inferredAxes)
 	return argType, ir.NewArrayType(
-		nil,
+		&ast.ArrayType{},
 		arrayType.DataType(),
 		&ir.Rank{Ax: inferredAxes},
 	), nil
