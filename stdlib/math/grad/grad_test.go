@@ -291,6 +291,39 @@ func __other_Func_g_x(x float32) float32 {
 `,
 			},
 		},
+		testgrad.Func{
+			GradOf: []string{"F", "G"},
+			Src: `
+func h(x float32) float32 {
+	return x	
+}
+
+func F(x float32) float32 {
+	return h(x*x)
+}
+
+func G(x float32) float32 {
+	return h(x*x)
+}
+`,
+			Wants: map[string]string{
+				"gradF": `
+func gradF(x float32) float32 {
+	return __grad_Func_h_x(x*x)*(x+x)
+}
+`,
+				"gradG": `
+func gradG(x float32) float32 {
+	return __grad_Func_h_x(x*x)*(x+x)
+}
+`,
+				"__grad_Func_h_x": `
+func __grad_Func_h_x(x float32) float32 {
+	return 1
+}
+`,
+			},
+		},
 	)
 }
 

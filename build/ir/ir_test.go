@@ -197,6 +197,10 @@ func (f *fetcherTesting) BuildExpr(src ast.Expr) (ir.Expr, bool) {
 	panic("not implemented")
 }
 
+func (*fetcherTesting) IsDefined(string) bool {
+	return false
+}
+
 func (f *fetcherTesting) Err() *fmterr.Appender {
 	return nil
 }

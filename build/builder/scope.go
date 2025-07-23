@@ -88,6 +88,11 @@ func (ev *compileEvaluator) EvalExpr(expr ir.Expr) (ir.Element, error) {
 	return ev.fitp.EvalExpr(expr)
 }
 
+func (ev *compileEvaluator) IsDefined(name string) bool {
+	_, found := ev.scope.find(name)
+	return found
+}
+
 func (ev *compileEvaluator) Err() *fmterr.Appender {
 	return ev.scope.err()
 }

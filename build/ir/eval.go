@@ -45,13 +45,12 @@ type (
 		EvalExpr(Expr) (Element, error)
 	}
 
-	// Fetcher fetches scalar value from identifiers in the code.
-	// A fetcher is required to sample tensor dimensions and,
-	// consequently, to compare one type to another.
+	// Fetcher represents a scope in the compiler.
 	Fetcher interface {
 		Evaluator
 		Err() *fmterr.Appender
 		BuildExpr(ast.Expr) (Expr, bool)
+		IsDefined(string) bool
 	}
 )
 

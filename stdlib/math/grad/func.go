@@ -31,6 +31,7 @@ func (m *gradMacro) gradFunc(fetcher ir.Fetcher, src *ir.FuncValExpr, wrt string
 }
 
 func gradFuncDecl(fetcher ir.Fetcher, parent *gradMacro, src *ir.FuncValExpr, fn *ir.FuncDecl, wrt string) (ast.Expr, bool) {
+	// Build the call to the gradient of a function.
 	wrtF, err := findParamStorage(fetcher.File(), src, fn, wrt)
 	if err != nil {
 		return nil, fetcher.Err().Append(err)
@@ -41,9 +42,16 @@ func gradFuncDecl(fetcher ir.Fetcher, parent *gradMacro, src *ir.FuncValExpr, fn
 		return nil, false
 	}
 	ident := &ast.Ident{Name: synthName}
-	if _, ok := grader.aux.Load(synthName); ok {
+	// Check if we need to build a new synthetic function.
+	if fetcher.IsDefined(synthName) {
+		// The function has already been built before.
 		return ident, true
 	}
+	if _, ok := grader.aux.Load(synthName); ok {
+		// The function has already been registered as a new auxiliary functions.
+		return ident, true
+	}
+	// No function already exists. Prepare to return it as a new auxiliary function.
 	gradF, err := grader.BuildType()
 	gradF.Name = ident
 	if err != nil {
