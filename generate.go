@@ -17,5 +17,5 @@ package gx
 
 //go:generate mkdir -p gxdeps/github.com/gx-org
 //go:generate ln -sf ../../.. gxdeps/github.com/gx-org/gx
-//go:generate bash -c "go tool cgo -exportheader golang/binder/cgx/cgx.cgo.h -- $CGO_CFLAGS golang/binder/cgx/cgx.go"
-//go:generate bash -c "go tool cgo -exportheader golang/binder/cgx/testing/testing.cgo.h -- $CGO_CFLAGS golang/binder/cgx/testing/testing.go"
+//go:generate go tool cgo -exportheader golang/binder/cgx/cgx.cgo.h golang/binder/cgx/cgx.go
+//go:generate go tool cgo -exportheader golang/binder/cgx/testing/testing.cgo.h golang/binder/cgx/testing/testing.go

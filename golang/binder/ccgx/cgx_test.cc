@@ -12,7 +12,7 @@
 // See the License for the specific language governing permissions and
 // limitations under the License.
 
-#include <gxdeps/github.com/gx-org/gx/golang/binder/cgx/cgx.h>
+#include <golang/binder/cgx/cgx.h>
 
 #include <stdlib.h>
 
@@ -21,8 +21,8 @@
 #include <string>
 
 #include <gtest/gtest.h>
-#include <gxdeps/github.com/gx-org/gx/golang/binder/cgx/cgx.cgo.h>
-#include <gxdeps/github.com/gx-org/gx/golang/binder/cgx/testing/testing.cgo.h>
+#include <golang/binder/cgx/cgx.cgo.h>
+#include <golang/binder/cgx/testing/testing.cgo.h>
 
 namespace cgx {
 namespace {

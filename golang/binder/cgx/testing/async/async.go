@@ -36,9 +36,9 @@ import (
 
 // #cgo CFLAGS: -I ../../../../..
 // #include <stdlib.h>
-// #include <gxdeps/github.com/gx-org/gx/golang/binder/cgx/cgx.h>
-// #include <gxdeps/github.com/gx-org/gx/golang/binder/cgx/cgx.cgo.h>
-// #include <gxdeps/github.com/gx-org/gx/golang/binder/cgx/testing/testing.cgo.h>
+// #include <golang/binder/cgx/cgx.h>
+// #include <golang/binder/cgx/cgx.cgo.h>
+// #include <golang/binder/cgx/testing/testing.cgo.h>
 import "C"
 
 const (

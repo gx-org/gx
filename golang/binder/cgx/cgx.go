@@ -41,7 +41,7 @@ import (
 #include <stdint.h>
 #include <stdlib.h>
 
-#include <gxdeps/github.com/gx-org/gx/golang/binder/cgx/cgx.h>
+#include <golang/binder/cgx/cgx.h>
 
 // cgx_device_get_result is the return value for cgx_device_get().
 struct cgx_device_get_result {

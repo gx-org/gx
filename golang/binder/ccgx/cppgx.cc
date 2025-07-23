@@ -12,7 +12,7 @@
 // See the License for the specific language governing permissions and
 // limitations under the License.
 
-#include <gxdeps/github.com/gx-org/gx/golang/binder/ccgx/cppgx.h>
+#include <golang/binder/ccgx/cppgx.h>
 
 #include <stdlib.h>
 
@@ -27,7 +27,7 @@
 #include <absl/status/status.h>
 #include <absl/status/statusor.h>
 #include <absl/types/span.h>
-#include <gxdeps/github.com/gx-org/gx/golang/binder/cgx/cgx.h>
+#include <golang/binder/cgx/cgx.h>
 
 namespace gxlang {
 namespace cppgx {

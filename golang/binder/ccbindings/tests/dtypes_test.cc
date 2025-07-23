@@ -20,9 +20,9 @@
 #include <gmock/gmock.h>
 #include <gtest/gtest.h>
 #include <absl/types/span.h>
-#include <gxdeps/github.com/gx-org/gx/golang/binder/ccgx/cppgx.h>
-#include <gxdeps/github.com/gx-org/gx/golang/binder/ccgx/testing/testing.h>
-#include <gxdeps/github.com/gx-org/gx/golang/binder/cgx/cgx.h>
+#include <golang/binder/ccgx/cppgx.h>
+#include <golang/binder/ccgx/testing/testing.h>
+#include <golang/binder/cgx/cgx.h>
 
 using gxlang::cppgx::Array;
 using gxlang::cppgx::Atomic;
