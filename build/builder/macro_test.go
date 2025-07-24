@@ -39,7 +39,7 @@ type idMacro struct {
 }
 
 func (m *idMacro) BuildType() (*ast.FuncDecl, error) {
-	return &ast.FuncDecl{Type: m.fn.FType.Src}, nil
+	return &ast.FuncDecl{Type: m.fn.FType.Src, Recv: m.fn.Src.Recv}, nil
 }
 
 func (m *idMacro) BuildBody(fetcher ir.Fetcher) (*ast.BlockStmt, []*cpevelements.SyntheticFuncDecl, bool) {
@@ -111,6 +111,110 @@ func f(x int32) int32 {
 	return x
 }
 `,
+		},
+	)
+}
+
+func TestMacroOnMethod(t *testing.T) {
+	typeS := &ir.NamedType{
+		File:       wantFile,
+		Src:        &ast.TypeSpec{Name: irh.Ident("S")},
+		Underlying: irh.TypeExpr(irh.StructType()),
+	}
+	fType := irh.FuncType(
+		nil,
+		irh.Fields(typeS),
+		irh.Fields(),
+		irh.Fields(ir.Int32Type()),
+	)
+	body := irh.SingleReturn(irh.IntNumberAs(2, ir.Int32Type()))
+	typeS.Methods = []ir.PkgFunc{
+		&ir.FuncDecl{
+			FType: fType,
+			Body:  body,
+		},
+		&ir.FuncDecl{
+			FType: fType,
+			Body:  body,
+		},
+	}
+	testbuild.Run(t,
+		testbuild.DeclarePackage{
+			Src: `
+package macro 
+
+//gx:irmacro
+func ID(any) any
+`,
+			Post: func(pkg *ir.Package) {
+				id := pkg.FindFunc("ID").(*ir.Macro)
+				id.BuildSynthetic = cpevelements.MacroImpl(newIDMacro)
+			},
+		},
+
+		testbuild.Decl{
+			Src: `
+import "macro"
+
+type S struct{}
+
+//gx:=macro.ID(S.f)
+func (S) synthetic()
+
+func (S) f() int32 {
+	return 2
+}
+`,
+			Want: []ir.Node{
+				typeS,
+			},
+		},
+		testbuild.Decl{
+			Src: `
+import "macro"
+
+type S struct{}
+
+//gx:=macro.ID(S.f)
+func synthetic()
+
+func (S) f() int32 {
+	return 2
+}
+`,
+			Err: "synthetic requires test.S receiver",
+		},
+		testbuild.Decl{
+			Src: `
+import "macro"
+
+type S struct{}
+
+//gx:=macro.ID(f)
+func (S) synthetic()
+
+func f() int32 {
+	return 2
+}
+`,
+			Err: "synthetic requires no receiver",
+		},
+		testbuild.Decl{
+			Src: `
+import "macro"
+
+type S struct{}
+
+type T struct{}
+
+//gx:=macro.ID(S.f)
+func (T) synthetic()
+
+func (S) f() int32 {
+	return 2
+}
+`,
+			Err: "cannot assign S.synthetic to T.synthetic",
 		},
 	)
 }
