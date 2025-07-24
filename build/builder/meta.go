@@ -330,6 +330,28 @@ func (f *syntheticFunc) buildSignature(pkgScope *pkgResolveScope) (ir.Func, iFun
 	return f.buildSignatureFScope(fScope)
 }
 
+func (f *syntheticFunc) checkSyntheticSignature(fScope *fileResolveScope, fSynth *ir.FuncDecl) bool {
+	fSrc, _, ok := buildFuncTypeFromAST(fScope, f.src)
+	if !ok {
+		return false
+	}
+	fSrcRecv := fSrc.FType.ReceiverField()
+	fSynthRecv := fSynth.FType.ReceiverField()
+	if fSrcRecv == nil && fSynthRecv == nil {
+		return true
+	}
+	if fSrcRecv == nil && fSynthRecv != nil {
+		return fScope.err().Appendf(f.src, "%s requires %s receiver", f.src.Name.Name, fSynthRecv.Type().String())
+	}
+	if fSrcRecv != nil && fSynthRecv == nil {
+		return fScope.err().Appendf(f.src, "%s requires no receiver", f.src.Name.Name)
+	}
+	if ok := equalToAt(fScope, f.src.Recv, fSrcRecv.Type(), fSynthRecv.Type()); !ok {
+		return fScope.err().Appendf(f.src, "cannot assign %s.%s to %s.%s", fSynthRecv.Type().NameDef().Name, fSynth.Src.Name.Name, fSrcRecv.Type().NameDef().Name, fSrc.Src.Name.Name)
+	}
+	return true
+}
+
 func (f *syntheticFunc) buildSignatureFScope(fScope *fileResolveScope) (ir.Func, iFuncResolveScope, bool) {
 	astFDecl, err := f.fnBuilder.Builder().BuildType()
 	if err != nil {
@@ -338,6 +360,9 @@ func (f *syntheticFunc) buildSignatureFScope(fScope *fileResolveScope) (ir.Func,
 	astFDecl.Name = f.src.Name
 	fDecl, fnScope, ok := buildFuncTypeFromAST(fScope, astFDecl)
 	if !ok {
+		return nil, nil, false
+	}
+	if ok := f.checkSyntheticSignature(fScope, fDecl); !ok {
 		return nil, nil, false
 	}
 	return fDecl, &macroResolveScope{

@@ -67,8 +67,7 @@ func (n *selectorExpr) selectFromPackage(scope resolveScope, sel *ir.SelectorExp
 	return store, true
 }
 
-func (n *selectorExpr) selectFromExpr(scope resolveScope, sel *ir.SelectorExpr) (ir.Storage, bool) {
-	exprType := sel.X.Type()
+func (n *selectorExpr) selectFromExpr(scope resolveScope, sel *ir.SelectorExpr, exprType ir.Type) (ir.Storage, bool) {
 	method, field := sel.Select(exprType)
 	if method != nil {
 		return method, true
@@ -79,11 +78,26 @@ func (n *selectorExpr) selectFromExpr(scope resolveScope, sel *ir.SelectorExpr) 
 	return n.returnUndefined(scope, sel.X)
 }
 
+func (n *selectorExpr) selectFromType(scope resolveScope, sel *ir.SelectorExpr) (ir.Storage, bool) {
+	xT, ok := sel.X.(*ir.ValueRef)
+	if !ok {
+		return n.returnUndefined(scope, sel.X)
+	}
+	exprType, ok := xT.Stor.(ir.Type)
+	if !ok {
+		return n.returnUndefined(scope, sel.X)
+	}
+	return n.selectFromExpr(scope, sel, exprType)
+}
+
 func (n *selectorExpr) selectStorageFrom(scope resolveScope, sel *ir.SelectorExpr) (ir.Storage, bool) {
 	if sel.X.Type().Kind() == ir.PackageKind {
 		return n.selectFromPackage(scope, sel)
 	}
-	return n.selectFromExpr(scope, sel)
+	if sel.X.Type().Kind() == ir.MetaTypeKind {
+		return n.selectFromType(scope, sel)
+	}
+	return n.selectFromExpr(scope, sel, sel.X.Type())
 }
 
 func (n *selectorExpr) buildSelectorExpr(scope resolveScope) (*ir.SelectorExpr, bool) {
