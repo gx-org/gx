@@ -54,12 +54,9 @@ func adjustFlags(mod *module.Module) error {
 	if *targetFolder != "" {
 		return nil
 	}
-	folder, err := mod.ImportToOSPath(*gxPackage)
-	if err != nil {
-		return err
-	}
-	*targetFolder = filepath.Join(folder, bindingsName)
-	return nil
+	var err error
+	*targetFolder, err = mod.ImportToOSPath(*gxPackage)
+	return err
 }
 
 func main() {

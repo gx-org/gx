@@ -67,7 +67,7 @@ func (b *binder) Files() []bindings.File {
 	}
 }
 
-func (b *binder) Namespace() (string, error) {
+func (b *binder) Namespace() string {
 	return fmtpath.Namespace(b.Package.FullName())
 }
 
@@ -83,7 +83,7 @@ func (f headerFile) WriteBindings(w io.Writer) error {
 	return hTemplate.Execute(w, f)
 }
 
-func (f headerFile) HeaderGuard() (string, error) {
+func (f headerFile) HeaderGuard() string {
 	return fmtpath.HeaderGuard(f.Package.FullName())
 }
 
@@ -99,6 +99,6 @@ func (f sourceFile) WriteBindings(w io.Writer) error {
 	return ccTemplate.Execute(w, f)
 }
 
-func (f sourceFile) HeaderPath() (string, error) {
+func (f sourceFile) HeaderPath() string {
 	return fmtpath.HeaderPath(f.Package.FullName())
 }
