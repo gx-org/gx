@@ -114,7 +114,7 @@ func Specialise(fetcher ir.Fetcher, expr ir.Expr, fun *ir.FuncValExpr, typs []*i
 			continue
 		}
 		if !assignedOk {
-			ok = fetcher.Err().Appendf(expr.Source(), "%s does not satisfy %s", typeArg.String(), typeParam.String())
+			ok = fetcher.Err().Appendf(expr.Source(), "%s does not satisfy %s", ir.TypeString(typeArg), ir.TypeString(typeParam))
 			continue
 		}
 		nameToType[genericName] = typeArgRef.Typ

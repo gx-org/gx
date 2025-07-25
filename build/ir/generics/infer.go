@@ -61,7 +61,7 @@ func Infer(fetcher ir.Fetcher, fExpr *ir.FuncValExpr, args []ir.AssignableExpr) 
 			inferredOk = fetcher.Err().Append(err)
 		}
 		if !canAssign {
-			inferredOk = fetcher.Err().Appendf(arg.Source(), "%s does not satisfy %s", arg.Type(), targetType)
+			inferredOk = fetcher.Err().Appendf(arg.Source(), "%s does not satisfy %s", ir.TypeString(arg.Type()), ir.TypeString(targetType))
 		}
 		nameToType[gType.name()] = arg.Type()
 	}

@@ -50,23 +50,20 @@ func (b *BlockStmt) String() string {
 }
 
 // String returns a string representation of the builtin function.
-func (s *FuncBuiltin) String() string {
-	return s.FType.String()
+func (f *FuncBuiltin) String() string {
+	return f.FType.NameString(f.Src.Name.Name)
 }
 
 // String returns a string representation of the function.
 func (f *FuncDecl) String() string {
-	params := f.FType.Params.String()
-	results := f.FType.Results.String()
-	if f.FType.Results.Len() > 1 {
-		results = fmt.Sprintf("(%s)", results)
-	}
+	sig := f.FType.NameString(f.Src.Name.Name)
 	body := gxfmt.Indent(f.Body.String())
-	return fmt.Sprintf("func %s(%s) %s {\n%s}", f.Src.Name.Name, params, results, body)
+	return fmt.Sprintf("%s {\n%s}", sig, body)
 }
 
-// String representation of the type.
-func (s *FuncType) String() string {
+// NameString returns a string representation of a signature given a name.
+// The name can be empty.
+func (s *FuncType) NameString(name string) string {
 	var b strings.Builder
 	b.WriteString("func")
 	if s.Receiver != nil {
@@ -75,10 +72,24 @@ func (s *FuncType) String() string {
 	if s.TypeParams != nil {
 		b.WriteString(fmt.Sprintf("[%s]", s.TypeParams.String()))
 	}
-	b.WriteString(s.Params.TupleType().String())
+	if name != "" {
+		b.WriteString(" " + name)
+	}
+	b.WriteString("(" + s.Params.String() + ")")
 	b.WriteRune(' ')
-	b.WriteString(s.Results.Type().String())
+	if s.Results.Len() > 1 {
+		b.WriteString("(")
+	}
+	b.WriteString(s.Results.String())
+	if s.Results.Len() > 1 {
+		b.WriteString(")")
+	}
 	return b.String()
+}
+
+// String representation of the type.
+func (s *FuncType) String() string {
+	return s.NameString("")
 }
 
 func (s *ReturnStmt) String() string {
@@ -261,4 +272,13 @@ func (s *BinaryExpr) String() string {
 	return (s.binaryElementString(s.X) +
 		s.Src.Op.String() +
 		s.binaryElementString(s.Y))
+}
+
+// TypeString returns a string representation of a type for users.
+func TypeString(typ Type) string {
+	nType, ok := typ.(*NamedType)
+	if !ok {
+		return typ.String()
+	}
+	return nType.Package().Name.Name + "." + nType.Name()
 }

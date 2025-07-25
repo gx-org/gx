@@ -1003,7 +1003,7 @@ func (f *NewPhilox) String() string {
 // If the shape of the arguments change, the function will panic.
 func (f *New) Run(arg0 *Philox) (_ *Rand, err error) {
 	var args []values.Value = []values.Value{
-		arg0.Bridge().GXValue(), // src rand.Philox
+		arg0.Bridge().GXValue(), // src Philox
 	}
 	if f.runner == nil {
 		f.runner, err = tracer.Trace(f.pkg.Device, f.function.(*ir.FuncDecl), nil, args, f.pkg.options)
