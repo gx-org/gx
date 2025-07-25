@@ -52,29 +52,29 @@ func trimPrefix(path string) (string, error) {
 }
 
 // HeaderPath formats the string for header guards.
-func HeaderPath(path string) (string, error) {
-	return filepath.Base(path) + ".h", nil
+func HeaderPath(path string) string {
+	return filepath.Base(path) + ".h"
 }
 
 // HeaderGuard formats the string for header guards.
-func HeaderGuard(guard string) (string, error) {
+func HeaderGuard(guard string) string {
 	guard, err := trimPrefix(guard)
 	if err != nil {
-		return "", err
+		return ""
 	}
 	guard = strings.ReplaceAll(guard, "/", "_")
 	guard = strings.ReplaceAll(guard, "-", "_")
 	guard = strings.ReplaceAll(guard, ".", "_")
 	guard = strings.ToUpper(guard)
-	return guard + "_H", nil
+	return guard + "_H"
 }
 
 // Namespace returns the C++ namespace.
-func Namespace(path string) (string, error) {
+func Namespace(path string) string {
 	namespace, err := trimPrefix(path)
 	if err != nil {
-		return "", err
+		return ""
 	}
 	namespace = strings.ReplaceAll(namespace, "/", "::")
-	return namespace, nil
+	return namespace
 }
