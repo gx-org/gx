@@ -87,7 +87,9 @@ func (m *exprGrader) gradExpr(src ir.Expr) (r *gradExprResult, ok bool) {
 	case *ir.ParenExpr:
 		return m.gradParenExpr(srcT)
 	case *ir.CallExpr:
-		return m.gradCall(m.fetcher, srcT)
+		return m.gradCall(srcT)
+	case *ir.SelectorExpr:
+		return m.gradSelectorExpr(srcT)
 	default:
 		return nil, m.fetcher.Err().Appendf(src.Source(), "gradient of %T expression not supported", srcT)
 	}
@@ -248,6 +250,10 @@ func (m *exprGrader) gradArrayLitExpr(src *ir.ArrayLitExpr) (*gradExprResult, bo
 			Elts: gValues,
 		},
 	}, true
+}
+
+func (m *exprGrader) gradSelectorExpr(src *ir.SelectorExpr) (*gradExprResult, bool) {
+	return zeroValueOf(src.Src), true
 }
 
 var zero = &ast.BasicLit{Value: "0", Kind: token.INT}
