@@ -67,13 +67,13 @@ func (s *FuncType) NameString(name string) string {
 	var b strings.Builder
 	b.WriteString("func")
 	if s.Receiver != nil {
-		b.WriteString(fmt.Sprintf(" (%s) ", s.Receiver.String()))
-	}
-	if s.TypeParams != nil {
-		b.WriteString(fmt.Sprintf("[%s]", s.TypeParams.String()))
+		b.WriteString(fmt.Sprintf(" (%s)", s.Receiver.String()))
 	}
 	if name != "" {
 		b.WriteString(" " + name)
+	}
+	if s.TypeParams != nil {
+		b.WriteString(fmt.Sprintf("[%s]", s.TypeParams.String()))
 	}
 	b.WriteString("(" + s.Params.String() + ")")
 	b.WriteRune(' ')
