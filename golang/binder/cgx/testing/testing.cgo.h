@@ -20,7 +20,8 @@ typedef struct { const char *p; ptrdiff_t n; } _GoString_;
 
 
 #line 29 "testing.go"
- #include <gx/golang/binder/cgx/cgx.h>
+
+ #include <golang/binder/cgx/cgx.h>
 
 #line 1 "cgo-generated-wrapper"
 

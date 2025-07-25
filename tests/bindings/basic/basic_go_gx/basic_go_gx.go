@@ -682,7 +682,7 @@ func (f *New) String() string {
 // If the shape of the arguments change, the function will panic.
 func (f *AddPrivate) Run(arg0 *Basic) (_ types.Atom[int32], err error) {
 	var args []values.Value = []values.Value{
-		arg0.Bridge().GXValue(), // b basic.Basic
+		arg0.Bridge().GXValue(), // b Basic
 	}
 	if f.runner == nil {
 		f.runner, err = tracer.Trace(f.pkg.Device, f.function.(*ir.FuncDecl), nil, args, f.pkg.options)

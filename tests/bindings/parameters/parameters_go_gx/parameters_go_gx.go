@@ -433,7 +433,7 @@ type MethodStructSetNotInSlice struct {
 // If the shape of the arguments change, the function will panic.
 func (f *MethodStructSetNotInSlice) Run(arg0 *NotInSlice) (_ *Struct, err error) {
 	var args []values.Value = []values.Value{
-		arg0.Bridge().GXValue(), // d parameters.NotInSlice
+		arg0.Bridge().GXValue(), // d NotInSlice
 	}
 	if f.runner == nil {
 		f.runner, err = tracer.Trace(f.pkg.Device, f.function.(*ir.FuncDecl), f.receiver.GXValue(), args, f.pkg.options)
@@ -762,7 +762,7 @@ func (f *NewStruct) String() string {
 // If the shape of the arguments change, the function will panic.
 func (f *AddToStruct) Run(arg0 *Struct) (_ *Struct, err error) {
 	var args []values.Value = []values.Value{
-		arg0.Bridge().GXValue(), // a parameters.Struct
+		arg0.Bridge().GXValue(), // a Struct
 	}
 	if f.runner == nil {
 		f.runner, err = tracer.Trace(f.pkg.Device, f.function.(*ir.FuncDecl), nil, args, f.pkg.options)
