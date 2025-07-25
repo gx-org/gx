@@ -34,7 +34,7 @@ func typeInclude(fetcher ir.Fetcher, set ir.Type, typ ir.Type) bool {
 		return fetcher.Err().Append(err)
 	}
 	if !isIn {
-		return fetcher.Err().Appendf(typ.Source(), "%s does not satisfy %s", typ.String(), set.String())
+		return fetcher.Err().Appendf(typ.Source(), "%s does not satisfy %s", ir.TypeString(typ), ir.TypeString(set))
 	}
 	return true
 }

@@ -625,7 +625,7 @@ func (s *NamedType) String() string {
 	if s.File == nil {
 		return s.Name()
 	}
-	return s.Package().Name.Name + "." + s.Name()
+	return s.Name()
 }
 
 // Package returns the package to which the type belongs to.
@@ -2264,7 +2264,10 @@ func (s *Field) Type() Type {
 
 // String returns a string representation of the field.
 func (s *Field) String() string {
-	return fmt.Sprintf("%s:%v", s.Name.Name, s.Group.Type)
+	if s.Name == nil {
+		return s.Group.Type.String()
+	}
+	return fmt.Sprintf("%s %s", s.Name.Name, s.Group.Type.String())
 }
 
 // ----------------------------------------------------------------------------
