@@ -164,6 +164,9 @@ func (mod *Module) ImportToOSPath(importPath string) (string, error) {
 
 // OSPath converts a path within the module to a path on the operating system.
 func (mod *Module) OSPath(path string) string {
+	if path == "." || path == "" {
+		return mod.root
+	}
 	return strings.Join([]string{
 		mod.root,
 		path,

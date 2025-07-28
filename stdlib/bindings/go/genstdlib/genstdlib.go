@@ -51,7 +51,7 @@ func BuildAll(newWriter func(*ir.Package) (io.WriteCloser, error)) error {
 			return err
 		}
 		defer w.Close()
-		bnd, err := gobindings.New(importer, pkg)
+		bnd, err := gobindings.NewWithImporter(importer, pkg)
 		if err != nil {
 			return fmt.Errorf("cannot create binder for %s: %w", pkg.Name.Name, err)
 		}

@@ -21,14 +21,11 @@ import (
 	"path/filepath"
 
 	"github.com/gx-org/gx/build/ir"
-	"github.com/gx-org/gx/golang/binder/gobindings"
 )
 
 // GenImports generates the source code to build GX packages
 // using the local filesystem.
 type GenImports struct{}
-
-var _ gobindings.DependenciesBuildCall = (*GenImports)(nil)
 
 // SourceImport generates the import when the GX source needs to be imported
 // from a Go module.

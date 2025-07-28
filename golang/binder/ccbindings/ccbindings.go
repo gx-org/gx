@@ -17,6 +17,7 @@ package ccbindings
 
 import (
 	"io"
+	"path/filepath"
 	"strings"
 	"text/template"
 
@@ -75,8 +76,9 @@ type headerFile struct {
 	*binder
 }
 
-func (headerFile) Extension() string {
-	return ".h"
+func (headerFile) BuildFilePath(root string, pkg *ir.Package) string {
+	pkgPath := fmtpath.PackagePath(pkg.Path)
+	return filepath.Join(root, pkgPath, pkg.Name.Name+".h")
 }
 
 func (f headerFile) WriteBindings(w io.Writer) error {
@@ -91,8 +93,9 @@ type sourceFile struct {
 	*binder
 }
 
-func (sourceFile) Extension() string {
-	return ".cc"
+func (sourceFile) BuildFilePath(root string, pkg *ir.Package) string {
+	pkgPath := fmtpath.PackagePath(pkg.Path)
+	return filepath.Join(root, pkgPath, pkg.Name.Name+".cc")
 }
 
 func (f sourceFile) WriteBindings(w io.Writer) error {

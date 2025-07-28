@@ -20,9 +20,12 @@ import (
 	"fmt"
 	"go/format"
 	"io"
+	"path/filepath"
 	"strings"
 	"text/template"
 
+	gbinder "github.com/gx-org/gx/build/importers/localfs/binder"
+	"github.com/gx-org/gx/golang/binder/ccbindings/fmtpath"
 	"github.com/pkg/errors"
 	"github.com/gx-org/gx/build/ir"
 	"github.com/gx-org/gx/golang/binder/bindings"
@@ -207,10 +210,15 @@ func (b *binder) namedTypeFactory(typ *ir.NamedType) (string, error) {
 }
 
 // New returns a new Go bindings generator.
-func New(builder DependenciesBuildCall, pkg *ir.Package) (bindings.Binder, error) {
+func New(pkg *ir.Package) (bindings.Binder, error) {
+	return NewWithImporter(gbinder.GenImports{}, pkg)
+}
+
+// NewWithImporter returns a new Go bindings generator given a way to import GX packages.
+func NewWithImporter(importer DependenciesBuildCall, pkg *ir.Package) (bindings.Binder, error) {
 	b := &binder{
 		Package:      pkg,
-		builder:      builder,
+		builder:      importer,
 		dependencies: make(map[string]dependency),
 		stdlib:       stdlib.Importer(nil),
 	}
@@ -245,8 +253,10 @@ func (b *binder) Files() []bindings.File {
 }
 
 // Extension returns the extension of the file being generated.
-func (b *binder) Extension() string {
-	return ".go"
+func (b *binder) BuildFilePath(root string, pkg *ir.Package) string {
+	pkgName := pkg.Name.Name
+	pkgPath := filepath.Join(fmtpath.PackagePath(pkg.Path), pkgName+"_go_gx", pkgName+"_go_gx"+".go")
+	return filepath.Join(root, pkgPath)
 }
 
 // WriteBindings the bindings for Go.
@@ -278,4 +288,13 @@ func nameFromRecv(recv *ir.Field) string {
 		return ""
 	}
 	return recv.Type().(*ir.NamedType).NameDef().Name
+}
+
+// Write writes Go bindings directly to a writer.
+func Write(w io.Writer, pkg *ir.Package) error {
+	bnd, err := New(pkg)
+	if err != nil {
+		return err
+	}
+	return bnd.Files()[0].WriteBindings(w)
 }
