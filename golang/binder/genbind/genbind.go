@@ -26,17 +26,14 @@ import (
 	"github.com/gx-org/gx/build/builder"
 	"github.com/gx-org/gx/build/importers"
 	"github.com/gx-org/gx/build/importers/localfs"
-	"github.com/gx-org/gx/build/module"
 	"github.com/gx-org/gx/golang/binder"
 	"github.com/gx-org/gx/stdlib"
 )
 
 var (
-	modfile      = flag.String("modfile", "", "folder containing go.mod")
-	targetFolder = flag.String("target_folder", "", "target location")
-	targetName   = flag.String("target_name", "", "name of the file")
-	language     = flag.String("language", "go", "Language for which to generate the bindings")
-	gxPackage    = flag.String("gx_package", "", "GX package to generate the bindings for")
+	modfile   = flag.String("modfile", "", "folder containing go.mod")
+	language  = flag.String("language", "go", "Language for which to generate the bindings")
+	gxPackage = flag.String("gx_package", "", "GX package to generate the bindings for")
 )
 
 func exit(format string, a ...any) {
@@ -45,35 +42,11 @@ func exit(format string, a ...any) {
 	os.Exit(1)
 }
 
-func adjustFlags(mod *module.Module) error {
-	_, name := filepath.Split(*gxPackage)
-	bindingsName := name + "_go_gx"
-	if *targetName == "" {
-		*targetName = bindingsName
-	}
-	if *targetFolder != "" {
-		return nil
-	}
-	folder, err := mod.ImportToOSPath(*gxPackage)
-	if err != nil {
-		return err
-	}
-	*targetFolder = filepath.Join(folder, bindingsName)
-	return nil
-}
-
 func main() {
 	flag.Parse()
 	localImporter, err := localfs.New(*modfile)
 	if err != nil {
 		exit("cannot create local importer: %v", err)
-	}
-	if err := adjustFlags(localImporter.Module()); err != nil {
-		exit("%v", err)
-	}
-	fullFilePath := filepath.Join(*targetFolder, *targetName)
-	if err := os.MkdirAll(filepath.Dir(fullFilePath), os.ModePerm); err != nil {
-		exit("cannot create target directory: %v", err)
 	}
 	bndConstructor, ok := binder.Binders[*language]
 	if !ok {
@@ -91,8 +64,13 @@ func main() {
 	if err != nil {
 		exit("%+v", err)
 	}
+	rootFolder := filepath.Join(localImporter.Module().OSPath(""), "gxdeps")
 	for _, file := range bnd.Files() {
-		f, err := os.Create(fullFilePath + file.Extension())
+		bindingPath := file.BuildFilePath(rootFolder, pkg.IR())
+		if err := os.MkdirAll(filepath.Dir(bindingPath), 0755); err != nil {
+			exit("cannot create target folder: %v", err)
+		}
+		f, err := os.Create(bindingPath)
 		if err != nil {
 			exit("cannot create target file: %v", err)
 		}

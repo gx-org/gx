@@ -17,6 +17,7 @@ package ccbindings
 
 import (
 	"io"
+	"path/filepath"
 	"strings"
 	"text/template"
 
@@ -67,7 +68,7 @@ func (b *binder) Files() []bindings.File {
 	}
 }
 
-func (b *binder) Namespace() (string, error) {
+func (b *binder) Namespace() string {
 	return fmtpath.Namespace(b.Package.FullName())
 }
 
@@ -75,15 +76,16 @@ type headerFile struct {
 	*binder
 }
 
-func (headerFile) Extension() string {
-	return ".h"
+func (headerFile) BuildFilePath(root string, pkg *ir.Package) string {
+	pkgPath := fmtpath.PackagePath(pkg.Path)
+	return filepath.Join(root, pkgPath, pkg.Name.Name+".h")
 }
 
 func (f headerFile) WriteBindings(w io.Writer) error {
 	return hTemplate.Execute(w, f)
 }
 
-func (f headerFile) HeaderGuard() (string, error) {
+func (f headerFile) HeaderGuard() string {
 	return fmtpath.HeaderGuard(f.Package.FullName())
 }
 
@@ -91,14 +93,15 @@ type sourceFile struct {
 	*binder
 }
 
-func (sourceFile) Extension() string {
-	return ".cc"
+func (sourceFile) BuildFilePath(root string, pkg *ir.Package) string {
+	pkgPath := fmtpath.PackagePath(pkg.Path)
+	return filepath.Join(root, pkgPath, pkg.Name.Name+".cc")
 }
 
 func (f sourceFile) WriteBindings(w io.Writer) error {
 	return ccTemplate.Execute(w, f)
 }
 
-func (f sourceFile) HeaderPath() (string, error) {
+func (f sourceFile) HeaderPath() string {
 	return fmtpath.HeaderPath(f.Package.FullName())
 }

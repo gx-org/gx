@@ -20,7 +20,7 @@ import (
 	"testing"
 
 	"github.com/gx-org/gx/build/builder"
-	"github.com/gx-org/gx/golang/binder"
+	"github.com/gx-org/gx/golang/binder/gobindings"
 	gxtesting "github.com/gx-org/gx/tests/testing"
 )
 
@@ -103,7 +103,7 @@ func run(t *testing.T, bld *builder.Builder, path string, wants []string) {
 		return
 	}
 	out := &strings.Builder{}
-	if err := binder.GoBindings(out, pkg.IR()); err != nil {
+	if err := gobindings.Write(out, pkg.IR()); err != nil {
 		t.Fatalf("cannot generate bindings:\n%+v\n\nOutput generated:\n%s", err, gxtesting.NumberLines(out.String()))
 	}
 	got := out.String()
