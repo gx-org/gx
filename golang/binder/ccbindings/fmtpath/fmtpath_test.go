@@ -27,7 +27,10 @@ func init() {
 }
 
 func TestHeaderPath(t *testing.T) {
-	got := fmtpath.HeaderPath(pkgPath)
+	got, err := fmtpath.HeaderPath(pkgPath)
+	if err != nil {
+		t.Fatal(err)
+	}
 	want := "somewhere.h"
 	if got != want {
 		t.Errorf("incorrect header path: got %s but want %s", got, want)
@@ -35,7 +38,10 @@ func TestHeaderPath(t *testing.T) {
 }
 
 func TestHeaderGuard(t *testing.T) {
-	got := fmtpath.HeaderGuard(pkgPath)
+	got, err := fmtpath.HeaderGuard(pkgPath)
+	if err != nil {
+		t.Fatal(err)
+	}
 	want := "PACKAGE_SOMEWHERE_H"
 	if got != want {
 		t.Errorf("incorrect header path: got %s but want %s", got, want)
@@ -43,7 +49,10 @@ func TestHeaderGuard(t *testing.T) {
 }
 
 func TestNamespace(t *testing.T) {
-	got := fmtpath.Namespace(pkgPath)
+	got, err := fmtpath.Namespace(pkgPath)
+	if err != nil {
+		t.Fatal(err)
+	}
 	want := "package::somewhere"
 	if got != want {
 		t.Errorf("incorrect header path: got %s but want %s", got, want)
