@@ -46,18 +46,24 @@ func trimPrefix(path string) (string, error) {
 	if err != nil {
 		return "", err
 	}
+	if mName == path {
+		return mName, nil
+	}
 	path = strings.TrimPrefix(path, mName)
 	path = strings.TrimPrefix(path, "/")
 	return path, nil
 }
 
+// Functions provided by the package.
+type Functions struct{}
+
 // HeaderPath formats the string for header guards.
-func HeaderPath(path string) string {
+func (Functions) HeaderPath(path string) string {
 	return filepath.Base(path) + ".h"
 }
 
 // HeaderGuard formats the string for header guards.
-func HeaderGuard(guard string) string {
+func (Functions) HeaderGuard(guard string) string {
 	guard, err := trimPrefix(guard)
 	if err != nil {
 		return ""
@@ -70,7 +76,7 @@ func HeaderGuard(guard string) string {
 }
 
 // Namespace returns the C++ namespace.
-func Namespace(path string) string {
+func (Functions) Namespace(path string) string {
 	namespace, err := trimPrefix(path)
 	if err != nil {
 		return ""
@@ -80,6 +86,6 @@ func Namespace(path string) string {
 }
 
 // PackagePath prepares a package path.
-func PackagePath(path string) string {
+func (Functions) PackagePath(path string) string {
 	return path
 }

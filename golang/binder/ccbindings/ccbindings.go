@@ -38,17 +38,35 @@ var (
 	hTemplate      = template.Must(template.New("hTMPL").Parse(headerBindings))
 )
 
-type binder struct {
-	Package *ir.Package
-	Class   string
+type (
+	// FmtPath is a set of functions to format C++ paths.
+	FmtPath interface {
+		HeaderPath(path string) string
+		HeaderGuard(path string) string
+		Namespace(path string) string
+		PackagePath(path string) string
+	}
 
-	Funcs []*function
-}
+	binder struct {
+		fmtpath FmtPath
+
+		Package *ir.Package
+		Class   string
+
+		Funcs []*function
+	}
+)
 
 // New C++ binder.
 func New(pkg *ir.Package) (bindings.Binder, error) {
+	return NewWithFmtPath(fmtpath.Functions{}, pkg)
+}
+
+// NewWithFmtPath returns a new C++ binder with a path formatter.
+func NewWithFmtPath(fmtpath FmtPath, pkg *ir.Package) (bindings.Binder, error) {
 	name := pkg.Name.Name
 	b := &binder{
+		fmtpath: fmtpath,
 		Package: pkg,
 		Class:   strings.ToUpper(name[:1]) + name[1:],
 	}
@@ -69,15 +87,15 @@ func (b *binder) Files() []bindings.File {
 }
 
 func (b *binder) Namespace() string {
-	return fmtpath.Namespace(b.Package.FullName())
+	return b.fmtpath.Namespace(b.Package.FullName())
 }
 
 type headerFile struct {
 	*binder
 }
 
-func (headerFile) BuildFilePath(root string, pkg *ir.Package) string {
-	pkgPath := fmtpath.PackagePath(pkg.Path)
+func (f headerFile) BuildFilePath(root string, pkg *ir.Package) string {
+	pkgPath := f.fmtpath.PackagePath(pkg.Path)
 	return filepath.Join(root, pkgPath, pkg.Name.Name+".h")
 }
 
@@ -86,15 +104,15 @@ func (f headerFile) WriteBindings(w io.Writer) error {
 }
 
 func (f headerFile) HeaderGuard() string {
-	return fmtpath.HeaderGuard(f.Package.FullName())
+	return f.fmtpath.HeaderGuard(f.Package.FullName())
 }
 
 type sourceFile struct {
 	*binder
 }
 
-func (sourceFile) BuildFilePath(root string, pkg *ir.Package) string {
-	pkgPath := fmtpath.PackagePath(pkg.Path)
+func (f sourceFile) BuildFilePath(root string, pkg *ir.Package) string {
+	pkgPath := f.fmtpath.PackagePath(pkg.Path)
 	return filepath.Join(root, pkgPath, pkg.Name.Name+".cc")
 }
 
@@ -103,5 +121,5 @@ func (f sourceFile) WriteBindings(w io.Writer) error {
 }
 
 func (f sourceFile) HeaderPath() string {
-	return fmtpath.HeaderPath(f.Package.FullName())
+	return f.fmtpath.HeaderPath(f.Package.FullName())
 }

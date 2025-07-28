@@ -26,6 +26,7 @@ import (
 
 	"github.com/pkg/errors"
 	"golang.org/x/mod/modfile"
+	"golang.org/x/mod/module"
 )
 
 const moduleFileName = "go.mod"
@@ -181,4 +182,53 @@ func (mod *Module) FS() fs.ReadDirFS {
 // Name of the module as specified in the go.mod file.
 func (mod *Module) Name() string {
 	return mod.name
+}
+
+// GXPathFromOS returns the GX package from an OS path.
+// Returns an empty string if the path does not belong to the package.
+func (mod *Module) GXPathFromOS(osPath string) (string, error) {
+	absPath, err := filepath.Abs(osPath)
+	if err != nil {
+		return "", fmt.Errorf("cannot get absolute path of %s: %v", osPath, err)
+	}
+	if !strings.HasPrefix(absPath, mod.root) {
+		return "", fmt.Errorf("%s does not have path prefix %s", absPath, mod.root)
+	}
+	info, err := os.Stat(absPath)
+	if err != nil {
+		return "", fmt.Errorf("cannot read %s: %v", absPath, err)
+	}
+	if !info.IsDir() {
+		absPath = filepath.Dir(absPath)
+	}
+	pkgPath := strings.TrimPrefix(absPath, mod.root)
+	return filepath.Join(mod.name, pkgPath), nil
+}
+
+// Deps returns a list of all the direct dependencies.
+func (mod *Module) Deps() []*module.Version {
+	var deps []*module.Version
+	for _, dep := range mod.mod.Require {
+		if dep.Indirect {
+			continue
+		}
+		deps = append(deps, &dep.Mod)
+	}
+	return deps
+}
+
+// VersionOf returns the version of a given module path
+// or an empty string if not found.
+func (mod *Module) VersionOf(path string) string {
+	for _, dep := range mod.Deps() {
+		if dep.Path == path {
+			return dep.Version
+		}
+	}
+	return ""
+}
+
+// Root returns the parent directory of go.mod.
+func (mod *Module) Root() string {
+	return mod.root
 }

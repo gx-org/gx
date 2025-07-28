@@ -125,7 +125,7 @@ func (a *cast) Type() ir.Type {
 
 // Unflatten creates a GX value from the next handles available in the parser.
 func (a *cast) Unflatten(handles *flatten.Parser) (values.Value, error) {
-	return handles.ParseArray(a.src.Node().Type())
+	return a.val, nil
 }
 
 // NumericalConstant returns the value of a constant represented by a node.

@@ -15,7 +15,6 @@
 package types
 
 import (
-	"fmt"
 	"go/ast"
 
 	"github.com/gx-org/backend/dtype"
@@ -46,11 +45,6 @@ var _ Array[int64] = (*DeviceArray[int64])(nil)
 func NewDeviceArray[T dtype.GoDataType](val *values.DeviceArray) *DeviceArray[T] {
 	array := &DeviceArray[T]{}
 	array.baseBridge = newBaseBridge(array, val)
-	dtypeGot := val.Shape().DType
-	dtypeWant := dtype.Generic[T]()
-	if dtypeGot != dtypeWant {
-		panic(fmt.Sprintf("assigning GX device value of shape %s to a Go binding array of data type %s", dtypeGot.String(), dtypeWant.String()))
-	}
 	return array
 }
 

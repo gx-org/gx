@@ -15,7 +15,6 @@
 package types
 
 import (
-	"fmt"
 	"unsafe"
 
 	"github.com/gx-org/backend/dtype"
@@ -48,11 +47,6 @@ var _ Atom[int64] = (*DeviceAtom[int64])(nil)
 func NewDeviceAtom[T dtype.GoDataType](val *values.DeviceArray) *DeviceAtom[T] {
 	atomic := &DeviceAtom[T]{}
 	atomic.baseBridge = newBaseBridge(atomic, val)
-	shapeGot := val.Shape()
-	dtypeWant := dtype.Generic[T]()
-	if shapeGot.DType != dtypeWant || !shapeGot.IsAtomic() {
-		panic(fmt.Sprintf("assigning GX device value of shape %s to a Go binding atom of type %s", shapeGot.String(), dtypeWant.String()))
-	}
 	return atomic
 }
 

@@ -255,8 +255,9 @@ func (b *binder) Files() []bindings.File {
 // Extension returns the extension of the file being generated.
 func (b *binder) BuildFilePath(root string, pkg *ir.Package) string {
 	pkgName := pkg.Name.Name
-	pkgPath := filepath.Join(fmtpath.PackagePath(pkg.Path), pkgName+"_go_gx", pkgName+"_go_gx"+".go")
-	return filepath.Join(root, pkgPath)
+	pkgPath := fmtpath.Functions{}.PackagePath(pkg.Path)
+	filePath := filepath.Join(pkgPath, pkgName+"_go_gx", pkgName+"_go_gx"+".go")
+	return filepath.Join(root, filePath)
 }
 
 // WriteBindings the bindings for Go.
