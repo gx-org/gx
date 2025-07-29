@@ -16,12 +16,11 @@
 package binder
 
 import (
-	"io"
 	"maps"
 	"os"
+	"path/filepath"
 	"slices"
 
-	"github.com/gx-org/gx/build/importers/localfs/binder"
 	"github.com/pkg/errors"
 	"github.com/gx-org/gx/build/ir"
 	"github.com/gx-org/gx/golang/binder/bindings"
@@ -29,18 +28,14 @@ import (
 	"github.com/gx-org/gx/golang/binder/gobindings"
 )
 
-func goBinder(pkg *ir.Package) (bindings.Binder, error) {
-	return gobindings.New(binder.GenImports{}, pkg)
-}
-
 // Binders available.
 var Binders = map[string]bindings.New{
-	"go": goBinder,
+	"go": gobindings.New,
 	"cc": ccbindings.New,
 }
 
 // Bind generates the package for a given language and file name.
-func Bind(language string, filepath string, pkg *ir.Package) error {
+func Bind(language string, targetFolder string, pkg *ir.Package) error {
 	bndConstructor, ok := Binders[language]
 	if !ok {
 		return errors.Errorf("cannot create bindings for language %q: no binder available. Available binders are %v", language, slices.Collect(maps.Keys(Binders)))
@@ -50,7 +45,11 @@ func Bind(language string, filepath string, pkg *ir.Package) error {
 		return err
 	}
 	for _, file := range bnd.Files() {
-		f, err := os.Create(filepath + file.Extension())
+		filePath := file.BuildFilePath(targetFolder, pkg)
+		if err := os.MkdirAll(filepath.Dir(filePath), 0750); err != nil {
+			return err
+		}
+		f, err := os.Create(filePath)
 		if err != nil {
 			return errors.Errorf("cannot create target file: %v", err)
 		}
@@ -62,13 +61,4 @@ func Bind(language string, filepath string, pkg *ir.Package) error {
 		}
 	}
 	return nil
-}
-
-// GoBindings generates the Go bindings into a writer.
-func GoBindings(w io.Writer, pkg *ir.Package) error {
-	bnd, err := goBinder(pkg)
-	if err != nil {
-		return err
-	}
-	return bnd.Files()[0].WriteBindings(w)
 }
