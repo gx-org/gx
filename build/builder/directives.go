@@ -41,12 +41,19 @@ func (d directive) String() string {
 	}
 }
 
-const directivePrefix = "//gx:"
+const directivePrefix = "gx:"
 
 var directives = map[string]directive{
 	irmacro.String(): irmacro,
 	cpeval.String():  cpeval,
 	none.String():    none,
+}
+
+func trimCommentPrefix(cmt *ast.Comment) string {
+	text := cmt.Text
+	text = strings.TrimPrefix(text, "//")
+	text = strings.TrimSpace(text)
+	return text
 }
 
 func processFuncDirective(pscope procScope, fn *ast.FuncDecl) (directive, *ast.Comment, bool) {
@@ -56,10 +63,11 @@ func processFuncDirective(pscope procScope, fn *ast.FuncDecl) (directive, *ast.C
 	dir := none
 	var comment *ast.Comment
 	for _, doc := range fn.Doc.List {
-		if !strings.HasPrefix(doc.Text, directivePrefix) {
+		text := trimCommentPrefix(doc)
+		if !strings.HasPrefix(text, directivePrefix) {
 			continue
 		}
-		dirS := doc.Text[len(directivePrefix):]
+		dirS := text[len(directivePrefix):]
 		docDir := directives[dirS]
 		if docDir == invalid {
 			return dir, doc, pscope.err().Appendf(doc, "undefined directive %s", doc.Text)

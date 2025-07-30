@@ -57,7 +57,7 @@ func TestAnnotation(t *testing.T) {
 			Src: `
 package annotation
 
-//gx:irmacro
+// gx:irmacro
 func Tag(any, string) any
 `,
 			Post: func(pkg *ir.Package) {
@@ -69,7 +69,7 @@ func Tag(any, string) any
 			Src: `
 import "annotation"
 
-//gx@=annotation.Tag("Hello")
+// gx@=annotation.Tag("Hello")
 func f() int32 {
 	return 2
 }
@@ -100,8 +100,8 @@ func f() int32 {
 			Src: `
 import "annotation"
 
-//gx@=annotation.Tag("Hello")
-//gx@=annotation.Tag("Bonjour")
+// gx@=annotation.Tag("Hello")
+// gx@=annotation.Tag("Bonjour")
 func f() int32 {
 	return 2
 }
