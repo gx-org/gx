@@ -172,23 +172,28 @@ var _ function = (*funcDecl)(nil)
 
 func (bFile *file) processFunc(fileScope procScope, src *ast.FuncDecl) bool {
 	dir, dirComment, dirOk := processFuncDirective(fileScope, src)
-	var funOk bool
+	var fn function
+	var ok bool
 	switch dir {
 	case none:
-		funOk = bFile.processDeclaredFunc(fileScope, src, false)
+		fn, ok = bFile.processDeclaredFunc(fileScope, src, false)
 	case assign: // Function body assigned via gx:=
-		funOk = bFile.processSyntheticFunc(fileScope, src, dirComment)
+		fn, ok = bFile.processSyntheticFunc(fileScope, src, dirComment)
 	case irmacro: // IR Macro function that will be called by the compiler via gx:irmacro
-		funOk = bFile.processIRMacroFunc(fileScope, src, dirComment)
+		fn, ok = bFile.processIRMacroFunc(fileScope, src, dirComment)
 	case cpeval:
-		funOk = bFile.processDeclaredFunc(fileScope, src, true)
+		fn, ok = bFile.processDeclaredFunc(fileScope, src, true)
 	default:
 		return fileScope.err().AppendInternalf(dirComment, "directive %d not supported", dir)
 	}
-	return dirOk && funOk
+	if !ok {
+		return false
+	}
+	_, ok = fileScope.pkgScope().decls().registerFunc(fn)
+	return dirOk && ok
 }
 
-func (bFile *file) processDeclaredFunc(fileScope procScope, src *ast.FuncDecl, compEval bool) bool {
+func (bFile *file) processDeclaredFunc(fileScope procScope, src *ast.FuncDecl, compEval bool) (function, bool) {
 	if src.Body == nil {
 		return bFile.processBuiltinFunc(fileScope, src, compEval)
 	}
@@ -196,26 +201,18 @@ func (bFile *file) processDeclaredFunc(fileScope procScope, src *ast.FuncDecl, c
 }
 
 func newFuncDecl(scope procScope, fn *ast.FuncDecl, compEval bool) (*funcDecl, bool) {
-	f := &funcDecl{
-		bFile: scope.file(),
-		src:   fn,
-	}
+	f := &funcDecl{bFile: scope.file(), src: fn}
 	var ok bool
 	f.fType, ok = processFuncType(scope, fn.Type, fn.Recv, compEval)
 	return f, ok
 }
 
-func (bFile *file) processFuncDecl(pscope procScope, src *ast.FuncDecl, compEval bool) bool {
-	f, processOk := newFuncDecl(pscope, src, compEval)
-	if _, regOk := pscope.decls().registerFunc(f); !regOk {
-		processOk = false
-	}
-	if !f.checkReturnValue(pscope) {
-		processOk = false
-	}
+func (bFile *file) processFuncDecl(pscope procScope, src *ast.FuncDecl, compEval bool) (function, bool) {
+	f, declOk := newFuncDecl(pscope, src, compEval)
+	retOk := f.checkReturnValue(pscope)
 	var bodyOk bool
 	f.body, bodyOk = processBlockStmt(pscope, f.src.Body)
-	return processOk && bodyOk
+	return f, declOk && retOk && bodyOk
 }
 
 func checkEmptyParamsResults(scope procScope, fn *ast.FuncDecl, errPrefix string) bool {
@@ -290,14 +287,11 @@ type funcBuiltin struct {
 
 var _ function = (*funcBuiltin)(nil)
 
-func (bFile *file) processBuiltinFunc(scope procScope, src *ast.FuncDecl, compEval bool) bool {
-	fDecl, fDeclOk := newFuncDecl(scope, src, compEval)
-	fn := &funcBuiltin{
-		funcDecl: fDecl,
-	}
-	returnOk := fn.funcDecl.checkReturnValue(scope)
-	_, declareOk := scope.decls().registerFunc(fn)
-	return fDeclOk && returnOk && declareOk
+func (bFile *file) processBuiltinFunc(scope procScope, src *ast.FuncDecl, compEval bool) (function, bool) {
+	fDecl, declOk := newFuncDecl(scope, src, compEval)
+	fn := &funcBuiltin{funcDecl: fDecl}
+	retOk := fn.funcDecl.checkReturnValue(scope)
+	return fn, declOk && retOk
 }
 
 func (f *funcBuiltin) buildSignature(pkgScope *pkgResolveScope) (ir.Func, iFuncResolveScope, bool) {
