@@ -190,24 +190,16 @@ type assignFuncDirective struct {
 	macro *callExpr
 }
 
-func (bFile *file) processSyntheticFunc(pscope procScope, src *ast.FuncDecl, comment *ast.Comment) bool {
+func (bFile *file) processSyntheticFunc(pscope procScope, src *ast.FuncDecl, comment *ast.Comment) (function, bool) {
 	f := &assignFuncDirective{
 		coreSyntheticFunc: coreSyntheticFunc{
 			bFile: pscope.file(),
 			src:   src,
 		},
 	}
-	ok := true
-	if _, regOk := pscope.decls().registerFunc(f); !regOk {
-		ok = false
-	}
-	if !checkEmptyParamsResults(pscope, src, "assigned") {
-		ok = false
-	}
-	if !ok {
-		return false
-	}
-	return f.processFuncAssignDirective(pscope, comment)
+	paramOk := checkEmptyParamsResults(pscope, src, "assigned")
+	dirOk := f.processFuncAssignDirective(pscope, comment)
+	return f, paramOk && dirOk
 }
 
 func (f *assignFuncDirective) processFuncAssignDirective(pscope procScope, doc *ast.Comment) bool {

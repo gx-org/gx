@@ -24,14 +24,11 @@ type funcMacro struct {
 	*funcDecl
 }
 
-func (bFile *file) processIRMacroFunc(scope procScope, src *ast.FuncDecl, comment *ast.Comment) bool {
-	fDecl, fDeclOk := newFuncDecl(scope, src, false)
-	fn := &funcMacro{
-		funcDecl: fDecl,
-	}
-	returnOk := fn.funcDecl.checkReturnValue(scope)
-	_, declareOk := scope.decls().registerFunc(fn)
-	return fDeclOk && returnOk && declareOk
+func (bFile *file) processIRMacroFunc(scope procScope, src *ast.FuncDecl, comment *ast.Comment) (function, bool) {
+	fDecl, declOk := newFuncDecl(scope, src, false)
+	fn := &funcMacro{funcDecl: fDecl}
+	retOk := fn.funcDecl.checkReturnValue(scope)
+	return fn, declOk && retOk
 }
 
 func (f *funcMacro) buildSignature(pkgScope *pkgResolveScope) (ir.Func, iFuncResolveScope, bool) {
