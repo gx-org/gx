@@ -66,7 +66,7 @@ func (tt Method) buildSourceCode() (string, error) {
 		tpName, fnName := names[0], names[1]
 		grads.WriteString(fmt.Sprintf(
 			`
-//gx:=%s.Func(%s.%s, "x")
+//gx@=%s.Func(%s.%s, "x")
 func (%s) grad%s()
 `,
 			callImportName, tpName, fnName, tpName, fnName))

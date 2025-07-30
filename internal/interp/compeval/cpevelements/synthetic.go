@@ -25,6 +25,7 @@ type (
 	SyntheticBuilder interface {
 		BuildType() (*ast.FuncDecl, error)
 		BuildBody(ir.Fetcher) (*ast.BlockStmt, []*SyntheticFuncDecl, bool)
+		BuildAnnotations(ir.Fetcher, ir.PkgFunc) bool
 	}
 
 	// SyntheticFunc is a GX string.

@@ -248,7 +248,7 @@ func (d *decls) buildFunctions(pkgScope *pkgResolveScope, filter func(f *process
 	return ok
 }
 
-func (d *decls) registerAuxFuncs(mScope *macroResolveScope, auxs []*cpevelements.SyntheticFuncDecl) (todos []*irFunc, ok bool) {
+func (d *decls) registerAuxFuncs(mScope *synthResolveScope, auxs []*cpevelements.SyntheticFuncDecl) (todos []*irFunc, ok bool) {
 	fScope := mScope.fileScope()
 	for _, aux := range auxs {
 		bFile := newFile(fScope.pkg(), aux.F.Name.Name+"_synt.gx", &ast.File{})

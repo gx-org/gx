@@ -6,7 +6,7 @@ func Constant(x [2]float32) [2]float32 {
 	return [...]float32{1.0, 2.0}
 }
 
-//gx:=grad.Func(Constant, "x")
+//gx@=grad.Func(Constant, "x")
 func ConstantGrad()
 
 func TestConstant() [2]float32 {
@@ -25,7 +25,7 @@ func XAsElement(x float32) [2]float32 {
 	return [...]float32{x, 2.0}
 }
 
-//gx:=grad.Func(XAsElement, "x")
+//gx@=grad.Func(XAsElement, "x")
 func XAsElementGrad()
 
 func TestXAsElementGrad() [2]float32 {
@@ -49,7 +49,7 @@ func OverShadow(x float32) (float32, float32) {
 	return x1, x2
 }
 
-//gx:=grad.Func(OverShadow, "x")
+//gx@=grad.Func(OverShadow, "x")
 func OverShadowGrad()
 
 func TestOverShadowGrad() (float32, float32) {

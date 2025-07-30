@@ -1120,6 +1120,7 @@ type (
 		pkgFunc()
 		StorageWithValue
 		Func
+		Annotations() *Annotations
 	}
 
 	// Statically assert that the Func and Expr interfaces are compatible.
@@ -1134,6 +1135,7 @@ type (
 		Src   *ast.FuncDecl
 		FType *FuncType
 		Body  *BlockStmt
+		Anns  Annotations
 	}
 
 	// FuncBuiltin is a function provided by a backend.
@@ -1143,6 +1145,7 @@ type (
 		Src   *ast.FuncDecl
 		FType *FuncType
 		Impl  FuncImpl
+		Anns  Annotations
 	}
 
 	// Macro is a function that takes a set of IR nodes as an input
@@ -1406,6 +1409,11 @@ func (s *FuncDecl) File() *File {
 	return s.FFile
 }
 
+// Annotations returns the annotations attached to the function.
+func (s *FuncDecl) Annotations() *Annotations {
+	return &s.Anns
+}
+
 func (*FuncBuiltin) node()         {}
 func (*FuncBuiltin) staticValue()  {}
 func (*FuncBuiltin) storage()      {}
@@ -1457,6 +1465,11 @@ func (s *FuncBuiltin) Same(o Storage) bool {
 // File declaring the function.
 func (s *FuncBuiltin) File() *File {
 	return s.FFile
+}
+
+// Annotations returns the annotations attached to the function.
+func (s *FuncBuiltin) Annotations() *Annotations {
+	return &s.Anns
 }
 
 func (*FuncLit) node()         {}
@@ -1578,6 +1591,11 @@ func (s *Macro) Source() ast.Node {
 // Same returns true if the other storage is this storage.
 func (s *Macro) Same(o Storage) bool {
 	return Storage(s) == o
+}
+
+// Annotations returns the annotations attached to the function.
+func (s *Macro) Annotations() *Annotations {
+	return &Annotations{}
 }
 
 // String representation of the literal.

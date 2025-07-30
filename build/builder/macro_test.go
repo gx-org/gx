@@ -27,7 +27,7 @@ import (
 )
 
 func newIDMacro(call elements.CallAt, macro *cpevelements.Macro, args []ir.Element) (*cpevelements.SyntheticFunc, error) {
-	fn, err := interp.FuncDeclFromElement(args[0])
+	fn, err := interp.FuncDeclFromElement(args[1])
 	if err != nil {
 		return nil, err
 	}
@@ -46,25 +46,31 @@ func (m *idMacro) BuildBody(fetcher ir.Fetcher) (*ast.BlockStmt, []*cpevelements
 	return m.fn.Body.Src, nil, true
 }
 
-func TestMacro(t *testing.T) {
-	testbuild.Run(t,
-		testbuild.DeclarePackage{
-			Src: `
+func (m *idMacro) BuildAnnotations(ir.Fetcher, ir.PkgFunc) bool {
+	return true
+}
+
+var declareMacroPackage = testbuild.DeclarePackage{
+	Src: `
 package macro 
 
 //gx:irmacro
-func ID(any) any
+func ID(any, any) any
 `,
-			Post: func(pkg *ir.Package) {
-				id := pkg.FindFunc("ID").(*ir.Macro)
-				id.BuildSynthetic = cpevelements.MacroImpl(newIDMacro)
-			},
-		},
+	Post: func(pkg *ir.Package) {
+		id := pkg.FindFunc("ID").(*ir.Macro)
+		id.BuildSynthetic = cpevelements.MacroImpl(newIDMacro)
+	},
+}
+
+func TestMacro(t *testing.T) {
+	testbuild.Run(t,
+		declareMacroPackage,
 		testbuild.Decl{
 			Src: `
 import "macro"
 
-//gx:=macro.ID(f)
+//gx@=macro.ID(f)
 func synthetic()
 
 func f() int32 {
@@ -104,7 +110,7 @@ func f() int32 {
 			Src: `
 import "macro"
 
-//gx:=macro.ID(f)
+//gx@=macro.ID(f)
 func synthetic()
 
 func f(x int32) int32 {
@@ -139,26 +145,14 @@ func TestMacroOnMethod(t *testing.T) {
 		},
 	}
 	testbuild.Run(t,
-		testbuild.DeclarePackage{
-			Src: `
-package macro 
-
-//gx:irmacro
-func ID(any) any
-`,
-			Post: func(pkg *ir.Package) {
-				id := pkg.FindFunc("ID").(*ir.Macro)
-				id.BuildSynthetic = cpevelements.MacroImpl(newIDMacro)
-			},
-		},
-
+		declareMacroPackage,
 		testbuild.Decl{
 			Src: `
 import "macro"
 
 type S struct{}
 
-//gx:=macro.ID(S.f)
+//gx@=macro.ID(S.f)
 func (S) synthetic()
 
 func (S) f() int32 {
@@ -175,7 +169,7 @@ import "macro"
 
 type S struct{}
 
-//gx:=macro.ID(S.f)
+//gx@=macro.ID(S.f)
 func synthetic()
 
 func (S) f() int32 {
@@ -190,7 +184,7 @@ import "macro"
 
 type S struct{}
 
-//gx:=macro.ID(f)
+//gx@=macro.ID(f)
 func (S) synthetic()
 
 func f() int32 {
@@ -207,7 +201,7 @@ type S struct{}
 
 type T struct{}
 
-//gx:=macro.ID(S.f)
+//gx@=macro.ID(S.f)
 func (T) synthetic()
 
 func (S) f() int32 {

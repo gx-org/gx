@@ -484,7 +484,7 @@ func evalExpr(fitp *FileScope, expr ir.Expr) (ir.Element, error) {
 	case *ir.BinaryExpr:
 		return evalBinaryExpression(fitp, exprT)
 	case *ir.ValueRef:
-		return fitp.ctx.CurrentFrame().Find(exprT.Src)
+		return evalValueRef(fitp, exprT)
 	case *ir.SelectorExpr:
 		return evalSelectorExpr(fitp, exprT)
 	case *ir.FuncLit:
@@ -508,6 +508,13 @@ func evalExpr(fitp *FileScope, expr ir.Expr) (ir.Element, error) {
 	default:
 		return nil, fmterr.Errorf(fitp.File().FileSet(), expr.Source(), "cannot evaluate GX expression: %T not supported", expr)
 	}
+}
+
+func evalValueRef(fitp *FileScope, ref *ir.ValueRef) (ir.Element, error) {
+	if ref.Src == nil {
+		return ref.Stor, nil
+	}
+	return fitp.ctx.CurrentFrame().Find(ref.Src)
 }
 
 func evalNumExpr(fitp *FileScope, expr ir.Expr) (evaluator.NumericalElement, error) {

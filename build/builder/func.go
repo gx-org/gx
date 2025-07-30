@@ -177,8 +177,6 @@ func (bFile *file) processFunc(fileScope procScope, src *ast.FuncDecl) bool {
 	switch dir {
 	case none:
 		fn, ok = bFile.processDeclaredFunc(fileScope, src, false)
-	case assign: // Function body assigned via gx:=
-		fn, ok = bFile.processSyntheticFunc(fileScope, src, dirComment)
 	case irmacro: // IR Macro function that will be called by the compiler via gx:irmacro
 		fn, ok = bFile.processIRMacroFunc(fileScope, src, dirComment)
 	case cpeval:
@@ -186,6 +184,10 @@ func (bFile *file) processFunc(fileScope procScope, src *ast.FuncDecl) bool {
 	default:
 		return fileScope.err().AppendInternalf(dirComment, "directive %d not supported", dir)
 	}
+	if !ok {
+		return false
+	}
+	fn, ok = processFuncAnnotations(fileScope, src, fn)
 	if !ok {
 		return false
 	}
@@ -209,29 +211,9 @@ func newFuncDecl(scope procScope, fn *ast.FuncDecl, compEval bool) (*funcDecl, b
 
 func (bFile *file) processFuncDecl(pscope procScope, src *ast.FuncDecl, compEval bool) (function, bool) {
 	f, declOk := newFuncDecl(pscope, src, compEval)
-	retOk := f.checkReturnValue(pscope)
 	var bodyOk bool
 	f.body, bodyOk = processBlockStmt(pscope, f.src.Body)
-	return f, declOk && retOk && bodyOk
-}
-
-func checkEmptyParamsResults(scope procScope, fn *ast.FuncDecl, errPrefix string) bool {
-	ok := true
-	if fn.Type.Params.NumFields() != 0 {
-		ok = scope.err().Appendf(fn, "%s function has parameters", errPrefix)
-	}
-	if fn.Type.Results.NumFields() != 0 {
-		ok = scope.err().Appendf(fn, "%s function has return values", errPrefix)
-	}
-	return ok
-}
-
-func (f *funcDecl) checkReturnValue(scope procScope) bool {
-	if f.src.Type.Results.NumFields() == 0 {
-		scope.err().Appendf(f.src, "function %s does not return a value in its signature", f.src.Name.Name)
-		return false
-	}
-	return true
+	return f, declOk && bodyOk
 }
 
 func (f *funcDecl) isMethod() bool {
@@ -290,8 +272,7 @@ var _ function = (*funcBuiltin)(nil)
 func (bFile *file) processBuiltinFunc(scope procScope, src *ast.FuncDecl, compEval bool) (function, bool) {
 	fDecl, declOk := newFuncDecl(scope, src, compEval)
 	fn := &funcBuiltin{funcDecl: fDecl}
-	retOk := fn.funcDecl.checkReturnValue(scope)
-	return fn, declOk && retOk
+	return fn, declOk
 }
 
 func (f *funcBuiltin) buildSignature(pkgScope *pkgResolveScope) (ir.Func, iFuncResolveScope, bool) {

@@ -128,6 +128,11 @@ func valueRefToString(done map[any]bool, val reflect.Value, proc processor) stri
 	return fmt.Sprintf("%s->%s[%s]", ref.Stor.NameDef().Name, typeOf.Name(), typeS)
 }
 
+func annotationToString(done map[any]bool, val reflect.Value, proc processor) string {
+	ann := val.Interface().(*ir.Annotation)
+	return ann.Key() + "=" + reflectString(done, reflect.ValueOf(ann.Value()), proc)
+}
+
 type (
 	stringerFunc func(done map[any]bool, val reflect.Value, proc processor) string
 	debugFunc    struct {
@@ -175,6 +180,7 @@ func init() {
 	typeToProcess["github.com/gx-org/gx/build/ir.numberIntType"] = debugOk(valueToString)
 	typeToProcess["github.com/gx-org/gx/build/ir.numberFloatType"] = debugOk(valueToString)
 	typeToProcess["github.com/gx-org/gx/build/ir.ValueRef"] = debugOk(valueRefToString)
+	typeToProcess["github.com/gx-org/gx/build/ir.Annotation"] = debugOk(annotationToString)
 	typeToProcess["github.com/gx-org/gx/build/ir.TypeSet"] = notOnDebug(valueToString)
 	typeToProcess["github.com/gx-org/gx/build/ir.Rank"] = notOnDebug(rank)
 	typeToProcess["github.com/gx-org/gx/build/ir.FuncValExpr"] = notOnDebug(skip)

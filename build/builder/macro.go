@@ -27,8 +27,7 @@ type funcMacro struct {
 func (bFile *file) processIRMacroFunc(scope procScope, src *ast.FuncDecl, comment *ast.Comment) (function, bool) {
 	fDecl, declOk := newFuncDecl(scope, src, false)
 	fn := &funcMacro{funcDecl: fDecl}
-	retOk := fn.funcDecl.checkReturnValue(scope)
-	return fn, declOk && retOk
+	return fn, declOk
 }
 
 func (f *funcMacro) buildSignature(pkgScope *pkgResolveScope) (ir.Func, iFuncResolveScope, bool) {
