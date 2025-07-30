@@ -70,10 +70,10 @@ func processFuncDirective(pscope procScope, fn *ast.FuncDecl) (directive, *ast.C
 		dirS := text[len(directivePrefix):]
 		docDir := directives[dirS]
 		if docDir == invalid {
-			return dir, doc, pscope.err().Appendf(doc, "undefined directive %s", doc.Text)
+			return dir, doc, pscope.Err().Appendf(doc, "undefined directive %s", doc.Text)
 		}
 		if dir != none {
-			return dir, doc, pscope.err().Appendf(doc, "a function can only have one GX directive")
+			return dir, doc, pscope.Err().Appendf(doc, "a function can only have one GX directive")
 		}
 		dir = docDir
 		comment = doc

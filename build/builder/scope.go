@@ -32,7 +32,7 @@ type pkgScope struct {
 	errs *fmterr.Appender
 }
 
-func (s *pkgScope) err() *fmterr.Appender {
+func (s *pkgScope) Err() *fmterr.Appender {
 	return s.errs
 }
 
@@ -94,7 +94,7 @@ func (ev *compileEvaluator) IsDefined(name string) bool {
 }
 
 func (ev *compileEvaluator) Err() *fmterr.Appender {
-	return ev.scope.err()
+	return ev.scope.Err()
 }
 
 func (ev *compileEvaluator) String() string {
@@ -108,7 +108,7 @@ func defineGlobal(s *scope.RWScope[processNode], tok token.Token, name *ast.Iden
 func elementFromStorage(scope resolveScope, ev *compileEvaluator, node ir.Storage) (ir.Element, bool) {
 	el, err := cpevelements.NewRuntimeValue(ev.fitp.File(), ev.fitp.NewFunc, node)
 	if err != nil {
-		return el, scope.err().Append(err)
+		return el, scope.Err().Append(err)
 	}
 	return el, true
 }
@@ -123,7 +123,7 @@ func elementFromStorageWithValue(ev *compileEvaluator, node ir.StorageWithValue)
 	}
 	el, err := ev.fitp.EvalExpr(value)
 	if err != nil {
-		return nil, ev.scope.err().Appendf(node.Source(), "cannot evaluate expression %s. Original error:\n%+v", value.String(), err)
+		return nil, ev.scope.Err().Appendf(node.Source(), "cannot evaluate expression %s. Original error:\n%+v", value.String(), err)
 	}
 	return el, true
 }
@@ -131,7 +131,7 @@ func elementFromStorageWithValue(ev *compileEvaluator, node ir.StorageWithValue)
 func defineLocalVar(scope resolveScope, storage ir.Storage) bool {
 	lScope, ok := scope.(localScope)
 	if !ok {
-		return scope.err().AppendInternalf(storage.Source(), "%T is not a local scope", scope)
+		return scope.Err().AppendInternalf(storage.Source(), "%T is not a local scope", scope)
 	}
 	ev, ok := scope.compEval()
 	if !ok {

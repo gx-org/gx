@@ -38,7 +38,7 @@ type signatureNamespace struct {
 
 func (ns *signatureNamespace) assignTypeField(pscope procScope, fld *field) bool {
 	if prev := ns.names[fld.src.Name]; prev != nil {
-		pscope.err().Appendf(fld.src, "type parameter %s redeclared", fld.src.Name)
+		pscope.Err().Appendf(fld.src, "type parameter %s redeclared", fld.src.Name)
 		return false
 	}
 	ns.names[fld.src.Name] = fld
@@ -47,7 +47,7 @@ func (ns *signatureNamespace) assignTypeField(pscope procScope, fld *field) bool
 
 func (ns *signatureNamespace) assignField(pscope procScope, fld *field) bool {
 	if prev := ns.names[fld.src.Name]; prev != nil {
-		return appendRedeclaredError(pscope.err(), fld.src.Name, prev.src, fld.src)
+		return appendRedeclaredError(pscope.Err(), fld.src.Name, prev.src, fld.src)
 	}
 	ns.names[fld.src.Name] = fld
 	return true
@@ -83,7 +83,7 @@ func processFuncType(pscope procScope, src *ast.FuncType, recv *ast.FieldList, c
 	sig := &signatureNamespace{fType: n, names: make(map[string]*field)}
 	n.recv, recvOk = processFieldList(pscope, recv, sig.assignField)
 	if n.recv != nil && n.recv.numFields() > 1 {
-		pscope.err().Appendf(recv, "method has multiple receivers")
+		pscope.Err().Appendf(recv, "method has multiple receivers")
 	}
 	n.typeParams, typesOk = processFieldList(pscope, src.TypeParams, sig.assignTypeField)
 	n.params, paramsOk = processFieldList(&funcParamScope{procScope: pscope}, src.Params, sig.assignField)
@@ -98,7 +98,7 @@ func rankInferOk(rscope resolveScope, src ast.Node, typ ir.Type) bool {
 	}
 
 	if _, isInfered := array.Rank().(*ir.RankInfer); isInfered {
-		return rscope.err().Appendf(src, "cannot use an inferred rank in fields")
+		return rscope.Err().Appendf(src, "cannot use an inferred rank in fields")
 	}
 	return true
 }
@@ -182,7 +182,7 @@ func (bFile *file) processFunc(fileScope procScope, src *ast.FuncDecl) bool {
 	case cpeval:
 		fn, ok = bFile.processDeclaredFunc(fileScope, src, true)
 	default:
-		return fileScope.err().AppendInternalf(dirComment, "directive %d not supported", dir)
+		return fileScope.Err().AppendInternalf(dirComment, "directive %d not supported", dir)
 	}
 	if !ok {
 		return false
@@ -361,7 +361,7 @@ func convertArgNumbers(rscope resolveScope, fType *ir.FuncType, args []ir.Assign
 
 func axisExprFrom(rscope resolveScope, ax ir.AxisLengths) (*ir.AxisExpr, bool) {
 	if ax == nil {
-		return nil, rscope.err().Append(fmterr.Internal(errors.Errorf("axis length is nil")))
+		return nil, rscope.Err().Append(fmterr.Internal(errors.Errorf("axis length is nil")))
 	}
 	switch axisT := ax.(type) {
 	case *ir.AxisExpr:
@@ -369,7 +369,7 @@ func axisExprFrom(rscope resolveScope, ax ir.AxisLengths) (*ir.AxisExpr, bool) {
 	case *ir.AxisInfer:
 		return axisExprFrom(rscope, axisT.X)
 	}
-	return nil, rscope.err().AppendInternalf(ax.Source(), "unknown axis length type: %T", ax)
+	return nil, rscope.Err().AppendInternalf(ax.Source(), "unknown axis length type: %T", ax)
 }
 
 func axisValuesFromArgumentValue(rscope resolveScope, compEval *compileEvaluator, src *ir.Field, val ir.Element) ([]ir.Element, bool) {
@@ -379,7 +379,7 @@ func axisValuesFromArgumentValue(rscope resolveScope, compEval *compileEvaluator
 	}
 	axes, err := arrayElement.Axes(compEval)
 	if err != nil {
-		return nil, rscope.err().AppendInternalf(src.Source(), "cannot get axes from element %T to assign to parameter %s: %v", val, src.Name, err)
+		return nil, rscope.Err().AppendInternalf(src.Source(), "cannot get axes from element %T to assign to parameter %s: %v", val, src.Name, err)
 	}
 	return axes.Elements(), true
 }
@@ -462,7 +462,7 @@ func assignArgValueToParamName(rscope resolveScope, compEval *compileEvaluator, 
 		}
 		argVal, err := compEval.fitp.EvalExpr(args[i])
 		if err != nil {
-			return nil, rscope.err().AppendAt(fExpr.Source(), err)
+			return nil, rscope.Err().AppendAt(fExpr.Source(), err)
 		}
 		if !assignArgValueToName(rscope, compEval, params, param, args[i], argVal) {
 			return nil, false
@@ -501,7 +501,7 @@ func buildFuncForCall(rscope resolveScope, fExpr *ir.FuncValExpr, args []ir.Assi
 		if len(names) > 1 {
 			parameter = "parameters"
 		}
-		return fExpr, args, rscope.err().Appendf(fExpr.X.Source(), "cannot infer type %s %s", parameter, strings.Join(names, ","))
+		return fExpr, args, rscope.Err().Appendf(fExpr.X.Source(), "cannot infer type %s %s", parameter, strings.Join(names, ","))
 	}
 	if args, ok = convertArgNumbers(rscope, fExpr.T, args); !ok {
 		return fExpr, args, false

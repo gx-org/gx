@@ -75,10 +75,10 @@ func resultTypes(exprs []ir.Expr) ([]ir.Type, bool) {
 func returnAs(rscope resolveScope, pos ast.Node, src, dst ir.Type) bool {
 	assignable, err := assignableTo(rscope, src, dst)
 	if err != nil {
-		return rscope.err().AppendAt(pos, err)
+		return rscope.Err().AppendAt(pos, err)
 	}
 	if !assignable {
-		return rscope.err().Appendf(pos, "cannot use %s as %s value in return statement", src.String(), dst.String())
+		return rscope.Err().Appendf(pos, "cannot use %s as %s value in return statement", src.String(), dst.String())
 	}
 	return true
 }
@@ -106,7 +106,7 @@ func (n *returnStmt) buildStmt(scope iFuncResolveScope) (ir.Stmt, bool) {
 	ext := &ir.ReturnStmt{Src: n.src}
 	fType := scope.funcType()
 	if fType == nil {
-		return ext, scope.err().AppendInternalf(n.src, "return statement without a function context")
+		return ext, scope.Err().AppendInternalf(n.src, "return statement without a function context")
 	}
 	wants := fType.Results.Fields()
 	if hasNamedResult(wants) && len(n.results) == 0 {
@@ -127,10 +127,10 @@ func (n *returnStmt) buildStmt(scope iFuncResolveScope) (ir.Stmt, bool) {
 	rTypes, isTuple := resultTypes(ext.Results)
 	// Compare the number of values being returned to the function results.
 	if len(rTypes) > len(wants) {
-		ok = scope.err().Appendf(n.source(), "too many return values")
+		ok = scope.Err().Appendf(n.source(), "too many return values")
 	}
 	if len(rTypes) < len(wants) {
-		ok = scope.err().Appendf(n.source(), "not enough return values")
+		ok = scope.Err().Appendf(n.source(), "not enough return values")
 	}
 	if !ok {
 		return ext, false

@@ -46,7 +46,7 @@ func (n *arrayType) source() ast.Node {
 func (n *arrayType) buildTypeExpr(rscope resolveScope) (*ir.TypeValExpr, bool) {
 	dtyp, dtypeOk := n.dtyp.buildTypeExpr(rscope)
 	if dtypeOk && !ir.IsDataType(dtyp.Typ) {
-		rscope.err().Appendf(n.source(), "array of %s not supported", dtyp.String())
+		rscope.Err().Appendf(n.source(), "array of %s not supported", dtyp.String())
 		dtypeOk = false
 	}
 	if !dtypeOk {
@@ -95,7 +95,7 @@ func (n *arrayLitExpr) buildExpr(rscope resolveScope) (ir.Expr, bool) {
 	under := ir.Underlying(typ)
 	arrayType, ok := under.(ir.ArrayType)
 	if !ok {
-		return &ir.SliceLitExpr{Src: n.src, Typ: ir.InvalidType()}, rscope.err().AppendInternalf(n.src, "%T is not an array type", under)
+		return &ir.SliceLitExpr{Src: n.src, Typ: ir.InvalidType()}, rscope.Err().AppendInternalf(n.src, "%T is not an array type", under)
 	}
 	return n.lit.buildExpr(toArrayLitScope(rscope, arrayType))
 }
@@ -117,7 +117,7 @@ func checkNumExprAgainstAxis(rscope resolveScope, pos ast.Node, elts []ir.Expr, 
 		return true
 	}
 	if !axisEqual(rscope, pos, axis, got) {
-		return rscope.err().Appendf(pos, "cannot use a literal of %d elements to define an axis length %s", len(elts), axis.String())
+		return rscope.Err().Appendf(pos, "cannot use a literal of %d elements to define an axis length %s", len(elts), axis.String())
 	}
 	return true
 }

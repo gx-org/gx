@@ -47,7 +47,7 @@ func processExpr(pscope procScope, expr ast.Expr) (exprNode, bool) {
 	case *ast.TypeAssertExpr:
 		return processTypeAssertExpr(pscope, exprT)
 	default:
-		pscope.err().Appendf(expr, "expression of type %T not supported", expr)
+		pscope.Err().Appendf(expr, "expression of type %T not supported", expr)
 	}
 	return nil, false
 }
@@ -66,7 +66,7 @@ func processTypeExpr(pscope procScope, expr ast.Node) (typeExprNode, bool) {
 	case *ast.InterfaceType:
 		return processInterfaceType(pscope, exprT)
 	default:
-		pscope.err().Appendf(expr, "type expression %T not supported", expr)
+		pscope.Err().Appendf(expr, "type expression %T not supported", expr)
 	}
 	return nil, false
 }

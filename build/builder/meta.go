@@ -31,7 +31,7 @@ import (
 func buildIRBody(mScope *synthResolveScope, extF ir.Func, compEval *compileEvaluator, body *ast.BlockStmt) (ok bool) {
 	defer func() {
 		if !ok {
-			mScope.err().Append(mScope.errorFor(body))
+			mScope.Err().Append(mScope.errorFor(body))
 		}
 	}()
 	fScope := mScope.fileScope()
@@ -186,13 +186,13 @@ func (f *syntheticFunc) checkSyntheticSignature(fScope *fileResolveScope, fSynth
 		return true
 	}
 	if fSrcRecv == nil && fSynthRecv != nil {
-		return fScope.err().Appendf(f.src, "%s requires a %s type receiver", f.src.Name.Name, fSynthRecv.Type().String())
+		return fScope.Err().Appendf(f.src, "%s requires a %s type receiver", f.src.Name.Name, fSynthRecv.Type().String())
 	}
 	if fSrcRecv != nil && fSynthRecv == nil {
-		return fScope.err().Appendf(f.src, "%s requires no receiver", f.src.Name.Name)
+		return fScope.Err().Appendf(f.src, "%s requires no receiver", f.src.Name.Name)
 	}
 	if ok := equalToAt(fScope, f.src.Recv, fSrcRecv.Type(), fSynthRecv.Type()); !ok {
-		return fScope.err().Appendf(f.src, "cannot assign %s.%s to %s.%s", fSynthRecv.Type().NameDef().Name, fSynth.Src.Name.Name, fSrcRecv.Type().NameDef().Name, fSrc.Src.Name.Name)
+		return fScope.Err().Appendf(f.src, "cannot assign %s.%s to %s.%s", fSynthRecv.Type().NameDef().Name, fSynth.Src.Name.Name, fSrcRecv.Type().NameDef().Name, fSrc.Src.Name.Name)
 	}
 	return true
 }
@@ -200,7 +200,7 @@ func (f *syntheticFunc) checkSyntheticSignature(fScope *fileResolveScope, fSynth
 func (f *syntheticFunc) buildSignatureFScope(fScope *fileResolveScope) (ir.Func, *synthResolveScope, bool) {
 	astFDecl, err := f.fnBuilder.Builder().BuildType()
 	if err != nil {
-		return nil, nil, fScope.err().AppendAt(f.src, err)
+		return nil, nil, fScope.Err().AppendAt(f.src, err)
 	}
 	astFDecl.Name = f.src.Name
 	fDecl, fnScope, ok := buildFuncTypeFromAST(fScope, astFDecl)

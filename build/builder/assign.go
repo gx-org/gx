@@ -39,12 +39,12 @@ func (asg *identStorage) assign(rscope resolveScope, typ ir.Type) (_ ir.Storage,
 	name := asg.target.src.Name
 	defined, isDefined := rscope.find(name)
 	if !isDefined {
-		return nil, false, rscope.err().Appendf(asg.source(), "undefined: %s", name)
+		return nil, false, rscope.Err().Appendf(asg.source(), "undefined: %s", name)
 	}
 	assignable, assignableOk := irCache[ir.Storage](rscope.irBuilder(), asg.source(), defined)
 	isStorage := rscope.nspace().CanAssign(name)
 	if !assignableOk || !isStorage {
-		return nil, false, rscope.err().Appendf(asg.source(), "cannot assign a value to %s", name)
+		return nil, false, rscope.Err().Appendf(asg.source(), "cannot assign a value to %s", name)
 	}
 	return assignable, false, true
 }
@@ -108,7 +108,7 @@ func (asg *selectorStorage) buildStorage(scope resolveScope, typ ir.Type) (_ ir.
 		return ext, false, false
 	}
 	if ext.Sel.Type().Kind() == ir.FuncKind {
-		return ext, false, scope.err().Appendf(asg.source(), "cannot assign to method %s", ext.Sel.Stor.NameDef().Name)
+		return ext, false, scope.Err().Appendf(asg.source(), "cannot assign to method %s", ext.Sel.Stor.NameDef().Name)
 	}
 	return ext, false, true
 }
@@ -141,11 +141,11 @@ func processRightExprs(pscope procScope, stmt *ast.AssignStmt) ([]exprNode, bool
 
 func processOpAssignStmt(pscope procScope, stmt *ast.AssignStmt) (stmtNode, bool) {
 	if len(stmt.Lhs) > 1 {
-		pscope.err().Appendf(stmt, "unexpected %s, expected := or = or comma", stmt.Tok)
+		pscope.Err().Appendf(stmt, "unexpected %s, expected := or = or comma", stmt.Tok)
 		return nil, false
 	}
 	if len(stmt.Rhs) != 1 {
-		pscope.err().Appendf(stmt, "unexpected comma at end of statement")
+		pscope.Err().Appendf(stmt, "unexpected comma at end of statement")
 		return nil, false
 	}
 
@@ -172,7 +172,7 @@ func processOpAssignStmt(pscope procScope, stmt *ast.AssignStmt) (stmtNode, bool
 	case token.SHR_ASSIGN:
 		op = token.SHR
 	default:
-		return nil, pscope.err().Appendf(stmt, "%s not supported in assignment", stmt.Tok)
+		return nil, pscope.Err().Appendf(stmt, "%s not supported in assignment", stmt.Tok)
 	}
 
 	target, targetOk := leftExprToTarget(pscope, stmt, stmt.Lhs[0], make(map[string]bool))
@@ -211,7 +211,7 @@ func leftExprToTarget(pscope procScope, stmt *ast.AssignStmt, expr ast.Expr, don
 	switch exprT := expr.(type) {
 	case *ast.Ident:
 		if done[exprT.Name] {
-			ok = pscope.err().Appendf(exprT, "%s repeated on left side of %s", exprT.Name, stmt.Tok.String())
+			ok = pscope.Err().Appendf(exprT, "%s repeated on left side of %s", exprT.Name, stmt.Tok.String())
 		}
 		if ir.ValidIdent(exprT) {
 			done[exprT.Name] = true
@@ -223,13 +223,13 @@ func leftExprToTarget(pscope procScope, stmt *ast.AssignStmt, expr ast.Expr, don
 		var exprOk bool
 		target.target, exprOk = processSelectorExpr(pscope, exprT)
 		if stmt.Tok == token.DEFINE {
-			ok = pscope.err().Appendf(exprT, "non-name %s on left side of :=", target.target.String())
+			ok = pscope.Err().Appendf(exprT, "non-name %s on left side of :=", target.target.String())
 		}
 		return target, ok && exprOk
 	case *ast.CompositeLit:
 		return leftExprToTarget(pscope, stmt, exprT.Type, done)
 	default:
-		return nil, pscope.err().Appendf(expr, "%T not supported on left-side of assignment", exprT)
+		return nil, pscope.Err().Appendf(expr, "%T not supported on left-side of assignment", exprT)
 	}
 }
 
@@ -251,7 +251,7 @@ func processAssignStmt(pscope procScope, src *ast.AssignStmt, rhsExprs []exprNod
 	lenRight := len(rhsExprs)
 	equalOk := true
 	if lenLeft != lenRight {
-		equalOk = pscope.err().Appendf(src, "assignment mismatch: %d variable(s) but %d value(s)", lenLeft, lenRight)
+		equalOk = pscope.Err().Appendf(src, "assignment mismatch: %d variable(s) but %d value(s)", lenLeft, lenRight)
 	}
 	total := min(lenLeft, lenRight)
 	targets, targetsOk := leftToTargets(pscope, src)
@@ -267,7 +267,7 @@ func processAssignStmt(pscope procScope, src *ast.AssignStmt, rhsExprs []exprNod
 
 func checkNewVariables(scope resolveScope, stmt *ast.AssignStmt, newVariables bool) bool {
 	if !newVariables && stmt.Tok == token.DEFINE {
-		return scope.err().Appendf(stmt, "no new variables on left side of :=")
+		return scope.Err().Appendf(stmt, "no new variables on left side of :=")
 	}
 	return true
 }
@@ -281,7 +281,7 @@ func buildAssignExpr(rscope resolveScope, asgm *assignment) (*ir.AssignExpr, boo
 	}
 	if tpl, isTuple := ext.X.Type().(*ir.TupleType); exprOk && isTuple {
 		if len(tpl.Types) != 1 {
-			exprOk = rscope.err().Appendf(asgm.expr.source(), "multiple-value (value of type %s) in single-value context", tpl.String())
+			exprOk = rscope.Err().Appendf(asgm.expr.source(), "multiple-value (value of type %s) in single-value context", tpl.String())
 		}
 	}
 	var newAsgm, targetOk bool
@@ -341,7 +341,7 @@ func (n *assignCallStmt) buildStmt(rscope iFuncResolveScope) (ir.Stmt, bool) {
 	funType := ext.Call.Callee.T
 	lenCallResults := funType.Results.Len()
 	if lenTargets != funType.Results.Len() {
-		return ext, rscope.err().Appendf(n.source(), "assignment mismatch: %d variable(s) but %s returns %d values", lenTargets, ext.Call.String(), lenCallResults)
+		return ext, rscope.Err().Appendf(n.source(), "assignment mismatch: %d variable(s) but %s returns %d values", lenTargets, ext.Call.String(), lenCallResults)
 	}
 	ext.List = make([]*ir.AssignCallResult, lenCallResults)
 	total := min(lenTargets, lenCallResults)

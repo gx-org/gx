@@ -38,7 +38,7 @@ func processImportDecl(pscope procScope, decl *ast.GenDecl) bool {
 		var err error
 		ext.Path, err = strconv.Unquote(ext.Src.Path.Value)
 		if err != nil {
-			ok = pscope.err().Appendf(ext.Src.Path, "malformed path: %s", ext.Src.Path.Value)
+			ok = pscope.Err().Appendf(ext.Src.Path, "malformed path: %s", ext.Src.Path.Value)
 		}
 		ident := ext.Src.Name
 		if ident == nil {
@@ -65,7 +65,7 @@ func importPackage(pkgScope *pkgResolveScope, decl *ir.ImportDecl) (*importedPac
 	ok := true
 	var irPackage *ir.Package
 	if err != nil {
-		ok = pkgScope.err().Append(err)
+		ok = pkgScope.Err().Append(err)
 		irPackage = &ir.Package{Decls: &ir.Declarations{}}
 	} else {
 		irPackage = bPackage.IR()

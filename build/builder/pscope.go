@@ -84,7 +84,7 @@ func (p *processNodeT[T]) bNode() any {
 func (p *processNodeT[T]) Build(ibld irBuilder) (ir.Node, bool) {
 	iNode, ok := any(p.node).(irb.Node[*pkgResolveScope])
 	if !ok {
-		return nil, ibld.Scope().err().Append(fmterr.Internal(errors.Errorf("cannot cast %T to %s", p.node, reflect.TypeFor[irb.Node[*pkgResolveScope]]().Name())))
+		return nil, ibld.Scope().Err().Append(fmterr.Internal(errors.Errorf("cannot cast %T to %s", p.node, reflect.TypeFor[irb.Node[*pkgResolveScope]]().Name())))
 	}
 	return ibld.Build(iNode)
 }
@@ -117,9 +117,9 @@ func (s *pkgProcScope) decls() *decls {
 
 type (
 	procScope interface {
+		fmterr.ErrAppender
 		file() *file
 		decls() *decls
-		err() *fmterr.Appender
 		processIdent(*ast.Ident) (exprNode, bool)
 		pkgScope() *pkgProcScope
 		axisLengthScope() procAxLenScope
@@ -141,11 +141,11 @@ func (s *pkgProcScope) newScope(f *file) *fileScope {
 func (s *fileScope) declareFileName(src *ast.Ident) (ok bool) {
 	prevPkg, exist := s.decls().declarations.Load(src.Name)
 	if exist {
-		return appendRedeclaredError(s.err(), src.Name, src, prevPkg.ident())
+		return appendRedeclaredError(s.Err(), src.Name, src, prevPkg.ident())
 	}
 	prevFile := s.fileNames[src.Name]
 	if prevFile != nil {
-		return appendRedeclaredError(s.err(), src.Name, src, prevFile)
+		return appendRedeclaredError(s.Err(), src.Name, src, prevFile)
 	}
 	s.fileNames[src.Name] = src
 	return true
@@ -192,7 +192,7 @@ func (s *fileScope) axisLengthScope() procAxLenScope {
 
 func checkAxisLengthIdent(pscope procScope, ident *ast.Ident) bool {
 	if strings.HasPrefix(ident.Name, "_") {
-		return pscope.err().Appendf(ident, "invalid character _ in axis length name %s", ident.Name)
+		return pscope.Err().Appendf(ident, "invalid character _ in axis length name %s", ident.Name)
 	}
 	return true
 }
@@ -210,7 +210,7 @@ func (s *axLenDefaultScope) processIdent(ident *ast.Ident) (exprNode, bool) {
 		return processIdentExpr(s, &grpIdent)
 	}
 	if ident.Name == ir.DefineAxisLength {
-		return nil, s.err().Appendf(ident, "cannot use %s as an axis identifier", ident.Name)
+		return nil, s.Err().Appendf(ident, "cannot use %s as an axis identifier", ident.Name)
 	}
 	return processIdentExpr(s, ident)
 }
@@ -241,7 +241,7 @@ func (*axLenParamScope) axlenScope() {}
 
 func (s *axLenParamScope) checkIfAlreadyDefine(src ast.Node, name string) bool {
 	if s.defined[name] {
-		return s.err().Appendf(src, "axis length %s assignment repeated", name)
+		return s.Err().Appendf(src, "axis length %s assignment repeated", name)
 	}
 	s.defined[name] = true
 	return true

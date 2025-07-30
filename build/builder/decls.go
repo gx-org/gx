@@ -58,7 +58,7 @@ func (d *decls) declarePackageName(node processNode) (ok bool) {
 	name := node.ident().Name
 	prev, exist := d.declarations.Load(name)
 	if !d.overwriteOk && exist {
-		return appendRedeclaredError(d.pkgScope.err(), name, node.ident(), prev.ident())
+		return appendRedeclaredError(d.pkgScope.Err(), name, node.ident(), prev.ident())
 	}
 	d.declarations.Store(name, node)
 	return true
@@ -198,7 +198,7 @@ func (d *decls) buildFuncType(pkgScope *pkgResolveScope, pNode *processNodeT[fun
 	}
 	pkgFn, fnOk := irFn.(ir.PkgFunc)
 	if !fnOk {
-		return nil, pkgScope.err().AppendInternalf(irFn.Source(), "cannot cast %T to %s", irFn, reflect.TypeFor[*ir.PkgFunc]().Name())
+		return nil, pkgScope.Err().AppendInternalf(irFn.Source(), "cannot cast %T to %s", irFn, reflect.TypeFor[*ir.PkgFunc]().Name())
 	}
 	pkgScope.ibld.Set(pNode, pkgFn)
 	irf := &irFunc{
@@ -214,7 +214,7 @@ func (d *decls) buildFuncType(pkgScope *pkgResolveScope, pNode *processNodeT[fun
 	}
 	nType, ok := recv.Type().(*ir.NamedType)
 	if !ok {
-		return irf, pkgScope.err().AppendInternalf(recv.Source(), "cannot cast %T to %s", recv.Type(), reflect.TypeFor[*ir.NamedType]().Name())
+		return irf, pkgScope.Err().AppendInternalf(recv.Source(), "cannot cast %T to %s", recv.Type(), reflect.TypeFor[*ir.NamedType]().Name())
 	}
 	assignMethod(fnScope.fileScope(), nType, irf)
 	return irf, true

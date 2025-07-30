@@ -29,7 +29,7 @@ type axisLengthNode interface {
 
 func processAxisLengthExpr(axScope procAxLenScope, array *ast.ArrayType) (axis axisLengthNode, ok bool) {
 	if array.Len == nil {
-		return nil, axScope.err().Appendf(array, "array of slices is not supported. Please specify an array axis length using '[length]' or '[...]'")
+		return nil, axScope.Err().Appendf(array, "array of slices is not supported. Please specify an array axis length using '[length]' or '[...]'")
 	}
 	switch lenT := array.Len.(type) {
 	case *ast.Ellipsis:
@@ -42,7 +42,7 @@ func processAxisLengthExpr(axScope procAxLenScope, array *ast.ArrayType) (axis a
 	case ast.Expr:
 		return processExprAxisLength(axScope, lenT)
 	default:
-		return nil, axScope.err().Appendf(array, "array dimension type %T not supported", lenT)
+		return nil, axScope.Err().Appendf(array, "array dimension type %T not supported", lenT)
 	}
 }
 
@@ -96,7 +96,7 @@ func (dim *exprAxisLength) build(rscope *defineLocalScope) (ir.AxisLengths, bool
 	}
 	xType := ext.X.Type()
 	if !ir.IsAxisLengthType(xType) {
-		xOk = rscope.err().Appendf(dim.src, "cannot use type %s as axis length: want type intlen or []intlen", xType.String())
+		xOk = rscope.Err().Appendf(dim.src, "cannot use type %s as axis length: want type intlen or []intlen", xType.String())
 	}
 	return ext, xOk
 }

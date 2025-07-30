@@ -47,11 +47,11 @@ func processStructType(own procScope, src *ast.StructType) (*structType, bool) {
 func (n *structType) assign(block procScope, fld *field) bool {
 	name := fld.src.Name
 	if prev, ok := n.nameToField[name]; ok {
-		block.err().Appendf(
+		block.Err().Appendf(
 			fld.src,
 			"%s redeclared in this block\n\t%s: other declaration of %s",
 			name,
-			fmterr.PosString(block.err().FSet().FSet, prev.src.Pos()),
+			fmterr.PosString(block.Err().FSet().FSet, prev.src.Pos()),
 			name,
 		)
 		return false
@@ -111,11 +111,11 @@ func processCompositeLitStruct(pscope procScope, src *ast.CompositeLit, typeExpr
 			if prevIndex, prevOk := n.nameToElt[field.ident.Name]; prevOk {
 				eltsOk = false
 				prev := n.fields[prevIndex]
-				pscope.err().Appendf(
+				pscope.Err().Appendf(
 					field.ident,
 					"%s redefined in this literal\n\t%s: other declaration of %s",
 					field.ident.Name,
-					fmterr.PosString(pscope.err().FSet().FSet, prev.ident.Pos()),
+					fmterr.PosString(pscope.Err().FSet().FSet, prev.ident.Pos()),
 					field.ident.Name,
 				)
 				continue
@@ -123,7 +123,7 @@ func processCompositeLitStruct(pscope procScope, src *ast.CompositeLit, typeExpr
 			n.nameToElt[field.ident.Name] = i
 			n.fields[i] = field
 		default:
-			pscope.err().Appendf(elt, "literal element type %T not supported", elt)
+			pscope.Err().Appendf(elt, "literal element type %T not supported", elt)
 			eltsOk = false
 		}
 	}
@@ -139,7 +139,7 @@ func (n *structLiteral) processKeyValueField(pscope procScope, expr *ast.KeyValu
 	case *ast.Ident:
 		field.ident = keyT
 	default:
-		pscope.err().Appendf(key, "literal element key %T not supported", key)
+		pscope.Err().Appendf(key, "literal element key %T not supported", key)
 		ok = false
 	}
 	return field, ok
@@ -159,7 +159,7 @@ func (n *structLiteral) buildExpr(rscope resolveScope) (ir.Expr, bool) {
 	underlying := ir.Underlying(ext.Typ)
 	structType, ok := underlying.(*ir.StructType)
 	if !ok {
-		return ext, rscope.err().Appendf(n.source(), "%s (type %T) is not a structure type", ext.Typ.String(), underlying.Type().String())
+		return ext, rscope.Err().Appendf(n.source(), "%s (type %T) is not a structure type", ext.Typ.String(), underlying.Type().String())
 	}
 	ext.Elts = make([]*ir.FieldLit, structType.Fields.Len())
 	fieldsOk := true
@@ -167,7 +167,7 @@ func (n *structLiteral) buildExpr(rscope resolveScope) (ir.Expr, bool) {
 		name := field.Name.Name
 		valueFieldIndex, valueOk := n.nameToElt[name]
 		if !valueOk {
-			fieldsOk = rscope.err().Appendf(ext.Src, "field %s has not been assigned", name)
+			fieldsOk = rscope.Err().Appendf(ext.Src, "field %s has not been assigned", name)
 			continue
 		}
 		fieldLit := &ir.FieldLit{FieldStorage: field.Storage()}
@@ -190,7 +190,7 @@ func (n *structLiteral) buildExpr(rscope resolveScope) (ir.Expr, bool) {
 	}
 	for _, fieldNameExpr := range n.fields {
 		if field := structType.Fields.FindField(fieldNameExpr.ident.Name); field == nil {
-			return ext, rscope.err().Appendf(fieldNameExpr.ident, "type %s has no field or method %s", ext.Typ.String(), fieldNameExpr.ident.Name)
+			return ext, rscope.Err().Appendf(fieldNameExpr.ident, "type %s has no field or method %s", ext.Typ.String(), fieldNameExpr.ident.Name)
 		}
 	}
 	return ext, fieldsOk

@@ -49,7 +49,7 @@ func (n *binaryExpr) checkKind(scope resolveScope, x exprNode, typ ir.Type, appe
 	arrayType, isArray = typ.(ir.ArrayType)
 	if !isScalar && !isArray {
 		if appendErr {
-			scope.err().Appendf(x.source(), "invalid operation: operator %s not defined on type %s", n.src.Op.String(), typ.String())
+			scope.Err().Appendf(x.source(), "invalid operation: operator %s not defined on type %s", n.src.Op.String(), typ.String())
 		}
 		ok = false
 		return
@@ -83,11 +83,11 @@ func (n *binaryExpr) determineOutputType(scope resolveScope, ops ir.Type) (resul
 	case token.LAND, token.LOR:
 		ok = ir.SupportOperators(ops) && opsKind == ir.BoolKind
 	default:
-		scope.err().Appendf(n.src, "token %s not supported", n.src.Op.String())
+		scope.Err().Appendf(n.src, "token %s not supported", n.src.Op.String())
 		return ir.InvalidType(), false, false
 	}
 	if !ok {
-		scope.err().Appendf(n.src, "operator %s not defined on %s", op.String(), ops)
+		scope.Err().Appendf(n.src, "operator %s not defined on %s", op.String(), ops)
 		return ir.InvalidType(), false, false
 	}
 	return
@@ -150,11 +150,11 @@ func (n *binaryExpr) buildOperands(scope resolveScope) (ir.AssignableExpr, ir.As
 		dtype := arrayType.DataType()
 		eq, err := dtype.Equal(compEval, scalarType)
 		if err != nil {
-			scope.err().Append(err)
+			scope.Err().Append(err)
 			return xExpr, yExpr, ir.InvalidType()
 		}
 		if !eq {
-			scope.err().Appendf(n.source(), "mismatched types %s and %s", scalarType.String(), dtype.String())
+			scope.Err().Appendf(n.source(), "mismatched types %s and %s", scalarType.String(), dtype.String())
 			return xExpr, yExpr, ir.InvalidType()
 		}
 		return xExpr, yExpr, arrayType
@@ -163,11 +163,11 @@ func (n *binaryExpr) buildOperands(scope resolveScope) (ir.AssignableExpr, ir.As
 	// Default case: check that both sides have the same type.
 	eq, err := xType.Equal(compEval, yType)
 	if err != nil {
-		scope.err().Append(err)
+		scope.Err().Append(err)
 		return xExpr, yExpr, ir.InvalidType()
 	}
 	if !eq {
-		scope.err().Appendf(n.source(), "mismatched types %s and %s", xType.String(), yType.String())
+		scope.Err().Appendf(n.source(), "mismatched types %s and %s", xType.String(), yType.String())
 		return xExpr, yExpr, ir.InvalidType()
 	}
 	return xExpr, yExpr, xType

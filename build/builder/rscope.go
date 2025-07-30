@@ -60,11 +60,11 @@ func irCache[N ir.Node](irs irBuilder, src ast.Node, bNode irb.Node[*pkgResolveS
 	}
 	var nT N
 	if !ok {
-		return nT, irs.Scope().err().AppendInternalf(src, "%T has not been built yet", bNode)
+		return nT, irs.Scope().Err().AppendInternalf(src, "%T has not been built yet", bNode)
 	}
 	nT, ok = n.(N)
 	if !ok {
-		return nT, irs.Scope().err().AppendInternalf(src, "cannot cast %T to %s", n, reflect.TypeFor[N]().Name())
+		return nT, irs.Scope().Err().AppendInternalf(src, "cannot cast %T to %s", n, reflect.TypeFor[N]().Name())
 	}
 	return nT, ok
 }
@@ -160,7 +160,7 @@ func (s *pkgResolveScope) packageInterpreter() *interp.Interpreter {
 	}
 	itp, err := interp.New(hostEval, opts)
 	if err != nil {
-		s.err().Append(err)
+		s.Err().Append(err)
 		return nil
 	}
 	return itp
@@ -176,10 +176,10 @@ func (s *pkgResolveScope) String() string {
 
 type (
 	resolveScope interface {
+		fmterr.ErrAppender
 		nspace() *scope.RWScope[processNode]
 		find(name string) (processNode, bool)
 		fileScope() *fileResolveScope
-		err() *fmterr.Appender
 		compEval() (*compileEvaluator, bool)
 		irBuilder() irBuilder
 	}
@@ -220,7 +220,7 @@ func (s *fileResolveScope) compEval() (*compileEvaluator, bool) {
 	pkgitp := s.pkgResolveScope.packageInterpreter()
 	fitp, err := pkgitp.ForFile(s.irFile())
 	if err != nil {
-		return nil, s.err().Append(err)
+		return nil, s.Err().Append(err)
 	}
 	return newEvaluator(s, fitp), true
 }
@@ -409,11 +409,11 @@ func (s *arrayResolveScope) appendAxisToInferredRanks(ax ir.AxisLengths) {
 func (s *arrayResolveScope) sub(src ast.Node) (compositeLitResolveScope, bool) {
 	elt, ok := s.current.ElementType()
 	if !ok {
-		return s, s.err().AppendInternalf(src, "unexpected literal for type %s ", s.current.String())
+		return s, s.Err().AppendInternalf(src, "unexpected literal for type %s ", s.current.String())
 	}
 	eltArray := ir.ToArrayType(elt)
 	if eltArray == nil {
-		return s, s.err().AppendInternalf(src, "invalid element type %s ", elt.String())
+		return s, s.Err().AppendInternalf(src, "invalid element type %s ", elt.String())
 	}
 	currentRank := s.currentRank + 1
 	if infer := toInferRank(s.current.Rank()); infer != nil {
@@ -469,7 +469,7 @@ func (s *arrayResolveScope) newInferCompositeType(src *ast.CompositeLit, exprs [
 		if parentInfer == nil {
 			return ext, true
 		}
-		return ext, s.err().Appendf(src, "cannot infer rank: empty literal")
+		return ext, s.Err().Appendf(src, "cannot infer rank: empty literal")
 	}
 	// We can now check compare the number of elements to the axis length.
 	got := &ir.AxisExpr{X: &ir.NumberCastExpr{
@@ -488,7 +488,7 @@ func (s *arrayResolveScope) newInferCompositeType(src *ast.CompositeLit, exprs [
 		}
 	}
 	if !axisEqual(s, src, axis, got) {
-		return ext, s.err().Appendf(src, "cannot assign %d element(s) to axis length %s", numExprs, axis.String())
+		return ext, s.Err().Appendf(src, "cannot assign %d element(s) to axis length %s", numExprs, axis.String())
 	}
 	return ext, true
 }
@@ -516,11 +516,11 @@ func (s *sliceResolveScope) dtype() ir.Type {
 func (s *sliceResolveScope) sub(src ast.Node) (compositeLitResolveScope, bool) {
 	slicer, ok := s.typ.(ir.SlicerType)
 	if !ok {
-		return s, s.err().AppendInternalf(src, "invalid composite literal element type %s ", s.typ.String())
+		return s, s.Err().AppendInternalf(src, "invalid composite literal element type %s ", s.typ.String())
 	}
 	elt, ok := slicer.ElementType()
 	if !ok {
-		return s, s.err().AppendInternalf(src, "unexpected literal for type %s ", slicer.String())
+		return s, s.Err().AppendInternalf(src, "unexpected literal for type %s ", slicer.String())
 	}
 	return &sliceResolveScope{
 		resolveScope: s,

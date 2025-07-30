@@ -42,7 +42,7 @@ func processVarDecl(pscope procScope, decl *ast.GenDecl) bool {
 
 func processVarSpec(pscope procScope, src *ast.ValueSpec) bool {
 	if len(src.Values) > 0 {
-		pscope.err().Appendf(src, "cannot assign a value to a static variable")
+		pscope.Err().Appendf(src, "cannot assign a value to a static variable")
 	}
 	spec := &varSpec{
 		src:   src,
@@ -52,7 +52,7 @@ func processVarSpec(pscope procScope, src *ast.ValueSpec) bool {
 	if src.Type != nil {
 		spec.typ, typeOk = processTypeExpr(pscope, src.Type)
 	} else {
-		typeOk = pscope.err().Appendf(src, "static variable has no type")
+		typeOk = pscope.Err().Appendf(src, "static variable has no type")
 	}
 	exprsOk := true
 	spec.exprs = make([]*varExpr, len(src.Names))

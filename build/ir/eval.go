@@ -48,7 +48,7 @@ type (
 	// Fetcher represents a scope in the compiler.
 	Fetcher interface {
 		Evaluator
-		Err() *fmterr.Appender
+		fmterr.ErrAppender
 		BuildExpr(ast.Expr) (Expr, bool)
 		IsDefined(string) bool
 	}

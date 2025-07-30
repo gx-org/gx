@@ -95,10 +95,10 @@ func (n *callExpr) buildTypeCast(rscope resolveScope, callee ir.AssignableExpr, 
 		return ext, false
 	}
 	if len(args) == 0 {
-		return ext, rscope.err().Appendf(n.src, "missing argument in conversion to %s", ext.Typ.String())
+		return ext, rscope.Err().Appendf(n.src, "missing argument in conversion to %s", ext.Typ.String())
 	}
 	if len(args) > 1 {
-		return ext, rscope.err().Appendf(n.src, "too many arguments in conversion to %s", ext.Typ.String())
+		return ext, rscope.Err().Appendf(n.src, "too many arguments in conversion to %s", ext.Typ.String())
 	}
 	ext.X = args[0]
 	if ir.IsNumber(ext.X.Type().Kind()) {
@@ -122,10 +122,10 @@ func (n *callExpr) buildTypeCast(rscope resolveScope, callee ir.AssignableExpr, 
 func checkNumArgs(rscope resolveScope, callee *ir.FuncValExpr, numArgs int) bool {
 	numParams := callee.T.Params.Len()
 	if numArgs > numParams {
-		return rscope.err().Appendf(callee.Source(), "too many arguments in call to %s", callee.Name())
+		return rscope.Err().Appendf(callee.Source(), "too many arguments in call to %s", callee.Name())
 	}
 	if numArgs < numParams {
-		return rscope.err().Appendf(callee.Source(), "not enough arguments in call to %s", callee.Name())
+		return rscope.Err().Appendf(callee.Source(), "not enough arguments in call to %s", callee.Name())
 	}
 	return true
 }
@@ -136,7 +136,7 @@ func buildMissingFuncType(rscope resolveScope, callee *ir.FuncValExpr, call *ir.
 	}
 	builtin, isBuiltin := callee.F.(*ir.FuncBuiltin)
 	if !isBuiltin {
-		return callee, rscope.err().AppendInternalf(callee.Source(), "missing function but function %s:%T is not a builtin function", callee.Name(), callee.T)
+		return callee, rscope.Err().AppendInternalf(callee.Source(), "missing function but function %s:%T is not a builtin function", callee.Name(), callee.T)
 	}
 	compEval, ok := rscope.compEval()
 	if !ok {
@@ -146,7 +146,7 @@ func buildMissingFuncType(rscope resolveScope, callee *ir.FuncValExpr, call *ir.
 	var err error
 	ext.T, err = builtin.Impl.BuildFuncType(compEval, call)
 	if err != nil {
-		return callee, rscope.err().AppendAt(callee.Source(), err)
+		return callee, rscope.Err().AppendAt(callee.Source(), err)
 	}
 	return &ext, true
 }
@@ -184,7 +184,7 @@ func (n *callExpr) buildCallExpr(rscope resolveScope, callee ir.AssignableExpr) 
 	}
 	funcRef, ok := val.(*ir.FuncValExpr)
 	if !ok {
-		return nil, rscope.err().Appendf(n.callee.source(), "cannot call non-function %s (type %s)", callee.String(), callee.Type().String())
+		return nil, rscope.Err().Appendf(n.callee.source(), "cannot call non-function %s (type %s)", callee.String(), callee.Type().String())
 	}
 	return n.buildFunctionCall(rscope, funcRef)
 }

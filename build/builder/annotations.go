@@ -48,10 +48,10 @@ func processScannerError(pscope procScope, doc *ast.Comment, errScanner error) b
 	if !ok {
 		// Unknown error: we build a new error at the comment position
 		// that includes the error type and its message.
-		return pscope.err().Appendf(doc, "%T:%s", errScanner, errScanner.Error())
+		return pscope.Err().Appendf(doc, "%T:%s", errScanner, errScanner.Error())
 	}
 	for _, err := range errList {
-		pscope.err().Appendf(astErrorNode{doc: doc, err: err}, "%s", err.Msg)
+		pscope.Err().Appendf(astErrorNode{doc: doc, err: err}, "%s", err.Msg)
 	}
 	return false
 }
@@ -119,7 +119,7 @@ func processFuncAnnotation(pscope procScope, src *ast.FuncDecl, fn function, com
 	}
 	f.macroCall, ok = expr.(*callExpr)
 	if !ok {
-		return nil, pscope.err().Appendf(comment, "GX equal directive (gx@=) only accept function call expression")
+		return nil, pscope.Err().Appendf(comment, "GX equal directive (gx@=) only accept function call expression")
 	}
 	return f, true
 }
@@ -136,7 +136,7 @@ func (f *assignFuncAnnotation) buildSignature(pkgScope *pkgResolveScope) (ir.Fun
 	}
 	underPkgFun, ok := underFun.(ir.PkgFunc)
 	if !ok {
-		return nil, nil, fScope.err().AppendInternalf(f.fn.source(), "%T not a package function", underFun)
+		return nil, nil, fScope.Err().AppendInternalf(f.fn.source(), "%T not a package function", underFun)
 	}
 	atExpr := &atFuncExpr{
 		ann:     f,
@@ -150,10 +150,10 @@ func (f *assignFuncAnnotation) buildSignature(pkgScope *pkgResolveScope) (ir.Fun
 	}
 	fCallExpr, ok := callExpr.(*ir.CallExpr)
 	if !ok {
-		return nil, nil, fScope.err().Appendf(f.macroCall.source(), "expect a function")
+		return nil, nil, fScope.Err().Appendf(f.macroCall.source(), "expect a function")
 	}
 	if _, ok := fCallExpr.Callee.F.(*ir.Macro); !ok {
-		return nil, nil, fScope.err().Appendf(f.macroCall.source(), "cannot use %s as a macro", fCallExpr.Callee.F.NameDef().Name)
+		return nil, nil, fScope.Err().Appendf(f.macroCall.source(), "cannot use %s as a macro", fCallExpr.Callee.F.NameDef().Name)
 	}
 	// Evaluate the macro expression.
 	compEval, compEvalOk := fScope.compEval()
@@ -162,12 +162,12 @@ func (f *assignFuncAnnotation) buildSignature(pkgScope *pkgResolveScope) (ir.Fun
 	}
 	macro, err := compEval.fitp.EvalExpr(fCallExpr)
 	if err != nil {
-		return nil, nil, fScope.err().AppendAt(f.macroCall.source(), err)
+		return nil, nil, fScope.Err().AppendAt(f.macroCall.source(), err)
 	}
 	// Return the result as a synthetic function.
 	sFunc, ok := macro.(*cpevelements.SyntheticFunc)
 	if !ok {
-		return nil, nil, fScope.err().AppendInternalf(f.macroCall.source(), "cannot convert %T to %s", macro, reflect.TypeFor[*cpevelements.SyntheticFunc]())
+		return nil, nil, fScope.Err().AppendInternalf(f.macroCall.source(), "cannot convert %T to %s", macro, reflect.TypeFor[*cpevelements.SyntheticFunc]())
 	}
 	synthFun, synthScope, ok := (&syntheticFunc{
 		coreSyntheticFunc: f.coreSyntheticFunc,

@@ -62,14 +62,14 @@ func processDTypeRank(pscope procScope, src *ast.ArrayType) (rankNode, typeExprN
 			}
 			elt = eltT.Elt
 		default:
-			return nil, nil, pscope.err().Appendf(elt, "element type %T in array declaration not supported", elt)
+			return nil, nil, pscope.Err().Appendf(elt, "element type %T in array declaration not supported", elt)
 		}
 	}
 	if len(ranks) == 0 {
 		return &rank{src: src, dims: axes}, dtype, ok
 	}
 	if len(axes) > 0 || len(ranks) > 1 {
-		ok = pscope.err().Appendf(src, "array with an inferred rank only support a single axis")
+		ok = pscope.Err().Appendf(src, "array with an inferred rank only support a single axis")
 	}
 	return ranks[0], dtype, ok
 }

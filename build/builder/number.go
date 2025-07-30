@@ -60,17 +60,17 @@ func castNumber(scope resolveScope, expr ir.Expr, target ir.Type) (*ir.NumberCas
 		underlying := ir.Underlying(cast.Typ)
 		arrayType, ok := underlying.(ir.ArrayType)
 		if !ok {
-			scope.err().AppendInternalf(expr.Source(), "type %T has %s but does not implement %s", underlying, ir.ArrayKind.String(), reflect.TypeFor[ir.ArrayType]().Name())
+			scope.Err().AppendInternalf(expr.Source(), "type %T has %s but does not implement %s", underlying, ir.ArrayKind.String(), reflect.TypeFor[ir.ArrayType]().Name())
 			return cast, false
 		}
 		cast.Typ = arrayType.DataType()
 	}
 	if !ir.CanBeNumber(cast.Typ) {
-		scope.err().Appendf(expr.Source(), "cannot use a number as %v", cast.Typ)
+		scope.Err().Appendf(expr.Source(), "cannot use a number as %v", cast.Typ)
 		return cast, false
 	}
 	if ir.IsFloat(expr.Type()) && ir.IsInteger(cast.Typ) {
-		scope.err().Appendf(expr.Source(), "cannot use %s (untyped FLOAT constant) as %s value", expr.String(), cast.Typ.String())
+		scope.Err().Appendf(expr.Source(), "cannot use %s (untyped FLOAT constant) as %s value", expr.String(), cast.Typ.String())
 		return cast, false
 	}
 	return cast, true

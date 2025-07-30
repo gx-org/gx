@@ -44,7 +44,7 @@ func newFile(pkg *basePackage, name string, src *ast.File) *file {
 func processFile(pkgctx *pkgProcScope, name string, src *ast.File) bool {
 	f := newFile(pkgctx.pkg(), name, src)
 	if err := f.pkg.setOrCheckName(src.Name); err != nil {
-		pkgctx.err().Appendf(src.Name, "%q is an invalid package name: %v", src.Name, err)
+		pkgctx.Err().Appendf(src.Name, "%q is an invalid package name: %v", src.Name, err)
 	}
 	return f.processDecls(pkgctx.newScope(f), src.Decls)
 }
@@ -59,7 +59,7 @@ func (f *file) processDecls(pscope procScope, decls []ast.Decl) bool {
 		case *ast.FuncDecl:
 			declOk = f.processFunc(pscope, declT)
 		default:
-			declOk = pscope.err().Appendf(decl, "declarator %T not supported", declT)
+			declOk = pscope.Err().Appendf(decl, "declarator %T not supported", declT)
 		}
 		ok = ok && declOk
 	}
@@ -82,7 +82,7 @@ func (f *file) processGenDecl(pscope procScope, gen *ast.GenDecl) bool {
 	case token.CONST:
 		return processConstDecl(pscope, gen)
 	default:
-		return pscope.err().Appendf(gen, "generic declaration %s not supported", gen.Tok)
+		return pscope.Err().Appendf(gen, "generic declaration %s not supported", gen.Tok)
 	}
 }
 
