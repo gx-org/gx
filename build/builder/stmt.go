@@ -55,11 +55,11 @@ func (n *blockStmt) buildBlockStmt(scope iFuncResolveScope) (*ir.BlockStmt, bool
 		block.List[i], stmtOk = node.buildStmt(scope)
 		ok = ok && stmtOk
 	}
-	if !ok && scope.err().Errors().Empty() {
+	if !ok && scope.Err().Errors().Empty() {
 		// an error occurred but no explicit error has been added to the list of error.
 		// report an error now to help with debugging.
-		if scope.err().Errors().Empty() {
-			scope.err().AppendInternalf(n.src, "failed to build statement but no error reported to the user")
+		if scope.Err().Errors().Empty() {
+			scope.Err().AppendInternalf(n.src, "failed to build statement but no error reported to the user")
 		}
 	}
 	return block, ok
@@ -82,7 +82,7 @@ func processExprStmt(pscope procScope, src *ast.ExprStmt) (*exprStmt, bool) {
 func (n *exprStmt) buildStmt(scope iFuncResolveScope) (ir.Stmt, bool) {
 	x, ok := n.x.buildExpr(scope)
 	if ok && x.Type().Kind() != ir.VoidKind {
-		scope.err().Appendf(n.src, "cannot use an expression returning a value as a statement")
+		scope.Err().Appendf(n.src, "cannot use an expression returning a value as a statement")
 	}
 	return &ir.ExprStmt{Src: n.src, X: x}, ok
 }
@@ -102,7 +102,7 @@ func processStmt(pscope procScope, stmt ast.Stmt) (node stmtNode, ok bool) {
 	case *ast.ExprStmt:
 		node, ok = processExprStmt(pscope, s)
 	default:
-		pscope.err().Appendf(stmt, "statement type not supported: %T", stmt)
+		pscope.Err().Appendf(stmt, "statement type not supported: %T", stmt)
 		ok = false
 	}
 	return

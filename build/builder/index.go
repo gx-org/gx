@@ -63,7 +63,7 @@ func (n *indexExpr) checkIndexType(scope *fileResolveScope, index ir.Expr) (ir.E
 		return index, false
 	}
 	if !ir.IsIndexType(index.Type()) {
-		return index, scope.err().Appendf(n.source(), "invalid argument: index %s must be integer", index.Type().String())
+		return index, scope.Err().Appendf(n.source(), "invalid argument: index %s must be integer", index.Type().String())
 	}
 	return index, true
 }
@@ -75,11 +75,11 @@ func (n *indexExpr) checkIndexBounds(rscope resolveScope, axLen ir.AxisLengths, 
 	}
 	axisValue, err := compEval.EvalExpr(axLen)
 	if err != nil {
-		return rscope.err().AppendInternalf(axLen.Source(), "cannot evaluate axis length expression: %v", err)
+		return rscope.Err().AppendInternalf(axLen.Source(), "cannot evaluate axis length expression: %v", err)
 	}
 	indexValue, err := compEval.EvalExpr(index)
 	if err != nil {
-		return rscope.err().AppendInternalf(axLen.Source(), "cannot evaluate slice index expression: %v", err)
+		return rscope.Err().AppendInternalf(axLen.Source(), "cannot evaluate slice index expression: %v", err)
 	}
 	axisInt := canonical.ToValue(axisValue)
 	indexInt := canonical.ToValue(indexValue)
@@ -87,7 +87,7 @@ func (n *indexExpr) checkIndexBounds(rscope resolveScope, axLen ir.AxisLengths, 
 		return true
 	}
 	if indexInt.Cmp(axisInt) >= 0 {
-		return rscope.err().Appendf(n.source(), "index out of range: %s >= %s", indexInt.String(), axisInt.String())
+		return rscope.Err().Appendf(n.source(), "index out of range: %s >= %s", indexInt.String(), axisInt.String())
 	}
 	return true
 }
@@ -103,7 +103,7 @@ func specializeFunc(rscope resolveScope, x ir.Expr, indices []ir.AssignableExpr)
 	}
 	fun, ok := funValue.(*ir.FuncValExpr)
 	if !ok {
-		return x, rscope.err().AppendInternalf(x.Source(), "%s is not a function: %T", x, x)
+		return x, rscope.Err().AppendInternalf(x.Source(), "%s is not a function: %T", x, x)
 	}
 	typeExprs := make([]*ir.TypeValExpr, len(indices))
 	indicesOk := true
@@ -139,15 +139,15 @@ func (n *indexExpr) buildExpr(rscope resolveScope) (ir.Expr, bool) {
 	}
 	ext := &ir.IndexExpr{Src: n.src, X: x, Index: idx, Typ: ir.InvalidType()}
 	if !ir.IsSlicingOk(xType) {
-		return ext, rscope.err().Appendf(n.source(), "cannot index %s (type: %s)", ext.X, xType)
+		return ext, rscope.Err().Appendf(n.source(), "cannot index %s (type: %s)", ext.X, xType)
 	}
 	slicerType, ok := ir.Underlying(xType).(ir.SlicerType)
 	if !ok {
-		return ext, rscope.err().AppendInternalf(n.source(), "type %T with kind %s supports slicing but does not implement %s", xType, xType.Kind().String(), reflect.TypeFor[ir.SlicerType]())
+		return ext, rscope.Err().AppendInternalf(n.source(), "type %T with kind %s supports slicing but does not implement %s", xType, xType.Kind().String(), reflect.TypeFor[ir.SlicerType]())
 	}
 	ext.Typ, ok = slicerType.ElementType()
 	if !ok {
-		return ext, rscope.err().Appendf(n.source(), "cannot index %s", xType)
+		return ext, rscope.Err().Appendf(n.source(), "cannot index %s", xType)
 	}
 	aType, isArray := xType.(ir.ArrayType)
 	boundOk := true
@@ -202,7 +202,7 @@ func (n *indexListExpr) buildExpr(rscope resolveScope) (ir.Expr, bool) {
 		return x, false
 	}
 	if x.Type().Kind() != ir.FuncKind {
-		return x, rscope.err().Appendf(n.source(), "list of indices only supported for generic functions")
+		return x, rscope.Err().Appendf(n.source(), "list of indices only supported for generic functions")
 	}
 	return specializeFunc(rscope, x, indices)
 }

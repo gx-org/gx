@@ -45,7 +45,7 @@ func (n *selectorExpr) source() ast.Node {
 }
 
 func (n *selectorExpr) returnUndefined(scope resolveScope, x ir.Expr) (ir.Storage, bool) {
-	return nil, scope.err().Appendf(n.src.Sel, "undefined: %s.%s", n.x.String(), n.src.Sel.Name)
+	return nil, scope.Err().Appendf(n.src.Sel, "undefined: %s.%s", n.x.String(), n.src.Sel.Name)
 }
 
 func (n *selectorExpr) selectFromPackage(scope resolveScope, sel *ir.SelectorExpr) (ir.Storage, bool) {
@@ -54,11 +54,11 @@ func (n *selectorExpr) selectFromPackage(scope resolveScope, sel *ir.SelectorExp
 		return nil, false
 	}
 	if _, ok := val.(*ir.ImportDecl); !ok {
-		return nil, scope.err().AppendInternalf(sel.X.Source(), "%T is not %s", val, reflect.TypeFor[*ir.ImportDecl]())
+		return nil, scope.Err().AppendInternalf(sel.X.Source(), "%T is not %s", val, reflect.TypeFor[*ir.ImportDecl]())
 	}
 	pkg := scope.fileScope().deps[val.NameDef().Name]
 	if !ir.IsExported(n.src.Sel.Name) {
-		return nil, scope.err().Appendf(n.src.Sel, "%s is not exported", n.src.Sel.Name)
+		return nil, scope.Err().Appendf(n.src.Sel, "%s is not exported", n.src.Sel.Name)
 	}
 	store := pkg.names[n.src.Sel.Name]
 	if store == nil {

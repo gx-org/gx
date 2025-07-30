@@ -36,7 +36,7 @@ func processInterfaceType(pscope procScope, src *ast.InterfaceType) (*typeSet, b
 	ok := true
 	for _, elem := range src.Methods.List {
 		if len(elem.Names) > 0 {
-			ok = pscope.err().Appendf(elem, "interface element not supported")
+			ok = pscope.Err().Appendf(elem, "interface element not supported")
 			continue
 		}
 		var elemOk bool
@@ -74,7 +74,7 @@ func (s *typeSet) buildTypeExpr(rscope resolveScope) (*ir.TypeValExpr, bool) {
 		}
 		ext.Typs[i] = typeExpr.Typ
 		if prev, exists := rtypeNames[s.typs[i].String()]; exists {
-			ok = rscope.err().Appendf(s.source(), "overlapping terms %s and %s", prev, typeExpr)
+			ok = rscope.Err().Appendf(s.source(), "overlapping terms %s and %s", prev, typeExpr)
 		}
 		rtypeNames[typeExpr.String()] = typeExpr.Typ
 	}

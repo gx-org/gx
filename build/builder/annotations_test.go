@@ -6,6 +6,7 @@ import (
 
 	"github.com/pkg/errors"
 	"github.com/gx-org/gx/build/builder/testbuild"
+	"github.com/gx-org/gx/build/fmterr"
 	"github.com/gx-org/gx/build/ir"
 	irh "github.com/gx-org/gx/build/ir/irhelper"
 	"github.com/gx-org/gx/internal/interp/compeval/cpevelements"
@@ -13,7 +14,7 @@ import (
 )
 
 func newAnnotation(call elements.CallAt, macro *cpevelements.Macro, args []ir.Element) (*cpevelements.SyntheticFunc, error) {
-	fn, ok := args[0].(*ir.FuncDecl)
+	fn, ok := args[0].(ir.PkgFunc)
 	if !ok {
 		return nil, errors.Errorf("%T not an IR function", args[0])
 	}
@@ -30,25 +31,30 @@ func newAnnotation(call elements.CallAt, macro *cpevelements.Macro, args []ir.El
 
 type idAnnotation struct {
 	macro *cpevelements.Macro
-	fn    *ir.FuncDecl
+	fn    ir.PkgFunc
 	tag   string
 }
 
 func (m *idAnnotation) BuildType() (*ast.FuncDecl, error) {
-	return m.fn.Src, nil
+	return &ast.FuncDecl{Type: m.fn.FuncType().Src}, nil
 }
 
 func (m *idAnnotation) BuildBody(fetcher ir.Fetcher) (*ast.BlockStmt, []*cpevelements.SyntheticFuncDecl, bool) {
-	return m.fn.Body.Src, nil, true
+	fDecl, ok := m.fn.(*ir.FuncDecl)
+	if !ok {
+		return nil, nil, true
+	}
+	return fDecl.Body.Src, nil, true
 }
 
-func (m *idAnnotation) BuildAnnotations(_ ir.Fetcher, ext ir.PkgFunc) bool {
+func (m *idAnnotation) BuildIR(errApp fmterr.ErrAppender, src *ast.FuncDecl, file *ir.File, fType *ir.FuncType) (ir.PkgFunc, bool) {
+	ext := m.fn.New(src, file, fType)
 	ext.Annotations().Append(
 		m.macro.Func().File().Package,
 		"TAG",
 		m.tag,
 	)
-	return true
+	return ext, true
 }
 
 func TestAnnotation(t *testing.T) {
@@ -122,12 +128,21 @@ func f() int32 {
 					),
 					Anns: ir.Annotations{
 						Anns: []ir.Annotation{
-							ir.NewAnnotation("annotation:TAG", "Hello"),
 							ir.NewAnnotation("annotation:TAG", "Bonjour"),
+							ir.NewAnnotation("annotation:TAG", "Hello"),
 						},
 					},
 				},
 			},
+		},
+		testbuild.Decl{
+			Src: `
+import "annotation"
+
+// gx@=annotation.Tag("Hello")
+// gx@=annotation.Tag("Bonjour")
+func f() int32
+`,
 		},
 	)
 }

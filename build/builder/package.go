@@ -169,16 +169,16 @@ func (pkg *FilePackage) BuildFiles(fs fs.FS, filenames []string) (err error) {
 func (pkg *FilePackage) buildFile(pscope *pkgProcScope, fs fs.FS, filename string) bool {
 	file, err := fs.Open(filename)
 	if err != nil {
-		return pscope.err().Append(err)
+		return pscope.Err().Append(err)
 	}
 	src, err := io.ReadAll(file)
 	if err != nil {
-		return pscope.err().Append(errors.Errorf("cannot read file %q: %v", file, err))
+		return pscope.Err().Append(errors.Errorf("cannot read file %q: %v", file, err))
 	}
 
 	fileDecl, err := parser.ParseFile(pkg.fset, filename, src, parser.ParseComments|parser.SkipObjectResolution)
 	if err != nil {
-		return pscope.err().Append(errors.Errorf("cannot parse file %s:\n\t%v", filename, err))
+		return pscope.Err().Append(errors.Errorf("cannot parse file %s:\n\t%v", filename, err))
 	}
 	return processFile(pscope, filename, fileDecl)
 }

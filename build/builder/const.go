@@ -51,13 +51,13 @@ func processConstSpec(pscope procScope, src *ast.ValueSpec) bool {
 	}
 	numOk := true
 	if len(src.Values) > len(src.Names) {
-		pscope.err().Appendf(src.Values[len(src.Names)], "extra init expr")
+		pscope.Err().Appendf(src.Values[len(src.Names)], "extra init expr")
 		numOk = false
 	}
 	names := src.Names
 	if len(src.Values) < len(names) {
 		name := names[len(src.Values)]
-		pscope.err().Appendf(name, "missing init expr for %s", name.Name)
+		pscope.Err().Appendf(name, "missing init expr for %s", name.Name)
 		numOk = false
 		names = src.Names[:len(src.Values)]
 	}

@@ -50,7 +50,7 @@ func processType(pscope procScope, src *ast.TypeSpec) bool {
 		return false
 	}
 	if src.TypeParams.NumFields() > 0 {
-		pscope.err().Appendf(src, "type may not have type parameters")
+		pscope.Err().Appendf(src, "type may not have type parameters")
 		ok = false
 	}
 	pNode := newProcessNode(token.TYPE, src.Name, n)
@@ -96,7 +96,7 @@ func assignMethod(scope *fileResolveScope, ext *ir.NamedType, fn *irFunc) bool {
 	structType, ok := underlying.(*ir.StructType)
 	if ok {
 		if defined := structType.Fields.FindField(fn.irFunc.Name()); defined != nil {
-			return scope.err().Appendf(fn.irFunc.Source(), "field and method with the same name %s", fn.irFunc.Name())
+			return scope.Err().Appendf(fn.irFunc.Source(), "field and method with the same name %s", fn.irFunc.Name())
 		}
 	}
 	// Check if a method has already been defined.
@@ -106,7 +106,7 @@ func assignMethod(scope *fileResolveScope, ext *ir.NamedType, fn *irFunc) bool {
 		scope.methods.Store(ext, methods)
 	}
 	if prev, hasPrev := methods.Load(ext.Name()); hasPrev {
-		return scope.err().Appendf(fn.irFunc.Source(), "method %s.%s already declared at %s", ext.Name(), fn.irFunc.Name(), funcPos(scope, prev.bFunc))
+		return scope.Err().Appendf(fn.irFunc.Source(), "method %s.%s already declared at %s", ext.Name(), fn.irFunc.Name(), funcPos(scope, prev.bFunc))
 	}
 	methods.Store(fn.irFunc.Name(), fn)
 	ext.Methods = updateMethods(scope.pkgResolveScope, ext)
@@ -130,7 +130,7 @@ func funcPos(scope *fileResolveScope, fn function) string {
 	if !ok {
 		return "as a builtin"
 	}
-	return fmterr.PosString(scope.err().FSet().FSet, fnPos.source().Pos())
+	return fmterr.PosString(scope.Err().FSet().FSet, fnPos.source().Pos())
 }
 
 func (n *namedType) String() string {

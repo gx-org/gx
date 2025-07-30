@@ -1118,6 +1118,7 @@ type (
 	// PkgFunc is a function declared at the package level.
 	PkgFunc interface {
 		pkgFunc()
+		New(*ast.FuncDecl, *File, *FuncType) PkgFunc
 		StorageWithValue
 		Func
 		Annotations() *Annotations
@@ -1414,6 +1415,11 @@ func (s *FuncDecl) Annotations() *Annotations {
 	return &s.Anns
 }
 
+// New returns a new function given a source, a file, and a type.
+func (s *FuncDecl) New(src *ast.FuncDecl, file *File, fType *FuncType) PkgFunc {
+	return &FuncDecl{Src: src, FFile: file, FType: fType}
+}
+
 func (*FuncBuiltin) node()         {}
 func (*FuncBuiltin) staticValue()  {}
 func (*FuncBuiltin) storage()      {}
@@ -1470,6 +1476,11 @@ func (s *FuncBuiltin) File() *File {
 // Annotations returns the annotations attached to the function.
 func (s *FuncBuiltin) Annotations() *Annotations {
 	return &s.Anns
+}
+
+// New returns a new function given a source, a file, and a type.
+func (s *FuncBuiltin) New(src *ast.FuncDecl, file *File, fType *FuncType) PkgFunc {
+	return &FuncBuiltin{Src: src, FFile: file, FType: fType}
 }
 
 func (*FuncLit) node()         {}
@@ -1601,6 +1612,11 @@ func (s *Macro) Annotations() *Annotations {
 // String representation of the literal.
 func (s *Macro) String() string {
 	return fmt.Sprintf("metafunc %s", s.Name())
+}
+
+// New returns a new function given a source, a file, and a type.
+func (s *Macro) New(src *ast.FuncDecl, file *File, fType *FuncType) PkgFunc {
+	return &Macro{Src: src, FFile: file, FType: fType}
 }
 
 func (*ImportDecl) node()         {}

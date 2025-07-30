@@ -94,7 +94,7 @@ func (r *tensorRef) buildExpr(rscope resolveScope) (ir.Expr, bool) {
 		return x, false
 	}
 	if x.Type().Kind() != ir.ArrayKind {
-		return x, rscope.err().Appendf(r.base, "tensor statements must only reference tensors; %s is %s", r.base, x.Type().String())
+		return x, rscope.Err().Appendf(r.base, "tensor statements must only reference tensors; %s is %s", r.base, x.Type().String())
 	}
 	return x, true
 }
@@ -122,7 +122,7 @@ func processTensorRef(pscope procScope, target *tensorRef, expr ast.Expr, others
 	case *ast.Ident:
 	case *ast.IndexExpr:
 	default:
-		pscope.err().Appendf(expr, "invalid tensor reference base: %T", expr)
+		pscope.Err().Appendf(expr, "invalid tensor reference base: %T", expr)
 		return nil, false
 	}
 
@@ -136,11 +136,11 @@ func processTensorRef(pscope procScope, target *tensorRef, expr ast.Expr, others
 	for i, elt := range elts {
 		ident, ok := elt.(*ast.Ident)
 		if !ok {
-			pscope.err().Appendf(elt, "expected tensor reference to index using bare variable, got %T", elt)
+			pscope.Err().Appendf(elt, "expected tensor reference to index using bare variable, got %T", elt)
 			return nil, false
 		}
 		if idents.contains(ident) {
-			pscope.err().Appendf(elt, "tensor reference includes axis %q more than once", ident)
+			pscope.Err().Appendf(elt, "tensor reference includes axis %q more than once", ident)
 			return nil, false
 		}
 		indices = append(indices, ident)
@@ -171,10 +171,10 @@ func processEinsumExpr(pscope procScope, left ast.Expr, right *ast.CallExpr) (ex
 func processTensorExpr(pscope procScope, target *tensorRef, expr ast.Expr, others ...*tensorRef) (*tensorExpr, bool) {
 	binExp, ok := expr.(*ast.BinaryExpr)
 	if !ok {
-		return nil, pscope.err().Appendf(expr, "expected a binary expression, got %T", expr)
+		return nil, pscope.Err().Appendf(expr, "expected a binary expression, got %T", expr)
 	}
 	if binExp.Op != token.MUL {
-		return nil, pscope.err().Appendf(expr, "expected a multiply operation, got %q", binExp.Op.String())
+		return nil, pscope.Err().Appendf(expr, "expected a multiply operation, got %q", binExp.Op.String())
 	}
 
 	rhs, ok := processTensorRef(pscope, target, binExp.Y)
@@ -203,11 +203,11 @@ func (s *tensorExpr) buildExpr(scope resolveScope) (ir.Expr, bool) {
 	}
 	lhsTyp, xOk := lhs.Type().(ir.ArrayType)
 	if !xOk {
-		return ext, scope.err().AppendInternalf(lhs.Source(), "%s:%s:%T is not an array type", lhs.String(), lhs.Type().String(), lhs.Type())
+		return ext, scope.Err().AppendInternalf(lhs.Source(), "%s:%s:%T is not an array type", lhs.String(), lhs.Type().String(), lhs.Type())
 	}
 	rhsTyp, yOk := rhs.Type().(ir.ArrayType)
 	if !yOk {
-		return ext, scope.err().AppendInternalf(rhs.Source(), "%s:%s:%T is not an array type", rhs.String(), rhs.Type().String(), rhs.Type())
+		return ext, scope.Err().AppendInternalf(rhs.Source(), "%s:%s:%T is not an array type", rhs.String(), rhs.Type().String(), rhs.Type())
 	}
 	leftRank := lhsTyp.Rank()
 	rightRank := rhsTyp.Rank()

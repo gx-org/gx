@@ -106,7 +106,7 @@ func (n *sliceLitExpr) buildExpr(rscope resolveScope) (ir.Expr, bool) {
 	under := ir.Underlying(typ)
 	sliceType, ok := under.(*ir.SliceType)
 	if !ok {
-		return &ir.SliceLitExpr{Src: n.src, Typ: ir.InvalidType()}, rscope.err().AppendInternalf(n.src, "%T is not a slice type", under)
+		return &ir.SliceLitExpr{Src: n.src, Typ: ir.InvalidType()}, rscope.Err().AppendInternalf(n.src, "%T is not a slice type", under)
 	}
 	return n.lit.buildExpr(newSliceLitScope(rscope, sliceType))
 }

@@ -17,6 +17,7 @@ package cpevelements
 import (
 	"go/ast"
 
+	"github.com/gx-org/gx/build/fmterr"
 	"github.com/gx-org/gx/build/ir"
 )
 
@@ -25,7 +26,7 @@ type (
 	SyntheticBuilder interface {
 		BuildType() (*ast.FuncDecl, error)
 		BuildBody(ir.Fetcher) (*ast.BlockStmt, []*SyntheticFuncDecl, bool)
-		BuildAnnotations(ir.Fetcher, ir.PkgFunc) bool
+		BuildIR(fmterr.ErrAppender, *ast.FuncDecl, *ir.File, *ir.FuncType) (ir.PkgFunc, bool)
 	}
 
 	// SyntheticFunc is a GX string.

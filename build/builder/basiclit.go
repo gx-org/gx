@@ -27,7 +27,7 @@ func processBasicLit(pscope procScope, expr *ast.BasicLit) (exprNode, bool) {
 	case token.FLOAT:
 		val, _, err := new(big.Float).Parse(expr.Value, 0)
 		if err != nil {
-			pscope.err().Appendf(expr, "cannot parse float number literal %q: %v", expr.Value, err)
+			pscope.Err().Appendf(expr, "cannot parse float number literal %q: %v", expr.Value, err)
 		}
 		return &numberLit{
 			ext: &ir.NumberFloat{Src: expr, Val: val},
@@ -35,7 +35,7 @@ func processBasicLit(pscope procScope, expr *ast.BasicLit) (exprNode, bool) {
 	case token.INT:
 		val, ok := new(big.Int).SetString(expr.Value, 0)
 		if !ok {
-			pscope.err().Appendf(expr, "cannot parse int number literal %q", expr.Value)
+			pscope.Err().Appendf(expr, "cannot parse int number literal %q", expr.Value)
 		}
 		return &numberLit{
 			ext: &ir.NumberInt{Src: expr, Val: val},
@@ -45,7 +45,7 @@ func processBasicLit(pscope procScope, expr *ast.BasicLit) (exprNode, bool) {
 			ext: ir.StringLiteral{Src: expr},
 		}, true
 	default:
-		return nil, pscope.err().Appendf(expr, "%s basic literal are not supported", expr.Kind)
+		return nil, pscope.Err().Appendf(expr, "%s basic literal are not supported", expr.Kind)
 	}
 }
 

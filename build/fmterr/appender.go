@@ -18,11 +18,19 @@ import (
 	"go/ast"
 )
 
-// Appender appends errors to a set within the context of a FileSet.
-type Appender struct {
-	errors *Errors
-	fset   FileSet
-}
+type (
+	// ErrAppender accumulates errors.
+	ErrAppender interface {
+		// Err returns the accumulator.
+		Err() *Appender
+	}
+
+	// Appender appends errors to a set within the context of a FileSet.
+	Appender struct {
+		errors *Errors
+		fset   FileSet
+	}
+)
 
 // Append an error to the list of errors.
 func (app *Appender) Append(err error) bool {

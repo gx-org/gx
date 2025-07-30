@@ -72,7 +72,7 @@ func (n *compositeLit) buildElements(ascope compositeLitResolveScope) ([]ir.Assi
 func (n *compositeLit) buildExpr(rscope resolveScope) (ir.Expr, bool) {
 	ascope, ok := rscope.(compositeLitResolveScope)
 	if !ok {
-		return nil, rscope.err().AppendInternalf(n.src, "cannot build a composite expression without a composite scope")
+		return nil, rscope.Err().AppendInternalf(n.src, "cannot build a composite expression without a composite scope")
 	}
 	elts, ok := n.buildElements(ascope)
 	if !ok {

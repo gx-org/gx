@@ -51,7 +51,7 @@ func processLoopAssignable(pscope procScope, expr ast.Expr) (*identStorage, bool
 		target, targetOk := processIdentExpr(pscope, exprT)
 		return &identStorage{target: target}, targetOk
 	default:
-		pscope.err().Appendf(expr, "%T not supported", expr)
+		pscope.Err().Appendf(expr, "%T not supported", expr)
 		return nil, false
 	}
 }
@@ -69,11 +69,11 @@ func (n *rangeStmt) buildBodyOverArray(rscope resolveScope, x ir.Expr) (ir.Stora
 	xUnder := ir.Underlying(x.Type())
 	xArrayType, ok := xUnder.(ir.ArrayType)
 	if !ok {
-		return key, nil, rscope.err().Appendf(n.x.source(), "%s is not an array type", x.Type().String())
+		return key, nil, rscope.Err().Appendf(n.x.source(), "%s is not an array type", x.Type().String())
 	}
 	valueType, ok := xArrayType.ElementType()
 	if !ok {
-		return key, nil, rscope.err().Appendf(n.x.source(), "cannot range over array %s with 0 axis", x.Type().String())
+		return key, nil, rscope.Err().Appendf(n.x.source(), "cannot range over array %s with 0 axis", x.Type().String())
 	}
 	value, _, valueOk := n.value.buildStorage(rscope, valueType)
 	return key, value, keyOk && valueOk
@@ -100,7 +100,7 @@ func (n *rangeStmt) buildStmt(parent iFuncResolveScope) (ir.Stmt, bool) {
 	} else if ext.X.Type().Kind() == ir.ArrayKind {
 		ext.Key, ext.Value, ok = n.buildBodyOverArray(rscope, ext.X)
 	} else {
-		return ext, rscope.err().Appendf(n.src, "cannot range over %s", ext.X.Type().String())
+		return ext, rscope.Err().Appendf(n.src, "cannot range over %s", ext.X.Type().String())
 	}
 	if !ok {
 		return ext, false

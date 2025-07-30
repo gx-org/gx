@@ -31,7 +31,7 @@ import (
 func buildIRBody(mScope *synthResolveScope, extF ir.Func, compEval *compileEvaluator, body *ast.BlockStmt) (ok bool) {
 	defer func() {
 		if !ok {
-			mScope.err().Append(mScope.errorFor(body))
+			mScope.Err().Append(mScope.errorFor(body))
 		}
 	}()
 	fScope := mScope.fileScope()
@@ -135,6 +135,9 @@ func (m *synthResolveScope) buildBody(fn *irFunc, compEval *compileEvaluator) ([
 	if !ok {
 		return nil, false
 	}
+	if astBody == nil {
+		return nil, true
+	}
 	// Register all the auxiliary functions, so that they are available to the builder.
 	pkgScope := m.fileScope().pkgResolveScope
 	irAuxs, ok := pkgScope.dcls.registerAuxFuncs(m, auxs)
@@ -142,13 +145,10 @@ func (m *synthResolveScope) buildBody(fn *irFunc, compEval *compileEvaluator) ([
 		return nil, false
 	}
 	// Build the IR representation of the function body.
-	if ok := buildIRBody(m, fn.irFunc, compEval, astBody); !ok {
-		return nil, false
-	}
-	return irAuxs, m.fnBuilder.Builder().BuildAnnotations(compEval, fn.irFunc)
+	return irAuxs, buildIRBody(m, fn.irFunc, compEval, astBody)
 }
 
-func buildFuncTypeFromAST(fScope *fileResolveScope, src *ast.FuncDecl) (*ir.FuncDecl, *funcResolveScope, bool) {
+func buildFuncTypeFromAST(fScope *fileResolveScope, fnBuilder *cpevelements.SyntheticFunc, src *ast.FuncDecl) (ir.PkgFunc, *funcResolveScope, bool) {
 	pkgPScope := fScope.pkgProcScope
 	pScope := pkgPScope.newScope(fScope.bFile())
 	ft, ok := processFuncType(pScope, src.Type, src.Recv, false)
@@ -159,7 +159,8 @@ func buildFuncTypeFromAST(fScope *fileResolveScope, src *ast.FuncDecl) (*ir.Func
 	if !ok {
 		return nil, nil, false
 	}
-	return &ir.FuncDecl{Src: src, FFile: fScope.irFile(), FType: fType}, fnScope, true
+	ext, ok := fnBuilder.Builder().BuildIR(fScope, src, fScope.irFile(), fType)
+	return ext, fnScope, ok
 }
 
 type syntheticFunc struct {
@@ -175,24 +176,24 @@ func (f *syntheticFunc) buildSignature(pkgScope *pkgResolveScope) (ir.Func, iFun
 	return f.buildSignatureFScope(fScope)
 }
 
-func (f *syntheticFunc) checkSyntheticSignature(fScope *fileResolveScope, fSynth *ir.FuncDecl) bool {
-	fSrc, _, ok := buildFuncTypeFromAST(fScope, f.src)
+func (f *syntheticFunc) checkSyntheticSignature(fScope *fileResolveScope, fSynth ir.Func) bool {
+	fSrc, _, ok := buildFuncTypeFromAST(fScope, f.fnBuilder, f.src)
 	if !ok {
 		return false
 	}
-	fSrcRecv := fSrc.FType.ReceiverField()
-	fSynthRecv := fSynth.FType.ReceiverField()
+	fSrcRecv := fSrc.FuncType().ReceiverField()
+	fSynthRecv := fSynth.FuncType().ReceiverField()
 	if fSrcRecv == nil && fSynthRecv == nil {
 		return true
 	}
 	if fSrcRecv == nil && fSynthRecv != nil {
-		return fScope.err().Appendf(f.src, "%s requires a %s type receiver", f.src.Name.Name, fSynthRecv.Type().String())
+		return fScope.Err().Appendf(f.src, "%s requires a %s type receiver", f.src.Name.Name, fSynthRecv.Type().String())
 	}
 	if fSrcRecv != nil && fSynthRecv == nil {
-		return fScope.err().Appendf(f.src, "%s requires no receiver", f.src.Name.Name)
+		return fScope.Err().Appendf(f.src, "%s requires no receiver", f.src.Name.Name)
 	}
 	if ok := equalToAt(fScope, f.src.Recv, fSrcRecv.Type(), fSynthRecv.Type()); !ok {
-		return fScope.err().Appendf(f.src, "cannot assign %s.%s to %s.%s", fSynthRecv.Type().NameDef().Name, fSynth.Src.Name.Name, fSrcRecv.Type().NameDef().Name, fSrc.Src.Name.Name)
+		return fScope.Err().Appendf(f.src, "cannot assign %s.%s to %s.%s", fSynthRecv.Type().NameDef().Name, fSynth.Name(), fSrcRecv.Type().NameDef().Name, fSrc.Name())
 	}
 	return true
 }
@@ -200,10 +201,10 @@ func (f *syntheticFunc) checkSyntheticSignature(fScope *fileResolveScope, fSynth
 func (f *syntheticFunc) buildSignatureFScope(fScope *fileResolveScope) (ir.Func, *synthResolveScope, bool) {
 	astFDecl, err := f.fnBuilder.Builder().BuildType()
 	if err != nil {
-		return nil, nil, fScope.err().AppendAt(f.src, err)
+		return nil, nil, fScope.Err().AppendAt(f.src, err)
 	}
 	astFDecl.Name = f.src.Name
-	fDecl, fnScope, ok := buildFuncTypeFromAST(fScope, astFDecl)
+	fDecl, fnScope, ok := buildFuncTypeFromAST(fScope, f.fnBuilder, astFDecl)
 	if !ok {
 		return nil, nil, false
 	}

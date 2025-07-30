@@ -67,7 +67,7 @@ type (
 func storageFromExpr(scope resolveScope, expr ir.Expr) (ir.Storage, bool) {
 	withStore, ok := expr.(ir.WithStore)
 	if !ok {
-		return nil, scope.err().AppendInternalf(expr.Source(), "%T does not have a store", expr)
+		return nil, scope.Err().AppendInternalf(expr.Source(), "%T does not have a store", expr)
 	}
 	store := withStore.Store()
 	if store == nil {
@@ -83,7 +83,7 @@ func typeFromStorage(rscope resolveScope, x ir.AssignableExpr, store ir.Storage)
 	}
 	typeRef, ok := value.(*ir.TypeValExpr)
 	if !ok {
-		return nil, rscope.err().Appendf(x.Source(), "%s not a type", x.String())
+		return nil, rscope.Err().Appendf(x.Source(), "%s not a type", x.String())
 	}
 	return &ir.TypeValExpr{X: x, Typ: typeRef.Typ}, true
 }
@@ -104,7 +104,7 @@ func valueFromStorage(rscope resolveScope, expr ir.Expr, store ir.Storage) (ir.A
 		if nameDef != nil {
 			name = nameDef.Name
 		}
-		return nil, rscope.err().AppendInternalf(store.Source(), "storage %T:%s:%s has no value", store, name, store.Type().String())
+		return nil, rscope.Err().AppendInternalf(store.Source(), "storage %T:%s:%s has no value", store, name, store.Type().String())
 	}
 	return withValue.Value(expr), true
 }
@@ -130,7 +130,7 @@ func buildArrayType(rscope resolveScope, eNode typeExprNode) (ir.ArrayType, bool
 	}
 	arrayType, ok := typeExpr.Typ.(ir.ArrayType)
 	if !ok {
-		return invalidArrayType, rscope.err().AppendInternalf(eNode.source(), "%s is not an array type", typeExpr.String())
+		return invalidArrayType, rscope.Err().AppendInternalf(eNode.source(), "%s is not an array type", typeExpr.String())
 	}
 	return arrayType, true
 }
@@ -147,7 +147,7 @@ func buildSliceType(rscope resolveScope, eNode typeExprNode) (*ir.SliceType, boo
 	}
 	sliceType, ok := typeExpr.Typ.(*ir.SliceType)
 	if !ok {
-		return invalidSliceType, rscope.err().AppendInternalf(eNode.source(), "%s is not a slice type", typeExpr.String())
+		return invalidSliceType, rscope.Err().AppendInternalf(eNode.source(), "%s is not a slice type", typeExpr.String())
 	}
 	return sliceType, true
 }
@@ -159,7 +159,7 @@ func buildCall(rscope resolveScope, eNode exprNode) (*ir.CallExpr, bool) {
 	}
 	call, ok := expr.(*ir.CallExpr)
 	if !ok {
-		return nil, rscope.err().AppendInternalf(eNode.source(), "cannot call non-function %s (variable of type %s)", expr.String(), expr.Type().String())
+		return nil, rscope.Err().AppendInternalf(eNode.source(), "cannot call non-function %s (variable of type %s)", expr.String(), expr.Type().String())
 	}
 	return call, true
 }
@@ -167,10 +167,10 @@ func buildCall(rscope resolveScope, eNode exprNode) (*ir.CallExpr, bool) {
 func assignableToAt(rscope resolveScope, pos ast.Node, src, dst ir.Type) bool {
 	assignable, err := assignableTo(rscope, src, dst)
 	if err != nil {
-		return rscope.err().AppendAt(pos, err)
+		return rscope.Err().AppendAt(pos, err)
 	}
 	if !assignable {
-		return rscope.err().Appendf(pos, "cannot use %s as %s value in assignment", src.String(), dst.String())
+		return rscope.Err().Appendf(pos, "cannot use %s as %s value in assignment", src.String(), dst.String())
 	}
 	return true
 }
@@ -191,10 +191,10 @@ func assignableTo(rscope resolveScope, src, dst ir.Type) (bool, error) {
 func convertToAt(rscope resolveScope, pos ast.Node, src, dst ir.Type) bool {
 	convertOk, err := convertTo(rscope, src, dst)
 	if err != nil {
-		return rscope.err().AppendAt(pos, err)
+		return rscope.Err().AppendAt(pos, err)
 	}
 	if !convertOk {
-		return rscope.err().Appendf(pos, "cannot convert %s to %s", src.String(), dst.String())
+		return rscope.Err().Appendf(pos, "cannot convert %s to %s", src.String(), dst.String())
 	}
 	return true
 }
@@ -238,7 +238,7 @@ func equalToAt(rscope resolveScope, pos ast.Node, src, dst ir.Type) bool {
 	}
 	eq, err := src.Equal(compEval, dst)
 	if err != nil {
-		rscope.err().AppendInternalf(pos, "cannot compare types: %v", err)
+		rscope.Err().AppendInternalf(pos, "cannot compare types: %v", err)
 		return true
 	}
 	return eq
@@ -251,7 +251,7 @@ func axisEqual(rscope resolveScope, pos ast.Node, src, dst ir.AxisLengths) bool 
 	}
 	eq, err := src.Equal(compEval, dst)
 	if err != nil {
-		rscope.err().AppendInternalf(pos, "cannot compare types: %v", err)
+		rscope.Err().AppendInternalf(pos, "cannot compare types: %v", err)
 		return true
 	}
 	return eq
@@ -278,7 +278,7 @@ func buildAExpr(rscope resolveScope, expr exprNode) (ir.AssignableExpr, bool) {
 	}
 	asExt, ok := ext.(ir.AssignableExpr)
 	if !ok {
-		return nil, rscope.err().Appendf(expr.source(), "%s %s is not assignable", ext.String(), ext.Type().Kind().String())
+		return nil, rscope.Err().Appendf(expr.source(), "%s %s is not assignable", ext.String(), ext.Type().Kind().String())
 	}
 	return asExt, true
 }

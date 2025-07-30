@@ -39,7 +39,7 @@ func (n *valueRef) buildValueRef(rscope resolveScope) (*ir.ValueRef, bool) {
 	name := n.src.Name
 	node, ok := rscope.find(name)
 	if !ok {
-		return nil, rscope.err().Appendf(n.src, "undefined: %s", name)
+		return nil, rscope.Err().Appendf(n.src, "undefined: %s", name)
 	}
 	irNode, ok := irCache[ir.Storage](rscope.irBuilder(), n.src, node)
 	if !ok {

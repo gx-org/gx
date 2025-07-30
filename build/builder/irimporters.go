@@ -71,7 +71,7 @@ func (f *importedFunc) Build(ibld irBuilder) (ir.Node, bool) {
 func pNodeFromFunc(pkgScope *pkgProcScope, file *file, fn ir.PkgFunc) (*processNodeT[function], bool) {
 	fnT, ok := fn.(*ir.FuncBuiltin)
 	if !ok {
-		return nil, pkgScope.err().AppendInternalf(fn.Source(), "cannot import function %T: not supported", fn)
+		return nil, pkgScope.Err().AppendInternalf(fn.Source(), "cannot import function %T: not supported", fn)
 	}
 	return newProcessNode[function](token.FUNC, fnT.Src.Name, &importedFunc{
 		file: file,
@@ -145,7 +145,7 @@ func (b *importedConstExpr) buildExpression(ibld irBuilder, ext *ir.ConstExpr) b
 func importConstDecls(pkgScope *pkgProcScope, file *file, cstDecls []*ir.ConstSpec) bool {
 	for _, cstDecl := range cstDecls {
 		if len(cstDecl.Exprs) != 1 {
-			return pkgScope.err().AppendInternalf(cstDecl.Src, "constant specification got %d expressions but want 1", len(cstDecl.Exprs))
+			return pkgScope.Err().AppendInternalf(cstDecl.Src, "constant specification got %d expressions but want 1", len(cstDecl.Exprs))
 		}
 		cstExpr := cstDecl.Exprs[0]
 		pNode := newProcessNode[iConstExpr](token.CONST, cstExpr.VName, &importedConstExpr{

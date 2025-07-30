@@ -118,8 +118,8 @@ func (m *gradMacro) BuildBody(fetcher ir.Fetcher) (*ast.BlockStmt, []*cpevelemen
 	return body, slices.Collect(m.aux.Values()), true
 }
 
-func (m *gradMacro) BuildAnnotations(ir.Fetcher, ir.PkgFunc) bool {
-	return true
+func (m *gradMacro) BuildIR(errApp fmterr.ErrAppender, src *ast.FuncDecl, file *ir.File, fType *ir.FuncType) (ir.PkgFunc, bool) {
+	return m.fn.New(src, file, fType), true
 }
 
 func gradIdent(src *ast.Ident) *ast.Ident {
