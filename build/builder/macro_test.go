@@ -19,6 +19,7 @@ import (
 	"testing"
 
 	"github.com/gx-org/gx/build/builder/testbuild"
+	"github.com/gx-org/gx/build/fmterr"
 	"github.com/gx-org/gx/build/ir"
 	irh "github.com/gx-org/gx/build/ir/irhelper"
 	"github.com/gx-org/gx/internal/interp/compeval/cpevelements"
@@ -46,13 +47,13 @@ func (m *idMacro) BuildBody(fetcher ir.Fetcher) (*ast.BlockStmt, []*cpevelements
 	return m.fn.Body.Src, nil, true
 }
 
-func (m *idMacro) BuildAnnotations(ir.Fetcher, ir.PkgFunc) bool {
-	return true
+func (m *idMacro) BuildIR(errApp fmterr.ErrAppender, src *ast.FuncDecl, file *ir.File, fType *ir.FuncType) (ir.PkgFunc, bool) {
+	return m.fn.New(src, file, fType), true
 }
 
 var declareMacroPackage = testbuild.DeclarePackage{
 	Src: `
-package macro 
+package macro
 
 //gx:irmacro
 func ID(any, any) any
