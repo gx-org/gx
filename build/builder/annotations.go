@@ -26,7 +26,7 @@ import (
 	"github.com/gx-org/gx/internal/interp/compeval/cpevelements"
 )
 
-const annotationPrefix = "//gx@="
+const annotationPrefix = "gx@="
 
 type astErrorNode struct {
 	doc *ast.Comment
@@ -61,10 +61,12 @@ func processFuncAnnotations(pscope procScope, src *ast.FuncDecl, fn function) (f
 		return fn, true
 	}
 	for _, doc := range src.Doc.List {
-		if !strings.HasPrefix(doc.Text, annotationPrefix) {
+		text := trimCommentPrefix(doc)
+		if !strings.HasPrefix(text, annotationPrefix) {
 			continue
 		}
-		annFN, ok := processFuncAnnotation(pscope, src, fn, doc)
+		text = strings.TrimPrefix(text, annotationPrefix)
+		annFN, ok := processFuncAnnotation(pscope, src, fn, doc, text)
 		if !ok {
 			return fn, false
 		}
@@ -99,7 +101,7 @@ type assignFuncAnnotation struct {
 	macroCall *callExpr
 }
 
-func processFuncAnnotation(pscope procScope, src *ast.FuncDecl, fn function, comment *ast.Comment) (function, bool) {
+func processFuncAnnotation(pscope procScope, src *ast.FuncDecl, fn function, comment *ast.Comment, annotSrc string) (function, bool) {
 	f := &assignFuncAnnotation{
 		fn: fn,
 		coreSyntheticFunc: coreSyntheticFunc{
@@ -107,7 +109,6 @@ func processFuncAnnotation(pscope procScope, src *ast.FuncDecl, fn function, com
 			src:   src,
 		},
 	}
-	annotSrc := strings.TrimPrefix(comment.Text, annotationPrefix)
 	astExpr, err := parser.ParseExprFrom(pscope.pkgScope().pkg().fset, f.bFile.name+":"+f.name().Name, annotSrc, parser.SkipObjectResolution)
 	if err != nil {
 		return nil, processScannerError(pscope, comment, err)
