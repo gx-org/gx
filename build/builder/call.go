@@ -64,6 +64,14 @@ func (n *callExpr) String() string {
 	return n.callee.String()
 }
 
+func (n *callExpr) injectArg(arg exprNode) *callExpr {
+	return &callExpr{
+		src:    n.src,
+		args:   append([]exprNode{arg}, n.args...),
+		callee: n.callee,
+	}
+}
+
 func (n *callExpr) buildArgs(scope resolveScope) ([]ir.AssignableExpr, bool) {
 	ok := true
 	args := make([]ir.AssignableExpr, len(n.args))
@@ -143,7 +151,7 @@ func buildMissingFuncType(rscope resolveScope, callee *ir.FuncValExpr, call *ir.
 	return &ext, true
 }
 
-func (n *callExpr) buildFunctionCall(rscope resolveScope, callee *ir.FuncValExpr) (ir.Expr, bool) {
+func (n *callExpr) buildFunctionCall(rscope resolveScope, callee *ir.FuncValExpr) (*ir.CallExpr, bool) {
 	ext := &ir.CallExpr{Src: n.src, Callee: callee}
 	var argsOk bool
 	ext.Args, argsOk = n.buildArgs(rscope)

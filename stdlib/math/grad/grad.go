@@ -61,11 +61,11 @@ func findParamStorage(file *ir.File, src ir.SourceNode, fn ir.Func, name string)
 
 // FuncGrad computes the gradient of a function.
 func FuncGrad(call elements.CallAt, macro *cpevelements.Macro, args []ir.Element) (*cpevelements.SyntheticFunc, error) {
-	fn, err := interp.FuncDeclFromElement(args[0])
+	fn, err := interp.FuncDeclFromElement(args[1])
 	if err != nil {
 		return nil, err
 	}
-	wrtS, err := elements.StringFromElement(args[1])
+	wrtS, err := elements.StringFromElement(args[2])
 	if err != nil {
 		return nil, err
 	}
@@ -116,6 +116,10 @@ func (m *gradMacro) BuildBody(fetcher ir.Fetcher) (*ast.BlockStmt, []*cpevelemen
 		return nil, nil, false
 	}
 	return body, slices.Collect(m.aux.Values()), true
+}
+
+func (m *gradMacro) BuildAnnotations(ir.Fetcher, ir.PkgFunc) bool {
+	return true
 }
 
 func gradIdent(src *ast.Ident) *ast.Ident {
