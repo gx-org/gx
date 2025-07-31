@@ -21,6 +21,7 @@ import (
 	"go/ast"
 	"slices"
 
+	"github.com/pkg/errors"
 	"github.com/gx-org/gx/base/ordered"
 	"github.com/gx-org/gx/build/fmterr"
 	"github.com/gx-org/gx/build/ir"
@@ -39,6 +40,7 @@ var Package = builtin.PackageBuilder{
 	Builders: []builtin.Builder{
 		builtin.ParseSource(&fs),
 		builtin.RegisterMacro("Func", FuncGrad),
+		builtin.RegisterMacro("Set", SetGrad),
 	},
 }
 
@@ -61,9 +63,13 @@ func findParamStorage(file *ir.File, src ir.SourceNode, fn ir.Func, name string)
 
 // FuncGrad computes the gradient of a function.
 func FuncGrad(call elements.CallAt, macro *cpevelements.Macro, args []ir.Element) (*cpevelements.SyntheticFunc, error) {
-	fn, err := interp.FuncDeclFromElement(args[1])
+	fn, err := interp.PkgFuncFromElement(args[1])
 	if err != nil {
 		return nil, err
+	}
+	fnT, ok := fn.(*ir.FuncDecl)
+	if !ok {
+		return nil, errors.Errorf("cannot compute the gradient of function %T", fn)
 	}
 	wrtS, err := elements.StringFromElement(args[2])
 	if err != nil {
@@ -76,7 +82,7 @@ func FuncGrad(call elements.CallAt, macro *cpevelements.Macro, args []ir.Element
 	return cpevelements.NewSyntheticFunc(gradMacro{
 		callSite: call,
 		macro:    macro,
-	}.newMacro(fn, wrtF)), nil
+	}.newMacro(fnT, wrtF)), nil
 }
 
 func (m gradMacro) newMacro(fn *ir.FuncDecl, wrt *ir.FieldStorage) *gradMacro {
@@ -102,15 +108,22 @@ func (m *gradMacro) syntheticFuncName(fetcher ir.Fetcher, fn ir.Func) (string, b
 }
 
 func (m *gradMacro) BuildType() (*ast.FuncDecl, error) {
-	return &ast.FuncDecl{Type: m.fn.Src.Type, Recv: m.fn.Src.Recv}, nil
+	fType := m.fn.FuncType()
+	fDecl := &ast.FuncDecl{Type: fType.Src}
+	recv := fType.Receiver
+	if recv != nil {
+		fDecl.Recv = recv.Src
+	}
+	return fDecl, nil
 }
 
 func (m *gradMacro) BuildBody(fetcher ir.Fetcher) (*ast.BlockStmt, []*cpevelements.SyntheticFuncDecl, bool) {
 	m.aux = ordered.NewMap[string, *cpevelements.SyntheticFuncDecl]()
 	sg := m.newStmtGrader(fetcher, nil)
-	sg.registerFieldNames(m.fn.FType.Receiver)
-	sg.registerFieldNames(m.fn.FType.Params)
-	sg.registerFieldNames(m.fn.FType.Results)
+	fType := m.fn.FuncType()
+	sg.registerFieldNames(fType.Receiver)
+	sg.registerFieldNames(fType.Params)
+	sg.registerFieldNames(fType.Results)
 	body, ok := sg.gradBlock(fetcher, m.fn.Body)
 	if !ok {
 		return nil, nil, false

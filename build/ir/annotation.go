@@ -17,7 +17,7 @@ package ir
 type (
 	// Annotations maps key to annotation value.
 	Annotations struct {
-		Anns []Annotation
+		Anns []*Annotation
 	}
 
 	// Annotation is a key pointing to some data.
@@ -35,26 +35,26 @@ func (anns *Annotations) Append(pkg *Package, key string, value any) {
 }
 
 // AppendAnn appends an annotation already constructed.
-func (anns *Annotations) AppendAnn(ann Annotation) {
+func (anns *Annotations) AppendAnn(ann *Annotation) {
 	anns.Anns = append(anns.Anns, ann)
 }
 
 // NewAnnotation creates a new annotation.
 // This function is mostly used for tests.
 // Prefer Annotations.Append instead.
-func NewAnnotation(key string, val any) Annotation {
-	return Annotation{
+func NewAnnotation(key string, val any) *Annotation {
+	return &Annotation{
 		key:   key,
 		value: val,
 	}
 }
 
 // Key of the annotation.
-func (ann Annotation) Key() string {
+func (ann *Annotation) Key() string {
 	return ann.key
 }
 
 // Value of the annotation.
-func (ann Annotation) Value() any {
+func (ann *Annotation) Value() any {
 	return ann.value
 }
