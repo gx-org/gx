@@ -23,10 +23,7 @@ import (
 
 func TestGradMethods(t *testing.T) {
 	testbuild.Run(t,
-		testbuild.DeclarePackage{
-			Src:  string(gradSrc),
-			Post: setGradImplementation,
-		},
+		declareGradPackage,
 		testgrad.Method{
 			Src: `
 type S struct {}

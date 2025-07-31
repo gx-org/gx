@@ -29,17 +29,18 @@ import (
 //go:embed grad.gx
 var gradSrc []byte
 
-func setGradImplementation(pkg *ir.Package) {
-	id := pkg.FindFunc("Func").(*ir.Macro)
-	id.BuildSynthetic = cpevelements.MacroImpl(grad.FuncGrad)
+var declareGradPackage = testbuild.DeclarePackage{
+	Path: "math",
+	Src:  string(gradSrc),
+	Post: func(pkg *ir.Package) {
+		irFunc := pkg.FindFunc("Func").(*ir.Macro)
+		irFunc.BuildSynthetic = cpevelements.MacroImpl(grad.FuncGrad)
+	},
 }
 
 func TestGradExpressions(t *testing.T) {
 	testbuild.Run(t,
-		testbuild.DeclarePackage{
-			Src:  string(gradSrc),
-			Post: setGradImplementation,
-		},
+		declareGradPackage,
 		testgrad.Func{
 			Src: `
 func F(x float32) float32 {
@@ -201,10 +202,7 @@ func gradF(x [2]float32) [2]float32 {
 
 func TestGradFunc(t *testing.T) {
 	testbuild.Run(t,
-		testbuild.DeclarePackage{
-			Src:  string(gradSrc),
-			Post: setGradImplementation,
-		},
+		declareGradPackage,
 		testgrad.Func{
 			Src: `
 func g() float32 {
@@ -329,10 +327,7 @@ func __grad_Func_h_x(x float32) float32 {
 
 func TestGradStatements(t *testing.T) {
 	testbuild.Run(t,
-		testbuild.DeclarePackage{
-			Src:  string(gradSrc),
-			Post: setGradImplementation,
-		},
+		declareGradPackage,
 		testgrad.Func{
 			Src: `
 func F(x float32) float32 {
@@ -425,10 +420,7 @@ func gradF(x float32) (float32, float32) {
 
 func TestGradErrors(t *testing.T) {
 	testbuild.Run(t,
-		testbuild.DeclarePackage{
-			Src:  string(gradSrc),
-			Post: setGradImplementation,
-		},
+		declareGradPackage,
 		testgrad.Func{
 			Src: `
 func F(y float32) float32 {

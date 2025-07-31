@@ -221,9 +221,12 @@ type IncrementalPackage struct {
 var _ Package = (*IncrementalPackage)(nil)
 
 // NewIncrementalPackage creates a new incremental package.
-func (b *Builder) NewIncrementalPackage(name string) *IncrementalPackage {
+func (b *Builder) NewIncrementalPackage(fullname string) *IncrementalPackage {
+	paths := strings.Split(fullname, "/")
+	name := paths[len(paths)-1]
+	path := strings.Join(paths[:len(paths)-1], "/")
 	pkg := &IncrementalPackage{
-		basePackage: newBasePackage(b, ""),
+		basePackage: newBasePackage(b, path),
 	}
 	pkg.basePackage.name = &ast.Ident{
 		Name: name,
