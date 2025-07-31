@@ -44,7 +44,7 @@ type (
 		HeaderPath(path string) string
 		HeaderGuard(path string) string
 		Namespace(path string) string
-		PackagePath(path string) string
+		PackagePath(*ir.Package) string
 	}
 
 	binder struct {
@@ -95,7 +95,7 @@ type headerFile struct {
 }
 
 func (f headerFile) BuildFilePath(root string, pkg *ir.Package) string {
-	pkgPath := f.fmtpath.PackagePath(pkg.Path)
+	pkgPath := f.fmtpath.PackagePath(pkg)
 	return filepath.Join(root, pkgPath, pkg.Name.Name+".h")
 }
 
@@ -112,7 +112,7 @@ type sourceFile struct {
 }
 
 func (f sourceFile) BuildFilePath(root string, pkg *ir.Package) string {
-	pkgPath := f.fmtpath.PackagePath(pkg.Path)
+	pkgPath := f.fmtpath.PackagePath(pkg)
 	return filepath.Join(root, pkgPath, pkg.Name.Name+".cc")
 }
 
