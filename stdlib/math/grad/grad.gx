@@ -3,3 +3,7 @@ package grad
 // Func computes the gradient of a GX function.
 // gx:irmacro
 func Func(orig any, fn any, wrtArg string) any
+
+// Set the gradient of a GX function.
+// gx:irmacro
+func Set(orig any, gradF any) any

@@ -95,7 +95,7 @@ func f() int32 {
 						},
 					),
 					Anns: ir.Annotations{
-						Anns: []ir.Annotation{
+						Anns: []*ir.Annotation{
 							ir.NewAnnotation("annotation:TAG", "Hello"),
 						},
 					},
@@ -127,7 +127,7 @@ func f() int32 {
 						},
 					),
 					Anns: ir.Annotations{
-						Anns: []ir.Annotation{
+						Anns: []*ir.Annotation{
 							ir.NewAnnotation("annotation:TAG", "Bonjour"),
 							ir.NewAnnotation("annotation:TAG", "Hello"),
 						},

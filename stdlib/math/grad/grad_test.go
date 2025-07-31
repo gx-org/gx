@@ -35,6 +35,8 @@ var declareGradPackage = testbuild.DeclarePackage{
 	Post: func(pkg *ir.Package) {
 		irFunc := pkg.FindFunc("Func").(*ir.Macro)
 		irFunc.BuildSynthetic = cpevelements.MacroImpl(grad.FuncGrad)
+		irSet := pkg.FindFunc("Set").(*ir.Macro)
+		irSet.BuildSynthetic = cpevelements.MacroImpl(grad.SetGrad)
 	},
 }
 
@@ -428,6 +430,12 @@ func F(y float32) float32 {
 }
 `,
 			Err: "no parameter named x in F",
+		},
+		testgrad.Func{
+			Src: `
+func F(x float32) float32
+`,
+			Err: "cannot compute the gradient of function",
 		},
 	)
 }

@@ -19,13 +19,34 @@ import (
 	"github.com/gx-org/gx/build/ir"
 )
 
-// FuncDeclFromElement extracts a function declaration from an element.
-func FuncDeclFromElement(el ir.Element) (*ir.FuncDecl, error) {
+// PkgFuncFromElement extracts a function declaration from an element.
+func PkgFuncFromElement(el ir.Element) (ir.PkgFunc, error) {
+	fn, err := FuncFromElement(el)
+	if err != nil {
+		return nil, err
+	}
+	pkgFn, ok := fn.(ir.PkgFunc)
+	if !ok {
+		return nil, errors.Errorf("cannot convert element %T to a package function", el)
+	}
+	return pkgFn, nil
+}
+
+// FuncFromElement extracts a function declaration from an element.
+func FuncFromElement(el ir.Element) (ir.Func, error) {
 	fEl, ok := el.(Func)
 	if !ok {
 		return nil, errors.Errorf("cannot convert element %T to a function", el)
 	}
-	fun := fEl.Func()
+	return fEl.Func(), nil
+}
+
+// FuncDeclFromElement extracts a function declaration from an element.
+func FuncDeclFromElement(el ir.Element) (*ir.FuncDecl, error) {
+	fun, err := FuncFromElement(el)
+	if err != nil {
+		return nil, err
+	}
 	fDecl, ok := fun.(*ir.FuncDecl)
 	if !ok {
 		return nil, errors.Errorf("%s is not a GX user function", fun.Name())
