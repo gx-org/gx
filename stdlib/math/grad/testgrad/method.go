@@ -74,7 +74,7 @@ func (%s) grad%s()
 	return fmt.Sprintf(`
 package test
 
-import %s"grad"
+import %s"math/grad"
 
 %s
 
@@ -92,7 +92,7 @@ func (tt Method) Run(b *testbuild.Builder) error {
 	if err != nil {
 		return err
 	}
-	pkg, err := b.Build(src)
+	pkg, err := b.Build("", src)
 	if err != nil {
 		return checkError(tt.Err, err)
 	}

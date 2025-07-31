@@ -89,6 +89,8 @@ func checkAll(wants []ir.Node, decls *ir.Declarations) error {
 
 // DeclarePackage declares a package for the following tests.
 type DeclarePackage struct {
+	// Path where the package belongs (without the name).
+	Path string
 	// Source code of the package.
 	Src string
 	// Function called (if not nil)  after the package has been built.
@@ -103,14 +105,14 @@ func (tt DeclarePackage) Source() string {
 
 // Run the source code to declare it as an importable package.
 func (tt DeclarePackage) Run(b *Builder) error {
-	pkg, err := b.Build(tt.Src)
+	pkg, err := b.Build(tt.Path, tt.Src)
 	if err != nil {
 		return err
 	}
 	if tt.Post != nil {
 		tt.Post(pkg.IR())
 	}
-	b.imp.pkgs[pkg.IR().Name.Name] = pkg
+	b.imp.pkgs[pkg.IR().FullName()] = pkg
 	return nil
 }
 
@@ -132,7 +134,7 @@ func (tt Decl) Source() string {
 
 // Run builds the declarations as a package, then compare to an expected outcome.
 func (tt Decl) Run(b *Builder) error {
-	pkg, err := b.Build(fmt.Sprintf(`
+	pkg, err := b.Build("", fmt.Sprintf(`
 package test
 
 %s
@@ -230,13 +232,17 @@ type Builder struct {
 }
 
 // Build test source code.
-func (b *Builder) Build(src string) (builder.Package, error) {
+func (b *Builder) Build(path, src string) (builder.Package, error) {
 	fileDecl, err := parser.ParseFile(token.NewFileSet(), "", src, parser.ParseComments|parser.SkipObjectResolution)
 	if err != nil {
 		return nil, err
 	}
 	bld := builder.New(&b.imp)
-	pkg := bld.NewIncrementalPackage(fileDecl.Name.Name)
+	fullPath := fileDecl.Name.Name
+	if path != "" {
+		fullPath = path + "/" + fullPath
+	}
+	pkg := bld.NewIncrementalPackage(fullPath)
 	return pkg, pkg.Build(src)
 }
 
