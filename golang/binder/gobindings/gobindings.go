@@ -255,7 +255,7 @@ func (b *binder) Files() []bindings.File {
 // Extension returns the extension of the file being generated.
 func (b *binder) BuildFilePath(root string, pkg *ir.Package) string {
 	pkgName := pkg.Name.Name
-	pkgPath := fmtpath.Functions{}.PackagePath(pkg.Path)
+	pkgPath := fmtpath.Functions{}.PackagePath(pkg)
 	filePath := filepath.Join(pkgPath, pkgName+"_go_gx", pkgName+"_go_gx"+".go")
 	return filepath.Join(root, filePath)
 }

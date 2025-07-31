@@ -19,6 +19,7 @@ import (
 	"path/filepath"
 	"strings"
 
+	"github.com/gx-org/gx/build/ir"
 	"github.com/gx-org/gx/build/module"
 )
 
@@ -82,10 +83,13 @@ func (Functions) Namespace(path string) string {
 		return ""
 	}
 	namespace = strings.ReplaceAll(namespace, "/", "::")
+	namespace = strings.ReplaceAll(namespace, ".", "_")
+	namespace = strings.ReplaceAll(namespace, "-", "_")
 	return namespace
 }
 
 // PackagePath prepares a package path.
-func (Functions) PackagePath(path string) string {
-	return path
+func (Functions) PackagePath(pkg *ir.Package) string {
+	paths := strings.Split(pkg.FullName(), "/")
+	return filepath.Join(paths...)
 }
