@@ -205,6 +205,28 @@ func (f *fetcherTesting) Err() *fmterr.Appender {
 	return nil
 }
 
+func TestIsExported(t *testing.T) {
+	cases := []struct {
+		name string
+		want bool
+	}{
+		{"∇f", false},
+		{"_private", false},
+		{"1private", false},
+		{"private", false},
+		{"Public", true},
+		{"ℒ", true},
+	}
+
+	for _, tc := range cases {
+		t.Run(tc.name, func(t *testing.T) {
+			if got := ir.IsExported(tc.name); got != tc.want {
+				t.Errorf("IsExported(%q) = %v, want %v", tc.name, got, tc.want)
+			}
+		})
+	}
+}
+
 // testTypeMatrix returns a string representation of the results of typeFunc `f` applied
 // to pairs of types drawn from `a` and `b`, with elements of `a` presented as rows and `b`
 // in columns.
