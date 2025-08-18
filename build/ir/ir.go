@@ -30,6 +30,8 @@ import (
 	"path/filepath"
 	"slices"
 	"strings"
+	"unicode"
+	"unicode/utf8"
 
 	"github.com/pkg/errors"
 	"github.com/gx-org/backend/dtype"
@@ -1262,8 +1264,8 @@ func IsExported(name string) bool {
 	if len(name) == 0 {
 		return false
 	}
-	first := name[:1]
-	return strings.ToUpper(first) == first
+	first, _ := utf8.DecodeRuneInString(name)
+	return unicode.IsUpper(first)
 }
 
 // ExportedFuncs returns the list of exported functions of a package.
