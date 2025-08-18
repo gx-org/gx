@@ -420,6 +420,24 @@ func gradF(x float32) (float32, float32) {
 	)
 }
 
+func TestParameters(t *testing.T) {
+	testbuild.Run(t,
+		declareGradPackage,
+		testgrad.Func{
+			Src: `
+func F(x, y float32) float32 {
+	return x*y
+}
+`,
+			Want: `
+func gradF(x, y float32) float32 {
+	return y
+}
+`,
+		},
+	)
+}
+
 func TestGradErrors(t *testing.T) {
 	testbuild.Run(t,
 		declareGradPackage,

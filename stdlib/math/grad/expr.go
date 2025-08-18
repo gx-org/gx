@@ -220,7 +220,10 @@ func (m *exprGrader) gradValueRef(src *ir.ValueRef) (*gradExprResult, bool) {
 	if m.macro.wrt.Same(src.Stor) {
 		return oneValueOf(src.Source()), true
 	}
-	gIdent := gradIdent(src.Stor.NameDef())
+	if m.macro.isParam(src.Stor) {
+		return zeroValueOf(src.Source()), true
+	}
+	gIdent := m.macro.gradIdent(src.Stor.NameDef())
 	return &gradExprResult{expr: gIdent}, true
 }
 
