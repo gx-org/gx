@@ -126,7 +126,7 @@ func (sg *stmtGrader) gradAssignExprStmt(fetcher ir.Fetcher, src *ir.AssignExprS
 		if !ok {
 			return nil, false
 		}
-		grIdent := gradIdent(aexpr.Storage.NameDef())
+		grIdent := sg.macro.gradIdent(aexpr.Storage.NameDef())
 		gradStmt.Lhs[i] = grIdent
 		known := sg.define(grIdent.Name, aexpr.Storage.Type())
 		allKnown = known && allKnown

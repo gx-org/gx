@@ -135,7 +135,12 @@ func (m *gradMacro) BuildIR(errApp fmterr.ErrAppender, src *ast.FuncDecl, file *
 	return m.fn.New(src, file, fType), true
 }
 
-func gradIdent(src *ast.Ident) *ast.Ident {
+func (m *gradMacro) isParam(src ir.Storage) bool {
+	_, ok := src.(*ir.FieldStorage)
+	return ok
+}
+
+func (m *gradMacro) gradIdent(src *ast.Ident) *ast.Ident {
 	return &ast.Ident{
 		NamePos: src.NamePos,
 		Name:    "__grad_" + src.Name,
