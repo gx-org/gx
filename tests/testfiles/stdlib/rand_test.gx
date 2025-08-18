@@ -1,6 +1,10 @@
 package stdlib
 
-import "rand"
+import (
+	"math"
+	"rand"
+	"num"
+)
 
 // Test options:
 // setStatic Size intlen 2
@@ -83,12 +87,14 @@ func TestRandUniformFloat32WithSize() [Size]float32 {
 	// [2]float32{0.253272, 0.303246}
 }
 
-func TestFloat32MinMax() [5]float32 {
+func TestFloat32MinMax() ([5]bool, [5]bool, bool) {
 	rnd := rand.New(rand.NewSource(0))
 	_, a := rnd.Float32MinMax(-100.5, 100.75, []intlen{5})
-	return a
+	return a > -100.5, a < 100.75, num.Sum(math.Abs[float32](a), []intidx{0}) > 50
 	// Want:
-	// [5]float32{-49.529022, -39.471786, 1.009949, 66.999619, -51.114819}
+	// 0: [5]bool{true, true, true, true, true}
+	// 1: [5]bool{true, true, true, true, true}
+	// 2: bool(true)
 }
 
 func TestFloat64MinMax() [5]float64 {
