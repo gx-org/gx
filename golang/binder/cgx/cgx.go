@@ -404,6 +404,12 @@ func cgx_function_name(cgxFunction C.cgx_function) *C.cchar_t {
 	return C.CString(function.fn.Name())
 }
 
+//export cgx_function_string
+func cgx_function_string(cgxFunction C.cgx_function) *C.cchar_t {
+	function := unwrap[*functionHandle](cgxFunction)
+	return C.CString(function.fn.String())
+}
+
 //export cgx_function_doc
 func cgx_function_doc(cgxFunction C.cgx_function) *C.cchar_t {
 	function := unwrap[*functionHandle](cgxFunction)

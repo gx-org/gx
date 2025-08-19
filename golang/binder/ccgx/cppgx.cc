@@ -198,6 +198,10 @@ std::string Function::doc() const {
   return FromHeapCString(cgx_function_doc(raw()));
 }
 
+std::string Function::str() const {
+  return FromHeapCString(cgx_function_string(raw()));
+}
+
 cgx_value_kind Function::param_dtype(int param) const {
   return cgx_function_param_dtype(raw(), param);
 }
