@@ -201,6 +201,7 @@ extern struct cgx_interface_find_result cgx_interface_find(cgx_package cgxPackag
 extern struct cgx_function_find_result cgx_function_find(cgx_package cgxPackage, cchar_t* funcNamePtr);
 extern struct cgx_function_run_result cgx_function_run(cgx_function cgxFunction, cgx_value cgxReceiver, int argCount, cgx_value* args);
 extern cchar_t* cgx_function_name(cgx_function cgxFunction);
+extern cchar_t* cgx_function_string(cgx_function cgxFunction);
 extern cchar_t* cgx_function_doc(cgx_function cgxFunction);
 extern struct cgx_function_signature_result cgx_function_signature(cgx_function cgxFunction);
 extern void cgx_free_function_signature_result(struct cgx_function_signature_result* cgxSignature);

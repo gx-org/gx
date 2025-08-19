@@ -127,6 +127,7 @@ class Function {
 
   cgx_function raw() const { return *function_; }
   std::string name() const;
+  std::string str() const;
   std::string doc() const;
   cgx_value_kind param_dtype(int param) const;
   int num_params() const;
