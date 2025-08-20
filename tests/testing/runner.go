@@ -108,7 +108,7 @@ func (r *testTracer) Trace(file *ir.File, call *ir.CallExpr, vals []values.Value
 		return err
 	}
 	pos := file.FileSet().Position(call.Src.Pos())
-	r.trace.WriteString(fmt.Sprintf("%s:%d", filepath.Base(pos.Filename), r.nTrace))
+	fmt.Fprintf(&r.trace, "%s:%d", filepath.Base(pos.Filename), r.nTrace)
 	r.nTrace++
 	const indent = "  "
 	r.trace.WriteString("\n" + indent)
@@ -169,7 +169,7 @@ func buildGot(out []values.Value) string {
 	}
 	bld := strings.Builder{}
 	for i, s := range out {
-		bld.WriteString(fmt.Sprintf("%d: %v\n", i, s))
+		fmt.Fprintf(&bld, "%d: %v\n", i, s)
 	}
 	return strings.TrimSpace(bld.String())
 }

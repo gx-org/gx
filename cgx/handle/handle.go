@@ -102,10 +102,10 @@ func Count() int {
 func Dump() string {
 	s := strings.Builder{}
 	for h, v := range handles.Iter() {
-		s.WriteString(fmt.Sprintf("%T handle: %v\n", v, h))
+		fmt.Fprintf(&s, "%T handle: %v\n", v, h)
 	}
 	for ptr := range pinners.Iter() {
-		s.WriteString(fmt.Sprintf("slice: %p\n", ptr))
+		fmt.Fprintf(&s, "slice: %p\n", ptr)
 	}
 	return s.String()
 }

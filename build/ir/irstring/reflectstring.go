@@ -206,7 +206,7 @@ func reflectStructString(done map[any]bool, val reflect.Value, proc processor) s
 	}
 
 	s := strings.Builder{}
-	s.WriteString(fmt.Sprintf("%s {", typ.Name()))
+	fmt.Fprintf(&s, "%s {", typ.Name())
 	for i := range typ.NumField() {
 		fieldVal := val.Field(i)
 		if fieldVal.IsZero() {

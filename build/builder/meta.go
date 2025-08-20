@@ -131,7 +131,7 @@ func (m *synthResolveScope) errorFor(body *ast.BlockStmt) error {
 
 func (m *synthResolveScope) buildBody(fn *irFunc, compEval *compileEvaluator) ([]*irFunc, bool) {
 	// First, build the AST body of the synthetic function.
-	astBody, auxs, ok := m.fnBuilder.Builder().BuildBody(compEval)
+	astBody, auxs, ok := m.fnBuilder.BuildBody(compEval, fn.bFunc.fnSource())
 	if !ok {
 		return nil, false
 	}
@@ -159,7 +159,7 @@ func buildFuncTypeFromAST(fScope *fileResolveScope, fnBuilder *cpevelements.Synt
 	if !ok {
 		return nil, nil, false
 	}
-	ext, ok := fnBuilder.Builder().BuildIR(fScope, src, fScope.irFile(), fType)
+	ext, ok := fnBuilder.BuildIR(fScope, src, fScope.irFile(), fType)
 	return ext, fnScope, ok
 }
 
@@ -199,7 +199,7 @@ func (f *syntheticFunc) checkSyntheticSignature(fScope *fileResolveScope, fSynth
 }
 
 func (f *syntheticFunc) buildSignatureFScope(fScope *fileResolveScope) (ir.Func, *synthResolveScope, bool) {
-	astFDecl, err := f.fnBuilder.Builder().BuildType()
+	astFDecl, err := f.fnBuilder.BuildType(f.fnSource())
 	if err != nil {
 		return nil, nil, fScope.Err().AppendAt(f.src, err)
 	}

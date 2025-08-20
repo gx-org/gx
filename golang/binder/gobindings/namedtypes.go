@@ -424,7 +424,7 @@ func (s structType) SetDeviceFieldsFromSliceValue() (string, error) {
 }
 
 var fieldToStringTemplate = template.Must(template.New("fieldToStringTMPL").Parse(`
-	bld.WriteString(fmt.Sprintf("%s:%s\n", "{{.FieldName}}", any(h.owner.{{.FieldName}}).(fmt.Stringer).String()))
+	fmt.Fprintf(&bld, "%s:%s\n", "{{.FieldName}}", any(h.owner.{{.FieldName}}).(fmt.Stringer).String())
 `))
 
 func (s structType) NamedTypeFieldsToString() (string, error) {

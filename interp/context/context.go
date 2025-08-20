@@ -132,7 +132,7 @@ func (ctx *Context) File() *ir.File {
 func (ctx *Context) String() string {
 	s := strings.Builder{}
 	for i, fr := range ctx.stack {
-		s.WriteString(fmt.Sprintf("Stack %d:\n%s", i, gxfmt.Indent(fr.String())))
+		fmt.Fprintf(&s, "Stack %d:\n%s", i, gxfmt.Indent(fr.String()))
 	}
 	return s.String()
 }

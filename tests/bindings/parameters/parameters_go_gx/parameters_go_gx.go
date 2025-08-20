@@ -258,7 +258,7 @@ func (h *handleNotInSlice) String() string {
 	bld := strings.Builder{}
 	bld.WriteString("NotInSlice{\n")
 
-	bld.WriteString(fmt.Sprintf("%s:%s\n", "Val", any(h.owner.Val).(fmt.Stringer).String()))
+	fmt.Fprintf(&bld, "%s:%s\n", "Val", any(h.owner.Val).(fmt.Stringer).String())
 
 	bld.WriteString("}")
 	return bld.String()
@@ -351,7 +351,7 @@ func (h *handleInSlice) String() string {
 	bld := strings.Builder{}
 	bld.WriteString("InSlice{\n")
 
-	bld.WriteString(fmt.Sprintf("%s:%s\n", "Val", any(h.owner.Val).(fmt.Stringer).String()))
+	fmt.Fprintf(&bld, "%s:%s\n", "Val", any(h.owner.Val).(fmt.Stringer).String())
 
 	bld.WriteString("}")
 	return bld.String()
@@ -486,17 +486,17 @@ func (h *handleStruct) String() string {
 	bld := strings.Builder{}
 	bld.WriteString("Struct{\n")
 
-	bld.WriteString(fmt.Sprintf("%s:%s\n", "A", any(h.owner.A).(fmt.Stringer).String()))
+	fmt.Fprintf(&bld, "%s:%s\n", "A", any(h.owner.A).(fmt.Stringer).String())
 
-	bld.WriteString(fmt.Sprintf("%s:%s\n", "B", any(h.owner.B).(fmt.Stringer).String()))
+	fmt.Fprintf(&bld, "%s:%s\n", "B", any(h.owner.B).(fmt.Stringer).String())
 
-	bld.WriteString(fmt.Sprintf("%s:%s\n", "C", any(h.owner.C).(fmt.Stringer).String()))
+	fmt.Fprintf(&bld, "%s:%s\n", "C", any(h.owner.C).(fmt.Stringer).String())
 
-	bld.WriteString(fmt.Sprintf("%s:%s\n", "D", any(h.owner.D).(fmt.Stringer).String()))
+	fmt.Fprintf(&bld, "%s:%s\n", "D", any(h.owner.D).(fmt.Stringer).String())
 
-	bld.WriteString(fmt.Sprintf("%s:%s\n", "specialIndex", any(h.owner.specialIndex).(fmt.Stringer).String()))
+	fmt.Fprintf(&bld, "%s:%s\n", "specialIndex", any(h.owner.specialIndex).(fmt.Stringer).String())
 
-	bld.WriteString(fmt.Sprintf("%s:%s\n", "SpecialValue", any(h.owner.SpecialValue).(fmt.Stringer).String()))
+	fmt.Fprintf(&bld, "%s:%s\n", "SpecialValue", any(h.owner.SpecialValue).(fmt.Stringer).String())
 
 	bld.WriteString("}")
 	return bld.String()

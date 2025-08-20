@@ -48,18 +48,6 @@ type setAnnotation struct {
 	grad  ir.PkgFunc
 }
 
-func (m *setAnnotation) BuildType() (*ast.FuncDecl, error) {
-	return &ast.FuncDecl{Type: m.fn.FuncType().Src}, nil
-}
-
-func (m *setAnnotation) BuildBody(fetcher ir.Fetcher) (*ast.BlockStmt, []*cpevelements.SyntheticFuncDecl, bool) {
-	fDecl, ok := m.fn.(*ir.FuncDecl)
-	if !ok {
-		return nil, nil, true
-	}
-	return fDecl.Body.Src, nil, true
-}
-
 const setKey = "set"
 
 func (m *setAnnotation) BuildIR(errApp fmterr.ErrAppender, src *ast.FuncDecl, file *ir.File, fType *ir.FuncType) (ir.PkgFunc, bool) {

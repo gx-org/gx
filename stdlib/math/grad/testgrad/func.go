@@ -59,12 +59,12 @@ func (tt Func) buildSourceCode() string {
 	}
 	grads := &strings.Builder{}
 	for _, fnName := range tt.GradOf {
-		grads.WriteString(fmt.Sprintf(
+		fmt.Fprintf(grads,
 			`
 //gx@=%s.Func(%s, "x")
 func grad%s()
 `,
-			callImportName, fnName, fnName))
+			callImportName, fnName, fnName)
 	}
 	return fmt.Sprintf(`
 package test

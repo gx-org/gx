@@ -104,13 +104,13 @@ func (h *Parser) ParseComposite(ncv newCompValue, typ ir.Type, els []ir.Element)
 
 func (h *Parser) String() string {
 	var s strings.Builder
-	s.WriteString(fmt.Sprintf("%T{", h))
+	fmt.Fprintf(&s, "%T{", h)
 	for i, hdl := range h.compOutput {
 		prefix := "  "
 		if i == h.nextPos {
 			prefix = "->"
 		}
-		s.WriteString(fmt.Sprintf("%s%d: %s\n", prefix, i, gxfmt.String(hdl)))
+		fmt.Fprintf(&s, "%s%d: %s\n", prefix, i, gxfmt.String(hdl))
 	}
 	s.WriteString("}")
 	return s.String()
