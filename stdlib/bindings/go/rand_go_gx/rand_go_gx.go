@@ -217,7 +217,7 @@ func (h *handlePhilox) String() string {
 	bld := strings.Builder{}
 	bld.WriteString("Philox{\n")
 
-	bld.WriteString(fmt.Sprintf("%s:%s\n", "state", any(h.owner.state).(fmt.Stringer).String()))
+	fmt.Fprintf(&bld, "%s:%s\n", "state", any(h.owner.state).(fmt.Stringer).String())
 
 	bld.WriteString("}")
 	return bld.String()
@@ -838,7 +838,7 @@ func (h *handleRand) String() string {
 	bld := strings.Builder{}
 	bld.WriteString("Rand{\n")
 
-	bld.WriteString(fmt.Sprintf("%s:%s\n", "src", any(h.owner.src).(fmt.Stringer).String()))
+	fmt.Fprintf(&bld, "%s:%s\n", "src", any(h.owner.src).(fmt.Stringer).String())
 
 	bld.WriteString("}")
 	return bld.String()
