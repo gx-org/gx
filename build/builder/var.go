@@ -120,3 +120,41 @@ func varDeclarator(spec *ir.VarSpec) irb.Declarator {
 func (vr *varExpr) String() string {
 	return fmt.Sprintf("var %s", vr.name.Name)
 }
+
+// buildLocal converts a builder's varExpr into an IR *ir.VarExpr for a local variable.
+func (vr *varExpr) buildLocal(scope iFuncResolveScope) (*ir.VarExpr, bool) {
+	return &ir.VarExpr{VName: vr.name}, true
+}
+
+// buildDecl builds an ir.VarSpec for a local variable declaration.
+func (spec *varSpec) buildDecl(scope iFuncResolveScope) (*ir.VarSpec, bool) {
+	if spec.typ == nil {
+		// This case is already checked in the processing phase, but as a safeguard.
+		return nil, scope.Err().Appendf(spec.src, "local variable declaration is missing a type")
+	}
+
+	irSpec := &ir.VarSpec{
+		FFile: scope.fileScope().irFile(),
+		Src:   spec.src,
+	}
+	typeExpr, ok := spec.typ.buildTypeExpr(scope)
+	if typeExpr != nil {
+		irSpec.TypeV = typeExpr.Typ
+	}
+
+	for _, childVarExpr := range spec.exprs {
+		irVar, childOk := childVarExpr.buildLocal(scope)
+		if !childOk {
+			ok = false
+		}
+		if irVar != nil {
+			irSpec.Exprs = append(irSpec.Exprs, irVar)
+		}
+	}
+
+	for _, expr := range irSpec.Exprs {
+		expr.Decl = irSpec
+	}
+
+	return irSpec, ok
+}
