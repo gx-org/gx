@@ -104,7 +104,7 @@ func valueFromStorage(rscope resolveScope, expr ir.Expr, store ir.Storage) (ir.A
 		if nameDef != nil {
 			name = nameDef.Name
 		}
-		return nil, rscope.Err().AppendInternalf(store.Source(), "storage %T:%s:%s has no value", store, name, store.Type().String())
+		return nil, rscope.Err().Appendf(store.Source(), "%s undefined", name)
 	}
 	return withValue.Value(expr), true
 }
