@@ -126,7 +126,7 @@ func funcsToString(funcs []string) string {
 	}
 	s := strings.Builder{}
 	for _, fun := range funcs {
-		s.WriteString(fmt.Sprintf("\t{name: \"%s\", test: %s},\n", fun, fun))
+		fmt.Fprintf(&s, "\t{name: \"%s\", test: %s},\n", fun, fun)
 	}
 	return s.String()
 }

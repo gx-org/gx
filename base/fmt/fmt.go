@@ -31,7 +31,7 @@ func Number(x string) string {
 	fmtString := fmt.Sprintf("%%0%dd %%s", numDigits)
 	var s strings.Builder
 	for i, line := range lines {
-		s.WriteString(fmt.Sprintf(fmtString, i+1, line))
+		fmt.Fprintf(&s, fmtString, i+1, line)
 	}
 	return s.String()
 }
@@ -57,7 +57,7 @@ func Indent(x string) string {
 
 func sliceString(x any) string {
 	var s strings.Builder
-	s.WriteString(fmt.Sprintf("%T{\n", x))
+	fmt.Fprintf(&s, "%T{\n", x)
 	val := reflect.ValueOf(x)
 	for i := range val.Len() {
 		s.WriteString(Indent(fmt.Sprintf("%d: %s,\n", i, String(val.Index(i).Interface()))))

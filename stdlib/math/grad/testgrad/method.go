@@ -64,12 +64,12 @@ func (tt Method) buildSourceCode() (string, error) {
 			return "", errors.Errorf(`invalid GradOf name: got %q but want "<named type>.<function name>"`, methodName)
 		}
 		tpName, fnName := names[0], names[1]
-		grads.WriteString(fmt.Sprintf(
+		fmt.Fprintf(grads,
 			`
 //gx@=%s.Func(%s.%s, "x")
 func (%s) grad%s()
 `,
-			callImportName, tpName, fnName, tpName, fnName))
+			callImportName, tpName, fnName, tpName, fnName)
 	}
 	return fmt.Sprintf(`
 package test

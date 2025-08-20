@@ -246,7 +246,7 @@ func testTypeMatrix(t *testing.T, a, b []ir.Type, f typeFunc) string {
 	var result strings.Builder
 	result.WriteString("---\n")
 	for _, typeA := range a {
-		result.WriteString(fmt.Sprintf("%*s: ", maxLen, typeA))
+		fmt.Fprintf(&result, "%*s: ", maxLen, typeA)
 		for _, typeB := range b {
 			ok, err := f(typeA, fetcher, typeB)
 			if err != nil {
@@ -448,7 +448,7 @@ func testRankMatrix(t *testing.T, ranks []rankFunc, f typeFunc) string {
 	var result strings.Builder
 	result.WriteString("---\n")
 	for _, rankA := range ranks {
-		result.WriteString(fmt.Sprintf("%*s: ", maxLen, rankA()))
+		fmt.Fprintf(&result, "%*s: ", maxLen, rankA())
 		for _, rankB := range ranks {
 			ok := true
 			for _, typ := range primitiveTypes {
