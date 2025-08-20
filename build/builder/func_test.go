@@ -64,6 +64,10 @@ func TestBuiltin(t *testing.T) {
 				},
 			},
 		},
+		testbuild.Decl{
+			Src: `func returnTwo(x int32) x`,
+			Err: "x undefined",
+		},
 	)
 }
 
