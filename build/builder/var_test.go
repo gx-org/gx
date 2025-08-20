@@ -47,3 +47,83 @@ func f[T dtypes.Floats]([a]float32) [a]float32
 		},
 	)
 }
+
+func TestLocalVar(t *testing.T) {
+	aStorage1 := &ir.VarExpr{VName: irh.Ident("a")}
+	aDeclSpec := &ir.VarSpec{
+		TypeV: ir.Int32Type(),
+		Exprs: []*ir.VarExpr{aStorage1},
+	}
+	aStorage1.Decl = aDeclSpec
+
+	aStorage2 := &ir.VarExpr{VName: irh.Ident("a")}
+	bStorage := &ir.VarExpr{VName: irh.Ident("b")}
+	abDeclSpec := &ir.VarSpec{
+		TypeV: ir.Int32Type(),
+		Exprs: []*ir.VarExpr{aStorage2, bStorage},
+	}
+	aStorage2.Decl = abDeclSpec
+	bStorage.Decl = abDeclSpec
+
+	testbuild.Run(t,
+		testbuild.Decl{
+			Src: `
+func F() int32 {
+    var a int32
+    return a
+}
+`,
+			Want: []ir.Node{
+				&ir.FuncDecl{
+					FType: irh.FuncType(
+						nil, nil,
+						irh.Fields(),
+						irh.Fields(ir.Int32Type()),
+					),
+					Body: irh.Block(
+						&ir.DeclStmt{
+							Decls: []*ir.VarSpec{aDeclSpec},
+						},
+						&ir.ReturnStmt{
+							Results: []ir.Expr{irh.ValueRef(aStorage1)},
+						},
+					),
+				},
+			},
+		},
+		testbuild.Decl{
+			Src: `
+func F() (int32, int32) {
+    var a, b int32
+    return a, b
+}
+`,
+			Want: []ir.Node{
+				&ir.FuncDecl{
+					FType: irh.FuncType(
+						nil, nil,
+						irh.Fields(),
+						irh.Fields(ir.Int32Type(), ir.Int32Type()),
+					),
+					Body: irh.Block(
+						&ir.DeclStmt{
+							Decls: []*ir.VarSpec{abDeclSpec},
+						},
+						&ir.ReturnStmt{
+							Results: []ir.Expr{irh.ValueRef(aStorage2), irh.ValueRef(bStorage)},
+						},
+					),
+				},
+			},
+		},
+		testbuild.Decl{
+			Src: `
+func F() int32 {
+    var a, a int32
+    return a
+}
+`,
+			Err: "redeclared in this block",
+		},
+	)
+}

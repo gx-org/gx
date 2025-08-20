@@ -3297,6 +3297,12 @@ type (
 		Src *ast.ExprStmt
 		X   Expr
 	}
+
+	// DeclStmt represents a statement that contains `var` declarations.
+	DeclStmt struct {
+		Src   ast.Node
+		Decls []*VarSpec
+	}
 )
 
 var (
@@ -3307,6 +3313,7 @@ var (
 	_ Stmt = (*RangeStmt)(nil)
 	_ Stmt = (*IfStmt)(nil)
 	_ Stmt = (*ExprStmt)(nil)
+	_ Stmt = (*DeclStmt)(nil)
 
 	_ StorageWithValue = (*AssignExpr)(nil)
 	_ StorageWithValue = (*AssignCallResult)(nil)
@@ -3365,6 +3372,13 @@ func (*ExprStmt) node()     {}
 
 // Source returns the node in the AST tree.
 func (s *ExprStmt) Source() ast.Node { return s.Src }
+
+func (*DeclStmt) node() {}
+
+// Source returns the original source node, satisfying the Node interface part of Stmt.
+func (s *DeclStmt) Source() ast.Node { return s.Src }
+
+func (*DeclStmt) stmtNode() {}
 
 func (*AssignExpr) storageValue() {}
 

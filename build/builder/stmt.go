@@ -16,6 +16,7 @@ package builder
 
 import (
 	"go/ast"
+	"go/token"
 
 	"github.com/gx-org/gx/build/ir"
 )
@@ -79,6 +80,87 @@ func processExprStmt(pscope procScope, src *ast.ExprStmt) (*exprStmt, bool) {
 	return n, ok
 }
 
+// declStmt represents a 'var' declaration statement in a function body.
+type declStmt struct {
+	src   *ast.DeclStmt
+	decls []*varSpec
+}
+
+var _ stmtNode = (*declStmt)(nil)
+
+func processDeclStmt(pscope procScope, src *ast.DeclStmt) (stmtNode, bool) {
+	genDecl, isGenDecl := src.Decl.(*ast.GenDecl)
+	if !isGenDecl || genDecl.Tok != token.VAR {
+		return nil, pscope.Err().Appendf(src, "unsupported declaration in function body (only 'var' is supported)")
+	}
+
+	n := &declStmt{src: src}
+	ok := true
+
+	for _, spec := range genDecl.Specs {
+		valueSpec, isValueSpec := spec.(*ast.ValueSpec)
+		if !isValueSpec {
+			ok = pscope.Err().Appendf(spec, "internal error: expected var declaration to contain value specs, got %T", spec)
+			continue
+		}
+
+		vs := &varSpec{src: valueSpec}
+
+		if valueSpec.Type == nil {
+			ok = pscope.Err().Appendf(valueSpec, "local variable declaration must have a type")
+			continue
+		}
+		var typeOk bool
+		vs.typ, typeOk = processTypeExpr(pscope.axisLengthScope(), valueSpec.Type)
+		ok = ok && typeOk
+
+		if len(valueSpec.Values) > 0 {
+			ok = pscope.Err().Appendf(valueSpec, "local variable with an initial value is not yet supported")
+		}
+
+		namesInSpec := make(map[string]bool)
+		for _, name := range valueSpec.Names {
+			if namesInSpec[name.Name] {
+				ok = pscope.Err().Appendf(name, "variable %q redeclared in this block", name.Name)
+				continue
+			}
+			namesInSpec[name.Name] = true
+			vr := &varExpr{
+				spec: vs,
+				name: name,
+			}
+			vs.exprs = append(vs.exprs, vr)
+		}
+		n.decls = append(n.decls, vs)
+	}
+
+	return n, ok
+}
+
+// buildStmt builds the IR for a declaration statement.
+func (n *declStmt) buildStmt(scope iFuncResolveScope) (ir.Stmt, bool) {
+	decls := make([]*ir.VarSpec, 0, len(n.decls))
+	declsOk := true
+
+	for _, d := range n.decls {
+		varSpec, declOk := d.buildDecl(scope)
+		if !declOk {
+			declsOk = false
+			continue
+		}
+
+		for _, varExpr := range varSpec.Exprs {
+			if !defineLocalVar(scope, varExpr) {
+				declsOk = false
+			}
+		}
+
+		decls = append(decls, varSpec)
+	}
+
+	return &ir.DeclStmt{Src: n.src, Decls: decls}, declsOk
+}
+
 func (n *exprStmt) buildStmt(scope iFuncResolveScope) (ir.Stmt, bool) {
 	x, ok := n.x.buildExpr(scope)
 	if ok && x.Type().Kind() != ir.VoidKind {
@@ -101,9 +183,10 @@ func processStmt(pscope procScope, stmt ast.Stmt) (node stmtNode, ok bool) {
 		node, ok = processBlockStmt(pscope, s)
 	case *ast.ExprStmt:
 		node, ok = processExprStmt(pscope, s)
+	case *ast.DeclStmt:
+		node, ok = processDeclStmt(pscope, s)
 	default:
-		pscope.Err().Appendf(stmt, "statement type not supported: %T", stmt)
-		ok = false
+		ok = pscope.Err().Appendf(stmt, "statement type not supported: %T", stmt)
 	}
 	return
 }

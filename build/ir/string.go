@@ -126,6 +126,10 @@ func (e *ExprStmt) String() string {
 	return e.X.String()
 }
 
+func (s *DeclStmt) String() string {
+	return "var-declaration"
+}
+
 // String representation.
 func (s *CallExpr) String() string {
 	var b strings.Builder
