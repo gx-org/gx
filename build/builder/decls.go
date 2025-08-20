@@ -65,7 +65,7 @@ func (d *decls) declarePackageName(node processNode) (ok bool) {
 }
 
 func (d *decls) registerFunc(fun function) (*processNodeT[function], bool) {
-	pNode := newProcessNode[function](token.FUNC, fun.name(), fun)
+	pNode := newProcessNode[function](token.FUNC, fun.fnSource().Name, fun)
 	if fun.isMethod() {
 		d.methods = append(d.methods, pNode)
 		return pNode, true

@@ -253,13 +253,13 @@ func (f *funcDecl) buildBody(fScope iFuncResolveScope, extF *irFunc) ([]*irFunc,
 	return nil, ok
 }
 
-func (f *funcDecl) name() *ast.Ident {
-	return f.src.Name
+func (f *funcDecl) fnSource() *ast.FuncDecl {
+	return f.src
 }
 
 // String returns a string representation of the function.
 func (f *funcDecl) String() string {
-	return f.name().Name
+	return fnName(f)
 }
 
 // funcBuiltin is a function imported from a package.

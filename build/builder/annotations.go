@@ -109,7 +109,7 @@ func processFuncAnnotation(pscope procScope, src *ast.FuncDecl, fn function, com
 			src:   src,
 		},
 	}
-	astExpr, err := parser.ParseExprFrom(pscope.pkgScope().pkg().fset, f.bFile.name+":"+f.name().Name, annotSrc, parser.SkipObjectResolution)
+	astExpr, err := parser.ParseExprFrom(pscope.pkgScope().pkg().fset, f.bFile.name+":"+fnName(f), annotSrc, parser.SkipObjectResolution)
 	if err != nil {
 		return nil, processScannerError(pscope, comment, err)
 	}

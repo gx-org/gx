@@ -29,7 +29,7 @@ type (
 
 	function interface {
 		nodePos
-		name() *ast.Ident
+		fnSource() *ast.FuncDecl
 		isMethod() bool
 		compEval() bool
 		resolveOrder() int
@@ -63,6 +63,10 @@ type (
 		clone() nodePos
 	}
 )
+
+func fnName(f function) string {
+	return f.fnSource().Name.Name
+}
 
 func storageFromExpr(scope resolveScope, expr ir.Expr) (ir.Storage, bool) {
 	withStore, ok := expr.(ir.WithStore)

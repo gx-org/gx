@@ -72,8 +72,8 @@ func (f *coreSyntheticFunc) source() ast.Node {
 	return f.src
 }
 
-func (f *coreSyntheticFunc) name() *ast.Ident {
-	return f.src.Name
+func (f *coreSyntheticFunc) fnSource() *ast.FuncDecl {
+	return f.src
 }
 
 func (f *coreSyntheticFunc) isMethod() bool {
