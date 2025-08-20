@@ -49,18 +49,6 @@ type idAnnotation struct {
 	tag   string
 }
 
-func (m *idAnnotation) BuildType() (*ast.FuncDecl, error) {
-	return &ast.FuncDecl{Type: m.fn.FuncType().Src}, nil
-}
-
-func (m *idAnnotation) BuildBody(fetcher ir.Fetcher) (*ast.BlockStmt, []*cpevelements.SyntheticFuncDecl, bool) {
-	fDecl, ok := m.fn.(*ir.FuncDecl)
-	if !ok {
-		return nil, nil, true
-	}
-	return fDecl.Body.Src, nil, true
-}
-
 func (m *idAnnotation) BuildIR(errApp fmterr.ErrAppender, src *ast.FuncDecl, file *ir.File, fType *ir.FuncType) (ir.PkgFunc, bool) {
 	ext := m.fn.New(src, file, fType)
 	ext.Annotations().Append(

@@ -22,16 +22,21 @@ import (
 )
 
 type (
-	// SyntheticBuilder builds a synthetic function.
-	SyntheticBuilder interface {
+	// FuncASTBuilder builds GX functions programmatically.
+	FuncASTBuilder interface {
 		BuildType() (*ast.FuncDecl, error)
 		BuildBody(ir.Fetcher) (*ast.BlockStmt, []*SyntheticFuncDecl, bool)
+	}
+
+	// FuncIRBuilder builds a synthetic function.
+	FuncIRBuilder interface {
 		BuildIR(fmterr.ErrAppender, *ast.FuncDecl, *ir.File, *ir.FuncType) (ir.PkgFunc, bool)
 	}
 
-	// SyntheticFunc is a GX string.
+	// SyntheticFunc is a function that is being built by a macro.
 	SyntheticFunc struct {
-		builder SyntheticBuilder
+		ir  FuncIRBuilder
+		ast FuncASTBuilder
 	}
 
 	// SyntheticFuncDecl is a synthetic package function declaration.
@@ -44,13 +49,30 @@ type (
 var _ ir.Element = (*SyntheticFunc)(nil)
 
 // NewSyntheticFunc returns a state element storing a string GX value.
-func NewSyntheticFunc(builder SyntheticBuilder) *SyntheticFunc {
-	return &SyntheticFunc{builder: builder}
+func NewSyntheticFunc(irBuilder FuncIRBuilder) *SyntheticFunc {
+	astBuilder, _ := irBuilder.(FuncASTBuilder)
+	return &SyntheticFunc{ir: irBuilder, ast: astBuilder}
 }
 
-// Builder returns the builder responsible for building the synthetic function.
-func (n *SyntheticFunc) Builder() SyntheticBuilder {
-	return n.builder
+// BuildType builds the function type of a synthetic function.
+func (n *SyntheticFunc) BuildType(src *ast.FuncDecl) (*ast.FuncDecl, error) {
+	if n.ast == nil {
+		return src, nil
+	}
+	return n.ast.BuildType()
+}
+
+// BuildBody builds the source code body of a synthetic function.
+func (n *SyntheticFunc) BuildBody(fetcher ir.Fetcher, src *ast.FuncDecl) (*ast.BlockStmt, []*SyntheticFuncDecl, bool) {
+	if n.ast == nil {
+		return src.Body, nil, true
+	}
+	return n.ast.BuildBody(fetcher)
+}
+
+// BuildIR builds the IR of a function.
+func (n *SyntheticFunc) BuildIR(err fmterr.ErrAppender, src *ast.FuncDecl, file *ir.File, fType *ir.FuncType) (ir.PkgFunc, bool) {
+	return n.ir.BuildIR(err, src, file, fType)
 }
 
 // Type of the element.
