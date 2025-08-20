@@ -33,8 +33,8 @@ func (f *importedFunc) source() ast.Node {
 	return f.fn.Source()
 }
 
-func (f *importedFunc) name() *ast.Ident {
-	return f.fn.NameDef()
+func (f *importedFunc) fnSource() *ast.FuncDecl {
+	return f.fn.Src
 }
 
 func (f *importedFunc) isMethod() bool {
