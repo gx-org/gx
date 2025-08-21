@@ -17,92 +17,42 @@ package builder
 import (
 	"go/ast"
 	"go/parser"
-	"go/scanner"
-	"go/token"
 	"reflect"
-	"strings"
 
 	"github.com/gx-org/gx/build/ir"
 	"github.com/gx-org/gx/internal/interp/compeval/cpevelements"
 )
 
-const annotationPrefix = "gx:="
+const assignPrefix = "gx:="
 
-type astErrorNode struct {
-	doc *ast.Comment
-	err *scanner.Error
-}
-
-var _ ast.Node = (*astErrorNode)(nil)
-
-func (n astErrorNode) Pos() token.Pos {
-	return n.doc.Pos() + token.Pos(n.err.Pos.Column) + token.Pos(len(annotationPrefix)) - 1
-}
-
-func (n astErrorNode) End() token.Pos {
-	return n.doc.End()
-}
-
-func processScannerError(pscope procScope, doc *ast.Comment, errScanner error) bool {
-	errList, ok := errScanner.(scanner.ErrorList)
-	if !ok {
-		// Unknown error: we build a new error at the comment position
-		// that includes the error type and its message.
-		return pscope.Err().Appendf(doc, "%T:%s", errScanner, errScanner.Error())
-	}
-	for _, err := range errList {
-		pscope.Err().Appendf(astErrorNode{doc: doc, err: err}, "%s", err.Msg)
-	}
-	return false
-}
-
-func processFuncAnnotations(pscope procScope, src *ast.FuncDecl, fn function) (function, bool) {
-	if src.Doc == nil {
-		return fn, true
-	}
-	for _, doc := range src.Doc.List {
-		text := trimCommentPrefix(doc)
-		if !strings.HasPrefix(text, annotationPrefix) {
-			continue
-		}
-		text = strings.TrimPrefix(text, annotationPrefix)
-		annFN, ok := processFuncAnnotation(pscope, src, fn, doc, text)
-		if !ok {
-			return fn, false
-		}
-		fn = annFN
-	}
-	return fn, true
-}
-
-type atFuncExpr struct {
-	ann     *assignFuncAnnotation
+type assignFuncExpr struct {
+	ann     *assignFuncFromMacro
 	irFun   ir.PkgFunc
 	fnScope iFuncResolveScope
 }
 
-func (at *atFuncExpr) source() ast.Node {
+func (at *assignFuncExpr) source() ast.Node {
 	return at.ann.fn.source()
 }
 
-func (at *atFuncExpr) buildExpr(rScope resolveScope) (ir.Expr, bool) {
+func (at *assignFuncExpr) buildExpr(rScope resolveScope) (ir.Expr, bool) {
 	return &ir.ValueRef{
 		Stor: at.irFun,
 	}, true
 }
 
-func (at *atFuncExpr) String() string {
-	return "@"
+func (at *assignFuncExpr) String() string {
+	return assignPrefix
 }
 
-type assignFuncAnnotation struct {
+type assignFuncFromMacro struct {
 	coreSyntheticFunc
 	fn        function
 	macroCall *callExpr
 }
 
-func processFuncAnnotation(pscope procScope, src *ast.FuncDecl, fn function, comment *ast.Comment, annotSrc string) (function, bool) {
-	f := &assignFuncAnnotation{
+func processFuncAssignment(pscope procScope, src *ast.FuncDecl, fn function, comment *ast.Comment, annotSrc string) (function, bool) {
+	f := &assignFuncFromMacro{
 		fn: fn,
 		coreSyntheticFunc: coreSyntheticFunc{
 			bFile: pscope.file(),
@@ -124,7 +74,7 @@ func processFuncAnnotation(pscope procScope, src *ast.FuncDecl, fn function, com
 	return f, true
 }
 
-func (f *assignFuncAnnotation) buildSignature(pkgScope *pkgResolveScope) (ir.Func, iFuncResolveScope, bool) {
+func (f *assignFuncFromMacro) buildSignature(pkgScope *pkgResolveScope) (ir.Func, iFuncResolveScope, bool) {
 	fScope, ok := pkgScope.newFileScope(f.bFile)
 	if !ok {
 		return nil, nil, false
@@ -138,7 +88,7 @@ func (f *assignFuncAnnotation) buildSignature(pkgScope *pkgResolveScope) (ir.Fun
 	if !ok {
 		return nil, nil, fScope.Err().AppendInternalf(f.fn.source(), "%T not a package function", underFun)
 	}
-	atExpr := &atFuncExpr{
+	atExpr := &assignFuncExpr{
 		ann:     f,
 		irFun:   underPkgFun,
 		fnScope: underScope,
@@ -184,7 +134,7 @@ func (f *assignFuncAnnotation) buildSignature(pkgScope *pkgResolveScope) (ir.Fun
 
 type macroResolveScope struct {
 	*synthResolveScope
-	under *atFuncExpr
+	under *assignFuncExpr
 }
 
 func (m *macroResolveScope) buildBody(fn *irFunc, compEval *compileEvaluator) ([]*irFunc, bool) {
