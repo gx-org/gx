@@ -196,11 +196,11 @@ func (h *handleScalars) String() string {
 	bld := strings.Builder{}
 	bld.WriteString("Scalars{\n")
 
-	bld.WriteString(fmt.Sprintf("%s:%s\n", "Int", any(h.owner.Int).(fmt.Stringer).String()))
+	fmt.Fprintf(&bld, "%s:%s\n", "Int", any(h.owner.Int).(fmt.Stringer).String())
 
-	bld.WriteString(fmt.Sprintf("%s:%s\n", "Float32", any(h.owner.Float32).(fmt.Stringer).String()))
+	fmt.Fprintf(&bld, "%s:%s\n", "Float32", any(h.owner.Float32).(fmt.Stringer).String())
 
-	bld.WriteString(fmt.Sprintf("%s:%s\n", "Float64", any(h.owner.Float64).(fmt.Stringer).String()))
+	fmt.Fprintf(&bld, "%s:%s\n", "Float64", any(h.owner.Float64).(fmt.Stringer).String())
 
 	bld.WriteString("}")
 	return bld.String()
@@ -318,7 +318,7 @@ func (h *handleArrays) String() string {
 	bld := strings.Builder{}
 	bld.WriteString("Arrays{\n")
 
-	bld.WriteString(fmt.Sprintf("%s:%s\n", "ArrayF32", any(h.owner.ArrayF32).(fmt.Stringer).String()))
+	fmt.Fprintf(&bld, "%s:%s\n", "ArrayF32", any(h.owner.ArrayF32).(fmt.Stringer).String())
 
 	bld.WriteString("}")
 	return bld.String()
@@ -411,11 +411,11 @@ func (h *handleEncoding) String() string {
 	bld := strings.Builder{}
 	bld.WriteString("Encoding{\n")
 
-	bld.WriteString(fmt.Sprintf("%s:%s\n", "Scalars", any(h.owner.Scalars).(fmt.Stringer).String()))
+	fmt.Fprintf(&bld, "%s:%s\n", "Scalars", any(h.owner.Scalars).(fmt.Stringer).String())
 
-	bld.WriteString(fmt.Sprintf("%s:%s\n", "DataAsSlices", any(h.owner.DataAsSlices).(fmt.Stringer).String()))
+	fmt.Fprintf(&bld, "%s:%s\n", "DataAsSlices", any(h.owner.DataAsSlices).(fmt.Stringer).String())
 
-	bld.WriteString(fmt.Sprintf("%s:%s\n", "DataAsArrays", any(h.owner.DataAsArrays).(fmt.Stringer).String()))
+	fmt.Fprintf(&bld, "%s:%s\n", "DataAsArrays", any(h.owner.DataAsArrays).(fmt.Stringer).String())
 
 	bld.WriteString("}")
 	return bld.String()
@@ -521,9 +521,9 @@ func (h *handleSlice) String() string {
 	bld := strings.Builder{}
 	bld.WriteString("Slice{\n")
 
-	bld.WriteString(fmt.Sprintf("%s:%s\n", "Instance", any(h.owner.Instance).(fmt.Stringer).String()))
+	fmt.Fprintf(&bld, "%s:%s\n", "Instance", any(h.owner.Instance).(fmt.Stringer).String())
 
-	bld.WriteString(fmt.Sprintf("%s:%s\n", "Slice", any(h.owner.Slice).(fmt.Stringer).String()))
+	fmt.Fprintf(&bld, "%s:%s\n", "Slice", any(h.owner.Slice).(fmt.Stringer).String())
 
 	bld.WriteString("}")
 	return bld.String()
