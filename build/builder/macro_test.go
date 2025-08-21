@@ -71,7 +71,7 @@ func TestMacro(t *testing.T) {
 			Src: `
 import "macro"
 
-//gx@=macro.ID(f)
+//gx:=macro.ID(f)
 func synthetic()
 
 func f() int32 {
@@ -111,7 +111,7 @@ func f() int32 {
 			Src: `
 import "macro"
 
-//gx@=macro.ID(f)
+//gx:=macro.ID(f)
 func synthetic()
 
 func f(x int32) int32 {
@@ -153,7 +153,7 @@ import "macro"
 
 type S struct{}
 
-//gx@=macro.ID(S.f)
+//gx:=macro.ID(S.f)
 func (S) synthetic()
 
 func (S) f() int32 {
@@ -170,7 +170,7 @@ import "macro"
 
 type S struct{}
 
-//gx@=macro.ID(S.f)
+//gx:=macro.ID(S.f)
 func synthetic()
 
 func (S) f() int32 {
@@ -185,7 +185,7 @@ import "macro"
 
 type S struct{}
 
-//gx@=macro.ID(f)
+//gx:=macro.ID(f)
 func (S) synthetic()
 
 func f() int32 {
@@ -202,7 +202,7 @@ type S struct{}
 
 type T struct{}
 
-//gx@=macro.ID(S.f)
+//gx:=macro.ID(S.f)
 func (T) synthetic()
 
 func (S) f() int32 {

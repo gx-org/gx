@@ -61,7 +61,7 @@ func (tt Func) buildSourceCode() string {
 	for _, fnName := range tt.GradOf {
 		fmt.Fprintf(grads,
 			`
-//gx@=%s.Func(%s, "x")
+//gx:=%s.Func(%s, "x")
 func grad%s()
 `,
 			callImportName, fnName, fnName)

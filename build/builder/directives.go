@@ -67,6 +67,9 @@ func processFuncDirective(pscope procScope, fn *ast.FuncDecl) (directive, *ast.C
 		if !strings.HasPrefix(text, directivePrefix) {
 			continue
 		}
+		if strings.HasPrefix(text, annotationPrefix) {
+			continue
+		}
 		dirS := text[len(directivePrefix):]
 		docDir := directives[dirS]
 		if docDir == invalid {

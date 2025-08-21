@@ -80,6 +80,9 @@ func (s *FuncType) NameString(name string) string {
 	if s.Results.Len() > 1 {
 		b.WriteString("(")
 	}
+	if s.Results == nil {
+		return b.String()
+	}
 	b.WriteString(s.Results.String())
 	if s.Results.Len() > 1 {
 		b.WriteString(")")
