@@ -95,8 +95,16 @@ type distinctType struct {
 
 func (*distinctType) node() {}
 
+func (t *distinctType) distinct() *distinctType {
+	return t
+}
+
 func (t *distinctType) Equal(_ Fetcher, target Type) (bool, error) {
-	return t.kind == target.Kind(), nil
+	other, ok := target.(interface{ distinct() *distinctType })
+	if !ok {
+		return false, nil
+	}
+	return t == other.distinct(), nil
 }
 
 func (t *distinctType) AssignableTo(fetcher Fetcher, target Type) (bool, error) {
