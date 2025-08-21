@@ -213,9 +213,9 @@ func (h *handleShape) String() string {
 	bld := strings.Builder{}
 	bld.WriteString("Shape{\n")
 
-	bld.WriteString(fmt.Sprintf("%s:%s\n", "DType", any(h.owner.DType).(fmt.Stringer).String()))
+	fmt.Fprintf(&bld, "%s:%s\n", "DType", any(h.owner.DType).(fmt.Stringer).String())
 
-	bld.WriteString(fmt.Sprintf("%s:%s\n", "Dimensions", any(h.owner.Dimensions).(fmt.Stringer).String()))
+	fmt.Fprintf(&bld, "%s:%s\n", "Dimensions", any(h.owner.Dimensions).(fmt.Stringer).String())
 
 	bld.WriteString("}")
 	return bld.String()
