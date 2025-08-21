@@ -21,10 +21,11 @@ import (
 	"github.com/gx-org/gx/stdlib/math/grad/testgrad"
 )
 
-func TestGradMethods(t *testing.T) {
+func TestGradMethodsNotOnReceiver(t *testing.T) {
 	testbuild.Run(t,
 		declareGradPackage,
 		testgrad.Method{
+			WRT: "x",
 			Src: `
 type S struct {}
 
@@ -39,6 +40,7 @@ func (S) gradF(x float32) float32 {
 `,
 		},
 		testgrad.Method{
+			WRT: "x",
 			Src: `
 type S struct {
 	y float32
@@ -51,6 +53,29 @@ func (s S) F(x float32) float32 {
 			Want: `
 func (s S) gradF(x float32) float32 {
 	return s.y
+}
+`,
+		},
+	)
+}
+
+func TestGradMethodsOnReceiver(t *testing.T) {
+	testbuild.Run(t,
+		declareGradPackage,
+		testgrad.Method{
+			WRT: "s",
+			Src: `
+type S struct {
+	y float32
+}
+
+func (s S) F(x float32) float32 {
+	return x*s.y
+}
+`,
+			Want: `
+func (s S) gradF(x float32) float32 {
+	return x
 }
 `,
 		},

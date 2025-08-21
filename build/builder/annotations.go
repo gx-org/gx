@@ -45,7 +45,7 @@ func (m *annotateFuncFromMacro) buildBody(fScope iFuncResolveScope, fn *irFunc) 
 	}
 	fnAnnotator, ok := macroEl.(cpevelements.FuncAnnotator)
 	if !ok {
-		return nil, fScope.Err().Appendf(m.macroCall.source(), "cannot use macro %s for function assignment", macroEl.Macro().Name())
+		return nil, fScope.Err().Appendf(m.macroCall.source(), "cannot use macro %s for function annotations", macroEl.Macro().Name())
 	}
 	return aux, fnAnnotator.Annotate(fScope, fn.irFunc)
 }

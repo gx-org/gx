@@ -216,12 +216,17 @@ func (m *exprGrader) gradParenExpr(src *ir.ParenExpr) (*gradExprResult, bool) {
 	}, true
 }
 
-func (m *exprGrader) gradValueRef(src *ir.ValueRef) (*gradExprResult, bool) {
-	if m.macro.wrt.Same(src.Stor) {
+func (m *exprGrader) gradFieldStorage(src *ir.FieldStorage) (*gradExprResult, bool) {
+	if m.macro.wrt.same(src.Field) {
 		return oneValueOf(src.Source()), true
 	}
-	if m.macro.isParam(src.Stor) {
-		return zeroValueOf(src.Source()), true
+	return zeroValueOf(src.Source()), true
+}
+
+func (m *exprGrader) gradValueRef(src *ir.ValueRef) (*gradExprResult, bool) {
+	fieldStorage, isField := src.Stor.(*ir.FieldStorage)
+	if isField {
+		return m.gradFieldStorage(fieldStorage)
 	}
 	gIdent := m.macro.gradIdent(src.Stor.NameDef())
 	return &gradExprResult{expr: gIdent}, true
@@ -256,6 +261,10 @@ func (m *exprGrader) gradArrayLitExpr(src *ir.ArrayLitExpr) (*gradExprResult, bo
 }
 
 func (m *exprGrader) gradSelectorExpr(src *ir.SelectorExpr) (*gradExprResult, bool) {
+	fieldStorage, isField := src.Stor.(*ir.FieldStorage)
+	if isField {
+		return m.gradFieldStorage(fieldStorage)
+	}
 	return zeroValueOf(src.Src), true
 }
 

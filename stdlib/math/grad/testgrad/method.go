@@ -31,6 +31,10 @@ type Method struct {
 	// If GradOf is empty, we compute the gradient of F.
 	GradOf []string
 
+	// WRT (with respect to) is the name of the variable to compute the gradient with respect to.
+	// If this is empty, it uses `s` (which will need to be defined).
+	WRT string
+
 	// Want stores the source code of the expected gradient of the function
 	Want string
 
@@ -57,6 +61,9 @@ func (tt Method) buildSourceCode() (string, error) {
 		declImportName = tt.GradImportName
 		callImportName = tt.GradImportName
 	}
+	if tt.WRT == "" {
+		return "", errors.Errorf("field WRT not set")
+	}
 	grads := &strings.Builder{}
 	for _, methodName := range tt.GradOf {
 		names := strings.Split(methodName, ".")
@@ -66,10 +73,10 @@ func (tt Method) buildSourceCode() (string, error) {
 		tpName, fnName := names[0], names[1]
 		fmt.Fprintf(grads,
 			`
-//gx:=%s.Func(%s.%s, "x")
+//gx:=%s.Func(%s.%s, "%s")
 func (%s) grad%s()
 `,
-			callImportName, tpName, fnName, tpName, fnName)
+			callImportName, tpName, fnName, tt.WRT, tpName, fnName)
 	}
 	return fmt.Sprintf(`
 package test
