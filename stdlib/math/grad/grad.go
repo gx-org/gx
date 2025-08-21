@@ -50,17 +50,23 @@ type gradMacro struct {
 	aux      *ordered.Map[string, *cpevelements.SyntheticFuncDecl]
 
 	fn  *ir.FuncDecl
-	wrt *ir.FieldStorage
+	wrt withRespectTo
 }
 
 var _ cpevelements.FuncASTBuilder = (*gradMacro)(nil)
 
-func findParamStorage(file *ir.File, src ir.SourceNode, fn ir.Func, name string) (*ir.FieldStorage, error) {
+func findParamStorage(file *ir.File, src ir.SourceNode, fn ir.Func, name string) (withRespectTo, error) {
+	recv := fn.FuncType().ReceiverField()
+	if recv != nil && recv.Name != nil {
+		if recv.Name.Name == name {
+			return newWRT(recv), nil
+		}
+	}
 	field := fn.FuncType().Params.FindField(name)
 	if field == nil {
 		return nil, fmterr.Errorf(file.FileSet(), src.Source(), "no parameter named %s in %s", name, fn.Name())
 	}
-	return field.Storage(), nil
+	return newWRT(field), nil
 }
 
 // FuncGrad computes the gradient of a function.
@@ -87,7 +93,7 @@ func FuncGrad(call elements.CallAt, macro *cpevelements.Macro, args []ir.Element
 	}.newMacro(fnT, wrtF), nil
 }
 
-func (m gradMacro) newMacro(fn *ir.FuncDecl, wrt *ir.FieldStorage) *gradMacro {
+func (m gradMacro) newMacro(fn *ir.FuncDecl, wrt withRespectTo) *gradMacro {
 	var n gradMacro = m
 	n.fn = fn
 	n.wrt = wrt
@@ -106,7 +112,7 @@ func (m *gradMacro) syntheticFuncName(fetcher ir.Fetcher, fn ir.Func) (string, b
 	if imp == nil {
 		return "", fetcher.Err().AppendInternalf(callee.Source(), "cannot find import name %s", macroPackage.FullName())
 	}
-	return fmt.Sprintf("__%s_%s_%s_%s", imp.Name(), funcName, fn.Name(), m.wrt.Field.Name), true
+	return fmt.Sprintf("__%s_%s_%s_%s", imp.Name(), funcName, fn.Name(), m.wrt.name()), true
 }
 
 func (m *gradMacro) BuildDecl() (*ast.FuncDecl, bool) {
@@ -131,11 +137,6 @@ func (m *gradMacro) BuildBody(fetcher ir.Fetcher, fn ir.Func) (*ast.BlockStmt, [
 		return nil, nil, false
 	}
 	return body, slices.Collect(m.aux.Values()), true
-}
-
-func (m *gradMacro) isParam(src ir.Storage) bool {
-	_, ok := src.(*ir.FieldStorage)
-	return ok
 }
 
 func (m *gradMacro) gradIdent(src *ast.Ident) *ast.Ident {
