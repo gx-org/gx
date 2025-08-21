@@ -77,7 +77,7 @@ func Tag(any, string) any
 			Src: `
 import "annotation"
 
-// gx@=annotation.Tag("Hello")
+// gx:=annotation.Tag("Hello")
 func f() int32 {
 	return 2
 }
@@ -108,8 +108,8 @@ func f() int32 {
 			Src: `
 import "annotation"
 
-// gx@=annotation.Tag("Hello")
-// gx@=annotation.Tag("Bonjour")
+// gx:=annotation.Tag("Hello")
+// gx:=annotation.Tag("Bonjour")
 func f() int32 {
 	return 2
 }
@@ -141,8 +141,8 @@ func f() int32 {
 			Src: `
 import "annotation"
 
-// gx@=annotation.Tag("Hello")
-// gx@=annotation.Tag("Bonjour")
+// gx:=annotation.Tag("Hello")
+// gx:=annotation.Tag("Bonjour")
 func f() int32
 `,
 		},

@@ -26,7 +26,7 @@ import (
 	"github.com/gx-org/gx/internal/interp/compeval/cpevelements"
 )
 
-const annotationPrefix = "gx@="
+const annotationPrefix = "gx:="
 
 type astErrorNode struct {
 	doc *ast.Comment

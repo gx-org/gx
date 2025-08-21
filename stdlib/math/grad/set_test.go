@@ -30,7 +30,7 @@ func gradOfG(x float32) float32 {
 	return x
 }
 
-//gx@=grad.Set(gradOfG)
+//gx:=grad.Set(gradOfG)
 func g(x float32) float32 {
 	return x	
 }
@@ -49,7 +49,7 @@ func gradF(x float32) float32 {
 			Src: `
 func gradOfG(x float32) float32
 
-//gx@=grad.Set(gradOfG)
+//gx:=grad.Set(gradOfG)
 func g(x float32) float32
 
 func F(x float32) float32 {
