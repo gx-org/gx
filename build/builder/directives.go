@@ -16,19 +16,21 @@ package builder
 
 import (
 	"go/ast"
+	"go/scanner"
+	"go/token"
 	"strings"
 )
 
-type directive int
+type funcAttribute int
 
 const (
-	invalid directive = iota
+	invalid funcAttribute = iota
 	irmacro
 	cpeval
 	none
 )
 
-func (d directive) String() string {
+func (d funcAttribute) String() string {
 	switch d {
 	case none:
 		return "none"
@@ -41,9 +43,9 @@ func (d directive) String() string {
 	}
 }
 
-const directivePrefix = "gx:"
+const funcAttributePrefix = "gx:"
 
-var directives = map[string]directive{
+var directives = map[string]funcAttribute{
 	irmacro.String(): irmacro,
 	cpeval.String():  cpeval,
 	none.String():    none,
@@ -56,7 +58,7 @@ func trimCommentPrefix(cmt *ast.Comment) string {
 	return text
 }
 
-func processFuncDirective(pscope procScope, fn *ast.FuncDecl) (directive, *ast.Comment, bool) {
+func processFuncAttribute(pscope procScope, fn *ast.FuncDecl) (funcAttribute, *ast.Comment, bool) {
 	if fn.Doc == nil {
 		return none, nil, true
 	}
@@ -64,13 +66,13 @@ func processFuncDirective(pscope procScope, fn *ast.FuncDecl) (directive, *ast.C
 	var comment *ast.Comment
 	for _, doc := range fn.Doc.List {
 		text := trimCommentPrefix(doc)
-		if !strings.HasPrefix(text, directivePrefix) {
+		if !strings.HasPrefix(text, funcAttributePrefix) {
 			continue
 		}
-		if strings.HasPrefix(text, annotationPrefix) {
+		if _, fnProc := funcProcessorFromDirective(text); fnProc != nil {
 			continue
 		}
-		dirS := text[len(directivePrefix):]
+		dirS := text[len(funcAttributePrefix):]
 		docDir := directives[dirS]
 		if docDir == invalid {
 			return dir, doc, pscope.Err().Appendf(doc, "undefined directive %s", doc.Text)
@@ -82,4 +84,70 @@ func processFuncDirective(pscope procScope, fn *ast.FuncDecl) (directive, *ast.C
 		comment = doc
 	}
 	return dir, comment, true
+}
+
+type astErrorNode struct {
+	doc *ast.Comment
+	err *scanner.Error
+}
+
+var _ ast.Node = (*astErrorNode)(nil)
+
+func (n astErrorNode) Pos() token.Pos {
+	return n.doc.Pos() + token.Pos(n.err.Pos.Column) + token.Pos(len(assignPrefix)) - 1
+}
+
+func (n astErrorNode) End() token.Pos {
+	return n.doc.End()
+}
+
+func processScannerError(pscope procScope, doc *ast.Comment, errScanner error) bool {
+	errList, ok := errScanner.(scanner.ErrorList)
+	if !ok {
+		// Unknown error: we build a new error at the comment position
+		// that includes the error type and its message.
+		return pscope.Err().Appendf(doc, "%T:%s", errScanner, errScanner.Error())
+	}
+	for _, err := range errList {
+		pscope.Err().Appendf(astErrorNode{doc: doc, err: err}, "%s", err.Msg)
+	}
+	return false
+}
+
+type funcProcessor func(pscope procScope, src *ast.FuncDecl, fn function, comment *ast.Comment, annotSrc string) (function, bool)
+
+var funcProcessors = map[string]funcProcessor{
+	assignPrefix: processFuncAssignment,
+}
+
+func funcProcessorFromDirective(text string) (string, funcProcessor) {
+	if len(text) <= 4 {
+		return "", nil
+	}
+	prefix := text[:4]
+	fnProc := funcProcessors[prefix]
+	if fnProc == nil {
+		return "", nil
+	}
+	return prefix, fnProc
+}
+
+func processFuncAnnotations(pscope procScope, src *ast.FuncDecl, fn function) (function, bool) {
+	if src.Doc == nil {
+		return fn, true
+	}
+	for _, doc := range src.Doc.List {
+		text := trimCommentPrefix(doc)
+		prefix, fnProc := funcProcessorFromDirective(text)
+		if fnProc == nil {
+			continue
+		}
+		text = strings.TrimPrefix(text, prefix)
+		annFN, ok := fnProc(pscope, src, fn, doc, text)
+		if !ok {
+			return fn, false
+		}
+		fn = annFN
+	}
+	return fn, true
 }

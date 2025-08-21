@@ -171,7 +171,7 @@ type funcDecl struct {
 var _ function = (*funcDecl)(nil)
 
 func (bFile *file) processFunc(fileScope procScope, src *ast.FuncDecl) bool {
-	dir, dirComment, dirOk := processFuncDirective(fileScope, src)
+	dir, dirComment, dirOk := processFuncAttribute(fileScope, src)
 	var fn function
 	var ok bool
 	switch dir {
