@@ -1120,7 +1120,7 @@ type (
 	// PkgFunc is a function declared at the package level.
 	PkgFunc interface {
 		pkgFunc()
-		New(*ast.FuncDecl, *File, *FuncType) PkgFunc
+		New() PkgFunc
 		StorageWithValue
 		Func
 		Annotations() *Annotations
@@ -1418,8 +1418,9 @@ func (s *FuncDecl) Annotations() *Annotations {
 }
 
 // New returns a new function given a source, a file, and a type.
-func (s *FuncDecl) New(src *ast.FuncDecl, file *File, fType *FuncType) PkgFunc {
-	return &FuncDecl{Src: src, FFile: file, FType: fType}
+func (s *FuncDecl) New() PkgFunc {
+	n := *s
+	return &n
 }
 
 func (*FuncBuiltin) node()         {}
@@ -1481,8 +1482,9 @@ func (s *FuncBuiltin) Annotations() *Annotations {
 }
 
 // New returns a new function given a source, a file, and a type.
-func (s *FuncBuiltin) New(src *ast.FuncDecl, file *File, fType *FuncType) PkgFunc {
-	return &FuncBuiltin{Src: src, FFile: file, FType: fType}
+func (s *FuncBuiltin) New() PkgFunc {
+	n := *s
+	return &n
 }
 
 func (*FuncLit) node()         {}
@@ -1617,8 +1619,9 @@ func (s *Macro) String() string {
 }
 
 // New returns a new function given a source, a file, and a type.
-func (s *Macro) New(src *ast.FuncDecl, file *File, fType *FuncType) PkgFunc {
-	return &Macro{Src: src, FFile: file, FType: fType}
+func (s *Macro) New() PkgFunc {
+	n := *s
+	return &n
 }
 
 func (*ImportDecl) node()         {}

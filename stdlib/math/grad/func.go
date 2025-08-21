@@ -56,14 +56,14 @@ func gradFuncDecl(fetcher ir.Fetcher, parent *gradMacro, src *ir.FuncValExpr, fn
 		return ident, true
 	}
 	// No function already exists. Prepare to return it as a new auxiliary function.
-	gradF, err := grader.BuildType()
-	gradF.Name = ident
-	if err != nil {
-		return nil, fetcher.Err().AppendAt(src.Source(), err)
+	gradF, ok := grader.BuildDecl()
+	if !ok {
+		return nil, false
 	}
+	gradF.Name = ident
 	grader.aux.Store(synthName, &cpevelements.SyntheticFuncDecl{
-		SyntheticFunc: cpevelements.NewSyntheticFunc(grader),
-		F:             gradF,
+		Builder: grader,
+		F:       gradF,
 	})
 	return ident, true
 }

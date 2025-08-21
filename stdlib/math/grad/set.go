@@ -25,8 +25,16 @@ import (
 	"github.com/gx-org/gx/interp"
 )
 
+type setAnnotation struct {
+	cpevelements.CoreMacroElement
+	fn   ir.PkgFunc
+	grad ir.PkgFunc
+}
+
+var _ cpevelements.FuncAnnotator = (*setAnnotation)(nil)
+
 // SetGrad sets the gradient of a function.
-func SetGrad(call elements.CallAt, macro *cpevelements.Macro, args []ir.Element) (*cpevelements.SyntheticFunc, error) {
+func SetGrad(call elements.CallAt, macro *cpevelements.Macro, args []ir.Element) (cpevelements.MacroElement, error) {
 	fn, ok := args[0].(ir.PkgFunc)
 	if !ok {
 		return nil, errors.Errorf("%T not an IR function", args[0])
@@ -35,29 +43,22 @@ func SetGrad(call elements.CallAt, macro *cpevelements.Macro, args []ir.Element)
 	if err != nil {
 		return nil, errors.Errorf("%T is not a function element", args[1])
 	}
-	return cpevelements.NewSyntheticFunc(&setAnnotation{
-		macro: macro,
-		fn:    fn,
-		grad:  grad,
-	}), nil
-}
-
-type setAnnotation struct {
-	macro *cpevelements.Macro
-	fn    ir.PkgFunc
-	grad  ir.PkgFunc
+	return &setAnnotation{
+		CoreMacroElement: cpevelements.CoreMacroElement{Mac: macro},
+		fn:               fn,
+		grad:             grad,
+	}, nil
 }
 
 const setKey = "set"
 
-func (m *setAnnotation) BuildIR(errApp fmterr.ErrAppender, src *ast.FuncDecl, file *ir.File, fType *ir.FuncType) (ir.PkgFunc, bool) {
-	ext := m.fn.New(src, file, fType)
-	ext.Annotations().Append(
-		m.macro.Func().File().Package,
+func (m *setAnnotation) Annotate(errApp fmterr.ErrAppender, fn ir.PkgFunc) bool {
+	fn.Annotations().Append(
+		m.CoreMacroElement.Mac.Func().File().Package,
 		setKey,
 		m.grad,
 	)
-	return ext, true
+	return true
 }
 
 func findSetAnnotation(stor ir.Storage) *ir.Annotation {

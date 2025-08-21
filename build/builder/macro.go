@@ -18,6 +18,7 @@ import (
 	"go/ast"
 
 	"github.com/gx-org/gx/build/ir"
+	"github.com/gx-org/gx/internal/interp/compeval/cpevelements"
 )
 
 type funcMacro struct {
@@ -68,4 +69,55 @@ func (f *funcMacro) compEval() bool {
 func (f *funcMacro) resolveOrder() int {
 	// Macro needs to be resolved first before any other functions.
 	return -1
+}
+
+type irExpr struct {
+	expr ir.Expr
+}
+
+func (e *irExpr) source() ast.Node {
+	return e.expr.Source()
+}
+
+func (e *irExpr) buildExpr(rScope resolveScope) (ir.Expr, bool) {
+	return e.expr, true
+}
+
+func (e *irExpr) String() string {
+	return "irexpr: " + e.expr.String()
+}
+
+func callMacroExpr(fScope *fileResolveScope, macroCall *callExpr, firstArg ir.Storage) (cpevelements.MacroElement, bool) {
+	// The function is passed as the first argument of the macro.
+	arg := &irExpr{expr: &ir.ValueRef{Stor: firstArg}}
+	// Build the IR to call the macro.
+	callExpr, ok := (&callExpr{
+		src:    macroCall.src,
+		args:   append([]exprNode{arg}, macroCall.args...),
+		callee: macroCall.callee,
+	}).buildExpr(fScope)
+	if !ok {
+		return nil, false
+	}
+	fCallExpr, ok := callExpr.(*ir.CallExpr)
+	if !ok {
+		return nil, fScope.Err().Appendf(macroCall.source(), "expect a function")
+	}
+	if _, ok := fCallExpr.Callee.F.(*ir.Macro); !ok {
+		return nil, fScope.Err().Appendf(macroCall.source(), "cannot use %s as a macro", fCallExpr.Callee.F.NameDef().Name)
+	}
+	// Evaluate the macro expression.
+	compEval, compEvalOk := fScope.compEval()
+	if !compEvalOk {
+		return nil, false
+	}
+	el, err := compEval.fitp.EvalExpr(fCallExpr)
+	if err != nil {
+		return nil, fScope.Err().AppendAt(macroCall.source(), err)
+	}
+	macroEl, ok := el.(cpevelements.MacroElement)
+	if !ok {
+		return nil, fScope.Err().AppendInternalf(macroCall.source(), "unexpected element type %s returned by macro %s", el.Type().String(), fCallExpr.Callee.F.NameDef().Name)
+	}
+	return macroEl, true
 }

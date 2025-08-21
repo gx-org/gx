@@ -24,6 +24,7 @@ import (
 	"runtime/debug"
 	"strings"
 
+	gxfmt "github.com/gx-org/gx/base/fmt"
 	"github.com/gx-org/gx/build/ir"
 	"github.com/gx-org/gx/internal/interp/compeval/cpevelements"
 )
@@ -87,7 +88,7 @@ func (f *coreSyntheticFunc) compEval() bool {
 type (
 	synthResolveScope struct {
 		iFuncResolveScope
-		fnBuilder *cpevelements.SyntheticFunc
+		fnBuilder cpevelements.FuncASTBuilder
 	}
 
 	iSynthResolveScope interface {
@@ -120,7 +121,7 @@ func (m *synthResolveScope) errorFor(body *ast.BlockStmt) error {
 	fmtW := &strings.Builder{}
 	errFmt := formatBody(body, fmtW)
 	if errFmt == nil {
-		return fmt.Errorf(coreError, fmtW.String())
+		return fmt.Errorf(coreError, gxfmt.Number(fmtW.String()))
 	}
 	fmtMsg := fmt.Sprintf("Formatted:\n%s\nError:\n%v", fmtW.String(), errFmt)
 	astW := &strings.Builder{}
@@ -131,7 +132,7 @@ func (m *synthResolveScope) errorFor(body *ast.BlockStmt) error {
 
 func (m *synthResolveScope) buildBody(fn *irFunc, compEval *compileEvaluator) ([]*irFunc, bool) {
 	// First, build the AST body of the synthetic function.
-	astBody, auxs, ok := m.fnBuilder.BuildBody(compEval, fn.bFunc.fnSource())
+	astBody, auxs, ok := m.fnBuilder.BuildBody(compEval, fn.irFunc)
 	if !ok {
 		return nil, false
 	}
@@ -148,24 +149,10 @@ func (m *synthResolveScope) buildBody(fn *irFunc, compEval *compileEvaluator) ([
 	return irAuxs, buildIRBody(m, fn.irFunc, compEval, astBody)
 }
 
-func buildFuncTypeFromAST(fScope *fileResolveScope, fnBuilder *cpevelements.SyntheticFunc, src *ast.FuncDecl) (ir.PkgFunc, *funcResolveScope, bool) {
-	pkgPScope := fScope.pkgProcScope
-	pScope := pkgPScope.newScope(fScope.bFile())
-	ft, ok := processFuncType(pScope, src.Type, src.Recv, false)
-	if !ok {
-		return nil, nil, false
-	}
-	fType, fnScope, ok := ft.buildFuncType(fScope)
-	if !ok {
-		return nil, nil, false
-	}
-	ext, ok := fnBuilder.BuildIR(fScope, src, fScope.irFile(), fType)
-	return ext, fnScope, ok
-}
-
 type syntheticFunc struct {
 	coreSyntheticFunc
-	fnBuilder *cpevelements.SyntheticFunc
+	underFun  ir.Func
+	fnBuilder cpevelements.FuncASTBuilder
 }
 
 func (f *syntheticFunc) buildSignature(pkgScope *pkgResolveScope) (ir.Func, iFuncResolveScope, bool) {
@@ -176,43 +163,49 @@ func (f *syntheticFunc) buildSignature(pkgScope *pkgResolveScope) (ir.Func, iFun
 	return f.buildSignatureFScope(fScope)
 }
 
-func (f *syntheticFunc) checkSyntheticSignature(fScope *fileResolveScope, fSynth ir.Func) bool {
-	fSrc, _, ok := buildFuncTypeFromAST(fScope, f.fnBuilder, f.src)
-	if !ok {
-		return false
-	}
-	fSrcRecv := fSrc.FuncType().ReceiverField()
-	fSynthRecv := fSynth.FuncType().ReceiverField()
-	if fSrcRecv == nil && fSynthRecv == nil {
+func (f *syntheticFunc) checkSyntheticSignature(fScope *fileResolveScope, fInputName string, fInputType *ir.FuncType, fOutputName string, fOutputType *ir.FuncType) bool {
+	fOutputRecv := fOutputType.ReceiverField()
+	fInputRecv := fInputType.ReceiverField()
+	if fOutputRecv == nil && fInputRecv == nil {
 		return true
 	}
-	if fSrcRecv == nil && fSynthRecv != nil {
-		return fScope.Err().Appendf(f.src, "%s requires a %s type receiver", f.src.Name.Name, fSynthRecv.Type().String())
+	if fInputRecv == nil && fOutputRecv != nil {
+		return fScope.Err().Appendf(f.src, "%s requires a %s type receiver", f.src.Name.Name, fOutputRecv.Type().String())
 	}
-	if fSrcRecv != nil && fSynthRecv == nil {
+	if fInputRecv != nil && fOutputRecv == nil {
 		return fScope.Err().Appendf(f.src, "%s requires no receiver", f.src.Name.Name)
 	}
-	if ok := equalToAt(fScope, f.src.Recv, fSrcRecv.Type(), fSynthRecv.Type()); !ok {
-		return fScope.Err().Appendf(f.src, "cannot assign %s.%s to %s.%s", fSynthRecv.Type().NameDef().Name, fSynth.Name(), fSrcRecv.Type().NameDef().Name, fSrc.Name())
+	if ok := equalToAt(fScope, f.src.Recv, fOutputRecv.Type(), fInputRecv.Type()); !ok {
+		return fScope.Err().Appendf(f.src, "cannot assign %s.%s to %s.%s", fOutputRecv.Type().NameDef().Name, fOutputName, fInputRecv.Type().NameDef().Name, fInputName)
 	}
 	return true
 }
 
-func (f *syntheticFunc) buildSignatureFScope(fScope *fileResolveScope) (ir.Func, *synthResolveScope, bool) {
-	astFDecl, err := f.fnBuilder.BuildType(f.fnSource())
-	if err != nil {
-		return nil, nil, fScope.Err().AppendAt(f.src, err)
-	}
-	astFDecl.Name = f.src.Name
-	fDecl, fnScope, ok := buildFuncTypeFromAST(fScope, f.fnBuilder, astFDecl)
+func (f *syntheticFunc) buildSignatureFScope(fScope *fileResolveScope) (ir.PkgFunc, *synthResolveScope, bool) {
+	synDecl, ok := f.fnBuilder.BuildDecl()
 	if !ok {
 		return nil, nil, false
 	}
-	if ok := f.checkSyntheticSignature(fScope, fDecl); !ok {
+	synDecl.Name = f.src.Name
+	pkgPScope := fScope.pkgProcScope
+	pScope := pkgPScope.newScope(fScope.bFile())
+	ft, ok := processFuncType(pScope, synDecl.Type, synDecl.Recv, false)
+	if !ok {
 		return nil, nil, false
 	}
-	return fDecl, &synthResolveScope{
-		iFuncResolveScope: fnScope,
-		fnBuilder:         f.fnBuilder,
-	}, ok
+	fnSyntheticType, fnScope, ok := ft.buildFuncType(fScope)
+	if !ok {
+		return nil, nil, false
+	}
+	if ok := f.checkSyntheticSignature(fScope, f.underFun.Name(), f.underFun.FuncType(), synDecl.Name.Name, fnSyntheticType); !ok {
+		return nil, nil, false
+	}
+	return &ir.FuncDecl{
+			FFile: fScope.irFile(),
+			Src:   synDecl,
+			FType: fnSyntheticType,
+		}, &synthResolveScope{
+			iFuncResolveScope: fnScope,
+			fnBuilder:         f.fnBuilder,
+		}, ok
 }

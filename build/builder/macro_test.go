@@ -19,7 +19,6 @@ import (
 	"testing"
 
 	"github.com/gx-org/gx/build/builder/testbuild"
-	"github.com/gx-org/gx/build/fmterr"
 	"github.com/gx-org/gx/build/ir"
 	irh "github.com/gx-org/gx/build/ir/irhelper"
 	"github.com/gx-org/gx/internal/interp/compeval/cpevelements"
@@ -27,28 +26,27 @@ import (
 	"github.com/gx-org/gx/interp"
 )
 
-func newIDMacro(call elements.CallAt, macro *cpevelements.Macro, args []ir.Element) (*cpevelements.SyntheticFunc, error) {
+type idMacro struct {
+	cpevelements.CoreMacroElement
+	fn *ir.FuncDecl
+}
+
+var _ cpevelements.FuncASTBuilder = (*idMacro)(nil)
+
+func newIDMacro(call elements.CallAt, macro *cpevelements.Macro, args []ir.Element) (cpevelements.MacroElement, error) {
 	fn, err := interp.FuncDeclFromElement(args[1])
 	if err != nil {
 		return nil, err
 	}
-	return cpevelements.NewSyntheticFunc(&idMacro{fn: fn}), nil
+	return &idMacro{CoreMacroElement: cpevelements.CoreMacroElement{Mac: macro}, fn: fn}, nil
 }
 
-type idMacro struct {
-	fn *ir.FuncDecl
+func (m *idMacro) BuildDecl() (*ast.FuncDecl, bool) {
+	return &ast.FuncDecl{Type: m.fn.FType.Src, Recv: m.fn.Src.Recv}, true
 }
 
-func (m *idMacro) BuildType() (*ast.FuncDecl, error) {
-	return &ast.FuncDecl{Type: m.fn.FType.Src, Recv: m.fn.Src.Recv}, nil
-}
-
-func (m *idMacro) BuildBody(fetcher ir.Fetcher) (*ast.BlockStmt, []*cpevelements.SyntheticFuncDecl, bool) {
+func (m *idMacro) BuildBody(fetcher ir.Fetcher, fn ir.Func) (*ast.BlockStmt, []*cpevelements.SyntheticFuncDecl, bool) {
 	return m.fn.Body.Src, nil, true
-}
-
-func (m *idMacro) BuildIR(errApp fmterr.ErrAppender, src *ast.FuncDecl, file *ir.File, fType *ir.FuncType) (ir.PkgFunc, bool) {
-	return m.fn.New(src, file, fType), true
 }
 
 var declareMacroPackage = testbuild.DeclarePackage{

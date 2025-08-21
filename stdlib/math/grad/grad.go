@@ -45,13 +45,15 @@ var Package = builtin.PackageBuilder{
 }
 
 type gradMacro struct {
-	macro    *cpevelements.Macro
+	cpevelements.CoreMacroElement
 	callSite elements.CallAt
 	aux      *ordered.Map[string, *cpevelements.SyntheticFuncDecl]
 
 	fn  *ir.FuncDecl
 	wrt *ir.FieldStorage
 }
+
+var _ cpevelements.FuncASTBuilder = (*gradMacro)(nil)
 
 func findParamStorage(file *ir.File, src ir.SourceNode, fn ir.Func, name string) (*ir.FieldStorage, error) {
 	field := fn.FuncType().Params.FindField(name)
@@ -62,7 +64,7 @@ func findParamStorage(file *ir.File, src ir.SourceNode, fn ir.Func, name string)
 }
 
 // FuncGrad computes the gradient of a function.
-func FuncGrad(call elements.CallAt, macro *cpevelements.Macro, args []ir.Element) (*cpevelements.SyntheticFunc, error) {
+func FuncGrad(call elements.CallAt, macro *cpevelements.Macro, args []ir.Element) (cpevelements.MacroElement, error) {
 	fn, err := interp.PkgFuncFromElement(args[1])
 	if err != nil {
 		return nil, err
@@ -79,10 +81,10 @@ func FuncGrad(call elements.CallAt, macro *cpevelements.Macro, args []ir.Element
 	if err != nil {
 		return nil, err
 	}
-	return cpevelements.NewSyntheticFunc(gradMacro{
-		callSite: call,
-		macro:    macro,
-	}.newMacro(fnT, wrtF)), nil
+	return gradMacro{
+		CoreMacroElement: cpevelements.CoreMacroElement{Mac: macro},
+		callSite:         call,
+	}.newMacro(fnT, wrtF), nil
 }
 
 func (m gradMacro) newMacro(fn *ir.FuncDecl, wrt *ir.FieldStorage) *gradMacro {
@@ -107,17 +109,17 @@ func (m *gradMacro) syntheticFuncName(fetcher ir.Fetcher, fn ir.Func) (string, b
 	return fmt.Sprintf("__%s_%s_%s_%s", imp.Name(), funcName, fn.Name(), m.wrt.Field.Name), true
 }
 
-func (m *gradMacro) BuildType() (*ast.FuncDecl, error) {
+func (m *gradMacro) BuildDecl() (*ast.FuncDecl, bool) {
 	fType := m.fn.FuncType()
 	fDecl := &ast.FuncDecl{Type: fType.Src}
 	recv := fType.Receiver
 	if recv != nil {
 		fDecl.Recv = recv.Src
 	}
-	return fDecl, nil
+	return fDecl, true
 }
 
-func (m *gradMacro) BuildBody(fetcher ir.Fetcher) (*ast.BlockStmt, []*cpevelements.SyntheticFuncDecl, bool) {
+func (m *gradMacro) BuildBody(fetcher ir.Fetcher, fn ir.Func) (*ast.BlockStmt, []*cpevelements.SyntheticFuncDecl, bool) {
 	m.aux = ordered.NewMap[string, *cpevelements.SyntheticFuncDecl]()
 	sg := m.newStmtGrader(fetcher, nil)
 	fType := m.fn.FuncType()
@@ -129,10 +131,6 @@ func (m *gradMacro) BuildBody(fetcher ir.Fetcher) (*ast.BlockStmt, []*cpevelemen
 		return nil, nil, false
 	}
 	return body, slices.Collect(m.aux.Values()), true
-}
-
-func (m *gradMacro) BuildIR(errApp fmterr.ErrAppender, src *ast.FuncDecl, file *ir.File, fType *ir.FuncType) (ir.PkgFunc, bool) {
-	return m.fn.New(src, file, fType), true
 }
 
 func (m *gradMacro) isParam(src ir.Storage) bool {
