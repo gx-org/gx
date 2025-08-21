@@ -203,7 +203,7 @@ func (h *handleunexported) String() string {
 	bld := strings.Builder{}
 	bld.WriteString("unexported{\n")
 
-	bld.WriteString(fmt.Sprintf("%s:%s\n", "a", any(h.owner.a).(fmt.Stringer).String()))
+	fmt.Fprintf(&bld, "%s:%s\n", "a", any(h.owner.a).(fmt.Stringer).String())
 
 	bld.WriteString("}")
 	return bld.String()
