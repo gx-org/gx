@@ -360,19 +360,19 @@ func (h *handleBasic) String() string {
 	bld := strings.Builder{}
 	bld.WriteString("Basic{\n")
 
-	bld.WriteString(fmt.Sprintf("%s:%s\n", "Int", any(h.owner.Int).(fmt.Stringer).String()))
+	fmt.Fprintf(&bld, "%s:%s\n", "Int", any(h.owner.Int).(fmt.Stringer).String())
 
-	bld.WriteString(fmt.Sprintf("%s:%s\n", "Float", any(h.owner.Float).(fmt.Stringer).String()))
+	fmt.Fprintf(&bld, "%s:%s\n", "Float", any(h.owner.Float).(fmt.Stringer).String())
 
-	bld.WriteString(fmt.Sprintf("%s:%s\n", "Array", any(h.owner.Array).(fmt.Stringer).String()))
+	fmt.Fprintf(&bld, "%s:%s\n", "Array", any(h.owner.Array).(fmt.Stringer).String())
 
-	bld.WriteString(fmt.Sprintf("%s:%s\n", "privateA", any(h.owner.privateA).(fmt.Stringer).String()))
+	fmt.Fprintf(&bld, "%s:%s\n", "privateA", any(h.owner.privateA).(fmt.Stringer).String())
 
-	bld.WriteString(fmt.Sprintf("%s:%s\n", "privateB", any(h.owner.privateB).(fmt.Stringer).String()))
+	fmt.Fprintf(&bld, "%s:%s\n", "privateB", any(h.owner.privateB).(fmt.Stringer).String())
 
-	bld.WriteString(fmt.Sprintf("%s:%s\n", "length", any(h.owner.length).(fmt.Stringer).String()))
+	fmt.Fprintf(&bld, "%s:%s\n", "length", any(h.owner.length).(fmt.Stringer).String())
 
-	bld.WriteString(fmt.Sprintf("%s:%s\n", "index", any(h.owner.index).(fmt.Stringer).String()))
+	fmt.Fprintf(&bld, "%s:%s\n", "index", any(h.owner.index).(fmt.Stringer).String())
 
 	bld.WriteString("}")
 	return bld.String()
