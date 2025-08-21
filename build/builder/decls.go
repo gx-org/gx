@@ -252,22 +252,34 @@ func (d *decls) registerAuxFuncs(mScope *synthResolveScope, auxs []*cpevelements
 	fScope := mScope.fileScope()
 	for _, aux := range auxs {
 		bFile := newFile(fScope.pkg(), aux.F.Name.Name+"_synt.gx", &ast.File{})
-		pNode, ok := d.registerFunc(&syntheticFunc{
+		aux.F.Body = &ast.BlockStmt{}
+		bAuxFun, ok := bFile.processFuncDecl(fScope.pkgProcScope.newScope(bFile), aux.F, false)
+		if !ok {
+			return nil, false
+		}
+		pkgScope := mScope.fileScope().pkgResolveScope
+		underFun, _, ok := bAuxFun.buildSignature(pkgScope)
+		if !ok {
+			return nil, false
+		}
+		synthFunc := &syntheticFunc{
 			coreSyntheticFunc: coreSyntheticFunc{
 				bFile: bFile,
 				src:   aux.F,
 			},
-			fnBuilder: aux.SyntheticFunc,
-		})
+			fnBuilder: aux.Builder,
+			underFun:  underFun,
+		}
+		pNode, ok := d.registerFunc(synthFunc)
 		if !ok {
 			return nil, false
 		}
-		irF, fnOk := d.buildFuncType(fScope.pkgResolveScope, pNode)
-		if !fnOk {
-			ok = false
-			continue
+		fn, ok := d.buildFuncType(pkgScope, pNode)
+		if !ok {
+			return nil, false
 		}
-		todos = append(todos, irF)
+		synthFunc.underFun = fn.irFunc
+		todos = append(todos, fn)
 	}
 	return todos, true
 }

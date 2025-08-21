@@ -16,6 +16,7 @@ package builder
 
 import (
 	"go/ast"
+	"go/parser"
 	"go/scanner"
 	"go/token"
 	"strings"
@@ -114,10 +115,11 @@ func processScannerError(pscope procScope, doc *ast.Comment, errScanner error) b
 	return false
 }
 
-type funcProcessor func(pscope procScope, src *ast.FuncDecl, fn function, comment *ast.Comment, annotSrc string) (function, bool)
+type funcProcessor func(pscope procScope, src *ast.FuncDecl, fn function, macroCall *callExpr) function
 
 var funcProcessors = map[string]funcProcessor{
-	assignPrefix: processFuncAssignment,
+	assignPrefix:   processFuncAssignment,
+	annotatePrefix: processFuncAnnotation,
 }
 
 func funcProcessorFromDirective(text string) (string, funcProcessor) {
@@ -143,11 +145,19 @@ func processFuncAnnotations(pscope procScope, src *ast.FuncDecl, fn function) (f
 			continue
 		}
 		text = strings.TrimPrefix(text, prefix)
-		annFN, ok := fnProc(pscope, src, fn, doc, text)
-		if !ok {
-			return fn, false
+		astExpr, err := parser.ParseExprFrom(pscope.pkgScope().pkg().fset, pscope.file().name+":"+src.Name.Name, text, parser.SkipObjectResolution)
+		if err != nil {
+			return nil, processScannerError(pscope, doc, err)
 		}
-		fn = annFN
+		expr, ok := processExpr(pscope, astExpr)
+		if !ok {
+			return nil, false
+		}
+		macroCall, ok := expr.(*callExpr)
+		if !ok {
+			return nil, pscope.Err().Appendf(doc, "GX directive (%s) only accept function call expression", prefix)
+		}
+		fn = fnProc(pscope, src, fn, macroCall)
 	}
 	return fn, true
 }

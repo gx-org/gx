@@ -24,7 +24,7 @@ import (
 )
 
 // MacroImpl is a builtin opaque function to produce an IR.
-type MacroImpl func(call elements.CallAt, fn *Macro, args []ir.Element) (*SyntheticFunc, error)
+type MacroImpl func(call elements.CallAt, fn *Macro, args []ir.Element) (MacroElement, error)
 
 // Macro is a macro function to build synthetic functions.
 type Macro struct {
@@ -58,6 +58,11 @@ func (f *Macro) Call(fctx *interp.FileScope, call *ir.CallExpr, args []ir.Elemen
 	}
 	el, err := buildSynthetic(elements.NewNodeAt(fctx.File(), call), f, args)
 	return []ir.Element{el}, err
+}
+
+// Name of the macro
+func (f *Macro) Name() string {
+	return f.Func().File().Package.Name.Name + "." + f.Func().Name()
 }
 
 // Type returns the type of the function.

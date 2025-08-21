@@ -64,14 +64,6 @@ func (n *callExpr) String() string {
 	return n.callee.String()
 }
 
-func (n *callExpr) injectArg(arg exprNode) *callExpr {
-	return &callExpr{
-		src:    n.src,
-		args:   append([]exprNode{arg}, n.args...),
-		callee: n.callee,
-	}
-}
-
 func (n *callExpr) buildArgs(scope resolveScope) ([]ir.AssignableExpr, bool) {
 	ok := true
 	args := make([]ir.AssignableExpr, len(n.args))
