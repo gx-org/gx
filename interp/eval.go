@@ -647,6 +647,8 @@ func set(fitp *FileScope, tok token.Token, dest ir.Storage, value ir.Element) er
 		return fitp.ctx.CurrentFrame().Assign(destT.Field.Name.Name, value)
 	case *ir.AssignExpr:
 		return fitp.ctx.CurrentFrame().Assign(destT.NameDef().Name, value)
+	case *ir.AssignCallResult:
+		return fitp.ctx.CurrentFrame().Assign(destT.NameDef().Name, value)
 	default:
 		return fmterr.Errorf(fitp.File().FileSet(), dest.Source(), "cannot assign %v to %T: not supported", value, destT)
 	}

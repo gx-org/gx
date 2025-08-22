@@ -112,3 +112,15 @@ func TestOpAssignFields() point {
 	//	y: float32(8),
 	// }
 }
+
+func newVectors() ([2]float32, [2]float32) {
+	return [2]float32{1, 2}, [2]float32{3, 4}
+}
+
+func TestDefineWithFuncThenAssign() [2]float32 {
+	x, y := newVectors()
+	x = [2]float32{-1, -2}
+	return x
+	// Want:
+	// [2]float32{-1, -2}
+}
