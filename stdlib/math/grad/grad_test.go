@@ -453,7 +453,7 @@ func F(y float32) float32 {
 			Src: `
 func F(x float32) float32
 `,
-			Err: "cannot compute the gradient of function",
+			Err: "function has no body",
 		},
 	)
 }

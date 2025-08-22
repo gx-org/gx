@@ -85,6 +85,10 @@ func (f *coreSyntheticFunc) compEval() bool {
 	return false
 }
 
+func (f *coreSyntheticFunc) buildAnnotations(fScope iFuncResolveScope, extF *irFunc) bool {
+	return true
+}
+
 type (
 	synthResolveScope struct {
 		iFuncResolveScope

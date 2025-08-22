@@ -30,7 +30,7 @@ func (m *gradMacro) gradFunc(fetcher ir.Fetcher, src *ir.FuncValExpr, wrt string
 	case *ir.FuncDecl:
 		return gradFuncDecl(fetcher, m, src, fT, wrt)
 	default:
-		return nil, fetcher.Err().Appendf(src.Source(), "cannot compute the gradient of function %T", fT)
+		return nil, fetcher.Err().Appendf(src.Source(), "cannot compute the gradient of function %s", fT.NameDef().Name)
 	}
 }
 

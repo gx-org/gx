@@ -49,7 +49,7 @@ type gradMacro struct {
 	callSite elements.CallAt
 	aux      *ordered.Map[string, *cpevelements.SyntheticFuncDecl]
 
-	fn  *ir.FuncDecl
+	fn  ir.PkgFunc
 	wrt withRespectTo
 }
 
@@ -75,7 +75,7 @@ func FuncGrad(call elements.CallAt, macro *cpevelements.Macro, args []ir.Element
 	if err != nil {
 		return nil, err
 	}
-	fnT, ok := fn.(*ir.FuncDecl)
+	fnT, ok := fn.(ir.PkgFunc)
 	if !ok {
 		return nil, errors.Errorf("cannot compute the gradient of function %T", fn)
 	}
@@ -93,7 +93,7 @@ func FuncGrad(call elements.CallAt, macro *cpevelements.Macro, args []ir.Element
 	}.newMacro(fnT, wrtF), nil
 }
 
-func (m gradMacro) newMacro(fn *ir.FuncDecl, wrt withRespectTo) *gradMacro {
+func (m gradMacro) newMacro(fn ir.PkgFunc, wrt withRespectTo) *gradMacro {
 	var n gradMacro = m
 	n.fn = fn
 	n.wrt = wrt
@@ -126,13 +126,17 @@ func (m *gradMacro) BuildDecl() (*ast.FuncDecl, bool) {
 }
 
 func (m *gradMacro) BuildBody(fetcher ir.Fetcher, fn ir.Func) (*ast.BlockStmt, []*cpevelements.SyntheticFuncDecl, bool) {
+	fnWithBody, ok := m.fn.(*ir.FuncDecl)
+	if !ok {
+		return nil, nil, fetcher.Err().Appendf(fn.Source(), "function has no body")
+	}
 	m.aux = ordered.NewMap[string, *cpevelements.SyntheticFuncDecl]()
 	sg := m.newStmtGrader(fetcher, nil)
 	fType := m.fn.FuncType()
 	sg.registerFieldNames(fType.Receiver)
 	sg.registerFieldNames(fType.Params)
 	sg.registerFieldNames(fType.Results)
-	body, ok := sg.gradBlock(fetcher, m.fn.Body)
+	body, ok := sg.gradBlock(fetcher, fnWithBody.Body)
 	if !ok {
 		return nil, nil, false
 	}

@@ -34,18 +34,18 @@ func processFuncAnnotation(pscope procScope, src *ast.FuncDecl, fn function, mac
 	}
 }
 
-func (m *annotateFuncFromMacro) buildBody(fScope iFuncResolveScope, fn *irFunc) ([]*irFunc, bool) {
-	aux, ok := m.function.buildBody(fScope, fn)
+func (m *annotateFuncFromMacro) buildAnnotations(fnScope iFuncResolveScope, fn *irFunc) bool {
+	ok := m.function.buildAnnotations(fnScope, fn)
 	if !ok {
-		return nil, false
+		return false
 	}
-	macroEl, ok := callMacroExpr(fScope.fileScope(), m.macroCall, fn.irFunc)
+	macroEl, ok := callMacroExpr(fnScope.fileScope(), m.macroCall, fn.irFunc)
 	if !ok {
-		return nil, false
+		return false
 	}
 	fnAnnotator, ok := macroEl.(cpevelements.FuncAnnotator)
 	if !ok {
-		return nil, fScope.Err().Appendf(m.macroCall.source(), "cannot use macro %s for function annotations", macroEl.Macro().Name())
+		return fnScope.Err().Appendf(m.macroCall.source(), "cannot use macro %s for function annotations", macroEl.Macro().Name())
 	}
-	return aux, fnAnnotator.Annotate(fScope, fn.irFunc)
+	return fnAnnotator.Annotate(fnScope, fn.irFunc)
 }
