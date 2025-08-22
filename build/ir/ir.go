@@ -1173,8 +1173,9 @@ type (
 
 	// ImportDecl imports a package.
 	ImportDecl struct {
-		Src  *ast.ImportSpec
-		Path string
+		Src     *ast.ImportSpec
+		Path    string
+		Package *Package
 	}
 
 	// VarExpr is a name,expr static variable pair.

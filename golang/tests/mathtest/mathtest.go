@@ -27,7 +27,7 @@ import (
 var mathGX *math_go_gx.Package
 
 func TestMathFloat32(t *testing.T) {
-	scalar, err := mathGX.ReturnMaxFloat32.Run()
+	scalar, err := mathGX.ReturnMaxFloat32()
 	if err != nil {
 		t.Fatalf("%+v", err)
 	}
@@ -39,7 +39,7 @@ func TestMathFloat32(t *testing.T) {
 }
 
 func TestMathFloat64(t *testing.T) {
-	scalar, err := mathGX.ReturnMaxFloat64.Run()
+	scalar, err := mathGX.ReturnMaxFloat64()
 	if err != nil {
 		t.Fatalf("%+v", err)
 	}
@@ -51,10 +51,7 @@ func TestMathFloat64(t *testing.T) {
 }
 
 func setupTest(dev *api.Device) error {
-	gxPackage, err := math_go_gx.Load(dev.Runtime())
-	if err != nil {
-		return err
-	}
-	mathGX = gxPackage.BuildFor(dev)
-	return nil
+	var err error
+	mathGX, err = math_go_gx.BuildFor(dev)
+	return err
 }

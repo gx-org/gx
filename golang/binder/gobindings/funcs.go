@@ -18,9 +18,7 @@ import (
 	"fmt"
 	"slices"
 	"strings"
-	"text/template"
 
-	"github.com/gx-org/gx/base/tmpl"
 	"github.com/gx-org/gx/build/ir"
 )
 
@@ -38,62 +36,28 @@ func (b *binder) newFunc(f ir.Func, i int) (*function, error) {
 	}, nil
 }
 
-func (b *binder) methods() []*function {
-	funcs := []*function{}
+func (b *binder) Methods() []*function {
+	var funcs []*function
 	for _, namedType := range b.NamedTypes {
-		funcs = append(funcs, namedType.Methods().funcs()...)
+		funcs = append(funcs, toFuncs(namedType.Methods())...)
 	}
 	return funcs
 }
 
-func (b *binder) functionsAndMethods() []*function {
-	return append(b.methods(), b.funcs...)
-}
-
-func (b *binder) FuncsPackageFields() (string, error) {
-	return tmpl.IterateFunc(b.funcs, func(_ int, f *function) (string, error) {
-		fieldName := f.RunnerField()
-		fieldType := f.RunnerType()
-		return fmt.Sprintf("\t%s %s", fieldName, fieldType), nil
-	})
-}
-
-func (b *binder) MethodsPackageFields() (string, error) {
-	return tmpl.IterateFunc(b.methods(), func(_ int, f *function) (string, error) {
-		fieldName := f.RunnerField()
-		const fieldType = "methodBase"
-		return fmt.Sprintf("\t%s %s", fieldName, fieldType), nil
-	})
-}
-
-var funcPackageSetField = template.Must(template.New("funcPackageSetFieldTMPL").Parse(`
-	c.{{.RunnerField}} = {{.Name}}{
-		methodBase: methodBase{
-			pkg: c,
-			function: c.Package.IR.Decls.Funcs[{{.FuncIndex}}],
-		},
-	}`))
-
-func (b *binder) FuncsPackageSetFields() (string, error) {
-	return tmpl.IterateTmpl(b.funcs, funcPackageSetField)
-}
-
-func (f function) RunnerField() string {
-	fieldName := f.Name()
-	recvName := nameFromRecv(f.FuncType().ReceiverField())
-	if recvName != "" {
-		fieldName = "method" + recvName + fieldName
-	}
-	return fieldName
+func (b *binder) FunctionsAndMethods() []*function {
+	return append(b.Methods(), b.Funcs...)
 }
 
 func (f function) RunnerType() string {
-	runnerType := f.Name()
-	recvName := nameFromRecv(f.FuncType().ReceiverField())
-	if recvName != "" {
-		runnerType = "Method" + recvName + runnerType
+	return f.FuncType().ReceiverField().Type().(*ir.NamedType).Name()
+}
+
+func (f function) RecvTypeName() string {
+	recv := f.FuncType().ReceiverField()
+	if recv == nil {
+		return ""
 	}
-	return runnerType
+	return recv.Type().(*ir.NamedType).NameDef().Name
 }
 
 func (f function) ReceiverField() (string, error) {
@@ -103,56 +67,6 @@ func (f function) ReceiverField() (string, error) {
 	}
 	return fmt.Sprintf("receiver handle%s", recvName), nil
 }
-
-var funcStructTmpl = template.Must(template.New("funcStructTMPL").Parse(`
-// {{.RunnerType}} compiles and runs the GX function {{.Name}} for a device.
-{{with .Doc}}{{range .List -}}
-{{.Text}}
-{{end}}{{end -}}
-type {{.RunnerType}} struct {
-	methodBase
-	{{.ReceiverField}}
-}
-`))
-
-func (b *binder) funcRunners(funcs []*function) (string, error) {
-	structS, err := tmpl.IterateTmpl(funcs, funcStructTmpl)
-	if err != nil {
-		return "", err
-	}
-	compileRunS, err := tmpl.IterateTmpl(funcs, funcRunnerTmpl)
-	if err != nil {
-		return "", err
-	}
-	return structS + compileRunS, nil
-}
-
-var funcRunnerTmpl = template.Must(template.New("funcRunnerTMPL").Parse(`
-// Run first compiles {{.Name}} for a given device and the given arguments.
-// Once compiled, the function is then run with these same arguments.
-// If the shape of the arguments change, the function will panic.
-func (f *{{.RunnerType}}) Run({{.Parameters}}) ({{.Results}}, err error) {
-	var args []values.Value = {{.BackendArguments}}
-	if f.runner == nil {
-		f.runner, err = tracer.Trace(f.pkg.Device, f.function.(*ir.FuncDecl), {{.ReceiverValue}}, args, f.pkg.options)
-		if err != nil {
-			return
-		}
-	}
-	var outputs []values.Value
-	outputs, err = f.runner.Run({{.ReceiverValue}}, args, f.pkg.Package.Tracer)
-	if err != nil {
-		return
-	}
-
-	{{.DefinePackageVariable}}{{.ProcessDeviceOutput}}
-	return {{.Returns}}, nil
-}
-
-func (f *{{.RunnerType}}) String() string {
-	return fmt.Sprint(f.function)
-}
-`))
 
 func outputN(i int) string {
 	return fmt.Sprintf("out%d", i)
@@ -172,23 +86,24 @@ func toKindSuffix(typ ir.Type) string {
 	return kindS
 }
 
-func (f function) ReceiverValue() string {
-	receiver := f.Func.FuncType().Receiver
-	if receiver == nil {
-		return "nil"
+func hasStructIn(fields *ir.FieldList) bool {
+	for _, grp := range fields.List {
+		if grp.Type.Typ.Kind() == ir.StructKind {
+			return true
+		}
 	}
-	return "f.receiver.GXValue()"
+	return false
 }
 
 func (f function) DefinePackageVariable() string {
-	for _, result := range f.Func.FuncType().Results.Fields() {
-		if result.Type().Kind() == ir.StructKind {
-			return strings.Join([]string{
-				"cmpl := f.pkg",
-			}, "\n\t")
-		}
+	fType := f.Func.FuncType()
+	if !hasStructIn(fType.Results) {
+		return ""
 	}
-	return ""
+	if fType.ReceiverField() == nil {
+		return "fty := pkg.handle.Factory\n\t"
+	}
+	return "fty := recv.handle.pkg.handle.Factory\n\t"
 }
 
 func (f function) ProcessDeviceOutput() (string, error) {

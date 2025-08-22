@@ -19,22 +19,13 @@ import (
 	"fmt"
 	"io"
 
+	"github.com/gx-org/gx/build/importers/localfs/binder"
 	"github.com/gx-org/gx/build/builder"
 	"github.com/gx-org/gx/build/importers"
 	"github.com/gx-org/gx/build/ir"
 	"github.com/gx-org/gx/golang/binder/gobindings"
 	"github.com/gx-org/gx/stdlib"
 )
-
-type stdlibImporter struct{}
-
-func (stdlibImporter) SourceImport(*ir.Package) string { return "" }
-
-func (stdlibImporter) StdlibDependencyImport(stdlibPath string) string { return "" }
-
-func (stdlibImporter) DependencyImport(*ir.Package) string { return "" }
-
-var importer = stdlibImporter{}
 
 // BuildAll builds the bindings for the standard library package.
 func BuildAll(newWriter func(*ir.Package) (io.WriteCloser, error)) error {
@@ -51,7 +42,7 @@ func BuildAll(newWriter func(*ir.Package) (io.WriteCloser, error)) error {
 			return err
 		}
 		defer w.Close()
-		bnd, err := gobindings.NewWithImporter(importer, pkg)
+		bnd, err := gobindings.NewWithImporter(&binder.GenImports{}, pkg)
 		if err != nil {
 			return fmt.Errorf("cannot create binder for %s: %w", pkg.Name.Name, err)
 		}

@@ -29,7 +29,7 @@ import (
 var basic *basic_go_gx.Package
 
 func TestReturnFloat32(t *testing.T) {
-	scalar, err := basic.ReturnFloat32.Run()
+	scalar, err := basic.ReturnFloat32()
 	if err != nil {
 		t.Fatalf("%+v", err)
 	}
@@ -41,7 +41,7 @@ func TestReturnFloat32(t *testing.T) {
 }
 
 func TestReturnTensorFloat32(t *testing.T) {
-	array, err := basic.ReturnArrayFloat32.Run()
+	array, err := basic.ReturnArrayFloat32()
 	if err != nil {
 		t.Fatalf("%+v", err)
 	}
@@ -53,7 +53,7 @@ func TestReturnTensorFloat32(t *testing.T) {
 }
 
 func TestReturnMultiple(t *testing.T) {
-	a, b, c, err := basic.ReturnMultiple.Run()
+	a, b, c, err := basic.ReturnMultiple()
 	if err != nil {
 		t.Fatalf("%+v", err)
 	}
@@ -64,7 +64,7 @@ func TestReturnMultiple(t *testing.T) {
 }
 
 func TestNew(t *testing.T) {
-	bsc, err := basic.New.Run()
+	bsc, err := basic.New()
 	if err != nil {
 		t.Fatalf("%+v", err)
 	}
@@ -89,11 +89,11 @@ func TestNew(t *testing.T) {
 }
 
 func TestAddPrivatePackageLevel(t *testing.T) {
-	bsc, err := basic.New.Run()
+	bsc, err := basic.New()
 	if err != nil {
 		t.Fatalf("%+v", err)
 	}
-	intDevice, err := basic.AddPrivate.Run(bsc)
+	intDevice, err := basic.AddPrivate(bsc)
 	if err != nil {
 		t.Fatalf("%+v", err)
 	}
@@ -105,11 +105,11 @@ func TestAddPrivatePackageLevel(t *testing.T) {
 }
 
 func TestAddPrivateStructLevel(t *testing.T) {
-	bsc, err := basic.New.Run()
+	bsc, err := basic.New()
 	if err != nil {
 		t.Fatalf("%+v", err)
 	}
-	intDevice, err := bsc.AddPrivate().Run()
+	intDevice, err := bsc.AddPrivate()
 	if err != nil {
 		t.Fatalf("%+v", err)
 	}
@@ -121,12 +121,12 @@ func TestAddPrivateStructLevel(t *testing.T) {
 }
 
 func TestSetFloat(t *testing.T) {
-	bsc, err := basic.New.Run()
+	bsc, err := basic.New()
 	if err != nil {
 		t.Fatalf("%+v", err)
 	}
 	var want float32 = 4.5
-	bsc, err = bsc.SetFloat().Run(types.Float32(want))
+	bsc, err = bsc.SetFloat(types.Float32(want))
 	if err != nil {
 		t.Fatalf("%+v", err)
 	}
@@ -137,10 +137,7 @@ func TestSetFloat(t *testing.T) {
 }
 
 func setupTest(dev *api.Device) error {
-	gxPackage, err := basic_go_gx.Load(dev.Runtime())
-	if err != nil {
-		return err
-	}
-	basic = gxPackage.BuildFor(dev)
-	return nil
+	var err error
+	basic, err = basic_go_gx.BuildFor(dev)
+	return err
 }

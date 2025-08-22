@@ -60,20 +60,22 @@ type (
 		builder DependenciesBuildCall
 		Package *ir.Package
 
-		funcs      []*function
+		Funcs      []*function
 		NamedTypes []namedType
 		stdlib     *stdlib.Stdlib
 
-		FuncRunners          string
-		NamedTypeDefinitions string
-		PkgVars              string
+		PkgVars string
 
 		dependencies map[string]dependency
 	}
 )
 
 func (b *binder) GXImportBindedLibrary() string {
-	return b.builder.SourceImport(b.Package)
+	if b.stdlib.Support(b.Package.FullName()) {
+		// Standard library package does not need to load GX source code.
+		return ""
+	}
+	return fmt.Sprintf(`_ "%s"`, b.builder.SourceImport(b.Package))
 }
 
 var processNamedTypeOutputTmpl = template.Must(template.New("processNamedTypeOutputTMPL").Parse(
@@ -84,9 +86,9 @@ if err != nil {
 }`))
 
 func (b *binder) processNamedTypeOutput(target, src string, typ *ir.NamedType) (res []string, err error) {
-	pkg := "cmpl"
+	pkg := "fty"
 	if typ.Package() != b.Package {
-		pkg += "." + b.namePackage(typ.Package())
+		pkg += ".Package.handle." + b.namePackage(typ.Package()) + ".Factory"
 	}
 	deviceType, err := b.gxValueTypePointer(typ)
 	if err != nil {
@@ -202,11 +204,10 @@ func (b *binder) setTargetFromSourceType(target, src string, typ ir.Type) ([]str
 }
 
 func (b *binder) namedTypeFactory(typ *ir.NamedType) (string, error) {
-	fac := "Factory"
 	if typ.Package() == b.Package {
-		return fac, nil
+		return "handle.Factory", nil
 	}
-	return b.namePackage(typ.Package()) + "." + fac, nil
+	return "handle." + b.namePackage(typ.Package()) + ".Factory", nil
 }
 
 // New returns a new Go bindings generator.
@@ -217,26 +218,17 @@ func New(pkg *ir.Package) (bindings.Binder, error) {
 // NewWithImporter returns a new Go bindings generator given a way to import GX packages.
 func NewWithImporter(importer DependenciesBuildCall, pkg *ir.Package) (bindings.Binder, error) {
 	b := &binder{
-		Package:      pkg,
-		builder:      importer,
-		dependencies: make(map[string]dependency),
-		stdlib:       stdlib.Importer(nil),
+		Package: pkg,
+		builder: importer,
+		stdlib:  stdlib.Importer(nil),
 	}
+	b.dependencies = b.buildDependencies()
 	var err error
-	b.funcs, err = bindings.BuildFuncs(pkg, b.newFunc)
+	b.Funcs, err = bindings.BuildFuncs(pkg, b.newFunc)
 	if err != nil {
 		return nil, err
 	}
 	b.NamedTypes, err = buildTypes(b)
-	if err != nil {
-		return nil, err
-	}
-
-	b.FuncRunners, err = b.funcRunners(b.funcs)
-	if err != nil {
-		return nil, err
-	}
-	b.NamedTypeDefinitions, err = b.namedTypeDefinitions()
 	if err != nil {
 		return nil, err
 	}

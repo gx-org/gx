@@ -26,7 +26,7 @@ import (
 var imports *imports_go_gx.Package
 
 func TestImportsReturnScalar(t *testing.T) {
-	scalar, err := imports.ReturnFromBasic.Run()
+	scalar, err := imports.ReturnFromBasic()
 	if err != nil {
 		t.Fatalf("%+v", err)
 	}
@@ -38,11 +38,11 @@ func TestImportsReturnScalar(t *testing.T) {
 }
 
 func TestAddPrivate(t *testing.T) {
-	imp, err := imports.NewImporter.Run()
+	imp, err := imports.NewImporter()
 	if err != nil {
 		t.Fatalf("%+v", err)
 	}
-	gotDevice, err := imp.Add().Run()
+	gotDevice, err := imp.Add()
 	if err != nil {
 		t.Fatalf("%+v", err)
 	}
@@ -54,10 +54,7 @@ func TestAddPrivate(t *testing.T) {
 }
 
 func setupTest(dev *api.Device) error {
-	gxPackage, err := imports_go_gx.Load(dev.Runtime())
-	if err != nil {
-		return err
-	}
-	imports = gxPackage.BuildFor(dev)
-	return nil
+	var err error
+	imports, err = imports_go_gx.BuildFor(dev)
+	return err
 }

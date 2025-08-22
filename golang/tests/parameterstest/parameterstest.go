@@ -30,7 +30,7 @@ var parametersGX *parameters_go_gx.Package
 func TestAddInt(t *testing.T) {
 	x := types.Int64(3)
 	y := types.Int64(4)
-	z, err := parametersGX.AddInt.Run(x, y)
+	z, err := parametersGX.AddInt(x, y)
 	if err != nil {
 		t.Fatalf("%+v", err)
 	}
@@ -44,7 +44,7 @@ func TestAddInt(t *testing.T) {
 func TestAddInts(t *testing.T) {
 	x := types.ArrayInt64([]int64{1, 2, 3})
 	y := types.ArrayInt64([]int64{-2, -4, -6})
-	z, err := parametersGX.AddInts.Run(x, y)
+	z, err := parametersGX.AddInts(x, y)
 	if err != nil {
 		t.Fatalf("%+v", err)
 	}
@@ -58,7 +58,7 @@ func TestAddInts(t *testing.T) {
 func TestAddFloat32(t *testing.T) {
 	x := types.Float32(3)
 	y := types.Float32(4)
-	z, err := parametersGX.AddFloat32.Run(x, y)
+	z, err := parametersGX.AddFloat32(x, y)
 	if err != nil {
 		t.Fatalf("%+v", err)
 	}
@@ -72,7 +72,7 @@ func TestAddFloat32(t *testing.T) {
 func TestAddFloat32s(t *testing.T) {
 	x := types.ArrayFloat32([]float32{1, 2, 3})
 	y := types.ArrayFloat32([]float32{-2, -4, -6})
-	z, err := parametersGX.AddFloat32s.Run(x, y)
+	z, err := parametersGX.AddFloat32s(x, y)
 	if err != nil {
 		t.Fatalf("%+v", err)
 	}
@@ -85,7 +85,7 @@ func TestAddFloat32s(t *testing.T) {
 
 func TestLen(t *testing.T) {
 	x := types.ArrayFloat32([]float32{1, 2, 3})
-	length, err := parametersGX.Len.Run(x)
+	length, err := parametersGX.Len(x)
 	if err != nil {
 		t.Fatalf("%+v", err)
 	}
@@ -97,7 +97,7 @@ func TestLen(t *testing.T) {
 }
 
 func TestIota(t *testing.T) {
-	iota, err := parametersGX.Iota.Run()
+	iota, err := parametersGX.Iota()
 	if err != nil {
 		t.Fatalf("%+v", err)
 	}
@@ -110,14 +110,14 @@ func TestIota(t *testing.T) {
 
 func TestAddToStruct(t *testing.T) {
 	offset := types.Float32(10)
-	st, err := parametersGX.NewStruct.Run(offset)
+	st, err := parametersGX.NewStruct(offset)
 	if err != nil {
 		t.Fatalf("%+v", err)
 	}
 	for i := range int32(4) {
 		ok := true
 		if32 := float32(i)
-		st, err = parametersGX.AddToStruct.Run(st)
+		st, err = parametersGX.AddToStruct(st)
 		if err != nil {
 			t.Fatalf("%+v", err)
 		}
@@ -183,7 +183,7 @@ func TestSliceSliceArg(t *testing.T) {
 	}
 	for i, want := range wants {
 		hostI := types.Int32(int32(i))
-		gotDevice, err := parametersGX.SliceSliceArg.Run(arg, hostI)
+		gotDevice, err := parametersGX.SliceSliceArg(arg, hostI)
 		if err != nil {
 			t.Fatalf("%+v", err)
 		}
@@ -208,7 +208,7 @@ func TestSliceArrayArg(t *testing.T) {
 	arg := types.ArrayFloat32(flat, 3, 2)
 	for i, want := range wants {
 		hostI := types.Int32(int32(i))
-		gotDevice, err := parametersGX.SliceArrayArg.Run(arg, hostI)
+		gotDevice, err := parametersGX.SliceArrayArg(arg, hostI)
 		if err != nil {
 			t.Fatalf("%+v", err)
 		}
@@ -230,7 +230,7 @@ func TestSliceArrayArgConstIndex(t *testing.T) {
 		flat = append(flat, want...)
 	}
 	arg := types.ArrayFloat32(flat, 3, 2)
-	gotDev0, gotDev1, gotDev2, err := parametersGX.SliceArrayArgConstIndex.Run(arg)
+	gotDev0, gotDev1, gotDev2, err := parametersGX.SliceArrayArgConstIndex(arg)
 	if err != nil {
 		t.Fatalf("%+v", err)
 	}
@@ -252,16 +252,16 @@ func TestSetNotInSlice(t *testing.T) {
 	// a dynamic assignment.
 	t.SkipNow()
 	offset := types.Float32(10)
-	aStruct, err := parametersGX.NewStruct.Run(offset)
+	aStruct, err := parametersGX.NewStruct(offset)
 	if err != nil {
 		t.Fatalf("%+v", err)
 	}
 	const want = 3
-	notInSlice, err := parametersGX.NewNotInSlice.Run(types.Int32(want))
+	notInSlice, err := parametersGX.NewNotInSlice(types.Int32(want))
 	if err != nil {
 		t.Fatalf("%+v", err)
 	}
-	aStruct, err = aStruct.SetNotInSlice().Run(notInSlice)
+	aStruct, err = aStruct.SetNotInSlice(notInSlice)
 	if err != nil {
 		t.Fatalf("%+v", err)
 	}
@@ -272,13 +272,10 @@ func TestSetNotInSlice(t *testing.T) {
 }
 
 func setupTest(dev *api.Device) error {
-	gxPackage, err := parameters_go_gx.Load(dev.Runtime())
-	if err != nil {
-		return err
-	}
-	parametersGX = gxPackage.BuildFor(
+	var err error
+	parametersGX, err = parameters_go_gx.BuildFor(
 		dev,
 		parameters_go_gx.Size.Set(5),
 	)
-	return nil
+	return err
 }

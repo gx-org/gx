@@ -32,7 +32,7 @@ var (
 )
 
 func TestReturnVar1(t *testing.T) {
-	res, err := pkgvars.ReturnVar1.Run()
+	res, err := pkgvars.ReturnVar1()
 	if err != nil {
 		t.Fatalf("%+v", err)
 	}
@@ -43,7 +43,7 @@ func TestReturnVar1(t *testing.T) {
 }
 
 func TestNewTwiceSize(t *testing.T) {
-	res, err := pkgvars.NewTwiceSize.Run()
+	res, err := pkgvars.NewTwiceSize()
 	if err != nil {
 		t.Fatalf("%+v", err)
 	}
@@ -55,14 +55,11 @@ func TestNewTwiceSize(t *testing.T) {
 }
 
 func setupTest(dev *api.Device) error {
-	gxPackage, err := pkgvars_go_gx.Load(dev.Runtime())
-	if err != nil {
-		return err
-	}
-	pkgvars = gxPackage.BuildFor(
+	var err error
+	pkgvars, err = pkgvars_go_gx.BuildFor(
 		dev,
 		pkgvars_go_gx.Var1.Set(var1),
 		pkgvars_go_gx.Size.Set(size),
 	)
-	return nil
+	return err
 }

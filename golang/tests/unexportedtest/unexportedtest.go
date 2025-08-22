@@ -26,11 +26,11 @@ import (
 var unexported *unexported_go_gx.Package
 
 func TestUnexported(t *testing.T) {
-	instance, err := unexported.New.Run()
+	instance, err := unexported.New()
 	if err != nil {
 		t.Fatalf("%+v", err)
 	}
-	scalar, err := instance.A().Run()
+	scalar, err := instance.A()
 	if err != nil {
 		t.Fatalf("%+v", err)
 	}
@@ -42,10 +42,7 @@ func TestUnexported(t *testing.T) {
 }
 
 func setupTest(dev *api.Device) error {
-	gxPackage, err := unexported_go_gx.Load(dev.Runtime())
-	if err != nil {
-		return err
-	}
-	unexported = gxPackage.BuildFor(dev)
-	return nil
+	var err error
+	unexported, err = unexported_go_gx.BuildFor(dev)
+	return err
 }
