@@ -257,6 +257,10 @@ func (f *funcDecl) fnSource() *ast.FuncDecl {
 	return f.src
 }
 
+func (f *funcDecl) buildAnnotations(fScope iFuncResolveScope, extF *irFunc) bool {
+	return true
+}
+
 // String returns a string representation of the function.
 func (f *funcDecl) String() string {
 	return fnName(f)

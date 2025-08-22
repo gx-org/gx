@@ -16,6 +16,8 @@ package builder_test
 
 import (
 	"fmt"
+	"go/ast"
+	"go/token"
 	"testing"
 
 	"github.com/pkg/errors"
@@ -28,15 +30,15 @@ import (
 	"github.com/gx-org/gx/interp"
 )
 
-type idAnnotation struct {
+type tagger struct {
 	cpevelements.CoreMacroElement
 	fn  ir.PkgFunc
 	tag string
 }
 
-var _ cpevelements.FuncAnnotator = (*idAnnotation)(nil)
+var _ cpevelements.FuncAnnotator = (*tagger)(nil)
 
-func newAnnotation(call elements.CallAt, macro *cpevelements.Macro, args []ir.Element) (cpevelements.MacroElement, error) {
+func buildTagger(call elements.CallAt, macro *cpevelements.Macro, args []ir.Element) (cpevelements.MacroElement, error) {
 	fn, ok := args[0].(ir.PkgFunc)
 	if !ok {
 		return nil, errors.Errorf("%T not an IR function", args[0])
@@ -50,20 +52,50 @@ func newAnnotation(call elements.CallAt, macro *cpevelements.Macro, args []ir.El
 	default:
 		tag = fmt.Sprintf("%T", argT)
 	}
-	return &idAnnotation{
+	return &tagger{
 		CoreMacroElement: cpevelements.CoreMacroElement{Mac: macro},
 		fn:               fn,
 		tag:              tag,
 	}, nil
 }
 
-func (m *idAnnotation) Annotate(errApp fmterr.ErrAppender, fn ir.PkgFunc) bool {
+func (m *tagger) Annotate(errApp fmterr.ErrAppender, fn ir.PkgFunc) bool {
 	fn.Annotations().Append(
 		m.Macro().Func().File().Package,
 		"TAG",
 		m.tag,
 	)
 	return true
+}
+
+type macroBuildReturn struct {
+	cpevelements.CoreMacroElement
+	origFn, tagFn ir.PkgFunc
+}
+
+var _ cpevelements.FuncASTBuilder = (*macroBuildReturn)(nil)
+
+func newBuildReturn(call elements.CallAt, macro *cpevelements.Macro, args []ir.Element) (cpevelements.MacroElement, error) {
+	return &macroBuildReturn{
+		CoreMacroElement: cpevelements.CoreMacroElement{Mac: macro},
+		origFn:           args[0].(ir.PkgFunc),
+		tagFn:            args[1].(interp.Func).Func().(ir.PkgFunc),
+	}, nil
+}
+
+func (m *macroBuildReturn) BuildDecl() (*ast.FuncDecl, bool) {
+	return m.origFn.Source().(*ast.FuncDecl), true
+}
+
+func (m *macroBuildReturn) BuildBody(fetcher ir.Fetcher, fn ir.Func) (*ast.BlockStmt, []*cpevelements.SyntheticFuncDecl, bool) {
+	return &ast.BlockStmt{List: []ast.Stmt{
+		&ast.ReturnStmt{Results: []ast.Expr{
+			&ast.BasicLit{
+				Kind:  token.STRING,
+				Value: m.tagFn.Annotations().Anns[0].Value().(string),
+			},
+		}},
+	}}, nil, true
 }
 
 func TestAnnotation(t *testing.T) {
@@ -74,10 +106,15 @@ package annotation
 
 // gx:irmacro
 func Tag(any, any) any
+
+// gx:irmacro
+func BuildReturn(any, any) any
 `,
 			Post: func(pkg *ir.Package) {
 				id := pkg.FindFunc("Tag").(*ir.Macro)
-				id.BuildSynthetic = cpevelements.MacroImpl(newAnnotation)
+				id.BuildSynthetic = cpevelements.MacroImpl(buildTagger)
+				id = pkg.FindFunc("BuildReturn").(*ir.Macro)
+				id.BuildSynthetic = cpevelements.MacroImpl(newBuildReturn)
 			},
 		},
 		testbuild.Decl{
@@ -167,6 +204,41 @@ func f() int32
 							ir.NewAnnotation("annotation:TAG", "f"),
 						},
 					},
+				},
+			},
+		},
+		testbuild.Decl{
+			Src: `
+import "annotation"
+
+// gx:=annotation.BuildReturn(f)
+func g() string
+
+// gx:@annotation.Tag("Source")
+func f() int32
+`,
+			Want: []ir.Node{
+				&ir.FuncBuiltin{
+					FType: irh.FuncType(
+						nil, nil,
+						irh.Fields(),
+						irh.Fields(ir.Int32Type()),
+					),
+					Anns: ir.Annotations{
+						Anns: []*ir.Annotation{
+							ir.NewAnnotation("annotation:TAG", "Source"),
+						},
+					},
+				},
+				&ir.FuncDecl{
+					FType: irh.FuncType(
+						nil, nil,
+						irh.Fields(),
+						irh.Fields(ir.StringType()),
+					),
+					Body: irh.SingleReturn(&ir.StringLiteral{
+						Src: &ast.BasicLit{Value: "Source"},
+					}),
 				},
 			},
 		},

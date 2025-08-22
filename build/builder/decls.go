@@ -228,17 +228,27 @@ func (d *decls) buildFunctions(pkgScope *pkgResolveScope, filter func(f *process
 	sort.Slice(filteredFuncs, func(i, j int) bool {
 		return filteredFuncs[i].node.resolveOrder() < filteredFuncs[j].node.resolveOrder()
 	})
+	// Build function signatures.
 	for _, pNode := range filteredFuncs {
-		irF, fnOk := d.buildFuncType(pkgScope, pNode)
+		fn, fnOk := d.buildFuncType(pkgScope, pNode)
 		if !fnOk {
 			ok = false
 			continue
 		}
-		funcs = append(funcs, irF)
+		funcs = append(funcs, fn)
 	}
 	if !ok {
 		return false
 	}
+	// Annotate functions.
+	for _, fn := range funcs {
+		fnOk := fn.bFunc.buildAnnotations(fn.scopeFunc, fn)
+		ok = ok && fnOk
+	}
+	if !ok {
+		return false
+	}
+	// Build functions bodies.
 	for len(funcs) > 0 {
 		funcs, ok = d.buildFunctionBodies(pkgScope, funcs)
 		if !ok {
