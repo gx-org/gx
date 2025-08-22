@@ -230,7 +230,7 @@ func (h *handleImporter) String() string {
 	bld := strings.Builder{}
 	bld.WriteString("Importer{\n")
 
-	bld.WriteString(fmt.Sprintf("%s:%s\n", "Basic", any(h.owner.Basic).(fmt.Stringer).String()))
+	fmt.Fprintf(&bld, "%s:%s\n", "Basic", any(h.owner.Basic).(fmt.Stringer).String())
 
 	bld.WriteString("}")
 	return bld.String()
