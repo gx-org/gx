@@ -337,33 +337,33 @@ func (h *handleCartpole) String() string {
 	bld := strings.Builder{}
 	bld.WriteString("Cartpole{\n")
 
-	bld.WriteString(fmt.Sprintf("%s:%s\n", "gravity", any(h.owner.gravity).(fmt.Stringer).String()))
+	fmt.Fprintf(&bld, "%s:%s\n", "gravity", any(h.owner.gravity).(fmt.Stringer).String())
 
-	bld.WriteString(fmt.Sprintf("%s:%s\n", "massCart", any(h.owner.massCart).(fmt.Stringer).String()))
+	fmt.Fprintf(&bld, "%s:%s\n", "massCart", any(h.owner.massCart).(fmt.Stringer).String())
 
-	bld.WriteString(fmt.Sprintf("%s:%s\n", "massPole", any(h.owner.massPole).(fmt.Stringer).String()))
+	fmt.Fprintf(&bld, "%s:%s\n", "massPole", any(h.owner.massPole).(fmt.Stringer).String())
 
-	bld.WriteString(fmt.Sprintf("%s:%s\n", "totalMass", any(h.owner.totalMass).(fmt.Stringer).String()))
+	fmt.Fprintf(&bld, "%s:%s\n", "totalMass", any(h.owner.totalMass).(fmt.Stringer).String())
 
-	bld.WriteString(fmt.Sprintf("%s:%s\n", "length", any(h.owner.length).(fmt.Stringer).String()))
+	fmt.Fprintf(&bld, "%s:%s\n", "length", any(h.owner.length).(fmt.Stringer).String())
 
-	bld.WriteString(fmt.Sprintf("%s:%s\n", "poleMassLength", any(h.owner.poleMassLength).(fmt.Stringer).String()))
+	fmt.Fprintf(&bld, "%s:%s\n", "poleMassLength", any(h.owner.poleMassLength).(fmt.Stringer).String())
 
-	bld.WriteString(fmt.Sprintf("%s:%s\n", "forceMag", any(h.owner.forceMag).(fmt.Stringer).String()))
+	fmt.Fprintf(&bld, "%s:%s\n", "forceMag", any(h.owner.forceMag).(fmt.Stringer).String())
 
-	bld.WriteString(fmt.Sprintf("%s:%s\n", "tau", any(h.owner.tau).(fmt.Stringer).String()))
+	fmt.Fprintf(&bld, "%s:%s\n", "tau", any(h.owner.tau).(fmt.Stringer).String())
 
-	bld.WriteString(fmt.Sprintf("%s:%s\n", "thetaThresholdRadians", any(h.owner.thetaThresholdRadians).(fmt.Stringer).String()))
+	fmt.Fprintf(&bld, "%s:%s\n", "thetaThresholdRadians", any(h.owner.thetaThresholdRadians).(fmt.Stringer).String())
 
-	bld.WriteString(fmt.Sprintf("%s:%s\n", "xThreshold", any(h.owner.xThreshold).(fmt.Stringer).String()))
+	fmt.Fprintf(&bld, "%s:%s\n", "xThreshold", any(h.owner.xThreshold).(fmt.Stringer).String())
 
-	bld.WriteString(fmt.Sprintf("%s:%s\n", "x", any(h.owner.x).(fmt.Stringer).String()))
+	fmt.Fprintf(&bld, "%s:%s\n", "x", any(h.owner.x).(fmt.Stringer).String())
 
-	bld.WriteString(fmt.Sprintf("%s:%s\n", "xDot", any(h.owner.xDot).(fmt.Stringer).String()))
+	fmt.Fprintf(&bld, "%s:%s\n", "xDot", any(h.owner.xDot).(fmt.Stringer).String())
 
-	bld.WriteString(fmt.Sprintf("%s:%s\n", "theta", any(h.owner.theta).(fmt.Stringer).String()))
+	fmt.Fprintf(&bld, "%s:%s\n", "theta", any(h.owner.theta).(fmt.Stringer).String())
 
-	bld.WriteString(fmt.Sprintf("%s:%s\n", "thetaDot", any(h.owner.thetaDot).(fmt.Stringer).String()))
+	fmt.Fprintf(&bld, "%s:%s\n", "thetaDot", any(h.owner.thetaDot).(fmt.Stringer).String())
 
 	bld.WriteString("}")
 	return bld.String()
