@@ -21,7 +21,6 @@ import (
 	"github.com/gx-org/gx/golang/backend/kernels"
 	"github.com/gx-org/gx/internal/interp/flatten"
 	"github.com/gx-org/gx/interp/elements"
-	"github.com/gx-org/gx/interp/evaluator"
 	"github.com/gx-org/gx/interp"
 	"github.com/gx-org/gx/interp/materialise"
 )
@@ -80,24 +79,7 @@ func (n *valueElement) Copy() interp.Copier {
 }
 
 func (n *valueElement) Axes(ev ir.Evaluator) (*interp.Slice, error) {
-	shape := n.value.Shape()
-	ctx := ev.(evaluator.Context)
-	axes := make([]ir.Element, len(shape.AxisLengths))
-	for i, axisSize := range shape.AxisLengths {
-		iExpr := &ir.AtomicValueT[ir.Int]{
-			Val: ir.Int(i),
-			Typ: ir.IntLenType(),
-		}
-		iValue, err := values.AtomIntegerValue[ir.Int](ir.IntLenType(), ir.Int(axisSize))
-		if err != nil {
-			return nil, err
-		}
-		axes[i], err = ctx.Evaluator().ElementFromAtom(ctx, iExpr, iValue)
-		if err != nil {
-			return nil, err
-		}
-	}
-	return interp.NewSlice(ir.IntLenSliceType(), axes), nil
+	return axesFromShape(ev, n.value.Shape())
 }
 
 func (n *valueElement) Type() ir.Type {
