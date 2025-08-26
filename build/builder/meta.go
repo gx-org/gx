@@ -100,12 +100,13 @@ type (
 	}
 )
 
-func formatBody(body *ast.BlockStmt, w io.Writer) (err error) {
+func formatBody(fType *ir.FuncType, body *ast.BlockStmt, w *strings.Builder) (err error) {
 	defer func() {
 		if r := recover(); r != nil {
 			err = errors.New(string(debug.Stack()))
 		}
 	}()
+	w.WriteString(fType.String() + " ")
 	fset := token.NewFileSet()
 	return format.Node(w, fset, body)
 }
@@ -123,7 +124,7 @@ func astVisitBody(body *ast.BlockStmt, w io.Writer) (err error) {
 func (m *synthResolveScope) errorFor(body *ast.BlockStmt) error {
 	const coreError = "cannot generate IR from synthetic function body:\n%s"
 	fmtW := &strings.Builder{}
-	errFmt := formatBody(body, fmtW)
+	errFmt := formatBody(m.funcType(), body, fmtW)
 	if errFmt == nil {
 		return fmt.Errorf(coreError, gxfmt.Number(fmtW.String()))
 	}

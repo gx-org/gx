@@ -75,6 +75,9 @@ func FuncGrad(call elements.CallAt, macro *cpevelements.Macro, args []ir.Element
 	if err != nil {
 		return nil, err
 	}
+	if fn.FuncType().Results.Len() > 1 {
+		return nil, errors.Errorf("cannot compute the gradient of function with more than one result")
+	}
 	fnT, ok := fn.(ir.PkgFunc)
 	if !ok {
 		return nil, errors.Errorf("cannot compute the gradient of function %T", fn)
@@ -118,6 +121,11 @@ func (m *gradMacro) syntheticFuncName(fetcher ir.Fetcher, fn ir.Func) (string, b
 func (m *gradMacro) BuildDecl() (*ast.FuncDecl, bool) {
 	fType := m.fn.FuncType()
 	fDecl := &ast.FuncDecl{Type: fType.Src}
+	fDecl.Type.Results = &ast.FieldList{
+		List: []*ast.Field{&ast.Field{
+			Type: m.wrt.fieldType(),
+		}},
+	}
 	recv := fType.Receiver
 	if recv != nil {
 		fDecl.Recv = recv.Src

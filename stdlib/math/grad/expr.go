@@ -234,30 +234,22 @@ func (m *exprGrader) gradValueRef(src *ir.ValueRef) (*gradExprResult, bool) {
 
 func (m *exprGrader) gradArrayLitExpr(src *ir.ArrayLitExpr) (*gradExprResult, bool) {
 	allZero := true
-	gValues := make([]ast.Expr, len(src.Values()))
-	for i, expr := range src.Values() {
+	var acc *gradExprResult = zeroValueOf(src.Source())
+	for _, expr := range src.Values() {
 		gExpr, ok := m.gradExpr(expr)
 		if !ok {
 			return nil, false
 		}
-		gValues[i] = gExpr.expr
-		if gExpr.kind != zeroSpecial {
-			allZero = false
+		if gExpr.kind == zeroSpecial {
 			continue
 		}
-		gExpr = zeroValueOf(expr.Source())
-		gValues[i] = gExpr.expr
+		allZero = false
+		acc = buildAdd(acc, gExpr)
 	}
 	if allZero {
 		return zeroValueOf(src.Source()), true
 	}
-	return &gradExprResult{
-		kind: notSpecial,
-		expr: &ast.CompositeLit{
-			Type: src.Typ.Source().(ast.Expr),
-			Elts: gValues,
-		},
-	}, true
+	return acc, true
 }
 
 func (m *exprGrader) gradSelectorExpr(src *ir.SelectorExpr) (*gradExprResult, bool) {

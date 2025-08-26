@@ -14,11 +14,16 @@
 
 package grad
 
-import "github.com/gx-org/gx/build/ir"
+import (
+	"go/ast"
+
+	"github.com/gx-org/gx/build/ir"
+)
 
 type withRespectTo interface {
 	same(storage *ir.Field) bool
 	name() string
+	fieldType() ast.Expr
 }
 
 type wrtArray struct {
@@ -48,6 +53,10 @@ func (f *wrtArray) name() string {
 	return f.field.Name.Name
 }
 
+func (f *wrtArray) fieldType() ast.Expr {
+	return f.field.Group.Src.Type
+}
+
 type wrtStruct struct {
 	tp    *ir.StructType
 	field *ir.Field
@@ -59,4 +68,8 @@ func (f *wrtStruct) same(src *ir.Field) bool {
 
 func (f *wrtStruct) name() string {
 	return f.field.Name.Name
+}
+
+func (f *wrtStruct) fieldType() ast.Expr {
+	return f.field.Group.Src.Type
 }
