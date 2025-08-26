@@ -77,5 +77,20 @@ func gradF(x float32) float32 {
 }
 `,
 		},
+		testgrad.Func{
+			Src: `
+func g(float32) float32
+
+//gx:@grad.Set(g)
+func F(x float32) float32 {
+	return x
+}
+`,
+			Want: `
+func gradF(x float32) float32 {
+	return g(x)
+}
+`,
+		},
 	)
 }

@@ -133,7 +133,24 @@ func (m *gradMacro) BuildDecl() (*ast.FuncDecl, bool) {
 	return fDecl, true
 }
 
+func (m *gradMacro) buildBodyFromSetAnnotation(fetcher ir.Fetcher, fn ir.Func, ann *ir.Annotation) (*ast.BlockStmt, []*cpevelements.SyntheticFuncDecl, bool) {
+	params := fn.FuncType().Params.Fields()
+	args := make([]ast.Expr, len(params))
+	for i, param := range params {
+		args[i] = param.Name
+	}
+	return &ast.BlockStmt{List: []ast.Stmt{&ast.ReturnStmt{
+		Results: []ast.Expr{&ast.CallExpr{
+			Fun:  &ast.Ident{Name: ann.Value().(ir.Func).Name()},
+			Args: args,
+		}},
+	}}}, nil, true
+}
+
 func (m *gradMacro) BuildBody(fetcher ir.Fetcher, fn ir.Func) (*ast.BlockStmt, []*cpevelements.SyntheticFuncDecl, bool) {
+	if ann := findSetAnnotation(m.fn); ann != nil {
+		return m.buildBodyFromSetAnnotation(fetcher, fn, ann)
+	}
 	fnWithBody, ok := m.fn.(*ir.FuncDecl)
 	if !ok {
 		return nil, nil, fetcher.Err().Appendf(fn.Source(), "function has no body")
