@@ -16,6 +16,7 @@ package cpevelements
 
 import (
 	"fmt"
+	"math/big"
 
 	"github.com/gx-org/backend/shape"
 	"github.com/gx-org/gx/api/values"
@@ -40,6 +41,7 @@ type binary struct {
 var (
 	_ materialise.ElementMaterialiser = (*binary)(nil)
 	_ ir.Canonical                    = (*binary)(nil)
+	_ canonical.Evaluable             = (*binary)(nil)
 	_ elements.ElementWithConstant    = (*binary)(nil)
 	_ fmt.Stringer                    = (*binary)(nil)
 	_ interp.WithAxes                 = (*cast)(nil)
@@ -148,6 +150,10 @@ func (a *binary) Shape() *shape.Shape {
 // Axes returns the axes of the value as a slice element.
 func (a *binary) Axes(ev ir.Evaluator) (*interp.Slice, error) {
 	return axesFromType(ev, a.src.Node().Type())
+}
+
+func (a *binary) Float() *big.Float {
+	return canonical.ToValue(a.canonical)
 }
 
 func (a *binary) Value() ir.AssignableExpr {
