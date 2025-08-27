@@ -16,6 +16,8 @@
 package core
 
 import (
+	"sync"
+
 	"github.com/pkg/errors"
 	"github.com/gx-org/gx/api"
 	"github.com/gx-org/gx/api/options"
@@ -104,12 +106,14 @@ type FuncCache struct {
 	setup            *PackageCompileSetup
 	recvName, fnName string
 
-	runner tracer.CompiledFunc
+	runner   tracer.CompiledFunc
+	err      error
+	initOnce sync.Once
 }
 
 // NewCache returns a new function cache given a package compilation setup.
-func (s *PackageCompileSetup) NewCache(recvName, fnName string) FuncCache {
-	return FuncCache{setup: s, recvName: recvName, fnName: fnName}
+func (s *PackageCompileSetup) NewCache(recvName, fnName string) *FuncCache {
+	return &FuncCache{setup: s, recvName: recvName, fnName: fnName}
 }
 
 func (c *FuncCache) findFunction() (*ir.FuncDecl, error) {
@@ -142,12 +146,7 @@ func (c *FuncCache) findMethod() (*ir.FuncDecl, error) {
 	return fDecl, nil
 }
 
-// Runner compiles the function if it has not been done before.
-// Returns the function compiled or an error.
-func (c *FuncCache) Runner(recv values.Value, args []values.Value) (tracer.CompiledFunc, error) {
-	if c.runner != nil {
-		return c.runner, nil
-	}
+func (c *FuncCache) buildRunner(recv values.Value, args []values.Value) (tracer.CompiledFunc, error) {
 	var fn *ir.FuncDecl
 	var err error
 	if c.recvName != "" {
@@ -162,6 +161,14 @@ func (c *FuncCache) Runner(recv values.Value, args []values.Value) (tracer.Compi
 	if err != nil {
 		return nil, err
 	}
-	c.runner = runner
-	return c.runner, nil
+	return runner, nil
+}
+
+// Runner compiles the function if it has not been done before.
+// Returns the function compiled or an error.
+func (c *FuncCache) Runner(recv values.Value, args []values.Value) (tracer.CompiledFunc, error) {
+	c.initOnce.Do(func() {
+		c.runner, c.err = c.buildRunner(recv, args)
+	})
+	return c.runner, c.err
 }

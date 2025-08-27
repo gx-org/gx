@@ -118,7 +118,7 @@ type Package struct {
 
 	// Functions and methods cache
 {{ range $fn := .FunctionsAndMethods -}}
-	cache{{$fn.RecvTypeName}}{{$fn.Name}} core.FuncCache
+	cache{{$fn.RecvTypeName}}{{$fn.Name}} *core.FuncCache
 {{end}}
 }
 
@@ -158,7 +158,7 @@ func (pkg *Package) {{.Name}}({{.Parameters}}) ({{.Results}}, err error) {
 	var runner tracer.CompiledFunc
 	runner, err = pkg.cache{{.Name}}.Runner(nil, args)
 	if err != nil {
-		return 
+		return
 	}
 	var outputs []values.Value
 	outputs, err = runner.Run(nil, args, pkg.handle.Tracer())
@@ -242,7 +242,7 @@ func (recv *{{.RecvTypeName}}) {{.Name}}({{.Parameters}}) ({{.Results}}, err err
 	var runner tracer.CompiledFunc
 	runner, err = recv.handle.pkg.cache{{.RecvTypeName}}{{.Name}}.Runner(recv.value, args)
 	if err != nil {
-		return 
+		return
 	}
 	var outputs []values.Value
 	outputs, err = runner.Run(recv.value, args, recv.handle.pkg.handle.Tracer())
