@@ -29,6 +29,10 @@ type genericType interface {
 }
 
 func typeInclude(fetcher ir.Fetcher, set ir.Type, typ ir.Type) bool {
+	typParam, isTypeParam := typ.(*ir.TypeParam)
+	if isTypeParam {
+		typ = typParam.Field.Type()
+	}
 	isIn, err := ir.TypeInclude(fetcher, set, typ)
 	if err != nil {
 		return fetcher.Err().Append(err)
@@ -93,8 +97,8 @@ func dtypeElement(expr ast.Expr) ast.Expr {
 	return dtypeElement(aType.Elt)
 }
 
-func extractTypeParamName(field *ir.FieldGroup) genericType {
-	switch typT := field.Type.Typ.(type) {
+func extractTypeSpecialiser(tp ir.Type) genericType {
+	switch typT := tp.(type) {
 	case *ir.TypeParam:
 		return &ident{set: typT.Field.Type(), typName: typT.Field.Name.Name}
 	case *ir.TypeSet:

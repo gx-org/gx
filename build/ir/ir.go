@@ -990,11 +990,15 @@ func (s *TypeParam) Kind() Kind {
 	return s.Field.Type().Kind()
 }
 
-// Equal returns true if other is the same type.
-func (s *TypeParam) Equal(fetcher Fetcher, typ Type) (bool, error) {
+func (s *TypeParam) equal(fetcher Fetcher, typ Type) (bool, error) {
+	otherT, isOtherTypeParam := typ.(*TypeParam)
+	if isOtherTypeParam {
+		return otherT == s, nil
+	}
 	switch typT := typ.(type) {
 	case *TypeParam:
-		return typT == s, nil
+	case *NamedType:
+		return s.Field.Type().Equal(fetcher, typ)
 	case ArrayType:
 		if !typT.Rank().IsAtomic() {
 			return false, nil
@@ -1002,6 +1006,15 @@ func (s *TypeParam) Equal(fetcher Fetcher, typ Type) (bool, error) {
 		return s.Equal(fetcher, typT.DataType())
 	}
 	return false, nil
+}
+
+// Equal returns true if other is the same type.
+func (s *TypeParam) Equal(fetcher Fetcher, typ Type) (bool, error) {
+	return s.equal(fetcher, typ)
+}
+
+func (s *TypeParam) assignableFrom(fetcher Fetcher, other Type) (bool, error) {
+	return other.AssignableTo(fetcher, s.Field.Type())
 }
 
 // AssignableTo reports whether a value of the type can be assigned to another.

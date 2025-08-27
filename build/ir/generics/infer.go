@@ -36,7 +36,7 @@ func Infer(fetcher ir.Fetcher, fExpr *ir.FuncValExpr, args []ir.AssignableExpr) 
 		if ir.IsNumber(arg.Type().Kind()) {
 			continue
 		}
-		gType := extractTypeParamName(param.Group)
+		gType := extractTypeSpecialiser(param.Group.Type.Typ)
 		if gType == nil {
 			continue
 		}

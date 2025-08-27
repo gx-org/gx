@@ -208,6 +208,17 @@ func callCast() int32 {
 				},
 			},
 		},
+		testbuild.Decl{
+			Src: `
+type someInt interface{ int32 | int64}
+
+func g[T someInt]() T
+
+func f[T someInt]() T {
+	return g[T]()
+}
+`,
+		},
 	)
 }
 
