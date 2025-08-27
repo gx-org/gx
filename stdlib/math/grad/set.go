@@ -38,9 +38,6 @@ func SetGrad(call elements.CallAt, macro *cpevelements.Macro, args []ir.Element)
 	if !ok {
 		return nil, errors.Errorf("%T not an IR function", args[0])
 	}
-	if fn.FuncType().Params.Len() != 1 {
-		return nil, errors.Errorf("cannot set gradient of %s: requires a single argument", fn.Name())
-	}
 	grad, err := interp.PkgFuncFromElement(args[1])
 	if err != nil {
 		return nil, errors.Errorf("%T is not a function element", args[1])
@@ -55,13 +52,6 @@ func SetGrad(call elements.CallAt, macro *cpevelements.Macro, args []ir.Element)
 const setKey = "set"
 
 func (m *setAnnotation) Annotate(fetcher ir.Fetcher, fn ir.PkgFunc) bool {
-	eq, err := m.fn.FuncType().Equal(fetcher, m.grad.FuncType())
-	if err != nil {
-		return fetcher.Err().AppendAt(m.fn.Source(), err)
-	}
-	if !eq {
-		return fetcher.Err().Appendf(m.fn.Source(), "cannot use %s as gradient for %s (requires the same signature)", m.grad.FuncType().String(), fn.Name())
-	}
 	fn.Annotations().Append(
 		m.CoreMacroElement.Mac.Func().File().Package,
 		setKey,
