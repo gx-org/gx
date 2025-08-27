@@ -94,3 +94,27 @@ func gradF(x float32) float32 {
 		},
 	)
 }
+
+func TestSetErrors(t *testing.T) {
+	testbuild.Run(t,
+		declareGradPackage,
+		testgrad.Func{
+			Src: `
+func g(x float64) float32
+
+//gx:@grad.Set(g)
+func F(x float32) float32
+`,
+			Err: "cannot use func(x float64) float32 as gradient for F (requires the same signature)",
+		},
+		testgrad.Func{
+			Src: `
+func g(x float64) float32
+
+//gx:@grad.Set(g)
+func F(x, y float32) float32
+`,
+			Err: "cannot set gradient of F: requires a single argument",
+		},
+	)
+}
