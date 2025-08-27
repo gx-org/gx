@@ -17,7 +17,6 @@ package cpevelements
 import (
 	"go/ast"
 
-	"github.com/gx-org/gx/build/fmterr"
 	"github.com/gx-org/gx/build/ir"
 )
 
@@ -38,7 +37,7 @@ type (
 	// FuncAnnotator builds a synthetic function.
 	FuncAnnotator interface {
 		MacroElement
-		Annotate(fmterr.ErrAppender, ir.PkgFunc) bool
+		Annotate(ir.Fetcher, ir.PkgFunc) bool
 	}
 
 	// SyntheticFuncDecl is a synthetic package function declaration.

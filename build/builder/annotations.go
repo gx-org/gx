@@ -47,5 +47,9 @@ func (m *annotateFuncFromMacro) buildAnnotations(fnScope iFuncResolveScope, fn *
 	if !ok {
 		return fnScope.Err().Appendf(m.macroCall.source(), "cannot use macro %s for function annotations", macroEl.Macro().Name())
 	}
-	return fnAnnotator.Annotate(fnScope, fn.irFunc)
+	cp, ok := fnScope.compEval()
+	if !ok {
+		return false
+	}
+	return fnAnnotator.Annotate(cp, fn.irFunc)
 }

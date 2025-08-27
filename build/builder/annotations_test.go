@@ -22,7 +22,6 @@ import (
 
 	"github.com/pkg/errors"
 	"github.com/gx-org/gx/build/builder/testbuild"
-	"github.com/gx-org/gx/build/fmterr"
 	"github.com/gx-org/gx/build/ir"
 	irh "github.com/gx-org/gx/build/ir/irhelper"
 	"github.com/gx-org/gx/internal/interp/compeval/cpevelements"
@@ -59,7 +58,7 @@ func buildTagger(call elements.CallAt, macro *cpevelements.Macro, args []ir.Elem
 	}, nil
 }
 
-func (m *tagger) Annotate(errApp fmterr.ErrAppender, fn ir.PkgFunc) bool {
+func (m *tagger) Annotate(fetcher ir.Fetcher, fn ir.PkgFunc) bool {
 	fn.Annotations().Append(
 		m.Macro().Func().File().Package,
 		"TAG",

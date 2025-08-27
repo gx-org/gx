@@ -18,7 +18,6 @@ import (
 	"go/ast"
 
 	"github.com/pkg/errors"
-	"github.com/gx-org/gx/build/fmterr"
 	"github.com/gx-org/gx/build/ir"
 	"github.com/gx-org/gx/internal/interp/compeval/cpevelements"
 	"github.com/gx-org/gx/interp/elements"
@@ -52,7 +51,7 @@ func SetGrad(call elements.CallAt, macro *cpevelements.Macro, args []ir.Element)
 
 const setKey = "set"
 
-func (m *setAnnotation) Annotate(errApp fmterr.ErrAppender, fn ir.PkgFunc) bool {
+func (m *setAnnotation) Annotate(fetcher ir.Fetcher, fn ir.PkgFunc) bool {
 	fn.Annotations().Append(
 		m.CoreMacroElement.Mac.Func().File().Package,
 		setKey,
