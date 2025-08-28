@@ -66,6 +66,9 @@ typedef cgx_handle cgx_package_ir;
 // cgx_device is an opaque handle for a GX device.
 typedef cgx_handle cgx_device;
 
+// cgx_package_option is an option to compile a package.
+typedef cgx_handle cgx_package_option;
+
 // cgx_package is an opaque handle for a GX package.
 typedef cgx_handle cgx_package;
 

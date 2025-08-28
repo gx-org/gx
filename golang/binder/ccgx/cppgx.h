@@ -216,7 +216,7 @@ class Value {
   uint32_t uint32_value() const { return cgx_value_get_uint32(*value_); }
   uint64_t uint64_value() const { return cgx_value_get_uint64(*value_); }
   absl::StatusOr<Struct> as_struct() const;
-  std::optional<Interface> interface_type(const Device& device) const;
+  std::optional<Interface> interface_type(const Package& package) const;
   std::string string() const;
 
  private:

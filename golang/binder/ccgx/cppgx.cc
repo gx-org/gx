@@ -323,8 +323,8 @@ absl::StatusOr<Struct> Value::as_struct() const {
   return Struct(result.strct);
 }
 
-std::optional<Interface> Value::interface_type(const Device& device) const {
-  cgx_interface iface = cgx_value_get_interface_type(device.raw(), *value_);
+std::optional<Interface> Value::interface_type(const Package& package) const {
+  cgx_interface iface = cgx_value_get_interface_type(package.raw(), *value_);
   if (iface == cgx_interface{}) {
     return std::nullopt;
   }

@@ -251,8 +251,9 @@ func cgx_package_ir_load(cgxRuntime C.cgx_runtime, pathPtr *C.cchar_t) C.struct_
 /* cgx_package */
 
 type packageHandle struct {
-	dev *api.Device
-	pkg builder.Package
+	dev     *api.Device
+	pkg     builder.Package
+	options []options.PackageOption
 }
 
 func newPackageHandle(dev *api.Device, pkg builder.Package) *packageHandle {
@@ -290,12 +291,23 @@ func cgx_package_ir_fullname(cgxPackageIR C.cgx_package_ir) *C.cchar_t {
 	return C.CString(pkg.IR().FullName())
 }
 
+type packageOption struct {
+	opt options.PackageOptionFactory
+}
+
+//export cgx_package_set_option
+func cgx_package_set_option(cgxPackage C.cgx_package, cgxOption C.cgx_package_option) {
+	cpkg := unwrap[*packageHandle](cgxPackage)
+	copt := unwrap[*packageOption](cgxOption)
+	cpkg.options = append(cpkg.options, copt.opt(cpkg.dev.PlatformDevice().Platform()))
+}
+
 //export cgx_package_list_functions
 func cgx_package_list_functions(cgxPackage C.cgx_package) C.struct_cgx_list_functions_result {
 	cpkg := unwrap[*packageHandle](cgxPackage)
 	var funcs []*functionHandle
 	for fn := range cpkg.pkg.IR().ExportedFuncs() {
-		funcs = append(funcs, newFunctionHandle(cpkg.dev, fn))
+		funcs = append(funcs, newFunctionHandle(cpkg, fn))
 	}
 	return C.struct_cgx_list_functions_result{
 		funcs:         (*C.cgx_function)(handle.PinSliceData(handle.WrapSlice(funcs))),
@@ -323,7 +335,7 @@ func cgx_interface_find(cgxPackage C.cgx_package, cname *C.cchar_t) (res C.struc
 	irPkg := cpkg.pkg.IR()
 	for _, typ := range irPkg.ExportedTypes() {
 		if typ.Name() == name {
-			res.iface = (C.cgx_interface)(wrap[*interfaceHandle](newInterfaceHandle(cpkg.dev, typ)))
+			res.iface = (C.cgx_interface)(wrap[*interfaceHandle](newInterfaceHandle(cpkg, typ)))
 			return
 		}
 	}
@@ -334,24 +346,21 @@ func cgx_interface_find(cgxPackage C.cgx_package, cname *C.cchar_t) (res C.struc
 /* cgx_function */
 
 type functionHandle struct {
-	dev   *api.Device
+	pkg   *packageHandle
 	fn    ir.Func
 	graph tracer.CompiledFunc
 }
 
-func newFunctionHandle(dev *api.Device, fn ir.Func) *functionHandle {
-	if dev == nil {
-		panic("nil device")
-	}
-	return &functionHandle{dev: dev, fn: fn}
+func newFunctionHandle(pkg *packageHandle, fn ir.Func) *functionHandle {
+	return &functionHandle{pkg: pkg, fn: fn}
 }
 
-func (f *functionHandle) compile(receiver values.Value, args []values.Value, options []options.PackageOption) (err error) {
+func (f *functionHandle) compile(receiver values.Value, args []values.Value) (err error) {
 	fDecl, ok := f.fn.(*ir.FuncDecl)
 	if !ok {
 		return errors.Errorf("cannot run %s.%s: builtin functions not supported", f.fn.File().Package.Name.Name, f.fn.Name())
 	}
-	f.graph, err = tracer.Trace(f.dev, fDecl, receiver, args, options)
+	f.graph, err = tracer.Trace(f.pkg.dev, fDecl, receiver, args, f.pkg.options)
 	return
 }
 
@@ -369,7 +378,7 @@ func cgx_function_find(cgxPackage C.cgx_package, funcNamePtr *C.cchar_t) (res C.
 		res.error = Errorf("function %q not found in package %q", name, irPkg.Name)
 		return
 	}
-	res.function = (C.cgx_function)(wrap[*functionHandle](newFunctionHandle(cpkg.dev, fun)))
+	res.function = (C.cgx_function)(wrap[*functionHandle](newFunctionHandle(cpkg, fun)))
 	return
 }
 
@@ -384,7 +393,7 @@ func cgx_function_run(cgxFunction C.cgx_function, cgxReceiver C.cgx_value, argCo
 	}
 	// If we haven't built a compiled graph yet, do so and cache it in the function handle.
 	if function.graph == nil {
-		if err := function.compile(recvValue, argValues, nil); err != nil {
+		if err := function.compile(recvValue, argValues); err != nil {
 			return C.struct_cgx_function_run_result{error: (C.cgx_error)(wrap[error](err))}
 		}
 	}
@@ -668,14 +677,14 @@ func cgx_value_get_struct(cgxValue C.cgx_value) C.struct_cgx_value_get_struct_re
 }
 
 //export cgx_value_get_interface_type
-func cgx_value_get_interface_type(cgxDevice C.cgx_device, cgxValue C.cgx_value) C.cgx_interface {
+func cgx_value_get_interface_type(cgxPackage C.cgx_package, cgxValue C.cgx_value) C.cgx_interface {
 	value := unwrap[values.Value](cgxValue)
 	namedType, ok := value.Type().(*ir.NamedType)
 	if !ok {
 		return 0
 	}
-	device := unwrap[*api.Device](cgxDevice)
-	return (C.cgx_interface)(wrap[*interfaceHandle](newInterfaceHandle(device, namedType)))
+	cpkg := unwrap[*packageHandle](cgxPackage)
+	return (C.cgx_interface)(wrap[*interfaceHandle](newInterfaceHandle(cpkg, namedType)))
 }
 
 //export cgx_value_string
@@ -817,15 +826,12 @@ func cgx_free_struct_field_list_result(cgxFieldList *C.struct_cgx_struct_field_l
 /* cgx_interface */
 
 type interfaceHandle struct {
-	device *api.Device
-	typ    *ir.NamedType
+	pkg *packageHandle
+	typ *ir.NamedType
 }
 
-func newInterfaceHandle(dev *api.Device, typ *ir.NamedType) *interfaceHandle {
-	if dev == nil {
-		panic("nil device")
-	}
-	return &interfaceHandle{device: dev, typ: typ}
+func newInterfaceHandle(pkg *packageHandle, typ *ir.NamedType) *interfaceHandle {
+	return &interfaceHandle{pkg: pkg, typ: typ}
 }
 
 //export cgx_interface_method_find
@@ -839,7 +845,7 @@ func cgx_interface_method_find(cgxIFace C.cgx_interface, methodNamePtr *C.cchar_
 		res.error = Errorf("type %s.%s has no method %s", packageName, typeName, methodName)
 		return
 	}
-	res.function = (C.cgx_function)(wrap[*functionHandle](newFunctionHandle(iface.device, method)))
+	res.function = (C.cgx_function)(wrap[*functionHandle](newFunctionHandle(iface.pkg, method)))
 	return
 }
 
@@ -863,7 +869,7 @@ func cgx_interface_list_methods(cgxIFace C.cgx_interface) C.struct_cgx_list_func
 		if !ir.IsExported(fn.Name()) {
 			continue
 		}
-		funcs = append(funcs, newFunctionHandle(iface.device, fn))
+		funcs = append(funcs, newFunctionHandle(iface.pkg, fn))
 	}
 	return C.struct_cgx_list_functions_result{
 		funcs:         (*C.cgx_function)(handle.PinSliceData(handle.WrapSlice(funcs))),

@@ -282,7 +282,7 @@ TEST_F(cgx, RunMethod_AddPrivate) {
   ASSERT_EQ(cgx_value_kind_of(rnewr.values[0]), CGX_STRUCT);
 
   // Check we can call a method on the returned structure.
-  const auto iface = cgx_value_get_interface_type(device(), rnewr.values[0]);
+  const auto iface = cgx_value_get_interface_type(pr.package, rnewr.values[0]);
   ASSERT_NE(iface, cgx_interface{});
   const std::string package_name =
       FromHeapCString(cgx_interface_package_name(iface));

@@ -44,3 +44,12 @@ type (
 func (p PackageVarSetValue) Package() string {
 	return p.Pkg
 }
+
+// Process options for a given platform.
+func Process(plat platform.Platform, optionFactories []PackageOptionFactory) []PackageOption {
+	opts := make([]PackageOption, len(optionFactories))
+	for i, optFactory := range optionFactories {
+		opts[i] = optFactory(plat)
+	}
+	return opts
+}

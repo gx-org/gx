@@ -72,12 +72,7 @@ func (pkg *PackageIR) Setup(dev *api.Device, opts []options.PackageOption) *Pack
 
 // ProcessOptions processes compiling options.
 func (pkg *PackageIR) ProcessOptions(optionFactories []options.PackageOptionFactory) []options.PackageOption {
-	plat := pkg.runtime.Backend().Platform()
-	opts := make([]options.PackageOption, len(optionFactories))
-	for i, opt := range optionFactories {
-		opts[i] = opt(plat)
-	}
-	return opts
+	return options.Process(pkg.runtime.Backend().Platform(), optionFactories)
 }
 
 // Device returns the device of the compile setup.
