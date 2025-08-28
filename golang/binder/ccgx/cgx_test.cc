@@ -424,8 +424,7 @@ TEST_F(cgx, FindFunction_NotFound) {
   CGX_ASSERT_OK(pr.error);
 
   const auto fr = cgx_function_find(pr.package, "Fake");
-  CGX_ASSERT_ERROR(fr.error,
-                   "function \"Fake\" not found in package \"basic\"");
+  CGX_ASSERT_ERROR(fr.error, "function Fake not found in package basic");
 
   cgx_release_reference(pr.package);
 }

@@ -25,12 +25,11 @@ import (
 	"github.com/gx-org/backend/shape"
 	"github.com/gx-org/gx/api"
 	"github.com/gx-org/gx/api/options"
-	"github.com/gx-org/gx/api/tracer"
 	"github.com/gx-org/gx/api/values"
-	"github.com/gx-org/gx/build/builder"
 	"github.com/gx-org/gx/build/ir"
 	"github.com/gx-org/gx/cgx/handle"
 	"github.com/gx-org/gx/golang/backend/kernels"
+	"github.com/gx-org/gx/golang/binder/gobindings/core"
 	"github.com/gx-org/gx/golang/binder/gobindings/types"
 )
 
@@ -241,54 +240,38 @@ func cgx_device_get_runtime(cgxDevice C.cgx_device) C.cgx_runtime {
 //export cgx_package_ir_load
 func cgx_package_ir_load(cgxRuntime C.cgx_runtime, pathPtr *C.cchar_t) C.struct_cgx_package_ir_load_result {
 	rtm := unwrap[*api.Runtime](cgxRuntime)
-	pkg, err := rtm.Builder().Build(C.GoString(pathPtr))
+	pkg, err := core.BuildPackage(rtm.Builder(), C.GoString(pathPtr))
 	return C.struct_cgx_package_ir_load_result{
 		error:    (C.cgx_error)(wrap[error](err)),
-		_package: (C.cgx_package_ir)(wrap[builder.Package](pkg)),
+		_package: (C.cgx_package_ir)(wrap[*core.Package](pkg)),
 	}
 }
 
 /* cgx_package */
 
-type packageHandle struct {
-	dev     *api.Device
-	pkg     builder.Package
-	options []options.PackageOption
-}
-
-func newPackageHandle(dev *api.Device, pkg builder.Package) *packageHandle {
-	if pkg == nil {
-		return nil
-	}
-	return &packageHandle{
-		pkg: pkg,
-		dev: dev,
-	}
-}
-
 // NewPackageHandle returns a new C handle to compile a package for a runtime and a device.
 // The returned value always has type C.cgx_package.
-func NewPackageHandle(dev *api.Device, pkg builder.Package) C.cgx_handle {
-	return wrap[*packageHandle](newPackageHandle(dev, pkg))
+func NewPackageHandle(dev *api.Device, pkg *core.Package) C.cgx_handle {
+	return wrap[*core.PackageCompileSetup](pkg.Setup(dev, nil))
 }
 
 //export cgx_package_ir_build_for
 func cgx_package_ir_build_for(cgxPackageIR C.cgx_package_ir, cgxDevice C.cgx_device) C.cgx_package {
 	dev := unwrap[*api.Device](cgxDevice)
-	pkg := unwrap[builder.Package](cgxPackageIR)
+	pkg := unwrap[*core.Package](cgxPackageIR)
 	return C.cgx_package(NewPackageHandle(dev, pkg))
 }
 
 //export cgx_package_ir_name
 func cgx_package_ir_name(cgxPackageIR C.cgx_package_ir) *C.cchar_t {
-	pkg := unwrap[builder.Package](cgxPackageIR)
-	return C.CString(pkg.IR().Name.Name)
+	pkg := unwrap[*core.Package](cgxPackageIR)
+	return C.CString(pkg.Package().Name.Name)
 }
 
 //export cgx_package_ir_fullname
 func cgx_package_ir_fullname(cgxPackageIR C.cgx_package_ir) *C.cchar_t {
-	pkg := unwrap[builder.Package](cgxPackageIR)
-	return C.CString(pkg.IR().FullName())
+	pkg := unwrap[*core.Package](cgxPackageIR)
+	return C.CString(pkg.Package().FullName())
 }
 
 type packageOption struct {
@@ -297,17 +280,21 @@ type packageOption struct {
 
 //export cgx_package_set_option
 func cgx_package_set_option(cgxPackage C.cgx_package, cgxOption C.cgx_package_option) {
-	cpkg := unwrap[*packageHandle](cgxPackage)
+	cpkg := unwrap[*core.PackageCompileSetup](cgxPackage)
 	copt := unwrap[*packageOption](cgxOption)
-	cpkg.options = append(cpkg.options, copt.opt(cpkg.dev.PlatformDevice().Platform()))
+	cpkg.AppendOptions(copt.opt)
 }
 
 //export cgx_package_list_functions
 func cgx_package_list_functions(cgxPackage C.cgx_package) C.struct_cgx_list_functions_result {
-	cpkg := unwrap[*packageHandle](cgxPackage)
-	var funcs []*functionHandle
-	for fn := range cpkg.pkg.IR().ExportedFuncs() {
-		funcs = append(funcs, newFunctionHandle(cpkg, fn))
+	cpkg := unwrap[*core.PackageCompileSetup](cgxPackage)
+	var funcs []*core.FuncCache
+	for fn := range cpkg.IR().ExportedFuncs() {
+		fnDecl, isDecl := fn.(*ir.FuncDecl)
+		if !isDecl {
+			continue
+		}
+		funcs = append(funcs, cpkg.NewCacheFromFunc(fnDecl))
 	}
 	return C.struct_cgx_list_functions_result{
 		funcs:         (*C.cgx_function)(handle.PinSliceData(handle.WrapSlice(funcs))),
@@ -317,8 +304,8 @@ func cgx_package_list_functions(cgxPackage C.cgx_package) C.struct_cgx_list_func
 
 //export cgx_package_get_ir
 func cgx_package_get_ir(cgxPackage C.cgx_package) C.cgx_package_ir {
-	cpkg := unwrap[*packageHandle](cgxPackage)
-	return (C.cgx_package_ir)(wrap[builder.Package](cpkg.pkg))
+	cpkg := unwrap[*core.PackageCompileSetup](cgxPackage)
+	return (C.cgx_package_ir)(wrap[*core.Package](cpkg.Package()))
 }
 
 //export cgx_free_list_functions_result
@@ -330,9 +317,9 @@ func cgx_free_list_functions_result(res *C.struct_cgx_list_functions_result) {
 
 //export cgx_interface_find
 func cgx_interface_find(cgxPackage C.cgx_package, cname *C.cchar_t) (res C.struct_cgx_interface_find_result) {
-	cpkg := unwrap[*packageHandle](cgxPackage)
+	cpkg := unwrap[*core.PackageCompileSetup](cgxPackage)
 	name := C.GoString(cname)
-	irPkg := cpkg.pkg.IR()
+	irPkg := cpkg.IR()
 	for _, typ := range irPkg.ExportedTypes() {
 		if typ.Name() == name {
 			res.iface = (C.cgx_interface)(wrap[*interfaceHandle](newInterfaceHandle(cpkg, typ)))
@@ -345,59 +332,37 @@ func cgx_interface_find(cgxPackage C.cgx_package, cname *C.cchar_t) (res C.struc
 
 /* cgx_function */
 
-type functionHandle struct {
-	pkg   *packageHandle
-	fn    ir.Func
-	graph tracer.CompiledFunc
-}
-
-func newFunctionHandle(pkg *packageHandle, fn ir.Func) *functionHandle {
-	return &functionHandle{pkg: pkg, fn: fn}
-}
-
-func (f *functionHandle) compile(receiver values.Value, args []values.Value) (err error) {
-	fDecl, ok := f.fn.(*ir.FuncDecl)
-	if !ok {
-		return errors.Errorf("cannot run %s.%s: builtin functions not supported", f.fn.File().Package.Name.Name, f.fn.Name())
-	}
-	f.graph, err = tracer.Trace(f.pkg.dev, fDecl, receiver, args, f.pkg.options)
-	return
-}
-
 //export cgx_function_find
 func cgx_function_find(cgxPackage C.cgx_package, funcNamePtr *C.cchar_t) (res C.struct_cgx_function_find_result) {
-	cpkg := unwrap[*packageHandle](cgxPackage)
+	cpkg := unwrap[*core.PackageCompileSetup](cgxPackage)
 	name := C.GoString(funcNamePtr)
 	if !ir.IsExported(name) {
 		res.error = Errorf("function %q not exported", name)
 		return
 	}
-	irPkg := cpkg.pkg.IR()
-	fun := irPkg.FindFunc(name)
-	if fun == nil {
-		res.error = Errorf("function %q not found in package %q", name, irPkg.Name)
+	function, err := cpkg.NewCache("", name)
+	if err != nil {
+		res.error = (C.cgx_error)(wrap[error](err))
 		return
 	}
-	res.function = (C.cgx_function)(wrap[*functionHandle](newFunctionHandle(cpkg, fun)))
+	res.function = (C.cgx_function)(wrap[*core.FuncCache](function))
 	return
 }
 
 //export cgx_function_run
 func cgx_function_run(cgxFunction C.cgx_function, cgxReceiver C.cgx_value, argCount C.int, args *C.cgx_value) C.struct_cgx_function_run_result {
-	function := unwrap[*functionHandle](cgxFunction)
+	function := unwrap[*core.FuncCache](cgxFunction)
 	recvValue := unwrap[values.Value](cgxReceiver)
 	cgxValues := unsafe.Slice(args, argCount)
 	argValues := make([]values.Value, int(argCount))
 	for i, cgxValue := range cgxValues {
 		argValues[i] = unwrap[values.Value](cgxValue)
 	}
-	// If we haven't built a compiled graph yet, do so and cache it in the function handle.
-	if function.graph == nil {
-		if err := function.compile(recvValue, argValues); err != nil {
-			return C.struct_cgx_function_run_result{error: (C.cgx_error)(wrap[error](err))}
-		}
+	runner, err := function.Runner(recvValue, argValues)
+	if err != nil {
+		return C.struct_cgx_function_run_result{error: (C.cgx_error)(wrap[error](err))}
 	}
-	results, err := function.graph.Run(recvValue, argValues, nil)
+	results, err := runner.Run(recvValue, argValues, nil)
 	if err != nil {
 		return C.struct_cgx_function_run_result{error: (C.cgx_error)(wrap[error](err))}
 	}
@@ -409,20 +374,20 @@ func cgx_function_run(cgxFunction C.cgx_function, cgxReceiver C.cgx_value, argCo
 
 //export cgx_function_name
 func cgx_function_name(cgxFunction C.cgx_function) *C.cchar_t {
-	function := unwrap[*functionHandle](cgxFunction)
-	return C.CString(function.fn.Name())
+	function := unwrap[*core.FuncCache](cgxFunction)
+	return C.CString(function.Func().Name())
 }
 
 //export cgx_function_string
 func cgx_function_string(cgxFunction C.cgx_function) *C.cchar_t {
-	function := unwrap[*functionHandle](cgxFunction)
-	return C.CString(function.fn.String())
+	function := unwrap[*core.FuncCache](cgxFunction)
+	return C.CString(function.Func().String())
 }
 
 //export cgx_function_doc
 func cgx_function_doc(cgxFunction C.cgx_function) *C.cchar_t {
-	function := unwrap[*functionHandle](cgxFunction)
-	return C.CString(function.fn.Doc().Text())
+	function := unwrap[*core.FuncCache](cgxFunction)
+	return C.CString(function.Func().Doc().Text())
 }
 
 func copySignatureElements(fields *ir.FieldList) *C.struct_cgx_function_signature_element {
@@ -436,12 +401,13 @@ func copySignatureElements(fields *ir.FieldList) *C.struct_cgx_function_signatur
 
 //export cgx_function_signature
 func cgx_function_signature(cgxFunction C.cgx_function) C.struct_cgx_function_signature_result {
-	function := unwrap[*functionHandle](cgxFunction)
+	function := unwrap[*core.FuncCache](cgxFunction)
+	fn := function.Func()
 	result := C.struct_cgx_function_signature_result{
-		parameter:      copySignatureElements(function.fn.FuncType().Params),
-		parameter_size: C.uint32_t(function.fn.FuncType().Params.Len()),
-		result:         copySignatureElements(function.fn.FuncType().Results),
-		result_size:    C.uint32_t(function.fn.FuncType().Results.Len()),
+		parameter:      copySignatureElements(fn.FuncType().Params),
+		parameter_size: C.uint32_t(fn.FuncType().Params.Len()),
+		result:         copySignatureElements(fn.FuncType().Results),
+		result_size:    C.uint32_t(fn.FuncType().Results.Len()),
 	}
 	return result
 }
@@ -464,14 +430,14 @@ func cgx_free_function_signature_result(cgxSignature *C.struct_cgx_function_sign
 
 //export cgx_function_num_params
 func cgx_function_num_params(cgxFunction C.cgx_function) int {
-	function := unwrap[*functionHandle](cgxFunction)
-	return function.fn.FuncType().Params.Len()
+	function := unwrap[*core.FuncCache](cgxFunction)
+	return function.Func().FuncType().Params.Len()
 }
 
 //export cgx_function_param_dtype
 func cgx_function_param_dtype(cgxFunction C.cgx_function, arg int) C.enum_cgx_value_kind {
-	function := unwrap[*functionHandle](cgxFunction)
-	params := function.fn.FuncType().Params.Fields()
+	function := unwrap[*core.FuncCache](cgxFunction)
+	params := function.Func().FuncType().Params.Fields()
 	if arg < 0 || arg >= len(params) {
 		return C.CGX_INVALID
 	}
@@ -683,7 +649,7 @@ func cgx_value_get_interface_type(cgxPackage C.cgx_package, cgxValue C.cgx_value
 	if !ok {
 		return 0
 	}
-	cpkg := unwrap[*packageHandle](cgxPackage)
+	cpkg := unwrap[*core.PackageCompileSetup](cgxPackage)
 	return (C.cgx_interface)(wrap[*interfaceHandle](newInterfaceHandle(cpkg, namedType)))
 }
 
@@ -826,11 +792,11 @@ func cgx_free_struct_field_list_result(cgxFieldList *C.struct_cgx_struct_field_l
 /* cgx_interface */
 
 type interfaceHandle struct {
-	pkg *packageHandle
+	pkg *core.PackageCompileSetup
 	typ *ir.NamedType
 }
 
-func newInterfaceHandle(pkg *packageHandle, typ *ir.NamedType) *interfaceHandle {
+func newInterfaceHandle(pkg *core.PackageCompileSetup, typ *ir.NamedType) *interfaceHandle {
 	return &interfaceHandle{pkg: pkg, typ: typ}
 }
 
@@ -845,7 +811,13 @@ func cgx_interface_method_find(cgxIFace C.cgx_interface, methodNamePtr *C.cchar_
 		res.error = Errorf("type %s.%s has no method %s", packageName, typeName, methodName)
 		return
 	}
-	res.function = (C.cgx_function)(wrap[*functionHandle](newFunctionHandle(iface.pkg, method)))
+	methodDecl, isDecl := method.(*ir.FuncDecl)
+	if !isDecl {
+		typeName := iface.typ.Name()
+		res.error = Errorf("method %s.%s is builtin", typeName, methodName)
+		return
+	}
+	res.function = (C.cgx_function)(wrap[*core.FuncCache](iface.pkg.NewCacheFromFunc(methodDecl)))
 	return
 }
 
@@ -864,12 +836,16 @@ func cgx_interface_package_name(cgxIFace C.cgx_interface) *C.cchar_t {
 //export cgx_interface_list_methods
 func cgx_interface_list_methods(cgxIFace C.cgx_interface) C.struct_cgx_list_functions_result {
 	iface := unwrap[*interfaceHandle](cgxIFace)
-	var funcs []*functionHandle
+	var funcs []*core.FuncCache
 	for _, fn := range iface.typ.Methods {
 		if !ir.IsExported(fn.Name()) {
 			continue
 		}
-		funcs = append(funcs, newFunctionHandle(iface.pkg, fn))
+		methodDecl, isDecl := fn.(*ir.FuncDecl)
+		if !isDecl {
+			continue
+		}
+		funcs = append(funcs, iface.pkg.NewCacheFromFunc(methodDecl))
 	}
 	return C.struct_cgx_list_functions_result{
 		funcs:         (*C.cgx_function)(handle.PinSliceData(handle.WrapSlice(funcs))),

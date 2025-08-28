@@ -87,7 +87,7 @@ func BuildHandleFor(dev *api.Device, opts ...options.PackageOptionFactory) (*Pac
 	if err != nil {
 		return nil, err
 	}
-	return BuildFromIR(pkg, dev, opts), nil
+	return BuildFromIR(pkg, dev, opts)
 }
 
 // Factory create new instance of types used in the package.
@@ -123,27 +123,34 @@ type Package struct {
 }
 
 // BuildFromIR builds a package for a device once it has been loaded.
-func BuildFromIR(irPkg *core.Package, dev *api.Device, optionFactories []options.PackageOptionFactory) *PackageHandle {
+func BuildFromIR(irPkg *core.Package, dev *api.Device, optionFactories []options.PackageOptionFactory) (*PackageHandle, error) {
 	pkg := &Package{}
 	pkg.handle.IR = irPkg
 	pkg.handle.Package = pkg
 	pkg.handle.Factory = &Factory{Package: pkg}
 	pkg.handle.PackageCompileSetup = irPkg.Setup(dev, optionFactories)
 	// Build dependencies.
+	var err error
 {{ range $dep := .Dependencies -}}
-	pkg.handle.{{$dep.ImportName}} = core.BuildDep[*{{$dep.ImportName}}.PackageHandle](
+	pkg.handle.{{$dep.ImportName}}, err = core.BuildDep[*{{$dep.ImportName}}.PackageHandle](
 		pkg.handle.PackageCompileSetup,
 		{{$dep.Index}},
 		{{$dep.ImportName}}.BuildFromIR,
 	)
+	if err != nil {
+		return nil, err
+	}
 {{end}}
 
 	// Initialise function and method caches.
 {{ range $fn := .FunctionsAndMethods -}}
-	pkg.cache{{$fn.RecvTypeName}}{{$fn.Name}} = pkg.handle.NewCache("{{$fn.RecvTypeName}}", "{{$fn.Name}}")
+	pkg.cache{{$fn.RecvTypeName}}{{$fn.Name}}, err = pkg.handle.NewCache("{{$fn.RecvTypeName}}", "{{$fn.Name}}")
+	if err != nil {
+		return nil, err
+	}
 {{end}}
 
-	return &pkg.handle
+	return &pkg.handle, err
 }
 
 {{.PkgVars}}

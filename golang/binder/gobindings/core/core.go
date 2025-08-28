@@ -44,7 +44,7 @@ func NewPackage(pkg builder.Package, deps []*Package) *Package {
 }
 
 // BuildPackage builds a package given its path and a runtime.
-func BuildPackage(bld builder.Builder, pkgPath string) (*Package, error) {
+func BuildPackage(bld *builder.Builder, pkgPath string) (*Package, error) {
 	pkg, err := bld.Build(pkgPath)
 	if err != nil {
 		return nil, err
@@ -65,7 +65,6 @@ func (pkg *Package) Tracer() trace.Callback {
 // PackageCompileSetup has all package level data to compile functions.
 type PackageCompileSetup struct {
 	pkg    *Package
-	irPkg  *ir.Package
 	device *api.Device
 
 	optionFactories []options.PackageOptionFactory
@@ -76,7 +75,6 @@ type PackageCompileSetup struct {
 func (pkg *Package) Setup(dev *api.Device, optionFactories []options.PackageOptionFactory) *PackageCompileSetup {
 	s := &PackageCompileSetup{
 		pkg:    pkg,
-		irPkg:  pkg.pkg.IR(),
 		device: dev,
 	}
 	s.AppendOptions(optionFactories...)
@@ -88,8 +86,18 @@ func (s *PackageCompileSetup) Device() *api.Device {
 	return s.device
 }
 
+// IR returns the intermediate representation of the package.
+func (s *PackageCompileSetup) IR() *ir.Package {
+	return s.pkg.pkg.IR()
+}
+
+// Package used by the setup.
+func (s *PackageCompileSetup) Package() *Package {
+	return s.pkg
+}
+
 // BuildDep builds a dependency.
-func BuildDep[T any](setup *PackageCompileSetup, at int, builder func(*Package, *api.Device, []options.PackageOptionFactory) T) T {
+func BuildDep[T any](setup *PackageCompileSetup, at int, builder func(*Package, *api.Device, []options.PackageOptionFactory) (T, error)) (T, error) {
 	return builder(setup.pkg.deps[at], setup.device, setup.optionFactories)
 }
 
@@ -108,61 +116,64 @@ func (s *PackageCompileSetup) AppendOptions(optionFactories ...options.PackageOp
 
 // FuncCache provides a compilation cache for a function.
 type FuncCache struct {
-	setup            *PackageCompileSetup
-	recvName, fnName string
+	setup *PackageCompileSetup
+	fn    *ir.FuncDecl
 
 	runner   tracer.CompiledFunc
 	err      error
 	initOnce sync.Once
 }
 
-// NewCache returns a new function cache given a package compilation setup.
-func (s *PackageCompileSetup) NewCache(recvName, fnName string) *FuncCache {
-	return &FuncCache{setup: s, recvName: recvName, fnName: fnName}
-}
-
-func (c *FuncCache) findFunction() (*ir.FuncDecl, error) {
-	pkg := c.setup.irPkg
-	fn := pkg.FindFunc(c.fnName)
+func findFunction(pkg *ir.Package, fnName string) (*ir.FuncDecl, error) {
+	fn := pkg.FindFunc(fnName)
 	if fn == nil {
-		return nil, errors.Errorf("package %s has no function %s", pkg.Name.Name, c.fnName)
+		return nil, errors.Errorf("function %s not found in package %s", fnName, pkg.Name.Name)
 	}
 	fDecl, ok := fn.(*ir.FuncDecl)
 	if !ok {
-		return nil, errors.Errorf("cannot compile function %s in package %s: incorrect type %T", c.fnName, pkg.FullName(), fn)
+		return nil, errors.Errorf("cannot compile function %s in package %s: incorrect type %T", fnName, pkg.FullName(), fn)
 	}
 	return fDecl, nil
 }
 
-func (c *FuncCache) findMethod() (*ir.FuncDecl, error) {
-	pkg := c.setup.irPkg
-	nType := pkg.Decls.TypeByName(c.recvName)
+func findMethod(pkg *ir.Package, recvName, fnName string) (*ir.FuncDecl, error) {
+	nType := pkg.Decls.TypeByName(recvName)
 	if nType == nil {
-		return nil, errors.Errorf("package %s has no type %s", pkg.Name.Name, c.recvName)
+		return nil, errors.Errorf("package %s has no type %s", pkg.Name.Name, recvName)
 	}
-	fn := nType.MethodByName(c.fnName)
+	fn := nType.MethodByName(fnName)
 	if fn == nil {
-		return nil, errors.Errorf("type %s.%s has no method %s", pkg.Name.Name, c.recvName, c.fnName)
+		return nil, errors.Errorf("type %s.%s has no method %s", pkg.Name.Name, recvName, fnName)
 	}
 	fDecl, ok := fn.(*ir.FuncDecl)
 	if !ok {
-		return nil, errors.Errorf("cannot compile method %s.%s in package %s: incorrect type %T", c.recvName, c.fnName, pkg.Name.Name, fn)
+		return nil, errors.Errorf("cannot compile method %s.%s in package %s: incorrect type %T", recvName, fnName, pkg.Name.Name, fn)
 	}
 	return fDecl, nil
 }
 
-func (c *FuncCache) buildRunner(recv values.Value, args []values.Value) (tracer.CompiledFunc, error) {
+// NewCache returns a new function cache given a package compilation setup.
+func (s *PackageCompileSetup) NewCache(recvName, fnName string) (*FuncCache, error) {
 	var fn *ir.FuncDecl
 	var err error
-	if c.recvName != "" {
-		fn, err = c.findMethod()
+	if recvName != "" {
+		fn, err = findMethod(s.IR(), recvName, fnName)
 	} else {
-		fn, err = c.findFunction()
+		fn, err = findFunction(s.IR(), fnName)
 	}
 	if err != nil {
 		return nil, err
 	}
-	runner, err := tracer.Trace(c.setup.device, fn, recv, args, c.setup.opts)
+	return s.NewCacheFromFunc(fn), nil
+}
+
+// NewCacheFromFunc returns a runner cache given a function.
+func (s *PackageCompileSetup) NewCacheFromFunc(fn *ir.FuncDecl) *FuncCache {
+	return &FuncCache{setup: s, fn: fn}
+}
+
+func (c *FuncCache) buildRunner(recv values.Value, args []values.Value) (tracer.CompiledFunc, error) {
+	runner, err := tracer.Trace(c.setup.device, c.fn, recv, args, c.setup.opts)
 	if err != nil {
 		return nil, err
 	}
@@ -176,4 +187,9 @@ func (c *FuncCache) Runner(recv values.Value, args []values.Value) (tracer.Compi
 		c.runner, c.err = c.buildRunner(recv, args)
 	})
 	return c.runner, c.err
+}
+
+// Func returns the function being cached.
+func (c *FuncCache) Func() ir.Func {
+	return c.fn
 }
