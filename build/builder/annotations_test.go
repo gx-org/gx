@@ -29,13 +29,19 @@ import (
 	"github.com/gx-org/gx/interp"
 )
 
-type tagger struct {
-	cpevelements.CoreMacroElement
-	fn  ir.PkgFunc
-	tag string
-}
+type (
+	tagAnnotation ir.AnnotationT[string]
+
+	tagger struct {
+		cpevelements.CoreMacroElement
+		fn  ir.PkgFunc
+		tag string
+	}
+)
 
 var _ cpevelements.FuncAnnotator = (*tagger)(nil)
+
+const tagKey = "annotation:TAG"
 
 func buildTagger(call elements.CallAt, macro *cpevelements.Macro, args []ir.Element) (cpevelements.MacroElement, error) {
 	fn, ok := args[0].(ir.PkgFunc)
@@ -59,11 +65,7 @@ func buildTagger(call elements.CallAt, macro *cpevelements.Macro, args []ir.Elem
 }
 
 func (m *tagger) Annotate(fetcher ir.Fetcher, fn ir.PkgFunc) bool {
-	fn.Annotations().Append(
-		m.Macro().Func().File().Package,
-		"TAG",
-		m.tag,
-	)
+	fn.Annotations().Set(ir.NewAnnotation(tagKey, m.tag))
 	return true
 }
 
@@ -91,7 +93,7 @@ func (m *macroBuildReturn) BuildBody(fetcher ir.Fetcher, fn ir.Func) (*ast.Block
 		&ast.ReturnStmt{Results: []ast.Expr{
 			&ast.BasicLit{
 				Kind:  token.STRING,
-				Value: m.tagFn.Annotations().Anns[0].Value().(string),
+				Value: ir.AnnotationFrom[string](m.tagFn, tagKey).Value(),
 			},
 		}},
 	}}, nil, true
@@ -139,11 +141,9 @@ func f() int32 {
 							},
 						},
 					),
-					Anns: ir.Annotations{
-						Anns: []*ir.Annotation{
-							ir.NewAnnotation("annotation:TAG", "Hello"),
-						},
-					},
+					Anns: irh.Annotations(
+						ir.NewAnnotation("annotation:TAG", "Hello"),
+					),
 				},
 			},
 		},
@@ -171,12 +171,10 @@ func f() int32 {
 							},
 						},
 					),
-					Anns: ir.Annotations{
-						Anns: []*ir.Annotation{
-							ir.NewAnnotation("annotation:TAG", "Hello"),
-							ir.NewAnnotation("annotation:TAG", "Bonjour"),
-						},
-					},
+					Anns: irh.Annotations(
+						ir.NewAnnotation("annotation:TAG", "Hello"),
+						ir.NewAnnotation("annotation:TAG", "Bonjour"),
+					),
 				},
 			},
 		},
@@ -196,13 +194,11 @@ func f() int32
 						irh.Fields(),
 						irh.Fields(ir.Int32Type()),
 					),
-					Anns: ir.Annotations{
-						Anns: []*ir.Annotation{
-							ir.NewAnnotation("annotation:TAG", "Hello"),
-							ir.NewAnnotation("annotation:TAG", "Bonjour"),
-							ir.NewAnnotation("annotation:TAG", "f"),
-						},
-					},
+					Anns: irh.Annotations(
+						ir.NewAnnotation("annotation:TAG", "Hello"),
+						ir.NewAnnotation("annotation:TAG", "Bonjour"),
+						ir.NewAnnotation("annotation:TAG", "f"),
+					),
 				},
 			},
 		},
@@ -223,11 +219,9 @@ func f() int32
 						irh.Fields(),
 						irh.Fields(ir.Int32Type()),
 					),
-					Anns: ir.Annotations{
-						Anns: []*ir.Annotation{
-							ir.NewAnnotation("annotation:TAG", "Source"),
-						},
-					},
+					Anns: irh.Annotations(
+						ir.NewAnnotation("annotation:TAG", "Source"),
+					),
 				},
 				&ir.FuncDecl{
 					FType: irh.FuncType(

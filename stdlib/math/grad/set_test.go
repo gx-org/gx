@@ -94,3 +94,92 @@ func gradF(x float32) float32 {
 		},
 	)
 }
+
+func TestSetFor(t *testing.T) {
+	testbuild.Run(t,
+		declareGradPackage,
+		testgrad.Func{
+			Src: `
+func gradOfGx(x, y float32) float32 {
+	return x
+}
+
+func gradOfGy(x, y float32) float32 {
+	return y
+}
+
+//gx:@grad.SetFor(gradOfGx, "x")
+//gx:@grad.SetFor(gradOfGy, "y")
+func F(x, y float32) float32 {
+	return x	
+}
+`,
+			Want: `
+func gradF(x, y float32) float32 {
+	return gradOfGx(x, y)
+}
+`,
+		},
+		testgrad.Func{
+			WRT: "y",
+			Src: `
+func gradOfGx(x, y float32) float32 {
+	return x
+}
+
+func gradOfGy(x, y float32) float32 {
+	return y
+}
+
+//gx:@grad.SetFor(gradOfGx, "x")
+//gx:@grad.SetFor(gradOfGy, "y")
+func F(x, y float32) float32 {
+	return x	
+}
+`,
+			Want: `
+func gradF(x, y float32) float32 {
+	return gradOfGy(x, y)
+}
+`,
+		},
+	)
+}
+
+func TestSetErrors(t *testing.T) {
+	testbuild.Run(t,
+		declareGradPackage,
+		testgrad.Func{
+			Src: `
+func g(x float64) float32
+
+//gx:@grad.Set(g)
+func F(x, y float32) float32
+`,
+			Err: "cannot set gradient of F: requires a single argument",
+		},
+		testgrad.Func{
+			Src: `
+func gradOfF(x, y float32) float32
+
+//gx:@grad.SetFor(gradOfF, "z")
+func F(x, y float32) float32 {
+	return x	
+}
+`,
+			Err: "function F has no parameter z",
+		},
+		testgrad.Func{
+			Src: `
+func gradOfF(x, y float32) float32
+
+//gx:@grad.SetFor(gradOfF, "x")
+//gx:@grad.SetFor(gradOfF, "x")
+func F(x, y float32) float32 {
+	return x	
+}
+`,
+			Err: "gradient for parameter x has already been set",
+		},
+	)
+}

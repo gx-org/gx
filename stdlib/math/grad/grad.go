@@ -41,6 +41,7 @@ var Package = builtin.PackageBuilder{
 		builtin.ParseSource(&fs),
 		builtin.RegisterMacro("Func", FuncGrad),
 		builtin.RegisterMacro("Set", SetGrad),
+		builtin.RegisterMacro("SetFor", SetGradFor),
 	},
 }
 
@@ -133,15 +134,19 @@ func (m *gradMacro) BuildDecl() (*ast.FuncDecl, bool) {
 	return fDecl, true
 }
 
-func (m *gradMacro) buildBodyFromSetAnnotation(fetcher ir.Fetcher, fn ir.Func, ann *ir.Annotation) (*ast.BlockStmt, []*cpevelements.SyntheticFuncDecl, bool) {
+func (m *gradMacro) buildBodyFromSetAnnotation(fetcher ir.Fetcher, fn ir.Func, ann *setAnnotation) (*ast.BlockStmt, []*cpevelements.SyntheticFuncDecl, bool) {
 	params := fn.FuncType().Params.Fields()
 	args := make([]ast.Expr, len(params))
 	for i, param := range params {
 		args[i] = param.Name
 	}
+	identToGradFunc, ok := gradFromAnnotation(fetcher, fn, ann, m.wrt.name())
+	if !ok {
+		return nil, nil, false
+	}
 	return &ast.BlockStmt{List: []ast.Stmt{&ast.ReturnStmt{
 		Results: []ast.Expr{&ast.CallExpr{
-			Fun:  &ast.Ident{Name: ann.Value().(ir.Func).Name()},
+			Fun:  identToGradFunc,
 			Args: args,
 		}},
 	}}}, nil, true

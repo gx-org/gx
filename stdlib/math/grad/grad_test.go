@@ -37,6 +37,8 @@ var declareGradPackage = testbuild.DeclarePackage{
 		irFunc.BuildSynthetic = cpevelements.MacroImpl(grad.FuncGrad)
 		irSet := pkg.FindFunc("Set").(*ir.Macro)
 		irSet.BuildSynthetic = cpevelements.MacroImpl(grad.SetGrad)
+		irSetFor := pkg.FindFunc("SetFor").(*ir.Macro)
+		irSetFor.BuildSynthetic = cpevelements.MacroImpl(grad.SetGradFor)
 	},
 }
 

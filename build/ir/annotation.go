@@ -14,47 +14,75 @@
 
 package ir
 
+import (
+	"fmt"
+	"maps"
+	"slices"
+)
+
 type (
 	// Annotations maps key to annotation value.
 	Annotations struct {
-		Anns []*Annotation
+		anns map[string]Annotation
 	}
 
-	// Annotation is a key pointing to some data.
-	Annotation struct {
+	// Annotation is meta data associated to a key and a IR element (typically functions).
+	Annotation interface {
+		Key() string
+	}
+
+	// AnnotationT is a key pointing to some data.
+	AnnotationT[T any] struct {
 		// Key used to identify the annotation.
 		key string
 		// Value of the annotation.
-		value any
+		value T
 	}
 )
 
-// Append a new annotation to the slice of annotation.
-func (anns *Annotations) Append(pkg *Package, key string, value any) {
-	anns.AppendAnn(NewAnnotation(pkg.FullName()+":"+key, value))
+// Set an annotation using its key.
+func (anns *Annotations) Set(ann Annotation) {
+	if anns.anns == nil {
+		anns.anns = make(map[string]Annotation)
+	}
+	anns.anns[ann.Key()] = ann
 }
 
-// AppendAnn appends an annotation already constructed.
-func (anns *Annotations) AppendAnn(ann *Annotation) {
-	anns.Anns = append(anns.Anns, ann)
+// Get an annotation given its key. Returns nil if the annotation is not present.
+func (anns *Annotations) Get(key string) Annotation {
+	return anns.anns[key]
+}
+
+// String representation of the annotations.
+func (anns *Annotations) String() string {
+	return fmt.Sprint(slices.Collect(maps.Keys(anns.anns)))
 }
 
 // NewAnnotation creates a new annotation.
 // This function is mostly used for tests.
 // Prefer Annotations.Append instead.
-func NewAnnotation(key string, val any) *Annotation {
-	return &Annotation{
+func NewAnnotation[T any](key string, val T) *AnnotationT[T] {
+	return &AnnotationT[T]{
 		key:   key,
 		value: val,
 	}
 }
 
 // Key of the annotation.
-func (ann *Annotation) Key() string {
+func (ann *AnnotationT[T]) Key() string {
 	return ann.key
 }
 
 // Value of the annotation.
-func (ann *Annotation) Value() any {
+func (ann *AnnotationT[T]) Value() T {
 	return ann.value
+}
+
+// AnnotationFrom returns an annotation given its key.
+func AnnotationFrom[T any](f PkgFunc, key string) *AnnotationT[T] {
+	ann := f.Annotations().Get(key)
+	if ann == nil {
+		return nil
+	}
+	return ann.(*AnnotationT[T])
 }

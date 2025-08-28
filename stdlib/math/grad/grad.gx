@@ -7,3 +7,7 @@ func Func(orig any, fn any, wrtArg string) any
 // Set the gradient of a GX function.
 // gx:irmacro
 func Set(orig any, gradF any) any
+
+// SetFor sets the gradient of a GX function with respect to a specific parameter, identified by its name.
+// gx:irmacro
+func SetFor(orig any, gradF any, parameter string) any
