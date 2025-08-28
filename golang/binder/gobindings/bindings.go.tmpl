@@ -55,25 +55,25 @@ var (
 )
 
 // Load the package for a given runtime.
-func Load(rtm *api.Runtime) (*core.PackageIR, error) {
+func Load(rtm *api.Runtime) (*core.Package, error) {
 	bpkg, err := rtm.Builder().Build("{{.Package.FullName}}")
 	if err != nil {
 		return nil, err
 	}
-	deps := make([]*core.PackageIR, {{.NumDeps}})
+	deps := make([]*core.Package, {{.NumDeps}})
 {{ range $dep := .Dependencies -}}
 	deps[{{$dep.Index}}], err = {{$dep.ImportName}}.Load(rtm)
 	if err != nil {
 		return nil, err
 	}
 {{end -}}
-	return core.NewPackageIR(rtm, bpkg.IR(), deps), nil
+	return core.NewPackage(bpkg, deps), nil
 }
 
 // BuildFor loads the GX package {{.Package.FullName}}
 // then returns that package for a given device and options.
-func BuildFor(dev *api.Device, options ...options.PackageOptionFactory) (*Package, error) {
-	pkgHandle, err := BuildHandleFor(dev, options...)
+func BuildFor(dev *api.Device, opts ...options.PackageOptionFactory) (*Package, error) {
+	pkgHandle, err := BuildHandleFor(dev, opts...)
 	if err != nil {
 		return nil, err
 	}
@@ -82,12 +82,12 @@ func BuildFor(dev *api.Device, options ...options.PackageOptionFactory) (*Packag
 
 // BuildHandleFor loads the GX package {{.Package.FullName}}
 // then returns that package for a given device and options.
-func BuildHandleFor(dev *api.Device, options ...options.PackageOptionFactory) (*PackageHandle, error) {
+func BuildHandleFor(dev *api.Device, opts ...options.PackageOptionFactory) (*PackageHandle, error) {
 	pkg, err := Load(dev.Runtime())
 	if err != nil {
 		return nil, err
 	}
-	return BuildFromIR(pkg, dev, pkg.ProcessOptions(options)), nil
+	return BuildFromIR(pkg, dev, opts), nil
 }
 
 // Factory create new instance of types used in the package.
@@ -101,7 +101,7 @@ type Factory struct {
 // PackageHandle provides utility functions for the package.
 type PackageHandle struct {
 	*core.PackageCompileSetup
-	IR *core.PackageIR
+	IR *core.Package
 	Factory *Factory
 	Package *Package
 
@@ -123,12 +123,12 @@ type Package struct {
 }
 
 // BuildFromIR builds a package for a device once it has been loaded.
-func BuildFromIR(irPkg *core.PackageIR, dev *api.Device, options []options.PackageOption) *PackageHandle {
+func BuildFromIR(irPkg *core.Package, dev *api.Device, optionFactories []options.PackageOptionFactory) *PackageHandle {
 	pkg := &Package{}
 	pkg.handle.IR = irPkg
 	pkg.handle.Package = pkg
 	pkg.handle.Factory = &Factory{Package: pkg}
-	pkg.handle.PackageCompileSetup = irPkg.Setup(dev, options)
+	pkg.handle.PackageCompileSetup = irPkg.Setup(dev, optionFactories)
 	// Build dependencies.
 {{ range $dep := .Dependencies -}}
 	pkg.handle.{{$dep.ImportName}} = core.BuildDep[*{{$dep.ImportName}}.PackageHandle](

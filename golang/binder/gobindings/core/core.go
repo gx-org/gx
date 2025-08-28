@@ -24,55 +24,63 @@ import (
 	"github.com/gx-org/gx/api/trace"
 	"github.com/gx-org/gx/api/tracer"
 	"github.com/gx-org/gx/api/values"
+	"github.com/gx-org/gx/build/builder"
 	"github.com/gx-org/gx/build/ir"
 )
 
-// PackageIR is the GX package intermediate representation
-// built for a given runtime, but not yet for a specific device.
+// Package is a handler to a package and its dependencies.
 //
-// PackageIR is constructed by loading a package from its path.
-type PackageIR struct {
-	runtime *api.Runtime
-	pkg     *ir.Package
-	tracer  trace.Callback
+// Package is constructed by loading a package from its path.
+type Package struct {
+	pkg    builder.Package
+	tracer trace.Callback
 
-	deps []*PackageIR
+	deps []*Package
 }
 
-// NewPackageIR returns a GX loaded package.
-func NewPackageIR(rtm *api.Runtime, pkg *ir.Package, deps []*PackageIR) *PackageIR {
-	return &PackageIR{runtime: rtm, pkg: pkg, deps: deps}
+// NewPackage returns a GX loaded package.
+func NewPackage(pkg builder.Package, deps []*Package) *Package {
+	return &Package{pkg: pkg, deps: deps}
+}
+
+// BuildPackage builds a package given its path and a runtime.
+func BuildPackage(bld builder.Builder, pkgPath string) (*Package, error) {
+	pkg, err := bld.Build(pkgPath)
+	if err != nil {
+		return nil, err
+	}
+	return NewPackage(pkg, nil), nil
 }
 
 // Package returns the IR package.
-func (pkg *PackageIR) Package() *ir.Package {
-	return pkg.pkg
+func (pkg *Package) Package() *ir.Package {
+	return pkg.pkg.IR()
 }
 
 // Tracer returns the tracer used by the package.
-func (pkg *PackageIR) Tracer() trace.Callback {
+func (pkg *Package) Tracer() trace.Callback {
 	return pkg.tracer
 }
 
 // PackageCompileSetup has all package level data to compile functions.
 type PackageCompileSetup struct {
-	irPkg   *PackageIR
-	device  *api.Device
-	options []options.PackageOption
+	pkg    *Package
+	irPkg  *ir.Package
+	device *api.Device
+
+	optionFactories []options.PackageOptionFactory
+	opts            []options.PackageOption
 }
 
 // Setup returns a package handle for a device and a set of options.
-func (pkg *PackageIR) Setup(dev *api.Device, opts []options.PackageOption) *PackageCompileSetup {
-	return &PackageCompileSetup{
-		irPkg:   pkg,
-		device:  dev,
-		options: opts,
+func (pkg *Package) Setup(dev *api.Device, optionFactories []options.PackageOptionFactory) *PackageCompileSetup {
+	s := &PackageCompileSetup{
+		pkg:    pkg,
+		irPkg:  pkg.pkg.IR(),
+		device: dev,
 	}
-}
-
-// ProcessOptions processes compiling options.
-func (pkg *PackageIR) ProcessOptions(optionFactories []options.PackageOptionFactory) []options.PackageOption {
-	return options.Process(pkg.runtime.Backend().Platform(), optionFactories)
+	s.AppendOptions(optionFactories...)
+	return s
 }
 
 // Device returns the device of the compile setup.
@@ -81,19 +89,21 @@ func (s *PackageCompileSetup) Device() *api.Device {
 }
 
 // BuildDep builds a dependency.
-func BuildDep[T any](setup *PackageCompileSetup, at int, builder func(*PackageIR, *api.Device, []options.PackageOption) T) T {
-	return builder(setup.irPkg.deps[at], setup.device, setup.options)
+func BuildDep[T any](setup *PackageCompileSetup, at int, builder func(*Package, *api.Device, []options.PackageOptionFactory) T) T {
+	return builder(setup.pkg.deps[at], setup.device, setup.optionFactories)
 }
 
 // Tracer returns the tracer that has been set.
 // Can return nil.
 func (s *PackageCompileSetup) Tracer() trace.Callback {
-	return s.irPkg.tracer
+	return s.pkg.tracer
 }
 
 // AppendOptions returns the set of options used for compilation.
-func (s *PackageCompileSetup) AppendOptions(options ...options.PackageOptionFactory) {
-	s.options = append(s.options, s.irPkg.ProcessOptions(options)...)
+func (s *PackageCompileSetup) AppendOptions(optionFactories ...options.PackageOptionFactory) {
+	plat := s.device.PlatformDevice().Platform()
+	s.optionFactories = append(s.optionFactories, optionFactories...)
+	s.opts = options.Process(plat, optionFactories)
 }
 
 // FuncCache provides a compilation cache for a function.
@@ -112,7 +122,7 @@ func (s *PackageCompileSetup) NewCache(recvName, fnName string) *FuncCache {
 }
 
 func (c *FuncCache) findFunction() (*ir.FuncDecl, error) {
-	pkg := c.setup.irPkg.pkg
+	pkg := c.setup.irPkg
 	fn := pkg.FindFunc(c.fnName)
 	if fn == nil {
 		return nil, errors.Errorf("package %s has no function %s", pkg.Name.Name, c.fnName)
@@ -125,7 +135,7 @@ func (c *FuncCache) findFunction() (*ir.FuncDecl, error) {
 }
 
 func (c *FuncCache) findMethod() (*ir.FuncDecl, error) {
-	pkg := c.setup.irPkg.pkg
+	pkg := c.setup.irPkg
 	nType := pkg.Decls.TypeByName(c.recvName)
 	if nType == nil {
 		return nil, errors.Errorf("package %s has no type %s", pkg.Name.Name, c.recvName)
@@ -152,7 +162,7 @@ func (c *FuncCache) buildRunner(recv values.Value, args []values.Value) (tracer.
 	if err != nil {
 		return nil, err
 	}
-	runner, err := tracer.Trace(c.setup.device, fn, recv, args, c.setup.options)
+	runner, err := tracer.Trace(c.setup.device, fn, recv, args, c.setup.opts)
 	if err != nil {
 		return nil, err
 	}
