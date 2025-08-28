@@ -292,6 +292,18 @@ func cgx_package_append_option(cgxPackage C.cgx_package, cgxOption C.cgx_package
 	cpkg.AppendOptions(copt.opt)
 }
 
+//export cgx_package_set_variable
+func cgx_package_set_variable(cgxPackage C.cgx_package, varNamePtr *C.cchar_t, cgxValue C.cgx_value) {
+	cpkg := unwrap[*core.PackageCompileSetup](cgxPackage)
+	cpkg.AppendOptions(func(plat platform.Platform) options.PackageOption {
+		return options.PackageVarSetValue{
+			Pkg:   cpkg.IR().FullName(),
+			Var:   C.GoString(varNamePtr),
+			Value: unwrap[values.Value](cgxValue),
+		}
+	})
+}
+
 //export cgx_package_list_statics
 func cgx_package_list_statics(cgxPackage C.cgx_package) C.struct_cgx_list_statics_result {
 	cpkg := unwrap[*core.PackageCompileSetup](cgxPackage)

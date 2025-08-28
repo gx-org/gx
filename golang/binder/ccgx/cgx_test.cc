@@ -149,6 +149,16 @@ TEST_F(cgx, PackageListFunctions) {
   cgx_release_reference(pr.package);
 }
 
+TEST_F(cgx, PackageSetStaticVars) {
+  struct build_result pr(BuildPackage(kPkgVarsPackage));
+  CGX_ASSERT_OK(pr.error);
+
+  // Note that no error checking is done (the value does not have to match the
+  // target variable's type) yet, so an empty value is fine here.
+  cgx_package_set_variable(pr.package, "Var1", cgx_value{});
+  cgx_release_reference(pr.package);
+}
+
 TEST_F(cgx, PackageListStaticVars) {
   struct build_result pr(BuildPackage(kPkgVarsPackage));
   CGX_ASSERT_OK(pr.error);
@@ -286,6 +296,31 @@ TEST_F(cgx, RunFunction_ReturnMultiple) {
   cgx_release_references(rr.values, rr.value_size);
   cgx_free_function_run_result(&rr);
   cgx_release_reference(fr.function);
+  cgx_release_reference(pr.package);
+}
+
+TEST_F(cgx, RunFunction_ReturnStaticVar) {
+  struct build_result pr(BuildPackage(kPkgVarsPackage));
+  CGX_ASSERT_OK(pr.error);
+
+  const auto var1_vr = cgx_value_new_int32(device(), 42);
+  CGX_ASSERT_OK(var1_vr.error);
+  cgx_package_set_variable(pr.package, "Var1", var1_vr.value);
+
+  const auto fr = cgx_function_find(pr.package, "ReturnVar1");
+  CGX_ASSERT_OK(fr.error);
+
+  auto rr = cgx_function_run(fr.function, cgx_value{}, 0, nullptr);
+  CGX_ASSERT_OK(rr.error);
+
+  ASSERT_EQ(rr.value_size, 1);
+  ASSERT_EQ(cgx_value_kind_of(rr.values[0]), CGX_INT32);
+  EXPECT_EQ(cgx_value_get_int32(rr.values[0]), 42);
+
+  cgx_release_references(rr.values, rr.value_size);
+  cgx_free_function_run_result(&rr);
+  cgx_release_reference(fr.function);
+  cgx_release_reference(var1_vr.value);
   cgx_release_reference(pr.package);
 }
 
