@@ -48,6 +48,13 @@ struct cgx_device_get_result {
 	cgx_error error;
 };
 
+// cgx_list_statics_result is the return value when listing static variables of a package.
+struct cgx_list_statics_result {
+	cgx_package_static* statics;
+	int num_statics;
+	cgx_error error;
+};
+
 // cgx_list_functions_result is the return value when listing functions of a GX element.
 struct cgx_list_functions_result {
 	cgx_function* funcs;
@@ -278,11 +285,39 @@ type packageOption struct {
 	opt options.PackageOptionFactory
 }
 
-//export cgx_package_set_option
-func cgx_package_set_option(cgxPackage C.cgx_package, cgxOption C.cgx_package_option) {
+//export cgx_package_append_option
+func cgx_package_append_option(cgxPackage C.cgx_package, cgxOption C.cgx_package_option) {
 	cpkg := unwrap[*core.PackageCompileSetup](cgxPackage)
 	copt := unwrap[*packageOption](cgxOption)
 	cpkg.AppendOptions(copt.opt)
+}
+
+//export cgx_package_list_statics
+func cgx_package_list_statics(cgxPackage C.cgx_package) C.struct_cgx_list_statics_result {
+	cpkg := unwrap[*core.PackageCompileSetup](cgxPackage)
+	var statics []*ir.VarExpr
+	for _, vars := range cpkg.IR().Decls.Vars {
+		for _, vr := range vars.Exprs {
+			statics = append(statics, vr)
+		}
+	}
+	return C.struct_cgx_list_statics_result{
+		statics:     (*C.cgx_function)(handle.PinSliceData(handle.WrapSlice(statics))),
+		num_statics: C.int(len(statics)),
+	}
+}
+
+//export cgx_static_name
+func cgx_static_name(cgxStatic C.cgx_package_static) *C.cchar_t {
+	vr := unwrap[*ir.VarExpr](cgxStatic)
+	return C.CString(vr.VName.Name)
+}
+
+//export cgx_free_list_statics_result
+func cgx_free_list_statics_result(res *C.struct_cgx_list_statics_result) {
+	handle.UnpinSliceData(unsafe.Pointer(res.statics))
+	res.statics = nil
+	res.num_statics = 0
 }
 
 //export cgx_package_list_functions
@@ -302,17 +337,17 @@ func cgx_package_list_functions(cgxPackage C.cgx_package) C.struct_cgx_list_func
 	}
 }
 
-//export cgx_package_get_ir
-func cgx_package_get_ir(cgxPackage C.cgx_package) C.cgx_package_ir {
-	cpkg := unwrap[*core.PackageCompileSetup](cgxPackage)
-	return (C.cgx_package_ir)(wrap[*core.Package](cpkg.Package()))
-}
-
 //export cgx_free_list_functions_result
 func cgx_free_list_functions_result(res *C.struct_cgx_list_functions_result) {
 	handle.UnpinSliceData(unsafe.Pointer(res.funcs))
 	res.funcs = nil
 	res.num_functions = 0
+}
+
+//export cgx_package_get_ir
+func cgx_package_get_ir(cgxPackage C.cgx_package) C.cgx_package_ir {
+	cpkg := unwrap[*core.PackageCompileSetup](cgxPackage)
+	return (C.cgx_package_ir)(wrap[*core.Package](cpkg.Package()))
 }
 
 //export cgx_interface_find

@@ -31,6 +31,8 @@ static constexpr char kBasicPackage[] =
     "github.com/gx-org/gx/tests/bindings/basic";
 static constexpr char kParametersPackage[] =
     "github.com/gx-org/gx/tests/bindings/parameters";
+static constexpr char kPkgVarsPackage[] =
+    "github.com/gx-org/gx/tests/bindings/pkgvars";
 
 std::string FromHeapCString(const char* cstr) {
   const std::string result(cstr);
@@ -143,6 +145,24 @@ TEST_F(cgx, PackageListFunctions) {
     cgx_release_reference(result.funcs[i]);
   }
   cgx_free_list_functions_result(&result);
+
+  cgx_release_reference(pr.package);
+}
+
+TEST_F(cgx, PackageListStaticVars) {
+  struct build_result pr(BuildPackage(kPkgVarsPackage));
+  CGX_ASSERT_OK(pr.error);
+
+  const char* wants[] = {"Var1", "Size"};
+  auto result = cgx_package_list_statics(pr.package);
+  CGX_ASSERT_OK(result.error);
+  ASSERT_EQ(result.num_statics, std::size(wants));
+  for (int i = 0; i < std::size(wants); i++) {
+    const std::string got = FromHeapCString(cgx_static_name(result.statics[i]));
+    EXPECT_EQ(got, wants[i]);
+    cgx_release_reference(result.statics[i]);
+  }
+  cgx_free_list_statics_result(&result);
 
   cgx_release_reference(pr.package);
 }
