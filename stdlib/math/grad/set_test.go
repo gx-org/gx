@@ -143,12 +143,42 @@ func gradF(x, y float32) float32 {
 }
 `,
 		},
+		testgrad.Func{
+			Src: `
+func g(float32) float32
+
+//gx:@grad.SetFor(g, "x")
+func F(x float32) float32 {
+	return x
+}`,
+			Want: `
+func gradF(x float32) float32 {
+	return g(x)
+}`,
+		},
 	)
 }
 
 func TestSetErrors(t *testing.T) {
 	testbuild.Run(t,
 		declareGradPackage,
+		testgrad.Func{
+			Src: `
+//gx:@grad.Set(missingGrad)
+func F(x float32) float32 {
+	return 42
+}`,
+			Err: "undefined: missingGrad",
+		},
+		testgrad.Func{
+			Src: `
+var v int32
+//gx:@grad.Set(v)
+func F(x float32) float32 {
+	return 42
+}`,
+			Err: "int32 is not a function",
+		},
 		testgrad.Func{
 			Src: `
 func g(x float64) float32
@@ -179,6 +209,17 @@ func F(x, y float32) float32 {
 	return x	
 }
 `,
+			Err: "gradient for parameter x has already been set",
+		},
+		testgrad.Func{
+			Src: `
+func g(float32) float32
+
+//gx:@grad.Set(g)
+//gx:@grad.SetFor(g, "x")
+func F(x float32) float32 {
+	return x
+}`,
 			Err: "gradient for parameter x has already been set",
 		},
 	)
