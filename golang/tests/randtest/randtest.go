@@ -142,6 +142,6 @@ func TestDeviceValueAsSeed(t *testing.T) {
 func setupTest(dev *api.Device) error {
 	var err error
 	randHandleGX, err = rand_go_gx.BuildHandleFor(dev)
-	randGX = randHandleGX.Package
+	randGX = randHandleGX.Factory.Package
 	return err
 }
