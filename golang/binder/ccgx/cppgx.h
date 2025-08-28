@@ -45,6 +45,7 @@ class Shape;
 class Value;
 class Struct;
 class Interface;
+class StaticVar;
 
 // Handle is a move-only wrapper class that manages cgx opaque handles. Each
 // handle has a single exclusive owner at any given time.
@@ -116,9 +117,21 @@ class Package {
   absl::StatusOr<Function> FindFunction(const std::string& name) const;
   absl::StatusOr<Interface> FindInterface(const std::string& name) const;
   absl::StatusOr<std::vector<Function>> ListFunctions() const;
+  absl::StatusOr<std::vector<StaticVar>> ListStaticVars() const;
 
  private:
   Handle<cgx_package> package_;
+};
+
+class StaticVar {
+ public:
+  StaticVar(cgx_package_static static_var) : static_var_(static_var) {}
+
+  cgx_package_static raw() const { return *static_var_; }
+  std::string name() const;
+
+ private:
+  Handle<cgx_package_static> static_var_;
 };
 
 class Function {

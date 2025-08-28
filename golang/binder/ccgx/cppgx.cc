@@ -161,6 +161,21 @@ absl::StatusOr<std::vector<Function>> Package::ListFunctions() const {
   return make_function_vector(&result);
 }
 
+absl::StatusOr<std::vector<StaticVar>> Package::ListStaticVars() const {
+  auto result = cgx_package_list_statics(*package_);
+  CPPGX_RETURN_IF_ERROR(result.error);
+  std::vector<StaticVar> vars(result.statics,
+                              result.statics + result.num_statics);
+  cgx_free_list_statics_result(&result);
+  return vars;
+}
+
+/* Static variables */
+
+std::string StaticVar::name() const {
+  return FromHeapCString(cgx_static_name(raw()));
+}
+
 /* Function */
 
 absl::StatusOr<FunctionResult> Function::Run(
