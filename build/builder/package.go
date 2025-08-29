@@ -96,16 +96,16 @@ func (pkg *basePackage) builder() *Builder {
 	return pkg.bld
 }
 
-func (pkg *basePackage) resolveBuild(pscope *pkgProcScope) bool {
+func (pkg *basePackage) resolveBuild(pscope *pkgProcScope) (*pkgResolveScope, bool) {
 	pkgScope, ok := newPackageResolveScope(pscope)
 	if !ok {
-		return false
+		return pkgScope, false
 	}
 	if ok := pscope.dcls.resolveAll(pkgScope); !ok {
-		return false
+		return pkgScope, false
 	}
 	pkg.last = pkgScope.lastBuild()
-	return true
+	return pkgScope, true
 }
 
 func (pkg *basePackage) newPackageIR() *ir.Package {
@@ -158,7 +158,7 @@ func (pkg *FilePackage) BuildFiles(fs fs.FS, filenames []string) (err error) {
 	if !ok {
 		return &errs
 	}
-	if !pkg.resolveBuild(pscope) {
+	if _, ok := pkg.resolveBuild(pscope); !ok {
 		return &errs
 	}
 	return nil
@@ -196,7 +196,7 @@ func (pkg *FilePackage) ImportIR(decls *ir.Declarations) error {
 	if !importConstDecls(pscope, pkg.irImports, decls.Consts) {
 		return errs
 	}
-	if !pkg.resolveBuild(pscope) {
+	if _, ok := pkg.resolveBuild(pscope); !ok {
 		return errs
 	}
 	return nil
@@ -249,7 +249,7 @@ func (pkg *IncrementalPackage) Build(src string) error {
 	if !processFile(pscope, name, astFile) {
 		return errs
 	}
-	if !pkg.resolveBuild(pscope) {
+	if _, ok := pkg.resolveBuild(pscope); !ok {
 		return errs
 	}
 	return nil
@@ -272,7 +272,7 @@ func (pkg *IncrementalPackage) BuildExpr(src string) (ir.Expr, error) {
 	if !errs.Empty() {
 		return nil, errs
 	}
-	pkgRScope, ok := newPackageResolveScope(pscope.pkgProcScope)
+	pkgRScope, ok := pkg.resolveBuild(pkgScope)
 	if !ok {
 		return nil, errs
 	}
