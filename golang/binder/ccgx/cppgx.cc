@@ -155,6 +155,10 @@ absl::StatusOr<Interface> Package::FindInterface(
   return Interface(result.iface);
 }
 
+bool Package::HasStaticVar(const std::string& name) const {
+  return cgx_static_has(*package_, name.c_str());
+}
+
 absl::StatusOr<StaticVar> Package::FindStaticVar(
     const std::string& name) const {
   const auto result = cgx_static_find(*package_, name.c_str());

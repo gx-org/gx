@@ -181,6 +181,7 @@ TEST_F(cgx, PackageFindStaticVar) {
   struct build_result pr(BuildPackage(kPkgVarsPackage));
   CGX_ASSERT_OK(pr.error);
 
+  ASSERT_TRUE(cgx_static_has(pr.package, "Var1"));
   const auto vr = cgx_static_find(pr.package, "Var1");
   CGX_ASSERT_OK(vr.error);
 
@@ -191,10 +192,11 @@ TEST_F(cgx, PackageFindStaticVar) {
   cgx_release_reference(pr.package);
 }
 
-TEST_F(cgx, PackageFindStaticVar_NotFound) {
+TEST_F(cgx, PackageFindStaticVarNotFound) {
   struct build_result pr(BuildPackage(kPkgVarsPackage));
   CGX_ASSERT_OK(pr.error);
 
+  ASSERT_FALSE(cgx_static_has(pr.package, "Fake"));
   const auto fr = cgx_static_find(pr.package, "Fake");
   CGX_ASSERT_ERROR(fr.error,
                    "static variable Fake not found in package pkgvars");

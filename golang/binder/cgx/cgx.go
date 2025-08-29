@@ -320,22 +320,36 @@ func cgx_package_list_statics(cgxPackage C.cgx_package) C.struct_cgx_list_static
 	}
 }
 
-//export cgx_static_find
-func cgx_static_find(cgxPackage C.cgx_package, staticNamePtr *C.cchar_t) (res C.struct_cgx_static_find_result) {
+func findStatic(cgxPackage C.cgx_package, staticNamePtr *C.cchar_t) (*ir.Package, string, *ir.VarExpr) {
 	cpkg := unwrap[*core.PackageCompileSetup](cgxPackage)
 	name := C.GoString(staticNamePtr)
-	if !ir.IsExported(name) {
-		res.error = Errorf("static variable %q not exported", name)
-		return
-	}
 	irPkg := cpkg.IR()
 	for _, vr := range irPkg.ExportedStatics() {
 		if vr.VName.Name == name {
-			res.static_var = wrap(vr)
-			return
+			return irPkg, name, vr
 		}
 	}
-	res.error = Errorf("static variable %s not found in package %s", name, irPkg.Name.String())
+	return irPkg, name, nil
+}
+
+//export cgx_static_has
+func cgx_static_has(cgxPackage C.cgx_package, staticNamePtr *C.cchar_t) bool {
+	_, _, vr := findStatic(cgxPackage, staticNamePtr)
+	return vr != nil
+}
+
+//export cgx_static_find
+func cgx_static_find(cgxPackage C.cgx_package, staticNamePtr *C.cchar_t) (res C.struct_cgx_static_find_result) {
+	pkg, name, vr := findStatic(cgxPackage, staticNamePtr)
+	if vr == nil {
+		res.error = Errorf("static variable %s not found in package %s", name, pkg.Name.String())
+		return
+	}
+	if !ir.IsExported(name) {
+		res.error = Errorf("static variable %s not exported", vr.VName.Name)
+		return
+	}
+	res.static_var = wrap(vr)
 	return
 }
 

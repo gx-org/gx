@@ -117,6 +117,7 @@ class Package {
   absl::StatusOr<Function> FindFunction(const std::string& name) const;
   absl::StatusOr<Interface> FindInterface(const std::string& name) const;
   absl::StatusOr<StaticVar> FindStaticVar(const std::string& name) const;
+  bool HasStaticVar(const std::string& name) const;
   absl::StatusOr<std::vector<Function>> ListFunctions() const;
   absl::StatusOr<std::vector<StaticVar>> ListStaticVars() const;
 
