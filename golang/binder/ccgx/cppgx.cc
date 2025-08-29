@@ -142,12 +142,6 @@ absl::StatusOr<DeviceAtomic<uint64_t>> Device::Send(uint64_t val) {
 
 /* Package */
 
-absl::StatusOr<Function> Package::FindFunction(const std::string& name) const {
-  const auto result = cgx_function_find(*package_, name.c_str());
-  CPPGX_RETURN_IF_ERROR(result.error);
-  return Function(result.function);
-}
-
 absl::StatusOr<Interface> Package::FindInterface(
     const std::string& name) const {
   const auto result = cgx_interface_find(*package_, name.c_str());
@@ -166,12 +160,6 @@ absl::StatusOr<StaticVar> Package::FindStaticVar(
   return StaticVar(result.static_var);
 }
 
-absl::StatusOr<std::vector<Function>> Package::ListFunctions() const {
-  auto result = cgx_package_list_functions(*package_);
-  CPPGX_RETURN_IF_ERROR(result.error);
-  return make_function_vector(&result);
-}
-
 absl::StatusOr<std::vector<StaticVar>> Package::ListStaticVars() const {
   auto result = cgx_package_list_statics(*package_);
   CPPGX_RETURN_IF_ERROR(result.error);
@@ -179,6 +167,22 @@ absl::StatusOr<std::vector<StaticVar>> Package::ListStaticVars() const {
                               result.statics + result.num_statics);
   cgx_free_list_statics_result(&result);
   return vars;
+}
+
+bool Package::HasFunction(const std::string& name) const {
+  return cgx_function_has(*package_, name.c_str());
+}
+
+absl::StatusOr<Function> Package::FindFunction(const std::string& name) const {
+  const auto result = cgx_function_find(*package_, name.c_str());
+  CPPGX_RETURN_IF_ERROR(result.error);
+  return Function(result.function);
+}
+
+absl::StatusOr<std::vector<Function>> Package::ListFunctions() const {
+  auto result = cgx_package_list_functions(*package_);
+  CPPGX_RETURN_IF_ERROR(result.error);
+  return make_function_vector(&result);
 }
 
 /* Static variables */

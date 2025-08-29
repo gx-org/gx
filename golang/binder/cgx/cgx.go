@@ -413,6 +413,13 @@ func cgx_interface_find(cgxPackage C.cgx_package, cname *C.cchar_t) (res C.struc
 
 /* cgx_function */
 
+//export cgx_function_has
+func cgx_function_has(cgxPackage C.cgx_package, funcNamePtr *C.cchar_t) bool {
+	cpkg := unwrap[*core.PackageCompileSetup](cgxPackage)
+	name := C.GoString(funcNamePtr)
+	return cpkg.IR().FindFunc(name) != nil
+}
+
 //export cgx_function_find
 func cgx_function_find(cgxPackage C.cgx_package, funcNamePtr *C.cchar_t) (res C.struct_cgx_function_find_result) {
 	cpkg := unwrap[*core.PackageCompileSetup](cgxPackage)

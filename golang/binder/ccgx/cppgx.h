@@ -114,12 +114,16 @@ class Package {
     // cgx_package_get_ir always return a new handle.
     return PackageIR(cgx_package_get_ir(raw()));
   }
-  absl::StatusOr<Function> FindFunction(const std::string& name) const;
+
   absl::StatusOr<Interface> FindInterface(const std::string& name) const;
-  absl::StatusOr<StaticVar> FindStaticVar(const std::string& name) const;
+
   bool HasStaticVar(const std::string& name) const;
-  absl::StatusOr<std::vector<Function>> ListFunctions() const;
+  absl::StatusOr<StaticVar> FindStaticVar(const std::string& name) const;
   absl::StatusOr<std::vector<StaticVar>> ListStaticVars() const;
+
+  bool HasFunction(const std::string& name) const;
+  absl::StatusOr<Function> FindFunction(const std::string& name) const;
+  absl::StatusOr<std::vector<Function>> ListFunctions() const;
 
  private:
   Handle<cgx_package> package_;

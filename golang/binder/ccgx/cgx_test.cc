@@ -469,6 +469,7 @@ TEST_F(cgx, RunFunction_MissingParameters) {
   struct build_result pr(BuildPackage(kParametersPackage));
   CGX_ASSERT_OK(pr.error);
 
+  ASSERT_TRUE(cgx_function_has(pr.package, "AddInt"));
   const auto fr = cgx_function_find(pr.package, "AddInt");
   CGX_ASSERT_OK(fr.error);
 
@@ -505,6 +506,7 @@ TEST_F(cgx, FindFunction_NotFound) {
   struct build_result pr(BuildPackage(kBasicPackage));
   CGX_ASSERT_OK(pr.error);
 
+  ASSERT_FALSE(cgx_function_has(pr.package, "Fake"));
   const auto fr = cgx_function_find(pr.package, "Fake");
   CGX_ASSERT_ERROR(fr.error, "function Fake not found in package basic");
 
