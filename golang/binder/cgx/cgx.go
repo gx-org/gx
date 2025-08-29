@@ -50,7 +50,7 @@ struct cgx_device_get_result {
 
 // cgx_list_statics_result is the return value when listing static variables of a package.
 struct cgx_list_statics_result {
-	cgx_package_static* statics;
+	cgx_static* statics;
 	int num_statics;
 	cgx_error error;
 };
@@ -75,6 +75,12 @@ struct cgx_function_signature_result {
 	struct cgx_function_signature_element* result;
 	uint32_t result_size;
 
+	cgx_error error;
+};
+
+// cgx_static_find_result is the return value for cgx_static_find().
+struct cgx_static_find_result {
+	cgx_static static_var;
 	cgx_error error;
 };
 
@@ -292,13 +298,13 @@ func cgx_package_append_option(cgxPackage C.cgx_package, cgxOption C.cgx_package
 	cpkg.AppendOptions(copt.opt)
 }
 
-//export cgx_package_set_variable
-func cgx_package_set_variable(cgxPackage C.cgx_package, varNamePtr *C.cchar_t, cgxValue C.cgx_value) {
+//export cgx_package_set_static
+func cgx_package_set_static(cgxPackage C.cgx_package, staticNamePtr *C.cchar_t, cgxValue C.cgx_value) {
 	cpkg := unwrap[*core.PackageCompileSetup](cgxPackage)
 	cpkg.AppendOptions(func(plat platform.Platform) options.PackageOption {
 		return options.PackageVarSetValue{
 			Pkg:   cpkg.IR().FullName(),
-			Var:   C.GoString(varNamePtr),
+			Var:   C.GoString(staticNamePtr),
 			Value: unwrap[values.Value](cgxValue),
 		}
 	})
@@ -307,20 +313,34 @@ func cgx_package_set_variable(cgxPackage C.cgx_package, varNamePtr *C.cchar_t, c
 //export cgx_package_list_statics
 func cgx_package_list_statics(cgxPackage C.cgx_package) C.struct_cgx_list_statics_result {
 	cpkg := unwrap[*core.PackageCompileSetup](cgxPackage)
-	var statics []*ir.VarExpr
-	for _, vars := range cpkg.IR().Decls.Vars {
-		for _, vr := range vars.Exprs {
-			statics = append(statics, vr)
-		}
-	}
+	statics := cpkg.IR().ExportedStatics()
 	return C.struct_cgx_list_statics_result{
 		statics:     (*C.cgx_function)(handle.PinSliceData(handle.WrapSlice(statics))),
 		num_statics: C.int(len(statics)),
 	}
 }
 
+//export cgx_static_find
+func cgx_static_find(cgxPackage C.cgx_package, staticNamePtr *C.cchar_t) (res C.struct_cgx_static_find_result) {
+	cpkg := unwrap[*core.PackageCompileSetup](cgxPackage)
+	name := C.GoString(staticNamePtr)
+	if !ir.IsExported(name) {
+		res.error = Errorf("static variable %q not exported", name)
+		return
+	}
+	irPkg := cpkg.IR()
+	for _, vr := range irPkg.ExportedStatics() {
+		if vr.VName.Name == name {
+			res.static_var = wrap(vr)
+			return
+		}
+	}
+	res.error = Errorf("static variable %s not found in package %s", name, irPkg.Name.String())
+	return
+}
+
 //export cgx_static_name
-func cgx_static_name(cgxStatic C.cgx_package_static) *C.cchar_t {
+func cgx_static_name(cgxStatic C.cgx_static) *C.cchar_t {
 	vr := unwrap[*ir.VarExpr](cgxStatic)
 	return C.CString(vr.VName.Name)
 }

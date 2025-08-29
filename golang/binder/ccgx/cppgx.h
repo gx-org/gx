@@ -116,6 +116,7 @@ class Package {
   }
   absl::StatusOr<Function> FindFunction(const std::string& name) const;
   absl::StatusOr<Interface> FindInterface(const std::string& name) const;
+  absl::StatusOr<StaticVar> FindStaticVar(const std::string& name) const;
   absl::StatusOr<std::vector<Function>> ListFunctions() const;
   absl::StatusOr<std::vector<StaticVar>> ListStaticVars() const;
 
@@ -125,13 +126,13 @@ class Package {
 
 class StaticVar {
  public:
-  StaticVar(cgx_package_static static_var) : static_var_(static_var) {}
+  StaticVar(cgx_static static_var) : static_var_(static_var) {}
 
-  cgx_package_static raw() const { return *static_var_; }
+  cgx_static raw() const { return *static_var_; }
   std::string name() const;
 
  private:
-  Handle<cgx_package_static> static_var_;
+  Handle<cgx_static> static_var_;
 };
 
 class Function {

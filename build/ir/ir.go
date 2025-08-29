@@ -1332,6 +1332,20 @@ func (pkg *Package) ExportedConsts() []*ConstExpr {
 	return exprs
 }
 
+// ExportedStatics returns the list of exported static variables.
+func (pkg *Package) ExportedStatics() []*VarExpr {
+	var exprs []*VarExpr
+	for _, vars := range pkg.Decls.Vars {
+		for _, vr := range vars.Exprs {
+			if !IsExported(vr.VName.Name) {
+				continue
+			}
+			exprs = append(exprs, vr)
+		}
+	}
+	return exprs
+}
+
 // String representation of the package.
 func (pkg *Package) String() string {
 	return pkg.FullName()

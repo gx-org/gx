@@ -155,6 +155,13 @@ absl::StatusOr<Interface> Package::FindInterface(
   return Interface(result.iface);
 }
 
+absl::StatusOr<StaticVar> Package::FindStaticVar(
+    const std::string& name) const {
+  const auto result = cgx_static_find(*package_, name.c_str());
+  CPPGX_RETURN_IF_ERROR(result.error);
+  return StaticVar(result.static_var);
+}
+
 absl::StatusOr<std::vector<Function>> Package::ListFunctions() const {
   auto result = cgx_package_list_functions(*package_);
   CPPGX_RETURN_IF_ERROR(result.error);

@@ -155,7 +155,7 @@ TEST_F(cgx, PackageSetStaticVars) {
 
   // Note that no error checking is done (the value does not have to match the
   // target variable's type) yet, so an empty value is fine here.
-  cgx_package_set_variable(pr.package, "Var1", cgx_value{});
+  cgx_package_set_static(pr.package, "Var1", cgx_value{});
   cgx_release_reference(pr.package);
 }
 
@@ -173,6 +173,31 @@ TEST_F(cgx, PackageListStaticVars) {
     cgx_release_reference(result.statics[i]);
   }
   cgx_free_list_statics_result(&result);
+
+  cgx_release_reference(pr.package);
+}
+
+TEST_F(cgx, PackageFindStaticVar) {
+  struct build_result pr(BuildPackage(kPkgVarsPackage));
+  CGX_ASSERT_OK(pr.error);
+
+  const auto vr = cgx_static_find(pr.package, "Var1");
+  CGX_ASSERT_OK(vr.error);
+
+  const std::string vr_name = FromHeapCString(cgx_static_name(vr.static_var));
+  EXPECT_EQ(vr_name, "Var1");
+
+  cgx_release_reference(vr.static_var);
+  cgx_release_reference(pr.package);
+}
+
+TEST_F(cgx, PackageFindStaticVar_NotFound) {
+  struct build_result pr(BuildPackage(kPkgVarsPackage));
+  CGX_ASSERT_OK(pr.error);
+
+  const auto fr = cgx_static_find(pr.package, "Fake");
+  CGX_ASSERT_ERROR(fr.error,
+                   "static variable Fake not found in package pkgvars");
 
   cgx_release_reference(pr.package);
 }
@@ -305,7 +330,7 @@ TEST_F(cgx, RunFunction_ReturnStaticVar) {
 
   const auto var1_vr = cgx_value_new_int32(device(), 42);
   CGX_ASSERT_OK(var1_vr.error);
-  cgx_package_set_variable(pr.package, "Var1", var1_vr.value);
+  cgx_package_set_static(pr.package, "Var1", var1_vr.value);
 
   const auto fr = cgx_function_find(pr.package, "ReturnVar1");
   CGX_ASSERT_OK(fr.error);
