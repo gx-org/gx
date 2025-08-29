@@ -288,6 +288,26 @@ func (pkg *IncrementalPackage) BuildExpr(src string) (ir.Expr, error) {
 	return irExpr, nil
 }
 
+// Fetcher builds a fetcher to evaluate expressions.
+func (pkg *IncrementalPackage) Fetcher() (ir.Fetcher, error) {
+	errs := &fmterr.Errors{}
+	pkgScope := newPackageProcScope(false, pkg.basePackage, errs)
+	pkgRScope, ok := pkg.resolveBuild(pkgScope)
+	if !ok {
+		return nil, errs.ToError()
+	}
+	file := newFile(pkg.basePackage, "", &ast.File{})
+	fScope, ok := pkgRScope.newFileScope(file)
+	if !ok {
+		return nil, errs.ToError()
+	}
+	cp, ok := fScope.compEval()
+	if !ok {
+		return nil, errs.ToError()
+	}
+	return cp, nil
+}
+
 // IR returns the package GX intermediate representation.
 func (pkg *IncrementalPackage) IR() *ir.Package {
 	pkg.mut.Lock()

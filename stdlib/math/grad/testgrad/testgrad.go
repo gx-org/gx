@@ -61,15 +61,3 @@ func checkFunc(pkg *ir.Package, name string, want string) error {
 	}
 	return testbuild.CompareString(gotF.String(), want)
 }
-
-func checkError(want string, got error) error {
-	if want == "" {
-		// No error expected
-		return got
-	}
-	msg := got.Error()
-	if strings.Contains(msg, want) {
-		return nil
-	}
-	return errors.Errorf("got error:\n%s\nbut want an expected error which contains %q", got, want)
-}

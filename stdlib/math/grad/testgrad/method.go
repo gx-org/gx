@@ -101,7 +101,7 @@ func (tt Method) Run(b *testbuild.Builder) error {
 	}
 	pkg, err := b.Build("", src)
 	if err != nil {
-		return checkError(tt.Err, err)
+		return testbuild.CheckError(tt.Err, err)
 	}
 	pkgIR := pkg.IR()
 	// Check the gradient of the default function F.
