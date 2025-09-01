@@ -355,6 +355,8 @@ func cgx_static_set(cgxStatic C.cgx_static, val int64) C.cgx_error {
 		gxValue, err = values.AtomIntegerValue[int32](ir.Int32Type(), int32(val))
 	case ir.Int64Type():
 		gxValue, err = values.AtomIntegerValue[int64](ir.Int64Type(), val)
+	case ir.IntLenType():
+		gxValue, err = values.AtomIntegerValue[int64](ir.IntLenType(), val)
 	default:
 		err = errors.Errorf("cannot set static variable: type %s not supported", tp)
 	}
