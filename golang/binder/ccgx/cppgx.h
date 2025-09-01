@@ -135,6 +135,7 @@ class StaticVar {
 
   cgx_static raw() const { return *static_var_; }
   std::string name() const;
+  absl::Status set_value(int64_t value) const;
 
  private:
   Handle<cgx_static> static_var_;

@@ -287,49 +287,34 @@ func cgx_package_ir_fullname(cgxPackageIR C.cgx_package_ir) *C.cchar_t {
 	return C.CString(pkg.Package().FullName())
 }
 
-type packageOption struct {
-	opt options.PackageOptionFactory
-}
-
-//export cgx_package_append_option
-func cgx_package_append_option(cgxPackage C.cgx_package, cgxOption C.cgx_package_option) {
-	cpkg := unwrap[*core.PackageCompileSetup](cgxPackage)
-	copt := unwrap[*packageOption](cgxOption)
-	cpkg.AppendOptions(copt.opt)
-}
-
-//export cgx_package_set_static
-func cgx_package_set_static(cgxPackage C.cgx_package, staticNamePtr *C.cchar_t, cgxValue C.cgx_value) {
-	cpkg := unwrap[*core.PackageCompileSetup](cgxPackage)
-	cpkg.AppendOptions(func(plat platform.Platform) options.PackageOption {
-		return options.PackageVarSetValue{
-			Pkg:   cpkg.IR().FullName(),
-			Var:   C.GoString(staticNamePtr),
-			Value: unwrap[values.Value](cgxValue),
-		}
-	})
+type staticVariable struct {
+	pkg *core.PackageCompileSetup
+	vr  *ir.VarExpr
 }
 
 //export cgx_package_list_statics
 func cgx_package_list_statics(cgxPackage C.cgx_package) C.struct_cgx_list_statics_result {
 	cpkg := unwrap[*core.PackageCompileSetup](cgxPackage)
-	statics := cpkg.IR().ExportedStatics()
+	var statics []*staticVariable
+	for _, vr := range cpkg.IR().ExportedStatics() {
+		statics = append(statics, &staticVariable{pkg: cpkg, vr: vr})
+	}
 	return C.struct_cgx_list_statics_result{
 		statics:     (*C.cgx_function)(handle.PinSliceData(handle.WrapSlice(statics))),
 		num_statics: C.int(len(statics)),
 	}
 }
 
-func findStatic(cgxPackage C.cgx_package, staticNamePtr *C.cchar_t) (*ir.Package, string, *ir.VarExpr) {
+func findStatic(cgxPackage C.cgx_package, staticNamePtr *C.cchar_t) (*core.PackageCompileSetup, string, *ir.VarExpr) {
 	cpkg := unwrap[*core.PackageCompileSetup](cgxPackage)
 	name := C.GoString(staticNamePtr)
 	irPkg := cpkg.IR()
 	for _, vr := range irPkg.ExportedStatics() {
 		if vr.VName.Name == name {
-			return irPkg, name, vr
+			return cpkg, name, vr
 		}
 	}
-	return irPkg, name, nil
+	return cpkg, name, nil
 }
 
 //export cgx_static_has
@@ -340,23 +325,50 @@ func cgx_static_has(cgxPackage C.cgx_package, staticNamePtr *C.cchar_t) bool {
 
 //export cgx_static_find
 func cgx_static_find(cgxPackage C.cgx_package, staticNamePtr *C.cchar_t) (res C.struct_cgx_static_find_result) {
-	pkg, name, vr := findStatic(cgxPackage, staticNamePtr)
+	cpkg, name, vr := findStatic(cgxPackage, staticNamePtr)
 	if vr == nil {
-		res.error = Errorf("static variable %s not found in package %s", name, pkg.Name.String())
+		res.error = Errorf("static variable %s not found in package %s", name, cpkg.IR().Name.String())
 		return
 	}
 	if !ir.IsExported(name) {
 		res.error = Errorf("static variable %s not exported", vr.VName.Name)
 		return
 	}
-	res.static_var = wrap(vr)
+	res.static_var = wrap(&staticVariable{pkg: cpkg, vr: vr})
 	return
 }
 
 //export cgx_static_name
 func cgx_static_name(cgxStatic C.cgx_static) *C.cchar_t {
-	vr := unwrap[*ir.VarExpr](cgxStatic)
-	return C.CString(vr.VName.Name)
+	cvr := unwrap[*staticVariable](cgxStatic)
+	return C.CString(cvr.vr.VName.Name)
+}
+
+//export cgx_static_set
+func cgx_static_set(cgxStatic C.cgx_static, val int64) C.cgx_error {
+	cvr := unwrap[*staticVariable](cgxStatic)
+	var gxValue values.Value
+	var err error
+	tp := cvr.vr.Type()
+	switch tp {
+	case ir.Int32Type():
+		gxValue, err = values.AtomIntegerValue[int32](ir.Int32Type(), int32(val))
+	case ir.Int64Type():
+		gxValue, err = values.AtomIntegerValue[int64](ir.Int64Type(), val)
+	default:
+		err = errors.Errorf("cannot set static variable: type %s not supported", tp)
+	}
+	cvr.pkg.AppendOptions(func(plat platform.Platform) options.PackageOption {
+		return options.PackageVarSetValue{
+			Pkg:   cvr.pkg.IR().FullName(),
+			Var:   cvr.vr.VName.Name,
+			Value: gxValue,
+		}
+	})
+	if err != nil {
+		return (C.cgx_error)(wrap[error](err))
+	}
+	return C.cgx_error(0)
 }
 
 //export cgx_free_list_statics_result

@@ -191,6 +191,12 @@ std::string StaticVar::name() const {
   return FromHeapCString(cgx_static_name(raw()));
 }
 
+absl::Status StaticVar::set_value(int64_t value) const {
+  const auto err = cgx_static_set(raw(), value);
+  CPPGX_RETURN_IF_ERROR(err);
+  return absl::OkStatus();
+}
+
 /* Function */
 
 absl::StatusOr<FunctionResult> Function::Run(

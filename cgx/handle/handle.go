@@ -71,7 +71,7 @@ func Release(h Handle) {
 	if h != 0 {
 		_, ok := handles.LoadAndDelete(h)
 		if !ok {
-			panic("cgx: deleting invalid handle")
+			panic(fmt.Sprintf("cgx: deleting invalid handle %v", h))
 		}
 	}
 	if handles.Empty() {
