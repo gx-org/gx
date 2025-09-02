@@ -627,7 +627,7 @@ func (s *NamedType) String() string {
 	if s.File == nil {
 		return s.Name()
 	}
-	return s.Name()
+	return s.File.Package.Name.Name + "." + s.Name()
 }
 
 // Package returns the package to which the type belongs to.
