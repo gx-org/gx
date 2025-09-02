@@ -618,6 +618,9 @@ type equaler interface {
 
 // Equal returns true if x and y are the same type.
 func Equal(fetcher Fetcher, x, y Type) (bool, error) {
+	if x == y {
+		return true, nil
+	}
 	ey, isEqualer := y.(equaler)
 	if isEqualer {
 		return ey.equal(fetcher, x)
@@ -631,6 +634,9 @@ type assigner interface {
 
 // AssignableTo reports whether a value of the type can be assigned to another.
 func AssignableTo(fetcher Fetcher, x, y Type) (bool, error) {
+	if x == y {
+		return true, nil
+	}
 	ey, isAssigner := y.(assigner)
 	if isAssigner {
 		return ey.assignableFrom(fetcher, x)
