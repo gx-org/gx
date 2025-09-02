@@ -69,6 +69,26 @@ func TestCast(t *testing.T) {
 			},
 			WantType: "[2]float32",
 		},
+		testbuild.Expr{
+			Src: `[___]float32([2]bool{true, false})`,
+			Want: &ir.CastExpr{
+				X: &ir.ArrayLitExpr{
+					Typ: irh.ArrayType(ir.BoolType(), 2),
+					Elts: []ir.AssignableExpr{
+						&ir.ValueRef{
+							Stor: ir.TrueStorage(),
+						},
+						&ir.ValueRef{
+							Stor: ir.FalseStorage(),
+						},
+					},
+				},
+				Typ: irh.ArrayType(ir.Float32Type(), &ir.RankInfer{
+					Rnk: &ir.Rank{Ax: []ir.AxisLengths{irh.Axis(2)}},
+				}),
+			},
+			WantType: "[2]float32",
+		},
 	)
 }
 
