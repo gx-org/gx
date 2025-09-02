@@ -583,7 +583,7 @@ func (s *NamedType) ConvertibleTo(fetcher Fetcher, target Type) (bool, error) {
 }
 
 func (s *NamedType) convertibleFrom(fetcher Fetcher, source Type) (bool, error) {
-	return s.Underlying.Typ.Equal(fetcher, source)
+	return source.ConvertibleTo(fetcher, s.Underlying.Typ)
 }
 
 // FullName returns the full name of the type, that is the full package path and the type name.
@@ -1026,6 +1026,11 @@ func (s *TypeParam) AssignableTo(fetcher Fetcher, typ Type) (bool, error) {
 // (using static type casting).
 func (s *TypeParam) ConvertibleTo(fetcher Fetcher, typ Type) (bool, error) {
 	return s.Field.Type().ConvertibleTo(fetcher, typ)
+}
+
+// convertibleFrom reports whether a value of some type can be converted to the receiver.
+func (s *TypeParam) convertibleFrom(fetcher Fetcher, from Type) (bool, error) {
+	return from.ConvertibleTo(fetcher, s.Field.Type())
 }
 
 // Source defining the type.

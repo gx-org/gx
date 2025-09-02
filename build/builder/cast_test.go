@@ -194,3 +194,19 @@ func f() float32 {
 		},
 	)
 }
+
+func TestCastToGenerics(t *testing.T) {
+	testbuild.Run(t,
+		testbuild.Decl{
+			Src: `
+type someInts interface { 
+	int32 | int64 
+}
+
+func f[T someInts](x bool) T {
+	return T(x) 
+}
+`,
+		},
+	)
+}
