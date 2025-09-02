@@ -83,6 +83,11 @@ var (
 	genericRankFunc = func() ir.ArrayRank {
 		return &ir.RankInfer{Rnk: newRank(newSymbol("a"))}
 	}
+	axisGroupRankFunc = func() ir.ArrayRank {
+		symbolicAxisNames["M"] = true
+		return newRank(irhelper.AxisGroup("M").AxisValue())
+	}
+
 	exampleRanks = []rankFunc{
 		scalarRankFunc,
 		rank2RankFunc,
@@ -92,6 +97,7 @@ var (
 		rank1SymbolicAddAxis,
 		rank1SymbolicMulAxis,
 		genericRankFunc,
+		axisGroupRankFunc,
 	}
 
 	primitiveTypes = []ir.Type{
@@ -473,14 +479,15 @@ func testRankMatrix(t *testing.T, ranks []rankFunc, f typeFunc) string {
 
 func TestArrayRanksEqual(t *testing.T) {
 	const want = `---
-      : X       
-   [2]:  X      
- [2+2]:   XX    
-   [4]:   XX    
-[a][a]:     X   
- [a+a]:      X  
- [a*a]:       X 
-   [a]:        X
+      : X        
+   [2]:  X       
+ [2+2]:   XX     
+   [4]:   XX     
+[a][a]:     X    
+ [a+a]:      X   
+ [a*a]:       X  
+   [a]:        X 
+   [M]:         X
 `
 
 	matrix := testRankMatrix(t, exampleRanks, ir.Type.Equal)
@@ -491,14 +498,15 @@ func TestArrayRanksEqual(t *testing.T) {
 
 func TestArrayRanksAssignableTo(t *testing.T) {
 	const want = `---
-      : X       
-   [2]:  X      
- [2+2]:   XX    
-   [4]:   XX    
-[a][a]:     X   
- [a+a]:      X  
- [a*a]:       X 
-   [a]:        X
+      : X        
+   [2]:  X       
+ [2+2]:   XX     
+   [4]:   XX     
+[a][a]:     X    
+ [a+a]:      X   
+ [a*a]:       X  
+   [a]:        X 
+   [M]:         X
 `
 
 	matrix := testRankMatrix(t, exampleRanks, ir.Type.AssignableTo)
@@ -509,14 +517,15 @@ func TestArrayRanksAssignableTo(t *testing.T) {
 
 func TestArrayRanksConvertibleTo(t *testing.T) {
 	const want = `---
-      : X       
-   [2]:  X      
- [2+2]:   XX    
-   [4]:   XX    
-[a][a]:     X X 
- [a+a]:      X  
- [a*a]:     X X 
-   [a]:        X
+      : X        
+   [2]:  X       
+ [2+2]:   XX     
+   [4]:   XX     
+[a][a]:     X X  
+ [a+a]:      X   
+ [a*a]:     X X  
+   [a]:        X 
+   [M]:         X
 `
 	matrix := testRankMatrix(t, exampleRanks, ir.Type.ConvertibleTo)
 	if matrix != want {
