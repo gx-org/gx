@@ -40,8 +40,7 @@ func Infer(fetcher ir.Fetcher, fExpr *ir.FuncValExpr, args []ir.AssignableExpr) 
 		if gType == nil {
 			continue
 		}
-		assigned := nameToType[gType.name()]
-		if assigned != nil {
+		if assigned := nameToType[gType.name()]; assigned != nil {
 			assignedOk, err := assigned.Equal(fetcher, arg.Type())
 			if err != nil {
 				inferredOk = fetcher.Err().Append(err)
@@ -49,8 +48,8 @@ func Infer(fetcher ir.Fetcher, fExpr *ir.FuncValExpr, args []ir.AssignableExpr) 
 			}
 			if !assignedOk {
 				inferredOk = fetcher.Err().Appendf(arg.Source(), "type %s of %s does not match inferred type %s for %s", arg.Type(), arg.String(), assigned.String(), gType)
-				continue
 			}
+			continue
 		}
 		targetType := nameToTypeParam[gType.name()]
 		if targetType == nil {

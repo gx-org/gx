@@ -38,7 +38,8 @@ func typeInclude(fetcher ir.Fetcher, set ir.Type, typ ir.Type) bool {
 		return fetcher.Err().Append(err)
 	}
 	if !isIn {
-		return fetcher.Err().Appendf(typ.Source(), "%s does not satisfy %s", ir.TypeString(typ), ir.TypeString(set))
+		return fetcher.Err().Appendf(typ.Source(), "%s does not satisfy %s",
+			ir.TypeString(typ), ir.TypeString(set))
 	}
 	return true
 }
@@ -104,14 +105,11 @@ func extractTypeSpecialiser(tp ir.Type) genericType {
 	case *ir.TypeSet:
 		return nil
 	case ir.ArrayType:
-		dtype := typT.DataType()
 		gType := &array{src: typT.ArrayType(), typ: typT}
-		typeParam, isTypeParam := dtype.(*ir.TypeParam)
-		if !isTypeParam {
-			return gType
+		if typeParam, hasTypeParam := typT.DataType().(*ir.TypeParam); hasTypeParam {
+			gType.set = typeParam.Field.Type()
+			gType.typName = typeParam.Field.Name.Name
 		}
-		gType.set = typeParam.Field.Type()
-		gType.typName = typeParam.Field.Name.Name
 		return gType
 	}
 	return nil
