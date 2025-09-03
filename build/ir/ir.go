@@ -456,7 +456,7 @@ func (s *atomicType) AssignableTo(fetcher Fetcher, target Type) (bool, error) {
 		}
 		return s.equalAtomic(targetT)
 	}
-	dtypeEq, err := s.Equal(fetcher, targetT.DataType())
+	dtypeEq, err := s.AssignableTo(fetcher, targetT.DataType())
 	if !dtypeEq || err != nil {
 		return false, err
 	}
