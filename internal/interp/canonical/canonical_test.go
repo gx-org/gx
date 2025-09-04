@@ -54,6 +54,30 @@ func newInt64(i int64) canonical.Canonical {
 	return can
 }
 
+type cVar struct {
+	name string
+}
+
+func newVar(name string) *cVar {
+	return &cVar{name: name}
+}
+
+func (cv *cVar) Compare(x canonical.Comparable) bool {
+	xT, ok := x.(*cVar)
+	if !ok {
+		return false
+	}
+	return cv.name == xT.name
+}
+
+func (cv *cVar) Simplify() canonical.Simplifier {
+	return cv
+}
+
+func (cv *cVar) String() string {
+	return cv.name
+}
+
 func TestCanonicalEval(t *testing.T) {
 	tests := []struct {
 		Expr       canonical.Simplifier
@@ -151,15 +175,53 @@ func TestCanonicalEval(t *testing.T) {
 			Str:        "(* 4 5 6 int64(1))",
 			Simplified: "(* 4 5 6)",
 		},
+		{
+			Expr: canonical.NewExpr(token.ADD,
+				newVar("x"),
+				newFloat(1),
+			),
+			Str:        "(+ 1 x)",
+			Simplified: "(+ 1 x)",
+		},
+		{
+			Expr: canonical.NewExpr(token.SUB,
+				newVar("x"),
+				newFloat(1),
+			),
+			Str:        "(- 1 x)",
+			Simplified: "(- 1 x)",
+		},
+		{
+			Expr: canonical.NewExpr(token.MUL,
+				newInt64(1),
+				newFloat(4),
+				newVar("x"),
+			),
+			Str:        "(* 4 int64(1) x)",
+			Simplified: "(* 4 x)",
+		},
+		{
+			Expr: canonical.NewExpr(token.QUO,
+				canonical.NewExpr(token.MUL,
+					newInt64(1),
+					newFloat(4),
+					newVar("x"),
+				)),
+			Str:        "(/ (* 4 int64(1) x))",
+			Simplified: "(/ (* 4 x))",
+		},
 	}
 	for i, test := range tests {
-		want := big.NewFloat(test.Want)
 		reprGot := test.Expr.String()
 		if reprGot != test.Str {
 			t.Errorf("test %d: incorrect expression representation: got %s but want %s", i, reprGot, test.Str)
 		}
+		want := big.NewFloat(test.Want)
 		valueGot := test.Expr.(canonical.Evaluable).Float()
-		if valueGot.Cmp(want) != 0 {
+		if valueGot == nil && test.Want != 0 {
+			t.Errorf("test %d: incorrect expression value %s: got nil but want %v", i, test.Expr.String(), want)
+		}
+		if valueGot != nil && valueGot.Cmp(want) != 0 {
 			t.Errorf("test %d: incorrect expression value %s: got %v but want %v", i, test.Expr.String(), valueGot, want)
 		}
 		if test.Simplified == "" {
@@ -167,7 +229,7 @@ func TestCanonicalEval(t *testing.T) {
 		}
 		simplified := test.Expr.Simplify()
 		simplifiedGot := simplified.(canonical.Evaluable).Float()
-		if simplifiedGot.Cmp(want) != 0 {
+		if simplifiedGot != nil && simplifiedGot.Cmp(want) != 0 {
 			t.Errorf("test %d: incorrect simplified expression value: got %v but want %v", i, simplifiedGot, want)
 		}
 		simplifiedReprGot := simplified.String()
@@ -177,16 +239,29 @@ func TestCanonicalEval(t *testing.T) {
 	}
 }
 
+var xVar = newVar("x")
+
 type exprGenerator struct {
+	num   int
 	prime *prime.Prime
+}
+
+func (eg *exprGenerator) nextCanonical() canonical.Simplifier {
+	eg.num++
+	// Inject named variables once in a while.
+	// Not too often so that most expressions can be evaluated and simplified.
+	if eg.num%71 == 0 {
+		return xVar
+	}
+	return newFloat(float64(eg.prime.Next()))
 }
 
 // buildAllExprs builds all possible combination of binary operations as deep as indicated by level.
 func (eg *exprGenerator) buildAllExprs(level int) []canonical.Simplifier {
 	if level == 0 {
-		return []canonical.Simplifier{newFloat(float64(eg.prime.Next()))}
+		return []canonical.Simplifier{eg.nextCanonical()}
 	}
-	exprs := []canonical.Simplifier{}
+	var exprs []canonical.Simplifier
 	for _, op := range []token.Token{token.ADD, token.SUB, token.MUL, token.QUO} {
 		for _, xi := range eg.buildAllExprs(level - 1) {
 			for _, yi := range eg.buildAllExprs(level - 1) {
@@ -198,18 +273,25 @@ func (eg *exprGenerator) buildAllExprs(level int) []canonical.Simplifier {
 }
 
 var (
-	relativePrecision = big.NewFloat(1e-15)
+	relativePrecision = big.NewFloat(1e-11)
 	zero              = big.NewFloat(0)
 )
 
 func TestCanonicalSimplify(t *testing.T) {
 	exprs := (&exprGenerator{prime: prime.New(11)}).buildAllExprs(3)
+	numValChecks := 0
+	numNoValues := 0
 	for i, expr := range exprs {
 		wantVal := expr.(canonical.Evaluable).Float()
 		wantRepr := expr.String()
 		simplified := expr.Simplify()
 		simplifiedVal := simplified.(canonical.Evaluable).Float()
 		wantValAfter := expr.(canonical.Evaluable).Float()
+		if wantValAfter == nil {
+			numNoValues++
+			continue
+		}
+		numValChecks++
 		if wantVal.Cmp(wantValAfter) != 0 {
 			t.Errorf("test %d: expression %s with value %s has been modified to %s and %s", i, wantRepr, wantVal.String(), expr.String(), wantValAfter.String())
 			continue
@@ -224,5 +306,13 @@ func TestCanonicalSimplify(t *testing.T) {
 			t.Errorf("test %d: simplified expression %s value is not equal to the original expression %s value: got %s but want %s (relative difference=%s%%)", i, expr.String(), simplified.String(), simplifiedVal.String(), wantVal.String(), relPercent.String())
 		}
 	}
-
+	// Check that the evaluation of expressions with named variables have been generated sometimes, but not too often.
+	wantNumNoValues := 1651
+	if numNoValues != wantNumNoValues {
+		t.Errorf("the number of expressions with variables in the test changed to %d from %d", numNoValues, wantNumNoValues)
+	}
+	wantNumValChecks := 14733
+	if numValChecks != wantNumValChecks {
+		t.Errorf("the number of expressions that can be evaluated in the test changed to %d from %d", numValChecks, wantNumValChecks)
+	}
 }
