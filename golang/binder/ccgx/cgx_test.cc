@@ -221,18 +221,21 @@ TEST_F(cgx, PackageSetStaticVar) {
   CGX_ASSERT_OK(vr.error);
   cgx_static_set(vr.static_var, 42);
 
+  const auto size = cgx_static_find(pr.package, "Size");
+  CGX_ASSERT_OK(size.error);
+  cgx_static_set(size.static_var, 2);
+
   const auto fr = cgx_function_find(pr.package, "ReturnVar1");
   CGX_ASSERT_OK(fr.error);
-
   auto rr = cgx_function_run(fr.function, cgx_value{}, 0, nullptr);
   CGX_ASSERT_OK(rr.error);
-
   ASSERT_EQ(rr.value_size, 1);
   ASSERT_EQ(cgx_value_kind_of(rr.values[0]), CGX_INT32);
   EXPECT_EQ(cgx_value_get_int32(rr.values[0]), 42);
 
   cgx_release_references(rr.values, rr.value_size);
   cgx_free_function_run_result(&rr);
+  cgx_release_reference(size.static_var);
   cgx_release_reference(vr.static_var);
   cgx_release_reference(fr.function);
   cgx_release_reference(pr.package);

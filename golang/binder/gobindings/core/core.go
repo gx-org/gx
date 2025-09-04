@@ -111,7 +111,7 @@ func (s *PackageCompileSetup) Tracer() trace.Callback {
 func (s *PackageCompileSetup) AppendOptions(optionFactories ...options.PackageOptionFactory) {
 	plat := s.device.PlatformDevice().Platform()
 	s.optionFactories = append(s.optionFactories, optionFactories...)
-	s.opts = options.Process(plat, optionFactories)
+	s.opts = append(s.opts, options.Process(plat, optionFactories)...)
 }
 
 // FuncCache provides a compilation cache for a function.
