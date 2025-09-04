@@ -149,6 +149,15 @@ absl::StatusOr<Interface> Package::FindInterface(
   return Interface(result.iface);
 }
 
+absl::StatusOr<std::vector<Interface>> Package::ListInterfaces() const {
+  auto result = cgx_package_list_interfaces(*package_);
+  CPPGX_RETURN_IF_ERROR(result.error);
+  std::vector<Interface> ifaces(result.ifaces,
+                                result.ifaces + result.num_ifaces);
+  cgx_free_list_interfaces_result(&result);
+  return ifaces;
+}
+
 bool Package::HasStaticVar(const std::string& name) const {
   return cgx_static_has(*package_, name.c_str());
 }

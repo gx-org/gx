@@ -62,6 +62,13 @@ struct cgx_list_functions_result {
 	cgx_error error;
 };
 
+// cgx_list_interfaces is the return value when listing interfaces (i.e. named types) of a GX element.
+struct cgx_list_interfaces_result {
+	cgx_interface* ifaces;
+	int num_ifaces;
+	cgx_error error;
+};
+
 // cgx_function_signature_element describes a function parameter or return value.
 struct cgx_function_signature_element {
 	const char* name;
@@ -408,6 +415,26 @@ func cgx_free_list_functions_result(res *C.struct_cgx_list_functions_result) {
 func cgx_package_get_ir(cgxPackage C.cgx_package) C.cgx_package_ir {
 	cpkg := unwrap[*core.PackageCompileSetup](cgxPackage)
 	return (C.cgx_package_ir)(wrap[*core.Package](cpkg.Package()))
+}
+
+//export cgx_package_list_interfaces
+func cgx_package_list_interfaces(cgxPackage C.cgx_package) C.struct_cgx_list_interfaces_result {
+	cpkg := unwrap[*core.PackageCompileSetup](cgxPackage)
+	var ifaces []*interfaceHandle
+	for _, iface := range cpkg.IR().ExportedTypes() {
+		ifaces = append(ifaces, newInterfaceHandle(cpkg, iface))
+	}
+	return C.struct_cgx_list_interfaces_result{
+		ifaces:     (*C.cgx_interface)(handle.PinSliceData(handle.WrapSlice(ifaces))),
+		num_ifaces: C.int(len(ifaces)),
+	}
+}
+
+//export cgx_free_list_interfaces_result
+func cgx_free_list_interfaces_result(res *C.struct_cgx_list_interfaces_result) {
+	handle.UnpinSliceData(unsafe.Pointer(res.ifaces))
+	res.ifaces = nil
+	res.num_ifaces = 0
 }
 
 //export cgx_interface_find

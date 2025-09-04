@@ -167,6 +167,25 @@ TEST_F(cgx, PackageListStaticVars) {
   cgx_release_reference(pr.package);
 }
 
+TEST_F(cgx, PackageListInterfaces) {
+  struct build_result pr(BuildPackage(kBasicPackage));
+  CGX_ASSERT_OK(pr.error);
+
+  const char* wants[] = {"Empty", "Basic"};
+  auto result = cgx_package_list_interfaces(pr.package);
+  CGX_ASSERT_OK(result.error);
+  ASSERT_EQ(result.num_ifaces, std::size(wants));
+  for (int i = 0; i < std::size(wants); i++) {
+    const std::string got =
+        FromHeapCString(cgx_interface_name(result.ifaces[i]));
+    EXPECT_EQ(got, wants[i]);
+    cgx_release_reference(result.ifaces[i]);
+  }
+  cgx_free_list_interfaces_result(&result);
+
+  cgx_release_reference(pr.package);
+}
+
 TEST_F(cgx, PackageFindStaticVar) {
   struct build_result pr(BuildPackage(kPkgVarsPackage));
   CGX_ASSERT_OK(pr.error);
