@@ -155,6 +155,25 @@ func TestGenericCall(t *testing.T) {
 		}},
 	}
 	testbuild.Run(t,
+		testbuild.DeclarePackage{
+			Src: `
+package dtype
+
+type (
+	Floats interface {
+		bfloat16 | float32 | float64
+	}
+
+	Ints interface {
+		int32 | int64 | uint32 | uint64
+	}
+
+	Num interface {
+		Floats | Ints
+	}
+)
+`,
+		},
 		testbuild.Decl{
 			Src: `
 type someInt interface{ int32 | int64 }
@@ -207,6 +226,41 @@ func callCast() int32 {
 					}},
 				},
 			},
+		},
+		testbuild.Decl{
+			Src: `
+type someInt interface{ int32 | int64}
+
+func g[T someInt]() T
+
+func f[T someInt]() T {
+	return g[T]()
+}
+`,
+		},
+		testbuild.Decl{
+			Src: `
+type someInt interface{ int32 | int64 }
+
+func f[T someInt](x [___X]T) [X___]T {
+	y := g[T](x)
+	return x / y
+}
+
+func g[T someInt](x [___X]T) T
+`,
+		},
+		testbuild.Decl{
+			Src: `
+import "dtype"
+
+func f[T dtype.Num](x [___X]T) [X___]T {
+	y := g[T](x)
+	return x / y
+}
+
+func g[T dtype.Num](x [___X]T) T
+`,
 		},
 	)
 }

@@ -175,7 +175,7 @@ func (S) f() int32 {
 	return 2
 }
 `,
-			Err: "synthetic requires a S type receiver",
+			Err: "synthetic requires a test.S type receiver",
 		},
 		testbuild.Decl{
 			Src: `

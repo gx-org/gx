@@ -42,6 +42,15 @@ func Block(stmts ...ir.Stmt) *ir.BlockStmt {
 	return &ir.BlockStmt{List: stmts}
 }
 
+// Annotations builds an annotation set.
+func Annotations(anns ...ir.Annotation) ir.Annotations {
+	var a ir.Annotations
+	for _, ann := range anns {
+		a.Set(ann)
+	}
+	return a
+}
+
 // LocalVar returns a local variable storage given a name and a type.
 func LocalVar(name string, typ ir.Type) *ir.LocalVarStorage {
 	return &ir.LocalVarStorage{

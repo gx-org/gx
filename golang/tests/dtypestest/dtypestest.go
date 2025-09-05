@@ -29,7 +29,7 @@ import (
 var dtypes *dtypes_go_gx.Package
 
 func TestBool(t *testing.T) {
-	atom, err := dtypes.Bool.Run(types.Bool(true))
+	atom, err := dtypes.Bool(types.Bool(true))
 	if err != nil {
 		t.Fatalf("%+v", err)
 	}
@@ -40,7 +40,7 @@ func TestBool(t *testing.T) {
 }
 
 func TestFloat32(t *testing.T) {
-	atom, err := dtypes.Float32.Run(types.Float32(math.MaxFloat32))
+	atom, err := dtypes.Float32(types.Float32(math.MaxFloat32))
 	if err != nil {
 		t.Fatalf("%+v", err)
 	}
@@ -51,7 +51,7 @@ func TestFloat32(t *testing.T) {
 }
 
 func TestFloat64(t *testing.T) {
-	atom, err := dtypes.Float64.Run(types.Float64(math.MaxFloat64))
+	atom, err := dtypes.Float64(types.Float64(math.MaxFloat64))
 	if err != nil {
 		t.Fatalf("%+v", err)
 	}
@@ -62,7 +62,7 @@ func TestFloat64(t *testing.T) {
 }
 
 func TestInt32(t *testing.T) {
-	atom, err := dtypes.Int32.Run(types.Int32(math.MaxInt32))
+	atom, err := dtypes.Int32(types.Int32(math.MaxInt32))
 	if err != nil {
 		t.Fatalf("%+v", err)
 	}
@@ -73,7 +73,7 @@ func TestInt32(t *testing.T) {
 }
 
 func TestInt64(t *testing.T) {
-	atom, err := dtypes.Int64.Run(types.Int64(math.MaxInt64))
+	atom, err := dtypes.Int64(types.Int64(math.MaxInt64))
 	if err != nil {
 		t.Fatalf("%+v", err)
 	}
@@ -84,7 +84,7 @@ func TestInt64(t *testing.T) {
 }
 
 func TestUint32(t *testing.T) {
-	atom, err := dtypes.Uint32.Run(types.Uint32(math.MaxUint32))
+	atom, err := dtypes.Uint32(types.Uint32(math.MaxUint32))
 	if err != nil {
 		t.Fatalf("%+v", err)
 	}
@@ -96,7 +96,7 @@ func TestUint32(t *testing.T) {
 }
 
 func TestUint64(t *testing.T) {
-	atom, err := dtypes.Uint64.Run(types.Uint64(math.MaxUint64))
+	atom, err := dtypes.Uint64(types.Uint64(math.MaxUint64))
 	if err != nil {
 		t.Fatalf("%+v", err)
 	}
@@ -109,7 +109,7 @@ func TestUint64(t *testing.T) {
 
 func TestBoolArray(t *testing.T) {
 	arg := []bool{true, false, true, false, true, false}
-	array, err := dtypes.ArrayBool.Run(types.ArrayBool(arg, 2, 3))
+	array, err := dtypes.ArrayBool(types.ArrayBool(arg, 2, 3))
 	if err != nil {
 		t.Fatalf("%+v", err)
 	}
@@ -124,7 +124,7 @@ func TestFloat32Array(t *testing.T) {
 		math.MaxFloat32, -math.MaxFloat32,
 		math.SmallestNonzeroFloat32, -math.SmallestNonzeroFloat32,
 	}, 2, 2)
-	array, err := dtypes.ArrayFloat32.Run(arg)
+	array, err := dtypes.ArrayFloat32(arg)
 	if err != nil {
 		t.Fatalf("%+v", err)
 	}
@@ -142,7 +142,7 @@ func TestFloat64Array(t *testing.T) {
 		math.MaxFloat64, -math.MaxFloat64,
 		math.SmallestNonzeroFloat64, -math.SmallestNonzeroFloat64,
 	}, 2, 2)
-	array, err := dtypes.ArrayFloat64.Run(arg)
+	array, err := dtypes.ArrayFloat64(arg)
 	if err != nil {
 		t.Fatalf("%+v", err)
 	}
@@ -157,7 +157,7 @@ func TestFloat64Array(t *testing.T) {
 
 func TestInt32Array(t *testing.T) {
 	arg := types.ArrayInt32([]int32{math.MaxInt32, math.MinInt32 + 1}, 2)
-	array, err := dtypes.ArrayInt32.Run(arg)
+	array, err := dtypes.ArrayInt32(arg)
 	if err != nil {
 		t.Fatalf("%+v", err)
 	}
@@ -169,7 +169,7 @@ func TestInt32Array(t *testing.T) {
 
 func TestInt64Array(t *testing.T) {
 	arg := types.ArrayInt64([]int64{math.MaxInt64, math.MinInt64 + 1}, 2)
-	array, err := dtypes.ArrayInt64.Run(arg)
+	array, err := dtypes.ArrayInt64(arg)
 	if err != nil {
 		t.Fatalf("%+v", err)
 	}
@@ -181,7 +181,7 @@ func TestInt64Array(t *testing.T) {
 
 func TestUint32Array(t *testing.T) {
 	arg := types.ArrayUint32([]uint32{math.MaxUint32, 1}, 2)
-	array, err := dtypes.ArrayUint32.Run(arg)
+	array, err := dtypes.ArrayUint32(arg)
 	if err != nil {
 		t.Fatalf("%+v", err)
 	}
@@ -193,7 +193,7 @@ func TestUint32Array(t *testing.T) {
 
 func TestUint64Array(t *testing.T) {
 	arg := types.ArrayUint64([]uint64{math.MaxUint64, 1}, 2)
-	array, err := dtypes.ArrayUint64.Run(arg)
+	array, err := dtypes.ArrayUint64(arg)
 	if err != nil {
 		t.Fatalf("%+v", err)
 	}
@@ -204,10 +204,7 @@ func TestUint64Array(t *testing.T) {
 }
 
 func setupTest(dev *api.Device) error {
-	gxPackage, err := dtypes_go_gx.Load(dev.Runtime())
-	if err != nil {
-		return err
-	}
-	dtypes = gxPackage.BuildFor(dev)
-	return nil
+	var err error
+	dtypes, err = dtypes_go_gx.BuildFor(dev)
+	return err
 }

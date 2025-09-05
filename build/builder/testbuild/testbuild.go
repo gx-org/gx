@@ -139,7 +139,7 @@ package test
 
 %s
 `, tt.Src))
-	if err := checkError(tt.Err, err); err != nil {
+	if err := CheckError(tt.Err, err); err != nil {
 		return err
 	}
 	if err := checkAll(tt.Want, pkg.IR().Decls); err != nil {
@@ -174,7 +174,8 @@ func checkNilError(err error) error {
 	return err
 }
 
-func checkError(want string, err error) error {
+// CheckError checks if an error is expected.
+func CheckError(want string, err error) error {
 	if want == "" {
 		return checkNilError(err)
 	}
@@ -193,7 +194,7 @@ func (tt Expr) Run(ctx *Builder) error {
 	bld := builder.New(&ctx.imp)
 	pkg := bld.NewIncrementalPackage("test")
 	got, err := pkg.BuildExpr(tt.Src)
-	if err := checkError(tt.Err, err); err != nil {
+	if err := CheckError(tt.Err, err); err != nil {
 		return err
 	}
 	if err := compare(done, got, tt.Want); err != nil {
@@ -244,6 +245,11 @@ func (b *Builder) Build(path, src string) (builder.Package, error) {
 	}
 	pkg := bld.NewIncrementalPackage(fullPath)
 	return pkg, pkg.Build(src)
+}
+
+// Loader used to build a GX builder.
+func (b *Builder) Loader() builder.Loader {
+	return &b.imp
 }
 
 // Test to run.

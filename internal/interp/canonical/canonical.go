@@ -169,20 +169,6 @@ func (m *pExpr) string(pe pExprOp) string {
 	return fmt.Sprintf("(%s %s)", pe.op(), m.str)
 }
 
-func (m *pExpr) simplifiedArgs() []Canonical {
-	args := m.args()
-	r := make([]Canonical, len(args))
-	for i, arg := range args {
-		simplifier, ok := arg.(Simplifier)
-		if !ok {
-			r[i] = arg
-		} else {
-			r[i] = simplifier.Simplify()
-		}
-	}
-	return r
-}
-
 func (m *pExpr) args() []Canonical {
 	return m.exprs
 }
@@ -204,19 +190,19 @@ func (pe add) Compare(other Comparable) bool {
 }
 
 func (pe add) Float() *big.Float {
+	floats, cans := floatArgs(pe)
+	if len(cans) > 0 {
+		return nil
+	}
 	r := new(big.Float)
-	for _, arg := range pe.args() {
-		argF := toFloat(arg)
-		if argF == nil {
-			return nil
-		}
-		r.Add(r, argF)
+	for _, f := range floats {
+		r.Add(r, f)
 	}
 	return r
 }
 
 func (pe add) Simplify() Simplifier {
-	return pe
+	return add{pExpr: prefixedExpr(simplifyArgs(pe)...)}
 }
 
 func (pe add) String() string {
@@ -232,20 +218,19 @@ func (pe sub) Compare(other Comparable) bool {
 }
 
 func (pe sub) Float() *big.Float {
+	floats, cans := floatArgs(pe)
+	if len(cans) > 0 {
+		return nil
+	}
 	r := new(big.Float)
-	for _, val := range pe.args() {
-		evalX, ok := val.(Evaluable)
-		if !ok {
-			return nil
-		}
-		x := evalX.Float()
-		r.Add(r, new(big.Float).Neg(x))
+	for _, f := range floats {
+		r.Add(r, new(big.Float).Neg(f))
 	}
 	return r
 }
 
 func (pe sub) Simplify() Simplifier {
-	return pe
+	return sub{pExpr: prefixedExpr(simplifyArgs(pe)...)}
 }
 
 func (pe sub) String() string {
@@ -261,28 +246,20 @@ func (pe mul) Compare(other Comparable) bool {
 }
 
 func (pe mul) Float() *big.Float {
+	floats, cans := floatArgs(pe)
+	if len(cans) > 0 {
+		return nil
+	}
 	r := big.NewFloat(1)
-	for _, val := range pe.args() {
-		valF := toFloat(val)
-		if valF == nil {
-			return nil
-		}
-		r.Mul(r, valF)
+	for _, f := range floats {
+		r.Mul(r, f)
 	}
 	return r
 }
 
-func toFloat(c Canonical) *big.Float {
-	f, ok := c.(Evaluable)
-	if !ok {
-		return nil
-	}
-	return f.Float()
-}
-
 func (pe mul) Simplify() Simplifier {
 	var args []Canonical
-	for _, arg := range pe.simplifiedArgs() {
+	for _, arg := range simplifyArgs(pe) {
 		argF := toFloat(arg)
 		if argF != nil && argF.Cmp(one) == 0 {
 			continue
@@ -312,19 +289,19 @@ func (pe quo) Compare(other Comparable) bool {
 var one = big.NewFloat(1)
 
 func (pe quo) Float() *big.Float {
+	floats, cans := floatArgs(pe)
+	if len(cans) > 0 {
+		return nil
+	}
 	r := big.NewFloat(1)
-	for _, arg := range pe.args() {
-		argF := toFloat(arg)
-		if argF == nil {
-			return nil
-		}
-		r.Mul(r, new(big.Float).Quo(one, argF))
+	for _, f := range floats {
+		r.Mul(r, new(big.Float).Quo(one, f))
 	}
 	return r
 }
 
 func (pe quo) Simplify() Simplifier {
-	return pe
+	return quo{pExpr: prefixedExpr(simplifyArgs(pe)...)}
 }
 
 func (pe quo) String() string {
@@ -349,6 +326,40 @@ func (pe unknown) Simplify() Simplifier {
 
 func (pe unknown) String() string {
 	return pe.pExpr.string(pe)
+}
+
+func toFloat(x Canonical) *big.Float {
+	eval, isEval := x.(Evaluable)
+	if !isEval {
+		return nil
+	}
+	return eval.Float()
+}
+
+func floatArgs(op pExprOp) (floats []*big.Float, vars []Canonical) {
+	for _, arg := range op.args() {
+		val := toFloat(arg)
+		if val != nil {
+			floats = append(floats, val)
+		} else {
+			vars = append(vars, arg)
+		}
+	}
+	return
+}
+
+func simplifyArgs(op pExprOp) []Canonical {
+	args := op.args()
+	r := make([]Canonical, len(args))
+	for i, arg := range args {
+		simplifier, ok := arg.(Simplifier)
+		if !ok {
+			r[i] = arg
+		} else {
+			r[i] = simplifier.Simplify()
+		}
+	}
+	return r
 }
 
 // ToValue returns a float value if the canonical expression is evaluable,

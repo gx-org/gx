@@ -276,3 +276,23 @@ func GraphFromElement(name string, el ir.Element) (*ops.Subgraph, error) {
 	}
 	return grapher.SubGraph(name)
 }
+
+func axesFromShape(ev ir.Evaluator, shape *shape.Shape) (*interp.Slice, error) {
+	ctx := ev.(evaluator.Context)
+	axes := make([]ir.Element, len(shape.AxisLengths))
+	for i, axisSize := range shape.AxisLengths {
+		iExpr := &ir.AtomicValueT[ir.Int]{
+			Val: ir.Int(i),
+			Typ: ir.IntLenType(),
+		}
+		iValue, err := values.AtomIntegerValue[ir.Int](ir.IntLenType(), ir.Int(axisSize))
+		if err != nil {
+			return nil, err
+		}
+		axes[i], err = ctx.Evaluator().ElementFromAtom(ctx, iExpr, iValue)
+		if err != nil {
+			return nil, err
+		}
+	}
+	return interp.NewSlice(ir.IntLenSliceType(), axes), nil
+}

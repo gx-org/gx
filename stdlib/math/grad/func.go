@@ -24,7 +24,7 @@ import (
 func (m *gradMacro) gradFunc(fetcher ir.Fetcher, src *ir.FuncValExpr, wrt string) (ast.Expr, bool) {
 	ann := findSetAnnotation(src.F)
 	if ann != nil {
-		return gradFuncWithSet(fetcher, src, ann)
+		return gradFromAnnotation(fetcher, src.F.(ir.Func), ann, wrt)
 	}
 	switch fT := src.F.(type) {
 	case *ir.FuncDecl:

@@ -50,3 +50,16 @@ func TestBinaryOp(t *testing.T) {
 		},
 	)
 }
+
+func TestStatementOps(t *testing.T) {
+	testbuild.Run(t,
+		testbuild.Decl{
+			Src: `
+func f(x float32) float32 {
+  a := -(1 * x) * -1
+  return a
+}
+`,
+		},
+	)
+}

@@ -45,6 +45,7 @@ class Shape;
 class Value;
 class Struct;
 class Interface;
+class StaticVar;
 
 // Handle is a move-only wrapper class that manages cgx opaque handles. Each
 // handle has a single exclusive owner at any given time.
@@ -113,12 +114,32 @@ class Package {
     // cgx_package_get_ir always return a new handle.
     return PackageIR(cgx_package_get_ir(raw()));
   }
-  absl::StatusOr<Function> FindFunction(const std::string& name) const;
+
   absl::StatusOr<Interface> FindInterface(const std::string& name) const;
+  absl::StatusOr<std::vector<Interface>> ListInterfaces() const;
+
+  bool HasStaticVar(const std::string& name) const;
+  absl::StatusOr<StaticVar> FindStaticVar(const std::string& name) const;
+  absl::StatusOr<std::vector<StaticVar>> ListStaticVars() const;
+
+  bool HasFunction(const std::string& name) const;
+  absl::StatusOr<Function> FindFunction(const std::string& name) const;
   absl::StatusOr<std::vector<Function>> ListFunctions() const;
 
  private:
   Handle<cgx_package> package_;
+};
+
+class StaticVar {
+ public:
+  StaticVar(cgx_static static_var) : static_var_(static_var) {}
+
+  cgx_static raw() const { return *static_var_; }
+  std::string name() const;
+  absl::Status set_value(int64_t value) const;
+
+ private:
+  Handle<cgx_static> static_var_;
 };
 
 class Function {
@@ -216,7 +237,7 @@ class Value {
   uint32_t uint32_value() const { return cgx_value_get_uint32(*value_); }
   uint64_t uint64_value() const { return cgx_value_get_uint64(*value_); }
   absl::StatusOr<Struct> as_struct() const;
-  std::optional<Interface> interface_type(const Device& device) const;
+  std::optional<Interface> interface_type(const Package& package) const;
   std::string string() const;
 
  private:

@@ -27,6 +27,9 @@ type Func struct {
 	// Src declares the function (which must be named `F`) to compute the gradient of.
 	Src string
 
+	// WRT defines the variables to compute the gradient w.r.t.
+	WRT string
+
 	// GradOf lists all the functions for which we compute the gradient of.
 	// If GradOf is empty, we compute the gradient of F.
 	GradOf []string
@@ -57,14 +60,17 @@ func (tt Func) buildSourceCode() string {
 		declImportName = tt.GradImportName
 		callImportName = tt.GradImportName
 	}
+	if tt.WRT == "" {
+		tt.WRT = "x"
+	}
 	grads := &strings.Builder{}
 	for _, fnName := range tt.GradOf {
 		fmt.Fprintf(grads,
 			`
-//gx:=%s.Func(%s, "x")
+//gx:=%s.Func(%s, "%s")
 func grad%s()
 `,
-			callImportName, fnName, fnName)
+			callImportName, fnName, tt.WRT, fnName)
 	}
 	return fmt.Sprintf(`
 package test
@@ -86,7 +92,7 @@ func (tt Func) Run(b *testbuild.Builder) error {
 	src := tt.buildSourceCode()
 	pkg, err := b.Build("", src)
 	if err != nil {
-		return checkError(tt.Err, err)
+		return testbuild.CheckError(tt.Err, err)
 	}
 	pkgIR := pkg.IR()
 	// Check the gradient of the default function F.

@@ -37,6 +37,8 @@ var declareGradPackage = testbuild.DeclarePackage{
 		irFunc.BuildSynthetic = cpevelements.MacroImpl(grad.FuncGrad)
 		irSet := pkg.FindFunc("Set").(*ir.Macro)
 		irSet.BuildSynthetic = cpevelements.MacroImpl(grad.SetGrad)
+		irSetFor := pkg.FindFunc("SetFor").(*ir.Macro)
+		irSetFor.BuildSynthetic = cpevelements.MacroImpl(grad.SetGradFor)
 	},
 }
 
@@ -62,8 +64,20 @@ func F(x float32) [2]float32 {
 }
 `,
 			Want: `
-func gradF(x float32) [2]float32 {
-	return [2]float32{1, 0}
+func gradF(x float32) float32 {
+	return 1
+}
+`,
+		},
+		testgrad.Func{
+			Src: `
+func F(x float32) [2]float32 {
+	return [...]float32{x*x, x}
+}
+`,
+			Want: `
+func gradF(x float32) float32 {
+	return (x+x)+1
 }
 `,
 		},
@@ -395,16 +409,16 @@ func gradF(x float32) float32 {
 		},
 		testgrad.Func{
 			Src: `
-func F(x float32) (float32, float32) {
+func F(x float32) float32 {
 	x = x*x
 	x1 := x
 	x = x+x
 	x2 := x
-	return x1, x2
+	return x1+x2
 }
 `,
 			Want: `
-func gradF(x float32) (float32, float32) {
+func gradF(x float32) float32 {
 	__grad_x := x+x
 	x = x*x
 	__grad_x1 := __grad_x
@@ -413,7 +427,7 @@ func gradF(x float32) (float32, float32) {
 	x = x+x
 	__grad_x2 := __grad_x
 	x2 := x
-	return __grad_x1, __grad_x2
+	return __grad_x1+__grad_x2
 }
 `,
 		},
@@ -454,6 +468,14 @@ func F(y float32) float32 {
 func F(x float32) float32
 `,
 			Err: "function has no body",
+		},
+		testgrad.Func{
+			Src: `
+func F(x float32) (float32, float32) {
+	return x, x
+}
+`,
+			Err: "cannot compute the gradient of function with more than one result",
 		},
 	)
 }

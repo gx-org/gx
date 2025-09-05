@@ -29,12 +29,17 @@ type genericType interface {
 }
 
 func typeInclude(fetcher ir.Fetcher, set ir.Type, typ ir.Type) bool {
+	typParam, isTypeParam := typ.(*ir.TypeParam)
+	if isTypeParam {
+		typ = typParam.Field.Type()
+	}
 	isIn, err := ir.TypeInclude(fetcher, set, typ)
 	if err != nil {
 		return fetcher.Err().Append(err)
 	}
 	if !isIn {
-		return fetcher.Err().Appendf(typ.Source(), "%s does not satisfy %s", ir.TypeString(typ), ir.TypeString(set))
+		return fetcher.Err().Appendf(typ.Source(), "%s does not satisfy %s",
+			ir.TypeString(typ), ir.TypeString(set))
 	}
 	return true
 }
@@ -93,21 +98,18 @@ func dtypeElement(expr ast.Expr) ast.Expr {
 	return dtypeElement(aType.Elt)
 }
 
-func extractTypeParamName(field *ir.FieldGroup) genericType {
-	switch typT := field.Type.Typ.(type) {
+func extractTypeSpecialiser(tp ir.Type) genericType {
+	switch typT := tp.(type) {
 	case *ir.TypeParam:
 		return &ident{set: typT.Field.Type(), typName: typT.Field.Name.Name}
 	case *ir.TypeSet:
 		return nil
 	case ir.ArrayType:
-		dtype := typT.DataType()
 		gType := &array{src: typT.ArrayType(), typ: typT}
-		typeParam, isTypeParam := dtype.(*ir.TypeParam)
-		if !isTypeParam {
-			return gType
+		if typeParam, hasTypeParam := typT.DataType().(*ir.TypeParam); hasTypeParam {
+			gType.set = typeParam.Field.Type()
+			gType.typName = typeParam.Field.Name.Name
 		}
-		gType.set = typeParam.Field.Type()
-		gType.typName = typeParam.Field.Name.Name
 		return gType
 	}
 	return nil

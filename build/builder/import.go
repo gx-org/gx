@@ -70,6 +70,7 @@ func importPackage(pkgScope *pkgResolveScope, decl *ir.ImportDecl) (*importedPac
 	} else {
 		irPackage = bPackage.IR()
 	}
+	decl.Package = irPackage
 	imp := &importedPackage{
 		pkg:   irPackage,
 		names: make(map[string]ir.Storage),

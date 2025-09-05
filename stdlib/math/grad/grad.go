@@ -41,6 +41,7 @@ var Package = builtin.PackageBuilder{
 		builtin.ParseSource(&fs),
 		builtin.RegisterMacro("Func", FuncGrad),
 		builtin.RegisterMacro("Set", SetGrad),
+		builtin.RegisterMacro("SetFor", SetGradFor),
 	},
 }
 
@@ -74,6 +75,9 @@ func FuncGrad(call elements.CallAt, macro *cpevelements.Macro, args []ir.Element
 	fn, err := interp.PkgFuncFromElement(args[1])
 	if err != nil {
 		return nil, err
+	}
+	if fn.FuncType().Results.Len() > 1 {
+		return nil, errors.Errorf("cannot compute the gradient of function with more than one result")
 	}
 	fnT, ok := fn.(ir.PkgFunc)
 	if !ok {
@@ -118,6 +122,11 @@ func (m *gradMacro) syntheticFuncName(fetcher ir.Fetcher, fn ir.Func) (string, b
 func (m *gradMacro) BuildDecl() (*ast.FuncDecl, bool) {
 	fType := m.fn.FuncType()
 	fDecl := &ast.FuncDecl{Type: fType.Src}
+	fDecl.Type.Results = &ast.FieldList{
+		List: []*ast.Field{&ast.Field{
+			Type: m.wrt.fieldType(),
+		}},
+	}
 	recv := fType.Receiver
 	if recv != nil {
 		fDecl.Recv = recv.Src
@@ -125,7 +134,28 @@ func (m *gradMacro) BuildDecl() (*ast.FuncDecl, bool) {
 	return fDecl, true
 }
 
+func (m *gradMacro) buildBodyFromSetAnnotation(fetcher ir.Fetcher, fn ir.Func, ann *setAnnotation) (*ast.BlockStmt, []*cpevelements.SyntheticFuncDecl, bool) {
+	params := fn.FuncType().Params.Fields()
+	args := make([]ast.Expr, len(params))
+	for i, param := range params {
+		args[i] = param.Name
+	}
+	identToGradFunc, ok := gradFromAnnotation(fetcher, fn, ann, m.wrt.name())
+	if !ok {
+		return nil, nil, false
+	}
+	return &ast.BlockStmt{List: []ast.Stmt{&ast.ReturnStmt{
+		Results: []ast.Expr{&ast.CallExpr{
+			Fun:  identToGradFunc,
+			Args: args,
+		}},
+	}}}, nil, true
+}
+
 func (m *gradMacro) BuildBody(fetcher ir.Fetcher, fn ir.Func) (*ast.BlockStmt, []*cpevelements.SyntheticFuncDecl, bool) {
+	if ann := findSetAnnotation(m.fn); ann != nil {
+		return m.buildBodyFromSetAnnotation(fetcher, fn, ann)
+	}
 	fnWithBody, ok := m.fn.(*ir.FuncDecl)
 	if !ok {
 		return nil, nil, fetcher.Err().Appendf(fn.Source(), "function has no body")

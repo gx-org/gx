@@ -27,7 +27,10 @@ import (
 	gxtesting "github.com/gx-org/gx/tests/testing"
 )
 
-var randGX *rand_go_gx.Package
+var (
+	randGX       *rand_go_gx.Package
+	randHandleGX *rand_go_gx.PackageHandle
+)
 
 func TestSample(t *testing.T) {
 	tests := []struct {
@@ -62,7 +65,7 @@ func TestSample(t *testing.T) {
 		},
 	}
 	for _, test := range tests {
-		vals, err := randGX.Sample.Run(types.Int64(test.seed))
+		vals, err := randGX.Sample(types.Int64(test.seed))
 		if err != nil {
 			t.Fatalf("%+v", err)
 		}
@@ -74,7 +77,7 @@ func TestSample(t *testing.T) {
 }
 
 func TestSampleBool(t *testing.T) {
-	values, err := randGX.SampleBool.Run(types.Int64(3141))
+	values, err := randGX.SampleBool(types.Int64(3141))
 	if err != nil {
 		t.Fatalf("%+v", err)
 	}
@@ -111,7 +114,7 @@ func kolmogorovSmirnov(values []float64) float64 {
 }
 
 func TestSampleUniformFloat64(t *testing.T) {
-	values, err := randGX.SampleUniformFloat64.Run(types.Int64(0))
+	values, err := randGX.SampleUniformFloat64(types.Int64(0))
 	if err != nil {
 		t.Fatalf("%+v", err)
 	}
@@ -127,20 +130,18 @@ func TestSampleUniformFloat64(t *testing.T) {
 
 func TestDeviceValueAsSeed(t *testing.T) {
 	seed := types.Int64(0)
-	seedDevice, err := seed.SendTo(randGX.Device)
+	seedDevice, err := seed.SendTo(randHandleGX.Device())
 	if err != nil {
 		t.Fatal(err)
 	}
-	if _, err := randGX.New.Run(seedDevice); err != nil {
+	if _, err := randGX.New(seedDevice); err != nil {
 		t.Error(err)
 	}
 }
 
 func setupTest(dev *api.Device) error {
-	gxPackage, err := rand_go_gx.Load(dev.Runtime())
-	if err != nil {
-		return err
-	}
-	randGX = gxPackage.BuildFor(dev)
-	return nil
+	var err error
+	randHandleGX, err = rand_go_gx.BuildHandleFor(dev)
+	randGX = randHandleGX.Factory.Package
+	return err
 }

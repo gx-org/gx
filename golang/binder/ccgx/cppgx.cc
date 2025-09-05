@@ -142,12 +142,6 @@ absl::StatusOr<DeviceAtomic<uint64_t>> Device::Send(uint64_t val) {
 
 /* Package */
 
-absl::StatusOr<Function> Package::FindFunction(const std::string& name) const {
-  const auto result = cgx_function_find(*package_, name.c_str());
-  CPPGX_RETURN_IF_ERROR(result.error);
-  return Function(result.function);
-}
-
 absl::StatusOr<Interface> Package::FindInterface(
     const std::string& name) const {
   const auto result = cgx_interface_find(*package_, name.c_str());
@@ -155,10 +149,61 @@ absl::StatusOr<Interface> Package::FindInterface(
   return Interface(result.iface);
 }
 
+absl::StatusOr<std::vector<Interface>> Package::ListInterfaces() const {
+  auto result = cgx_package_list_interfaces(*package_);
+  CPPGX_RETURN_IF_ERROR(result.error);
+  std::vector<Interface> ifaces(result.ifaces,
+                                result.ifaces + result.num_ifaces);
+  cgx_free_list_interfaces_result(&result);
+  return ifaces;
+}
+
+bool Package::HasStaticVar(const std::string& name) const {
+  return cgx_static_has(*package_, name.c_str());
+}
+
+absl::StatusOr<StaticVar> Package::FindStaticVar(
+    const std::string& name) const {
+  const auto result = cgx_static_find(*package_, name.c_str());
+  CPPGX_RETURN_IF_ERROR(result.error);
+  return StaticVar(result.static_var);
+}
+
+absl::StatusOr<std::vector<StaticVar>> Package::ListStaticVars() const {
+  auto result = cgx_package_list_statics(*package_);
+  CPPGX_RETURN_IF_ERROR(result.error);
+  std::vector<StaticVar> vars(result.statics,
+                              result.statics + result.num_statics);
+  cgx_free_list_statics_result(&result);
+  return vars;
+}
+
+bool Package::HasFunction(const std::string& name) const {
+  return cgx_function_has(*package_, name.c_str());
+}
+
+absl::StatusOr<Function> Package::FindFunction(const std::string& name) const {
+  const auto result = cgx_function_find(*package_, name.c_str());
+  CPPGX_RETURN_IF_ERROR(result.error);
+  return Function(result.function);
+}
+
 absl::StatusOr<std::vector<Function>> Package::ListFunctions() const {
   auto result = cgx_package_list_functions(*package_);
   CPPGX_RETURN_IF_ERROR(result.error);
   return make_function_vector(&result);
+}
+
+/* Static variables */
+
+std::string StaticVar::name() const {
+  return FromHeapCString(cgx_static_name(raw()));
+}
+
+absl::Status StaticVar::set_value(int64_t value) const {
+  const auto err = cgx_static_set(raw(), value);
+  CPPGX_RETURN_IF_ERROR(err);
+  return absl::OkStatus();
 }
 
 /* Function */
@@ -323,8 +368,8 @@ absl::StatusOr<Struct> Value::as_struct() const {
   return Struct(result.strct);
 }
 
-std::optional<Interface> Value::interface_type(const Device& device) const {
-  cgx_interface iface = cgx_value_get_interface_type(device.raw(), *value_);
+std::optional<Interface> Value::interface_type(const Package& package) const {
+  cgx_interface iface = cgx_value_get_interface_type(package.raw(), *value_);
   if (iface == cgx_interface{}) {
     return std::nullopt;
   }

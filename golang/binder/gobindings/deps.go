@@ -18,15 +18,35 @@ import (
 	"fmt"
 	"maps"
 	"slices"
-	"sort"
-	"strings"
 
 	"github.com/gx-org/gx/build/ir"
 )
 
 type dependency struct {
+	Index       int
 	PackagePath string
 	ImportName  string
+}
+
+func (b *binder) buildDependencies() map[string]dependency {
+	deps := make(map[string]dependency)
+	for file := range maps.Values(b.Package.Files) {
+		for _, imp := range file.Imports {
+			path := b.packageToPath(imp.Package)
+			_, ok := deps[path]
+			if ok {
+				continue
+			}
+			index := len(deps)
+			importName := fmt.Sprintf("gxdep%d", index)
+			deps[path] = dependency{
+				PackagePath: path,
+				ImportName:  importName,
+				Index:       index,
+			}
+		}
+	}
+	return deps
 }
 
 func (b *binder) Dependencies() []dependency {
@@ -38,36 +58,22 @@ func (b *binder) Dependencies() []dependency {
 	return deps
 }
 
-func (b *binder) GXImportDeps() string {
-	var imports []string
-	for _, dep := range b.Dependencies() {
-		imports = append(imports, fmt.Sprintf("\t%s \"%s\"", dep.ImportName, dep.PackagePath))
-	}
-	sort.Slice(imports, func(i, j int) bool {
-		return imports[i] < imports[j]
-	})
-	return strings.Join(imports, "\n")
+func (b *binder) NumDeps() int {
+	return len(b.dependencies)
 }
 
-func (b *binder) importPathToName(path string) string {
-	dep, ok := b.dependencies[path]
-	if ok {
-		return dep.ImportName
+func (b *binder) registerImport(path string) {
+}
+
+func (b *binder) packageToPath(pkg *ir.Package) string {
+	packagePath := pkg.FullName()
+	if b.stdlib.Support(packagePath) {
+		return b.builder.StdlibDependencyImport(packagePath)
 	}
-	importName := fmt.Sprintf("gxdep%d", len(b.dependencies))
-	b.dependencies[path] = dependency{
-		PackagePath: path,
-		ImportName:  importName,
-	}
-	return importName
+	return b.builder.DependencyImport(pkg)
 }
 
 func (b *binder) namePackage(pkg *ir.Package) string {
-	packagePath := pkg.FullName()
-	if b.stdlib.Support(packagePath) {
-		packagePath = b.builder.StdlibDependencyImport(packagePath)
-	} else {
-		packagePath = b.builder.DependencyImport(pkg)
-	}
-	return b.importPathToName(packagePath)
+	path := b.packageToPath(pkg)
+	return b.dependencies[path].ImportName
 }

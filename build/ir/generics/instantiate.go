@@ -112,7 +112,7 @@ func instantiateGroupType(fetcher ir.Fetcher) groupCloner {
 			Src:  group.Src,
 			Type: group.Type,
 		}
-		gType := extractTypeParamName(group)
+		gType := extractTypeSpecialiser(group.Type.Typ)
 		if gType == nil {
 			return ext
 		}

@@ -16,7 +16,6 @@ package gobindings
 
 import (
 	"fmt"
-	"io"
 	"slices"
 	"strings"
 	"text/template"
@@ -29,8 +28,8 @@ import (
 
 type namedType interface {
 	named() *ir.NamedType
-	buildBackendDefinition(io.Writer) error
-	Methods() *methods
+	BuildDeclaration() (string, error)
+	Methods() []method
 	Index() int
 	InitGXValue() (string, error)
 	Fields() []structField
@@ -40,7 +39,7 @@ func buildTypes(b *binder) ([]namedType, error) {
 	var types []namedType
 	for i, gxType := range b.Package.Decls.Types {
 		_, ok := gxType.Underlying.Typ.(*ir.BuiltinType)
-		if ok && !ir.IsExported(gxType.Name()) {
+		if ok {
 			continue
 		}
 		typ, err := b.buildType(i, gxType)
@@ -50,16 +49,6 @@ func buildTypes(b *binder) ([]namedType, error) {
 		types = append(types, typ)
 	}
 	return types, nil
-}
-
-func (b *binder) namedTypeDefinitions() (string, error) {
-	return tmpl.IterateFunc(b.NamedTypes, func(_ int, tp namedType) (string, error) {
-		var buf strings.Builder
-		if err := tp.buildBackendDefinition(&buf); err != nil {
-			return "", err
-		}
-		return buf.String(), nil
-	})
 }
 
 func (b *binder) buildType(index int, gxType *ir.NamedType) (namedType, error) {
@@ -105,11 +94,7 @@ type handle{{.Named.Name}} struct {
 	pkg       *Package
 	struc     *ir.NamedType
 	owner     *{{.Named.Name}}
-
-{{.Methods.HandleMethodFields}}
 }
-
-{{.Methods.Runners}}
 
 // Type of the value.
 func (h *handle{{.Named.Name}}) Type() ir.Type {
@@ -147,14 +132,14 @@ type baseType struct {
 	index int
 
 	CannotBeOnDevice string
-	methods          *methods
+	methods          []method
 }
 
 func (s baseType) named() *ir.NamedType {
 	return s.Named
 }
 
-func (s baseType) Methods() *methods {
+func (s baseType) Methods() []method {
 	return s.methods
 }
 
@@ -188,8 +173,8 @@ func (val {{.Named.Name}}) String() string {
 func (val *{{.Named.Name}}) Bridge() types.Bridge { return &val.handle }
 
 // Marshal{{.Named.Name}} populates the receiver fields with device handles.
-func (cmpl *Package) Marshal{{.Named.Name}}(val values.Value) (s *{{.Named.Name}}, err error) {
-	s = cmpl.Factory.New{{.Named.Name}}()
+func (fty *Factory) Marshal{{.Named.Name}}(val values.Value) (s *{{.Named.Name}}, err error) {
+	s = fty.New{{.Named.Name}}()
 	if _, ok := val.(*values.Slice); ok {
 		err = fmt.Errorf("cannot use handle to set {{.Named.Name}}: got a tuple instead of a single value")
 		return
@@ -206,13 +191,17 @@ func (cmpl *Package) Marshal{{.Named.Name}}(val values.Value) (s *{{.Named.Name}
 `))
 )
 
-func (s scalarType) buildBackendDefinition(w io.Writer) error {
+func (s scalarType) BuildDeclaration() (string, error) {
 	tmpl := scalarBackendTemplate
 	if err := bindings.CanBeOnDevice(s.typ); err != nil {
 		s.CannotBeOnDevice = err.Error()
 		tmpl = scalarNotSupportedTemplate
 	}
-	return tmpl.Execute(w, s)
+	var w strings.Builder
+	if err := tmpl.Execute(&w, s); err != nil {
+		return "", err
+	}
+	return w.String(), nil
 }
 
 func (s scalarType) BackendType() (string, error) {
@@ -338,9 +327,10 @@ var (
 type {{.Named.Name}} struct {
 	handle handle{{.Named.Name}}
 	value *values.NamedType
-{{range $field := .Fields}}
+
+{{range $field := .Fields -}}
 	{{$field.Name}} {{$field.BridgerType}}
-{{end}}
+{{end -}}
 }
 
 var (
@@ -354,8 +344,8 @@ func (h *handle{{.Named.Name}}) StructValue() *values.Struct {
 }
 
 // Marshal{{.Named.Name}} populates the receiver fields with device handles.
-func (cmpl *Package) Marshal{{.Named.Name}}(val values.Value) (s *{{.Named.Name}}, err error) {
-	s = cmpl.Factory.New{{.Named.Name}}()
+func (fty *Factory) Marshal{{.Named.Name}}(val values.Value) (s *{{.Named.Name}}, err error) {
+	s = fty.New{{.Named.Name}}()
 	var ok bool
 	s.value, ok = val.(*values.NamedType)
 	if !ok {
@@ -382,7 +372,6 @@ func (s {{.Named.Name}}) String() string {
 // Bridge returns the bridge between the Go value and the GX value.
 func (s *{{.Named.Name}}) Bridge() types.Bridge { return &s.handle }
 
-{{.Methods.ReturnHandle}}
 `))
 
 	structNotDeviceTemplate = template.Must(template.New("structNotDeviceTMPL").Parse(`
@@ -391,20 +380,24 @@ func (s *{{.Named.Name}}) Bridge() types.Bridge { return &s.handle }
 `))
 )
 
-func (s structType) buildBackendDefinition(w io.Writer) error {
+func (s structType) BuildDeclaration() (string, error) {
 	tmpl := structTemplate
 	if err := bindings.CanBeOnDevice(s.typ); err != nil {
 		s.CannotBeOnDevice = err.Error()
 		tmpl = structNotDeviceTemplate
 	}
-	return tmpl.Execute(w, s)
+	var w strings.Builder
+	if err := tmpl.Execute(&w, s); err != nil {
+		return "", err
+	}
+	return w.String(), nil
 }
 
 func (s structType) SetDeviceFieldsFromSliceValue() (string, error) {
 	if s.typ.NumFields() == 0 {
 		return "", nil
 	}
-	res := []string{}
+	var res []string
 	// Construct all the field values.
 	fields := s.typ.Fields.Fields()
 	for i, field := range fields {
@@ -442,7 +435,7 @@ func (s structType) NamedTypeFieldsToString() (string, error) {
 
 var setFieldTemplate = template.Must(template.New("allocStructFieldTMPL").Parse(`
 	case "{{.FieldName}}":
-		fieldValue, err := h.pkg.Device.factory.New(field.Type().(*ir.NamedType))
+		fieldValue, err := h.pkg.handle.factory.New(field.Type().(*ir.NamedType))
 		if err != nil {
 			return nil, err
 		}

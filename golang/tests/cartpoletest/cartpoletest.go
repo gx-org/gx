@@ -46,39 +46,36 @@ func TestStep(t *testing.T) {
 	wantInitialFullState := []float32{9.8, 1, 0.1, 1.1, 0.5, 0.05, 10, 0.02, 0.20943952, 2.4, 0, 0, 0, 0}
 	wantStateAfterStep := []float32{0, 0.19512196, 0, -0.29268292}
 
-	cp, err := cartpole.New.Run()
+	cp, err := cartpole.New()
 	if err != nil {
 		t.Fatal(err)
 	}
-	wantState(t, cp.FullState().Run, wantInitialFullState)
+	wantState(t, cp.FullState, wantInitialFullState)
 
 	// Run a few step function.
-	cp, err = cp.Step().Run(types.Float32(1))
+	cp, err = cp.Step(types.Float32(1))
 	if err != nil {
 		t.Fatal(err)
 	}
-	wantState(t, cp.State().Run, wantStateAfterStep)
+	wantState(t, cp.State, wantStateAfterStep)
 
 	// Reset cartpole.
-	cp, err = cp.Reset().Run()
+	cp, err = cp.Reset()
 	if err != nil {
 		t.Fatal(err)
 	}
-	wantState(t, cp.FullState().Run, wantInitialFullState)
+	wantState(t, cp.FullState, wantInitialFullState)
 
 	// Run a few step function.
-	cp, err = cp.Step().Run(types.Float32(1))
+	cp, err = cp.Step(types.Float32(1))
 	if err != nil {
 		t.Fatal(err)
 	}
-	wantState(t, cp.State().Run, wantStateAfterStep)
+	wantState(t, cp.State, wantStateAfterStep)
 }
 
 func setupTest(dev *api.Device) error {
-	gxPackage, err := cartpole_go_gx.Load(dev.Runtime())
-	if err != nil {
-		return err
-	}
-	cartpole = gxPackage.BuildFor(dev)
-	return nil
+	var err error
+	cartpole, err = cartpole_go_gx.BuildFor(dev)
+	return err
 }

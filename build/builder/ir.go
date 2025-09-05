@@ -190,7 +190,7 @@ func assignableTo(rscope resolveScope, src, dst ir.Type) (bool, error) {
 	if !compEvalOk {
 		return true, nil
 	}
-	return src.AssignableTo(compEval, dst)
+	return ir.AssignableTo(compEval, src, dst)
 }
 
 func convertToAt(rscope resolveScope, pos ast.Node, src, dst ir.Type) bool {
@@ -241,7 +241,7 @@ func equalToAt(rscope resolveScope, pos ast.Node, src, dst ir.Type) bool {
 	if !compEvalOk {
 		return true
 	}
-	eq, err := src.Equal(compEval, dst)
+	eq, err := ir.Equal(compEval, src, dst)
 	if err != nil {
 		rscope.Err().AppendInternalf(pos, "cannot compare types: %v", err)
 		return true

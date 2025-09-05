@@ -317,6 +317,7 @@ var (
 	_ materialise.ElementMaterialiser = (*arrayArgument)(nil)
 	_ flatten.Unflattener             = (*arrayArgument)(nil)
 	_ interp.Slicer                   = (*arrayArgument)(nil)
+	_ interp.WithAxes                 = (*arrayArgument)(nil)
 )
 
 // NewArrayArgument creates a new argument element that the graph can also use as an argument.
@@ -412,6 +413,10 @@ func (n *arrayArgument) Materialise(mat materialise.Materialiser) (materialise.N
 // Shape returns the shape of the element.
 func (n *arrayArgument) Shape() *shape.Shape {
 	return n.shape
+}
+
+func (n *arrayArgument) Axes(ev ir.Evaluator) (*interp.Slice, error) {
+	return axesFromShape(ev, n.shape)
 }
 
 func (n *arrayArgument) ToDeviceHandle(dev platform.Device, in *values.FuncInputs) (platform.DeviceHandle, error) {

@@ -33,7 +33,7 @@ import (
 	gxtesting "github.com/gx-org/gx/tests/testing"
 )
 
-var encodingGX *encoding_go_gx.Package
+var encodingGX *encoding_go_gx.PackageHandle
 
 func multiply[T dtype.AlgebraType](f int, x T) T {
 	return x * T(f)
@@ -166,7 +166,7 @@ func TestRunUnmarshalledScalarsStruct(t *testing.T) {
 		t.Fatalf("%+v", err)
 	}
 	checkScalars(t, factor, scalars)
-	gotTotalDevice, err := scalars.GetTotal().Run()
+	gotTotalDevice, err := scalars.GetTotal()
 	if err != nil {
 		t.Fatalf("%+v", err)
 	}
@@ -184,16 +184,15 @@ func TestMain(m *testing.M) {
 	rtm := backend.New(builder.New(importers.NewCacheLoader(
 		embedpkg.New(),
 	)))
-	gxPackage, err := encoding_go_gx.Load(rtm)
-	if err != nil {
-		fmt.Fprintf(os.Stderr, "%+v", fmterr.ToStackTraceError(err))
-		return
-	}
 	dev, err := rtm.Device(0)
 	if err != nil {
 		fmt.Fprintf(os.Stderr, "%+v", fmterr.ToStackTraceError(err))
 		return
 	}
-	encodingGX = gxPackage.BuildFor(dev)
+	encodingGX, err = encoding_go_gx.BuildHandleFor(dev)
+	if err != nil {
+		fmt.Fprintf(os.Stderr, "%+v", fmterr.ToStackTraceError(err))
+		return
+	}
 	os.Exit(m.Run())
 }

@@ -456,7 +456,7 @@ func (s *atomicType) AssignableTo(fetcher Fetcher, target Type) (bool, error) {
 		}
 		return s.equalAtomic(targetT)
 	}
-	dtypeEq, err := s.Equal(fetcher, targetT.DataType())
+	dtypeEq, err := s.AssignableTo(fetcher, targetT.DataType())
 	if !dtypeEq || err != nil {
 		return false, err
 	}
@@ -583,7 +583,7 @@ func (s *NamedType) ConvertibleTo(fetcher Fetcher, target Type) (bool, error) {
 }
 
 func (s *NamedType) convertibleFrom(fetcher Fetcher, source Type) (bool, error) {
-	return s.Underlying.Typ.Equal(fetcher, source)
+	return source.ConvertibleTo(fetcher, s.Underlying.Typ)
 }
 
 // FullName returns the full name of the type, that is the full package path and the type name.
@@ -627,7 +627,7 @@ func (s *NamedType) String() string {
 	if s.File == nil {
 		return s.Name()
 	}
-	return s.Name()
+	return s.File.Package.Name.Name + "." + s.Name()
 }
 
 // Package returns the package to which the type belongs to.
@@ -990,11 +990,15 @@ func (s *TypeParam) Kind() Kind {
 	return s.Field.Type().Kind()
 }
 
-// Equal returns true if other is the same type.
-func (s *TypeParam) Equal(fetcher Fetcher, typ Type) (bool, error) {
+func (s *TypeParam) equal(fetcher Fetcher, typ Type) (bool, error) {
+	otherT, isOtherTypeParam := typ.(*TypeParam)
+	if isOtherTypeParam {
+		return otherT == s, nil
+	}
 	switch typT := typ.(type) {
 	case *TypeParam:
-		return typT == s, nil
+	case *NamedType:
+		return s.Field.Type().Equal(fetcher, typ)
 	case ArrayType:
 		if !typT.Rank().IsAtomic() {
 			return false, nil
@@ -1002,6 +1006,15 @@ func (s *TypeParam) Equal(fetcher Fetcher, typ Type) (bool, error) {
 		return s.Equal(fetcher, typT.DataType())
 	}
 	return false, nil
+}
+
+// Equal returns true if other is the same type.
+func (s *TypeParam) Equal(fetcher Fetcher, typ Type) (bool, error) {
+	return s.equal(fetcher, typ)
+}
+
+func (s *TypeParam) assignableFrom(fetcher Fetcher, other Type) (bool, error) {
+	return other.AssignableTo(fetcher, s.Field.Type())
 }
 
 // AssignableTo reports whether a value of the type can be assigned to another.
@@ -1013,6 +1026,11 @@ func (s *TypeParam) AssignableTo(fetcher Fetcher, typ Type) (bool, error) {
 // (using static type casting).
 func (s *TypeParam) ConvertibleTo(fetcher Fetcher, typ Type) (bool, error) {
 	return s.Field.Type().ConvertibleTo(fetcher, typ)
+}
+
+// convertibleFrom reports whether a value of some type can be converted to the receiver.
+func (s *TypeParam) convertibleFrom(fetcher Fetcher, from Type) (bool, error) {
+	return from.ConvertibleTo(fetcher, s.Field.Type())
 }
 
 // Source defining the type.
@@ -1173,8 +1191,9 @@ type (
 
 	// ImportDecl imports a package.
 	ImportDecl struct {
-		Src  *ast.ImportSpec
-		Path string
+		Src     *ast.ImportSpec
+		Path    string
+		Package *Package
 	}
 
 	// VarExpr is a name,expr static variable pair.
@@ -1313,6 +1332,20 @@ func (pkg *Package) ExportedConsts() []*ConstExpr {
 				continue
 			}
 			exprs = append(exprs, cst)
+		}
+	}
+	return exprs
+}
+
+// ExportedStatics returns the list of exported static variables.
+func (pkg *Package) ExportedStatics() []*VarExpr {
+	var exprs []*VarExpr
+	for _, vars := range pkg.Decls.Vars {
+		for _, vr := range vars.Exprs {
+			if !IsExported(vr.VName.Name) {
+				continue
+			}
+			exprs = append(exprs, vr)
 		}
 	}
 	return exprs

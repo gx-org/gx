@@ -15,10 +15,6 @@
 package gobindings
 
 import (
-	"fmt"
-	"text/template"
-
-	"github.com/gx-org/gx/base/tmpl"
 	"github.com/gx-org/gx/build/ir"
 	"github.com/gx-org/gx/golang/binder/bindings"
 )
@@ -30,20 +26,14 @@ type (
 	}
 
 	method struct {
-		Receiver receiver
-		Method   function
-
+		function
+		Receiver   receiver
 		NameDevice string
-	}
-
-	methods struct {
-		binder  *binder
-		methods []method
 	}
 )
 
-func (b *binder) buildMethods(r receiver) *methods {
-	var funcs []method
+func (b *binder) buildMethods(r receiver) []method {
+	var methods []method
 	for i, fun := range r.named().Methods {
 		if !ir.IsExported(fun.Name()) {
 			continue
@@ -54,76 +44,23 @@ func (b *binder) buildMethods(r receiver) *methods {
 		if !bindings.CanBeOnDeviceFunc(fun) {
 			continue
 		}
-		funcs = append(funcs, method{
-			Receiver: r,
-			Method: function{
+		methods = append(methods, method{
+			function: function{
 				binder:    b,
 				Func:      fun,
 				FuncIndex: i,
 			},
-
+			Receiver:   r,
 			NameDevice: fun.Name(),
 		})
 	}
-	return &methods{binder: b, methods: funcs}
+	return methods
 }
 
-func (ms methods) Methods() (string, error) {
-	return tmpl.IterateFunc(ms.methods, func(_ int, m method) (string, error) {
-		return fmt.Sprintf("%s() *Method%s%s", m.Method.Name(), m.Receiver.named().Name(), m.Method.Name()), nil
-	})
-}
-
-func (ms methods) funcs() []*function {
-	funcs := make([]*function, len(ms.methods))
-	for i, method := range ms.methods {
-		funcs[i] = &method.Method
+func toFuncs(methods []method) []*function {
+	funcs := make([]*function, len(methods))
+	for i, method := range methods {
+		funcs[i] = &method.function
 	}
 	return funcs
-}
-
-func (ms methods) Runners() (string, error) {
-	return ms.binder.funcRunners(ms.funcs())
-}
-
-var handleMethodFieldTemplate = template.Must(template.New("handleMethodFieldTMPL").Parse(`
-	runner{{.Method.Name}} *{{.Method.RunnerType}}
-`))
-
-func (ms methods) HandleMethodFields() (string, error) {
-	return tmpl.IterateTmpl(ms.methods, handleMethodFieldTemplate)
-}
-
-var methodReturnHandleTemplate = template.Must(template.New("methodReturnHandleTMPL").Parse(`
-// {{.Method.Name}} returns a handle to compile method {{.Method.Name}} for a device.
-func (s {{.Receiver.Named.Name}}) {{.Method.Name}}() *{{.Method.RunnerType}} {
-	return s.handle.runner{{.Method.Name}}
-}
-`))
-
-func (ms methods) ReturnHandle() (string, error) {
-	return tmpl.IterateTmpl(ms.methods, methodReturnHandleTemplate)
-}
-
-var methodInitRunnerTemplate = template.Must(template.New("methodInitRunnerTMPL").Parse(`
-	s.handle.runner{{.Method.Name}} = &{{.Method.RunnerType}}{
-		methodBase: s.handle.pkg.{{.Method.RunnerField}},
-		receiver: s.handle,
-	}
-`))
-
-func (ms methods) InitRunners() (string, error) {
-	return tmpl.IterateTmpl(ms.methods, methodInitRunnerTemplate)
-}
-
-var methodPackageSetField = template.Must(template.New("funcPackageSetFieldTMPL").Parse(`
-	c.{{.Method.RunnerField}} = methodBase{
-		pkg: c,
-		function: c.Package.IR.Decls.Types[{{.Receiver.Index}}].Methods[{{.Method.FuncIndex}}],
-	}`))
-
-func (b *binder) MethodsPackageSetFields() (string, error) {
-	return tmpl.IterateFunc(b.NamedTypes, func(_ int, typ namedType) (string, error) {
-		return tmpl.IterateTmpl(typ.Methods().methods, methodPackageSetField)
-	})
 }

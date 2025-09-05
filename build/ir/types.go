@@ -454,13 +454,22 @@ func (s *TypeSet) ConvertibleTo(fetcher Fetcher, target Type) (bool, error) {
 
 // TypeInclude returns if a typ is included in a type or not.
 func TypeInclude(fetcher Fetcher, set Type, typ Type) (bool, error) {
+	_, isSetNamed := set.(*NamedType)
+	_, isTypeNamed := typ.(*NamedType)
+	if isSetNamed && isTypeNamed {
+		return set.Equal(fetcher, typ)
+	}
+	return typeInclude(fetcher, set, typ)
+}
+
+func typeInclude(fetcher Fetcher, set Type, typ Type) (bool, error) {
 	set = Underlying(set)
 	typeSet, typeSetOk := set.(*TypeSet)
 	if !typeSetOk {
 		return set.Equal(fetcher, typ)
 	}
 	for _, sub := range typeSet.Typs {
-		in, err := TypeInclude(fetcher, sub, typ)
+		in, err := typeInclude(fetcher, sub, typ)
 		if err != nil {
 			return false, err
 		}
@@ -601,4 +610,36 @@ func ToArrayType(typ Type) ArrayType {
 		return typT
 	}
 	return nil
+}
+
+type equaler interface {
+	equal(fetcher Fetcher, x Type) (bool, error)
+}
+
+// Equal returns true if x and y are the same type.
+func Equal(fetcher Fetcher, x, y Type) (bool, error) {
+	if x == y {
+		return true, nil
+	}
+	ey, isEqualer := y.(equaler)
+	if isEqualer {
+		return ey.equal(fetcher, x)
+	}
+	return x.Equal(fetcher, y)
+}
+
+type assigner interface {
+	assignableFrom(fetcher Fetcher, x Type) (bool, error)
+}
+
+// AssignableTo reports whether a value of the type can be assigned to another.
+func AssignableTo(fetcher Fetcher, x, y Type) (bool, error) {
+	if x == y {
+		return true, nil
+	}
+	ey, isAssigner := y.(assigner)
+	if isAssigner {
+		return ey.assignableFrom(fetcher, x)
+	}
+	return x.AssignableTo(fetcher, y)
 }
