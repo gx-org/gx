@@ -27,13 +27,17 @@ import (
 	"github.com/gx-org/backend/platform"
 	"github.com/gx-org/gx/api"
 	"github.com/gx-org/gx/api/options"
-	"github.com/gx-org/gx/api/trace"
 	"github.com/gx-org/gx/api/tracer"
 	"github.com/gx-org/gx/api/values"
 	"github.com/gx-org/gx/build/ir"
+	"github.com/gx-org/gx/golang/binder/gobindings/core"
 	"github.com/gx-org/gx/golang/binder/gobindings/types"
-	_ "github.com/gx-org/gx/tests/bindings/parameters"
 	"github.com/pkg/errors"
+
+	_ "github.com/gx-org/gx/tests/bindings/parameters"
+
+	gxdep0 "github.com/gx-org/gx/stdlib/bindings/go/num_go_gx"
+	gxdep1 "github.com/gx-org/gx/stdlib/bindings/go/shapes_go_gx"
 )
 
 // Force some package dependencies.
@@ -45,38 +49,46 @@ var (
 	_ = errors.Errorf
 	_ = types.NewSlice[types.Bridger]
 	_ = platform.HostTransfer
+	_ = ir.NamedType{}
+	_ = tracer.Trace
 )
 
-// PackageIR is the GX package intermediate representation
-// built for a given runtime, but not yet for a specific device.
-type PackageIR struct {
-	Runtime *api.Runtime
-	IR      *ir.Package
-	Tracer  trace.Callback
-}
-
-// Load the GX package for a given backend.
-func Load(rtm *api.Runtime) (*PackageIR, error) {
+// Load the package for a given runtime.
+func Load(rtm *api.Runtime) (*core.Package, error) {
 	bpkg, err := rtm.Builder().Build("github.com/gx-org/gx/tests/bindings/parameters")
 	if err != nil {
 		return nil, err
 	}
-	pkg := &PackageIR{
-		Runtime: rtm,
-		IR:      bpkg.IR(),
+	deps := make([]*core.Package, 2)
+	deps[0], err = gxdep0.Load(rtm)
+	if err != nil {
+		return nil, err
 	}
-
-	return pkg, nil
+	deps[1], err = gxdep1.Load(rtm)
+	if err != nil {
+		return nil, err
+	}
+	return core.NewPackage(bpkg, deps), nil
 }
 
 // BuildFor loads the GX package github.com/gx-org/gx/tests/bindings/parameters
 // then returns that package for a given device and options.
-func BuildFor(dev *api.Device, options ...options.PackageOptionFactory) (*Package, error) {
+func BuildFor(dev *api.Device, opts ...options.PackageOptionFactory) (*Package, error) {
+	pkgHandle, err := BuildHandleFor(dev, opts...)
+	if err != nil {
+		return nil, err
+	}
+	return pkgHandle.Factory.Package, nil
+}
+
+// BuildHandleFor loads the GX package github.com/gx-org/gx/tests/bindings/parameters
+// then returns that package for a given device and options.
+func BuildHandleFor(dev *api.Device, opts ...options.PackageOptionFactory) (*PackageHandle, error) {
 	pkg, err := Load(dev.Runtime())
 	if err != nil {
 		return nil, err
 	}
-	return pkg.BuildFor(dev, options...), nil
+	return BuildFromIR(pkg, dev, opts)
 }
 
 // Factory create new instance of types used in the package.
@@ -87,126 +99,116 @@ type Factory struct {
 	Package *Package
 }
 
+// PackageHandle provides utility functions for the package.
+type PackageHandle struct {
+	*core.PackageCompileSetup
+	Factory *Factory
+
+	// Package dependencies
+	gxdep0 *gxdep0.PackageHandle
+	gxdep1 *gxdep1.PackageHandle
+}
+
 // Package is a GX package for a given device.
 // Functions and methods are compiled specifically for that device.
 type Package struct {
-	Package *PackageIR
-	Device  *api.Device
-	Factory *Factory
+	handle PackageHandle
 
-	options []options.PackageOption
-
-	NewStruct                 NewStruct
-	AddToStruct               AddToStruct
-	AddFloat32                AddFloat32
-	AddInt                    AddInt
-	AddFloat32s               AddFloat32s
-	AddInts                   AddInts
-	Len                       Len
-	Iota                      Iota
-	SliceArrayArgConstIndex   SliceArrayArgConstIndex
-	SliceArrayArg             SliceArrayArg
-	SliceSliceArg             SliceSliceArg
-	NewNotInSlice             NewNotInSlice
-	methodStructSetNotInSlice methodBase
+	// Functions and methods cache
+	cacheStructSetNotInSlice     *core.FuncCache
+	cacheNewStruct               *core.FuncCache
+	cacheAddToStruct             *core.FuncCache
+	cacheAddFloat32              *core.FuncCache
+	cacheAddInt                  *core.FuncCache
+	cacheAddFloat32s             *core.FuncCache
+	cacheAddInts                 *core.FuncCache
+	cacheLen                     *core.FuncCache
+	cacheIota                    *core.FuncCache
+	cacheSliceArrayArgConstIndex *core.FuncCache
+	cacheSliceArrayArg           *core.FuncCache
+	cacheSliceSliceArg           *core.FuncCache
+	cacheNewNotInSlice           *core.FuncCache
 }
 
-// AppendOptions appends options to the compiler.
-func (cmpl *Package) AppendOptions(options ...options.PackageOptionFactory) {
-	plat := cmpl.Package.Runtime.Backend().Platform()
-	for _, opt := range options {
-		cmpl.options = append(cmpl.options, opt(plat))
+// BuildFromIR builds a package for a device once it has been loaded.
+func BuildFromIR(irPkg *core.Package, dev *api.Device, optionFactories []options.PackageOptionFactory) (*PackageHandle, error) {
+	pkg := &Package{}
+	pkg.handle.Factory = &Factory{Package: pkg}
+	pkg.handle.PackageCompileSetup = irPkg.Setup(dev, optionFactories)
+	// Build dependencies.
+	var err error
+	pkg.handle.gxdep0, err = core.BuildDep[*gxdep0.PackageHandle](
+		pkg.handle.PackageCompileSetup,
+		0,
+		gxdep0.BuildFromIR,
+	)
+	if err != nil {
+		return nil, err
 	}
-}
-
-// BuildFor returns a package ready to compile for a device and options.
-func (pkg *PackageIR) BuildFor(dev *api.Device, options ...options.PackageOptionFactory) *Package {
-	c := &Package{
-		Package: pkg,
-		Device:  dev,
-	}
-	c.Factory = &Factory{Package: c}
-	c.AppendOptions(options...)
-
-	c.NewStruct = NewStruct{
-		methodBase: methodBase{
-			pkg:      c,
-			function: c.Package.IR.Decls.Funcs[0],
-		},
-	}
-	c.AddToStruct = AddToStruct{
-		methodBase: methodBase{
-			pkg:      c,
-			function: c.Package.IR.Decls.Funcs[3],
-		},
-	}
-	c.AddFloat32 = AddFloat32{
-		methodBase: methodBase{
-			pkg:      c,
-			function: c.Package.IR.Decls.Funcs[4],
-		},
-	}
-	c.AddInt = AddInt{
-		methodBase: methodBase{
-			pkg:      c,
-			function: c.Package.IR.Decls.Funcs[5],
-		},
-	}
-	c.AddFloat32s = AddFloat32s{
-		methodBase: methodBase{
-			pkg:      c,
-			function: c.Package.IR.Decls.Funcs[6],
-		},
-	}
-	c.AddInts = AddInts{
-		methodBase: methodBase{
-			pkg:      c,
-			function: c.Package.IR.Decls.Funcs[7],
-		},
-	}
-	c.Len = Len{
-		methodBase: methodBase{
-			pkg:      c,
-			function: c.Package.IR.Decls.Funcs[8],
-		},
-	}
-	c.Iota = Iota{
-		methodBase: methodBase{
-			pkg:      c,
-			function: c.Package.IR.Decls.Funcs[9],
-		},
-	}
-	c.SliceArrayArgConstIndex = SliceArrayArgConstIndex{
-		methodBase: methodBase{
-			pkg:      c,
-			function: c.Package.IR.Decls.Funcs[10],
-		},
-	}
-	c.SliceArrayArg = SliceArrayArg{
-		methodBase: methodBase{
-			pkg:      c,
-			function: c.Package.IR.Decls.Funcs[11],
-		},
-	}
-	c.SliceSliceArg = SliceSliceArg{
-		methodBase: methodBase{
-			pkg:      c,
-			function: c.Package.IR.Decls.Funcs[12],
-		},
-	}
-	c.NewNotInSlice = NewNotInSlice{
-		methodBase: methodBase{
-			pkg:      c,
-			function: c.Package.IR.Decls.Funcs[13],
-		},
+	pkg.handle.gxdep1, err = core.BuildDep[*gxdep1.PackageHandle](
+		pkg.handle.PackageCompileSetup,
+		1,
+		gxdep1.BuildFromIR,
+	)
+	if err != nil {
+		return nil, err
 	}
 
-	c.methodStructSetNotInSlice = methodBase{
-		pkg:      c,
-		function: c.Package.IR.Decls.Types[2].Methods[0],
+	// Initialise function and method caches.
+	pkg.cacheStructSetNotInSlice, err = pkg.handle.NewCache("Struct", "SetNotInSlice")
+	if err != nil {
+		return nil, err
+	}
+	pkg.cacheNewStruct, err = pkg.handle.NewCache("", "NewStruct")
+	if err != nil {
+		return nil, err
+	}
+	pkg.cacheAddToStruct, err = pkg.handle.NewCache("", "AddToStruct")
+	if err != nil {
+		return nil, err
+	}
+	pkg.cacheAddFloat32, err = pkg.handle.NewCache("", "AddFloat32")
+	if err != nil {
+		return nil, err
+	}
+	pkg.cacheAddInt, err = pkg.handle.NewCache("", "AddInt")
+	if err != nil {
+		return nil, err
+	}
+	pkg.cacheAddFloat32s, err = pkg.handle.NewCache("", "AddFloat32s")
+	if err != nil {
+		return nil, err
+	}
+	pkg.cacheAddInts, err = pkg.handle.NewCache("", "AddInts")
+	if err != nil {
+		return nil, err
+	}
+	pkg.cacheLen, err = pkg.handle.NewCache("", "Len")
+	if err != nil {
+		return nil, err
+	}
+	pkg.cacheIota, err = pkg.handle.NewCache("", "Iota")
+	if err != nil {
+		return nil, err
+	}
+	pkg.cacheSliceArrayArgConstIndex, err = pkg.handle.NewCache("", "SliceArrayArgConstIndex")
+	if err != nil {
+		return nil, err
+	}
+	pkg.cacheSliceArrayArg, err = pkg.handle.NewCache("", "SliceArrayArg")
+	if err != nil {
+		return nil, err
+	}
+	pkg.cacheSliceSliceArg, err = pkg.handle.NewCache("", "SliceSliceArg")
+	if err != nil {
+		return nil, err
+	}
+	pkg.cacheNewNotInSlice, err = pkg.handle.NewCache("", "NewNotInSlice")
+	if err != nil {
+		return nil, err
 	}
 
-	return c
+	return &pkg.handle, err
 }
 
 var Size SizeStatic
@@ -224,6 +226,339 @@ func (SizeStatic) Set(value ir.Int) options.PackageOptionFactory {
 			Value: hostValue.GXValue(),
 		}
 	}
+}
+
+// New returns a new structure.
+func (pkg *Package) NewStruct(arg0 types.Atom[float32]) (_ *Struct, err error) {
+	var args []values.Value = []values.Value{
+		arg0.Bridge().GXValue(), // offset float32
+	}
+	var runner tracer.CompiledFunc
+	runner, err = pkg.cacheNewStruct.Runner(nil, args)
+	if err != nil {
+		return
+	}
+	var outputs []values.Value
+	outputs, err = runner.Run(nil, args, pkg.handle.Tracer())
+	if err != nil {
+		return
+	}
+
+	fty := pkg.handle.Factory
+
+	var out0 *Struct
+	out0, err = fty.MarshalStruct(outputs[0])
+	if err != nil {
+		return
+	}
+
+	return out0, nil
+}
+
+// AddToStruct adds a scalar to the structure field.
+func (pkg *Package) AddToStruct(arg0 *Struct) (_ *Struct, err error) {
+	var args []values.Value = []values.Value{
+		arg0.Bridge().GXValue(), // a parameters.Struct
+	}
+	var runner tracer.CompiledFunc
+	runner, err = pkg.cacheAddToStruct.Runner(nil, args)
+	if err != nil {
+		return
+	}
+	var outputs []values.Value
+	outputs, err = runner.Run(nil, args, pkg.handle.Tracer())
+	if err != nil {
+		return
+	}
+
+	fty := pkg.handle.Factory
+
+	var out0 *Struct
+	out0, err = fty.MarshalStruct(outputs[0])
+	if err != nil {
+		return
+	}
+
+	return out0, nil
+}
+
+// AddFloat32 adds x and y.
+func (pkg *Package) AddFloat32(arg0 types.Atom[float32], arg1 types.Atom[float32]) (_ types.Atom[float32], err error) {
+	var args []values.Value = []values.Value{
+		arg0.Bridge().GXValue(), // x float32
+		arg1.Bridge().GXValue(), // y float32
+	}
+	var runner tracer.CompiledFunc
+	runner, err = pkg.cacheAddFloat32.Runner(nil, args)
+	if err != nil {
+		return
+	}
+	var outputs []values.Value
+	outputs, err = runner.Run(nil, args, pkg.handle.Tracer())
+	if err != nil {
+		return
+	}
+
+	out0Value, ok := outputs[0].(values.Array)
+	if !ok {
+		err = errors.Errorf("cannot cast %T to %s", outputs[0], reflect.TypeFor[*values.DeviceArray]().Name())
+		return
+	}
+	out0 := types.NewAtom[float32](out0Value)
+
+	return out0, nil
+}
+
+// AddInt adds x and y.
+func (pkg *Package) AddInt(arg0 types.Atom[int64], arg1 types.Atom[int64]) (_ types.Atom[int64], err error) {
+	var args []values.Value = []values.Value{
+		arg0.Bridge().GXValue(), // x int64
+		arg1.Bridge().GXValue(), // y int64
+	}
+	var runner tracer.CompiledFunc
+	runner, err = pkg.cacheAddInt.Runner(nil, args)
+	if err != nil {
+		return
+	}
+	var outputs []values.Value
+	outputs, err = runner.Run(nil, args, pkg.handle.Tracer())
+	if err != nil {
+		return
+	}
+
+	out0Value, ok := outputs[0].(values.Array)
+	if !ok {
+		err = errors.Errorf("cannot cast %T to %s", outputs[0], reflect.TypeFor[*values.DeviceArray]().Name())
+		return
+	}
+	out0 := types.NewAtom[int64](out0Value)
+
+	return out0, nil
+}
+
+// Add x and y.
+func (pkg *Package) AddFloat32s(arg0 types.Array[float32], arg1 types.Array[float32]) (_ types.Array[float32], err error) {
+	var args []values.Value = []values.Value{
+		arg0.Bridge().GXValue(), // x [a]float32
+		arg1.Bridge().GXValue(), // y [a]float32
+	}
+	var runner tracer.CompiledFunc
+	runner, err = pkg.cacheAddFloat32s.Runner(nil, args)
+	if err != nil {
+		return
+	}
+	var outputs []values.Value
+	outputs, err = runner.Run(nil, args, pkg.handle.Tracer())
+	if err != nil {
+		return
+	}
+
+	out0Value, ok := outputs[0].(values.Array)
+	if !ok {
+		err = errors.Errorf("cannot cast %T to %s", outputs[0], reflect.TypeFor[*values.DeviceArray]().Name())
+		return
+	}
+	out0 := types.NewArray[float32](out0Value)
+
+	return out0, nil
+}
+
+// AddInts x and y.
+func (pkg *Package) AddInts(arg0 types.Array[int64], arg1 types.Array[int64]) (_ types.Array[int64], err error) {
+	var args []values.Value = []values.Value{
+		arg0.Bridge().GXValue(), // x [a]int64
+		arg1.Bridge().GXValue(), // y [a]int64
+	}
+	var runner tracer.CompiledFunc
+	runner, err = pkg.cacheAddInts.Runner(nil, args)
+	if err != nil {
+		return
+	}
+	var outputs []values.Value
+	outputs, err = runner.Run(nil, args, pkg.handle.Tracer())
+	if err != nil {
+		return
+	}
+
+	out0Value, ok := outputs[0].(values.Array)
+	if !ok {
+		err = errors.Errorf("cannot cast %T to %s", outputs[0], reflect.TypeFor[*values.DeviceArray]().Name())
+		return
+	}
+	out0 := types.NewArray[int64](out0Value)
+
+	return out0, nil
+}
+
+// Len returns the outmost dimension of x.
+func (pkg *Package) Len(arg0 types.Array[float32]) (_ types.Atom[int64], err error) {
+	var args []values.Value = []values.Value{
+		arg0.Bridge().GXValue(), // x []float32
+	}
+	var runner tracer.CompiledFunc
+	runner, err = pkg.cacheLen.Runner(nil, args)
+	if err != nil {
+		return
+	}
+	var outputs []values.Value
+	outputs, err = runner.Run(nil, args, pkg.handle.Tracer())
+	if err != nil {
+		return
+	}
+
+	out0Value, ok := outputs[0].(values.Array)
+	if !ok {
+		err = errors.Errorf("cannot cast %T to %s", outputs[0], reflect.TypeFor[*values.DeviceArray]().Name())
+		return
+	}
+	out0 := types.NewAtom[int64](out0Value)
+
+	return out0, nil
+}
+
+// Iota returns an array filled with numbers.
+func (pkg *Package) Iota() (_ types.Array[int64], err error) {
+	var args []values.Value = nil
+	var runner tracer.CompiledFunc
+	runner, err = pkg.cacheIota.Runner(nil, args)
+	if err != nil {
+		return
+	}
+	var outputs []values.Value
+	outputs, err = runner.Run(nil, args, pkg.handle.Tracer())
+	if err != nil {
+		return
+	}
+
+	out0Value, ok := outputs[0].(values.Array)
+	if !ok {
+		err = errors.Errorf("cannot cast %T to %s", outputs[0], reflect.TypeFor[*values.DeviceArray]().Name())
+		return
+	}
+	out0 := types.NewArray[int64](out0Value)
+
+	return out0, nil
+}
+
+// SliceArrayArg checks that we can slice an array type argument.
+func (pkg *Package) SliceArrayArgConstIndex(arg0 types.Array[float32]) (_ types.Array[float32], _ types.Array[float32], _ types.Array[float32], err error) {
+	var args []values.Value = []values.Value{
+		arg0.Bridge().GXValue(), // a [3][2]float32
+	}
+	var runner tracer.CompiledFunc
+	runner, err = pkg.cacheSliceArrayArgConstIndex.Runner(nil, args)
+	if err != nil {
+		return
+	}
+	var outputs []values.Value
+	outputs, err = runner.Run(nil, args, pkg.handle.Tracer())
+	if err != nil {
+		return
+	}
+
+	out0Value, ok := outputs[0].(values.Array)
+	if !ok {
+		err = errors.Errorf("cannot cast %T to %s", outputs[0], reflect.TypeFor[*values.DeviceArray]().Name())
+		return
+	}
+	out0 := types.NewArray[float32](out0Value)
+
+	out1Value, ok := outputs[1].(values.Array)
+	if !ok {
+		err = errors.Errorf("cannot cast %T to %s", outputs[1], reflect.TypeFor[*values.DeviceArray]().Name())
+		return
+	}
+	out1 := types.NewArray[float32](out1Value)
+
+	out2Value, ok := outputs[2].(values.Array)
+	if !ok {
+		err = errors.Errorf("cannot cast %T to %s", outputs[2], reflect.TypeFor[*values.DeviceArray]().Name())
+		return
+	}
+	out2 := types.NewArray[float32](out2Value)
+
+	return out0, out1, out2, nil
+}
+
+// SliceArrayArg checks that we can slice an array type argument.
+func (pkg *Package) SliceArrayArg(arg0 types.Array[float32], arg1 types.Atom[int32]) (_ types.Array[float32], err error) {
+	var args []values.Value = []values.Value{
+		arg0.Bridge().GXValue(), // a [3][2]float32
+		arg1.Bridge().GXValue(), // i int32
+	}
+	var runner tracer.CompiledFunc
+	runner, err = pkg.cacheSliceArrayArg.Runner(nil, args)
+	if err != nil {
+		return
+	}
+	var outputs []values.Value
+	outputs, err = runner.Run(nil, args, pkg.handle.Tracer())
+	if err != nil {
+		return
+	}
+
+	out0Value, ok := outputs[0].(values.Array)
+	if !ok {
+		err = errors.Errorf("cannot cast %T to %s", outputs[0], reflect.TypeFor[*values.DeviceArray]().Name())
+		return
+	}
+	out0 := types.NewArray[float32](out0Value)
+
+	return out0, nil
+}
+
+// SliceSliceArg checks that we can slice a slice.
+func (pkg *Package) SliceSliceArg(arg0 *types.Slice[types.Array[float32]], arg1 types.Atom[int32]) (_ types.Array[float32], err error) {
+	var args []values.Value = []values.Value{
+		arg0.Bridge().GXValue(), // a [][2]float32
+		arg1.Bridge().GXValue(), // i int32
+	}
+	var runner tracer.CompiledFunc
+	runner, err = pkg.cacheSliceSliceArg.Runner(nil, args)
+	if err != nil {
+		return
+	}
+	var outputs []values.Value
+	outputs, err = runner.Run(nil, args, pkg.handle.Tracer())
+	if err != nil {
+		return
+	}
+
+	out0Value, ok := outputs[0].(values.Array)
+	if !ok {
+		err = errors.Errorf("cannot cast %T to %s", outputs[0], reflect.TypeFor[*values.DeviceArray]().Name())
+		return
+	}
+	out0 := types.NewArray[float32](out0Value)
+
+	return out0, nil
+}
+
+// NewNotInSlice returns a NotInSlice instance with its Val attributes assigned to val.
+func (pkg *Package) NewNotInSlice(arg0 types.Atom[int32]) (_ *NotInSlice, err error) {
+	var args []values.Value = []values.Value{
+		arg0.Bridge().GXValue(), // val int32
+	}
+	var runner tracer.CompiledFunc
+	runner, err = pkg.cacheNewNotInSlice.Runner(nil, args)
+	if err != nil {
+		return
+	}
+	var outputs []values.Value
+	outputs, err = runner.Run(nil, args, pkg.handle.Tracer())
+	if err != nil {
+		return
+	}
+
+	fty := pkg.handle.Factory
+
+	var out0 *NotInSlice
+	out0, err = fty.MarshalNotInSlice(outputs[0])
+	if err != nil {
+		return
+	}
+
+	return out0, nil
 }
 
 // handleNotInSlice stores the backend handles of NotInSlice.
@@ -283,8 +618,8 @@ func (h *handleNotInSlice) StructValue() *values.Struct {
 }
 
 // MarshalNotInSlice populates the receiver fields with device handles.
-func (cmpl *Package) MarshalNotInSlice(val values.Value) (s *NotInSlice, err error) {
-	s = cmpl.Factory.NewNotInSlice()
+func (fty *Factory) MarshalNotInSlice(val values.Value) (s *NotInSlice, err error) {
+	s = fty.NewNotInSlice()
 	var ok bool
 	s.value, ok = val.(*values.NamedType)
 	if !ok {
@@ -318,6 +653,64 @@ func (s NotInSlice) String() string {
 
 // Bridge returns the bridge between the Go value and the GX value.
 func (s *NotInSlice) Bridge() types.Bridge { return &s.handle }
+
+// NewNotInSlice returns a handle on named type NotInSlice.
+func (fac *Factory) NewNotInSlice() *NotInSlice {
+	s := &NotInSlice{}
+	typ := fac.Package.handle.IR().Decls.TypeByName("NotInSlice")
+	s.handle = handleNotInSlice{
+		pkg:   fac.Package,
+		struc: typ,
+		owner: s,
+	}
+
+	structVal, err := values.NewStruct(typ, nil)
+	if err != nil {
+		panic(err)
+	}
+	s.value = values.NewNamedType(structVal, typ)
+
+	return s
+}
+
+var _ types.Bridge = (*handleNotInSlice)(nil)
+
+func (h *handleNotInSlice) NewFromField(field *ir.Field) (types.Bridge, error) {
+	name := field.Name.Name
+	switch name {
+	case "Val":
+		return nil, errors.Errorf("cannot create a new instance for field Val: type types.Atom[int32] not supported")
+
+	default:
+		return nil, errors.Errorf("structure NotInSlice has no field %q", name)
+	}
+}
+
+// SetField sets a field in the structure.
+func (h *handleNotInSlice) SetField(field *ir.Field, val types.Bridge) error {
+
+	name := field.Name.Name
+	structVal, ok := h.owner.value.Underlying().(*values.Struct)
+	if !ok {
+		return fmt.Errorf("incorrect underlying value for named type NotInSlice: %T is not a %s", val, reflect.TypeFor[*values.Struct]().Name())
+	}
+	switch name {
+
+	case "Val":
+		bridger := val.Bridger()
+		fieldValue, ok := bridger.(types.Atom[int32])
+		if !ok {
+			return errors.Errorf("cannot set field Val: cannot cast %T to types.Atom[int32]", bridger)
+		}
+		h.owner.Val = fieldValue
+		structVal.SetField("Val", val.GXValue())
+		return nil
+
+	default:
+		return errors.Errorf("structure NotInSlice has no field %q", name)
+	}
+
+}
 
 // handleInSlice stores the backend handles of InSlice.
 type handleInSlice struct {
@@ -376,8 +769,8 @@ func (h *handleInSlice) StructValue() *values.Struct {
 }
 
 // MarshalInSlice populates the receiver fields with device handles.
-func (cmpl *Package) MarshalInSlice(val values.Value) (s *InSlice, err error) {
-	s = cmpl.Factory.NewInSlice()
+func (fty *Factory) MarshalInSlice(val values.Value) (s *InSlice, err error) {
+	s = fty.NewInSlice()
 	var ok bool
 	s.value, ok = val.(*values.NamedType)
 	if !ok {
@@ -412,53 +805,69 @@ func (s InSlice) String() string {
 // Bridge returns the bridge between the Go value and the GX value.
 func (s *InSlice) Bridge() types.Bridge { return &s.handle }
 
+// NewInSlice returns a handle on named type InSlice.
+func (fac *Factory) NewInSlice() *InSlice {
+	s := &InSlice{}
+	typ := fac.Package.handle.IR().Decls.TypeByName("InSlice")
+	s.handle = handleInSlice{
+		pkg:   fac.Package,
+		struc: typ,
+		owner: s,
+	}
+
+	structVal, err := values.NewStruct(typ, nil)
+	if err != nil {
+		panic(err)
+	}
+	s.value = values.NewNamedType(structVal, typ)
+
+	return s
+}
+
+var _ types.Bridge = (*handleInSlice)(nil)
+
+func (h *handleInSlice) NewFromField(field *ir.Field) (types.Bridge, error) {
+	name := field.Name.Name
+	switch name {
+	case "Val":
+		return nil, errors.Errorf("cannot create a new instance for field Val: type types.Atom[int32] not supported")
+
+	default:
+		return nil, errors.Errorf("structure InSlice has no field %q", name)
+	}
+}
+
+// SetField sets a field in the structure.
+func (h *handleInSlice) SetField(field *ir.Field, val types.Bridge) error {
+
+	name := field.Name.Name
+	structVal, ok := h.owner.value.Underlying().(*values.Struct)
+	if !ok {
+		return fmt.Errorf("incorrect underlying value for named type InSlice: %T is not a %s", val, reflect.TypeFor[*values.Struct]().Name())
+	}
+	switch name {
+
+	case "Val":
+		bridger := val.Bridger()
+		fieldValue, ok := bridger.(types.Atom[int32])
+		if !ok {
+			return errors.Errorf("cannot set field Val: cannot cast %T to types.Atom[int32]", bridger)
+		}
+		h.owner.Val = fieldValue
+		structVal.SetField("Val", val.GXValue())
+		return nil
+
+	default:
+		return errors.Errorf("structure InSlice has no field %q", name)
+	}
+
+}
+
 // handleStruct stores the backend handles of Struct.
 type handleStruct struct {
 	pkg   *Package
 	struc *ir.NamedType
 	owner *Struct
-
-	runnerSetNotInSlice *MethodStructSetNotInSlice
-}
-
-// MethodStructSetNotInSlice compiles and runs the GX function SetNotInSlice for a device.
-// SetNotInSlice tests setting a structure field with a structure.
-type MethodStructSetNotInSlice struct {
-	methodBase
-	receiver handleStruct
-}
-
-// Run first compiles SetNotInSlice for a given device and the given arguments.
-// Once compiled, the function is then run with these same arguments.
-// If the shape of the arguments change, the function will panic.
-func (f *MethodStructSetNotInSlice) Run(arg0 *NotInSlice) (_ *Struct, err error) {
-	var args []values.Value = []values.Value{
-		arg0.Bridge().GXValue(), // d NotInSlice
-	}
-	if f.runner == nil {
-		f.runner, err = tracer.Trace(f.pkg.Device, f.function.(*ir.FuncDecl), f.receiver.GXValue(), args, f.pkg.options)
-		if err != nil {
-			return
-		}
-	}
-	var outputs []values.Value
-	outputs, err = f.runner.Run(f.receiver.GXValue(), args, f.pkg.Package.Tracer)
-	if err != nil {
-		return
-	}
-
-	cmpl := f.pkg
-	var out0 *Struct
-	out0, err = cmpl.MarshalStruct(outputs[0])
-	if err != nil {
-		return
-	}
-
-	return out0, nil
-}
-
-func (f *MethodStructSetNotInSlice) String() string {
-	return fmt.Sprint(f.function)
 }
 
 // Type of the value.
@@ -507,16 +916,11 @@ type Struct struct {
 	handle handleStruct
 	value  *values.NamedType
 
-	A types.Array[float32]
-
-	B *types.Slice[types.Atom[float32]]
-
-	C *types.Slice[*InSlice]
-
-	D *NotInSlice
-
+	A            types.Array[float32]
+	B            *types.Slice[types.Atom[float32]]
+	C            *types.Slice[*InSlice]
+	D            *NotInSlice
 	specialIndex types.Atom[int32]
-
 	SpecialValue types.Atom[float32]
 }
 
@@ -531,8 +935,8 @@ func (h *handleStruct) StructValue() *values.Struct {
 }
 
 // MarshalStruct populates the receiver fields with device handles.
-func (cmpl *Package) MarshalStruct(val values.Value) (s *Struct, err error) {
-	s = cmpl.Factory.NewStruct()
+func (fty *Factory) MarshalStruct(val values.Value) (s *Struct, err error) {
+	s = fty.NewStruct()
 	var ok bool
 	s.value, ok = val.(*values.NamedType)
 	if !ok {
@@ -591,7 +995,7 @@ func (cmpl *Package) MarshalStruct(val values.Value) (s *Struct, err error) {
 	for i := 0; i < field2Slice.Len(); i++ {
 		field2HandleI := field2Slice.Element(i)
 		var field2ElmtI *InSlice
-		field2ElmtI, err = cmpl.MarshalInSlice(field2HandleI)
+		field2ElmtI, err = fty.MarshalInSlice(field2HandleI)
 		if err != nil {
 			return
 		}
@@ -606,7 +1010,7 @@ func (cmpl *Package) MarshalStruct(val values.Value) (s *Struct, err error) {
 	}
 
 	var field3 *NotInSlice
-	field3, err = cmpl.MarshalNotInSlice(fields[3])
+	field3, err = fty.MarshalNotInSlice(fields[3])
 	if err != nil {
 		return
 	}
@@ -641,625 +1045,10 @@ func (s Struct) String() string {
 // Bridge returns the bridge between the Go value and the GX value.
 func (s *Struct) Bridge() types.Bridge { return &s.handle }
 
-// SetNotInSlice returns a handle to compile method SetNotInSlice for a device.
-func (s Struct) SetNotInSlice() *MethodStructSetNotInSlice {
-	return s.handle.runnerSetNotInSlice
-}
-
-type methodBase struct {
-	pkg      *Package
-	function ir.Func
-	runner   tracer.CompiledFunc
-}
-
-// NewStruct compiles and runs the GX function NewStruct for a device.
-// New returns a new structure.
-type NewStruct struct {
-	methodBase
-}
-
-// AddToStruct compiles and runs the GX function AddToStruct for a device.
-// AddToStruct adds a scalar to the structure field.
-type AddToStruct struct {
-	methodBase
-}
-
-// AddFloat32 compiles and runs the GX function AddFloat32 for a device.
-// AddFloat32 adds x and y.
-type AddFloat32 struct {
-	methodBase
-}
-
-// AddInt compiles and runs the GX function AddInt for a device.
-// AddInt adds x and y.
-type AddInt struct {
-	methodBase
-}
-
-// AddFloat32s compiles and runs the GX function AddFloat32s for a device.
-// Add x and y.
-type AddFloat32s struct {
-	methodBase
-}
-
-// AddInts compiles and runs the GX function AddInts for a device.
-// AddInts x and y.
-type AddInts struct {
-	methodBase
-}
-
-// Len compiles and runs the GX function Len for a device.
-// Len returns the outmost dimension of x.
-type Len struct {
-	methodBase
-}
-
-// Iota compiles and runs the GX function Iota for a device.
-// Iota returns an array filled with numbers.
-type Iota struct {
-	methodBase
-}
-
-// SliceArrayArgConstIndex compiles and runs the GX function SliceArrayArgConstIndex for a device.
-// SliceArrayArg checks that we can slice an array type argument.
-type SliceArrayArgConstIndex struct {
-	methodBase
-}
-
-// SliceArrayArg compiles and runs the GX function SliceArrayArg for a device.
-// SliceArrayArg checks that we can slice an array type argument.
-type SliceArrayArg struct {
-	methodBase
-}
-
-// SliceSliceArg compiles and runs the GX function SliceSliceArg for a device.
-// SliceSliceArg checks that we can slice a slice.
-type SliceSliceArg struct {
-	methodBase
-}
-
-// NewNotInSlice compiles and runs the GX function NewNotInSlice for a device.
-// NewNotInSlice returns a NotInSlice instance with its Val attributes assigned to val.
-type NewNotInSlice struct {
-	methodBase
-}
-
-// Run first compiles NewStruct for a given device and the given arguments.
-// Once compiled, the function is then run with these same arguments.
-// If the shape of the arguments change, the function will panic.
-func (f *NewStruct) Run(arg0 types.Atom[float32]) (_ *Struct, err error) {
-	var args []values.Value = []values.Value{
-		arg0.Bridge().GXValue(), // offset float32
-	}
-	if f.runner == nil {
-		f.runner, err = tracer.Trace(f.pkg.Device, f.function.(*ir.FuncDecl), nil, args, f.pkg.options)
-		if err != nil {
-			return
-		}
-	}
-	var outputs []values.Value
-	outputs, err = f.runner.Run(nil, args, f.pkg.Package.Tracer)
-	if err != nil {
-		return
-	}
-
-	cmpl := f.pkg
-	var out0 *Struct
-	out0, err = cmpl.MarshalStruct(outputs[0])
-	if err != nil {
-		return
-	}
-
-	return out0, nil
-}
-
-func (f *NewStruct) String() string {
-	return fmt.Sprint(f.function)
-}
-
-// Run first compiles AddToStruct for a given device and the given arguments.
-// Once compiled, the function is then run with these same arguments.
-// If the shape of the arguments change, the function will panic.
-func (f *AddToStruct) Run(arg0 *Struct) (_ *Struct, err error) {
-	var args []values.Value = []values.Value{
-		arg0.Bridge().GXValue(), // a Struct
-	}
-	if f.runner == nil {
-		f.runner, err = tracer.Trace(f.pkg.Device, f.function.(*ir.FuncDecl), nil, args, f.pkg.options)
-		if err != nil {
-			return
-		}
-	}
-	var outputs []values.Value
-	outputs, err = f.runner.Run(nil, args, f.pkg.Package.Tracer)
-	if err != nil {
-		return
-	}
-
-	cmpl := f.pkg
-	var out0 *Struct
-	out0, err = cmpl.MarshalStruct(outputs[0])
-	if err != nil {
-		return
-	}
-
-	return out0, nil
-}
-
-func (f *AddToStruct) String() string {
-	return fmt.Sprint(f.function)
-}
-
-// Run first compiles AddFloat32 for a given device and the given arguments.
-// Once compiled, the function is then run with these same arguments.
-// If the shape of the arguments change, the function will panic.
-func (f *AddFloat32) Run(arg0 types.Atom[float32], arg1 types.Atom[float32]) (_ types.Atom[float32], err error) {
-	var args []values.Value = []values.Value{
-		arg0.Bridge().GXValue(), // x float32
-		arg1.Bridge().GXValue(), // y float32
-	}
-	if f.runner == nil {
-		f.runner, err = tracer.Trace(f.pkg.Device, f.function.(*ir.FuncDecl), nil, args, f.pkg.options)
-		if err != nil {
-			return
-		}
-	}
-	var outputs []values.Value
-	outputs, err = f.runner.Run(nil, args, f.pkg.Package.Tracer)
-	if err != nil {
-		return
-	}
-
-	out0Value, ok := outputs[0].(values.Array)
-	if !ok {
-		err = errors.Errorf("cannot cast %T to %s", outputs[0], reflect.TypeFor[*values.DeviceArray]().Name())
-		return
-	}
-	out0 := types.NewAtom[float32](out0Value)
-
-	return out0, nil
-}
-
-func (f *AddFloat32) String() string {
-	return fmt.Sprint(f.function)
-}
-
-// Run first compiles AddInt for a given device and the given arguments.
-// Once compiled, the function is then run with these same arguments.
-// If the shape of the arguments change, the function will panic.
-func (f *AddInt) Run(arg0 types.Atom[int64], arg1 types.Atom[int64]) (_ types.Atom[int64], err error) {
-	var args []values.Value = []values.Value{
-		arg0.Bridge().GXValue(), // x int64
-		arg1.Bridge().GXValue(), // y int64
-	}
-	if f.runner == nil {
-		f.runner, err = tracer.Trace(f.pkg.Device, f.function.(*ir.FuncDecl), nil, args, f.pkg.options)
-		if err != nil {
-			return
-		}
-	}
-	var outputs []values.Value
-	outputs, err = f.runner.Run(nil, args, f.pkg.Package.Tracer)
-	if err != nil {
-		return
-	}
-
-	out0Value, ok := outputs[0].(values.Array)
-	if !ok {
-		err = errors.Errorf("cannot cast %T to %s", outputs[0], reflect.TypeFor[*values.DeviceArray]().Name())
-		return
-	}
-	out0 := types.NewAtom[int64](out0Value)
-
-	return out0, nil
-}
-
-func (f *AddInt) String() string {
-	return fmt.Sprint(f.function)
-}
-
-// Run first compiles AddFloat32s for a given device and the given arguments.
-// Once compiled, the function is then run with these same arguments.
-// If the shape of the arguments change, the function will panic.
-func (f *AddFloat32s) Run(arg0 types.Array[float32], arg1 types.Array[float32]) (_ types.Array[float32], err error) {
-	var args []values.Value = []values.Value{
-		arg0.Bridge().GXValue(), // x [a]float32
-		arg1.Bridge().GXValue(), // y [a]float32
-	}
-	if f.runner == nil {
-		f.runner, err = tracer.Trace(f.pkg.Device, f.function.(*ir.FuncDecl), nil, args, f.pkg.options)
-		if err != nil {
-			return
-		}
-	}
-	var outputs []values.Value
-	outputs, err = f.runner.Run(nil, args, f.pkg.Package.Tracer)
-	if err != nil {
-		return
-	}
-
-	out0Value, ok := outputs[0].(values.Array)
-	if !ok {
-		err = errors.Errorf("cannot cast %T to %s", outputs[0], reflect.TypeFor[*values.DeviceArray]().Name())
-		return
-	}
-	out0 := types.NewArray[float32](out0Value)
-
-	return out0, nil
-}
-
-func (f *AddFloat32s) String() string {
-	return fmt.Sprint(f.function)
-}
-
-// Run first compiles AddInts for a given device and the given arguments.
-// Once compiled, the function is then run with these same arguments.
-// If the shape of the arguments change, the function will panic.
-func (f *AddInts) Run(arg0 types.Array[int64], arg1 types.Array[int64]) (_ types.Array[int64], err error) {
-	var args []values.Value = []values.Value{
-		arg0.Bridge().GXValue(), // x [a]int64
-		arg1.Bridge().GXValue(), // y [a]int64
-	}
-	if f.runner == nil {
-		f.runner, err = tracer.Trace(f.pkg.Device, f.function.(*ir.FuncDecl), nil, args, f.pkg.options)
-		if err != nil {
-			return
-		}
-	}
-	var outputs []values.Value
-	outputs, err = f.runner.Run(nil, args, f.pkg.Package.Tracer)
-	if err != nil {
-		return
-	}
-
-	out0Value, ok := outputs[0].(values.Array)
-	if !ok {
-		err = errors.Errorf("cannot cast %T to %s", outputs[0], reflect.TypeFor[*values.DeviceArray]().Name())
-		return
-	}
-	out0 := types.NewArray[int64](out0Value)
-
-	return out0, nil
-}
-
-func (f *AddInts) String() string {
-	return fmt.Sprint(f.function)
-}
-
-// Run first compiles Len for a given device and the given arguments.
-// Once compiled, the function is then run with these same arguments.
-// If the shape of the arguments change, the function will panic.
-func (f *Len) Run(arg0 types.Array[float32]) (_ types.Atom[int64], err error) {
-	var args []values.Value = []values.Value{
-		arg0.Bridge().GXValue(), // x []float32
-	}
-	if f.runner == nil {
-		f.runner, err = tracer.Trace(f.pkg.Device, f.function.(*ir.FuncDecl), nil, args, f.pkg.options)
-		if err != nil {
-			return
-		}
-	}
-	var outputs []values.Value
-	outputs, err = f.runner.Run(nil, args, f.pkg.Package.Tracer)
-	if err != nil {
-		return
-	}
-
-	out0Value, ok := outputs[0].(values.Array)
-	if !ok {
-		err = errors.Errorf("cannot cast %T to %s", outputs[0], reflect.TypeFor[*values.DeviceArray]().Name())
-		return
-	}
-	out0 := types.NewAtom[int64](out0Value)
-
-	return out0, nil
-}
-
-func (f *Len) String() string {
-	return fmt.Sprint(f.function)
-}
-
-// Run first compiles Iota for a given device and the given arguments.
-// Once compiled, the function is then run with these same arguments.
-// If the shape of the arguments change, the function will panic.
-func (f *Iota) Run() (_ types.Array[int64], err error) {
-	var args []values.Value = nil
-	if f.runner == nil {
-		f.runner, err = tracer.Trace(f.pkg.Device, f.function.(*ir.FuncDecl), nil, args, f.pkg.options)
-		if err != nil {
-			return
-		}
-	}
-	var outputs []values.Value
-	outputs, err = f.runner.Run(nil, args, f.pkg.Package.Tracer)
-	if err != nil {
-		return
-	}
-
-	out0Value, ok := outputs[0].(values.Array)
-	if !ok {
-		err = errors.Errorf("cannot cast %T to %s", outputs[0], reflect.TypeFor[*values.DeviceArray]().Name())
-		return
-	}
-	out0 := types.NewArray[int64](out0Value)
-
-	return out0, nil
-}
-
-func (f *Iota) String() string {
-	return fmt.Sprint(f.function)
-}
-
-// Run first compiles SliceArrayArgConstIndex for a given device and the given arguments.
-// Once compiled, the function is then run with these same arguments.
-// If the shape of the arguments change, the function will panic.
-func (f *SliceArrayArgConstIndex) Run(arg0 types.Array[float32]) (_ types.Array[float32], _ types.Array[float32], _ types.Array[float32], err error) {
-	var args []values.Value = []values.Value{
-		arg0.Bridge().GXValue(), // a [3][2]float32
-	}
-	if f.runner == nil {
-		f.runner, err = tracer.Trace(f.pkg.Device, f.function.(*ir.FuncDecl), nil, args, f.pkg.options)
-		if err != nil {
-			return
-		}
-	}
-	var outputs []values.Value
-	outputs, err = f.runner.Run(nil, args, f.pkg.Package.Tracer)
-	if err != nil {
-		return
-	}
-
-	out0Value, ok := outputs[0].(values.Array)
-	if !ok {
-		err = errors.Errorf("cannot cast %T to %s", outputs[0], reflect.TypeFor[*values.DeviceArray]().Name())
-		return
-	}
-	out0 := types.NewArray[float32](out0Value)
-
-	out1Value, ok := outputs[1].(values.Array)
-	if !ok {
-		err = errors.Errorf("cannot cast %T to %s", outputs[1], reflect.TypeFor[*values.DeviceArray]().Name())
-		return
-	}
-	out1 := types.NewArray[float32](out1Value)
-
-	out2Value, ok := outputs[2].(values.Array)
-	if !ok {
-		err = errors.Errorf("cannot cast %T to %s", outputs[2], reflect.TypeFor[*values.DeviceArray]().Name())
-		return
-	}
-	out2 := types.NewArray[float32](out2Value)
-
-	return out0, out1, out2, nil
-}
-
-func (f *SliceArrayArgConstIndex) String() string {
-	return fmt.Sprint(f.function)
-}
-
-// Run first compiles SliceArrayArg for a given device and the given arguments.
-// Once compiled, the function is then run with these same arguments.
-// If the shape of the arguments change, the function will panic.
-func (f *SliceArrayArg) Run(arg0 types.Array[float32], arg1 types.Atom[int32]) (_ types.Array[float32], err error) {
-	var args []values.Value = []values.Value{
-		arg0.Bridge().GXValue(), // a [3][2]float32
-		arg1.Bridge().GXValue(), // i int32
-	}
-	if f.runner == nil {
-		f.runner, err = tracer.Trace(f.pkg.Device, f.function.(*ir.FuncDecl), nil, args, f.pkg.options)
-		if err != nil {
-			return
-		}
-	}
-	var outputs []values.Value
-	outputs, err = f.runner.Run(nil, args, f.pkg.Package.Tracer)
-	if err != nil {
-		return
-	}
-
-	out0Value, ok := outputs[0].(values.Array)
-	if !ok {
-		err = errors.Errorf("cannot cast %T to %s", outputs[0], reflect.TypeFor[*values.DeviceArray]().Name())
-		return
-	}
-	out0 := types.NewArray[float32](out0Value)
-
-	return out0, nil
-}
-
-func (f *SliceArrayArg) String() string {
-	return fmt.Sprint(f.function)
-}
-
-// Run first compiles SliceSliceArg for a given device and the given arguments.
-// Once compiled, the function is then run with these same arguments.
-// If the shape of the arguments change, the function will panic.
-func (f *SliceSliceArg) Run(arg0 *types.Slice[types.Array[float32]], arg1 types.Atom[int32]) (_ types.Array[float32], err error) {
-	var args []values.Value = []values.Value{
-		arg0.Bridge().GXValue(), // a [][2]float32
-		arg1.Bridge().GXValue(), // i int32
-	}
-	if f.runner == nil {
-		f.runner, err = tracer.Trace(f.pkg.Device, f.function.(*ir.FuncDecl), nil, args, f.pkg.options)
-		if err != nil {
-			return
-		}
-	}
-	var outputs []values.Value
-	outputs, err = f.runner.Run(nil, args, f.pkg.Package.Tracer)
-	if err != nil {
-		return
-	}
-
-	out0Value, ok := outputs[0].(values.Array)
-	if !ok {
-		err = errors.Errorf("cannot cast %T to %s", outputs[0], reflect.TypeFor[*values.DeviceArray]().Name())
-		return
-	}
-	out0 := types.NewArray[float32](out0Value)
-
-	return out0, nil
-}
-
-func (f *SliceSliceArg) String() string {
-	return fmt.Sprint(f.function)
-}
-
-// Run first compiles NewNotInSlice for a given device and the given arguments.
-// Once compiled, the function is then run with these same arguments.
-// If the shape of the arguments change, the function will panic.
-func (f *NewNotInSlice) Run(arg0 types.Atom[int32]) (_ *NotInSlice, err error) {
-	var args []values.Value = []values.Value{
-		arg0.Bridge().GXValue(), // val int32
-	}
-	if f.runner == nil {
-		f.runner, err = tracer.Trace(f.pkg.Device, f.function.(*ir.FuncDecl), nil, args, f.pkg.options)
-		if err != nil {
-			return
-		}
-	}
-	var outputs []values.Value
-	outputs, err = f.runner.Run(nil, args, f.pkg.Package.Tracer)
-	if err != nil {
-		return
-	}
-
-	cmpl := f.pkg
-	var out0 *NotInSlice
-	out0, err = cmpl.MarshalNotInSlice(outputs[0])
-	if err != nil {
-		return
-	}
-
-	return out0, nil
-}
-
-func (f *NewNotInSlice) String() string {
-	return fmt.Sprint(f.function)
-}
-
-// NewNotInSlice returns a handle on named type NotInSlice.
-func (fac *Factory) NewNotInSlice() *NotInSlice {
-	s := &NotInSlice{}
-	typ := fac.Package.Package.IR.Decls.TypeByName("NotInSlice")
-	s.handle = handleNotInSlice{
-		pkg:   fac.Package,
-		struc: typ,
-		owner: s,
-	}
-
-	structVal, err := values.NewStruct(typ, nil)
-	if err != nil {
-		panic(err)
-	}
-	s.value = values.NewNamedType(structVal, typ)
-
-	return s
-}
-
-var _ types.Bridge = (*handleNotInSlice)(nil)
-
-func (h *handleNotInSlice) NewFromField(field *ir.Field) (types.Bridge, error) {
-	name := field.Name.Name
-	switch name {
-
-	case "Val":
-		return nil, errors.Errorf("cannot create a new instance for field Val: type types.Atom[int32] not supported")
-
-	default:
-		return nil, errors.Errorf("structure NotInSlice has no field %q", name)
-	}
-}
-
-// SetField sets a field in the structure.
-func (h *handleNotInSlice) SetField(field *ir.Field, val types.Bridge) error {
-
-	name := field.Name.Name
-	structVal, ok := h.owner.value.Underlying().(*values.Struct)
-	if !ok {
-		return fmt.Errorf("incorrect underlying value for named type NotInSlice: %T is not a %s", val, reflect.TypeFor[*values.Struct]().Name())
-	}
-	switch name {
-
-	case "Val":
-		bridger := val.Bridger()
-		fieldValue, ok := bridger.(types.Atom[int32])
-		if !ok {
-			return errors.Errorf("cannot set field Val: cannot cast %T to types.Atom[int32]", bridger)
-		}
-		h.owner.Val = fieldValue
-		structVal.SetField("Val", val.GXValue())
-		return nil
-
-	default:
-		return errors.Errorf("structure NotInSlice has no field %q", name)
-	}
-
-}
-
-// NewInSlice returns a handle on named type InSlice.
-func (fac *Factory) NewInSlice() *InSlice {
-	s := &InSlice{}
-	typ := fac.Package.Package.IR.Decls.TypeByName("InSlice")
-	s.handle = handleInSlice{
-		pkg:   fac.Package,
-		struc: typ,
-		owner: s,
-	}
-
-	structVal, err := values.NewStruct(typ, nil)
-	if err != nil {
-		panic(err)
-	}
-	s.value = values.NewNamedType(structVal, typ)
-
-	return s
-}
-
-var _ types.Bridge = (*handleInSlice)(nil)
-
-func (h *handleInSlice) NewFromField(field *ir.Field) (types.Bridge, error) {
-	name := field.Name.Name
-	switch name {
-
-	case "Val":
-		return nil, errors.Errorf("cannot create a new instance for field Val: type types.Atom[int32] not supported")
-
-	default:
-		return nil, errors.Errorf("structure InSlice has no field %q", name)
-	}
-}
-
-// SetField sets a field in the structure.
-func (h *handleInSlice) SetField(field *ir.Field, val types.Bridge) error {
-
-	name := field.Name.Name
-	structVal, ok := h.owner.value.Underlying().(*values.Struct)
-	if !ok {
-		return fmt.Errorf("incorrect underlying value for named type InSlice: %T is not a %s", val, reflect.TypeFor[*values.Struct]().Name())
-	}
-	switch name {
-
-	case "Val":
-		bridger := val.Bridger()
-		fieldValue, ok := bridger.(types.Atom[int32])
-		if !ok {
-			return errors.Errorf("cannot set field Val: cannot cast %T to types.Atom[int32]", bridger)
-		}
-		h.owner.Val = fieldValue
-		structVal.SetField("Val", val.GXValue())
-		return nil
-
-	default:
-		return errors.Errorf("structure InSlice has no field %q", name)
-	}
-
-}
-
 // NewStruct returns a handle on named type Struct.
 func (fac *Factory) NewStruct() *Struct {
 	s := &Struct{}
-	typ := fac.Package.Package.IR.Decls.TypeByName("Struct")
+	typ := fac.Package.handle.IR().Decls.TypeByName("Struct")
 	s.handle = handleStruct{
 		pkg:   fac.Package,
 		struc: typ,
@@ -1272,11 +1061,6 @@ func (fac *Factory) NewStruct() *Struct {
 	}
 	s.value = values.NewNamedType(structVal, typ)
 
-	s.handle.runnerSetNotInSlice = &MethodStructSetNotInSlice{
-		methodBase: s.handle.pkg.methodStructSetNotInSlice,
-		receiver:   s.handle,
-	}
-
 	return s
 }
 
@@ -1285,32 +1069,26 @@ var _ types.Bridge = (*handleStruct)(nil)
 func (h *handleStruct) NewFromField(field *ir.Field) (types.Bridge, error) {
 	name := field.Name.Name
 	switch name {
-
 	case "A":
 		return nil, errors.Errorf("cannot create a new instance for field A: type types.Array[float32] not supported")
-
 	case "B":
 		slice, err := types.NewEmptySlice[types.Atom[float32]](field.Type(), nil)
 		if err != nil {
 			return nil, err
 		}
 		return slice.Bridge(), nil
-
 	case "C":
 		slice, err := types.NewEmptySlice[*InSlice](field.Type(), func() (types.Bridge, error) {
-			return h.pkg.Factory.NewInSlice().Bridge(), nil
+			return h.pkg.handle.Factory.NewInSlice().Bridge(), nil
 		})
 		if err != nil {
 			return nil, err
 		}
 		return slice.Bridge(), nil
-
 	case "D":
-		return h.pkg.Factory.NewNotInSlice().Bridge(), nil
-
+		return h.pkg.handle.Factory.NewNotInSlice().Bridge(), nil
 	case "specialIndex":
 		return nil, errors.Errorf("cannot create a new instance for field specialIndex: type types.Atom[int32] not supported")
-
 	case "SpecialValue":
 		return nil, errors.Errorf("cannot create a new instance for field SpecialValue: type types.Atom[float32] not supported")
 
@@ -1393,4 +1171,31 @@ func (h *handleStruct) SetField(field *ir.Field, val types.Bridge) error {
 		return errors.Errorf("structure Struct has no field %q", name)
 	}
 
+}
+
+// SetNotInSlice tests setting a structure field with a structure.
+func (recv *Struct) SetNotInSlice(arg0 *NotInSlice) (_ *Struct, err error) {
+	var args []values.Value = []values.Value{
+		arg0.Bridge().GXValue(), // d parameters.NotInSlice
+	}
+	var runner tracer.CompiledFunc
+	runner, err = recv.handle.pkg.cacheStructSetNotInSlice.Runner(recv.value, args)
+	if err != nil {
+		return
+	}
+	var outputs []values.Value
+	outputs, err = runner.Run(recv.value, args, recv.handle.pkg.handle.Tracer())
+	if err != nil {
+		return
+	}
+
+	fty := recv.handle.pkg.handle.Factory
+
+	var out0 *Struct
+	out0, err = fty.MarshalStruct(outputs[0])
+	if err != nil {
+		return
+	}
+
+	return out0, nil
 }

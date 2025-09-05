@@ -27,13 +27,14 @@ import (
 	"github.com/gx-org/backend/platform"
 	"github.com/gx-org/gx/api"
 	"github.com/gx-org/gx/api/options"
-	"github.com/gx-org/gx/api/trace"
 	"github.com/gx-org/gx/api/tracer"
 	"github.com/gx-org/gx/api/values"
 	"github.com/gx-org/gx/build/ir"
+	"github.com/gx-org/gx/golang/binder/gobindings/core"
 	"github.com/gx-org/gx/golang/binder/gobindings/types"
-	_ "github.com/gx-org/gx/tests/bindings/unexported"
 	"github.com/pkg/errors"
+
+	_ "github.com/gx-org/gx/tests/bindings/unexported"
 )
 
 // Force some package dependencies.
@@ -45,38 +46,38 @@ var (
 	_ = errors.Errorf
 	_ = types.NewSlice[types.Bridger]
 	_ = platform.HostTransfer
+	_ = ir.NamedType{}
+	_ = tracer.Trace
 )
 
-// PackageIR is the GX package intermediate representation
-// built for a given runtime, but not yet for a specific device.
-type PackageIR struct {
-	Runtime *api.Runtime
-	IR      *ir.Package
-	Tracer  trace.Callback
-}
-
-// Load the GX package for a given backend.
-func Load(rtm *api.Runtime) (*PackageIR, error) {
+// Load the package for a given runtime.
+func Load(rtm *api.Runtime) (*core.Package, error) {
 	bpkg, err := rtm.Builder().Build("github.com/gx-org/gx/tests/bindings/unexported")
 	if err != nil {
 		return nil, err
 	}
-	pkg := &PackageIR{
-		Runtime: rtm,
-		IR:      bpkg.IR(),
-	}
-
-	return pkg, nil
+	deps := make([]*core.Package, 0)
+	return core.NewPackage(bpkg, deps), nil
 }
 
 // BuildFor loads the GX package github.com/gx-org/gx/tests/bindings/unexported
 // then returns that package for a given device and options.
-func BuildFor(dev *api.Device, options ...options.PackageOptionFactory) (*Package, error) {
+func BuildFor(dev *api.Device, opts ...options.PackageOptionFactory) (*Package, error) {
+	pkgHandle, err := BuildHandleFor(dev, opts...)
+	if err != nil {
+		return nil, err
+	}
+	return pkgHandle.Factory.Package, nil
+}
+
+// BuildHandleFor loads the GX package github.com/gx-org/gx/tests/bindings/unexported
+// then returns that package for a given device and options.
+func BuildHandleFor(dev *api.Device, opts ...options.PackageOptionFactory) (*PackageHandle, error) {
 	pkg, err := Load(dev.Runtime())
 	if err != nil {
 		return nil, err
 	}
-	return pkg.BuildFor(dev, options...), nil
+	return BuildFromIR(pkg, dev, opts)
 }
 
 // Factory create new instance of types used in the package.
@@ -87,49 +88,68 @@ type Factory struct {
 	Package *Package
 }
 
+// PackageHandle provides utility functions for the package.
+type PackageHandle struct {
+	*core.PackageCompileSetup
+	Factory *Factory
+
+	// Package dependencies
+
+}
+
 // Package is a GX package for a given device.
 // Functions and methods are compiled specifically for that device.
 type Package struct {
-	Package *PackageIR
-	Device  *api.Device
-	Factory *Factory
+	handle PackageHandle
 
-	options []options.PackageOption
-
-	New               New
-	methodunexportedA methodBase
+	// Functions and methods cache
+	cacheunexportedA *core.FuncCache
+	cacheNew         *core.FuncCache
 }
 
-// AppendOptions appends options to the compiler.
-func (cmpl *Package) AppendOptions(options ...options.PackageOptionFactory) {
-	plat := cmpl.Package.Runtime.Backend().Platform()
-	for _, opt := range options {
-		cmpl.options = append(cmpl.options, opt(plat))
+// BuildFromIR builds a package for a device once it has been loaded.
+func BuildFromIR(irPkg *core.Package, dev *api.Device, optionFactories []options.PackageOptionFactory) (*PackageHandle, error) {
+	pkg := &Package{}
+	pkg.handle.Factory = &Factory{Package: pkg}
+	pkg.handle.PackageCompileSetup = irPkg.Setup(dev, optionFactories)
+	// Build dependencies.
+	var err error
+
+	// Initialise function and method caches.
+	pkg.cacheunexportedA, err = pkg.handle.NewCache("unexported", "A")
+	if err != nil {
+		return nil, err
 	}
+	pkg.cacheNew, err = pkg.handle.NewCache("", "New")
+	if err != nil {
+		return nil, err
+	}
+
+	return &pkg.handle, err
 }
 
-// BuildFor returns a package ready to compile for a device and options.
-func (pkg *PackageIR) BuildFor(dev *api.Device, options ...options.PackageOptionFactory) *Package {
-	c := &Package{
-		Package: pkg,
-		Device:  dev,
+func (pkg *Package) New() (_ *unexported, err error) {
+	var args []values.Value = nil
+	var runner tracer.CompiledFunc
+	runner, err = pkg.cacheNew.Runner(nil, args)
+	if err != nil {
+		return
 	}
-	c.Factory = &Factory{Package: c}
-	c.AppendOptions(options...)
-
-	c.New = New{
-		methodBase: methodBase{
-			pkg:      c,
-			function: c.Package.IR.Decls.Funcs[0],
-		},
+	var outputs []values.Value
+	outputs, err = runner.Run(nil, args, pkg.handle.Tracer())
+	if err != nil {
+		return
 	}
 
-	c.methodunexportedA = methodBase{
-		pkg:      c,
-		function: c.Package.IR.Decls.Types[0].Methods[0],
+	fty := pkg.handle.Factory
+
+	var out0 *unexported
+	out0, err = fty.Marshalunexported(outputs[0])
+	if err != nil {
+		return
 	}
 
-	return c
+	return out0, nil
 }
 
 // handleunexported stores the backend handles of unexported.
@@ -137,45 +157,6 @@ type handleunexported struct {
 	pkg   *Package
 	struc *ir.NamedType
 	owner *unexported
-
-	runnerA *MethodunexportedA
-}
-
-// MethodunexportedA compiles and runs the GX function A for a device.
-type MethodunexportedA struct {
-	methodBase
-	receiver handleunexported
-}
-
-// Run first compiles A for a given device and the given arguments.
-// Once compiled, the function is then run with these same arguments.
-// If the shape of the arguments change, the function will panic.
-func (f *MethodunexportedA) Run() (_ types.Atom[float32], err error) {
-	var args []values.Value = nil
-	if f.runner == nil {
-		f.runner, err = tracer.Trace(f.pkg.Device, f.function.(*ir.FuncDecl), f.receiver.GXValue(), args, f.pkg.options)
-		if err != nil {
-			return
-		}
-	}
-	var outputs []values.Value
-	outputs, err = f.runner.Run(f.receiver.GXValue(), args, f.pkg.Package.Tracer)
-	if err != nil {
-		return
-	}
-
-	out0Value, ok := outputs[0].(values.Array)
-	if !ok {
-		err = errors.Errorf("cannot cast %T to %s", outputs[0], reflect.TypeFor[*values.DeviceArray]().Name())
-		return
-	}
-	out0 := types.NewAtom[float32](out0Value)
-
-	return out0, nil
-}
-
-func (f *MethodunexportedA) String() string {
-	return fmt.Sprint(f.function)
 }
 
 // Type of the value.
@@ -228,8 +209,8 @@ func (h *handleunexported) StructValue() *values.Struct {
 }
 
 // Marshalunexported populates the receiver fields with device handles.
-func (cmpl *Package) Marshalunexported(val values.Value) (s *unexported, err error) {
-	s = cmpl.Factory.Newunexported()
+func (fty *Factory) Marshalunexported(val values.Value) (s *unexported, err error) {
+	s = fty.Newunexported()
 	var ok bool
 	s.value, ok = val.(*values.NamedType)
 	if !ok {
@@ -264,57 +245,10 @@ func (s unexported) String() string {
 // Bridge returns the bridge between the Go value and the GX value.
 func (s *unexported) Bridge() types.Bridge { return &s.handle }
 
-// A returns a handle to compile method A for a device.
-func (s unexported) A() *MethodunexportedA {
-	return s.handle.runnerA
-}
-
-type methodBase struct {
-	pkg      *Package
-	function ir.Func
-	runner   tracer.CompiledFunc
-}
-
-// New compiles and runs the GX function New for a device.
-type New struct {
-	methodBase
-}
-
-// Run first compiles New for a given device and the given arguments.
-// Once compiled, the function is then run with these same arguments.
-// If the shape of the arguments change, the function will panic.
-func (f *New) Run() (_ *unexported, err error) {
-	var args []values.Value = nil
-	if f.runner == nil {
-		f.runner, err = tracer.Trace(f.pkg.Device, f.function.(*ir.FuncDecl), nil, args, f.pkg.options)
-		if err != nil {
-			return
-		}
-	}
-	var outputs []values.Value
-	outputs, err = f.runner.Run(nil, args, f.pkg.Package.Tracer)
-	if err != nil {
-		return
-	}
-
-	cmpl := f.pkg
-	var out0 *unexported
-	out0, err = cmpl.Marshalunexported(outputs[0])
-	if err != nil {
-		return
-	}
-
-	return out0, nil
-}
-
-func (f *New) String() string {
-	return fmt.Sprint(f.function)
-}
-
 // Newunexported returns a handle on named type unexported.
 func (fac *Factory) Newunexported() *unexported {
 	s := &unexported{}
-	typ := fac.Package.Package.IR.Decls.TypeByName("unexported")
+	typ := fac.Package.handle.IR().Decls.TypeByName("unexported")
 	s.handle = handleunexported{
 		pkg:   fac.Package,
 		struc: typ,
@@ -327,11 +261,6 @@ func (fac *Factory) Newunexported() *unexported {
 	}
 	s.value = values.NewNamedType(structVal, typ)
 
-	s.handle.runnerA = &MethodunexportedA{
-		methodBase: s.handle.pkg.methodunexportedA,
-		receiver:   s.handle,
-	}
-
 	return s
 }
 
@@ -340,7 +269,6 @@ var _ types.Bridge = (*handleunexported)(nil)
 func (h *handleunexported) NewFromField(field *ir.Field) (types.Bridge, error) {
 	name := field.Name.Name
 	switch name {
-
 	case "a":
 		return nil, errors.Errorf("cannot create a new instance for field a: type types.Atom[float32] not supported")
 
@@ -373,4 +301,27 @@ func (h *handleunexported) SetField(field *ir.Field, val types.Bridge) error {
 		return errors.Errorf("structure unexported has no field %q", name)
 	}
 
+}
+
+func (recv *unexported) A() (_ types.Atom[float32], err error) {
+	var args []values.Value = nil
+	var runner tracer.CompiledFunc
+	runner, err = recv.handle.pkg.cacheunexportedA.Runner(recv.value, args)
+	if err != nil {
+		return
+	}
+	var outputs []values.Value
+	outputs, err = runner.Run(recv.value, args, recv.handle.pkg.handle.Tracer())
+	if err != nil {
+		return
+	}
+
+	out0Value, ok := outputs[0].(values.Array)
+	if !ok {
+		err = errors.Errorf("cannot cast %T to %s", outputs[0], reflect.TypeFor[*values.DeviceArray]().Name())
+		return
+	}
+	out0 := types.NewAtom[float32](out0Value)
+
+	return out0, nil
 }
