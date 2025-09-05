@@ -27,12 +27,14 @@ import (
 	"github.com/gx-org/backend/platform"
 	"github.com/gx-org/gx/api"
 	"github.com/gx-org/gx/api/options"
-	"github.com/gx-org/gx/api/trace"
 	"github.com/gx-org/gx/api/tracer"
 	"github.com/gx-org/gx/api/values"
 	"github.com/gx-org/gx/build/ir"
+	"github.com/gx-org/gx/golang/binder/gobindings/core"
 	"github.com/gx-org/gx/golang/binder/gobindings/types"
 	"github.com/pkg/errors"
+
+	gxdep0 "github.com/gx-org/gx/stdlib/bindings/go/dtype_go_gx"
 )
 
 // Force some package dependencies.
@@ -44,38 +46,42 @@ var (
 	_ = errors.Errorf
 	_ = types.NewSlice[types.Bridger]
 	_ = platform.HostTransfer
+	_ = ir.NamedType{}
+	_ = tracer.Trace
 )
 
-// PackageIR is the GX package intermediate representation
-// built for a given runtime, but not yet for a specific device.
-type PackageIR struct {
-	Runtime *api.Runtime
-	IR      *ir.Package
-	Tracer  trace.Callback
-}
-
-// Load the GX package for a given backend.
-func Load(rtm *api.Runtime) (*PackageIR, error) {
+// Load the package for a given runtime.
+func Load(rtm *api.Runtime) (*core.Package, error) {
 	bpkg, err := rtm.Builder().Build("math")
 	if err != nil {
 		return nil, err
 	}
-	pkg := &PackageIR{
-		Runtime: rtm,
-		IR:      bpkg.IR(),
+	deps := make([]*core.Package, 1)
+	deps[0], err = gxdep0.Load(rtm)
+	if err != nil {
+		return nil, err
 	}
-
-	return pkg, nil
+	return core.NewPackage(bpkg, deps), nil
 }
 
 // BuildFor loads the GX package math
 // then returns that package for a given device and options.
-func BuildFor(dev *api.Device, options ...options.PackageOptionFactory) (*Package, error) {
+func BuildFor(dev *api.Device, opts ...options.PackageOptionFactory) (*Package, error) {
+	pkgHandle, err := BuildHandleFor(dev, opts...)
+	if err != nil {
+		return nil, err
+	}
+	return pkgHandle.Factory.Package, nil
+}
+
+// BuildHandleFor loads the GX package math
+// then returns that package for a given device and options.
+func BuildHandleFor(dev *api.Device, opts ...options.PackageOptionFactory) (*PackageHandle, error) {
 	pkg, err := Load(dev.Runtime())
 	if err != nil {
 		return nil, err
 	}
-	return pkg.BuildFor(dev, options...), nil
+	return BuildFromIR(pkg, dev, opts)
 }
 
 // Factory create new instance of types used in the package.
@@ -86,38 +92,41 @@ type Factory struct {
 	Package *Package
 }
 
+// PackageHandle provides utility functions for the package.
+type PackageHandle struct {
+	*core.PackageCompileSetup
+	Factory *Factory
+
+	// Package dependencies
+	gxdep0 *gxdep0.PackageHandle
+}
+
 // Package is a GX package for a given device.
 // Functions and methods are compiled specifically for that device.
 type Package struct {
-	Package *PackageIR
-	Device  *api.Device
-	Factory *Factory
+	handle PackageHandle
 
-	options []options.PackageOption
+	// Functions and methods cache
+
 }
 
-// AppendOptions appends options to the compiler.
-func (cmpl *Package) AppendOptions(options ...options.PackageOptionFactory) {
-	plat := cmpl.Package.Runtime.Backend().Platform()
-	for _, opt := range options {
-		cmpl.options = append(cmpl.options, opt(plat))
+// BuildFromIR builds a package for a device once it has been loaded.
+func BuildFromIR(irPkg *core.Package, dev *api.Device, optionFactories []options.PackageOptionFactory) (*PackageHandle, error) {
+	pkg := &Package{}
+	pkg.handle.Factory = &Factory{Package: pkg}
+	pkg.handle.PackageCompileSetup = irPkg.Setup(dev, optionFactories)
+	// Build dependencies.
+	var err error
+	pkg.handle.gxdep0, err = core.BuildDep[*gxdep0.PackageHandle](
+		pkg.handle.PackageCompileSetup,
+		0,
+		gxdep0.BuildFromIR,
+	)
+	if err != nil {
+		return nil, err
 	}
-}
 
-// BuildFor returns a package ready to compile for a device and options.
-func (pkg *PackageIR) BuildFor(dev *api.Device, options ...options.PackageOptionFactory) *Package {
-	c := &Package{
-		Package: pkg,
-		Device:  dev,
-	}
-	c.Factory = &Factory{Package: c}
-	c.AppendOptions(options...)
+	// Initialise function and method caches.
 
-	return c
-}
-
-type methodBase struct {
-	pkg      *Package
-	function ir.Func
-	runner   tracer.CompiledFunc
+	return &pkg.handle, err
 }

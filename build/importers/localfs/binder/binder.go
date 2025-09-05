@@ -30,7 +30,7 @@ type GenImports struct{}
 // SourceImport generates the import when the GX source needs to be imported
 // from a Go module.
 func (GenImports) SourceImport(pkg *ir.Package) string {
-	return fmt.Sprintf(`_ "%s"`, pkg.FullName())
+	return pkg.FullName()
 }
 
 // DependencyImport generates the import to insert in the package source code.

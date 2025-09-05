@@ -27,13 +27,14 @@ import (
 	"github.com/gx-org/backend/platform"
 	"github.com/gx-org/gx/api"
 	"github.com/gx-org/gx/api/options"
-	"github.com/gx-org/gx/api/trace"
 	"github.com/gx-org/gx/api/tracer"
 	"github.com/gx-org/gx/api/values"
 	"github.com/gx-org/gx/build/ir"
+	"github.com/gx-org/gx/golang/binder/gobindings/core"
 	"github.com/gx-org/gx/golang/binder/gobindings/types"
-	_ "github.com/gx-org/gx/tests/bindings/dtypes"
 	"github.com/pkg/errors"
+
+	_ "github.com/gx-org/gx/tests/bindings/dtypes"
 )
 
 // Force some package dependencies.
@@ -45,38 +46,38 @@ var (
 	_ = errors.Errorf
 	_ = types.NewSlice[types.Bridger]
 	_ = platform.HostTransfer
+	_ = ir.NamedType{}
+	_ = tracer.Trace
 )
 
-// PackageIR is the GX package intermediate representation
-// built for a given runtime, but not yet for a specific device.
-type PackageIR struct {
-	Runtime *api.Runtime
-	IR      *ir.Package
-	Tracer  trace.Callback
-}
-
-// Load the GX package for a given backend.
-func Load(rtm *api.Runtime) (*PackageIR, error) {
+// Load the package for a given runtime.
+func Load(rtm *api.Runtime) (*core.Package, error) {
 	bpkg, err := rtm.Builder().Build("github.com/gx-org/gx/tests/bindings/dtypes")
 	if err != nil {
 		return nil, err
 	}
-	pkg := &PackageIR{
-		Runtime: rtm,
-		IR:      bpkg.IR(),
-	}
-
-	return pkg, nil
+	deps := make([]*core.Package, 0)
+	return core.NewPackage(bpkg, deps), nil
 }
 
 // BuildFor loads the GX package github.com/gx-org/gx/tests/bindings/dtypes
 // then returns that package for a given device and options.
-func BuildFor(dev *api.Device, options ...options.PackageOptionFactory) (*Package, error) {
+func BuildFor(dev *api.Device, opts ...options.PackageOptionFactory) (*Package, error) {
+	pkgHandle, err := BuildHandleFor(dev, opts...)
+	if err != nil {
+		return nil, err
+	}
+	return pkgHandle.Factory.Package, nil
+}
+
+// BuildHandleFor loads the GX package github.com/gx-org/gx/tests/bindings/dtypes
+// then returns that package for a given device and options.
+func BuildHandleFor(dev *api.Device, opts ...options.PackageOptionFactory) (*PackageHandle, error) {
 	pkg, err := Load(dev.Runtime())
 	if err != nil {
 		return nil, err
 	}
-	return pkg.BuildFor(dev, options...), nil
+	return BuildFromIR(pkg, dev, opts)
 }
 
 // Factory create new instance of types used in the package.
@@ -87,227 +88,117 @@ type Factory struct {
 	Package *Package
 }
 
+// PackageHandle provides utility functions for the package.
+type PackageHandle struct {
+	*core.PackageCompileSetup
+	Factory *Factory
+
+	// Package dependencies
+
+}
+
 // Package is a GX package for a given device.
 // Functions and methods are compiled specifically for that device.
 type Package struct {
-	Package *PackageIR
-	Device  *api.Device
-	Factory *Factory
+	handle PackageHandle
 
-	options []options.PackageOption
-
-	Bool         Bool
-	Float32      Float32
-	Float64      Float64
-	Int32        Int32
-	Int64        Int64
-	Uint32       Uint32
-	Uint64       Uint64
-	ArrayBool    ArrayBool
-	ArrayFloat32 ArrayFloat32
-	ArrayFloat64 ArrayFloat64
-	ArrayInt32   ArrayInt32
-	ArrayInt64   ArrayInt64
-	ArrayUint32  ArrayUint32
-	ArrayUint64  ArrayUint64
+	// Functions and methods cache
+	cacheBool         *core.FuncCache
+	cacheFloat32      *core.FuncCache
+	cacheFloat64      *core.FuncCache
+	cacheInt32        *core.FuncCache
+	cacheInt64        *core.FuncCache
+	cacheUint32       *core.FuncCache
+	cacheUint64       *core.FuncCache
+	cacheArrayBool    *core.FuncCache
+	cacheArrayFloat32 *core.FuncCache
+	cacheArrayFloat64 *core.FuncCache
+	cacheArrayInt32   *core.FuncCache
+	cacheArrayInt64   *core.FuncCache
+	cacheArrayUint32  *core.FuncCache
+	cacheArrayUint64  *core.FuncCache
 }
 
-// AppendOptions appends options to the compiler.
-func (cmpl *Package) AppendOptions(options ...options.PackageOptionFactory) {
-	plat := cmpl.Package.Runtime.Backend().Platform()
-	for _, opt := range options {
-		cmpl.options = append(cmpl.options, opt(plat))
-	}
-}
+// BuildFromIR builds a package for a device once it has been loaded.
+func BuildFromIR(irPkg *core.Package, dev *api.Device, optionFactories []options.PackageOptionFactory) (*PackageHandle, error) {
+	pkg := &Package{}
+	pkg.handle.Factory = &Factory{Package: pkg}
+	pkg.handle.PackageCompileSetup = irPkg.Setup(dev, optionFactories)
+	// Build dependencies.
+	var err error
 
-// BuildFor returns a package ready to compile for a device and options.
-func (pkg *PackageIR) BuildFor(dev *api.Device, options ...options.PackageOptionFactory) *Package {
-	c := &Package{
-		Package: pkg,
-		Device:  dev,
+	// Initialise function and method caches.
+	pkg.cacheBool, err = pkg.handle.NewCache("", "Bool")
+	if err != nil {
+		return nil, err
 	}
-	c.Factory = &Factory{Package: c}
-	c.AppendOptions(options...)
-
-	c.Bool = Bool{
-		methodBase: methodBase{
-			pkg:      c,
-			function: c.Package.IR.Decls.Funcs[0],
-		},
+	pkg.cacheFloat32, err = pkg.handle.NewCache("", "Float32")
+	if err != nil {
+		return nil, err
 	}
-	c.Float32 = Float32{
-		methodBase: methodBase{
-			pkg:      c,
-			function: c.Package.IR.Decls.Funcs[1],
-		},
+	pkg.cacheFloat64, err = pkg.handle.NewCache("", "Float64")
+	if err != nil {
+		return nil, err
 	}
-	c.Float64 = Float64{
-		methodBase: methodBase{
-			pkg:      c,
-			function: c.Package.IR.Decls.Funcs[2],
-		},
+	pkg.cacheInt32, err = pkg.handle.NewCache("", "Int32")
+	if err != nil {
+		return nil, err
 	}
-	c.Int32 = Int32{
-		methodBase: methodBase{
-			pkg:      c,
-			function: c.Package.IR.Decls.Funcs[3],
-		},
+	pkg.cacheInt64, err = pkg.handle.NewCache("", "Int64")
+	if err != nil {
+		return nil, err
 	}
-	c.Int64 = Int64{
-		methodBase: methodBase{
-			pkg:      c,
-			function: c.Package.IR.Decls.Funcs[4],
-		},
+	pkg.cacheUint32, err = pkg.handle.NewCache("", "Uint32")
+	if err != nil {
+		return nil, err
 	}
-	c.Uint32 = Uint32{
-		methodBase: methodBase{
-			pkg:      c,
-			function: c.Package.IR.Decls.Funcs[5],
-		},
+	pkg.cacheUint64, err = pkg.handle.NewCache("", "Uint64")
+	if err != nil {
+		return nil, err
 	}
-	c.Uint64 = Uint64{
-		methodBase: methodBase{
-			pkg:      c,
-			function: c.Package.IR.Decls.Funcs[6],
-		},
+	pkg.cacheArrayBool, err = pkg.handle.NewCache("", "ArrayBool")
+	if err != nil {
+		return nil, err
 	}
-	c.ArrayBool = ArrayBool{
-		methodBase: methodBase{
-			pkg:      c,
-			function: c.Package.IR.Decls.Funcs[7],
-		},
+	pkg.cacheArrayFloat32, err = pkg.handle.NewCache("", "ArrayFloat32")
+	if err != nil {
+		return nil, err
 	}
-	c.ArrayFloat32 = ArrayFloat32{
-		methodBase: methodBase{
-			pkg:      c,
-			function: c.Package.IR.Decls.Funcs[8],
-		},
+	pkg.cacheArrayFloat64, err = pkg.handle.NewCache("", "ArrayFloat64")
+	if err != nil {
+		return nil, err
 	}
-	c.ArrayFloat64 = ArrayFloat64{
-		methodBase: methodBase{
-			pkg:      c,
-			function: c.Package.IR.Decls.Funcs[9],
-		},
+	pkg.cacheArrayInt32, err = pkg.handle.NewCache("", "ArrayInt32")
+	if err != nil {
+		return nil, err
 	}
-	c.ArrayInt32 = ArrayInt32{
-		methodBase: methodBase{
-			pkg:      c,
-			function: c.Package.IR.Decls.Funcs[10],
-		},
+	pkg.cacheArrayInt64, err = pkg.handle.NewCache("", "ArrayInt64")
+	if err != nil {
+		return nil, err
 	}
-	c.ArrayInt64 = ArrayInt64{
-		methodBase: methodBase{
-			pkg:      c,
-			function: c.Package.IR.Decls.Funcs[11],
-		},
+	pkg.cacheArrayUint32, err = pkg.handle.NewCache("", "ArrayUint32")
+	if err != nil {
+		return nil, err
 	}
-	c.ArrayUint32 = ArrayUint32{
-		methodBase: methodBase{
-			pkg:      c,
-			function: c.Package.IR.Decls.Funcs[12],
-		},
-	}
-	c.ArrayUint64 = ArrayUint64{
-		methodBase: methodBase{
-			pkg:      c,
-			function: c.Package.IR.Decls.Funcs[13],
-		},
+	pkg.cacheArrayUint64, err = pkg.handle.NewCache("", "ArrayUint64")
+	if err != nil {
+		return nil, err
 	}
 
-	return c
+	return &pkg.handle, err
 }
 
-type methodBase struct {
-	pkg      *Package
-	function ir.Func
-	runner   tracer.CompiledFunc
-}
-
-// Bool compiles and runs the GX function Bool for a device.
-type Bool struct {
-	methodBase
-}
-
-// Float32 compiles and runs the GX function Float32 for a device.
-type Float32 struct {
-	methodBase
-}
-
-// Float64 compiles and runs the GX function Float64 for a device.
-type Float64 struct {
-	methodBase
-}
-
-// Int32 compiles and runs the GX function Int32 for a device.
-type Int32 struct {
-	methodBase
-}
-
-// Int64 compiles and runs the GX function Int64 for a device.
-type Int64 struct {
-	methodBase
-}
-
-// Uint32 compiles and runs the GX function Uint32 for a device.
-type Uint32 struct {
-	methodBase
-}
-
-// Uint64 compiles and runs the GX function Uint64 for a device.
-type Uint64 struct {
-	methodBase
-}
-
-// ArrayBool compiles and runs the GX function ArrayBool for a device.
-type ArrayBool struct {
-	methodBase
-}
-
-// ArrayFloat32 compiles and runs the GX function ArrayFloat32 for a device.
-type ArrayFloat32 struct {
-	methodBase
-}
-
-// ArrayFloat64 compiles and runs the GX function ArrayFloat64 for a device.
-type ArrayFloat64 struct {
-	methodBase
-}
-
-// ArrayInt32 compiles and runs the GX function ArrayInt32 for a device.
-type ArrayInt32 struct {
-	methodBase
-}
-
-// ArrayInt64 compiles and runs the GX function ArrayInt64 for a device.
-type ArrayInt64 struct {
-	methodBase
-}
-
-// ArrayUint32 compiles and runs the GX function ArrayUint32 for a device.
-type ArrayUint32 struct {
-	methodBase
-}
-
-// ArrayUint64 compiles and runs the GX function ArrayUint64 for a device.
-type ArrayUint64 struct {
-	methodBase
-}
-
-// Run first compiles Bool for a given device and the given arguments.
-// Once compiled, the function is then run with these same arguments.
-// If the shape of the arguments change, the function will panic.
-func (f *Bool) Run(arg0 types.Atom[bool]) (_ types.Atom[bool], err error) {
+func (pkg *Package) Bool(arg0 types.Atom[bool]) (_ types.Atom[bool], err error) {
 	var args []values.Value = []values.Value{
 		arg0.Bridge().GXValue(), // x bool
 	}
-	if f.runner == nil {
-		f.runner, err = tracer.Trace(f.pkg.Device, f.function.(*ir.FuncDecl), nil, args, f.pkg.options)
-		if err != nil {
-			return
-		}
+	var runner tracer.CompiledFunc
+	runner, err = pkg.cacheBool.Runner(nil, args)
+	if err != nil {
+		return
 	}
 	var outputs []values.Value
-	outputs, err = f.runner.Run(nil, args, f.pkg.Package.Tracer)
+	outputs, err = runner.Run(nil, args, pkg.handle.Tracer())
 	if err != nil {
 		return
 	}
@@ -322,25 +213,17 @@ func (f *Bool) Run(arg0 types.Atom[bool]) (_ types.Atom[bool], err error) {
 	return out0, nil
 }
 
-func (f *Bool) String() string {
-	return fmt.Sprint(f.function)
-}
-
-// Run first compiles Float32 for a given device and the given arguments.
-// Once compiled, the function is then run with these same arguments.
-// If the shape of the arguments change, the function will panic.
-func (f *Float32) Run(arg0 types.Atom[float32]) (_ types.Atom[float32], err error) {
+func (pkg *Package) Float32(arg0 types.Atom[float32]) (_ types.Atom[float32], err error) {
 	var args []values.Value = []values.Value{
 		arg0.Bridge().GXValue(), // x float32
 	}
-	if f.runner == nil {
-		f.runner, err = tracer.Trace(f.pkg.Device, f.function.(*ir.FuncDecl), nil, args, f.pkg.options)
-		if err != nil {
-			return
-		}
+	var runner tracer.CompiledFunc
+	runner, err = pkg.cacheFloat32.Runner(nil, args)
+	if err != nil {
+		return
 	}
 	var outputs []values.Value
-	outputs, err = f.runner.Run(nil, args, f.pkg.Package.Tracer)
+	outputs, err = runner.Run(nil, args, pkg.handle.Tracer())
 	if err != nil {
 		return
 	}
@@ -355,25 +238,17 @@ func (f *Float32) Run(arg0 types.Atom[float32]) (_ types.Atom[float32], err erro
 	return out0, nil
 }
 
-func (f *Float32) String() string {
-	return fmt.Sprint(f.function)
-}
-
-// Run first compiles Float64 for a given device and the given arguments.
-// Once compiled, the function is then run with these same arguments.
-// If the shape of the arguments change, the function will panic.
-func (f *Float64) Run(arg0 types.Atom[float64]) (_ types.Atom[float64], err error) {
+func (pkg *Package) Float64(arg0 types.Atom[float64]) (_ types.Atom[float64], err error) {
 	var args []values.Value = []values.Value{
 		arg0.Bridge().GXValue(), // x float64
 	}
-	if f.runner == nil {
-		f.runner, err = tracer.Trace(f.pkg.Device, f.function.(*ir.FuncDecl), nil, args, f.pkg.options)
-		if err != nil {
-			return
-		}
+	var runner tracer.CompiledFunc
+	runner, err = pkg.cacheFloat64.Runner(nil, args)
+	if err != nil {
+		return
 	}
 	var outputs []values.Value
-	outputs, err = f.runner.Run(nil, args, f.pkg.Package.Tracer)
+	outputs, err = runner.Run(nil, args, pkg.handle.Tracer())
 	if err != nil {
 		return
 	}
@@ -388,25 +263,17 @@ func (f *Float64) Run(arg0 types.Atom[float64]) (_ types.Atom[float64], err erro
 	return out0, nil
 }
 
-func (f *Float64) String() string {
-	return fmt.Sprint(f.function)
-}
-
-// Run first compiles Int32 for a given device and the given arguments.
-// Once compiled, the function is then run with these same arguments.
-// If the shape of the arguments change, the function will panic.
-func (f *Int32) Run(arg0 types.Atom[int32]) (_ types.Atom[int32], err error) {
+func (pkg *Package) Int32(arg0 types.Atom[int32]) (_ types.Atom[int32], err error) {
 	var args []values.Value = []values.Value{
 		arg0.Bridge().GXValue(), // x int32
 	}
-	if f.runner == nil {
-		f.runner, err = tracer.Trace(f.pkg.Device, f.function.(*ir.FuncDecl), nil, args, f.pkg.options)
-		if err != nil {
-			return
-		}
+	var runner tracer.CompiledFunc
+	runner, err = pkg.cacheInt32.Runner(nil, args)
+	if err != nil {
+		return
 	}
 	var outputs []values.Value
-	outputs, err = f.runner.Run(nil, args, f.pkg.Package.Tracer)
+	outputs, err = runner.Run(nil, args, pkg.handle.Tracer())
 	if err != nil {
 		return
 	}
@@ -421,25 +288,17 @@ func (f *Int32) Run(arg0 types.Atom[int32]) (_ types.Atom[int32], err error) {
 	return out0, nil
 }
 
-func (f *Int32) String() string {
-	return fmt.Sprint(f.function)
-}
-
-// Run first compiles Int64 for a given device and the given arguments.
-// Once compiled, the function is then run with these same arguments.
-// If the shape of the arguments change, the function will panic.
-func (f *Int64) Run(arg0 types.Atom[int64]) (_ types.Atom[int64], err error) {
+func (pkg *Package) Int64(arg0 types.Atom[int64]) (_ types.Atom[int64], err error) {
 	var args []values.Value = []values.Value{
 		arg0.Bridge().GXValue(), // x int64
 	}
-	if f.runner == nil {
-		f.runner, err = tracer.Trace(f.pkg.Device, f.function.(*ir.FuncDecl), nil, args, f.pkg.options)
-		if err != nil {
-			return
-		}
+	var runner tracer.CompiledFunc
+	runner, err = pkg.cacheInt64.Runner(nil, args)
+	if err != nil {
+		return
 	}
 	var outputs []values.Value
-	outputs, err = f.runner.Run(nil, args, f.pkg.Package.Tracer)
+	outputs, err = runner.Run(nil, args, pkg.handle.Tracer())
 	if err != nil {
 		return
 	}
@@ -454,25 +313,17 @@ func (f *Int64) Run(arg0 types.Atom[int64]) (_ types.Atom[int64], err error) {
 	return out0, nil
 }
 
-func (f *Int64) String() string {
-	return fmt.Sprint(f.function)
-}
-
-// Run first compiles Uint32 for a given device and the given arguments.
-// Once compiled, the function is then run with these same arguments.
-// If the shape of the arguments change, the function will panic.
-func (f *Uint32) Run(arg0 types.Atom[uint32]) (_ types.Atom[uint32], err error) {
+func (pkg *Package) Uint32(arg0 types.Atom[uint32]) (_ types.Atom[uint32], err error) {
 	var args []values.Value = []values.Value{
 		arg0.Bridge().GXValue(), // x uint32
 	}
-	if f.runner == nil {
-		f.runner, err = tracer.Trace(f.pkg.Device, f.function.(*ir.FuncDecl), nil, args, f.pkg.options)
-		if err != nil {
-			return
-		}
+	var runner tracer.CompiledFunc
+	runner, err = pkg.cacheUint32.Runner(nil, args)
+	if err != nil {
+		return
 	}
 	var outputs []values.Value
-	outputs, err = f.runner.Run(nil, args, f.pkg.Package.Tracer)
+	outputs, err = runner.Run(nil, args, pkg.handle.Tracer())
 	if err != nil {
 		return
 	}
@@ -487,25 +338,17 @@ func (f *Uint32) Run(arg0 types.Atom[uint32]) (_ types.Atom[uint32], err error) 
 	return out0, nil
 }
 
-func (f *Uint32) String() string {
-	return fmt.Sprint(f.function)
-}
-
-// Run first compiles Uint64 for a given device and the given arguments.
-// Once compiled, the function is then run with these same arguments.
-// If the shape of the arguments change, the function will panic.
-func (f *Uint64) Run(arg0 types.Atom[uint64]) (_ types.Atom[uint64], err error) {
+func (pkg *Package) Uint64(arg0 types.Atom[uint64]) (_ types.Atom[uint64], err error) {
 	var args []values.Value = []values.Value{
 		arg0.Bridge().GXValue(), // x uint64
 	}
-	if f.runner == nil {
-		f.runner, err = tracer.Trace(f.pkg.Device, f.function.(*ir.FuncDecl), nil, args, f.pkg.options)
-		if err != nil {
-			return
-		}
+	var runner tracer.CompiledFunc
+	runner, err = pkg.cacheUint64.Runner(nil, args)
+	if err != nil {
+		return
 	}
 	var outputs []values.Value
-	outputs, err = f.runner.Run(nil, args, f.pkg.Package.Tracer)
+	outputs, err = runner.Run(nil, args, pkg.handle.Tracer())
 	if err != nil {
 		return
 	}
@@ -520,25 +363,17 @@ func (f *Uint64) Run(arg0 types.Atom[uint64]) (_ types.Atom[uint64], err error) 
 	return out0, nil
 }
 
-func (f *Uint64) String() string {
-	return fmt.Sprint(f.function)
-}
-
-// Run first compiles ArrayBool for a given device and the given arguments.
-// Once compiled, the function is then run with these same arguments.
-// If the shape of the arguments change, the function will panic.
-func (f *ArrayBool) Run(arg0 types.Array[bool]) (_ types.Array[bool], err error) {
+func (pkg *Package) ArrayBool(arg0 types.Array[bool]) (_ types.Array[bool], err error) {
 	var args []values.Value = []values.Value{
 		arg0.Bridge().GXValue(), // x [2][3]bool
 	}
-	if f.runner == nil {
-		f.runner, err = tracer.Trace(f.pkg.Device, f.function.(*ir.FuncDecl), nil, args, f.pkg.options)
-		if err != nil {
-			return
-		}
+	var runner tracer.CompiledFunc
+	runner, err = pkg.cacheArrayBool.Runner(nil, args)
+	if err != nil {
+		return
 	}
 	var outputs []values.Value
-	outputs, err = f.runner.Run(nil, args, f.pkg.Package.Tracer)
+	outputs, err = runner.Run(nil, args, pkg.handle.Tracer())
 	if err != nil {
 		return
 	}
@@ -553,25 +388,17 @@ func (f *ArrayBool) Run(arg0 types.Array[bool]) (_ types.Array[bool], err error)
 	return out0, nil
 }
 
-func (f *ArrayBool) String() string {
-	return fmt.Sprint(f.function)
-}
-
-// Run first compiles ArrayFloat32 for a given device and the given arguments.
-// Once compiled, the function is then run with these same arguments.
-// If the shape of the arguments change, the function will panic.
-func (f *ArrayFloat32) Run(arg0 types.Array[float32]) (_ types.Array[float32], err error) {
+func (pkg *Package) ArrayFloat32(arg0 types.Array[float32]) (_ types.Array[float32], err error) {
 	var args []values.Value = []values.Value{
 		arg0.Bridge().GXValue(), // x [2][3]float32
 	}
-	if f.runner == nil {
-		f.runner, err = tracer.Trace(f.pkg.Device, f.function.(*ir.FuncDecl), nil, args, f.pkg.options)
-		if err != nil {
-			return
-		}
+	var runner tracer.CompiledFunc
+	runner, err = pkg.cacheArrayFloat32.Runner(nil, args)
+	if err != nil {
+		return
 	}
 	var outputs []values.Value
-	outputs, err = f.runner.Run(nil, args, f.pkg.Package.Tracer)
+	outputs, err = runner.Run(nil, args, pkg.handle.Tracer())
 	if err != nil {
 		return
 	}
@@ -586,25 +413,17 @@ func (f *ArrayFloat32) Run(arg0 types.Array[float32]) (_ types.Array[float32], e
 	return out0, nil
 }
 
-func (f *ArrayFloat32) String() string {
-	return fmt.Sprint(f.function)
-}
-
-// Run first compiles ArrayFloat64 for a given device and the given arguments.
-// Once compiled, the function is then run with these same arguments.
-// If the shape of the arguments change, the function will panic.
-func (f *ArrayFloat64) Run(arg0 types.Array[float64]) (_ types.Array[float64], err error) {
+func (pkg *Package) ArrayFloat64(arg0 types.Array[float64]) (_ types.Array[float64], err error) {
 	var args []values.Value = []values.Value{
 		arg0.Bridge().GXValue(), // x [2][3]float64
 	}
-	if f.runner == nil {
-		f.runner, err = tracer.Trace(f.pkg.Device, f.function.(*ir.FuncDecl), nil, args, f.pkg.options)
-		if err != nil {
-			return
-		}
+	var runner tracer.CompiledFunc
+	runner, err = pkg.cacheArrayFloat64.Runner(nil, args)
+	if err != nil {
+		return
 	}
 	var outputs []values.Value
-	outputs, err = f.runner.Run(nil, args, f.pkg.Package.Tracer)
+	outputs, err = runner.Run(nil, args, pkg.handle.Tracer())
 	if err != nil {
 		return
 	}
@@ -619,25 +438,17 @@ func (f *ArrayFloat64) Run(arg0 types.Array[float64]) (_ types.Array[float64], e
 	return out0, nil
 }
 
-func (f *ArrayFloat64) String() string {
-	return fmt.Sprint(f.function)
-}
-
-// Run first compiles ArrayInt32 for a given device and the given arguments.
-// Once compiled, the function is then run with these same arguments.
-// If the shape of the arguments change, the function will panic.
-func (f *ArrayInt32) Run(arg0 types.Array[int32]) (_ types.Array[int32], err error) {
+func (pkg *Package) ArrayInt32(arg0 types.Array[int32]) (_ types.Array[int32], err error) {
 	var args []values.Value = []values.Value{
 		arg0.Bridge().GXValue(), // x [2][3]int32
 	}
-	if f.runner == nil {
-		f.runner, err = tracer.Trace(f.pkg.Device, f.function.(*ir.FuncDecl), nil, args, f.pkg.options)
-		if err != nil {
-			return
-		}
+	var runner tracer.CompiledFunc
+	runner, err = pkg.cacheArrayInt32.Runner(nil, args)
+	if err != nil {
+		return
 	}
 	var outputs []values.Value
-	outputs, err = f.runner.Run(nil, args, f.pkg.Package.Tracer)
+	outputs, err = runner.Run(nil, args, pkg.handle.Tracer())
 	if err != nil {
 		return
 	}
@@ -652,25 +463,17 @@ func (f *ArrayInt32) Run(arg0 types.Array[int32]) (_ types.Array[int32], err err
 	return out0, nil
 }
 
-func (f *ArrayInt32) String() string {
-	return fmt.Sprint(f.function)
-}
-
-// Run first compiles ArrayInt64 for a given device and the given arguments.
-// Once compiled, the function is then run with these same arguments.
-// If the shape of the arguments change, the function will panic.
-func (f *ArrayInt64) Run(arg0 types.Array[int64]) (_ types.Array[int64], err error) {
+func (pkg *Package) ArrayInt64(arg0 types.Array[int64]) (_ types.Array[int64], err error) {
 	var args []values.Value = []values.Value{
 		arg0.Bridge().GXValue(), // x [2][3]int64
 	}
-	if f.runner == nil {
-		f.runner, err = tracer.Trace(f.pkg.Device, f.function.(*ir.FuncDecl), nil, args, f.pkg.options)
-		if err != nil {
-			return
-		}
+	var runner tracer.CompiledFunc
+	runner, err = pkg.cacheArrayInt64.Runner(nil, args)
+	if err != nil {
+		return
 	}
 	var outputs []values.Value
-	outputs, err = f.runner.Run(nil, args, f.pkg.Package.Tracer)
+	outputs, err = runner.Run(nil, args, pkg.handle.Tracer())
 	if err != nil {
 		return
 	}
@@ -685,25 +488,17 @@ func (f *ArrayInt64) Run(arg0 types.Array[int64]) (_ types.Array[int64], err err
 	return out0, nil
 }
 
-func (f *ArrayInt64) String() string {
-	return fmt.Sprint(f.function)
-}
-
-// Run first compiles ArrayUint32 for a given device and the given arguments.
-// Once compiled, the function is then run with these same arguments.
-// If the shape of the arguments change, the function will panic.
-func (f *ArrayUint32) Run(arg0 types.Array[uint32]) (_ types.Array[uint32], err error) {
+func (pkg *Package) ArrayUint32(arg0 types.Array[uint32]) (_ types.Array[uint32], err error) {
 	var args []values.Value = []values.Value{
 		arg0.Bridge().GXValue(), // x [2][3]uint32
 	}
-	if f.runner == nil {
-		f.runner, err = tracer.Trace(f.pkg.Device, f.function.(*ir.FuncDecl), nil, args, f.pkg.options)
-		if err != nil {
-			return
-		}
+	var runner tracer.CompiledFunc
+	runner, err = pkg.cacheArrayUint32.Runner(nil, args)
+	if err != nil {
+		return
 	}
 	var outputs []values.Value
-	outputs, err = f.runner.Run(nil, args, f.pkg.Package.Tracer)
+	outputs, err = runner.Run(nil, args, pkg.handle.Tracer())
 	if err != nil {
 		return
 	}
@@ -718,25 +513,17 @@ func (f *ArrayUint32) Run(arg0 types.Array[uint32]) (_ types.Array[uint32], err 
 	return out0, nil
 }
 
-func (f *ArrayUint32) String() string {
-	return fmt.Sprint(f.function)
-}
-
-// Run first compiles ArrayUint64 for a given device and the given arguments.
-// Once compiled, the function is then run with these same arguments.
-// If the shape of the arguments change, the function will panic.
-func (f *ArrayUint64) Run(arg0 types.Array[uint64]) (_ types.Array[uint64], err error) {
+func (pkg *Package) ArrayUint64(arg0 types.Array[uint64]) (_ types.Array[uint64], err error) {
 	var args []values.Value = []values.Value{
 		arg0.Bridge().GXValue(), // x [2][3]uint64
 	}
-	if f.runner == nil {
-		f.runner, err = tracer.Trace(f.pkg.Device, f.function.(*ir.FuncDecl), nil, args, f.pkg.options)
-		if err != nil {
-			return
-		}
+	var runner tracer.CompiledFunc
+	runner, err = pkg.cacheArrayUint64.Runner(nil, args)
+	if err != nil {
+		return
 	}
 	var outputs []values.Value
-	outputs, err = f.runner.Run(nil, args, f.pkg.Package.Tracer)
+	outputs, err = runner.Run(nil, args, pkg.handle.Tracer())
 	if err != nil {
 		return
 	}
@@ -749,8 +536,4 @@ func (f *ArrayUint64) Run(arg0 types.Array[uint64]) (_ types.Array[uint64], err 
 	out0 := types.NewArray[uint64](out0Value)
 
 	return out0, nil
-}
-
-func (f *ArrayUint64) String() string {
-	return fmt.Sprint(f.function)
 }
