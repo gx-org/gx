@@ -162,6 +162,18 @@ func (n *callExpr) buildFunctionCall(rscope resolveScope, callee *ir.FuncValExpr
 	return ext, callOk
 }
 
+func buildFuncValExpr(rscope resolveScope, callee ir.AssignableExpr, stor ir.Storage, val ir.AssignableExpr) (*ir.FuncValExpr, bool) {
+	fType, isFunc := ir.Underlying(val.Type()).(*ir.FuncType)
+	if !isFunc {
+		return nil, rscope.Err().Appendf(callee.Source(), "cannot call non-function %s (type %s)", callee.String(), callee.Type().String())
+	}
+	return &ir.FuncValExpr{
+		X: callee,
+		F: stor,
+		T: fType,
+	}, true
+}
+
 func (n *callExpr) buildCallExpr(rscope resolveScope, callee ir.AssignableExpr) (ir.Expr, bool) {
 	store, ok := storageFromExpr(rscope, callee)
 	if !ok {
@@ -176,7 +188,10 @@ func (n *callExpr) buildCallExpr(rscope resolveScope, callee ir.AssignableExpr) 
 	}
 	funcRef, ok := val.(*ir.FuncValExpr)
 	if !ok {
-		return nil, rscope.Err().Appendf(n.callee.source(), "cannot call non-function %s (type %s)", callee.String(), callee.Type().String())
+		funcRef, ok = buildFuncValExpr(rscope, callee, store, val)
+	}
+	if !ok {
+		return nil, false
 	}
 	return n.buildFunctionCall(rscope, funcRef)
 }

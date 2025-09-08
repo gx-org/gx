@@ -106,6 +106,8 @@ func NewRuntimeValue(file *ir.File, newFunc interp.NewFunc, store ir.Storage) (i
 		if !ir.IsStatic(typT.DataType()) {
 			return NewArray(typT), nil
 		}
+	case *ir.FuncType:
+		return NewFunc(&ir.FuncLit{FType: typT}, nil), nil
 	}
 	return NewVariable(elements.NewNodeAt(file, store)), nil
 }

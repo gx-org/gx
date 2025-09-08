@@ -60,7 +60,7 @@ func New(importer ir.Importer, pr *processor.Processor, gr ops.Graph) *Evaluator
 }
 
 // NewFunc creates a new function given its definition and a receiver.
-func (ev *Evaluator) NewFunc(itp *interp.Interpreter, fn ir.PkgFunc, recv *interp.Receiver) interp.Func {
+func (ev *Evaluator) NewFunc(itp *interp.Interpreter, fn ir.Func, recv *interp.Receiver) interp.Func {
 	return interp.NewRunFunc(fn, recv)
 }
 

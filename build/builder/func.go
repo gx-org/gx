@@ -148,6 +148,18 @@ func (n *funcType) buildFuncType(rscope resolveScope) (*ir.FuncType, *funcResolv
 	return ext, fScope, tParamsOk && paramsOk && resultsOk && recvOk
 }
 
+func (n *funcType) source() ast.Node {
+	return n.src
+}
+
+func (n *funcType) buildTypeExpr(rscope resolveScope) (*ir.TypeValExpr, bool) {
+	tp, _, ok := n.buildFuncType(rscope)
+	if !ok {
+		return nil, false
+	}
+	return &ir.TypeValExpr{X: tp, Typ: tp}, true
+}
+
 func (n *funcType) String() string {
 	typeParams := ""
 	if !n.typeParams.empty() {
