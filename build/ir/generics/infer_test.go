@@ -23,6 +23,25 @@ import (
 
 func TestInfer(t *testing.T) {
 	testbuild.Run(t,
+		testbuild.DeclarePackage{
+			Src: `
+package dtype
+
+type (
+	Floats interface {
+		bfloat16 | float32 | float64
+	}
+
+	Ints interface {
+		int32 | int64 | uint32 | uint64
+	}
+
+	Num interface {
+		Floats | Ints
+	}
+)
+`,
+		},
 		testgenerics.Infer{
 			Src: "func F(int32) int32",
 			Calls: []testgenerics.Call{
@@ -42,11 +61,14 @@ func TestInfer(t *testing.T) {
 		},
 		testgenerics.Infer{
 			Src: `
-type someInt interface{ int32 | int64 }
-
-func F[T someInt](T) T
+import "dtype"
+func F[T dtype.Ints](T) T
 `,
 			Calls: []testgenerics.Call{
+				testgenerics.Call{
+					Args: []string{"true"},
+					Err:  "inferring type T: bool does not satisfy dtype.Ints",
+				},
 				testgenerics.Call{
 					Args: []string{"int32(2)"},
 					Want: "func[](int32) int32",
@@ -54,6 +76,22 @@ func F[T someInt](T) T
 				testgenerics.Call{
 					Args: []string{"int64(2)"},
 					Want: "func[](int64) int64",
+				},
+			},
+		},
+		testgenerics.Infer{
+			Src: `
+import "dtype"
+func F[T dtype.Ints](x T, y T) T
+`,
+			Calls: []testgenerics.Call{
+				testgenerics.Call{
+					Args: []string{"int32(2)", "int64(4)"},
+					Err:  "type int64 of int64(4) does not match inferred type int32 for T",
+				},
+				testgenerics.Call{
+					Args: []string{"int32(2)", "int32(4)"},
+					Want: "func[](x int32, y int32) int32",
 				},
 			},
 		},
