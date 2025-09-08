@@ -1,5 +1,9 @@
 package grad
 
+// VJP computes the Vector-Jacobian product of a GX function.
+// gx:irmacro
+func VJP(orig any, fn any, wrtArg string) any
+
 // Func computes the gradient of a GX function.
 // gx:irmacro
 func Func(orig any, fn any, wrtArg string) any
