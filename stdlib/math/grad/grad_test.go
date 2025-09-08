@@ -33,6 +33,8 @@ var declareGradPackage = testbuild.DeclarePackage{
 	Path: "math",
 	Src:  string(gradSrc),
 	Post: func(pkg *ir.Package) {
+		irVJP := pkg.FindFunc("VJP").(*ir.Macro)
+		irVJP.BuildSynthetic = cpevelements.MacroImpl(grad.VJP)
 		irFunc := pkg.FindFunc("Func").(*ir.Macro)
 		irFunc.BuildSynthetic = cpevelements.MacroImpl(grad.FuncGrad)
 		irSet := pkg.FindFunc("Set").(*ir.Macro)
