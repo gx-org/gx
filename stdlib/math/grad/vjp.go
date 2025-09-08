@@ -17,6 +17,7 @@ package grad
 import (
 	"fmt"
 	"go/ast"
+	"slices"
 
 	"github.com/pkg/errors"
 	"github.com/gx-org/gx/base/ordered"
@@ -68,6 +69,12 @@ func (m vjpMacro) newMacro(fn ir.PkgFunc, wrt withRespectTo) *vjpMacro {
 	return &n
 }
 
+func argAt(i int) *ast.Ident {
+	return &ast.Ident{
+		Name: fmt.Sprintf("__bck%d", i),
+	}
+}
+
 func nameResultFields(results *ast.FieldList) *ast.FieldList {
 	all := ast.FieldList{
 		List: make([]*ast.Field, len(results.List)),
@@ -78,10 +85,8 @@ func nameResultFields(results *ast.FieldList) *ast.FieldList {
 		if len(named.Names) == 0 {
 			named.Names = []*ast.Ident{&ast.Ident{}}
 		}
-		for iIdent, ident := range named.Names {
-			after := *ident
-			after.Name = fmt.Sprintf("__back%d", num)
-			named.Names[iIdent] = &after
+		for iIdent := range named.Names {
+			named.Names[iIdent] = argAt(num)
 			num++
 		}
 		all.List[iField] = &named
@@ -121,6 +126,27 @@ func (m *vjpMacro) BuildDecl() (*ast.FuncDecl, bool) {
 	return fDecl, true
 }
 
+func (m *vjpMacro) buildBodyFromSetAnnotation(fetcher ir.Fetcher, fn ir.Func, ann *setAnnotation) (*ast.BlockStmt, []*cpevelements.SyntheticFuncDecl, bool) {
+	return nil, nil, fetcher.Err().Appendf(fn.Source(), "function with set directives not supported yet")
+}
+
 func (m *vjpMacro) BuildBody(fetcher ir.Fetcher, fn ir.Func) (*ast.BlockStmt, []*cpevelements.SyntheticFuncDecl, bool) {
-	return &ast.BlockStmt{}, nil, true
+	if ann := findSetAnnotation(m.fn); ann != nil {
+		return m.buildBodyFromSetAnnotation(fetcher, fn, ann)
+	}
+	fnWithBody, ok := m.fn.(*ir.FuncDecl)
+	if !ok {
+		return nil, nil, fetcher.Err().Appendf(fn.Source(), "function has no body")
+	}
+	m.aux = ordered.NewMap[string, *cpevelements.SyntheticFuncDecl]()
+	sg := m.newStmt(fetcher, nil)
+	fType := m.fn.FuncType()
+	sg.registerFieldNames(fType.Receiver)
+	sg.registerFieldNames(fType.Params)
+	sg.registerFieldNames(fType.Results)
+	body, ok := sg.processBlock(fnWithBody.Body)
+	if !ok {
+		return nil, nil, false
+	}
+	return body, slices.Collect(m.aux.Values()), true
 }

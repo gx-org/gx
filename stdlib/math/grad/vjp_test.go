@@ -31,8 +31,21 @@ func F(x float32) float32 {
 }
 `,
 			Want: `
-func vjpF(x float32, __back0 float32) (float32, float32) {
-	
+func vjpF(x float32, __bck0 float32) (float32, float32) {
+	__fwd0 := float32(2.0)
+	return __fwd0, 0
+}
+`,
+		},
+		testgrad.VJP{
+			Src: `
+func F(x float32) float32 {
+	return x
+}
+`,
+			Want: `
+func vjpF(x float32, __bck0 float32) (float32, float32) {
+	return x, __bck0
 }
 `,
 		},
