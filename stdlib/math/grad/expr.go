@@ -34,21 +34,25 @@ type gradExprResult struct {
 	expr ast.Expr
 }
 
-func (r *gradExprResult) addCastIfRequired(typ ir.Type) (*gradExprResult, bool) {
-	basic, isBasic := r.expr.(*ast.BasicLit)
+func addCastIfRequired(expr ast.Expr, typ ir.Type) ast.Expr {
+	basic, isBasic := expr.(*ast.BasicLit)
 	if !isBasic {
-		return r, true
+		return expr
 	}
 	if basic.Kind != token.INT && basic.Kind != token.FLOAT {
-		return r, true
+		return expr
 	}
+	return &ast.CallExpr{
+		Fun:  typ.Source().(ast.Expr),
+		Args: []ast.Expr{expr},
+	}
+}
+
+func (r *gradExprResult) addCastIfRequired(typ ir.Type) *gradExprResult {
 	return &gradExprResult{
 		kind: r.kind,
-		expr: &ast.CallExpr{
-			Fun:  typ.Source().(ast.Expr),
-			Args: []ast.Expr{r.expr},
-		},
-	}, true
+		expr: addCastIfRequired(r.expr, typ),
+	}
 }
 
 func (r *gradExprResult) Print() {
@@ -73,7 +77,7 @@ func (m *exprGrader) gradExpr(src ir.Expr) (r *gradExprResult, ok bool) {
 		if !ok || !m.castNumbers {
 			return
 		}
-		r, ok = r.addCastIfRequired(src.Type())
+		r = r.addCastIfRequired(src.Type())
 	}()
 	switch srcT := src.(type) {
 	case *ir.ArrayLitExpr:
