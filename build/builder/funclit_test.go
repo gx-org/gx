@@ -32,5 +32,60 @@ func f() int32 {
 }
 `,
 		},
+		testbuild.Decl{
+			Src: `
+func f(x float32) (float32, func() int32) {
+	fn := func() int32 {
+		return 10
+	}
+	return x, fn
+}
+`,
+		},
+		testbuild.Decl{
+			Src: `
+func f(x float32) (float32, func() int32) {
+	fn := func() int32 {
+		return 10
+	}
+	return x, fn
+}
+
+func g() (float32, int32) {
+	x, fn := f(10.0)
+	return x, fn()
+}
+`,
+		},
+		testbuild.Decl{
+			Src: `
+func f(a float32) func() float32 {
+	return func() float32 {
+		return a
+	}
+}
+
+func g() float32 {
+	fn := f(10)
+	a := fn()
+	return a
+}
+`,
+		},
+		testbuild.Decl{
+			Src: `
+func f(a float32) func() float32 {
+	return func() float32 {
+		return a
+	}
+}
+
+func g() float32 {
+	fn := f(10)
+	b := fn()
+	return b
+}
+`,
+		},
 	)
 }
