@@ -35,7 +35,7 @@ type (
 		evaluator.Evaluator
 
 		// NewFunc creates a new function given its definition and a receiver.
-		NewFunc(*Interpreter, ir.PkgFunc, *Receiver) Func
+		NewFunc(*Interpreter, ir.Func, *Receiver) Func
 
 		// NewFuncLit calls a function literal.
 		NewFuncLit(fitp *FileScope, ref *ir.FuncLit) (Func, error)
@@ -99,7 +99,7 @@ func (itp *Interpreter) Core() *context.Core {
 }
 
 // NewFunc creates function elements from function IRs.
-func (itp *Interpreter) NewFunc(fn ir.PkgFunc, recv *Receiver) Func {
+func (itp *Interpreter) NewFunc(fn ir.Func, recv *Receiver) Func {
 	return itp.eval.NewFunc(itp, fn, recv)
 }
 
@@ -150,7 +150,7 @@ func (fitp *FileScope) Sub(vals map[string]ir.Element) *FileScope {
 }
 
 // NewFunc creates function elements from function IRs.
-func (fitp *FileScope) NewFunc(fn ir.PkgFunc, recv *Receiver) Func {
+func (fitp *FileScope) NewFunc(fn ir.Func, recv *Receiver) Func {
 	return fitp.itp.NewFunc(fn, recv)
 }
 

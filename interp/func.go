@@ -39,7 +39,7 @@ type (
 	}
 
 	// NewFunc creates function elements from function IRs.
-	NewFunc func(ir.PkgFunc, *Receiver) Func
+	NewFunc func(ir.Func, *Receiver) Func
 )
 
 // FuncBuiltin defines a builtin function provided by a backend.
@@ -54,7 +54,7 @@ var _ Func = (*funcBase)(nil)
 
 // NewRunFunc creates a function given an IR and a receiver.
 // The function is run when being called.
-func NewRunFunc(fn ir.PkgFunc, recv *Receiver) Func {
+func NewRunFunc(fn ir.Func, recv *Receiver) Func {
 	switch fnT := fn.(type) {
 	case *ir.FuncDecl:
 		return &funcDecl{
