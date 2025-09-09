@@ -141,7 +141,8 @@ func (ev *Evaluator) outputNodesFromElements(fileScope *interp.FileScope, fType 
 
 // NewFuncLit creates a new function literal.
 func (ev *Evaluator) NewFuncLit(fitp *interp.FileScope, lit *ir.FuncLit) (interp.Func, error) {
-	return ev.newFuncLit(lit, fitp.NewFuncLitScope(ev)), nil
+	litScope := fitp.NewFuncLitScope(ev, lit)
+	return ev.newFuncLit(lit, litScope), nil
 }
 
 func (ev *Evaluator) elementsFromTupleNode(file *ir.File, tpl ops.Tuple, elExprs []ir.AssignableExpr, shps []*shape.Shape) ([]ir.Element, error) {

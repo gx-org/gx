@@ -47,6 +47,11 @@ func (fr *Frame) Find(id *ast.Ident) (ir.Element, error) {
 	return value, nil
 }
 
+// String representation of the frame.
+func (fr *Frame) String() string {
+	return fr.scope.String()
+}
+
 type baseFrame struct {
 	scope *scope.RWScope[ir.Element]
 }
@@ -174,6 +179,24 @@ func (ctx *Context) PushFuncFrame(fn ir.Func) (*Frame, error) {
 	}
 	fnFrame := flFrame.pushFuncFrame(ctx, fn)
 	return &Frame{file: fn.File(), scope: fnFrame.scope}, nil
+}
+
+// FuncLitFrame builds a read-only context for the evaluation of a function literal.
+func (ctx *Context) FuncLitFrame(lit *ir.FuncLit) (*Context, *Frame) {
+	current := ctx.currentFrame()
+	roScope := current.scope.Collect()
+	return &Context{
+		core: ctx.core,
+		stack: []*blockFrame{&blockFrame{
+			baseFrame: baseFrame{
+				scope: scope.NewScope(roScope),
+			},
+			owner: &functionFrame{
+				parent:   current.owner.parent,
+				function: lit,
+			},
+		}},
+	}, &Frame{file: ctx.File(), scope: scope.NewScope(roScope)}
 }
 
 type blockFrame struct {

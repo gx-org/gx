@@ -16,22 +16,31 @@ package interp
 
 import (
 	"github.com/gx-org/gx/build/ir"
+	"github.com/gx-org/gx/interp/context"
 )
 
 // FuncLitScope is an interpreter scope to evaluate function literals.
 type FuncLitScope struct {
-	fitp *FileScope
+	fitp  *FileScope
+	lit   *ir.FuncLit
+	frame *context.Frame
 }
 
 // NewFuncLitScope returns a new interpreter for a function literal.
-func (fitp *FileScope) NewFuncLitScope(eval Evaluator) *FuncLitScope {
+func (fitp *FileScope) NewFuncLitScope(eval Evaluator, lit *ir.FuncLit) *FuncLitScope {
 	itp := *fitp.itp
 	itp.eval = eval
-	return &FuncLitScope{fitp: &FileScope{
-		itp:       &itp,
-		initScope: fitp.ctx.File(),
-		ctx:       fitp.ctx,
-	}}
+	ctx, frame := fitp.ctx.FuncLitFrame(lit)
+	litp := &FuncLitScope{
+		fitp: &FileScope{
+			itp:       &itp,
+			initScope: fitp.ctx.File(),
+			ctx:       ctx,
+		},
+		lit:   lit,
+		frame: frame,
+	}
+	return litp
 }
 
 // FileScope returns the interpreter for a file scope.
@@ -40,16 +49,13 @@ func (litp *FuncLitScope) FileScope() *FileScope {
 }
 
 // RunFuncLit runs a function literal given the current context.
-func (litp *FuncLitScope) RunFuncLit(eval Evaluator, fn *ir.FuncLit, args []ir.Element) ([]ir.Element, error) {
-	funcFrame, err := litp.fitp.ctx.PushFuncFrame(fn)
-	if err != nil {
-		return nil, err
-	}
-
-	assignArgumentValues(fn.FuncType(), funcFrame, args)
-	for _, resultName := range fieldNames(fn.FuncType().Results.List) {
+func (litp *FuncLitScope) RunFuncLit(eval Evaluator, args []ir.Element) ([]ir.Element, error) {
+	funcFrame := litp.fitp.ctx.PushBlockFrame()
+	fType := litp.lit.FuncType()
+	assignArgumentValues(fType, funcFrame, args)
+	for _, resultName := range fieldNames(fType.Results.List) {
 		funcFrame.Define(resultName.Name, nil)
 	}
 	defer litp.fitp.ctx.PopFrame()
-	return evalFuncBody(litp.fitp, fn.Body)
+	return evalFuncBody(litp.fitp, litp.lit.Body)
 }

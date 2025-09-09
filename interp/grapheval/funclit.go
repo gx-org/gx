@@ -68,8 +68,8 @@ func (sg *funcLit) SubGraph(name string) (*ops.Subgraph, error) {
 	if err != nil {
 		return nil, err
 	}
-	litp := sg.litp.FileScope().NewFuncLitScope(subeval)
-	outElts, err := litp.RunFuncLit(subeval, sg.lit, fnInputs.Args)
+	litp := sg.litp.FileScope().NewFuncLitScope(subeval, sg.lit)
+	outElts, err := litp.RunFuncLit(subeval, fnInputs.Args)
 	if err != nil {
 		return nil, err
 	}
@@ -86,7 +86,7 @@ func (sg *funcLit) SubGraph(name string) (*ops.Subgraph, error) {
 // Call the function literal given its set of arguments,
 // effectively inlining the function in the parent graph.
 func (sg *funcLit) Call(fitp *interp.FileScope, call *ir.CallExpr, args []ir.Element) ([]ir.Element, error) {
-	return sg.litp.RunFuncLit(sg.eval, sg.lit, args)
+	return sg.litp.RunFuncLit(sg.eval, args)
 }
 
 // Unflatten creates a GX value from the next handles available in the parser.
