@@ -16,6 +16,8 @@ package scope
 
 import (
 	"testing"
+
+	"github.com/gx-org/gx/base/ordered"
 )
 
 type tester interface {
@@ -131,6 +133,10 @@ func (f scopeF) CanAssign(key string) bool {
 	return false
 }
 
+func (f scopeF) Items() *ordered.Map[string, int] {
+	return ordered.NewMap[string, int]()
+}
+
 func TestRONestedScope(t *testing.T) {
 	s1 := NewScope[int](nil)
 	s1.Define("xx", 10)
@@ -178,4 +184,30 @@ func TestReadOnly(t *testing.T) {
 		assignWant{key: "a", canAssign: true},
 		assignWant{key: "b", canAssign: true},
 	)
+}
+
+func TestCollect(t *testing.T) {
+	s1 := NewScope[int](nil)
+	s1.Define("x", 1)
+	s1.Define("z", 20)
+
+	s2 := NewScope(s1)
+	s2.Define("x", 10)
+	s2.Define("y", 2)
+
+	testAll(t, s1,
+		valueWant{key: "x", val: 1, ok: true},
+		valueWant{key: "z", val: 20, ok: true},
+		valueWant{key: "y"},
+	)
+
+	s2Want := []tester{
+		valueWant{key: "x", val: 10, ok: true},
+		valueWant{key: "z", val: 20, ok: true},
+		valueWant{key: "y", val: 2, ok: true},
+	}
+	testAll(t, s2, s2Want...)
+
+	got := s2.Collect()
+	testAll(t, got, s2Want...)
 }
