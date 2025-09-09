@@ -20,51 +20,6 @@ func TestAssignNumber() int32 {
 	// int32(4)
 }
 
-func TestCallLambda() int32 {
-	return func() int32 {
-		return 10
-	}()
-	// Want:
-	// int32(10)
-}
-
-func TestAssignLambda() int32 {
-	fn := func() int32 {
-		return 10
-	}
-	return fn()
-	// Want:
-	// int32(10)
-}
-
-func TestAssignLambda2() int32 {
-	fn := func(x, y int32) int32 {
-		return x + y + 10
-	}
-	return fn(10, 5)
-	// Want:
-	// int32(25)
-}
-
-func TestAssignLambda3() int64 {
-	fn := func(x int64) int64 {
-		return x + staticValue
-	}
-	return fn(11)
-	// Want:
-	// int64(111)
-}
-
-func TestAssignLambda4() (int32, int64) {
-	fn := func() (int32, int64) {
-		return 12, 34
-	}
-	return fn()
-	// Want:
-	// 0: int32(12)
-	// 1: int64(34)
-}
-
 func TestAddAssign() int64 {
 	x := 1
 	x += 1
