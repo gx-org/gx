@@ -29,6 +29,7 @@ type (
 	Scope[V any] interface {
 		CanAssign(string) bool
 		Find(string) (V, bool)
+		Items() *ordered.Map[string, V]
 	}
 
 	roScope[V any] struct {
@@ -64,6 +65,23 @@ func (s *roScope[V]) CanAssign(key string) bool {
 	return false
 }
 
+func mergeItems[V any](scopes ...Scope[V]) *ordered.Map[string, V] {
+	all := ordered.NewMap[string, V]()
+	for _, scope := range scopes {
+		if scope == nil {
+			continue
+		}
+		for k, v := range scope.Items().Iter() {
+			all.Store(k, v)
+		}
+	}
+	return all
+}
+
+func (s *roScope[V]) Items() *ordered.Map[string, V] {
+	return mergeItems(s.parent, s.local)
+}
+
 func (s *roScope[V]) String() string {
 	return scopeString(s.local, s.parent)
 }
@@ -88,6 +106,10 @@ func (s *localScope[V]) Find(key string) (value V, ok bool) {
 func (s *localScope[V]) CanAssign(key string) bool {
 	_, ok := s.data.Load(key)
 	return ok
+}
+
+func (s *localScope[V]) Items() *ordered.Map[string, V] {
+	return s.data.Clone()
 }
 
 func (s *localScope[V]) String() string {
@@ -166,6 +188,22 @@ func (s *RWScope[V]) Assign(key string, value V) error {
 		return errors.Errorf("cannot assign %s: scope parent of type %T does support assignment", key, s.parent)
 	}
 	return rwParent.Assign(key, value)
+}
+
+// Items returns the list of the items in the scope.
+func (s *RWScope[V]) Items() *ordered.Map[string, V] {
+	return mergeItems(s.parent, s.local)
+}
+
+// Collect all the elements in the scope.
+// Note that all scopes are merged in a single scope, meaning
+// that values with overwritten values are lost.
+func (s *RWScope[V]) Collect() Scope[V] {
+	return &RWScope[V]{
+		local: &localScope[V]{
+			data: s.Items(),
+		},
+	}
 }
 
 // ReadOnly returns a scope to which values cannot be assigned or defined.

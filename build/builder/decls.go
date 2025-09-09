@@ -314,6 +314,10 @@ func (d *decls) CanAssign(key string) bool {
 	return false
 }
 
+func (d *decls) Items() *ordered.Map[string, processNode] {
+	return d.declarations.Clone()
+}
+
 func (d *decls) String() string {
 	kvs := make([]string, 0, d.declarations.Size())
 	for k, v := range d.declarations.Iter() {
