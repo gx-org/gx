@@ -1,0 +1,20 @@
+package rope
+
+import "shapes"
+import "num"
+import "math"
+
+var QKVDim intlen
+
+func rope(x [QKVDim]float32, pos float32) [QKVDim]float32 {
+	maxWavelength := shapes.Broadcast([1]float32{10000}, []intlen{QKVDim / 2})
+	maxIota := 2 / float32(QKVDim)
+	freqExp := [...]float32(num.IotaFull([]intlen{QKVDim})) * maxIota
+	timescale := math.Pow(maxWavelength, freqExp) // ERROR  mismatch types [QKVDim/2]float32 and [QKVDim]float32
+	radians := pos / timescale
+	sin, cos := math.Sin[float32](radians), math.Cos[float32](radians)
+	xx := shapes.Split(0, x, 2)
+	return shapes.Concat(0,
+	  xx[0]*cos-xx[1]*sin, xx[1]*cos+xx[0]*sin,
+	).([QKVDim]float32)
+}

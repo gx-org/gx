@@ -181,7 +181,7 @@ func assignableToAt(rscope resolveScope, pos ast.Node, src, dst ir.Type) bool {
 }
 
 func assignableTo(rscope resolveScope, src, dst ir.Type) (bool, error) {
-	if isInvalid(src) && isInvalid(dst) {
+	if isInvalid(src) || isInvalid(dst) {
 		// An error should have already been reported. We skip the check
 		// to prevent additional confusing errors.
 		return true, nil
@@ -218,7 +218,7 @@ func reconcile(src, dst ir.Type) {
 }
 
 func convertTo(rscope resolveScope, src, dst ir.Type) (bool, error) {
-	if isInvalid(src) && isInvalid(dst) {
+	if isInvalid(src) || isInvalid(dst) {
 		// An error should have already been reported. We skip the check
 		// to prevent additional confusing errors.
 		return true, nil
@@ -232,7 +232,7 @@ func convertTo(rscope resolveScope, src, dst ir.Type) (bool, error) {
 }
 
 func equalToAt(rscope resolveScope, pos ast.Node, src, dst ir.Type) bool {
-	if isInvalid(src) && isInvalid(dst) {
+	if isInvalid(src) || isInvalid(dst) {
 		// An error should have already been reported. We skip the check
 		// to prevent additional confusing errors.
 		return true
@@ -277,13 +277,10 @@ func isInvalid(typ ir.Type) bool {
 }
 
 func buildAExpr(rscope resolveScope, expr exprNode) (ir.AssignableExpr, bool) {
-	ext, ok := expr.buildExpr(rscope)
-	if !ok {
-		return nil, false
-	}
-	asExt, ok := ext.(ir.AssignableExpr)
-	if !ok {
+	ext, exprOk := expr.buildExpr(rscope)
+	asExt, aexprOk := ext.(ir.AssignableExpr)
+	if !aexprOk {
 		return nil, rscope.Err().Appendf(expr.source(), "%s %s is not assignable", ext.String(), ext.Type().Kind().String())
 	}
-	return asExt, true
+	return asExt, exprOk
 }
