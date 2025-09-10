@@ -44,6 +44,10 @@ func (n *binaryExpr) source() ast.Node {
 }
 
 func (n *binaryExpr) checkKind(scope resolveScope, x exprNode, typ ir.Type, appendErr bool) (isScalar bool, arrayType ir.ArrayType, ok bool) {
+	if isInvalid(typ) {
+		ok = false
+		return
+	}
 	isScalar = ir.SupportOperators(typ)
 	var isArray bool
 	arrayType, isArray = typ.(ir.ArrayType)

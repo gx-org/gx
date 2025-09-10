@@ -77,11 +77,10 @@ func (s *UnitSession) runFileTest(t *testing.T, path, fileName, packageName stri
 	pkg, err := rtm.Builder().BuildFiles(path, packageName, s.fs, []string{
 		filepath.Join(path, fileName),
 	})
-	if err != nil {
-		return 0, err
-	}
-	if err := Validate(pkg.IR(), CheckSource); err != nil {
-		return 0, err
+	if err == nil {
+		if err := Validate(pkg.IR(), CheckSource); err != nil {
+			return 0, err
+		}
 	}
 	numTests := RunAll(t, rtm, pkg.IR(), err)
 	return numTests, nil

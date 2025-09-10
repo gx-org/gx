@@ -158,7 +158,9 @@ func (pkg *FilePackage) BuildFiles(fs fs.FS, filenames []string) (err error) {
 	if !ok {
 		return &errs
 	}
-	if _, ok := pkg.resolveBuild(pscope); !ok {
+	pkgScope, ok := pkg.resolveBuild(pscope)
+	if !ok {
+		pkg.last.pkg = pkgScope.ibld.Pkg()
 		return &errs
 	}
 	return nil

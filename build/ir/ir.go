@@ -2853,7 +2853,12 @@ func (s *CallExpr) Source() ast.Node { return s.Src }
 
 // Type returns the type returned by the function call.
 // Use CallExpr.Func.Type to get the type of the function being called.
-func (s *CallExpr) Type() Type { return s.Callee.T.Results.Type() }
+func (s *CallExpr) Type() Type {
+	if s.Callee.T == nil {
+		return InvalidType()
+	}
+	return s.Callee.T.Results.Type()
+}
 
 // Expr returns the expression in the source code.
 func (s *CallExpr) Expr() ast.Expr { return s.Src }

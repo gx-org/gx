@@ -170,13 +170,13 @@ func RunAll(t *testing.T, rtm *api.Runtime, pkg *ir.Package, err error) (numTest
 			return
 		}
 	}
-	hasExpectedErrors, err := CompareToExpectedErrors(pkg, errs)
+	numExpectedErrors, err := CompareToExpectedErrors(pkg, errs)
 	if err != nil {
 		t.Errorf("\n%+v", err)
 		return
 	}
-	if hasExpectedErrors {
-		return
+	if numExpectedErrors > 0 {
+		return numExpectedErrors
 	}
 	fns, err := FindTests(pkg)
 	if err != nil {
