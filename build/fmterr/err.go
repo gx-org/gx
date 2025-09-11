@@ -42,6 +42,10 @@ type (
 
 // Position adds GX position information to an error.
 func Position(fset *token.FileSet, src ast.Node, err error) ErrorWithPos {
+	errT, isWithPos := err.(ErrorWithPos)
+	if isWithPos {
+		return errT
+	}
 	return errorWithPos{
 		fset: fset,
 		src:  src,
