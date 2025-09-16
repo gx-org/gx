@@ -31,9 +31,12 @@ func F(x float32) float32 {
 }
 `,
 			Want: `
-func vjpF(x float32, __bck0 float32) (float32, float32) {
+func vjpF(x float32) (float32, func(__bck0 float32) float32) {
 	__fwd0 := float32(2.0)
-	return __fwd0, 0
+	__backward := func(__bck0 float32) float32 {
+		return 0
+	}
+	return __fwd0, __backward
 }
 `,
 		},
@@ -44,8 +47,11 @@ func F(x float32) float32 {
 }
 `,
 			Want: `
-func vjpF(x float32, __bck0 float32) (float32, float32) {
-	return x, __bck0
+func vjpF(x float32) (float32, func(__bck0 float32) float32) {
+	__backward := func(__bck0 float32) float32 {
+		return __bck0
+	}
+	return x, __backward
 }
 `,
 		},

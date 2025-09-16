@@ -20,52 +20,42 @@ import (
 	"github.com/gx-org/gx/build/ir"
 )
 
-// exprVJP decomposes expressions into elementary assignment statements.
-type exprVJP struct {
+// exprBackwardVJP decomposes expressions into elementary assignment statements.
+type exprBackwardVJP struct {
 	*stmtVJP
 }
 
-func (m *stmtVJP) newExprVJP() *exprVJP {
-	return &exprVJP{stmtVJP: m}
+func (m *stmtVJP) newExprBackwardVJP() *exprBackwardVJP {
+	return &exprBackwardVJP{stmtVJP: m}
 }
 
-func (m *exprVJP) process(expr ir.Expr) bool {
+func (m *exprBackwardVJP) backward(expr ir.Expr) (*gradExprResult, bool) {
 	switch exprT := expr.(type) {
 	case *ir.NumberCastExpr:
 		return m.vjpNumberCastExpr(exprT)
 	case *ir.ValueRef:
 		return m.vjpValueRef(exprT)
 	default:
-		return m.fetcher.Err().Appendf(expr.Source(), "gradient of %T expression not supported", exprT)
+		return nil, m.fetcher.Err().Appendf(expr.Source(), "gradient of %T expression not supported", exprT)
 	}
 }
 
-func (m *exprVJP) vjpNumberCastExpr(expr *ir.NumberCastExpr) bool {
+func (m *exprBackwardVJP) vjpNumberCastExpr(expr *ir.NumberCastExpr) (*gradExprResult, bool) {
 	src := expr.X.Source().(ast.Expr)
-	grad := zeroValueOf(src)
-	m.assignElementary(expr, src, grad)
-	return true
+	return zeroValueOf(src), true
 }
 
-func (m *exprVJP) gradFieldStorage(expr *ir.ValueRef, stor *ir.FieldStorage) bool {
-	var grad *gradExprResult
+func (m *exprBackwardVJP) gradFieldStorage(expr *ir.ValueRef, stor *ir.FieldStorage) (*gradExprResult, bool) {
 	if m.macro.wrt.same(stor.Field) {
-		grad = oneValueOf(expr.Source())
-	} else {
-		grad = zeroValueOf(expr.Source())
+		return oneValueOf(expr.Source()), true
 	}
-	m.assignGradAs(expr, stor.NameDef().Name, grad)
-	return true
+	return zeroValueOf(expr.Source()), true
 }
 
-func (m *exprVJP) vjpValueRef(expr *ir.ValueRef) bool {
+func (m *exprBackwardVJP) vjpValueRef(expr *ir.ValueRef) (*gradExprResult, bool) {
 	fieldStorage, isField := expr.Stor.(*ir.FieldStorage)
 	if isField {
 		return m.gradFieldStorage(expr, fieldStorage)
 	}
-	gIdent := gradIdent(expr.Stor.NameDef())
-	m.assignGradAs(expr, expr.Stor.NameDef().Name, &gradExprResult{
-		expr: gIdent,
-	})
-	return true
+	return &gradExprResult{expr: gradIdent(expr.Stor.NameDef())}, true
 }

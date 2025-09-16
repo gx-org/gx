@@ -32,8 +32,9 @@ type vjpMacro struct {
 	callSite elements.CallAt
 	aux      *ordered.Map[string, *cpevelements.SyntheticFuncDecl]
 
-	fn  ir.PkgFunc
-	wrt withRespectTo
+	fn       ir.PkgFunc
+	wrt      withRespectTo
+	backward *ast.FuncType
 }
 
 var _ cpevelements.FuncASTBuilder = (*vjpMacro)(nil)
@@ -102,20 +103,37 @@ func concatFieldList(lists ...*ast.FieldList) *ast.FieldList {
 	return &all
 }
 
+func (m *vjpMacro) buildBackwardSignature(fType *ir.FuncType) *ast.FuncType {
+	namedResultFields := nameResultFields(fType.Src.Results)
+	return &ast.FuncType{
+		// Same as the original function.
+		TypeParams: fType.Src.TypeParams,
+		// Gradient coming from the output values of the function.
+		Params: namedResultFields,
+		// Return the gradient.
+		Results: &ast.FieldList{
+			List: []*ast.Field{&ast.Field{
+				Type: m.wrt.fieldType(),
+			}},
+		},
+	}
+}
+
 func (m *vjpMacro) BuildDecl() (*ast.FuncDecl, bool) {
 	fType := m.fn.FuncType()
-	namedResultFields := nameResultFields(fType.Src.Results)
+	m.backward = m.buildBackwardSignature(fType)
 	fDecl := &ast.FuncDecl{Type: &ast.FuncType{
 		// Same as the original function.
 		TypeParams: fType.Src.TypeParams,
-		// Same parameters than the original function plus all the output values.
-		Params: concatFieldList(fType.Src.Params, namedResultFields),
-		// Return the result of the original function as well as the gradient.
+		// Same parameters than the original function.
+		Params: fType.Src.Params,
+		// Return the result of the original function as well as
+		// a backward function to compute the gradient.
 		Results: concatFieldList(
 			fType.Src.Results,
 			&ast.FieldList{
 				List: []*ast.Field{&ast.Field{
-					Type: m.wrt.fieldType(),
+					Type: m.backward,
 				}},
 			}),
 	}}
