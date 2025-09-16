@@ -61,6 +61,13 @@ func (f *FuncDecl) String() string {
 	return fmt.Sprintf("%s {\n%s}", sig, body)
 }
 
+// String representation of the literal.
+func (f *FuncLit) String() string {
+	sig := f.FType.NameString("")
+	body := gxfmt.Indent(f.Body.String())
+	return fmt.Sprintf("%s {\n%s}", sig, body)
+}
+
 // NameString returns a string representation of a signature given a name.
 // The name can be empty.
 func (s *FuncType) NameString(name string) string {

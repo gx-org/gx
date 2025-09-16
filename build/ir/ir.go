@@ -1581,11 +1581,6 @@ func (s *FuncLit) Source() ast.Node { return s.Src }
 // Expr returns the expression in the source code.
 func (s *FuncLit) Expr() ast.Expr { return s.Src }
 
-// String representation of the literal.
-func (s *FuncLit) String() string {
-	return "func {...}"
-}
-
 func (*Macro) node()         {}
 func (*Macro) staticValue()  {}
 func (*Macro) storage()      {}

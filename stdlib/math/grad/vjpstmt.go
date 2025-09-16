@@ -15,7 +15,6 @@
 package grad
 
 import (
-	"fmt"
 	"go/ast"
 	"go/token"
 
@@ -35,31 +34,32 @@ type (
 		parent  *stmtVJP
 		scope   *scope.RWScope[ir.Type]
 
-		exprToGrad map[ir.Expr]*vjpExprResult
-		block      []ast.Stmt
+		numForward int
+		exprToName map[ir.Expr]string
+		forward    []ast.Stmt
 	}
 )
 
 func (m *vjpMacro) newStmt(fetcher ir.Fetcher, parent *stmtVJP) *stmtVJP {
-	var exprToGrad map[ir.Expr]*vjpExprResult
 	var parentScope scope.Scope[ir.Type]
+	var exprToName map[ir.Expr]string
 	if parent != nil {
 		parentScope = parent.scope
-		exprToGrad = parent.exprToGrad
+		exprToName = parent.exprToName
 	} else {
-		exprToGrad = make(map[ir.Expr]*vjpExprResult)
+		exprToName = make(map[ir.Expr]string)
 	}
 	return &stmtVJP{
 		macro:      m,
 		fetcher:    fetcher,
 		parent:     parent,
 		scope:      scope.NewScope[ir.Type](parentScope),
-		exprToGrad: exprToGrad,
+		exprToName: exprToName,
 	}
 }
 
 func (sg *stmtVJP) appendStmt(stmt ast.Stmt) {
-	sg.block = append(sg.block, stmt)
+	sg.forward = append(sg.forward, stmt)
 }
 
 func (sg *stmtVJP) registerFieldNames(list *ir.FieldList) {
@@ -78,24 +78,6 @@ func (sg *stmtVJP) newSub() *stmtVJP {
 	return sg.macro.newStmt(sg.fetcher, sg)
 }
 
-func (sg *exprVJP) assignElementary(expr ir.Expr, elementary ast.Expr, grad *gradExprResult) {
-	name := fmt.Sprintf("__fwd%d", len(sg.exprToGrad))
-	sg.assignGradAs(expr, name, grad)
-	casted := addCastIfRequired(elementary, expr.Type())
-	sg.appendStmt(&ast.AssignStmt{
-		Tok: token.DEFINE,
-		Lhs: []ast.Expr{&ast.Ident{Name: name}},
-		Rhs: []ast.Expr{casted},
-	})
-}
-
-func (sg *exprVJP) assignGradAs(expr ir.Expr, name string, grad *gradExprResult) {
-	sg.exprToGrad[expr] = &vjpExprResult{
-		name: name,
-		grad: grad,
-	}
-}
-
 func (sg *stmtVJP) processBlock(src *ir.BlockStmt) (*ast.BlockStmt, bool) {
 	sub := sg.newSub()
 	for _, stmt := range src.List {
@@ -104,40 +86,62 @@ func (sg *stmtVJP) processBlock(src *ir.BlockStmt) (*ast.BlockStmt, bool) {
 		}
 	}
 	return &ast.BlockStmt{
-		List: sub.block,
+		List: sub.forward,
 	}, true
 }
 
 func (sg *stmtVJP) processStmt(src ir.Stmt) bool {
 	switch srcT := src.(type) {
 	case *ir.ReturnStmt:
-		return sg.gradReturnStmt(srcT)
+		return sg.returnStmt(srcT)
 	default:
 		return sg.fetcher.Err().Appendf(src.Source(), "gradient of %T statement not supported", srcT)
 	}
 }
 
-func (sg *stmtVJP) gradReturnStmt(src *ir.ReturnStmt) bool {
+func (sg *stmtVJP) buildBackwardFunction(src *ir.ReturnStmt) (*ast.FuncLit, bool) {
+	backwarder := sg.newExprBackwardVJP()
+	ret := &ast.ReturnStmt{Results: make([]ast.Expr, len(src.Results))}
+	for i, expr := range src.Results {
+		gradExpr, ok := backwarder.backward(expr)
+		if !ok {
+			return nil, false
+		}
+		ret.Results[i] = buildMul(&gradExprResult{
+			expr: argAt(i),
+		}, gradExpr).expr
+	}
+	return &ast.FuncLit{
+		Type: sg.macro.backward,
+		Body: &ast.BlockStmt{List: []ast.Stmt{ret}},
+	}, true
+}
+
+func (sg *stmtVJP) returnStmt(src *ir.ReturnStmt) bool {
 	// Generate forward statements for the expressions in the statement.
-	ge := sg.newExprVJP()
-	for _, expr := range src.Results {
-		if ok := ge.process(expr); !ok {
+	forwarder := sg.newExprForwardVJP()
+	ret := &ast.ReturnStmt{Results: make([]ast.Expr, len(src.Results))}
+	for i, expr := range src.Results {
+		var ok bool
+		ret.Results[i], ok = forwarder.forward(expr)
+		if !ok {
 			return false
 		}
 	}
-	// Append to the results the names of the variables of the original expressions.
-	var res []ast.Expr
-	for _, expr := range src.Results {
-		res = append(res, &ast.Ident{Name: sg.exprToGrad[expr].name})
+	// Build a backward function.
+	backward, ok := sg.buildBackwardFunction(src)
+	if !ok {
+		return false
 	}
-	for i, expr := range src.Results {
-		mul := buildMul(
-			&gradExprResult{expr: argAt(i)},
-			sg.exprToGrad[expr].grad,
-		)
-		res = append(res, mul.expr)
-	}
-	sg.appendStmt(&ast.ReturnStmt{Results: res})
+	const backwardFuncName = "__backward"
+	sg.appendStmt(&ast.AssignStmt{
+		Tok: token.DEFINE,
+		Lhs: []ast.Expr{&ast.Ident{Name: backwardFuncName}},
+		Rhs: []ast.Expr{backward},
+	})
+	// Append the backward function to the return.
+	ret.Results = append(ret.Results, &ast.Ident{Name: backwardFuncName})
+	sg.appendStmt(ret)
 	return true
 }
 
