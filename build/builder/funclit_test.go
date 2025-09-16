@@ -87,5 +87,18 @@ func g() float32 {
 }
 `,
 		},
+		testbuild.Decl{
+			Src: `
+func f(x float32) float32 {
+	return x
+}
+
+func F(x float32) func() float32 {
+	return func() float32 {
+		return f(x)
+	}
+}
+			`,
+		},
 	)
 }
