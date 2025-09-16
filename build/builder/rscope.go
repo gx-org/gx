@@ -295,11 +295,15 @@ func (s *funcResolveScope) update(store ir.Storage, el ir.Element) bool {
 }
 
 func (s *funcResolveScope) compEval() (*compileEvaluator, bool) {
-	fileCEval, ok := s.fileScope().compEval()
+	fileCEval, ok := s.resolveScope.compEval()
 	if !ok {
 		return fileCEval, false
 	}
 	return fileCEval.sub(s.fType.Source(), s.names)
+}
+
+func (s *funcResolveScope) String() string {
+	return s.nspc.String()
 }
 
 type (
@@ -350,6 +354,10 @@ func (s *blockResolveScope) update(store ir.Storage, el ir.Element) bool {
 
 func (s *blockResolveScope) compEval() (*compileEvaluator, bool) {
 	return s.compeval, true
+}
+
+func (s *blockResolveScope) String() string {
+	return s.nspc.String()
 }
 
 type (
