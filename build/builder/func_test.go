@@ -298,3 +298,26 @@ func call() float32 {
 		},
 	)
 }
+
+func TestUndefinedCallee(t *testing.T) {
+	testbuild.Run(t,
+		testbuild.Decl{
+			Src: `
+func f() float32 {
+	return g()()
+}
+`,
+			Err: "undefined: g",
+		},
+		testbuild.Decl{
+			Src: `
+func f() float32 {
+	a := g()()
+	return a
+}
+`,
+			Err: "undefined: g",
+		},
+	)
+
+}

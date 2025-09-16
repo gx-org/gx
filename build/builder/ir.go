@@ -276,11 +276,16 @@ func isInvalid(typ ir.Type) bool {
 	return typ == nil || typ.Kind() == ir.InvalidKind
 }
 
+var invalidExpr = &ir.ValueRef{Stor: ir.InvalidType()}
+
 func buildAExpr(rscope resolveScope, expr exprNode) (ir.AssignableExpr, bool) {
 	ext, exprOk := expr.buildExpr(rscope)
+	if !exprOk {
+		return invalidExpr, false
+	}
 	asExt, aexprOk := ext.(ir.AssignableExpr)
 	if !aexprOk {
-		return nil, rscope.Err().Appendf(expr.source(), "%s %s is not assignable", ext.String(), ext.Type().Kind().String())
+		return invalidExpr, rscope.Err().Appendf(expr.source(), "%s %s is not assignable", ext.String(), ext.Type().Kind().String())
 	}
 	return asExt, exprOk
 }
