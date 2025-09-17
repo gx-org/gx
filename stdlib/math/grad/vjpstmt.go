@@ -35,26 +35,20 @@ type (
 		scope   *scope.RWScope[ir.Type]
 
 		numForward int
-		exprToName map[ir.Expr]string
 		forward    []ast.Stmt
 	}
 )
 
 func (m *vjpMacro) newStmt(fetcher ir.Fetcher, parent *stmtVJP) *stmtVJP {
 	var parentScope scope.Scope[ir.Type]
-	var exprToName map[ir.Expr]string
 	if parent != nil {
 		parentScope = parent.scope
-		exprToName = parent.exprToName
-	} else {
-		exprToName = make(map[ir.Expr]string)
 	}
 	return &stmtVJP{
-		macro:      m,
-		fetcher:    fetcher,
-		parent:     parent,
-		scope:      scope.NewScope[ir.Type](parentScope),
-		exprToName: exprToName,
+		macro:   m,
+		fetcher: fetcher,
+		parent:  parent,
+		scope:   scope.NewScope[ir.Type](parentScope),
 	}
 }
 
