@@ -34,7 +34,7 @@ func (m *stmtVJP) newExprForwardVJP() *exprForwardVJP {
 func (m *exprForwardVJP) assignElementary(expr ir.Expr, elementary ast.Expr) *ast.Ident {
 	name := &ast.Ident{Name: fmt.Sprintf("__fwd%d", m.numForward)}
 	m.numForward++
-	m.exprToName[expr] = name.Name
+	m.macro.exprToName[expr] = name.Name
 	casted := addCastIfRequired(elementary, expr.Type())
 	m.appendStmt(&ast.AssignStmt{
 		Tok: token.DEFINE,

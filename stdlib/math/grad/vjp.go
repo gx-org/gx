@@ -29,8 +29,9 @@ import (
 
 type vjpMacro struct {
 	cpevelements.CoreMacroElement
-	callSite elements.CallAt
-	aux      *ordered.Map[string, *cpevelements.SyntheticFuncDecl]
+	callSite   elements.CallAt
+	aux        *ordered.Map[string, *cpevelements.SyntheticFuncDecl]
+	exprToName map[ir.Expr]string
 
 	fn       ir.PkgFunc
 	wrt      withRespectTo
@@ -67,6 +68,7 @@ func (m vjpMacro) newMacro(fn ir.PkgFunc, wrt withRespectTo) *vjpMacro {
 	var n vjpMacro = m
 	n.fn = fn
 	n.wrt = wrt
+	n.exprToName = make(map[ir.Expr]string)
 	return &n
 }
 
