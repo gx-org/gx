@@ -39,7 +39,7 @@ func (m *annotateFuncFromMacro) buildAnnotations(fnScope iFuncResolveScope, fn *
 	if !ok {
 		return false
 	}
-	macroEl, ok := callMacroExpr(fnScope.fileScope(), m.macroCall, fn.irFunc)
+	macroEl, ok := callMacroExpr(fnScope.fileScope(), m.macroCall)
 	if !ok {
 		return false
 	}

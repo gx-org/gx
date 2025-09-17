@@ -2,16 +2,16 @@ package grad
 
 // VJP computes the Vector-Jacobian product of a GX function.
 // gx:irmacro
-func VJP(orig any, fn any, wrtArg string) any
+func VJP(fn any, wrtArg string) any
 
 // Func computes the gradient of a GX function.
 // gx:irmacro
-func Func(orig any, fn any, wrtArg string) any
+func Func(fn any, wrtArg string) any
 
 // Set the gradient of a GX function.
 // gx:irmacro
-func Set(orig any, gradF any) any
+func Set(gradF any) any
 
 // SetFor sets the gradient of a GX function with respect to a specific parameter, identified by its name.
 // gx:irmacro
-func SetFor(orig any, gradF any, parameter string) any
+func SetFor(gradF any, parameter string) any

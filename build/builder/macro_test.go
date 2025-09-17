@@ -34,14 +34,14 @@ type idMacro struct {
 var _ cpevelements.FuncASTBuilder = (*idMacro)(nil)
 
 func newIDMacro(call elements.CallAt, macro *cpevelements.Macro, args []ir.Element) (cpevelements.MacroElement, error) {
-	fn, err := interp.FuncDeclFromElement(args[1])
+	fn, err := interp.FuncDeclFromElement(args[0])
 	if err != nil {
 		return nil, err
 	}
 	return &idMacro{CoreMacroElement: cpevelements.CoreMacroElement{Mac: macro}, fn: fn}, nil
 }
 
-func (m *idMacro) BuildDecl() (*ast.FuncDecl, bool) {
+func (m *idMacro) BuildDecl(fn ir.PkgFunc) (*ast.FuncDecl, bool) {
 	return &ast.FuncDecl{Type: m.fn.FType.Src, Recv: m.fn.Src.Recv}, true
 }
 
@@ -54,7 +54,7 @@ var declareMacroPackage = testbuild.DeclarePackage{
 package macro
 
 //gx:irmacro
-func ID(any, any) any
+func ID(any) any
 `,
 	Post: func(pkg *ir.Package) {
 		id := pkg.FindFunc("ID").(*ir.Macro)

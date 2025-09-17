@@ -29,9 +29,9 @@ type (
 
 	setAnnotationMacro struct {
 		cpevelements.CoreMacroElement
-		fn    ir.PkgFunc
-		grad  ir.PkgFunc
-		param *ir.Field
+		grad ir.PkgFunc
+
+		paramName string
 	}
 )
 
@@ -39,52 +39,32 @@ var _ cpevelements.FuncAnnotator = (*setAnnotationMacro)(nil)
 
 // SetGrad sets the gradient of a function.
 func SetGrad(call elements.CallAt, macro *cpevelements.Macro, args []ir.Element) (cpevelements.MacroElement, error) {
-	fn, ok := args[0].(ir.PkgFunc)
-	if !ok {
-		return nil, errors.Errorf("%T not an IR function", args[0])
-	}
-	if fn.FuncType().Params.Len() != 1 {
-		return nil, errors.Errorf("cannot set gradient of %s: requires a single argument", fn.Name())
-	}
-	params := fn.FuncType().Params.Fields()
-	if len(params) != 1 {
-		return nil, errors.Errorf("cannot set gradient of %s: requires a single argument", fn.Name())
-	}
-	grad, err := interp.PkgFuncFromElement(args[1])
+	grad, err := interp.PkgFuncFromElement(args[0])
 	if err != nil {
-		return nil, errors.Errorf("%s is not a function", args[1].Type().String())
+		return nil, errors.Errorf("%s is not a function", args[0].Type().String())
 	}
 
-	return newSetMacro(fn, macro, grad, params[0])
+	return newSetMacro(macro, grad, "")
 }
 
 // SetGradFor sets the gradient of a function.
 func SetGradFor(call elements.CallAt, macro *cpevelements.Macro, args []ir.Element) (cpevelements.MacroElement, error) {
-	fn, ok := args[0].(ir.PkgFunc)
-	if !ok {
-		return nil, errors.Errorf("%T not an IR function", args[0])
-	}
-	grad, err := interp.PkgFuncFromElement(args[1])
+	grad, err := interp.PkgFuncFromElement(args[0])
 	if err != nil {
 		return nil, errors.Errorf("%s is not a function", args[1].Type().String())
 	}
-	fieldName, err := elements.StringFromElement(args[2])
+	fieldName, err := elements.StringFromElement(args[1])
 	if err != nil {
 		return nil, err
 	}
-	param := fn.FuncType().Params.FindField(fieldName)
-	if param == nil {
-		return nil, errors.Errorf("function %s has no parameter %s", fn.Name(), fieldName)
-	}
-	return newSetMacro(fn, macro, grad, param)
+	return newSetMacro(macro, grad, fieldName)
 }
 
-func newSetMacro(fn ir.PkgFunc, macro *cpevelements.Macro, grad ir.PkgFunc, param *ir.Field) (cpevelements.MacroElement, error) {
+func newSetMacro(macro *cpevelements.Macro, grad ir.PkgFunc, paramName string) (cpevelements.MacroElement, error) {
 	return &setAnnotationMacro{
 		CoreMacroElement: cpevelements.CoreMacroElement{Mac: macro},
-		fn:               fn,
 		grad:             grad,
-		param:            param,
+		paramName:        paramName,
 	}, nil
 }
 
@@ -97,12 +77,22 @@ func (m *setAnnotationMacro) Annotate(fetcher ir.Fetcher, fn ir.PkgFunc) bool {
 		fn.Annotations().Set(ann)
 	}
 	paramToFunc := ann.Value()
-	paramName := m.param.Name.Name
-	prev := paramToFunc[paramName]
-	if prev != nil {
-		return fetcher.Err().Appendf(m.fn.Source(), "gradient for parameter %s has already been set", paramName)
+	params := fn.FuncType().Params.Fields()
+	if m.paramName == "" {
+		if len(params) != 1 {
+			return fetcher.Err().Appendf(fn.Source(), "cannot set gradient of %s: requires a single argument", fn.Name())
+		}
+		m.paramName = params[0].Name.Name
 	}
-	paramToFunc[paramName] = m.grad
+	param := fn.FuncType().Params.FindField(m.paramName)
+	if param == nil {
+		return fetcher.Err().Appendf(fn.Source(), "function %s has no parameter %s", fn.Name(), m.paramName)
+	}
+	prev := paramToFunc[m.paramName]
+	if prev != nil {
+		return fetcher.Err().Appendf(fn.Source(), "gradient for parameter %s has already been set", m.paramName)
+	}
+	paramToFunc[m.paramName] = m.grad
 	return true
 }
 

@@ -72,7 +72,7 @@ func findParamStorage(file *ir.File, src ir.SourceNode, fn ir.Func, name string)
 
 // FuncGrad computes the gradient of a function.
 func FuncGrad(call elements.CallAt, macro *cpevelements.Macro, args []ir.Element) (cpevelements.MacroElement, error) {
-	fn, err := interp.PkgFuncFromElement(args[1])
+	fn, err := interp.PkgFuncFromElement(args[0])
 	if err != nil {
 		return nil, err
 	}
@@ -83,7 +83,7 @@ func FuncGrad(call elements.CallAt, macro *cpevelements.Macro, args []ir.Element
 	if !ok {
 		return nil, errors.Errorf("cannot compute the gradient of function %T", fn)
 	}
-	wrtS, err := elements.StringFromElement(args[2])
+	wrtS, err := elements.StringFromElement(args[1])
 	if err != nil {
 		return nil, err
 	}
@@ -119,7 +119,7 @@ func (m *gradMacro) syntheticFuncName(fetcher ir.Fetcher, fn ir.Func) (string, b
 	return fmt.Sprintf("__%s_%s_%s_%s", imp.Name(), funcName, fn.Name(), m.wrt.name()), true
 }
 
-func (m *gradMacro) BuildDecl() (*ast.FuncDecl, bool) {
+func (m *gradMacro) BuildDecl(ir.PkgFunc) (*ast.FuncDecl, bool) {
 	fType := m.fn.FuncType()
 	fDecl := &ast.FuncDecl{Type: fType.Src}
 	fDecl.Type.Results = &ast.FieldList{

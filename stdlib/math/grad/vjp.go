@@ -42,7 +42,7 @@ var _ cpevelements.FuncASTBuilder = (*vjpMacro)(nil)
 
 // VJP computes the vector-jacobian product of a function.
 func VJP(call elements.CallAt, macro *cpevelements.Macro, args []ir.Element) (cpevelements.MacroElement, error) {
-	fn, err := interp.PkgFuncFromElement(args[1])
+	fn, err := interp.PkgFuncFromElement(args[0])
 	if err != nil {
 		return nil, err
 	}
@@ -50,7 +50,7 @@ func VJP(call elements.CallAt, macro *cpevelements.Macro, args []ir.Element) (cp
 	if !ok {
 		return nil, errors.Errorf("cannot compute the gradient of function %T", fn)
 	}
-	wrtS, err := elements.StringFromElement(args[2])
+	wrtS, err := elements.StringFromElement(args[1])
 	if err != nil {
 		return nil, err
 	}
@@ -121,7 +121,7 @@ func (m *vjpMacro) buildBackwardSignature(fType *ir.FuncType) *ast.FuncType {
 	}
 }
 
-func (m *vjpMacro) BuildDecl() (*ast.FuncDecl, bool) {
+func (m *vjpMacro) BuildDecl(ir.PkgFunc) (*ast.FuncDecl, bool) {
 	fType := m.fn.FuncType()
 	m.backward = m.buildBackwardSignature(fType)
 	fDecl := &ast.FuncDecl{Type: &ast.FuncType{
