@@ -61,3 +61,37 @@ func TestName(t *testing.T) {
 		}
 	}
 }
+
+func TestNameNumbered(t *testing.T) {
+	tests := []struct {
+		name, want string
+	}{
+		{
+			name: "a",
+			want: "a0",
+		},
+		{
+			name: "a",
+			want: "a1",
+		},
+		{
+			name: "b",
+			want: "b0",
+		},
+		{
+			name: "c",
+			want: "c0",
+		},
+		{
+			name: "c",
+			want: "c1",
+		},
+	}
+	unames := uname.New()
+	for i, test := range tests {
+		got := unames.NameNumbered(test.name)
+		if got != test.want {
+			t.Errorf("test %d: for name %s, got %s but want %s", i, test.name, got, test.want)
+		}
+	}
+}

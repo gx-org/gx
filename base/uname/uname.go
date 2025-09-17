@@ -15,7 +15,10 @@
 // Package uname provides unique names.
 package uname
 
-import "fmt"
+import (
+	"fmt"
+	"go/ast"
+)
 
 // Unique generates unique names.
 type Unique struct {
@@ -27,15 +30,44 @@ func New() *Unique {
 	return &Unique{names: make(map[string]int)}
 }
 
-// Name returns a unique name given a desired base name.
-// If the base name is available, it is returned directly. Else, a unique suffix is appended.
-func (n *Unique) Name(root string) string {
+func (n *Unique) name(root string, alwaysSuffix bool) string {
 	nextIndex, ok := n.names[root]
-	if !ok {
+	if !ok && !alwaysSuffix {
 		n.names[root] = 1
 		return root
 	}
 	name := fmt.Sprintf("%s%d", root, nextIndex)
 	n.names[root] = nextIndex + 1
 	return name
+}
+
+// Name returns a unique name given a desired base name.
+// If the base name is available, it is returned directly. Else, a unique suffix is appended.
+func (n *Unique) Name(root string) string {
+	return n.name(root, false)
+}
+
+// NameNumbered returns a unique name given a base name,
+// always with a number suffix in the name even if the root
+// has not been queried before.
+func (n *Unique) NameNumbered(root string) string {
+	return n.name(root, true)
+}
+
+// Ident returns an ident with a unique name.
+func (n *Unique) Ident(id *ast.Ident) *ast.Ident {
+	return &ast.Ident{Name: n.Name(id.Name)}
+}
+
+// Default returns a default value if a name is empty or equal to "_".
+func Default(name, def string) string {
+	if name == "" || name == "_" {
+		return def
+	}
+	return name
+}
+
+// DefaultIdent returns a default value if the name in the ident is empty or equal to "_".
+func DefaultIdent(id *ast.Ident, def string) *ast.Ident {
+	return &ast.Ident{Name: Default(id.Name, def)}
 }
