@@ -24,7 +24,6 @@ import (
 	"github.com/gx-org/gx/build/fmterr"
 	"github.com/gx-org/gx/build/ir"
 	"github.com/gx-org/gx/internal/interp/canonical"
-	"github.com/gx-org/gx/internal/interp/compeval"
 	"github.com/gx-org/gx/interp/elements"
 	"github.com/gx-org/gx/interp/evaluator"
 	"github.com/gx-org/gx/interp/fun"
@@ -81,7 +80,7 @@ func (f broadcast) BuildFuncType(fetcher ir.Fetcher, call *ir.CallExpr) (*ir.Fun
 	if err != nil {
 		return nil, err
 	}
-	targetRank, targetElmts, err := compeval.EvalRank(fetcher, call.Args[1])
+	targetRank, targetElmts, err := elements.EvalRank(fetcher, call.Args[1])
 	if err != nil {
 		return nil, err
 	}

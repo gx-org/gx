@@ -20,7 +20,7 @@ import (
 	"github.com/gx-org/gx/build/builtins"
 	"github.com/gx-org/gx/build/fmterr"
 	"github.com/gx-org/gx/build/ir"
-	"github.com/gx-org/gx/internal/interp/compeval"
+	"github.com/gx-org/gx/interp/elements"
 	"github.com/gx-org/gx/stdlib/builtin"
 	"github.com/gx-org/gx/stdlib/impl"
 )
@@ -125,7 +125,7 @@ func (f einsum) validateAxisExpr(fetcher ir.Fetcher, call *ir.CallExpr, arg, max
 
 	axes := make([]int, len(axisExpr.Elts))
 	for n, val := range axisExpr.Elts {
-		axisI64, err := compeval.EvalInt(fetcher, val)
+		axisI64, err := elements.EvalInt(fetcher, val)
 		if err != nil {
 			return nil, err
 		}

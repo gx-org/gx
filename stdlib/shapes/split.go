@@ -21,7 +21,7 @@ import (
 	"github.com/gx-org/gx/build/builtins"
 	"github.com/gx-org/gx/build/fmterr"
 	"github.com/gx-org/gx/build/ir"
-	"github.com/gx-org/gx/internal/interp/compeval"
+	"github.com/gx-org/gx/interp/elements"
 	"github.com/gx-org/gx/stdlib/builtin"
 	"github.com/gx-org/gx/stdlib/impl"
 )
@@ -44,7 +44,7 @@ func (f split) BuildFuncType(fetcher ir.Fetcher, call *ir.CallExpr) (*ir.FuncTyp
 		return nil, err
 	}
 
-	axis, err := compeval.EvalInt(fetcher, call.Args[0])
+	axis, err := elements.EvalInt(fetcher, call.Args[0])
 	if err != nil {
 		return nil, fmterr.Errorf(fetcher.File().FileSet(), call.Source(), "unable to evaluate axis argument to %s: %s", f.Func.Name(), err)
 	}
