@@ -85,8 +85,8 @@ func (ev *Evaluator) Materialiser() materialise.Materialiser {
 }
 
 // ElementFromAtom returns an element from a GX value.
-func (ev *Evaluator) ElementFromAtom(ctx ir.Evaluator, src ir.AssignableExpr, val values.Array) (evaluator.NumericalElement, error) {
-	return ev.hostEval.ElementFromAtom(ctx, src, val)
+func (ev *Evaluator) ElementFromAtom(file *ir.File, src ir.AssignableExpr, val values.Array) (evaluator.NumericalElement, error) {
+	return ev.hostEval.ElementFromAtom(file, src, val)
 }
 
 func buildProxyArguments(file *ir.File, args []*ir.Field) ([]ir.Element, error) {
@@ -290,7 +290,7 @@ func axesFromShape(ev ir.Evaluator, shape *shape.Shape) (*interp.Slice, error) {
 		if err != nil {
 			return nil, err
 		}
-		axes[i], err = ctx.Evaluator().ElementFromAtom(ctx, iExpr, iValue)
+		axes[i], err = ctx.Evaluator().ElementFromAtom(ctx.File(), iExpr, iValue)
 		if err != nil {
 			return nil, err
 		}

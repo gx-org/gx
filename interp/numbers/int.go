@@ -107,7 +107,7 @@ func (n *Int) Cast(ctx ir.Evaluator, expr ir.AssignableExpr, target ir.Type) (ev
 	if err != nil {
 		return nil, err
 	}
-	return ctx.(evaluator.Context).Evaluator().ElementFromAtom(ctx, expr, val)
+	return ctx.(evaluator.Context).Evaluator().ElementFromAtom(ctx.File(), expr, val)
 }
 
 // Reshape the number into an array.
@@ -116,7 +116,7 @@ func (n *Int) Reshape(ctx ir.Evaluator, expr ir.AssignableExpr, axisLengths []ev
 	if err != nil {
 		return nil, err
 	}
-	return ctx.(evaluator.Context).Evaluator().ElementFromAtom(ctx, expr, val)
+	return ctx.(evaluator.Context).Evaluator().ElementFromAtom(ctx.File(), expr, val)
 }
 
 // Shape of the value represented by the element.

@@ -62,7 +62,7 @@ func (fitp *FileScope) defineBoolConstant(scope *scope.RWScope[ir.Element], ctx 
 	if err != nil {
 		return err
 	}
-	el, err := fitp.itp.eval.ElementFromAtom(fitp, val.Value(nil), gxValue)
+	el, err := fitp.itp.eval.ElementFromAtom(ctx.File(), val.Value(nil), gxValue)
 	if err != nil {
 		return err
 	}

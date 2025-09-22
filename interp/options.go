@@ -76,16 +76,12 @@ func processPackageVarSetGXValue(opt options.PackageVarSetValue) (packageOption,
 		if err != nil {
 			return err
 		}
-		fitp, err := itp.ForFile(vrExpr.Decl.FFile)
-		if err != nil {
-			return err
-		}
 		ident := opt.Var
 		array, ok := opt.Value.(values.Array)
 		if !ok {
 			return errors.Errorf("package variables of type %T (used in %s.%s) not supported", opt.Value, pkg.Name, opt.Var)
 		}
-		node, err := itp.eval.ElementFromAtom(fitp, &ir.ValueRef{
+		node, err := itp.eval.ElementFromAtom(vrExpr.Decl.FFile, &ir.ValueRef{
 			Src:  vrExpr.VName,
 			Stor: vrExpr,
 		}, array)

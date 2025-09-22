@@ -190,7 +190,7 @@ func toAtomElementInt[T dtype.IntegerType](fitp *FileScope, src elements.ExprAt,
 	if err != nil {
 		return nil, err
 	}
-	return fitp.Evaluator().ElementFromAtom(fitp, src.Node(), hostVal)
+	return fitp.Evaluator().ElementFromAtom(fitp.File(), src.Node(), hostVal)
 }
 
 func toAtomElementFloat[T dtype.Float](fitp *FileScope, src elements.ExprAt, val T) (evaluator.NumericalElement, error) {
@@ -198,7 +198,7 @@ func toAtomElementFloat[T dtype.Float](fitp *FileScope, src elements.ExprAt, val
 	if err != nil {
 		return nil, err
 	}
-	return fitp.Evaluator().ElementFromAtom(fitp, src.Node(), hostVal)
+	return fitp.Evaluator().ElementFromAtom(fitp.File(), src.Node(), hostVal)
 }
 
 func toAtomElementBool(fitp *FileScope, src elements.ExprAt, val bool) (evaluator.NumericalElement, error) {
@@ -206,7 +206,7 @@ func toAtomElementBool(fitp *FileScope, src elements.ExprAt, val bool) (evaluato
 	if err != nil {
 		return nil, err
 	}
-	return fitp.Evaluator().ElementFromAtom(fitp, src.Node(), hostVal)
+	return fitp.Evaluator().ElementFromAtom(fitp.File(), src.Node(), hostVal)
 }
 
 func evalAtomicValue(fitp *FileScope, expr ir.AtomicValue) (evaluator.NumericalElement, error) {

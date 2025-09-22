@@ -86,7 +86,7 @@ func evalRangeForLoopOverInteger[T dtype.AlgebraType](fitp *FileScope, stmt *ir.
 		if err != nil {
 			return nil, true, err
 		}
-		iElement, err := fitp.Evaluator().ElementFromAtom(fitp, iExpr, iValue)
+		iElement, err := fitp.Evaluator().ElementFromAtom(fitp.File(), iExpr, iValue)
 		if err != nil {
 			return nil, true, err
 		}
@@ -139,7 +139,7 @@ func evalRangeStmtForLoopOverArray[T dtype.AlgebraType](fitp *FileScope, stmt *i
 		if err != nil {
 			return nil, false, err
 		}
-		iElement, err := fitp.Evaluator().ElementFromAtom(fitp, iExpr, iValue)
+		iElement, err := fitp.Evaluator().ElementFromAtom(fitp.File(), iExpr, iValue)
 		if err != nil {
 			return nil, false, err
 		}
@@ -324,7 +324,7 @@ func evalCastAtomToArrayExpr(fitp *FileScope, expr ir.TypeCastExpr, x evaluator.
 	shapeOfOnes := make([]evaluator.NumericalElement, len(axes))
 	for i := range axes {
 		var err error
-		shapeOfOnes[i], err = fitp.Evaluator().ElementFromAtom(fitp, expr, one)
+		shapeOfOnes[i], err = fitp.Evaluator().ElementFromAtom(fitp.File(), expr, one)
 		if err != nil {
 			return nil, err
 		}
@@ -675,7 +675,7 @@ func dimsAsElements(fitp *FileScope, expr ir.AssignableExpr, dims []int) ([]eval
 		if err != nil {
 			return nil, err
 		}
-		els[i], err = fitp.Evaluator().ElementFromAtom(fitp, expr, val)
+		els[i], err = fitp.Evaluator().ElementFromAtom(fitp.File(), expr, val)
 		if err != nil {
 			return nil, err
 		}
