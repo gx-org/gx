@@ -100,5 +100,15 @@ func F(x float32) func() float32 {
 }
 			`,
 		},
+		testbuild.Decl{
+			Src: `
+func F() int32 {
+	fn := func(x, y int32) int32 {
+		return x + y + 10
+	}
+	return fn(10, 5)
+}
+`,
+		},
 	)
 }

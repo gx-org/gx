@@ -21,7 +21,6 @@ import (
 	"github.com/gx-org/gx/golang/backend/kernels"
 	"github.com/gx-org/gx/internal/interp/flatten"
 	"github.com/gx-org/gx/interp/elements"
-	"github.com/gx-org/gx/interp"
 	"github.com/gx-org/gx/interp/materialise"
 )
 
@@ -33,12 +32,12 @@ type valueElement struct {
 
 var (
 	_ elements.ElementWithConstant    = (*valueElement)(nil)
-	_ interp.ArraySlicer              = (*valueElement)(nil)
-	_ interp.Slicer                   = (*valueElement)(nil)
+	_ elements.ArraySlicer            = (*valueElement)(nil)
+	_ elements.Slicer                 = (*valueElement)(nil)
 	_ materialise.ElementMaterialiser = (*valueElement)(nil)
 	_ materialise.Node                = (*valueElement)(nil)
-	_ interp.Copier                   = (*valueElement)(nil)
-	_ interp.WithAxes                 = (*valueElement)(nil)
+	_ elements.Copier                 = (*valueElement)(nil)
+	_ elements.WithAxes               = (*valueElement)(nil)
 )
 
 func newValueElement(ev *Evaluator, src elements.ExprAt, value values.Array) (*valueElement, error) {
@@ -74,12 +73,12 @@ func (n *valueElement) Unflatten(handles *flatten.Parser) (values.Value, error) 
 }
 
 // Copy the graph node by returning itself.
-func (n *valueElement) Copy() interp.Copier {
+func (n *valueElement) Copy() elements.Copier {
 	return n
 }
 
-func (n *valueElement) Axes(ev ir.Evaluator) (*interp.Slice, error) {
-	return axesFromShape(ev, n.value.Shape())
+func (n *valueElement) Axes(ev ir.Evaluator) (*elements.Slice, error) {
+	return n.ev.axesFromShape(ev.File(), n.value.Shape())
 }
 
 func (n *valueElement) Type() ir.Type {

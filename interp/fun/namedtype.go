@@ -12,7 +12,7 @@
 // See the License for the specific language governing permissions and
 // limitations under the License.
 
-package interp
+package fun
 
 import (
 	"go/ast"
@@ -21,6 +21,7 @@ import (
 	"github.com/gx-org/gx/api/values"
 	"github.com/gx-org/gx/build/ir"
 	"github.com/gx-org/gx/internal/interp/flatten"
+	"github.com/gx-org/gx/interp/elements"
 )
 
 // NamedType references a type exported by an imported package.
@@ -28,17 +29,17 @@ type NamedType struct {
 	newFunc NewFunc
 	typ     *ir.NamedType
 	funcs   map[string]ir.PkgFunc
-	under   Copier
+	under   elements.Copier
 }
 
 var (
-	_ Selector = (*NamedType)(nil)
-	_ NType    = (*NamedType)(nil)
-	_ Copier   = (*NamedType)(nil)
+	_ elements.Selector = (*NamedType)(nil)
+	_ elements.NType    = (*NamedType)(nil)
+	_ elements.Copier   = (*NamedType)(nil)
 )
 
 // NewNamedType returns a new node representing an exported type.
-func NewNamedType(newFunc NewFunc, typ *ir.NamedType, under Copier) *NamedType {
+func NewNamedType(newFunc NewFunc, typ *ir.NamedType, under elements.Copier) *NamedType {
 	funcs := make(map[string]ir.PkgFunc)
 	for _, fun := range typ.Methods {
 		funcs[fun.Name()] = fun
@@ -58,7 +59,7 @@ func (n *NamedType) Select(expr *ir.SelectorExpr) (ir.Element, error) {
 	if fn := n.funcs[name]; fn != nil {
 		return n.newFunc(fn, NewReceiver(n, fn)), nil
 	}
-	under, ok := n.under.(Selector)
+	under, ok := n.under.(elements.Selector)
 	if !ok {
 		return nil, errors.Errorf("%s is undefined", name)
 	}
@@ -66,7 +67,7 @@ func (n *NamedType) Select(expr *ir.SelectorExpr) (ir.Element, error) {
 }
 
 // Copy the element.
-func (n *NamedType) Copy() Copier {
+func (n *NamedType) Copy() elements.Copier {
 	return n.RecvCopy()
 }
 

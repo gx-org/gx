@@ -12,44 +12,19 @@
 // See the License for the specific language governing permissions and
 // limitations under the License.
 
-package interp
+package elements
 
 import (
 	"github.com/pkg/errors"
 	"github.com/gx-org/backend/shape"
 	"github.com/gx-org/gx/build/ir"
-	"github.com/gx-org/gx/interp/evaluator"
 )
 
 type (
-	// Slicer is a state element that can be sliced.
-	Slicer interface {
-		Slice(fitp *FileScope, expr *ir.IndexExpr, index evaluator.NumericalElement) (ir.Element, error)
-	}
-
-	// ArraySlicer is a state element with an array that can be sliced.
-	ArraySlicer interface {
-		evaluator.NumericalElement
-		SliceArray(fitp *FileScope, expr ir.AssignableExpr, index evaluator.NumericalElement) (evaluator.NumericalElement, error)
-		Type() ir.Type
-	}
-
-	// WithAxes is an element able to return its axes as a slice of element.
-	WithAxes interface {
-		Axes(ev ir.Evaluator) (*Slice, error)
-	}
-
 	// FixedShape is an (array) element from which the shape has been fully determined.
 	FixedShape interface {
 		ir.Element
 		Shape() *shape.Shape
-	}
-
-	// FixedSlice is a slice
-	FixedSlice interface {
-		ir.Element
-		Elements() []ir.Element
-		Len() int
 	}
 
 	// NType is a named type.

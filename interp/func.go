@@ -27,34 +27,22 @@ import (
 	"github.com/gx-org/gx/interp/context"
 	"github.com/gx-org/gx/interp/elements"
 	"github.com/gx-org/gx/interp/evaluator"
-)
-
-type (
-	// Func is an element owning a callable function.
-	Func interface {
-		ir.Element
-		Func() ir.Func
-		Recv() *Receiver
-		Call(fitp *FileScope, call *ir.CallExpr, args []ir.Element) ([]ir.Element, error)
-	}
-
-	// NewFunc creates function elements from function IRs.
-	NewFunc func(ir.Func, *Receiver) Func
+	"github.com/gx-org/gx/interp/fun"
 )
 
 // FuncBuiltin defines a builtin function provided by a backend.
-type FuncBuiltin func(ctx evaluator.Context, call elements.CallAt, fn Func, irFunc *ir.FuncBuiltin, args []ir.Element) ([]ir.Element, error)
+type FuncBuiltin func(ctx evaluator.Env, call elements.CallAt, fn fun.Func, irFunc *ir.FuncBuiltin, args []ir.Element) ([]ir.Element, error)
 
 type funcBase struct {
 	fn   ir.Func
-	recv *Receiver
+	recv *fun.Receiver
 }
 
-var _ Func = (*funcBase)(nil)
+var _ fun.Func = (*funcBase)(nil)
 
 // NewRunFunc creates a function given an IR and a receiver.
 // The function is run when being called.
-func NewRunFunc(fn ir.Func, recv *Receiver) Func {
+func NewRunFunc(fn ir.Func, recv *fun.Receiver) fun.Func {
 	switch fnT := fn.(type) {
 	case *ir.FuncDecl:
 		return &funcDecl{
@@ -66,8 +54,24 @@ func NewRunFunc(fn ir.Func, recv *Receiver) Func {
 			funcBase: funcBase{fn: fnT, recv: recv},
 			fnT:      fnT,
 		}
+	case *ir.FuncKeyword:
+		return &funcKeyword{
+			funcBase: funcBase{fn: fnT},
+			fnT:      fnT,
+		}
 	}
 	return &funcBase{fn: fn, recv: recv}
+}
+
+func (st *funcBase) toFuncBuiltin(impl ir.FuncImpl) (FuncBuiltin, error) {
+	if impl == nil {
+		return nil, errors.Errorf("function %s has no implementation", st.fn.Name())
+	}
+	blt, isBuiltin := impl.Implementation().(FuncBuiltin)
+	if !isBuiltin {
+		return nil, errors.Errorf("type %T is not a function builtin implementation", impl)
+	}
+	return blt, nil
 }
 
 // Type of the function.
@@ -81,7 +85,7 @@ func (st *funcBase) Func() ir.Func {
 }
 
 // Recv returns the receiver of the function or nil if the function has no receiver.
-func (st *funcBase) Recv() *Receiver {
+func (st *funcBase) Recv() *fun.Receiver {
 	return st.recv
 }
 
@@ -96,7 +100,7 @@ func (*funcBase) Kind() ir.Kind {
 }
 
 // Call the function.
-func (st *funcBase) Call(ctx *FileScope, call *ir.CallExpr, args []ir.Element) ([]ir.Element, error) {
+func (st *funcBase) Call(ctx *fun.CallEnv, call *ir.CallExpr, args []ir.Element) ([]ir.Element, error) {
 	return nil, fmterr.Internalf(ctx.File().FileSet(), st.fn.Source(), "function type %T not supported", st.fn)
 }
 
@@ -110,16 +114,16 @@ type funcDecl struct {
 	fnT *ir.FuncDecl
 }
 
-func (f *funcDecl) Call(fitp *FileScope, call *ir.CallExpr, args []ir.Element) (outs []ir.Element, err error) {
+func (f *funcDecl) Call(env *fun.CallEnv, call *ir.CallExpr, args []ir.Element) (outs []ir.Element, err error) {
 	if f.fnT.Body == nil {
-		return nil, fmterr.Errorf(fitp.File().FileSet(), f.fnT.Source(), "missing function body")
+		return nil, fmterr.Errorf(env.File().FileSet(), f.fnT.Source(), "missing function body")
 	}
 	// Create a new function frame.
-	funcFrame, err := fitp.ctx.PushFuncFrame(f.fnT)
+	funcFrame, err := env.Context().PushFuncFrame(f.fnT)
 	if err != nil {
 		return nil, err
 	}
-	defer fitp.ctx.PopFrame()
+	defer env.Context().PopFrame()
 	for _, resultName := range fieldNames(f.fnT.FType.Results.List) {
 		funcFrame.Define(resultName.Name, nil)
 	}
@@ -131,8 +135,9 @@ func (f *funcDecl) Call(fitp *FileScope, call *ir.CallExpr, args []ir.Element) (
 		}
 	}
 	assignArgumentValues(f.fnT.FType, funcFrame, args)
+	ctx := newFileScope(env.Context(), env.FuncEval(), f.Func().File())
 	// Evaluate the function within the frame.
-	return evalFuncBody(fitp, f.fnT.Body)
+	return evalFuncBody(ctx, f.fnT.Body)
 }
 
 type funcBuiltin struct {
@@ -140,21 +145,35 @@ type funcBuiltin struct {
 	fnT *ir.FuncBuiltin
 }
 
-func (f *funcBuiltin) Call(fitp *FileScope, call *ir.CallExpr, args []ir.Element) (outs []ir.Element, err error) {
+func (f *funcBuiltin) Call(env *fun.CallEnv, call *ir.CallExpr, args []ir.Element) (outs []ir.Element, err error) {
 	defer func() {
 		if err != nil {
-			err = fmterr.Position(fitp.File().FileSet(), call.Expr(), err)
+			err = fmterr.Position(env.File().FileSet(), call.Expr(), err)
 		}
 	}()
-	var impl FuncBuiltin
-	if f.fnT.Impl != nil {
-		impl = f.fnT.Impl.Implementation().(FuncBuiltin)
+	impl, err := f.toFuncBuiltin(f.fnT.Impl)
+	if err != nil {
+		return nil, err
 	}
-	if impl == nil {
-		err = errors.Errorf("function %s has no implementation", f.fn.Name())
-		return
+	return impl(env, elements.NewNodeAt[*ir.CallExpr](env.File(), call), f, f.fnT, args)
+}
+
+type funcKeyword struct {
+	funcBase
+	fnT *ir.FuncKeyword
+}
+
+func (f *funcKeyword) Call(env *fun.CallEnv, call *ir.CallExpr, args []ir.Element) (outs []ir.Element, err error) {
+	defer func() {
+		if err != nil {
+			err = fmterr.Position(env.File().FileSet(), call.Expr(), err)
+		}
+	}()
+	impl, err := f.toFuncBuiltin(f.fnT.Impl)
+	if err != nil {
+		return nil, err
 	}
-	return impl(fitp, elements.NewNodeAt[*ir.CallExpr](fitp.File(), call), f, f.fnT, args)
+	return impl(env, elements.NewNodeAt[*ir.CallExpr](env.File(), call), f, nil, args)
 }
 
 func evalFuncBody(fitp *FileScope, body *ir.BlockStmt) ([]ir.Element, error) {
@@ -179,7 +198,7 @@ func assignArgumentValues(funcType *ir.FuncType, funcFrame *context.Frame, args 
 	// For each parameter of the function, assign its argument value to the frame.
 	names := fieldNames(funcType.Params.List)
 	for i, arg := range args {
-		copyable, ok := arg.(Copier)
+		copyable, ok := arg.(elements.Copier)
 		if ok {
 			arg = copyable.Copy()
 		}

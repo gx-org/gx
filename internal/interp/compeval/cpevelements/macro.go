@@ -20,7 +20,7 @@ import (
 	"github.com/pkg/errors"
 	"github.com/gx-org/gx/build/ir"
 	"github.com/gx-org/gx/interp/elements"
-	"github.com/gx-org/gx/interp"
+	"github.com/gx-org/gx/interp/fun"
 )
 
 // MacroImpl is a builtin opaque function to produce an IR.
@@ -29,11 +29,11 @@ type MacroImpl func(call elements.CallAt, fn *Macro, args []ir.Element) (MacroEl
 // Macro is a macro function to build synthetic functions.
 type Macro struct {
 	macro *ir.Macro
-	recv  *interp.Receiver
+	recv  *fun.Receiver
 }
 
 // NewMacro creates a new macro given its definition and a receiver.
-func NewMacro(fn *ir.Macro, recv *interp.Receiver) interp.Func {
+func NewMacro(fn *ir.Macro, recv *fun.Receiver) fun.Func {
 	return &Macro{macro: fn, recv: recv}
 }
 
@@ -43,12 +43,12 @@ func (f *Macro) Func() ir.Func {
 }
 
 // Recv returns the receiver of the macro function.
-func (f *Macro) Recv() *interp.Receiver {
+func (f *Macro) Recv() *fun.Receiver {
 	return f.recv
 }
 
 // Call the macro to build the synthetic element.
-func (f *Macro) Call(fctx *interp.FileScope, call *ir.CallExpr, args []ir.Element) ([]ir.Element, error) {
+func (f *Macro) Call(fctx *fun.CallEnv, call *ir.CallExpr, args []ir.Element) ([]ir.Element, error) {
 	if f.macro.BuildSynthetic == nil {
 		return nil, errors.Errorf("macro %s.%s has no implementation to build the synthetic function type", f.macro.FFile.Package.Name.Name, f.macro.Name())
 	}

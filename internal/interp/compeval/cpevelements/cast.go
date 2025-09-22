@@ -25,7 +25,6 @@ import (
 	"github.com/gx-org/gx/internal/interp/flatten"
 	"github.com/gx-org/gx/interp/elements"
 	"github.com/gx-org/gx/interp/evaluator"
-	"github.com/gx-org/gx/interp"
 	"github.com/gx-org/gx/interp/materialise"
 )
 
@@ -38,15 +37,15 @@ type cast struct {
 
 var (
 	_ materialise.ElementMaterialiser = (*cast)(nil)
-	_ interp.WithAxes                 = (*cast)(nil)
-	_ interp.Copier                   = (*cast)(nil)
+	_ elements.WithAxes               = (*cast)(nil)
+	_ elements.Copier                 = (*cast)(nil)
 	_ elements.ElementWithConstant    = (*cast)(nil)
 	_ fmt.Stringer                    = (*cast)(nil)
 )
 
-func newCast(ctx ir.Evaluator, expr ir.AssignableExpr, xEl Element, target ir.Type) (*cast, error) {
+func newCast(env evaluator.Env, expr ir.AssignableExpr, xEl Element, target ir.Type) (*cast, error) {
 	opEl := &cast{
-		src:    elements.NewNodeAt(ctx.File(), expr),
+		src:    elements.NewNodeAt(env.File(), expr),
 		target: target,
 		x:      xEl,
 	}
@@ -80,7 +79,7 @@ func newCast(ctx ir.Evaluator, expr ir.AssignableExpr, xEl Element, target ir.Ty
 
 }
 
-func newReshape(ctx ir.Evaluator, expr ir.AssignableExpr, xEl Element, axisLengths []evaluator.NumericalElement) (Element, error) {
+func newReshape(env evaluator.Env, expr ir.AssignableExpr, xEl Element, axisLengths []evaluator.NumericalElement) (Element, error) {
 	x := elements.ConstantFromElement(xEl)
 	if x == nil {
 		return xEl, nil
@@ -90,27 +89,27 @@ func newReshape(ctx ir.Evaluator, expr ir.AssignableExpr, xEl Element, axisLengt
 		return nil, err
 	}
 	return &cast{
-		src:    elements.NewExprAt(ctx.File(), expr),
+		src:    elements.NewExprAt(env.File(), expr),
 		target: expr.Type(),
 		x:      xEl,
 		val:    val,
 	}, nil
 }
 
-func (a *cast) UnaryOp(ctx ir.Evaluator, expr *ir.UnaryExpr) (evaluator.NumericalElement, error) {
-	return newUnary(ctx, expr, a)
+func (a *cast) UnaryOp(env evaluator.Env, expr *ir.UnaryExpr) (evaluator.NumericalElement, error) {
+	return newUnary(env, expr, a)
 }
 
-func (a *cast) BinaryOp(ctx ir.Evaluator, expr *ir.BinaryExpr, x, y evaluator.NumericalElement) (evaluator.NumericalElement, error) {
-	return newBinary(ctx, expr, x, y)
+func (a *cast) BinaryOp(env evaluator.Env, expr *ir.BinaryExpr, x, y evaluator.NumericalElement) (evaluator.NumericalElement, error) {
+	return newBinary(env, expr, x, y)
 }
 
-func (a *cast) Cast(ctx ir.Evaluator, expr ir.AssignableExpr, target ir.Type) (evaluator.NumericalElement, error) {
-	return newCast(ctx, expr, a, target)
+func (a *cast) Cast(env evaluator.Env, expr ir.AssignableExpr, target ir.Type) (evaluator.NumericalElement, error) {
+	return newCast(env, expr, a, target)
 }
 
-func (a *cast) Reshape(ctx ir.Evaluator, expr ir.AssignableExpr, axisLengths []evaluator.NumericalElement) (evaluator.NumericalElement, error) {
-	return newReshape(ctx, expr, a, axisLengths)
+func (a *cast) Reshape(env evaluator.Env, expr ir.AssignableExpr, axisLengths []evaluator.NumericalElement) (evaluator.NumericalElement, error) {
+	return newReshape(env, expr, a, axisLengths)
 }
 
 // Shape of the value represented by the element.
@@ -134,7 +133,7 @@ func (a *cast) NumericalConstant() *values.HostArray {
 }
 
 // Copy the element by returning itself.
-func (a *cast) Copy() interp.Copier {
+func (a *cast) Copy() elements.Copier {
 	return a
 }
 
@@ -144,7 +143,7 @@ func (a *cast) Materialise(ao materialise.Materialiser) (materialise.Node, error
 }
 
 // Axes of the result of the cast.
-func (a *cast) Axes(ev ir.Evaluator) (*interp.Slice, error) {
+func (a *cast) Axes(ev ir.Evaluator) (*elements.Slice, error) {
 	return axesFromType(ev, a.target)
 }
 

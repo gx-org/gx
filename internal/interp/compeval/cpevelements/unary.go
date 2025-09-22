@@ -44,14 +44,14 @@ var (
 	_ fmt.Stringer                    = (*unary)(nil)
 )
 
-func newUnary(ctx ir.Evaluator, expr *ir.UnaryExpr, xEl Element) (_ *unary, err error) {
+func newUnary(env evaluator.Env, expr *ir.UnaryExpr, xEl Element) (_ *unary, err error) {
 	defer func() {
 		if err != nil {
-			err = fmterr.Position(ctx.File().FileSet(), expr.Src, err)
+			err = fmterr.Position(env.File().FileSet(), expr.Src, err)
 		}
 	}()
 	opEl := &unary{
-		src: elements.NewNodeAt(ctx.File(), expr),
+		src: elements.NewNodeAt(env.File(), expr),
 		x:   xEl,
 	}
 	defer func() {
@@ -87,23 +87,23 @@ func newUnary(ctx ir.Evaluator, expr *ir.UnaryExpr, xEl Element) (_ *unary, err 
 
 }
 
-func (a *unary) Reshape(ctx ir.Evaluator, expr ir.AssignableExpr, axisLengths []evaluator.NumericalElement) (evaluator.NumericalElement, error) {
-	return newReshape(ctx, expr, a, axisLengths)
+func (a *unary) Reshape(env evaluator.Env, expr ir.AssignableExpr, axisLengths []evaluator.NumericalElement) (evaluator.NumericalElement, error) {
+	return newReshape(env, expr, a, axisLengths)
 }
 
 // UnaryOp applies a unary operator on x.
-func (a *unary) UnaryOp(ctx ir.Evaluator, expr *ir.UnaryExpr) (evaluator.NumericalElement, error) {
-	return newUnary(ctx, expr, a)
+func (a *unary) UnaryOp(env evaluator.Env, expr *ir.UnaryExpr) (evaluator.NumericalElement, error) {
+	return newUnary(env, expr, a)
 }
 
 // BinaryOp applies a binary operator to x and y.
-func (a *unary) BinaryOp(ctx ir.Evaluator, expr *ir.BinaryExpr, x, y evaluator.NumericalElement) (evaluator.NumericalElement, error) {
-	return newBinary(ctx, expr, x, y)
+func (a *unary) BinaryOp(env evaluator.Env, expr *ir.BinaryExpr, x, y evaluator.NumericalElement) (evaluator.NumericalElement, error) {
+	return newBinary(env, expr, x, y)
 }
 
 // Cast an element into a given data type.
-func (a *unary) Cast(ctx ir.Evaluator, expr ir.AssignableExpr, target ir.Type) (evaluator.NumericalElement, error) {
-	return newCast(ctx, expr, a, target)
+func (a *unary) Cast(env evaluator.Env, expr ir.AssignableExpr, target ir.Type) (evaluator.NumericalElement, error) {
+	return newCast(env, expr, a, target)
 }
 
 // Shape of the value represented by the element.

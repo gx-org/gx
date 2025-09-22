@@ -22,8 +22,8 @@ import (
 	"github.com/gx-org/gx/build/ir"
 	"github.com/gx-org/gx/interp/elements"
 	"github.com/gx-org/gx/interp/evaluator"
+	"github.com/gx-org/gx/interp/fun"
 	"github.com/gx-org/gx/interp/grapheval"
-	"github.com/gx-org/gx/interp"
 	"github.com/gx-org/gx/interp/materialise"
 	"github.com/gx-org/gx/stdlib/builtin"
 	"github.com/gx-org/gx/stdlib/impl"
@@ -63,8 +63,8 @@ func (f while) BuildFuncType(fetcher ir.Fetcher, call *ir.CallExpr) (*ir.FuncTyp
 	}, nil
 }
 
-func evalWhile(ctx evaluator.Context, call elements.CallAt, fn interp.Func, irFunc *ir.FuncBuiltin, args []ir.Element) ([]ir.Element, error) {
-	g := ctx.Evaluator().ArrayOps().Graph().Core()
+func evalWhile(env evaluator.Env, call elements.CallAt, fn fun.Func, irFunc *ir.FuncBuiltin, args []ir.Element) ([]ir.Element, error) {
+	g := env.Evaluator().ArrayOps().Graph().Core()
 
 	cond, err := grapheval.GraphFromElement("while.cond", args[1])
 	if err != nil {
@@ -75,7 +75,7 @@ func evalWhile(ctx evaluator.Context, call elements.CallAt, fn interp.Func, irFu
 		return nil, err
 	}
 
-	stateNodes, stateShapes, err := materialise.Flatten(ctx.Materialiser(), args[0])
+	stateNodes, stateShapes, err := materialise.Flatten(builtin.Materialiser(env), args[0])
 	if err != nil {
 		return nil, err
 	}
@@ -88,8 +88,8 @@ func evalWhile(ctx evaluator.Context, call elements.CallAt, fn interp.Func, irFu
 	if err != nil {
 		return nil, err
 	}
-	ev := ctx.Evaluator().(*grapheval.Evaluator)
-	out, err := ev.ElementFromTuple(ctx.File(), call.Node(), fnState.(ops.Tuple), stateShapes, args[0].Type())
+	ev := env.Evaluator().(*grapheval.Evaluator)
+	out, err := ev.ElementFromTuple(env.File(), call.Node(), fnState.(ops.Tuple), stateShapes, args[0].Type())
 	if err != nil {
 		return nil, err
 	}

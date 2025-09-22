@@ -20,6 +20,7 @@ import (
 
 	"github.com/gx-org/gx/build/ir"
 	"github.com/gx-org/gx/internal/interp/flatten"
+	"github.com/gx-org/gx/interp/elements"
 	"github.com/gx-org/gx/interp/evaluator"
 )
 
@@ -30,8 +31,8 @@ type Tuple struct {
 }
 
 var (
-	_ Slicer     = (*Tuple)(nil)
-	_ ir.Element = (*Tuple)(nil)
+	_ elements.Slicer = (*Tuple)(nil)
+	_ ir.Element      = (*Tuple)(nil)
 )
 
 // NewTuple returns a tuple to store the result of a function returning more than one value.
@@ -52,8 +53,8 @@ func (n *Tuple) Elements() []ir.Element {
 }
 
 // Slice of the tuple.
-func (n *Tuple) Slice(fitp *FileScope, expr *ir.IndexExpr, index evaluator.NumericalElement) (ir.Element, error) {
-	return slice(fitp, expr, index, n.elements)
+func (n *Tuple) Slice(expr *ir.IndexExpr, index evaluator.NumericalElement) (ir.Element, error) {
+	return elements.SliceVals(expr, index, n.elements)
 }
 
 // Type of the element.

@@ -26,61 +26,27 @@ import (
 	"github.com/gx-org/gx/build/ir"
 	"github.com/gx-org/gx/interp/context"
 	"github.com/gx-org/gx/interp/evaluator"
+	"github.com/gx-org/gx/interp/fun"
 	"github.com/gx-org/gx/interp/materialise"
 	"github.com/gx-org/gx/interp/procoptions"
 )
 
-type (
-	// Evaluator provides core primitives for the interpreter.
-	Evaluator interface {
-		evaluator.Evaluator
-
-		// NewFunc creates a new function given its definition and a receiver.
-		NewFunc(*Interpreter, ir.Func, *Receiver) Func
-
-		// NewFuncLit calls a function literal.
-		NewFuncLit(fitp *FileScope, ref *ir.FuncLit) (Func, error)
-	}
-)
-
-type intern struct {
-	itp *Interpreter
-}
-
-// EvalExpr evaluates an expression block.
-func (itn *intern) EvalExpr(ctx *context.Context, expr ir.Expr) (ir.Element, error) {
-	fitp := &FileScope{
-		itp: itn.itp,
-		ctx: ctx,
-	}
-	return evalExpr(fitp, expr)
-}
-
-// EvalStmt evaluates a statement block.
-func (itn *intern) EvalStmt(ctx *context.Context, stmt *ir.BlockStmt) ([]ir.Element, bool, error) {
-	fitp := &FileScope{
-		itp: itn.itp,
-		ctx: ctx,
-	}
-	return evalBlockStmt(fitp, stmt)
-}
-
 // Interpreter runs GX code given an evaluator and package options.
 type Interpreter struct {
-	eval Evaluator
+	eval fun.Evaluator
 	core *context.Core
 
 	options *procoptions.Options
 }
 
 // New returns a new interpreter.
-func New(eval Evaluator, options []options.PackageOption) (*Interpreter, error) {
+func New(eval fun.Evaluator, options []options.PackageOption) (*Interpreter, error) {
 	itp := &Interpreter{eval: eval}
 	var err error
 	if itp.options, err = procoptions.New(eval, options); err != nil {
 		return nil, err
 	}
-	itp.core, err = context.New(&intern{itp: itp}, eval.Importer())
+	itp.core, err = context.New(itp, eval.Importer())
 	if err != nil {
 		return nil, err
 	}
@@ -93,26 +59,29 @@ func (itp *Interpreter) Core() *context.Core {
 }
 
 // NewFunc creates function elements from function IRs.
-func (itp *Interpreter) NewFunc(fn ir.Func, recv *Receiver) Func {
-	return itp.eval.NewFunc(itp, fn, recv)
+func (itp *Interpreter) NewFunc(fn ir.Func, recv *fun.Receiver) fun.Func {
+	return itp.eval.NewFunc(fn, recv)
 }
 
 // FileScope returns an interpreter given the scope of a file from within a package.
 type FileScope struct {
-	itp *Interpreter
-
 	ctx *context.Context
+	env *fun.CallEnv
+}
+
+func newFileScope(ctx *context.Context, eval fun.Evaluator, file *ir.File) *FileScope {
+	fitp := &FileScope{ctx: ctx}
+	fitp.env = fun.NewCallEnv(fitp, eval, fitp.ctx)
+	return fitp
 }
 
 // ForFile returns an interpreter for a file context.
 func (itp *Interpreter) ForFile(file *ir.File) (*FileScope, error) {
-	fitp := &FileScope{itp: itp}
-	var err error
-	fitp.ctx, err = itp.core.NewFileContext(file)
+	ctx, err := itp.core.NewFileContext(file)
 	if err != nil {
 		return nil, err
 	}
-	return fitp, nil
+	return newFileScope(ctx, itp.eval, file), nil
 }
 
 // EvalExpr evaluates an expression for a given context.
@@ -122,30 +91,31 @@ func (fitp *FileScope) EvalExpr(expr ir.Expr) (ir.Element, error) {
 
 // Evaluator returns the evaluator used by the interpreter
 func (fitp *FileScope) Evaluator() evaluator.Evaluator {
-	return fitp.itp.eval
+	return fitp.env.FuncEval()
 }
 
 // Materialiser returns the materialiser to convert elements into graph nodes.
 func (fitp *FileScope) Materialiser() materialise.Materialiser {
-	return fitp.itp.eval.ArrayOps().(materialise.Materialiser)
+	return fitp.Evaluator().ArrayOps().(materialise.Materialiser)
 }
 
 // Sub returns a new interpreter with additional values defined in the context.
 func (fitp *FileScope) Sub(vals map[string]ir.Element) *FileScope {
 	sub := *fitp
 	sub.ctx = fitp.ctx.Sub(vals)
+	sub.env = fun.NewCallEnv(fitp, fitp.env.FuncEval(), sub.ctx)
 	return &sub
 }
 
 // NewFunc creates function elements from function IRs.
-func (fitp *FileScope) NewFunc(fn ir.Func, recv *Receiver) Func {
-	return fitp.itp.NewFunc(fn, recv)
+func (fitp *FileScope) NewFunc(fn ir.Func, recv *fun.Receiver) fun.Func {
+	return fitp.env.FuncEval().NewFunc(fn, recv)
 }
 
 // EvalFunc evaluates a function.
 func (fitp *FileScope) EvalFunc(f ir.PkgFunc, call *ir.CallExpr, args []ir.Element) ([]ir.Element, error) {
 	fnEl := NewRunFunc(f, nil)
-	return fnEl.Call(fitp, call, args)
+	return fnEl.Call(fitp.env, call, args)
 }
 
 // Context used by the interpreter.
@@ -156,4 +126,9 @@ func (fitp *FileScope) Context() *context.Context {
 // File returns the current file of the current execution.
 func (fitp *FileScope) File() *ir.File {
 	return fitp.ctx.File()
+}
+
+// String representation of the receiver.
+func (fitp *FileScope) String() string {
+	return fitp.env.String()
 }

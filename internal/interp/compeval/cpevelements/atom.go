@@ -26,7 +26,6 @@ import (
 	"github.com/gx-org/gx/internal/interp/flatten"
 	"github.com/gx-org/gx/interp/elements"
 	"github.com/gx-org/gx/interp/evaluator"
-	"github.com/gx-org/gx/interp"
 	"github.com/gx-org/gx/interp/materialise"
 )
 
@@ -40,9 +39,9 @@ var (
 	_ elements.ElementWithConstant    = (*atom)(nil)
 	_ materialise.ElementMaterialiser = (*atom)(nil)
 	_ Element                         = (*atom)(nil)
-	_ interp.Copier                   = (*atom)(nil)
+	_ elements.Copier                 = (*atom)(nil)
 	_ canonical.Evaluable             = (*atom)(nil)
-	_ interp.WithAxes                 = (*atom)(nil)
+	_ elements.WithAxes               = (*atom)(nil)
 	_ ir.Canonical                    = (*atom)(nil)
 )
 
@@ -60,12 +59,12 @@ func NewAtom(src elements.ExprAt, val *values.HostArray) (Element, error) {
 }
 
 // UnaryOp applies a unary operator on x.
-func (a *atom) UnaryOp(ctx ir.Evaluator, expr *ir.UnaryExpr) (evaluator.NumericalElement, error) {
-	return newUnary(ctx, expr, a)
+func (a *atom) UnaryOp(env evaluator.Env, expr *ir.UnaryExpr) (evaluator.NumericalElement, error) {
+	return newUnary(env, expr, a)
 }
 
 // Copy the atom.
-func (a *atom) Copy() interp.Copier {
+func (a *atom) Copy() elements.Copier {
 	return &atom{
 		src:   a.src,
 		val:   a.val,
@@ -74,17 +73,17 @@ func (a *atom) Copy() interp.Copier {
 }
 
 // BinaryOp applies a binary operator to x and y.
-func (a *atom) BinaryOp(ctx ir.Evaluator, expr *ir.BinaryExpr, x, y evaluator.NumericalElement) (evaluator.NumericalElement, error) {
-	return newBinary(ctx, expr, x, y)
+func (a *atom) BinaryOp(env evaluator.Env, expr *ir.BinaryExpr, x, y evaluator.NumericalElement) (evaluator.NumericalElement, error) {
+	return newBinary(env, expr, x, y)
 }
 
 // Cast an element into a given data type.
-func (a *atom) Cast(ctx ir.Evaluator, expr ir.AssignableExpr, dtype ir.Type) (evaluator.NumericalElement, error) {
-	return newCast(ctx, expr, a, dtype)
+func (a *atom) Cast(env evaluator.Env, expr ir.AssignableExpr, dtype ir.Type) (evaluator.NumericalElement, error) {
+	return newCast(env, expr, a, dtype)
 }
 
-func (a *atom) Reshape(ctx ir.Evaluator, expr ir.AssignableExpr, axisLengths []evaluator.NumericalElement) (evaluator.NumericalElement, error) {
-	return newReshape(ctx, expr, a, axisLengths)
+func (a *atom) Reshape(env evaluator.Env, expr ir.AssignableExpr, axisLengths []evaluator.NumericalElement) (evaluator.NumericalElement, error) {
+	return newReshape(env, expr, a, axisLengths)
 }
 
 // Shape of the value represented by the element.
@@ -125,8 +124,8 @@ func (a *atom) Compare(x canonical.Comparable) bool {
 	return equalArray(a.val, cx)
 }
 
-func (a *atom) Axes(ir.Evaluator) (*interp.Slice, error) {
-	return interp.NewSlice(ir.IntLenSliceType(), nil), nil
+func (a *atom) Axes(ir.Evaluator) (*elements.Slice, error) {
+	return elements.NewSlice(ir.IntLenSliceType(), nil), nil
 }
 
 // Expr returns the IR expression represented by the variable.

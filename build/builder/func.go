@@ -28,7 +28,6 @@ import (
 	"github.com/gx-org/gx/build/ir"
 	"github.com/gx-org/gx/internal/interp/compeval/cpevelements"
 	"github.com/gx-org/gx/interp/elements"
-	"github.com/gx-org/gx/interp"
 )
 
 type signatureNamespace struct {
@@ -389,7 +388,7 @@ func axisExprFrom(rscope resolveScope, ax ir.AxisLengths) (*ir.AxisExpr, bool) {
 }
 
 func axisValuesFromArgumentValue(rscope resolveScope, compEval *compileEvaluator, src *ir.Field, val ir.Element) ([]ir.Element, bool) {
-	arrayElement, axOk := val.(interp.WithAxes)
+	arrayElement, axOk := val.(elements.WithAxes)
 	if !axOk {
 		return nil, true
 	}
@@ -415,7 +414,7 @@ var (
 	}
 	zeroValue, _ = values.AtomNumberInt(&big.Int{}, zeroExpr.Type())
 	zeroLen, _   = cpevelements.NewAtom(elements.NewExprAt(cstFile, zeroExpr), zeroValue)
-	emptySlice   = interp.NewSlice(ir.IntLenSliceType(), nil)
+	emptySlice   = elements.NewSlice(ir.IntLenSliceType(), nil)
 )
 
 func buildAtomicAxisValue(rscope resolveScope, arg ir.AssignableExpr, elts []ir.Element) (ax ir.Element, todo []ir.Element) {
@@ -429,7 +428,7 @@ func buildSliceAxisValue(rscope resolveScope, arg ir.AssignableExpr, elts []ir.E
 	if len(elts) == 0 {
 		return emptySlice, nil
 	}
-	return interp.NewSlice(arg.Type(), elts), nil
+	return elements.NewSlice(arg.Type(), elts), nil
 }
 
 func assignArgValueToName(rscope resolveScope, compEval *compileEvaluator, params map[string]ir.Element, param *ir.Field, arg ir.AssignableExpr, argVal ir.Element) bool {
