@@ -22,25 +22,25 @@ import (
 	"github.com/gx-org/gx/interp"
 )
 
-type fun struct {
+type function struct {
 	fn   ir.Func
 	recv *interp.Receiver
 }
 
 // NewFunc creates a new function given its definition and a receiver.
 func NewFunc(fn ir.Func, recv *interp.Receiver) interp.Func {
-	return &fun{fn: fn, recv: recv}
+	return &function{fn: fn, recv: recv}
 }
 
-func (f *fun) Func() ir.Func {
+func (f *function) Func() ir.Func {
 	return f.fn
 }
 
-func (f *fun) Recv() *interp.Receiver {
+func (f *function) Recv() *interp.Receiver {
 	return f.recv
 }
 
-func (f *fun) callAtCompEval(fitp *interp.FileScope, call *ir.CallExpr, args []ir.Element) ([]ir.Element, error) {
+func (f *function) callAtCompEval(fitp *interp.FileScope, call *ir.CallExpr, args []ir.Element) ([]ir.Element, error) {
 	pkgFunc, ok := f.fn.(ir.PkgFunc)
 	if !ok {
 		return nil, errors.Errorf("cannot evaluate a non compeval function (e.g. a function literal) at compile time")
@@ -48,7 +48,7 @@ func (f *fun) callAtCompEval(fitp *interp.FileScope, call *ir.CallExpr, args []i
 	return fitp.EvalFunc(pkgFunc, call, args)
 }
 
-func (f *fun) Call(fitp *interp.FileScope, call *ir.CallExpr, args []ir.Element) ([]ir.Element, error) {
+func (f *function) Call(fitp *interp.FileScope, call *ir.CallExpr, args []ir.Element) ([]ir.Element, error) {
 	fType := f.fn.FuncType()
 	if fType != nil && fType.CompEval { // Some builtin functions have no type at the moment.
 		return f.callAtCompEval(fitp, call, args)
@@ -68,6 +68,6 @@ func (f *fun) Call(fitp *interp.FileScope, call *ir.CallExpr, args []ir.Element)
 	return els, nil
 }
 
-func (f *fun) Type() ir.Type {
+func (f *function) Type() ir.Type {
 	return f.fn.Type()
 }
