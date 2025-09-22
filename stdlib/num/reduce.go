@@ -20,7 +20,7 @@ import (
 	"github.com/gx-org/gx/build/builtins"
 	"github.com/gx-org/gx/build/fmterr"
 	"github.com/gx-org/gx/build/ir"
-	"github.com/gx-org/gx/internal/interp/compeval"
+	"github.com/gx-org/gx/interp/elements"
 	"github.com/gx-org/gx/stdlib/builtin"
 	"github.com/gx-org/gx/stdlib/impl"
 )
@@ -111,7 +111,7 @@ func (f argmax) BuildFuncType(fetcher ir.Fetcher, call *ir.CallExpr) (*ir.FuncTy
 	}
 	arrayType := call.Args[0].Type().(ir.ArrayType)
 	rank := arrayType.Rank()
-	reduceAxis, err := compeval.EvalInt(fetcher, call.Args[1])
+	reduceAxis, err := elements.EvalInt(fetcher, call.Args[1])
 	if err != nil {
 		return nil, err
 	}

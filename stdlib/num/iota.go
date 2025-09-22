@@ -21,7 +21,6 @@ import (
 	"github.com/gx-org/backend/shape"
 	"github.com/gx-org/gx/build/builtins"
 	"github.com/gx-org/gx/build/ir"
-	"github.com/gx-org/gx/internal/interp/compeval"
 	"github.com/gx-org/gx/interp/elements"
 	"github.com/gx-org/gx/interp/evaluator"
 	"github.com/gx-org/gx/interp/fun"
@@ -46,7 +45,7 @@ func (f iotaWithAxis) BuildFuncType(fetcher ir.Fetcher, call *ir.CallExpr) (*ir.
 	if err != nil {
 		return nil, err
 	}
-	rank, _, err := compeval.EvalRank(fetcher, call.Args[0])
+	rank, _, err := elements.EvalRank(fetcher, call.Args[0])
 	if err != nil {
 		return nil, err
 	}

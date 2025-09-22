@@ -20,7 +20,7 @@ import (
 	"github.com/gx-org/gx/build/builtins"
 	"github.com/gx-org/gx/build/fmterr"
 	"github.com/gx-org/gx/build/ir"
-	"github.com/gx-org/gx/internal/interp/compeval"
+	"github.com/gx-org/gx/interp/elements"
 	"github.com/gx-org/gx/stdlib/builtin"
 	"github.com/gx-org/gx/stdlib/impl"
 )
@@ -56,7 +56,7 @@ func (f gather) BuildFuncType(fetcher ir.Fetcher, call *ir.CallExpr) (*ir.FuncTy
 	sourceRank := sourceArray.Rank()
 	indicesRank := indexArray.Rank()
 	indexDims := indicesRank.Axes()[len(indicesRank.Axes())-1]
-	indexRank, err := compeval.EvalInt(fetcher, indexDims)
+	indexRank, err := elements.EvalInt(fetcher, indexDims)
 	if err != nil {
 		return nil, err
 	}

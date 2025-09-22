@@ -20,7 +20,7 @@ import (
 	"github.com/pkg/errors"
 	"github.com/gx-org/gx/build/builtins"
 	"github.com/gx-org/gx/build/ir"
-	"github.com/gx-org/gx/internal/interp/compeval"
+	"github.com/gx-org/gx/interp/elements"
 )
 
 type setFunc struct{}
@@ -66,7 +66,7 @@ func (f *setFunc) BuildFuncType(fetcher ir.Fetcher, call *ir.CallExpr) (*ir.Func
 	if len(posRank.Axes()) != 1 {
 		return ext, errors.Errorf("position has an invalid number of axes: got %d but want 1", len(posRank.Axes()))
 	}
-	posSize, err := compeval.EvalInt(fetcher, posRank.Axes()[0])
+	posSize, err := elements.EvalInt(fetcher, posRank.Axes()[0])
 	if err != nil {
 		return ext, err
 	}
