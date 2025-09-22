@@ -1,4 +1,4 @@
-// Copyright 2024 Google LLC
+// Copyright 2025 Google LLC
 //
 // Licensed under the Apache License, Version 2.0 (the "License");
 // you may not use this file except in compliance with the License.
@@ -12,7 +12,8 @@
 // See the License for the specific language governing permissions and
 // limitations under the License.
 
-package interp
+// Package procoptions processes the options for the interpreter.
+package procoptions
 
 import (
 	"github.com/pkg/errors"
@@ -21,30 +22,33 @@ import (
 	"github.com/gx-org/gx/build/ir"
 	"github.com/gx-org/gx/internal/base/scope"
 	"github.com/gx-org/gx/interp/elements"
+	"github.com/gx-org/gx/interp/evaluator"
 )
 
-type packageOption func(itp *Interpreter, pkg *ir.Package, scope *scope.RWScope[ir.Element]) error
+type packageOption func(pkg *ir.Package, scope *scope.RWScope[ir.Element]) error
 
-func (itp *Interpreter) evalOptions(pkg *ir.Package, scope *scope.RWScope[ir.Element]) error {
-	options := itp.packageOptions[pkg.FullName()]
-	for _, option := range options {
-		if err := option(itp, pkg, scope); err != nil {
-			return err
-		}
-	}
-	return nil
+// Options set for an evaluation.
+type Options struct {
+	eval           evaluator.Evaluator
+	options        []options.PackageOption
+	packageOptions map[string][]packageOption
 }
 
-func processOptions(opts []options.PackageOption) (map[string][]packageOption, error) {
-	packageOptions := make(map[string][]packageOption)
+// New returns an option set.
+func New(eval evaluator.Evaluator, opts []options.PackageOption) (*Options, error) {
+	o := &Options{
+		eval:           eval,
+		options:        opts,
+		packageOptions: make(map[string][]packageOption),
+	}
 	for _, option := range opts {
 		var optFunc packageOption
 		var err error
 		switch optionT := option.(type) {
 		case options.PackageVarSetValue:
-			optFunc, err = processPackageVarSetGXValue(optionT)
+			optFunc, err = o.processPackageVarSetGXValue(optionT)
 		case elements.PackageVarSetElement:
-			optFunc, err = processPackageVarSetElement(optionT)
+			optFunc, err = o.processPackageVarSetElement(optionT)
 		default:
 			err = errors.Errorf("option of type %T not supported", optionT)
 		}
@@ -52,11 +56,22 @@ func processOptions(opts []options.PackageOption) (map[string][]packageOption, e
 			return nil, err
 		}
 		pkg := option.Package()
-		options := packageOptions[pkg]
+		options := o.packageOptions[pkg]
 		options = append(options, optFunc)
-		packageOptions[pkg] = options
+		o.packageOptions[pkg] = options
 	}
-	return packageOptions, nil
+	return o, nil
+}
+
+// Eval evaluates options for a given package.
+func (o *Options) Eval(pkg *ir.Package, scope *scope.RWScope[ir.Element]) error {
+	options := o.packageOptions[pkg.FullName()]
+	for _, option := range options {
+		if err := option(pkg, scope); err != nil {
+			return err
+		}
+	}
+	return nil
 }
 
 func findVarExpr(pkg *ir.Package, name string) (*ir.VarExpr, error) {
@@ -70,8 +85,8 @@ func findVarExpr(pkg *ir.Package, name string) (*ir.VarExpr, error) {
 	return nil, errors.Errorf("cannot find static variable %s in package %s", name, pkg.FullName())
 }
 
-func processPackageVarSetGXValue(opt options.PackageVarSetValue) (packageOption, error) {
-	return func(itp *Interpreter, pkg *ir.Package, scope *scope.RWScope[ir.Element]) error {
+func (o *Options) processPackageVarSetGXValue(opt options.PackageVarSetValue) (packageOption, error) {
+	return func(pkg *ir.Package, scope *scope.RWScope[ir.Element]) error {
 		vrExpr, err := findVarExpr(pkg, opt.Var)
 		if err != nil {
 			return err
@@ -81,7 +96,7 @@ func processPackageVarSetGXValue(opt options.PackageVarSetValue) (packageOption,
 		if !ok {
 			return errors.Errorf("package variables of type %T (used in %s.%s) not supported", opt.Value, pkg.Name, opt.Var)
 		}
-		node, err := itp.eval.ElementFromAtom(vrExpr.Decl.FFile, &ir.ValueRef{
+		node, err := o.eval.ElementFromAtom(vrExpr.Decl.FFile, &ir.ValueRef{
 			Src:  vrExpr.VName,
 			Stor: vrExpr,
 		}, array)
@@ -93,8 +108,8 @@ func processPackageVarSetGXValue(opt options.PackageVarSetValue) (packageOption,
 	}, nil
 }
 
-func processPackageVarSetElement(opt elements.PackageVarSetElement) (packageOption, error) {
-	return func(itp *Interpreter, pkg *ir.Package, scope *scope.RWScope[ir.Element]) error {
+func (o *Options) processPackageVarSetElement(opt elements.PackageVarSetElement) (packageOption, error) {
+	return func(pkg *ir.Package, scope *scope.RWScope[ir.Element]) error {
 		varExpr, err := findVarExpr(pkg, opt.Var)
 		if err != nil {
 			return err
