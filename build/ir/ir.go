@@ -1108,6 +1108,9 @@ type (
 	// For example, the function num.Concat is not implemented in GX
 	// and directly provided by the backend.
 	FuncImpl interface {
+		// Name of the builtin function.
+		Name() string
+
 		// BuildFuncType builds the type of a function given how it is called.
 		BuildFuncType(fetcher Fetcher, call *CallExpr) (*FuncType, error)
 

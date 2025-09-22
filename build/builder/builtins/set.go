@@ -25,7 +25,17 @@ import (
 
 type setFunc struct{}
 
-var _ ir.FuncImpl = (*setFunc)(nil)
+var setF = &setFunc{}
+
+// Set returns the set function builtin.
+func Set() ir.FuncImpl {
+	return setF
+}
+
+// Name of the builtin function.
+func (*setFunc) Name() string {
+	return "set"
+}
 
 // BuildFuncType builds the type of a function given how it is called.
 func (f *setFunc) BuildFuncType(fetcher ir.Fetcher, call *ir.CallExpr) (*ir.FuncType, error) {
@@ -34,7 +44,7 @@ func (f *setFunc) BuildFuncType(fetcher ir.Fetcher, call *ir.CallExpr) (*ir.Func
 			Src: &ast.FuncType{Func: call.Src.Pos()},
 		},
 	}
-	params, err := builtins.BuildFuncParams(fetcher, call, "set", []ir.Type{
+	params, err := builtins.BuildFuncParams(fetcher, call, f.Name(), []ir.Type{
 		builtins.GenericArrayType,
 		builtins.GenericArrayType,
 		builtins.PositionsType,
