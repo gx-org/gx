@@ -25,7 +25,7 @@ import (
 	irh "github.com/gx-org/gx/build/ir/irhelper"
 	"github.com/gx-org/gx/internal/interp/compeval/cpevelements"
 	"github.com/gx-org/gx/interp/elements"
-	"github.com/gx-org/gx/interp"
+	"github.com/gx-org/gx/interp/fun"
 )
 
 type (
@@ -47,7 +47,7 @@ func buildTagger(call elements.CallAt, macro *cpevelements.Macro, args []ir.Elem
 	switch argT := args[0].(type) {
 	case *elements.String:
 		tag = argT.StringValue().String()
-	case interp.Func:
+	case fun.Func:
 		tag = argT.Func().Name()
 	default:
 		tag = fmt.Sprintf("%T", argT)
@@ -73,7 +73,7 @@ var _ cpevelements.FuncASTBuilder = (*macroBuildReturn)(nil)
 func newBuildReturn(call elements.CallAt, macro *cpevelements.Macro, args []ir.Element) (cpevelements.MacroElement, error) {
 	return &macroBuildReturn{
 		CoreMacroElement: cpevelements.CoreMacroElement{Mac: macro},
-		tagFn:            args[0].(interp.Func).Func().(ir.PkgFunc),
+		tagFn:            args[0].(fun.Func).Func().(ir.PkgFunc),
 	}, nil
 }
 

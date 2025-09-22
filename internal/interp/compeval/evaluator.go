@@ -23,7 +23,7 @@ import (
 	"github.com/gx-org/gx/internal/tracer/processor"
 	"github.com/gx-org/gx/interp/elements"
 	"github.com/gx-org/gx/interp/evaluator"
-	"github.com/gx-org/gx/interp"
+	"github.com/gx-org/gx/interp/fun"
 )
 
 // CompEval is the evaluator used for compilation evaluation.
@@ -31,7 +31,7 @@ type CompEval struct {
 	importer ir.Importer
 }
 
-var _ interp.Evaluator = (*CompEval)(nil)
+var _ fun.Evaluator = (*CompEval)(nil)
 
 // NewHostEvaluator returns a new evaluator for the host.
 func NewHostEvaluator(importer ir.Importer) *CompEval {
@@ -39,7 +39,7 @@ func NewHostEvaluator(importer ir.Importer) *CompEval {
 }
 
 // NewFunc creates a new function given its definition and a receiver.
-func (ev *CompEval) NewFunc(itp *interp.Interpreter, fn ir.Func, recv *interp.Receiver) interp.Func {
+func (ev *CompEval) NewFunc(fn ir.Func, recv *fun.Receiver) fun.Func {
 	if macro, ok := fn.(*ir.Macro); ok {
 		return cpevelements.NewMacro(macro, recv)
 	}
@@ -47,7 +47,7 @@ func (ev *CompEval) NewFunc(itp *interp.Interpreter, fn ir.Func, recv *interp.Re
 }
 
 // NewFuncLit creates a new function literal.
-func (ev *CompEval) NewFuncLit(fitp *interp.FileScope, fn *ir.FuncLit) (interp.Func, error) {
+func (ev *CompEval) NewFuncLit(env *fun.CallEnv, fn *ir.FuncLit) (fun.Func, error) {
 	return cpevelements.NewFunc(fn, nil), nil
 }
 

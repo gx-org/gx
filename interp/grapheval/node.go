@@ -37,8 +37,8 @@ type BackendNode struct {
 }
 
 var (
-	_ interp.Slicer                   = (*BackendNode)(nil)
-	_ interp.Copier                   = (*BackendNode)(nil)
+	_ elements.Slicer                 = (*BackendNode)(nil)
+	_ elements.Copier                 = (*BackendNode)(nil)
 	_ materialise.ElementMaterialiser = (*BackendNode)(nil)
 	_ evaluator.NumericalElement      = (*BackendNode)(nil)
 )
@@ -100,8 +100,8 @@ func (ev *Evaluator) elementFromTuple(src elements.ExprAt, tpl ops.Tuple, shps [
 }
 
 // BinaryOp applies a binary operator to x and y.
-func (n *BackendNode) BinaryOp(ctx ir.Evaluator, expr *ir.BinaryExpr, x, y evaluator.NumericalElement) (evaluator.NumericalElement, error) {
-	ao := opsFromContext(ctx.(*interp.FileScope))
+func (n *BackendNode) BinaryOp(env evaluator.Env, expr *ir.BinaryExpr, x, y evaluator.NumericalElement) (evaluator.NumericalElement, error) {
+	ao := n.ev.ArrayOps()
 	xNode, xShape, err := materialise.Element(n.ev.ao, x)
 	if err != nil {
 		return nil, err
@@ -112,7 +112,7 @@ func (n *BackendNode) BinaryOp(ctx ir.Evaluator, expr *ir.BinaryExpr, x, y evalu
 	}
 	binaryNode, err := ao.Graph().Core().Binary(expr.Src, xNode, yNode)
 	if err != nil {
-		return nil, fmterr.Errorf(ctx.File().FileSet(), expr.Src, "cannot create binary operation for %v%s%v: %v", x, expr.Src.Op, y, err)
+		return nil, fmterr.Errorf(env.File().FileSet(), expr.Src, "cannot create binary operation for %v%s%v: %v", x, expr.Src.Op, y, err)
 	}
 	targetShape := &shape.Shape{
 		DType:       xShape.DType,
@@ -126,7 +126,7 @@ func (n *BackendNode) BinaryOp(ctx ir.Evaluator, expr *ir.BinaryExpr, x, y evalu
 	}
 	return NewBackendNode(
 		n.ev,
-		elements.NewExprAt(ctx.File(), expr),
+		elements.NewExprAt(env.File(), expr),
 		&ops.OutputNode{
 			Node:  binaryNode,
 			Shape: targetShape,
@@ -134,15 +134,15 @@ func (n *BackendNode) BinaryOp(ctx ir.Evaluator, expr *ir.BinaryExpr, x, y evalu
 }
 
 // UnaryOp applies a unary operator on x.
-func (n *BackendNode) UnaryOp(ctx ir.Evaluator, expr *ir.UnaryExpr) (evaluator.NumericalElement, error) {
-	ao := opsFromContext(ctx.(*interp.FileScope))
+func (n *BackendNode) UnaryOp(env evaluator.Env, expr *ir.UnaryExpr) (evaluator.NumericalElement, error) {
+	ao := n.ev.ArrayOps()
 	unaryNode, err := ao.Graph().Core().Unary(expr.Src, n.nod.Node)
 	if err != nil {
 		return nil, err
 	}
 	return NewBackendNode(
 		n.ev,
-		elements.NewExprAt(ctx.File(), expr),
+		elements.NewExprAt(env.File(), expr),
 		&ops.OutputNode{
 			Node:  unaryNode,
 			Shape: n.nod.Shape,
@@ -150,8 +150,8 @@ func (n *BackendNode) UnaryOp(ctx ir.Evaluator, expr *ir.UnaryExpr) (evaluator.N
 }
 
 // Cast an element into a given data type.
-func (n *BackendNode) Cast(ctx ir.Evaluator, expr ir.AssignableExpr, target ir.Type) (evaluator.NumericalElement, error) {
-	ao := opsFromContext(ctx.(*interp.FileScope))
+func (n *BackendNode) Cast(env evaluator.Env, expr ir.AssignableExpr, target ir.Type) (evaluator.NumericalElement, error) {
+	ao := n.ev.ArrayOps()
 	targetKind := target.Kind().DType()
 	casted, err := ao.Graph().Core().Cast(n.nod.Node, targetKind)
 	if err != nil {
@@ -159,7 +159,7 @@ func (n *BackendNode) Cast(ctx ir.Evaluator, expr ir.AssignableExpr, target ir.T
 	}
 	return NewBackendNode(
 		n.ev,
-		elements.NewExprAt(ctx.File(), expr),
+		elements.NewExprAt(env.File(), expr),
 		&ops.OutputNode{
 			Node: casted,
 			Shape: &shape.Shape{
@@ -170,7 +170,7 @@ func (n *BackendNode) Cast(ctx ir.Evaluator, expr ir.AssignableExpr, target ir.T
 }
 
 // Reshape an element into a given shape.
-func (n *BackendNode) Reshape(ctx ir.Evaluator, expr ir.AssignableExpr, axisLengths []evaluator.NumericalElement) (evaluator.NumericalElement, error) {
+func (n *BackendNode) Reshape(env evaluator.Env, expr ir.AssignableExpr, axisLengths []evaluator.NumericalElement) (evaluator.NumericalElement, error) {
 	axes := make([]int, len(axisLengths))
 	for i, el := range axisLengths {
 		var err error
@@ -179,14 +179,14 @@ func (n *BackendNode) Reshape(ctx ir.Evaluator, expr ir.AssignableExpr, axisLeng
 			return nil, err
 		}
 	}
-	ao := opsFromContext(ctx.(*interp.FileScope))
+	ao := n.ev.ArrayOps()
 	reshaped, err := ao.Graph().Core().Reshape(n.nod.Node, axes)
 	if err != nil {
 		return nil, err
 	}
 	return NewBackendNode(
 		n.ev,
-		elements.NewExprAt(ctx.File(), expr),
+		elements.NewExprAt(env.File(), expr),
 		&ops.OutputNode{
 			Node: reshaped,
 			Shape: &shape.Shape{
@@ -197,21 +197,21 @@ func (n *BackendNode) Reshape(ctx ir.Evaluator, expr ir.AssignableExpr, axisLeng
 }
 
 // Slice of the value on the first axis given an index.
-func (n *BackendNode) Slice(fitp *interp.FileScope, expr *ir.IndexExpr, index evaluator.NumericalElement) (ir.Element, error) {
-	return n.SliceArray(fitp, expr, index)
+func (n *BackendNode) Slice(expr *ir.IndexExpr, index evaluator.NumericalElement) (ir.Element, error) {
+	return n.SliceArray(expr, index)
 }
 
 // SliceArray of the value on the first axis given an index.
-func (n *BackendNode) SliceArray(fitp *interp.FileScope, expr ir.AssignableExpr, index evaluator.NumericalElement) (evaluator.NumericalElement, error) {
+func (n *BackendNode) SliceArray(expr ir.AssignableExpr, index evaluator.NumericalElement) (evaluator.NumericalElement, error) {
 	i, err := elements.ConstantIntFromElement(index)
 	if err != nil {
 		return nil, err
 	}
-	sliceNode, err := opsFromContext(fitp).Graph().Core().Slice(n.nod.Node, i)
+	sliceNode, err := n.ev.ao.Graph().Core().Slice(n.nod.Node, i)
 	if err != nil {
 		return nil, err
 	}
-	return NewBackendNode(n.ev, elements.NewExprAt(fitp.File(), expr), &ops.OutputNode{
+	return NewBackendNode(n.ev, elements.NewExprAt(n.expr.File(), expr), &ops.OutputNode{
 		Node: sliceNode,
 		Shape: &shape.Shape{
 			DType:       n.Shape().DType,
@@ -226,7 +226,7 @@ func (n *BackendNode) Unflatten(handles *flatten.Parser) (values.Value, error) {
 }
 
 // Copy the node by returning itself.
-func (n *BackendNode) Copy() interp.Copier {
+func (n *BackendNode) Copy() elements.Copier {
 	return n
 }
 

@@ -19,7 +19,6 @@ package tracer
 import (
 	"fmt"
 
-	"github.com/gx-org/backend/ops"
 	"github.com/gx-org/gx/api"
 	"github.com/gx-org/gx/api/options"
 	"github.com/gx-org/gx/api/trace"
@@ -33,20 +32,12 @@ import (
 	"github.com/gx-org/gx/interp/materialise"
 )
 
-type (
-	// tracer interprets GX code to build a backend graph.
-	// The graph is then compiled to return a compiled function.
-	tracer struct {
-		graph ops.Graph
-	}
-
-	// CompiledFunc is a function compiled for a given receiver and argument shapes
-	// which is ready to run.
-	CompiledFunc interface {
-		// Run the function for the given GX values.
-		Run(receiver values.Value, args []values.Value, tracer trace.Callback) ([]values.Value, error)
-	}
-)
+// CompiledFunc is a function compiled for a given receiver and argument shapes
+// which is ready to run.
+type CompiledFunc interface {
+	// Run the function for the given GX values.
+	Run(receiver values.Value, args []values.Value, tracer trace.Callback) ([]values.Value, error)
+}
 
 // Trace a function and returns a runner to run the function on the device.
 func Trace(dev *api.Device, fn *ir.FuncDecl, receiver values.Value, args []values.Value, options []options.PackageOption) (_ CompiledFunc, err error) {
@@ -60,31 +51,27 @@ func Trace(dev *api.Device, fn *ir.FuncDecl, receiver values.Value, args []value
 		}
 		err = fmterr.ToStackTraceError(err)
 	}()
-	// Create a new evaluator for the interpreter.
+	// Create a new graph and evaluator for the interpreter.
 	proc := &processor.Processor{}
-	// Visit the receiver and arguments values to create elements for the interpreter.
-	in, err := grapheval.FuncInputsToElements(fn.File(), proc, fn.FuncType(), receiver, values.ToElements(args))
-	if err != nil {
-		return nil, err
-	}
 	graph, err := dev.Runtime().Backend().NewOps(fn.FullyQualifiedName())
 	if err != nil {
 		return nil, err
 	}
-	tr := &tracer{
-		graph: graph,
-	}
-	ev := grapheval.New(dev.Runtime().Builder(), proc, tr.graph)
-	// Add all the arguments to the graph.
-	if _, err := materialise.All(ev.Materialiser(), proc.ElementArgs()); err != nil {
-		return nil, err
-	}
+	ev := grapheval.New(dev.Runtime().Builder(), proc, graph)
 	// Create the interpreter.
 	itp, err := interp.New(ev, options)
 	if err != nil {
 		return nil, err
 	}
-
+	// Visit the receiver and arguments values to create elements for the interpreter.
+	in, err := ev.FuncInputsToElements(itp.NewFunc, fn, receiver, values.ToElements(args))
+	if err != nil {
+		return nil, err
+	}
+	// Add all the arguments to the graph.
+	if _, err := materialise.All(ev.Materialiser(), proc.ElementArgs()); err != nil {
+		return nil, err
+	}
 	// Interpret the function with the evaluator to build the graph.
 	// The evaluation returns a single output element.
 	outs, err := itp.EvalFunc(fn, in)

@@ -12,7 +12,7 @@
 // See the License for the specific language governing permissions and
 // limitations under the License.
 
-package interp
+package elements
 
 import (
 	"github.com/pkg/errors"
@@ -21,8 +21,34 @@ import (
 	"github.com/gx-org/gx/build/ir"
 	"github.com/gx-org/gx/internal/interp/canonical"
 	"github.com/gx-org/gx/internal/interp/flatten"
-	"github.com/gx-org/gx/interp/elements"
 	"github.com/gx-org/gx/interp/evaluator"
+)
+
+type (
+
+	// Slicer is a state element that can be sliced.
+	Slicer interface {
+		Slice(expr *ir.IndexExpr, index evaluator.NumericalElement) (ir.Element, error)
+	}
+
+	// ArraySlicer is a state element with an array that can be sliced.
+	ArraySlicer interface {
+		evaluator.NumericalElement
+		SliceArray(expr ir.AssignableExpr, index evaluator.NumericalElement) (evaluator.NumericalElement, error)
+		Type() ir.Type
+	}
+
+	// WithAxes is an element able to return its axes as a slice of element.
+	WithAxes interface {
+		Axes(ev ir.Evaluator) (*Slice, error)
+	}
+
+	// FixedSlice is a slice where the number of elements is known.
+	FixedSlice interface {
+		ir.Element
+		Elements() []ir.Element
+		Len() int
+	}
 )
 
 // Slice element storing a slice of elements.
@@ -52,20 +78,9 @@ func (n *Slice) Flatten() ([]ir.Element, error) {
 	return flatten.Flatten(n.values...)
 }
 
-func slice(fitp *FileScope, expr ir.AssignableExpr, index evaluator.NumericalElement, vals []ir.Element) (ir.Element, error) {
-	i, err := elements.ConstantIntFromElement(index)
-	if err != nil {
-		return nil, err
-	}
-	if i < 0 || i >= len(vals) {
-		return nil, errors.Errorf("invalid argument: index %d out of bounds [0:%d]", i, len(vals))
-	}
-	return vals[i], nil
-}
-
 // Slice of the tuple.
-func (n *Slice) Slice(fitp *FileScope, expr *ir.IndexExpr, index evaluator.NumericalElement) (ir.Element, error) {
-	return slice(fitp, expr, index, n.values)
+func (n *Slice) Slice(expr *ir.IndexExpr, index evaluator.NumericalElement) (ir.Element, error) {
+	return SliceVals(expr, index, n.values)
 }
 
 // Type of the slice.

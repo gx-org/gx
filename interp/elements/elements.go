@@ -27,6 +27,7 @@ import (
 	"github.com/gx-org/gx/build/fmterr"
 	"github.com/gx-org/gx/build/ir"
 	"github.com/gx-org/gx/internal/interp/flatten"
+	"github.com/gx-org/gx/interp/evaluator"
 )
 
 // InputElements is the receiver and arguments with which the function was called.
@@ -236,4 +237,16 @@ func StringFromElement(el ir.Element) (string, error) {
 		return "", errors.Errorf("cannot convert element %T is not a string literal", el)
 	}
 	return sEl.StringValue().String(), nil
+}
+
+// SliceVals slices a slice of elements.
+func SliceVals(expr ir.AssignableExpr, index evaluator.NumericalElement, vals []ir.Element) (ir.Element, error) {
+	i, err := ConstantIntFromElement(index)
+	if err != nil {
+		return nil, err
+	}
+	if i < 0 || i >= len(vals) {
+		return nil, errors.Errorf("invalid argument: index %d out of bounds [0:%d]", i, len(vals))
+	}
+	return vals[i], nil
 }

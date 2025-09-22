@@ -106,7 +106,7 @@ func defineGlobal(s *scope.RWScope[processNode], tok token.Token, name *ast.Iden
 }
 
 func elementFromStorage(scope resolveScope, ev *compileEvaluator, node ir.Storage) (ir.Element, bool) {
-	el, err := cpevelements.NewRuntimeValue(ev.fitp.File(), ev.fitp.NewFunc, node)
+	el, err := cpevelements.NewRuntimeValue(ev.fitp.File(), node)
 	if err != nil {
 		return el, scope.Err().Append(err)
 	}

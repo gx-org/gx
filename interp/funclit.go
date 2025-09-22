@@ -17,44 +17,38 @@ package interp
 import (
 	"github.com/gx-org/gx/build/ir"
 	"github.com/gx-org/gx/interp/context"
+	"github.com/gx-org/gx/interp/fun"
 )
 
 // FuncLitScope is an interpreter scope to evaluate function literals.
 type FuncLitScope struct {
-	fitp  *FileScope
+	eval  fun.Evaluator
+	ctx   *context.Context
 	lit   *ir.FuncLit
 	frame *context.Frame
 }
 
 // NewFuncLitScope returns a new interpreter for a function literal.
-func (fitp *FileScope) NewFuncLitScope(eval Evaluator, lit *ir.FuncLit) *FuncLitScope {
-	itp := *fitp.itp
-	itp.eval = eval
-	ctx, frame := fitp.ctx.FuncLitFrame(lit)
+func NewFuncLitScope(eval fun.Evaluator, ctx *context.Context, lit *ir.FuncLit) *FuncLitScope {
+	ctx, frame := ctx.FuncLitFrame(lit)
 	litp := &FuncLitScope{
-		fitp: &FileScope{
-			itp: &itp,
-			ctx: ctx,
-		},
+		eval:  eval,
+		ctx:   ctx,
 		lit:   lit,
 		frame: frame,
 	}
 	return litp
 }
 
-// FileScope returns the interpreter for a file scope.
-func (litp *FuncLitScope) FileScope() *FileScope {
-	return litp.fitp
-}
-
 // RunFuncLit runs a function literal given the current context.
-func (litp *FuncLitScope) RunFuncLit(eval Evaluator, args []ir.Element) ([]ir.Element, error) {
-	funcFrame := litp.fitp.ctx.PushBlockFrame()
+func (litp *FuncLitScope) RunFuncLit(args []ir.Element) ([]ir.Element, error) {
+	funcFrame := litp.ctx.PushBlockFrame()
 	fType := litp.lit.FuncType()
 	assignArgumentValues(fType, funcFrame, args)
 	for _, resultName := range fieldNames(fType.Results.List) {
 		funcFrame.Define(resultName.Name, nil)
 	}
-	defer litp.fitp.ctx.PopFrame()
-	return evalFuncBody(litp.fitp, litp.lit.Body)
+	defer litp.ctx.PopFrame()
+	fitp := newFileScope(litp.ctx, litp.eval, litp.lit.File())
+	return evalFuncBody(fitp, litp.lit.Body)
 }

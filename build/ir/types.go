@@ -184,6 +184,17 @@ func UnknownType() Type {
 	return unknownT
 }
 
+// keywordTyp is the type returned by function with no results.
+type keywordTyp struct {
+	distinctType
+}
+
+var keywordT = &keywordTyp{distinctType: distinctType{kind: FuncKind}}
+
+func keywordType() Type {
+	return keywordT
+}
+
 // voidType is the type returned by function with no results.
 type voidType struct {
 	distinctType

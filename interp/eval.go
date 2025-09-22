@@ -26,6 +26,7 @@ import (
 	"github.com/gx-org/gx/build/ir"
 	"github.com/gx-org/gx/interp/elements"
 	"github.com/gx-org/gx/interp/evaluator"
+	"github.com/gx-org/gx/interp/fun"
 	"github.com/gx-org/gx/interp/numbers"
 )
 
@@ -121,11 +122,11 @@ func evalRangeStmtForLoopOverArray[T dtype.AlgebraType](fitp *FileScope, stmt *i
 	if err != nil {
 		return nil, false, err
 	}
-	value, ok := x.(ArraySlicer)
+	value, ok := x.(elements.ArraySlicer)
 	if !ok {
 		return nil, false, fmterr.Errorf(fitp.File().FileSet(), stmt.Source(), "cannot range over %T", x)
 	}
-	arrayShape, err := ShapeFromElement(value)
+	arrayShape, err := elements.ShapeFromElement(value)
 	if err != nil {
 		return nil, false, fmterr.Position(fitp.File().FileSet(), stmt.Source(), err)
 	}
@@ -151,7 +152,7 @@ func evalRangeStmtForLoopOverArray[T dtype.AlgebraType](fitp *FileScope, stmt *i
 				Src: stmt.Src.X,
 				Typ: value.Type(), // TODO(396633820): compute the correct type (the dtype will be correct but not the shape)
 			}
-			elementI, err := value.SliceArray(fitp, valueExpr, iElement)
+			elementI, err := value.SliceArray(valueExpr, iElement)
 			if err != nil {
 				return nil, false, err
 			}
@@ -159,7 +160,7 @@ func evalRangeStmtForLoopOverArray[T dtype.AlgebraType](fitp *FileScope, stmt *i
 			if err != nil {
 				return nil, false, err
 			}
-			reshapedElement, err := elementI.Reshape(fitp, valueExpr, dims)
+			reshapedElement, err := elementI.Reshape(fitp.env, valueExpr, dims)
 			if err != nil {
 				return nil, false, err
 			}
@@ -201,8 +202,8 @@ func evalRangeStmt(fitp *FileScope, stmt *ir.RangeStmt) ([]ir.Element, bool, err
 }
 
 func evalIfStmt(fitp *FileScope, stmt *ir.IfStmt) ([]ir.Element, bool, error) {
-	fitp.ctx.PushBlockFrame()
-	defer fitp.ctx.PopFrame()
+	fitp.Context().PushBlockFrame()
+	defer fitp.Context().PopFrame()
 
 	if stmt.Init != nil {
 		if _, _, err := evalStmt(fitp, stmt.Init); err != nil {
@@ -290,18 +291,18 @@ func evalReturnStmt(fitp *FileScope, ret *ir.ReturnStmt) ([]ir.Element, bool, er
 }
 
 func evalCastToScalarExpr(fitp *FileScope, expr ir.TypeCastExpr, x evaluator.NumericalElement, targetType ir.ArrayType) (ir.Element, error) {
-	xShape, err := ShapeFromElement(x)
+	xShape, err := elements.ShapeFromElement(x)
 	if err != nil {
 		return nil, fmterr.Position(fitp.File().FileSet(), expr.Source(), err)
 	}
 	if len(xShape.AxisLengths) > 0 {
-		return x.Reshape(fitp, expr, nil)
+		return x.Reshape(fitp.env, expr, nil)
 	}
-	return x.Cast(fitp, expr, targetType)
+	return x.Cast(fitp.env, expr, targetType)
 }
 
 func evalArrayAxes(fitp *FileScope, src ir.SourceNode, typ ir.ArrayType) ([]evaluator.NumericalElement, error) {
-	rank, err := rankOf(fitp, src, typ)
+	rank, err := rankOf(fitp.env, src, typ)
 	if err != nil {
 		return nil, err
 	}
@@ -329,7 +330,7 @@ func evalCastAtomToArrayExpr(fitp *FileScope, expr ir.TypeCastExpr, x evaluator.
 			return nil, err
 		}
 	}
-	reshaped, err := x.Reshape(fitp, srcExpr.ToExprAt().Node(), shapeOfOnes)
+	reshaped, err := x.Reshape(fitp.env, srcExpr.ToExprAt().Node(), shapeOfOnes)
 	if err != nil {
 		return nil, err
 	}
@@ -343,7 +344,7 @@ func evalCastToArrayExpr(fitp *FileScope, expr ir.TypeCastExpr, x evaluator.Nume
 	targetKind := targetDType.Kind().DType()
 	if xDType.Kind().DType() != targetKind {
 		var err error
-		x, err = x.Cast(fitp, expr, targetDType)
+		x, err = x.Cast(fitp.env, expr, targetDType)
 		if err != nil {
 			return nil, err
 		}
@@ -355,7 +356,7 @@ func evalCastToArrayExpr(fitp *FileScope, expr ir.TypeCastExpr, x evaluator.Nume
 	if origRank.IsAtomic() {
 		return evalCastAtomToArrayExpr(fitp, expr, x, axes)
 	}
-	reshape, err := x.Reshape(fitp, expr, axes)
+	reshape, err := x.Reshape(fitp.env, expr, axes)
 	if err != nil {
 		return nil, fmterr.Position(fitp.File().FileSet(), expr.Source(), err)
 	}
@@ -366,7 +367,7 @@ func evalCastToArrayExpr(fitp *FileScope, expr ir.TypeCastExpr, x evaluator.Nume
 	if sourceType.DataType().Kind().DType() == targetKind {
 		return reshape, nil
 	}
-	return reshape.Cast(fitp, expr, targetDType)
+	return reshape.Cast(fitp.env, expr, targetDType)
 }
 
 func evalCastExpr(fitp *FileScope, expr ir.TypeCastExpr) (ir.Element, error) {
@@ -376,17 +377,17 @@ func evalCastExpr(fitp *FileScope, expr ir.TypeCastExpr) (ir.Element, error) {
 	}
 	target := expr.Type()
 	if named, ok := target.(*ir.NamedType); ok {
-		recv, ok := x.(Copier)
+		recv, ok := x.(elements.Copier)
 		if !ok {
 			return nil, errors.Errorf("element %T cannot be copied", x)
 		}
-		return NewNamedType(fitp.NewFunc, named, recv), nil
+		return fun.NewNamedType(fitp.NewFunc, named, recv), nil
 	}
 	arrayType, ok := target.(ir.ArrayType)
 	if !ok {
 		return nil, fmterr.Errorf(fitp.File().FileSet(), expr.Source(), "cast to %s not supported", target.String())
 	}
-	xNum, ok := Underlying(x).(evaluator.NumericalElement)
+	xNum, ok := fun.Underlying(x).(evaluator.NumericalElement)
 	if !ok {
 		return nil, fmterr.Errorf(fitp.File().FileSet(), expr.Source(), "cannot cast element of type %T to %s", x, reflect.TypeFor[evaluator.NumericalElement]().Name())
 	}
@@ -404,7 +405,7 @@ func evalUnaryExpression(fitp *FileScope, expr *ir.UnaryExpr) (ir.Element, error
 	if ir.IsStatic(expr.Type()) {
 		return nil, errors.Errorf("not supported")
 	}
-	return x.UnaryOp(fitp, expr)
+	return x.UnaryOp(fitp.env, expr)
 }
 
 func evalBinaryExpression(fitp *FileScope, expr *ir.BinaryExpr) (ir.Element, error) {
@@ -416,7 +417,7 @@ func evalBinaryExpression(fitp *FileScope, expr *ir.BinaryExpr) (ir.Element, err
 	if err != nil {
 		return nil, err
 	}
-	return x.BinaryOp(fitp, expr, x, y)
+	return x.BinaryOp(fitp.env, expr, x, y)
 }
 
 func evalStructLiteral(fitp *FileScope, expr *ir.StructLitExpr) (ir.Element, error) {
@@ -433,12 +434,12 @@ func evalStructLiteral(fitp *FileScope, expr *ir.StructLitExpr) (ir.Element, err
 		}
 		fields[fieldLit.Field.Name.Name] = node
 	}
-	strct := NewStruct(structType, fields)
+	strct := elements.NewStruct(structType, fields)
 	nType, ok := expr.Typ.(*ir.NamedType)
 	if !ok {
 		return strct, nil
 	}
-	return NewNamedType(fitp.NewFunc, nType, strct), nil
+	return fun.NewNamedType(fitp.NewFunc, nType, strct), nil
 }
 
 func evalSliceLiteral(fitp *FileScope, expr *ir.SliceLitExpr) (ir.Element, error) {
@@ -450,7 +451,7 @@ func evalSliceLiteral(fitp *FileScope, expr *ir.SliceLitExpr) (ir.Element, error
 		}
 		els[i] = elt
 	}
-	return NewSlice(expr.Type(), els), nil
+	return elements.NewSlice(expr.Type(), els), nil
 }
 
 // evalExpr evaluates an expression within the Context.
@@ -488,7 +489,7 @@ func evalExpr(fitp *FileScope, expr ir.Expr) (ir.Element, error) {
 	case *ir.SelectorExpr:
 		return evalSelectorExpr(fitp, exprT)
 	case *ir.FuncLit:
-		return fitp.itp.eval.NewFuncLit(fitp, exprT)
+		return fitp.env.FuncEval().NewFuncLit(fitp.env, exprT)
 	case *ir.IndexExpr:
 		return evalIndexExpr(fitp, exprT)
 	case *ir.EinsumExpr:
@@ -522,7 +523,7 @@ func evalNumExpr(fitp *FileScope, expr ir.Expr) (evaluator.NumericalElement, err
 	if err != nil {
 		return nil, err
 	}
-	numEl, ok := Underlying(el).(evaluator.NumericalElement)
+	numEl, ok := fun.Underlying(el).(evaluator.NumericalElement)
 	if !ok {
 		return nil, errors.Errorf("cannot cast %T to %s", el, reflect.TypeFor[evaluator.NumericalElement]())
 	}
@@ -534,7 +535,7 @@ func evalNumberCastExpr(fitp *FileScope, expr *ir.NumberCastExpr) (evaluator.Num
 	if err != nil {
 		return nil, err
 	}
-	return number.Cast(fitp, expr, expr.Typ)
+	return number.Cast(fitp.env, expr, expr.Typ)
 }
 
 func evalSelectorExpr(fitp *FileScope, ref *ir.SelectorExpr) (ir.Element, error) {
@@ -542,9 +543,9 @@ func evalSelectorExpr(fitp *FileScope, ref *ir.SelectorExpr) (ir.Element, error)
 	if err != nil {
 		return nil, err
 	}
-	slt, ok := node.(Selector)
+	slt, ok := node.(elements.Selector)
 	if !ok {
-		return nil, fmterr.Internalf(fitp.File().FileSet(), ref.Source(), "%T does not implement %s: cannot fetch member %s", node, reflect.TypeFor[Selector](), ref.Src.Sel.Name)
+		return nil, fmterr.Internalf(fitp.File().FileSet(), ref.Source(), "%T does not implement %s: cannot fetch member %s", node, reflect.TypeFor[elements.Selector](), ref.Src.Sel.Name)
 	}
 	return slt.Select(ref)
 }
@@ -554,8 +555,8 @@ func evalIndexExpr(fitp *FileScope, ref *ir.IndexExpr) (ir.Element, error) {
 	if err != nil {
 		return nil, err
 	}
-	x = Underlying(x)
-	slicer, ok := x.(Slicer)
+	x = fun.Underlying(x)
+	slicer, ok := x.(elements.Slicer)
 	if !ok {
 		return nil, fmterr.Errorf(fitp.File().FileSet(), ref.Source(), "cannot index over %T", x)
 	}
@@ -563,7 +564,7 @@ func evalIndexExpr(fitp *FileScope, ref *ir.IndexExpr) (ir.Element, error) {
 	if err != nil {
 		return nil, err
 	}
-	return slicer.Slice(fitp, ref, index)
+	return slicer.Slice(ref, index)
 }
 
 func evalEinsumExpr(fitp *FileScope, ref *ir.EinsumExpr) (ir.Element, error) {
@@ -601,7 +602,7 @@ func evalCall(fitp *FileScope, expr *ir.CallExpr) ([]ir.Element, error) {
 	if err != nil {
 		return nil, err
 	}
-	fn, ok := fnNode.(Func)
+	fn, ok := fnNode.(fun.Func)
 	if !ok {
 		return nil, fmterr.Errorf(fitp.File().FileSet(), expr.Source(), "%T is not callable", fnNode)
 	}
@@ -615,7 +616,7 @@ func evalCall(fitp *FileScope, expr *ir.CallExpr) ([]ir.Element, error) {
 		}
 		args[i] = el
 	}
-	return fn.Call(fitp, expr, args)
+	return fn.Call(fitp.env, expr, args)
 }
 
 func set(fitp *FileScope, tok token.Token, dest ir.Storage, value ir.Element) error {
@@ -637,7 +638,7 @@ func set(fitp *FileScope, tok token.Token, dest ir.Storage, value ir.Element) er
 		if err != nil {
 			return err
 		}
-		strt, ok := Underlying(receiver).(*Struct)
+		strt, ok := fun.Underlying(receiver).(*elements.Struct)
 		if !ok {
 			return fmterr.Errorf(fitp.File().FileSet(), dest.Source(), "cannot convert %T to %T", receiver, strt)
 		}
@@ -683,16 +684,16 @@ func dimsAsElements(fitp *FileScope, expr ir.AssignableExpr, dims []int) ([]eval
 	return els, nil
 }
 
-func rankOf(ctx evaluator.Context, src ir.SourceNode, typ ir.ArrayType) (ir.ArrayRank, error) {
+func rankOf(env evaluator.Env, src ir.SourceNode, typ ir.ArrayType) (ir.ArrayRank, error) {
 	switch rank := typ.Rank().(type) {
 	case *ir.Rank:
 		return rank, nil
 	case *ir.RankInfer:
 		if rank.Rnk == nil {
-			return nil, fmterr.Errorf(ctx.File().FileSet(), src.Source(), "array rank has not been resolved")
+			return nil, fmterr.Errorf(env.ExprEval().File().FileSet(), src.Source(), "array rank has not been resolved")
 		}
 		return rank.Rnk, nil
 	default:
-		return nil, fmterr.Errorf(ctx.File().FileSet(), src.Source(), "rank %T not supported", rank)
+		return nil, fmterr.Errorf(env.ExprEval().File().FileSet(), src.Source(), "rank %T not supported", rank)
 	}
 }

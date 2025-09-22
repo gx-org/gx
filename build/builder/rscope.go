@@ -182,6 +182,7 @@ type (
 		fileScope() *fileResolveScope
 		compEval() (*compileEvaluator, bool)
 		irBuilder() irBuilder
+		String() string
 	}
 
 	fileResolveScope struct {

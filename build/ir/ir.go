@@ -1132,6 +1132,7 @@ type (
 		// If the function is generic, then the type will have been inferred by the compiler from the
 		// types passed as args. Note that both FuncType() and Type() must return the same underlying
 		// value, though FuncType returns the concrete type.
+		// FuncType returns nil if the function needs the call to build its type.
 		FuncType() *FuncType
 	}
 
@@ -1167,6 +1168,12 @@ type (
 		FType *FuncType
 		Impl  FuncImpl
 		Anns  Annotations
+	}
+
+	// FuncKeyword is a function implementing a GX keyword.
+	FuncKeyword struct {
+		ID   *ast.Ident
+		Impl FuncImpl
 	}
 
 	// Macro is a function that takes a set of IR nodes as an input
@@ -1235,6 +1242,7 @@ var (
 	_ Node             = (*VarSpec)(nil)
 	_ Storage          = (*VarExpr)(nil)
 	_ PkgFunc          = (*FuncBuiltin)(nil)
+	_ Func             = (*FuncKeyword)(nil)
 	_ PkgFunc          = (*FuncDecl)(nil)
 	_ Func             = (*FuncLit)(nil)
 	_ PkgFunc          = (*Macro)(nil)
@@ -1518,6 +1526,41 @@ func (s *FuncBuiltin) Annotations() *Annotations {
 func (s *FuncBuiltin) New() PkgFunc {
 	n := *s
 	return &n
+}
+
+func (*FuncKeyword) node() {}
+
+// Source returns the node in the AST tree.
+func (s *FuncKeyword) Source() ast.Node { return s.ID }
+
+// Name of the function. Returns an empty string if the function is anonymous.
+func (s *FuncKeyword) Name() string {
+	return s.ID.Name
+}
+
+// Doc returns associated documentation or nil.
+func (s *FuncKeyword) Doc() *ast.CommentGroup {
+	return nil
+}
+
+// Type returns the type of the function.
+func (s *FuncKeyword) Type() Type {
+	return keywordType()
+}
+
+// FuncType returns the concrete type of the function.
+func (s *FuncKeyword) FuncType() *FuncType {
+	return nil
+}
+
+// File declaring the function.
+func (s *FuncKeyword) File() *File {
+	return nil
+}
+
+// String return the name of the keyword.
+func (s *FuncKeyword) String() string {
+	return s.ID.Name
 }
 
 func (*FuncLit) node()         {}

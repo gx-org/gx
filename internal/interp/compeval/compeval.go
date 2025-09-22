@@ -25,13 +25,11 @@ import (
 	"github.com/gx-org/gx/internal/interp/canonical"
 	"github.com/gx-org/gx/internal/interp/compeval/cpevelements"
 	"github.com/gx-org/gx/interp/elements"
-	"github.com/gx-org/gx/interp/evaluator"
-	"github.com/gx-org/gx/interp"
 )
 
 // EvalExpr evaluates a GX expression into an interpreter element.
-func EvalExpr(ctx evaluator.Context, expr ir.Expr) (cpevelements.Element, error) {
-	val, err := ctx.EvalExpr(expr)
+func EvalExpr(eval ir.Evaluator, expr ir.Expr) (cpevelements.Element, error) {
+	val, err := eval.EvalExpr(expr)
 	if err != nil {
 		return nil, err
 	}
@@ -75,7 +73,7 @@ func EvalRank(fetcher ir.Fetcher, expr ir.Expr) (ir.ArrayRank, []canonical.Canon
 	if err != nil {
 		return nil, nil, err
 	}
-	slice, ok := rankVal.(*interp.Slice)
+	slice, ok := rankVal.(*elements.Slice)
 	if !ok {
 		return nil, nil, fmterr.Internalf(fetcher.File().FileSet(), expr.Source(), "cannot build a rank from %s (%T): not supported", expr.String(), rankVal)
 	}

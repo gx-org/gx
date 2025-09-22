@@ -21,7 +21,9 @@ import (
 
 	"github.com/gx-org/gx/build/builder"
 	"github.com/gx-org/gx/build/ir"
+	"github.com/gx-org/gx/interp/evaluator"
 	"github.com/gx-org/gx/interp"
+	"github.com/gx-org/gx/interp/materialise"
 	"github.com/gx-org/gx/stdlib/impl"
 )
 
@@ -95,4 +97,9 @@ func IRFuncBuiltin[T builtinFuncImpl](name string, fnBuiltin interp.FuncBuiltin,
 		Impl: fnBuiltin,
 	}}
 	return fn
+}
+
+// Materialiser returns the materialiser from the evaluation environment.
+func Materialiser(env evaluator.Env) materialise.Materialiser {
+	return env.Evaluator().ArrayOps().(materialise.Materialiser)
 }

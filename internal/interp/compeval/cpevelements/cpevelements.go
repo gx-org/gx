@@ -24,7 +24,7 @@ import (
 	"github.com/gx-org/gx/internal/interp/canonical"
 	"github.com/gx-org/gx/interp/elements"
 	"github.com/gx-org/gx/interp/evaluator"
-	"github.com/gx-org/gx/interp"
+	"github.com/gx-org/gx/interp/fun"
 )
 
 // Element returned after an evaluation at compeval.
@@ -57,7 +57,7 @@ func valEqual(x, y Element) bool {
 	return equalArray(xEl, yEl)
 }
 
-func axesFromType(ev ir.Evaluator, typ ir.Type) (*interp.Slice, error) {
+func axesFromType(ev ir.Evaluator, typ ir.Type) (*elements.Slice, error) {
 	aTyp, ok := typ.(ir.ArrayType)
 	if !ok {
 		return nil, nil
@@ -72,11 +72,11 @@ func axesFromType(ev ir.Evaluator, typ ir.Type) (*interp.Slice, error) {
 			return nil, err
 		}
 	}
-	return interp.NewSlice(ir.IntLenSliceType(), elts), nil
+	return elements.NewSlice(ir.IntLenSliceType(), elts), nil
 }
 
 // NewRuntimeValue creates a new runtime value given an expression in a file.
-func NewRuntimeValue(file *ir.File, newFunc interp.NewFunc, store ir.Storage) (ir.Element, error) {
+func NewRuntimeValue(file *ir.File, store ir.Storage) (ir.Element, error) {
 	ref := &ir.ValueRef{Src: store.NameDef(), Stor: store}
 	typ, ok := store.(ir.Type)
 	if !ok { // Check if storage is a type itself.
@@ -90,18 +90,18 @@ func NewRuntimeValue(file *ir.File, newFunc interp.NewFunc, store ir.Storage) (i
 		fields := make(map[string]ir.Element)
 		for _, field := range typT.Fields.Fields() {
 			var err error
-			fields[field.Name.Name], err = NewRuntimeValue(file, newFunc, field.Storage())
+			fields[field.Name.Name], err = NewRuntimeValue(file, field.Storage())
 			if err != nil {
 				return nil, err
 			}
 		}
-		return interp.NewStruct(typT, fields), nil
+		return elements.NewStruct(typT, fields), nil
 	case *ir.NamedType:
-		under, err := NewRuntimeValue(file, newFunc, typT.Underlying.Typ)
+		under, err := NewRuntimeValue(file, typT.Underlying.Typ)
 		if err != nil {
 			return nil, err
 		}
-		return interp.NewNamedType(newFunc, typT, under.(interp.Copier)), nil
+		return fun.NewNamedType(NewFunc, typT, under.(elements.Copier)), nil
 	case ir.ArrayType:
 		if !ir.IsStatic(typT.DataType()) {
 			return NewArray(typT), nil

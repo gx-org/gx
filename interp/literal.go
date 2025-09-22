@@ -145,7 +145,7 @@ func (v valuerT[T]) array(fitp *FileScope, lit *ir.ArrayLitExpr) (ir.Element, er
 	if len(axes) == 1 {
 		return array1d, nil
 	}
-	return array1d.Reshape(fitp, lit, axes)
+	return array1d.Reshape(fitp.env, lit, axes)
 }
 
 func newValuer(fitp *FileScope, expr ir.Expr, kind ir.Kind) (v valuer, err error) {

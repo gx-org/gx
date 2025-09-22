@@ -26,14 +26,15 @@ import (
 	"github.com/gx-org/gx/interp/context"
 	"github.com/gx-org/gx/interp/elements"
 	"github.com/gx-org/gx/interp/evaluator"
+	"github.com/gx-org/gx/interp/fun"
 )
 
-func (itn *intern) InitBuiltins(ctx *context.Context, scope *scope.RWScope[ir.Element]) error {
-	fitp := &FileScope{itp: itn.itp, ctx: ctx}
-	if err := fitp.defineBoolConstant(scope, ctx, ir.FalseStorage()); err != nil {
+// InitBuiltins initializes the builtins.
+func (itp *Interpreter) InitBuiltins(ctx *context.Context, scope *scope.RWScope[ir.Element]) error {
+	if err := itp.defineBoolConstant(scope, ctx, ir.FalseStorage()); err != nil {
 		return err
 	}
-	if err := fitp.defineBoolConstant(scope, ctx, ir.TrueStorage()); err != nil {
+	if err := itp.defineBoolConstant(scope, ctx, ir.TrueStorage()); err != nil {
 		return err
 	}
 	for name, impl := range map[string]ir.FuncImpl{
@@ -42,27 +43,22 @@ func (itn *intern) InitBuiltins(ctx *context.Context, scope *scope.RWScope[ir.El
 		"set":       setFunc{},
 		"trace":     traceFunc{},
 	} {
-		irFunc := &ir.FuncBuiltin{
-			Src:  &ast.FuncDecl{Name: &ast.Ident{Name: name}},
+		irFunc := &ir.FuncKeyword{
+			ID:   &ast.Ident{Name: name},
 			Impl: impl,
 		}
-		var err error
-		irFunc.FType, err = impl.BuildFuncType(nil, nil)
-		if err != nil {
-			return err
-		}
-		elFunc := itn.itp.eval.NewFunc(itn.itp, irFunc, nil)
+		elFunc := itp.eval.NewFunc(irFunc, nil)
 		scope.Define(name, elFunc)
 	}
 	return nil
 }
 
-func (fitp *FileScope) defineBoolConstant(scope *scope.RWScope[ir.Element], ctx *context.Context, val ir.StorageWithValue) error {
+func (itp *Interpreter) defineBoolConstant(scope *scope.RWScope[ir.Element], ctx *context.Context, val ir.StorageWithValue) error {
 	gxValue, err := values.AtomBoolValue(ir.BoolType(), val.Value(nil).(*ir.AtomicValueT[bool]).Val)
 	if err != nil {
 		return err
 	}
-	el, err := fitp.itp.eval.ElementFromAtom(ctx.File(), val.Value(nil), gxValue)
+	el, err := itp.eval.ElementFromAtom(ctx.File(), val.Value(nil), gxValue)
 	if err != nil {
 		return err
 	}
@@ -82,14 +78,14 @@ func (appendFunc) Implementation() any {
 	return FuncBuiltin(appendImpl)
 }
 
-func appendImpl(ctx evaluator.Context, call elements.CallAt, fn Func, irFunc *ir.FuncBuiltin, args []ir.Element) ([]ir.Element, error) {
-	slice, ok := args[0].(*Slice)
+func appendImpl(ctx evaluator.Env, call elements.CallAt, fn fun.Func, irFunc *ir.FuncBuiltin, args []ir.Element) ([]ir.Element, error) {
+	slice, ok := args[0].(*elements.Slice)
 	if !ok {
-		return nil, errors.Errorf("cannot cast %T to %s", args[0], reflect.TypeFor[*Slice]())
+		return nil, errors.Errorf("cannot cast %T to %s", args[0], reflect.TypeFor[*elements.Slice]())
 	}
 	els := append([]ir.Element{}, slice.Elements()...)
 	els = append(els, args[1:]...)
-	return []ir.Element{NewSlice(slice.Type(), els)}, nil
+	return []ir.Element{elements.NewSlice(slice.Type(), els)}, nil
 }
 
 type axlengthsFunc struct{}
@@ -104,14 +100,15 @@ func (axlengthsFunc) Implementation() any {
 	return FuncBuiltin(axlengthsImpl)
 }
 
-func axlengthsImpl(ctx evaluator.Context, call elements.CallAt, fn Func, irFunc *ir.FuncBuiltin, args []ir.Element) ([]ir.Element, error) {
-	array, ok := args[0].(WithAxes)
+func axlengthsImpl(ctx evaluator.Env, call elements.CallAt, fn fun.Func, irFunc *ir.FuncBuiltin, args []ir.Element) ([]ir.Element, error) {
+	file := ctx.ExprEval().File()
+	array, ok := args[0].(elements.WithAxes)
 	if !ok {
-		return nil, fmterr.Internalf(ctx.File().FileSet(), call.Node().Src, "cannot get the shape of %T: not supported", args[0])
+		return nil, fmterr.Internalf(file.FileSet(), call.Node().Src, "cannot get the shape of %T: not supported", args[0])
 	}
-	shape, err := array.Axes(ctx)
+	shape, err := array.Axes(ctx.ExprEval())
 	if err != nil {
-		return nil, fmterr.Position(ctx.File().FileSet(), call.Node().Src, err)
+		return nil, fmterr.Position(file.FileSet(), call.Node().Src, err)
 	}
 	return []ir.Element{shape}, nil
 }
@@ -128,8 +125,8 @@ func (setFunc) Implementation() any {
 	return FuncBuiltin(setImpl)
 }
 
-func setImpl(ctx evaluator.Context, call elements.CallAt, fn Func, irFunc *ir.FuncBuiltin, args []ir.Element) ([]ir.Element, error) {
-	out, err := ctx.Evaluator().ArrayOps().Set(ctx, call.Node(), args[0], args[1], args[2])
+func setImpl(ctx evaluator.Env, call elements.CallAt, fn fun.Func, irFunc *ir.FuncBuiltin, args []ir.Element) ([]ir.Element, error) {
+	out, err := ctx.Evaluator().ArrayOps().Set(ctx.ExprEval(), call.Node(), args[0], args[1], args[2])
 	if err != nil {
 		return nil, err
 	}
@@ -148,6 +145,6 @@ func (traceFunc) Implementation() any {
 	return FuncBuiltin(traceImpl)
 }
 
-func traceImpl(ctx evaluator.Context, call elements.CallAt, fn Func, irFunc *ir.FuncBuiltin, args []ir.Element) ([]ir.Element, error) {
-	return nil, ctx.Evaluator().Trace(ctx, call.Node(), args)
+func traceImpl(ctx evaluator.Env, call elements.CallAt, fn fun.Func, irFunc *ir.FuncBuiltin, args []ir.Element) ([]ir.Element, error) {
+	return nil, ctx.Evaluator().Trace(ctx.ExprEval(), call.Node(), args)
 }
