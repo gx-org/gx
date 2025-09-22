@@ -31,7 +31,7 @@ func (itn *intern) InitPkgScope(pkg *ir.Package, scope *scope.RWScope[ir.Element
 	if err := itp.evalPackageConsts(pkg, scope); err != nil {
 		return nil, err
 	}
-	if err := itn.itp.evalOptions(pkg, scope); err != nil {
+	if err := itn.itp.options.Eval(pkg, scope); err != nil {
 		return nil, err
 	}
 	return NewPackage(pkg, scope, itn.itp.NewFunc), nil

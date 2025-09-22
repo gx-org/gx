@@ -27,6 +27,7 @@ import (
 	"github.com/gx-org/gx/interp/context"
 	"github.com/gx-org/gx/interp/evaluator"
 	"github.com/gx-org/gx/interp/materialise"
+	"github.com/gx-org/gx/interp/procoptions"
 )
 
 type (
@@ -69,23 +70,18 @@ type Interpreter struct {
 	eval Evaluator
 	core *context.Core
 
-	options        []options.PackageOption
-	packageOptions map[string][]packageOption
+	options *procoptions.Options
 }
 
 // New returns a new interpreter.
 func New(eval Evaluator, options []options.PackageOption) (*Interpreter, error) {
-	itp := &Interpreter{
-		eval:           eval,
-		options:        options,
-		packageOptions: make(map[string][]packageOption),
-	}
+	itp := &Interpreter{eval: eval}
 	var err error
-	itp.core, err = context.New(&intern{itp: itp}, eval.Importer())
-	if err != nil {
+	if itp.options, err = procoptions.New(eval, options); err != nil {
 		return nil, err
 	}
-	if itp.packageOptions, err = processOptions(options); err != nil {
+	itp.core, err = context.New(&intern{itp: itp}, eval.Importer())
+	if err != nil {
 		return nil, err
 	}
 	return itp, nil
