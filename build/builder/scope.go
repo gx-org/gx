@@ -71,7 +71,7 @@ func (ev *compileEvaluator) sub(src ast.Node, vals map[string]ir.Element) (*comp
 }
 
 func (ev *compileEvaluator) File() *ir.File {
-	return ev.fitp.InitScope()
+	return ev.fitp.File()
 }
 
 func (ev *compileEvaluator) BuildExpr(src ast.Expr) (ir.Expr, bool) {

@@ -49,9 +49,8 @@ type intern struct {
 // EvalExpr evaluates an expression block.
 func (itn *intern) EvalExpr(ctx *context.Context, expr ir.Expr) (ir.Element, error) {
 	fitp := &FileScope{
-		itp:       itn.itp,
-		initScope: ctx.File(),
-		ctx:       ctx,
+		itp: itn.itp,
+		ctx: ctx,
 	}
 	return evalExpr(fitp, expr)
 }
@@ -59,9 +58,8 @@ func (itn *intern) EvalExpr(ctx *context.Context, expr ir.Expr) (ir.Element, err
 // EvalStmt evaluates a statement block.
 func (itn *intern) EvalStmt(ctx *context.Context, stmt *ir.BlockStmt) ([]ir.Element, bool, error) {
 	fitp := &FileScope{
-		itp:       itn.itp,
-		initScope: ctx.File(),
-		ctx:       ctx,
+		itp: itn.itp,
+		ctx: ctx,
 	}
 	return evalBlockStmt(fitp, stmt)
 }
@@ -105,15 +103,14 @@ func (itp *Interpreter) NewFunc(fn ir.Func, recv *Receiver) Func {
 
 // FileScope returns an interpreter given the scope of a file from within a package.
 type FileScope struct {
-	itp       *Interpreter
-	initScope *ir.File
+	itp *Interpreter
 
 	ctx *context.Context
 }
 
 // ForFile returns an interpreter for a file context.
 func (itp *Interpreter) ForFile(file *ir.File) (*FileScope, error) {
-	fitp := &FileScope{itp: itp, initScope: file}
+	fitp := &FileScope{itp: itp}
 	var err error
 	fitp.ctx, err = itp.core.NewFileContext(file)
 	if err != nil {
@@ -125,11 +122,6 @@ func (itp *Interpreter) ForFile(file *ir.File) (*FileScope, error) {
 // EvalExpr evaluates an expression for a given context.
 func (fitp *FileScope) EvalExpr(expr ir.Expr) (ir.Element, error) {
 	return evalExpr(fitp, expr)
-}
-
-// InitScope returns the initial file scope (as opposed to the file of the current context).
-func (fitp *FileScope) InitScope() *ir.File {
-	return fitp.initScope
 }
 
 // Evaluator returns the evaluator used by the interpreter
