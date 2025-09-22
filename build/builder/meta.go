@@ -156,7 +156,7 @@ func (m *synthResolveScope) buildBody(fn *irFunc, compEval *compileEvaluator) ([
 
 type syntheticFunc struct {
 	coreSyntheticFunc
-	underFun  ir.Func
+	underFun  ir.PkgFunc
 	fnBuilder cpevelements.FuncASTBuilder
 }
 
@@ -187,7 +187,7 @@ func (f *syntheticFunc) checkSyntheticSignature(fScope *fileResolveScope, fInput
 }
 
 func (f *syntheticFunc) buildSignatureFScope(fScope *fileResolveScope) (ir.PkgFunc, *synthResolveScope, bool) {
-	synDecl, ok := f.fnBuilder.BuildDecl()
+	synDecl, ok := f.fnBuilder.BuildDecl(f.underFun)
 	if !ok {
 		return nil, nil, false
 	}

@@ -278,7 +278,7 @@ func (d *decls) registerAuxFuncs(mScope *synthResolveScope, auxs []*cpevelements
 				src:   aux.F,
 			},
 			fnBuilder: aux.Builder,
-			underFun:  underFun,
+			underFun:  underFun.(ir.PkgFunc),
 		}
 		pNode, ok := d.registerFunc(synthFunc)
 		if !ok {

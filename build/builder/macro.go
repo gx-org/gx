@@ -87,13 +87,11 @@ func (e *irExpr) String() string {
 	return "irexpr: " + e.expr.String()
 }
 
-func callMacroExpr(fScope *fileResolveScope, macroCall *callExpr, firstArg ir.Storage) (cpevelements.MacroElement, bool) {
-	// The function is passed as the first argument of the macro.
-	arg := &irExpr{expr: &ir.ValueRef{Stor: firstArg}}
+func callMacroExpr(fScope *fileResolveScope, macroCall *callExpr) (cpevelements.MacroElement, bool) {
 	// Build the IR to call the macro.
 	callExpr, ok := (&callExpr{
 		src:    macroCall.src,
-		args:   append([]exprNode{arg}, macroCall.args...),
+		args:   macroCall.args,
 		callee: macroCall.callee,
 	}).buildExpr(fScope)
 	if !ok {

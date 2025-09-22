@@ -29,7 +29,7 @@ import (
 )
 
 func (itn *intern) InitBuiltins(ctx *context.Context, scope *scope.RWScope[ir.Element]) error {
-	fitp := &FileScope{itp: itn.itp, initScope: ctx.File(), ctx: ctx}
+	fitp := &FileScope{itp: itn.itp, ctx: ctx}
 	if err := fitp.defineBoolConstant(scope, ctx, ir.FalseStorage()); err != nil {
 		return err
 	}

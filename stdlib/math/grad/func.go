@@ -56,7 +56,7 @@ func gradFuncDecl(fetcher ir.Fetcher, parent *gradMacro, src *ir.FuncValExpr, fn
 		return ident, true
 	}
 	// No function already exists. Prepare to return it as a new auxiliary function.
-	gradF, ok := grader.BuildDecl()
+	gradF, ok := grader.BuildDecl(nil)
 	if !ok {
 		return nil, false
 	}

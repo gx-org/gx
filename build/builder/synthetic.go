@@ -54,7 +54,7 @@ func (f *assignFuncFromMacro) buildSignature(pkgScope *pkgResolveScope) (ir.Func
 	if !ok {
 		return nil, nil, fScope.Err().AppendInternalf(f.fn.source(), "%T not a package function", underFun)
 	}
-	macroEl, ok := callMacroExpr(fScope, f.macroCall, underPkgFun)
+	macroEl, ok := callMacroExpr(fScope, f.macroCall)
 	if !ok {
 		return nil, nil, false
 	}
@@ -66,7 +66,7 @@ func (f *assignFuncFromMacro) buildSignature(pkgScope *pkgResolveScope) (ir.Func
 	synthFunc, synthScope, ok := (&syntheticFunc{
 		coreSyntheticFunc: f.coreSyntheticFunc,
 		fnBuilder:         fnBuilder,
-		underFun:          underFun,
+		underFun:          underPkgFun,
 	}).buildSignatureFScope(fScope)
 	if !ok {
 		return nil, nil, false

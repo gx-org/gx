@@ -20,7 +20,6 @@ import (
 	"go/token"
 	"testing"
 
-	"github.com/pkg/errors"
 	"github.com/gx-org/gx/build/builder/testbuild"
 	"github.com/gx-org/gx/build/ir"
 	irh "github.com/gx-org/gx/build/ir/irhelper"
@@ -44,12 +43,8 @@ var _ cpevelements.FuncAnnotator = (*tagger)(nil)
 const tagKey = "annotation:TAG"
 
 func buildTagger(call elements.CallAt, macro *cpevelements.Macro, args []ir.Element) (cpevelements.MacroElement, error) {
-	fn, ok := args[0].(ir.PkgFunc)
-	if !ok {
-		return nil, errors.Errorf("%T not an IR function", args[0])
-	}
 	var tag string
-	switch argT := args[1].(type) {
+	switch argT := args[0].(type) {
 	case *elements.String:
 		tag = argT.StringValue().String()
 	case interp.Func:
@@ -59,7 +54,6 @@ func buildTagger(call elements.CallAt, macro *cpevelements.Macro, args []ir.Elem
 	}
 	return &tagger{
 		CoreMacroElement: cpevelements.CoreMacroElement{Mac: macro},
-		fn:               fn,
 		tag:              tag,
 	}, nil
 }
@@ -71,7 +65,7 @@ func (m *tagger) Annotate(fetcher ir.Fetcher, fn ir.PkgFunc) bool {
 
 type macroBuildReturn struct {
 	cpevelements.CoreMacroElement
-	origFn, tagFn ir.PkgFunc
+	tagFn ir.PkgFunc
 }
 
 var _ cpevelements.FuncASTBuilder = (*macroBuildReturn)(nil)
@@ -79,13 +73,12 @@ var _ cpevelements.FuncASTBuilder = (*macroBuildReturn)(nil)
 func newBuildReturn(call elements.CallAt, macro *cpevelements.Macro, args []ir.Element) (cpevelements.MacroElement, error) {
 	return &macroBuildReturn{
 		CoreMacroElement: cpevelements.CoreMacroElement{Mac: macro},
-		origFn:           args[0].(ir.PkgFunc),
-		tagFn:            args[1].(interp.Func).Func().(ir.PkgFunc),
+		tagFn:            args[0].(interp.Func).Func().(ir.PkgFunc),
 	}, nil
 }
 
-func (m *macroBuildReturn) BuildDecl() (*ast.FuncDecl, bool) {
-	return m.origFn.Source().(*ast.FuncDecl), true
+func (m *macroBuildReturn) BuildDecl(origFn ir.PkgFunc) (*ast.FuncDecl, bool) {
+	return origFn.Source().(*ast.FuncDecl), true
 }
 
 func (m *macroBuildReturn) BuildBody(fetcher ir.Fetcher, fn ir.Func) (*ast.BlockStmt, []*cpevelements.SyntheticFuncDecl, bool) {
@@ -106,10 +99,10 @@ func TestAnnotation(t *testing.T) {
 package annotation
 
 // gx:irmacro
-func Tag(any, any) any
+func Tag(any) any
 
 // gx:irmacro
-func BuildReturn(any, any) any
+func BuildReturn(any) any
 `,
 			Post: func(pkg *ir.Package) {
 				id := pkg.FindFunc("Tag").(*ir.Macro)

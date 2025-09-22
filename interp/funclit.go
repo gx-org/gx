@@ -33,9 +33,8 @@ func (fitp *FileScope) NewFuncLitScope(eval Evaluator, lit *ir.FuncLit) *FuncLit
 	ctx, frame := fitp.ctx.FuncLitFrame(lit)
 	litp := &FuncLitScope{
 		fitp: &FileScope{
-			itp:       &itp,
-			initScope: fitp.ctx.File(),
-			ctx:       ctx,
+			itp: &itp,
+			ctx: ctx,
 		},
 		lit:   lit,
 		frame: frame,
