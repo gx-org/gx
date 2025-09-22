@@ -67,12 +67,12 @@ func (ev *CompEval) ArrayOps() evaluator.ArrayOps {
 }
 
 // ElementFromAtom returns an element from a GX value.
-func (ev *CompEval) ElementFromAtom(ctx ir.Evaluator, src ir.AssignableExpr, val values.Array) (evaluator.NumericalElement, error) {
+func (ev *CompEval) ElementFromAtom(file *ir.File, expr ir.AssignableExpr, val values.Array) (evaluator.NumericalElement, error) {
 	hostValue, err := val.ToHostArray(kernels.Allocator())
 	if err != nil {
 		return nil, err
 	}
-	return cpevelements.NewAtom(elements.NewExprAt(ctx.File(), src), hostValue)
+	return cpevelements.NewAtom(elements.NewExprAt(file, expr), hostValue)
 }
 
 // Trace register a call to the trace builtin function.
