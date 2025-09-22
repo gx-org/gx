@@ -20,17 +20,11 @@ import "github.com/gx-org/gx/interp"
 type (
 	// Stdlib is an implementation of the standard library functions by a backend.
 	Stdlib struct {
-		Control Control
-		Dtype   Dtype
-		Math    Math
-		Num     Num
-		Rand    Rand
-		Shapes  Shapes
-	}
-
-	// Control is the implementation of the control package.
-	Control struct {
-		While interp.FuncBuiltin
+		Dtype  Dtype
+		Math   Math
+		Num    Num
+		Rand   Rand
+		Shapes Shapes
 	}
 
 	// Dtype is the implementation of the dtype package.
