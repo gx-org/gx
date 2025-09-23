@@ -172,7 +172,7 @@ func (core *Core) fileFrame(file *ir.File) (*fileFrame, error) {
 }
 
 // PushFuncFrame pushes a function frame to the stack.
-func (ctx *Context) PushFuncFrame(fn ir.Func) (*Frame, error) {
+func (ctx *Context) PushFuncFrame(fn ir.PkgFunc) (*Frame, error) {
 	flFrame, err := ctx.core.fileFrame(fn.File())
 	if err != nil {
 		return nil, err

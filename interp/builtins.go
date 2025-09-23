@@ -51,6 +51,22 @@ func (itp *Interpreter) InitBuiltins(ctx *context.Context, scope *scope.RWScope[
 		elFunc := itp.eval.NewFunc(irFunc, nil)
 		scope.Define(impl.Name(), elFunc)
 	}
+	for _, tp := range []ir.Type{
+		ir.AnyType(),
+		ir.BoolType(),
+		ir.Bfloat16Type(),
+		ir.Float32Type(),
+		ir.Float64Type(),
+		ir.Int32Type(),
+		ir.Int64Type(),
+		ir.StringType(),
+		ir.Uint32Type(),
+		ir.Uint64Type(),
+		ir.IntLenType(),
+		ir.IntIndexType(),
+	} {
+		scope.Define(tp.String(), tp)
+	}
 	return nil
 }
 

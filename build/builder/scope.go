@@ -119,7 +119,7 @@ func elementFromStorageWithValue(ev *compileEvaluator, node ir.StorageWithValue)
 		Stor: node,
 	})
 	if _, isType := value.(*ir.TypeValExpr); isType {
-		return nil, true
+		return value, true
 	}
 	el, err := ev.fitp.EvalExpr(value)
 	if err != nil {

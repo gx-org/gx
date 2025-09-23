@@ -48,7 +48,7 @@ func buildTagger(call elements.CallAt, macro *cpevelements.Macro, args []ir.Elem
 	case *elements.String:
 		tag = argT.StringValue().String()
 	case fun.Func:
-		tag = argT.Func().Name()
+		tag = argT.Func().ShortString()
 	default:
 		tag = fmt.Sprintf("%T", argT)
 	}

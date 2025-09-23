@@ -50,7 +50,7 @@ func FuncDeclFromElement(el ir.Element) (*ir.FuncDecl, error) {
 	}
 	fDecl, ok := fun.(*ir.FuncDecl)
 	if !ok {
-		return nil, errors.Errorf("%s is not a GX user function", fun.Name())
+		return nil, errors.Errorf("%s is not a GX user function", fun.FuncType().String())
 	}
 	return fDecl, nil
 }

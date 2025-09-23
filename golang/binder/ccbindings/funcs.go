@@ -29,7 +29,7 @@ type (
 
 	function struct {
 		*binder
-		ir.Func
+		ir.PkgFunc
 		FuncIndex   int
 		ReturnType  string
 		Params      []funcField
@@ -38,10 +38,10 @@ type (
 	}
 )
 
-func (b *binder) newFunc(f ir.Func, i int) (*function, error) {
+func (b *binder) newFunc(f ir.PkgFunc, i int) (*function, error) {
 	fn := &function{
 		binder:      b,
-		Func:        f,
+		PkgFunc:     f,
 		FuncIndex:   i,
 		ReturnTuple: f.FuncType().Results.Len() > 1,
 	}

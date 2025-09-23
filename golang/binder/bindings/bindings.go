@@ -88,8 +88,8 @@ func CanBeOnDevice(tp ir.Type) error {
 }
 
 // BuildFuncs collects all the functions of a package for which bindings are generated.
-func BuildFuncs[T any](pkg *ir.Package, factory func(ir.Func, int) (*T, error)) ([]*T, error) {
-	funcs := []*T{}
+func BuildFuncs[T any](pkg *ir.Package, factory func(ir.PkgFunc, int) (*T, error)) ([]*T, error) {
+	var funcs []*T
 	for i, gxFunc := range pkg.Decls.Funcs {
 		if !ir.IsExported(gxFunc.Name()) {
 			continue

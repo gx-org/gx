@@ -47,7 +47,7 @@ func (b *binder) buildMethods(r receiver) []method {
 		methods = append(methods, method{
 			function: function{
 				binder:    b,
-				Func:      fun,
+				PkgFunc:   fun,
 				FuncIndex: i,
 			},
 			Receiver:   r,

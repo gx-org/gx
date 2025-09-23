@@ -15,7 +15,6 @@
 package interp
 
 import (
-	"fmt"
 	"go/ast"
 	"strings"
 
@@ -49,6 +48,8 @@ func NewRunFunc(fn ir.Func, recv *fun.Receiver) fun.Func {
 			funcBase: funcBase{fn: fnT, recv: recv},
 			fnT:      fnT,
 		}
+	case *ir.SpecialisedFunc:
+		return NewRunFunc(fnT.F.F, recv)
 	case *ir.FuncBuiltin:
 		return &funcBuiltin{
 			funcBase: funcBase{fn: fnT, recv: recv},
@@ -65,7 +66,7 @@ func NewRunFunc(fn ir.Func, recv *fun.Receiver) fun.Func {
 
 func (st *funcBase) toFuncBuiltin(impl ir.FuncImpl) (FuncBuiltin, error) {
 	if impl == nil {
-		return nil, errors.Errorf("function %s has no implementation", st.fn.Name())
+		return nil, errors.Errorf("function %s has no implementation", st.fn.ShortString())
 	}
 	blt, isBuiltin := impl.Implementation().(FuncBuiltin)
 	if !isBuiltin {
@@ -106,7 +107,7 @@ func (st *funcBase) Call(ctx *fun.CallEnv, call *ir.CallExpr, args []ir.Element)
 
 // String representation of the node.
 func (st *funcBase) String() string {
-	return fmt.Sprintf("func(%s)", st.Func().Name())
+	return st.fn.String()
 }
 
 type funcDecl struct {
@@ -135,7 +136,7 @@ func (f *funcDecl) Call(env *fun.CallEnv, call *ir.CallExpr, args []ir.Element) 
 		}
 	}
 	assignArgumentValues(f.fnT.FType, funcFrame, args)
-	ctx := newFileScope(env.Context(), env.FuncEval(), f.Func().File())
+	ctx := newFileScope(env.Context(), env.FuncEval(), f.fnT.File())
 	// Evaluate the function within the frame.
 	return evalFuncBody(ctx, f.fnT.Body)
 }

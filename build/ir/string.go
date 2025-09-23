@@ -68,6 +68,11 @@ func (f *FuncLit) String() string {
 	return fmt.Sprintf("%s {\n%s}", sig, body)
 }
 
+// String representation of the literal.
+func (f *SpecialisedFunc) String() string {
+	return f.T.String()
+}
+
 // NameString returns a string representation of a signature given a name.
 // The name can be empty.
 func (s *FuncType) NameString(name string) string {
@@ -143,7 +148,7 @@ func (s *DeclStmt) String() string {
 // String representation.
 func (s *CallExpr) String() string {
 	var b strings.Builder
-	fmt.Fprintf(&b, "%s(", s.Callee.String())
+	fmt.Fprintf(&b, "%s(", s.Callee.ShortString())
 	stringseq.AppendStringer(&b, slices.Values(s.Args), ", ")
 	fmt.Fprintf(&b, ")")
 	return b.String()

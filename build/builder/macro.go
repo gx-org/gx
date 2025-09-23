@@ -102,7 +102,7 @@ func callMacroExpr(fScope *fileResolveScope, macroCall *callExpr) (cpevelements.
 		return nil, fScope.Err().Appendf(macroCall.source(), "expect a function")
 	}
 	if _, ok := fCallExpr.Callee.F.(*ir.Macro); !ok {
-		return nil, fScope.Err().Appendf(macroCall.source(), "cannot use %s as a macro", fCallExpr.Callee.F.NameDef().Name)
+		return nil, fScope.Err().Appendf(macroCall.source(), "cannot use %s as a macro", fCallExpr.Callee.ShortString())
 	}
 	// Evaluate the macro expression.
 	compEval, compEvalOk := fScope.compEval()
@@ -115,7 +115,7 @@ func callMacroExpr(fScope *fileResolveScope, macroCall *callExpr) (cpevelements.
 	}
 	macroEl, ok := el.(cpevelements.MacroElement)
 	if !ok {
-		return nil, fScope.Err().AppendInternalf(macroCall.source(), "unexpected element type %s returned by macro %s", el.Type().String(), fCallExpr.Callee.F.NameDef().Name)
+		return nil, fScope.Err().AppendInternalf(macroCall.source(), "unexpected element type %s returned by macro %s", el.Type().String(), fCallExpr.Callee.ShortString())
 	}
 	return macroEl, true
 }

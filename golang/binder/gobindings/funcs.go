@@ -24,14 +24,14 @@ import (
 
 type function struct {
 	*binder
-	ir.Func
+	ir.PkgFunc
 	FuncIndex int
 }
 
-func (b *binder) newFunc(f ir.Func, i int) (*function, error) {
+func (b *binder) newFunc(f ir.PkgFunc, i int) (*function, error) {
 	return &function{
 		binder:    b,
-		Func:      f,
+		PkgFunc:   f,
 		FuncIndex: i,
 	}, nil
 }
@@ -96,7 +96,7 @@ func hasStructIn(fields *ir.FieldList) bool {
 }
 
 func (f function) DefinePackageVariable() string {
-	fType := f.Func.FuncType()
+	fType := f.FuncType()
 	if !hasStructIn(fType.Results) {
 		return ""
 	}
@@ -107,7 +107,7 @@ func (f function) DefinePackageVariable() string {
 }
 
 func (f function) ProcessDeviceOutput() (string, error) {
-	fields := f.Func.FuncType().Results.Fields()
+	fields := f.FuncType().Results.Fields()
 	lines := []string{""}
 	for i, field := range fields {
 		fieldLines, err := f.setTargetFromSourceType(outputN(i), fmt.Sprintf("outputs[%d]", i), field.Type())
@@ -121,7 +121,7 @@ func (f function) ProcessDeviceOutput() (string, error) {
 }
 
 func (f function) BackendArguments() (string, error) {
-	fields := f.Func.FuncType().Params.Fields()
+	fields := f.FuncType().Params.Fields()
 	if len(fields) == 0 {
 		return "nil", nil
 	}
@@ -140,7 +140,7 @@ func (f function) BackendArguments() (string, error) {
 }
 
 func (f function) Parameters() (string, error) {
-	fields := f.Func.FuncType().Params.Fields()
+	fields := f.FuncType().Params.Fields()
 	params := make([]string, len(fields))
 	for i, field := range fields {
 		typeS, err := f.bridgerType(field.Group.Type.Typ)
@@ -153,7 +153,7 @@ func (f function) Parameters() (string, error) {
 }
 
 func (f function) Returns() (string, error) {
-	fields := f.Func.FuncType().Results.Fields()
+	fields := f.FuncType().Results.Fields()
 	returns := make([]string, len(fields))
 	for i := range fields {
 		returns[i] = outputN(i)
@@ -162,7 +162,7 @@ func (f function) Returns() (string, error) {
 }
 
 func (f function) Results() (string, error) {
-	fields := f.Func.FuncType().Results.Fields()
+	fields := f.FuncType().Results.Fields()
 	results := make([]string, len(fields))
 	for i, field := range fields {
 		typeS, err := f.binder.bridgerType(field.Group.Type.Typ)
