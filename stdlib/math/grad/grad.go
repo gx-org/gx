@@ -65,7 +65,7 @@ func findParamStorage(file *ir.File, src ir.SourceNode, fn ir.Func, name string)
 	}
 	field := fn.FuncType().Params.FindField(name)
 	if field == nil {
-		return nil, fmterr.Errorf(file.FileSet(), src.Source(), "no parameter named %s in %s", name, fn.Name())
+		return nil, fmterr.Errorf(file.FileSet(), src.Source(), "no parameter named %s in %s", name, fn.ShortString())
 	}
 	return newWRT(field), nil
 }
@@ -110,13 +110,13 @@ func (m gradMacro) clone() *gradMacro {
 
 func (m *gradMacro) syntheticFuncName(fetcher ir.Fetcher, fn ir.Func) (string, bool) {
 	callee := m.callSite.Node().Callee
-	funcName := callee.Name()
+	funcName := callee.ShortString()
 	macroPackage := callee.F.(*ir.Macro).File().Package
 	imp := m.callSite.File().FindImport(macroPackage.FullName())
 	if imp == nil {
 		return "", fetcher.Err().AppendInternalf(callee.Source(), "cannot find import name %s", macroPackage.FullName())
 	}
-	return fmt.Sprintf("__%s_%s_%s_%s", imp.Name(), funcName, fn.Name(), m.wrt.name()), true
+	return fmt.Sprintf("__%s_%s_%s_%s", imp.Name(), funcName, fn.ShortString(), m.wrt.name()), true
 }
 
 func (m *gradMacro) BuildDecl(ir.PkgFunc) (*ast.FuncDecl, bool) {

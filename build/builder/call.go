@@ -16,8 +16,11 @@ package builder
 
 import (
 	"go/ast"
+	"reflect"
 
 	"github.com/gx-org/gx/build/ir"
+	"github.com/gx-org/gx/internal/interp/compeval/cpevelements"
+	"github.com/gx-org/gx/interp/fun"
 )
 
 func unpackIndexedExpr(n ast.Node) (ast.Expr, []ast.Expr) {
@@ -114,10 +117,10 @@ func (n *callExpr) buildTypeCast(rscope resolveScope, callee ir.AssignableExpr, 
 func checkNumArgs(rscope resolveScope, callee *ir.FuncValExpr, numArgs int) bool {
 	numParams := callee.T.Params.Len()
 	if numArgs > numParams {
-		return rscope.Err().Appendf(callee.Source(), "too many arguments in call to %s", callee.Name())
+		return rscope.Err().Appendf(callee.Source(), "too many arguments in call to %s", callee.ShortString())
 	}
 	if numArgs < numParams {
-		return rscope.Err().Appendf(callee.Source(), "not enough arguments in call to %s", callee.Name())
+		return rscope.Err().Appendf(callee.Source(), "not enough arguments in call to %s", callee.ShortString())
 	}
 	return true
 }
@@ -126,9 +129,14 @@ func buildMissingFuncType(rscope resolveScope, callee *ir.FuncValExpr, call *ir.
 	if callee.T != nil {
 		return callee, true
 	}
-	builtin, isBuiltin := callee.F.(*ir.FuncBuiltin)
-	if !isBuiltin {
-		return callee, rscope.Err().AppendInternalf(callee.Source(), "missing function but function %s:%T is not a builtin function", callee.Name(), callee.T)
+	var impl ir.FuncImpl
+	switch fT := callee.F.(type) {
+	case *ir.FuncBuiltin:
+		impl = fT.Impl
+	case *ir.FuncKeyword:
+		impl = fT.Impl
+	default:
+		return callee, rscope.Err().AppendInternalf(callee.Source(), "missing function but function %s:%T is not a builtin function", callee.ShortString(), callee.T)
 	}
 	compEval, ok := rscope.compEval()
 	if !ok {
@@ -136,7 +144,7 @@ func buildMissingFuncType(rscope resolveScope, callee *ir.FuncValExpr, call *ir.
 	}
 	ext := *callee
 	var err error
-	ext.T, err = builtin.Impl.BuildFuncType(compEval, call)
+	ext.T, err = impl.BuildFuncType(compEval, call)
 	if err != nil {
 		return callee, rscope.Err().AppendAt(callee.Source(), err)
 	}
@@ -167,33 +175,48 @@ func buildFuncValExpr(rscope resolveScope, callee ir.AssignableExpr, stor ir.Sto
 	if !isFunc {
 		return nil, rscope.Err().Appendf(callee.Source(), "cannot call non-function %s (type %s)", callee.String(), callee.Type().String())
 	}
+	fn, isFunc := val.(ir.Func)
+	if !isFunc {
+		return nil, rscope.Err().AppendInternalf(callee.Source(), "%T has function type %s but does not implement %s", val, fType.String(), reflect.TypeFor[ir.Func]().Name())
+	}
 	return &ir.FuncValExpr{
 		X: callee,
-		F: stor,
+		F: fn,
 		T: fType,
 	}, true
 }
 
 func (n *callExpr) buildCallExpr(rscope resolveScope, callee ir.AssignableExpr) (ir.Expr, bool) {
-	store, ok := storageFromExpr(rscope, callee)
+	compEval, ok := rscope.compEval()
 	if !ok {
-		return nil, false
+		return invalidExpr, ok
 	}
-	if store.Type().Kind() == ir.MetaTypeKind {
-		return n.buildTypeCast(rscope, callee, store)
+	el, err := compEval.fitp.EvalExpr(callee)
+	if err != nil {
+		return invalidExpr, rscope.Err().AppendAt(callee.Source(), err)
 	}
-	val, ok := valueFromStorage(rscope, callee, store)
-	if !ok {
-		return nil, false
+	switch elT := el.(type) {
+	case *cpevelements.Macro:
+		return n.buildFunctionCall(rscope, &ir.FuncValExpr{
+			X: callee,
+			F: elT.Func(),
+			T: elT.Func().FuncType(),
+		})
+	case ir.Type:
+		return n.buildTypeCast(rscope, callee, elT)
+	case fun.Func:
+		return n.buildFunctionCall(rscope, &ir.FuncValExpr{
+			X: callee,
+			F: elT.Func(),
+			T: elT.Func().FuncType(),
+		})
+	case *fun.NamedType:
+		return n.buildTypeCast(rscope, callee, elT.Type())
+	case *ir.TypeValExpr:
+		return n.buildTypeCast(rscope, callee, elT.Store())
+	default:
+		return invalidExpr, rscope.Err().AppendInternalf(callee.Source(), "expression %s evaluated to unsupported element of type %T. Scope:\n%s\nCompEval:\n%s", callee.String(), elT, rscope.String(), compEval.String())
 	}
-	funcRef, ok := val.(*ir.FuncValExpr)
-	if !ok {
-		funcRef, ok = buildFuncValExpr(rscope, callee, store, val)
-	}
-	if !ok {
-		return nil, false
-	}
-	return n.buildFunctionCall(rscope, funcRef)
 }
 
 func (n *callExpr) buildExpr(rscope resolveScope) (ir.Expr, bool) {

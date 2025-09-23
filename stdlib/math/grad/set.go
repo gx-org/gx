@@ -96,19 +96,15 @@ func (m *setAnnotationMacro) Annotate(fetcher ir.Fetcher, fn ir.PkgFunc) bool {
 	return true
 }
 
-func findSetAnnotation(stor ir.Storage) *setAnnotation {
-	pkgFunc, ok := stor.(ir.PkgFunc)
-	if !ok {
-		return nil
-	}
-	return ir.AnnotationFrom[map[string]ir.PkgFunc](pkgFunc, setKey)
+func findSetAnnotation(fn ir.Func) *setAnnotation {
+	return ir.AnnotationFrom[map[string]ir.PkgFunc](fn, setKey)
 }
 
 func gradFromAnnotation(fetcher ir.Fetcher, src ir.Func, ann *setAnnotation, wrt string) (ast.Expr, bool) {
 	paramToFunc := ann.Value()
 	pkgFunc := paramToFunc[wrt]
 	if pkgFunc == nil {
-		return nil, fetcher.Err().Appendf(src.Source(), "no gradient defined for parameter %s of function %s", wrt, src.Name())
+		return nil, fetcher.Err().Appendf(src.Source(), "no gradient defined for parameter %s of function %s", wrt, src.ShortString())
 	}
-	return &ast.Ident{Name: pkgFunc.Name()}, true
+	return &ast.Ident{Name: pkgFunc.ShortString()}, true
 }

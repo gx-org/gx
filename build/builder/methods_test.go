@@ -34,6 +34,7 @@ func TestMethods(t *testing.T) {
 	}
 	aRecv := irh.Fields("a", typeA)
 	fI := &ir.FuncDecl{
+		Src: &ast.FuncDecl{Name: &ast.Ident{Name: "fI"}},
 		FType: irh.FuncType(nil,
 			aRecv,
 			irh.Fields(),
@@ -140,6 +141,7 @@ func TestMethodOnNamedTypes(t *testing.T) {
 	}
 	aRecv := irh.Fields("a", typeA)
 	val := &ir.FuncDecl{
+		Src: &ast.FuncDecl{Name: &ast.Ident{Name: "val"}},
 		FType: irh.FuncType(nil,
 			aRecv,
 			irh.Fields(),

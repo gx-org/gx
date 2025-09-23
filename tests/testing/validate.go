@@ -87,7 +87,6 @@ func (v *validator) validate(node ir.Node) {
 	case *ir.FuncLit:
 		v.validate(nodeT.FType)
 		if nodeT.Body == nil {
-			v.errs.Append(errors.Errorf("function literal has no body"))
 			return
 		}
 		v.validate(nodeT.Body)

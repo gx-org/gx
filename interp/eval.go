@@ -505,10 +505,20 @@ func evalExpr(fitp *FileScope, expr ir.Expr) (ir.Element, error) {
 	case *ir.PackageRef:
 		return fitp.ctx.CurrentFrame().Find(exprT.X.Src)
 	case *ir.FuncValExpr:
-		return evalExpr(fitp, exprT.X)
+		return evalFuncValExpr(fitp, exprT)
+	case *ir.TypeValExpr:
+		return exprT, nil
 	default:
 		return nil, fmterr.Errorf(fitp.File().FileSet(), expr.Source(), "cannot evaluate GX expression: %T not supported", expr)
 	}
+}
+
+func evalFuncValExpr(fitp *FileScope, expr *ir.FuncValExpr) (ir.Element, error) {
+	lit, isLit := expr.F.(*ir.FuncLit)
+	if isLit {
+		return fitp.env.FuncEval().NewFuncLit(fitp.env, lit)
+	}
+	return fitp.NewFunc(expr.F, nil), nil
 }
 
 func evalValueRef(fitp *FileScope, ref *ir.ValueRef) (ir.Element, error) {

@@ -337,3 +337,14 @@ func SingleReturn(exprs ...ir.Expr) *ir.BlockStmt {
 		}},
 	}
 }
+
+// FuncDeclCallee returns a proxy to call a function given its name.
+func FuncDeclCallee(name string) *ir.FuncValExpr {
+	return &ir.FuncValExpr{
+		F: &ir.FuncDecl{
+			Src: &ast.FuncDecl{
+				Name: &ast.Ident{Name: name},
+			},
+		},
+	}
+}

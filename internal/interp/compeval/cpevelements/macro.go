@@ -62,7 +62,8 @@ func (f *Macro) Call(fctx *fun.CallEnv, call *ir.CallExpr, args []ir.Element) ([
 
 // Name of the macro
 func (f *Macro) Name() string {
-	return f.Func().File().Package.Name.Name + "." + f.Func().Name()
+	fn := f.Func().(ir.PkgFunc)
+	return fn.File().Package.Name.Name + "." + fn.Name()
 }
 
 // Type returns the type of the function.

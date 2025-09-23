@@ -79,7 +79,7 @@ func (ann *AnnotationT[T]) Value() T {
 }
 
 // AnnotationFrom returns an annotation given its key.
-func AnnotationFrom[T any](f PkgFunc, key string) *AnnotationT[T] {
+func AnnotationFrom[T any](f Func, key string) *AnnotationT[T] {
 	ann := f.Annotations().Get(key)
 	if ann == nil {
 		return nil
