@@ -173,3 +173,7 @@ func (m *vjpMacro) BuildBody(fetcher ir.Fetcher, fn ir.Func) (*ast.BlockStmt, []
 	}
 	return body, slices.Collect(m.aux.Values()), true
 }
+
+func (m *vjpMacro) BuildFuncLit(fetcher ir.Fetcher) (*ast.FuncLit, bool) {
+	return nil, fetcher.Err().AppendInternalf(m.Source(), "not implemented")
+}

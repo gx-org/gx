@@ -180,5 +180,20 @@ func F() int32 {
 }
 `,
 		},
+		testbuild.Decl{
+			Src: `
+func pair() (func() float32, func() float32) {
+	f := func() float32{
+		return 2
+	}
+	return f, f
+}
+
+func F() (float32, float32) {
+	f1, f2 := pair()
+	return f1(), f2()
+}
+`,
+		},
 	)
 }

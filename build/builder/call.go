@@ -186,6 +186,26 @@ func buildFuncValExpr(rscope resolveScope, callee ir.AssignableExpr, stor ir.Sto
 	}, true
 }
 
+func (n *callExpr) buildMacroCall(rscope resolveScope, compEval *compileEvaluator, callee ir.AssignableExpr, astBuilder cpevelements.FuncASTBuilder) (ir.Expr, bool) {
+	src, ok := astBuilder.BuildFuncLit(compEval)
+	if !ok {
+		return invalidExpr, false
+	}
+	fn, ok := processFuncLit(rscope.fileScope().processScope(), src)
+	if !ok {
+		return invalidExpr, false
+	}
+	fnIR, ok := fn.buildFuncLit(rscope)
+	if !ok {
+		return invalidExpr, false
+	}
+	return n.buildFunctionCall(rscope, &ir.FuncValExpr{
+		X: callee,
+		F: fnIR,
+		T: fnIR.FuncType(),
+	})
+}
+
 func (n *callExpr) buildCallExpr(rscope resolveScope, callee ir.AssignableExpr) (ir.Expr, bool) {
 	compEval, ok := rscope.compEval()
 	if !ok {
@@ -210,6 +230,10 @@ func (n *callExpr) buildCallExpr(rscope resolveScope, callee ir.AssignableExpr) 
 			F: elT.Func(),
 			T: elT.Func().FuncType(),
 		})
+	case cpevelements.FuncASTBuilder:
+		return n.buildMacroCall(rscope, compEval, callee, elT)
+	case cpevelements.FuncAnnotator:
+		return invalidExpr, rscope.Err().Appendf(callee.Source(), "invalid use of annotation macro %s", elT.From().IR().ShortString())
 	case *fun.NamedType:
 		return n.buildTypeCast(rscope, callee, elT.Type())
 	case *ir.TypeValExpr:

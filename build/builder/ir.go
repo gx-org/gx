@@ -72,7 +72,7 @@ func fnName(f function) string {
 func storageFromExpr(scope resolveScope, expr ir.Expr) (ir.Storage, bool) {
 	withStore, ok := expr.(ir.WithStore)
 	if !ok {
-		return nil, scope.Err().AppendInternalf(expr.Source(), "%T does not have a store", expr)
+		return nil, scope.Err().AppendInternalf(expr.Source(), "%s:%T does not have a store", expr.String(), expr)
 	}
 	store := withStore.Store()
 	if store == nil {

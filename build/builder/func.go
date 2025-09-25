@@ -328,7 +328,7 @@ func processFuncLit(pscope procScope, src *ast.FuncLit) (*funcLiteral, bool) {
 	}, ftypeOk && bodyOk
 }
 
-func (fn *funcLiteral) buildExpr(rscope resolveScope) (ir.Expr, bool) {
+func (fn *funcLiteral) buildFuncLit(rscope resolveScope) (*ir.FuncLit, bool) {
 	lit := &ir.FuncLit{
 		Src:   fn.src,
 		FFile: rscope.fileScope().irFile(),
@@ -344,11 +344,19 @@ func (fn *funcLiteral) buildExpr(rscope resolveScope) (ir.Expr, bool) {
 		return lit, false
 	}
 	lit.Body, ok = fn.body.buildBlockStmt(bScope)
+	return lit, true
+}
+
+func (fn *funcLiteral) buildExpr(rscope resolveScope) (ir.Expr, bool) {
+	lit, ok := fn.buildFuncLit(rscope)
+	if !ok {
+		return invalidExpr, false
+	}
 	return &ir.FuncValExpr{
 		X: lit,
 		F: lit,
 		T: lit.FType,
-	}, ok
+	}, true
 }
 
 func (fn *funcLiteral) source() ast.Node {

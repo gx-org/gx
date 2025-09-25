@@ -90,7 +90,7 @@ var _ cpevelements.FuncASTBuilder = (*macroBuildReturn)(nil)
 func newBuildReturn(call elements.CallAt, macro *cpevelements.Macro, args []ir.Element) (cpevelements.MacroElement, error) {
 	return &macroBuildReturn{
 		CoreMacroElement: macro.Element(call),
-		tagMacro:         macro.IR().File().Package.FindFunc("Tag").(*ir.Macro),
+		tagMacro:         macro.FindMacro("Tag"),
 		tagFn:            args[0].(fun.Func).Func().(ir.PkgFunc),
 	}, nil
 }
@@ -111,27 +111,48 @@ func (m *macroBuildReturn) BuildBody(fetcher ir.Fetcher, fn ir.Func) (*ast.Block
 	}}, nil, true
 }
 
-func TestAnnotation(t *testing.T) {
-	var tag, buildReturn *ir.Macro
-	bld := testbuild.Run(t,
-		testbuild.DeclarePackage{
-			Src: `
+func (m *macroBuildReturn) BuildFuncLit(fetcher ir.Fetcher) (*ast.FuncLit, bool) {
+	body, _, ok := m.BuildBody(fetcher, nil)
+	if !ok {
+		return nil, false
+	}
+	return &ast.FuncLit{
+		Type: &ast.FuncType{Results: &ast.FieldList{List: []*ast.Field{
+			&ast.Field{
+				Type: &ast.Ident{Name: "string"},
+			},
+		}}},
+		Body: body,
+	}, true
+}
+
+func annotationPackage(tag, buildReturn **ir.Macro) testbuild.DeclarePackage {
+	if tag == nil {
+		var tagM, buildReturnM *ir.Macro
+		tag, buildReturn = &tagM, &buildReturnM
+	}
+	return testbuild.DeclarePackage{
+		Src: `
 package annotation
 
 // gx:irmacro
-func Tag(any) any
+func Tag(any)
 
 // gx:irmacro
 func BuildReturn(any) any
 `,
-			Post: func(pkg *ir.Package) {
-				tag = pkg.FindFunc("Tag").(*ir.Macro)
-				tag.BuildSynthetic = cpevelements.MacroImpl(buildTagger)
-				buildReturn = pkg.FindFunc("BuildReturn").(*ir.Macro)
-				buildReturn.BuildSynthetic = cpevelements.MacroImpl(newBuildReturn)
-			},
+		Post: func(pkg *ir.Package) {
+			*tag = pkg.FindFunc("Tag").(*ir.Macro)
+			(*tag).BuildSynthetic = cpevelements.MacroImpl(buildTagger)
+			*buildReturn = pkg.FindFunc("BuildReturn").(*ir.Macro)
+			(*buildReturn).BuildSynthetic = cpevelements.MacroImpl(newBuildReturn)
 		},
-	)
+	}
+}
+
+func TestAnnotation(t *testing.T) {
+	var tag, buildReturn *ir.Macro
+	bld := testbuild.Run(t, annotationPackage(&tag, &buildReturn))
 	bld.Continue(t,
 		testbuild.Decl{
 			Src: `
@@ -238,6 +259,22 @@ func f() int32
 					}),
 				},
 			},
+		},
+	)
+}
+
+func TestAnnotationError(t *testing.T) {
+	testbuild.Run(t,
+		annotationPackage(nil, nil),
+		testbuild.Decl{
+			Src: `
+import "annotation"
+
+func f() string {
+	return annotation.Tag("Source")("Hi")
+}
+`,
+			Err: "invalid use of annotation macro annotation.Tag",
 		},
 	)
 }
