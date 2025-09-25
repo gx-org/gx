@@ -35,9 +35,9 @@ func TestXAsElementGrad() float32 {
 	// float32(1)
         // Trace:
         // grad_test.gx:0
-        //   func XAsElementGrad(x float32) float32 {
-        //   	return 1
-        //   }
+        // 	func XAsElementGrad(x float32) float32 {
+        // 		return 1
+        // 	}
 }
 
 
