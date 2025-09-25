@@ -49,6 +49,13 @@ func (m *idMacro) BuildBody(fetcher ir.Fetcher, fn ir.Func) (*ast.BlockStmt, []*
 	return m.fn.Body.Src, nil, true
 }
 
+func (m *idMacro) BuildFuncLit(fetcher ir.Fetcher) (*ast.FuncLit, bool) {
+	return &ast.FuncLit{
+		Type: m.fn.FType.Src,
+		Body: m.fn.Body.Src,
+	}, true
+}
+
 var declareMacroPackage = testbuild.DeclarePackage{
 	Src: `
 package macro
@@ -114,6 +121,19 @@ func synthetic()
 
 func f(x int32) int32 {
 	return x
+}
+`,
+		},
+		testbuild.Decl{
+			Src: `
+import "macro"
+
+func f(x int32) int32 {
+	return x
+}
+
+func F() int32 {
+	return macro.ID(f)(2)
 }
 `,
 		},

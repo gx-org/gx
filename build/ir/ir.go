@@ -1795,7 +1795,7 @@ func (s *Macro) New() PkgFunc {
 
 // ShortString returns the name of the function.
 func (s *Macro) ShortString() string {
-	return s.Name()
+	return s.File().Package.Name.Name + "." + s.Name()
 }
 
 func (*ImportDecl) node()         {}

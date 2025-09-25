@@ -34,6 +34,7 @@ type (
 		MacroElement
 		BuildDecl(target ir.PkgFunc) (*ast.FuncDecl, bool)
 		BuildBody(ir.Fetcher, ir.Func) (*ast.BlockStmt, []*SyntheticFuncDecl, bool)
+		BuildFuncLit(ir.Fetcher) (*ast.FuncLit, bool)
 	}
 
 	// FuncAnnotator builds a synthetic function.
