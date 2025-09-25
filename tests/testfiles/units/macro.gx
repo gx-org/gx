@@ -21,8 +21,8 @@ func TestMacros() (string, string) {
 	// Trace:
 	// macro.gx:0
 	//   func callF() (string, string) {
-	//   	a := func() string()
-	//   	b := func() string()
+	//   	a := testmacros.UpdateReturn(f, "a")()
+	//   	b := testmacros.UpdateReturn(f, "b")()
 	//   	return a, b
 	//   }
 }

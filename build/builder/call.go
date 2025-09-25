@@ -200,7 +200,10 @@ func (n *callExpr) buildMacroCall(rscope resolveScope, compEval *compileEvaluato
 		return invalidExpr, false
 	}
 	return n.buildFunctionCall(rscope, &ir.FuncValExpr{
-		X: fnIR,
+		X: &ir.MacroCall{
+			X: callee,
+			F: fnIR,
+		},
 		F: fnIR,
 		T: fnIR.FuncType(),
 	})

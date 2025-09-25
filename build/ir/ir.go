@@ -2976,11 +2976,7 @@ func (s *FuncValExpr) Type() Type {
 
 // ShortString representing the function being called.
 func (s *FuncValExpr) ShortString() string {
-	pkgF, ok := s.F.(PkgFunc)
-	if ok {
-		return pkgF.Name()
-	}
-	return s.F.FuncType().String()
+	return s.X.String()
 }
 
 // String representation.

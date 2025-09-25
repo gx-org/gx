@@ -476,6 +476,8 @@ func evalExpr(fitp *FileScope, expr ir.Expr) (ir.Element, error) {
 		return evalCastExpr(fitp, exprT)
 	case *ir.TypeAssertExpr:
 		return evalCastExpr(fitp, exprT)
+	case *ir.MacroCall:
+		return evalExpr(fitp, exprT.F)
 	case *ir.CallExpr:
 		return evalCallExpr(fitp, exprT)
 	case *ir.UnaryExpr:
