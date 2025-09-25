@@ -21,6 +21,7 @@ import (
 
 	"github.com/pkg/errors"
 	"github.com/gx-org/gx/base/ordered"
+	"github.com/gx-org/gx/build/ir/annotations"
 	"github.com/gx-org/gx/build/ir"
 	"github.com/gx-org/gx/internal/interp/compeval/cpevelements"
 	"github.com/gx-org/gx/interp/elements"
@@ -30,6 +31,7 @@ import (
 type vjpMacro struct {
 	cpevelements.CoreMacroElement
 	callSite   elements.CallAt
+	set        *ir.Macro
 	aux        *ordered.Map[string, *cpevelements.SyntheticFuncDecl]
 	exprToName map[ir.Expr]string
 
@@ -59,8 +61,9 @@ func VJP(call elements.CallAt, macro *cpevelements.Macro, args []ir.Element) (cp
 		return nil, err
 	}
 	return vjpMacro{
-		CoreMacroElement: cpevelements.CoreMacroElement{Mac: macro},
+		CoreMacroElement: macro.Element(call),
 		callSite:         call,
+		set:              setMacro(macro),
 	}.newMacro(fnT, wrtF), nil
 }
 
@@ -146,12 +149,12 @@ func (m *vjpMacro) BuildDecl(ir.PkgFunc) (*ast.FuncDecl, bool) {
 	return fDecl, true
 }
 
-func (m *vjpMacro) buildBodyFromSetAnnotation(fetcher ir.Fetcher, fn ir.Func, ann *setAnnotation) (*ast.BlockStmt, []*cpevelements.SyntheticFuncDecl, bool) {
+func (m *vjpMacro) buildBodyFromSetAnnotation(fetcher ir.Fetcher, fn ir.Func, ann setAnnotation) (*ast.BlockStmt, []*cpevelements.SyntheticFuncDecl, bool) {
 	return nil, nil, fetcher.Err().Appendf(fn.Source(), "function with set directives not supported yet")
 }
 
 func (m *vjpMacro) BuildBody(fetcher ir.Fetcher, fn ir.Func) (*ast.BlockStmt, []*cpevelements.SyntheticFuncDecl, bool) {
-	if ann := findSetAnnotation(m.fn); ann != nil {
+	if ann := annotations.Get[setAnnotation](fn, m.set); ann != nil {
 		return m.buildBodyFromSetAnnotation(fetcher, fn, ann)
 	}
 	fnWithBody, ok := m.fn.(*ir.FuncDecl)

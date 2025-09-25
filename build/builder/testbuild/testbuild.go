@@ -229,7 +229,14 @@ func (imp *localImporter) Load(bld *builder.Builder, path string) (builder.Packa
 
 // Builder builds test source code.
 type Builder struct {
-	imp localImporter
+	imp  localImporter
+	next int
+}
+
+func (b *Builder) nextTestName() string {
+	name := fmt.Sprintf("test%d", b.next)
+	b.next++
+	return name
 }
 
 // Build test source code.
@@ -259,20 +266,26 @@ type Test interface {
 }
 
 // Run all the test.
-func Run(t *testing.T, tests ...Test) {
+func Run(t *testing.T, tests ...Test) *Builder {
 	t.Helper()
 	ctx := &Builder{
 		imp: localImporter{pkgs: make(map[string]builder.Package)},
 	}
-	for i, test := range tests {
+	ctx.Continue(t, tests...)
+	return ctx
+}
+
+// Continue running tests with the same builder.
+func (b *Builder) Continue(t *testing.T, tests ...Test) {
+	for _, test := range tests {
 		if _, ok := test.(DeclarePackage); ok {
-			if err := test.Run(ctx); err != nil {
+			if err := test.Run(b); err != nil {
 				t.Fatal(err)
 			}
 		}
-		t.Run(fmt.Sprintf("test%d", i), func(t *testing.T) {
+		t.Run(b.nextTestName(), func(t *testing.T) {
 			t.Helper()
-			if err := test.Run(ctx); err != nil {
+			if err := test.Run(b); err != nil {
 				t.Errorf("\n%s\n%+v", test.Source(), fmterr.ToStackTraceError(err))
 			}
 		})

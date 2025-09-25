@@ -21,6 +21,7 @@ import (
 	"math/big"
 	"strings"
 
+	"github.com/gx-org/gx/build/ir/annotations"
 	"github.com/gx-org/gx/build/ir"
 )
 
@@ -42,13 +43,22 @@ func Block(stmts ...ir.Stmt) *ir.BlockStmt {
 	return &ir.BlockStmt{List: stmts}
 }
 
+type testAnnotations struct {
+	anns annotations.Annotations
+}
+
+func (ta *testAnnotations) ShortString() string {
+	return "irhelper.annotations"
+}
+func (ta *testAnnotations) Annotations() *annotations.Annotations {
+	return &ta.anns
+}
+
 // Annotations builds an annotation set.
-func Annotations(anns ...ir.Annotation) ir.Annotations {
-	var a ir.Annotations
-	for _, ann := range anns {
-		a.Set(ann)
-	}
-	return a
+func Annotations[T fmt.Stringer](key annotations.Key, val T) annotations.Annotations {
+	var anns testAnnotations
+	annotations.Set(&anns, key, val)
+	return anns.anns
 }
 
 // LocalVar returns a local variable storage given a name and a type.

@@ -195,7 +195,7 @@ func init() {
 	typeToProcess["github.com/gx-org/gx/build/ir.numberIntType"] = debugOk(valueToString)
 	typeToProcess["github.com/gx-org/gx/build/ir.numberFloatType"] = debugOk(valueToString)
 	typeToProcess["github.com/gx-org/gx/build/ir.ValueRef"] = debugOk(valueRefToString)
-	typeToProcess["github.com/gx-org/gx/build/ir.Annotations"] = debugOk(valueToString)
+	typeToProcess["github.com/gx-org/gx/build/annotations/annotations.Annotations"] = debugOk(valueToString)
 	typeToProcess["github.com/gx-org/gx/build/ir.StringLiteral"] = debugOk(stringLiteral)
 	typeToProcess["github.com/gx-org/gx/build/ir.TypeSet"] = notOnDebug(valueToString)
 	typeToProcess["github.com/gx-org/gx/build/ir.Rank"] = notOnDebug(rank)
@@ -282,6 +282,9 @@ func toPointer(val reflect.Value) any {
 	case reflect.Interface:
 		return val.Elem().Interface()
 	default:
+		if !val.CanInterface() {
+			return fmt.Sprintf("cannot interface from %s", val.String())
+		}
 		return val.Interface()
 	}
 }

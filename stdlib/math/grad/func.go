@@ -17,12 +17,13 @@ package grad
 import (
 	"go/ast"
 
+	"github.com/gx-org/gx/build/ir/annotations"
 	"github.com/gx-org/gx/build/ir"
 	"github.com/gx-org/gx/internal/interp/compeval/cpevelements"
 )
 
 func (m *gradMacro) gradFunc(fetcher ir.Fetcher, src *ir.FuncValExpr, wrt string) (ast.Expr, bool) {
-	ann := findSetAnnotation(src.F)
+	ann := annotations.Get[setAnnotation](src.F, m.set)
 	if ann != nil {
 		return gradFromAnnotation(fetcher, src.F.(ir.Func), ann, wrt)
 	}

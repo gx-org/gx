@@ -24,6 +24,7 @@ import (
 	"github.com/pkg/errors"
 	"github.com/gx-org/gx/base/ordered"
 	"github.com/gx-org/gx/build/fmterr"
+	"github.com/gx-org/gx/build/ir/annotations"
 	"github.com/gx-org/gx/build/ir"
 	"github.com/gx-org/gx/internal/interp/compeval/cpevelements"
 	"github.com/gx-org/gx/interp/elements"
@@ -49,6 +50,7 @@ type gradMacro struct {
 	cpevelements.CoreMacroElement
 	callSite elements.CallAt
 	aux      *ordered.Map[string, *cpevelements.SyntheticFuncDecl]
+	set      *ir.Macro
 
 	fn  ir.PkgFunc
 	wrt withRespectTo
@@ -92,8 +94,9 @@ func FuncGrad(call elements.CallAt, macro *cpevelements.Macro, args []ir.Element
 		return nil, err
 	}
 	return gradMacro{
-		CoreMacroElement: cpevelements.CoreMacroElement{Mac: macro},
+		CoreMacroElement: macro.Element(call),
 		callSite:         call,
+		set:              setMacro(macro),
 	}.newMacro(fnT, wrtF), nil
 }
 
@@ -134,7 +137,7 @@ func (m *gradMacro) BuildDecl(ir.PkgFunc) (*ast.FuncDecl, bool) {
 	return fDecl, true
 }
 
-func (m *gradMacro) buildBodyFromSetAnnotation(fetcher ir.Fetcher, fn ir.Func, ann *setAnnotation) (*ast.BlockStmt, []*cpevelements.SyntheticFuncDecl, bool) {
+func (m *gradMacro) buildBodyFromSetAnnotation(fetcher ir.Fetcher, fn ir.Func, ann setAnnotation) (*ast.BlockStmt, []*cpevelements.SyntheticFuncDecl, bool) {
 	params := fn.FuncType().Params.Fields()
 	args := make([]ast.Expr, len(params))
 	for i, param := range params {
@@ -153,7 +156,7 @@ func (m *gradMacro) buildBodyFromSetAnnotation(fetcher ir.Fetcher, fn ir.Func, a
 }
 
 func (m *gradMacro) BuildBody(fetcher ir.Fetcher, fn ir.Func) (*ast.BlockStmt, []*cpevelements.SyntheticFuncDecl, bool) {
-	if ann := findSetAnnotation(m.fn); ann != nil {
+	if ann := annotations.Get[setAnnotation](m.fn, m.set); ann != nil {
 		return m.buildBodyFromSetAnnotation(fetcher, fn, ann)
 	}
 	fnWithBody, ok := m.fn.(*ir.FuncDecl)

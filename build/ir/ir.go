@@ -36,6 +36,7 @@ import (
 	"github.com/pkg/errors"
 	"github.com/gx-org/backend/dtype"
 	"github.com/gx-org/backend/shape"
+	"github.com/gx-org/gx/build/ir/annotations"
 )
 
 // ----------------------------------------------------------------------------
@@ -1121,6 +1122,7 @@ type (
 	// Func is a callable GX function.
 	Func interface {
 		Expr
+		annotations.Annotated
 
 		// File owning the function.
 		File() *File
@@ -1130,9 +1132,6 @@ type (
 		// types passed as args. Note that both FuncType() and Type() must return the same underlying
 		// value, though FuncType returns the concrete type.
 		FuncType() *FuncType
-
-		// Annotations attached to the function.
-		Annotations() *Annotations
 
 		// ShortString returns a human readable representation of the function.
 		ShortString() string
@@ -1151,9 +1150,6 @@ type (
 
 		// Doc returns associated documentation or nil.
 		Doc() *ast.CommentGroup
-
-		// Annotations attached to the function.
-		Annotations() *Annotations
 
 		// Type of the function.
 		// If the function is generic, then the type will have been inferred by the compiler from the
@@ -1175,7 +1171,7 @@ type (
 		Src   *ast.FuncDecl
 		FType *FuncType
 		Body  *BlockStmt
-		Anns  Annotations
+		Anns  annotations.Annotations
 	}
 
 	// FuncBuiltin is a function provided by a backend.
@@ -1185,7 +1181,7 @@ type (
 		Src   *ast.FuncDecl
 		FType *FuncType
 		Impl  FuncImpl
-		Anns  Annotations
+		Anns  annotations.Annotations
 	}
 
 	// FuncKeyword is a function implementing a GX keyword.
@@ -1212,7 +1208,7 @@ type (
 		FType *FuncType
 		FFile *File
 		Body  *BlockStmt
-		Anns  Annotations
+		Anns  annotations.Annotations
 	}
 
 	// SpecialisedFunc is a function that has been specialised.
@@ -1220,7 +1216,7 @@ type (
 		X    Expr
 		F    *FuncValExpr
 		T    *FuncType
-		Anns Annotations
+		Anns annotations.Annotations
 	}
 
 	// ImportDecl imports a package.
@@ -1482,7 +1478,7 @@ func (s *FuncDecl) File() *File {
 }
 
 // Annotations returns the annotations attached to the function.
-func (s *FuncDecl) Annotations() *Annotations {
+func (s *FuncDecl) Annotations() *annotations.Annotations {
 	return &s.Anns
 }
 
@@ -1556,7 +1552,7 @@ func (s *FuncBuiltin) File() *File {
 }
 
 // Annotations returns the annotations attached to the function.
-func (s *FuncBuiltin) Annotations() *Annotations {
+func (s *FuncBuiltin) Annotations() *annotations.Annotations {
 	return &s.Anns
 }
 
@@ -1597,7 +1593,7 @@ func (s *FuncKeyword) File() *File {
 }
 
 // Annotations returns the annotations attached to the function.
-func (s *FuncKeyword) Annotations() *Annotations {
+func (s *FuncKeyword) Annotations() *annotations.Annotations {
 	return nil
 }
 
@@ -1678,7 +1674,7 @@ func (s *FuncLit) Source() ast.Node { return s.Src }
 func (s *FuncLit) Expr() ast.Expr { return s.Src }
 
 // Annotations returns the annotations attached to the function.
-func (s *FuncLit) Annotations() *Annotations {
+func (s *FuncLit) Annotations() *annotations.Annotations {
 	return &s.Anns
 }
 
@@ -1707,7 +1703,7 @@ func (s *SpecialisedFunc) Value(x Expr) AssignableExpr {
 }
 
 // Annotations returns the annotations attached to the function.
-func (s *SpecialisedFunc) Annotations() *Annotations {
+func (s *SpecialisedFunc) Annotations() *annotations.Annotations {
 	return &s.Anns
 }
 
@@ -1726,6 +1722,11 @@ func (*Macro) staticValue()  {}
 func (*Macro) storage()      {}
 func (*Macro) storageValue() {}
 func (*Macro) pkgFunc()      {}
+
+// FullName returns the fully qualified name of the macro.
+func (s *Macro) FullName() string {
+	return fullName(s)
+}
 
 // Name of the function.
 func (s *Macro) Name() string {
@@ -1777,8 +1778,8 @@ func (s *Macro) Same(o Storage) bool {
 }
 
 // Annotations returns the annotations attached to the function.
-func (s *Macro) Annotations() *Annotations {
-	return &Annotations{}
+func (s *Macro) Annotations() *annotations.Annotations {
+	return &annotations.Annotations{}
 }
 
 // String representation of the literal.
@@ -3609,4 +3610,8 @@ func ToArrayTypeGivenShape(typ Type, sh *shape.Shape) (ArrayType, error) {
 		return array, errors.Errorf("cannot create array value: type %s has data type %s but shape has data type %s", typ.String(), dt, sh.DType.String())
 	}
 	return array, nil
+}
+
+func fullName(f PkgFunc) string {
+	return f.File().Package.FullName() + "." + f.Name()
 }
