@@ -60,6 +60,11 @@ func (f *Macro) Call(fctx *fun.CallEnv, call *ir.CallExpr, args []ir.Element) ([
 	return []ir.Element{el}, err
 }
 
+// IR of the macro function.
+func (f *Macro) IR() *ir.Macro {
+	return f.macro
+}
+
 // Name of the macro
 func (f *Macro) Name() string {
 	fn := f.Func().(ir.PkgFunc)
@@ -69,4 +74,9 @@ func (f *Macro) Name() string {
 // Type returns the type of the function.
 func (f *Macro) Type() ir.Type {
 	return f.macro.Type()
+}
+
+// FindMacro finds another macro in the same package given its name.
+func (f *Macro) FindMacro(name string) *ir.Macro {
+	return f.macro.File().Package.FindFunc(name).(*ir.Macro)
 }

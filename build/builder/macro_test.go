@@ -38,7 +38,7 @@ func newIDMacro(call elements.CallAt, macro *cpevelements.Macro, args []ir.Eleme
 	if err != nil {
 		return nil, err
 	}
-	return &idMacro{CoreMacroElement: cpevelements.CoreMacroElement{Mac: macro}, fn: fn}, nil
+	return &idMacro{CoreMacroElement: macro.Element(call), fn: fn}, nil
 }
 
 func (m *idMacro) BuildDecl(fn ir.PkgFunc) (*ast.FuncDecl, bool) {

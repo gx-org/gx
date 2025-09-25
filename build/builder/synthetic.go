@@ -61,7 +61,7 @@ func (f *assignFuncFromMacro) buildSignature(pkgScope *pkgResolveScope) (ir.Func
 	// Return the result as a synthetic function.
 	fnBuilder, ok := macroEl.(cpevelements.FuncASTBuilder)
 	if !ok {
-		return nil, nil, fScope.Err().Appendf(f.fn.source(), "cannot use macro %s for function assignment", macroEl.Macro().Name())
+		return nil, nil, fScope.Err().Appendf(f.fn.source(), "cannot use macro %s for function assignment", macroEl.From().Name())
 	}
 	synthFunc, synthScope, ok := (&syntheticFunc{
 		coreSyntheticFunc: f.coreSyntheticFunc,

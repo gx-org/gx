@@ -99,6 +99,12 @@ func (ea NodeFile[T]) Node() T {
 	return ea.node
 }
 
+// Source of the node.
+func (ea NodeFile[T]) Source() ast.Node {
+	var node ir.Node = ea.node
+	return node.(ir.SourceNode).Source()
+}
+
 // ExprSrc returns the source expression.
 func (ea NodeFile[T]) ExprSrc() ast.Expr {
 	var node any = ea.node
