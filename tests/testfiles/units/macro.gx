@@ -1,0 +1,28 @@
+package macro
+
+import "testmacros"
+
+func f() string {
+	return "undefined"
+}
+
+func callF() (string, string) {
+	a := testmacros.UpdateReturn(f, "a")()
+	b := testmacros.UpdateReturn(f, "b")()
+	return a, b
+}
+
+func TestMacros() (string, string) {
+	trace(callF)
+	return callF()
+	// Want:
+	// 0: a
+	// 1: b
+	// Trace:
+	// macro.gx:0
+	//   func callF() (string, string) {
+	//   	a := testmacros.UpdateReturn(f, "a")()
+	//   	b := testmacros.UpdateReturn(f, "b")()
+	//   	return a, b
+	//   }
+}
