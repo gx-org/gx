@@ -103,14 +103,23 @@ func (tt DeclarePackage) Source() string {
 	return tt.Src
 }
 
-// Run the source code to declare it as an importable package.
-func (tt DeclarePackage) Run(b *Builder) error {
-	pkg, err := b.Build(tt.Path, tt.Src)
+// Build the package.
+func (tt DeclarePackage) Build(b *builder.Builder) (builder.Package, error) {
+	pkg, err := build(b, tt.Path, tt.Src)
 	if err != nil {
-		return err
+		return nil, err
 	}
 	if tt.Post != nil {
 		tt.Post(pkg.IR())
+	}
+	return pkg, nil
+}
+
+// Run the source code to declare it as an importable package.
+func (tt DeclarePackage) Run(b *Builder) error {
+	pkg, err := tt.Build(builder.New(&b.imp))
+	if err != nil {
+		return err
 	}
 	b.imp.pkgs[pkg.IR().FullName()] = pkg
 	return nil
@@ -239,19 +248,22 @@ func (b *Builder) nextTestName() string {
 	return name
 }
 
-// Build test source code.
-func (b *Builder) Build(path, src string) (builder.Package, error) {
+func build(bld *builder.Builder, path, src string) (builder.Package, error) {
 	fileDecl, err := parser.ParseFile(token.NewFileSet(), "", src, parser.ParseComments|parser.SkipObjectResolution)
 	if err != nil {
 		return nil, err
 	}
-	bld := builder.New(&b.imp)
 	fullPath := fileDecl.Name.Name
 	if path != "" {
 		fullPath = path + "/" + fullPath
 	}
 	pkg := bld.NewIncrementalPackage(fullPath)
 	return pkg, pkg.Build(src)
+}
+
+// Build test source code.
+func (b *Builder) Build(path, src string) (builder.Package, error) {
+	return build(builder.New(&b.imp), path, src)
 }
 
 // Loader used to build a GX builder.
