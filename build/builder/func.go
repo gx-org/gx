@@ -350,7 +350,7 @@ func (fn *funcLiteral) buildFuncLit(rscope resolveScope) (*ir.FuncLit, bool) {
 func (fn *funcLiteral) buildExpr(rscope resolveScope) (ir.Expr, bool) {
 	lit, ok := fn.buildFuncLit(rscope)
 	if !ok {
-		return invalidExpr, false
+		return invalidExpr(), false
 	}
 	return &ir.FuncValExpr{
 		X: lit,
