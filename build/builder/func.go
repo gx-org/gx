@@ -344,7 +344,7 @@ func (fn *funcLiteral) buildFuncLit(rscope resolveScope) (*ir.FuncLit, bool) {
 		return lit, false
 	}
 	lit.Body, ok = fn.body.buildBlockStmt(bScope)
-	return lit, true
+	return lit, ok
 }
 
 func (fn *funcLiteral) buildExpr(rscope resolveScope) (ir.Expr, bool) {

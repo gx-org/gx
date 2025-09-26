@@ -181,7 +181,7 @@ func assignableToAt(rscope resolveScope, pos ast.Node, src, dst ir.Type) bool {
 }
 
 func assignableTo(rscope resolveScope, src, dst ir.Type) (bool, error) {
-	if isInvalid(src) || isInvalid(dst) {
+	if isInvalidType(src) || isInvalidType(dst) {
 		// An error should have already been reported. We skip the check
 		// to prevent additional confusing errors.
 		return true, nil
@@ -218,7 +218,7 @@ func reconcile(src, dst ir.Type) {
 }
 
 func convertTo(rscope resolveScope, src, dst ir.Type) (bool, error) {
-	if isInvalid(src) || isInvalid(dst) {
+	if isInvalidType(src) || isInvalidType(dst) {
 		// An error should have already been reported. We skip the check
 		// to prevent additional confusing errors.
 		return true, nil
@@ -232,7 +232,7 @@ func convertTo(rscope resolveScope, src, dst ir.Type) (bool, error) {
 }
 
 func equalToAt(rscope resolveScope, pos ast.Node, src, dst ir.Type) bool {
-	if isInvalid(src) || isInvalid(dst) {
+	if isInvalidType(src) || isInvalidType(dst) {
 		// An error should have already been reported. We skip the check
 		// to prevent additional confusing errors.
 		return true
@@ -272,8 +272,15 @@ func appendRedeclaredError(errF *fmterr.Appender, name string, cur ast.Node, pre
 	)
 }
 
-func isInvalid(typ ir.Type) bool {
+func isInvalidType(typ ir.Type) bool {
 	return typ == nil || typ.Kind() == ir.InvalidKind
+}
+
+func isInvalidExpr(expr ir.Expr) bool {
+	if expr == nil {
+		return true
+	}
+	return isInvalidType(expr.Type())
 }
 
 var invalidValueRef = &ir.ValueRef{
@@ -294,5 +301,5 @@ func buildAExpr(rscope resolveScope, expr exprNode) (ir.AssignableExpr, bool) {
 	if !aexprOk {
 		return invalidExpr(), rscope.Err().Appendf(expr.source(), "%s %s is not assignable", ext.String(), ext.Type().Kind().String())
 	}
-	return asExt, exprOk
+	return asExt, exprOk && !isInvalidExpr(ext)
 }
