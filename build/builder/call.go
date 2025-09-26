@@ -189,15 +189,15 @@ func buildFuncValExpr(rscope resolveScope, callee ir.AssignableExpr, stor ir.Sto
 func (n *callExpr) buildMacroCall(rscope resolveScope, compEval *compileEvaluator, callee ir.AssignableExpr, astBuilder cpevelements.FuncASTBuilder) (ir.Expr, bool) {
 	src, ok := astBuilder.BuildFuncLit(compEval)
 	if !ok {
-		return invalidExpr, false
+		return invalidExpr(), false
 	}
 	fn, ok := processFuncLit(rscope.fileScope().processScope(), src)
 	if !ok {
-		return invalidExpr, false
+		return invalidExpr(), false
 	}
 	fnIR, ok := fn.buildFuncLit(rscope)
 	if !ok {
-		return invalidExpr, false
+		return invalidExpr(), false
 	}
 	return n.buildFunctionCall(rscope, &ir.FuncValExpr{
 		X: &ir.MacroCall{
@@ -212,11 +212,11 @@ func (n *callExpr) buildMacroCall(rscope resolveScope, compEval *compileEvaluato
 func (n *callExpr) buildCallExpr(rscope resolveScope, callee ir.AssignableExpr) (ir.Expr, bool) {
 	compEval, ok := rscope.compEval()
 	if !ok {
-		return invalidExpr, ok
+		return invalidExpr(), ok
 	}
 	el, err := compEval.fitp.EvalExpr(callee)
 	if err != nil {
-		return invalidExpr, rscope.Err().AppendAt(callee.Source(), err)
+		return invalidExpr(), rscope.Err().AppendAt(callee.Source(), err)
 	}
 	switch elT := el.(type) {
 	case *cpevelements.Macro:
@@ -236,13 +236,13 @@ func (n *callExpr) buildCallExpr(rscope resolveScope, callee ir.AssignableExpr) 
 	case cpevelements.FuncASTBuilder:
 		return n.buildMacroCall(rscope, compEval, callee, elT)
 	case cpevelements.FuncAnnotator:
-		return invalidExpr, rscope.Err().Appendf(callee.Source(), "invalid use of annotation macro %s", elT.From().IR().ShortString())
+		return invalidExpr(), rscope.Err().Appendf(callee.Source(), "invalid use of annotation macro %s", elT.From().IR().ShortString())
 	case *fun.NamedType:
 		return n.buildTypeCast(rscope, callee, elT.Type())
 	case *ir.TypeValExpr:
 		return n.buildTypeCast(rscope, callee, elT.Store())
 	default:
-		return invalidExpr, rscope.Err().AppendInternalf(callee.Source(), "expression %s evaluated to unsupported element of type %T. Scope:\n%s\nCompEval:\n%s", callee.String(), elT, rscope.String(), compEval.String())
+		return invalidExpr(), rscope.Err().AppendInternalf(callee.Source(), "expression %s evaluated to unsupported element of type %T. Scope:\n%s\nCompEval:\n%s", callee.String(), elT, rscope.String(), compEval.String())
 	}
 }
 

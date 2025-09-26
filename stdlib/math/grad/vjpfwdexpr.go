@@ -103,9 +103,21 @@ func (m *exprForwardVJP) forward(expr ir.Expr) (*ast.Ident, bool) {
 		return m.assignAs(expr)
 	case *ir.ValueRef:
 		return m.valueRef(exprT)
+	case *ir.BinaryExpr:
+		return m.binaryExpr(exprT)
 	default:
 		return nil, m.fetcher.Err().Appendf(expr.Source(), "gradient of %T expression not supported", exprT)
 	}
+}
+
+func (m *exprForwardVJP) binaryExpr(expr *ir.BinaryExpr) (*ast.Ident, bool) {
+	x, xOk := m.forward(expr.X)
+	y, yOk := m.forward(expr.Y)
+	return m.assignElementary(expr, &ast.BinaryExpr{
+		Op: expr.Src.Op,
+		X:  x,
+		Y:  y,
+	}), xOk && yOk
 }
 
 func (m *exprForwardVJP) callExpr(expr *ir.CallExpr) (*ast.Ident, bool) {
