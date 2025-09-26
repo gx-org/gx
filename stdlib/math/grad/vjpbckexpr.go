@@ -58,8 +58,24 @@ func (m *exprBackwardVJP) backward(bck *gradExprResult, expr ir.Expr) (vjp *grad
 		return m.numberCastExpr(bck, exprT)
 	case *ir.ValueRef:
 		return m.valueRef(bck, exprT)
+	case *ir.BinaryExpr:
+		return m.binaryExpr(bck, exprT)
 	default:
 		return nil, m.fetcher.Err().Appendf(expr.Source(), "gradient of %T expression not supported", exprT)
+	}
+}
+
+func (m *exprBackwardVJP) binaryExpr(bck *gradExprResult, expr *ir.BinaryExpr) (*gradExprResult, bool) {
+	xBack, xOk := m.backward(bck, expr.X)
+	yBack, yOk := m.backward(bck, expr.Y)
+	if !xOk || !yOk {
+		return nil, false
+	}
+	switch expr.Src.Op {
+	case token.ADD:
+		return buildAdd(xBack, yBack), true
+	default:
+		return nil, m.fetcher.Err().Appendf(expr.Source(), "gradient of binary operator %s not supported", expr.Src.Op)
 	}
 }
 
