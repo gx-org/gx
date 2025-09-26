@@ -191,3 +191,19 @@ func (m *gradMacro) gradIdent(src *ast.Ident) *ast.Ident {
 		Name:    "__grad_" + src.Name,
 	}
 }
+
+func syntheticFuncName(fetcher ir.Fetcher, callSite elements.CallAt, fn ir.Func, wrt withRespectTo) (string, bool) {
+	callee := callSite.Node().Callee
+	macro := callee.F.(*ir.Macro)
+	funcName := macro.Name()
+	macroPackage := callee.F.(*ir.Macro).File().Package
+	imp := callSite.File().FindImport(macroPackage.FullName())
+	if imp == nil {
+		return "", fetcher.Err().AppendInternalf(callee.Source(), "cannot find import name %s", macroPackage.FullName())
+	}
+	pkgFunc, ok := fn.(ir.PkgFunc)
+	if !ok {
+		return "", fetcher.Err().AppendInternalf(callee.Source(), "cannot build a synthetic name for %T", fn)
+	}
+	return fmt.Sprintf("__%s_%s_%s_%s", imp.Name(), funcName, pkgFunc.ShortString(), wrt.name()), true
+}

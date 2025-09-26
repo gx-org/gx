@@ -31,12 +31,39 @@ func (m *stmtVJP) newExprForwardVJP() *exprForwardVJP {
 	return &exprForwardVJP{stmtVJP: m}
 }
 
+func (m *exprForwardVJP) assignAs(expr ir.Expr) (*ast.Ident, bool) {
+	src, isExpr := expr.Source().(ast.Expr)
+	if !isExpr {
+		m.fetcher.Err().Appendf(expr.Source(), "%T not an AST expression", expr.Source())
+	}
+	return m.assignElementary(expr, src), true
+}
+
+func (m *exprForwardVJP) nextForwardName() *ast.Ident {
+	name := m.macro.unames.NameNumbered("fwd")
+	return &ast.Ident{Name: name}
+}
+
+func (m *exprForwardVJP) assignFuncCall(expr ir.Expr, calleeName string, call *ast.CallExpr) *ast.Ident {
+	name := m.nextForwardName()
+	vjpFuncName := m.macro.unames.Name(fmt.Sprintf("%sVJP", calleeName))
+	m.macro.exprToName[expr] = forwardValues{
+		forwards: []string{name.Name},
+		vjp:      vjpFuncName,
+	}
+	m.appendMainStmt(&ast.AssignStmt{
+		Tok: token.DEFINE,
+		Lhs: []ast.Expr{name, &ast.Ident{Name: vjpFuncName}},
+		Rhs: []ast.Expr{call},
+	})
+	return name
+}
+
 func (m *exprForwardVJP) assignElementary(expr ir.Expr, elementary ast.Expr) *ast.Ident {
-	name := &ast.Ident{Name: fmt.Sprintf("__fwd%d", m.numForward)}
-	m.numForward++
-	m.macro.exprToName[expr] = name.Name
+	name := m.nextForwardName()
+	m.macro.exprToName[expr] = m.macro.exprToName[expr].add(name.Name)
 	casted := addCastIfRequired(elementary, expr.Type())
-	m.appendStmt(&ast.AssignStmt{
+	m.appendMainStmt(&ast.AssignStmt{
 		Tok: token.DEFINE,
 		Lhs: []ast.Expr{name},
 		Rhs: []ast.Expr{casted},
@@ -44,22 +71,72 @@ func (m *exprForwardVJP) assignElementary(expr ir.Expr, elementary ast.Expr) *as
 	return name
 }
 
+func asExpr(vars []*ast.Ident) []ast.Expr {
+	exprs := make([]ast.Expr, len(vars))
+	for i, vr := range vars {
+		exprs[i] = vr
+	}
+	return exprs
+}
+
+func (m *exprForwardVJP) assignForwardFuncCall(expr ir.Expr, call ast.Expr, numResults int) []*ast.Ident {
+	// Build all the variables to receive values.
+	fwdVars := make([]*ast.Ident, numResults)
+	for i := range numResults {
+		fwdVars[i] = m.nextForwardName()
+	}
+	funcFwdName := m.nextForwardName()
+	fwdVars = append(fwdVars, funcFwdName)
+	m.appendMainStmt(&ast.AssignStmt{
+		Tok: token.DEFINE,
+		Lhs: asExpr(fwdVars),
+		Rhs: []ast.Expr{call},
+	})
+	return fwdVars
+}
+
 func (m *exprForwardVJP) forward(expr ir.Expr) (*ast.Ident, bool) {
 	switch exprT := expr.(type) {
+	case *ir.CallExpr:
+		return m.callExpr(exprT)
 	case *ir.NumberCastExpr:
-		return m.vjpNumberCastExpr(exprT)
+		return m.assignAs(expr)
 	case *ir.ValueRef:
-		return m.vjpValueRef(exprT)
+		return m.valueRef(exprT)
 	default:
 		return nil, m.fetcher.Err().Appendf(expr.Source(), "gradient of %T expression not supported", exprT)
 	}
 }
 
-func (m *exprForwardVJP) vjpNumberCastExpr(expr *ir.NumberCastExpr) (*ast.Ident, bool) {
+func (m *exprForwardVJP) callExpr(expr *ir.CallExpr) (*ast.Ident, bool) {
+	if len(expr.Args) == 0 {
+		return m.assignAs(expr)
+	}
+	args := make([]ast.Expr, len(expr.Args))
+	for i, argI := range expr.Args {
+		var ok bool
+		args[i], ok = m.forward(argI)
+		if !ok {
+			return nil, false
+		}
+	}
+	fnName, buildVJPCall, ok := m.macro.vjpFunc(m.fetcher, expr.Callee, m.macro.wrt.name())
+	if !ok {
+		return nil, false
+	}
+	call := &ast.CallExpr{
+		Fun:  buildVJPCall,
+		Args: args,
+	}
+	return m.assignFuncCall(expr, fnName, call), true
+}
+
+func (m *exprForwardVJP) numberCastExpr(expr *ir.NumberCastExpr) (*ast.Ident, bool) {
 	src := expr.X.Source().(ast.Expr)
 	return m.assignElementary(expr, src), true
 }
 
-func (m *exprForwardVJP) vjpValueRef(expr *ir.ValueRef) (*ast.Ident, bool) {
+func (m *exprForwardVJP) valueRef(expr *ir.ValueRef) (*ast.Ident, bool) {
+	m.macro.exprToName[expr] = m.macro.exprToName[expr].add(expr.Src.Name)
 	return expr.Stor.NameDef(), true
 }

@@ -2980,7 +2980,7 @@ func (s *FuncValExpr) ShortString() string {
 }
 
 // String representation.
-func (s *FuncValExpr) String() string { return s.F.String() }
+func (s *FuncValExpr) String() string { return s.X.String() }
 
 func (s *CallExpr) node()       {}
 func (s *CallExpr) assignable() {}

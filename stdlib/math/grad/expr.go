@@ -99,18 +99,23 @@ func (m *exprGrader) gradExpr(src ir.Expr) (r *gradExprResult, ok bool) {
 	}
 }
 
-func buildAdd(x, y *gradExprResult) *gradExprResult {
-	if x.kind == zeroSpecial {
-		return y
+func buildAdd(xs ...*gradExprResult) *gradExprResult {
+	if len(xs) == 1 {
+		return xs[0]
 	}
-	if y.kind == zeroSpecial {
-		return x
+	left := xs[0]
+	right := buildAdd(xs[1:]...)
+	if left.kind == zeroSpecial {
+		return right
+	}
+	if right.kind == zeroSpecial {
+		return left
 	}
 	return &gradExprResult{
 		expr: &ast.BinaryExpr{
 			Op: token.ADD,
-			X:  x.expr,
-			Y:  y.expr,
+			X:  left.expr,
+			Y:  right.expr,
 		},
 	}
 }

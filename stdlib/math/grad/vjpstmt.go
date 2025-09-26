@@ -34,8 +34,7 @@ type (
 		parent  *stmtVJP
 		scope   *scope.RWScope[ir.Type]
 
-		numForward int
-		forward    []ast.Stmt
+		stmts []ast.Stmt
 	}
 )
 
@@ -52,8 +51,8 @@ func (m *vjpMacro) newStmt(fetcher ir.Fetcher, parent *stmtVJP) *stmtVJP {
 	}
 }
 
-func (sg *stmtVJP) appendStmt(stmt ast.Stmt) {
-	sg.forward = append(sg.forward, stmt)
+func (sg *stmtVJP) appendMainStmt(stmt ast.Stmt) {
+	sg.stmts = append(sg.stmts, stmt)
 }
 
 func (sg *stmtVJP) registerFieldNames(list *ir.FieldList) {
@@ -80,7 +79,7 @@ func (sg *stmtVJP) processBlock(src *ir.BlockStmt) (*ast.BlockStmt, bool) {
 		}
 	}
 	return &ast.BlockStmt{
-		List: sub.forward,
+		List: sub.stmts,
 	}, true
 }
 
@@ -93,21 +92,24 @@ func (sg *stmtVJP) processStmt(src ir.Stmt) bool {
 	}
 }
 
-func (sg *stmtVJP) buildBackwardFunction(src *ir.ReturnStmt) (*ast.FuncLit, bool) {
+func (sg *stmtVJP) buildVJPFunction(src *ir.ReturnStmt) (*ast.FuncLit, bool) {
 	backwarder := sg.newExprBackwardVJP()
 	ret := &ast.ReturnStmt{Results: make([]ast.Expr, len(src.Results))}
 	for i, expr := range src.Results {
-		gradExpr, ok := backwarder.backward(expr)
+		gradExpr, ok := backwarder.backward(&gradExprResult{
+			expr: &ast.Ident{Name: sg.macro.resultNames[i]},
+		}, expr)
 		if !ok {
 			return nil, false
 		}
-		ret.Results[i] = buildMul(&gradExprResult{
-			expr: argAt(i),
-		}, gradExpr).expr
+		ret.Results[i] = gradExpr.expr
 	}
+	var body []ast.Stmt
+	body = append(body, backwarder.stmts...)
+	body = append(body, ret)
 	return &ast.FuncLit{
 		Type: sg.macro.backward,
-		Body: &ast.BlockStmt{List: []ast.Stmt{ret}},
+		Body: &ast.BlockStmt{List: body},
 	}, true
 }
 
@@ -123,19 +125,19 @@ func (sg *stmtVJP) returnStmt(src *ir.ReturnStmt) bool {
 		}
 	}
 	// Build a backward function.
-	backward, ok := sg.buildBackwardFunction(src)
+	backward, ok := sg.buildVJPFunction(src)
 	if !ok {
 		return false
 	}
-	const backwardFuncName = "__backward"
-	sg.appendStmt(&ast.AssignStmt{
+	selfVJPFuncName := sg.macro.unames.Name("selfVJPFunc")
+	sg.appendMainStmt(&ast.AssignStmt{
 		Tok: token.DEFINE,
-		Lhs: []ast.Expr{&ast.Ident{Name: backwardFuncName}},
+		Lhs: []ast.Expr{&ast.Ident{Name: selfVJPFuncName}},
 		Rhs: []ast.Expr{backward},
 	})
 	// Append the backward function to the return.
-	ret.Results = append(ret.Results, &ast.Ident{Name: backwardFuncName})
-	sg.appendStmt(ret)
+	ret.Results = append(ret.Results, &ast.Ident{Name: selfVJPFuncName})
+	sg.appendMainStmt(ret)
 	return true
 }
 
