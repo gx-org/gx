@@ -197,3 +197,22 @@ func F() (float32, float32) {
 		},
 	)
 }
+
+func TestFunctionLiteralErrors(t *testing.T) {
+	testbuild.Run(t,
+		testbuild.Decl{
+			Src: `
+func g(int32) int32
+
+func f() int32 {
+	fn := func() int32 {
+		a := g()
+		return a
+	}
+	return fn()
+}
+`,
+			Err: "not enough arguments in call to g",
+		},
+	)
+}

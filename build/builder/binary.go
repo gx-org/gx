@@ -44,7 +44,7 @@ func (n *binaryExpr) source() ast.Node {
 }
 
 func (n *binaryExpr) checkKind(scope resolveScope, x exprNode, typ ir.Type, appendErr bool) (isScalar bool, arrayType ir.ArrayType, ok bool) {
-	if isInvalid(typ) {
+	if isInvalidType(typ) {
 		ok = false
 		return
 	}
@@ -180,12 +180,12 @@ func (n *binaryExpr) buildOperands(scope resolveScope) (ir.AssignableExpr, ir.As
 func (n *binaryExpr) buildExpr(scope resolveScope) (ir.Expr, bool) {
 	expr := &ir.BinaryExpr{Src: n.src}
 	expr.X, expr.Y, expr.Typ = n.buildOperands(scope)
-	if isInvalid(expr.Typ) {
-		return expr, false
+	if isInvalidType(expr.Typ) {
+		return invalidExpr(), false
 	}
 	outTyp, forceCastNumber, ok := n.determineOutputType(scope, expr.Typ)
 	if !ok {
-		return expr, false
+		return invalidExpr(), false
 	}
 	if forceCastNumber && ir.IsNumber(expr.Typ.Kind()) {
 		var xOk, yOk bool

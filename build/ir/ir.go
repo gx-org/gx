@@ -1872,6 +1872,9 @@ func (cst *ConstExpr) NameDef() *ast.Ident {
 
 // Type returns the type of an expression.
 func (cst *ConstExpr) Type() Type {
+	if cst.Val == nil {
+		return UnknownType()
+	}
 	return cst.Val.Type()
 }
 
