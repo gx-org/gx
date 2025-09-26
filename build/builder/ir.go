@@ -276,7 +276,10 @@ func isInvalid(typ ir.Type) bool {
 	return typ == nil || typ.Kind() == ir.InvalidKind
 }
 
-var invalidExpr = &ir.ValueRef{Stor: ir.InvalidType()}
+var invalidExpr = &ir.ValueRef{
+	Src:  &ast.Ident{Name: "<<<invalid>>>"},
+	Stor: ir.InvalidType(),
+}
 
 func buildAExpr(rscope resolveScope, expr exprNode) (ir.AssignableExpr, bool) {
 	ext, exprOk := expr.buildExpr(rscope)

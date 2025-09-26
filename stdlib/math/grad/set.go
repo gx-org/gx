@@ -96,7 +96,7 @@ func (m *setAnnotationMacro) Annotate(fetcher ir.Fetcher, fn ir.PkgFunc) bool {
 	return true
 }
 
-func gradFromAnnotation(fetcher ir.Fetcher, src ir.Func, paramToFunc setAnnotation, wrt string) (ast.Expr, bool) {
+func gradFromAnnotation(fetcher ir.Fetcher, src ir.Func, paramToFunc setAnnotation, wrt string) (*ast.Ident, bool) {
 	pkgFunc := paramToFunc[wrt]
 	if pkgFunc == nil {
 		return nil, fetcher.Err().Appendf(src.Source(), "no gradient defined for parameter %s of function %s", wrt, src.ShortString())

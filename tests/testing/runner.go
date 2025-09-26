@@ -26,6 +26,7 @@ import (
 	"github.com/gx-org/gx/api/options"
 	"github.com/gx-org/gx/api/tracer"
 	"github.com/gx-org/gx/api/values"
+	gxfmt "github.com/gx-org/gx/base/fmt"
 	"github.com/gx-org/gx/build/builder"
 	"github.com/gx-org/gx/build/fmterr"
 	"github.com/gx-org/gx/build/importers/embedpkg"
@@ -110,11 +111,10 @@ func (r *testTracer) Trace(file *ir.File, call *ir.CallExpr, vals []values.Value
 	pos := file.FileSet().Position(call.Src.Pos())
 	fmt.Fprintf(&r.trace, "%s:%d", filepath.Base(pos.Filename), r.nTrace)
 	r.nTrace++
-	const indent = "  "
-	r.trace.WriteString("\n" + indent)
+	r.trace.WriteString("\n")
 	for _, val := range vals {
 		valS := fmt.Sprint(val)
-		valS = strings.ReplaceAll(valS, "\n", "\n"+indent)
+		valS = gxfmt.Indent(valS)
 		r.trace.WriteString(valS)
 	}
 	r.trace.WriteString("\n")

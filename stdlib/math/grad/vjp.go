@@ -15,12 +15,12 @@
 package grad
 
 import (
-	"fmt"
 	"go/ast"
 	"slices"
 
 	"github.com/pkg/errors"
 	"github.com/gx-org/gx/base/ordered"
+	"github.com/gx-org/gx/base/uname"
 	"github.com/gx-org/gx/build/ir/annotations"
 	"github.com/gx-org/gx/build/ir"
 	"github.com/gx-org/gx/internal/interp/compeval/cpevelements"
@@ -28,12 +28,26 @@ import (
 	"github.com/gx-org/gx/interp"
 )
 
+type forwardValues struct {
+	forwards []string
+	vjp      string
+}
+
+func (fv forwardValues) add(name string) forwardValues {
+	return forwardValues{
+		forwards: append(fv.forwards, name),
+		vjp:      fv.vjp,
+	}
+}
+
 type vjpMacro struct {
 	cpevelements.CoreMacroElement
-	callSite   elements.CallAt
-	set        *ir.Macro
-	aux        *ordered.Map[string, *cpevelements.SyntheticFuncDecl]
-	exprToName map[ir.Expr]string
+	callSite    elements.CallAt
+	set         *ir.Macro
+	unames      *uname.Unique
+	aux         *ordered.Map[string, *cpevelements.SyntheticFuncDecl]
+	exprToName  map[ir.Expr]forwardValues
+	resultNames []string
 
 	fn       ir.PkgFunc
 	wrt      withRespectTo
@@ -62,6 +76,7 @@ func VJP(call elements.CallAt, macro *cpevelements.Macro, args []ir.Element) (cp
 	}
 	return vjpMacro{
 		CoreMacroElement: macro.Element(call),
+		unames:           uname.New(),
 		callSite:         call,
 		set:              setMacro(macro),
 	}.newMacro(fnT, wrtF), nil
@@ -71,33 +86,32 @@ func (m vjpMacro) newMacro(fn ir.PkgFunc, wrt withRespectTo) *vjpMacro {
 	var n vjpMacro = m
 	n.fn = fn
 	n.wrt = wrt
-	n.exprToName = make(map[ir.Expr]string)
 	return &n
 }
 
-func argAt(i int) *ast.Ident {
-	return &ast.Ident{
-		Name: fmt.Sprintf("__bck%d", i),
-	}
+func (m *vjpMacro) start() {
+	m.exprToName = make(map[ir.Expr]forwardValues)
+	m.backward = m.buildBackwardSignature(m.fn.FuncType())
 }
 
-func nameResultFields(results *ast.FieldList) *ast.FieldList {
+func (m *vjpMacro) nameResultFields(results *ast.FieldList) ([]string, *ast.FieldList) {
 	all := ast.FieldList{
 		List: make([]*ast.Field, len(results.List)),
 	}
-	var num int
+	var names []string
 	for iField, field := range results.List {
 		named := *field
 		if len(named.Names) == 0 {
 			named.Names = []*ast.Ident{&ast.Ident{}}
 		}
-		for iIdent := range named.Names {
-			named.Names[iIdent] = argAt(num)
-			num++
+		for iName, name := range named.Names {
+			retName := uname.DefaultIdent(name, "res")
+			named.Names[iName] = m.unames.Ident(retName)
+			names = append(names, retName.Name)
 		}
 		all.List[iField] = &named
 	}
-	return &all
+	return names, &all
 }
 
 func concatFieldList(lists ...*ast.FieldList) *ast.FieldList {
@@ -109,7 +123,8 @@ func concatFieldList(lists ...*ast.FieldList) *ast.FieldList {
 }
 
 func (m *vjpMacro) buildBackwardSignature(fType *ir.FuncType) *ast.FuncType {
-	namedResultFields := nameResultFields(fType.Src.Results)
+	var namedResultFields *ast.FieldList
+	m.resultNames, namedResultFields = m.nameResultFields(fType.Results.Src)
 	return &ast.FuncType{
 		// Same as the original function.
 		TypeParams: fType.Src.TypeParams,
@@ -124,10 +139,9 @@ func (m *vjpMacro) buildBackwardSignature(fType *ir.FuncType) *ast.FuncType {
 	}
 }
 
-func (m *vjpMacro) BuildDecl(ir.PkgFunc) (*ast.FuncDecl, bool) {
+func (m *vjpMacro) buildType() *ast.FuncType {
 	fType := m.fn.FuncType()
-	m.backward = m.buildBackwardSignature(fType)
-	fDecl := &ast.FuncDecl{Type: &ast.FuncType{
+	return &ast.FuncType{
 		// Same as the original function.
 		TypeParams: fType.Src.TypeParams,
 		// Same parameters than the original function.
@@ -141,25 +155,30 @@ func (m *vjpMacro) BuildDecl(ir.PkgFunc) (*ast.FuncDecl, bool) {
 					Type: m.backward,
 				}},
 			}),
-	}}
-	recv := fType.Receiver
+	}
+}
+
+func (m *vjpMacro) BuildDecl(ir.PkgFunc) (*ast.FuncDecl, bool) {
+	m.start()
+	fDecl := &ast.FuncDecl{Type: m.buildType()}
+	recv := m.fn.FuncType().Receiver
 	if recv != nil {
 		fDecl.Recv = recv.Src
 	}
 	return fDecl, true
 }
 
-func (m *vjpMacro) buildBodyFromSetAnnotation(fetcher ir.Fetcher, fn ir.Func, ann setAnnotation) (*ast.BlockStmt, []*cpevelements.SyntheticFuncDecl, bool) {
-	return nil, nil, fetcher.Err().Appendf(fn.Source(), "function with set directives not supported yet")
+func (m *vjpMacro) buildBodyFromSetAnnotation(fetcher ir.Fetcher, ann setAnnotation) (*ast.BlockStmt, []*cpevelements.SyntheticFuncDecl, bool) {
+	return nil, nil, fetcher.Err().Appendf(m.Source(), "function with set directives not supported yet")
 }
 
-func (m *vjpMacro) BuildBody(fetcher ir.Fetcher, fn ir.Func) (*ast.BlockStmt, []*cpevelements.SyntheticFuncDecl, bool) {
-	if ann := annotations.Get[setAnnotation](fn, m.set); ann != nil {
-		return m.buildBodyFromSetAnnotation(fetcher, fn, ann)
+func (m *vjpMacro) BuildBody(fetcher ir.Fetcher, _ ir.Func) (*ast.BlockStmt, []*cpevelements.SyntheticFuncDecl, bool) {
+	if ann := annotations.Get[setAnnotation](m.fn, m.set); ann != nil {
+		return m.buildBodyFromSetAnnotation(fetcher, ann)
 	}
 	fnWithBody, ok := m.fn.(*ir.FuncDecl)
 	if !ok {
-		return nil, nil, fetcher.Err().Appendf(fn.Source(), "function has no body")
+		return nil, nil, fetcher.Err().Appendf(m.Source(), "function %s has no body", m.fn.ShortString())
 	}
 	m.aux = ordered.NewMap[string, *cpevelements.SyntheticFuncDecl]()
 	sg := m.newStmt(fetcher, nil)
@@ -175,5 +194,13 @@ func (m *vjpMacro) BuildBody(fetcher ir.Fetcher, fn ir.Func) (*ast.BlockStmt, []
 }
 
 func (m *vjpMacro) BuildFuncLit(fetcher ir.Fetcher) (*ast.FuncLit, bool) {
-	return nil, fetcher.Err().AppendInternalf(m.Source(), "not implemented")
+	m.start()
+	body, _, ok := m.BuildBody(fetcher, nil)
+	if !ok {
+		return nil, false
+	}
+	return &ast.FuncLit{
+		Type: m.buildType(),
+		Body: body,
+	}, true
 }

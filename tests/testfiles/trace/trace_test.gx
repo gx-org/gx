@@ -10,9 +10,9 @@ func TestTraceScalar() int64 {
 	// int64(3)
 	// Trace:
 	// trace_test.gx:0
-	//   int64(2)
+	// 	int64(2)
 	// trace_test.gx:1
-	//   int64(3)
+	// 	int64(3)
 }
 
 func TestTrace() [2]float64 {
@@ -25,7 +25,7 @@ func TestTrace() [2]float64 {
 	// [2]float64{3, 3}
 	// Trace:
 	// trace_test.gx:0
-	//   [2]float64{2, 2}
+	// 	[2]float64{2, 2}
 	// trace_test.gx:1
-	//   [2]float64{3, 3}
+	// 	[2]float64{3, 3}
 }
