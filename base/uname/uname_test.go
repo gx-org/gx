@@ -62,36 +62,82 @@ func TestName(t *testing.T) {
 	}
 }
 
-func TestNameNumbered(t *testing.T) {
+func TestRoot(t *testing.T) {
+	unames := uname.New()
+	for _, name := range []string{"b0", "c1", "c1x1"} {
+		unames.Register(name)
+	}
+	a := unames.Root("a")
+	b := unames.Root("b")
+	c := unames.Root("c")
 	tests := []struct {
-		name, want string
+		root *uname.Root
+		want string
 	}{
 		{
-			name: "a",
+			root: a,
 			want: "a0",
 		},
 		{
-			name: "a",
+			root: a,
 			want: "a1",
 		},
 		{
-			name: "b",
-			want: "b0",
+			root: b,
+			want: "b0x1",
 		},
 		{
-			name: "c",
+			root: c,
 			want: "c0",
 		},
 		{
-			name: "c",
-			want: "c1",
+			root: c,
+			want: "c1x2",
 		},
 	}
-	unames := uname.New()
 	for i, test := range tests {
-		got := unames.NameNumbered(test.name)
+		got := test.root.Next().String()
 		if got != test.want {
-			t.Errorf("test %d: for name %s, got %s but want %s", i, test.name, got, test.want)
+			t.Errorf("test %d: for root %s, got %s but want %s", i, test.root.Root(), got, test.want)
 		}
 	}
+}
+
+func TestNameFor(t *testing.T) {
+	unames := uname.New()
+	for _, name := range []string{"b1", "b2", "b2x1"} {
+		unames.Register(name)
+	}
+	a := unames.Root("a")
+	names := make([]uname.Name, 6)
+	for i := range len(names) {
+		names[i] = a.Next()
+	}
+	b := unames.Root("b")
+	for i, want := range []string{"b0", "b1x1", "b2x2"} {
+		got := names[i].NameFor(b).String()
+		if got != want {
+			t.Errorf("index %d: got %s but want %s", i, got, want)
+		}
+	}
+}
+
+func TestNameSub(t *testing.T) {
+	unames := uname.New()
+	for _, name := range []string{"a5_2", "a5_3", "a5_3x1"} {
+		unames.Register(name)
+	}
+	a := unames.Root("a")
+	var name uname.Name
+	for range 6 {
+		name = a.Next()
+	}
+	root := name.Sub()
+	for i, want := range []string{"a5_0", "a5_1", "a5_2x1", "a5_3x2"} {
+		got := root.Next().String()
+		if got != want {
+			t.Errorf("index %d: got %s but want %s", i, got, want)
+		}
+	}
+
 }

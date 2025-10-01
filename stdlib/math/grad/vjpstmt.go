@@ -119,7 +119,7 @@ func (sg *stmtVJP) returnStmt(src *ir.ReturnStmt) bool {
 	ret := &ast.ReturnStmt{Results: make([]ast.Expr, len(src.Results))}
 	for i, expr := range src.Results {
 		var ok bool
-		ret.Results[i], ok = forwarder.forward(expr)
+		ret.Results[i], ok = forwarder.forwardSingle(expr)
 		if !ok {
 			return false
 		}

@@ -28,26 +28,17 @@ import (
 	"github.com/gx-org/gx/interp"
 )
 
-type forwardValues struct {
-	forwards []string
-	vjp      string
-}
-
-func (fv forwardValues) add(name string) forwardValues {
-	return forwardValues{
-		forwards: append(fv.forwards, name),
-		vjp:      fv.vjp,
-	}
-}
-
 type vjpMacro struct {
 	cpevelements.CoreMacroElement
 	callSite    elements.CallAt
 	set         *ir.Macro
-	unames      *uname.Unique
 	aux         *ordered.Map[string, *cpevelements.SyntheticFuncDecl]
 	exprToName  map[ir.Expr]forwardValues
 	resultNames []string
+
+	unames  *uname.Unique
+	fwdRoot *uname.Root
+	bckRoot *uname.Root
 
 	fn       ir.PkgFunc
 	wrt      withRespectTo
@@ -74,11 +65,14 @@ func VJP(call elements.CallAt, macro *cpevelements.Macro, args []ir.Element) (cp
 	if err != nil {
 		return nil, err
 	}
+	unames := uname.New()
 	return vjpMacro{
 		CoreMacroElement: macro.Element(call),
-		unames:           uname.New(),
+		unames:           unames,
 		callSite:         call,
 		set:              setMacro(macro),
+		fwdRoot:          unames.Root("fwd"),
+		bckRoot:          unames.Root("bck"),
 	}.newMacro(fnT, wrtF), nil
 }
 
