@@ -46,7 +46,7 @@ func (f *function) Call(env *fun.CallEnv, call *ir.CallExpr, args []ir.Element) 
 	if isKeyword || fType != nil && fType.CompEval { // Some builtin functions have no type at the moment.
 		return interp.NewRunFunc(f.fn, f.recv).Call(env, call, args)
 	}
-	res := call.Callee.T.Results.Fields()
+	res := call.Callee.FuncType().Results.Fields()
 	els := make([]ir.Element, len(res))
 	for i, ri := range res {
 		var err error

@@ -69,10 +69,3 @@ func (m *updateReturn) body() *ast.BlockStmt {
 func (m *updateReturn) BuildBody(fetcher ir.Fetcher, _ ir.Func) (*ast.BlockStmt, []*cpevelements.SyntheticFuncDecl, bool) {
 	return m.body(), nil, true
 }
-
-func (m *updateReturn) BuildFuncLit(fetcher ir.Fetcher) (*ast.FuncLit, bool) {
-	return &ast.FuncLit{
-		Type: m.fn.FType.Src,
-		Body: m.body(),
-	}, true
-}

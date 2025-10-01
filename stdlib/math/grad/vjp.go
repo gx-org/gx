@@ -192,15 +192,3 @@ func (m *vjpMacro) BuildBody(fetcher ir.Fetcher, _ ir.Func) (*ast.BlockStmt, []*
 	}
 	return body, slices.Collect(m.aux.Values()), true
 }
-
-func (m *vjpMacro) BuildFuncLit(fetcher ir.Fetcher) (*ast.FuncLit, bool) {
-	m.start()
-	body, _, ok := m.BuildBody(fetcher, nil)
-	if !ok {
-		return nil, false
-	}
-	return &ast.FuncLit{
-		Type: m.buildType(),
-		Body: body,
-	}, true
-}

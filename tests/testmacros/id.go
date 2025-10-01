@@ -45,10 +45,3 @@ func (m *id) BuildDecl(ir.PkgFunc) (*ast.FuncDecl, bool) {
 func (m *id) BuildBody(fetcher ir.Fetcher, _ ir.Func) (*ast.BlockStmt, []*cpevelements.SyntheticFuncDecl, bool) {
 	return m.fn.Body.Src, nil, true
 }
-
-func (m *id) BuildFuncLit(fetcher ir.Fetcher) (*ast.FuncLit, bool) {
-	return &ast.FuncLit{
-		Type: m.fn.FType.Src,
-		Body: m.fn.Body.Src,
-	}, true
-}
