@@ -199,7 +199,7 @@ func F(x [2]float32) [2]float32 {
 `,
 			Want: `
 func gradF(x [2]float32) [2]float32 {
-	return -1*(x+x)/((x*x)*(x*x))
+	return -(1*(x+x))/((x*x)*(x*x))
 }
 `,
 		},

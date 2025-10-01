@@ -15,41 +15,20 @@
 package builder
 
 import (
-	"errors"
 	"fmt"
 	"go/ast"
 	"go/format"
+	"go/parser"
 	"go/token"
 	"io"
 	"runtime/debug"
 	"strings"
 
+	"github.com/pkg/errors"
 	gxfmt "github.com/gx-org/gx/base/fmt"
 	"github.com/gx-org/gx/build/ir"
 	"github.com/gx-org/gx/internal/interp/compeval/cpevelements"
 )
-
-func buildIRBody(mScope *synthResolveScope, extF ir.Func, compEval *compileEvaluator, body *ast.BlockStmt) (ok bool) {
-	defer func() {
-		if !ok {
-			mScope.Err().Append(mScope.errorFor(body))
-		}
-	}()
-	fScope := mScope.fileScope()
-	pkgPScope := fScope.pkgResolveScope.pkgProcScope
-	pScope := pkgPScope.newScope(fScope.bFile())
-	bBody, ok := processBlockStmt(pScope, body)
-	if !ok {
-		return false
-	}
-	irBlock, ok := bBody.buildBlockStmt(mScope.iFuncResolveScope)
-	if !ok {
-		return false
-	}
-	ext := extF.(*ir.FuncDecl)
-	ext.Body = irBlock
-	return ok
-}
 
 type coreSyntheticFunc struct {
 	bFile *file
@@ -106,9 +85,20 @@ func formatBody(fType *ir.FuncType, body *ast.BlockStmt, w *strings.Builder) (er
 			err = errors.New(string(debug.Stack()))
 		}
 	}()
-	w.WriteString(fType.String() + " ")
 	fset := token.NewFileSet()
-	return format.Node(w, fset, body)
+	err = format.Node(w, fset, &ast.FuncDecl{
+		Type: fType.Src,
+		Name: &ast.Ident{Name: "_"},
+		Body: body,
+	})
+	if err == nil { // No error: we are done here.
+		return
+	}
+	fmtMsg := fmt.Sprintf("Formatted:\n%s\nError:\n%v", w.String(), err)
+	astW := &strings.Builder{}
+	errAST := astVisitBody(body, astW)
+	astMsg := fmt.Sprintf("%s\nVisited:\n%s\nError:\n%v", fmtMsg, astW.String(), errAST)
+	return fmt.Errorf("cannot format synthetic body:\n%s", astMsg)
 }
 
 func astVisitBody(body *ast.BlockStmt, w io.Writer) (err error) {
@@ -121,18 +111,26 @@ func astVisitBody(body *ast.BlockStmt, w io.Writer) (err error) {
 	return ast.Fprint(w, fset, body, nil)
 }
 
-func (m *synthResolveScope) errorFor(body *ast.BlockStmt) error {
-	const coreError = "cannot generate IR from synthetic function body:\n%s"
-	fmtW := &strings.Builder{}
-	errFmt := formatBody(m.funcType(), body, fmtW)
-	if errFmt == nil {
-		return fmt.Errorf(coreError, gxfmt.Number(fmtW.String()))
+func buildIRBody(mScope *synthResolveScope, extF ir.Func, compEval *compileEvaluator, src string, body *ast.BlockStmt) (ok bool) {
+	defer func() {
+		if !ok {
+			mScope.Err().Append(errors.Errorf("cannot compile synthetic body from source:\n%s", gxfmt.Number(src)))
+		}
+	}()
+	fScope := mScope.fileScope()
+	pkgPScope := fScope.pkgResolveScope.pkgProcScope
+	pScope := pkgPScope.newScope(fScope.bFile())
+	bBody, ok := processBlockStmt(pScope, body)
+	if !ok {
+		return false
 	}
-	fmtMsg := fmt.Sprintf("Formatted:\n%s\nError:\n%v", fmtW.String(), errFmt)
-	astW := &strings.Builder{}
-	errAST := astVisitBody(body, astW)
-	astMsg := fmt.Sprintf("%s\nVisited:\n%s\nError:\n%v", fmtMsg, astW.String(), errAST)
-	return fmt.Errorf(coreError, astMsg)
+	irBlock, ok := bBody.buildBlockStmt(mScope.iFuncResolveScope)
+	if !ok {
+		return false
+	}
+	ext := extF.(*ir.FuncDecl)
+	ext.Body = irBlock
+	return ok
 }
 
 func (m *synthResolveScope) buildBody(fn *irFunc, compEval *compileEvaluator) ([]*irFunc, bool) {
@@ -150,8 +148,21 @@ func (m *synthResolveScope) buildBody(fn *irFunc, compEval *compileEvaluator) ([
 	if !ok {
 		return nil, false
 	}
+	// Format the body to build line numbers.
+	src := &strings.Builder{}
+	src.WriteString("package _\n")
+	err := formatBody(m.funcType(), astBody, src)
+	if err != nil {
+		return nil, m.Err().Append(err)
+	}
+	fs := token.NewFileSet()
+	astFile, err := parser.ParseFile(fs, "", src.String(), parser.ParseComments)
+	if err != nil {
+		return nil, m.Err().Append(errors.Errorf("cannot parse formatted file: %v\nSource:\n%s", err, src.String()))
+	}
+	astBody = astFile.Decls[0].(*ast.FuncDecl).Body
 	// Build the IR representation of the function body.
-	return irAuxs, buildIRBody(m, fn.irFunc, compEval, astBody)
+	return irAuxs, buildIRBody(m, fn.irFunc, compEval, src.String(), astBody)
 }
 
 type syntheticFunc struct {
