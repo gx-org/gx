@@ -332,7 +332,7 @@ func (n *assignCallStmt) buildStmt(rscope iFuncResolveScope) (ir.Stmt, bool) {
 		return ext, false
 	}
 	lenTargets := len(n.targets)
-	funType := ext.Call.Callee.T
+	funType := ext.Call.Callee.FuncType()
 	lenCallResults := funType.Results.Len()
 	if lenTargets != funType.Results.Len() {
 		return ext, rscope.Err().Appendf(n.source(), "assignment mismatch: %d variable(s) but %s returns %d values", lenTargets, ext.Call.String(), lenCallResults)

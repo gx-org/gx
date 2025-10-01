@@ -600,6 +600,23 @@ func evalAtom[T dtype.GoDataType](fitp *FileScope, expr ir.Expr) (val T, err err
 	return elements.ConstantScalarFromElement[T](el)
 }
 
+func evalCallee(fitp *FileScope, callee ir.Callee) (fun.Func, error) {
+	switch calleeT := callee.(type) {
+	case *ir.FuncValExpr:
+		fnNode, err := fitp.EvalExpr(calleeT.X)
+		if err != nil {
+			return nil, err
+		}
+		fn, ok := fnNode.(fun.Func)
+		if !ok {
+			return nil, fmterr.Errorf(fitp.File().FileSet(), callee.Source(), "%T is not callable", fnNode)
+		}
+		return fn, nil
+	default:
+		return nil, errors.Errorf("callee type %T not supported", callee)
+	}
+}
+
 func evalCallExpr(fitp *FileScope, expr *ir.CallExpr) (ir.Element, error) {
 	outs, err := evalCall(fitp, expr)
 	if err != nil {
@@ -609,16 +626,10 @@ func evalCallExpr(fitp *FileScope, expr *ir.CallExpr) (ir.Element, error) {
 }
 
 func evalCall(fitp *FileScope, expr *ir.CallExpr) ([]ir.Element, error) {
-	// Fetch the function and check that it is callable.
-	fnNode, err := fitp.EvalExpr(expr.Callee.X)
+	callee, err := evalCallee(fitp, expr.Callee)
 	if err != nil {
 		return nil, err
 	}
-	fn, ok := fnNode.(fun.Func)
-	if !ok {
-		return nil, fmterr.Errorf(fitp.File().FileSet(), expr.Source(), "%T is not callable", fnNode)
-	}
-
 	// Evaluate the arguments to pass to the function.
 	args := make([]ir.Element, len(expr.Args))
 	for i, arg := range expr.Args {
@@ -628,7 +639,7 @@ func evalCall(fitp *FileScope, expr *ir.CallExpr) ([]ir.Element, error) {
 		}
 		args[i] = el
 	}
-	return fn.Call(fitp.env, expr, args)
+	return callee.Call(fitp.env, expr, args)
 }
 
 func set(fitp *FileScope, tok token.Token, dest ir.Storage, value ir.Element) error {

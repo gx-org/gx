@@ -2599,11 +2599,19 @@ type (
 		T *FuncType
 	}
 
+	// Callee function being called from a call expression.
+	Callee interface {
+		SourceNode
+		Func() Func
+		FuncType() *FuncType
+		ShortString() string
+	}
+
 	// CallExpr is an expression calling a function.
 	CallExpr struct {
 		Src    *ast.CallExpr
 		Args   []AssignableExpr
-		Callee *FuncValExpr
+		Callee Callee
 	}
 
 	// CallResultExpr represents the ith result of a function call as an expression.
@@ -2739,6 +2747,7 @@ var (
 	_ Expr             = (*Tuple)(nil)
 
 	_ AssignableExpr = (*FuncValExpr)(nil)
+	_ Callee         = (*FuncValExpr)(nil)
 	_ AssignableExpr = (*TypeValExpr)(nil) // Use AssignableExpr to store a type in a field (in function type params).
 	_ WithStore      = (*TypeValExpr)(nil)
 )
@@ -2972,6 +2981,17 @@ func (s *FuncValExpr) Source() ast.Node {
 	return s.F.Source()
 }
 
+// Func returns the function being called.
+func (s *FuncValExpr) Func() Func {
+	return s.F
+}
+
+// FuncType returns type of the function being.
+// If the function is generic, the type is specialised.
+func (s *FuncValExpr) FuncType() *FuncType {
+	return s.T
+}
+
 // Type of the function being called.
 func (s *FuncValExpr) Type() Type {
 	return s.T
@@ -2994,10 +3014,10 @@ func (s *CallExpr) Source() ast.Node { return s.Src }
 // Type returns the type returned by the function call.
 // Use CallExpr.Func.Type to get the type of the function being called.
 func (s *CallExpr) Type() Type {
-	if s.Callee.T == nil {
+	if s.Callee == nil {
 		return InvalidType()
 	}
-	return s.Callee.T.Results.Type()
+	return s.Callee.FuncType().Results.Type()
 }
 
 // Expr returns the expression in the source code.
@@ -3020,7 +3040,7 @@ func (s *CallResultExpr) Source() ast.Node { return s.Call.Source() }
 // Type returns the type returned by the function call.
 // Use CallExpr.Func.Type to get the type of the function being called.
 func (s *CallResultExpr) Type() Type {
-	return s.Call.Callee.T.Results.Fields()[s.Index].Type()
+	return s.Call.Callee.FuncType().Results.Fields()[s.Index].Type()
 }
 
 // Expr returns the expression in the source code.

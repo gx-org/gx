@@ -113,7 +113,7 @@ func (m gradMacro) clone() *gradMacro {
 
 func (m *gradMacro) syntheticFuncName(fetcher ir.Fetcher, fn ir.Func) (string, bool) {
 	callee := m.callSite.Node().Callee
-	macro := callee.F.(*ir.Macro)
+	macro := callee.Func().(*ir.Macro)
 	funcName := macro.Name()
 	macroPackage := macro.File().Package
 	imp := m.callSite.File().FindImport(macroPackage.FullName())
@@ -194,9 +194,9 @@ func (m *gradMacro) gradIdent(src *ast.Ident) *ast.Ident {
 
 func syntheticFuncName(fetcher ir.Fetcher, callSite elements.CallAt, fn ir.Func, wrt withRespectTo) (string, bool) {
 	callee := callSite.Node().Callee
-	macro := callee.F.(*ir.Macro)
+	macro := callee.Func().(*ir.Macro)
 	funcName := macro.Name()
-	macroPackage := callee.F.(*ir.Macro).File().Package
+	macroPackage := macro.File().Package
 	imp := callSite.File().FindImport(macroPackage.FullName())
 	if imp == nil {
 		return "", fetcher.Err().AppendInternalf(callee.Source(), "cannot find import name %s", macroPackage.FullName())

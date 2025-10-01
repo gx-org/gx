@@ -132,7 +132,11 @@ func (m *exprForwardVJP) callExpr(expr *ir.CallExpr) (*ast.Ident, bool) {
 			return nil, false
 		}
 	}
-	fnName, buildVJPCall, ok := m.macro.vjpFunc(m.fetcher, expr.Callee, m.macro.wrt.name())
+	calleeT, ok := expr.Callee.(*ir.FuncValExpr)
+	if !ok {
+		return nil, m.fetcher.Err().AppendInternalf(expr.Source(), "callee type %T not supported", expr.Callee)
+	}
+	fnName, buildVJPCall, ok := m.macro.vjpFunc(m.fetcher, calleeT, m.macro.wrt.name())
 	if !ok {
 		return nil, false
 	}
