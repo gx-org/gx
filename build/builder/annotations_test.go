@@ -18,6 +18,7 @@ import (
 	"fmt"
 	"go/ast"
 	"go/token"
+	"strconv"
 	"testing"
 
 	"github.com/gx-org/gx/build/builder/testbuild"
@@ -105,7 +106,7 @@ func (m *macroBuildReturn) BuildBody(fetcher ir.Fetcher, fn ir.Func) (*ast.Block
 		&ast.ReturnStmt{Results: []ast.Expr{
 			&ast.BasicLit{
 				Kind:  token.STRING,
-				Value: ann.s,
+				Value: strconv.Quote(ann.s),
 			},
 		}},
 	}}, nil, true
@@ -255,7 +256,7 @@ func f() int32
 						irh.Fields(ir.StringType()),
 					),
 					Body: irh.SingleReturn(&ir.StringLiteral{
-						Src: &ast.BasicLit{Value: "Source"},
+						Src: &ast.BasicLit{Value: strconv.Quote("Source")},
 					}),
 				},
 			},
