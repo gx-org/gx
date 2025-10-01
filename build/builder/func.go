@@ -504,15 +504,15 @@ func checkArgsForCall(rscope resolveScope, fExpr *ir.FuncValExpr, args []ir.Assi
 	return ok
 }
 
-func buildFuncForCall(rscope resolveScope, fExpr *ir.FuncValExpr, args []ir.AssignableExpr) (*ir.FuncValExpr, []ir.AssignableExpr, bool) {
+func buildFuncForCall(rscope resolveScope, fExpr *ir.FuncValExpr, args []ir.AssignableExpr) ([]ir.AssignableExpr, *ir.FuncValExpr, bool) {
 	compEval, compEvalOk := rscope.compEval()
 	if !compEvalOk {
-		return fExpr, args, false
+		return args, fExpr, false
 	}
 	var ok bool
 	fExpr, ok = generics.Infer(compEval, fExpr, args)
 	if !ok {
-		return fExpr, args, false
+		return args, fExpr, false
 	}
 	typeParams := fExpr.T.TypeParams.Fields()
 	if len(typeParams) > 0 {
@@ -524,21 +524,21 @@ func buildFuncForCall(rscope resolveScope, fExpr *ir.FuncValExpr, args []ir.Assi
 		if len(names) > 1 {
 			parameter = "parameters"
 		}
-		return fExpr, args, rscope.Err().Appendf(fExpr.X.Source(), "cannot infer type %s %s", parameter, strings.Join(names, ","))
+		return args, fExpr, rscope.Err().Appendf(fExpr.X.Source(), "cannot infer type %s %s", parameter, strings.Join(names, ","))
 	}
 	if args, ok = convertArgNumbers(rscope, fExpr.T, args); !ok {
-		return fExpr, args, false
+		return args, fExpr, false
 	}
 	argsVals, ok := assignArgValueToParamName(rscope, compEval, fExpr, args)
 	if !ok {
-		return fExpr, args, false
+		return args, fExpr, false
 	}
 	ce, ok := compEval.sub(fExpr.Source(), argsVals)
 	if !ok {
-		return fExpr, args, false
+		return args, fExpr, false
 	}
 	fExpr, ok = generics.Instantiate(ce, fExpr)
-	return fExpr, args, ok && checkArgsForCall(rscope, fExpr, args)
+	return args, fExpr, ok && checkArgsForCall(rscope, fExpr, args)
 }
 
 func funcDeclarator(fn ir.PkgFunc) irb.Declarator {

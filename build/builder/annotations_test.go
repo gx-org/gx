@@ -112,21 +112,6 @@ func (m *macroBuildReturn) BuildBody(fetcher ir.Fetcher, fn ir.Func) (*ast.Block
 	}}, nil, true
 }
 
-func (m *macroBuildReturn) BuildFuncLit(fetcher ir.Fetcher) (*ast.FuncLit, bool) {
-	body, _, ok := m.BuildBody(fetcher, nil)
-	if !ok {
-		return nil, false
-	}
-	return &ast.FuncLit{
-		Type: &ast.FuncType{Results: &ast.FieldList{List: []*ast.Field{
-			&ast.Field{
-				Type: &ast.Ident{Name: "string"},
-			},
-		}}},
-		Body: body,
-	}, true
-}
-
 func annotationPackage(tag, buildReturn **ir.Macro) testbuild.DeclarePackage {
 	if tag == nil {
 		var tagM, buildReturnM *ir.Macro

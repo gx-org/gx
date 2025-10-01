@@ -181,10 +181,6 @@ func (m *gradMacro) BuildBody(fetcher ir.Fetcher, fn ir.Func) (*ast.BlockStmt, [
 	return body, slices.Collect(m.aux.Values()), true
 }
 
-func (m *gradMacro) BuildFuncLit(fetcher ir.Fetcher) (*ast.FuncLit, bool) {
-	return nil, fetcher.Err().AppendInternalf(m.Source(), "not implemented")
-}
-
 func (m *gradMacro) gradIdent(src *ast.Ident) *ast.Ident {
 	return &ast.Ident{
 		NamePos: src.NamePos,
