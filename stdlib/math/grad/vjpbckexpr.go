@@ -25,11 +25,12 @@ import (
 // exprBackwardVJP decomposes expressions into elementary assignment statements.
 type exprBackwardVJP struct {
 	*stmtVJP
+	wrt   withRespectTo
 	stmts []ast.Stmt
 }
 
-func (m *stmtVJP) newExprBackwardVJP() *exprBackwardVJP {
-	return &exprBackwardVJP{stmtVJP: m}
+func (m *stmtVJP) newExprBackwardVJP(wrt withRespectTo) *exprBackwardVJP {
+	return &exprBackwardVJP{stmtVJP: m, wrt: wrt}
 }
 
 func (m *exprBackwardVJP) singleForwardValue(expr ir.Expr) (forwardValues, bool) {
@@ -117,7 +118,7 @@ func (m *exprBackwardVJP) numberCastExpr(bck *gradExprResult, expr *ir.NumberCas
 }
 
 func (m *exprBackwardVJP) gradFieldStorage(bck *gradExprResult, expr *ir.ValueRef, stor *ir.FieldStorage) (*gradExprResult, bool) {
-	if m.macro.wrt.same(stor.Field) {
+	if m.wrt.same(stor.Field) {
 		return bck, true
 	}
 	return zeroValueOf(expr.Source()), true

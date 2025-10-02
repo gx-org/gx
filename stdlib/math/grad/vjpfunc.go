@@ -16,22 +16,20 @@ package grad
 
 import (
 	"go/ast"
-	"go/token"
-	"strconv"
 
 	"github.com/gx-org/gx/build/ir"
 )
 
-func (m *vjpMacro) vjpFunc(fetcher ir.Fetcher, src *ir.FuncValExpr, wrt string) (string, *ast.CallExpr, bool) {
+func (m *vjpMacro) vjpFunc(fetcher ir.Fetcher, src *ir.FuncValExpr) (string, *ast.CallExpr, bool) {
 	switch fT := src.F.(type) {
 	case *ir.FuncDecl:
-		return vjpFuncDecl(fetcher, m, src, fT, wrt)
+		return vjpFuncDecl(fetcher, m, src, fT)
 	default:
 		return "", nil, fetcher.Err().Appendf(src.Source(), "cannot compute the gradient of function %s", fT.ShortString())
 	}
 }
 
-func (m *vjpMacro) buildCallAST(fetcher ir.Fetcher, fn ir.Func, wrt withRespectTo) (*ast.CallExpr, bool) {
+func (m *vjpMacro) buildCallAST(fetcher ir.Fetcher, fn ir.Func) (*ast.CallExpr, bool) {
 	macro := m.From().IR()
 	return &ast.CallExpr{
 		Fun: &ast.SelectorExpr{
@@ -40,22 +38,13 @@ func (m *vjpMacro) buildCallAST(fetcher ir.Fetcher, fn ir.Func, wrt withRespectT
 		},
 		Args: []ast.Expr{
 			&ast.Ident{Name: fn.ShortString()},
-			&ast.BasicLit{
-				Kind:  token.STRING,
-				Value: strconv.Quote(wrt.name()),
-			},
 		},
 	}, true
 }
 
-func vjpFuncDecl(fetcher ir.Fetcher, parent *vjpMacro, src *ir.FuncValExpr, fn *ir.FuncDecl, wrt string) (string, *ast.CallExpr, bool) {
-	// Build the call to the gradient of a function.
-	wrtF, err := findParamStorage(fetcher.File(), src, fn, wrt)
-	if err != nil {
-		return "", nil, fetcher.Err().Append(err)
-	}
-	macro := parent.newMacro(fn, wrtF)
-	vjpCall, ok := macro.buildCallAST(fetcher, fn, wrtF)
+func vjpFuncDecl(fetcher ir.Fetcher, parent *vjpMacro, src *ir.FuncValExpr, fn *ir.FuncDecl) (string, *ast.CallExpr, bool) {
+	macro := parent.newMacro(fn)
+	vjpCall, ok := macro.buildCallAST(fetcher, fn)
 	if !ok {
 		return "", nil, false
 	}

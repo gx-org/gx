@@ -92,8 +92,8 @@ func (sg *stmtVJP) processStmt(src ir.Stmt) bool {
 	}
 }
 
-func (sg *stmtVJP) buildVJPFunction(src *ir.ReturnStmt) (*ast.FuncLit, bool) {
-	backwarder := sg.newExprBackwardVJP()
+func (sg *stmtVJP) buildVJPFunctionWRT(src *ir.ReturnStmt, param vjpParam) (*ast.FuncLit, bool) {
+	backwarder := sg.newExprBackwardVJP(param.wrt)
 	ret := &ast.ReturnStmt{Results: make([]ast.Expr, len(src.Results))}
 	for i, expr := range src.Results {
 		gradExpr, ok := backwarder.backward(&gradExprResult{
@@ -108,7 +108,7 @@ func (sg *stmtVJP) buildVJPFunction(src *ir.ReturnStmt) (*ast.FuncLit, bool) {
 	body = append(body, backwarder.stmts...)
 	body = append(body, ret)
 	return &ast.FuncLit{
-		Type: sg.macro.backward,
+		Type: param.vjpFType,
 		Body: &ast.BlockStmt{List: body},
 	}, true
 }
@@ -124,19 +124,25 @@ func (sg *stmtVJP) returnStmt(src *ir.ReturnStmt) bool {
 			return false
 		}
 	}
-	// Build a backward function.
-	backward, ok := sg.buildVJPFunction(src)
-	if !ok {
-		return false
+	// Build a backward function for each function parameter.
+	names := make([]ast.Expr, len(sg.macro.params))
+	for _, param := range sg.macro.params {
+		vjpFuncLit, ok := sg.buildVJPFunctionWRT(src, param)
+		if !ok {
+			return false
+		}
+		root := "selfVJPFunc"
+		if len(names) > 1 {
+			root += "WRT" + param.wrt.name()
+		}
+		vjpFuncName := sg.macro.unames.Name(root)
+		sg.appendMainStmt(&ast.AssignStmt{
+			Tok: token.DEFINE,
+			Lhs: []ast.Expr{&ast.Ident{Name: vjpFuncName}},
+			Rhs: []ast.Expr{vjpFuncLit},
+		})
+		ret.Results = append(ret.Results, &ast.Ident{Name: vjpFuncName})
 	}
-	selfVJPFuncName := sg.macro.unames.Name("selfVJPFunc")
-	sg.appendMainStmt(&ast.AssignStmt{
-		Tok: token.DEFINE,
-		Lhs: []ast.Expr{&ast.Ident{Name: selfVJPFuncName}},
-		Rhs: []ast.Expr{backward},
-	})
-	// Append the backward function to the return.
-	ret.Results = append(ret.Results, &ast.Ident{Name: selfVJPFuncName})
 	sg.appendMainStmt(ret)
 	return true
 }
