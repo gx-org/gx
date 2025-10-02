@@ -18,36 +18,69 @@ import (
 	"go/ast"
 	"go/token"
 
+	"github.com/gx-org/gx/base/uname"
 	"github.com/gx-org/gx/build/ir"
 )
 
 // exprBackwardVJP decomposes expressions into elementary assignment statements.
 type exprBackwardVJP struct {
 	*stmtVJP
+	wrt   withRespectTo
 	stmts []ast.Stmt
 }
 
-func (m *stmtVJP) newExprBackwardVJP() *exprBackwardVJP {
-	return &exprBackwardVJP{stmtVJP: m}
+func (m *stmtVJP) newExprBackwardVJP(wrt withRespectTo) *exprBackwardVJP {
+	return &exprBackwardVJP{stmtVJP: m, wrt: wrt}
+}
+
+func (m *exprBackwardVJP) singleForwardValue(expr ir.Expr) (forwardValues, bool) {
+	fv, ok := m.macro.exprToName[expr]
+	if !ok {
+		return nil, m.fetcher.Err().AppendInternalf(expr.Source(), "forward expression %T:%s has no name", expr, expr.String())
+	}
+	if fv.numVars() != 1 {
+		return nil, m.fetcher.Err().AppendInternalf(expr.Source(), "forward expression %T:%s has multiple names in a single value context", expr, expr.String())
+	}
+	return fv, true
+}
+
+func (m *exprBackwardVJP) singleForwardName(expr ir.Expr) (_ uname.Name, ok bool) {
+	fv, ok := m.singleForwardValue(expr)
+	if !ok {
+		return
+	}
+	alloc, ok := fv.(*allocForwardValues)
+	if !ok {
+		m.fetcher.Err().AppendInternalf(expr.Source(), "forward expression %T:%s has no allocated name", expr, expr.String())
+		return
+	}
+	return alloc.forwards[0], true
+}
+
+func (m *exprBackwardVJP) singleForwardIdent(expr ir.Expr) (ast.Expr, bool) {
+	fv, ok := m.singleForwardValue(expr)
+	if !ok {
+		return nil, false
+	}
+	return fv.idents()[0], true
 }
 
 func (m *exprBackwardVJP) appendVJPStmt(stmt ast.Stmt) {
 	m.stmts = append(m.stmts, stmt)
 }
 
-func (m *exprBackwardVJP) nextBackwardName() *ast.Ident {
-	name := m.macro.unames.NameNumbered("bck")
-	return &ast.Ident{Name: name}
-}
-
-func (m *exprBackwardVJP) assign(expr *gradExprResult) *gradExprResult {
-	name := m.nextBackwardName()
+func (m *exprBackwardVJP) assign(fwdExpr ir.Expr, expr *gradExprResult) (*gradExprResult, bool) {
+	name, ok := m.singleForwardName(fwdExpr)
+	if !ok {
+		return nil, false
+	}
+	idName := &ast.Ident{Name: name.NameFor(m.macro.bckRoot).String()}
 	m.appendVJPStmt(&ast.AssignStmt{
 		Tok: token.DEFINE,
-		Lhs: []ast.Expr{name},
+		Lhs: []ast.Expr{idName},
 		Rhs: []ast.Expr{expr.expr},
 	})
-	return &gradExprResult{expr: name}
+	return &gradExprResult{expr: idName}, true
 }
 
 func (m *exprBackwardVJP) backward(bck *gradExprResult, expr ir.Expr) (vjp *gradExprResult, ok bool) {
@@ -85,7 +118,7 @@ func (m *exprBackwardVJP) numberCastExpr(bck *gradExprResult, expr *ir.NumberCas
 }
 
 func (m *exprBackwardVJP) gradFieldStorage(bck *gradExprResult, expr *ir.ValueRef, stor *ir.FieldStorage) (*gradExprResult, bool) {
-	if m.macro.wrt.same(stor.Field) {
+	if m.wrt.same(stor.Field) {
 		return bck, true
 	}
 	return zeroValueOf(expr.Source()), true
@@ -107,16 +140,22 @@ func (m *exprBackwardVJP) callExpr(bck *gradExprResult, expr *ir.CallExpr) (*gra
 	// the forward of its argument.
 	args := make([]ast.Expr, len(expr.Args))
 	for i, arg := range expr.Args {
-		fwdVals := m.macro.exprToName[arg]
-		args[i] = &ast.Ident{Name: fwdVals.forwards[0]}
+		var ok bool
+		args[i], ok = m.singleForwardIdent(arg)
+		if !ok {
+			return nil, false
+		}
 	}
 	// Compute the derivative of its arguments.
-	forwardValues := m.macro.exprToName[expr]
+	forwardValues := m.macro.exprToName[expr].(*allocForwardValues)
 	selfCall := &ast.CallExpr{
 		Fun:  &ast.Ident{Name: forwardValues.vjp},
 		Args: args,
 	}
-	bckIdent := m.assign(buildMul(bck, &gradExprResult{expr: selfCall}))
+	bckIdent, ok := m.assign(expr, buildMul(bck, &gradExprResult{expr: selfCall}))
+	if !ok {
+		return nil, false
+	}
 	argBackwardIdents := make([]*gradExprResult, len(expr.Args))
 	for i, argI := range expr.Args {
 		var ok bool
@@ -128,5 +167,5 @@ func (m *exprBackwardVJP) callExpr(bck *gradExprResult, expr *ir.CallExpr) (*gra
 	if len(argBackwardIdents) == 1 {
 		return argBackwardIdents[0], true
 	}
-	return m.assign(buildAdd(argBackwardIdents...)), true
+	return m.assign(expr, buildAdd(argBackwardIdents...))
 }

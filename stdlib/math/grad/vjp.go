@@ -28,31 +28,29 @@ import (
 	"github.com/gx-org/gx/interp"
 )
 
-type forwardValues struct {
-	forwards []string
-	vjp      string
-}
-
-func (fv forwardValues) add(name string) forwardValues {
-	return forwardValues{
-		forwards: append(fv.forwards, name),
-		vjp:      fv.vjp,
+type (
+	vjpParam struct {
+		field    *ir.Field
+		wrt      withRespectTo
+		vjpFType *ast.FuncType
 	}
-}
 
-type vjpMacro struct {
-	cpevelements.CoreMacroElement
-	callSite    elements.CallAt
-	set         *ir.Macro
-	unames      *uname.Unique
-	aux         *ordered.Map[string, *cpevelements.SyntheticFuncDecl]
-	exprToName  map[ir.Expr]forwardValues
-	resultNames []string
+	vjpMacro struct {
+		cpevelements.CoreMacroElement
+		callSite    elements.CallAt
+		set         *ir.Macro
+		aux         *ordered.Map[string, *cpevelements.SyntheticFuncDecl]
+		exprToName  map[ir.Expr]forwardValues
+		resultNames []string
 
-	fn       ir.PkgFunc
-	wrt      withRespectTo
-	backward *ast.FuncType
-}
+		unames  *uname.Unique
+		fwdRoot *uname.Root
+		bckRoot *uname.Root
+
+		fn     ir.PkgFunc
+		params []vjpParam
+	}
+)
 
 var _ cpevelements.FuncASTBuilder = (*vjpMacro)(nil)
 
@@ -66,32 +64,37 @@ func VJP(call elements.CallAt, macro *cpevelements.Macro, args []ir.Element) (cp
 	if !ok {
 		return nil, errors.Errorf("cannot compute the gradient of function %T", fn)
 	}
-	wrtS, err := elements.StringFromElement(args[1])
-	if err != nil {
-		return nil, err
-	}
-	wrtF, err := findParamStorage(call.File(), call.Node(), fn, wrtS)
-	if err != nil {
-		return nil, err
-	}
+	unames := uname.New()
 	return vjpMacro{
 		CoreMacroElement: macro.Element(call),
-		unames:           uname.New(),
+		unames:           unames,
 		callSite:         call,
 		set:              setMacro(macro),
-	}.newMacro(fnT, wrtF), nil
+		fwdRoot:          unames.Root("fwd"),
+		bckRoot:          unames.Root("bck"),
+	}.newMacro(fnT), nil
 }
 
-func (m vjpMacro) newMacro(fn ir.PkgFunc, wrt withRespectTo) *vjpMacro {
-	var n vjpMacro = m
-	n.fn = fn
-	n.wrt = wrt
-	return &n
+func (m vjpMacro) newMacro(fn ir.PkgFunc) *vjpMacro {
+	m.fn = fn
+	fType := m.fn.FuncType()
+	params := fType.Params.Fields()
+	m.params = make([]vjpParam, len(params))
+	var namedResultFields *ast.FieldList
+	m.resultNames, namedResultFields = m.nameResultFields(fType.Results.Src)
+	for i, param := range params {
+		wrt := newWRT(param)
+		m.params[i] = vjpParam{
+			field:    param,
+			wrt:      newWRT(param),
+			vjpFType: m.buildBackwardSignature(fType, wrt, namedResultFields),
+		}
+	}
+	return &m
 }
 
 func (m *vjpMacro) start() {
 	m.exprToName = make(map[ir.Expr]forwardValues)
-	m.backward = m.buildBackwardSignature(m.fn.FuncType())
 }
 
 func (m *vjpMacro) nameResultFields(results *ast.FieldList) ([]string, *ast.FieldList) {
@@ -122,9 +125,7 @@ func concatFieldList(lists ...*ast.FieldList) *ast.FieldList {
 	return &all
 }
 
-func (m *vjpMacro) buildBackwardSignature(fType *ir.FuncType) *ast.FuncType {
-	var namedResultFields *ast.FieldList
-	m.resultNames, namedResultFields = m.nameResultFields(fType.Results.Src)
+func (m *vjpMacro) buildBackwardSignature(fType *ir.FuncType, wrt withRespectTo, namedResultFields *ast.FieldList) *ast.FuncType {
 	return &ast.FuncType{
 		// Same as the original function.
 		TypeParams: fType.Src.TypeParams,
@@ -133,7 +134,7 @@ func (m *vjpMacro) buildBackwardSignature(fType *ir.FuncType) *ast.FuncType {
 		// Return the gradient.
 		Results: &ast.FieldList{
 			List: []*ast.Field{&ast.Field{
-				Type: m.wrt.fieldType(),
+				Type: wrt.fieldType(),
 			}},
 		},
 	}
@@ -141,7 +142,13 @@ func (m *vjpMacro) buildBackwardSignature(fType *ir.FuncType) *ast.FuncType {
 
 func (m *vjpMacro) buildType() *ast.FuncType {
 	fType := m.fn.FuncType()
-	return &ast.FuncType{
+	vjpFuncs := make([]*ast.Field, len(m.params))
+	for i, param := range m.params {
+		vjpFuncs[i] = &ast.Field{
+			Type: param.vjpFType,
+		}
+	}
+	vjpType := &ast.FuncType{
 		// Same as the original function.
 		TypeParams: fType.Src.TypeParams,
 		// Same parameters than the original function.
@@ -150,12 +157,10 @@ func (m *vjpMacro) buildType() *ast.FuncType {
 		// a backward function to compute the gradient.
 		Results: concatFieldList(
 			fType.Src.Results,
-			&ast.FieldList{
-				List: []*ast.Field{&ast.Field{
-					Type: m.backward,
-				}},
-			}),
+			&ast.FieldList{List: vjpFuncs},
+		),
 	}
+	return vjpType
 }
 
 func (m *vjpMacro) BuildDecl(ir.PkgFunc) (*ast.FuncDecl, bool) {

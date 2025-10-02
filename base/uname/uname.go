@@ -18,45 +18,135 @@ package uname
 import (
 	"fmt"
 	"go/ast"
+	"strconv"
 )
+
+type (
+	// Root generates unique numbered names given a common root.
+	Root struct {
+		unique       *Unique
+		root         string
+		alwaysSuffix bool
+
+		nextSuffix int
+	}
+
+	// Name generated from a root.
+	Name struct {
+		root         *Root
+		numberSuffix int
+		uniqueSuffix int
+	}
+)
+
+func newName(r *Root, numberSuffix int) Name {
+	n := Name{
+		root:         r,
+		numberSuffix: numberSuffix,
+	}
+	s := n.String()
+	for r.unique.has(s) {
+		n.uniqueSuffix = r.unique.nextUniqueSuffix(s)
+		s = n.String()
+	}
+	return n
+}
+
+// Sub returns a new sub-root from this name.
+func (n Name) Sub() *Root {
+	return n.root.unique.Root(n.String() + "_")
+}
+
+// NameFor returns a numbered name given a new root.
+func (n Name) NameFor(r *Root) Name {
+	return newName(r, n.numberSuffix)
+}
+
+// String representation of the name.
+func (n Name) String() string {
+	uniqueSuffix := ""
+	if n.uniqueSuffix > 0 {
+		uniqueSuffix = "x" + strconv.Itoa(n.uniqueSuffix)
+	}
+	numberSuffix := ""
+	if n.root.alwaysSuffix || n.numberSuffix > 0 {
+		numberSuffix = strconv.Itoa(n.numberSuffix)
+	}
+	return fmt.Sprintf("%s%s%s", n.root.root, numberSuffix, uniqueSuffix)
+}
+
+// Next generates the next name.
+func (r *Root) Next() Name {
+	n := newName(r, r.nextSuffix)
+	r.nextSuffix++
+	return n
+}
+
+// Root returns the root as a string.
+// Note that this may not be unique.
+func (r *Root) Root() string {
+	return r.root
+}
 
 // Unique generates unique names.
 type Unique struct {
-	names map[string]int
+	done  map[string]int
+	roots map[string]*Root
 }
 
 // New name generator.
 func New() *Unique {
-	return &Unique{names: make(map[string]int)}
-}
-
-func (n *Unique) name(root string, alwaysSuffix bool) string {
-	nextIndex, ok := n.names[root]
-	if !ok && !alwaysSuffix {
-		n.names[root] = 1
-		return root
+	return &Unique{
+		done:  make(map[string]int),
+		roots: make(map[string]*Root),
 	}
-	name := fmt.Sprintf("%s%d", root, nextIndex)
-	n.names[root] = nextIndex + 1
-	return name
 }
 
-// Name returns a unique name given a desired base name.
-// If the base name is available, it is returned directly. Else, a unique suffix is appended.
+func (n *Unique) newRoot(root string, alwaysSuffix bool) *Root {
+	r := &Root{
+		unique:       n,
+		root:         root,
+		alwaysSuffix: alwaysSuffix,
+		nextSuffix:   0,
+	}
+	n.roots[root] = r
+	return r
+}
+
+// Register a name as not available.
+func (n *Unique) Register(name string) {
+	n.done[name] = 1
+}
+
+// Root returns a name generator for a given root.
+func (n *Unique) Root(root string) *Root {
+	return n.newRoot(root, true)
+}
+
+// Name returns a unique name given a root.
 func (n *Unique) Name(root string) string {
-	return n.name(root, false)
+	r, ok := n.roots[root]
+	if !ok {
+		r = n.newRoot(root, false)
+	}
+	return r.Next().String()
 }
 
-// NameNumbered returns a unique name given a base name,
-// always with a number suffix in the name even if the root
-// has not been queried before.
-func (n *Unique) NameNumbered(root string) string {
-	return n.name(root, true)
+func (n *Unique) has(s string) bool {
+	_, ok := n.done[s]
+	return ok
+}
+
+func (n *Unique) nextUniqueSuffix(s string) int {
+	next := n.done[s]
+	n.done[s] = next + 1
+	return next
 }
 
 // Ident returns an ident with a unique name.
 func (n *Unique) Ident(id *ast.Ident) *ast.Ident {
-	return &ast.Ident{Name: n.Name(id.Name)}
+	name := n.Name(id.Name)
+	return &ast.Ident{Name: name}
 }
 
 // Default returns a default value if a name is empty or equal to "_".

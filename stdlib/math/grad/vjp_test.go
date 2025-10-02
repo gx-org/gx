@@ -100,8 +100,8 @@ func F(x float32) float32 {
 `,
 			Want: `
 func vjpF(x float32) (float32, func(res float32) float32) {
-	fwd0, fVJP := grad.VJP(f, "x")(x)
-	fwd1, fVJP1 := grad.VJP(f, "x")(x)
+	fwd0, fVJP := grad.VJP(f)(x)
+	fwd1, fVJP1 := grad.VJP(f)(x)
 	fwd2 := fwd0+fwd1
 	selfVJPFunc := func(res float32) float32 {
 		bck0 := res*fVJP(x)
@@ -128,8 +128,8 @@ func F(x float32) float32 {
 `,
 			Want: `
 func vjpF(x float32) (float32, func(res float32) float32) {
-	fwd0, fVJP := grad.VJP(f, "x")(x)
-	fwd1, gVJP := grad.VJP(g, "x")(x)
+	fwd0, fVJP := grad.VJP(f)(x)
+	fwd1, gVJP := grad.VJP(g)(x)
 	fwd2 := fwd0+fwd1
 	selfVJPFunc := func(res float32) float32 {
 		bck0 := res*fVJP(x)
@@ -158,7 +158,7 @@ func F(x float32) float32 {
 `,
 			Want: `
 func vjpF(x float32) (float32, func(res float32) float32) {
-	fwd0, fVJP := grad.VJP(f, "x")(x)
+	fwd0, fVJP := grad.VJP(f)(x)
 	selfVJPFunc := func(res float32) float32 {
 		bck0 := res*fVJP(x)
 		return bck0
@@ -183,12 +183,12 @@ func F(x float32) float32 {
 `,
 			Want: `
 func vjpF(x float32) (float32, func(res float32) float32) {
-	fwd0, gVJP := grad.VJP(g, "x")(x)
-	fwd1, fVJP := grad.VJP(f, "x")(fwd0)
+	fwd0, gVJP := grad.VJP(g)(x)
+	fwd1, fVJP := grad.VJP(f)(fwd0)
 	selfVJPFunc := func(res float32) float32 {
-		bck0 := res*fVJP(fwd0)
-		bck1 := bck0*gVJP(x)
-		return bck1
+		bck1 := res*fVJP(fwd0)
+		bck0 := bck1*gVJP(x)
+		return bck0
 	}
 	return fwd1, selfVJPFunc
 }
@@ -222,18 +222,18 @@ func F(x float32) float32 {
 `,
 			Want: `
 func vjpF(x float32) (float32, func(res float32) float32) {
-	fwd0, f0VJP := grad.VJP(f0, "x")(x)
-	fwd1, f1VJP := grad.VJP(f1, "x")(fwd0)
-	fwd2, f2VJP := grad.VJP(f2, "x")(fwd1)
-	fwd3, f3VJP := grad.VJP(f3, "x")(fwd2)
-	fwd4, f4VJP := grad.VJP(f4, "x")(fwd3)
+	fwd0, f0VJP := grad.VJP(f0)(x)
+	fwd1, f1VJP := grad.VJP(f1)(fwd0)
+	fwd2, f2VJP := grad.VJP(f2)(fwd1)
+	fwd3, f3VJP := grad.VJP(f3)(fwd2)
+	fwd4, f4VJP := grad.VJP(f4)(fwd3)
 	selfVJPFunc := func(res float32) float32 {
-		bck0 := res*f4VJP(fwd3)
-		bck1 := bck0*f3VJP(fwd2)
-		bck2 := bck1*f2VJP(fwd1)
-		bck3 := bck2*f1VJP(fwd0)
-		bck4 := bck3*f0VJP(x)
-		return bck4
+		bck4 := res*f4VJP(fwd3)
+		bck3 := bck4*f3VJP(fwd2)
+		bck2 := bck3*f2VJP(fwd1)
+		bck1 := bck2*f1VJP(fwd0)
+		bck0 := bck1*f0VJP(x)
+		return bck0
 	}
 	return fwd4, selfVJPFunc
 }

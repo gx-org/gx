@@ -27,9 +27,6 @@ type VJP struct {
 	// Src declares the function (which must be named `F`) to compute the VJP of.
 	Src string
 
-	// WRT defines the variables to compute the VJP w.r.t.
-	WRT string
-
 	// GradOf lists all the functions for which we compute the VJP of.
 	// If GradOf is empty, we compute the VJP of F.
 	GradOf []string
@@ -60,17 +57,14 @@ func (tt VJP) buildSourceCode() string {
 		declImportName = tt.GradImportName
 		callImportName = tt.GradImportName
 	}
-	if tt.WRT == "" {
-		tt.WRT = "x"
-	}
 	grads := &strings.Builder{}
 	for _, fnName := range tt.GradOf {
 		fmt.Fprintf(grads,
 			`
-//gx:=%s.VJP(%s, "%s")
+//gx:=%s.VJP(%s)
 func vjp%s()
 `,
-			callImportName, fnName, tt.WRT, fnName)
+			callImportName, fnName, fnName)
 	}
 	return fmt.Sprintf(`
 package test
