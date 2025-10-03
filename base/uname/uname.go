@@ -53,8 +53,8 @@ func newName(r *Root, numberSuffix int) Name {
 }
 
 // Sub returns a new sub-root from this name.
-func (n Name) Sub() *Root {
-	return n.root.unique.Root(n.String() + "_")
+func (n Name) Sub(suffix string) *Root {
+	return n.root.unique.Root(n.String() + suffix)
 }
 
 // NameFor returns a numbered name given a new root.
@@ -66,7 +66,7 @@ func (n Name) NameFor(r *Root) Name {
 func (n Name) String() string {
 	uniqueSuffix := ""
 	if n.uniqueSuffix > 0 {
-		uniqueSuffix = "x" + strconv.Itoa(n.uniqueSuffix)
+		uniqueSuffix = "_" + strconv.Itoa(n.uniqueSuffix)
 	}
 	numberSuffix := ""
 	if n.root.alwaysSuffix || n.numberSuffix > 0 {

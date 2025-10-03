@@ -64,7 +64,7 @@ func TestName(t *testing.T) {
 
 func TestRoot(t *testing.T) {
 	unames := uname.New()
-	for _, name := range []string{"b0", "c1", "c1x1"} {
+	for _, name := range []string{"b0", "c1", "c1_1"} {
 		unames.Register(name)
 	}
 	a := unames.Root("a")
@@ -84,7 +84,7 @@ func TestRoot(t *testing.T) {
 		},
 		{
 			root: b,
-			want: "b0x1",
+			want: "b0_1",
 		},
 		{
 			root: c,
@@ -92,7 +92,7 @@ func TestRoot(t *testing.T) {
 		},
 		{
 			root: c,
-			want: "c1x2",
+			want: "c1_2",
 		},
 	}
 	for i, test := range tests {
@@ -105,7 +105,7 @@ func TestRoot(t *testing.T) {
 
 func TestNameFor(t *testing.T) {
 	unames := uname.New()
-	for _, name := range []string{"b1", "b2", "b2x1"} {
+	for _, name := range []string{"b1", "b2", "b2_1"} {
 		unames.Register(name)
 	}
 	a := unames.Root("a")
@@ -114,7 +114,7 @@ func TestNameFor(t *testing.T) {
 		names[i] = a.Next()
 	}
 	b := unames.Root("b")
-	for i, want := range []string{"b0", "b1x1", "b2x2"} {
+	for i, want := range []string{"b0", "b1_1", "b2_2"} {
 		got := names[i].NameFor(b).String()
 		if got != want {
 			t.Errorf("index %d: got %s but want %s", i, got, want)
@@ -124,7 +124,7 @@ func TestNameFor(t *testing.T) {
 
 func TestNameSub(t *testing.T) {
 	unames := uname.New()
-	for _, name := range []string{"a5_2", "a5_3", "a5_3x1"} {
+	for _, name := range []string{"a5X2", "a5X3", "a5X3_1"} {
 		unames.Register(name)
 	}
 	a := unames.Root("a")
@@ -132,8 +132,8 @@ func TestNameSub(t *testing.T) {
 	for range 6 {
 		name = a.Next()
 	}
-	root := name.Sub()
-	for i, want := range []string{"a5_0", "a5_1", "a5_2x1", "a5_3x2"} {
+	root := name.Sub("X")
+	for i, want := range []string{"a5X0", "a5X1", "a5X2_1", "a5X3_2"} {
 		got := root.Next().String()
 		if got != want {
 			t.Errorf("index %d: got %s but want %s", i, got, want)
