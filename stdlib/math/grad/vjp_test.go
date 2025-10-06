@@ -88,6 +88,33 @@ func vjpF(x float32) (float32, func(res float32) float32) {
 }
 `,
 		},
+	)
+}
+
+func TestVJPFunctions(t *testing.T) {
+	testbuild.Run(t,
+		declareGradPackage,
+		testgrad.VJP{
+			Src: `
+func f(x float32) float32 {
+	return x
+}
+
+func F(x float32) float32 {
+	return f(x)
+}
+`,
+			Want: `
+func vjpF(x float32) (float32, func(res float32) float32) {
+	fwd0, fVJP := grad.VJP(f)(x)
+	selfVJPFunc := func(res float32) float32 {
+		bck0 := res*fVJP(x)
+		return bck0
+	}
+	return fwd0, selfVJPFunc
+}
+`,
+		},
 		testgrad.VJP{
 			Src: `
 func f(x float32) float32 {
@@ -137,33 +164,6 @@ func vjpF(x float32) (float32, func(res float32) float32) {
 		return bck0+bck1
 	}
 	return fwd2, selfVJPFunc
-}
-`,
-		},
-	)
-}
-
-func TestVJPFunctions(t *testing.T) {
-	testbuild.Run(t,
-		declareGradPackage,
-		testgrad.VJP{
-			Src: `
-func f(x float32) float32 {
-	return x
-}
-
-func F(x float32) float32 {
-	return f(x)
-}
-`,
-			Want: `
-func vjpF(x float32) (float32, func(res float32) float32) {
-	fwd0, fVJP := grad.VJP(f)(x)
-	selfVJPFunc := func(res float32) float32 {
-		bck0 := res*fVJP(x)
-		return bck0
-	}
-	return fwd0, selfVJPFunc
 }
 `,
 		},
@@ -236,6 +236,87 @@ func vjpF(x float32) (float32, func(res float32) float32) {
 		return bck0
 	}
 	return fwd4, selfVJPFunc
+}
+`,
+		},
+	)
+}
+
+func TestVJPFunctionsFanInFanOut(t *testing.T) {
+	testbuild.Run(t,
+		declareGradPackage,
+		testgrad.VJP{
+			Src: `
+func F(x, y float32) float32 {
+	return x+y
+}
+`,
+			Want: `
+func vjpF(x, y float32) (float32, func(res float32) float32, func(res float32) float32) {
+	fwd0 := x+y
+	selfVJPFuncWRTx := func(res float32) float32 {
+		return res
+	}
+	selfVJPFuncWRTy := func(res float32) float32 {
+		return res
+	}
+	return fwd0, selfVJPFuncWRTx, selfVJPFuncWRTy
+}
+`,
+		},
+		testgrad.VJP{
+			Src: `
+func h(a, b float32) float32 {
+	return a+b
+}
+
+func F(x float32) float32 {
+	return h(x, x)
+}
+`,
+			Want: `
+func vjpF(x float32) (float32, func(res float32) float32) {
+	fwd0, hVJPa, hVJPb := grad.VJP(h)(x, x)
+	selfVJPFunc := func(res float32) float32 {
+		bck0a := res*hVJPa(x)
+		bck0b := res*hVJPb(x)
+		return bck0a+bck0b
+	}
+	return fwd0, selfVJPFunc
+}
+`,
+		},
+		testgrad.VJP{
+			Src: `
+func f(x float32) float32 {
+	return x
+}
+
+func g(x float32) float32 {
+	return x
+}
+
+func h(a, b float32) float32 {
+	return a+b
+}
+
+func F(x float32) float32 {
+	return h(f(x), g(x))
+}
+`,
+			Want: `
+func vjpF(x float32) (float32, func(res float32) float32) {
+	fwd0, fVJP := grad.VJP(f)(x)
+	fwd1, gVJP := grad.VJP(g)(x)
+	fwd2, hVJPa, hVJPb := grad.VJP(h)(fwd0, fwd1)
+	selfVJPFunc := func(res float32) float32 {
+		bck2a := res*hVJPa(fwd0)
+		bck2b := res*hVJPb(fwd1)
+		bck1 := bck2b*gVJP(x)
+		bck0 := bck2a*fVJP(x)
+		return bck0+bck1
+	}
+	return fwd2, selfVJPFunc
 }
 `,
 		},

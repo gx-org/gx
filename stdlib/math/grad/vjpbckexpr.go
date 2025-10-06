@@ -69,12 +69,17 @@ func (m *exprBackwardVJP) appendVJPStmt(stmt ast.Stmt) {
 	m.stmts = append(m.stmts, stmt)
 }
 
-func (m *exprBackwardVJP) assign(fwdExpr ir.Expr, expr *gradExprResult) (*gradExprResult, bool) {
-	name, ok := m.singleForwardName(fwdExpr)
+func (m *exprBackwardVJP) assign(fwdExpr ir.Expr, expr *gradExprResult, suffix string) (*gradExprResult, bool) {
+	fwdName, ok := m.singleForwardName(fwdExpr)
 	if !ok {
 		return nil, false
 	}
-	idName := &ast.Ident{Name: name.NameFor(m.macro.bckRoot).String()}
+	bckNameRoot := fwdName.NameFor(m.macro.bckRoot)
+	bckName := bckNameRoot.String()
+	if suffix != "" {
+		bckName = m.macro.unames.Name(bckName + suffix)
+	}
+	idName := &ast.Ident{Name: bckName}
 	m.appendVJPStmt(&ast.AssignStmt{
 		Tok: token.DEFINE,
 		Lhs: []ast.Expr{idName},
@@ -136,36 +141,37 @@ func (m *exprBackwardVJP) callExpr(bck *gradExprResult, expr *ir.CallExpr) (*gra
 	if len(expr.Args) == 0 {
 		return zeroValueOf(expr.Source()), true
 	}
-	// Call the derivative of the original function with the value of
-	// the forward of its argument.
-	args := make([]ast.Expr, len(expr.Args))
-	for i, arg := range expr.Args {
-		var ok bool
-		args[i], ok = m.singleForwardIdent(arg)
-		if !ok {
-			return nil, false
-		}
-	}
-	// Compute the derivative of its arguments.
 	forwardValues := m.macro.exprToName[expr].(*allocForwardValues)
-	selfCall := &ast.CallExpr{
-		Fun:  &ast.Ident{Name: forwardValues.vjp},
-		Args: args,
-	}
-	bckIdent, ok := m.assign(expr, buildMul(bck, &gradExprResult{expr: selfCall}))
-	if !ok {
-		return nil, false
-	}
-	argBackwardIdents := make([]*gradExprResult, len(expr.Args))
-	for i, argI := range expr.Args {
-		var ok bool
-		argBackwardIdents[i], ok = m.backward(bckIdent, argI)
+	calleeParams := expr.Callee.FuncType().Params.Fields()
+	backwardIdents := make([]*gradExprResult, len(calleeParams))
+	for i, param := range calleeParams {
+		fwdArgName, ok := m.singleForwardValue(expr.Args[i])
+		if !ok {
+			return nil, false
+		}
+		vjpCall := &ast.CallExpr{
+			Fun:  &ast.Ident{Name: forwardValues.vjps[i]},
+			Args: []ast.Expr{fwdArgName.idents()[0]},
+		}
+		bckSuffix := ""
+		if len(calleeParams) > 1 {
+			bckSuffix = param.Name.Name
+		}
+		backwardIdents[i], ok = m.assign(expr, buildMul(bck, &gradExprResult{expr: vjpCall}), bckSuffix)
 		if !ok {
 			return nil, false
 		}
 	}
-	if len(argBackwardIdents) == 1 {
-		return argBackwardIdents[0], true
+	argsGrad := make([]*gradExprResult, len(expr.Args))
+	for i := len(expr.Args) - 1; i >= 0; i-- {
+		var ok bool
+		argsGrad[i], ok = m.backward(backwardIdents[i], expr.Args[i])
+		if !ok {
+			return nil, false
+		}
 	}
-	return m.assign(expr, buildAdd(argBackwardIdents...))
+	if len(argsGrad) == 1 {
+		return argsGrad[0], true
+	}
+	return buildAdd(argsGrad...), true
 }
