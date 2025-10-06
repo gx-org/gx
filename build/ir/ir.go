@@ -1199,7 +1199,7 @@ type (
 		Src   *ast.FuncDecl
 		FType *FuncType
 
-		BuildSynthetic any
+		BuildSynthetic MacroImpl
 	}
 
 	// FuncLit is a function literal.

@@ -24,7 +24,6 @@ import (
 	"github.com/gx-org/gx/build/ir/annotations"
 	"github.com/gx-org/gx/build/ir"
 	"github.com/gx-org/gx/internal/interp/compeval/cpevelements"
-	"github.com/gx-org/gx/interp/elements"
 	"github.com/gx-org/gx/interp"
 )
 
@@ -37,7 +36,6 @@ type (
 
 	vjpMacro struct {
 		cpevelements.CoreMacroElement
-		callSite    elements.CallAt
 		set         *ir.Macro
 		aux         *ordered.Map[string, *cpevelements.SyntheticFuncDecl]
 		exprToName  map[ir.Expr]forwardValues
@@ -55,7 +53,7 @@ type (
 var _ cpevelements.FuncASTBuilder = (*vjpMacro)(nil)
 
 // VJP computes the vector-jacobian product of a function.
-func VJP(call elements.CallAt, macro *cpevelements.Macro, args []ir.Element) (cpevelements.MacroElement, error) {
+func VJP(file *ir.File, call *ir.CallExpr, macro *ir.Macro, args []ir.Element) (ir.MacroElement, error) {
 	fn, err := interp.PkgFuncFromElement(args[0])
 	if err != nil {
 		return nil, err
@@ -66,9 +64,8 @@ func VJP(call elements.CallAt, macro *cpevelements.Macro, args []ir.Element) (cp
 	}
 	unames := uname.New()
 	return vjpMacro{
-		CoreMacroElement: macro.Element(call),
+		CoreMacroElement: cpevelements.MacroElement(macro, file, call),
 		unames:           unames,
-		callSite:         call,
 		set:              setMacro(macro),
 		fwdRoot:          unames.Root("fwd"),
 		bckRoot:          unames.Root("bck"),

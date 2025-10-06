@@ -42,7 +42,7 @@ func gradFuncDecl(fetcher ir.Fetcher, parent *gradMacro, src *ir.FuncValExpr, fn
 		return nil, fetcher.Err().Append(err)
 	}
 	grader := parent.newMacro(fn, wrtF)
-	synthName, ok := syntheticFuncName(fetcher, grader.callSite, fn, wrtF)
+	synthName, ok := syntheticFuncName(fetcher, grader.Call(), fn, wrtF)
 	if !ok {
 		return nil, false
 	}

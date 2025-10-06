@@ -21,7 +21,6 @@ import (
 
 	"github.com/gx-org/gx/build/builder/testbuild"
 	"github.com/gx-org/gx/build/ir"
-	"github.com/gx-org/gx/internal/interp/compeval/cpevelements"
 	"github.com/gx-org/gx/stdlib/math/grad"
 	"github.com/gx-org/gx/stdlib/math/grad/testgrad"
 )
@@ -34,13 +33,13 @@ var declareGradPackage = testbuild.DeclarePackage{
 	Src:  string(gradSrc),
 	Post: func(pkg *ir.Package) {
 		irVJP := pkg.FindFunc("VJP").(*ir.Macro)
-		irVJP.BuildSynthetic = cpevelements.MacroImpl(grad.VJP)
+		irVJP.BuildSynthetic = ir.MacroImpl(grad.VJP)
 		irFunc := pkg.FindFunc("Func").(*ir.Macro)
-		irFunc.BuildSynthetic = cpevelements.MacroImpl(grad.FuncGrad)
+		irFunc.BuildSynthetic = ir.MacroImpl(grad.FuncGrad)
 		irSet := pkg.FindFunc("Set").(*ir.Macro)
-		irSet.BuildSynthetic = cpevelements.MacroImpl(grad.SetGrad)
+		irSet.BuildSynthetic = ir.MacroImpl(grad.SetGrad)
 		irSetFor := pkg.FindFunc("SetFor").(*ir.Macro)
-		irSetFor.BuildSynthetic = cpevelements.MacroImpl(grad.SetGradFor)
+		irSetFor.BuildSynthetic = ir.MacroImpl(grad.SetGradFor)
 	},
 }
 

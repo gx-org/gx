@@ -226,7 +226,7 @@ func (n *callExpr) buildCallExpr(rscope resolveScope, callee ir.AssignableExpr) 
 	case cpevelements.FuncASTBuilder:
 		return n.buildMacroCallExpr(rscope, compEval, callee, elT)
 	case cpevelements.FuncAnnotator:
-		return invalidExpr(), rscope.Err().Appendf(callee.Source(), "invalid use of annotation macro %s", elT.From().IR().ShortString())
+		return invalidExpr(), rscope.Err().Appendf(callee.Source(), "invalid use of annotation macro %s", elT.From().ShortString())
 	case *fun.NamedType:
 		return n.buildTypeCast(rscope, callee, elT.Type())
 	case *ir.TypeValExpr:

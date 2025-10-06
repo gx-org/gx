@@ -48,9 +48,8 @@ var Package = builtin.PackageBuilder{
 
 type gradMacro struct {
 	cpevelements.CoreMacroElement
-	callSite elements.CallAt
-	aux      *ordered.Map[string, *cpevelements.SyntheticFuncDecl]
-	set      *ir.Macro
+	aux *ordered.Map[string, *cpevelements.SyntheticFuncDecl]
+	set *ir.Macro
 
 	fn  ir.PkgFunc
 	wrt withRespectTo
@@ -73,7 +72,7 @@ func findParamStorage(file *ir.File, src ir.SourceNode, fn ir.Func, name string)
 }
 
 // FuncGrad computes the gradient of a function.
-func FuncGrad(call elements.CallAt, macro *cpevelements.Macro, args []ir.Element) (cpevelements.MacroElement, error) {
+func FuncGrad(file *ir.File, call *ir.CallExpr, mac *ir.Macro, args []ir.Element) (ir.MacroElement, error) {
 	fn, err := interp.PkgFuncFromElement(args[0])
 	if err != nil {
 		return nil, err
@@ -89,14 +88,13 @@ func FuncGrad(call elements.CallAt, macro *cpevelements.Macro, args []ir.Element
 	if err != nil {
 		return nil, err
 	}
-	wrtF, err := findParamStorage(call.File(), call.Node(), fn, wrtS)
+	wrtF, err := findParamStorage(file, call, fn, wrtS)
 	if err != nil {
 		return nil, err
 	}
 	return gradMacro{
-		CoreMacroElement: macro.Element(call),
-		callSite:         call,
-		set:              setMacro(macro),
+		CoreMacroElement: cpevelements.MacroElement(mac, file, call),
+		set:              setMacro(mac),
 	}.newMacro(fnT, wrtF), nil
 }
 
@@ -112,11 +110,12 @@ func (m gradMacro) clone() *gradMacro {
 }
 
 func (m *gradMacro) syntheticFuncName(fetcher ir.Fetcher, fn ir.Func) (string, bool) {
-	callee := m.callSite.Node().Callee
+	callSite := m.Call()
+	callee := callSite.Node().Callee
 	macro := callee.Func().(*ir.Macro)
 	funcName := macro.Name()
 	macroPackage := macro.File().Package
-	imp := m.callSite.File().FindImport(macroPackage.FullName())
+	imp := callSite.File().FindImport(macroPackage.FullName())
 	if imp == nil {
 		return "", fetcher.Err().AppendInternalf(callee.Source(), "cannot find import name %s", macroPackage.FullName())
 	}

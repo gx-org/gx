@@ -33,7 +33,7 @@ type updateReturn struct {
 
 var _ cpevelements.FuncASTBuilder = (*updateReturn)(nil)
 
-func newUpdateReturn(call elements.CallAt, macro *cpevelements.Macro, args []ir.Element) (cpevelements.MacroElement, error) {
+func newUpdateReturn(file *ir.File, call *ir.CallExpr, mac *ir.Macro, args []ir.Element) (ir.MacroElement, error) {
 	fn, err := interp.FuncDeclFromElement(args[0])
 	if err != nil {
 		return nil, err
@@ -43,7 +43,7 @@ func newUpdateReturn(call elements.CallAt, macro *cpevelements.Macro, args []ir.
 		return nil, err
 	}
 	return &updateReturn{
-		CoreMacroElement: macro.Element(call),
+		CoreMacroElement: cpevelements.MacroElement(mac, file, call),
 		fn:               fn,
 		str:              str,
 	}, nil

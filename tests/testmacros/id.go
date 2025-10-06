@@ -19,7 +19,6 @@ import (
 
 	"github.com/gx-org/gx/build/ir"
 	"github.com/gx-org/gx/internal/interp/compeval/cpevelements"
-	"github.com/gx-org/gx/interp/elements"
 	"github.com/gx-org/gx/interp"
 )
 
@@ -30,12 +29,12 @@ type id struct {
 
 var _ cpevelements.FuncASTBuilder = (*id)(nil)
 
-func newID(call elements.CallAt, macro *cpevelements.Macro, args []ir.Element) (cpevelements.MacroElement, error) {
+func newID(file *ir.File, call *ir.CallExpr, mac *ir.Macro, args []ir.Element) (ir.MacroElement, error) {
 	fn, err := interp.FuncDeclFromElement(args[0])
 	if err != nil {
 		return nil, err
 	}
-	return &id{CoreMacroElement: macro.Element(call), fn: fn}, nil
+	return &id{CoreMacroElement: cpevelements.MacroElement(mac, file, call), fn: fn}, nil
 }
 
 func (m *id) BuildDecl(ir.PkgFunc) (*ast.FuncDecl, bool) {

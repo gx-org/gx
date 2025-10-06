@@ -58,7 +58,7 @@ type tagger struct {
 
 var _ cpevelements.FuncAnnotator = (*tagger)(nil)
 
-func buildTagger(call elements.CallAt, macro *cpevelements.Macro, args []ir.Element) (cpevelements.MacroElement, error) {
+func buildTagger(file *ir.File, call *ir.CallExpr, macro *ir.Macro, args []ir.Element) (ir.MacroElement, error) {
 	var tag string
 	switch argT := args[0].(type) {
 	case *elements.String:
@@ -69,7 +69,7 @@ func buildTagger(call elements.CallAt, macro *cpevelements.Macro, args []ir.Elem
 		tag = fmt.Sprintf("%T", argT)
 	}
 	return &tagger{
-		CoreMacroElement: macro.Element(call),
+		CoreMacroElement: cpevelements.MacroElement(macro, file, call),
 		tag:              tag,
 	}, nil
 }
@@ -88,10 +88,10 @@ type macroBuildReturn struct {
 
 var _ cpevelements.FuncASTBuilder = (*macroBuildReturn)(nil)
 
-func newBuildReturn(call elements.CallAt, macro *cpevelements.Macro, args []ir.Element) (cpevelements.MacroElement, error) {
+func newBuildReturn(file *ir.File, call *ir.CallExpr, macro *ir.Macro, args []ir.Element) (ir.MacroElement, error) {
 	return &macroBuildReturn{
-		CoreMacroElement: macro.Element(call),
-		tagMacro:         macro.FindMacro("Tag"),
+		CoreMacroElement: cpevelements.MacroElement(macro, file, call),
+		tagMacro:         macro.File().Package.FindFunc("Tag").(*ir.Macro),
 		tagFn:            args[0].(fun.Func).Func().(ir.PkgFunc),
 	}, nil
 }
@@ -129,9 +129,9 @@ func BuildReturn(any) any
 `,
 		Post: func(pkg *ir.Package) {
 			*tag = pkg.FindFunc("Tag").(*ir.Macro)
-			(*tag).BuildSynthetic = cpevelements.MacroImpl(buildTagger)
+			(*tag).BuildSynthetic = ir.MacroImpl(buildTagger)
 			*buildReturn = pkg.FindFunc("BuildReturn").(*ir.Macro)
-			(*buildReturn).BuildSynthetic = cpevelements.MacroImpl(newBuildReturn)
+			(*buildReturn).BuildSynthetic = ir.MacroImpl(newBuildReturn)
 		},
 	}
 }

@@ -15,16 +15,10 @@
 package cpevelements
 
 import (
-	"reflect"
-
 	"github.com/pkg/errors"
 	"github.com/gx-org/gx/build/ir"
-	"github.com/gx-org/gx/interp/elements"
 	"github.com/gx-org/gx/interp/fun"
 )
-
-// MacroImpl is a builtin opaque function to produce an IR.
-type MacroImpl func(call elements.CallAt, fn *Macro, args []ir.Element) (MacroElement, error)
 
 // Macro is a macro function to build synthetic functions.
 type Macro struct {
@@ -52,11 +46,7 @@ func (f *Macro) Call(fctx *fun.CallEnv, call *ir.CallExpr, args []ir.Element) ([
 	if f.macro.BuildSynthetic == nil {
 		return nil, errors.Errorf("macro %s.%s has no implementation to build the synthetic function type", f.macro.FFile.Package.Name.Name, f.macro.Name())
 	}
-	buildSynthetic, ok := f.macro.BuildSynthetic.(MacroImpl)
-	if !ok {
-		return nil, errors.Errorf("%T cannot converted to %s", f.macro.BuildSynthetic, reflect.TypeFor[MacroImpl]())
-	}
-	el, err := buildSynthetic(elements.NewNodeAt(fctx.File(), call), f, args)
+	el, err := f.macro.BuildSynthetic(fctx.File(), call, f.macro, args)
 	return []ir.Element{el}, err
 }
 
@@ -74,9 +64,4 @@ func (f *Macro) Name() string {
 // Type returns the type of the function.
 func (f *Macro) Type() ir.Type {
 	return f.macro.Type()
-}
-
-// FindMacro finds another macro in the same package given its name.
-func (f *Macro) FindMacro(name string) *ir.Macro {
-	return f.macro.File().Package.FindFunc(name).(*ir.Macro)
 }

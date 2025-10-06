@@ -18,7 +18,6 @@ package testmacros
 import (
 	"github.com/gx-org/gx/build/builder/testbuild"
 	"github.com/gx-org/gx/build/ir"
-	"github.com/gx-org/gx/internal/interp/compeval/cpevelements"
 )
 
 // DeclarePackage declares the macro package in a test.
@@ -35,8 +34,8 @@ func UpdateReturn(any, string) any
 `,
 	Post: func(pkg *ir.Package) {
 		id := pkg.FindFunc("ID").(*ir.Macro)
-		id.BuildSynthetic = cpevelements.MacroImpl(newID)
+		id.BuildSynthetic = ir.MacroImpl(newID)
 		ret := pkg.FindFunc("UpdateReturn").(*ir.Macro)
-		ret.BuildSynthetic = cpevelements.MacroImpl(newUpdateReturn)
+		ret.BuildSynthetic = ir.MacroImpl(newUpdateReturn)
 	},
 }
