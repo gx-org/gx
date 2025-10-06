@@ -18,7 +18,6 @@ import (
 	"go/ast"
 
 	"github.com/gx-org/gx/build/ir"
-	"github.com/gx-org/gx/internal/interp/compeval/cpevelements"
 )
 
 type funcMacro struct {
@@ -87,7 +86,7 @@ func (e *irExpr) String() string {
 	return "irexpr: " + e.expr.String()
 }
 
-func callMacroExpr(fScope *fileResolveScope, macroCall *callExpr) (cpevelements.MacroElement, bool) {
+func callMacroExpr(fScope *fileResolveScope, macroCall *callExpr) (ir.MacroElement, bool) {
 	// Build the IR to call the macro.
 	callExpr, ok := (&callExpr{
 		src:    macroCall.src,
@@ -113,7 +112,7 @@ func callMacroExpr(fScope *fileResolveScope, macroCall *callExpr) (cpevelements.
 	if err != nil {
 		return nil, fScope.Err().AppendAt(macroCall.source(), err)
 	}
-	macroEl, ok := el.(cpevelements.MacroElement)
+	macroEl, ok := el.(ir.MacroElement)
 	if !ok {
 		return nil, fScope.Err().AppendInternalf(macroCall.source(), "unexpected element type %s returned by macro %s", el.Type().String(), fCallExpr.Callee.Func().ShortString())
 	}

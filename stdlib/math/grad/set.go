@@ -38,22 +38,22 @@ type (
 
 var _ cpevelements.FuncAnnotator = (*setAnnotationMacro)(nil)
 
-func setMacro(macro *cpevelements.Macro) *ir.Macro {
-	return macro.FindMacro("SetFor")
+func setMacro(mac *ir.Macro) *ir.Macro {
+	return mac.File().Package.FindFunc("SetFor").(*ir.Macro)
 }
 
 // SetGrad sets the gradient of a function.
-func SetGrad(call elements.CallAt, macro *cpevelements.Macro, args []ir.Element) (cpevelements.MacroElement, error) {
+func SetGrad(file *ir.File, call *ir.CallExpr, macro *ir.Macro, args []ir.Element) (ir.MacroElement, error) {
 	grad, err := interp.PkgFuncFromElement(args[0])
 	if err != nil {
 		return nil, errors.Errorf("%s is not a function", args[0].Type().String())
 	}
 
-	return newSetMacro(call, macro, grad, "")
+	return newSetMacro(file, call, macro, grad, "")
 }
 
 // SetGradFor sets the gradient of a function.
-func SetGradFor(call elements.CallAt, macro *cpevelements.Macro, args []ir.Element) (cpevelements.MacroElement, error) {
+func SetGradFor(file *ir.File, call *ir.CallExpr, macro *ir.Macro, args []ir.Element) (ir.MacroElement, error) {
 	grad, err := interp.PkgFuncFromElement(args[0])
 	if err != nil {
 		return nil, errors.Errorf("%s is not a function", args[1].Type().String())
@@ -62,12 +62,12 @@ func SetGradFor(call elements.CallAt, macro *cpevelements.Macro, args []ir.Eleme
 	if err != nil {
 		return nil, err
 	}
-	return newSetMacro(call, macro, grad, fieldName)
+	return newSetMacro(file, call, macro, grad, fieldName)
 }
 
-func newSetMacro(call elements.CallAt, macro *cpevelements.Macro, grad ir.PkgFunc, paramName string) (cpevelements.MacroElement, error) {
+func newSetMacro(file *ir.File, call *ir.CallExpr, mac *ir.Macro, grad ir.PkgFunc, paramName string) (ir.MacroElement, error) {
 	return &setAnnotationMacro{
-		CoreMacroElement: macro.ElementWithKey(call, setMacro(macro)),
+		CoreMacroElement: cpevelements.MacroElementWithKey(mac, file, call, setMacro(mac)),
 		grad:             grad,
 		paramName:        paramName,
 	}, nil

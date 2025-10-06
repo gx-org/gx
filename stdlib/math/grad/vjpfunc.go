@@ -30,7 +30,7 @@ func (m *vjpMacro) vjpFunc(fetcher ir.Fetcher, src *ir.FuncValExpr) (string, *as
 }
 
 func (m *vjpMacro) buildCallAST(fetcher ir.Fetcher, fn ir.Func) (*ast.CallExpr, bool) {
-	macro := m.From().IR()
+	macro := m.From()
 	return &ast.CallExpr{
 		Fun: &ast.SelectorExpr{
 			X:   &ast.Ident{Name: macro.File().Package.Name.Name},
