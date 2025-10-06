@@ -88,6 +88,58 @@ func vjpF(x float32) (float32, func(res float32) float32) {
 }
 `,
 		},
+		testgrad.VJP{
+			Src: `
+func F(x float32) float32 {
+	return 2*x
+}
+`,
+			Want: `
+func vjpF(x float32) (float32, func(res float32) float32) {
+	fwd0 := float32(2)
+	fwd1 := fwd0*x
+	selfVJPFunc := func(res float32) float32 {
+		return fwd0*res
+	}
+	return fwd1, selfVJPFunc
+}
+`,
+		},
+		testgrad.VJP{
+			Src: `
+func F(x float32) float32 {
+	return x*x
+}
+`,
+			Want: `
+func vjpF(x float32) (float32, func(res float32) float32) {
+	fwd0 := x*x
+	selfVJPFunc := func(res float32) float32 {
+		return res*x+x*res
+	}
+	return fwd0, selfVJPFunc
+}
+`,
+		},
+		testgrad.VJP{
+			Src: `
+func F(x, y float32) float32 {
+	return x*y
+}
+`,
+			Want: `
+func vjpF(x, y float32) (float32, func(res float32) float32, func(res float32) float32) {
+	fwd0 := x*y
+	selfVJPFuncWRTx := func(res float32) float32 {
+		return res*y
+	}
+	selfVJPFuncWRTy := func(res float32) float32 {
+		return x*res
+	}
+	return fwd0, selfVJPFuncWRTx, selfVJPFuncWRTy
+}
+`,
+		},
 	)
 }
 
@@ -315,6 +367,40 @@ func vjpF(x float32) (float32, func(res float32) float32) {
 		bck1 := bck2b*gVJP(x)
 		bck0 := bck2a*fVJP(x)
 		return bck0+bck1
+	}
+	return fwd2, selfVJPFunc
+}
+`,
+		},
+	)
+}
+
+func TestVJPFunctionsInExpressions(t *testing.T) {
+	testbuild.Run(t,
+		declareGradPackage,
+		testgrad.VJP{
+			Src: `
+func f(x float32) float32 {
+	return x
+}
+
+func g(x float32) float32 {
+	return x
+}
+
+func F(x float32) float32 {
+	return f(x)*g(x)
+}
+`,
+			Want: `
+func vjpF(x float32) (float32, func(res float32) float32) {
+	fwd0, fVJP := grad.VJP(f)(x)
+	fwd1, gVJP := grad.VJP(g)(x)
+	fwd2 := fwd0*fwd1
+	selfVJPFunc := func(res float32) float32 {
+		bck0 := res*fVJP(x)
+		bck1 := res*gVJP(x)
+		return bck0*fwd1+fwd0*bck1
 	}
 	return fwd2, selfVJPFunc
 }
