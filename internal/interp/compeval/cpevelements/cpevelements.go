@@ -17,6 +17,7 @@ package cpevelements
 
 import (
 	"fmt"
+	"go/ast"
 	"reflect"
 
 	"github.com/pkg/errors"
@@ -107,7 +108,10 @@ func NewRuntimeValue(file *ir.File, store ir.Storage) (ir.Element, error) {
 			return NewArray(typT), nil
 		}
 	case *ir.FuncType:
-		return NewFunc(&ir.FuncLit{FType: typT}, nil), nil
+		return NewFunc(&ir.FuncLit{
+			Src:   &ast.FuncLit{Type: typT.Src},
+			FType: typT,
+		}, nil), nil
 	}
 	return NewVariable(elements.NewNodeAt(file, store)), nil
 }

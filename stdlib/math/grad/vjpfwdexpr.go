@@ -32,7 +32,7 @@ type (
 	allocForwardValues struct {
 		sub      *uname.Root
 		forwards []uname.Name
-		vjp      string
+		vjps     []string
 	}
 
 	refForwardValue struct {
@@ -97,8 +97,17 @@ func (m *exprForwardVJP) assignFuncCall(expr *ir.CallExpr, calleeName string, ca
 		Rhs: []ast.Expr{call},
 	}
 	m.appendMainStmt(stmt)
-	fv.vjp = m.macro.unames.Name(fmt.Sprintf("%sVJP", calleeName))
-	stmt.Lhs = append(stmt.Lhs, &ast.Ident{Name: fv.vjp})
+	root := fmt.Sprintf("%sVJP", calleeName)
+	calleeParams := expr.Callee.Func().FuncType().Params.Fields()
+	fv.vjps = make([]string, len(calleeParams))
+	for i, param := range calleeParams {
+		vjpFuncName := root
+		if len(calleeParams) > 1 {
+			vjpFuncName += param.Name.Name
+		}
+		fv.vjps[i] = m.macro.unames.Name(vjpFuncName)
+		stmt.Lhs = append(stmt.Lhs, &ast.Ident{Name: fv.vjps[i]})
+	}
 	return fv
 }
 
