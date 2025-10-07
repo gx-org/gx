@@ -56,7 +56,7 @@ type tagger struct {
 	tag string
 }
 
-var _ cpevelements.FuncAnnotator = (*tagger)(nil)
+var _ ir.FuncAnnotator = (*tagger)(nil)
 
 func buildTagger(file *ir.File, call *ir.CallExpr, macro *ir.Macro, args []ir.Element) (ir.MacroElement, error) {
 	var tag string
@@ -86,7 +86,7 @@ type macroBuildReturn struct {
 	tagFn    ir.PkgFunc
 }
 
-var _ cpevelements.FuncASTBuilder = (*macroBuildReturn)(nil)
+var _ ir.FuncASTBuilder = (*macroBuildReturn)(nil)
 
 func newBuildReturn(file *ir.File, call *ir.CallExpr, macro *ir.Macro, args []ir.Element) (ir.MacroElement, error) {
 	return &macroBuildReturn{
@@ -100,8 +100,11 @@ func (m *macroBuildReturn) BuildDecl(origFn ir.PkgFunc) (*ast.FuncDecl, bool) {
 	return origFn.Source().(*ast.FuncDecl), true
 }
 
-func (m *macroBuildReturn) BuildBody(fetcher ir.Fetcher, fn ir.Func) (*ast.BlockStmt, []*cpevelements.SyntheticFuncDecl, bool) {
+func (m *macroBuildReturn) BuildBody(fetcher ir.Fetcher, fn ir.Func) (*ast.BlockStmt, bool) {
 	ann := annotations.Get[*tagStr](m.tagFn, m.tagMacro)
+	if ann == nil {
+		return nil, fetcher.Err().Appendf(m.Source(), "cannot find %s value on function %s", m.tagMacro.ShortString(), m.tagFn.ShortString())
+	}
 	return &ast.BlockStmt{List: []ast.Stmt{
 		&ast.ReturnStmt{Results: []ast.Expr{
 			&ast.BasicLit{
@@ -109,7 +112,7 @@ func (m *macroBuildReturn) BuildBody(fetcher ir.Fetcher, fn ir.Func) (*ast.Block
 				Value: strconv.Quote(ann.s),
 			},
 		}},
-	}}, nil, true
+	}}, true
 }
 
 func annotationPackage(tag, buildReturn **ir.Macro) testbuild.DeclarePackage {
@@ -260,7 +263,7 @@ func f() string {
 	return annotation.Tag("Source")("Hi")
 }
 `,
-			Err: "invalid use of annotation macro annotation.Tag",
+			Err: "macro annotation.Tag does not build functions",
 		},
 	)
 }

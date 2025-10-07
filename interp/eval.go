@@ -490,6 +490,8 @@ func evalExpr(fitp *FileScope, expr ir.Expr) (ir.Element, error) {
 		return evalSelectorExpr(fitp, exprT)
 	case *ir.FuncLit:
 		return fitp.env.FuncEval().NewFuncLit(fitp.env, exprT)
+	case *ir.MacroCallExpr:
+		return fitp.env.FuncEval().NewFunc(exprT.F, nil), nil
 	case *ir.IndexExpr:
 		return evalIndexExpr(fitp, exprT)
 	case *ir.EinsumExpr:

@@ -36,7 +36,7 @@ type (
 	}
 )
 
-var _ cpevelements.FuncAnnotator = (*setAnnotationMacro)(nil)
+var _ ir.FuncAnnotator = (*setAnnotationMacro)(nil)
 
 func setMacro(mac *ir.Macro) *ir.Macro {
 	return mac.File().Package.FindFunc("SetFor").(*ir.Macro)

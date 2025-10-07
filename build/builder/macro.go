@@ -18,6 +18,7 @@ import (
 	"go/ast"
 
 	"github.com/gx-org/gx/build/ir"
+	"github.com/gx-org/gx/internal/interp/compeval/cpevelements"
 )
 
 type funcMacro struct {
@@ -53,8 +54,8 @@ func (f *funcMacro) name() *ast.Ident {
 	return f.src.Name
 }
 
-func (f *funcMacro) buildBody(iFuncResolveScope, *irFunc) ([]*irFunc, bool) {
-	return nil, true
+func (f *funcMacro) buildBody(iFuncResolveScope, *irFunc) bool {
+	return true
 }
 
 func (f *funcMacro) receiver() *fieldList {
@@ -86,35 +87,30 @@ func (e *irExpr) String() string {
 	return "irexpr: " + e.expr.String()
 }
 
-func callMacroExpr(fScope *fileResolveScope, macroCall *callExpr) (ir.MacroElement, bool) {
-	// Build the IR to call the macro.
-	callExpr, ok := (&callExpr{
-		src:    macroCall.src,
-		args:   macroCall.args,
-		callee: macroCall.callee,
-	}).buildExpr(fScope)
-	if !ok {
+func evalMacroCallee(rscope resolveScope, compEval *compileEvaluator, macroCall *callExpr) (*ir.CallExpr, bool) {
+	callee, calleeOk := buildAExpr(rscope, macroCall.callee)
+	if !calleeOk {
 		return nil, false
 	}
-	fCallExpr, ok := callExpr.(*ir.CallExpr)
-	if !ok {
-		return nil, fScope.Err().Appendf(macroCall.source(), "expect a function")
-	}
-	if _, ok := fCallExpr.Callee.Func().(*ir.Macro); !ok {
-		return nil, fScope.Err().Appendf(macroCall.source(), "cannot use %s as a macro", fCallExpr.Callee.Func().ShortString())
-	}
-	// Evaluate the macro expression.
-	compEval, compEvalOk := fScope.compEval()
-	if !compEvalOk {
-		return nil, false
-	}
-	el, err := compEval.fitp.EvalExpr(fCallExpr)
+	el, err := compEval.fitp.EvalExpr(callee)
 	if err != nil {
-		return nil, fScope.Err().AppendAt(macroCall.source(), err)
+		return nil, rscope.Err().AppendAt(callee.Source(), err)
+	}
+	elT, ok := el.(*cpevelements.Macro)
+	if !ok {
+		return nil, rscope.Err().Appendf(callee.Source(), "cannot use %s as macro", callee.String())
+	}
+	return macroCall.buildFuncCallExpr(rscope, callee, elT.IR())
+}
+
+func evalMacroCall(compEval *compileEvaluator, call *ir.CallExpr) (ir.MacroElement, bool) {
+	el, err := compEval.fitp.EvalExpr(call)
+	if err != nil {
+		return nil, compEval.Err().AppendAt(call.Source(), err)
 	}
 	macroEl, ok := el.(ir.MacroElement)
 	if !ok {
-		return nil, fScope.Err().AppendInternalf(macroCall.source(), "unexpected element type %s returned by macro %s", el.Type().String(), fCallExpr.Callee.Func().ShortString())
+		return nil, compEval.Err().AppendInternalf(call.Source(), "unexpected element type %s returned by macro %s", el.Type().String(), call.Callee.Func().ShortString())
 	}
 	return macroEl, true
 }

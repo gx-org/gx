@@ -19,10 +19,8 @@ import (
 	"embed"
 	"fmt"
 	"go/ast"
-	"slices"
 
 	"github.com/pkg/errors"
-	"github.com/gx-org/gx/base/ordered"
 	"github.com/gx-org/gx/build/fmterr"
 	"github.com/gx-org/gx/build/ir/annotations"
 	"github.com/gx-org/gx/build/ir"
@@ -41,6 +39,7 @@ var Package = builtin.PackageBuilder{
 	Builders: []builtin.Builder{
 		builtin.ParseSource(&fs),
 		builtin.RegisterMacro("Func", FuncGrad),
+		builtin.RegisterMacro("VJP", VJP),
 		builtin.RegisterMacro("Set", SetGrad),
 		builtin.RegisterMacro("SetFor", SetGradFor),
 	},
@@ -48,14 +47,13 @@ var Package = builtin.PackageBuilder{
 
 type gradMacro struct {
 	cpevelements.CoreMacroElement
-	aux *ordered.Map[string, *cpevelements.SyntheticFuncDecl]
 	set *ir.Macro
 
 	fn  ir.PkgFunc
 	wrt withRespectTo
 }
 
-var _ cpevelements.FuncASTBuilder = (*gradMacro)(nil)
+var _ ir.FuncASTBuilder = (*gradMacro)(nil)
 
 func findParamStorage(file *ir.File, src ir.SourceNode, fn ir.Func, name string) (withRespectTo, error) {
 	recv := fn.FuncType().ReceiverField()
@@ -141,7 +139,7 @@ func (m *gradMacro) BuildDecl(ir.PkgFunc) (*ast.FuncDecl, bool) {
 	return fDecl, true
 }
 
-func (m *gradMacro) buildBodyFromSetAnnotation(fetcher ir.Fetcher, fn ir.Func, ann setAnnotation) (*ast.BlockStmt, []*cpevelements.SyntheticFuncDecl, bool) {
+func (m *gradMacro) buildBodyFromSetAnnotation(fetcher ir.Fetcher, fn ir.Func, ann setAnnotation) (*ast.BlockStmt, bool) {
 	params := fn.FuncType().Params.Fields()
 	args := make([]ast.Expr, len(params))
 	for i, param := range params {
@@ -149,25 +147,24 @@ func (m *gradMacro) buildBodyFromSetAnnotation(fetcher ir.Fetcher, fn ir.Func, a
 	}
 	identToGradFunc, ok := gradFromAnnotation(fetcher, fn, ann, m.wrt.name())
 	if !ok {
-		return nil, nil, false
+		return nil, false
 	}
 	return &ast.BlockStmt{List: []ast.Stmt{&ast.ReturnStmt{
 		Results: []ast.Expr{&ast.CallExpr{
 			Fun:  identToGradFunc,
 			Args: args,
 		}},
-	}}}, nil, true
+	}}}, true
 }
 
-func (m *gradMacro) BuildBody(fetcher ir.Fetcher, fn ir.Func) (*ast.BlockStmt, []*cpevelements.SyntheticFuncDecl, bool) {
+func (m *gradMacro) BuildBody(fetcher ir.Fetcher, fn ir.Func) (*ast.BlockStmt, bool) {
 	if ann := annotations.Get[setAnnotation](m.fn, m.set); ann != nil {
 		return m.buildBodyFromSetAnnotation(fetcher, fn, ann)
 	}
 	fnWithBody, ok := m.fn.(*ir.FuncDecl)
 	if !ok {
-		return nil, nil, fetcher.Err().Appendf(fn.Source(), "function has no body")
+		return nil, fetcher.Err().Appendf(fn.Source(), "function has no body")
 	}
-	m.aux = ordered.NewMap[string, *cpevelements.SyntheticFuncDecl]()
 	sg := m.newStmtGrader(fetcher, nil)
 	fType := m.fn.FuncType()
 	sg.registerFieldNames(fType.Receiver)
@@ -175,9 +172,9 @@ func (m *gradMacro) BuildBody(fetcher ir.Fetcher, fn ir.Func) (*ast.BlockStmt, [
 	sg.registerFieldNames(fType.Results)
 	body, ok := sg.gradBlock(fetcher, fnWithBody.Body)
 	if !ok {
-		return nil, nil, false
+		return nil, false
 	}
-	return body, slices.Collect(m.aux.Values()), true
+	return body, true
 }
 
 func (m *gradMacro) gradIdent(src *ast.Ident) *ast.Ident {

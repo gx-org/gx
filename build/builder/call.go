@@ -173,7 +173,7 @@ func (n *callExpr) buildCallee(rscope resolveScope, expr ir.AssignableExpr, fn i
 	return args, callee.T, callOk
 }
 
-func (n *callExpr) buildFuncCallExpr(rscope resolveScope, expr ir.AssignableExpr, fn ir.Func) (ir.Expr, bool) {
+func (n *callExpr) buildFuncCallExpr(rscope resolveScope, expr ir.AssignableExpr, fn ir.Func) (*ir.CallExpr, bool) {
 	extCallee := &ir.FuncValExpr{
 		X: expr,
 		F: fn,
@@ -182,29 +182,36 @@ func (n *callExpr) buildFuncCallExpr(rscope resolveScope, expr ir.AssignableExpr
 	var ok bool
 	extCall.Args, extCallee.T, ok = n.buildCallee(rscope, expr, fn)
 	if !ok {
-		return invalidExpr(), false
+		return nil, false
 	}
 	return extCall, true
 }
 
-func (n *callExpr) buildMacroCallExpr(rscope resolveScope, compEval *compileEvaluator, expr ir.AssignableExpr, astBuilder cpevelements.FuncASTBuilder) (ir.Expr, bool) {
-	synDecl, synScope, ok := buildSyntheticFuncSig(rscope.fileScope(), astBuilder, nil)
+func (n *callExpr) buildMacroCall(rscope resolveScope, compEval *compileEvaluator, expr ir.AssignableExpr, mac *ir.Macro) (ir.Expr, bool) {
+	callExpr, ok := n.buildFuncCallExpr(rscope, expr, mac)
 	if !ok {
 		return invalidExpr(), false
 	}
-	if _, ok = synScope.buildBody(synDecl, compEval); !ok {
+	macroEl, ok := evalMacroCall(compEval, callExpr)
+	if !ok {
 		return invalidExpr(), false
 	}
-	extCallee := &ir.MacroCallExpr{
-		X: expr,
+	fnBuilder, ok := macroEl.(ir.FuncASTBuilder)
+	if !ok {
+		return invalidExpr(), rscope.Err().Appendf(n.source(), "macro %s does not build functions", mac.ShortString())
+	}
+	synDecl, synScope, ok := buildSyntheticFuncSig(rscope.fileScope(), fnBuilder, nil)
+	if !ok {
+		return invalidExpr(), false
+	}
+	if ok = synScope.buildBody(synDecl, compEval); !ok {
+		return invalidExpr(), ok
+	}
+	return &ir.MacroCallExpr{
+		X: callExpr,
+		M: fnBuilder,
 		F: synDecl,
-	}
-	extCall := &ir.CallExpr{Src: n.src, Callee: extCallee}
-	extCall.Args, extCallee.T, ok = n.buildCallee(rscope, expr, synDecl)
-	if !ok {
-		return invalidExpr(), false
-	}
-	return extCall, true
+	}, true
 }
 
 func (n *callExpr) buildCallExpr(rscope resolveScope, callee ir.AssignableExpr) (ir.Expr, bool) {
@@ -218,14 +225,12 @@ func (n *callExpr) buildCallExpr(rscope resolveScope, callee ir.AssignableExpr) 
 	}
 	switch elT := el.(type) {
 	case *cpevelements.Macro:
-		return n.buildFuncCallExpr(rscope, callee, elT.Func())
+		return n.buildMacroCall(rscope, compEval, callee, elT.IR())
 	case ir.Type:
 		return n.buildTypeCast(rscope, callee, elT)
 	case fun.Func:
 		return n.buildFuncCallExpr(rscope, callee, elT.Func())
-	case cpevelements.FuncASTBuilder:
-		return n.buildMacroCallExpr(rscope, compEval, callee, elT)
-	case cpevelements.FuncAnnotator:
+	case ir.FuncAnnotator:
 		return invalidExpr(), rscope.Err().Appendf(callee.Source(), "invalid use of annotation macro %s", elT.From().ShortString())
 	case *fun.NamedType:
 		return n.buildTypeCast(rscope, callee, elT.Type())

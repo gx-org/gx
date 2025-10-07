@@ -19,7 +19,6 @@ import (
 
 	"github.com/gx-org/gx/build/ir/annotations"
 	"github.com/gx-org/gx/build/ir"
-	"github.com/gx-org/gx/internal/interp/compeval/cpevelements"
 )
 
 func (m *gradMacro) gradFunc(fetcher ir.Fetcher, src *ir.FuncValExpr, wrt string) (ast.Expr, bool) {
@@ -42,31 +41,11 @@ func gradFuncDecl(fetcher ir.Fetcher, parent *gradMacro, src *ir.FuncValExpr, fn
 		return nil, fetcher.Err().Append(err)
 	}
 	grader := parent.newMacro(fn, wrtF)
-	synthName, ok := syntheticFuncName(fetcher, grader.Call(), fn, wrtF)
-	if !ok {
-		return nil, false
-	}
-	ident := &ast.Ident{Name: synthName}
-	// Check if we need to build a new synthetic function.
-	if fetcher.IsDefined(synthName) {
-		// The function has already been built before.
-		return ident, true
-	}
-	if _, ok := grader.aux.Load(synthName); ok {
-		// The function has already been registered as a new auxiliary functions.
-		return ident, true
-	}
-	// No function already exists. Prepare to return it as a new auxiliary function.
 	gradF, ok := grader.BuildDecl(nil)
 	if !ok {
 		return nil, false
 	}
-	gradF.Name = ident
-	grader.aux.Store(synthName, &cpevelements.SyntheticFuncDecl{
-		Builder: grader,
-		F:       gradF,
-	})
-	return ident, true
+	return &ast.Ident{Name: "TODO" + gradF.Name.Name}, true
 }
 
 func astExprs(exprs []ir.AssignableExpr) []ast.Expr {

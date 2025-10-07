@@ -69,20 +69,24 @@ func irCache[N ir.Node](irs irBuilder, src ast.Node, bNode irb.Node[*pkgResolveS
 	return nT, ok
 }
 
-// pkgResolveScope is a package and its namespace with an error accumulator.
-// This context is used in the resolve phase.
-type pkgResolveScope struct {
-	*pkgProcScope
-	// namedTypes maps build named types to IR named types.
-	namedTypes map[*namedType]*ir.NamedType
-	// methods is a mapping from type name to method name to method
-	methods *ordered.Map[*ir.NamedType, *ordered.Map[string, *irFunc]]
-	// nspcpace is the package namespace.
-	// Includes all the builtins as well as all package declarations.
-	nspc scope.Scope[processNode]
-	// ibld keeps track of all IR that have been built until now.
-	ibld irBuilder
-}
+type (
+	bodyBuilder func(compEval *compileEvaluator) bool
+
+	// pkgResolveScope is a package and its namespace with an error accumulator.
+	// This context is used in the resolve phase.
+	pkgResolveScope struct {
+		*pkgProcScope
+		// namedTypes maps build named types to IR named types.
+		namedTypes map[*namedType]*ir.NamedType
+		// methods is a mapping from type name to method name to method
+		methods *ordered.Map[*ir.NamedType, *ordered.Map[string, *irFunc]]
+		// nspcpace is the package namespace.
+		// Includes all the builtins as well as all package declarations.
+		nspc scope.Scope[processNode]
+		// ibld keeps track of all IR that have been built until now.
+		ibld irBuilder
+	}
+)
 
 func newPackageResolveScope(pscope *pkgProcScope) (*pkgResolveScope, bool) {
 	s := &pkgResolveScope{

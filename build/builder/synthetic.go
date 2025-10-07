@@ -18,7 +18,6 @@ import (
 	"go/ast"
 
 	"github.com/gx-org/gx/build/ir"
-	"github.com/gx-org/gx/internal/interp/compeval/cpevelements"
 )
 
 const assignPrefix = "gx:="
@@ -40,6 +39,27 @@ func processFuncAssignment(pscope procScope, src *ast.FuncDecl, fn function, mac
 	}
 }
 
+func (f *assignFuncFromMacro) buildFuncBuilder(fScope *fileResolveScope) (ir.FuncASTBuilder, bool) {
+	compEval, compEvalOk := fScope.compEval()
+	if !compEvalOk {
+		return nil, false
+	}
+	macroCall, ok := evalMacroCallee(fScope, compEval, f.macroCall)
+	if !ok {
+		return nil, false
+	}
+	el, ok := evalMacroCall(compEval, macroCall)
+	if !ok {
+		return nil, false
+	}
+	// Return the result as a synthetic function.
+	elT, ok := el.(ir.FuncASTBuilder)
+	if !ok {
+		return nil, fScope.Err().Appendf(f.fn.source(), "cannot use macro %s for function assignment", el.From().Name())
+	}
+	return elT, true
+}
+
 func (f *assignFuncFromMacro) buildSignature(pkgScope *pkgResolveScope) (ir.Func, iFuncResolveScope, bool) {
 	fScope, ok := pkgScope.newFileScope(f.bFile)
 	if !ok {
@@ -54,14 +74,9 @@ func (f *assignFuncFromMacro) buildSignature(pkgScope *pkgResolveScope) (ir.Func
 	if !ok {
 		return nil, nil, fScope.Err().AppendInternalf(f.fn.source(), "%T not a package function", underFun)
 	}
-	macroEl, ok := callMacroExpr(fScope, f.macroCall)
+	fnBuilder, ok := f.buildFuncBuilder(fScope)
 	if !ok {
 		return nil, nil, false
-	}
-	// Return the result as a synthetic function.
-	fnBuilder, ok := macroEl.(cpevelements.FuncASTBuilder)
-	if !ok {
-		return nil, nil, fScope.Err().Appendf(f.fn.source(), "cannot use macro %s for function assignment", macroEl.From().Name())
 	}
 	synthFunc, synthScope, ok := (&syntheticFunc{
 		coreSyntheticFunc: f.coreSyntheticFunc,

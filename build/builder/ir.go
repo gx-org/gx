@@ -35,7 +35,7 @@ type (
 		resolveOrder() int
 		buildSignature(*pkgResolveScope) (ir.Func, iFuncResolveScope, bool)
 		buildAnnotations(iFuncResolveScope, *irFunc) bool
-		buildBody(iFuncResolveScope, *irFunc) ([]*irFunc, bool)
+		buildBody(iFuncResolveScope, *irFunc) bool
 	}
 
 	// exprNode builds a IR expression.
