@@ -16,6 +16,7 @@ package ir
 
 import (
 	"fmt"
+	"go/ast"
 	"go/token"
 	"slices"
 	"strings"
@@ -51,19 +52,19 @@ func (b *BlockStmt) String() string {
 
 // String returns a string representation of the builtin function.
 func (f *FuncBuiltin) String() string {
-	return f.FType.NameString(f.Src.Name.Name)
+	return f.FType.NameString(f.Src.Name)
 }
 
 // String returns a string representation of the function.
 func (f *FuncDecl) String() string {
-	sig := f.FType.NameString(f.Src.Name.Name)
+	sig := f.FType.NameString(f.Src.Name)
 	body := gxfmt.Indent(f.Body.String())
 	return fmt.Sprintf("%s {\n%s}", sig, body)
 }
 
 // String representation of the literal.
 func (f *FuncLit) String() string {
-	sig := f.FType.NameString("")
+	sig := f.FType.NameString(nil)
 	body := gxfmt.Indent(f.Body.String())
 	return fmt.Sprintf("%s {\n%s}", sig, body)
 }
@@ -75,14 +76,14 @@ func (f *SpecialisedFunc) String() string {
 
 // NameString returns a string representation of a signature given a name.
 // The name can be empty.
-func (s *FuncType) NameString(name string) string {
+func (s *FuncType) NameString(name *ast.Ident) string {
 	var b strings.Builder
 	b.WriteString("func")
 	if s.Receiver != nil {
 		fmt.Fprintf(&b, " (%s)", s.Receiver.String())
 	}
-	if name != "" {
-		b.WriteString(" " + name)
+	if name != nil && name.Name != "" {
+		b.WriteString(" " + name.Name)
 	}
 	if s.TypeParams != nil {
 		fmt.Fprintf(&b, "[%s]", s.TypeParams.String())
@@ -104,7 +105,7 @@ func (s *FuncType) NameString(name string) string {
 
 // String representation of the type.
 func (s *FuncType) String() string {
-	return s.NameString("")
+	return s.NameString(nil)
 }
 
 func (s *ReturnStmt) String() string {
