@@ -27,7 +27,7 @@ type id struct {
 	fn *ir.FuncDecl
 }
 
-var _ cpevelements.FuncASTBuilder = (*id)(nil)
+var _ ir.FuncASTBuilder = (*id)(nil)
 
 func newID(file *ir.File, call *ir.CallExpr, mac *ir.Macro, args []ir.Element) (ir.MacroElement, error) {
 	fn, err := interp.FuncDeclFromElement(args[0])
@@ -41,6 +41,6 @@ func (m *id) BuildDecl(ir.PkgFunc) (*ast.FuncDecl, bool) {
 	return &ast.FuncDecl{Type: m.fn.FType.Src, Recv: m.fn.Src.Recv}, true
 }
 
-func (m *id) BuildBody(fetcher ir.Fetcher, _ ir.Func) (*ast.BlockStmt, []*cpevelements.SyntheticFuncDecl, bool) {
-	return m.fn.Body.Src, nil, true
+func (m *id) BuildBody(fetcher ir.Fetcher, _ ir.Func) (*ast.BlockStmt, bool) {
+	return m.fn.Body.Src, true
 }

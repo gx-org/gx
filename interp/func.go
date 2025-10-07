@@ -60,6 +60,11 @@ func NewRunFunc(fn ir.Func, recv *fun.Receiver) fun.Func {
 			funcBase: funcBase{fn: fnT},
 			fnT:      fnT,
 		}
+	case *ir.Macro:
+		return &funcMacro{
+			funcBase: funcBase{fn: fnT, recv: recv},
+			fnT:      fnT,
+		}
 	}
 	return &funcBase{fn: fn, recv: recv}
 }
@@ -175,6 +180,24 @@ func (f *funcKeyword) Call(env *fun.CallEnv, call *ir.CallExpr, args []ir.Elemen
 		return nil, err
 	}
 	return impl(env, elements.NewNodeAt[*ir.CallExpr](env.File(), call), f, nil, args)
+}
+
+type funcMacro struct {
+	funcBase
+	fnT *ir.Macro
+}
+
+func (f *funcMacro) Call(env *fun.CallEnv, call *ir.CallExpr, args []ir.Element) (outs []ir.Element, err error) {
+	defer func() {
+		if err != nil {
+			err = fmterr.Position(env.File().FileSet(), call.Expr(), err)
+		}
+	}()
+	synth, err := f.fnT.BuildSynthetic(env.File(), call, f.fnT, args)
+	if err != nil {
+		return nil, err
+	}
+	return []ir.Element{synth}, nil
 }
 
 func evalFuncBody(fitp *FileScope, body *ir.BlockStmt) ([]ir.Element, error) {

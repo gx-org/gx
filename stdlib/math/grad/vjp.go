@@ -16,14 +16,14 @@ package grad
 
 import (
 	"go/ast"
-	"slices"
 
 	"github.com/pkg/errors"
-	"github.com/gx-org/gx/base/ordered"
+	"github.com/gx-org/gx/api/values"
 	"github.com/gx-org/gx/base/uname"
 	"github.com/gx-org/gx/build/ir/annotations"
 	"github.com/gx-org/gx/build/ir"
 	"github.com/gx-org/gx/internal/interp/compeval/cpevelements"
+	"github.com/gx-org/gx/internal/interp/flatten"
 	"github.com/gx-org/gx/interp"
 )
 
@@ -37,7 +37,6 @@ type (
 	vjpMacro struct {
 		cpevelements.CoreMacroElement
 		set         *ir.Macro
-		aux         *ordered.Map[string, *cpevelements.SyntheticFuncDecl]
 		exprToName  map[ir.Expr]forwardValues
 		resultNames []string
 
@@ -50,7 +49,7 @@ type (
 	}
 )
 
-var _ cpevelements.FuncASTBuilder = (*vjpMacro)(nil)
+var _ ir.FuncASTBuilder = (*vjpMacro)(nil)
 
 // VJP computes the vector-jacobian product of a function.
 func VJP(file *ir.File, call *ir.CallExpr, macro *ir.Macro, args []ir.Element) (ir.MacroElement, error) {
@@ -170,19 +169,18 @@ func (m *vjpMacro) BuildDecl(ir.PkgFunc) (*ast.FuncDecl, bool) {
 	return fDecl, true
 }
 
-func (m *vjpMacro) buildBodyFromSetAnnotation(fetcher ir.Fetcher, ann setAnnotation) (*ast.BlockStmt, []*cpevelements.SyntheticFuncDecl, bool) {
-	return nil, nil, fetcher.Err().Appendf(m.Source(), "function with set directives not supported yet")
+func (m *vjpMacro) buildBodyFromSetAnnotation(fetcher ir.Fetcher, ann setAnnotation) (*ast.BlockStmt, bool) {
+	return nil, fetcher.Err().Appendf(m.Source(), "function with set directives not supported yet")
 }
 
-func (m *vjpMacro) BuildBody(fetcher ir.Fetcher, _ ir.Func) (*ast.BlockStmt, []*cpevelements.SyntheticFuncDecl, bool) {
+func (m *vjpMacro) BuildBody(fetcher ir.Fetcher, _ ir.Func) (*ast.BlockStmt, bool) {
 	if ann := annotations.Get[setAnnotation](m.fn, m.set); ann != nil {
 		return m.buildBodyFromSetAnnotation(fetcher, ann)
 	}
 	fnWithBody, ok := m.fn.(*ir.FuncDecl)
 	if !ok {
-		return nil, nil, fetcher.Err().Appendf(m.Source(), "function %s has no body", m.fn.ShortString())
+		return nil, fetcher.Err().Appendf(m.Source(), "function %s has no body", m.fn.ShortString())
 	}
-	m.aux = ordered.NewMap[string, *cpevelements.SyntheticFuncDecl]()
 	sg := m.newStmt(fetcher, nil)
 	fType := m.fn.FuncType()
 	sg.registerFieldNames(fType.Receiver)
@@ -190,7 +188,12 @@ func (m *vjpMacro) BuildBody(fetcher ir.Fetcher, _ ir.Func) (*ast.BlockStmt, []*
 	sg.registerFieldNames(fType.Results)
 	body, ok := sg.processBlock(fnWithBody.Body)
 	if !ok {
-		return nil, nil, false
+		return nil, false
 	}
-	return body, slices.Collect(m.aux.Values()), true
+	return body, true
+}
+
+// Unflatten creates a GX value from the next handles available in the parser.
+func (m *vjpMacro) Unflatten(handles *flatten.Parser) (values.Value, error) {
+	return values.NewIRNode(m.fn)
 }

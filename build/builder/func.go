@@ -254,14 +254,14 @@ func (f *funcDecl) buildSignature(pkgScope *pkgResolveScope) (ir.Func, iFuncReso
 	return ext, funcScope, ok
 }
 
-func (f *funcDecl) buildBody(fScope iFuncResolveScope, extF *irFunc) ([]*irFunc, bool) {
+func (f *funcDecl) buildBody(fScope iFuncResolveScope, extF *irFunc) bool {
 	ext := extF.irFunc.(*ir.FuncDecl)
 	scope, ok := newBlockScope(fScope)
 	if !ok {
-		return nil, false
+		return false
 	}
 	ext.Body, ok = f.body.buildBlockStmt(scope)
-	return nil, ok
+	return ok
 }
 
 func (f *funcDecl) fnSource() *ast.FuncDecl {
@@ -304,8 +304,8 @@ func (f *funcBuiltin) buildSignature(pkgScope *pkgResolveScope) (ir.Func, iFuncR
 	return ext, fScope, ok
 }
 
-func (f *funcBuiltin) buildBody(iFuncResolveScope, *irFunc) ([]*irFunc, bool) {
-	return nil, true
+func (f *funcBuiltin) buildBody(iFuncResolveScope, *irFunc) bool {
+	return true
 }
 
 type funcLiteral struct {

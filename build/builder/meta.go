@@ -27,7 +27,6 @@ import (
 	"github.com/pkg/errors"
 	gxfmt "github.com/gx-org/gx/base/fmt"
 	"github.com/gx-org/gx/build/ir"
-	"github.com/gx-org/gx/internal/interp/compeval/cpevelements"
 )
 
 type coreSyntheticFunc struct {
@@ -35,11 +34,11 @@ type coreSyntheticFunc struct {
 	src   *ast.FuncDecl
 }
 
-func (f *coreSyntheticFunc) buildBody(fnScope iFuncResolveScope, fn *irFunc) ([]*irFunc, bool) {
+func (f *coreSyntheticFunc) buildBody(fnScope iFuncResolveScope, fn *irFunc) bool {
 	mScope := fnScope.(iSynthResolveScope)
 	compEval, ok := fnScope.compEval()
 	if !ok {
-		return nil, false
+		return false
 	}
 	return mScope.buildBody(fn.irFunc.(*ir.FuncDecl), compEval)
 }
@@ -71,11 +70,11 @@ func (f *coreSyntheticFunc) buildAnnotations(fScope iFuncResolveScope, extF *irF
 type (
 	synthResolveScope struct {
 		iFuncResolveScope
-		fnBuilder cpevelements.FuncASTBuilder
+		fnBuilder ir.FuncASTBuilder
 	}
 
 	iSynthResolveScope interface {
-		buildBody(*ir.FuncDecl, *compileEvaluator) ([]*irFunc, bool)
+		buildBody(*ir.FuncDecl, *compileEvaluator) bool
 	}
 )
 
@@ -129,45 +128,39 @@ func buildIRBody(mScope *synthResolveScope, ext *ir.FuncDecl, compEval *compileE
 		return false
 	}
 	ext.Body = irBlock
-	return ok
+	return true
 }
 
-func (m *synthResolveScope) buildBody(fn *ir.FuncDecl, compEval *compileEvaluator) ([]*irFunc, bool) {
+func (m *synthResolveScope) buildBody(fn *ir.FuncDecl, compEval *compileEvaluator) bool {
 	// First, build the AST body of the synthetic function.
-	astBody, auxs, ok := m.fnBuilder.BuildBody(compEval, fn)
+	astBody, ok := m.fnBuilder.BuildBody(compEval, fn)
 	if !ok {
-		return nil, false
+		return false
 	}
 	if astBody == nil {
-		return nil, true
-	}
-	// Register all the auxiliary functions, so that they are available to the builder.
-	pkgScope := m.fileScope().pkgResolveScope
-	irAuxs, ok := pkgScope.dcls.registerAuxFuncs(m, auxs)
-	if !ok {
-		return nil, false
+		return true
 	}
 	// Format the body to build line numbers.
 	src := &strings.Builder{}
 	src.WriteString("package _\n")
 	err := formatBody(m.funcType(), astBody, src)
 	if err != nil {
-		return nil, m.Err().Append(err)
+		return m.Err().Append(err)
 	}
 	fs := token.NewFileSet()
 	astFile, err := parser.ParseFile(fs, "", src.String(), parser.ParseComments)
 	if err != nil {
-		return nil, m.Err().Append(errors.Errorf("cannot parse formatted file: %v\nSource:\n%s", err, src.String()))
+		return m.Err().Append(errors.Errorf("cannot parse formatted file: %v\nSource:\n%s", err, src.String()))
 	}
 	fn.Src.Body = astFile.Decls[0].(*ast.FuncDecl).Body
 	// Build the IR representation of the function body.
-	return irAuxs, buildIRBody(m, fn, compEval, src.String(), fn.Src.Body)
+	return buildIRBody(m, fn, compEval, src.String(), fn.Src.Body)
 }
 
 type syntheticFunc struct {
 	coreSyntheticFunc
 	underFun  ir.PkgFunc
-	fnBuilder cpevelements.FuncASTBuilder
+	fnBuilder ir.FuncASTBuilder
 }
 
 func (f *syntheticFunc) buildSignature(pkgScope *pkgResolveScope) (ir.Func, iFuncResolveScope, bool) {
@@ -196,7 +189,7 @@ func (f *syntheticFunc) checkSyntheticSignature(fScope *fileResolveScope, fInput
 	return true
 }
 
-func buildSyntheticFuncSig(fScope *fileResolveScope, astBuilder cpevelements.FuncASTBuilder, target ir.PkgFunc) (*ir.FuncDecl, *synthResolveScope, bool) {
+func buildSyntheticFuncSig(fScope *fileResolveScope, astBuilder ir.FuncASTBuilder, target ir.PkgFunc) (*ir.FuncDecl, *synthResolveScope, bool) {
 	synDecl, ok := astBuilder.BuildDecl(target)
 	if !ok {
 		return nil, nil, false

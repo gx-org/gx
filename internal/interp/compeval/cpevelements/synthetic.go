@@ -22,27 +22,6 @@ import (
 	"github.com/gx-org/gx/interp/elements"
 )
 
-type (
-	// FuncASTBuilder builds GX functions programmatically.
-	FuncASTBuilder interface {
-		ir.MacroElement
-		BuildDecl(target ir.PkgFunc) (*ast.FuncDecl, bool)
-		BuildBody(ir.Fetcher, ir.Func) (*ast.BlockStmt, []*SyntheticFuncDecl, bool)
-	}
-
-	// FuncAnnotator builds a synthetic function.
-	FuncAnnotator interface {
-		ir.MacroElement
-		Annotate(ir.Fetcher, ir.PkgFunc) bool
-	}
-
-	// SyntheticFuncDecl is a synthetic package function declaration.
-	SyntheticFuncDecl struct {
-		Builder FuncASTBuilder
-		F       *ast.FuncDecl
-	}
-)
-
 // CoreMacroElement is a helper structure to implement macros.
 type CoreMacroElement struct {
 	mac  *ir.Macro

@@ -61,8 +61,8 @@ func (f *importedFunc) buildSignature(pkgScope *pkgResolveScope) (ir.Func, iFunc
 	return f.fn, newFuncScope(fScope, f.fn.FType), true
 }
 
-func (f *importedFunc) buildBody(iFuncResolveScope, *irFunc) ([]*irFunc, bool) {
-	return nil, true
+func (f *importedFunc) buildBody(iFuncResolveScope, *irFunc) bool {
+	return true
 }
 
 func (f *importedFunc) Build(ibld irBuilder) (ir.Node, bool) {

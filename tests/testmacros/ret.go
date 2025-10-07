@@ -31,7 +31,7 @@ type updateReturn struct {
 	str string
 }
 
-var _ cpevelements.FuncASTBuilder = (*updateReturn)(nil)
+var _ ir.FuncASTBuilder = (*updateReturn)(nil)
 
 func newUpdateReturn(file *ir.File, call *ir.CallExpr, mac *ir.Macro, args []ir.Element) (ir.MacroElement, error) {
 	fn, err := interp.FuncDeclFromElement(args[0])
@@ -66,6 +66,6 @@ func (m *updateReturn) body() *ast.BlockStmt {
 	}
 }
 
-func (m *updateReturn) BuildBody(fetcher ir.Fetcher, _ ir.Func) (*ast.BlockStmt, []*cpevelements.SyntheticFuncDecl, bool) {
-	return m.body(), nil, true
+func (m *updateReturn) BuildBody(fetcher ir.Fetcher, _ ir.Func) (*ast.BlockStmt, bool) {
+	return m.body(), true
 }
