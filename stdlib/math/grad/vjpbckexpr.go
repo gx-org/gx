@@ -17,6 +17,7 @@ package grad
 import (
 	"go/ast"
 	"go/token"
+	"strconv"
 
 	"github.com/gx-org/gx/base/uname"
 	"github.com/gx-org/gx/build/ir"
@@ -149,6 +150,30 @@ func (m *exprBackwardVJP) valueRef(bck *gradExprResult, expr *ir.ValueRef) (*gra
 	return &gradExprResult{expr: gradIdent(expr.Stor.NameDef())}, true
 }
 
+func (m *exprBackwardVJP) callTrace(backwardIdents []*gradExprResult) {
+	if !traceAll {
+		return
+	}
+	var traceArgs []ast.Expr
+	for i, bckExpr := range backwardIdents {
+		ident, ok := bckExpr.expr.(*ast.Ident)
+		if !ok {
+			continue
+		}
+		traceArgs = append(traceArgs,
+			&ast.BasicLit{Value: strconv.Quote(ident.Name)},
+			backwardIdents[i].expr,
+		)
+
+	}
+	m.appendVJPStmt(&ast.ExprStmt{
+		X: &ast.CallExpr{
+			Fun:  &ast.Ident{Name: "trace"},
+			Args: traceArgs,
+		},
+	})
+}
+
 func (m *exprBackwardVJP) callExpr(bck *gradExprResult, expr *ir.CallExpr) (*gradExprResult, bool) {
 	if len(expr.Args) == 0 {
 		return zeroValueOf(expr.Source()), true
@@ -157,23 +182,21 @@ func (m *exprBackwardVJP) callExpr(bck *gradExprResult, expr *ir.CallExpr) (*gra
 	calleeParams := expr.Callee.FuncType().Params.Fields()
 	backwardIdents := make([]*gradExprResult, len(calleeParams))
 	for i, param := range calleeParams {
-		fwdArgName, ok := m.singleForwardValue(expr.Args[i])
-		if !ok {
-			return nil, false
-		}
 		vjpCall := &ast.CallExpr{
 			Fun:  &ast.Ident{Name: forwardValues.vjps[i]},
-			Args: []ast.Expr{fwdArgName.idents()[0]},
+			Args: []ast.Expr{bck.expr},
 		}
 		bckSuffix := ""
 		if len(calleeParams) > 1 {
 			bckSuffix = param.Name.Name
 		}
-		backwardIdents[i], ok = m.assign(expr, buildMul(bck, &gradExprResult{expr: vjpCall}), bckSuffix)
+		var ok bool
+		backwardIdents[i], ok = m.assign(expr, &gradExprResult{expr: vjpCall}, bckSuffix)
 		if !ok {
 			return nil, false
 		}
 	}
+	m.callTrace(backwardIdents)
 	argsGrad := make([]*gradExprResult, len(expr.Args))
 	for i := len(expr.Args) - 1; i >= 0; i-- {
 		var ok bool
