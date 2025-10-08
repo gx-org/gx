@@ -18,10 +18,13 @@ import (
 	"fmt"
 	"go/ast"
 	"go/token"
+	"strconv"
 
 	"github.com/gx-org/gx/base/uname"
 	"github.com/gx-org/gx/build/ir"
 )
+
+var traceAll = false
 
 type (
 	forwardValues interface {
@@ -88,6 +91,29 @@ func (m *exprForwardVJP) assignAs(expr ir.Expr) (*allocForwardValues, bool) {
 	return m.assignElementary(expr, src), true
 }
 
+func (m *exprForwardVJP) callTrace(exprs []ast.Expr) {
+	if !traceAll {
+		return
+	}
+	var traceArgs []ast.Expr
+	for _, expr := range exprs {
+		ident, ok := expr.(*ast.Ident)
+		if !ok {
+			continue
+		}
+		traceArgs = append(traceArgs,
+			&ast.BasicLit{Value: strconv.Quote(ident.Name)},
+			expr,
+		)
+	}
+	m.appendMainStmt(&ast.ExprStmt{
+		X: &ast.CallExpr{
+			Fun:  &ast.Ident{Name: "trace"},
+			Args: traceArgs,
+		},
+	})
+}
+
 func (m *exprForwardVJP) assignFuncCall(expr *ir.CallExpr, calleeName string, call *ast.CallExpr) *allocForwardValues {
 	nVals := expr.Callee.FuncType().Results.Len()
 	fv := m.newForwardValues(expr, nVals)
@@ -108,6 +134,7 @@ func (m *exprForwardVJP) assignFuncCall(expr *ir.CallExpr, calleeName string, ca
 		fv.vjps[i] = m.macro.unames.Name(vjpFuncName)
 		stmt.Lhs = append(stmt.Lhs, &ast.Ident{Name: fv.vjps[i]})
 	}
+	m.callTrace(stmt.Lhs)
 	return fv
 }
 

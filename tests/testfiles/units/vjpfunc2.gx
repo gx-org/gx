@@ -1,0 +1,39 @@
+package vjpfunc
+
+import "math/grad"
+
+func f(x float32) float32 {
+	return 3*x
+}
+
+func g(x float32) float32 {
+	return x*x
+}
+
+func F(x float32) float32 {
+	return f(g(x))
+}
+
+func TestVJPF() (float32, float32) {
+	vjpF := grad.VJP(F)
+	trace(vjpF)
+	y, bckFunc := vjpF(5)
+	return y, bckFunc(2)
+	// Want:
+ 	// 0: float32(75)
+ 	// 1: float32(60)
+ 	// Trace:
+ 	// vjpfunc2.gx:0
+ 	// 	func(x float32) (float32, func(res float32) float32) {
+ 	// 		fwd0, gVJP := grad.VJP(g)(x)
+ 	// 		fwd1, fVJP := grad.VJP(f)(fwd0)
+ 	// 		selfVJPFunc := func(res float32) float32 {
+ 	// 			bck1 := fVJP(res)
+ 	// 			bck0 := gVJP(bck1)
+ 	// 			return bck0
+ 	// 		}
+ 	// 		return fwd1, selfVJPFunc
+ 	// 	}
+
+}
+
