@@ -50,6 +50,16 @@ func newMathUnaryNode(g *Graph, x ops.Node, f func(float64) float64) (ops.Node, 
 	}, nil
 }
 
+// Log returns the natural logarithm of x.
+func (g *Graph) Log(x ops.Node) (ops.Node, error) {
+	return newMathUnaryNode(g, x, math.Log)
+}
+
+// Exp returns the computation for the exponential.
+func (g *Graph) Exp(x ops.Node) (ops.Node, error) {
+	return newMathUnaryNode(g, x, math.Exp)
+}
+
 // Cos returns a node computing the cosine.
 func (g *Graph) Cos(x ops.Node) (ops.Node, error) {
 	return newMathUnaryNode(g, x, math.Cos)
