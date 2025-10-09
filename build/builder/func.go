@@ -291,13 +291,11 @@ func (bFile *file) processBuiltinFunc(scope procScope, src *ast.FuncDecl, compEv
 }
 
 func (f *funcBuiltin) buildSignature(pkgScope *pkgResolveScope) (ir.Func, iFuncResolveScope, bool) {
-	ext := &ir.FuncBuiltin{
-		Src: f.src,
-	}
 	fileScope, scopeOk := pkgScope.newFileScope(f.bFile)
 	if !scopeOk {
-		return ext, nil, false
+		return nil, nil, false
 	}
+	ext := &ir.FuncBuiltin{Src: f.src, FFile: fileScope.irFile()}
 	var ok bool
 	var fScope *funcResolveScope
 	ext.FType, fScope, ok = f.fType.buildFuncType(fileScope)

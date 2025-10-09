@@ -328,11 +328,13 @@ func (n *assignCallStmt) buildStmt(rscope iFuncResolveScope) (ir.Stmt, bool) {
 	ext := &ir.AssignCallStmt{Src: n.src}
 	var callOk bool
 	ext.Call, callOk = buildCall(rscope, n.call)
-	if !callOk {
-		return ext, false
-	}
 	lenTargets := len(n.targets)
-	funType := ext.Call.Callee.FuncType()
+	var funType *ir.FuncType
+	if callOk {
+		funType = ext.Call.Callee.FuncType()
+	} else {
+		funType = buildInvalidFuncType(len(n.targets))
+	}
 	lenCallResults := funType.Results.Len()
 	if lenTargets != funType.Results.Len() {
 		return ext, rscope.Err().Appendf(n.source(), "assignment mismatch: %d variable(s) but %s returns %d values", lenTargets, ext.Call.String(), lenCallResults)
@@ -358,7 +360,7 @@ func (n *assignCallStmt) buildStmt(rscope iFuncResolveScope) (ir.Stmt, bool) {
 		}
 		newVariables = newVariables || asgmNew
 	}
-	return ext, ok && checkNewVariables(rscope, n.src, newVariables)
+	return ext, ok && callOk && checkNewVariables(rscope, n.src, newVariables)
 }
 
 // Pos returns the position of the statement in the file.

@@ -292,6 +292,23 @@ func invalidExpr() *ir.ValueRef {
 	return invalidValueRef
 }
 
+var invalidGroup = &ir.FieldGroup{Type: &ir.TypeValExpr{
+	X:   invalidExpr(),
+	Typ: ir.InvalidType(),
+}}
+
+func buildInvalidFuncType(numResults int) *ir.FuncType {
+	list := make([]*ir.FieldGroup, numResults)
+	for i := range numResults {
+		list[i] = invalidGroup
+	}
+	return &ir.FuncType{
+		Results: &ir.FieldList{
+			List: list,
+		},
+	}
+}
+
 func buildAExpr(rscope resolveScope, expr exprNode) (ir.AssignableExpr, bool) {
 	ext, exprOk := expr.buildExpr(rscope)
 	if !exprOk {
