@@ -87,6 +87,15 @@ func checkAll(wants []ir.Node, decls *ir.Declarations) error {
 	return nil
 }
 
+type compileError struct {
+	src string
+	err error
+}
+
+func (ce *compileError) Error() string {
+	return fmt.Sprintf("%s\nTest source:\n%s", ce.err.Error(), gxfmt.Number(ce.src))
+}
+
 // DeclarePackage declares a package for the following tests.
 type DeclarePackage struct {
 	// Path where the package belongs (without the name).
@@ -173,7 +182,11 @@ func checkNilError(err error) error {
 	if err == nil {
 		return nil
 	}
-	errs, ok := err.(*fmterr.Errors)
+	builderError := err
+	if cErr, ok := err.(*compileError); ok {
+		builderError = cErr.err
+	}
+	errs, ok := builderError.(*fmterr.Errors)
 	if !ok {
 		return err
 	}
@@ -251,14 +264,17 @@ func (b *Builder) nextTestName() string {
 func build(bld *builder.Builder, path, src string) (builder.Package, error) {
 	fileDecl, err := parser.ParseFile(token.NewFileSet(), "", src, parser.ParseComments|parser.SkipObjectResolution)
 	if err != nil {
-		return nil, err
+		return nil, &compileError{src: src, err: err}
 	}
 	fullPath := fileDecl.Name.Name
 	if path != "" {
 		fullPath = path + "/" + fullPath
 	}
 	pkg := bld.NewIncrementalPackage(fullPath)
-	return pkg, pkg.Build(src)
+	if err := pkg.Build(src); err != nil {
+		return pkg, &compileError{src: src, err: err}
+	}
+	return pkg, nil
 }
 
 // Build test source code.
