@@ -101,5 +101,5 @@ func gradFromAnnotation(fetcher ir.Fetcher, src ir.Func, paramToFunc setAnnotati
 	if pkgFunc == nil {
 		return nil, fetcher.Err().Appendf(src.Source(), "no gradient defined for parameter %s of function %s", wrt, src.ShortString())
 	}
-	return &ast.Ident{Name: pkgFunc.ShortString()}, true
+	return &ast.Ident{Name: pkgFunc.Name()}, true
 }

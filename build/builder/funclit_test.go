@@ -212,7 +212,7 @@ func f() int32 {
 	return fn()
 }
 `,
-			Err: "not enough arguments in call to g",
+			Err: "not enough arguments in call to test.g",
 		},
 	)
 }

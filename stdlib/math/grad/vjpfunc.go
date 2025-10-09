@@ -29,17 +29,27 @@ func (m *vjpMacro) vjpFunc(fetcher ir.Fetcher, src *ir.FuncValExpr) (string, *as
 	}
 }
 
+func nameOf(fetcher ir.Fetcher, src ast.Node, fn ir.Func) (string, bool) {
+	switch fnT := fn.(type) {
+	case ir.PkgFunc:
+		return fnT.Name(), true
+	default:
+		return "unknown", fetcher.Err().Appendf(src, "cannot call function type %T", fn)
+	}
+}
+
 func (m *vjpMacro) buildCallAST(fetcher ir.Fetcher, fn ir.Func) (*ast.CallExpr, bool) {
 	macro := m.From()
+	callName, ok := nameOf(fetcher, m.Source(), fn)
 	return &ast.CallExpr{
 		Fun: &ast.SelectorExpr{
 			X:   &ast.Ident{Name: macro.File().Package.Name.Name},
 			Sel: &ast.Ident{Name: macro.Name()},
 		},
 		Args: []ast.Expr{
-			&ast.Ident{Name: fn.ShortString()},
+			&ast.Ident{Name: callName},
 		},
-	}, true
+	}, ok
 }
 
 func vjpFuncDecl(fetcher ir.Fetcher, parent *vjpMacro, src *ir.FuncValExpr, fn *ir.FuncDecl) (string, *ast.CallExpr, bool) {
