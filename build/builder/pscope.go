@@ -264,5 +264,8 @@ func (s *axLenParamScope) processIdent(ident *ast.Ident) (exprNode, bool) {
 			typ:  ir.IntLenType(),
 		}, s.checkIfAlreadyDefine(ident, name)
 	}
+	if strings.HasSuffix(ident.Name, ir.DefineAxisGroup) {
+		ident.Name = strings.TrimSuffix(ident.Name, ir.DefineAxisGroup)
+	}
 	return processIdentExpr(s, ident)
 }

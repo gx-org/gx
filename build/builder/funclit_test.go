@@ -198,6 +198,31 @@ func F() (float32, float32) {
 	)
 }
 
+func TestFunctionLiteralGeneric(t *testing.T) {
+	testbuild.Run(t,
+		testbuild.Decl{
+			Src: `
+func f([___M]float32) func ([___N]float32) [N___]float32
+`,
+		},
+		testbuild.Decl{
+			Src: `
+func f([___M]float32) func ([M___]float32) [M___]float32
+
+func g(x [3]float32) [3]float32 {
+	fun := f(x)
+	return fun(x)
+}
+`,
+		},
+		testbuild.Decl{
+			Src: `
+func f([___M]float32) func ([___M]float32) [M___]float32
+`,
+		},
+	)
+}
+
 func TestFunctionLiteralErrors(t *testing.T) {
 	testbuild.Run(t,
 		testbuild.Decl{
