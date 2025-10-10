@@ -139,7 +139,7 @@ func (m *gradMacro) BuildDecl(ir.PkgFunc) (*ast.FuncDecl, bool) {
 	return fDecl, true
 }
 
-func (m *gradMacro) buildBodyFromSetAnnotation(fetcher ir.Fetcher, fn ir.Func, ann setAnnotation) (*ast.BlockStmt, bool) {
+func (m *gradMacro) buildBodyFromSetAnnotation(fetcher ir.Fetcher, fn ir.Func, ann *setAnnotation) (*ast.BlockStmt, bool) {
 	params := fn.FuncType().Params.Fields()
 	args := make([]ast.Expr, len(params))
 	for i, param := range params {
@@ -158,7 +158,7 @@ func (m *gradMacro) buildBodyFromSetAnnotation(fetcher ir.Fetcher, fn ir.Func, a
 }
 
 func (m *gradMacro) BuildBody(fetcher ir.Fetcher, fn ir.Func) (*ast.BlockStmt, bool) {
-	if ann := annotations.Get[setAnnotation](m.fn, m.set); ann != nil {
+	if ann := annotations.Get[*setAnnotation](m.fn, m.set); ann != nil {
 		return m.buildBodyFromSetAnnotation(fetcher, fn, ann)
 	}
 	fnWithBody, ok := m.fn.(*ir.FuncDecl)

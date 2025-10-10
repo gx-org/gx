@@ -179,12 +179,12 @@ func (m *vjpMacro) BuildDecl(ir.PkgFunc) (*ast.FuncDecl, bool) {
 	return fDecl, true
 }
 
-func (m *vjpMacro) buildBodyFromSetAnnotation(fetcher ir.Fetcher, ann setAnnotation) (*ast.BlockStmt, bool) {
+func (m *vjpMacro) buildBodyFromSetAnnotation(fetcher ir.Fetcher, ann *setAnnotation) (*ast.BlockStmt, bool) {
 	return nil, fetcher.Err().Appendf(m.Source(), "function with set directives not supported yet")
 }
 
 func (m *vjpMacro) BuildBody(fetcher ir.Fetcher, _ ir.Func) (*ast.BlockStmt, bool) {
-	if ann := annotations.Get[setAnnotation](m.fn, m.set); ann != nil {
+	if ann := annotations.Get[*setAnnotation](m.fn, m.set); ann != nil {
 		return m.buildBodyFromSetAnnotation(fetcher, ann)
 	}
 	fnWithBody, ok := m.fn.(*ir.FuncDecl)

@@ -26,7 +26,9 @@ import (
 )
 
 type (
-	setAnnotation = map[string]ir.PkgFunc
+	setAnnotation struct {
+		partials []ir.PkgFunc
+	}
 
 	setAnnotationMacro struct {
 		cpevelements.CoreMacroElement
@@ -73,31 +75,51 @@ func newSetMacro(file *ir.File, call *ir.CallExpr, mac *ir.Macro, grad ir.PkgFun
 	}, nil
 }
 
+func findNameInFields(paramName string, fields *ir.FieldList) int {
+	for i, param := range fields.Fields() {
+		if param.Name == nil {
+			continue
+		}
+		if param.Name.Name == paramName {
+			return i
+		}
+	}
+	return -1
+}
+
 func (m *setAnnotationMacro) Annotate(fetcher ir.Fetcher, fn ir.PkgFunc) bool {
-	paramToFunc := annotations.GetDef(fn, m.Key(), func() setAnnotation {
-		return make(map[string]ir.PkgFunc)
+	fType := fn.FuncType()
+	paramToFunc := annotations.GetDef(fn, m.Key(), func() *setAnnotation {
+		return &setAnnotation{
+			partials: make([]ir.PkgFunc, fType.Params.Len()),
+		}
 	})
-	params := fn.FuncType().Params.Fields()
+	paramPos := -1
 	if m.paramName == "" {
-		if len(params) != 1 {
+		if fn.FuncType().Params.Len() != 1 {
 			return fetcher.Err().Appendf(m.Source(), "cannot set gradient of %s: requires a single argument", fn.Name())
 		}
-		m.paramName = params[0].Name.Name
+		paramPos = 0
+	} else {
+		paramPos = findNameInFields(m.paramName, fType.Params)
 	}
-	param := fn.FuncType().Params.FindField(m.paramName)
-	if param == nil {
+	if paramPos < 0 {
 		return fetcher.Err().Appendf(m.Source(), "function %s has no parameter %s", fn.Name(), m.paramName)
 	}
-	prev := paramToFunc[m.paramName]
+	prev := paramToFunc.partials[paramPos]
 	if prev != nil {
 		return fetcher.Err().Appendf(m.Source(), "gradient for parameter %s has already been set", m.paramName)
 	}
-	paramToFunc[m.paramName] = m.grad
+	paramToFunc.partials[paramPos] = m.grad
 	return true
 }
 
-func gradFromAnnotation(fetcher ir.Fetcher, src ir.Func, paramToFunc setAnnotation, wrt string) (*ast.Ident, bool) {
-	pkgFunc := paramToFunc[wrt]
+func gradFromAnnotation(fetcher ir.Fetcher, src ir.Func, paramToFunc *setAnnotation, wrt string) (*ast.Ident, bool) {
+	paramPos := findNameInFields(wrt, src.FuncType().Params)
+	if paramPos < 0 {
+		return nil, fetcher.Err().Appendf(src.Source(), "function %s has no parameter %s", src.ShortString(), wrt)
+	}
+	pkgFunc := paramToFunc.partials[paramPos]
 	if pkgFunc == nil {
 		return nil, fetcher.Err().Appendf(src.Source(), "no gradient defined for parameter %s of function %s", wrt, src.ShortString())
 	}
