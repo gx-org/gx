@@ -431,3 +431,22 @@ func vjpF(x float32) (float32, func(res float32) float32) {
 		},
 	)
 }
+
+func TestVJPPackageBuiltins(t *testing.T) {
+	testbuild.Run(t,
+		declareGradPackage,
+		declareMathPackage,
+		testgrad.VJP{
+			Imports: []string{"math"},
+			Src: `
+func F(x float32) float32 {
+	return math.Sin(x)
+}
+`,
+			Want: `
+TODO
+`,
+			Err: "function math.Sin has no body",
+		},
+	)
+}

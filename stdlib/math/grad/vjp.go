@@ -22,6 +22,7 @@ import (
 	"github.com/gx-org/gx/base/uname"
 	"github.com/gx-org/gx/build/ir/annotations"
 	"github.com/gx-org/gx/build/ir"
+	"github.com/gx-org/gx/internal/astbuilder"
 	"github.com/gx-org/gx/internal/interp/compeval/cpevelements"
 	"github.com/gx-org/gx/internal/interp/flatten"
 	"github.com/gx-org/gx/interp"
@@ -68,10 +69,10 @@ func VJP(file *ir.File, call *ir.CallExpr, macro *ir.Macro, args []ir.Element) (
 		set:              setMacro(macro),
 		fwdRoot:          unames.Root("fwd"),
 		bckRoot:          unames.Root("bck"),
-	}.newMacro(fnT), nil
+	}.newMacro(fnT)
 }
 
-func (m vjpMacro) newMacro(fn ir.PkgFunc) *vjpMacro {
+func (m vjpMacro) newMacro(fn ir.PkgFunc) (*vjpMacro, error) {
 	m.fn = fn
 	fType := m.fn.FuncType()
 	params := fType.Params.Fields()
@@ -80,13 +81,17 @@ func (m vjpMacro) newMacro(fn ir.PkgFunc) *vjpMacro {
 	m.resultNames, namedResultFields = m.nameResultFields(fType.Results.Src)
 	for i, param := range params {
 		wrt := newWRT(param)
+		backwardSig, err := m.buildBackwardSignature(fType, wrt, namedResultFields)
+		if err != nil {
+			return nil, err
+		}
 		m.params[i] = vjpParam{
 			field:    param,
 			wrt:      newWRT(param),
-			vjpFType: m.buildBackwardSignature(fType, wrt, namedResultFields),
+			vjpFType: backwardSig,
 		}
 	}
-	return &m
+	return &m, nil
 }
 
 func (m *vjpMacro) start() {
@@ -121,19 +126,24 @@ func concatFieldList(lists ...*ast.FieldList) *ast.FieldList {
 	return &all
 }
 
-func (m *vjpMacro) buildBackwardSignature(fType *ir.FuncType, wrt withRespectTo, namedResultFields *ast.FieldList) *ast.FuncType {
+func (m *vjpMacro) buildBackwardSignature(fType *ir.FuncType, wrt withRespectTo, namedResultFields *ast.FieldList) (*ast.FuncType, error) {
+	results, err := astbuilder.Clone(&ast.FieldList{
+		List: []*ast.Field{&ast.Field{
+			Type: wrt.fieldType(),
+		}},
+	}, astbuilder.AssignToExpandShape)
+	if err != nil {
+		return nil, err
+	}
+
 	return &ast.FuncType{
 		// Same as the original function.
 		TypeParams: fType.Src.TypeParams,
 		// Gradient coming from the output values of the function.
 		Params: namedResultFields,
 		// Return the gradient.
-		Results: &ast.FieldList{
-			List: []*ast.Field{&ast.Field{
-				Type: wrt.fieldType(),
-			}},
-		},
-	}
+		Results: results,
+	}, nil
 }
 
 func (m *vjpMacro) buildType() *ast.FuncType {

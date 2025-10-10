@@ -21,42 +21,16 @@ import (
 )
 
 func (m *vjpMacro) vjpFunc(fetcher ir.Fetcher, src *ir.FuncValExpr) (string, *ast.CallExpr, bool) {
-	switch fT := src.F.(type) {
-	case *ir.FuncDecl:
-		return vjpFuncDecl(fetcher, m, src, fT)
-	default:
-		return "", nil, fetcher.Err().Appendf(src.Source(), "cannot compute the gradient of function %s", fT.ShortString())
+	name := "Fun"
+	if pkgFunc, ok := src.F.(ir.PkgFunc); ok {
+		name = pkgFunc.Name()
 	}
-}
-
-func nameOf(fetcher ir.Fetcher, src ast.Node, fn ir.Func) (string, bool) {
-	switch fnT := fn.(type) {
-	case ir.PkgFunc:
-		return fnT.Name(), true
-	default:
-		return "unknown", fetcher.Err().Appendf(src, "cannot call function type %T", fn)
-	}
-}
-
-func (m *vjpMacro) buildCallAST(fetcher ir.Fetcher, fn ir.Func) (*ast.CallExpr, bool) {
 	macro := m.From()
-	callName, ok := nameOf(fetcher, m.Source(), fn)
-	return &ast.CallExpr{
+	return name, &ast.CallExpr{
 		Fun: &ast.SelectorExpr{
 			X:   &ast.Ident{Name: macro.File().Package.Name.Name},
 			Sel: &ast.Ident{Name: macro.Name()},
 		},
-		Args: []ast.Expr{
-			&ast.Ident{Name: callName},
-		},
-	}, ok
-}
-
-func vjpFuncDecl(fetcher ir.Fetcher, parent *vjpMacro, src *ir.FuncValExpr, fn *ir.FuncDecl) (string, *ast.CallExpr, bool) {
-	macro := parent.newMacro(fn)
-	vjpCall, ok := macro.buildCallAST(fetcher, fn)
-	if !ok {
-		return "", nil, false
-	}
-	return fn.Name(), vjpCall, true
+		Args: []ast.Expr{src.X.Source().(ast.Expr)},
+	}, true
 }

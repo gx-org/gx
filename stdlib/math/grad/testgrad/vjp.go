@@ -41,6 +41,9 @@ type VJP struct {
 	// Wants stores the source code of the expected synthetic auxiliary functions.
 	Wants map[string]string
 
+	// List of imports to include in the source.
+	Imports []string
+
 	// Err is the substring expected if the compiler returns an error.
 	Err string
 }
@@ -66,15 +69,20 @@ func vjp%s()
 `,
 			callImportName, fnName, fnName)
 	}
+	var imports string
+	for _, imp := range tt.Imports {
+		imports += fmt.Sprintf("import \"%s\"\n", imp)
+	}
 	return fmt.Sprintf(`
 package test
 
+%s
 import %s"math/grad"
 
 %s
 
 %s
-`, declImportName+" ", grads.String(), tt.Src)
+`, imports, declImportName+" ", grads.String(), tt.Src)
 }
 
 // Run builds the declarations as a package, then compare to an expected outcome.

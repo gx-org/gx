@@ -28,20 +28,30 @@ import (
 //go:embed grad.gx
 var gradSrc []byte
 
-var declareGradPackage = testbuild.DeclarePackage{
-	Path: "math",
-	Src:  string(gradSrc),
-	Post: func(pkg *ir.Package) {
-		irVJP := pkg.FindFunc("VJP").(*ir.Macro)
-		irVJP.BuildSynthetic = ir.MacroImpl(grad.VJP)
-		irFunc := pkg.FindFunc("Func").(*ir.Macro)
-		irFunc.BuildSynthetic = ir.MacroImpl(grad.FuncGrad)
-		irSet := pkg.FindFunc("Set").(*ir.Macro)
-		irSet.BuildSynthetic = ir.MacroImpl(grad.SetGrad)
-		irSetFor := pkg.FindFunc("SetFor").(*ir.Macro)
-		irSetFor.BuildSynthetic = ir.MacroImpl(grad.SetGradFor)
-	},
-}
+var (
+	declareGradPackage = testbuild.DeclarePackage{
+		Path: "math",
+		Src:  string(gradSrc),
+		Post: func(pkg *ir.Package) {
+			irVJP := pkg.FindFunc("VJP").(*ir.Macro)
+			irVJP.BuildSynthetic = ir.MacroImpl(grad.VJP)
+			irFunc := pkg.FindFunc("Func").(*ir.Macro)
+			irFunc.BuildSynthetic = ir.MacroImpl(grad.FuncGrad)
+			irSet := pkg.FindFunc("Set").(*ir.Macro)
+			irSet.BuildSynthetic = ir.MacroImpl(grad.SetGrad)
+			irSetFor := pkg.FindFunc("SetFor").(*ir.Macro)
+			irSetFor.BuildSynthetic = ir.MacroImpl(grad.SetGradFor)
+		},
+	}
+
+	declareMathPackage = testbuild.DeclarePackage{
+		Src: `
+package math
+
+func Sin([___M]float32) [M___]float32
+`,
+	}
+)
 
 func TestGradExpressions(t *testing.T) {
 	t.SkipNow()
