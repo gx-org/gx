@@ -206,7 +206,7 @@ func (s *axLenDefaultScope) checkIdent(ident *ast.Ident) bool {
 func (s *axLenDefaultScope) processIdent(ident *ast.Ident) (exprNode, bool) {
 	if strings.HasPrefix(ident.Name, ir.DefineAxisGroup) {
 		name := strings.TrimPrefix(ident.Name, ir.DefineAxisGroup)
-		return nil, s.Err().Appendf(ident, "cannot define shape %s using %s outside function parameters", name, ident.Name)
+		return nil, s.Err().Appendf(ident, "shape %s using %s can only be defined in function parameters", name, ident.Name)
 	}
 	if strings.HasSuffix(ident.Name, ir.DefineAxisGroup) {
 		grpIdent := *ident
