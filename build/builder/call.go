@@ -210,7 +210,7 @@ func (n *callExpr) buildMacroCall(rscope resolveScope, compEval *compileEvaluato
 		return invalidExpr(), false
 	}
 	if ok = synScope.buildBody(synDecl, compEval); !ok {
-		return invalidExpr(), ok
+		return invalidExpr(), false
 	}
 	return &ir.MacroCallExpr{
 		X: callExpr,

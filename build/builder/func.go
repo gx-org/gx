@@ -82,7 +82,7 @@ func processFuncType(pscope procScope, src *ast.FuncType, recv *ast.FieldList, c
 	sig := &signatureNamespace{fType: n, names: make(map[string]*field)}
 	n.recv, recvOk = processFieldList(pscope, recv, sig.assignField)
 	if n.recv != nil && n.recv.numFields() > 1 {
-		pscope.Err().Appendf(recv, "method has multiple receivers")
+		recvOk = pscope.Err().Appendf(recv, "method has multiple receivers")
 	}
 	n.typeParams, typesOk = processFieldList(pscope, src.TypeParams, sig.assignTypeField)
 	n.params, paramsOk = processFieldList(&funcParamScope{procScope: pscope}, src.Params, sig.assignField)

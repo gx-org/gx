@@ -58,6 +58,9 @@ func (f *FuncBuiltin) String() string {
 // String returns a string representation of the function.
 func (f *FuncDecl) String() string {
 	sig := f.FType.NameString(f.Src.Name)
+	if f.Body == nil {
+		return sig
+	}
 	body := gxfmt.Indent(f.Body.String())
 	return fmt.Sprintf("%s {\n%s}", sig, body)
 }

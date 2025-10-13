@@ -48,6 +48,11 @@ var (
 		Src: `
 package math
 
+import "math/grad"
+
+func Cos([___M]float32) [M___]float32
+
+//gx:@grad.Set(Cos)
 func Sin([___M]float32) [M___]float32
 `,
 	}

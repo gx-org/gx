@@ -109,3 +109,35 @@ func toTransform[T ast.Node](f func(T) error) Transform {
 		return f(nT)
 	}
 }
+
+type paramNamer struct {
+	pos int
+}
+
+// NameParams names parameters that have no names.
+func NameParams() Transform {
+	return toTransform((&paramNamer{}).transform)
+}
+
+func (pn *paramNamer) name() string {
+	return fmt.Sprintf("p%d", pn.pos)
+}
+
+func (pn *paramNamer) transform(n *ast.Field) error {
+	defer func() {
+		pn.pos++
+	}()
+	if len(n.Names) == 0 {
+		n.Names = []*ast.Ident{&ast.Ident{
+			Name: pn.name(),
+		}}
+		return nil
+	}
+	for _, name := range n.Names {
+		if ir.ValidName(name.Name) {
+			continue
+		}
+		name.Name = pn.name()
+	}
+	return nil
+}

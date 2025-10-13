@@ -444,9 +444,16 @@ func F(x float32) float32 {
 }
 `,
 			Want: `
-TODO
+func vjpF(x float32) (float32, func(res float32) float32) {
+	fwd0, SinVJP := grad.VJP(math.Sin)(x)
+	selfVJPFunc := func(res float32) float32 {
+		bck0 := SinVJP(res)
+		return bck0
+	}
+	return fwd0, selfVJPFunc
+}
 `,
-			Err: "function math.Sin has no body",
+			Err: "undefined: Sin",
 		},
 	)
 }
