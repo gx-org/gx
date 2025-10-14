@@ -121,7 +121,7 @@ type (
 		file() *file
 		decls() *decls
 		processIdent(*ast.Ident) (exprNode, bool)
-		pkgScope() *pkgProcScope
+		pkg() *basePackage
 		axisLengthScope() procAxLenScope
 	}
 

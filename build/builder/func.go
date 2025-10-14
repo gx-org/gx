@@ -202,7 +202,7 @@ func (bFile *file) processFunc(fileScope procScope, src *ast.FuncDecl) bool {
 	if !ok {
 		return false
 	}
-	_, ok = fileScope.pkgScope().decls().registerFunc(fn)
+	_, ok = fileScope.decls().registerFunc(fn)
 	return dirOk && ok
 }
 
