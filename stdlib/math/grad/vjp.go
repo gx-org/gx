@@ -169,14 +169,14 @@ func (m *vjpMacro) buildType() *ast.FuncType {
 	return vjpType
 }
 
-func (m *vjpMacro) BuildDecl(ir.PkgFunc) (*ast.FuncDecl, bool) {
+func (m *vjpMacro) BuildDecl(ir.PkgFunc) (*ir.File, *ast.FuncDecl, bool) {
 	m.start()
 	fDecl := &ast.FuncDecl{Type: m.buildType()}
 	recv := m.fn.FuncType().Receiver
 	if recv != nil {
 		fDecl.Recv = recv.Src
 	}
-	return fDecl, true
+	return m.fn.File(), fDecl, true
 }
 
 func (sg *stmtVJP) buildVJPFunctionWRTFromAnn(grad ir.PkgFunc, param vjpParam) (*ast.FuncLit, bool) {

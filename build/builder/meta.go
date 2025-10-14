@@ -198,7 +198,7 @@ func (f *syntheticFunc) checkSyntheticSignature(fScope *fileResolveScope, fInput
 }
 
 func buildSyntheticFuncSig(fScope *fileResolveScope, astBuilder ir.FuncASTBuilder, target ir.PkgFunc) (*ir.FuncDecl, *synthResolveScope, bool) {
-	synDecl, ok := astBuilder.BuildDecl(target)
+	_, synDecl, ok := astBuilder.BuildDecl(target)
 	if !ok {
 		return nil, nil, false
 	}
@@ -206,7 +206,7 @@ func buildSyntheticFuncSig(fScope *fileResolveScope, astBuilder ir.FuncASTBuilde
 	if err != nil {
 		return nil, nil, fScope.Err().Append(err)
 	}
-	pScope := fScope.fileScope().processScope()
+	pScope := fScope.fileScope().newScope(fScope.bFile())
 	fScope.Err().Push(fmterr.PrefixWith("cannot compile synthetic signature:\n%s\n", src))
 	defer fScope.Err().Pop()
 	ft, ok := processFuncType(pScope, synDecl.Type, synDecl.Recv, false)

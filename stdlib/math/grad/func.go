@@ -41,7 +41,7 @@ func gradFuncDecl(fetcher ir.Fetcher, parent *gradMacro, src *ir.FuncValExpr, fn
 		return nil, fetcher.Err().Append(err)
 	}
 	grader := parent.newMacro(fn, wrtF)
-	gradF, ok := grader.BuildDecl(nil)
+	_, gradF, ok := grader.BuildDecl(nil)
 	if !ok {
 		return nil, false
 	}

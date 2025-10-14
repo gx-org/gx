@@ -254,10 +254,6 @@ func (s *fileResolveScope) nspace() *scope.RWScope[processNode] {
 	return s.nspc
 }
 
-func (s *fileResolveScope) processScope() procScope {
-	return s.pkgProcScope.newScope(s.bFile())
-}
-
 type (
 	iFuncResolveScope interface {
 		resolveScope
