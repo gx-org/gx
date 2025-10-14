@@ -22,7 +22,7 @@ import (
 )
 
 func (m *gradMacro) gradFunc(fetcher ir.Fetcher, src *ir.FuncValExpr, wrt string) (ast.Expr, bool) {
-	ann := annotations.Get[setAnnotation](src.F, m.set)
+	ann := annotations.Get[*setAnnotation](src.F, m.set)
 	if ann != nil {
 		return gradFromAnnotation(fetcher, src.F.(ir.Func), ann, wrt)
 	}
@@ -41,7 +41,7 @@ func gradFuncDecl(fetcher ir.Fetcher, parent *gradMacro, src *ir.FuncValExpr, fn
 		return nil, fetcher.Err().Append(err)
 	}
 	grader := parent.newMacro(fn, wrtF)
-	gradF, ok := grader.BuildDecl(nil)
+	_, gradF, ok := grader.BuildDecl(nil)
 	if !ok {
 		return nil, false
 	}

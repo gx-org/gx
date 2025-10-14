@@ -16,12 +16,14 @@ package grad
 
 import (
 	"go/ast"
+	"go/token"
 
 	"github.com/pkg/errors"
 	"github.com/gx-org/gx/api/values"
 	"github.com/gx-org/gx/base/uname"
 	"github.com/gx-org/gx/build/ir/annotations"
 	"github.com/gx-org/gx/build/ir"
+	"github.com/gx-org/gx/internal/astbuilder"
 	"github.com/gx-org/gx/internal/interp/compeval/cpevelements"
 	"github.com/gx-org/gx/internal/interp/flatten"
 	"github.com/gx-org/gx/interp"
@@ -68,25 +70,28 @@ func VJP(file *ir.File, call *ir.CallExpr, macro *ir.Macro, args []ir.Element) (
 		set:              setMacro(macro),
 		fwdRoot:          unames.Root("fwd"),
 		bckRoot:          unames.Root("bck"),
-	}.newMacro(fnT), nil
+	}.newMacro(fnT)
 }
 
-func (m vjpMacro) newMacro(fn ir.PkgFunc) *vjpMacro {
+func (m vjpMacro) newMacro(fn ir.PkgFunc) (*vjpMacro, error) {
 	m.fn = fn
 	fType := m.fn.FuncType()
-	params := fType.Params.Fields()
-	m.params = make([]vjpParam, len(params))
+	m.params = make([]vjpParam, fType.Params.Len())
 	var namedResultFields *ast.FieldList
 	m.resultNames, namedResultFields = m.nameResultFields(fType.Results.Src)
-	for i, param := range params {
+	for i, param := range fType.Params.Fields() {
 		wrt := newWRT(param)
+		backwardSig, err := m.buildBackwardSignature(fType, wrt, namedResultFields)
+		if err != nil {
+			return nil, err
+		}
 		m.params[i] = vjpParam{
 			field:    param,
 			wrt:      newWRT(param),
-			vjpFType: m.buildBackwardSignature(fType, wrt, namedResultFields),
+			vjpFType: backwardSig,
 		}
 	}
-	return &m
+	return &m, nil
 }
 
 func (m *vjpMacro) start() {
@@ -121,19 +126,24 @@ func concatFieldList(lists ...*ast.FieldList) *ast.FieldList {
 	return &all
 }
 
-func (m *vjpMacro) buildBackwardSignature(fType *ir.FuncType, wrt withRespectTo, namedResultFields *ast.FieldList) *ast.FuncType {
+func (m *vjpMacro) buildBackwardSignature(fType *ir.FuncType, wrt withRespectTo, namedResultFields *ast.FieldList) (*ast.FuncType, error) {
+	results, err := astbuilder.Clone(&ast.FieldList{
+		List: []*ast.Field{&ast.Field{
+			Type: wrt.fieldType(),
+		}},
+	}, astbuilder.AssignToExpandShape)
+	if err != nil {
+		return nil, err
+	}
+
 	return &ast.FuncType{
 		// Same as the original function.
 		TypeParams: fType.Src.TypeParams,
 		// Gradient coming from the output values of the function.
 		Params: namedResultFields,
 		// Return the gradient.
-		Results: &ast.FieldList{
-			List: []*ast.Field{&ast.Field{
-				Type: wrt.fieldType(),
-			}},
-		},
-	}
+		Results: results,
+	}, nil
 }
 
 func (m *vjpMacro) buildType() *ast.FuncType {
@@ -159,33 +169,95 @@ func (m *vjpMacro) buildType() *ast.FuncType {
 	return vjpType
 }
 
-func (m *vjpMacro) BuildDecl(ir.PkgFunc) (*ast.FuncDecl, bool) {
+func (m *vjpMacro) BuildDecl(ir.PkgFunc) (*ir.File, *ast.FuncDecl, bool) {
 	m.start()
 	fDecl := &ast.FuncDecl{Type: m.buildType()}
 	recv := m.fn.FuncType().Receiver
 	if recv != nil {
 		fDecl.Recv = recv.Src
 	}
-	return fDecl, true
+	return m.fn.File(), fDecl, true
 }
 
-func (m *vjpMacro) buildBodyFromSetAnnotation(fetcher ir.Fetcher, ann setAnnotation) (*ast.BlockStmt, bool) {
-	return nil, fetcher.Err().Appendf(m.Source(), "function with set directives not supported yet")
+func (sg *stmtVJP) buildVJPFunctionWRTFromAnn(grad ir.PkgFunc, param vjpParam) (*ast.FuncLit, bool) {
+	backwarder := sg.newExprBackwardVJP(param.wrt)
+	ret := &ast.ReturnStmt{Results: make([]ast.Expr, len(sg.macro.resultNames))}
+	for i, res := range sg.macro.resultNames {
+		ret.Results[i] = buildMul(
+			&gradExprResult{
+				expr: &ast.Ident{Name: res},
+			},
+			&gradExprResult{
+				expr: &ast.Ident{Name: grad.Name()},
+			},
+		).expr
+	}
+	var body []ast.Stmt
+	body = append(body, backwarder.stmts...)
+	body = append(body, ret)
+	return &ast.FuncLit{
+		Type: param.vjpFType,
+		Body: &ast.BlockStmt{List: body},
+	}, true
+}
+
+func (m *vjpMacro) buildBodyFromSetAnnotation(fetcher ir.Fetcher, sg *stmtVJP, ann *setAnnotation) (*ast.BlockStmt, bool) {
+	forwarder := sg.newExprForwardVJP()
+	// Call the original function to get the forward values.
+	nVals := m.fn.FuncType().Results.Len()
+	fv := forwarder.newForwardValues(nil, nVals)
+	stmt := &ast.AssignStmt{
+		Tok: token.DEFINE,
+		Lhs: fv.idents(),
+		Rhs: []ast.Expr{&ast.CallExpr{
+			Fun: &ast.Ident{Name: m.fn.Name()},
+		}},
+	}
+	forwarder.appendMainStmt(stmt)
+
+	// Generate forward statements for the expressions in the statement.
+	ret := &ast.ReturnStmt{Results: make([]ast.Expr, nVals)}
+	for i, expr := range fv.idents() {
+		ret.Results[i] = expr
+	}
+
+	// Build a backward function for each function parameter.
+	names := make([]ast.Expr, len(sg.macro.params))
+	for i, param := range sg.macro.params {
+		vjpFuncLit, ok := sg.buildVJPFunctionWRTFromAnn(ann.partials[i], param)
+		if !ok {
+			return nil, false
+		}
+		root := "selfVJPFunc"
+		if len(names) > 1 {
+			root += "WRT" + param.wrt.name()
+		}
+		vjpFuncName := sg.macro.unames.Name(root)
+		sg.appendMainStmt(&ast.AssignStmt{
+			Tok: token.DEFINE,
+			Lhs: []ast.Expr{&ast.Ident{Name: vjpFuncName}},
+			Rhs: []ast.Expr{vjpFuncLit},
+		})
+		ret.Results = append(ret.Results, &ast.Ident{Name: vjpFuncName})
+	}
+	stmts := append([]ast.Stmt{}, sg.stmts...)
+	stmts = append(stmts, ret)
+	return &ast.BlockStmt{List: stmts}, true
 }
 
 func (m *vjpMacro) BuildBody(fetcher ir.Fetcher, _ ir.Func) (*ast.BlockStmt, bool) {
-	if ann := annotations.Get[setAnnotation](m.fn, m.set); ann != nil {
-		return m.buildBodyFromSetAnnotation(fetcher, ann)
-	}
-	fnWithBody, ok := m.fn.(*ir.FuncDecl)
-	if !ok {
-		return nil, fetcher.Err().Appendf(m.Source(), "function %s has no body", m.fn.ShortString())
-	}
 	sg := m.newStmt(fetcher, nil)
 	fType := m.fn.FuncType()
 	sg.registerFieldNames(fType.Receiver)
 	sg.registerFieldNames(fType.Params)
 	sg.registerFieldNames(fType.Results)
+	if ann := annotations.Get[*setAnnotation](m.fn, m.set); ann != nil {
+		return m.buildBodyFromSetAnnotation(fetcher, sg, ann)
+	}
+	fnWithBody, ok := m.fn.(*ir.FuncDecl)
+	if !ok {
+		return nil, fetcher.Err().Appendf(m.Source(), "function %s requires a gradient specification", m.fn.ShortString())
+	}
 	body, ok := sg.processBlock(fnWithBody.Body)
 	if !ok {
 		return nil, false

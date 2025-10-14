@@ -17,6 +17,7 @@ package builder
 import (
 	"go/ast"
 
+	"github.com/gx-org/gx/build/fmterr"
 	"github.com/gx-org/gx/build/ir"
 	"github.com/gx-org/gx/internal/interp/compeval/cpevelements"
 	"github.com/gx-org/gx/interp/fun"
@@ -200,12 +201,16 @@ func (n *callExpr) buildMacroCall(rscope resolveScope, compEval *compileEvaluato
 	if !ok {
 		return invalidExpr(), rscope.Err().Appendf(n.source(), "macro %s does not build functions", mac.ShortString())
 	}
+
+	rscope.Err().Push(fmterr.PosPrefixWith(rscope.fileScope().pkg().fset, callExpr.Src.Fun.Pos(), "error while calling macro %s:\n", callExpr.String()))
+	defer rscope.Err().Pop()
+
 	synDecl, synScope, ok := buildSyntheticFuncSig(rscope.fileScope(), fnBuilder, nil)
 	if !ok {
 		return invalidExpr(), false
 	}
 	if ok = synScope.buildBody(synDecl, compEval); !ok {
-		return invalidExpr(), ok
+		return invalidExpr(), false
 	}
 	return &ir.MacroCallExpr{
 		X: callExpr,

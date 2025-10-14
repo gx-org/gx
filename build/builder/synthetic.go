@@ -61,7 +61,7 @@ func (f *assignFuncFromMacro) buildFuncBuilder(fScope *fileResolveScope) (ir.Fun
 }
 
 func (f *assignFuncFromMacro) buildSignature(pkgScope *pkgResolveScope) (ir.Func, iFuncResolveScope, bool) {
-	fScope, ok := pkgScope.newFileScope(f.bFile)
+	fScope, ok := pkgScope.newFileRScope(f.bFile)
 	if !ok {
 		return nil, nil, false
 	}

@@ -202,7 +202,7 @@ type (
 
 var _ resolveScope = (*fileResolveScope)(nil)
 
-func (s *pkgResolveScope) newFileScope(f *file) (*fileResolveScope, bool) {
+func (s *pkgResolveScope) newFileRScope(f *file) (*fileResolveScope, bool) {
 	fScope := &fileResolveScope{
 		pkgResolveScope: s,
 		bF:              f,
@@ -252,10 +252,6 @@ func (s *fileResolveScope) find(name string) (processNode, bool) {
 
 func (s *fileResolveScope) nspace() *scope.RWScope[processNode] {
 	return s.nspc
-}
-
-func (s *fileResolveScope) processScope() procScope {
-	return s.pkgProcScope.newScope(s.bFile())
 }
 
 type (

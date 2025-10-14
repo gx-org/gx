@@ -46,7 +46,7 @@ func processFile(pkgctx *pkgProcScope, name string, src *ast.File) bool {
 	if err := f.pkg.setOrCheckName(src.Name); err != nil {
 		pkgctx.Err().Appendf(src.Name, "%q is an invalid package name: %v", src.Name, err)
 	}
-	return f.processDecls(pkgctx.newScope(f), src.Decls)
+	return f.processDecls(pkgctx.newFilePScope(f), src.Decls)
 }
 
 func (f *file) processDecls(pscope procScope, decls []ast.Decl) bool {

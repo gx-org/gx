@@ -269,7 +269,7 @@ func (pkg *IncrementalPackage) BuildExpr(src string) (ir.Expr, error) {
 	errs := &fmterr.Errors{}
 	pkgScope := newPackageProcScope(false, pkg.basePackage, errs)
 	file := newFile(pkg.basePackage, fileName, &ast.File{})
-	pscope := pkgScope.newScope(file)
+	pscope := pkgScope.newFilePScope(file)
 	expr, _ := processExpr(pscope, astExpr)
 	if !errs.Empty() {
 		return nil, errs
@@ -278,7 +278,7 @@ func (pkg *IncrementalPackage) BuildExpr(src string) (ir.Expr, error) {
 	if !ok {
 		return nil, errs
 	}
-	rScope, ok := pkgRScope.newFileScope(file)
+	rScope, ok := pkgRScope.newFileRScope(file)
 	if !ok {
 		return nil, errs
 	}
@@ -299,7 +299,7 @@ func (pkg *IncrementalPackage) Fetcher() (ir.Fetcher, error) {
 		return nil, errs.ToError()
 	}
 	file := newFile(pkg.basePackage, "", &ast.File{})
-	fScope, ok := pkgRScope.newFileScope(file)
+	fScope, ok := pkgRScope.newFileRScope(file)
 	if !ok {
 		return nil, errs.ToError()
 	}

@@ -431,3 +431,29 @@ func vjpF(x float32) (float32, func(res float32) float32) {
 		},
 	)
 }
+
+func TestVJPPackageBuiltins(t *testing.T) {
+	testbuild.Run(t,
+		declareGradPackage,
+		declareMathPackage,
+		testgrad.VJP{
+			Imports: []string{"math"},
+			Src: `
+func F(x float32) float32 {
+	return math.Sin(x)
+}
+`,
+			Want: `
+func vjpF(x float32) (float32, func(res float32) float32) {
+	fwd0, SinVJP := grad.VJP(math.Sin)(x)
+	selfVJPFunc := func(res float32) float32 {
+		bck0 := SinVJP(res)
+		return bck0
+	}
+	return fwd0, selfVJPFunc
+}
+`,
+			Err: "undefined: Sin",
+		},
+	)
+}

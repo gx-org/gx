@@ -32,7 +32,7 @@ func (bFile *file) processIRMacroFunc(scope procScope, src *ast.FuncDecl, commen
 }
 
 func (f *funcMacro) buildSignature(pkgScope *pkgResolveScope) (ir.Func, iFuncResolveScope, bool) {
-	fScope, scopeOk := pkgScope.newFileScope(f.bFile)
+	fScope, scopeOk := pkgScope.newFileRScope(f.bFile)
 	if !scopeOk {
 		return nil, nil, false
 	}

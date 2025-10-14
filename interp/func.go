@@ -77,6 +77,9 @@ func (st *funcBase) toFuncBuiltin(impl ir.FuncImpl) (FuncBuiltin, error) {
 	if !isBuiltin {
 		return nil, errors.Errorf("type %T is not a function builtin implementation", impl)
 	}
+	if blt == nil {
+		return nil, errors.Errorf("function %s has no implementation", st.fn.ShortString())
+	}
 	return blt, nil
 }
 

@@ -124,7 +124,7 @@ func (m *gradMacro) syntheticFuncName(fetcher ir.Fetcher, fn ir.Func) (string, b
 	return fmt.Sprintf("__%s_%s_%s_%s", imp.Name(), funcName, pkgFunc.Name(), m.wrt.name()), true
 }
 
-func (m *gradMacro) BuildDecl(ir.PkgFunc) (*ast.FuncDecl, bool) {
+func (m *gradMacro) BuildDecl(ir.PkgFunc) (*ir.File, *ast.FuncDecl, bool) {
 	fType := m.fn.FuncType()
 	fDecl := &ast.FuncDecl{Type: fType.Src}
 	fDecl.Type.Results = &ast.FieldList{
@@ -136,10 +136,10 @@ func (m *gradMacro) BuildDecl(ir.PkgFunc) (*ast.FuncDecl, bool) {
 	if recv != nil {
 		fDecl.Recv = recv.Src
 	}
-	return fDecl, true
+	return m.fn.File(), fDecl, true
 }
 
-func (m *gradMacro) buildBodyFromSetAnnotation(fetcher ir.Fetcher, fn ir.Func, ann setAnnotation) (*ast.BlockStmt, bool) {
+func (m *gradMacro) buildBodyFromSetAnnotation(fetcher ir.Fetcher, fn ir.Func, ann *setAnnotation) (*ast.BlockStmt, bool) {
 	params := fn.FuncType().Params.Fields()
 	args := make([]ast.Expr, len(params))
 	for i, param := range params {
@@ -158,7 +158,7 @@ func (m *gradMacro) buildBodyFromSetAnnotation(fetcher ir.Fetcher, fn ir.Func, a
 }
 
 func (m *gradMacro) BuildBody(fetcher ir.Fetcher, fn ir.Func) (*ast.BlockStmt, bool) {
-	if ann := annotations.Get[setAnnotation](m.fn, m.set); ann != nil {
+	if ann := annotations.Get[*setAnnotation](m.fn, m.set); ann != nil {
 		return m.buildBodyFromSetAnnotation(fetcher, fn, ann)
 	}
 	fnWithBody, ok := m.fn.(*ir.FuncDecl)

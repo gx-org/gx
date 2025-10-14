@@ -1514,7 +1514,7 @@ func (s *FuncBuiltin) NameDef() *ast.Ident {
 
 // ShortString returns the name of the function.
 func (s *FuncBuiltin) ShortString() string {
-	return s.Name()
+	return s.FFile.Package.Name.Name + "." + s.Name()
 }
 
 // Value returns a reference to the function.

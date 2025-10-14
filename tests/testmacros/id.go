@@ -37,8 +37,8 @@ func newID(file *ir.File, call *ir.CallExpr, mac *ir.Macro, args []ir.Element) (
 	return &id{CoreMacroElement: cpevelements.MacroElement(mac, file, call), fn: fn}, nil
 }
 
-func (m *id) BuildDecl(ir.PkgFunc) (*ast.FuncDecl, bool) {
-	return &ast.FuncDecl{Type: m.fn.FType.Src, Recv: m.fn.Src.Recv}, true
+func (m *id) BuildDecl(ir.PkgFunc) (*ir.File, *ast.FuncDecl, bool) {
+	return m.fn.FFile, &ast.FuncDecl{Type: m.fn.FType.Src, Recv: m.fn.Src.Recv}, true
 }
 
 func (m *id) BuildBody(fetcher ir.Fetcher, _ ir.Func) (*ast.BlockStmt, bool) {

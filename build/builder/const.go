@@ -72,7 +72,7 @@ func processConstSpec(pscope procScope, src *ast.ValueSpec) bool {
 }
 
 func (spec *constSpec) Build(irb irBuilder) (ir.Node, bool) {
-	fScope, ok := irb.Scope().newFileScope(spec.bFile)
+	fScope, ok := irb.Scope().newFileRScope(spec.bFile)
 	if !ok {
 		return nil, false
 	}
@@ -122,7 +122,7 @@ func (cst *constExpr) buildDeclaration(ibld irBuilder) (*ir.ConstExpr, bool) {
 }
 
 func (cst *constExpr) buildExpression(ibld irBuilder, ext *ir.ConstExpr) bool {
-	fScope, ok := ibld.Scope().newFileScope(cst.spec.bFile)
+	fScope, ok := ibld.Scope().newFileRScope(cst.spec.bFile)
 	if !ok {
 		return false
 	}

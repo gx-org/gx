@@ -82,7 +82,7 @@ func processFuncType(pscope procScope, src *ast.FuncType, recv *ast.FieldList, c
 	sig := &signatureNamespace{fType: n, names: make(map[string]*field)}
 	n.recv, recvOk = processFieldList(pscope, recv, sig.assignField)
 	if n.recv != nil && n.recv.numFields() > 1 {
-		pscope.Err().Appendf(recv, "method has multiple receivers")
+		recvOk = pscope.Err().Appendf(recv, "method has multiple receivers")
 	}
 	n.typeParams, typesOk = processFieldList(pscope, src.TypeParams, sig.assignTypeField)
 	n.params, paramsOk = processFieldList(&funcParamScope{procScope: pscope}, src.Params, sig.assignField)
@@ -202,7 +202,7 @@ func (bFile *file) processFunc(fileScope procScope, src *ast.FuncDecl) bool {
 	if !ok {
 		return false
 	}
-	_, ok = fileScope.pkgScope().decls().registerFunc(fn)
+	_, ok = fileScope.decls().registerFunc(fn)
 	return dirOk && ok
 }
 
@@ -244,7 +244,7 @@ func (f *funcDecl) resolveOrder() int {
 }
 
 func (f *funcDecl) buildSignature(pkgScope *pkgResolveScope) (ir.Func, iFuncResolveScope, bool) {
-	fScope, ok := pkgScope.newFileScope(f.bFile)
+	fScope, ok := pkgScope.newFileRScope(f.bFile)
 	if !ok {
 		return nil, nil, false
 	}
@@ -291,13 +291,11 @@ func (bFile *file) processBuiltinFunc(scope procScope, src *ast.FuncDecl, compEv
 }
 
 func (f *funcBuiltin) buildSignature(pkgScope *pkgResolveScope) (ir.Func, iFuncResolveScope, bool) {
-	ext := &ir.FuncBuiltin{
-		Src: f.src,
-	}
-	fileScope, scopeOk := pkgScope.newFileScope(f.bFile)
+	fileScope, scopeOk := pkgScope.newFileRScope(f.bFile)
 	if !scopeOk {
-		return ext, nil, false
+		return nil, nil, false
 	}
+	ext := &ir.FuncBuiltin{Src: f.src, FFile: fileScope.irFile()}
 	var ok bool
 	var fScope *funcResolveScope
 	ext.FType, fScope, ok = f.fType.buildFuncType(fileScope)

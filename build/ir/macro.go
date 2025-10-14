@@ -28,7 +28,7 @@ type (
 	// FuncASTBuilder builds GX functions programmatically.
 	FuncASTBuilder interface {
 		MacroElement
-		BuildDecl(target PkgFunc) (*ast.FuncDecl, bool)
+		BuildDecl(target PkgFunc) (*File, *ast.FuncDecl, bool)
 		BuildBody(Fetcher, Func) (*ast.BlockStmt, bool)
 	}
 

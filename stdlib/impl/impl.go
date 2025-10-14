@@ -38,11 +38,9 @@ type (
 		Ceil     interp.FuncBuiltin
 		Erf      interp.FuncBuiltin
 		Expm1    interp.FuncBuiltin
-		Exp      interp.FuncBuiltin
 		Floor    interp.FuncBuiltin
 		Log1p    interp.FuncBuiltin
 		Logistic interp.FuncBuiltin
-		Log      interp.FuncBuiltin
 		Max      interp.FuncBuiltin
 		Min      interp.FuncBuiltin
 		Pow      interp.FuncBuiltin
