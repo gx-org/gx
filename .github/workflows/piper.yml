@@ -48,6 +48,9 @@ jobs:
     - name: Install C++ dependencies
       run: sudo apt install -y libabsl-dev
 
+    - name: Update GX dependencies to the latest commit
+      run: go get github.com/gx-org/backend@latest
+
     - name: Tidy (best effort)
       run: go mod tidy || true
 
@@ -58,9 +61,6 @@ jobs:
 
     - name: Tidy (required)
       run: go mod tidy
-
-    - name: Update GX dependencies to the latest commit
-      run: go get github.com/gx-org/backend@latest
 
     - name: Build
       run: |
