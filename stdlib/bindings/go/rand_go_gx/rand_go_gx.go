@@ -27,12 +27,15 @@ import (
 	"github.com/gx-org/backend/platform"
 	"github.com/gx-org/gx/api"
 	"github.com/gx-org/gx/api/options"
-	"github.com/gx-org/gx/api/trace"
 	"github.com/gx-org/gx/api/tracer"
 	"github.com/gx-org/gx/api/values"
 	"github.com/gx-org/gx/build/ir"
+	"github.com/gx-org/gx/golang/binder/gobindings/core"
 	"github.com/gx-org/gx/golang/binder/gobindings/types"
 	"github.com/pkg/errors"
+
+	gxdep0 "github.com/gx-org/gx/stdlib/bindings/go/dtype_go_gx"
+	gxdep1 "github.com/gx-org/gx/stdlib/bindings/go/math_go_gx"
 )
 
 // Force some package dependencies.
@@ -44,38 +47,46 @@ var (
 	_ = errors.Errorf
 	_ = types.NewSlice[types.Bridger]
 	_ = platform.HostTransfer
+	_ = ir.NamedType{}
+	_ = tracer.Trace
 )
 
-// PackageIR is the GX package intermediate representation
-// built for a given runtime, but not yet for a specific device.
-type PackageIR struct {
-	Runtime *api.Runtime
-	IR      *ir.Package
-	Tracer  trace.Callback
-}
-
-// Load the GX package for a given backend.
-func Load(rtm *api.Runtime) (*PackageIR, error) {
+// Load the package for a given runtime.
+func Load(rtm *api.Runtime) (*core.Package, error) {
 	bpkg, err := rtm.Builder().Build("rand")
 	if err != nil {
 		return nil, err
 	}
-	pkg := &PackageIR{
-		Runtime: rtm,
-		IR:      bpkg.IR(),
+	deps := make([]*core.Package, 2)
+	deps[0], err = gxdep0.Load(rtm)
+	if err != nil {
+		return nil, err
 	}
-
-	return pkg, nil
+	deps[1], err = gxdep1.Load(rtm)
+	if err != nil {
+		return nil, err
+	}
+	return core.NewPackage(bpkg, deps), nil
 }
 
 // BuildFor loads the GX package rand
 // then returns that package for a given device and options.
-func BuildFor(dev *api.Device, options ...options.PackageOptionFactory) (*Package, error) {
+func BuildFor(dev *api.Device, opts ...options.PackageOptionFactory) (*Package, error) {
+	pkgHandle, err := BuildHandleFor(dev, opts...)
+	if err != nil {
+		return nil, err
+	}
+	return pkgHandle.Factory.Package, nil
+}
+
+// BuildHandleFor loads the GX package rand
+// then returns that package for a given device and options.
+func BuildHandleFor(dev *api.Device, opts ...options.PackageOptionFactory) (*PackageHandle, error) {
 	pkg, err := Load(dev.Runtime())
 	if err != nil {
 		return nil, err
 	}
-	return pkg.BuildFor(dev, options...), nil
+	return BuildFromIR(pkg, dev, opts)
 }
 
 // Factory create new instance of types used in the package.
@@ -86,103 +97,192 @@ type Factory struct {
 	Package *Package
 }
 
+// PackageHandle provides utility functions for the package.
+type PackageHandle struct {
+	*core.PackageCompileSetup
+	Factory *Factory
+
+	// Package dependencies
+	gxdep0 *gxdep0.PackageHandle
+	gxdep1 *gxdep1.PackageHandle
+}
+
 // Package is a GX package for a given device.
 // Functions and methods are compiled specifically for that device.
 type Package struct {
-	Package *PackageIR
-	Device  *api.Device
-	Factory *Factory
+	handle PackageHandle
 
-	options []options.PackageOption
-
-	NewPhilox               NewPhilox
-	New                     New
-	NewSource               NewSource
-	methodRandBool          methodBase
-	methodRandUint32        methodBase
-	methodRandUint64        methodBase
-	methodRandInt32         methodBase
-	methodRandInt64         methodBase
-	methodRandFloat64MinMax methodBase
-	methodRandFloat64       methodBase
-	methodRandFloat32MinMax methodBase
-	methodRandFloat32       methodBase
+	// Functions and methods cache
+	cacheRandBool          *core.FuncCache
+	cacheRandUint32        *core.FuncCache
+	cacheRandUint64        *core.FuncCache
+	cacheRandInt32         *core.FuncCache
+	cacheRandInt64         *core.FuncCache
+	cacheRandFloat64MinMax *core.FuncCache
+	cacheRandFloat64       *core.FuncCache
+	cacheRandFloat32MinMax *core.FuncCache
+	cacheRandFloat32       *core.FuncCache
+	cacheNewPhilox         *core.FuncCache
+	cacheNew               *core.FuncCache
+	cacheNewSource         *core.FuncCache
 }
 
-// AppendOptions appends options to the compiler.
-func (cmpl *Package) AppendOptions(options ...options.PackageOptionFactory) {
-	plat := cmpl.Package.Runtime.Backend().Platform()
-	for _, opt := range options {
-		cmpl.options = append(cmpl.options, opt(plat))
+// BuildFromIR builds a package for a device once it has been loaded.
+func BuildFromIR(irPkg *core.Package, dev *api.Device, optionFactories []options.PackageOptionFactory) (*PackageHandle, error) {
+	pkg := &Package{}
+	pkg.handle.Factory = &Factory{Package: pkg}
+	pkg.handle.PackageCompileSetup = irPkg.Setup(dev, optionFactories)
+	// Build dependencies.
+	var err error
+	pkg.handle.gxdep0, err = core.BuildDep[*gxdep0.PackageHandle](
+		pkg.handle.PackageCompileSetup,
+		0,
+		gxdep0.BuildFromIR,
+	)
+	if err != nil {
+		return nil, err
 	}
+	pkg.handle.gxdep1, err = core.BuildDep[*gxdep1.PackageHandle](
+		pkg.handle.PackageCompileSetup,
+		1,
+		gxdep1.BuildFromIR,
+	)
+	if err != nil {
+		return nil, err
+	}
+
+	// Initialise function and method caches.
+	pkg.cacheRandBool, err = pkg.handle.NewCache("Rand", "Bool")
+	if err != nil {
+		return nil, err
+	}
+	pkg.cacheRandUint32, err = pkg.handle.NewCache("Rand", "Uint32")
+	if err != nil {
+		return nil, err
+	}
+	pkg.cacheRandUint64, err = pkg.handle.NewCache("Rand", "Uint64")
+	if err != nil {
+		return nil, err
+	}
+	pkg.cacheRandInt32, err = pkg.handle.NewCache("Rand", "Int32")
+	if err != nil {
+		return nil, err
+	}
+	pkg.cacheRandInt64, err = pkg.handle.NewCache("Rand", "Int64")
+	if err != nil {
+		return nil, err
+	}
+	pkg.cacheRandFloat64MinMax, err = pkg.handle.NewCache("Rand", "Float64MinMax")
+	if err != nil {
+		return nil, err
+	}
+	pkg.cacheRandFloat64, err = pkg.handle.NewCache("Rand", "Float64")
+	if err != nil {
+		return nil, err
+	}
+	pkg.cacheRandFloat32MinMax, err = pkg.handle.NewCache("Rand", "Float32MinMax")
+	if err != nil {
+		return nil, err
+	}
+	pkg.cacheRandFloat32, err = pkg.handle.NewCache("Rand", "Float32")
+	if err != nil {
+		return nil, err
+	}
+	pkg.cacheNewPhilox, err = pkg.handle.NewCache("", "NewPhilox")
+	if err != nil {
+		return nil, err
+	}
+	pkg.cacheNew, err = pkg.handle.NewCache("", "New")
+	if err != nil {
+		return nil, err
+	}
+	pkg.cacheNewSource, err = pkg.handle.NewCache("", "NewSource")
+	if err != nil {
+		return nil, err
+	}
+
+	return &pkg.handle, err
 }
 
-// BuildFor returns a package ready to compile for a device and options.
-func (pkg *PackageIR) BuildFor(dev *api.Device, options ...options.PackageOptionFactory) *Package {
-	c := &Package{
-		Package: pkg,
-		Device:  dev,
+// NewPhilox returns a new Philox source seeded with the given values.
+func (pkg *Package) NewPhilox(arg0 types.Array[uint64]) (_ *Philox, err error) {
+	var args []values.Value = []values.Value{
+		arg0.Bridge().GXValue(), // seed [3]uint64
 	}
-	c.Factory = &Factory{Package: c}
-	c.AppendOptions(options...)
-
-	c.NewPhilox = NewPhilox{
-		methodBase: methodBase{
-			pkg:      c,
-			function: c.Package.IR.Decls.Funcs[0],
-		},
+	var runner tracer.CompiledFunc
+	runner, err = pkg.cacheNewPhilox.Runner(nil, args)
+	if err != nil {
+		return
 	}
-	c.New = New{
-		methodBase: methodBase{
-			pkg:      c,
-			function: c.Package.IR.Decls.Funcs[2],
-		},
-	}
-	c.NewSource = NewSource{
-		methodBase: methodBase{
-			pkg:      c,
-			function: c.Package.IR.Decls.Funcs[3],
-		},
+	var outputs []values.Value
+	outputs, err = runner.Run(nil, args, pkg.handle.Tracer())
+	if err != nil {
+		return
 	}
 
-	c.methodRandBool = methodBase{
-		pkg:      c,
-		function: c.Package.IR.Decls.Types[2].Methods[0],
-	}
-	c.methodRandUint32 = methodBase{
-		pkg:      c,
-		function: c.Package.IR.Decls.Types[2].Methods[1],
-	}
-	c.methodRandUint64 = methodBase{
-		pkg:      c,
-		function: c.Package.IR.Decls.Types[2].Methods[2],
-	}
-	c.methodRandInt32 = methodBase{
-		pkg:      c,
-		function: c.Package.IR.Decls.Types[2].Methods[3],
-	}
-	c.methodRandInt64 = methodBase{
-		pkg:      c,
-		function: c.Package.IR.Decls.Types[2].Methods[4],
-	}
-	c.methodRandFloat64MinMax = methodBase{
-		pkg:      c,
-		function: c.Package.IR.Decls.Types[2].Methods[5],
-	}
-	c.methodRandFloat64 = methodBase{
-		pkg:      c,
-		function: c.Package.IR.Decls.Types[2].Methods[6],
-	}
-	c.methodRandFloat32MinMax = methodBase{
-		pkg:      c,
-		function: c.Package.IR.Decls.Types[2].Methods[7],
-	}
-	c.methodRandFloat32 = methodBase{
-		pkg:      c,
-		function: c.Package.IR.Decls.Types[2].Methods[8],
+	fty := pkg.handle.Factory
+
+	var out0 *Philox
+	out0, err = fty.MarshalPhilox(outputs[0])
+	if err != nil {
+		return
 	}
 
-	return c
+	return out0, nil
+}
+
+// New returns random values by transforming random values generated by src.
+func (pkg *Package) New(arg0 *Philox) (_ *Rand, err error) {
+	var args []values.Value = []values.Value{
+		arg0.Bridge().GXValue(), // src rand.Philox
+	}
+	var runner tracer.CompiledFunc
+	runner, err = pkg.cacheNew.Runner(nil, args)
+	if err != nil {
+		return
+	}
+	var outputs []values.Value
+	outputs, err = runner.Run(nil, args, pkg.handle.Tracer())
+	if err != nil {
+		return
+	}
+
+	fty := pkg.handle.Factory
+
+	var out0 *Rand
+	out0, err = fty.MarshalRand(outputs[0])
+	if err != nil {
+		return
+	}
+
+	return out0, nil
+}
+
+// NewSource returns a new source for a random generator using a seed.
+func (pkg *Package) NewSource(arg0 types.Atom[int64]) (_ *Philox, err error) {
+	var args []values.Value = []values.Value{
+		arg0.Bridge().GXValue(), // seed int64
+	}
+	var runner tracer.CompiledFunc
+	runner, err = pkg.cacheNewSource.Runner(nil, args)
+	if err != nil {
+		return
+	}
+	var outputs []values.Value
+	outputs, err = runner.Run(nil, args, pkg.handle.Tracer())
+	if err != nil {
+		return
+	}
+
+	fty := pkg.handle.Factory
+
+	var out0 *Philox
+	out0, err = fty.MarshalPhilox(outputs[0])
+	if err != nil {
+		return
+	}
+
+	return out0, nil
 }
 
 // handlePhilox stores the backend handles of Philox.
@@ -217,7 +317,7 @@ func (h *handlePhilox) String() string {
 	bld := strings.Builder{}
 	bld.WriteString("Philox{\n")
 
-	bld.WriteString(fmt.Sprintf("%s:%s\n", "state", any(h.owner.state).(fmt.Stringer).String()))
+	fmt.Fprintf(&bld, "%s:%s\n", "state", any(h.owner.state).(fmt.Stringer).String())
 
 	bld.WriteString("}")
 	return bld.String()
@@ -242,8 +342,8 @@ func (h *handlePhilox) StructValue() *values.Struct {
 }
 
 // MarshalPhilox populates the receiver fields with device handles.
-func (cmpl *Package) MarshalPhilox(val values.Value) (s *Philox, err error) {
-	s = cmpl.Factory.NewPhilox()
+func (fty *Factory) MarshalPhilox(val values.Value) (s *Philox, err error) {
+	s = fty.NewPhilox()
 	var ok bool
 	s.value, ok = val.(*values.NamedType)
 	if !ok {
@@ -277,6 +377,64 @@ func (s Philox) String() string {
 
 // Bridge returns the bridge between the Go value and the GX value.
 func (s *Philox) Bridge() types.Bridge { return &s.handle }
+
+// NewPhilox returns a handle on named type Philox.
+func (fac *Factory) NewPhilox() *Philox {
+	s := &Philox{}
+	typ := fac.Package.handle.IR().Decls.TypeByName("Philox")
+	s.handle = handlePhilox{
+		pkg:   fac.Package,
+		struc: typ,
+		owner: s,
+	}
+
+	structVal, err := values.NewStruct(typ, nil)
+	if err != nil {
+		panic(err)
+	}
+	s.value = values.NewNamedType(structVal, typ)
+
+	return s
+}
+
+var _ types.Bridge = (*handlePhilox)(nil)
+
+func (h *handlePhilox) NewFromField(field *ir.Field) (types.Bridge, error) {
+	name := field.Name.Name
+	switch name {
+	case "state":
+		return nil, errors.Errorf("cannot create a new instance for field state: type types.Array[uint64] not supported")
+
+	default:
+		return nil, errors.Errorf("structure Philox has no field %q", name)
+	}
+}
+
+// SetField sets a field in the structure.
+func (h *handlePhilox) SetField(field *ir.Field, val types.Bridge) error {
+
+	name := field.Name.Name
+	structVal, ok := h.owner.value.Underlying().(*values.Struct)
+	if !ok {
+		return fmt.Errorf("incorrect underlying value for named type Philox: %T is not a %s", val, reflect.TypeFor[*values.Struct]().Name())
+	}
+	switch name {
+
+	case "state":
+		bridger := val.Bridger()
+		fieldValue, ok := bridger.(types.Array[uint64])
+		if !ok {
+			return errors.Errorf("cannot set field state: cannot cast %T to types.Array[uint64]", bridger)
+		}
+		h.owner.state = fieldValue
+		structVal.SetField("state", val.GXValue())
+		return nil
+
+	default:
+		return errors.Errorf("structure Philox has no field %q", name)
+	}
+
+}
 
 // handlebootstrapGenerator stores the backend handles of bootstrapGenerator.
 type handlebootstrapGenerator struct {
@@ -331,8 +489,8 @@ func (h *handlebootstrapGenerator) StructValue() *values.Struct {
 }
 
 // MarshalbootstrapGenerator populates the receiver fields with device handles.
-func (cmpl *Package) MarshalbootstrapGenerator(val values.Value) (s *bootstrapGenerator, err error) {
-	s = cmpl.Factory.NewbootstrapGenerator()
+func (fty *Factory) MarshalbootstrapGenerator(val values.Value) (s *bootstrapGenerator, err error) {
+	s = fty.NewbootstrapGenerator()
 	var ok bool
 	s.value, ok = val.(*values.NamedType)
 	if !ok {
@@ -359,774 +517,10 @@ func (s bootstrapGenerator) String() string {
 // Bridge returns the bridge between the Go value and the GX value.
 func (s *bootstrapGenerator) Bridge() types.Bridge { return &s.handle }
 
-// handleRand stores the backend handles of Rand.
-type handleRand struct {
-	pkg   *Package
-	struc *ir.NamedType
-	owner *Rand
-
-	runnerBool *MethodRandBool
-
-	runnerUint32 *MethodRandUint32
-
-	runnerUint64 *MethodRandUint64
-
-	runnerInt32 *MethodRandInt32
-
-	runnerInt64 *MethodRandInt64
-
-	runnerFloat64MinMax *MethodRandFloat64MinMax
-
-	runnerFloat64 *MethodRandFloat64
-
-	runnerFloat32MinMax *MethodRandFloat32MinMax
-
-	runnerFloat32 *MethodRandFloat32
-}
-
-// MethodRandBool compiles and runs the GX function Bool for a device.
-// Bool returns pseudo-random boolean values as an array of bool.
-type MethodRandBool struct {
-	methodBase
-	receiver handleRand
-}
-
-// MethodRandUint32 compiles and runs the GX function Uint32 for a device.
-// Uint32 returns pseudo-random 32-bit values as an array of uint32.
-type MethodRandUint32 struct {
-	methodBase
-	receiver handleRand
-}
-
-// MethodRandUint64 compiles and runs the GX function Uint64 for a device.
-// Uint64 returns pseudo-random 64-bit values as an array of uint64.
-type MethodRandUint64 struct {
-	methodBase
-	receiver handleRand
-}
-
-// MethodRandInt32 compiles and runs the GX function Int32 for a device.
-// Int32 returns pseudo-random 32-bit values as an array of int32.
-type MethodRandInt32 struct {
-	methodBase
-	receiver handleRand
-}
-
-// MethodRandInt64 compiles and runs the GX function Int64 for a device.
-// Int64 returns pseudo-random 64-bit values as an array of int64.
-type MethodRandInt64 struct {
-	methodBase
-	receiver handleRand
-}
-
-// MethodRandFloat64MinMax compiles and runs the GX function Float64MinMax for a device.
-// Float64MinMax samples uniform pseudo-random values in [min, max).
-type MethodRandFloat64MinMax struct {
-	methodBase
-	receiver handleRand
-}
-
-// MethodRandFloat64 compiles and runs the GX function Float64 for a device.
-// Float64 returns pseudo-random values as an array of float64
-// uniformly distributed from [0.0, 1.0) (1.0 being excluded).
-type MethodRandFloat64 struct {
-	methodBase
-	receiver handleRand
-}
-
-// MethodRandFloat32MinMax compiles and runs the GX function Float32MinMax for a device.
-// Float32MinMax samples uniform pseudo-random values in [min, max).
-type MethodRandFloat32MinMax struct {
-	methodBase
-	receiver handleRand
-}
-
-// MethodRandFloat32 compiles and runs the GX function Float32 for a device.
-// Float32 returns pseudo-random values as an array of float32
-// uniformly distributed from [0.0, 1.0) (1.0 being excluded).
-type MethodRandFloat32 struct {
-	methodBase
-	receiver handleRand
-}
-
-// Run first compiles Bool for a given device and the given arguments.
-// Once compiled, the function is then run with these same arguments.
-// If the shape of the arguments change, the function will panic.
-func (f *MethodRandBool) Run(arg0 *types.Slice[types.Atom[ir.Int]]) (_ *Rand, _ types.Array[bool], err error) {
-	var args []values.Value = []values.Value{
-		arg0.Bridge().GXValue(), // dims []intlen
-	}
-	if f.runner == nil {
-		f.runner, err = tracer.Trace(f.pkg.Device, f.function.(*ir.FuncDecl), f.receiver.GXValue(), args, f.pkg.options)
-		if err != nil {
-			return
-		}
-	}
-	var outputs []values.Value
-	outputs, err = f.runner.Run(f.receiver.GXValue(), args, f.pkg.Package.Tracer)
-	if err != nil {
-		return
-	}
-
-	cmpl := f.pkg
-	var out0 *Rand
-	out0, err = cmpl.MarshalRand(outputs[0])
-	if err != nil {
-		return
-	}
-
-	out1Value, ok := outputs[1].(values.Array)
-	if !ok {
-		err = errors.Errorf("cannot cast %T to %s", outputs[1], reflect.TypeFor[*values.DeviceArray]().Name())
-		return
-	}
-	out1 := types.NewArray[bool](out1Value)
-
-	return out0, out1, nil
-}
-
-func (f *MethodRandBool) String() string {
-	return fmt.Sprint(f.function)
-}
-
-// Run first compiles Uint32 for a given device and the given arguments.
-// Once compiled, the function is then run with these same arguments.
-// If the shape of the arguments change, the function will panic.
-func (f *MethodRandUint32) Run(arg0 *types.Slice[types.Atom[ir.Int]]) (_ *Rand, _ types.Array[uint32], err error) {
-	var args []values.Value = []values.Value{
-		arg0.Bridge().GXValue(), // dims []intlen
-	}
-	if f.runner == nil {
-		f.runner, err = tracer.Trace(f.pkg.Device, f.function.(*ir.FuncDecl), f.receiver.GXValue(), args, f.pkg.options)
-		if err != nil {
-			return
-		}
-	}
-	var outputs []values.Value
-	outputs, err = f.runner.Run(f.receiver.GXValue(), args, f.pkg.Package.Tracer)
-	if err != nil {
-		return
-	}
-
-	cmpl := f.pkg
-	var out0 *Rand
-	out0, err = cmpl.MarshalRand(outputs[0])
-	if err != nil {
-		return
-	}
-
-	out1Value, ok := outputs[1].(values.Array)
-	if !ok {
-		err = errors.Errorf("cannot cast %T to %s", outputs[1], reflect.TypeFor[*values.DeviceArray]().Name())
-		return
-	}
-	out1 := types.NewArray[uint32](out1Value)
-
-	return out0, out1, nil
-}
-
-func (f *MethodRandUint32) String() string {
-	return fmt.Sprint(f.function)
-}
-
-// Run first compiles Uint64 for a given device and the given arguments.
-// Once compiled, the function is then run with these same arguments.
-// If the shape of the arguments change, the function will panic.
-func (f *MethodRandUint64) Run(arg0 *types.Slice[types.Atom[ir.Int]]) (_ *Rand, _ types.Array[uint64], err error) {
-	var args []values.Value = []values.Value{
-		arg0.Bridge().GXValue(), // dims []intlen
-	}
-	if f.runner == nil {
-		f.runner, err = tracer.Trace(f.pkg.Device, f.function.(*ir.FuncDecl), f.receiver.GXValue(), args, f.pkg.options)
-		if err != nil {
-			return
-		}
-	}
-	var outputs []values.Value
-	outputs, err = f.runner.Run(f.receiver.GXValue(), args, f.pkg.Package.Tracer)
-	if err != nil {
-		return
-	}
-
-	cmpl := f.pkg
-	var out0 *Rand
-	out0, err = cmpl.MarshalRand(outputs[0])
-	if err != nil {
-		return
-	}
-
-	out1Value, ok := outputs[1].(values.Array)
-	if !ok {
-		err = errors.Errorf("cannot cast %T to %s", outputs[1], reflect.TypeFor[*values.DeviceArray]().Name())
-		return
-	}
-	out1 := types.NewArray[uint64](out1Value)
-
-	return out0, out1, nil
-}
-
-func (f *MethodRandUint64) String() string {
-	return fmt.Sprint(f.function)
-}
-
-// Run first compiles Int32 for a given device and the given arguments.
-// Once compiled, the function is then run with these same arguments.
-// If the shape of the arguments change, the function will panic.
-func (f *MethodRandInt32) Run(arg0 *types.Slice[types.Atom[ir.Int]]) (_ *Rand, _ types.Array[int32], err error) {
-	var args []values.Value = []values.Value{
-		arg0.Bridge().GXValue(), // dims []intlen
-	}
-	if f.runner == nil {
-		f.runner, err = tracer.Trace(f.pkg.Device, f.function.(*ir.FuncDecl), f.receiver.GXValue(), args, f.pkg.options)
-		if err != nil {
-			return
-		}
-	}
-	var outputs []values.Value
-	outputs, err = f.runner.Run(f.receiver.GXValue(), args, f.pkg.Package.Tracer)
-	if err != nil {
-		return
-	}
-
-	cmpl := f.pkg
-	var out0 *Rand
-	out0, err = cmpl.MarshalRand(outputs[0])
-	if err != nil {
-		return
-	}
-
-	out1Value, ok := outputs[1].(values.Array)
-	if !ok {
-		err = errors.Errorf("cannot cast %T to %s", outputs[1], reflect.TypeFor[*values.DeviceArray]().Name())
-		return
-	}
-	out1 := types.NewArray[int32](out1Value)
-
-	return out0, out1, nil
-}
-
-func (f *MethodRandInt32) String() string {
-	return fmt.Sprint(f.function)
-}
-
-// Run first compiles Int64 for a given device and the given arguments.
-// Once compiled, the function is then run with these same arguments.
-// If the shape of the arguments change, the function will panic.
-func (f *MethodRandInt64) Run(arg0 *types.Slice[types.Atom[ir.Int]]) (_ *Rand, _ types.Array[int64], err error) {
-	var args []values.Value = []values.Value{
-		arg0.Bridge().GXValue(), // dims []intlen
-	}
-	if f.runner == nil {
-		f.runner, err = tracer.Trace(f.pkg.Device, f.function.(*ir.FuncDecl), f.receiver.GXValue(), args, f.pkg.options)
-		if err != nil {
-			return
-		}
-	}
-	var outputs []values.Value
-	outputs, err = f.runner.Run(f.receiver.GXValue(), args, f.pkg.Package.Tracer)
-	if err != nil {
-		return
-	}
-
-	cmpl := f.pkg
-	var out0 *Rand
-	out0, err = cmpl.MarshalRand(outputs[0])
-	if err != nil {
-		return
-	}
-
-	out1Value, ok := outputs[1].(values.Array)
-	if !ok {
-		err = errors.Errorf("cannot cast %T to %s", outputs[1], reflect.TypeFor[*values.DeviceArray]().Name())
-		return
-	}
-	out1 := types.NewArray[int64](out1Value)
-
-	return out0, out1, nil
-}
-
-func (f *MethodRandInt64) String() string {
-	return fmt.Sprint(f.function)
-}
-
-// Run first compiles Float64MinMax for a given device and the given arguments.
-// Once compiled, the function is then run with these same arguments.
-// If the shape of the arguments change, the function will panic.
-func (f *MethodRandFloat64MinMax) Run(arg0 types.Atom[float64], arg1 types.Atom[float64], arg2 *types.Slice[types.Atom[ir.Int]]) (_ *Rand, _ types.Array[float64], err error) {
-	var args []values.Value = []values.Value{
-		arg0.Bridge().GXValue(), // min float64
-		arg1.Bridge().GXValue(), // max float64
-		arg2.Bridge().GXValue(), // dims []intlen
-	}
-	if f.runner == nil {
-		f.runner, err = tracer.Trace(f.pkg.Device, f.function.(*ir.FuncDecl), f.receiver.GXValue(), args, f.pkg.options)
-		if err != nil {
-			return
-		}
-	}
-	var outputs []values.Value
-	outputs, err = f.runner.Run(f.receiver.GXValue(), args, f.pkg.Package.Tracer)
-	if err != nil {
-		return
-	}
-
-	cmpl := f.pkg
-	var out0 *Rand
-	out0, err = cmpl.MarshalRand(outputs[0])
-	if err != nil {
-		return
-	}
-
-	out1Value, ok := outputs[1].(values.Array)
-	if !ok {
-		err = errors.Errorf("cannot cast %T to %s", outputs[1], reflect.TypeFor[*values.DeviceArray]().Name())
-		return
-	}
-	out1 := types.NewArray[float64](out1Value)
-
-	return out0, out1, nil
-}
-
-func (f *MethodRandFloat64MinMax) String() string {
-	return fmt.Sprint(f.function)
-}
-
-// Run first compiles Float64 for a given device and the given arguments.
-// Once compiled, the function is then run with these same arguments.
-// If the shape of the arguments change, the function will panic.
-func (f *MethodRandFloat64) Run(arg0 *types.Slice[types.Atom[ir.Int]]) (_ *Rand, _ types.Array[float64], err error) {
-	var args []values.Value = []values.Value{
-		arg0.Bridge().GXValue(), // dims []intlen
-	}
-	if f.runner == nil {
-		f.runner, err = tracer.Trace(f.pkg.Device, f.function.(*ir.FuncDecl), f.receiver.GXValue(), args, f.pkg.options)
-		if err != nil {
-			return
-		}
-	}
-	var outputs []values.Value
-	outputs, err = f.runner.Run(f.receiver.GXValue(), args, f.pkg.Package.Tracer)
-	if err != nil {
-		return
-	}
-
-	cmpl := f.pkg
-	var out0 *Rand
-	out0, err = cmpl.MarshalRand(outputs[0])
-	if err != nil {
-		return
-	}
-
-	out1Value, ok := outputs[1].(values.Array)
-	if !ok {
-		err = errors.Errorf("cannot cast %T to %s", outputs[1], reflect.TypeFor[*values.DeviceArray]().Name())
-		return
-	}
-	out1 := types.NewArray[float64](out1Value)
-
-	return out0, out1, nil
-}
-
-func (f *MethodRandFloat64) String() string {
-	return fmt.Sprint(f.function)
-}
-
-// Run first compiles Float32MinMax for a given device and the given arguments.
-// Once compiled, the function is then run with these same arguments.
-// If the shape of the arguments change, the function will panic.
-func (f *MethodRandFloat32MinMax) Run(arg0 types.Atom[float32], arg1 types.Atom[float32], arg2 *types.Slice[types.Atom[ir.Int]]) (_ *Rand, _ types.Array[float32], err error) {
-	var args []values.Value = []values.Value{
-		arg0.Bridge().GXValue(), // min float32
-		arg1.Bridge().GXValue(), // max float32
-		arg2.Bridge().GXValue(), // dims []intlen
-	}
-	if f.runner == nil {
-		f.runner, err = tracer.Trace(f.pkg.Device, f.function.(*ir.FuncDecl), f.receiver.GXValue(), args, f.pkg.options)
-		if err != nil {
-			return
-		}
-	}
-	var outputs []values.Value
-	outputs, err = f.runner.Run(f.receiver.GXValue(), args, f.pkg.Package.Tracer)
-	if err != nil {
-		return
-	}
-
-	cmpl := f.pkg
-	var out0 *Rand
-	out0, err = cmpl.MarshalRand(outputs[0])
-	if err != nil {
-		return
-	}
-
-	out1Value, ok := outputs[1].(values.Array)
-	if !ok {
-		err = errors.Errorf("cannot cast %T to %s", outputs[1], reflect.TypeFor[*values.DeviceArray]().Name())
-		return
-	}
-	out1 := types.NewArray[float32](out1Value)
-
-	return out0, out1, nil
-}
-
-func (f *MethodRandFloat32MinMax) String() string {
-	return fmt.Sprint(f.function)
-}
-
-// Run first compiles Float32 for a given device and the given arguments.
-// Once compiled, the function is then run with these same arguments.
-// If the shape of the arguments change, the function will panic.
-func (f *MethodRandFloat32) Run(arg0 *types.Slice[types.Atom[ir.Int]]) (_ *Rand, _ types.Array[float32], err error) {
-	var args []values.Value = []values.Value{
-		arg0.Bridge().GXValue(), // dims []intlen
-	}
-	if f.runner == nil {
-		f.runner, err = tracer.Trace(f.pkg.Device, f.function.(*ir.FuncDecl), f.receiver.GXValue(), args, f.pkg.options)
-		if err != nil {
-			return
-		}
-	}
-	var outputs []values.Value
-	outputs, err = f.runner.Run(f.receiver.GXValue(), args, f.pkg.Package.Tracer)
-	if err != nil {
-		return
-	}
-
-	cmpl := f.pkg
-	var out0 *Rand
-	out0, err = cmpl.MarshalRand(outputs[0])
-	if err != nil {
-		return
-	}
-
-	out1Value, ok := outputs[1].(values.Array)
-	if !ok {
-		err = errors.Errorf("cannot cast %T to %s", outputs[1], reflect.TypeFor[*values.DeviceArray]().Name())
-		return
-	}
-	out1 := types.NewArray[float32](out1Value)
-
-	return out0, out1, nil
-}
-
-func (f *MethodRandFloat32) String() string {
-	return fmt.Sprint(f.function)
-}
-
-// Type of the value.
-func (h *handleRand) Type() ir.Type {
-	return h.struc
-}
-
-// NamedType returns the intermediate representation of the type.
-func (h *handleRand) NamedType() *ir.NamedType {
-	return h.struc
-}
-
-// Bridger returns the Go object owning this handle.
-func (h *handleRand) Bridger() types.Bridger {
-	return h.owner
-}
-
-// GXValue returns the GX value.
-func (h *handleRand) GXValue() values.Value {
-	return h.owner.value
-}
-
-// String representation of the handle.
-func (h *handleRand) String() string {
-	bld := strings.Builder{}
-	bld.WriteString("Rand{\n")
-
-	bld.WriteString(fmt.Sprintf("%s:%s\n", "src", any(h.owner.src).(fmt.Stringer).String()))
-
-	bld.WriteString("}")
-	return bld.String()
-}
-
-// Rand stores the handle of Rand on a device.
-type Rand struct {
-	handle handleRand
-	value  *values.NamedType
-
-	src *Philox
-}
-
-var (
-	_ types.Bridger      = (*Rand)(nil)
-	_ types.StructBridge = (*handleRand)(nil)
-)
-
-// StructValue returns the GX value of the structure.
-func (h *handleRand) StructValue() *values.Struct {
-	return h.owner.value.Underlying().(*values.Struct)
-}
-
-// MarshalRand populates the receiver fields with device handles.
-func (cmpl *Package) MarshalRand(val values.Value) (s *Rand, err error) {
-	s = cmpl.Factory.NewRand()
-	var ok bool
-	s.value, ok = val.(*values.NamedType)
-	if !ok {
-		err = errors.Errorf("cannot use handle to set Rand: %T is not a %s", val, reflect.TypeFor[*values.NamedType]())
-		return
-	}
-	structVal, ok := s.value.Underlying().(*values.Struct)
-	if !ok {
-		err = errors.Errorf("incorrect underlying value for named type Rand: %T is not a %s", val, reflect.TypeFor[*values.Struct]().Name())
-		return
-	}
-	fields := make([]values.Value, structVal.StructType().NumFields())
-	for i, field := range structVal.StructType().Fields.Fields() {
-		fields[i] = structVal.FieldValue(field.Name.Name)
-	}
-	var field0 *Philox
-	field0, err = cmpl.MarshalPhilox(fields[0])
-	if err != nil {
-		return
-	}
-	s.src = field0
-	return
-}
-
-func (s Rand) String() string {
-	return s.handle.String()
-}
-
-// Bridge returns the bridge between the Go value and the GX value.
-func (s *Rand) Bridge() types.Bridge { return &s.handle }
-
-// Bool returns a handle to compile method Bool for a device.
-func (s Rand) Bool() *MethodRandBool {
-	return s.handle.runnerBool
-}
-
-// Uint32 returns a handle to compile method Uint32 for a device.
-func (s Rand) Uint32() *MethodRandUint32 {
-	return s.handle.runnerUint32
-}
-
-// Uint64 returns a handle to compile method Uint64 for a device.
-func (s Rand) Uint64() *MethodRandUint64 {
-	return s.handle.runnerUint64
-}
-
-// Int32 returns a handle to compile method Int32 for a device.
-func (s Rand) Int32() *MethodRandInt32 {
-	return s.handle.runnerInt32
-}
-
-// Int64 returns a handle to compile method Int64 for a device.
-func (s Rand) Int64() *MethodRandInt64 {
-	return s.handle.runnerInt64
-}
-
-// Float64MinMax returns a handle to compile method Float64MinMax for a device.
-func (s Rand) Float64MinMax() *MethodRandFloat64MinMax {
-	return s.handle.runnerFloat64MinMax
-}
-
-// Float64 returns a handle to compile method Float64 for a device.
-func (s Rand) Float64() *MethodRandFloat64 {
-	return s.handle.runnerFloat64
-}
-
-// Float32MinMax returns a handle to compile method Float32MinMax for a device.
-func (s Rand) Float32MinMax() *MethodRandFloat32MinMax {
-	return s.handle.runnerFloat32MinMax
-}
-
-// Float32 returns a handle to compile method Float32 for a device.
-func (s Rand) Float32() *MethodRandFloat32 {
-	return s.handle.runnerFloat32
-}
-
-type methodBase struct {
-	pkg      *Package
-	function ir.Func
-	runner   tracer.CompiledFunc
-}
-
-// NewPhilox compiles and runs the GX function NewPhilox for a device.
-// NewPhilox returns a new Philox source seeded with the given values.
-type NewPhilox struct {
-	methodBase
-}
-
-// New compiles and runs the GX function New for a device.
-// New returns random values by transforming random values generated by src.
-type New struct {
-	methodBase
-}
-
-// NewSource compiles and runs the GX function NewSource for a device.
-// NewSource returns a new source for a random generator using a seed.
-type NewSource struct {
-	methodBase
-}
-
-// Run first compiles NewPhilox for a given device and the given arguments.
-// Once compiled, the function is then run with these same arguments.
-// If the shape of the arguments change, the function will panic.
-func (f *NewPhilox) Run(arg0 types.Array[uint64]) (_ *Philox, err error) {
-	var args []values.Value = []values.Value{
-		arg0.Bridge().GXValue(), // seed [3]uint64
-	}
-	if f.runner == nil {
-		f.runner, err = tracer.Trace(f.pkg.Device, f.function.(*ir.FuncDecl), nil, args, f.pkg.options)
-		if err != nil {
-			return
-		}
-	}
-	var outputs []values.Value
-	outputs, err = f.runner.Run(nil, args, f.pkg.Package.Tracer)
-	if err != nil {
-		return
-	}
-
-	cmpl := f.pkg
-	var out0 *Philox
-	out0, err = cmpl.MarshalPhilox(outputs[0])
-	if err != nil {
-		return
-	}
-
-	return out0, nil
-}
-
-func (f *NewPhilox) String() string {
-	return fmt.Sprint(f.function)
-}
-
-// Run first compiles New for a given device and the given arguments.
-// Once compiled, the function is then run with these same arguments.
-// If the shape of the arguments change, the function will panic.
-func (f *New) Run(arg0 *Philox) (_ *Rand, err error) {
-	var args []values.Value = []values.Value{
-		arg0.Bridge().GXValue(), // src Philox
-	}
-	if f.runner == nil {
-		f.runner, err = tracer.Trace(f.pkg.Device, f.function.(*ir.FuncDecl), nil, args, f.pkg.options)
-		if err != nil {
-			return
-		}
-	}
-	var outputs []values.Value
-	outputs, err = f.runner.Run(nil, args, f.pkg.Package.Tracer)
-	if err != nil {
-		return
-	}
-
-	cmpl := f.pkg
-	var out0 *Rand
-	out0, err = cmpl.MarshalRand(outputs[0])
-	if err != nil {
-		return
-	}
-
-	return out0, nil
-}
-
-func (f *New) String() string {
-	return fmt.Sprint(f.function)
-}
-
-// Run first compiles NewSource for a given device and the given arguments.
-// Once compiled, the function is then run with these same arguments.
-// If the shape of the arguments change, the function will panic.
-func (f *NewSource) Run(arg0 types.Atom[int64]) (_ *Philox, err error) {
-	var args []values.Value = []values.Value{
-		arg0.Bridge().GXValue(), // seed int64
-	}
-	if f.runner == nil {
-		f.runner, err = tracer.Trace(f.pkg.Device, f.function.(*ir.FuncDecl), nil, args, f.pkg.options)
-		if err != nil {
-			return
-		}
-	}
-	var outputs []values.Value
-	outputs, err = f.runner.Run(nil, args, f.pkg.Package.Tracer)
-	if err != nil {
-		return
-	}
-
-	cmpl := f.pkg
-	var out0 *Philox
-	out0, err = cmpl.MarshalPhilox(outputs[0])
-	if err != nil {
-		return
-	}
-
-	return out0, nil
-}
-
-func (f *NewSource) String() string {
-	return fmt.Sprint(f.function)
-}
-
-// NewPhilox returns a handle on named type Philox.
-func (fac *Factory) NewPhilox() *Philox {
-	s := &Philox{}
-	typ := fac.Package.Package.IR.Decls.TypeByName("Philox")
-	s.handle = handlePhilox{
-		pkg:   fac.Package,
-		struc: typ,
-		owner: s,
-	}
-
-	structVal, err := values.NewStruct(typ, nil)
-	if err != nil {
-		panic(err)
-	}
-	s.value = values.NewNamedType(structVal, typ)
-
-	return s
-}
-
-var _ types.Bridge = (*handlePhilox)(nil)
-
-func (h *handlePhilox) NewFromField(field *ir.Field) (types.Bridge, error) {
-	name := field.Name.Name
-	switch name {
-
-	case "state":
-		return nil, errors.Errorf("cannot create a new instance for field state: type types.Array[uint64] not supported")
-
-	default:
-		return nil, errors.Errorf("structure Philox has no field %q", name)
-	}
-}
-
-// SetField sets a field in the structure.
-func (h *handlePhilox) SetField(field *ir.Field, val types.Bridge) error {
-
-	name := field.Name.Name
-	structVal, ok := h.owner.value.Underlying().(*values.Struct)
-	if !ok {
-		return fmt.Errorf("incorrect underlying value for named type Philox: %T is not a %s", val, reflect.TypeFor[*values.Struct]().Name())
-	}
-	switch name {
-
-	case "state":
-		bridger := val.Bridger()
-		fieldValue, ok := bridger.(types.Array[uint64])
-		if !ok {
-			return errors.Errorf("cannot set field state: cannot cast %T to types.Array[uint64]", bridger)
-		}
-		h.owner.state = fieldValue
-		structVal.SetField("state", val.GXValue())
-		return nil
-
-	default:
-		return errors.Errorf("structure Philox has no field %q", name)
-	}
-
-}
-
 // NewbootstrapGenerator returns a handle on named type bootstrapGenerator.
 func (fac *Factory) NewbootstrapGenerator() *bootstrapGenerator {
 	s := &bootstrapGenerator{}
-	typ := fac.Package.Package.IR.Decls.TypeByName("bootstrapGenerator")
+	typ := fac.Package.handle.IR().Decls.TypeByName("bootstrapGenerator")
 	s.handle = handlebootstrapGenerator{
 		pkg:   fac.Package,
 		struc: typ,
@@ -1160,10 +554,100 @@ func (h *handlebootstrapGenerator) SetField(field *ir.Field, val types.Bridge) e
 
 }
 
+// handleRand stores the backend handles of Rand.
+type handleRand struct {
+	pkg   *Package
+	struc *ir.NamedType
+	owner *Rand
+}
+
+// Type of the value.
+func (h *handleRand) Type() ir.Type {
+	return h.struc
+}
+
+// NamedType returns the intermediate representation of the type.
+func (h *handleRand) NamedType() *ir.NamedType {
+	return h.struc
+}
+
+// Bridger returns the Go object owning this handle.
+func (h *handleRand) Bridger() types.Bridger {
+	return h.owner
+}
+
+// GXValue returns the GX value.
+func (h *handleRand) GXValue() values.Value {
+	return h.owner.value
+}
+
+// String representation of the handle.
+func (h *handleRand) String() string {
+	bld := strings.Builder{}
+	bld.WriteString("Rand{\n")
+
+	fmt.Fprintf(&bld, "%s:%s\n", "src", any(h.owner.src).(fmt.Stringer).String())
+
+	bld.WriteString("}")
+	return bld.String()
+}
+
+// Rand stores the handle of Rand on a device.
+type Rand struct {
+	handle handleRand
+	value  *values.NamedType
+
+	src *Philox
+}
+
+var (
+	_ types.Bridger      = (*Rand)(nil)
+	_ types.StructBridge = (*handleRand)(nil)
+)
+
+// StructValue returns the GX value of the structure.
+func (h *handleRand) StructValue() *values.Struct {
+	return h.owner.value.Underlying().(*values.Struct)
+}
+
+// MarshalRand populates the receiver fields with device handles.
+func (fty *Factory) MarshalRand(val values.Value) (s *Rand, err error) {
+	s = fty.NewRand()
+	var ok bool
+	s.value, ok = val.(*values.NamedType)
+	if !ok {
+		err = errors.Errorf("cannot use handle to set Rand: %T is not a %s", val, reflect.TypeFor[*values.NamedType]())
+		return
+	}
+	structVal, ok := s.value.Underlying().(*values.Struct)
+	if !ok {
+		err = errors.Errorf("incorrect underlying value for named type Rand: %T is not a %s", val, reflect.TypeFor[*values.Struct]().Name())
+		return
+	}
+	fields := make([]values.Value, structVal.StructType().NumFields())
+	for i, field := range structVal.StructType().Fields.Fields() {
+		fields[i] = structVal.FieldValue(field.Name.Name)
+	}
+	var field0 *Philox
+	field0, err = fty.MarshalPhilox(fields[0])
+	if err != nil {
+		return
+	}
+	s.src = field0
+	return
+}
+
+func (s Rand) String() string {
+	return s.handle.String()
+}
+
+// Bridge returns the bridge between the Go value and the GX value.
+func (s *Rand) Bridge() types.Bridge { return &s.handle }
+
 // NewRand returns a handle on named type Rand.
 func (fac *Factory) NewRand() *Rand {
 	s := &Rand{}
-	typ := fac.Package.Package.IR.Decls.TypeByName("Rand")
+	typ := fac.Package.handle.IR().Decls.TypeByName("Rand")
 	s.handle = handleRand{
 		pkg:   fac.Package,
 		struc: typ,
@@ -1176,51 +660,6 @@ func (fac *Factory) NewRand() *Rand {
 	}
 	s.value = values.NewNamedType(structVal, typ)
 
-	s.handle.runnerBool = &MethodRandBool{
-		methodBase: s.handle.pkg.methodRandBool,
-		receiver:   s.handle,
-	}
-
-	s.handle.runnerUint32 = &MethodRandUint32{
-		methodBase: s.handle.pkg.methodRandUint32,
-		receiver:   s.handle,
-	}
-
-	s.handle.runnerUint64 = &MethodRandUint64{
-		methodBase: s.handle.pkg.methodRandUint64,
-		receiver:   s.handle,
-	}
-
-	s.handle.runnerInt32 = &MethodRandInt32{
-		methodBase: s.handle.pkg.methodRandInt32,
-		receiver:   s.handle,
-	}
-
-	s.handle.runnerInt64 = &MethodRandInt64{
-		methodBase: s.handle.pkg.methodRandInt64,
-		receiver:   s.handle,
-	}
-
-	s.handle.runnerFloat64MinMax = &MethodRandFloat64MinMax{
-		methodBase: s.handle.pkg.methodRandFloat64MinMax,
-		receiver:   s.handle,
-	}
-
-	s.handle.runnerFloat64 = &MethodRandFloat64{
-		methodBase: s.handle.pkg.methodRandFloat64,
-		receiver:   s.handle,
-	}
-
-	s.handle.runnerFloat32MinMax = &MethodRandFloat32MinMax{
-		methodBase: s.handle.pkg.methodRandFloat32MinMax,
-		receiver:   s.handle,
-	}
-
-	s.handle.runnerFloat32 = &MethodRandFloat32{
-		methodBase: s.handle.pkg.methodRandFloat32,
-		receiver:   s.handle,
-	}
-
 	return s
 }
 
@@ -1229,9 +668,8 @@ var _ types.Bridge = (*handleRand)(nil)
 func (h *handleRand) NewFromField(field *ir.Field) (types.Bridge, error) {
 	name := field.Name.Name
 	switch name {
-
 	case "src":
-		return h.pkg.Factory.NewPhilox().Bridge(), nil
+		return h.pkg.handle.Factory.NewPhilox().Bridge(), nil
 
 	default:
 		return nil, errors.Errorf("structure Rand has no field %q", name)
@@ -1262,4 +700,316 @@ func (h *handleRand) SetField(field *ir.Field, val types.Bridge) error {
 		return errors.Errorf("structure Rand has no field %q", name)
 	}
 
+}
+
+// Bool returns pseudo-random boolean values as an array of bool.
+func (recv *Rand) Bool(arg0 *types.Slice[types.Atom[ir.Int]]) (_ *Rand, _ types.Array[bool], err error) {
+	var args []values.Value = []values.Value{
+		arg0.Bridge().GXValue(), // dims []intlen
+	}
+	var runner tracer.CompiledFunc
+	runner, err = recv.handle.pkg.cacheRandBool.Runner(recv.value, args)
+	if err != nil {
+		return
+	}
+	var outputs []values.Value
+	outputs, err = runner.Run(recv.value, args, recv.handle.pkg.handle.Tracer())
+	if err != nil {
+		return
+	}
+
+	fty := recv.handle.pkg.handle.Factory
+
+	var out0 *Rand
+	out0, err = fty.MarshalRand(outputs[0])
+	if err != nil {
+		return
+	}
+
+	out1Value, ok := outputs[1].(values.Array)
+	if !ok {
+		err = errors.Errorf("cannot cast %T to %s", outputs[1], reflect.TypeFor[*values.DeviceArray]().Name())
+		return
+	}
+	out1 := types.NewArray[bool](out1Value)
+
+	return out0, out1, nil
+}
+
+// Uint32 returns pseudo-random 32-bit values as an array of uint32.
+func (recv *Rand) Uint32(arg0 *types.Slice[types.Atom[ir.Int]]) (_ *Rand, _ types.Array[uint32], err error) {
+	var args []values.Value = []values.Value{
+		arg0.Bridge().GXValue(), // dims []intlen
+	}
+	var runner tracer.CompiledFunc
+	runner, err = recv.handle.pkg.cacheRandUint32.Runner(recv.value, args)
+	if err != nil {
+		return
+	}
+	var outputs []values.Value
+	outputs, err = runner.Run(recv.value, args, recv.handle.pkg.handle.Tracer())
+	if err != nil {
+		return
+	}
+
+	fty := recv.handle.pkg.handle.Factory
+
+	var out0 *Rand
+	out0, err = fty.MarshalRand(outputs[0])
+	if err != nil {
+		return
+	}
+
+	out1Value, ok := outputs[1].(values.Array)
+	if !ok {
+		err = errors.Errorf("cannot cast %T to %s", outputs[1], reflect.TypeFor[*values.DeviceArray]().Name())
+		return
+	}
+	out1 := types.NewArray[uint32](out1Value)
+
+	return out0, out1, nil
+}
+
+// Uint64 returns pseudo-random 64-bit values as an array of uint64.
+func (recv *Rand) Uint64(arg0 *types.Slice[types.Atom[ir.Int]]) (_ *Rand, _ types.Array[uint64], err error) {
+	var args []values.Value = []values.Value{
+		arg0.Bridge().GXValue(), // dims []intlen
+	}
+	var runner tracer.CompiledFunc
+	runner, err = recv.handle.pkg.cacheRandUint64.Runner(recv.value, args)
+	if err != nil {
+		return
+	}
+	var outputs []values.Value
+	outputs, err = runner.Run(recv.value, args, recv.handle.pkg.handle.Tracer())
+	if err != nil {
+		return
+	}
+
+	fty := recv.handle.pkg.handle.Factory
+
+	var out0 *Rand
+	out0, err = fty.MarshalRand(outputs[0])
+	if err != nil {
+		return
+	}
+
+	out1Value, ok := outputs[1].(values.Array)
+	if !ok {
+		err = errors.Errorf("cannot cast %T to %s", outputs[1], reflect.TypeFor[*values.DeviceArray]().Name())
+		return
+	}
+	out1 := types.NewArray[uint64](out1Value)
+
+	return out0, out1, nil
+}
+
+// Int32 returns pseudo-random 32-bit values as an array of int32.
+func (recv *Rand) Int32(arg0 *types.Slice[types.Atom[ir.Int]]) (_ *Rand, _ types.Array[int32], err error) {
+	var args []values.Value = []values.Value{
+		arg0.Bridge().GXValue(), // dims []intlen
+	}
+	var runner tracer.CompiledFunc
+	runner, err = recv.handle.pkg.cacheRandInt32.Runner(recv.value, args)
+	if err != nil {
+		return
+	}
+	var outputs []values.Value
+	outputs, err = runner.Run(recv.value, args, recv.handle.pkg.handle.Tracer())
+	if err != nil {
+		return
+	}
+
+	fty := recv.handle.pkg.handle.Factory
+
+	var out0 *Rand
+	out0, err = fty.MarshalRand(outputs[0])
+	if err != nil {
+		return
+	}
+
+	out1Value, ok := outputs[1].(values.Array)
+	if !ok {
+		err = errors.Errorf("cannot cast %T to %s", outputs[1], reflect.TypeFor[*values.DeviceArray]().Name())
+		return
+	}
+	out1 := types.NewArray[int32](out1Value)
+
+	return out0, out1, nil
+}
+
+// Int64 returns pseudo-random 64-bit values as an array of int64.
+func (recv *Rand) Int64(arg0 *types.Slice[types.Atom[ir.Int]]) (_ *Rand, _ types.Array[int64], err error) {
+	var args []values.Value = []values.Value{
+		arg0.Bridge().GXValue(), // dims []intlen
+	}
+	var runner tracer.CompiledFunc
+	runner, err = recv.handle.pkg.cacheRandInt64.Runner(recv.value, args)
+	if err != nil {
+		return
+	}
+	var outputs []values.Value
+	outputs, err = runner.Run(recv.value, args, recv.handle.pkg.handle.Tracer())
+	if err != nil {
+		return
+	}
+
+	fty := recv.handle.pkg.handle.Factory
+
+	var out0 *Rand
+	out0, err = fty.MarshalRand(outputs[0])
+	if err != nil {
+		return
+	}
+
+	out1Value, ok := outputs[1].(values.Array)
+	if !ok {
+		err = errors.Errorf("cannot cast %T to %s", outputs[1], reflect.TypeFor[*values.DeviceArray]().Name())
+		return
+	}
+	out1 := types.NewArray[int64](out1Value)
+
+	return out0, out1, nil
+}
+
+// Float64MinMax samples uniform pseudo-random values in [min, max).
+func (recv *Rand) Float64MinMax(arg0 types.Atom[float64], arg1 types.Atom[float64], arg2 *types.Slice[types.Atom[ir.Int]]) (_ *Rand, _ types.Array[float64], err error) {
+	var args []values.Value = []values.Value{
+		arg0.Bridge().GXValue(), // min float64
+		arg1.Bridge().GXValue(), // max float64
+		arg2.Bridge().GXValue(), // dims []intlen
+	}
+	var runner tracer.CompiledFunc
+	runner, err = recv.handle.pkg.cacheRandFloat64MinMax.Runner(recv.value, args)
+	if err != nil {
+		return
+	}
+	var outputs []values.Value
+	outputs, err = runner.Run(recv.value, args, recv.handle.pkg.handle.Tracer())
+	if err != nil {
+		return
+	}
+
+	fty := recv.handle.pkg.handle.Factory
+
+	var out0 *Rand
+	out0, err = fty.MarshalRand(outputs[0])
+	if err != nil {
+		return
+	}
+
+	out1Value, ok := outputs[1].(values.Array)
+	if !ok {
+		err = errors.Errorf("cannot cast %T to %s", outputs[1], reflect.TypeFor[*values.DeviceArray]().Name())
+		return
+	}
+	out1 := types.NewArray[float64](out1Value)
+
+	return out0, out1, nil
+}
+
+// Float64 returns pseudo-random values as an array of float64
+// uniformly distributed from [0.0, 1.0) (1.0 being excluded).
+func (recv *Rand) Float64(arg0 *types.Slice[types.Atom[ir.Int]]) (_ *Rand, _ types.Array[float64], err error) {
+	var args []values.Value = []values.Value{
+		arg0.Bridge().GXValue(), // dims []intlen
+	}
+	var runner tracer.CompiledFunc
+	runner, err = recv.handle.pkg.cacheRandFloat64.Runner(recv.value, args)
+	if err != nil {
+		return
+	}
+	var outputs []values.Value
+	outputs, err = runner.Run(recv.value, args, recv.handle.pkg.handle.Tracer())
+	if err != nil {
+		return
+	}
+
+	fty := recv.handle.pkg.handle.Factory
+
+	var out0 *Rand
+	out0, err = fty.MarshalRand(outputs[0])
+	if err != nil {
+		return
+	}
+
+	out1Value, ok := outputs[1].(values.Array)
+	if !ok {
+		err = errors.Errorf("cannot cast %T to %s", outputs[1], reflect.TypeFor[*values.DeviceArray]().Name())
+		return
+	}
+	out1 := types.NewArray[float64](out1Value)
+
+	return out0, out1, nil
+}
+
+// Float32MinMax samples uniform pseudo-random values in [min, max).
+func (recv *Rand) Float32MinMax(arg0 types.Atom[float32], arg1 types.Atom[float32], arg2 *types.Slice[types.Atom[ir.Int]]) (_ *Rand, _ types.Array[float32], err error) {
+	var args []values.Value = []values.Value{
+		arg0.Bridge().GXValue(), // min float32
+		arg1.Bridge().GXValue(), // max float32
+		arg2.Bridge().GXValue(), // dims []intlen
+	}
+	var runner tracer.CompiledFunc
+	runner, err = recv.handle.pkg.cacheRandFloat32MinMax.Runner(recv.value, args)
+	if err != nil {
+		return
+	}
+	var outputs []values.Value
+	outputs, err = runner.Run(recv.value, args, recv.handle.pkg.handle.Tracer())
+	if err != nil {
+		return
+	}
+
+	fty := recv.handle.pkg.handle.Factory
+
+	var out0 *Rand
+	out0, err = fty.MarshalRand(outputs[0])
+	if err != nil {
+		return
+	}
+
+	out1Value, ok := outputs[1].(values.Array)
+	if !ok {
+		err = errors.Errorf("cannot cast %T to %s", outputs[1], reflect.TypeFor[*values.DeviceArray]().Name())
+		return
+	}
+	out1 := types.NewArray[float32](out1Value)
+
+	return out0, out1, nil
+}
+
+// Float32 returns pseudo-random values as an array of float32
+// uniformly distributed from [0.0, 1.0) (1.0 being excluded).
+func (recv *Rand) Float32(arg0 *types.Slice[types.Atom[ir.Int]]) (_ *Rand, _ types.Array[float32], err error) {
+	var args []values.Value = []values.Value{
+		arg0.Bridge().GXValue(), // dims []intlen
+	}
+	var runner tracer.CompiledFunc
+	runner, err = recv.handle.pkg.cacheRandFloat32.Runner(recv.value, args)
+	if err != nil {
+		return
+	}
+	var outputs []values.Value
+	outputs, err = runner.Run(recv.value, args, recv.handle.pkg.handle.Tracer())
+	if err != nil {
+		return
+	}
+
+	fty := recv.handle.pkg.handle.Factory
+
+	var out0 *Rand
+	out0, err = fty.MarshalRand(outputs[0])
+	if err != nil {
+		return
+	}
+
+	out1Value, ok := outputs[1].(values.Array)
+	if !ok {
+		err = errors.Errorf("cannot cast %T to %s", outputs[1], reflect.TypeFor[*values.DeviceArray]().Name())
+		return
+	}
+	out1 := types.NewArray[float32](out1Value)
+
+	return out0, out1, nil
 }

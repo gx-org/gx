@@ -59,11 +59,8 @@ jobs:
     - name: Tidy (required)
       run: go mod tidy
 
-    - name: Update all the dependencies to the latest release
-      run: |
-        export DEPS=$(go list -m -u all | grep "gx-org" | grep "\[v")
-        [ "$DEPS" != "" ] && go list -m -u all | grep "gx-org" | grep "\[v" | awk '{print $1}' | xargs -n 1 go get -u
-        go mod tidy
+    - name: Update GX dependencies to the latest commit
+      run: go get github.com/gx-org/backend@latest
 
     - name: Build
       run: |

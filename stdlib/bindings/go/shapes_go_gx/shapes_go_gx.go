@@ -27,12 +27,14 @@ import (
 	"github.com/gx-org/backend/platform"
 	"github.com/gx-org/gx/api"
 	"github.com/gx-org/gx/api/options"
-	"github.com/gx-org/gx/api/trace"
 	"github.com/gx-org/gx/api/tracer"
 	"github.com/gx-org/gx/api/values"
 	"github.com/gx-org/gx/build/ir"
+	"github.com/gx-org/gx/golang/binder/gobindings/core"
 	"github.com/gx-org/gx/golang/binder/gobindings/types"
 	"github.com/pkg/errors"
+
+	gxdep0 "github.com/gx-org/gx/stdlib/bindings/go/dtype_go_gx"
 )
 
 // Force some package dependencies.
@@ -44,38 +46,42 @@ var (
 	_ = errors.Errorf
 	_ = types.NewSlice[types.Bridger]
 	_ = platform.HostTransfer
+	_ = ir.NamedType{}
+	_ = tracer.Trace
 )
 
-// PackageIR is the GX package intermediate representation
-// built for a given runtime, but not yet for a specific device.
-type PackageIR struct {
-	Runtime *api.Runtime
-	IR      *ir.Package
-	Tracer  trace.Callback
-}
-
-// Load the GX package for a given backend.
-func Load(rtm *api.Runtime) (*PackageIR, error) {
+// Load the package for a given runtime.
+func Load(rtm *api.Runtime) (*core.Package, error) {
 	bpkg, err := rtm.Builder().Build("shapes")
 	if err != nil {
 		return nil, err
 	}
-	pkg := &PackageIR{
-		Runtime: rtm,
-		IR:      bpkg.IR(),
+	deps := make([]*core.Package, 1)
+	deps[0], err = gxdep0.Load(rtm)
+	if err != nil {
+		return nil, err
 	}
-
-	return pkg, nil
+	return core.NewPackage(bpkg, deps), nil
 }
 
 // BuildFor loads the GX package shapes
 // then returns that package for a given device and options.
-func BuildFor(dev *api.Device, options ...options.PackageOptionFactory) (*Package, error) {
+func BuildFor(dev *api.Device, opts ...options.PackageOptionFactory) (*Package, error) {
+	pkgHandle, err := BuildHandleFor(dev, opts...)
+	if err != nil {
+		return nil, err
+	}
+	return pkgHandle.Factory.Package, nil
+}
+
+// BuildHandleFor loads the GX package shapes
+// then returns that package for a given device and options.
+func BuildHandleFor(dev *api.Device, opts ...options.PackageOptionFactory) (*PackageHandle, error) {
 	pkg, err := Load(dev.Runtime())
 	if err != nil {
 		return nil, err
 	}
-	return pkg.BuildFor(dev, options...), nil
+	return BuildFromIR(pkg, dev, opts)
 }
 
 // Factory create new instance of types used in the package.
@@ -86,34 +92,43 @@ type Factory struct {
 	Package *Package
 }
 
+// PackageHandle provides utility functions for the package.
+type PackageHandle struct {
+	*core.PackageCompileSetup
+	Factory *Factory
+
+	// Package dependencies
+	gxdep0 *gxdep0.PackageHandle
+}
+
 // Package is a GX package for a given device.
 // Functions and methods are compiled specifically for that device.
 type Package struct {
-	Package *PackageIR
-	Device  *api.Device
-	Factory *Factory
+	handle PackageHandle
 
-	options []options.PackageOption
+	// Functions and methods cache
+
 }
 
-// AppendOptions appends options to the compiler.
-func (cmpl *Package) AppendOptions(options ...options.PackageOptionFactory) {
-	plat := cmpl.Package.Runtime.Backend().Platform()
-	for _, opt := range options {
-		cmpl.options = append(cmpl.options, opt(plat))
+// BuildFromIR builds a package for a device once it has been loaded.
+func BuildFromIR(irPkg *core.Package, dev *api.Device, optionFactories []options.PackageOptionFactory) (*PackageHandle, error) {
+	pkg := &Package{}
+	pkg.handle.Factory = &Factory{Package: pkg}
+	pkg.handle.PackageCompileSetup = irPkg.Setup(dev, optionFactories)
+	// Build dependencies.
+	var err error
+	pkg.handle.gxdep0, err = core.BuildDep[*gxdep0.PackageHandle](
+		pkg.handle.PackageCompileSetup,
+		0,
+		gxdep0.BuildFromIR,
+	)
+	if err != nil {
+		return nil, err
 	}
-}
 
-// BuildFor returns a package ready to compile for a device and options.
-func (pkg *PackageIR) BuildFor(dev *api.Device, options ...options.PackageOptionFactory) *Package {
-	c := &Package{
-		Package: pkg,
-		Device:  dev,
-	}
-	c.Factory = &Factory{Package: c}
-	c.AppendOptions(options...)
+	// Initialise function and method caches.
 
-	return c
+	return &pkg.handle, err
 }
 
 // handleDType stores the backend handles of DType.
@@ -171,14 +186,45 @@ func (val DType) String() string {
 func (val *DType) Bridge() types.Bridge { return &val.handle }
 
 // MarshalDType populates the receiver fields with device handles.
-func (cmpl *Package) MarshalDType(val values.Value) (s *DType, err error) {
-	s = cmpl.Factory.NewDType()
+func (fty *Factory) MarshalDType(val values.Value) (s *DType, err error) {
+	s = fty.NewDType()
 	if _, ok := val.(*values.Slice); ok {
 		err = fmt.Errorf("cannot use handle to set DType: got a tuple instead of a single value")
 		return
 	}
 	s.value = val.(values.Array)
 	return
+}
+
+// NewDType returns a handle on named type DType.
+func (fac *Factory) NewDType() *DType {
+	s := &DType{}
+	typ := fac.Package.handle.IR().Decls.TypeByName("DType")
+	s.handle = handleDType{
+		pkg:   fac.Package,
+		struc: typ,
+		owner: s,
+	}
+
+	return s
+}
+
+var _ types.Bridge = (*handleDType)(nil)
+
+func (h *handleDType) NewFromField(field *ir.Field) (types.Bridge, error) {
+	name := field.Name.Name
+	switch name {
+
+	default:
+		return nil, errors.Errorf("structure DType has no field %q", name)
+	}
+}
+
+// SetField sets a field in the structure.
+func (h *handleDType) SetField(field *ir.Field, val types.Bridge) error {
+
+	return errors.Errorf("type DType has no field")
+
 }
 
 // handleShape stores the backend handles of Shape.
@@ -213,9 +259,9 @@ func (h *handleShape) String() string {
 	bld := strings.Builder{}
 	bld.WriteString("Shape{\n")
 
-	bld.WriteString(fmt.Sprintf("%s:%s\n", "DType", any(h.owner.DType).(fmt.Stringer).String()))
+	fmt.Fprintf(&bld, "%s:%s\n", "DType", any(h.owner.DType).(fmt.Stringer).String())
 
-	bld.WriteString(fmt.Sprintf("%s:%s\n", "Dimensions", any(h.owner.Dimensions).(fmt.Stringer).String()))
+	fmt.Fprintf(&bld, "%s:%s\n", "Dimensions", any(h.owner.Dimensions).(fmt.Stringer).String())
 
 	bld.WriteString("}")
 	return bld.String()
@@ -226,8 +272,7 @@ type Shape struct {
 	handle handleShape
 	value  *values.NamedType
 
-	DType *DType
-
+	DType      *DType
 	Dimensions *types.Slice[types.Atom[ir.Int]]
 }
 
@@ -242,8 +287,8 @@ func (h *handleShape) StructValue() *values.Struct {
 }
 
 // MarshalShape populates the receiver fields with device handles.
-func (cmpl *Package) MarshalShape(val values.Value) (s *Shape, err error) {
-	s = cmpl.Factory.NewShape()
+func (fty *Factory) MarshalShape(val values.Value) (s *Shape, err error) {
+	s = fty.NewShape()
 	var ok bool
 	s.value, ok = val.(*values.NamedType)
 	if !ok {
@@ -260,7 +305,7 @@ func (cmpl *Package) MarshalShape(val values.Value) (s *Shape, err error) {
 		fields[i] = structVal.FieldValue(field.Name.Name)
 	}
 	var field0 *DType
-	field0, err = cmpl.MarshalDType(fields[0])
+	field0, err = fty.MarshalDType(fields[0])
 	if err != nil {
 		return
 	}
@@ -303,47 +348,10 @@ func (s Shape) String() string {
 // Bridge returns the bridge between the Go value and the GX value.
 func (s *Shape) Bridge() types.Bridge { return &s.handle }
 
-type methodBase struct {
-	pkg      *Package
-	function ir.Func
-	runner   tracer.CompiledFunc
-}
-
-// NewDType returns a handle on named type DType.
-func (fac *Factory) NewDType() *DType {
-	s := &DType{}
-	typ := fac.Package.Package.IR.Decls.TypeByName("DType")
-	s.handle = handleDType{
-		pkg:   fac.Package,
-		struc: typ,
-		owner: s,
-	}
-
-	return s
-}
-
-var _ types.Bridge = (*handleDType)(nil)
-
-func (h *handleDType) NewFromField(field *ir.Field) (types.Bridge, error) {
-	name := field.Name.Name
-	switch name {
-
-	default:
-		return nil, errors.Errorf("structure DType has no field %q", name)
-	}
-}
-
-// SetField sets a field in the structure.
-func (h *handleDType) SetField(field *ir.Field, val types.Bridge) error {
-
-	return errors.Errorf("type DType has no field")
-
-}
-
 // NewShape returns a handle on named type Shape.
 func (fac *Factory) NewShape() *Shape {
 	s := &Shape{}
-	typ := fac.Package.Package.IR.Decls.TypeByName("Shape")
+	typ := fac.Package.handle.IR().Decls.TypeByName("Shape")
 	s.handle = handleShape{
 		pkg:   fac.Package,
 		struc: typ,
@@ -364,10 +372,8 @@ var _ types.Bridge = (*handleShape)(nil)
 func (h *handleShape) NewFromField(field *ir.Field) (types.Bridge, error) {
 	name := field.Name.Name
 	switch name {
-
 	case "DType":
-		return h.pkg.Factory.NewDType().Bridge(), nil
-
+		return h.pkg.handle.Factory.NewDType().Bridge(), nil
 	case "Dimensions":
 		slice, err := types.NewEmptySlice[types.Atom[ir.Int]](field.Type(), nil)
 		if err != nil {
