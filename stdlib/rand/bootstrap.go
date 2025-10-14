@@ -19,28 +19,27 @@ import (
 
 	"github.com/pkg/errors"
 	"github.com/gx-org/gx/api/values"
-	"github.com/gx-org/gx/build/fmterr"
 	"github.com/gx-org/gx/build/ir"
 	"github.com/gx-org/gx/golang/backend/kernels"
 	"github.com/gx-org/gx/golang/binder/gobindings/types"
 	"github.com/gx-org/gx/internal/interp/compeval/cpevelements"
 	"github.com/gx-org/gx/interp/elements"
 	"github.com/gx-org/gx/interp/evaluator"
+	"github.com/gx-org/gx/interp/fun"
 	"github.com/gx-org/gx/interp/grapheval"
 	"github.com/gx-org/gx/interp"
 )
 
 type randBootstrap struct {
-	context evaluator.Context
-	call    elements.CallAt
-	errF    fmterr.FileSet
+	eval *grapheval.Evaluator
+	call elements.CallAt
 
 	seed evaluator.NumericalElement
 	rand *rand.Rand
-	next func(*interp.FileScope) (evaluator.NumericalElement, error)
+	next func(evaluator.Env) (evaluator.NumericalElement, error)
 }
 
-var _ interp.Copier = (*randBootstrap)(nil)
+var _ elements.Copier = (*randBootstrap)(nil)
 
 func (rb *randBootstrap) Type() ir.Type {
 	return &ir.BuiltinType{Impl: rb}
@@ -50,7 +49,7 @@ func (*randBootstrap) Kind() ir.Kind {
 	return ir.InterfaceKind
 }
 
-func (rb *randBootstrap) Copy() interp.Copier {
+func (rb *randBootstrap) Copy() elements.Copier {
 	return rb
 }
 
@@ -62,7 +61,7 @@ func (rb *randBootstrap) initRand(seed *values.HostArray) error {
 
 var uint64Type = ir.TypeFromKind(ir.Uint64Kind)
 
-func (rb *randBootstrap) nextConstant(*interp.FileScope) (evaluator.NumericalElement, error) {
+func (rb *randBootstrap) nextConstant(env evaluator.Env) (evaluator.NumericalElement, error) {
 	next := rb.rand.Uint64()
 	expr := &ir.AtomicValueT[uint64]{
 		Src: rb.call.Node().Expr(),
@@ -73,22 +72,20 @@ func (rb *randBootstrap) nextConstant(*interp.FileScope) (evaluator.NumericalEle
 	if err != nil {
 		return nil, err
 	}
-	return rb.context.Evaluator().ElementFromAtom(rb.context, expr, value)
+	return rb.eval.ElementFromAtom(env.File(), expr, value)
 }
 
 type randBootstrapArg struct {
-	seed  elements.ElementWithArrayFromContext
-	ctx   ir.Evaluator
 	rb    *randBootstrap
+	seed  elements.ElementWithArrayFromContext
 	proxy ir.Element
 }
 
 var seedType = ir.Uint64Type()
 
-func newRandBootstrapArg(ctx evaluator.Context, rb *randBootstrap, seed elements.ElementWithArrayFromContext) (*randBootstrapArg, error) {
+func newRandBootstrapArg(ctx evaluator.Env, rb *randBootstrap, seed elements.ElementWithArrayFromContext) (*randBootstrapArg, error) {
 	argFactory := &randBootstrapArg{
 		rb:    rb,
-		ctx:   ctx,
 		seed:  seed,
 		proxy: cpevelements.NewArray(seedType),
 	}
@@ -96,9 +93,8 @@ func newRandBootstrapArg(ctx evaluator.Context, rb *randBootstrap, seed elements
 	return argFactory, nil
 }
 
-func (arg *randBootstrapArg) next(fitp *interp.FileScope) (evaluator.NumericalElement, error) {
-	ev := arg.ctx.(evaluator.Context).Evaluator().(*grapheval.Evaluator)
-	return ev.NewArrayArgument(fitp.File(), arg, seedType, arg.proxy)
+func (arg *randBootstrapArg) next(env evaluator.Env) (evaluator.NumericalElement, error) {
+	return arg.rb.eval.NewArrayArgument(env.File(), arg, seedType, arg.proxy)
 }
 
 func (arg *randBootstrapArg) Init(ctx *values.FuncInputs) error {
@@ -117,20 +113,23 @@ func (arg *randBootstrapArg) Init(ctx *values.FuncInputs) error {
 	return arg.rb.initRand(array)
 }
 
-func (arg randBootstrapArg) Name() string {
+func (arg *randBootstrapArg) Name() string {
 	return "randBootstrapArg.next()"
 }
 
-func (arg randBootstrapArg) ValueFromContext(ctx *values.FuncInputs) (ir.Element, error) {
+func (arg *randBootstrapArg) ValueFromContext(ctx *values.FuncInputs) (ir.Element, error) {
 	val := arg.rb.rand.Uint64()
 	return values.AtomIntegerValue[uint64](seedType, val)
 }
 
-func evalNewBootstrapGenerator(ctx evaluator.Context, call elements.CallAt, fn interp.Func, irFunc *ir.FuncBuiltin, args []ir.Element) ([]ir.Element, error) {
+func (arg *randBootstrapArg) Evaluator() *grapheval.Evaluator {
+	return arg.rb.eval
+}
+
+func evalNewBootstrapGenerator(ctx evaluator.Env, call elements.CallAt, fn fun.Func, irFunc *ir.FuncBuiltin, args []ir.Element) ([]ir.Element, error) {
 	bootstrap := &randBootstrap{
-		context: ctx,
-		call:    call,
-		errF:    fmterr.FileSet{FSet: ctx.File().FileSet()},
+		eval: ctx.Evaluator().(*grapheval.Evaluator),
+		call: call,
 	}
 	var err error
 	switch seedNode := args[0].(type) {
@@ -150,16 +149,16 @@ func evalNewBootstrapGenerator(ctx evaluator.Context, call elements.CallAt, fn i
 	if err != nil {
 		return nil, err
 	}
-	return []ir.Element{interp.NewNamedType(
-		ctx.(*interp.FileScope).NewFunc,
+	return []ir.Element{fun.NewNamedType(
+		interp.NewRunFunc,
 		call.Node().Type().(*ir.NamedType),
 		bootstrap,
 	)}, nil
 }
 
-func evalBootstrapGeneratorNext(ctx evaluator.Context, call elements.CallAt, fn interp.Func, irFunc *ir.FuncBuiltin, args []ir.Element) ([]ir.Element, error) {
-	bootStrap := interp.Underlying(fn.Recv().Element).(*randBootstrap)
-	el, err := bootStrap.next(ctx.(*interp.FileScope))
+func evalBootstrapGeneratorNext(ctx evaluator.Env, call elements.CallAt, fn fun.Func, irFunc *ir.FuncBuiltin, args []ir.Element) ([]ir.Element, error) {
+	bootStrap := fun.Underlying(fn.Recv().Element).(*randBootstrap)
+	el, err := bootStrap.next(ctx)
 	if err != nil {
 		return nil, err
 	}

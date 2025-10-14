@@ -15,26 +15,26 @@
 package interp
 
 import (
-	"github.com/pkg/errors"
 	"github.com/gx-org/gx/build/ir"
 	"github.com/gx-org/gx/internal/base/scope"
+	"github.com/gx-org/gx/interp/fun"
 )
 
-func (itn *intern) InitPkgScope(pkg *ir.Package, scope *scope.RWScope[ir.Element]) (ir.Element, error) {
-	itp := itn.itp
+// InitPkgScope returns a package element with its scope.
+func (itp *Interpreter) InitPkgScope(pkg *ir.Package, scope *scope.RWScope[ir.Element]) (ir.Element, error) {
 	for _, f := range pkg.Decls.Funcs {
-		scope.Define(f.Name(), itp.eval.NewFunc(itp, f, nil))
+		scope.Define(f.Name(), itp.eval.NewFunc(f, nil))
 	}
 	for _, tp := range pkg.Decls.Types {
-		scope.Define(tp.Name(), NewNamedType(itn.itp.NewFunc, tp, nil))
+		scope.Define(tp.Name(), fun.NewNamedType(itp.NewFunc, tp, nil))
 	}
 	if err := itp.evalPackageConsts(pkg, scope); err != nil {
 		return nil, err
 	}
-	if err := itn.itp.evalOptions(pkg, scope); err != nil {
+	if err := itp.options.Eval(pkg, scope); err != nil {
 		return nil, err
 	}
-	return NewPackage(pkg, scope, itn.itp.NewFunc), nil
+	return fun.NewPackage(pkg, scope, itp.NewFunc), nil
 }
 
 func (itp *Interpreter) evalPackageConsts(pkg *ir.Package, scope *scope.RWScope[ir.Element]) error {
@@ -61,40 +61,4 @@ func (itp *Interpreter) evalPackageConstExpr(scope *scope.RWScope[ir.Element], e
 	}
 	scope.Define(expr.VName.Name, el)
 	return nil
-}
-
-// Package groups elements exported by a package.
-type Package struct {
-	pkg  *ir.Package
-	defs scope.Scope[ir.Element]
-}
-
-var (
-	_ ir.Element = (*Package)(nil)
-	_ Selector   = (*Package)(nil)
-)
-
-// NewPackage returns a package grouping everything that a package exports.
-func NewPackage(pkg *ir.Package, defs scope.Scope[ir.Element], newFunc NewFunc) *Package {
-	return &Package{pkg: pkg, defs: defs}
-}
-
-// Type of the element.
-func (pkg *Package) Type() ir.Type {
-	return ir.PackageType()
-}
-
-// Select a member of the package.
-func (pkg *Package) Select(expr *ir.SelectorExpr) (ir.Element, error) {
-	name := expr.Stor.NameDef().Name
-	el, ok := pkg.defs.Find(name)
-	if !ok {
-		return nil, errors.Errorf("%s.%s undefined", pkg.pkg.Name, name)
-	}
-	return el, nil
-}
-
-// String returns a string representation of the node.
-func (pkg *Package) String() string {
-	return "package"
 }

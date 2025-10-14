@@ -36,6 +36,7 @@ import (
 	"github.com/pkg/errors"
 	"github.com/gx-org/backend/dtype"
 	"github.com/gx-org/backend/shape"
+	"github.com/gx-org/gx/build/ir/annotations"
 )
 
 // ----------------------------------------------------------------------------
@@ -1108,6 +1109,9 @@ type (
 	// For example, the function num.Concat is not implemented in GX
 	// and directly provided by the backend.
 	FuncImpl interface {
+		// Name of the builtin function.
+		Name() string
+
 		// BuildFuncType builds the type of a function given how it is called.
 		BuildFuncType(fetcher Fetcher, call *CallExpr) (*FuncType, error)
 
@@ -1118,12 +1122,7 @@ type (
 	// Func is a callable GX function.
 	Func interface {
 		Expr
-
-		// Name of the function (without the package name).
-		Name() string
-
-		// Doc returns associated documentation or nil.
-		Doc() *ast.CommentGroup
+		annotations.Annotated
 
 		// File owning the function.
 		File() *File
@@ -1133,15 +1132,31 @@ type (
 		// types passed as args. Note that both FuncType() and Type() must return the same underlying
 		// value, though FuncType returns the concrete type.
 		FuncType() *FuncType
+
+		// ShortString returns a human readable representation of the function.
+		ShortString() string
 	}
 
 	// PkgFunc is a function declared at the package level.
 	PkgFunc interface {
 		pkgFunc()
-		New() PkgFunc
 		StorageWithValue
 		Func
-		Annotations() *Annotations
+
+		New() PkgFunc
+
+		// Name of the function.
+		Name() string
+
+		// Doc returns associated documentation or nil.
+		Doc() *ast.CommentGroup
+
+		// Type of the function.
+		// If the function is generic, then the type will have been inferred by the compiler from the
+		// types passed as args. Note that both FuncType() and Type() must return the same underlying
+		// value, though FuncType returns the concrete type.
+		// FuncType returns nil if the function needs the call to build its type.
+		FuncType() *FuncType
 	}
 
 	// Statically assert that the Func and Expr interfaces are compatible.
@@ -1156,7 +1171,7 @@ type (
 		Src   *ast.FuncDecl
 		FType *FuncType
 		Body  *BlockStmt
-		Anns  Annotations
+		Anns  annotations.Annotations
 	}
 
 	// FuncBuiltin is a function provided by a backend.
@@ -1166,7 +1181,13 @@ type (
 		Src   *ast.FuncDecl
 		FType *FuncType
 		Impl  FuncImpl
-		Anns  Annotations
+		Anns  annotations.Annotations
+	}
+
+	// FuncKeyword is a function implementing a GX keyword.
+	FuncKeyword struct {
+		ID   *ast.Ident
+		Impl FuncImpl
 	}
 
 	// Macro is a function that takes a set of IR nodes as an input
@@ -1178,7 +1199,7 @@ type (
 		Src   *ast.FuncDecl
 		FType *FuncType
 
-		BuildSynthetic any
+		BuildSynthetic MacroImpl
 	}
 
 	// FuncLit is a function literal.
@@ -1187,6 +1208,15 @@ type (
 		FType *FuncType
 		FFile *File
 		Body  *BlockStmt
+		Anns  annotations.Annotations
+	}
+
+	// SpecialisedFunc is a function that has been specialised.
+	SpecialisedFunc struct {
+		X    Expr
+		F    *FuncValExpr
+		T    *FuncType
+		Anns annotations.Annotations
 	}
 
 	// ImportDecl imports a package.
@@ -1235,8 +1265,10 @@ var (
 	_ Node             = (*VarSpec)(nil)
 	_ Storage          = (*VarExpr)(nil)
 	_ PkgFunc          = (*FuncBuiltin)(nil)
+	_ Func             = (*FuncKeyword)(nil)
 	_ PkgFunc          = (*FuncDecl)(nil)
 	_ Func             = (*FuncLit)(nil)
+	_ Func             = (*SpecialisedFunc)(nil)
 	_ PkgFunc          = (*Macro)(nil)
 	_ WithStore        = (*FuncLit)(nil)
 	_ StorageWithValue = (*FuncLit)(nil)
@@ -1446,7 +1478,7 @@ func (s *FuncDecl) File() *File {
 }
 
 // Annotations returns the annotations attached to the function.
-func (s *FuncDecl) Annotations() *Annotations {
+func (s *FuncDecl) Annotations() *annotations.Annotations {
 	return &s.Anns
 }
 
@@ -1454,6 +1486,11 @@ func (s *FuncDecl) Annotations() *Annotations {
 func (s *FuncDecl) New() PkgFunc {
 	n := *s
 	return &n
+}
+
+// ShortString returns the name of the function.
+func (s *FuncDecl) ShortString() string {
+	return s.Name()
 }
 
 func (*FuncBuiltin) node()         {}
@@ -1473,6 +1510,11 @@ func (s *FuncBuiltin) Name() string {
 // NameDef is the name definition of the function.
 func (s *FuncBuiltin) NameDef() *ast.Ident {
 	return s.Src.Name
+}
+
+// ShortString returns the name of the function.
+func (s *FuncBuiltin) ShortString() string {
+	return s.FFile.Package.Name.Name + "." + s.Name()
 }
 
 // Value returns a reference to the function.
@@ -1510,7 +1552,7 @@ func (s *FuncBuiltin) File() *File {
 }
 
 // Annotations returns the annotations attached to the function.
-func (s *FuncBuiltin) Annotations() *Annotations {
+func (s *FuncBuiltin) Annotations() *annotations.Annotations {
 	return &s.Anns
 }
 
@@ -1518,6 +1560,51 @@ func (s *FuncBuiltin) Annotations() *Annotations {
 func (s *FuncBuiltin) New() PkgFunc {
 	n := *s
 	return &n
+}
+
+func (*FuncKeyword) node() {}
+
+// Source returns the node in the AST tree.
+func (s *FuncKeyword) Source() ast.Node { return s.ID }
+
+// Name of the function. Returns an empty string if the function is anonymous.
+func (s *FuncKeyword) Name() string {
+	return s.ID.Name
+}
+
+// Doc returns associated documentation or nil.
+func (s *FuncKeyword) Doc() *ast.CommentGroup {
+	return nil
+}
+
+// Type returns the type of the function.
+func (s *FuncKeyword) Type() Type {
+	return keywordType()
+}
+
+// FuncType returns the concrete type of the function.
+func (s *FuncKeyword) FuncType() *FuncType {
+	return nil
+}
+
+// File declaring the function.
+func (s *FuncKeyword) File() *File {
+	return nil
+}
+
+// Annotations returns the annotations attached to the function.
+func (s *FuncKeyword) Annotations() *annotations.Annotations {
+	return nil
+}
+
+// ShortString returns a short string representation of the keyword.
+func (s *FuncKeyword) ShortString() string {
+	return s.String()
+}
+
+// String return the name of the keyword.
+func (s *FuncKeyword) String() string {
+	return s.ID.Name
 }
 
 func (*FuncLit) node()         {}
@@ -1548,6 +1635,11 @@ func (s *FuncLit) Value(x Expr) AssignableExpr {
 		F: s,
 		T: s.FType,
 	}
+}
+
+// ShortString returns the name of the function.
+func (s *FuncLit) ShortString() string {
+	return s.FType.String()
 }
 
 // Doc returns associated documentation or nil.
@@ -1581,9 +1673,48 @@ func (s *FuncLit) Source() ast.Node { return s.Src }
 // Expr returns the expression in the source code.
 func (s *FuncLit) Expr() ast.Expr { return s.Src }
 
-// String representation of the literal.
-func (s *FuncLit) String() string {
-	return "func {...}"
+// Annotations returns the annotations attached to the function.
+func (s *FuncLit) Annotations() *annotations.Annotations {
+	return &s.Anns
+}
+
+func (*SpecialisedFunc) node()         {}
+func (*SpecialisedFunc) storage()      {}
+func (*SpecialisedFunc) storageValue() {}
+
+// Source returns the node in the AST tree.
+func (s *SpecialisedFunc) Source() ast.Node {
+	return s.X.Source()
+}
+
+// Type of the destination of the assignment.
+func (s *SpecialisedFunc) Type() Type { return s.T }
+
+// FuncType returns the type of the function.
+func (s *SpecialisedFunc) FuncType() *FuncType { return s.T }
+
+// Value returns the function as a value.
+func (s *SpecialisedFunc) Value(x Expr) AssignableExpr {
+	return &FuncValExpr{
+		X: x,
+		F: s,
+		T: s.T,
+	}
+}
+
+// Annotations returns the annotations attached to the function.
+func (s *SpecialisedFunc) Annotations() *annotations.Annotations {
+	return &s.Anns
+}
+
+// File declaring the function.
+func (s *SpecialisedFunc) File() *File {
+	return s.F.F.File()
+}
+
+// ShortString returns the name of the function.
+func (s *SpecialisedFunc) ShortString() string {
+	return s.FuncType().String()
 }
 
 func (*Macro) node()         {}
@@ -1591,6 +1722,11 @@ func (*Macro) staticValue()  {}
 func (*Macro) storage()      {}
 func (*Macro) storageValue() {}
 func (*Macro) pkgFunc()      {}
+
+// FullName returns the fully qualified name of the macro.
+func (s *Macro) FullName() string {
+	return fullName(s)
+}
 
 // Name of the function.
 func (s *Macro) Name() string {
@@ -1642,8 +1778,8 @@ func (s *Macro) Same(o Storage) bool {
 }
 
 // Annotations returns the annotations attached to the function.
-func (s *Macro) Annotations() *Annotations {
-	return &Annotations{}
+func (s *Macro) Annotations() *annotations.Annotations {
+	return &annotations.Annotations{}
 }
 
 // String representation of the literal.
@@ -1655,6 +1791,11 @@ func (s *Macro) String() string {
 func (s *Macro) New() PkgFunc {
 	n := *s
 	return &n
+}
+
+// ShortString returns the name of the function.
+func (s *Macro) ShortString() string {
+	return s.File().Package.Name.Name + "." + s.Name()
 }
 
 func (*ImportDecl) node()         {}
@@ -1731,6 +1872,9 @@ func (cst *ConstExpr) NameDef() *ast.Ident {
 
 // Type returns the type of an expression.
 func (cst *ConstExpr) Type() Type {
+	if cst.Val == nil {
+		return UnknownType()
+	}
 	return cst.Val.Type()
 }
 
@@ -2449,17 +2593,25 @@ type (
 	// FuncValExpr is an expression pointing to a function.
 	FuncValExpr struct {
 		X Expr
-		F Storage
+		F Func
 		// T is the function type if the function has been specialised by the call
 		// (in the context of generic functions).
 		T *FuncType
+	}
+
+	// Callee function being called from a call expression.
+	Callee interface {
+		SourceNode
+		Func() Func
+		FuncType() *FuncType
+		ShortString() string
 	}
 
 	// CallExpr is an expression calling a function.
 	CallExpr struct {
 		Src    *ast.CallExpr
 		Args   []AssignableExpr
-		Callee *FuncValExpr
+		Callee Callee
 	}
 
 	// CallResultExpr represents the ith result of a function call as an expression.
@@ -2595,7 +2747,7 @@ var (
 	_ Expr             = (*Tuple)(nil)
 
 	_ AssignableExpr = (*FuncValExpr)(nil)
-	_ WithStore      = (*FuncValExpr)(nil)
+	_ Callee         = (*FuncValExpr)(nil)
 	_ AssignableExpr = (*TypeValExpr)(nil) // Use AssignableExpr to store a type in a field (in function type params).
 	_ WithStore      = (*TypeValExpr)(nil)
 )
@@ -2821,11 +2973,6 @@ func (s *TypeValExpr) String() string { return s.Typ.String() }
 func (s *FuncValExpr) node()       {}
 func (s *FuncValExpr) assignable() {}
 
-// Name returns the name of a function
-func (s *FuncValExpr) Name() string {
-	return s.F.NameDef().Name
-}
-
 // Source returns the node in the AST tree.
 func (s *FuncValExpr) Source() ast.Node {
 	if s.X != nil {
@@ -2834,13 +2981,26 @@ func (s *FuncValExpr) Source() ast.Node {
 	return s.F.Source()
 }
 
+// Func returns the function being called.
+func (s *FuncValExpr) Func() Func {
+	return s.F
+}
+
+// FuncType returns type of the function being.
+// If the function is generic, the type is specialised.
+func (s *FuncValExpr) FuncType() *FuncType {
+	return s.T
+}
+
 // Type of the function being called.
 func (s *FuncValExpr) Type() Type {
 	return s.T
 }
 
-// Store storing the type.
-func (s *FuncValExpr) Store() Storage { return s.F }
+// ShortString representing the function being called.
+func (s *FuncValExpr) ShortString() string {
+	return s.X.String()
+}
 
 // String representation.
 func (s *FuncValExpr) String() string { return s.X.String() }
@@ -2853,7 +3013,12 @@ func (s *CallExpr) Source() ast.Node { return s.Src }
 
 // Type returns the type returned by the function call.
 // Use CallExpr.Func.Type to get the type of the function being called.
-func (s *CallExpr) Type() Type { return s.Callee.T.Results.Type() }
+func (s *CallExpr) Type() Type {
+	if s.Callee == nil {
+		return InvalidType()
+	}
+	return s.Callee.FuncType().Results.Type()
+}
 
 // Expr returns the expression in the source code.
 func (s *CallExpr) Expr() ast.Expr { return s.Src }
@@ -2875,7 +3040,7 @@ func (s *CallResultExpr) Source() ast.Node { return s.Call.Source() }
 // Type returns the type returned by the function call.
 // Use CallExpr.Func.Type to get the type of the function being called.
 func (s *CallResultExpr) Type() Type {
-	return s.Call.Callee.T.Results.Fields()[s.Index].Type()
+	return s.Call.Callee.FuncType().Results.Fields()[s.Index].Type()
 }
 
 // Expr returns the expression in the source code.
@@ -3107,13 +3272,6 @@ type (
 		Field *Field
 	}
 
-	// SpecialisedFunc is a storage for a function that has been specialised
-	SpecialisedFunc struct {
-		X Expr
-		F *FuncValExpr
-		T *FuncType
-	}
-
 	// AxLengthName defines a name for the length of an axis or a group of axes.
 	AxLengthName struct {
 		Src *ast.Ident
@@ -3122,12 +3280,11 @@ type (
 )
 
 var (
-	_ Storage          = (*AnonymousStorage)(nil)
-	_ Storage          = (*LocalVarStorage)(nil)
-	_ Storage          = (*StructFieldStorage)(nil)
-	_ Storage          = (*FieldStorage)(nil)
-	_ Storage          = (*AxLengthName)(nil)
-	_ StorageWithValue = (*SpecialisedFunc)(nil)
+	_ Storage = (*AnonymousStorage)(nil)
+	_ Storage = (*LocalVarStorage)(nil)
+	_ Storage = (*StructFieldStorage)(nil)
+	_ Storage = (*FieldStorage)(nil)
+	_ Storage = (*AxLengthName)(nil)
 )
 
 func (*AnonymousStorage) node()    {}
@@ -3229,35 +3386,6 @@ func (s *AxLengthName) NameDef() *ast.Ident { return s.Src }
 
 // Same returns true if the other storage is this storage.
 func (s *AxLengthName) Same(o Storage) bool {
-	return Storage(s) == o
-}
-
-func (*SpecialisedFunc) node()         {}
-func (*SpecialisedFunc) storage()      {}
-func (*SpecialisedFunc) storageValue() {}
-
-// Source returns the node in the AST tree.
-func (s *SpecialisedFunc) Source() ast.Node {
-	return s.X.Source()
-}
-
-// Type of the destination of the assignment.
-func (s *SpecialisedFunc) Type() Type { return s.T }
-
-// NameDef returns the identifier identifying the storage.
-func (s *SpecialisedFunc) NameDef() *ast.Ident { return s.F.F.NameDef() }
-
-// Value returns the function as a value.
-func (s *SpecialisedFunc) Value(x Expr) AssignableExpr {
-	return &FuncValExpr{
-		X: x,
-		F: s,
-		T: s.T,
-	}
-}
-
-// Same returns true if the other storage is this storage.
-func (s *SpecialisedFunc) Same(o Storage) bool {
 	return Storage(s) == o
 }
 
@@ -3501,4 +3629,8 @@ func ToArrayTypeGivenShape(typ Type, sh *shape.Shape) (ArrayType, error) {
 		return array, errors.Errorf("cannot create array value: type %s has data type %s but shape has data type %s", typ.String(), dt, sh.DType.String())
 	}
 	return array, nil
+}
+
+func fullName(f PkgFunc) string {
+	return f.File().Package.FullName() + "." + f.Name()
 }

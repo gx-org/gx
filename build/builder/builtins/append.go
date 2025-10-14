@@ -24,9 +24,17 @@ import (
 
 type appendFunc struct{}
 
-const appendName = "append"
+var appendF = &appendFunc{}
 
-var _ ir.FuncImpl = (*appendFunc)(nil)
+// Append returns the append function builtin.
+func Append() ir.FuncImpl {
+	return appendF
+}
+
+// Name of the builtin function.
+func (*appendFunc) Name() string {
+	return "append"
+}
 
 // BuildFuncType builds the type of a function given how it is called.
 func (f *appendFunc) BuildFuncType(fetcher ir.Fetcher, call *ir.CallExpr) (*ir.FuncType, error) {
@@ -35,7 +43,7 @@ func (f *appendFunc) BuildFuncType(fetcher ir.Fetcher, call *ir.CallExpr) (*ir.F
 			Src: &ast.FuncType{Func: call.Src.Pos()},
 		},
 	}
-	params, err := builtins.BuildFuncParams(fetcher, call, appendName, []ir.Type{
+	params, err := builtins.BuildFuncParams(fetcher, call, f.Name(), []ir.Type{
 		builtins.GenericSliceType,
 		nil,
 	})

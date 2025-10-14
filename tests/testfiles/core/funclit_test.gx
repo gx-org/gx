@@ -1,0 +1,81 @@
+package core
+
+
+func TestCallLambda() int32 {
+	return func() int32 {
+		return 10
+	}()
+	// Want:
+	// int32(10)
+}
+
+func TestAssignLambda() int32 {
+	fn := func() int32 {
+		return 10
+	}
+	return fn()
+	// Want:
+	// int32(10)
+}
+
+func TestAssignLambda2() int32 {
+	fn := func(x, y int32) int32 {
+		return x + y + 10
+	}
+	return fn(10, 5)
+	// Want:
+	// int32(25)
+}
+
+func TestAssignLambda3() int64 {
+	fn := func(x int64) int64 {
+		return x + staticValue
+	}
+	return fn(11)
+	// Want:
+	// int64(111)
+}
+
+func TestAssignLambda4() (int32, int64) {
+	fn := func() (int32, int64) {
+		return 12, 34
+	}
+	return fn()
+	// Want:
+	// 0: int32(12)
+	// 1: int64(34)
+}
+
+func buildFN() func() float32 {
+	return func() float32 {
+		return 42.0
+	}
+}
+
+func TestBuildFN() float32 {
+	fn := buildFN()
+	return fn()
+	// Want:
+	// float32(42)
+}
+
+func captureFN(a float32) func() (float32, float32) {
+	twiceA := a*2
+	return func() (float32, float32) {
+		return a, twiceA
+	}
+}
+
+func TestCaptureFN() (float32, float32, float32, float32) {
+	fn := captureFN(10)
+	a1, a2 := fn()
+	fn = captureFN(-20)
+	b1, b2 := fn()
+	return a1, a2, b1, b2
+	// Want:
+	// 0: float32(10)
+	// 1: float32(20)
+	// 2: float32(-20)
+	// 3: float32(-40)
+}
+

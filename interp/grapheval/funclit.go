@@ -20,6 +20,7 @@ import (
 	"github.com/gx-org/gx/build/ir"
 	"github.com/gx-org/gx/internal/interp/flatten"
 	"github.com/gx-org/gx/internal/tracer/processor"
+	"github.com/gx-org/gx/interp/fun"
 	"github.com/gx-org/gx/interp"
 )
 
@@ -28,18 +29,21 @@ type processCallResults func(ops.Node) ([]ir.Element, error)
 // funcLit is a function represented as a subgraph.
 type funcLit struct {
 	eval *Evaluator
+	env  *fun.CallEnv
 	lit  *ir.FuncLit
 	litp *interp.FuncLitScope
 }
 
-var _ interp.Func = (*funcLit)(nil)
+var _ fun.Func = (*funcLit)(nil)
 
-func (ev *Evaluator) newFuncLit(lit *ir.FuncLit, litp *interp.FuncLitScope) *funcLit {
+// NewFuncLit creates a new function literal.
+func (ev *Evaluator) NewFuncLit(env *fun.CallEnv, lit *ir.FuncLit) (fun.Func, error) {
 	return &funcLit{
 		eval: ev,
+		env:  env,
 		lit:  lit,
-		litp: litp,
-	}
+		litp: interp.NewFuncLitScope(ev, env.Context(), lit),
+	}, nil
 }
 
 // Func returns the IR function represented by the graph.
@@ -48,32 +52,32 @@ func (sg *funcLit) Func() ir.Func {
 }
 
 // Recv returns the receiver of the function.
-func (sg *funcLit) Recv() *interp.Receiver {
+func (sg *funcLit) Recv() *fun.Receiver {
 	return nil
 }
 
 // SubGraph represents the graph implementing the function.
 func (sg *funcLit) SubGraph(name string) (*ops.Subgraph, error) {
-	file := sg.litp.FileScope().File()
+	file := sg.lit.File()
 	proxyArgs, err := buildProxyArguments(file, sg.lit.FType.Params.Fields())
 	if err != nil {
 		return nil, err
 	}
 	proc := &processor.Processor{}
-	fnInputs, err := FuncInputsToElements(file, proc, sg.lit.FType, nil, proxyArgs)
-	if err != nil {
-		return nil, err
-	}
 	subeval, err := sg.eval.subEval(proc, name)
 	if err != nil {
 		return nil, err
 	}
-	litp := sg.litp.FileScope().NewFuncLitScope(subeval)
-	outElts, err := litp.RunFuncLit(subeval, sg.lit, fnInputs.Args)
+	fnInputs, err := subeval.FuncInputsToElements(interp.NewRunFunc, sg.lit, nil, proxyArgs)
 	if err != nil {
 		return nil, err
 	}
-	_, outNode, err := subeval.outputNodesFromElements(litp.FileScope(), sg.lit.FType, outElts)
+	litp := interp.NewFuncLitScope(subeval, sg.env.Context(), sg.lit)
+	outElts, err := litp.RunFuncLit(fnInputs.Args)
+	if err != nil {
+		return nil, err
+	}
+	_, outNode, err := subeval.outputNodesFromElements(sg.lit.File(), sg.lit.FType, outElts)
 	if err != nil {
 		return nil, err
 	}
@@ -85,8 +89,8 @@ func (sg *funcLit) SubGraph(name string) (*ops.Subgraph, error) {
 
 // Call the function literal given its set of arguments,
 // effectively inlining the function in the parent graph.
-func (sg *funcLit) Call(fitp *interp.FileScope, call *ir.CallExpr, args []ir.Element) ([]ir.Element, error) {
-	return sg.litp.RunFuncLit(sg.eval, sg.lit, args)
+func (sg *funcLit) Call(env *fun.CallEnv, call *ir.CallExpr, args []ir.Element) ([]ir.Element, error) {
+	return sg.litp.RunFuncLit(args)
 }
 
 // Unflatten creates a GX value from the next handles available in the parser.

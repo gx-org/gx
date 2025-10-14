@@ -20,12 +20,22 @@ import (
 	"github.com/pkg/errors"
 	"github.com/gx-org/gx/build/builtins"
 	"github.com/gx-org/gx/build/ir"
-	"github.com/gx-org/gx/internal/interp/compeval"
+	"github.com/gx-org/gx/interp/elements"
 )
 
 type setFunc struct{}
 
-var _ ir.FuncImpl = (*setFunc)(nil)
+var setF = &setFunc{}
+
+// Set returns the set function builtin.
+func Set() ir.FuncImpl {
+	return setF
+}
+
+// Name of the builtin function.
+func (*setFunc) Name() string {
+	return "set"
+}
 
 // BuildFuncType builds the type of a function given how it is called.
 func (f *setFunc) BuildFuncType(fetcher ir.Fetcher, call *ir.CallExpr) (*ir.FuncType, error) {
@@ -34,7 +44,7 @@ func (f *setFunc) BuildFuncType(fetcher ir.Fetcher, call *ir.CallExpr) (*ir.Func
 			Src: &ast.FuncType{Func: call.Src.Pos()},
 		},
 	}
-	params, err := builtins.BuildFuncParams(fetcher, call, "set", []ir.Type{
+	params, err := builtins.BuildFuncParams(fetcher, call, f.Name(), []ir.Type{
 		builtins.GenericArrayType,
 		builtins.GenericArrayType,
 		builtins.PositionsType,
@@ -66,7 +76,7 @@ func (f *setFunc) BuildFuncType(fetcher ir.Fetcher, call *ir.CallExpr) (*ir.Func
 	if len(posRank.Axes()) != 1 {
 		return ext, errors.Errorf("position has an invalid number of axes: got %d but want 1", len(posRank.Axes()))
 	}
-	posSize, err := compeval.EvalInt(fetcher, posRank.Axes()[0])
+	posSize, err := elements.EvalInt(fetcher, posRank.Axes()[0])
 	if err != nil {
 		return ext, err
 	}

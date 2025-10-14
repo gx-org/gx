@@ -26,7 +26,6 @@ import (
 	"github.com/gx-org/gx/build/builder"
 	"github.com/gx-org/gx/build/fmterr"
 	"github.com/gx-org/gx/build/ir"
-	"github.com/gx-org/gx/internal/interp/compeval/cpevelements"
 	"github.com/gx-org/gx/interp"
 	"github.com/gx-org/gx/stdlib/impl"
 )
@@ -115,6 +114,7 @@ func BuildFunc(f FuncBuilder) Builder {
 
 type stubFunc struct {
 	ftype *ir.FuncType
+	name  string
 	impl  any
 }
 
@@ -123,6 +123,11 @@ var _ ir.FuncImpl = (*stubFunc)(nil)
 // BuildFuncType builds the type of a function given how it is called.
 func (s *stubFunc) BuildFuncType(fetcher ir.Fetcher, call *ir.CallExpr) (*ir.FuncType, error) {
 	return s.ftype, nil
+}
+
+// Name of the function.
+func (s *stubFunc) Name() string {
+	return s.name
 }
 
 // Implementation of the function, provided by the backend.
@@ -167,7 +172,7 @@ func ImplementStubFunc(name string, slotFn func(impl *impl.Stdlib) interp.FuncBu
 			if stub == nil {
 				return errors.Errorf("failed to replace function stub %q: builtin function declaration not found", name)
 			}
-			stub.Impl = &stubFunc{ftype: stub.FuncType(), impl: slotFn(impl)}
+			stub.Impl = &stubFunc{name: name, ftype: stub.FuncType(), impl: slotFn(impl)}
 			return nil
 		},
 	}
@@ -310,11 +315,11 @@ func BuildConst(f ConstBuilder) Builder {
 
 type registerMacro struct {
 	name string
-	impl cpevelements.MacroImpl
+	impl ir.MacroImpl
 }
 
 // RegisterMacro registers the implementation of a meta function.
-func RegisterMacro(name string, impl cpevelements.MacroImpl) Builder {
+func RegisterMacro(name string, impl ir.MacroImpl) Builder {
 	return &registerMacro{
 		name: name,
 		impl: impl,

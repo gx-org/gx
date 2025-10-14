@@ -28,15 +28,14 @@ import (
 	"github.com/gx-org/backend/platform"
 	"github.com/gx-org/gx/api"
 	"github.com/gx-org/gx/api/options"
+	"github.com/gx-org/gx/api/tracer"
 	"github.com/gx-org/gx/api/values"
 	"github.com/gx-org/gx/build/ir"
-	"github.com/gx-org/gx/api/tracer"
 	"github.com/gx-org/gx/golang/binder/gobindings/core"
 	"github.com/gx-org/gx/golang/binder/gobindings/types"
+	"github.com/pkg/errors"
 
-	_ "_ "github.com/gx-org/gx/tests/bindings/basic""
-
-
+	_ "github.com/gx-org/gx/tests/bindings/basic"
 )
 
 // Force some package dependencies.
@@ -59,7 +58,7 @@ func Load(rtm *api.Runtime) (*core.Package, error) {
 		return nil, err
 	}
 	deps := make([]*core.Package, 0)
-return core.NewPackage(bpkg, deps), nil
+	return core.NewPackage(bpkg, deps), nil
 }
 
 // BuildFor loads the GX package github.com/gx-org/gx/tests/bindings/basic
@@ -105,14 +104,13 @@ type Package struct {
 	handle PackageHandle
 
 	// Functions and methods cache
-cacheBasicAddPrivate *core.FuncCache
-cacheBasicSetFloat *core.FuncCache
-cacheReturnFloat32 *core.FuncCache
-cacheReturnArrayFloat32 *core.FuncCache
-cacheReturnMultiple *core.FuncCache
-cacheNew *core.FuncCache
-cacheAddPrivate *core.FuncCache
-
+	cacheBasicAddPrivate    *core.FuncCache
+	cacheBasicSetFloat      *core.FuncCache
+	cacheReturnFloat32      *core.FuncCache
+	cacheReturnArrayFloat32 *core.FuncCache
+	cacheReturnMultiple     *core.FuncCache
+	cacheNew                *core.FuncCache
+	cacheAddPrivate         *core.FuncCache
 }
 
 // BuildFromIR builds a package for a device once it has been loaded.
@@ -123,42 +121,38 @@ func BuildFromIR(irPkg *core.Package, dev *api.Device, optionFactories []options
 	// Build dependencies.
 	var err error
 
-
 	// Initialise function and method caches.
-pkg.cacheBasicAddPrivate, err = pkg.handle.NewCache("Basic", "AddPrivate")
+	pkg.cacheBasicAddPrivate, err = pkg.handle.NewCache("Basic", "AddPrivate")
 	if err != nil {
 		return nil, err
 	}
-pkg.cacheBasicSetFloat, err = pkg.handle.NewCache("Basic", "SetFloat")
+	pkg.cacheBasicSetFloat, err = pkg.handle.NewCache("Basic", "SetFloat")
 	if err != nil {
 		return nil, err
 	}
-pkg.cacheReturnFloat32, err = pkg.handle.NewCache("", "ReturnFloat32")
+	pkg.cacheReturnFloat32, err = pkg.handle.NewCache("", "ReturnFloat32")
 	if err != nil {
 		return nil, err
 	}
-pkg.cacheReturnArrayFloat32, err = pkg.handle.NewCache("", "ReturnArrayFloat32")
+	pkg.cacheReturnArrayFloat32, err = pkg.handle.NewCache("", "ReturnArrayFloat32")
 	if err != nil {
 		return nil, err
 	}
-pkg.cacheReturnMultiple, err = pkg.handle.NewCache("", "ReturnMultiple")
+	pkg.cacheReturnMultiple, err = pkg.handle.NewCache("", "ReturnMultiple")
 	if err != nil {
 		return nil, err
 	}
-pkg.cacheNew, err = pkg.handle.NewCache("", "New")
+	pkg.cacheNew, err = pkg.handle.NewCache("", "New")
 	if err != nil {
 		return nil, err
 	}
-pkg.cacheAddPrivate, err = pkg.handle.NewCache("", "AddPrivate")
+	pkg.cacheAddPrivate, err = pkg.handle.NewCache("", "AddPrivate")
 	if err != nil {
 		return nil, err
 	}
-
 
 	return &pkg.handle, err
 }
-
-
 
 // ReturnFloat32 returns a float32.
 func (pkg *Package) ReturnFloat32() (_ types.Atom[float32], err error) {
@@ -174,8 +168,6 @@ func (pkg *Package) ReturnFloat32() (_ types.Atom[float32], err error) {
 		return
 	}
 
-	
-	
 	out0Value, ok := outputs[0].(values.Array)
 	if !ok {
 		err = errors.Errorf("cannot cast %T to %s", outputs[0], reflect.TypeFor[*values.DeviceArray]().Name())
@@ -183,7 +175,120 @@ func (pkg *Package) ReturnFloat32() (_ types.Atom[float32], err error) {
 	}
 	out0 := types.NewAtom[float32](out0Value)
 
-	
+	return out0, nil
+}
+
+// ReturnArrayFloat32 returns a float32 tensor.
+func (pkg *Package) ReturnArrayFloat32() (_ types.Array[float32], err error) {
+	var args []values.Value = nil
+	var runner tracer.CompiledFunc
+	runner, err = pkg.cacheReturnArrayFloat32.Runner(nil, args)
+	if err != nil {
+		return
+	}
+	var outputs []values.Value
+	outputs, err = runner.Run(nil, args, pkg.handle.Tracer())
+	if err != nil {
+		return
+	}
+	out0 := types.NewAtom[float32](out0Value)
+
+	out0Value, ok := outputs[0].(values.Array)
+	if !ok {
+		err = errors.Errorf("cannot cast %T to %s", outputs[0], reflect.TypeFor[*values.DeviceArray]().Name())
+		return
+	}
+	out0 := types.NewArray[float32](out0Value)
+
+	return out0, nil
+}
+
+// ReturnMultiple returns multiple values.
+func (pkg *Package) ReturnMultiple() (_ types.Atom[int32], _ types.Atom[float32], _ types.Atom[float64], err error) {
+	var args []values.Value = nil
+	var runner tracer.CompiledFunc
+	runner, err = pkg.cacheReturnMultiple.Runner(nil, args)
+	if err != nil {
+		return
+	}
+	var outputs []values.Value
+	outputs, err = runner.Run(nil, args, pkg.handle.Tracer())
+	if err != nil {
+		return
+	}
+
+	out0Value, ok := outputs[0].(values.Array)
+	if !ok {
+		err = errors.Errorf("cannot cast %T to %s", outputs[0], reflect.TypeFor[*values.DeviceArray]().Name())
+		return
+	}
+	out0 := types.NewAtom[int32](out0Value)
+
+	out1Value, ok := outputs[1].(values.Array)
+	if !ok {
+		err = errors.Errorf("cannot cast %T to %s", outputs[1], reflect.TypeFor[*values.DeviceArray]().Name())
+		return
+	}
+	out1 := types.NewAtom[float32](out1Value)
+
+	out2Value, ok := outputs[2].(values.Array)
+	if !ok {
+		err = errors.Errorf("cannot cast %T to %s", outputs[2], reflect.TypeFor[*values.DeviceArray]().Name())
+		return
+	}
+	out2 := types.NewAtom[float64](out2Value)
+
+	return out0, out1, out2, nil
+}
+
+// New returns a new instance of the basic structure.
+func (pkg *Package) New() (_ *Basic, err error) {
+	var args []values.Value = nil
+	var runner tracer.CompiledFunc
+	runner, err = pkg.cacheNew.Runner(nil, args)
+	if err != nil {
+		return
+	}
+	var outputs []values.Value
+	outputs, err = runner.Run(nil, args, pkg.handle.Tracer())
+	if err != nil {
+		return
+	}
+
+	fty := pkg.handle.Factory
+
+	var out0 *Basic
+	out0, err = fty.MarshalBasic(outputs[0])
+	if err != nil {
+		return
+	}
+
+	return out0, nil
+}
+
+// AddPrivate returns the sum of two private fields.
+func (pkg *Package) AddPrivate(arg0 *Basic) (_ types.Atom[int32], err error) {
+	var args []values.Value = []values.Value{
+		arg0.Bridge().GXValue(), // b basic.Basic
+	}
+	var runner tracer.CompiledFunc
+	runner, err = pkg.cacheAddPrivate.Runner(nil, args)
+	if err != nil {
+		return
+	}
+	var outputs []values.Value
+	outputs, err = runner.Run(nil, args, pkg.handle.Tracer())
+	if err != nil {
+		return
+	}
+
+	out0Value, ok := outputs[0].(values.Array)
+	if !ok {
+		err = errors.Errorf("cannot cast %T to %s", outputs[0], reflect.TypeFor[*values.DeviceArray]().Name())
+		return
+	}
+	out0 := types.NewAtom[int32](out0Value)
+
 	return out0, nil
 }
 
@@ -394,16 +499,14 @@ func (s Empty) String() string {
 // Bridge returns the bridge between the Go value and the GX value.
 func (s *Empty) Bridge() types.Bridge { return &s.handle }
 
-
-
 // NewEmpty returns a handle on named type Empty.
 func (fac *Factory) NewEmpty() *Empty {
 	s := &Empty{}
 	typ := fac.Package.handle.IR().Decls.TypeByName("Empty")
 	s.handle = handleEmpty{
-		pkg: fac.Package,
-		struc:  typ,
-		owner:  s,
+		pkg:   fac.Package,
+		struc: typ,
+		owner: s,
 	}
 
 	structVal, err := values.NewStruct(typ, nil)
@@ -429,17 +532,15 @@ func (h *handleEmpty) NewFromField(field *ir.Field) (types.Bridge, error) {
 // SetField sets a field in the structure.
 func (h *handleEmpty) SetField(field *ir.Field, val types.Bridge) error {
 
-
 	return errors.Errorf("type Empty has no field")
 
 }
 
-
 // handleBasic stores the backend handles of Basic.
 type handleBasic struct {
-	pkg       *Package
-	struc     *ir.NamedType
-	owner     *Basic
+	pkg   *Package
+	struc *ir.NamedType
+	owner *Basic
 }
 
 // Type of the value.
@@ -469,21 +570,15 @@ func (h *handleBasic) String() string {
 
 	fmt.Fprintf(&bld, "%s:%s\n", "Int", any(h.owner.Int).(fmt.Stringer).String())
 
-
 	fmt.Fprintf(&bld, "%s:%s\n", "Float", any(h.owner.Float).(fmt.Stringer).String())
-
 
 	fmt.Fprintf(&bld, "%s:%s\n", "Array", any(h.owner.Array).(fmt.Stringer).String())
 
-
 	fmt.Fprintf(&bld, "%s:%s\n", "privateA", any(h.owner.privateA).(fmt.Stringer).String())
-
 
 	fmt.Fprintf(&bld, "%s:%s\n", "privateB", any(h.owner.privateB).(fmt.Stringer).String())
 
-
 	fmt.Fprintf(&bld, "%s:%s\n", "length", any(h.owner.length).(fmt.Stringer).String())
-
 
 	fmt.Fprintf(&bld, "%s:%s\n", "index", any(h.owner.index).(fmt.Stringer).String())
 
@@ -496,13 +591,13 @@ type Basic struct {
 	handle handleBasic
 	value *values.NamedType
 
-Int types.Atom[int32]
-Float types.Atom[float32]
-Array types.Array[float32]
-privateA types.Atom[int32]
-privateB types.Atom[int32]
-length types.Atom[ir.Int]
-index types.Atom[ir.Int]
+	Int      types.Atom[int32]
+	Float    types.Atom[float32]
+	Array    types.Array[float32]
+	privateA types.Atom[int32]
+	privateB types.Atom[int32]
+	length   types.Atom[ir.Int]
+	index    types.Atom[ir.Int]
 }
 
 var (
@@ -606,8 +701,6 @@ func (s Basic) String() string {
 // Bridge returns the bridge between the Go value and the GX value.
 func (s *Basic) Bridge() types.Bridge { return &s.handle }
 
-
-
 // NewBasic returns a handle on named type Basic.
 func (fac *Factory) NewBasic() *Basic {
 	s := &Basic{}
@@ -632,19 +725,19 @@ var _ types.Bridge = (*handleBasic)(nil)
 func (h *handleBasic) NewFromField(field *ir.Field) (types.Bridge, error) {
 	name := field.Name.Name
 	switch name {
-case "Int":
+	case "Int":
 		return nil, errors.Errorf("cannot create a new instance for field Int: type types.Atom[int32] not supported")
-case "Float":
+	case "Float":
 		return nil, errors.Errorf("cannot create a new instance for field Float: type types.Atom[float32] not supported")
-case "Array":
+	case "Array":
 		return nil, errors.Errorf("cannot create a new instance for field Array: type types.Array[float32] not supported")
-case "privateA":
+	case "privateA":
 		return nil, errors.Errorf("cannot create a new instance for field privateA: type types.Atom[int32] not supported")
-case "privateB":
+	case "privateB":
 		return nil, errors.Errorf("cannot create a new instance for field privateB: type types.Atom[int32] not supported")
-case "length":
+	case "length":
 		return nil, errors.Errorf("cannot create a new instance for field length: type types.Atom[ir.Int] not supported")
-case "index":
+	case "index":
 		return nil, errors.Errorf("cannot create a new instance for field index: type types.Atom[ir.Int] not supported")
 
 	default:
@@ -753,8 +846,6 @@ func (recv *Basic) AddPrivate() (_ types.Atom[int32], err error) {
 		return
 	}
 
-	
-	
 	out0Value, ok := outputs[0].(values.Array)
 	if !ok {
 		err = errors.Errorf("cannot cast %T to %s", outputs[0], reflect.TypeFor[*values.DeviceArray]().Name())
@@ -762,7 +853,6 @@ func (recv *Basic) AddPrivate() (_ types.Atom[int32], err error) {
 	}
 	out0 := types.NewAtom[int32](out0Value)
 
-	
 	return out0, nil
 }
 
@@ -783,13 +873,12 @@ func (recv *Basic) SetFloat(arg0 types.Atom[float32]) (_ *Basic, err error) {
 	}
 
 	fty := recv.handle.pkg.handle.Factory
-	
+
 	var out0 *Basic
 	out0, err = fty.MarshalBasic(outputs[0])
 	if err != nil {
 		return
 	}
-	
+
 	return out0, nil
 }
-

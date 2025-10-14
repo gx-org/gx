@@ -21,11 +21,10 @@ import (
 	"github.com/gx-org/backend/shape"
 	"github.com/gx-org/gx/build/builtins"
 	"github.com/gx-org/gx/build/ir"
-	"github.com/gx-org/gx/internal/interp/compeval"
 	"github.com/gx-org/gx/interp/elements"
 	"github.com/gx-org/gx/interp/evaluator"
+	"github.com/gx-org/gx/interp/fun"
 	"github.com/gx-org/gx/interp/grapheval"
-	"github.com/gx-org/gx/interp"
 	"github.com/gx-org/gx/stdlib/builtin"
 	"github.com/gx-org/gx/stdlib/impl"
 )
@@ -46,7 +45,7 @@ func (f iotaWithAxis) BuildFuncType(fetcher ir.Fetcher, call *ir.CallExpr) (*ir.
 	if err != nil {
 		return nil, err
 	}
-	rank, _, err := compeval.EvalRank(fetcher, call.Args[0])
+	rank, _, err := elements.EvalRank(fetcher, call.Args[0])
 	if err != nil {
 		return nil, err
 	}
@@ -56,7 +55,7 @@ func (f iotaWithAxis) BuildFuncType(fetcher ir.Fetcher, call *ir.CallExpr) (*ir.
 	}, nil
 }
 
-func evalIotaFull(ctx evaluator.Context, call elements.CallAt, fn interp.Func, irFunc *ir.FuncBuiltin, args []ir.Element) ([]ir.Element, error) {
+func evalIotaFull(ctx evaluator.Env, call elements.CallAt, fn fun.Func, irFunc *ir.FuncBuiltin, args []ir.Element) ([]ir.Element, error) {
 	axes, err := elements.AxesFromElement(args[0])
 	if err != nil {
 		return nil, err
@@ -78,7 +77,7 @@ func evalIotaFull(ctx evaluator.Context, call elements.CallAt, fn interp.Func, i
 	if err != nil {
 		return nil, err
 	}
-	return ctx.Materialiser().ElementsFromNodes(call.File(), call.Node(), &ops.OutputNode{
+	return builtin.Materialiser(ctx).ElementsFromNodes(call.File(), call.Node(), &ops.OutputNode{
 		Node:  op,
 		Shape: targetShape,
 	})

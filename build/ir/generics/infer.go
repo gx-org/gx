@@ -36,7 +36,7 @@ func Infer(fetcher ir.Fetcher, fExpr *ir.FuncValExpr, args []ir.AssignableExpr) 
 		if ir.IsNumber(arg.Type().Kind()) {
 			continue
 		}
-		gType := extractTypeSpecialiser(param.Group.Type.Typ)
+		gType := extractTypeSpecialiser(param.Type())
 		if gType == nil {
 			continue
 		}
@@ -47,7 +47,7 @@ func Infer(fetcher ir.Fetcher, fExpr *ir.FuncValExpr, args []ir.AssignableExpr) 
 				continue
 			}
 			if !assignedOk {
-				inferredOk = fetcher.Err().Appendf(arg.Source(), "type %s of %s does not match inferred type %s for %s", arg.Type(), arg.String(), assigned.String(), gType)
+				inferredOk = fetcher.Err().Appendf(arg.Source(), "type %s of %s does not match inferred type %s for %s", arg.Type(), arg.String(), assigned.String(), gType.name())
 			}
 			continue
 		}
@@ -58,9 +58,11 @@ func Infer(fetcher ir.Fetcher, fExpr *ir.FuncValExpr, args []ir.AssignableExpr) 
 		canAssign, err := arg.Type().AssignableTo(fetcher, targetType)
 		if err != nil {
 			inferredOk = fetcher.Err().Append(err)
+			continue
 		}
 		if !canAssign {
-			inferredOk = fetcher.Err().Appendf(arg.Source(), "%s does not satisfy %s", ir.TypeString(arg.Type()), ir.TypeString(targetType))
+			inferredOk = fetcher.Err().Appendf(arg.Source(), "inferring type %s: %s does not satisfy %s", gType.name(), ir.TypeString(arg.Type()), ir.TypeString(targetType))
+			continue
 		}
 		nameToType[gType.name()] = arg.Type()
 	}

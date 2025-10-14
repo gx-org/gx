@@ -34,8 +34,17 @@ type (
 
 // Append an error to the list of errors.
 func (app *Appender) Append(err error) bool {
-	app.errors.Append(err)
-	return false
+	return app.errors.Append(err)
+}
+
+// Push a new context in the error stack.
+func (app *Appender) Push(f func(error) error) {
+	app.errors.Push(f)
+}
+
+// Pop removes the last error context in the stack.
+func (app *Appender) Pop() {
+	app.errors.Pop()
 }
 
 // AppendAt appends an existing error at a given position.
@@ -65,10 +74,12 @@ func (app *Appender) Pos(node ast.Node) *PosAppender {
 
 // Errors returns the set of errors or nil if no errors has been appended.
 func (app *Appender) Errors() *Errors {
-	if app.errors.Empty() {
-		return nil
-	}
 	return app.errors
+}
+
+// Empty returns true if no errors has been appended.
+func (app *Appender) Empty() bool {
+	return app.errors.Empty()
 }
 
 // String representation of the error.

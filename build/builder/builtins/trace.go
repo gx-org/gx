@@ -24,7 +24,17 @@ import (
 type traceFunc struct {
 }
 
-var _ ir.FuncImpl = (*traceFunc)(nil)
+var traceF = &traceFunc{}
+
+// Trace returns the trace function builtin.
+func Trace() ir.FuncImpl {
+	return traceF
+}
+
+// Name of the builtin function.
+func (*traceFunc) Name() string {
+	return "trace"
+}
 
 // BuildFuncType builds the type of a function given how it is called.
 func (f *traceFunc) BuildFuncType(fetcher ir.Fetcher, call *ir.CallExpr) (*ir.FuncType, error) {

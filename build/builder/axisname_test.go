@@ -467,3 +467,14 @@ func f() int64 {
 		},
 	)
 }
+
+func TestAxisErrors(t *testing.T) {
+	testbuild.Run(t,
+		testbuild.Decl{
+			Src: `
+func f([___M]float32) [___M]float32
+`,
+			Err: "shape M using ___M can only be defined in function parameters",
+		},
+	)
+}

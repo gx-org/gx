@@ -24,10 +24,9 @@ import (
 	"github.com/gx-org/gx/build/fmterr"
 	"github.com/gx-org/gx/build/ir"
 	"github.com/gx-org/gx/internal/interp/canonical"
-	"github.com/gx-org/gx/internal/interp/compeval"
 	"github.com/gx-org/gx/interp/elements"
 	"github.com/gx-org/gx/interp/evaluator"
-	"github.com/gx-org/gx/interp"
+	"github.com/gx-org/gx/interp/fun"
 	"github.com/gx-org/gx/interp/materialise"
 	"github.com/gx-org/gx/interp/numbers"
 	"github.com/gx-org/gx/stdlib/builtin"
@@ -81,7 +80,7 @@ func (f broadcast) BuildFuncType(fetcher ir.Fetcher, call *ir.CallExpr) (*ir.Fun
 	if err != nil {
 		return nil, err
 	}
-	targetRank, targetElmts, err := compeval.EvalRank(fetcher, call.Args[1])
+	targetRank, targetElmts, err := elements.EvalRank(fetcher, call.Args[1])
 	if err != nil {
 		return nil, err
 	}
@@ -95,7 +94,7 @@ func (f broadcast) BuildFuncType(fetcher ir.Fetcher, call *ir.CallExpr) (*ir.Fun
 	}, nil
 }
 
-func evalBroadcast(ctx evaluator.Context, call elements.CallAt, fn interp.Func, irFunc *ir.FuncBuiltin, args []ir.Element) ([]ir.Element, error) {
+func evalBroadcast(env evaluator.Env, call elements.CallAt, fn fun.Func, irFunc *ir.FuncBuiltin, args []ir.Element) ([]ir.Element, error) {
 	targetAxes, err := elements.AxesFromElement(args[1])
 	if err != nil {
 		return nil, err
@@ -104,7 +103,8 @@ func evalBroadcast(ctx evaluator.Context, call elements.CallAt, fn interp.Func, 
 	for i := range targetAxes {
 		broadcastAxes[i] = i
 	}
-	x, xShape, err := materialise.Element(ctx.Materialiser(), args[0])
+	mat := builtin.Materialiser(env)
+	x, xShape, err := materialise.Element(mat, args[0])
 	if err != nil {
 		return nil, err
 	}
@@ -112,11 +112,11 @@ func evalBroadcast(ctx evaluator.Context, call elements.CallAt, fn interp.Func, 
 		DType:       xShape.DType,
 		AxisLengths: targetAxes,
 	}
-	op, err := ctx.Evaluator().ArrayOps().Graph().Core().BroadcastInDim(x, targetShape, broadcastAxes)
+	op, err := env.Evaluator().ArrayOps().Graph().Core().BroadcastInDim(x, targetShape, broadcastAxes)
 	if err != nil {
 		return nil, err
 	}
-	return ctx.Materialiser().ElementsFromNodes(call.File(), call.Node(), &ops.OutputNode{
+	return mat.ElementsFromNodes(call.File(), call.Node(), &ops.OutputNode{
 		Node:  op,
 		Shape: targetShape,
 	})

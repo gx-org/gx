@@ -88,6 +88,57 @@ func MetaType() Type {
 	return metaTypeT
 }
 
+type invalidType struct {
+}
+
+var invalidT = &invalidType{}
+
+// InvalidType returns an invalid type.
+// Often used as a placeholder when an error occurred.
+func InvalidType() Type {
+	return invalidT
+}
+
+func (*invalidType) node()         {}
+func (*invalidType) storage()      {}
+func (*invalidType) storageValue() {}
+
+func (*invalidType) Source() ast.Node { return nil }
+
+func (*invalidType) Same(Storage) bool {
+	return true
+}
+
+func (*invalidType) Equal(Fetcher, Type) (bool, error) {
+	// If the type is invalid, an error has already been emitted.
+	// We disable any checks to avoid reporting unhelpful errors.
+	return false, nil
+}
+
+func (*invalidType) AssignableTo(Fetcher, Type) (bool, error) {
+	return (*invalidType).Equal(nil, nil, nil)
+}
+
+func (*invalidType) assignableFrom(Fetcher, Type) (bool, error) {
+	return (*invalidType).Equal(nil, nil, nil)
+}
+
+func (*invalidType) ConvertibleTo(Fetcher, Type) (bool, error) {
+	return (*invalidType).Equal(nil, nil, nil)
+}
+
+func (*invalidType) Kind() Kind { return InvalidKind }
+
+func (*invalidType) NameDef() *ast.Ident { return nil }
+
+func (*invalidType) Type() Type { return InvalidType() }
+
+func (*invalidType) Value(Expr) AssignableExpr { return nil }
+
+func (*invalidType) String() string {
+	return InvalidKind.String()
+}
+
 type distinctType struct {
 	BaseType[ast.Expr]
 	kind Kind
@@ -133,6 +184,17 @@ func UnknownType() Type {
 	return unknownT
 }
 
+// keywordTyp is the type returned by function with no results.
+type keywordTyp struct {
+	distinctType
+}
+
+var keywordT = &keywordTyp{distinctType: distinctType{kind: FuncKind}}
+
+func keywordType() Type {
+	return keywordT
+}
+
 // voidType is the type returned by function with no results.
 type voidType struct {
 	distinctType
@@ -154,18 +216,6 @@ var packageT = &packageType{distinctType: distinctType{kind: PackageKind}}
 // PackageType returns the package type.
 func PackageType() Type {
 	return packageT
-}
-
-type invalidType struct {
-	distinctType
-}
-
-var invalidT = &invalidType{distinctType: distinctType{kind: InvalidKind}}
-
-// InvalidType returns an invalid type.
-// Often used as a placeholder when an error occurred.
-func InvalidType() Type {
-	return invalidT
 }
 
 type rankType struct {

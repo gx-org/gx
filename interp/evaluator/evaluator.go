@@ -21,19 +21,19 @@ import (
 	"github.com/gx-org/gx/api/values"
 	"github.com/gx-org/gx/build/ir"
 	"github.com/gx-org/gx/internal/tracer/processor"
-	"github.com/gx-org/gx/interp/materialise"
 )
 
 type (
-	// Context in which an operator is being executed.
-	Context interface {
-		ir.Evaluator
+	// Env is the environment in which GX code is evaluated.
+	Env interface {
+		// File returns the file in which the code is currently being executed.
+		File() *ir.File
+
+		// ExprEval returns an expression evaluator.
+		ExprEval() ir.Evaluator
 
 		// Evaluator returns the evaluator used by the interpreter.
 		Evaluator() Evaluator
-
-		// Materialiser returns the materialiser to convert elements into graph nodes.
-		Materialiser() materialise.Materialiser
 	}
 
 	// Evaluator implements GX operators.
@@ -48,7 +48,7 @@ type (
 		Processor() *processor.Processor
 
 		// ElementFromAtom returns an element from an atomic GX value.
-		ElementFromAtom(ctx ir.Evaluator, expr ir.AssignableExpr, val values.Array) (NumericalElement, error)
+		ElementFromAtom(file *ir.File, expr ir.AssignableExpr, val values.Array) (NumericalElement, error)
 
 		// Trace register a call to the trace builtin function.
 		Trace(ctx ir.Evaluator, call *ir.CallExpr, args []ir.Element) error
@@ -59,17 +59,17 @@ type (
 		ir.Element
 
 		// UnaryOp applies a unary operator on x.
-		UnaryOp(ctx ir.Evaluator, expr *ir.UnaryExpr) (NumericalElement, error)
+		UnaryOp(env Env, expr *ir.UnaryExpr) (NumericalElement, error)
 
 		// BinaryOp applies a binary operator to x and y.
 		// Note that the receiver can be either the left or right argument.
-		BinaryOp(ctx ir.Evaluator, expr *ir.BinaryExpr, x, y NumericalElement) (NumericalElement, error)
+		BinaryOp(env Env, expr *ir.BinaryExpr, x, y NumericalElement) (NumericalElement, error)
 
 		// Cast an element into a given data type.
-		Cast(ctx ir.Evaluator, expr ir.AssignableExpr, target ir.Type) (NumericalElement, error)
+		Cast(env Env, expr ir.AssignableExpr, target ir.Type) (NumericalElement, error)
 
 		// Reshape an element.
-		Reshape(ctx ir.Evaluator, expr ir.AssignableExpr, axisLengths []NumericalElement) (NumericalElement, error)
+		Reshape(env Env, expr ir.AssignableExpr, axisLengths []NumericalElement) (NumericalElement, error)
 	}
 
 	// ArrayOps are the operator implementations for arrays.

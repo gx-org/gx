@@ -81,7 +81,7 @@ func (n *namedType) build(ibld irBuilder) (*irNamedType, bool) {
 }
 
 func (n *namedType) buildUnderlying(pkgScope *pkgResolveScope, nType *ir.NamedType) bool {
-	rscope, scopeOk := pkgScope.newFileScope(n.file)
+	rscope, scopeOk := pkgScope.newFileRScope(n.file)
 	if !scopeOk {
 		return false
 	}

@@ -19,11 +19,10 @@ import (
 	"embed"
 	"fmt"
 	"go/ast"
-	"slices"
 
 	"github.com/pkg/errors"
-	"github.com/gx-org/gx/base/ordered"
 	"github.com/gx-org/gx/build/fmterr"
+	"github.com/gx-org/gx/build/ir/annotations"
 	"github.com/gx-org/gx/build/ir"
 	"github.com/gx-org/gx/internal/interp/compeval/cpevelements"
 	"github.com/gx-org/gx/interp/elements"
@@ -40,6 +39,7 @@ var Package = builtin.PackageBuilder{
 	Builders: []builtin.Builder{
 		builtin.ParseSource(&fs),
 		builtin.RegisterMacro("Func", FuncGrad),
+		builtin.RegisterMacro("VJP", VJP),
 		builtin.RegisterMacro("Set", SetGrad),
 		builtin.RegisterMacro("SetFor", SetGradFor),
 	},
@@ -47,14 +47,13 @@ var Package = builtin.PackageBuilder{
 
 type gradMacro struct {
 	cpevelements.CoreMacroElement
-	callSite elements.CallAt
-	aux      *ordered.Map[string, *cpevelements.SyntheticFuncDecl]
+	set *ir.Macro
 
 	fn  ir.PkgFunc
 	wrt withRespectTo
 }
 
-var _ cpevelements.FuncASTBuilder = (*gradMacro)(nil)
+var _ ir.FuncASTBuilder = (*gradMacro)(nil)
 
 func findParamStorage(file *ir.File, src ir.SourceNode, fn ir.Func, name string) (withRespectTo, error) {
 	recv := fn.FuncType().ReceiverField()
@@ -65,14 +64,14 @@ func findParamStorage(file *ir.File, src ir.SourceNode, fn ir.Func, name string)
 	}
 	field := fn.FuncType().Params.FindField(name)
 	if field == nil {
-		return nil, fmterr.Errorf(file.FileSet(), src.Source(), "no parameter named %s in %s", name, fn.Name())
+		return nil, fmterr.Errorf(file.FileSet(), src.Source(), "no parameter named %s in %s", name, fn.ShortString())
 	}
 	return newWRT(field), nil
 }
 
 // FuncGrad computes the gradient of a function.
-func FuncGrad(call elements.CallAt, macro *cpevelements.Macro, args []ir.Element) (cpevelements.MacroElement, error) {
-	fn, err := interp.PkgFuncFromElement(args[1])
+func FuncGrad(file *ir.File, call *ir.CallExpr, mac *ir.Macro, args []ir.Element) (ir.MacroElement, error) {
+	fn, err := interp.PkgFuncFromElement(args[0])
 	if err != nil {
 		return nil, err
 	}
@@ -83,17 +82,17 @@ func FuncGrad(call elements.CallAt, macro *cpevelements.Macro, args []ir.Element
 	if !ok {
 		return nil, errors.Errorf("cannot compute the gradient of function %T", fn)
 	}
-	wrtS, err := elements.StringFromElement(args[2])
+	wrtS, err := elements.StringFromElement(args[1])
 	if err != nil {
 		return nil, err
 	}
-	wrtF, err := findParamStorage(call.File(), call.Node(), fn, wrtS)
+	wrtF, err := findParamStorage(file, call, fn, wrtS)
 	if err != nil {
 		return nil, err
 	}
 	return gradMacro{
-		CoreMacroElement: cpevelements.CoreMacroElement{Mac: macro},
-		callSite:         call,
+		CoreMacroElement: cpevelements.MacroElement(mac, file, call),
+		set:              setMacro(mac),
 	}.newMacro(fnT, wrtF), nil
 }
 
@@ -109,17 +108,23 @@ func (m gradMacro) clone() *gradMacro {
 }
 
 func (m *gradMacro) syntheticFuncName(fetcher ir.Fetcher, fn ir.Func) (string, bool) {
-	callee := m.callSite.Node().Callee
-	funcName := callee.Name()
-	macroPackage := callee.F.(*ir.Macro).File().Package
-	imp := m.callSite.File().FindImport(macroPackage.FullName())
+	callSite := m.Call()
+	callee := callSite.Node().Callee
+	macro := callee.Func().(*ir.Macro)
+	funcName := macro.Name()
+	macroPackage := macro.File().Package
+	imp := callSite.File().FindImport(macroPackage.FullName())
 	if imp == nil {
 		return "", fetcher.Err().AppendInternalf(callee.Source(), "cannot find import name %s", macroPackage.FullName())
 	}
-	return fmt.Sprintf("__%s_%s_%s_%s", imp.Name(), funcName, fn.Name(), m.wrt.name()), true
+	pkgFunc, ok := fn.(ir.PkgFunc)
+	if !ok {
+		return "", fetcher.Err().AppendInternalf(callee.Source(), "cannot build a synthetic name for %T", fn)
+	}
+	return fmt.Sprintf("__%s_%s_%s_%s", imp.Name(), funcName, pkgFunc.Name(), m.wrt.name()), true
 }
 
-func (m *gradMacro) BuildDecl() (*ast.FuncDecl, bool) {
+func (m *gradMacro) BuildDecl(ir.PkgFunc) (*ir.File, *ast.FuncDecl, bool) {
 	fType := m.fn.FuncType()
 	fDecl := &ast.FuncDecl{Type: fType.Src}
 	fDecl.Type.Results = &ast.FieldList{
@@ -131,10 +136,10 @@ func (m *gradMacro) BuildDecl() (*ast.FuncDecl, bool) {
 	if recv != nil {
 		fDecl.Recv = recv.Src
 	}
-	return fDecl, true
+	return m.fn.File(), fDecl, true
 }
 
-func (m *gradMacro) buildBodyFromSetAnnotation(fetcher ir.Fetcher, fn ir.Func, ann *setAnnotation) (*ast.BlockStmt, []*cpevelements.SyntheticFuncDecl, bool) {
+func (m *gradMacro) buildBodyFromSetAnnotation(fetcher ir.Fetcher, fn ir.Func, ann *setAnnotation) (*ast.BlockStmt, bool) {
 	params := fn.FuncType().Params.Fields()
 	args := make([]ast.Expr, len(params))
 	for i, param := range params {
@@ -142,25 +147,24 @@ func (m *gradMacro) buildBodyFromSetAnnotation(fetcher ir.Fetcher, fn ir.Func, a
 	}
 	identToGradFunc, ok := gradFromAnnotation(fetcher, fn, ann, m.wrt.name())
 	if !ok {
-		return nil, nil, false
+		return nil, false
 	}
 	return &ast.BlockStmt{List: []ast.Stmt{&ast.ReturnStmt{
 		Results: []ast.Expr{&ast.CallExpr{
 			Fun:  identToGradFunc,
 			Args: args,
 		}},
-	}}}, nil, true
+	}}}, true
 }
 
-func (m *gradMacro) BuildBody(fetcher ir.Fetcher, fn ir.Func) (*ast.BlockStmt, []*cpevelements.SyntheticFuncDecl, bool) {
-	if ann := findSetAnnotation(m.fn); ann != nil {
+func (m *gradMacro) BuildBody(fetcher ir.Fetcher, fn ir.Func) (*ast.BlockStmt, bool) {
+	if ann := annotations.Get[*setAnnotation](m.fn, m.set); ann != nil {
 		return m.buildBodyFromSetAnnotation(fetcher, fn, ann)
 	}
 	fnWithBody, ok := m.fn.(*ir.FuncDecl)
 	if !ok {
-		return nil, nil, fetcher.Err().Appendf(fn.Source(), "function has no body")
+		return nil, fetcher.Err().Appendf(fn.Source(), "function has no body")
 	}
-	m.aux = ordered.NewMap[string, *cpevelements.SyntheticFuncDecl]()
 	sg := m.newStmtGrader(fetcher, nil)
 	fType := m.fn.FuncType()
 	sg.registerFieldNames(fType.Receiver)
@@ -168,9 +172,9 @@ func (m *gradMacro) BuildBody(fetcher ir.Fetcher, fn ir.Func) (*ast.BlockStmt, [
 	sg.registerFieldNames(fType.Results)
 	body, ok := sg.gradBlock(fetcher, fnWithBody.Body)
 	if !ok {
-		return nil, nil, false
+		return nil, false
 	}
-	return body, slices.Collect(m.aux.Values()), true
+	return body, true
 }
 
 func (m *gradMacro) gradIdent(src *ast.Ident) *ast.Ident {
@@ -178,4 +182,20 @@ func (m *gradMacro) gradIdent(src *ast.Ident) *ast.Ident {
 		NamePos: src.NamePos,
 		Name:    "__grad_" + src.Name,
 	}
+}
+
+func syntheticFuncName(fetcher ir.Fetcher, callSite elements.CallAt, fn ir.Func, wrt withRespectTo) (string, bool) {
+	callee := callSite.Node().Callee
+	macro := callee.Func().(*ir.Macro)
+	funcName := macro.Name()
+	macroPackage := macro.File().Package
+	imp := callSite.File().FindImport(macroPackage.FullName())
+	if imp == nil {
+		return "", fetcher.Err().AppendInternalf(callee.Source(), "cannot find import name %s", macroPackage.FullName())
+	}
+	pkgFunc, ok := fn.(ir.PkgFunc)
+	if !ok {
+		return "", fetcher.Err().AppendInternalf(callee.Source(), "cannot build a synthetic name for %T", fn)
+	}
+	return fmt.Sprintf("__%s_%s_%s_%s", imp.Name(), funcName, pkgFunc.ShortString(), wrt.name()), true
 }

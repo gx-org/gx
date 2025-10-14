@@ -145,7 +145,7 @@ func processFuncAnnotations(pscope procScope, src *ast.FuncDecl, fn function) (f
 			continue
 		}
 		text = strings.TrimPrefix(text, prefix)
-		astExpr, err := parser.ParseExprFrom(pscope.pkgScope().pkg().fset, pscope.file().name+":"+src.Name.Name, text, parser.SkipObjectResolution)
+		astExpr, err := parser.ParseExprFrom(pscope.pkg().fset, pscope.file().name+":"+src.Name.Name, text, parser.SkipObjectResolution)
 		if err != nil {
 			return nil, processScannerError(pscope, doc, err)
 		}

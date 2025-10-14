@@ -22,7 +22,6 @@ import (
 	"github.com/gx-org/gx/internal/interp/canonical"
 	"github.com/gx-org/gx/interp/elements"
 	"github.com/gx-org/gx/interp/evaluator"
-	"github.com/gx-org/gx/interp"
 )
 
 type variable struct {
@@ -31,10 +30,10 @@ type variable struct {
 }
 
 var (
-	_ Element         = (*variable)(nil)
-	_ interp.WithAxes = (*variable)(nil)
-	_ ir.Canonical    = (*variable)(nil)
-	_ interp.Slicer   = (*variable)(nil)
+	_ Element           = (*variable)(nil)
+	_ elements.WithAxes = (*variable)(nil)
+	_ ir.Canonical      = (*variable)(nil)
+	_ elements.Slicer   = (*variable)(nil)
 )
 
 // NewVariable returns a new variable element given a GX variable name.
@@ -43,23 +42,23 @@ func NewVariable(src elements.StorageAt) ir.Element {
 }
 
 // UnaryOp applies a unary operator on x.
-func (a *variable) UnaryOp(ctx ir.Evaluator, expr *ir.UnaryExpr) (evaluator.NumericalElement, error) {
-	return newUnary(ctx, expr, a)
+func (a *variable) UnaryOp(env evaluator.Env, expr *ir.UnaryExpr) (evaluator.NumericalElement, error) {
+	return newUnary(env, expr, a)
 }
 
 // BinaryOp applies a binary operator to x and y.
-func (a *variable) BinaryOp(ctx ir.Evaluator, expr *ir.BinaryExpr, x, y evaluator.NumericalElement) (evaluator.NumericalElement, error) {
-	return newBinary(ctx, expr, x, y)
+func (a *variable) BinaryOp(env evaluator.Env, expr *ir.BinaryExpr, x, y evaluator.NumericalElement) (evaluator.NumericalElement, error) {
+	return newBinary(env, expr, x, y)
 }
 
 // Cast an element into a given data type.
-func (a *variable) Cast(ctx ir.Evaluator, expr ir.AssignableExpr, target ir.Type) (evaluator.NumericalElement, error) {
-	return newCast(ctx, expr, a, target)
+func (a *variable) Cast(env evaluator.Env, expr ir.AssignableExpr, target ir.Type) (evaluator.NumericalElement, error) {
+	return newCast(env, expr, a, target)
 }
 
 // Reshape the variable into a different shape.
-func (a *variable) Reshape(ctx ir.Evaluator, expr ir.AssignableExpr, axisLengths []evaluator.NumericalElement) (evaluator.NumericalElement, error) {
-	return newReshape(ctx, expr, a, axisLengths)
+func (a *variable) Reshape(env evaluator.Env, expr ir.AssignableExpr, axisLengths []evaluator.NumericalElement) (evaluator.NumericalElement, error) {
+	return newReshape(env, expr, a, axisLengths)
 }
 
 // Shape of the value represented by the element.
@@ -73,14 +72,14 @@ func (a *variable) Type() ir.Type {
 }
 
 // Axes returns the axes of the value as a slice element.
-func (a *variable) Axes(ev ir.Evaluator) (*interp.Slice, error) {
+func (a *variable) Axes(ev ir.Evaluator) (*elements.Slice, error) {
 	return axesFromType(ev, a.src.Node().Type())
 }
 
 // Slice computes a slice from the variable.
-func (a *variable) Slice(fitp *interp.FileScope, expr *ir.IndexExpr, index evaluator.NumericalElement) (ir.Element, error) {
+func (a *variable) Slice(expr *ir.IndexExpr, index evaluator.NumericalElement) (ir.Element, error) {
 	store := &ir.LocalVarStorage{Src: &ast.Ident{}, Typ: expr.Type()}
-	return NewRuntimeValue(fitp.File(), fitp.NewFunc, store)
+	return NewRuntimeValue(a.src.File(), store)
 }
 
 // Compare to another element.

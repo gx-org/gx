@@ -29,6 +29,7 @@ import (
 	"github.com/gx-org/gx/internal/tracer/processor"
 	"github.com/gx-org/gx/interp/elements"
 	"github.com/gx-org/gx/interp/evaluator"
+	"github.com/gx-org/gx/interp/fun"
 	"github.com/gx-org/gx/interp"
 	"github.com/gx-org/gx/interp/materialise"
 )
@@ -47,7 +48,7 @@ type Evaluator struct {
 	hostEval evaluator.Evaluator
 }
 
-var _ interp.Evaluator = (*Evaluator)(nil)
+var _ fun.Evaluator = (*Evaluator)(nil)
 
 // New returns a new evaluator given a elements.
 func New(importer ir.Importer, pr *processor.Processor, gr ops.Graph) *Evaluator {
@@ -60,7 +61,7 @@ func New(importer ir.Importer, pr *processor.Processor, gr ops.Graph) *Evaluator
 }
 
 // NewFunc creates a new function given its definition and a receiver.
-func (ev *Evaluator) NewFunc(itp *interp.Interpreter, fn ir.PkgFunc, recv *interp.Receiver) interp.Func {
+func (ev *Evaluator) NewFunc(fn ir.Func, recv *fun.Receiver) fun.Func {
 	return interp.NewRunFunc(fn, recv)
 }
 
@@ -74,6 +75,11 @@ func (ev *Evaluator) Importer() ir.Importer {
 	return ev.hostEval.Importer()
 }
 
+// Graph used by the evaluator.
+func (ev *Evaluator) Graph() ops.Graph {
+	return ev.ao.graph
+}
+
 // ArrayOps returns the array operators implementation.
 func (ev *Evaluator) ArrayOps() evaluator.ArrayOps {
 	return ev.ao
@@ -85,15 +91,15 @@ func (ev *Evaluator) Materialiser() materialise.Materialiser {
 }
 
 // ElementFromAtom returns an element from a GX value.
-func (ev *Evaluator) ElementFromAtom(ctx ir.Evaluator, src ir.AssignableExpr, val values.Array) (evaluator.NumericalElement, error) {
-	return ev.hostEval.ElementFromAtom(ctx, src, val)
+func (ev *Evaluator) ElementFromAtom(file *ir.File, src ir.AssignableExpr, val values.Array) (evaluator.NumericalElement, error) {
+	return ev.hostEval.ElementFromAtom(file, src, val)
 }
 
 func buildProxyArguments(file *ir.File, args []*ir.Field) ([]ir.Element, error) {
 	els := make([]ir.Element, len(args))
 	for i, arg := range args {
 		var err error
-		els[i], err = cpevelements.NewRuntimeValue(file, interp.NewRunFunc, &ir.FieldStorage{
+		els[i], err = cpevelements.NewRuntimeValue(file, &ir.FieldStorage{
 			Field: arg,
 		})
 		if err != nil {
@@ -103,7 +109,7 @@ func buildProxyArguments(file *ir.File, args []*ir.Field) ([]ir.Element, error) 
 	return els, nil
 }
 
-func (ev *Evaluator) outputNodesFromElements(fileScope *interp.FileScope, fType *ir.FuncType, out []ir.Element) (processCallResults, *ops.OutputNode, error) {
+func (ev *Evaluator) outputNodesFromElements(file *ir.File, fType *ir.FuncType, out []ir.Element) (processCallResults, *ops.OutputNode, error) {
 	if len(out) == 0 {
 		return nil, nil, errors.Errorf("literal has no output")
 	}
@@ -121,7 +127,7 @@ func (ev *Evaluator) outputNodesFromElements(fileScope *interp.FileScope, fType 
 			expr := &ir.ValueRef{
 				Stor: &ir.FieldStorage{Field: results.Fields()[0]},
 			}
-			return ev.ao.ElementsFromNodes(fileScope.File(), expr, out)
+			return ev.ao.ElementsFromNodes(file, expr, out)
 		}, out, nil
 	}
 	exprs := make([]ir.AssignableExpr, len(nodes))
@@ -135,13 +141,8 @@ func (ev *Evaluator) outputNodesFromElements(fileScope *interp.FileScope, fType 
 		return nil, nil, err
 	}
 	return func(outputNode ops.Node) ([]ir.Element, error) {
-		return ev.elementsFromTupleNode(fileScope.File(), tupleNode, exprs, shapes)
+		return ev.elementsFromTupleNode(file, tupleNode, exprs, shapes)
 	}, &ops.OutputNode{Node: tupleNode}, nil
-}
-
-// NewFuncLit creates a new function literal.
-func (ev *Evaluator) NewFuncLit(fitp *interp.FileScope, lit *ir.FuncLit) (interp.Func, error) {
-	return ev.newFuncLit(lit, fitp.NewFuncLitScope(ev)), nil
 }
 
 func (ev *Evaluator) elementsFromTupleNode(file *ir.File, tpl ops.Tuple, elExprs []ir.AssignableExpr, shps []*shape.Shape) ([]ir.Element, error) {
@@ -196,10 +197,10 @@ func (ev *Evaluator) ElementFromTuple(file *ir.File, expr ir.AssignableExpr, tpl
 	if err != nil {
 		return nil, err
 	}
-	var el interp.Copier
-	el = interp.NewStructFromElements(structTyp, els)
+	var el elements.Copier
+	el = elements.NewStructFromElements(structTyp, els)
 	for _, nType := range namedTypes {
-		el = interp.NewNamedType(interp.NewRunFunc, nType, el)
+		el = fun.NewNamedType(interp.NewRunFunc, nType, el)
 	}
 	return el, nil
 }
@@ -222,13 +223,10 @@ func (ev *Evaluator) Trace(ctx ir.Evaluator, call *ir.CallExpr, args []ir.Elemen
 	return ev.process.RegisterTrace(ctx, call, args)
 }
 
-func opsFromContext(ctx *interp.FileScope) *arrayOps {
-	return ctx.Evaluator().(*Evaluator).ao
-}
-
 // FuncInputsToElements converts values to a function input.
-func FuncInputsToElements(file *ir.File, processor *processor.Processor, fType *ir.FuncType, receiver ir.Element, args []ir.Element) (*elements.InputElements, error) {
-	vis := newInputVisitor(file, processor)
+func (ev *Evaluator) FuncInputsToElements(newFunc fun.NewFunc, fn ir.Func, receiver ir.Element, args []ir.Element) (*elements.InputElements, error) {
+	vis := newInputVisitor(newFunc, ev, fn.File())
+	fType := fn.FuncType()
 	var recvEl ir.Element
 	if receiver != nil {
 		recvField := fType.ReceiverField()
@@ -277,8 +275,7 @@ func GraphFromElement(name string, el ir.Element) (*ops.Subgraph, error) {
 	return grapher.SubGraph(name)
 }
 
-func axesFromShape(ev ir.Evaluator, shape *shape.Shape) (*interp.Slice, error) {
-	ctx := ev.(evaluator.Context)
+func (ev *Evaluator) axesFromShape(file *ir.File, shape *shape.Shape) (*elements.Slice, error) {
 	axes := make([]ir.Element, len(shape.AxisLengths))
 	for i, axisSize := range shape.AxisLengths {
 		iExpr := &ir.AtomicValueT[ir.Int]{
@@ -289,10 +286,10 @@ func axesFromShape(ev ir.Evaluator, shape *shape.Shape) (*interp.Slice, error) {
 		if err != nil {
 			return nil, err
 		}
-		axes[i], err = ctx.Evaluator().ElementFromAtom(ctx, iExpr, iValue)
+		axes[i], err = ev.ElementFromAtom(file, iExpr, iValue)
 		if err != nil {
 			return nil, err
 		}
 	}
-	return interp.NewSlice(ir.IntLenSliceType(), axes), nil
+	return elements.NewSlice(ir.IntLenSliceType(), axes), nil
 }

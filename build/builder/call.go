@@ -17,7 +17,10 @@ package builder
 import (
 	"go/ast"
 
+	"github.com/gx-org/gx/build/fmterr"
 	"github.com/gx-org/gx/build/ir"
+	"github.com/gx-org/gx/internal/interp/compeval/cpevelements"
+	"github.com/gx-org/gx/interp/fun"
 )
 
 func unpackIndexedExpr(n ast.Node) (ast.Expr, []ast.Expr) {
@@ -111,74 +114,136 @@ func (n *callExpr) buildTypeCast(rscope resolveScope, callee ir.AssignableExpr, 
 	return ext, convertOk
 }
 
-func checkNumArgs(rscope resolveScope, callee *ir.FuncValExpr, numArgs int) bool {
-	numParams := callee.T.Params.Len()
+func checkNumArgs(rscope resolveScope, fn ir.Func, fType *ir.FuncType, numArgs int) bool {
+	numParams := fType.Params.Len()
 	if numArgs > numParams {
-		return rscope.Err().Appendf(callee.Source(), "too many arguments in call to %s", callee.Name())
+		return rscope.Err().Appendf(fn.Source(), "too many arguments in call to %s", fn.ShortString())
 	}
 	if numArgs < numParams {
-		return rscope.Err().Appendf(callee.Source(), "not enough arguments in call to %s", callee.Name())
+		return rscope.Err().Appendf(fn.Source(), "not enough arguments in call to %s", fn.ShortString())
 	}
 	return true
 }
 
-func buildMissingFuncType(rscope resolveScope, callee *ir.FuncValExpr, call *ir.CallExpr) (*ir.FuncValExpr, bool) {
-	if callee.T != nil {
-		return callee, true
+func (n *callExpr) buildFuncType(rscope resolveScope, callee ir.Func, args []ir.AssignableExpr) (*ir.FuncType, bool) {
+	fType := callee.FuncType()
+	if fType != nil {
+		return fType, true
 	}
-	builtin, isBuiltin := callee.F.(*ir.FuncBuiltin)
-	if !isBuiltin {
-		return callee, rscope.Err().AppendInternalf(callee.Source(), "missing function but function %s:%T is not a builtin function", callee.Name(), callee.T)
+	var impl ir.FuncImpl
+	switch fT := callee.(type) {
+	case *ir.FuncBuiltin:
+		impl = fT.Impl
+	case *ir.FuncKeyword:
+		impl = fT.Impl
+	default:
+		return nil, rscope.Err().AppendInternalf(callee.Source(), "missing function type but function %s:%T is not a builtin function", callee.ShortString(), callee)
 	}
 	compEval, ok := rscope.compEval()
 	if !ok {
-		return callee, false
+		return nil, false
 	}
-	ext := *callee
-	var err error
-	ext.T, err = builtin.Impl.BuildFuncType(compEval, call)
+	fType, err := impl.BuildFuncType(compEval, &ir.CallExpr{
+		Src:    n.src,
+		Callee: &ir.FuncValExpr{F: callee},
+		Args:   args,
+	})
 	if err != nil {
-		return callee, rscope.Err().AppendAt(callee.Source(), err)
+		return nil, rscope.Err().AppendAt(callee.Source(), err)
 	}
-	return &ext, true
+	return fType, true
 }
 
-func (n *callExpr) buildFunctionCall(rscope resolveScope, callee *ir.FuncValExpr) (*ir.CallExpr, bool) {
-	ext := &ir.CallExpr{Src: n.src, Callee: callee}
-	var argsOk bool
-	ext.Args, argsOk = n.buildArgs(rscope)
+func (n *callExpr) buildCallee(rscope resolveScope, expr ir.AssignableExpr, fn ir.Func) ([]ir.AssignableExpr, *ir.FuncType, bool) {
+	args, argsOk := n.buildArgs(rscope)
 	if !argsOk {
-		return ext, false
+		return nil, nil, false
 	}
-	callee, ok := buildMissingFuncType(rscope, callee, ext)
+	fType, ok := n.buildFuncType(rscope, fn, args)
 	if !ok {
-		return ext, false
+		return nil, nil, false
 	}
-	if numArgsOk := checkNumArgs(rscope, callee, len(ext.Args)); !numArgsOk {
-		return ext, false
+	if numArgsOk := checkNumArgs(rscope, fn, fType, len(args)); !numArgsOk {
+		return nil, nil, false
 	}
-	var callOk bool
-	ext.Callee, ext.Args, callOk = buildFuncForCall(rscope, callee, ext.Args)
-	return ext, callOk
+	args, callee, callOk := buildFuncForCall(rscope, &ir.FuncValExpr{
+		X: expr,
+		F: fn,
+		T: fType,
+	}, args)
+	return args, callee.T, callOk
+}
+
+func (n *callExpr) buildFuncCallExpr(rscope resolveScope, expr ir.AssignableExpr, fn ir.Func) (*ir.CallExpr, bool) {
+	extCallee := &ir.FuncValExpr{
+		X: expr,
+		F: fn,
+	}
+	extCall := &ir.CallExpr{Src: n.src, Callee: extCallee}
+	var ok bool
+	extCall.Args, extCallee.T, ok = n.buildCallee(rscope, expr, fn)
+	if !ok {
+		return nil, false
+	}
+	return extCall, true
+}
+
+func (n *callExpr) buildMacroCall(rscope resolveScope, compEval *compileEvaluator, expr ir.AssignableExpr, mac *ir.Macro) (ir.Expr, bool) {
+	callExpr, ok := n.buildFuncCallExpr(rscope, expr, mac)
+	if !ok {
+		return invalidExpr(), false
+	}
+	macroEl, ok := evalMacroCall(compEval, callExpr)
+	if !ok {
+		return invalidExpr(), false
+	}
+	fnBuilder, ok := macroEl.(ir.FuncASTBuilder)
+	if !ok {
+		return invalidExpr(), rscope.Err().Appendf(n.source(), "macro %s does not build functions", mac.ShortString())
+	}
+
+	rscope.Err().Push(fmterr.PosPrefixWith(rscope.fileScope().pkg().fset, callExpr.Src.Fun.Pos(), "error while calling macro %s:\n", callExpr.String()))
+	defer rscope.Err().Pop()
+
+	synDecl, synScope, ok := buildSyntheticFuncSig(rscope.fileScope(), fnBuilder, nil)
+	if !ok {
+		return invalidExpr(), false
+	}
+	if ok = synScope.buildBody(synDecl, compEval); !ok {
+		return invalidExpr(), false
+	}
+	return &ir.MacroCallExpr{
+		X: callExpr,
+		M: fnBuilder,
+		F: synDecl,
+	}, true
 }
 
 func (n *callExpr) buildCallExpr(rscope resolveScope, callee ir.AssignableExpr) (ir.Expr, bool) {
-	store, ok := storageFromExpr(rscope, callee)
+	compEval, ok := rscope.compEval()
 	if !ok {
-		return nil, false
+		return invalidExpr(), ok
 	}
-	if store.Type().Kind() == ir.MetaTypeKind {
-		return n.buildTypeCast(rscope, callee, store)
+	el, err := compEval.fitp.EvalExpr(callee)
+	if err != nil {
+		return invalidExpr(), rscope.Err().AppendAt(callee.Source(), err)
 	}
-	val, ok := valueFromStorage(rscope, callee, store)
-	if !ok {
-		return nil, false
+	switch elT := el.(type) {
+	case *cpevelements.Macro:
+		return n.buildMacroCall(rscope, compEval, callee, elT.IR())
+	case ir.Type:
+		return n.buildTypeCast(rscope, callee, elT)
+	case fun.Func:
+		return n.buildFuncCallExpr(rscope, callee, elT.Func())
+	case ir.FuncAnnotator:
+		return invalidExpr(), rscope.Err().Appendf(callee.Source(), "invalid use of annotation macro %s", elT.From().ShortString())
+	case *fun.NamedType:
+		return n.buildTypeCast(rscope, callee, elT.Type())
+	case *ir.TypeValExpr:
+		return n.buildTypeCast(rscope, callee, elT.Store())
+	default:
+		return invalidExpr(), rscope.Err().AppendInternalf(callee.Source(), "expression %s evaluated to unsupported element of type %T. Scope:\n%s\nCompEval:\n%s", callee.String(), elT, rscope.String(), compEval.String())
 	}
-	funcRef, ok := val.(*ir.FuncValExpr)
-	if !ok {
-		return nil, rscope.Err().Appendf(n.callee.source(), "cannot call non-function %s (type %s)", callee.String(), callee.Type().String())
-	}
-	return n.buildFunctionCall(rscope, funcRef)
 }
 
 func (n *callExpr) buildExpr(rscope resolveScope) (ir.Expr, bool) {

@@ -16,7 +16,6 @@ package builder
 
 import (
 	"fmt"
-	"go/ast"
 	"go/token"
 	"reflect"
 	"slices"
@@ -27,7 +26,6 @@ import (
 	"github.com/gx-org/gx/base/ordered"
 	"github.com/gx-org/gx/build/ir"
 	"github.com/gx-org/gx/internal/base/scope"
-	"github.com/gx-org/gx/internal/interp/compeval/cpevelements"
 )
 
 type decls struct {
@@ -249,61 +247,17 @@ func (d *decls) buildFunctions(pkgScope *pkgResolveScope, filter func(f *process
 		return false
 	}
 	// Build functions bodies.
-	for len(funcs) > 0 {
-		funcs, ok = d.buildFunctionBodies(pkgScope, funcs)
+	return d.buildFunctionBodies(pkgScope, funcs)
+}
+
+func (d *decls) buildFunctionBodies(pkgScope *pkgResolveScope, funcs []*irFunc) bool {
+	for _, fn := range funcs {
+		ok := fn.bFunc.buildBody(fn.scopeFunc, fn)
 		if !ok {
 			return false
 		}
 	}
-	return ok
-}
-
-func (d *decls) registerAuxFuncs(mScope *synthResolveScope, auxs []*cpevelements.SyntheticFuncDecl) (todos []*irFunc, ok bool) {
-	fScope := mScope.fileScope()
-	for _, aux := range auxs {
-		bFile := newFile(fScope.pkg(), aux.F.Name.Name+"_synt.gx", &ast.File{})
-		aux.F.Body = &ast.BlockStmt{}
-		bAuxFun, ok := bFile.processFuncDecl(fScope.pkgProcScope.newScope(bFile), aux.F, false)
-		if !ok {
-			return nil, false
-		}
-		pkgScope := mScope.fileScope().pkgResolveScope
-		underFun, _, ok := bAuxFun.buildSignature(pkgScope)
-		if !ok {
-			return nil, false
-		}
-		synthFunc := &syntheticFunc{
-			coreSyntheticFunc: coreSyntheticFunc{
-				bFile: bFile,
-				src:   aux.F,
-			},
-			fnBuilder: aux.Builder,
-			underFun:  underFun,
-		}
-		pNode, ok := d.registerFunc(synthFunc)
-		if !ok {
-			return nil, false
-		}
-		fn, ok := d.buildFuncType(pkgScope, pNode)
-		if !ok {
-			return nil, false
-		}
-		synthFunc.underFun = fn.irFunc
-		todos = append(todos, fn)
-	}
-	return todos, true
-}
-
-func (d *decls) buildFunctionBodies(pkgScope *pkgResolveScope, funcs []*irFunc) ([]*irFunc, bool) {
-	var todoNext []*irFunc
-	for _, fn := range funcs {
-		todos, ok := fn.bFunc.buildBody(fn.scopeFunc, fn)
-		if !ok {
-			return nil, false
-		}
-		todoNext = append(todoNext, todos...)
-	}
-	return todoNext, true
+	return true
 }
 
 func (d *decls) Find(key string) (processNode, bool) {
@@ -312,6 +266,10 @@ func (d *decls) Find(key string) (processNode, bool) {
 
 func (d *decls) CanAssign(key string) bool {
 	return false
+}
+
+func (d *decls) Items() *ordered.Map[string, processNode] {
+	return d.declarations.Clone()
 }
 
 func (d *decls) String() string {

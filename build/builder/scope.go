@@ -71,12 +71,12 @@ func (ev *compileEvaluator) sub(src ast.Node, vals map[string]ir.Element) (*comp
 }
 
 func (ev *compileEvaluator) File() *ir.File {
-	return ev.fitp.InitScope()
+	return ev.fitp.File()
 }
 
 func (ev *compileEvaluator) BuildExpr(src ast.Expr) (ir.Expr, bool) {
 	file := ev.scope.fileScope().bFile()
-	pscope := ev.scope.fileScope().pkgProcScope.newScope(file)
+	pscope := ev.scope.fileScope().newFilePScope(file)
 	expr, ok := processExpr(pscope, src)
 	if !ok {
 		return nil, false
@@ -106,7 +106,7 @@ func defineGlobal(s *scope.RWScope[processNode], tok token.Token, name *ast.Iden
 }
 
 func elementFromStorage(scope resolveScope, ev *compileEvaluator, node ir.Storage) (ir.Element, bool) {
-	el, err := cpevelements.NewRuntimeValue(ev.fitp.File(), ev.fitp.NewFunc, node)
+	el, err := cpevelements.NewRuntimeValue(ev.fitp.File(), node)
 	if err != nil {
 		return el, scope.Err().Append(err)
 	}
@@ -119,7 +119,7 @@ func elementFromStorageWithValue(ev *compileEvaluator, node ir.StorageWithValue)
 		Stor: node,
 	})
 	if _, isType := value.(*ir.TypeValExpr); isType {
-		return nil, true
+		return value, true
 	}
 	el, err := ev.fitp.EvalExpr(value)
 	if err != nil {
@@ -132,6 +132,9 @@ func defineLocalVar(scope resolveScope, storage ir.Storage) bool {
 	lScope, ok := scope.(localScope)
 	if !ok {
 		return scope.Err().AppendInternalf(storage.Source(), "%T is not a local scope", scope)
+	}
+	if isInvalidType(storage.Type()) {
+		return lScope.update(storage, ir.InvalidType())
 	}
 	ev, ok := scope.compEval()
 	if !ok {

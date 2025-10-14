@@ -56,12 +56,10 @@ func (n *blockStmt) buildBlockStmt(scope iFuncResolveScope) (*ir.BlockStmt, bool
 		block.List[i], stmtOk = node.buildStmt(scope)
 		ok = ok && stmtOk
 	}
-	if !ok && scope.Err().Errors().Empty() {
+	if !ok && scope.Err().Empty() {
 		// an error occurred but no explicit error has been added to the list of error.
 		// report an error now to help with debugging.
-		if scope.Err().Errors().Empty() {
-			scope.Err().AppendInternalf(n.src, "failed to build statement but no error reported to the user")
-		}
+		scope.Err().AppendInternalf(n.src, "failed to build statement but no error reported to the user")
 	}
 	return block, ok
 }

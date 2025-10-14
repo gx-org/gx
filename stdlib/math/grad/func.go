@@ -17,12 +17,12 @@ package grad
 import (
 	"go/ast"
 
+	"github.com/gx-org/gx/build/ir/annotations"
 	"github.com/gx-org/gx/build/ir"
-	"github.com/gx-org/gx/internal/interp/compeval/cpevelements"
 )
 
 func (m *gradMacro) gradFunc(fetcher ir.Fetcher, src *ir.FuncValExpr, wrt string) (ast.Expr, bool) {
-	ann := findSetAnnotation(src.F)
+	ann := annotations.Get[*setAnnotation](src.F, m.set)
 	if ann != nil {
 		return gradFromAnnotation(fetcher, src.F.(ir.Func), ann, wrt)
 	}
@@ -30,7 +30,7 @@ func (m *gradMacro) gradFunc(fetcher ir.Fetcher, src *ir.FuncValExpr, wrt string
 	case *ir.FuncDecl:
 		return gradFuncDecl(fetcher, m, src, fT, wrt)
 	default:
-		return nil, fetcher.Err().Appendf(src.Source(), "cannot compute the gradient of function %s", fT.NameDef().Name)
+		return nil, fetcher.Err().Appendf(src.Source(), "cannot compute the gradient of function %s", fT.ShortString())
 	}
 }
 
@@ -41,31 +41,11 @@ func gradFuncDecl(fetcher ir.Fetcher, parent *gradMacro, src *ir.FuncValExpr, fn
 		return nil, fetcher.Err().Append(err)
 	}
 	grader := parent.newMacro(fn, wrtF)
-	synthName, ok := grader.syntheticFuncName(fetcher, fn)
+	_, gradF, ok := grader.BuildDecl(nil)
 	if !ok {
 		return nil, false
 	}
-	ident := &ast.Ident{Name: synthName}
-	// Check if we need to build a new synthetic function.
-	if fetcher.IsDefined(synthName) {
-		// The function has already been built before.
-		return ident, true
-	}
-	if _, ok := grader.aux.Load(synthName); ok {
-		// The function has already been registered as a new auxiliary functions.
-		return ident, true
-	}
-	// No function already exists. Prepare to return it as a new auxiliary function.
-	gradF, ok := grader.BuildDecl()
-	if !ok {
-		return nil, false
-	}
-	gradF.Name = ident
-	grader.aux.Store(synthName, &cpevelements.SyntheticFuncDecl{
-		Builder: grader,
-		F:       gradF,
-	})
-	return ident, true
+	return &ast.Ident{Name: "TODO" + gradF.Name.Name}, true
 }
 
 func astExprs(exprs []ir.AssignableExpr) []ast.Expr {
@@ -80,10 +60,14 @@ func (m *stmtGrader) gradCall(src *ir.CallExpr) (*gradExprResult, bool) {
 	if len(src.Args) == 0 {
 		return zeroValueOf(src.Source()), true
 	}
+	calleeT, ok := src.Callee.(*ir.FuncValExpr)
+	if !ok {
+		return nil, m.fetcher.Err().AppendInternalf(src.Source(), "callee type %T not supported", src.Callee)
+	}
 	var gExpr *gradExprResult
 	ge := m.newExprGrader(false)
 	for i, argI := range src.Args {
-		gradCallee, ok := m.macro.gradFunc(m.fetcher, src.Callee, src.Callee.T.Params.Fields()[i].Name.Name)
+		gradCallee, ok := m.macro.gradFunc(m.fetcher, calleeT, calleeT.T.Params.Fields()[i].Name.Name)
 		if !ok {
 			return nil, false
 		}

@@ -17,7 +17,7 @@ package builder
 import (
 	"go/ast"
 
-	"github.com/gx-org/gx/internal/interp/compeval/cpevelements"
+	"github.com/gx-org/gx/build/ir"
 )
 
 const annotatePrefix = "gx:@"
@@ -39,13 +39,21 @@ func (m *annotateFuncFromMacro) buildAnnotations(fnScope iFuncResolveScope, fn *
 	if !ok {
 		return false
 	}
-	macroEl, ok := callMacroExpr(fnScope.fileScope(), m.macroCall, fn.irFunc)
+	compEval, ok := fnScope.compEval()
 	if !ok {
 		return false
 	}
-	fnAnnotator, ok := macroEl.(cpevelements.FuncAnnotator)
+	macroCall, ok := evalMacroCallee(fnScope, compEval, m.macroCall)
 	if !ok {
-		return fnScope.Err().Appendf(m.macroCall.source(), "cannot use macro %s for function annotations", macroEl.Macro().Name())
+		return false
+	}
+	macroEl, ok := evalMacroCall(compEval, macroCall)
+	if !ok {
+		return false
+	}
+	fnAnnotator, ok := macroEl.(ir.FuncAnnotator)
+	if !ok {
+		return fnScope.Err().Appendf(m.macroCall.source(), "cannot use macro %s for function annotations", macroEl.From().Name())
 	}
 	cp, ok := fnScope.compEval()
 	if !ok {

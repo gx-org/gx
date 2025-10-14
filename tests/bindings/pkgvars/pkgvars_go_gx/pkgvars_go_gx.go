@@ -27,13 +27,14 @@ import (
 	"github.com/gx-org/backend/platform"
 	"github.com/gx-org/gx/api"
 	"github.com/gx-org/gx/api/options"
-	"github.com/gx-org/gx/api/trace"
 	"github.com/gx-org/gx/api/tracer"
 	"github.com/gx-org/gx/api/values"
 	"github.com/gx-org/gx/build/ir"
+	"github.com/gx-org/gx/golang/binder/gobindings/core"
 	"github.com/gx-org/gx/golang/binder/gobindings/types"
-	_ "github.com/gx-org/gx/tests/bindings/pkgvars"
 	"github.com/pkg/errors"
+
+	_ "github.com/gx-org/gx/tests/bindings/pkgvars"
 )
 
 // Force some package dependencies.
@@ -45,38 +46,38 @@ var (
 	_ = errors.Errorf
 	_ = types.NewSlice[types.Bridger]
 	_ = platform.HostTransfer
+	_ = ir.NamedType{}
+	_ = tracer.Trace
 )
 
-// PackageIR is the GX package intermediate representation
-// built for a given runtime, but not yet for a specific device.
-type PackageIR struct {
-	Runtime *api.Runtime
-	IR      *ir.Package
-	Tracer  trace.Callback
-}
-
-// Load the GX package for a given backend.
-func Load(rtm *api.Runtime) (*PackageIR, error) {
+// Load the package for a given runtime.
+func Load(rtm *api.Runtime) (*core.Package, error) {
 	bpkg, err := rtm.Builder().Build("github.com/gx-org/gx/tests/bindings/pkgvars")
 	if err != nil {
 		return nil, err
 	}
-	pkg := &PackageIR{
-		Runtime: rtm,
-		IR:      bpkg.IR(),
-	}
-
-	return pkg, nil
+	deps := make([]*core.Package, 0)
+	return core.NewPackage(bpkg, deps), nil
 }
 
 // BuildFor loads the GX package github.com/gx-org/gx/tests/bindings/pkgvars
 // then returns that package for a given device and options.
-func BuildFor(dev *api.Device, options ...options.PackageOptionFactory) (*Package, error) {
+func BuildFor(dev *api.Device, opts ...options.PackageOptionFactory) (*Package, error) {
+	pkgHandle, err := BuildHandleFor(dev, opts...)
+	if err != nil {
+		return nil, err
+	}
+	return pkgHandle.Factory.Package, nil
+}
+
+// BuildHandleFor loads the GX package github.com/gx-org/gx/tests/bindings/pkgvars
+// then returns that package for a given device and options.
+func BuildHandleFor(dev *api.Device, opts ...options.PackageOptionFactory) (*PackageHandle, error) {
 	pkg, err := Load(dev.Runtime())
 	if err != nil {
 		return nil, err
 	}
-	return pkg.BuildFor(dev, options...), nil
+	return BuildFromIR(pkg, dev, opts)
 }
 
 // Factory create new instance of types used in the package.
@@ -87,50 +88,44 @@ type Factory struct {
 	Package *Package
 }
 
+// PackageHandle provides utility functions for the package.
+type PackageHandle struct {
+	*core.PackageCompileSetup
+	Factory *Factory
+
+	// Package dependencies
+
+}
+
 // Package is a GX package for a given device.
 // Functions and methods are compiled specifically for that device.
 type Package struct {
-	Package *PackageIR
-	Device  *api.Device
-	Factory *Factory
+	handle PackageHandle
 
-	options []options.PackageOption
-
-	ReturnVar1   ReturnVar1
-	NewTwiceSize NewTwiceSize
+	// Functions and methods cache
+	cacheReturnVar1   *core.FuncCache
+	cacheNewTwiceSize *core.FuncCache
 }
 
-// AppendOptions appends options to the compiler.
-func (cmpl *Package) AppendOptions(options ...options.PackageOptionFactory) {
-	plat := cmpl.Package.Runtime.Backend().Platform()
-	for _, opt := range options {
-		cmpl.options = append(cmpl.options, opt(plat))
-	}
-}
+// BuildFromIR builds a package for a device once it has been loaded.
+func BuildFromIR(irPkg *core.Package, dev *api.Device, optionFactories []options.PackageOptionFactory) (*PackageHandle, error) {
+	pkg := &Package{}
+	pkg.handle.Factory = &Factory{Package: pkg}
+	pkg.handle.PackageCompileSetup = irPkg.Setup(dev, optionFactories)
+	// Build dependencies.
+	var err error
 
-// BuildFor returns a package ready to compile for a device and options.
-func (pkg *PackageIR) BuildFor(dev *api.Device, options ...options.PackageOptionFactory) *Package {
-	c := &Package{
-		Package: pkg,
-		Device:  dev,
+	// Initialise function and method caches.
+	pkg.cacheReturnVar1, err = pkg.handle.NewCache("", "ReturnVar1")
+	if err != nil {
+		return nil, err
 	}
-	c.Factory = &Factory{Package: c}
-	c.AppendOptions(options...)
-
-	c.ReturnVar1 = ReturnVar1{
-		methodBase: methodBase{
-			pkg:      c,
-			function: c.Package.IR.Decls.Funcs[0],
-		},
-	}
-	c.NewTwiceSize = NewTwiceSize{
-		methodBase: methodBase{
-			pkg:      c,
-			function: c.Package.IR.Decls.Funcs[1],
-		},
+	pkg.cacheNewTwiceSize, err = pkg.handle.NewCache("", "NewTwiceSize")
+	if err != nil {
+		return nil, err
 	}
 
-	return c
+	return &pkg.handle, err
 }
 
 var Var1 Var1Static
@@ -167,37 +162,16 @@ func (SizeStatic) Set(value ir.Int) options.PackageOptionFactory {
 	}
 }
 
-type methodBase struct {
-	pkg      *Package
-	function ir.Func
-	runner   tracer.CompiledFunc
-}
-
-// ReturnVar1 compiles and runs the GX function ReturnVar1 for a device.
 // ReturnVar1 returns the value of the static variable Var1
-type ReturnVar1 struct {
-	methodBase
-}
-
-// NewTwiceSize compiles and runs the GX function NewTwiceSize for a device.
-// New 1-axis array of size Size.
-type NewTwiceSize struct {
-	methodBase
-}
-
-// Run first compiles ReturnVar1 for a given device and the given arguments.
-// Once compiled, the function is then run with these same arguments.
-// If the shape of the arguments change, the function will panic.
-func (f *ReturnVar1) Run() (_ types.Atom[int32], err error) {
+func (pkg *Package) ReturnVar1() (_ types.Atom[int32], err error) {
 	var args []values.Value = nil
-	if f.runner == nil {
-		f.runner, err = tracer.Trace(f.pkg.Device, f.function.(*ir.FuncDecl), nil, args, f.pkg.options)
-		if err != nil {
-			return
-		}
+	var runner tracer.CompiledFunc
+	runner, err = pkg.cacheReturnVar1.Runner(nil, args)
+	if err != nil {
+		return
 	}
 	var outputs []values.Value
-	outputs, err = f.runner.Run(nil, args, f.pkg.Package.Tracer)
+	outputs, err = runner.Run(nil, args, pkg.handle.Tracer())
 	if err != nil {
 		return
 	}
@@ -212,23 +186,16 @@ func (f *ReturnVar1) Run() (_ types.Atom[int32], err error) {
 	return out0, nil
 }
 
-func (f *ReturnVar1) String() string {
-	return fmt.Sprint(f.function)
-}
-
-// Run first compiles NewTwiceSize for a given device and the given arguments.
-// Once compiled, the function is then run with these same arguments.
-// If the shape of the arguments change, the function will panic.
-func (f *NewTwiceSize) Run() (_ types.Array[float32], err error) {
+// New 1-axis array of size Size.
+func (pkg *Package) NewTwiceSize() (_ types.Array[float32], err error) {
 	var args []values.Value = nil
-	if f.runner == nil {
-		f.runner, err = tracer.Trace(f.pkg.Device, f.function.(*ir.FuncDecl), nil, args, f.pkg.options)
-		if err != nil {
-			return
-		}
+	var runner tracer.CompiledFunc
+	runner, err = pkg.cacheNewTwiceSize.Runner(nil, args)
+	if err != nil {
+		return
 	}
 	var outputs []values.Value
-	outputs, err = f.runner.Run(nil, args, f.pkg.Package.Tracer)
+	outputs, err = runner.Run(nil, args, pkg.handle.Tracer())
 	if err != nil {
 		return
 	}
@@ -241,8 +208,4 @@ func (f *NewTwiceSize) Run() (_ types.Array[float32], err error) {
 	out0 := types.NewArray[float32](out0Value)
 
 	return out0, nil
-}
-
-func (f *NewTwiceSize) String() string {
-	return fmt.Sprint(f.function)
 }

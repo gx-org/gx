@@ -35,7 +35,7 @@ type (
 		resolveOrder() int
 		buildSignature(*pkgResolveScope) (ir.Func, iFuncResolveScope, bool)
 		buildAnnotations(iFuncResolveScope, *irFunc) bool
-		buildBody(iFuncResolveScope, *irFunc) ([]*irFunc, bool)
+		buildBody(iFuncResolveScope, *irFunc) bool
 	}
 
 	// exprNode builds a IR expression.
@@ -72,7 +72,7 @@ func fnName(f function) string {
 func storageFromExpr(scope resolveScope, expr ir.Expr) (ir.Storage, bool) {
 	withStore, ok := expr.(ir.WithStore)
 	if !ok {
-		return nil, scope.Err().AppendInternalf(expr.Source(), "%T does not have a store", expr)
+		return nil, scope.Err().AppendInternalf(expr.Source(), "%s:%T does not have a store", expr.String(), expr)
 	}
 	store := withStore.Store()
 	if store == nil {
@@ -181,7 +181,7 @@ func assignableToAt(rscope resolveScope, pos ast.Node, src, dst ir.Type) bool {
 }
 
 func assignableTo(rscope resolveScope, src, dst ir.Type) (bool, error) {
-	if isInvalid(src) && isInvalid(dst) {
+	if isInvalidType(src) || isInvalidType(dst) {
 		// An error should have already been reported. We skip the check
 		// to prevent additional confusing errors.
 		return true, nil
@@ -218,7 +218,7 @@ func reconcile(src, dst ir.Type) {
 }
 
 func convertTo(rscope resolveScope, src, dst ir.Type) (bool, error) {
-	if isInvalid(src) && isInvalid(dst) {
+	if isInvalidType(src) || isInvalidType(dst) {
 		// An error should have already been reported. We skip the check
 		// to prevent additional confusing errors.
 		return true, nil
@@ -232,7 +232,7 @@ func convertTo(rscope resolveScope, src, dst ir.Type) (bool, error) {
 }
 
 func equalToAt(rscope resolveScope, pos ast.Node, src, dst ir.Type) bool {
-	if isInvalid(src) && isInvalid(dst) {
+	if isInvalidType(src) || isInvalidType(dst) {
 		// An error should have already been reported. We skip the check
 		// to prevent additional confusing errors.
 		return true
@@ -272,18 +272,51 @@ func appendRedeclaredError(errF *fmterr.Appender, name string, cur ast.Node, pre
 	)
 }
 
-func isInvalid(typ ir.Type) bool {
+func isInvalidType(typ ir.Type) bool {
 	return typ == nil || typ.Kind() == ir.InvalidKind
 }
 
+func isInvalidExpr(expr ir.Expr) bool {
+	if expr == nil {
+		return true
+	}
+	return isInvalidType(expr.Type())
+}
+
+var invalidValueRef = &ir.ValueRef{
+	Src:  &ast.Ident{Name: "<<<invalid>>>"},
+	Stor: ir.InvalidType(),
+}
+
+func invalidExpr() *ir.ValueRef {
+	return invalidValueRef
+}
+
+var invalidGroup = &ir.FieldGroup{Type: &ir.TypeValExpr{
+	X:   invalidExpr(),
+	Typ: ir.InvalidType(),
+}}
+
+func buildInvalidFuncType(numResults int) *ir.FuncType {
+	list := make([]*ir.FieldGroup, numResults)
+	for i := range numResults {
+		list[i] = invalidGroup
+	}
+	return &ir.FuncType{
+		Results: &ir.FieldList{
+			List: list,
+		},
+	}
+}
+
 func buildAExpr(rscope resolveScope, expr exprNode) (ir.AssignableExpr, bool) {
-	ext, ok := expr.buildExpr(rscope)
-	if !ok {
-		return nil, false
+	ext, exprOk := expr.buildExpr(rscope)
+	if !exprOk {
+		return invalidExpr(), false
 	}
-	asExt, ok := ext.(ir.AssignableExpr)
-	if !ok {
-		return nil, rscope.Err().Appendf(expr.source(), "%s %s is not assignable", ext.String(), ext.Type().Kind().String())
+	asExt, aexprOk := ext.(ir.AssignableExpr)
+	if !aexprOk {
+		return invalidExpr(), rscope.Err().Appendf(expr.source(), "%s %s is not assignable", ext.String(), ext.Type().Kind().String())
 	}
-	return asExt, true
+	return asExt, exprOk && !isInvalidExpr(ext)
 }

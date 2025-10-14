@@ -87,6 +87,15 @@ func checkAll(wants []ir.Node, decls *ir.Declarations) error {
 	return nil
 }
 
+type compileError struct {
+	src string
+	err error
+}
+
+func (ce *compileError) Error() string {
+	return fmt.Sprintf("%s\nTest source:\n%s", ce.err.Error(), gxfmt.Number(ce.src))
+}
+
 // DeclarePackage declares a package for the following tests.
 type DeclarePackage struct {
 	// Path where the package belongs (without the name).
@@ -103,14 +112,23 @@ func (tt DeclarePackage) Source() string {
 	return tt.Src
 }
 
-// Run the source code to declare it as an importable package.
-func (tt DeclarePackage) Run(b *Builder) error {
-	pkg, err := b.Build(tt.Path, tt.Src)
+// Build the package.
+func (tt DeclarePackage) Build(b *builder.Builder) (builder.Package, error) {
+	pkg, err := build(b, tt.Path, tt.Src)
 	if err != nil {
-		return err
+		return nil, err
 	}
 	if tt.Post != nil {
 		tt.Post(pkg.IR())
+	}
+	return pkg, nil
+}
+
+// Run the source code to declare it as an importable package.
+func (tt DeclarePackage) Run(b *Builder) error {
+	pkg, err := tt.Build(builder.New(&b.imp))
+	if err != nil {
+		return err
 	}
 	b.imp.pkgs[pkg.IR().FullName()] = pkg
 	return nil
@@ -164,7 +182,11 @@ func checkNilError(err error) error {
 	if err == nil {
 		return nil
 	}
-	errs, ok := err.(*fmterr.Errors)
+	builderError := err
+	if cErr, ok := err.(*compileError); ok {
+		builderError = cErr.err
+	}
+	errs, ok := builderError.(*fmterr.Errors)
 	if !ok {
 		return err
 	}
@@ -229,22 +251,35 @@ func (imp *localImporter) Load(bld *builder.Builder, path string) (builder.Packa
 
 // Builder builds test source code.
 type Builder struct {
-	imp localImporter
+	imp  localImporter
+	next int
 }
 
-// Build test source code.
-func (b *Builder) Build(path, src string) (builder.Package, error) {
+func (b *Builder) nextTestName() string {
+	name := fmt.Sprintf("test%d", b.next)
+	b.next++
+	return name
+}
+
+func build(bld *builder.Builder, path, src string) (builder.Package, error) {
 	fileDecl, err := parser.ParseFile(token.NewFileSet(), "", src, parser.ParseComments|parser.SkipObjectResolution)
 	if err != nil {
-		return nil, err
+		return nil, &compileError{src: src, err: err}
 	}
-	bld := builder.New(&b.imp)
 	fullPath := fileDecl.Name.Name
 	if path != "" {
 		fullPath = path + "/" + fullPath
 	}
 	pkg := bld.NewIncrementalPackage(fullPath)
-	return pkg, pkg.Build(src)
+	if err := pkg.Build(src); err != nil {
+		return pkg, &compileError{src: src, err: err}
+	}
+	return pkg, nil
+}
+
+// Build test source code.
+func (b *Builder) Build(path, src string) (builder.Package, error) {
+	return build(builder.New(&b.imp), path, src)
 }
 
 // Loader used to build a GX builder.
@@ -259,20 +294,26 @@ type Test interface {
 }
 
 // Run all the test.
-func Run(t *testing.T, tests ...Test) {
+func Run(t *testing.T, tests ...Test) *Builder {
 	t.Helper()
 	ctx := &Builder{
 		imp: localImporter{pkgs: make(map[string]builder.Package)},
 	}
-	for i, test := range tests {
+	ctx.Continue(t, tests...)
+	return ctx
+}
+
+// Continue running tests with the same builder.
+func (b *Builder) Continue(t *testing.T, tests ...Test) {
+	for _, test := range tests {
 		if _, ok := test.(DeclarePackage); ok {
-			if err := test.Run(ctx); err != nil {
+			if err := test.Run(b); err != nil {
 				t.Fatal(err)
 			}
 		}
-		t.Run(fmt.Sprintf("test%d", i), func(t *testing.T) {
+		t.Run(b.nextTestName(), func(t *testing.T) {
 			t.Helper()
-			if err := test.Run(ctx); err != nil {
+			if err := test.Run(b); err != nil {
 				t.Errorf("\n%s\n%+v", test.Source(), fmterr.ToStackTraceError(err))
 			}
 		})

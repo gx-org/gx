@@ -29,7 +29,7 @@ import (
 	"github.com/gx-org/gx/internal/tracer/processor"
 	"github.com/gx-org/gx/interp/elements"
 	"github.com/gx-org/gx/interp/evaluator"
-	"github.com/gx-org/gx/interp"
+	"github.com/gx-org/gx/interp/fun"
 	"github.com/gx-org/gx/interp/materialise"
 )
 
@@ -54,33 +54,36 @@ func (f receiverFetcher) ValueFromContext(in *values.FuncInputs) (ir.Element, er
 }
 
 type inputVisitor struct {
-	proc *processor.Processor
-	file *ir.File
+	newFunc fun.NewFunc
+	ev      *Evaluator
+	file    *ir.File
 }
 
-func newInputVisitor(file *ir.File, proc *processor.Processor) *inputVisitor {
-	return &inputVisitor{file: file, proc: proc}
+func newInputVisitor(newFunc fun.NewFunc, ev *Evaluator, file *ir.File) *inputVisitor {
+	return &inputVisitor{newFunc: newFunc, ev: ev, file: file}
 }
 
 // ArgGX represents a GX argument.
 func (vis *inputVisitor) visitArg(field *ir.Field, index int, proxy ir.Element) (ir.Element, error) {
-	return vis.newRootArg(field, parameterFetcher{paramIndex: index}, proxy)
+	return vis.newRootArg(vis.ev, field, parameterFetcher{paramIndex: index}, proxy)
 }
 
 // Receiver represents a GX function call receiver.
 func (vis *inputVisitor) visitReceiver(field *ir.Field, proxy ir.Element) (ir.Element, error) {
-	return vis.newRootArg(field, receiverFetcher{}, proxy)
+	return vis.newRootArg(vis.ev, field, receiverFetcher{}, proxy)
 }
 
 type (
 	parentArgument interface {
 		Name() string
 		ValueFromContext(*values.FuncInputs) (ir.Element, error)
+		Evaluator() *Evaluator
 	}
 
 	// rootArgument is an argument passed to the GX interpreter from the host language.
 	rootArgument struct {
 		argFetcher
+		vis  *inputVisitor
 		name string
 		typ  ir.Type
 	}
@@ -88,8 +91,9 @@ type (
 
 var _ parentArgument = (*rootArgument)(nil)
 
-func (vis *inputVisitor) newRootArg(field *ir.Field, fetcher argFetcher, proxy ir.Element) (ir.Element, error) {
+func (vis *inputVisitor) newRootArg(ev *Evaluator, field *ir.Field, fetcher argFetcher, proxy ir.Element) (ir.Element, error) {
 	n := &rootArgument{
+		vis:        vis,
 		argFetcher: fetcher,
 		name:       field.Name.Name,
 		typ:        field.Type(),
@@ -103,6 +107,10 @@ func (a *rootArgument) Name() string {
 
 func (a *rootArgument) Type() ir.Type {
 	return a.typ
+}
+
+func (a *rootArgument) Evaluator() *Evaluator {
+	return a.vis.ev
 }
 
 func (vis *inputVisitor) newArg(parent parentArgument, typ ir.Type, proxy ir.Element) (ir.Element, error) {
@@ -125,12 +133,12 @@ type namedTypeArgument struct {
 	typ    *ir.NamedType
 }
 
-func (vis *inputVisitor) newNamedTypeArgument(parent parentArgument, typ *ir.NamedType, el ir.Element) (*interp.NamedType, error) {
+func (vis *inputVisitor) newNamedTypeArgument(parent parentArgument, typ *ir.NamedType, el ir.Element) (*fun.NamedType, error) {
 	arg := &namedTypeArgument{
 		parent: parent,
 		typ:    typ,
 	}
-	named, ok := el.(interp.NType)
+	named, ok := el.(elements.NType)
 	if !ok {
 		return nil, errors.Errorf("element %T is not a named type element", el)
 	}
@@ -138,11 +146,11 @@ func (vis *inputVisitor) newNamedTypeArgument(parent parentArgument, typ *ir.Nam
 	if err != nil {
 		return nil, err
 	}
-	recvCopier, ok := recv.(interp.Copier)
+	recvCopier, ok := recv.(elements.Copier)
 	if !ok {
 		return nil, errors.Errorf("element %T cannot be used as a receiver", recv)
 	}
-	return interp.NewNamedType(interp.NewRunFunc, arg.typ, recvCopier), nil
+	return fun.NewNamedType(vis.newFunc, arg.typ, recvCopier), nil
 }
 
 func (arg *namedTypeArgument) Name() string {
@@ -153,11 +161,15 @@ func (arg *namedTypeArgument) ValueFromContext(ctx *values.FuncInputs) (ir.Eleme
 	return arg.parent.ValueFromContext(ctx)
 }
 
+func (arg *namedTypeArgument) Evaluator() *Evaluator {
+	return arg.parent.Evaluator()
+}
+
 type (
 	structArgument struct {
 		parentArgument
 		typ   *ir.StructType
-		proxy interp.Selector
+		proxy elements.Selector
 	}
 
 	fieldSelectorArgument struct {
@@ -169,10 +181,10 @@ type (
 
 var _ parentArgument = (*fieldSelectorArgument)(nil)
 
-func (vis *inputVisitor) newStructArgument(parent parentArgument, typ *ir.StructType, proxy ir.Element) (*interp.Struct, error) {
-	sel, ok := proxy.(interp.Selector)
+func (vis *inputVisitor) newStructArgument(parent parentArgument, typ *ir.StructType, proxy ir.Element) (*elements.Struct, error) {
+	sel, ok := proxy.(elements.Selector)
 	if !ok {
-		return nil, errors.Errorf("%T does not support %s", proxy, reflect.TypeFor[interp.Selector]().Name())
+		return nil, errors.Errorf("%T does not support %s", proxy, reflect.TypeFor[elements.Selector]().Name())
 	}
 	structArg := &structArgument{
 		parentArgument: parent,
@@ -206,7 +218,7 @@ func (vis *inputVisitor) newStructArgument(parent parentArgument, typ *ir.Struct
 		}
 		fields[name] = field
 	}
-	return interp.NewStruct(typ, fields), nil
+	return elements.NewStruct(typ, fields), nil
 }
 
 func (sel *fieldSelectorArgument) Name() string {
@@ -218,7 +230,7 @@ func (sel *fieldSelectorArgument) ValueFromContext(ctx *values.FuncInputs) (ir.E
 	if err != nil {
 		return nil, err
 	}
-	structValue, ok := val.(interp.Selector)
+	structValue, ok := val.(elements.Selector)
 	if !ok {
 		return nil, errors.Errorf("%s is not a structure instance (type %s)", sel.parent.Name(), sel.parent.typ.String())
 	}
@@ -234,11 +246,15 @@ func (sel *fieldSelectorArgument) ValueFromContext(ctx *values.FuncInputs) (ir.E
 	return fieldVal, nil
 }
 
+func (sel *fieldSelectorArgument) Evaluator() *Evaluator {
+	return sel.parent.Evaluator()
+}
+
 type (
 	sliceArgument struct {
 		parentArgument
 		typ   *ir.SliceType
-		proxy interp.FixedSlice
+		proxy elements.FixedSlice
 	}
 
 	indexSelectorArgument struct {
@@ -248,10 +264,10 @@ type (
 	}
 )
 
-func (vis *inputVisitor) newSliceArgument(parent parentArgument, typ *ir.SliceType, proxy ir.Element) (*interp.Slice, error) {
-	fixed, ok := proxy.(interp.FixedSlice)
+func (vis *inputVisitor) newSliceArgument(parent parentArgument, typ *ir.SliceType, proxy ir.Element) (*elements.Slice, error) {
+	fixed, ok := proxy.(elements.FixedSlice)
 	if !ok {
-		return nil, errors.Errorf("%T does not support %s", proxy, reflect.TypeFor[interp.FixedSlice]().Name())
+		return nil, errors.Errorf("%T does not support %s", proxy, reflect.TypeFor[elements.FixedSlice]().Name())
 	}
 	sliceArg := &sliceArgument{
 		parentArgument: parent,
@@ -276,7 +292,7 @@ func (vis *inputVisitor) newSliceArgument(parent parentArgument, typ *ir.SliceTy
 		}
 
 	}
-	return interp.NewSlice(typ, args), nil
+	return elements.NewSlice(typ, args), nil
 }
 
 func (sel *indexSelectorArgument) Name() string {
@@ -299,6 +315,10 @@ func (sel *indexSelectorArgument) ValueFromContext(ctx *values.FuncInputs) (ir.E
 	return val, nil
 }
 
+func (sel *indexSelectorArgument) Evaluator() *Evaluator {
+	return sel.parent.Evaluator()
+}
+
 var _ parentArgument = (*indexSelectorArgument)(nil)
 
 type arrayArgument struct {
@@ -316,21 +336,21 @@ var (
 	_ evaluator.NumericalElement      = (*arrayArgument)(nil)
 	_ materialise.ElementMaterialiser = (*arrayArgument)(nil)
 	_ flatten.Unflattener             = (*arrayArgument)(nil)
-	_ interp.Slicer                   = (*arrayArgument)(nil)
-	_ interp.WithAxes                 = (*arrayArgument)(nil)
+	_ elements.Slicer                 = (*arrayArgument)(nil)
+	_ elements.WithAxes               = (*arrayArgument)(nil)
 )
 
 // NewArrayArgument creates a new argument element that the graph can also use as an argument.
 func (ev *Evaluator) NewArrayArgument(file *ir.File, parent parentArgument, typ ir.ArrayType, proxy ir.Element) (elements.ElementWithArrayFromContext, error) {
-	vis := &inputVisitor{file: file, proc: ev.process}
+	vis := &inputVisitor{file: file, ev: ev}
 	return vis.newArrayArgument(parent, typ, proxy)
 }
 
 // NewArrayArgument creates a new argument element that the graph can also use as an argument.
 func (vis *inputVisitor) newArrayArgument(parent parentArgument, typ ir.ArrayType, proxy ir.Element) (elements.ElementWithArrayFromContext, error) {
-	fixed, ok := proxy.(interp.FixedShape)
+	fixed, ok := proxy.(elements.FixedShape)
 	if !ok {
-		return nil, errors.Errorf("%T does not support %s", proxy, reflect.TypeFor[interp.FixedShape]().Name())
+		return nil, errors.Errorf("%T does not support %s", proxy, reflect.TypeFor[elements.FixedShape]().Name())
 	}
 	n := &arrayArgument{
 		parentArgument: parent,
@@ -338,45 +358,45 @@ func (vis *inputVisitor) newArrayArgument(parent parentArgument, typ ir.ArrayTyp
 		shape:          fixed.Shape(),
 		file:           vis.file,
 	}
-	n.graphCallIndex = vis.proc.RegisterArg(n)
+	n.graphCallIndex = vis.ev.process.RegisterArg(n)
 	return n, nil
 }
 
 // UnaryOp applies a unary operator on x.
-func (n *arrayArgument) UnaryOp(ctx ir.Evaluator, expr *ir.UnaryExpr) (evaluator.NumericalElement, error) {
-	node, err := n.materialise(ctx.(evaluator.Context).Materialiser())
+func (n *arrayArgument) UnaryOp(env evaluator.Env, expr *ir.UnaryExpr) (evaluator.NumericalElement, error) {
+	node, err := n.materialise(n.parentArgument.Evaluator().Materialiser())
 	if err != nil {
 		return nil, err
 	}
-	return node.UnaryOp(ctx, expr)
+	return node.UnaryOp(env, expr)
 }
 
 // BinaryOp applies a binary operator to x and y.
 // Note that the receiver can be either the left or right argument.
-func (n *arrayArgument) BinaryOp(ctx ir.Evaluator, expr *ir.BinaryExpr, x, y evaluator.NumericalElement) (evaluator.NumericalElement, error) {
-	node, err := n.materialise(ctx.(evaluator.Context).Materialiser())
+func (n *arrayArgument) BinaryOp(env evaluator.Env, expr *ir.BinaryExpr, x, y evaluator.NumericalElement) (evaluator.NumericalElement, error) {
+	node, err := n.materialise(n.parentArgument.Evaluator().Materialiser())
 	if err != nil {
 		return nil, err
 	}
-	return node.BinaryOp(ctx, expr, x, y)
+	return node.BinaryOp(env, expr, x, y)
 }
 
 // Cast an element into a given data type.
-func (n *arrayArgument) Cast(ctx ir.Evaluator, expr ir.AssignableExpr, target ir.Type) (evaluator.NumericalElement, error) {
-	node, err := n.materialise(ctx.(evaluator.Context).Materialiser())
+func (n *arrayArgument) Cast(env evaluator.Env, expr ir.AssignableExpr, target ir.Type) (evaluator.NumericalElement, error) {
+	node, err := n.materialise(n.parentArgument.Evaluator().Materialiser())
 	if err != nil {
 		return nil, err
 	}
-	return node.Cast(ctx, expr, target)
+	return node.Cast(env, expr, target)
 }
 
 // Reshape an element.
-func (n *arrayArgument) Reshape(ctx ir.Evaluator, expr ir.AssignableExpr, axisLengths []evaluator.NumericalElement) (evaluator.NumericalElement, error) {
-	node, err := n.materialise(ctx.(evaluator.Context).Materialiser())
+func (n *arrayArgument) Reshape(env evaluator.Env, expr ir.AssignableExpr, axisLengths []evaluator.NumericalElement) (evaluator.NumericalElement, error) {
+	node, err := n.materialise(n.parentArgument.Evaluator().Materialiser())
 	if err != nil {
 		return nil, err
 	}
-	return node.Reshape(ctx, expr, axisLengths)
+	return node.Reshape(env, expr, axisLengths)
 }
 
 func (n *arrayArgument) materialise(mat materialise.Materialiser) (*BackendNode, error) {
@@ -415,8 +435,8 @@ func (n *arrayArgument) Shape() *shape.Shape {
 	return n.shape
 }
 
-func (n *arrayArgument) Axes(ev ir.Evaluator) (*interp.Slice, error) {
-	return axesFromShape(ev, n.shape)
+func (n *arrayArgument) Axes(ev ir.Evaluator) (*elements.Slice, error) {
+	return n.node.ev.axesFromShape(ev.File(), n.shape)
 }
 
 func (n *arrayArgument) ToDeviceHandle(dev platform.Device, in *values.FuncInputs) (platform.DeviceHandle, error) {
@@ -448,7 +468,7 @@ func (n *arrayArgument) ArrayFromContext(in *values.FuncInputs) (values.Array, e
 	return array, nil
 }
 
-func (n *arrayArgument) Copy() interp.Copier {
+func (n *arrayArgument) Copy() elements.Copier {
 	return n
 }
 
@@ -462,19 +482,19 @@ func (n *arrayArgument) Unflatten(handles *flatten.Parser) (values.Value, error)
 }
 
 // Slice of the value on the first axis given an index.
-func (n *arrayArgument) Slice(fitp *interp.FileScope, expr *ir.IndexExpr, index evaluator.NumericalElement) (ir.Element, error) {
-	node, err := n.materialise(fitp.Materialiser())
+func (n *arrayArgument) Slice(expr *ir.IndexExpr, index evaluator.NumericalElement) (ir.Element, error) {
+	node, err := n.materialise(n.Evaluator().Materialiser())
 	if err != nil {
 		return nil, err
 	}
-	return node.Slice(fitp, expr, index)
+	return node.Slice(expr, index)
 }
 
 // SliceArray of the value on the first axis given an index.
-func (n *arrayArgument) SliceArray(fitp *interp.FileScope, expr ir.AssignableExpr, index evaluator.NumericalElement) (evaluator.NumericalElement, error) {
-	node, err := n.materialise(fitp.Materialiser())
+func (n *arrayArgument) SliceArray(expr ir.AssignableExpr, index evaluator.NumericalElement) (evaluator.NumericalElement, error) {
+	node, err := n.materialise(n.Evaluator().Materialiser())
 	if err != nil {
 		return nil, err
 	}
-	return node.SliceArray(fitp, expr, index)
+	return node.SliceArray(expr, index)
 }

@@ -26,7 +26,9 @@ import (
 	gxfmt "github.com/gx-org/gx/base/fmt"
 	"github.com/gx-org/gx/build/fmterr"
 	"github.com/gx-org/gx/build/ir"
+	"github.com/gx-org/gx/internal/interp/canonical"
 	"github.com/gx-org/gx/internal/interp/flatten"
+	"github.com/gx-org/gx/interp/evaluator"
 )
 
 // InputElements is the receiver and arguments with which the function was called.
@@ -95,6 +97,12 @@ func (ea NodeFile[T]) FSet() *token.FileSet {
 // Node returns the expression.
 func (ea NodeFile[T]) Node() T {
 	return ea.node
+}
+
+// Source of the node.
+func (ea NodeFile[T]) Source() ast.Node {
+	var node ir.Node = ea.node
+	return node.(ir.SourceNode).Source()
 }
 
 // ExprSrc returns the source expression.
@@ -236,4 +244,62 @@ func StringFromElement(el ir.Element) (string, error) {
 		return "", errors.Errorf("cannot convert element %T is not a string literal", el)
 	}
 	return sEl.StringValue().String(), nil
+}
+
+// SliceVals slices a slice of elements.
+func SliceVals(expr ir.AssignableExpr, index evaluator.NumericalElement, vals []ir.Element) (ir.Element, error) {
+	i, err := ConstantIntFromElement(index)
+	if err != nil {
+		return nil, err
+	}
+	if i < 0 || i >= len(vals) {
+		return nil, errors.Errorf("invalid argument: index %d out of bounds [0:%d]", i, len(vals))
+	}
+	return vals[i], nil
+}
+
+// EvalInt evaluates an expression to return an int.
+func EvalInt(fetcher ir.Fetcher, expr ir.Expr) (int, error) {
+	el, err := fetcher.EvalExpr(expr)
+	if err != nil {
+		return 0, err
+	}
+	val := canonical.ToValue(el)
+	if val == nil {
+		return 0, fmterr.Errorf(fetcher.File().FileSet(), expr.Source(), "expected axis literals, but expression %s cannot be evaluated at compile time", expr.String())
+	}
+	if !val.IsInt() {
+		return 0, fmterr.Errorf(fetcher.File().FileSet(), expr.Source(), "cannot use %s as static int value in axis specification", val.String())
+	}
+	valInt, _ := val.Int64()
+	return int(valInt), nil
+}
+
+// EvalRank evaluates an expression to build the rank of an array.
+func EvalRank(fetcher ir.Fetcher, expr ir.Expr) (ir.ArrayRank, []canonical.Canonical, error) {
+	rankVal, err := fetcher.EvalExpr(expr)
+	if err != nil {
+		return nil, nil, err
+	}
+	slice, ok := rankVal.(*Slice)
+	if !ok {
+		return nil, nil, fmterr.Internalf(fetcher.File().FileSet(), expr.Source(), "cannot build a rank from %s (%T): not supported", expr.String(), rankVal)
+	}
+	axes := make([]ir.AxisLengths, slice.Len())
+	cans := make([]canonical.Canonical, slice.Len())
+	for i, el := range slice.Elements() {
+		ex, ok := el.(ir.Canonical)
+		if !ok {
+			return nil, nil, fmterr.Internalf(fetcher.File().FileSet(), expr.Source(), "cannot build an axis expression from element %T: not supported", el)
+		}
+		irExpr, err := ex.Expr()
+		if err != nil {
+			return nil, nil, err
+		}
+		axes[i] = &ir.AxisExpr{
+			X: irExpr,
+		}
+		cans[i] = el.(canonical.Canonical)
+	}
+	return &ir.Rank{Ax: axes}, cans, nil
 }

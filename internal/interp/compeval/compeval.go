@@ -20,18 +20,14 @@ import (
 
 	"github.com/pkg/errors"
 	"github.com/gx-org/gx/api/options"
-	"github.com/gx-org/gx/build/fmterr"
 	"github.com/gx-org/gx/build/ir"
-	"github.com/gx-org/gx/internal/interp/canonical"
 	"github.com/gx-org/gx/internal/interp/compeval/cpevelements"
 	"github.com/gx-org/gx/interp/elements"
-	"github.com/gx-org/gx/interp/evaluator"
-	"github.com/gx-org/gx/interp"
 )
 
 // EvalExpr evaluates a GX expression into an interpreter element.
-func EvalExpr(ctx evaluator.Context, expr ir.Expr) (cpevelements.Element, error) {
-	val, err := ctx.EvalExpr(expr)
+func EvalExpr(eval ir.Evaluator, expr ir.Expr) (cpevelements.Element, error) {
+	val, err := eval.EvalExpr(expr)
 	if err != nil {
 		return nil, err
 	}
@@ -50,50 +46,4 @@ func NewOptionVariable(vr *ir.VarExpr) options.PackageOption {
 		Var:   vr.VName.Name,
 		Value: cpevelements.NewVariable(src),
 	}
-}
-
-// EvalInt evaluates an expression to return an int.
-func EvalInt(fetcher ir.Fetcher, expr ir.Expr) (int, error) {
-	el, err := fetcher.EvalExpr(expr)
-	if err != nil {
-		return 0, err
-	}
-	val := canonical.ToValue(el)
-	if val == nil {
-		return 0, fmterr.Errorf(fetcher.File().FileSet(), expr.Source(), "expected axis literals, but expression %s cannot be evaluated at compile time", expr.String())
-	}
-	if !val.IsInt() {
-		return 0, fmterr.Errorf(fetcher.File().FileSet(), expr.Source(), "cannot use %s as static int value in axis specification", val.String())
-	}
-	valInt, _ := val.Int64()
-	return int(valInt), nil
-}
-
-// EvalRank evaluates an expression to build the rank of an array.
-func EvalRank(fetcher ir.Fetcher, expr ir.Expr) (ir.ArrayRank, []canonical.Canonical, error) {
-	rankVal, err := fetcher.EvalExpr(expr)
-	if err != nil {
-		return nil, nil, err
-	}
-	slice, ok := rankVal.(*interp.Slice)
-	if !ok {
-		return nil, nil, fmterr.Internalf(fetcher.File().FileSet(), expr.Source(), "cannot build a rank from %s (%T): not supported", expr.String(), rankVal)
-	}
-	axes := make([]ir.AxisLengths, slice.Len())
-	cans := make([]canonical.Canonical, slice.Len())
-	for i, el := range slice.Elements() {
-		ex, ok := el.(ir.Canonical)
-		if !ok {
-			return nil, nil, fmterr.Internalf(fetcher.File().FileSet(), expr.Source(), "cannot build an axis expression from element %T: not supported", el)
-		}
-		irExpr, err := ex.Expr()
-		if err != nil {
-			return nil, nil, err
-		}
-		axes[i] = &ir.AxisExpr{
-			X: irExpr,
-		}
-		cans[i] = el.(canonical.Canonical)
-	}
-	return &ir.Rank{Ax: axes}, cans, nil
 }

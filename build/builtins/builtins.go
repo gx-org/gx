@@ -23,7 +23,7 @@ import (
 
 	"github.com/gx-org/gx/build/fmterr"
 	"github.com/gx-org/gx/build/ir"
-	"github.com/gx-org/gx/internal/interp/compeval"
+	"github.com/gx-org/gx/interp/elements"
 )
 
 var (
@@ -190,7 +190,7 @@ func UniqueAxesFromExpr(fetcher ir.Fetcher, expr ir.Expr) (map[int]struct{}, err
 
 	axes := map[int]struct{}{}
 	for _, val := range sliceExpr.Elts {
-		axis, err := compeval.EvalInt(fetcher, val)
+		axis, err := elements.EvalInt(fetcher, val)
 		if err != nil {
 			return nil, fmterr.Position(fetcher.File().FileSet(), expr.Source(), err)
 		}

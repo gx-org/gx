@@ -17,47 +17,40 @@ package cpevelements
 import (
 	"go/ast"
 
-	"github.com/pkg/errors"
 	"github.com/gx-org/gx/build/ir"
+	"github.com/gx-org/gx/interp/fun"
 	"github.com/gx-org/gx/interp"
 )
 
-type fun struct {
+type function struct {
 	fn   ir.Func
-	recv *interp.Receiver
+	recv *fun.Receiver
 }
 
 // NewFunc creates a new function given its definition and a receiver.
-func NewFunc(fn ir.Func, recv *interp.Receiver) interp.Func {
-	return &fun{fn: fn, recv: recv}
+func NewFunc(fn ir.Func, recv *fun.Receiver) fun.Func {
+	return &function{fn: fn, recv: recv}
 }
 
-func (f *fun) Func() ir.Func {
+func (f *function) Func() ir.Func {
 	return f.fn
 }
 
-func (f *fun) Recv() *interp.Receiver {
+func (f *function) Recv() *fun.Receiver {
 	return f.recv
 }
 
-func (f *fun) callAtCompEval(fitp *interp.FileScope, call *ir.CallExpr, args []ir.Element) ([]ir.Element, error) {
-	pkgFunc, ok := f.fn.(ir.PkgFunc)
-	if !ok {
-		return nil, errors.Errorf("cannot evaluate a non compeval function (e.g. a function literal) at compile time")
-	}
-	return fitp.EvalFunc(pkgFunc, call, args)
-}
-
-func (f *fun) Call(fitp *interp.FileScope, call *ir.CallExpr, args []ir.Element) ([]ir.Element, error) {
+func (f *function) Call(env *fun.CallEnv, call *ir.CallExpr, args []ir.Element) ([]ir.Element, error) {
+	_, isKeyword := f.fn.(*ir.FuncKeyword)
 	fType := f.fn.FuncType()
-	if fType != nil && fType.CompEval { // Some builtin functions have no type at the moment.
-		return f.callAtCompEval(fitp, call, args)
+	if isKeyword || fType != nil && fType.CompEval { // Some builtin functions have no type at the moment.
+		return interp.NewRunFunc(f.fn, f.recv).Call(env, call, args)
 	}
-	res := call.Callee.T.Results.Fields()
+	res := call.Callee.FuncType().Results.Fields()
 	els := make([]ir.Element, len(res))
 	for i, ri := range res {
 		var err error
-		els[i], err = NewRuntimeValue(fitp.File(), fitp.NewFunc, &ir.LocalVarStorage{
+		els[i], err = NewRuntimeValue(env.File(), &ir.LocalVarStorage{
 			Src: &ast.Ident{},
 			Typ: ri.Type(),
 		})
@@ -68,6 +61,6 @@ func (f *fun) Call(fitp *interp.FileScope, call *ir.CallExpr, args []ir.Element)
 	return els, nil
 }
 
-func (f *fun) Type() ir.Type {
+func (f *function) Type() ir.Type {
 	return f.fn.Type()
 }

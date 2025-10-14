@@ -190,6 +190,6 @@ func (c *FuncCache) Runner(recv values.Value, args []values.Value) (tracer.Compi
 }
 
 // Func returns the function being cached.
-func (c *FuncCache) Func() ir.Func {
+func (c *FuncCache) Func() ir.PkgFunc {
 	return c.fn
 }

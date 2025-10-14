@@ -276,9 +276,6 @@ func buildAssignExpr(rscope resolveScope, asgm *assignment) (*ir.AssignExpr, boo
 	ext := &ir.AssignExpr{}
 	var exprOk bool
 	ext.X, exprOk = buildAExpr(rscope, asgm.expr)
-	if !exprOk {
-		return ext, false, false
-	}
 	if tpl, isTuple := ext.X.Type().(*ir.TupleType); exprOk && isTuple {
 		if len(tpl.Types) != 1 {
 			exprOk = rscope.Err().Appendf(asgm.expr.source(), "multiple-value (value of type %s) in single-value context", tpl.String())
@@ -286,9 +283,6 @@ func buildAssignExpr(rscope resolveScope, asgm *assignment) (*ir.AssignExpr, boo
 	}
 	var newAsgm, targetOk bool
 	ext.Storage, newAsgm, targetOk = asgm.target.buildStorage(rscope, ext.X.Type())
-	if !exprOk || !targetOk {
-		return ext, false, false
-	}
 	if ir.IsNumber(ext.X.Type().Kind()) {
 		ext.X, exprOk = castNumber(rscope, ext.X, ext.Storage.Type())
 	}
@@ -334,11 +328,13 @@ func (n *assignCallStmt) buildStmt(rscope iFuncResolveScope) (ir.Stmt, bool) {
 	ext := &ir.AssignCallStmt{Src: n.src}
 	var callOk bool
 	ext.Call, callOk = buildCall(rscope, n.call)
-	if !callOk {
-		return ext, false
-	}
 	lenTargets := len(n.targets)
-	funType := ext.Call.Callee.T
+	var funType *ir.FuncType
+	if callOk {
+		funType = ext.Call.Callee.FuncType()
+	} else {
+		funType = buildInvalidFuncType(len(n.targets))
+	}
 	lenCallResults := funType.Results.Len()
 	if lenTargets != funType.Results.Len() {
 		return ext, rscope.Err().Appendf(n.source(), "assignment mismatch: %d variable(s) but %s returns %d values", lenTargets, ext.Call.String(), lenCallResults)
@@ -364,7 +360,7 @@ func (n *assignCallStmt) buildStmt(rscope iFuncResolveScope) (ir.Stmt, bool) {
 		}
 		newVariables = newVariables || asgmNew
 	}
-	return ext, ok && checkNewVariables(rscope, n.src, newVariables)
+	return ext, ok && callOk && checkNewVariables(rscope, n.src, newVariables)
 }
 
 // Pos returns the position of the statement in the file.

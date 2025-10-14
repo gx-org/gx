@@ -27,13 +27,16 @@ import (
 	"github.com/gx-org/backend/platform"
 	"github.com/gx-org/gx/api"
 	"github.com/gx-org/gx/api/options"
-	"github.com/gx-org/gx/api/trace"
 	"github.com/gx-org/gx/api/tracer"
 	"github.com/gx-org/gx/api/values"
 	"github.com/gx-org/gx/build/ir"
+	"github.com/gx-org/gx/golang/binder/gobindings/core"
 	"github.com/gx-org/gx/golang/binder/gobindings/types"
-	_ "github.com/gx-org/gx/tests/bindings/cartpole"
 	"github.com/pkg/errors"
+
+	_ "github.com/gx-org/gx/tests/bindings/cartpole"
+
+	gxdep0 "github.com/gx-org/gx/stdlib/bindings/go/math_go_gx"
 )
 
 // Force some package dependencies.
@@ -45,38 +48,42 @@ var (
 	_ = errors.Errorf
 	_ = types.NewSlice[types.Bridger]
 	_ = platform.HostTransfer
+	_ = ir.NamedType{}
+	_ = tracer.Trace
 )
 
-// PackageIR is the GX package intermediate representation
-// built for a given runtime, but not yet for a specific device.
-type PackageIR struct {
-	Runtime *api.Runtime
-	IR      *ir.Package
-	Tracer  trace.Callback
-}
-
-// Load the GX package for a given backend.
-func Load(rtm *api.Runtime) (*PackageIR, error) {
+// Load the package for a given runtime.
+func Load(rtm *api.Runtime) (*core.Package, error) {
 	bpkg, err := rtm.Builder().Build("github.com/gx-org/gx/tests/bindings/cartpole")
 	if err != nil {
 		return nil, err
 	}
-	pkg := &PackageIR{
-		Runtime: rtm,
-		IR:      bpkg.IR(),
+	deps := make([]*core.Package, 1)
+	deps[0], err = gxdep0.Load(rtm)
+	if err != nil {
+		return nil, err
 	}
-
-	return pkg, nil
+	return core.NewPackage(bpkg, deps), nil
 }
 
 // BuildFor loads the GX package github.com/gx-org/gx/tests/bindings/cartpole
 // then returns that package for a given device and options.
-func BuildFor(dev *api.Device, options ...options.PackageOptionFactory) (*Package, error) {
+func BuildFor(dev *api.Device, opts ...options.PackageOptionFactory) (*Package, error) {
+	pkgHandle, err := BuildHandleFor(dev, opts...)
+	if err != nil {
+		return nil, err
+	}
+	return pkgHandle.Factory.Package, nil
+}
+
+// BuildHandleFor loads the GX package github.com/gx-org/gx/tests/bindings/cartpole
+// then returns that package for a given device and options.
+func BuildHandleFor(dev *api.Device, opts ...options.PackageOptionFactory) (*PackageHandle, error) {
 	pkg, err := Load(dev.Runtime())
 	if err != nil {
 		return nil, err
 	}
-	return pkg.BuildFor(dev, options...), nil
+	return BuildFromIR(pkg, dev, opts)
 }
 
 // Factory create new instance of types used in the package.
@@ -87,64 +94,91 @@ type Factory struct {
 	Package *Package
 }
 
+// PackageHandle provides utility functions for the package.
+type PackageHandle struct {
+	*core.PackageCompileSetup
+	Factory *Factory
+
+	// Package dependencies
+	gxdep0 *gxdep0.PackageHandle
+}
+
 // Package is a GX package for a given device.
 // Functions and methods are compiled specifically for that device.
 type Package struct {
-	Package *PackageIR
-	Device  *api.Device
-	Factory *Factory
+	handle PackageHandle
 
-	options []options.PackageOption
-
-	New                     New
-	methodCartpoleReset     methodBase
-	methodCartpoleStep      methodBase
-	methodCartpoleState     methodBase
-	methodCartpoleFullState methodBase
+	// Functions and methods cache
+	cacheCartpoleReset     *core.FuncCache
+	cacheCartpoleStep      *core.FuncCache
+	cacheCartpoleState     *core.FuncCache
+	cacheCartpoleFullState *core.FuncCache
+	cacheNew               *core.FuncCache
 }
 
-// AppendOptions appends options to the compiler.
-func (cmpl *Package) AppendOptions(options ...options.PackageOptionFactory) {
-	plat := cmpl.Package.Runtime.Backend().Platform()
-	for _, opt := range options {
-		cmpl.options = append(cmpl.options, opt(plat))
+// BuildFromIR builds a package for a device once it has been loaded.
+func BuildFromIR(irPkg *core.Package, dev *api.Device, optionFactories []options.PackageOptionFactory) (*PackageHandle, error) {
+	pkg := &Package{}
+	pkg.handle.Factory = &Factory{Package: pkg}
+	pkg.handle.PackageCompileSetup = irPkg.Setup(dev, optionFactories)
+	// Build dependencies.
+	var err error
+	pkg.handle.gxdep0, err = core.BuildDep[*gxdep0.PackageHandle](
+		pkg.handle.PackageCompileSetup,
+		0,
+		gxdep0.BuildFromIR,
+	)
+	if err != nil {
+		return nil, err
 	}
+
+	// Initialise function and method caches.
+	pkg.cacheCartpoleReset, err = pkg.handle.NewCache("Cartpole", "Reset")
+	if err != nil {
+		return nil, err
+	}
+	pkg.cacheCartpoleStep, err = pkg.handle.NewCache("Cartpole", "Step")
+	if err != nil {
+		return nil, err
+	}
+	pkg.cacheCartpoleState, err = pkg.handle.NewCache("Cartpole", "State")
+	if err != nil {
+		return nil, err
+	}
+	pkg.cacheCartpoleFullState, err = pkg.handle.NewCache("Cartpole", "FullState")
+	if err != nil {
+		return nil, err
+	}
+	pkg.cacheNew, err = pkg.handle.NewCache("", "New")
+	if err != nil {
+		return nil, err
+	}
+
+	return &pkg.handle, err
 }
 
-// BuildFor returns a package ready to compile for a device and options.
-func (pkg *PackageIR) BuildFor(dev *api.Device, options ...options.PackageOptionFactory) *Package {
-	c := &Package{
-		Package: pkg,
-		Device:  dev,
+func (pkg *Package) New() (_ *Cartpole, err error) {
+	var args []values.Value = nil
+	var runner tracer.CompiledFunc
+	runner, err = pkg.cacheNew.Runner(nil, args)
+	if err != nil {
+		return
 	}
-	c.Factory = &Factory{Package: c}
-	c.AppendOptions(options...)
-
-	c.New = New{
-		methodBase: methodBase{
-			pkg:      c,
-			function: c.Package.IR.Decls.Funcs[0],
-		},
+	var outputs []values.Value
+	outputs, err = runner.Run(nil, args, pkg.handle.Tracer())
+	if err != nil {
+		return
 	}
 
-	c.methodCartpoleReset = methodBase{
-		pkg:      c,
-		function: c.Package.IR.Decls.Types[0].Methods[0],
-	}
-	c.methodCartpoleStep = methodBase{
-		pkg:      c,
-		function: c.Package.IR.Decls.Types[0].Methods[1],
-	}
-	c.methodCartpoleState = methodBase{
-		pkg:      c,
-		function: c.Package.IR.Decls.Types[0].Methods[2],
-	}
-	c.methodCartpoleFullState = methodBase{
-		pkg:      c,
-		function: c.Package.IR.Decls.Types[0].Methods[3],
+	fty := pkg.handle.Factory
+
+	var out0 *Cartpole
+	out0, err = fty.MarshalCartpole(outputs[0])
+	if err != nil {
+		return
 	}
 
-	return c
+	return out0, nil
 }
 
 // handleCartpole stores the backend handles of Cartpole.
@@ -152,164 +186,6 @@ type handleCartpole struct {
 	pkg   *Package
 	struc *ir.NamedType
 	owner *Cartpole
-
-	runnerReset *MethodCartpoleReset
-
-	runnerStep *MethodCartpoleStep
-
-	runnerState *MethodCartpoleState
-
-	runnerFullState *MethodCartpoleFullState
-}
-
-// MethodCartpoleReset compiles and runs the GX function Reset for a device.
-type MethodCartpoleReset struct {
-	methodBase
-	receiver handleCartpole
-}
-
-// MethodCartpoleStep compiles and runs the GX function Step for a device.
-type MethodCartpoleStep struct {
-	methodBase
-	receiver handleCartpole
-}
-
-// MethodCartpoleState compiles and runs the GX function State for a device.
-type MethodCartpoleState struct {
-	methodBase
-	receiver handleCartpole
-}
-
-// MethodCartpoleFullState compiles and runs the GX function FullState for a device.
-type MethodCartpoleFullState struct {
-	methodBase
-	receiver handleCartpole
-}
-
-// Run first compiles Reset for a given device and the given arguments.
-// Once compiled, the function is then run with these same arguments.
-// If the shape of the arguments change, the function will panic.
-func (f *MethodCartpoleReset) Run() (_ *Cartpole, err error) {
-	var args []values.Value = nil
-	if f.runner == nil {
-		f.runner, err = tracer.Trace(f.pkg.Device, f.function.(*ir.FuncDecl), f.receiver.GXValue(), args, f.pkg.options)
-		if err != nil {
-			return
-		}
-	}
-	var outputs []values.Value
-	outputs, err = f.runner.Run(f.receiver.GXValue(), args, f.pkg.Package.Tracer)
-	if err != nil {
-		return
-	}
-
-	cmpl := f.pkg
-	var out0 *Cartpole
-	out0, err = cmpl.MarshalCartpole(outputs[0])
-	if err != nil {
-		return
-	}
-
-	return out0, nil
-}
-
-func (f *MethodCartpoleReset) String() string {
-	return fmt.Sprint(f.function)
-}
-
-// Run first compiles Step for a given device and the given arguments.
-// Once compiled, the function is then run with these same arguments.
-// If the shape of the arguments change, the function will panic.
-func (f *MethodCartpoleStep) Run(arg0 types.Atom[float32]) (_ *Cartpole, err error) {
-	var args []values.Value = []values.Value{
-		arg0.Bridge().GXValue(), // action float32
-	}
-	if f.runner == nil {
-		f.runner, err = tracer.Trace(f.pkg.Device, f.function.(*ir.FuncDecl), f.receiver.GXValue(), args, f.pkg.options)
-		if err != nil {
-			return
-		}
-	}
-	var outputs []values.Value
-	outputs, err = f.runner.Run(f.receiver.GXValue(), args, f.pkg.Package.Tracer)
-	if err != nil {
-		return
-	}
-
-	cmpl := f.pkg
-	var out0 *Cartpole
-	out0, err = cmpl.MarshalCartpole(outputs[0])
-	if err != nil {
-		return
-	}
-
-	return out0, nil
-}
-
-func (f *MethodCartpoleStep) String() string {
-	return fmt.Sprint(f.function)
-}
-
-// Run first compiles State for a given device and the given arguments.
-// Once compiled, the function is then run with these same arguments.
-// If the shape of the arguments change, the function will panic.
-func (f *MethodCartpoleState) Run() (_ types.Array[float32], err error) {
-	var args []values.Value = nil
-	if f.runner == nil {
-		f.runner, err = tracer.Trace(f.pkg.Device, f.function.(*ir.FuncDecl), f.receiver.GXValue(), args, f.pkg.options)
-		if err != nil {
-			return
-		}
-	}
-	var outputs []values.Value
-	outputs, err = f.runner.Run(f.receiver.GXValue(), args, f.pkg.Package.Tracer)
-	if err != nil {
-		return
-	}
-
-	out0Value, ok := outputs[0].(values.Array)
-	if !ok {
-		err = errors.Errorf("cannot cast %T to %s", outputs[0], reflect.TypeFor[*values.DeviceArray]().Name())
-		return
-	}
-	out0 := types.NewArray[float32](out0Value)
-
-	return out0, nil
-}
-
-func (f *MethodCartpoleState) String() string {
-	return fmt.Sprint(f.function)
-}
-
-// Run first compiles FullState for a given device and the given arguments.
-// Once compiled, the function is then run with these same arguments.
-// If the shape of the arguments change, the function will panic.
-func (f *MethodCartpoleFullState) Run() (_ types.Array[float32], err error) {
-	var args []values.Value = nil
-	if f.runner == nil {
-		f.runner, err = tracer.Trace(f.pkg.Device, f.function.(*ir.FuncDecl), f.receiver.GXValue(), args, f.pkg.options)
-		if err != nil {
-			return
-		}
-	}
-	var outputs []values.Value
-	outputs, err = f.runner.Run(f.receiver.GXValue(), args, f.pkg.Package.Tracer)
-	if err != nil {
-		return
-	}
-
-	out0Value, ok := outputs[0].(values.Array)
-	if !ok {
-		err = errors.Errorf("cannot cast %T to %s", outputs[0], reflect.TypeFor[*values.DeviceArray]().Name())
-		return
-	}
-	out0 := types.NewArray[float32](out0Value)
-
-	return out0, nil
-}
-
-func (f *MethodCartpoleFullState) String() string {
-	return fmt.Sprint(f.function)
 }
 
 // Type of the value.
@@ -337,33 +213,33 @@ func (h *handleCartpole) String() string {
 	bld := strings.Builder{}
 	bld.WriteString("Cartpole{\n")
 
-	bld.WriteString(fmt.Sprintf("%s:%s\n", "gravity", any(h.owner.gravity).(fmt.Stringer).String()))
+	fmt.Fprintf(&bld, "%s:%s\n", "gravity", any(h.owner.gravity).(fmt.Stringer).String())
 
-	bld.WriteString(fmt.Sprintf("%s:%s\n", "massCart", any(h.owner.massCart).(fmt.Stringer).String()))
+	fmt.Fprintf(&bld, "%s:%s\n", "massCart", any(h.owner.massCart).(fmt.Stringer).String())
 
-	bld.WriteString(fmt.Sprintf("%s:%s\n", "massPole", any(h.owner.massPole).(fmt.Stringer).String()))
+	fmt.Fprintf(&bld, "%s:%s\n", "massPole", any(h.owner.massPole).(fmt.Stringer).String())
 
-	bld.WriteString(fmt.Sprintf("%s:%s\n", "totalMass", any(h.owner.totalMass).(fmt.Stringer).String()))
+	fmt.Fprintf(&bld, "%s:%s\n", "totalMass", any(h.owner.totalMass).(fmt.Stringer).String())
 
-	bld.WriteString(fmt.Sprintf("%s:%s\n", "length", any(h.owner.length).(fmt.Stringer).String()))
+	fmt.Fprintf(&bld, "%s:%s\n", "length", any(h.owner.length).(fmt.Stringer).String())
 
-	bld.WriteString(fmt.Sprintf("%s:%s\n", "poleMassLength", any(h.owner.poleMassLength).(fmt.Stringer).String()))
+	fmt.Fprintf(&bld, "%s:%s\n", "poleMassLength", any(h.owner.poleMassLength).(fmt.Stringer).String())
 
-	bld.WriteString(fmt.Sprintf("%s:%s\n", "forceMag", any(h.owner.forceMag).(fmt.Stringer).String()))
+	fmt.Fprintf(&bld, "%s:%s\n", "forceMag", any(h.owner.forceMag).(fmt.Stringer).String())
 
-	bld.WriteString(fmt.Sprintf("%s:%s\n", "tau", any(h.owner.tau).(fmt.Stringer).String()))
+	fmt.Fprintf(&bld, "%s:%s\n", "tau", any(h.owner.tau).(fmt.Stringer).String())
 
-	bld.WriteString(fmt.Sprintf("%s:%s\n", "thetaThresholdRadians", any(h.owner.thetaThresholdRadians).(fmt.Stringer).String()))
+	fmt.Fprintf(&bld, "%s:%s\n", "thetaThresholdRadians", any(h.owner.thetaThresholdRadians).(fmt.Stringer).String())
 
-	bld.WriteString(fmt.Sprintf("%s:%s\n", "xThreshold", any(h.owner.xThreshold).(fmt.Stringer).String()))
+	fmt.Fprintf(&bld, "%s:%s\n", "xThreshold", any(h.owner.xThreshold).(fmt.Stringer).String())
 
-	bld.WriteString(fmt.Sprintf("%s:%s\n", "x", any(h.owner.x).(fmt.Stringer).String()))
+	fmt.Fprintf(&bld, "%s:%s\n", "x", any(h.owner.x).(fmt.Stringer).String())
 
-	bld.WriteString(fmt.Sprintf("%s:%s\n", "xDot", any(h.owner.xDot).(fmt.Stringer).String()))
+	fmt.Fprintf(&bld, "%s:%s\n", "xDot", any(h.owner.xDot).(fmt.Stringer).String())
 
-	bld.WriteString(fmt.Sprintf("%s:%s\n", "theta", any(h.owner.theta).(fmt.Stringer).String()))
+	fmt.Fprintf(&bld, "%s:%s\n", "theta", any(h.owner.theta).(fmt.Stringer).String())
 
-	bld.WriteString(fmt.Sprintf("%s:%s\n", "thetaDot", any(h.owner.thetaDot).(fmt.Stringer).String()))
+	fmt.Fprintf(&bld, "%s:%s\n", "thetaDot", any(h.owner.thetaDot).(fmt.Stringer).String())
 
 	bld.WriteString("}")
 	return bld.String()
@@ -374,33 +250,20 @@ type Cartpole struct {
 	handle handleCartpole
 	value  *values.NamedType
 
-	gravity types.Atom[float32]
-
-	massCart types.Atom[float32]
-
-	massPole types.Atom[float32]
-
-	totalMass types.Atom[float32]
-
-	length types.Atom[float32]
-
-	poleMassLength types.Atom[float32]
-
-	forceMag types.Atom[float32]
-
-	tau types.Atom[float32]
-
+	gravity               types.Atom[float32]
+	massCart              types.Atom[float32]
+	massPole              types.Atom[float32]
+	totalMass             types.Atom[float32]
+	length                types.Atom[float32]
+	poleMassLength        types.Atom[float32]
+	forceMag              types.Atom[float32]
+	tau                   types.Atom[float32]
 	thetaThresholdRadians types.Atom[float32]
-
-	xThreshold types.Atom[float32]
-
-	x types.Atom[float32]
-
-	xDot types.Atom[float32]
-
-	theta types.Atom[float32]
-
-	thetaDot types.Atom[float32]
+	xThreshold            types.Atom[float32]
+	x                     types.Atom[float32]
+	xDot                  types.Atom[float32]
+	theta                 types.Atom[float32]
+	thetaDot              types.Atom[float32]
 }
 
 var (
@@ -414,8 +277,8 @@ func (h *handleCartpole) StructValue() *values.Struct {
 }
 
 // MarshalCartpole populates the receiver fields with device handles.
-func (cmpl *Package) MarshalCartpole(val values.Value) (s *Cartpole, err error) {
-	s = cmpl.Factory.NewCartpole()
+func (fty *Factory) MarshalCartpole(val values.Value) (s *Cartpole, err error) {
+	s = fty.NewCartpole()
 	var ok bool
 	s.value, ok = val.(*values.NamedType)
 	if !ok {
@@ -554,72 +417,10 @@ func (s Cartpole) String() string {
 // Bridge returns the bridge between the Go value and the GX value.
 func (s *Cartpole) Bridge() types.Bridge { return &s.handle }
 
-// Reset returns a handle to compile method Reset for a device.
-func (s Cartpole) Reset() *MethodCartpoleReset {
-	return s.handle.runnerReset
-}
-
-// Step returns a handle to compile method Step for a device.
-func (s Cartpole) Step() *MethodCartpoleStep {
-	return s.handle.runnerStep
-}
-
-// State returns a handle to compile method State for a device.
-func (s Cartpole) State() *MethodCartpoleState {
-	return s.handle.runnerState
-}
-
-// FullState returns a handle to compile method FullState for a device.
-func (s Cartpole) FullState() *MethodCartpoleFullState {
-	return s.handle.runnerFullState
-}
-
-type methodBase struct {
-	pkg      *Package
-	function ir.Func
-	runner   tracer.CompiledFunc
-}
-
-// New compiles and runs the GX function New for a device.
-type New struct {
-	methodBase
-}
-
-// Run first compiles New for a given device and the given arguments.
-// Once compiled, the function is then run with these same arguments.
-// If the shape of the arguments change, the function will panic.
-func (f *New) Run() (_ *Cartpole, err error) {
-	var args []values.Value = nil
-	if f.runner == nil {
-		f.runner, err = tracer.Trace(f.pkg.Device, f.function.(*ir.FuncDecl), nil, args, f.pkg.options)
-		if err != nil {
-			return
-		}
-	}
-	var outputs []values.Value
-	outputs, err = f.runner.Run(nil, args, f.pkg.Package.Tracer)
-	if err != nil {
-		return
-	}
-
-	cmpl := f.pkg
-	var out0 *Cartpole
-	out0, err = cmpl.MarshalCartpole(outputs[0])
-	if err != nil {
-		return
-	}
-
-	return out0, nil
-}
-
-func (f *New) String() string {
-	return fmt.Sprint(f.function)
-}
-
 // NewCartpole returns a handle on named type Cartpole.
 func (fac *Factory) NewCartpole() *Cartpole {
 	s := &Cartpole{}
-	typ := fac.Package.Package.IR.Decls.TypeByName("Cartpole")
+	typ := fac.Package.handle.IR().Decls.TypeByName("Cartpole")
 	s.handle = handleCartpole{
 		pkg:   fac.Package,
 		struc: typ,
@@ -632,26 +433,6 @@ func (fac *Factory) NewCartpole() *Cartpole {
 	}
 	s.value = values.NewNamedType(structVal, typ)
 
-	s.handle.runnerReset = &MethodCartpoleReset{
-		methodBase: s.handle.pkg.methodCartpoleReset,
-		receiver:   s.handle,
-	}
-
-	s.handle.runnerStep = &MethodCartpoleStep{
-		methodBase: s.handle.pkg.methodCartpoleStep,
-		receiver:   s.handle,
-	}
-
-	s.handle.runnerState = &MethodCartpoleState{
-		methodBase: s.handle.pkg.methodCartpoleState,
-		receiver:   s.handle,
-	}
-
-	s.handle.runnerFullState = &MethodCartpoleFullState{
-		methodBase: s.handle.pkg.methodCartpoleFullState,
-		receiver:   s.handle,
-	}
-
 	return s
 }
 
@@ -660,46 +441,32 @@ var _ types.Bridge = (*handleCartpole)(nil)
 func (h *handleCartpole) NewFromField(field *ir.Field) (types.Bridge, error) {
 	name := field.Name.Name
 	switch name {
-
 	case "gravity":
 		return nil, errors.Errorf("cannot create a new instance for field gravity: type types.Atom[float32] not supported")
-
 	case "massCart":
 		return nil, errors.Errorf("cannot create a new instance for field massCart: type types.Atom[float32] not supported")
-
 	case "massPole":
 		return nil, errors.Errorf("cannot create a new instance for field massPole: type types.Atom[float32] not supported")
-
 	case "totalMass":
 		return nil, errors.Errorf("cannot create a new instance for field totalMass: type types.Atom[float32] not supported")
-
 	case "length":
 		return nil, errors.Errorf("cannot create a new instance for field length: type types.Atom[float32] not supported")
-
 	case "poleMassLength":
 		return nil, errors.Errorf("cannot create a new instance for field poleMassLength: type types.Atom[float32] not supported")
-
 	case "forceMag":
 		return nil, errors.Errorf("cannot create a new instance for field forceMag: type types.Atom[float32] not supported")
-
 	case "tau":
 		return nil, errors.Errorf("cannot create a new instance for field tau: type types.Atom[float32] not supported")
-
 	case "thetaThresholdRadians":
 		return nil, errors.Errorf("cannot create a new instance for field thetaThresholdRadians: type types.Atom[float32] not supported")
-
 	case "xThreshold":
 		return nil, errors.Errorf("cannot create a new instance for field xThreshold: type types.Atom[float32] not supported")
-
 	case "x":
 		return nil, errors.Errorf("cannot create a new instance for field x: type types.Atom[float32] not supported")
-
 	case "xDot":
 		return nil, errors.Errorf("cannot create a new instance for field xDot: type types.Atom[float32] not supported")
-
 	case "theta":
 		return nil, errors.Errorf("cannot create a new instance for field theta: type types.Atom[float32] not supported")
-
 	case "thetaDot":
 		return nil, errors.Errorf("cannot create a new instance for field thetaDot: type types.Atom[float32] not supported")
 
@@ -862,4 +629,100 @@ func (h *handleCartpole) SetField(field *ir.Field, val types.Bridge) error {
 		return errors.Errorf("structure Cartpole has no field %q", name)
 	}
 
+}
+
+func (recv *Cartpole) Reset() (_ *Cartpole, err error) {
+	var args []values.Value = nil
+	var runner tracer.CompiledFunc
+	runner, err = recv.handle.pkg.cacheCartpoleReset.Runner(recv.value, args)
+	if err != nil {
+		return
+	}
+	var outputs []values.Value
+	outputs, err = runner.Run(recv.value, args, recv.handle.pkg.handle.Tracer())
+	if err != nil {
+		return
+	}
+
+	fty := recv.handle.pkg.handle.Factory
+
+	var out0 *Cartpole
+	out0, err = fty.MarshalCartpole(outputs[0])
+	if err != nil {
+		return
+	}
+
+	return out0, nil
+}
+
+func (recv *Cartpole) Step(arg0 types.Atom[float32]) (_ *Cartpole, err error) {
+	var args []values.Value = []values.Value{
+		arg0.Bridge().GXValue(), // action float32
+	}
+	var runner tracer.CompiledFunc
+	runner, err = recv.handle.pkg.cacheCartpoleStep.Runner(recv.value, args)
+	if err != nil {
+		return
+	}
+	var outputs []values.Value
+	outputs, err = runner.Run(recv.value, args, recv.handle.pkg.handle.Tracer())
+	if err != nil {
+		return
+	}
+
+	fty := recv.handle.pkg.handle.Factory
+
+	var out0 *Cartpole
+	out0, err = fty.MarshalCartpole(outputs[0])
+	if err != nil {
+		return
+	}
+
+	return out0, nil
+}
+
+func (recv *Cartpole) State() (_ types.Array[float32], err error) {
+	var args []values.Value = nil
+	var runner tracer.CompiledFunc
+	runner, err = recv.handle.pkg.cacheCartpoleState.Runner(recv.value, args)
+	if err != nil {
+		return
+	}
+	var outputs []values.Value
+	outputs, err = runner.Run(recv.value, args, recv.handle.pkg.handle.Tracer())
+	if err != nil {
+		return
+	}
+
+	out0Value, ok := outputs[0].(values.Array)
+	if !ok {
+		err = errors.Errorf("cannot cast %T to %s", outputs[0], reflect.TypeFor[*values.DeviceArray]().Name())
+		return
+	}
+	out0 := types.NewArray[float32](out0Value)
+
+	return out0, nil
+}
+
+func (recv *Cartpole) FullState() (_ types.Array[float32], err error) {
+	var args []values.Value = nil
+	var runner tracer.CompiledFunc
+	runner, err = recv.handle.pkg.cacheCartpoleFullState.Runner(recv.value, args)
+	if err != nil {
+		return
+	}
+	var outputs []values.Value
+	outputs, err = runner.Run(recv.value, args, recv.handle.pkg.handle.Tracer())
+	if err != nil {
+		return
+	}
+
+	out0Value, ok := outputs[0].(values.Array)
+	if !ok {
+		err = errors.Errorf("cannot cast %T to %s", outputs[0], reflect.TypeFor[*values.DeviceArray]().Name())
+		return
+	}
+	out0 := types.NewArray[float32](out0Value)
+
+	return out0, nil
 }

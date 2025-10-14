@@ -15,54 +15,33 @@
 package builder
 
 import (
-	"errors"
 	"fmt"
 	"go/ast"
 	"go/format"
+	"go/parser"
 	"go/token"
 	"io"
 	"runtime/debug"
 	"strings"
 
+	"github.com/pkg/errors"
 	gxfmt "github.com/gx-org/gx/base/fmt"
+	"github.com/gx-org/gx/build/fmterr"
 	"github.com/gx-org/gx/build/ir"
-	"github.com/gx-org/gx/internal/interp/compeval/cpevelements"
 )
-
-func buildIRBody(mScope *synthResolveScope, extF ir.Func, compEval *compileEvaluator, body *ast.BlockStmt) (ok bool) {
-	defer func() {
-		if !ok {
-			mScope.Err().Append(mScope.errorFor(body))
-		}
-	}()
-	fScope := mScope.fileScope()
-	pkgPScope := fScope.pkgResolveScope.pkgProcScope
-	pScope := pkgPScope.newScope(fScope.bFile())
-	bBody, ok := processBlockStmt(pScope, body)
-	if !ok {
-		return false
-	}
-	irBlock, ok := bBody.buildBlockStmt(mScope.iFuncResolveScope)
-	if !ok {
-		return false
-	}
-	ext := extF.(*ir.FuncDecl)
-	ext.Body = irBlock
-	return ok
-}
 
 type coreSyntheticFunc struct {
 	bFile *file
 	src   *ast.FuncDecl
 }
 
-func (f *coreSyntheticFunc) buildBody(fnScope iFuncResolveScope, fn *irFunc) ([]*irFunc, bool) {
+func (f *coreSyntheticFunc) buildBody(fnScope iFuncResolveScope, fn *irFunc) bool {
 	mScope := fnScope.(iSynthResolveScope)
 	compEval, ok := fnScope.compEval()
 	if !ok {
-		return nil, false
+		return false
 	}
-	return mScope.buildBody(fn, compEval)
+	return mScope.buildBody(fn.irFunc.(*ir.FuncDecl), compEval)
 }
 
 func (f *coreSyntheticFunc) resolveOrder() int {
@@ -92,23 +71,48 @@ func (f *coreSyntheticFunc) buildAnnotations(fScope iFuncResolveScope, extF *irF
 type (
 	synthResolveScope struct {
 		iFuncResolveScope
-		fnBuilder cpevelements.FuncASTBuilder
+		fnBuilder ir.FuncASTBuilder
 	}
 
 	iSynthResolveScope interface {
-		buildBody(*irFunc, *compileEvaluator) ([]*irFunc, bool)
+		buildBody(*ir.FuncDecl, *compileEvaluator) bool
 	}
 )
 
-func formatBody(fType *ir.FuncType, body *ast.BlockStmt, w *strings.Builder) (err error) {
+var unknownIdent = &ast.Ident{Name: "_"}
+
+func formatFunction(orig *ast.FuncDecl) (src string, decl *ast.FuncDecl, err error) {
 	defer func() {
 		if r := recover(); r != nil {
 			err = errors.New(string(debug.Stack()))
 		}
 	}()
-	w.WriteString(fType.String() + " ")
 	fset := token.NewFileSet()
-	return format.Node(w, fset, body)
+	w := &strings.Builder{}
+	w.WriteString("package _\n")
+	srcDecl := *orig
+	if srcDecl.Name == nil {
+		srcDecl.Name = unknownIdent
+	}
+	err = format.Node(w, fset, &srcDecl)
+	src = w.String()
+	if err != nil { // No error: we are done here.
+		fmtMsg := fmt.Sprintf("Formatted:\n%s\nError:\n%v", src, err)
+		astW := &strings.Builder{}
+		errAST := astVisitBody(srcDecl.Body, astW)
+		astMsg := fmt.Sprintf("%s\nVisited:\n%s\nError:\n%v", fmtMsg, astW.String(), errAST)
+		err = fmt.Errorf("cannot format synthetic body:\n%s", astMsg)
+		return
+	}
+	fs := token.NewFileSet()
+	astFile, err := parser.ParseFile(fs, "", w.String(), parser.ParseComments)
+	if err != nil {
+		err = errors.Errorf("cannot parse the following source code: %v\n%s", err, src)
+		return
+	}
+	decl = astFile.Decls[0].(*ast.FuncDecl)
+	decl.Name = orig.Name
+	return
 }
 
 func astVisitBody(body *ast.BlockStmt, w io.Writer) (err error) {
@@ -121,47 +125,54 @@ func astVisitBody(body *ast.BlockStmt, w io.Writer) (err error) {
 	return ast.Fprint(w, fset, body, nil)
 }
 
-func (m *synthResolveScope) errorFor(body *ast.BlockStmt) error {
-	const coreError = "cannot generate IR from synthetic function body:\n%s"
-	fmtW := &strings.Builder{}
-	errFmt := formatBody(m.funcType(), body, fmtW)
-	if errFmt == nil {
-		return fmt.Errorf(coreError, gxfmt.Number(fmtW.String()))
+func buildIRBody(mScope *synthResolveScope, ext *ir.FuncDecl, compEval *compileEvaluator, src string, body *ast.BlockStmt) (ok bool) {
+	fScope := mScope.fileScope()
+	pkgPScope := fScope.pkgResolveScope.pkgProcScope
+	pScope := pkgPScope.newFilePScope(fScope.bFile())
+	pScope.Err().Push(fmterr.PrefixWith("cannot compile synthetic body from source:\n%s\n", gxfmt.Number(src)))
+	defer pScope.Err().Pop()
+	bBody, ok := processBlockStmt(pScope, body)
+	if !ok {
+		return false
 	}
-	fmtMsg := fmt.Sprintf("Formatted:\n%s\nError:\n%v", fmtW.String(), errFmt)
-	astW := &strings.Builder{}
-	errAST := astVisitBody(body, astW)
-	astMsg := fmt.Sprintf("%s\nVisited:\n%s\nError:\n%v", fmtMsg, astW.String(), errAST)
-	return fmt.Errorf(coreError, astMsg)
+	irBlock, ok := bBody.buildBlockStmt(mScope.iFuncResolveScope)
+	if !ok {
+		return false
+	}
+	ext.Body = irBlock
+	return true
 }
 
-func (m *synthResolveScope) buildBody(fn *irFunc, compEval *compileEvaluator) ([]*irFunc, bool) {
+func (m *synthResolveScope) buildBody(fn *ir.FuncDecl, compEval *compileEvaluator) bool {
 	// First, build the AST body of the synthetic function.
-	astBody, auxs, ok := m.fnBuilder.BuildBody(compEval, fn.irFunc)
+	var ok bool
+	fn.Src.Body, ok = m.fnBuilder.BuildBody(compEval, fn)
 	if !ok {
-		return nil, false
+		return false
+
 	}
-	if astBody == nil {
-		return nil, true
+	if fn.Src.Body == nil {
+		return true
 	}
-	// Register all the auxiliary functions, so that they are available to the builder.
-	pkgScope := m.fileScope().pkgResolveScope
-	irAuxs, ok := pkgScope.dcls.registerAuxFuncs(m, auxs)
-	if !ok {
-		return nil, false
+	// Format the body to build line numbers.
+	var src string
+	var err error
+	src, fn.Src, err = formatFunction(fn.Src)
+	if err != nil {
+		return m.Err().Append(err)
 	}
 	// Build the IR representation of the function body.
-	return irAuxs, buildIRBody(m, fn.irFunc, compEval, astBody)
+	return buildIRBody(m, fn, compEval, src, fn.Src.Body)
 }
 
 type syntheticFunc struct {
 	coreSyntheticFunc
-	underFun  ir.Func
-	fnBuilder cpevelements.FuncASTBuilder
+	underFun  ir.PkgFunc
+	fnBuilder ir.FuncASTBuilder
 }
 
 func (f *syntheticFunc) buildSignature(pkgScope *pkgResolveScope) (ir.Func, iFuncResolveScope, bool) {
-	fScope, ok := pkgScope.newFileScope(f.bFile)
+	fScope, ok := pkgScope.newFileRScope(f.bFile)
 	if !ok {
 		return nil, nil, false
 	}
@@ -186,31 +197,45 @@ func (f *syntheticFunc) checkSyntheticSignature(fScope *fileResolveScope, fInput
 	return true
 }
 
-func (f *syntheticFunc) buildSignatureFScope(fScope *fileResolveScope) (ir.PkgFunc, *synthResolveScope, bool) {
-	synDecl, ok := f.fnBuilder.BuildDecl()
+func buildSyntheticFuncSig(fScope *fileResolveScope, astBuilder ir.FuncASTBuilder, target ir.PkgFunc) (*ir.FuncDecl, *synthResolveScope, bool) {
+	_, synDecl, ok := astBuilder.BuildDecl(target)
 	if !ok {
 		return nil, nil, false
 	}
-	synDecl.Name = f.src.Name
-	pkgPScope := fScope.pkgProcScope
-	pScope := pkgPScope.newScope(fScope.bFile())
+	src, synDecl, err := formatFunction(synDecl)
+	if err != nil {
+		return nil, nil, fScope.Err().Append(err)
+	}
+	pScope := fScope.fileScope().newFilePScope(fScope.bFile())
+	fScope.Err().Push(fmterr.PrefixWith("cannot compile synthetic signature:\n%s\n", src))
+	defer fScope.Err().Pop()
 	ft, ok := processFuncType(pScope, synDecl.Type, synDecl.Recv, false)
 	if !ok {
 		return nil, nil, false
 	}
-	fnSyntheticType, fnScope, ok := ft.buildFuncType(fScope)
+	fType, fnScope, ok := ft.buildFuncType(fScope)
 	if !ok {
-		return nil, nil, false
-	}
-	if ok := f.checkSyntheticSignature(fScope, f.underFun.Name(), f.underFun.FuncType(), synDecl.Name.Name, fnSyntheticType); !ok {
 		return nil, nil, false
 	}
 	return &ir.FuncDecl{
 			FFile: fScope.irFile(),
 			Src:   synDecl,
-			FType: fnSyntheticType,
-		}, &synthResolveScope{
+			FType: fType,
+		},
+		&synthResolveScope{
 			iFuncResolveScope: fnScope,
-			fnBuilder:         f.fnBuilder,
-		}, ok
+			fnBuilder:         astBuilder,
+		}, true
+}
+
+func (f *syntheticFunc) buildSignatureFScope(fScope *fileResolveScope) (ir.PkgFunc, *synthResolveScope, bool) {
+	synDecl, synScope, ok := buildSyntheticFuncSig(fScope, f.fnBuilder, f.underFun)
+	if !ok {
+		return nil, nil, false
+	}
+	synDecl.Src.Name = f.src.Name
+	if ok := f.checkSyntheticSignature(fScope, f.underFun.Name(), f.underFun.FuncType(), synDecl.Src.Name.Name, synDecl.FType); !ok {
+		return nil, nil, false
+	}
+	return synDecl, synScope, ok
 }

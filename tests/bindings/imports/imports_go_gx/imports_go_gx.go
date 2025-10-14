@@ -27,13 +27,14 @@ import (
 	"github.com/gx-org/backend/platform"
 	"github.com/gx-org/gx/api"
 	"github.com/gx-org/gx/api/options"
-	"github.com/gx-org/gx/api/trace"
 	"github.com/gx-org/gx/api/tracer"
 	"github.com/gx-org/gx/api/values"
 	"github.com/gx-org/gx/build/ir"
+	"github.com/gx-org/gx/golang/binder/gobindings/core"
 	"github.com/gx-org/gx/golang/binder/gobindings/types"
-	_ "github.com/gx-org/gx/tests/bindings/imports"
 	"github.com/pkg/errors"
+
+	_ "github.com/gx-org/gx/tests/bindings/imports"
 
 	gxdep0 "github.com/gx-org/gx/tests/bindings/basic/basic_go_gx"
 )
@@ -47,44 +48,42 @@ var (
 	_ = errors.Errorf
 	_ = types.NewSlice[types.Bridger]
 	_ = platform.HostTransfer
+	_ = ir.NamedType{}
+	_ = tracer.Trace
 )
 
-// PackageIR is the GX package intermediate representation
-// built for a given runtime, but not yet for a specific device.
-type PackageIR struct {
-	Runtime *api.Runtime
-	IR      *ir.Package
-	Tracer  trace.Callback
-
-	gxdep0 *gxdep0.PackageIR
-}
-
-// Load the GX package for a given backend.
-func Load(rtm *api.Runtime) (*PackageIR, error) {
+// Load the package for a given runtime.
+func Load(rtm *api.Runtime) (*core.Package, error) {
 	bpkg, err := rtm.Builder().Build("github.com/gx-org/gx/tests/bindings/imports")
 	if err != nil {
 		return nil, err
 	}
-	pkg := &PackageIR{
-		Runtime: rtm,
-		IR:      bpkg.IR(),
-	}
-
-	if pkg.gxdep0, err = gxdep0.Load(rtm); err != nil {
+	deps := make([]*core.Package, 1)
+	deps[0], err = gxdep0.Load(rtm)
+	if err != nil {
 		return nil, err
 	}
-
-	return pkg, nil
+	return core.NewPackage(bpkg, deps), nil
 }
 
 // BuildFor loads the GX package github.com/gx-org/gx/tests/bindings/imports
 // then returns that package for a given device and options.
-func BuildFor(dev *api.Device, options ...options.PackageOptionFactory) (*Package, error) {
+func BuildFor(dev *api.Device, opts ...options.PackageOptionFactory) (*Package, error) {
+	pkgHandle, err := BuildHandleFor(dev, opts...)
+	if err != nil {
+		return nil, err
+	}
+	return pkgHandle.Factory.Package, nil
+}
+
+// BuildHandleFor loads the GX package github.com/gx-org/gx/tests/bindings/imports
+// then returns that package for a given device and options.
+func BuildHandleFor(dev *api.Device, opts ...options.PackageOptionFactory) (*PackageHandle, error) {
 	pkg, err := Load(dev.Runtime())
 	if err != nil {
 		return nil, err
 	}
-	return pkg.BuildFor(dev, options...), nil
+	return BuildFromIR(pkg, dev, opts)
 }
 
 // Factory create new instance of types used in the package.
@@ -95,98 +94,124 @@ type Factory struct {
 	Package *Package
 }
 
+// PackageHandle provides utility functions for the package.
+type PackageHandle struct {
+	*core.PackageCompileSetup
+	Factory *Factory
+
+	// Package dependencies
+	gxdep0 *gxdep0.PackageHandle
+}
+
 // Package is a GX package for a given device.
 // Functions and methods are compiled specifically for that device.
 type Package struct {
-	Package *PackageIR
-	Device  *api.Device
-	Factory *Factory
+	handle PackageHandle
 
-	options []options.PackageOption
-
-	gxdep0 *gxdep0.Package
-
-	NewBasic          NewBasic
-	NewImporter       NewImporter
-	ReturnFromBasic   ReturnFromBasic
-	methodImporterAdd methodBase
+	// Functions and methods cache
+	cacheImporterAdd     *core.FuncCache
+	cacheNewBasic        *core.FuncCache
+	cacheNewImporter     *core.FuncCache
+	cacheReturnFromBasic *core.FuncCache
 }
 
-// AppendOptions appends options to the compiler.
-func (cmpl *Package) AppendOptions(options ...options.PackageOptionFactory) {
-	plat := cmpl.Package.Runtime.Backend().Platform()
-	for _, opt := range options {
-		cmpl.options = append(cmpl.options, opt(plat))
+// BuildFromIR builds a package for a device once it has been loaded.
+func BuildFromIR(irPkg *core.Package, dev *api.Device, optionFactories []options.PackageOptionFactory) (*PackageHandle, error) {
+	pkg := &Package{}
+	pkg.handle.Factory = &Factory{Package: pkg}
+	pkg.handle.PackageCompileSetup = irPkg.Setup(dev, optionFactories)
+	// Build dependencies.
+	var err error
+	pkg.handle.gxdep0, err = core.BuildDep[*gxdep0.PackageHandle](
+		pkg.handle.PackageCompileSetup,
+		0,
+		gxdep0.BuildFromIR,
+	)
+	if err != nil {
+		return nil, err
 	}
+
+	// Initialise function and method caches.
+	pkg.cacheImporterAdd, err = pkg.handle.NewCache("Importer", "Add")
+	if err != nil {
+		return nil, err
+	}
+	pkg.cacheNewBasic, err = pkg.handle.NewCache("", "NewBasic")
+	if err != nil {
+		return nil, err
+	}
+	pkg.cacheNewImporter, err = pkg.handle.NewCache("", "NewImporter")
+	if err != nil {
+		return nil, err
+	}
+	pkg.cacheReturnFromBasic, err = pkg.handle.NewCache("", "ReturnFromBasic")
+	if err != nil {
+		return nil, err
+	}
+
+	return &pkg.handle, err
 }
 
-// BuildFor returns a package ready to compile for a device and options.
-func (pkg *PackageIR) BuildFor(dev *api.Device, options ...options.PackageOptionFactory) *Package {
-	c := &Package{
-		Package: pkg,
-		Device:  dev,
-	}
-	c.Factory = &Factory{Package: c}
-	c.AppendOptions(options...)
-
-	c.NewBasic = NewBasic{
-		methodBase: methodBase{
-			pkg:      c,
-			function: c.Package.IR.Decls.Funcs[0],
-		},
-	}
-	c.NewImporter = NewImporter{
-		methodBase: methodBase{
-			pkg:      c,
-			function: c.Package.IR.Decls.Funcs[1],
-		},
-	}
-	c.ReturnFromBasic = ReturnFromBasic{
-		methodBase: methodBase{
-			pkg:      c,
-			function: c.Package.IR.Decls.Funcs[2],
-		},
-	}
-
-	c.methodImporterAdd = methodBase{
-		pkg:      c,
-		function: c.Package.IR.Decls.Types[0].Methods[0],
-	}
-
-	c.gxdep0 = c.Package.gxdep0.BuildFor(dev, options...)
-
-	return c
-}
-
-// handleImporter stores the backend handles of Importer.
-type handleImporter struct {
-	pkg   *Package
-	struc *ir.NamedType
-	owner *Importer
-
-	runnerAdd *MethodImporterAdd
-}
-
-// MethodImporterAdd compiles and runs the GX function Add for a device.
-// Add returns the result from Basic.AddPrivate.
-type MethodImporterAdd struct {
-	methodBase
-	receiver handleImporter
-}
-
-// Run first compiles Add for a given device and the given arguments.
-// Once compiled, the function is then run with these same arguments.
-// If the shape of the arguments change, the function will panic.
-func (f *MethodImporterAdd) Run() (_ types.Atom[int32], err error) {
+// NewBasic returns a new basic structure.
+func (pkg *Package) NewBasic() (_ *gxdep0.Basic, err error) {
 	var args []values.Value = nil
-	if f.runner == nil {
-		f.runner, err = tracer.Trace(f.pkg.Device, f.function.(*ir.FuncDecl), f.receiver.GXValue(), args, f.pkg.options)
-		if err != nil {
-			return
-		}
+	var runner tracer.CompiledFunc
+	runner, err = pkg.cacheNewBasic.Runner(nil, args)
+	if err != nil {
+		return
 	}
 	var outputs []values.Value
-	outputs, err = f.runner.Run(f.receiver.GXValue(), args, f.pkg.Package.Tracer)
+	outputs, err = runner.Run(nil, args, pkg.handle.Tracer())
+	if err != nil {
+		return
+	}
+
+	fty := pkg.handle.Factory
+
+	var out0 *gxdep0.Basic
+	out0, err = fty.Package.handle.gxdep0.Factory.MarshalBasic(outputs[0])
+	if err != nil {
+		return
+	}
+
+	return out0, nil
+}
+
+// NewImported returns a new Imported structure.
+func (pkg *Package) NewImporter() (_ *Importer, err error) {
+	var args []values.Value = nil
+	var runner tracer.CompiledFunc
+	runner, err = pkg.cacheNewImporter.Runner(nil, args)
+	if err != nil {
+		return
+	}
+	var outputs []values.Value
+	outputs, err = runner.Run(nil, args, pkg.handle.Tracer())
+	if err != nil {
+		return
+	}
+
+	fty := pkg.handle.Factory
+
+	var out0 *Importer
+	out0, err = fty.MarshalImporter(outputs[0])
+	if err != nil {
+		return
+	}
+
+	return out0, nil
+}
+
+// ReturnFromBasic returns a float from the basic package.
+func (pkg *Package) ReturnFromBasic() (_ types.Atom[float32], err error) {
+	var args []values.Value = nil
+	var runner tracer.CompiledFunc
+	runner, err = pkg.cacheReturnFromBasic.Runner(nil, args)
+	if err != nil {
+		return
+	}
+	var outputs []values.Value
+	outputs, err = runner.Run(nil, args, pkg.handle.Tracer())
 	if err != nil {
 		return
 	}
@@ -196,13 +221,16 @@ func (f *MethodImporterAdd) Run() (_ types.Atom[int32], err error) {
 		err = errors.Errorf("cannot cast %T to %s", outputs[0], reflect.TypeFor[*values.DeviceArray]().Name())
 		return
 	}
-	out0 := types.NewAtom[int32](out0Value)
+	out0 := types.NewAtom[float32](out0Value)
 
 	return out0, nil
 }
 
-func (f *MethodImporterAdd) String() string {
-	return fmt.Sprint(f.function)
+// handleImporter stores the backend handles of Importer.
+type handleImporter struct {
+	pkg   *Package
+	struc *ir.NamedType
+	owner *Importer
 }
 
 // Type of the value.
@@ -230,7 +258,7 @@ func (h *handleImporter) String() string {
 	bld := strings.Builder{}
 	bld.WriteString("Importer{\n")
 
-	bld.WriteString(fmt.Sprintf("%s:%s\n", "Basic", any(h.owner.Basic).(fmt.Stringer).String()))
+	fmt.Fprintf(&bld, "%s:%s\n", "Basic", any(h.owner.Basic).(fmt.Stringer).String())
 
 	bld.WriteString("}")
 	return bld.String()
@@ -255,8 +283,8 @@ func (h *handleImporter) StructValue() *values.Struct {
 }
 
 // MarshalImporter populates the receiver fields with device handles.
-func (cmpl *Package) MarshalImporter(val values.Value) (s *Importer, err error) {
-	s = cmpl.Factory.NewImporter()
+func (fty *Factory) MarshalImporter(val values.Value) (s *Importer, err error) {
+	s = fty.NewImporter()
 	var ok bool
 	s.value, ok = val.(*values.NamedType)
 	if !ok {
@@ -273,7 +301,7 @@ func (cmpl *Package) MarshalImporter(val values.Value) (s *Importer, err error) 
 		fields[i] = structVal.FieldValue(field.Name.Name)
 	}
 	var field0 *gxdep0.Basic
-	field0, err = cmpl.gxdep0.MarshalBasic(fields[0])
+	field0, err = fty.Package.handle.gxdep0.Factory.MarshalBasic(fields[0])
 	if err != nil {
 		return
 	}
@@ -288,132 +316,10 @@ func (s Importer) String() string {
 // Bridge returns the bridge between the Go value and the GX value.
 func (s *Importer) Bridge() types.Bridge { return &s.handle }
 
-// Add returns a handle to compile method Add for a device.
-func (s Importer) Add() *MethodImporterAdd {
-	return s.handle.runnerAdd
-}
-
-type methodBase struct {
-	pkg      *Package
-	function ir.Func
-	runner   tracer.CompiledFunc
-}
-
-// NewBasic compiles and runs the GX function NewBasic for a device.
-// NewBasic returns a new basic structure.
-type NewBasic struct {
-	methodBase
-}
-
-// NewImporter compiles and runs the GX function NewImporter for a device.
-// NewImported returns a new Imported structure.
-type NewImporter struct {
-	methodBase
-}
-
-// ReturnFromBasic compiles and runs the GX function ReturnFromBasic for a device.
-// ReturnFromBasic returns a float from the basic package.
-type ReturnFromBasic struct {
-	methodBase
-}
-
-// Run first compiles NewBasic for a given device and the given arguments.
-// Once compiled, the function is then run with these same arguments.
-// If the shape of the arguments change, the function will panic.
-func (f *NewBasic) Run() (_ *gxdep0.Basic, err error) {
-	var args []values.Value = nil
-	if f.runner == nil {
-		f.runner, err = tracer.Trace(f.pkg.Device, f.function.(*ir.FuncDecl), nil, args, f.pkg.options)
-		if err != nil {
-			return
-		}
-	}
-	var outputs []values.Value
-	outputs, err = f.runner.Run(nil, args, f.pkg.Package.Tracer)
-	if err != nil {
-		return
-	}
-
-	cmpl := f.pkg
-	var out0 *gxdep0.Basic
-	out0, err = cmpl.gxdep0.MarshalBasic(outputs[0])
-	if err != nil {
-		return
-	}
-
-	return out0, nil
-}
-
-func (f *NewBasic) String() string {
-	return fmt.Sprint(f.function)
-}
-
-// Run first compiles NewImporter for a given device and the given arguments.
-// Once compiled, the function is then run with these same arguments.
-// If the shape of the arguments change, the function will panic.
-func (f *NewImporter) Run() (_ *Importer, err error) {
-	var args []values.Value = nil
-	if f.runner == nil {
-		f.runner, err = tracer.Trace(f.pkg.Device, f.function.(*ir.FuncDecl), nil, args, f.pkg.options)
-		if err != nil {
-			return
-		}
-	}
-	var outputs []values.Value
-	outputs, err = f.runner.Run(nil, args, f.pkg.Package.Tracer)
-	if err != nil {
-		return
-	}
-
-	cmpl := f.pkg
-	var out0 *Importer
-	out0, err = cmpl.MarshalImporter(outputs[0])
-	if err != nil {
-		return
-	}
-
-	return out0, nil
-}
-
-func (f *NewImporter) String() string {
-	return fmt.Sprint(f.function)
-}
-
-// Run first compiles ReturnFromBasic for a given device and the given arguments.
-// Once compiled, the function is then run with these same arguments.
-// If the shape of the arguments change, the function will panic.
-func (f *ReturnFromBasic) Run() (_ types.Atom[float32], err error) {
-	var args []values.Value = nil
-	if f.runner == nil {
-		f.runner, err = tracer.Trace(f.pkg.Device, f.function.(*ir.FuncDecl), nil, args, f.pkg.options)
-		if err != nil {
-			return
-		}
-	}
-	var outputs []values.Value
-	outputs, err = f.runner.Run(nil, args, f.pkg.Package.Tracer)
-	if err != nil {
-		return
-	}
-
-	out0Value, ok := outputs[0].(values.Array)
-	if !ok {
-		err = errors.Errorf("cannot cast %T to %s", outputs[0], reflect.TypeFor[*values.DeviceArray]().Name())
-		return
-	}
-	out0 := types.NewAtom[float32](out0Value)
-
-	return out0, nil
-}
-
-func (f *ReturnFromBasic) String() string {
-	return fmt.Sprint(f.function)
-}
-
 // NewImporter returns a handle on named type Importer.
 func (fac *Factory) NewImporter() *Importer {
 	s := &Importer{}
-	typ := fac.Package.Package.IR.Decls.TypeByName("Importer")
+	typ := fac.Package.handle.IR().Decls.TypeByName("Importer")
 	s.handle = handleImporter{
 		pkg:   fac.Package,
 		struc: typ,
@@ -426,11 +332,6 @@ func (fac *Factory) NewImporter() *Importer {
 	}
 	s.value = values.NewNamedType(structVal, typ)
 
-	s.handle.runnerAdd = &MethodImporterAdd{
-		methodBase: s.handle.pkg.methodImporterAdd,
-		receiver:   s.handle,
-	}
-
 	return s
 }
 
@@ -439,9 +340,8 @@ var _ types.Bridge = (*handleImporter)(nil)
 func (h *handleImporter) NewFromField(field *ir.Field) (types.Bridge, error) {
 	name := field.Name.Name
 	switch name {
-
 	case "Basic":
-		return h.pkg.gxdep0.Factory.NewBasic().Bridge(), nil
+		return h.pkg.handle.gxdep0.Factory.NewBasic().Bridge(), nil
 
 	default:
 		return nil, errors.Errorf("structure Importer has no field %q", name)
@@ -472,4 +372,28 @@ func (h *handleImporter) SetField(field *ir.Field, val types.Bridge) error {
 		return errors.Errorf("structure Importer has no field %q", name)
 	}
 
+}
+
+// Add returns the result from Basic.AddPrivate.
+func (recv *Importer) Add() (_ types.Atom[int32], err error) {
+	var args []values.Value = nil
+	var runner tracer.CompiledFunc
+	runner, err = recv.handle.pkg.cacheImporterAdd.Runner(recv.value, args)
+	if err != nil {
+		return
+	}
+	var outputs []values.Value
+	outputs, err = runner.Run(recv.value, args, recv.handle.pkg.handle.Tracer())
+	if err != nil {
+		return
+	}
+
+	out0Value, ok := outputs[0].(values.Array)
+	if !ok {
+		err = errors.Errorf("cannot cast %T to %s", outputs[0], reflect.TypeFor[*values.DeviceArray]().Name())
+		return
+	}
+	out0 := types.NewAtom[int32](out0Value)
+
+	return out0, nil
 }

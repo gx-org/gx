@@ -69,20 +69,24 @@ func irCache[N ir.Node](irs irBuilder, src ast.Node, bNode irb.Node[*pkgResolveS
 	return nT, ok
 }
 
-// pkgResolveScope is a package and its namespace with an error accumulator.
-// This context is used in the resolve phase.
-type pkgResolveScope struct {
-	*pkgProcScope
-	// namedTypes maps build named types to IR named types.
-	namedTypes map[*namedType]*ir.NamedType
-	// methods is a mapping from type name to method name to method
-	methods *ordered.Map[*ir.NamedType, *ordered.Map[string, *irFunc]]
-	// nspcpace is the package namespace.
-	// Includes all the builtins as well as all package declarations.
-	nspc scope.Scope[processNode]
-	// ibld keeps track of all IR that have been built until now.
-	ibld irBuilder
-}
+type (
+	bodyBuilder func(compEval *compileEvaluator) bool
+
+	// pkgResolveScope is a package and its namespace with an error accumulator.
+	// This context is used in the resolve phase.
+	pkgResolveScope struct {
+		*pkgProcScope
+		// namedTypes maps build named types to IR named types.
+		namedTypes map[*namedType]*ir.NamedType
+		// methods is a mapping from type name to method name to method
+		methods *ordered.Map[*ir.NamedType, *ordered.Map[string, *irFunc]]
+		// nspcpace is the package namespace.
+		// Includes all the builtins as well as all package declarations.
+		nspc scope.Scope[processNode]
+		// ibld keeps track of all IR that have been built until now.
+		ibld irBuilder
+	}
+)
 
 func newPackageResolveScope(pscope *pkgProcScope) (*pkgResolveScope, bool) {
 	s := &pkgResolveScope{
@@ -182,6 +186,7 @@ type (
 		fileScope() *fileResolveScope
 		compEval() (*compileEvaluator, bool)
 		irBuilder() irBuilder
+		String() string
 	}
 
 	fileResolveScope struct {
@@ -197,7 +202,7 @@ type (
 
 var _ resolveScope = (*fileResolveScope)(nil)
 
-func (s *pkgResolveScope) newFileScope(f *file) (*fileResolveScope, bool) {
+func (s *pkgResolveScope) newFileRScope(f *file) (*fileResolveScope, bool) {
 	fScope := &fileResolveScope{
 		pkgResolveScope: s,
 		bF:              f,
@@ -295,11 +300,15 @@ func (s *funcResolveScope) update(store ir.Storage, el ir.Element) bool {
 }
 
 func (s *funcResolveScope) compEval() (*compileEvaluator, bool) {
-	fileCEval, ok := s.fileScope().compEval()
+	fileCEval, ok := s.resolveScope.compEval()
 	if !ok {
 		return fileCEval, false
 	}
 	return fileCEval.sub(s.fType.Source(), s.names)
+}
+
+func (s *funcResolveScope) String() string {
+	return s.nspc.String()
 }
 
 type (
@@ -350,6 +359,10 @@ func (s *blockResolveScope) update(store ir.Storage, el ir.Element) bool {
 
 func (s *blockResolveScope) compEval() (*compileEvaluator, bool) {
 	return s.compeval, true
+}
+
+func (s *blockResolveScope) String() string {
+	return s.nspc.String()
 }
 
 type (

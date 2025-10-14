@@ -26,7 +26,6 @@ import (
 	"github.com/gx-org/gx/build/ir"
 	"github.com/gx-org/gx/build/ir/irhelper"
 	"github.com/gx-org/gx/internal/interp/compeval"
-	"github.com/gx-org/gx/interp/evaluator"
 	"github.com/gx-org/gx/interp"
 )
 
@@ -167,7 +166,7 @@ func makeNamedType(typ ir.Type) *ir.NamedType {
 
 type fetcherTesting struct {
 	file *ir.File
-	ctx  evaluator.Context
+	eval ir.Evaluator
 }
 
 var _ ir.Fetcher = (*fetcherTesting)(nil)
@@ -188,7 +187,7 @@ func newFetcherTesting() (*fetcherTesting, error) {
 	}
 	return &fetcherTesting{
 		file: file,
-		ctx:  ctx,
+		eval: ctx,
 	}, nil
 }
 func (f *fetcherTesting) File() *ir.File {
@@ -196,7 +195,7 @@ func (f *fetcherTesting) File() *ir.File {
 }
 
 func (f *fetcherTesting) EvalExpr(expr ir.Expr) (ir.Element, error) {
-	return compeval.EvalExpr(f.ctx, expr)
+	return compeval.EvalExpr(f.eval, expr)
 }
 
 func (f *fetcherTesting) BuildExpr(src ast.Expr) (ir.Expr, bool) {

@@ -48,10 +48,10 @@ func init() {
 	registerBuiltinIR(token.CONST, ir.TrueStorage())
 
 	// Builtin functions.
-	registerBuiltinFunc(appendName, &appendFunc{})
-	registerBuiltinFunc("axlengths", &axlengthsFunc{})
-	registerBuiltinFunc("set", &setFunc{})
-	registerBuiltinFunc("trace", &traceFunc{})
+	registerBuiltinFunc(Append())
+	registerBuiltinFunc(AxLengths())
+	registerBuiltinFunc(Set())
+	registerBuiltinFunc(Trace())
 }
 
 func registerBuiltinIR(tok token.Token, store ir.Storage) {
@@ -64,9 +64,9 @@ func registerBuiltinType(name string, node ir.Type) {
 	registerBuiltinIR(token.TYPE, ir.BuiltinStorage(name, &ir.TypeValExpr{Typ: node}))
 }
 
-func registerBuiltinFunc(name string, impl ir.FuncImpl) {
+func registerBuiltinFunc(impl ir.FuncImpl) {
 	registerBuiltinIR(token.FUNC, &ir.FuncBuiltin{
-		Src:  &ast.FuncDecl{Name: &ast.Ident{Name: name}},
+		Src:  &ast.FuncDecl{Name: &ast.Ident{Name: impl.Name()}},
 		Impl: impl,
 	})
 }

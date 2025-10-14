@@ -28,7 +28,6 @@ import (
 	"github.com/gx-org/gx/build/ir"
 	"github.com/gx-org/gx/internal/interp/compeval/cpevelements"
 	"github.com/gx-org/gx/interp/elements"
-	"github.com/gx-org/gx/interp"
 )
 
 type signatureNamespace struct {
@@ -83,7 +82,7 @@ func processFuncType(pscope procScope, src *ast.FuncType, recv *ast.FieldList, c
 	sig := &signatureNamespace{fType: n, names: make(map[string]*field)}
 	n.recv, recvOk = processFieldList(pscope, recv, sig.assignField)
 	if n.recv != nil && n.recv.numFields() > 1 {
-		pscope.Err().Appendf(recv, "method has multiple receivers")
+		recvOk = pscope.Err().Appendf(recv, "method has multiple receivers")
 	}
 	n.typeParams, typesOk = processFieldList(pscope, src.TypeParams, sig.assignTypeField)
 	n.params, paramsOk = processFieldList(&funcParamScope{procScope: pscope}, src.Params, sig.assignField)
@@ -148,6 +147,18 @@ func (n *funcType) buildFuncType(rscope resolveScope) (*ir.FuncType, *funcResolv
 	return ext, fScope, tParamsOk && paramsOk && resultsOk && recvOk
 }
 
+func (n *funcType) source() ast.Node {
+	return n.src
+}
+
+func (n *funcType) buildTypeExpr(rscope resolveScope) (*ir.TypeValExpr, bool) {
+	tp, _, ok := n.buildFuncType(rscope)
+	if !ok {
+		return nil, false
+	}
+	return &ir.TypeValExpr{X: tp, Typ: tp}, true
+}
+
 func (n *funcType) String() string {
 	typeParams := ""
 	if !n.typeParams.empty() {
@@ -191,7 +202,7 @@ func (bFile *file) processFunc(fileScope procScope, src *ast.FuncDecl) bool {
 	if !ok {
 		return false
 	}
-	_, ok = fileScope.pkgScope().decls().registerFunc(fn)
+	_, ok = fileScope.decls().registerFunc(fn)
 	return dirOk && ok
 }
 
@@ -233,7 +244,7 @@ func (f *funcDecl) resolveOrder() int {
 }
 
 func (f *funcDecl) buildSignature(pkgScope *pkgResolveScope) (ir.Func, iFuncResolveScope, bool) {
-	fScope, ok := pkgScope.newFileScope(f.bFile)
+	fScope, ok := pkgScope.newFileRScope(f.bFile)
 	if !ok {
 		return nil, nil, false
 	}
@@ -243,14 +254,14 @@ func (f *funcDecl) buildSignature(pkgScope *pkgResolveScope) (ir.Func, iFuncReso
 	return ext, funcScope, ok
 }
 
-func (f *funcDecl) buildBody(fScope iFuncResolveScope, extF *irFunc) ([]*irFunc, bool) {
+func (f *funcDecl) buildBody(fScope iFuncResolveScope, extF *irFunc) bool {
 	ext := extF.irFunc.(*ir.FuncDecl)
 	scope, ok := newBlockScope(fScope)
 	if !ok {
-		return nil, false
+		return false
 	}
 	ext.Body, ok = f.body.buildBlockStmt(scope)
-	return nil, ok
+	return ok
 }
 
 func (f *funcDecl) fnSource() *ast.FuncDecl {
@@ -280,21 +291,19 @@ func (bFile *file) processBuiltinFunc(scope procScope, src *ast.FuncDecl, compEv
 }
 
 func (f *funcBuiltin) buildSignature(pkgScope *pkgResolveScope) (ir.Func, iFuncResolveScope, bool) {
-	ext := &ir.FuncBuiltin{
-		Src: f.src,
-	}
-	fileScope, scopeOk := pkgScope.newFileScope(f.bFile)
+	fileScope, scopeOk := pkgScope.newFileRScope(f.bFile)
 	if !scopeOk {
-		return ext, nil, false
+		return nil, nil, false
 	}
+	ext := &ir.FuncBuiltin{Src: f.src, FFile: fileScope.irFile()}
 	var ok bool
 	var fScope *funcResolveScope
 	ext.FType, fScope, ok = f.fType.buildFuncType(fileScope)
 	return ext, fScope, ok
 }
 
-func (f *funcBuiltin) buildBody(iFuncResolveScope, *irFunc) ([]*irFunc, bool) {
-	return nil, true
+func (f *funcBuiltin) buildBody(iFuncResolveScope, *irFunc) bool {
+	return true
 }
 
 type funcLiteral struct {
@@ -317,7 +326,7 @@ func processFuncLit(pscope procScope, src *ast.FuncLit) (*funcLiteral, bool) {
 	}, ftypeOk && bodyOk
 }
 
-func (fn *funcLiteral) buildExpr(rscope resolveScope) (ir.Expr, bool) {
+func (fn *funcLiteral) buildFuncLit(rscope resolveScope) (*ir.FuncLit, bool) {
 	lit := &ir.FuncLit{
 		Src:   fn.src,
 		FFile: rscope.fileScope().irFile(),
@@ -333,11 +342,19 @@ func (fn *funcLiteral) buildExpr(rscope resolveScope) (ir.Expr, bool) {
 		return lit, false
 	}
 	lit.Body, ok = fn.body.buildBlockStmt(bScope)
+	return lit, ok
+}
+
+func (fn *funcLiteral) buildExpr(rscope resolveScope) (ir.Expr, bool) {
+	lit, ok := fn.buildFuncLit(rscope)
+	if !ok {
+		return invalidExpr(), false
+	}
 	return &ir.FuncValExpr{
 		X: lit,
 		F: lit,
 		T: lit.FType,
-	}, ok
+	}, true
 }
 
 func (fn *funcLiteral) source() ast.Node {
@@ -377,7 +394,7 @@ func axisExprFrom(rscope resolveScope, ax ir.AxisLengths) (*ir.AxisExpr, bool) {
 }
 
 func axisValuesFromArgumentValue(rscope resolveScope, compEval *compileEvaluator, src *ir.Field, val ir.Element) ([]ir.Element, bool) {
-	arrayElement, axOk := val.(interp.WithAxes)
+	arrayElement, axOk := val.(elements.WithAxes)
 	if !axOk {
 		return nil, true
 	}
@@ -403,7 +420,7 @@ var (
 	}
 	zeroValue, _ = values.AtomNumberInt(&big.Int{}, zeroExpr.Type())
 	zeroLen, _   = cpevelements.NewAtom(elements.NewExprAt(cstFile, zeroExpr), zeroValue)
-	emptySlice   = interp.NewSlice(ir.IntLenSliceType(), nil)
+	emptySlice   = elements.NewSlice(ir.IntLenSliceType(), nil)
 )
 
 func buildAtomicAxisValue(rscope resolveScope, arg ir.AssignableExpr, elts []ir.Element) (ax ir.Element, todo []ir.Element) {
@@ -417,7 +434,7 @@ func buildSliceAxisValue(rscope resolveScope, arg ir.AssignableExpr, elts []ir.E
 	if len(elts) == 0 {
 		return emptySlice, nil
 	}
-	return interp.NewSlice(arg.Type(), elts), nil
+	return elements.NewSlice(arg.Type(), elts), nil
 }
 
 func assignArgValueToName(rscope resolveScope, compEval *compileEvaluator, params map[string]ir.Element, param *ir.Field, arg ir.AssignableExpr, argVal ir.Element) bool {
@@ -485,15 +502,15 @@ func checkArgsForCall(rscope resolveScope, fExpr *ir.FuncValExpr, args []ir.Assi
 	return ok
 }
 
-func buildFuncForCall(rscope resolveScope, fExpr *ir.FuncValExpr, args []ir.AssignableExpr) (*ir.FuncValExpr, []ir.AssignableExpr, bool) {
+func buildFuncForCall(rscope resolveScope, fExpr *ir.FuncValExpr, args []ir.AssignableExpr) ([]ir.AssignableExpr, *ir.FuncValExpr, bool) {
 	compEval, compEvalOk := rscope.compEval()
 	if !compEvalOk {
-		return fExpr, args, false
+		return args, fExpr, false
 	}
 	var ok bool
 	fExpr, ok = generics.Infer(compEval, fExpr, args)
 	if !ok {
-		return fExpr, args, false
+		return args, fExpr, false
 	}
 	typeParams := fExpr.T.TypeParams.Fields()
 	if len(typeParams) > 0 {
@@ -505,21 +522,21 @@ func buildFuncForCall(rscope resolveScope, fExpr *ir.FuncValExpr, args []ir.Assi
 		if len(names) > 1 {
 			parameter = "parameters"
 		}
-		return fExpr, args, rscope.Err().Appendf(fExpr.X.Source(), "cannot infer type %s %s", parameter, strings.Join(names, ","))
+		return args, fExpr, rscope.Err().Appendf(fExpr.X.Source(), "cannot infer type %s %s", parameter, strings.Join(names, ","))
 	}
 	if args, ok = convertArgNumbers(rscope, fExpr.T, args); !ok {
-		return fExpr, args, false
+		return args, fExpr, false
 	}
 	argsVals, ok := assignArgValueToParamName(rscope, compEval, fExpr, args)
 	if !ok {
-		return fExpr, args, false
+		return args, fExpr, false
 	}
 	ce, ok := compEval.sub(fExpr.Source(), argsVals)
 	if !ok {
-		return fExpr, args, false
+		return args, fExpr, false
 	}
 	fExpr, ok = generics.Instantiate(ce, fExpr)
-	return fExpr, args, ok && checkArgsForCall(rscope, fExpr, args)
+	return args, fExpr, ok && checkArgsForCall(rscope, fExpr, args)
 }
 
 func funcDeclarator(fn ir.PkgFunc) irb.Declarator {

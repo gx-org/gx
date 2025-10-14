@@ -54,15 +54,15 @@ func (f *importedFunc) buildAnnotations(fScope iFuncResolveScope, extF *irFunc) 
 }
 
 func (f *importedFunc) buildSignature(pkgScope *pkgResolveScope) (ir.Func, iFuncResolveScope, bool) {
-	fScope, ok := pkgScope.newFileScope(f.file)
+	fScope, ok := pkgScope.newFileRScope(f.file)
 	if !ok {
 		return f.fn, nil, false
 	}
 	return f.fn, newFuncScope(fScope, f.fn.FType), true
 }
 
-func (f *importedFunc) buildBody(iFuncResolveScope, *irFunc) ([]*irFunc, bool) {
-	return nil, true
+func (f *importedFunc) buildBody(iFuncResolveScope, *irFunc) bool {
+	return true
 }
 
 func (f *importedFunc) Build(ibld irBuilder) (ir.Node, bool) {

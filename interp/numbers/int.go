@@ -42,7 +42,7 @@ func NewInt(expr elements.ExprAt, val *big.Int) Number {
 }
 
 // UnaryOp applies a unary operator on x.
-func (n *Int) UnaryOp(ctx ir.Evaluator, expr *ir.UnaryExpr) (evaluator.NumericalElement, error) {
+func (n *Int) UnaryOp(env evaluator.Env, expr *ir.UnaryExpr) (evaluator.NumericalElement, error) {
 	var val *big.Int
 	switch expr.Src.Op {
 	case token.ADD:
@@ -50,21 +50,21 @@ func (n *Int) UnaryOp(ctx ir.Evaluator, expr *ir.UnaryExpr) (evaluator.Numerical
 	case token.SUB:
 		val = new(big.Int).Neg(n.val)
 	default:
-		return nil, fmterr.Errorf(ctx.File().FileSet(), expr.Src, "number int unary operator %s not implemented", expr.Src.Op)
+		return nil, fmterr.Errorf(env.File().FileSet(), expr.Src, "number int unary operator %s not implemented", expr.Src.Op)
 	}
-	return NewInt(elements.NewExprAt(ctx.File(), expr), val), nil
+	return NewInt(elements.NewExprAt(env.File(), expr), val), nil
 }
 
 // BinaryOp applies a binary operator to x and y.
 // Note that the receiver can be either the left or right argument.
-func (n *Int) BinaryOp(ctx ir.Evaluator, expr *ir.BinaryExpr, x, y evaluator.NumericalElement) (evaluator.NumericalElement, error) {
+func (n *Int) BinaryOp(env evaluator.Env, expr *ir.BinaryExpr, x, y evaluator.NumericalElement) (evaluator.NumericalElement, error) {
 	switch yT := y.(type) {
 	case *Float:
-		return binaryFloat(ctx, expr, n.Float(), yT.val)
+		return binaryFloat(env, expr, n.Float(), yT.val)
 	case *Int:
-		return binaryInt(ctx, expr, n.val, yT.val)
+		return binaryInt(env, expr, n.val, yT.val)
 	}
-	return nil, fmterr.Errorf(ctx.File().FileSet(), expr.Src, "number int operator not implemented for %T%s%T", x, expr.Src.Op, y)
+	return nil, fmterr.Errorf(env.File().FileSet(), expr.Src, "number int operator not implemented for %T%s%T", x, expr.Src.Op, y)
 }
 
 // Float value of the integer.
@@ -72,7 +72,7 @@ func (n *Int) Float() *big.Float {
 	return new(big.Float).SetInt(n.val)
 }
 
-func binaryInt(ctx ir.Evaluator, expr *ir.BinaryExpr, x, y *big.Int) (evaluator.NumericalElement, error) {
+func binaryInt(env evaluator.Env, expr *ir.BinaryExpr, x, y *big.Int) (evaluator.NumericalElement, error) {
 	var val *big.Int
 	switch expr.Src.Op {
 	case token.ADD:
@@ -96,27 +96,27 @@ func binaryInt(ctx ir.Evaluator, expr *ir.BinaryExpr, x, y *big.Int) (evaluator.
 	case token.XOR:
 		val = new(big.Int).Xor(x, y)
 	default:
-		return nil, fmterr.Errorf(ctx.File().FileSet(), expr.Src, "number int binary operator %s not implemented", expr.Src.Op)
+		return nil, fmterr.Errorf(env.File().FileSet(), expr.Src, "number int binary operator %s not implemented", expr.Src.Op)
 	}
-	return NewInt(elements.NewExprAt(ctx.File(), expr), val), nil
+	return NewInt(elements.NewExprAt(env.File(), expr), val), nil
 }
 
 // Cast an element into a given data type.
-func (n *Int) Cast(ctx ir.Evaluator, expr ir.AssignableExpr, target ir.Type) (evaluator.NumericalElement, error) {
+func (n *Int) Cast(env evaluator.Env, expr ir.AssignableExpr, target ir.Type) (evaluator.NumericalElement, error) {
 	val, err := values.AtomNumberInt(n.val, target)
 	if err != nil {
 		return nil, err
 	}
-	return ctx.(evaluator.Context).Evaluator().ElementFromAtom(ctx, expr, val)
+	return env.Evaluator().ElementFromAtom(env.File(), expr, val)
 }
 
 // Reshape the number into an array.
-func (n *Int) Reshape(ctx ir.Evaluator, expr ir.AssignableExpr, axisLengths []evaluator.NumericalElement) (evaluator.NumericalElement, error) {
+func (n *Int) Reshape(env evaluator.Env, expr ir.AssignableExpr, axisLengths []evaluator.NumericalElement) (evaluator.NumericalElement, error) {
 	val, err := values.AtomNumberInt(n.val, expr.Type())
 	if err != nil {
 		return nil, err
 	}
-	return ctx.(evaluator.Context).Evaluator().ElementFromAtom(ctx, expr, val)
+	return env.Evaluator().ElementFromAtom(env.File(), expr, val)
 }
 
 // Shape of the value represented by the element.

@@ -29,6 +29,7 @@ import (
 	"github.com/gx-org/gx/build/ir"
 	"github.com/gx-org/gx/interp/elements"
 	"github.com/gx-org/gx/interp/evaluator"
+	"github.com/gx-org/gx/interp/fun"
 	"github.com/gx-org/gx/interp"
 	"github.com/gx-org/gx/interp/materialise"
 	"github.com/gx-org/gx/stdlib/builtin"
@@ -56,11 +57,11 @@ var Package = builtin.PackageBuilder{
 		buildUnary("Cos", func(g ops.Graph) unaryFunc { return g.Math().Cos }),
 		builtin.ImplementStubFunc("Erf", func(impl *impl.Stdlib) interp.FuncBuiltin { return impl.Math.Erf }),
 		builtin.ImplementStubFunc("Expm1", func(impl *impl.Stdlib) interp.FuncBuiltin { return impl.Math.Expm1 }),
-		builtin.ImplementStubFunc("Exp", func(impl *impl.Stdlib) interp.FuncBuiltin { return impl.Math.Exp }),
+		buildUnary("Exp", func(g ops.Graph) unaryFunc { return g.Math().Exp }),
 		builtin.ImplementStubFunc("Floor", func(impl *impl.Stdlib) interp.FuncBuiltin { return impl.Math.Floor }),
 		builtin.ImplementStubFunc("Log1p", func(impl *impl.Stdlib) interp.FuncBuiltin { return impl.Math.Log1p }),
 		builtin.ImplementStubFunc("Logistic", func(impl *impl.Stdlib) interp.FuncBuiltin { return impl.Math.Logistic }),
-		builtin.ImplementStubFunc("Log", func(impl *impl.Stdlib) interp.FuncBuiltin { return impl.Math.Log }),
+		buildUnary("Log", func(g ops.Graph) unaryFunc { return g.Math().Log }),
 		builtin.ImplementStubFunc("Round", func(impl *impl.Stdlib) interp.FuncBuiltin { return impl.Math.Round }),
 		builtin.ImplementStubFunc("Rsqrt", func(impl *impl.Stdlib) interp.FuncBuiltin { return impl.Math.Rsqrt }),
 		builtin.ImplementStubFunc("Sign", func(impl *impl.Stdlib) interp.FuncBuiltin { return impl.Math.Sign }),
@@ -124,17 +125,18 @@ func buildConstScalar[T dtype.GoDataType](name string, value T) builtin.Builder 
 type unaryFunc = func(ops.Node) (ops.Node, error)
 
 func buildUnary(name string, f func(graph ops.Graph) unaryFunc) builtin.Builder {
-	return builtin.ImplementGraphFunc(name, func(ctx evaluator.Context, call elements.CallAt, fn interp.Func, irFunc *ir.FuncBuiltin, args []ir.Element) ([]ir.Element, error) {
-		x, xShape, err := materialise.Element(ctx.Materialiser(), args[0])
+	return builtin.ImplementGraphFunc(name, func(env evaluator.Env, call elements.CallAt, fn fun.Func, irFunc *ir.FuncBuiltin, args []ir.Element) ([]ir.Element, error) {
+		mat := builtin.Materialiser(env)
+		x, xShape, err := materialise.Element(mat, args[0])
 		if err != nil {
 			return nil, err
 		}
-		unaryF := f(ctx.Evaluator().ArrayOps().Graph())
+		unaryF := f(env.Evaluator().ArrayOps().Graph())
 		node, err := unaryF(x)
 		if err != nil {
 			return nil, err
 		}
-		return ctx.Materialiser().ElementsFromNodes(call.File(), call.Node(), &ops.OutputNode{
+		return mat.ElementsFromNodes(call.File(), call.Node(), &ops.OutputNode{
 			Node:  node,
 			Shape: xShape,
 		})

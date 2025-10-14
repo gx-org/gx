@@ -16,6 +16,7 @@ package ir
 
 import (
 	"fmt"
+	"go/ast"
 	"go/token"
 	"slices"
 	"strings"
@@ -51,26 +52,41 @@ func (b *BlockStmt) String() string {
 
 // String returns a string representation of the builtin function.
 func (f *FuncBuiltin) String() string {
-	return f.FType.NameString(f.Src.Name.Name)
+	return f.FType.NameString(f.Src.Name)
 }
 
 // String returns a string representation of the function.
 func (f *FuncDecl) String() string {
-	sig := f.FType.NameString(f.Src.Name.Name)
+	sig := f.FType.NameString(f.Src.Name)
+	if f.Body == nil {
+		return sig
+	}
 	body := gxfmt.Indent(f.Body.String())
 	return fmt.Sprintf("%s {\n%s}", sig, body)
 }
 
+// String representation of the literal.
+func (f *FuncLit) String() string {
+	sig := f.FType.NameString(nil)
+	body := gxfmt.Indent(f.Body.String())
+	return fmt.Sprintf("%s {\n%s}", sig, body)
+}
+
+// String representation of the literal.
+func (f *SpecialisedFunc) String() string {
+	return f.T.String()
+}
+
 // NameString returns a string representation of a signature given a name.
 // The name can be empty.
-func (s *FuncType) NameString(name string) string {
+func (s *FuncType) NameString(name *ast.Ident) string {
 	var b strings.Builder
 	b.WriteString("func")
 	if s.Receiver != nil {
 		fmt.Fprintf(&b, " (%s)", s.Receiver.String())
 	}
-	if name != "" {
-		b.WriteString(" " + name)
+	if name != nil && name.Name != "" {
+		b.WriteString(" " + name.Name)
 	}
 	if s.TypeParams != nil {
 		fmt.Fprintf(&b, "[%s]", s.TypeParams.String())
@@ -92,7 +108,7 @@ func (s *FuncType) NameString(name string) string {
 
 // String representation of the type.
 func (s *FuncType) String() string {
-	return s.NameString("")
+	return s.NameString(nil)
 }
 
 func (s *ReturnStmt) String() string {
@@ -136,7 +152,7 @@ func (s *DeclStmt) String() string {
 // String representation.
 func (s *CallExpr) String() string {
 	var b strings.Builder
-	fmt.Fprintf(&b, "%s(", s.Callee.String())
+	fmt.Fprintf(&b, "%s(", s.Callee.ShortString())
 	stringseq.AppendStringer(&b, slices.Values(s.Args), ", ")
 	fmt.Fprintf(&b, ")")
 	return b.String()

@@ -121,6 +121,20 @@ func typeValExpr(done map[any]bool, val reflect.Value, proc processor) string {
 	}
 }
 
+func funcValExpr(done map[any]bool, val reflect.Value, proc processor) string {
+	ref := val.Interface().(*ir.FuncValExpr)
+	switch fT := ref.F.(type) {
+	case *ir.FuncLit:
+		return reflectString(done, reflect.ValueOf(fT), proc)
+	case ir.PkgFunc:
+		return fT.Name()
+	case *ir.SpecialisedFunc:
+		return fT.X.String()
+	default:
+		return ref.T.Type().String()
+	}
+}
+
 func stringLiteral(done map[any]bool, val reflect.Value, proc processor) string {
 	ref := val.Interface().(*ir.StringLiteral)
 	return fmt.Sprintf("StringLiteral{%s}", ref.Src.Value)
@@ -181,11 +195,11 @@ func init() {
 	typeToProcess["github.com/gx-org/gx/build/ir.numberIntType"] = debugOk(valueToString)
 	typeToProcess["github.com/gx-org/gx/build/ir.numberFloatType"] = debugOk(valueToString)
 	typeToProcess["github.com/gx-org/gx/build/ir.ValueRef"] = debugOk(valueRefToString)
-	typeToProcess["github.com/gx-org/gx/build/ir.Annotations"] = debugOk(valueToString)
+	typeToProcess["github.com/gx-org/gx/build/annotations/annotations.Annotations"] = debugOk(valueToString)
 	typeToProcess["github.com/gx-org/gx/build/ir.StringLiteral"] = debugOk(stringLiteral)
 	typeToProcess["github.com/gx-org/gx/build/ir.TypeSet"] = notOnDebug(valueToString)
 	typeToProcess["github.com/gx-org/gx/build/ir.Rank"] = notOnDebug(rank)
-	typeToProcess["github.com/gx-org/gx/build/ir.FuncValExpr"] = notOnDebug(skip)
+	typeToProcess["github.com/gx-org/gx/build/ir.FuncValExpr"] = notOnDebug(funcValExpr)
 	typeToProcess["github.com/gx-org/gx/build/ir.File"] = debugOk(func(map[any]bool, reflect.Value, processor) string {
 		return ""
 	})
@@ -268,6 +282,9 @@ func toPointer(val reflect.Value) any {
 	case reflect.Interface:
 		return val.Elem().Interface()
 	default:
+		if !val.CanInterface() {
+			return fmt.Sprintf("cannot interface from %s", val.String())
+		}
 		return val.Interface()
 	}
 }

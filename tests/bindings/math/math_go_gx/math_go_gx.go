@@ -27,13 +27,16 @@ import (
 	"github.com/gx-org/backend/platform"
 	"github.com/gx-org/gx/api"
 	"github.com/gx-org/gx/api/options"
-	"github.com/gx-org/gx/api/trace"
 	"github.com/gx-org/gx/api/tracer"
 	"github.com/gx-org/gx/api/values"
 	"github.com/gx-org/gx/build/ir"
+	"github.com/gx-org/gx/golang/binder/gobindings/core"
 	"github.com/gx-org/gx/golang/binder/gobindings/types"
-	_ "github.com/gx-org/gx/tests/bindings/math"
 	"github.com/pkg/errors"
+
+	_ "github.com/gx-org/gx/tests/bindings/math"
+
+	gxdep0 "github.com/gx-org/gx/stdlib/bindings/go/math_go_gx"
 )
 
 // Force some package dependencies.
@@ -45,38 +48,42 @@ var (
 	_ = errors.Errorf
 	_ = types.NewSlice[types.Bridger]
 	_ = platform.HostTransfer
+	_ = ir.NamedType{}
+	_ = tracer.Trace
 )
 
-// PackageIR is the GX package intermediate representation
-// built for a given runtime, but not yet for a specific device.
-type PackageIR struct {
-	Runtime *api.Runtime
-	IR      *ir.Package
-	Tracer  trace.Callback
-}
-
-// Load the GX package for a given backend.
-func Load(rtm *api.Runtime) (*PackageIR, error) {
+// Load the package for a given runtime.
+func Load(rtm *api.Runtime) (*core.Package, error) {
 	bpkg, err := rtm.Builder().Build("github.com/gx-org/gx/tests/bindings/math")
 	if err != nil {
 		return nil, err
 	}
-	pkg := &PackageIR{
-		Runtime: rtm,
-		IR:      bpkg.IR(),
+	deps := make([]*core.Package, 1)
+	deps[0], err = gxdep0.Load(rtm)
+	if err != nil {
+		return nil, err
 	}
-
-	return pkg, nil
+	return core.NewPackage(bpkg, deps), nil
 }
 
 // BuildFor loads the GX package github.com/gx-org/gx/tests/bindings/math
 // then returns that package for a given device and options.
-func BuildFor(dev *api.Device, options ...options.PackageOptionFactory) (*Package, error) {
+func BuildFor(dev *api.Device, opts ...options.PackageOptionFactory) (*Package, error) {
+	pkgHandle, err := BuildHandleFor(dev, opts...)
+	if err != nil {
+		return nil, err
+	}
+	return pkgHandle.Factory.Package, nil
+}
+
+// BuildHandleFor loads the GX package github.com/gx-org/gx/tests/bindings/math
+// then returns that package for a given device and options.
+func BuildHandleFor(dev *api.Device, opts ...options.PackageOptionFactory) (*PackageHandle, error) {
 	pkg, err := Load(dev.Runtime())
 	if err != nil {
 		return nil, err
 	}
-	return pkg.BuildFor(dev, options...), nil
+	return BuildFromIR(pkg, dev, opts)
 }
 
 // Factory create new instance of types used in the package.
@@ -87,83 +94,64 @@ type Factory struct {
 	Package *Package
 }
 
+// PackageHandle provides utility functions for the package.
+type PackageHandle struct {
+	*core.PackageCompileSetup
+	Factory *Factory
+
+	// Package dependencies
+	gxdep0 *gxdep0.PackageHandle
+}
+
 // Package is a GX package for a given device.
 // Functions and methods are compiled specifically for that device.
 type Package struct {
-	Package *PackageIR
-	Device  *api.Device
-	Factory *Factory
+	handle PackageHandle
 
-	options []options.PackageOption
-
-	ReturnMaxFloat32 ReturnMaxFloat32
-	ReturnMaxFloat64 ReturnMaxFloat64
+	// Functions and methods cache
+	cacheReturnMaxFloat32 *core.FuncCache
+	cacheReturnMaxFloat64 *core.FuncCache
 }
 
-// AppendOptions appends options to the compiler.
-func (cmpl *Package) AppendOptions(options ...options.PackageOptionFactory) {
-	plat := cmpl.Package.Runtime.Backend().Platform()
-	for _, opt := range options {
-		cmpl.options = append(cmpl.options, opt(plat))
+// BuildFromIR builds a package for a device once it has been loaded.
+func BuildFromIR(irPkg *core.Package, dev *api.Device, optionFactories []options.PackageOptionFactory) (*PackageHandle, error) {
+	pkg := &Package{}
+	pkg.handle.Factory = &Factory{Package: pkg}
+	pkg.handle.PackageCompileSetup = irPkg.Setup(dev, optionFactories)
+	// Build dependencies.
+	var err error
+	pkg.handle.gxdep0, err = core.BuildDep[*gxdep0.PackageHandle](
+		pkg.handle.PackageCompileSetup,
+		0,
+		gxdep0.BuildFromIR,
+	)
+	if err != nil {
+		return nil, err
 	}
+
+	// Initialise function and method caches.
+	pkg.cacheReturnMaxFloat32, err = pkg.handle.NewCache("", "ReturnMaxFloat32")
+	if err != nil {
+		return nil, err
+	}
+	pkg.cacheReturnMaxFloat64, err = pkg.handle.NewCache("", "ReturnMaxFloat64")
+	if err != nil {
+		return nil, err
+	}
+
+	return &pkg.handle, err
 }
 
-// BuildFor returns a package ready to compile for a device and options.
-func (pkg *PackageIR) BuildFor(dev *api.Device, options ...options.PackageOptionFactory) *Package {
-	c := &Package{
-		Package: pkg,
-		Device:  dev,
-	}
-	c.Factory = &Factory{Package: c}
-	c.AppendOptions(options...)
-
-	c.ReturnMaxFloat32 = ReturnMaxFloat32{
-		methodBase: methodBase{
-			pkg:      c,
-			function: c.Package.IR.Decls.Funcs[0],
-		},
-	}
-	c.ReturnMaxFloat64 = ReturnMaxFloat64{
-		methodBase: methodBase{
-			pkg:      c,
-			function: c.Package.IR.Decls.Funcs[1],
-		},
-	}
-
-	return c
-}
-
-type methodBase struct {
-	pkg      *Package
-	function ir.Func
-	runner   tracer.CompiledFunc
-}
-
-// ReturnMaxFloat32 compiles and runs the GX function ReturnMaxFloat32 for a device.
 // ReturnMaxFloat32 returns the maximum float32.
-type ReturnMaxFloat32 struct {
-	methodBase
-}
-
-// ReturnMaxFloat64 compiles and runs the GX function ReturnMaxFloat64 for a device.
-// ReturnMaxFloat64 returns the maximum float64.
-type ReturnMaxFloat64 struct {
-	methodBase
-}
-
-// Run first compiles ReturnMaxFloat32 for a given device and the given arguments.
-// Once compiled, the function is then run with these same arguments.
-// If the shape of the arguments change, the function will panic.
-func (f *ReturnMaxFloat32) Run() (_ types.Atom[float32], err error) {
+func (pkg *Package) ReturnMaxFloat32() (_ types.Atom[float32], err error) {
 	var args []values.Value = nil
-	if f.runner == nil {
-		f.runner, err = tracer.Trace(f.pkg.Device, f.function.(*ir.FuncDecl), nil, args, f.pkg.options)
-		if err != nil {
-			return
-		}
+	var runner tracer.CompiledFunc
+	runner, err = pkg.cacheReturnMaxFloat32.Runner(nil, args)
+	if err != nil {
+		return
 	}
 	var outputs []values.Value
-	outputs, err = f.runner.Run(nil, args, f.pkg.Package.Tracer)
+	outputs, err = runner.Run(nil, args, pkg.handle.Tracer())
 	if err != nil {
 		return
 	}
@@ -178,23 +166,16 @@ func (f *ReturnMaxFloat32) Run() (_ types.Atom[float32], err error) {
 	return out0, nil
 }
 
-func (f *ReturnMaxFloat32) String() string {
-	return fmt.Sprint(f.function)
-}
-
-// Run first compiles ReturnMaxFloat64 for a given device and the given arguments.
-// Once compiled, the function is then run with these same arguments.
-// If the shape of the arguments change, the function will panic.
-func (f *ReturnMaxFloat64) Run() (_ types.Atom[float64], err error) {
+// ReturnMaxFloat64 returns the maximum float64.
+func (pkg *Package) ReturnMaxFloat64() (_ types.Atom[float64], err error) {
 	var args []values.Value = nil
-	if f.runner == nil {
-		f.runner, err = tracer.Trace(f.pkg.Device, f.function.(*ir.FuncDecl), nil, args, f.pkg.options)
-		if err != nil {
-			return
-		}
+	var runner tracer.CompiledFunc
+	runner, err = pkg.cacheReturnMaxFloat64.Runner(nil, args)
+	if err != nil {
+		return
 	}
 	var outputs []values.Value
-	outputs, err = f.runner.Run(nil, args, f.pkg.Package.Tracer)
+	outputs, err = runner.Run(nil, args, pkg.handle.Tracer())
 	if err != nil {
 		return
 	}
@@ -207,8 +188,4 @@ func (f *ReturnMaxFloat64) Run() (_ types.Atom[float64], err error) {
 	out0 := types.NewAtom[float64](out0Value)
 
 	return out0, nil
-}
-
-func (f *ReturnMaxFloat64) String() string {
-	return fmt.Sprint(f.function)
 }

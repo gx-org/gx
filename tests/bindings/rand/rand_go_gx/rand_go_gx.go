@@ -27,13 +27,14 @@ import (
 	"github.com/gx-org/backend/platform"
 	"github.com/gx-org/gx/api"
 	"github.com/gx-org/gx/api/options"
-	"github.com/gx-org/gx/api/trace"
 	"github.com/gx-org/gx/api/tracer"
 	"github.com/gx-org/gx/api/values"
 	"github.com/gx-org/gx/build/ir"
+	"github.com/gx-org/gx/golang/binder/gobindings/core"
 	"github.com/gx-org/gx/golang/binder/gobindings/types"
-	_ "github.com/gx-org/gx/tests/bindings/rand"
 	"github.com/pkg/errors"
+
+	_ "github.com/gx-org/gx/tests/bindings/rand"
 
 	gxdep0 "github.com/gx-org/gx/stdlib/bindings/go/rand_go_gx"
 )
@@ -47,44 +48,42 @@ var (
 	_ = errors.Errorf
 	_ = types.NewSlice[types.Bridger]
 	_ = platform.HostTransfer
+	_ = ir.NamedType{}
+	_ = tracer.Trace
 )
 
-// PackageIR is the GX package intermediate representation
-// built for a given runtime, but not yet for a specific device.
-type PackageIR struct {
-	Runtime *api.Runtime
-	IR      *ir.Package
-	Tracer  trace.Callback
-
-	gxdep0 *gxdep0.PackageIR
-}
-
-// Load the GX package for a given backend.
-func Load(rtm *api.Runtime) (*PackageIR, error) {
+// Load the package for a given runtime.
+func Load(rtm *api.Runtime) (*core.Package, error) {
 	bpkg, err := rtm.Builder().Build("github.com/gx-org/gx/tests/bindings/rand")
 	if err != nil {
 		return nil, err
 	}
-	pkg := &PackageIR{
-		Runtime: rtm,
-		IR:      bpkg.IR(),
-	}
-
-	if pkg.gxdep0, err = gxdep0.Load(rtm); err != nil {
+	deps := make([]*core.Package, 1)
+	deps[0], err = gxdep0.Load(rtm)
+	if err != nil {
 		return nil, err
 	}
-
-	return pkg, nil
+	return core.NewPackage(bpkg, deps), nil
 }
 
 // BuildFor loads the GX package github.com/gx-org/gx/tests/bindings/rand
 // then returns that package for a given device and options.
-func BuildFor(dev *api.Device, options ...options.PackageOptionFactory) (*Package, error) {
+func BuildFor(dev *api.Device, opts ...options.PackageOptionFactory) (*Package, error) {
+	pkgHandle, err := BuildHandleFor(dev, opts...)
+	if err != nil {
+		return nil, err
+	}
+	return pkgHandle.Factory.Package, nil
+}
+
+// BuildHandleFor loads the GX package github.com/gx-org/gx/tests/bindings/rand
+// then returns that package for a given device and options.
+func BuildHandleFor(dev *api.Device, opts ...options.PackageOptionFactory) (*PackageHandle, error) {
 	pkg, err := Load(dev.Runtime())
 	if err != nil {
 		return nil, err
 	}
-	return pkg.BuildFor(dev, options...), nil
+	return BuildFromIR(pkg, dev, opts)
 }
 
 // Factory create new instance of types used in the package.
@@ -95,122 +94,84 @@ type Factory struct {
 	Package *Package
 }
 
+// PackageHandle provides utility functions for the package.
+type PackageHandle struct {
+	*core.PackageCompileSetup
+	Factory *Factory
+
+	// Package dependencies
+	gxdep0 *gxdep0.PackageHandle
+}
+
 // Package is a GX package for a given device.
 // Functions and methods are compiled specifically for that device.
 type Package struct {
-	Package *PackageIR
-	Device  *api.Device
-	Factory *Factory
+	handle PackageHandle
 
-	options []options.PackageOption
-
-	gxdep0 *gxdep0.Package
-
-	New                  New
-	Sample               Sample
-	SampleBool           SampleBool
-	SampleUniformFloat64 SampleUniformFloat64
+	// Functions and methods cache
+	cacheNew                  *core.FuncCache
+	cacheSample               *core.FuncCache
+	cacheSampleBool           *core.FuncCache
+	cacheSampleUniformFloat64 *core.FuncCache
 }
 
-// AppendOptions appends options to the compiler.
-func (cmpl *Package) AppendOptions(options ...options.PackageOptionFactory) {
-	plat := cmpl.Package.Runtime.Backend().Platform()
-	for _, opt := range options {
-		cmpl.options = append(cmpl.options, opt(plat))
+// BuildFromIR builds a package for a device once it has been loaded.
+func BuildFromIR(irPkg *core.Package, dev *api.Device, optionFactories []options.PackageOptionFactory) (*PackageHandle, error) {
+	pkg := &Package{}
+	pkg.handle.Factory = &Factory{Package: pkg}
+	pkg.handle.PackageCompileSetup = irPkg.Setup(dev, optionFactories)
+	// Build dependencies.
+	var err error
+	pkg.handle.gxdep0, err = core.BuildDep[*gxdep0.PackageHandle](
+		pkg.handle.PackageCompileSetup,
+		0,
+		gxdep0.BuildFromIR,
+	)
+	if err != nil {
+		return nil, err
 	}
+
+	// Initialise function and method caches.
+	pkg.cacheNew, err = pkg.handle.NewCache("", "New")
+	if err != nil {
+		return nil, err
+	}
+	pkg.cacheSample, err = pkg.handle.NewCache("", "Sample")
+	if err != nil {
+		return nil, err
+	}
+	pkg.cacheSampleBool, err = pkg.handle.NewCache("", "SampleBool")
+	if err != nil {
+		return nil, err
+	}
+	pkg.cacheSampleUniformFloat64, err = pkg.handle.NewCache("", "SampleUniformFloat64")
+	if err != nil {
+		return nil, err
+	}
+
+	return &pkg.handle, err
 }
 
-// BuildFor returns a package ready to compile for a device and options.
-func (pkg *PackageIR) BuildFor(dev *api.Device, options ...options.PackageOptionFactory) *Package {
-	c := &Package{
-		Package: pkg,
-		Device:  dev,
-	}
-	c.Factory = &Factory{Package: c}
-	c.AppendOptions(options...)
-
-	c.New = New{
-		methodBase: methodBase{
-			pkg:      c,
-			function: c.Package.IR.Decls.Funcs[0],
-		},
-	}
-	c.Sample = Sample{
-		methodBase: methodBase{
-			pkg:      c,
-			function: c.Package.IR.Decls.Funcs[1],
-		},
-	}
-	c.SampleBool = SampleBool{
-		methodBase: methodBase{
-			pkg:      c,
-			function: c.Package.IR.Decls.Funcs[2],
-		},
-	}
-	c.SampleUniformFloat64 = SampleUniformFloat64{
-		methodBase: methodBase{
-			pkg:      c,
-			function: c.Package.IR.Decls.Funcs[3],
-		},
-	}
-
-	c.gxdep0 = c.Package.gxdep0.BuildFor(dev, options...)
-
-	return c
-}
-
-type methodBase struct {
-	pkg      *Package
-	function ir.Func
-	runner   tracer.CompiledFunc
-}
-
-// New compiles and runs the GX function New for a device.
 // New returns a new Rand instance given a seed.
-type New struct {
-	methodBase
-}
-
-// Sample compiles and runs the GX function Sample for a device.
-// Sample the first few numbers from a number generator.
-type Sample struct {
-	methodBase
-}
-
-// SampleBool compiles and runs the GX function SampleBool for a device.
-// Sample the first few booleans from a number generator.
-type SampleBool struct {
-	methodBase
-}
-
-// SampleUniformFloat64 compiles and runs the GX function SampleUniformFloat64 for a device.
-// Sample a million uniform float64s from a number generator.
-type SampleUniformFloat64 struct {
-	methodBase
-}
-
-// Run first compiles New for a given device and the given arguments.
-// Once compiled, the function is then run with these same arguments.
-// If the shape of the arguments change, the function will panic.
-func (f *New) Run(arg0 types.Atom[int64]) (_ *gxdep0.Rand, err error) {
+func (pkg *Package) New(arg0 types.Atom[int64]) (_ *gxdep0.Rand, err error) {
 	var args []values.Value = []values.Value{
 		arg0.Bridge().GXValue(), // seed int64
 	}
-	if f.runner == nil {
-		f.runner, err = tracer.Trace(f.pkg.Device, f.function.(*ir.FuncDecl), nil, args, f.pkg.options)
-		if err != nil {
-			return
-		}
+	var runner tracer.CompiledFunc
+	runner, err = pkg.cacheNew.Runner(nil, args)
+	if err != nil {
+		return
 	}
 	var outputs []values.Value
-	outputs, err = f.runner.Run(nil, args, f.pkg.Package.Tracer)
+	outputs, err = runner.Run(nil, args, pkg.handle.Tracer())
 	if err != nil {
 		return
 	}
 
-	cmpl := f.pkg
+	fty := pkg.handle.Factory
+
 	var out0 *gxdep0.Rand
-	out0, err = cmpl.gxdep0.MarshalRand(outputs[0])
+	out0, err = fty.Package.handle.gxdep0.Factory.MarshalRand(outputs[0])
 	if err != nil {
 		return
 	}
@@ -218,25 +179,18 @@ func (f *New) Run(arg0 types.Atom[int64]) (_ *gxdep0.Rand, err error) {
 	return out0, nil
 }
 
-func (f *New) String() string {
-	return fmt.Sprint(f.function)
-}
-
-// Run first compiles Sample for a given device and the given arguments.
-// Once compiled, the function is then run with these same arguments.
-// If the shape of the arguments change, the function will panic.
-func (f *Sample) Run(arg0 types.Atom[int64]) (_ types.Array[float32], err error) {
+// Sample the first few numbers from a number generator.
+func (pkg *Package) Sample(arg0 types.Atom[int64]) (_ types.Array[float32], err error) {
 	var args []values.Value = []values.Value{
 		arg0.Bridge().GXValue(), // seed int64
 	}
-	if f.runner == nil {
-		f.runner, err = tracer.Trace(f.pkg.Device, f.function.(*ir.FuncDecl), nil, args, f.pkg.options)
-		if err != nil {
-			return
-		}
+	var runner tracer.CompiledFunc
+	runner, err = pkg.cacheSample.Runner(nil, args)
+	if err != nil {
+		return
 	}
 	var outputs []values.Value
-	outputs, err = f.runner.Run(nil, args, f.pkg.Package.Tracer)
+	outputs, err = runner.Run(nil, args, pkg.handle.Tracer())
 	if err != nil {
 		return
 	}
@@ -251,25 +205,18 @@ func (f *Sample) Run(arg0 types.Atom[int64]) (_ types.Array[float32], err error)
 	return out0, nil
 }
 
-func (f *Sample) String() string {
-	return fmt.Sprint(f.function)
-}
-
-// Run first compiles SampleBool for a given device and the given arguments.
-// Once compiled, the function is then run with these same arguments.
-// If the shape of the arguments change, the function will panic.
-func (f *SampleBool) Run(arg0 types.Atom[int64]) (_ types.Array[bool], err error) {
+// SampleBool the first few booleans from a number generator.
+func (pkg *Package) SampleBool(arg0 types.Atom[int64]) (_ types.Array[bool], err error) {
 	var args []values.Value = []values.Value{
 		arg0.Bridge().GXValue(), // seed int64
 	}
-	if f.runner == nil {
-		f.runner, err = tracer.Trace(f.pkg.Device, f.function.(*ir.FuncDecl), nil, args, f.pkg.options)
-		if err != nil {
-			return
-		}
+	var runner tracer.CompiledFunc
+	runner, err = pkg.cacheSampleBool.Runner(nil, args)
+	if err != nil {
+		return
 	}
 	var outputs []values.Value
-	outputs, err = f.runner.Run(nil, args, f.pkg.Package.Tracer)
+	outputs, err = runner.Run(nil, args, pkg.handle.Tracer())
 	if err != nil {
 		return
 	}
@@ -284,25 +231,18 @@ func (f *SampleBool) Run(arg0 types.Atom[int64]) (_ types.Array[bool], err error
 	return out0, nil
 }
 
-func (f *SampleBool) String() string {
-	return fmt.Sprint(f.function)
-}
-
-// Run first compiles SampleUniformFloat64 for a given device and the given arguments.
-// Once compiled, the function is then run with these same arguments.
-// If the shape of the arguments change, the function will panic.
-func (f *SampleUniformFloat64) Run(arg0 types.Atom[int64]) (_ types.Array[float64], err error) {
+// SampleUniformFloat64 a million uniform float64s from a number generator.
+func (pkg *Package) SampleUniformFloat64(arg0 types.Atom[int64]) (_ types.Array[float64], err error) {
 	var args []values.Value = []values.Value{
 		arg0.Bridge().GXValue(), // seed int64
 	}
-	if f.runner == nil {
-		f.runner, err = tracer.Trace(f.pkg.Device, f.function.(*ir.FuncDecl), nil, args, f.pkg.options)
-		if err != nil {
-			return
-		}
+	var runner tracer.CompiledFunc
+	runner, err = pkg.cacheSampleUniformFloat64.Runner(nil, args)
+	if err != nil {
+		return
 	}
 	var outputs []values.Value
-	outputs, err = f.runner.Run(nil, args, f.pkg.Package.Tracer)
+	outputs, err = runner.Run(nil, args, pkg.handle.Tracer())
 	if err != nil {
 		return
 	}
@@ -315,8 +255,4 @@ func (f *SampleUniformFloat64) Run(arg0 types.Atom[int64]) (_ types.Array[float6
 	out0 := types.NewArray[float64](out0Value)
 
 	return out0, nil
-}
-
-func (f *SampleUniformFloat64) String() string {
-	return fmt.Sprint(f.function)
 }

@@ -18,7 +18,6 @@ import (
 	"go/ast"
 	"slices"
 
-	"github.com/pkg/errors"
 	"github.com/gx-org/gx/build/fmterr"
 )
 
@@ -69,10 +68,6 @@ func idents(done map[string]bool, expr Expr) ([]*ValueRef, error) {
 	switch exprT := expr.(type) {
 	case *ValueRef:
 		return appendIdent(done, nil, exprT), nil
-	case *NumberInt:
-		return nil, nil
-	case *NumberFloat:
-		return nil, nil
 	case *NumberCastExpr:
 		return idents(done, exprT.X)
 	case *ParenExpr:
@@ -93,10 +88,8 @@ func idents(done map[string]bool, expr Expr) ([]*ValueRef, error) {
 			all = appendIdent(done, all, id)
 		}
 		return all, nil
-	case AtomicValue:
-		return nil, nil
 	default:
-		return nil, errors.Errorf("cannot get constant expression dependencies: expression %T not supported", expr)
+		return nil, nil
 	}
 }
 

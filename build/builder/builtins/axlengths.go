@@ -23,7 +23,17 @@ import (
 
 type axlengthsFunc struct{}
 
-var _ ir.FuncImpl = (*appendFunc)(nil)
+var axLengthsF = &axlengthsFunc{}
+
+// AxLengths returns the append function builtin.
+func AxLengths() ir.FuncImpl {
+	return axLengthsF
+}
+
+// Name of the builtin function.
+func (*axlengthsFunc) Name() string {
+	return "axlengths"
+}
 
 // BuildFuncType builds the type of a function given how it is called.
 func (f *axlengthsFunc) BuildFuncType(fetcher ir.Fetcher, call *ir.CallExpr) (*ir.FuncType, error) {

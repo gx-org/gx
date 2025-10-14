@@ -20,49 +20,62 @@ import (
 
 	"github.com/pkg/errors"
 	"github.com/gx-org/gx/api/values"
+	"github.com/gx-org/gx/build/builder/builtins"
 	"github.com/gx-org/gx/build/fmterr"
 	"github.com/gx-org/gx/build/ir"
 	"github.com/gx-org/gx/internal/base/scope"
 	"github.com/gx-org/gx/interp/context"
 	"github.com/gx-org/gx/interp/elements"
 	"github.com/gx-org/gx/interp/evaluator"
+	"github.com/gx-org/gx/interp/fun"
 )
 
-func (itn *intern) InitBuiltins(ctx *context.Context, scope *scope.RWScope[ir.Element]) error {
-	fitp := &FileScope{itp: itn.itp, initScope: ctx.File(), ctx: ctx}
-	if err := fitp.defineBoolConstant(scope, ctx, ir.FalseStorage()); err != nil {
+// InitBuiltins initializes the builtins.
+func (itp *Interpreter) InitBuiltins(ctx *context.Context, scope *scope.RWScope[ir.Element]) error {
+	if err := itp.defineBoolConstant(scope, ctx, ir.FalseStorage()); err != nil {
 		return err
 	}
-	if err := fitp.defineBoolConstant(scope, ctx, ir.TrueStorage()); err != nil {
+	if err := itp.defineBoolConstant(scope, ctx, ir.TrueStorage()); err != nil {
 		return err
 	}
-	for name, impl := range map[string]ir.FuncImpl{
-		"append":    appendFunc{},
-		"axlengths": axlengthsFunc{},
-		"set":       setFunc{},
-		"trace":     traceFunc{},
+	for _, impl := range []ir.FuncImpl{
+		appendF,
+		axlengthsF,
+		setF,
+		traceF,
 	} {
-		irFunc := &ir.FuncBuiltin{
-			Src:  &ast.FuncDecl{Name: &ast.Ident{Name: name}},
+		irFunc := &ir.FuncKeyword{
+			ID:   &ast.Ident{Name: impl.Name()},
 			Impl: impl,
 		}
-		var err error
-		irFunc.FType, err = impl.BuildFuncType(nil, nil)
-		if err != nil {
-			return err
-		}
-		elFunc := itn.itp.eval.NewFunc(itn.itp, irFunc, nil)
-		scope.Define(name, elFunc)
+		elFunc := itp.eval.NewFunc(irFunc, nil)
+		scope.Define(impl.Name(), elFunc)
+	}
+	for _, tp := range []ir.Type{
+		ir.AnyType(),
+		ir.BoolType(),
+		ir.Bfloat16Type(),
+		ir.Float32Type(),
+		ir.Float64Type(),
+		ir.Int32Type(),
+		ir.Int64Type(),
+		ir.StringType(),
+		ir.Uint32Type(),
+		ir.Uint64Type(),
+		ir.IntLenType(),
+		ir.IntIndexType(),
+	} {
+		scope.Define(tp.String(), tp)
 	}
 	return nil
 }
 
-func (fitp *FileScope) defineBoolConstant(scope *scope.RWScope[ir.Element], ctx *context.Context, val ir.StorageWithValue) error {
+func (itp *Interpreter) defineBoolConstant(scope *scope.RWScope[ir.Element], ctx *context.Context, val ir.StorageWithValue) error {
 	gxValue, err := values.AtomBoolValue(ir.BoolType(), val.Value(nil).(*ir.AtomicValueT[bool]).Val)
 	if err != nil {
 		return err
 	}
-	el, err := fitp.itp.eval.ElementFromAtom(fitp, val.Value(nil), gxValue)
+	el, err := itp.eval.ElementFromAtom(ctx.File(), val.Value(nil), gxValue)
 	if err != nil {
 		return err
 	}
@@ -70,84 +83,65 @@ func (fitp *FileScope) defineBoolConstant(scope *scope.RWScope[ir.Element], ctx 
 	return nil
 }
 
-type appendFunc struct{}
-
-var _ ir.FuncImpl = (*appendFunc)(nil)
-
-func (appendFunc) BuildFuncType(fetcher ir.Fetcher, call *ir.CallExpr) (*ir.FuncType, error) {
-	return &ir.FuncType{CompEval: true}, nil
+type builtinFunc struct {
+	ir.FuncImpl
+	impl FuncBuiltin
 }
 
-func (appendFunc) Implementation() any {
-	return FuncBuiltin(appendImpl)
+func (bf builtinFunc) Implementation() any {
+	return bf.impl
 }
 
-func appendImpl(ctx evaluator.Context, call elements.CallAt, fn Func, irFunc *ir.FuncBuiltin, args []ir.Element) ([]ir.Element, error) {
-	slice, ok := args[0].(*Slice)
+var (
+	appendF = &builtinFunc{
+		FuncImpl: builtins.Append(),
+		impl:     appendImpl,
+	}
+	axlengthsF = &builtinFunc{
+		FuncImpl: builtins.AxLengths(),
+		impl:     axlengthsImpl,
+	}
+	setF = &builtinFunc{
+		FuncImpl: builtins.Set(),
+		impl:     setImpl,
+	}
+	traceF = &builtinFunc{
+		FuncImpl: builtins.Trace(),
+		impl:     traceImpl,
+	}
+)
+
+func appendImpl(env evaluator.Env, call elements.CallAt, fn fun.Func, irFunc *ir.FuncBuiltin, args []ir.Element) ([]ir.Element, error) {
+	slice, ok := args[0].(*elements.Slice)
 	if !ok {
-		return nil, errors.Errorf("cannot cast %T to %s", args[0], reflect.TypeFor[*Slice]())
+		return nil, errors.Errorf("cannot cast %T to %s", args[0], reflect.TypeFor[*elements.Slice]())
 	}
 	els := append([]ir.Element{}, slice.Elements()...)
 	els = append(els, args[1:]...)
-	return []ir.Element{NewSlice(slice.Type(), els)}, nil
+	return []ir.Element{elements.NewSlice(slice.Type(), els)}, nil
 }
 
-type axlengthsFunc struct{}
-
-var _ ir.FuncImpl = (*axlengthsFunc)(nil)
-
-func (axlengthsFunc) BuildFuncType(fetcher ir.Fetcher, call *ir.CallExpr) (*ir.FuncType, error) {
-	return &ir.FuncType{CompEval: true}, nil
-}
-
-func (axlengthsFunc) Implementation() any {
-	return FuncBuiltin(axlengthsImpl)
-}
-
-func axlengthsImpl(ctx evaluator.Context, call elements.CallAt, fn Func, irFunc *ir.FuncBuiltin, args []ir.Element) ([]ir.Element, error) {
-	array, ok := args[0].(WithAxes)
+func axlengthsImpl(env evaluator.Env, call elements.CallAt, fn fun.Func, irFunc *ir.FuncBuiltin, args []ir.Element) ([]ir.Element, error) {
+	file := env.ExprEval().File()
+	array, ok := args[0].(elements.WithAxes)
 	if !ok {
-		return nil, fmterr.Internalf(ctx.File().FileSet(), call.Node().Src, "cannot get the shape of %T: not supported", args[0])
+		return nil, fmterr.Internalf(file.FileSet(), call.Node().Src, "cannot get the shape of %T: not supported", args[0])
 	}
-	shape, err := array.Axes(ctx)
+	shape, err := array.Axes(env.ExprEval())
 	if err != nil {
-		return nil, fmterr.Position(ctx.File().FileSet(), call.Node().Src, err)
+		return nil, fmterr.Position(file.FileSet(), call.Node().Src, err)
 	}
 	return []ir.Element{shape}, nil
 }
 
-type setFunc struct{}
-
-var _ ir.FuncImpl = (*setFunc)(nil)
-
-func (setFunc) BuildFuncType(fetcher ir.Fetcher, call *ir.CallExpr) (*ir.FuncType, error) {
-	return nil, nil
-}
-
-func (setFunc) Implementation() any {
-	return FuncBuiltin(setImpl)
-}
-
-func setImpl(ctx evaluator.Context, call elements.CallAt, fn Func, irFunc *ir.FuncBuiltin, args []ir.Element) ([]ir.Element, error) {
-	out, err := ctx.Evaluator().ArrayOps().Set(ctx, call.Node(), args[0], args[1], args[2])
+func setImpl(env evaluator.Env, call elements.CallAt, fn fun.Func, irFunc *ir.FuncBuiltin, args []ir.Element) ([]ir.Element, error) {
+	out, err := env.Evaluator().ArrayOps().Set(env.ExprEval(), call.Node(), args[0], args[1], args[2])
 	if err != nil {
 		return nil, err
 	}
 	return []ir.Element{out}, nil
 }
 
-type traceFunc struct{}
-
-var _ ir.FuncImpl = (*traceFunc)(nil)
-
-func (traceFunc) BuildFuncType(fetcher ir.Fetcher, call *ir.CallExpr) (*ir.FuncType, error) {
-	return nil, nil
-}
-
-func (traceFunc) Implementation() any {
-	return FuncBuiltin(traceImpl)
-}
-
-func traceImpl(ctx evaluator.Context, call elements.CallAt, fn Func, irFunc *ir.FuncBuiltin, args []ir.Element) ([]ir.Element, error) {
-	return nil, ctx.Evaluator().Trace(ctx, call.Node(), args)
+func traceImpl(env evaluator.Env, call elements.CallAt, fn fun.Func, irFunc *ir.FuncBuiltin, args []ir.Element) ([]ir.Element, error) {
+	return nil, env.Evaluator().Trace(env.ExprEval(), call.Node(), args)
 }

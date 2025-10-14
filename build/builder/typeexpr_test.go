@@ -115,7 +115,7 @@ func TestResolveType(t *testing.T) {
 					got = "\n<no error>"
 				}
 				if !strings.Contains(got, test.err) {
-					t.Errorf("got error:%s\nbut want an error containing %s", got, test.err)
+					t.Errorf("unexpected error for %q got error: %s\nbut want an error containing %s", test.code, got, test.err)
 					return
 				}
 				return

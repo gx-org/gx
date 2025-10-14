@@ -68,16 +68,16 @@ func main() {
 	for _, file := range bnd.Files() {
 		bindingPath := file.BuildFilePath(rootFolder, pkg.IR())
 		if err := os.MkdirAll(filepath.Dir(bindingPath), 0755); err != nil {
-			exit("cannot create target folder: %v", err)
+			exit("cannot create target folder for %s: %v", bindingPath, err)
 		}
 		f, err := os.Create(bindingPath)
 		if err != nil {
-			exit("cannot create target file: %v", err)
+			exit("cannot create target file %s: %v", bindingPath, err)
 		}
 		defer f.Close()
 
 		if err := file.WriteBindings(f); err != nil {
-			exit("%+v", err)
+			exit("error while writing %s: %+v", bindingPath, err)
 		}
 	}
 }

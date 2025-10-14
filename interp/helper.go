@@ -17,6 +17,7 @@ package interp
 import (
 	"github.com/pkg/errors"
 	"github.com/gx-org/gx/build/ir"
+	"github.com/gx-org/gx/interp/fun"
 )
 
 // PkgFuncFromElement extracts a function declaration from an element.
@@ -34,7 +35,7 @@ func PkgFuncFromElement(el ir.Element) (ir.PkgFunc, error) {
 
 // FuncFromElement extracts a function declaration from an element.
 func FuncFromElement(el ir.Element) (ir.Func, error) {
-	fEl, ok := el.(Func)
+	fEl, ok := el.(fun.Func)
 	if !ok {
 		return nil, errors.Errorf("cannot convert element %T to a function", el)
 	}
@@ -49,7 +50,7 @@ func FuncDeclFromElement(el ir.Element) (*ir.FuncDecl, error) {
 	}
 	fDecl, ok := fun.(*ir.FuncDecl)
 	if !ok {
-		return nil, errors.Errorf("%s is not a GX user function", fun.Name())
+		return nil, errors.Errorf("%s is not a GX user function", fun.FuncType().String())
 	}
 	return fDecl, nil
 }

@@ -20,27 +20,60 @@ import (
 	"strings"
 )
 
-// Errors is a set of errors.
-type Errors struct {
-	errs []error
-}
+type (
+	contextError struct {
+		f      func(error) error
+		errors Errors
+	}
+
+	// Errors is a set of errors.
+	Errors struct {
+		stack []contextError
+		errs  []error
+	}
+)
 
 // NewAppender returns a new appender to collect errors.
 func (errs *Errors) NewAppender(fset *token.FileSet) *Appender {
 	return &Appender{errors: errs, fset: FileSet{FSet: fset}}
 }
 
+// Push a new context in the error stack.
+func (errs *Errors) Push(f func(error) error) {
+	errs.stack = append(errs.stack, contextError{f: f})
+}
+
+// Pop removes the last error context in the stack.
+func (errs *Errors) Pop() {
+	last := errs.stack[len(errs.stack)-1]
+	errs.stack = errs.stack[:len(errs.stack)-1]
+	if last.errors.Empty() {
+		return
+	}
+	errs.Append(last.f(&last.errors))
+}
+
 // Append an error to the list of errors.
-func (errs *Errors) Append(err error) {
-	errs.errs = append(errs.errs, err)
+func (errs *Errors) Append(err error) bool {
+	if len(errs.stack) == 0 {
+		errs.errs = append(errs.errs, err)
+	} else {
+		errs.stack[len(errs.stack)-1].errors.Append(err)
+	}
+	return false
 }
 
 // Empty returns true if no error has been declared.
 func (errs *Errors) Empty() bool {
-	if errs == nil {
-		return true
+	if len(errs.errs) > 0 {
+		return false
 	}
-	return len(errs.errs) == 0
+	for _, st := range errs.stack {
+		if !st.errors.Empty() {
+			return false
+		}
+	}
+	return true
 }
 
 // Error returns the current set of errors as a string.
