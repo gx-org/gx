@@ -205,7 +205,7 @@ func (n *callExpr) buildMacroCall(rscope resolveScope, compEval *compileEvaluato
 	rscope.Err().Push(fmterr.PosPrefixWith(rscope.fileScope().pkg().fset, callExpr.Src.Fun.Pos(), "error while calling macro %s:\n", callExpr.String()))
 	defer rscope.Err().Pop()
 
-	synDecl, synScope, ok := buildSyntheticFuncSig(rscope.fileScope(), fnBuilder, nil)
+	synDecl, synScope, ok := buildSyntheticFuncSig(rscope.fileScope(), expr.Source(), fnBuilder, nil)
 	if !ok {
 		return invalidExpr(), false
 	}

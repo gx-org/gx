@@ -41,12 +41,12 @@ func newFile(pkg *basePackage, name string, src *ast.File) *file {
 	return f
 }
 
-func processFile(pkgctx *pkgProcScope, name string, src *ast.File) bool {
+func processFile(pkgctx *pkgProcScope, name string, src *ast.File) (*file, bool) {
 	f := newFile(pkgctx.pkg(), name, src)
 	if err := f.pkg.setOrCheckName(src.Name); err != nil {
 		pkgctx.Err().Appendf(src.Name, "%q is an invalid package name: %v", src.Name, err)
 	}
-	return f.processDecls(pkgctx.newFilePScope(f), src.Decls)
+	return f, f.processDecls(pkgctx.newFilePScope(f), src.Decls)
 }
 
 func (f *file) processDecls(pscope procScope, decls []ast.Decl) bool {

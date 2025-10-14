@@ -138,19 +138,6 @@ func (s *pkgProcScope) newFilePScope(f *file) *fileProcScope {
 	return &fileProcScope{pkgProcScope: s, f: f}
 }
 
-func (s *fileProcScope) declareFileName(src *ast.Ident) (ok bool) {
-	prevPkg, exist := s.decls().declarations.Load(src.Name)
-	if exist {
-		return appendRedeclaredError(s.Err(), src.Name, src, prevPkg.ident())
-	}
-	prevFile := s.fileNames[src.Name]
-	if prevFile != nil {
-		return appendRedeclaredError(s.Err(), src.Name, src, prevFile)
-	}
-	s.fileNames[src.Name] = src
-	return true
-}
-
 func (s *fileProcScope) pkgScope() *pkgProcScope {
 	return s.pkgProcScope
 }

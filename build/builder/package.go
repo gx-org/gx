@@ -28,6 +28,7 @@ import (
 
 	"github.com/pkg/errors"
 	"github.com/gx-org/gx/base/ordered"
+	"github.com/gx-org/gx/base/uname"
 	"github.com/gx-org/gx/build/fmterr"
 	"github.com/gx-org/gx/build/ir"
 )
@@ -56,20 +57,24 @@ func (lb *lastBuild) String() string {
 type basePackage struct {
 	bld *Builder
 
-	name  *ast.Ident
-	path  string
-	fset  *token.FileSet
-	files *ordered.Map[string, *file]
-	last  *lastBuild
+	name      *ast.Ident
+	path      string
+	fset      *token.FileSet
+	files     *ordered.Map[string, *file]
+	last      *lastBuild
+	unames    *uname.Unique
+	macroRoot *uname.Root
 }
 
 func newBasePackage(b *Builder, path string) *basePackage {
 	pkg := &basePackage{
-		bld:   b,
-		path:  path,
-		fset:  token.NewFileSet(),
-		files: ordered.NewMap[string, *file](),
+		bld:    b,
+		path:   path,
+		fset:   token.NewFileSet(),
+		files:  ordered.NewMap[string, *file](),
+		unames: uname.New(),
 	}
+	pkg.macroRoot = pkg.unames.Root("_macro")
 	pkg.last = &lastBuild{
 		decls: ordered.NewMap[string, processNode](),
 		pkg:   pkg.newPackageIR(),
@@ -182,7 +187,8 @@ func (pkg *FilePackage) buildFile(pscope *pkgProcScope, fs fs.FS, filename strin
 	if err != nil {
 		return pscope.Err().Append(errors.Errorf("cannot parse file %s:\n\t%v", filename, err))
 	}
-	return processFile(pscope, filename, fileDecl)
+	_, ok := processFile(pscope, filename, fileDecl)
+	return ok
 }
 
 // ImportIR imports package definitions from a GX intermediate representation.
@@ -248,7 +254,7 @@ func (pkg *IncrementalPackage) Build(src string) error {
 	}
 	errs := &fmterr.Errors{}
 	pscope := newPackageProcScope(true, pkg.basePackage, errs)
-	if !processFile(pscope, name, astFile) {
+	if _, ok := processFile(pscope, name, astFile); !ok {
 		return errs
 	}
 	if _, ok := pkg.resolveBuild(pscope); !ok {

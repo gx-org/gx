@@ -197,19 +197,26 @@ func (f *syntheticFunc) checkSyntheticSignature(fScope *fileResolveScope, fInput
 	return true
 }
 
-func buildSyntheticFuncSig(fScope *fileResolveScope, astBuilder ir.FuncASTBuilder, target ir.PkgFunc) (*ir.FuncDecl, *synthResolveScope, bool) {
-	_, synDecl, ok := astBuilder.BuildDecl(target)
+func buildSyntheticFuncSig(parentScope *fileResolveScope, srcloc ast.Node, astBuilder ir.FuncASTBuilder, target ir.PkgFunc) (*ir.FuncDecl, *synthResolveScope, bool) {
+	macroFile, synDecl, ok := astBuilder.BuildDecl(target)
 	if !ok {
 		return nil, nil, false
 	}
 	src, synDecl, err := formatFunction(synDecl)
 	if err != nil {
-		return nil, nil, fScope.Err().Append(err)
+		return nil, nil, parentScope.Err().Append(err)
 	}
-	pScope := fScope.fileScope().newFilePScope(fScope.bFile())
-	fScope.Err().Push(fmterr.PrefixWith("cannot compile synthetic signature:\n%s\n", src))
-	defer fScope.Err().Pop()
-	ft, ok := processFuncType(pScope, synDecl.Type, synDecl.Recv, false)
+	pMacroScope, ok := newMacroProcScope(parentScope, srcloc, macroFile)
+	if !ok {
+		return nil, nil, false
+	}
+	pMacroScope.Err().Push(fmterr.PrefixWith("cannot compile synthetic signature:\n%s\n", src))
+	defer pMacroScope.Err().Pop()
+	ft, ok := processFuncType(pMacroScope.filePScope(), synDecl.Type, synDecl.Recv, false)
+	if !ok {
+		return nil, nil, false
+	}
+	fScope, ok := pMacroScope.newResolveScope()
 	if !ok {
 		return nil, nil, false
 	}
@@ -229,7 +236,7 @@ func buildSyntheticFuncSig(fScope *fileResolveScope, astBuilder ir.FuncASTBuilde
 }
 
 func (f *syntheticFunc) buildSignatureFScope(fScope *fileResolveScope) (ir.PkgFunc, *synthResolveScope, bool) {
-	synDecl, synScope, ok := buildSyntheticFuncSig(fScope, f.fnBuilder, f.underFun)
+	synDecl, synScope, ok := buildSyntheticFuncSig(fScope, f.src, f.fnBuilder, f.underFun)
 	if !ok {
 		return nil, nil, false
 	}
