@@ -49,7 +49,7 @@ jobs:
       run: sudo apt install -y libabsl-dev
 
     - name: Update GX dependencies to the latest commit
-      run: go get github.com/gx-org/backend@latest
+      run: go get github.com/gx-org/backend@main
 
     - name: Tidy (best effort)
       run: go mod tidy || true
