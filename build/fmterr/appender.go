@@ -15,7 +15,6 @@
 package fmterr
 
 import (
-	"errors"
 	"go/ast"
 )
 
@@ -26,42 +25,26 @@ type (
 		Err() *Appender
 	}
 
-	contextError struct {
-		f      func(error) error
-		errors Errors
-	}
-
 	// Appender appends errors to a set within the context of a FileSet.
 	Appender struct {
-		stack  []contextError
 		errors *Errors
 		fset   FileSet
 	}
 )
 
+// Append an error to the list of errors.
+func (app *Appender) Append(err error) bool {
+	return app.errors.Append(err)
+}
+
 // Push a new context in the error stack.
 func (app *Appender) Push(f func(error) error) {
-	app.stack = append(app.stack, contextError{f: f})
+	app.errors.Push(f)
 }
 
 // Pop removes the last error context in the stack.
 func (app *Appender) Pop() {
-	last := app.stack[len(app.stack)-1]
-	app.stack = app.stack[:len(app.stack)-1]
-	if last.errors.Empty() {
-		return
-	}
-	app.Append(last.f(&last.errors))
-}
-
-// Append an error to the list of errors.
-func (app *Appender) Append(err error) bool {
-	if len(app.stack) == 0 {
-		app.errors.Append(err)
-	} else {
-		app.stack[len(app.stack)-1].errors.Append(err)
-	}
-	return false
+	app.errors.Pop()
 }
 
 // AppendAt appends an existing error at a given position.
@@ -91,29 +74,12 @@ func (app *Appender) Pos(node ast.Node) *PosAppender {
 
 // Errors returns the set of errors or nil if no errors has been appended.
 func (app *Appender) Errors() *Errors {
-	if len(app.stack) > 0 {
-		var errs Errors
-		errs.Append(Internal(errors.New("cannot fetch errors while the context stack is non-empty")))
-		return &errs
-	}
-	if app.errors.Empty() {
-		return nil
-	}
 	return app.errors
 }
 
 // Empty returns true if no errors has been appended.
 func (app *Appender) Empty() bool {
-	empty := app.errors.Empty()
-	if !empty {
-		return false
-	}
-	for _, app := range app.stack {
-		if !app.errors.Empty() {
-			return false
-		}
-	}
-	return true
+	return app.errors.Empty()
 }
 
 // String representation of the error.
