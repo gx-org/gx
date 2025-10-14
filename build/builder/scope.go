@@ -76,7 +76,7 @@ func (ev *compileEvaluator) File() *ir.File {
 
 func (ev *compileEvaluator) BuildExpr(src ast.Expr) (ir.Expr, bool) {
 	file := ev.scope.fileScope().bFile()
-	pscope := ev.scope.fileScope().pkgProcScope.newScope(file)
+	pscope := ev.scope.fileScope().newFilePScope(file)
 	expr, ok := processExpr(pscope, src)
 	if !ok {
 		return nil, false

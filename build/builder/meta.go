@@ -128,7 +128,7 @@ func astVisitBody(body *ast.BlockStmt, w io.Writer) (err error) {
 func buildIRBody(mScope *synthResolveScope, ext *ir.FuncDecl, compEval *compileEvaluator, src string, body *ast.BlockStmt) (ok bool) {
 	fScope := mScope.fileScope()
 	pkgPScope := fScope.pkgResolveScope.pkgProcScope
-	pScope := pkgPScope.newScope(fScope.bFile())
+	pScope := pkgPScope.newFilePScope(fScope.bFile())
 	pScope.Err().Push(fmterr.PrefixWith("cannot compile synthetic body from source:\n%s\n", gxfmt.Number(src)))
 	defer pScope.Err().Pop()
 	bBody, ok := processBlockStmt(pScope, body)
@@ -172,7 +172,7 @@ type syntheticFunc struct {
 }
 
 func (f *syntheticFunc) buildSignature(pkgScope *pkgResolveScope) (ir.Func, iFuncResolveScope, bool) {
-	fScope, ok := pkgScope.newFileScope(f.bFile)
+	fScope, ok := pkgScope.newFileRScope(f.bFile)
 	if !ok {
 		return nil, nil, false
 	}
@@ -206,7 +206,7 @@ func buildSyntheticFuncSig(fScope *fileResolveScope, astBuilder ir.FuncASTBuilde
 	if err != nil {
 		return nil, nil, fScope.Err().Append(err)
 	}
-	pScope := fScope.fileScope().newScope(fScope.bFile())
+	pScope := fScope.fileScope().newFilePScope(fScope.bFile())
 	fScope.Err().Push(fmterr.PrefixWith("cannot compile synthetic signature:\n%s\n", src))
 	defer fScope.Err().Pop()
 	ft, ok := processFuncType(pScope, synDecl.Type, synDecl.Recv, false)

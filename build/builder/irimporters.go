@@ -54,7 +54,7 @@ func (f *importedFunc) buildAnnotations(fScope iFuncResolveScope, extF *irFunc) 
 }
 
 func (f *importedFunc) buildSignature(pkgScope *pkgResolveScope) (ir.Func, iFuncResolveScope, bool) {
-	fScope, ok := pkgScope.newFileScope(f.file)
+	fScope, ok := pkgScope.newFileRScope(f.file)
 	if !ok {
 		return f.fn, nil, false
 	}

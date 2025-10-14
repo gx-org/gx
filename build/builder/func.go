@@ -244,7 +244,7 @@ func (f *funcDecl) resolveOrder() int {
 }
 
 func (f *funcDecl) buildSignature(pkgScope *pkgResolveScope) (ir.Func, iFuncResolveScope, bool) {
-	fScope, ok := pkgScope.newFileScope(f.bFile)
+	fScope, ok := pkgScope.newFileRScope(f.bFile)
 	if !ok {
 		return nil, nil, false
 	}
@@ -291,7 +291,7 @@ func (bFile *file) processBuiltinFunc(scope procScope, src *ast.FuncDecl, compEv
 }
 
 func (f *funcBuiltin) buildSignature(pkgScope *pkgResolveScope) (ir.Func, iFuncResolveScope, bool) {
-	fileScope, scopeOk := pkgScope.newFileScope(f.bFile)
+	fileScope, scopeOk := pkgScope.newFileRScope(f.bFile)
 	if !scopeOk {
 		return nil, nil, false
 	}

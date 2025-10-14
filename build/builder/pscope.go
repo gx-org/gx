@@ -125,7 +125,7 @@ type (
 		axisLengthScope() procAxLenScope
 	}
 
-	fileScope struct {
+	fileProcScope struct {
 		*pkgProcScope
 		f *file
 
@@ -134,11 +134,11 @@ type (
 	}
 )
 
-func (s *pkgProcScope) newScope(f *file) *fileScope {
-	return &fileScope{pkgProcScope: s, f: f}
+func (s *pkgProcScope) newFilePScope(f *file) *fileProcScope {
+	return &fileProcScope{pkgProcScope: s, f: f}
 }
 
-func (s *fileScope) declareFileName(src *ast.Ident) (ok bool) {
+func (s *fileProcScope) declareFileName(src *ast.Ident) (ok bool) {
 	prevPkg, exist := s.decls().declarations.Load(src.Name)
 	if exist {
 		return appendRedeclaredError(s.Err(), src.Name, src, prevPkg.ident())
@@ -151,23 +151,23 @@ func (s *fileScope) declareFileName(src *ast.Ident) (ok bool) {
 	return true
 }
 
-func (s *fileScope) pkgScope() *pkgProcScope {
+func (s *fileProcScope) pkgScope() *pkgProcScope {
 	return s.pkgProcScope
 }
 
-func (s *fileScope) file() *file {
+func (s *fileProcScope) file() *file {
 	return s.f
 }
 
-func (s *fileScope) decls() *decls {
+func (s *fileProcScope) decls() *decls {
 	return s.dcls
 }
 
-func (s *fileScope) processIdent(src *ast.Ident) (exprNode, bool) {
+func (s *fileProcScope) processIdent(src *ast.Ident) (exprNode, bool) {
 	return processIdentExpr(s, src)
 }
 
-func (s *fileScope) String() string {
+func (s *fileProcScope) String() string {
 	return fmt.Sprintf("errs: %s\n%s", s.errs.String(), s.pkgProcScope.String())
 }
 
@@ -186,7 +186,7 @@ type (
 	}
 )
 
-func (s *fileScope) axisLengthScope() procAxLenScope {
+func (s *fileProcScope) axisLengthScope() procAxLenScope {
 	return &axLenDefaultScope{procScope: s}
 }
 

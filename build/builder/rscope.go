@@ -202,7 +202,7 @@ type (
 
 var _ resolveScope = (*fileResolveScope)(nil)
 
-func (s *pkgResolveScope) newFileScope(f *file) (*fileResolveScope, bool) {
+func (s *pkgResolveScope) newFileRScope(f *file) (*fileResolveScope, bool) {
 	fScope := &fileResolveScope{
 		pkgResolveScope: s,
 		bF:              f,
