@@ -149,7 +149,6 @@ func (m *synthResolveScope) buildBody(fn *ir.FuncDecl, compEval *compileEvaluato
 	fn.Src.Body, ok = m.fnBuilder.BuildBody(compEval, fn)
 	if !ok {
 		return false
-
 	}
 	if fn.Src.Body == nil {
 		return true
