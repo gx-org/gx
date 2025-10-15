@@ -453,7 +453,7 @@ func vjpF(x float32) (float32, func(res float32) float32) {
 	return fwd0, selfVJPFunc
 }
 `,
-			Err: "has not been built yet",
+			Err: "invalid operation: operator * not defined on type func",
 		},
 	)
 }

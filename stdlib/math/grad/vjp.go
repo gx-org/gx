@@ -38,9 +38,8 @@ type (
 
 	vjpMacro struct {
 		cpevelements.CoreMacroElement
-		set         *ir.Macro
-		exprToName  map[ir.Expr]forwardValues
-		resultNames []string
+		set        *ir.Macro
+		exprToName map[ir.Expr]forwardValues
 
 		unames  *uname.Unique
 		fwdRoot *uname.Root
@@ -48,6 +47,8 @@ type (
 
 		fn     ir.PkgFunc
 		params []vjpParam
+
+		results *namedFields
 	}
 )
 
@@ -77,11 +78,10 @@ func (m vjpMacro) newMacro(fn ir.PkgFunc) (*vjpMacro, error) {
 	m.fn = fn
 	fType := m.fn.FuncType()
 	m.params = make([]vjpParam, fType.Params.Len())
-	var namedResultFields *ast.FieldList
-	m.resultNames, namedResultFields = m.nameResultFields(fType.Results.Src)
+	m.results = nameFields(m.unames, "res", fType.Results.Src)
 	for i, param := range fType.Params.Fields() {
 		wrt := newWRT(param)
-		backwardSig, err := m.buildBackwardSignature(fType, wrt, namedResultFields)
+		backwardSig, err := m.buildBackwardSignature(fType, wrt, m.results.fields)
 		if err != nil {
 			return nil, err
 		}
@@ -96,26 +96,6 @@ func (m vjpMacro) newMacro(fn ir.PkgFunc) (*vjpMacro, error) {
 
 func (m *vjpMacro) start() {
 	m.exprToName = make(map[ir.Expr]forwardValues)
-}
-
-func (m *vjpMacro) nameResultFields(results *ast.FieldList) ([]string, *ast.FieldList) {
-	all := ast.FieldList{
-		List: make([]*ast.Field, len(results.List)),
-	}
-	var names []string
-	for iField, field := range results.List {
-		named := *field
-		if len(named.Names) == 0 {
-			named.Names = []*ast.Ident{&ast.Ident{}}
-		}
-		for iName, name := range named.Names {
-			retName := uname.DefaultIdent(name, "res")
-			named.Names[iName] = m.unames.Ident(retName)
-			names = append(names, retName.Name)
-		}
-		all.List[iField] = &named
-	}
-	return names, &all
 }
 
 func concatFieldList(lists ...*ast.FieldList) *ast.FieldList {
@@ -181,8 +161,8 @@ func (m *vjpMacro) BuildDecl(ir.PkgFunc) (*ir.File, *ast.FuncDecl, bool) {
 
 func (sg *stmtVJP) buildVJPFunctionWRTFromAnn(grad ir.PkgFunc, param vjpParam) (*ast.FuncLit, bool) {
 	backwarder := sg.newExprBackwardVJP(param.wrt)
-	ret := &ast.ReturnStmt{Results: make([]ast.Expr, len(sg.macro.resultNames))}
-	for i, res := range sg.macro.resultNames {
+	ret := &ast.ReturnStmt{Results: make([]ast.Expr, len(sg.macro.results.names))}
+	for i, res := range sg.macro.results.names {
 		ret.Results[i] = buildMul(
 			&gradExprResult{
 				expr: &ast.Ident{Name: res},

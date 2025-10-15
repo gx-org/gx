@@ -40,21 +40,39 @@ func copyImportDecls(tgt *ast.File, src *ast.File) {
 	}
 }
 
+func ephemeralPkgScope(fscope *fileResolveScope, src ast.Node, pkgPath string) (*pkgResolveScope, bool) {
+	pkg, err := fscope.pkg().bld.importPath(pkgPath)
+	if err != nil {
+		return nil, fscope.Err().AppendInternalf(src, "cannot import %s: %v", pkgPath, err)
+	}
+	base := pkg.base()
+	pscope := &pkgProcScope{
+		pkgScope: pkgScope{
+			bpkg: base,
+			errs: fscope.Err().Errors().NewAppender(base.fset),
+		},
+		dcls: base.last.builderState.dcls,
+	}
+	return &pkgResolveScope{
+		pkgProcScope: newPackageProcScope(false, pkg.base(), pscope.Err().Errors()),
+		state:        pkg.base().last.builderState,
+	}, true
+}
+
 func newMacroProcScope(pScope *fileResolveScope, src ast.Node, macroFile *ir.File) (*macroProcScope, bool) {
 	currentPackagePath := pScope.irBuilder().Pkg().FullName()
 	pkgPath := macroFile.Package.FullName()
-	var pscope *pkgProcScope
 	var rscope *pkgResolveScope
 	if currentPackagePath == pkgPath {
-		pscope = pScope.pkgProcScope
 		rscope = pScope.pkgResolveScope
 	} else {
-		pkg, err := pScope.pkg().bld.importPath(pkgPath)
-		if err != nil {
-			return nil, pScope.Err().AppendInternalf(src, "cannot import %s: %v", pkgPath, err)
+		var ok bool
+		rscope, ok = ephemeralPkgScope(pScope, src, pkgPath)
+		if !ok {
+			return nil, false
 		}
-		pscope = newPackageProcScope(false, pkg.base(), pScope.Err().Errors())
 	}
+	pscope := rscope.pkgProcScope
 	base := pscope.pkg().base()
 	astFile := &ast.File{
 		Name:    macroFile.Src.Name,
@@ -77,12 +95,5 @@ func (m *macroProcScope) filePScope() *fileProcScope {
 }
 
 func (m *macroProcScope) newResolveScope() (*fileResolveScope, bool) {
-	if m.rscope != nil {
-		return m.rscope.newFileRScope(m.file)
-	}
-	pkgRScope, ok := newPackageResolveScope(m.pkgProcScope)
-	if !ok {
-		return nil, false
-	}
-	return pkgRScope.newFileRScope(m.file)
+	return m.rscope.newFileRScope(m.file)
 }

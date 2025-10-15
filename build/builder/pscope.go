@@ -104,7 +104,7 @@ func newPackageProcScope(overwriteOk bool, pkg *basePackage, errs *fmterr.Errors
 		},
 	}
 	scope.dcls = newDecls(overwriteOk, scope)
-	for node := range pkg.last.decls.Values() {
+	for node := range pkg.last.decls().Values() {
 		scope.dcls.declarePackageName(node)
 	}
 	scope.dcls.methods = append([]*processNodeT[function]{}, pkg.last.methods...)

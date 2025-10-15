@@ -73,6 +73,8 @@ type (
 	bodyBuilder func(compEval *compileEvaluator) bool
 
 	pkgState struct {
+		// dcls are dc
+		dcls *decls
 		// nspcpace is the package namespace.
 		// Includes all the builtins as well as all package declarations.
 		nspc scope.Scope[processNode]
@@ -84,7 +86,7 @@ type (
 	// This context is used in the resolve phase.
 	pkgResolveScope struct {
 		*pkgProcScope
-		state pkgState
+		state *pkgState
 		// namedTypes maps build named types to IR named types.
 		namedTypes map[*namedType]*ir.NamedType
 		// methods is a mapping from type name to method name to method
@@ -96,6 +98,7 @@ func newPackageResolveScope(pscope *pkgProcScope) (*pkgResolveScope, bool) {
 	s := &pkgResolveScope{
 		pkgProcScope: pscope,
 		methods:      ordered.NewMap[*ir.NamedType, *ordered.Map[string, *irFunc]](),
+		state:        &pkgState{dcls: pscope.decls()},
 	}
 	pkg := pscope.bpkg.newPackageIR()
 	s.state.ibld = irb.New(s, pkg)
@@ -139,20 +142,6 @@ func (s *pkgResolveScope) buildStorageProcessNode(tok token.Token, store ir.Stor
 	pNode := newProcessNode(tok, store.NameDef(), store)
 	s.state.ibld.Set(pNode, store)
 	return pNode, true
-}
-
-func (s *pkgResolveScope) lastBuild() *lastBuild {
-	last := &lastBuild{
-		pkg:   s.state.ibld.Pkg(),
-		decls: s.dcls.declarations,
-	}
-	for methods := range s.methods.Values() {
-		for method := range methods.Values() {
-			last.methods = append(last.methods, method.pNode)
-		}
-	}
-	last.pkg.Decls = s.state.ibld.Decls()
-	return last
 }
 
 func (s *pkgResolveScope) packageInterpreter() *interp.Interpreter {
