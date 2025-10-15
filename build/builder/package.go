@@ -34,15 +34,36 @@ import (
 )
 
 type lastBuild struct {
-	decls   *ordered.Map[string, processNode]
-	methods []*processNodeT[function]
-	pkg     *ir.Package
+	builderState *pkgState
+	methods      []*processNodeT[function]
+	pkg          *ir.Package
+}
+
+func (s *pkgResolveScope) lastBuild() *lastBuild {
+	last := &lastBuild{
+		pkg:          s.state.ibld.Pkg(),
+		builderState: s.state,
+	}
+	for methods := range s.methods.Values() {
+		for method := range methods.Values() {
+			last.methods = append(last.methods, method.pNode)
+		}
+	}
+	last.pkg.Decls = s.state.ibld.Decls()
+	return last
+}
+
+func (lb *lastBuild) decls() *ordered.Map[string, processNode] {
+	if lb.builderState == nil {
+		return ordered.NewMap[string, processNode]()
+	}
+	return lb.builderState.dcls.declarations
 }
 
 func (lb *lastBuild) String() string {
 	s := &strings.Builder{}
 	fmt.Fprintln(s, "Declarations:")
-	for k, v := range lb.decls.Iter() {
+	for k, v := range lb.decls().Iter() {
 		fmt.Fprintf(s, "  %s: %T\n", k, v)
 	}
 	fmt.Fprintln(s, "Package:")
@@ -76,8 +97,7 @@ func newBasePackage(b *Builder, path string) *basePackage {
 	}
 	pkg.macroRoot = pkg.unames.Root("_macro")
 	pkg.last = &lastBuild{
-		decls: ordered.NewMap[string, processNode](),
-		pkg:   pkg.newPackageIR(),
+		pkg: pkg.newPackageIR(),
 	}
 	return pkg
 }

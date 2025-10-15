@@ -90,7 +90,14 @@ func (errs *Errors) Error() string {
 
 // Errors returns the list of all collected errors.
 func (errs *Errors) Errors() []error {
-	return errs.errs
+	all := append([]error{}, errs.errs...)
+	for _, st := range errs.stack {
+		if st.errors.Empty() {
+			continue
+		}
+		all = append(all, st.f(&st.errors))
+	}
+	return all
 }
 
 // ToError returns the errors as an error interface.
