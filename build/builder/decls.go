@@ -138,34 +138,35 @@ func (d *decls) resolveAll(pkgScope *pkgResolveScope) bool {
 	ok := true
 	// Build named types header. The underlying types are not being resolved yet.
 	var nTypes []*irNamedType
+	ibld := pkgScope.irBuilder()
 	for pNode := range iterToken[*namedType](d.declarations, filterTok(token.TYPE)) {
-		nType, nTypeOk := pNode.node.build(pkgScope.ibld)
-		pkgScope.ibld.Set(pNode, nType.ext)
+		nType, nTypeOk := pNode.node.build(ibld)
+		ibld.Set(pNode, nType.ext)
 		nTypes = append(nTypes, nType)
 		ok = ok && nTypeOk
 	}
 	// Build all variables.
 	for pNode := range iterToken[*varExpr](d.declarations, filterTok(token.VAR)) {
-		ext, vrOk := pNode.node.build(pkgScope.ibld)
-		pkgScope.ibld.Set(pNode, ext)
+		ext, vrOk := pNode.node.build(ibld)
+		ibld.Set(pNode, ext)
 		ok = ok && vrOk
 	}
 	// Build all constants.
 	var consts []bConstExpr
 	for pNode := range iterToken[iConstExpr](d.declarations, filterTok(token.CONST)) {
-		ext, cstOk := pNode.node.buildDeclaration(pkgScope.ibld)
+		ext, cstOk := pNode.node.buildDeclaration(ibld)
 		consts = append(consts, bConstExpr{
 			bConst: pNode.node,
 			ext:    ext,
 		})
-		pkgScope.ibld.Set(pNode, ext)
+		ibld.Set(pNode, ext)
 		ok = ok && cstOk
 	}
 	if !ok {
 		return false
 	}
 	for _, cst := range consts {
-		cstOk := cst.bConst.buildExpression(pkgScope.ibld, cst.ext)
+		cstOk := cst.bConst.buildExpression(ibld, cst.ext)
 		ok = ok && cstOk
 	}
 	// Build compeval function signature.
@@ -198,7 +199,8 @@ func (d *decls) buildFuncType(pkgScope *pkgResolveScope, pNode *processNodeT[fun
 	if !fnOk {
 		return nil, pkgScope.Err().AppendInternalf(irFn.Source(), "cannot cast %T to %s", irFn, reflect.TypeFor[*ir.PkgFunc]().Name())
 	}
-	pkgScope.ibld.Set(pNode, pkgFn)
+	ibld := pkgScope.irBuilder()
+	ibld.Set(pNode, pkgFn)
 	irf := &irFunc{
 		pNode:     pNode,
 		bFunc:     pNode.node,
@@ -207,7 +209,7 @@ func (d *decls) buildFuncType(pkgScope *pkgResolveScope, pNode *processNodeT[fun
 	}
 	recv := irf.scopeFunc.funcType().ReceiverField()
 	if recv == nil {
-		pkgScope.ibld.Register(funcDeclarator(irf.irFunc))
+		ibld.Register(funcDeclarator(irf.irFunc))
 		return irf, fnOk
 	}
 	nType, ok := recv.Type().(*ir.NamedType)

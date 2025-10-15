@@ -72,19 +72,23 @@ func irCache[N ir.Node](irs irBuilder, src ast.Node, bNode irb.Node[*pkgResolveS
 type (
 	bodyBuilder func(compEval *compileEvaluator) bool
 
-	// pkgResolveScope is a package and its namespace with an error accumulator.
-	// This context is used in the resolve phase.
-	pkgResolveScope struct {
-		*pkgProcScope
-		// namedTypes maps build named types to IR named types.
-		namedTypes map[*namedType]*ir.NamedType
-		// methods is a mapping from type name to method name to method
-		methods *ordered.Map[*ir.NamedType, *ordered.Map[string, *irFunc]]
+	pkgState struct {
 		// nspcpace is the package namespace.
 		// Includes all the builtins as well as all package declarations.
 		nspc scope.Scope[processNode]
 		// ibld keeps track of all IR that have been built until now.
 		ibld irBuilder
+	}
+
+	// pkgResolveScope is a package and its namespace with an error accumulator.
+	// This context is used in the resolve phase.
+	pkgResolveScope struct {
+		*pkgProcScope
+		state pkgState
+		// namedTypes maps build named types to IR named types.
+		namedTypes map[*namedType]*ir.NamedType
+		// methods is a mapping from type name to method name to method
+		methods *ordered.Map[*ir.NamedType, *ordered.Map[string, *irFunc]]
 	}
 )
 
@@ -94,16 +98,16 @@ func newPackageResolveScope(pscope *pkgProcScope) (*pkgResolveScope, bool) {
 		methods:      ordered.NewMap[*ir.NamedType, *ordered.Map[string, *irFunc]](),
 	}
 	pkg := pscope.bpkg.newPackageIR()
-	s.ibld = irb.New(s, pkg)
+	s.state.ibld = irb.New(s, pkg)
 	ok := true
 	for bFile := range pscope.bpkg.files.Values() {
-		irFile, fileOk := irBuild[*ir.File](s.ibld, bFile)
+		irFile, fileOk := irBuild[*ir.File](s.state.ibld, bFile)
 		ok = ok && fileOk
 		pkg.Files[irFile.Name()] = irFile
 	}
 	irBuiltins := make(map[string]processNode)
 	builtinFile := newFile(s.bpkg, "", &ast.File{})
-	_, builtinFileOk := irBuild[*ir.File](s.ibld, builtinFile)
+	_, builtinFileOk := irBuild[*ir.File](s.state.ibld, builtinFile)
 	ok = ok && builtinFileOk
 	builtins.Register(func(tok token.Token, stor ir.Storage) {
 		var bOk bool
@@ -117,7 +121,7 @@ func newPackageResolveScope(pscope *pkgProcScope) (*pkgResolveScope, bool) {
 		irBuiltins[stor.NameDef().Name] = pNode
 	})
 	builtinNS := scope.NewScopeWithValues(irBuiltins)
-	s.nspc = scope.NewReadOnly[processNode](builtinNS, pscope.decls())
+	s.state.nspc = scope.NewReadOnly[processNode](builtinNS, pscope.decls())
 	return s, ok
 }
 
@@ -127,19 +131,19 @@ func (s *pkgResolveScope) buildFuncProcessNode(bFile *file, store ir.Storage) (p
 		file: bFile,
 		fn:   fn,
 	})
-	_, ok := irBuild[*ir.FuncBuiltin](s.ibld, pNode)
+	_, ok := irBuild[*ir.FuncBuiltin](s.state.ibld, pNode)
 	return pNode, ok
 }
 
 func (s *pkgResolveScope) buildStorageProcessNode(tok token.Token, store ir.Storage) (processNode, bool) {
 	pNode := newProcessNode(tok, store.NameDef(), store)
-	s.ibld.Set(pNode, store)
+	s.state.ibld.Set(pNode, store)
 	return pNode, true
 }
 
 func (s *pkgResolveScope) lastBuild() *lastBuild {
 	last := &lastBuild{
-		pkg:   s.ibld.Pkg(),
+		pkg:   s.state.ibld.Pkg(),
 		decls: s.dcls.declarations,
 	}
 	for methods := range s.methods.Values() {
@@ -147,14 +151,14 @@ func (s *pkgResolveScope) lastBuild() *lastBuild {
 			last.methods = append(last.methods, method.pNode)
 		}
 	}
-	last.pkg.Decls = s.ibld.Decls()
+	last.pkg.Decls = s.state.ibld.Decls()
 	return last
 }
 
 func (s *pkgResolveScope) packageInterpreter() *interp.Interpreter {
 	hostEval := compeval.NewHostEvaluator(s.bpkg.builder())
-	pkg := s.ibld.Pkg()
-	pkg.Decls = s.ibld.Decls()
+	pkg := s.state.ibld.Pkg()
+	pkg.Decls = s.state.ibld.Decls()
 	var opts []options.PackageOption
 	for _, decl := range pkg.Decls.Vars {
 		for _, vr := range decl.Exprs {
@@ -174,8 +178,12 @@ func (s *pkgResolveScope) namedTypeIR(nType *namedType) *ir.NamedType {
 	return s.namedTypes[nType]
 }
 
+func (s *pkgResolveScope) irBuilder() irBuilder {
+	return s.state.ibld
+}
+
 func (s *pkgResolveScope) String() string {
-	return gxfmt.String(s.nspc)
+	return gxfmt.String(s.state.nspc)
 }
 
 type (
@@ -206,7 +214,7 @@ func (s *pkgResolveScope) newFileRScope(f *file) (*fileResolveScope, bool) {
 	fScope := &fileResolveScope{
 		pkgResolveScope: s,
 		bF:              f,
-		nspc:            scope.NewScope(s.nspc),
+		nspc:            scope.NewScope(s.state.nspc),
 		deps:            make(map[string]*importedPackage),
 	}
 	ok := true
@@ -217,7 +225,7 @@ func (s *pkgResolveScope) newFileRScope(f *file) (*fileResolveScope, bool) {
 		ok = ok && depOk
 	}
 	var fileOk bool
-	fScope.irF, fileOk = irBuild[*ir.File](s.ibld, fScope.bFile())
+	fScope.irF, fileOk = irBuild[*ir.File](s.state.ibld, fScope.bFile())
 	return fScope, ok && fileOk
 }
 
@@ -240,10 +248,6 @@ func (s *fileResolveScope) bFile() *file {
 
 func (s *fileResolveScope) irFile() *ir.File {
 	return s.irF
-}
-
-func (s *fileResolveScope) irBuilder() irBuilder {
-	return s.pkgResolveScope.ibld
 }
 
 func (s *fileResolveScope) find(name string) (processNode, bool) {
