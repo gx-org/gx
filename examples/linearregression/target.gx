@@ -1,0 +1,38 @@
+// Package linearregression implements a random target able to
+// generate samples that a linear regression learner
+// learns from. Because the target and the learner share the same
+// function class, the weights of the learner converge to the weights
+// of the target.
+//
+// See the Go package linearregression to run an experiment using this code.
+package linearregression
+
+import (
+	"num"
+	"rand"
+)
+
+// Size is the number of weights to learn in the target.
+var Size intlen
+
+// Target that the learner needs to converge to by learning from samples.
+type Target struct {
+	rnd     rand.Rand
+	weights [Size]float32
+	bias    float32
+}
+
+// NewTarget generates a new target given a random seed.
+func NewTarget(seed int64, bias float32) Target {
+	rnd := rand.New(rand.NewSource(seed))
+	rnd, weights := rnd.Float32([]intlen{Size})
+	return Target{rnd: rnd, weights: weights, bias: bias}
+}
+
+// Sample generates a new vector of features and the corresponding prediction.
+func (t Target) Sample() (t Target, features [Size]float32, prediction float32) {
+	newRnd, features := t.rnd.Float32([]intlen{Size})
+	prediction = float32(num.Sum(t.weights*features, []intidx{0})) + t.bias
+	t.rnd = newRnd
+	return
+}
