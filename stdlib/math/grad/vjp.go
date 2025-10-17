@@ -38,7 +38,6 @@ type (
 
 	vjpMacro struct {
 		cpevelements.CoreMacroElement
-		set        *ir.Macro
 		exprToName map[ir.Expr]forwardValues
 
 		unames  *uname.Unique
@@ -69,7 +68,6 @@ func VJP(file *ir.File, call *ir.CallExpr, macro *ir.Macro, args []ir.Element) (
 	return vjpMacro{
 		CoreMacroElement: cpevelements.MacroElement(macro, file, call),
 		unames:           unames,
-		set:              setMacro(macro),
 		fwdRoot:          unames.Root("fwd"),
 		bckRoot:          unames.Root("bck"),
 	}.newMacro(fnT)
@@ -240,7 +238,7 @@ func (m *vjpMacro) BuildBody(fetcher ir.Fetcher, _ ir.Func) (*ast.BlockStmt, boo
 	sg.registerFieldNames(fType.Receiver)
 	sg.registerFieldNames(fType.Params)
 	sg.registerFieldNames(fType.Results)
-	if ann := annotations.Get[*setAnnotation](m.fn, m.set); ann != nil {
+	if ann := annotations.Get[*setAnnotation](m.fn, setKey); ann != nil {
 		return m.buildBodyFromSetAnnotation(fetcher, sg, ann)
 	}
 	fnWithBody, ok := m.fn.(*ir.FuncDecl)

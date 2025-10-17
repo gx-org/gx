@@ -34,6 +34,8 @@ type tagStr struct {
 	s string
 }
 
+var tagKey = annotations.NewKey(tagStr{})
+
 func newTag() *tagStr {
 	return &tagStr{}
 }
@@ -50,15 +52,7 @@ func (ts *tagStr) String() string {
 	return ts.s
 }
 
-type tagger struct {
-	cpevelements.CoreMacroElement
-	fn  ir.PkgFunc
-	tag string
-}
-
-var _ ir.FuncAnnotator = (*tagger)(nil)
-
-func buildTagger(file *ir.File, call *ir.CallExpr, macro *ir.Macro, args []ir.Element) (ir.MacroElement, error) {
+func tagFunc(fetcher ir.Fetcher, annotator *ir.Annotator, fn ir.PkgFunc, call *ir.CallExpr, args []ir.Element) bool {
 	var tag string
 	switch argT := args[0].(type) {
 	case *elements.String:
@@ -68,22 +62,14 @@ func buildTagger(file *ir.File, call *ir.CallExpr, macro *ir.Macro, args []ir.El
 	default:
 		tag = fmt.Sprintf("%T", argT)
 	}
-	return &tagger{
-		CoreMacroElement: cpevelements.MacroElement(macro, file, call),
-		tag:              tag,
-	}, nil
-}
-
-func (m *tagger) Annotate(fetcher ir.Fetcher, fn ir.PkgFunc) bool {
-	tg := annotations.GetDef[*tagStr](fn, m.Key(), newTag)
-	tg.append(m.tag)
+	tg := annotations.GetDef[*tagStr](fn, tagKey, newTag)
+	tg.append(tag)
 	return true
 }
 
 type macroBuildReturn struct {
 	cpevelements.CoreMacroElement
-	tagMacro *ir.Macro
-	tagFn    ir.PkgFunc
+	tagFn ir.PkgFunc
 }
 
 var _ ir.FuncASTBuilder = (*macroBuildReturn)(nil)
@@ -91,7 +77,6 @@ var _ ir.FuncASTBuilder = (*macroBuildReturn)(nil)
 func newBuildReturn(file *ir.File, call *ir.CallExpr, macro *ir.Macro, args []ir.Element) (ir.MacroElement, error) {
 	return &macroBuildReturn{
 		CoreMacroElement: cpevelements.MacroElement(macro, file, call),
-		tagMacro:         macro.File().Package.FindFunc("Tag").(*ir.Macro),
 		tagFn:            args[0].(fun.Func).Func().(ir.PkgFunc),
 	}, nil
 }
@@ -101,9 +86,9 @@ func (m *macroBuildReturn) BuildDecl(origFn ir.PkgFunc) (*ir.File, *ast.FuncDecl
 }
 
 func (m *macroBuildReturn) BuildBody(fetcher ir.Fetcher, fn ir.Func) (*ast.BlockStmt, bool) {
-	ann := annotations.Get[*tagStr](m.tagFn, m.tagMacro)
+	ann := annotations.Get[*tagStr](m.tagFn, tagKey)
 	if ann == nil {
-		return nil, fetcher.Err().Appendf(m.Source(), "cannot find %s value on function %s", m.tagMacro.ShortString(), m.tagFn.ShortString())
+		return nil, fetcher.Err().Appendf(m.Source(), "cannot find tag value on function %s", m.tagFn.ShortString())
 	}
 	return &ast.BlockStmt{List: []ast.Stmt{
 		&ast.ReturnStmt{Results: []ast.Expr{
@@ -115,24 +100,26 @@ func (m *macroBuildReturn) BuildBody(fetcher ir.Fetcher, fn ir.Func) (*ast.Block
 	}}, true
 }
 
-func annotationPackage(tag, buildReturn **ir.Macro) testbuild.DeclarePackage {
+func annotationPackage(tag **ir.Annotator, buildReturn **ir.Macro) testbuild.DeclarePackage {
 	if tag == nil {
-		var tagM, buildReturnM *ir.Macro
-		tag, buildReturn = &tagM, &buildReturnM
+		var tagM *ir.Annotator
+		tag = &tagM
+		var buildReturnM *ir.Macro
+		buildReturn = &buildReturnM
 	}
 	return testbuild.DeclarePackage{
 		Src: `
 package annotation
 
-// gx:irmacro
+// gx:annotator
 func Tag(any)
 
 // gx:irmacro
 func BuildReturn(any) any
 `,
 		Post: func(pkg *ir.Package) {
-			*tag = pkg.FindFunc("Tag").(*ir.Macro)
-			(*tag).BuildSynthetic = ir.MacroImpl(buildTagger)
+			*tag = pkg.FindFunc("Tag").(*ir.Annotator)
+			(*tag).Annotate = ir.AnnotatorImpl(tagFunc)
 			*buildReturn = pkg.FindFunc("BuildReturn").(*ir.Macro)
 			(*buildReturn).BuildSynthetic = ir.MacroImpl(newBuildReturn)
 		},
@@ -140,7 +127,8 @@ func BuildReturn(any) any
 }
 
 func TestAnnotation(t *testing.T) {
-	var tag, buildReturn *ir.Macro
+	var tag *ir.Annotator
+	var buildReturn *ir.Macro
 	bld := testbuild.Run(t, annotationPackage(&tag, &buildReturn))
 	bld.Continue(t,
 		testbuild.Decl{
@@ -166,7 +154,7 @@ func f() int32 {
 							},
 						},
 					),
-					Anns: irh.Annotations(tag, &tagStr{s: "Hello"}),
+					Anns: irh.Annotations(tagKey, &tagStr{s: "Hello"}),
 				},
 			},
 		},
@@ -194,7 +182,7 @@ func f() int32 {
 							},
 						},
 					),
-					Anns: irh.Annotations(tag, &tagStr{s: "Hello, Bonjour"}),
+					Anns: irh.Annotations(tagKey, &tagStr{s: "Hello, Bonjour"}),
 				},
 			},
 		},
@@ -214,7 +202,7 @@ func f() int32
 						irh.Fields(),
 						irh.Fields(ir.Int32Type()),
 					),
-					Anns: irh.Annotations(tag, &tagStr{s: "Hello, Bonjour, func() int32"}),
+					Anns: irh.Annotations(tagKey, &tagStr{s: "Hello, Bonjour, func() int32"}),
 				},
 			},
 		},
@@ -235,7 +223,7 @@ func f() int32
 						irh.Fields(),
 						irh.Fields(ir.Int32Type()),
 					),
-					Anns: irh.Annotations(tag, &tagStr{s: "Source"}),
+					Anns: irh.Annotations(tagKey, &tagStr{s: "Source"}),
 				},
 				&ir.FuncDecl{
 					FType: irh.FuncType(
@@ -263,7 +251,7 @@ func f() string {
 	return annotation.Tag("Source")("Hi")
 }
 `,
-			Err: "macro annotation.Tag does not build functions",
+			Err: "gx:@annotation.Tag is an annotator only valid in a function annotation context",
 		},
 	)
 }

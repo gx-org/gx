@@ -27,6 +27,7 @@ type funcAttribute int
 const (
 	invalid funcAttribute = iota
 	irmacro
+	annotator
 	cpeval
 	none
 )
@@ -37,6 +38,8 @@ func (d funcAttribute) String() string {
 		return "none"
 	case irmacro:
 		return "irmacro"
+	case annotator:
+		return "annotator"
 	case cpeval:
 		return "compeval"
 	default:
@@ -47,9 +50,10 @@ func (d funcAttribute) String() string {
 const funcAttributePrefix = "gx:"
 
 var directives = map[string]funcAttribute{
-	irmacro.String(): irmacro,
-	cpeval.String():  cpeval,
-	none.String():    none,
+	irmacro.String():   irmacro,
+	annotator.String(): annotator,
+	cpeval.String():    cpeval,
+	none.String():      none,
 }
 
 func trimCommentPrefix(cmt *ast.Comment) string {

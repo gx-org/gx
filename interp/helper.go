@@ -37,7 +37,7 @@ func PkgFuncFromElement(el ir.Element) (ir.PkgFunc, error) {
 func FuncFromElement(el ir.Element) (ir.Func, error) {
 	fEl, ok := el.(fun.Func)
 	if !ok {
-		return nil, errors.Errorf("cannot convert element %T to a function", el)
+		return nil, errors.Errorf("%s is not a function", el.Type().String())
 	}
 	return fEl.Func(), nil
 }

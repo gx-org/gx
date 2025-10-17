@@ -9,9 +9,9 @@ func VJP(fn any) any
 func Func(fn any, wrtArg string) any
 
 // Set the gradient of a GX function.
-// gx:irmacro
+// gx:annotator
 func Set(gradF any) any
 
 // SetFor sets the gradient of a GX function with respect to a specific parameter, identified by its name.
-// gx:irmacro
-func SetFor(gradF any, parameter string) any
+// gx:annotator
+func SetFor(parameter string, gradF any) any

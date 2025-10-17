@@ -17,7 +17,6 @@ package cpevelements
 import (
 	"go/ast"
 
-	"github.com/gx-org/gx/build/ir/annotations"
 	"github.com/gx-org/gx/build/ir"
 	"github.com/gx-org/gx/interp/elements"
 )
@@ -25,7 +24,6 @@ import (
 // CoreMacroElement is a helper structure to implement macros.
 type CoreMacroElement struct {
 	mac  *ir.Macro
-	key  annotations.Key
 	call elements.CallAt
 }
 
@@ -33,14 +31,8 @@ var _ ir.MacroElement = (*CoreMacroElement)(nil)
 
 // MacroElement returns a core macro element for custom elements.
 func MacroElement(mac *ir.Macro, file *ir.File, call *ir.CallExpr) CoreMacroElement {
-	return MacroElementWithKey(mac, file, call, mac)
-}
-
-// MacroElementWithKey returns a core macro element for custom elements given a key for annotations.
-func MacroElementWithKey(mac *ir.Macro, file *ir.File, call *ir.CallExpr, key annotations.Key) CoreMacroElement {
 	return CoreMacroElement{
 		mac:  mac,
-		key:  key,
 		call: elements.NewNodeAt(file, call),
 	}
 }
@@ -63,9 +55,4 @@ func (m *CoreMacroElement) Call() elements.CallAt {
 // Source returns the source call from where the element was created.
 func (m *CoreMacroElement) Source() ast.Node {
 	return m.call.Source()
-}
-
-// Key of the macro that has generated this element.
-func (m *CoreMacroElement) Key() annotations.Key {
-	return m.key
 }

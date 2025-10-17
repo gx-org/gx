@@ -24,11 +24,33 @@ import (
 )
 
 type (
-	// Key is an annotation key. This is defined by the macro setting the value of the annotations.
+	// Key is an annotation key.
+	// Singleton created by the package defining Annotators.
 	Key interface {
+		key()
 		FullName() string
 	}
 
+	key struct {
+		fullName string
+	}
+)
+
+// NewKey returns an annotation key where the name is the type of the given argument.
+func NewKey(a any) Key {
+	return &key{
+		fullName: fmt.Sprintf("%T", a),
+	}
+}
+
+func (key) key() {}
+
+// FullName of the key.
+func (k *key) FullName() string {
+	return k.fullName
+}
+
+type (
 	// Annotations maps key to annotation value.
 	Annotations struct {
 		anns *ordered.Map[Key, annotation]

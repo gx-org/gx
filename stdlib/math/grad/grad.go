@@ -40,14 +40,13 @@ var Package = builtin.PackageBuilder{
 		builtin.ParseSource(&fs),
 		builtin.RegisterMacro("Func", FuncGrad),
 		builtin.RegisterMacro("VJP", VJP),
-		builtin.RegisterMacro("Set", SetGrad),
-		builtin.RegisterMacro("SetFor", SetGradFor),
+		builtin.RegisterAnnotator("Set", SetGrad),
+		builtin.RegisterAnnotator("SetFor", SetGradFor),
 	},
 }
 
 type gradMacro struct {
 	cpevelements.CoreMacroElement
-	set *ir.Macro
 
 	fn  ir.PkgFunc
 	wrt withRespectTo
@@ -92,7 +91,6 @@ func FuncGrad(file *ir.File, call *ir.CallExpr, mac *ir.Macro, args []ir.Element
 	}
 	return gradMacro{
 		CoreMacroElement: cpevelements.MacroElement(mac, file, call),
-		set:              setMacro(mac),
 	}.newMacro(fnT, wrtF), nil
 }
 
@@ -124,9 +122,9 @@ func (m *gradMacro) syntheticFuncName(fetcher ir.Fetcher, fn ir.Func) (string, b
 	return fmt.Sprintf("__%s_%s_%s_%s", imp.Name(), funcName, pkgFunc.Name(), m.wrt.name()), true
 }
 
-func (m *gradMacro) BuildDecl(ir.PkgFunc) (*ir.File, *ast.FuncDecl, bool) {
+func (m *gradMacro) BuildDecl(fn ir.PkgFunc) (*ir.File, *ast.FuncDecl, bool) {
 	fType := m.fn.FuncType()
-	fDecl := &ast.FuncDecl{Type: fType.Src}
+	fDecl := &ast.FuncDecl{Type: fType.Src, Name: &ast.Ident{Name: "grad"}}
 	fDecl.Type.Results = &ast.FieldList{
 		List: []*ast.Field{&ast.Field{
 			Type: m.wrt.fieldType(),
@@ -158,7 +156,7 @@ func (m *gradMacro) buildBodyFromSetAnnotation(fetcher ir.Fetcher, fn ir.Func, a
 }
 
 func (m *gradMacro) BuildBody(fetcher ir.Fetcher, fn ir.Func) (*ast.BlockStmt, bool) {
-	if ann := annotations.Get[*setAnnotation](m.fn, m.set); ann != nil {
+	if ann := annotations.Get[*setAnnotation](m.fn, setKey); ann != nil {
 		return m.buildBodyFromSetAnnotation(fetcher, fn, ann)
 	}
 	fnWithBody, ok := m.fn.(*ir.FuncDecl)

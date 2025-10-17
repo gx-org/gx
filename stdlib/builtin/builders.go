@@ -24,7 +24,6 @@ import (
 
 	"github.com/pkg/errors"
 	"github.com/gx-org/gx/build/builder"
-	"github.com/gx-org/gx/build/fmterr"
 	"github.com/gx-org/gx/build/ir"
 	"github.com/gx-org/gx/interp"
 	"github.com/gx-org/gx/stdlib/impl"
@@ -311,40 +310,4 @@ func BuildConst(f ConstBuilder) Builder {
 		name:  "ConstBuilder:" + funcName(f),
 		build: buildConst,
 	}
-}
-
-type registerMacro struct {
-	name string
-	impl ir.MacroImpl
-}
-
-// RegisterMacro registers the implementation of a meta function.
-func RegisterMacro(name string, impl ir.MacroImpl) Builder {
-	return &registerMacro{
-		name: name,
-		impl: impl,
-	}
-}
-
-func (b *registerMacro) Build(bld *builder.Builder, _ *impl.Stdlib, pkg *builder.FilePackage) (err error) {
-	pkgIR := pkg.IR()
-	defer func() {
-		if err != nil {
-			err = fmterr.Internal(errors.Errorf("cannot set the implementation of %s.%s: %v", pkgIR.Name, b.name, err))
-		}
-	}()
-	fun := pkgIR.FindFunc(b.name)
-	if fun == nil {
-		return errors.Errorf("cannot find the function in the package IR")
-	}
-	macro, ok := fun.(*ir.Macro)
-	if !ok {
-		return errors.Errorf("type %T is not %s", fun, reflect.TypeFor[*ir.Macro]())
-	}
-	macro.BuildSynthetic = b.impl
-	return nil
-}
-
-func (b *registerMacro) Name() string {
-	return fmt.Sprintf("%T:%s", b, b.name)
 }

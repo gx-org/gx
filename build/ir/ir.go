@@ -1190,18 +1190,6 @@ type (
 		Impl FuncImpl
 	}
 
-	// Macro is a function that takes a set of IR nodes as an input
-	// and returns a new set of IR nodes (or a compiler error).
-	// An example of such function is math/graph.Grad.
-	// The implementation is opaque to GX.
-	Macro struct {
-		FFile *File
-		Src   *ast.FuncDecl
-		FType *FuncType
-
-		BuildSynthetic MacroImpl
-	}
-
 	// FuncLit is a function literal.
 	FuncLit struct {
 		Src   *ast.FuncLit
@@ -1715,87 +1703,6 @@ func (s *SpecialisedFunc) File() *File {
 // ShortString returns the name of the function.
 func (s *SpecialisedFunc) ShortString() string {
 	return s.FuncType().String()
-}
-
-func (*Macro) node()         {}
-func (*Macro) staticValue()  {}
-func (*Macro) storage()      {}
-func (*Macro) storageValue() {}
-func (*Macro) pkgFunc()      {}
-
-// FullName returns the fully qualified name of the macro.
-func (s *Macro) FullName() string {
-	return fullName(s)
-}
-
-// Name of the function.
-func (s *Macro) Name() string {
-	return s.Src.Name.Name
-}
-
-// NameDef is the name definition of the function.
-func (s *Macro) NameDef() *ast.Ident {
-	return s.Src.Name
-}
-
-// Value returns a reference to the function.
-func (s *Macro) Value(x Expr) AssignableExpr {
-	return &FuncValExpr{
-		X: x,
-		F: s,
-		T: s.FuncType(),
-	}
-}
-
-// Doc returns associated documentation or nil.
-func (s *Macro) Doc() *ast.CommentGroup {
-	return nil
-}
-
-// File declaring the function literal.
-func (s *Macro) File() *File {
-	return s.FFile
-}
-
-// FuncType returns the concrete type of the function.
-func (s *Macro) FuncType() *FuncType {
-	return s.FType
-}
-
-// Type returns the type of the function.
-func (s *Macro) Type() Type {
-	return s.FuncType()
-}
-
-// Source returns the node in the AST tree.
-func (s *Macro) Source() ast.Node {
-	return s.Src
-}
-
-// Same returns true if the other storage is this storage.
-func (s *Macro) Same(o Storage) bool {
-	return Storage(s) == o
-}
-
-// Annotations returns the annotations attached to the function.
-func (s *Macro) Annotations() *annotations.Annotations {
-	return &annotations.Annotations{}
-}
-
-// String representation of the literal.
-func (s *Macro) String() string {
-	return fmt.Sprintf("metafunc %s", s.Name())
-}
-
-// New returns a new function given a source, a file, and a type.
-func (s *Macro) New() PkgFunc {
-	n := *s
-	return &n
-}
-
-// ShortString returns the name of the function.
-func (s *Macro) ShortString() string {
-	return s.File().Package.Name.Name + "." + s.Name()
 }
 
 func (*ImportDecl) node()         {}

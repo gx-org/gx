@@ -17,62 +17,70 @@ package grad
 import (
 	"go/ast"
 
-	"github.com/pkg/errors"
 	"github.com/gx-org/gx/build/ir/annotations"
 	"github.com/gx-org/gx/build/ir"
-	"github.com/gx-org/gx/internal/interp/compeval/cpevelements"
 	"github.com/gx-org/gx/interp/elements"
 	"github.com/gx-org/gx/interp"
 )
 
-type (
-	setAnnotation struct {
-		partials []ir.PkgFunc
-	}
-
-	setAnnotationMacro struct {
-		cpevelements.CoreMacroElement
-		grad ir.PkgFunc
-
-		paramName string
-	}
-)
-
-var _ ir.FuncAnnotator = (*setAnnotationMacro)(nil)
-
-func setMacro(mac *ir.Macro) *ir.Macro {
-	return mac.File().Package.FindFunc("SetFor").(*ir.Macro)
+type setAnnotation struct {
+	partials []ir.PkgFunc
 }
 
-// SetGrad sets the gradient of a function.
-func SetGrad(file *ir.File, call *ir.CallExpr, macro *ir.Macro, args []ir.Element) (ir.MacroElement, error) {
-	grad, err := interp.PkgFuncFromElement(args[0])
-	if err != nil {
-		return nil, errors.Errorf("%s is not a function", args[0].Type().String())
-	}
+var setKey = annotations.NewKey(setAnnotation{})
 
-	return newSetMacro(file, call, macro, grad, "")
+// SetGrad sets the gradient of a function.
+func SetGrad(fetcher ir.Fetcher, ann *ir.Annotator, fn ir.PkgFunc, call *ir.CallExpr, args []ir.Element) bool {
+	params := fn.FuncType().Params.Fields()
+	switch len(params) {
+	case 0:
+		return fetcher.Err().Appendf(call.Source(), "cannot set gradient of %s: function has no argument", fn.Name())
+	case 1:
+	default:
+		return fetcher.Err().Appendf(call.Source(), "use %s.SetFor to set the gradient of a function with more than one parameter", fn.File().Package.Name.Name)
+	}
+	field := params[0]
+	paramName := "_"
+	if field.Name != nil {
+		paramName = field.Name.Name
+	}
+	return annotate(fetcher, ann, fn, call, paramName, 0, args[0])
 }
 
 // SetGradFor sets the gradient of a function.
-func SetGradFor(file *ir.File, call *ir.CallExpr, macro *ir.Macro, args []ir.Element) (ir.MacroElement, error) {
-	grad, err := interp.PkgFuncFromElement(args[0])
+func SetGradFor(fetcher ir.Fetcher, ann *ir.Annotator, fn ir.PkgFunc, call *ir.CallExpr, args []ir.Element) bool {
+	arg0, err := fetcher.EvalExpr(call.Args[0])
 	if err != nil {
-		return nil, errors.Errorf("%s is not a function", args[1].Type().String())
+		return fetcher.Err().AppendAt(call.Args[0].Source(), err)
 	}
-	fieldName, err := elements.StringFromElement(args[1])
+	paramName, err := elements.StringFromElement(arg0)
 	if err != nil {
-		return nil, err
+		return fetcher.Err().AppendAt(call.Args[0].Source(), err)
 	}
-	return newSetMacro(file, call, macro, grad, fieldName)
+	paramPos := findNameInFields(paramName, fn.FuncType().Params)
+	if paramPos < 0 {
+		return fetcher.Err().Appendf(call.Args[0].Source(), "function %s has no parameter %s", fn.Name(), paramName)
+	}
+	return annotate(fetcher, ann, fn, call, paramName, paramPos, args[1])
 }
 
-func newSetMacro(file *ir.File, call *ir.CallExpr, mac *ir.Macro, grad ir.PkgFunc, paramName string) (ir.MacroElement, error) {
-	return &setAnnotationMacro{
-		CoreMacroElement: cpevelements.MacroElementWithKey(mac, file, call, setMacro(mac)),
-		grad:             grad,
-		paramName:        paramName,
-	}, nil
+func annotate(fetcher ir.Fetcher, ann *ir.Annotator, fn ir.PkgFunc, call *ir.CallExpr, paramName string, paramPos int, gradEl ir.Element) bool {
+	fType := fn.FuncType()
+	paramToFunc := annotations.GetDef(fn, setKey, func() *setAnnotation {
+		return &setAnnotation{
+			partials: make([]ir.PkgFunc, fType.Params.Len()),
+		}
+	})
+	prev := paramToFunc.partials[paramPos]
+	if prev != nil {
+		return fetcher.Err().Appendf(call.Source(), "gradient for parameter %s has already been set", paramName)
+	}
+	gradFn, err := interp.PkgFuncFromElement(gradEl)
+	if err != nil {
+		return fetcher.Err().AppendAt(call.Source(), err)
+	}
+	paramToFunc.partials[paramPos] = gradFn
+	return true
 }
 
 func findNameInFields(paramName string, fields *ir.FieldList) int {
@@ -85,33 +93,6 @@ func findNameInFields(paramName string, fields *ir.FieldList) int {
 		}
 	}
 	return -1
-}
-
-func (m *setAnnotationMacro) Annotate(fetcher ir.Fetcher, fn ir.PkgFunc) bool {
-	fType := fn.FuncType()
-	paramToFunc := annotations.GetDef(fn, m.Key(), func() *setAnnotation {
-		return &setAnnotation{
-			partials: make([]ir.PkgFunc, fType.Params.Len()),
-		}
-	})
-	paramPos := -1
-	if m.paramName == "" {
-		if fn.FuncType().Params.Len() != 1 {
-			return fetcher.Err().Appendf(m.Source(), "cannot set gradient of %s: requires a single argument", fn.Name())
-		}
-		paramPos = 0
-	} else {
-		paramPos = findNameInFields(m.paramName, fType.Params)
-	}
-	if paramPos < 0 {
-		return fetcher.Err().Appendf(m.Source(), "function %s has no parameter %s", fn.Name(), m.paramName)
-	}
-	prev := paramToFunc.partials[paramPos]
-	if prev != nil {
-		return fetcher.Err().Appendf(m.Source(), "gradient for parameter %s has already been set", m.paramName)
-	}
-	paramToFunc.partials[paramPos] = m.grad
-	return true
 }
 
 func gradFromAnnotation(fetcher ir.Fetcher, src ir.Func, paramToFunc *setAnnotation, wrt string) (*ast.Ident, bool) {

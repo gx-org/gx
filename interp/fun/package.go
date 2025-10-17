@@ -33,7 +33,7 @@ var (
 )
 
 // NewPackage returns a package grouping everything that a package exports.
-func NewPackage(pkg *ir.Package, defs scope.Scope[ir.Element], newFunc NewFunc) *Package {
+func NewPackage(pkg *ir.Package, defs scope.Scope[ir.Element]) *Package {
 	return &Package{pkg: pkg, defs: defs}
 }
 

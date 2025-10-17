@@ -130,8 +130,8 @@ func gradOfGy(x, y float32) float32 {
 	return y
 }
 
-//gx:@grad.SetFor(gradOfGx, "x")
-//gx:@grad.SetFor(gradOfGy, "y")
+//gx:@grad.SetFor("x", gradOfGx)
+//gx:@grad.SetFor("y", gradOfGy)
 func F(x, y float32) float32 {
 	return x	
 }
@@ -160,8 +160,8 @@ func gradOfGy(x, y float32) float32 {
 	return y
 }
 
-//gx:@grad.SetFor(gradOfGx, "x")
-//gx:@grad.SetFor(gradOfGy, "y")
+//gx:@grad.SetFor("x", gradOfGx)
+//gx:@grad.SetFor("y", gradOfGy)
 func F(x, y float32) float32 {
 	return x	
 }
@@ -183,7 +183,7 @@ func vjpF(x, y float32) (float32, func(res float32) float32, func(res float32) f
 			Src: `
 func g(float32) float32
 
-//gx:@grad.SetFor(g, "x")
+//gx:@grad.SetFor("x", g)
 func F(x float32) float32 {
 	return x
 }`,
@@ -227,13 +227,13 @@ func g(x float64) float32
 //gx:@grad.Set(g)
 func F(x, y float32) float32
 `,
-			Err: "cannot set gradient of F: requires a single argument",
+			Err: "use test.SetFor to set the gradient of a function with more than one parameter",
 		},
 		testgrad.Func{
 			Src: `
 func gradOfF(x, y float32) float32
 
-//gx:@grad.SetFor(gradOfF, "z")
+//gx:@grad.SetFor("z", gradOfF)
 func F(x, y float32) float32 {
 	return x	
 }
@@ -244,8 +244,8 @@ func F(x, y float32) float32 {
 			Src: `
 func gradOfF(x, y float32) float32
 
-//gx:@grad.SetFor(gradOfF, "x")
-//gx:@grad.SetFor(gradOfF, "x")
+//gx:@grad.SetFor("x", gradOfF)
+//gx:@grad.SetFor("x", gradOfF)
 func F(x, y float32) float32 {
 	return x	
 }
@@ -257,7 +257,7 @@ func F(x, y float32) float32 {
 func g(float32) float32
 
 //gx:@grad.Set(g)
-//gx:@grad.SetFor(g, "x")
+//gx:@grad.SetFor("x", g)
 func F(x float32) float32 {
 	return x
 }`,
