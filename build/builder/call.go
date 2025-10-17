@@ -242,7 +242,7 @@ func (n *callExpr) buildCallExpr(rscope resolveScope, callee ir.AssignableExpr) 
 	case *ir.TypeValExpr:
 		return n.buildTypeCast(rscope, callee, elT.Store())
 	default:
-		return invalidExpr(), rscope.Err().AppendInternalf(callee.Source(), "expression %s evaluated to unsupported element of type %T. Scope:\n%s\nCompEval:\n%s", callee.String(), elT, rscope.String(), compEval.String())
+		return invalidExpr(), rscope.Err().AppendInternalf(callee.Source(), "expression %s evaluated to element of type %T that is not callable. Scope:\n%s\nCompEval:\n%s", callee.String(), elT, rscope.String(), compEval.String())
 	}
 }
 
