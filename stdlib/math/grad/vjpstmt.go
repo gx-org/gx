@@ -97,7 +97,7 @@ func (sg *stmtVJP) buildVJPFunctionWRT(src *ir.ReturnStmt, param vjpParam) (*ast
 	ret := &ast.ReturnStmt{Results: make([]ast.Expr, len(src.Results))}
 	for i, expr := range src.Results {
 		gradExpr, ok := backwarder.backward(&gradExprResult{
-			expr: &ast.Ident{Name: sg.macro.resultNames[i]},
+			expr: &ast.Ident{Name: sg.macro.nResults.names[i]},
 		}, expr)
 		if !ok {
 			return nil, false

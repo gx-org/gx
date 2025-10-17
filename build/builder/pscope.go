@@ -104,7 +104,7 @@ func newPackageProcScope(overwriteOk bool, pkg *basePackage, errs *fmterr.Errors
 		},
 	}
 	scope.dcls = newDecls(overwriteOk, scope)
-	for node := range pkg.last.decls.Values() {
+	for node := range pkg.last.decls().Values() {
 		scope.dcls.declarePackageName(node)
 	}
 	scope.dcls.methods = append([]*processNodeT[function]{}, pkg.last.methods...)
@@ -136,19 +136,6 @@ type (
 
 func (s *pkgProcScope) newFilePScope(f *file) *fileProcScope {
 	return &fileProcScope{pkgProcScope: s, f: f}
-}
-
-func (s *fileProcScope) declareFileName(src *ast.Ident) (ok bool) {
-	prevPkg, exist := s.decls().declarations.Load(src.Name)
-	if exist {
-		return appendRedeclaredError(s.Err(), src.Name, src, prevPkg.ident())
-	}
-	prevFile := s.fileNames[src.Name]
-	if prevFile != nil {
-		return appendRedeclaredError(s.Err(), src.Name, src, prevFile)
-	}
-	s.fileNames[src.Name] = src
-	return true
 }
 
 func (s *fileProcScope) pkgScope() *pkgProcScope {

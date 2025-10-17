@@ -38,9 +38,8 @@ type (
 
 	vjpMacro struct {
 		cpevelements.CoreMacroElement
-		set         *ir.Macro
-		exprToName  map[ir.Expr]forwardValues
-		resultNames []string
+		set        *ir.Macro
+		exprToName map[ir.Expr]forwardValues
 
 		unames  *uname.Unique
 		fwdRoot *uname.Root
@@ -48,6 +47,9 @@ type (
 
 		fn     ir.PkgFunc
 		params []vjpParam
+
+		nResults *namedFields
+		nParams  *namedFields
 	}
 )
 
@@ -77,11 +79,11 @@ func (m vjpMacro) newMacro(fn ir.PkgFunc) (*vjpMacro, error) {
 	m.fn = fn
 	fType := m.fn.FuncType()
 	m.params = make([]vjpParam, fType.Params.Len())
-	var namedResultFields *ast.FieldList
-	m.resultNames, namedResultFields = m.nameResultFields(fType.Results.Src)
+	m.nResults = nameFields(m.unames, "res", fType.Results.Src)
+	m.nParams = nameFields(m.unames, "par", fType.Params.Src)
 	for i, param := range fType.Params.Fields() {
 		wrt := newWRT(param)
-		backwardSig, err := m.buildBackwardSignature(fType, wrt, namedResultFields)
+		backwardSig, err := m.buildBackwardSignature(fType, wrt, m.nResults.fields)
 		if err != nil {
 			return nil, err
 		}
@@ -96,26 +98,6 @@ func (m vjpMacro) newMacro(fn ir.PkgFunc) (*vjpMacro, error) {
 
 func (m *vjpMacro) start() {
 	m.exprToName = make(map[ir.Expr]forwardValues)
-}
-
-func (m *vjpMacro) nameResultFields(results *ast.FieldList) ([]string, *ast.FieldList) {
-	all := ast.FieldList{
-		List: make([]*ast.Field, len(results.List)),
-	}
-	var names []string
-	for iField, field := range results.List {
-		named := *field
-		if len(named.Names) == 0 {
-			named.Names = []*ast.Ident{&ast.Ident{}}
-		}
-		for iName, name := range named.Names {
-			retName := uname.DefaultIdent(name, "res")
-			named.Names[iName] = m.unames.Ident(retName)
-			names = append(names, retName.Name)
-		}
-		all.List[iField] = &named
-	}
-	return names, &all
 }
 
 func concatFieldList(lists ...*ast.FieldList) *ast.FieldList {
@@ -137,8 +119,6 @@ func (m *vjpMacro) buildBackwardSignature(fType *ir.FuncType, wrt withRespectTo,
 	}
 
 	return &ast.FuncType{
-		// Same as the original function.
-		TypeParams: fType.Src.TypeParams,
 		// Gradient coming from the output values of the function.
 		Params: namedResultFields,
 		// Return the gradient.
@@ -157,8 +137,8 @@ func (m *vjpMacro) buildType() *ast.FuncType {
 	vjpType := &ast.FuncType{
 		// Same as the original function.
 		TypeParams: fType.Src.TypeParams,
-		// Same parameters than the original function.
-		Params: fType.Src.Params,
+		// Same parameters (but named) as the original function.
+		Params: m.nParams.fields,
 		// Return the result of the original function as well as
 		// a backward function to compute the gradient.
 		Results: concatFieldList(
@@ -179,16 +159,19 @@ func (m *vjpMacro) BuildDecl(ir.PkgFunc) (*ir.File, *ast.FuncDecl, bool) {
 	return m.fn.File(), fDecl, true
 }
 
-func (sg *stmtVJP) buildVJPFunctionWRTFromAnn(grad ir.PkgFunc, param vjpParam) (*ast.FuncLit, bool) {
+func (sg *stmtVJP) buildVJPFunctionWRTFromAnn(grad ir.PkgFunc, param vjpParam, args []ast.Expr) (*ast.FuncLit, bool) {
 	backwarder := sg.newExprBackwardVJP(param.wrt)
-	ret := &ast.ReturnStmt{Results: make([]ast.Expr, len(sg.macro.resultNames))}
-	for i, res := range sg.macro.resultNames {
+	ret := &ast.ReturnStmt{Results: make([]ast.Expr, len(sg.macro.nResults.names))}
+	for i, res := range sg.macro.nResults.names {
 		ret.Results[i] = buildMul(
 			&gradExprResult{
 				expr: &ast.Ident{Name: res},
 			},
 			&gradExprResult{
-				expr: &ast.Ident{Name: grad.Name()},
+				expr: &ast.CallExpr{
+					Fun:  &ast.Ident{Name: grad.Name()},
+					Args: args,
+				},
 			},
 		).expr
 	}
@@ -203,6 +186,11 @@ func (sg *stmtVJP) buildVJPFunctionWRTFromAnn(grad ir.PkgFunc, param vjpParam) (
 
 func (m *vjpMacro) buildBodyFromSetAnnotation(fetcher ir.Fetcher, sg *stmtVJP, ann *setAnnotation) (*ast.BlockStmt, bool) {
 	forwarder := sg.newExprForwardVJP()
+	// Build the arguments to call the forward functions.
+	args := make([]ast.Expr, len(m.nParams.names))
+	for i, fieldName := range m.nParams.names {
+		args[i] = &ast.Ident{Name: fieldName}
+	}
 	// Call the original function to get the forward values.
 	nVals := m.fn.FuncType().Results.Len()
 	fv := forwarder.newForwardValues(nil, nVals)
@@ -210,7 +198,8 @@ func (m *vjpMacro) buildBodyFromSetAnnotation(fetcher ir.Fetcher, sg *stmtVJP, a
 		Tok: token.DEFINE,
 		Lhs: fv.idents(),
 		Rhs: []ast.Expr{&ast.CallExpr{
-			Fun: &ast.Ident{Name: m.fn.Name()},
+			Fun:  &ast.Ident{Name: m.fn.Name()},
+			Args: args,
 		}},
 	}
 	forwarder.appendMainStmt(stmt)
@@ -224,7 +213,7 @@ func (m *vjpMacro) buildBodyFromSetAnnotation(fetcher ir.Fetcher, sg *stmtVJP, a
 	// Build a backward function for each function parameter.
 	names := make([]ast.Expr, len(sg.macro.params))
 	for i, param := range sg.macro.params {
-		vjpFuncLit, ok := sg.buildVJPFunctionWRTFromAnn(ann.partials[i], param)
+		vjpFuncLit, ok := sg.buildVJPFunctionWRTFromAnn(ann.partials[i], param, args)
 		if !ok {
 			return nil, false
 		}
