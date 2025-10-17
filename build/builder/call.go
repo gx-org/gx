@@ -236,7 +236,7 @@ func (n *callExpr) buildCallExpr(rscope resolveScope, callee ir.AssignableExpr) 
 	case fun.Func:
 		return n.buildFuncCallExpr(rscope, callee, elT.Func())
 	case ir.FuncAnnotator:
-		return invalidExpr(), rscope.Err().Appendf(callee.Source(), "invalid use of annotation macro %s", elT.From().ShortString())
+		return invalidExpr(), rscope.Err().Appendf(callee.Source(), "invalid use of annotation macro %s", elT.ShortString())
 	case *fun.NamedType:
 		return n.buildTypeCast(rscope, callee, elT.Type())
 	case *ir.TypeValExpr:

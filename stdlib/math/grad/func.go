@@ -22,7 +22,7 @@ import (
 )
 
 func (m *gradMacro) gradFunc(fetcher ir.Fetcher, src *ir.FuncValExpr, wrt string) (ast.Expr, bool) {
-	ann := annotations.Get[*setAnnotation](src.F, m.set)
+	ann := annotations.Get[*setAnnotation](src.F, setKey)
 	if ann != nil {
 		return gradFromAnnotation(fetcher, src.F.(ir.Func), ann, wrt)
 	}
@@ -45,7 +45,7 @@ func gradFuncDecl(fetcher ir.Fetcher, parent *gradMacro, src *ir.FuncValExpr, fn
 	if !ok {
 		return nil, false
 	}
-	return &ast.Ident{Name: "TODO" + gradF.Name.Name}, true
+	return gradF.Name, true
 }
 
 func astExprs(exprs []ir.AssignableExpr) []ast.Expr {

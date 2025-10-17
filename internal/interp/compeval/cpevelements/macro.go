@@ -55,10 +55,9 @@ func (f *Macro) IR() *ir.Macro {
 	return f.macro
 }
 
-// Name of the macro
+// Name of the macro.
 func (f *Macro) Name() string {
-	fn := f.Func().(ir.PkgFunc)
-	return fn.File().Package.Name.Name + "." + fn.Name()
+	return f.macro.File().Package.Name.Name + "." + f.macro.Name()
 }
 
 // Type returns the type of the function.

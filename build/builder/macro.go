@@ -16,27 +16,46 @@ package builder
 
 import (
 	"go/ast"
+	"reflect"
 
 	"github.com/gx-org/gx/build/ir"
-	"github.com/gx-org/gx/internal/interp/compeval/cpevelements"
 )
 
-type funcMacro struct {
+type funcMeta struct {
 	*funcDecl
 }
 
-func (bFile *file) processIRMacroFunc(scope procScope, src *ast.FuncDecl, comment *ast.Comment) (function, bool) {
-	fDecl, declOk := newFuncDecl(scope, src, false)
-	fn := &funcMacro{funcDecl: fDecl}
-	return fn, declOk
+func (f *funcMeta) source() ast.Node {
+	return f.src
 }
 
-func (f *funcMacro) buildSignature(pkgScope *pkgResolveScope) (ir.Func, iFuncResolveScope, bool) {
+func (f *funcMeta) name() *ast.Ident {
+	return f.src.Name
+}
+
+func (f *funcMeta) buildBody(iFuncResolveScope, *irFunc) bool {
+	return true
+}
+
+func (f *funcMeta) receiver() *fieldList {
+	return nil
+}
+
+func (f *funcMeta) compEval() bool {
+	return true
+}
+
+func (f *funcMeta) resolveOrder() int {
+	// Macro needs to be resolved first before any other functions.
+	return -1
+}
+
+func (f *funcMeta) buildSignature(pkgScope *pkgResolveScope) (ir.MetaCore, iFuncResolveScope, bool) {
 	fScope, scopeOk := pkgScope.newFileRScope(f.bFile)
 	if !scopeOk {
-		return nil, nil, false
+		return ir.MetaCore{}, nil, false
 	}
-	ext := &ir.Macro{
+	ext := ir.MetaCore{
 		Src:   f.src,
 		FFile: fScope.irFile(),
 	}
@@ -46,29 +65,34 @@ func (f *funcMacro) buildSignature(pkgScope *pkgResolveScope) (ir.Func, iFuncRes
 	return ext, fnScope, ok
 }
 
-func (f *funcMacro) source() ast.Node {
-	return f.src
+type funcMacro struct {
+	funcMeta
 }
 
-func (f *funcMacro) name() *ast.Ident {
-	return f.src.Name
+func (bFile *file) processIRMacroFunc(scope procScope, src *ast.FuncDecl, comment *ast.Comment) (function, bool) {
+	fDecl, declOk := newFuncDecl(scope, src, false)
+	fn := &funcMacro{funcMeta{funcDecl: fDecl}}
+	return fn, declOk
 }
 
-func (f *funcMacro) buildBody(iFuncResolveScope, *irFunc) bool {
-	return true
+func (f *funcMacro) buildSignature(pkgScope *pkgResolveScope) (ir.Func, iFuncResolveScope, bool) {
+	core, fnScope, ok := f.funcMeta.buildSignature(pkgScope)
+	return &ir.Macro{MetaCore: core}, fnScope, ok
 }
 
-func (f *funcMacro) receiver() *fieldList {
-	return nil
+type funcAnnotator struct {
+	funcMeta
 }
 
-func (f *funcMacro) compEval() bool {
-	return true
+func (bFile *file) processAnnotatorFunc(scope procScope, src *ast.FuncDecl, comment *ast.Comment) (function, bool) {
+	fDecl, declOk := newFuncDecl(scope, src, false)
+	fn := &funcAnnotator{funcMeta{funcDecl: fDecl}}
+	return fn, declOk
 }
 
-func (f *funcMacro) resolveOrder() int {
-	// Macro needs to be resolved first before any other functions.
-	return -1
+func (f *funcAnnotator) buildSignature(pkgScope *pkgResolveScope) (ir.Func, iFuncResolveScope, bool) {
+	core, fnScope, ok := f.funcMeta.buildSignature(pkgScope)
+	return &ir.Annotator{MetaCore: core}, fnScope, ok
 }
 
 type irExpr struct {
@@ -87,20 +111,26 @@ func (e *irExpr) String() string {
 	return "irexpr: " + e.expr.String()
 }
 
-func evalMacroCallee(rscope resolveScope, compEval *compileEvaluator, macroCall *callExpr) (*ir.CallExpr, bool) {
+type funcWithIR interface {
+	Func() ir.Func
+}
+
+func evalMetaCallee[T funcWithIR](rscope resolveScope, compEval *compileEvaluator, macroCall *callExpr) (*ir.CallExpr, T, bool) {
+	var zero T
 	callee, calleeOk := buildAExpr(rscope, macroCall.callee)
 	if !calleeOk {
-		return nil, false
+		return nil, zero, false
 	}
 	el, err := compEval.fitp.EvalExpr(callee)
 	if err != nil {
-		return nil, rscope.Err().AppendAt(callee.Source(), err)
+		return nil, zero, rscope.Err().AppendAt(callee.Source(), err)
 	}
-	elT, ok := el.(*cpevelements.Macro)
+	elT, ok := el.(T)
 	if !ok {
-		return nil, rscope.Err().Appendf(callee.Source(), "cannot use %s as macro", callee.String())
+		return nil, zero, rscope.Err().Appendf(callee.Source(), "cannot use %s as %s", callee.String(), reflect.TypeFor[T]())
 	}
-	return macroCall.buildFuncCallExpr(rscope, callee, elT.IR())
+	call, ok := macroCall.buildFuncCallExpr(rscope, callee, elT.Func())
+	return call, elT, ok
 }
 
 func evalMacroCall(compEval *compileEvaluator, call *ir.CallExpr) (ir.MacroElement, bool) {

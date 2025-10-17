@@ -40,8 +40,11 @@ func NewHostEvaluator(importer ir.Importer) *CompEval {
 
 // NewFunc creates a new function given its definition and a receiver.
 func (ev *CompEval) NewFunc(fn ir.Func, recv *fun.Receiver) fun.Func {
-	if macro, ok := fn.(*ir.Macro); ok {
-		return cpevelements.NewMacro(macro, recv)
+	switch fnT := fn.(type) {
+	case *ir.Annotator:
+		return cpevelements.NewAnnotator(fnT, recv)
+	case *ir.Macro:
+		return cpevelements.NewMacro(fnT, recv)
 	}
 	return cpevelements.NewFunc(fn, recv)
 }

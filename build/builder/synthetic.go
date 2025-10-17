@@ -18,6 +18,7 @@ import (
 	"go/ast"
 
 	"github.com/gx-org/gx/build/ir"
+	"github.com/gx-org/gx/internal/interp/compeval/cpevelements"
 )
 
 const assignPrefix = "gx:="
@@ -44,7 +45,7 @@ func (f *assignFuncFromMacro) buildFuncBuilder(fScope *fileResolveScope) (ir.Fun
 	if !compEvalOk {
 		return nil, false
 	}
-	macroCall, ok := evalMacroCallee(fScope, compEval, f.macroCall)
+	macroCall, _, ok := evalMetaCallee[*cpevelements.Macro](fScope, compEval, f.macroCall)
 	if !ok {
 		return nil, false
 	}

@@ -34,7 +34,7 @@ func (itp *Interpreter) InitPkgScope(pkg *ir.Package, scope *scope.RWScope[ir.El
 	if err := itp.options.Eval(pkg, scope); err != nil {
 		return nil, err
 	}
-	return fun.NewPackage(pkg, scope, itp.NewFunc), nil
+	return fun.NewPackage(pkg, scope), nil
 }
 
 func (itp *Interpreter) evalPackageConsts(pkg *ir.Package, scope *scope.RWScope[ir.Element]) error {
