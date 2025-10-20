@@ -93,17 +93,25 @@ func (n *indexExpr) checkIndexBounds(rscope resolveScope, axLen ir.AxisLengths, 
 }
 
 func specializeFunc(rscope resolveScope, x ir.Expr, indices []ir.AssignableExpr) (ir.Expr, bool) {
-	funStore, ok := storageFromExpr(rscope, x)
-	if !ok {
-		return nil, false
-	}
-	funValue, ok := valueFromStorage(rscope, x, funStore)
-	if !ok {
-		return nil, false
-	}
-	fun, ok := funValue.(*ir.FuncValExpr)
-	if !ok {
-		return x, rscope.Err().AppendInternalf(x.Source(), "%s is not a function: %T", x, x)
+	var fun *ir.FuncValExpr
+	switch xT := x.(type) {
+	case *ir.MacroCallExpr:
+		fun = &ir.FuncValExpr{
+			X: x,
+			F: xT.F,
+			T: xT.FuncType(),
+		}
+	case ir.WithStore:
+		funValue, ok := valueFromStorage(rscope, x, xT.Store())
+		if !ok {
+			return nil, false
+		}
+		fun, ok = funValue.(*ir.FuncValExpr)
+		if !ok {
+			return x, rscope.Err().AppendInternalf(x.Source(), "%s is not a function: %T", x, x)
+		}
+	default:
+		return invalidExpr(), rscope.Err().AppendInternalf(x.Source(), "cannot specialise function call %T: not supported", x)
 	}
 	typeExprs := make([]*ir.TypeValExpr, len(indices))
 	indicesOk := true
@@ -112,7 +120,7 @@ func specializeFunc(rscope resolveScope, x ir.Expr, indices []ir.AssignableExpr)
 		typeExprs[i], iOk = typeFromExpr(rscope, index)
 		indicesOk = indicesOk && iOk
 	}
-	if !ok || !indicesOk {
+	if !indicesOk {
 		return x, false
 	}
 	compEval, compEvalOk := rscope.compEval()
