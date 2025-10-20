@@ -95,6 +95,29 @@ func F() int32 {
 	)
 }
 
+func TestMacroWithGenerics(t *testing.T) {
+	testbuild.Run(t,
+		testmacros.DeclarePackage,
+		testbuild.Decl{
+			Src: `
+import "testmacros"
+
+type floats interface {
+	float32 | float64
+}
+
+func f[T floats]() T {
+	return 2
+}
+
+func g[T floats]() T {
+	return testmacros.ID(f)[T]()
+}
+`,
+		},
+	)
+}
+
 func TestMacroOnMethod(t *testing.T) {
 	typeS := &ir.NamedType{
 		File:       wantFile,
