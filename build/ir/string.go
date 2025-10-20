@@ -42,6 +42,24 @@ func (g *FieldGroup) String() string {
 	return names + typ
 }
 
+// SourceString represents the field list as GX source code.
+func (l *FieldList) SourceString(fileContext *File) string {
+	groups := make([]string, len(l.List))
+	for grpI, grp := range l.List {
+		typeS := grp.Type.Typ.SourceString(fileContext)
+		if len(grp.Fields) == 0 {
+			groups[grpI] = typeS
+			continue
+		}
+		names := make([]string, len(grp.Fields))
+		for nameI, name := range grp.Fields {
+			names[nameI] = name.Name.Name
+		}
+		groups[grpI] = fmt.Sprintf("%s %s", strings.Join(names, ", "), typeS)
+	}
+	return strings.Join(groups, ", ")
+}
+
 func (l *FieldList) String() string {
 	return stringseq.JoinStringer(slices.Values(l.List), ", ")
 }
@@ -52,12 +70,12 @@ func (b *BlockStmt) String() string {
 
 // String returns a string representation of the builtin function.
 func (f *FuncBuiltin) String() string {
-	return f.FType.NameString(f.Src.Name)
+	return f.FType.SourceSignature(nil, f.Src.Name)
 }
 
 // String returns a string representation of the function.
 func (f *FuncDecl) String() string {
-	sig := f.FType.NameString(f.Src.Name)
+	sig := f.FType.SourceSignature(f.FFile, f.Src.Name)
 	if f.Body == nil {
 		return sig
 	}
@@ -67,7 +85,7 @@ func (f *FuncDecl) String() string {
 
 // String representation of the literal.
 func (f *FuncLit) String() string {
-	sig := f.FType.NameString(nil)
+	sig := f.FType.SourceString(nil)
 	body := gxfmt.Indent(f.Body.String())
 	return fmt.Sprintf("%s {\n%s}", sig, body)
 }
@@ -77,21 +95,26 @@ func (f *SpecialisedFunc) String() string {
 	return f.T.String()
 }
 
-// NameString returns a string representation of a signature given a name.
+// SourceString returns a string representation of the signature of a function.
+func (s *FuncType) SourceString(context *File) string {
+	return s.SourceSignature(context, nil)
+}
+
+// SourceSignature returns a string representation of a signature given a name.
 // The name can be empty.
-func (s *FuncType) NameString(name *ast.Ident) string {
+func (s *FuncType) SourceSignature(fileContext *File, name *ast.Ident) string {
 	var b strings.Builder
 	b.WriteString("func")
 	if s.Receiver != nil {
-		fmt.Fprintf(&b, " (%s)", s.Receiver.String())
+		fmt.Fprintf(&b, " (%s)", s.Receiver.SourceString(fileContext))
 	}
 	if name != nil && name.Name != "" {
 		b.WriteString(" " + name.Name)
 	}
 	if s.TypeParams != nil {
-		fmt.Fprintf(&b, "[%s]", s.TypeParams.String())
+		fmt.Fprintf(&b, "[%s]", s.TypeParams.SourceString(fileContext))
 	}
-	b.WriteString("(" + s.Params.String() + ")")
+	b.WriteString("(" + s.Params.SourceString(fileContext) + ")")
 	b.WriteRune(' ')
 	if s.Results.Len() > 1 {
 		b.WriteString("(")
@@ -99,7 +122,7 @@ func (s *FuncType) NameString(name *ast.Ident) string {
 	if s.Results == nil {
 		return b.String()
 	}
-	b.WriteString(s.Results.String())
+	b.WriteString(s.Results.SourceString(fileContext))
 	if s.Results.Len() > 1 {
 		b.WriteString(")")
 	}
@@ -108,7 +131,7 @@ func (s *FuncType) NameString(name *ast.Ident) string {
 
 // String representation of the type.
 func (s *FuncType) String() string {
-	return s.NameString(nil)
+	return s.SourceString(nil)
 }
 
 func (s *ReturnStmt) String() string {

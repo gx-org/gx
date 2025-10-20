@@ -17,10 +17,7 @@ package ir
 import (
 	"fmt"
 	"go/ast"
-	"slices"
 	"strings"
-
-	"github.com/gx-org/gx/base/stringseq"
 )
 
 // BaseType is the base of all types.
@@ -74,6 +71,10 @@ func (*metaType) ConvertibleTo(fetcher Fetcher, target Type) (bool, error) {
 }
 
 func (t *metaType) Kind() Kind { return MetaTypeKind }
+
+func (t *metaType) SourceString(*File) string {
+	return t.String()
+}
 
 func (t *metaType) String() string {
 	return MetaTypeKind.String()
@@ -135,6 +136,10 @@ func (*invalidType) Type() Type { return InvalidType() }
 
 func (*invalidType) Value(Expr) AssignableExpr { return nil }
 
+func (*invalidType) SourceString(*File) string {
+	return InvalidKind.String()
+}
+
 func (*invalidType) String() string {
 	return InvalidKind.String()
 }
@@ -167,6 +172,10 @@ func (t *distinctType) ConvertibleTo(fetcher Fetcher, target Type) (bool, error)
 }
 
 func (t *distinctType) Kind() Kind { return t.kind }
+
+func (t *distinctType) SourceString(*File) string {
+	return t.String()
+}
 
 func (t *distinctType) String() string {
 	return t.kind.String()
@@ -564,16 +573,33 @@ func (s *TypeSet) Value(x Expr) AssignableExpr {
 	return &TypeValExpr{X: x, Typ: s}
 }
 
-// String representation of the type.
-func (s *TypeSet) String() string {
-	if len(s.Typs) == 0 {
+func (s *TypeSet) interfaceString(types []string) string {
+	if len(types) == 0 {
 		return "any"
 	}
 	var b strings.Builder
 	b.WriteString("interface { ")
-	stringseq.AppendStringer(&b, slices.Values(s.Typs), "|")
+	b.WriteString(strings.Join(types, "|"))
 	b.WriteString(" }")
 	return b.String()
+}
+
+// SourceString returns a string representation of the signature of a function.
+func (s *TypeSet) SourceString(context *File) string {
+	types := make([]string, len(s.Typs))
+	for i, typ := range s.Typs {
+		types[i] = typ.SourceString(context)
+	}
+	return s.interfaceString(types)
+}
+
+// String representation of the type.
+func (s *TypeSet) String() string {
+	types := make([]string, len(s.Typs))
+	for i, typ := range s.Typs {
+		types[i] = typ.String()
+	}
+	return s.interfaceString(types)
 }
 
 func (s *TypeSet) equalArray(fetcher Fetcher, target ArrayType) (bool, error) {
