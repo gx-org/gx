@@ -261,7 +261,7 @@ func (b *Builder) nextTestName() string {
 	return name
 }
 
-func build(bld *builder.Builder, path, src string) (builder.Package, error) {
+func build(bld *builder.Builder, path, src string) (*builder.IncrementalPackage, error) {
 	fileDecl, err := parser.ParseFile(token.NewFileSet(), "", src, parser.ParseComments|parser.SkipObjectResolution)
 	if err != nil {
 		return nil, &compileError{src: src, err: err}
@@ -278,7 +278,7 @@ func build(bld *builder.Builder, path, src string) (builder.Package, error) {
 }
 
 // Build test source code.
-func (b *Builder) Build(path, src string) (builder.Package, error) {
+func (b *Builder) Build(path, src string) (*builder.IncrementalPackage, error) {
 	return build(builder.New(&b.imp), path, src)
 }
 

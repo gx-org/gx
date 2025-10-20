@@ -190,6 +190,16 @@ func vjpF(x float32) (float32, func(res float32) float32) {
 	return fwd2, selfVJPFunc
 }
 `,
+			WantExprs: map[string]string{
+				"grad.VJP(f)": `
+func(x float32) (float32, func(res float32) float32) {
+	selfVJPFunc := func(res float32) float32 {
+		return res
+	}
+	return x, selfVJPFunc
+}
+`,
+			},
 		},
 		testgrad.VJP{
 			Src: `
