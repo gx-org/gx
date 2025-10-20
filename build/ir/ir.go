@@ -116,6 +116,9 @@ type (
 		// (using static type casting).
 		ConvertibleTo(Fetcher, Type) (bool, error)
 
+		// SourceString returns a reference to the type given a file context.
+		SourceString(file *File) string
+
 		// String representation of the type.
 		String() string
 	}
@@ -330,6 +333,11 @@ func (s *TupleType) Value(x Expr) AssignableExpr {
 	return &TypeValExpr{X: x, Typ: s}
 }
 
+// SourceString returns a string representation of the signature of a function.
+func (s *TupleType) SourceString(context *File) string {
+	return s.String()
+}
+
 // String representation of the type.
 func (s *TupleType) String() string {
 	ss := make([]string, len(s.Types))
@@ -358,6 +366,11 @@ func (s *InterfaceType) ConvertibleTo(Fetcher, Type) (bool, error) { return fals
 // Value returns a value pointing to the receiver.
 func (s *InterfaceType) Value(x Expr) AssignableExpr {
 	return &TypeValExpr{X: x, Typ: s}
+}
+
+// SourceString returns a reference to the type given a file context.
+func (s *InterfaceType) SourceString(context *File) string {
+	return s.String()
 }
 
 // String representation of the type.
@@ -396,6 +409,11 @@ func (s *BuiltinType) ConvertibleTo(fetcher Fetcher, target Type) (bool, error) 
 // Value returns a value pointing to the receiver.
 func (s *BuiltinType) Value(x Expr) AssignableExpr {
 	return &TypeValExpr{X: x, Typ: s}
+}
+
+// SourceString returns a string representation of the signature of a function.
+func (s *BuiltinType) SourceString(context *File) string {
+	return s.String()
 }
 
 // String representation of the type.
@@ -525,6 +543,11 @@ func (s *atomicType) Zero() AssignableExpr {
 	}
 }
 
+// SourceString returns a reference to the type given a file context.
+func (s *atomicType) SourceString(*File) string {
+	return s.String()
+}
+
 // String representation of the type.
 func (s *atomicType) String() string {
 	return s.Kind().String()
@@ -623,6 +646,14 @@ func (s *NamedType) Same(o Storage) bool {
 	return Storage(s) == o
 }
 
+// SourceString returns a reference to the type given a file context.
+func (s *NamedType) SourceString(context *File) string {
+	if s.File == nil || s.File.Package == context.Package {
+		return s.Name()
+	}
+	return s.File.Package.Name.Name + "." + s.Name()
+}
+
 // String representation of the type.
 func (s *NamedType) String() string {
 	if s.File == nil {
@@ -679,6 +710,11 @@ func (s *StructType) Source() ast.Node { return s.Src }
 // Value returns a value pointing to the receiver.
 func (s *StructType) Value(x Expr) AssignableExpr {
 	return &TypeValExpr{X: x, Typ: s}
+}
+
+// SourceString returns a reference to the type given a file context.
+func (s *StructType) SourceString(context *File) string {
+	return s.String()
 }
 
 // String representation of the type.
@@ -819,17 +855,26 @@ func (s *SliceType) ElementType() (Type, bool) {
 	}, true
 }
 
-// String representation of the type.
-func (s *SliceType) String() string {
-	dtype := "nil"
-	if s.DType != nil {
-		dtype = s.DType.String()
-	}
+func (s *SliceType) rankString(dtype string) string {
 	rank := "[?]"
 	if s.Rank > 0 {
 		rank = strings.Repeat("[]", s.Rank)
 	}
 	return rank + dtype
+}
+
+// SourceString returns a reference to the type given a file context.
+func (s *SliceType) SourceString(context *File) string {
+	return s.rankString(s.DType.Typ.SourceString(context))
+}
+
+// String representation of the type.
+func (s *SliceType) String() string {
+	dtype := "unknown"
+	if s.DType != nil {
+		dtype = s.DType.String()
+	}
+	return s.rankString(dtype)
 }
 
 func (*arrayType) node() {}
@@ -971,17 +1016,26 @@ func (s *arrayType) Zero() AssignableExpr {
 	}
 }
 
+func (s *arrayType) rankString(dtype string) string {
+	rank := "[invalid]"
+	if s.RankF != nil {
+		rank = s.RankF.String()
+	}
+	return rank + dtype
+}
+
+// SourceString returns a reference to the type given a file context.
+func (s *arrayType) SourceString(context *File) string {
+	return s.rankString(s.DTypeF.SourceString(context))
+}
+
 // String representation of the tensor type.
 func (s *arrayType) String() string {
 	dtype := "dtype"
 	if s.DTypeF != nil {
 		dtype = s.DTypeF.String()
 	}
-	rank := "[invalid]"
-	if s.RankF != nil {
-		rank = s.RankF.String()
-	}
-	return rank + dtype
+	return s.rankString(dtype)
 }
 
 func (*TypeParam) node() {}
@@ -1052,6 +1106,11 @@ func (s *TypeParam) Same(o Storage) bool {
 // Value returns a value pointing to the receiver.
 func (s *TypeParam) Value(x Expr) AssignableExpr {
 	return &TypeValExpr{X: x, Typ: s}
+}
+
+// SourceString returns a reference to the type given a file context.
+func (s *TypeParam) SourceString(context *File) string {
+	return s.Field.Type().SourceString(context)
 }
 
 // String representation of the type.
