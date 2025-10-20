@@ -284,7 +284,7 @@ func (pkg *IncrementalPackage) Build(src string) error {
 }
 
 // BuildExpr builds an expression.
-func (pkg *IncrementalPackage) BuildExpr(src string) (ir.Expr, error) {
+func (pkg *IncrementalPackage) BuildExpr(src string, imports ...*ast.ImportSpec) (ir.Expr, error) {
 	const fileName = "expression"
 	fset := &token.FileSet{}
 	fset.AddFile(fileName, -1, len(src))
@@ -294,8 +294,17 @@ func (pkg *IncrementalPackage) BuildExpr(src string) (ir.Expr, error) {
 	}
 	errs := &fmterr.Errors{}
 	pkgScope := newPackageProcScope(false, pkg.basePackage, errs)
-	file := newFile(pkg.basePackage, fileName, &ast.File{})
+	file := newFile(pkg.basePackage, fileName, &ast.File{
+		Imports: imports,
+	})
 	pscope := pkgScope.newFilePScope(file)
+	if ok := file.processDecls(pscope, nil); !ok {
+		return nil, errs
+	}
+	bFType, ok := processFuncType(pscope, &ast.FuncType{}, nil, false)
+	if !ok {
+		return nil, errs
+	}
 	expr, _ := processExpr(pscope, astExpr)
 	if !errs.Empty() {
 		return nil, errs
@@ -308,8 +317,11 @@ func (pkg *IncrementalPackage) BuildExpr(src string) (ir.Expr, error) {
 	if !ok {
 		return nil, errs
 	}
-	fScope := newFuncScope(rScope, &ir.FuncType{})
-	irExpr, ok := expr.buildExpr(fScope)
+	_, funRScope, ok := bFType.buildFuncType(rScope)
+	if !ok {
+		return nil, errs
+	}
+	irExpr, ok := expr.buildExpr(funRScope)
 	if !ok {
 		return nil, errs
 	}

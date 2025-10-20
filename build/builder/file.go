@@ -51,6 +51,10 @@ func processFile(pkgctx *pkgProcScope, name string, src *ast.File) (*file, bool)
 
 func (f *file) processDecls(pscope procScope, decls []ast.Decl) bool {
 	ok := true
+	for _, impSpec := range f.src.Imports {
+		importOk := processImportSpec(pscope, impSpec)
+		ok = importOk && ok
+	}
 	for _, decl := range decls {
 		var declOk bool
 		switch declT := decl.(type) {

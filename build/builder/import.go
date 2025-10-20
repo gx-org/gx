@@ -31,25 +31,29 @@ type importDecl struct {
 	pkg *basePackage
 }
 
+func processImportSpec(pscope procScope, spec *ast.ImportSpec) bool {
+	ext := &ir.ImportDecl{Src: spec}
+	var err error
+	ext.Path, err = strconv.Unquote(ext.Src.Path.Value)
+	if err != nil {
+		return pscope.Err().Appendf(ext.Src.Path, "malformed path: %s", ext.Src.Path.Value)
+	}
+	ident := ext.Src.Name
+	if ident == nil {
+		// The import does not define a name for the package.
+		// Use the last element of the import path.
+		ident = &ast.Ident{
+			NamePos: ext.Src.Path.ValuePos,
+			Name:    filepath.Base(ext.Path),
+		}
+	}
+	return pscope.file().declareImports(pscope, ident, ext)
+}
+
 func processImportDecl(pscope procScope, decl *ast.GenDecl) bool {
 	ok := true
 	for _, spec := range decl.Specs {
-		ext := &ir.ImportDecl{Src: spec.(*ast.ImportSpec)}
-		var err error
-		ext.Path, err = strconv.Unquote(ext.Src.Path.Value)
-		if err != nil {
-			ok = pscope.Err().Appendf(ext.Src.Path, "malformed path: %s", ext.Src.Path.Value)
-		}
-		ident := ext.Src.Name
-		if ident == nil {
-			// The import does not define a name for the package.
-			// Use the last element of the import path.
-			ident = &ast.Ident{
-				NamePos: ext.Src.Path.ValuePos,
-				Name:    filepath.Base(ext.Path),
-			}
-		}
-		importOk := pscope.file().declareImports(pscope, ident, ext)
+		importOk := processImportSpec(pscope, spec.(*ast.ImportSpec))
 		ok = importOk && ok
 	}
 	return ok
