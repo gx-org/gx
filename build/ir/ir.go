@@ -1125,12 +1125,12 @@ func (s *TypeParam) Value(x Expr) AssignableExpr {
 
 // SourceString returns a reference to the type given a file context.
 func (s *TypeParam) SourceString(context *File) string {
-	return s.Field.Type().SourceString(context)
+	return s.Field.Name.Name
 }
 
 // String representation of the type.
 func (s *TypeParam) String() string {
-	return s.Field.Type().String()
+	return s.Field.Name.Name
 }
 
 // IsStatic return true if the type is static, that is if the instance of the type

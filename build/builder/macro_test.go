@@ -132,6 +132,44 @@ func g[T floats](x T) T {
 }
 `,
 		},
+		testbuild.Decl{
+			Src: `
+import "testmacros"
+
+type floats interface {
+	float32 | float64
+}
+
+func f[T floats](x T) T {
+	return 2*x
+}
+
+func g(x float32) float32 {
+	return testmacros.ID(f)(x)
+}
+`,
+		},
+		testbuild.Decl{
+			Src: `
+import "testmacros"
+
+type floats interface {
+	float32 | float64
+}
+
+func g[T floats](x T) T {
+	return 2*x
+}
+
+func f(x float32) float32 {
+	return g[float32](x)
+}
+
+func F(x float32) float32 {
+	return testmacros.ID(f)(x)
+}
+`,
+		},
 	)
 }
 
@@ -247,7 +285,7 @@ func g[T floats](x T) T {
 	return testmacros.ID(f)[T]()
 }
 `,
-			Err: "not enough arguments in call to func[](x test.floats) test.floats",
+			Err: "not enough arguments in call to func[](x T) T",
 		},
 	)
 }

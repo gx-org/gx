@@ -279,14 +279,14 @@ func TestGenericArray(t *testing.T) {
 			irhelper.Fields(typeParamFieldT),
 			nil,
 			irhelper.Fields(),
-			irhelper.Fields(irhelper.ArrayType(someInt, 2, 3)),
+			irhelper.Fields(irhelper.ArrayType(typeParamT, 2, 3)),
 		),
 		Body: &ir.BlockStmt{List: []ir.Stmt{
 			&ir.ReturnStmt{Results: []ir.Expr{&ir.ArrayLitExpr{
-				Typ: irhelper.ArrayType(someInt, 2, 3),
+				Typ: irhelper.ArrayType(typeParamT, 2, 3),
 				Elts: []ir.AssignableExpr{
 					&ir.ArrayLitExpr{
-						Typ: irhelper.ArrayType(someInt, 3),
+						Typ: irhelper.ArrayType(typeParamT, 3),
 						Elts: []ir.AssignableExpr{
 							irhelper.IntNumberAs(1, typeParamT),
 							irhelper.IntNumberAs(2, typeParamT),
@@ -294,7 +294,7 @@ func TestGenericArray(t *testing.T) {
 						},
 					},
 					&ir.ArrayLitExpr{
-						Typ: irhelper.ArrayType(someInt, 3),
+						Typ: irhelper.ArrayType(typeParamT, 3),
 						Elts: []ir.AssignableExpr{
 							irhelper.IntNumberAs(4, typeParamT),
 							irhelper.IntNumberAs(5, typeParamT),
@@ -511,13 +511,16 @@ func TestGenericCastArray(t *testing.T) {
 		File:       wantFile,
 		Underlying: irhelper.TypeExpr(irhelper.TypeSet(ir.Int32Type(), ir.Int64Type())),
 	}
+	typeParams := irhelper.Fields("T", "S", someInt)
+	typeParamT := &ir.TypeParam{Field: typeParams.List[0].Fields[0]}
+	typeParamS := &ir.TypeParam{Field: typeParams.List[0].Fields[1]}
 	castArrayFunc := &ir.FuncBuiltin{
 		Src: &ast.FuncDecl{Name: &ast.Ident{Name: "cast"}},
 		FType: irhelper.FuncType(
-			irhelper.Fields("T", "S", someInt),
+			typeParams,
 			nil,
-			irhelper.Fields(irhelper.ArrayType(someInt, irhelper.Axis("___M"))),
-			irhelper.Fields(irhelper.ArrayType(someInt, irhelper.Axis("M___"))),
+			irhelper.Fields(irhelper.ArrayType(typeParamS, irhelper.Axis("___M"))),
+			irhelper.Fields(irhelper.ArrayType(typeParamT, irhelper.Axis("M___"))),
 		),
 	}
 	xField := irhelper.Field("x", irhelper.ArrayType(ir.Int64Type(), 2), nil)
