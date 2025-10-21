@@ -648,6 +648,9 @@ func (s *NamedType) Same(o Storage) bool {
 
 // SourceString returns a reference to the type given a file context.
 func (s *NamedType) SourceString(context *File) string {
+	if context == nil {
+		return s.String()
+	}
 	if s.File == nil || s.File.Package == context.Package {
 		return s.Name()
 	}
@@ -957,6 +960,17 @@ func (s *arrayType) Equal(fetcher Fetcher, other Type) (bool, error) {
 	return s.equalArray(fetcher, otherT)
 }
 
+func (s *arrayType) assignableFrom(fetcher Fetcher, x Type) (bool, error) {
+	arrayType, isArrayType := x.(ArrayType)
+	if isArrayType {
+		return s.assignableToArray(fetcher, arrayType)
+	}
+	if !s.RankF.IsAtomic() {
+		return false, nil
+	}
+	return AssignableTo(fetcher, x, s.DataType())
+}
+
 // AssignableTo reports if the type can be assigned to other.
 func (s *arrayType) AssignableTo(fetcher Fetcher, target Type) (bool, error) {
 	targetT, ok := target.(ArrayType)
@@ -1046,12 +1060,13 @@ func (s *TypeParam) Kind() Kind {
 }
 
 func (s *TypeParam) equal(fetcher Fetcher, typ Type) (bool, error) {
-	otherT, isOtherTypeParam := typ.(*TypeParam)
-	if isOtherTypeParam {
-		return otherT == s, nil
-	}
 	switch typT := typ.(type) {
+	case *atomicType:
+		return false, nil
 	case *TypeParam:
+		if s == typT {
+			return true, nil
+		}
 	case *NamedType:
 		return s.Field.Type().Equal(fetcher, typ)
 	case ArrayType:

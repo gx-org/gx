@@ -613,3 +613,23 @@ func F[T Floats](x T) T {
 		},
 	)
 }
+
+func TestGenericCallGeneric(t *testing.T) {
+	testbuild.Run(t,
+		testbuild.Decl{
+			Src: `
+type floats interface {
+	float32 | float64
+}
+
+func f[T floats](x T) T {
+	return 2*x
+}
+
+func g[T floats](x T) T {
+	return f[T](x)
+}
+`,
+		},
+	)
+}
