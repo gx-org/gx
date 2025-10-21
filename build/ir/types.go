@@ -708,8 +708,18 @@ type assigner interface {
 	assignableFrom(fetcher Fetcher, x Type) (bool, error)
 }
 
+func simplifyType(t Type) Type {
+	typeParam, ok := t.(*TypeParam)
+	if !ok {
+		return t
+	}
+	return typeParam.Field.Group.Type.Typ
+}
+
 // AssignableTo reports whether a value of the type can be assigned to another.
 func AssignableTo(fetcher Fetcher, x, y Type) (bool, error) {
+	x = simplifyType(x)
+	y = simplifyType(y)
 	if x == y {
 		return true, nil
 	}
