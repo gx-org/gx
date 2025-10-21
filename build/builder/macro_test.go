@@ -132,6 +132,23 @@ func g[T floats](x T) T {
 }
 `,
 		},
+		testbuild.Decl{
+			Src: `
+import "testmacros"
+
+type floats interface {
+	float32 | float64
+}
+
+func f[T floats](x T) T {
+	return 2*x
+}
+
+func g(x float32) float32 {
+	return testmacros.ID(f)(x)
+}
+`,
+		},
 	)
 }
 
