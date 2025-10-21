@@ -483,8 +483,8 @@ func F[T floats](x T) T {
 }
 `,
 			Want: `
-func vjpF[T floats](x floats) (floats, func(res floats) floats) {
-	selfVJPFunc := func(res test.floats) test.floats {
+func vjpF[T floats](x T) (T, func(res T) T) {
+	selfVJPFunc := func(res T) T {
 		return res
 	}
 	return x, selfVJPFunc
