@@ -21,9 +21,7 @@ import (
 	"strings"
 
 	"github.com/pkg/errors"
-	"github.com/gx-org/gx/build/builder"
 	"github.com/gx-org/gx/build/builder/testbuild"
-	"github.com/gx-org/gx/build/ir"
 )
 
 // VJP tests the computation of the Vector-Jacobian product of a function.
@@ -42,7 +40,7 @@ type VJP struct {
 	// If empty, then the default import name is used.
 	GradImportName string
 
-	// WantExprs stores the source code of the expected synthetic auxiliary functions.
+	// WantExprs compares expanded expressions to required GX source code.
 	WantExprs map[string]string
 
 	// List of imports to include in the source.
@@ -93,21 +91,6 @@ var gradImport = &ast.ImportSpec{
 	Path: &ast.BasicLit{Value: strconv.Quote("math/grad")},
 }
 
-func evalExpr(pkg *builder.IncrementalPackage, src string, want string) error {
-	irExpr, err := pkg.BuildExpr(src, gradImport)
-	if err != nil {
-		return errors.Errorf("cannot build expression %q:\n%+v", src, err)
-	}
-	var got string
-	switch irExprT := irExpr.(type) {
-	case *ir.MacroCallExpr:
-		got = irExprT.F.String()
-	default:
-		got = irExpr.String()
-	}
-	return testbuild.CompareString(got, want)
-}
-
 // Run builds the declarations as a package, then compare to an expected outcome.
 func (tt VJP) Run(b *testbuild.Builder) error {
 	if len(tt.GradOf) == 0 {
@@ -127,7 +110,7 @@ func (tt VJP) Run(b *testbuild.Builder) error {
 	}
 	// Check other functions we expect.
 	for expr, want := range tt.WantExprs {
-		if err := evalExpr(pkg, expr, want); err != nil {
+		if err := testbuild.CheckExpandedExpr(pkg, expr, want, gradImport); err != nil {
 			return err
 		}
 	}

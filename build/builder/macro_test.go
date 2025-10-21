@@ -148,6 +148,13 @@ func g(x float32) float32 {
 	return testmacros.ID(f)(x)
 }
 `,
+			WantExprs: map[string]string{
+				"testmacros.ID(f)": `
+func[T floats](x T) T {
+	return 2*x
+}
+`,
+			},
 		},
 		testbuild.Decl{
 			Src: `
@@ -169,6 +176,13 @@ func F(x float32) float32 {
 	return testmacros.ID(f)(x)
 }
 `,
+			WantExprs: map[string]string{
+				"testmacros.ID(f)": `
+func(x float32) float32 {
+	return g(x)
+}
+`,
+			},
 		},
 	)
 }
@@ -268,7 +282,6 @@ func (S) f() int32 {
 func TestMacroWithErrors(t *testing.T) {
 	testbuild.Run(t,
 		testmacros.DeclarePackage,
-
 		testbuild.Decl{
 			Src: `
 import "testmacros"
