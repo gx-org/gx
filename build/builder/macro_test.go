@@ -115,6 +115,23 @@ func g[T floats]() T {
 }
 `,
 		},
+		testbuild.Decl{
+			Src: `
+import "testmacros"
+
+type floats interface {
+	float32 | float64
+}
+
+func f[T floats](x T) T {
+	return 2*x
+}
+
+func g[T floats](x T) T {
+	return testmacros.ID(f)[T](x)
+}
+`,
+		},
 	)
 }
 
@@ -206,6 +223,31 @@ func (S) f() int32 {
 }
 `,
 			Err: "cannot assign S.synthetic to T.synthetic",
+		},
+	)
+}
+
+func TestMacroWithErrors(t *testing.T) {
+	testbuild.Run(t,
+		testmacros.DeclarePackage,
+
+		testbuild.Decl{
+			Src: `
+import "testmacros"
+
+type floats interface {
+	float32 | float64
+}
+
+func f[T floats](x T) T {
+	return 2*x
+}
+
+func g[T floats](x T) T {
+	return testmacros.ID(f)[T]()
+}
+`,
+			Err: "not enough arguments in call to func[](x test.floats) test.floats",
 		},
 	)
 }
