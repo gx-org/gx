@@ -1776,7 +1776,7 @@ func (s *SpecialisedFunc) File() *File {
 
 // ShortString returns the name of the function.
 func (s *SpecialisedFunc) ShortString() string {
-	return s.FuncType().String()
+	return s.F.FuncType().String()
 }
 
 func (*ImportDecl) node()         {}

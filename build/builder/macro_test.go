@@ -282,6 +282,32 @@ func (S) f() int32 {
 func TestMacroWithErrors(t *testing.T) {
 	testbuild.Run(t,
 		testmacros.DeclarePackage,
+		// First: make sure testmacros.ID(f) as generic types.
+		testbuild.Decl{
+			Src: `
+import "testmacros"
+
+type floats interface {
+	float32 | float64
+}
+
+func f[T floats](x T) T {
+	return 2*x
+}
+
+func g[T floats](x T) T {
+	return testmacros.ID(f)[T](x)
+}
+`,
+			WantExprs: map[string]string{
+				"testmacros.ID(f)": `
+func[T floats](x T) T {
+	return 2*x
+}
+`,
+			},
+		},
+		// Second: check the representation testmacros.ID(f) in the error message.
 		testbuild.Decl{
 			Src: `
 import "testmacros"
@@ -298,7 +324,7 @@ func g[T floats](x T) T {
 	return testmacros.ID(f)[T]()
 }
 `,
-			Err: "not enough arguments in call to func[](x T) T",
+			Err: "not enough arguments in call to func[T test.floats](x T) T",
 		},
 	)
 }
