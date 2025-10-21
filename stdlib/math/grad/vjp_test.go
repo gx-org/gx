@@ -466,3 +466,46 @@ func vjpF(x float32) (float32, func(res float32) float32) {
 		},
 	)
 }
+
+func TestVJPGenerics(t *testing.T) {
+	testbuild.Run(t,
+		declareGradPackage,
+		declareMathPackage,
+		testgrad.VJP{
+			Imports: []string{"math"},
+			Src: `
+type floats interface {
+	float32 | float64
+}
+
+func F[T floats](x T) T {
+	return x
+}
+`,
+			Want: `
+func vjpF[T floats](x floats) (floats, func(res floats) floats) {
+	selfVJPFunc := func(res test.floats) test.floats {
+		return res
+	}
+	return x, selfVJPFunc
+}
+`,
+		},
+		testgrad.VJP{
+			Imports: []string{"math"},
+			Src: `
+type floats interface {
+	float32 | float64
+}
+
+func g[T floats](x T) T {
+	return x
+}
+
+func F[T floats](x T) T {
+	return g(x)
+}
+`,
+		},
+	)
+}
