@@ -17,13 +17,16 @@ package testbuild
 
 import (
 	"fmt"
+	"go/ast"
 	"go/parser"
 	"go/token"
+	"strconv"
 	"strings"
 	"testing"
 
 	"github.com/google/go-cmp/cmp"
 	"github.com/pkg/errors"
+	"golang.org/x/exp/maps"
 	gxfmt "github.com/gx-org/gx/base/fmt"
 	"github.com/gx-org/gx/build/builder"
 	"github.com/gx-org/gx/build/fmterr"
@@ -143,11 +146,30 @@ type Decl struct {
 	Want []ir.Node
 	// Err is the substring expected if the compiler returns an error.
 	Err string
+
+	// WantExprs compares expanded expressions to required GX source code.
+	WantExprs map[string]string
 }
 
 // Source code of the declarations.
 func (tt Decl) Source() string {
 	return tt.Src
+}
+
+// CheckExpandedExpr builds an expression and compares the outcome to a string.
+func CheckExpandedExpr(pkg *builder.IncrementalPackage, src string, want string, imports ...*ast.ImportSpec) error {
+	irExpr, err := pkg.BuildExpr(src, imports...)
+	if err != nil {
+		return errors.Errorf("cannot build expression %q:\n%+v", src, err)
+	}
+	var got string
+	switch irExprT := irExpr.(type) {
+	case *ir.MacroCallExpr:
+		got = irExprT.F.String()
+	default:
+		got = irExpr.String()
+	}
+	return CompareString(got, want)
 }
 
 // Run builds the declarations as a package, then compare to an expected outcome.
@@ -162,6 +184,12 @@ package test
 	}
 	if err := checkAll(tt.Want, pkg.IR().Decls); err != nil {
 		return err
+	}
+	// Check other functions we expect.
+	for expr, want := range tt.WantExprs {
+		if err := CheckExpandedExpr(pkg, expr, want, b.imp.importSpecs()...); err != nil {
+			return err
+		}
 	}
 	return nil
 }
@@ -247,6 +275,16 @@ func (imp *localImporter) Load(bld *builder.Builder, path string) (builder.Packa
 		return nil, errors.Errorf("package %s has not been built", path)
 	}
 	return pkg, nil
+}
+
+func (imp *localImporter) importSpecs() []*ast.ImportSpec {
+	specs := make([]*ast.ImportSpec, len(imp.pkgs))
+	for i, path := range maps.Keys(imp.pkgs) {
+		specs[i] = &ast.ImportSpec{
+			Path: &ast.BasicLit{Value: strconv.Quote(path)},
+		}
+	}
+	return specs
 }
 
 // Builder builds test source code.
