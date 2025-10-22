@@ -537,8 +537,13 @@ func buildFuncForCall(rscope resolveScope, fExpr *ir.FuncValExpr, args []ir.Assi
 	if !ok {
 		return args, fExpr, false
 	}
-	fExpr, ok = generics.Instantiate(ce, fExpr)
-	return args, fExpr, ok && checkArgsForCall(rscope, fExpr, args)
+	fTypeInst, ok := generics.Instantiate(ce, fExpr.T)
+	fExprInst := &ir.FuncValExpr{
+		X: fExpr.X,
+		F: fExpr.F,
+		T: fTypeInst,
+	}
+	return args, fExprInst, ok && checkArgsForCall(rscope, fExprInst, args)
 }
 
 func funcDeclarator(fn ir.PkgFunc) irb.Declarator {
