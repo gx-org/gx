@@ -74,11 +74,22 @@ func specialise(fetcher ir.Fetcher, fType *ir.FuncType, nameToType map[string]ir
 	if !ok {
 		return fType, false
 	}
+	typeParamsValues := make([]ir.TypeParamValue, fType.TypeParams.Len())
+	for i, typeParam := range fType.TypeParams.Fields() {
+		tp, ok := nameToType[typeParam.Name.Name]
+		if !ok {
+			continue
+		}
+		typeParamsValues[i] = ir.TypeParamValue{
+			Field: typeParam,
+			Typ:   tp,
+		}
+	}
 	return &ir.FuncType{
 		BaseType:         fType.BaseType,
 		Receiver:         fType.Receiver,
 		TypeParams:       typeParams,
-		TypeParamsValues: append([]ir.TypeParamValue{}, fType.TypeParamsValues...),
+		TypeParamsValues: typeParamsValues,
 		CompEval:         fType.CompEval,
 		Params:           params,
 		Results:          results,

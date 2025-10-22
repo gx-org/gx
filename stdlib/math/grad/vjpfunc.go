@@ -20,17 +20,17 @@ import (
 	"github.com/gx-org/gx/build/ir"
 )
 
-func (m *vjpMacro) vjpFunc(fetcher ir.Fetcher, src *ir.FuncValExpr) (string, *ast.CallExpr, bool) {
+func (m *vjpMacro) vjpFunc(fetcher ir.Fetcher, src *ir.FuncValExpr) (string, ast.Expr, bool) {
 	name := "Fun"
 	if pkgFunc, ok := src.F.(ir.PkgFunc); ok {
 		name = pkgFunc.Name()
 	}
 	macro := m.From()
-	return name, &ast.CallExpr{
+	return name, m.funcNameWithTypeParamsExpr(&ast.CallExpr{
 		Fun: &ast.SelectorExpr{
 			X:   &ast.Ident{Name: macro.File().Package.Name.Name},
 			Sel: &ast.Ident{Name: macro.Name()},
 		},
 		Args: []ast.Expr{src.X.Source().(ast.Expr)},
-	}, true
+	}), true
 }

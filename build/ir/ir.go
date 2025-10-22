@@ -2984,7 +2984,20 @@ func (s *FuncValExpr) ShortString() string {
 }
 
 // String representation.
-func (s *FuncValExpr) String() string { return s.X.String() }
+func (s *FuncValExpr) String() string {
+	callee := s.X.String()
+	spec := ""
+	fType := s.F.FuncType()
+	numTypeParamValues := len(fType.TypeParamsValues)
+	if numTypeParamValues > 0 {
+		types := make([]string, numTypeParamValues)
+		for i, val := range fType.TypeParamsValues {
+			types[i] = val.Typ.String()
+		}
+		spec = "[" + strings.Join(types, ",") + "]"
+	}
+	return callee + spec
+}
 
 func (s *CallExpr) node()       {}
 func (s *CallExpr) assignable() {}

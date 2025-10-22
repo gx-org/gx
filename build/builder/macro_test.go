@@ -179,7 +179,7 @@ func F(x float32) float32 {
 			WantExprs: map[string]string{
 				"testmacros.ID(f)": `
 func(x float32) float32 {
-	return g(x)
+	return g[float32](x)
 }
 `,
 			},
