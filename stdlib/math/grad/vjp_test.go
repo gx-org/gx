@@ -506,6 +506,16 @@ func F[T floats](x T) T {
 	return g(x)
 }
 `,
+			Want: `
+func vjpF[T floats](x T) (T, func(res T) T) {
+	fwd0, gVJP := grad.VJP(g)[T](x)
+	selfVJPFunc := func(res T) T {
+		bck0 := gVJP(res)
+		return bck0
+	}
+	return fwd0, selfVJPFunc
+}
+`,
 		},
 	)
 }

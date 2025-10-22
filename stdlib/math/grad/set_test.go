@@ -200,6 +200,35 @@ func vjpF(x float32) (float32, func(res float32) float32) {
 	)
 }
 
+func TestSetGeneric(t *testing.T) {
+	testbuild.Run(t,
+		declareGradPackage,
+		testgrad.Func{
+			Src: `
+type floats interface {
+	float32 | float64
+}
+
+func g[T floats](T) T 
+
+//gx:@grad.Set(g)
+func F[T floats](x T) T {
+	return x
+}
+`,
+			Want: `
+func vjpF[T floats](x T) (T, func(res T) T) {
+	fwd0 := F[T](x)
+	selfVJPFunc := func(res T) T {
+		return res*g[T](x)
+	}
+	return fwd0, selfVJPFunc
+}
+`,
+		},
+	)
+}
+
 func TestSetErrors(t *testing.T) {
 	testbuild.Run(t,
 		declareGradPackage,

@@ -47,8 +47,9 @@ type (
 		fn     ir.PkgFunc
 		params []vjpParam
 
-		nResults *namedFields
-		nParams  *namedFields
+		nResults       *namedFields
+		nParams        *namedFields
+		typeParamsExpr []ast.Expr
 	}
 )
 
@@ -90,6 +91,14 @@ func (m vjpMacro) newMacro(fn ir.PkgFunc) (*vjpMacro, error) {
 			wrt:      newWRT(param),
 			vjpFType: backwardSig,
 		}
+	}
+	typeParams := fType.TypeParams.Fields()
+	if len(typeParams) == 0 {
+		return &m, nil
+	}
+	m.typeParamsExpr = make([]ast.Expr, len(typeParams))
+	for i, typeParam := range typeParams {
+		m.typeParamsExpr[i] = &ast.Ident{Name: typeParam.Name.Name}
 	}
 	return &m, nil
 }
@@ -167,7 +176,9 @@ func (sg *stmtVJP) buildVJPFunctionWRTFromAnn(grad ir.PkgFunc, param vjpParam, a
 			},
 			&gradExprResult{
 				expr: &ast.CallExpr{
-					Fun:  &ast.Ident{Name: grad.Name()},
+					Fun: sg.macro.funcNameWithTypeParamsExpr(
+						&ast.Ident{Name: grad.Name()},
+					),
 					Args: args,
 				},
 			},
@@ -182,6 +193,24 @@ func (sg *stmtVJP) buildVJPFunctionWRTFromAnn(grad ir.PkgFunc, param vjpParam, a
 	}, true
 }
 
+func (m *vjpMacro) funcNameWithTypeParamsExpr(fn ast.Expr) ast.Expr {
+	var callee ast.Expr = fn
+	switch len(m.typeParamsExpr) {
+	case 0:
+		return callee
+	case 1:
+		return &ast.IndexExpr{
+			X:     callee,
+			Index: m.typeParamsExpr[0],
+		}
+	default:
+		return &ast.IndexListExpr{
+			X:       callee,
+			Indices: m.typeParamsExpr,
+		}
+	}
+}
+
 func (m *vjpMacro) buildBodyFromSetAnnotation(fetcher ir.Fetcher, sg *stmtVJP, ann *setAnnotation) (*ast.BlockStmt, bool) {
 	forwarder := sg.newExprForwardVJP()
 	// Build the arguments to call the forward functions.
@@ -190,13 +219,16 @@ func (m *vjpMacro) buildBodyFromSetAnnotation(fetcher ir.Fetcher, sg *stmtVJP, a
 		args[i] = &ast.Ident{Name: fieldName}
 	}
 	// Call the original function to get the forward values.
-	nVals := m.fn.FuncType().Results.Len()
+	fType := m.fn.FuncType()
+	nVals := fType.Results.Len()
 	fv := forwarder.newForwardValues(nil, nVals)
 	stmt := &ast.AssignStmt{
 		Tok: token.DEFINE,
 		Lhs: fv.idents(),
 		Rhs: []ast.Expr{&ast.CallExpr{
-			Fun:  &ast.Ident{Name: m.fn.Name()},
+			Fun: m.funcNameWithTypeParamsExpr(
+				&ast.Ident{Name: m.fn.Name()},
+			),
 			Args: args,
 		}},
 	}
