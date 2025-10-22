@@ -126,27 +126,26 @@ func instantiateGroupType(fetcher ir.Fetcher) groupCloner {
 }
 
 // Instantiate replaces data types either specified or inferred.
-func Instantiate(fetcher ir.Fetcher, fExpr *ir.FuncValExpr) (*ir.FuncValExpr, bool) {
-	params, ok := cloneFields(fetcher, fExpr.T.Params, instantiateGroupType(fetcher), cloneField)
-	if !ok {
-		return fExpr, false
+func Instantiate(fetcher ir.Fetcher, fType *ir.FuncType) (*ir.FuncType, bool) {
+	nameToType := make(map[string]ir.Type)
+	for _, tParamValue := range fType.TypeParamsValues {
+		nameToType[tParamValue.Field.Name.Name] = tParamValue.Typ
 	}
-	results, ok := cloneFields(fetcher, fExpr.T.Results, instantiateGroupType(fetcher), cloneField)
+	params, ok := cloneFields(fetcher, fType.Params, instantiateGroupType(fetcher), cloneField)
 	if !ok {
-		return fExpr, false
+		return fType, false
 	}
-	fType := &ir.FuncType{
-		BaseType:         fExpr.T.BaseType,
-		Receiver:         fExpr.T.Receiver,
-		TypeParams:       fExpr.T.TypeParams,
-		TypeParamsValues: append([]ir.TypeParamValue{}, fExpr.T.TypeParamsValues...),
-		CompEval:         fExpr.T.CompEval,
+	results, ok := cloneFields(fetcher, fType.Results, instantiateGroupType(fetcher), cloneField)
+	if !ok {
+		return fType, false
+	}
+	return &ir.FuncType{
+		BaseType:         fType.BaseType,
+		Receiver:         fType.Receiver,
+		TypeParams:       fType.TypeParams,
+		TypeParamsValues: append([]ir.TypeParamValue{}, fType.TypeParamsValues...),
+		CompEval:         fType.CompEval,
 		Params:           params,
 		Results:          results,
-	}
-	return &ir.FuncValExpr{
-		X: fExpr.X,
-		F: fExpr.F,
-		T: fType,
 	}, true
 }
