@@ -1275,10 +1275,10 @@ type (
 
 	// SpecialisedFunc is a function that has been specialised.
 	SpecialisedFunc struct {
-		X    Expr
-		F    *FuncValExpr
-		T    *FuncType
-		Anns annotations.Annotations
+		PkgFunc
+		X Expr
+		F *FuncValExpr
+		T *FuncType
 	}
 
 	// ImportDecl imports a package.
@@ -1330,7 +1330,7 @@ var (
 	_ Func             = (*FuncKeyword)(nil)
 	_ PkgFunc          = (*FuncDecl)(nil)
 	_ Func             = (*FuncLit)(nil)
-	_ Func             = (*SpecialisedFunc)(nil)
+	_ PkgFunc          = (*SpecialisedFunc)(nil)
 	_ PkgFunc          = (*Macro)(nil)
 	_ WithStore        = (*FuncLit)(nil)
 	_ StorageWithValue = (*FuncLit)(nil)
@@ -1762,16 +1762,6 @@ func (s *SpecialisedFunc) Value(x Expr) AssignableExpr {
 		F: s,
 		T: s.T,
 	}
-}
-
-// Annotations returns the annotations attached to the function.
-func (s *SpecialisedFunc) Annotations() *annotations.Annotations {
-	return &s.Anns
-}
-
-// File declaring the function.
-func (s *SpecialisedFunc) File() *File {
-	return s.F.F.File()
 }
 
 // ShortString returns the name of the function.

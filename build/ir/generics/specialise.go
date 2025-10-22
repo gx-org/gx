@@ -135,9 +135,10 @@ func Specialise(fetcher ir.Fetcher, expr ir.Expr, fun *ir.FuncValExpr, typs []*i
 	}
 	specType, ok := specialise(fetcher, fType, nameToType)
 	return &ir.SpecialisedFunc{
-		X: expr,
-		F: fun,
-		T: specType,
+		PkgFunc: fun.F.(ir.PkgFunc),
+		X:       expr,
+		F:       fun,
+		T:       specType,
 	}, ok
 }
 

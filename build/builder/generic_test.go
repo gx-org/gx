@@ -201,7 +201,8 @@ func callCast() int32 {
 								X: &ir.FuncValExpr{
 									X: irhelper.ValueRef(castNoArgFunc),
 									F: &ir.SpecialisedFunc{
-										X: irhelper.ValueRef(castNoArgFunc),
+										PkgFunc: castNoArgFunc,
+										X:       irhelper.ValueRef(castNoArgFunc),
 										F: &ir.FuncValExpr{
 											X: irhelper.ValueRef(castNoArgFunc),
 											F: castNoArgFunc,
@@ -212,7 +213,8 @@ func callCast() int32 {
 									T: castNoArgFunc.FType,
 								},
 								F: &ir.SpecialisedFunc{
-									X: irhelper.ValueRef(castNoArgFunc),
+									PkgFunc: castNoArgFunc,
+									X:       irhelper.ValueRef(castNoArgFunc),
 									F: &ir.FuncValExpr{
 										X: irhelper.ValueRef(castNoArgFunc),
 										F: castNoArgFunc,
@@ -333,7 +335,8 @@ func callCast() [2][3]int32 {
 								X: &ir.FuncValExpr{
 									X: irhelper.ValueRef(new2x3ArrayFunc),
 									F: &ir.SpecialisedFunc{
-										X: irhelper.ValueRef(new2x3ArrayFunc),
+										PkgFunc: new2x3ArrayFunc,
+										X:       irhelper.ValueRef(new2x3ArrayFunc),
 										F: &ir.FuncValExpr{
 											X: irhelper.ValueRef(new2x3ArrayFunc),
 											F: new2x3ArrayFunc,
@@ -344,7 +347,8 @@ func callCast() [2][3]int32 {
 									T: new2x3ArrayFunc.FType,
 								},
 								F: &ir.SpecialisedFunc{
-									X: irhelper.ValueRef(new2x3ArrayFunc),
+									PkgFunc: new2x3ArrayFunc,
+									X:       irhelper.ValueRef(new2x3ArrayFunc),
 									F: &ir.FuncValExpr{
 										X: irhelper.ValueRef(new2x3ArrayFunc),
 										F: new2x3ArrayFunc,
