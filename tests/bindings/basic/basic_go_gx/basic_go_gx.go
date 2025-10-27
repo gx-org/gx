@@ -21,10 +21,9 @@ package basic_go_gx
 
 import (
 	"fmt"
-	"strings"
 	"reflect"
+	"strings"
 
-	"github.com/pkg/errors"
 	"github.com/gx-org/backend/platform"
 	"github.com/gx-org/gx/api"
 	"github.com/gx-org/gx/api/options"
@@ -191,7 +190,6 @@ func (pkg *Package) ReturnArrayFloat32() (_ types.Array[float32], err error) {
 	if err != nil {
 		return
 	}
-	out0 := types.NewAtom[float32](out0Value)
 
 	out0Value, ok := outputs[0].(values.Array)
 	if !ok {
@@ -291,137 +289,12 @@ func (pkg *Package) AddPrivate(arg0 *Basic) (_ types.Atom[int32], err error) {
 
 	return out0, nil
 }
-
-// ReturnArrayFloat32 returns a float32 tensor.
-func (pkg *Package) ReturnArrayFloat32() (_ types.Array[float32], err error) {
-	var args []values.Value = nil
-	var runner tracer.CompiledFunc
-	runner, err = pkg.cacheReturnArrayFloat32.Runner(nil, args)
-	if err != nil {
-		return
-	}
-	var outputs []values.Value
-	outputs, err = runner.Run(nil, args, pkg.handle.Tracer())
-	if err != nil {
-		return
-	}
-
-	
-	
-	out0Value, ok := outputs[0].(values.Array)
-	if !ok {
-		err = errors.Errorf("cannot cast %T to %s", outputs[0], reflect.TypeFor[*values.DeviceArray]().Name())
-		return
-	}
-	out0 := types.NewArray[float32](out0Value)
-
-	
-	return out0, nil
-}
-
-// ReturnMultiple returns multiple values.
-func (pkg *Package) ReturnMultiple() (_ types.Atom[int32], _ types.Atom[float32], _ types.Atom[float64], err error) {
-	var args []values.Value = nil
-	var runner tracer.CompiledFunc
-	runner, err = pkg.cacheReturnMultiple.Runner(nil, args)
-	if err != nil {
-		return
-	}
-	var outputs []values.Value
-	outputs, err = runner.Run(nil, args, pkg.handle.Tracer())
-	if err != nil {
-		return
-	}
-
-	
-	
-	out0Value, ok := outputs[0].(values.Array)
-	if !ok {
-		err = errors.Errorf("cannot cast %T to %s", outputs[0], reflect.TypeFor[*values.DeviceArray]().Name())
-		return
-	}
-	out0 := types.NewAtom[int32](out0Value)
-
-	
-	out1Value, ok := outputs[1].(values.Array)
-	if !ok {
-		err = errors.Errorf("cannot cast %T to %s", outputs[1], reflect.TypeFor[*values.DeviceArray]().Name())
-		return
-	}
-	out1 := types.NewAtom[float32](out1Value)
-
-	
-	out2Value, ok := outputs[2].(values.Array)
-	if !ok {
-		err = errors.Errorf("cannot cast %T to %s", outputs[2], reflect.TypeFor[*values.DeviceArray]().Name())
-		return
-	}
-	out2 := types.NewAtom[float64](out2Value)
-
-	
-	return out0, out1, out2, nil
-}
-
-// New returns a new instance of the basic structure.
-func (pkg *Package) New() (_ *Basic, err error) {
-	var args []values.Value = nil
-	var runner tracer.CompiledFunc
-	runner, err = pkg.cacheNew.Runner(nil, args)
-	if err != nil {
-		return
-	}
-	var outputs []values.Value
-	outputs, err = runner.Run(nil, args, pkg.handle.Tracer())
-	if err != nil {
-		return
-	}
-
-	fty := pkg.handle.Factory
-	
-	var out0 *Basic
-	out0, err = fty.MarshalBasic(outputs[0])
-	if err != nil {
-		return
-	}
-	
-	return out0, nil
-}
-
-// AddPrivate returns the sum of two private fields.
-func (pkg *Package) AddPrivate(arg0 *Basic) (_ types.Atom[int32], err error) {
-	var args []values.Value = []values.Value{
-		arg0.Bridge().GXValue(), // b basic.Basic
-	}
-	var runner tracer.CompiledFunc
-	runner, err = pkg.cacheAddPrivate.Runner(nil, args)
-	if err != nil {
-		return
-	}
-	var outputs []values.Value
-	outputs, err = runner.Run(nil, args, pkg.handle.Tracer())
-	if err != nil {
-		return
-	}
-
-	
-	
-	out0Value, ok := outputs[0].(values.Array)
-	if !ok {
-		err = errors.Errorf("cannot cast %T to %s", outputs[0], reflect.TypeFor[*values.DeviceArray]().Name())
-		return
-	}
-	out0 := types.NewAtom[int32](out0Value)
-
-	
-	return out0, nil
-}
-
 
 // handleEmpty stores the backend handles of Empty.
 type handleEmpty struct {
-	pkg       *Package
-	struc     *ir.NamedType
-	owner     *Empty
+	pkg   *Package
+	struc *ir.NamedType
+	owner *Empty
 }
 
 // Type of the value.
@@ -456,12 +329,11 @@ func (h *handleEmpty) String() string {
 // Empty stores the handle of Empty on a device.
 type Empty struct {
 	handle handleEmpty
-	value *values.NamedType
-
+	value  *values.NamedType
 }
 
 var (
-	_ types.Bridger = (*Empty)(nil)
+	_ types.Bridger      = (*Empty)(nil)
 	_ types.StructBridge = (*handleEmpty)(nil)
 )
 
@@ -488,7 +360,7 @@ func (fty *Factory) MarshalEmpty(val values.Value) (s *Empty, err error) {
 	for i, field := range structVal.StructType().Fields.Fields() {
 		fields[i] = structVal.FieldValue(field.Name.Name)
 	}
-	
+
 	return
 }
 
@@ -589,7 +461,7 @@ func (h *handleBasic) String() string {
 // Basic stores the handle of Basic on a device.
 type Basic struct {
 	handle handleBasic
-	value *values.NamedType
+	value  *values.NamedType
 
 	Int      types.Atom[int32]
 	Float    types.Atom[float32]
@@ -601,7 +473,7 @@ type Basic struct {
 }
 
 var (
-	_ types.Bridger = (*Basic)(nil)
+	_ types.Bridger      = (*Basic)(nil)
 	_ types.StructBridge = (*handleBasic)(nil)
 )
 
@@ -628,14 +500,13 @@ func (fty *Factory) MarshalBasic(val values.Value) (s *Basic, err error) {
 	for i, field := range structVal.StructType().Fields.Fields() {
 		fields[i] = structVal.FieldValue(field.Name.Name)
 	}
-	
+
 	field0Value, ok := fields[0].(values.Array)
 	if !ok {
 		err = errors.Errorf("cannot cast %T to %s", fields[0], reflect.TypeFor[*values.DeviceArray]().Name())
 		return
 	}
 	field0 := types.NewAtom[int32](field0Value)
-
 
 	field1Value, ok := fields[1].(values.Array)
 	if !ok {
@@ -644,14 +515,12 @@ func (fty *Factory) MarshalBasic(val values.Value) (s *Basic, err error) {
 	}
 	field1 := types.NewAtom[float32](field1Value)
 
-
 	field2Value, ok := fields[2].(values.Array)
 	if !ok {
 		err = errors.Errorf("cannot cast %T to %s", fields[2], reflect.TypeFor[*values.DeviceArray]().Name())
 		return
 	}
 	field2 := types.NewArray[float32](field2Value)
-
 
 	field3Value, ok := fields[3].(values.Array)
 	if !ok {
@@ -660,7 +529,6 @@ func (fty *Factory) MarshalBasic(val values.Value) (s *Basic, err error) {
 	}
 	field3 := types.NewAtom[int32](field3Value)
 
-
 	field4Value, ok := fields[4].(values.Array)
 	if !ok {
 		err = errors.Errorf("cannot cast %T to %s", fields[4], reflect.TypeFor[*values.DeviceArray]().Name())
@@ -668,14 +536,12 @@ func (fty *Factory) MarshalBasic(val values.Value) (s *Basic, err error) {
 	}
 	field4 := types.NewAtom[int32](field4Value)
 
-
 	field5Value, ok := fields[5].(values.Array)
 	if !ok {
 		err = errors.Errorf("cannot cast %T to %s", fields[5], reflect.TypeFor[*values.DeviceArray]().Name())
 		return
 	}
 	field5 := types.NewAtom[ir.Int](field5Value)
-
 
 	field6Value, ok := fields[6].(values.Array)
 	if !ok {
@@ -706,9 +572,9 @@ func (fac *Factory) NewBasic() *Basic {
 	s := &Basic{}
 	typ := fac.Package.handle.IR().Decls.TypeByName("Basic")
 	s.handle = handleBasic{
-		pkg: fac.Package,
-		struc:  typ,
-		owner:  s,
+		pkg:   fac.Package,
+		struc: typ,
+		owner: s,
 	}
 
 	structVal, err := values.NewStruct(typ, nil)
@@ -747,7 +613,6 @@ func (h *handleBasic) NewFromField(field *ir.Field) (types.Bridge, error) {
 
 // SetField sets a field in the structure.
 func (h *handleBasic) SetField(field *ir.Field, val types.Bridge) error {
-
 
 	name := field.Name.Name
 	structVal, ok := h.owner.value.Underlying().(*values.Struct)
