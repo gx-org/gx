@@ -42,11 +42,11 @@ func TestAxisName01(t *testing.T) {
 	}
 	castFunc := &ir.FuncBuiltin{
 		Src: &ast.FuncDecl{Name: &ast.Ident{Name: "cast"}},
-		FType: irh.FuncType(
+		FType: irh.AxisLengths(irh.FuncType(
 			nil, nil,
 			irh.Fields(irh.ArrayType(ir.Float32Type(), irh.Axis("___S"))),
 			irh.Fields(irh.ArrayType(ir.Float64Type(), irh.Axis("S___"))),
-		),
+		), "___S"),
 	}
 	dimsField := irh.Field("dims", ir.IntLenSliceType(), nil)
 	aStorage := &ir.LocalVarStorage{

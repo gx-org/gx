@@ -209,6 +209,7 @@ func (s *axLenDefaultScope) processIdent(ident *ast.Ident) (exprNode, bool) {
 type (
 	funcParamScope struct {
 		procScope
+		ftype *funcType
 	}
 
 	// axLenParamScope is a process scope used inside all axis length expressions
@@ -216,44 +217,42 @@ type (
 	// It returns axis length name definition when _ and ___ prefixes identifiers.
 	// Also checks that names are not defined twice.
 	axLenParamScope struct {
-		procScope
-		defined map[string]bool
+		*funcParamScope
 	}
 )
 
 func (s *funcParamScope) axisLengthScope() procAxLenScope {
 	return &axLenParamScope{
-		procScope: s,
-		defined:   make(map[string]bool),
+		funcParamScope: s,
 	}
 }
 
 func (*axLenParamScope) axlenScope() {}
 
-func (s *axLenParamScope) checkIfAlreadyDefine(src ast.Node, name string) bool {
-	if s.defined[name] {
-		return s.Err().Appendf(src, "axis length %s assignment repeated", name)
+func (s *axLenParamScope) registerAxis(axis *defineAxisLength) (*defineAxisLength, bool) {
+	if _, has := s.ftype.genShapes.Load(axis.name); has {
+		return axis, s.Err().Appendf(axis.src, "axis length %s can only be defined once", axis.name)
 	}
-	s.defined[name] = true
-	return true
+	s.ftype.genShapes.Store(axis.name, axis)
+	return axis, true
 }
 
 func (s *axLenParamScope) processIdent(ident *ast.Ident) (exprNode, bool) {
 	if strings.HasPrefix(ident.Name, ir.DefineAxisGroup) {
 		name := strings.TrimPrefix(ident.Name, ir.DefineAxisGroup)
-		return &defineAxisLength{
+		return s.registerAxis(&defineAxisLength{
 			src:  ident,
 			name: name,
 			typ:  ir.IntLenSliceType(),
-		}, s.checkIfAlreadyDefine(ident, name)
+		})
 	}
 	if strings.HasPrefix(ident.Name, ir.DefineAxisLength) {
 		name := strings.TrimPrefix(ident.Name, ir.DefineAxisLength)
-		return &defineAxisLength{
+		return s.registerAxis(&defineAxisLength{
 			src:  ident,
 			name: name,
 			typ:  ir.IntLenType(),
-		}, s.checkIfAlreadyDefine(ident, name)
+		})
 	}
 	if strings.HasSuffix(ident.Name, ir.DefineAxisGroup) {
 		ident.Name = strings.TrimSuffix(ident.Name, ir.DefineAxisGroup)
