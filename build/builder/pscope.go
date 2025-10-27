@@ -240,16 +240,18 @@ func (s *axLenParamScope) registerAxis(axis *defineAxisLength) (*defineAxisLengt
 func (s *axLenParamScope) processIdent(ident *ast.Ident) (exprNode, bool) {
 	if strings.HasPrefix(ident.Name, ir.DefineAxisGroup) {
 		name := strings.TrimPrefix(ident.Name, ir.DefineAxisGroup)
+		src := &ast.Ident{NamePos: ident.NamePos, Name: name}
 		return s.registerAxis(&defineAxisLength{
-			src:  ident,
+			src:  src,
 			name: name,
 			typ:  ir.IntLenSliceType(),
 		})
 	}
 	if strings.HasPrefix(ident.Name, ir.DefineAxisLength) {
 		name := strings.TrimPrefix(ident.Name, ir.DefineAxisLength)
+		src := &ast.Ident{NamePos: ident.NamePos, Name: name}
 		return s.registerAxis(&defineAxisLength{
-			src:  ident,
+			src:  src,
 			name: name,
 			typ:  ir.IntLenType(),
 		})

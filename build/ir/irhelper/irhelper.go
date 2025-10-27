@@ -334,11 +334,16 @@ func AxisLengths(ftype *ir.FuncType, axes ...string) *ir.FuncType {
 	ftype.AxisLengths = make([]*ir.AxLengthName, len(axes))
 	for i, axis := range axes {
 		typ := ir.IntLenType()
+		name := axis
 		if strings.HasPrefix(axis, ir.DefineAxisGroup) {
 			typ = ir.IntLenSliceType()
+			name = strings.TrimPrefix(name, ir.DefineAxisGroup)
+		}
+		if strings.HasPrefix(axis, ir.DefineAxisLength) {
+			name = strings.TrimPrefix(name, ir.DefineAxisLength)
 		}
 		ftype.AxisLengths[i] = &ir.AxLengthName{
-			Src: Ident(axis),
+			Src: Ident(name),
 			Typ: typ,
 		}
 	}
