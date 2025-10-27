@@ -74,7 +74,7 @@ func TestGenericSignature(t *testing.T) {
 			Src: `func f(x [_X][_Y]int32) ([X]int32, [Y]int32)`,
 			Want: []ir.Node{
 				&ir.FuncBuiltin{
-					FType: irhelper.FuncType(
+					FType: irhelper.AxisLengths(irhelper.FuncType(
 						nil, nil,
 						irhelper.Fields(
 							"x",
@@ -95,19 +95,19 @@ func TestGenericSignature(t *testing.T) {
 								irhelper.Axis(yAxLen),
 							),
 						),
-					),
+					), "_X", "_Y"),
 				},
 			},
 		},
 		testbuild.Decl{
 			Src: `func f(x [_X][_X]int32) [X]int32`,
-			Err: "axis length X assignment repeated",
+			Err: "axis length X can only be defined once",
 		},
 		testbuild.Decl{
 			Src: `func f([___X]int32) [X___]int32`,
 			Want: []ir.Node{
 				&ir.FuncBuiltin{
-					FType: irhelper.FuncType(
+					FType: irhelper.AxisLengths(irhelper.FuncType(
 						nil, nil,
 						irhelper.Fields(
 							"",
@@ -122,7 +122,7 @@ func TestGenericSignature(t *testing.T) {
 								irhelper.Axis("X___"),
 							),
 						),
-					),
+					), "___X"),
 				},
 			},
 		},
@@ -520,12 +520,12 @@ func TestGenericCastArray(t *testing.T) {
 	typeParamS := &ir.TypeParam{Field: typeParams.List[0].Fields[1]}
 	castArrayFunc := &ir.FuncBuiltin{
 		Src: &ast.FuncDecl{Name: &ast.Ident{Name: "cast"}},
-		FType: irhelper.FuncType(
+		FType: irhelper.AxisLengths(irhelper.FuncType(
 			typeParams,
 			nil,
 			irhelper.Fields(irhelper.ArrayType(typeParamS, irhelper.Axis("___M"))),
 			irhelper.Fields(irhelper.ArrayType(typeParamT, irhelper.Axis("M___"))),
-		),
+		), "___M"),
 	}
 	xField := irhelper.Field("x", irhelper.ArrayType(ir.Int64Type(), 2), nil)
 	testbuild.Run(t,

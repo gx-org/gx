@@ -123,6 +123,7 @@ func specializeFunc(rscope resolveScope, x ir.Expr, indices []ir.AssignableExpr)
 	if !indicesOk {
 		return x, false
 	}
+
 	compEval, compEvalOk := rscope.compEval()
 	if !compEvalOk {
 		return x, false

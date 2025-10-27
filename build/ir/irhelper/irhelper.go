@@ -329,6 +329,22 @@ func FuncType(types, recv, params, results *ir.FieldList) *ir.FuncType {
 	}
 }
 
+// AxisLengths defines axis lengths for a function type.
+func AxisLengths(ftype *ir.FuncType, axes ...string) *ir.FuncType {
+	ftype.AxisLengths = make([]*ir.AxLengthName, len(axes))
+	for i, axis := range axes {
+		typ := ir.IntLenType()
+		if strings.HasPrefix(axis, ir.DefineAxisGroup) {
+			typ = ir.IntLenSliceType()
+		}
+		ftype.AxisLengths[i] = &ir.AxLengthName{
+			Src: Ident(axis),
+			Typ: typ,
+		}
+	}
+	return ftype
+}
+
 // CompEvalFuncType builds a compeval function type .
 func CompEvalFuncType(params, results *ir.FieldList) *ir.FuncType {
 	return &ir.FuncType{

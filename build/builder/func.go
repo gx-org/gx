@@ -22,6 +22,7 @@ import (
 
 	"github.com/pkg/errors"
 	"github.com/gx-org/gx/api/values"
+	"github.com/gx-org/gx/base/ordered"
 	"github.com/gx-org/gx/build/builder/irb"
 	"github.com/gx-org/gx/build/fmterr"
 	"github.com/gx-org/gx/build/ir/generics"
@@ -65,6 +66,7 @@ type funcType struct {
 	receiver *namedType
 
 	typeParams *fieldList
+	genShapes  *ordered.Map[string, *defineAxisLength]
 
 	recv    *fieldList
 	params  *fieldList
@@ -75,8 +77,9 @@ type funcType struct {
 
 func processFuncType(pscope procScope, src *ast.FuncType, recv *ast.FieldList, compEval bool) (*funcType, bool) {
 	n := &funcType{
-		src:      src,
-		compEval: compEval,
+		src:       src,
+		compEval:  compEval,
+		genShapes: ordered.NewMap[string, *defineAxisLength](),
 	}
 	var recvOk, typesOk, paramsOk, resultsOk bool
 	sig := &signatureNamespace{fType: n, names: make(map[string]*field)}
@@ -85,7 +88,10 @@ func processFuncType(pscope procScope, src *ast.FuncType, recv *ast.FieldList, c
 		recvOk = pscope.Err().Appendf(recv, "method has multiple receivers")
 	}
 	n.typeParams, typesOk = processFieldList(pscope, src.TypeParams, sig.assignTypeField)
-	n.params, paramsOk = processFieldList(&funcParamScope{procScope: pscope}, src.Params, sig.assignField)
+	n.params, paramsOk = processFieldList(&funcParamScope{
+		procScope: pscope,
+		ftype:     n,
+	}, src.Params, sig.assignField)
 	n.results, resultsOk = processFieldList(pscope, src.Results, sig.assignResultField)
 	return n, recvOk && typesOk && paramsOk && resultsOk
 }
@@ -143,6 +149,13 @@ func (n *funcType) buildFuncType(rscope resolveScope) (*ir.FuncType, *funcResolv
 				resultsOk = false
 			}
 		}
+	}
+	ext.AxisLengths = make([]*ir.AxLengthName, 0, n.genShapes.Size())
+	for def := range n.genShapes.Values() {
+		ext.AxisLengths = append(ext.AxisLengths, &ir.AxLengthName{
+			Src: def.src,
+			Typ: def.typ,
+		})
 	}
 	return ext, fScope, tParamsOk && paramsOk && resultsOk && recvOk
 }
