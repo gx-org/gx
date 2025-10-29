@@ -248,7 +248,7 @@ func (s *fileResolveScope) nspace() *scope.RWScope[processNode] {
 }
 
 type (
-	iFuncResolveScope interface {
+	fnResolveScope interface {
 		resolveScope
 		funcType() *ir.FuncType
 	}
@@ -311,7 +311,7 @@ type (
 	}
 
 	blockResolveScope struct {
-		iFuncResolveScope
+		fnResolveScope
 		nspc     *scope.RWScope[processNode]
 		compeval *compileEvaluator
 	}
@@ -319,16 +319,16 @@ type (
 
 var _ localScope = (*blockResolveScope)(nil)
 
-func newBlockScope(rscope iFuncResolveScope) (*blockResolveScope, bool) {
+func newBlockScope(rscope fnResolveScope) (*blockResolveScope, bool) {
 	s := &blockResolveScope{
-		iFuncResolveScope: rscope,
-		nspc:              scope.NewScope(rscope.nspace()),
+		fnResolveScope: rscope,
+		nspc:           scope.NewScope(rscope.nspace()),
 	}
-	parentCompEval, ok := s.iFuncResolveScope.compEval()
+	parentCompEval, ok := s.fnResolveScope.compEval()
 	if !ok {
 		return s, false
 	}
-	s.compeval, ok = parentCompEval.sub(s.iFuncResolveScope.funcType().Src, nil)
+	s.compeval, ok = parentCompEval.sub(s.fnResolveScope.funcType().Src, nil)
 	return s, ok
 }
 

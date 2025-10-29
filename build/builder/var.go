@@ -122,12 +122,12 @@ func (vr *varExpr) String() string {
 }
 
 // buildLocal converts a builder's varExpr into an IR *ir.VarExpr for a local variable.
-func (vr *varExpr) buildLocal(scope iFuncResolveScope) (*ir.VarExpr, bool) {
+func (vr *varExpr) buildLocal(scope fnResolveScope) (*ir.VarExpr, bool) {
 	return &ir.VarExpr{VName: vr.name}, true
 }
 
 // buildDecl builds an ir.VarSpec for a local variable declaration.
-func (spec *varSpec) buildDecl(scope iFuncResolveScope) (*ir.VarSpec, bool) {
+func (spec *varSpec) buildDecl(scope fnResolveScope) (*ir.VarSpec, bool) {
 	if spec.typ == nil {
 		// This case is already checked in the processing phase, but as a safeguard.
 		return nil, scope.Err().Appendf(spec.src, "local variable declaration is missing a type")

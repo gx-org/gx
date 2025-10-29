@@ -83,7 +83,7 @@ func returnAs(rscope resolveScope, pos ast.Node, src, dst ir.Type) bool {
 	return true
 }
 
-func (n *returnStmt) castNumber(scope iFuncResolveScope, expr ir.Expr, want ir.Type) (ir.Expr, bool) {
+func (n *returnStmt) castNumber(scope fnResolveScope, expr ir.Expr, want ir.Type) (ir.Expr, bool) {
 	ret, ok := castNumber(scope, expr, want)
 	if !ok {
 		return expr, false
@@ -102,7 +102,7 @@ func (n *returnStmt) castNumber(scope iFuncResolveScope, expr ir.Expr, want ir.T
 	}, true
 }
 
-func (n *returnStmt) buildStmt(scope iFuncResolveScope) (ir.Stmt, bool) {
+func (n *returnStmt) buildStmt(scope fnResolveScope) (ir.Stmt, bool) {
 	ext := &ir.ReturnStmt{Src: n.src}
 	fType := scope.funcType()
 	if fType == nil {

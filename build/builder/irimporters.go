@@ -49,11 +49,11 @@ func (f *importedFunc) resolveOrder() int {
 	return -1
 }
 
-func (f *importedFunc) buildAnnotations(fScope iFuncResolveScope, extF *irFunc) bool {
+func (f *importedFunc) buildAnnotations(fScope fnResolveScope, extF *irFunc) bool {
 	return true
 }
 
-func (f *importedFunc) buildSignature(pkgScope *pkgResolveScope) (ir.Func, iFuncResolveScope, bool) {
+func (f *importedFunc) buildSignature(pkgScope *pkgResolveScope) (ir.Func, fnResolveScope, bool) {
 	fScope, ok := pkgScope.newFileRScope(f.file)
 	if !ok {
 		return f.fn, nil, false
@@ -61,7 +61,7 @@ func (f *importedFunc) buildSignature(pkgScope *pkgResolveScope) (ir.Func, iFunc
 	return f.fn, newFuncScope(fScope, f.fn.FType), true
 }
 
-func (f *importedFunc) buildBody(iFuncResolveScope, *irFunc) bool {
+func (f *importedFunc) buildBody(fnResolveScope, *irFunc) bool {
 	return true
 }
 

@@ -35,7 +35,7 @@ type coreSyntheticFunc struct {
 	src   *ast.FuncDecl
 }
 
-func (f *coreSyntheticFunc) buildBody(fnScope iFuncResolveScope, fn *irFunc) bool {
+func (f *coreSyntheticFunc) buildBody(fnScope fnResolveScope, fn *irFunc) bool {
 	mScope := fnScope.(iSynthResolveScope)
 	compEval, ok := fnScope.compEval()
 	if !ok {
@@ -64,13 +64,13 @@ func (f *coreSyntheticFunc) compEval() bool {
 	return false
 }
 
-func (f *coreSyntheticFunc) buildAnnotations(fScope iFuncResolveScope, extF *irFunc) bool {
+func (f *coreSyntheticFunc) buildAnnotations(fScope fnResolveScope, extF *irFunc) bool {
 	return true
 }
 
 type (
 	synthResolveScope struct {
-		iFuncResolveScope
+		fnResolveScope
 		fnBuilder ir.FuncASTBuilder
 	}
 
@@ -135,7 +135,7 @@ func buildIRBody(mScope *synthResolveScope, ext *ir.FuncDecl, compEval *compileE
 	if !ok {
 		return false
 	}
-	irBlock, ok := bBody.buildBlockStmt(mScope.iFuncResolveScope)
+	irBlock, ok := bBody.buildBlockStmt(mScope.fnResolveScope)
 	if !ok {
 		return false
 	}
@@ -170,7 +170,7 @@ type syntheticFunc struct {
 	fnBuilder ir.FuncASTBuilder
 }
 
-func (f *syntheticFunc) buildSignature(pkgScope *pkgResolveScope) (ir.Func, iFuncResolveScope, bool) {
+func (f *syntheticFunc) buildSignature(pkgScope *pkgResolveScope) (ir.Func, fnResolveScope, bool) {
 	fScope, ok := pkgScope.newFileRScope(f.bFile)
 	if !ok {
 		return nil, nil, false
@@ -229,8 +229,8 @@ func buildSyntheticFuncSig(parentScope *fileResolveScope, srcloc ast.Node, astBu
 			FType: fType,
 		},
 		&synthResolveScope{
-			iFuncResolveScope: fnScope,
-			fnBuilder:         astBuilder,
+			fnResolveScope: fnScope,
+			fnBuilder:      astBuilder,
 		}, true
 }
 

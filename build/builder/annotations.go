@@ -35,7 +35,7 @@ func processFuncAnnotation(pscope procScope, src *ast.FuncDecl, fn function, mac
 	}
 }
 
-func (m *annotateFuncFromMacro) buildAnnotations(fnScope iFuncResolveScope, fn *irFunc) bool {
+func (m *annotateFuncFromMacro) buildAnnotations(fnScope fnResolveScope, fn *irFunc) bool {
 	ok := m.function.buildAnnotations(fnScope, fn)
 	if !ok {
 		return false
