@@ -33,7 +33,7 @@ func (f *funcMeta) name() *ast.Ident {
 	return f.src.Name
 }
 
-func (f *funcMeta) buildBody(iFuncResolveScope, *irFunc) bool {
+func (f *funcMeta) buildBody(fnResolveScope, *irFunc) bool {
 	return true
 }
 
@@ -50,7 +50,7 @@ func (f *funcMeta) resolveOrder() int {
 	return -1
 }
 
-func (f *funcMeta) buildSignature(pkgScope *pkgResolveScope) (ir.MetaCore, iFuncResolveScope, bool) {
+func (f *funcMeta) buildSignature(pkgScope *pkgResolveScope) (ir.MetaCore, fnResolveScope, bool) {
 	fScope, scopeOk := pkgScope.newFileRScope(f.bFile)
 	if !scopeOk {
 		return ir.MetaCore{}, nil, false
@@ -75,7 +75,7 @@ func (bFile *file) processIRMacroFunc(scope procScope, src *ast.FuncDecl, commen
 	return fn, declOk
 }
 
-func (f *funcMacro) buildSignature(pkgScope *pkgResolveScope) (ir.Func, iFuncResolveScope, bool) {
+func (f *funcMacro) buildSignature(pkgScope *pkgResolveScope) (ir.Func, fnResolveScope, bool) {
 	core, fnScope, ok := f.funcMeta.buildSignature(pkgScope)
 	return &ir.Macro{MetaCore: core}, fnScope, ok
 }
@@ -90,7 +90,7 @@ func (bFile *file) processAnnotatorFunc(scope procScope, src *ast.FuncDecl, comm
 	return fn, declOk
 }
 
-func (f *funcAnnotator) buildSignature(pkgScope *pkgResolveScope) (ir.Func, iFuncResolveScope, bool) {
+func (f *funcAnnotator) buildSignature(pkgScope *pkgResolveScope) (ir.Func, fnResolveScope, bool) {
 	core, fnScope, ok := f.funcMeta.buildSignature(pkgScope)
 	return &ir.Annotator{MetaCore: core}, fnScope, ok
 }

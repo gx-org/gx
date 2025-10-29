@@ -33,9 +33,9 @@ type (
 		isMethod() bool
 		compEval() bool
 		resolveOrder() int
-		buildSignature(*pkgResolveScope) (ir.Func, iFuncResolveScope, bool)
-		buildAnnotations(iFuncResolveScope, *irFunc) bool
-		buildBody(iFuncResolveScope, *irFunc) bool
+		buildSignature(*pkgResolveScope) (ir.Func, fnResolveScope, bool)
+		buildAnnotations(fnResolveScope, *irFunc) bool
+		buildBody(fnResolveScope, *irFunc) bool
 	}
 
 	// exprNode builds a IR expression.
@@ -57,7 +57,7 @@ type (
 
 	// stmtNode is a GX statement.
 	stmtNode interface {
-		buildStmt(iFuncResolveScope) (ir.Stmt, bool)
+		buildStmt(fnResolveScope) (ir.Stmt, bool)
 	}
 
 	cloner interface {

@@ -41,11 +41,11 @@ func processBlockStmt(pscope procScope, src *ast.BlockStmt) (*blockStmt, bool) {
 	return n, ok
 }
 
-func (n *blockStmt) buildStmt(scope iFuncResolveScope) (ir.Stmt, bool) {
+func (n *blockStmt) buildStmt(scope fnResolveScope) (ir.Stmt, bool) {
 	return n.buildBlockStmt(scope)
 }
 
-func (n *blockStmt) buildBlockStmt(scope iFuncResolveScope) (*ir.BlockStmt, bool) {
+func (n *blockStmt) buildBlockStmt(scope fnResolveScope) (*ir.BlockStmt, bool) {
 	block := &ir.BlockStmt{
 		Src:  n.src,
 		List: make([]ir.Stmt, len(n.stmts)),
@@ -136,7 +136,7 @@ func processDeclStmt(pscope procScope, src *ast.DeclStmt) (stmtNode, bool) {
 }
 
 // buildStmt builds the IR for a declaration statement.
-func (n *declStmt) buildStmt(scope iFuncResolveScope) (ir.Stmt, bool) {
+func (n *declStmt) buildStmt(scope fnResolveScope) (ir.Stmt, bool) {
 	decls := make([]*ir.VarSpec, 0, len(n.decls))
 	declsOk := true
 
@@ -159,7 +159,7 @@ func (n *declStmt) buildStmt(scope iFuncResolveScope) (ir.Stmt, bool) {
 	return &ir.DeclStmt{Src: n.src, Decls: decls}, declsOk
 }
 
-func (n *exprStmt) buildStmt(scope iFuncResolveScope) (ir.Stmt, bool) {
+func (n *exprStmt) buildStmt(scope fnResolveScope) (ir.Stmt, bool) {
 	x, ok := n.x.buildExpr(scope)
 	if ok && x.Type().Kind() != ir.VoidKind {
 		scope.Err().Appendf(n.src, "cannot use an expression returning a value as a statement")

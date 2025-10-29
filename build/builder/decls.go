@@ -186,7 +186,7 @@ func (d *decls) resolveAll(pkgScope *pkgResolveScope) bool {
 type irFunc struct {
 	pNode     *processNodeT[function]
 	bFunc     function
-	scopeFunc iFuncResolveScope
+	scopeFunc fnResolveScope
 	irFunc    ir.PkgFunc
 }
 
