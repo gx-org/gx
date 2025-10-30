@@ -716,8 +716,18 @@ func simplifyType(t Type) Type {
 	return typeParam.Field.Group.Type.Typ
 }
 
+// IsInvalidType returns true if a type is invalid.
+func IsInvalidType(typ Type) bool {
+	return typ == nil || typ.Kind() == InvalidKind
+}
+
 // AssignableTo reports whether a value of the type can be assigned to another.
 func AssignableTo(fetcher Fetcher, x, y Type) (bool, error) {
+	if IsInvalidType(x) || IsInvalidType(y) {
+		// An error should have already been reported. We skip the check
+		// to prevent additional confusing errors.
+		return true, nil
+	}
 	x = simplifyType(x)
 	y = simplifyType(y)
 	if x == y {
@@ -728,4 +738,17 @@ func AssignableTo(fetcher Fetcher, x, y Type) (bool, error) {
 		return ey.assignableFrom(fetcher, x)
 	}
 	return x.AssignableTo(fetcher, y)
+}
+
+// AssignableToAt reports whether a value of the type can be assigned to another.
+// An error is added at the specified code location if the value cannot be assigned.
+func AssignableToAt(fetcher Fetcher, pos ast.Node, src, dst Type) bool {
+	assignable, err := AssignableTo(fetcher, src, dst)
+	if err != nil {
+		return fetcher.Err().AppendAt(pos, err)
+	}
+	if !assignable {
+		return fetcher.Err().Appendf(pos, "cannot use %s as %s value in assignment", src.String(), dst.String())
+	}
+	return true
 }

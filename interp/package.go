@@ -43,6 +43,9 @@ func (itp *Interpreter) evalPackageConsts(pkg *ir.Package, scope *scope.RWScope[
 		return err
 	}
 	for _, expr := range exprs {
+		if expr.Val == nil {
+			continue
+		}
 		if err := itp.evalPackageConstExpr(scope, expr); err != nil {
 			return err
 		}
