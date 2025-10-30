@@ -170,25 +170,17 @@ func buildCall(rscope resolveScope, eNode exprNode) (*ir.CallExpr, bool) {
 }
 
 func assignableToAt(rscope resolveScope, pos ast.Node, src, dst ir.Type) bool {
-	assignable, err := assignableTo(rscope, src, dst)
-	if err != nil {
-		return rscope.Err().AppendAt(pos, err)
+	compEval, compEvalOk := rscope.compEval()
+	if !compEvalOk {
+		return false
 	}
-	if !assignable {
-		return rscope.Err().Appendf(pos, "cannot use %s as %s value in assignment", src.String(), dst.String())
-	}
-	return true
+	return ir.AssignableToAt(compEval, pos, src, dst)
 }
 
 func assignableTo(rscope resolveScope, src, dst ir.Type) (bool, error) {
-	if isInvalidType(src) || isInvalidType(dst) {
-		// An error should have already been reported. We skip the check
-		// to prevent additional confusing errors.
-		return true, nil
-	}
 	compEval, compEvalOk := rscope.compEval()
 	if !compEvalOk {
-		return true, nil
+		return false, nil
 	}
 	return ir.AssignableTo(compEval, src, dst)
 }
@@ -218,7 +210,7 @@ func reconcile(src, dst ir.Type) {
 }
 
 func convertTo(rscope resolveScope, src, dst ir.Type) (bool, error) {
-	if isInvalidType(src) || isInvalidType(dst) {
+	if ir.IsInvalidType(src) || ir.IsInvalidType(dst) {
 		// An error should have already been reported. We skip the check
 		// to prevent additional confusing errors.
 		return true, nil
@@ -232,7 +224,7 @@ func convertTo(rscope resolveScope, src, dst ir.Type) (bool, error) {
 }
 
 func equalToAt(rscope resolveScope, pos ast.Node, src, dst ir.Type) bool {
-	if isInvalidType(src) || isInvalidType(dst) {
+	if ir.IsInvalidType(src) || ir.IsInvalidType(dst) {
 		// An error should have already been reported. We skip the check
 		// to prevent additional confusing errors.
 		return true
@@ -272,15 +264,11 @@ func appendRedeclaredError(errF *fmterr.Appender, name string, cur ast.Node, pre
 	)
 }
 
-func isInvalidType(typ ir.Type) bool {
-	return typ == nil || typ.Kind() == ir.InvalidKind
-}
-
 func isInvalidExpr(expr ir.Expr) bool {
 	if expr == nil {
 		return true
 	}
-	return isInvalidType(expr.Type())
+	return ir.IsInvalidType(expr.Type())
 }
 
 var invalidValueRef = &ir.ValueRef{

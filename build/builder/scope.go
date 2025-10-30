@@ -133,7 +133,7 @@ func defineLocalVar(scope resolveScope, storage ir.Storage) bool {
 	if !ok {
 		return scope.Err().AppendInternalf(storage.Source(), "%T is not a local scope", scope)
 	}
-	if isInvalidType(storage.Type()) {
+	if ir.IsInvalidType(storage.Type()) {
 		return lScope.update(storage, ir.InvalidType())
 	}
 	ev, ok := scope.compEval()
