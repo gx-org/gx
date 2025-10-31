@@ -17,6 +17,7 @@ package rand
 
 import (
 	"embed"
+	"go/ast"
 	"math"
 
 	"github.com/gx-org/gx/build/ir"
@@ -34,7 +35,7 @@ var Package = builtin.PackageBuilder{
 	Builders: []builtin.Builder{
 		builtin.BuildConst(func(pkg *ir.Package) (string, ir.AssignableExpr, ir.Type, error) {
 			value := &ir.AtomicValueT[float64]{
-				Src: pkg.Name,
+				Src: &ast.BasicLit{},
 				Val: float64(1 << 64),
 				Typ: ir.TypeFromKind(ir.Float64Kind),
 			}
@@ -42,7 +43,7 @@ var Package = builtin.PackageBuilder{
 		}),
 		builtin.BuildConst(func(pkg *ir.Package) (string, ir.AssignableExpr, ir.Type, error) {
 			value := &ir.AtomicValueT[float64]{
-				Src: pkg.Name,
+				Src: &ast.BasicLit{},
 				Val: math.Nextafter(1, 0),
 				Typ: ir.TypeFromKind(ir.Float64Kind),
 			}

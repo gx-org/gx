@@ -15,7 +15,10 @@
 package ir
 
 import (
+	"go/ast"
+
 	"github.com/pkg/errors"
+	"github.com/gx-org/gx/internal/exprdeps"
 )
 
 var falseValue = &AtomicValueT[bool]{
@@ -39,8 +42,11 @@ func True() *AtomicValueT[bool] {
 }
 
 // Deps returns the dependencies of a constant expression.
-func (expr *ConstExpr) Deps() ([]*ValueRef, error) {
-	return Idents(expr.Val)
+func (expr *ConstExpr) Deps() []*ast.Ident {
+	if expr.Val == nil {
+		return nil
+	}
+	return exprdeps.Idents(expr.Val.Source().(ast.Expr))
 }
 
 func (decls *Declarations) findConstExpr(name string) *ConstExpr {
@@ -59,15 +65,12 @@ func (decls *Declarations) appendConstExprs(done map[string]bool, expr *ConstExp
 		return nil, nil
 	}
 	done[expr.VName.Name] = true
-	deps, err := expr.Deps()
-	if err != nil {
-		return nil, err
-	}
+	deps := expr.Deps()
 	var exprs []*ConstExpr
 	for _, dep := range deps {
-		exprDep := decls.findConstExpr(dep.Src.Name)
+		exprDep := decls.findConstExpr(dep.Name)
 		if exprDep == nil {
-			return nil, errors.Errorf("cannot find expression definition for %s", dep.Src.Name)
+			return nil, errors.Errorf("cannot find expression definition for %s", dep.Name)
 		}
 		depExprs, err := decls.appendConstExprs(done, exprDep)
 		if err != nil {

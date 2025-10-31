@@ -12,48 +12,52 @@
 // See the License for the specific language governing permissions and
 // limitations under the License.
 
-package ir_test
+package exprdeps_test
 
 import (
+	"go/ast"
 	"testing"
 
 	"github.com/google/go-cmp/cmp"
-	"github.com/gx-org/gx/build/ir"
-	"github.com/gx-org/gx/build/ir/irhelper"
+	"github.com/gx-org/gx/internal/exprdeps"
 )
 
+func names(vals []*ast.Ident) []string {
+	ss := make([]string, len(vals))
+	for i, val := range vals {
+		ss[i] = val.Name
+	}
+	return ss
+}
+
 func TestIdents(t *testing.T) {
-	xVar := irhelper.LocalVar("x", ir.Int32Type())
-	yVar := irhelper.LocalVar("y", ir.Int32Type())
+	xVar := &ast.Ident{Name: "x"}
+	yVar := &ast.Ident{Name: "y"}
 	tests := []struct {
-		expr ir.Expr
+		expr ast.Expr
 		want []string
 	}{
 		{
-			expr: irhelper.ValueRef(xVar),
+			expr: xVar,
 			want: []string{"x"},
 		},
 		{
-			expr: &ir.BinaryExpr{
-				X: irhelper.ValueRef(xVar),
-				Y: irhelper.ValueRef(yVar),
+			expr: &ast.BinaryExpr{
+				X: xVar,
+				Y: yVar,
 			},
 			want: []string{"x", "y"},
 		},
 		{
-			expr: &ir.BinaryExpr{
-				X: irhelper.ValueRef(xVar),
-				Y: irhelper.ValueRef(xVar),
+			expr: &ast.BinaryExpr{
+				X: xVar,
+				Y: xVar,
 			},
 			want: []string{"x"},
 		},
 	}
 	for i, test := range tests {
-		refs, err := ir.Idents(test.expr)
-		if err != nil {
-			t.Error(err)
-			continue
-		}
+		refs := exprdeps.Idents(test.expr)
 		got := names(refs)
 		if !cmp.Equal(got, test.want) {
 			t.Errorf("test %d: incorrect identifier list: got %v but want %v", i, got, test.want)

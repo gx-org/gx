@@ -16,7 +16,6 @@ package ir
 
 import (
 	"go/ast"
-	"slices"
 
 	"github.com/gx-org/gx/build/fmterr"
 )
@@ -52,48 +51,3 @@ type (
 		IsDefined(string) bool
 	}
 )
-
-func appendIdent(done map[string]bool, ids []*ValueRef, id *ValueRef) []*ValueRef {
-	if done[id.Src.Name] {
-		return ids
-	}
-	done[id.Src.Name] = true
-	return append(ids, id)
-}
-
-func idents(done map[string]bool, expr Expr) ([]*ValueRef, error) {
-	if done == nil {
-		done = make(map[string]bool)
-	}
-	switch exprT := expr.(type) {
-	case *ValueRef:
-		return appendIdent(done, nil, exprT), nil
-	case *NumberCastExpr:
-		return idents(done, exprT.X)
-	case *ParenExpr:
-		return idents(done, exprT.X)
-	case *UnaryExpr:
-		return idents(done, exprT.X)
-	case *BinaryExpr:
-		xDeps, err := idents(nil, exprT.X)
-		if err != nil {
-			return nil, err
-		}
-		yDeps, err := idents(nil, exprT.Y)
-		if err != nil {
-			return nil, err
-		}
-		var all []*ValueRef
-		for _, id := range slices.Concat(xDeps, yDeps) {
-			all = appendIdent(done, all, id)
-		}
-		return all, nil
-	default:
-		return nil, nil
-	}
-}
-
-// Idents returns a slice of all identifiers used in an expression.
-func Idents(expr Expr) ([]*ValueRef, error) {
-	return idents(nil, expr)
-}
