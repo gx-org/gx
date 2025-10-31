@@ -29,10 +29,10 @@ import (
 	"github.com/gx-org/gx/interp"
 )
 
-func names(vals []*ir.ValueRef) []string {
+func names(vals []*ast.Ident) []string {
 	ss := make([]string, len(vals))
 	for i, val := range vals {
-		ss[i] = val.Src.Name
+		ss[i] = val.Name
 	}
 	return ss
 }

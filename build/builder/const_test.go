@@ -72,6 +72,29 @@ const cstA = 5
 				irh.ConstSpec(nil, cstA),
 			},
 		},
+		testbuild.Decl{
+			Src: `
+const cstA = 2 * (3 + 4)
+`,
+			Want: []ir.Node{
+				irh.ConstSpec(nil,
+					&ir.ConstExpr{
+						VName: irh.Ident("cstA"),
+						Val: &ir.BinaryExpr{
+							X: &ir.NumberInt{Val: big.NewInt(2)},
+							Y: &ir.ParenExpr{
+								X: &ir.BinaryExpr{
+									X:   &ir.NumberInt{Val: big.NewInt(3)},
+									Y:   &ir.NumberInt{Val: big.NewInt(4)},
+									Typ: ir.NumberIntType(),
+								},
+							},
+							Typ: ir.NumberIntType(),
+						},
+					},
+				),
+			},
+		},
 	)
 }
 
