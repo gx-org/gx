@@ -15,6 +15,7 @@
 package builder
 
 import (
+	"fmt"
 	"go/ast"
 
 	"github.com/gx-org/gx/build/fmterr"
@@ -201,8 +202,9 @@ func (n *callExpr) buildMacroCall(rscope resolveScope, compEval *compileEvaluato
 	if !ok {
 		return invalidExpr(), rscope.Err().Appendf(n.source(), "macro %s does not build functions", mac.ShortString())
 	}
-
-	rscope.Err().Push(fmterr.PosPrefixWith(rscope.fileScope().pkg().fset, callExpr.Src.Fun.Pos(), "error while calling macro %s:\n", callExpr.String()))
+	rscope.Err().Push(fmterr.PosPrefixWith(rscope.fileScope().pkg().fset, callExpr.Src.Fun.Pos(), func() string {
+		return fmt.Sprintf("error while calling macro %s:\n", callExpr.String())
+	}))
 	defer rscope.Err().Pop()
 
 	synDecl, synScope, ok := buildSyntheticFuncSig(rscope.fileScope(), expr.Source(), fnBuilder, nil)

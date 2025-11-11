@@ -29,8 +29,9 @@ func PrefixWith(s string, o ...any) func(err error) error {
 }
 
 // PosPrefixWith returns a function to prefix errors with a formatted string.
-func PosPrefixWith(fset *token.FileSet, pos token.Pos, s string, o ...any) func(err error) error {
+func PosPrefixWith(fset *token.FileSet, pos token.Pos, prefix func() string) func(err error) error {
 	return func(err error) error {
-		return fmt.Errorf("%s%s%w", PosString(fset, pos), fmt.Sprintf(s, o...), err)
+		pr := prefix()
+		return fmt.Errorf("%s%s%w", PosString(fset, pos), pr, err)
 	}
 }
