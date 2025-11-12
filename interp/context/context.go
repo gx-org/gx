@@ -29,10 +29,13 @@ type (
 	// Interpreter evaluates expressions and statements given the context.
 	Interpreter interface {
 		// InitPkgScope initialises the namespace of a package.
-		InitPkgScope(pkg *ir.Package, scope *scope.RWScope[ir.Element]) (ir.Element, error)
+		InitPkgScope(pkg *ir.Package, scope *scope.RWScope[ir.Element]) (ir.PackageElement, error)
 
 		// InitBuiltins initialises a namespace with GX builtins implementation.
 		InitBuiltins(ctx *Context, scope *scope.RWScope[ir.Element]) error
+
+		// PackageToImport encapsulates a package into its import declaration.
+		PackageToImport(imp *ir.ImportDecl, pkg ir.PackageElement) ir.Element
 	}
 
 	// Core contains everything in the context independent of code location.
@@ -122,6 +125,11 @@ func (ctx *Context) Sub(elts map[string]ir.Element) *Context {
 		bFrame.Define(n, elt)
 	}
 	return sub
+}
+
+// Scope returns the scope for the current context.
+func (ctx *Context) Scope() *scope.RWScope[ir.Element] {
+	return ctx.currentFrame().scope
 }
 
 // File returns the current file the interpreter is running code from.

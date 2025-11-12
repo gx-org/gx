@@ -24,7 +24,7 @@ import (
 )
 
 func TestAxisName01(t *testing.T) {
-	arrayType := irh.ArrayType(ir.Float32Type(), irh.AxisGroup("shape"))
+	arrayType := irh.ArrayType(ir.Float32Type(), irh.AxisGroup("dims"))
 	sliceLiteral := &ir.SliceLitExpr{
 		Typ: ir.IntLenSliceType(),
 		Elts: []ir.AssignableExpr{
@@ -36,7 +36,7 @@ func TestAxisName01(t *testing.T) {
 		Src: &ast.FuncDecl{Name: &ast.Ident{Name: "newArray"}},
 		FType: irh.FuncType(
 			nil, nil,
-			irh.Fields("shape", ir.IntLenSliceType()),
+			irh.Fields("dims", ir.IntLenSliceType()),
 			irh.Fields(arrayType),
 		),
 	}
@@ -73,13 +73,13 @@ func TestAxisName01(t *testing.T) {
 	testbuild.Run(t,
 		testbuild.Decl{
 			Src: `
-func newArray(shape []intlen) [shape___]float32
+func newArray(dims []intlen) [dims___]float32
 `,
 			Want: []ir.Node{newArrayFunc},
 		},
 		testbuild.Decl{
 			Src: `
-func newArray(shape []intlen) [shape___]float32
+func newArray(dims []intlen) [dims___]float32
 
 func f(dims []intlen) [dims___]float32 {
 	return newArray(dims)
@@ -120,7 +120,7 @@ func f(dims []intlen) [dims___]float32 {
 		},
 		testbuild.Decl{
 			Src: `
-func newArray(shape []intlen) [shape___]float32
+func newArray(dims []intlen) [dims___]float32
 
 func f(dims []intlen) [dims___]float32 {
 	a := newArray(dims)
@@ -152,7 +152,7 @@ func f(dims []intlen) [dims___]float32 {
 		},
 		testbuild.Decl{
 			Src: `
-func newArray(shape []intlen) [shape___]float32
+func newArray(dims []intlen) [dims___]float32
 
 func f() [2][3]float32 {
 	return newArray([]intlen{2,3})
@@ -187,7 +187,7 @@ func f() [2][3]float32 {
 		},
 		testbuild.Decl{
 			Src: `
-func newArray(shape []intlen) [shape___]float32
+func newArray(dims []intlen) [dims___]float32
 
 func f() [4][3]float32 {
 	oneAxis := []intlen{4}
@@ -200,7 +200,7 @@ func f() [4][3]float32 {
 			Src: `
 var numClasses intlen
 
-func newArray(shape []intlen) [shape___]float32
+func newArray(dims []intlen) [dims___]float32
 
 func f(x [___axes]float32) [axes___][numClasses]float32 {
 	ax := append(axlengths(x), numClasses)
@@ -239,7 +239,7 @@ func f() [2]float64 {
 									F: castFunc,
 									T: irh.FuncType(
 										nil, nil,
-										irh.Fields(irh.ArrayType(ir.Float32Type(), "___S")),
+										irh.Fields(irh.ArrayType(ir.Float32Type(), 2)),
 										irh.Fields(irh.ArrayType(ir.Float64Type(), 2)),
 									),
 								},
@@ -277,7 +277,7 @@ func f() float64 {
 									F: castFunc,
 									T: irh.FuncType(
 										nil, nil,
-										irh.Fields(irh.ArrayType(ir.Float32Type(), "___S")),
+										irh.Fields(irh.ArrayType(ir.Float32Type())),
 										irh.Fields(irh.ArrayType(ir.Float64Type())),
 									),
 								},
@@ -315,12 +315,12 @@ func f() [2]float32 {
 }
 
 func TestAxisName02(t *testing.T) {
-	arrayType := irh.ArrayType(ir.Float32Type(), irh.AxisGroup("shape"))
+	arrayType := irh.ArrayType(ir.Float32Type(), irh.AxisGroup("dims"))
 	newArrayFunc := &ir.FuncBuiltin{
 		Src: &ast.FuncDecl{Name: &ast.Ident{Name: "newArray"}},
 		FType: irh.FuncType(
 			nil, nil,
-			irh.Fields("shape", ir.IntLenSliceType()),
+			irh.Fields("dims", ir.IntLenSliceType()),
 			irh.Fields(arrayType),
 		),
 	}
@@ -341,7 +341,7 @@ func TestAxisName02(t *testing.T) {
 	testbuild.Run(t,
 		testbuild.Decl{
 			Src: `
-func newArray(shape []intlen) [shape___]float32
+func newArray(dims []intlen) [dims___]float32
 
 func f() [2][3]float32  {
 	fDims := []intlen{2, 3}
@@ -366,7 +366,11 @@ func f() [2][3]float32  {
 								Callee: &ir.FuncValExpr{
 									X: irh.ValueRef(newArrayFunc),
 									F: newArrayFunc,
-									T: newArrayFunc.FType,
+									T: irh.FuncType(
+										nil, nil,
+										irh.Fields("dims", ir.IntLenSliceType()),
+										irh.Fields(irh.ArrayType(ir.Float32Type(), 2, 3)),
+									),
 								},
 							},
 						}},
@@ -389,7 +393,7 @@ func f(x [A][B]float32) [A][B]float32 {
 			Src: `
 var A, B intlen
 
-func h(x [___]int32, shape []intlen) [shape___]int32
+func h(x [___]int32, dims []intlen) [dims___]int32
 
 func f(a [A]int32) [A][B][1]int32 {
 	return h(a, []intlen{A, B, 1})
@@ -400,7 +404,7 @@ func f(a [A]int32) [A][B][1]int32 {
 			Src: `
 var A, B intlen
 
-func h(x [1][A]int32, shape []intlen) [shape___]int32
+func h(x [1][A]int32, dims []intlen) [dims___]int32
 
 func f(a [A]int32) [A][B][1]int32 {
 	return h([1][A]int32(a), []intlen{A, B, 1})

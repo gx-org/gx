@@ -33,9 +33,11 @@ type NamedType struct {
 }
 
 var (
+	_ ir.StorageElement = (*NamedType)(nil)
 	_ elements.Selector = (*NamedType)(nil)
 	_ elements.NType    = (*NamedType)(nil)
 	_ elements.Copier   = (*NamedType)(nil)
+	_ elements.Under    = (*NamedType)(nil)
 )
 
 // NewNamedType returns a new node representing an exported type.
@@ -105,6 +107,11 @@ func (n *NamedType) Type() ir.Type {
 	return n.typ
 }
 
+// Store returns the storage owning the type definition.
+func (n *NamedType) Store() ir.Storage {
+	return n.typ
+}
+
 // String returns a string representation of the node.
 func (n *NamedType) String() string {
 	return n.typ.FullName()
@@ -130,13 +137,4 @@ func NewReceiver(el *NamedType, fn ir.Func) *Receiver {
 		Ident:   name,
 		Element: el,
 	}
-}
-
-// Underlying returns the underlying element.
-func Underlying(val ir.Element) ir.Element {
-	named, ok := val.(*NamedType)
-	if !ok {
-		return val
-	}
-	return Underlying(named.under)
 }

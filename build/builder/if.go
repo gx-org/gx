@@ -67,7 +67,7 @@ func (n *ifStmt) checkConditionType(scope resolveScope, typ ir.Type) bool {
 }
 
 func (n *ifStmt) buildStmt(rscope fnResolveScope) (ir.Stmt, bool) {
-	bScope, ok := newBlockScope(rscope)
+	bScope, ok := newBlockScope(rscope, n)
 	if !ok {
 		return nil, false
 	}
@@ -92,4 +92,11 @@ func (n *ifStmt) buildStmt(rscope fnResolveScope) (ir.Stmt, bool) {
 		Body: body,
 		Else: els,
 	}, initOk && condOk && bodyOk && elseOk
+}
+
+func (n *ifStmt) source() ast.Node {
+	if n.init != nil {
+		return n.init.source()
+	}
+	return n.cond.source()
 }

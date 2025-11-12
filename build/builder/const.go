@@ -21,6 +21,7 @@ import (
 
 	"github.com/gx-org/gx/build/builder/irb"
 	"github.com/gx-org/gx/build/ir"
+	"github.com/gx-org/gx/internal/exprdeps"
 )
 
 type constSpec struct {
@@ -94,7 +95,7 @@ type (
 	}
 
 	iConstExpr interface {
-		buildDeclaration(irBuilder) (*ir.ConstExpr, bool)
+		buildDeclaration(irBuilder) (*ir.ConstExpr, []*ast.Ident, bool)
 		buildExpression(irBuilder, *ir.ConstExpr) bool
 	}
 )
@@ -110,15 +111,15 @@ func (spec *constSpec) processConstExpr(pscope procScope, name *ast.Ident, value
 	}, ok
 }
 
-func (cst *constExpr) buildDeclaration(ibld irBuilder) (*ir.ConstExpr, bool) {
+func (cst *constExpr) buildDeclaration(ibld irBuilder) (*ir.ConstExpr, []*ast.Ident, bool) {
 	ext := &ir.ConstExpr{VName: cst.name}
 	var ok bool
 	ext.Decl, ok = irBuild[*ir.ConstSpec](ibld, cst.spec)
 	if !ok {
-		return ext, false
+		return ext, nil, false
 	}
 	ext.Decl.Exprs = append(ext.Decl.Exprs, ext)
-	return ext, true
+	return ext, exprdeps.Idents(cst.value.source().(ast.Expr)), true
 }
 
 func (cst *constExpr) buildExpression(ibld irBuilder, ext *ir.ConstExpr) bool {

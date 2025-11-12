@@ -91,7 +91,6 @@ type (
 
 	// WithStore is an expression which points to a storage.
 	WithStore interface {
-		Expr
 		Store() Storage
 	}
 )
@@ -99,6 +98,20 @@ type (
 // ----------------------------------------------------------------------------
 // Types definition.
 type (
+	// Specialiser provides methods to specialise a type.
+	Specialiser interface {
+		Fetcher
+		TypeOf(string) Type
+	}
+
+	// Unifier provides methods to unify types.
+	Unifier interface {
+		Fetcher
+		Source() ast.Node
+		DefineTParam(tp *TypeParam, typ Type) bool
+		DefineAxis(*AxisExpr, []AxisLengths) ([]AxisLengths, bool)
+	}
+
 	// Type of a value.
 	Type interface {
 		StorageWithValue
@@ -115,6 +128,12 @@ type (
 		// ConvertibleTo reports whether a value of the type can be converted to another
 		// (using static type casting).
 		ConvertibleTo(Fetcher, Type) (bool, error)
+
+		// Specialise a type to a given target.
+		Specialise(Specialiser) (Type, error)
+
+		// UnifyWith recursively unifies a type parameters with types.
+		UnifyWith(Unifier, Type) bool
 
 		// SourceString returns a reference to the type given a file context.
 		SourceString(file *File) string
@@ -172,12 +191,6 @@ type (
 	convertsFrom interface {
 		// convertibleFrom reports whether a value of some type can be converted to the receiver.
 		convertibleFrom(Fetcher, Type) (bool, error)
-	}
-
-	atomicType struct {
-		BaseType[ast.Expr]
-
-		Knd Kind
 	}
 
 	// NamedType defines a new type from an existing type.
@@ -247,7 +260,6 @@ var (
 	_ Type             = (*NamedType)(nil)
 	_ Type             = (*StructType)(nil)
 	_ Type             = (*InterfaceType)(nil)
-	_ Type             = (*FuncType)(nil)
 	_ SlicerType       = (*SliceType)(nil)
 	_ Type             = (*TupleType)(nil)
 	_ ArrayType        = (*atomicType)(nil)
@@ -482,6 +494,11 @@ func (s *atomicType) ConvertibleTo(fetcher Fetcher, target Type) (bool, error) {
 	return s.Rank().Equal(fetcher, targetT.Rank())
 }
 
+// Specialise a type to a given target.
+func (s *atomicType) Specialise(Specialiser) (Type, error) {
+	return s, nil
+}
+
 // Source returns the source code defining the type.
 // Always returns nil.
 func (s *atomicType) Source() ast.Node {
@@ -644,6 +661,12 @@ func (s *NamedType) String() string {
 	return s.File.Package.Name.Name + "." + s.Name()
 }
 
+// Specialise a type to a given target.
+func (s *NamedType) Specialise(spec Specialiser) (Type, error) {
+	_, err := s.Underlying.Typ.Specialise(spec)
+	return s, err
+}
+
 // Package returns the package to which the type belongs to.
 func (s *NamedType) Package() *Package {
 	return s.File.Package
@@ -702,6 +725,11 @@ func (s *StructType) SourceString(context *File) string {
 // String representation of the type.
 func (s *StructType) String() string {
 	return s.Kind().String()
+}
+
+// Specialise a type to a given target.
+func (s *StructType) Specialise(spec Specialiser) (Type, error) {
+	return s, nil
 }
 
 // NumFields returns the number of fields in a structure.
@@ -775,6 +803,16 @@ func (s *SliceType) rankString(dtype string) string {
 // SourceString returns a reference to the type given a file context.
 func (s *SliceType) SourceString(context *File) string {
 	return s.rankString(s.DType.Typ.SourceString(context))
+}
+
+// Specialise a type to a given target.
+func (s *SliceType) Specialise(spec Specialiser) (Type, error) {
+	return s, nil
+}
+
+// UnifyWith recursively unifies a type parameters with types.
+func (s *SliceType) UnifyWith(Unifier, Type) bool {
+	return true
 }
 
 // String representation of the type.
@@ -907,6 +945,31 @@ func (s *arrayType) ConvertibleTo(fetcher Fetcher, target Type) (bool, error) {
 	return s.RankF.ConvertibleTo(fetcher, targetT.Rank())
 }
 
+// Specialise a type to a given target.
+func (s *arrayType) Specialise(spec Specialiser) (Type, error) {
+	dtype, err := s.DTypeF.Specialise(spec)
+	if err != nil {
+		return InvalidType(), err
+	}
+	rank, err := s.RankF.Specialise(spec)
+	if err != nil {
+		return InvalidType(), err
+	}
+	return NewArrayType(s.Src, dtype, rank), nil
+}
+
+// UnifyWith recursively unifies a type parameters with types.
+func (s *arrayType) UnifyWith(uni Unifier, typ Type) bool {
+	other, ok := typ.(ArrayType)
+	if !ok {
+		return true
+	}
+	if !s.DTypeF.UnifyWith(uni, other.DataType()) {
+		return false
+	}
+	return s.RankF.UnifyWith(uni, other.Rank())
+}
+
 // Value returns a value pointing to the receiver.
 func (s *arrayType) Value(x Expr) AssignableExpr {
 	return &TypeValExpr{X: x, Typ: s}
@@ -970,7 +1033,7 @@ func (s *TypeParam) equal(fetcher Fetcher, typ Type) (bool, error) {
 	case *atomicType:
 		return false, nil
 	case *TypeParam:
-		if s == typT {
+		if s.Field == typT.Field {
 			return true, nil
 		}
 	case *NamedType:
@@ -1032,6 +1095,26 @@ func (s *TypeParam) Value(x Expr) AssignableExpr {
 // SourceString returns a reference to the type given a file context.
 func (s *TypeParam) SourceString(context *File) string {
 	return s.Field.Name.Name
+}
+
+// Specialise a type to a given target.
+func (s *TypeParam) Specialise(spec Specialiser) (Type, error) {
+	tp := spec.TypeOf(s.Field.Name.Name)
+	if tp == nil {
+		return s, nil
+	}
+	return tp, nil
+}
+
+// UnifyWith recursively unifies a type parameters with types.
+func (s *TypeParam) UnifyWith(uni Unifier, typ Type) bool {
+	switch typ.Kind() {
+	case NumberIntKind:
+		typ = Int64Type()
+	case NumberFloatKind:
+		typ = Float64Type()
+	}
+	return uni.DefineTParam(s, typ)
 }
 
 // String representation of the type.
@@ -1179,14 +1262,6 @@ type (
 		Anns  annotations.Annotations
 	}
 
-	// SpecialisedFunc is a function that has been specialised.
-	SpecialisedFunc struct {
-		PkgFunc
-		X Expr
-		F *FuncValExpr
-		T *FuncType
-	}
-
 	// ImportDecl imports a package.
 	ImportDecl struct {
 		Src     *ast.ImportSpec
@@ -1234,9 +1309,9 @@ var (
 	_ Storage          = (*VarExpr)(nil)
 	_ PkgFunc          = (*FuncBuiltin)(nil)
 	_ Func             = (*FuncKeyword)(nil)
+	_ Storage          = (*FuncKeyword)(nil)
 	_ PkgFunc          = (*FuncDecl)(nil)
 	_ Func             = (*FuncLit)(nil)
-	_ PkgFunc          = (*SpecialisedFunc)(nil)
 	_ PkgFunc          = (*Macro)(nil)
 	_ WithStore        = (*FuncLit)(nil)
 	_ StorageWithValue = (*FuncLit)(nil)
@@ -1458,7 +1533,11 @@ func (s *FuncDecl) New() PkgFunc {
 
 // ShortString returns the name of the function.
 func (s *FuncDecl) ShortString() string {
-	return s.Name()
+	name := s.Name()
+	if name != "" {
+		return name
+	}
+	return s.FuncType().String()
 }
 
 func (*FuncBuiltin) node()         {}
@@ -1530,10 +1609,16 @@ func (s *FuncBuiltin) New() PkgFunc {
 	return &n
 }
 
-func (*FuncKeyword) node() {}
+func (*FuncKeyword) node()    {}
+func (*FuncKeyword) storage() {}
 
 // Source returns the node in the AST tree.
 func (s *FuncKeyword) Source() ast.Node { return s.ID }
+
+// NameDef is the name definition of the function.
+func (s *FuncKeyword) NameDef() *ast.Ident {
+	return s.ID
+}
 
 // Name of the function. Returns an empty string if the function is anonymous.
 func (s *FuncKeyword) Name() string {
@@ -1563,6 +1648,11 @@ func (s *FuncKeyword) File() *File {
 // Annotations returns the annotations attached to the function.
 func (s *FuncKeyword) Annotations() *annotations.Annotations {
 	return nil
+}
+
+// Same returns true if the other storage is this storage.
+func (s *FuncKeyword) Same(o Storage) bool {
+	return Storage(s) == o
 }
 
 // ShortString returns a short string representation of the keyword.
@@ -1644,35 +1734,6 @@ func (s *FuncLit) Expr() ast.Expr { return s.Src }
 // Annotations returns the annotations attached to the function.
 func (s *FuncLit) Annotations() *annotations.Annotations {
 	return &s.Anns
-}
-
-func (*SpecialisedFunc) node()         {}
-func (*SpecialisedFunc) storage()      {}
-func (*SpecialisedFunc) storageValue() {}
-
-// Source returns the node in the AST tree.
-func (s *SpecialisedFunc) Source() ast.Node {
-	return s.X.Source()
-}
-
-// Type of the destination of the assignment.
-func (s *SpecialisedFunc) Type() Type { return s.T }
-
-// FuncType returns the type of the function.
-func (s *SpecialisedFunc) FuncType() *FuncType { return s.T }
-
-// Value returns the function as a value.
-func (s *SpecialisedFunc) Value(x Expr) AssignableExpr {
-	return &FuncValExpr{
-		X: x,
-		F: s,
-		T: s.T,
-	}
-}
-
-// ShortString returns the name of the function.
-func (s *SpecialisedFunc) ShortString() string {
-	return s.F.FuncType().String()
 }
 
 func (*ImportDecl) node()         {}
@@ -1816,6 +1877,12 @@ type (
 		// ConvertibleTo returns true if this rank can be converted to the destination rank.
 		ConvertibleTo(Fetcher, ArrayRank) (bool, error)
 
+		// Specialise a type to a given target.
+		Specialise(Specialiser) (ArrayRank, error)
+
+		// UnifyWith unifies the rank with a given target.
+		UnifyWith(Unifier, ArrayRank) bool
+
 		// SubRank returns the rank with the top-axis removed.
 		SubRank() (ArrayRank, bool)
 
@@ -1852,6 +1919,12 @@ type (
 
 		// AssignableTo returns true if this axis length can be assigned to another.
 		AssignableTo(Fetcher, AxisLengths) (bool, error)
+
+		// Specialise the axis length given a context.
+		Specialise(Specialiser) ([]AxisLengths, error)
+
+		// UnifyWith unifies axis lengths with a given target.
+		UnifyWith(Unifier, []AxisLengths) ([]AxisLengths, bool)
 
 		// String representation of the axis length.
 		String() string
@@ -1989,6 +2062,32 @@ func (r *Rank) ConvertibleTo(fetcher Fetcher, dst ArrayRank) (bool, error) {
 	return areEqual(fetcher, thisSize, otherSize)
 }
 
+// Specialise a type to a given target.
+func (r *Rank) Specialise(spec Specialiser) (ArrayRank, error) {
+	var axes []AxisLengths
+	for _, ax := range r.Ax {
+		subs, err := ax.Specialise(spec)
+		if err != nil {
+			return r, err
+		}
+		axes = append(axes, subs...)
+	}
+	return &Rank{Src: r.Src, Ax: axes}, nil
+}
+
+// UnifyWith unifies the rank with a given target.
+func (r *Rank) UnifyWith(uni Unifier, arg ArrayRank) bool {
+	targets := arg.Axes()
+	for _, ax := range r.Ax {
+		var ok bool
+		targets, ok = ax.UnifyWith(uni, targets)
+		if !ok {
+			return false
+		}
+	}
+	return true
+}
+
 var oneSize = &NumberCastExpr{
 	X:   &NumberInt{Val: big.NewInt(1)},
 	Typ: IntLenType(),
@@ -2105,6 +2204,22 @@ func (r *RankInfer) SubRank() (ArrayRank, bool) {
 	return r.Rnk.SubRank()
 }
 
+// Specialise a type to a given target.
+func (r *RankInfer) Specialise(spec Specialiser) (ArrayRank, error) {
+	if r.Rnk == nil {
+		return r, nil
+	}
+	return r.Rnk.Specialise(spec)
+}
+
+// UnifyWith unifies the rank with a given target.
+func (r *RankInfer) UnifyWith(uni Unifier, target ArrayRank) bool {
+	if r.Rnk == nil {
+		return true
+	}
+	return r.Rnk.UnifyWith(uni, target)
+}
+
 func (*AxisInfer) node() {}
 
 // Source returns the source expression specifying the dimension.
@@ -2153,6 +2268,16 @@ func (dm *AxisInfer) AxisValue() AssignableExpr {
 	return dm.X.AxisValue()
 }
 
+// Specialise the axis length given a context.
+func (dm *AxisInfer) Specialise(spec Specialiser) ([]AxisLengths, error) {
+	return dm.X.Specialise(spec)
+}
+
+// UnifyWith unifies axis lengths with a given target.
+func (dm *AxisInfer) UnifyWith(uni Unifier, target []AxisLengths) ([]AxisLengths, bool) {
+	return dm.X.UnifyWith(uni, target)
+}
+
 // Value of the axis.
 func (dm *AxisInfer) Value(Expr) AssignableExpr {
 	return dm.AxisValue()
@@ -2194,6 +2319,32 @@ func (dm *AxisExpr) Equal(fetcher Fetcher, other AxisLengths) (bool, error) {
 	default:
 		return false, errors.Errorf("cannot compare with axis type %T: not supported", otherT)
 	}
+}
+
+// Specialise the axis length given a context.
+func (dm *AxisExpr) Specialise(spec Specialiser) ([]AxisLengths, error) {
+	el, err := spec.EvalExpr(dm.X)
+	if err != nil {
+		return []AxisLengths{dm}, err
+	}
+	exprIR, err := toExpr(el)
+	if err != nil {
+		return []AxisLengths{dm}, err
+	}
+	sliceLit, isSliceLit := exprIR.(*SliceLitExpr)
+	if !isSliceLit {
+		return []AxisLengths{&AxisExpr{Src: dm.Src, X: exprIR}}, nil
+	}
+	axes := make([]AxisLengths, len(sliceLit.Elts))
+	for i, expr := range sliceLit.Elts {
+		axes[i] = &AxisExpr{Src: dm.Src, X: expr}
+	}
+	return axes, nil
+}
+
+// UnifyWith unifies axis lengths with a given target.
+func (dm *AxisExpr) UnifyWith(uni Unifier, targets []AxisLengths) ([]AxisLengths, bool) {
+	return uni.DefineAxis(dm, targets)
 }
 
 // AxisValue returns the value assigned to the axis.
@@ -2352,6 +2503,9 @@ func (s *Field) Storage() *FieldStorage {
 
 // Type returns the type of the field.
 func (s *Field) Type() Type {
+	if s.Group.Type == nil {
+		return nil
+	}
 	return s.Group.Type.Typ
 }
 
@@ -2482,6 +2636,7 @@ type (
 		Func() Func
 		FuncType() *FuncType
 		ShortString() string
+		SourceString() string
 	}
 
 	// CallExpr is an expression calling a function.
@@ -2879,11 +3034,16 @@ func (s *FuncValExpr) ShortString() string {
 	return s.X.String()
 }
 
+// SourceString returns GX code representing the call to the function.
+func (s *FuncValExpr) SourceString() string {
+	return s.String()
+}
+
 // String representation.
 func (s *FuncValExpr) String() string {
 	callee := s.X.String()
 	spec := ""
-	fType := s.F.FuncType()
+	fType := s.T
 	numTypeParamValues := len(fType.TypeParamsValues)
 	if numTypeParamValues > 0 {
 		types := make([]string, numTypeParamValues)
@@ -3273,6 +3433,11 @@ func (s *AxLengthName) Type() Type { return s.Typ }
 
 // NameDef returns the identifier identifying the storage.
 func (s *AxLengthName) NameDef() *ast.Ident { return s.Src }
+
+// Name returns the name of the axis.
+func (s *AxLengthName) Name() string {
+	return strings.TrimPrefix(s.Src.Name, DefineAxisGroup)
+}
 
 // Same returns true if the other storage is this storage.
 func (s *AxLengthName) Same(o Storage) bool {

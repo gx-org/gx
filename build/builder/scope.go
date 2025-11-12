@@ -61,13 +61,22 @@ func newEvaluator(scope resolveScope, ctx *interp.FileScope) *compileEvaluator {
 
 func (ev *compileEvaluator) update(rscope resolveScope, store ir.Storage, el ir.Element) (*compileEvaluator, bool) {
 	name := store.NameDef().Name
-	subEval := ev.fitp.Sub(map[string]ir.Element{name: el})
+	storeEl := cpevelements.NewStoredValue(
+		rscope.fileScope().irFile(),
+		store,
+		el,
+	)
+	subEval := ev.fitp.Sub(map[string]ir.Element{name: storeEl})
 	return newEvaluator(rscope, subEval), true
 }
 
-func (ev *compileEvaluator) sub(src ast.Node, vals map[string]ir.Element) (*compileEvaluator, bool) {
+func (ev *compileEvaluator) sub(vals map[string]ir.Element) (*compileEvaluator, bool) {
 	ctx := ev.fitp.Sub(vals)
 	return newEvaluator(ev.scope, ctx), true
+}
+
+func (ev *compileEvaluator) Sub(vals map[string]ir.Element) (ir.Fetcher, bool) {
+	return ev.sub(vals)
 }
 
 func (ev *compileEvaluator) File() *ir.File {
@@ -89,7 +98,7 @@ func (ev *compileEvaluator) EvalExpr(expr ir.Expr) (ir.Element, error) {
 }
 
 func (ev *compileEvaluator) IsDefined(name string) bool {
-	_, found := ev.scope.find(name)
+	_, found := ev.fitp.Context().Scope().Find(name)
 	return found
 }
 
@@ -105,27 +114,28 @@ func defineGlobal(s *scope.RWScope[processNode], tok token.Token, name *ast.Iden
 	s.Define(name.Name, newProcessNode(tok, name, node))
 }
 
-func elementFromStorage(scope resolveScope, ev *compileEvaluator, node ir.Storage) (ir.Element, bool) {
-	el, err := cpevelements.NewRuntimeValue(ev.fitp.File(), node)
+func elementFromStorage(scope resolveScope, node ir.Storage) (ir.Element, bool) {
+	el, err := cpevelements.NewRuntimeValue(scope.fileScope().irFile(), node)
 	if err != nil {
 		return el, scope.Err().Append(err)
 	}
 	return el, true
 }
 
-func elementFromStorageWithValue(ev *compileEvaluator, node ir.StorageWithValue) (ir.Element, bool) {
+func elementFromStorageWithValue(scope resolveScope, node ir.StorageWithValue) (ir.Element, bool) {
 	value := node.Value(&ir.ValueRef{
 		Src:  node.NameDef(),
 		Stor: node,
 	})
-	if _, isType := value.(*ir.TypeValExpr); isType {
-		return value, true
+	ev, ok := scope.compEval()
+	if !ok {
+		return nil, false
 	}
 	el, err := ev.fitp.EvalExpr(value)
 	if err != nil {
 		return nil, ev.scope.Err().Appendf(node.Source(), "cannot evaluate expression %s. Original error:\n%+v", value.String(), err)
 	}
-	return el, true
+	return cpevelements.NewStoredValue(ev.File(), node, el), true
 }
 
 func defineLocalVar(scope resolveScope, storage ir.Storage) bool {
@@ -136,16 +146,12 @@ func defineLocalVar(scope resolveScope, storage ir.Storage) bool {
 	if ir.IsInvalidType(storage.Type()) {
 		return lScope.update(storage, ir.InvalidType())
 	}
-	ev, ok := scope.compEval()
-	if !ok {
-		return false
-	}
 	var el ir.Element
 	var elOk bool
 	if withValue, hasValue := storage.(ir.StorageWithValue); hasValue {
-		el, elOk = elementFromStorageWithValue(ev, withValue)
+		el, elOk = elementFromStorageWithValue(scope, withValue)
 	} else {
-		el, elOk = elementFromStorage(scope, ev, storage)
+		el, elOk = elementFromStorage(scope, storage)
 	}
 	if !elOk {
 		return false

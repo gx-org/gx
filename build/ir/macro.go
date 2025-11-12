@@ -93,6 +93,11 @@ func (s *MacroCallExpr) ShortString() string {
 	return s.X.String()
 }
 
+// SourceString returns GX code representing the call to the macro.
+func (s *MacroCallExpr) SourceString() string {
+	return s.String()
+}
+
 // String representation of the macro.
 func (s *MacroCallExpr) String() string {
 	return s.ShortString()

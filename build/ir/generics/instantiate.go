@@ -86,7 +86,7 @@ func instantiateAxis(fetcher ir.Fetcher, axis ir.AxisLengths) ([]ir.AxisLengths,
 	}
 }
 
-func (i *array) instantiateRank(fetcher ir.Fetcher, rank ir.ArrayRank) (ir.ArrayRank, bool) {
+func instantiateRank(fetcher ir.Fetcher, rank ir.ArrayRank) (ir.ArrayRank, bool) {
 	if _, ok := rank.(*ir.RankInfer); ok {
 		return &ir.RankInfer{}, true
 	}
@@ -104,48 +104,4 @@ func (i *array) instantiateRank(fetcher ir.Fetcher, rank ir.ArrayRank) (ir.Array
 		Src: rank.Source().(*ast.ArrayType),
 		Ax:  axes,
 	}, ok
-}
-
-func instantiateGroupType(fetcher ir.Fetcher) groupCloner {
-	return func(fetcher ir.Fetcher, group *ir.FieldGroup) *ir.FieldGroup {
-		ext := &ir.FieldGroup{
-			Src:  group.Src,
-			Type: group.Type,
-		}
-		gType := extractTypeSpecialiser(group.Type.Typ)
-		if gType == nil {
-			return ext
-		}
-		iType := gType.instantiate(fetcher)
-		if iType == nil {
-			return nil
-		}
-		ext.Type = &ir.TypeValExpr{X: group.Type.X, Typ: iType}
-		return ext
-	}
-}
-
-// Instantiate replaces data types either specified or inferred.
-func Instantiate(fetcher ir.Fetcher, fType *ir.FuncType) (*ir.FuncType, bool) {
-	nameToType := make(map[string]ir.Type)
-	for _, tParamValue := range fType.TypeParamsValues {
-		nameToType[tParamValue.Field.Name.Name] = tParamValue.Typ
-	}
-	params, ok := cloneFields(fetcher, fType.Params, instantiateGroupType(fetcher), cloneField)
-	if !ok {
-		return fType, false
-	}
-	results, ok := cloneFields(fetcher, fType.Results, instantiateGroupType(fetcher), cloneField)
-	if !ok {
-		return fType, false
-	}
-	return &ir.FuncType{
-		BaseType:         fType.BaseType,
-		Receiver:         fType.Receiver,
-		TypeParams:       fType.TypeParams,
-		TypeParamsValues: append([]ir.TypeParamValue{}, fType.TypeParamsValues...),
-		CompEval:         fType.CompEval,
-		Params:           params,
-		Results:          results,
-	}, true
 }

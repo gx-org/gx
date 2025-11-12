@@ -23,7 +23,7 @@ import (
 
 type (
 	rankNode interface {
-		build(resolveScope) (ir.ArrayRank, bool)
+		build(localScope) (ir.ArrayRank, bool)
 		String() string
 	}
 
@@ -74,13 +74,15 @@ func processDTypeRank(pscope procScope, src *ast.ArrayType) (rankNode, typeExprN
 	return ranks[0], dtype, ok
 }
 
-func (r *rank) build(rscope resolveScope) (ir.ArrayRank, bool) {
+func (r *rank) build(rscope localScope) (ir.ArrayRank, bool) {
 	ext := &ir.Rank{
 		Src: r.src,
 		Ax:  make([]ir.AxisLengths, len(r.dims)),
 	}
-	ok := true
-	dScope := toDefineScope(rscope)
+	dScope, ok := toDefineScope(rscope)
+	if !ok {
+		return ext, false
+	}
 	for i, dim := range r.dims {
 		var dimOk bool
 		ext.Ax[i], dimOk = dim.build(dScope)
@@ -103,7 +105,7 @@ type genericRank struct {
 
 var _ rankNode = (*genericRank)(nil)
 
-func (r *genericRank) build(rscope resolveScope) (ir.ArrayRank, bool) {
+func (r *genericRank) build(localScope) (ir.ArrayRank, bool) {
 	return &ir.RankInfer{Src: r.src}, true
 }
 

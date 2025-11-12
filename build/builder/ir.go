@@ -57,6 +57,7 @@ type (
 
 	// stmtNode is a GX statement.
 	stmtNode interface {
+		nodePos
 		buildStmt(fnResolveScope) (ir.Stmt, bool)
 	}
 
@@ -67,6 +68,26 @@ type (
 
 func fnName(f function) string {
 	return f.fnSource().Name.Name
+}
+
+func findStorage(scope resolveScope, name *ast.Ident) (ir.Storage, bool) {
+	ns := scope.nspace()
+	el, ok := ns.Find(name.Name)
+	if !ok {
+		return nil, scope.Err().Appendf(name, "undefined: %s", name.Name)
+	}
+	switch elT := el.(type) {
+	case ir.Storage:
+		return elT, true
+	case ir.WithStore:
+		store := elT.Store()
+		if store == nil {
+			return nil, scope.Err().AppendInternalf(name, "name %q refers element %T which returned a nil storage", name.Name, el)
+		}
+		return elT.Store(), true
+	default:
+		return nil, scope.Err().AppendInternalf(name, "element %T is not a storage", el)
+	}
 }
 
 func storageFromExpr(scope resolveScope, expr ir.Expr) (ir.Storage, bool) {
@@ -82,6 +103,10 @@ func storageFromExpr(scope resolveScope, expr ir.Expr) (ir.Storage, bool) {
 }
 
 func typeFromStorage(rscope resolveScope, x ir.AssignableExpr, store ir.Storage) (*ir.TypeValExpr, bool) {
+	tp, ok := store.(ir.Type)
+	if ok {
+		return &ir.TypeValExpr{X: x, Typ: tp}, true
+	}
 	value, ok := valueFromStorage(rscope, x, store)
 	if !ok {
 		return nil, false
@@ -90,7 +115,7 @@ func typeFromStorage(rscope resolveScope, x ir.AssignableExpr, store ir.Storage)
 	if !ok {
 		return nil, rscope.Err().Appendf(x.Source(), "%s not a type", x.String())
 	}
-	return &ir.TypeValExpr{X: x, Typ: typeRef.Typ}, true
+	return typeRef, true
 }
 
 func typeFromExpr(rscope resolveScope, x ir.AssignableExpr) (*ir.TypeValExpr, bool) {
@@ -284,18 +309,6 @@ var invalidGroup = &ir.FieldGroup{Type: &ir.TypeValExpr{
 	X:   invalidExpr(),
 	Typ: ir.InvalidType(),
 }}
-
-func buildInvalidFuncType(numResults int) *ir.FuncType {
-	list := make([]*ir.FieldGroup, numResults)
-	for i := range numResults {
-		list[i] = invalidGroup
-	}
-	return &ir.FuncType{
-		Results: &ir.FieldList{
-			List: list,
-		},
-	}
-}
 
 func buildAExpr(rscope resolveScope, expr exprNode) (ir.AssignableExpr, bool) {
 	ext, exprOk := expr.buildExpr(rscope)

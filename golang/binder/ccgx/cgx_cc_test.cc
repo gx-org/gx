@@ -12,8 +12,6 @@
 // See the License for the specific language governing permissions and
 // limitations under the License.
 
-#include <golang/binder/cgx/cgx.h>
-
 #include <stdlib.h>
 
 #include <cstdint>
@@ -22,6 +20,7 @@
 
 #include <gtest/gtest.h>
 #include <golang/binder/cgx/cgx.cgo.h>
+#include <golang/binder/cgx/cgx.h>
 #include <golang/binder/cgx/testing/testing.cgo.h>
 
 namespace cgx {
@@ -223,7 +222,8 @@ TEST_F(cgx, PackageSetStaticVar) {
 
   const auto size = cgx_static_find(pr.package, "Size");
   CGX_ASSERT_OK(size.error);
-  cgx_static_set(size.static_var, 2);
+  const auto err = cgx_static_set(size.static_var, 2);
+  CGX_ASSERT_OK(err);
 
   const auto fr = cgx_function_find(pr.package, "ReturnVar1");
   CGX_ASSERT_OK(fr.error);

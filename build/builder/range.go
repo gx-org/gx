@@ -56,6 +56,10 @@ func processLoopAssignable(pscope procScope, expr ast.Expr) (*identStorage, bool
 	}
 }
 
+func (n *rangeStmt) source() ast.Node {
+	return n.src
+}
+
 func (n *rangeStmt) buildBodyOverScalar(rscope resolveScope, x ir.Expr) (ir.Storage, ir.Storage, bool) {
 	key, _, keyOk := n.key.buildStorage(rscope, x.Type())
 	return key, nil, keyOk
@@ -81,7 +85,7 @@ func (n *rangeStmt) buildBodyOverArray(rscope resolveScope, x ir.Expr) (ir.Stora
 
 func (n *rangeStmt) buildStmt(parent fnResolveScope) (ir.Stmt, bool) {
 	ext := &ir.RangeStmt{Src: n.src}
-	rscope, ok := newBlockScope(parent)
+	rscope, ok := newBlockScope(parent, n)
 	if !ok {
 		return ext, false
 	}

@@ -50,6 +50,9 @@ type (
 		// ElementFromAtom returns an element from an atomic GX value.
 		ElementFromAtom(file *ir.File, expr ir.AssignableExpr, val values.Array) (NumericalElement, error)
 
+		// ElementFromStorage returns an element from an atomic GX value and its storage.
+		ElementFromStorage(file *ir.File, expr ir.StorageWithValue, val ir.Element) ir.Element
+
 		// Trace register a call to the trace builtin function.
 		Trace(ctx ir.Evaluator, call *ir.CallExpr, args []ir.Element) error
 	}

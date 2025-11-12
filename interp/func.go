@@ -48,8 +48,6 @@ func NewRunFunc(fn ir.Func, recv *fun.Receiver) fun.Func {
 			funcBase: funcBase{fn: fnT, recv: recv},
 			fnT:      fnT,
 		}
-	case *ir.SpecialisedFunc:
-		return NewRunFunc(fnT.F.F, recv)
 	case *ir.FuncBuiltin:
 		return &funcBuiltin{
 			funcBase: funcBase{fn: fnT, recv: recv},

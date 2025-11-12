@@ -52,10 +52,14 @@ func (n *arrayType) buildTypeExpr(rscope resolveScope) (*ir.TypeValExpr, bool) {
 	if !dtypeOk {
 		return nil, false
 	}
+	lscope, ok := rscope.(localScope)
+	if !ok {
+		return nil, rscope.Err().AppendInternalf(n.src, "%T is not a local scope", rscope)
+	}
 	// Note that rank.resolve() may return a new concrete rankNode instance if the rank was generic.
 	// In that case, we return a new instance of arrayType (see below) and keep the generic arrayType
 	// and rank unchanged so they can be specialized again for the next call.
-	rank, rankOk := n.rnk.build(rscope)
+	rank, rankOk := n.rnk.build(lscope)
 	arrayType, ok := ir.NewArrayType(n.src, dtyp.Typ, rank), dtypeOk && rankOk
 	return &ir.TypeValExpr{X: arrayType, Typ: arrayType}, ok
 }
@@ -88,7 +92,7 @@ func (n *arrayLitExpr) source() ast.Node {
 }
 
 func (n *arrayLitExpr) buildExpr(rscope resolveScope) (ir.Expr, bool) {
-	typ, ok := buildArrayType(rscope, n.typ)
+	typ, ok := buildArrayType(newArrayLitResolveScope(rscope), n.typ)
 	if !ok {
 		return &ir.SliceLitExpr{Src: n.src, Typ: ir.InvalidType()}, false
 	}

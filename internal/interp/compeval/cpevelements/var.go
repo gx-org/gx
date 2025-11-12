@@ -31,6 +31,7 @@ type variable struct {
 
 var (
 	_ Element           = (*variable)(nil)
+	_ ir.StorageElement = (*variable)(nil)
 	_ elements.WithAxes = (*variable)(nil)
 	_ ir.Canonical      = (*variable)(nil)
 	_ elements.Slicer   = (*variable)(nil)
@@ -38,6 +39,10 @@ var (
 
 // NewVariable returns a new variable element given a GX variable name.
 func NewVariable(src elements.StorageAt) ir.Element {
+	return newVariable(src)
+}
+
+func newVariable(src elements.StorageAt) *variable {
 	return &variable{src: src, name: src.Node().NameDef().Name}
 }
 
@@ -64,6 +69,11 @@ func (a *variable) Reshape(env evaluator.Env, expr ir.AssignableExpr, axisLength
 // Shape of the value represented by the element.
 func (a *variable) Shape() *shape.Shape {
 	return &shape.Shape{}
+}
+
+// Store returns the storage represented by this variable.
+func (a *variable) Store() ir.Storage {
+	return a.src.Node()
 }
 
 // Type of the element.

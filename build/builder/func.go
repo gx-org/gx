@@ -66,7 +66,7 @@ type funcType struct {
 	receiver *namedType
 
 	typeParams *fieldList
-	genShapes  *ordered.Map[string, *defineAxisLength]
+	genShapes  *ordered.Map[string, *processNodeT[*defineAxisLength]]
 
 	recv    *fieldList
 	params  *fieldList
@@ -79,7 +79,7 @@ func processFuncType(pscope procScope, src *ast.FuncType, recv *ast.FieldList, c
 	n := &funcType{
 		src:       src,
 		compEval:  compEval,
-		genShapes: ordered.NewMap[string, *defineAxisLength](),
+		genShapes: ordered.NewMap[string, *processNodeT[*defineAxisLength]](),
 	}
 	var recvOk, typesOk, paramsOk, resultsOk bool
 	sig := &signatureNamespace{fType: n, names: make(map[string]*field)}
@@ -127,21 +127,24 @@ func (n *funcType) buildFuncType(rscope resolveScope) (*ir.FuncType, *funcResolv
 		CompEval: n.compEval,
 	}
 	var tParamsOk, recvOk, paramsOk, resultsOk bool
-	fScope := newFuncScope(rscope, ext)
-	typeParamsScope := newDefineScope(fScope, defineTypeParam, nil)
+	sigscope, ok := newEphemeralResolveScope(rscope, n.src)
+	if !ok {
+		return ext, nil, false
+	}
+	typeParamsScope := newDefineScope(sigscope, defineTypeParam, nil)
 	ext.TypeParams, tParamsOk = n.typeParams.buildFieldList(typeParamsScope)
-	ext.Receiver, recvOk = n.recv.buildFieldList(fScope)
+	ext.Receiver, recvOk = n.recv.buildFieldList(newDefineScope(sigscope, nil, nil))
 	if recvOk && ext.Receiver != nil {
 		if field := ext.ReceiverField(); field.Name != nil {
-			defineLocalVar(fScope, field.Storage())
+			defineLocalVar(sigscope, field.Storage())
 		}
 	}
-	paramScope := newDefineScope(fScope, defineLocalVar, defineLocalVar)
+	paramScope := newDefineScope(sigscope, defineLocalVar, defineLocalVar)
 	ext.Params, paramsOk = n.params.buildFieldList(paramScope)
 	if !paramsOk {
-		return ext, fScope, false
+		return ext, nil, false
 	}
-	resultScope := newDefineScope(fScope, defineLocalVar, nil)
+	resultScope := newDefineScope(sigscope, defineLocalVar, nil)
 	ext.Results, resultsOk = n.results.buildFieldList(resultScope)
 	if resultsOk {
 		for _, field := range ext.Results.Fields() {
@@ -153,11 +156,12 @@ func (n *funcType) buildFuncType(rscope resolveScope) (*ir.FuncType, *funcResolv
 	ext.AxisLengths = make([]*ir.AxLengthName, 0, n.genShapes.Size())
 	for def := range n.genShapes.Values() {
 		ext.AxisLengths = append(ext.AxisLengths, &ir.AxLengthName{
-			Src: def.src,
-			Typ: def.typ,
+			Src: def.node.src,
+			Typ: def.node.typ,
 		})
 	}
-	return ext, fScope, tParamsOk && paramsOk && resultsOk && recvOk
+	fnscope, fnscopeOk := newFuncScope(rscope, ext)
+	return ext, fnscope, tParamsOk && paramsOk && resultsOk && recvOk && fnscopeOk
 }
 
 func (n *funcType) source() ast.Node {
@@ -264,18 +268,27 @@ func (f *funcDecl) buildSignature(pkgScope *pkgResolveScope) (ir.Func, fnResolve
 		return nil, nil, false
 	}
 	ext := &ir.FuncDecl{Src: f.src, FFile: fScope.irFile()}
-	var funcScope *funcResolveScope
-	ext.FType, funcScope, ok = f.fType.buildFuncType(fScope)
-	return ext, funcScope, ok
+	var fnscope *funcResolveScope
+	ext.FType, fnscope, ok = f.fType.buildFuncType(fScope)
+	if !ok {
+		return ext, nil, false
+	}
+	fnscope, ok = fnscope.setFuncValue(ext)
+	return ext, fnscope, ok
 }
 
-func (f *funcDecl) buildBody(fScope fnResolveScope, extF *irFunc) bool {
-	ext := extF.irFunc.(*ir.FuncDecl)
-	scope, ok := newBlockScope(fScope)
+func (f *funcDecl) buildBody(fnscope fnResolveScope, extF *irFunc) bool {
+	// Rebuilding the function scope to make sure all function declarations are included.
+	fScope, ok := fnscope.fileScope().pkgResolveScope.newFileRScope(f.bFile)
 	if !ok {
 		return false
 	}
-	ext.Body, ok = f.body.buildBlockStmt(scope)
+	fnScope, ok := newFuncScope(fScope, extF.irFunc.FuncType())
+	if !ok {
+		return false
+	}
+	ext := extF.irFunc.(*ir.FuncDecl)
+	ext.Body, ok = f.body.buildBlockStmt(fnScope)
 	return ok
 }
 
@@ -314,6 +327,10 @@ func (f *funcBuiltin) buildSignature(pkgScope *pkgResolveScope) (ir.Func, fnReso
 	var ok bool
 	var fScope *funcResolveScope
 	ext.FType, fScope, ok = f.fType.buildFuncType(fileScope)
+	if !ok {
+		return ext, nil, false
+	}
+	fScope, ok = fScope.setFuncValue(ext)
 	return ext, fScope, ok
 }
 
@@ -347,16 +364,12 @@ func (fn *funcLiteral) buildFuncLit(rscope resolveScope) (*ir.FuncLit, bool) {
 		FFile: rscope.fileScope().irFile(),
 	}
 	var ok bool
-	var fScope *funcResolveScope
-	lit.FType, fScope, ok = fn.ftype.buildFuncType(rscope)
+	var fnscope *funcResolveScope
+	lit.FType, fnscope, ok = fn.ftype.buildFuncType(rscope)
 	if !ok {
 		return lit, false
 	}
-	bScope, ok := newBlockScope(fScope)
-	if !ok {
-		return lit, false
-	}
-	lit.Body, ok = fn.body.buildBlockStmt(bScope)
+	lit.Body, ok = fn.body.buildBlockStmt(fnscope)
 	return lit, ok
 }
 
@@ -416,6 +429,9 @@ func axisValuesFromArgumentValue(rscope resolveScope, compEval *compileEvaluator
 	axes, err := arrayElement.Axes(compEval)
 	if err != nil {
 		return nil, rscope.Err().AppendInternalf(src.Source(), "cannot get axes from element %T to assign to parameter %s: %v", val, src.Name, err)
+	}
+	if axes == nil {
+		return nil, true
 	}
 	return axes.Elements(), true
 }
@@ -490,8 +506,12 @@ func assignArgValueToName(rscope resolveScope, compEval *compileEvaluator, param
 	return ok
 }
 
-func assignArgValueToParamName(rscope resolveScope, compEval *compileEvaluator, fExpr *ir.FuncValExpr, args []ir.AssignableExpr) (map[string]ir.Element, bool) {
+func assignArgValueToParamName(rscope resolveScope, fExpr *ir.FuncValExpr, args []ir.AssignableExpr) (map[string]ir.Element, bool) {
 	params := make(map[string]ir.Element)
+	compEval, ok := rscope.compEval()
+	if !ok {
+		return params, false
+	}
 	for i, param := range fExpr.T.Params.Fields() {
 		if param.Name == nil {
 			continue
@@ -518,7 +538,7 @@ func checkArgsForCall(rscope resolveScope, fExpr *ir.FuncValExpr, args []ir.Assi
 }
 
 func buildFuncForCall(rscope resolveScope, fExpr *ir.FuncValExpr, args []ir.AssignableExpr) ([]ir.AssignableExpr, *ir.FuncValExpr, bool) {
-	compEval, compEvalOk := rscope.compEval()
+	compEval, compEvalOk := compEvalForFuncType(rscope, fExpr.X.Source(), fExpr.T)
 	if !compEvalOk {
 		return args, fExpr, false
 	}
@@ -542,15 +562,18 @@ func buildFuncForCall(rscope resolveScope, fExpr *ir.FuncValExpr, args []ir.Assi
 	if args, ok = convertArgNumbers(rscope, fExpr.T, args); !ok {
 		return args, fExpr, false
 	}
-	argsVals, ok := assignArgValueToParamName(rscope, compEval, fExpr, args)
+	argsVals, ok := assignArgValueToParamName(rscope, fExpr, args)
 	if !ok {
 		return args, fExpr, false
 	}
-	ce, ok := compEval.sub(fExpr.Source(), argsVals)
+	ce, ok := compEval.sub(argsVals)
 	if !ok {
 		return args, fExpr, false
 	}
-	fTypeInst, ok := generics.Instantiate(ce, fExpr.T)
+	fTypeInst, err := generics.Instantiate(ce, fExpr.T)
+	if err != nil {
+		return args, fExpr, rscope.Err().AppendAt(fExpr.Source(), err)
+	}
 	fExprInst := &ir.FuncValExpr{
 		X: fExpr.X,
 		F: fExpr.F,

@@ -85,8 +85,12 @@ func (n *namedType) buildUnderlying(pkgScope *pkgResolveScope, nType *ir.NamedTy
 	if !scopeOk {
 		return false
 	}
+	ephemeral, ok := newEphemeralResolveScope(rscope, n.src)
+	if !ok {
+		return false
+	}
 	var underOk bool
-	nType.Underlying, underOk = n.underlying.buildTypeExpr(rscope)
+	nType.Underlying, underOk = n.underlying.buildTypeExpr(ephemeral)
 	return underOk
 }
 

@@ -365,7 +365,10 @@ func cgx_static_set(cgxStatic C.cgx_static, val int64) C.cgx_error {
 	case ir.IntLenType():
 		gxValue, err = values.AtomIntegerValue[int64](ir.IntLenType(), val)
 	default:
-		err = errors.Errorf("cannot set static variable: type %s not supported", tp)
+		err = errors.Errorf("cannot set static variable: type %s not supported", tp.String())
+	}
+	if err != nil {
+		return (C.cgx_error)(wrap[error](err))
 	}
 	cvr.pkg.AppendOptions(func(plat platform.Platform) options.PackageOption {
 		return options.PackageVarSetValue{
@@ -374,9 +377,6 @@ func cgx_static_set(cgxStatic C.cgx_static, val int64) C.cgx_error {
 			Value: gxValue,
 		}
 	})
-	if err != nil {
-		return (C.cgx_error)(wrap[error](err))
-	}
 	return C.cgx_error(0)
 }
 

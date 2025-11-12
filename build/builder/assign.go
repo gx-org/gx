@@ -36,22 +36,22 @@ type (
 var _ assignable = (*identStorage)(nil)
 
 func (asg *identStorage) assign(rscope resolveScope, typ ir.Type) (_ ir.Storage, newName, ok bool) {
-	name := asg.target.src.Name
-	defined, isDefined := rscope.find(name)
-	if !isDefined {
-		return nil, false, rscope.Err().Appendf(asg.source(), "undefined: %s", name)
+	name := asg.target.src
+	ns := rscope.nspace()
+	if !ns.CanAssign(name.Name) {
+		return nil, false, rscope.Err().Appendf(asg.source(), "cannot assign a value to %s", name.Name)
 	}
-	assignable, assignableOk := irCache[ir.Storage](rscope.irBuilder(), asg.source(), defined)
-	isStorage := rscope.nspace().CanAssign(name)
-	if !assignableOk || !isStorage {
-		return nil, false, rscope.Err().Appendf(asg.source(), "cannot assign a value to %s", name)
+	storage, ok := findStorage(rscope, name)
+	if !ok {
+		return nil, false, false
 	}
-	return assignable, false, true
+	return storage, false, true
 }
 
 func (asg *identStorage) define(rscope resolveScope, typ ir.Type) (_ ir.Storage, newName, ok bool) {
 	name := asg.target.src.Name
-	_, isDefined := rscope.find(name)
+	ns := rscope.nspace()
+	_, isDefined := ns.Find(name)
 	if builtins.Is(name) {
 		// If the name is a builtin, it will already be defined in one of the parent scope.
 		// Check if that builtin is defined in the local scope instead.
@@ -323,6 +323,13 @@ func processAssignCall(pscope procScope, src *ast.AssignStmt, call *callExpr) (s
 		targets: targets,
 	}, ok
 }
+func (n *assignCallStmt) defineLeftAsInvalid(rscope fnResolveScope) bool {
+	for _, target := range n.targets {
+		storage, _, _ := target.buildStorage(rscope, invalidExpr().Type())
+		defineLocalVar(rscope, storage)
+	}
+	return false
+}
 
 func (n *assignCallStmt) buildStmt(rscope fnResolveScope) (ir.Stmt, bool) {
 	ext := &ir.AssignCallStmt{Src: n.src}
@@ -333,7 +340,7 @@ func (n *assignCallStmt) buildStmt(rscope fnResolveScope) (ir.Stmt, bool) {
 	if callOk {
 		funType = ext.Call.Callee.FuncType()
 	} else {
-		funType = buildInvalidFuncType(len(n.targets))
+		return ext, n.defineLeftAsInvalid(rscope)
 	}
 	lenCallResults := funType.Results.Len()
 	if lenTargets != funType.Results.Len() {

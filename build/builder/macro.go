@@ -129,7 +129,10 @@ func evalMetaCallee[T funcWithIR](rscope resolveScope, compEval *compileEvaluato
 	if !ok {
 		return nil, zero, rscope.Err().Appendf(callee.Source(), "cannot use %s as %s", callee.String(), reflect.TypeFor[T]())
 	}
-	call, ok := macroCall.buildFuncCallExpr(rscope, callee, elT.Func())
+	call, ok := macroCall.buildFuncCallExpr(rscope, &ir.FuncValExpr{
+		X: callee,
+		F: elT.Func(),
+	})
 	return call, elT, ok
 }
 

@@ -90,11 +90,6 @@ func (f *FuncLit) String() string {
 	return fmt.Sprintf("%s {\n%s}", sig, body)
 }
 
-// String representation of the literal.
-func (f *SpecialisedFunc) String() string {
-	return f.T.String()
-}
-
 // SourceString returns a string representation of the signature of a function.
 func (s *FuncType) SourceString(context *File) string {
 	return s.SourceSignature(context, nil)
@@ -175,7 +170,7 @@ func (s *DeclStmt) String() string {
 // String representation.
 func (s *CallExpr) String() string {
 	var b strings.Builder
-	fmt.Fprintf(&b, "%s(", s.Callee.ShortString())
+	fmt.Fprintf(&b, "%s(", s.Callee.SourceString())
 	stringseq.AppendStringer(&b, slices.Values(s.Args), ", ")
 	fmt.Fprintf(&b, ")")
 	return b.String()

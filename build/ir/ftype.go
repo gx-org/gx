@@ -114,5 +114,73 @@ func (s *FuncType) Value(x Expr) AssignableExpr {
 	return &TypeValExpr{X: x, Typ: s}
 }
 
+// Specialise a type to a given target.
+func (s *FuncType) Specialise(spec Specialiser) (Type, error) {
+	return s.SpecialiseFType(spec)
+}
+
+func skipIfDefined(spec Specialiser) fieldCloner {
+	return func(grp *FieldGroup, i int, field *Field) (*Field, error) {
+		if spec.TypeOf(field.Name.Name) != nil {
+			return nil, nil
+		}
+		return cloneField(grp, i, field)
+	}
+}
+
+// SpecialiseFType specialises a function type.
+func (s *FuncType) SpecialiseFType(spec Specialiser) (*FuncType, error) {
+	res := *s
+	var err error
+	specialiser := &cloner{
+		group: func(grp *FieldGroup) (*FieldGroup, error) {
+			specType, err := grp.Type.Typ.Specialise(spec)
+			if err != nil {
+				return nil, err
+			}
+			return &FieldGroup{
+				Src: grp.Src,
+				Type: &TypeValExpr{
+					X:   grp.Type.X,
+					Typ: specType,
+				},
+			}, nil
+		},
+		field: cloneField,
+	}
+	res.Params, err = cloneFields(s.Params, specialiser)
+	if err != nil {
+		return nil, err
+	}
+	res.Results, err = cloneFields(s.Results, specialiser)
+	if err != nil {
+		return nil, err
+	}
+	res.TypeParams, err = cloneFields(s.TypeParams, &cloner{
+		group: cloneGroup,
+		field: skipIfDefined(spec),
+	})
+	if err != nil {
+		return nil, err
+	}
+
+	for _, typeParam := range s.TypeParams.Fields() {
+		defined := spec.TypeOf(typeParam.Name.Name)
+		if defined == nil {
+			break
+		}
+		res.TypeParamsValues = append(res.TypeParamsValues, TypeParamValue{
+			Field: typeParam,
+			Typ:   defined,
+		})
+	}
+	return &res, nil
+}
+
+// UnifyWith recursively unifies a type parameters with types.
+func (s *FuncType) UnifyWith(unifier Unifier, typ Type) bool {
+	return true
+}
+
 // Source returns the node in the AST tree.
 func (s *FuncType) Source() ast.Node { return s.Src }

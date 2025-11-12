@@ -233,7 +233,7 @@ func (s *axLenParamScope) registerAxis(axis *defineAxisLength) (*defineAxisLengt
 	if _, has := s.ftype.genShapes.Load(axis.name); has {
 		return axis, s.Err().Appendf(axis.src, "axis length %s can only be defined once", axis.name)
 	}
-	s.ftype.genShapes.Store(axis.name, axis)
+	s.ftype.genShapes.Store(axis.name, newProcessNode(token.VAR, axis.src, axis))
 	return axis, true
 }
 

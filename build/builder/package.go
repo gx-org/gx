@@ -321,7 +321,13 @@ func (pkg *IncrementalPackage) BuildExpr(src string, imports ...*ast.ImportSpec)
 	if !ok {
 		return nil, errs
 	}
-	irExpr, ok := expr.buildExpr(funRScope)
+	blockScope, ok := newBlockScope(funRScope, &blockStmt{
+		src: &ast.BlockStmt{},
+	})
+	if !ok {
+		return nil, errs
+	}
+	irExpr, ok := expr.buildExpr(blockScope)
 	if !ok {
 		return nil, errs
 	}

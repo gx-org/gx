@@ -95,3 +95,40 @@ func fail(x [A][B][1]float32) float32 {
 		},
 	)
 }
+
+func TestCallKeyword(t *testing.T) {
+	testbuild.Run(t,
+		testbuild.Decl{
+			Src: `
+func f() string {
+	return "undefined"
+}
+
+func TestF() string {
+	trace(f)
+	return f()
+}
+`,
+		},
+	)
+}
+
+func TestCallSameName(t *testing.T) {
+	testbuild.Run(t,
+		testbuild.Decl{
+			Src: `
+type S struct {
+	f float32
+}
+
+func inc(a float32) float32 {
+	return a + 1
+}
+
+func F(a S) float32 {
+	return inc(a.f)
+}
+`,
+		},
+	)
+}

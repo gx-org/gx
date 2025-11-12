@@ -67,8 +67,13 @@ func (n *structType) source() ast.Node {
 
 func (n *structType) buildTypeExpr(scope resolveScope) (*ir.TypeValExpr, bool) {
 	ext := &ir.StructType{BaseType: ir.BaseType[*ast.StructType]{Src: n.src}}
+	ephemeral, ok := newEphemeralResolveScope(scope, n.src)
+	if !ok {
+		return &ir.TypeValExpr{X: ext, Typ: ir.InvalidType()}, false
+	}
+	stypeScope := newDefineScope(ephemeral, nil, nil)
 	var fieldsOk bool
-	ext.Fields, fieldsOk = n.fieldList.buildFieldList(scope)
+	ext.Fields, fieldsOk = n.fieldList.buildFieldList(stypeScope)
 	return &ir.TypeValExpr{X: ext, Typ: ext}, fieldsOk
 }
 

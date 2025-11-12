@@ -126,12 +126,11 @@ func funcValExpr(done map[any]bool, val reflect.Value, proc processor) string {
 	switch fT := ref.F.(type) {
 	case *ir.FuncLit:
 		return reflectString(done, reflect.ValueOf(fT), proc)
-	case ir.PkgFunc:
-		return fT.Name()
-	case *ir.SpecialisedFunc:
-		return fT.X.String()
 	default:
-		return ref.T.Type().String()
+		if ref.T != nil {
+			return ref.T.String()
+		}
+		return ref.F.ShortString()
 	}
 }
 
@@ -191,6 +190,8 @@ func init() {
 	typeToProcess["github.com/gx-org/gx/build/ir.float32Type"] = debugOk(valueToString)
 	typeToProcess["github.com/gx-org/gx/build/ir.float64Type"] = debugOk(valueToString)
 	typeToProcess["github.com/gx-org/gx/build/ir.boolType"] = debugOk(valueToString)
+	typeToProcess["github.com/gx-org/gx/build/ir.uint32Type"] = debugOk(valueToString)
+	typeToProcess["github.com/gx-org/gx/build/ir.uint64Type"] = debugOk(valueToString)
 	typeToProcess["github.com/gx-org/gx/build/ir.stringType"] = debugOk(valueToString)
 	typeToProcess["github.com/gx-org/gx/build/ir.numberIntType"] = debugOk(valueToString)
 	typeToProcess["github.com/gx-org/gx/build/ir.numberFloatType"] = debugOk(valueToString)

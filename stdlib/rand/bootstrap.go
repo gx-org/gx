@@ -157,7 +157,7 @@ func evalNewBootstrapGenerator(ctx evaluator.Env, call elements.CallAt, fn fun.F
 }
 
 func evalBootstrapGeneratorNext(ctx evaluator.Env, call elements.CallAt, fn fun.Func, irFunc *ir.FuncBuiltin, args []ir.Element) ([]ir.Element, error) {
-	bootStrap := fun.Underlying(fn.Recv().Element).(*randBootstrap)
+	bootStrap := elements.Underlying(fn.Recv().Element).(*randBootstrap)
 	el, err := bootStrap.next(ctx)
 	if err != nil {
 		return nil, err

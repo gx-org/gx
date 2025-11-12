@@ -281,7 +281,7 @@ func EvalRank(fetcher ir.Fetcher, expr ir.Expr) (ir.ArrayRank, []canonical.Canon
 	if err != nil {
 		return nil, nil, err
 	}
-	slice, ok := rankVal.(*Slice)
+	slice, ok := Underlying(rankVal).(*Slice)
 	if !ok {
 		return nil, nil, fmterr.Internalf(fetcher.File().FileSet(), expr.Source(), "cannot build a rank from %s (%T): not supported", expr.String(), rankVal)
 	}

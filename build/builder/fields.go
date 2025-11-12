@@ -41,7 +41,7 @@ func processFieldList(pscope procScope, src *ast.FieldList, assign func(procScop
 	return f, ok
 }
 
-func (f *fieldList) buildFieldList(rscope resolveScope) (*ir.FieldList, bool) {
+func (f *fieldList) buildFieldList(dscope *defineLocalScope) (*ir.FieldList, bool) {
 	if f == nil {
 		return nil, true
 	}
@@ -50,7 +50,6 @@ func (f *fieldList) buildFieldList(rscope resolveScope) (*ir.FieldList, bool) {
 		List: make([]*ir.FieldGroup, len(f.list)),
 	}
 	ok := true
-	dscope := toDefineScope(rscope)
 	for i, group := range f.list {
 		var fieldOk bool
 		fList.List[i], fieldOk = group.build(dscope)

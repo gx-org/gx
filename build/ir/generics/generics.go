@@ -22,17 +22,15 @@ import (
 	"github.com/gx-org/gx/build/ir"
 )
 
-type genericType interface {
-	name() string
-	specialise(fetcher ir.Fetcher, typ ir.Type) ir.Type
-	instantiate(fetcher ir.Fetcher) ir.Type
+func newTypeParamDefinition(ftype *ir.FuncType) map[string]ir.Type {
+	defined := make(map[string]ir.Type)
+	for _, typeParamValue := range ftype.TypeParamsValues {
+		defined[typeParamValue.Field.Name.Name] = typeParamValue.Typ
+	}
+	return defined
 }
 
 func typeInclude(fetcher ir.Fetcher, set ir.Type, typ ir.Type) bool {
-	typParam, isTypeParam := typ.(*ir.TypeParam)
-	if isTypeParam {
-		typ = typParam.Field.Type()
-	}
 	isIn, err := ir.TypeInclude(fetcher, set, typ)
 	if err != nil {
 		return fetcher.Err().Append(err)
@@ -44,75 +42,12 @@ func typeInclude(fetcher ir.Fetcher, set ir.Type, typ ir.Type) bool {
 	return true
 }
 
-type ident struct {
-	set     ir.Type
-	typName string
-}
-
-func (i *ident) name() string {
-	return i.typName
-}
-
-func (i *ident) specialise(fetcher ir.Fetcher, typ ir.Type) ir.Type {
-	if !typeInclude(fetcher, i.set, typ) {
-		return nil
-	}
-	return typ
-}
-
-func (i *ident) instantiate(ir.Fetcher) ir.Type {
-	return i.set
-}
-
-type array struct {
-	src     ast.Expr
-	typ     ir.ArrayType
-	typName string
-	set     ir.Type
-}
-
-func (i *array) name() string {
-	return i.typName
-}
-
-func (i *array) instantiate(fetcher ir.Fetcher) ir.Type {
-	rank, ok := i.instantiateRank(fetcher, i.typ.Rank())
-	if !ok {
-		return nil
-	}
-	return ir.NewArrayType(i.src, i.typ.DataType(), rank)
-}
-
-func (i *array) specialise(fetcher ir.Fetcher, typ ir.Type) ir.Type {
-	if !typeInclude(fetcher, i.set, typ) {
-		return nil
-	}
-	return ir.NewArrayType(i.typ.ArrayType(), typ, i.typ.Rank())
-}
-
 func dtypeElement(expr ast.Expr) ast.Expr {
 	aType, ok := expr.(*ast.ArrayType)
 	if !ok {
 		return expr
 	}
 	return dtypeElement(aType.Elt)
-}
-
-func extractTypeSpecialiser(tp ir.Type) genericType {
-	switch typT := tp.(type) {
-	case *ir.TypeParam:
-		return &ident{set: typT.Field.Type(), typName: typT.Field.Name.Name}
-	case *ir.TypeSet:
-		return nil
-	case ir.ArrayType:
-		gType := &array{src: typT.ArrayType(), typ: typT}
-		if typeParam, hasTypeParam := typT.DataType().(*ir.TypeParam); hasTypeParam {
-			gType.set = typeParam.Field.Type()
-			gType.typName = typeParam.Field.Name.Name
-		}
-		return gType
-	}
-	return nil
 }
 
 func instantiateExpr(fetcher ir.Fetcher, expr ir.Expr) (ir.Value, bool) {
