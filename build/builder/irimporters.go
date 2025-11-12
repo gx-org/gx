@@ -18,6 +18,7 @@ import (
 	"go/ast"
 	"go/token"
 
+	"github.com/pkg/errors"
 	"github.com/gx-org/gx/build/builder/irb"
 	"github.com/gx-org/gx/build/ir"
 )
@@ -58,7 +59,8 @@ func (f *importedFunc) buildSignature(pkgScope *pkgResolveScope) (ir.Func, fnRes
 	if !ok {
 		return f.fn, nil, false
 	}
-	return f.fn, newFuncScope(fScope, f.fn.FType), true
+	fnscope, ok := newFuncScope(fScope, f.fn.FType)
+	return f.fn, fnscope, ok
 }
 
 func (f *importedFunc) buildBody(fnResolveScope, *irFunc) bool {
@@ -75,7 +77,8 @@ func (f *importedFunc) Build(ibld irBuilder) (ir.Node, bool) {
 func pNodeFromFunc(pkgScope *pkgProcScope, file *file, fn ir.PkgFunc) (*processNodeT[function], bool) {
 	fnT, ok := fn.(*ir.FuncBuiltin)
 	if !ok {
-		return nil, pkgScope.Err().AppendInternalf(fn.Source(), "cannot import function %T: not supported", fn)
+		// Use errors.Errorf because imported functions have no source location.
+		return nil, pkgScope.Err().Append(errors.Errorf("cannot import function %T: not supported", fn))
 	}
 	return newProcessNode[function](token.FUNC, fnT.Src.Name, &importedFunc{
 		file: file,
@@ -129,7 +132,7 @@ type importedConstExpr struct {
 
 var _ iConstExpr = (*importedConstExpr)(nil)
 
-func (b *importedConstExpr) buildDeclaration(ibld irBuilder) (*ir.ConstExpr, bool) {
+func (b *importedConstExpr) buildDeclaration(ibld irBuilder) (*ir.ConstExpr, []*ast.Ident, bool) {
 	extSpec := *b.expr.Decl
 	extSpec.Exprs = []*ir.ConstExpr{{
 		Decl:  &extSpec,
@@ -139,7 +142,7 @@ func (b *importedConstExpr) buildDeclaration(ibld irBuilder) (*ir.ConstExpr, boo
 	var ok bool
 	extSpec.FFile, ok = irBuild[*ir.File](ibld, b.bFile)
 	ibld.Register(constDeclarator(&extSpec))
-	return extSpec.Exprs[0], ok
+	return extSpec.Exprs[0], nil, ok
 }
 
 func (b *importedConstExpr) buildExpression(ibld irBuilder, ext *ir.ConstExpr) bool {

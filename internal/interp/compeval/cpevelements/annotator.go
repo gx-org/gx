@@ -45,7 +45,7 @@ func (f *Annotator) Recv() *fun.Receiver {
 
 // Call the macro to build the synthetic element.
 func (f *Annotator) Call(fctx *fun.CallEnv, call *ir.CallExpr, args []ir.Element) ([]ir.Element, error) {
-	return nil, errors.Errorf("gx:@%s is an annotator only valid in a function annotation context", f.Name())
+	return nil, errors.Errorf("annotator gx:@%s only valid in a function annotation context", f.Name())
 }
 
 // IR of the macro function.

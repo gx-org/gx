@@ -118,7 +118,7 @@ func (s *localScope[V]) String() string {
 	}
 	var kvs []string
 	for k, v := range s.data.Iter() {
-		kvs = append(kvs, fmt.Sprintf("%s: %T", k, v))
+		kvs = append(kvs, fmt.Sprintf("%s: %T:%v", k, v, v))
 	}
 	return strings.Join(kvs, "\n")
 }
@@ -211,10 +211,18 @@ func (s *RWScope[V]) ReadOnly() Scope[V] {
 	return &roScope[V]{parent: s.parent, local: s.local}
 }
 
+func (s *RWScope[V]) localString() string {
+	return s.local.String()
+}
+
 func scopeString[V any](local any, parent Scope[V]) string {
 	parentS := "root"
 	if parent != nil {
-		parentS = fmt.Sprint(parent)
+		if rws, ok := parent.(*RWScope[V]); ok {
+			parentS = rws.localString()
+		} else {
+			parentS = fmt.Sprint(parent)
+		}
 	}
 	return fmt.Sprintf("%s\n-- %p --\n%v\n", parentS, local, local)
 }

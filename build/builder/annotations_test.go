@@ -251,7 +251,7 @@ func f() string {
 	return annotation.Tag("Source")("Hi")
 }
 `,
-			Err: "gx:@annotation.Tag is an annotator only valid in a function annotation context",
+			Err: "annotator gx:@annotation.Tag only valid in a function annotation context",
 		},
 	)
 }

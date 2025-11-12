@@ -69,7 +69,9 @@ func g() int32 {
 						&ir.AssignExprStmt{List: []*ir.AssignExpr{&ir.AssignExpr{
 							Storage: irh.LocalVar("fn", funcLitType()),
 							X: &ir.CallExpr{
-								Callee: irh.FuncDeclCallee("f"),
+								Callee: irh.FuncDeclCallee("f", irh.FuncType(
+									nil, nil, nil,
+									irh.Fields(funcLitType()))),
 							},
 						}}},
 						&ir.ReturnStmt{Results: []ir.Expr{

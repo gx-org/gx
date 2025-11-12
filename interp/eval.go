@@ -387,7 +387,7 @@ func evalCastExpr(fitp *FileScope, expr ir.TypeCastExpr) (ir.Element, error) {
 	if !ok {
 		return nil, fmterr.Errorf(fitp.File().FileSet(), expr.Source(), "cast to %s not supported", target.String())
 	}
-	xNum, ok := fun.Underlying(x).(evaluator.NumericalElement)
+	xNum, ok := elements.Underlying(x).(evaluator.NumericalElement)
 	if !ok {
 		return nil, fmterr.Errorf(fitp.File().FileSet(), expr.Source(), "cannot cast element of type %T to %s", x, reflect.TypeFor[evaluator.NumericalElement]().Name())
 	}
@@ -535,7 +535,7 @@ func evalNumExpr(fitp *FileScope, expr ir.Expr) (evaluator.NumericalElement, err
 	if err != nil {
 		return nil, err
 	}
-	numEl, ok := fun.Underlying(el).(evaluator.NumericalElement)
+	numEl, ok := elements.Underlying(el).(evaluator.NumericalElement)
 	if !ok {
 		return nil, errors.Errorf("cannot cast %T to %s", el, reflect.TypeFor[evaluator.NumericalElement]())
 	}
@@ -567,7 +567,7 @@ func evalIndexExpr(fitp *FileScope, ref *ir.IndexExpr) (ir.Element, error) {
 	if err != nil {
 		return nil, err
 	}
-	x = fun.Underlying(x)
+	x = elements.Underlying(x)
 	slicer, ok := x.(elements.Slicer)
 	if !ok {
 		return nil, fmterr.Errorf(fitp.File().FileSet(), ref.Source(), "cannot index over %T", x)
@@ -675,7 +675,7 @@ func set(fitp *FileScope, tok token.Token, dest ir.Storage, value ir.Element) er
 		if err != nil {
 			return err
 		}
-		strt, ok := fun.Underlying(receiver).(*elements.Struct)
+		strt, ok := elements.Underlying(receiver).(*elements.Struct)
 		if !ok {
 			return fmterr.Errorf(fitp.File().FileSet(), dest.Source(), "cannot convert %T to %T", receiver, strt)
 		}

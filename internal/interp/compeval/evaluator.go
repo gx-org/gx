@@ -78,6 +78,11 @@ func (ev *CompEval) ElementFromAtom(file *ir.File, expr ir.AssignableExpr, val v
 	return cpevelements.NewAtom(elements.NewExprAt(file, expr), hostValue)
 }
 
+// ElementFromStorage returns an element from an atomic GX value and its storage.
+func (ev *CompEval) ElementFromStorage(file *ir.File, storage ir.StorageWithValue, val ir.Element) ir.Element {
+	return cpevelements.NewStoredValue(file, storage, val)
+}
+
 // Trace register a call to the trace builtin function.
 func (ev *CompEval) Trace(ctx ir.Evaluator, call *ir.CallExpr, args []ir.Element) error {
 	return errors.Errorf("not implemented")

@@ -102,5 +102,20 @@ func f(s []Container) int32 {
 }
 `,
 		},
+		testbuild.Decl{
+			Src: `
+type S struct {
+	F int32
+}
+
+func New() S {
+	return S{F:2}
+}
+
+func CallNew() S {
+	return New()
+}
+`,
+		},
 	)
 }

@@ -36,18 +36,13 @@ func (n *valueRef) source() ast.Node {
 }
 
 func (n *valueRef) buildValueRef(rscope resolveScope) (*ir.ValueRef, bool) {
-	name := n.src.Name
-	node, ok := rscope.find(name)
-	if !ok {
-		return nil, rscope.Err().Appendf(n.src, "undefined: %s", name)
-	}
-	irNode, ok := irCache[ir.Storage](rscope.irBuilder(), n.src, node)
+	storage, ok := findStorage(rscope, n.src)
 	if !ok {
 		return nil, false
 	}
 	return &ir.ValueRef{
 		Src:  n.src,
-		Stor: irNode,
+		Stor: storage,
 	}, true
 }
 

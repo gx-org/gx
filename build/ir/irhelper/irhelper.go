@@ -320,6 +320,9 @@ func StructType(fields ...*ir.Field) *ir.StructType {
 
 // FuncType builds a compeval function type .
 func FuncType(types, recv, params, results *ir.FieldList) *ir.FuncType {
+	if params == nil {
+		params = &ir.FieldList{}
+	}
 	return &ir.FuncType{
 		BaseType:   ir.BaseType[*ast.FuncType]{Src: &ast.FuncType{}},
 		TypeParams: types,
@@ -369,13 +372,14 @@ func SingleReturn(exprs ...ir.Expr) *ir.BlockStmt {
 	}
 }
 
-// FuncDeclCallee returns a proxy to call a function given its name.
-func FuncDeclCallee(name string) *ir.FuncValExpr {
+// FuncDeclCallee returns a reference to call a function given its name.
+func FuncDeclCallee(name string, ftype *ir.FuncType) *ir.FuncValExpr {
 	return &ir.FuncValExpr{
 		F: &ir.FuncDecl{
 			Src: &ast.FuncDecl{
 				Name: &ast.Ident{Name: name},
 			},
 		},
+		T: ftype,
 	}
 }

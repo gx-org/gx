@@ -27,10 +27,7 @@ type Package struct {
 	defs scope.Scope[ir.Element]
 }
 
-var (
-	_ ir.Element        = (*Package)(nil)
-	_ elements.Selector = (*Package)(nil)
-)
+var _ ir.PackageElement = (*Package)(nil)
 
 // NewPackage returns a package grouping everything that a package exports.
 func NewPackage(pkg *ir.Package, defs scope.Scope[ir.Element]) *Package {
@@ -42,17 +39,48 @@ func (pkg *Package) Type() ir.Type {
 	return ir.PackageType()
 }
 
-// Select a member of the package.
-func (pkg *Package) Select(expr *ir.SelectorExpr) (ir.Element, error) {
-	name := expr.Stor.NameDef().Name
-	el, ok := pkg.defs.Find(name)
-	if !ok {
-		return nil, errors.Errorf("%s.%s undefined", pkg.pkg.Name, name)
-	}
-	return el, nil
+// Package encapsulated.
+func (pkg *Package) Package() *ir.Package {
+	return pkg.pkg
 }
 
 // String returns a string representation of the node.
 func (pkg *Package) String() string {
 	return "package"
+}
+
+// Import is an element representing an import in a file.
+type Import struct {
+	imp *ir.ImportDecl
+	pkg *Package
+}
+
+var (
+	_ ir.StorageElement = (*Import)(nil)
+	_ elements.Selector = (*Import)(nil)
+)
+
+// NewImport returns a new import element for a given package.
+func NewImport(imp *ir.ImportDecl, pkg ir.PackageElement) ir.Element {
+	return &Import{imp: imp, pkg: pkg.(*Package)}
+}
+
+// Type of the element.
+func (imp *Import) Type() ir.Type {
+	return ir.PackageType()
+}
+
+// Store returns the IR storage.
+func (imp *Import) Store() ir.Storage {
+	return imp.imp
+}
+
+// Select a member of the package.
+func (imp *Import) Select(expr *ir.SelectorExpr) (ir.Element, error) {
+	name := expr.Stor.NameDef().Name
+	el, ok := imp.pkg.defs.Find(name)
+	if !ok {
+		return nil, errors.Errorf("%s.%s undefined", imp.pkg.pkg.Name, name)
+	}
+	return el, nil
 }

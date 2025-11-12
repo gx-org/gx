@@ -206,6 +206,10 @@ func (*fetcherTesting) IsDefined(string) bool {
 	return false
 }
 
+func (f *fetcherTesting) Sub(map[string]ir.Element) (ir.Fetcher, bool) {
+	panic("not implemented")
+}
+
 func (f *fetcherTesting) Err() *fmterr.Appender {
 	return nil
 }

@@ -27,6 +27,11 @@ type function struct {
 	recv *fun.Receiver
 }
 
+var (
+	_ ir.StorageElement = (*function)(nil)
+	_ ir.FuncElement    = (*function)(nil)
+)
+
 // NewFunc creates a new function given its definition and a receiver.
 func NewFunc(fn ir.Func, recv *fun.Receiver) fun.Func {
 	return &function{fn: fn, recv: recv}
@@ -41,10 +46,14 @@ func (f *function) Recv() *fun.Receiver {
 }
 
 func (f *function) Call(env *fun.CallEnv, call *ir.CallExpr, args []ir.Element) ([]ir.Element, error) {
+	valArgs := make([]ir.Element, len(args))
+	for i, arg := range args {
+		valArgs[i] = StoredValueOf(arg)
+	}
 	_, isKeyword := f.fn.(*ir.FuncKeyword)
 	fType := f.fn.FuncType()
 	if isKeyword || fType != nil && fType.CompEval { // Some builtin functions have no type at the moment.
-		return interp.NewRunFunc(f.fn, f.recv).Call(env, call, args)
+		return interp.NewRunFunc(f.fn, f.recv).Call(env, call, valArgs)
 	}
 	res := call.Callee.FuncType().Results.Fields()
 	els := make([]ir.Element, len(res))
@@ -59,6 +68,14 @@ func (f *function) Call(env *fun.CallEnv, call *ir.CallExpr, args []ir.Element) 
 		}
 	}
 	return els, nil
+}
+
+func (f *function) Store() ir.Storage {
+	storage, ok := f.fn.(ir.Storage)
+	if !ok {
+		return nil
+	}
+	return storage
 }
 
 func (f *function) Type() ir.Type {

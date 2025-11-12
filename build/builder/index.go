@@ -123,8 +123,7 @@ func specializeFunc(rscope resolveScope, x ir.Expr, indices []ir.AssignableExpr)
 	if !indicesOk {
 		return x, false
 	}
-
-	compEval, compEvalOk := rscope.compEval()
+	compEval, compEvalOk := compEvalForFuncType(rscope, x.Source(), fun.FuncType())
 	if !compEvalOk {
 		return x, false
 	}
@@ -133,7 +132,7 @@ func specializeFunc(rscope resolveScope, x ir.Expr, indices []ir.AssignableExpr)
 	if !ok {
 		return x, false
 	}
-	return specFunType.Value(x), ok
+	return specFunType, ok
 }
 
 func (n *indexExpr) buildExpr(rscope resolveScope) (ir.Expr, bool) {

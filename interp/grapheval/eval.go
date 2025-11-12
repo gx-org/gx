@@ -95,6 +95,11 @@ func (ev *Evaluator) ElementFromAtom(file *ir.File, src ir.AssignableExpr, val v
 	return ev.hostEval.ElementFromAtom(file, src, val)
 }
 
+// ElementFromStorage returns an element from an atomic GX value and its storage.
+func (ev *Evaluator) ElementFromStorage(file *ir.File, expr ir.StorageWithValue, val ir.Element) ir.Element {
+	return val
+}
+
 func buildProxyArguments(file *ir.File, args []*ir.Field) ([]ir.Element, error) {
 	els := make([]ir.Element, len(args))
 	for i, arg := range args {

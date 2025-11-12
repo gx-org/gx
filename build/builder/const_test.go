@@ -95,6 +95,24 @@ const cstA = 2 * (3 + 4)
 				),
 			},
 		},
+		testbuild.Decl{
+			Src: `
+const (
+	cstA = 5.2
+	cstB = 2 / cstA
+)
+`,
+		},
+		testbuild.Decl{
+			Src: `
+const (
+	cstA = 0.6
+	cstB = 1 / cstA
+	cstC = 2.3
+	cstD = 1 / cstC
+)
+`,
+		},
 	)
 }
 

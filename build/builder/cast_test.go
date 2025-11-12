@@ -26,6 +26,28 @@ import (
 func TestCast(t *testing.T) {
 	testbuild.Run(t,
 		testbuild.Expr{
+			Src: `[2]float32(1.0)`,
+			Want: &ir.CastExpr{
+				X: &ir.CastExpr{
+					Typ: irh.ArrayType(ir.Float32Type(), 2),
+					X:   irh.FloatNumberAs(1, ir.Float32Type()),
+				},
+				Typ: irh.ArrayType(ir.Float32Type(), 2),
+			},
+			WantType: "[2]float32",
+		},
+		testbuild.Expr{
+			Src: `[2]float32(1)`,
+			Want: &ir.CastExpr{
+				X: &ir.CastExpr{
+					Typ: irh.ArrayType(ir.Float32Type(), 2),
+					X:   irh.IntNumberAs(1, ir.Float32Type()),
+				},
+				Typ: irh.ArrayType(ir.Float32Type(), 2),
+			},
+			WantType: "[2]float32",
+		},
+		testbuild.Expr{
 			Src: `[2]float32([2]int64{3, 4})`,
 			Want: &ir.CastExpr{
 				X: &ir.ArrayLitExpr{

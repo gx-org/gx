@@ -40,6 +40,7 @@ var (
 	_ elements.WithAxes               = (*cast)(nil)
 	_ elements.Copier                 = (*cast)(nil)
 	_ elements.ElementWithConstant    = (*cast)(nil)
+	_ ir.StorageElement               = (*cast)(nil)
 	_ fmt.Stringer                    = (*cast)(nil)
 )
 
@@ -135,6 +136,10 @@ func (a *cast) NumericalConstant() *values.HostArray {
 // Copy the element by returning itself.
 func (a *cast) Copy() elements.Copier {
 	return a
+}
+
+func (a *cast) Store() ir.Storage {
+	return a.target
 }
 
 // Materialise returns the element with all its values from the graph.

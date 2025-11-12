@@ -16,6 +16,7 @@ package builder
 
 import (
 	"fmt"
+	"go/ast"
 	"go/token"
 	"reflect"
 	"slices"
@@ -129,11 +130,6 @@ func filterTok(tokens ...token.Token) func(processNode) bool {
 	}
 }
 
-type bConstExpr struct {
-	bConst iConstExpr
-	ext    *ir.ConstExpr
-}
-
 func (d *decls) resolveAll(pkgScope *pkgResolveScope) bool {
 	ok := true
 	// Build named types header. The underlying types are not being resolved yet.
@@ -152,22 +148,8 @@ func (d *decls) resolveAll(pkgScope *pkgResolveScope) bool {
 		ok = ok && vrOk
 	}
 	// Build all constants.
-	var consts []bConstExpr
-	for pNode := range iterToken[iConstExpr](d.declarations, filterTok(token.CONST)) {
-		ext, cstOk := pNode.node.buildDeclaration(ibld)
-		consts = append(consts, bConstExpr{
-			bConst: pNode.node,
-			ext:    ext,
-		})
-		ibld.Set(pNode, ext)
-		ok = ok && cstOk
-	}
-	if !ok {
+	if compEvalOk := d.buildConstants(pkgScope); !compEvalOk {
 		return false
-	}
-	for _, cst := range consts {
-		cstOk := cst.bConst.buildExpression(ibld, cst.ext)
-		ok = ok && cstOk
 	}
 	// Build compeval function signature.
 	if compEvalOk := d.buildFunctions(pkgScope, filterCompEval(true)); !compEvalOk {
@@ -183,11 +165,61 @@ func (d *decls) resolveAll(pkgScope *pkgResolveScope) bool {
 	return funOk && ok
 }
 
+type bConstExpr struct {
+	bConst iConstExpr
+	ext    *ir.ConstExpr
+	deps   []*ast.Ident
+}
+
+func buildConstExpr(pkgScope *pkgResolveScope, consts *ordered.Map[string, *bConstExpr], done map[string]bool, cst *bConstExpr) bool {
+	ibld := pkgScope.irBuilder()
+	ok := true
+	for _, dep := range cst.deps {
+		depExpr, ok := consts.Load(dep.Name)
+		if !ok {
+			return pkgScope.Err().Appendf(dep, "constant %s undefined", dep.Name)
+		}
+		depOk := buildConstExpr(pkgScope, consts, done, depExpr)
+		if !depOk {
+			ok = false
+		}
+	}
+	if !ok {
+		return false
+	}
+	return cst.bConst.buildExpression(ibld, cst.ext)
+}
+
+func (d *decls) buildConstants(pkgScope *pkgResolveScope) bool {
+	ibld := pkgScope.irBuilder()
+	ok := true
+	consts := ordered.NewMap[string, *bConstExpr]()
+	for pNode := range iterToken[iConstExpr](d.declarations, filterTok(token.CONST)) {
+		ext, deps, cstOk := pNode.node.buildDeclaration(ibld)
+		consts.Store(ext.VName.Name, &bConstExpr{
+			bConst: pNode.node,
+			ext:    ext,
+			deps:   deps,
+		})
+		ibld.Set(pNode, ext)
+		ok = ok && cstOk
+	}
+	if !ok {
+		return false
+	}
+	done := make(map[string]bool)
+	for bConst := range consts.Values() {
+		cstOk := buildConstExpr(pkgScope, consts, done, bConst)
+		ok = ok && cstOk
+	}
+	return ok
+}
+
 type irFunc struct {
-	pNode     *processNodeT[function]
-	bFunc     function
-	scopeFunc fnResolveScope
-	irFunc    ir.PkgFunc
+	pNode    *processNodeT[function]
+	bFunc    function
+	sigScope fnResolveScope
+	irFunc   ir.PkgFunc
 }
 
 func (d *decls) buildFuncType(pkgScope *pkgResolveScope, pNode *processNodeT[function]) (*irFunc, bool) {
@@ -202,12 +234,12 @@ func (d *decls) buildFuncType(pkgScope *pkgResolveScope, pNode *processNodeT[fun
 	ibld := pkgScope.irBuilder()
 	ibld.Set(pNode, pkgFn)
 	irf := &irFunc{
-		pNode:     pNode,
-		bFunc:     pNode.node,
-		scopeFunc: fnScope,
-		irFunc:    pkgFn,
+		pNode:    pNode,
+		bFunc:    pNode.node,
+		sigScope: fnScope,
+		irFunc:   pkgFn,
 	}
-	recv := irf.scopeFunc.funcType().ReceiverField()
+	recv := irf.sigScope.funcType().ReceiverField()
 	if recv == nil {
 		ibld.Register(funcDeclarator(irf.irFunc))
 		return irf, fnOk
@@ -242,7 +274,7 @@ func (d *decls) buildFunctions(pkgScope *pkgResolveScope, filter func(f *process
 	}
 	// Annotate functions.
 	for _, fn := range funcs {
-		fnOk := fn.bFunc.buildAnnotations(fn.scopeFunc, fn)
+		fnOk := fn.bFunc.buildAnnotations(fn.sigScope, fn)
 		ok = ok && fnOk
 	}
 	if !ok {
@@ -254,7 +286,7 @@ func (d *decls) buildFunctions(pkgScope *pkgResolveScope, filter func(f *process
 
 func (d *decls) buildFunctionBodies(pkgScope *pkgResolveScope, funcs []*irFunc) bool {
 	for _, fn := range funcs {
-		ok := fn.bFunc.buildBody(fn.scopeFunc, fn)
+		ok := fn.bFunc.buildBody(fn.sigScope, fn)
 		if !ok {
 			return false
 		}

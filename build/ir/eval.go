@@ -17,6 +17,7 @@ package ir
 import (
 	"go/ast"
 
+	"github.com/pkg/errors"
 	"github.com/gx-org/gx/build/fmterr"
 )
 
@@ -37,6 +38,28 @@ type (
 		Type() Type
 	}
 
+	// PackageElement is an element encapsulating a package.
+	PackageElement interface {
+		Element
+		Package() *Package
+	}
+
+	// StorageElement represents an element able to store values.
+	StorageElement interface {
+		Element
+		WithStore
+	}
+
+	// FuncElement converts an element into an IR expressions.
+	FuncElement interface {
+		Func() Func
+	}
+
+	// WithExpr converts an element into an IR expressions.
+	WithExpr interface {
+		Expr() (AssignableExpr, error)
+	}
+
 	// Evaluator evaluates IR expressions into canonical values.
 	Evaluator interface {
 		File() *File
@@ -49,5 +72,14 @@ type (
 		fmterr.ErrAppender
 		BuildExpr(ast.Expr) (Expr, bool)
 		IsDefined(string) bool
+		Sub(map[string]Element) (Fetcher, bool)
 	}
 )
+
+func toExpr(el Element) (AssignableExpr, error) {
+	toExpr, ok := el.(WithExpr)
+	if !ok {
+		return nil, errors.Errorf("cannot convert %T to an IR expression", el)
+	}
+	return toExpr.Expr()
+}

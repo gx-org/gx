@@ -67,7 +67,7 @@ func F[T dtype.Ints](T) T
 			Calls: []testgenerics.Call{
 				testgenerics.Call{
 					Args: []string{"true"},
-					Err:  "inferring type T: bool does not satisfy dtype.Ints",
+					Err:  "bool does not satisfy dtype.Ints for T",
 				},
 				testgenerics.Call{
 					Args: []string{"int32(2)"},
@@ -87,7 +87,7 @@ func F[T dtype.Ints](x T, y T) T
 			Calls: []testgenerics.Call{
 				testgenerics.Call{
 					Args: []string{"int32(2)", "int64(4)"},
-					Err:  "type int64 of int64(4) does not match inferred type int32 for T",
+					Err:  "type int64 does not match type int32 for T",
 				},
 				testgenerics.Call{
 					Args: []string{"int32(2)", "int32(4)"},

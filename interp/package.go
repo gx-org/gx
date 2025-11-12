@@ -21,7 +21,7 @@ import (
 )
 
 // InitPkgScope returns a package element with its scope.
-func (itp *Interpreter) InitPkgScope(pkg *ir.Package, scope *scope.RWScope[ir.Element]) (ir.Element, error) {
+func (itp *Interpreter) InitPkgScope(pkg *ir.Package, scope *scope.RWScope[ir.Element]) (ir.PackageElement, error) {
 	for _, f := range pkg.Decls.Funcs {
 		scope.Define(f.Name(), itp.eval.NewFunc(f, nil))
 	}
@@ -35,6 +35,11 @@ func (itp *Interpreter) InitPkgScope(pkg *ir.Package, scope *scope.RWScope[ir.El
 		return nil, err
 	}
 	return fun.NewPackage(pkg, scope), nil
+}
+
+// PackageToImport encapsulates a package into its import declaration.
+func (itp *Interpreter) PackageToImport(imp *ir.ImportDecl, pkg ir.PackageElement) ir.Element {
+	return fun.NewImport(imp, pkg)
 }
 
 func (itp *Interpreter) evalPackageConsts(pkg *ir.Package, scope *scope.RWScope[ir.Element]) error {
@@ -62,6 +67,7 @@ func (itp *Interpreter) evalPackageConstExpr(scope *scope.RWScope[ir.Element], e
 	if err != nil {
 		return err
 	}
+	el = itp.eval.ElementFromStorage(expr.Decl.FFile, expr, el)
 	scope.Define(expr.VName.Name, el)
 	return nil
 }

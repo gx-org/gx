@@ -29,6 +29,8 @@ import (
 	"github.com/gx-org/gx/build/ir"
 	"github.com/gx-org/gx/internal/base/scope"
 	"github.com/gx-org/gx/internal/interp/compeval"
+	"github.com/gx-org/gx/internal/interp/compeval/cpevelements"
+	"github.com/gx-org/gx/interp/elements"
 	"github.com/gx-org/gx/interp"
 )
 
@@ -178,9 +180,9 @@ func (s *pkgResolveScope) String() string {
 type (
 	resolveScope interface {
 		fmterr.ErrAppender
-		nspace() *scope.RWScope[processNode]
-		find(name string) (processNode, bool)
+		nspace() *scope.RWScope[ir.Element]
 		fileScope() *fileResolveScope
+		toDefineScope() *defineLocalScope
 		compEval() (*compileEvaluator, bool)
 		irBuilder() irBuilder
 		String() string
@@ -215,16 +217,22 @@ func (s *pkgResolveScope) newFileRScope(f *file) (*fileResolveScope, bool) {
 	}
 	var fileOk bool
 	fScope.irF, fileOk = irBuild[*ir.File](s.state.ibld, fScope.bFile())
-	return fScope, ok && fileOk
+	var evOk bool
+	fScope.ev, evOk = fScope.newCompEval()
+	return fScope, ok && fileOk && evOk
 }
 
-func (s *fileResolveScope) compEval() (*compileEvaluator, bool) {
+func (s *fileResolveScope) newCompEval() (*compileEvaluator, bool) {
 	pkgitp := s.pkgResolveScope.packageInterpreter()
 	fitp, err := pkgitp.ForFile(s.irFile())
 	if err != nil {
 		return nil, s.Err().Append(err)
 	}
 	return newEvaluator(s, fitp), true
+}
+
+func (s *fileResolveScope) compEval() (*compileEvaluator, bool) {
+	return s.ev, true
 }
 
 func (s *fileResolveScope) fileScope() *fileResolveScope {
@@ -239,12 +247,12 @@ func (s *fileResolveScope) irFile() *ir.File {
 	return s.irF
 }
 
-func (s *fileResolveScope) find(name string) (processNode, bool) {
-	return s.nspc.Find(name)
+func (s *fileResolveScope) nspace() *scope.RWScope[ir.Element] {
+	return s.ev.fitp.Context().Scope()
 }
 
-func (s *fileResolveScope) nspace() *scope.RWScope[processNode] {
-	return s.nspc
+func (s *fileResolveScope) toDefineScope() *defineLocalScope {
+	return nil
 }
 
 type (
@@ -257,47 +265,78 @@ type (
 		resolveScope
 		fType *ir.FuncType
 		nspc  *scope.RWScope[processNode]
-		names map[string]ir.Element
+
+		bodyCE *compileEvaluator
+		names  map[string]ir.Element
 	}
 )
 
-var _ localScope = (*funcResolveScope)(nil)
+func compEvalForFuncType(rscope resolveScope, src ast.Node, ftype *ir.FuncType) (*compileEvaluator, bool) {
+	compEval, compEvalOk := rscope.compEval()
+	if !compEvalOk {
+		return nil, false
+	}
+	funcVars := make(map[string]ir.Element)
+	for _, axLen := range ftype.AxisLengths {
+		storeAt := elements.NewNodeAt[ir.Storage](rscope.fileScope().irFile(), axLen)
+		funcVars[axLen.Name()] = cpevelements.NewVariable(storeAt)
+	}
+	for _, tParam := range ftype.TypeParams.Fields() {
+		funcVars[tParam.Name.Name] = &ir.TypeParam{Field: tParam}
+	}
+	irFile := rscope.fileScope().irFile()
+	var fields []*ir.Field
+	fields = append(fields, ftype.Receiver.Fields()...)
+	fields = append(fields, ftype.Params.Fields()...)
+	fields = append(fields, ftype.Results.Fields()...)
+	for _, field := range fields {
+		if field.Name == nil {
+			continue
+		}
+		storage := field.Storage()
+		el, err := cpevelements.NewRuntimeValue(irFile, storage)
+		if err != nil {
+			return nil, rscope.Err().AppendAt(src, err)
+		}
+		funcVars[field.Name.Name] = cpevelements.NewStoredValue(irFile, storage, el)
+	}
+	return compEval.sub(funcVars)
+}
 
-func newFuncScope(rscope resolveScope, fType *ir.FuncType) *funcResolveScope {
-	ns := scope.NewScope(rscope.nspace())
+func newFuncScope(rscope resolveScope, fType *ir.FuncType) (*funcResolveScope, bool) {
+	if fType == nil {
+		return &funcResolveScope{resolveScope: rscope}, true
+	}
+	bodyCE, ok := compEvalForFuncType(rscope, fType.Source(), fType)
+	if !ok {
+		return nil, false
+	}
 	return &funcResolveScope{
 		resolveScope: rscope,
 		fType:        fType,
-		nspc:         scope.NewScope(ns.ReadOnly()),
+		bodyCE:       bodyCE,
 		names:        make(map[string]ir.Element),
-	}
+	}, true
 }
 
 func (s *funcResolveScope) funcType() *ir.FuncType {
 	return s.fType
 }
 
-func (s *funcResolveScope) nspace() *scope.RWScope[processNode] {
-	return s.nspc
+func (s *funcResolveScope) nspace() *scope.RWScope[ir.Element] {
+	return s.bodyCE.fitp.Context().Scope()
 }
 
-func (s *funcResolveScope) find(key string) (processNode, bool) {
-	return s.nspc.Find(key)
-}
-
-func (s *funcResolveScope) update(store ir.Storage, el ir.Element) bool {
-	nameDef := store.NameDef()
-	s.nspc.Define(nameDef.Name, newProcessNode(token.VAR, nameDef, store))
-	s.names[nameDef.Name] = el
-	return true
+func (s *funcResolveScope) setFuncValue(fn ir.PkgFunc) (*funcResolveScope, bool) {
+	var ok bool
+	s.bodyCE, ok = s.bodyCE.sub(map[string]ir.Element{
+		fn.Name(): cpevelements.NewFunc(fn, nil),
+	})
+	return s, ok
 }
 
 func (s *funcResolveScope) compEval() (*compileEvaluator, bool) {
-	fileCEval, ok := s.resolveScope.compEval()
-	if !ok {
-		return fileCEval, false
-	}
-	return fileCEval.sub(s.fType.Source(), s.names)
+	return s.bodyCE.sub(s.names)
 }
 
 func (s *funcResolveScope) String() string {
@@ -312,39 +351,27 @@ type (
 
 	blockResolveScope struct {
 		fnResolveScope
-		nspc     *scope.RWScope[processNode]
 		compeval *compileEvaluator
 	}
 )
 
 var _ localScope = (*blockResolveScope)(nil)
 
-func newBlockScope(rscope fnResolveScope) (*blockResolveScope, bool) {
-	s := &blockResolveScope{
-		fnResolveScope: rscope,
-		nspc:           scope.NewScope(rscope.nspace()),
-	}
+func newBlockScope(rscope fnResolveScope, block stmtNode) (*blockResolveScope, bool) {
+	s := &blockResolveScope{fnResolveScope: rscope}
 	parentCompEval, ok := s.fnResolveScope.compEval()
 	if !ok {
 		return s, false
 	}
-	s.compeval, ok = parentCompEval.sub(s.fnResolveScope.funcType().Src, nil)
+	s.compeval, ok = parentCompEval.sub(nil)
 	return s, ok
 }
 
-func (s *blockResolveScope) nspace() *scope.RWScope[processNode] {
-	return s.nspc
-}
-
-func (s *blockResolveScope) find(key string) (processNode, bool) {
-	return s.nspc.Find(key)
+func (s *blockResolveScope) nspace() *scope.RWScope[ir.Element] {
+	return s.compeval.fitp.Context().Scope()
 }
 
 func (s *blockResolveScope) update(store ir.Storage, el ir.Element) bool {
-	nameDef := store.NameDef()
-	pNode := newProcessNode(token.VAR, nameDef, store)
-	s.nspc.Define(nameDef.Name, pNode)
-	s.irBuilder().Set(pNode, store)
 	var ok bool
 	s.compeval, ok = s.compeval.update(s, store, el)
 	return ok
@@ -355,7 +382,54 @@ func (s *blockResolveScope) compEval() (*compileEvaluator, bool) {
 }
 
 func (s *blockResolveScope) String() string {
-	return s.nspc.String()
+	return s.compeval.String()
+}
+
+type ephemeralResolveScope struct {
+	resolveScope
+	ce *compileEvaluator
+}
+
+var _ localScope = (*ephemeralResolveScope)(nil)
+
+func newEphemeralResolveScope(parent resolveScope, src ast.Node) (*ephemeralResolveScope, bool) {
+	ce, ok := parent.compEval()
+	if !ok {
+		return nil, false
+	}
+	ce, ok = ce.sub(nil)
+	if !ok {
+		return nil, false
+	}
+	return &ephemeralResolveScope{resolveScope: parent, ce: ce}, true
+}
+
+func (s *ephemeralResolveScope) update(store ir.Storage, el ir.Element) bool {
+	el = cpevelements.NewStoredValue(s.fileScope().irFile(), store, el)
+	s.ce.fitp.Context().Scope().Define(store.NameDef().Name, el)
+	return true
+}
+
+func (s *ephemeralResolveScope) nspace() *scope.RWScope[ir.Element] {
+	return s.ce.fitp.Context().Scope()
+}
+
+func (s *ephemeralResolveScope) compEval() (*compileEvaluator, bool) {
+	return s.ce, true
+}
+
+type arrayLitResolveScope struct {
+	resolveScope
+}
+
+var _ localScope = (*arrayLitResolveScope)(nil)
+
+func newArrayLitResolveScope(parent resolveScope) *arrayLitResolveScope {
+	return &arrayLitResolveScope{resolveScope: parent}
+}
+
+func (s *arrayLitResolveScope) update(store ir.Storage, el ir.Element) bool {
+	return s.Err().Appendf(store.Source(), "cannot define %s in an array literal expression", store.NameDef().Name)
 }
 
 type (
@@ -556,19 +630,18 @@ type (
 	}
 )
 
-func toDefineScope(scope resolveScope) *defineLocalScope {
+func toDefineScope(scope localScope) (*defineLocalScope, bool) {
 	dScope, ok := scope.(*defineLocalScope)
 	if ok {
-		return dScope
+		return dScope, true
 	}
-	local, ok := scope.(localScope)
-	if !ok {
-		local = newFuncScope(scope, &ir.FuncType{})
-	}
-	return &defineLocalScope{localScope: local}
+	return newDefineScope(scope, nil, nil), true
 }
 
 func newDefineScope(scope localScope, def defineLocalF, defAxis defineLocalF) *defineLocalScope {
+	if scope == nil {
+		panic("nil scope")
+	}
 	return &defineLocalScope{localScope: scope, def: def, defAxis: defAxis}
 }
 

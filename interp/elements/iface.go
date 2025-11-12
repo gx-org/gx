@@ -43,6 +43,11 @@ type (
 		ir.Element
 		Select(expr *ir.SelectorExpr) (ir.Element, error)
 	}
+
+	// Under is an element with an underlying element.
+	Under interface {
+		Under() ir.Element
+	}
 )
 
 // ShapeFromElement returns the shape of a numerical element.
@@ -52,4 +57,13 @@ func ShapeFromElement(node ir.Element) (*shape.Shape, error) {
 		return nil, errors.Errorf("cannot cast %T to a numerical element", node)
 	}
 	return numerical.Shape(), nil
+}
+
+// Underlying returns the underlying element.
+func Underlying(val ir.Element) ir.Element {
+	named, ok := val.(Under)
+	if !ok {
+		return val
+	}
+	return Underlying(named.Under())
 }

@@ -126,7 +126,7 @@ func checkNumArgs(rscope resolveScope, fn ir.Func, fType *ir.FuncType, numArgs i
 	return true
 }
 
-func (n *callExpr) buildFuncType(rscope resolveScope, callee ir.Func, args []ir.AssignableExpr) (*ir.FuncType, bool) {
+func (n *callExpr) completeFuncType(rscope resolveScope, callee ir.Func, args []ir.AssignableExpr) (*ir.FuncType, bool) {
 	fType := callee.FuncType()
 	if fType != nil {
 		return fType, true
@@ -150,39 +150,37 @@ func (n *callExpr) buildFuncType(rscope resolveScope, callee ir.Func, args []ir.
 		Args:   args,
 	})
 	if err != nil {
-		return nil, rscope.Err().AppendAt(callee.Source(), err)
+		return nil, rscope.Err().AppendAt(n.src, err)
 	}
 	return fType, true
 }
 
-func (n *callExpr) buildCallee(rscope resolveScope, expr ir.AssignableExpr, fn ir.Func) ([]ir.AssignableExpr, *ir.FuncType, bool) {
+func (n *callExpr) buildCallee(rscope resolveScope, expr *ir.FuncValExpr) ([]ir.AssignableExpr, *ir.FuncValExpr, bool) {
 	args, argsOk := n.buildArgs(rscope)
 	if !argsOk {
 		return nil, nil, false
 	}
-	fType, ok := n.buildFuncType(rscope, fn, args)
-	if !ok {
+	if expr.T == nil {
+		expr.T = expr.F.FuncType()
+	}
+	if expr.T == nil {
+		var ok bool
+		expr.T, ok = n.completeFuncType(rscope, expr.F, args)
+		if !ok {
+			return nil, nil, false
+		}
+	}
+	if numArgsOk := checkNumArgs(rscope, expr.F, expr.T, len(args)); !numArgsOk {
 		return nil, nil, false
 	}
-	if numArgsOk := checkNumArgs(rscope, fn, fType, len(args)); !numArgsOk {
-		return nil, nil, false
-	}
-	args, callee, callOk := buildFuncForCall(rscope, &ir.FuncValExpr{
-		X: expr,
-		F: fn,
-		T: fType,
-	}, args)
-	return args, callee.T, callOk
+	args, callee, callOk := buildFuncForCall(rscope, expr, args)
+	return args, callee, callOk
 }
 
-func (n *callExpr) buildFuncCallExpr(rscope resolveScope, expr ir.AssignableExpr, fn ir.Func) (*ir.CallExpr, bool) {
-	extCallee := &ir.FuncValExpr{
-		X: expr,
-		F: fn,
-	}
-	extCall := &ir.CallExpr{Src: n.src, Callee: extCallee}
+func (n *callExpr) buildFuncCallExpr(rscope resolveScope, expr *ir.FuncValExpr) (*ir.CallExpr, bool) {
+	extCall := &ir.CallExpr{Src: n.src}
 	var ok bool
-	extCall.Args, extCallee.T, ok = n.buildCallee(rscope, expr, fn)
+	extCall.Args, extCall.Callee, ok = n.buildCallee(rscope, expr)
 	if !ok {
 		return nil, false
 	}
@@ -190,7 +188,7 @@ func (n *callExpr) buildFuncCallExpr(rscope resolveScope, expr ir.AssignableExpr
 }
 
 func (n *callExpr) buildMacroCall(rscope resolveScope, compEval *compileEvaluator, expr ir.AssignableExpr, mac *ir.Macro) (ir.Expr, bool) {
-	callExpr, ok := n.buildFuncCallExpr(rscope, expr, mac)
+	callExpr, ok := n.buildFuncCallExpr(rscope, &ir.FuncValExpr{X: expr, F: mac})
 	if !ok {
 		return invalidExpr(), false
 	}
@@ -222,6 +220,10 @@ func (n *callExpr) buildMacroCall(rscope resolveScope, compEval *compileEvaluato
 }
 
 func (n *callExpr) buildCallExpr(rscope resolveScope, callee ir.AssignableExpr) (ir.Expr, bool) {
+	switch calleeT := callee.(type) {
+	case *ir.FuncValExpr:
+		return n.buildFuncCallExpr(rscope, calleeT)
+	}
 	compEval, ok := rscope.compEval()
 	if !ok {
 		return invalidExpr(), ok
@@ -235,14 +237,17 @@ func (n *callExpr) buildCallExpr(rscope resolveScope, callee ir.AssignableExpr) 
 		return n.buildMacroCall(rscope, compEval, callee, elT.IR())
 	case ir.Type:
 		return n.buildTypeCast(rscope, callee, elT)
-	case fun.Func:
-		return n.buildFuncCallExpr(rscope, callee, elT.Func())
 	case ir.FuncAnnotator:
-		return invalidExpr(), rscope.Err().Appendf(callee.Source(), "invalid use of annotation macro %s", elT.ShortString())
+		return invalidExpr(), rscope.Err().Appendf(callee.Source(), "annotator gx:@%s only valid in a function annotation context", elT.ShortString())
 	case *fun.NamedType:
 		return n.buildTypeCast(rscope, callee, elT.Type())
 	case *ir.TypeValExpr:
 		return n.buildTypeCast(rscope, callee, elT.Store())
+	case ir.FuncElement:
+		return n.buildCallExpr(rscope, &ir.FuncValExpr{
+			X: callee,
+			F: elT.Func(),
+		})
 	default:
 		return invalidExpr(), rscope.Err().AppendInternalf(callee.Source(), "expression %s evaluated to element of type %T that is not callable. Scope:\n%s\nCompEval:\n%s", callee.String(), elT, rscope.String(), compEval.String())
 	}

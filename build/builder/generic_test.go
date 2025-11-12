@@ -198,31 +198,12 @@ func callCast() int32 {
 					Body: &ir.BlockStmt{List: []ir.Stmt{
 						&ir.ReturnStmt{Results: []ir.Expr{&ir.CallExpr{
 							Callee: &ir.FuncValExpr{
-								X: &ir.FuncValExpr{
-									X: irhelper.ValueRef(castNoArgFunc),
-									F: &ir.SpecialisedFunc{
-										PkgFunc: castNoArgFunc,
-										X:       irhelper.ValueRef(castNoArgFunc),
-										F: &ir.FuncValExpr{
-											X: irhelper.ValueRef(castNoArgFunc),
-											F: castNoArgFunc,
-											T: castNoArgFunc.FType,
-										},
-										T: castNoArgFunc.FType,
-									},
-									T: castNoArgFunc.FType,
-								},
-								F: &ir.SpecialisedFunc{
-									PkgFunc: castNoArgFunc,
-									X:       irhelper.ValueRef(castNoArgFunc),
-									F: &ir.FuncValExpr{
-										X: irhelper.ValueRef(castNoArgFunc),
-										F: castNoArgFunc,
-										T: castNoArgFunc.FType,
-									},
-									T: castNoArgFunc.FType,
-								},
-								T: castNoArgFunc.FType,
+								F: castNoArgFunc,
+								T: irhelper.FuncType(
+									irhelper.Fields(),
+									nil, nil,
+									irhelper.Fields(ir.Int32Type()),
+								),
 							},
 						}}},
 					}},
@@ -332,30 +313,8 @@ func callCast() [2][3]int32 {
 					Body: &ir.BlockStmt{List: []ir.Stmt{
 						&ir.ReturnStmt{Results: []ir.Expr{&ir.CallExpr{
 							Callee: &ir.FuncValExpr{
-								X: &ir.FuncValExpr{
-									X: irhelper.ValueRef(new2x3ArrayFunc),
-									F: &ir.SpecialisedFunc{
-										PkgFunc: new2x3ArrayFunc,
-										X:       irhelper.ValueRef(new2x3ArrayFunc),
-										F: &ir.FuncValExpr{
-											X: irhelper.ValueRef(new2x3ArrayFunc),
-											F: new2x3ArrayFunc,
-											T: new2x3ArrayFunc.FType,
-										},
-										T: new2x3ArrayFunc.FType,
-									},
-									T: new2x3ArrayFunc.FType,
-								},
-								F: &ir.SpecialisedFunc{
-									PkgFunc: new2x3ArrayFunc,
-									X:       irhelper.ValueRef(new2x3ArrayFunc),
-									F: &ir.FuncValExpr{
-										X: irhelper.ValueRef(new2x3ArrayFunc),
-										F: new2x3ArrayFunc,
-										T: new2x3ArrayFunc.FType,
-									},
-									T: new2x3ArrayFunc.FType,
-								},
+								X: irhelper.ValueRef(new2x3ArrayFunc),
+								F: new2x3ArrayFunc,
 								T: irhelper.FuncType(
 									irhelper.Fields(), nil,
 									irhelper.Fields(),
@@ -451,7 +410,7 @@ func callCast() int32 {
 								F: castAtomFunc,
 								T: irhelper.FuncType(
 									irhelper.Fields(), nil,
-									irhelper.Fields(ir.Int64Type()),
+									irhelper.Fields("val", ir.Int64Type()),
 									irhelper.Fields(ir.Int32Type()),
 								),
 							},
@@ -491,7 +450,7 @@ func callCast() int32 {
 								F: castAtomFunc,
 								T: irhelper.FuncType(
 									irhelper.Fields(), nil,
-									irhelper.Fields(ir.Int64Type()),
+									irhelper.Fields("val", ir.Int64Type()),
 									irhelper.Fields(ir.Int32Type()),
 								),
 							},
@@ -555,7 +514,7 @@ func callCast(x [2]int64) [2]int32 {
 								F: castArrayFunc,
 								T: irhelper.FuncType(
 									irhelper.Fields(), nil,
-									irhelper.Fields(irhelper.ArrayType(ir.Int64Type(), irhelper.Axis("___M"))),
+									irhelper.Fields(irhelper.ArrayType(ir.Int64Type(), 2)),
 									irhelper.Fields(irhelper.ArrayType(ir.Int32Type(), 2)),
 								),
 							},
@@ -621,6 +580,41 @@ func F[T Floats](x T) T {
 	)
 }
 
+func TestGenericWithInference(t *testing.T) {
+	testbuild.Run(t,
+		testbuild.Decl{
+			Src: `
+type Floats interface {
+	float32 | float64
+}
+
+func F[T Floats](x [___M]T) [M___]T {
+	return 2*x
+}
+
+func f() float32 {
+	return F(float32(2))
+}
+`,
+		},
+		testbuild.Decl{
+			Src: `
+type Floats interface {
+	float32 | float64
+}
+
+func F[T Floats](x [___M]T) [M___]T {
+	return 2*x
+}
+
+func f() [2]float32 {
+	return F([...]float32{1, 2})
+}
+`,
+		},
+	)
+}
+
 func TestGenericCallGeneric(t *testing.T) {
 	testbuild.Run(t,
 		testbuild.Decl{
@@ -635,6 +629,45 @@ func f[T floats](x T) T {
 
 func g[T floats](x T) T {
 	return f[T](x)
+}
+`,
+		},
+	)
+}
+
+func TestGenericFuncLit(t *testing.T) {
+	testbuild.Run(t,
+		testbuild.Decl{
+			Src: `
+type floats interface {
+	float32 | float64
+}
+
+func f[T floats](x T) func () T {
+	return func() T {
+		return x
+	}
+}
+
+func g(x float32) float32 {
+	return f[float32](x)()
+}
+`,
+		},
+		testbuild.Decl{
+			Src: `
+type floats interface {
+	float32 | float64
+}
+
+func f[T floats](x [___M]T) func () [M___]T {
+	return func() [M___]T {
+		return x
+	}
+}
+
+func g(x float32) float32 {
+	return f[float32](x)()
 }
 `,
 		},

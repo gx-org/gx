@@ -18,6 +18,8 @@ import (
 	"fmt"
 	"go/ast"
 	"strings"
+
+	"github.com/pkg/errors"
 )
 
 // BaseType is the base of all types.
@@ -50,6 +52,16 @@ func (BaseType[T]) Type() Type {
 // Same returns true if the other storage is this storage.
 func (m *BaseType[T]) Same(o Storage) bool {
 	return Storage(m) == o
+}
+
+// Specialise a type to a given target.
+func (*BaseType[T]) Specialise(spec Specialiser) (Type, error) {
+	return nil, errors.Errorf("type specialisation not supported")
+}
+
+// UnifyWith recursively unifies a type parameters with types.
+func (*BaseType[T]) UnifyWith(unifier Unifier, typ Type) bool {
+	return true
 }
 
 type metaType struct {
@@ -144,6 +156,16 @@ func (*invalidType) String() string {
 	return InvalidKind.String()
 }
 
+// Specialise a type to a given target.
+func (m *invalidType) Specialise(spec Specialiser) (Type, error) {
+	return m, nil
+}
+
+// UnifyWith recursively unifies a type parameters with types.
+func (m *invalidType) UnifyWith(unifier Unifier, typ Type) bool {
+	return true
+}
+
 type distinctType struct {
 	BaseType[ast.Expr]
 	kind Kind
@@ -225,186 +247,6 @@ var packageT = &packageType{distinctType: distinctType{kind: PackageKind}}
 // PackageType returns the package type.
 func PackageType() Type {
 	return packageT
-}
-
-type rankType struct {
-	atomicType
-}
-
-var rankT = &rankType{atomicType: atomicType{Knd: RankKind}}
-
-// RankType returns the rank type.
-func RankType() Type {
-	return rankT
-}
-
-type boolType struct {
-	atomicType
-}
-
-var boolT = &boolType{atomicType: atomicType{Knd: BoolKind}}
-
-// BoolType returns the type for a boolean.
-func BoolType() Type {
-	return boolT
-}
-
-type bfloat16Type struct {
-	atomicType
-}
-
-var bfloat16T = &bfloat16Type{atomicType: atomicType{Knd: Bfloat16Kind}}
-
-// Bfloat16Type returns the type for a bfloat16.
-func Bfloat16Type() Type {
-	return bfloat16T
-}
-
-type float32Type struct {
-	atomicType
-}
-
-var float32T = &float32Type{atomicType: atomicType{Knd: Float32Kind}}
-
-// Float32Type returns the type for a float32.
-func Float32Type() Type {
-	return float32T
-}
-
-type float64Type struct {
-	atomicType
-}
-
-var float64T = &float64Type{atomicType: atomicType{Knd: Float64Kind}}
-
-// Float64Type returns the type for a float64.
-func Float64Type() Type {
-	return float64T
-}
-
-type int32Type struct {
-	atomicType
-}
-
-var int32T = &int32Type{atomicType: atomicType{Knd: Int32Kind}}
-
-// Int32Type returns the type for a int32.
-func Int32Type() Type {
-	return int32T
-}
-
-type int64Type struct {
-	atomicType
-}
-
-var int64T = &int64Type{atomicType: atomicType{Knd: Int64Kind}}
-
-// Int64Type returns the type for a int64.
-func Int64Type() Type {
-	return int64T
-}
-
-type numberFloatType struct {
-	atomicType
-}
-
-var numberFloatT = &numberFloatType{atomicType: atomicType{Knd: NumberFloatKind}}
-
-type intidxType struct {
-	atomicType
-}
-
-var (
-	intidxT         = &intidxType{atomicType: atomicType{Knd: IntIdxKind}}
-	axisIndicesType = &SliceType{
-		DType: &TypeValExpr{Typ: IntIndexType()},
-		Rank:  1,
-	}
-)
-
-// IntIndexType returns the type for intidx, that is the length of an axis.
-func IntIndexType() Type {
-	return intidxT
-}
-
-// IntIndexSliceType returns a slice of axis lengths type.
-func IntIndexSliceType() *SliceType {
-	return axisIndicesType
-}
-
-type intlenType struct {
-	atomicType
-}
-
-var (
-	intlenT         = &intlenType{atomicType: atomicType{Knd: IntLenKind}}
-	axisLengthsType = &SliceType{
-		BaseType: BaseType[*ast.ArrayType]{Src: &ast.ArrayType{}},
-		DType: &TypeValExpr{
-			X:   IntLenType(),
-			Typ: IntLenType(),
-		},
-		Rank: 1,
-	}
-)
-
-// IntLenType returns the type for intlen, that is the length of an axis.
-func IntLenType() Type {
-	return intlenT
-}
-
-// IntLenSliceType returns a slice of axis lengths type.
-func IntLenSliceType() *SliceType {
-	return axisLengthsType
-}
-
-// NumberFloatType returns the type for a float number.
-func NumberFloatType() Type {
-	return numberFloatT
-}
-
-type numberIntType struct {
-	atomicType
-}
-
-var numberIntT = &numberIntType{atomicType: atomicType{Knd: NumberIntKind}}
-
-// NumberIntType returns the type for an integer number.
-func NumberIntType() Type {
-	return numberIntT
-}
-
-type stringType struct {
-	atomicType
-}
-
-var stringT = &stringType{atomicType: atomicType{Knd: StringKind}}
-
-// StringType returns the type for a string.
-func StringType() Type {
-	return stringT
-}
-
-type uint32Type struct {
-	atomicType
-}
-
-var uint32T = &uint32Type{atomicType: atomicType{Knd: Uint32Kind}}
-
-// Uint32Type returns the type for a uint32.
-func Uint32Type() Type {
-	return uint32T
-}
-
-type uint64Type struct {
-	atomicType
-}
-
-var uint64T = &uint64Type{atomicType: atomicType{Knd: Uint64Kind}}
-
-// Uint64Type returns the type for a uint64.
-func Uint64Type() ArrayType {
-	return uint64T
 }
 
 // TypeSet represents a set of types.
@@ -511,8 +353,20 @@ func (s *TypeSet) ConvertibleTo(fetcher Fetcher, target Type) (bool, error) {
 	return false, nil
 }
 
+// Specialise a type to a given target.
+func (s *TypeSet) Specialise(Specialiser) (Type, error) {
+	return s, nil
+}
+
+// UnifyWith recursively unifies a type parameters with types.
+func (*TypeSet) UnifyWith(unifier Unifier, typ Type) bool {
+	return true
+}
+
 // TypeInclude returns if a typ is included in a type or not.
 func TypeInclude(fetcher Fetcher, set Type, typ Type) (bool, error) {
+	set = simplifyType(set)
+	typ = simplifyType(typ)
 	_, isSetNamed := set.(*NamedType)
 	_, isTypeNamed := typ.(*NamedType)
 	if isSetNamed && isTypeNamed {

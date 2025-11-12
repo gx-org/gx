@@ -41,16 +41,23 @@ func processBlockStmt(pscope procScope, src *ast.BlockStmt) (*blockStmt, bool) {
 	return n, ok
 }
 
+func (n *blockStmt) source() ast.Node {
+	return n.src
+}
+
 func (n *blockStmt) buildStmt(scope fnResolveScope) (ir.Stmt, bool) {
 	return n.buildBlockStmt(scope)
 }
 
-func (n *blockStmt) buildBlockStmt(scope fnResolveScope) (*ir.BlockStmt, bool) {
+func (n *blockStmt) buildBlockStmt(parentScope fnResolveScope) (*ir.BlockStmt, bool) {
+	scope, ok := newBlockScope(parentScope, n)
+	if !ok {
+		return nil, false
+	}
 	block := &ir.BlockStmt{
 		Src:  n.src,
 		List: make([]ir.Stmt, len(n.stmts)),
 	}
-	ok := true
 	for i, node := range n.stmts {
 		var stmtOk bool
 		block.List[i], stmtOk = node.buildStmt(scope)
@@ -76,6 +83,10 @@ func processExprStmt(pscope procScope, src *ast.ExprStmt) (*exprStmt, bool) {
 	var ok bool
 	n.x, ok = processExpr(pscope, src.X)
 	return n, ok
+}
+
+func (n *exprStmt) source() ast.Node {
+	return n.src
 }
 
 // declStmt represents a 'var' declaration statement in a function body.
@@ -133,6 +144,10 @@ func processDeclStmt(pscope procScope, src *ast.DeclStmt) (stmtNode, bool) {
 	}
 
 	return n, ok
+}
+
+func (n *declStmt) source() ast.Node {
+	return n.src
 }
 
 // buildStmt builds the IR for a declaration statement.
