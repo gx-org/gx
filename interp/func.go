@@ -141,6 +141,7 @@ func (f *funcDecl) Call(env *fun.CallEnv, call *ir.CallExpr, args []ir.Element) 
 			funcFrame.Define(recv.Ident.Name, recvNode)
 		}
 	}
+	assignTypeParameters(call.Callee, funcFrame)
 	assignArgumentValues(f.fnT.FType, funcFrame, args)
 	ctx := newFileScope(env.Context(), env.FuncEval(), f.fnT.File())
 	// Evaluate the function within the frame.
@@ -217,6 +218,16 @@ func fieldNames(fields []*ir.FieldGroup) (r []*ast.Ident) {
 		}
 	}
 	return
+}
+
+func assignTypeParameters(callee ir.Callee, funcFrame *context.Frame) {
+	funRef, ok := callee.(*ir.FuncValExpr)
+	if !ok {
+		return
+	}
+	for _, tpParam := range funRef.T.TypeParamsValues {
+		funcFrame.Define(tpParam.Field.Name.Name, tpParam.Typ)
+	}
 }
 
 func assignArgumentValues(funcType *ir.FuncType, funcFrame *context.Frame, args []ir.Element) {
