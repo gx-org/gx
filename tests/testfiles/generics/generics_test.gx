@@ -47,3 +47,13 @@ func TestNegate() (int32, int64) {
 	// 0: int32(-2)
 	// 1: int64(-3)
 }
+
+func addTwo[T ints](x [___S]T) [S___]T {
+	return x+2
+}
+
+func TestAddTwo() [2]int32 {
+	return addTwo([2]int32{1, 2})
+	// Want:
+	// [2]int32{3, 4}
+}

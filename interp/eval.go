@@ -547,7 +547,18 @@ func evalNumberCastExpr(fitp *FileScope, expr *ir.NumberCastExpr) (evaluator.Num
 	if err != nil {
 		return nil, err
 	}
-	return number.Cast(fitp.env, expr, expr.Typ)
+	tp := expr.Typ
+	if tpParam, ok := expr.Typ.(*ir.TypeParam); ok {
+		tpEl, err := fitp.ctx.CurrentFrame().Find(tpParam.Field.Name)
+		if err != nil {
+			return nil, err
+		}
+		tp, ok = elements.Underlying(tpEl).(ir.Type)
+		if !ok {
+			return nil, errors.Errorf("%T is not a type", tpEl)
+		}
+	}
+	return number.Cast(fitp.env, expr, tp)
 }
 
 func evalSelectorExpr(fitp *FileScope, ref *ir.SelectorExpr) (ir.Element, error) {

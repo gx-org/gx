@@ -223,6 +223,15 @@ func f[T someInt]() T {
 		},
 		testbuild.Decl{
 			Src: `
+import "dtype"
+
+func f[T dtype.Num](a [___S]T) [S___]T {
+	return a+2
+}
+`,
+		},
+		testbuild.Decl{
+			Src: `
 type someInt interface{ int32 | int64 }
 
 func f[T someInt](x [___X]T) [X___]T {
