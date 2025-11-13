@@ -96,7 +96,7 @@ func TestResolveType(t *testing.T) {
 		{code: "x(1)", err: "undefined: x"},
 		{code: "[2]float", err: "undefined: float"},
 		{code: "[2][3]float32{{1, 2, 3}}", err: "cannot assign"},
-		{code: "func(int32) bool {}(true)", err: "cannot use bool as int32"},
+		{code: "func(int32) bool {}(true)", err: "cannot use type bool as int32 in argument to func(int32) bool"},
 	}
 
 	for i, test := range tests {
