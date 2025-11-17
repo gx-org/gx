@@ -20,6 +20,24 @@ import (
 	"github.com/gx-org/gx/build/builder/testbuild"
 )
 
+func TestCallNoReturn(t *testing.T) {
+	testbuild.Run(t,
+		testbuild.Decl{
+			Src: `
+func g(a int32) {
+	a = a + 2
+}
+
+func f() int32 {
+	a := int32(0)
+	g(a)
+	return a
+}
+`,
+		},
+	)
+}
+
 func TestCallMultipleReturns(t *testing.T) {
 	testbuild.Run(t,
 		testbuild.Decl{

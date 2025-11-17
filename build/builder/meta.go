@@ -135,7 +135,7 @@ func buildIRBody(mScope *synthResolveScope, ext *ir.FuncDecl, compEval *compileE
 	if !ok {
 		return false
 	}
-	irBlock, ok := bBody.buildBlockStmt(mScope.fnResolveScope)
+	irBlock, ok := buildFuncBody(mScope.fnResolveScope, bBody)
 	if !ok {
 		return false
 	}

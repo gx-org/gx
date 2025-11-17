@@ -131,8 +131,11 @@ func (f *funcDecl) Call(env *fun.CallEnv, call *ir.CallExpr, args []ir.Element) 
 		return nil, err
 	}
 	defer env.Context().PopFrame()
-	for _, resultName := range fieldNames(f.fnT.FType.Results.List) {
-		funcFrame.Define(resultName.Name, nil)
+	results := f.fnT.FType.Results
+	if results != nil {
+		for _, resultName := range fieldNames(results.List) {
+			funcFrame.Define(resultName.Name, nil)
+		}
 	}
 	// Add the receiver name to the function frame if present.
 	if recv := f.Recv(); recv != nil {
@@ -203,11 +206,7 @@ func (f *funcMacro) Call(env *fun.CallEnv, call *ir.CallExpr, args []ir.Element)
 }
 
 func evalFuncBody(fitp *FileScope, body *ir.BlockStmt) ([]ir.Element, error) {
-	outs, stop, err := evalBlockStmt(fitp, body)
-	if !stop {
-		// No return statement was processed during the eval of the function.
-		return nil, fmterr.Errorf(fitp.File().FileSet(), body.Src, "missing return")
-	}
+	outs, _, err := evalBlockStmt(fitp, body)
 	return outs, err
 }
 

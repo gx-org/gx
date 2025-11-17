@@ -18,6 +18,8 @@ import (
 	"go/ast"
 	"go/token"
 
+	"github.com/pkg/errors"
+	"github.com/gx-org/gx/build/fmterr"
 	"github.com/gx-org/gx/build/ir"
 )
 
@@ -45,30 +47,45 @@ func (n *blockStmt) source() ast.Node {
 	return n.src
 }
 
-func (n *blockStmt) buildStmt(scope fnResolveScope) (ir.Stmt, bool) {
+func (n *blockStmt) buildStmt(scope fnResolveScope) (ir.Stmt, bool, bool) {
 	return n.buildBlockStmt(scope)
 }
 
-func (n *blockStmt) buildBlockStmt(parentScope fnResolveScope) (*ir.BlockStmt, bool) {
+func (n *blockStmt) buildBlockStmt(parentScope fnResolveScope) (*ir.BlockStmt, bool, bool) {
 	scope, ok := newBlockScope(parentScope, n)
 	if !ok {
-		return nil, false
+		return nil, false, false
 	}
 	block := &ir.BlockStmt{
 		Src:  n.src,
 		List: make([]ir.Stmt, len(n.stmts)),
 	}
+	stop := false
+	unreachableReported := false
 	for i, node := range n.stmts {
-		var stmtOk bool
-		block.List[i], stmtOk = node.buildStmt(scope)
+		if stop && !unreachableReported {
+			ok = scope.Err().Appendf(node.source(), "unreachable code")
+			unreachableReported = true
+		}
+		var stmtStop, stmtOk bool
+		block.List[i], stmtStop, stmtOk = node.buildStmt(scope)
 		ok = ok && stmtOk
+		stop = stop || stmtStop
 	}
 	if !ok && scope.Err().Empty() {
 		// an error occurred but no explicit error has been added to the list of error.
 		// report an error now to help with debugging.
 		scope.Err().AppendInternalf(n.src, "failed to build statement but no error reported to the user")
 	}
-	return block, ok
+	return block, stop, ok
+}
+
+func buildFuncBody(scope fnResolveScope, body *blockStmt) (*ir.BlockStmt, bool) {
+	irBody, stop, ok := body.buildBlockStmt(scope)
+	if !stop && scope.funcType().Results.Len() > 0 {
+		ok = scope.Err().Append(fmterr.AtPos(scope.Err().FSet().FSet, body.src.End(), errors.Errorf("missing return")))
+	}
+	return irBody, ok
 }
 
 type exprStmt struct {
@@ -151,7 +168,7 @@ func (n *declStmt) source() ast.Node {
 }
 
 // buildStmt builds the IR for a declaration statement.
-func (n *declStmt) buildStmt(scope fnResolveScope) (ir.Stmt, bool) {
+func (n *declStmt) buildStmt(scope fnResolveScope) (ir.Stmt, bool, bool) {
 	decls := make([]*ir.VarSpec, 0, len(n.decls))
 	declsOk := true
 
@@ -171,15 +188,15 @@ func (n *declStmt) buildStmt(scope fnResolveScope) (ir.Stmt, bool) {
 		decls = append(decls, varSpec)
 	}
 
-	return &ir.DeclStmt{Src: n.src, Decls: decls}, declsOk
+	return &ir.DeclStmt{Src: n.src, Decls: decls}, false, declsOk
 }
 
-func (n *exprStmt) buildStmt(scope fnResolveScope) (ir.Stmt, bool) {
+func (n *exprStmt) buildStmt(scope fnResolveScope) (ir.Stmt, bool, bool) {
 	x, ok := n.x.buildExpr(scope)
 	if ok && x.Type().Kind() != ir.VoidKind {
 		scope.Err().Appendf(n.src, "cannot use an expression returning a value as a statement")
 	}
-	return &ir.ExprStmt{Src: n.src, X: x}, ok
+	return &ir.ExprStmt{Src: n.src, X: x}, false, ok
 }
 
 func processStmt(pscope procScope, stmt ast.Stmt) (node stmtNode, ok bool) {

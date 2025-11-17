@@ -102,16 +102,16 @@ func (n *returnStmt) castNumber(scope fnResolveScope, expr ir.Expr, want ir.Type
 	}, true
 }
 
-func (n *returnStmt) buildStmt(scope fnResolveScope) (ir.Stmt, bool) {
+func (n *returnStmt) buildStmt(scope fnResolveScope) (ir.Stmt, bool, bool) {
 	ext := &ir.ReturnStmt{Src: n.src}
 	fType := scope.funcType()
 	if fType == nil {
-		return ext, scope.Err().AppendInternalf(n.src, "return statement without a function context")
+		return ext, true, scope.Err().AppendInternalf(n.src, "return statement without a function context")
 	}
 	wants := fType.Results.Fields()
 	if hasNamedResult(wants) && len(n.results) == 0 {
 		// Naked return with named results: nothing else to check.
-		return ext, true
+		return ext, true, true
 	}
 	// Resolve all the expressions composing the return.
 	ok := true
@@ -122,7 +122,7 @@ func (n *returnStmt) buildStmt(scope fnResolveScope) (ir.Stmt, bool) {
 		ok = exprOk && ok
 	}
 	if !ok {
-		return ext, false
+		return ext, true, false
 	}
 	rTypes, isTuple := resultTypes(ext.Results)
 	// Compare the number of values being returned to the function results.
@@ -133,7 +133,7 @@ func (n *returnStmt) buildStmt(scope fnResolveScope) (ir.Stmt, bool) {
 		ok = scope.Err().Appendf(n.source(), "not enough return values")
 	}
 	if !ok {
-		return ext, false
+		return ext, true, false
 	}
 	resultPos := ext.Results[0].Source()
 	// Check if the types being returned are assignable to the types declared by the signature.
@@ -159,5 +159,5 @@ func (n *returnStmt) buildStmt(scope fnResolveScope) (ir.Stmt, bool) {
 		okI := returnAs(scope, posI, gotType, wantType)
 		ok = ok && okI
 	}
-	return ext, ok
+	return ext, true, ok
 }

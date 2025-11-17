@@ -1,0 +1,103 @@
+// Copyright 2025 Google LLC
+//
+// Licensed under the Apache License, Version 2.0 (the "License");
+// you may not use this file except in compliance with the License.
+// You may obtain a copy of the License at
+//
+//     http://www.apache.org/licenses/LICENSE-2.0
+//
+// Unless required by applicable law or agreed to in writing, software
+// distributed under the License is distributed on an "AS IS" BASIS,
+// WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
+// See the License for the specific language governing permissions and
+// limitations under the License.
+
+package builder_test
+
+import (
+	"testing"
+
+	"github.com/gx-org/gx/build/builder/testbuild"
+)
+
+func TestMissingReturns(t *testing.T) {
+	testbuild.Run(t,
+		testbuild.Decl{
+			Src: `
+func f() int32 {
+}
+`,
+			Err: "missing return",
+		},
+		testbuild.Decl{
+			Src: `
+func f() int32 {
+	a := 2
+	if a > 2 {
+		return 1
+	} else {
+		return 2
+	}
+}
+`,
+		},
+		testbuild.Decl{
+			Src: `
+func f() int32 {
+	a := 2
+	if a > 2 {
+		return 1
+	}
+}
+`,
+			Err: "missing return",
+		},
+		testbuild.Decl{
+			Src: `
+func f() int32 {
+	a := 2
+	for a := range(5) {
+		return 2
+	}
+}
+`,
+		},
+		testbuild.Decl{
+			Src: `
+func f() int32 {
+	a := 2
+	for a := range(5) {
+	}
+}
+`,
+			Err: "missing return",
+		},
+	)
+}
+
+func TestUnreachable(t *testing.T) {
+	testbuild.Run(t,
+		testbuild.Decl{
+			Src: `
+func f() int32 {
+	return 2
+	a := 2
+}
+`,
+			Err: "unreachable code",
+		},
+		testbuild.Decl{
+			Src: `
+func f() int32 {
+	if a > 2 {
+		return 1
+	} else {
+		return 2
+	}
+	a := 2
+}
+`,
+			Err: "unreachable code",
+		},
+	)
+}

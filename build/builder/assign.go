@@ -291,7 +291,7 @@ func buildAssignExpr(rscope resolveScope, asgm *assignment) (*ir.AssignExpr, boo
 	return ext, newAsgm, exprOk && targetOk && definedOk && assignOk
 }
 
-func (n *assignExprStmt) buildStmt(scope fnResolveScope) (ir.Stmt, bool) {
+func (n *assignExprStmt) buildStmt(scope fnResolveScope) (ir.Stmt, bool, bool) {
 	ext := &ir.AssignExprStmt{Src: n.src, List: make([]*ir.AssignExpr, len(n.assigns))}
 	ok := true
 	newVariables := false
@@ -301,7 +301,7 @@ func (n *assignExprStmt) buildStmt(scope fnResolveScope) (ir.Stmt, bool) {
 		newVariables = newVariables || asgmNew
 		ok = ok && asgmOk
 	}
-	return ext, ok && checkNewVariables(scope, n.src, newVariables)
+	return ext, false, ok && checkNewVariables(scope, n.src, newVariables)
 }
 
 func (n *assignExprStmt) source() ast.Node {
@@ -331,7 +331,7 @@ func (n *assignCallStmt) defineLeftAsInvalid(rscope fnResolveScope) bool {
 	return false
 }
 
-func (n *assignCallStmt) buildStmt(rscope fnResolveScope) (ir.Stmt, bool) {
+func (n *assignCallStmt) buildStmt(rscope fnResolveScope) (ir.Stmt, bool, bool) {
 	ext := &ir.AssignCallStmt{Src: n.src}
 	var callOk bool
 	ext.Call, callOk = buildCall(rscope, n.call)
@@ -340,11 +340,11 @@ func (n *assignCallStmt) buildStmt(rscope fnResolveScope) (ir.Stmt, bool) {
 	if callOk {
 		funType = ext.Call.Callee.FuncType()
 	} else {
-		return ext, n.defineLeftAsInvalid(rscope)
+		return ext, false, n.defineLeftAsInvalid(rscope)
 	}
 	lenCallResults := funType.Results.Len()
 	if lenTargets != funType.Results.Len() {
-		return ext, rscope.Err().Appendf(n.source(), "assignment mismatch: %d variable(s) but %s returns %d values", lenTargets, ext.Call.String(), lenCallResults)
+		return ext, false, rscope.Err().Appendf(n.source(), "assignment mismatch: %d variable(s) but %s returns %d values", lenTargets, ext.Call.String(), lenCallResults)
 	}
 	ext.List = make([]*ir.AssignCallResult, lenCallResults)
 	total := min(lenTargets, lenCallResults)
@@ -367,7 +367,7 @@ func (n *assignCallStmt) buildStmt(rscope fnResolveScope) (ir.Stmt, bool) {
 		}
 		newVariables = newVariables || asgmNew
 	}
-	return ext, ok && callOk && checkNewVariables(rscope, n.src, newVariables)
+	return ext, false, ok && callOk && checkNewVariables(rscope, n.src, newVariables)
 }
 
 // Pos returns the position of the statement in the file.

@@ -288,7 +288,7 @@ func (f *funcDecl) buildBody(fnscope fnResolveScope, extF *irFunc) bool {
 		return false
 	}
 	ext := extF.irFunc.(*ir.FuncDecl)
-	ext.Body, ok = f.body.buildBlockStmt(fnScope)
+	ext.Body, ok = buildFuncBody(fnScope, f.body)
 	return ok
 }
 
@@ -369,7 +369,7 @@ func (fn *funcLiteral) buildFuncLit(rscope resolveScope) (*ir.FuncLit, bool) {
 	if !ok {
 		return lit, false
 	}
-	lit.Body, ok = fn.body.buildBlockStmt(fnscope)
+	lit.Body, ok = buildFuncBody(fnscope, fn.body)
 	return lit, ok
 }
 
