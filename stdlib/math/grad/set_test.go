@@ -226,6 +226,43 @@ func vjpF[T floats](x T) (T, func(res T) T) {
 }
 `,
 		},
+		testgrad.VJP{
+			Src: `
+type floats interface {
+	float32 | float64
+}
+
+func backward[T floats](x T) T 
+
+//gx:@grad.Set(backward)
+func forward[T floats](x T) T 
+
+func F(x float32) float32 {
+	return forward[float32](x)
+}
+`,
+			Want: `
+func vjpF(x float32) (float32, func(res float32) float32) {
+	fwd0, forwardVJP := grad.VJP(forward)[float32](x)
+	selfVJPFunc := func(res float32) float32 {
+		bck0 := forwardVJP(res)
+		return bck0
+	}
+	return fwd0, selfVJPFunc
+}
+`,
+			WantExprs: map[string]string{
+				"grad.VJP(forward)": `
+func[T floats](x T) (T, func(res T) T) {
+	fwd0 := forward[T](x)
+	selfVJPFunc := func(res T) T {
+		return res*backward[T](x)
+	}
+	return fwd0, selfVJPFunc
+}
+`,
+			},
+		},
 	)
 }
 
