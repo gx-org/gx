@@ -530,9 +530,20 @@ func assignArgValueToParamName(rscope resolveScope, fExpr *ir.FuncValExpr, args 
 func checkArgsForCall(rscope resolveScope, fExpr *ir.FuncValExpr, args []ir.AssignableExpr) bool {
 	ok := true
 	wants := fExpr.T.Params.Fields()
+	compEval, compEvalOk := rscope.compEval()
+	if !compEvalOk {
+		return false
+	}
 	for i, arg := range args {
-		okI := assignableToAt(rscope, arg.Source(), arg.Type(), wants[i].Type())
-		ok = okI && ok
+		param := wants[i]
+		assignable, err := ir.AssignableTo(compEval, arg.Type(), param.Type())
+		if err != nil {
+			return rscope.Err().AppendAt(arg.Source(), err)
+		}
+		if !assignable {
+			rscope.Err().Appendf(arg.Source(), "cannot use type %s as %s in argument to %s", arg.Type().String(), param.Type().String(), fExpr.F.ShortString())
+			ok = false
+		}
 	}
 	return ok
 }

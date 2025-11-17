@@ -59,7 +59,7 @@ func newBinary(env evaluator.Env, expr *ir.BinaryExpr, xEl, yEl evaluator.Numeri
 	}
 	defer func() {
 		if err != nil {
-			err = fmterr.Position(env.File().FileSet(), expr.Src, err)
+			err = fmterr.AtNode(env.File().FileSet(), expr.Src, err)
 		}
 	}()
 	var val *values.HostArray

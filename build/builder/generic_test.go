@@ -363,6 +363,20 @@ func callCast() int32 {
 `,
 			Err: "float32 does not satisfy test.someInt",
 		},
+		testbuild.Decl{
+			Src: `
+type someInt interface{ int32 | int64 }
+
+func f[T someInt](x [___S]T) [S___]T {
+	return x
+}
+
+func callF() [2]int64 {
+	return f[int32]([2]int64{1, 2})
+}
+`,
+			Err: "cannot use type [2]int64 as [2]int32 in argument to f",
+		},
 	)
 }
 

@@ -117,7 +117,7 @@ func (f concat) resultsType(fetcher ir.Fetcher, call *ir.CallExpr) (params []ir.
 			}
 			ok, err := axJ.AssignableTo(fetcher, outputDims[j])
 			if err != nil {
-				return nil, nil, fmterr.Position(fetcher.File().FileSet(), call.Source(), err)
+				return nil, nil, fmterr.AtNode(fetcher.File().FileSet(), call.Source(), err)
 			}
 			if !ok {
 				return nil, nil, fmterr.Errorf(fetcher.File().FileSet(), call.Source(),

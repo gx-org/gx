@@ -31,7 +31,7 @@ func (f FileSet) Errorf(node ast.Node, format string, a ...any) error {
 
 // Position positions an error in GX.
 func (f FileSet) Position(node ast.Node, err error) error {
-	return Position(f.FSet, node, err)
+	return AtPos(f.FSet, node.Pos(), err)
 }
 
 // Pos returns a formatter with a fileset and a position as a context.
