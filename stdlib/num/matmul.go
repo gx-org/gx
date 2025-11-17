@@ -72,7 +72,7 @@ func (f matmul) resultsType(fetcher ir.Fetcher, call *ir.CallExpr) ([]ir.Type, i
 	dotDim := rightDims[dotDimIndex]
 	ok, err := lastLeft.AssignableTo(fetcher, dotDim)
 	if err != nil {
-		return nil, nil, fmterr.Position(fetcher.File().FileSet(), call.Source(), err)
+		return nil, nil, fmterr.AtNode(fetcher.File().FileSet(), call.Source(), err)
 	}
 	if !ok {
 		return nil, nil, fmterr.Errorf(fetcher.File().FileSet(), call.Source(), "left argument (shape: %v) not compatible with right argument (shape: %v) in %s call", left.Rank(), right.Rank(), f.Name())
@@ -197,7 +197,7 @@ func (f einsum) resultsType(fetcher ir.Fetcher, call *ir.CallExpr) ([]ir.Type, i
 		rhsDim := rightDims[rhsContractingDims[n]]
 		ok, err := lhsDim.AssignableTo(fetcher, rhsDim)
 		if err != nil {
-			return nil, nil, fmterr.Position(fetcher.File().FileSet(), call.Source(), err)
+			return nil, nil, fmterr.AtNode(fetcher.File().FileSet(), call.Source(), err)
 		}
 		if !ok {
 			return nil, nil, fmterr.Errorf(fetcher.File().FileSet(), call.Source(),
@@ -215,7 +215,7 @@ func (f einsum) resultsType(fetcher ir.Fetcher, call *ir.CallExpr) ([]ir.Type, i
 		rhsDim := rightDims[rhsBatchDims[n]]
 		ok, err := lhsDim.AssignableTo(fetcher, rhsDim)
 		if err != nil {
-			return nil, nil, fmterr.Position(fetcher.File().FileSet(), call.Source(), err)
+			return nil, nil, fmterr.AtNode(fetcher.File().FileSet(), call.Source(), err)
 		}
 		if !ok {
 			return nil, nil, fmterr.Errorf(fetcher.File().FileSet(), call.Source(),
