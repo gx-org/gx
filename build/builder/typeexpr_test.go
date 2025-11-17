@@ -61,12 +61,12 @@ func TestResolveType(t *testing.T) {
 		{code: "struct{}{}", typ: "struct"},
 		{code: "struct{x int32}{x: 1}", typ: "struct"},
 
-		{code: "func() bool {}", typ: "func() bool"},
-		{code: "func() bool {}()", typ: "bool"},
-		{code: "func(int32) bool {}", typ: "func(int32) bool"},
-		{code: "func(int32) bool {}(1)", typ: "bool"},
-		{code: "func(interface{bool}) bool {}", typ: "func(interface { bool }) bool"},
-		{code: "func(interface{bfloat16|float32|float64}) bool {}", typ: "func(interface { bfloat16|float32|float64 }) bool"},
+		{code: "func() bool { return true }", typ: "func() bool"},
+		{code: "func() bool { return true }()", typ: "bool"},
+		{code: "func(int32) bool { return true }", typ: "func(int32) bool"},
+		{code: "func(int32) bool { return true }(1)", typ: "bool"},
+		{code: "func(interface{bool}) bool { return true }", typ: "func(interface { bool }) bool"},
+		{code: "func(interface{bfloat16|float32|float64}) bool { return true }", typ: "func(interface { bfloat16|float32|float64 }) bool"},
 
 		// Static cast of numbers
 		{code: "[2]int32(1)", typ: "[2]int32"},
@@ -96,7 +96,7 @@ func TestResolveType(t *testing.T) {
 		{code: "x(1)", err: "undefined: x"},
 		{code: "[2]float", err: "undefined: float"},
 		{code: "[2][3]float32{{1, 2, 3}}", err: "cannot assign"},
-		{code: "func(int32) bool {}(true)", err: "cannot use type bool as int32 in argument to func(int32) bool"},
+		{code: "func(int32) bool { return false }(true)", err: "cannot use type bool as int32 in argument to func(int32) bool"},
 	}
 
 	for i, test := range tests {

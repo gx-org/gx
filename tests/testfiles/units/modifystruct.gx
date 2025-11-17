@@ -1,0 +1,42 @@
+package modifystruct
+
+type Struct struct {
+	A int32
+}
+
+func (s Struct) NoOp() {
+	s.A = 3
+}
+
+func (s Struct) Modify() Struct {
+	s.A = 4
+	return s
+}
+
+func TestModify() Struct {
+	a := Struct{A:2}
+	trace(a)
+	a.NoOp()
+	trace(a)
+	a = a.Modify()
+	trace(a)
+	return a
+    	// Want:
+	// modifystruct.Struct{
+	// 	A: int32(4),
+	// }
+	// Trace:
+	// modifystruct.gx:0
+	// 	modifystruct.Struct{
+	// 		A: int32(2),
+	// 	}
+	// modifystruct.gx:1
+	// 	modifystruct.Struct{
+	// 		A: int32(2),
+	// 	}
+	// modifystruct.gx:2
+	// 	modifystruct.Struct{
+	// 		A: int32(4),
+	// 	}
+}
+

@@ -66,32 +66,33 @@ func (n *ifStmt) checkConditionType(scope resolveScope, typ ir.Type) bool {
 	return true
 }
 
-func (n *ifStmt) buildStmt(rscope fnResolveScope) (ir.Stmt, bool) {
+func (n *ifStmt) buildStmt(rscope fnResolveScope) (ir.Stmt, bool, bool) {
 	bScope, ok := newBlockScope(rscope, n)
 	if !ok {
-		return nil, false
+		return nil, false, false
 	}
 	var init ir.Stmt
 	initOk := true
 	if n.init != nil {
-		init, initOk = n.init.buildStmt(bScope)
+		init, _, initOk = n.init.buildStmt(bScope)
 	}
 	cond, condOk := buildAExpr(bScope, n.cond)
 	if condOk {
 		condOk = n.checkConditionType(bScope, cond.Type())
 	}
-	body, bodyOk := n.body.buildBlockStmt(bScope)
+	var bodyStop, elseStop bool
+	body, bodyStop, bodyOk := n.body.buildBlockStmt(bScope)
 	var els ir.Stmt
 	elseOk := true
 	if n.elseStmt != nil {
-		els, elseOk = n.elseStmt.buildStmt(bScope)
+		els, elseStop, elseOk = n.elseStmt.buildStmt(bScope)
 	}
 	return &ir.IfStmt{
 		Init: init,
 		Cond: cond,
 		Body: body,
 		Else: els,
-	}, initOk && condOk && bodyOk && elseOk
+	}, bodyStop && elseStop, initOk && condOk && bodyOk && elseOk
 }
 
 func (n *ifStmt) source() ast.Node {

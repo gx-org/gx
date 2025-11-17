@@ -83,40 +83,41 @@ func (n *rangeStmt) buildBodyOverArray(rscope resolveScope, x ir.Expr) (ir.Stora
 	return key, value, keyOk && valueOk
 }
 
-func (n *rangeStmt) buildStmt(parent fnResolveScope) (ir.Stmt, bool) {
+func (n *rangeStmt) buildStmt(parent fnResolveScope) (ir.Stmt, bool, bool) {
 	ext := &ir.RangeStmt{Src: n.src}
 	rscope, ok := newBlockScope(parent, n)
 	if !ok {
-		return ext, false
+		return ext, false, false
 	}
 	ext.X, ok = buildAExpr(rscope, n.x)
 	if !ok {
-		return ext, false
+		return ext, false, false
 	}
 	if ir.IsNumber(ext.X.Type().Kind()) {
 		ext.X, ok = castNumber(rscope, ext.X, ir.IntLenType())
 	}
 	if !ok {
-		return ext, false
+		return ext, false, false
 	}
 	if ir.IsRangeOk(ext.X.Type().Kind()) {
 		ext.Key, ext.Value, ok = n.buildBodyOverScalar(rscope, ext.X)
 	} else if ext.X.Type().Kind() == ir.ArrayKind {
 		ext.Key, ext.Value, ok = n.buildBodyOverArray(rscope, ext.X)
 	} else {
-		return ext, rscope.Err().Appendf(n.src, "cannot range over %s", ext.X.Type().String())
+		return ext, false, rscope.Err().Appendf(n.src, "cannot range over %s", ext.X.Type().String())
 	}
 	if !ok {
-		return ext, false
+		return ext, false, false
 	}
 	if ok = defineLocalVar(rscope, ext.Key); !ok {
-		return ext, false
+		return ext, false, false
 	}
 	if ext.Value != nil {
 		if ok = defineLocalVar(rscope, ext.Value); !ok {
-			return ext, false
+			return ext, false, false
 		}
 	}
-	ext.Body, ok = n.body.buildBlockStmt(rscope)
-	return ext, ok
+	var stop bool
+	ext.Body, stop, ok = n.body.buildBlockStmt(rscope)
+	return ext, stop, ok
 }

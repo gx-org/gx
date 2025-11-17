@@ -198,5 +198,15 @@ func a() st {
 `,
 			Err: "cannot use int32 as float32",
 		},
+		testbuild.Decl{
+			Src: `
+func f() int64 {
+	a := 2
+	a := 3
+	return a
+}
+`,
+			Err: "no new variables on left side of :=",
+		},
 	)
 }

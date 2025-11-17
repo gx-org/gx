@@ -58,7 +58,9 @@ type (
 	// stmtNode is a GX statement.
 	stmtNode interface {
 		nodePos
-		buildStmt(fnResolveScope) (ir.Stmt, bool)
+		// buildStmt a statement.
+		// stop is set to true if the statement always return.
+		buildStmt(fnResolveScope) (_ ir.Stmt, stop bool, ok bool)
 	}
 
 	cloner interface {
