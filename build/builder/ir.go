@@ -34,7 +34,7 @@ type (
 		compEval() bool
 		resolveOrder() int
 		buildSignature(*pkgResolveScope) (ir.Func, fnResolveScope, bool)
-		buildAnnotations(fnResolveScope, *irFunc) bool
+		buildAnnotations(*pkgResolveScope, *irFunc) bool
 		buildBody(fnResolveScope, *irFunc) bool
 	}
 

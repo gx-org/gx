@@ -296,7 +296,7 @@ func (f *funcDecl) fnSource() *ast.FuncDecl {
 	return f.src
 }
 
-func (f *funcDecl) buildAnnotations(fScope fnResolveScope, extF *irFunc) bool {
+func (f *funcDecl) buildAnnotations(pkgScope *pkgResolveScope, extF *irFunc) bool {
 	return true
 }
 

@@ -222,6 +222,14 @@ func (s *pkgResolveScope) newFileRScope(f *file) (*fileResolveScope, bool) {
 	return fScope, ok && fileOk && evOk
 }
 
+func (s *pkgResolveScope) newFuncScope(f *file, ftype *ir.FuncType) (*funcResolveScope, bool) {
+	fScope, ok := s.newFileRScope(f)
+	if !ok {
+		return nil, false
+	}
+	return newFuncScope(fScope, ftype)
+}
+
 func (s *fileResolveScope) newCompEval() (*compileEvaluator, bool) {
 	pkgitp := s.pkgResolveScope.packageInterpreter()
 	fitp, err := pkgitp.ForFile(s.irFile())

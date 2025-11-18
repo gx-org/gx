@@ -274,7 +274,7 @@ func (d *decls) buildFunctions(pkgScope *pkgResolveScope, filter func(f *process
 	}
 	// Annotate functions.
 	for _, fn := range funcs {
-		fnOk := fn.bFunc.buildAnnotations(fn.sigScope, fn)
+		fnOk := fn.bFunc.buildAnnotations(pkgScope, fn)
 		ok = ok && fnOk
 	}
 	if !ok {
