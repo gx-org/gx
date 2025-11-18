@@ -64,7 +64,7 @@ func (f *coreSyntheticFunc) compEval() bool {
 	return false
 }
 
-func (f *coreSyntheticFunc) buildAnnotations(fScope fnResolveScope, extF *irFunc) bool {
+func (f *coreSyntheticFunc) buildAnnotations(pkgScope *pkgResolveScope, extF *irFunc) bool {
 	return true
 }
 

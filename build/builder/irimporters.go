@@ -50,7 +50,7 @@ func (f *importedFunc) resolveOrder() int {
 	return -1
 }
 
-func (f *importedFunc) buildAnnotations(fScope fnResolveScope, extF *irFunc) bool {
+func (f *importedFunc) buildAnnotations(pkgScope *pkgResolveScope, extF *irFunc) bool {
 	return true
 }
 
