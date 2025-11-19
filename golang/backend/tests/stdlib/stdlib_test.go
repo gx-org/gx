@@ -26,6 +26,7 @@ func TestStdlib(t *testing.T) {
 	session := gxtesting.NewSession(bck, tests.FS)
 	for _, path := range []string{
 		"testfiles/grad",
+		"testfiles/vjp",
 		"testfiles/compeval",
 	} {
 		session.TestFolder(t, path)
