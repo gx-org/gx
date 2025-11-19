@@ -164,7 +164,7 @@ func (v *storedValue) Recv() *fun.Receiver {
 	return v.val.(fun.Func).Recv()
 }
 
-func (v *storedValue) Call(env *fun.CallEnv, call *ir.CallExpr, args []ir.Element) ([]ir.Element, error) {
+func (v *storedValue) Call(env *fun.CallEnv, call *ir.FuncCallExpr, args []ir.Element) ([]ir.Element, error) {
 	return v.val.(fun.Func).Call(env, call, args)
 }
 

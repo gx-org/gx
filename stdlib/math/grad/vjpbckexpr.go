@@ -91,7 +91,7 @@ func (m *exprBackwardVJP) assign(fwdExpr ir.Expr, expr *gradExprResult, suffix s
 
 func (m *exprBackwardVJP) backward(bck *gradExprResult, expr ir.Expr) (vjp *gradExprResult, ok bool) {
 	switch exprT := expr.(type) {
-	case *ir.CallExpr:
+	case *ir.FuncCallExpr:
 		return m.callExpr(bck, exprT)
 	case *ir.NumberCastExpr:
 		return m.numberCastExpr(bck, exprT)
@@ -174,7 +174,7 @@ func (m *exprBackwardVJP) callTrace(backwardIdents []*gradExprResult) {
 	})
 }
 
-func (m *exprBackwardVJP) callExpr(bck *gradExprResult, expr *ir.CallExpr) (*gradExprResult, bool) {
+func (m *exprBackwardVJP) callExpr(bck *gradExprResult, expr *ir.FuncCallExpr) (*gradExprResult, bool) {
 	if len(expr.Args) == 0 {
 		return zeroValueOf(expr.Source()), true
 	}

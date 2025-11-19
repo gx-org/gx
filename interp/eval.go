@@ -240,7 +240,7 @@ func evalAssignExprStmt(fitp *FileScope, stmt *ir.AssignExprStmt) error {
 }
 
 func evalAssignCallStmt(fitp *FileScope, stmt *ir.AssignCallStmt) error {
-	nodes, err := evalCall(fitp, stmt.Call)
+	nodes, err := evalCall(fitp, stmt.Call.FuncCall())
 	if err != nil {
 		return err
 	}
@@ -476,7 +476,7 @@ func evalExpr(fitp *FileScope, expr ir.Expr) (ir.Element, error) {
 		return evalCastExpr(fitp, exprT)
 	case *ir.TypeAssertExpr:
 		return evalCastExpr(fitp, exprT)
-	case *ir.CallExpr:
+	case *ir.FuncCallExpr:
 		return evalCallExpr(fitp, exprT)
 	case *ir.UnaryExpr:
 		return evalUnaryExpression(fitp, exprT)
@@ -630,7 +630,7 @@ func evalCallee(fitp *FileScope, callee ir.Callee) (fun.Func, error) {
 	}
 }
 
-func evalCallExpr(fitp *FileScope, expr *ir.CallExpr) (ir.Element, error) {
+func evalCallExpr(fitp *FileScope, expr *ir.FuncCallExpr) (ir.Element, error) {
 	outs, err := evalCall(fitp, expr)
 	if err != nil {
 		return nil, err
@@ -638,7 +638,7 @@ func evalCallExpr(fitp *FileScope, expr *ir.CallExpr) (ir.Element, error) {
 	return ToSingleElement(fitp, expr, outs)
 }
 
-func evalCall(fitp *FileScope, expr *ir.CallExpr) ([]ir.Element, error) {
+func evalCall(fitp *FileScope, expr *ir.FuncCallExpr) ([]ir.Element, error) {
 	callee, err := evalCallee(fitp, expr.Callee)
 	if err != nil {
 		return nil, err
@@ -655,7 +655,7 @@ func evalCall(fitp *FileScope, expr *ir.CallExpr) ([]ir.Element, error) {
 	return callee.Call(fitp.env, expr, args)
 }
 
-func evalFuncCall(fitp *FileScope, fn fun.Func, expr *ir.CallExpr) ([]ir.Element, error) {
+func evalFuncCall(fitp *FileScope, fn fun.Func, expr *ir.FuncCallExpr) ([]ir.Element, error) {
 	args := make([]ir.Element, len(expr.Args))
 	for i, arg := range expr.Args {
 		el, err := fitp.EvalExpr(arg)

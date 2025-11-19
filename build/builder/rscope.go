@@ -133,8 +133,8 @@ func newPackageResolveScope(pscope *pkgProcScope) (*pkgResolveScope, bool) {
 func (s *pkgResolveScope) buildFuncProcessNode(bFile *file, store ir.Storage) (processNode, bool) {
 	fn := store.(*ir.FuncBuiltin)
 	pNode := newProcessNode[function](token.FUNC, fn.Src.Name, &importedFunc{
-		file: bFile,
-		fn:   fn,
+		bFile: bFile,
+		fn:    fn,
 	})
 	_, ok := irBuild[*ir.FuncBuiltin](s.state.ibld, pNode)
 	return pNode, ok

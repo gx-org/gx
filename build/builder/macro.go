@@ -50,11 +50,7 @@ func (f *funcMeta) resolveOrder() int {
 	return -1
 }
 
-func (f *funcMeta) buildSignature(pkgScope *pkgResolveScope) (ir.MetaCore, fnResolveScope, bool) {
-	fScope, scopeOk := pkgScope.newFileRScope(f.bFile)
-	if !scopeOk {
-		return ir.MetaCore{}, nil, false
-	}
+func (f *funcMeta) buildSignature(fScope *fileResolveScope) (ir.MetaCore, fnResolveScope, bool) {
 	ext := ir.MetaCore{
 		Src:   f.src,
 		FFile: fScope.irFile(),
@@ -75,8 +71,8 @@ func (bFile *file) processIRMacroFunc(scope procScope, src *ast.FuncDecl, commen
 	return fn, declOk
 }
 
-func (f *funcMacro) buildSignature(pkgScope *pkgResolveScope) (ir.Func, fnResolveScope, bool) {
-	core, fnScope, ok := f.funcMeta.buildSignature(pkgScope)
+func (f *funcMacro) buildSignature(fScope *fileResolveScope) (ir.Func, fnResolveScope, bool) {
+	core, fnScope, ok := f.funcMeta.buildSignature(fScope)
 	return &ir.Macro{MetaCore: core}, fnScope, ok
 }
 
@@ -90,8 +86,8 @@ func (bFile *file) processAnnotatorFunc(scope procScope, src *ast.FuncDecl, comm
 	return fn, declOk
 }
 
-func (f *funcAnnotator) buildSignature(pkgScope *pkgResolveScope) (ir.Func, fnResolveScope, bool) {
-	core, fnScope, ok := f.funcMeta.buildSignature(pkgScope)
+func (f *funcAnnotator) buildSignature(fScope *fileResolveScope) (ir.Func, fnResolveScope, bool) {
+	core, fnScope, ok := f.funcMeta.buildSignature(fScope)
 	return &ir.Annotator{MetaCore: core}, fnScope, ok
 }
 
@@ -115,7 +111,7 @@ type funcWithIR interface {
 	Func() ir.Func
 }
 
-func evalMetaCallee[T funcWithIR](rscope resolveScope, compEval *compileEvaluator, macroCall *callExpr) (*ir.CallExpr, T, bool) {
+func evalMetaCallee[T funcWithIR](rscope resolveScope, compEval *compileEvaluator, macroCall *callExpr) (*ir.FuncCallExpr, T, bool) {
 	var zero T
 	callee, calleeOk := buildAExpr(rscope, macroCall.callee)
 	if !calleeOk {
@@ -136,7 +132,7 @@ func evalMetaCallee[T funcWithIR](rscope resolveScope, compEval *compileEvaluato
 	return call, elT, ok
 }
 
-func evalMacroCall(compEval *compileEvaluator, call *ir.CallExpr) (ir.MacroElement, bool) {
+func evalMacroCall(compEval *compileEvaluator, call *ir.FuncCallExpr) (ir.MacroElement, bool) {
 	el, err := compEval.fitp.EvalExpr(call)
 	if err != nil {
 		return nil, compEval.Err().AppendAt(call.Source(), err)

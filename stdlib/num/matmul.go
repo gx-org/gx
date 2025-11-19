@@ -33,7 +33,7 @@ func (f matmul) BuildFuncIR(impl *impl.Stdlib, pkg *ir.Package) (*ir.FuncBuiltin
 	return builtin.IRFuncBuiltin[matmul]("MatMul", impl.Num.MatMul, pkg), nil
 }
 
-func (f matmul) resultsType(fetcher ir.Fetcher, call *ir.CallExpr) ([]ir.Type, ir.Type, error) {
+func (f matmul) resultsType(fetcher ir.Fetcher, call *ir.FuncCallExpr) ([]ir.Type, ir.Type, error) {
 	params, err := builtins.BuildFuncParams(fetcher, call, f.Name(), []ir.Type{
 		builtins.GenericArrayType,
 		builtins.GenericArrayType,
@@ -88,7 +88,7 @@ func (f matmul) resultsType(fetcher ir.Fetcher, call *ir.CallExpr) ([]ir.Type, i
 	return params, ir.NewArrayType(&ast.ArrayType{}, left.DataType(), &resultRank), nil
 }
 
-func (f matmul) BuildFuncType(fetcher ir.Fetcher, call *ir.CallExpr) (*ir.FuncType, error) {
+func (f matmul) BuildFuncType(fetcher ir.Fetcher, call *ir.FuncCallExpr) (*ir.FuncType, error) {
 	params, result, err := f.resultsType(fetcher, call)
 	if err != nil {
 		return nil, err
@@ -117,7 +117,7 @@ func (f einsum) BuildFuncIR(impl *impl.Stdlib, pkg *ir.Package) (*ir.FuncBuiltin
 	return builtin.IRFuncBuiltin[einsum]("Einsum", impl.Num.Einsum, pkg), nil
 }
 
-func (f einsum) validateAxisExpr(fetcher ir.Fetcher, call *ir.CallExpr, arg, maxRank int, seen map[int]bool) ([]int, error) {
+func (f einsum) validateAxisExpr(fetcher ir.Fetcher, call *ir.FuncCallExpr, arg, maxRank int, seen map[int]bool) ([]int, error) {
 	axisExpr, ok := call.Args[arg].(*ir.SliceLitExpr)
 	if !ok {
 		return nil, fmterr.Errorf(fetcher.File().FileSet(), call.Source(), "argument %d to %s must be []intidx (got %s)", arg, f.Name(), call.Args[arg].String())
@@ -142,7 +142,7 @@ func (f einsum) validateAxisExpr(fetcher ir.Fetcher, call *ir.CallExpr, arg, max
 	return axes, nil
 }
 
-func (f einsum) resultsType(fetcher ir.Fetcher, call *ir.CallExpr) ([]ir.Type, ir.Type, error) {
+func (f einsum) resultsType(fetcher ir.Fetcher, call *ir.FuncCallExpr) ([]ir.Type, ir.Type, error) {
 	params, err := builtins.BuildFuncParams(fetcher, call, f.Name(), []ir.Type{
 		builtins.GenericArrayType,
 		ir.IntIndexSliceType(),
@@ -243,7 +243,7 @@ func (f einsum) resultsType(fetcher ir.Fetcher, call *ir.CallExpr) ([]ir.Type, i
 	return params, ir.NewArrayType(&ast.ArrayType{}, left.DataType(), &ir.Rank{Ax: outDims}), nil
 }
 
-func (f einsum) BuildFuncType(fetcher ir.Fetcher, call *ir.CallExpr) (*ir.FuncType, error) {
+func (f einsum) BuildFuncType(fetcher ir.Fetcher, call *ir.FuncCallExpr) (*ir.FuncType, error) {
 	params, result, err := f.resultsType(fetcher, call)
 	if err != nil {
 		return nil, err

@@ -45,7 +45,7 @@ func (f *function) Recv() *fun.Receiver {
 	return f.recv
 }
 
-func (f *function) Call(env *fun.CallEnv, call *ir.CallExpr, args []ir.Element) ([]ir.Element, error) {
+func (f *function) Call(env *fun.CallEnv, call *ir.FuncCallExpr, args []ir.Element) ([]ir.Element, error) {
 	valArgs := make([]ir.Element, len(args))
 	for i, arg := range args {
 		valArgs[i] = StoredValueOf(arg)

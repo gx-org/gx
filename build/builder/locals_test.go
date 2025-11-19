@@ -52,7 +52,7 @@ func call(x float32, y float32) float32 {
 						irh.Fields(ir.Float32Type()),
 					),
 					Body: irh.SingleReturn(
-						&ir.CallExpr{
+						&ir.FuncCallExpr{
 							Callee: &ir.FuncValExpr{
 								X: irh.ValueRef(idFunc),
 								F: idFunc,

@@ -34,7 +34,7 @@ func (f split) BuildFuncIR(impl *impl.Stdlib, pkg *ir.Package) (*ir.FuncBuiltin,
 	return builtin.IRFuncBuiltin[split]("Split", impl.Shapes.Split, pkg), nil
 }
 
-func (f split) BuildFuncType(fetcher ir.Fetcher, call *ir.CallExpr) (*ir.FuncType, error) {
+func (f split) BuildFuncType(fetcher ir.Fetcher, call *ir.FuncCallExpr) (*ir.FuncType, error) {
 	params, err := builtins.BuildFuncParams(fetcher, call, f.Name(), []ir.Type{
 		ir.IntIndexType(),
 		builtins.GenericArrayType,

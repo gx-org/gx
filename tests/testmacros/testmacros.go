@@ -29,12 +29,17 @@ package testmacros
 func ID(any) any
 
 //gx:irmacro
+func IDWithBool(any) any
+
+//gx:irmacro
 func UpdateReturn(any, string) any
 
 `,
 	Post: func(pkg *ir.Package) {
 		id := pkg.FindFunc("ID").(*ir.Macro)
 		id.BuildSynthetic = ir.MacroImpl(newID)
+		idWithBool := pkg.FindFunc("IDWithBool").(*ir.Macro)
+		idWithBool.BuildSynthetic = ir.MacroImpl(newIDWithBool)
 		ret := pkg.FindFunc("UpdateReturn").(*ir.Macro)
 		ret.BuildSynthetic = ir.MacroImpl(newUpdateReturn)
 	},

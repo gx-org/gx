@@ -24,8 +24,8 @@ import (
 )
 
 type importedFunc struct {
-	file *file
-	fn   *ir.FuncBuiltin
+	bFile *file
+	fn    *ir.FuncBuiltin
 }
 
 var _ irb.Node[*pkgResolveScope] = (*importedFunc)(nil)
@@ -36,6 +36,10 @@ func (f *importedFunc) source() ast.Node {
 
 func (f *importedFunc) fnSource() *ast.FuncDecl {
 	return f.fn.Src
+}
+
+func (f *importedFunc) file() *file {
+	return f.bFile
 }
 
 func (f *importedFunc) isMethod() bool {
@@ -50,15 +54,11 @@ func (f *importedFunc) resolveOrder() int {
 	return -1
 }
 
-func (f *importedFunc) buildAnnotations(pkgScope *pkgResolveScope, extF *irFunc) bool {
+func (f *importedFunc) buildAnnotations(*fileResolveScope, *irFunc) bool {
 	return true
 }
 
-func (f *importedFunc) buildSignature(pkgScope *pkgResolveScope) (ir.Func, fnResolveScope, bool) {
-	fScope, ok := pkgScope.newFileRScope(f.file)
-	if !ok {
-		return f.fn, nil, false
-	}
+func (f *importedFunc) buildSignature(fScope *fileResolveScope) (ir.Func, fnResolveScope, bool) {
 	fnscope, ok := newFuncScope(fScope, f.fn.FType)
 	return f.fn, fnscope, ok
 }
@@ -70,7 +70,7 @@ func (f *importedFunc) buildBody(fnResolveScope, *irFunc) bool {
 func (f *importedFunc) Build(ibld irBuilder) (ir.Node, bool) {
 	fn := *(f.fn)
 	var ok bool
-	fn.FFile, ok = irCache[*ir.File](ibld, f.fn.Src, f.file)
+	fn.FFile, ok = irCache[*ir.File](ibld, f.fn.Src, f.bFile)
 	return &fn, ok
 }
 
@@ -81,8 +81,8 @@ func pNodeFromFunc(pkgScope *pkgProcScope, file *file, fn ir.PkgFunc) (*processN
 		return nil, pkgScope.Err().Append(errors.Errorf("cannot import function %T: not supported", fn))
 	}
 	return newProcessNode[function](token.FUNC, fnT.Src.Name, &importedFunc{
-		file: file,
-		fn:   fnT,
+		bFile: file,
+		fn:    fnT,
 	}), true
 }
 

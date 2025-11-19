@@ -33,7 +33,7 @@ type updateReturn struct {
 
 var _ ir.FuncASTBuilder = (*updateReturn)(nil)
 
-func newUpdateReturn(file *ir.File, call *ir.CallExpr, mac *ir.Macro, args []ir.Element) (ir.MacroElement, error) {
+func newUpdateReturn(file *ir.File, call *ir.FuncCallExpr, mac *ir.Macro, args []ir.Element) (ir.MacroElement, error) {
 	fn, err := interp.FuncDeclFromElement(args[0])
 	if err != nil {
 		return nil, err

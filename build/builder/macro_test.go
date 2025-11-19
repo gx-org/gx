@@ -92,6 +92,35 @@ func F() int32 {
 }
 `,
 		},
+		testbuild.Decl{
+			Src: `
+import "testmacros"
+
+func f(x int32) int32 {
+	return x
+}
+
+func F() (int32, bool) {
+	fn := testmacros.IDWithBool(f)
+	return fn(2)
+}
+`,
+		},
+		testbuild.Decl{
+			Src: `
+import "testmacros"
+
+func f(x int32) int32 {
+	return x
+}
+
+func F() (int32, bool) {
+	fn, ok := testmacros.IDWithBool(f)
+	return fn(2), ok
+}
+`,
+			Err: "assignment mismatch: 2 variable(s) but testmacros.IDWithBool(f) returns 1 values",
+		},
 	)
 }
 

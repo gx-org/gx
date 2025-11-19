@@ -31,7 +31,7 @@ func (f pow) BuildFuncIR(impl *impl.Stdlib, pkg *ir.Package) (*ir.FuncBuiltin, e
 	return builtin.IRFuncBuiltin[pow]("Pow", impl.Math.Pow, pkg), nil
 }
 
-func (f pow) BuildFuncType(fetcher ir.Fetcher, call *ir.CallExpr) (*ir.FuncType, error) {
+func (f pow) BuildFuncType(fetcher ir.Fetcher, call *ir.FuncCallExpr) (*ir.FuncType, error) {
 	baseParam, exponentParam, result, err := mainAuxArgsToTypes(f.Name(), fetcher, call)
 	if err != nil {
 		return nil, err

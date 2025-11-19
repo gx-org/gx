@@ -162,7 +162,7 @@ func (ao *arrayOps) Concat(ctx ir.Evaluator, expr ir.AssignableExpr, xs []evalua
 }
 
 // Set a slice in an array.
-func (ao *arrayOps) Set(ctx ir.Evaluator, expr *ir.CallExpr, x, updates, index ir.Element) (ir.Element, error) {
+func (ao *arrayOps) Set(ctx ir.Evaluator, expr *ir.FuncCallExpr, x, updates, index ir.Element) (ir.Element, error) {
 	nodes, err := materialise.AllWithShapes(ao, []ir.Element{x, updates, index})
 	if err != nil {
 		return nil, err

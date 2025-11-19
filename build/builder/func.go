@@ -246,6 +246,10 @@ func (bFile *file) processFuncDecl(pscope procScope, src *ast.FuncDecl, compEval
 	return f, declOk && bodyOk
 }
 
+func (f *funcDecl) file() *file {
+	return f.bFile
+}
+
 func (f *funcDecl) isMethod() bool {
 	return f.fType.recv != nil
 }
@@ -262,12 +266,9 @@ func (f *funcDecl) resolveOrder() int {
 	return 0
 }
 
-func (f *funcDecl) buildSignature(pkgScope *pkgResolveScope) (ir.Func, fnResolveScope, bool) {
-	fScope, ok := pkgScope.newFileRScope(f.bFile)
-	if !ok {
-		return nil, nil, false
-	}
+func (f *funcDecl) buildSignature(fScope *fileResolveScope) (ir.Func, fnResolveScope, bool) {
 	ext := &ir.FuncDecl{Src: f.src, FFile: fScope.irFile()}
+	var ok bool
 	var fnscope *funcResolveScope
 	ext.FType, fnscope, ok = f.fType.buildFuncType(fScope)
 	if !ok {
@@ -296,7 +297,7 @@ func (f *funcDecl) fnSource() *ast.FuncDecl {
 	return f.src
 }
 
-func (f *funcDecl) buildAnnotations(pkgScope *pkgResolveScope, extF *irFunc) bool {
+func (f *funcDecl) buildAnnotations(*fileResolveScope, *irFunc) bool {
 	return true
 }
 
@@ -318,20 +319,16 @@ func (bFile *file) processBuiltinFunc(scope procScope, src *ast.FuncDecl, compEv
 	return fn, declOk
 }
 
-func (f *funcBuiltin) buildSignature(pkgScope *pkgResolveScope) (ir.Func, fnResolveScope, bool) {
-	fileScope, scopeOk := pkgScope.newFileRScope(f.bFile)
-	if !scopeOk {
-		return nil, nil, false
-	}
-	ext := &ir.FuncBuiltin{Src: f.src, FFile: fileScope.irFile()}
+func (f *funcBuiltin) buildSignature(fScope *fileResolveScope) (ir.Func, fnResolveScope, bool) {
+	ext := &ir.FuncBuiltin{Src: f.src, FFile: fScope.irFile()}
 	var ok bool
-	var fScope *funcResolveScope
-	ext.FType, fScope, ok = f.fType.buildFuncType(fileScope)
+	var fnScope *funcResolveScope
+	ext.FType, fnScope, ok = f.fType.buildFuncType(fScope)
 	if !ok {
 		return ext, nil, false
 	}
-	fScope, ok = fScope.setFuncValue(ext)
-	return ext, fScope, ok
+	fnScope, ok = fnScope.setFuncValue(ext)
+	return ext, fnScope, ok
 }
 
 func (f *funcBuiltin) buildBody(fnResolveScope, *irFunc) bool {

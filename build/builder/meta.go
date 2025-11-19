@@ -44,10 +44,15 @@ func (f *coreSyntheticFunc) buildBody(fnScope fnResolveScope, fn *irFunc) bool {
 	return mScope.buildBody(fn.irFunc.(*ir.FuncDecl), compEval)
 }
 
+func (f *coreSyntheticFunc) file() *file {
+	return f.bFile
+}
+
 func (f *coreSyntheticFunc) resolveOrder() int {
 	// Synthetic functions need to be resolved last.
 	return 1
 }
+
 func (f *coreSyntheticFunc) source() ast.Node {
 	return f.src
 }
@@ -64,7 +69,7 @@ func (f *coreSyntheticFunc) compEval() bool {
 	return false
 }
 
-func (f *coreSyntheticFunc) buildAnnotations(pkgScope *pkgResolveScope, extF *irFunc) bool {
+func (f *coreSyntheticFunc) buildAnnotations(*fileResolveScope, *irFunc) bool {
 	return true
 }
 

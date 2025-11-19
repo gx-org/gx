@@ -89,7 +89,7 @@ func (sg *funcLit) SubGraph(name string) (*ops.Subgraph, error) {
 
 // Call the function literal given its set of arguments,
 // effectively inlining the function in the parent graph.
-func (sg *funcLit) Call(env *fun.CallEnv, call *ir.CallExpr, args []ir.Element) ([]ir.Element, error) {
+func (sg *funcLit) Call(env *fun.CallEnv, call *ir.FuncCallExpr, args []ir.Element) ([]ir.Element, error) {
 	return sg.litp.RunFuncLit(args)
 }
 

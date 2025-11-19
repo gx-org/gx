@@ -224,7 +224,7 @@ func (ev *Evaluator) subEval(proc *processor.Processor, name string) (*Evaluator
 }
 
 // Trace a set of elements.
-func (ev *Evaluator) Trace(ctx ir.Evaluator, call *ir.CallExpr, args []ir.Element) error {
+func (ev *Evaluator) Trace(ctx ir.Evaluator, call *ir.FuncCallExpr, args []ir.Element) error {
 	return ev.process.RegisterTrace(ctx, call, args)
 }
 

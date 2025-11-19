@@ -37,7 +37,7 @@ func (*appendFunc) Name() string {
 }
 
 // BuildFuncType builds the type of a function given how it is called.
-func (f *appendFunc) BuildFuncType(fetcher ir.Fetcher, call *ir.CallExpr) (*ir.FuncType, error) {
+func (f *appendFunc) BuildFuncType(fetcher ir.Fetcher, call *ir.FuncCallExpr) (*ir.FuncType, error) {
 	ext := &ir.FuncType{
 		BaseType: ir.BaseType[*ast.FuncType]{
 			Src: &ast.FuncType{Func: call.Src.Pos()},

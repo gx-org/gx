@@ -35,12 +35,12 @@ func processFuncAnnotation(pscope procScope, src *ast.FuncDecl, fn function, mac
 	}
 }
 
-func (m *annotateFuncFromMacro) buildAnnotations(pkgScope *pkgResolveScope, fn *irFunc) bool {
-	ok := m.function.buildAnnotations(pkgScope, fn)
+func (m *annotateFuncFromMacro) buildAnnotations(fScope *fileResolveScope, fn *irFunc) bool {
+	ok := m.function.buildAnnotations(fScope, fn)
 	if !ok {
 		return false
 	}
-	fnScope, ok := pkgScope.newFuncScope(fn.sigScope.fileScope().bFile(), fn.irFunc.FuncType())
+	fnScope, ok := newFuncScope(fScope, fn.irFunc.FuncType())
 	if !ok {
 		return false
 	}

@@ -44,7 +44,7 @@ func (f while) BuildFuncIR(impl *impl.Stdlib, pkg *ir.Package) (*ir.FuncBuiltin,
 // The `cond` and `body` functions must accept the iteration state through identical parameters, and
 // the body function must return a new iteration state. Last, the overall While() function takes an
 // initial iteration state and returns the final state.
-func (f while) BuildFuncType(fetcher ir.Fetcher, call *ir.CallExpr) (*ir.FuncType, error) {
+func (f while) BuildFuncType(fetcher ir.Fetcher, call *ir.FuncCallExpr) (*ir.FuncType, error) {
 	stateType := call.Args[0].Type()
 	condType := &ir.FuncType{ // `func(state T) bool`
 		BaseType: ir.BaseType[*ast.FuncType]{Src: &ast.FuncType{Func: call.Source().Pos()}},

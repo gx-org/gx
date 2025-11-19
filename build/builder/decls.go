@@ -223,7 +223,11 @@ type irFunc struct {
 }
 
 func (d *decls) buildFuncType(pkgScope *pkgResolveScope, pNode *processNodeT[function]) (*irFunc, bool) {
-	irFn, fnScope, fnOk := pNode.node.buildSignature(pkgScope)
+	fScope, fnOk := pkgScope.newFileRScope(pNode.node.file())
+	if !fnOk {
+		return nil, false
+	}
+	irFn, fnScope, fnOk := pNode.node.buildSignature(fScope)
 	if !fnOk {
 		return nil, false
 	}
@@ -274,7 +278,12 @@ func (d *decls) buildFunctions(pkgScope *pkgResolveScope, filter func(f *process
 	}
 	// Annotate functions.
 	for _, fn := range funcs {
-		fnOk := fn.bFunc.buildAnnotations(pkgScope, fn)
+		fScope, fnOk := pkgScope.newFileRScope(fn.bFunc.file())
+		if !fnOk {
+			ok = false
+			continue
+		}
+		fnOk = fn.bFunc.buildAnnotations(fScope, fn)
 		ok = ok && fnOk
 	}
 	if !ok {

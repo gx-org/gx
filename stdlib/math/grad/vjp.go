@@ -56,7 +56,7 @@ type (
 var _ ir.FuncASTBuilder = (*vjpMacro)(nil)
 
 // VJP computes the vector-jacobian product of a function.
-func VJP(file *ir.File, call *ir.CallExpr, macro *ir.Macro, args []ir.Element) (ir.MacroElement, error) {
+func VJP(file *ir.File, call *ir.FuncCallExpr, macro *ir.Macro, args []ir.Element) (ir.MacroElement, error) {
 	fn, err := interp.PkgFuncFromElement(args[0])
 	if err != nil {
 		return nil, err
