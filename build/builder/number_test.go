@@ -85,5 +85,12 @@ func f() [2]float32 {
 }
 `,
 		},
+		testbuild.Decl{
+			Src: `
+func f() float32 {
+	return -2
+}
+`,
+		},
 	)
 }

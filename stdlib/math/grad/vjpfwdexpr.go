@@ -140,11 +140,10 @@ func (m *exprForwardVJP) assignFuncCall(expr *ir.FuncCallExpr, calleeName string
 
 func (m *exprForwardVJP) assignElementary(expr ir.Expr, elementary ast.Expr) *allocForwardValues {
 	fv := m.newForwardValues(expr, 1)
-	casted := addCastIfRequired(elementary, expr.Type())
 	m.appendMainStmt(&ast.AssignStmt{
 		Tok: token.DEFINE,
 		Lhs: fv.idents(),
-		Rhs: []ast.Expr{casted},
+		Rhs: []ast.Expr{elementary},
 	})
 	return fv
 }
@@ -162,9 +161,11 @@ func (m *exprForwardVJP) forward(expr ir.Expr) (forwardValues, bool) {
 	case *ir.FuncCallExpr:
 		return m.callExpr(exprT)
 	case *ir.NumberCastExpr:
-		return m.assignAs(expr)
+		return m.numberCastExpr(exprT)
 	case *ir.ValueRef:
 		return m.valueRef(exprT)
+	case *ir.UnaryExpr:
+		return m.unaryExpr(exprT)
 	case *ir.BinaryExpr:
 		return m.binaryExpr(exprT)
 	default:
@@ -182,6 +183,14 @@ func (m *exprForwardVJP) forwardSingle(expr ir.Expr) (ast.Expr, bool) {
 		return nil, m.fetcher.Err().AppendInternalf(expr.Source(), "multiple values from expression %T:%s in single value context", expr, expr.String())
 	}
 	return idents[0], true
+}
+
+func (m *exprForwardVJP) unaryExpr(expr *ir.UnaryExpr) (*allocForwardValues, bool) {
+	x, xOk := m.forwardSingle(expr.X)
+	return m.assignElementary(expr, &ast.UnaryExpr{
+		Op: expr.Src.Op,
+		X:  x,
+	}), xOk
 }
 
 func (m *exprForwardVJP) binaryExpr(expr *ir.BinaryExpr) (*allocForwardValues, bool) {
@@ -223,7 +232,7 @@ func (m *exprForwardVJP) callExpr(expr *ir.FuncCallExpr) (*allocForwardValues, b
 
 func (m *exprForwardVJP) numberCastExpr(expr *ir.NumberCastExpr) (*allocForwardValues, bool) {
 	src := expr.X.Source().(ast.Expr)
-	return m.assignElementary(expr, src), true
+	return m.assignElementary(expr, addCast(src, expr.Typ)), true
 }
 
 func (m *exprForwardVJP) valueRef(expr *ir.ValueRef) (*refForwardValue, bool) {
