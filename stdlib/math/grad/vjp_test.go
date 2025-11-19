@@ -32,11 +32,10 @@ func F(x float32) float32 {
 `,
 			Want: `
 func vjpF(x float32) (float32, func(res float32) float32) {
-	fwd0 := float32(2.0)
 	selfVJPFunc := func(res float32) float32 {
 		return 0
 	}
-	return fwd0, selfVJPFunc
+	return 2.0, selfVJPFunc
 }
 `,
 		},
@@ -63,12 +62,11 @@ func F(x float32) float32 {
 `,
 			Want: `
 func vjpF(x float32) (float32, func(res float32) float32) {
-	fwd0 := float32(2)
-	fwd1 := x+fwd0
+	fwd0 := x+2
 	selfVJPFunc := func(res float32) float32 {
 		return res
 	}
-	return fwd1, selfVJPFunc
+	return fwd0, selfVJPFunc
 }
 `,
 		},
@@ -96,12 +94,11 @@ func F(x float32) float32 {
 `,
 			Want: `
 func vjpF(x float32) (float32, func(res float32) float32) {
-	fwd0 := float32(2)
-	fwd1 := x-fwd0
+	fwd0 := x-2
 	selfVJPFunc := func(res float32) float32 {
 		return res
 	}
-	return fwd1, selfVJPFunc
+	return fwd0, selfVJPFunc
 }
 `,
 		},
@@ -129,12 +126,11 @@ func F(x float32) float32 {
 `,
 			Want: `
 func vjpF(x float32) (float32, func(res float32) float32) {
-	fwd0 := float32(2)
-	fwd1 := fwd0*x
+	fwd0 := 2*x
 	selfVJPFunc := func(res float32) float32 {
-		return fwd0*res
+		return 2*res
 	}
-	return fwd1, selfVJPFunc
+	return fwd0, selfVJPFunc
 }
 `,
 		},
@@ -146,11 +142,10 @@ func F(x float32) float32 {
 `,
 			Want: `
 func vjpF(x float32) (float32, func(res float32) float32) {
-	fwd0 := float32(-2)
 	selfVJPFunc := func(res float32) float32 {
 		return 0
 	}
-	return fwd0, selfVJPFunc
+	return -2, selfVJPFunc
 }
 `,
 		},
@@ -202,6 +197,23 @@ func vjpF(x, y float32) (float32, func(res float32) float32, func(res float32) f
 		return x*res
 	}
 	return fwd0, selfVJPFuncWRTx, selfVJPFuncWRTy
+}
+`,
+		},
+		testgrad.VJP{
+			Src: `
+func F(x float32) float32 {
+	return x*(2+x)
+}
+`,
+			Want: `
+func vjpF(x float32) (float32, func(res float32) float32) {
+	fwd0 := 2+x
+	fwd1 := x*fwd0
+	selfVJPFunc := func(res float32) float32 {
+		return res*fwd0+x*(res)
+	}
+	return fwd1, selfVJPFunc
 }
 `,
 		},
@@ -399,18 +411,16 @@ func F(x, y float32) float32 {
 `,
 			Want: `
 func vjpF(x, y float32) (float32, func(res float32) float32, func(res float32) float32) {
-	fwd0 := float32(2)
-	fwd1 := fwd0*x
-	fwd2 := float32(3)
-	fwd3 := fwd2*y
-	fwd4 := fwd1+fwd3
+	fwd0 := 2*x
+	fwd1 := 3*y
+	fwd2 := fwd0+fwd1
 	selfVJPFuncWRTx := func(res float32) float32 {
-		return fwd0*res
+		return 2*res
 	}
 	selfVJPFuncWRTy := func(res float32) float32 {
-		return fwd2*res
+		return 3*res
 	}
-	return fwd4, selfVJPFuncWRTx, selfVJPFuncWRTy
+	return fwd2, selfVJPFuncWRTx, selfVJPFuncWRTy
 }
 `,
 		},

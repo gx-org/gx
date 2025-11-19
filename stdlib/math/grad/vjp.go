@@ -224,7 +224,7 @@ func (m *vjpMacro) buildBodyFromSetAnnotation(fetcher ir.Fetcher, sg *stmtVJP, a
 	fv := forwarder.newForwardValues(nil, nVals)
 	stmt := &ast.AssignStmt{
 		Tok: token.DEFINE,
-		Lhs: fv.idents(),
+		Lhs: fv.exprs(),
 		Rhs: []ast.Expr{&ast.CallExpr{
 			Fun: m.funcNameWithTypeParamsExpr(
 				&ast.Ident{Name: m.fn.Name()},
@@ -236,7 +236,7 @@ func (m *vjpMacro) buildBodyFromSetAnnotation(fetcher ir.Fetcher, sg *stmtVJP, a
 
 	// Generate forward statements for the expressions in the statement.
 	ret := &ast.ReturnStmt{Results: make([]ast.Expr, nVals)}
-	for i, expr := range fv.idents() {
+	for i, expr := range fv.exprs() {
 		ret.Results[i] = expr
 	}
 
