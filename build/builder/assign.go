@@ -338,7 +338,7 @@ func (n *assignCallStmt) buildStmt(rscope fnResolveScope) (ir.Stmt, bool, bool) 
 	lenTargets := len(n.targets)
 	var funType *ir.FuncType
 	if callOk {
-		funType = ext.Call.Callee.FuncType()
+		funType = ext.Call.FuncCall().Callee.FuncType()
 	} else {
 		return ext, false, n.defineLeftAsInvalid(rscope)
 	}

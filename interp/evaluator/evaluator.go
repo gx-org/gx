@@ -54,7 +54,7 @@ type (
 		ElementFromStorage(file *ir.File, expr ir.StorageWithValue, val ir.Element) ir.Element
 
 		// Trace register a call to the trace builtin function.
-		Trace(ctx ir.Evaluator, call *ir.CallExpr, args []ir.Element) error
+		Trace(ctx ir.Evaluator, call *ir.FuncCallExpr, args []ir.Element) error
 	}
 
 	// NumericalElement is a node representing a numerical value.
@@ -93,7 +93,7 @@ type (
 		Concat(ctx ir.Evaluator, expr ir.AssignableExpr, xs []NumericalElement) (NumericalElement, error)
 
 		// Set a slice in an array.
-		Set(ctx ir.Evaluator, expr *ir.CallExpr, x, updates, index ir.Element) (ir.Element, error)
+		Set(ctx ir.Evaluator, expr *ir.FuncCallExpr, x, updates, index ir.Element) (ir.Element, error)
 
 		// ElementFromArray returns an element from an array GX value.
 		ElementFromArray(ctx ir.Evaluator, expr ir.AssignableExpr, val values.Array) (NumericalElement, error)

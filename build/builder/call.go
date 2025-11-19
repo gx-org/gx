@@ -144,7 +144,7 @@ func (n *callExpr) completeFuncType(rscope resolveScope, callee ir.Func, args []
 	if !ok {
 		return nil, false
 	}
-	fType, err := impl.BuildFuncType(compEval, &ir.CallExpr{
+	fType, err := impl.BuildFuncType(compEval, &ir.FuncCallExpr{
 		Src:    n.src,
 		Callee: &ir.FuncValExpr{F: callee},
 		Args:   args,
@@ -177,8 +177,8 @@ func (n *callExpr) buildCallee(rscope resolveScope, expr *ir.FuncValExpr) ([]ir.
 	return args, callee, callOk
 }
 
-func (n *callExpr) buildFuncCallExpr(rscope resolveScope, expr *ir.FuncValExpr) (*ir.CallExpr, bool) {
-	extCall := &ir.CallExpr{Src: n.src}
+func (n *callExpr) buildFuncCallExpr(rscope resolveScope, expr *ir.FuncValExpr) (*ir.FuncCallExpr, bool) {
+	extCall := &ir.FuncCallExpr{Src: n.src}
 	var ok bool
 	extCall.Args, extCall.Callee, ok = n.buildCallee(rscope, expr)
 	if !ok {

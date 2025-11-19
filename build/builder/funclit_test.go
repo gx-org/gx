@@ -68,14 +68,14 @@ func g() int32 {
 					Body: &ir.BlockStmt{List: []ir.Stmt{
 						&ir.AssignExprStmt{List: []*ir.AssignExpr{&ir.AssignExpr{
 							Storage: irh.LocalVar("fn", funcLitType()),
-							X: &ir.CallExpr{
+							X: &ir.FuncCallExpr{
 								Callee: irh.FuncDeclCallee("f", irh.FuncType(
 									nil, nil, nil,
 									irh.Fields(funcLitType()))),
 							},
 						}}},
 						&ir.ReturnStmt{Results: []ir.Expr{
-							&ir.CallExpr{
+							&ir.FuncCallExpr{
 								Callee: &ir.FuncValExpr{
 									X: irh.ValueRef(irh.LocalVar("fn", funcLitType())),
 									F: &ir.FuncLit{

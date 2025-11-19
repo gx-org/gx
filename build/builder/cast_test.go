@@ -145,7 +145,7 @@ func f() float32 {
 						irh.Fields(),
 						irh.Fields(ir.Float32Type()),
 					),
-					Body: irh.SingleReturn(&ir.CallExpr{
+					Body: irh.SingleReturn(&ir.FuncCallExpr{
 						Args: []ir.AssignableExpr{&ir.CastExpr{
 							X:   irh.ValueRef(aVarDecl.Exprs[0]),
 							Typ: ir.Float32Type(),

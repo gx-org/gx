@@ -75,7 +75,7 @@ var Package = builtin.PackageBuilder{
 // The result of the function is computed from the first argument.
 // The second argument is either a scalar which needs to be of the same numerical type than the first argument
 // or an array which needs to be of the same shape than the first argument.
-func mainAuxArgsToTypes(funcName string, fetcher ir.Fetcher, call *ir.CallExpr) (main, aux ir.Type, result ir.Type, err error) {
+func mainAuxArgsToTypes(funcName string, fetcher ir.Fetcher, call *ir.FuncCallExpr) (main, aux ir.Type, result ir.Type, err error) {
 	if len(call.Args) != 2 {
 		return nil, nil, nil, fmterr.Errorf(fetcher.File().FileSet(), call.Source(), "wrong number of arguments in call to %s: got %d but want 2", funcName, len(call.Args))
 	}

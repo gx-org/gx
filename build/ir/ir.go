@@ -1176,7 +1176,7 @@ type (
 		Name() string
 
 		// BuildFuncType builds the type of a function given how it is called.
-		BuildFuncType(fetcher Fetcher, call *CallExpr) (*FuncType, error)
+		BuildFuncType(fetcher Fetcher, call *FuncCallExpr) (*FuncType, error)
 
 		// Implementation of the function, provided by the backend.
 		Implementation() any
@@ -2639,8 +2639,8 @@ type (
 		SourceString() string
 	}
 
-	// CallExpr is an expression calling a function.
-	CallExpr struct {
+	// FuncCallExpr is an expression calling a function.
+	FuncCallExpr struct {
 		Src    *ast.CallExpr
 		Args   []AssignableExpr
 		Callee Callee
@@ -2649,7 +2649,7 @@ type (
 	// CallResultExpr represents the ith result of a function call as an expression.
 	CallResultExpr struct {
 		Index int
-		Call  *CallExpr
+		Call  *FuncCallExpr
 	}
 
 	// TypeCastExpr is an abstract type conversion.
@@ -2763,7 +2763,7 @@ var (
 	_ AssignableExpr   = (*ParenExpr)(nil)
 	_ WithStore        = (*ParenExpr)(nil)
 	_ AssignableExpr   = (*BinaryExpr)(nil)
-	_ AssignableExpr   = (*CallExpr)(nil)
+	_ CallExpr         = (*FuncCallExpr)(nil)
 	_ AssignableExpr   = (*CallResultExpr)(nil)
 	_ TypeCastExpr     = (*CastExpr)(nil)
 	_ TypeCastExpr     = (*TypeAssertExpr)(nil)
@@ -3055,26 +3055,34 @@ func (s *FuncValExpr) String() string {
 	return callee + spec
 }
 
-func (s *CallExpr) node()       {}
-func (s *CallExpr) assignable() {}
+func (s *FuncCallExpr) node()       {}
+func (s *FuncCallExpr) assignable() {}
 
 // Source returns the node in the AST tree.
-func (s *CallExpr) Source() ast.Node { return s.Src }
+func (s *FuncCallExpr) Source() ast.Node { return s.Call() }
+
+// Call returns the source of the call.
+func (s *FuncCallExpr) Call() *ast.CallExpr { return s.Src }
 
 // Type returns the type returned by the function call.
 // Use CallExpr.Func.Type to get the type of the function being called.
-func (s *CallExpr) Type() Type {
+func (s *FuncCallExpr) Type() Type {
 	if s.Callee == nil {
 		return InvalidType()
 	}
 	return s.Callee.FuncType().Results.Type()
 }
 
+// FuncCall returns the function call from the call.
+func (s *FuncCallExpr) FuncCall() *FuncCallExpr {
+	return s
+}
+
 // Expr returns the expression in the source code.
-func (s *CallExpr) Expr() ast.Expr { return s.Src }
+func (s *FuncCallExpr) Expr() ast.Expr { return s.Src }
 
 // ExprFromResult returns an expression pointing to the ith result of a function call.
-func (s *CallExpr) ExprFromResult(i int) *CallResultExpr {
+func (s *FuncCallExpr) ExprFromResult(i int) *CallResultExpr {
 	return &CallResultExpr{
 		Index: i,
 		Call:  s,
@@ -3468,10 +3476,17 @@ type (
 		Results []Expr
 	}
 
+	// CallExpr is a call expression such as a function or a macro.
+	CallExpr interface {
+		AssignableExpr
+		Call() *ast.CallExpr
+		FuncCall() *FuncCallExpr
+	}
+
 	// AssignCallStmt assigns the results of a function call returning more than one value to variables.
 	AssignCallStmt struct {
 		Src  *ast.AssignStmt
-		Call *CallExpr
+		Call CallExpr
 		List []*AssignCallResult
 	}
 
@@ -3484,7 +3499,7 @@ type (
 	// AssignCallResult assigns the result of a function call.
 	AssignCallResult struct {
 		Storage
-		Call        *CallExpr
+		Call        CallExpr
 		ResultIndex int
 	}
 
@@ -3611,7 +3626,7 @@ func (*AssignCallResult) storageValue() {}
 // Value returns the expression stored in the storage.
 func (a *AssignCallResult) Value(Expr) AssignableExpr {
 	return &IndexExpr{
-		Src: &ast.IndexExpr{X: a.Call.Src},
+		Src: &ast.IndexExpr{X: a.Call.Call()},
 		X:   a.Call,
 		Typ: a.Type(),
 		Index: &AtomicValueT[int64]{

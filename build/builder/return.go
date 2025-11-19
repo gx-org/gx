@@ -65,7 +65,7 @@ func allTypes[T ir.Value](list []T) []ir.Type {
 
 func resultTypes(exprs []ir.Expr) ([]ir.Type, bool) {
 	if len(exprs) == 1 {
-		if callExpr, ok := exprs[0].(*ir.CallExpr); ok {
+		if callExpr, ok := exprs[0].(*ir.FuncCallExpr); ok {
 			return allTypes(callExpr.Callee.FuncType().Results.Fields()), true
 		}
 	}

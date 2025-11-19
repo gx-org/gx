@@ -113,7 +113,7 @@ func (fitp *FileScope) NewFunc(fn ir.Func, recv *fun.Receiver) fun.Func {
 }
 
 // EvalFunc evaluates a function.
-func (fitp *FileScope) EvalFunc(f ir.PkgFunc, call *ir.CallExpr, args []ir.Element) ([]ir.Element, error) {
+func (fitp *FileScope) EvalFunc(f ir.PkgFunc, call *ir.FuncCallExpr, args []ir.Element) ([]ir.Element, error) {
 	fnEl := NewRunFunc(f, nil)
 	return fnEl.Call(fitp.env, call, args)
 }

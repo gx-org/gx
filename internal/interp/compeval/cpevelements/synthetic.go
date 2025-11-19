@@ -30,7 +30,7 @@ type CoreMacroElement struct {
 var _ ir.MacroElement = (*CoreMacroElement)(nil)
 
 // MacroElement returns a core macro element for custom elements.
-func MacroElement(mac *ir.Macro, file *ir.File, call *ir.CallExpr) CoreMacroElement {
+func MacroElement(mac *ir.Macro, file *ir.File, call *ir.FuncCallExpr) CoreMacroElement {
 	return CoreMacroElement{
 		mac:  mac,
 		call: elements.NewNodeAt(file, call),

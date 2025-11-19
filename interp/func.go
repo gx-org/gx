@@ -107,7 +107,7 @@ func (*funcBase) Kind() ir.Kind {
 }
 
 // Call the function.
-func (st *funcBase) Call(ctx *fun.CallEnv, call *ir.CallExpr, args []ir.Element) ([]ir.Element, error) {
+func (st *funcBase) Call(ctx *fun.CallEnv, call *ir.FuncCallExpr, args []ir.Element) ([]ir.Element, error) {
 	return nil, fmterr.Internalf(ctx.File().FileSet(), st.fn.Source(), "function type %T not supported", st.fn)
 }
 
@@ -121,7 +121,7 @@ type funcDecl struct {
 	fnT *ir.FuncDecl
 }
 
-func (f *funcDecl) Call(env *fun.CallEnv, call *ir.CallExpr, args []ir.Element) (outs []ir.Element, err error) {
+func (f *funcDecl) Call(env *fun.CallEnv, call *ir.FuncCallExpr, args []ir.Element) (outs []ir.Element, err error) {
 	if f.fnT.Body == nil {
 		return nil, fmterr.Errorf(env.File().FileSet(), f.fnT.Source(), "missing function body")
 	}
@@ -156,7 +156,7 @@ type funcBuiltin struct {
 	fnT *ir.FuncBuiltin
 }
 
-func (f *funcBuiltin) Call(env *fun.CallEnv, call *ir.CallExpr, args []ir.Element) (outs []ir.Element, err error) {
+func (f *funcBuiltin) Call(env *fun.CallEnv, call *ir.FuncCallExpr, args []ir.Element) (outs []ir.Element, err error) {
 	defer func() {
 		if err != nil {
 			err = fmterr.AtNode(env.File().FileSet(), call.Expr(), err)
@@ -166,7 +166,7 @@ func (f *funcBuiltin) Call(env *fun.CallEnv, call *ir.CallExpr, args []ir.Elemen
 	if err != nil {
 		return nil, err
 	}
-	return impl(env, elements.NewNodeAt[*ir.CallExpr](env.File(), call), f, f.fnT, args)
+	return impl(env, elements.NewNodeAt[*ir.FuncCallExpr](env.File(), call), f, f.fnT, args)
 }
 
 type funcKeyword struct {
@@ -174,7 +174,7 @@ type funcKeyword struct {
 	fnT *ir.FuncKeyword
 }
 
-func (f *funcKeyword) Call(env *fun.CallEnv, call *ir.CallExpr, args []ir.Element) (outs []ir.Element, err error) {
+func (f *funcKeyword) Call(env *fun.CallEnv, call *ir.FuncCallExpr, args []ir.Element) (outs []ir.Element, err error) {
 	defer func() {
 		if err != nil {
 			err = fmterr.AtNode(env.File().FileSet(), call.Expr(), err)
@@ -184,7 +184,7 @@ func (f *funcKeyword) Call(env *fun.CallEnv, call *ir.CallExpr, args []ir.Elemen
 	if err != nil {
 		return nil, err
 	}
-	return impl(env, elements.NewNodeAt[*ir.CallExpr](env.File(), call), f, nil, args)
+	return impl(env, elements.NewNodeAt[*ir.FuncCallExpr](env.File(), call), f, nil, args)
 }
 
 type funcMacro struct {
@@ -192,7 +192,7 @@ type funcMacro struct {
 	fnT *ir.Macro
 }
 
-func (f *funcMacro) Call(env *fun.CallEnv, call *ir.CallExpr, args []ir.Element) (outs []ir.Element, err error) {
+func (f *funcMacro) Call(env *fun.CallEnv, call *ir.FuncCallExpr, args []ir.Element) (outs []ir.Element, err error) {
 	defer func() {
 		if err != nil {
 			err = fmterr.AtNode(env.File().FileSet(), call.Expr(), err)

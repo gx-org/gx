@@ -196,7 +196,7 @@ func callCast() int32 {
 						irhelper.Fields(ir.Int32Type()),
 					),
 					Body: &ir.BlockStmt{List: []ir.Stmt{
-						&ir.ReturnStmt{Results: []ir.Expr{&ir.CallExpr{
+						&ir.ReturnStmt{Results: []ir.Expr{&ir.FuncCallExpr{
 							Callee: &ir.FuncValExpr{
 								F: castNoArgFunc,
 								T: irhelper.FuncType(
@@ -320,7 +320,7 @@ func callCast() [2][3]int32 {
 						irhelper.Fields(irhelper.ArrayType(ir.Int32Type(), 2, 3)),
 					),
 					Body: &ir.BlockStmt{List: []ir.Stmt{
-						&ir.ReturnStmt{Results: []ir.Expr{&ir.CallExpr{
+						&ir.ReturnStmt{Results: []ir.Expr{&ir.FuncCallExpr{
 							Callee: &ir.FuncValExpr{
 								X: irhelper.ValueRef(new2x3ArrayFunc),
 								F: new2x3ArrayFunc,
@@ -427,7 +427,7 @@ func callCast() int32 {
 						irhelper.Fields(ir.Int32Type()),
 					),
 					Body: &ir.BlockStmt{List: []ir.Stmt{
-						&ir.ReturnStmt{Results: []ir.Expr{&ir.CallExpr{
+						&ir.ReturnStmt{Results: []ir.Expr{&ir.FuncCallExpr{
 							Callee: &ir.FuncValExpr{
 								X: irhelper.ValueRef(castAtomFunc),
 								F: castAtomFunc,
@@ -467,7 +467,7 @@ func callCast() int32 {
 						irhelper.Fields(ir.Int32Type()),
 					),
 					Body: &ir.BlockStmt{List: []ir.Stmt{
-						&ir.ReturnStmt{Results: []ir.Expr{&ir.CallExpr{
+						&ir.ReturnStmt{Results: []ir.Expr{&ir.FuncCallExpr{
 							Callee: &ir.FuncValExpr{
 								X: irhelper.ValueRef(castAtomFunc),
 								F: castAtomFunc,
@@ -531,7 +531,7 @@ func callCast(x [2]int64) [2]int32 {
 						irhelper.Fields(irhelper.ArrayType(ir.Int32Type(), irhelper.Axis(2))),
 					),
 					Body: &ir.BlockStmt{List: []ir.Stmt{
-						&ir.ReturnStmt{Results: []ir.Expr{&ir.CallExpr{
+						&ir.ReturnStmt{Results: []ir.Expr{&ir.FuncCallExpr{
 							Callee: &ir.FuncValExpr{
 								X: irhelper.ValueRef(castArrayFunc),
 								F: castArrayFunc,

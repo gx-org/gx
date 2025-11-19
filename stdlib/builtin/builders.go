@@ -120,7 +120,7 @@ type stubFunc struct {
 var _ ir.FuncImpl = (*stubFunc)(nil)
 
 // BuildFuncType builds the type of a function given how it is called.
-func (s *stubFunc) BuildFuncType(fetcher ir.Fetcher, call *ir.CallExpr) (*ir.FuncType, error) {
+func (s *stubFunc) BuildFuncType(fetcher ir.Fetcher, call *ir.FuncCallExpr) (*ir.FuncType, error) {
 	return s.ftype, nil
 }
 
@@ -192,7 +192,7 @@ type graphFunc struct {
 var _ ir.FuncImpl = (*stubFunc)(nil)
 
 // BuildFuncType builds the type of a function given how it is called.
-func (s *graphFunc) BuildFuncType(fetcher ir.Fetcher, call *ir.CallExpr) (*ir.FuncType, error) {
+func (s *graphFunc) BuildFuncType(fetcher ir.Fetcher, call *ir.FuncCallExpr) (*ir.FuncType, error) {
 	return s.ftype, nil
 }
 

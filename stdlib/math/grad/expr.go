@@ -90,7 +90,7 @@ func (m *exprGrader) gradExpr(src ir.Expr) (r *gradExprResult, ok bool) {
 		return m.gradBinaryExpr(srcT)
 	case *ir.ParenExpr:
 		return m.gradParenExpr(srcT)
-	case *ir.CallExpr:
+	case *ir.FuncCallExpr:
 		return m.gradCall(srcT)
 	case *ir.SelectorExpr:
 		return m.gradSelectorExpr(srcT)

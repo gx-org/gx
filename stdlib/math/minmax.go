@@ -31,7 +31,7 @@ func (f minFunc) BuildFuncIR(impl *impl.Stdlib, pkg *ir.Package) (*ir.FuncBuilti
 	return builtin.IRFuncBuiltin[minFunc]("Min", impl.Math.Min, pkg), nil
 }
 
-func (f minFunc) BuildFuncType(fetcher ir.Fetcher, call *ir.CallExpr) (*ir.FuncType, error) {
+func (f minFunc) BuildFuncType(fetcher ir.Fetcher, call *ir.FuncCallExpr) (*ir.FuncType, error) {
 	mainParam, auxParam, result, err := mainAuxArgsToTypes(f.Name(), fetcher, call)
 	if err != nil {
 		return nil, err
@@ -51,7 +51,7 @@ func (f maxFunc) BuildFuncIR(impl *impl.Stdlib, pkg *ir.Package) (*ir.FuncBuilti
 	return builtin.IRFuncBuiltin[maxFunc]("Max", impl.Math.Max, pkg), nil
 }
 
-func (f maxFunc) BuildFuncType(fetcher ir.Fetcher, call *ir.CallExpr) (*ir.FuncType, error) {
+func (f maxFunc) BuildFuncType(fetcher ir.Fetcher, call *ir.FuncCallExpr) (*ir.FuncType, error) {
 	mainParam, auxParam, result, err := mainAuxArgsToTypes(f.Name(), fetcher, call)
 	if err != nil {
 		return nil, err

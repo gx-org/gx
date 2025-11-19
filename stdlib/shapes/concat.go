@@ -58,13 +58,13 @@ func checkConsistent[R any](values []ir.ArrayType, extractFn func(v ir.ArrayType
 	return result, nil
 }
 
-func numAxes(fetcher ir.Fetcher, call *ir.CallExpr) func(ir.ArrayType) (int, error) {
+func numAxes(fetcher ir.Fetcher, call *ir.FuncCallExpr) func(ir.ArrayType) (int, error) {
 	return func(a ir.ArrayType) (int, error) {
 		return len(a.Rank().Axes()), nil
 	}
 }
 
-func (f concat) resultsType(fetcher ir.Fetcher, call *ir.CallExpr) (params []ir.Type, out ir.Type, err error) {
+func (f concat) resultsType(fetcher ir.Fetcher, call *ir.FuncCallExpr) (params []ir.Type, out ir.Type, err error) {
 	want := []ir.Type{
 		ir.IntIndexType(),
 		builtins.GenericArrayType,
@@ -136,7 +136,7 @@ func (f concat) resultsType(fetcher ir.Fetcher, call *ir.CallExpr) (params []ir.
 	}), nil
 }
 
-func (f concat) BuildFuncType(fetcher ir.Fetcher, call *ir.CallExpr) (*ir.FuncType, error) {
+func (f concat) BuildFuncType(fetcher ir.Fetcher, call *ir.FuncCallExpr) (*ir.FuncType, error) {
 	params, result, err := f.resultsType(fetcher, call)
 	if err != nil {
 		return nil, err

@@ -24,7 +24,7 @@ import (
 
 type traceProcessor struct {
 	file   *ir.File
-	call   *ir.CallExpr
+	call   *ir.FuncCallExpr
 	traced []ir.Element
 }
 
@@ -46,7 +46,7 @@ type traces struct {
 }
 
 // RegisterTrace registers a call to the trace builtin.
-func (ts *traces) RegisterTrace(ctx ir.Evaluator, call *ir.CallExpr, args []ir.Element) error {
+func (ts *traces) RegisterTrace(ctx ir.Evaluator, call *ir.FuncCallExpr, args []ir.Element) error {
 	ts.traces = append(ts.traces, &traceProcessor{
 		file:   ctx.File(),
 		call:   call,

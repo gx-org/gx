@@ -37,7 +37,7 @@ func (f iotaWithAxis) BuildFuncIR(impl *impl.Stdlib, pkg *ir.Package) (*ir.FuncB
 	return builtin.IRFuncBuiltin[iotaWithAxis]("Iota", impl.Num.Iota, pkg), nil
 }
 
-func (f iotaWithAxis) BuildFuncType(fetcher ir.Fetcher, call *ir.CallExpr) (*ir.FuncType, error) {
+func (f iotaWithAxis) BuildFuncType(fetcher ir.Fetcher, call *ir.FuncCallExpr) (*ir.FuncType, error) {
 	params, err := builtins.BuildFuncParams(fetcher, call, f.Name(), []ir.Type{
 		ir.IntLenSliceType(),
 		ir.IntIndexType(),

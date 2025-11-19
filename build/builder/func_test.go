@@ -140,7 +140,7 @@ func call() float32 {
 					FType: irh.FuncType(nil, nil, irh.Fields(), irh.Fields(ir.Float32Type())),
 					Body: irh.Block(
 						&ir.ReturnStmt{
-							Results: []ir.Expr{&ir.CallExpr{
+							Results: []ir.Expr{&ir.FuncCallExpr{
 								Callee: &ir.FuncValExpr{
 									X: irh.ValueRef(returnTwoFunc),
 									F: returnTwoFunc,
@@ -235,7 +235,7 @@ func call() (float32, int32) {
 					),
 					Body: irh.Block(
 						&ir.ReturnStmt{
-							Results: []ir.Expr{&ir.CallExpr{
+							Results: []ir.Expr{&ir.FuncCallExpr{
 								Callee: &ir.FuncValExpr{
 									X: irh.ValueRef(returnTupleFunc),
 									F: returnTupleFunc,
@@ -283,7 +283,7 @@ func call() float32 {
 					FType: irh.FuncType(nil, nil, irh.Fields(), irh.Fields(ir.Float32Type())),
 					Body: irh.Block(
 						&ir.ReturnStmt{
-							Results: []ir.Expr{&ir.CallExpr{
+							Results: []ir.Expr{&ir.FuncCallExpr{
 								Callee: &ir.FuncValExpr{
 									X: irh.ValueRef(fDef),
 									F: fDef,

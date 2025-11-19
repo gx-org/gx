@@ -114,7 +114,7 @@ func (m *exprForwardVJP) callTrace(exprs []ast.Expr) {
 	})
 }
 
-func (m *exprForwardVJP) assignFuncCall(expr *ir.CallExpr, calleeName string, call *ast.CallExpr) *allocForwardValues {
+func (m *exprForwardVJP) assignFuncCall(expr *ir.FuncCallExpr, calleeName string, call *ast.CallExpr) *allocForwardValues {
 	nVals := expr.Callee.FuncType().Results.Len()
 	fv := m.newForwardValues(expr, nVals)
 	stmt := &ast.AssignStmt{
@@ -159,7 +159,7 @@ func asExpr(vars []*ast.Ident) []ast.Expr {
 
 func (m *exprForwardVJP) forward(expr ir.Expr) (forwardValues, bool) {
 	switch exprT := expr.(type) {
-	case *ir.CallExpr:
+	case *ir.FuncCallExpr:
 		return m.callExpr(exprT)
 	case *ir.NumberCastExpr:
 		return m.assignAs(expr)
@@ -194,7 +194,7 @@ func (m *exprForwardVJP) binaryExpr(expr *ir.BinaryExpr) (*allocForwardValues, b
 	}), xOk && yOk
 }
 
-func (m *exprForwardVJP) callExpr(expr *ir.CallExpr) (*allocForwardValues, bool) {
+func (m *exprForwardVJP) callExpr(expr *ir.FuncCallExpr) (*allocForwardValues, bool) {
 	if len(expr.Args) == 0 {
 		return m.assignAs(expr)
 	}

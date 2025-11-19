@@ -59,7 +59,7 @@ type (
 	ExprAt = NodeFile[ir.AssignableExpr]
 
 	// CallAt is a function call GX expression.
-	CallAt = NodeFile[*ir.CallExpr]
+	CallAt = NodeFile[*ir.FuncCallExpr]
 
 	// FieldAt is a typed field at a given position.
 	FieldAt = NodeFile[*ir.Field]

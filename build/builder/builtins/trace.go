@@ -37,7 +37,7 @@ func (*traceFunc) Name() string {
 }
 
 // BuildFuncType builds the type of a function given how it is called.
-func (f *traceFunc) BuildFuncType(fetcher ir.Fetcher, call *ir.CallExpr) (*ir.FuncType, error) {
+func (f *traceFunc) BuildFuncType(fetcher ir.Fetcher, call *ir.FuncCallExpr) (*ir.FuncType, error) {
 	params := make([]ir.Type, len(call.Args))
 	for i, arg := range call.Args {
 		params[i] = arg.Type()

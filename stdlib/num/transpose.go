@@ -33,7 +33,7 @@ func (f transpose) BuildFuncIR(impl *impl.Stdlib, pkg *ir.Package) (*ir.FuncBuil
 	return builtin.IRFuncBuiltin[transpose]("Transpose", impl.Num.Transpose, pkg), nil
 }
 
-func (f transpose) resultsType(fetcher ir.Fetcher, call *ir.CallExpr) (ir.Type, ir.Type, error) {
+func (f transpose) resultsType(fetcher ir.Fetcher, call *ir.FuncCallExpr) (ir.Type, ir.Type, error) {
 	if len(call.Args) != 1 {
 		return nil, nil, fmterr.Errorf(fetcher.File().FileSet(), call.Source(), "wrong number of argument in call to %s: got %d but want 1", f.Name(), len(call.Args))
 	}
@@ -53,7 +53,7 @@ func (f transpose) resultsType(fetcher ir.Fetcher, call *ir.CallExpr) (ir.Type, 
 	), nil
 }
 
-func (f transpose) BuildFuncType(fetcher ir.Fetcher, call *ir.CallExpr) (*ir.FuncType, error) {
+func (f transpose) BuildFuncType(fetcher ir.Fetcher, call *ir.FuncCallExpr) (*ir.FuncType, error) {
 	param, result, err := f.resultsType(fetcher, call)
 	if err != nil {
 		return nil, err

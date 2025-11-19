@@ -99,7 +99,7 @@ func call() int32 {
 							Storage: &ir.LocalVarStorage{Src: irh.Ident("a"), Typ: typeA},
 						}}},
 						&ir.ReturnStmt{
-							Results: []ir.Expr{&ir.CallExpr{
+							Results: []ir.Expr{&ir.FuncCallExpr{
 								Callee: &ir.FuncValExpr{
 									X: &ir.SelectorExpr{
 										X:    irh.ValueRef(typeA),
@@ -187,7 +187,7 @@ func call() int32 {
 							Storage: &ir.LocalVarStorage{Src: irh.Ident("a"), Typ: typeA},
 						}}},
 						&ir.ReturnStmt{
-							Results: []ir.Expr{&ir.CallExpr{
+							Results: []ir.Expr{&ir.FuncCallExpr{
 								Callee: &ir.FuncValExpr{
 									X: &ir.SelectorExpr{
 										X:    irh.ValueRef(typeA),

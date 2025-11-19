@@ -56,7 +56,7 @@ func astExprs(exprs []ir.AssignableExpr) []ast.Expr {
 	return as
 }
 
-func (m *stmtGrader) gradCall(src *ir.CallExpr) (*gradExprResult, bool) {
+func (m *stmtGrader) gradCall(src *ir.FuncCallExpr) (*gradExprResult, bool) {
 	if len(src.Args) == 0 {
 		return zeroValueOf(src.Source()), true
 	}

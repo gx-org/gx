@@ -55,7 +55,7 @@ func TestAxisName01(t *testing.T) {
 	}
 	aAssignment := &ir.AssignExpr{
 		Storage: aStorage,
-		X: &ir.CallExpr{
+		X: &ir.FuncCallExpr{
 			Args: []ir.AssignableExpr{irh.ValueRef(dimsField.Storage())},
 			Callee: &ir.FuncValExpr{
 				X: irh.ValueRef(newArrayFunc),
@@ -98,7 +98,7 @@ func f(dims []intlen) [dims___]float32 {
 					),
 					Body: &ir.BlockStmt{List: []ir.Stmt{
 						&ir.ReturnStmt{Results: []ir.Expr{
-							&ir.CallExpr{
+							&ir.FuncCallExpr{
 								Args: []ir.AssignableExpr{irh.ValueRef(dimsField.Storage())},
 								Callee: &ir.FuncValExpr{
 									X: irh.ValueRef(newArrayFunc),
@@ -168,7 +168,7 @@ func f() [2][3]float32 {
 					),
 					Body: &ir.BlockStmt{List: []ir.Stmt{
 						&ir.ReturnStmt{Results: []ir.Expr{
-							&ir.CallExpr{
+							&ir.FuncCallExpr{
 								Args: []ir.AssignableExpr{sliceLiteral},
 								Callee: &ir.FuncValExpr{
 									X: irh.ValueRef(newArrayFunc),
@@ -226,7 +226,7 @@ func f() [2]float64 {
 					),
 					Body: &ir.BlockStmt{List: []ir.Stmt{
 						&ir.ReturnStmt{Results: []ir.Expr{
-							&ir.CallExpr{
+							&ir.FuncCallExpr{
 								Args: []ir.AssignableExpr{&ir.ArrayLitExpr{
 									Typ: irh.ArrayType(ir.Float32Type(), 2),
 									Elts: []ir.AssignableExpr{
@@ -267,7 +267,7 @@ func f() float64 {
 					),
 					Body: &ir.BlockStmt{List: []ir.Stmt{
 						&ir.ReturnStmt{Results: []ir.Expr{
-							&ir.CallExpr{
+							&ir.FuncCallExpr{
 								Args: []ir.AssignableExpr{&ir.CastExpr{
 									X:   irh.IntNumberAs(1, ir.Float32Type()),
 									Typ: ir.Float32Type(),
@@ -361,7 +361,7 @@ func f() [2][3]float32  {
 							List: []*ir.AssignExpr{fDimsAssignment},
 						},
 						&ir.ReturnStmt{Results: []ir.Expr{
-							&ir.CallExpr{
+							&ir.FuncCallExpr{
 								Args: []ir.AssignableExpr{irh.ValueRef(fDimsAssignment)},
 								Callee: &ir.FuncValExpr{
 									X: irh.ValueRef(newArrayFunc),

@@ -30,7 +30,7 @@ var reductionArgs = []ir.Type{
 	ir.IntIndexSliceType(),
 }
 
-func reductionFuncSig(fetcher ir.Fetcher, f builtin.Func, call *ir.CallExpr) (*ir.FuncType, error) {
+func reductionFuncSig(fetcher ir.Fetcher, f builtin.Func, call *ir.FuncCallExpr) (*ir.FuncType, error) {
 	// Perform basic signature check; we know we have (tensor, slice) arguments afterwards.
 	params, err := builtins.BuildFuncParams(fetcher, call, f.Name(), reductionArgs)
 	if err != nil {
@@ -76,7 +76,7 @@ func (f reduceMax) BuildFuncIR(impl *impl.Stdlib, pkg *ir.Package) (*ir.FuncBuil
 	return builtin.IRFuncBuiltin[reduceMax]("ReduceMax", impl.Num.ReduceMax, pkg), nil
 }
 
-func (f reduceMax) BuildFuncType(fetcher ir.Fetcher, call *ir.CallExpr) (*ir.FuncType, error) {
+func (f reduceMax) BuildFuncType(fetcher ir.Fetcher, call *ir.FuncCallExpr) (*ir.FuncType, error) {
 	return reductionFuncSig(fetcher, f.Func, call)
 }
 
@@ -88,7 +88,7 @@ func (f reduceSum) BuildFuncIR(impl *impl.Stdlib, pkg *ir.Package) (*ir.FuncBuil
 	return builtin.IRFuncBuiltin[reduceSum]("Sum", impl.Num.Sum, pkg), nil
 }
 
-func (f reduceSum) BuildFuncType(fetcher ir.Fetcher, call *ir.CallExpr) (*ir.FuncType, error) {
+func (f reduceSum) BuildFuncType(fetcher ir.Fetcher, call *ir.FuncCallExpr) (*ir.FuncType, error) {
 	return reductionFuncSig(fetcher, f.Func, call)
 }
 
@@ -100,7 +100,7 @@ func (f argmax) BuildFuncIR(impl *impl.Stdlib, pkg *ir.Package) (*ir.FuncBuiltin
 	return builtin.IRFuncBuiltin[argmax]("Argmax", impl.Num.Argmax, pkg), nil
 }
 
-func (f argmax) BuildFuncType(fetcher ir.Fetcher, call *ir.CallExpr) (*ir.FuncType, error) {
+func (f argmax) BuildFuncType(fetcher ir.Fetcher, call *ir.FuncCallExpr) (*ir.FuncType, error) {
 	// Perform basic signature check; we know we have (tensor, slice) arguments afterwards.
 	params, err := builtins.BuildFuncParams(fetcher, call, f.Name(), []ir.Type{
 		builtins.GenericArrayType,

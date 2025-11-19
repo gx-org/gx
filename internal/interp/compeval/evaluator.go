@@ -84,6 +84,6 @@ func (ev *CompEval) ElementFromStorage(file *ir.File, storage ir.StorageWithValu
 }
 
 // Trace register a call to the trace builtin function.
-func (ev *CompEval) Trace(ctx ir.Evaluator, call *ir.CallExpr, args []ir.Element) error {
+func (ev *CompEval) Trace(ctx ir.Evaluator, call *ir.FuncCallExpr, args []ir.Element) error {
 	return errors.Errorf("not implemented")
 }

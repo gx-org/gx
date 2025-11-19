@@ -168,7 +168,7 @@ func (s *DeclStmt) String() string {
 }
 
 // String representation.
-func (s *CallExpr) String() string {
+func (s *FuncCallExpr) String() string {
 	var b strings.Builder
 	fmt.Fprintf(&b, "%s(", s.Callee.SourceString())
 	stringseq.AppendStringer(&b, slices.Values(s.Args), ", ")

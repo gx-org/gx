@@ -52,7 +52,7 @@ func (ts *tagStr) String() string {
 	return ts.s
 }
 
-func tagFunc(fetcher ir.Fetcher, annotator *ir.Annotator, fn ir.PkgFunc, call *ir.CallExpr, args []ir.Element) bool {
+func tagFunc(fetcher ir.Fetcher, annotator *ir.Annotator, fn ir.PkgFunc, call *ir.FuncCallExpr, args []ir.Element) bool {
 	var tag string
 	switch argT := args[0].(type) {
 	case *elements.String:
@@ -74,7 +74,7 @@ type macroBuildReturn struct {
 
 var _ ir.FuncASTBuilder = (*macroBuildReturn)(nil)
 
-func newBuildReturn(file *ir.File, call *ir.CallExpr, macro *ir.Macro, args []ir.Element) (ir.MacroElement, error) {
+func newBuildReturn(file *ir.File, call *ir.FuncCallExpr, macro *ir.Macro, args []ir.Element) (ir.MacroElement, error) {
 	return &macroBuildReturn{
 		CoreMacroElement: cpevelements.MacroElement(macro, file, call),
 		tagFn:            args[0].(fun.Func).Func().(ir.PkgFunc),

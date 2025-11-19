@@ -60,7 +60,7 @@ func (compArrayOps) Concat(ctx ir.Evaluator, expr ir.AssignableExpr, xs []evalua
 }
 
 // Set a slice in an array.
-func (compArrayOps) Set(ctx ir.Evaluator, expr *ir.CallExpr, x, updates, index ir.Element) (ir.Element, error) {
+func (compArrayOps) Set(ctx ir.Evaluator, expr *ir.FuncCallExpr, x, updates, index ir.Element) (ir.Element, error) {
 	return cpevelements.NewArray(expr.Type().(ir.ArrayType)), nil
 }
 

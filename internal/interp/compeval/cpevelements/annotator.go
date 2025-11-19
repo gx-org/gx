@@ -44,7 +44,7 @@ func (f *Annotator) Recv() *fun.Receiver {
 }
 
 // Call the macro to build the synthetic element.
-func (f *Annotator) Call(fctx *fun.CallEnv, call *ir.CallExpr, args []ir.Element) ([]ir.Element, error) {
+func (f *Annotator) Call(fctx *fun.CallEnv, call *ir.FuncCallExpr, args []ir.Element) ([]ir.Element, error) {
 	return nil, errors.Errorf("annotator gx:@%s only valid in a function annotation context", f.Name())
 }
 
@@ -64,7 +64,7 @@ func (f *Annotator) ShortString() string {
 }
 
 // Annotate a given function for a given call.
-func (f *Annotator) Annotate(fetcher ir.Fetcher, fn ir.PkgFunc, call *ir.CallExpr, args []ir.Element) bool {
+func (f *Annotator) Annotate(fetcher ir.Fetcher, fn ir.PkgFunc, call *ir.FuncCallExpr, args []ir.Element) bool {
 	return f.ann.Annotate(fetcher, f.ann, fn, call, args)
 }
 

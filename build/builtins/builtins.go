@@ -74,7 +74,7 @@ func Fields(expr ir.Expr, types ...ir.Type) *ir.FieldList {
 
 // InferFromNumericalType returns an argument type if that argument
 // is numerical.
-func InferFromNumericalType(fetcher ir.Fetcher, call *ir.CallExpr, argNum int, numberTarget ir.Type) (ir.Type, ir.Type, error) {
+func InferFromNumericalType(fetcher ir.Fetcher, call *ir.FuncCallExpr, argNum int, numberTarget ir.Type) (ir.Type, ir.Type, error) {
 	arg := call.Args[argNum]
 	argType := arg.Type()
 	argKind := argType.Kind()
@@ -120,7 +120,7 @@ func fmtExprType(e ir.AssignableExpr) string { return fmtType(e.Type()) }
 // and returns a list of parameters for the function.
 // Arguments with NumberKind are replaced by the target type.
 // It returns an error if a call's arguments don't match the given signature.
-func BuildFuncParams(fetcher ir.Fetcher, call *ir.CallExpr, name string, sig []ir.Type) ([]ir.Type, error) {
+func BuildFuncParams(fetcher ir.Fetcher, call *ir.FuncCallExpr, name string, sig []ir.Type) ([]ir.Type, error) {
 	if len(sig) != len(call.Args) {
 		actual := joinSignature[ir.AssignableExpr](call.Args, fmtExprType)
 		wanted := joinSignature[ir.Type](sig, fmtType)
@@ -159,7 +159,7 @@ func BuildFuncParams(fetcher ir.Fetcher, call *ir.CallExpr, name string, sig []i
 }
 
 // NarrowType converts an abstract type into more concrete type, typically *github.com/gx-org/gx/build/ir.ArrayType.
-func NarrowType[T ir.Type](fetcher ir.Fetcher, call *ir.CallExpr, arg ir.Type) (t T, err error) {
+func NarrowType[T ir.Type](fetcher ir.Fetcher, call *ir.FuncCallExpr, arg ir.Type) (t T, err error) {
 	var ok bool
 	t, ok = arg.(T)
 	if !ok {
@@ -169,7 +169,7 @@ func NarrowType[T ir.Type](fetcher ir.Fetcher, call *ir.CallExpr, arg ir.Type) (
 }
 
 // NarrowTypes converts abstract types into more concrete types, typically *ir.ArrayType.
-func NarrowTypes[T ir.Type](fetcher ir.Fetcher, call *ir.CallExpr, args []ir.Type) ([]T, error) {
+func NarrowTypes[T ir.Type](fetcher ir.Fetcher, call *ir.FuncCallExpr, args []ir.Type) ([]T, error) {
 	res := make([]T, len(args))
 	for i, arg := range args {
 		var err error

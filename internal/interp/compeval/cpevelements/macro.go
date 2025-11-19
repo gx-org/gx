@@ -42,7 +42,7 @@ func (f *Macro) Recv() *fun.Receiver {
 }
 
 // Call the macro to build the synthetic element.
-func (f *Macro) Call(fctx *fun.CallEnv, call *ir.CallExpr, args []ir.Element) ([]ir.Element, error) {
+func (f *Macro) Call(fctx *fun.CallEnv, call *ir.FuncCallExpr, args []ir.Element) ([]ir.Element, error) {
 	if f.macro.BuildSynthetic == nil {
 		return nil, errors.Errorf("macro %s.%s has no implementation to build the synthetic function type", f.macro.FFile.Package.Name.Name, f.macro.Name())
 	}

@@ -48,7 +48,7 @@ type (
 		ir.Element
 		Func() ir.Func
 		Recv() *Receiver
-		Call(env *CallEnv, call *ir.CallExpr, args []ir.Element) ([]ir.Element, error)
+		Call(env *CallEnv, call *ir.FuncCallExpr, args []ir.Element) ([]ir.Element, error)
 	}
 
 	// NewFunc creates function elements from function IRs.

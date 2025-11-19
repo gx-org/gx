@@ -100,7 +100,7 @@ func (r *Runner) RunWithArgs(fn *ir.FuncDecl, recv values.Value, args []values.V
 	return values, all, nil
 }
 
-func (r *testTracer) Trace(file *ir.File, call *ir.CallExpr, vals []values.Value) error {
+func (r *testTracer) Trace(file *ir.File, call *ir.FuncCallExpr, vals []values.Value) error {
 	if r.nTrace == 0 {
 		r.trace.WriteString("\nTrace:\n")
 	}

@@ -33,8 +33,9 @@ type (
 		isMethod() bool
 		compEval() bool
 		resolveOrder() int
-		buildSignature(*pkgResolveScope) (ir.Func, fnResolveScope, bool)
-		buildAnnotations(*pkgResolveScope, *irFunc) bool
+		file() *file
+		buildSignature(*fileResolveScope) (ir.Func, fnResolveScope, bool)
+		buildAnnotations(*fileResolveScope, *irFunc) bool
 		buildBody(fnResolveScope, *irFunc) bool
 	}
 
@@ -184,12 +185,12 @@ func buildSliceType(rscope resolveScope, eNode typeExprNode) (*ir.SliceType, boo
 	return sliceType, true
 }
 
-func buildCall(rscope resolveScope, eNode exprNode) (*ir.CallExpr, bool) {
+func buildCall(rscope resolveScope, eNode exprNode) (ir.CallExpr, bool) {
 	expr, ok := eNode.buildExpr(rscope)
 	if !ok {
 		return nil, false
 	}
-	call, ok := expr.(*ir.CallExpr)
+	call, ok := expr.(ir.CallExpr)
 	if !ok {
 		return nil, rscope.Err().AppendInternalf(eNode.source(), "cannot call non-function %s (variable of type %s)", expr.String(), expr.Type().String())
 	}

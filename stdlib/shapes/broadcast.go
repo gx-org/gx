@@ -43,7 +43,7 @@ func (f broadcast) BuildFuncIR(impl *impl.Stdlib, pkg *ir.Package) (*ir.FuncBuil
 
 var oneAxisLength = numbers.NewInt(elements.NewExprAt(nil, &ir.NumberInt{}), big.NewInt(1))
 
-func checkBroadcastRanks(fetcher ir.Fetcher, call *ir.CallExpr, src ir.ArrayRank, target ir.ArrayRank, targetElmts []canonical.Canonical) error {
+func checkBroadcastRanks(fetcher ir.Fetcher, call *ir.FuncCallExpr, src ir.ArrayRank, target ir.ArrayRank, targetElmts []canonical.Canonical) error {
 	if src == nil || target == nil {
 		return nil
 	}
@@ -68,7 +68,7 @@ func checkBroadcastRanks(fetcher ir.Fetcher, call *ir.CallExpr, src ir.ArrayRank
 	return nil
 }
 
-func (f broadcast) BuildFuncType(fetcher ir.Fetcher, call *ir.CallExpr) (*ir.FuncType, error) {
+func (f broadcast) BuildFuncType(fetcher ir.Fetcher, call *ir.FuncCallExpr) (*ir.FuncType, error) {
 	params, err := builtins.BuildFuncParams(fetcher, call, f.Name(), []ir.Type{
 		builtins.GenericArrayType,
 		ir.IntLenSliceType(),

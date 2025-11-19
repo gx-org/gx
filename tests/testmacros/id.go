@@ -29,7 +29,7 @@ type id struct {
 
 var _ ir.FuncASTBuilder = (*id)(nil)
 
-func newID(file *ir.File, call *ir.CallExpr, mac *ir.Macro, args []ir.Element) (ir.MacroElement, error) {
+func newID(file *ir.File, call *ir.FuncCallExpr, mac *ir.Macro, args []ir.Element) (ir.MacroElement, error) {
 	fn, err := interp.FuncDeclFromElement(args[0])
 	if err != nil {
 		return nil, err
@@ -43,4 +43,43 @@ func (m *id) BuildDecl(ir.PkgFunc) (*ir.File, *ast.FuncDecl, bool) {
 
 func (m *id) BuildBody(fetcher ir.Fetcher, _ ir.Func) (*ast.BlockStmt, bool) {
 	return m.fn.Body.Src, true
+}
+
+type idWithBool struct {
+	cpevelements.CoreMacroElement
+	fn *ir.FuncDecl
+}
+
+var _ ir.FuncASTBuilder = (*id)(nil)
+
+func newIDWithBool(file *ir.File, call *ir.FuncCallExpr, mac *ir.Macro, args []ir.Element) (ir.MacroElement, error) {
+	fn, err := interp.FuncDeclFromElement(args[0])
+	if err != nil {
+		return nil, err
+	}
+	return &idWithBool{CoreMacroElement: cpevelements.MacroElement(mac, file, call), fn: fn}, nil
+}
+
+func (m *idWithBool) BuildDecl(ir.PkgFunc) (*ir.File, *ast.FuncDecl, bool) {
+	results := *m.fn.FType.Src.Results
+	results.List = append(results.List, &ast.Field{
+		Type: &ast.Ident{Name: "bool"},
+	})
+	ftype := *m.fn.FType.Src
+	ftype.Results = &results
+	return m.fn.FFile, &ast.FuncDecl{Type: &ftype, Recv: m.fn.Src.Recv}, true
+}
+
+func (m *idWithBool) BuildBody(fetcher ir.Fetcher, _ ir.Func) (*ast.BlockStmt, bool) {
+	block := *m.fn.Body.Src
+	for i, stmt := range block.List {
+		ret, ok := stmt.(*ast.ReturnStmt)
+		if !ok {
+			continue
+		}
+		ret2 := *ret
+		ret2.Results = append(ret2.Results, &ast.Ident{Name: "true"})
+		block.List[i] = &ret2
+	}
+	return &block, true
 }

@@ -69,7 +69,7 @@ func findParamStorage(file *ir.File, src ir.SourceNode, fn ir.Func, name string)
 }
 
 // FuncGrad computes the gradient of a function.
-func FuncGrad(file *ir.File, call *ir.CallExpr, mac *ir.Macro, args []ir.Element) (ir.MacroElement, error) {
+func FuncGrad(file *ir.File, call *ir.FuncCallExpr, mac *ir.Macro, args []ir.Element) (ir.MacroElement, error) {
 	fn, err := interp.PkgFuncFromElement(args[0])
 	if err != nil {
 		return nil, err
