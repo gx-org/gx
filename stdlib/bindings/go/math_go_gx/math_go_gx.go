@@ -35,6 +35,7 @@ import (
 	"github.com/pkg/errors"
 
 	gxdep0 "github.com/gx-org/gx/stdlib/bindings/go/dtype_go_gx"
+	gxdep1 "github.com/gx-org/gx/stdlib/bindings/go/math/grad_go_gx"
 )
 
 // Force some package dependencies.
@@ -56,8 +57,12 @@ func Load(rtm *api.Runtime) (*core.Package, error) {
 	if err != nil {
 		return nil, err
 	}
-	deps := make([]*core.Package, 1)
+	deps := make([]*core.Package, 2)
 	deps[0], err = gxdep0.Load(rtm)
+	if err != nil {
+		return nil, err
+	}
+	deps[1], err = gxdep1.Load(rtm)
 	if err != nil {
 		return nil, err
 	}
@@ -99,6 +104,7 @@ type PackageHandle struct {
 
 	// Package dependencies
 	gxdep0 *gxdep0.PackageHandle
+	gxdep1 *gxdep1.PackageHandle
 }
 
 // Package is a GX package for a given device.
@@ -121,6 +127,14 @@ func BuildFromIR(irPkg *core.Package, dev *api.Device, optionFactories []options
 		pkg.handle.PackageCompileSetup,
 		0,
 		gxdep0.BuildFromIR,
+	)
+	if err != nil {
+		return nil, err
+	}
+	pkg.handle.gxdep1, err = core.BuildDep[*gxdep1.PackageHandle](
+		pkg.handle.PackageCompileSetup,
+		1,
+		gxdep1.BuildFromIR,
 	)
 	if err != nil {
 		return nil, err
