@@ -17,6 +17,7 @@ package grad
 import (
 	"go/ast"
 	"go/token"
+	"math/big"
 
 	"github.com/gx-org/gx/build/ir"
 	"github.com/gx-org/gx/internal/base/scope"
@@ -81,6 +82,11 @@ func (sg *stmtVJP) processBlock(src *ir.BlockStmt) (*ast.BlockStmt, bool) {
 	return &ast.BlockStmt{
 		List: sub.stmts,
 	}, true
+}
+
+var oneIR = &ir.NumberInt{
+	Src: one,
+	Val: big.NewInt(1),
 }
 
 func (sg *stmtVJP) processStmt(src ir.Stmt) bool {

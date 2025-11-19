@@ -160,6 +160,14 @@ func (m *exprBackwardVJP) binaryExpr(bck *gradExprResult, expr *ir.BinaryExpr) (
 			buildMul(xBack, y),
 			buildMul(x, yBack),
 		), true
+	case token.QUO:
+		return buildQuo(
+			buildSub(
+				buildMul(xBack, y),
+				buildMul(x, yBack),
+			),
+			buildMul(y, y),
+		), true
 	default:
 		return nil, m.fetcher.Err().Appendf(expr.Source(), "gradient of binary operator %s not supported", expr.Src.Op)
 	}
