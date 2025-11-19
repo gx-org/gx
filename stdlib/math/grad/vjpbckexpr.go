@@ -135,6 +135,8 @@ func (m *exprBackwardVJP) binaryExpr(bck *gradExprResult, expr *ir.BinaryExpr) (
 	switch expr.Src.Op {
 	case token.ADD:
 		return buildAdd(xBack, yBack), true
+	case token.SUB:
+		return buildSub(xBack, yBack), true
 	case token.MUL:
 		return buildAdd(
 			buildMul(xBack, y),
