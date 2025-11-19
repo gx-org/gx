@@ -34,6 +34,13 @@ type gradExprResult struct {
 	expr ast.Expr
 }
 
+func addCast(expr ast.Expr, typ ir.Type) ast.Expr {
+	return &ast.CallExpr{
+		Fun:  typ.Source().(ast.Expr),
+		Args: []ast.Expr{expr},
+	}
+}
+
 func addCastIfRequired(expr ast.Expr, typ ir.Type) ast.Expr {
 	basic, isBasic := expr.(*ast.BasicLit)
 	if !isBasic {
@@ -42,10 +49,7 @@ func addCastIfRequired(expr ast.Expr, typ ir.Type) ast.Expr {
 	if basic.Kind != token.INT && basic.Kind != token.FLOAT {
 		return expr
 	}
-	return &ast.CallExpr{
-		Fun:  typ.Source().(ast.Expr),
-		Args: []ast.Expr{expr},
-	}
+	return addCast(expr, typ)
 }
 
 func (r *gradExprResult) addCastIfRequired(typ ir.Type) *gradExprResult {
@@ -141,6 +145,18 @@ func buildMul(x, y *gradExprResult) *gradExprResult {
 			Op: token.MUL,
 			X:  x.expr,
 			Y:  y.expr,
+		},
+	}
+}
+
+func buildUnarySub(x *gradExprResult) *gradExprResult {
+	if x.kind == zeroSpecial {
+		return x
+	}
+	return &gradExprResult{
+		expr: &ast.UnaryExpr{
+			Op: token.SUB,
+			X:  x.expr,
 		},
 	}
 }
