@@ -59,11 +59,14 @@ func (m *exprBackwardVJP) singleForwardName(expr ir.Expr) (_ uname.Name, ok bool
 }
 
 func (m *exprBackwardVJP) singleForwardIdent(expr ir.Expr) (ast.Expr, bool) {
+	if paren, isParen := expr.(*ir.ParenExpr); isParen {
+		return m.singleForwardIdent(paren.X)
+	}
 	fv, ok := m.singleForwardValue(expr)
 	if !ok {
 		return nil, false
 	}
-	return fv.idents()[0], true
+	return fv.exprs()[0], true
 }
 
 func (m *exprBackwardVJP) appendVJPStmt(stmt ast.Stmt) {
@@ -101,9 +104,24 @@ func (m *exprBackwardVJP) backward(bck *gradExprResult, expr ir.Expr) (vjp *grad
 		return m.unaryExpr(bck, exprT)
 	case *ir.BinaryExpr:
 		return m.binaryExpr(bck, exprT)
+	case *ir.ParenExpr:
+		return m.parenExpr(bck, exprT)
 	default:
 		return nil, m.fetcher.Err().Appendf(expr.Source(), "gradient of %T expression not supported", exprT)
 	}
+}
+
+func (m *exprBackwardVJP) parenExpr(bck *gradExprResult, expr *ir.ParenExpr) (*gradExprResult, bool) {
+	xBack, xOk := m.backward(bck, expr.X)
+	if !xOk {
+		return nil, false
+	}
+	if xBack.kind != notSpecial {
+		return xBack, true
+	}
+	return &gradExprResult{
+		expr: &ast.ParenExpr{X: xBack.expr},
+	}, true
 }
 
 func (m *exprBackwardVJP) unaryExpr(bck *gradExprResult, expr *ir.UnaryExpr) (*gradExprResult, bool) {

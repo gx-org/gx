@@ -29,17 +29,13 @@ var traceAll = false
 type (
 	forwardValues interface {
 		numVars() int
-		idents() []ast.Expr
+		exprs() []ast.Expr
 	}
 
 	allocForwardValues struct {
 		sub      *uname.Root
 		forwards []uname.Name
 		vjps     []string
-	}
-
-	refForwardValue struct {
-		name string
 	}
 )
 
@@ -54,7 +50,7 @@ func (m *exprForwardVJP) newForwardValues(expr ir.Expr, numVals int) *allocForwa
 	return fv
 }
 
-func (fv *allocForwardValues) idents() []ast.Expr {
+func (fv *allocForwardValues) exprs() []ast.Expr {
 	exprs := make([]ast.Expr, len(fv.forwards))
 	for i, name := range fv.forwards {
 		exprs[i] = &ast.Ident{Name: name.String()}
@@ -66,11 +62,23 @@ func (fv *allocForwardValues) numVars() int {
 	return len(fv.forwards)
 }
 
-func (ref *refForwardValue) idents() []ast.Expr {
-	return []ast.Expr{&ast.Ident{Name: ref.name}}
+type astForwardValue struct {
+	expr ast.Expr
 }
 
-func (ref *refForwardValue) numVars() int {
+func newASTIdentValue(name string) *astForwardValue {
+	return newASTForwardValue(&ast.Ident{Name: name})
+}
+
+func newASTForwardValue(expr ast.Expr) *astForwardValue {
+	return &astForwardValue{expr: expr}
+}
+
+func (fv *astForwardValue) exprs() []ast.Expr {
+	return []ast.Expr{fv.expr}
+}
+
+func (*astForwardValue) numVars() int {
 	return 1
 }
 
@@ -119,7 +127,7 @@ func (m *exprForwardVJP) assignFuncCall(expr *ir.FuncCallExpr, calleeName string
 	fv := m.newForwardValues(expr, nVals)
 	stmt := &ast.AssignStmt{
 		Tok: token.DEFINE,
-		Lhs: fv.idents(),
+		Lhs: fv.exprs(),
 		Rhs: []ast.Expr{call},
 	}
 	m.appendMainStmt(stmt)
@@ -138,11 +146,17 @@ func (m *exprForwardVJP) assignFuncCall(expr *ir.FuncCallExpr, calleeName string
 	return fv
 }
 
+func (m *exprForwardVJP) registerExpr(expr ir.Expr, fwd ast.Expr) *astForwardValue {
+	fv := newASTForwardValue(fwd)
+	m.macro.exprToName[expr] = fv
+	return fv
+}
+
 func (m *exprForwardVJP) assignElementary(expr ir.Expr, elementary ast.Expr) *allocForwardValues {
 	fv := m.newForwardValues(expr, 1)
 	m.appendMainStmt(&ast.AssignStmt{
 		Tok: token.DEFINE,
-		Lhs: fv.idents(),
+		Lhs: fv.exprs(),
 		Rhs: []ast.Expr{elementary},
 	})
 	return fv
@@ -168,6 +182,8 @@ func (m *exprForwardVJP) forward(expr ir.Expr) (forwardValues, bool) {
 		return m.unaryExpr(exprT)
 	case *ir.BinaryExpr:
 		return m.binaryExpr(exprT)
+	case *ir.ParenExpr:
+		return m.forward(exprT.X)
 	default:
 		return nil, m.fetcher.Err().Appendf(expr.Source(), "gradient of %T expression not supported", exprT)
 	}
@@ -178,11 +194,11 @@ func (m *exprForwardVJP) forwardSingle(expr ir.Expr) (ast.Expr, bool) {
 	if !ok {
 		return nil, false
 	}
-	idents := fv.idents()
-	if len(idents) != 1 {
+	exprs := fv.exprs()
+	if len(exprs) != 1 {
 		return nil, m.fetcher.Err().AppendInternalf(expr.Source(), "multiple values from expression %T:%s in single value context", expr, expr.String())
 	}
-	return idents[0], true
+	return exprs[0], true
 }
 
 func (m *exprForwardVJP) unaryExpr(expr *ir.UnaryExpr) (*allocForwardValues, bool) {
@@ -230,13 +246,11 @@ func (m *exprForwardVJP) callExpr(expr *ir.FuncCallExpr) (*allocForwardValues, b
 	return m.assignFuncCall(expr, fnName, call), true
 }
 
-func (m *exprForwardVJP) numberCastExpr(expr *ir.NumberCastExpr) (*allocForwardValues, bool) {
+func (m *exprForwardVJP) numberCastExpr(expr *ir.NumberCastExpr) (forwardValues, bool) {
 	src := expr.X.Source().(ast.Expr)
-	return m.assignElementary(expr, addCast(src, expr.Typ)), true
+	return m.registerExpr(expr, src), true
 }
 
-func (m *exprForwardVJP) valueRef(expr *ir.ValueRef) (*refForwardValue, bool) {
-	fv := &refForwardValue{name: expr.Src.Name}
-	m.macro.exprToName[expr] = fv
-	return fv, true
+func (m *exprForwardVJP) valueRef(expr *ir.ValueRef) (*astForwardValue, bool) {
+	return m.registerExpr(expr, expr.Stor.NameDef()), true
 }
