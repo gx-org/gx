@@ -208,6 +208,7 @@ extern int64_t cgx_handle_count();
 extern cchar_t* cgx_handle_dump();
 extern cchar_t* cgx_error_message(cgx_error cgxError);
 extern cchar_t* cgx_error_debug_message(cgx_error cgxError);
+extern cgx_error cgx_runtime_release(cgx_runtime cgxRuntime);
 extern struct cgx_device_get_result cgx_device_get(cgx_runtime cgxRuntime, GoInt deviceIdx);
 extern cgx_runtime cgx_device_get_runtime(cgx_device cgxDevice);
 extern struct cgx_package_ir_load_result cgx_package_ir_load(cgx_runtime cgxRuntime, cchar_t* pathPtr);
