@@ -233,6 +233,17 @@ func cgx_error_debug_message(cgxError C.cgx_error) *C.cchar_t {
 	return C.CString(fmt.Sprintf("%+v\n", err))
 }
 
+/* cgx_runtime */
+
+//export cgx_runtime_release
+func cgx_runtime_release(cgxRuntime C.cgx_runtime) C.cgx_error {
+	rtm := unwrap[*api.Runtime](cgxRuntime)
+	if err := rtm.Backend().Release(); err != nil {
+		return Errorf("cannot release backend: %v", err)
+	}
+	return 0
+}
+
 /* cgx_device */
 
 //export cgx_device_get

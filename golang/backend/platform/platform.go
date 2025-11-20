@@ -47,6 +47,13 @@ func (plat *Platform) Device(ordinal int) (platform.Device, error) {
 	return plat.GoDevice(ordinal)
 }
 
+// Release everything linked to the platform.
+// It is invalid to use the platform or graph builder after this call.
+func (plat *Platform) Release() error {
+	plat.dev = nil
+	return nil
+}
+
 // FromValue returns a handle on a value.
 func FromValue(dev platform.Device, x kernels.Array) platform.DeviceHandle {
 	return &Handle{

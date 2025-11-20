@@ -87,6 +87,8 @@ class Runtime {
 
   absl::StatusOr<PackageIR> Load(const std::string& path) const;
 
+  absl::Status Release();
+
  private:
   Handle<cgx_runtime> runtime_;
 };
