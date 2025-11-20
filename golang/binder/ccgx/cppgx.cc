@@ -59,6 +59,12 @@ absl::StatusOr<Device> Runtime::GetDevice(int index) const {
   return Device(result.device);
 }
 
+absl::Status Runtime::Release() {
+  const auto result = cgx_runtime_release(*runtime_);
+  CPPGX_RETURN_IF_ERROR(result);
+  return absl::OkStatus();
+}
+
 /* Package IR */
 
 Package PackageIR::BuildFor(const Device& device) const {

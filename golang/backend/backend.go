@@ -44,3 +44,11 @@ func (bck *backend) Platform() platform.Platform {
 func (bck *backend) NewOps(funcName string) (ops.Graph, error) {
 	return gograph.New(bck.plat, funcName), nil
 }
+
+// Release everything linked to the platform.
+// It is invalid to use any device from the platform after this call.
+func (bck *backend) Release() error {
+	err := bck.plat.Release()
+	bck.plat = nil
+	return err
+}

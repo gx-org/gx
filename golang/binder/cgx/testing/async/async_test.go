@@ -23,5 +23,6 @@ import (
 
 func TestAsyncCGXGoBackend(t *testing.T) {
 	rtm := backend.New(async.NewBuilder())
+	defer rtm.Backend().Release()
 	async.RunTestAsyncCGX(t, rtm, async.RunFunctionReturnFloat32)
 }

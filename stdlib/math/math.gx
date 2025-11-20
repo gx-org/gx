@@ -50,6 +50,7 @@ func Ceil[T dtype.Num]([___M]T) [M___]T
 func Cos[T dtype.Num]([___M]T) [M___]T
 func Erf[T dtype.Num]([___M]T) [M___]T
 func Expm1[T dtype.Num]([___M]T) [M___]T
+// gx:@grad.Set(Exp)
 func Exp[T dtype.Num]([___M]T) [M___]T
 func Floor[T dtype.Num]([___M]T) [M___]T
 func Log1p[T dtype.Num]([___M]T) [M___]T
@@ -58,10 +59,8 @@ func Log[T dtype.Num]([___M]T) [M___]T
 func Round[T dtype.Num]([___M]T) [M___]T
 func Rsqrt[T dtype.Num]([___M]T) [M___]T
 func Sign[T dtype.Num]([___M]T) [M___]T
-
 // gx:@grad.Set(Cos)
 func Sin[T dtype.Num]([___M]T) [M___]T
-
 func Sqrt[T dtype.Num]([___M]T) [M___]T
 func Tanh[T dtype.Num]([___M]T) [M___]T
 
