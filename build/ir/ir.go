@@ -1386,6 +1386,18 @@ func (pkg *Package) FindFunc(name string) PkgFunc {
 	return nil
 }
 
+// FindStatic returns a static variable given its name or nil if not found.
+func (pkg *Package) FindStatic(name string) *VarExpr {
+	for _, vars := range pkg.Decls.Vars {
+		for _, vr := range vars.Exprs {
+			if vr.VName.Name == name {
+				return vr
+			}
+		}
+	}
+	return nil
+}
+
 // ExportedTypes returns the list of exported types of a package.
 func (pkg *Package) ExportedTypes() []*NamedType {
 	var types []*NamedType
