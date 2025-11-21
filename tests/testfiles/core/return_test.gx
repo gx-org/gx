@@ -324,3 +324,15 @@ func TestConstNoTypeInDim() [noType]float32 {
 	// Want:
 	// [2]float32{0, 0}
 }
+
+func TestNoReturn() {
+	// Want:
+}
+
+func TestNoReturnWithTrace() {
+	trace([2]float32{2, 3})
+	// Want:
+	// Trace:
+	// return_test.gx:0
+	// 	[2]float32{2, 3}
+}

@@ -257,8 +257,10 @@ func (itp *Interpreter) EvalFunc(fn *ir.FuncDecl, in *elements.InputElements) (o
 	}
 	defer fitp.ctx.PopFrame()
 	// Add the result names to the Context.
-	for _, resultName := range fieldNames(fn.FType.Results.List) {
-		frame.Define(resultName.Name, nil)
+	if fn.FType.Results != nil {
+		for _, resultName := range fieldNames(fn.FType.Results.List) {
+			frame.Define(resultName.Name, nil)
+		}
 	}
 	// Add the receiver to the Context.
 	recv := fn.FType.ReceiverField()
