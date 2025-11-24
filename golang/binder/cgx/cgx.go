@@ -525,7 +525,11 @@ func cgx_function_doc(cgxFunction C.cgx_function) *C.cchar_t {
 func copySignatureElements(fields *ir.FieldList) *C.struct_cgx_function_signature_element {
 	elements := make([]C.struct_cgx_function_signature_element, fields.Len())
 	for n, field := range fields.Fields() {
-		elements[n].name = C.CString(field.Name.String())
+		name := ""
+		if field.Name != nil {
+			name = field.Name.String()
+		}
+		elements[n].name = C.CString(name)
 		elements[n].kind = toCGXValueKind(field.Type().Kind())
 	}
 	return (*C.struct_cgx_function_signature_element)(handle.PinSliceData(elements))

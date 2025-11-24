@@ -255,10 +255,10 @@ TEST_F(cgx, FindFunction_Signature) {
   EXPECT_STREQ(sr.parameter[0].name, "x");
   EXPECT_EQ(sr.parameter[1].kind, CGX_INT64);
   EXPECT_STREQ(sr.parameter[1].name, "y");
-  // GX defaults to "_" when no name is given to a result.
+  // GX defaults to "" when no name is given to a result.
   ASSERT_EQ(sr.result_size, 1);
   EXPECT_EQ(sr.result[0].kind, CGX_INT64);
-  EXPECT_STREQ(sr.result[0].name, "_");
+  EXPECT_STREQ(sr.result[0].name, "");
 
   cgx_free_function_signature_result(&sr);
   cgx_release_reference(fr.function);

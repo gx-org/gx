@@ -75,6 +75,26 @@ func f() int32 {
 	)
 }
 
+func TestEmptyReturns(t *testing.T) {
+	testbuild.Run(t,
+		testbuild.Decl{
+			Src: `
+func f() (a int32) {
+	return
+}
+`,
+		},
+		testbuild.Decl{
+			Src: `
+func f() int32 {
+	return
+}
+`,
+			Err: "not enough return values",
+		},
+	)
+}
+
 func TestUnreachable(t *testing.T) {
 	testbuild.Run(t,
 		testbuild.Decl{
