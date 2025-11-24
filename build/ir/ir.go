@@ -2421,7 +2421,6 @@ func (s *FieldList) Fields() []*Field {
 		if len(grp.Fields) == 0 {
 			fields = append(fields, &Field{
 				Group: grp,
-				Name:  &ast.Ident{Name: "_"},
 			})
 			continue
 		}

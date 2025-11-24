@@ -145,7 +145,7 @@ class PygxTest(googletest.TestCase):
     self.assertEqual(signature.parameters()[1].name, "y")
     self.assertEqual(signature.parameters()[1].kind, pygx.Kind.CGX_INT64)
     self.assertLen(signature.results(), 1)
-    self.assertEqual(signature.results()[0].name, "_")
+    self.assertEqual(signature.results()[0].name, "")
     self.assertEqual(signature.results()[0].kind, pygx.Kind.CGX_INT64)
 
   def testFindFunction_NotFound(self):

@@ -203,8 +203,8 @@ TEST_F(cppgx, FindFunction_Signature) {
   ASSERT_OK_AND_ASSIGN(FunctionSignature signature, function.Signature());
   EXPECT_THAT(signature.parameters(), ElementsAre(FieldsAre("x", CGX_INT64),
                                                   FieldsAre("y", CGX_INT64)));
-  // GX defaults to "_" when no name is given to a result.
-  EXPECT_THAT(signature.results(), ElementsAre(FieldsAre("_", CGX_INT64)));
+  // GX defaults to "" when no name is given to a result.
+  EXPECT_THAT(signature.results(), ElementsAre(FieldsAre("", CGX_INT64)));
 }
 
 TEST_F(cppgx, FindFunction_NotFound) {

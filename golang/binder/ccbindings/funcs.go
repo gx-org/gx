@@ -66,7 +66,10 @@ func (f function) processFields(fieldList *ir.FieldList, prefix string) ([]funcF
 		if err != nil {
 			return nil, err
 		}
-		name := field.Name.Name
+		name := ""
+		if field.Name != nil {
+			name = field.Name.Name
+		}
 		if name == "" {
 			name = fmt.Sprintf("%s%02d", prefix, i)
 		}
