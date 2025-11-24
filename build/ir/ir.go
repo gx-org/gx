@@ -593,6 +593,10 @@ func (s *NamedType) assignableFrom(fetcher Fetcher, source Type) (bool, error) {
 // ConvertibleTo reports whether a value of the type can be converted to another
 // (using static type casting).
 func (s *NamedType) ConvertibleTo(fetcher Fetcher, target Type) (bool, error) {
+	typeSet, ok := Underlying(s.Underlying.Typ).(*TypeSet)
+	if ok {
+		return typeSet.ConvertibleTo(fetcher, target)
+	}
 	switch targetT := target.(type) {
 	case *NamedType:
 		return s.Equal(fetcher, targetT)
