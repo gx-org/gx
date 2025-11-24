@@ -230,5 +230,36 @@ func f[T someInts](x bool) T {
 }
 `,
 		},
+		testbuild.Decl{
+			Src: `
+type Ints interface { 
+	int32 | int64 
+}
+
+type Floats interface {
+	float32 | float64
+}
+
+func ToInts[U Ints, T Floats](a [2][3]T) [2][3]U {
+    return [2][3]U(a)
+}
+`,
+		},
+		testbuild.Decl{
+			Src: `
+type Ints struct { 
+	i int32 
+}
+
+type Floats interface {
+	float32 | float64
+}
+
+func ToInts[T Floats](a T) Ints {
+    return Ints(a)
+}
+`,
+			Err: "cannot convert T to test.Ints",
+		},
 	)
 }
