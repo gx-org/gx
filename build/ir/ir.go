@@ -1112,12 +1112,6 @@ func (s *TypeParam) Specialise(spec Specialiser) (Type, error) {
 
 // UnifyWith recursively unifies a type parameters with types.
 func (s *TypeParam) UnifyWith(uni Unifier, typ Type) bool {
-	switch typ.Kind() {
-	case NumberIntKind:
-		typ = Int64Type()
-	case NumberFloatKind:
-		typ = Float64Type()
-	}
 	return uni.DefineTParam(s, typ)
 }
 

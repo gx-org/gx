@@ -254,6 +254,51 @@ func f[T dtype.Num](x [___X]T) [X___]T {
 func g[T dtype.Num](x [___X]T) T
 `,
 		},
+		testbuild.Decl{
+			Src: `
+import "dtype"
+
+func g[T dtype.Num](a T) T
+
+func f() int64 {
+	return g(10)
+}
+`,
+		},
+		testbuild.Decl{
+			Src: `
+import "dtype"
+
+func g[T dtype.Num](a T) T
+
+func f() float64 {
+	return g(10.0)
+}
+`,
+		},
+		testbuild.Decl{
+			Src: `
+import "dtype"
+
+func g[T dtype.Num](a, b T) T
+
+func f() float32 {
+	a := float32(1)
+	return g(10, a)
+}
+`,
+		},
+		testbuild.Decl{
+			Src: `
+import "dtype"
+
+func g[T dtype.Num](a T, x [___X]T) [X___]T
+
+func f() [2][3]float32 {
+	return g(10, [2][3]float32{{1, 2, 3}, {4, 5, 6}})
+}
+`,
+		},
 	)
 }
 

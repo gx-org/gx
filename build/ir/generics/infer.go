@@ -36,8 +36,32 @@ type (
 
 var _ = (ir.Unifier)(&argUnifier{})
 
+func (uni *unifier) specialiseRemainingNumbers() bool {
+	for name, v := range uni.defined {
+		if !ir.IsNumber(v.Kind()) {
+			continue
+		}
+		uni.defined[name] = ir.DefaultNumberType(v.Kind())
+	}
+	return true
+}
+
 func (uni *argUnifier) Source() ast.Node {
 	return uni.arg.Source()
+}
+
+func (uni *argUnifier) specialiseNumber(name string, defined, typ ir.Type) ir.Type {
+	if !ir.IsNumber(defined.Kind()) {
+		return defined
+	}
+	if ir.IsNumber(typ.Kind()) {
+		return defined
+	}
+	if !ir.CanBeNumber(typ) {
+		return defined
+	}
+	uni.defined[name] = typ
+	return typ
 }
 
 func (uni *argUnifier) DefineTParam(tp *ir.TypeParam, typ ir.Type) bool {
@@ -56,6 +80,7 @@ func (uni *argUnifier) DefineTParam(tp *ir.TypeParam, typ ir.Type) bool {
 		uni.defined[name] = typ
 		return true
 	}
+	defined = uni.specialiseNumber(name, defined, typ)
 	eq, err := defined.Equal(uni, typ)
 	if err != nil {
 		return uni.Err().AppendAt(uni.arg.Source(), err)
@@ -156,6 +181,9 @@ func Infer(fetcher ir.Fetcher, fExpr *ir.FuncValExpr, args []ir.AssignableExpr) 
 		}
 	}
 	if !ok {
+		return fExpr, false
+	}
+	if !uni.specialiseRemainingNumbers() {
 		return fExpr, false
 	}
 	subFetcher, ok := fetcher.Sub(uni.axes)
