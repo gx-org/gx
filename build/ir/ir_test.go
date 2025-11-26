@@ -21,6 +21,7 @@ import (
 	"strings"
 	"testing"
 
+	"github.com/google/go-cmp/cmp"
 	"github.com/gx-org/gx/api/options"
 	"github.com/gx-org/gx/build/fmterr"
 	"github.com/gx-org/gx/build/ir"
@@ -276,17 +277,17 @@ func testTypeMatrix(t *testing.T, a, b []ir.Type, f typeFunc) string {
 func TestTypeEquals(t *testing.T) {
 	// Types are equal only to themselves:
 	const want = (`---
-    bool: X          
-   int32:  X         
-   int64:   X        
-bfloat16:    X       
- float32:     X      
- float64:      X     
-  uint32:       X    
-  uint64:        X   
-  number:         X  
-  number:          X 
-  string:           X
+        bool: X          
+       int32:  X         
+       int64:   X        
+    bfloat16:    X       
+     float32:     X      
+     float64:      X     
+      uint32:       X    
+      uint64:        X   
+  int number:         X  
+float number:          X 
+      string:           X
 `)
 
 	matrix := testTypeMatrix(t, allTypes, allTypes, ir.Type.Equal)
@@ -298,22 +299,22 @@ bfloat16:    X
 func TestTypeAssignableTo(t *testing.T) {
 	// Each scalar type is assignable to itself, and numbers additionally assign to concrete types.
 	const want = (`---
-    bool: X          
-   int32:  X         
-   int64:   X        
-bfloat16:    X       
- float32:     X      
- float64:      X     
-  uint32:       X    
-  uint64:        X   
-  number:  XX   XXX  
-  number:    XXX   X 
-  string:           X
+        bool: X          
+       int32:  X         
+       int64:   X        
+    bfloat16:    X       
+     float32:     X      
+     float64:      X     
+      uint32:       X    
+      uint64:        X   
+  int number:  XXXXXXXXX 
+float number:    XXX   X 
+      string:           X
 `)
 
 	matrix := testTypeMatrix(t, allTypes, allTypes, ir.Type.AssignableTo)
 	if matrix != want {
-		t.Errorf("Unexpected type AssignableTo() matrix; got:\n%s\nwant:\n%s", matrix, want)
+		t.Errorf("Unexpected type AssignableTo() matrix; got:\n%s\nwant:\n%sdiff:\n%s", matrix, want, cmp.Diff(matrix, want))
 	}
 }
 
@@ -327,17 +328,17 @@ func TestTypeConvertibleTo(t *testing.T) {
 	}{
 		// Every type is convertible to all other types except string.
 		{"scalar-all", allTypes, allTypes, (`---
-    bool: XXXXXXXXXX 
-   int32: XXXXXXXXXX 
-   int64: XXXXXXXXXX 
-bfloat16: XXXXXXXXXX 
- float32: XXXXXXXXXX 
- float64: XXXXXXXXXX 
-  uint32: XXXXXXXXXX 
-  uint64: XXXXXXXXXX 
-  number: XXXXXXXXXX 
-  number: XXXXXXXXXX 
-  string:           X
+        bool: XXXXXXXXXX 
+       int32: XXXXXXXXXX 
+       int64: XXXXXXXXXX 
+    bfloat16: XXXXXXXXXX 
+     float32: XXXXXXXXXX 
+     float64: XXXXXXXXXX 
+      uint32: XXXXXXXXXX 
+      uint64: XXXXXXXXXX 
+  int number: XXXXXXXXXX 
+float number: XXXXXXXXXX 
+      string:           X
 `)},
 		// [...]T converts to all other [...]U for primitive type T, U.
 		{"generic-array-all", primitiveGenericRankArrayTypes, primitiveGenericRankArrayTypes, (`---
@@ -599,17 +600,17 @@ interface { int32|int64|uint32|uint64 }:
 func TestTypeSetAssignableFromAllTypes(t *testing.T) {
 	// Note that the horizontal axis here is all type sets.
 	const want = (`---
-    bool: XX   
-   int32: X X X
-   int64: X X X
-bfloat16: X    
- float32: X    
- float64: X    
-  uint32: X  XX
-  uint64: X  XX
-  number: X XXX
-  number: X    
-  string: X    
+        bool: XX   
+       int32: X X X
+       int64: X X X
+    bfloat16: X    
+     float32: X    
+     float64: X    
+      uint32: X  XX
+      uint64: X  XX
+  int number: X XXX
+float number: X    
+      string: X    
 `)
 
 	matrix := testTypeMatrix(t, allTypes, allSets, ir.Type.AssignableTo)

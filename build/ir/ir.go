@@ -458,7 +458,7 @@ func (s *atomicType) AssignableTo(fetcher Fetcher, target Type) (bool, error) {
 		return false, nil
 	}
 	if targetT.Rank().IsAtomic() {
-		if s.Knd == NumberIntKind && IsInteger(target) {
+		if s.Knd == NumberIntKind && (IsInteger(target) || IsFloat(target)) {
 			return true, nil
 		}
 		if s.Knd == NumberFloatKind && IsFloat(target) {

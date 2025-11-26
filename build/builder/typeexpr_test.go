@@ -31,8 +31,8 @@ func TestResolveType(t *testing.T) {
 	}{
 		{code: "true", typ: "bool"},
 		{code: "false", typ: "bool"},
-		{code: "123", typ: "number"},
-		{code: "123.0", typ: "number"},
+		{code: "123", typ: "int number"},
+		{code: "123.0", typ: "float number"},
 		{code: `"a"`, typ: "string"},
 		{code: "int32(1)", typ: "int32"},
 		{code: "float64(-1)", typ: "float64"},
