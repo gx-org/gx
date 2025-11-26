@@ -81,6 +81,9 @@ func (uni *argUnifier) DefineTParam(tp *ir.TypeParam, typ ir.Type) bool {
 		return true
 	}
 	defined = uni.specialiseNumber(name, defined, typ)
+	if !ir.IsValid(defined) || !ir.IsValid(typ) {
+		return false
+	}
 	eq, err := defined.Equal(uni, typ)
 	if err != nil {
 		return uni.Err().AppendAt(uni.arg.Source(), err)

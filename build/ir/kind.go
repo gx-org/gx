@@ -74,9 +74,9 @@ func (k Kind) String() string {
 	case InterfaceKind:
 		return "interface"
 	case NumberFloatKind:
-		return "number"
+		return "float number"
 	case NumberIntKind:
-		return "number"
+		return "int number"
 	case IntIdxKind:
 		return "intidx"
 	case IntLenKind:

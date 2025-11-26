@@ -292,12 +292,35 @@ func f() float32 {
 			Src: `
 import "dtype"
 
+func g[T dtype.Floats](a T, x [___X]T) [X___]T
+
+func f() [2][3]float32 {
+	return g(10, [2][3]float32{{1, 2, 3}, {4, 5, 6}})
+}
+`,
+		},
+		testbuild.Decl{
+			Src: `
+import "dtype"
+
 func g[T dtype.Num](a T, x [___X]T) [X___]T
 
 func f() [2][3]float32 {
 	return g(10, [2][3]float32{{1, 2, 3}, {4, 5, 6}})
 }
 `,
+		},
+		testbuild.Decl{
+			Src: `
+import "dtype"
+
+func g[T dtype.Ints](a T, x [___X]T) [X___]T
+
+func f() [2][3]int32 {
+	return g(10.0, [2][3]int32{{1, 2, 3}, {4, 5, 6}})
+}
+`,
+			Err: "float number does not satisfy dtype.Ints for T",
 		},
 	)
 }
