@@ -34,7 +34,7 @@ var tests = []struct {
 		path: "github.com/gx-org/gx/tests/bindings/dtypes",
 		ccWants: []string{
 			"DtypesIR::Load",
-			"Dtypes::BuildFor",
+			"DtypesIR::BuildFor",
 		},
 		hWants: []string{
 			"class DtypesIR",

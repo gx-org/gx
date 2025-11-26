@@ -21,6 +21,14 @@
 
 namespace {{.Namespace}} {
 
+// Static variables
+
+{{range $staticVar := .StaticVars }}
+::gxlang::cppgx::SetStaticVariable<{{$staticVar.CCType}}> {{$staticVar.Name}}::Set({{$staticVar.CCType}} x) {
+  return ::gxlang::cppgx::SetStaticVariable<{{$staticVar.CCType}}>("{{$staticVar.PkgPath}}", "{{$staticVar.Name}}", x);
+}
+{{end}}
+
 // Function classes
 
 {{range $func := .Funcs }}
@@ -68,12 +76,6 @@ absl::StatusOr<{{.Class}}IR> {{.Class}}IR::Load(const ::gxlang::cppgx::Runtime& 
 
 {{.Class}} {{.Class}}IR::BuildFor(const ::gxlang::cppgx::Device& dev) {
   return {{.Class}}(package_ir_.BuildFor(dev));
-}
-
-absl::StatusOr<{{.Class}}> {{.Class}}::BuildFor(const ::gxlang::cppgx::Device& device) {
-  auto result = {{.Class}}IR::Load(device.runtime());
-  if (!result.ok()) return result.status();
-  return result.value().BuildFor(device);
 }
 
 } // namespace {{.Namespace}}

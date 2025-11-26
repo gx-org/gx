@@ -53,7 +53,8 @@ type (
 		Package *ir.Package
 		Class   string
 
-		Funcs []*function
+		Funcs      []*function
+		StaticVars []*staticVar
 	}
 )
 
@@ -71,10 +72,10 @@ func NewWithFmtPath(fmtpath FmtPath, pkg *ir.Package) (bindings.Binder, error) {
 		Class:   strings.ToUpper(name[:1]) + name[1:],
 	}
 	var err error
-	b.Funcs, err = bindings.BuildFuncs(pkg, b.newFunc)
-	if err != nil {
+	if b.Funcs, err = bindings.BuildFuncs(pkg, b.newFunc); err != nil {
 		return nil, err
 	}
+	b.StaticVars = b.buildStaticVars(pkg)
 	return b, nil
 
 }
