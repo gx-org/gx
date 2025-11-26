@@ -17,10 +17,20 @@
 #ifndef {{.HeaderGuard}}
 #define {{.HeaderGuard}}
 
+#include <array>
+#include <type_traits>
+
 #include <absl/status/statusor.h>
 #include <golang/binder/ccgx/cppgx.h>
 
 namespace {{.Namespace}} {
+
+{{range $staticVar := .StaticVars }}
+class {{$staticVar.Name}} {
+public:
+ static ::gxlang::cppgx::SetStaticVariable<{{$staticVar.CCType}}> Set({{$staticVar.CCType}} x);
+};
+{{end}}
 
 class {{.Class}};
 
@@ -52,7 +62,20 @@ class {{.Class}} {
     : package_(std::move(pkg)){{range $func := .Funcs }}, {{$func.Name}}(*this){{end}} {}
   {{.Class}}({{.Class}}&& other) : {{.Class}}(std::move(other.package_)) {}
 
-  static absl::StatusOr<{{.Class}}> BuildFor(const ::gxlang::cppgx::Device& device);
+  template<typename... Options>
+  static absl::StatusOr<{{.Class}}> BuildFor(const ::gxlang::cppgx::Device& device, Options... options) requires (std::is_convertible_v<Options, ::gxlang::cppgx::BuildOption*> && ...) {
+    auto result = {{.Class}}IR::Load(device.runtime());
+    if (!result.ok()) return result.status();
+    auto pkg = result.value().BuildFor(device);
+    std::array<::gxlang::cppgx::BuildOption*, sizeof...(options)> options_array = { options... };
+    for (const auto opt : options_array) {
+      auto opt_result = opt->apply(pkg.package_);
+      if (!opt_result.ok()) {
+        return absl::StatusOr<{{.Class}}>(opt_result);
+      }
+    }
+    return pkg;
+  }
 
  private:
   ::gxlang::cppgx::Package package_;

@@ -38,6 +38,8 @@ func (b *binder) ccTypeFromKind(knd ir.Kind) (string, error) {
 		return "uint32_t", nil
 	case ir.Uint64Kind:
 		return "uint64_t", nil
+	case ir.IntLenKind:
+		return "uint64_t", nil
 	default:
 		return "", errors.Errorf("cannot convert kind %s to a C++ type: not supported", knd.String())
 	}

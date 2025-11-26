@@ -19,6 +19,7 @@
 
 #include <cstdint>
 #include <functional>
+#include <memory>
 #include <optional>
 #include <string>
 #include <utility>
@@ -393,6 +394,39 @@ absl::StatusOr<absl::Span<T>> Array<T>::Acquire() {
 
   T* data = reinterpret_cast<T*>(buffer_->Acquire());
   return absl::MakeSpan(data, shape_result->size());
+}
+
+class BuildOption {
+ public:
+  virtual absl::Status apply(const Package&) const = 0;
+  virtual ~BuildOption() {};
+};
+
+template <typename T>
+class SetStaticVariable : public BuildOption {
+ public:
+  SetStaticVariable(const std::string& package_path, const std::string& name,
+                    const T value)
+      : package_path_(package_path), name_(name), value_(value) {}
+  ~SetStaticVariable() override = default;
+
+  absl::Status apply(const Package& pkg) const override;
+
+ private:
+  // TODO(degris): fix CGX and transform PackageCompileSetup to
+  // DeviceCompileSetup.
+  const std::string package_path_;
+  const std::string name_;
+  const T value_;
+};
+
+template <typename T>
+absl::Status SetStaticVariable<T>::apply(const Package& pkg) const {
+  auto static_var = pkg.FindStaticVar(name_);
+  if (!static_var.ok()) {
+    return static_var.status();
+  }
+  return static_var->set_value(value_);
 }
 
 /* Helper methods */
