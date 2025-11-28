@@ -28,96 +28,74 @@ import (
 	"github.com/gx-org/gx/build/ir"
 )
 
-// Package is a handler to a package and its dependencies.
-//
-// Package is constructed by loading a package from its path.
-type Package struct {
-	pkg    builder.Package
-	tracer trace.Callback
-
-	deps []*Package
-}
-
-// NewPackage returns a GX loaded package.
-func NewPackage(pkg builder.Package, deps []*Package) *Package {
-	return &Package{pkg: pkg, deps: deps}
-}
-
-// BuildPackage builds a package given its path and a runtime.
-func BuildPackage(bld *builder.Builder, pkgPath string) (*Package, error) {
-	pkg, err := bld.Build(pkgPath)
-	if err != nil {
-		return nil, err
-	}
-	return NewPackage(pkg, nil), nil
-}
-
-// Package returns the IR package.
-func (pkg *Package) Package() *ir.Package {
-	return pkg.pkg.IR()
-}
-
-// Tracer returns the tracer used by the package.
-func (pkg *Package) Tracer() trace.Callback {
-	return pkg.tracer
-}
-
-// PackageCompileSetup has all package level data to compile functions.
-type PackageCompileSetup struct {
-	pkg    *Package
+// DeviceSetup is a device with compile option.
+// All packages build for this device will share the same options.
+type DeviceSetup struct {
 	device *api.Device
-
-	optionFactories []options.PackageOptionFactory
-	opts            []options.PackageOption
+	tracer trace.Callback
+	opts   []options.PackageOption
 }
 
-// Setup returns a package handle for a device and a set of options.
-func (pkg *Package) Setup(dev *api.Device, optionFactories []options.PackageOptionFactory) *PackageCompileSetup {
-	s := &PackageCompileSetup{
-		pkg:    pkg,
+// NewDeviceSetup returns a device and a set of options.
+func NewDeviceSetup(dev *api.Device, optionFactories []options.PackageOptionFactory) *DeviceSetup {
+	s := &DeviceSetup{
 		device: dev,
 	}
 	s.AppendOptions(optionFactories...)
 	return s
 }
 
-// Device returns the device of the compile setup.
-func (s *PackageCompileSetup) Device() *api.Device {
+// AppendOptions returns the set of options used for compilation.
+func (s *DeviceSetup) AppendOptions(optionFactories ...options.PackageOptionFactory) {
+	plat := s.device.PlatformDevice().Platform()
+	s.opts = append(s.opts, options.Process(plat, optionFactories)...)
+}
+
+// Runtime used by the device.
+func (s *DeviceSetup) Runtime() *api.Runtime {
+	return s.device.Runtime()
+}
+
+// PackageSetup returns a package using this device setup.
+func (s *DeviceSetup) PackageSetup(pkg builder.Package) *PackageCompileSetup {
+	return &PackageCompileSetup{devSetup: s, pkg: pkg}
+}
+
+// Device returns the device for which packages are compiled for.
+func (s *DeviceSetup) Device() *api.Device {
 	return s.device
+}
+
+// PackageCompileSetup has all package level data to compile functions.
+type PackageCompileSetup struct {
+	devSetup *DeviceSetup
+	pkg      builder.Package
+}
+
+// Setup returns the device of the compile setup.
+func (s *PackageCompileSetup) Setup() *DeviceSetup {
+	return s.devSetup
+}
+
+// Package returns the builder package.
+func (s *PackageCompileSetup) Package() builder.Package {
+	return s.pkg
 }
 
 // IR returns the intermediate representation of the package.
 func (s *PackageCompileSetup) IR() *ir.Package {
-	return s.pkg.pkg.IR()
+	return s.pkg.IR()
 }
 
-// Package used by the setup.
-func (s *PackageCompileSetup) Package() *Package {
-	return s.pkg
-}
-
-// BuildDep builds a dependency.
-func BuildDep[T any](setup *PackageCompileSetup, at int, builder func(*Package, *api.Device, []options.PackageOptionFactory) (T, error)) (T, error) {
-	return builder(setup.pkg.deps[at], setup.device, setup.optionFactories)
-}
-
-// Tracer returns the tracer that has been set.
-// Can return nil.
+// Tracer returns the tracer used by the package.
 func (s *PackageCompileSetup) Tracer() trace.Callback {
-	return s.pkg.tracer
-}
-
-// AppendOptions returns the set of options used for compilation.
-func (s *PackageCompileSetup) AppendOptions(optionFactories ...options.PackageOptionFactory) {
-	plat := s.device.PlatformDevice().Platform()
-	s.optionFactories = append(s.optionFactories, optionFactories...)
-	s.opts = append(s.opts, options.Process(plat, optionFactories)...)
+	return s.devSetup.tracer
 }
 
 // FuncCache provides a compilation cache for a function.
 type FuncCache struct {
-	setup *PackageCompileSetup
-	fn    *ir.FuncDecl
+	pkg *PackageCompileSetup
+	fn  *ir.FuncDecl
 
 	runner   tracer.CompiledFunc
 	err      error
@@ -169,11 +147,11 @@ func (s *PackageCompileSetup) NewCache(recvName, fnName string) (*FuncCache, err
 
 // NewCacheFromFunc returns a runner cache given a function.
 func (s *PackageCompileSetup) NewCacheFromFunc(fn *ir.FuncDecl) *FuncCache {
-	return &FuncCache{setup: s, fn: fn}
+	return &FuncCache{pkg: s, fn: fn}
 }
 
 func (c *FuncCache) buildRunner(recv values.Value, args []values.Value) (tracer.CompiledFunc, error) {
-	runner, err := tracer.Trace(c.setup.device, c.fn, recv, args, c.setup.opts)
+	runner, err := tracer.Trace(c.pkg.devSetup.device, c.fn, recv, args, c.pkg.devSetup.opts)
 	if err != nil {
 		return nil, err
 	}

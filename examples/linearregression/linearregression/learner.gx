@@ -1,0 +1,29 @@
+package linearregression
+
+import (
+	"num"
+	"shapes"
+)
+
+// Learner learns a set of Weights from samples.
+type Learner struct {
+	stepSize float32
+	Weights  [Size + 1]float32
+}
+
+// NewLearner returns a new learner ready to learn.
+func NewLearner(stepSize float32) Learner {
+	return Learner{
+		stepSize: stepSize,
+		Weights:  [Size + 1]float32{},
+	}
+}
+
+// Sample generates a new vector of features and the corresponding prediction.
+func (l Learner) Update(features [Size]float32, target float32) (Learner, float32) {
+	featuresWithBias := shapes.Concat(0, features, [1]float32{1})
+	prediction := float32(num.Sum(l.Weights*featuresWithBias, []intidx{0}))
+	predictionError := target - prediction
+	l.Weights = l.Weights + l.stepSize*predictionError*featuresWithBias
+	return l, predictionError
+}
