@@ -169,10 +169,7 @@ func (mod *Module) OSPath(path string) string {
 	if path == "." || path == "" {
 		return mod.root
 	}
-	return strings.Join([]string{
-		mod.root,
-		path,
-	}, "/")
+	return filepath.Join(mod.root, path)
 }
 
 // FS returns the filesystem for the current module.
