@@ -130,7 +130,7 @@ func TestSampleUniformFloat64(t *testing.T) {
 
 func TestDeviceValueAsSeed(t *testing.T) {
 	seed := types.Int64(0)
-	seedDevice, err := seed.SendTo(randHandleGX.Device())
+	seedDevice, err := seed.SendTo(randHandleGX.Setup().Device())
 	if err != nil {
 		t.Fatal(err)
 	}

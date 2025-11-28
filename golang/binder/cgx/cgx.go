@@ -26,6 +26,7 @@ import (
 	"github.com/gx-org/gx/api"
 	"github.com/gx-org/gx/api/options"
 	"github.com/gx-org/gx/api/values"
+	"github.com/gx-org/gx/build/builder"
 	"github.com/gx-org/gx/build/ir"
 	"github.com/gx-org/gx/cgx/handle"
 	"github.com/gx-org/gx/golang/backend/kernels"
@@ -255,14 +256,15 @@ func cgx_device_get(cgxRuntime C.cgx_runtime, deviceIdx int) C.struct_cgx_device
 			error: (C.cgx_error)(wrap[error](err)),
 		}
 	}
+	devSetup := core.NewDeviceSetup(dev, nil)
 	return C.struct_cgx_device_get_result{
-		device: (C.cgx_device)(wrap[*api.Device](dev)),
+		device: (C.cgx_device)(wrap[*core.DeviceSetup](devSetup)),
 	}
 }
 
 //export cgx_device_get_runtime
 func cgx_device_get_runtime(cgxDevice C.cgx_device) C.cgx_runtime {
-	dev := unwrap[*api.Device](cgxDevice)
+	dev := unwrap[*core.DeviceSetup](cgxDevice)
 	return (C.cgx_runtime)(wrap[*api.Runtime](dev.Runtime()))
 }
 
@@ -271,38 +273,32 @@ func cgx_device_get_runtime(cgxDevice C.cgx_device) C.cgx_runtime {
 //export cgx_package_ir_load
 func cgx_package_ir_load(cgxRuntime C.cgx_runtime, pathPtr *C.cchar_t) C.struct_cgx_package_ir_load_result {
 	rtm := unwrap[*api.Runtime](cgxRuntime)
-	pkg, err := core.BuildPackage(rtm.Builder(), C.GoString(pathPtr))
+	pkg, err := rtm.Builder().Build(C.GoString(pathPtr))
 	return C.struct_cgx_package_ir_load_result{
 		error:    (C.cgx_error)(wrap[error](err)),
-		_package: (C.cgx_package_ir)(wrap[*core.Package](pkg)),
+		_package: (C.cgx_package_ir)(wrap[builder.Package](pkg)),
 	}
 }
 
 /* cgx_package */
 
-// NewPackageHandle returns a new C handle to compile a package for a runtime and a device.
-// The returned value always has type C.cgx_package.
-func NewPackageHandle(dev *api.Device, pkg *core.Package) C.cgx_handle {
-	return wrap[*core.PackageCompileSetup](pkg.Setup(dev, nil))
-}
-
 //export cgx_package_ir_build_for
 func cgx_package_ir_build_for(cgxPackageIR C.cgx_package_ir, cgxDevice C.cgx_device) C.cgx_package {
-	dev := unwrap[*api.Device](cgxDevice)
-	pkg := unwrap[*core.Package](cgxPackageIR)
-	return C.cgx_package(NewPackageHandle(dev, pkg))
+	dev := unwrap[*core.DeviceSetup](cgxDevice)
+	pkg := unwrap[builder.Package](cgxPackageIR)
+	return C.cgx_package(wrap[*core.PackageCompileSetup](dev.PackageSetup(pkg)))
 }
 
 //export cgx_package_ir_name
 func cgx_package_ir_name(cgxPackageIR C.cgx_package_ir) *C.cchar_t {
-	pkg := unwrap[*core.Package](cgxPackageIR)
-	return C.CString(pkg.Package().Name.Name)
+	pkg := unwrap[builder.Package](cgxPackageIR)
+	return C.CString(pkg.IR().Name.Name)
 }
 
 //export cgx_package_ir_fullname
 func cgx_package_ir_fullname(cgxPackageIR C.cgx_package_ir) *C.cchar_t {
-	pkg := unwrap[*core.Package](cgxPackageIR)
-	return C.CString(pkg.Package().FullName())
+	pkg := unwrap[builder.Package](cgxPackageIR)
+	return C.CString(pkg.IR().FullName())
 }
 
 type staticVariable struct {
@@ -373,7 +369,7 @@ func cgx_static_set(cgxStatic C.cgx_static, val int64) C.cgx_error {
 	if err != nil {
 		return (C.cgx_error)(wrap[error](err))
 	}
-	cvr.pkg.AppendOptions(func(plat platform.Platform) options.PackageOption {
+	cvr.pkg.Setup().AppendOptions(func(plat platform.Platform) options.PackageOption {
 		return options.PackageVarSetValue{
 			Pkg:   cvr.pkg.IR().FullName(),
 			Var:   cvr.vr.VName.Name,
@@ -417,7 +413,7 @@ func cgx_free_list_functions_result(res *C.struct_cgx_list_functions_result) {
 //export cgx_package_get_ir
 func cgx_package_get_ir(cgxPackage C.cgx_package) C.cgx_package_ir {
 	cpkg := unwrap[*core.PackageCompileSetup](cgxPackage)
-	return (C.cgx_package_ir)(wrap[*core.Package](cpkg.Package()))
+	return (C.cgx_package_ir)(wrap[builder.Package](cpkg.Package()))
 }
 
 //export cgx_package_list_interfaces
@@ -600,53 +596,53 @@ func toValueResult[T dtype.GoDataType](devAtom *types.DeviceAtom[T], err error) 
 
 //export cgx_value_new_bool
 func cgx_value_new_bool(cgxDevice C.cgx_device, value C.bool) C.struct_cgx_value_new_result {
-	dev := unwrap[*api.Device](cgxDevice)
-	return toValueResult(types.Bool(bool(value)).SendTo(dev))
+	dev := unwrap[*core.DeviceSetup](cgxDevice)
+	return toValueResult(types.Bool(bool(value)).SendTo(dev.Device()))
 }
 
 //export cgx_value_new_float32
 func cgx_value_new_float32(cgxDevice C.cgx_device, value C.float) C.struct_cgx_value_new_result {
-	dev := unwrap[*api.Device](cgxDevice)
-	return toValueResult(types.Float32(float32(value)).SendTo(dev))
+	dev := unwrap[*core.DeviceSetup](cgxDevice)
+	return toValueResult(types.Float32(float32(value)).SendTo(dev.Device()))
 }
 
 //export cgx_value_new_float64
 func cgx_value_new_float64(cgxDevice C.cgx_device, value C.double) C.struct_cgx_value_new_result {
-	dev := unwrap[*api.Device](cgxDevice)
-	return toValueResult(types.Float64(float64(value)).SendTo(dev))
+	dev := unwrap[*core.DeviceSetup](cgxDevice)
+	return toValueResult(types.Float64(float64(value)).SendTo(dev.Device()))
 }
 
 //export cgx_value_new_int32
 func cgx_value_new_int32(cgxDevice C.cgx_device, value C.int32_t) C.struct_cgx_value_new_result {
-	dev := unwrap[*api.Device](cgxDevice)
-	return toValueResult(types.Int32(int32(value)).SendTo(dev))
+	dev := unwrap[*core.DeviceSetup](cgxDevice)
+	return toValueResult(types.Int32(int32(value)).SendTo(dev.Device()))
 }
 
 //export cgx_value_new_int64
 func cgx_value_new_int64(cgxDevice C.cgx_device, value C.int64_t) C.struct_cgx_value_new_result {
-	dev := unwrap[*api.Device](cgxDevice)
-	return toValueResult(types.Int64(int64(value)).SendTo(dev))
+	dev := unwrap[*core.DeviceSetup](cgxDevice)
+	return toValueResult(types.Int64(int64(value)).SendTo(dev.Device()))
 }
 
 //export cgx_value_new_uint32
 func cgx_value_new_uint32(cgxDevice C.cgx_device, value C.uint32_t) C.struct_cgx_value_new_result {
-	dev := unwrap[*api.Device](cgxDevice)
-	return toValueResult(types.Uint32(uint32(value)).SendTo(dev))
+	dev := unwrap[*core.DeviceSetup](cgxDevice)
+	return toValueResult(types.Uint32(uint32(value)).SendTo(dev.Device()))
 }
 
 //export cgx_value_new_uint64
 func cgx_value_new_uint64(cgxDevice C.cgx_device, value C.uint64_t) C.struct_cgx_value_new_result {
-	dev := unwrap[*api.Device](cgxDevice)
-	return toValueResult(types.Uint64(uint64(value)).SendTo(dev))
+	dev := unwrap[*core.DeviceSetup](cgxDevice)
+	return toValueResult(types.Uint64(uint64(value)).SendTo(dev.Device()))
 }
 
 //export cgx_value_send
 func cgx_value_send(cgxDevice C.cgx_device, cgxShape C.cgx_shape, data *C.cvoid_t, dataSize C.uint64_t) C.struct_cgx_value_new_result {
-	dev := unwrap[*api.Device](cgxDevice)
+	dev := unwrap[*core.DeviceSetup](cgxDevice)
 	shape := unwrap[*shape.Shape](cgxShape)
 	byteData := (*byte)(unsafe.Pointer(data))
 
-	h, err := dev.PlatformDevice().Send(unsafe.Slice(byteData, dataSize), shape)
+	h, err := dev.Device().PlatformDevice().Send(unsafe.Slice(byteData, dataSize), shape)
 	if err != nil {
 		return C.struct_cgx_value_new_result{error: (C.cgx_error)(wrap[error](err))}
 	}

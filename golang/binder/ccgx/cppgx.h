@@ -398,7 +398,7 @@ absl::StatusOr<absl::Span<T>> Array<T>::Acquire() {
 
 class BuildOption {
  public:
-  virtual absl::Status apply(const Package&) const = 0;
+  virtual absl::Status apply(const Device&) const = 0;
   virtual ~BuildOption() {};
 };
 
@@ -410,19 +410,21 @@ class SetStaticVariable : public BuildOption {
       : package_path_(package_path), name_(name), value_(value) {}
   ~SetStaticVariable() override = default;
 
-  absl::Status apply(const Package& pkg) const override;
+  absl::Status apply(const Device& dev) const override;
 
  private:
-  // TODO(degris): fix CGX and transform PackageCompileSetup to
-  // DeviceCompileSetup.
   const std::string package_path_;
   const std::string name_;
   const T value_;
 };
 
 template <typename T>
-absl::Status SetStaticVariable<T>::apply(const Package& pkg) const {
-  auto static_var = pkg.FindStaticVar(name_);
+absl::Status SetStaticVariable<T>::apply(const Device& dev) const {
+  auto pkg = dev.BuildPackage(package_path_);
+  if (!pkg.ok()) {
+    return pkg.status();
+  }
+  auto static_var = pkg->FindStaticVar(name_);
   if (!static_var.ok()) {
     return static_var.status();
   }
