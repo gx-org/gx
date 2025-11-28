@@ -48,20 +48,10 @@ var (
 	_ = tracer.Trace
 )
 
-// Load the package for a given runtime.
-func Load(rtm *api.Runtime) (*core.Package, error) {
-	bpkg, err := rtm.Builder().Build("dtype")
-	if err != nil {
-		return nil, err
-	}
-	deps := make([]*core.Package, 0)
-	return core.NewPackage(bpkg, deps), nil
-}
-
 // BuildFor loads the GX package dtype
 // then returns that package for a given device and options.
 func BuildFor(dev *api.Device, opts ...options.PackageOptionFactory) (*Package, error) {
-	pkgHandle, err := BuildHandleFor(dev, opts...)
+	pkgHandle, err := Build(core.NewDeviceSetup(dev, opts))
 	if err != nil {
 		return nil, err
 	}
@@ -69,13 +59,9 @@ func BuildFor(dev *api.Device, opts ...options.PackageOptionFactory) (*Package, 
 }
 
 // BuildHandleFor loads the GX package dtype
-// then returns that package for a given device and options.
+// then returns the package handle.
 func BuildHandleFor(dev *api.Device, opts ...options.PackageOptionFactory) (*PackageHandle, error) {
-	pkg, err := Load(dev.Runtime())
-	if err != nil {
-		return nil, err
-	}
-	return BuildFromIR(pkg, dev, opts)
+	return Build(core.NewDeviceSetup(dev, opts))
 }
 
 // Factory create new instance of types used in the package.
@@ -104,13 +90,17 @@ type Package struct {
 
 }
 
-// BuildFromIR builds a package for a device once it has been loaded.
-func BuildFromIR(irPkg *core.Package, dev *api.Device, optionFactories []options.PackageOptionFactory) (*PackageHandle, error) {
+// Build builds a package for a device once it has been loaded.
+func Build(dev *core.DeviceSetup) (*PackageHandle, error) {
+	bpkg, err := dev.Runtime().Builder().Build("dtype")
+	if err != nil {
+		return nil, err
+	}
 	pkg := &Package{}
 	pkg.handle.Factory = &Factory{Package: pkg}
-	pkg.handle.PackageCompileSetup = irPkg.Setup(dev, optionFactories)
+	pkg.handle.PackageCompileSetup = dev.PackageSetup(bpkg)
+
 	// Build dependencies.
-	var err error
 
 	// Initialise function and method caches.
 
