@@ -51,28 +51,10 @@ var (
 	_ = tracer.Trace
 )
 
-// Load the package for a given runtime.
-func Load(rtm *api.Runtime) (*core.Package, error) {
-	bpkg, err := rtm.Builder().Build("rand")
-	if err != nil {
-		return nil, err
-	}
-	deps := make([]*core.Package, 2)
-	deps[0], err = gxdep0.Load(rtm)
-	if err != nil {
-		return nil, err
-	}
-	deps[1], err = gxdep1.Load(rtm)
-	if err != nil {
-		return nil, err
-	}
-	return core.NewPackage(bpkg, deps), nil
-}
-
 // BuildFor loads the GX package rand
 // then returns that package for a given device and options.
 func BuildFor(dev *api.Device, opts ...options.PackageOptionFactory) (*Package, error) {
-	pkgHandle, err := BuildHandleFor(dev, opts...)
+	pkgHandle, err := Build(core.NewDeviceSetup(dev, opts))
 	if err != nil {
 		return nil, err
 	}
@@ -80,13 +62,9 @@ func BuildFor(dev *api.Device, opts ...options.PackageOptionFactory) (*Package, 
 }
 
 // BuildHandleFor loads the GX package rand
-// then returns that package for a given device and options.
+// then returns the package handle.
 func BuildHandleFor(dev *api.Device, opts ...options.PackageOptionFactory) (*PackageHandle, error) {
-	pkg, err := Load(dev.Runtime())
-	if err != nil {
-		return nil, err
-	}
-	return BuildFromIR(pkg, dev, opts)
+	return Build(core.NewDeviceSetup(dev, opts))
 }
 
 // Factory create new instance of types used in the package.
@@ -127,25 +105,25 @@ type Package struct {
 	cacheNewSource         *core.FuncCache
 }
 
-// BuildFromIR builds a package for a device once it has been loaded.
-func BuildFromIR(irPkg *core.Package, dev *api.Device, optionFactories []options.PackageOptionFactory) (*PackageHandle, error) {
+// Build builds a package for a device once it has been loaded.
+func Build(dev *core.DeviceSetup) (*PackageHandle, error) {
+	bpkg, err := dev.Runtime().Builder().Build("rand")
+	if err != nil {
+		return nil, err
+	}
 	pkg := &Package{}
 	pkg.handle.Factory = &Factory{Package: pkg}
-	pkg.handle.PackageCompileSetup = irPkg.Setup(dev, optionFactories)
+	pkg.handle.PackageCompileSetup = dev.PackageSetup(bpkg)
+
 	// Build dependencies.
-	var err error
-	pkg.handle.gxdep0, err = core.BuildDep[*gxdep0.PackageHandle](
-		pkg.handle.PackageCompileSetup,
-		0,
-		gxdep0.BuildFromIR,
+	pkg.handle.gxdep0, err = gxdep0.Build(
+		pkg.handle.PackageCompileSetup.Setup(),
 	)
 	if err != nil {
 		return nil, err
 	}
-	pkg.handle.gxdep1, err = core.BuildDep[*gxdep1.PackageHandle](
-		pkg.handle.PackageCompileSetup,
-		1,
-		gxdep1.BuildFromIR,
+	pkg.handle.gxdep1, err = gxdep1.Build(
+		pkg.handle.PackageCompileSetup.Setup(),
 	)
 	if err != nil {
 		return nil, err
