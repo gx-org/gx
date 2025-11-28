@@ -12,15 +12,15 @@
 // See the License for the specific language governing permissions and
 // limitations under the License.
 
-// Package linearregressionexperiment runs the linear regression example given a backend.
-package linearregressionexperiment
+// Package linearregression runs the linear regression example given a backend.
+package linearregression
 
 import (
 	"fmt"
 	"math"
 
 	"github.com/gx-org/gx/api"
-	"github.com/gx-org/gx/examples/linearregression/linearregression_go_gx"
+	"github.com/gx-org/gx/examples/linearregression/linearregression/linearregression_go_gx"
 	"github.com/gx-org/gx/golang/binder/gobindings/types"
 )
 

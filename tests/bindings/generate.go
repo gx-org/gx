@@ -46,3 +46,9 @@ package bindings
 //go:generate go run ../../golang/tools/testsmain/testsmain.go --gx_test_folder=../../golang/tests/dtypestest
 //go:generate go run ../../golang/tools/testsmain/testsmain.go --gx_test_folder=../../golang/tests/cartpoletest
 //go:generate go run ../../golang/tools/testsmain/testsmain.go --gx_test_folder=../../golang/tests/unexportedtest
+
+//go:generate go run ../../golang/packager --gx_package=github.com/gx-org/gx/golang/backend/tests/notimp
+//go:generate go run ../../golang/packager --gx_package=github.com/gx-org/gx/examples/linearregression/linearregression
+
+//go:generate go run ../../golang/binder/genbind --gx_package=github.com/gx-org/gx/golang/backend/tests/notimp
+//go:generate go run ../../golang/binder/genbind --gx_package=github.com/gx-org/gx/examples/linearregression/linearregression

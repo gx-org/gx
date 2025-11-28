@@ -12,7 +12,7 @@
 // See the License for the specific language governing permissions and
 // limitations under the License.
 
-package linearregressionexperiment_test
+package linearregression_test
 
 import (
 	"strings"
@@ -21,13 +21,13 @@ import (
 	"github.com/gx-org/gx/golang/binder/gobindings"
 	gxtesting "github.com/gx-org/gx/tests/testing"
 
-	_ "github.com/gx-org/gx/examples/linearregression"
+	_ "github.com/gx-org/gx/examples/linearregression/linearregression"
 )
 
 func TestLinearRegressionBindings(t *testing.T) {
 	bld := gxtesting.NewBuilderStaticSource(nil)
 	out := &strings.Builder{}
-	pkg, err := bld.Build("github.com/gx-org/gx/examples/linearregression")
+	pkg, err := bld.Build("github.com/gx-org/gx/examples/linearregression/linearregression")
 	if err != nil {
 		t.Fatalf("cannot generate bindings:\n%+v", err)
 	}
