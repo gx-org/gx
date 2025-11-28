@@ -29,6 +29,7 @@ import (
 	"github.com/gx-org/gx/build/importers"
 	"github.com/gx-org/gx/cgx/handle"
 	cgxtesting "github.com/gx-org/gx/golang/binder/cgx/testing"
+	"github.com/gx-org/gx/golang/binder/gobindings/core"
 	"github.com/gx-org/gx/stdlib"
 
 	_ "github.com/gx-org/gx/golang/binder/cgx" // C dependency
@@ -82,7 +83,7 @@ func NewBuilder() *builder.Builder {
 }
 
 func clearLoaderCache(cdev C.cgx_device) {
-	dev := handle.Unwrap[*api.Device](handle.Handle(cdev))
+	dev := handle.Unwrap[*core.DeviceSetup](handle.Handle(cdev))
 	loader := dev.Runtime().Builder().Loader()
 	cache, ok := loader.(*importers.CacheLoader)
 	if !ok {

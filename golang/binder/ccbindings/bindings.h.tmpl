@@ -69,7 +69,7 @@ class {{.Class}} {
     auto pkg = result.value().BuildFor(device);
     std::array<::gxlang::cppgx::BuildOption*, sizeof...(options)> options_array = { options... };
     for (const auto opt : options_array) {
-      auto opt_result = opt->apply(pkg.package_);
+      auto opt_result = opt->apply(device);
       if (!opt_result.ok()) {
         return absl::StatusOr<{{.Class}}>(opt_result);
       }
