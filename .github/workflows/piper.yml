@@ -49,7 +49,7 @@ jobs:
       run: sudo apt install -y libabsl-dev
 
     - name: Remove unsupported code
-      run: rm -rf examples golang/binder/cgx/cgx_test.cc golang/binder/ccgx/cppgx_test.cc golang/binder/pygx
+      run: rm -rf golang/binder/cgx/cgx_test.cc golang/binder/ccgx/cppgx_test.cc golang/binder/pygx
 
     - name: Update GX dependencies to the latest commit
       run: go get github.com/gx-org/backend@main
