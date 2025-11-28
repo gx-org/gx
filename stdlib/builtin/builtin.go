@@ -90,7 +90,8 @@ type builtinFuncImpl interface {
 // The type of the function is computed at compile time from the call to the function.
 func IRFuncBuiltin[T builtinFuncImpl](name string, fnBuiltin interp.FuncBuiltin, pkg *ir.Package) *ir.FuncBuiltin {
 	fn := &ir.FuncBuiltin{
-		Src: &ast.FuncDecl{Name: &ast.Ident{Name: name}},
+		Src:   &ast.FuncDecl{Name: &ast.Ident{Name: name}},
+		FFile: &ir.File{Package: pkg},
 	}
 	fn.Impl = T{Func: Func{
 		Func: fn,

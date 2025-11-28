@@ -1,0 +1,7 @@
+package notimp
+
+import "num"
+
+func CallSum() float32 {
+	return num.Sum([2]float32{1, 2}, []intidx{0})
+}
