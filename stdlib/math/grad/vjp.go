@@ -266,10 +266,6 @@ func (m *vjpMacro) buildBodyFromSetAnnotation(fetcher ir.Fetcher, sg *stmtVJP, a
 
 func (m *vjpMacro) BuildBody(fetcher ir.Fetcher, _ ir.Func) (*ast.BlockStmt, bool) {
 	sg := m.newStmt(fetcher, nil)
-	fType := m.fn.FuncType()
-	sg.registerFieldNames(fType.Receiver)
-	sg.registerFieldNames(fType.Params)
-	sg.registerFieldNames(fType.Results)
 	if ann := annotations.Get[*setAnnotation](m.fn, setKey); ann != nil {
 		return m.buildBodyFromSetAnnotation(fetcher, sg, ann)
 	}

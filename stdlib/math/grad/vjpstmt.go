@@ -20,7 +20,6 @@ import (
 	"math/big"
 
 	"github.com/gx-org/gx/build/ir"
-	"github.com/gx-org/gx/internal/base/scope"
 )
 
 type (
@@ -33,39 +32,21 @@ type (
 		macro   *vjpMacro
 		fetcher ir.Fetcher
 		parent  *stmtVJP
-		scope   *scope.RWScope[ir.Type]
 
 		stmts []ast.Stmt
 	}
 )
 
 func (m *vjpMacro) newStmt(fetcher ir.Fetcher, parent *stmtVJP) *stmtVJP {
-	var parentScope scope.Scope[ir.Type]
-	if parent != nil {
-		parentScope = parent.scope
-	}
 	return &stmtVJP{
 		macro:   m,
 		fetcher: fetcher,
 		parent:  parent,
-		scope:   scope.NewScope[ir.Type](parentScope),
 	}
 }
 
 func (sg *stmtVJP) appendMainStmt(stmt ast.Stmt) {
 	sg.stmts = append(sg.stmts, stmt)
-}
-
-func (sg *stmtVJP) registerFieldNames(list *ir.FieldList) {
-	if list == nil {
-		return
-	}
-	for _, field := range list.Fields() {
-		if field.Name == nil {
-			continue
-		}
-		sg.scope.Define(field.Name.Name, field.Type())
-	}
 }
 
 func (sg *stmtVJP) newSub() *stmtVJP {
