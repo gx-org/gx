@@ -20,6 +20,7 @@ import (
 
 	"github.com/gx-org/gx/build/ir"
 	"github.com/gx-org/gx/internal/base/scope"
+	"github.com/gx-org/gx/stdlib/math/grad/special"
 )
 
 // stmtGrader computes the gradient of statements.
@@ -97,12 +98,12 @@ func (sg *stmtGrader) gradReturnStmt(fetcher ir.Fetcher, src *ir.ReturnStmt) (*a
 		}
 		if res != nil {
 			// The expression depends on arg: nothing left to do.
-			stmt.Results[i] = res.expr
+			stmt.Results[i] = res.Expr
 			continue
 		}
 		// The expression does not depend on arg: replace it with a zero value.
-		res = zeroValueOf(expr.Source())
-		stmt.Results[i] = res.expr
+		res = special.ZeroExpr()
+		stmt.Results[i] = res.Expr
 	}
 	return stmt, true
 }
@@ -130,7 +131,7 @@ func (sg *stmtGrader) gradAssignExprStmt(fetcher ir.Fetcher, src *ir.AssignExprS
 		gradStmt.Lhs[i] = grIdent
 		known := sg.define(grIdent.Name, aexpr.Storage.Type())
 		allKnown = known && allKnown
-		gradStmt.Rhs[i] = gExpr.expr
+		gradStmt.Rhs[i] = gExpr.Expr
 	}
 	if allKnown {
 		gradStmt.Tok = token.ASSIGN

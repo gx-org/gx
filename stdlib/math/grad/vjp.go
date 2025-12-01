@@ -27,6 +27,7 @@ import (
 	"github.com/gx-org/gx/internal/interp/compeval/cpevelements"
 	"github.com/gx-org/gx/internal/interp/flatten"
 	"github.com/gx-org/gx/interp"
+	"github.com/gx-org/gx/stdlib/math/grad/special"
 )
 
 type (
@@ -170,19 +171,19 @@ func (sg *stmtVJP) buildVJPFunctionWRTFromAnn(grad ir.PkgFunc, param vjpParam, a
 	backwarder := sg.newExprBackwardVJP(param.wrt)
 	ret := &ast.ReturnStmt{Results: make([]ast.Expr, len(sg.macro.nResults.names))}
 	for i, res := range sg.macro.nResults.names {
-		ret.Results[i] = buildMul(
-			&gradExprResult{
-				expr: &ast.Ident{Name: res},
+		ret.Results[i] = special.Mul(
+			&special.Expr{
+				Expr: &ast.Ident{Name: res},
 			},
-			&gradExprResult{
-				expr: &ast.CallExpr{
+			&special.Expr{
+				Expr: &ast.CallExpr{
 					Fun: sg.macro.funcNameWithTypeParamsExpr(
 						&ast.Ident{Name: grad.Name()},
 					),
 					Args: args,
 				},
 			},
-		).expr
+		).Expr
 	}
 	var body []ast.Stmt
 	body = append(body, backwarder.stmts...)

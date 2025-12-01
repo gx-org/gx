@@ -17,15 +17,15 @@ package grad
 import (
 	"go/ast"
 	"go/token"
-	"math/big"
 
 	"github.com/gx-org/gx/build/ir"
+	"github.com/gx-org/gx/stdlib/math/grad/special"
 )
 
 type (
 	vjpExprResult struct {
 		name string
-		grad *gradExprResult
+		grad *special.Expr
 	}
 
 	stmtVJP struct {
@@ -65,11 +65,6 @@ func (sg *stmtVJP) processBlock(src *ir.BlockStmt) (*ast.BlockStmt, bool) {
 	}, true
 }
 
-var oneIR = &ir.NumberInt{
-	Src: one,
-	Val: big.NewInt(1),
-}
-
 func (sg *stmtVJP) processStmt(src ir.Stmt) bool {
 	switch srcT := src.(type) {
 	case *ir.ReturnStmt:
@@ -83,13 +78,13 @@ func (sg *stmtVJP) buildVJPFunctionWRT(src *ir.ReturnStmt, param vjpParam) (*ast
 	backwarder := sg.newExprBackwardVJP(param.wrt)
 	ret := &ast.ReturnStmt{Results: make([]ast.Expr, len(src.Results))}
 	for i, expr := range src.Results {
-		gradExpr, ok := backwarder.backward(&gradExprResult{
-			expr: &ast.Ident{Name: sg.macro.nResults.names[i]},
+		gradExpr, ok := backwarder.backward(&special.Expr{
+			Expr: &ast.Ident{Name: sg.macro.nResults.names[i]},
 		}, expr)
 		if !ok {
 			return nil, false
 		}
-		ret.Results[i] = gradExpr.expr
+		ret.Results[i] = gradExpr.Expr
 	}
 	var body []ast.Stmt
 	body = append(body, backwarder.stmts...)

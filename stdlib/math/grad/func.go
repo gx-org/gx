@@ -19,6 +19,7 @@ import (
 
 	"github.com/gx-org/gx/build/ir/annotations"
 	"github.com/gx-org/gx/build/ir"
+	"github.com/gx-org/gx/stdlib/math/grad/special"
 )
 
 func (m *gradMacro) gradFunc(fetcher ir.Fetcher, src *ir.FuncValExpr, wrt string) (ast.Expr, bool) {
@@ -56,15 +57,15 @@ func astExprs(exprs []ir.AssignableExpr) []ast.Expr {
 	return as
 }
 
-func (m *stmtGrader) gradCall(src *ir.FuncCallExpr) (*gradExprResult, bool) {
+func (m *stmtGrader) gradCall(src *ir.FuncCallExpr) (*special.Expr, bool) {
 	if len(src.Args) == 0 {
-		return zeroValueOf(src.Source()), true
+		return special.ZeroExpr(), true
 	}
 	calleeT, ok := src.Callee.(*ir.FuncValExpr)
 	if !ok {
 		return nil, m.fetcher.Err().AppendInternalf(src.Source(), "callee type %T not supported", src.Callee)
 	}
-	var gExpr *gradExprResult
+	var gExpr *special.Expr
 	ge := m.newExprGrader(false)
 	for i, argI := range src.Args {
 		gradCallee, ok := m.macro.gradFunc(m.fetcher, calleeT, calleeT.T.Params.Fields()[i].Name.Name)
@@ -75,9 +76,9 @@ func (m *stmtGrader) gradCall(src *ir.FuncCallExpr) (*gradExprResult, bool) {
 		if !ok {
 			return nil, false
 		}
-		gradI := buildMul(
-			&gradExprResult{
-				expr: &ast.CallExpr{
+		gradI := special.Mul(
+			&special.Expr{
+				Expr: &ast.CallExpr{
 					Fun:  gradCallee,
 					Args: astExprs(src.Args),
 				},
@@ -88,7 +89,7 @@ func (m *stmtGrader) gradCall(src *ir.FuncCallExpr) (*gradExprResult, bool) {
 			gExpr = gradI
 			continue
 		}
-		gExpr = buildAdd(gExpr, gradI)
+		gExpr = special.Add(gExpr, gradI)
 	}
 	return gExpr, true
 }
