@@ -21,6 +21,7 @@ import (
 
 	"github.com/gx-org/gx/base/uname"
 	"github.com/gx-org/gx/build/ir"
+	"github.com/gx-org/gx/stdlib/math/grad/special"
 )
 
 // exprBackwardVJP decomposes expressions into elementary assignment statements.
@@ -73,7 +74,7 @@ func (m *exprBackwardVJP) appendVJPStmt(stmt ast.Stmt) {
 	m.stmts = append(m.stmts, stmt)
 }
 
-func (m *exprBackwardVJP) assign(fwdExpr ir.Expr, expr *gradExprResult, suffix string) (*gradExprResult, bool) {
+func (m *exprBackwardVJP) assign(fwdExpr ir.Expr, expr *special.Expr, suffix string) (*special.Expr, bool) {
 	fwdName, ok := m.singleForwardName(fwdExpr)
 	if !ok {
 		return nil, false
@@ -87,12 +88,12 @@ func (m *exprBackwardVJP) assign(fwdExpr ir.Expr, expr *gradExprResult, suffix s
 	m.appendVJPStmt(&ast.AssignStmt{
 		Tok: token.DEFINE,
 		Lhs: []ast.Expr{idName},
-		Rhs: []ast.Expr{expr.expr},
+		Rhs: []ast.Expr{expr.Expr},
 	})
-	return &gradExprResult{expr: idName}, true
+	return &special.Expr{Expr: idName}, true
 }
 
-func (m *exprBackwardVJP) backward(bck *gradExprResult, expr ir.Expr) (vjp *gradExprResult, ok bool) {
+func (m *exprBackwardVJP) backward(bck *special.Expr, expr ir.Expr) (vjp *special.Expr, ok bool) {
 	switch exprT := expr.(type) {
 	case *ir.FuncCallExpr:
 		return m.callExpr(bck, exprT)
@@ -111,40 +112,40 @@ func (m *exprBackwardVJP) backward(bck *gradExprResult, expr ir.Expr) (vjp *grad
 	}
 }
 
-func (m *exprBackwardVJP) parenExpr(bck *gradExprResult, expr *ir.ParenExpr) (*gradExprResult, bool) {
+func (m *exprBackwardVJP) parenExpr(bck *special.Expr, expr *ir.ParenExpr) (*special.Expr, bool) {
 	xBack, xOk := m.backward(bck, expr.X)
 	if !xOk {
 		return nil, false
 	}
-	if xBack.kind != notSpecial {
+	if xBack.Value != special.Any {
 		return xBack, true
 	}
-	return &gradExprResult{
-		expr: &ast.ParenExpr{X: xBack.expr},
+	return &special.Expr{
+		Expr: &ast.ParenExpr{X: xBack.Expr},
 	}, true
 }
 
-func (m *exprBackwardVJP) unaryExpr(bck *gradExprResult, expr *ir.UnaryExpr) (*gradExprResult, bool) {
+func (m *exprBackwardVJP) unaryExpr(bck *special.Expr, expr *ir.UnaryExpr) (*special.Expr, bool) {
 	xBack, xOk := m.backward(bck, expr.X)
 	if !xOk {
 		return nil, false
 	}
 	switch expr.Src.Op {
 	case token.SUB:
-		return buildUnarySub(xBack), true
+		return special.UnarySub(xBack), true
 	default:
 		return nil, m.fetcher.Err().Appendf(expr.Source(), "gradient of binary operator %s not supported", expr.Src.Op)
 	}
 }
 
-func (m *exprBackwardVJP) binaryExpr(bck *gradExprResult, expr *ir.BinaryExpr) (*gradExprResult, bool) {
+func (m *exprBackwardVJP) binaryExpr(bck *special.Expr, expr *ir.BinaryExpr) (*special.Expr, bool) {
 	xFwd, xOk := m.singleForwardIdent(expr.X)
 	yFwd, yOk := m.singleForwardIdent(expr.Y)
 	if !xOk || !yOk {
 		return nil, false
 	}
-	x := &gradExprResult{expr: xFwd}
-	y := &gradExprResult{expr: yFwd}
+	x := &special.Expr{Expr: xFwd}
+	y := &special.Expr{Expr: yFwd}
 	xBack, xOk := m.backward(bck, expr.X)
 	yBack, yOk := m.backward(bck, expr.Y)
 	if !xOk || !yOk {
@@ -152,60 +153,59 @@ func (m *exprBackwardVJP) binaryExpr(bck *gradExprResult, expr *ir.BinaryExpr) (
 	}
 	switch expr.Src.Op {
 	case token.ADD:
-		return buildAdd(xBack, yBack), true
+		return special.Add(xBack, yBack), true
 	case token.SUB:
-		return buildSub(xBack, yBack), true
+		return special.Sub(xBack, yBack), true
 	case token.MUL:
-		return buildAdd(
-			buildMul(xBack, y),
-			buildMul(x, yBack),
+		return special.Add(
+			special.Mul(xBack, y),
+			special.Mul(x, yBack),
 		), true
 	case token.QUO:
-		return buildQuo(
-			buildSub(
-				buildMul(xBack, y),
-				buildMul(x, yBack),
+		return special.Quo(
+			special.Sub(
+				special.Mul(xBack, y),
+				special.Mul(x, yBack),
 			),
-			buildMul(y, y),
+			special.Mul(y, y),
 		), true
 	default:
 		return nil, m.fetcher.Err().Appendf(expr.Source(), "gradient of binary operator %s not supported", expr.Src.Op)
 	}
 }
 
-func (m *exprBackwardVJP) numberCastExpr(bck *gradExprResult, expr *ir.NumberCastExpr) (*gradExprResult, bool) {
-	src := expr.X.Source().(ast.Expr)
-	return zeroValueOf(src), true
+func (m *exprBackwardVJP) numberCastExpr(bck *special.Expr, expr *ir.NumberCastExpr) (*special.Expr, bool) {
+	return special.ZeroExpr(), true
 }
 
-func (m *exprBackwardVJP) gradFieldStorage(bck *gradExprResult, expr *ir.ValueRef, stor *ir.FieldStorage) (*gradExprResult, bool) {
+func (m *exprBackwardVJP) gradFieldStorage(bck *special.Expr, expr *ir.ValueRef, stor *ir.FieldStorage) (*special.Expr, bool) {
 	if m.wrt.same(stor.Field) {
 		return bck, true
 	}
-	return zeroValueOf(expr.Source()), true
+	return special.ZeroExpr(), true
 }
 
-func (m *exprBackwardVJP) valueRef(bck *gradExprResult, expr *ir.ValueRef) (*gradExprResult, bool) {
+func (m *exprBackwardVJP) valueRef(bck *special.Expr, expr *ir.ValueRef) (*special.Expr, bool) {
 	fieldStorage, isField := expr.Stor.(*ir.FieldStorage)
 	if isField {
 		return m.gradFieldStorage(bck, expr, fieldStorage)
 	}
-	return &gradExprResult{expr: gradIdent(expr.Stor.NameDef())}, true
+	return &special.Expr{Expr: gradIdent(expr.Stor.NameDef())}, true
 }
 
-func (m *exprBackwardVJP) callTrace(backwardIdents []*gradExprResult) {
+func (m *exprBackwardVJP) callTrace(backwardIdents []*special.Expr) {
 	if !traceAll {
 		return
 	}
 	var traceArgs []ast.Expr
 	for i, bckExpr := range backwardIdents {
-		ident, ok := bckExpr.expr.(*ast.Ident)
+		ident, ok := bckExpr.Expr.(*ast.Ident)
 		if !ok {
 			continue
 		}
 		traceArgs = append(traceArgs,
 			&ast.BasicLit{Value: strconv.Quote(ident.Name)},
-			backwardIdents[i].expr,
+			backwardIdents[i].Expr,
 		)
 
 	}
@@ -217,30 +217,30 @@ func (m *exprBackwardVJP) callTrace(backwardIdents []*gradExprResult) {
 	})
 }
 
-func (m *exprBackwardVJP) callExpr(bck *gradExprResult, expr *ir.FuncCallExpr) (*gradExprResult, bool) {
+func (m *exprBackwardVJP) callExpr(bck *special.Expr, expr *ir.FuncCallExpr) (*special.Expr, bool) {
 	if len(expr.Args) == 0 {
-		return zeroValueOf(expr.Source()), true
+		return special.ZeroExpr(), true
 	}
 	forwardValues := m.macro.exprToName[expr].(*allocForwardValues)
 	calleeParams := expr.Callee.FuncType().Params.Fields()
-	backwardIdents := make([]*gradExprResult, len(calleeParams))
+	backwardIdents := make([]*special.Expr, len(calleeParams))
 	for i, param := range calleeParams {
 		vjpCall := &ast.CallExpr{
 			Fun:  &ast.Ident{Name: forwardValues.vjps[i]},
-			Args: []ast.Expr{bck.expr},
+			Args: []ast.Expr{bck.Expr},
 		}
 		bckSuffix := ""
 		if len(calleeParams) > 1 {
 			bckSuffix = param.Name.Name
 		}
 		var ok bool
-		backwardIdents[i], ok = m.assign(expr, &gradExprResult{expr: vjpCall}, bckSuffix)
+		backwardIdents[i], ok = m.assign(expr, &special.Expr{Expr: vjpCall}, bckSuffix)
 		if !ok {
 			return nil, false
 		}
 	}
 	m.callTrace(backwardIdents)
-	argsGrad := make([]*gradExprResult, len(expr.Args))
+	argsGrad := make([]*special.Expr, len(expr.Args))
 	for i := len(expr.Args) - 1; i >= 0; i-- {
 		var ok bool
 		argsGrad[i], ok = m.backward(backwardIdents[i], expr.Args[i])
@@ -251,5 +251,5 @@ func (m *exprBackwardVJP) callExpr(bck *gradExprResult, expr *ir.FuncCallExpr) (
 	if len(argsGrad) == 1 {
 		return argsGrad[0], true
 	}
-	return buildAdd(argsGrad...), true
+	return special.Add(argsGrad...), true
 }

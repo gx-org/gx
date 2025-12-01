@@ -19,49 +19,8 @@ import (
 	"go/token"
 
 	"github.com/gx-org/gx/build/ir"
+	"github.com/gx-org/gx/stdlib/math/grad/special"
 )
-
-type specialValue int
-
-const (
-	notSpecial = iota
-	zeroSpecial
-	oneSpecial
-)
-
-type gradExprResult struct {
-	kind specialValue
-	expr ast.Expr
-}
-
-func addCast(expr ast.Expr, typ ir.Type) ast.Expr {
-	return &ast.CallExpr{
-		Fun:  typ.Source().(ast.Expr),
-		Args: []ast.Expr{expr},
-	}
-}
-
-func addCastIfRequired(expr ast.Expr, typ ir.Type) ast.Expr {
-	basic, isBasic := expr.(*ast.BasicLit)
-	if !isBasic {
-		return expr
-	}
-	if basic.Kind != token.INT && basic.Kind != token.FLOAT {
-		return expr
-	}
-	return addCast(expr, typ)
-}
-
-func (r *gradExprResult) addCastIfRequired(typ ir.Type) *gradExprResult {
-	return &gradExprResult{
-		kind: r.kind,
-		expr: addCastIfRequired(r.expr, typ),
-	}
-}
-
-func (r *gradExprResult) Print() {
-	ast.Print(token.NewFileSet(), r.expr)
-}
 
 // exprGrader computes the gradient of expression.
 type exprGrader struct {
@@ -76,18 +35,18 @@ func (m *stmtGrader) newExprGrader(castNumbers bool) *exprGrader {
 	}
 }
 
-func (m *exprGrader) gradExpr(src ir.Expr) (r *gradExprResult, ok bool) {
+func (m *exprGrader) gradExpr(src ir.Expr) (r *special.Expr, ok bool) {
 	defer func() {
 		if !ok || !m.castNumbers {
 			return
 		}
-		r = r.addCastIfRequired(src.Type())
+		r = r.AddCastIfRequired(src.Type())
 	}()
 	switch srcT := src.(type) {
 	case *ir.ArrayLitExpr:
 		return m.gradArrayLitExpr(srcT)
 	case *ir.NumberCastExpr:
-		return zeroValueOf(src.Source()), true
+		return special.ZeroExpr(), true
 	case *ir.ValueRef:
 		return m.gradValueRef(srcT)
 	case *ir.BinaryExpr:
@@ -103,103 +62,9 @@ func (m *exprGrader) gradExpr(src ir.Expr) (r *gradExprResult, ok bool) {
 	}
 }
 
-func buildAdd(xs ...*gradExprResult) *gradExprResult {
-	if len(xs) == 1 {
-		return xs[0]
-	}
-	left := xs[0]
-	right := buildAdd(xs[1:]...)
-	if left.kind == zeroSpecial {
-		return right
-	}
-	if right.kind == zeroSpecial {
-		return left
-	}
-	return &gradExprResult{
-		expr: &ast.BinaryExpr{
-			Op: token.ADD,
-			X:  left.expr,
-			Y:  right.expr,
-		},
-	}
-}
-
-func buildMul(x, y *gradExprResult) *gradExprResult {
-	// Multiplication by 0.
-	if x.kind == zeroSpecial {
-		return x
-	}
-	if y.kind == zeroSpecial {
-		return y
-	}
-	// Multiplication by 1.
-	if x.kind == oneSpecial {
-		return y
-	}
-	if y.kind == oneSpecial {
-		return x
-	}
-	// All other cases.
-	return &gradExprResult{
-		expr: &ast.BinaryExpr{
-			Op: token.MUL,
-			X:  x.expr,
-			Y:  y.expr,
-		},
-	}
-}
-
-func buildUnarySub(x *gradExprResult) *gradExprResult {
-	if x.kind == zeroSpecial {
-		return x
-	}
-	return &gradExprResult{
-		expr: &ast.UnaryExpr{
-			Op: token.SUB,
-			X:  x.expr,
-		},
-	}
-}
-
-func buildSub(x, y *gradExprResult) *gradExprResult {
-	// Substraction by 0.
-	if y.kind == zeroSpecial {
-		return x
-	}
-	// Substraction from 0.
-	if x.kind == zeroSpecial {
-		return &gradExprResult{
-			expr: &ast.UnaryExpr{
-				Op: token.SUB,
-				X:  y.expr,
-			},
-		}
-	}
-	return &gradExprResult{
-		expr: &ast.BinaryExpr{
-			Op: token.SUB,
-			X:  x.expr,
-			Y:  y.expr,
-		},
-	}
-}
-
-func buildQuo(x, y *gradExprResult) *gradExprResult {
-	if y.kind == oneSpecial {
-		return x
-	}
-	return &gradExprResult{
-		expr: &ast.BinaryExpr{
-			Op: token.QUO,
-			X:  x.expr,
-			Y:  y.expr,
-		},
-	}
-}
-
-func (m *exprGrader) gradBinaryExpr(src *ir.BinaryExpr) (*gradExprResult, bool) {
-	u := &gradExprResult{expr: src.X.Source().(ast.Expr)}
-	v := &gradExprResult{expr: src.Y.Source().(ast.Expr)}
+func (m *exprGrader) gradBinaryExpr(src *ir.BinaryExpr) (*special.Expr, bool) {
+	u := special.New(src.X)
+	v := special.New(src.Y)
 	uGrad, xOk := m.gradExpr(src.X)
 	vGrad, yOk := m.gradExpr(src.Y)
 	if !xOk || !yOk {
@@ -207,98 +72,80 @@ func (m *exprGrader) gradBinaryExpr(src *ir.BinaryExpr) (*gradExprResult, bool) 
 	}
 	switch src.Src.Op {
 	case token.ADD:
-		return buildAdd(uGrad, vGrad), true
+		return special.Add(uGrad, vGrad), true
 	case token.SUB:
-		return buildSub(uGrad, vGrad), true
+		return special.Sub(uGrad, vGrad), true
 	case token.MUL:
-		return buildAdd(
-			buildMul(uGrad, v),
-			buildMul(u, vGrad),
+		return special.Add(
+			special.Mul(uGrad, v),
+			special.Mul(u, vGrad),
 		), true
 	case token.QUO:
-		return buildQuo(
-			buildSub(
-				buildMul(uGrad, v),
-				buildMul(u, vGrad),
+		return special.Quo(
+			special.Sub(
+				special.Mul(uGrad, v),
+				special.Mul(u, vGrad),
 			),
-			buildMul(v, v),
+			special.Mul(v, v),
 		), true
 	default:
 		return nil, m.fetcher.Err().Appendf(src.Source(), "gradient of binary expression %s not supported", src.Src.Op)
 	}
 }
 
-func (m *exprGrader) gradParenExpr(src *ir.ParenExpr) (*gradExprResult, bool) {
+func (m *exprGrader) gradParenExpr(src *ir.ParenExpr) (*special.Expr, bool) {
 	expr, ok := m.gradExpr(src.X)
 	if !ok {
 		return expr, false
 	}
-	if expr.kind != notSpecial {
+	if expr.Value != special.Any {
 		return expr, true
 	}
-	return &gradExprResult{
-		expr: &ast.ParenExpr{X: expr.expr},
+	return &special.Expr{
+		Expr: &ast.ParenExpr{X: expr.Expr},
 	}, true
 }
 
-func (m *exprGrader) gradFieldStorage(src *ir.FieldStorage) (*gradExprResult, bool) {
+func (m *exprGrader) gradFieldStorage(src *ir.FieldStorage) (*special.Expr, bool) {
 	if m.macro.wrt.same(src.Field) {
-		return oneValueOf(src.Source()), true
+		return special.OneExpr(src.Source()), true
 	}
-	return zeroValueOf(src.Source()), true
+	return special.ZeroExpr(), true
 }
 
-func (m *exprGrader) gradValueRef(src *ir.ValueRef) (*gradExprResult, bool) {
+func (m *exprGrader) gradValueRef(src *ir.ValueRef) (*special.Expr, bool) {
 	fieldStorage, isField := src.Stor.(*ir.FieldStorage)
 	if isField {
 		return m.gradFieldStorage(fieldStorage)
 	}
 	gIdent := m.macro.gradIdent(src.Stor.NameDef())
-	return &gradExprResult{expr: gIdent}, true
+	return &special.Expr{Expr: gIdent}, true
 }
 
-func (m *exprGrader) gradArrayLitExpr(src *ir.ArrayLitExpr) (*gradExprResult, bool) {
+func (m *exprGrader) gradArrayLitExpr(src *ir.ArrayLitExpr) (*special.Expr, bool) {
 	allZero := true
-	var acc *gradExprResult = zeroValueOf(src.Source())
+	var acc *special.Expr = special.ZeroExpr()
 	for _, expr := range src.Values() {
 		gExpr, ok := m.gradExpr(expr)
 		if !ok {
 			return nil, false
 		}
-		if gExpr.kind == zeroSpecial {
+		if gExpr.Value == special.Zero {
 			continue
 		}
 		allZero = false
-		acc = buildAdd(acc, gExpr)
+		acc = special.Add(acc, gExpr)
 	}
 	if allZero {
-		return zeroValueOf(src.Source()), true
+		return special.ZeroExpr(), true
 	}
 	return acc, true
 }
 
-func (m *exprGrader) gradSelectorExpr(src *ir.SelectorExpr) (*gradExprResult, bool) {
+func (m *exprGrader) gradSelectorExpr(src *ir.SelectorExpr) (*special.Expr, bool) {
 	fieldStorage, isField := src.Stor.(*ir.FieldStorage)
 	if isField {
 		return m.gradFieldStorage(fieldStorage)
 	}
-	return zeroValueOf(src.Src), true
-}
-
-var zero = &ast.BasicLit{Value: "0", Kind: token.INT}
-
-func zeroValueOf(node ast.Node) *gradExprResult {
-	return &gradExprResult{
-		kind: zeroSpecial,
-		expr: zero,
-	}
-}
-
-var one = &ast.BasicLit{Value: "1", Kind: token.INT}
-
-func oneValueOf(node ast.Node) *gradExprResult {
-	return &gradExprResult{
-		kind: oneSpecial,
-		expr: one,
-	}
+	return special.ZeroExpr(), true
 }
