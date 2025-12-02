@@ -16,6 +16,7 @@ package builder
 
 import (
 	"go/ast"
+	"go/token"
 
 	"github.com/gx-org/gx/build/ir"
 )
@@ -29,7 +30,12 @@ var _ exprNode = (*unaryExpr)(nil)
 
 func processUnaryExpr(pscope procScope, expr *ast.UnaryExpr) (exprNode, bool) {
 	x, ok := processExpr(pscope, expr.X)
-	return &unaryExpr{src: expr, x: x}, ok
+	n := &unaryExpr{src: expr, x: x}
+	switch expr.Op {
+	case token.SUB, token.ADD, token.NOT:
+		return n, ok
+	}
+	return n, pscope.Err().Appendf(expr, "unary operator %s not supported", expr.Op.String())
 }
 
 func (n *unaryExpr) source() ast.Node {

@@ -46,10 +46,10 @@ func processExpr(pscope procScope, expr ast.Expr) (exprNode, bool) {
 		return processFuncLit(pscope, exprT)
 	case *ast.TypeAssertExpr:
 		return processTypeAssertExpr(pscope, exprT)
-	default:
-		pscope.Err().Appendf(expr, "expression of type %T not supported", expr)
+	case *ast.StarExpr:
+		return nil, pscope.Err().Appendf(exprT, "star expression *<expr> not supported")
 	}
-	return nil, false
+	return nil, pscope.Err().Appendf(expr, "expression of type %T not supported", expr)
 }
 
 // processTypeExpr processes an expr in the context of defining a type.
