@@ -27,7 +27,6 @@ import (
 type (
 	// Scope provides a set of values that can be find given their name.
 	Scope[V any] interface {
-		CanAssign(string) bool
 		Find(string) (V, bool)
 		Items() *ordered.Map[string, V]
 	}
@@ -59,10 +58,6 @@ func find[V any](key string, local Scope[V], parent Scope[V]) (value V, ok bool)
 // The second return value indicates whether any value was found.
 func (s *roScope[V]) Find(key string) (value V, ok bool) {
 	return find(key, s.local, s.parent)
-}
-
-func (s *roScope[V]) CanAssign(key string) bool {
-	return false
 }
 
 func mergeItems[V any](scopes ...Scope[V]) *ordered.Map[string, V] {
@@ -103,7 +98,7 @@ func (s *localScope[V]) Find(key string) (value V, ok bool) {
 	return s.data.Load(key)
 }
 
-func (s *localScope[V]) CanAssign(key string) bool {
+func (s *localScope[V]) Has(key string) bool {
 	_, ok := s.data.Load(key)
 	return ok
 }
@@ -147,14 +142,6 @@ func NewScope[V any](parent Scope[V]) *RWScope[V] {
 // Define maps `key` to `value`, overwriting if necessary.
 func (s *RWScope[V]) Define(k string, v V) {
 	s.local.data.Store(k, v)
-}
-
-// CanAssign returns true if a key can be assigned.
-func (s *RWScope[V]) CanAssign(key string) bool {
-	if can := s.local.CanAssign(key); can || s.parent == nil {
-		return can
-	}
-	return s.parent.CanAssign(key)
 }
 
 // LocalKeys returns the keys of the local scope without the parent.

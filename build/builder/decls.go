@@ -307,10 +307,6 @@ func (d *decls) Find(key string) (processNode, bool) {
 	return d.declarations.Load(key)
 }
 
-func (d *decls) CanAssign(key string) bool {
-	return false
-}
-
 func (d *decls) Items() *ordered.Map[string, processNode] {
 	return d.declarations.Clone()
 }

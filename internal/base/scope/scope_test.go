@@ -37,18 +37,6 @@ func (want valueWant) run(t *testing.T, s Scope[int], testID int) {
 	}
 }
 
-type assignWant struct {
-	key       string
-	canAssign bool
-}
-
-func (want assignWant) run(t *testing.T, s Scope[int], testID int) {
-	got := s.CanAssign(want.key)
-	if got != want.canAssign {
-		t.Errorf("test %d: CanAssign(%s) = %v but want %v", testID, want.key, got, want.canAssign)
-	}
-}
-
 func testAll(t *testing.T, s Scope[int], all ...tester) {
 	t.Helper()
 	for i, tester := range all {
@@ -159,30 +147,6 @@ func TestRONestedScope(t *testing.T) {
 		valueWant{key: "b", val: -2, ok: true},
 		valueWant{key: "c", val: -3, ok: true},
 		valueWant{key: "d", val: -4, ok: true},
-		assignWant{key: "xx", canAssign: false},
-		assignWant{key: "yy", canAssign: false},
-		assignWant{key: "zz", canAssign: false},
-		assignWant{key: "A", canAssign: false},
-		assignWant{key: "B", canAssign: false},
-		assignWant{key: "a", canAssign: true},
-		assignWant{key: "b", canAssign: true},
-		assignWant{key: "c", canAssign: true},
-		assignWant{key: "d", canAssign: true},
-	)
-}
-
-func TestReadOnly(t *testing.T) {
-	s1 := NewScope[int](nil)
-	s1.Define("xx", 10)
-	s1.Define("zz", 20)
-	s2 := NewScope[int](s1.ReadOnly())
-	s2.Define("a", -1)
-	s2.Define("b", -2)
-	testAll(t, s2,
-		assignWant{key: "xx", canAssign: false},
-		assignWant{key: "zz", canAssign: false},
-		assignWant{key: "a", canAssign: true},
-		assignWant{key: "b", canAssign: true},
 	)
 }
 
