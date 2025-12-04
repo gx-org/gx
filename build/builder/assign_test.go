@@ -186,6 +186,15 @@ func a() st {
 		},
 		testbuild.Decl{
 			Src: `
+func f() int64 {
+	x = 0
+	return x
+}
+`,
+			Err: "undefined: x",
+		},
+		testbuild.Decl{
+			Src: `
 type st struct {
 	a float32
 }

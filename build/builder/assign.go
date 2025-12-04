@@ -37,10 +37,6 @@ var _ assignable = (*identStorage)(nil)
 
 func (asg *identStorage) assign(rscope resolveScope, typ ir.Type) (_ ir.Storage, newName, ok bool) {
 	name := asg.target.src
-	ns := rscope.nspace()
-	if !ns.CanAssign(name.Name) {
-		return nil, false, rscope.Err().Appendf(asg.source(), "cannot assign a value to %s", name.Name)
-	}
 	storage, ok := findStorage(rscope, name)
 	if !ok {
 		return nil, false, false
@@ -283,6 +279,9 @@ func buildAssignExpr(rscope resolveScope, asgm *assignment) (*ir.AssignExpr, boo
 	}
 	var newAsgm, targetOk bool
 	ext.Storage, newAsgm, targetOk = asgm.target.buildStorage(rscope, ext.X.Type())
+	if !targetOk {
+		return ext, false, false
+	}
 	if ir.IsNumber(ext.X.Type().Kind()) {
 		ext.X, exprOk = castNumber(rscope, ext.X, ext.Storage.Type())
 	}
