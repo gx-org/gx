@@ -42,5 +42,23 @@ func New() S {
 `,
 			Err: "expression *<expr> not supported",
 		},
+		testbuild.Decl{
+			Src: `
+func New() float32 {
+	1 := 2
+	return 1
+}
+`,
+			Err: "non-name on left side of :=",
+		},
+		testbuild.Decl{
+			Src: `
+func New() float32 {
+	1 = 2
+	return 1
+}
+`,
+			Err: "non-name on left side of =",
+		},
 	)
 }
