@@ -225,7 +225,7 @@ func leftExprToTarget(pscope procScope, stmt *ast.AssignStmt, expr ast.Expr, don
 	case *ast.CompositeLit:
 		return leftExprToTarget(pscope, stmt, exprT.Type, done)
 	default:
-		return nil, pscope.Err().Appendf(expr, "%T not supported on left-side of assignment", exprT)
+		return nil, pscope.Err().Appendf(expr, "non-name on left side of %s", stmt.Tok)
 	}
 }
 
