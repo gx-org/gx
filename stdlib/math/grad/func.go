@@ -17,13 +17,13 @@ package grad
 import (
 	"go/ast"
 
-	"github.com/gx-org/gx/build/ir/annotations"
 	"github.com/gx-org/gx/build/ir"
+	"github.com/gx-org/gx/stdlib/math/grad/setann"
 	"github.com/gx-org/gx/stdlib/math/grad/special"
 )
 
 func (m *gradMacro) gradFunc(fetcher ir.Fetcher, src *ir.FuncValExpr, wrt string) (ast.Expr, bool) {
-	ann := annotations.Get[*setAnnotation](src.F, setKey)
+	ann := setann.Get(src.F)
 	if ann != nil {
 		return gradFromAnnotation(fetcher, src.F.(ir.Func), ann, wrt)
 	}
