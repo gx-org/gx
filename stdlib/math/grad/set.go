@@ -17,17 +17,11 @@ package grad
 import (
 	"go/ast"
 
-	"github.com/gx-org/gx/build/ir/annotations"
 	"github.com/gx-org/gx/build/ir"
 	"github.com/gx-org/gx/interp/elements"
 	"github.com/gx-org/gx/interp"
+	"github.com/gx-org/gx/stdlib/math/grad/setann"
 )
-
-type setAnnotation struct {
-	partials []ir.PkgFunc
-}
-
-var setKey = annotations.NewKey(setAnnotation{})
 
 // SetGrad sets the gradient of a function.
 func SetGrad(fetcher ir.Fetcher, ann *ir.Annotator, fn ir.PkgFunc, call *ir.FuncCallExpr, args []ir.Element) bool {
@@ -65,13 +59,8 @@ func SetGradFor(fetcher ir.Fetcher, ann *ir.Annotator, fn ir.PkgFunc, call *ir.F
 }
 
 func annotate(fetcher ir.Fetcher, ann *ir.Annotator, fn ir.PkgFunc, call *ir.FuncCallExpr, paramName string, paramPos int, gradEl ir.Element) bool {
-	fType := fn.FuncType()
-	paramToFunc := annotations.GetDef(fn, setKey, func() *setAnnotation {
-		return &setAnnotation{
-			partials: make([]ir.PkgFunc, fType.Params.Len()),
-		}
-	})
-	prev := paramToFunc.partials[paramPos]
+	paramToFunc := setann.GetDef(fn)
+	prev := paramToFunc.Partials[paramPos]
 	if prev != nil {
 		return fetcher.Err().Appendf(call.Source(), "gradient for parameter %s has already been set", paramName)
 	}
@@ -79,7 +68,7 @@ func annotate(fetcher ir.Fetcher, ann *ir.Annotator, fn ir.PkgFunc, call *ir.Fun
 	if err != nil {
 		return fetcher.Err().AppendAt(call.Source(), err)
 	}
-	paramToFunc.partials[paramPos] = gradFn
+	paramToFunc.Partials[paramPos] = gradFn
 	return true
 }
 
@@ -95,12 +84,12 @@ func findNameInFields(paramName string, fields *ir.FieldList) int {
 	return -1
 }
 
-func gradFromAnnotation(fetcher ir.Fetcher, src ir.Func, paramToFunc *setAnnotation, wrt string) (*ast.Ident, bool) {
+func gradFromAnnotation(fetcher ir.Fetcher, src ir.Func, paramToFunc *setann.Annotation, wrt string) (*ast.Ident, bool) {
 	paramPos := findNameInFields(wrt, src.FuncType().Params)
 	if paramPos < 0 {
 		return nil, fetcher.Err().Appendf(src.Source(), "function %s has no parameter %s", src.ShortString(), wrt)
 	}
-	pkgFunc := paramToFunc.partials[paramPos]
+	pkgFunc := paramToFunc.Partials[paramPos]
 	if pkgFunc == nil {
 		return nil, fetcher.Err().Appendf(src.Source(), "no gradient defined for parameter %s of function %s", wrt, src.ShortString())
 	}

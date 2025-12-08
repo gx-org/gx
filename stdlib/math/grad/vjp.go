@@ -21,12 +21,12 @@ import (
 	"github.com/pkg/errors"
 	"github.com/gx-org/gx/api/values"
 	"github.com/gx-org/gx/base/uname"
-	"github.com/gx-org/gx/build/ir/annotations"
 	"github.com/gx-org/gx/build/ir"
 	"github.com/gx-org/gx/internal/astbuilder"
 	"github.com/gx-org/gx/internal/interp/compeval/cpevelements"
 	"github.com/gx-org/gx/internal/interp/flatten"
 	"github.com/gx-org/gx/interp"
+	"github.com/gx-org/gx/stdlib/math/grad/setann"
 	"github.com/gx-org/gx/stdlib/math/grad/special"
 )
 
@@ -212,7 +212,7 @@ func (m *vjpMacro) funcNameWithTypeParamsExpr(fn ast.Expr) ast.Expr {
 	}
 }
 
-func (m *vjpMacro) buildBodyFromSetAnnotation(fetcher ir.Fetcher, sg *stmtVJP, ann *setAnnotation) (*ast.BlockStmt, bool) {
+func (m *vjpMacro) buildBodyFromSetAnnotation(fetcher ir.Fetcher, sg *stmtVJP, ann *setann.Annotation) (*ast.BlockStmt, bool) {
 	forwarder := sg.newExprForwardVJP()
 	// Build the arguments to call the forward functions.
 	args := make([]ast.Expr, len(m.nParams.names))
@@ -244,7 +244,7 @@ func (m *vjpMacro) buildBodyFromSetAnnotation(fetcher ir.Fetcher, sg *stmtVJP, a
 	// Build a backward function for each function parameter.
 	names := make([]ast.Expr, len(sg.macro.params))
 	for i, param := range sg.macro.params {
-		vjpFuncLit, ok := sg.buildVJPFunctionWRTFromAnn(ann.partials[i], param, args)
+		vjpFuncLit, ok := sg.buildVJPFunctionWRTFromAnn(ann.Partials[i], param, args)
 		if !ok {
 			return nil, false
 		}
@@ -267,7 +267,7 @@ func (m *vjpMacro) buildBodyFromSetAnnotation(fetcher ir.Fetcher, sg *stmtVJP, a
 
 func (m *vjpMacro) BuildBody(fetcher ir.Fetcher, _ ir.Func) (*ast.BlockStmt, bool) {
 	sg := m.newStmt(fetcher, nil)
-	if ann := annotations.Get[*setAnnotation](m.fn, setKey); ann != nil {
+	if ann := setann.Get(m.fn); ann != nil {
 		return m.buildBodyFromSetAnnotation(fetcher, sg, ann)
 	}
 	fnWithBody, ok := m.fn.(*ir.FuncDecl)

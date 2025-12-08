@@ -22,12 +22,12 @@ import (
 
 	"github.com/pkg/errors"
 	"github.com/gx-org/gx/build/fmterr"
-	"github.com/gx-org/gx/build/ir/annotations"
 	"github.com/gx-org/gx/build/ir"
 	"github.com/gx-org/gx/internal/interp/compeval/cpevelements"
 	"github.com/gx-org/gx/interp/elements"
 	"github.com/gx-org/gx/interp"
 	"github.com/gx-org/gx/stdlib/builtin"
+	"github.com/gx-org/gx/stdlib/math/grad/setann"
 )
 
 //go:embed *.gx
@@ -137,7 +137,7 @@ func (m *gradMacro) BuildDecl(fn ir.PkgFunc) (*ir.File, *ast.FuncDecl, bool) {
 	return m.fn.File(), fDecl, true
 }
 
-func (m *gradMacro) buildBodyFromSetAnnotation(fetcher ir.Fetcher, fn ir.Func, ann *setAnnotation) (*ast.BlockStmt, bool) {
+func (m *gradMacro) buildBodyFromSetAnnotation(fetcher ir.Fetcher, fn ir.Func, ann *setann.Annotation) (*ast.BlockStmt, bool) {
 	params := fn.FuncType().Params.Fields()
 	args := make([]ast.Expr, len(params))
 	for i, param := range params {
@@ -156,7 +156,7 @@ func (m *gradMacro) buildBodyFromSetAnnotation(fetcher ir.Fetcher, fn ir.Func, a
 }
 
 func (m *gradMacro) BuildBody(fetcher ir.Fetcher, fn ir.Func) (*ast.BlockStmt, bool) {
-	if ann := annotations.Get[*setAnnotation](m.fn, setKey); ann != nil {
+	if ann := setann.Get(m.fn); ann != nil {
 		return m.buildBodyFromSetAnnotation(fetcher, fn, ann)
 	}
 	fnWithBody, ok := m.fn.(*ir.FuncDecl)
