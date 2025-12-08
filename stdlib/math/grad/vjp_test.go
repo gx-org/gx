@@ -159,7 +159,8 @@ func F(x float32) float32 {
 func vjpF(x float32) (float32, func(res float32) float32) {
 	fwd0 := -x
 	selfVJPFunc := func(res float32) float32 {
-		return -res
+		bck0 := -res
+		return bck0
 	}
 	return fwd0, selfVJPFunc
 }
@@ -251,6 +252,23 @@ func vjpF(x, y float32) (float32, func(res float32) float32, func(res float32) f
 	return fwd0, selfVJPFuncWRTx, selfVJPFuncWRTy
 }
 `,
+		},
+		testgrad.VJP{
+			Src: `
+func F(x float32) float32 {
+	return -(x*x)
+}
+`,
+			Want: `
+func vjpF(x float32) (float32, func(res float32) float32) {
+	fwd0 := x*x
+	fwd1 := -fwd0
+	selfVJPFunc := func(res float32) float32 {
+		bck1 := -res
+		return (bck1*x+x*bck1)
+	}
+	return fwd1, selfVJPFunc
+}`,
 		},
 	)
 }

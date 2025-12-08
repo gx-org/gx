@@ -204,16 +204,15 @@ func (n *unaryExpr) forwardValue() (*special.Expr, bool) {
 }
 
 func (n *unaryExpr) buildBackward(bckstmts *bckStmts, bck *special.Expr) (*special.Expr, bool) {
-	xBack, xOk := n.x.buildBackward(bckstmts, bck)
-	if !xOk {
-		return nil, false
-	}
+	var xbck *special.Expr
 	switch n.irnode.Src.Op {
 	case token.SUB:
-		return special.UnarySub(xBack), true
+		xbck = special.UnarySub(bck)
 	default:
 		return nil, bckstmts.err().Appendf(n.irnode.Src, "gradient of unary operator %s not supported", n.irnode.Src.Op)
 	}
+	xbck = bckstmts.assignSpecialExpr(n.id, xbck)
+	return n.x.buildBackward(bckstmts, xbck)
 }
 
 type binaryExpr struct {

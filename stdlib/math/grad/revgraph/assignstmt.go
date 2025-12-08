@@ -157,3 +157,10 @@ func (a *astStmts) newBackwardStmts(wrt withRespectTo) *bckStmts {
 		wrt: wrt,
 	}
 }
+
+func (b *bckStmts) assignSpecialExpr(id nodeID, expr *special.Expr) *special.Expr {
+	if expr.Value != special.Any {
+		return expr
+	}
+	return &special.Expr{Expr: b.assignExpr(id, expr.Expr)}
+}
