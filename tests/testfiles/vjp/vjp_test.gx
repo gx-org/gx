@@ -1,7 +1,9 @@
 package vjp
 
-import "math"
-import "math/grad"
+import (
+	"math"
+	"math/grad"
+)
 
 func F(x float32) float32 {
 	return math.Sin[float32](x)
@@ -21,7 +23,7 @@ func TestVJPF() func(x float32) (float32, func(res float32) float32) {
 }
 
 func SoftMax(x float32) float32 {
-	return 1/(1+math.Exp(-x))
+	return 1 / (1 + math.Exp(-x))
 }
 
 func TestVJPSoftMax() (float32, float32) {
@@ -30,20 +32,21 @@ func TestVJPSoftMax() (float32, float32) {
 	y, bck := vjp(0.8)
 	return y, bck(1)
 	// Want:
-        // 0: float32(0.689974)
-        // 1: float32(0.21391)
-        // Trace:
-        // vjp_test.gx:0
-        // 	func(x float32) (float32, func(res float32) float32) {
-        // 		fwd0 := -x
-        // 		fwd1, ExpVJP := grad.VJP(math.Exp)[float32](fwd0)
-        // 		fwd2 := 1+fwd1
-        // 		fwd3 := 1/fwd2
-        // 		selfVJPFunc := func(res float32) float32 {
-        // 			bck1 := ExpVJP(res)
-        // 			return -(1*(-bck1))/(fwd2*fwd2)
-        // 		}
-        // 		return fwd3, selfVJPFunc
-        // 	}
+	// 0: float32(0.689974)
+	// 1: float32(0.21391)
+	// Trace:
+	// vjp_test.gx:0
+	// 	func(x float32) (float32, func(res float32) float32) {
+	// 		fwd0 := -x
+	// 		fwd1, ExpVJP := grad.VJP(math.Exp)[float32](fwd0)
+	// 		fwd2 := 1+fwd1
+	// 		fwd3 := 1/fwd2
+	// 		selfVJPFunc := func(res float32) float32 {
+	// 			bck1 := ExpVJP(res)
+	// 			bck0 := -bck1
+	// 			return -(1*(bck0))/(fwd2*fwd2)
+	// 		}
+	// 		return fwd3, selfVJPFunc
+	// 	}
 }
 
