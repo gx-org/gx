@@ -164,3 +164,10 @@ func (b *bckStmts) assignSpecialExpr(id nodeID, expr *special.Expr) *special.Exp
 	}
 	return &special.Expr{Expr: b.assignExpr(id, expr.Expr)}
 }
+
+func (b *bckStmts) assignSpecialExprSuffix(id nodeID, expr *special.Expr, suffix string) *special.Expr {
+	if expr.Value != special.Any {
+		return expr
+	}
+	return &special.Expr{Expr: b.assignExprs(id, []ast.Expr{expr.Expr}, 1, suffix)[0]}
+}

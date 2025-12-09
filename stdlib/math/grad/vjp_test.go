@@ -64,7 +64,8 @@ func F(x float32) float32 {
 func vjpF(x float32) (float32, func(res float32) float32) {
 	fwd0 := x+2
 	selfVJPFunc := func(res float32) float32 {
-		return res
+		bck0 := res
+		return bck0
 	}
 	return fwd0, selfVJPFunc
 }
@@ -80,7 +81,8 @@ func F(x float32) float32 {
 func vjpF(x float32) (float32, func(res float32) float32) {
 	fwd0 := x+x
 	selfVJPFunc := func(res float32) float32 {
-		return res+res
+		bck0 := res+res
+		return bck0
 	}
 	return fwd0, selfVJPFunc
 }
@@ -212,7 +214,8 @@ func vjpF(x float32) (float32, func(res float32) float32) {
 	fwd0 := 2+x
 	fwd1 := x*fwd0
 	selfVJPFunc := func(res float32) float32 {
-		return res*fwd0+x*(res)
+		bck0 := res
+		return res*fwd0+x*(bck0)
 	}
 	return fwd1, selfVJPFunc
 }
@@ -315,7 +318,8 @@ func vjpF(x float32) (float32, func(res float32) float32) {
 	selfVJPFunc := func(res float32) float32 {
 		bck0 := fVJP(res)
 		bck1 := fVJP1(res)
-		return bck0+bck1
+		bck2 := bck0+bck1
+		return bck2
 	}
 	return fwd2, selfVJPFunc
 }
@@ -353,7 +357,8 @@ func vjpF(x float32) (float32, func(res float32) float32) {
 	selfVJPFunc := func(res float32) float32 {
 		bck0 := fVJP(res)
 		bck1 := gVJP(res)
-		return bck0+bck1
+		bck2 := bck0+bck1
+		return bck2
 	}
 	return fwd2, selfVJPFunc
 }
@@ -447,10 +452,12 @@ func F(x, y float32) float32 {
 func vjpF(x, y float32) (float32, func(res float32) float32, func(res float32) float32) {
 	fwd0 := x+y
 	selfVJPFuncWRTx := func(res float32) float32 {
-		return res
+		bck0 := res
+		return bck0
 	}
 	selfVJPFuncWRTy := func(res float32) float32 {
-		return res
+		bck01 := res
+		return bck01
 	}
 	return fwd0, selfVJPFuncWRTx, selfVJPFuncWRTy
 }
@@ -468,10 +475,12 @@ func vjpF(x, y float32) (float32, func(res float32) float32, func(res float32) f
 	fwd1 := 3*y
 	fwd2 := fwd0+fwd1
 	selfVJPFuncWRTx := func(res float32) float32 {
-		return 2*res
+		bck2 := 2*res
+		return bck2
 	}
 	selfVJPFuncWRTy := func(res float32) float32 {
-		return 3*res
+		bck21 := 3*res
+		return bck21
 	}
 	return fwd2, selfVJPFuncWRTx, selfVJPFuncWRTy
 }

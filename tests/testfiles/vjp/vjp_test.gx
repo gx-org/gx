@@ -44,7 +44,8 @@ func TestVJPSoftMax() (float32, float32) {
 	// 		selfVJPFunc := func(res float32) float32 {
 	// 			bck1 := ExpVJP(res)
 	// 			bck0 := -bck1
-	// 			return -(1*(bck0))/(fwd2*fwd2)
+	// 			bck2 := bck0
+	// 			return -(1*(bck2))/(fwd2*fwd2)
 	// 		}
 	// 		return fwd3, selfVJPFunc
 	// 	}
