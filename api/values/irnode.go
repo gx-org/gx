@@ -35,6 +35,11 @@ func NewIRNode(node ir.Node) (*IRNode, error) {
 
 func (s *IRNode) value() {}
 
+// Node stored in the value.
+func (s *IRNode) Node() ir.Node {
+	return s.node
+}
+
 // Type returns the type of the value.
 func (s *IRNode) Type() ir.Type {
 	return ir.TypeFromKind(ir.IRKind)
