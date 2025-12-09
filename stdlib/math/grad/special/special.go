@@ -194,3 +194,19 @@ var one = &Expr{
 func OneExpr(node ast.Node) *Expr {
 	return one
 }
+
+// Paren returns an expression inside parenthesis if necessary.
+func Paren(x *Expr) *Expr {
+	if x.Value != Any {
+		return x
+	}
+	switch x.Expr.(type) {
+	case *ast.Ident:
+		return x
+	case *ast.ParenExpr:
+		return x
+	}
+	return &Expr{
+		Expr: &ast.ParenExpr{X: x.Expr},
+	}
+}

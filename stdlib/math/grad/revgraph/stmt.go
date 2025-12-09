@@ -92,7 +92,11 @@ func (n *returnStmt) buildVJPFunctionWRT(astmts *astStmts, param vjpParam) (*ast
 		if !ok {
 			return nil, false
 		}
-		ret.Results[i] = gradExpr.Expr
+		retExpr := gradExpr.Expr
+		if parenExpr, ok := gradExpr.Expr.(*ast.ParenExpr); ok {
+			retExpr = parenExpr.X
+		}
+		ret.Results[i] = retExpr
 	}
 	var body []ast.Stmt
 	body = append(body, bckstmts.stmts...)
