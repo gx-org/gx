@@ -257,6 +257,9 @@ func (n *binaryExpr) buildBackwardOk(bckstmts *bckStmts, bck *special.Expr) (*sp
 	case token.ADD:
 		xres = bck
 		yres = bck
+	case token.SUB:
+		xres = bck
+		yres = special.UnarySub(bck)
 	default:
 		return nil, bckstmts.err().Appendf(n.irnode.Src, "gradient of binary operator %s not supported", n.irnode.Src.Op)
 	}
@@ -268,6 +271,8 @@ func (n *binaryExpr) buildBackwardOk(bckstmts *bckStmts, bck *special.Expr) (*sp
 func (n *binaryExpr) buildBackward(bckstmts *bckStmts, bck *special.Expr) (*special.Expr, bool) {
 	switch n.irnode.Src.Op {
 	case token.ADD:
+		return n.buildBackwardOk(bckstmts, bck)
+	case token.SUB:
 		return n.buildBackwardOk(bckstmts, bck)
 	}
 
