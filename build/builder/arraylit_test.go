@@ -137,3 +137,12 @@ func TestArrayLit(t *testing.T) {
 		},
 	)
 }
+
+func TestArrayLitError(t *testing.T) {
+	testbuild.Run(t,
+		testbuild.Expr{
+			Src: `[2]float32{{1, 2, 3}, {4, 5, 6}}`,
+			Err: "unexpected literal for type float32",
+		},
+	)
+}
