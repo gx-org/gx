@@ -203,7 +203,6 @@ func textFromComment(cmt *ast.CommentGroup, prefix string) string {
 }
 
 func (r *Runner) run(t *testing.T, fn *ir.FuncDecl, options []options.PackageOption) {
-	t.Parallel()
 	values, got, err := r.Run(fn, options)
 	if err != nil {
 		t.Errorf("runner.Run error:\n%+v", err)
