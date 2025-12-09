@@ -497,7 +497,7 @@ func (s *arrayResolveScope) appendAxisToInferredRanks(ax ir.AxisLengths) {
 func (s *arrayResolveScope) sub(src ast.Node) (compositeLitResolveScope, bool) {
 	elt, ok := s.current.ElementType()
 	if !ok {
-		return s, s.Err().AppendInternalf(src, "unexpected literal for type %s ", s.current.String())
+		return s, s.Err().Appendf(src, "unexpected literal for type %s ", s.current.String())
 	}
 	eltArray := ir.ToArrayType(elt)
 	if eltArray == nil {
