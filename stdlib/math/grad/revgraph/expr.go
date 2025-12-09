@@ -251,7 +251,12 @@ func (n *binaryExpr) forwardValue() (*special.Expr, bool) {
 	return &special.Expr{Expr: n.fwd}, true
 }
 
-func (n *binaryExpr) buildBackwardOk(bckstmts *bckStmts, bck *special.Expr) (*special.Expr, bool) {
+func (n *binaryExpr) buildBackward(bckstmts *bckStmts, bck *special.Expr) (*special.Expr, bool) {
+	x, xOk := n.x.forwardValue()
+	y, yOk := n.y.forwardValue()
+	if !xOk || !yOk {
+		return nil, false
+	}
 	var xres, yres *special.Expr
 	switch n.irnode.Src.Op {
 	case token.ADD:
@@ -260,51 +265,27 @@ func (n *binaryExpr) buildBackwardOk(bckstmts *bckStmts, bck *special.Expr) (*sp
 	case token.SUB:
 		xres = bck
 		yres = special.UnarySub(bck)
-	default:
-		return nil, bckstmts.err().Appendf(n.irnode.Src, "gradient of binary operator %s not supported", n.irnode.Src.Op)
-	}
-	xbck, xok := n.x.buildBackward(bckstmts, xres)
-	ybck, yok := n.y.buildBackward(bckstmts, yres)
-	return bckstmts.assignSpecialExpr(n.id, special.Add(xbck, ybck)), xok && yok
-}
-
-func (n *binaryExpr) buildBackward(bckstmts *bckStmts, bck *special.Expr) (*special.Expr, bool) {
-	switch n.irnode.Src.Op {
-	case token.ADD:
-		return n.buildBackwardOk(bckstmts, bck)
-	case token.SUB:
-		return n.buildBackwardOk(bckstmts, bck)
-	}
-
-	x, xOk := n.x.forwardValue()
-	y, yOk := n.y.forwardValue()
-	if !xOk || !yOk {
-		return nil, false
-	}
-	xBack, xOk := n.x.buildBackward(bckstmts, bck)
-	yBack, yOk := n.y.buildBackward(bckstmts, bck)
-	if !xOk || !yOk {
-		return nil, false
-	}
-	switch n.irnode.Src.Op {
-	case token.SUB:
-		return special.Sub(xBack, yBack), true
 	case token.MUL:
-		return special.Add(
-			special.Mul(xBack, y),
-			special.Mul(x, yBack),
-		), true
+		xres = special.Mul(bck, y)
+		yres = special.Mul(x, bck)
 	case token.QUO:
-		return special.Quo(
-			special.Sub(
-				special.Mul(xBack, y),
-				special.Mul(x, yBack),
-			),
+		xres = special.Quo(bck, y)
+		yres = special.Quo(
+			special.UnarySub(special.Mul(x, bck)),
 			special.Mul(y, y),
-		), true
+		)
 	default:
 		return nil, bckstmts.err().Appendf(n.irnode.Src, "gradient of binary operator %s not supported", n.irnode.Src.Op)
 	}
+	if xres != bck {
+		xres = bckstmts.assignSpecialExprSuffix(n.id, xres, "x")
+	}
+	if yres != bck {
+		yres = bckstmts.assignSpecialExprSuffix(n.id, yres, "y")
+	}
+	ybck, yok := n.y.buildBackward(bckstmts, yres)
+	xbck, xok := n.x.buildBackward(bckstmts, xres)
+	return special.Paren(special.Add(xbck, ybck)), xok && yok
 }
 
 type numberCastExpr struct {
@@ -398,10 +379,5 @@ func (n *parenExpr) buildBackward(bckstmts *bckStmts, bck *special.Expr) (*speci
 	if !xOk {
 		return nil, false
 	}
-	if xBack.Value != special.Any {
-		return xBack, true
-	}
-	return &special.Expr{
-		Expr: &ast.ParenExpr{X: xBack.Expr},
-	}, true
+	return special.Paren(xBack), true
 }
