@@ -77,12 +77,10 @@ func (m *stmtGrader) gradCall(src *ir.FuncCallExpr) (*special.Expr, bool) {
 			return nil, false
 		}
 		gradI := special.Mul(
-			&special.Expr{
-				Expr: &ast.CallExpr{
-					Fun:  gradCallee,
-					Args: astExprs(src.Args),
-				},
-			},
+			special.New(&ast.CallExpr{
+				Fun:  gradCallee,
+				Args: astExprs(src.Args),
+			}),
 			gradArg,
 		)
 		if gExpr == nil {

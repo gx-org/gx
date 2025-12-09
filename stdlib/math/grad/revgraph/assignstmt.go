@@ -82,7 +82,7 @@ func (a *astStmts) callTraceSpecials(exprs []*special.Expr) {
 	}
 	var idents []*ast.Ident
 	for _, expr := range exprs {
-		id, ok := expr.Expr.(*ast.Ident)
+		id, ok := expr.AST().(*ast.Ident)
 		if !ok {
 			continue
 		}
@@ -159,15 +159,12 @@ func (a *astStmts) newBackwardStmts(wrt withRespectTo) *bckStmts {
 }
 
 func (b *bckStmts) assignSpecialExpr(id nodeID, expr *special.Expr) *special.Expr {
-	if expr.Value != special.Any {
-		return expr
-	}
-	return &special.Expr{Expr: b.assignExpr(id, expr.Expr)}
+	return b.assignSpecialExprSuffix(id, expr, "")
 }
 
 func (b *bckStmts) assignSpecialExprSuffix(id nodeID, expr *special.Expr, suffix string) *special.Expr {
-	if expr.Value != special.Any {
+	if !expr.IsAny() {
 		return expr
 	}
-	return &special.Expr{Expr: b.assignExprs(id, []ast.Expr{expr.Expr}, 1, suffix)[0]}
+	return special.New(b.assignExprs(id, []ast.Expr{expr.AST()}, 1, suffix)[0])
 }

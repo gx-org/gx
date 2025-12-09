@@ -241,7 +241,25 @@ func vjpF(x float32) (float32, func(res float32) float32) {
 	fwd0 := 1/x
 	selfVJPFunc := func(res float32) float32 {
 		bck0x := res/x
-		bck0y := -(1*res)/(x*x)
+		bck0y := -res/(x*x)
+		return bck0y
+	}
+	return fwd0, selfVJPFunc
+}
+`,
+		},
+		testgrad.VJP{
+			Src: `
+func F(x float32) float32 {
+	return 1.0/x
+}
+`,
+			Want: `
+func vjpF(x float32) (float32, func(res float32) float32) {
+	fwd0 := 1.0/x
+	selfVJPFunc := func(res float32) float32 {
+		bck0x := res/x
+		bck0y := -res/(x*x)
 		return bck0y
 	}
 	return fwd0, selfVJPFunc

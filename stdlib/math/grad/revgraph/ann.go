@@ -47,18 +47,14 @@ func (n *annFunc) buildVJPFunctionWRTFromAnn(astmts *astStmts, grad ir.PkgFunc, 
 	ret := &ast.ReturnStmt{Results: make([]ast.Expr, len(n.graph.nResults.names))}
 	for i, res := range n.graph.nResults.names {
 		ret.Results[i] = special.Mul(
-			&special.Expr{
-				Expr: &ast.Ident{Name: res},
-			},
-			&special.Expr{
-				Expr: &ast.CallExpr{
-					Fun: n.graph.funcNameWithTypeParamsExpr(
-						&ast.Ident{Name: grad.Name()},
-					),
-					Args: args,
-				},
-			},
-		).Expr
+			special.New(&ast.Ident{Name: res}),
+			special.New(&ast.CallExpr{
+				Fun: n.graph.funcNameWithTypeParamsExpr(
+					&ast.Ident{Name: grad.Name()},
+				),
+				Args: args,
+			}),
+		).AST()
 	}
 	var body []ast.Stmt
 	body = append(body, backwarder.stmts...)

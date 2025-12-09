@@ -86,14 +86,14 @@ func (n *returnStmt) buildVJPFunctionWRT(astmts *astStmts, param vjpParam) (*ast
 	bckstmts := astmts.newBackwardStmts(param.wrt)
 	ret := &ast.ReturnStmt{Results: make([]ast.Expr, len(n.exprs))}
 	for i, expr := range n.exprs {
-		gradExpr, ok := expr.buildBackward(bckstmts, &special.Expr{
-			Expr: &ast.Ident{Name: n.graph.nResults.names[i]},
-		})
+		gradExpr, ok := expr.buildBackward(bckstmts, special.New(
+			&ast.Ident{Name: n.graph.nResults.names[i]},
+		))
 		if !ok {
 			return nil, false
 		}
-		retExpr := gradExpr.Expr
-		if parenExpr, ok := gradExpr.Expr.(*ast.ParenExpr); ok {
+		retExpr := gradExpr.AST()
+		if parenExpr, ok := retExpr.(*ast.ParenExpr); ok {
 			retExpr = parenExpr.X
 		}
 		ret.Results[i] = retExpr

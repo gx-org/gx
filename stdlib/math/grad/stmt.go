@@ -98,12 +98,12 @@ func (sg *stmtGrader) gradReturnStmt(fetcher ir.Fetcher, src *ir.ReturnStmt) (*a
 		}
 		if res != nil {
 			// The expression depends on arg: nothing left to do.
-			stmt.Results[i] = res.Expr
+			stmt.Results[i] = res.AST()
 			continue
 		}
 		// The expression does not depend on arg: replace it with a zero value.
 		res = special.ZeroExpr()
-		stmt.Results[i] = res.Expr
+		stmt.Results[i] = res.AST()
 	}
 	return stmt, true
 }
@@ -131,7 +131,7 @@ func (sg *stmtGrader) gradAssignExprStmt(fetcher ir.Fetcher, src *ir.AssignExprS
 		gradStmt.Lhs[i] = grIdent
 		known := sg.define(grIdent.Name, aexpr.Storage.Type())
 		allKnown = known && allKnown
-		gradStmt.Rhs[i] = gExpr.Expr
+		gradStmt.Rhs[i] = gExpr.AST()
 	}
 	if allKnown {
 		gradStmt.Tok = token.ASSIGN
