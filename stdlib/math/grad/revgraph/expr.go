@@ -136,7 +136,7 @@ func (n *funcCallExpr) forwardValue() (*special.Expr, bool) {
 	if len(n.fwds) > 1 {
 		return nil, n.err().Appendf(n.irnode.Src, "multiple-value %s in single-value context", n.irnode.Callee.ShortString())
 	}
-	return &special.Expr{Expr: n.fwds[0]}, true
+	return special.New(n.fwds[0]), true
 }
 
 func (n *funcCallExpr) buildBackward(bckstmts *bckStmts, bck *special.Expr) (*special.Expr, bool) {
@@ -148,14 +148,14 @@ func (n *funcCallExpr) buildBackward(bckstmts *bckStmts, bck *special.Expr) (*sp
 	for i, param := range calleeParams {
 		vjpCall := &ast.CallExpr{
 			Fun:  &ast.Ident{Name: n.vjps[i]},
-			Args: []ast.Expr{bck.Expr},
+			Args: []ast.Expr{bck.AST()},
 		}
 		bckSuffix := ""
 		if len(calleeParams) > 1 {
 			bckSuffix = param.Name.Name
 		}
 		bckIdent := bckstmts.assignExprs(n.id, []ast.Expr{vjpCall}, 1, bckSuffix)
-		backwardIdents[i] = &special.Expr{Expr: bckIdent[0]}
+		backwardIdents[i] = special.New(bckIdent[0])
 	}
 	bckstmts.callTraceSpecials(backwardIdents)
 	argsGrad := make([]*special.Expr, len(n.args))
@@ -200,7 +200,7 @@ func (n *unaryExpr) buildForward(astmts *astStmts) ([]ast.Expr, bool) {
 }
 
 func (n *unaryExpr) forwardValue() (*special.Expr, bool) {
-	return &special.Expr{Expr: n.fwd}, true
+	return special.New(n.fwd), true
 }
 
 func (n *unaryExpr) buildBackward(bckstmts *bckStmts, bck *special.Expr) (*special.Expr, bool) {
@@ -248,7 +248,7 @@ func (n *binaryExpr) buildForward(astmts *astStmts) ([]ast.Expr, bool) {
 }
 
 func (n *binaryExpr) forwardValue() (*special.Expr, bool) {
-	return &special.Expr{Expr: n.fwd}, true
+	return special.New(n.fwd), true
 }
 
 func (n *binaryExpr) buildBackward(bckstmts *bckStmts, bck *special.Expr) (*special.Expr, bool) {
@@ -303,7 +303,7 @@ func (n *numberCastExpr) buildForward(astmts *astStmts) ([]ast.Expr, bool) {
 }
 
 func (n *numberCastExpr) forwardValue() (*special.Expr, bool) {
-	return &special.Expr{Expr: n.irnode.X.Source().(ast.Expr)}, true
+	return special.NewFromIR(n.irnode.X), true
 }
 
 func (n *numberCastExpr) buildBackward(bckstmts *bckStmts, bck *special.Expr) (*special.Expr, bool) {
@@ -325,7 +325,7 @@ func (n *valueRef) buildForward(astmts *astStmts) ([]ast.Expr, bool) {
 }
 
 func (n *valueRef) forwardValue() (*special.Expr, bool) {
-	return &special.Expr{Expr: n.irnode.Src}, true
+	return special.New(n.irnode.Src), true
 }
 
 func (n *valueRef) gradFieldStorage(bckstmts *bckStmts, bck *special.Expr, stor *ir.FieldStorage) (*special.Expr, bool) {
@@ -340,7 +340,7 @@ func (n *valueRef) buildBackward(bckstmts *bckStmts, bck *special.Expr) (*specia
 	if isField {
 		return n.gradFieldStorage(bckstmts, bck, fieldStorage)
 	}
-	return &special.Expr{Expr: gradIdent(n.irnode.Stor.NameDef())}, true
+	return special.New(gradIdent(n.irnode.Stor.NameDef())), true
 }
 
 func gradIdent(src *ast.Ident) *ast.Ident {
@@ -371,7 +371,7 @@ func (n *parenExpr) buildForward(astmts *astStmts) ([]ast.Expr, bool) {
 }
 
 func (n *parenExpr) forwardValue() (*special.Expr, bool) {
-	return &special.Expr{Expr: n.fwd}, true
+	return special.New(n.fwd), true
 }
 
 func (n *parenExpr) buildBackward(bckstmts *bckStmts, bck *special.Expr) (*special.Expr, bool) {

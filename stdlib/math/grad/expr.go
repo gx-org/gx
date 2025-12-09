@@ -15,7 +15,6 @@
 package grad
 
 import (
-	"go/ast"
 	"go/token"
 
 	"github.com/gx-org/gx/build/ir"
@@ -63,8 +62,8 @@ func (m *exprGrader) gradExpr(src ir.Expr) (r *special.Expr, ok bool) {
 }
 
 func (m *exprGrader) gradBinaryExpr(src *ir.BinaryExpr) (*special.Expr, bool) {
-	u := special.New(src.X)
-	v := special.New(src.Y)
+	u := special.NewFromIR(src.X)
+	v := special.NewFromIR(src.Y)
 	uGrad, xOk := m.gradExpr(src.X)
 	vGrad, yOk := m.gradExpr(src.Y)
 	if !xOk || !yOk {
@@ -98,12 +97,7 @@ func (m *exprGrader) gradParenExpr(src *ir.ParenExpr) (*special.Expr, bool) {
 	if !ok {
 		return expr, false
 	}
-	if expr.Value != special.Any {
-		return expr, true
-	}
-	return &special.Expr{
-		Expr: &ast.ParenExpr{X: expr.Expr},
-	}, true
+	return special.Paren(expr), true
 }
 
 func (m *exprGrader) gradFieldStorage(src *ir.FieldStorage) (*special.Expr, bool) {
@@ -119,7 +113,7 @@ func (m *exprGrader) gradValueRef(src *ir.ValueRef) (*special.Expr, bool) {
 		return m.gradFieldStorage(fieldStorage)
 	}
 	gIdent := m.macro.gradIdent(src.Stor.NameDef())
-	return &special.Expr{Expr: gIdent}, true
+	return special.New(gIdent), true
 }
 
 func (m *exprGrader) gradArrayLitExpr(src *ir.ArrayLitExpr) (*special.Expr, bool) {
@@ -130,7 +124,7 @@ func (m *exprGrader) gradArrayLitExpr(src *ir.ArrayLitExpr) (*special.Expr, bool
 		if !ok {
 			return nil, false
 		}
-		if gExpr.Value == special.Zero {
+		if gExpr.IsZero() {
 			continue
 		}
 		allZero = false
