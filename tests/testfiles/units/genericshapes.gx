@@ -1,0 +1,33 @@
+package genericshapes
+
+import (
+	"dtype"
+	"num"
+)
+
+func traceGenericShapes[T dtype.Num](a [_A][_B]T, b [___S]T) [A][B]int64 {
+	trace(A)
+	trace(B)
+	trace(S)
+	return num.IotaFull([]intlen{A, B})
+}
+
+func TestTraceGenericShapes() [2][3]int64 {
+	return traceGenericShapes(
+		[2][3]float32{},
+		[4][5][6]float32{},
+	)
+	// Want:
+	// [2][3]int64{
+	// 	{0, 1, 2},
+	// 	{3, 4, 5},
+	// }
+	// Trace:
+	// genericshapes.gx:0
+	// 	int64(2)
+	// genericshapes.gx:1
+	// 	int64(3)
+	// genericshapes.gx:2
+	// 	[int64(4),int64(5),int64(6)]
+}
+

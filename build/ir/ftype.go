@@ -16,6 +16,7 @@ package ir
 
 import (
 	"go/ast"
+	"slices"
 )
 
 type (
@@ -173,6 +174,12 @@ func (s *FuncType) SpecialiseFType(spec Specialiser) (*FuncType, error) {
 			Field: typeParam,
 			Typ:   defined,
 		})
+	}
+	res.AxisLengths = slices.Clone(s.AxisLengths)
+	for i, axis := range s.AxisLengths {
+		axisVal := *axis
+		axisVal.Value = spec.ValueOf(axis.Name())
+		res.AxisLengths[i] = &axisVal
 	}
 	return &res, nil
 }

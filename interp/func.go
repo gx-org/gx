@@ -145,6 +145,7 @@ func (f *funcDecl) Call(env *fun.CallEnv, call *ir.FuncCallExpr, args []ir.Eleme
 		}
 	}
 	assignTypeParameters(call.Callee, funcFrame)
+	assignAxisLengths(call.Callee, funcFrame)
 	assignArgumentValues(f.fnT.FType, funcFrame, args)
 	ctx := newFileScope(env.Context(), env.FuncEval(), f.fnT.File())
 	// Evaluate the function within the frame.
@@ -217,6 +218,19 @@ func fieldNames(fields []*ir.FieldGroup) (r []*ast.Ident) {
 		}
 	}
 	return
+}
+
+func assignAxisLengths(callee ir.Callee, funcFrame *context.Frame) {
+	funRef, ok := callee.(*ir.FuncValExpr)
+	if !ok {
+		return
+	}
+	for _, axLen := range funRef.T.AxisLengths {
+		if axLen.Value == nil {
+			continue
+		}
+		funcFrame.Define(axLen.Src.Name, axLen.Value)
+	}
 }
 
 func assignTypeParameters(callee ir.Callee, funcFrame *context.Frame) {

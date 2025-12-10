@@ -30,6 +30,14 @@ func newTypeParamDefinition(ftype *ir.FuncType) map[string]ir.Type {
 	return defined
 }
 
+func newAxisLengthsDefinition(ftype *ir.FuncType) map[string]ir.Element {
+	axes := make(map[string]ir.Element)
+	for _, axValue := range ftype.AxisLengths {
+		axes[axValue.Name()] = axValue.Value
+	}
+	return axes
+}
+
 func typeInclude(fetcher ir.Fetcher, set ir.Type, typ ir.Type) bool {
 	isIn, err := ir.TypeInclude(fetcher, set, typ)
 	if err != nil {
