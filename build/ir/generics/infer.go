@@ -196,6 +196,7 @@ func Infer(fetcher ir.Fetcher, fExpr *ir.FuncValExpr, args []ir.AssignableExpr) 
 	spec := &specialiser{
 		Fetcher: subFetcher,
 		defined: uni.defined,
+		axes:    uni.axes,
 	}
 	ftypeInfer, err := ftype.SpecialiseFType(spec)
 	if err != nil {

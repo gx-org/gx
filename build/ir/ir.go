@@ -101,7 +101,8 @@ type (
 	// Specialiser provides methods to specialise a type.
 	Specialiser interface {
 		Fetcher
-		TypeOf(string) Type
+		TypeOf(tParamName string) Type
+		ValueOf(axLengthname string) Element
 	}
 
 	// Unifier provides methods to unify types.
@@ -3341,8 +3342,9 @@ type (
 
 	// AxLengthName defines a name for the length of an axis or a group of axes.
 	AxLengthName struct {
-		Src *ast.Ident
-		Typ Type
+		Src   *ast.Ident
+		Value Element
+		Typ   Type
 	}
 )
 

@@ -20,11 +20,16 @@ import (
 
 type specialiser struct {
 	ir.Fetcher
+	axes    map[string]ir.Element
 	defined map[string]ir.Type
 }
 
 func (s *specialiser) TypeOf(name string) ir.Type {
 	return s.defined[name]
+}
+
+func (s *specialiser) ValueOf(name string) ir.Element {
+	return s.axes[name]
 }
 
 // Specialise a function signature for a given type.
@@ -81,9 +86,9 @@ func Specialise(fetcher ir.Fetcher, expr ir.Expr, fun *ir.FuncValExpr, typs []*i
 
 // Instantiate replaces data types either specified or inferred.
 func Instantiate(fetcher ir.Fetcher, ftype *ir.FuncType) (*ir.FuncType, error) {
-	definedTypeParams := newTypeParamDefinition(ftype)
 	return ftype.SpecialiseFType(&specialiser{
 		Fetcher: fetcher,
-		defined: definedTypeParams,
+		defined: newTypeParamDefinition(ftype),
+		axes:    newAxisLengthsDefinition(ftype),
 	})
 }
