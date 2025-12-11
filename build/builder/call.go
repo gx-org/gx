@@ -22,6 +22,7 @@ import (
 	"github.com/gx-org/gx/build/ir"
 	"github.com/gx-org/gx/internal/interp/compeval/cpevelements"
 	"github.com/gx-org/gx/interp/fun"
+	"github.com/gx-org/gx/interp"
 )
 
 func unpackIndexedExpr(n ast.Node) (ast.Expr, []ast.Expr) {
@@ -248,6 +249,8 @@ func (n *callExpr) buildCallExpr(rscope resolveScope, callee ir.AssignableExpr) 
 			X: callee,
 			F: elT.Func(),
 		})
+	case *interp.Tuple:
+		return invalidExpr(), rscope.Err().Appendf(callee.Source(), "multiple value %s in single-value context", callee.String())
 	default:
 		return invalidExpr(), rscope.Err().AppendInternalf(callee.Source(), "expression %s evaluated to element of type %T that is not callable. Scope:\n%s\nCompEval:\n%s", callee.String(), elT, rscope.String(), compEval.String())
 	}
