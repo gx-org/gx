@@ -120,6 +120,15 @@ func (r *Expr) AddCastIfRequired(typ ir.Type) *Expr {
 	}
 }
 
+// RemoveParen removes the top parenthesis if required.
+func (r *Expr) RemoveParen() *Expr {
+	parent, ok := r.expr.(*ast.ParenExpr)
+	if !ok {
+		return r
+	}
+	return (&Expr{expr: parent.X}).RemoveParen()
+}
+
 // Print the expression (only used for debugging).
 func (r *Expr) Print() {
 	ast.Print(token.NewFileSet(), r.expr)

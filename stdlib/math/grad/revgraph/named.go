@@ -38,7 +38,7 @@ func nameFields(unames *uname.Unique, root string, fields *ast.FieldList) *named
 		for iName, name := range named.Names {
 			retName := uname.DefaultIdent(name, root)
 			named.Names[iName] = unames.Ident(retName)
-			names = append(names, retName.Name)
+			names = append(names, named.Names[iName].Name)
 		}
 		all.List[iField] = &named
 	}

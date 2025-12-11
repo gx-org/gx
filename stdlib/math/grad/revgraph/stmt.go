@@ -55,6 +55,8 @@ func (n *blockStmt) build(astmts *astStmts) bool {
 
 func (p *processor) processStmt(isrc ir.Stmt) (stmt, bool) {
 	switch srcT := isrc.(type) {
+	case *ir.AssignExprStmt:
+		return p.processAssignExprStmt(srcT)
 	case *ir.ReturnStmt:
 		return p.processReturnStmt(srcT)
 	default:
@@ -84,23 +86,21 @@ func (p *processor) processReturnStmt(isrc *ir.ReturnStmt) (*returnStmt, bool) {
 
 func (n *returnStmt) buildVJPFunctionWRT(astmts *astStmts, param vjpParam) (*ast.FuncLit, bool) {
 	bckstmts := astmts.newBackwardStmts(param.wrt)
-	ret := &ast.ReturnStmt{Results: make([]ast.Expr, len(n.exprs))}
+	rets := make([]*special.Expr, len(n.exprs))
 	for i, expr := range n.exprs {
-		gradExpr, ok := expr.buildBackward(bckstmts, special.New(
+		var ok bool
+		rets[i], ok = expr.buildBackward(bckstmts, special.New(
 			&ast.Ident{Name: n.graph.nResults.names[i]},
 		))
 		if !ok {
 			return nil, false
 		}
-		retExpr := gradExpr.AST()
-		if parenExpr, ok := retExpr.(*ast.ParenExpr); ok {
-			retExpr = parenExpr.X
-		}
-		ret.Results[i] = retExpr
 	}
 	var body []ast.Stmt
 	body = append(body, bckstmts.stmts...)
-	body = append(body, ret)
+	body = append(body, &ast.ReturnStmt{
+		Results: []ast.Expr{special.Add(rets...).RemoveParen().AST()},
+	})
 	return &ast.FuncLit{
 		Type: param.vjpFType,
 		Body: &ast.BlockStmt{List: body},
@@ -136,6 +136,47 @@ func (n *returnStmt) build(astmts *astStmts) bool {
 			Rhs: []ast.Expr{vjpFuncLit},
 		})
 		out.Results = append(out.Results, &ast.Ident{Name: vjpFuncName})
+	}
+	astmts.append(out)
+	return true
+}
+
+type assignExprStmt struct {
+	node[*ir.AssignExprStmt]
+	exprs []expr
+}
+
+func (p *processor) processAssignExprStmt(isrc *ir.AssignExprStmt) (*assignExprStmt, bool) {
+	out := &assignExprStmt{
+		node:  newNodeNoID[*ir.AssignExprStmt](p, isrc),
+		exprs: make([]expr, len(isrc.List)),
+	}
+	for i, expr := range isrc.List {
+		var ok bool
+		out.exprs[i], ok = p.processExpr(expr.X)
+		if !ok {
+			return nil, false
+		}
+		p.unames.Register(expr.NameDef().Name)
+	}
+	return out, true
+}
+
+func (n *assignExprStmt) build(astmts *astStmts) bool {
+	out := &ast.AssignStmt{
+		Tok: n.irnode.Src.Tok,
+		Lhs: make([]ast.Expr, len(n.exprs)),
+		Rhs: make([]ast.Expr, len(n.exprs)),
+	}
+	for i, x := range n.exprs {
+		name := n.irnode.List[i].NameDef().Name
+		out.Lhs[i] = &ast.Ident{Name: name}
+		var ok bool
+		out.Rhs[i], ok = buildSingleForward(astmts, x)
+		if !ok {
+			return false
+		}
+		astmts.setIdentExpr(name, x)
 	}
 	astmts.append(out)
 	return true
