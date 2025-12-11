@@ -26,14 +26,24 @@ import (
 )
 
 type astStmts struct {
-	graph   *Graph
-	fetcher ir.Fetcher
-	uroot   string
-	stmts   []ast.Stmt
+	graph       *Graph
+	fetcher     ir.Fetcher
+	uroot       string
+	stmts       []ast.Stmt
+	identToExpr map[string]expr
 }
 
 func (g *Graph) newForwardStmts(fetcher ir.Fetcher) *astStmts {
-	return &astStmts{graph: g, fetcher: fetcher, uroot: "fwd"}
+	return &astStmts{
+		graph:       g,
+		fetcher:     fetcher,
+		uroot:       "fwd",
+		identToExpr: make(map[string]expr),
+	}
+}
+
+func (a *astStmts) setIdentExpr(name string, x expr) {
+	a.identToExpr[name] = x
 }
 
 func (a *astStmts) append(s ast.Stmt) {
@@ -47,11 +57,15 @@ func (a *astStmts) assignExpr(id nodeID, expr ast.Expr) *ast.Ident {
 func (a *astStmts) buildIdents(id nodeID, n int, suffix string) []*ast.Ident {
 	idents := make([]*ast.Ident, n)
 	for i := range n {
+		idS := ""
+		if id >= 0 {
+			idS = strconv.Itoa(int(id))
+		}
 		var root string
 		if n == 1 {
-			root = fmt.Sprintf("%s%d%s", a.uroot, id, suffix)
+			root = fmt.Sprintf("%s%s%s", a.uroot, idS, suffix)
 		} else {
-			root = fmt.Sprintf("%s%dr%d%s", a.uroot, id, i, suffix)
+			root = fmt.Sprintf("%s%sr%d%s", a.uroot, idS, i, suffix)
 		}
 		idents[i] = &ast.Ident{Name: a.graph.unames.Name(root)}
 	}
@@ -150,9 +164,10 @@ type bckStmts struct {
 func (a *astStmts) newBackwardStmts(wrt withRespectTo) *bckStmts {
 	return &bckStmts{
 		astStmts: astStmts{
-			graph:   a.graph,
-			fetcher: a.fetcher,
-			uroot:   "bck",
+			graph:       a.graph,
+			fetcher:     a.fetcher,
+			identToExpr: a.identToExpr,
+			uroot:       "bck",
 		},
 		wrt: wrt,
 	}

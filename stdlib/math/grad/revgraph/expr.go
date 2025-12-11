@@ -340,14 +340,16 @@ func (n *valueRef) buildBackward(bckstmts *bckStmts, bck *special.Expr) (*specia
 	if isField {
 		return n.gradFieldStorage(bckstmts, bck, fieldStorage)
 	}
-	return special.New(gradIdent(n.irnode.Stor.NameDef())), true
-}
-
-func gradIdent(src *ast.Ident) *ast.Ident {
-	return &ast.Ident{
-		NamePos: src.NamePos,
-		Name:    "__grad_" + src.Name,
+	name := n.irnode.Stor.NameDef().Name
+	expr := bckstmts.identToExpr[name]
+	if expr == nil {
+		return nil, n.fetcher.Err().AppendInternalf(n.irnode.Source(), "cannot find revgraph node for %q", name)
 	}
+	bckExpr, ok := expr.buildBackward(bckstmts, bck)
+	if !ok {
+		return nil, false
+	}
+	return bckstmts.assignSpecialExprSuffix(n.id, bckExpr, name), true
 }
 
 type parenExpr struct {

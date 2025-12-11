@@ -47,7 +47,7 @@ func newNode[T ir.SourceNode](p *processor, isrc T) node[T] {
 }
 
 func newNodeNoID[T ir.SourceNode](proc *processor, isrc T) node[T] {
-	return node[T]{graph: proc.Graph, fetcher: proc.fetcher, irnode: isrc}
+	return node[T]{graph: proc.Graph, fetcher: proc.fetcher, irnode: isrc, id: -1}
 }
 
 func (n *node[T]) source() ast.Node {

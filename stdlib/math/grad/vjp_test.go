@@ -720,3 +720,105 @@ func vjpF[T floats](x T) (T, func(res T) T) {
 		},
 	)
 }
+
+func TestVJPAssignments(t *testing.T) {
+	testbuild.Run(t,
+		declareGradPackage,
+		testgrad.VJP{
+			Src: `
+func F(x float32) float32 {
+	a := 2*x
+	return a
+}
+`,
+			Want: `
+func vjpF(x float32) (float32, func(res float32) float32) {
+	fwd0 := 2*x
+	a := fwd0
+	selfVJPFunc := func(res float32) float32 {
+		bck0x := res*x
+		bck0y := 2*res
+		bcka := bck0y
+		return bcka
+	}
+	return a, selfVJPFunc
+}
+`,
+		},
+		testgrad.VJP{
+			Src: `
+func F(x float32) float32 {
+	a := 2*x
+	a = 3*x
+	return a
+}
+`,
+			Want: `
+func vjpF(x float32) (float32, func(res float32) float32) {
+	fwd0 := 2*x
+	a := fwd0
+	fwd1 := 3*x
+	a = fwd1
+	selfVJPFunc := func(res float32) float32 {
+		bck1x := res*x
+		bck1y := 3*res
+		bcka := bck1y
+		return bcka
+	}
+	return a, selfVJPFunc
+}
+`,
+		},
+		testgrad.VJP{
+			Src: `
+func F(x float32) float32 {
+	a := 2*x
+	a = 3*x
+	return a*x
+}
+`,
+			Want: `
+func vjpF(x float32) (float32, func(res float32) float32) {
+	fwd0 := 2*x
+	a := fwd0
+	fwd1 := 3*x
+	a = fwd1
+	fwd2 := a*x
+	selfVJPFunc := func(res float32) float32 {
+		bck2x := res*x
+		bck2y := a*res
+		bck1x := bck2x*x
+		bck1y := 3*bck2x
+		bcka := bck1y
+		return bcka+bck2y
+	}
+	return fwd2, selfVJPFunc
+}
+`,
+		},
+		testgrad.VJP{
+			Src: `
+func F(x float32) (float32, float32, float32) {
+	a, b, c := x, 2*x, 2+x
+	return a, b, c
+}
+`,
+			Want: `
+func vjpF(x float32) (float32, float32, float32, func(res float32, res1 float32, res2 float32) float32) {
+	fwd0 := 2*x
+	fwd1 := 2+x
+	a, b, c := x, fwd0, fwd1
+	selfVJPFunc := func(res float32, res1 float32, res2 float32) float32 {
+		bcka := res
+		bck0x := res1*x
+		bck0y := 2*res1
+		bckb := bck0y
+		bckc := res2
+		return bcka+(bckb+bckc)
+	}
+	return a, b, c, selfVJPFunc
+}
+`,
+		},
+	)
+}
