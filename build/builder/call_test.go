@@ -150,3 +150,18 @@ func F(a S) float32 {
 		},
 	)
 }
+
+func TestCallErrors(t *testing.T) {
+	testbuild.Run(t,
+		testbuild.Decl{
+			Src: `
+func g() (float32, float32)
+
+func f() float32 {
+	return g()()
+}
+`,
+			Err: "multiple value g() in single-value context",
+		},
+	)
+}
