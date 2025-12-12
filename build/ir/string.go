@@ -236,56 +236,6 @@ func (e *ConstExpr) String() string {
 	return fmt.Sprintf("const %s", e.VName.Name)
 }
 
-func (dm *AxisInfer) axExprString() string {
-	return dm.X.axExprString()
-}
-
-// String representation of the dimension.
-func (dm *AxisInfer) String() string {
-	if dm.X == nil {
-		return "[_]"
-	}
-	return fmt.Sprintf("[%s]", dm.axExprString())
-}
-
-func (dm *AxisExpr) axExprString() string {
-	return dm.X.String()
-}
-
-// String representation of the dimension.
-func (dm *AxisExpr) String() string {
-	return fmt.Sprintf("[%s]", dm.axExprString())
-}
-
-func (dm *AxLengthName) axExprString() string {
-	return dm.Src.Name
-}
-
-// String representation of the dimension.
-func (dm *AxLengthName) String() string {
-	return fmt.Sprintf("[%s]", dm.axExprString())
-}
-
-// String returns a string representation of the rank.
-func (r *Rank) String() string {
-	if r == nil {
-		return ""
-	}
-	bld := strings.Builder{}
-	for _, dim := range r.Ax {
-		bld.WriteString(dim.String())
-	}
-	return bld.String()
-}
-
-// String returns a string representation of the rank.
-func (r *RankInfer) String() string {
-	if r.Rnk == nil {
-		return "[...]"
-	}
-	return r.Rnk.String()
-}
-
 // String representation.
 func (s *SelectorExpr) String() string {
 	return fmt.Sprintf("%s.%s", s.X.String(), s.Src.Sel.Name)

@@ -125,7 +125,7 @@ func (dim *defineAxisLength) buildExpr(rscope resolveScope) (ir.Expr, bool) {
 	axScope := rscope.(*defineLocalScope)
 	src := *dim.src
 	src.Name = dim.name
-	stor := &ir.AxLengthName{
+	stor := &ir.GenAxLenName{
 		Src: &src,
 		Typ: dim.typ,
 	}
