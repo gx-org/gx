@@ -653,7 +653,7 @@ func newDefineScope(scope localScope, def defineLocalF, defAxis defineLocalF) *d
 	return &defineLocalScope{localScope: scope, def: def, defAxis: defAxis}
 }
 
-func (s *defineLocalScope) defineAxis(storage *ir.AxLengthName) {
+func (s *defineLocalScope) defineAxis(storage *ir.GenAxLenName) {
 	if s.defAxis == nil {
 		return
 	}

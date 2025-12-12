@@ -35,7 +35,7 @@ type (
 		Params     *FieldList
 		Results    *FieldList
 
-		AxisLengths      []*AxLengthName
+		AxisLengths      []*GenAxLenName
 		TypeParamsValues []TypeParamValue
 
 		// CompEval is set to true if the function can be called at compilation time.

@@ -153,9 +153,9 @@ func (n *funcType) buildFuncType(rscope resolveScope) (*ir.FuncType, *funcResolv
 			}
 		}
 	}
-	ext.AxisLengths = make([]*ir.AxLengthName, 0, n.genShapes.Size())
+	ext.AxisLengths = make([]*ir.GenAxLenName, 0, n.genShapes.Size())
 	for def := range n.genShapes.Values() {
-		ext.AxisLengths = append(ext.AxisLengths, &ir.AxLengthName{
+		ext.AxisLengths = append(ext.AxisLengths, &ir.GenAxLenName{
 			Src: def.node.src,
 			Typ: def.node.typ,
 		})
@@ -489,7 +489,7 @@ func assignArgValueToName(rscope resolveScope, compEval *compileEvaluator, param
 		if !ok {
 			continue
 		}
-		if _, ok := ident.Stor.(*ir.AxLengthName); !ok {
+		if _, ok := ident.Stor.(*ir.GenAxLenName); !ok {
 			continue
 		}
 		var buildAxisValue func(resolveScope, ir.AssignableExpr, []ir.Element) (ir.Element, []ir.Element)
