@@ -822,3 +822,39 @@ func vjpF(x float32) (float32, float32, float32, func(res float32, res1 float32,
 		},
 	)
 }
+
+func TestVJPArrays(t *testing.T) {
+	testbuild.Run(t,
+		declareGradPackage,
+		testgrad.VJP{
+			Src: `
+func F(x [2]float32) [2]float32 {
+	return x
+}
+`,
+			Want: `
+func vjpF(x [2]float32) ([2]float32, func(res [2]float32) [2]float32) {
+	selfVJPFunc := func(res [2]float32) [2]float32 {
+		return res
+	}
+	return x, selfVJPFunc
+}
+`,
+		},
+		testgrad.VJP{
+			Src: `
+func F(x [2][3]float32) [2][3]float32 {
+	return x
+}
+`,
+			Want: `
+func vjpF(x [2][3]float32) ([2][3]float32, func(res [2][3]float32) [2][3]float32) {
+	selfVJPFunc := func(res [2][3]float32) [2][3]float32 {
+		return res
+	}
+	return x, selfVJPFunc
+}
+`,
+		},
+	)
+}
