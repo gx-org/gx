@@ -45,7 +45,7 @@ func processType(pscope procScope, src *ast.TypeSpec) bool {
 		file: pscope.file(),
 	}
 	var ok bool
-	n.underlying, ok = processTypeExpr(pscope, src.Type)
+	n.underlying, ok = processTypeExpr(defaultTypeProcScope(pscope), src.Type)
 	if !ok {
 		return false
 	}

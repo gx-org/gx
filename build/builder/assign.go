@@ -212,7 +212,7 @@ func leftExprToTarget(pscope procScope, stmt *ast.AssignStmt, expr ast.Expr, don
 		if ir.ValidIdent(exprT) {
 			done[exprT.Name] = true
 		}
-		identExpr, identExprOk := processIdentExpr(pscope, exprT)
+		identExpr, identExprOk := processIdent(pscope, exprT)
 		return &identStorage{target: identExpr, tok: stmt.Tok}, identExprOk && ok
 	case *ast.SelectorExpr:
 		target := &selectorStorage{}

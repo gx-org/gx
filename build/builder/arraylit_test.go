@@ -48,7 +48,7 @@ func TestArrayLit(t *testing.T) {
 		},
 		testbuild.Expr{
 			Src: `[_]float32{3, 4}`,
-			Err: "cannot use _ as an axis identifier",
+			Err: "axis length _ can only be defined in function parameters",
 		},
 		testbuild.Expr{
 			Src: `[2][3]float32{{1, 2, 3}, {4, 5, 6}}`,

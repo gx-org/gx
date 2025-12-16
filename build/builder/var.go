@@ -35,7 +35,7 @@ var _ irb.Node[*pkgResolveScope] = (*varSpec)(nil)
 func processVarDecl(pscope procScope, decl *ast.GenDecl) bool {
 	ok := true
 	for _, spec := range decl.Specs {
-		ok = processVarSpec(pscope.axisLengthScope(), spec.(*ast.ValueSpec)) && ok
+		ok = processVarSpec(pscope, spec.(*ast.ValueSpec)) && ok
 	}
 	return ok
 }
@@ -50,7 +50,8 @@ func processVarSpec(pscope procScope, src *ast.ValueSpec) bool {
 	}
 	var typeOk bool
 	if src.Type != nil {
-		spec.typ, typeOk = processTypeExpr(pscope, src.Type)
+		typScope := defaultTypeProcScope(pscope)
+		spec.typ, typeOk = processTypeExpr(typScope, src.Type)
 	} else {
 		typeOk = pscope.Err().Appendf(src, "static variable has no type")
 	}

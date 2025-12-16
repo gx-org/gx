@@ -30,7 +30,8 @@ var _ exprNode = (*typeAssertExpr)(nil)
 
 func processTypeAssertExpr(pscope procScope, src *ast.TypeAssertExpr) (exprNode, bool) {
 	x, xOk := processExpr(pscope, src.X)
-	typ, typOk := processTypeExpr(pscope, src.Type)
+	typScope := defaultTypeProcScope(pscope)
+	typ, typOk := processTypeExpr(typScope, src.Type)
 	return &typeAssertExpr{
 		src: src,
 		x:   x,

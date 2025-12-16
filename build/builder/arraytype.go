@@ -30,7 +30,7 @@ type arrayType struct {
 
 var _ typeExprNode = (*arrayType)(nil)
 
-func processArrayType(pscope procScope, src *ast.ArrayType) (arraySliceExprType, bool) {
+func processArrayType(pscope typeProcScope, src *ast.ArrayType) (arraySliceExprType, bool) {
 	rank, dtype, ok := processDTypeRank(pscope, src)
 	return &arrayType{
 		src:  src,

@@ -38,7 +38,7 @@ func TestResolveType(t *testing.T) {
 		{code: "float64(-1)", typ: "float64"},
 		{code: "float64([1]float64{-5})", typ: "float64"},
 		{code: "[1]int32{1}", typ: "[1]int32"},
-		{code: "[_]int32{1}", err: "cannot use _"},
+		{code: "[_]int32{1}", err: "axis length _ can only be defined in function parameters"},
 		{code: "[...]int32{1}", typ: "[1]int32"},
 		{code: "[...]int32{{1, 2}, {3, 4}}", typ: "[2][2]int32"},
 		{code: "[...]int32{1, 2, 3}[1]", typ: "int32"},

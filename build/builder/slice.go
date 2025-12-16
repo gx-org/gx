@@ -34,7 +34,7 @@ var (
 	_ typeExprNode = (*sliceType)(nil)
 )
 
-func processSliceType(pscope procScope, src *ast.ArrayType) (*sliceType, bool) {
+func processSliceType(pscope typeProcScope, src *ast.ArrayType) (*sliceType, bool) {
 	rank := 0
 	var elt ast.Node = src
 	for {

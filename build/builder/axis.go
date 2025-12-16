@@ -38,9 +38,9 @@ func processAxisLengthExpr(axScope procAxLenScope, array *ast.ArrayType) (axis a
 		if lenT.Name == ir.DefineAxisGroup {
 			return nil, true
 		}
-		return processExprAxisLength(axScope, lenT)
+		return axScope.processAxisExpr(lenT)
 	case ast.Expr:
-		return processExprAxisLength(axScope, lenT)
+		return axScope.processAxisExpr(lenT)
 	default:
 		return nil, axScope.Err().Appendf(array, "array dimension type %T not supported", lenT)
 	}
@@ -79,8 +79,8 @@ type exprAxisLength struct {
 
 var _ axisLengthNode = (*exprAxisLength)(nil)
 
-func processExprAxisLength(pscope procAxLenScope, src ast.Expr) (*exprAxisLength, bool) {
-	x, ok := processExpr(pscope, src)
+func processExprAxisLength(axScope procAxLenScope, src ast.Expr) (*exprAxisLength, bool) {
+	x, ok := processExpr(axScope, src)
 	return &exprAxisLength{src: src, x: x}, ok
 }
 
@@ -115,24 +115,26 @@ type defineAxisLength struct {
 	typ  ir.Type
 }
 
-var _ exprNode = (*defineAxisLength)(nil)
+var _ axisLengthNode = (*defineAxisLength)(nil)
 
 func (dim *defineAxisLength) source() ast.Node {
 	return dim.src
 }
 
-func (dim *defineAxisLength) buildExpr(rscope resolveScope) (ir.Expr, bool) {
-	axScope := rscope.(*defineLocalScope)
+func (dim *defineAxisLength) build(rscope *defineLocalScope) (ir.AxisLengths, bool) {
 	src := *dim.src
 	src.Name = dim.name
 	stor := &ir.GenAxLenName{
 		Src: &src,
 		Typ: dim.typ,
 	}
-	axScope.defineAxis(stor)
-	return &ir.ValueRef{
-		Src:  stor.Src,
-		Stor: stor,
+	rscope.defineAxis(stor)
+	return &ir.AxisExpr{
+		Src: dim.src,
+		X: &ir.ValueRef{
+			Src:  stor.Src,
+			Stor: stor,
+		},
 	}, true
 }
 

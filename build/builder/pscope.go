@@ -120,17 +120,22 @@ type (
 		fmterr.ErrAppender
 		file() *file
 		decls() *decls
-		processIdent(*ast.Ident) (exprNode, bool)
+		processIdentExpr(*ast.Ident) (exprNode, bool)
 		pkg() *basePackage
-		axisLengthScope() procAxLenScope
+		typeScope() typeProcScope
 	}
 
 	fileProcScope struct {
 		*pkgProcScope
 		f *file
 
-		// fileNames maps all declarations to their identifier. It is used to check if a name has already been declared in the package.
+		// fileNames maps all declarations to their identifier.
+		// It is used to check if a name has already been declared in the package.
 		fileNames map[string]*ast.Ident
+	}
+
+	fieldProcScope interface {
+		procScope
 	}
 )
 
@@ -150,86 +155,78 @@ func (s *fileProcScope) decls() *decls {
 	return s.dcls
 }
 
-func (s *fileProcScope) processIdent(src *ast.Ident) (exprNode, bool) {
-	return processIdentExpr(s, src)
+func (s *fileProcScope) processIdentExpr(src *ast.Ident) (exprNode, bool) {
+	return processIdent(s, src)
+}
+
+func (s *fileProcScope) typeScope() typeProcScope {
+	return defaultTypeProcScope(s)
 }
 
 func (s *fileProcScope) String() string {
 	return fmt.Sprintf("errs: %s\n%s", s.errs.String(), s.pkgProcScope.String())
 }
 
-type (
-	procAxLenScope interface {
-		axlenScope()
-		procScope
-	}
-
-	// axLenDefaultScope is the process scope used inside all axis length expressions,
-	// except in function parameters.
-	// It checks that no identifier starts with _.
-	// Expressions are processed like any other expressions.
-	axLenDefaultScope struct {
-		procScope
-	}
-)
-
-func (s *fileProcScope) axisLengthScope() procAxLenScope {
-	return &axLenDefaultScope{procScope: s}
+type typeProcScope interface {
+	procScope
+	axisLengthScope() procAxLenScope
 }
 
-func checkAxisLengthIdent(pscope procScope, ident *ast.Ident) bool {
-	if strings.HasPrefix(ident.Name, "_") {
-		return pscope.Err().Appendf(ident, "invalid character _ in axis length name %s", ident.Name)
+type procAxLenScope interface {
+	procScope
+	processAxisExpr(ast.Expr) (axisLengthNode, bool)
+}
+
+// defaultAxLenTypeScope is the process scope used inside all axis length expressions,
+// except in function parameters.
+// It checks that no identifier starts with _.
+// Expressions are processed like any other expressions.
+type defaultAxLenTypeScope struct {
+	procScope
+}
+
+func defaultTypeProcScope(s procScope) typeProcScope {
+	return &defaultAxLenTypeScope{
+		procScope: s,
 	}
-	return true
 }
 
-func (*axLenDefaultScope) axlenScope() {}
-
-func (s *axLenDefaultScope) checkIdent(ident *ast.Ident) bool {
-	return checkAxisLengthIdent(s, ident)
+func (s *defaultAxLenTypeScope) axisLengthScope() procAxLenScope {
+	return s
 }
 
-func (s *axLenDefaultScope) processIdent(ident *ast.Ident) (exprNode, bool) {
+func (s *defaultAxLenTypeScope) processAxisExpr(expr ast.Expr) (axisLengthNode, bool) {
+	return processExprAxisLength(s, expr)
+}
+
+func (s *defaultAxLenTypeScope) processIdentExpr(ident *ast.Ident) (exprNode, bool) {
 	if strings.HasPrefix(ident.Name, ir.DefineAxisGroup) {
 		name := strings.TrimPrefix(ident.Name, ir.DefineAxisGroup)
 		return nil, s.Err().Appendf(ident, "shape %s using %s can only be defined in function parameters", name, ident.Name)
 	}
+	if strings.HasPrefix(ident.Name, "_") {
+		return nil, s.Err().Appendf(ident, "axis length %s can only be defined in function parameters", ident.Name)
+	}
 	if strings.HasSuffix(ident.Name, ir.DefineAxisGroup) {
 		grpIdent := *ident
 		grpIdent.Name = strings.TrimSuffix(grpIdent.Name, ir.DefineAxisGroup)
-		return processIdentExpr(s, &grpIdent)
+		return processIdent(s, &grpIdent)
 	}
-	if ident.Name == ir.DefineAxisLength {
-		return nil, s.Err().Appendf(ident, "cannot use %s as an axis identifier", ident.Name)
-	}
-	return processIdentExpr(s, ident)
+	return processIdent(s, ident)
 }
 
-type (
-	funcParamScope struct {
-		procScope
-		ftype *funcType
-	}
-
-	// axLenParamScope is a process scope used inside all axis length expressions
-	// in the parameters section of a function signature.
-	// It returns axis length name definition when _ and ___ prefixes identifiers.
-	// Also checks that names are not defined twice.
-	axLenParamScope struct {
-		*funcParamScope
-	}
-)
-
-func (s *funcParamScope) axisLengthScope() procAxLenScope {
-	return &axLenParamScope{
-		funcParamScope: s,
-	}
+// funcParamScope is a process scope used inside all axis length expressions
+// in the parameters section of a function signature.
+// It returns axis length name definition when _ and ___ prefixes identifiers.
+// Also checks that names are not defined twice.
+type funcParamScope struct {
+	*defaultAxLenTypeScope
+	ftype *funcType
 }
 
-func (*axLenParamScope) axlenScope() {}
+var _ typeProcScope = (*funcParamScope)(nil)
 
-func (s *axLenParamScope) registerAxis(axis *defineAxisLength) (*defineAxisLength, bool) {
+func (s *funcParamScope) registerAxis(axis *defineAxisLength) (*defineAxisLength, bool) {
 	if _, has := s.ftype.genShapes.Load(axis.name); has {
 		return axis, s.Err().Appendf(axis.src, "axis length %s can only be defined once", axis.name)
 	}
@@ -237,7 +234,7 @@ func (s *axLenParamScope) registerAxis(axis *defineAxisLength) (*defineAxisLengt
 	return axis, true
 }
 
-func (s *axLenParamScope) processIdent(ident *ast.Ident) (exprNode, bool) {
+func (s *funcParamScope) processAxisIdent(ident *ast.Ident) (axisLengthNode, bool) {
 	if strings.HasPrefix(ident.Name, ir.DefineAxisGroup) {
 		name := strings.TrimPrefix(ident.Name, ir.DefineAxisGroup)
 		src := &ast.Ident{NamePos: ident.NamePos, Name: name}
@@ -256,8 +253,17 @@ func (s *axLenParamScope) processIdent(ident *ast.Ident) (exprNode, bool) {
 			typ:  ir.IntLenType(),
 		})
 	}
-	if strings.HasSuffix(ident.Name, ir.DefineAxisGroup) {
-		ident.Name = strings.TrimSuffix(ident.Name, ir.DefineAxisGroup)
+	return processExprAxisLength(s.defaultAxLenTypeScope, ident)
+}
+
+func (s *funcParamScope) processAxisExpr(expr ast.Expr) (axisLengthNode, bool) {
+	ident, isIdent := expr.(*ast.Ident)
+	if isIdent {
+		return s.processAxisIdent(ident)
 	}
-	return processIdentExpr(s, ident)
+	return processExprAxisLength(s.defaultAxLenTypeScope, expr)
+}
+
+func (s *funcParamScope) axisLengthScope() procAxLenScope {
+	return s
 }

@@ -83,16 +83,34 @@ func processFuncType(pscope procScope, src *ast.FuncType, recv *ast.FieldList, c
 	}
 	var recvOk, typesOk, paramsOk, resultsOk bool
 	sig := &signatureNamespace{fType: n, names: make(map[string]*field)}
-	n.recv, recvOk = processFieldList(pscope, recv, sig.assignField)
+	n.recv, recvOk = processFieldList(
+		defaultTypeProcScope(pscope),
+		recv,
+		sig.assignField,
+	)
 	if n.recv != nil && n.recv.numFields() > 1 {
 		recvOk = pscope.Err().Appendf(recv, "method has multiple receivers")
 	}
-	n.typeParams, typesOk = processFieldList(pscope, src.TypeParams, sig.assignTypeField)
-	n.params, paramsOk = processFieldList(&funcParamScope{
-		procScope: pscope,
-		ftype:     n,
-	}, src.Params, sig.assignField)
-	n.results, resultsOk = processFieldList(pscope, src.Results, sig.assignResultField)
+	n.typeParams, typesOk = processFieldList(
+		defaultTypeProcScope(pscope),
+		src.TypeParams,
+		sig.assignTypeField,
+	)
+	n.params, paramsOk = processFieldList(
+		&funcParamScope{
+			defaultAxLenTypeScope: &defaultAxLenTypeScope{
+				procScope: pscope,
+			},
+			ftype: n,
+		},
+		src.Params,
+		sig.assignField,
+	)
+	n.results, resultsOk = processFieldList(
+		defaultTypeProcScope(pscope),
+		src.Results,
+		sig.assignResultField,
+	)
 	return n, recvOk && typesOk && paramsOk && resultsOk
 }
 

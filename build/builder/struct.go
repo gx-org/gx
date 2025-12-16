@@ -32,7 +32,7 @@ type structType struct {
 
 var _ typeExprNode = (*structType)(nil)
 
-func processStructType(own procScope, src *ast.StructType) (*structType, bool) {
+func processStructType(own typeProcScope, src *ast.StructType) (*structType, bool) {
 	n := &structType{
 		src:         src,
 		nameToField: make(map[string]*field),
@@ -105,8 +105,9 @@ func processCompositeLitStruct(pscope procScope, src *ast.CompositeLit, typeExpr
 		fields:    make([]fieldExpr, len(src.Elts)),
 		nameToElt: make(map[string]int),
 	}
+	typScope := defaultTypeProcScope(pscope)
 	var typOk bool
-	n.typ, typOk = processTypeExpr(pscope, typeExpr)
+	n.typ, typOk = processTypeExpr(typScope, typeExpr)
 	eltsOk := true
 	for i, elt := range src.Elts {
 		switch eltT := elt.(type) {

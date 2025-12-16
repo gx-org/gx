@@ -35,7 +35,7 @@ type (
 
 var _ rankNode = (*rank)(nil)
 
-func processDTypeRank(pscope procScope, src *ast.ArrayType) (rankNode, typeExprNode, bool) {
+func processDTypeRank(pscope typeProcScope, src *ast.ArrayType) (rankNode, typeExprNode, bool) {
 	var ranks []rankNode
 	var axes []axisLengthNode
 	var dtype typeExprNode
