@@ -176,7 +176,9 @@ func (n *assignExprStmt) build(astmts *astStmts) bool {
 		if !ok {
 			return false
 		}
-		astmts.setIdentExpr(name, x)
+		if !astmts.setIdentExpr(name, x, n.irnode.Src) {
+			return false
+		}
 	}
 	astmts.append(out)
 	return true

@@ -22,6 +22,7 @@ import (
 
 	"github.com/gx-org/gx/build/fmterr"
 	"github.com/gx-org/gx/build/ir"
+	"github.com/gx-org/gx/internal/base/scope"
 	"github.com/gx-org/gx/stdlib/math/grad/special"
 )
 
@@ -30,7 +31,7 @@ type astStmts struct {
 	fetcher     ir.Fetcher
 	uroot       string
 	stmts       []ast.Stmt
-	identToExpr map[string]expr
+	identToExpr *scope.RWScope[expr]
 }
 
 func (g *Graph) newForwardStmts(fetcher ir.Fetcher) *astStmts {
@@ -38,12 +39,20 @@ func (g *Graph) newForwardStmts(fetcher ir.Fetcher) *astStmts {
 		graph:       g,
 		fetcher:     fetcher,
 		uroot:       "fwd",
-		identToExpr: make(map[string]expr),
+		identToExpr: scope.NewScope[expr](nil),
 	}
 }
 
-func (a *astStmts) setIdentExpr(name string, x expr) {
-	a.identToExpr[name] = x
+func (a *astStmts) setIdentExpr(name string, x expr, src *ast.AssignStmt) bool {
+	switch src.Tok {
+	case token.DEFINE:
+		a.identToExpr.Define(name, x)
+	case token.ASSIGN:
+		a.identToExpr.Assign(name, x)
+	default:
+		return a.fetcher.Err().Appendf(src, "cannot set %s for token %s", name, src.Tok)
+	}
+	return true
 }
 
 func (a *astStmts) append(s ast.Stmt) {
