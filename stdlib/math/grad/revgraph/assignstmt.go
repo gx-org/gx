@@ -43,16 +43,8 @@ func (g *Graph) newASTOut(fetcher ir.Fetcher) *astOut {
 	}
 }
 
-func (a *astOut) setIdentExpr(name string, x expr, src *ast.AssignStmt) bool {
-	switch src.Tok {
-	case token.DEFINE:
-		a.identToExpr.Define(name, x)
-	case token.ASSIGN:
-		a.identToExpr.Assign(name, x)
-	default:
-		return a.fetcher.Err().Appendf(src, "cannot set %s for token %s", name, src.Tok)
-	}
-	return true
+func (a *astOut) setIdentExpr(name string, x expr) {
+	a.identToExpr.Define(name, x)
 }
 
 func (a *astOut) append(s ast.Stmt) {
@@ -166,33 +158,39 @@ func (a *astOut) err() *fmterr.Appender {
 }
 
 type fwdStmts struct {
-	astOut
+	*astOut
 
-	idents scope.RWScope[expr]
+	idents scope.Scope[expr]
 }
 
-type bckStmts struct {
+func (a *astOut) newStmt() *fwdStmts {
+	return &fwdStmts{
+		astOut: a,
+		idents: a.identToExpr.Collect(),
+	}
+}
+
+type astOutWRT struct {
 	astOut
 	wrt withRespectTo
 }
 
-func (a *astOut) newBackwardStmts(wrt withRespectTo) *bckStmts {
-	return &bckStmts{
+func (a *astOut) newASTOutWRT(wrt withRespectTo) *astOutWRT {
+	return &astOutWRT{
 		astOut: astOut{
-			graph:       a.graph,
-			fetcher:     a.fetcher,
-			identToExpr: a.identToExpr,
-			uroot:       "bck",
+			graph:   a.graph,
+			fetcher: a.fetcher,
+			uroot:   "bck",
 		},
 		wrt: wrt,
 	}
 }
 
-func (b *bckStmts) assignSpecialExpr(id nodeID, expr *special.Expr) *special.Expr {
+func (b *astOutWRT) assignSpecialExpr(id nodeID, expr *special.Expr) *special.Expr {
 	return b.assignSpecialExprSuffix(id, expr, "")
 }
 
-func (b *bckStmts) assignSpecialExprSuffix(id nodeID, expr *special.Expr, suffix string) *special.Expr {
+func (b *astOutWRT) assignSpecialExprSuffix(id nodeID, expr *special.Expr, suffix string) *special.Expr {
 	if !expr.IsAny() {
 		return expr
 	}

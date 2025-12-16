@@ -16,6 +16,7 @@
 package revgraph
 
 import (
+	"fmt"
 	"go/ast"
 
 	"github.com/gx-org/gx/base/uname"
@@ -56,6 +57,10 @@ func (n *node[T]) source() ast.Node {
 
 func (n *node[T]) err() *fmterr.Appender {
 	return n.fetcher.Err()
+}
+
+func (n *node[T]) String() string {
+	return fmt.Sprint(n.irnode)
 }
 
 type (

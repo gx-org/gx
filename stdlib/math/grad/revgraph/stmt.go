@@ -22,6 +22,15 @@ import (
 	"github.com/gx-org/gx/stdlib/math/grad/special"
 )
 
+type coreStmt[T ir.Stmt] struct {
+	node[T]
+	fwdStmts *fwdStmts
+}
+
+func newCoreStmt[T ir.Stmt](p *processor, isrc T) coreStmt[T] {
+	return coreStmt[T]{node: newNodeNoID[T](p, isrc)}
+}
+
 type (
 	stmt interface {
 		build(*astOut) bool
@@ -44,9 +53,9 @@ func (p *processor) processBlockStmt(isrc *ir.BlockStmt) (*blockStmt, bool) {
 	return out, true
 }
 
-func (n *blockStmt) build(astmts *astOut) bool {
+func (n *blockStmt) build(outStmts *astOut) bool {
 	for _, stmt := range n.stmts {
-		if ok := stmt.build(astmts); !ok {
+		if ok := stmt.build(outStmts); !ok {
 			return false
 		}
 	}
@@ -65,14 +74,14 @@ func (p *processor) processStmt(isrc ir.Stmt) (stmt, bool) {
 }
 
 type returnStmt struct {
-	node[*ir.ReturnStmt]
+	coreStmt[*ir.ReturnStmt]
 	exprs []expr
 }
 
 func (p *processor) processReturnStmt(isrc *ir.ReturnStmt) (*returnStmt, bool) {
 	out := &returnStmt{
-		node:  newNodeNoID[*ir.ReturnStmt](p, isrc),
-		exprs: make([]expr, len(isrc.Results)),
+		coreStmt: newCoreStmt[*ir.ReturnStmt](p, isrc),
+		exprs:    make([]expr, len(isrc.Results)),
 	}
 	for i, expr := range isrc.Results {
 		var ok bool
@@ -84,12 +93,12 @@ func (p *processor) processReturnStmt(isrc *ir.ReturnStmt) (*returnStmt, bool) {
 	return out, true
 }
 
-func (n *returnStmt) buildVJPFunctionWRT(astmts *astOut, param vjpParam) (*ast.FuncLit, bool) {
-	bckstmts := astmts.newBackwardStmts(param.wrt)
+func (n *returnStmt) buildVJPFunctionWRT(outStmts *astOut, param vjpParam) (*ast.FuncLit, bool) {
+	outWRT := outStmts.newASTOutWRT(param.wrt)
 	rets := make([]*special.Expr, len(n.exprs))
 	for i, expr := range n.exprs {
 		var ok bool
-		rets[i], ok = expr.buildBackward(bckstmts, special.New(
+		rets[i], ok = expr.buildBackward(outWRT, special.New(
 			&ast.Ident{Name: n.graph.nResults.names[i]},
 		))
 		if !ok {
@@ -97,7 +106,7 @@ func (n *returnStmt) buildVJPFunctionWRT(astmts *astOut, param vjpParam) (*ast.F
 		}
 	}
 	var body []ast.Stmt
-	body = append(body, bckstmts.stmts...)
+	body = append(body, outWRT.stmts...)
 	body = append(body, &ast.ReturnStmt{
 		Results: []ast.Expr{special.Add(rets...).RemoveParen().AST()},
 	})
@@ -107,13 +116,14 @@ func (n *returnStmt) buildVJPFunctionWRT(astmts *astOut, param vjpParam) (*ast.F
 	}, true
 }
 
-func (n *returnStmt) build(astmts *astOut) bool {
+func (n *returnStmt) build(outStmts *astOut) bool {
 	out := &ast.ReturnStmt{
 		Results: make([]ast.Expr, len(n.irnode.Results)),
 	}
+	n.fwdStmts = outStmts.newStmt()
 	for i, expr := range n.exprs {
 		var ok bool
-		out.Results[i], ok = buildSingleForward(astmts, expr)
+		out.Results[i], ok = buildSingleForward(n.fwdStmts, expr)
 		if !ok {
 			return false
 		}
@@ -121,7 +131,7 @@ func (n *returnStmt) build(astmts *astOut) bool {
 	// Build a backward function for each function parameter.
 	names := make([]ast.Expr, len(n.graph.params))
 	for _, param := range n.graph.params {
-		vjpFuncLit, ok := n.buildVJPFunctionWRT(astmts, param)
+		vjpFuncLit, ok := n.buildVJPFunctionWRT(outStmts, param)
 		if !ok {
 			return false
 		}
@@ -130,26 +140,26 @@ func (n *returnStmt) build(astmts *astOut) bool {
 			root += "WRT" + param.wrt.name()
 		}
 		vjpFuncName := n.graph.unames.Name(root)
-		astmts.append(&ast.AssignStmt{
+		outStmts.append(&ast.AssignStmt{
 			Tok: token.DEFINE,
 			Lhs: []ast.Expr{&ast.Ident{Name: vjpFuncName}},
 			Rhs: []ast.Expr{vjpFuncLit},
 		})
 		out.Results = append(out.Results, &ast.Ident{Name: vjpFuncName})
 	}
-	astmts.append(out)
+	outStmts.append(out)
 	return true
 }
 
 type assignExprStmt struct {
-	node[*ir.AssignExprStmt]
+	coreStmt[*ir.AssignExprStmt]
 	exprs []expr
 }
 
 func (p *processor) processAssignExprStmt(isrc *ir.AssignExprStmt) (*assignExprStmt, bool) {
 	out := &assignExprStmt{
-		node:  newNodeNoID[*ir.AssignExprStmt](p, isrc),
-		exprs: make([]expr, len(isrc.List)),
+		coreStmt: newCoreStmt[*ir.AssignExprStmt](p, isrc),
+		exprs:    make([]expr, len(isrc.List)),
 	}
 	for i, expr := range isrc.List {
 		var ok bool
@@ -157,29 +167,48 @@ func (p *processor) processAssignExprStmt(isrc *ir.AssignExprStmt) (*assignExprS
 		if !ok {
 			return nil, false
 		}
-		p.unames.Register(expr.NameDef().Name)
 	}
 	return out, true
 }
 
-func (n *assignExprStmt) build(astmts *astOut) bool {
+type assignedExpr struct {
+	expr
+
+	fwd *ast.Ident
+}
+
+func (n *assignedExpr) buildForward(astmts *fwdStmts) ([]ast.Expr, bool) {
+	return []ast.Expr{n.fwd}, true
+}
+
+func (n *assignedExpr) forwardValue() (*special.Expr, bool) {
+	return special.New(n.fwd), true
+}
+
+func (n *assignExprStmt) build(outStmts *astOut) bool {
 	out := &ast.AssignStmt{
-		Tok: n.irnode.Src.Tok,
+		Tok: token.DEFINE,
 		Lhs: make([]ast.Expr, len(n.exprs)),
 		Rhs: make([]ast.Expr, len(n.exprs)),
 	}
+	n.fwdStmts = outStmts.newStmt()
 	for i, x := range n.exprs {
-		name := n.irnode.List[i].NameDef().Name
-		out.Lhs[i] = &ast.Ident{Name: name}
 		var ok bool
-		out.Rhs[i], ok = buildSingleForward(astmts, x)
+		out.Rhs[i], ok = buildSingleForward(n.fwdStmts, x)
 		if !ok {
 			return false
 		}
-		if !astmts.setIdentExpr(name, x, n.irnode.Src) {
-			return false
-		}
+		out.Rhs[i] = special.CastIfRequired(out.Rhs[i], n.irnode.List[i].Type())
 	}
-	astmts.append(out)
+	for i, x := range n.exprs {
+		name := n.irnode.List[i].NameDef().Name
+		uname := &ast.Ident{Name: n.graph.unames.Name(name)}
+		out.Lhs[i] = uname
+		outStmts.setIdentExpr(name, &assignedExpr{
+			expr: x,
+			fwd:  uname,
+		})
+	}
+	outStmts.append(out)
 	return true
 }
