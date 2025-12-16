@@ -92,7 +92,7 @@ type arraySliceExprType interface {
 	processLiteralExpr(procScope, *ast.CompositeLit) (exprNode, bool)
 }
 
-func processArraySliceType(pscope procScope, typ *ast.ArrayType) (arraySliceExprType, bool) {
+func processArraySliceType(pscope typeProcScope, typ *ast.ArrayType) (arraySliceExprType, bool) {
 	if typ.Len != nil {
 		return processArrayType(pscope, typ)
 	}
@@ -103,9 +103,10 @@ func processCompositeLit(pscope procScope, src *ast.CompositeLit) (exprNode, boo
 	if src.Type == nil {
 		return processUntypedCompositeLit(pscope, src)
 	}
+	typScope := defaultTypeProcScope(pscope)
 	switch srcTypeT := src.Type.(type) {
 	case *ast.ArrayType:
-		typ, typeOk := processArraySliceType(pscope, srcTypeT)
+		typ, typeOk := processArraySliceType(typScope, srcTypeT)
 		literal, literalOk := typ.processLiteralExpr(pscope, src)
 		return literal, typeOk && literalOk
 	case *ast.CompositeLit:

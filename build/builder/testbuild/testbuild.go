@@ -99,6 +99,10 @@ func (ce *compileError) Error() string {
 	return fmt.Sprintf("%s\nTest source:\n%s", ce.err.Error(), gxfmt.Number(ce.src))
 }
 
+func (ce *compileError) Unwrap() error {
+	return ce.err
+}
+
 // DeclarePackage declares a package for the following tests.
 type DeclarePackage struct {
 	// Path where the package belongs (without the name).
