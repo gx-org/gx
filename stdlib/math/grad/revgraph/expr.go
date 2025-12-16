@@ -341,8 +341,8 @@ func (n *valueRef) buildBackward(bckstmts *bckStmts, bck *special.Expr) (*specia
 		return n.gradFieldStorage(bckstmts, bck, fieldStorage)
 	}
 	name := n.irnode.Stor.NameDef().Name
-	expr := bckstmts.identToExpr[name]
-	if expr == nil {
+	expr, found := bckstmts.identToExpr.Find(name)
+	if !found {
 		return nil, n.fetcher.Err().AppendInternalf(n.irnode.Source(), "cannot find revgraph node for %q", name)
 	}
 	bckExpr, ok := expr.buildBackward(bckstmts, bck)
