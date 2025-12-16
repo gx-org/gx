@@ -26,7 +26,7 @@ import (
 	"github.com/gx-org/gx/stdlib/math/grad/special"
 )
 
-type astStmts struct {
+type astOut struct {
 	graph       *Graph
 	fetcher     ir.Fetcher
 	uroot       string
@@ -34,8 +34,8 @@ type astStmts struct {
 	identToExpr *scope.RWScope[expr]
 }
 
-func (g *Graph) newForwardStmts(fetcher ir.Fetcher) *astStmts {
-	return &astStmts{
+func (g *Graph) newASTOut(fetcher ir.Fetcher) *astOut {
+	return &astOut{
 		graph:       g,
 		fetcher:     fetcher,
 		uroot:       "fwd",
@@ -43,7 +43,7 @@ func (g *Graph) newForwardStmts(fetcher ir.Fetcher) *astStmts {
 	}
 }
 
-func (a *astStmts) setIdentExpr(name string, x expr, src *ast.AssignStmt) bool {
+func (a *astOut) setIdentExpr(name string, x expr, src *ast.AssignStmt) bool {
 	switch src.Tok {
 	case token.DEFINE:
 		a.identToExpr.Define(name, x)
@@ -55,15 +55,15 @@ func (a *astStmts) setIdentExpr(name string, x expr, src *ast.AssignStmt) bool {
 	return true
 }
 
-func (a *astStmts) append(s ast.Stmt) {
+func (a *astOut) append(s ast.Stmt) {
 	a.stmts = append(a.stmts, s)
 }
 
-func (a *astStmts) assignExpr(id nodeID, expr ast.Expr) *ast.Ident {
+func (a *astOut) assignExpr(id nodeID, expr ast.Expr) *ast.Ident {
 	return a.assignExprs(id, []ast.Expr{expr}, 1, "")[0]
 }
 
-func (a *astStmts) buildIdents(id nodeID, n int, suffix string) []*ast.Ident {
+func (a *astOut) buildIdents(id nodeID, n int, suffix string) []*ast.Ident {
 	idents := make([]*ast.Ident, n)
 	for i := range n {
 		idS := ""
@@ -89,7 +89,7 @@ func toExprs(idents []*ast.Ident) []ast.Expr {
 	return exprs
 }
 
-func (a *astStmts) assignExprs(id nodeID, expr []ast.Expr, n int, suffix string) []*ast.Ident {
+func (a *astOut) assignExprs(id nodeID, expr []ast.Expr, n int, suffix string) []*ast.Ident {
 	idents := a.buildIdents(id, n, suffix)
 	a.stmts = append(a.stmts, &ast.AssignStmt{
 		Tok: token.DEFINE,
@@ -99,7 +99,7 @@ func (a *astStmts) assignExprs(id nodeID, expr []ast.Expr, n int, suffix string)
 	return idents
 }
 
-func (a *astStmts) callTraceSpecials(exprs []*special.Expr) {
+func (a *astOut) callTraceSpecials(exprs []*special.Expr) {
 	if !traceAll {
 		return
 	}
@@ -114,7 +114,7 @@ func (a *astStmts) callTraceSpecials(exprs []*special.Expr) {
 	a.callTrace(idents)
 }
 
-func (a *astStmts) callTrace(idents []*ast.Ident) {
+func (a *astOut) callTrace(idents []*ast.Ident) {
 	if !traceAll {
 		return
 	}
@@ -137,7 +137,7 @@ func (a *astStmts) callTrace(idents []*ast.Ident) {
 	})
 }
 
-func (a *astStmts) assignFuncCall(id nodeID, ftype *ir.FuncType, calleeName string, call *ast.CallExpr) ([]*ast.Ident, []string) {
+func (a *astOut) assignFuncCall(id nodeID, ftype *ir.FuncType, calleeName string, call *ast.CallExpr) ([]*ast.Ident, []string) {
 	nVals := ftype.Results.Len()
 	idents := a.buildIdents(id, nVals, "")
 	stmt := &ast.AssignStmt{
@@ -161,18 +161,24 @@ func (a *astStmts) assignFuncCall(id nodeID, ftype *ir.FuncType, calleeName stri
 	return idents, vjps
 }
 
-func (a *astStmts) err() *fmterr.Appender {
+func (a *astOut) err() *fmterr.Appender {
 	return a.fetcher.Err()
 }
 
+type fwdStmts struct {
+	astOut
+
+	idents scope.RWScope[expr]
+}
+
 type bckStmts struct {
-	astStmts
+	astOut
 	wrt withRespectTo
 }
 
-func (a *astStmts) newBackwardStmts(wrt withRespectTo) *bckStmts {
+func (a *astOut) newBackwardStmts(wrt withRespectTo) *bckStmts {
 	return &bckStmts{
-		astStmts: astStmts{
+		astOut: astOut{
 			graph:       a.graph,
 			fetcher:     a.fetcher,
 			identToExpr: a.identToExpr,

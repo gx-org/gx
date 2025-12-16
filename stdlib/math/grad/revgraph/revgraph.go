@@ -161,7 +161,7 @@ func (g *Graph) Process(fetcher ir.Fetcher) (*ast.BlockStmt, bool) {
 	if !ok {
 		return nil, false
 	}
-	astmts := g.newForwardStmts(fetcher)
+	astmts := g.newASTOut(fetcher)
 	if ok := root.build(astmts); !ok {
 		return nil, false
 	}

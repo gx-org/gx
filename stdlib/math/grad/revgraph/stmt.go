@@ -24,7 +24,7 @@ import (
 
 type (
 	stmt interface {
-		build(*astStmts) bool
+		build(*astOut) bool
 	}
 
 	blockStmt struct {
@@ -44,7 +44,7 @@ func (p *processor) processBlockStmt(isrc *ir.BlockStmt) (*blockStmt, bool) {
 	return out, true
 }
 
-func (n *blockStmt) build(astmts *astStmts) bool {
+func (n *blockStmt) build(astmts *astOut) bool {
 	for _, stmt := range n.stmts {
 		if ok := stmt.build(astmts); !ok {
 			return false
@@ -84,7 +84,7 @@ func (p *processor) processReturnStmt(isrc *ir.ReturnStmt) (*returnStmt, bool) {
 	return out, true
 }
 
-func (n *returnStmt) buildVJPFunctionWRT(astmts *astStmts, param vjpParam) (*ast.FuncLit, bool) {
+func (n *returnStmt) buildVJPFunctionWRT(astmts *astOut, param vjpParam) (*ast.FuncLit, bool) {
 	bckstmts := astmts.newBackwardStmts(param.wrt)
 	rets := make([]*special.Expr, len(n.exprs))
 	for i, expr := range n.exprs {
@@ -107,7 +107,7 @@ func (n *returnStmt) buildVJPFunctionWRT(astmts *astStmts, param vjpParam) (*ast
 	}, true
 }
 
-func (n *returnStmt) build(astmts *astStmts) bool {
+func (n *returnStmt) build(astmts *astOut) bool {
 	out := &ast.ReturnStmt{
 		Results: make([]ast.Expr, len(n.irnode.Results)),
 	}
@@ -162,7 +162,7 @@ func (p *processor) processAssignExprStmt(isrc *ir.AssignExprStmt) (*assignExprS
 	return out, true
 }
 
-func (n *assignExprStmt) build(astmts *astStmts) bool {
+func (n *assignExprStmt) build(astmts *astOut) bool {
 	out := &ast.AssignStmt{
 		Tok: n.irnode.Src.Tok,
 		Lhs: make([]ast.Expr, len(n.exprs)),
