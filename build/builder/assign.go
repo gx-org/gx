@@ -74,7 +74,7 @@ func (asg *identStorage) anonymousStorage(rscope resolveScope, typ ir.Type) (_ i
 }
 
 func (asg *identStorage) buildStorage(rscope resolveScope, typ ir.Type) (_ ir.Storage, newName, ok bool) {
-	if !ir.ValidIdent(asg.target.src) {
+	if !ir.ValidIdent(asg.target.src) || !ir.IsValid(typ) {
 		return asg.anonymousStorage(rscope, typ)
 	}
 	if asg.tok == token.ASSIGN {
