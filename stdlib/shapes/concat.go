@@ -106,7 +106,7 @@ func (f concat) resultsType(fetcher ir.Fetcher, call *ir.FuncCallExpr) (params [
 	}
 	var outputDims []ir.AxisLengths = make([]ir.AxisLengths, len(firstDims))
 	copy(outputDims, firstDims)
-	var outputExpr ir.AssignableExpr = firstDims[axis].AxisValue()
+	var outputExpr ir.AssignableExpr = firstDims[axis].AsExpr()
 
 	for i := 1; i < len(arrayTypes); i++ {
 		rank := arrayTypes[i].Rank()
@@ -125,7 +125,7 @@ func (f concat) resultsType(fetcher ir.Fetcher, call *ir.FuncCallExpr) (params [
 					i+1, arrayTypes[i].Rank(), arrayTypes[0].Rank(), f.Name(), j, axJ, outputDims[j])
 			}
 		}
-		outputExpr = builtins.ToBinaryExpr(token.ADD, outputExpr, rank.Axes()[axis].AxisValue())
+		outputExpr = builtins.ToBinaryExpr(token.ADD, outputExpr, rank.Axes()[axis].AsExpr())
 	}
 	outputDims[axis] = &ir.AxisExpr{
 		Src: call.Expr(),

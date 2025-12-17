@@ -128,7 +128,7 @@ func (uni *argUnifier) defineGroupAsAllSingleAxes(param *ir.AxisExpr, vr *ir.Val
 		if axis.Type().Kind() != ir.IntLenKind {
 			break
 		}
-		el, err := uni.Fetcher.EvalExpr(axis.AxisValue())
+		el, err := uni.Fetcher.EvalExpr(axis.AsExpr())
 		if err != nil {
 			return nil, uni.Fetcher.Err().AppendAt(uni.Source(), err)
 		}

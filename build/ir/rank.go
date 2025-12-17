@@ -229,7 +229,7 @@ func RankSize(r ArrayRank) Expr {
 				Y:  exprSource(axis),
 			},
 			X:   expr,
-			Y:   axis.AxisValue(),
+			Y:   axis.AsExpr(),
 			Typ: IntLenType(),
 		}
 	}
