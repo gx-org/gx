@@ -85,7 +85,7 @@ var (
 	}
 	axisGroupRankFunc = func() ir.ArrayRank {
 		symbolicAxisNames["M"] = true
-		return newRank(irhelper.AxisGroup("M").AxisValue())
+		return newRank(irhelper.AxisGroup("M").AsExpr())
 	}
 
 	exampleRanks = []rankFunc{

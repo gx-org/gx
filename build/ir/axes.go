@@ -75,11 +75,14 @@ type (
 	// AxisLengths specification of an array.
 	AxisLengths interface {
 		axExprString() string
-		Expr
+		SourceNode
 
-		// AxisValue returns the value associated with the axis.
+		// Type of the axis.
+		Type() Type
+
+		// AsExpr returns the axis value as an expression.
 		// Can return nil if the axis has not been resolved.
-		AxisValue() AssignableExpr
+		AsExpr() AssignableExpr
 
 		// Equal returns true if two axis lengths have been resolved and are equal.
 		// Returns an error if one of the axis has not been resolved.
@@ -175,11 +178,8 @@ func (dm *AxisExpr) UnifyWith(uni Unifier, targets []AxisLengths) ([]AxisLengths
 	return uni.DefineAxis(dm, targets)
 }
 
-// AxisValue returns the value assigned to the axis.
-func (dm *AxisExpr) AxisValue() AssignableExpr { return dm.X }
-
-// Value of the axis.
-func (dm *AxisExpr) Value(Expr) AssignableExpr { return dm.AxisValue() }
+// AsExpr returns the axis value as an expression.
+func (dm *AxisExpr) AsExpr() AssignableExpr { return dm.X }
 
 // Type of the expression.
 func (dm *AxisExpr) Type() Type { return dm.X.Type() }
@@ -241,12 +241,12 @@ func (dm *AxisInfer) AssignableTo(fetcher Fetcher, dst AxisLengths) (bool, error
 	return true, nil
 }
 
-// AxisValue returns the value assigned to the axis.
-func (dm *AxisInfer) AxisValue() AssignableExpr {
+// AsExpr returns the axis value as an expression.
+func (dm *AxisInfer) AsExpr() AssignableExpr {
 	if dm.X == nil {
 		return nil
 	}
-	return dm.X.AxisValue()
+	return dm.X.AsExpr()
 }
 
 // Specialise the axis length given a context.
@@ -257,11 +257,6 @@ func (dm *AxisInfer) Specialise(spec Specialiser) ([]AxisLengths, error) {
 // UnifyWith unifies axis lengths with a given target.
 func (dm *AxisInfer) UnifyWith(uni Unifier, target []AxisLengths) ([]AxisLengths, bool) {
 	return dm.X.UnifyWith(uni, target)
-}
-
-// Value of the axis.
-func (dm *AxisInfer) Value(Expr) AssignableExpr {
-	return dm.AxisValue()
 }
 
 func (dm *AxisInfer) axExprString() string {
