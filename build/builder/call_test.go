@@ -163,5 +163,14 @@ func f() float32 {
 `,
 			Err: "multiple value g() in single-value context",
 		},
+		testbuild.Decl{
+			Src: `
+func f() float32 {
+	c, d = somefunc()
+	return c
+}
+`,
+			Err: "undefined: somefunc",
+		},
 	)
 }
