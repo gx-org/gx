@@ -29,6 +29,7 @@ import (
 )
 
 type cast struct {
+	canonical.AtomStringImpl
 	src    elements.ExprAt
 	target ir.Type
 	x      Element
@@ -83,7 +84,8 @@ func newCast(env evaluator.Env, expr ir.AssignableExpr, xEl Element, target ir.T
 
 }
 
-func newReshape(env evaluator.Env, expr ir.AssignableExpr, xEl Element, axisLengths []evaluator.NumericalElement) (Element, error) {
+// NewReshape returns a reshape elements.
+func NewReshape(env evaluator.Env, expr ir.AssignableExpr, xEl Element, axisLengths []evaluator.NumericalElement) (Element, error) {
 	x, err := elements.ConstantFromElement(xEl)
 	if err != nil {
 		return xEl, err
@@ -108,7 +110,7 @@ func (a *cast) UnaryOp(env evaluator.Env, expr *ir.UnaryExpr) (evaluator.Numeric
 }
 
 func (a *cast) BinaryOp(env evaluator.Env, expr *ir.BinaryExpr, x, y evaluator.NumericalElement) (evaluator.NumericalElement, error) {
-	return newBinary(env, expr, x, y)
+	return NewBinary(env, expr, x, y)
 }
 
 func (a *cast) Cast(env evaluator.Env, expr ir.AssignableExpr, target ir.Type) (evaluator.NumericalElement, error) {
@@ -116,7 +118,7 @@ func (a *cast) Cast(env evaluator.Env, expr ir.AssignableExpr, target ir.Type) (
 }
 
 func (a *cast) Reshape(env evaluator.Env, expr ir.AssignableExpr, axisLengths []evaluator.NumericalElement) (evaluator.NumericalElement, error) {
-	return newReshape(env, expr, a, axisLengths)
+	return NewReshape(env, expr, a, axisLengths)
 }
 
 // Shape of the value represented by the element.

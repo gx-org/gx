@@ -74,7 +74,7 @@ func (v *storedValue) UnaryOp(env evaluator.Env, expr *ir.UnaryExpr) (evaluator.
 
 // BinaryOp applies a binary operator to x and y.
 func (v *storedValue) BinaryOp(env evaluator.Env, expr *ir.BinaryExpr, x, y evaluator.NumericalElement) (evaluator.NumericalElement, error) {
-	return newBinary(env, expr, x, y)
+	return NewBinary(env, expr, x, y)
 }
 
 // Cast an element into a given data type.
@@ -92,7 +92,7 @@ func (v *storedValue) Reshape(env evaluator.Env, expr ir.AssignableExpr, axisLen
 	if err != nil {
 		return can, nil
 	}
-	return newReshape(env, expr, can, axisLengths)
+	return NewReshape(env, expr, can, axisLengths)
 }
 
 // Store returns the storage represented by this variable.

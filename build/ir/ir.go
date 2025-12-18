@@ -2345,7 +2345,9 @@ func (s *NumberCastExpr) Source() ast.Node { return s.X.Source() }
 func (s *NumberCastExpr) Type() Type { return s.Typ }
 
 // String representation of the number.
-func (s *NumberCastExpr) String() string { return s.X.String() }
+func (s *NumberCastExpr) String() string {
+	return s.X.String()
+}
 
 func (s *StringLiteral) node()        {}
 func (s *StringLiteral) staticValue() {}

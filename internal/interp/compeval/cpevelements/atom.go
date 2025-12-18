@@ -30,6 +30,7 @@ import (
 )
 
 type atom struct {
+	canonical.AtomStringImpl
 	src   elements.ExprAt
 	val   *values.HostArray
 	float *big.Float
@@ -74,7 +75,7 @@ func (a *atom) Copy() elements.Copier {
 
 // BinaryOp applies a binary operator to x and y.
 func (a *atom) BinaryOp(env evaluator.Env, expr *ir.BinaryExpr, x, y evaluator.NumericalElement) (evaluator.NumericalElement, error) {
-	return newBinary(env, expr, x, y)
+	return NewBinary(env, expr, x, y)
 }
 
 // Cast an element into a given data type.
@@ -83,7 +84,7 @@ func (a *atom) Cast(env evaluator.Env, expr ir.AssignableExpr, dtype ir.Type) (e
 }
 
 func (a *atom) Reshape(env evaluator.Env, expr ir.AssignableExpr, axisLengths []evaluator.NumericalElement) (evaluator.NumericalElement, error) {
-	return newReshape(env, expr, a, axisLengths)
+	return NewReshape(env, expr, a, axisLengths)
 }
 
 // Shape of the value represented by the element.

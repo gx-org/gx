@@ -34,7 +34,7 @@ type binary struct {
 	canonical canonical.Canonical
 	src       elements.NodeFile[*ir.BinaryExpr]
 	x, y      Element
-	val       *values.HostArray
+	cst       *values.HostArray
 }
 
 var (
@@ -46,7 +46,8 @@ var (
 	_ elements.WithAxes               = (*cast)(nil)
 )
 
-func newBinary(env evaluator.Env, expr *ir.BinaryExpr, xEl, yEl evaluator.NumericalElement) (_ evaluator.NumericalElement, err error) {
+// NewBinary returns a binary operation between two elements.
+func NewBinary(env evaluator.Env, expr *ir.BinaryExpr, xEl, yEl evaluator.NumericalElement) (_ evaluator.NumericalElement, err error) {
 	// If the other element is not a compeval element,
 	// we are not in compeval mode, so forward the binary operation to the other element.
 	x, xOk := xEl.(Element)
@@ -62,27 +63,10 @@ func newBinary(env evaluator.Env, expr *ir.BinaryExpr, xEl, yEl evaluator.Numeri
 			err = fmterr.AtNode(env.File().FileSet(), expr.Src, err)
 		}
 	}()
-	var val *values.HostArray
-	cx, err := elements.ConstantFromElement(x)
-	if err != nil {
-		return nil, err
-	}
-	cy, err := elements.ConstantFromElement(y)
-	if err != nil {
-		return nil, err
-	}
-	if cx != nil && cy != nil {
-		// Both operand values are known: compute the constant for this operand.
-		val, err = buildBinaryVal(expr, cx, cy)
-		if err != nil {
-			return nil, err
-		}
-	}
 	el := &binary{
 		src: elements.NewNodeAt(env.File(), expr),
 		x:   x,
 		y:   y,
-		val: val,
 	}
 	el.canonical = canonical.FromBinary(expr.Src.Op, x.CanonicalExpr(), y.CanonicalExpr()).Simplify()
 	return el, err
@@ -134,7 +118,7 @@ func (a *binary) UnaryOp(env evaluator.Env, expr *ir.UnaryExpr) (evaluator.Numer
 
 // BinaryOp applies a binary operator to x and y.
 func (a *binary) BinaryOp(env evaluator.Env, expr *ir.BinaryExpr, x, y evaluator.NumericalElement) (evaluator.NumericalElement, error) {
-	return newBinary(env, expr, x, y)
+	return NewBinary(env, expr, x, y)
 }
 
 // Cast an element into a given data type.
@@ -144,12 +128,17 @@ func (a *binary) Cast(env evaluator.Env, expr ir.AssignableExpr, target ir.Type)
 
 // Reshape the element into a new shape.
 func (a *binary) Reshape(env evaluator.Env, expr ir.AssignableExpr, axisLengths []evaluator.NumericalElement) (evaluator.NumericalElement, error) {
-	return newReshape(env, expr, a, axisLengths)
+	return NewReshape(env, expr, a, axisLengths)
 }
 
 // Shape of the value represented by the element.
 func (a *binary) Shape() *shape.Shape {
-	return a.val.Shape()
+	cst, err := a.NumericalConstant()
+	if err != nil {
+		// TODO(degris): see cl/846337025
+		panic(err)
+	}
+	return cst.Shape()
 }
 
 // Axes returns the axes of the value as a slice element.
@@ -177,12 +166,34 @@ func (a *binary) Unflatten(handles *flatten.Parser) (values.Value, error) {
 
 // NumericalConstant returns the value of a constant represented by a node.
 func (a *binary) NumericalConstant() (*values.HostArray, error) {
-	return a.val, nil
+	if a.cst != nil {
+		return a.cst, nil
+	}
+	cx, err := elements.ConstantFromElement(a.x)
+	if err != nil {
+		return nil, err
+	}
+	cy, err := elements.ConstantFromElement(a.y)
+	if err != nil {
+		return nil, err
+	}
+	if cx != nil && cy != nil {
+		// Both operand values are known: compute the constant for this operand.
+		a.cst, err = buildBinaryVal(a.src.Node(), cx, cy)
+		if err != nil {
+			return nil, err
+		}
+	}
+	return a.cst, nil
 }
 
 // Materialise returns the element with all its values from the graph.
 func (a *binary) Materialise(ao materialise.Materialiser) (materialise.Node, error) {
-	return ao.NodeFromArray(a.src.File(), a.src.Node(), a.val)
+	cst, err := a.NumericalConstant()
+	if err != nil {
+		return nil, nil
+	}
+	return ao.NodeFromArray(a.src.File(), a.src.Node(), cst)
 }
 
 // Compare to another element.
@@ -212,19 +223,7 @@ func (a *binary) Expr() (ir.AssignableExpr, error) {
 }
 
 func (a *binary) String() string {
-	var x string
-	switch a.x.(type) {
-	case *binary:
-		x = fmt.Sprintf("(%v)", a.x)
-	default:
-		x = fmt.Sprint(a.x)
-	}
-	var y string
-	switch a.y.(type) {
-	case *atom, *cast, *variable:
-		y = fmt.Sprint(a.y)
-	default:
-		y = fmt.Sprintf("(%v)", a.y)
-	}
+	x := canonical.ToString(a.x)
+	y := canonical.ToString(a.y)
 	return fmt.Sprintf("%v%v%v", x, a.src.Node().Src.Op, y)
 }

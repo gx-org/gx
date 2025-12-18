@@ -91,7 +91,7 @@ func newUnary(env evaluator.Env, expr *ir.UnaryExpr, xEl Element) (_ *unary, err
 }
 
 func (a *unary) Reshape(env evaluator.Env, expr ir.AssignableExpr, axisLengths []evaluator.NumericalElement) (evaluator.NumericalElement, error) {
-	return newReshape(env, expr, a, axisLengths)
+	return NewReshape(env, expr, a, axisLengths)
 }
 
 // UnaryOp applies a unary operator on x.
@@ -101,7 +101,7 @@ func (a *unary) UnaryOp(env evaluator.Env, expr *ir.UnaryExpr) (evaluator.Numeri
 
 // BinaryOp applies a binary operator to x and y.
 func (a *unary) BinaryOp(env evaluator.Env, expr *ir.BinaryExpr, x, y evaluator.NumericalElement) (evaluator.NumericalElement, error) {
-	return newBinary(env, expr, x, y)
+	return NewBinary(env, expr, x, y)
 }
 
 // Cast an element into a given data type.

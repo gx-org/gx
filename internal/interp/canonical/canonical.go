@@ -24,6 +24,23 @@ import (
 )
 
 type (
+	// AtomString is a structure to indicate that an instance
+	// does not require parenthesis in an string expression.
+	AtomString interface {
+		NoParenthesis()
+	}
+
+	// AtomStringImpl is an implementation of AtomString
+	// that can easily be embedded in other structures.
+	AtomStringImpl struct{}
+)
+
+var _ AtomString = AtomStringImpl{}
+
+// NoParenthesis implements AtomString.
+func (AtomStringImpl) NoParenthesis() {}
+
+type (
 
 	// Comparable defines an interface for comparing an expression against another.
 	Comparable interface {
@@ -374,4 +391,14 @@ func ToValue(el any) *big.Float {
 		return nil
 	}
 	return eval.Float()
+}
+
+// ToString converts an instance into a string, adding parenthesis when necessary.
+func ToString(a fmt.Stringer) string {
+	s := a.String()
+	_, isAtomString := a.(AtomString)
+	if isAtomString {
+		return s
+	}
+	return fmt.Sprintf("(%s)", s)
 }

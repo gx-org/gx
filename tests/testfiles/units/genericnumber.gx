@@ -1,0 +1,23 @@
+package genericnumber
+
+type (
+	ints interface {
+		int32 | int64
+	}
+
+	floats interface {
+		float32 | float64
+	}
+)
+
+func addTwo[T ints, U floats](x [___S]T, y [S___]U) ([S___]T, [S___]U) {
+	return x + 2, y + 3
+}
+
+func TestAddTwo() (int32, float64) {
+	return addTwo[int32, float64](5, 7.0)
+	// Want:
+	// 0: int32(7)
+	// 1: float64(10)
+}
+
