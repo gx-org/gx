@@ -89,8 +89,8 @@ func (a *array) Graph() ops.Graph {
 	return nil
 }
 
-func (a *array) Compare(x canonical.Comparable) bool {
-	return false
+func (a *array) Compare(x canonical.Comparable) (bool, error) {
+	return false, nil
 }
 
 func (a *array) CanonicalExpr() canonical.Canonical {

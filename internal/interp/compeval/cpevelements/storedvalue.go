@@ -51,7 +51,7 @@ func NewStoredValue(file *ir.File, storage ir.Storage, value ir.Element) ir.Elem
 }
 
 // NumericalConstant returns the value of a constant represented by a node.
-func (v *storedValue) NumericalConstant() *values.HostArray {
+func (v *storedValue) NumericalConstant() (*values.HostArray, error) {
 	return elements.ConstantFromElement(v.val)
 }
 
@@ -127,12 +127,12 @@ func (v *storedValue) Axes(ev ir.Evaluator) (*elements.Slice, error) {
 }
 
 // Compare to another element.
-func (v *storedValue) Compare(x canonical.Comparable) bool {
+func (v *storedValue) Compare(x canonical.Comparable) (bool, error) {
 	other, ok := x.(*storedValue)
 	if !ok {
-		return false
+		return false, nil
 	}
-	return v == other
+	return v == other, nil
 }
 
 // Slice computes a slice from the variable.

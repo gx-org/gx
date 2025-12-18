@@ -63,8 +63,14 @@ func newBinary(env evaluator.Env, expr *ir.BinaryExpr, xEl, yEl evaluator.Numeri
 		}
 	}()
 	var val *values.HostArray
-	cx := elements.ConstantFromElement(x)
-	cy := elements.ConstantFromElement(y)
+	cx, err := elements.ConstantFromElement(x)
+	if err != nil {
+		return nil, err
+	}
+	cy, err := elements.ConstantFromElement(y)
+	if err != nil {
+		return nil, err
+	}
 	if cx != nil && cy != nil {
 		// Both operand values are known: compute the constant for this operand.
 		val, err = buildBinaryVal(expr, cx, cy)
@@ -170,8 +176,8 @@ func (a *binary) Unflatten(handles *flatten.Parser) (values.Value, error) {
 }
 
 // NumericalConstant returns the value of a constant represented by a node.
-func (a *binary) NumericalConstant() *values.HostArray {
-	return a.val
+func (a *binary) NumericalConstant() (*values.HostArray, error) {
+	return a.val, nil
 }
 
 // Materialise returns the element with all its values from the graph.
@@ -180,13 +186,17 @@ func (a *binary) Materialise(ao materialise.Materialiser) (materialise.Node, err
 }
 
 // Compare to another element.
-func (a *binary) Compare(other canonical.Comparable) bool {
+func (a *binary) Compare(other canonical.Comparable) (bool, error) {
 	otherT, ok := other.(Element)
 	if !ok {
-		return false
+		return false, nil
 	}
-	if valEqual(a, otherT) {
-		return true
+	eq, err := valEqual(a, otherT)
+	if err != nil {
+		return false, err
+	}
+	if eq {
+		return true, nil
 	}
 	return a.canonical.Compare(otherT.CanonicalExpr())
 }

@@ -173,7 +173,10 @@ func AxesFromElement(el ir.Element) ([]int, error) {
 // ConstantScalarFromElement returns a scalar on a host given an element.
 func ConstantScalarFromElement[T dtype.GoDataType](el ir.Element) (val T, err error) {
 	var hostArray *values.HostArray
-	hostArray = ConstantFromElement(el)
+	hostArray, err = ConstantFromElement(el)
+	if err != nil {
+		return
+	}
 	if hostArray == nil {
 		err = errors.Errorf("state element %T does not store a constant numerical value", el)
 		return
@@ -184,7 +187,10 @@ func ConstantScalarFromElement[T dtype.GoDataType](el ir.Element) (val T, err er
 // ConstantIntFromElement returns a scalar on a host given an element.
 func ConstantIntFromElement(el ir.Element) (val int, err error) {
 	var hostArray *values.HostArray
-	hostArray = ConstantFromElement(el)
+	hostArray, err = ConstantFromElement(el)
+	if err != nil {
+		return
+	}
 	if hostArray == nil {
 		err = errors.Errorf("state element %T does not store a constant numerical value", el)
 		return
@@ -214,10 +220,10 @@ func toGoInt(val *values.HostArray) (int, error) {
 
 // ConstantFromElement returns the host value represented by an element.
 // The function returns (nil, nil) if the element does not host a numerical value.
-func ConstantFromElement(el ir.Element) *values.HostArray {
+func ConstantFromElement(el ir.Element) (*values.HostArray, error) {
 	numerical, ok := el.(ElementWithConstant)
 	if !ok {
-		return nil
+		return nil, nil
 	}
 	return numerical.NumericalConstant()
 }

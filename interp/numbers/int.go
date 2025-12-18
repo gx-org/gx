@@ -130,20 +130,26 @@ func (n *Int) Type() ir.Type {
 }
 
 // Compare with another number.
-func (n *Int) Compare(x canonical.Comparable) bool {
+func (n *Int) Compare(x canonical.Comparable) (bool, error) {
 	switch xT := x.(type) {
 	case *Float:
-		return n.Float().Cmp(xT.val) == 0
+		return n.Float().Cmp(xT.val) == 0, nil
 	case *Int:
-		return n.val.Cmp(xT.val) == 0
+		return n.val.Cmp(xT.val) == 0, nil
 	case elements.ElementWithConstant:
-		val := xT.NumericalConstant()
+		val, err := xT.NumericalConstant()
+		if err != nil {
+			return false, err
+		}
+		if val == nil {
+			return false, nil
+		}
 		if !val.Shape().IsAtomic() {
-			return false
+			return false, nil
 		}
 		other, err := val.ToAtom()
 		if err != nil {
-			return false
+			return false, nil
 		}
 		var otherI *big.Int
 		switch otherT := other.(type) {
@@ -152,14 +158,14 @@ func (n *Int) Compare(x canonical.Comparable) bool {
 		case int64:
 			otherI = big.NewInt(otherT)
 		default:
-			return false
+			return false, nil
 		}
-		return n.val.Cmp(otherI) == 0
+		return n.val.Cmp(otherI) == 0, nil
 	}
 	// Because the compiler cast numbers to concrete types,
 	// numbers should only be compared to other numbers.
 	// Always return false if that is not the case.
-	return false
+	return false, nil
 }
 
 // CanonicalExpr returns the canonical expression used for comparison.
