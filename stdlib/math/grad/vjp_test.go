@@ -955,5 +955,88 @@ func vjpF(x [___S]float32) ([S___]float32, func(res [S___]float32) [S___]float32
 }
 `,
 		},
+		testgrad.VJP{
+			Src: `
+type floats interface {
+	float32 | float64
+}
+
+func F[T floats](x [___S]T) [S___]T {
+	return x
+}
+`,
+			Want: `
+func vjpF[T floats](x [___S]T) ([S___]T, func(res [S___]T) [S___]T) {
+	selfVJPFunc := func(res [S___]T) [S___]T {
+		return res
+	}
+	return x, selfVJPFunc
+}
+`,
+		},
+	)
+}
+
+func TestVJPDuplicatedNames(t *testing.T) {
+	testbuild.Run(t,
+		declareGradPackage,
+		testgrad.VJP{
+			Src: `
+func F(fwd0 [___S]float32) [S___]float32 {
+	return 2*fwd0
+}
+`,
+			Want: `
+func vjpF(fwd0 [___S]float32) ([S___]float32, func(res [S___]float32) [S___]float32) {
+	fwd01 := 2*fwd0
+	selfVJPFunc := func(res [S___]float32) [S___]float32 {
+		bck0x := res*fwd0
+		bck0y := 2*res
+		return bck0y
+	}
+	return fwd01, selfVJPFunc
+}
+`,
+		},
+		testgrad.VJP{
+			Src: `
+func F(x [___fwd0]float32) [fwd0___]float32 {
+	return 2*x
+}
+`,
+			Want: `
+func vjpF(x [___fwd0]float32) ([fwd0___]float32, func(res [fwd0___]float32) [fwd0___]float32) {
+	fwd0_1 := 2*x
+	selfVJPFunc := func(res [fwd0___]float32) [fwd0___]float32 {
+		bck0x := res*x
+		bck0y := 2*res
+		return bck0y
+	}
+	return fwd0_1, selfVJPFunc
+}
+`,
+		},
+		testgrad.VJP{
+			Src: `
+type floats interface {
+	float32 | float64
+}
+
+func F[fwd0 floats](x [___S]fwd0) [S___]fwd0 {
+	return 2*x
+}
+`,
+			Want: `
+func vjpF[fwd0 floats](x [___S]fwd0) ([S___]fwd0, func(res [S___]fwd0) [S___]fwd0) {
+	fwd0_1 := 2*x
+	selfVJPFunc := func(res [S___]fwd0) [S___]fwd0 {
+		bck0x := res*x
+		bck0y := 2*res
+		return bck0y
+	}
+	return fwd0_1, selfVJPFunc
+}
+`,
+		},
 	)
 }

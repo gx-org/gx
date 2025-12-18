@@ -108,6 +108,10 @@ func New(macro *cpevelements.CoreMacroElement, fn ir.Func) (*Graph, error) {
 			vjpFType: backwardSig,
 		}
 	}
+	for _, axisVal := range fType.AxisLengths {
+		g.unames.Register(axisVal.Name())
+	}
+	g.unames.RegisterFieldNames(fType.TypeParams)
 	return g, nil
 }
 
