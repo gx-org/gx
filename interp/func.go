@@ -229,7 +229,7 @@ func assignAxisLengths(callee ir.Callee, funcFrame *context.Frame) {
 		if axLen.Value == nil {
 			continue
 		}
-		funcFrame.Define(axLen.Src.Name, axLen.Value)
+		funcFrame.Define(axLen.Name(), axLen.Value)
 	}
 }
 

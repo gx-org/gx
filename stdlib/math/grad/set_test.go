@@ -24,7 +24,7 @@ import (
 func TestSet(t *testing.T) {
 	testbuild.Run(t,
 		declareGradPackage,
-		testgrad.Func{
+		testgrad.VJP{
 			Src: `
 func g(float32) float32
 
@@ -43,7 +43,7 @@ func vjpF(x float32) (float32, func(res float32) float32) {
 }
 `,
 		},
-		testgrad.Func{
+		testgrad.VJP{
 			Src: `
 func gradOfG(x float32) float32 {
 	return x
@@ -72,7 +72,7 @@ func vjpF(x float32) (float32, func(res float32) float32) {
 }
 `,
 		},
-		testgrad.Func{
+		testgrad.VJP{
 			Src: `
 func gradOfG(x float32) float32
 
@@ -97,7 +97,7 @@ func vjpF(x float32) (float32, func(res float32) float32) {
 }
 `,
 		},
-		testgrad.Func{
+		testgrad.VJP{
 			Src: `
 //gx:@grad.Set(g)
 func g(x float32) float32
@@ -126,7 +126,7 @@ func vjpF(x float32) (float32, func(res float32) float32) {
 func TestSetFor(t *testing.T) {
 	testbuild.Run(t,
 		declareGradPackage,
-		testgrad.Func{
+		testgrad.VJP{
 			Src: `
 func gradOfGx(x, y float32) float32 {
 	return x
@@ -155,8 +155,7 @@ func vjpF(x, y float32) (float32, func(res float32) float32, func(res float32) f
 }
 `,
 		},
-		testgrad.Func{
-			WRT: "y",
+		testgrad.VJP{
 			Src: `
 func gradOfGx(x, y float32) float32 {
 	return x
@@ -185,7 +184,7 @@ func vjpF(x, y float32) (float32, func(res float32) float32, func(res float32) f
 }
 `,
 		},
-		testgrad.Func{
+		testgrad.VJP{
 			Src: `
 func g(float32) float32
 
@@ -209,7 +208,7 @@ func vjpF(x float32) (float32, func(res float32) float32) {
 func TestSetGeneric(t *testing.T) {
 	testbuild.Run(t,
 		declareGradPackage,
-		testgrad.Func{
+		testgrad.VJP{
 			Src: `
 type floats interface {
 	float32 | float64
@@ -275,7 +274,7 @@ func[T floats](x T) (T, func(res T) T) {
 func TestSetErrors(t *testing.T) {
 	testbuild.Run(t,
 		declareGradPackage,
-		testgrad.Func{
+		testgrad.VJP{
 			Src: `
 //gx:@grad.Set(missingGrad)
 func F(x float32) float32 {
@@ -283,7 +282,7 @@ func F(x float32) float32 {
 }`,
 			Err: "undefined: missingGrad",
 		},
-		testgrad.Func{
+		testgrad.VJP{
 			Src: `
 var v int32
 //gx:@grad.Set(v)
@@ -292,7 +291,7 @@ func F(x float32) float32 {
 }`,
 			Err: "int32 is not a function",
 		},
-		testgrad.Func{
+		testgrad.VJP{
 			Src: `
 func g(x float64) float32
 
@@ -301,30 +300,30 @@ func F(x, y float32) float32
 `,
 			Err: "use test.SetFor to set the gradient of a function with more than one parameter",
 		},
-		testgrad.Func{
+		testgrad.VJP{
 			Src: `
 func gradOfF(x, y float32) float32
 
 //gx:@grad.SetFor("z", gradOfF)
 func F(x, y float32) float32 {
-	return x	
+	return x
 }
 `,
 			Err: "function F has no parameter z",
 		},
-		testgrad.Func{
+		testgrad.VJP{
 			Src: `
 func gradOfF(x, y float32) float32
 
 //gx:@grad.SetFor("x", gradOfF)
 //gx:@grad.SetFor("x", gradOfF)
 func F(x, y float32) float32 {
-	return x	
+	return x
 }
 `,
 			Err: "gradient for parameter x has already been set",
 		},
-		testgrad.Func{
+		testgrad.VJP{
 			Src: `
 func g(float32) float32
 

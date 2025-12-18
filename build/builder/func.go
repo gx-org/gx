@@ -18,6 +18,7 @@ import (
 	"fmt"
 	"go/ast"
 	"math/big"
+	"reflect"
 	"strings"
 
 	"github.com/pkg/errors"
@@ -139,6 +140,19 @@ func defineTypeParam(s resolveScope, storage ir.Storage) bool {
 	})
 }
 
+type ftypeAxisLengths struct {
+	axLens []ir.AxisValue
+}
+
+func (axs *ftypeAxisLengths) define(s resolveScope, storage ir.Storage) bool {
+	axStmt, ok := storage.(*ir.AxisStmt)
+	if !ok {
+		return s.Err().AppendInternalf(storage.NameDef(), "cannot register axis %s: cannot cast %T to %s", storage.NameDef().Name, storage, reflect.TypeFor[*ir.AxisStmt]())
+	}
+	axs.axLens = append(axs.axLens, ir.AxisValue{Axis: axStmt})
+	return defineLocalVar(s, storage)
+}
+
 func (n *funcType) buildFuncType(rscope resolveScope) (*ir.FuncType, *funcResolveScope, bool) {
 	ext := &ir.FuncType{
 		BaseType: ir.BaseType[*ast.FuncType]{Src: n.src},
@@ -157,7 +171,8 @@ func (n *funcType) buildFuncType(rscope resolveScope) (*ir.FuncType, *funcResolv
 			defineLocalVar(sigscope, field.Storage())
 		}
 	}
-	paramScope := newDefineScope(sigscope, defineLocalVar, defineLocalVar)
+	axisLengths := &ftypeAxisLengths{}
+	paramScope := newDefineScope(sigscope, defineLocalVar, axisLengths.define)
 	ext.Params, paramsOk = n.params.buildFieldList(paramScope)
 	if !paramsOk {
 		return ext, nil, false
@@ -171,13 +186,7 @@ func (n *funcType) buildFuncType(rscope resolveScope) (*ir.FuncType, *funcResolv
 			}
 		}
 	}
-	ext.AxisLengths = make([]*ir.GenAxLenName, 0, n.genShapes.Size())
-	for def := range n.genShapes.Values() {
-		ext.AxisLengths = append(ext.AxisLengths, &ir.GenAxLenName{
-			Src: def.node.src,
-			Typ: def.node.typ,
-		})
-	}
+	ext.AxisLengths = axisLengths.axLens
 	fnscope, fnscopeOk := newFuncScope(rscope, ext)
 	return ext, fnscope, tParamsOk && paramsOk && resultsOk && recvOk && fnscopeOk
 }
@@ -507,7 +516,7 @@ func assignArgValueToName(rscope resolveScope, compEval *compileEvaluator, param
 		if !ok {
 			continue
 		}
-		if _, ok := ident.Stor.(*ir.GenAxLenName); !ok {
+		if _, ok := ident.Stor.(*ir.AxisStmt); !ok {
 			continue
 		}
 		var buildAxisValue func(resolveScope, ir.AssignableExpr, []ir.Element) (ir.Element, []ir.Element)

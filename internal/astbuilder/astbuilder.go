@@ -99,6 +99,11 @@ func assignToExpandShape(id *ast.Ident) error {
 	if strings.HasPrefix(id.Name, ir.DefineAxisGroup) {
 		id.Name = strings.TrimPrefix(id.Name, ir.DefineAxisGroup)
 		id.Name += ir.DefineAxisGroup
+		return nil
+	}
+	if strings.HasPrefix(id.Name, ir.DefineAxisLength) {
+		id.Name = strings.TrimPrefix(id.Name, ir.DefineAxisLength)
+		return nil
 	}
 	return nil
 }

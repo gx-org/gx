@@ -24,7 +24,6 @@ import (
 )
 
 func TestAxisName01(t *testing.T) {
-	arrayType := irh.ArrayType(ir.Float32Type(), irh.AxisGroup("dims"))
 	sliceLiteral := &ir.SliceLitExpr{
 		Typ: ir.IntLenSliceType(),
 		Elts: []ir.AssignableExpr{
@@ -37,7 +36,7 @@ func TestAxisName01(t *testing.T) {
 		FType: irh.FuncType(
 			nil, nil,
 			irh.Fields("dims", ir.IntLenSliceType()),
-			irh.Fields(arrayType),
+			irh.Fields(irh.ArrayType(ir.Float32Type(), irh.Axis("dims___"))),
 		),
 	}
 	castFunc := &ir.FuncBuiltin{
@@ -315,13 +314,12 @@ func f() [2]float32 {
 }
 
 func TestAxisName02(t *testing.T) {
-	arrayType := irh.ArrayType(ir.Float32Type(), irh.AxisGroup("dims"))
 	newArrayFunc := &ir.FuncBuiltin{
 		Src: &ast.FuncDecl{Name: &ast.Ident{Name: "newArray"}},
 		FType: irh.FuncType(
 			nil, nil,
 			irh.Fields("dims", ir.IntLenSliceType()),
-			irh.Fields(arrayType),
+			irh.Fields(irh.ArrayType(ir.Float32Type(), irh.Axis("dims___"))),
 		),
 	}
 	fDims := &ir.LocalVarStorage{

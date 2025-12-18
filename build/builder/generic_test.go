@@ -87,12 +87,12 @@ func TestGenericSignature(t *testing.T) {
 							"",
 							irhelper.ArrayType(
 								ir.Int32Type(),
-								irhelper.Axis(xAxLen),
+								irhelper.Axis("X_"),
 							),
 							"",
 							irhelper.ArrayType(
 								ir.Int32Type(),
-								irhelper.Axis(yAxLen),
+								irhelper.Axis("Y_"),
 							),
 						),
 					), "_X", "_Y"),

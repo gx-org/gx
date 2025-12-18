@@ -68,7 +68,7 @@ func axesFromType(ev ir.Evaluator, typ ir.Type) (*elements.Slice, error) {
 	elts := make([]ir.Element, len(axes))
 	for i, ax := range axes {
 		var err error
-		elts[i], err = ev.EvalExpr(ax)
+		elts[i], err = ev.EvalExpr(ax.AsExpr())
 		if err != nil {
 			return nil, err
 		}
