@@ -113,7 +113,11 @@ func (uni *argUnifier) defineAxisElement(param *ir.AxisStmt, el ir.Element) bool
 		uni.axes[name] = el
 		return true
 	}
-	if !ir.ElementEqual(defined, el) {
+	eq, err := ir.ElementEqual(defined, el)
+	if err != nil {
+		return uni.Err().AppendAt(uni.arg.Source(), err)
+	}
+	if !eq {
 		return uni.Err().Appendf(uni.arg.Source(), "axis length %v does not match length %v for %s", defined, el, name)
 	}
 	return true

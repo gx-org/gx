@@ -57,7 +57,10 @@ func newUnary(env evaluator.Env, expr *ir.UnaryExpr, xEl Element) (_ *unary, err
 	defer func() {
 		opEl.canonical = opEl.toCanonical()
 	}()
-	x := elements.ConstantFromElement(xEl)
+	x, err := elements.ConstantFromElement(xEl)
+	if err != nil {
+		return nil, err
+	}
 	if x == nil {
 		return opEl, nil
 	}
@@ -125,8 +128,8 @@ func (a *unary) Unflatten(handles *flatten.Parser) (values.Value, error) {
 }
 
 // NumericalConstant returns the value of a constant represented by a node.
-func (a *unary) NumericalConstant() *values.HostArray {
-	return a.val
+func (a *unary) NumericalConstant() (*values.HostArray, error) {
+	return a.val, nil
 }
 
 // Materialise returns the element with all its values from the graph.
@@ -139,16 +142,20 @@ func (a *unary) Expr() (ir.AssignableExpr, error) {
 }
 
 // Compare to another element.
-func (a *unary) Compare(x canonical.Comparable) bool {
-	if valEqual(a, x.(Element)) {
-		return true
+func (a *unary) Compare(x canonical.Comparable) (bool, error) {
+	eq, err := valEqual(a, x.(Element))
+	if err != nil {
+		return false, err
+	}
+	if eq {
+		return true, nil
 	}
 	other, ok := x.(*unary)
 	if !ok {
-		return false
+		return false, nil
 	}
 	if a.src.Node().Src.Op != other.src.Node().Src.Op {
-		return false
+		return false, nil
 	}
 	return a.x.Compare(other.x)
 }

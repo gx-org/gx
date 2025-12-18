@@ -121,17 +121,17 @@ func (n *Float) Float() *big.Float {
 }
 
 // Compare with another number.
-func (n *Float) Compare(x canonical.Comparable) bool {
+func (n *Float) Compare(x canonical.Comparable) (bool, error) {
 	switch xT := x.(type) {
 	case *Float:
-		return n.val.Cmp(xT.val) == 0
+		return n.val.Cmp(xT.val) == 0, nil
 	case *Int:
-		return n.val.Cmp(xT.Float()) == 0
+		return n.val.Cmp(xT.Float()) == 0, nil
 	}
 	// Because the compiler cast numbers to concrete types,
 	// numbers should only be compared to other numbers.
 	// Always return false if that is not the case.
-	return false
+	return false, nil
 }
 
 // CanonicalExpr returns the canonical expression used for comparison.

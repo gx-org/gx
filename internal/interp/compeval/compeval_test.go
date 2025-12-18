@@ -279,7 +279,11 @@ func TestExprEval(t *testing.T) {
 			if !test.value.eval {
 				return
 			}
-			value := element.(elements.ElementWithConstant).NumericalConstant()
+			value, err := element.(elements.ElementWithConstant).NumericalConstant()
+			if err != nil {
+				t.Errorf("cannot fetch constant:\n%+v", fmterr.ToStackTraceError(err))
+				return
+			}
 			gotValue, err := values.ToAtom[int32](value)
 			if err != nil {
 				t.Errorf("%s: atom conversion error:\n%+v", test.desc, fmterr.ToStackTraceError(err))
@@ -432,7 +436,11 @@ func TestExprEvalAndCompare(t *testing.T) {
 		if err != nil {
 			t.Fatalf("\n%+v", err)
 		}
-		if !xEl.Compare(isEl) {
+		eq, err := xEl.Compare(isEl)
+		if err != nil {
+			t.Fatalf("\n%+v", err)
+		}
+		if !eq {
 			t.Errorf("test %d:%s: %s == %s is false", i, test.desc, xEl, isEl)
 			continue
 		}
@@ -440,7 +448,11 @@ func TestExprEvalAndCompare(t *testing.T) {
 		if err != nil {
 			t.Fatalf("\n%+v", err)
 		}
-		if !xEl.Compare(isEl) {
+		eq, err = xEl.Compare(isEl)
+		if err != nil {
+			t.Fatalf("\n%+v", err)
+		}
+		if !eq {
 			t.Errorf("test %d:%s: %s != %s is false", i, test.desc, xEl, isNotEl)
 			continue
 		}

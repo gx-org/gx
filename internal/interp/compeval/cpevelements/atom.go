@@ -92,8 +92,8 @@ func (a *atom) Shape() *shape.Shape {
 }
 
 // NumericalConstant returns the value of a constant represented by a node.
-func (a *atom) NumericalConstant() *values.HostArray {
-	return a.val
+func (a *atom) NumericalConstant() (*values.HostArray, error) {
+	return a.val, nil
 }
 
 // Unflatten creates a GX value from the next handles available in the parser.
@@ -112,16 +112,19 @@ func (a *atom) Materialise(ao materialise.Materialiser) (materialise.Node, error
 }
 
 // Compare to another element.
-func (a *atom) Compare(x canonical.Comparable) bool {
+func (a *atom) Compare(x canonical.Comparable) (bool, error) {
 	xEl, ok := x.(ir.Element)
 	if !ok {
-		return false
+		return false, nil
 	}
-	cx := elements.ConstantFromElement(xEl)
+	cx, err := elements.ConstantFromElement(xEl)
+	if err != nil {
+		return false, err
+	}
 	if cx == nil {
-		return false
+		return false, nil
 	}
-	return equalArray(a.val, cx)
+	return equalArray(a.val, cx), nil
 }
 
 func (a *atom) Axes(ir.Evaluator) (*elements.Slice, error) {

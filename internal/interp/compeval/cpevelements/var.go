@@ -93,12 +93,12 @@ func (a *variable) Slice(expr *ir.IndexExpr, index evaluator.NumericalElement) (
 }
 
 // Compare to another element.
-func (a *variable) Compare(x canonical.Comparable) bool {
+func (a *variable) Compare(x canonical.Comparable) (bool, error) {
 	other, ok := x.(*variable)
 	if !ok {
-		return false
+		return false, nil
 	}
-	return a.name == other.name
+	return a.name == other.name, nil
 }
 
 // Expr returns the IR expression represented by the variable.

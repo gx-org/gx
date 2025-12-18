@@ -61,7 +61,15 @@ func checkBroadcastRanks(fetcher ir.Fetcher, call *ir.FuncCallExpr, src ir.Array
 		if !ok {
 			return fmterr.Internalf(fetcher.File().FileSet(), call.Source(), "expression evaluation axis %d=%s did not return a canonical expression", i, srcAxes[i])
 		}
-		if !targetElt.Compare(srcCan) && !oneAxisLength.Compare(srcCan) {
+		tgOk, err := targetElt.Compare(srcCan)
+		if err != nil {
+			return fmterr.Internal(err)
+		}
+		oneAxisOk, err := oneAxisLength.Compare(srcCan)
+		if err != nil {
+			return fmterr.Internal(err)
+		}
+		if !tgOk && !oneAxisOk {
 			return fmterr.Errorf(fetcher.File().FileSet(), srcAxes[i].Source(), "cannot broadcast array with axis %d of size %d: size of 1 or %d required", i, srcElt, targetElt)
 		}
 	}

@@ -50,7 +50,10 @@ func newCast(env evaluator.Env, expr ir.AssignableExpr, xEl Element, target ir.T
 		target: target,
 		x:      xEl,
 	}
-	x := elements.ConstantFromElement(xEl)
+	x, err := elements.ConstantFromElement(xEl)
+	if err != nil {
+		return nil, err
+	}
 	if x == nil {
 		return opEl, nil
 	}
@@ -81,7 +84,10 @@ func newCast(env evaluator.Env, expr ir.AssignableExpr, xEl Element, target ir.T
 }
 
 func newReshape(env evaluator.Env, expr ir.AssignableExpr, xEl Element, axisLengths []evaluator.NumericalElement) (Element, error) {
-	x := elements.ConstantFromElement(xEl)
+	x, err := elements.ConstantFromElement(xEl)
+	if err != nil {
+		return xEl, err
+	}
 	if x == nil {
 		return xEl, nil
 	}
@@ -129,8 +135,8 @@ func (a *cast) Unflatten(handles *flatten.Parser) (values.Value, error) {
 }
 
 // NumericalConstant returns the value of a constant represented by a node.
-func (a *cast) NumericalConstant() *values.HostArray {
-	return a.val
+func (a *cast) NumericalConstant() (*values.HostArray, error) {
+	return a.val, nil
 }
 
 // Copy the element by returning itself.
@@ -153,16 +159,20 @@ func (a *cast) Axes(ev ir.Evaluator) (*elements.Slice, error) {
 }
 
 // Compare to another element.
-func (a *cast) Compare(x canonical.Comparable) bool {
-	if valEqual(a, x.(Element)) {
-		return true
+func (a *cast) Compare(x canonical.Comparable) (bool, error) {
+	eq, err := valEqual(a, x.(Element))
+	if err != nil {
+		return false, err
+	}
+	if eq {
+		return true, nil
 	}
 	other, ok := x.(*cast)
 	if !ok {
-		return false
+		return false, nil
 	}
 	if a.target != other.target {
-		return false
+		return false, nil
 	}
 	return a.x.Compare(other.x)
 }

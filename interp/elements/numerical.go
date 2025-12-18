@@ -25,7 +25,7 @@ type (
 		evaluator.NumericalElement
 
 		// NumericalConstant returns the value of a constant represented by a node.
-		NumericalConstant() *values.HostArray
+		NumericalConstant() (*values.HostArray, error)
 	}
 
 	// ElementWithArrayFromContext is an element able to return a concrete value from the current context.

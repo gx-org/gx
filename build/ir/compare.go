@@ -25,18 +25,18 @@ func areEqual(fetcher Fetcher, x, y Expr) (bool, error) {
 	if err != nil {
 		return false, err
 	}
-	return ElementEqual(xExpr, yExpr), nil
+	return ElementEqual(xExpr, yExpr)
 }
 
 // ElementEqual compares if two runtime elements are equal.
-func ElementEqual(x, y Element) bool {
+func ElementEqual(x, y Element) (bool, error) {
 	xCan, ok := x.(canonical.Canonical)
 	if !ok {
-		return false
+		return false, nil
 	}
 	yCan, ok := y.(canonical.Canonical)
 	if !ok {
-		return false
+		return false, nil
 	}
 	return xCan.Compare(yCan)
 }
