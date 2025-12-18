@@ -19,7 +19,6 @@ import (
 
 	"github.com/gx-org/gx/build/ir"
 	"github.com/gx-org/gx/interp/fun"
-	"github.com/gx-org/gx/interp"
 )
 
 type function struct {
@@ -53,7 +52,7 @@ func (f *function) Call(env *fun.CallEnv, call *ir.FuncCallExpr, args []ir.Eleme
 	_, isKeyword := f.fn.(*ir.FuncKeyword)
 	fType := f.fn.FuncType()
 	if isKeyword || fType != nil && fType.CompEval { // Some builtin functions have no type at the moment.
-		return interp.NewRunFunc(f.fn, f.recv).Call(env, call, valArgs)
+		return env.Run(f.fn, f.recv, call, valArgs)
 	}
 	res := call.Callee.FuncType().Results.Fields()
 	els := make([]ir.Element, len(res))
