@@ -651,6 +651,12 @@ func F[t interface{}](a [BatchSize]T) [BatchSize]T
 `,
 			Err: "undefined: T",
 		},
+		testbuild.Decl{
+			Src: `
+func F[T whatisai.X]() T
+`,
+			Err: "undefined: whatisai",
+		},
 	)
 
 }

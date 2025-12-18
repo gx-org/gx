@@ -290,6 +290,9 @@ func compEvalForFuncType(rscope resolveScope, src ast.Node, ftype *ir.FuncType) 
 		funcVars[axLen.Name()] = cpevelements.NewVariable(storeAt)
 	}
 	for _, tParam := range ftype.TypeParams.Fields() {
+		if tParam == nil {
+			continue
+		}
 		funcVars[tParam.Name.Name] = &ir.TypeParam{Field: tParam}
 	}
 	irFile := rscope.fileScope().irFile()
