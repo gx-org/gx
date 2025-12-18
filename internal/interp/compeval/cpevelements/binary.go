@@ -34,7 +34,7 @@ type binary struct {
 	canonical canonical.Canonical
 	src       elements.NodeFile[*ir.BinaryExpr]
 	x, y      Element
-	val       *values.HostArray
+	cst       *values.HostArray
 }
 
 var (
@@ -63,27 +63,10 @@ func NewBinary(env evaluator.Env, expr *ir.BinaryExpr, xEl, yEl evaluator.Numeri
 			err = fmterr.AtNode(env.File().FileSet(), expr.Src, err)
 		}
 	}()
-	var val *values.HostArray
-	cx, err := elements.ConstantFromElement(x)
-	if err != nil {
-		return nil, err
-	}
-	cy, err := elements.ConstantFromElement(y)
-	if err != nil {
-		return nil, err
-	}
-	if cx != nil && cy != nil {
-		// Both operand values are known: compute the constant for this operand.
-		val, err = buildBinaryVal(expr, cx, cy)
-		if err != nil {
-			return nil, err
-		}
-	}
 	el := &binary{
 		src: elements.NewNodeAt(env.File(), expr),
 		x:   x,
 		y:   y,
-		val: val,
 	}
 	el.canonical = canonical.FromBinary(expr.Src.Op, x.CanonicalExpr(), y.CanonicalExpr()).Simplify()
 	return el, err
@@ -150,7 +133,12 @@ func (a *binary) Reshape(env evaluator.Env, expr ir.AssignableExpr, axisLengths 
 
 // Shape of the value represented by the element.
 func (a *binary) Shape() *shape.Shape {
-	return a.val.Shape()
+	cst, err := a.NumericalConstant()
+	if err != nil {
+		// TODO(degris): see cl/846337025
+		panic(err)
+	}
+	return cst.Shape()
 }
 
 // Axes returns the axes of the value as a slice element.
@@ -178,12 +166,34 @@ func (a *binary) Unflatten(handles *flatten.Parser) (values.Value, error) {
 
 // NumericalConstant returns the value of a constant represented by a node.
 func (a *binary) NumericalConstant() (*values.HostArray, error) {
-	return a.val, nil
+	if a.cst != nil {
+		return a.cst, nil
+	}
+	cx, err := elements.ConstantFromElement(a.x)
+	if err != nil {
+		return nil, err
+	}
+	cy, err := elements.ConstantFromElement(a.y)
+	if err != nil {
+		return nil, err
+	}
+	if cx != nil && cy != nil {
+		// Both operand values are known: compute the constant for this operand.
+		a.cst, err = buildBinaryVal(a.src.Node(), cx, cy)
+		if err != nil {
+			return nil, err
+		}
+	}
+	return a.cst, nil
 }
 
 // Materialise returns the element with all its values from the graph.
 func (a *binary) Materialise(ao materialise.Materialiser) (materialise.Node, error) {
-	return ao.NodeFromArray(a.src.File(), a.src.Node(), a.val)
+	cst, err := a.NumericalConstant()
+	if err != nil {
+		return nil, nil
+	}
+	return ao.NodeFromArray(a.src.File(), a.src.Node(), cst)
 }
 
 // Compare to another element.
