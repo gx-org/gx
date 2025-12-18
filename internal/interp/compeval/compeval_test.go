@@ -127,7 +127,7 @@ func value(x int32) wantValue {
 }
 
 func newInterpreter(opts []options.PackageOption) (*interp.FileScope, error) {
-	itp, err := interp.New(compeval.NewHostEvaluator(nil), opts)
+	itp, err := interp.New(compeval.NewHostEvaluator(nil, interp.NewRunFunc), opts)
 	if err != nil {
 		return nil, err
 	}

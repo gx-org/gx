@@ -180,7 +180,7 @@ func newFetcherTesting() (*fetcherTesting, error) {
 	for symbol := range symbolicAxisNames {
 		packageOptions = declareVariable(file, symbol, packageOptions)
 	}
-	itp, err := interp.New(compeval.NewHostEvaluator(nil), packageOptions)
+	itp, err := interp.New(compeval.NewHostEvaluator(nil, interp.NewRunFunc), packageOptions)
 	if err != nil {
 		return nil, err
 	}

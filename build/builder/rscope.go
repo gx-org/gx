@@ -147,7 +147,7 @@ func (s *pkgResolveScope) buildStorageProcessNode(tok token.Token, store ir.Stor
 }
 
 func (s *pkgResolveScope) packageInterpreter() *interp.Interpreter {
-	hostEval := compeval.NewHostEvaluator(s.bpkg.builder())
+	hostEval := compeval.NewHostEvaluator(s.bpkg.builder(), interp.NewRunFunc)
 	pkg := s.state.ibld.Pkg()
 	pkg.Decls = s.state.ibld.Decls()
 	var opts []options.PackageOption

@@ -54,7 +54,7 @@ var _ fun.Evaluator = (*Evaluator)(nil)
 func New(importer ir.Importer, pr *processor.Processor, gr ops.Graph) *Evaluator {
 	ev := &Evaluator{
 		process:  pr,
-		hostEval: compeval.NewHostEvaluator(importer),
+		hostEval: compeval.NewHostEvaluator(importer, interp.NewRunFunc),
 	}
 	ev.ao = &arrayOps{graph: gr, ev: ev}
 	return ev
@@ -62,6 +62,11 @@ func New(importer ir.Importer, pr *processor.Processor, gr ops.Graph) *Evaluator
 
 // NewFunc creates a new function given its definition and a receiver.
 func (ev *Evaluator) NewFunc(fn ir.Func, recv *fun.Receiver) fun.Func {
+	return interp.NewRunFunc(fn, recv)
+}
+
+// NewRunFunc creates a new function given its definition and a receiver.
+func (ev *Evaluator) NewRunFunc(fn ir.Func, recv *fun.Receiver) fun.Func {
 	return interp.NewRunFunc(fn, recv)
 }
 
