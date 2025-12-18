@@ -46,7 +46,8 @@ var (
 	_ elements.WithAxes               = (*cast)(nil)
 )
 
-func newBinary(env evaluator.Env, expr *ir.BinaryExpr, xEl, yEl evaluator.NumericalElement) (_ evaluator.NumericalElement, err error) {
+// NewBinary returns a binary operation between two elements.
+func NewBinary(env evaluator.Env, expr *ir.BinaryExpr, xEl, yEl evaluator.NumericalElement) (_ evaluator.NumericalElement, err error) {
 	// If the other element is not a compeval element,
 	// we are not in compeval mode, so forward the binary operation to the other element.
 	x, xOk := xEl.(Element)
@@ -134,7 +135,7 @@ func (a *binary) UnaryOp(env evaluator.Env, expr *ir.UnaryExpr) (evaluator.Numer
 
 // BinaryOp applies a binary operator to x and y.
 func (a *binary) BinaryOp(env evaluator.Env, expr *ir.BinaryExpr, x, y evaluator.NumericalElement) (evaluator.NumericalElement, error) {
-	return newBinary(env, expr, x, y)
+	return NewBinary(env, expr, x, y)
 }
 
 // Cast an element into a given data type.
@@ -144,7 +145,7 @@ func (a *binary) Cast(env evaluator.Env, expr ir.AssignableExpr, target ir.Type)
 
 // Reshape the element into a new shape.
 func (a *binary) Reshape(env evaluator.Env, expr ir.AssignableExpr, axisLengths []evaluator.NumericalElement) (evaluator.NumericalElement, error) {
-	return newReshape(env, expr, a, axisLengths)
+	return NewReshape(env, expr, a, axisLengths)
 }
 
 // Shape of the value represented by the element.
@@ -212,19 +213,7 @@ func (a *binary) Expr() (ir.AssignableExpr, error) {
 }
 
 func (a *binary) String() string {
-	var x string
-	switch a.x.(type) {
-	case *binary:
-		x = fmt.Sprintf("(%v)", a.x)
-	default:
-		x = fmt.Sprint(a.x)
-	}
-	var y string
-	switch a.y.(type) {
-	case *atom, *cast, *variable:
-		y = fmt.Sprint(a.y)
-	default:
-		y = fmt.Sprintf("(%v)", a.y)
-	}
+	x := canonical.ToString(a.x)
+	y := canonical.ToString(a.y)
 	return fmt.Sprintf("%v%v%v", x, a.src.Node().Src.Op, y)
 }

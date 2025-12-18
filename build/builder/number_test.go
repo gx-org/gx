@@ -94,3 +94,32 @@ func f() float32 {
 		},
 	)
 }
+
+func TestNumberWithGenerics(t *testing.T) {
+	testbuild.Run(t,
+		testbuild.Decl{
+			Src: `
+type floats interface {
+	float32 | float64
+}
+
+func f[T floats](x [___S]T) [S___]T {
+	a := x*2
+	return a
+}
+`,
+		},
+		testbuild.Decl{
+			Src: `
+type floats interface {
+	float32 | float64
+}
+
+func f[T floats](x [___S]T) [S___]T {
+	a := x*2.0
+	return a
+}
+`,
+		},
+	)
+}

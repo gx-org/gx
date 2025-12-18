@@ -160,7 +160,7 @@ func TestExprEval(t *testing.T) {
 				numberInt32(4),
 			),
 			value: value(-4),
-			want:  "-int32(4)",
+			want:  "int32(-4)",
 		},
 		{
 			desc: "cast expression",
@@ -177,7 +177,7 @@ func TestExprEval(t *testing.T) {
 				numberInt32(5),
 			),
 			value: value(9),
-			want:  "int32(4)+int32(5)",
+			want:  "int32(4+5)",
 		},
 		{
 			desc: "static variable",
@@ -229,7 +229,7 @@ func TestExprEval(t *testing.T) {
 				unaryExpr(token.SUB, numberInt32(4)),
 				valueRef("a"),
 			),
-			want: "-int32(4)-a",
+			want: "int32(-4)-a",
 		},
 		{
 			desc: "numberInt",
@@ -247,15 +247,15 @@ func TestExprEval(t *testing.T) {
 				unaryExpr(token.SUB, numberInt(4)),
 				numberInt(5),
 			),
-			want: "-4-5",
+			want: "int32(-4-5)",
 		},
 		{
 			desc: "binary numberInt numberFloat",
 			expr: binaryExpr(token.SUB,
 				unaryExpr(token.SUB, numberInt(4)),
-				numberFloat(5),
+				castExpr(dtype.Int32, numberFloat(5.3)),
 			),
-			want: "-4-5",
+			want: "int32(-4-int32(5.3))",
 		},
 		{
 			desc: "binary binary no number",

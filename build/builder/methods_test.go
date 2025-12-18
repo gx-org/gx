@@ -201,5 +201,19 @@ func call() int32 {
 					)},
 			},
 		},
+		testbuild.Decl{
+			Src: `
+type A float32
+
+func (a A) val() float32 {
+	return float32(a)
+}
+
+func call() float32 {
+	a := A(2.3)
+	return a.val()
+}
+`,
+		},
 	)
 }

@@ -25,6 +25,7 @@ import (
 )
 
 type variable struct {
+	canonical.AtomStringImpl
 	src  elements.StorageAt
 	name string
 }
@@ -53,7 +54,7 @@ func (a *variable) UnaryOp(env evaluator.Env, expr *ir.UnaryExpr) (evaluator.Num
 
 // BinaryOp applies a binary operator to x and y.
 func (a *variable) BinaryOp(env evaluator.Env, expr *ir.BinaryExpr, x, y evaluator.NumericalElement) (evaluator.NumericalElement, error) {
-	return newBinary(env, expr, x, y)
+	return NewBinary(env, expr, x, y)
 }
 
 // Cast an element into a given data type.
@@ -63,7 +64,7 @@ func (a *variable) Cast(env evaluator.Env, expr ir.AssignableExpr, target ir.Typ
 
 // Reshape the variable into a different shape.
 func (a *variable) Reshape(env evaluator.Env, expr ir.AssignableExpr, axisLengths []evaluator.NumericalElement) (evaluator.NumericalElement, error) {
-	return newReshape(env, expr, a, axisLengths)
+	return NewReshape(env, expr, a, axisLengths)
 }
 
 // Shape of the value represented by the element.
