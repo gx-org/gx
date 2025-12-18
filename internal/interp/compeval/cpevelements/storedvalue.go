@@ -51,7 +51,7 @@ func NewStoredValue(file *ir.File, storage ir.Storage, value ir.Element) ir.Elem
 }
 
 // NumericalConstant returns the value of a constant represented by a node.
-func (v *storedValue) NumericalConstant() *values.HostArray {
+func (v *storedValue) NumericalConstant() (*values.HostArray, error) {
 	return elements.ConstantFromElement(v.val)
 }
 
@@ -74,7 +74,7 @@ func (v *storedValue) UnaryOp(env evaluator.Env, expr *ir.UnaryExpr) (evaluator.
 
 // BinaryOp applies a binary operator to x and y.
 func (v *storedValue) BinaryOp(env evaluator.Env, expr *ir.BinaryExpr, x, y evaluator.NumericalElement) (evaluator.NumericalElement, error) {
-	return newBinary(env, expr, x, y)
+	return NewBinary(env, expr, x, y)
 }
 
 // Cast an element into a given data type.
@@ -92,7 +92,7 @@ func (v *storedValue) Reshape(env evaluator.Env, expr ir.AssignableExpr, axisLen
 	if err != nil {
 		return can, nil
 	}
-	return newReshape(env, expr, can, axisLengths)
+	return NewReshape(env, expr, can, axisLengths)
 }
 
 // Store returns the storage represented by this variable.
@@ -127,12 +127,12 @@ func (v *storedValue) Axes(ev ir.Evaluator) (*elements.Slice, error) {
 }
 
 // Compare to another element.
-func (v *storedValue) Compare(x canonical.Comparable) bool {
+func (v *storedValue) Compare(x canonical.Comparable) (bool, error) {
 	other, ok := x.(*storedValue)
 	if !ok {
-		return false
+		return false, nil
 	}
-	return v == other
+	return v == other, nil
 }
 
 // Slice computes a slice from the variable.

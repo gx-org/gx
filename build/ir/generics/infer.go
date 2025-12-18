@@ -94,77 +94,77 @@ func (uni *argUnifier) DefineTParam(tp *ir.TypeParam, typ ir.Type) bool {
 	return true
 }
 
-func (uni *argUnifier) defineAxis(vr *ir.ValueRef, targets []ir.AxisLengths) bool {
+func (uni *argUnifier) defineAxis(param *ir.AxisStmt, targets []ir.AxisLengths) bool {
 	if len(targets) == 0 {
-		return uni.Err().Appendf(uni.arg.Source(), "no axis left to define %s", vr.Stor.NameDef().Name)
+		return uni.Err().Appendf(uni.arg.Source(), "no axis left to define %s", param.NameDef().Name)
 	}
 	ax := targets[0]
-	el, err := uni.Fetcher.EvalExpr(ax)
+	el, err := uni.Fetcher.EvalExpr(ax.AsExpr())
 	if err != nil {
 		return uni.Err().AppendAt(uni.Source(), err)
 	}
-	return uni.defineAxisElement(vr, el)
+	return uni.defineAxisElement(param, el)
 }
 
-func (uni *argUnifier) defineAxisElement(vr *ir.ValueRef, el ir.Element) bool {
-	if vr == nil {
-		return true
-	}
-	name := vr.Stor.NameDef().Name
+func (uni *argUnifier) defineAxisElement(param *ir.AxisStmt, el ir.Element) bool {
+	name := param.NameDef().Name
 	defined, isDefined := uni.axes[name]
 	if !isDefined {
 		uni.axes[name] = el
 		return true
 	}
-	if !ir.ElementEqual(defined, el) {
+	eq, err := ir.ElementEqual(defined, el)
+	if err != nil {
+		return uni.Err().AppendAt(uni.arg.Source(), err)
+	}
+	if !eq {
 		return uni.Err().Appendf(uni.arg.Source(), "axis length %v does not match length %v for %s", defined, el, name)
 	}
 	return true
 }
 
-func (uni *argUnifier) defineGroupAsAllSingleAxes(param *ir.AxisExpr, vr *ir.ValueRef, targets []ir.AxisLengths) ([]ir.AxisLengths, bool) {
+func (uni *argUnifier) defineGroupAsAllSingleAxes(param *ir.AxisStmt, targets []ir.AxisLengths) ([]ir.AxisLengths, bool) {
 	var singles []ir.Element
 	for _, axis := range targets {
 		if axis.Type().Kind() != ir.IntLenKind {
 			break
 		}
-		el, err := uni.Fetcher.EvalExpr(axis.AxisValue())
+		el, err := uni.Fetcher.EvalExpr(axis.AsExpr())
 		if err != nil {
 			return nil, uni.Fetcher.Err().AppendAt(uni.Source(), err)
 		}
 		singles = append(singles, el)
 	}
-	return targets[len(singles):], uni.defineAxisElement(vr, elements.NewSlice(
+	return targets[len(singles):], uni.defineAxisElement(param, elements.NewSlice(
 		ir.IntLenSliceType(), singles,
 	))
 }
 
-func (uni *argUnifier) defineGroupAxis(param *ir.AxisExpr, vr *ir.ValueRef, targets []ir.AxisLengths) ([]ir.AxisLengths, bool) {
+func (uni *argUnifier) defineGroupAxis(param *ir.AxisStmt, targets []ir.AxisLengths) ([]ir.AxisLengths, bool) {
 	if len(targets) == 0 {
-		return uni.defineGroupAsAllSingleAxes(param, vr, targets)
+		return uni.defineGroupAsAllSingleAxes(param, targets)
 	}
 	switch targets[0].Type().Kind() {
 	case ir.IntLenKind:
-		return uni.defineGroupAsAllSingleAxes(param, vr, targets)
+		return uni.defineGroupAsAllSingleAxes(param, targets)
 	case ir.SliceKind:
-		ok := uni.defineAxis(vr, targets)
+		ok := uni.defineAxis(param, targets)
 		return targets[1:], ok
 	default:
 		arg := targets[0]
-		return nil, uni.Err().Appendf(uni.Source(), "cannot unify axis length %s of type %s in parameters with axis length %s of type %s: not supported", param.String(), vr.Type().String(), arg.String(), arg.Type().String())
+		return nil, uni.Err().Appendf(uni.Source(), "cannot unify axis length %s of type %s in parameters with axis length %s of type %s: not supported", param.String(), param.Type().String(), arg.String(), arg.Type().String())
 	}
 }
 
-func (uni *argUnifier) DefineAxis(param *ir.AxisExpr, targets []ir.AxisLengths) ([]ir.AxisLengths, bool) {
-	vr, _ := param.X.(*ir.ValueRef)
-	switch param.X.Type().Kind() {
+func (uni *argUnifier) DefineAxis(param *ir.AxisStmt, targets []ir.AxisLengths) ([]ir.AxisLengths, bool) {
+	switch param.Type().Kind() {
 	case ir.IntLenKind:
-		ok := uni.defineAxis(vr, targets)
+		ok := uni.defineAxis(param, targets)
 		return targets[1:], ok
 	case ir.SliceKind:
-		return uni.defineGroupAxis(param, vr, targets)
+		return uni.defineGroupAxis(param, targets)
 	default:
-		return nil, uni.Err().Appendf(uni.Source(), "cannot unify axis expression of type %s in parameters: not supported", param.X.Type().String())
+		return nil, uni.Err().Appendf(uni.Source(), "cannot unify axis expression of type %s in parameters: not supported", param.Type().String())
 	}
 }
 
@@ -196,6 +196,7 @@ func Infer(fetcher ir.Fetcher, fExpr *ir.FuncValExpr, args []ir.AssignableExpr) 
 	spec := &specialiser{
 		Fetcher: subFetcher,
 		defined: uni.defined,
+		axes:    uni.axes,
 	}
 	ftypeInfer, err := ftype.SpecialiseFType(spec)
 	if err != nil {

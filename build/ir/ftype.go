@@ -16,7 +16,19 @@ package ir
 
 import (
 	"go/ast"
+	"slices"
 )
+
+// AxisValue assigns a value to an axis length.
+type AxisValue struct {
+	Axis  *AxisStmt
+	Value Element
+}
+
+// Name of the axis length.
+func (ax *AxisValue) Name() string {
+	return ax.Axis.NameDef().Name
+}
 
 type (
 	// TypeParamValue assigns a type to a field of a more generic type.
@@ -34,7 +46,7 @@ type (
 		Params     *FieldList
 		Results    *FieldList
 
-		AxisLengths      []*AxLengthName
+		AxisLengths      []AxisValue
 		TypeParamsValues []TypeParamValue
 
 		// CompEval is set to true if the function can be called at compilation time.
@@ -173,6 +185,10 @@ func (s *FuncType) SpecialiseFType(spec Specialiser) (*FuncType, error) {
 			Field: typeParam,
 			Typ:   defined,
 		})
+	}
+	res.AxisLengths = slices.Clone(s.AxisLengths)
+	for i, axis := range s.AxisLengths {
+		res.AxisLengths[i].Value = spec.ValueOf(axis.Name())
 	}
 	return &res, nil
 }

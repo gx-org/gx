@@ -48,13 +48,13 @@ var Errors = []string{
 // AlgebraicCore is a set of paths only testing core algebraic operations.
 var AlgebraicCore = []string{
 	"testfiles/core",
+	"testfiles/generics",
 }
 
 // LanguageCore is a set of paths testing the GX core language
 // without built-in like einsum.
 var LanguageCore = appendAll(AlgebraicCore, []string{
 	"testfiles/forloops",
-	"testfiles/generics",
 	"testfiles/ifstmts",
 	"testfiles/imports",
 	"testfiles/slices",

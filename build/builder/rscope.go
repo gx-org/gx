@@ -147,7 +147,7 @@ func (s *pkgResolveScope) buildStorageProcessNode(tok token.Token, store ir.Stor
 }
 
 func (s *pkgResolveScope) packageInterpreter() *interp.Interpreter {
-	hostEval := compeval.NewHostEvaluator(s.bpkg.builder())
+	hostEval := compeval.NewHostEvaluator(s.bpkg.builder(), interp.NewRunFunc)
 	pkg := s.state.ibld.Pkg()
 	pkg.Decls = s.state.ibld.Decls()
 	var opts []options.PackageOption
@@ -286,7 +286,7 @@ func compEvalForFuncType(rscope resolveScope, src ast.Node, ftype *ir.FuncType) 
 	}
 	funcVars := make(map[string]ir.Element)
 	for _, axLen := range ftype.AxisLengths {
-		storeAt := elements.NewNodeAt[ir.Storage](rscope.fileScope().irFile(), axLen)
+		storeAt := elements.NewNodeAt[ir.Storage](rscope.fileScope().irFile(), axLen.Axis)
 		funcVars[axLen.Name()] = cpevelements.NewVariable(storeAt)
 	}
 	for _, tParam := range ftype.TypeParams.Fields() {
@@ -653,7 +653,7 @@ func newDefineScope(scope localScope, def defineLocalF, defAxis defineLocalF) *d
 	return &defineLocalScope{localScope: scope, def: def, defAxis: defAxis}
 }
 
-func (s *defineLocalScope) defineAxis(storage *ir.AxLengthName) {
+func (s *defineLocalScope) defineAxis(storage *ir.AxisStmt) {
 	if s.defAxis == nil {
 		return
 	}

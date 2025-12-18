@@ -135,7 +135,12 @@ func evalNewBootstrapGenerator(ctx evaluator.Env, call elements.CallAt, fn fun.F
 	switch seedNode := args[0].(type) {
 	case elements.ElementWithConstant:
 		bootstrap.next = bootstrap.nextConstant
-		err = bootstrap.initRand(seedNode.NumericalConstant())
+		var cst *values.HostArray
+		cst, err = seedNode.NumericalConstant()
+		if err != nil {
+			return nil, err
+		}
+		err = bootstrap.initRand(cst)
 	case elements.ElementWithArrayFromContext:
 		var argFactory *randBootstrapArg
 		argFactory, err = newRandBootstrapArg(ctx, bootstrap, seedNode)

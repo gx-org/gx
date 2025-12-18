@@ -39,7 +39,7 @@ func (m *exprGrader) gradExpr(src ir.Expr) (r *special.Expr, ok bool) {
 		if !ok || !m.castNumbers {
 			return
 		}
-		r = r.AddCastIfRequired(src.Type())
+		r = r.CastIfRequired(src.Type())
 	}()
 	switch srcT := src.(type) {
 	case *ir.ArrayLitExpr:

@@ -63,8 +63,8 @@ func newValueElement(ev *Evaluator, src elements.ExprAt, value values.Array) (*v
 }
 
 // NumericalConstant returns the value of a constant represented by a node.
-func (n *valueElement) NumericalConstant() *values.HostArray {
-	return n.value
+func (n *valueElement) NumericalConstant() (*values.HostArray, error) {
+	return n.value, nil
 }
 
 // Unflatten creates a GX value from the next handles available in the parser.

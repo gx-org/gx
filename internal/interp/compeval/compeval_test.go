@@ -127,7 +127,7 @@ func value(x int32) wantValue {
 }
 
 func newInterpreter(opts []options.PackageOption) (*interp.FileScope, error) {
-	itp, err := interp.New(compeval.NewHostEvaluator(nil), opts)
+	itp, err := interp.New(compeval.NewHostEvaluator(nil, interp.NewRunFunc), opts)
 	if err != nil {
 		return nil, err
 	}
@@ -160,7 +160,7 @@ func TestExprEval(t *testing.T) {
 				numberInt32(4),
 			),
 			value: value(-4),
-			want:  "-int32(4)",
+			want:  "int32(-4)",
 		},
 		{
 			desc: "cast expression",
@@ -177,7 +177,7 @@ func TestExprEval(t *testing.T) {
 				numberInt32(5),
 			),
 			value: value(9),
-			want:  "int32(4)+int32(5)",
+			want:  "int32(4+5)",
 		},
 		{
 			desc: "static variable",
@@ -229,7 +229,7 @@ func TestExprEval(t *testing.T) {
 				unaryExpr(token.SUB, numberInt32(4)),
 				valueRef("a"),
 			),
-			want: "-int32(4)-a",
+			want: "int32(-4)-a",
 		},
 		{
 			desc: "numberInt",
@@ -247,15 +247,15 @@ func TestExprEval(t *testing.T) {
 				unaryExpr(token.SUB, numberInt(4)),
 				numberInt(5),
 			),
-			want: "-4-5",
+			want: "int32(-4-5)",
 		},
 		{
 			desc: "binary numberInt numberFloat",
 			expr: binaryExpr(token.SUB,
 				unaryExpr(token.SUB, numberInt(4)),
-				numberFloat(5),
+				castExpr(dtype.Int32, numberFloat(5.3)),
 			),
-			want: "-4-5",
+			want: "int32(-4-int32(5.3))",
 		},
 		{
 			desc: "binary binary no number",
@@ -279,7 +279,11 @@ func TestExprEval(t *testing.T) {
 			if !test.value.eval {
 				return
 			}
-			value := element.(elements.ElementWithConstant).NumericalConstant()
+			value, err := element.(elements.ElementWithConstant).NumericalConstant()
+			if err != nil {
+				t.Errorf("cannot fetch constant:\n%+v", fmterr.ToStackTraceError(err))
+				return
+			}
 			gotValue, err := values.ToAtom[int32](value)
 			if err != nil {
 				t.Errorf("%s: atom conversion error:\n%+v", test.desc, fmterr.ToStackTraceError(err))
@@ -432,7 +436,11 @@ func TestExprEvalAndCompare(t *testing.T) {
 		if err != nil {
 			t.Fatalf("\n%+v", err)
 		}
-		if !xEl.Compare(isEl) {
+		eq, err := xEl.Compare(isEl)
+		if err != nil {
+			t.Fatalf("\n%+v", err)
+		}
+		if !eq {
 			t.Errorf("test %d:%s: %s == %s is false", i, test.desc, xEl, isEl)
 			continue
 		}
@@ -440,7 +448,11 @@ func TestExprEvalAndCompare(t *testing.T) {
 		if err != nil {
 			t.Fatalf("\n%+v", err)
 		}
-		if !xEl.Compare(isEl) {
+		eq, err = xEl.Compare(isEl)
+		if err != nil {
+			t.Fatalf("\n%+v", err)
+		}
+		if !eq {
 			t.Errorf("test %d:%s: %s != %s is false", i, test.desc, xEl, isNotEl)
 			continue
 		}

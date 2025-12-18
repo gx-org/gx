@@ -1,0 +1,36 @@
+package vjpfunc3
+
+import "math"
+import "math/grad"
+
+func F(x float32) float32 {
+	a := x
+	a = a * x
+	return a // 2*x
+}
+
+func TestVJPAssign() (float32, float32) {
+	revF := grad.VJP(F)
+	trace(revF)
+	y, backward := revF(3.0)
+	return y, backward(1.0)
+	// Want:
+	// 0: float32(9)
+	// 1: float32(6)
+	// Trace:
+	// vjpfunc4.gx:0
+	// 	func(x float32) (float32, func(res float32) float32) {
+	// 		a := x
+	// 		fwd0 := a*x
+	// 		a1 := fwd0
+	// 		selfVJPFunc := func(res float32) float32 {
+	// 			bck0x := res*x
+	// 			bck0y := a*res
+	// 			bcka := bck0x
+	// 			bcka1 := (bcka+bck0y)
+	// 			return bcka1
+	// 		}
+	// 		return a1, selfVJPFunc
+	// 	}
+}
+

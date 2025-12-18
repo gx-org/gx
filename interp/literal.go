@@ -43,11 +43,13 @@ func goValueFromElement[T dtype.GoDataType](el evaluator.NumericalElement) (T, b
 	if !ok {
 		return t, false, nil
 	}
-	cst := canonicalElt.NumericalConstant()
+	cst, err := canonicalElt.NumericalConstant()
+	if err != nil {
+		return t, false, err
+	}
 	if cst == nil {
 		return t, false, nil
 	}
-	var err error
 	t, err = values.ToAtom[T](cst)
 	return t, err == nil, err
 }
@@ -57,7 +59,11 @@ func goSliceFromArrayElement[T dtype.GoDataType](el evaluator.NumericalElement) 
 	if !ok {
 		return nil, false, nil
 	}
-	array := canonicalElt.NumericalConstant().Handle().(*kernels.Buffer).KernelValue().(interface{ Flat() []T })
+	val, err := canonicalElt.NumericalConstant()
+	if err != nil {
+		return nil, false, err
+	}
+	array := val.Handle().(*kernels.Buffer).KernelValue().(interface{ Flat() []T })
 	return array.Flat(), true, nil
 }
 

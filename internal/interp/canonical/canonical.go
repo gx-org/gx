@@ -24,10 +24,27 @@ import (
 )
 
 type (
+	// AtomString is a structure to indicate that an instance
+	// does not require parenthesis in an string expression.
+	AtomString interface {
+		NoParenthesis()
+	}
+
+	// AtomStringImpl is an implementation of AtomString
+	// that can easily be embedded in other structures.
+	AtomStringImpl struct{}
+)
+
+var _ AtomString = AtomStringImpl{}
+
+// NoParenthesis implements AtomString.
+func (AtomStringImpl) NoParenthesis() {}
+
+type (
 
 	// Comparable defines an interface for comparing an expression against another.
 	Comparable interface {
-		Compare(x Comparable) bool
+		Compare(x Comparable) (bool, error)
 	}
 
 	// Canonical is a canonical expression.
@@ -145,24 +162,28 @@ func prefixedExpr(xs ...Canonical) *pExpr {
 	}
 }
 
-func (m *pExpr) compare(op token.Token, other Comparable) bool {
+func (m *pExpr) compare(op token.Token, other Comparable) (bool, error) {
 	otherT, ok := other.(pExprOp)
 	if !ok {
-		return false
+		return false, nil
 	}
 	if op != otherT.op() {
-		return false
+		return false, nil
 	}
 	oExprs := otherT.args()
 	if len(m.exprs) != len(oExprs) {
-		return false
+		return false, nil
 	}
 	for i, mi := range m.exprs {
-		if !mi.Compare(oExprs[i]) {
-			return false
+		cmp, err := mi.Compare(oExprs[i])
+		if err != nil {
+			return false, err
+		}
+		if !cmp {
+			return false, nil
 		}
 	}
-	return true
+	return true, nil
 }
 
 func (m *pExpr) string(pe pExprOp) string {
@@ -185,7 +206,7 @@ func (pe add) op() token.Token {
 	return token.ADD
 }
 
-func (pe add) Compare(other Comparable) bool {
+func (pe add) Compare(other Comparable) (bool, error) {
 	return pe.compare(pe.op(), other)
 }
 
@@ -213,7 +234,7 @@ func (pe sub) op() token.Token {
 	return token.SUB
 }
 
-func (pe sub) Compare(other Comparable) bool {
+func (pe sub) Compare(other Comparable) (bool, error) {
 	return pe.compare(pe.op(), other)
 }
 
@@ -241,7 +262,7 @@ func (pe mul) op() token.Token {
 	return token.MUL
 }
 
-func (pe mul) Compare(other Comparable) bool {
+func (pe mul) Compare(other Comparable) (bool, error) {
 	return pe.compare(pe.op(), other)
 }
 
@@ -282,7 +303,7 @@ func (pe quo) op() token.Token {
 	return token.QUO
 }
 
-func (pe quo) Compare(other Comparable) bool {
+func (pe quo) Compare(other Comparable) (bool, error) {
 	return pe.compare(pe.op(), other)
 }
 
@@ -312,7 +333,7 @@ func (pe unknown) op() token.Token {
 	return pe.tk
 }
 
-func (pe unknown) Compare(other Comparable) bool {
+func (pe unknown) Compare(other Comparable) (bool, error) {
 	return pe.compare(pe.op(), other)
 }
 
@@ -370,4 +391,14 @@ func ToValue(el any) *big.Float {
 		return nil
 	}
 	return eval.Float()
+}
+
+// ToString converts an instance into a string, adding parenthesis when necessary.
+func ToString(a fmt.Stringer) string {
+	s := a.String()
+	_, isAtomString := a.(AtomString)
+	if isAtomString {
+		return s
+	}
+	return fmt.Sprintf("(%s)", s)
 }

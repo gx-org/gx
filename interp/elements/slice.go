@@ -129,25 +129,29 @@ func (n *Slice) Len() int {
 }
 
 // Compare the slice to another canonical value.
-func (n *Slice) Compare(x canonical.Comparable) bool {
+func (n *Slice) Compare(x canonical.Comparable) (bool, error) {
 	other, ok := x.(*Slice)
 	if !ok {
-		return false
+		return false, nil
 	}
 	if len(n.values) != len(other.values) {
-		return false
+		return false, nil
 	}
 	for i, vi := range n.values {
 		xComp, xOk := vi.(canonical.Canonical)
 		yComp, yOk := other.values[i].(canonical.Canonical)
 		if !xOk || !yOk {
-			return false
+			return false, nil
 		}
-		if !xComp.Compare(yComp) {
-			return false
+		cmp, err := xComp.Compare(yComp)
+		if err != nil {
+			return false, err
+		}
+		if !cmp {
+			return false, nil
 		}
 	}
-	return true
+	return true, nil
 }
 
 // String returns a string representation of the slice.

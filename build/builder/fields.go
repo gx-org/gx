@@ -26,7 +26,7 @@ type fieldList struct {
 	list []*fieldGroup
 }
 
-func processFieldList(pscope procScope, src *ast.FieldList, assign func(procScope, *field) bool) (*fieldList, bool) {
+func processFieldList(pscope typeProcScope, src *ast.FieldList, assign func(procScope, *field) bool) (*fieldList, bool) {
 	if src == nil {
 		return nil, true // No fields.
 	}
@@ -94,7 +94,7 @@ type fieldGroup struct {
 	typ  typeExprNode
 }
 
-func processFieldGroup(pscope procScope, src *ast.Field, assign func(procScope, *field) bool) (*fieldGroup, bool) {
+func processFieldGroup(pscope typeProcScope, src *ast.Field, assign func(procScope, *field) bool) (*fieldGroup, bool) {
 	typ, ok := processTypeExpr(pscope, src.Type)
 	grp := &fieldGroup{
 		src:  src,

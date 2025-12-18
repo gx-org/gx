@@ -22,36 +22,51 @@ import (
 
 	"github.com/gx-org/gx/build/fmterr"
 	"github.com/gx-org/gx/build/ir"
+	"github.com/gx-org/gx/internal/base/scope"
 	"github.com/gx-org/gx/stdlib/math/grad/special"
 )
 
-type astStmts struct {
-	graph   *Graph
-	fetcher ir.Fetcher
-	uroot   string
-	stmts   []ast.Stmt
+type astOut struct {
+	graph       *Graph
+	fetcher     ir.Fetcher
+	uroot       string
+	stmts       []ast.Stmt
+	identToExpr *scope.RWScope[expr]
 }
 
-func (g *Graph) newForwardStmts(fetcher ir.Fetcher) *astStmts {
-	return &astStmts{graph: g, fetcher: fetcher, uroot: "fwd"}
+func (g *Graph) newASTOut(fetcher ir.Fetcher) *astOut {
+	return &astOut{
+		graph:       g,
+		fetcher:     fetcher,
+		uroot:       "fwd",
+		identToExpr: scope.NewScope[expr](nil),
+	}
 }
 
-func (a *astStmts) append(s ast.Stmt) {
+func (a *astOut) setIdentExpr(name string, x expr) {
+	a.identToExpr.Define(name, x)
+}
+
+func (a *astOut) append(s ast.Stmt) {
 	a.stmts = append(a.stmts, s)
 }
 
-func (a *astStmts) assignExpr(id nodeID, expr ast.Expr) *ast.Ident {
+func (a *astOut) assignExpr(id nodeID, expr ast.Expr) *ast.Ident {
 	return a.assignExprs(id, []ast.Expr{expr}, 1, "")[0]
 }
 
-func (a *astStmts) buildIdents(id nodeID, n int, suffix string) []*ast.Ident {
+func (a *astOut) buildIdents(id nodeID, n int, suffix string) []*ast.Ident {
 	idents := make([]*ast.Ident, n)
 	for i := range n {
+		idS := ""
+		if id >= 0 {
+			idS = strconv.Itoa(int(id))
+		}
 		var root string
 		if n == 1 {
-			root = fmt.Sprintf("%s%d%s", a.uroot, id, suffix)
+			root = fmt.Sprintf("%s%s%s", a.uroot, idS, suffix)
 		} else {
-			root = fmt.Sprintf("%s%dr%d%s", a.uroot, id, i, suffix)
+			root = fmt.Sprintf("%s%sr%d%s", a.uroot, idS, i, suffix)
 		}
 		idents[i] = &ast.Ident{Name: a.graph.unames.Name(root)}
 	}
@@ -66,7 +81,7 @@ func toExprs(idents []*ast.Ident) []ast.Expr {
 	return exprs
 }
 
-func (a *astStmts) assignExprs(id nodeID, expr []ast.Expr, n int, suffix string) []*ast.Ident {
+func (a *astOut) assignExprs(id nodeID, expr []ast.Expr, n int, suffix string) []*ast.Ident {
 	idents := a.buildIdents(id, n, suffix)
 	a.stmts = append(a.stmts, &ast.AssignStmt{
 		Tok: token.DEFINE,
@@ -76,7 +91,7 @@ func (a *astStmts) assignExprs(id nodeID, expr []ast.Expr, n int, suffix string)
 	return idents
 }
 
-func (a *astStmts) callTraceSpecials(exprs []*special.Expr) {
+func (a *astOut) callTraceSpecials(exprs []*special.Expr) {
 	if !traceAll {
 		return
 	}
@@ -91,7 +106,7 @@ func (a *astStmts) callTraceSpecials(exprs []*special.Expr) {
 	a.callTrace(idents)
 }
 
-func (a *astStmts) callTrace(idents []*ast.Ident) {
+func (a *astOut) callTrace(idents []*ast.Ident) {
 	if !traceAll {
 		return
 	}
@@ -114,7 +129,7 @@ func (a *astStmts) callTrace(idents []*ast.Ident) {
 	})
 }
 
-func (a *astStmts) assignFuncCall(id nodeID, ftype *ir.FuncType, calleeName string, call *ast.CallExpr) ([]*ast.Ident, []string) {
+func (a *astOut) assignFuncCall(id nodeID, ftype *ir.FuncType, calleeName string, call *ast.CallExpr) ([]*ast.Ident, []string) {
 	nVals := ftype.Results.Len()
 	idents := a.buildIdents(id, nVals, "")
 	stmt := &ast.AssignStmt{
@@ -138,18 +153,31 @@ func (a *astStmts) assignFuncCall(id nodeID, ftype *ir.FuncType, calleeName stri
 	return idents, vjps
 }
 
-func (a *astStmts) err() *fmterr.Appender {
+func (a *astOut) err() *fmterr.Appender {
 	return a.fetcher.Err()
 }
 
-type bckStmts struct {
-	astStmts
+type fwdStmts struct {
+	*astOut
+
+	idents scope.Scope[expr]
+}
+
+func (a *astOut) newStmt() *fwdStmts {
+	return &fwdStmts{
+		astOut: a,
+		idents: a.identToExpr.Collect(),
+	}
+}
+
+type astOutWRT struct {
+	astOut
 	wrt withRespectTo
 }
 
-func (a *astStmts) newBackwardStmts(wrt withRespectTo) *bckStmts {
-	return &bckStmts{
-		astStmts: astStmts{
+func (a *astOut) newASTOutWRT(wrt withRespectTo) *astOutWRT {
+	return &astOutWRT{
+		astOut: astOut{
 			graph:   a.graph,
 			fetcher: a.fetcher,
 			uroot:   "bck",
@@ -158,11 +186,11 @@ func (a *astStmts) newBackwardStmts(wrt withRespectTo) *bckStmts {
 	}
 }
 
-func (b *bckStmts) assignSpecialExpr(id nodeID, expr *special.Expr) *special.Expr {
+func (b *astOutWRT) assignSpecialExpr(id nodeID, expr *special.Expr) *special.Expr {
 	return b.assignSpecialExprSuffix(id, expr, "")
 }
 
-func (b *bckStmts) assignSpecialExprSuffix(id nodeID, expr *special.Expr, suffix string) *special.Expr {
+func (b *astOutWRT) assignSpecialExprSuffix(id nodeID, expr *special.Expr, suffix string) *special.Expr {
 	if !expr.IsAny() {
 		return expr
 	}

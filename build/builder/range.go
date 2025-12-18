@@ -48,7 +48,7 @@ func processLoopAssignable(pscope procScope, expr ast.Expr) (*identStorage, bool
 	}
 	switch exprT := expr.(type) {
 	case *ast.Ident:
-		target, targetOk := processIdentExpr(pscope, exprT)
+		target, targetOk := processIdent(pscope, exprT)
 		return &identStorage{target: target}, targetOk
 	default:
 		pscope.Err().Appendf(expr, "%T not supported", expr)

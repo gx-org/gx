@@ -137,7 +137,8 @@ func processDeclStmt(pscope procScope, src *ast.DeclStmt) (stmtNode, bool) {
 			continue
 		}
 		var typeOk bool
-		vs.typ, typeOk = processTypeExpr(pscope.axisLengthScope(), valueSpec.Type)
+		typScope := defaultTypeProcScope(pscope)
+		vs.typ, typeOk = processTypeExpr(typScope, valueSpec.Type)
 		ok = ok && typeOk
 
 		if len(valueSpec.Values) > 0 {

@@ -26,16 +26,22 @@ import (
 	"github.com/gx-org/gx/interp/fun"
 )
 
-// CompEval is the evaluator used for compilation evaluation.
-type CompEval struct {
-	importer ir.Importer
-}
+type (
+	// NewRunFunc is a function to create a function that will be executed by the interpreter.
+	NewRunFunc func(fn ir.Func, recv *fun.Receiver) fun.Func
+
+	// CompEval is the evaluator used for compilation evaluation.
+	CompEval struct {
+		importer   ir.Importer
+		newRunFunc NewRunFunc
+	}
+)
 
 var _ fun.Evaluator = (*CompEval)(nil)
 
 // NewHostEvaluator returns a new evaluator for the host.
-func NewHostEvaluator(importer ir.Importer) *CompEval {
-	return &CompEval{importer: importer}
+func NewHostEvaluator(importer ir.Importer, newRunFunc NewRunFunc) *CompEval {
+	return &CompEval{importer: importer, newRunFunc: newRunFunc}
 }
 
 // NewFunc creates a new function given its definition and a receiver.
@@ -52,6 +58,11 @@ func (ev *CompEval) NewFunc(fn ir.Func, recv *fun.Receiver) fun.Func {
 // NewFuncLit creates a new function literal.
 func (ev *CompEval) NewFuncLit(env *fun.CallEnv, fn *ir.FuncLit) (fun.Func, error) {
 	return cpevelements.NewFunc(fn, nil), nil
+}
+
+// NewRunFunc returns a function that will be run by the interpreter.
+func (ev *CompEval) NewRunFunc(fn ir.Func, recv *fun.Receiver) fun.Func {
+	return ev.newRunFunc(fn, recv)
 }
 
 // Processor returns the processor used to process inits and traces for compiled function.

@@ -74,7 +74,7 @@ func (asg *identStorage) anonymousStorage(rscope resolveScope, typ ir.Type) (_ i
 }
 
 func (asg *identStorage) buildStorage(rscope resolveScope, typ ir.Type) (_ ir.Storage, newName, ok bool) {
-	if !ir.ValidIdent(asg.target.src) {
+	if !ir.ValidIdent(asg.target.src) || !ir.IsValid(typ) {
 		return asg.anonymousStorage(rscope, typ)
 	}
 	if asg.tok == token.ASSIGN {
@@ -212,7 +212,7 @@ func leftExprToTarget(pscope procScope, stmt *ast.AssignStmt, expr ast.Expr, don
 		if ir.ValidIdent(exprT) {
 			done[exprT.Name] = true
 		}
-		identExpr, identExprOk := processIdentExpr(pscope, exprT)
+		identExpr, identExprOk := processIdent(pscope, exprT)
 		return &identStorage{target: identExpr, tok: stmt.Tok}, identExprOk && ok
 	case *ast.SelectorExpr:
 		target := &selectorStorage{}

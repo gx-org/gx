@@ -30,6 +30,7 @@ import (
 )
 
 type atom struct {
+	canonical.AtomStringImpl
 	src   elements.ExprAt
 	val   *values.HostArray
 	float *big.Float
@@ -74,7 +75,7 @@ func (a *atom) Copy() elements.Copier {
 
 // BinaryOp applies a binary operator to x and y.
 func (a *atom) BinaryOp(env evaluator.Env, expr *ir.BinaryExpr, x, y evaluator.NumericalElement) (evaluator.NumericalElement, error) {
-	return newBinary(env, expr, x, y)
+	return NewBinary(env, expr, x, y)
 }
 
 // Cast an element into a given data type.
@@ -83,7 +84,7 @@ func (a *atom) Cast(env evaluator.Env, expr ir.AssignableExpr, dtype ir.Type) (e
 }
 
 func (a *atom) Reshape(env evaluator.Env, expr ir.AssignableExpr, axisLengths []evaluator.NumericalElement) (evaluator.NumericalElement, error) {
-	return newReshape(env, expr, a, axisLengths)
+	return NewReshape(env, expr, a, axisLengths)
 }
 
 // Shape of the value represented by the element.
@@ -92,8 +93,8 @@ func (a *atom) Shape() *shape.Shape {
 }
 
 // NumericalConstant returns the value of a constant represented by a node.
-func (a *atom) NumericalConstant() *values.HostArray {
-	return a.val
+func (a *atom) NumericalConstant() (*values.HostArray, error) {
+	return a.val, nil
 }
 
 // Unflatten creates a GX value from the next handles available in the parser.
@@ -112,16 +113,19 @@ func (a *atom) Materialise(ao materialise.Materialiser) (materialise.Node, error
 }
 
 // Compare to another element.
-func (a *atom) Compare(x canonical.Comparable) bool {
+func (a *atom) Compare(x canonical.Comparable) (bool, error) {
 	xEl, ok := x.(ir.Element)
 	if !ok {
-		return false
+		return false, nil
 	}
-	cx := elements.ConstantFromElement(xEl)
+	cx, err := elements.ConstantFromElement(xEl)
+	if err != nil {
+		return false, err
+	}
 	if cx == nil {
-		return false
+		return false, nil
 	}
-	return equalArray(a.val, cx)
+	return equalArray(a.val, cx), nil
 }
 
 func (a *atom) Axes(ir.Evaluator) (*elements.Slice, error) {

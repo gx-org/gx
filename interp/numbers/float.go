@@ -24,14 +24,20 @@ import (
 	"github.com/gx-org/gx/build/fmterr"
 	"github.com/gx-org/gx/build/ir"
 	"github.com/gx-org/gx/internal/interp/canonical"
+	"github.com/gx-org/gx/internal/interp/compeval/cpevelements"
+	"github.com/gx-org/gx/internal/interp/flatten"
 	"github.com/gx-org/gx/interp/elements"
 	"github.com/gx-org/gx/interp/evaluator"
+	"github.com/gx-org/gx/interp/materialise"
 )
 
 // Float is a GX number.
 type Float struct {
+	canonical.AtomStringImpl
 	expr elements.ExprAt
 	val  *big.Float
+
+	concrete ir.Type // Concrete type in the interpreter.
 }
 
 var (
@@ -41,7 +47,11 @@ var (
 
 // NewFloat returns a new element Float number element.
 func NewFloat(expr elements.ExprAt, val *big.Float) *Float {
-	return &Float{expr: expr, val: val}
+	return &Float{
+		expr:     expr,
+		val:      val,
+		concrete: toConcrete(nil, expr.Node().Type()),
+	}
 }
 
 // UnaryOp applies a unary operator on x.
@@ -55,7 +65,11 @@ func (n *Float) UnaryOp(env evaluator.Env, expr *ir.UnaryExpr) (evaluator.Numeri
 	default:
 		return nil, fmterr.Errorf(env.File().FileSet(), expr.Src, "number int unary operator %s not implemented", expr.Src.Op)
 	}
-	return NewFloat(elements.NewExprAt(env.File(), expr), val), nil
+	return &Float{
+		expr:     elements.NewExprAt(env.File(), expr),
+		val:      val,
+		concrete: n.concrete,
+	}, nil
 }
 
 // BinaryOp applies a binary operator to x and y.
@@ -63,14 +77,15 @@ func (n *Float) UnaryOp(env evaluator.Env, expr *ir.UnaryExpr) (evaluator.Numeri
 func (n *Float) BinaryOp(env evaluator.Env, expr *ir.BinaryExpr, x, y evaluator.NumericalElement) (evaluator.NumericalElement, error) {
 	switch yT := y.(type) {
 	case *Float:
-		return binaryFloat(env, expr, n.val, yT.val)
+		return binaryFloat(env, expr, n, yT)
 	case *Int:
-		return binaryFloat(env, expr, n.val, yT.Float())
+		return binaryFloat(env, expr, n, yT.toFloat())
 	}
-	return nil, fmterr.Errorf(env.File().FileSet(), expr.Src, "number int operator not implemented for %T%s%T", x, expr.Src.Op, y)
+	return cpevelements.NewBinary(env, expr, x, y)
 }
 
-func binaryFloat(env evaluator.Env, expr *ir.BinaryExpr, x, y *big.Float) (evaluator.NumericalElement, error) {
+func binaryFloat(env evaluator.Env, expr *ir.BinaryExpr, xFloat, yFloat *Float) (evaluator.NumericalElement, error) {
+	x, y := xFloat.val, yFloat.val
 	var val *big.Float
 	switch expr.Src.Op {
 	case token.ADD:
@@ -84,25 +99,25 @@ func binaryFloat(env evaluator.Env, expr *ir.BinaryExpr, x, y *big.Float) (evalu
 	default:
 		return nil, fmterr.Errorf(env.File().FileSet(), expr.Src, "number int binary operator %s not implemented", expr.Src.Op)
 	}
-	return NewFloat(elements.NewExprAt(env.File(), expr), val), nil
+	return &Float{
+		expr:     elements.NewExprAt(env.File(), expr),
+		val:      val,
+		concrete: toConcrete(expr.Type(), xFloat.concrete, yFloat.concrete),
+	}, nil
 }
 
 // Cast an element into a given data type.
 func (n *Float) Cast(env evaluator.Env, expr ir.AssignableExpr, target ir.Type) (evaluator.NumericalElement, error) {
-	val, err := values.AtomNumberFloat(n.val, target)
-	if err != nil {
-		return nil, err
-	}
-	return env.Evaluator().ElementFromAtom(env.File(), expr, val)
+	return &Float{
+		expr:     elements.NewExprAt(env.File(), expr),
+		val:      n.val,
+		concrete: toConcrete(target, n.concrete),
+	}, nil
 }
 
 // Reshape the number into an array.
 func (n *Float) Reshape(env evaluator.Env, expr ir.AssignableExpr, axisLengths []evaluator.NumericalElement) (evaluator.NumericalElement, error) {
-	val, err := values.AtomNumberFloat(n.val, expr.Type())
-	if err != nil {
-		return nil, err
-	}
-	return env.Evaluator().ElementFromAtom(env.File(), expr, val)
+	return cpevelements.NewReshape(env, expr, n, axisLengths)
 }
 
 // Shape of the value represented by the element.
@@ -121,17 +136,17 @@ func (n *Float) Float() *big.Float {
 }
 
 // Compare with another number.
-func (n *Float) Compare(x canonical.Comparable) bool {
+func (n *Float) Compare(x canonical.Comparable) (bool, error) {
 	switch xT := x.(type) {
 	case *Float:
-		return n.val.Cmp(xT.val) == 0
+		return n.val.Cmp(xT.val) == 0, nil
 	case *Int:
-		return n.val.Cmp(xT.Float()) == 0
+		return n.val.Cmp(xT.Float()) == 0, nil
 	}
 	// Because the compiler cast numbers to concrete types,
 	// numbers should only be compared to other numbers.
 	// Always return false if that is not the case.
-	return false
+	return false, nil
 }
 
 // CanonicalExpr returns the canonical expression used for comparison.
@@ -144,7 +159,38 @@ func (n *Float) Simplify() canonical.Simplifier {
 	return n
 }
 
+// Copy returns the receiver.
+func (n *Float) Copy() elements.Copier {
+	return n
+}
+
+// NumericalConstant returns the value of a constant represented by a node.
+func (n *Float) NumericalConstant() (*values.HostArray, error) {
+	if n.concrete == nil {
+		return nil, fmterr.Internalf(n.expr.File().FileSet(), n.expr.Source(), "number %s:%s has no concrete type", n.expr.String(), n.expr.Node().Type().String())
+	}
+	return values.AtomNumberFloat(n.val, n.concrete)
+}
+
+// Unflatten creates a GX value from the next handles available in the parser.
+func (n *Float) Unflatten(handles *flatten.Parser) (values.Value, error) {
+	return handles.ParseArray(n.expr.Node().Type())
+}
+
+// Materialise the value into a node in the backend graph.
+func (n *Float) Materialise(ao materialise.Materialiser) (materialise.Node, error) {
+	val, err := n.NumericalConstant()
+	if err != nil {
+		return nil, err
+	}
+	return ao.NodeFromArray(n.expr.File(), n.expr.Node(), val)
+}
+
 // String return the float literal.
 func (n *Float) String() string {
-	return fmt.Sprint(n.expr.Node())
+	val := n.expr.Node().String()
+	if n.Type().Kind() == ir.NumberFloatKind {
+		return val
+	}
+	return fmt.Sprintf("%s(%s)", n.Type(), val)
 }

@@ -62,12 +62,12 @@ func newVar(name string) *cVar {
 	return &cVar{name: name}
 }
 
-func (cv *cVar) Compare(x canonical.Comparable) bool {
+func (cv *cVar) Compare(x canonical.Comparable) (bool, error) {
 	xT, ok := x.(*cVar)
 	if !ok {
-		return false
+		return false, nil
 	}
-	return cv.name == xT.name
+	return cv.name == xT.name, nil
 }
 
 func (cv *cVar) Simplify() canonical.Simplifier {

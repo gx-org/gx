@@ -55,6 +55,9 @@ func (cl *cloner) clone(n ast.Node) ast.Node {
 			Elt: clone(cl, nT.Elt),
 			Len: clone(cl, nT.Len),
 		}
+	case *ast.BasicLit:
+		o := *nT
+		out = &o
 	default:
 		cl.errs.Append(errors.Errorf("%T not supported", nT))
 	}
@@ -96,6 +99,11 @@ func assignToExpandShape(id *ast.Ident) error {
 	if strings.HasPrefix(id.Name, ir.DefineAxisGroup) {
 		id.Name = strings.TrimPrefix(id.Name, ir.DefineAxisGroup)
 		id.Name += ir.DefineAxisGroup
+		return nil
+	}
+	if strings.HasPrefix(id.Name, ir.DefineAxisLength) {
+		id.Name = strings.TrimPrefix(id.Name, ir.DefineAxisLength)
+		return nil
 	}
 	return nil
 }

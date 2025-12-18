@@ -26,8 +26,9 @@ type (
 	expr interface {
 		source() ast.Node
 		forwardValue() (*special.Expr, bool)
-		buildForward(astmts *astStmts) ([]ast.Expr, bool)
-		buildBackward(bckstmts *bckStmts, bck *special.Expr) (*special.Expr, bool)
+		buildForward(astmts *fwdStmts) ([]ast.Expr, bool)
+		buildBackward(bckstmts *astOutWRT, bck *special.Expr) (*special.Expr, bool)
+		String() string
 	}
 )
 
@@ -50,7 +51,7 @@ func (p *processor) processExpr(isrc ir.Expr) (expr, bool) {
 	}
 }
 
-func buildSingleForward(astmts *astStmts, node expr) (ast.Expr, bool) {
+func buildSingleForward(astmts *fwdStmts, node expr) (ast.Expr, bool) {
 	exprs, ok := node.buildForward(astmts)
 	if !ok {
 		return nil, false
@@ -84,7 +85,7 @@ func (p *processor) processFuncCallExpr(isrc *ir.FuncCallExpr) (*funcCallExpr, b
 	}, true
 }
 
-func (n *funcCallExpr) vjpFunc(astmts *astStmts) (string, ast.Expr, bool) {
+func (n *funcCallExpr) vjpFunc(astmts *fwdStmts) (string, ast.Expr, bool) {
 	src, ok := n.irnode.Callee.(*ir.FuncValExpr)
 	if !ok {
 		return "", nil, astmts.err().AppendInternalf(n.irnode.Source(), "callee type %T not supported", n.irnode.Callee)
@@ -103,7 +104,7 @@ func (n *funcCallExpr) vjpFunc(astmts *astStmts) (string, ast.Expr, bool) {
 	}), true
 }
 
-func (n *funcCallExpr) buildForward(astmts *astStmts) ([]ast.Expr, bool) {
+func (n *funcCallExpr) buildForward(astmts *fwdStmts) ([]ast.Expr, bool) {
 	ftype := n.irnode.Callee.FuncType()
 	if len(n.irnode.Args) == 0 {
 		n.fwds = astmts.assignExprs(n.id, []ast.Expr{n.irnode.Src}, ftype.Results.Len(), "")
@@ -139,7 +140,7 @@ func (n *funcCallExpr) forwardValue() (*special.Expr, bool) {
 	return special.New(n.fwds[0]), true
 }
 
-func (n *funcCallExpr) buildBackward(bckstmts *bckStmts, bck *special.Expr) (*special.Expr, bool) {
+func (n *funcCallExpr) buildBackward(bckstmts *astOutWRT, bck *special.Expr) (*special.Expr, bool) {
 	if len(n.args) == 0 {
 		return special.ZeroExpr(), true
 	}
@@ -187,7 +188,7 @@ func (p *processor) processUnaryExpr(isrc *ir.UnaryExpr) (*unaryExpr, bool) {
 	}, ok
 }
 
-func (n *unaryExpr) buildForward(astmts *astStmts) ([]ast.Expr, bool) {
+func (n *unaryExpr) buildForward(astmts *fwdStmts) ([]ast.Expr, bool) {
 	x, ok := buildSingleForward(astmts, n.x)
 	if !ok {
 		return nil, false
@@ -203,7 +204,7 @@ func (n *unaryExpr) forwardValue() (*special.Expr, bool) {
 	return special.New(n.fwd), true
 }
 
-func (n *unaryExpr) buildBackward(bckstmts *bckStmts, bck *special.Expr) (*special.Expr, bool) {
+func (n *unaryExpr) buildBackward(bckstmts *astOutWRT, bck *special.Expr) (*special.Expr, bool) {
 	var xbck *special.Expr
 	switch n.irnode.Src.Op {
 	case token.SUB:
@@ -233,7 +234,7 @@ func (p *processor) processBinaryExpr(isrc *ir.BinaryExpr) (*binaryExpr, bool) {
 	}, xOk && yOk
 }
 
-func (n *binaryExpr) buildForward(astmts *astStmts) ([]ast.Expr, bool) {
+func (n *binaryExpr) buildForward(astmts *fwdStmts) ([]ast.Expr, bool) {
 	x, xOk := buildSingleForward(astmts, n.x)
 	y, yOk := buildSingleForward(astmts, n.y)
 	if !xOk || !yOk {
@@ -251,7 +252,7 @@ func (n *binaryExpr) forwardValue() (*special.Expr, bool) {
 	return special.New(n.fwd), true
 }
 
-func (n *binaryExpr) buildBackward(bckstmts *bckStmts, bck *special.Expr) (*special.Expr, bool) {
+func (n *binaryExpr) buildBackward(bckstmts *astOutWRT, bck *special.Expr) (*special.Expr, bool) {
 	x, xOk := n.x.forwardValue()
 	y, yOk := n.y.forwardValue()
 	if !xOk || !yOk {
@@ -298,7 +299,7 @@ func (p *processor) processNumberCastExpr(isrc *ir.NumberCastExpr) (*numberCastE
 	}, true
 }
 
-func (n *numberCastExpr) buildForward(astmts *astStmts) ([]ast.Expr, bool) {
+func (n *numberCastExpr) buildForward(astmts *fwdStmts) ([]ast.Expr, bool) {
 	return []ast.Expr{n.irnode.X.Source().(ast.Expr)}, true
 }
 
@@ -306,48 +307,66 @@ func (n *numberCastExpr) forwardValue() (*special.Expr, bool) {
 	return special.NewFromIR(n.irnode.X), true
 }
 
-func (n *numberCastExpr) buildBackward(bckstmts *bckStmts, bck *special.Expr) (*special.Expr, bool) {
+func (n *numberCastExpr) buildBackward(bckstmts *astOutWRT, bck *special.Expr) (*special.Expr, bool) {
 	return special.ZeroExpr(), true
 }
 
-type valueRef struct {
-	node[*ir.ValueRef]
+type fieldRef struct {
+	node[*ir.FieldStorage]
 }
 
-func (p *processor) processValueRef(isrc *ir.ValueRef) (*valueRef, bool) {
-	return &valueRef{
-		node: newNodeNoID[*ir.ValueRef](p, isrc),
-	}, true
+func (n *fieldRef) buildForward(astmts *fwdStmts) ([]ast.Expr, bool) {
+	return []ast.Expr{n.irnode.Field.Name}, true
 }
 
-func (n *valueRef) buildForward(astmts *astStmts) ([]ast.Expr, bool) {
-	return []ast.Expr{n.irnode.Src}, true
+func (n *fieldRef) forwardValue() (*special.Expr, bool) {
+	return special.New(n.irnode.Field.Name), true
 }
 
-func (n *valueRef) forwardValue() (*special.Expr, bool) {
-	return special.New(n.irnode.Src), true
-}
-
-func (n *valueRef) gradFieldStorage(bckstmts *bckStmts, bck *special.Expr, stor *ir.FieldStorage) (*special.Expr, bool) {
-	if bckstmts.wrt.same(stor.Field) {
+func (n *fieldRef) buildBackward(bckstmts *astOutWRT, bck *special.Expr) (*special.Expr, bool) {
+	if bckstmts.wrt.same(n.irnode.Field) {
 		return bck, true
 	}
 	return special.ZeroExpr(), true
 }
 
-func (n *valueRef) buildBackward(bckstmts *bckStmts, bck *special.Expr) (*special.Expr, bool) {
-	fieldStorage, isField := n.irnode.Stor.(*ir.FieldStorage)
-	if isField {
-		return n.gradFieldStorage(bckstmts, bck, fieldStorage)
-	}
-	return special.New(gradIdent(n.irnode.Stor.NameDef())), true
+type valueRef struct {
+	node[*ir.ValueRef]
+
+	fwd expr
 }
 
-func gradIdent(src *ast.Ident) *ast.Ident {
-	return &ast.Ident{
-		NamePos: src.NamePos,
-		Name:    "__grad_" + src.Name,
+func (p *processor) processValueRef(isrc *ir.ValueRef) (expr, bool) {
+	fieldStorage, isField := isrc.Stor.(*ir.FieldStorage)
+	if isField {
+		return &fieldRef{
+			node: newNodeNoID[*ir.FieldStorage](p, fieldStorage),
+		}, true
 	}
+	return &valueRef{
+		node: newNodeNoID[*ir.ValueRef](p, isrc),
+	}, true
+}
+
+func (n *valueRef) buildForward(astmts *fwdStmts) ([]ast.Expr, bool) {
+	var ok bool
+	n.fwd, ok = astmts.idents.Find(n.irnode.Src.Name)
+	if !ok {
+		return nil, n.err().Appendf(n.irnode.Src, "identifier node %s has not been registered in the reverse graph", n.irnode.Src.Name)
+	}
+	return n.fwd.buildForward(astmts)
+}
+
+func (n *valueRef) forwardValue() (*special.Expr, bool) {
+	return n.fwd.forwardValue()
+}
+
+func (n *valueRef) buildBackward(bckstmts *astOutWRT, bck *special.Expr) (*special.Expr, bool) {
+	bckExpr, ok := n.fwd.buildBackward(bckstmts, bck)
+	if !ok {
+		return nil, false
+	}
+	return bckstmts.assignSpecialExprSuffix(n.id, bckExpr, n.irnode.Src.Name), true
 }
 
 type parenExpr struct {
@@ -364,7 +383,7 @@ func (p *processor) processParenExpr(isrc *ir.ParenExpr) (*parenExpr, bool) {
 	}, ok
 }
 
-func (n *parenExpr) buildForward(astmts *astStmts) ([]ast.Expr, bool) {
+func (n *parenExpr) buildForward(astmts *fwdStmts) ([]ast.Expr, bool) {
 	var ok bool
 	n.fwd, ok = buildSingleForward(astmts, n.x)
 	return []ast.Expr{n.fwd}, ok
@@ -374,7 +393,7 @@ func (n *parenExpr) forwardValue() (*special.Expr, bool) {
 	return special.New(n.fwd), true
 }
 
-func (n *parenExpr) buildBackward(bckstmts *bckStmts, bck *special.Expr) (*special.Expr, bool) {
+func (n *parenExpr) buildBackward(bckstmts *astOutWRT, bck *special.Expr) (*special.Expr, bool) {
 	xBack, xOk := n.x.buildBackward(bckstmts, bck)
 	if !xOk {
 		return nil, false

@@ -21,11 +21,12 @@ import (
 func processExpr(pscope procScope, expr ast.Expr) (exprNode, bool) {
 	switch exprT := expr.(type) {
 	case *ast.Ident:
-		return pscope.processIdent(exprT)
+		return pscope.processIdentExpr(exprT)
 	case *ast.BasicLit:
 		return processBasicLit(pscope, exprT)
 	case *ast.ArrayType:
-		return processArrayType(pscope, exprT)
+		typScope := defaultTypeProcScope(pscope)
+		return processArrayType(typScope, exprT)
 	case *ast.CompositeLit:
 		return processCompositeLit(pscope, exprT)
 	case *ast.CallExpr:
@@ -53,10 +54,10 @@ func processExpr(pscope procScope, expr ast.Expr) (exprNode, bool) {
 }
 
 // processTypeExpr processes an expr in the context of defining a type.
-func processTypeExpr(pscope procScope, expr ast.Node) (typeExprNode, bool) {
+func processTypeExpr(pscope typeProcScope, expr ast.Node) (typeExprNode, bool) {
 	switch exprT := expr.(type) {
 	case *ast.Ident:
-		return processIdentExpr(pscope, exprT)
+		return processIdent(pscope, exprT)
 	case *ast.ArrayType:
 		return processArraySliceType(pscope, exprT)
 	case *ast.StructType:

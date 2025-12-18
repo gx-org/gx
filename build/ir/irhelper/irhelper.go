@@ -150,30 +150,18 @@ func FieldLit(fields *ir.FieldList, name string, val ir.AssignableExpr) *ir.Fiel
 }
 
 // AxisLenName returns a new axis group given a name.
-func AxisLenName(name string) ir.AxisLengths {
-	stor := &ir.AxLengthName{
+func AxisLenName(name string) *ir.AxisStmt {
+	return &ir.AxisStmt{
 		Src: &ast.Ident{Name: name},
 		Typ: ir.IntLenType(),
-	}
-	return &ir.AxisExpr{
-		X: &ir.ValueRef{
-			Src:  stor.Src,
-			Stor: stor,
-		},
 	}
 }
 
 // AxisGroup returns a new axis group given a name.
-func AxisGroup(name string) ir.AxisLengths {
-	stor := &ir.AxLengthName{
+func AxisGroup(name string) *ir.AxisStmt {
+	return &ir.AxisStmt{
 		Src: &ast.Ident{Name: name},
 		Typ: ir.IntLenSliceType(),
-	}
-	return &ir.AxisExpr{
-		X: &ir.ValueRef{
-			Src:  stor.Src,
-			Stor: stor,
-		},
 	}
 }
 
@@ -189,10 +177,27 @@ func Axis(ax any) ir.AxisLengths {
 	case ir.AssignableExpr:
 		return &ir.AxisExpr{Src: axisT.Source().(ast.Expr), X: axisT}
 	case string:
-		if strings.HasPrefix(axisT, ir.DefineAxisGroup) || strings.HasSuffix(axisT, ir.DefineAxisGroup) {
+		if strings.HasPrefix(axisT, ir.DefineAxisGroup) {
 			name := strings.TrimPrefix(axisT, ir.DefineAxisGroup)
-			name = strings.TrimSuffix(name, ir.DefineAxisGroup)
 			return AxisGroup(name)
+		}
+		if strings.HasSuffix(axisT, ir.DefineAxisGroup) {
+			name := strings.TrimSuffix(axisT, ir.DefineAxisGroup)
+			return &ir.AxisExpr{
+				X: &ir.ValueRef{
+					Src:  &ast.Ident{Name: name},
+					Stor: AxisGroup(name),
+				},
+			}
+		}
+		if strings.HasSuffix(axisT, ir.DefineAxisLength) {
+			name := strings.TrimSuffix(axisT, ir.DefineAxisLength)
+			return &ir.AxisExpr{
+				X: &ir.ValueRef{
+					Src:  &ast.Ident{Name: name},
+					Stor: AxisLenName(name),
+				},
+			}
 		}
 		panic(fmt.Sprintf("axis string %q not supported: pass a storage", axisT))
 	}
@@ -334,7 +339,7 @@ func FuncType(types, recv, params, results *ir.FieldList) *ir.FuncType {
 
 // AxisLengths defines axis lengths for a function type.
 func AxisLengths(ftype *ir.FuncType, axes ...string) *ir.FuncType {
-	ftype.AxisLengths = make([]*ir.AxLengthName, len(axes))
+	ftype.AxisLengths = make([]ir.AxisValue, len(axes))
 	for i, axis := range axes {
 		typ := ir.IntLenType()
 		name := axis
@@ -345,9 +350,11 @@ func AxisLengths(ftype *ir.FuncType, axes ...string) *ir.FuncType {
 		if strings.HasPrefix(axis, ir.DefineAxisLength) {
 			name = strings.TrimPrefix(name, ir.DefineAxisLength)
 		}
-		ftype.AxisLengths[i] = &ir.AxLengthName{
-			Src: Ident(name),
-			Typ: typ,
+		ftype.AxisLengths[i] = ir.AxisValue{
+			Axis: &ir.AxisStmt{
+				Src: Ident(name),
+				Typ: typ,
+			},
 		}
 	}
 	return ftype

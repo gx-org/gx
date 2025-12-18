@@ -16,6 +16,7 @@
 package revgraph
 
 import (
+	"fmt"
 	"go/ast"
 
 	"github.com/gx-org/gx/base/uname"
@@ -47,7 +48,7 @@ func newNode[T ir.SourceNode](p *processor, isrc T) node[T] {
 }
 
 func newNodeNoID[T ir.SourceNode](proc *processor, isrc T) node[T] {
-	return node[T]{graph: proc.Graph, fetcher: proc.fetcher, irnode: isrc}
+	return node[T]{graph: proc.Graph, fetcher: proc.fetcher, irnode: isrc, id: -1}
 }
 
 func (n *node[T]) source() ast.Node {
@@ -56,6 +57,10 @@ func (n *node[T]) source() ast.Node {
 
 func (n *node[T]) err() *fmterr.Appender {
 	return n.fetcher.Err()
+}
+
+func (n *node[T]) String() string {
+	return fmt.Sprint(n.irnode)
 }
 
 type (
@@ -103,6 +108,10 @@ func New(macro *cpevelements.CoreMacroElement, fn ir.Func) (*Graph, error) {
 			vjpFType: backwardSig,
 		}
 	}
+	for _, axisVal := range fType.AxisLengths {
+		g.unames.Register(axisVal.Name())
+	}
+	g.unames.RegisterFieldNames(fType.TypeParams)
 	return g, nil
 }
 
@@ -161,7 +170,7 @@ func (g *Graph) Process(fetcher ir.Fetcher) (*ast.BlockStmt, bool) {
 	if !ok {
 		return nil, false
 	}
-	astmts := g.newForwardStmts(fetcher)
+	astmts := g.newASTOut(fetcher)
 	if ok := root.build(astmts); !ok {
 		return nil, false
 	}

@@ -203,7 +203,7 @@ func bigFloatCast[T dtype.AlgebraType](x *big.Float) T {
 }
 
 // AtomNumberFloat  evaluates a big integer number into a GX array value.
-func AtomNumberFloat(x *big.Float, typ ir.Type) (Array, error) {
+func AtomNumberFloat(x *big.Float, typ ir.Type) (*HostArray, error) {
 	switch typ.Kind() {
 	case ir.Bfloat16Kind:
 		xF64, _ := x.Float64()

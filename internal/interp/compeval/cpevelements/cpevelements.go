@@ -46,16 +46,22 @@ func toElement(x evaluator.NumericalElement) (Element, error) {
 	return el, nil
 }
 
-func valEqual(x, y Element) bool {
-	xEl := elements.ConstantFromElement(x)
+func valEqual(x, y Element) (bool, error) {
+	xEl, err := elements.ConstantFromElement(x)
+	if err != nil {
+		return false, err
+	}
 	if xEl == nil {
-		return false
+		return false, nil
 	}
-	yEl := elements.ConstantFromElement(y)
+	yEl, err := elements.ConstantFromElement(y)
+	if err != nil {
+		return false, err
+	}
 	if yEl == nil {
-		return false
+		return false, nil
 	}
-	return equalArray(xEl, yEl)
+	return equalArray(xEl, yEl), nil
 }
 
 func axesFromType(ev ir.Evaluator, typ ir.Type) (*elements.Slice, error) {
@@ -68,7 +74,7 @@ func axesFromType(ev ir.Evaluator, typ ir.Type) (*elements.Slice, error) {
 	elts := make([]ir.Element, len(axes))
 	for i, ax := range axes {
 		var err error
-		elts[i], err = ev.EvalExpr(ax)
+		elts[i], err = ev.EvalExpr(ax.AsExpr())
 		if err != nil {
 			return nil, err
 		}

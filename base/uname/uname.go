@@ -19,6 +19,8 @@ import (
 	"fmt"
 	"go/ast"
 	"strconv"
+
+	"github.com/gx-org/gx/build/ir"
 )
 
 type (
@@ -147,6 +149,19 @@ func (n *Unique) nextUniqueSuffix(s string) int {
 func (n *Unique) Ident(id *ast.Ident) *ast.Ident {
 	name := n.Name(id.Name)
 	return &ast.Ident{Name: name}
+}
+
+// RegisterFieldNames register the names in the fields.
+func (n *Unique) RegisterFieldNames(fields *ir.FieldList) {
+	if fields == nil {
+		return
+	}
+	for _, field := range fields.Fields() {
+		if field.Name == nil {
+			continue
+		}
+		n.Register(field.Name.Name)
+	}
 }
 
 // Default returns a default value if a name is empty or equal to "_".

@@ -40,8 +40,8 @@ func (p *processor) processFuncWithAnn(ann *setann.Annotation) (stmt, bool) {
 	}, true
 }
 
-func (n *annFunc) buildVJPFunctionWRTFromAnn(astmts *astStmts, grad ir.PkgFunc, param vjpParam, args []ast.Expr) (*ast.FuncLit, bool) {
-	backwarder := astmts.newBackwardStmts(param.wrt)
+func (n *annFunc) buildVJPFunctionWRTFromAnn(astmts *astOut, grad ir.PkgFunc, param vjpParam, args []ast.Expr) (*ast.FuncLit, bool) {
+	backwarder := astmts.newASTOutWRT(param.wrt)
 	// For each result of the function, builds a VJP for all parameters.
 	// Return the forward results, and all the VJPs.
 	ret := &ast.ReturnStmt{Results: make([]ast.Expr, len(n.graph.nResults.names))}
@@ -65,7 +65,7 @@ func (n *annFunc) buildVJPFunctionWRTFromAnn(astmts *astStmts, grad ir.PkgFunc, 
 	}, true
 }
 
-func (n *annFunc) build(astmts *astStmts) bool {
+func (n *annFunc) build(astmts *astOut) bool {
 	// Build the arguments to call the forward functions.
 	args := make([]ast.Expr, len(n.graph.nParams.names))
 	for i, fieldName := range n.graph.nParams.names {

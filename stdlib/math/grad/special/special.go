@@ -101,7 +101,8 @@ func addCast(expr ast.Expr, typ ir.Type) ast.Expr {
 	}
 }
 
-func addCastIfRequired(expr ast.Expr, typ ir.Type) ast.Expr {
+// CastIfRequired casts an expression if required.
+func CastIfRequired(expr ast.Expr, typ ir.Type) ast.Expr {
 	basic, isBasic := expr.(*ast.BasicLit)
 	if !isBasic {
 		return expr
@@ -112,12 +113,21 @@ func addCastIfRequired(expr ast.Expr, typ ir.Type) ast.Expr {
 	return addCast(expr, typ)
 }
 
-// AddCastIfRequired returns a new expression with a cast when the expression is a basic literal.
-func (r *Expr) AddCastIfRequired(typ ir.Type) *Expr {
+// CastIfRequired returns a new expression with a cast when the expression is a basic literal.
+func (r *Expr) CastIfRequired(typ ir.Type) *Expr {
 	return &Expr{
 		value: r.value,
-		expr:  addCastIfRequired(r.expr, typ),
+		expr:  CastIfRequired(r.expr, typ),
 	}
+}
+
+// RemoveParen removes the top parenthesis if required.
+func (r *Expr) RemoveParen() *Expr {
+	parent, ok := r.expr.(*ast.ParenExpr)
+	if !ok {
+		return r
+	}
+	return (&Expr{expr: parent.X}).RemoveParen()
 }
 
 // Print the expression (only used for debugging).

@@ -71,6 +71,7 @@ var (
 			Src: &ast.BinaryExpr{Op: token.ADD},
 			X:   newSymbol("a"),
 			Y:   newSymbol("a"),
+			Typ: ir.IntLenType(),
 		})
 	}
 	rank1SymbolicMulAxis = func() ir.ArrayRank {
@@ -78,6 +79,7 @@ var (
 			Src: &ast.BinaryExpr{Op: token.MUL},
 			X:   newSymbol("a"),
 			Y:   newSymbol("a"),
+			Typ: ir.IntLenType(),
 		})
 	}
 	genericRankFunc = func() ir.ArrayRank {
@@ -85,7 +87,7 @@ var (
 	}
 	axisGroupRankFunc = func() ir.ArrayRank {
 		symbolicAxisNames["M"] = true
-		return newRank(irhelper.AxisGroup("M").AxisValue())
+		return newRank(irhelper.AxisGroup("M").AsExpr())
 	}
 
 	exampleRanks = []rankFunc{
@@ -178,7 +180,7 @@ func newFetcherTesting() (*fetcherTesting, error) {
 	for symbol := range symbolicAxisNames {
 		packageOptions = declareVariable(file, symbol, packageOptions)
 	}
-	itp, err := interp.New(compeval.NewHostEvaluator(nil), packageOptions)
+	itp, err := interp.New(compeval.NewHostEvaluator(nil, interp.NewRunFunc), packageOptions)
 	if err != nil {
 		return nil, err
 	}
@@ -491,7 +493,7 @@ func TestArrayRanksEqual(t *testing.T) {
  [a+a]:      X   
  [a*a]:       X  
    [a]:        X 
-   [M]:         X
+[M___]:         X
 `
 
 	matrix := testRankMatrix(t, exampleRanks, ir.Type.Equal)
@@ -510,7 +512,7 @@ func TestArrayRanksAssignableTo(t *testing.T) {
  [a+a]:      X   
  [a*a]:       X  
    [a]:        X 
-   [M]:         X
+[M___]:         X
 `
 
 	matrix := testRankMatrix(t, exampleRanks, ir.Type.AssignableTo)
@@ -529,7 +531,7 @@ func TestArrayRanksConvertibleTo(t *testing.T) {
  [a+a]:      X   
  [a*a]:     X X  
    [a]:        X 
-   [M]:         X
+[M___]:         X
 `
 	matrix := testRankMatrix(t, exampleRanks, ir.Type.ConvertibleTo)
 	if matrix != want {
