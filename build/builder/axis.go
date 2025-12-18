@@ -124,18 +124,12 @@ func (dim *defineAxisLength) source() ast.Node {
 func (dim *defineAxisLength) build(rscope *defineLocalScope) (ir.AxisLengths, bool) {
 	src := *dim.src
 	src.Name = dim.name
-	stor := &ir.GenAxLenName{
-		Src: &src,
+	ax := &ir.AxisStmt{
+		Src: dim.src,
 		Typ: dim.typ,
 	}
-	rscope.defineAxis(stor)
-	return &ir.AxisExpr{
-		Src: dim.src,
-		X: &ir.ValueRef{
-			Src:  stor.Src,
-			Stor: stor,
-		},
-	}, true
+	rscope.defineAxis(ax)
+	return ax, true
 }
 
 func (dim *defineAxisLength) String() string {

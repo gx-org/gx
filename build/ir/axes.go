@@ -17,9 +17,6 @@ package ir
 import (
 	"fmt"
 	"go/ast"
-	"strings"
-
-	"github.com/pkg/errors"
 )
 
 const (
@@ -29,53 +26,11 @@ const (
 	DefineAxisLength = "_"
 )
 
-// GenAxLenName defines a name for the length of a generic axis or a generic group of axes.
-type GenAxLenName struct {
-	Src   *ast.Ident
-	Value Element
-	Typ   Type
-}
-
-var _ Storage = (*GenAxLenName)(nil)
-
-func (*GenAxLenName) node()    {}
-func (*GenAxLenName) storage() {}
-
-// Source returns the node in the AST tree.
-func (s *GenAxLenName) Source() ast.Node {
-	return s.Src
-}
-
-// Type of the destination of the assignment.
-func (s *GenAxLenName) Type() Type { return s.Typ }
-
-// NameDef returns the identifier identifying the storage.
-func (s *GenAxLenName) NameDef() *ast.Ident { return s.Src }
-
-// Name returns the name of the axis.
-func (s *GenAxLenName) Name() string {
-	return strings.TrimPrefix(s.Src.Name, DefineAxisGroup)
-}
-
-// Same returns true if the other storage is this storage.
-func (s *GenAxLenName) Same(o Storage) bool {
-	return Storage(s) == o
-}
-
-func (s *GenAxLenName) axExprString() string {
-	return s.Src.Name
-}
-
-// String representation of the dimension.
-func (s *GenAxLenName) String() string {
-	return fmt.Sprintf("[%s]", s.axExprString())
-}
-
 type (
 	// AxisLengths specification of an array.
 	AxisLengths interface {
-		axExprString() string
 		SourceNode
+		axExprString() string
 
 		// Type of the axis.
 		Type() Type
@@ -104,8 +59,6 @@ type (
 	// AxisExpr is an array axis specified using an expression.
 	AxisExpr struct {
 		// Source of the axis expression.
-		// May be different from the source of the expression, for example
-		// the expression is formed from a function call.
 		Src ast.Expr
 		// X computes the size of the axis.
 		X AssignableExpr
@@ -116,40 +69,20 @@ var _ AxisLengths = (*AxisExpr)(nil)
 
 func (*AxisExpr) node() {}
 
-// Source returns the source expression specifying the dimension.
+// Source returns the source expression specifying the axis length.
 func (dm *AxisExpr) Source() ast.Node { return dm.X.Source() }
 
 // NumAxes returns the number of axis represented by the group.
 func (dm *AxisExpr) NumAxes() int { return 1 }
 
-// AssignableTo returns true if a dimension can be assigned to another.
+// AssignableTo returns true if an axis length can be assigned to another.
 func (dm *AxisExpr) AssignableTo(fetcher Fetcher, dst AxisLengths) (bool, error) {
-	switch dstT := dst.(type) {
-	case *AxisExpr:
-		return dm.Equal(fetcher, dst)
-	case *AxisInfer:
-		if dstT.X == nil {
-			return true, nil
-		}
-		return dm.Equal(fetcher, dstT.X)
-	default:
-		return false, errors.Errorf("assigning an axis to an axis type %T not supported", dstT)
-	}
+	return dm.Equal(fetcher, dst)
 }
 
 // Equal returns true if other has the axis length.
 func (dm *AxisExpr) Equal(fetcher Fetcher, other AxisLengths) (bool, error) {
-	switch otherT := other.(type) {
-	case *AxisExpr:
-		return areEqual(fetcher, dm.X, otherT.X)
-	case *AxisInfer:
-		if otherT.X == nil {
-			return false, errors.Errorf("cannot compare with an unresolved axis length")
-		}
-		return dm.Equal(fetcher, otherT.X)
-	default:
-		return false, errors.Errorf("cannot compare with axis type %T: not supported", otherT)
-	}
+	return areEqual(fetcher, dm.X, other.AsExpr())
 }
 
 // Specialise the axis length given a context.
@@ -175,7 +108,7 @@ func (dm *AxisExpr) Specialise(spec Specialiser) ([]AxisLengths, error) {
 
 // UnifyWith unifies axis lengths with a given target.
 func (dm *AxisExpr) UnifyWith(uni Unifier, targets []AxisLengths) ([]AxisLengths, bool) {
-	return uni.DefineAxis(dm, targets)
+	return []AxisLengths{dm}, true
 }
 
 // AsExpr returns the axis value as an expression.
@@ -185,10 +118,14 @@ func (dm *AxisExpr) AsExpr() AssignableExpr { return dm.X }
 func (dm *AxisExpr) Type() Type { return dm.X.Type() }
 
 func (dm *AxisExpr) axExprString() string {
-	return dm.X.String()
+	suffix := ""
+	if typ := dm.X.Type(); typ.Kind() == SliceKind {
+		suffix = "___"
+	}
+	return dm.X.String() + suffix
 }
 
-// String representation of the dimension.
+// String representation of the axis length.
 func (dm *AxisExpr) String() string {
 	return fmt.Sprintf("[%s]", dm.axExprString())
 }
@@ -203,42 +140,23 @@ var _ AxisLengths = (*AxisInfer)(nil)
 
 func (*AxisInfer) node() {}
 
-// Source returns the source expression specifying the dimension.
+// Source returns the source expression specifying the axis length.
 func (dm *AxisInfer) Source() ast.Node { return dm.Src }
 
 // Type of the expression.
 func (dm *AxisInfer) Type() Type { return IntLenType() }
 
-// Expr returns how to compute the dimension as an expression.
+// Expr returns how to compute the expression defining the axis length.
 func (dm *AxisInfer) Expr() ast.Expr { return dm.Src }
 
 // Equal returns true if other has the axis length.
 func (dm *AxisInfer) Equal(fetcher Fetcher, other AxisLengths) (bool, error) {
-	switch otherT := other.(type) {
-	case *AxisExpr:
-		if dm.X == nil {
-			return false, errors.Errorf("unresolved axis length")
-		}
-		return dm.X.Equal(fetcher, otherT)
-	case *AxisInfer:
-		if dm.X == nil && otherT.X == nil {
-			return true, nil
-		}
-		if dm.X != nil && otherT.X != nil {
-			return dm.X.Equal(fetcher, otherT.X)
-		}
-		return false, nil
-	default:
-		return false, errors.Errorf("cannot compare with axis type %T: not supported", otherT)
-	}
+	return areEqual(fetcher, dm.AsExpr(), other.AsExpr())
 }
 
 // AssignableTo returns true if a dimension can be assigned to another.
 func (dm *AxisInfer) AssignableTo(fetcher Fetcher, dst AxisLengths) (bool, error) {
-	if dm.X != nil {
-		return dm.X.AssignableTo(fetcher, dst)
-	}
-	return true, nil
+	return dm.Equal(fetcher, dst)
 }
 
 // AsExpr returns the axis value as an expression.
@@ -268,5 +186,100 @@ func (dm *AxisInfer) String() string {
 	if dm.X == nil {
 		return "[_]"
 	}
+	return fmt.Sprintf("[%s]", dm.axExprString())
+}
+
+// AxisStmt is an array axis specified using a statement.
+type AxisStmt struct {
+	Src *ast.Ident
+	Typ Type
+}
+
+var (
+	_ AxisLengths = (*AxisStmt)(nil)
+	_ Storage     = (*AxisStmt)(nil)
+)
+
+func (*AxisStmt) node()    {}
+func (*AxisStmt) storage() {}
+
+// Source returns the source expression specifying the axis length.
+func (dm *AxisStmt) Source() ast.Node { return dm.Src }
+
+// NameDef returns the identifier identifying the storage.
+func (dm *AxisStmt) NameDef() *ast.Ident { return dm.Src }
+
+// NumAxes returns the number of axis represented by the group.
+func (dm *AxisStmt) NumAxes() int { return 1 }
+
+// AssignableTo returns true if an axis length can be assigned to another.
+func (dm *AxisStmt) AssignableTo(fetcher Fetcher, dst AxisLengths) (bool, error) {
+	return dm.Equal(fetcher, dst)
+}
+
+// Equal returns true if other has the axis length.
+func (dm *AxisStmt) Equal(fetcher Fetcher, other AxisLengths) (bool, error) {
+	return areEqual(fetcher, dm.AsExpr(), other.AsExpr())
+}
+
+// Same returns true if the other storage is this storage.
+func (dm *AxisStmt) Same(o Storage) bool {
+	return Storage(dm) == o
+}
+
+// Specialise the axis length given a context.
+func (dm *AxisStmt) Specialise(spec Specialiser) ([]AxisLengths, error) {
+	el, err := spec.EvalExpr(dm.AsExpr())
+	if err != nil {
+		return []AxisLengths{dm}, err
+	}
+	exprIR, err := toExpr(el)
+	if err != nil {
+		return []AxisLengths{dm}, err
+	}
+	switch exprT := exprIR.(type) {
+	case *SliceLitExpr:
+		axes := make([]AxisLengths, len(exprT.Elts))
+		for i, expr := range exprT.Elts {
+			axes[i] = &AxisExpr{Src: expr.Source().(ast.Expr), X: expr}
+		}
+		return axes, nil
+	case WithStore:
+		ax, isAxisStmt := exprT.Store().(*AxisStmt)
+		if isAxisStmt {
+			return []AxisLengths{ax}, nil
+		}
+	}
+	return []AxisLengths{&AxisExpr{
+		Src: exprIR.Source().(ast.Expr),
+		X:   exprIR,
+	}}, nil
+}
+
+// UnifyWith unifies axis lengths with a given target.
+func (dm *AxisStmt) UnifyWith(uni Unifier, targets []AxisLengths) ([]AxisLengths, bool) {
+	return uni.DefineAxis(dm, targets)
+}
+
+// AsExpr returns the value assigned to the axis.
+func (dm *AxisStmt) AsExpr() AssignableExpr {
+	return &ValueRef{Src: dm.Src, Stor: dm}
+}
+
+// Type of the expression.
+func (dm *AxisStmt) Type() Type {
+	return dm.Typ
+}
+
+func (dm *AxisStmt) axExprString() string {
+	prefix := DefineAxisLength
+	if dm.Typ.Kind() == SliceKind {
+		prefix = DefineAxisGroup
+	}
+	return prefix + dm.Src.Name
+}
+
+// String representation of the axis length.
+func (dm *AxisStmt) String() string {
 	return fmt.Sprintf("[%s]", dm.axExprString())
 }

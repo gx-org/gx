@@ -110,7 +110,7 @@ type (
 		Fetcher
 		Source() ast.Node
 		DefineTParam(tp *TypeParam, typ Type) bool
-		DefineAxis(*AxisExpr, []AxisLengths) ([]AxisLengths, bool)
+		DefineAxis(*AxisStmt, []AxisLengths) ([]AxisLengths, bool)
 	}
 
 	// Type of a value.

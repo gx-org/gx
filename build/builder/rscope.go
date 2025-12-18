@@ -286,7 +286,7 @@ func compEvalForFuncType(rscope resolveScope, src ast.Node, ftype *ir.FuncType) 
 	}
 	funcVars := make(map[string]ir.Element)
 	for _, axLen := range ftype.AxisLengths {
-		storeAt := elements.NewNodeAt[ir.Storage](rscope.fileScope().irFile(), axLen)
+		storeAt := elements.NewNodeAt[ir.Storage](rscope.fileScope().irFile(), axLen.Axis)
 		funcVars[axLen.Name()] = cpevelements.NewVariable(storeAt)
 	}
 	for _, tParam := range ftype.TypeParams.Fields() {
@@ -653,7 +653,7 @@ func newDefineScope(scope localScope, def defineLocalF, defAxis defineLocalF) *d
 	return &defineLocalScope{localScope: scope, def: def, defAxis: defAxis}
 }
 
-func (s *defineLocalScope) defineAxis(storage *ir.GenAxLenName) {
+func (s *defineLocalScope) defineAxis(storage *ir.AxisStmt) {
 	if s.defAxis == nil {
 		return
 	}
