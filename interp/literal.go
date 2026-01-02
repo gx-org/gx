@@ -178,7 +178,7 @@ func newValuer(fitp *FileScope, expr ir.Expr, kind irkind.Kind) (v valuer, err e
 	case irkind.Uint64:
 		v = valuerT[uint64]{kind: kind, toAtomValue: values.AtomIntegerValue[uint64], toArrayValue: values.ArrayIntegerValue[uint64]}
 	default:
-		err = fmterr.Errorf(fitp.File().FileSet(), expr.Source(), "%s cannot be converted to backend numerical: not supported", kind)
+		err = fmterr.Errorf(fitp.File().FileSet(), expr.Node(), "%s cannot be converted to backend numerical: not supported", kind)
 	}
 	return
 }
@@ -239,6 +239,6 @@ func evalAtomicValue(fitp *FileScope, expr ir.AtomicValue) (evaluator.NumericalE
 	case irkind.Uint64:
 		return toAtomElementInt(fitp, exprAt, expr.(*ir.AtomicValueT[uint64]).Val)
 	default:
-		return nil, fmterr.Errorf(fitp.File().FileSet(), expr.Source(), "%s cannot be converted to backend numerical: not supported", kind)
+		return nil, fmterr.Errorf(fitp.File().FileSet(), expr.Node(), "%s cannot be converted to backend numerical: not supported", kind)
 	}
 }

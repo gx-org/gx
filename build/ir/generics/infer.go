@@ -47,8 +47,8 @@ func (uni *unifier) specialiseRemainingNumbers() bool {
 	return true
 }
 
-func (uni *argUnifier) Source() ast.Node {
-	return uni.arg.Source()
+func (uni *argUnifier) Node() ast.Node {
+	return uni.arg.Node()
 }
 
 func (uni *argUnifier) specialiseNumber(name string, defined, typ ir.Type) ir.Type {
@@ -70,11 +70,11 @@ func (uni *argUnifier) DefineTParam(tp *ir.TypeParam, typ ir.Type) bool {
 	ok, err := ir.AssignableTo(uni, typ, tp.Field.Type())
 	if err != nil {
 		uni.defined[name] = ir.InvalidType()
-		return uni.Err().AppendAt(uni.arg.Source(), err)
+		return uni.Err().AppendAt(uni.arg.Node(), err)
 	}
 	if !ok {
 		uni.defined[name] = ir.InvalidType()
-		return uni.Err().Appendf(uni.arg.Source(), "%s does not satisfy %s for %s", typ.String(), tp.Field.Type().String(), tp.Field.Name.Name)
+		return uni.Err().Appendf(uni.arg.Node(), "%s does not satisfy %s for %s", typ.String(), tp.Field.Type().String(), tp.Field.Name.Name)
 	}
 	defined := uni.defined[name]
 	if defined == nil {
@@ -87,22 +87,22 @@ func (uni *argUnifier) DefineTParam(tp *ir.TypeParam, typ ir.Type) bool {
 	}
 	eq, err := defined.Equal(uni, typ)
 	if err != nil {
-		return uni.Err().AppendAt(uni.arg.Source(), err)
+		return uni.Err().AppendAt(uni.arg.Node(), err)
 	}
 	if !eq {
-		return uni.Err().Appendf(uni.arg.Source(), "type %s does not match type %s for %s", typ.String(), defined.String(), tp.Field.Name.Name)
+		return uni.Err().Appendf(uni.arg.Node(), "type %s does not match type %s for %s", typ.String(), defined.String(), tp.Field.Name.Name)
 	}
 	return true
 }
 
 func (uni *argUnifier) defineAxis(param *ir.AxisStmt, targets []ir.AxisLengths) bool {
 	if len(targets) == 0 {
-		return uni.Err().Appendf(uni.arg.Source(), "no axis left to define %s", param.NameDef().Name)
+		return uni.Err().Appendf(uni.arg.Node(), "no axis left to define %s", param.NameDef().Name)
 	}
 	ax := targets[0]
 	el, err := uni.Fetcher.EvalExpr(ax.AsExpr())
 	if err != nil {
-		return uni.Err().AppendAt(uni.Source(), err)
+		return uni.Err().AppendAt(uni.Node(), err)
 	}
 	return uni.defineAxisElement(param, el)
 }
@@ -116,10 +116,10 @@ func (uni *argUnifier) defineAxisElement(param *ir.AxisStmt, el ir.Element) bool
 	}
 	eq, err := ir.ElementEqual(defined, el)
 	if err != nil {
-		return uni.Err().AppendAt(uni.arg.Source(), err)
+		return uni.Err().AppendAt(uni.arg.Node(), err)
 	}
 	if !eq {
-		return uni.Err().Appendf(uni.arg.Source(), "axis length %v does not match length %v for %s", defined, el, name)
+		return uni.Err().Appendf(uni.arg.Node(), "axis length %v does not match length %v for %s", defined, el, name)
 	}
 	return true
 }
@@ -132,7 +132,7 @@ func (uni *argUnifier) defineGroupAsAllSingleAxes(param *ir.AxisStmt, targets []
 		}
 		el, err := uni.Fetcher.EvalExpr(axis.AsExpr())
 		if err != nil {
-			return nil, uni.Fetcher.Err().AppendAt(uni.Source(), err)
+			return nil, uni.Fetcher.Err().AppendAt(uni.Node(), err)
 		}
 		singles = append(singles, el)
 	}
@@ -153,7 +153,7 @@ func (uni *argUnifier) defineGroupAxis(param *ir.AxisStmt, targets []ir.AxisLeng
 		return targets[1:], ok
 	default:
 		arg := targets[0]
-		return nil, uni.Err().Appendf(uni.Source(), "cannot unify axis length %s of type %s in parameters with axis length %s of type %s: not supported", param.String(), param.Type().String(), arg.String(), arg.Type().String())
+		return nil, uni.Err().Appendf(uni.Node(), "cannot unify axis length %s of type %s in parameters with axis length %s of type %s: not supported", param.String(), param.Type().String(), arg.String(), arg.Type().String())
 	}
 }
 
@@ -165,7 +165,7 @@ func (uni *argUnifier) DefineAxis(param *ir.AxisStmt, targets []ir.AxisLengths) 
 	case irkind.Slice:
 		return uni.defineGroupAxis(param, targets)
 	default:
-		return nil, uni.Err().Appendf(uni.Source(), "cannot unify axis expression of type %s in parameters: not supported", param.Type().String())
+		return nil, uni.Err().Appendf(uni.Node(), "cannot unify axis expression of type %s in parameters: not supported", param.Type().String())
 	}
 }
 
@@ -201,7 +201,7 @@ func Infer(fetcher ir.Fetcher, fExpr *ir.FuncValExpr, args []ir.AssignableExpr) 
 	}
 	ftypeInfer, err := ftype.SpecialiseFType(spec)
 	if err != nil {
-		return fExpr, fetcher.Err().AppendAt(fExpr.X.Source(), err)
+		return fExpr, fetcher.Err().AppendAt(fExpr.X.Node(), err)
 	}
 	return &ir.FuncValExpr{
 		X: fExpr.X,

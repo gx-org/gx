@@ -233,7 +233,7 @@ func (d *decls) buildFuncType(pkgScope *pkgResolveScope, pNode *processNodeT[fun
 	}
 	pkgFn, fnOk := irFn.(ir.PkgFunc)
 	if !fnOk {
-		return nil, pkgScope.Err().AppendInternalf(irFn.Source(), "cannot cast %T to %s", irFn, reflect.TypeFor[*ir.PkgFunc]().Name())
+		return nil, pkgScope.Err().AppendInternalf(irFn.Node(), "cannot cast %T to %s", irFn, reflect.TypeFor[*ir.PkgFunc]().Name())
 	}
 	ibld := pkgScope.irBuilder()
 	ibld.Set(pNode, pkgFn)
@@ -250,7 +250,7 @@ func (d *decls) buildFuncType(pkgScope *pkgResolveScope, pNode *processNodeT[fun
 	}
 	nType, ok := recv.Type().(*ir.NamedType)
 	if !ok {
-		return irf, pkgScope.Err().AppendInternalf(recv.Source(), "cannot cast %T to %s", recv.Type(), reflect.TypeFor[*ir.NamedType]().Name())
+		return irf, pkgScope.Err().AppendInternalf(recv.Node(), "cannot cast %T to %s", recv.Type(), reflect.TypeFor[*ir.NamedType]().Name())
 	}
 	assignMethod(fnScope.fileScope(), nType, irf)
 	return irf, true

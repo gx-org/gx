@@ -57,7 +57,7 @@ func (m *annotateFuncFromMacro) buildAnnotations(fScope *fileResolveScope, fn *i
 		var err error
 		els[i], err = compEval.EvalExpr(arg)
 		if err != nil {
-			fnScope.Err().AppendAt(arg.Source(), err)
+			fnScope.Err().AppendAt(arg.Node(), err)
 			ok = false
 		}
 	}

@@ -95,8 +95,8 @@ func (n *returnStmt) castNumber(scope fnResolveScope, expr ir.Expr, want ir.Type
 	}
 	return &ir.CastExpr{
 		Src: &ast.CallExpr{
-			Fun:  arrayWant.Source().(ast.Expr),
-			Args: []ast.Expr{expr.Source().(ast.Expr)},
+			Fun:  arrayWant.Node().(ast.Expr),
+			Args: []ast.Expr{expr.Node().(ast.Expr)},
 		},
 		X:   ret,
 		Typ: arrayWant,
@@ -136,7 +136,7 @@ func (n *returnStmt) buildStmt(scope fnResolveScope) (ir.Stmt, bool, bool) {
 	if !ok {
 		return ext, true, false
 	}
-	resultPos := ext.Results[0].Source()
+	resultPos := ext.Results[0].Node()
 	// Check if the types being returned are assignable to the types declared by the signature.
 	for i, wantI := range wants {
 		retOk := true
@@ -155,7 +155,7 @@ func (n *returnStmt) buildStmt(scope fnResolveScope) (ir.Stmt, bool, bool) {
 		}
 		posI := resultPos
 		if !isTuple {
-			posI = ext.Results[i].Source()
+			posI = ext.Results[i].Node()
 		}
 		okI := returnAs(scope, posI, gotType, wantType)
 		ok = ok && okI

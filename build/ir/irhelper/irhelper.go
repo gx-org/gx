@@ -176,7 +176,7 @@ func Axis(ax any) ir.AxisLengths {
 	case ir.AxisLengths:
 		return axisT
 	case ir.AssignableExpr:
-		return &ir.AxisExpr{Src: axisT.Source().(ast.Expr), X: axisT}
+		return &ir.AxisExpr{Src: axisT.Node().(ast.Expr), X: axisT}
 	case string:
 		if strings.HasPrefix(axisT, ir.DefineAxisGroup) {
 			name := strings.TrimPrefix(axisT, ir.DefineAxisGroup)
@@ -301,10 +301,7 @@ func ConstSpec(typ ir.Type, exprs ...*ir.ConstExpr) *ir.ConstSpec {
 
 // TypeSet builds a set of types.
 func TypeSet(types ...ir.Type) *ir.TypeSet {
-	return &ir.TypeSet{
-		BaseType: ir.BaseType[*ast.InterfaceType]{Src: &ast.InterfaceType{}},
-		Typs:     types,
-	}
+	return ir.NewTypeSet(&ast.InterfaceType{}, types)
 }
 
 // StructType builds a structure type.

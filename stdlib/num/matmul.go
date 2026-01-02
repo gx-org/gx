@@ -48,15 +48,15 @@ func (f matmul) resultsType(fetcher ir.Fetcher, call *ir.FuncCallExpr) ([]ir.Typ
 	left := arrays[0]
 	right := arrays[1]
 	if left.DataType().Kind() != right.DataType().Kind() {
-		return nil, nil, fmterr.Errorf(fetcher.File().FileSet(), call.Source(), "mismatched argument types %s and %s in %s call", left.DataType().String(), right.DataType().String(), f.Name())
+		return nil, nil, fmterr.Errorf(fetcher.File().FileSet(), call.Node(), "mismatched argument types %s and %s in %s call", left.DataType().String(), right.DataType().String(), f.Name())
 	}
 	leftRank := left.Rank()
 	if len(leftRank.Axes()) > 2 {
-		return nil, nil, fmterr.Errorf(fetcher.File().FileSet(), call.Source(), "more than 2-axis for the left argument (shape: %v) not supported in %s call", left.Rank(), f.Name())
+		return nil, nil, fmterr.Errorf(fetcher.File().FileSet(), call.Node(), "more than 2-axis for the left argument (shape: %v) not supported in %s call", left.Rank(), f.Name())
 	}
 	rightRank := right.Rank()
 	if len(rightRank.Axes()) > 2 {
-		return nil, nil, fmterr.Errorf(fetcher.File().FileSet(), call.Source(), "more than 2-axis for the right argument (shape: %v) not supported in %s call", right.Rank(), f.Name())
+		return nil, nil, fmterr.Errorf(fetcher.File().FileSet(), call.Node(), "more than 2-axis for the right argument (shape: %v) not supported in %s call", right.Rank(), f.Name())
 	}
 	leftDims := leftRank.Axes()
 	rightDims := rightRank.Axes()
@@ -72,10 +72,10 @@ func (f matmul) resultsType(fetcher ir.Fetcher, call *ir.FuncCallExpr) ([]ir.Typ
 	dotDim := rightDims[dotDimIndex]
 	ok, err := lastLeft.AssignableTo(fetcher, dotDim)
 	if err != nil {
-		return nil, nil, fmterr.AtNode(fetcher.File().FileSet(), call.Source(), err)
+		return nil, nil, fmterr.AtNode(fetcher.File().FileSet(), call.Node(), err)
 	}
 	if !ok {
-		return nil, nil, fmterr.Errorf(fetcher.File().FileSet(), call.Source(), "left argument (shape: %v) not compatible with right argument (shape: %v) in %s call", left.Rank(), right.Rank(), f.Name())
+		return nil, nil, fmterr.Errorf(fetcher.File().FileSet(), call.Node(), "left argument (shape: %v) not compatible with right argument (shape: %v) in %s call", left.Rank(), right.Rank(), f.Name())
 	}
 	resultRank := ir.Rank{}
 	if len(leftDims) == 2 && len(rightDims) == 2 {
@@ -94,7 +94,7 @@ func (f matmul) BuildFuncType(fetcher ir.Fetcher, call *ir.FuncCallExpr) (*ir.Fu
 		return nil, err
 	}
 	return &ir.FuncType{
-		BaseType: ir.BaseType[*ast.FuncType]{Src: &ast.FuncType{Func: call.Source().Pos()}},
+		BaseType: ir.BaseType[*ast.FuncType]{Src: &ast.FuncType{Func: call.Node().Pos()}},
 		Params:   builtins.Fields(call, params...),
 		Results:  builtins.Fields(call, result),
 	}, nil
@@ -120,7 +120,7 @@ func (f einsum) BuildFuncIR(impl *impl.Stdlib, pkg *ir.Package) (*ir.FuncBuiltin
 func (f einsum) validateAxisExpr(fetcher ir.Fetcher, call *ir.FuncCallExpr, arg, maxRank int, seen map[int]bool) ([]int, error) {
 	axisExpr, ok := call.Args[arg].(*ir.SliceLitExpr)
 	if !ok {
-		return nil, fmterr.Errorf(fetcher.File().FileSet(), call.Source(), "argument %d to %s must be []intidx (got %s)", arg, f.Name(), call.Args[arg].String())
+		return nil, fmterr.Errorf(fetcher.File().FileSet(), call.Node(), "argument %d to %s must be []intidx (got %s)", arg, f.Name(), call.Args[arg].String())
 	}
 
 	axes := make([]int, len(axisExpr.Elts))
@@ -131,10 +131,10 @@ func (f einsum) validateAxisExpr(fetcher ir.Fetcher, call *ir.FuncCallExpr, arg,
 		}
 		axis := int(axisI64)
 		if _, exists := seen[axis]; exists {
-			return nil, fmterr.Errorf(fetcher.File().FileSet(), call.Source(), "axis %d already specified in argument %d to %s: axes may only be contracted or batched once", axis, arg, f.Name())
+			return nil, fmterr.Errorf(fetcher.File().FileSet(), call.Node(), "axis %d already specified in argument %d to %s: axes may only be contracted or batched once", axis, arg, f.Name())
 		}
 		if axis < 0 || axis >= maxRank {
-			return nil, fmterr.Errorf(fetcher.File().FileSet(), call.Source(), "axis %d specified in argument %d to %s is out-of-range: must be in [0, %d)", axis, arg, f.Name(), maxRank)
+			return nil, fmterr.Errorf(fetcher.File().FileSet(), call.Node(), "axis %d specified in argument %d to %s is out-of-range: must be in [0, %d)", axis, arg, f.Name(), maxRank)
 		}
 		axes[n] = axis
 		seen[axis] = true
@@ -158,7 +158,7 @@ func (f einsum) resultsType(fetcher ir.Fetcher, call *ir.FuncCallExpr) ([]ir.Typ
 	left := params[0].(ir.ArrayType)
 	right := params[3].(ir.ArrayType)
 	if left.DataType().Kind() != right.DataType().Kind() {
-		return nil, nil, fmterr.Errorf(fetcher.File().FileSet(), call.Source(), "mismatched argument types %s and %s in %s call", left.DataType().String(), right.DataType().String(), f.Name())
+		return nil, nil, fmterr.Errorf(fetcher.File().FileSet(), call.Node(), "mismatched argument types %s and %s in %s call", left.DataType().String(), right.DataType().String(), f.Name())
 	}
 	leftRank := left.Rank()
 	rightRank := right.Rank()
@@ -188,7 +188,7 @@ func (f einsum) resultsType(fetcher ir.Fetcher, call *ir.FuncCallExpr) ([]ir.Typ
 		return nil, nil, err
 	}
 	if len(lhsContractingDims) != len(rhsContractingDims) {
-		return nil, nil, fmterr.Errorf(fetcher.File().FileSet(), call.Source(),
+		return nil, nil, fmterr.Errorf(fetcher.File().FileSet(), call.Node(),
 			"must specify the same number of lhs and rhs contracting dimensions for %s (got %d and %d)",
 			f.Name(), len(lhsContractingDims), len(rhsContractingDims))
 	}
@@ -197,16 +197,16 @@ func (f einsum) resultsType(fetcher ir.Fetcher, call *ir.FuncCallExpr) ([]ir.Typ
 		rhsDim := rightDims[rhsContractingDims[n]]
 		ok, err := lhsDim.AssignableTo(fetcher, rhsDim)
 		if err != nil {
-			return nil, nil, fmterr.AtNode(fetcher.File().FileSet(), call.Source(), err)
+			return nil, nil, fmterr.AtNode(fetcher.File().FileSet(), call.Node(), err)
 		}
 		if !ok {
-			return nil, nil, fmterr.Errorf(fetcher.File().FileSet(), call.Source(),
+			return nil, nil, fmterr.Errorf(fetcher.File().FileSet(), call.Node(),
 				"left argument (shape: %v) not compatible with right argument (shape: %v) in %s call: cannot contract lhs dimension %s with rhs dimension %s",
 				left.Rank(), right.Rank(), f.Name(), lhsDim, rhsDim)
 		}
 	}
 	if len(lhsBatchDims) != len(rhsBatchDims) {
-		return nil, nil, fmterr.Errorf(fetcher.File().FileSet(), call.Source(),
+		return nil, nil, fmterr.Errorf(fetcher.File().FileSet(), call.Node(),
 			"must specify the same number of lhs and rhs batching dimensions for %s (got %d and %d)",
 			f.Name(), len(lhsBatchDims), len(rhsBatchDims))
 	}
@@ -215,10 +215,10 @@ func (f einsum) resultsType(fetcher ir.Fetcher, call *ir.FuncCallExpr) ([]ir.Typ
 		rhsDim := rightDims[rhsBatchDims[n]]
 		ok, err := lhsDim.AssignableTo(fetcher, rhsDim)
 		if err != nil {
-			return nil, nil, fmterr.AtNode(fetcher.File().FileSet(), call.Source(), err)
+			return nil, nil, fmterr.AtNode(fetcher.File().FileSet(), call.Node(), err)
 		}
 		if !ok {
-			return nil, nil, fmterr.Errorf(fetcher.File().FileSet(), call.Source(),
+			return nil, nil, fmterr.Errorf(fetcher.File().FileSet(), call.Node(),
 				"left argument (shape: %v) not compatible with right argument (shape: %v) in %s call: cannot batch lhs dimension %s with rhs dimension %s",
 				left.Rank(), right.Rank(), f.Name(), lhsDim, rhsDim)
 		}
@@ -249,7 +249,7 @@ func (f einsum) BuildFuncType(fetcher ir.Fetcher, call *ir.FuncCallExpr) (*ir.Fu
 		return nil, err
 	}
 	return &ir.FuncType{
-		BaseType: ir.BaseType[*ast.FuncType]{Src: &ast.FuncType{Func: call.Source().Pos()}},
+		BaseType: ir.BaseType[*ast.FuncType]{Src: &ast.FuncType{Func: call.Node().Pos()}},
 		Params:   builtins.Fields(call, params...),
 		Results:  builtins.Fields(call, result),
 	}, nil

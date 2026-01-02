@@ -49,7 +49,7 @@ func checkBroadcastRanks(fetcher ir.Fetcher, call *ir.FuncCallExpr, src ir.Array
 	}
 	srcAxes := src.Axes()
 	if len(srcAxes) != len(targetElmts) {
-		return fmterr.Errorf(fetcher.File().FileSet(), call.Source(), "cannot broadcast array with %d axes to %d axes: the same number of axes is required", len(srcAxes), len(targetElmts))
+		return fmterr.Errorf(fetcher.File().FileSet(), call.Node(), "cannot broadcast array with %d axes to %d axes: the same number of axes is required", len(srcAxes), len(targetElmts))
 	}
 
 	for i, targetElt := range targetElmts {
@@ -59,7 +59,7 @@ func checkBroadcastRanks(fetcher ir.Fetcher, call *ir.FuncCallExpr, src ir.Array
 		}
 		srcCan, ok := srcElt.(canonical.Canonical)
 		if !ok {
-			return fmterr.Internalf(fetcher.File().FileSet(), call.Source(), "expression evaluation axis %d=%s did not return a canonical expression", i, srcAxes[i])
+			return fmterr.Internalf(fetcher.File().FileSet(), call.Node(), "expression evaluation axis %d=%s did not return a canonical expression", i, srcAxes[i])
 		}
 		tgOk, err := targetElt.Compare(srcCan)
 		if err != nil {
@@ -70,7 +70,7 @@ func checkBroadcastRanks(fetcher ir.Fetcher, call *ir.FuncCallExpr, src ir.Array
 			return fmterr.Internal(err)
 		}
 		if !tgOk && !oneAxisOk {
-			return fmterr.Errorf(fetcher.File().FileSet(), srcAxes[i].Source(), "cannot broadcast array with axis %d of size %d: size of 1 or %d required", i, srcElt, targetElt)
+			return fmterr.Errorf(fetcher.File().FileSet(), srcAxes[i].Node(), "cannot broadcast array with axis %d of size %d: size of 1 or %d required", i, srcElt, targetElt)
 		}
 	}
 	return nil
@@ -96,7 +96,7 @@ func (f broadcast) BuildFuncType(fetcher ir.Fetcher, call *ir.FuncCallExpr) (*ir
 		return nil, err
 	}
 	return &ir.FuncType{
-		BaseType: ir.BaseType[*ast.FuncType]{Src: &ast.FuncType{Func: call.Source().Pos()}},
+		BaseType: ir.BaseType[*ast.FuncType]{Src: &ast.FuncType{Func: call.Node().Pos()}},
 		Params:   builtins.Fields(call, params...),
 		Results:  builtins.Fields(call, ir.NewArrayType(&ast.ArrayType{}, arrayType.DataType(), targetRank)),
 	}, nil

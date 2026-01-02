@@ -96,7 +96,7 @@ type irExpr struct {
 }
 
 func (e *irExpr) source() ast.Node {
-	return e.expr.Source()
+	return e.expr.Node()
 }
 
 func (e *irExpr) buildExpr(rScope resolveScope) (ir.Expr, bool) {
@@ -119,11 +119,11 @@ func evalMetaCallee[T funcWithIR](rscope resolveScope, compEval *compileEvaluato
 	}
 	el, err := compEval.fitp.EvalExpr(callee)
 	if err != nil {
-		return nil, zero, rscope.Err().AppendAt(callee.Source(), err)
+		return nil, zero, rscope.Err().AppendAt(callee.Node(), err)
 	}
 	elT, ok := el.(T)
 	if !ok {
-		return nil, zero, rscope.Err().Appendf(callee.Source(), "cannot use %s as %s", callee.String(), reflect.TypeFor[T]())
+		return nil, zero, rscope.Err().Appendf(callee.Node(), "cannot use %s as %s", callee.String(), reflect.TypeFor[T]())
 	}
 	call, ok := macroCall.buildFuncCallExpr(rscope, &ir.FuncValExpr{
 		X: callee,
@@ -135,11 +135,11 @@ func evalMetaCallee[T funcWithIR](rscope resolveScope, compEval *compileEvaluato
 func evalMacroCall(compEval *compileEvaluator, call *ir.FuncCallExpr) (ir.MacroElement, bool) {
 	el, err := compEval.fitp.EvalExpr(call)
 	if err != nil {
-		return nil, compEval.Err().AppendAt(call.Source(), err)
+		return nil, compEval.Err().AppendAt(call.Node(), err)
 	}
 	macroEl, ok := el.(ir.MacroElement)
 	if !ok {
-		return nil, compEval.Err().AppendInternalf(call.Source(), "unexpected element type %s returned by macro %s", el.Type().String(), call.Callee.Func().ShortString())
+		return nil, compEval.Err().AppendInternalf(call.Node(), "unexpected element type %s returned by macro %s", el.Type().String(), call.Callee.Func().ShortString())
 	}
 	return macroEl, true
 }

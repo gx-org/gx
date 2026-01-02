@@ -87,8 +87,8 @@ func NewRank(axlens []int) *Rank {
 // Type returns the rank type.
 func (r *Rank) Type() Type { return RankType() }
 
-// Source returns the source node defining the rank.
-func (r *Rank) Source() ast.Node { return r.Src }
+// Node returns the source node defining the rank.
+func (r *Rank) Node() ast.Node { return r.Src }
 
 // Axes returns all axis in the rank.
 func (r *Rank) Axes() []AxisLengths { return r.Ax }
@@ -206,11 +206,11 @@ var oneSize = &NumberCastExpr{
 	Typ: IntLenType(),
 }
 
-func exprSource(n SourceNode) ast.Expr {
+func exprSource(n Node) ast.Expr {
 	if n == nil {
 		return nil
 	}
-	src := n.Source()
+	src := n.Node()
 	if src == nil {
 		return nil
 	}
@@ -280,8 +280,8 @@ var _ ArrayRank = (*RankInfer)(nil)
 func (*RankInfer) node()     {}
 func (*RankInfer) nodeRank() {}
 
-// Source returns the node defining the rank.
-func (r *RankInfer) Source() ast.Node { return r.Src }
+// Node returns the node defining the rank.
+func (r *RankInfer) Node() ast.Node { return r.Src }
 
 // Type returns the rank type.
 func (r *RankInfer) Type() Type { return RankType() }

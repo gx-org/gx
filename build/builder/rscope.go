@@ -318,7 +318,7 @@ func newFuncScope(rscope resolveScope, fType *ir.FuncType) (*funcResolveScope, b
 	if fType == nil {
 		return &funcResolveScope{resolveScope: rscope}, true
 	}
-	bodyCE, ok := compEvalForFuncType(rscope, fType.Source(), fType)
+	bodyCE, ok := compEvalForFuncType(rscope, fType.BaseType.Node(), fType)
 	if !ok {
 		return nil, false
 	}
@@ -440,7 +440,7 @@ func newArrayLitResolveScope(parent resolveScope) *arrayLitResolveScope {
 }
 
 func (s *arrayLitResolveScope) update(store ir.Storage, el ir.Element) bool {
-	return s.Err().Appendf(store.Source(), "cannot define %s in an array literal expression", store.NameDef().Name)
+	return s.Err().Appendf(store.Node(), "cannot define %s in an array literal expression", store.NameDef().Name)
 }
 
 type (

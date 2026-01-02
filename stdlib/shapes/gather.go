@@ -50,7 +50,7 @@ func (f gather) BuildFuncType(fetcher ir.Fetcher, call *ir.FuncCallExpr) (*ir.Fu
 		return nil, err
 	}
 	if !ir.IsIndexType(indexArray.DataType()) {
-		return nil, fmterr.Errorf(fetcher.File().FileSet(), call.Source(), "Gather requires indices to have an integer type, got shape %q instead", indexArray)
+		return nil, fmterr.Errorf(fetcher.File().FileSet(), call.Node(), "Gather requires indices to have an integer type, got shape %q instead", indexArray)
 	}
 
 	sourceRank := sourceArray.Rank()
@@ -65,7 +65,7 @@ func (f gather) BuildFuncType(fetcher ir.Fetcher, call *ir.FuncCallExpr) (*ir.Fu
 	resultRank.Ax = append(resultRank.Ax, indicesRank.Axes()[0:1]...)
 	resultRank.Ax = append(resultRank.Ax, sourceRank.Axes()[indexRank:]...)
 	return &ir.FuncType{
-		BaseType: ir.BaseType[*ast.FuncType]{Src: &ast.FuncType{Func: call.Source().Pos()}},
+		BaseType: ir.BaseType[*ast.FuncType]{Src: &ast.FuncType{Func: call.Node().Pos()}},
 		Params:   builtins.Fields(call, params...),
 		Results:  builtins.Fields(call, ir.NewArrayType(&ast.ArrayType{}, sourceArray.DataType(), resultRank)),
 	}, nil

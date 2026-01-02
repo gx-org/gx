@@ -32,7 +32,7 @@ type annFunc struct {
 func (p *processor) processFuncWithAnn(ann *setann.Annotation) (stmt, bool) {
 	fn, ok := p.fn.(ir.PkgFunc)
 	if !ok {
-		return nil, p.fetcher.Err().Appendf(p.fn.Source(), "cannot cast %T to %s", p.fn, reflect.TypeFor[ir.PkgFunc]().Name())
+		return nil, p.fetcher.Err().Appendf(p.fn.Node(), "cannot cast %T to %s", p.fn, reflect.TypeFor[ir.PkgFunc]().Name())
 	}
 	return &annFunc{
 		node: newNode(p, fn),

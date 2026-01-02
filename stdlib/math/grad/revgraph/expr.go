@@ -49,7 +49,7 @@ func (p *processor) processExpr(isrc ir.Expr) (expr, bool) {
 	case *ir.ParenExpr:
 		return p.processParenExpr(isrcT)
 	default:
-		return nil, p.fetcher.Err().Appendf(isrc.Source(), "%T not supported", isrcT)
+		return nil, p.fetcher.Err().Appendf(isrc.Node(), "%T not supported", isrcT)
 	}
 }
 
@@ -90,7 +90,7 @@ func (p *processor) processFuncCallExpr(isrc *ir.FuncCallExpr) (*funcCallExpr, b
 func (n *funcCallExpr) vjpFunc(astmts *fwdStmts) (string, ast.Expr, bool) {
 	src, ok := n.irnode.Callee.(*ir.FuncValExpr)
 	if !ok {
-		return "", nil, astmts.err().AppendInternalf(n.irnode.Source(), "callee type %T not supported", n.irnode.Callee)
+		return "", nil, astmts.err().AppendInternalf(n.irnode.Node(), "callee type %T not supported", n.irnode.Callee)
 	}
 	name := "Fun"
 	if pkgFunc, ok := src.F.(ir.PkgFunc); ok {
@@ -102,7 +102,7 @@ func (n *funcCallExpr) vjpFunc(astmts *fwdStmts) (string, ast.Expr, bool) {
 			X:   &ast.Ident{Name: macro.File().Package.Name.Name},
 			Sel: &ast.Ident{Name: macro.Name()},
 		},
-		Args: []ast.Expr{src.X.Source().(ast.Expr)},
+		Args: []ast.Expr{src.X.Node().(ast.Expr)},
 	}), true
 }
 
@@ -302,7 +302,7 @@ func (p *processor) processNumberCastExpr(isrc *ir.NumberCastExpr) (*numberCastE
 }
 
 func (n *numberCastExpr) buildForward(astmts *fwdStmts) ([]ast.Expr, bool) {
-	return []ast.Expr{n.irnode.X.Source().(ast.Expr)}, true
+	return []ast.Expr{n.irnode.X.Node().(ast.Expr)}, true
 }
 
 func (n *numberCastExpr) forwardValue() (*special.Expr, bool) {

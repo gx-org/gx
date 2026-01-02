@@ -540,7 +540,7 @@ func TestArrayRanksConvertibleTo(t *testing.T) {
 }
 
 func makeTypeSet(typs ...ir.Type) *ir.TypeSet {
-	return &ir.TypeSet{Typs: typs}
+	return ir.NewTypeSet(nil, typs)
 }
 
 var (

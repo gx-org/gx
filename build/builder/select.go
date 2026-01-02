@@ -55,7 +55,7 @@ func (n *selectorExpr) selectFromPackage(scope resolveScope, sel *ir.SelectorExp
 		return nil, false
 	}
 	if _, ok := val.(*ir.ImportDecl); !ok {
-		return nil, scope.Err().AppendInternalf(sel.X.Source(), "%T is not %s", val, reflect.TypeFor[*ir.ImportDecl]())
+		return nil, scope.Err().AppendInternalf(sel.X.Node(), "%T is not %s", val, reflect.TypeFor[*ir.ImportDecl]())
 	}
 	pkg := scope.fileScope().deps[val.NameDef().Name]
 	if !ir.IsExported(n.src.Sel.Name) {

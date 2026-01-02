@@ -109,7 +109,7 @@ func (*funcBase) Kind() irkind.Kind {
 
 // Call the function.
 func (st *funcBase) Call(ctx *fun.CallEnv, call *ir.FuncCallExpr, args []ir.Element) ([]ir.Element, error) {
-	return nil, fmterr.Internalf(ctx.File().FileSet(), st.fn.Source(), "function type %T not supported", st.fn)
+	return nil, fmterr.Internalf(ctx.File().FileSet(), st.fn.Node(), "function type %T not supported", st.fn)
 }
 
 // String representation of the node.
@@ -124,7 +124,7 @@ type funcDecl struct {
 
 func (f *funcDecl) Call(env *fun.CallEnv, call *ir.FuncCallExpr, args []ir.Element) (outs []ir.Element, err error) {
 	if f.fnT.Body == nil {
-		return nil, fmterr.Errorf(env.File().FileSet(), f.fnT.Source(), "missing function body")
+		return nil, fmterr.Errorf(env.File().FileSet(), f.fnT.Node(), "missing function body")
 	}
 	// Create a new function frame.
 	funcFrame, err := env.Context().PushFuncFrame(f.fnT)

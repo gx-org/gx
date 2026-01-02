@@ -31,7 +31,7 @@ const (
 type (
 	// AxisLengths specification of an array.
 	AxisLengths interface {
-		SourceNode
+		Node
 		axExprString() string
 
 		// Type of the axis.
@@ -71,8 +71,8 @@ var _ AxisLengths = (*AxisExpr)(nil)
 
 func (*AxisExpr) node() {}
 
-// Source returns the source expression specifying the axis length.
-func (dm *AxisExpr) Source() ast.Node { return dm.X.Source() }
+// Node returns the source expression specifying the axis length.
+func (dm *AxisExpr) Node() ast.Node { return dm.X.Node() }
 
 // NumAxes returns the number of axis represented by the group.
 func (dm *AxisExpr) NumAxes() int { return 1 }
@@ -142,8 +142,8 @@ var _ AxisLengths = (*AxisInfer)(nil)
 
 func (*AxisInfer) node() {}
 
-// Source returns the source expression specifying the axis length.
-func (dm *AxisInfer) Source() ast.Node { return dm.Src }
+// Node returns the source expression specifying the axis length.
+func (dm *AxisInfer) Node() ast.Node { return dm.Src }
 
 // Type of the expression.
 func (dm *AxisInfer) Type() Type { return IntLenType() }
@@ -205,8 +205,8 @@ var (
 func (*AxisStmt) node()    {}
 func (*AxisStmt) storage() {}
 
-// Source returns the source expression specifying the axis length.
-func (dm *AxisStmt) Source() ast.Node { return dm.Src }
+// Node returns the source expression specifying the axis length.
+func (dm *AxisStmt) Node() ast.Node { return dm.Src }
 
 // NameDef returns the identifier identifying the storage.
 func (dm *AxisStmt) NameDef() *ast.Ident { return dm.Src }
@@ -243,7 +243,7 @@ func (dm *AxisStmt) Specialise(spec Specialiser) ([]AxisLengths, error) {
 	case *SliceLitExpr:
 		axes := make([]AxisLengths, len(exprT.Elts))
 		for i, expr := range exprT.Elts {
-			axes[i] = &AxisExpr{Src: expr.Source().(ast.Expr), X: expr}
+			axes[i] = &AxisExpr{Src: expr.Node().(ast.Expr), X: expr}
 		}
 		return axes, nil
 	case WithStore:
@@ -253,7 +253,7 @@ func (dm *AxisStmt) Specialise(spec Specialiser) ([]AxisLengths, error) {
 		}
 	}
 	return []AxisLengths{&AxisExpr{
-		Src: exprIR.Source().(ast.Expr),
+		Src: exprIR.Node().(ast.Expr),
 		X:   exprIR,
 	}}, nil
 }

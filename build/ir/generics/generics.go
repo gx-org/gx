@@ -44,7 +44,7 @@ func typeInclude(fetcher ir.Fetcher, set ir.Type, typ ir.Type) bool {
 		return fetcher.Err().Append(err)
 	}
 	if !isIn {
-		return fetcher.Err().Appendf(typ.Source(), "%s does not satisfy %s",
+		return fetcher.Err().Appendf(typ.Node(), "%s does not satisfy %s",
 			ir.TypeString(typ), ir.TypeString(set))
 	}
 	return true
@@ -65,11 +65,11 @@ func instantiateExpr(fetcher ir.Fetcher, expr ir.Expr) (ir.Value, bool) {
 	}
 	irVal, ok := val.(ir.Canonical)
 	if !ok {
-		return expr, fetcher.Err().AppendInternalf(expr.Source(), "cannot convert %T to %s", val, reflect.TypeFor[ir.Canonical]())
+		return expr, fetcher.Err().AppendInternalf(expr.Node(), "cannot convert %T to %s", val, reflect.TypeFor[ir.Canonical]())
 	}
 	irExpr, err := irVal.Expr()
 	if err != nil {
-		return expr, fetcher.Err().AppendAt(expr.Source(), err)
+		return expr, fetcher.Err().AppendAt(expr.Node(), err)
 	}
 	return irExpr, true
 }

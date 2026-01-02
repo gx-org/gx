@@ -78,7 +78,7 @@ var Package = builtin.PackageBuilder{
 // or an array which needs to be of the same shape than the first argument.
 func mainAuxArgsToTypes(funcName string, fetcher ir.Fetcher, call *ir.FuncCallExpr) (main, aux ir.Type, result ir.Type, err error) {
 	if len(call.Args) != 2 {
-		return nil, nil, nil, fmterr.Errorf(fetcher.File().FileSet(), call.Source(), "wrong number of arguments in call to %s: got %d but want 2", funcName, len(call.Args))
+		return nil, nil, nil, fmterr.Errorf(fetcher.File().FileSet(), call.Node(), "wrong number of arguments in call to %s: got %d but want 2", funcName, len(call.Args))
 	}
 	baseType, baseNumType, err := builtins.InferFromNumericalType(fetcher, call, 0, nil)
 	if err != nil {
@@ -90,20 +90,20 @@ func mainAuxArgsToTypes(funcName string, fetcher ir.Fetcher, call *ir.FuncCallEx
 	}
 	kindEq, err := baseNumType.Equal(fetcher, auxNumTyp)
 	if err != nil {
-		return nil, nil, nil, fmterr.Internalf(fetcher.File().FileSet(), call.Source(), "cannot compare arguments type: %v", err)
+		return nil, nil, nil, fmterr.Internalf(fetcher.File().FileSet(), call.Node(), "cannot compare arguments type: %v", err)
 	}
 	if !kindEq {
-		return nil, nil, nil, fmterr.Errorf(fetcher.File().FileSet(), call.Source(), "mismatch types %s and %s", baseType.String(), auxType.String())
+		return nil, nil, nil, fmterr.Errorf(fetcher.File().FileSet(), call.Node(), "mismatch types %s and %s", baseType.String(), auxType.String())
 	}
 	if auxType.(ir.ArrayType).Rank().IsAtomic() {
 		return baseType, auxType, baseType, nil
 	}
 	shapeEq, err := baseType.Equal(fetcher, auxType)
 	if err != nil {
-		return nil, nil, nil, fmterr.Internalf(fetcher.File().FileSet(), call.Source(), "cannot compare arguments type: %v", err)
+		return nil, nil, nil, fmterr.Internalf(fetcher.File().FileSet(), call.Node(), "cannot compare arguments type: %v", err)
 	}
 	if !shapeEq {
-		return nil, nil, nil, fmterr.Errorf(fetcher.File().FileSet(), call.Source(), "mismatch types %s and %s", baseType.String(), auxType.String())
+		return nil, nil, nil, fmterr.Errorf(fetcher.File().FileSet(), call.Node(), "mismatch types %s and %s", baseType.String(), auxType.String())
 	}
 	return baseType, auxType, baseType, nil
 }

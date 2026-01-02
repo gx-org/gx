@@ -35,8 +35,8 @@ func (BaseType[T]) storageValue() {}
 // NameDef of the base type always returns a nil name definition.
 func (BaseType[T]) NameDef() *ast.Ident { return nil }
 
-// Source returns the source node defining the type.
-func (m *BaseType[T]) Source() ast.Node {
+// Node returns the source node defining the type.
+func (m *BaseType[T]) Node() ast.Node {
 	return m.Src
 }
 
@@ -117,7 +117,7 @@ func (*invalidType) node()         {}
 func (*invalidType) storage()      {}
 func (*invalidType) storageValue() {}
 
-func (*invalidType) Source() ast.Node { return nil }
+func (*invalidType) Node() ast.Node { return nil }
 
 func (*invalidType) Same(Storage) bool {
 	return true
@@ -253,7 +253,7 @@ func PackageType() Type {
 // TypeSet represents a set of types.
 type TypeSet struct {
 	BaseType[*ast.InterfaceType]
-	Typs []Type
+	types []Type
 }
 
 var (
@@ -262,6 +262,17 @@ var (
 	_       ArrayType   = (*TypeSet)(nil)
 	_       assignsFrom = (*TypeSet)(nil)
 )
+
+// NewTypeSet returns a new type set given a set of types.
+func NewTypeSet(src *ast.InterfaceType, types []Type) *TypeSet {
+	if src == nil {
+		src = &ast.InterfaceType{}
+	}
+	return &TypeSet{
+		BaseType: BaseType[*ast.InterfaceType]{Src: src},
+		types:    types,
+	}
+}
 
 // AnyType returns the type for the keyword any.
 func AnyType() Type {
@@ -296,11 +307,11 @@ func (s *TypeSet) Equal(fetcher Fetcher, target Type) (bool, error) {
 	if s == targetSet {
 		return true, nil
 	}
-	if len(s.Typs) != len(targetSet.Typs) {
+	if len(s.types) != len(targetSet.types) {
 		return false, nil
 	}
-	for i, typ := range s.Typs {
-		if ok, err := typ.Equal(fetcher, targetSet.Typs[i]); !ok {
+	for i, typ := range s.types {
+		if ok, err := typ.Equal(fetcher, targetSet.types[i]); !ok {
 			if err != nil {
 				err = fmt.Errorf("type set %q not equal to %q: %w", s, targetSet, err)
 			}
@@ -315,24 +326,24 @@ func (s *TypeSet) AssignableTo(fetcher Fetcher, target Type) (bool, error) {
 	if targetSet, ok := target.(*TypeSet); ok {
 		return targetSet.assignableFrom(fetcher, s)
 	}
-	for _, typ := range s.Typs {
+	for _, typ := range s.types {
 		if ok, _ := typ.AssignableTo(fetcher, target); !ok {
 			return false, nil
 		}
 	}
-	return len(s.Typs) > 0, nil
+	return len(s.types) > 0, nil
 }
 
 // AssignableFrom reports whether a given source type is assignable to any members of the set.
 func (s *TypeSet) assignableFrom(fetcher Fetcher, source Type) (bool, error) {
-	if len(s.Typs) == 0 {
+	if len(s.types) == 0 {
 		return true, nil
 	}
 
 	if sourceSet, ok := source.(*TypeSet); ok {
 		return s.containsTypes(fetcher, sourceSet), nil
 	}
-	for _, typ := range s.Typs {
+	for _, typ := range s.types {
 		if ok, _ := source.AssignableTo(fetcher, typ); ok {
 			return true, nil
 		}
@@ -346,7 +357,7 @@ func (s *TypeSet) ConvertibleTo(fetcher Fetcher, target Type) (bool, error) {
 	if _, ok := target.(*TypeSet); ok {
 		return s.Equal(fetcher, target)
 	}
-	for _, typ := range s.Typs {
+	for _, typ := range s.types {
 		if ok, _ := typ.ConvertibleTo(fetcher, target); ok {
 			return true, nil
 		}
@@ -382,7 +393,7 @@ func typeInclude(fetcher Fetcher, set Type, typ Type) (bool, error) {
 	if !typeSetOk {
 		return set.Equal(fetcher, typ)
 	}
-	for _, sub := range typeSet.Typs {
+	for _, sub := range typeSet.types {
 		in, err := typeInclude(fetcher, sub, typ)
 		if err != nil {
 			return false, err
@@ -407,7 +418,7 @@ func (s *TypeSet) Zero() AssignableExpr {
 func (s *TypeSet) ElementType() (Type, bool) {
 	sub := &TypeSet{}
 	ok := true
-	for _, typ := range s.Typs {
+	for _, typ := range s.types {
 		aType, eltOk := typ.(SlicerType)
 		if !eltOk {
 			ok = false
@@ -418,7 +429,7 @@ func (s *TypeSet) ElementType() (Type, bool) {
 			ok = false
 			continue
 		}
-		sub.Typs = append(sub.Typs, sType)
+		sub.types = append(sub.types, sType)
 	}
 	return sub, ok
 }
@@ -441,8 +452,8 @@ func (s *TypeSet) interfaceString(types []string) string {
 
 // SourceString returns a string representation of the signature of a function.
 func (s *TypeSet) SourceString(context *File) string {
-	types := make([]string, len(s.Typs))
-	for i, typ := range s.Typs {
+	types := make([]string, len(s.types))
+	for i, typ := range s.types {
 		types[i] = typ.SourceString(context)
 	}
 	return s.interfaceString(types)
@@ -450,8 +461,8 @@ func (s *TypeSet) SourceString(context *File) string {
 
 // String representation of the type.
 func (s *TypeSet) String() string {
-	types := make([]string, len(s.Typs))
-	for i, typ := range s.Typs {
+	types := make([]string, len(s.types))
+	for i, typ := range s.types {
 		types[i] = typ.String()
 	}
 	return s.interfaceString(types)
@@ -464,17 +475,17 @@ func (s *TypeSet) equalArray(fetcher Fetcher, target ArrayType) (bool, error) {
 // hasCapability returns true if and only if the capability applies to all types in the set.
 // Returns false if the type set is empty.
 func (s *TypeSet) hasCapability(f func(Type) bool) bool {
-	for _, typ := range s.Typs {
+	for _, typ := range s.types {
 		if !f(typ) {
 			return false
 		}
 	}
-	return len(s.Typs) > 0
+	return len(s.types) > 0
 }
 
 // containsType returns true if the given type is present in the set.
 func (s *TypeSet) containsType(fetcher Fetcher, wantType Type) bool {
-	for _, typ := range s.Typs {
+	for _, typ := range s.types {
 		if eq, _ := wantType.Equal(fetcher, typ); eq {
 			return true
 		}
@@ -484,7 +495,7 @@ func (s *TypeSet) containsType(fetcher Fetcher, wantType Type) bool {
 
 // containsTypes returns true if all the given types are present in the set.
 func (s *TypeSet) containsTypes(fetcher Fetcher, types *TypeSet) bool {
-	for _, wantType := range types.Typs {
+	for _, wantType := range types.types {
 		if !s.containsType(fetcher, wantType) {
 			return false
 		}

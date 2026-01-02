@@ -110,8 +110,8 @@ func (s *MacroCallExpr) FuncCall() *FuncCallExpr {
 	}
 }
 
-// Source returns the node in the AST tree.
-func (s *MacroCallExpr) Source() ast.Node { return s.F.Source() }
+// Node returns the node in the AST tree.
+func (s *MacroCallExpr) Node() ast.Node { return s.F.Node() }
 
 // Call returns the source of the call.
 func (s *MacroCallExpr) Call() *ast.CallExpr { return s.X.Src }

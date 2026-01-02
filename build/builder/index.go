@@ -76,11 +76,11 @@ func (n *indexExpr) checkIndexBounds(rscope resolveScope, axLen ir.AxisLengths, 
 	}
 	axisValue, err := compEval.EvalExpr(axLen)
 	if err != nil {
-		return rscope.Err().AppendInternalf(axLen.Source(), "cannot evaluate axis length expression: %v", err)
+		return rscope.Err().AppendInternalf(axLen.Node(), "cannot evaluate axis length expression: %v", err)
 	}
 	indexValue, err := compEval.EvalExpr(index)
 	if err != nil {
-		return rscope.Err().AppendInternalf(axLen.Source(), "cannot evaluate slice index expression: %v", err)
+		return rscope.Err().AppendInternalf(axLen.Node(), "cannot evaluate slice index expression: %v", err)
 	}
 	axisInt := canonical.ToValue(axisValue)
 	indexInt := canonical.ToValue(indexValue)
@@ -109,10 +109,10 @@ func specializeFunc(rscope resolveScope, x ir.Expr, indices []ir.AssignableExpr)
 		}
 		fun, ok = funValue.(*ir.FuncValExpr)
 		if !ok {
-			return x, rscope.Err().AppendInternalf(x.Source(), "%s is not a function: %T", x, x)
+			return x, rscope.Err().AppendInternalf(x.Node(), "%s is not a function: %T", x, x)
 		}
 	default:
-		return invalidExpr(), rscope.Err().AppendInternalf(x.Source(), "cannot specialise function call %T: not supported", x)
+		return invalidExpr(), rscope.Err().AppendInternalf(x.Node(), "cannot specialise function call %T: not supported", x)
 	}
 	typeExprs := make([]*ir.TypeValExpr, len(indices))
 	indicesOk := true
@@ -124,7 +124,7 @@ func specializeFunc(rscope resolveScope, x ir.Expr, indices []ir.AssignableExpr)
 	if !indicesOk {
 		return x, false
 	}
-	compEval, compEvalOk := compEvalForFuncType(rscope, x.Source(), fun.FuncType())
+	compEval, compEvalOk := compEvalForFuncType(rscope, x.Node(), fun.FuncType())
 	if !compEvalOk {
 		return x, false
 	}

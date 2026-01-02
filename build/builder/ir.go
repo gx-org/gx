@@ -96,7 +96,7 @@ func findStorage(scope resolveScope, name *ast.Ident) (ir.Storage, bool) {
 func storageFromExpr(scope resolveScope, expr ir.Expr) (ir.Storage, bool) {
 	withStore, ok := expr.(ir.WithStore)
 	if !ok {
-		return nil, scope.Err().AppendInternalf(expr.Source(), "%s:%T does not have a store", expr.String(), expr)
+		return nil, scope.Err().AppendInternalf(expr.Node(), "%s:%T does not have a store", expr.String(), expr)
 	}
 	store := withStore.Store()
 	if store == nil {
@@ -116,7 +116,7 @@ func typeFromStorage(rscope resolveScope, x ir.AssignableExpr, store ir.Storage)
 	}
 	typeRef, ok := value.(*ir.TypeValExpr)
 	if !ok {
-		return nil, rscope.Err().Appendf(x.Source(), "%s not a type", x.String())
+		return nil, rscope.Err().Appendf(x.Node(), "%s not a type", x.String())
 	}
 	return typeRef, true
 }
@@ -137,7 +137,7 @@ func valueFromStorage(rscope resolveScope, expr ir.Expr, store ir.Storage) (ir.A
 		if nameDef != nil {
 			name = nameDef.Name
 		}
-		return nil, rscope.Err().Appendf(store.Source(), "%s undefined", name)
+		return nil, rscope.Err().Appendf(store.Node(), "%s undefined", name)
 	}
 	return withValue.Value(expr), true
 }

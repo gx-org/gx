@@ -112,10 +112,10 @@ func (n *callExpr) buildTypeCast(rscope resolveScope, callee ir.AssignableExpr, 
 func checkNumArgs(rscope resolveScope, fn ir.Func, fType *ir.FuncType, numArgs int) bool {
 	numParams := fType.Params.Len()
 	if numArgs > numParams {
-		return rscope.Err().Appendf(fn.Source(), "too many arguments in call to %s", fn.ShortString())
+		return rscope.Err().Appendf(fn.Node(), "too many arguments in call to %s", fn.ShortString())
 	}
 	if numArgs < numParams {
-		return rscope.Err().Appendf(fn.Source(), "not enough arguments in call to %s", fn.ShortString())
+		return rscope.Err().Appendf(fn.Node(), "not enough arguments in call to %s", fn.ShortString())
 	}
 	return true
 }
@@ -132,7 +132,7 @@ func (n *callExpr) completeFuncType(rscope resolveScope, callee ir.Func, args []
 	case *ir.FuncKeyword:
 		impl = fT.Impl
 	default:
-		return nil, rscope.Err().AppendInternalf(callee.Source(), "missing function type but function %s:%T is not a builtin function", callee.ShortString(), callee)
+		return nil, rscope.Err().AppendInternalf(callee.Node(), "missing function type but function %s:%T is not a builtin function", callee.ShortString(), callee)
 	}
 	compEval, ok := rscope.compEval()
 	if !ok {
@@ -199,7 +199,7 @@ func (n *callExpr) buildMacroCall(rscope resolveScope, compEval *compileEvaluato
 	}))
 	defer rscope.Err().Pop()
 
-	synDecl, synScope, ok := buildSyntheticFuncSig(rscope.fileScope(), expr.Source(), fnBuilder, nil)
+	synDecl, synScope, ok := buildSyntheticFuncSig(rscope.fileScope(), expr.Node(), fnBuilder, nil)
 	if !ok {
 		return invalidExpr(), false
 	}
@@ -224,7 +224,7 @@ func (n *callExpr) buildCallExpr(rscope resolveScope, callee ir.AssignableExpr) 
 	}
 	el, err := compEval.fitp.EvalExpr(callee)
 	if err != nil {
-		return invalidExpr(), rscope.Err().AppendAt(callee.Source(), err)
+		return invalidExpr(), rscope.Err().AppendAt(callee.Node(), err)
 	}
 	switch elT := el.(type) {
 	case *cpevelements.Macro:
@@ -232,7 +232,7 @@ func (n *callExpr) buildCallExpr(rscope resolveScope, callee ir.AssignableExpr) 
 	case ir.Type:
 		return n.buildTypeCast(rscope, callee, elT)
 	case ir.FuncAnnotator:
-		return invalidExpr(), rscope.Err().Appendf(callee.Source(), "annotator gx:@%s only valid in a function annotation context", elT.ShortString())
+		return invalidExpr(), rscope.Err().Appendf(callee.Node(), "annotator gx:@%s only valid in a function annotation context", elT.ShortString())
 	case *fun.NamedType:
 		return n.buildTypeCast(rscope, callee, elT.Type())
 	case *ir.TypeValExpr:
@@ -243,9 +243,9 @@ func (n *callExpr) buildCallExpr(rscope resolveScope, callee ir.AssignableExpr) 
 			F: elT.Func(),
 		})
 	case *interp.Tuple:
-		return invalidExpr(), rscope.Err().Appendf(callee.Source(), "multiple value %s in single-value context", callee.String())
+		return invalidExpr(), rscope.Err().Appendf(callee.Node(), "multiple value %s in single-value context", callee.String())
 	default:
-		return invalidExpr(), rscope.Err().AppendInternalf(callee.Source(), "expression %s evaluated to element of type %T that is not callable. Scope:\n%s\nCompEval:\n%s", callee.String(), elT, rscope.String(), compEval.String())
+		return invalidExpr(), rscope.Err().AppendInternalf(callee.Node(), "expression %s evaluated to element of type %T that is not callable. Scope:\n%s\nCompEval:\n%s", callee.String(), elT, rscope.String(), compEval.String())
 	}
 }
 

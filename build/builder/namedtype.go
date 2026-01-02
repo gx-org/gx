@@ -100,7 +100,7 @@ func assignMethod(scope *fileResolveScope, ext *ir.NamedType, fn *irFunc) bool {
 	structType, ok := underlying.(*ir.StructType)
 	if ok {
 		if defined := structType.Fields.FindField(fn.irFunc.Name()); defined != nil {
-			return scope.Err().Appendf(fn.irFunc.Source(), "field and method with the same name %s", fn.irFunc.Name())
+			return scope.Err().Appendf(fn.irFunc.Node(), "field and method with the same name %s", fn.irFunc.Name())
 		}
 	}
 	// Check if a method has already been defined.
@@ -110,7 +110,7 @@ func assignMethod(scope *fileResolveScope, ext *ir.NamedType, fn *irFunc) bool {
 		scope.methods.Store(ext, methods)
 	}
 	if prev, hasPrev := methods.Load(ext.Name()); hasPrev {
-		return scope.Err().Appendf(fn.irFunc.Source(), "method %s.%s already declared at %s", ext.Name(), fn.irFunc.Name(), funcPos(scope, prev.bFunc))
+		return scope.Err().Appendf(fn.irFunc.Node(), "method %s.%s already declared at %s", ext.Name(), fn.irFunc.Name(), funcPos(scope, prev.bFunc))
 	}
 	methods.Store(fn.irFunc.Name(), fn)
 	ext.Methods = updateMethods(scope.pkgResolveScope, ext)

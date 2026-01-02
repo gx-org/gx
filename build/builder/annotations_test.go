@@ -82,7 +82,7 @@ func newBuildReturn(file *ir.File, call *ir.FuncCallExpr, macro *ir.Macro, args 
 }
 
 func (m *macroBuildReturn) BuildDecl(origFn ir.PkgFunc) (*ir.File, *ast.FuncDecl, bool) {
-	return m.tagFn.File(), origFn.Source().(*ast.FuncDecl), true
+	return m.tagFn.File(), origFn.Node().(*ast.FuncDecl), true
 }
 
 func (m *macroBuildReturn) BuildBody(fetcher ir.Fetcher, fn ir.Func) (*ast.BlockStmt, bool) {

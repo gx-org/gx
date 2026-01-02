@@ -62,7 +62,7 @@ func (n *stringLit) buildExpr(resolveScope) (ir.Expr, bool) {
 
 // Pos returns the position of the literal in the code.
 func (n *stringLit) source() ast.Node {
-	return n.ext.Source()
+	return n.ext.Node()
 }
 
 func (n *stringLit) String() string {
