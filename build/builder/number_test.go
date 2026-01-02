@@ -15,7 +15,6 @@
 package builder_test
 
 import (
-	"go/ast"
 	"testing"
 
 	"github.com/gx-org/gx/build/builder/testbuild"
@@ -24,37 +23,6 @@ import (
 )
 
 func TestNumber(t *testing.T) {
-	valField := irh.Field("val", ir.Float32Type(), nil)
-	typeA := &ir.NamedType{
-		File:       wantFile,
-		Src:        &ast.TypeSpec{Name: irh.Ident("A")},
-		Underlying: irh.TypeExpr(irh.StructType(valField)),
-	}
-	typeA.Methods = []ir.PkgFunc{
-		&ir.FuncDecl{
-			FType: irh.FuncType(
-				nil,
-				irh.Fields("a", typeA),
-				irh.Fields(),
-				irh.Fields(ir.Float32Type()),
-			),
-			Body: irh.Block(
-				&ir.AssignExprStmt{List: []*ir.AssignExpr{{
-					X: irh.FloatNumberAs(0, ir.Float32Type()),
-					Storage: &ir.StructFieldStorage{Sel: &ir.SelectorExpr{
-						X:    irh.ValueRef(typeA),
-						Stor: valField.Storage(),
-					}},
-				}}},
-				&ir.ReturnStmt{Results: []ir.Expr{
-					&ir.SelectorExpr{
-						X:    irh.ValueRef(typeA),
-						Stor: valField.Storage(),
-					},
-				}},
-			),
-		},
-	}
 	testbuild.Run(t,
 		testbuild.Decl{
 			Src: `
@@ -120,6 +88,36 @@ func f[T floats](x [___S]T) [S___]T {
 	return a
 }
 `,
+		},
+	)
+}
+
+func TestNumberArrayCast(t *testing.T) {
+	testbuild.Run(t,
+		testbuild.Decl{
+			Src: `
+func f() [2]float32 {
+	return [2]float32(1)
+}
+`,
+			Want: []ir.Node{
+				&ir.FuncDecl{
+					FType: irh.FuncType(
+						nil, nil,
+						irh.Fields(),
+						irh.Fields(irh.ArrayType(ir.Float32Type(), 2)),
+					),
+					Body: irh.Block(
+						&ir.ReturnStmt{
+							Results: []ir.Expr{
+								&ir.CastExpr{
+									Typ: irh.ArrayType(ir.Float32Type(), 2),
+									X:   irh.IntNumberAs(1, ir.Float32Type()),
+								},
+							},
+						},
+					)},
+			},
 		},
 	)
 }
