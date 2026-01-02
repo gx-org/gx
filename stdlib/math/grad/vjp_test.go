@@ -1092,5 +1092,43 @@ func vjpF[fwd0 floats](x [___S]fwd0) ([S___]fwd0, func(res [S___]fwd0) [S___]fwd
 }
 `,
 		},
+		testgrad.VJP{
+			Src: `
+func F(x float32) float32 {
+	x = x*x
+	x1 := x
+	x = x+x
+	x2 := x
+	return x1+x2
+}
+`,
+			Want: `
+func vjpF(x float32) (float32, func(res float32) float32) {
+	fwd0 := x*x
+	x1 := fwd0
+	x1_1 := x1
+	fwd1 := x1+x1
+	x2 := fwd1
+	x2_1 := x2
+	fwd2 := x1_1+x2_1
+	selfVJPFunc := func(res float32) float32 {
+		bck0x := res*x
+		bck0y := x*res
+		bckx := (bck0x+bck0y)
+		bck0x1 := res*x
+		bck0y1 := x*res
+		bckx1 := (bck0x1+bck0y1)
+		bckx2 := (bckx1+bckx)
+		bckx2_1 := bckx2
+		bck0x2 := res*x
+		bck0y2 := x*res
+		bckx3 := (bck0x2+bck0y2)
+		bckx1_1 := bckx3
+		return bckx1_1+bckx2_1
+	}
+	return fwd2, selfVJPFunc
+}
+`,
+		},
 	)
 }
