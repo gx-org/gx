@@ -51,16 +51,16 @@ type (
 		node()
 	}
 
-	// SourceNode is a node with a position in GX source code.
-	SourceNode interface {
+	// Node is a node with a position in GX source code.
+	Node interface {
 		IR
-		Source() ast.Node
+		Node() ast.Node
 	}
 
 	// Storage is a node that can store a value.
 	// (e.g. a field in a function)
 	Storage interface {
-		SourceNode
+		Node
 		storage()
 		NameDef() *ast.Ident
 		Same(Storage) bool
@@ -79,7 +79,7 @@ type (
 	// Value is a value used by the compiler. It can be any thing with a type (package, constant, ...).
 	// This is a superset of AssignableExpr.
 	Value interface {
-		SourceNode
+		Node
 		Type() Type
 	}
 
@@ -109,7 +109,7 @@ type (
 	// Unifier provides methods to unify types.
 	Unifier interface {
 		Fetcher
-		Source() ast.Node
+		Node() ast.Node
 		DefineTParam(tp *TypeParam, typ Type) bool
 		DefineAxis(*AxisStmt, []AxisLengths) ([]AxisLengths, bool)
 	}
@@ -164,7 +164,7 @@ type (
 	// ArrayType is a type with a rank.
 	ArrayType interface {
 		Zeroer
-		SourceNode
+		Node
 		SlicerType
 
 		// ArrayType returns the source code defining the array type.
@@ -496,9 +496,9 @@ func (s *atomicType) Specialise(Specialiser) (Type, error) {
 	return s, nil
 }
 
-// Source returns the source code defining the type.
+// Node returns the source code defining the type.
 // Always returns nil.
-func (s *atomicType) Source() ast.Node {
+func (s *atomicType) Node() ast.Node {
 	return s.ArrayType()
 }
 
@@ -612,8 +612,8 @@ func (s *NamedType) FullName() string {
 	return s.File.Package.Path + "." + s.Name()
 }
 
-// Source returns the node in the AST tree.
-func (s *NamedType) Source() ast.Node { return s.Src }
+// Node returns the node in the AST tree.
+func (s *NamedType) Node() ast.Node { return s.Src }
 
 // Name of the type.
 func (s *NamedType) Name() string {
@@ -710,8 +710,8 @@ func (s *StructType) ConvertibleTo(fetcher Fetcher, target Type) (bool, error) {
 	return false, nil
 }
 
-// Source returns the node in the AST tree.
-func (s *StructType) Source() ast.Node { return s.Src }
+// Node returns the node in the AST tree.
+func (s *StructType) Node() ast.Node { return s.Src }
 
 // Value returns a value pointing to the receiver.
 func (s *StructType) Value(x Expr) AssignableExpr {
@@ -775,8 +775,8 @@ func (s *SliceType) Value(x Expr) AssignableExpr {
 	return &TypeValExpr{X: x, Typ: s}
 }
 
-// Source returns the node in the AST tree.
-func (s *SliceType) Source() ast.Node { return s.Src }
+// Node returns the node in the AST tree.
+func (s *SliceType) Node() ast.Node { return s.Src }
 
 // ElementType returns the type of an element in that slice.
 func (s *SliceType) ElementType() (Type, bool) {
@@ -976,8 +976,8 @@ func (s *arrayType) Value(x Expr) AssignableExpr {
 	return &TypeValExpr{X: x, Typ: s}
 }
 
-// Source returns the node in the AST tree.
-func (s *arrayType) Source() ast.Node { return s.ArrayType() }
+// Node returns the node in the AST tree.
+func (s *arrayType) Node() ast.Node { return s.ArrayType() }
 
 // ArrayType returns the source code defining the type.
 func (s *arrayType) ArrayType() ast.Expr {
@@ -1073,9 +1073,9 @@ func (s *TypeParam) convertibleFrom(fetcher Fetcher, from Type) (bool, error) {
 	return from.ConvertibleTo(fetcher, s.Field.Type())
 }
 
-// Source defining the type.
-func (s *TypeParam) Source() ast.Node {
-	return s.Field.Type().Source()
+// Node defining the type.
+func (s *TypeParam) Node() ast.Node {
+	return s.Field.Type().Node()
 }
 
 // Type of the type.
@@ -1470,8 +1470,8 @@ func (*FuncDecl) storage()      {}
 func (*FuncDecl) storageValue() {}
 func (*FuncDecl) pkgFunc()      {}
 
-// Source returns the node in the AST tree.
-func (s *FuncDecl) Source() ast.Node { return s.Src }
+// Node returns the node in the AST tree.
+func (s *FuncDecl) Node() ast.Node { return s.Src }
 
 // Name of the function. Returns an empty string if the function is anonymous.
 func (s *FuncDecl) Name() string {
@@ -1553,8 +1553,8 @@ func (*FuncBuiltin) storage()      {}
 func (*FuncBuiltin) storageValue() {}
 func (*FuncBuiltin) pkgFunc()      {}
 
-// Source returns the node in the AST tree.
-func (s *FuncBuiltin) Source() ast.Node { return s.Src }
+// Node returns the node in the AST tree.
+func (s *FuncBuiltin) Node() ast.Node { return s.Src }
 
 // Name of the function. Returns an empty string if the function is anonymous.
 func (s *FuncBuiltin) Name() string {
@@ -1619,8 +1619,8 @@ func (s *FuncBuiltin) New() PkgFunc {
 func (*FuncKeyword) node()    {}
 func (*FuncKeyword) storage() {}
 
-// Source returns the node in the AST tree.
-func (s *FuncKeyword) Source() ast.Node { return s.ID }
+// Node returns the node in the AST tree.
+func (s *FuncKeyword) Node() ast.Node { return s.ID }
 
 // NameDef is the name definition of the function.
 func (s *FuncKeyword) NameDef() *ast.Ident {
@@ -1732,8 +1732,8 @@ func (s *FuncLit) Same(o Storage) bool {
 	return Storage(s) == o
 }
 
-// Source returns the node in the AST tree.
-func (s *FuncLit) Source() ast.Node { return s.Src }
+// Node returns the node in the AST tree.
+func (s *FuncLit) Node() ast.Node { return s.Src }
 
 // Expr returns the expression in the source code.
 func (s *FuncLit) Expr() ast.Expr { return s.Src }
@@ -1748,8 +1748,8 @@ func (*ImportDecl) staticValue()  {}
 func (*ImportDecl) storage()      {}
 func (*ImportDecl) storageValue() {}
 
-// Source returns the node in the AST tree.
-func (s *ImportDecl) Source() ast.Node {
+// Node returns the node in the AST tree.
+func (s *ImportDecl) Node() ast.Node {
 	return s.Src
 }
 
@@ -1800,8 +1800,8 @@ func (*ConstExpr) node()         {}
 func (*ConstExpr) storage()      {}
 func (*ConstExpr) storageValue() {}
 
-// Source returns the node in the AST tree.
-func (cst *ConstExpr) Source() ast.Node {
+// Node returns the node in the AST tree.
+func (cst *ConstExpr) Node() ast.Node {
 	return cst.VName
 }
 
@@ -1833,8 +1833,8 @@ func (*VarSpec) node() {}
 func (*VarExpr) node()    {}
 func (*VarExpr) storage() {}
 
-// Source returns the node in the AST tree.
-func (vr *VarExpr) Source() ast.Node {
+// Node returns the node in the AST tree.
+func (vr *VarExpr) Node() ast.Node {
 	return vr.VName
 }
 
@@ -1879,15 +1879,15 @@ type (
 )
 
 var (
-	_ SourceNode = (*FieldList)(nil)
-	_ SourceNode = (*FieldGroup)(nil)
-	_ Expr       = (*Field)(nil)
+	_ Node = (*FieldList)(nil)
+	_ Node = (*FieldGroup)(nil)
+	_ Expr = (*Field)(nil)
 )
 
 func (*FieldList) node() {}
 
-// Source returns the source defining the field.
-func (s *FieldList) Source() ast.Node {
+// Node returns the source defining the field.
+func (s *FieldList) Node() ast.Node {
 	return s.Src
 }
 
@@ -1961,8 +1961,8 @@ func (s *FieldList) TupleType() *TupleType {
 
 func (*FieldGroup) node() {}
 
-// Source returns the node in the AST tree.
-func (s *FieldGroup) Source() ast.Node {
+// Node returns the node in the AST tree.
+func (s *FieldGroup) Node() ast.Node {
 	if len(s.Src.Names) > 0 {
 		return s.Src.Names[0]
 	}
@@ -1984,10 +1984,10 @@ func (s *Field) Expr() ast.Expr {
 	return s.Name
 }
 
-// Source returns the source defining the field.
-func (s *Field) Source() ast.Node {
+// Node returns the source defining the field.
+func (s *Field) Node() ast.Node {
 	if s.Name == nil {
-		return s.Group.Source()
+		return s.Group.Node()
 	}
 	return s.Name
 }
@@ -2018,7 +2018,7 @@ func (s *Field) String() string {
 type (
 	// Expr is an expression that returns a (typed) result.
 	Expr interface {
-		SourceNode
+		Node
 		Type() Type
 		String() string
 	}
@@ -2128,7 +2128,7 @@ type (
 
 	// Callee function being called from a call expression.
 	Callee interface {
-		SourceNode
+		Node
 		Func() Func
 		FuncType() *FuncType
 		ShortString() string
@@ -2296,8 +2296,8 @@ func (s *NumberFloat) Zero() AssignableExpr {
 // Expr returns the AST expression.
 func (s *NumberFloat) Expr() ast.Expr { return s.Src }
 
-// Source returns the node in the AST tree.
-func (s *NumberFloat) Source() ast.Node { return s.Src }
+// Node returns the node in the AST tree.
+func (s *NumberFloat) Node() ast.Node { return s.Src }
 
 // Type returns the type returned by the function call.
 func (s *NumberFloat) Type() Type { return NumberFloatType() }
@@ -2321,8 +2321,8 @@ func (s *NumberInt) Zero() AssignableExpr {
 // Expr returns the AST expression.
 func (s *NumberInt) Expr() ast.Expr { return s.Src }
 
-// Source returns the node in the AST tree.
-func (s *NumberInt) Source() ast.Node { return s.Src }
+// Node returns the node in the AST tree.
+func (s *NumberInt) Node() ast.Node { return s.Src }
 
 // Type returns the type returned by the function call.
 func (s *NumberInt) Type() Type { return NumberIntType() }
@@ -2334,8 +2334,8 @@ func (s *NumberCastExpr) node()        {}
 func (s *NumberCastExpr) staticValue() {}
 func (s *NumberCastExpr) assignable()  {}
 
-// Source returns the node in the AST tree.
-func (s *NumberCastExpr) Source() ast.Node { return s.X.Source() }
+// Node returns the node in the AST tree.
+func (s *NumberCastExpr) Node() ast.Node { return s.X.Node() }
 
 // Type returns the type returned by the function call.
 func (s *NumberCastExpr) Type() Type { return s.Typ }
@@ -2352,8 +2352,8 @@ func (s *StringLiteral) assignable()  {}
 // Expr returns the AST expression.
 func (s *StringLiteral) Expr() ast.Expr { return s.Src }
 
-// Source returns the node in the AST tree.
-func (s *StringLiteral) Source() ast.Node { return s.Src }
+// Node returns the node in the AST tree.
+func (s *StringLiteral) Node() ast.Node { return s.Src }
 
 // Type returns the type returned by the function call.
 func (s *StringLiteral) Type() Type { return StringType() }
@@ -2368,8 +2368,8 @@ func (s *AtomicValueT[T]) assignable()  {}
 // Expr returns the AST expression.
 func (s *AtomicValueT[T]) Expr() ast.Expr { return s.Src }
 
-// Source returns the node in the AST tree.
-func (s *AtomicValueT[T]) Source() ast.Node { return s.Src }
+// Node returns the node in the AST tree.
+func (s *AtomicValueT[T]) Node() ast.Node { return s.Src }
 
 // Type returns the type returned by the function call.
 func (s *AtomicValueT[T]) Type() Type { return s.Typ }
@@ -2380,8 +2380,8 @@ func (s *AtomicValueT[T]) String() string { return fmt.Sprint(s.Val) }
 func (s *ArrayLitExpr) node()       {}
 func (s *ArrayLitExpr) assignable() {}
 
-// Source returns the node in the AST tree.
-func (s *ArrayLitExpr) Source() ast.Node {
+// Node returns the node in the AST tree.
+func (s *ArrayLitExpr) Node() ast.Node {
 	return s.Src
 }
 
@@ -2405,8 +2405,8 @@ func (s *ArrayLitExpr) NewFromValues(elts []AssignableExpr) *ArrayLitExpr {
 func (s *StructLitExpr) node()       {}
 func (s *StructLitExpr) assignable() {}
 
-// Source returns the node in the AST tree.
-func (s *StructLitExpr) Source() ast.Node { return s.Src }
+// Node returns the node in the AST tree.
+func (s *StructLitExpr) Node() ast.Node { return s.Src }
 
 // Type returns the type returned by the function call.
 func (s *StructLitExpr) Type() Type { return s.Typ }
@@ -2420,8 +2420,8 @@ func (s *StructLitExpr) String() string { return s.Type().String() }
 func (s *SliceLitExpr) node()       {}
 func (s *SliceLitExpr) assignable() {}
 
-// Source returns the node in the AST tree.
-func (s *SliceLitExpr) Source() ast.Node { return s.Src }
+// Node returns the node in the AST tree.
+func (s *SliceLitExpr) Node() ast.Node { return s.Src }
 
 // Type returns the type returned by the function call.
 func (s *SliceLitExpr) Type() Type { return s.Typ }
@@ -2432,8 +2432,8 @@ func (s *SliceLitExpr) Expr() ast.Expr { return s.Src }
 func (s *UnaryExpr) node()       {}
 func (s *UnaryExpr) assignable() {}
 
-// Source returns the node in the AST tree.
-func (s *UnaryExpr) Source() ast.Node { return s.Src }
+// Node returns the node in the AST tree.
+func (s *UnaryExpr) Node() ast.Node { return s.Src }
 
 // Type returns the type returned by the expression.
 func (s *UnaryExpr) Type() Type { return s.X.Type() }
@@ -2447,8 +2447,8 @@ func (s *UnaryExpr) String() string { return s.Src.Op.String() + s.X.String() }
 func (s *ParenExpr) node()       {}
 func (s *ParenExpr) assignable() {}
 
-// Source returns the node in the AST tree.
-func (s *ParenExpr) Source() ast.Node { return s.Src }
+// Node returns the node in the AST tree.
+func (s *ParenExpr) Node() ast.Node { return s.Src }
 
 // Type returns the type returned by the expression.
 func (s *ParenExpr) Type() Type { return s.X.Type() }
@@ -2471,8 +2471,8 @@ func (s *ParenExpr) String() string { return "(" + s.X.String() + ")" }
 func (s *BinaryExpr) node()       {}
 func (s *BinaryExpr) assignable() {}
 
-// Source returns the node in the AST tree.
-func (s *BinaryExpr) Source() ast.Node { return s.Src }
+// Node returns the node in the AST tree.
+func (s *BinaryExpr) Node() ast.Node { return s.Src }
 
 // Type returned by the expression.
 func (s *BinaryExpr) Type() Type { return s.Typ }
@@ -2484,8 +2484,8 @@ func (s *TypeValExpr) node()       {}
 func (s *TypeValExpr) typeExpr()   {}
 func (s *TypeValExpr) assignable() {}
 
-// Source returns the node in the AST tree.
-func (s *TypeValExpr) Source() ast.Node { return s.X.Source() }
+// Node returns the node in the AST tree.
+func (s *TypeValExpr) Node() ast.Node { return s.X.Node() }
 
 // Type of the function being called.
 func (s *TypeValExpr) Type() Type {
@@ -2503,12 +2503,12 @@ func (s *TypeValExpr) String() string { return s.Typ.String() }
 func (s *FuncValExpr) node()       {}
 func (s *FuncValExpr) assignable() {}
 
-// Source returns the node in the AST tree.
-func (s *FuncValExpr) Source() ast.Node {
+// Node returns the node in the AST tree.
+func (s *FuncValExpr) Node() ast.Node {
 	if s.X != nil {
-		return s.X.Source()
+		return s.X.Node()
 	}
-	return s.F.Source()
+	return s.F.Node()
 }
 
 // Func returns the function being called.
@@ -2556,8 +2556,8 @@ func (s *FuncValExpr) String() string {
 func (s *FuncCallExpr) node()       {}
 func (s *FuncCallExpr) assignable() {}
 
-// Source returns the node in the AST tree.
-func (s *FuncCallExpr) Source() ast.Node { return s.Call() }
+// Node returns the node in the AST tree.
+func (s *FuncCallExpr) Node() ast.Node { return s.Call() }
 
 // Call returns the source of the call.
 func (s *FuncCallExpr) Call() *ast.CallExpr { return s.Src }
@@ -2590,8 +2590,8 @@ func (s *FuncCallExpr) ExprFromResult(i int) *CallResultExpr {
 func (s *CallResultExpr) node()       {}
 func (s *CallResultExpr) assignable() {}
 
-// Source returns the node in the AST tree.
-func (s *CallResultExpr) Source() ast.Node { return s.Call.Source() }
+// Node returns the node in the AST tree.
+func (s *CallResultExpr) Node() ast.Node { return s.Call.Node() }
 
 // Type returns the type returned by the function call.
 // Use CallExpr.Func.Type to get the type of the function being called.
@@ -2608,8 +2608,8 @@ func (s *CallResultExpr) String() string { return fmt.Sprintf("%T", s) }
 func (s *CastExpr) node()       {}
 func (s *CastExpr) assignable() {}
 
-// Source returns the node in the AST tree.
-func (s *CastExpr) Source() ast.Node { return s.Src }
+// Node returns the node in the AST tree.
+func (s *CastExpr) Node() ast.Node { return s.Src }
 
 // Type returns the target type of the cast.
 func (s *CastExpr) Type() Type { return s.Typ }
@@ -2623,8 +2623,8 @@ func (s *CastExpr) Orig() Expr { return s.X }
 func (s *TypeAssertExpr) node()       {}
 func (s *TypeAssertExpr) assignable() {}
 
-// Source returns the node in the AST tree.
-func (s *TypeAssertExpr) Source() ast.Node { return s.Src }
+// Node returns the node in the AST tree.
+func (s *TypeAssertExpr) Node() ast.Node { return s.Src }
 
 // Type returns the target type of the cast.
 func (s *TypeAssertExpr) Type() Type { return s.Typ }
@@ -2638,8 +2638,8 @@ func (s *TypeAssertExpr) Orig() Expr { return s.X }
 func (s *ValueRef) node()       {}
 func (s *ValueRef) assignable() {}
 
-// Source returns the node in the AST tree.
-func (s *ValueRef) Source() ast.Node { return s.Src }
+// Node returns the node in the AST tree.
+func (s *ValueRef) Node() ast.Node { return s.Src }
 
 // Type returns the type returned by the function call.
 // Use CallExpr.Func.Type to get the type of the function being called.
@@ -2657,8 +2657,8 @@ func (s *ValueRef) String() string { return s.Src.Name }
 func (s *PackageRef) node()       {}
 func (s *PackageRef) assignable() {}
 
-// Source returns the node in the AST tree.
-func (s *PackageRef) Source() ast.Node { return s.X.Source() }
+// Node returns the node in the AST tree.
+func (s *PackageRef) Node() ast.Node { return s.X.Node() }
 
 // Type returns the package type.
 func (s *PackageRef) Type() Type { return PackageType() }
@@ -2682,8 +2682,8 @@ func (lit *FieldLit) Same(o Storage) bool {
 func (s *SelectorExpr) node()       {}
 func (s *SelectorExpr) assignable() {}
 
-// Source returns the node in the AST tree.
-func (s *SelectorExpr) Source() ast.Node { return s.Src }
+// Node returns the node in the AST tree.
+func (s *SelectorExpr) Node() ast.Node { return s.Src }
 
 // Type returns the type returned after the selection.
 func (s *SelectorExpr) Type() Type { return s.Stor.Type() }
@@ -2717,8 +2717,8 @@ func (s *SelectorExpr) Store() Storage {
 func (s *IndexExpr) node()       {}
 func (s *IndexExpr) assignable() {}
 
-// Source returns the node in the AST tree.
-func (s *IndexExpr) Source() ast.Node { return s.Src }
+// Node returns the node in the AST tree.
+func (s *IndexExpr) Node() ast.Node { return s.Src }
 
 // Type returns the type of the indexed element.
 func (s *IndexExpr) Type() Type { return s.Typ }
@@ -2729,8 +2729,8 @@ func (s *IndexExpr) Expr() ast.Expr { return s.Src }
 func (s *IndexListExpr) node()       {}
 func (s *IndexListExpr) assignable() {}
 
-// Source returns the node in the AST tree.
-func (s *IndexListExpr) Source() ast.Node { return s.Src }
+// Node returns the node in the AST tree.
+func (s *IndexListExpr) Node() ast.Node { return s.Src }
 
 // Type returns the type of the indexed element.
 func (s *IndexListExpr) Type() Type { return s.Typ }
@@ -2744,8 +2744,8 @@ func (s *IndexListExpr) String() string { return fmt.Sprintf("%T", s) }
 func (s *EinsumExpr) node()       {}
 func (s *EinsumExpr) assignable() {}
 
-// Source returns the node in the AST tree.
-func (s *EinsumExpr) Source() ast.Node { return s.Src }
+// Node returns the node in the AST tree.
+func (s *EinsumExpr) Node() ast.Node { return s.Src }
 
 // Type returns the type returned by the einsum.
 func (s *EinsumExpr) Type() Type { return s.Typ }
@@ -2758,8 +2758,8 @@ func (s *EinsumExpr) String() string { return fmt.Sprintf("%T", s) }
 
 func (s *RuntimeValueExprT[T]) node() {}
 
-// Source returns the node in the AST tree.
-func (s *RuntimeValueExprT[T]) Source() ast.Node { return s.Src }
+// Node returns the node in the AST tree.
+func (s *RuntimeValueExprT[T]) Node() ast.Node { return s.Src }
 
 // Expr returns the expression in the source code.
 func (s *RuntimeValueExprT[T]) Expr() ast.Expr { return s.Src }
@@ -2785,7 +2785,7 @@ func (s *Tuple) Type() Type {
 	}
 	var src ast.Expr
 	if len(s.Exprs) > 0 {
-		src = s.Exprs[0].Source().(ast.Expr)
+		src = s.Exprs[0].Node().(ast.Expr)
 	}
 	return &TupleType{
 		BaseType: BaseType[ast.Expr]{Src: src},
@@ -2793,12 +2793,12 @@ func (s *Tuple) Type() Type {
 	}
 }
 
-// Source returns the node in the AST tree.
-func (s *Tuple) Source() ast.Node {
+// Node returns the node in the AST tree.
+func (s *Tuple) Node() ast.Node {
 	if len(s.Exprs) == 0 {
 		return nil
 	}
-	return s.Exprs[0].Source()
+	return s.Exprs[0].Node()
 }
 
 // ----------------------------------------------------------------------------
@@ -2839,8 +2839,8 @@ var (
 func (*AnonymousStorage) node()    {}
 func (*AnonymousStorage) storage() {}
 
-// Source returns the node in the AST tree.
-func (s *AnonymousStorage) Source() ast.Node { return s.Src }
+// Node returns the node in the AST tree.
+func (s *AnonymousStorage) Node() ast.Node { return s.Src }
 
 // Expr returns the expression in the AST tree.
 func (s *AnonymousStorage) Expr() ast.Expr { return s.Src }
@@ -2859,8 +2859,8 @@ func (s *AnonymousStorage) Same(o Storage) bool {
 func (*LocalVarStorage) node()    {}
 func (*LocalVarStorage) storage() {}
 
-// Source returns the node in the AST tree.
-func (s *LocalVarStorage) Source() ast.Node { return s.Src }
+// Node returns the node in the AST tree.
+func (s *LocalVarStorage) Node() ast.Node { return s.Src }
 
 // Expr returns the expression in the AST tree.
 func (s *LocalVarStorage) Expr() ast.Expr { return s.Src }
@@ -2879,8 +2879,8 @@ func (s *LocalVarStorage) Same(o Storage) bool {
 func (*StructFieldStorage) node()    {}
 func (*StructFieldStorage) storage() {}
 
-// Source returns the node in the AST tree.
-func (s *StructFieldStorage) Source() ast.Node { return s.Expr() }
+// Node returns the node in the AST tree.
+func (s *StructFieldStorage) Node() ast.Node { return s.Expr() }
 
 // Expr returns the expression in the AST tree.
 func (s *StructFieldStorage) Expr() ast.Expr { return s.Sel.Expr() }
@@ -2899,9 +2899,9 @@ func (s *StructFieldStorage) Same(o Storage) bool {
 func (*FieldStorage) node()    {}
 func (*FieldStorage) storage() {}
 
-// Source returns the node in the AST tree.
-func (s *FieldStorage) Source() ast.Node {
-	return s.Field.Source()
+// Node returns the node in the AST tree.
+func (s *FieldStorage) Node() ast.Node {
+	return s.Field.Node()
 }
 
 // Type of the destination of the assignment.
@@ -2931,7 +2931,7 @@ type (
 	// Stmt is a statement that performs an action.
 	// No value is being returned.
 	Stmt interface {
-		SourceNode
+		Node
 		// stmtNode marks a structure as a statement structure.
 		stmtNode()
 		String() string
@@ -3023,14 +3023,14 @@ var (
 func (*BlockStmt) stmtNode() {}
 func (*BlockStmt) node()     {}
 
-// Source returns the node in the AST tree.
-func (s *BlockStmt) Source() ast.Node { return s.Src }
+// Node returns the node in the AST tree.
+func (s *BlockStmt) Node() ast.Node { return s.Src }
 
 func (*ReturnStmt) stmtNode() {}
 func (*ReturnStmt) node()     {}
 
-// Source returns the node in the AST tree.
-func (s *ReturnStmt) Source() ast.Node { return s.Src }
+// Node returns the node in the AST tree.
+func (s *ReturnStmt) Node() ast.Node { return s.Src }
 
 // Type of the result being returned.
 func (s *ReturnStmt) Type() Type {
@@ -3047,37 +3047,37 @@ func (s *ReturnStmt) Type() Type {
 func (*AssignCallStmt) stmtNode() {}
 func (*AssignCallStmt) node()     {}
 
-// Source returns the node in the AST tree.
-func (s *AssignCallStmt) Source() ast.Node { return s.Src }
+// Node returns the node in the AST tree.
+func (s *AssignCallStmt) Node() ast.Node { return s.Src }
 
 func (*AssignExprStmt) stmtNode() {}
 func (*AssignExprStmt) node()     {}
 
-// Source returns the node in the AST tree.
-func (s *AssignExprStmt) Source() ast.Node { return s.Src }
+// Node returns the node in the AST tree.
+func (s *AssignExprStmt) Node() ast.Node { return s.Src }
 
 func (*RangeStmt) stmtNode() {}
 func (*RangeStmt) node()     {}
 
-// Source returns the node in the AST tree.
-func (s *RangeStmt) Source() ast.Node { return s.Src }
+// Node returns the node in the AST tree.
+func (s *RangeStmt) Node() ast.Node { return s.Src }
 
 func (*IfStmt) stmtNode() {}
 func (*IfStmt) node()     {}
 
-// Source returns the node in the AST tree.
-func (s *IfStmt) Source() ast.Node { return s.Src }
+// Node returns the node in the AST tree.
+func (s *IfStmt) Node() ast.Node { return s.Src }
 
 func (*ExprStmt) stmtNode() {}
 func (*ExprStmt) node()     {}
 
-// Source returns the node in the AST tree.
-func (s *ExprStmt) Source() ast.Node { return s.Src }
+// Node returns the node in the AST tree.
+func (s *ExprStmt) Node() ast.Node { return s.Src }
 
 func (*DeclStmt) node() {}
 
-// Source returns the original source node, satisfying the Node interface part of Stmt.
-func (s *DeclStmt) Source() ast.Node { return s.Src }
+// Node returns the original source node, satisfying the Node interface part of Stmt.
+func (s *DeclStmt) Node() ast.Node { return s.Src }
 
 func (*DeclStmt) stmtNode() {}
 

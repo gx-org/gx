@@ -294,11 +294,11 @@ func (v *validator) validatePackage(pkg *ir.Package) {
 
 // CheckSource checks that Source and File return non-nil values.
 func CheckSource(errs *fmterr.Errors, node ir.IR) {
-	src, ok := node.(ir.SourceNode)
+	src, ok := node.(ir.Node)
 	if !ok {
 		return
 	}
-	if src.Source() == nil {
+	if src.Node() == nil {
 		errs.Append(fmt.Errorf("validator: %T.Source() returns nil", src))
 	}
 }

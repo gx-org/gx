@@ -29,7 +29,7 @@ func (*builtinStorage) node()         {}
 func (*builtinStorage) storage()      {}
 func (*builtinStorage) storageValue() {}
 
-func (s *builtinStorage) Source() ast.Node {
+func (s *builtinStorage) Node() ast.Node {
 	return s.name
 }
 

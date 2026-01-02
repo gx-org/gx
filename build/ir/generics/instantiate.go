@@ -55,7 +55,7 @@ func instantiateAxisExpr(fetcher ir.Fetcher, axis *ir.AxisExpr) ([]ir.AxisLength
 }
 
 func exprSource(e ir.Expr) ast.Expr {
-	src := e.Source()
+	src := e.Node()
 	if src == nil {
 		return nil
 	}
@@ -101,7 +101,7 @@ func instantiateRank(fetcher ir.Fetcher, rank ir.ArrayRank) (ir.ArrayRank, bool)
 		axes = append(axes, axs...)
 	}
 	return &ir.Rank{
-		Src: rank.Source().(*ast.ArrayType),
+		Src: rank.Node().(*ast.ArrayType),
 		Ax:  axes,
 	}, ok
 }

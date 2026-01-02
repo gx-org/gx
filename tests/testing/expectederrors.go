@@ -204,7 +204,7 @@ func CompareToExpectedErrors(pkg *ir.Package, err error) (int, error) {
 	// A package with expected errors cannot have test functions.
 	// These tests would not be run anyway.
 	for _, fn := range testFuncs {
-		out.Append(fmterr.Errorf(pkg.FSet, fn.Source(), "test function %s in a package with expected errors not supported", fn.Name()))
+		out.Append(fmterr.Errorf(pkg.FSet, fn.Node(), "test function %s in a package with expected errors not supported", fn.Name()))
 	}
 	return numExpectedErrors, out.ToError()
 }

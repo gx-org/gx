@@ -31,7 +31,7 @@ type importedFunc struct {
 var _ irb.Node[*pkgResolveScope] = (*importedFunc)(nil)
 
 func (f *importedFunc) source() ast.Node {
-	return f.fn.Source()
+	return f.fn.Node()
 }
 
 func (f *importedFunc) fnSource() *ast.FuncDecl {

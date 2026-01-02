@@ -35,8 +35,8 @@ func (BaseType[T]) storageValue() {}
 // NameDef of the base type always returns a nil name definition.
 func (BaseType[T]) NameDef() *ast.Ident { return nil }
 
-// Source returns the source node defining the type.
-func (m *BaseType[T]) Source() ast.Node {
+// Node returns the source node defining the type.
+func (m *BaseType[T]) Node() ast.Node {
 	return m.Src
 }
 
@@ -117,7 +117,7 @@ func (*invalidType) node()         {}
 func (*invalidType) storage()      {}
 func (*invalidType) storageValue() {}
 
-func (*invalidType) Source() ast.Node { return nil }
+func (*invalidType) Node() ast.Node { return nil }
 
 func (*invalidType) Same(Storage) bool {
 	return true

@@ -47,17 +47,17 @@ func (f while) BuildFuncIR(impl *impl.Stdlib, pkg *ir.Package) (*ir.FuncBuiltin,
 func (f while) BuildFuncType(fetcher ir.Fetcher, call *ir.FuncCallExpr) (*ir.FuncType, error) {
 	stateType := call.Args[0].Type()
 	condType := &ir.FuncType{ // `func(state T) bool`
-		BaseType: ir.BaseType[*ast.FuncType]{Src: &ast.FuncType{Func: call.Source().Pos()}},
+		BaseType: ir.BaseType[*ast.FuncType]{Src: &ast.FuncType{Func: call.Node().Pos()}},
 		Params:   builtins.Fields(call, stateType),
 		Results:  builtins.Fields(call, ir.BoolType()),
 	}
 	bodyType := &ir.FuncType{ // `func(state T) T`
-		BaseType: ir.BaseType[*ast.FuncType]{Src: &ast.FuncType{Func: call.Source().Pos()}},
+		BaseType: ir.BaseType[*ast.FuncType]{Src: &ast.FuncType{Func: call.Node().Pos()}},
 		Params:   builtins.Fields(call, stateType),
 		Results:  builtins.Fields(call, stateType),
 	}
 	return &ir.FuncType{
-		BaseType: ir.BaseType[*ast.FuncType]{Src: &ast.FuncType{Func: call.Source().Pos()}},
+		BaseType: ir.BaseType[*ast.FuncType]{Src: &ast.FuncType{Func: call.Node().Pos()}},
 		Params:   builtins.Fields(call, stateType, condType, bodyType),
 		Results:  builtins.Fields(call, stateType),
 	}, nil

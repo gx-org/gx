@@ -85,24 +85,24 @@ func (f concat) resultsType(fetcher ir.Fetcher, call *ir.FuncCallExpr) (params [
 	}
 	arrayTypes, err := builtins.NarrowTypes[ir.ArrayType](fetcher, call, params[1:])
 	if err != nil {
-		return nil, nil, fmterr.Errorf(fetcher.File().FileSet(), call.Source(), "expected all arguments but the first to be arrays in call to %s, but %s", f.Func.Name(), err)
+		return nil, nil, fmterr.Errorf(fetcher.File().FileSet(), call.Node(), "expected all arguments but the first to be arrays in call to %s, but %s", f.Func.Name(), err)
 	}
 	arrayDataType := func(t ir.ArrayType) (ir.Type, error) { return t.DataType(), nil }
 	isSameKind := func(lhs, rhs ir.Type) bool { return lhs.Kind() == rhs.Kind() }
 	dtype, err := checkConsistent(arrayTypes, arrayDataType, isSameKind)
 	if err != nil {
-		return nil, nil, fmterr.Errorf(fetcher.File().FileSet(), call.Source(), "expected arrays of the same data type in call to %s, but %s", f.Func.Name(), err)
+		return nil, nil, fmterr.Errorf(fetcher.File().FileSet(), call.Node(), "expected arrays of the same data type in call to %s, but %s", f.Func.Name(), err)
 	}
 	isEqual := func(lhs, rhs int) bool { return lhs == rhs }
 	_, err = checkConsistent(arrayTypes, numAxes(fetcher, call), isEqual)
 	if err != nil {
-		return nil, nil, fmterr.Errorf(fetcher.File().FileSet(), call.Source(), "expected all arguments to be arrays of the same rank in call to %s, but %s", f.Func.Name(), err)
+		return nil, nil, fmterr.Errorf(fetcher.File().FileSet(), call.Node(), "expected all arguments to be arrays of the same rank in call to %s, but %s", f.Func.Name(), err)
 	}
 
 	// Check that all but the concatenated dimension match, determine dimensions after concat.
 	firstDims := arrayTypes[0].Rank().Axes()
 	if axis < 0 || int(axis) >= len(firstDims) {
-		return nil, nil, fmterr.Errorf(fetcher.File().FileSet(), call.Source(), "axis %d is out of bounds for array of rank %d in call to Concat", axis, len(firstDims))
+		return nil, nil, fmterr.Errorf(fetcher.File().FileSet(), call.Node(), "axis %d is out of bounds for array of rank %d in call to Concat", axis, len(firstDims))
 	}
 	var outputDims []ir.AxisLengths = make([]ir.AxisLengths, len(firstDims))
 	copy(outputDims, firstDims)
@@ -117,10 +117,10 @@ func (f concat) resultsType(fetcher ir.Fetcher, call *ir.FuncCallExpr) (params [
 			}
 			ok, err := axJ.AssignableTo(fetcher, outputDims[j])
 			if err != nil {
-				return nil, nil, fmterr.AtNode(fetcher.File().FileSet(), call.Source(), err)
+				return nil, nil, fmterr.AtNode(fetcher.File().FileSet(), call.Node(), err)
 			}
 			if !ok {
-				return nil, nil, fmterr.Errorf(fetcher.File().FileSet(), call.Source(),
+				return nil, nil, fmterr.Errorf(fetcher.File().FileSet(), call.Node(),
 					"argument %d (shape: %v) incompatible with initial shape (%v) in %s call: dimension %d, %s != %s",
 					i+1, arrayTypes[i].Rank(), arrayTypes[0].Rank(), f.Name(), j, axJ, outputDims[j])
 			}
@@ -142,7 +142,7 @@ func (f concat) BuildFuncType(fetcher ir.Fetcher, call *ir.FuncCallExpr) (*ir.Fu
 		return nil, err
 	}
 	return &ir.FuncType{
-		BaseType: ir.BaseType[*ast.FuncType]{Src: &ast.FuncType{Func: call.Source().Pos()}},
+		BaseType: ir.BaseType[*ast.FuncType]{Src: &ast.FuncType{Func: call.Node().Pos()}},
 		Params:   builtins.Fields(call, params...),
 		Results:  builtins.Fields(call, result),
 	}, nil

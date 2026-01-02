@@ -28,10 +28,10 @@ func SetGrad(fetcher ir.Fetcher, ann *ir.Annotator, fn ir.PkgFunc, call *ir.Func
 	params := fn.FuncType().Params.Fields()
 	switch len(params) {
 	case 0:
-		return fetcher.Err().Appendf(call.Source(), "cannot set gradient of %s: function has no argument", fn.Name())
+		return fetcher.Err().Appendf(call.Node(), "cannot set gradient of %s: function has no argument", fn.Name())
 	case 1:
 	default:
-		return fetcher.Err().Appendf(call.Source(), "use %s.SetFor to set the gradient of a function with more than one parameter", fn.File().Package.Name.Name)
+		return fetcher.Err().Appendf(call.Node(), "use %s.SetFor to set the gradient of a function with more than one parameter", fn.File().Package.Name.Name)
 	}
 	field := params[0]
 	paramName := "_"
@@ -45,15 +45,15 @@ func SetGrad(fetcher ir.Fetcher, ann *ir.Annotator, fn ir.PkgFunc, call *ir.Func
 func SetGradFor(fetcher ir.Fetcher, ann *ir.Annotator, fn ir.PkgFunc, call *ir.FuncCallExpr, args []ir.Element) bool {
 	arg0, err := fetcher.EvalExpr(call.Args[0])
 	if err != nil {
-		return fetcher.Err().AppendAt(call.Args[0].Source(), err)
+		return fetcher.Err().AppendAt(call.Args[0].Node(), err)
 	}
 	paramName, err := elements.StringFromElement(arg0)
 	if err != nil {
-		return fetcher.Err().AppendAt(call.Args[0].Source(), err)
+		return fetcher.Err().AppendAt(call.Args[0].Node(), err)
 	}
 	paramPos := findNameInFields(paramName, fn.FuncType().Params)
 	if paramPos < 0 {
-		return fetcher.Err().Appendf(call.Args[0].Source(), "function %s has no parameter %s", fn.Name(), paramName)
+		return fetcher.Err().Appendf(call.Args[0].Node(), "function %s has no parameter %s", fn.Name(), paramName)
 	}
 	return annotate(fetcher, ann, fn, call, paramName, paramPos, args[1])
 }
@@ -62,11 +62,11 @@ func annotate(fetcher ir.Fetcher, ann *ir.Annotator, fn ir.PkgFunc, call *ir.Fun
 	paramToFunc := setann.GetDef(fn)
 	prev := paramToFunc.Partials[paramPos]
 	if prev != nil {
-		return fetcher.Err().Appendf(call.Source(), "gradient for parameter %s has already been set", paramName)
+		return fetcher.Err().Appendf(call.Node(), "gradient for parameter %s has already been set", paramName)
 	}
 	gradFn, err := interp.PkgFuncFromElement(gradEl)
 	if err != nil {
-		return fetcher.Err().AppendAt(call.Source(), err)
+		return fetcher.Err().AppendAt(call.Node(), err)
 	}
 	paramToFunc.Partials[paramPos] = gradFn
 	return true
@@ -87,11 +87,11 @@ func findNameInFields(paramName string, fields *ir.FieldList) int {
 func gradFromAnnotation(fetcher ir.Fetcher, src ir.Func, paramToFunc *setann.Annotation, wrt string) (*ast.Ident, bool) {
 	paramPos := findNameInFields(wrt, src.FuncType().Params)
 	if paramPos < 0 {
-		return nil, fetcher.Err().Appendf(src.Source(), "function %s has no parameter %s", src.ShortString(), wrt)
+		return nil, fetcher.Err().Appendf(src.Node(), "function %s has no parameter %s", src.ShortString(), wrt)
 	}
 	pkgFunc := paramToFunc.Partials[paramPos]
 	if pkgFunc == nil {
-		return nil, fetcher.Err().Appendf(src.Source(), "no gradient defined for parameter %s of function %s", wrt, src.ShortString())
+		return nil, fetcher.Err().Appendf(src.Node(), "no gradient defined for parameter %s of function %s", wrt, src.ShortString())
 	}
 	return &ast.Ident{Name: pkgFunc.Name()}, true
 }

@@ -200,5 +200,5 @@ func (s *FuncType) UnifyWith(unifier Unifier, typ Type) bool {
 	return true
 }
 
-// Source returns the node in the AST tree.
-func (s *FuncType) Source() ast.Node { return s.Src }
+// Node returns the node in the AST tree.
+func (s *FuncType) Node() ast.Node { return s.Src }

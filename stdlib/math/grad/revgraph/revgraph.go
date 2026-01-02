@@ -32,7 +32,7 @@ var traceAll = false
 type (
 	nodeID int
 
-	node[T ir.SourceNode] struct {
+	node[T ir.Node] struct {
 		graph   *Graph
 		fetcher ir.Fetcher
 		id      nodeID
@@ -40,19 +40,19 @@ type (
 	}
 )
 
-func newNode[T ir.SourceNode](p *processor, isrc T) node[T] {
+func newNode[T ir.Node](p *processor, isrc T) node[T] {
 	n := newNodeNoID[T](p, isrc)
 	n.id = nodeID(p.Graph.nextID)
 	p.Graph.nextID++
 	return n
 }
 
-func newNodeNoID[T ir.SourceNode](proc *processor, isrc T) node[T] {
+func newNodeNoID[T ir.Node](proc *processor, isrc T) node[T] {
 	return node[T]{graph: proc.Graph, fetcher: proc.fetcher, irnode: isrc, id: -1}
 }
 
 func (n *node[T]) source() ast.Node {
-	return n.irnode.Source()
+	return n.irnode.Node()
 }
 
 func (n *node[T]) err() *fmterr.Appender {
@@ -194,7 +194,7 @@ func (g *Graph) Process(fetcher ir.Fetcher) (*ast.BlockStmt, bool) {
 func (p *processor) processFuncWithoutAnn() (stmt, bool) {
 	fnWithBody, ok := p.fn.(*ir.FuncDecl)
 	if !ok {
-		return nil, p.fetcher.Err().Appendf(p.fn.Source(), "function %s requires a gradient specification", p.fn.ShortString())
+		return nil, p.fetcher.Err().Appendf(p.fn.Node(), "function %s requires a gradient specification", p.fn.ShortString())
 	}
 	root, ok := p.processBlockStmt(fnWithBody.Body)
 	typeParams := p.fn.FuncType().TypeParams.Fields()

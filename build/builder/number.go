@@ -35,7 +35,7 @@ func (n *numberLit) buildExpr(resolveScope) (ir.Expr, bool) {
 
 // Pos returns the position of the literal in the code.
 func (n *numberLit) source() ast.Node {
-	return n.ext.Source()
+	return n.ext.Node()
 }
 
 func (n *numberLit) String() string {
@@ -62,15 +62,15 @@ func castNumber(scope resolveScope, expr ir.Expr, target ir.Type) (*ir.NumberCas
 		arrayType, ok := underlying.(ir.ArrayType)
 		if !ok {
 
-			return cast, scope.Err().AppendInternalf(expr.Source(), "type %T has %s but does not implement %s", underlying, irkind.Array.String(), reflect.TypeFor[ir.ArrayType]().Name())
+			return cast, scope.Err().AppendInternalf(expr.Node(), "type %T has %s but does not implement %s", underlying, irkind.Array.String(), reflect.TypeFor[ir.ArrayType]().Name())
 		}
 		cast.Typ = arrayType.DataType()
 	}
 	if !ir.CanBeNumber(cast.Typ) {
-		return cast, scope.Err().Appendf(expr.Source(), "cannot use a number as %v", cast.Typ)
+		return cast, scope.Err().Appendf(expr.Node(), "cannot use a number as %v", cast.Typ)
 	}
 	if ir.IsFloat(expr.Type()) && ir.IsInteger(cast.Typ) {
-		return cast, scope.Err().Appendf(expr.Source(), "cannot use %s (untyped FLOAT constant) as %s value", expr.String(), cast.Typ.String())
+		return cast, scope.Err().Appendf(expr.Node(), "cannot use %s (untyped FLOAT constant) as %s value", expr.String(), cast.Typ.String())
 	}
 	return cast, true
 }

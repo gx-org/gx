@@ -182,7 +182,7 @@ func (n *funcType) buildFuncType(rscope resolveScope) (*ir.FuncType, *funcResolv
 	ext.Results, resultsOk = n.results.buildFieldList(resultScope)
 	if resultsOk {
 		for _, field := range ext.Results.Fields() {
-			if !rankInferOk(rscope, field.Type().Source(), field.Type()) {
+			if !rankInferOk(rscope, field.Type().Node(), field.Type()) {
 				resultsOk = false
 			}
 		}
@@ -443,7 +443,7 @@ func axisExprFrom(rscope resolveScope, ax ir.AxisLengths) (*ir.AxisExpr, bool) {
 	case *ir.AxisInfer:
 		return axisExprFrom(rscope, axisT.X)
 	}
-	return nil, rscope.Err().AppendInternalf(ax.Source(), "unknown axis length type: %T", ax)
+	return nil, rscope.Err().AppendInternalf(ax.Node(), "unknown axis length type: %T", ax)
 }
 
 func axisValuesFromArgumentValue(rscope resolveScope, compEval *compileEvaluator, src *ir.Field, val ir.Element) ([]ir.Element, bool) {
@@ -453,7 +453,7 @@ func axisValuesFromArgumentValue(rscope resolveScope, compEval *compileEvaluator
 	}
 	axes, err := arrayElement.Axes(compEval)
 	if err != nil {
-		return nil, rscope.Err().AppendInternalf(src.Source(), "cannot get axes from element %T to assign to parameter %s: %v", val, src.Name, err)
+		return nil, rscope.Err().AppendInternalf(src.Node(), "cannot get axes from element %T to assign to parameter %s: %v", val, src.Name, err)
 	}
 	if axes == nil {
 		return nil, true
@@ -543,7 +543,7 @@ func assignArgValueToParamName(rscope resolveScope, fExpr *ir.FuncValExpr, args 
 		}
 		argVal, err := compEval.fitp.EvalExpr(args[i])
 		if err != nil {
-			return nil, rscope.Err().AppendAt(fExpr.Source(), err)
+			return nil, rscope.Err().AppendAt(fExpr.Node(), err)
 		}
 		if !assignArgValueToName(rscope, compEval, params, param, args[i], argVal) {
 			return nil, false
@@ -563,10 +563,10 @@ func checkArgsForCall(rscope resolveScope, fExpr *ir.FuncValExpr, args []ir.Assi
 		param := wants[i]
 		assignable, err := ir.AssignableTo(compEval, arg.Type(), param.Type())
 		if err != nil {
-			return rscope.Err().AppendAt(arg.Source(), err)
+			return rscope.Err().AppendAt(arg.Node(), err)
 		}
 		if !assignable {
-			rscope.Err().Appendf(arg.Source(), "cannot use type %s as %s in argument to %s", arg.Type().String(), param.Type().String(), fExpr.F.ShortString())
+			rscope.Err().Appendf(arg.Node(), "cannot use type %s as %s in argument to %s", arg.Type().String(), param.Type().String(), fExpr.F.ShortString())
 			ok = false
 		}
 	}
@@ -574,7 +574,7 @@ func checkArgsForCall(rscope resolveScope, fExpr *ir.FuncValExpr, args []ir.Assi
 }
 
 func buildFuncForCall(rscope resolveScope, fExpr *ir.FuncValExpr, args []ir.AssignableExpr) ([]ir.AssignableExpr, *ir.FuncValExpr, bool) {
-	compEval, compEvalOk := compEvalForFuncType(rscope, fExpr.X.Source(), fExpr.T)
+	compEval, compEvalOk := compEvalForFuncType(rscope, fExpr.X.Node(), fExpr.T)
 	if !compEvalOk {
 		return args, fExpr, false
 	}
@@ -593,7 +593,7 @@ func buildFuncForCall(rscope resolveScope, fExpr *ir.FuncValExpr, args []ir.Assi
 		if len(names) > 1 {
 			parameter = "parameters"
 		}
-		return args, fExpr, rscope.Err().Appendf(fExpr.X.Source(), "cannot infer type %s %s", parameter, strings.Join(names, ","))
+		return args, fExpr, rscope.Err().Appendf(fExpr.X.Node(), "cannot infer type %s %s", parameter, strings.Join(names, ","))
 	}
 	if args, ok = convertArgNumbers(rscope, fExpr.T, args); !ok {
 		return args, fExpr, false
@@ -608,7 +608,7 @@ func buildFuncForCall(rscope resolveScope, fExpr *ir.FuncValExpr, args []ir.Assi
 	}
 	fTypeInst, err := generics.Instantiate(ce, fExpr.T)
 	if err != nil {
-		return args, fExpr, rscope.Err().AppendAt(fExpr.Source(), err)
+		return args, fExpr, rscope.Err().AppendAt(fExpr.Node(), err)
 	}
 	fExprInst := &ir.FuncValExpr{
 		X: fExpr.X,

@@ -46,8 +46,8 @@ var (
 func ToBinaryExpr(op token.Token, x, y ir.AssignableExpr) *ir.BinaryExpr {
 	return &ir.BinaryExpr{
 		Src: &ast.BinaryExpr{
-			X:  x.Source().(ast.Expr),
-			Y:  y.Source().(ast.Expr),
+			X:  x.Node().(ast.Expr),
+			Y:  y.Node().(ast.Expr),
 			Op: op,
 		},
 		X:   x,
@@ -63,7 +63,7 @@ func Fields(expr ir.Expr, types ...ir.Type) *ir.FieldList {
 	}
 	for i, tp := range types {
 		l.List[i] = &ir.FieldGroup{
-			Src: &ast.Field{Type: expr.Source().(ast.Expr)},
+			Src: &ast.Field{Type: expr.Node().(ast.Expr)},
 			Type: &ir.TypeValExpr{
 				X:   expr,
 				Typ: tp,
@@ -91,7 +91,7 @@ func InferFromNumericalType(fetcher ir.Fetcher, call *ir.FuncCallExpr, argNum in
 	}
 	arrayType, arrayOk := argType.(ir.ArrayType)
 	if !arrayOk {
-		return nil, nil, fmterr.Errorf(fetcher.File().FileSet(), call.Args[argNum].Source(), "argument type %s not supported", arg.Type().String())
+		return nil, nil, fmterr.Errorf(fetcher.File().FileSet(), call.Args[argNum].Node(), "argument type %s not supported", arg.Type().String())
 	}
 	return arrayType, arrayType.DataType(), nil
 }
@@ -125,7 +125,7 @@ func BuildFuncParams(fetcher ir.Fetcher, call *ir.FuncCallExpr, name string, sig
 	if len(sig) != len(call.Args) {
 		actual := joinSignature[ir.AssignableExpr](call.Args, fmtExprType)
 		wanted := joinSignature[ir.Type](sig, fmtType)
-		return nil, fmterr.Errorf(fetcher.File().FileSet(), call.Source(), "wrong number of arguments in call to %s: got %s but want %s", name, actual, wanted)
+		return nil, fmterr.Errorf(fetcher.File().FileSet(), call.Node(), "wrong number of arguments in call to %s: got %s but want %s", name, actual, wanted)
 	}
 	params := make([]ir.Type, len(sig))
 	for i, want := range sig {
@@ -153,7 +153,7 @@ func BuildFuncParams(fetcher ir.Fetcher, call *ir.FuncCallExpr, name string, sig
 		if !ok {
 			actual := joinSignature[ir.AssignableExpr](call.Args, fmtExprType)
 			wanted := joinSignature[ir.Type](sig, fmtType)
-			return nil, fmterr.Errorf(fetcher.File().FileSet(), call.Source(), "signature mismatch in call to %s: got %s but want %s", name, actual, wanted)
+			return nil, fmterr.Errorf(fetcher.File().FileSet(), call.Node(), "signature mismatch in call to %s: got %s but want %s", name, actual, wanted)
 		}
 	}
 	return params, nil
@@ -164,7 +164,7 @@ func NarrowType[T ir.Type](fetcher ir.Fetcher, call *ir.FuncCallExpr, arg ir.Typ
 	var ok bool
 	t, ok = arg.(T)
 	if !ok {
-		err = fmterr.Errorf(fetcher.File().FileSet(), call.Source(), "cannot convert %T to %s", arg, reflect.TypeFor[T]().String())
+		err = fmterr.Errorf(fetcher.File().FileSet(), call.Node(), "cannot convert %T to %s", arg, reflect.TypeFor[T]().String())
 	}
 	return
 }
@@ -186,17 +186,17 @@ func NarrowTypes[T ir.Type](fetcher ir.Fetcher, call *ir.FuncCallExpr, args []ir
 func UniqueAxesFromExpr(fetcher ir.Fetcher, expr ir.Expr) (map[int]struct{}, error) {
 	sliceExpr, ok := expr.(*ir.SliceLitExpr)
 	if !ok {
-		return nil, fmterr.Errorf(fetcher.File().FileSet(), expr.Source(), "expected axes slice literal, but got %s", expr.String())
+		return nil, fmterr.Errorf(fetcher.File().FileSet(), expr.Node(), "expected axes slice literal, but got %s", expr.String())
 	}
 
 	axes := map[int]struct{}{}
 	for _, val := range sliceExpr.Elts {
 		axis, err := elements.EvalInt(fetcher, val)
 		if err != nil {
-			return nil, fmterr.AtNode(fetcher.File().FileSet(), expr.Source(), err)
+			return nil, fmterr.AtNode(fetcher.File().FileSet(), expr.Node(), err)
 		}
 		if _, exists := axes[axis]; exists {
-			return nil, fmterr.Errorf(fetcher.File().FileSet(), expr.Source(), "axis index %d specified more than once", axis)
+			return nil, fmterr.Errorf(fetcher.File().FileSet(), expr.Node(), "axis index %d specified more than once", axis)
 		}
 		axes[axis] = struct{}{}
 	}

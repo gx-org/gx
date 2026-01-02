@@ -58,7 +58,7 @@ type gradMacro struct {
 
 var _ ir.FuncASTBuilder = (*gradMacro)(nil)
 
-func findParamStorage(file *ir.File, src ir.SourceNode, fn ir.Func, name string) (withRespectTo, error) {
+func findParamStorage(file *ir.File, src ir.Node, fn ir.Func, name string) (withRespectTo, error) {
 	recv := fn.FuncType().ReceiverField()
 	if recv != nil && recv.Name != nil {
 		if recv.Name.Name == name {
@@ -67,7 +67,7 @@ func findParamStorage(file *ir.File, src ir.SourceNode, fn ir.Func, name string)
 	}
 	field := fn.FuncType().Params.FindField(name)
 	if field == nil {
-		return nil, fmterr.Errorf(file.FileSet(), src.Source(), "no parameter named %s in %s", name, fn.ShortString())
+		return nil, fmterr.Errorf(file.FileSet(), src.Node(), "no parameter named %s in %s", name, fn.ShortString())
 	}
 	return newWRT(field), nil
 }
@@ -117,12 +117,12 @@ func (m *gradMacro) BuildDecl(fn ir.PkgFunc) (*ir.File, *ast.FuncDecl, bool) {
 	fType := target.FuncType()
 	results := &ast.FieldList{List: []*ast.Field{
 		&ast.Field{
-			Type: fType.Results.Fields()[0].Type().Source().(ast.Expr),
+			Type: fType.Results.Fields()[0].Type().Node().(ast.Expr),
 		},
 	}}
 	for _, param := range fType.Params.Fields() {
 		results.List = append(results.List, &ast.Field{
-			Type: param.Type().Source().(ast.Expr),
+			Type: param.Type().Node().(ast.Expr),
 		})
 	}
 	fDecl := &ast.FuncDecl{Type: &ast.FuncType{
@@ -164,7 +164,7 @@ func (m *gradMacro) BuildBody(fetcher ir.Fetcher, fn ir.Func) (*ast.BlockStmt, b
 							X:   imp.NameDef(),
 							Sel: &ast.Ident{Name: "VJP"},
 						},
-						Args: []ast.Expr{m.call.Node().Args[0].Source().(ast.Expr)},
+						Args: []ast.Expr{m.call.Node().Args[0].Node().(ast.Expr)},
 					},
 					Args: []ast.Expr{fn.FuncType().Params.Fields()[0].Name},
 				},

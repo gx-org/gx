@@ -102,13 +102,13 @@ func (ea NodeFile[T]) Node() T {
 // Source of the node.
 func (ea NodeFile[T]) Source() ast.Node {
 	var node ir.IR = ea.node
-	return node.(ir.SourceNode).Source()
+	return node.(ir.Node).Node()
 }
 
 // ExprSrc returns the source expression.
 func (ea NodeFile[T]) ExprSrc() ast.Expr {
 	var node any = ea.node
-	src := node.(ir.SourceNode).Source()
+	src := node.(ir.Node).Node()
 	if src == nil {
 		return nil
 	}
@@ -146,7 +146,7 @@ func (ea NodeFile[T]) File() *ir.File {
 func (ea NodeFile[T]) String() string {
 	var node ir.IR = ea.node
 	return fmt.Sprintf("%s%s",
-		fmterr.PosString(ea.file.FileSet(), node.(ir.SourceNode).Source().Pos()),
+		fmterr.PosString(ea.file.FileSet(), node.(ir.Node).Node().Pos()),
 		gxfmt.String(ea.node),
 	)
 }
@@ -272,10 +272,10 @@ func EvalInt(fetcher ir.Fetcher, expr ir.Expr) (int, error) {
 	}
 	val := canonical.ToValue(el)
 	if val == nil {
-		return 0, fmterr.Errorf(fetcher.File().FileSet(), expr.Source(), "expected axis literals, but expression %s cannot be evaluated at compile time", expr.String())
+		return 0, fmterr.Errorf(fetcher.File().FileSet(), expr.Node(), "expected axis literals, but expression %s cannot be evaluated at compile time", expr.String())
 	}
 	if !val.IsInt() {
-		return 0, fmterr.Errorf(fetcher.File().FileSet(), expr.Source(), "cannot use %s as static int value in axis specification", val.String())
+		return 0, fmterr.Errorf(fetcher.File().FileSet(), expr.Node(), "cannot use %s as static int value in axis specification", val.String())
 	}
 	valInt, _ := val.Int64()
 	return int(valInt), nil
@@ -289,14 +289,14 @@ func EvalRank(fetcher ir.Fetcher, expr ir.Expr) (ir.ArrayRank, []canonical.Canon
 	}
 	slice, ok := Underlying(rankVal).(*Slice)
 	if !ok {
-		return nil, nil, fmterr.Internalf(fetcher.File().FileSet(), expr.Source(), "cannot build a rank from %s (%T): not supported", expr.String(), rankVal)
+		return nil, nil, fmterr.Internalf(fetcher.File().FileSet(), expr.Node(), "cannot build a rank from %s (%T): not supported", expr.String(), rankVal)
 	}
 	axes := make([]ir.AxisLengths, slice.Len())
 	cans := make([]canonical.Canonical, slice.Len())
 	for i, el := range slice.Elements() {
 		ex, ok := el.(ir.Canonical)
 		if !ok {
-			return nil, nil, fmterr.Internalf(fetcher.File().FileSet(), expr.Source(), "cannot build an axis expression from element %T: not supported", el)
+			return nil, nil, fmterr.Internalf(fetcher.File().FileSet(), expr.Node(), "cannot build an axis expression from element %T: not supported", el)
 		}
 		irExpr, err := ex.Expr()
 		if err != nil {

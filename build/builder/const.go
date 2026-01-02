@@ -142,7 +142,7 @@ func (cst *constExpr) buildExpression(ibld irBuilder, ext *ir.ConstExpr) bool {
 	if !ok {
 		return false
 	}
-	return assignableToAt(fScope, ext.Val.Source(), ext.Val.Type(), targetType)
+	return assignableToAt(fScope, ext.Val.Node(), ext.Val.Type(), targetType)
 }
 
 func (cst *constExpr) pNode() processNode {

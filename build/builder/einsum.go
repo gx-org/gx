@@ -204,11 +204,11 @@ func (s *tensorExpr) buildExpr(scope resolveScope) (ir.Expr, bool) {
 	}
 	lhsTyp, xOk := lhs.Type().(ir.ArrayType)
 	if !xOk {
-		return ext, scope.Err().AppendInternalf(lhs.Source(), "%s:%s:%T is not an array type", lhs.String(), lhs.Type().String(), lhs.Type())
+		return ext, scope.Err().AppendInternalf(lhs.Node(), "%s:%s:%T is not an array type", lhs.String(), lhs.Type().String(), lhs.Type())
 	}
 	rhsTyp, yOk := rhs.Type().(ir.ArrayType)
 	if !yOk {
-		return ext, scope.Err().AppendInternalf(rhs.Source(), "%s:%s:%T is not an array type", rhs.String(), rhs.Type().String(), rhs.Type())
+		return ext, scope.Err().AppendInternalf(rhs.Node(), "%s:%s:%T is not an array type", rhs.String(), rhs.Type().String(), rhs.Type())
 	}
 	leftRank := lhsTyp.Rank()
 	rightRank := rhsTyp.Rank()

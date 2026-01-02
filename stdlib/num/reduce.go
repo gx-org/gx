@@ -50,7 +50,7 @@ func reductionFuncSig(fetcher ir.Fetcher, f builtin.Func, call *ir.FuncCallExpr)
 	var resultDims []ir.AxisLengths
 	for axis := range reduceAxes {
 		if len(rank.Axes()) > 0 && (axis < 0 || axis >= len(rank.Axes())) {
-			return nil, fmterr.Errorf(fetcher.File().FileSet(), call.Source(),
+			return nil, fmterr.Errorf(fetcher.File().FileSet(), call.Node(),
 				"invalid reduction axis in call to %s: axis %d does not exist in input %s",
 				f.Name(), axis, arrayType)
 		}
@@ -63,7 +63,7 @@ func reductionFuncSig(fetcher ir.Fetcher, f builtin.Func, call *ir.FuncCallExpr)
 	}
 	resultRank.Ax = resultDims
 	return &ir.FuncType{
-		BaseType: ir.BaseType[*ast.FuncType]{Src: &ast.FuncType{Func: call.Source().Pos()}},
+		BaseType: ir.BaseType[*ast.FuncType]{Src: &ast.FuncType{Func: call.Node().Pos()}},
 		Params:   builtins.Fields(call, params...),
 		Results:  builtins.Fields(call, result),
 	}, nil
@@ -121,7 +121,7 @@ func (f argmax) BuildFuncType(fetcher ir.Fetcher, call *ir.FuncCallExpr) (*ir.Fu
 	resultRank := ir.Rank{}
 	result := ir.NewArrayType(&ast.ArrayType{}, ir.TypeFromKind(irkind.DefaultInt), &resultRank)
 	if len(rank.Axes()) > 0 && (reduceAxis < 0 || int(reduceAxis) >= len(rank.Axes())) {
-		return nil, fmterr.Errorf(fetcher.File().FileSet(), call.Source(),
+		return nil, fmterr.Errorf(fetcher.File().FileSet(), call.Node(),
 			"invalid reduction axis in call to %s: axis %d does not exist in input %s",
 			f.Name(), reduceAxis, arrayType)
 	}
@@ -134,7 +134,7 @@ func (f argmax) BuildFuncType(fetcher ir.Fetcher, call *ir.FuncCallExpr) (*ir.Fu
 	}
 	resultRank.Ax = resultDims
 	return &ir.FuncType{
-		BaseType: ir.BaseType[*ast.FuncType]{Src: &ast.FuncType{Func: call.Source().Pos()}},
+		BaseType: ir.BaseType[*ast.FuncType]{Src: &ast.FuncType{Func: call.Node().Pos()}},
 		Params:   builtins.Fields(call, params...),
 		Results:  builtins.Fields(call, result),
 	}, nil

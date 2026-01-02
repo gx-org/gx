@@ -133,7 +133,7 @@ func elementFromStorageWithValue(scope resolveScope, node ir.StorageWithValue) (
 	}
 	el, err := ev.fitp.EvalExpr(value)
 	if err != nil {
-		return nil, ev.scope.Err().Appendf(node.Source(), "cannot evaluate expression %s. Original error:\n%+v", value.String(), err)
+		return nil, ev.scope.Err().Appendf(node.Node(), "cannot evaluate expression %s. Original error:\n%+v", value.String(), err)
 	}
 	return cpevelements.NewStoredValue(ev.File(), node, el), true
 }
@@ -141,7 +141,7 @@ func elementFromStorageWithValue(scope resolveScope, node ir.StorageWithValue) (
 func defineLocalVar(scope resolveScope, storage ir.Storage) bool {
 	lScope, ok := scope.(localScope)
 	if !ok {
-		return scope.Err().AppendInternalf(storage.Source(), "%T is not a local scope", scope)
+		return scope.Err().AppendInternalf(storage.Node(), "%T is not a local scope", scope)
 	}
 	if ir.IsInvalidType(storage.Type()) {
 		return lScope.update(storage, ir.InvalidType())

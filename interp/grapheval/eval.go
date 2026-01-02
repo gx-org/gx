@@ -173,7 +173,7 @@ func (ev *Evaluator) elementsFromTupleNode(file *ir.File, tpl ops.Tuple, elExprs
 	return elts, nil
 }
 
-func unpackTypes(file *ir.File, src ir.SourceNode, tp ir.Type) (*ir.StructType, []*ir.NamedType, error) {
+func unpackTypes(file *ir.File, src ir.Node, tp ir.Type) (*ir.StructType, []*ir.NamedType, error) {
 	switch tpT := tp.(type) {
 	case *ir.NamedType:
 		sType, nTypes, err := unpackTypes(file, src, tpT.Underlying.Typ)
@@ -185,7 +185,7 @@ func unpackTypes(file *ir.File, src ir.SourceNode, tp ir.Type) (*ir.StructType, 
 	case *ir.StructType:
 		return tpT, nil, nil
 	default:
-		return nil, nil, fmterr.Internalf(file.FileSet(), src.Source(), "cannot unpack a tuple to type %T: not supported", tp)
+		return nil, nil, fmterr.Internalf(file.FileSet(), src.Node(), "cannot unpack a tuple to type %T: not supported", tp)
 	}
 }
 

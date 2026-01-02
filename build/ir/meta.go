@@ -88,8 +88,8 @@ func (s *MetaCore) Type() Type {
 	return s.FuncType()
 }
 
-// Source returns the node in the AST tree.
-func (s *MetaCore) Source() ast.Node {
+// Node returns the node in the AST tree.
+func (s *MetaCore) Node() ast.Node {
 	return s.Src
 }
 

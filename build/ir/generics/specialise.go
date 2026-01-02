@@ -38,12 +38,12 @@ func Specialise(fetcher ir.Fetcher, expr ir.Expr, fun *ir.FuncValExpr, typs []*i
 	if fType == nil {
 		// This is a builtin function with the type built later.
 		// That should not be specialised by the user.
-		return nil, fetcher.Err().Appendf(expr.Source(), "builtin function does not support type arguments")
+		return nil, fetcher.Err().Appendf(expr.Node(), "builtin function does not support type arguments")
 	}
 	typeParams := fType.TypeParams.Fields()
 	gotN, wantN := len(typs), len(typeParams)
 	if gotN > wantN {
-		return nil, fetcher.Err().Appendf(expr.Source(), "got %d type arguments but want %d", gotN, wantN)
+		return nil, fetcher.Err().Appendf(expr.Node(), "got %d type arguments but want %d", gotN, wantN)
 	}
 	definedTypeParams := make(map[string]ir.Type)
 	ok := true
@@ -59,7 +59,7 @@ func Specialise(fetcher ir.Fetcher, expr ir.Expr, fun *ir.FuncValExpr, typs []*i
 			continue
 		}
 		if !assignedOk {
-			ok = fetcher.Err().Appendf(expr.Source(), "%s does not satisfy %s", ir.TypeString(gotType), ir.TypeString(wantType))
+			ok = fetcher.Err().Appendf(expr.Node(), "%s does not satisfy %s", ir.TypeString(gotType), ir.TypeString(wantType))
 			continue
 		}
 		definedTypeParams[typeParam.Name.Name] = typeValExpr.Typ
@@ -72,7 +72,7 @@ func Specialise(fetcher ir.Fetcher, expr ir.Expr, fun *ir.FuncValExpr, typs []*i
 		defined: definedTypeParams,
 	})
 	if err != nil {
-		return nil, fetcher.Err().AppendAt(fun.X.Source(), err)
+		return nil, fetcher.Err().AppendAt(fun.X.Node(), err)
 	}
 	if specType == nil {
 		return nil, false

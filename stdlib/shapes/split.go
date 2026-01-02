@@ -47,11 +47,11 @@ func (f split) BuildFuncType(fetcher ir.Fetcher, call *ir.FuncCallExpr) (*ir.Fun
 
 	axis, err := elements.EvalInt(fetcher, call.Args[0])
 	if err != nil {
-		return nil, fmterr.Errorf(fetcher.File().FileSet(), call.Source(), "unable to evaluate axis argument to %s: %s", f.Func.Name(), err)
+		return nil, fmterr.Errorf(fetcher.File().FileSet(), call.Node(), "unable to evaluate axis argument to %s: %s", f.Func.Name(), err)
 	}
 	arrayType, ok := params[1].(ir.ArrayType)
 	if !ok {
-		return nil, fmterr.Errorf(fetcher.File().FileSet(), call.Source(), "expected second argument to be an array in call to %s, but got %s", f.Func.Name(), call.Args[0].Type().String())
+		return nil, fmterr.Errorf(fetcher.File().FileSet(), call.Node(), "expected second argument to be an array in call to %s, but got %s", f.Func.Name(), call.Args[0].Type().String())
 	}
 	rank := arrayType.Rank()
 	// Determine dimensions after split.
@@ -66,7 +66,7 @@ func (f split) BuildFuncType(fetcher ir.Fetcher, call *ir.FuncCallExpr) (*ir.Fun
 	outputDims := append([]ir.AxisLengths{&ir.AxisExpr{Src: call.Expr(), X: numSplit}}, dims...)
 	splitDimExpr, ok := dims[axis].(*ir.AxisExpr)
 	if !ok {
-		return nil, fmterr.Internalf(fetcher.File().FileSet(), call.Source(), "cannot split axis %s (%T)", dims[axis], dims[axis])
+		return nil, fmterr.Internalf(fetcher.File().FileSet(), call.Node(), "cannot split axis %s (%T)", dims[axis], dims[axis])
 	}
 	outputDims[axis+1] = &ir.AxisExpr{
 		Src: call.Expr(),
@@ -74,7 +74,7 @@ func (f split) BuildFuncType(fetcher ir.Fetcher, call *ir.FuncCallExpr) (*ir.Fun
 	}
 	out := ir.NewArrayType(&ast.ArrayType{}, arrayType.DataType(), &ir.Rank{Ax: outputDims})
 	return &ir.FuncType{
-		BaseType: ir.BaseType[*ast.FuncType]{Src: &ast.FuncType{Func: call.Source().Pos()}},
+		BaseType: ir.BaseType[*ast.FuncType]{Src: &ast.FuncType{Func: call.Node().Pos()}},
 		Params:   builtins.Fields(call, params...),
 		Results:  builtins.Fields(call, out),
 	}, nil

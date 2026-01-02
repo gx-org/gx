@@ -69,7 +69,7 @@ func (p *processor) processStmt(isrc ir.Stmt) (stmt, bool) {
 	case *ir.ReturnStmt:
 		return p.processReturnStmt(srcT)
 	default:
-		return nil, p.fetcher.Err().Appendf(isrc.Source(), "gradient of %T statement not supported", srcT)
+		return nil, p.fetcher.Err().Appendf(isrc.Node(), "gradient of %T statement not supported", srcT)
 	}
 }
 
