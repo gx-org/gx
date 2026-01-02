@@ -21,6 +21,7 @@ import (
 	"github.com/gx-org/gx/build/builtins"
 	"github.com/gx-org/gx/build/fmterr"
 	"github.com/gx-org/gx/build/ir"
+	"github.com/gx-org/gx/build/ir/irkind"
 	"github.com/gx-org/gx/interp/elements"
 	"github.com/gx-org/gx/stdlib/builtin"
 	"github.com/gx-org/gx/stdlib/impl"
@@ -56,7 +57,7 @@ func (f split) BuildFuncType(fetcher ir.Fetcher, call *ir.FuncCallExpr) (*ir.Fun
 	// Determine dimensions after split.
 	dims := rank.Axes()
 	numSplit := call.Args[2]
-	if ir.IsNumber(numSplit.Type().Kind()) {
+	if irkind.IsNumber(numSplit.Type().Kind()) {
 		numSplit = &ir.NumberCastExpr{
 			X:   numSplit,
 			Typ: ir.IntLenType(),

@@ -20,6 +20,7 @@ import (
 	"reflect"
 
 	"github.com/gx-org/gx/build/ir"
+	"github.com/gx-org/gx/build/ir/irkind"
 )
 
 // selectedExpr references an attribute in a package or a structure.
@@ -91,10 +92,10 @@ func (n *selectorExpr) selectFromType(scope resolveScope, sel *ir.SelectorExpr) 
 }
 
 func (n *selectorExpr) selectStorageFrom(scope resolveScope, sel *ir.SelectorExpr) (ir.Storage, bool) {
-	if sel.X.Type().Kind() == ir.PackageKind {
+	if sel.X.Type().Kind() == irkind.Package {
 		return n.selectFromPackage(scope, sel)
 	}
-	if sel.X.Type().Kind() == ir.MetaTypeKind {
+	if sel.X.Type().Kind() == irkind.MetaType {
 		return n.selectFromType(scope, sel)
 	}
 	return n.selectFromExpr(scope, sel, sel.X.Type())

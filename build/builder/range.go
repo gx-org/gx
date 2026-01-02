@@ -18,6 +18,7 @@ import (
 	"go/ast"
 
 	"github.com/gx-org/gx/build/ir"
+	"github.com/gx-org/gx/build/ir/irkind"
 )
 
 type rangeStmt struct {
@@ -93,15 +94,15 @@ func (n *rangeStmt) buildStmt(parent fnResolveScope) (ir.Stmt, bool, bool) {
 	if !ok {
 		return ext, false, false
 	}
-	if ir.IsNumber(ext.X.Type().Kind()) {
+	if irkind.IsNumber(ext.X.Type().Kind()) {
 		ext.X, ok = castNumber(rscope, ext.X, ir.IntLenType())
 	}
 	if !ok {
 		return ext, false, false
 	}
-	if ir.IsRangeOk(ext.X.Type().Kind()) {
+	if irkind.IsRangeOk(ext.X.Type().Kind()) {
 		ext.Key, ext.Value, ok = n.buildBodyOverScalar(rscope, ext.X)
-	} else if ext.X.Type().Kind() == ir.ArrayKind {
+	} else if ext.X.Type().Kind() == irkind.Array {
 		ext.Key, ext.Value, ok = n.buildBodyOverArray(rscope, ext.X)
 	} else {
 		return ext, false, rscope.Err().Appendf(n.src, "cannot range over %s", ext.X.Type().String())

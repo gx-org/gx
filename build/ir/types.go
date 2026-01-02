@@ -20,6 +20,7 @@ import (
 	"strings"
 
 	"github.com/pkg/errors"
+	"github.com/gx-org/gx/build/ir/irkind"
 )
 
 // BaseType is the base of all types.
@@ -82,18 +83,18 @@ func (*metaType) ConvertibleTo(fetcher Fetcher, target Type) (bool, error) {
 	return false, nil
 }
 
-func (t *metaType) Kind() Kind { return MetaTypeKind }
+func (t *metaType) Kind() irkind.Kind { return irkind.MetaType }
 
 func (t *metaType) SourceString(*File) string {
 	return t.String()
 }
 
 func (t *metaType) String() string {
-	return MetaTypeKind.String()
+	return irkind.MetaType.String()
 }
 
 var metaTypeT = &metaType{
-	BaseType: BaseType[*ast.Ident]{Src: &ast.Ident{Name: MetaTypeKind.String()}},
+	BaseType: BaseType[*ast.Ident]{Src: &ast.Ident{Name: irkind.MetaType.String()}},
 }
 
 // MetaType returns the meta type shared across all types.
@@ -140,7 +141,7 @@ func (*invalidType) ConvertibleTo(Fetcher, Type) (bool, error) {
 	return (*invalidType).Equal(nil, nil, nil)
 }
 
-func (*invalidType) Kind() Kind { return InvalidKind }
+func (*invalidType) Kind() irkind.Kind { return irkind.Invalid }
 
 func (*invalidType) NameDef() *ast.Ident { return nil }
 
@@ -149,11 +150,11 @@ func (*invalidType) Type() Type { return InvalidType() }
 func (*invalidType) Value(Expr) AssignableExpr { return nil }
 
 func (*invalidType) SourceString(*File) string {
-	return InvalidKind.String()
+	return irkind.Invalid.String()
 }
 
 func (*invalidType) String() string {
-	return InvalidKind.String()
+	return irkind.Invalid.String()
 }
 
 // Specialise a type to a given target.
@@ -168,7 +169,7 @@ func (m *invalidType) UnifyWith(unifier Unifier, typ Type) bool {
 
 type distinctType struct {
 	BaseType[ast.Expr]
-	kind Kind
+	kind irkind.Kind
 }
 
 func (*distinctType) node() {}
@@ -193,7 +194,7 @@ func (t *distinctType) ConvertibleTo(fetcher Fetcher, target Type) (bool, error)
 	return t.Equal(fetcher, target)
 }
 
-func (t *distinctType) Kind() Kind { return t.kind }
+func (t *distinctType) Kind() irkind.Kind { return t.kind }
 
 func (t *distinctType) SourceString(*File) string {
 	return t.String()
@@ -208,7 +209,7 @@ type unknownType struct {
 	distinctType
 }
 
-var unknownT = &unknownType{distinctType: distinctType{kind: UnknownKind}}
+var unknownT = &unknownType{distinctType: distinctType{kind: irkind.Unknown}}
 
 // UnknownType returns the unknown type.
 func UnknownType() Type {
@@ -220,7 +221,7 @@ type keywordTyp struct {
 	distinctType
 }
 
-var keywordT = &keywordTyp{distinctType: distinctType{kind: FuncKind}}
+var keywordT = &keywordTyp{distinctType: distinctType{kind: irkind.Func}}
 
 func keywordType() Type {
 	return keywordT
@@ -231,7 +232,7 @@ type voidType struct {
 	distinctType
 }
 
-var voidT = &voidType{distinctType: distinctType{kind: VoidKind}}
+var voidT = &voidType{distinctType: distinctType{kind: irkind.Void}}
 
 // VoidType returns the void type.
 func VoidType() Type {
@@ -242,7 +243,7 @@ type packageType struct {
 	distinctType
 }
 
-var packageT = &packageType{distinctType: distinctType{kind: PackageKind}}
+var packageT = &packageType{distinctType: distinctType{kind: irkind.Package}}
 
 // PackageType returns the package type.
 func PackageType() Type {
@@ -284,7 +285,7 @@ func (s *TypeSet) ArrayType() ast.Expr {
 }
 
 // Kind returns the scalar kind.
-func (s *TypeSet) Kind() Kind { return InterfaceKind }
+func (s *TypeSet) Kind() irkind.Kind { return irkind.Interface }
 
 // Equal returns true if other is the exact same type set.
 func (s *TypeSet) Equal(fetcher Fetcher, target Type) (bool, error) {
@@ -494,7 +495,7 @@ func (s *TypeSet) containsTypes(fetcher Fetcher, types *TypeSet) bool {
 func fieldListAtomicIR() *FieldList {
 	group := &FieldGroup{
 		Type: &TypeValExpr{
-			Typ: TypeFromKind(IRKind),
+			Typ: TypeFromKind(irkind.IR),
 		},
 	}
 	group.Fields = []*Field{&Field{
@@ -572,7 +573,7 @@ func simplifyType(t Type) Type {
 
 // IsInvalidType returns true if a type is invalid.
 func IsInvalidType(typ Type) bool {
-	return typ == nil || typ.Kind() == InvalidKind
+	return typ == nil || typ.Kind() == irkind.Invalid
 }
 
 // AssignableTo reports whether a value of the type can be assigned to another.

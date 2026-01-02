@@ -20,6 +20,7 @@ import (
 	"github.com/gx-org/gx/api/values"
 	"github.com/gx-org/gx/build/fmterr"
 	"github.com/gx-org/gx/build/ir"
+	"github.com/gx-org/gx/build/ir/irkind"
 	"github.com/gx-org/gx/golang/backend/kernels"
 	"github.com/gx-org/gx/interp/elements"
 	"github.com/gx-org/gx/interp/evaluator"
@@ -31,7 +32,7 @@ type (
 	}
 
 	valuerT[T dtype.GoDataType] struct {
-		kind         ir.Kind
+		kind         irkind.Kind
 		toAtomValue  func(tp ir.Type, val T) (*values.HostArray, error)
 		toArrayValue func(tp ir.Type, val []T, dims []int) (*values.HostArray, error)
 	}
@@ -73,7 +74,7 @@ func goSliceFromElements[T dtype.GoDataType](els []evaluator.NumericalElement) (
 		var subVals []T
 		var ok bool
 		var err error
-		if el.Type().Kind() == ir.ArrayKind {
+		if el.Type().Kind() == irkind.Array {
 			subVals, ok, err = goSliceFromArrayElement[T](el)
 		} else {
 			subVals = make([]T, 1)
@@ -154,27 +155,27 @@ func (v valuerT[T]) array(fitp *FileScope, lit *ir.ArrayLitExpr) (ir.Element, er
 	return array1d.Reshape(fitp.env, lit, axes)
 }
 
-func newValuer(fitp *FileScope, expr ir.Expr, kind ir.Kind) (v valuer, err error) {
+func newValuer(fitp *FileScope, expr ir.Expr, kind irkind.Kind) (v valuer, err error) {
 	switch kind {
-	case ir.IntIdxKind:
+	case irkind.IntIdx:
 		v = valuerT[ir.Int]{kind: kind, toAtomValue: values.AtomIntegerValue[ir.Int], toArrayValue: values.ArrayIntegerValue[ir.Int]}
-	case ir.IntLenKind:
+	case irkind.IntLen:
 		v = valuerT[ir.Int]{kind: kind, toAtomValue: values.AtomIntegerValue[ir.Int], toArrayValue: values.ArrayIntegerValue[ir.Int]}
-	case ir.BoolKind:
+	case irkind.Bool:
 		v = valuerT[bool]{kind: kind, toAtomValue: values.AtomBoolValue, toArrayValue: values.ArrayBoolValue}
-	case ir.Bfloat16Kind:
+	case irkind.Bfloat16:
 		v = valuerT[dtype.Bfloat16T]{kind: kind, toAtomValue: values.AtomBfloat16Value, toArrayValue: values.ArrayBfloat16Value}
-	case ir.Float32Kind:
+	case irkind.Float32:
 		v = valuerT[float32]{kind: kind, toAtomValue: values.AtomFloatValue[float32], toArrayValue: values.ArrayFloatValue[float32]}
-	case ir.Float64Kind:
+	case irkind.Float64:
 		v = valuerT[float64]{kind: kind, toAtomValue: values.AtomFloatValue[float64], toArrayValue: values.ArrayFloatValue[float64]}
-	case ir.Int32Kind:
+	case irkind.Int32:
 		v = valuerT[int32]{kind: kind, toAtomValue: values.AtomIntegerValue[int32], toArrayValue: values.ArrayIntegerValue[int32]}
-	case ir.Int64Kind:
+	case irkind.Int64:
 		v = valuerT[int64]{kind: kind, toAtomValue: values.AtomIntegerValue[int64], toArrayValue: values.ArrayIntegerValue[int64]}
-	case ir.Uint32Kind:
+	case irkind.Uint32:
 		v = valuerT[uint32]{kind: kind, toAtomValue: values.AtomIntegerValue[uint32], toArrayValue: values.ArrayIntegerValue[uint32]}
-	case ir.Uint64Kind:
+	case irkind.Uint64:
 		v = valuerT[uint64]{kind: kind, toAtomValue: values.AtomIntegerValue[uint64], toArrayValue: values.ArrayIntegerValue[uint64]}
 	default:
 		err = fmterr.Errorf(fitp.File().FileSet(), expr.Source(), "%s cannot be converted to backend numerical: not supported", kind)
@@ -219,23 +220,23 @@ func evalAtomicValue(fitp *FileScope, expr ir.AtomicValue) (evaluator.NumericalE
 	kind := expr.Type().Kind()
 	exprAt := elements.NewExprAt(fitp.File(), expr)
 	switch kind {
-	case ir.IntIdxKind:
+	case irkind.IntIdx:
 		return toAtomElementInt(fitp, exprAt, expr.(*ir.AtomicValueT[ir.Int]).Val)
-	case ir.IntLenKind:
+	case irkind.IntLen:
 		return toAtomElementInt(fitp, exprAt, expr.(*ir.AtomicValueT[ir.Int]).Val)
-	case ir.BoolKind:
+	case irkind.Bool:
 		return toAtomElementBool(fitp, exprAt, expr.(*ir.AtomicValueT[bool]).Val)
-	case ir.Float32Kind:
+	case irkind.Float32:
 		return toAtomElementFloat(fitp, exprAt, expr.(*ir.AtomicValueT[float32]).Val)
-	case ir.Float64Kind:
+	case irkind.Float64:
 		return toAtomElementFloat(fitp, exprAt, expr.(*ir.AtomicValueT[float64]).Val)
-	case ir.Int32Kind:
+	case irkind.Int32:
 		return toAtomElementInt(fitp, exprAt, expr.(*ir.AtomicValueT[int32]).Val)
-	case ir.Int64Kind:
+	case irkind.Int64:
 		return toAtomElementInt(fitp, exprAt, expr.(*ir.AtomicValueT[int64]).Val)
-	case ir.Uint32Kind:
+	case irkind.Uint32:
 		return toAtomElementInt(fitp, exprAt, expr.(*ir.AtomicValueT[uint32]).Val)
-	case ir.Uint64Kind:
+	case irkind.Uint64:
 		return toAtomElementInt(fitp, exprAt, expr.(*ir.AtomicValueT[uint64]).Val)
 	default:
 		return nil, fmterr.Errorf(fitp.File().FileSet(), expr.Source(), "%s cannot be converted to backend numerical: not supported", kind)

@@ -24,6 +24,7 @@ import (
 
 	gxfmt "github.com/gx-org/gx/base/fmt"
 	"github.com/gx-org/gx/build/ir"
+	"github.com/gx-org/gx/build/ir/irkind"
 )
 
 type rStringType int
@@ -100,9 +101,9 @@ func rank(done map[any]bool, val reflect.Value, proc processor) string {
 	axes := make([]string, len(rnk.Ax))
 	for i, ax := range rnk.Ax {
 		switch ax.Type().Kind() {
-		case ir.SliceKind:
+		case irkind.Slice:
 			axes[i] = fmt.Sprintf("[group<%s>]", ax.String())
-		case ir.IntLenKind:
+		case irkind.IntLen:
 			axes[i] = ax.String()
 		default:
 			axes[i] = "invalid"

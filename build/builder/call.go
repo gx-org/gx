@@ -20,6 +20,7 @@ import (
 
 	"github.com/gx-org/gx/build/fmterr"
 	"github.com/gx-org/gx/build/ir"
+	"github.com/gx-org/gx/build/ir/irkind"
 	"github.com/gx-org/gx/internal/interp/compeval/cpevelements"
 	"github.com/gx-org/gx/interp/fun"
 	"github.com/gx-org/gx/interp"
@@ -98,7 +99,7 @@ func (n *callExpr) buildTypeCast(rscope resolveScope, callee ir.AssignableExpr, 
 		return ext, rscope.Err().Appendf(n.src, "too many arguments in conversion to %s", ext.Typ.String())
 	}
 	ext.X = args[0]
-	if ir.IsNumber(ext.X.Type().Kind()) {
+	if irkind.IsNumber(ext.X.Type().Kind()) {
 		ext.X, ok = castNumber(rscope, ext.X, ext.Typ)
 		targetArrayType := ir.ToArrayType(ext.Typ)
 		if targetArrayType != nil && !targetArrayType.Rank().IsAtomic() {

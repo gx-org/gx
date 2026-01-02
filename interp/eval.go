@@ -24,6 +24,7 @@ import (
 	"github.com/gx-org/gx/api/values"
 	"github.com/gx-org/gx/build/fmterr"
 	"github.com/gx-org/gx/build/ir"
+	"github.com/gx-org/gx/build/ir/irkind"
 	"github.com/gx-org/gx/interp/elements"
 	"github.com/gx-org/gx/interp/evaluator"
 	"github.com/gx-org/gx/interp/fun"
@@ -102,13 +103,13 @@ func evalRangeForLoopOverInteger[T dtype.AlgebraType](fitp *FileScope, stmt *ir.
 	return nil, false, nil
 }
 
-func evalRangeStmtInteger(fitp *FileScope, stmt *ir.RangeStmt, xKind ir.Kind) ([]ir.Element, bool, error) {
+func evalRangeStmtInteger(fitp *FileScope, stmt *ir.RangeStmt, xKind irkind.Kind) ([]ir.Element, bool, error) {
 	toValue, err := newValuer(fitp, stmt.X, xKind)
 	if err != nil {
 		return nil, false, err
 	}
 	switch xKind {
-	case ir.IntLenKind:
+	case irkind.IntLen:
 		return evalRangeForLoopOverInteger[ir.Int](fitp, stmt, toValue)
 	default:
 		return nil, true, fmterr.Errorf(fitp.File().FileSet(), stmt.Source(), "cannot range over %s", xKind.String())
@@ -183,7 +184,7 @@ func evalRangeStmtArray(fitp *FileScope, stmt *ir.RangeStmt) ([]ir.Element, bool
 		return nil, false, err
 	}
 	switch keyKind {
-	case ir.Int64Kind:
+	case irkind.Int64:
 		return evalRangeStmtForLoopOverArray[ir.Int](fitp, stmt, toValue)
 	default:
 		return nil, true, fmterr.Errorf(fitp.File().FileSet(), stmt.Source(), "cannot range over %s", keyKind.String())
@@ -192,10 +193,10 @@ func evalRangeStmtArray(fitp *FileScope, stmt *ir.RangeStmt) ([]ir.Element, bool
 
 func evalRangeStmt(fitp *FileScope, stmt *ir.RangeStmt) ([]ir.Element, bool, error) {
 	kind := stmt.X.Type().Kind()
-	if ir.IsRangeOk(kind) {
+	if irkind.IsRangeOk(kind) {
 		return evalRangeStmtInteger(fitp, stmt, kind)
 	}
-	if kind == ir.ArrayKind {
+	if kind == irkind.Array {
 		return evalRangeStmtArray(fitp, stmt)
 	}
 	return nil, true, errors.Errorf("cannot range over %s", kind.String())

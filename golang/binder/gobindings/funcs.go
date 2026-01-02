@@ -20,6 +20,7 @@ import (
 	"strings"
 
 	"github.com/gx-org/gx/build/ir"
+	"github.com/gx-org/gx/build/ir/irkind"
 )
 
 type function struct {
@@ -78,7 +79,7 @@ func argN(i int) string {
 
 func toKindSuffix(typ ir.Type) string {
 	kind := typ.Kind()
-	if kind == ir.IntLenKind || kind == ir.IntIdxKind {
+	if kind == irkind.IntLen || kind == irkind.IntIdx {
 		return "DefaultInt" // Matches platform.Host.DefaultInt(ir.Int)
 	}
 	kindS := kind.String()
@@ -88,7 +89,7 @@ func toKindSuffix(typ ir.Type) string {
 
 func hasStructIn(fields *ir.FieldList) bool {
 	for _, grp := range fields.List {
-		if grp.Type.Typ.Kind() == ir.StructKind {
+		if grp.Type.Typ.Kind() == irkind.Struct {
 			return true
 		}
 	}

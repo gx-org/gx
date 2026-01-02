@@ -20,6 +20,7 @@ import (
 	"io"
 
 	"github.com/gx-org/gx/build/ir"
+	"github.com/gx-org/gx/build/ir/irkind"
 )
 
 type (
@@ -114,6 +115,6 @@ func BuildFuncs[T any](pkg *ir.Package, factory func(ir.PkgFunc, int) (*T, error
 }
 
 // IsDefaultInt returns true if the kind can be converted to the system default integer type.
-func IsDefaultInt(kind ir.Kind) bool {
-	return kind == ir.IntLenKind || kind == ir.IntIdxKind
+func IsDefaultInt(kind irkind.Kind) bool {
+	return kind == irkind.IntLen || kind == irkind.IntIdx
 }

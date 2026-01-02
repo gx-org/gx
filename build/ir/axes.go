@@ -17,6 +17,8 @@ package ir
 import (
 	"fmt"
 	"go/ast"
+
+	"github.com/gx-org/gx/build/ir/irkind"
 )
 
 const (
@@ -119,7 +121,7 @@ func (dm *AxisExpr) Type() Type { return dm.X.Type() }
 
 func (dm *AxisExpr) axExprString() string {
 	suffix := ""
-	if typ := dm.X.Type(); typ.Kind() == SliceKind {
+	if typ := dm.X.Type(); typ.Kind() == irkind.Slice {
 		suffix = "___"
 	}
 	return dm.X.String() + suffix
@@ -273,7 +275,7 @@ func (dm *AxisStmt) Type() Type {
 
 func (dm *AxisStmt) axExprString() string {
 	prefix := DefineAxisLength
-	if dm.Typ.Kind() == SliceKind {
+	if dm.Typ.Kind() == irkind.Slice {
 		prefix = DefineAxisGroup
 	}
 	return prefix + dm.Src.Name

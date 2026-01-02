@@ -22,6 +22,7 @@ import (
 
 	"github.com/gx-org/gx/build/ir/generics"
 	"github.com/gx-org/gx/build/ir"
+	"github.com/gx-org/gx/build/ir/irkind"
 	"github.com/gx-org/gx/internal/interp/canonical"
 )
 
@@ -55,7 +56,7 @@ func (n *indexExpr) source() ast.Node {
 
 func (n *indexExpr) checkIndexType(scope *fileResolveScope, index ir.Expr) (ir.Expr, bool) {
 	var ok bool
-	if ir.IsNumber(index.Type().Kind()) {
+	if irkind.IsNumber(index.Type().Kind()) {
 		// Coerce index type to a concrete integer type.
 		index, ok = castNumber(scope, index, ir.DefaultIntType)
 	}
@@ -142,7 +143,7 @@ func (n *indexExpr) buildExpr(rscope resolveScope) (ir.Expr, bool) {
 		return nil, false
 	}
 	xType := x.Type()
-	if xType.Kind() == ir.FuncKind {
+	if xType.Kind() == irkind.Func {
 		return specializeFunc(rscope, x, []ir.AssignableExpr{idx})
 	}
 	ext := &ir.IndexExpr{Src: n.src, X: x, Index: idx, Typ: ir.InvalidType()}
@@ -164,7 +165,7 @@ func (n *indexExpr) buildExpr(rscope resolveScope) (ir.Expr, bool) {
 
 	}
 	numberOk := true
-	if ir.IsNumber(ext.Index.Type().Kind()) {
+	if irkind.IsNumber(ext.Index.Type().Kind()) {
 		ext.Index, numberOk = castNumber(rscope, ext.Index, ir.Int64Type())
 	}
 	return ext, boundOk && numberOk
@@ -209,7 +210,7 @@ func (n *indexListExpr) buildExpr(rscope resolveScope) (ir.Expr, bool) {
 	if !xOk || !indicesOk {
 		return x, false
 	}
-	if x.Type().Kind() != ir.FuncKind {
+	if x.Type().Kind() != irkind.Func {
 		return x, rscope.Err().Appendf(n.source(), "list of indices only supported for generic functions")
 	}
 	return specializeFunc(rscope, x, indices)

@@ -18,6 +18,7 @@ package numbers
 import (
 	"github.com/gx-org/backend/shape"
 	"github.com/gx-org/gx/build/ir"
+	"github.com/gx-org/gx/build/ir/irkind"
 	"github.com/gx-org/gx/internal/interp/canonical"
 	"github.com/gx-org/gx/interp/elements"
 	"github.com/gx-org/gx/interp/evaluator"
@@ -40,10 +41,10 @@ func toConcrete(tps ...ir.Type) ir.Type {
 			continue
 		}
 		knd := tp.Kind()
-		if ir.IsNumber(knd) {
+		if irkind.IsNumber(knd) {
 			continue
 		}
-		if ir.IsIntegerKind(knd) || ir.IsFloatKind(knd) {
+		if irkind.IsIntegerKind(knd) || irkind.IsFloatKind(knd) {
 			return tp
 		}
 	}

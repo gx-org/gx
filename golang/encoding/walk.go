@@ -23,6 +23,7 @@ import (
 	"github.com/pkg/errors"
 	"github.com/gx-org/gx/api"
 	"github.com/gx-org/gx/build/ir"
+	"github.com/gx-org/gx/build/ir/irkind"
 	"github.com/gx-org/gx/golang/binder/gobindings/types"
 )
 
@@ -74,9 +75,9 @@ func unmarshal(ld *loader, target types.Bridge, data Data) error {
 	var err error
 	kind := target.GXValue().Type().Kind()
 	switch kind {
-	case ir.StructKind:
+	case irkind.Struct:
 		err = unmarshalStruct(ld, target, data)
-	case ir.SliceKind:
+	case irkind.Slice:
 		err = unmarshalSliceType(ld, target, data)
 	default:
 		err = errors.Errorf("type %T not supported", kind)

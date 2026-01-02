@@ -17,6 +17,8 @@ package ir
 import (
 	"go/ast"
 	"slices"
+
+	"github.com/gx-org/gx/build/ir/irkind"
 )
 
 // AxisValue assigns a value to an axis length.
@@ -59,7 +61,7 @@ var _ Type = (*FuncType)(nil)
 func (*FuncType) node() {}
 
 // Kind returns the function kind.
-func (s *FuncType) Kind() Kind { return FuncKind }
+func (s *FuncType) Kind() irkind.Kind { return irkind.Func }
 
 // Equal returns true if other is the same type.
 func (s *FuncType) Equal(fetcher Fetcher, other Type) (bool, error) {

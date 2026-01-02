@@ -28,6 +28,7 @@ import (
 	"github.com/gx-org/gx/api/values"
 	"github.com/gx-org/gx/build/builder"
 	"github.com/gx-org/gx/build/ir"
+	"github.com/gx-org/gx/build/ir/irkind"
 	"github.com/gx-org/gx/cgx/handle"
 	"github.com/gx-org/gx/golang/backend/kernels"
 	"github.com/gx-org/gx/golang/binder/gobindings/core"
@@ -646,7 +647,7 @@ func cgx_value_send(cgxDevice C.cgx_device, cgxShape C.cgx_shape, data *C.cvoid_
 	if err != nil {
 		return C.struct_cgx_value_new_result{error: (C.cgx_error)(wrap[error](err))}
 	}
-	dataType := ir.TypeFromKind(ir.Kind(shape.DType))
+	dataType := ir.TypeFromKind(irkind.Kind(shape.DType))
 	valueType := ir.NewArrayType(nil, dataType, ir.NewRank(shape.AxisLengths))
 	value, err := values.NewDeviceArray(valueType, h)
 	if err != nil {
@@ -657,29 +658,29 @@ func cgx_value_send(cgxDevice C.cgx_device, cgxShape C.cgx_shape, data *C.cvoid_
 	}
 }
 
-func toCGXValueKind(kind ir.Kind) C.enum_cgx_value_kind {
+func toCGXValueKind(kind irkind.Kind) C.enum_cgx_value_kind {
 	switch kind {
-	case ir.BoolKind:
+	case irkind.Bool:
 		return C.CGX_BOOL
-	case ir.Bfloat16Kind:
+	case irkind.Bfloat16:
 		return C.CGX_BFLOAT16
-	case ir.Float32Kind:
+	case irkind.Float32:
 		return C.CGX_FLOAT32
-	case ir.Float64Kind:
+	case irkind.Float64:
 		return C.CGX_FLOAT64
-	case ir.Int32Kind:
+	case irkind.Int32:
 		return C.CGX_INT32
-	case ir.Int64Kind:
+	case irkind.Int64:
 		return C.CGX_INT64
-	case ir.Uint32Kind:
+	case irkind.Uint32:
 		return C.CGX_UINT32
-	case ir.Uint64Kind:
+	case irkind.Uint64:
 		return C.CGX_UINT64
-	case ir.ArrayKind:
+	case irkind.Array:
 		return C.CGX_ARRAY
-	case ir.SliceKind:
+	case irkind.Slice:
 		return C.CGX_SLICE
-	case ir.StructKind:
+	case irkind.Struct:
 		return C.CGX_STRUCT
 	default:
 		return C.CGX_INVALID
@@ -763,9 +764,9 @@ func cgx_value_host_buffer(cgxValue C.cgx_value) C.struct_cgx_value_host_buffer_
 func cgx_value_get_struct(cgxValue C.cgx_value) C.struct_cgx_value_get_struct_result {
 	value := unwrap[values.Value](cgxValue)
 	kind := value.Type().Kind()
-	if value.Type().Kind() != ir.StructKind {
+	if value.Type().Kind() != irkind.Struct {
 		return C.struct_cgx_value_get_struct_result{
-			error: Errorf("value has kind %v, expect kind %v", kind, ir.StructKind),
+			error: Errorf("value has kind %v, expect kind %v", kind, irkind.Struct),
 		}
 	}
 	strct := values.Underlying(value).(*values.Struct)
@@ -850,7 +851,7 @@ func cgx_shape_size(cgxShape C.cgx_shape) C.int {
 func cgx_shape_element_kind(cgxShape C.cgx_shape) C.enum_cgx_value_kind {
 	shape := unwrap[*shape.Shape](cgxShape)
 	if shape.DType < dtype.MaxDataType {
-		return toCGXValueKind(ir.Kind(shape.DType))
+		return toCGXValueKind(irkind.Kind(shape.DType))
 	}
 	return C.CGX_INVALID
 }

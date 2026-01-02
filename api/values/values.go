@@ -22,6 +22,7 @@ import (
 	"github.com/gx-org/backend/dtype"
 	"github.com/gx-org/backend/platform"
 	"github.com/gx-org/gx/build/ir"
+	"github.com/gx-org/gx/build/ir/irkind"
 	"github.com/gx-org/gx/golang/backend/kernels"
 )
 
@@ -114,29 +115,29 @@ func sliceZeroValue(typ ir.Type) (*Slice, error) {
 func Zero(typ ir.Type) (Value, error) {
 	kind := typ.Kind()
 	switch kind {
-	case ir.BoolKind:
+	case irkind.Bool:
 		return AtomBoolValue(typ, false)
-	case ir.Bfloat16Kind:
+	case irkind.Bfloat16:
 		return AtomBfloat16Value(typ, 0)
-	case ir.Float32Kind:
+	case irkind.Float32:
 		return AtomFloatValue[float32](typ, 0)
-	case ir.Float64Kind:
+	case irkind.Float64:
 		return AtomFloatValue[float64](typ, 0)
-	case ir.Int32Kind:
+	case irkind.Int32:
 		return AtomIntegerValue[int32](typ, 0)
-	case ir.Int64Kind:
+	case irkind.Int64:
 		return AtomIntegerValue[int64](typ, 0)
-	case ir.Uint32Kind:
+	case irkind.Uint32:
 		return AtomIntegerValue[uint32](typ, 0)
-	case ir.Uint64Kind:
+	case irkind.Uint64:
 		return AtomIntegerValue[uint64](typ, 0)
-	case ir.IntLenKind:
+	case irkind.IntLen:
 		return AtomIntegerValue[ir.Int](typ, 0)
-	case ir.IntIdxKind:
+	case irkind.IntIdx:
 		return AtomIntegerValue[ir.Int](typ, 0)
-	case ir.ArrayKind:
+	case irkind.Array:
 		return arrayZeroValue(typ)
-	case ir.SliceKind:
+	case irkind.Slice:
 		return sliceZeroValue(typ)
 	default:
 		return nil, errors.Errorf("cannot create a zero value of %s", kind.String())
@@ -174,24 +175,24 @@ func bigIntToUint[T dtype.Unsigned](x *big.Int) T {
 // AtomNumberInt evaluates a big integer number into a GX array value.
 func AtomNumberInt(x *big.Int, typ ir.Type) (*HostArray, error) {
 	switch typ.Kind() {
-	case ir.Bfloat16Kind:
+	case irkind.Bfloat16:
 		xF64, _ := x.Float64()
 		return AtomBfloat16Value(typ, dtype.BFloat16FromFloat64(xF64))
-	case ir.Float32Kind:
+	case irkind.Float32:
 		return AtomFloatValue[float32](typ, bigIntToFloat[float32](x))
-	case ir.Float64Kind:
+	case irkind.Float64:
 		return AtomFloatValue[float64](typ, bigIntToFloat[float64](x))
-	case ir.Int32Kind:
+	case irkind.Int32:
 		return AtomIntegerValue[int32](typ, bigIntToInt[int32](x))
-	case ir.Int64Kind:
+	case irkind.Int64:
 		return AtomIntegerValue[int64](typ, bigIntToInt[int64](x))
-	case ir.Uint32Kind:
+	case irkind.Uint32:
 		return AtomIntegerValue[uint32](typ, bigIntToUint[uint32](x))
-	case ir.Uint64Kind:
+	case irkind.Uint64:
 		return AtomIntegerValue[uint64](typ, bigIntToUint[uint64](x))
-	case ir.IntLenKind:
+	case irkind.IntLen:
 		return AtomIntegerValue[ir.Int](typ, bigIntToInt[ir.Int](x))
-	case ir.IntIdxKind:
+	case irkind.IntIdx:
 		return AtomIntegerValue[ir.Int](typ, bigIntToInt[ir.Int](x))
 	}
 	return nil, errors.Errorf("cannot convert %T(%s) to %s: not implemented", x, x, typ.String())
@@ -205,24 +206,24 @@ func bigFloatCast[T dtype.AlgebraType](x *big.Float) T {
 // AtomNumberFloat  evaluates a big integer number into a GX array value.
 func AtomNumberFloat(x *big.Float, typ ir.Type) (*HostArray, error) {
 	switch typ.Kind() {
-	case ir.Bfloat16Kind:
+	case irkind.Bfloat16:
 		xF64, _ := x.Float64()
 		return AtomBfloat16Value(typ, dtype.BFloat16FromFloat64(xF64))
-	case ir.Float32Kind:
+	case irkind.Float32:
 		return AtomFloatValue[float32](typ, bigFloatCast[float32](x))
-	case ir.Float64Kind:
+	case irkind.Float64:
 		return AtomFloatValue[float64](typ, bigFloatCast[float64](x))
-	case ir.Int32Kind:
+	case irkind.Int32:
 		return AtomIntegerValue[int32](typ, bigFloatCast[int32](x))
-	case ir.Int64Kind:
+	case irkind.Int64:
 		return AtomIntegerValue[int64](typ, bigFloatCast[int64](x))
-	case ir.Uint32Kind:
+	case irkind.Uint32:
 		return AtomIntegerValue[uint32](typ, bigFloatCast[uint32](x))
-	case ir.Uint64Kind:
+	case irkind.Uint64:
 		return AtomIntegerValue[uint64](typ, bigFloatCast[uint64](x))
-	case ir.IntLenKind:
+	case irkind.IntLen:
 		return AtomIntegerValue[ir.Int](typ, bigFloatCast[ir.Int](x))
-	case ir.IntIdxKind:
+	case irkind.IntIdx:
 		return AtomIntegerValue[ir.Int](typ, bigFloatCast[ir.Int](x))
 	}
 	return nil, errors.Errorf("cannot convert %T(%s) to %s: not implemented", x, x, typ.String())

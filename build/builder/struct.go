@@ -19,6 +19,7 @@ import (
 
 	"github.com/gx-org/gx/build/fmterr"
 	"github.com/gx-org/gx/build/ir"
+	"github.com/gx-org/gx/build/ir/irkind"
 )
 
 // structType represents a structure type.
@@ -184,7 +185,7 @@ func (n *structLiteral) buildExpr(rscope resolveScope) (ir.Expr, bool) {
 			fieldsOk = false
 			continue
 		}
-		if ir.IsNumber(fieldLit.X.Type().Kind()) {
+		if irkind.IsNumber(fieldLit.X.Type().Kind()) {
 			fieldLit.X, valueOk = castNumber(rscope, fieldLit.X, field.Type())
 			if !valueOk {
 				fieldsOk = false

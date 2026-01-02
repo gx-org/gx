@@ -18,6 +18,7 @@ import (
 	"go/ast"
 
 	"github.com/gx-org/gx/build/ir"
+	"github.com/gx-org/gx/build/ir/irkind"
 )
 
 type returnStmt struct {
@@ -139,7 +140,7 @@ func (n *returnStmt) buildStmt(scope fnResolveScope) (ir.Stmt, bool, bool) {
 	// Check if the types being returned are assignable to the types declared by the signature.
 	for i, wantI := range wants {
 		retOk := true
-		if ir.IsNumber(rTypes[i].Kind()) {
+		if irkind.IsNumber(rTypes[i].Kind()) {
 			ext.Results[i], retOk = n.castNumber(scope, ext.Results[i], wantI.Type())
 			rTypes[i] = ext.Results[i].Type()
 		}
@@ -148,7 +149,7 @@ func (n *returnStmt) buildStmt(scope fnResolveScope) (ir.Stmt, bool, bool) {
 		}
 		gotType := rTypes[i]
 		wantType := wantI.Group.Type.Typ
-		if gotType.Kind() == ir.InvalidKind || wantType.Kind() == ir.InvalidKind {
+		if gotType.Kind() == irkind.Invalid || wantType.Kind() == irkind.Invalid {
 			ok = false
 			continue
 		}

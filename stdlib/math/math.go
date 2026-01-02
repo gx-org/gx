@@ -27,6 +27,7 @@ import (
 	"github.com/gx-org/gx/build/builtins"
 	"github.com/gx-org/gx/build/fmterr"
 	"github.com/gx-org/gx/build/ir"
+	"github.com/gx-org/gx/build/ir/irkind"
 	"github.com/gx-org/gx/interp/elements"
 	"github.com/gx-org/gx/interp/evaluator"
 	"github.com/gx-org/gx/interp/fun"
@@ -108,7 +109,7 @@ func mainAuxArgsToTypes(funcName string, fetcher ir.Fetcher, call *ir.FuncCallEx
 }
 
 func buildConstScalar[T dtype.GoDataType](name string, value T) builtin.Builder {
-	kind := ir.KindGeneric[T]()
+	kind := irkind.KindGeneric[T]()
 	return builtin.BuildConst(func(*ir.Package) (string, ir.AssignableExpr, ir.Type, error) {
 		value := &ir.AtomicValueT[T]{
 			Src: &ast.BasicLit{
