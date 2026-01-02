@@ -6,7 +6,7 @@ func Constant(x [2]float32) [2]float32 {
 	return [...]float32{1.0, 2.0}
 }
 
-//gx:=grad.Func(Constant, "x")
+// gx:=grad.Func(Constant, "x")
 func ConstantGrad()
 
 func TestConstant() [2]float32 {
@@ -15,45 +15,50 @@ func TestConstant() [2]float32 {
 	// [2]float32{1, 2}
 }
 
-func TestConstantGrad() [2]float32 {
+func TestConstantGrad() ([2]float32, [2]float32) {
 	return ConstantGrad([2]float32{3.0, 4.0})
 	// Want:
-	// [2]float32{0, 0}
+	// 0: [2]float32{1, 2}
+	// 1: [2]float32{0, 0}
 }
 
 func XAsElement(x float32) [2]float32 {
 	return [...]float32{x, 2.0}
 }
 
-//gx:=grad.Func(XAsElement, "x")
+// gx:=grad.Func(XAsElement, "x")
 func XAsElementGrad()
 
-func TestXAsElementGrad() float32 {
+func TestXAsElementGrad() ([2]float32, float32) {
 	trace(XAsElementGrad)
 	return XAsElementGrad(2.0)
 	// Want:
-	// float32(1)
-        // Trace:
-        // grad_test.gx:0
-        // 	func XAsElementGrad(x float32) float32 {
-        // 		return 1
-        // 	}
+	// 0: [2]float32{2, 2}
+	// 1: float32(1)
+	// Trace:
+	// grad_test.gx:0
+	// 	func XAsElementGrad(x float32) ([2]float32, float32) {
+	// 		y, xVJP := grad.VJP(XAsElement)(x)
+	// 		res := [2]float32(1)
+	// 		return y, xVJP(res)
+	// 	}
 }
-
 
 func OverShadow(x float32) float32 {
-	x = x*x
+	x = x * x
 	x1 := x // Gradient of x*x: should be 2*x
-	x = x+x
+	x = x + x
 	x2 := x // Gradient of (x*x)+(x*x): should be 4*x
-	return x1+x2
+	return x1 + x2
 }
 
-//gx:=grad.Func(OverShadow, "x")
+// gx:=grad.Func(OverShadow, "x")
 func OverShadowGrad()
 
-func TestOverShadowGrad() float32 {
+func TestOverShadowGrad() (float32, float32) {
 	return OverShadowGrad(3)
 	// Want:
-	// float32(18)
+	// 0: float32(27)
+	// 1: float32(18)
 }
+

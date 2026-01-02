@@ -67,10 +67,10 @@ func (tt Func) buildSourceCode() string {
 	for _, fnName := range tt.GradOf {
 		fmt.Fprintf(grads,
 			`
-//gx:=%s.VJP(%s)
-func vjp%s()
+//gx:=%s.Func(%s, "%s")
+func grad%s()
 `,
-			callImportName, fnName, fnName)
+			callImportName, fnName, tt.WRT, fnName)
 	}
 	return fmt.Sprintf(`
 package test
@@ -97,7 +97,7 @@ func (tt Func) Run(b *testbuild.Builder) error {
 	pkgIR := pkg.IR()
 	// Check the gradient of the default function F.
 	// checkFunc returns a nil error if tt.Want is empty.
-	if err := checkFunc(pkgIR, "vjpF", tt.Want); err != nil {
+	if err := checkFunc(pkgIR, "gradF", tt.Want); err != nil {
 		return err
 	}
 	// Check other functions we expect.

@@ -17,17 +17,19 @@ package grad
 
 import (
 	"embed"
-	"fmt"
 	"go/ast"
+	"go/token"
 
 	"github.com/pkg/errors"
+	"github.com/gx-org/gx/base/uname"
 	"github.com/gx-org/gx/build/fmterr"
 	"github.com/gx-org/gx/build/ir"
 	"github.com/gx-org/gx/internal/interp/compeval/cpevelements"
 	"github.com/gx-org/gx/interp/elements"
 	"github.com/gx-org/gx/interp"
 	"github.com/gx-org/gx/stdlib/builtin"
-	"github.com/gx-org/gx/stdlib/math/grad/setann"
+	"github.com/gx-org/gx/stdlib/math/grad/revgraph"
+	"github.com/gx-org/gx/stdlib/math/grad/special"
 )
 
 //go:embed *.gx
@@ -47,9 +49,11 @@ var Package = builtin.PackageBuilder{
 
 type gradMacro struct {
 	cpevelements.CoreMacroElement
+	call   elements.CallAt
+	unames *uname.Unique
 
-	fn  ir.PkgFunc
-	wrt withRespectTo
+	wrt      withRespectTo
+	revgraph *revgraph.Graph
 }
 
 var _ ir.FuncASTBuilder = (*gradMacro)(nil)
@@ -74,12 +78,9 @@ func FuncGrad(file *ir.File, call *ir.FuncCallExpr, mac *ir.Macro, args []ir.Ele
 	if err != nil {
 		return nil, err
 	}
-	if fn.FuncType().Results.Len() > 1 {
-		return nil, errors.Errorf("cannot compute the gradient of function with more than one result")
-	}
-	fnT, ok := fn.(ir.PkgFunc)
-	if !ok {
-		return nil, errors.Errorf("cannot compute the gradient of function %T", fn)
+	fType := fn.FuncType()
+	if fType.Results.Len() != 1 {
+		return nil, errors.Errorf("%s expects 1 result but %s returns %d results", mac.ShortString(), fn.ShortString(), fn.FuncType().Results.Len())
 	}
 	wrtS, err := elements.StringFromElement(args[1])
 	if err != nil {
@@ -89,111 +90,93 @@ func FuncGrad(file *ir.File, call *ir.FuncCallExpr, mac *ir.Macro, args []ir.Ele
 	if err != nil {
 		return nil, err
 	}
-	return gradMacro{
+	m := &gradMacro{
 		CoreMacroElement: cpevelements.MacroElement(mac, file, call),
-	}.newMacro(fnT, wrtF), nil
-}
-
-func (m gradMacro) newMacro(fn ir.PkgFunc, wrt withRespectTo) *gradMacro {
-	var n gradMacro = m
-	n.fn = fn
-	n.wrt = wrt
-	return &n
-}
-
-func (m gradMacro) clone() *gradMacro {
-	return m.newMacro(m.fn, m.wrt)
-}
-
-func (m *gradMacro) syntheticFuncName(fetcher ir.Fetcher, fn ir.Func) (string, bool) {
-	callSite := m.Call()
-	callee := callSite.Node().Callee
-	macro := callee.Func().(*ir.Macro)
-	funcName := macro.Name()
-	macroPackage := macro.File().Package
-	imp := callSite.File().FindImport(macroPackage.FullName())
-	if imp == nil {
-		return "", fetcher.Err().AppendInternalf(callee.Source(), "cannot find import name %s", macroPackage.FullName())
+		call:             elements.NewNodeAt(file, call),
+		unames:           uname.New(),
+		wrt:              wrtF,
 	}
-	pkgFunc, ok := fn.(ir.PkgFunc)
-	if !ok {
-		return "", fetcher.Err().AppendInternalf(callee.Source(), "cannot build a synthetic name for %T", fn)
+	if m.revgraph, err = revgraph.New(&m.CoreMacroElement, fn); err != nil {
+		return nil, err
 	}
-	return fmt.Sprintf("__%s_%s_%s_%s", imp.Name(), funcName, pkgFunc.Name(), m.wrt.name()), true
+	m.unames.RegisterFieldNames(fType.Receiver)
+	m.unames.RegisterFieldNames(fType.Params)
+	m.unames.RegisterFieldNames(fType.Results)
+	return m, nil
+}
+
+func typeParamsOf(fields *ir.FieldList) *ast.FieldList {
+	if fields == nil {
+		return nil
+	}
+	return fields.Src
 }
 
 func (m *gradMacro) BuildDecl(fn ir.PkgFunc) (*ir.File, *ast.FuncDecl, bool) {
-	fType := m.fn.FuncType()
-	fDecl := &ast.FuncDecl{Type: fType.Src, Name: &ast.Ident{Name: "grad"}}
-	fDecl.Type.Results = &ast.FieldList{
-		List: []*ast.Field{&ast.Field{
-			Type: m.wrt.fieldType(),
-		}},
+	target := m.revgraph.Func()
+	fType := target.FuncType()
+	results := &ast.FieldList{List: []*ast.Field{
+		&ast.Field{
+			Type: fType.Results.Fields()[0].Type().Source().(ast.Expr),
+		},
+	}}
+	for _, param := range fType.Params.Fields() {
+		results.List = append(results.List, &ast.Field{
+			Type: param.Type().Source().(ast.Expr),
+		})
 	}
+	fDecl := &ast.FuncDecl{Type: &ast.FuncType{
+		TypeParams: typeParamsOf(fType.TypeParams),
+		Params:     fType.Params.Src,
+		Results:    results,
+	}}
 	recv := fType.Receiver
 	if recv != nil {
 		fDecl.Recv = recv.Src
 	}
-	return m.fn.File(), fDecl, true
-}
-
-func (m *gradMacro) buildBodyFromSetAnnotation(fetcher ir.Fetcher, fn ir.Func, ann *setann.Annotation) (*ast.BlockStmt, bool) {
-	params := fn.FuncType().Params.Fields()
-	args := make([]ast.Expr, len(params))
-	for i, param := range params {
-		args[i] = param.Name
-	}
-	identToGradFunc, ok := gradFromAnnotation(fetcher, fn, ann, m.wrt.name())
-	if !ok {
-		return nil, false
-	}
-	return &ast.BlockStmt{List: []ast.Stmt{&ast.ReturnStmt{
-		Results: []ast.Expr{&ast.CallExpr{
-			Fun:  identToGradFunc,
-			Args: args,
-		}},
-	}}}, true
+	return target.File(), fDecl, true
 }
 
 func (m *gradMacro) BuildBody(fetcher ir.Fetcher, fn ir.Func) (*ast.BlockStmt, bool) {
-	if ann := setann.Get(m.fn); ann != nil {
-		return m.buildBodyFromSetAnnotation(fetcher, fn, ann)
+	gradPkgFullName := m.CoreMacroElement.From().File().Package.FullName()
+	imp := m.call.File().FindImport(gradPkgFullName)
+	y := &ast.Ident{Name: m.unames.Name("y")}
+	resIdent := &ast.Ident{Name: m.unames.Name("res")}
+	outType := m.revgraph.Func().FuncType().Results.Fields()[0].Type()
+	vjps := m.revgraph.VJPs()
+	vjpVars := make([]ast.Expr, len(vjps))
+	vjpCalls := make([]ast.Expr, len(vjps))
+	for i, vjp := range vjps {
+		vjpVars[i] = &ast.Ident{Name: m.unames.Name(vjp.Name() + "VJP")}
+		vjpCalls[i] = &ast.CallExpr{
+			Fun:  vjpVars[i],
+			Args: []ast.Expr{resIdent},
+		}
 	}
-	fnWithBody, ok := m.fn.(*ir.FuncDecl)
-	if !ok {
-		return nil, fetcher.Err().Appendf(fn.Source(), "function has no body")
-	}
-	sg := m.newStmtGrader(fetcher, nil)
-	fType := m.fn.FuncType()
-	sg.registerFieldNames(fType.Receiver)
-	sg.registerFieldNames(fType.Params)
-	sg.registerFieldNames(fType.Results)
-	body, ok := sg.gradBlock(fetcher, fnWithBody.Body)
-	if !ok {
-		return nil, false
-	}
-	return body, true
-}
-
-func (m *gradMacro) gradIdent(src *ast.Ident) *ast.Ident {
-	return &ast.Ident{
-		NamePos: src.NamePos,
-		Name:    "__grad_" + src.Name,
-	}
-}
-
-func syntheticFuncName(fetcher ir.Fetcher, callSite elements.CallAt, fn ir.Func, wrt withRespectTo) (string, bool) {
-	callee := callSite.Node().Callee
-	macro := callee.Func().(*ir.Macro)
-	funcName := macro.Name()
-	macroPackage := macro.File().Package
-	imp := callSite.File().FindImport(macroPackage.FullName())
-	if imp == nil {
-		return "", fetcher.Err().AppendInternalf(callee.Source(), "cannot find import name %s", macroPackage.FullName())
-	}
-	pkgFunc, ok := fn.(ir.PkgFunc)
-	if !ok {
-		return "", fetcher.Err().AppendInternalf(callee.Source(), "cannot build a synthetic name for %T", fn)
-	}
-	return fmt.Sprintf("__%s_%s_%s_%s", imp.Name(), funcName, pkgFunc.ShortString(), wrt.name()), true
+	return &ast.BlockStmt{List: []ast.Stmt{
+		&ast.AssignStmt{
+			Tok: token.DEFINE,
+			Lhs: append([]ast.Expr{y}, vjpVars...),
+			Rhs: []ast.Expr{
+				&ast.CallExpr{
+					Fun: &ast.CallExpr{
+						Fun: &ast.SelectorExpr{
+							X:   imp.NameDef(),
+							Sel: &ast.Ident{Name: "VJP"},
+						},
+						Args: []ast.Expr{m.call.Node().Args[0].Source().(ast.Expr)},
+					},
+					Args: []ast.Expr{fn.FuncType().Params.Fields()[0].Name},
+				},
+			},
+		},
+		&ast.AssignStmt{
+			Tok: token.DEFINE,
+			Lhs: []ast.Expr{resIdent},
+			Rhs: []ast.Expr{special.OneExpr().CastIfRequired(outType).AST()},
+		},
+		&ast.ReturnStmt{
+			Results: append([]ast.Expr{y}, vjpCalls...),
+		},
+	}}, true
 }

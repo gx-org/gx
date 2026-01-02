@@ -262,7 +262,7 @@ var one = &Expr{
 }
 
 // OneExpr returns an expression representing one.
-func OneExpr(node ast.Node) *Expr {
+func OneExpr() *Expr {
 	return one
 }
 

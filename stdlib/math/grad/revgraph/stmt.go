@@ -93,7 +93,7 @@ func (p *processor) processReturnStmt(isrc *ir.ReturnStmt) (*returnStmt, bool) {
 	return out, true
 }
 
-func (n *returnStmt) buildVJPFunctionWRT(outStmts *astOut, param vjpParam) (*ast.FuncLit, bool) {
+func (n *returnStmt) buildVJPFunctionWRT(outStmts *astOut, param VJPParam) (*ast.FuncLit, bool) {
 	outWRT := outStmts.newASTOutWRT(param.wrt)
 	rets := make([]*special.Expr, len(n.exprs))
 	for i, expr := range n.exprs {
