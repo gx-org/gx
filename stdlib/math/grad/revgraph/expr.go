@@ -34,6 +34,8 @@ type (
 
 func (p *processor) processExpr(isrc ir.Expr) (expr, bool) {
 	switch isrcT := isrc.(type) {
+	case *ir.ArrayLitExpr:
+		return p.processArrayLitExpr(isrcT)
 	case *ir.UnaryExpr:
 		return p.processUnaryExpr(isrcT)
 	case *ir.BinaryExpr:
@@ -399,4 +401,55 @@ func (n *parenExpr) buildBackward(bckstmts *astOutWRT, bck *special.Expr) (*spec
 		return nil, false
 	}
 	return special.Paren(xBack), true
+}
+
+type arrayLitExpr struct {
+	node[*ir.ArrayLitExpr]
+	xs  []expr
+	fwd ast.Expr
+}
+
+func (p *processor) processArrayLitExpr(isrc *ir.ArrayLitExpr) (*arrayLitExpr, bool) {
+	xs := make([]expr, len(isrc.Elts))
+	ok := true
+	for i, el := range isrc.Elts {
+		var elOk bool
+		xs[i], elOk = p.processExpr(el)
+		ok = ok && elOk
+	}
+	return &arrayLitExpr{
+		node: newNodeNoID[*ir.ArrayLitExpr](p, isrc),
+		xs:   xs,
+	}, ok
+}
+
+func (n *arrayLitExpr) buildForward(astmts *fwdStmts) ([]ast.Expr, bool) {
+	ok := true
+	fwds := make([]ast.Expr, len(n.xs))
+	for i, x := range n.xs {
+		var fwdOk bool
+		fwds[i], fwdOk = buildSingleForward(astmts, x)
+		ok = ok && fwdOk
+	}
+	n.fwd = &ast.CompositeLit{
+		Type: n.node.irnode.Src.Type,
+		Elts: fwds,
+	}
+	return []ast.Expr{n.fwd}, ok
+}
+
+func (n *arrayLitExpr) forwardValue() (*special.Expr, bool) {
+	return special.New(n.fwd), true
+}
+
+func (n *arrayLitExpr) buildBackward(bckstmts *astOutWRT, bck *special.Expr) (*special.Expr, bool) {
+	bcks := make([]*special.Expr, len(n.xs))
+	for i, x := range n.xs {
+		xBack, xOk := x.buildBackward(bckstmts, bck.Index(i))
+		if !xOk {
+			return nil, false
+		}
+		bcks[i] = xBack
+	}
+	return special.Add(bcks...), true
 }

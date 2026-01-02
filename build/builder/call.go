@@ -101,14 +101,6 @@ func (n *callExpr) buildTypeCast(rscope resolveScope, callee ir.AssignableExpr, 
 	ext.X = args[0]
 	if irkind.IsNumber(ext.X.Type().Kind()) {
 		ext.X, ok = castNumber(rscope, ext.X, ext.Typ)
-		targetArrayType := ir.ToArrayType(ext.Typ)
-		if targetArrayType != nil && !targetArrayType.Rank().IsAtomic() {
-			ext.X = &ir.CastExpr{
-				Src: n.src,
-				Typ: ext.Typ,
-				X:   ext.X,
-			}
-		}
 	}
 	if !ok {
 		return ext, false

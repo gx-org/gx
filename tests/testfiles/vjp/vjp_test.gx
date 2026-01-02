@@ -92,3 +92,23 @@ func TestF3() (float32, float32) {
 	// 1: float32(12)
 }
 
+func arrayLiteral(x float32) [3][2]float32 {
+	return [3][2]float32{
+		{1 * x, 2 * x},
+		{3 * x, 4 * x},
+		{5 * x, 6 * x},
+	}
+}
+
+func TestArrayLiteral() ([3][2]float32, float32) {
+	y, bck := grad.VJP(arrayLiteral)(2)
+	return y, bck([3][2]float32(1))
+	// Want:
+	// 0: [3][2]float32{
+	// 	{2, 4},
+	// 	{6, 8},
+	// 	{10, 12},
+	// }
+	// 1: float32(21)
+}
+

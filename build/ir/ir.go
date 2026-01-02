@@ -488,10 +488,7 @@ func (s *atomicType) ConvertibleTo(fetcher Fetcher, target Type) (bool, error) {
 	if !ok {
 		return false, nil
 	}
-	if targetT.Rank().IsAtomic() {
-		return s.Kind() == target.Kind() || SupportOperators(s) == SupportOperators(target), nil
-	}
-	return s.Rank().Equal(fetcher, targetT.Rank())
+	return SupportOperators(s) == SupportOperators(targetT.DataType()), nil
 }
 
 // Specialise a type to a given target.
