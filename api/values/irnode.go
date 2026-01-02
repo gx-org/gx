@@ -19,6 +19,7 @@ import (
 
 	"github.com/gx-org/backend/platform"
 	"github.com/gx-org/gx/build/ir"
+	"github.com/gx-org/gx/build/ir/irkind"
 )
 
 var _ Value = (*IRNode)(nil)
@@ -42,7 +43,7 @@ func (s *IRNode) Node() ir.Node {
 
 // Type returns the type of the value.
 func (s *IRNode) Type() ir.Type {
-	return ir.TypeFromKind(ir.IRKind)
+	return ir.TypeFromKind(irkind.IR)
 }
 
 // ToHost transfers the value to host given an allocator.

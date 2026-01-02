@@ -22,6 +22,7 @@ import (
 	"github.com/gx-org/gx/api/values"
 	"github.com/gx-org/gx/build/fmterr"
 	"github.com/gx-org/gx/build/ir"
+	"github.com/gx-org/gx/build/ir/irkind"
 	"github.com/gx-org/gx/internal/interp/flatten"
 	"github.com/gx-org/gx/interp/context"
 	"github.com/gx-org/gx/interp/elements"
@@ -102,8 +103,8 @@ func (st *funcBase) Unflatten(handles *flatten.Parser) (values.Value, error) {
 }
 
 // Kind of the element.
-func (*funcBase) Kind() ir.Kind {
-	return ir.FuncKind
+func (*funcBase) Kind() irkind.Kind {
+	return irkind.Func
 }
 
 // Call the function.

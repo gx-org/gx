@@ -18,6 +18,7 @@ import (
 	"go/ast"
 
 	"github.com/gx-org/gx/build/ir"
+	"github.com/gx-org/gx/build/ir/irkind"
 )
 
 type withRespectTo interface {
@@ -32,7 +33,7 @@ type wrtArray struct {
 
 func newWRT(field *ir.Field) withRespectTo {
 	tp := field.Type()
-	if tp.Kind() != ir.StructKind {
+	if tp.Kind() != irkind.Struct {
 		return &wrtArray{field: field}
 	}
 	under := ir.Underlying(tp).(*ir.StructType)

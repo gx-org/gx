@@ -19,6 +19,7 @@ import (
 
 	"github.com/pkg/errors"
 	"github.com/gx-org/gx/build/ir"
+	"github.com/gx-org/gx/build/ir/irkind"
 )
 
 type axlengthsFunc struct{}
@@ -46,7 +47,7 @@ func (f *axlengthsFunc) BuildFuncType(fetcher ir.Fetcher, call *ir.FuncCallExpr)
 		return ext, errors.Errorf("wrong number of arguments to axlengths: expected 1, found %d", len(call.Args))
 	}
 	arg := call.Args[0]
-	if arg.Type().Kind() != ir.ArrayKind {
+	if arg.Type().Kind() != irkind.Array {
 		return ext, errors.Errorf("axlengths(%s) not supported", arg.Type().Kind())
 	}
 

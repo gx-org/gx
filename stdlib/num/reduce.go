@@ -20,6 +20,7 @@ import (
 	"github.com/gx-org/gx/build/builtins"
 	"github.com/gx-org/gx/build/fmterr"
 	"github.com/gx-org/gx/build/ir"
+	"github.com/gx-org/gx/build/ir/irkind"
 	"github.com/gx-org/gx/interp/elements"
 	"github.com/gx-org/gx/stdlib/builtin"
 	"github.com/gx-org/gx/stdlib/impl"
@@ -118,7 +119,7 @@ func (f argmax) BuildFuncType(fetcher ir.Fetcher, call *ir.FuncCallExpr) (*ir.Fu
 
 	// Infer the result tensor shape by knocking out reduced axis.
 	resultRank := ir.Rank{}
-	result := ir.NewArrayType(&ast.ArrayType{}, ir.TypeFromKind(ir.DefaultIntKind), &resultRank)
+	result := ir.NewArrayType(&ast.ArrayType{}, ir.TypeFromKind(irkind.DefaultInt), &resultRank)
 	if len(rank.Axes()) > 0 && (reduceAxis < 0 || int(reduceAxis) >= len(rank.Axes())) {
 		return nil, fmterr.Errorf(fetcher.File().FileSet(), call.Source(),
 			"invalid reduction axis in call to %s: axis %d does not exist in input %s",

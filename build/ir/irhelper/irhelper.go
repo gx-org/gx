@@ -23,6 +23,7 @@ import (
 
 	"github.com/gx-org/gx/build/ir/annotations"
 	"github.com/gx-org/gx/build/ir"
+	"github.com/gx-org/gx/build/ir/irkind"
 )
 
 // Ident returns an identifier.
@@ -82,7 +83,7 @@ func fieldGroup(fields []*ir.Field, typeExpr *ir.TypeValExpr) *ir.FieldGroup {
 
 func toTypeRef(typ ir.Type) *ir.TypeValExpr {
 	switch typ.Kind() {
-	case ir.SliceKind:
+	case irkind.Slice:
 		return &ir.TypeValExpr{X: typ, Typ: typ}
 	default:
 		return ir.AtomTypeExpr(typ)

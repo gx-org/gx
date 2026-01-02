@@ -19,6 +19,7 @@ import (
 	"github.com/gx-org/gx/api/values"
 	gxfmt "github.com/gx-org/gx/base/fmt"
 	"github.com/gx-org/gx/build/ir"
+	"github.com/gx-org/gx/build/ir/irkind"
 	"github.com/gx-org/gx/internal/interp/canonical"
 	"github.com/gx-org/gx/internal/interp/flatten"
 	"github.com/gx-org/gx/interp/evaluator"
@@ -89,8 +90,8 @@ func (n *Slice) Type() ir.Type {
 }
 
 // Kind of the element.
-func (*Slice) Kind() ir.Kind {
-	return ir.SliceKind
+func (*Slice) Kind() irkind.Kind {
+	return irkind.Slice
 }
 
 // Unflatten consumes the next handles to return a GX value.

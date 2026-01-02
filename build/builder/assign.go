@@ -20,6 +20,7 @@ import (
 
 	"github.com/gx-org/gx/build/builder/builtins"
 	"github.com/gx-org/gx/build/ir"
+	"github.com/gx-org/gx/build/ir/irkind"
 )
 
 type (
@@ -53,7 +54,7 @@ func (asg *identStorage) define(rscope resolveScope, typ ir.Type) (_ ir.Storage,
 		// Check if that builtin is defined in the local scope instead.
 		isDefined = rscope.nspace().IsLocal(name)
 	}
-	if ir.IsNumber(typ.Kind()) {
+	if irkind.IsNumber(typ.Kind()) {
 		typ = ir.DefaultNumberType(typ.Kind())
 	}
 	ext := &ir.LocalVarStorage{Src: asg.target.src, Typ: typ}
@@ -64,7 +65,7 @@ func (asg *identStorage) define(rscope resolveScope, typ ir.Type) (_ ir.Storage,
 }
 
 func (asg *identStorage) anonymousStorage(rscope resolveScope, typ ir.Type) (_ ir.Storage, newName, ok bool) {
-	if ir.IsNumber(typ.Kind()) {
+	if irkind.IsNumber(typ.Kind()) {
 		typ = ir.DefaultNumberType(typ.Kind())
 	}
 	return &ir.LocalVarStorage{
@@ -103,7 +104,7 @@ func (asg *selectorStorage) buildStorage(scope resolveScope, typ ir.Type) (_ ir.
 	if !ok {
 		return ext, false, false
 	}
-	if ext.Sel.Type().Kind() == ir.FuncKind {
+	if ext.Sel.Type().Kind() == irkind.Func {
 		return ext, false, scope.Err().Appendf(asg.source(), "cannot assign to method %s", ext.Sel.Stor.NameDef().Name)
 	}
 	return ext, false, true
@@ -282,7 +283,7 @@ func buildAssignExpr(rscope resolveScope, asgm *assignment) (*ir.AssignExpr, boo
 	if !targetOk {
 		return ext, false, false
 	}
-	if ir.IsNumber(ext.X.Type().Kind()) {
+	if irkind.IsNumber(ext.X.Type().Kind()) {
 		ext.X, exprOk = castNumber(rscope, ext.X, ext.Storage.Type())
 	}
 	assignOk := assignableToAt(rscope, asgm.expr.source(), ext.X.Type(), ext.Storage.Type())

@@ -18,6 +18,7 @@ import (
 	"github.com/gx-org/backend/ops"
 	"github.com/gx-org/gx/api/values"
 	"github.com/gx-org/gx/build/ir"
+	"github.com/gx-org/gx/build/ir/irkind"
 	"github.com/gx-org/gx/golang/backend/kernels"
 	"github.com/gx-org/gx/internal/interp/flatten"
 	"github.com/gx-org/gx/interp/elements"
@@ -85,7 +86,7 @@ func (n *valueElement) Type() ir.Type {
 	return n.value.Type()
 }
 
-func (n *valueElement) Kind() ir.Kind {
+func (n *valueElement) Kind() irkind.Kind {
 	return n.value.Type().Kind()
 }
 

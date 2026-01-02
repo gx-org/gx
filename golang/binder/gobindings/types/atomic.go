@@ -23,6 +23,7 @@ import (
 	"github.com/gx-org/gx/api"
 	"github.com/gx-org/gx/api/values"
 	"github.com/gx-org/gx/build/ir"
+	"github.com/gx-org/gx/build/ir/irkind"
 	"github.com/gx-org/gx/golang/backend/kernels"
 )
 
@@ -138,7 +139,7 @@ func (atom *HostAtom[T]) String() string {
 	return atom.GXValue().String()
 }
 
-func newAtom[T dtype.GoDataType](dt ir.Kind, array kernels.Array) *HostAtom[T] {
+func newAtom[T dtype.GoDataType](dt irkind.Kind, array kernels.Array) *HostAtom[T] {
 	typ := ir.TypeFromKind(dt)
 	buffer := kernels.NewBuffer(array)
 	hostArray, err := values.NewHostArray(typ, buffer)
@@ -153,42 +154,42 @@ func newAtom[T dtype.GoDataType](dt ir.Kind, array kernels.Array) *HostAtom[T] {
 
 // Bool returns a new Go host atom of bool.
 func Bool(val bool) *HostAtom[bool] {
-	return newAtom[bool](ir.BoolKind, kernels.ToBoolAtom(val))
+	return newAtom[bool](irkind.Bool, kernels.ToBoolAtom(val))
 }
 
 // Float32 returns a new Go host atom of float32.
 func Float32(val float32) *HostAtom[float32] {
-	return newAtom[float32](ir.Float32Kind, kernels.ToFloatAtom(val))
+	return newAtom[float32](irkind.Float32, kernels.ToFloatAtom(val))
 }
 
 // Float64 returns a new Go host atom of float64.
 func Float64(val float64) *HostAtom[float64] {
-	return newAtom[float64](ir.Float64Kind, kernels.ToFloatAtom(val))
+	return newAtom[float64](irkind.Float64, kernels.ToFloatAtom(val))
 }
 
 // DefaultInt returns a new Go host atom of int32.
 func DefaultInt(val ir.Int) *HostAtom[ir.Int] {
-	return newAtom[ir.Int](ir.DefaultIntKind, kernels.ToIntegerAtom(val))
+	return newAtom[ir.Int](irkind.DefaultInt, kernels.ToIntegerAtom(val))
 }
 
 // Int32 returns a new Go host atom of int32.
 func Int32(val int32) *HostAtom[int32] {
-	return newAtom[int32](ir.Int32Kind, kernels.ToIntegerAtom(val))
+	return newAtom[int32](irkind.Int32, kernels.ToIntegerAtom(val))
 }
 
 // Int64 returns a new Go host atom of int64.
 func Int64(val int64) *HostAtom[int64] {
-	return newAtom[int64](ir.Int64Kind, kernels.ToIntegerAtom(val))
+	return newAtom[int64](irkind.Int64, kernels.ToIntegerAtom(val))
 }
 
 // Uint32 returns a new Go host atom of uint32.
 func Uint32(val uint32) *HostAtom[uint32] {
-	return newAtom[uint32](ir.Uint32Kind, kernels.ToIntegerAtom(val))
+	return newAtom[uint32](irkind.Uint32, kernels.ToIntegerAtom(val))
 }
 
 // Uint64 returns a new Go host atom of uint64.
 func Uint64(val uint64) *HostAtom[uint64] {
-	return newAtom[uint64](ir.Uint64Kind, kernels.ToIntegerAtom(val))
+	return newAtom[uint64](irkind.Uint64, kernels.ToIntegerAtom(val))
 }
 
 // AtomFromHost returns an atom from a value stored on the host.

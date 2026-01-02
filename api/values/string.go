@@ -18,6 +18,7 @@ import (
 	"github.com/pkg/errors"
 	"github.com/gx-org/backend/platform"
 	"github.com/gx-org/gx/build/ir"
+	"github.com/gx-org/gx/build/ir/irkind"
 )
 
 var _ Value = (*String)(nil)
@@ -30,7 +31,7 @@ type String struct {
 
 // NewString returns a GX string value from its type and its Go value.
 func NewString(typ ir.Type, str string) (*String, error) {
-	if typ.Kind() != ir.StringKind {
+	if typ.Kind() != irkind.String {
 		return nil, errors.Errorf("%s is an invalid kind for a string value", typ.Kind().String())
 	}
 	return &String{typ: typ, str: str}, nil

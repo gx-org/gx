@@ -20,7 +20,7 @@ import (
 	"strings"
 
 	"github.com/gx-org/backend/dtype"
-	"github.com/gx-org/gx/build/ir"
+	"github.com/gx-org/gx/build/ir/irkind"
 )
 
 func computeIndex(offsets []int, p []int) int {
@@ -134,7 +134,7 @@ func (b *builder[T]) printType() int {
 		shapes[i] = fmt.Sprintf("[%d]", size)
 		total *= size
 	}
-	shapes = append(shapes, ir.KindGeneric[T]().String())
+	shapes = append(shapes, irkind.KindGeneric[T]().String())
 	b.w.WriteString(strings.Join(shapes, ""))
 	return total
 }

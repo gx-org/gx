@@ -18,6 +18,7 @@ import (
 	"go/ast"
 
 	"github.com/gx-org/gx/build/ir"
+	"github.com/gx-org/gx/build/ir/irkind"
 	"github.com/gx-org/gx/interp/elements"
 )
 
@@ -38,7 +39,7 @@ var _ = (ir.Unifier)(&argUnifier{})
 
 func (uni *unifier) specialiseRemainingNumbers() bool {
 	for name, v := range uni.defined {
-		if !ir.IsNumber(v.Kind()) {
+		if !irkind.IsNumber(v.Kind()) {
 			continue
 		}
 		uni.defined[name] = ir.DefaultNumberType(v.Kind())
@@ -51,10 +52,10 @@ func (uni *argUnifier) Source() ast.Node {
 }
 
 func (uni *argUnifier) specialiseNumber(name string, defined, typ ir.Type) ir.Type {
-	if !ir.IsNumber(defined.Kind()) {
+	if !irkind.IsNumber(defined.Kind()) {
 		return defined
 	}
-	if ir.IsNumber(typ.Kind()) {
+	if irkind.IsNumber(typ.Kind()) {
 		return defined
 	}
 	if !ir.CanBeNumber(typ) {
@@ -126,7 +127,7 @@ func (uni *argUnifier) defineAxisElement(param *ir.AxisStmt, el ir.Element) bool
 func (uni *argUnifier) defineGroupAsAllSingleAxes(param *ir.AxisStmt, targets []ir.AxisLengths) ([]ir.AxisLengths, bool) {
 	var singles []ir.Element
 	for _, axis := range targets {
-		if axis.Type().Kind() != ir.IntLenKind {
+		if axis.Type().Kind() != irkind.IntLen {
 			break
 		}
 		el, err := uni.Fetcher.EvalExpr(axis.AsExpr())
@@ -145,9 +146,9 @@ func (uni *argUnifier) defineGroupAxis(param *ir.AxisStmt, targets []ir.AxisLeng
 		return uni.defineGroupAsAllSingleAxes(param, targets)
 	}
 	switch targets[0].Type().Kind() {
-	case ir.IntLenKind:
+	case irkind.IntLen:
 		return uni.defineGroupAsAllSingleAxes(param, targets)
-	case ir.SliceKind:
+	case irkind.Slice:
 		ok := uni.defineAxis(param, targets)
 		return targets[1:], ok
 	default:
@@ -158,10 +159,10 @@ func (uni *argUnifier) defineGroupAxis(param *ir.AxisStmt, targets []ir.AxisLeng
 
 func (uni *argUnifier) DefineAxis(param *ir.AxisStmt, targets []ir.AxisLengths) ([]ir.AxisLengths, bool) {
 	switch param.Type().Kind() {
-	case ir.IntLenKind:
+	case irkind.IntLen:
 		ok := uni.defineAxis(param, targets)
 		return targets[1:], ok
-	case ir.SliceKind:
+	case irkind.Slice:
 		return uni.defineGroupAxis(param, targets)
 	default:
 		return nil, uni.Err().Appendf(uni.Source(), "cannot unify axis expression of type %s in parameters: not supported", param.Type().String())

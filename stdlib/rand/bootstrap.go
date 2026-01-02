@@ -20,6 +20,7 @@ import (
 	"github.com/pkg/errors"
 	"github.com/gx-org/gx/api/values"
 	"github.com/gx-org/gx/build/ir"
+	"github.com/gx-org/gx/build/ir/irkind"
 	"github.com/gx-org/gx/golang/backend/kernels"
 	"github.com/gx-org/gx/golang/binder/gobindings/types"
 	"github.com/gx-org/gx/internal/interp/compeval/cpevelements"
@@ -45,8 +46,8 @@ func (rb *randBootstrap) Type() ir.Type {
 	return &ir.BuiltinType{Impl: rb}
 }
 
-func (*randBootstrap) Kind() ir.Kind {
-	return ir.InterfaceKind
+func (*randBootstrap) Kind() irkind.Kind {
+	return irkind.Interface
 }
 
 func (rb *randBootstrap) Copy() elements.Copier {
@@ -59,7 +60,7 @@ func (rb *randBootstrap) initRand(seed *values.HostArray) error {
 	return nil
 }
 
-var uint64Type = ir.TypeFromKind(ir.Uint64Kind)
+var uint64Type = ir.TypeFromKind(irkind.Uint64)
 
 func (rb *randBootstrap) nextConstant(env evaluator.Env) (evaluator.NumericalElement, error) {
 	next := rb.rand.Uint64()

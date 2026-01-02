@@ -37,6 +37,7 @@ import (
 	"github.com/gx-org/backend/dtype"
 	"github.com/gx-org/backend/shape"
 	"github.com/gx-org/gx/build/ir/annotations"
+	"github.com/gx-org/gx/build/ir/irkind"
 )
 
 // ----------------------------------------------------------------------------
@@ -118,7 +119,7 @@ type (
 		StorageWithValue
 
 		// Kind of the type.
-		Kind() Kind
+		Kind() irkind.Kind
 
 		// Equal returns true if other is the same type.
 		Equal(Fetcher, Type) (bool, error)
@@ -272,11 +273,9 @@ var (
 var DefaultFloatType = Float32Type()
 
 var (
-	// DefaultIntKind is the default kind for integer.
-	DefaultIntKind = Int64Kind
 
 	// DefaultIntType is the default type used for an integer.
-	DefaultIntType = TypeFromKind(Int64Kind)
+	DefaultIntType = TypeFromKind(irkind.Int64)
 )
 
 // Int is the default integer for indices, for loops, etc.
@@ -286,7 +285,7 @@ type Int = int64
 func (*TupleType) node() {}
 
 // Kind returns the scalar kind.
-func (s *TupleType) Kind() Kind { return TupleKind }
+func (s *TupleType) Kind() irkind.Kind { return irkind.Tuple }
 
 func (s *TupleType) apply(fetcher Fetcher, target Type, f func(Type, Fetcher, Type) (bool, error)) (bool, error) {
 	targetTuple, ok := target.(*TupleType)
@@ -342,7 +341,7 @@ func (s *TupleType) String() string {
 func (*InterfaceType) node() {}
 
 // Kind returns the interface kind.
-func (s *InterfaceType) Kind() Kind { return InterfaceKind }
+func (s *InterfaceType) Kind() irkind.Kind { return irkind.Interface }
 
 // Equal returns true if other is the same type.
 func (s *InterfaceType) Equal(Fetcher, Type) (bool, error) { return false, nil }
@@ -370,13 +369,13 @@ func (s *InterfaceType) String() string { return s.Kind().String() }
 
 // IsValid returns true if the type is valid.
 func IsValid(tp Type) bool {
-	return tp.Kind() != InvalidKind
+	return tp.Kind() != irkind.Invalid
 }
 
 func (*BuiltinType) node() {}
 
 // Kind returns the scalar kind.
-func (s *BuiltinType) Kind() Kind { return BuiltinKind }
+func (s *BuiltinType) Kind() irkind.Kind { return irkind.Builtin }
 
 // Equal returns true if other is the same type.
 func (s *BuiltinType) Equal(_ Fetcher, other Type) (bool, error) {
@@ -417,7 +416,7 @@ func (*atomicType) node()   {}
 func (*atomicType) atomic() {}
 
 // Kind returns the scalar kind.
-func (s *atomicType) Kind() Kind { return s.Knd }
+func (s *atomicType) Kind() irkind.Kind { return s.Knd }
 
 func (s *atomicType) equalAtomic(other ArrayType) (bool, error) {
 	return s.Knd == other.Kind(), nil
@@ -459,10 +458,10 @@ func (s *atomicType) AssignableTo(fetcher Fetcher, target Type) (bool, error) {
 		return false, nil
 	}
 	if targetT.Rank().IsAtomic() {
-		if s.Knd == NumberIntKind && (IsInteger(target) || IsFloat(target)) {
+		if s.Knd == irkind.NumberInt && (IsInteger(target) || IsFloat(target)) {
 			return true, nil
 		}
-		if s.Knd == NumberFloatKind && IsFloat(target) {
+		if s.Knd == irkind.NumberFloat && IsFloat(target) {
 			return true, nil
 		}
 		return s.equalAtomic(targetT)
@@ -561,7 +560,7 @@ func (s *NamedType) MethodByName(name string) PkgFunc {
 }
 
 // Kind of the underlying type.
-func (s *NamedType) Kind() Kind { return s.Underlying.Typ.Kind() }
+func (s *NamedType) Kind() irkind.Kind { return s.Underlying.Typ.Kind() }
 
 // Equal returns true if other is the same type.
 func (s *NamedType) Equal(fetcher Fetcher, other Type) (bool, error) {
@@ -692,7 +691,7 @@ func Underlying(typ Type) Type {
 func (*StructType) node() {}
 
 // Kind returns the structure kind.
-func (s *StructType) Kind() Kind { return StructKind }
+func (s *StructType) Kind() irkind.Kind { return irkind.Struct }
 
 // Equal returns true if other is the same type.
 func (s *StructType) Equal(_ Fetcher, other Type) (bool, error) {
@@ -749,7 +748,7 @@ func (s *StructType) NumFields() int {
 func (*SliceType) node() {}
 
 // Kind returns the slide kind.
-func (s *SliceType) Kind() Kind { return SliceKind }
+func (s *SliceType) Kind() irkind.Kind { return irkind.Slice }
 
 // Equal returns true if other is the same type.
 func (s *SliceType) Equal(fetcher Fetcher, other Type) (bool, error) {
@@ -847,14 +846,14 @@ func NewArrayType(src ast.Expr, dtype Type, rank ArrayRank) ArrayType {
 }
 
 // Kind returns the tensor kind.
-func (s *arrayType) Kind() Kind {
+func (s *arrayType) Kind() irkind.Kind {
 	if s.RankF == nil {
-		return InvalidKind
+		return irkind.Invalid
 	}
 	if s.RankF.IsAtomic() {
 		return s.DTypeF.Kind()
 	}
-	return ArrayKind
+	return irkind.Array
 }
 
 // ElementType returns the type of the element with rank-1.
@@ -1029,7 +1028,7 @@ func (s *arrayType) String() string {
 func (*TypeParam) node() {}
 
 // Kind of the type.
-func (s *TypeParam) Kind() Kind {
+func (s *TypeParam) Kind() irkind.Kind {
 	return s.Field.Type().Kind()
 }
 
@@ -1125,9 +1124,9 @@ func (s *TypeParam) String() string {
 // can be evaluated when the graph is being constructed.
 func IsStatic(tp Type) bool {
 	switch tp.Kind() {
-	case SliceKind:
+	case irkind.Slice:
 		return IsStatic(tp.(*SliceType).DType.Typ)
-	case IntIdxKind, IntLenKind:
+	case irkind.IntIdx, irkind.IntLen:
 		return true
 	}
 	return false
@@ -2307,7 +2306,7 @@ func (s *NumberFloat) Source() ast.Node { return s.Src }
 func (s *NumberFloat) Type() Type { return NumberFloatType() }
 
 // DefaultType returns the default type of the number.
-func (s NumberFloat) DefaultType() Type { return TypeFromKind(Float64Kind) }
+func (s NumberFloat) DefaultType() Type { return TypeFromKind(irkind.Float64) }
 
 func (s *NumberInt) node()       {}
 func (s *NumberInt) numberExpr() {}
@@ -2332,7 +2331,7 @@ func (s *NumberInt) Source() ast.Node { return s.Src }
 func (s *NumberInt) Type() Type { return NumberIntType() }
 
 // DefaultType returns the default type of the number.
-func (s NumberInt) DefaultType() Type { return TypeFromKind(Int64Kind) }
+func (s NumberInt) DefaultType() Type { return TypeFromKind(irkind.Int64) }
 
 func (s *NumberCastExpr) node()        {}
 func (s *NumberCastExpr) staticValue() {}
@@ -3161,7 +3160,7 @@ func ToArrayTypeGivenShape(typ Type, sh *shape.Shape) (ArrayType, error) {
 		return array, nil
 	}
 	arrayElementKind := array.DataType().Kind()
-	if arrayElementKind == UnknownKind {
+	if arrayElementKind == irkind.Unknown {
 		// TODO(396628508): result of a generic that has not been resolved by the compiler. Temporary until will support generics correctly.
 		return array, nil
 	}

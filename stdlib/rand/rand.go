@@ -21,6 +21,7 @@ import (
 	"math"
 
 	"github.com/gx-org/gx/build/ir"
+	"github.com/gx-org/gx/build/ir/irkind"
 	"github.com/gx-org/gx/interp"
 	"github.com/gx-org/gx/stdlib/builtin"
 	"github.com/gx-org/gx/stdlib/impl"
@@ -37,7 +38,7 @@ var Package = builtin.PackageBuilder{
 			value := &ir.AtomicValueT[float64]{
 				Src: &ast.BasicLit{},
 				Val: float64(1 << 64),
-				Typ: ir.TypeFromKind(ir.Float64Kind),
+				Typ: ir.TypeFromKind(irkind.Float64),
 			}
 			return "rescaleRandFloat64", value, value.Type(), nil
 		}),
@@ -45,7 +46,7 @@ var Package = builtin.PackageBuilder{
 			value := &ir.AtomicValueT[float64]{
 				Src: &ast.BasicLit{},
 				Val: math.Nextafter(1, 0),
-				Typ: ir.TypeFromKind(ir.Float64Kind),
+				Typ: ir.TypeFromKind(irkind.Float64),
 			}
 			return "maxFloat64BelowOne", value, value.Type(), nil
 		}),

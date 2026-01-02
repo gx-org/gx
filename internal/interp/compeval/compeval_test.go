@@ -27,6 +27,7 @@ import (
 	"github.com/gx-org/gx/build/fmterr"
 	"github.com/gx-org/gx/build/ir"
 	"github.com/gx-org/gx/build/ir/irhelper"
+	"github.com/gx-org/gx/build/ir/irkind"
 	"github.com/gx-org/gx/internal/interp/compeval"
 	"github.com/gx-org/gx/internal/interp/compeval/cpevelements"
 	"github.com/gx-org/gx/interp/elements"
@@ -95,7 +96,7 @@ func unaryExpr(op token.Token, x ir.AssignableExpr) *ir.UnaryExpr {
 
 func castExpr(dt dtype.DataType, x ir.Expr) *ir.CastExpr {
 	return &ir.CastExpr{
-		Typ: ir.TypeFromKind(ir.Kind(dt)),
+		Typ: ir.TypeFromKind(irkind.Kind(dt)),
 		X:   x,
 	}
 }

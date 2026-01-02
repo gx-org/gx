@@ -19,6 +19,7 @@ import (
 	"reflect"
 
 	"github.com/gx-org/gx/build/ir"
+	"github.com/gx-org/gx/build/ir/irkind"
 )
 
 // numberLit is the literal of a number.
@@ -46,14 +47,14 @@ func castNumber(scope resolveScope, expr ir.Expr, target ir.Type) (*ir.NumberCas
 		X:   expr,
 		Typ: target,
 	}
-	if cast.Typ.Kind() == ir.UnknownKind {
+	if cast.Typ.Kind() == irkind.Unknown {
 		// No specification on what we want.
 		// For example:
 		//   a := 5.2
 		// Then we cast the number, 5.2 in this example, to a default type.
 		cast.Typ = ir.DefaultNumberType(expr.Type().Kind())
 	}
-	if cast.Typ.Kind() == ir.ArrayKind {
+	if cast.Typ.Kind() == irkind.Array {
 		// The required type is an array. For example:
 		//   a := 5 * [2]float32{1, 2}
 		// We cast the number, 5 in this example, to the data type of the array.
@@ -61,7 +62,7 @@ func castNumber(scope resolveScope, expr ir.Expr, target ir.Type) (*ir.NumberCas
 		arrayType, ok := underlying.(ir.ArrayType)
 		if !ok {
 
-			return cast, scope.Err().AppendInternalf(expr.Source(), "type %T has %s but does not implement %s", underlying, ir.ArrayKind.String(), reflect.TypeFor[ir.ArrayType]().Name())
+			return cast, scope.Err().AppendInternalf(expr.Source(), "type %T has %s but does not implement %s", underlying, irkind.Array.String(), reflect.TypeFor[ir.ArrayType]().Name())
 		}
 		cast.Typ = arrayType.DataType()
 	}

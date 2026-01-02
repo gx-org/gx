@@ -20,25 +20,26 @@ import (
 
 	"github.com/pkg/errors"
 	"github.com/gx-org/gx/build/ir"
+	"github.com/gx-org/gx/build/ir/irkind"
 )
 
-func (b *binder) ccTypeFromKind(knd ir.Kind) (string, error) {
+func (b *binder) ccTypeFromKind(knd irkind.Kind) (string, error) {
 	switch knd {
-	case ir.BoolKind:
+	case irkind.Bool:
 		return "bool", nil
-	case ir.Float32Kind:
+	case irkind.Float32:
 		return "float", nil
-	case ir.Float64Kind:
+	case irkind.Float64:
 		return "double", nil
-	case ir.Int32Kind:
+	case irkind.Int32:
 		return "int32_t", nil
-	case ir.Int64Kind:
+	case irkind.Int64:
 		return "int64_t", nil
-	case ir.Uint32Kind:
+	case irkind.Uint32:
 		return "uint32_t", nil
-	case ir.Uint64Kind:
+	case irkind.Uint64:
 		return "uint64_t", nil
-	case ir.IntLenKind:
+	case irkind.IntLen:
 		return "uint64_t", nil
 	default:
 		return "", errors.Errorf("cannot convert kind %s to a C++ type: not supported", knd.String())
@@ -77,7 +78,7 @@ func (b *binder) ccTypeFromIR(typ ir.Type) (string, error) {
 }
 
 func (b *binder) ccReturnTypeFromIR(typ ir.Type) (string, error) {
-	if typ.Kind() == ir.VoidKind {
+	if typ.Kind() == irkind.Void {
 		return "absl::Status", nil
 	}
 	typS, err := b.ccTypeFromIR(typ)

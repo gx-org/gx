@@ -28,6 +28,7 @@ import (
 	"github.com/gx-org/gx/build/fmterr"
 	"github.com/gx-org/gx/build/ir/generics"
 	"github.com/gx-org/gx/build/ir"
+	"github.com/gx-org/gx/build/ir/irkind"
 	"github.com/gx-org/gx/internal/interp/compeval/cpevelements"
 	"github.com/gx-org/gx/interp/elements"
 )
@@ -422,7 +423,7 @@ func convertArgNumbers(rscope resolveScope, fType *ir.FuncType, args []ir.Assign
 	params := fType.Params.Fields()
 	argsOk := true
 	for i, arg := range args {
-		if !ir.IsNumber(arg.Type().Kind()) {
+		if !irkind.IsNumber(arg.Type().Kind()) {
 			continue
 		}
 		var iOk bool
@@ -520,7 +521,7 @@ func assignArgValueToName(rscope resolveScope, compEval *compileEvaluator, param
 			continue
 		}
 		var buildAxisValue func(resolveScope, ir.AssignableExpr, []ir.Element) (ir.Element, []ir.Element)
-		if axExpr.Type().Kind() == ir.IntLenKind {
+		if axExpr.Type().Kind() == irkind.IntLen {
 			buildAxisValue = buildAtomicAxisValue
 		} else {
 			buildAxisValue = buildSliceAxisValue

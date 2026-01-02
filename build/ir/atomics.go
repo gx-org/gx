@@ -14,12 +14,16 @@
 
 package ir
 
-import "go/ast"
+import (
+	"go/ast"
+
+	"github.com/gx-org/gx/build/ir/irkind"
+)
 
 type atomicType struct {
 	BaseType[ast.Expr]
 
-	Knd Kind
+	Knd irkind.Kind
 }
 
 func (*atomicType) UnifyWith(unifier Unifier, typ Type) bool {
@@ -30,7 +34,7 @@ type rankType struct {
 	atomicType
 }
 
-var rankT = &rankType{atomicType: atomicType{Knd: RankKind}}
+var rankT = &rankType{atomicType: atomicType{Knd: irkind.Rank}}
 
 // RankType returns the rank type.
 func RankType() Type {
@@ -41,7 +45,7 @@ type boolType struct {
 	atomicType
 }
 
-var boolT = &boolType{atomicType: atomicType{Knd: BoolKind}}
+var boolT = &boolType{atomicType: atomicType{Knd: irkind.Bool}}
 
 func (s *boolType) Specialise(spec Specialiser) (Type, error) { return boolT, nil }
 
@@ -54,7 +58,7 @@ type bfloat16Type struct {
 	atomicType
 }
 
-var bfloat16T = &bfloat16Type{atomicType: atomicType{Knd: Bfloat16Kind}}
+var bfloat16T = &bfloat16Type{atomicType: atomicType{Knd: irkind.Bfloat16}}
 
 func (s *bfloat16Type) Specialise(spec Specialiser) (Type, error) { return bfloat16T, nil }
 
@@ -67,7 +71,7 @@ type float32Type struct {
 	atomicType
 }
 
-var float32T = &float32Type{atomicType: atomicType{Knd: Float32Kind}}
+var float32T = &float32Type{atomicType: atomicType{Knd: irkind.Float32}}
 
 func (s *float32Type) Specialise(spec Specialiser) (Type, error) { return float32T, nil }
 
@@ -80,7 +84,7 @@ type float64Type struct {
 	atomicType
 }
 
-var float64T = &float64Type{atomicType: atomicType{Knd: Float64Kind}}
+var float64T = &float64Type{atomicType: atomicType{Knd: irkind.Float64}}
 
 func (s *float64Type) Specialise(spec Specialiser) (Type, error) { return float64T, nil }
 
@@ -93,7 +97,7 @@ type int32Type struct {
 	atomicType
 }
 
-var int32T = &int32Type{atomicType: atomicType{Knd: Int32Kind}}
+var int32T = &int32Type{atomicType: atomicType{Knd: irkind.Int32}}
 
 func (s *int32Type) Specialise(spec Specialiser) (Type, error) { return int32T, nil }
 
@@ -106,7 +110,7 @@ type int64Type struct {
 	atomicType
 }
 
-var int64T = &int64Type{atomicType: atomicType{Knd: Int64Kind}}
+var int64T = &int64Type{atomicType: atomicType{Knd: irkind.Int64}}
 
 func (s *int64Type) Specialise(spec Specialiser) (Type, error) { return int64T, nil }
 
@@ -119,14 +123,14 @@ type numberFloatType struct {
 	atomicType
 }
 
-var numberFloatT = &numberFloatType{atomicType: atomicType{Knd: NumberFloatKind}}
+var numberFloatT = &numberFloatType{atomicType: atomicType{Knd: irkind.NumberFloat}}
 
 type intidxType struct {
 	atomicType
 }
 
 var (
-	intidxT         = &intidxType{atomicType: atomicType{Knd: IntIdxKind}}
+	intidxT         = &intidxType{atomicType: atomicType{Knd: irkind.IntIdx}}
 	axisIndicesType = &SliceType{
 		DType: &TypeValExpr{Typ: IntIndexType()},
 		Rank:  1,
@@ -148,7 +152,7 @@ type intlenType struct {
 }
 
 var (
-	intlenT         = &intlenType{atomicType: atomicType{Knd: IntLenKind}}
+	intlenT         = &intlenType{atomicType: atomicType{Knd: irkind.IntLen}}
 	axisLengthsType = &SliceType{
 		BaseType: BaseType[*ast.ArrayType]{Src: &ast.ArrayType{}},
 		DType: &TypeValExpr{
@@ -180,7 +184,7 @@ type numberIntType struct {
 	atomicType
 }
 
-var numberIntT = &numberIntType{atomicType: atomicType{Knd: NumberIntKind}}
+var numberIntT = &numberIntType{atomicType: atomicType{Knd: irkind.NumberInt}}
 
 // NumberIntType returns the type for an integer number.
 func NumberIntType() Type {
@@ -191,7 +195,7 @@ type stringType struct {
 	atomicType
 }
 
-var stringT = &stringType{atomicType: atomicType{Knd: StringKind}}
+var stringT = &stringType{atomicType: atomicType{Knd: irkind.String}}
 
 func (s *stringType) Specialise(spec Specialiser) (Type, error) { return stringT, nil }
 
@@ -204,7 +208,7 @@ type uint32Type struct {
 	atomicType
 }
 
-var uint32T = &uint32Type{atomicType: atomicType{Knd: Uint32Kind}}
+var uint32T = &uint32Type{atomicType: atomicType{Knd: irkind.Uint32}}
 
 func (s *uint32Type) Specialise(spec Specialiser) (Type, error) { return uint32T, nil }
 
@@ -217,7 +221,7 @@ type uint64Type struct {
 	atomicType
 }
 
-var uint64T = &uint64Type{atomicType: atomicType{Knd: Uint64Kind}}
+var uint64T = &uint64Type{atomicType: atomicType{Knd: irkind.Uint64}}
 
 func (s *uint64Type) Specialise(spec Specialiser) (Type, error) { return uint64T, nil }
 

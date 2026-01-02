@@ -23,6 +23,7 @@ import (
 	"github.com/gx-org/gx/api/values"
 	"github.com/gx-org/gx/build/fmterr"
 	"github.com/gx-org/gx/build/ir"
+	"github.com/gx-org/gx/build/ir/irkind"
 	"github.com/gx-org/gx/internal/interp/canonical"
 	"github.com/gx-org/gx/internal/interp/compeval/cpevelements"
 	"github.com/gx-org/gx/internal/interp/flatten"
@@ -189,7 +190,7 @@ func (n *Float) Materialise(ao materialise.Materialiser) (materialise.Node, erro
 // String return the float literal.
 func (n *Float) String() string {
 	val := n.expr.Node().String()
-	if n.Type().Kind() == ir.NumberFloatKind {
+	if n.Type().Kind() == irkind.NumberFloat {
 		return val
 	}
 	return fmt.Sprintf("%s(%s)", n.Type(), val)

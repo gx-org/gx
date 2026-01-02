@@ -21,6 +21,7 @@ import (
 	"slices"
 
 	"github.com/gx-org/gx/build/ir"
+	"github.com/gx-org/gx/build/ir/irkind"
 )
 
 type axis struct {
@@ -93,7 +94,7 @@ func (r *tensorRef) buildExpr(rscope resolveScope) (ir.Expr, bool) {
 	if !ok {
 		return x, false
 	}
-	if x.Type().Kind() != ir.ArrayKind {
+	if x.Type().Kind() != irkind.Array {
 		return x, rscope.Err().Appendf(r.base, "tensor statements must only reference tensors; %s is %s", r.base, x.Type().String())
 	}
 	return x, true

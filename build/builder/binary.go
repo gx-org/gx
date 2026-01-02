@@ -20,6 +20,7 @@ import (
 	"go/token"
 
 	"github.com/gx-org/gx/build/ir"
+	"github.com/gx-org/gx/build/ir/irkind"
 )
 
 type binaryExpr struct {
@@ -72,7 +73,7 @@ func (n *binaryExpr) determineOutputType(scope resolveScope, ops ir.Type) (resul
 	op := n.src.Op
 	switch op {
 	case token.ADD, token.MUL, token.SUB, token.QUO:
-		ok = ir.SupportOperators(ops) && opsKind != ir.BoolKind
+		ok = ir.SupportOperators(ops) && opsKind != irkind.Bool
 	case token.REM, token.SHL, token.SHR, token.AND, token.OR, token.XOR:
 		ok = ir.SupportOperators(ops) && ir.IsInteger(ops)
 	case token.EQL, token.GTR, token.LSS, token.NEQ, token.LEQ, token.GEQ:
@@ -85,7 +86,7 @@ func (n *binaryExpr) determineOutputType(scope resolveScope, ops ir.Type) (resul
 		// Force cast of the operands to a default type for an expression like: 3 == 3.
 		forceCastNumber = true
 	case token.LAND, token.LOR:
-		ok = ir.SupportOperators(ops) && opsKind == ir.BoolKind
+		ok = ir.SupportOperators(ops) && opsKind == irkind.Bool
 	default:
 		scope.Err().Appendf(n.src, "token %s not supported", n.src.Op.String())
 		return ir.InvalidType(), false, false
@@ -106,20 +107,20 @@ func (n *binaryExpr) buildOperands(scope resolveScope) (ir.AssignableExpr, ir.As
 	xKind := xExpr.Type().Kind()
 	yKind := yExpr.Type().Kind()
 	// Both operands are numbers, so this binary expression becomes a number.
-	if ir.IsNumber(xKind) && ir.IsNumber(yKind) {
+	if irkind.IsNumber(xKind) && irkind.IsNumber(yKind) {
 		typ := ir.NumberIntType()
 		// If either operand is a float, the result is a float number.
 		// For example: 3.2+4 is a float number.
-		if xKind == ir.NumberFloatKind || yKind == ir.NumberFloatKind {
+		if xKind == irkind.NumberFloat || yKind == irkind.NumberFloat {
 			typ = ir.NumberFloatType()
 		}
 		return xExpr, yExpr, typ
 	}
 	// Only one operand is a number, so we cast the number operand to the other type operand.
-	if ir.IsNumber(xKind) {
+	if irkind.IsNumber(xKind) {
 		xExpr, xOk = castNumber(scope, xExpr, yExpr.Type())
 	}
-	if ir.IsNumber(yKind) {
+	if irkind.IsNumber(yKind) {
 		yExpr, yOk = castNumber(scope, yExpr, xExpr.Type())
 	}
 	if !xOk || !yOk {
@@ -187,7 +188,7 @@ func (n *binaryExpr) buildExpr(scope resolveScope) (ir.Expr, bool) {
 	if !ok {
 		return invalidExpr(), false
 	}
-	if forceCastNumber && ir.IsNumber(expr.Typ.Kind()) {
+	if forceCastNumber && irkind.IsNumber(expr.Typ.Kind()) {
 		var xOk, yOk bool
 		expr.X, xOk = castNumber(scope, expr.X, ir.UnknownType())
 		expr.Y, yOk = castNumber(scope, expr.Y, ir.UnknownType())

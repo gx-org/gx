@@ -23,12 +23,13 @@ import (
 
 	"github.com/gx-org/gx/build/fmterr"
 	"github.com/gx-org/gx/build/ir"
+	"github.com/gx-org/gx/build/ir/irkind"
 	"github.com/gx-org/gx/interp/elements"
 )
 
 var (
 	// GenericArrayType returns a generic array type.
-	GenericArrayType = ir.NewArrayType(&ast.ArrayType{}, ir.TypeFromKind(ir.UnknownKind), &ir.RankInfer{})
+	GenericArrayType = ir.NewArrayType(&ast.ArrayType{}, ir.TypeFromKind(irkind.Unknown), &ir.RankInfer{})
 
 	// GenericSliceType returns a generic slice type.
 	GenericSliceType = &ir.SliceType{}
@@ -78,7 +79,7 @@ func InferFromNumericalType(fetcher ir.Fetcher, call *ir.FuncCallExpr, argNum in
 	arg := call.Args[argNum]
 	argType := arg.Type()
 	argKind := argType.Kind()
-	if ir.IsNumber(argKind) {
+	if irkind.IsNumber(argKind) {
 		target := numberTarget
 		if target == nil {
 			target = ir.DefaultNumberType(argKind)
@@ -136,11 +137,11 @@ func BuildFuncParams(fetcher ir.Fetcher, call *ir.FuncCallExpr, name string, sig
 		params[i] = want
 		ok := false
 		switch want.Kind() {
-		case ir.ArrayKind:
-			ok = got.Kind() == ir.ArrayKind
+		case irkind.Array:
+			ok = got.Kind() == irkind.Array
 			params[i] = got
-		case ir.SliceKind:
-			ok = got.Kind() == ir.SliceKind
+		case irkind.Slice:
+			ok = got.Kind() == irkind.Slice
 			params[i] = got
 		default:
 			assignable, err := got.AssignableTo(fetcher, want)

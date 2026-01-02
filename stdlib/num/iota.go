@@ -21,6 +21,7 @@ import (
 	"github.com/gx-org/backend/shape"
 	"github.com/gx-org/gx/build/builtins"
 	"github.com/gx-org/gx/build/ir"
+	"github.com/gx-org/gx/build/ir/irkind"
 	"github.com/gx-org/gx/interp/elements"
 	"github.com/gx-org/gx/interp/evaluator"
 	"github.com/gx-org/gx/interp/fun"
@@ -61,13 +62,13 @@ func evalIotaFull(ctx evaluator.Env, call elements.CallAt, fn fun.Func, irFunc *
 		return nil, err
 	}
 	targetShape := &shape.Shape{
-		DType:       ir.DefaultIntKind.DType(),
+		DType:       irkind.DefaultInt.DType(),
 		AxisLengths: axes,
 	}
 	ev := ctx.Evaluator().(*grapheval.Evaluator)
 	gr := ev.ArrayOps().Graph()
 	iotaOp, err := gr.Num().Iota(&shape.Shape{
-		DType:       ir.DefaultIntKind.DType(),
+		DType:       irkind.DefaultInt.DType(),
 		AxisLengths: []int{targetShape.Size()},
 	}, 0)
 	if err != nil {
