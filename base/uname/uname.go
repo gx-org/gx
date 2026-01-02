@@ -126,7 +126,10 @@ func (n *Unique) Root(root string) *Root {
 }
 
 // Name returns a unique name given a root.
-func (n *Unique) Name(root string) string {
+func (n *Unique) Name(root string) (name string) {
+	defer func() {
+		n.Register(name)
+	}()
 	r, ok := n.roots[root]
 	if !ok {
 		r = n.newRoot(root, false)
