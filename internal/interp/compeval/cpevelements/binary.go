@@ -132,13 +132,12 @@ func (a *binary) Reshape(env evaluator.Env, expr ir.AssignableExpr, axisLengths 
 }
 
 // Shape of the value represented by the element.
-func (a *binary) Shape() *shape.Shape {
+func (a *binary) Shape() (*shape.Shape, error) {
 	cst, err := a.NumericalConstant()
 	if err != nil {
-		// TODO(degris): see cl/846337025
-		panic(err)
+		return nil, err
 	}
-	return cst.Shape()
+	return cst.Shape(), nil
 }
 
 // Axes returns the axes of the value as a slice element.
