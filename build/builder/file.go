@@ -94,7 +94,7 @@ func (f *file) file() *file {
 	return f
 }
 
-func (f *file) Build(irb irBuilder) (ir.Node, bool) {
+func (f *file) Build(irb irBuilder) (ir.IR, bool) {
 	return &ir.File{
 		Src:     f.src,
 		Imports: f.imports,

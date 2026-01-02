@@ -67,7 +67,7 @@ func (f *importedFunc) buildBody(fnResolveScope, *irFunc) bool {
 	return true
 }
 
-func (f *importedFunc) Build(ibld irBuilder) (ir.Node, bool) {
+func (f *importedFunc) Build(ibld irBuilder) (ir.IR, bool) {
 	fn := *(f.fn)
 	var ok bool
 	fn.FFile, ok = irCache[*ir.File](ibld, f.fn.Src, f.bFile)

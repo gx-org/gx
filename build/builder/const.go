@@ -73,7 +73,7 @@ func processConstSpec(pscope procScope, src *ast.ValueSpec) bool {
 	return declaredTypeOk && numOk && exprsOk && pscope.decls().registerConst(spec)
 }
 
-func (spec *constSpec) Build(irb irBuilder) (ir.Node, bool) {
+func (spec *constSpec) Build(irb irBuilder) (ir.IR, bool) {
 	fScope, ok := irb.Scope().newFileRScope(spec.bFile)
 	if !ok {
 		return nil, false

@@ -43,7 +43,7 @@ import "dtype"
 
 func bla() dtype.Int
 `,
-			Want: []ir.Node{
+			Want: []ir.IR{
 				&ir.FuncBuiltin{
 					FType: irhelper.FuncType(
 						nil, nil,
@@ -84,7 +84,7 @@ func returnMyConst() int32 {
 	return pkg.MyConst
 }
 `,
-			Want: []ir.Node{
+			Want: []ir.IR{
 				&ir.FuncDecl{
 					FType: irhelper.FuncType(
 						nil, nil,

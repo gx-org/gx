@@ -50,7 +50,7 @@ func g() int32 {
 	return fn()
 }
 `,
-			Want: []ir.Node{
+			Want: []ir.IR{
 				&ir.FuncDecl{
 					FType: irh.FuncType(
 						nil, nil,

@@ -38,7 +38,7 @@ func f() int32 {
 	return 2
 }
 `,
-			Want: []ir.Node{
+			Want: []ir.IR{
 				&ir.FuncDecl{
 					FType: irh.FuncType(
 						nil, nil,
@@ -254,7 +254,7 @@ func (S) f() int32 {
 	return 2
 }
 `,
-			Want: []ir.Node{
+			Want: []ir.IR{
 				typeS,
 			},
 		},

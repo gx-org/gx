@@ -43,7 +43,7 @@ func call(x float32, y float32) float32 {
 	return id(x/y)
 }
 `,
-			Want: []ir.Node{
+			Want: []ir.IR{
 				idFunc,
 				&ir.FuncDecl{
 					FType: irh.FuncType(

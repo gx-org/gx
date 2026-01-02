@@ -83,7 +83,7 @@ func assign() (float32, float32) {
 	return a, b
 }
 `,
-			Want: []ir.Node{assign},
+			Want: []ir.IR{assign},
 		},
 		testbuild.Decl{
 			Src: `
@@ -97,7 +97,7 @@ func callAssign() (float32, float32) {
 	return c, d
 }
 `,
-			Want: []ir.Node{
+			Want: []ir.IR{
 				assign,
 				&ir.FuncDecl{
 					FType: irh.FuncType(

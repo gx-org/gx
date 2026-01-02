@@ -63,27 +63,36 @@ func (n *node[T]) String() string {
 	return fmt.Sprint(n.irnode)
 }
 
-type (
-	vjpParam struct {
-		field    *ir.Field
-		wrt      withRespectTo
-		vjpFType *ast.FuncType
-	}
+// VJPParam is a parameter in a function that the gradient is going to be computed with respect to.
+type VJPParam struct {
+	field    *ir.Field
+	wrt      withRespectTo
+	vjpFType *ast.FuncType
+}
 
-	// Graph representing the compute done in a root block.
-	Graph struct {
-		macro  *cpevelements.CoreMacroElement
-		fn     ir.Func
-		unames *uname.Unique
-		root   stmt
-		nextID int
+// Name of the field.
+func (p *VJPParam) Name() string {
+	return p.field.Name.Name
+}
 
-		params         []vjpParam
-		nResults       *namedFields
-		nParams        *namedFields
-		typeParamsExpr []ast.Expr
-	}
-)
+// Type of the field.
+func (p *VJPParam) Type() ir.Type {
+	return p.field.Type()
+}
+
+// Graph representing the compute done in a root block.
+type Graph struct {
+	macro  *cpevelements.CoreMacroElement
+	fn     ir.Func
+	unames *uname.Unique
+	root   stmt
+	nextID int
+
+	params         []VJPParam
+	nResults       *namedFields
+	nParams        *namedFields
+	typeParamsExpr []ast.Expr
+}
 
 // New reverse graph.
 func New(macro *cpevelements.CoreMacroElement, fn ir.Func) (*Graph, error) {
@@ -93,7 +102,7 @@ func New(macro *cpevelements.CoreMacroElement, fn ir.Func) (*Graph, error) {
 		fn:     fn,
 	}
 	fType := g.fn.FuncType()
-	g.params = make([]vjpParam, fType.Params.Len())
+	g.params = make([]VJPParam, fType.Params.Len())
 	g.nResults = nameFields(g.unames, "res", fType.Results.Src)
 	g.nParams = nameFields(g.unames, "par", fType.Params.Src)
 	for i, param := range fType.Params.Fields() {
@@ -102,9 +111,9 @@ func New(macro *cpevelements.CoreMacroElement, fn ir.Func) (*Graph, error) {
 		if err != nil {
 			return nil, err
 		}
-		g.params[i] = vjpParam{
+		g.params[i] = VJPParam{
 			field:    param,
-			wrt:      newWRT(param),
+			wrt:      wrt,
 			vjpFType: backwardSig,
 		}
 	}
@@ -145,6 +154,11 @@ func (g *Graph) BuildType() *ast.FuncType {
 		),
 	}
 	return vjpType
+}
+
+// VJPs returns all the parameters with which the gradient is going to be computed with respect to.
+func (g *Graph) VJPs() []VJPParam {
+	return g.params
 }
 
 // Func returns the function represented by the graph.

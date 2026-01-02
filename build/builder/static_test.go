@@ -32,13 +32,13 @@ func TestStaticVar(t *testing.T) {
 	testbuild.Run(t,
 		testbuild.Decl{
 			Src: `var a intlen`,
-			Want: []ir.Node{
+			Want: []ir.IR{
 				irh.VarSpec("a"),
 			},
 		},
 		testbuild.Decl{
 			Src: `var a, b intlen`,
-			Want: []ir.Node{
+			Want: []ir.IR{
 				irh.VarSpec("a", "b"),
 			},
 		},
@@ -47,7 +47,7 @@ func TestStaticVar(t *testing.T) {
 var a, b intlen
 var c, d intlen
 			`,
-			Want: []ir.Node{
+			Want: []ir.IR{
 				irh.VarSpec("a", "b"),
 				irh.VarSpec("c", "d"),
 			},
@@ -60,7 +60,7 @@ func f(x [a]int32) [a]int32 {
 	return x
 }
 			`,
-			Want: []ir.Node{
+			Want: []ir.IR{
 				aVarDecl,
 				&ir.FuncDecl{
 					FType: irh.FuncType(

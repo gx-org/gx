@@ -61,8 +61,8 @@ func newProcessNode[T any](tok token.Token, id *ast.Ident, node T) *processNodeT
 	}
 }
 
-func (p *processNodeT[T]) ir() ir.Node {
-	node, ok := any(p.node).(ir.Node)
+func (p *processNodeT[T]) ir() ir.IR {
+	node, ok := any(p.node).(ir.IR)
 	if !ok {
 		return nil
 	}
@@ -81,7 +81,7 @@ func (p *processNodeT[T]) bNode() any {
 	return p.node
 }
 
-func (p *processNodeT[T]) Build(ibld irBuilder) (ir.Node, bool) {
+func (p *processNodeT[T]) Build(ibld irBuilder) (ir.IR, bool) {
 	iNode, ok := any(p.node).(irb.Node[*pkgResolveScope])
 	if !ok {
 		return nil, ibld.Scope().Err().Append(fmterr.Internal(errors.Errorf("cannot cast %T to %s", p.node, reflect.TypeFor[irb.Node[*pkgResolveScope]]().Name())))

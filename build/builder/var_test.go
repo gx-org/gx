@@ -31,7 +31,7 @@ func TestVars(t *testing.T) {
 	testbuild.Run(t,
 		testbuild.Decl{
 			Src: `var a intlen`,
-			Want: []ir.Node{
+			Want: []ir.IR{
 				vrA.Decl,
 			},
 		},
@@ -73,7 +73,7 @@ func F() int32 {
     return a
 }
 `,
-			Want: []ir.Node{
+			Want: []ir.IR{
 				&ir.FuncDecl{
 					FType: irh.FuncType(
 						nil, nil,
@@ -98,7 +98,7 @@ func F() (int32, int32) {
     return a, b
 }
 `,
-			Want: []ir.Node{
+			Want: []ir.IR{
 				&ir.FuncDecl{
 					FType: irh.FuncType(
 						nil, nil,

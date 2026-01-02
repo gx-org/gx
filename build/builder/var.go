@@ -65,7 +65,7 @@ func processVarSpec(pscope procScope, src *ast.ValueSpec) bool {
 	return typeOk && exprsOk && pscope.decls().registerStaticVar(spec)
 }
 
-func (spec *varSpec) Build(ibld irBuilder) (ir.Node, bool) {
+func (spec *varSpec) Build(ibld irBuilder) (ir.IR, bool) {
 	ext := &ir.VarSpec{Src: spec.src}
 	ibld.Register(varDeclarator(ext))
 	var ok bool
