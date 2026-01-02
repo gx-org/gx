@@ -19,6 +19,7 @@ import (
 	"go/ast"
 	"go/token"
 	"math/big"
+	"strconv"
 
 	"github.com/gx-org/gx/build/ir"
 )
@@ -77,6 +78,17 @@ func NewFromIR(node ir.SourceNode) *Expr {
 // AST of the expression.
 func (r *Expr) AST() ast.Expr {
 	return r.expr
+}
+
+// Index returns an index expression given a index number.
+func (r *Expr) Index(i int) *Expr {
+	return New(&ast.IndexExpr{
+		X: r.AST(),
+		Index: &ast.BasicLit{
+			Kind:  token.INT,
+			Value: strconv.Itoa(i),
+		},
+	})
 }
 
 // IsAny returns true if the value can be anything.

@@ -308,6 +308,60 @@ func vjpF(x float32) (float32, func(res float32) float32) {
 	return fwd1, selfVJPFunc
 }`,
 		},
+		testgrad.VJP{
+			Src: `
+func F(x float32) [2]float32 {
+	return [2]float32{x*x, 2}
+}
+`,
+			Want: `
+func vjpF(x float32) ([2]float32, func(res [2]float32) float32) {
+	fwd0 := x*x
+	selfVJPFunc := func(res [2]float32) float32 {
+		bck0x := res[0]*x
+		bck0y := x*res[0]
+		return bck0x+bck0y
+	}
+	return [2]float32{fwd0, 2}, selfVJPFunc
+}
+`,
+		},
+		testgrad.VJP{
+			Src: `
+func F(x float32) [3][2]float32 {
+	return [3][2]float32{
+		{1*x,2*x},
+		{3*x,4*x},
+		{5*x,6*x},
+	}
+}
+`,
+			Want: `
+func vjpF(x float32) ([3][2]float32, func(res [3][2]float32) float32) {
+	fwd0 := 1*x
+	fwd1 := 2*x
+	fwd2 := 3*x
+	fwd3 := 4*x
+	fwd4 := 5*x
+	fwd5 := 6*x
+	selfVJPFunc := func(res [3][2]float32) float32 {
+		bck0x := res[0][0]*x
+		bck1x := res[0][1]*x
+		bck1y := 2*res[0][1]
+		bck2x := res[1][0]*x
+		bck2y := 3*res[1][0]
+		bck3x := res[1][1]*x
+		bck3y := 4*res[1][1]
+		bck4x := res[2][0]*x
+		bck4y := 5*res[2][0]
+		bck5x := res[2][1]*x
+		bck5y := 6*res[2][1]
+		return ((res[0][0])+bck1y)+((bck2y+bck3y)+(bck4y+bck5y))
+	}
+	return [3][2]float32{[2]float32{fwd0, fwd1}, [2]float32{fwd2, fwd3}, [2]float32{fwd4, fwd5}}, selfVJPFunc
+}
+`,
+		},
 	)
 }
 
