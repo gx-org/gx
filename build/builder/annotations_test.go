@@ -140,7 +140,7 @@ func f() int32 {
 	return 2
 }
 `,
-			Want: []ir.Node{
+			Want: []ir.IR{
 				&ir.FuncDecl{
 					FType: irh.FuncType(
 						nil, nil,
@@ -168,7 +168,7 @@ func f() int32 {
 	return 2
 }
 `,
-			Want: []ir.Node{
+			Want: []ir.IR{
 				&ir.FuncDecl{
 					FType: irh.FuncType(
 						nil, nil,
@@ -195,7 +195,7 @@ import "annotation"
 // gx:@annotation.Tag(f)
 func f() int32
 `,
-			Want: []ir.Node{
+			Want: []ir.IR{
 				&ir.FuncBuiltin{
 					FType: irh.FuncType(
 						nil, nil,
@@ -216,7 +216,7 @@ func g() string
 // gx:@annotation.Tag("Source")
 func f() int32
 `,
-			Want: []ir.Node{
+			Want: []ir.IR{
 				&ir.FuncBuiltin{
 					FType: irh.FuncType(
 						nil, nil,

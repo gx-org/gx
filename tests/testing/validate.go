@@ -24,25 +24,25 @@ import (
 )
 
 // Visitor checks node in the intermediate representation.
-type Visitor func(errs *fmterr.Errors, node ir.Node)
+type Visitor func(errs *fmterr.Errors, node ir.IR)
 
 type validator struct {
 	errs     fmterr.Errors
-	visited  map[ir.Node]bool
+	visited  map[ir.IR]bool
 	visitors []Visitor
 }
 
 // Validate an intermediate representation tree to make sure all fields are set.
-func Validate(node ir.Node, visitors ...Visitor) error {
+func Validate(node ir.IR, visitors ...Visitor) error {
 	v := validator{
 		visitors: visitors,
-		visited:  map[ir.Node]bool{},
+		visited:  map[ir.IR]bool{},
 	}
 	v.validate(node)
 	return v.errs.ToError()
 }
 
-func (v *validator) validate(node ir.Node) {
+func (v *validator) validate(node ir.IR) {
 	if node == nil {
 		return
 	}
@@ -293,7 +293,7 @@ func (v *validator) validatePackage(pkg *ir.Package) {
 }
 
 // CheckSource checks that Source and File return non-nil values.
-func CheckSource(errs *fmterr.Errors, node ir.Node) {
+func CheckSource(errs *fmterr.Errors, node ir.IR) {
 	src, ok := node.(ir.SourceNode)
 	if !ok {
 		return

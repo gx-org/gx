@@ -47,7 +47,7 @@ func a() A {
 	}
 }
 `,
-			Want: []ir.Node{
+			Want: []ir.IR{
 				typeA,
 				&ir.FuncDecl{
 					FType: irh.FuncType(

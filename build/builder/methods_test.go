@@ -61,7 +61,7 @@ func (a A) fI() int32 {
 	return a.i
 }
 `,
-			Want: []ir.Node{typeA},
+			Want: []ir.IR{typeA},
 		},
 		testbuild.Decl{
 			Src: `
@@ -79,7 +79,7 @@ func call() int32 {
 	return a.fI()
 }
 `,
-			Want: []ir.Node{
+			Want: []ir.IR{
 				typeA,
 				&ir.FuncDecl{
 					FType: irh.FuncType(
@@ -170,7 +170,7 @@ func call() int32 {
 	return a.val()
 }
 `,
-			Want: []ir.Node{
+			Want: []ir.IR{
 				typeA,
 				&ir.FuncDecl{
 					FType: irh.FuncType(

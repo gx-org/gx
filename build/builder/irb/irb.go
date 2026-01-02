@@ -21,16 +21,16 @@ import "github.com/gx-org/gx/build/ir"
 type (
 	// Node builds an IR node.
 	Node[T any] interface {
-		Build(*Builder[T]) (ir.Node, bool)
+		Build(*Builder[T]) (ir.IR, bool)
 	}
 
 	// NodeF builds a node.
-	NodeF[T any] func(*Builder[T]) (ir.Node, bool)
+	NodeF[T any] func(*Builder[T]) (ir.IR, bool)
 
 	// Builder are IR nodes already built as well as their declarators.
 	Builder[T any] struct {
 		scope T
-		built map[Node[T]]ir.Node
+		built map[Node[T]]ir.IR
 		pkg   *ir.Package
 
 		declarators []Declarator
@@ -41,7 +41,7 @@ type (
 )
 
 // Build the node.
-func (f NodeF[T]) Build(ibld *Builder[T]) (ir.Node, bool) {
+func (f NodeF[T]) Build(ibld *Builder[T]) (ir.IR, bool) {
 	return f(ibld)
 }
 
@@ -49,7 +49,7 @@ func (f NodeF[T]) Build(ibld *Builder[T]) (ir.Node, bool) {
 func New[T any](scope T, pkg *ir.Package) *Builder[T] {
 	return &Builder[T]{
 		scope: scope,
-		built: make(map[Node[T]]ir.Node),
+		built: make(map[Node[T]]ir.IR),
 		pkg:   pkg,
 	}
 }
@@ -70,18 +70,18 @@ func (ibld *Builder[T]) Scope() T {
 }
 
 // Cache return the IR of a node that has already been built.
-func (ibld *Builder[T]) Cache(bld Node[T]) (ir.Node, bool) {
+func (ibld *Builder[T]) Cache(bld Node[T]) (ir.IR, bool) {
 	node, ok := ibld.built[bld]
 	return node, ok
 }
 
 // Set the IR of a given builder node.
-func (ibld *Builder[T]) Set(bld Node[T], n ir.Node) {
+func (ibld *Builder[T]) Set(bld Node[T], n ir.IR) {
 	ibld.built[bld] = n
 }
 
 // Build an IR node or returns the node if it has already been built.
-func (ibld *Builder[T]) Build(bld Node[T]) (ir.Node, bool) {
+func (ibld *Builder[T]) Build(bld Node[T]) (ir.IR, bool) {
 	node, ok := ibld.Cache(bld)
 	if ok {
 		return node, true

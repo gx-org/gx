@@ -32,7 +32,7 @@ func returnTwo() float32 {
 	return 2
 }
 `,
-			Want: []ir.Node{
+			Want: []ir.IR{
 				&ir.FuncDecl{
 					FType: irh.CompEvalFuncType(
 						irh.Fields(),
@@ -54,7 +54,7 @@ func TestBuiltin(t *testing.T) {
 	testbuild.Run(t,
 		testbuild.Decl{
 			Src: `func returnTwo() float32`,
-			Want: []ir.Node{
+			Want: []ir.IR{
 				&ir.FuncBuiltin{
 					FType: irh.FuncType(
 						nil, nil,
@@ -92,7 +92,7 @@ func TestBuiltinMethods(t *testing.T) {
 type A uint32
 func (A) F(uint32) uint32
 `,
-			Want: []ir.Node{
+			Want: []ir.IR{
 				typeA,
 			},
 		},
@@ -122,7 +122,7 @@ func returnTwo() float32 {
 	return 2
 }
 `,
-			Want: []ir.Node{returnTwoFunc},
+			Want: []ir.IR{returnTwoFunc},
 		},
 		testbuild.Decl{
 			Src: `
@@ -134,7 +134,7 @@ func call() float32 {
 	return returnTwo()
 }
 `,
-			Want: []ir.Node{
+			Want: []ir.IR{
 				returnTwoFunc,
 				&ir.FuncDecl{
 					FType: irh.FuncType(nil, nil, irh.Fields(), irh.Fields(ir.Float32Type())),
@@ -158,7 +158,7 @@ func withArgs(a int32) int32 {
 	return a
 }
 `,
-			Want: []ir.Node{
+			Want: []ir.IR{
 				&ir.FuncDecl{
 					FType: irh.FuncType(
 						nil, nil,
@@ -181,7 +181,7 @@ func namedReturn() (a int32) {
 	return
 }
 `,
-			Want: []ir.Node{
+			Want: []ir.IR{
 				&ir.FuncDecl{
 					FType: irh.FuncType(
 						nil, nil, irh.Fields(),
@@ -225,7 +225,7 @@ func call() (float32, int32) {
 	return returnTuple()
 }
 `,
-			Want: []ir.Node{
+			Want: []ir.IR{
 				returnTupleFunc,
 				&ir.FuncDecl{
 					FType: irh.FuncType(
@@ -277,7 +277,7 @@ func call() float32 {
 	return f([1][1]float32{{2}})
 }
 `,
-			Want: []ir.Node{
+			Want: []ir.IR{
 				fDef,
 				&ir.FuncDecl{
 					FType: irh.FuncType(nil, nil, irh.Fields(), irh.Fields(ir.Float32Type())),

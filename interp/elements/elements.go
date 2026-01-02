@@ -47,13 +47,13 @@ type InputElements struct {
 
 type (
 	// NodeFile is an expression with the file in which it is declared.
-	NodeFile[T ir.Node] struct {
+	NodeFile[T ir.IR] struct {
 		file *ir.File
 		node T
 	}
 
 	// NodeAt is a generic GX node.
-	NodeAt = NodeFile[ir.Node]
+	NodeAt = NodeFile[ir.IR]
 
 	// ExprAt is a generic GX expression.
 	ExprAt = NodeFile[ir.AssignableExpr]
@@ -75,7 +75,7 @@ type (
 )
 
 // NewNodeAt returns a new expression at a given position.
-func NewNodeAt[T ir.Node](file *ir.File, expr T) NodeFile[T] {
+func NewNodeAt[T ir.IR](file *ir.File, expr T) NodeFile[T] {
 	return NodeFile[T]{file: file, node: expr}
 }
 
@@ -101,7 +101,7 @@ func (ea NodeFile[T]) Node() T {
 
 // Source of the node.
 func (ea NodeFile[T]) Source() ast.Node {
-	var node ir.Node = ea.node
+	var node ir.IR = ea.node
 	return node.(ir.SourceNode).Source()
 }
 
@@ -116,13 +116,13 @@ func (ea NodeFile[T]) ExprSrc() ast.Expr {
 }
 
 // NodeFile returns a general node.
-func (ea NodeFile[T]) NodeFile() NodeFile[ir.Node] {
-	return NodeFile[ir.Node]{file: ea.file, node: ea.node}
+func (ea NodeFile[T]) NodeFile() NodeFile[ir.IR] {
+	return NodeFile[ir.IR]{file: ea.file, node: ea.node}
 }
 
 // ToNodeAt converts a type position into a generic node position.
 func (ea NodeFile[T]) ToNodeAt() NodeAt {
-	return NewNodeAt[ir.Node](ea.file, ea.node)
+	return NewNodeAt[ir.IR](ea.file, ea.node)
 }
 
 // ToExprAt converts a type position into a generic node position.
@@ -144,7 +144,7 @@ func (ea NodeFile[T]) File() *ir.File {
 
 // String representation of the node in the source code.
 func (ea NodeFile[T]) String() string {
-	var node ir.Node = ea.node
+	var node ir.IR = ea.node
 	return fmt.Sprintf("%s%s",
 		fmterr.PosString(ea.file.FileSet(), node.(ir.SourceNode).Source().Pos()),
 		gxfmt.String(ea.node),

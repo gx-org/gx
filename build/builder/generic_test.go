@@ -33,7 +33,7 @@ func TestGenericSignature(t *testing.T) {
 	testbuild.Run(t,
 		testbuild.Decl{
 			Src: `func f[S any](S) S`,
-			Want: []ir.Node{
+			Want: []ir.IR{
 				&ir.FuncBuiltin{
 					FType: irhelper.FuncType(
 						irhelper.Fields(anyS),
@@ -46,7 +46,7 @@ func TestGenericSignature(t *testing.T) {
 		},
 		testbuild.Decl{
 			Src: `func f[T interface{int32|int64}](T) T`,
-			Want: []ir.Node{
+			Want: []ir.IR{
 				&ir.FuncBuiltin{
 					FType: irhelper.FuncType(
 						irhelper.Fields(intsT),
@@ -59,7 +59,7 @@ func TestGenericSignature(t *testing.T) {
 		},
 		testbuild.Decl{
 			Src: `func f[S any, T interface{int32|int64}](S) T`,
-			Want: []ir.Node{
+			Want: []ir.IR{
 				&ir.FuncBuiltin{
 					FType: irhelper.FuncType(
 						irhelper.Fields(anyS, intsT),
@@ -72,7 +72,7 @@ func TestGenericSignature(t *testing.T) {
 		},
 		testbuild.Decl{
 			Src: `func f(x [_X][_Y]int32) ([X]int32, [Y]int32)`,
-			Want: []ir.Node{
+			Want: []ir.IR{
 				&ir.FuncBuiltin{
 					FType: irhelper.AxisLengths(irhelper.FuncType(
 						nil, nil,
@@ -105,7 +105,7 @@ func TestGenericSignature(t *testing.T) {
 		},
 		testbuild.Decl{
 			Src: `func f([___X]int32) [X___]int32`,
-			Want: []ir.Node{
+			Want: []ir.IR{
 				&ir.FuncBuiltin{
 					FType: irhelper.AxisLengths(irhelper.FuncType(
 						nil, nil,
@@ -186,7 +186,7 @@ func callCast() int32 {
 	return cast[int32]()
 }
 `,
-			Want: []ir.Node{
+			Want: []ir.IR{
 				someInt,
 				castNoArgFunc,
 				&ir.FuncDecl{
@@ -378,7 +378,7 @@ func callCast() [2][3]int32 {
 	return new2x3Array[int32]()
 }
 `,
-			Want: []ir.Node{
+			Want: []ir.IR{
 				someInt,
 				new2x3ArrayFunc,
 				&ir.FuncDecl{
@@ -485,7 +485,7 @@ func callCast() int32 {
 	return cast[int32, int64](2)
 }
 `,
-			Want: []ir.Node{
+			Want: []ir.IR{
 				someInt,
 				castAtomFunc,
 				&ir.FuncDecl{
@@ -525,7 +525,7 @@ func callCast() int32 {
 	return cast[int32](int64(2))
 }
 `,
-			Want: []ir.Node{
+			Want: []ir.IR{
 				someInt,
 				castAtomFunc,
 				&ir.FuncDecl{
@@ -589,7 +589,7 @@ func callCast(x [2]int64) [2]int32 {
 	return cast[int32, int64](x)
 }
 `,
-			Want: []ir.Node{
+			Want: []ir.IR{
 				someInt,
 				castArrayFunc,
 				&ir.FuncDecl{

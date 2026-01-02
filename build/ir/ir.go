@@ -43,8 +43,8 @@ import (
 // ----------------------------------------------------------------------------
 // Types of node in the tree.
 type (
-	// Node in the tree.
-	Node interface {
+	// IR in the tree.
+	IR interface {
 		// node marks a structure as a node structure.
 		// It prevents external implementations of the interface.
 		// It prevents using arbitrary structure in this package to be used as nodes.
@@ -53,7 +53,7 @@ type (
 
 	// SourceNode is a node with a position in GX source code.
 	SourceNode interface {
-		Node
+		IR
 		Source() ast.Node
 	}
 
@@ -1296,11 +1296,11 @@ type (
 )
 
 var (
-	_ Node             = (*Package)(nil)
+	_ IR               = (*Package)(nil)
 	_ StorageWithValue = (*ImportDecl)(nil)
-	_ Node             = (*ConstSpec)(nil)
+	_ IR               = (*ConstSpec)(nil)
 	_ StorageWithValue = (*ConstExpr)(nil)
-	_ Node             = (*VarSpec)(nil)
+	_ IR               = (*VarSpec)(nil)
 	_ Storage          = (*VarExpr)(nil)
 	_ PkgFunc          = (*FuncBuiltin)(nil)
 	_ Func             = (*FuncKeyword)(nil)

@@ -29,7 +29,7 @@ func TestReflectString(t *testing.T) {
 	a := irhelper.Field("a", ir.Float32Type(), nil).Storage()
 	b := irhelper.Field("b", ir.Float32Type(), a.Field.Group).Storage()
 	tests := []struct {
-		code ir.Node
+		code ir.IR
 		want string
 	}{
 		{

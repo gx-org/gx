@@ -74,7 +74,7 @@ func TestAxisName01(t *testing.T) {
 			Src: `
 func newArray(dims []intlen) [dims___]float32
 `,
-			Want: []ir.Node{newArrayFunc},
+			Want: []ir.IR{newArrayFunc},
 		},
 		testbuild.Decl{
 			Src: `
@@ -84,7 +84,7 @@ func f(dims []intlen) [dims___]float32 {
 	return newArray(dims)
 }
 `,
-			Want: []ir.Node{
+			Want: []ir.IR{
 				newArrayFunc,
 				&ir.FuncDecl{
 					FType: irh.FuncType(
@@ -127,7 +127,7 @@ func f(dims []intlen) [dims___]float32 {
 }
 
 `,
-			Want: []ir.Node{
+			Want: []ir.IR{
 				newArrayFunc,
 				&ir.FuncDecl{
 					FType: irh.FuncType(
@@ -157,7 +157,7 @@ func f() [2][3]float32 {
 	return newArray([]intlen{2,3})
 }
 `,
-			Want: []ir.Node{
+			Want: []ir.IR{
 				newArrayFunc,
 				&ir.FuncDecl{
 					FType: irh.FuncType(
@@ -215,7 +215,7 @@ func f() [2]float64 {
 	return cast([2]float32{3, 4})
 }
 `,
-			Want: []ir.Node{
+			Want: []ir.IR{
 				castFunc,
 				&ir.FuncDecl{
 					FType: irh.FuncType(
@@ -256,7 +256,7 @@ func f() float64 {
 	return cast(float32(1))
 }
 `,
-			Want: []ir.Node{
+			Want: []ir.IR{
 				castFunc,
 				&ir.FuncDecl{
 					FType: irh.FuncType(
@@ -346,7 +346,7 @@ func f() [2][3]float32  {
 	return newArray(fDims)
 }
 `,
-			Want: []ir.Node{
+			Want: []ir.IR{
 				newArrayFunc,
 				&ir.FuncDecl{
 					FType: irh.FuncType(
@@ -422,7 +422,7 @@ func g(a [___dims]int32) [dims___]int32 {
 	return a + f(a)
 }
 `,
-			Want: []ir.Node{},
+			Want: []ir.IR{},
 		},
 		testbuild.Decl{
 			Src: `

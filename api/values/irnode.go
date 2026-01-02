@@ -26,18 +26,18 @@ var _ Value = (*IRNode)(nil)
 
 // IRNode is a GX string value.
 type IRNode struct {
-	node ir.Node
+	node ir.IR
 }
 
 // NewIRNode returns a GX string value from its type and its Go value.
-func NewIRNode(node ir.Node) (*IRNode, error) {
+func NewIRNode(node ir.IR) (*IRNode, error) {
 	return &IRNode{node: node}, nil
 }
 
 func (s *IRNode) value() {}
 
 // Node stored in the value.
-func (s *IRNode) Node() ir.Node {
+func (s *IRNode) Node() ir.IR {
 	return s.node
 }
 

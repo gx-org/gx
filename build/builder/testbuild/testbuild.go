@@ -44,13 +44,13 @@ func CompareString(got, want string) error {
 	return fmt.Errorf("diff:\n%s\ngot:\n%s\nwant:\n%s", cmp.Diff(got, want), gxfmt.Number(got), gxfmt.Number(want))
 }
 
-func compare(done map[any]bool, got, want ir.Node) error {
+func compare(done map[any]bool, got, want ir.IR) error {
 	gotS := irstring.ReflectString(done, got)
 	wantS := irstring.ReflectString(done, want)
 	return CompareString(gotS, wantS)
 }
 
-func check[T ir.Node](nextWant *int, pkg *ir.Package, wants []ir.Node, gots []T) error {
+func check[T ir.IR](nextWant *int, pkg *ir.Package, wants []ir.IR, gots []T) error {
 	done := map[any]bool{pkg: true}
 	for _, gotT := range gots {
 		if *nextWant >= len(wants) {
@@ -64,7 +64,7 @@ func check[T ir.Node](nextWant *int, pkg *ir.Package, wants []ir.Node, gots []T)
 	return nil
 }
 
-func checkAll(wants []ir.Node, decls *ir.Declarations) error {
+func checkAll(wants []ir.IR, decls *ir.Declarations) error {
 	if len(wants) == 0 {
 		return nil
 	}
@@ -147,7 +147,7 @@ type Decl struct {
 	Src string
 	// Want is the set of nodes that is expected from the compiler to build.
 	// If nil (or length 0), the output of the compiler is not checked.
-	Want []ir.Node
+	Want []ir.IR
 	// Err is the substring expected if the compiler returns an error.
 	Err string
 

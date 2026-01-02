@@ -38,11 +38,11 @@ type (
 	irBuilder = *irb.Builder[*pkgResolveScope]
 
 	cachedIR interface {
-		ir() ir.Node
+		ir() ir.IR
 	}
 )
 
-func irBuild[N ir.Node](irs irBuilder, bNode irb.Node[*pkgResolveScope]) (N, bool) {
+func irBuild[N ir.IR](irs irBuilder, bNode irb.Node[*pkgResolveScope]) (N, bool) {
 	n, ok := irs.Build(bNode)
 	var nT N
 	if n != nil {
@@ -51,8 +51,8 @@ func irBuild[N ir.Node](irs irBuilder, bNode irb.Node[*pkgResolveScope]) (N, boo
 	return nT, ok
 }
 
-func irCache[N ir.Node](irs irBuilder, src ast.Node, bNode irb.Node[*pkgResolveScope]) (N, bool) {
-	var n ir.Node
+func irCache[N ir.IR](irs irBuilder, src ast.Node, bNode irb.Node[*pkgResolveScope]) (N, bool) {
+	var n ir.IR
 	if cached, isCached := bNode.(cachedIR); isCached {
 		n = cached.ir()
 	}

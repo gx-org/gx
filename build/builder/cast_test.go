@@ -129,7 +129,7 @@ func f() float32 {
 	return x(float32(a))
 }
 `,
-			Want: []ir.Node{
+			Want: []ir.IR{
 				aVarDecl,
 				xFunc,
 				&ir.FuncDecl{
@@ -159,7 +159,7 @@ func f() [2][3]float64 {
 	return ([2][3]float64)([6]float32{1, 2, 3, 4, 5, 6})
 }
 `,
-			Want: []ir.Node{
+			Want: []ir.IR{
 				&ir.FuncDecl{
 					Src: &ast.FuncDecl{Name: &ast.Ident{Name: "f"}},
 					FType: irh.FuncType(

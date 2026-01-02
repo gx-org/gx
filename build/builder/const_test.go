@@ -34,7 +34,7 @@ func TestConst(t *testing.T) {
 	testbuild.Run(t,
 		testbuild.Decl{
 			Src: `const cstA = 5`,
-			Want: []ir.Node{
+			Want: []ir.IR{
 				cstA.Decl,
 			},
 		},
@@ -43,7 +43,7 @@ func TestConst(t *testing.T) {
 const cstA = 5
 type Array [cstA]float32
 `,
-			Want: []ir.Node{
+			Want: []ir.IR{
 				&ir.NamedType{
 					Src: &ast.TypeSpec{Name: irh.Ident("Array")},
 					Underlying: irh.TypeExpr(irh.ArrayType(
@@ -62,7 +62,7 @@ type Array [cstA]float32
 const cstB = cstA
 const cstA = 5
 `,
-			Want: []ir.Node{
+			Want: []ir.IR{
 				irh.ConstSpec(nil,
 					&ir.ConstExpr{
 						VName: irh.Ident("cstB"),
@@ -76,7 +76,7 @@ const cstA = 5
 			Src: `
 const cstA = 2 * (3 + 4)
 `,
-			Want: []ir.Node{
+			Want: []ir.IR{
 				irh.ConstSpec(nil,
 					&ir.ConstExpr{
 						VName: irh.Ident("cstA"),
@@ -129,7 +129,7 @@ func TestConstWithType(t *testing.T) {
 	testbuild.Run(t,
 		testbuild.Decl{
 			Src: `const cstIntA int32 = 5`,
-			Want: []ir.Node{
+			Want: []ir.IR{
 				cstIntA.Decl,
 			},
 		},

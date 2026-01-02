@@ -45,7 +45,7 @@ func f() int32 {
 	return x
 }
 `,
-			Want: []ir.Node{
+			Want: []ir.IR{
 				lVarDecl,
 				&ir.FuncDecl{
 					FType: irh.FuncType(
