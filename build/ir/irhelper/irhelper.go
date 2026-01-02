@@ -301,10 +301,7 @@ func ConstSpec(typ ir.Type, exprs ...*ir.ConstExpr) *ir.ConstSpec {
 
 // TypeSet builds a set of types.
 func TypeSet(types ...ir.Type) *ir.TypeSet {
-	return &ir.TypeSet{
-		BaseType: ir.BaseType[*ast.InterfaceType]{Src: &ast.InterfaceType{}},
-		Typs:     types,
-	}
+	return ir.NewTypeSet(&ast.InterfaceType{}, types)
 }
 
 // StructType builds a structure type.
