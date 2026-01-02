@@ -139,5 +139,22 @@ func TestNameSub(t *testing.T) {
 			t.Errorf("index %d: got %s but want %s", i, got, want)
 		}
 	}
+}
 
+func TestNames(t *testing.T) {
+	tests := []struct {
+		Root string
+		Want string
+	}{
+		{Root: "x", Want: "x"},
+		{Root: "x", Want: "x1"},
+		{Root: "x1", Want: "x1_1"},
+	}
+	unames := uname.New()
+	for i, test := range tests {
+		got := unames.Name(test.Root)
+		if got != test.Want {
+			t.Errorf("test %d: got %s but want %s", i, got, test.Want)
+		}
+	}
 }
