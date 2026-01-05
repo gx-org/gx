@@ -2781,7 +2781,7 @@ func (s *Tuple) Type() Type {
 	}
 	var src ast.Expr
 	if len(s.Exprs) > 0 {
-		src = s.Exprs[0].Node().(ast.Expr)
+		src = s.Exprs[0].Expr()
 	}
 	return &TupleType{
 		BaseType: BaseType[ast.Expr]{Src: src},

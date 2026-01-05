@@ -46,8 +46,8 @@ var (
 func ToBinaryExpr(op token.Token, x, y ir.Expr) *ir.BinaryExpr {
 	return &ir.BinaryExpr{
 		Src: &ast.BinaryExpr{
-			X:  x.Node().(ast.Expr),
-			Y:  y.Node().(ast.Expr),
+			X:  x.Expr(),
+			Y:  y.Expr(),
 			Op: op,
 		},
 		X:   x,
@@ -63,7 +63,7 @@ func Fields(expr ir.Expr, types ...ir.Type) *ir.FieldList {
 	}
 	for i, tp := range types {
 		l.List[i] = &ir.FieldGroup{
-			Src:  &ast.Field{Type: expr.Node().(ast.Expr)},
+			Src:  &ast.Field{Type: expr.Expr()},
 			Type: ir.TypeExpr(expr, tp),
 		}
 	}

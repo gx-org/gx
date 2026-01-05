@@ -55,24 +55,24 @@ var (
 )
 
 // NewFromIR returns an expression for any value given an IR source node.
-func NewFromIR(node ir.Node) *Expr {
-	switch nodeT := node.(type) {
+func NewFromIR(irexpr ir.Expr) *Expr {
+	switch irexprT := irexpr.(type) {
 	case *ir.NumberInt:
-		if nodeT.Val.Cmp(bigZeroInt) == 0 {
+		if irexprT.Val.Cmp(bigZeroInt) == 0 {
 			return zero
 		}
-		if nodeT.Val.Cmp(bigOneInt) == 0 {
+		if irexprT.Val.Cmp(bigOneInt) == 0 {
 			return one
 		}
 	case *ir.NumberFloat:
-		if nodeT.Val.Cmp(bigZeroFloat) == 0 {
+		if irexprT.Val.Cmp(bigZeroFloat) == 0 {
 			return zero
 		}
-		if nodeT.Val.Cmp(bigOneFloat) == 0 {
+		if irexprT.Val.Cmp(bigOneFloat) == 0 {
 			return one
 		}
 	}
-	return New(node.Node().(ast.Expr))
+	return New(irexpr.Expr())
 }
 
 // AST of the expression.
@@ -108,7 +108,7 @@ func (r *Expr) IsZero() bool {
 
 func addCast(expr ast.Expr, typ ir.Type) ast.Expr {
 	return &ast.CallExpr{
-		Fun:  typ.Node().(ast.Expr),
+		Fun:  ir.TypeExpr(nil, typ).Expr(),
 		Args: []ast.Expr{expr},
 	}
 }

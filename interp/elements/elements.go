@@ -108,11 +108,7 @@ func (ea NodeFile[T]) Source() ast.Node {
 // ExprSrc returns the source expression.
 func (ea NodeFile[T]) ExprSrc() ast.Expr {
 	var node any = ea.node
-	src := node.(ir.Node).Node()
-	if src == nil {
-		return nil
-	}
-	return src.(ast.Expr)
+	return node.(ir.Expr).Expr()
 }
 
 // NodeFile returns a general node.

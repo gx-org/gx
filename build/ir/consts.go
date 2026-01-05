@@ -46,7 +46,7 @@ func (expr *ConstExpr) Deps() []*ast.Ident {
 	if expr.Val == nil {
 		return nil
 	}
-	return exprdeps.Idents(expr.Val.Node().(ast.Expr))
+	return exprdeps.Idents(expr.Val.Expr())
 }
 
 func (decls *Declarations) findConstExpr(name string) *ConstExpr {
