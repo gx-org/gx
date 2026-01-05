@@ -102,7 +102,7 @@ func (n *funcCallExpr) vjpFunc(astmts *fwdStmts) (string, ast.Expr, bool) {
 			X:   &ast.Ident{Name: macro.File().Package.Name.Name},
 			Sel: &ast.Ident{Name: macro.Name()},
 		},
-		Args: []ast.Expr{src.Node().(ast.Expr)},
+		Args: []ast.Expr{src.Expr()},
 	}), true
 }
 
@@ -302,7 +302,7 @@ func (p *processor) processNumberCastExpr(isrc *ir.NumberCastExpr) (*numberCastE
 }
 
 func (n *numberCastExpr) buildForward(astmts *fwdStmts) ([]ast.Expr, bool) {
-	return []ast.Expr{n.irnode.X.Node().(ast.Expr)}, true
+	return []ast.Expr{n.irnode.X.Expr()}, true
 }
 
 func (n *numberCastExpr) forwardValue() (*special.Expr, bool) {

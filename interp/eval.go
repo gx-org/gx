@@ -15,7 +15,6 @@
 package interp
 
 import (
-	"go/ast"
 	"go/token"
 	"reflect"
 
@@ -80,7 +79,7 @@ func evalRangeForLoopOverInteger[T dtype.AlgebraType](fitp *FileScope, stmt *ir.
 	defer fitp.ctx.PopFrame()
 	for i := T(0); i < val; i++ {
 		iExpr := &ir.AtomicValueT[T]{
-			Src: stmt.Key.Node().(ast.Expr),
+			Src: stmt.X.Expr(),
 			Val: i,
 			Typ: indexType,
 		}
@@ -133,7 +132,7 @@ func evalRangeStmtForLoopOverArray[T dtype.AlgebraType](fitp *FileScope, stmt *i
 	}
 	for i := 0; i < arrayShape.AxisLengths[0]; i++ {
 		iExpr := &ir.AtomicValueT[T]{
-			Src: stmt.Key.Node().(ast.Expr),
+			Src: stmt.X.Expr(),
 			Val: T(i),
 			Typ: indexType,
 		}

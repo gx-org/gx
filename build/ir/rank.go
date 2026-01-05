@@ -209,18 +209,6 @@ var oneSize = &NumberCastExpr{
 	Typ: IntLenType(),
 }
 
-func exprSource(n Node) ast.Expr {
-	if n == nil {
-		return nil
-	}
-	src := n.Node()
-	if src == nil {
-		return nil
-	}
-	expr, _ := src.(ast.Expr)
-	return expr
-}
-
 // RankSize is the total number of elements across all axes.
 func RankSize(r ArrayRank) Expr {
 	var expr Expr = oneSize
@@ -228,8 +216,8 @@ func RankSize(r ArrayRank) Expr {
 		expr = &BinaryExpr{
 			Src: &ast.BinaryExpr{
 				Op: token.MUL,
-				X:  exprSource(expr),
-				Y:  exprSource(axis),
+				X:  expr.Expr(),
+				Y:  axis.AsExpr().Expr(),
 			},
 			X:   expr,
 			Y:   axis.AsExpr(),

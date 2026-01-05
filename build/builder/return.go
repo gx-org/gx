@@ -95,8 +95,8 @@ func (n *returnStmt) castNumber(scope fnResolveScope, expr ir.Expr, want ir.Type
 	}
 	return &ir.CastExpr{
 		Src: &ast.CallExpr{
-			Fun:  arrayWant.Node().(ast.Expr),
-			Args: []ast.Expr{expr.Node().(ast.Expr)},
+			Fun:  arrayWant.Value(nil).Expr(),
+			Args: []ast.Expr{expr.Expr()},
 		},
 		X:   ret,
 		Typ: arrayWant,

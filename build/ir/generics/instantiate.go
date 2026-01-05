@@ -54,15 +54,6 @@ func instantiateAxisExpr(fetcher ir.Fetcher, axis *ir.AxisExpr) ([]ir.AxisLength
 	}
 }
 
-func exprSource(e ir.Expr) ast.Expr {
-	src := e.Node()
-	if src == nil {
-		return nil
-	}
-	srcE, _ := src.(ast.Expr)
-	return srcE
-}
-
 func instantiateAxisInfer(fetcher ir.Fetcher, axis *ir.AxisInfer) ([]ir.AxisLengths, bool) {
 	switch axis.Src.Name {
 	case "_":

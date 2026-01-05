@@ -117,12 +117,12 @@ func (m *gradMacro) BuildDecl(fn ir.PkgFunc) (*ir.File, *ast.FuncDecl, bool) {
 	fType := target.FuncType()
 	results := &ast.FieldList{List: []*ast.Field{
 		&ast.Field{
-			Type: fType.Results.Fields()[0].Type().Node().(ast.Expr),
+			Type: fType.Results.Fields()[0].Group.Type.Expr(),
 		},
 	}}
 	for _, param := range fType.Params.Fields() {
 		results.List = append(results.List, &ast.Field{
-			Type: param.Type().Node().(ast.Expr),
+			Type: param.Group.Type.Expr(),
 		})
 	}
 	fDecl := &ast.FuncDecl{Type: &ast.FuncType{
@@ -164,7 +164,7 @@ func (m *gradMacro) BuildBody(fetcher ir.Fetcher, fn ir.Func) (*ast.BlockStmt, b
 							X:   imp.NameDef(),
 							Sel: &ast.Ident{Name: "VJP"},
 						},
-						Args: []ast.Expr{m.call.Node().Args[0].Node().(ast.Expr)},
+						Args: []ast.Expr{m.call.Node().Args[0].Expr()},
 					},
 					Args: []ast.Expr{fn.FuncType().Params.Fields()[0].Name},
 				},
