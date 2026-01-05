@@ -23,7 +23,6 @@ import (
 
 	"github.com/gx-org/gx/build/ir/annotations"
 	"github.com/gx-org/gx/build/ir"
-	"github.com/gx-org/gx/build/ir/irkind"
 )
 
 // Ident returns an identifier.
@@ -81,20 +80,11 @@ func fieldGroup(fields []*ir.Field, typeExpr *ir.TypeValExpr) *ir.FieldGroup {
 	return group
 }
 
-func toTypeRef(typ ir.Type) *ir.TypeValExpr {
-	switch typ.Kind() {
-	case irkind.Slice:
-		return &ir.TypeValExpr{X: typ, Typ: typ}
-	default:
-		return ir.AtomTypeExpr(typ)
-	}
-}
-
 // Field returns a field group of one field given a name and type.
 func Field(name string, typ ir.Type, grp *ir.FieldGroup) *ir.Field {
 	if grp == nil {
 		grp = &ir.FieldGroup{
-			Type: toTypeRef(typ),
+			Type: ir.TypeExpr(nil, typ),
 		}
 	}
 	field := &ir.Field{
@@ -119,7 +109,7 @@ func Fields(vals ...any) *ir.FieldList {
 				Name: Ident(valT),
 			})
 		case ir.Type:
-			group := fieldGroup(fields, ir.AtomTypeExpr(valT))
+			group := fieldGroup(fields, ir.TypeExpr(nil, valT))
 			list.List = append(list.List, group)
 			fields = []*ir.Field{}
 		case *ir.TypeValExpr:
@@ -138,7 +128,7 @@ func Fields(vals ...any) *ir.FieldList {
 }
 
 // FieldLit builds a field literal from a field name and a value.
-func FieldLit(fields *ir.FieldList, name string, val ir.AssignableExpr) *ir.FieldLit {
+func FieldLit(fields *ir.FieldList, name string, val ir.Expr) *ir.FieldLit {
 	field := fields.FindField(name)
 	if field == nil {
 		field = &ir.Field{Name: Ident(fmt.Sprintf("ERROR: FIELD %q NOT FOUND", name))}
@@ -175,8 +165,8 @@ func Axis(ax any) ir.AxisLengths {
 		}
 	case ir.AxisLengths:
 		return axisT
-	case ir.AssignableExpr:
-		return &ir.AxisExpr{Src: axisT.Node().(ast.Expr), X: axisT}
+	case ir.Expr:
+		return &ir.AxisExpr{X: axisT}
 	case string:
 		if strings.HasPrefix(axisT, ir.DefineAxisGroup) {
 			name := strings.TrimPrefix(axisT, ir.DefineAxisGroup)
@@ -205,13 +195,6 @@ func Axis(ax any) ir.AxisLengths {
 	panic(fmt.Sprintf("axis type %T not supported", ax))
 }
 
-// TypeRef returns a reference to a type that defines itself
-// (e.g. []intlen which defines a slice of axis lengths
-// as opposed to intlen which references the axis length type).
-func TypeRef(typ ir.Type) *ir.TypeValExpr {
-	return &ir.TypeValExpr{X: typ, Typ: typ}
-}
-
 // ArrayType returns a new array type given a list of expressions to specify axis lengths.
 func ArrayType(dtype ir.Type, axes ...any) ir.ArrayType {
 	if len(axes) == 1 {
@@ -225,11 +208,6 @@ func ArrayType(dtype ir.Type, axes ...any) ir.ArrayType {
 		rank.Ax = append(rank.Ax, Axis(ax))
 	}
 	return ir.NewArrayType(&ast.ArrayType{}, dtype, rank)
-}
-
-// TypeExpr encapsulates a type in an expression.
-func TypeExpr(typ ir.Type) *ir.TypeValExpr {
-	return &ir.TypeValExpr{X: typ, Typ: typ}
 }
 
 // SliceType returns a new slice type.
@@ -253,7 +231,7 @@ func InferArrayType(dtype ir.Type, axes ...any) ir.ArrayType {
 }
 
 // FloatNumberAs returns a integer number casted to a target type.
-func FloatNumberAs(val float64, typ ir.Type) ir.AssignableExpr {
+func FloatNumberAs(val float64, typ ir.Type) ir.Expr {
 	return &ir.NumberCastExpr{
 		X:   &ir.NumberFloat{Val: big.NewFloat(val)},
 		Typ: typ,
@@ -261,7 +239,7 @@ func FloatNumberAs(val float64, typ ir.Type) ir.AssignableExpr {
 }
 
 // IntNumberAs returns a integer number casted to a target type.
-func IntNumberAs(val int64, typ ir.Type) ir.AssignableExpr {
+func IntNumberAs(val int64, typ ir.Type) ir.Expr {
 	return &ir.NumberCastExpr{
 		X:   &ir.NumberInt{Val: big.NewInt(val)},
 		Typ: typ,
@@ -287,7 +265,7 @@ func VarSpec(names ...string) *ir.VarSpec {
 func ConstSpec(typ ir.Type, exprs ...*ir.ConstExpr) *ir.ConstSpec {
 	var typeExpr *ir.TypeValExpr
 	if typ != nil {
-		typeExpr = &ir.TypeValExpr{X: typ, Typ: typ}
+		typeExpr = ir.TypeExpr(nil, typ)
 	}
 	spec := &ir.ConstSpec{
 		Type:  typeExpr,

@@ -135,7 +135,7 @@ func (cst *constExpr) buildExpression(ibld irBuilder, ext *ir.ConstExpr) bool {
 	if ext.Decl.Type == nil {
 		return true
 	}
-	targetType := ext.Decl.Type.Typ
+	targetType := ext.Decl.Type.Val()
 	if irkind.IsNumber(ext.Val.Type().Kind()) {
 		ext.Val, ok = castNumber(fScope, ext.Val, targetType)
 	}

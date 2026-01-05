@@ -39,7 +39,7 @@ type (
 
 		// AsExpr returns the axis value as an expression.
 		// Can return nil if the axis has not been resolved.
-		AsExpr() AssignableExpr
+		AsExpr() Expr
 
 		// Equal returns true if two axis lengths have been resolved and are equal.
 		// Returns an error if one of the axis has not been resolved.
@@ -60,10 +60,8 @@ type (
 
 	// AxisExpr is an array axis specified using an expression.
 	AxisExpr struct {
-		// Source of the axis expression.
-		Src ast.Expr
 		// X computes the size of the axis.
-		X AssignableExpr
+		X Expr
 	}
 )
 
@@ -72,7 +70,10 @@ var _ AxisLengths = (*AxisExpr)(nil)
 func (*AxisExpr) node() {}
 
 // Node returns the source expression specifying the axis length.
-func (dm *AxisExpr) Node() ast.Node { return dm.X.Node() }
+func (dm *AxisExpr) Node() ast.Node { return dm.Expr() }
+
+// Expr returns the AST of the expression.
+func (dm *AxisExpr) Expr() ast.Expr { return dm.X.Expr() }
 
 // NumAxes returns the number of axis represented by the group.
 func (dm *AxisExpr) NumAxes() int { return 1 }
@@ -99,11 +100,11 @@ func (dm *AxisExpr) Specialise(spec Specialiser) ([]AxisLengths, error) {
 	}
 	sliceLit, isSliceLit := exprIR.(*SliceLitExpr)
 	if !isSliceLit {
-		return []AxisLengths{&AxisExpr{Src: dm.Src, X: exprIR}}, nil
+		return []AxisLengths{&AxisExpr{X: exprIR}}, nil
 	}
 	axes := make([]AxisLengths, len(sliceLit.Elts))
 	for i, expr := range sliceLit.Elts {
-		axes[i] = &AxisExpr{Src: dm.Src, X: expr}
+		axes[i] = &AxisExpr{X: expr}
 	}
 	return axes, nil
 }
@@ -114,7 +115,7 @@ func (dm *AxisExpr) UnifyWith(uni Unifier, targets []AxisLengths) ([]AxisLengths
 }
 
 // AsExpr returns the axis value as an expression.
-func (dm *AxisExpr) AsExpr() AssignableExpr { return dm.X }
+func (dm *AxisExpr) AsExpr() Expr { return dm.X }
 
 // Type of the expression.
 func (dm *AxisExpr) Type() Type { return dm.X.Type() }
@@ -162,7 +163,7 @@ func (dm *AxisInfer) AssignableTo(fetcher Fetcher, dst AxisLengths) (bool, error
 }
 
 // AsExpr returns the axis value as an expression.
-func (dm *AxisInfer) AsExpr() AssignableExpr {
+func (dm *AxisInfer) AsExpr() Expr {
 	if dm.X == nil {
 		return nil
 	}
@@ -243,7 +244,7 @@ func (dm *AxisStmt) Specialise(spec Specialiser) ([]AxisLengths, error) {
 	case *SliceLitExpr:
 		axes := make([]AxisLengths, len(exprT.Elts))
 		for i, expr := range exprT.Elts {
-			axes[i] = &AxisExpr{Src: expr.Node().(ast.Expr), X: expr}
+			axes[i] = &AxisExpr{X: expr}
 		}
 		return axes, nil
 	case WithStore:
@@ -252,10 +253,7 @@ func (dm *AxisStmt) Specialise(spec Specialiser) ([]AxisLengths, error) {
 			return []AxisLengths{ax}, nil
 		}
 	}
-	return []AxisLengths{&AxisExpr{
-		Src: exprIR.Node().(ast.Expr),
-		X:   exprIR,
-	}}, nil
+	return []AxisLengths{&AxisExpr{X: exprIR}}, nil
 }
 
 // UnifyWith unifies axis lengths with a given target.
@@ -264,7 +262,7 @@ func (dm *AxisStmt) UnifyWith(uni Unifier, targets []AxisLengths) ([]AxisLengths
 }
 
 // AsExpr returns the value assigned to the axis.
-func (dm *AxisStmt) AsExpr() AssignableExpr {
+func (dm *AxisStmt) AsExpr() Expr {
 	return &ValueRef{Src: dm.Src, Stor: dm}
 }
 

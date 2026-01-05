@@ -35,7 +35,7 @@ type (
 	// ArraySlicer is a state element with an array that can be sliced.
 	ArraySlicer interface {
 		evaluator.NumericalElement
-		SliceArray(expr ir.AssignableExpr, index evaluator.NumericalElement) (evaluator.NumericalElement, error)
+		SliceArray(expr ir.Expr, index evaluator.NumericalElement) (evaluator.NumericalElement, error)
 		Type() ir.Type
 	}
 
@@ -100,10 +100,10 @@ func (n *Slice) Unflatten(handles *flatten.Parser) (values.Value, error) {
 }
 
 // Expr returns the IR expression representing the slice.
-func (n *Slice) Expr() (ir.AssignableExpr, error) {
+func (n *Slice) Expr() (ir.Expr, error) {
 	ext := &ir.SliceLitExpr{
 		Typ:  n.typ,
-		Elts: make([]ir.AssignableExpr, n.Len()),
+		Elts: make([]ir.Expr, n.Len()),
 	}
 	for i, el := range n.values {
 		irEl, ok := el.(ir.Canonical)

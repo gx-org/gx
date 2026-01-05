@@ -70,9 +70,9 @@ func (n *callExpr) String() string {
 	return n.callee.String()
 }
 
-func (n *callExpr) buildArgs(scope resolveScope) ([]ir.AssignableExpr, bool) {
+func (n *callExpr) buildArgs(scope resolveScope) ([]ir.Expr, bool) {
 	ok := true
-	args := make([]ir.AssignableExpr, len(n.args))
+	args := make([]ir.Expr, len(n.args))
 	for i, arg := range n.args {
 		var argOk bool
 		args[i], argOk = buildAExpr(scope, arg)
@@ -81,12 +81,12 @@ func (n *callExpr) buildArgs(scope resolveScope) ([]ir.AssignableExpr, bool) {
 	return args, ok
 }
 
-func (n *callExpr) buildTypeCast(rscope resolveScope, callee ir.AssignableExpr, store ir.Storage) (ir.Expr, bool) {
+func (n *callExpr) buildTypeCast(rscope resolveScope, callee ir.Expr, store ir.Storage) (ir.Expr, bool) {
 	typRef, ok := typeFromStorage(rscope, callee, store)
 	if !ok {
 		return nil, false
 	}
-	dst := typRef.Typ
+	dst := typRef.Val()
 	ext := &ir.CastExpr{Src: n.src, Typ: dst}
 	args, argsOk := n.buildArgs(rscope)
 	if !argsOk {
@@ -120,7 +120,7 @@ func checkNumArgs(rscope resolveScope, fn *ir.FuncValExpr, numArgs int) bool {
 	return true
 }
 
-func (n *callExpr) completeFuncType(rscope resolveScope, callee *ir.FuncValExpr, args []ir.AssignableExpr) (*ir.FuncValExpr, bool) {
+func (n *callExpr) completeFuncType(rscope resolveScope, callee *ir.FuncValExpr, args []ir.Expr) (*ir.FuncValExpr, bool) {
 	fType := callee.FuncType()
 	if fType != nil {
 		return callee, true
@@ -149,7 +149,7 @@ func (n *callExpr) completeFuncType(rscope resolveScope, callee *ir.FuncValExpr,
 	return callee.NewFType(fType), true
 }
 
-func (n *callExpr) buildCallee(rscope resolveScope, expr *ir.FuncValExpr) ([]ir.AssignableExpr, *ir.FuncValExpr, bool) {
+func (n *callExpr) buildCallee(rscope resolveScope, expr *ir.FuncValExpr) ([]ir.Expr, *ir.FuncValExpr, bool) {
 	args, argsOk := n.buildArgs(rscope)
 	if !argsOk {
 		return nil, nil, false
@@ -178,7 +178,7 @@ func (n *callExpr) buildFuncCallExpr(rscope resolveScope, expr *ir.FuncValExpr) 
 	return extCall, true
 }
 
-func (n *callExpr) buildMacroCall(rscope resolveScope, compEval *compileEvaluator, expr ir.AssignableExpr, mac *ir.Macro) (ir.Expr, bool) {
+func (n *callExpr) buildMacroCall(rscope resolveScope, compEval *compileEvaluator, expr ir.Expr, mac *ir.Macro) (ir.Expr, bool) {
 	callExpr, ok := n.buildFuncCallExpr(rscope, ir.NewFuncValExpr(expr, mac))
 	if !ok {
 		return invalidExpr(), false
@@ -210,7 +210,7 @@ func (n *callExpr) buildMacroCall(rscope resolveScope, compEval *compileEvaluato
 	}, true
 }
 
-func (n *callExpr) buildCallExpr(rscope resolveScope, callee ir.AssignableExpr) (ir.Expr, bool) {
+func (n *callExpr) buildCallExpr(rscope resolveScope, callee ir.Expr) (ir.Expr, bool) {
 	switch calleeT := callee.(type) {
 	case *ir.FuncValExpr:
 		return n.buildFuncCallExpr(rscope, calleeT)

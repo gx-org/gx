@@ -46,7 +46,7 @@ func TestCast(t *testing.T) {
 			Want: &ir.CastExpr{
 				X: &ir.ArrayLitExpr{
 					Typ: irh.ArrayType(ir.Int64Type(), 2),
-					Elts: []ir.AssignableExpr{
+					Elts: []ir.Expr{
 						irh.IntNumberAs(3, ir.Int64Type()),
 						irh.IntNumberAs(4, ir.Int64Type()),
 					},
@@ -60,7 +60,7 @@ func TestCast(t *testing.T) {
 			Want: &ir.CastExpr{
 				X: &ir.ArrayLitExpr{
 					Typ: irh.ArrayType(ir.Int64Type(), 2),
-					Elts: []ir.AssignableExpr{
+					Elts: []ir.Expr{
 						irh.IntNumberAs(3, ir.Int64Type()),
 						irh.IntNumberAs(4, ir.Int64Type()),
 					},
@@ -74,7 +74,7 @@ func TestCast(t *testing.T) {
 			Want: &ir.CastExpr{
 				X: &ir.ArrayLitExpr{
 					Typ: irh.ArrayType(ir.Int64Type(), 2),
-					Elts: []ir.AssignableExpr{
+					Elts: []ir.Expr{
 						irh.IntNumberAs(3, ir.Int64Type()),
 						irh.IntNumberAs(4, ir.Int64Type()),
 					},
@@ -90,7 +90,7 @@ func TestCast(t *testing.T) {
 			Want: &ir.CastExpr{
 				X: &ir.ArrayLitExpr{
 					Typ: irh.ArrayType(ir.BoolType(), 2),
-					Elts: []ir.AssignableExpr{
+					Elts: []ir.Expr{
 						&ir.ValueRef{
 							Stor: ir.TrueStorage(),
 						},
@@ -140,11 +140,11 @@ func f() float32 {
 						irh.Fields(ir.Float32Type()),
 					),
 					Body: irh.SingleReturn(&ir.FuncCallExpr{
-						Args: []ir.AssignableExpr{&ir.CastExpr{
+						Args: []ir.Expr{&ir.CastExpr{
 							X:   irh.ValueRef(aVarDecl.Exprs[0]),
 							Typ: ir.Float32Type(),
 						}},
-						Callee: ir.NewFuncValExpr(xFunc, xFunc),
+						Callee: irh.FuncExpr(xFunc),
 					}),
 				},
 			},
@@ -167,7 +167,7 @@ func f() [2][3]float64 {
 						Typ: irh.ArrayType(ir.Float64Type(), 2, 3),
 						X: &ir.ArrayLitExpr{
 							Typ: irh.ArrayType(ir.Float32Type(), 6),
-							Elts: []ir.AssignableExpr{
+							Elts: []ir.Expr{
 								irh.IntNumberAs(1, ir.Float32Type()),
 								irh.IntNumberAs(2, ir.Float32Type()),
 								irh.IntNumberAs(3, ir.Float32Type()),

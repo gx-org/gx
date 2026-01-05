@@ -50,7 +50,7 @@ func (n *typeAssertExpr) buildExpr(rscope resolveScope) (ir.Expr, bool) {
 	return &ir.TypeAssertExpr{
 		Src: n.src,
 		X:   x,
-		Typ: typeExpr.Typ,
+		Typ: typeExpr.Val(),
 	}, xOk && toTypOk
 }
 

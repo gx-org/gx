@@ -29,7 +29,7 @@ func TestIndex(t *testing.T) {
 			Want: &ir.IndexExpr{
 				X: &ir.ArrayLitExpr{
 					Typ: irh.ArrayType(ir.Float32Type(), 2),
-					Elts: []ir.AssignableExpr{
+					Elts: []ir.Expr{
 						irh.IntNumberAs(3, ir.Float32Type()),
 						irh.IntNumberAs(4, ir.Float32Type()),
 					},

@@ -65,11 +65,11 @@ func (a *array) BinaryOp(env evaluator.Env, expr *ir.BinaryExpr, x, y evaluator.
 	return NewArray(expr.Type().(ir.ArrayType)), nil
 }
 
-func (a *array) Cast(env evaluator.Env, expr ir.AssignableExpr, target ir.Type) (evaluator.NumericalElement, error) {
+func (a *array) Cast(env evaluator.Env, expr ir.Expr, target ir.Type) (evaluator.NumericalElement, error) {
 	return NewArray(expr.Type().(ir.ArrayType)), nil
 }
 
-func (a *array) Reshape(env evaluator.Env, expr ir.AssignableExpr, axisLengths []evaluator.NumericalElement) (evaluator.NumericalElement, error) {
+func (a *array) Reshape(env evaluator.Env, expr ir.Expr, axisLengths []evaluator.NumericalElement) (evaluator.NumericalElement, error) {
 	return NewArray(expr.Type().(ir.ArrayType)), nil
 }
 

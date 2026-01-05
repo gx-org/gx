@@ -28,7 +28,7 @@ func TestArrayLit(t *testing.T) {
 			Src: `[2]float32{3, 4}`,
 			Want: &ir.ArrayLitExpr{
 				Typ: irh.ArrayType(ir.Float32Type(), 2),
-				Elts: []ir.AssignableExpr{
+				Elts: []ir.Expr{
 					irh.IntNumberAs(3, ir.Float32Type()),
 					irh.IntNumberAs(4, ir.Float32Type()),
 				},
@@ -39,7 +39,7 @@ func TestArrayLit(t *testing.T) {
 			Src: `[...]float32{3, 4}`,
 			Want: &ir.ArrayLitExpr{
 				Typ: irh.InferArrayType(ir.Float32Type(), 2),
-				Elts: []ir.AssignableExpr{
+				Elts: []ir.Expr{
 					irh.IntNumberAs(3, ir.Float32Type()),
 					irh.IntNumberAs(4, ir.Float32Type()),
 				},
@@ -54,10 +54,10 @@ func TestArrayLit(t *testing.T) {
 			Src: `[2][3]float32{{1, 2, 3}, {4, 5, 6}}`,
 			Want: &ir.ArrayLitExpr{
 				Typ: irh.ArrayType(ir.Float32Type(), 2, 3),
-				Elts: []ir.AssignableExpr{
+				Elts: []ir.Expr{
 					&ir.ArrayLitExpr{
 						Typ: irh.ArrayType(ir.Float32Type(), 3),
-						Elts: []ir.AssignableExpr{
+						Elts: []ir.Expr{
 							irh.IntNumberAs(1, ir.Float32Type()),
 							irh.IntNumberAs(2, ir.Float32Type()),
 							irh.IntNumberAs(3, ir.Float32Type()),
@@ -65,7 +65,7 @@ func TestArrayLit(t *testing.T) {
 					},
 					&ir.ArrayLitExpr{
 						Typ: irh.ArrayType(ir.Float32Type(), 3),
-						Elts: []ir.AssignableExpr{
+						Elts: []ir.Expr{
 							irh.IntNumberAs(4, ir.Float32Type()),
 							irh.IntNumberAs(5, ir.Float32Type()),
 							irh.IntNumberAs(6, ir.Float32Type()),
@@ -90,7 +90,7 @@ func TestArrayLit(t *testing.T) {
 			Src: `[...]int32{1, 2, 3}`,
 			Want: &ir.ArrayLitExpr{
 				Typ: irh.InferArrayType(ir.Int32Type(), 3),
-				Elts: []ir.AssignableExpr{
+				Elts: []ir.Expr{
 					irh.IntNumberAs(1, ir.Int32Type()),
 					irh.IntNumberAs(2, ir.Int32Type()),
 					irh.IntNumberAs(3, ir.Int32Type()),
@@ -102,10 +102,10 @@ func TestArrayLit(t *testing.T) {
 			Src: `[...]int32{{1, 2, 3}, {4, 5, 6}}`,
 			Want: &ir.ArrayLitExpr{
 				Typ: irh.InferArrayType(ir.Int32Type(), 2, 3),
-				Elts: []ir.AssignableExpr{
+				Elts: []ir.Expr{
 					&ir.ArrayLitExpr{
 						Typ: irh.InferArrayType(ir.Int32Type(), 3),
-						Elts: []ir.AssignableExpr{
+						Elts: []ir.Expr{
 							irh.IntNumberAs(1, ir.Int32Type()),
 							irh.IntNumberAs(2, ir.Int32Type()),
 							irh.IntNumberAs(3, ir.Int32Type()),
@@ -113,7 +113,7 @@ func TestArrayLit(t *testing.T) {
 					},
 					&ir.ArrayLitExpr{
 						Typ: irh.InferArrayType(ir.Int32Type(), 3),
-						Elts: []ir.AssignableExpr{
+						Elts: []ir.Expr{
 							irh.IntNumberAs(4, ir.Int32Type()),
 							irh.IntNumberAs(5, ir.Int32Type()),
 							irh.IntNumberAs(6, ir.Int32Type()),
@@ -127,10 +127,10 @@ func TestArrayLit(t *testing.T) {
 			Src: `[1][1]int32{{2}}`,
 			Want: &ir.ArrayLitExpr{
 				Typ: irh.ArrayType(ir.Int32Type(), 1, 1),
-				Elts: []ir.AssignableExpr{
+				Elts: []ir.Expr{
 					&ir.ArrayLitExpr{
 						Typ:  irh.ArrayType(ir.Int32Type(), 1),
-						Elts: []ir.AssignableExpr{irh.IntNumberAs(2, ir.Int32Type())},
+						Elts: []ir.Expr{irh.IntNumberAs(2, ir.Int32Type())},
 					},
 				},
 			},

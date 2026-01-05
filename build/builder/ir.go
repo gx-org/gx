@@ -105,10 +105,10 @@ func storageFromExpr(scope resolveScope, expr ir.Expr) (ir.Storage, bool) {
 	return store, true
 }
 
-func typeFromStorage(rscope resolveScope, x ir.AssignableExpr, store ir.Storage) (*ir.TypeValExpr, bool) {
+func typeFromStorage(rscope resolveScope, x ir.Expr, store ir.Storage) (*ir.TypeValExpr, bool) {
 	tp, ok := store.(ir.Type)
 	if ok {
-		return &ir.TypeValExpr{X: x, Typ: tp}, true
+		return ir.TypeExpr(x, tp), true
 	}
 	value, ok := valueFromStorage(rscope, x, store)
 	if !ok {
@@ -121,7 +121,7 @@ func typeFromStorage(rscope resolveScope, x ir.AssignableExpr, store ir.Storage)
 	return typeRef, true
 }
 
-func typeFromExpr(rscope resolveScope, x ir.AssignableExpr) (*ir.TypeValExpr, bool) {
+func typeFromExpr(rscope resolveScope, x ir.Expr) (*ir.TypeValExpr, bool) {
 	store, ok := storageFromExpr(rscope, x)
 	if !ok {
 		return nil, false
@@ -129,7 +129,7 @@ func typeFromExpr(rscope resolveScope, x ir.AssignableExpr) (*ir.TypeValExpr, bo
 	return typeFromStorage(rscope, x, store)
 }
 
-func valueFromStorage(rscope resolveScope, expr ir.Expr, store ir.Storage) (ir.AssignableExpr, bool) {
+func valueFromStorage(rscope resolveScope, expr ir.Expr, store ir.Storage) (ir.Expr, bool) {
 	withValue, ok := store.(ir.StorageWithValue)
 	if !ok {
 		nameDef := store.NameDef()
@@ -161,7 +161,7 @@ func buildArrayType(rscope resolveScope, eNode typeExprNode) (ir.ArrayType, bool
 	if !ok {
 		return invalidArrayType, false
 	}
-	arrayType, ok := typeExpr.Typ.(ir.ArrayType)
+	arrayType, ok := typeExpr.Val().(ir.ArrayType)
 	if !ok {
 		return invalidArrayType, rscope.Err().AppendInternalf(eNode.source(), "%s is not an array type", typeExpr.String())
 	}
@@ -169,7 +169,7 @@ func buildArrayType(rscope resolveScope, eNode typeExprNode) (ir.ArrayType, bool
 }
 
 var invalidSliceType = &ir.SliceType{
-	DType: &ir.TypeValExpr{Typ: ir.InvalidType()},
+	DType: ir.TypeExpr(nil, ir.InvalidType()),
 	Rank:  -1,
 }
 
@@ -178,7 +178,7 @@ func buildSliceType(rscope resolveScope, eNode typeExprNode) (*ir.SliceType, boo
 	if !ok {
 		return invalidSliceType, false
 	}
-	sliceType, ok := typeExpr.Typ.(*ir.SliceType)
+	sliceType, ok := typeExpr.Val().(*ir.SliceType)
 	if !ok {
 		return invalidSliceType, rscope.Err().AppendInternalf(eNode.source(), "%s is not a slice type", typeExpr.String())
 	}
@@ -308,17 +308,17 @@ func invalidExpr() *ir.ValueRef {
 	return invalidValueRef
 }
 
-var invalidGroup = &ir.FieldGroup{Type: &ir.TypeValExpr{
-	X:   invalidExpr(),
-	Typ: ir.InvalidType(),
-}}
+var invalidGroup = &ir.FieldGroup{Type: ir.TypeExpr(
+	invalidExpr(),
+	ir.InvalidType(),
+)}
 
-func buildAExpr(rscope resolveScope, expr exprNode) (ir.AssignableExpr, bool) {
+func buildAExpr(rscope resolveScope, expr exprNode) (ir.Expr, bool) {
 	ext, exprOk := expr.buildExpr(rscope)
 	if !exprOk {
 		return invalidExpr(), false
 	}
-	asExt, aexprOk := ext.(ir.AssignableExpr)
+	asExt, aexprOk := ext.(ir.Expr)
 	if !aexprOk {
 		return invalidExpr(), rscope.Err().Appendf(expr.source(), "%s %s is not assignable", ext.String(), ext.Type().Kind().String())
 	}

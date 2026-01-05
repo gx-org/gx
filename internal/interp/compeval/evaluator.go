@@ -81,7 +81,7 @@ func (ev *CompEval) ArrayOps() evaluator.ArrayOps {
 }
 
 // ElementFromAtom returns an element from a GX value.
-func (ev *CompEval) ElementFromAtom(file *ir.File, expr ir.AssignableExpr, val values.Array) (evaluator.NumericalElement, error) {
+func (ev *CompEval) ElementFromAtom(file *ir.File, expr ir.Expr, val values.Array) (evaluator.NumericalElement, error) {
 	hostValue, err := val.ToHostArray(kernels.Allocator())
 	if err != nil {
 		return nil, err

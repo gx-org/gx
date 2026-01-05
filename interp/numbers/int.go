@@ -133,7 +133,7 @@ func binaryInt(env evaluator.Env, expr *ir.BinaryExpr, xInt, yInt *Int) (evaluat
 }
 
 // Cast an element into a given data type.
-func (n *Int) Cast(env evaluator.Env, expr ir.AssignableExpr, target ir.Type) (evaluator.NumericalElement, error) {
+func (n *Int) Cast(env evaluator.Env, expr ir.Expr, target ir.Type) (evaluator.NumericalElement, error) {
 	return &Int{
 		expr:     elements.NewExprAt(env.File(), expr),
 		val:      n.val,
@@ -142,7 +142,7 @@ func (n *Int) Cast(env evaluator.Env, expr ir.AssignableExpr, target ir.Type) (e
 }
 
 // Reshape the number into an array.
-func (n *Int) Reshape(env evaluator.Env, expr ir.AssignableExpr, axisLengths []evaluator.NumericalElement) (evaluator.NumericalElement, error) {
+func (n *Int) Reshape(env evaluator.Env, expr ir.Expr, axisLengths []evaluator.NumericalElement) (evaluator.NumericalElement, error) {
 	return cpevelements.NewReshape(env, expr, n, axisLengths)
 }
 
@@ -201,7 +201,7 @@ func (n *Int) CanonicalExpr() canonical.Canonical {
 }
 
 // Expr returns an IR expression representing the integer value.
-func (n *Int) Expr() (ir.AssignableExpr, error) {
+func (n *Int) Expr() (ir.Expr, error) {
 	return n.expr.Node(), nil
 }
 

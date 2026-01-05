@@ -62,7 +62,7 @@ func (f function) processFields(fieldList *ir.FieldList, prefix string) ([]funcF
 	var fFields []funcField
 	fields := fieldList.Fields()
 	for i, field := range fields {
-		typ, err := f.binder.ccTypeFromIR(field.Group.Type.Typ)
+		typ, err := f.binder.ccTypeFromIR(field.Group.Type.Val())
 		if err != nil {
 			return nil, err
 		}

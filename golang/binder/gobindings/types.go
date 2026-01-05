@@ -37,7 +37,7 @@ func (b *binder) packagePrefixNameOf(tp *ir.NamedType) string {
 }
 
 func (b *binder) nameSlice(tp *ir.SliceType) (string, error) {
-	hostType, err := b.bridgerType(tp.DType.Typ)
+	hostType, err := b.bridgerType(tp.DType.Val())
 	if err != nil {
 		return "", err
 	}
@@ -54,7 +54,7 @@ func (b *binder) bridgerType(tp ir.Type) (string, error) {
 		goType, err := b.nameGoType(typT.DataType())
 		return fmt.Sprintf("types.Array[%s]", goType), err
 	case *ir.SliceType:
-		dtype, err := b.bridgerType(typT.DType.Typ)
+		dtype, err := b.bridgerType(typT.DType.Val())
 		if err != nil {
 			return "", err
 		}
@@ -104,7 +104,7 @@ func (b *binder) nameGoType(tp ir.Type) (string, error) {
 		}
 		return kind.String(), nil
 	case *ir.NamedType:
-		return b.nameGoType(typT.Underlying.Typ)
+		return b.nameGoType(typT.Underlying.Val())
 	default:
 		return "", errors.Errorf("cannot write nameGoType bindings for type %T on device", typT)
 	}
@@ -118,7 +118,7 @@ func (b *binder) nameHostFuncType(tp ir.Type) (string, error) {
 		}
 		return toKindSuffix(typT), nil
 	case *ir.NamedType:
-		return b.nameHostFuncType(typT.Underlying.Typ)
+		return b.nameHostFuncType(typT.Underlying.Val())
 	default:
 		return "", errors.Errorf("cannot write nameHostFuncType bindings for type %T on device", typT)
 	}

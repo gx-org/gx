@@ -310,7 +310,7 @@ func evalArrayAxes(fitp *FileScope, src ir.Node, typ ir.ArrayType) ([]evaluator.
 	axes := make([]evaluator.NumericalElement, len(rank.Axes()))
 	for i, axis := range rank.Axes() {
 		var err error
-		axes[i], err = evalNumExpr(fitp, axis)
+		axes[i], err = evalNumExpr(fitp, axis.AsExpr())
 		if err != nil {
 			return nil, err
 		}
@@ -466,7 +466,7 @@ func evalExpr(fitp *FileScope, expr ir.Expr) (ir.Element, error) {
 	case *ir.AxisExpr:
 		return evalExpr(fitp, exprT.X)
 	case *ir.AxisInfer:
-		return evalExpr(fitp, exprT.X)
+		return evalExpr(fitp, exprT.X.AsExpr())
 	case *ir.NumberCastExpr:
 		return evalNumberCastExpr(fitp, exprT)
 	case *ir.SliceLitExpr:
@@ -718,7 +718,7 @@ func ToSingleElement(ctx ir.Evaluator, node ir.Node, els []ir.Element) (ir.Eleme
 
 }
 
-func dimsAsElements(fitp *FileScope, expr ir.AssignableExpr, dims []int) ([]evaluator.NumericalElement, error) {
+func dimsAsElements(fitp *FileScope, expr ir.Expr, dims []int) ([]evaluator.NumericalElement, error) {
 	els := make([]evaluator.NumericalElement, len(dims))
 	for i, di := range dims {
 		val, err := values.AtomIntegerValue[int64](ir.IntLenType(), int64(di))

@@ -108,7 +108,7 @@ func binaryFloat(env evaluator.Env, expr *ir.BinaryExpr, xFloat, yFloat *Float) 
 }
 
 // Cast an element into a given data type.
-func (n *Float) Cast(env evaluator.Env, expr ir.AssignableExpr, target ir.Type) (evaluator.NumericalElement, error) {
+func (n *Float) Cast(env evaluator.Env, expr ir.Expr, target ir.Type) (evaluator.NumericalElement, error) {
 	return &Float{
 		expr:     elements.NewExprAt(env.File(), expr),
 		val:      n.val,
@@ -117,7 +117,7 @@ func (n *Float) Cast(env evaluator.Env, expr ir.AssignableExpr, target ir.Type) 
 }
 
 // Reshape the number into an array.
-func (n *Float) Reshape(env evaluator.Env, expr ir.AssignableExpr, axisLengths []evaluator.NumericalElement) (evaluator.NumericalElement, error) {
+func (n *Float) Reshape(env evaluator.Env, expr ir.Expr, axisLengths []evaluator.NumericalElement) (evaluator.NumericalElement, error) {
 	return cpevelements.NewReshape(env, expr, n, axisLengths)
 }
 

@@ -38,10 +38,10 @@ type (
 		Graph() ops.Graph
 
 		// Materialise returns the element with all its values from the graph.
-		NodeFromArray(file *ir.File, expr ir.AssignableExpr, val values.Array) (Node, error)
+		NodeFromArray(file *ir.File, expr ir.Expr, val values.Array) (Node, error)
 
 		// ElementsFromNodes returns a slice of elements from nodes
-		ElementsFromNodes(file *ir.File, expr ir.AssignableExpr, nodes ...*ops.OutputNode) ([]ir.Element, error)
+		ElementsFromNodes(file *ir.File, expr ir.Expr, nodes ...*ops.OutputNode) ([]ir.Element, error)
 	}
 
 	// ElementMaterialiser is an element that can return an instance of itself composed only of elements from the backend ops.

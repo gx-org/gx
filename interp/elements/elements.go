@@ -56,7 +56,7 @@ type (
 	NodeAt = NodeFile[ir.IR]
 
 	// ExprAt is a generic GX expression.
-	ExprAt = NodeFile[ir.AssignableExpr]
+	ExprAt = NodeFile[ir.Expr]
 
 	// CallAt is a function call GX expression.
 	CallAt = NodeFile[*ir.FuncCallExpr]
@@ -85,7 +85,7 @@ func NewValueAt(file *ir.File, expr ir.Value) ValueAt {
 }
 
 // NewExprAt returns a new expression at a given position.
-func NewExprAt(file *ir.File, expr ir.AssignableExpr) ExprAt {
+func NewExprAt(file *ir.File, expr ir.Expr) ExprAt {
 	return NewNodeAt(file, expr)
 }
 
@@ -128,7 +128,7 @@ func (ea NodeFile[T]) ToNodeAt() NodeAt {
 // ToExprAt converts a type position into a generic node position.
 func (ea NodeFile[T]) ToExprAt() ExprAt {
 	node := any(ea.node)
-	return NewNodeAt(ea.file, node.(ir.AssignableExpr))
+	return NewNodeAt(ea.file, node.(ir.Expr))
 }
 
 // ToValueAt converts a type position into a generic node position.
@@ -253,7 +253,7 @@ func StringFromElement(el ir.Element) (string, error) {
 }
 
 // SliceVals slices a slice of elements.
-func SliceVals(expr ir.AssignableExpr, index evaluator.NumericalElement, vals []ir.Element) (ir.Element, error) {
+func SliceVals(expr ir.Expr, index evaluator.NumericalElement, vals []ir.Element) (ir.Element, error) {
 	i, err := ConstantIntFromElement(index)
 	if err != nil {
 		return nil, err

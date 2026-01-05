@@ -46,7 +46,7 @@ func (g *FieldGroup) String() string {
 func (l *FieldList) SourceString(fileContext *File) string {
 	groups := make([]string, len(l.List))
 	for grpI, grp := range l.List {
-		typeS := grp.Type.Typ.SourceString(fileContext)
+		typeS := grp.Type.Val().SourceString(fileContext)
 		if len(grp.Fields) == 0 {
 			groups[grpI] = typeS
 			continue
@@ -176,7 +176,7 @@ func (s *FuncCallExpr) String() string {
 	return b.String()
 }
 
-func stringLiteral(elts []AssignableExpr) string {
+func stringLiteral(elts []Expr) string {
 	ss := make([]string, len(elts))
 	for i, elt := range elts {
 		ss[i] = elt.String()

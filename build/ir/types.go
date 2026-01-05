@@ -41,7 +41,7 @@ func (m *BaseType[T]) Node() ast.Node {
 }
 
 // Value returns nil.
-func (BaseType[T]) Value(Expr) AssignableExpr {
+func (BaseType[T]) Value(Expr) Expr {
 	return nil
 }
 
@@ -147,7 +147,7 @@ func (*invalidType) NameDef() *ast.Ident { return nil }
 
 func (*invalidType) Type() Type { return InvalidType() }
 
-func (*invalidType) Value(Expr) AssignableExpr { return nil }
+func (*invalidType) Value(Expr) Expr { return nil }
 
 func (*invalidType) SourceString(*File) string {
 	return irkind.Invalid.String()
@@ -410,7 +410,7 @@ func typeInclude(fetcher Fetcher, set Type, typ Type) (bool, error) {
 func (s *TypeSet) Source() ast.Node { return s.ArrayType() }
 
 // Zero returns a zero expression of the same type.
-func (s *TypeSet) Zero() AssignableExpr {
+func (s *TypeSet) Zero() Expr {
 	panic("unimplemented")
 }
 
@@ -435,8 +435,8 @@ func (s *TypeSet) ElementType() (Type, bool) {
 }
 
 // Value returns a value pointing to the receiver.
-func (s *TypeSet) Value(x Expr) AssignableExpr {
-	return &TypeValExpr{X: x, Typ: s}
+func (s *TypeSet) Value(x Expr) Expr {
+	return TypeExpr(x, s)
 }
 
 func (s *TypeSet) interfaceString(types []string) string {
@@ -505,9 +505,7 @@ func (s *TypeSet) containsTypes(fetcher Fetcher, types *TypeSet) bool {
 
 func fieldListAtomicIR() *FieldList {
 	group := &FieldGroup{
-		Type: &TypeValExpr{
-			Typ: TypeFromKind(irkind.IR),
-		},
+		Type: TypeExpr(nil, TypeFromKind(irkind.IR)),
 	}
 	group.Fields = []*Field{&Field{
 		Group: group,
@@ -527,22 +525,14 @@ func MetaFuncType() *FuncType {
 	return metaFuncType
 }
 
-// AtomTypeExpr returns a type expression for an atomic type.
-func AtomTypeExpr(typ Type) *TypeValExpr {
-	return &TypeValExpr{
-		X:   typ,
-		Typ: typ,
-	}
-}
-
 // ToArrayType converts a type into an array type.
 // Returns nil if the conversion is not possible
 func ToArrayType(typ Type) ArrayType {
 	switch typT := typ.(type) {
 	case *TypeParam:
-		return ToArrayType(typT.Field.Group.Type.Typ)
+		return ToArrayType(typT.Field.Group.Type.Val())
 	case *NamedType:
-		return ToArrayType(typT.Underlying.Typ)
+		return ToArrayType(typT.Underlying.Val())
 	case *TypeSet:
 		if !typT.hasCapability(IsDataType) {
 			return nil
@@ -579,7 +569,7 @@ func simplifyType(t Type) Type {
 	if !ok {
 		return t
 	}
-	return typeParam.Field.Group.Type.Typ
+	return typeParam.Field.Group.Type.Val()
 }
 
 // IsInvalidType returns true if a type is invalid.

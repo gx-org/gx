@@ -43,8 +43,8 @@ func (n *compositeLit) source() ast.Node {
 	return n.src
 }
 
-func (n *compositeLit) buildElements(ascope compositeLitResolveScope) ([]ir.AssignableExpr, bool) {
-	elts := make([]ir.AssignableExpr, len(n.elts))
+func (n *compositeLit) buildElements(ascope compositeLitResolveScope) ([]ir.Expr, bool) {
+	elts := make([]ir.Expr, len(n.elts))
 	if len(n.elts) == 0 {
 		return nil, true
 	}

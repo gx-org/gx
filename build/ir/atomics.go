@@ -132,7 +132,7 @@ type intidxType struct {
 var (
 	intidxT         = &intidxType{atomicType: atomicType{Knd: irkind.IntIdx}}
 	axisIndicesType = &SliceType{
-		DType: &TypeValExpr{Typ: IntIndexType()},
+		DType: TypeExpr(nil, IntIndexType()),
 		Rank:  1,
 	}
 )
@@ -155,11 +155,8 @@ var (
 	intlenT         = &intlenType{atomicType: atomicType{Knd: irkind.IntLen}}
 	axisLengthsType = &SliceType{
 		BaseType: BaseType[*ast.ArrayType]{Src: &ast.ArrayType{}},
-		DType: &TypeValExpr{
-			X:   IntLenType(),
-			Typ: IntLenType(),
-		},
-		Rank: 1,
+		DType:    TypeExpr(nil, IntLenType()),
+		Rank:     1,
 	}
 )
 

@@ -70,8 +70,10 @@ var (
 	_ CallExpr = (*MacroCallExpr)(nil)
 )
 
-func (s *MacroCallExpr) node()       {}
-func (s *MacroCallExpr) assignable() {}
+func (s *MacroCallExpr) node() {}
+
+// Expr returns the expression AST.
+func (s *MacroCallExpr) Expr() ast.Expr { return s.X.Expr() }
 
 // Type returns the type of the function.
 func (s *MacroCallExpr) Type() Type {
@@ -94,9 +96,7 @@ func (s *MacroCallExpr) FuncCall() *FuncCallExpr {
 	ftype.Results = &FieldList{
 		List: []*FieldGroup{
 			&FieldGroup{
-				Type: &TypeValExpr{
-					Typ: s.F.FuncType(),
-				},
+				Type: TypeExpr(nil, s.F.FuncType()),
 			},
 		},
 	}
@@ -107,7 +107,7 @@ func (s *MacroCallExpr) FuncCall() *FuncCallExpr {
 }
 
 // Node returns the node in the AST tree.
-func (s *MacroCallExpr) Node() ast.Node { return s.F.Node() }
+func (s *MacroCallExpr) Node() ast.Node { return s.Expr() }
 
 // Call returns the source of the call.
 func (s *MacroCallExpr) Call() *ast.CallExpr { return s.X.Src }

@@ -220,7 +220,7 @@ func TestMacroOnMethod(t *testing.T) {
 	typeS := &ir.NamedType{
 		File:       wantFile,
 		Src:        &ast.TypeSpec{Name: irh.Ident("S")},
-		Underlying: irh.TypeExpr(irh.StructType()),
+		Underlying: ir.TypeExpr(nil, irh.StructType()),
 	}
 	fType := irh.FuncType(
 		nil,

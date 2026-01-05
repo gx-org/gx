@@ -104,7 +104,7 @@ func NewRuntimeValue(file *ir.File, store ir.Storage) (ir.Element, error) {
 		}
 		return elements.NewStruct(typT, fields), nil
 	case *ir.NamedType:
-		under, err := NewRuntimeValue(file, typT.Underlying.Typ)
+		under, err := NewRuntimeValue(file, typT.Underlying.Val())
 		if err != nil {
 			return nil, err
 		}

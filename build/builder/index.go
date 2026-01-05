@@ -74,7 +74,7 @@ func (n *indexExpr) checkIndexBounds(rscope resolveScope, axLen ir.AxisLengths, 
 	if !compEvalOk {
 		return false
 	}
-	axisValue, err := compEval.EvalExpr(axLen)
+	axisValue, err := compEval.EvalExpr(axLen.AsExpr())
 	if err != nil {
 		return rscope.Err().AppendInternalf(axLen.Node(), "cannot evaluate axis length expression: %v", err)
 	}
@@ -93,7 +93,7 @@ func (n *indexExpr) checkIndexBounds(rscope resolveScope, axLen ir.AxisLengths, 
 	return true
 }
 
-func specializeFunc(rscope resolveScope, x ir.Expr, indices []ir.AssignableExpr) (ir.Expr, bool) {
+func specializeFunc(rscope resolveScope, x ir.Expr, indices []ir.Expr) (ir.Expr, bool) {
 	var fun *ir.FuncValExpr
 	switch xT := x.(type) {
 	case *ir.MacroCallExpr:
@@ -140,7 +140,7 @@ func (n *indexExpr) buildExpr(rscope resolveScope) (ir.Expr, bool) {
 	}
 	xType := x.Type()
 	if xType.Kind() == irkind.Func {
-		return specializeFunc(rscope, x, []ir.AssignableExpr{idx})
+		return specializeFunc(rscope, x, []ir.Expr{idx})
 	}
 	ext := &ir.IndexExpr{Src: n.src, X: x, Index: idx, Typ: ir.InvalidType()}
 	if !ir.IsSlicingOk(xType) {
@@ -196,7 +196,7 @@ func processIndexListExpr(pscope procScope, src *ast.IndexListExpr) (*indexListE
 
 func (n *indexListExpr) buildExpr(rscope resolveScope) (ir.Expr, bool) {
 	x, xOk := n.x.buildExpr(rscope)
-	indices := make([]ir.AssignableExpr, len(n.indices))
+	indices := make([]ir.Expr, len(n.indices))
 	indicesOk := true
 	for i, index := range n.indices {
 		var iOk bool

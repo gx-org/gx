@@ -89,7 +89,7 @@ func toKindSuffix(typ ir.Type) string {
 
 func hasStructIn(fields *ir.FieldList) bool {
 	for _, grp := range fields.List {
-		if grp.Type.Typ.Kind() == irkind.Struct {
+		if grp.Type.Val().Kind() == irkind.Struct {
 			return true
 		}
 	}
@@ -144,7 +144,7 @@ func (f function) Parameters() (string, error) {
 	fields := f.FuncType().Params.Fields()
 	params := make([]string, len(fields))
 	for i, field := range fields {
-		typeS, err := f.bridgerType(field.Group.Type.Typ)
+		typeS, err := f.bridgerType(field.Group.Type.Val())
 		if err != nil {
 			return "", err
 		}
@@ -166,7 +166,7 @@ func (f function) Results() (string, error) {
 	fields := f.FuncType().Results.Fields()
 	results := make([]string, len(fields))
 	for i, field := range fields {
-		typeS, err := f.binder.bridgerType(field.Group.Type.Typ)
+		typeS, err := f.binder.bridgerType(field.Group.Type.Val())
 		if err != nil {
 			return "", err
 		}

@@ -30,7 +30,7 @@ func TestStruct(t *testing.T) {
 	typeA := &ir.NamedType{
 		File:       wantFile,
 		Src:        &ast.TypeSpec{Name: irh.Ident("A")},
-		Underlying: irh.TypeExpr(structA),
+		Underlying: ir.TypeExpr(nil, structA),
 	}
 	testbuild.Run(t,
 		testbuild.Decl{

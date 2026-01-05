@@ -124,8 +124,8 @@ func (s *FuncType) ConvertibleTo(fetcher Fetcher, target Type) (bool, error) {
 }
 
 // Value returns a value pointing to the receiver.
-func (s *FuncType) Value(x Expr) AssignableExpr {
-	return &TypeValExpr{X: x, Typ: s}
+func (s *FuncType) Value(x Expr) Expr {
+	return TypeExpr(x, s)
 }
 
 // Specialise a type to a given target.
@@ -148,16 +148,16 @@ func (s *FuncType) SpecialiseFType(spec Specialiser) (*FuncType, error) {
 	var err error
 	specialiser := &cloner{
 		group: func(grp *FieldGroup) (*FieldGroup, error) {
-			specType, err := grp.Type.Typ.Specialise(spec)
+			specType, err := grp.Type.Val().Specialise(spec)
 			if err != nil {
 				return nil, err
 			}
 			return &FieldGroup{
 				Src: grp.Src,
-				Type: &TypeValExpr{
-					X:   grp.Type.X,
-					Typ: specType,
-				},
+				Type: TypeExpr(
+					grp.Type.X(),
+					specType,
+				),
 			}, nil
 		},
 		field: cloneField,
@@ -199,6 +199,9 @@ func (s *FuncType) SpecialiseFType(spec Specialiser) (*FuncType, error) {
 func (s *FuncType) UnifyWith(unifier Unifier, typ Type) bool {
 	return true
 }
+
+// Expr returns the expression AST.
+func (s *FuncType) Expr() ast.Expr { return s.Src }
 
 // Node returns the node in the AST tree.
 func (s *FuncType) Node() ast.Node { return s.Src }

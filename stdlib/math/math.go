@@ -110,7 +110,7 @@ func mainAuxArgsToTypes(funcName string, fetcher ir.Fetcher, call *ir.FuncCallEx
 
 func buildConstScalar[T dtype.GoDataType](name string, value T) builtin.Builder {
 	kind := irkind.KindGeneric[T]()
-	return builtin.BuildConst(func(*ir.Package) (string, ir.AssignableExpr, ir.Type, error) {
+	return builtin.BuildConst(func(*ir.Package) (string, ir.Expr, ir.Type, error) {
 		value := &ir.AtomicValueT[T]{
 			Src: &ast.BasicLit{
 				Kind:  token.IDENT,

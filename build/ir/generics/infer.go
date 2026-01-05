@@ -31,7 +31,7 @@ type (
 
 	argUnifier struct {
 		*unifier
-		arg ir.AssignableExpr
+		arg ir.Expr
 	}
 )
 
@@ -170,7 +170,7 @@ func (uni *argUnifier) DefineAxis(param *ir.AxisStmt, targets []ir.AxisLengths) 
 }
 
 // Infer the type parameters of a function given a list of argument expressions.
-func Infer(fetcher ir.Fetcher, fExpr *ir.FuncValExpr, args []ir.AssignableExpr) (*ir.FuncValExpr, bool) {
+func Infer(fetcher ir.Fetcher, fExpr *ir.FuncValExpr, args []ir.Expr) (*ir.FuncValExpr, bool) {
 	ftype := fExpr.FuncType()
 	uni := &unifier{
 		Fetcher: fetcher,

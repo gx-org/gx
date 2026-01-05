@@ -109,7 +109,7 @@ func IsAxisLengthType(typ Type) bool {
 		if !ok {
 			return false
 		}
-		return sliceType.DType.Typ.Kind() == irkind.IntLen
+		return sliceType.DType.Val().Kind() == irkind.IntLen
 	case irkind.Interface:
 		if typSet, ok := toTypeSet(typ); ok {
 			return typSet.hasCapability(IsInteger)

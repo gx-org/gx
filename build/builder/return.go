@@ -148,7 +148,7 @@ func (n *returnStmt) buildStmt(scope fnResolveScope) (ir.Stmt, bool, bool) {
 			continue
 		}
 		gotType := rTypes[i]
-		wantType := wantI.Group.Type.Typ
+		wantType := wantI.Group.Type.Val()
 		if gotType.Kind() == irkind.Invalid || wantType.Kind() == irkind.Invalid {
 			ok = false
 			continue

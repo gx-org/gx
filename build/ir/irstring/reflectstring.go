@@ -114,7 +114,7 @@ func rank(done map[any]bool, val reflect.Value, proc processor) string {
 
 func typeValExpr(done map[any]bool, val reflect.Value, proc processor) string {
 	ref := val.Interface().(*ir.TypeValExpr)
-	switch typT := ref.Typ.(type) {
+	switch typT := ref.Val().(type) {
 	case *ir.FuncType, ir.ArrayType, *ir.TypeParam:
 		return reflectString(done, reflect.ValueOf(typT), proc)
 	default:

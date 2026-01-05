@@ -28,7 +28,7 @@ func TestImportType(t *testing.T) {
 	typInt := &ir.NamedType{
 		File:       &ir.File{Package: &ir.Package{Name: irhelper.Ident("dtype")}},
 		Src:        &ast.TypeSpec{Name: irhelper.Ident("Int")},
-		Underlying: irhelper.TypeExpr(ir.Int32Type()),
+		Underlying: ir.TypeExpr(nil, ir.Int32Type()),
 	}
 	testbuild.Run(t,
 		testbuild.DeclarePackage{

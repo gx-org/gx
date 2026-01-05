@@ -60,8 +60,8 @@ func registerBuiltinIR(tok token.Token, store ir.Storage) {
 	}
 }
 
-func registerBuiltinType(name string, node ir.Type) {
-	registerBuiltinIR(token.TYPE, ir.BuiltinStorage(name, &ir.TypeValExpr{Typ: node}))
+func registerBuiltinType(name string, typ ir.Type) {
+	registerBuiltinIR(token.TYPE, ir.BuiltinStorage(name, ir.TypeExpr(nil, typ)))
 }
 
 func registerBuiltinFunc(impl ir.FuncImpl) {

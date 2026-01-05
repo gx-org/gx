@@ -46,7 +46,7 @@ type Array [cstA]float32
 			Want: []ir.IR{
 				&ir.NamedType{
 					Src: &ast.TypeSpec{Name: irh.Ident("Array")},
-					Underlying: irh.TypeExpr(irh.ArrayType(
+					Underlying: ir.TypeExpr(nil, irh.ArrayType(
 						ir.Float32Type(),
 						&ir.NumberCastExpr{
 							X:   irh.ValueRef(cstA),
@@ -118,7 +118,7 @@ const (
 
 func TestConstWithType(t *testing.T) {
 	cstIntA := &ir.ConstExpr{
-		Decl:  &ir.ConstSpec{Type: irh.TypeRef(ir.Int32Type())},
+		Decl:  &ir.ConstSpec{Type: ir.TypeExpr(nil, ir.Int32Type())},
 		VName: irh.Ident("cstIntA"),
 		Val: &ir.NumberCastExpr{
 			X:   &ir.NumberInt{Val: big.NewInt(5)},

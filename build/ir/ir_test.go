@@ -121,7 +121,7 @@ var (
 	symbolicAxisNames = make(map[string]bool)
 )
 
-func newRank(exprs ...ir.AssignableExpr) *ir.Rank {
+func newRank(exprs ...ir.Expr) *ir.Rank {
 	axes := make([]ir.AxisLengths, len(exprs))
 	for i, expr := range exprs {
 		axes[i] = &ir.AxisExpr{X: expr}
@@ -162,7 +162,7 @@ func makeNamedType(typ ir.Type) *ir.NamedType {
 	return &ir.NamedType{
 		Src:        &ast.TypeSpec{Name: irhelper.Ident("named_" + typ.String())},
 		File:       testFile,
-		Underlying: &ir.TypeValExpr{Typ: typ},
+		Underlying: ir.TypeExpr(nil, typ),
 		Methods:    []ir.PkgFunc{},
 	}
 }

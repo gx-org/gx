@@ -70,12 +70,12 @@ func (n *structType) buildTypeExpr(scope resolveScope) (*ir.TypeValExpr, bool) {
 	ext := &ir.StructType{BaseType: ir.BaseType[*ast.StructType]{Src: n.src}}
 	ephemeral, ok := newEphemeralResolveScope(scope, n.src)
 	if !ok {
-		return &ir.TypeValExpr{X: ext, Typ: ir.InvalidType()}, false
+		return ir.TypeExpr(nil, ir.InvalidType()), false
 	}
 	stypeScope := newDefineScope(ephemeral, nil, nil)
 	var fieldsOk bool
 	ext.Fields, fieldsOk = n.fieldList.buildFieldList(stypeScope)
-	return &ir.TypeValExpr{X: ext, Typ: ext}, fieldsOk
+	return ir.TypeExpr(nil, ext), fieldsOk
 }
 
 func (n *structType) String() string {
@@ -162,7 +162,7 @@ func (n *structLiteral) buildExpr(rscope resolveScope) (ir.Expr, bool) {
 	if !typOk {
 		return ext, false
 	}
-	ext.Typ = typeExpr.Typ
+	ext.Typ = typeExpr.Val()
 	underlying := ir.Underlying(ext.Typ)
 	structType, ok := underlying.(*ir.StructType)
 	if !ok {
