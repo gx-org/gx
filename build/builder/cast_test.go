@@ -144,11 +144,7 @@ func f() float32 {
 							X:   irh.ValueRef(aVarDecl.Exprs[0]),
 							Typ: ir.Float32Type(),
 						}},
-						Callee: &ir.FuncValExpr{
-							X: xFunc,
-							F: xFunc,
-							T: xFunc.FuncType(),
-						},
+						Callee: ir.NewFuncValExpr(xFunc, xFunc),
 					}),
 				},
 			},

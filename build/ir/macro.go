@@ -101,12 +101,8 @@ func (s *MacroCallExpr) FuncCall() *FuncCallExpr {
 		},
 	}
 	return &FuncCallExpr{
-		Src: s.X.Src,
-		Callee: &FuncValExpr{
-			X: s.X,
-			F: s.M.From(),
-			T: &ftype,
-		},
+		Src:    s.X.Src,
+		Callee: NewFuncValExpr(s.X, s.M.From()).NewFType(&ftype),
 	}
 }
 

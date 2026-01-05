@@ -153,9 +153,9 @@ func (v *validator) validate(node ir.IR) {
 		v.validate(nodeT.X)
 		v.validate(nodeT.Y)
 	case *ir.FuncValExpr:
-		v.validate(nodeT.X)
-		v.validate(nodeT.F)
-		v.validate(nodeT.T)
+		v.validate(nodeT.X())
+		v.validate(nodeT.Func())
+		v.validate(nodeT.FuncType())
 	case *ir.FuncCallExpr:
 		v.validate(nodeT.Callee)
 		for _, arg := range nodeT.Args {

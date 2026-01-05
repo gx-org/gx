@@ -76,13 +76,11 @@ func g() int32 {
 						}}},
 						&ir.ReturnStmt{Results: []ir.Expr{
 							&ir.FuncCallExpr{
-								Callee: &ir.FuncValExpr{
-									X: irh.ValueRef(irh.LocalVar("fn", funcLitType())),
-									F: &ir.FuncLit{
+								Callee: ir.NewFuncValExpr(
+									irh.ValueRef(irh.LocalVar("fn", funcLitType())),
+									&ir.FuncLit{
 										FType: funcLitType(),
-									},
-									T: funcLitType(),
-								},
+									}),
 							},
 						}},
 					}},
@@ -239,7 +237,7 @@ func f() int32 {
 	return fn()
 }
 `,
-			Err: "not enough arguments in call to test.g",
+			Err: "not enough arguments in call to g",
 		},
 	)
 }

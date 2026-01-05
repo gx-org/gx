@@ -226,7 +226,7 @@ func assignAxisLengths(callee ir.Callee, funcFrame *context.Frame) {
 	if !ok {
 		return
 	}
-	for _, axLen := range funRef.T.AxisLengths {
+	for _, axLen := range funRef.FuncType().AxisLengths {
 		if axLen.Value == nil {
 			continue
 		}
@@ -239,7 +239,7 @@ func assignTypeParameters(callee ir.Callee, funcFrame *context.Frame) {
 	if !ok {
 		return
 	}
-	for _, tpParam := range funRef.T.TypeParamsValues {
+	for _, tpParam := range funRef.FuncType().TypeParamsValues {
 		funcFrame.Define(tpParam.Field.Name.Name, tpParam.Typ)
 	}
 }

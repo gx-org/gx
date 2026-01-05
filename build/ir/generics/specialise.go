@@ -34,7 +34,7 @@ func (s *specialiser) ValueOf(name string) ir.Element {
 
 // Specialise a function signature for a given type.
 func Specialise(fetcher ir.Fetcher, expr ir.Expr, fun *ir.FuncValExpr, typs []*ir.TypeValExpr) (*ir.FuncValExpr, bool) {
-	fType := fun.T
+	fType := fun.FuncType()
 	if fType == nil {
 		// This is a builtin function with the type built later.
 		// That should not be specialised by the user.
@@ -72,16 +72,12 @@ func Specialise(fetcher ir.Fetcher, expr ir.Expr, fun *ir.FuncValExpr, typs []*i
 		defined: definedTypeParams,
 	})
 	if err != nil {
-		return nil, fetcher.Err().AppendAt(fun.X.Node(), err)
+		return nil, fetcher.Err().AppendAt(fun.Node(), err)
 	}
 	if specType == nil {
 		return nil, false
 	}
-	return &ir.FuncValExpr{
-		X: expr,
-		F: fun.F,
-		T: specType,
-	}, ok
+	return ir.NewFuncValExpr(expr, fun.Func()).NewFType(specType), ok
 }
 
 // Instantiate replaces data types either specified or inferred.

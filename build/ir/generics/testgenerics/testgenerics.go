@@ -59,7 +59,7 @@ package test
 `, tt.Src)
 }
 
-func (call Call) run(pkg *builder.IncrementalPackage, fnValRef ir.FuncValExpr) error {
+func (call Call) run(pkg *builder.IncrementalPackage, fnValRef *ir.FuncValExpr) error {
 	args := make([]ir.AssignableExpr, len(call.Args))
 	for i, arg := range call.Args {
 		argI, err := pkg.BuildExpr(arg)
@@ -72,14 +72,14 @@ func (call Call) run(pkg *builder.IncrementalPackage, fnValRef ir.FuncValExpr) e
 	if err != nil {
 		return err
 	}
-	fnGot, _ := generics.Infer(fetcher, &fnValRef, args)
+	fnGot, _ := generics.Infer(fetcher, fnValRef, args)
 	if err := testbuild.CheckError(call.Err, fetcher.Err().Errors().ToError()); err != nil {
 		return err
 	}
 	if call.Want == "" {
 		return nil
 	}
-	got := fnGot.T.String()
+	got := fnGot.FuncType().String()
 	if got != call.Want {
 		return errors.Errorf("incorrect signature: got %s but want %s", got, call.Want)
 	}
@@ -102,11 +102,7 @@ func (tt Infer) Run(b *testbuild.Builder) error {
 		return errors.Errorf("got %d function declarations but want only 1", len(funcs))
 	}
 	fn := funcs[0]
-	fnValRef := ir.FuncValExpr{
-		X: &ir.ValueRef{Stor: fn},
-		F: fn,
-		T: fn.FuncType(),
-	}
+	fnValRef := ir.NewFuncValExpr(&ir.ValueRef{Stor: fn}, fn)
 	// Evaluates all calls.
 	errs := &fmterr.Errors{}
 	for i, call := range tt.Calls {

@@ -403,11 +403,7 @@ func (fn *funcLiteral) buildExpr(rscope resolveScope) (ir.Expr, bool) {
 	if !ok {
 		return invalidExpr(), false
 	}
-	return &ir.FuncValExpr{
-		X: lit,
-		F: lit,
-		T: lit.FType,
-	}, true
+	return ir.NewFuncValExpr(lit, lit), true
 }
 
 func (fn *funcLiteral) source() ast.Node {
@@ -537,7 +533,7 @@ func assignArgValueToParamName(rscope resolveScope, fExpr *ir.FuncValExpr, args 
 	if !ok {
 		return params, false
 	}
-	for i, param := range fExpr.T.Params.Fields() {
+	for i, param := range fExpr.FuncType().Params.Fields() {
 		if param.Name == nil {
 			continue
 		}
@@ -554,7 +550,7 @@ func assignArgValueToParamName(rscope resolveScope, fExpr *ir.FuncValExpr, args 
 
 func checkArgsForCall(rscope resolveScope, fExpr *ir.FuncValExpr, args []ir.AssignableExpr) bool {
 	ok := true
-	wants := fExpr.T.Params.Fields()
+	wants := fExpr.FuncType().Params.Fields()
 	compEval, compEvalOk := rscope.compEval()
 	if !compEvalOk {
 		return false
@@ -566,7 +562,7 @@ func checkArgsForCall(rscope resolveScope, fExpr *ir.FuncValExpr, args []ir.Assi
 			return rscope.Err().AppendAt(arg.Node(), err)
 		}
 		if !assignable {
-			rscope.Err().Appendf(arg.Node(), "cannot use type %s as %s in argument to %s", arg.Type().String(), param.Type().String(), fExpr.F.ShortString())
+			rscope.Err().Appendf(arg.Node(), "cannot use type %s as %s in argument to %s", arg.Type().String(), param.Type().String(), fExpr.Func().ShortString())
 			ok = false
 		}
 	}
@@ -574,7 +570,7 @@ func checkArgsForCall(rscope resolveScope, fExpr *ir.FuncValExpr, args []ir.Assi
 }
 
 func buildFuncForCall(rscope resolveScope, fExpr *ir.FuncValExpr, args []ir.AssignableExpr) ([]ir.AssignableExpr, *ir.FuncValExpr, bool) {
-	compEval, compEvalOk := compEvalForFuncType(rscope, fExpr.X.Node(), fExpr.T)
+	compEval, compEvalOk := compEvalForFuncType(rscope, fExpr.Node(), fExpr.FuncType())
 	if !compEvalOk {
 		return args, fExpr, false
 	}
@@ -583,7 +579,7 @@ func buildFuncForCall(rscope resolveScope, fExpr *ir.FuncValExpr, args []ir.Assi
 	if !ok {
 		return args, fExpr, false
 	}
-	typeParams := fExpr.T.TypeParams.Fields()
+	typeParams := fExpr.FuncType().TypeParams.Fields()
 	if len(typeParams) > 0 {
 		names := make([]string, len(typeParams))
 		for i, field := range typeParams {
@@ -593,9 +589,9 @@ func buildFuncForCall(rscope resolveScope, fExpr *ir.FuncValExpr, args []ir.Assi
 		if len(names) > 1 {
 			parameter = "parameters"
 		}
-		return args, fExpr, rscope.Err().Appendf(fExpr.X.Node(), "cannot infer type %s %s", parameter, strings.Join(names, ","))
+		return args, fExpr, rscope.Err().Appendf(fExpr.Node(), "cannot infer type %s %s", parameter, strings.Join(names, ","))
 	}
-	if args, ok = convertArgNumbers(rscope, fExpr.T, args); !ok {
+	if args, ok = convertArgNumbers(rscope, fExpr.FuncType(), args); !ok {
 		return args, fExpr, false
 	}
 	argsVals, ok := assignArgValueToParamName(rscope, fExpr, args)
@@ -606,15 +602,11 @@ func buildFuncForCall(rscope resolveScope, fExpr *ir.FuncValExpr, args []ir.Assi
 	if !ok {
 		return args, fExpr, false
 	}
-	fTypeInst, err := generics.Instantiate(ce, fExpr.T)
+	fTypeInst, err := generics.Instantiate(ce, fExpr.FuncType())
 	if err != nil {
 		return args, fExpr, rscope.Err().AppendAt(fExpr.Node(), err)
 	}
-	fExprInst := &ir.FuncValExpr{
-		X: fExpr.X,
-		F: fExpr.F,
-		T: fTypeInst,
-	}
+	fExprInst := fExpr.NewFType(fTypeInst)
 	return args, fExprInst, ok && checkArgsForCall(rscope, fExprInst, args)
 }
 

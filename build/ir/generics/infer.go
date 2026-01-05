@@ -171,10 +171,10 @@ func (uni *argUnifier) DefineAxis(param *ir.AxisStmt, targets []ir.AxisLengths) 
 
 // Infer the type parameters of a function given a list of argument expressions.
 func Infer(fetcher ir.Fetcher, fExpr *ir.FuncValExpr, args []ir.AssignableExpr) (*ir.FuncValExpr, bool) {
-	ftype := fExpr.T
+	ftype := fExpr.FuncType()
 	uni := &unifier{
 		Fetcher: fetcher,
-		defined: newTypeParamDefinition(fExpr.T),
+		defined: newTypeParamDefinition(ftype),
 		axes:    make(map[string]ir.Element),
 	}
 	ok := true
@@ -201,11 +201,7 @@ func Infer(fetcher ir.Fetcher, fExpr *ir.FuncValExpr, args []ir.AssignableExpr) 
 	}
 	ftypeInfer, err := ftype.SpecialiseFType(spec)
 	if err != nil {
-		return fExpr, fetcher.Err().AppendAt(fExpr.X.Node(), err)
+		return fExpr, fetcher.Err().AppendAt(fExpr.Node(), err)
 	}
-	return &ir.FuncValExpr{
-		X: fExpr.X,
-		F: fExpr.F,
-		T: ftypeInfer,
-	}, ok
+	return fExpr.NewFType(ftypeInfer), ok
 }
