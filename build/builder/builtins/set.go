@@ -76,7 +76,7 @@ func (f *setFunc) BuildFuncType(fetcher ir.Fetcher, call *ir.FuncCallExpr) (*ir.
 	if len(posRank.Axes()) != 1 {
 		return ext, errors.Errorf("position has an invalid number of axes: got %d but want 1", len(posRank.Axes()))
 	}
-	posSize, err := elements.EvalInt(fetcher, posRank.Axes()[0])
+	posSize, err := elements.EvalInt(fetcher, posRank.Axes()[0].AsExpr())
 	if err != nil {
 		return ext, err
 	}

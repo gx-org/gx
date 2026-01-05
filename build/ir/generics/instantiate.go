@@ -44,13 +44,13 @@ func instantiateAxisExpr(fetcher ir.Fetcher, axis *ir.AxisExpr) ([]ir.AxisLength
 	case *ir.SliceLitExpr:
 		axes := make([]ir.AxisLengths, len(valT.Elts))
 		for i, el := range valT.Elts {
-			axes[i] = &ir.AxisExpr{Src: axis.Src, X: el}
+			axes[i] = &ir.AxisExpr{X: el}
 		}
 		return axes, true
-	case ir.AssignableExpr:
-		return []ir.AxisLengths{&ir.AxisExpr{Src: axis.Src, X: valT}}, true
+	case ir.Expr:
+		return []ir.AxisLengths{&ir.AxisExpr{X: valT}}, true
 	default:
-		return nil, fetcher.Err().AppendInternalf(axis.Src, "cannot instantiate axis %s: value type %T not supported", axis.String(), valT)
+		return nil, fetcher.Err().AppendInternalf(axis.Node(), "cannot instantiate axis %s: value type %T not supported", axis.String(), valT)
 	}
 }
 

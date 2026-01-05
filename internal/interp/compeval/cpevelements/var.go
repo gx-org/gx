@@ -58,12 +58,12 @@ func (a *variable) BinaryOp(env evaluator.Env, expr *ir.BinaryExpr, x, y evaluat
 }
 
 // Cast an element into a given data type.
-func (a *variable) Cast(env evaluator.Env, expr ir.AssignableExpr, target ir.Type) (evaluator.NumericalElement, error) {
+func (a *variable) Cast(env evaluator.Env, expr ir.Expr, target ir.Type) (evaluator.NumericalElement, error) {
 	return newCast(env, expr, a, target)
 }
 
 // Reshape the variable into a different shape.
-func (a *variable) Reshape(env evaluator.Env, expr ir.AssignableExpr, axisLengths []evaluator.NumericalElement) (evaluator.NumericalElement, error) {
+func (a *variable) Reshape(env evaluator.Env, expr ir.Expr, axisLengths []evaluator.NumericalElement) (evaluator.NumericalElement, error) {
 	return NewReshape(env, expr, a, axisLengths)
 }
 
@@ -103,7 +103,7 @@ func (a *variable) Compare(x canonical.Comparable) (bool, error) {
 }
 
 // Expr returns the IR expression represented by the variable.
-func (a *variable) Expr() (ir.AssignableExpr, error) {
+func (a *variable) Expr() (ir.Expr, error) {
 	return &ir.ValueRef{
 		Src: &ast.Ident{
 			Name: a.name,

@@ -284,7 +284,7 @@ func BuildType(f TypeBuilder) Builder {
 }
 
 // ConstBuilder builds a type for a package.
-type ConstBuilder func(*ir.Package) (string, ir.AssignableExpr, ir.Type, error)
+type ConstBuilder func(*ir.Package) (string, ir.Expr, ir.Type, error)
 
 // BuildConst builds a function in a package.
 func BuildConst(f ConstBuilder) Builder {
@@ -294,7 +294,7 @@ func BuildConst(f ConstBuilder) Builder {
 		if err != nil {
 			return err
 		}
-		constDecl := ir.ConstSpec{Type: &ir.TypeValExpr{Typ: typ}}
+		constDecl := ir.ConstSpec{Type: ir.TypeExpr(nil, typ)}
 		constDecl.Exprs = []*ir.ConstExpr{
 			&ir.ConstExpr{
 				Decl:  &constDecl,

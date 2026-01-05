@@ -75,7 +75,7 @@ func TestBuiltinMethods(t *testing.T) {
 	typeA := &ir.NamedType{
 		File:       wantFile,
 		Src:        &ast.TypeSpec{Name: irh.Ident("A")},
-		Underlying: ir.AtomTypeExpr(ir.Uint32Type()),
+		Underlying: ir.TypeExpr(nil, ir.Uint32Type()),
 	}
 	funF := &ir.FuncBuiltin{
 		FType: irh.FuncType(
@@ -245,10 +245,10 @@ func call() (float32, int32) {
 func TestCallWithLiterals(t *testing.T) {
 	oneByOneLiteral := &ir.ArrayLitExpr{
 		Typ: irh.ArrayType(ir.Float32Type(), 1, 1),
-		Elts: []ir.AssignableExpr{
+		Elts: []ir.Expr{
 			&ir.ArrayLitExpr{
 				Typ:  irh.ArrayType(ir.Float32Type(), 1),
-				Elts: []ir.AssignableExpr{irh.IntNumberAs(2, ir.Float32Type())},
+				Elts: []ir.Expr{irh.IntNumberAs(2, ir.Float32Type())},
 			},
 		},
 	}
@@ -277,7 +277,7 @@ func call() float32 {
 						&ir.ReturnStmt{
 							Results: []ir.Expr{&ir.FuncCallExpr{
 								Callee: irh.FuncExpr(fDef),
-								Args:   []ir.AssignableExpr{oneByOneLiteral},
+								Args:   []ir.Expr{oneByOneLiteral},
 							}},
 						},
 					),

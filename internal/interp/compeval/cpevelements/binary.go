@@ -122,12 +122,12 @@ func (a *binary) BinaryOp(env evaluator.Env, expr *ir.BinaryExpr, x, y evaluator
 }
 
 // Cast an element into a given data type.
-func (a *binary) Cast(env evaluator.Env, expr ir.AssignableExpr, target ir.Type) (evaluator.NumericalElement, error) {
+func (a *binary) Cast(env evaluator.Env, expr ir.Expr, target ir.Type) (evaluator.NumericalElement, error) {
 	return newCast(env, expr, a, target)
 }
 
 // Reshape the element into a new shape.
-func (a *binary) Reshape(env evaluator.Env, expr ir.AssignableExpr, axisLengths []evaluator.NumericalElement) (evaluator.NumericalElement, error) {
+func (a *binary) Reshape(env evaluator.Env, expr ir.Expr, axisLengths []evaluator.NumericalElement) (evaluator.NumericalElement, error) {
 	return NewReshape(env, expr, a, axisLengths)
 }
 
@@ -149,7 +149,7 @@ func (a *binary) Float() *big.Float {
 	return canonical.ToValue(a.canonical)
 }
 
-func (a *binary) Value() ir.AssignableExpr {
+func (a *binary) Value() ir.Expr {
 	return a.src.Node()
 }
 
@@ -217,7 +217,7 @@ func (a *binary) CanonicalExpr() canonical.Canonical {
 }
 
 // Expr returns the IR expression represented by the variable.
-func (a *binary) Expr() (ir.AssignableExpr, error) {
+func (a *binary) Expr() (ir.Expr, error) {
 	return a.src.Node(), nil
 }
 

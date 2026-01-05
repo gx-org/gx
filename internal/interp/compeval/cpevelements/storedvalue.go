@@ -78,7 +78,7 @@ func (v *storedValue) BinaryOp(env evaluator.Env, expr *ir.BinaryExpr, x, y eval
 }
 
 // Cast an element into a given data type.
-func (v *storedValue) Cast(env evaluator.Env, expr ir.AssignableExpr, target ir.Type) (evaluator.NumericalElement, error) {
+func (v *storedValue) Cast(env evaluator.Env, expr ir.Expr, target ir.Type) (evaluator.NumericalElement, error) {
 	can, err := v.canonical()
 	if err != nil {
 		return can, nil
@@ -87,7 +87,7 @@ func (v *storedValue) Cast(env evaluator.Env, expr ir.AssignableExpr, target ir.
 }
 
 // Reshape the variable into a different shape.
-func (v *storedValue) Reshape(env evaluator.Env, expr ir.AssignableExpr, axisLengths []evaluator.NumericalElement) (evaluator.NumericalElement, error) {
+func (v *storedValue) Reshape(env evaluator.Env, expr ir.Expr, axisLengths []evaluator.NumericalElement) (evaluator.NumericalElement, error) {
 	can, err := v.canonical()
 	if err != nil {
 		return can, nil
@@ -145,7 +145,7 @@ func (v *storedValue) Slice(expr *ir.IndexExpr, index evaluator.NumericalElement
 }
 
 // Expr returns the IR expression represented by the variable.
-func (v *storedValue) Expr() (ir.AssignableExpr, error) {
+func (v *storedValue) Expr() (ir.Expr, error) {
 	valExpr, ok := v.val.(ir.WithExpr)
 	if ok {
 		return valExpr.Expr()

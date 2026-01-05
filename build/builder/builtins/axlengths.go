@@ -54,20 +54,14 @@ func (f *axlengthsFunc) BuildFuncType(fetcher ir.Fetcher, call *ir.FuncCallExpr)
 	srcFieldList := &ast.FieldList{Opening: call.Src.Lparen, Closing: call.Src.Rparen}
 
 	paramsGroup := &ir.FieldGroup{
-		Src: &ast.Field{Type: call.Src},
-		Type: &ir.TypeValExpr{
-			X:   arg.Type(),
-			Typ: arg.Type(),
-		},
+		Src:  &ast.Field{Type: call.Src},
+		Type: ir.TypeExpr(nil, arg.Type()),
 	}
 	paramsGroup.Fields = []*ir.Field{{Group: paramsGroup}}
 
 	resultsGroup := &ir.FieldGroup{
-		Src: &ast.Field{Type: call.Src},
-		Type: &ir.TypeValExpr{
-			X:   ir.IntLenSliceType(),
-			Typ: ir.IntLenSliceType(),
-		},
+		Src:  &ast.Field{Type: call.Src},
+		Type: ir.TypeExpr(nil, ir.IntLenSliceType()),
 	}
 	resultsGroup.Fields = []*ir.Field{{Group: resultsGroup}}
 

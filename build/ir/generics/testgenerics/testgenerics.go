@@ -60,13 +60,13 @@ package test
 }
 
 func (call Call) run(pkg *builder.IncrementalPackage, fnValRef *ir.FuncValExpr) error {
-	args := make([]ir.AssignableExpr, len(call.Args))
+	args := make([]ir.Expr, len(call.Args))
 	for i, arg := range call.Args {
 		argI, err := pkg.BuildExpr(arg)
 		if err != nil {
 			return errors.Errorf("cannot build argument %d defined as %q: %v", i, arg, err)
 		}
-		args[i] = argI.(ir.AssignableExpr)
+		args[i] = argI.(ir.Expr)
 	}
 	fetcher, err := pkg.Fetcher()
 	if err != nil {

@@ -45,7 +45,7 @@ var (
 	_ fmt.Stringer                    = (*cast)(nil)
 )
 
-func newCast(env evaluator.Env, expr ir.AssignableExpr, xEl Element, target ir.Type) (*cast, error) {
+func newCast(env evaluator.Env, expr ir.Expr, xEl Element, target ir.Type) (*cast, error) {
 	opEl := &cast{
 		src:    elements.NewNodeAt(env.File(), expr),
 		target: target,
@@ -85,7 +85,7 @@ func newCast(env evaluator.Env, expr ir.AssignableExpr, xEl Element, target ir.T
 }
 
 // NewReshape returns a reshape elements.
-func NewReshape(env evaluator.Env, expr ir.AssignableExpr, xEl Element, axisLengths []evaluator.NumericalElement) (Element, error) {
+func NewReshape(env evaluator.Env, expr ir.Expr, xEl Element, axisLengths []evaluator.NumericalElement) (Element, error) {
 	x, err := elements.ConstantFromElement(xEl)
 	if err != nil {
 		return xEl, err
@@ -113,11 +113,11 @@ func (a *cast) BinaryOp(env evaluator.Env, expr *ir.BinaryExpr, x, y evaluator.N
 	return NewBinary(env, expr, x, y)
 }
 
-func (a *cast) Cast(env evaluator.Env, expr ir.AssignableExpr, target ir.Type) (evaluator.NumericalElement, error) {
+func (a *cast) Cast(env evaluator.Env, expr ir.Expr, target ir.Type) (evaluator.NumericalElement, error) {
 	return newCast(env, expr, a, target)
 }
 
-func (a *cast) Reshape(env evaluator.Env, expr ir.AssignableExpr, axisLengths []evaluator.NumericalElement) (evaluator.NumericalElement, error) {
+func (a *cast) Reshape(env evaluator.Env, expr ir.Expr, axisLengths []evaluator.NumericalElement) (evaluator.NumericalElement, error) {
 	return NewReshape(env, expr, a, axisLengths)
 }
 

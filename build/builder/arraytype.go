@@ -45,7 +45,7 @@ func (n *arrayType) source() ast.Node {
 
 func (n *arrayType) buildTypeExpr(rscope resolveScope) (*ir.TypeValExpr, bool) {
 	dtyp, dtypeOk := n.dtyp.buildTypeExpr(rscope)
-	if dtypeOk && !ir.IsDataType(dtyp.Typ) {
+	if dtypeOk && !ir.IsDataType(dtyp.Val()) {
 		rscope.Err().Appendf(n.source(), "array of %s not supported", dtyp.String())
 		dtypeOk = false
 	}
@@ -60,8 +60,8 @@ func (n *arrayType) buildTypeExpr(rscope resolveScope) (*ir.TypeValExpr, bool) {
 	// In that case, we return a new instance of arrayType (see below) and keep the generic arrayType
 	// and rank unchanged so they can be specialized again for the next call.
 	rank, rankOk := n.rnk.build(lscope)
-	arrayType, ok := ir.NewArrayType(n.src, dtyp.Typ, rank), dtypeOk && rankOk
-	return &ir.TypeValExpr{X: arrayType, Typ: arrayType}, ok
+	arrayType, ok := ir.NewArrayType(n.src, dtyp.Val(), rank), dtypeOk && rankOk
+	return ir.TypeExpr(nil, arrayType), ok
 }
 
 func (n *arrayType) buildExpr(rscope resolveScope) (ir.Expr, bool) {

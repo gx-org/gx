@@ -24,7 +24,7 @@ import (
 type (
 	// Canonical is a canonical value with a IR representation.
 	Canonical interface {
-		Expr() (AssignableExpr, error)
+		Expr() (Expr, error)
 	}
 
 	// Importer imports packages given their path.
@@ -57,7 +57,7 @@ type (
 
 	// WithExpr converts an element into an IR expressions.
 	WithExpr interface {
-		Expr() (AssignableExpr, error)
+		Expr() (Expr, error)
 	}
 
 	// Evaluator evaluates IR expressions into canonical values.
@@ -76,7 +76,7 @@ type (
 	}
 )
 
-func toExpr(el Element) (AssignableExpr, error) {
+func toExpr(el Element) (Expr, error) {
 	toExpr, ok := el.(WithExpr)
 	if !ok {
 		return nil, errors.Errorf("cannot convert %T to an IR expression", el)

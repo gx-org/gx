@@ -38,7 +38,7 @@ type namedType interface {
 func buildTypes(b *binder) ([]namedType, error) {
 	var types []namedType
 	for i, gxType := range b.Package.Decls.Types {
-		_, ok := gxType.Underlying.Typ.(*ir.BuiltinType)
+		_, ok := gxType.Underlying.Val().(*ir.BuiltinType)
 		if ok {
 			continue
 		}
@@ -52,7 +52,7 @@ func buildTypes(b *binder) ([]namedType, error) {
 }
 
 func (b *binder) buildType(index int, gxType *ir.NamedType) (namedType, error) {
-	switch typT := gxType.Underlying.Typ.(type) {
+	switch typT := gxType.Underlying.Val().(type) {
 	case ir.ArrayType:
 		if !typT.Rank().IsAtomic() {
 			return nil, errors.Errorf("array named type %s:%T not supported", gxType.Name(), typT)
@@ -265,7 +265,7 @@ var (
 )
 
 func (s *structType) sliceElementFactory(typ *ir.SliceType) (string, error) {
-	namedType, ok := typ.DType.Typ.(*ir.NamedType)
+	namedType, ok := typ.DType.Val().(*ir.NamedType)
 	if !ok {
 		return "nil", nil
 	}
@@ -282,7 +282,7 @@ func (s *structType) buildFields() ([]structField, error) {
 	fields := s.typ.Fields.Fields()
 	var structFields []structField
 	for _, field := range fields {
-		goType, err := s.binder.bridgerType(field.Group.Type.Typ)
+		goType, err := s.binder.bridgerType(field.Group.Type.Val())
 		if err != nil {
 			return nil, err
 		}
@@ -303,7 +303,7 @@ func (s *structType) buildFields() ([]structField, error) {
 
 		case *ir.SliceType:
 			sField.constructor = fieldSliceType
-			sField.SliceElementBridgerType, err = s.bridgerType(typT.DType.Typ)
+			sField.SliceElementBridgerType, err = s.bridgerType(typT.DType.Val())
 			if err != nil {
 				return nil, err
 			}

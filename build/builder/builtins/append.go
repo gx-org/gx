@@ -54,7 +54,7 @@ func (f *appendFunc) BuildFuncType(fetcher ir.Fetcher, call *ir.FuncCallExpr) (*
 	dtype := container.DType
 	for i, arg := range call.Args[1:] {
 		argType := arg.Type()
-		eq, err := argType.AssignableTo(fetcher, container.DType.Typ)
+		eq, err := argType.AssignableTo(fetcher, container.DType.Val())
 		if err != nil {
 			return ext, errors.Errorf("cannot evaluate the type of argument %d to append", i)
 		}
@@ -64,12 +64,12 @@ func (f *appendFunc) BuildFuncType(fetcher ir.Fetcher, call *ir.FuncCallExpr) (*
 	}
 	containerGroup := &ir.FieldGroup{
 		Src:  &ast.Field{Type: call.Src},
-		Type: &ir.TypeValExpr{X: call, Typ: params[0]},
+		Type: ir.TypeExpr(call, params[0]),
 	}
 	containerGroup.Fields = []*ir.Field{&ir.Field{Group: containerGroup}}
 	elementsGroup := &ir.FieldGroup{
 		Src:  &ast.Field{Type: call.Src},
-		Type: &ir.TypeValExpr{X: call, Typ: container.DType.Typ},
+		Type: ir.TypeExpr(call, container.DType.Val()),
 	}
 	for range len(call.Args) - 1 {
 		elementsGroup.Fields = append(elementsGroup.Fields, &ir.Field{

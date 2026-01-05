@@ -157,5 +157,5 @@ func (b *SliceBridge) GXValue() values.Value {
 
 // DType returns the data type of the slice.
 func (b *SliceBridge) DType() ir.Type {
-	return b.gxSlice.SliceType().DType.Typ
+	return b.gxSlice.SliceType().DType.Val()
 }

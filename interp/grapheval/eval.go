@@ -96,7 +96,7 @@ func (ev *Evaluator) Materialiser() materialise.Materialiser {
 }
 
 // ElementFromAtom returns an element from a GX value.
-func (ev *Evaluator) ElementFromAtom(file *ir.File, src ir.AssignableExpr, val values.Array) (evaluator.NumericalElement, error) {
+func (ev *Evaluator) ElementFromAtom(file *ir.File, src ir.Expr, val values.Array) (evaluator.NumericalElement, error) {
 	return ev.hostEval.ElementFromAtom(file, src, val)
 }
 
@@ -140,7 +140,7 @@ func (ev *Evaluator) outputNodesFromElements(file *ir.File, fType *ir.FuncType, 
 			return ev.ao.ElementsFromNodes(file, expr, out)
 		}, out, nil
 	}
-	exprs := make([]ir.AssignableExpr, len(nodes))
+	exprs := make([]ir.Expr, len(nodes))
 	for i := range nodes {
 		exprs[i] = &ir.ValueRef{
 			Stor: &ir.FieldStorage{Field: results.Fields()[0]},
@@ -155,7 +155,7 @@ func (ev *Evaluator) outputNodesFromElements(file *ir.File, fType *ir.FuncType, 
 	}, &ops.OutputNode{Node: tupleNode}, nil
 }
 
-func (ev *Evaluator) elementsFromTupleNode(file *ir.File, tpl ops.Tuple, elExprs []ir.AssignableExpr, shps []*shape.Shape) ([]ir.Element, error) {
+func (ev *Evaluator) elementsFromTupleNode(file *ir.File, tpl ops.Tuple, elExprs []ir.Expr, shps []*shape.Shape) ([]ir.Element, error) {
 	elts := make([]ir.Element, tpl.Size())
 	for i := range tpl.Size() {
 		node, err := tpl.Element(i)
@@ -176,7 +176,7 @@ func (ev *Evaluator) elementsFromTupleNode(file *ir.File, tpl ops.Tuple, elExprs
 func unpackTypes(file *ir.File, src ir.Node, tp ir.Type) (*ir.StructType, []*ir.NamedType, error) {
 	switch tpT := tp.(type) {
 	case *ir.NamedType:
-		sType, nTypes, err := unpackTypes(file, src, tpT.Underlying.Typ)
+		sType, nTypes, err := unpackTypes(file, src, tpT.Underlying.Val())
 		if err != nil {
 			return nil, nil, err
 		}
@@ -190,13 +190,13 @@ func unpackTypes(file *ir.File, src ir.Node, tp ir.Type) (*ir.StructType, []*ir.
 }
 
 // ElementFromTuple creates an interpreter element of a given type from a graph tuple.
-func (ev *Evaluator) ElementFromTuple(file *ir.File, expr ir.AssignableExpr, tpl ops.Tuple, shapes []*shape.Shape, targetType ir.Type) (ir.Element, error) {
+func (ev *Evaluator) ElementFromTuple(file *ir.File, expr ir.Expr, tpl ops.Tuple, shapes []*shape.Shape, targetType ir.Type) (ir.Element, error) {
 	structTyp, namedTypes, err := unpackTypes(file, expr, targetType)
 	if err != nil {
 		return nil, err
 	}
 	// Construct dummy expressions for all the fields of the structure to keep track of the value types.
-	fieldExprs := make([]ir.AssignableExpr, structTyp.NumFields())
+	fieldExprs := make([]ir.Expr, structTyp.NumFields())
 	for i, field := range structTyp.Fields.Fields() {
 		fieldExprs[i] = &ir.ValueRef{
 			Src:  field.Name,

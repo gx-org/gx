@@ -133,7 +133,7 @@ func TestGenericCall(t *testing.T) {
 	someInt := &ir.NamedType{
 		Src:        &ast.TypeSpec{Name: irhelper.Ident("someInt")},
 		File:       wantFile,
-		Underlying: irhelper.TypeExpr(irhelper.TypeSet(ir.Int32Type(), ir.Int64Type())),
+		Underlying: ir.TypeExpr(nil, irhelper.TypeSet(ir.Int32Type(), ir.Int64Type())),
 	}
 	someIntT := irhelper.Field("T", someInt, nil)
 	someIntTP := &ir.TypeParam{Field: someIntT}
@@ -328,7 +328,7 @@ func TestGenericArray(t *testing.T) {
 	someInt := &ir.NamedType{
 		Src:        &ast.TypeSpec{Name: irhelper.Ident("someInt")},
 		File:       wantFile,
-		Underlying: irhelper.TypeExpr(irhelper.TypeSet(ir.Int32Type(), ir.Int64Type())),
+		Underlying: ir.TypeExpr(nil, irhelper.TypeSet(ir.Int32Type(), ir.Int64Type())),
 	}
 	typeParamFieldT := irhelper.Field("T", someInt, nil)
 	typeParamT := &ir.TypeParam{Field: typeParamFieldT}
@@ -343,10 +343,10 @@ func TestGenericArray(t *testing.T) {
 		Body: &ir.BlockStmt{List: []ir.Stmt{
 			&ir.ReturnStmt{Results: []ir.Expr{&ir.ArrayLitExpr{
 				Typ: irhelper.ArrayType(typeParamT, 2, 3),
-				Elts: []ir.AssignableExpr{
+				Elts: []ir.Expr{
 					&ir.ArrayLitExpr{
 						Typ: irhelper.ArrayType(typeParamT, 3),
-						Elts: []ir.AssignableExpr{
+						Elts: []ir.Expr{
 							irhelper.IntNumberAs(1, typeParamT),
 							irhelper.IntNumberAs(2, typeParamT),
 							irhelper.IntNumberAs(3, typeParamT),
@@ -354,7 +354,7 @@ func TestGenericArray(t *testing.T) {
 					},
 					&ir.ArrayLitExpr{
 						Typ: irhelper.ArrayType(typeParamT, 3),
-						Elts: []ir.AssignableExpr{
+						Elts: []ir.Expr{
 							irhelper.IntNumberAs(4, typeParamT),
 							irhelper.IntNumberAs(5, typeParamT),
 							irhelper.IntNumberAs(6, typeParamT),
@@ -448,7 +448,7 @@ func TestGenericConvert(t *testing.T) {
 	someInt := &ir.NamedType{
 		Src:        &ast.TypeSpec{Name: irhelper.Ident("someInt")},
 		File:       wantFile,
-		Underlying: irhelper.TypeExpr(irhelper.TypeSet(ir.Int32Type(), ir.Int64Type())),
+		Underlying: ir.TypeExpr(nil, irhelper.TypeSet(ir.Int32Type(), ir.Int64Type())),
 	}
 	someIntT := irhelper.Field("T", someInt, nil)
 	someIntTP := &ir.TypeParam{Field: someIntT}
@@ -498,7 +498,7 @@ func callCast() int32 {
 									irhelper.Fields("val", ir.Int64Type()),
 									irhelper.Fields(ir.Int32Type()),
 								)),
-							Args: []ir.AssignableExpr{
+							Args: []ir.Expr{
 								irhelper.IntNumberAs(2, ir.Int64Type()),
 							},
 						}}},
@@ -535,7 +535,7 @@ func callCast() int32 {
 									irhelper.Fields("val", ir.Int64Type()),
 									irhelper.Fields(ir.Int32Type()),
 								)),
-							Args: []ir.AssignableExpr{
+							Args: []ir.Expr{
 								&ir.CastExpr{
 									X:   irhelper.IntNumberAs(2, ir.Int64Type()),
 									Typ: ir.Int64Type(),
@@ -553,7 +553,7 @@ func TestGenericCastArray(t *testing.T) {
 	someInt := &ir.NamedType{
 		Src:        &ast.TypeSpec{Name: irhelper.Ident("someInt")},
 		File:       wantFile,
-		Underlying: irhelper.TypeExpr(irhelper.TypeSet(ir.Int32Type(), ir.Int64Type())),
+		Underlying: ir.TypeExpr(nil, irhelper.TypeSet(ir.Int32Type(), ir.Int64Type())),
 	}
 	typeParams := irhelper.Fields("T", "S", someInt)
 	typeParamT := &ir.TypeParam{Field: typeParams.List[0].Fields[0]}
@@ -597,7 +597,7 @@ func callCast(x [2]int64) [2]int32 {
 									irhelper.Fields(irhelper.ArrayType(ir.Int32Type(), 2)),
 								),
 							),
-							Args: []ir.AssignableExpr{
+							Args: []ir.Expr{
 								irhelper.ValueRef(xField.Storage()),
 							},
 						}}},

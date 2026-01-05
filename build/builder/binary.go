@@ -98,7 +98,7 @@ func (n *binaryExpr) determineOutputType(scope resolveScope, ops ir.Type) (resul
 	return
 }
 
-func (n *binaryExpr) buildOperands(scope resolveScope) (ir.AssignableExpr, ir.AssignableExpr, ir.Type) {
+func (n *binaryExpr) buildOperands(scope resolveScope) (ir.Expr, ir.Expr, ir.Type) {
 	xExpr, xOk := buildAExpr(scope, n.x)
 	yExpr, yOk := buildAExpr(scope, n.y)
 	if !xOk || !yOk {

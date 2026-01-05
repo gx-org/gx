@@ -142,7 +142,7 @@ func (vis *inputVisitor) newNamedTypeArgument(parent parentArgument, typ *ir.Nam
 	if !ok {
 		return nil, errors.Errorf("element %T is not a named type element", el)
 	}
-	recv, err := vis.newArg(arg, typ.Underlying.Typ, named.Under())
+	recv, err := vis.newArg(arg, typ.Underlying.Val(), named.Under())
 	if err != nil {
 		return nil, err
 	}
@@ -382,7 +382,7 @@ func (n *arrayArgument) BinaryOp(env evaluator.Env, expr *ir.BinaryExpr, x, y ev
 }
 
 // Cast an element into a given data type.
-func (n *arrayArgument) Cast(env evaluator.Env, expr ir.AssignableExpr, target ir.Type) (evaluator.NumericalElement, error) {
+func (n *arrayArgument) Cast(env evaluator.Env, expr ir.Expr, target ir.Type) (evaluator.NumericalElement, error) {
 	node, err := n.materialise(n.parentArgument.Evaluator().Materialiser())
 	if err != nil {
 		return nil, err
@@ -391,7 +391,7 @@ func (n *arrayArgument) Cast(env evaluator.Env, expr ir.AssignableExpr, target i
 }
 
 // Reshape an element.
-func (n *arrayArgument) Reshape(env evaluator.Env, expr ir.AssignableExpr, axisLengths []evaluator.NumericalElement) (evaluator.NumericalElement, error) {
+func (n *arrayArgument) Reshape(env evaluator.Env, expr ir.Expr, axisLengths []evaluator.NumericalElement) (evaluator.NumericalElement, error) {
 	node, err := n.materialise(n.parentArgument.Evaluator().Materialiser())
 	if err != nil {
 		return nil, err
@@ -491,7 +491,7 @@ func (n *arrayArgument) Slice(expr *ir.IndexExpr, index evaluator.NumericalEleme
 }
 
 // SliceArray of the value on the first axis given an index.
-func (n *arrayArgument) SliceArray(expr ir.AssignableExpr, index evaluator.NumericalElement) (evaluator.NumericalElement, error) {
+func (n *arrayArgument) SliceArray(expr ir.Expr, index evaluator.NumericalElement) (evaluator.NumericalElement, error) {
 	node, err := n.materialise(n.Evaluator().Materialiser())
 	if err != nil {
 		return nil, err

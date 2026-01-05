@@ -84,7 +84,7 @@ func (spec *varSpec) Build(ibld irBuilder) (ir.IR, bool) {
 	if !ok {
 		return ext, false
 	}
-	ext.TypeV = typeRef.Typ
+	ext.TypeV = typeRef.Val()
 	return ext, true
 }
 
@@ -140,7 +140,7 @@ func (spec *varSpec) buildDecl(scope fnResolveScope) (*ir.VarSpec, bool) {
 	}
 	typeExpr, ok := spec.typ.buildTypeExpr(scope)
 	if typeExpr != nil {
-		irSpec.TypeV = typeExpr.Typ
+		irSpec.TypeV = typeExpr.Val()
 	}
 
 	for _, childVarExpr := range spec.exprs {

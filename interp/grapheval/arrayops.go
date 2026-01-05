@@ -95,7 +95,7 @@ func elementsToInt(els []evaluator.NumericalElement) ([]int, error) {
 }
 
 // BroadcastInDim the data of an array across dimensions.
-func (ao *arrayOps) BroadcastInDim(ctx ir.Evaluator, expr ir.AssignableExpr, x evaluator.NumericalElement, axisLengths []evaluator.NumericalElement) (evaluator.NumericalElement, error) {
+func (ao *arrayOps) BroadcastInDim(ctx ir.Evaluator, expr ir.Expr, x evaluator.NumericalElement, axisLengths []evaluator.NumericalElement) (evaluator.NumericalElement, error) {
 	axes, err := elementsToInt(axisLengths)
 	if err != nil {
 		return nil, err
@@ -129,7 +129,7 @@ func (ao *arrayOps) BroadcastInDim(ctx ir.Evaluator, expr ir.AssignableExpr, x e
 }
 
 // Concat concatenates scalars elements into an array with one axis.
-func (ao *arrayOps) Concat(ctx ir.Evaluator, expr ir.AssignableExpr, xs []evaluator.NumericalElement) (evaluator.NumericalElement, error) {
+func (ao *arrayOps) Concat(ctx ir.Evaluator, expr ir.Expr, xs []evaluator.NumericalElement) (evaluator.NumericalElement, error) {
 	nodes := make([]ops.Node, len(xs))
 	var dtype dtype.DataType
 	for i, x := range xs {
@@ -190,12 +190,12 @@ func unpackOutputs(outputs []*ops.OutputNode) (nodes []ops.Node, shapes []*shape
 }
 
 // ElementFromArray returns an element from an array GX value.
-func (ao *arrayOps) NodeFromArray(file *ir.File, expr ir.AssignableExpr, val values.Array) (materialise.Node, error) {
+func (ao *arrayOps) NodeFromArray(file *ir.File, expr ir.Expr, val values.Array) (materialise.Node, error) {
 	return newValueElement(ao.ev, elements.NewExprAt(file, expr), val)
 }
 
 // ElementsFromNodes returns a slice of elements from nodes
-func (ao *arrayOps) ElementsFromNodes(file *ir.File, expr ir.AssignableExpr, nodes ...*ops.OutputNode) ([]ir.Element, error) {
+func (ao *arrayOps) ElementsFromNodes(file *ir.File, expr ir.Expr, nodes ...*ops.OutputNode) ([]ir.Element, error) {
 	els := make([]ir.Element, len(nodes))
 	for i, node := range nodes {
 		var err error
@@ -220,6 +220,6 @@ func (ao *arrayOps) Tuple(nodes []ops.Node) (materialise.Node, error) {
 }
 
 // ElementFromArray returns an element from an array GX value.
-func (ao *arrayOps) ElementFromArray(ctx ir.Evaluator, expr ir.AssignableExpr, val values.Array) (evaluator.NumericalElement, error) {
+func (ao *arrayOps) ElementFromArray(ctx ir.Evaluator, expr ir.Expr, val values.Array) (evaluator.NumericalElement, error) {
 	return newValueElement(ao.ev, elements.NewExprAt(ctx.File(), expr), val)
 }

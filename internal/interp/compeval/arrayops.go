@@ -45,7 +45,7 @@ func (compArrayOps) Einsum(ctx ir.Evaluator, expr *ir.EinsumExpr, x, y evaluator
 }
 
 // BroadcastInDim the data of an array across dimensions.
-func (compArrayOps) BroadcastInDim(ctx ir.Evaluator, expr ir.AssignableExpr, x evaluator.NumericalElement, axisLengths []evaluator.NumericalElement) (evaluator.NumericalElement, error) {
+func (compArrayOps) BroadcastInDim(ctx ir.Evaluator, expr ir.Expr, x evaluator.NumericalElement, axisLengths []evaluator.NumericalElement) (evaluator.NumericalElement, error) {
 	return cpevelements.NewArray(expr.Type().(ir.ArrayType)), nil
 }
 
@@ -55,7 +55,7 @@ func (compArrayOps) Reshape(expr elements.ExprAt, x evaluator.NumericalElement, 
 }
 
 // Concat concatenates scalars elements into an array with one axis.
-func (compArrayOps) Concat(ctx ir.Evaluator, expr ir.AssignableExpr, xs []evaluator.NumericalElement) (evaluator.NumericalElement, error) {
+func (compArrayOps) Concat(ctx ir.Evaluator, expr ir.Expr, xs []evaluator.NumericalElement) (evaluator.NumericalElement, error) {
 	return cpevelements.NewArray(expr.Type().(ir.ArrayType)), nil
 }
 
@@ -65,6 +65,6 @@ func (compArrayOps) Set(ctx ir.Evaluator, expr *ir.FuncCallExpr, x, updates, ind
 }
 
 // ElementFromArray returns an element from an array GX value.
-func (compArrayOps) ElementFromArray(ctx ir.Evaluator, expr ir.AssignableExpr, val values.Array) (evaluator.NumericalElement, error) {
+func (compArrayOps) ElementFromArray(ctx ir.Evaluator, expr ir.Expr, val values.Array) (evaluator.NumericalElement, error) {
 	return cpevelements.NewArray(val.Type().(ir.ArrayType)), nil
 }

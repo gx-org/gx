@@ -48,7 +48,7 @@ type (
 		Processor() *processor.Processor
 
 		// ElementFromAtom returns an element from an atomic GX value.
-		ElementFromAtom(file *ir.File, expr ir.AssignableExpr, val values.Array) (NumericalElement, error)
+		ElementFromAtom(file *ir.File, expr ir.Expr, val values.Array) (NumericalElement, error)
 
 		// ElementFromStorage returns an element from an atomic GX value and its storage.
 		ElementFromStorage(file *ir.File, expr ir.StorageWithValue, val ir.Element) ir.Element
@@ -69,10 +69,10 @@ type (
 		BinaryOp(env Env, expr *ir.BinaryExpr, x, y NumericalElement) (NumericalElement, error)
 
 		// Cast an element into a given data type.
-		Cast(env Env, expr ir.AssignableExpr, target ir.Type) (NumericalElement, error)
+		Cast(env Env, expr ir.Expr, target ir.Type) (NumericalElement, error)
 
 		// Reshape an element.
-		Reshape(env Env, expr ir.AssignableExpr, axisLengths []NumericalElement) (NumericalElement, error)
+		Reshape(env Env, expr ir.Expr, axisLengths []NumericalElement) (NumericalElement, error)
 	}
 
 	// ArrayOps are the operator implementations for arrays.
@@ -87,15 +87,15 @@ type (
 		Einsum(ctx ir.Evaluator, expr *ir.EinsumExpr, x, y NumericalElement) (NumericalElement, error)
 
 		// BroadcastInDim the data of an array across dimensions.
-		BroadcastInDim(ctx ir.Evaluator, expr ir.AssignableExpr, x NumericalElement, axisLengths []NumericalElement) (NumericalElement, error)
+		BroadcastInDim(ctx ir.Evaluator, expr ir.Expr, x NumericalElement, axisLengths []NumericalElement) (NumericalElement, error)
 
 		// Concat concatenates scalars elements into an array with one axis.
-		Concat(ctx ir.Evaluator, expr ir.AssignableExpr, xs []NumericalElement) (NumericalElement, error)
+		Concat(ctx ir.Evaluator, expr ir.Expr, xs []NumericalElement) (NumericalElement, error)
 
 		// Set a slice in an array.
 		Set(ctx ir.Evaluator, expr *ir.FuncCallExpr, x, updates, index ir.Element) (ir.Element, error)
 
 		// ElementFromArray returns an element from an array GX value.
-		ElementFromArray(ctx ir.Evaluator, expr ir.AssignableExpr, val values.Array) (NumericalElement, error)
+		ElementFromArray(ctx ir.Evaluator, expr ir.Expr, val values.Array) (NumericalElement, error)
 	}
 )

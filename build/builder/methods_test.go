@@ -30,7 +30,7 @@ func TestMethods(t *testing.T) {
 	typeA := &ir.NamedType{
 		Src:        &ast.TypeSpec{Name: &ast.Ident{Name: "A"}},
 		File:       wantFile,
-		Underlying: irh.TypeExpr(structA),
+		Underlying: ir.TypeExpr(nil, structA),
 	}
 	aRecv := irh.Fields("a", typeA)
 	fI := &ir.FuncDecl{
@@ -134,7 +134,7 @@ func TestMethodOnNamedTypes(t *testing.T) {
 	typeA := &ir.NamedType{
 		File:       wantFile,
 		Src:        &ast.TypeSpec{Name: irh.Ident("A")},
-		Underlying: ir.AtomTypeExpr(ir.Int32Type()),
+		Underlying: ir.TypeExpr(nil, ir.Int32Type()),
 	}
 	aRecv := irh.Fields("a", typeA)
 	val := &ir.FuncDecl{

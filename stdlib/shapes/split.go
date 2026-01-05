@@ -63,14 +63,13 @@ func (f split) BuildFuncType(fetcher ir.Fetcher, call *ir.FuncCallExpr) (*ir.Fun
 			Typ: ir.IntLenType(),
 		}
 	}
-	outputDims := append([]ir.AxisLengths{&ir.AxisExpr{Src: call.Expr(), X: numSplit}}, dims...)
+	outputDims := append([]ir.AxisLengths{&ir.AxisExpr{X: numSplit}}, dims...)
 	splitDimExpr, ok := dims[axis].(*ir.AxisExpr)
 	if !ok {
 		return nil, fmterr.Internalf(fetcher.File().FileSet(), call.Node(), "cannot split axis %s (%T)", dims[axis], dims[axis])
 	}
 	outputDims[axis+1] = &ir.AxisExpr{
-		Src: call.Expr(),
-		X:   builtins.ToBinaryExpr(token.QUO, splitDimExpr.X, numSplit),
+		X: builtins.ToBinaryExpr(token.QUO, splitDimExpr.X, numSplit),
 	}
 	out := ir.NewArrayType(&ast.ArrayType{}, arrayType.DataType(), &ir.Rank{Ax: outputDims})
 	return &ir.FuncType{

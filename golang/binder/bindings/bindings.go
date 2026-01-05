@@ -60,7 +60,7 @@ func CanBeOnDeviceFunc(gxFunc ir.Func) bool {
 
 func canBeOnDeviceStruct(tp *ir.StructType) error {
 	for _, group := range tp.Fields.List {
-		if err := CanBeOnDevice(group.Type.Typ); err != nil {
+		if err := CanBeOnDevice(group.Type.Val()); err != nil {
 			var fieldNames []string
 			for _, field := range group.Fields {
 				fieldNames = append(fieldNames, field.Name.Name)
@@ -78,11 +78,11 @@ func CanBeOnDevice(tp ir.Type) error {
 	}
 	switch typT := tp.(type) {
 	case *ir.NamedType:
-		return CanBeOnDevice(typT.Underlying.Typ)
+		return CanBeOnDevice(typT.Underlying.Val())
 	case *ir.StructType:
 		return canBeOnDeviceStruct(typT)
 	case *ir.SliceType:
-		return CanBeOnDevice(typT.DType.Typ)
+		return CanBeOnDevice(typT.DType.Val())
 	default:
 		return fmt.Errorf("type %T not supported", typT)
 	}

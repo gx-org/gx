@@ -136,13 +136,13 @@ func isNamedStruct(typ ir.Type) bool {
 }
 
 func (b *binder) processSliceOutput(target, src string, typ *ir.SliceType) ([]string, error) {
-	sliceDataType, err := b.bridgerType(typ.DType.Typ)
+	sliceDataType, err := b.bridgerType(typ.DType.Val())
 	if err != nil {
 		return nil, err
 	}
 	elementSource := target + "HandleI"
 	elementTarget := target + "ElmtI"
-	setSliceElement, err := b.setTargetFromSourceType(elementTarget, elementSource, typ.DType.Typ)
+	setSliceElement, err := b.setTargetFromSourceType(elementTarget, elementSource, typ.DType.Val())
 	if err != nil {
 		return nil, err
 	}

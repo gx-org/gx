@@ -57,7 +57,6 @@ var _ axisLengthNode = (*inferredFromLiteralAxisLength)(nil)
 
 func (dim *inferredFromLiteralAxisLength) build(rscope *defineLocalScope) (ir.AxisLengths, bool) {
 	return &ir.AxisExpr{
-		Src: dim.src,
 		X: &ir.NumberCastExpr{
 			X: &ir.NumberInt{
 				Src: &ast.BasicLit{ValuePos: dim.src.Pos()},
@@ -86,7 +85,7 @@ func processExprAxisLength(axScope procAxLenScope, src ast.Expr) (*exprAxisLengt
 }
 
 func (dim *exprAxisLength) build(rscope *defineLocalScope) (ir.AxisLengths, bool) {
-	ext := &ir.AxisExpr{Src: dim.src}
+	ext := &ir.AxisExpr{}
 	var xOk bool
 	ext.X, xOk = buildAExpr(rscope, dim.x)
 	if !xOk {

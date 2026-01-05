@@ -79,11 +79,11 @@ func (a *atom) BinaryOp(env evaluator.Env, expr *ir.BinaryExpr, x, y evaluator.N
 }
 
 // Cast an element into a given data type.
-func (a *atom) Cast(env evaluator.Env, expr ir.AssignableExpr, dtype ir.Type) (evaluator.NumericalElement, error) {
+func (a *atom) Cast(env evaluator.Env, expr ir.Expr, dtype ir.Type) (evaluator.NumericalElement, error) {
 	return newCast(env, expr, a, dtype)
 }
 
-func (a *atom) Reshape(env evaluator.Env, expr ir.AssignableExpr, axisLengths []evaluator.NumericalElement) (evaluator.NumericalElement, error) {
+func (a *atom) Reshape(env evaluator.Env, expr ir.Expr, axisLengths []evaluator.NumericalElement) (evaluator.NumericalElement, error) {
 	return NewReshape(env, expr, a, axisLengths)
 }
 
@@ -133,7 +133,7 @@ func (a *atom) Axes(ir.Evaluator) (*elements.Slice, error) {
 }
 
 // Expr returns the IR expression represented by the variable.
-func (a *atom) Expr() (ir.AssignableExpr, error) {
+func (a *atom) Expr() (ir.Expr, error) {
 	return a.src.Node(), nil
 }
 

@@ -54,7 +54,7 @@ func call(x float32, y float32) float32 {
 					Body: irh.SingleReturn(
 						&ir.FuncCallExpr{
 							Callee: irh.FuncExpr(idFunc),
-							Args: []ir.AssignableExpr{&ir.BinaryExpr{
+							Args: []ir.Expr{&ir.BinaryExpr{
 								X:   irh.ValueRef(xField.Storage()),
 								Y:   irh.ValueRef(yField.Storage()),
 								Typ: ir.Float32Type(),

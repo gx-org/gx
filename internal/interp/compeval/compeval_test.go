@@ -87,7 +87,7 @@ func atomicFloat32(val float32) ir.AtomicValue {
 	}
 }
 
-func unaryExpr(op token.Token, x ir.AssignableExpr) *ir.UnaryExpr {
+func unaryExpr(op token.Token, x ir.Expr) *ir.UnaryExpr {
 	return &ir.UnaryExpr{
 		Src: &ast.UnaryExpr{Op: op},
 		X:   x,
@@ -101,7 +101,7 @@ func castExpr(dt dtype.DataType, x ir.Expr) *ir.CastExpr {
 	}
 }
 
-func binaryExpr(op token.Token, x, y ir.AssignableExpr) *ir.BinaryExpr {
+func binaryExpr(op token.Token, x, y ir.Expr) *ir.BinaryExpr {
 	return &ir.BinaryExpr{
 		Src: &ast.BinaryExpr{Op: op},
 		X:   x,

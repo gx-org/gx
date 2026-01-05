@@ -52,7 +52,7 @@ func Specialise(fetcher ir.Fetcher, expr ir.Expr, fun *ir.FuncValExpr, typs []*i
 		if !ir.ValidName(typeParam.Name.Name) {
 			continue
 		}
-		gotType, wantType := typeValExpr.Typ, typeParam.Group.Type.Typ
+		gotType, wantType := typeValExpr.Val(), typeParam.Group.Type.Val()
 		assignedOk, err := gotType.AssignableTo(fetcher, wantType)
 		if err != nil {
 			ok = fetcher.Err().Append(err)
@@ -62,7 +62,7 @@ func Specialise(fetcher ir.Fetcher, expr ir.Expr, fun *ir.FuncValExpr, typs []*i
 			ok = fetcher.Err().Appendf(expr.Node(), "%s does not satisfy %s", ir.TypeString(gotType), ir.TypeString(wantType))
 			continue
 		}
-		definedTypeParams[typeParam.Name.Name] = typeValExpr.Typ
+		definedTypeParams[typeParam.Name.Name] = typeValExpr.Val()
 	}
 	if !ok {
 		return nil, false

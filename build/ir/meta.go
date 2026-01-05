@@ -60,7 +60,7 @@ func (s *MetaCore) NameDef() *ast.Ident {
 }
 
 // Value returns a reference to the function.
-func (s *MetaCore) Value(x Expr) AssignableExpr {
+func (s *MetaCore) Value(x Expr) Expr {
 	return NewFuncValExpr(x, s)
 }
 

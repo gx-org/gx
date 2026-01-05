@@ -43,7 +43,7 @@ var (
 )
 
 // ToBinaryExpr returns a binary expression from two expressions.
-func ToBinaryExpr(op token.Token, x, y ir.AssignableExpr) *ir.BinaryExpr {
+func ToBinaryExpr(op token.Token, x, y ir.Expr) *ir.BinaryExpr {
 	return &ir.BinaryExpr{
 		Src: &ast.BinaryExpr{
 			X:  x.Node().(ast.Expr),
@@ -63,11 +63,8 @@ func Fields(expr ir.Expr, types ...ir.Type) *ir.FieldList {
 	}
 	for i, tp := range types {
 		l.List[i] = &ir.FieldGroup{
-			Src: &ast.Field{Type: expr.Node().(ast.Expr)},
-			Type: &ir.TypeValExpr{
-				X:   expr,
-				Typ: tp,
-			},
+			Src:  &ast.Field{Type: expr.Node().(ast.Expr)},
+			Type: ir.TypeExpr(expr, tp),
 		}
 	}
 	return l
@@ -115,7 +112,7 @@ func fmtType(typ ir.Type) string {
 	return typ.String()
 }
 
-func fmtExprType(e ir.AssignableExpr) string { return fmtType(e.Type()) }
+func fmtExprType(e ir.Expr) string { return fmtType(e.Type()) }
 
 // BuildFuncParams takes a function call and list of required argument types
 // and returns a list of parameters for the function.
@@ -123,7 +120,7 @@ func fmtExprType(e ir.AssignableExpr) string { return fmtType(e.Type()) }
 // It returns an error if a call's arguments don't match the given signature.
 func BuildFuncParams(fetcher ir.Fetcher, call *ir.FuncCallExpr, name string, sig []ir.Type) ([]ir.Type, error) {
 	if len(sig) != len(call.Args) {
-		actual := joinSignature[ir.AssignableExpr](call.Args, fmtExprType)
+		actual := joinSignature[ir.Expr](call.Args, fmtExprType)
 		wanted := joinSignature[ir.Type](sig, fmtType)
 		return nil, fmterr.Errorf(fetcher.File().FileSet(), call.Node(), "wrong number of arguments in call to %s: got %s but want %s", name, actual, wanted)
 	}
@@ -151,7 +148,7 @@ func BuildFuncParams(fetcher ir.Fetcher, call *ir.FuncCallExpr, name string, sig
 			ok = assignable
 		}
 		if !ok {
-			actual := joinSignature[ir.AssignableExpr](call.Args, fmtExprType)
+			actual := joinSignature[ir.Expr](call.Args, fmtExprType)
 			wanted := joinSignature[ir.Type](sig, fmtType)
 			return nil, fmterr.Errorf(fetcher.File().FileSet(), call.Node(), "signature mismatch in call to %s: got %s but want %s", name, actual, wanted)
 		}

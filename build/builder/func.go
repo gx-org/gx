@@ -137,7 +137,7 @@ func defineTypeParam(s resolveScope, storage ir.Storage) bool {
 			Src: storage.NameDef(),
 			Typ: ir.MetaType(),
 		},
-		X: &ir.TypeValExpr{X: typ, Typ: typ},
+		X: ir.TypeExpr(nil, typ),
 	})
 }
 
@@ -201,7 +201,7 @@ func (n *funcType) buildTypeExpr(rscope resolveScope) (*ir.TypeValExpr, bool) {
 	if !ok {
 		return nil, false
 	}
-	return &ir.TypeValExpr{X: tp, Typ: tp}, true
+	return ir.TypeExpr(tp, tp), true
 }
 
 func (n *funcType) String() string {
@@ -414,8 +414,8 @@ func (fn *funcLiteral) String() string {
 	return fmt.Sprintf("func %s{...}", fn.ftype.String())
 }
 
-func convertArgNumbers(rscope resolveScope, fType *ir.FuncType, args []ir.AssignableExpr) ([]ir.AssignableExpr, bool) {
-	args = append([]ir.AssignableExpr{}, args...)
+func convertArgNumbers(rscope resolveScope, fType *ir.FuncType, args []ir.Expr) ([]ir.Expr, bool) {
+	args = append([]ir.Expr{}, args...)
 	params := fType.Params.Fields()
 	argsOk := true
 	for i, arg := range args {
@@ -475,21 +475,21 @@ var (
 	emptySlice   = elements.NewSlice(ir.IntLenSliceType(), nil)
 )
 
-func buildAtomicAxisValue(rscope resolveScope, arg ir.AssignableExpr, elts []ir.Element) (ax ir.Element, todo []ir.Element) {
+func buildAtomicAxisValue(rscope resolveScope, arg ir.Expr, elts []ir.Element) (ax ir.Element, todo []ir.Element) {
 	if len(elts) == 0 {
 		return zeroLen, nil
 	}
 	return elts[0], elts[1:]
 }
 
-func buildSliceAxisValue(rscope resolveScope, arg ir.AssignableExpr, elts []ir.Element) (ax ir.Element, todo []ir.Element) {
+func buildSliceAxisValue(rscope resolveScope, arg ir.Expr, elts []ir.Element) (ax ir.Element, todo []ir.Element) {
 	if len(elts) == 0 {
 		return emptySlice, nil
 	}
 	return elements.NewSlice(arg.Type(), elts), nil
 }
 
-func assignArgValueToName(rscope resolveScope, compEval *compileEvaluator, params map[string]ir.Element, param *ir.Field, arg ir.AssignableExpr, argVal ir.Element) bool {
+func assignArgValueToName(rscope resolveScope, compEval *compileEvaluator, params map[string]ir.Element, param *ir.Field, arg ir.Expr, argVal ir.Element) bool {
 	name := param.Name.Name
 	if ir.ValidName(name) {
 		params[name] = argVal
@@ -516,7 +516,7 @@ func assignArgValueToName(rscope resolveScope, compEval *compileEvaluator, param
 		if _, ok := ident.Stor.(*ir.AxisStmt); !ok {
 			continue
 		}
-		var buildAxisValue func(resolveScope, ir.AssignableExpr, []ir.Element) (ir.Element, []ir.Element)
+		var buildAxisValue func(resolveScope, ir.Expr, []ir.Element) (ir.Element, []ir.Element)
 		if axExpr.Type().Kind() == irkind.IntLen {
 			buildAxisValue = buildAtomicAxisValue
 		} else {
@@ -527,7 +527,7 @@ func assignArgValueToName(rscope resolveScope, compEval *compileEvaluator, param
 	return ok
 }
 
-func assignArgValueToParamName(rscope resolveScope, fExpr *ir.FuncValExpr, args []ir.AssignableExpr) (map[string]ir.Element, bool) {
+func assignArgValueToParamName(rscope resolveScope, fExpr *ir.FuncValExpr, args []ir.Expr) (map[string]ir.Element, bool) {
 	params := make(map[string]ir.Element)
 	compEval, ok := rscope.compEval()
 	if !ok {
@@ -548,7 +548,7 @@ func assignArgValueToParamName(rscope resolveScope, fExpr *ir.FuncValExpr, args 
 	return params, true
 }
 
-func checkArgsForCall(rscope resolveScope, fExpr *ir.FuncValExpr, args []ir.AssignableExpr) bool {
+func checkArgsForCall(rscope resolveScope, fExpr *ir.FuncValExpr, args []ir.Expr) bool {
 	ok := true
 	wants := fExpr.FuncType().Params.Fields()
 	compEval, compEvalOk := rscope.compEval()
@@ -569,7 +569,7 @@ func checkArgsForCall(rscope resolveScope, fExpr *ir.FuncValExpr, args []ir.Assi
 	return ok
 }
 
-func buildFuncForCall(rscope resolveScope, fExpr *ir.FuncValExpr, args []ir.AssignableExpr) ([]ir.AssignableExpr, *ir.FuncValExpr, bool) {
+func buildFuncForCall(rscope resolveScope, fExpr *ir.FuncValExpr, args []ir.Expr) ([]ir.Expr, *ir.FuncValExpr, bool) {
 	compEval, compEvalOk := compEvalForFuncType(rscope, fExpr.Node(), fExpr.FuncType())
 	if !compEvalOk {
 		return args, fExpr, false

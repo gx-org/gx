@@ -201,8 +201,8 @@ func (v *validator) validate(node ir.IR) {
 	case *ir.ValueRef:
 		v.validate(nodeT.Stor)
 	case *ir.TypeValExpr:
-		v.validate(nodeT.X)
-		v.validate(nodeT.Typ)
+		v.validate(nodeT.X())
+		v.validate(nodeT.Val())
 
 	// Statements
 	case *ir.ReturnStmt:

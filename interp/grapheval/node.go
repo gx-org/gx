@@ -150,7 +150,7 @@ func (n *BackendNode) UnaryOp(env evaluator.Env, expr *ir.UnaryExpr) (evaluator.
 }
 
 // Cast an element into a given data type.
-func (n *BackendNode) Cast(env evaluator.Env, expr ir.AssignableExpr, target ir.Type) (evaluator.NumericalElement, error) {
+func (n *BackendNode) Cast(env evaluator.Env, expr ir.Expr, target ir.Type) (evaluator.NumericalElement, error) {
 	ao := n.ev.ArrayOps()
 	targetKind := target.Kind().DType()
 	casted, err := ao.Graph().Core().Cast(n.nod.Node, targetKind)
@@ -170,7 +170,7 @@ func (n *BackendNode) Cast(env evaluator.Env, expr ir.AssignableExpr, target ir.
 }
 
 // Reshape an element into a given shape.
-func (n *BackendNode) Reshape(env evaluator.Env, expr ir.AssignableExpr, axisLengths []evaluator.NumericalElement) (evaluator.NumericalElement, error) {
+func (n *BackendNode) Reshape(env evaluator.Env, expr ir.Expr, axisLengths []evaluator.NumericalElement) (evaluator.NumericalElement, error) {
 	axes := make([]int, len(axisLengths))
 	for i, el := range axisLengths {
 		var err error
@@ -202,7 +202,7 @@ func (n *BackendNode) Slice(expr *ir.IndexExpr, index evaluator.NumericalElement
 }
 
 // SliceArray of the value on the first axis given an index.
-func (n *BackendNode) SliceArray(expr ir.AssignableExpr, index evaluator.NumericalElement) (evaluator.NumericalElement, error) {
+func (n *BackendNode) SliceArray(expr ir.Expr, index evaluator.NumericalElement) (evaluator.NumericalElement, error) {
 	i, err := elements.ConstantIntFromElement(index)
 	if err != nil {
 		return nil, err
@@ -258,13 +258,13 @@ func (n *BackendNode) String() string {
 // extractGraphNodes extracts all the graph nodes from an element and its children.
 // It first flattens the element, then extracts all the BackendNodes (that is, any elements
 // representing a node in the backend graph).
-func extractGraphNodes(els []ir.Element) ([]ir.AssignableExpr, []*ops.OutputNode, error) {
+func extractGraphNodes(els []ir.Element) ([]ir.Expr, []*ops.OutputNode, error) {
 	flatten, err := flatten.Flatten(els...)
 	if err != nil {
 		return nil, nil, err
 	}
 	var graphNodes []*ops.OutputNode
-	var exprs []ir.AssignableExpr
+	var exprs []ir.Expr
 	for _, elt := range flatten {
 		node, ok := elt.(*BackendNode)
 		if !ok {

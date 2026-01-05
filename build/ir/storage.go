@@ -20,7 +20,7 @@ import (
 
 type builtinStorage struct {
 	name *ast.Ident
-	val  AssignableExpr
+	val  Expr
 }
 
 var builtinStore builtinStorage
@@ -41,7 +41,7 @@ func (s *builtinStorage) Type() Type {
 	return s.val.Type()
 }
 
-func (s *builtinStorage) Value(Expr) AssignableExpr {
+func (s *builtinStorage) Value(Expr) Expr {
 	return s.val
 }
 
@@ -55,7 +55,7 @@ func (s *builtinStorage) Same(o Storage) bool {
 }
 
 // BuiltinStorage stores a value in a builtin storage.
-func BuiltinStorage(name string, val AssignableExpr) StorageWithValue {
+func BuiltinStorage(name string, val Expr) StorageWithValue {
 	return &builtinStorage{
 		name: &ast.Ident{Name: name},
 		val:  val,

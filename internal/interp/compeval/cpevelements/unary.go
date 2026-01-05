@@ -90,7 +90,7 @@ func newUnary(env evaluator.Env, expr *ir.UnaryExpr, xEl Element) (_ *unary, err
 
 }
 
-func (a *unary) Reshape(env evaluator.Env, expr ir.AssignableExpr, axisLengths []evaluator.NumericalElement) (evaluator.NumericalElement, error) {
+func (a *unary) Reshape(env evaluator.Env, expr ir.Expr, axisLengths []evaluator.NumericalElement) (evaluator.NumericalElement, error) {
 	return NewReshape(env, expr, a, axisLengths)
 }
 
@@ -105,7 +105,7 @@ func (a *unary) BinaryOp(env evaluator.Env, expr *ir.BinaryExpr, x, y evaluator.
 }
 
 // Cast an element into a given data type.
-func (a *unary) Cast(env evaluator.Env, expr ir.AssignableExpr, target ir.Type) (evaluator.NumericalElement, error) {
+func (a *unary) Cast(env evaluator.Env, expr ir.Expr, target ir.Type) (evaluator.NumericalElement, error) {
 	return newCast(env, expr, a, target)
 }
 
@@ -137,7 +137,7 @@ func (a *unary) Materialise(ao materialise.Materialiser) (materialise.Node, erro
 	return ao.NodeFromArray(a.src.File(), a.src.Node(), a.val)
 }
 
-func (a *unary) Expr() (ir.AssignableExpr, error) {
+func (a *unary) Expr() (ir.Expr, error) {
 	return a.src.Node(), nil
 }
 

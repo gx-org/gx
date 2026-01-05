@@ -29,7 +29,7 @@ func TestBinaryOp(t *testing.T) {
 			Want: &ir.BinaryExpr{
 				X: &ir.ArrayLitExpr{
 					Typ: irh.ArrayType(ir.Int64Type(), 2),
-					Elts: []ir.AssignableExpr{
+					Elts: []ir.Expr{
 						irh.IntNumberAs(3, ir.Int64Type()),
 						irh.IntNumberAs(4, ir.Int64Type()),
 					},

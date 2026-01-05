@@ -90,6 +90,9 @@ func (r *Rank) Type() Type { return RankType() }
 // Node returns the source node defining the rank.
 func (r *Rank) Node() ast.Node { return r.Src }
 
+// Expr returns the AST expression.
+func (r *Rank) Expr() ast.Expr { return r.Src.Len }
+
 // Axes returns all axis in the rank.
 func (r *Rank) Axes() []AxisLengths { return r.Ax }
 
@@ -220,7 +223,7 @@ func exprSource(n Node) ast.Expr {
 
 // RankSize is the total number of elements across all axes.
 func RankSize(r ArrayRank) Expr {
-	var expr AssignableExpr = oneSize
+	var expr Expr = oneSize
 	for _, axis := range r.Axes() {
 		expr = &BinaryExpr{
 			Src: &ast.BinaryExpr{
@@ -281,7 +284,10 @@ func (*RankInfer) node()     {}
 func (*RankInfer) nodeRank() {}
 
 // Node returns the node defining the rank.
-func (r *RankInfer) Node() ast.Node { return r.Src }
+func (r *RankInfer) Node() ast.Node { return r.Expr() }
+
+// Expr returns the AST expression.
+func (r *RankInfer) Expr() ast.Expr { return r.Src.Len }
 
 // Type returns the rank type.
 func (r *RankInfer) Type() Type { return RankType() }

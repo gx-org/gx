@@ -62,7 +62,7 @@ func flattenTypeList(pscope procScope, list []typeExprNode, expr ast.Expr) ([]ty
 
 func (s *typeSet) buildTypeExpr(rscope resolveScope) (*ir.TypeValExpr, bool) {
 	ok := true
-	types := make([]ir.Type, len(s.typs))
+	types := make([]ir.Type, 0, len(s.typs)) // Do not use s.typs length because we exclude types with errors.
 	rtypeNames := map[string]ir.Type{}
 	for i, typ := range s.typs {
 		typeExpr, typOk := typ.buildTypeExpr(rscope)
@@ -70,14 +70,13 @@ func (s *typeSet) buildTypeExpr(rscope resolveScope) (*ir.TypeValExpr, bool) {
 			ok = false
 			continue
 		}
-		types[i] = typeExpr.Typ
+		types = append(types, typeExpr.Val())
 		if prev, exists := rtypeNames[s.typs[i].String()]; exists {
 			ok = rscope.Err().Appendf(s.source(), "overlapping terms %s and %s", prev, typeExpr)
 		}
-		rtypeNames[typeExpr.String()] = typeExpr.Typ
+		rtypeNames[typeExpr.String()] = typeExpr.Val()
 	}
-	ext := ir.NewTypeSet(s.src, types)
-	return &ir.TypeValExpr{X: ext, Typ: ext}, ok
+	return ir.TypeExpr(nil, ir.NewTypeSet(s.src, types)), ok
 }
 
 func (s *typeSet) source() ast.Node {

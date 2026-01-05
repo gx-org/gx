@@ -449,7 +449,7 @@ type (
 		dtype() ir.Type
 		sub(ast.Node) (compositeLitResolveScope, bool)
 		want() ir.Type
-		newInferCompositeType(src *ast.CompositeLit, exprs []ir.AssignableExpr) (ir.Expr, bool)
+		newInferCompositeType(src *ast.CompositeLit, exprs []ir.Expr) (ir.Expr, bool)
 	}
 
 	arrayResolveScope struct {
@@ -551,7 +551,7 @@ func (s *arrayResolveScope) rootRank() ir.ArrayRank {
 	return cur.current.Rank()
 }
 
-func (s *arrayResolveScope) newInferCompositeType(src *ast.CompositeLit, exprs []ir.AssignableExpr) (ir.Expr, bool) {
+func (s *arrayResolveScope) newInferCompositeType(src *ast.CompositeLit, exprs []ir.Expr) (ir.Expr, bool) {
 	numExprs := len(exprs)
 	// Implicit literal: we require an explicit rank.
 	parentInfer := toInferRank(s.rootRank())
@@ -601,7 +601,7 @@ func newSliceLitScope(rscope resolveScope, want *ir.SliceType) *sliceResolveScop
 }
 
 func (s *sliceResolveScope) dtype() ir.Type {
-	return s.dt.Typ
+	return s.dt.Val()
 }
 
 func (s *sliceResolveScope) sub(src ast.Node) (compositeLitResolveScope, bool) {
@@ -624,7 +624,7 @@ func (s *sliceResolveScope) want() ir.Type {
 	return s.typ
 }
 
-func (s *sliceResolveScope) newInferCompositeType(src *ast.CompositeLit, exprs []ir.AssignableExpr) (ir.Expr, bool) {
+func (s *sliceResolveScope) newInferCompositeType(src *ast.CompositeLit, exprs []ir.Expr) (ir.Expr, bool) {
 	return &ir.SliceLitExpr{
 		Src:  src,
 		Elts: exprs,
