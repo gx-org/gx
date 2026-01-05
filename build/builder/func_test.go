@@ -141,11 +141,7 @@ func call() float32 {
 					Body: irh.Block(
 						&ir.ReturnStmt{
 							Results: []ir.Expr{&ir.FuncCallExpr{
-								Callee: &ir.FuncValExpr{
-									X: irh.ValueRef(returnTwoFunc),
-									F: returnTwoFunc,
-									T: returnTwoFunc.FType,
-								},
+								Callee: irh.FuncExpr(returnTwoFunc),
 							}},
 						},
 					),
@@ -236,11 +232,7 @@ func call() (float32, int32) {
 					Body: irh.Block(
 						&ir.ReturnStmt{
 							Results: []ir.Expr{&ir.FuncCallExpr{
-								Callee: &ir.FuncValExpr{
-									X: irh.ValueRef(returnTupleFunc),
-									F: returnTupleFunc,
-									T: returnTupleFunc.FType,
-								},
+								Callee: irh.FuncExpr(returnTupleFunc),
 							}},
 						},
 					),
@@ -284,12 +276,8 @@ func call() float32 {
 					Body: irh.Block(
 						&ir.ReturnStmt{
 							Results: []ir.Expr{&ir.FuncCallExpr{
-								Callee: &ir.FuncValExpr{
-									X: irh.ValueRef(fDef),
-									F: fDef,
-									T: fDef.FType,
-								},
-								Args: []ir.AssignableExpr{oneByOneLiteral},
+								Callee: irh.FuncExpr(fDef),
+								Args:   []ir.AssignableExpr{oneByOneLiteral},
 							}},
 						},
 					),

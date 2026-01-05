@@ -1489,11 +1489,7 @@ func (s *FuncDecl) NameDef() *ast.Ident {
 
 // Value returns a reference to the function.
 func (s *FuncDecl) Value(x Expr) AssignableExpr {
-	return &FuncValExpr{
-		X: x,
-		F: s,
-		T: s.FType,
-	}
+	return NewFuncValExpr(x, s)
 }
 
 // FullyQualifiedName returns a fully qualified function name, that is
@@ -1573,11 +1569,7 @@ func (s *FuncBuiltin) ShortString() string {
 
 // Value returns a reference to the function.
 func (s *FuncBuiltin) Value(x Expr) AssignableExpr {
-	return &FuncValExpr{
-		X: x,
-		F: s,
-		T: s.FType,
-	}
+	return NewFuncValExpr(x, s)
 }
 
 // Doc returns associated documentation or nil.
@@ -1695,11 +1687,7 @@ func (s *FuncLit) NameDef() *ast.Ident {
 
 // Value returns the function literal as an assignable expression.
 func (s *FuncLit) Value(x Expr) AssignableExpr {
-	return &FuncValExpr{
-		X: x,
-		F: s,
-		T: s.FType,
-	}
+	return NewFuncValExpr(x, s)
 }
 
 // ShortString returns the name of the function.
@@ -2119,11 +2107,11 @@ type (
 
 	// FuncValExpr is an expression pointing to a function.
 	FuncValExpr struct {
-		X Expr
-		F Func
+		x Expr
+		f Func
 		// T is the function type if the function has been specialised by the call
 		// (in the context of generic functions).
-		T *FuncType
+		t *FuncType
 	}
 
 	// Callee function being called from a call expression.
@@ -2500,36 +2488,51 @@ func (s *TypeValExpr) Store() Storage { return s.Typ }
 // String representation.
 func (s *TypeValExpr) String() string { return s.Typ.String() }
 
+// NewFuncValExpr returns a new expression referencing a function.
+func NewFuncValExpr(x Expr, fn Func) *FuncValExpr {
+	return &FuncValExpr{x: x, f: fn, t: fn.FuncType()}
+}
+
 func (s *FuncValExpr) node()       {}
 func (s *FuncValExpr) assignable() {}
 
 // Node returns the node in the AST tree.
 func (s *FuncValExpr) Node() ast.Node {
-	if s.X != nil {
-		return s.X.Node()
+	if s.x != nil {
+		return s.x.Node()
 	}
-	return s.F.Node()
+	return s.f.Node()
+}
+
+// X returns the expression referencing the function.
+func (s *FuncValExpr) X() Expr {
+	return s.x
 }
 
 // Func returns the function being called.
 func (s *FuncValExpr) Func() Func {
-	return s.F
+	return s.f
 }
 
 // FuncType returns type of the function being.
 // If the function is generic, the type is specialised.
 func (s *FuncValExpr) FuncType() *FuncType {
-	return s.T
+	return s.t
+}
+
+// NewFType returns the expression for a new function type (e.g. after the function has been specialised).
+func (s *FuncValExpr) NewFType(t *FuncType) *FuncValExpr {
+	return &FuncValExpr{x: s.x, f: s.f, t: t}
 }
 
 // Type of the function being called.
 func (s *FuncValExpr) Type() Type {
-	return s.T
+	return s.t
 }
 
 // ShortString representing the function being called.
 func (s *FuncValExpr) ShortString() string {
-	return s.X.String()
+	return s.x.String()
 }
 
 // SourceString returns GX code representing the call to the function.
@@ -2539,9 +2542,9 @@ func (s *FuncValExpr) SourceString() string {
 
 // String representation.
 func (s *FuncValExpr) String() string {
-	callee := s.X.String()
+	callee := s.x.String()
 	spec := ""
-	fType := s.T
+	fType := s.t
 	numTypeParamValues := len(fType.TypeParamsValues)
 	if numTypeParamValues > 0 {
 		types := make([]string, numTypeParamValues)

@@ -61,11 +61,7 @@ func (s *MetaCore) NameDef() *ast.Ident {
 
 // Value returns a reference to the function.
 func (s *MetaCore) Value(x Expr) AssignableExpr {
-	return &FuncValExpr{
-		X: x,
-		F: s,
-		T: s.FuncType(),
-	}
+	return NewFuncValExpr(x, s)
 }
 
 // Doc returns associated documentation or nil.

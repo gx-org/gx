@@ -56,17 +56,14 @@ func TestAxisName01(t *testing.T) {
 		Storage: aStorage,
 		X: &ir.FuncCallExpr{
 			Args: []ir.AssignableExpr{irh.ValueRef(dimsField.Storage())},
-			Callee: &ir.FuncValExpr{
-				X: irh.ValueRef(newArrayFunc),
-				F: newArrayFunc,
-				T: irh.FuncType(
+			Callee: irh.FuncExpr(newArrayFunc).NewFType(
+				irh.FuncType(
 					nil, nil,
 					irh.Fields("dims", irh.TypeRef(ir.IntLenSliceType())),
 					irh.Fields(irh.TypeRef(
 						irh.ArrayType(ir.Float32Type(), irh.Axis("dims___")),
 					)),
-				),
-			},
+				)),
 		},
 	}
 	testbuild.Run(t,
@@ -99,10 +96,8 @@ func f(dims []intlen) [dims___]float32 {
 						&ir.ReturnStmt{Results: []ir.Expr{
 							&ir.FuncCallExpr{
 								Args: []ir.AssignableExpr{irh.ValueRef(dimsField.Storage())},
-								Callee: &ir.FuncValExpr{
-									X: irh.ValueRef(newArrayFunc),
-									F: newArrayFunc,
-									T: irh.FuncType(
+								Callee: irh.FuncExpr(newArrayFunc).NewFType(
+									irh.FuncType(
 										nil, nil,
 										irh.Fields("dims", ir.IntLenSliceType()),
 										irh.Fields(irh.ArrayType(
@@ -110,7 +105,7 @@ func f(dims []intlen) [dims___]float32 {
 											irh.Axis("dims___")),
 										),
 									),
-								},
+								),
 							},
 						}},
 					}},
@@ -169,16 +164,13 @@ func f() [2][3]float32 {
 						&ir.ReturnStmt{Results: []ir.Expr{
 							&ir.FuncCallExpr{
 								Args: []ir.AssignableExpr{sliceLiteral},
-								Callee: &ir.FuncValExpr{
-									X: irh.ValueRef(newArrayFunc),
-									F: newArrayFunc,
-									T: irh.FuncType(
+								Callee: irh.FuncExpr(newArrayFunc).NewFType(
+									irh.FuncType(
 										nil, nil,
 										irh.Fields("dims", ir.IntLenSliceType()),
 										irh.Fields(irh.ArrayType(ir.Float32Type(), 2, 3)),
 									),
-								},
-							},
+								)},
 						}},
 					}},
 				},
@@ -233,19 +225,16 @@ func f() [2]float64 {
 										irh.IntNumberAs(4, ir.Float32Type()),
 									},
 								}},
-								Callee: &ir.FuncValExpr{
-									X: irh.ValueRef(castFunc),
-									F: castFunc,
-									T: irh.FuncType(
+								Callee: irh.FuncExpr(castFunc).NewFType(
+									irh.FuncType(
 										nil, nil,
 										irh.Fields(irh.ArrayType(ir.Float32Type(), 2)),
 										irh.Fields(irh.ArrayType(ir.Float64Type(), 2)),
-									),
-								},
+									)),
 							},
+						},
 						}},
 					}},
-				},
 			},
 		},
 		testbuild.Decl{
@@ -271,15 +260,12 @@ func f() float64 {
 									X:   irh.IntNumberAs(1, ir.Float32Type()),
 									Typ: ir.Float32Type(),
 								}},
-								Callee: &ir.FuncValExpr{
-									X: irh.ValueRef(castFunc),
-									F: castFunc,
-									T: irh.FuncType(
+								Callee: irh.FuncExpr(castFunc).NewFType(
+									irh.FuncType(
 										nil, nil,
 										irh.Fields(irh.ArrayType(ir.Float32Type())),
 										irh.Fields(irh.ArrayType(ir.Float64Type())),
-									),
-								},
+									)),
 							},
 						}},
 					}},
@@ -361,15 +347,12 @@ func f() [2][3]float32  {
 						&ir.ReturnStmt{Results: []ir.Expr{
 							&ir.FuncCallExpr{
 								Args: []ir.AssignableExpr{irh.ValueRef(fDimsAssignment)},
-								Callee: &ir.FuncValExpr{
-									X: irh.ValueRef(newArrayFunc),
-									F: newArrayFunc,
-									T: irh.FuncType(
+								Callee: irh.FuncExpr(newArrayFunc).NewFType(
+									irh.FuncType(
 										nil, nil,
 										irh.Fields("dims", ir.IntLenSliceType()),
 										irh.Fields(irh.ArrayType(ir.Float32Type(), 2, 3)),
-									),
-								},
+									)),
 							},
 						}},
 					}},

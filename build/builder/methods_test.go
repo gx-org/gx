@@ -100,16 +100,13 @@ func call() int32 {
 						}}},
 						&ir.ReturnStmt{
 							Results: []ir.Expr{&ir.FuncCallExpr{
-								Callee: &ir.FuncValExpr{
-									X: &ir.SelectorExpr{
+								Callee: ir.NewFuncValExpr(
+									&ir.SelectorExpr{
 										X:    irh.ValueRef(typeA),
 										Stor: fI,
 									},
-									F: fI,
-									T: fI.FuncType(),
-								},
-							}},
-						},
+									fI),
+							}}},
 					)},
 			},
 		},
@@ -188,14 +185,13 @@ func call() int32 {
 						}}},
 						&ir.ReturnStmt{
 							Results: []ir.Expr{&ir.FuncCallExpr{
-								Callee: &ir.FuncValExpr{
-									X: &ir.SelectorExpr{
+								Callee: ir.NewFuncValExpr(
+									&ir.SelectorExpr{
 										X:    irh.ValueRef(typeA),
 										Stor: val,
 									},
-									F: val,
-									T: val.FuncType(),
-								},
+									val,
+								),
 							}},
 						},
 					)},

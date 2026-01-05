@@ -109,8 +109,8 @@ func (n *callExpr) buildTypeCast(rscope resolveScope, callee ir.AssignableExpr, 
 	return ext, convertOk
 }
 
-func checkNumArgs(rscope resolveScope, fn ir.Func, fType *ir.FuncType, numArgs int) bool {
-	numParams := fType.Params.Len()
+func checkNumArgs(rscope resolveScope, fn *ir.FuncValExpr, numArgs int) bool {
+	numParams := fn.FuncType().Params.Len()
 	if numArgs > numParams {
 		return rscope.Err().Appendf(fn.Node(), "too many arguments in call to %s", fn.ShortString())
 	}
@@ -120,13 +120,13 @@ func checkNumArgs(rscope resolveScope, fn ir.Func, fType *ir.FuncType, numArgs i
 	return true
 }
 
-func (n *callExpr) completeFuncType(rscope resolveScope, callee ir.Func, args []ir.AssignableExpr) (*ir.FuncType, bool) {
+func (n *callExpr) completeFuncType(rscope resolveScope, callee *ir.FuncValExpr, args []ir.AssignableExpr) (*ir.FuncValExpr, bool) {
 	fType := callee.FuncType()
 	if fType != nil {
-		return fType, true
+		return callee, true
 	}
 	var impl ir.FuncImpl
-	switch fT := callee.(type) {
+	switch fT := callee.Func().(type) {
 	case *ir.FuncBuiltin:
 		impl = fT.Impl
 	case *ir.FuncKeyword:
@@ -140,13 +140,13 @@ func (n *callExpr) completeFuncType(rscope resolveScope, callee ir.Func, args []
 	}
 	fType, err := impl.BuildFuncType(compEval, &ir.FuncCallExpr{
 		Src:    n.src,
-		Callee: &ir.FuncValExpr{F: callee},
+		Callee: callee,
 		Args:   args,
 	})
 	if err != nil {
 		return nil, rscope.Err().AppendAt(n.src, err)
 	}
-	return fType, true
+	return callee.NewFType(fType), true
 }
 
 func (n *callExpr) buildCallee(rscope resolveScope, expr *ir.FuncValExpr) ([]ir.AssignableExpr, *ir.FuncValExpr, bool) {
@@ -154,17 +154,14 @@ func (n *callExpr) buildCallee(rscope resolveScope, expr *ir.FuncValExpr) ([]ir.
 	if !argsOk {
 		return nil, nil, false
 	}
-	if expr.T == nil {
-		expr.T = expr.F.FuncType()
-	}
-	if expr.T == nil {
+	if expr.FuncType() == nil {
 		var ok bool
-		expr.T, ok = n.completeFuncType(rscope, expr.F, args)
+		expr, ok = n.completeFuncType(rscope, expr, args)
 		if !ok {
 			return nil, nil, false
 		}
 	}
-	if numArgsOk := checkNumArgs(rscope, expr.F, expr.T, len(args)); !numArgsOk {
+	if numArgsOk := checkNumArgs(rscope, expr, len(args)); !numArgsOk {
 		return nil, nil, false
 	}
 	args, callee, callOk := buildFuncForCall(rscope, expr, args)
@@ -182,7 +179,7 @@ func (n *callExpr) buildFuncCallExpr(rscope resolveScope, expr *ir.FuncValExpr) 
 }
 
 func (n *callExpr) buildMacroCall(rscope resolveScope, compEval *compileEvaluator, expr ir.AssignableExpr, mac *ir.Macro) (ir.Expr, bool) {
-	callExpr, ok := n.buildFuncCallExpr(rscope, &ir.FuncValExpr{X: expr, F: mac})
+	callExpr, ok := n.buildFuncCallExpr(rscope, ir.NewFuncValExpr(expr, mac))
 	if !ok {
 		return invalidExpr(), false
 	}
@@ -238,10 +235,7 @@ func (n *callExpr) buildCallExpr(rscope resolveScope, callee ir.AssignableExpr) 
 	case *ir.TypeValExpr:
 		return n.buildTypeCast(rscope, callee, elT.Store())
 	case ir.FuncElement:
-		return n.buildCallExpr(rscope, &ir.FuncValExpr{
-			X: callee,
-			F: elT.Func(),
-		})
+		return n.buildCallExpr(rscope, ir.NewFuncValExpr(callee, elT.Func()))
 	case *interp.Tuple:
 		return invalidExpr(), rscope.Err().Appendf(callee.Node(), "multiple value %s in single-value context", callee.String())
 	default:

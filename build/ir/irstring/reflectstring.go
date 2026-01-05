@@ -124,14 +124,14 @@ func typeValExpr(done map[any]bool, val reflect.Value, proc processor) string {
 
 func funcValExpr(done map[any]bool, val reflect.Value, proc processor) string {
 	ref := val.Interface().(*ir.FuncValExpr)
-	switch fT := ref.F.(type) {
+	switch fT := ref.Func().(type) {
 	case *ir.FuncLit:
 		return reflectString(done, reflect.ValueOf(fT), proc)
 	default:
-		if ref.T != nil {
-			return ref.T.String()
+		if ref.FuncType() != nil {
+			return ref.FuncType().String()
 		}
-		return ref.F.ShortString()
+		return ref.Func().ShortString()
 	}
 }
 

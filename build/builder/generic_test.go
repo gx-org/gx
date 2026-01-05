@@ -197,14 +197,13 @@ func callCast() int32 {
 					),
 					Body: &ir.BlockStmt{List: []ir.Stmt{
 						&ir.ReturnStmt{Results: []ir.Expr{&ir.FuncCallExpr{
-							Callee: &ir.FuncValExpr{
-								F: castNoArgFunc,
-								T: irhelper.FuncType(
+							Callee: irhelper.FuncExpr(castNoArgFunc).NewFType(
+								irhelper.FuncType(
 									irhelper.Fields(),
 									nil, nil,
 									irhelper.Fields(ir.Int32Type()),
 								),
-							},
+							),
 						}}},
 					}},
 				},
@@ -389,15 +388,12 @@ func callCast() [2][3]int32 {
 					),
 					Body: &ir.BlockStmt{List: []ir.Stmt{
 						&ir.ReturnStmt{Results: []ir.Expr{&ir.FuncCallExpr{
-							Callee: &ir.FuncValExpr{
-								X: irhelper.ValueRef(new2x3ArrayFunc),
-								F: new2x3ArrayFunc,
-								T: irhelper.FuncType(
+							Callee: irhelper.FuncExpr(new2x3ArrayFunc).NewFType(
+								irhelper.FuncType(
 									irhelper.Fields(), nil,
 									irhelper.Fields(),
 									irhelper.Fields(irhelper.ArrayType(ir.Int32Type(), 2, 3)),
-								),
-							},
+								)),
 						}}},
 					}},
 				},
@@ -496,15 +492,12 @@ func callCast() int32 {
 					),
 					Body: &ir.BlockStmt{List: []ir.Stmt{
 						&ir.ReturnStmt{Results: []ir.Expr{&ir.FuncCallExpr{
-							Callee: &ir.FuncValExpr{
-								X: irhelper.ValueRef(castAtomFunc),
-								F: castAtomFunc,
-								T: irhelper.FuncType(
+							Callee: irhelper.FuncExpr(castAtomFunc).NewFType(
+								irhelper.FuncType(
 									irhelper.Fields(), nil,
 									irhelper.Fields("val", ir.Int64Type()),
 									irhelper.Fields(ir.Int32Type()),
-								),
-							},
+								)),
 							Args: []ir.AssignableExpr{
 								irhelper.IntNumberAs(2, ir.Int64Type()),
 							},
@@ -536,15 +529,12 @@ func callCast() int32 {
 					),
 					Body: &ir.BlockStmt{List: []ir.Stmt{
 						&ir.ReturnStmt{Results: []ir.Expr{&ir.FuncCallExpr{
-							Callee: &ir.FuncValExpr{
-								X: irhelper.ValueRef(castAtomFunc),
-								F: castAtomFunc,
-								T: irhelper.FuncType(
+							Callee: irhelper.FuncExpr(castAtomFunc).NewFType(
+								irhelper.FuncType(
 									irhelper.Fields(), nil,
 									irhelper.Fields("val", ir.Int64Type()),
 									irhelper.Fields(ir.Int32Type()),
-								),
-							},
+								)),
 							Args: []ir.AssignableExpr{
 								&ir.CastExpr{
 									X:   irhelper.IntNumberAs(2, ir.Int64Type()),
@@ -600,15 +590,13 @@ func callCast(x [2]int64) [2]int32 {
 					),
 					Body: &ir.BlockStmt{List: []ir.Stmt{
 						&ir.ReturnStmt{Results: []ir.Expr{&ir.FuncCallExpr{
-							Callee: &ir.FuncValExpr{
-								X: irhelper.ValueRef(castArrayFunc),
-								F: castArrayFunc,
-								T: irhelper.FuncType(
+							Callee: irhelper.FuncExpr(castArrayFunc).NewFType(
+								irhelper.FuncType(
 									irhelper.Fields(), nil,
 									irhelper.Fields(irhelper.ArrayType(ir.Int64Type(), 2)),
 									irhelper.Fields(irhelper.ArrayType(ir.Int32Type(), 2)),
 								),
-							},
+							),
 							Args: []ir.AssignableExpr{
 								irhelper.ValueRef(xField.Storage()),
 							},

@@ -379,12 +379,16 @@ func SingleReturn(exprs ...ir.Expr) *ir.BlockStmt {
 
 // FuncDeclCallee returns a reference to call a function given its name.
 func FuncDeclCallee(name string, ftype *ir.FuncType) *ir.FuncValExpr {
-	return &ir.FuncValExpr{
-		F: &ir.FuncDecl{
-			Src: &ast.FuncDecl{
-				Name: &ast.Ident{Name: name},
-			},
-		},
-		T: ftype,
+	id := &ast.Ident{Name: name}
+	fn := &ir.FuncDecl{
+		Src:   &ast.FuncDecl{Name: id},
+		FType: ftype,
 	}
+	x := &ir.ValueRef{Src: id, Stor: fn}
+	return ir.NewFuncValExpr(x, fn)
+}
+
+// FuncExpr builds a function expression from a function.
+func FuncExpr(fn ir.Func) *ir.FuncValExpr {
+	return ir.NewFuncValExpr(ValueRef(fn.(ir.Storage)), fn)
 }

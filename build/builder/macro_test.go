@@ -353,7 +353,7 @@ func g[T floats](x T) T {
 	return testmacros.ID(f)[T]()
 }
 `,
-			Err: "not enough arguments in call to func[T test.floats](x T) T",
+			Err: "not enough arguments in call to testmacros.ID(f)",
 		},
 	)
 }

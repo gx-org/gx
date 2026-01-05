@@ -59,11 +59,7 @@ func TestAssign(t *testing.T) {
 			},
 		)}
 	callToAssign := &ir.FuncCallExpr{
-		Callee: &ir.FuncValExpr{
-			X: irh.ValueRef(assign),
-			F: assign,
-			T: assign.FType,
-		},
+		Callee: irh.FuncExpr(assign),
 	}
 	cAssignment := &ir.AssignCallResult{
 		Storage:     cStorage,

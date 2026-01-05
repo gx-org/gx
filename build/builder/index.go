@@ -97,11 +97,7 @@ func specializeFunc(rscope resolveScope, x ir.Expr, indices []ir.AssignableExpr)
 	var fun *ir.FuncValExpr
 	switch xT := x.(type) {
 	case *ir.MacroCallExpr:
-		fun = &ir.FuncValExpr{
-			X: x,
-			F: xT.F,
-			T: xT.FuncType(),
-		}
+		fun = ir.NewFuncValExpr(x, xT.F).NewFType(xT.FuncType())
 	case ir.WithStore:
 		funValue, ok := valueFromStorage(rscope, x, xT.Store())
 		if !ok {

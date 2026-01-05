@@ -517,11 +517,11 @@ func evalExpr(fitp *FileScope, expr ir.Expr) (ir.Element, error) {
 }
 
 func evalFuncValExpr(fitp *FileScope, expr *ir.FuncValExpr) (ir.Element, error) {
-	lit, isLit := expr.F.(*ir.FuncLit)
+	lit, isLit := expr.Func().(*ir.FuncLit)
 	if isLit {
 		return fitp.env.FuncEval().NewFuncLit(fitp.env, lit)
 	}
-	return fitp.NewFunc(expr.F, nil), nil
+	return fitp.NewFunc(expr.Func(), nil), nil
 }
 
 func evalValueRef(fitp *FileScope, ref *ir.ValueRef) (ir.Element, error) {
@@ -615,7 +615,7 @@ func evalAtom[T dtype.GoDataType](fitp *FileScope, expr ir.Expr) (val T, err err
 func evalCallee(fitp *FileScope, callee ir.Callee) (fun.Func, error) {
 	switch calleeT := callee.(type) {
 	case *ir.FuncValExpr:
-		fnNode, err := fitp.EvalExpr(calleeT.X)
+		fnNode, err := fitp.EvalExpr(calleeT.X())
 		if err != nil {
 			return nil, err
 		}

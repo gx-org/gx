@@ -93,7 +93,7 @@ func (n *funcCallExpr) vjpFunc(astmts *fwdStmts) (string, ast.Expr, bool) {
 		return "", nil, astmts.err().AppendInternalf(n.irnode.Node(), "callee type %T not supported", n.irnode.Callee)
 	}
 	name := "Fun"
-	if pkgFunc, ok := src.F.(ir.PkgFunc); ok {
+	if pkgFunc, ok := src.Func().(ir.PkgFunc); ok {
 		name = pkgFunc.Name()
 	}
 	macro := n.graph.macro.From()
@@ -102,7 +102,7 @@ func (n *funcCallExpr) vjpFunc(astmts *fwdStmts) (string, ast.Expr, bool) {
 			X:   &ast.Ident{Name: macro.File().Package.Name.Name},
 			Sel: &ast.Ident{Name: macro.Name()},
 		},
-		Args: []ast.Expr{src.X.Node().(ast.Expr)},
+		Args: []ast.Expr{src.Node().(ast.Expr)},
 	}), true
 }
 
