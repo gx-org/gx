@@ -268,6 +268,27 @@ func[T floats](x T) (T, func(res T) T) {
 `,
 			},
 		},
+		testgrad.VJP{
+			Src: `
+type floats interface {
+	float32 | float64
+}
+
+func g[T floats](x [___M]T) [M___]T
+
+//gx:@grad.Set(g)
+func F[T floats](x [___M]T) [M___]T
+`,
+			Want: `
+func vjpF[T floats](x [___M]T) ([M___]T, func(res [M___]T) [M___]T) {
+	fwd0 := F[T](x)
+	selfVJPFunc := func(res [M___]T) [M___]T {
+		return res*g[T](x)
+	}
+	return fwd0, selfVJPFunc
+}
+`,
+		},
 	)
 }
 
