@@ -110,12 +110,12 @@ func (s *FuncType) SourceSignature(fileContext *File, name *ast.Ident) string {
 		fmt.Fprintf(&b, "[%s]", s.TypeParams.SourceString(fileContext))
 	}
 	b.WriteString("(" + s.Params.SourceString(fileContext) + ")")
+	if s.Results.Len() == 0 {
+		return b.String()
+	}
 	b.WriteRune(' ')
 	if s.Results.Len() > 1 {
 		b.WriteString("(")
-	}
-	if s.Results == nil {
-		return b.String()
 	}
 	b.WriteString(s.Results.SourceString(fileContext))
 	if s.Results.Len() > 1 {
