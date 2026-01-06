@@ -198,7 +198,7 @@ func (v *validator) validate(node ir.IR) {
 		}
 	case *ir.UnaryExpr:
 		v.validate(nodeT.X)
-	case *ir.ValueRef:
+	case *ir.Ident:
 		v.validate(nodeT.Stor)
 	case *ir.TypeValExpr:
 		v.validate(nodeT.X())

@@ -299,13 +299,13 @@ func isInvalidExpr(expr ir.Expr) bool {
 	return ir.IsInvalidType(expr.Type())
 }
 
-var invalidValueRef = &ir.ValueRef{
+var invalidIdent = &ir.Ident{
 	Src:  &ast.Ident{Name: "<<<invalid>>>"},
 	Stor: ir.InvalidType(),
 }
 
-func invalidExpr() *ir.ValueRef {
-	return invalidValueRef
+func invalidExpr() *ir.Ident {
+	return invalidIdent
 }
 
 var invalidGroup = &ir.FieldGroup{Type: ir.TypeExpr(

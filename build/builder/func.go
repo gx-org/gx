@@ -512,8 +512,8 @@ func assignArgValueToName(rscope resolveScope, compEval *compileEvaluator, param
 			ok = false
 			continue
 		}
-		ident, isValueRef := axExpr.X.(*ir.ValueRef)
-		if !isValueRef {
+		ident, isIdent := axExpr.X.(*ir.Ident)
+		if !isIdent {
 			continue
 		}
 		if _, isAxisStmt := ident.Stor.(*ir.AxisStmt); !isAxisStmt {

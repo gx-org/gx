@@ -484,8 +484,8 @@ func evalExpr(fitp *FileScope, expr ir.Expr) (ir.Element, error) {
 		return evalExpr(fitp, exprT.X)
 	case *ir.BinaryExpr:
 		return evalBinaryExpression(fitp, exprT)
-	case *ir.ValueRef:
-		return evalValueRef(fitp, exprT)
+	case *ir.Ident:
+		return evalIdent(fitp, exprT)
 	case *ir.SelectorExpr:
 		return evalSelectorExpr(fitp, exprT)
 	case *ir.FuncLit:
@@ -523,7 +523,7 @@ func evalFuncValExpr(fitp *FileScope, expr *ir.FuncValExpr) (ir.Element, error) 
 	return fitp.NewFunc(expr.Func(), nil), nil
 }
 
-func evalValueRef(fitp *FileScope, ref *ir.ValueRef) (ir.Element, error) {
+func evalIdent(fitp *FileScope, ref *ir.Ident) (ir.Element, error) {
 	if ref.Src == nil {
 		return ref.Stor, nil
 	}

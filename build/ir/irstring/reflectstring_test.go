@@ -42,8 +42,8 @@ func TestReflectString(t *testing.T) {
 					&ir.ReturnStmt{
 						Results: []ir.Expr{
 							&ir.BinaryExpr{
-								X:   irhelper.ValueRef(a),
-								Y:   irhelper.ValueRef(b),
+								X:   irhelper.Ident(a),
+								Y:   irhelper.Ident(b),
 								Typ: ir.Float32Type(),
 							},
 						},

@@ -20,44 +20,44 @@ import (
 	"github.com/gx-org/gx/build/ir"
 )
 
-// valueRef is a reference to a value by an identifier.
-type valueRef struct {
+// ident is a reference to a value by an identifier.
+type ident struct {
 	src *ast.Ident
 }
 
-var _ exprNode = (*valueRef)(nil)
+var _ exprNode = (*ident)(nil)
 
-func processIdent(pscope procScope, src *ast.Ident) (*valueRef, bool) {
-	return &valueRef{src: src}, true
+func processIdent(pscope procScope, src *ast.Ident) (*ident, bool) {
+	return &ident{src: src}, true
 }
 
-func (n *valueRef) source() ast.Node {
+func (n *ident) source() ast.Node {
 	return n.src
 }
 
-func (n *valueRef) buildValueRef(rscope resolveScope) (*ir.ValueRef, bool) {
+func (n *ident) buildIdent(rscope resolveScope) (*ir.Ident, bool) {
 	storage, ok := findStorage(rscope, n.src)
 	if !ok {
 		return nil, false
 	}
-	return &ir.ValueRef{
+	return &ir.Ident{
 		Src:  n.src,
 		Stor: storage,
 	}, true
 }
 
-func (n *valueRef) buildExpr(rscope resolveScope) (ir.Expr, bool) {
-	return n.buildValueRef(rscope)
+func (n *ident) buildExpr(rscope resolveScope) (ir.Expr, bool) {
+	return n.buildIdent(rscope)
 }
 
-func (n *valueRef) buildTypeExpr(rscope resolveScope) (*ir.TypeValExpr, bool) {
-	valueRef, ok := n.buildValueRef(rscope)
+func (n *ident) buildTypeExpr(rscope resolveScope) (*ir.TypeValExpr, bool) {
+	idt, ok := n.buildIdent(rscope)
 	if !ok {
 		return nil, false
 	}
-	return typeFromStorage(rscope, valueRef, valueRef.Stor)
+	return typeFromStorage(rscope, idt, idt.Stor)
 }
 
-func (n *valueRef) String() string {
+func (n *ident) String() string {
 	return n.src.Name
 }

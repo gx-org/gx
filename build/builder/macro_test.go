@@ -219,7 +219,7 @@ func(x float32) float32 {
 func TestMacroOnMethod(t *testing.T) {
 	typeS := &ir.NamedType{
 		File:       wantFile,
-		Src:        &ast.TypeSpec{Name: irh.Ident("S")},
+		Src:        &ast.TypeSpec{Name: irh.IdentAST("S")},
 		Underlying: ir.TypeExpr(nil, irh.StructType()),
 	}
 	fType := irh.FuncType(

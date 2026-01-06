@@ -131,7 +131,7 @@ func TestGenericSignature(t *testing.T) {
 
 func TestGenericCall(t *testing.T) {
 	someInt := &ir.NamedType{
-		Src:        &ast.TypeSpec{Name: irhelper.Ident("someInt")},
+		Src:        &ast.TypeSpec{Name: irhelper.IdentAST("someInt")},
 		File:       wantFile,
 		Underlying: ir.TypeExpr(nil, irhelper.TypeSet(ir.Int32Type(), ir.Int64Type())),
 	}
@@ -326,7 +326,7 @@ func f() [2][3]int32 {
 
 func TestGenericArray(t *testing.T) {
 	someInt := &ir.NamedType{
-		Src:        &ast.TypeSpec{Name: irhelper.Ident("someInt")},
+		Src:        &ast.TypeSpec{Name: irhelper.IdentAST("someInt")},
 		File:       wantFile,
 		Underlying: ir.TypeExpr(nil, irhelper.TypeSet(ir.Int32Type(), ir.Int64Type())),
 	}
@@ -446,7 +446,7 @@ func callF() [2]int64 {
 
 func TestGenericConvert(t *testing.T) {
 	someInt := &ir.NamedType{
-		Src:        &ast.TypeSpec{Name: irhelper.Ident("someInt")},
+		Src:        &ast.TypeSpec{Name: irhelper.IdentAST("someInt")},
 		File:       wantFile,
 		Underlying: ir.TypeExpr(nil, irhelper.TypeSet(ir.Int32Type(), ir.Int64Type())),
 	}
@@ -464,7 +464,7 @@ func TestGenericConvert(t *testing.T) {
 		),
 		Body: &ir.BlockStmt{List: []ir.Stmt{
 			&ir.ReturnStmt{Results: []ir.Expr{
-				&ir.CastExpr{Typ: someIntTP, X: irhelper.ValueRef(valField.Storage())},
+				&ir.CastExpr{Typ: someIntTP, X: irhelper.Ident(valField.Storage())},
 			}},
 		}},
 	}
@@ -551,7 +551,7 @@ func callCast() int32 {
 
 func TestGenericCastArray(t *testing.T) {
 	someInt := &ir.NamedType{
-		Src:        &ast.TypeSpec{Name: irhelper.Ident("someInt")},
+		Src:        &ast.TypeSpec{Name: irhelper.IdentAST("someInt")},
 		File:       wantFile,
 		Underlying: ir.TypeExpr(nil, irhelper.TypeSet(ir.Int32Type(), ir.Int64Type())),
 	}
@@ -598,7 +598,7 @@ func callCast(x [2]int64) [2]int32 {
 								),
 							),
 							Args: []ir.Expr{
-								irhelper.ValueRef(xField.Storage()),
+								irhelper.Ident(xField.Storage()),
 							},
 						}}},
 					}},

@@ -77,7 +77,7 @@ func g() int32 {
 						&ir.ReturnStmt{Results: []ir.Expr{
 							&ir.FuncCallExpr{
 								Callee: ir.NewFuncValExpr(
-									irh.ValueRef(irh.LocalVar("fn", funcLitType())),
+									irh.Ident(irh.LocalVar("fn", funcLitType())),
 									&ir.FuncLit{
 										FType: funcLitType(),
 									}),

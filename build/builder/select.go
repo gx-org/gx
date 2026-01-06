@@ -80,7 +80,7 @@ func (n *selectorExpr) selectFromExpr(scope resolveScope, sel *ir.SelectorExpr, 
 }
 
 func (n *selectorExpr) selectFromType(scope resolveScope, sel *ir.SelectorExpr) (ir.Storage, bool) {
-	xT, ok := sel.X.(*ir.ValueRef)
+	xT, ok := sel.X.(*ir.Ident)
 	if !ok {
 		return n.returnUndefined(scope, sel.X)
 	}

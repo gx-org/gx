@@ -74,7 +74,7 @@ func TestBuiltin(t *testing.T) {
 func TestBuiltinMethods(t *testing.T) {
 	typeA := &ir.NamedType{
 		File:       wantFile,
-		Src:        &ast.TypeSpec{Name: irh.Ident("A")},
+		Src:        &ast.TypeSpec{Name: irh.IdentAST("A")},
 		Underlying: ir.TypeExpr(nil, ir.Uint32Type()),
 	}
 	funF := &ir.FuncBuiltin{
@@ -164,7 +164,7 @@ func withArgs(a int32) int32 {
 					Body: irh.Block(
 						&ir.ReturnStmt{
 							Results: []ir.Expr{
-								irh.ValueRef(aField.Storage()),
+								irh.Ident(aField.Storage()),
 							},
 						},
 					)},

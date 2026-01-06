@@ -55,7 +55,7 @@ func TestAxisName01(t *testing.T) {
 	aAssignment := &ir.AssignExpr{
 		Storage: aStorage,
 		X: &ir.FuncCallExpr{
-			Args: []ir.Expr{irh.ValueRef(dimsField.Storage())},
+			Args: []ir.Expr{irh.Ident(dimsField.Storage())},
 			Callee: irh.FuncExpr(newArrayFunc).NewFType(
 				irh.FuncType(
 					nil, nil,
@@ -96,7 +96,7 @@ func f(dims []intlen) [dims___]float32 {
 					Body: &ir.BlockStmt{List: []ir.Stmt{
 						&ir.ReturnStmt{Results: []ir.Expr{
 							&ir.FuncCallExpr{
-								Args: []ir.Expr{irh.ValueRef(dimsField.Storage())},
+								Args: []ir.Expr{irh.Ident(dimsField.Storage())},
 								Callee: irh.FuncExpr(newArrayFunc).NewFType(
 									irh.FuncType(
 										nil, nil,
@@ -139,7 +139,7 @@ func f(dims []intlen) [dims___]float32 {
 							aAssignment,
 						}},
 						&ir.ReturnStmt{Results: []ir.Expr{
-							irh.ValueRef(aAssignment),
+							irh.Ident(aAssignment),
 						}},
 					}},
 				},
@@ -310,7 +310,7 @@ func TestAxisName02(t *testing.T) {
 		),
 	}
 	fDims := &ir.LocalVarStorage{
-		Src: irh.Ident("fDims"),
+		Src: irh.IdentAST("fDims"),
 		Typ: ir.IntLenSliceType(),
 	}
 	fDimsAssignment := &ir.AssignExpr{
@@ -347,7 +347,7 @@ func f() [2][3]float32  {
 						},
 						&ir.ReturnStmt{Results: []ir.Expr{
 							&ir.FuncCallExpr{
-								Args: []ir.Expr{irh.ValueRef(fDimsAssignment)},
+								Args: []ir.Expr{irh.Ident(fDimsAssignment)},
 								Callee: irh.FuncExpr(newArrayFunc).NewFType(
 									irh.FuncType(
 										nil, nil,

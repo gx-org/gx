@@ -43,7 +43,7 @@ func TestMethods(t *testing.T) {
 		Body: irh.Block(
 			&ir.ReturnStmt{
 				Results: []ir.Expr{&ir.SelectorExpr{
-					X:    irh.ValueRef(aRecv.Fields()[0].Storage()),
+					X:    irh.Ident(aRecv.Fields()[0].Storage()),
 					Stor: fieldI.Storage(),
 				}},
 			},
@@ -96,13 +96,13 @@ func call() int32 {
 								},
 								Typ: typeA,
 							},
-							Storage: &ir.LocalVarStorage{Src: irh.Ident("a"), Typ: typeA},
+							Storage: &ir.LocalVarStorage{Src: irh.IdentAST("a"), Typ: typeA},
 						}}},
 						&ir.ReturnStmt{
 							Results: []ir.Expr{&ir.FuncCallExpr{
 								Callee: ir.NewFuncValExpr(
 									&ir.SelectorExpr{
-										X:    irh.ValueRef(typeA),
+										X:    irh.Ident(typeA),
 										Stor: fI,
 									},
 									fI),
@@ -133,7 +133,7 @@ func (b B) f() int32 {
 func TestMethodOnNamedTypes(t *testing.T) {
 	typeA := &ir.NamedType{
 		File:       wantFile,
-		Src:        &ast.TypeSpec{Name: irh.Ident("A")},
+		Src:        &ast.TypeSpec{Name: irh.IdentAST("A")},
 		Underlying: ir.TypeExpr(nil, ir.Int32Type()),
 	}
 	aRecv := irh.Fields("a", typeA)
@@ -148,7 +148,7 @@ func TestMethodOnNamedTypes(t *testing.T) {
 			&ir.ReturnStmt{
 				Results: []ir.Expr{&ir.CastExpr{
 					Typ: ir.Int32Type(),
-					X:   irh.ValueRef(aRecv.Fields()[0].Storage()),
+					X:   irh.Ident(aRecv.Fields()[0].Storage()),
 				}},
 			},
 		)}
@@ -181,13 +181,13 @@ func call() int32 {
 								X:   irh.IntNumberAs(2, typeA),
 								Typ: typeA,
 							},
-							Storage: &ir.LocalVarStorage{Src: irh.Ident("a"), Typ: typeA},
+							Storage: &ir.LocalVarStorage{Src: irh.IdentAST("a"), Typ: typeA},
 						}}},
 						&ir.ReturnStmt{
 							Results: []ir.Expr{&ir.FuncCallExpr{
 								Callee: ir.NewFuncValExpr(
 									&ir.SelectorExpr{
-										X:    irh.ValueRef(typeA),
+										X:    irh.Ident(typeA),
 										Stor: val,
 									},
 									val,

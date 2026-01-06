@@ -102,7 +102,7 @@ func (tt Infer) Run(b *testbuild.Builder) error {
 		return errors.Errorf("got %d function declarations but want only 1", len(funcs))
 	}
 	fn := funcs[0]
-	fnValRef := ir.NewFuncValExpr(&ir.ValueRef{Stor: fn}, fn)
+	fnValRef := ir.NewFuncValExpr(&ir.Ident{Stor: fn}, fn)
 	// Evaluates all calls.
 	errs := &fmterr.Errors{}
 	for i, call := range tt.Calls {

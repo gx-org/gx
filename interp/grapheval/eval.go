@@ -134,7 +134,7 @@ func (ev *Evaluator) outputNodesFromElements(file *ir.File, fType *ir.FuncType, 
 	if len(nodes) == 1 {
 		out := &ops.OutputNode{Node: nodes[0], Shape: shapes[0]}
 		return func(outputNode ops.Node) ([]ir.Element, error) {
-			expr := &ir.ValueRef{
+			expr := &ir.Ident{
 				Stor: &ir.FieldStorage{Field: results.Fields()[0]},
 			}
 			return ev.ao.ElementsFromNodes(file, expr, out)
@@ -142,7 +142,7 @@ func (ev *Evaluator) outputNodesFromElements(file *ir.File, fType *ir.FuncType, 
 	}
 	exprs := make([]ir.Expr, len(nodes))
 	for i := range nodes {
-		exprs[i] = &ir.ValueRef{
+		exprs[i] = &ir.Ident{
 			Stor: &ir.FieldStorage{Field: results.Fields()[0]},
 		}
 	}
@@ -198,7 +198,7 @@ func (ev *Evaluator) ElementFromTuple(file *ir.File, expr ir.Expr, tpl ops.Tuple
 	// Construct dummy expressions for all the fields of the structure to keep track of the value types.
 	fieldExprs := make([]ir.Expr, structTyp.NumFields())
 	for i, field := range structTyp.Fields.Fields() {
-		fieldExprs[i] = &ir.ValueRef{
+		fieldExprs[i] = &ir.Ident{
 			Src:  field.Name,
 			Stor: field.Storage(),
 		}

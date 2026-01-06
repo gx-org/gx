@@ -91,10 +91,10 @@ func TestCast(t *testing.T) {
 				X: &ir.ArrayLitExpr{
 					Typ: irh.ArrayType(ir.BoolType(), 2),
 					Elts: []ir.Expr{
-						&ir.ValueRef{
+						&ir.Ident{
 							Stor: ir.TrueStorage(),
 						},
-						&ir.ValueRef{
+						&ir.Ident{
 							Stor: ir.FalseStorage(),
 						},
 					},
@@ -141,7 +141,7 @@ func f() float32 {
 					),
 					Body: irh.SingleReturn(&ir.FuncCallExpr{
 						Args: []ir.Expr{&ir.CastExpr{
-							X:   irh.ValueRef(aVarDecl.Exprs[0]),
+							X:   irh.Ident(aVarDecl.Exprs[0]),
 							Typ: ir.Float32Type(),
 						}},
 						Callee: irh.FuncExpr(xFunc),

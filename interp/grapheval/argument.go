@@ -410,7 +410,7 @@ func (n *arrayArgument) materialise(mat materialise.Materialiser) (*BackendNode,
 	n.node, err = NewBackendNode(
 		mat.(*arrayOps).ev,
 		elements.NewExprAt(n.file,
-			&ir.ValueRef{Stor: &ir.LocalVarStorage{
+			&ir.Ident{Stor: &ir.LocalVarStorage{
 				Src: &ast.Ident{Name: n.Name()},
 				Typ: n.typ,
 			}},

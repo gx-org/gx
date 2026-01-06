@@ -84,7 +84,7 @@ func axesFromType(ev ir.Evaluator, typ ir.Type) (*elements.Slice, error) {
 
 // NewRuntimeValue creates a new runtime value given an expression in a file.
 func NewRuntimeValue(file *ir.File, store ir.Storage) (ir.Element, error) {
-	ref := &ir.ValueRef{Src: store.NameDef(), Stor: store}
+	ref := &ir.Ident{Src: store.NameDef(), Stor: store}
 	typ, ok := store.(ir.Type)
 	if !ok { // Check if storage is a type itself.
 		// If not, then get the type from the storage.

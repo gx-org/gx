@@ -25,7 +25,7 @@ import (
 func TestVars(t *testing.T) {
 	vrA := &ir.VarExpr{
 		Decl:  &ir.VarSpec{TypeV: ir.IntLenType()},
-		VName: irh.Ident("a"),
+		VName: irh.IdentAST("a"),
 	}
 	vrA.Decl.Exprs = append(vrA.Decl.Exprs, vrA)
 	testbuild.Run(t,
@@ -49,15 +49,15 @@ func f[T dtypes.Floats]([a]float32) [a]float32
 }
 
 func TestLocalVar(t *testing.T) {
-	aStorage1 := &ir.VarExpr{VName: irh.Ident("a")}
+	aStorage1 := &ir.VarExpr{VName: irh.IdentAST("a")}
 	aDeclSpec := &ir.VarSpec{
 		TypeV: ir.Int32Type(),
 		Exprs: []*ir.VarExpr{aStorage1},
 	}
 	aStorage1.Decl = aDeclSpec
 
-	aStorage2 := &ir.VarExpr{VName: irh.Ident("a")}
-	bStorage := &ir.VarExpr{VName: irh.Ident("b")}
+	aStorage2 := &ir.VarExpr{VName: irh.IdentAST("a")}
+	bStorage := &ir.VarExpr{VName: irh.IdentAST("b")}
 	abDeclSpec := &ir.VarSpec{
 		TypeV: ir.Int32Type(),
 		Exprs: []*ir.VarExpr{aStorage2, bStorage},
@@ -85,7 +85,7 @@ func F() int32 {
 							Decls: []*ir.VarSpec{aDeclSpec},
 						},
 						&ir.ReturnStmt{
-							Results: []ir.Expr{irh.ValueRef(aStorage1)},
+							Results: []ir.Expr{irh.Ident(aStorage1)},
 						},
 					),
 				},
@@ -110,7 +110,7 @@ func F() (int32, int32) {
 							Decls: []*ir.VarSpec{abDeclSpec},
 						},
 						&ir.ReturnStmt{
-							Results: []ir.Expr{irh.ValueRef(aStorage2), irh.ValueRef(bStorage)},
+							Results: []ir.Expr{irh.Ident(aStorage2), irh.Ident(bStorage)},
 						},
 					),
 				},

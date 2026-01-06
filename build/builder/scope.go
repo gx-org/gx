@@ -123,7 +123,7 @@ func elementFromStorage(scope resolveScope, node ir.Storage) (ir.Element, bool) 
 }
 
 func elementFromStorageWithValue(scope resolveScope, node ir.StorageWithValue) (ir.Element, bool) {
-	value := node.Value(&ir.ValueRef{
+	value := node.Value(&ir.Ident{
 		Src:  node.NameDef(),
 		Stor: node,
 	})

@@ -29,7 +29,7 @@ type (
 	}
 
 	identStorage struct {
-		target *valueRef
+		target *ident
 		tok    token.Token
 	}
 )
