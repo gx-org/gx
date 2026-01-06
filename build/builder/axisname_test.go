@@ -464,3 +464,33 @@ func f([___M]float32) [___M]float32
 		},
 	)
 }
+
+func TestAxisStatements(t *testing.T) {
+	testbuild.Run(t,
+		testbuild.Decl{
+			Src: `
+type floats interface {
+	float32 | float64
+}
+
+func g[T floats](x [___M]T) [M___]T
+
+func f[T floats]([___M]T) [M___]T
+
+func reverse[T floats](par [___M]T) ([M___]T, func(res [M___]T) [M___]T) {
+      fwd0 := f(par)
+      selfVJPFunc := func(res [M___]T) [M___]T {
+              return g(par)
+      }
+      return fwd0, selfVJPFunc
+}
+
+func Test() (float64, float64) {
+	y, vjp := reverse(0.8)
+	yprime := vjp(1.0)
+	return y, yprime
+}
+`,
+		},
+	)
+}

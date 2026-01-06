@@ -438,8 +438,10 @@ func axisExprFrom(rscope resolveScope, ax ir.AxisLengths) (*ir.AxisExpr, bool) {
 		return axisT, true
 	case *ir.AxisInfer:
 		return axisExprFrom(rscope, axisT.X)
+	case *ir.AxisStmt:
+		return &ir.AxisExpr{X: axisT.AsExpr()}, true
 	}
-	return nil, rscope.Err().AppendInternalf(ax.Node(), "unknown axis length type: %T", ax)
+	return nil, rscope.Err().AppendInternalf(ax.Node(), "unknown axis length type: %T:%s", ax, ax.String())
 }
 
 func axisValuesFromArgumentValue(rscope resolveScope, compEval *compileEvaluator, src *ir.Field, val ir.Element) ([]ir.Element, bool) {
@@ -505,15 +507,16 @@ func assignArgValueToName(rscope resolveScope, compEval *compileEvaluator, param
 		return ok
 	}
 	for _, axis := range paramArrayType.Rank().Axes() {
-		axExpr, ok := axisExprFrom(rscope, axis)
-		if !ok {
+		axExpr, axisOk := axisExprFrom(rscope, axis)
+		if !axisOk {
+			ok = false
 			continue
 		}
-		ident, ok := axExpr.X.(*ir.ValueRef)
-		if !ok {
+		ident, isValueRef := axExpr.X.(*ir.ValueRef)
+		if !isValueRef {
 			continue
 		}
-		if _, ok := ident.Stor.(*ir.AxisStmt); !ok {
+		if _, isAxisStmt := ident.Stor.(*ir.AxisStmt); !isAxisStmt {
 			continue
 		}
 		var buildAxisValue func(resolveScope, ir.Expr, []ir.Element) (ir.Element, []ir.Element)
