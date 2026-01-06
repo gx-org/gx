@@ -494,3 +494,22 @@ func Test() (float64, float64) {
 		},
 	)
 }
+
+func TestAxisNameWithBuiltin(t *testing.T) {
+	testbuild.Run(t,
+		testbuild.Decl{
+			Src: `
+type floats interface {
+	float32 | float64
+}
+
+func f[T floats]([___M]T) [M___]T
+
+func Test() float64 {
+	trace(f)
+	return 0
+}
+`,
+		},
+	)
+}

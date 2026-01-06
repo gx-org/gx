@@ -38,17 +38,22 @@ func (*traceFunc) Name() string {
 
 // BuildFuncType builds the type of a function given how it is called.
 func (f *traceFunc) BuildFuncType(fetcher ir.Fetcher, call *ir.FuncCallExpr) (*ir.FuncType, error) {
-	params := make([]ir.Type, len(call.Args))
-	for i, arg := range call.Args {
-		params[i] = arg.Type()
-	}
-	return &ir.FuncType{
+	ftype := &ir.FuncType{
 		BaseType: ir.BaseType[*ast.FuncType]{
 			Src: &ast.FuncType{Func: call.Src.Pos()},
 		},
-		Params:  builtins.Fields(call, params...),
-		Results: builtins.Fields(call),
-	}, nil
+	}
+	params := make([]ir.Type, len(call.Args))
+	for i, arg := range call.Args {
+		params[i] = arg.Type()
+		argFType, isFuncType := ir.Underlying(params[i]).(*ir.FuncType)
+		if !isFuncType {
+			continue
+		}
+		ftype.AxisLengths = append(ftype.AxisLengths, argFType.AxisLengths...)
+	}
+	ftype.Params = builtins.Fields(call, params...)
+	return ftype, nil
 }
 
 // BuildFuncType builds the type of a function given how it is called.

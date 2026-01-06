@@ -551,22 +551,17 @@ func assignArgValueToParamName(rscope resolveScope, fExpr *ir.FuncValExpr, args 
 	return params, true
 }
 
-func checkArgsForCall(rscope resolveScope, fExpr *ir.FuncValExpr, args []ir.Expr) bool {
+func checkArgsForCall(ce *compileEvaluator, fExpr *ir.FuncValExpr, args []ir.Expr) bool {
 	ok := true
 	wants := fExpr.FuncType().Params.Fields()
-	compEval, compEvalOk := rscope.compEval()
-	if !compEvalOk {
-		return false
-	}
 	for i, arg := range args {
 		param := wants[i]
-		assignable, err := ir.AssignableTo(compEval, arg.Type(), param.Type())
+		assignable, err := ir.AssignableTo(ce, arg.Type(), param.Type())
 		if err != nil {
-			return rscope.Err().AppendAt(arg.Node(), err)
+			return ce.Err().AppendAt(arg.Node(), err)
 		}
 		if !assignable {
-			rscope.Err().Appendf(arg.Node(), "cannot use type %s as %s in argument to %s", arg.Type().String(), param.Type().String(), fExpr.Func().ShortString())
-			ok = false
+			ok = ce.Err().Appendf(arg.Node(), "cannot use type %s as %s in argument to %s", arg.Type().String(), param.Type().String(), fExpr.Func().ShortString())
 		}
 	}
 	return ok
@@ -610,7 +605,7 @@ func buildFuncForCall(rscope resolveScope, fExpr *ir.FuncValExpr, args []ir.Expr
 		return args, fExpr, rscope.Err().AppendAt(fExpr.Node(), err)
 	}
 	fExprInst := fExpr.NewFType(fTypeInst)
-	return args, fExprInst, ok && checkArgsForCall(rscope, fExprInst, args)
+	return args, fExprInst, ok && checkArgsForCall(ce, fExprInst, args)
 }
 
 func funcDeclarator(fn ir.PkgFunc) irb.Declarator {

@@ -15,6 +15,7 @@
 package ir
 
 import (
+	"fmt"
 	"go/ast"
 	"slices"
 
@@ -150,7 +151,7 @@ func (s *FuncType) SpecialiseFType(spec Specialiser) (*FuncType, error) {
 		group: func(grp *FieldGroup) (*FieldGroup, error) {
 			specType, err := grp.Type.Val().Specialise(spec)
 			if err != nil {
-				return nil, err
+				return nil, fmt.Errorf("cannot specialise %s: %v", s.String(), err)
 			}
 			return &FieldGroup{
 				Src: grp.Src,
