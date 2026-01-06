@@ -1,8 +1,10 @@
 // Source: Go src/math/const.go
 package math
 
-import "dtype"
-import "math/grad"
+import (
+	"dtype"
+	"math/grad"
+)
 
 // Mathematical constants.
 const (
@@ -50,15 +52,24 @@ func Ceil[T dtype.Num]([___M]T) [M___]T
 func Cos[T dtype.Num]([___M]T) [M___]T
 func Erf[T dtype.Num]([___M]T) [M___]T
 func Expm1[T dtype.Num]([___M]T) [M___]T
+
 // gx:@grad.Set(Exp)
 func Exp[T dtype.Num]([___M]T) [M___]T
 func Floor[T dtype.Num]([___M]T) [M___]T
 func Log1p[T dtype.Num]([___M]T) [M___]T
 func Logistic[T dtype.Num]([___M]T) [M___]T
+
+func inverse[T dtype.Num](x [___M]T) [M___]T {
+	return 1 / x
+}
+
+// gx:@grad.Set(inverse)
 func Log[T dtype.Num]([___M]T) [M___]T
+
 func Round[T dtype.Num]([___M]T) [M___]T
 func Rsqrt[T dtype.Num]([___M]T) [M___]T
 func Sign[T dtype.Num]([___M]T) [M___]T
+
 // gx:@grad.Set(Cos)
 func Sin[T dtype.Num]([___M]T) [M___]T
 func Sqrt[T dtype.Num]([___M]T) [M___]T

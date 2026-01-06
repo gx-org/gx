@@ -112,3 +112,22 @@ func TestArrayLiteral() ([3][2]float32, float32) {
 	// 1: float32(21)
 }
 
+func TestVJPLog() (float64, float64) {
+	vjp := grad.VJP(math.Log)
+	trace(vjp)
+	y, bck := vjp(0.8)
+	return y, bck(0.4)
+	// Want:
+	// 0: float64(-0.2231435513)
+	// 1: float64(0.5)
+	// Trace:
+	// vjp_test.gx:0
+	// 	func[T dtype.Num](par [___M]T) ([M___]T, func(res [M___]T) [M___]T) {
+	// 		fwd0 := Log[T](par)
+	// 		selfVJPFunc := func(res [M___]T) [M___]T {
+	// 			return res*inverse[T](par)
+	// 		}
+	// 		return fwd0, selfVJPFunc
+	// 	}
+}
+
