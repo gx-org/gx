@@ -131,7 +131,7 @@ func axlengthsImpl(env evaluator.Env, call elements.CallAt, fn fun.Func, irFunc 
 	}
 	shape, err := array.Axes(env.ExprEval())
 	if err != nil {
-		return nil, fmterr.AtNode(file.FileSet(), call.Node().Src, err)
+		return nil, fmterr.Error(file.FileSet(), call.Node().Src, err)
 	}
 	return []ir.Element{shape}, nil
 }

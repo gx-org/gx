@@ -47,7 +47,7 @@ var (
 func newUnary(env evaluator.Env, expr *ir.UnaryExpr, xEl Element) (_ *unary, err error) {
 	defer func() {
 		if err != nil {
-			err = fmterr.AtNode(env.File().FileSet(), expr.Src, err)
+			err = fmterr.Error(env.File().FileSet(), expr.Src, err)
 		}
 	}()
 	opEl := &unary{

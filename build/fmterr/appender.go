@@ -49,17 +49,17 @@ func (app *Appender) Pop() {
 
 // AppendAt appends an existing error at a given position.
 func (app *Appender) AppendAt(node ast.Node, err error) bool {
-	return app.Append(app.fset.Position(node, err))
+	return app.Append(app.fset.Pos(node).Error(err))
 }
 
 // Appendf appends an error at a position.
 func (app *Appender) Appendf(node ast.Node, format string, a ...any) bool {
-	return app.Append(app.fset.Errorf(node, format, a...))
+	return app.Append(app.fset.Pos(node).Errorf(format, a...))
 }
 
 // AppendInternalf appends an internal error at a position.
 func (app *Appender) AppendInternalf(node ast.Node, format string, a ...any) bool {
-	return app.Append(Internal(app.fset.Errorf(node, format, a...)))
+	return app.Append(Internal(app.fset.Pos(node).Errorf(format, a...)))
 }
 
 // FSet returns the error fileset formatter.

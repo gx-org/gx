@@ -161,7 +161,7 @@ type funcBuiltin struct {
 func (f *funcBuiltin) Call(env *fun.CallEnv, call *ir.FuncCallExpr, args []ir.Element) (outs []ir.Element, err error) {
 	defer func() {
 		if err != nil {
-			err = fmterr.AtNode(env.File().FileSet(), call.Expr(), err)
+			err = fmterr.Error(env.File().FileSet(), call.Expr(), err)
 		}
 	}()
 	impl, err := f.toFuncBuiltin(f.fnT.Impl)
@@ -179,7 +179,7 @@ type funcKeyword struct {
 func (f *funcKeyword) Call(env *fun.CallEnv, call *ir.FuncCallExpr, args []ir.Element) (outs []ir.Element, err error) {
 	defer func() {
 		if err != nil {
-			err = fmterr.AtNode(env.File().FileSet(), call.Expr(), err)
+			err = fmterr.Error(env.File().FileSet(), call.Expr(), err)
 		}
 	}()
 	impl, err := f.toFuncBuiltin(f.fnT.Impl)
@@ -197,7 +197,7 @@ type funcMacro struct {
 func (f *funcMacro) Call(env *fun.CallEnv, call *ir.FuncCallExpr, args []ir.Element) (outs []ir.Element, err error) {
 	defer func() {
 		if err != nil {
-			err = fmterr.AtNode(env.File().FileSet(), call.Expr(), err)
+			err = fmterr.Error(env.File().FileSet(), call.Expr(), err)
 		}
 	}()
 	synth, err := f.fnT.BuildSynthetic(env.File(), call, f.fnT, args)

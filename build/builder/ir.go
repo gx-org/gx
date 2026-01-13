@@ -287,7 +287,7 @@ func appendRedeclaredError(errF *fmterr.Appender, name string, cur ast.Node, pre
 		cur,
 		"%s redeclared in this block\n\t%s: other declaration of %s",
 		name,
-		fmterr.PosString(errF.FSet().FSet, prev.Pos()),
+		fmterr.At(errF.FSet().FSet, prev),
 		name,
 	)
 }

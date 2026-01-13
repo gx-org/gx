@@ -134,7 +134,7 @@ func funcPos(scope *fileResolveScope, fn function) string {
 	if !ok {
 		return "as a builtin"
 	}
-	return fmterr.PosString(scope.Err().FSet().FSet, fnPos.source().Pos())
+	return fmterr.At(scope.Err().FSet().FSet, fnPos.source()).String()
 }
 
 func (n *namedType) String() string {

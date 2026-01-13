@@ -191,7 +191,7 @@ func (n *callExpr) buildMacroCall(rscope resolveScope, compEval *compileEvaluato
 	if !ok {
 		return invalidExpr(), rscope.Err().Appendf(n.source(), "macro %s does not build functions", mac.ShortString())
 	}
-	rscope.Err().Push(fmterr.PosPrefixWith(rscope.fileScope().pkg().fset, callExpr.Src.Fun.Pos(), func() string {
+	rscope.Err().Push(fmterr.PosPrefixWith(rscope.fileScope().pkg().fset, callExpr.Src.Fun, func() string {
 		return fmt.Sprintf("error while calling macro %s:\n", callExpr.String())
 	}))
 	defer rscope.Err().Pop()
