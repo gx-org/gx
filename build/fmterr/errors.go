@@ -82,7 +82,7 @@ func (errs *Errors) Error() string {
 	if len(errs.errs) > 0 {
 		ss = []string{""}
 	}
-	for _, err := range errs.errs {
+	for _, err := range errs.Errors() {
 		ss = append(ss, err.Error())
 	}
 	return strings.Join(ss, "\n")
@@ -133,8 +133,8 @@ func (errs *Errors) Format(s fmt.State, verb rune) {
 	if s.Flag('+') {
 		flag = "+"
 	}
+	format := fmt.Sprintf("%%%s%s\n", flag, string(verb))
 	for _, e := range errs.errs {
-		format := fmt.Sprintf("%%%s%s\n", flag, string(verb))
 		fmt.Fprintf(s, format, e)
 	}
 }

@@ -127,13 +127,16 @@ func elementFromStorageWithValue(scope resolveScope, node ir.StorageWithValue) (
 		Src:  node.NameDef(),
 		Stor: node,
 	})
+	if ir.IsInvalidType(value.Type()) {
+		return elementFromStorage(scope, node)
+	}
 	ev, ok := scope.compEval()
 	if !ok {
 		return nil, false
 	}
 	el, err := ev.fitp.EvalExpr(value)
 	if err != nil {
-		return nil, ev.scope.Err().Appendf(node.Node(), "cannot evaluate expression %s. Original error:\n%+v", value.String(), err)
+		return nil, ev.scope.Err().AppendAt(node.Node(), err)
 	}
 	return cpevelements.NewStoredValue(ev.File(), node, el), true
 }
