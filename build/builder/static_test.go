@@ -26,7 +26,7 @@ func TestStaticVar(t *testing.T) {
 	aVarDecl := irh.VarSpec("a")
 	int32ArrayType := irh.ArrayType(
 		ir.Int32Type(),
-		&ir.AxisExpr{X: irh.ValueRef(aVarDecl.Exprs[0])},
+		&ir.AxisExpr{X: irh.Ident(aVarDecl.Exprs[0])},
 	)
 	xField := irh.Field("x", int32ArrayType, nil)
 	testbuild.Run(t,
@@ -69,7 +69,7 @@ func f(x [a]int32) [a]int32 {
 						irh.Fields(int32ArrayType),
 					),
 					Body: irh.SingleReturn(
-						irh.ValueRef(xField.Storage()),
+						irh.Ident(xField.Storage()),
 					),
 				},
 			},

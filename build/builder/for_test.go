@@ -59,15 +59,15 @@ func f() int32 {
 						}},
 						&ir.RangeStmt{
 							Key: iStorage,
-							X:   irh.ValueRef(lVarDecl.Exprs[0]),
+							X:   irh.Ident(lVarDecl.Exprs[0]),
 							Body: irh.Block(
 								&ir.AssignExprStmt{List: []*ir.AssignExpr{
 									&ir.AssignExpr{
 										Storage: xStorage,
 										X: &ir.BinaryExpr{
-											X: irh.ValueRef(xAssign),
+											X: irh.Ident(xAssign),
 											Y: &ir.CastExpr{
-												X:   irh.ValueRef(iStorage),
+												X:   irh.Ident(iStorage),
 												Typ: ir.Int32Type(),
 											},
 											Typ: ir.Int32Type(),
@@ -75,7 +75,7 @@ func f() int32 {
 									}}}),
 						},
 						&ir.ReturnStmt{Results: []ir.Expr{
-							irh.ValueRef(xAssign),
+							irh.Ident(xAssign),
 						}},
 					),
 				},

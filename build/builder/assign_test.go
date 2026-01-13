@@ -41,7 +41,7 @@ func TestAssign(t *testing.T) {
 	cStorage := irh.LocalVar("c", ir.Float32Type())
 	dStorage := irh.LocalVar("d", ir.Float32Type())
 	assign := &ir.FuncDecl{
-		Src: &ast.FuncDecl{Name: irh.Ident("assign")},
+		Src: &ast.FuncDecl{Name: irh.IdentAST("assign")},
 		FType: irh.FuncType(
 			nil, nil,
 			irh.Fields(),
@@ -53,8 +53,8 @@ func TestAssign(t *testing.T) {
 			}},
 			&ir.ReturnStmt{
 				Results: []ir.Expr{
-					irh.ValueRef(aStorage),
-					irh.ValueRef(bStorage),
+					irh.Ident(aStorage),
+					irh.Ident(bStorage),
 				},
 			},
 		)}
@@ -111,8 +111,8 @@ func callAssign() (float32, float32) {
 						},
 						&ir.ReturnStmt{
 							Results: []ir.Expr{
-								irh.ValueRef(cAssignment),
-								irh.ValueRef(dAssignment),
+								irh.Ident(cAssignment),
+								irh.Ident(dAssignment),
 							},
 						},
 					)},

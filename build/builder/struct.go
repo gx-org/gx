@@ -52,7 +52,7 @@ func (n *structType) assign(block procScope, fld *field) bool {
 			fld.src,
 			"%s redeclared in this block\n\t%s: other declaration of %s",
 			name,
-			fmterr.PosString(block.Err().FSet().FSet, prev.src.Pos()),
+			fmterr.At(block.Err().FSet().FSet, prev.src),
 			name,
 		)
 		return false
@@ -122,7 +122,7 @@ func processCompositeLitStruct(pscope procScope, src *ast.CompositeLit, typeExpr
 					field.ident,
 					"%s redefined in this literal\n\t%s: other declaration of %s",
 					field.ident.Name,
-					fmterr.PosString(pscope.Err().FSet().FSet, prev.ident.Pos()),
+					fmterr.At(pscope.Err().FSet().FSet, prev.ident).String(),
 					field.ident.Name,
 				)
 				continue

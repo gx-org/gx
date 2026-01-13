@@ -20,6 +20,6 @@ import (
 )
 
 var (
-	wantPackage = &ir.Package{Name: irhelper.Ident("test")}
+	wantPackage = &ir.Package{Name: irhelper.IdentAST("test")}
 	wantFile    = &ir.File{Package: wantPackage}
 )

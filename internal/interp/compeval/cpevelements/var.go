@@ -104,7 +104,7 @@ func (a *variable) Compare(x canonical.Comparable) (bool, error) {
 
 // Expr returns the IR expression represented by the variable.
 func (a *variable) Expr() (ir.Expr, error) {
-	return &ir.ValueRef{
+	return &ir.Ident{
 		Src: &ast.Ident{
 			Name: a.name,
 		},

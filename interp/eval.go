@@ -128,7 +128,7 @@ func evalRangeStmtForLoopOverArray[T dtype.AlgebraType](fitp *FileScope, stmt *i
 	}
 	arrayShape, err := elements.ShapeFromElement(value)
 	if err != nil {
-		return nil, false, fmterr.AtNode(fitp.File().FileSet(), stmt.Node(), err)
+		return nil, false, fmterr.Error(fitp.File().FileSet(), stmt.Node(), err)
 	}
 	for i := 0; i < arrayShape.AxisLengths[0]; i++ {
 		iExpr := &ir.AtomicValueT[T]{
@@ -293,7 +293,7 @@ func evalReturnStmt(fitp *FileScope, ret *ir.ReturnStmt) ([]ir.Element, bool, er
 func evalCastToScalarExpr(fitp *FileScope, expr ir.TypeCastExpr, x evaluator.NumericalElement, targetType ir.ArrayType) (ir.Element, error) {
 	xShape, err := elements.ShapeFromElement(x)
 	if err != nil {
-		return nil, fmterr.AtNode(fitp.File().FileSet(), expr.Node(), err)
+		return nil, fmterr.Error(fitp.File().FileSet(), expr.Node(), err)
 	}
 	if len(xShape.AxisLengths) > 0 {
 		return x.Reshape(fitp.env, expr, nil)
@@ -358,7 +358,7 @@ func evalCastToArrayExpr(fitp *FileScope, expr ir.TypeCastExpr, x evaluator.Nume
 	}
 	reshape, err := x.Reshape(fitp.env, expr, axes)
 	if err != nil {
-		return nil, fmterr.AtNode(fitp.File().FileSet(), expr.Node(), err)
+		return nil, fmterr.Error(fitp.File().FileSet(), expr.Node(), err)
 	}
 	sourceType, ok := origType.(ir.ArrayType)
 	if !ok {
@@ -484,8 +484,8 @@ func evalExpr(fitp *FileScope, expr ir.Expr) (ir.Element, error) {
 		return evalExpr(fitp, exprT.X)
 	case *ir.BinaryExpr:
 		return evalBinaryExpression(fitp, exprT)
-	case *ir.ValueRef:
-		return evalValueRef(fitp, exprT)
+	case *ir.Ident:
+		return evalIdent(fitp, exprT)
 	case *ir.SelectorExpr:
 		return evalSelectorExpr(fitp, exprT)
 	case *ir.FuncLit:
@@ -523,7 +523,7 @@ func evalFuncValExpr(fitp *FileScope, expr *ir.FuncValExpr) (ir.Element, error) 
 	return fitp.NewFunc(expr.Func(), nil), nil
 }
 
-func evalValueRef(fitp *FileScope, ref *ir.ValueRef) (ir.Element, error) {
+func evalIdent(fitp *FileScope, ref *ir.Ident) (ir.Element, error) {
 	if ref.Src == nil {
 		return ref.Stor, nil
 	}

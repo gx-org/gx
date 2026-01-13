@@ -15,23 +15,16 @@
 package fmterr
 
 import (
+	"fmt"
 	"go/ast"
 	"go/token"
+
+	"github.com/pkg/errors"
 )
 
 // FileSet builds errors formatted for a given file set.
 type FileSet struct {
 	FSet *token.FileSet
-}
-
-// Errorf returns a formatted compiler error for the user.
-func (f FileSet) Errorf(node ast.Node, format string, a ...any) error {
-	return Errorf(f.FSet, node, format, a...)
-}
-
-// Position positions an error in GX.
-func (f FileSet) Position(node ast.Node, err error) error {
-	return AtPos(f.FSet, node.Pos(), err)
 }
 
 // Pos returns a formatter with a fileset and a position as a context.
@@ -45,7 +38,31 @@ type Pos struct {
 	Node ast.Node
 }
 
+// At returns a position given the file set and node.
+func At(fset *token.FileSet, node ast.Node) Pos {
+	return Pos{FileSet: FileSet{FSet: fset}, Node: node}
+}
+
+// Error returns a new error at the position.
+func (f Pos) Error(err error) ErrorWithPos {
+	return errorWithPos{
+		pos: f,
+		err: err,
+	}
+}
+
+// Position positions an error in GX.
+func (f Pos) Position() token.Position {
+	return f.FSet.Position(f.Node.Pos())
+}
+
 // Errorf returns a formatted compiler error for the user.
 func (f Pos) Errorf(format string, a ...any) error {
-	return f.FileSet.Errorf(f.Node, format, a...)
+	return f.Error(errors.Errorf(format, a...))
+}
+
+// PosString returns a position as a string that can be used for an error.
+func (f Pos) String() string {
+	pos := f.Position()
+	return fmt.Sprintf("%s:%d:%d", pos.Filename, pos.Line, pos.Column)
 }

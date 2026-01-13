@@ -42,8 +42,8 @@ func (p *processor) processExpr(isrc ir.Expr) (expr, bool) {
 		return p.processBinaryExpr(isrcT)
 	case *ir.NumberCastExpr:
 		return p.processNumberCastExpr(isrcT)
-	case *ir.ValueRef:
-		return p.processValueRef(isrcT)
+	case *ir.Ident:
+		return p.processIdent(isrcT)
 	case *ir.FuncCallExpr:
 		return p.processFuncCallExpr(isrcT)
 	case *ir.ParenExpr:
@@ -332,25 +332,25 @@ func (n *fieldRef) buildBackward(bckstmts *astOutWRT, bck *special.Expr) (*speci
 	return special.ZeroExpr(), true
 }
 
-type valueRef struct {
-	node[*ir.ValueRef]
+type ident struct {
+	node[*ir.Ident]
 
 	fwd expr
 }
 
-func (p *processor) processValueRef(isrc *ir.ValueRef) (expr, bool) {
+func (p *processor) processIdent(isrc *ir.Ident) (expr, bool) {
 	fieldStorage, isField := isrc.Stor.(*ir.FieldStorage)
 	if isField {
 		return &fieldRef{
 			node: newNodeNoID[*ir.FieldStorage](p, fieldStorage),
 		}, true
 	}
-	return &valueRef{
-		node: newNodeNoID[*ir.ValueRef](p, isrc),
+	return &ident{
+		node: newNodeNoID[*ir.Ident](p, isrc),
 	}, true
 }
 
-func (n *valueRef) buildForward(astmts *fwdStmts) ([]ast.Expr, bool) {
+func (n *ident) buildForward(astmts *fwdStmts) ([]ast.Expr, bool) {
 	var ok bool
 	n.fwd, ok = astmts.idents.Find(n.irnode.Src.Name)
 	if !ok {
@@ -359,11 +359,11 @@ func (n *valueRef) buildForward(astmts *fwdStmts) ([]ast.Expr, bool) {
 	return n.fwd.buildForward(astmts)
 }
 
-func (n *valueRef) forwardValue() (*special.Expr, bool) {
+func (n *ident) forwardValue() (*special.Expr, bool) {
 	return n.fwd.forwardValue()
 }
 
-func (n *valueRef) buildBackward(bckstmts *astOutWRT, bck *special.Expr) (*special.Expr, bool) {
+func (n *ident) buildBackward(bckstmts *astOutWRT, bck *special.Expr) (*special.Expr, bool) {
 	bckExpr, ok := n.fwd.buildBackward(bckstmts, bck)
 	if !ok {
 		return nil, false

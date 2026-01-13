@@ -31,7 +31,7 @@ func TestNamedTypes(t *testing.T) {
 		testbuild.Decl{
 			Src: `type A intlen`,
 			Want: []ir.IR{&ir.NamedType{
-				Src:        &ast.TypeSpec{Name: irh.Ident("A")},
+				Src:        &ast.TypeSpec{Name: irh.IdentAST("A")},
 				Underlying: ir.TypeExpr(nil, ir.IntLenType()),
 			}},
 		},
@@ -40,7 +40,7 @@ func TestNamedTypes(t *testing.T) {
 				float32 | float64
 			}`,
 			Want: []ir.IR{&ir.NamedType{
-				Src: &ast.TypeSpec{Name: irh.Ident("B")},
+				Src: &ast.TypeSpec{Name: irh.IdentAST("B")},
 				Underlying: ir.TypeExpr(nil, irh.TypeSet(
 					ir.Float32Type(),
 					ir.Float64Type(),
@@ -53,7 +53,7 @@ func TestNamedTypes(t *testing.T) {
 				c float64
 			}`,
 			Want: []ir.IR{&ir.NamedType{
-				Src: &ast.TypeSpec{Name: irh.Ident("A")},
+				Src: &ast.TypeSpec{Name: irh.IdentAST("A")},
 				Underlying: ir.TypeExpr(nil, irh.StructType(
 					aField, bField, cField,
 				))}},
@@ -61,7 +61,7 @@ func TestNamedTypes(t *testing.T) {
 		testbuild.Decl{
 			Src: `type A [2][3]float32`,
 			Want: []ir.IR{&ir.NamedType{
-				Src: &ast.TypeSpec{Name: irh.Ident("A")},
+				Src: &ast.TypeSpec{Name: irh.IdentAST("A")},
 				Underlying: ir.TypeExpr(nil, irh.ArrayType(
 					ir.Float32Type(),
 					irh.IntNumberAs(2, ir.IntLenType()),
@@ -81,7 +81,7 @@ func (x matrix) top() [3]float32 {
 	)
 	typeA := &ir.NamedType{
 		File:       wantFile,
-		Src:        &ast.TypeSpec{Name: irh.Ident("A")},
+		Src:        &ast.TypeSpec{Name: irh.IdentAST("A")},
 		Underlying: ir.TypeExpr(nil, ir.Float32Type()),
 	}
 	testbuild.Run(t,

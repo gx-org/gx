@@ -129,10 +129,10 @@ func newRank(exprs ...ir.Expr) *ir.Rank {
 	return &ir.Rank{Ax: axes}
 }
 
-func newSymbol(name string) *ir.ValueRef {
+func newSymbol(name string) *ir.Ident {
 	vr := irhelper.LocalVar(name, ir.IntLenType())
 	symbolicAxisNames[name] = true
-	return irhelper.ValueRef(vr)
+	return irhelper.Ident(vr)
 }
 
 func declareVariable(file *ir.File, name string, opts []options.PackageOption) []options.PackageOption {
@@ -160,7 +160,7 @@ func makeArrayTypes(types []ir.Type, ranker rankFunc) []ir.Type {
 
 func makeNamedType(typ ir.Type) *ir.NamedType {
 	return &ir.NamedType{
-		Src:        &ast.TypeSpec{Name: irhelper.Ident("named_" + typ.String())},
+		Src:        &ast.TypeSpec{Name: irhelper.IdentAST("named_" + typ.String())},
 		File:       testFile,
 		Underlying: ir.TypeExpr(nil, typ),
 		Methods:    []ir.PkgFunc{},

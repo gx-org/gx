@@ -18,7 +18,6 @@ import (
 	"go/ast"
 	"go/token"
 
-	"github.com/pkg/errors"
 	"github.com/gx-org/gx/build/fmterr"
 	"github.com/gx-org/gx/build/ir"
 	"github.com/gx-org/gx/build/ir/irkind"
@@ -84,7 +83,7 @@ func (n *blockStmt) buildBlockStmt(parentScope fnResolveScope) (*ir.BlockStmt, b
 func buildFuncBody(scope fnResolveScope, body *blockStmt) (*ir.BlockStmt, bool) {
 	irBody, stop, ok := body.buildBlockStmt(scope)
 	if !stop && scope.funcType().Results.Len() > 0 {
-		ok = scope.Err().Append(fmterr.AtPos(scope.Err().FSet().FSet, body.src.End(), errors.Errorf("missing return")))
+		ok = scope.Err().Append(fmterr.Errorf(scope.Err().FSet().FSet, body.src, "missing return"))
 	}
 	return irBody, ok
 }

@@ -28,38 +28,28 @@ type (
 	ErrorWithPos interface {
 		error
 		FSet() *token.FileSet
-		Pos() token.Pos
+		Pos() Pos
 		Err() error
 	}
 
 	errorWithPos struct {
-		fset *token.FileSet
-		pos  token.Pos
-		err  error
+		pos Pos
+		err error
 	}
 )
 
-// AtPos adds GX position information to an error.
-func AtPos(fset *token.FileSet, pos token.Pos, err error) ErrorWithPos {
-	errT, isWithPos := err.(ErrorWithPos)
-	if isWithPos {
-		return errT
+// Error returns an error at a given position.
+func Error(fset *token.FileSet, node ast.Node, err error) ErrorWithPos {
+	var errPos ErrorWithPos
+	if errors.As(err, &errPos) {
+		return errPos
 	}
-	return errorWithPos{
-		fset: fset,
-		pos:  pos,
-		err:  err,
-	}
-}
-
-// AtNode returns an error at a given position.
-func AtNode(fset *token.FileSet, src ast.Node, err error) ErrorWithPos {
-	return AtPos(fset, src.Pos(), err)
+	return At(fset, node).Error(err)
 }
 
 // Errorf returns a formatted compiler error for the user.
 func Errorf(fset *token.FileSet, src ast.Node, format string, a ...any) ErrorWithPos {
-	return AtNode(fset, src, errors.Errorf(format, a...))
+	return Error(fset, src, errors.Errorf(format, a...))
 }
 
 // Internal marks an error as internal, potentially adding additional information.
@@ -82,13 +72,13 @@ func (err errorWithPos) Error() (s string) {
 		}
 		s = fmt.Sprintf("recovered from panic when building error message: %T:\n%v", err.err, string(debug.Stack()))
 	}()
-	if err.fset == nil {
+	if err.FSet() == nil {
 		return err.err.Error()
 	}
-	return PosString(err.fset, err.pos) + " " + err.err.Error()
+	return err.pos.String() + " " + err.err.Error()
 }
 
-func (err errorWithPos) Pos() token.Pos {
+func (err errorWithPos) Pos() Pos {
 	return err.pos
 }
 
@@ -103,14 +93,9 @@ func (err errorWithPos) Format(s fmt.State, verb rune) {
 }
 
 func (err errorWithPos) FSet() *token.FileSet {
-	return err.fset
+	return err.pos.FileSet.FSet
 }
 
 func (err errorWithPos) Err() error {
 	return err.err
-}
-
-// PosString returns a position as a string that can be used for an error.
-func PosString(fset *token.FileSet, pos token.Pos) string {
-	return fset.Position(pos).String() + ":"
 }

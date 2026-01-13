@@ -110,9 +110,9 @@ func binaryExpr(op token.Token, x, y ir.Expr) *ir.BinaryExpr {
 	}
 }
 
-func valueRef(name string) *ir.ValueRef {
+func ident(name string) *ir.Ident {
 	store := irhelper.LocalVar(name, exprType)
-	return &ir.ValueRef{
+	return &ir.Ident{
 		Src:  &ast.Ident{Name: name},
 		Stor: store,
 	}
@@ -182,28 +182,28 @@ func TestExprEval(t *testing.T) {
 		},
 		{
 			desc: "static variable",
-			expr: valueRef("a"),
+			expr: ident("a"),
 			want: "a",
 		},
 		{
 			desc: "unary static variable",
 			expr: unaryExpr(token.SUB,
-				valueRef("a"),
+				ident("a"),
 			),
 			want: "-a",
 		},
 		{
 			desc: "binary static variable",
 			expr: binaryExpr(token.SUB,
-				valueRef("a"),
-				valueRef("a"),
+				ident("a"),
+				ident("a"),
 			),
 			want: "a-a",
 		},
 		{
 			desc: "binary static variable, int32",
 			expr: binaryExpr(token.SUB,
-				valueRef("a"),
+				ident("a"),
 				numberInt32(4),
 			),
 			want: "a-int32(4)",
@@ -212,7 +212,7 @@ func TestExprEval(t *testing.T) {
 			desc: "binary int32, static variable",
 			expr: binaryExpr(token.SUB,
 				numberInt32(4),
-				valueRef("a"),
+				ident("a"),
 			),
 			want: "int32(4)-a",
 		},
@@ -220,7 +220,7 @@ func TestExprEval(t *testing.T) {
 			desc: "binary int32, unary static variable",
 			expr: binaryExpr(token.SUB,
 				numberInt32(4),
-				unaryExpr(token.SUB, valueRef("a")),
+				unaryExpr(token.SUB, ident("a")),
 			),
 			want: "int32(4)-(-a)",
 		},
@@ -228,7 +228,7 @@ func TestExprEval(t *testing.T) {
 			desc: "binary unary int32, static variable",
 			expr: binaryExpr(token.SUB,
 				unaryExpr(token.SUB, numberInt32(4)),
-				valueRef("a"),
+				ident("a"),
 			),
 			want: "int32(-4)-a",
 		},
@@ -261,8 +261,8 @@ func TestExprEval(t *testing.T) {
 		{
 			desc: "binary binary no number",
 			expr: binaryExpr(token.SUB,
-				binaryExpr(token.ADD, valueRef("a"), valueRef("a")),
-				binaryExpr(token.ADD, valueRef("a"), valueRef("a")),
+				binaryExpr(token.ADD, ident("a"), ident("a")),
+				binaryExpr(token.ADD, ident("a"), ident("a")),
 			),
 			want: "(a+a)-(a+a)",
 		},
@@ -364,47 +364,47 @@ func TestExprEvalAndCompare(t *testing.T) {
 		},
 		{
 			desc:  "static variable",
-			x:     valueRef("a"),
-			is:    valueRef("a"),
-			isNot: valueRef("b"),
+			x:     ident("a"),
+			is:    ident("a"),
+			isNot: ident("b"),
 		},
 		{
 			desc: "unary static variable",
 			x: unaryExpr(token.SUB,
-				valueRef("a"),
+				ident("a"),
 			),
 			is: unaryExpr(token.SUB,
-				valueRef("a"),
+				ident("a"),
 			),
 			isNot: numberInt32(5),
 		},
 		{
 			desc: "binary static variable",
 			x: binaryExpr(token.SUB,
-				valueRef("a"),
-				valueRef("a"),
+				ident("a"),
+				ident("a"),
 			),
 			is: binaryExpr(token.SUB,
-				valueRef("a"),
-				valueRef("a"),
+				ident("a"),
+				ident("a"),
 			),
 			isNot: binaryExpr(token.SUB,
-				valueRef("a"),
-				valueRef("b"),
+				ident("a"),
+				ident("b"),
 			),
 		},
 		{
 			desc: "binary static variable, number",
 			x: binaryExpr(token.SUB,
-				valueRef("a"),
+				ident("a"),
 				numberInt32(4),
 			),
 			is: binaryExpr(token.SUB,
-				valueRef("a"),
+				ident("a"),
 				numberInt32(4),
 			),
 			isNot: binaryExpr(token.SUB,
-				valueRef("a"),
+				ident("a"),
 				numberInt32(5),
 			),
 		},
@@ -421,7 +421,7 @@ func TestExprEvalAndCompare(t *testing.T) {
 				numberInt32(1),
 				numberInt32(3),
 			),
-			isNot: valueRef("a"),
+			isNot: ident("a"),
 		},
 	}
 	itp, err := newInterpreter(opts)
@@ -467,7 +467,7 @@ func TestSubContext(t *testing.T) {
 	if err != nil {
 		t.Fatal(err)
 	}
-	expr := binaryExpr(token.SUB, valueRef("a"), valueRef("b"))
+	expr := binaryExpr(token.SUB, ident("a"), ident("b"))
 	_, err = compeval.EvalExpr(itp, expr)
 	if err == nil {
 		t.Errorf("expected an error but got nil")

@@ -25,14 +25,14 @@ import (
 	"github.com/gx-org/gx/build/ir"
 )
 
-// Ident returns an identifier.
-func Ident(n string) *ast.Ident {
+// IdentAST returns an identifier.
+func IdentAST(n string) *ast.Ident {
 	return &ast.Ident{Name: n}
 }
 
-// ValueRef returns a reference to a value.
-func ValueRef(store ir.Storage) *ir.ValueRef {
-	return &ir.ValueRef{
+// Ident returns a reference to a value.
+func Ident(store ir.Storage) *ir.Ident {
+	return &ir.Ident{
 		Src:  store.NameDef(),
 		Stor: store,
 	}
@@ -64,7 +64,7 @@ func Annotations[T fmt.Stringer](key annotations.Key, val T) annotations.Annotat
 // LocalVar returns a local variable storage given a name and a type.
 func LocalVar(name string, typ ir.Type) *ir.LocalVarStorage {
 	return &ir.LocalVarStorage{
-		Src: Ident(name),
+		Src: IdentAST(name),
 		Typ: typ,
 	}
 }
@@ -106,7 +106,7 @@ func Fields(vals ...any) *ir.FieldList {
 				continue
 			}
 			fields = append(fields, &ir.Field{
-				Name: Ident(valT),
+				Name: IdentAST(valT),
 			})
 		case ir.Type:
 			group := fieldGroup(fields, ir.TypeExpr(nil, valT))
@@ -131,7 +131,7 @@ func Fields(vals ...any) *ir.FieldList {
 func FieldLit(fields *ir.FieldList, name string, val ir.Expr) *ir.FieldLit {
 	field := fields.FindField(name)
 	if field == nil {
-		field = &ir.Field{Name: Ident(fmt.Sprintf("ERROR: FIELD %q NOT FOUND", name))}
+		field = &ir.Field{Name: IdentAST(fmt.Sprintf("ERROR: FIELD %q NOT FOUND", name))}
 	}
 	return &ir.FieldLit{
 		FieldStorage: field.Storage(),
@@ -175,7 +175,7 @@ func Axis(ax any) ir.AxisLengths {
 		if strings.HasSuffix(axisT, ir.DefineAxisGroup) {
 			name := strings.TrimSuffix(axisT, ir.DefineAxisGroup)
 			return &ir.AxisExpr{
-				X: &ir.ValueRef{
+				X: &ir.Ident{
 					Src:  &ast.Ident{Name: name},
 					Stor: AxisGroup(name),
 				},
@@ -184,7 +184,7 @@ func Axis(ax any) ir.AxisLengths {
 		if strings.HasSuffix(axisT, ir.DefineAxisLength) {
 			name := strings.TrimSuffix(axisT, ir.DefineAxisLength)
 			return &ir.AxisExpr{
-				X: &ir.ValueRef{
+				X: &ir.Ident{
 					Src:  &ast.Ident{Name: name},
 					Stor: AxisLenName(name),
 				},
@@ -255,7 +255,7 @@ func VarSpec(names ...string) *ir.VarSpec {
 	for i, name := range names {
 		spec.Exprs[i] = &ir.VarExpr{
 			Decl:  spec,
-			VName: Ident(name),
+			VName: IdentAST(name),
 		}
 	}
 	return spec
@@ -328,7 +328,7 @@ func AxisLengths(ftype *ir.FuncType, axes ...string) *ir.FuncType {
 		}
 		ftype.AxisLengths[i] = ir.AxisValue{
 			Axis: &ir.AxisStmt{
-				Src: Ident(name),
+				Src: IdentAST(name),
 				Typ: typ,
 			},
 		}
@@ -362,11 +362,11 @@ func FuncDeclCallee(name string, ftype *ir.FuncType) *ir.FuncValExpr {
 		Src:   &ast.FuncDecl{Name: id},
 		FType: ftype,
 	}
-	x := &ir.ValueRef{Src: id, Stor: fn}
+	x := &ir.Ident{Src: id, Stor: fn}
 	return ir.NewFuncValExpr(x, fn)
 }
 
 // FuncExpr builds a function expression from a function.
 func FuncExpr(fn ir.Func) *ir.FuncValExpr {
-	return ir.NewFuncValExpr(ValueRef(fn.(ir.Storage)), fn)
+	return ir.NewFuncValExpr(Ident(fn.(ir.Storage)), fn)
 }

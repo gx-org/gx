@@ -27,7 +27,7 @@ import (
 func TestConst(t *testing.T) {
 	cstA := &ir.ConstExpr{
 		Decl:  &ir.ConstSpec{},
-		VName: irh.Ident("cstA"),
+		VName: irh.IdentAST("cstA"),
 		Val:   &ir.NumberInt{Val: big.NewInt(5)},
 	}
 	cstA.Decl.Exprs = append(cstA.Decl.Exprs, cstA)
@@ -45,11 +45,11 @@ type Array [cstA]float32
 `,
 			Want: []ir.IR{
 				&ir.NamedType{
-					Src: &ast.TypeSpec{Name: irh.Ident("Array")},
+					Src: &ast.TypeSpec{Name: irh.IdentAST("Array")},
 					Underlying: ir.TypeExpr(nil, irh.ArrayType(
 						ir.Float32Type(),
 						&ir.NumberCastExpr{
-							X:   irh.ValueRef(cstA),
+							X:   irh.Ident(cstA),
 							Typ: ir.IntLenType(),
 						},
 					)),
@@ -65,8 +65,8 @@ const cstA = 5
 			Want: []ir.IR{
 				irh.ConstSpec(nil,
 					&ir.ConstExpr{
-						VName: irh.Ident("cstB"),
-						Val:   irh.ValueRef(cstA),
+						VName: irh.IdentAST("cstB"),
+						Val:   irh.Ident(cstA),
 					},
 				),
 				irh.ConstSpec(nil, cstA),
@@ -79,7 +79,7 @@ const cstA = 2 * (3 + 4)
 			Want: []ir.IR{
 				irh.ConstSpec(nil,
 					&ir.ConstExpr{
-						VName: irh.Ident("cstA"),
+						VName: irh.IdentAST("cstA"),
 						Val: &ir.BinaryExpr{
 							X: &ir.NumberInt{Val: big.NewInt(2)},
 							Y: &ir.ParenExpr{
@@ -119,7 +119,7 @@ const (
 func TestConstWithType(t *testing.T) {
 	cstIntA := &ir.ConstExpr{
 		Decl:  &ir.ConstSpec{Type: ir.TypeExpr(nil, ir.Int32Type())},
-		VName: irh.Ident("cstIntA"),
+		VName: irh.IdentAST("cstIntA"),
 		Val: &ir.NumberCastExpr{
 			X:   &ir.NumberInt{Val: big.NewInt(5)},
 			Typ: ir.Int32Type(),

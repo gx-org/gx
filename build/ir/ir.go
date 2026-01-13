@@ -1763,7 +1763,7 @@ func (*ImportDecl) Type() Type {
 // Value returns a reference to the function.
 func (s *ImportDecl) Value(x Expr) Expr {
 	return &PackageRef{
-		X:    x.(*ValueRef),
+		X:    x.(*Ident),
 		Decl: s,
 	}
 }
@@ -2155,15 +2155,15 @@ type (
 		X Expr
 	}
 
-	// ValueRef is a reference to a value.
-	ValueRef struct {
+	// Ident is a reference to a value.
+	Ident struct {
 		Src  *ast.Ident
 		Stor Storage
 	}
 
 	// PackageRef is a reference to a package.
 	PackageRef struct {
-		X    *ValueRef
+		X    *Ident
 		Decl *ImportDecl
 	}
 
@@ -2247,8 +2247,8 @@ var (
 	_ Expr             = (*CallResultExpr)(nil)
 	_ TypeCastExpr     = (*CastExpr)(nil)
 	_ TypeCastExpr     = (*TypeAssertExpr)(nil)
-	_ Expr             = (*ValueRef)(nil)
-	_ WithStore        = (*ValueRef)(nil)
+	_ Expr             = (*Ident)(nil)
+	_ WithStore        = (*Ident)(nil)
 	_ Expr             = (*PackageRef)(nil)
 	_ Expr             = (*SelectorExpr)(nil)
 	_ WithStore        = (*SelectorExpr)(nil)
@@ -2451,7 +2451,7 @@ func (s *BinaryExpr) Expr() ast.Expr { return s.Src }
 // TypeExpr builds an expression given a type.
 func TypeExpr(x Expr, t Type) *TypeValExpr {
 	if x == nil {
-		x = &ValueRef{
+		x = &Ident{
 			Stor: t,
 			Src:  &ast.Ident{Name: t.String()},
 		}
@@ -2634,23 +2634,23 @@ func (s *TypeAssertExpr) Expr() ast.Expr { return s.Src }
 // Orig returns the expression being casted.
 func (s *TypeAssertExpr) Orig() Expr { return s.X }
 
-func (s *ValueRef) node() {}
+func (s *Ident) node() {}
 
 // Node returns the node in the AST tree.
-func (s *ValueRef) Node() ast.Node { return s.Src }
+func (s *Ident) Node() ast.Node { return s.Src }
 
 // Type returns the type returned by the function call.
 // Use CallExpr.Func.Type to get the type of the function being called.
-func (s *ValueRef) Type() Type { return s.Stor.Type() }
+func (s *Ident) Type() Type { return s.Stor.Type() }
 
 // Expr returns the expression in the source code.
-func (s *ValueRef) Expr() ast.Expr { return s.Src }
+func (s *Ident) Expr() ast.Expr { return s.Src }
 
 // Store returns the storage referenced by this expression.
-func (s *ValueRef) Store() Storage { return s.Stor }
+func (s *Ident) Store() Storage { return s.Stor }
 
 // String representation.
-func (s *ValueRef) String() string { return s.Src.Name }
+func (s *Ident) String() string { return s.Src.Name }
 
 func (s *PackageRef) node() {}
 

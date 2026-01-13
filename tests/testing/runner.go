@@ -211,11 +211,12 @@ func (r *Runner) run(t *testing.T, fn *ir.FuncDecl, options []options.PackageOpt
 	wantOutCmt, err := wantOutput(fn)
 	if err != nil {
 		t.Errorf("%s: incorrect output declaration: %v",
-			fmterr.PosString(fn.File().Package.FSet, fn.Src.Pos()), err)
+			fmterr.At(fn.File().Package.FSet, fn.Src).String(),
+			err)
 		return
 	}
 	if wantOutCmt == nil {
-		t.Errorf("%s expected a Want: directive", fmterr.PosString(fn.File().Package.FSet, fn.Src.Pos()))
+		t.Errorf("%s expected a Want: directive", fmterr.At(fn.File().Package.FSet, fn.Src))
 		return
 	}
 	want := textFromComment(wantOutCmt, WantPrefix)
@@ -225,6 +226,6 @@ func (r *Runner) run(t *testing.T, fn *ir.FuncDecl, options []options.PackageOpt
 			gotTypes[i] = fmt.Sprintf("%T", val)
 		}
 		t.Errorf("test run error:\n%s: incorrect output:\ngot (%s):\n%s\nwant:\n%s\ndiff:\n%s\n",
-			fmterr.PosString(fn.File().Package.FSet, wantOutCmt.Pos()), strings.Join(gotTypes, ","), got, want, cmp.Diff(got, want))
+			fmterr.At(fn.File().Package.FSet, wantOutCmt), strings.Join(gotTypes, ","), got, want, cmp.Diff(got, want))
 	}
 }

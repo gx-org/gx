@@ -142,7 +142,7 @@ func (ea NodeFile[T]) File() *ir.File {
 func (ea NodeFile[T]) String() string {
 	var node ir.IR = ea.node
 	return fmt.Sprintf("%s%s",
-		fmterr.PosString(ea.file.FileSet(), node.(ir.Node).Node().Pos()),
+		fmterr.At(ea.file.FileSet(), node.(ir.Node).Node()).String(),
 		gxfmt.String(ea.node),
 	)
 }

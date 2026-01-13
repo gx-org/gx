@@ -96,7 +96,7 @@ func (o *Options) processPackageVarSetGXValue(opt options.PackageVarSetValue) (p
 		if !ok {
 			return errors.Errorf("package variables of type %T (used in %s.%s) not supported", opt.Value, pkg.Name, opt.Var)
 		}
-		node, err := o.eval.ElementFromAtom(vrExpr.Decl.FFile, &ir.ValueRef{
+		node, err := o.eval.ElementFromAtom(vrExpr.Decl.FFile, &ir.Ident{
 			Src:  vrExpr.VName,
 			Stor: vrExpr,
 		}, array)

@@ -99,7 +99,7 @@ func (ei *errorInspector) commentToError(errs map[int]fmterr.ErrorWithPos, cmt *
 		text = strings.TrimPrefix(text, errorPrefix)
 		text = strings.TrimSpace(text)
 		cmtPos := ei.pkg.FSet.Position(cmt.Pos())
-		errs[cmtPos.Line] = fmterr.AtNode(
+		errs[cmtPos.Line] = fmterr.Error(
 			ei.pkg.FSet,
 			cmt,
 			errors.New(text),
@@ -112,11 +112,12 @@ func (ei *errorInspector) notFoundExpectedErrors() error {
 	for _, lineToError := range ei.fileToLineToErrors {
 		for _, err := range lineToError {
 			notFoundErr := err
-			pos := ei.pkg.FSet.Position(err.Pos())
-			notFoundErr = fmterr.AtPos(
+			pos := err.Pos().Position()
+			notFoundErr = fmterr.Errorf(
 				ei.pkg.FSet,
-				notFoundErr.Pos(),
-				fmt.Errorf("%s:%d: expected error not found: %s", pos.Filename, pos.Line, err.Err().Error()),
+				notFoundErr.Pos().Node,
+				"%s:%d: expected error not found: %s",
+				pos.Filename, pos.Line, err.Err().Error(),
 			)
 			errs.Append(notFoundErr)
 		}
@@ -134,7 +135,7 @@ func (ei *errorInspector) processPackageErrors(err error) error {
 	if !errors.As(err, &errPos) {
 		return err
 	}
-	pos := ei.pkg.FSet.Position(errPos.Pos())
+	pos := errPos.Pos().Position()
 	fileErrors := ei.fileToLineToErrors[pos.Filename]
 	if fileErrors == nil {
 		return err
@@ -154,7 +155,7 @@ func (ei *errorInspector) processPackageErrors(err error) error {
 	}
 	// The error is expected but does not have the correct message.
 	// We transform the error to transform the report such finding.
-	return fmterr.AtPos(ei.pkg.FSet, lineError.Pos(), errors.Errorf("incorrect compiler error:\n%s\nbut want an error message that contains %q", compilerText, expectedText))
+	return fmterr.Errorf(ei.pkg.FSet, lineError.Pos().Node, "incorrect compiler error:\n%s\nbut want an error message that contains %q", compilerText, expectedText)
 }
 
 // CompareToExpectedErrors removes errors declared in the source code using:

@@ -263,7 +263,7 @@ func (dm *AxisStmt) UnifyWith(uni Unifier, targets []AxisLengths) ([]AxisLengths
 
 // AsExpr returns the value assigned to the axis.
 func (dm *AxisStmt) AsExpr() Expr {
-	return &ValueRef{Src: dm.Src, Stor: dm}
+	return &Ident{Src: dm.Src, Stor: dm}
 }
 
 // Type of the expression.

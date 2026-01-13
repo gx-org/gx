@@ -190,7 +190,7 @@ func UniqueAxesFromExpr(fetcher ir.Fetcher, expr ir.Expr) (map[int]struct{}, err
 	for _, val := range sliceExpr.Elts {
 		axis, err := elements.EvalInt(fetcher, val)
 		if err != nil {
-			return nil, fmterr.AtNode(fetcher.File().FileSet(), expr.Node(), err)
+			return nil, fmterr.Error(fetcher.File().FileSet(), expr.Node(), err)
 		}
 		if _, exists := axes[axis]; exists {
 			return nil, fmterr.Errorf(fetcher.File().FileSet(), expr.Node(), "axis index %d specified more than once", axis)

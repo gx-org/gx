@@ -26,8 +26,8 @@ import (
 
 func TestImportType(t *testing.T) {
 	typInt := &ir.NamedType{
-		File:       &ir.File{Package: &ir.Package{Name: irhelper.Ident("dtype")}},
-		Src:        &ast.TypeSpec{Name: irhelper.Ident("Int")},
+		File:       &ir.File{Package: &ir.Package{Name: irhelper.IdentAST("dtype")}},
+		Src:        &ast.TypeSpec{Name: irhelper.IdentAST("Int")},
 		Underlying: ir.TypeExpr(nil, ir.Int32Type()),
 	}
 	testbuild.Run(t,
@@ -58,12 +58,12 @@ func bla() dtype.Int
 
 func TestImportConst(t *testing.T) {
 	pkgImportDecl := &ir.ImportDecl{
-		Src:  &ast.ImportSpec{Name: irhelper.Ident("pkg")},
+		Src:  &ast.ImportSpec{Name: irhelper.IdentAST("pkg")},
 		Path: "pkg",
 	}
 	constExpr := &ir.ConstExpr{
 		Decl:  &ir.ConstSpec{},
-		VName: irhelper.Ident("MyConst"),
+		VName: irhelper.IdentAST("MyConst"),
 		Val:   &ir.NumberInt{Val: big.NewInt(42)},
 	}
 	constExpr.Decl.Exprs = []*ir.ConstExpr{constExpr}
@@ -96,7 +96,7 @@ func returnMyConst() int32 {
 							Results: []ir.Expr{
 								&ir.NumberCastExpr{
 									X: &ir.SelectorExpr{
-										X:    irhelper.ValueRef(pkgImportDecl),
+										X:    irhelper.Ident(pkgImportDecl),
 										Stor: constExpr,
 									},
 									Typ: ir.Int32Type(),

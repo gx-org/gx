@@ -60,7 +60,7 @@ func NewBinary(env evaluator.Env, expr *ir.BinaryExpr, xEl, yEl evaluator.Numeri
 	}
 	defer func() {
 		if err != nil {
-			err = fmterr.AtNode(env.File().FileSet(), expr.Src, err)
+			err = fmterr.Error(env.File().FileSet(), expr.Src, err)
 		}
 	}()
 	el := &binary{
