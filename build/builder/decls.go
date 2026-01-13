@@ -294,13 +294,12 @@ func (d *decls) buildFunctions(pkgScope *pkgResolveScope, filter func(f *process
 }
 
 func (d *decls) buildFunctionBodies(pkgScope *pkgResolveScope, funcs []*irFunc) bool {
+	ok := true
 	for _, fn := range funcs {
-		ok := fn.bFunc.buildBody(fn.sigScope, fn)
-		if !ok {
-			return false
-		}
+		fnOk := fn.bFunc.buildBody(fn.sigScope, fn)
+		ok = ok && fnOk
 	}
-	return true
+	return ok
 }
 
 func (d *decls) Find(key string) (processNode, bool) {

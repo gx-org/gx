@@ -256,6 +256,9 @@ func (b *Builder) NewIncrementalPackage(fullname string) *IncrementalPackage {
 	pkg := &IncrementalPackage{
 		basePackage: newBasePackage(b, path),
 	}
+	if name == "" {
+		return pkg
+	}
 	pkg.basePackage.name = &ast.Ident{
 		Name: name,
 	}

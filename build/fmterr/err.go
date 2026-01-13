@@ -66,15 +66,11 @@ func Internalf(fset *token.FileSet, src ast.Node, format string, a ...any) error
 // Error returns a string description of the error.
 func (err errorWithPos) Error() (s string) {
 	defer func() {
-		r := recover()
-		if r == nil {
+		if r := recover(); r != nil {
+			s = fmt.Sprintf("recovered from panic when building error message: %T:\n%v", err.err, string(debug.Stack()))
 			return
 		}
-		s = fmt.Sprintf("recovered from panic when building error message: %T:\n%v", err.err, string(debug.Stack()))
 	}()
-	if err.FSet() == nil {
-		return err.err.Error()
-	}
 	return err.pos.String() + " " + err.err.Error()
 }
 
