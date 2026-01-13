@@ -308,10 +308,14 @@ func invalidExpr() *ir.Ident {
 	return invalidIdent
 }
 
-var invalidGroup = &ir.FieldGroup{Type: ir.TypeExpr(
+var invalidTypeExprVal = ir.TypeExpr(
 	invalidExpr(),
 	ir.InvalidType(),
-)}
+)
+
+var invalidGroup = &ir.FieldGroup{
+	Type: invalidTypeExprVal,
+}
 
 func buildAExpr(rscope resolveScope, expr exprNode) (ir.Expr, bool) {
 	ext, exprOk := expr.buildExpr(rscope)

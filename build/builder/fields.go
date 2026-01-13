@@ -111,19 +111,16 @@ func processFieldGroup(pscope typeProcScope, src *ast.Field, assign func(procSco
 }
 
 func (f *fieldGroup) build(dscope *defineLocalScope) (*ir.FieldGroup, bool) {
-	typeExpr, ok := f.typ.buildTypeExpr(dscope)
 	grp := &ir.FieldGroup{
 		Src:    f.src,
-		Type:   typeExpr,
 		Fields: make([]*ir.Field, len(f.list)),
 	}
-	if !ok {
-		return grp, false
-	}
+	var ok bool
+	grp.Type, ok = f.typ.buildTypeExpr(dscope)
 	for i, field := range f.list {
 		grp.Fields[i] = field.build(dscope, grp)
 	}
-	return grp, true
+	return grp, ok
 }
 
 func (f *fieldGroup) String() string {

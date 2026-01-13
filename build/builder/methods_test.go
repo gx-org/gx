@@ -213,3 +213,21 @@ func call() float32 {
 		},
 	)
 }
+
+func TestMethodsWithErrors(t *testing.T) {
+	testbuild.Run(t,
+		testbuild.Decl{
+			Src: `
+type A struct {
+	a [AgeOfTheCaptain]float32
+	val int32 
+}
+
+func (a A) F() int32 {
+	return a.val
+}
+`,
+			Err: "undefined: AgeOfTheCaptain",
+		},
+	)
+}
