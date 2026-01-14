@@ -32,6 +32,11 @@ type (
 	PathReseter interface {
 		ResetPath(string)
 	}
+
+	// Loader loads packages given their import path.
+	Loader interface {
+		Load(bld Builder, path string) (Package, error)
+	}
 )
 
 func findImporter(importers []Importer, path string) Importer {

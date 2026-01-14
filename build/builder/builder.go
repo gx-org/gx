@@ -48,22 +48,17 @@ type (
 		base() *basePackage
 	}
 
-	// Loader loads packages given their import path.
-	Loader interface {
-		Load(bld importers.Builder, path string) (importers.Package, error)
-	}
-
 	// Builder represents a build session from text to
 	// the intermediate representation.
 	Builder struct {
-		loader Loader
+		loader importers.Loader
 	}
 )
 
 var _ ir.Importer = (*Builder)(nil)
 
 // New returns a new build session.
-func New(loader Loader) *Builder {
+func New(loader importers.Loader) *Builder {
 	return &Builder{loader: loader}
 }
 
@@ -73,7 +68,7 @@ func (b *Builder) Build(path string) (importers.Package, error) {
 }
 
 // Loader returns the package loader of the builder.
-func (b *Builder) Loader() Loader {
+func (b *Builder) Loader() importers.Loader {
 	return b.loader
 }
 
