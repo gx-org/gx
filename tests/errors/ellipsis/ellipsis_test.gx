@@ -8,7 +8,7 @@ func inferredShape() [4]float32 {
 }
 
 func testInferredShapePropagated() [2]float32 {
-	return [2]float32{1, 2} + inferredShape() // ERROR: mismatched types [2]float32 and [4]float32
+	return [2]float32{1, 2} + inferredShape() // ERROR mismatched types [2]float32 and [4]float32
 }
 
 func inferredShapeForward() [4]float32 {
@@ -16,5 +16,6 @@ func inferredShapeForward() [4]float32 {
 }
 
 func testInferredShapePropagatedForward() [2]float32 {
-	return [2]float32{1, 2} + inferredShapeForward() // ERROR: mismatched types [2]float32 and [4]float32
+	return [2]float32{1, 2} + inferredShapeForward() // ERROR mismatched types [2]float32 and [4]float32
 }
+

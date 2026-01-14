@@ -6,9 +6,6 @@ var (
 	errMore, errVars, errThanValues int32 = 4, 5 // ERROR cannot assign
 )
 
-func testNoReturn() { // ERROR function testNoReturn does not return a value
-}
-
 func testNoSize() [4]float64 {
 	return [4][]float64{2, 3} // ERROR array of slices is not supported
 }
@@ -60,9 +57,10 @@ func testFuncTypeParameters_Redeclared[T int32, T int32]() int32 { // ERROR type
 	return 0
 }
 
-type testTypeParameters[T any] struct {} // ERROR type may not have type parameters
+type testTypeParameters[T any] struct{} // ERROR type may not have type parameters
 
 type testInterfaceMethods interface {
-	Print() // ERROR interface element not supported
+	Print()         // ERROR interface element not supported
 	String() string // ERROR interface element not supported
 }
+

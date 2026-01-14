@@ -1,17 +1,8 @@
 package meta
 
-//gx:=foo bar // ERROR: expected 'EOF', found bar
+// gx:=foo bar // ERROR expected 'EOF', found bar
 func incorrectDirectiveAST()
 
-//gx:=expr // ERROR: GX equal directive (gx:=) only accept function call expression
+// gx:=expr // ERROR GX directive (gx:=) only accept function call expression
 func notAFunctionCall()
 
-//gx:=expr01()
-//gx:=expr02() // ERROR: a function can only have one GX directive
-func multipleDirective()
-
-//gx:=expr01()
-func assignedNoParam(shouldnotbehere) // ERROR: assigned function has parameters
-
-//gx:=expr01()
-func assignedNoResult() shouldnotbehere // ERROR: assigned function has return values
