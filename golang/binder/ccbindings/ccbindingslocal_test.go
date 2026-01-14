@@ -85,7 +85,7 @@ func TestCCBindingsLocal(t *testing.T) {
 	}
 	for _, test := range tests {
 		ld := &loader{}
-		bld := builder.New(ld)
+		bld := builder.NewWithLoader(ld)
 		ld.builder = bld
 		fmtpath.SetModuleName(test.pkgName)
 		pkg, err := bld.Build(test.pkgName)

@@ -24,7 +24,6 @@ import (
 	"slices"
 
 	"github.com/gx-org/gx/build/builder"
-	"github.com/gx-org/gx/build/importers"
 	"github.com/gx-org/gx/build/importers/localfs"
 	"github.com/gx-org/gx/golang/binder"
 	"github.com/gx-org/gx/stdlib"
@@ -52,10 +51,10 @@ func main() {
 	if !ok {
 		exit("cannot create bindings for language %q: no binder available. Available binders are %v", *language, slices.Collect(maps.Keys(binder.Binders)))
 	}
-	bld := builder.New(importers.NewCacheLoader(
+	bld := builder.New(
 		stdlib.Importer(nil),
 		localImporter,
-	))
+	)
 	pkg, err := bld.Build(*gxPackage)
 	if err != nil {
 		exit("%+v", err)

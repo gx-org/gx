@@ -77,10 +77,10 @@ func NewBuilder() (importers.Builder, error) {
 	if err != nil {
 		return nil, err
 	}
-	return builder.New(importers.NewCacheLoader(
+	return builder.New(
 		stdlib.Importer(nil),
 		importer,
-	)), nil
+	), nil
 }
 
 func (imp *Importer) findDep(path string) *module.Version {

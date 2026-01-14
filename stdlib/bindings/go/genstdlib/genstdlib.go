@@ -21,7 +21,6 @@ import (
 
 	"github.com/gx-org/gx/build/importers/localfs/binder"
 	"github.com/gx-org/gx/build/builder"
-	"github.com/gx-org/gx/build/importers"
 	"github.com/gx-org/gx/build/ir"
 	"github.com/gx-org/gx/golang/binder/gobindings"
 	"github.com/gx-org/gx/stdlib"
@@ -30,7 +29,7 @@ import (
 // BuildAll builds the bindings for the standard library package.
 func BuildAll(newWriter func(*ir.Package) (io.WriteCloser, error)) error {
 	libs := stdlib.Importer(nil)
-	bld := builder.New(importers.NewCacheLoader(libs))
+	bld := builder.New(libs)
 	for _, path := range libs.Paths() {
 		bpkg, err := bld.Build(path)
 		if err != nil {

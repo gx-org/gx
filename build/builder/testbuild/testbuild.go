@@ -134,7 +134,7 @@ func (tt DeclarePackage) Build(b *builder.Builder) (importers.Package, error) {
 
 // Run the source code to declare it as an importable package.
 func (tt DeclarePackage) Run(b *Builder) error {
-	pkg, err := tt.Build(builder.New(&b.imp))
+	pkg, err := tt.Build(builder.NewWithLoader(&b.imp))
 	if err != nil {
 		return err
 	}
@@ -246,7 +246,7 @@ func CheckError(want string, err error) error {
 // Run the expression test.
 func (tt Expr) Run(ctx *Builder) error {
 	done := map[any]bool{}
-	bld := builder.New(&ctx.imp)
+	bld := builder.NewWithLoader(&ctx.imp)
 	pkg := bld.NewIncrementalPackage("test")
 	got, err := pkg.BuildExpr(tt.Src)
 	if err := CheckError(tt.Err, err); err != nil {
@@ -322,7 +322,7 @@ func build(bld *builder.Builder, path, src string) (*builder.IncrementalPackage,
 
 // Build test source code.
 func (b *Builder) Build(path, src string) (*builder.IncrementalPackage, error) {
-	return build(builder.New(&b.imp), path, src)
+	return build(builder.NewWithLoader(&b.imp), path, src)
 }
 
 // Loader returns the package loader of the builder.

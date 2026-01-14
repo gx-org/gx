@@ -76,8 +76,8 @@ func (imp *Importer) Import(bld importers.Builder, path string) (importers.Packa
 
 // NewBuilder returns a builder loading GX files from the files embedded in the binary.
 func NewBuilder(stdlibImpl *impl.Stdlib) *builder.Builder {
-	return builder.New(importers.NewCacheLoader(
+	return builder.New(
 		stdlib.Importer(nil),
 		New(),
-	))
+	)
 }
