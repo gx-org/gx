@@ -181,6 +181,8 @@ func (pkg *FilePackage) BuildFiles(fs fs.FS, filenames []string) (err error) {
 		ok = ok && fileOk
 	}
 	if !ok {
+		pkgScope, _ := newPackageResolveScope(pscope)
+		pkg.last.pkg = pkgScope.irBuilder().Pkg()
 		return &errs
 	}
 	pkgScope, ok := pkg.resolveBuild(pscope)
