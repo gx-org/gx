@@ -58,7 +58,12 @@ type (
 var _ ir.Importer = (*Builder)(nil)
 
 // New returns a new build session.
-func New(loader importers.Loader) *Builder {
+func New(imps ...importers.Importer) *Builder {
+	return NewWithLoader(importers.NewCacheLoader(imps...))
+}
+
+// NewWithLoader returns a new build session.
+func NewWithLoader(loader importers.Loader) *Builder {
 	return &Builder{loader: loader}
 }
 

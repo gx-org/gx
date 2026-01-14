@@ -30,7 +30,6 @@ import (
 	"github.com/gx-org/gx/build/builder"
 	"github.com/gx-org/gx/build/fmterr"
 	"github.com/gx-org/gx/build/importers/embedpkg"
-	"github.com/gx-org/gx/build/importers"
 	"github.com/gx-org/gx/build/ir"
 	"github.com/gx-org/gx/golang/backend/kernels"
 	"github.com/gx-org/gx/stdlib/impl"
@@ -64,10 +63,10 @@ type (
 // NewBuilderStaticSource returns a builder using the embedpkg importer which
 // embeds GX testing source files into their corresponding Go package.
 func NewBuilderStaticSource(stdlibImpl *impl.Stdlib) *builder.Builder {
-	return builder.New(importers.NewCacheLoader(
+	return builder.New(
 		stdlib.Importer(stdlibImpl),
 		embedpkg.New(),
-	))
+	)
 }
 
 // NewRunner returns a test runner given a device.

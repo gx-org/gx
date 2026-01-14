@@ -18,14 +18,13 @@ import (
 	"testing"
 
 	"github.com/gx-org/gx/build/builder"
-	"github.com/gx-org/gx/build/importers"
 	"github.com/gx-org/gx/stdlib"
 	gxtesting "github.com/gx-org/gx/tests/testing"
 )
 
 func TestStdlibValid(t *testing.T) {
 	lib := stdlib.Importer(nil)
-	bld := builder.New(importers.NewCacheLoader(lib))
+	bld := builder.New(lib)
 	for _, path := range lib.Paths() {
 		pkg, err := bld.Build(path)
 		if err != nil {

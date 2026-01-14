@@ -21,7 +21,6 @@ import (
 
 	"github.com/gx-org/gx/build/builder"
 	"github.com/gx-org/gx/build/importers/embedpkg"
-	"github.com/gx-org/gx/build/importers"
 	"github.com/gx-org/gx/golang/backend"
 	"github.com/gx-org/gx/golang/backend/tests/notimp/notimp_go_gx"
 	"github.com/gx-org/gx/stdlib"
@@ -29,10 +28,10 @@ import (
 
 // ExampleRun runs GX linear regression codelab.
 func TestNotImplemented(t *testing.T) {
-	bck := backend.New(builder.New(importers.NewCacheLoader(
+	bck := backend.New(builder.New(
 		stdlib.Importer(nil),
 		embedpkg.New(),
-	)))
+	))
 	dev, err := bck.Device(0)
 	if err != nil {
 		t.Fatal(err)

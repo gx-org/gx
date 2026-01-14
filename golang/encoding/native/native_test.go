@@ -25,7 +25,6 @@ import (
 	"github.com/gx-org/gx/build/builder"
 	"github.com/gx-org/gx/build/fmterr"
 	"github.com/gx-org/gx/build/importers/embedpkg"
-	"github.com/gx-org/gx/build/importers"
 	"github.com/gx-org/gx/build/ir"
 	"github.com/gx-org/gx/golang/backend"
 	"github.com/gx-org/gx/golang/encoding/native"
@@ -181,9 +180,9 @@ func TestRunUnmarshalledScalarsStruct(t *testing.T) {
 }
 
 func TestMain(m *testing.M) {
-	rtm := backend.New(builder.New(importers.NewCacheLoader(
+	rtm := backend.New(builder.New(
 		embedpkg.New(),
-	)))
+	))
 	dev, err := rtm.Device(0)
 	if err != nil {
 		fmt.Fprintf(os.Stderr, "%+v", fmterr.ToStackTraceError(err))

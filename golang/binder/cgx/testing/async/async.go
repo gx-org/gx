@@ -76,10 +76,10 @@ func setup(rtm *api.Runtime) (C.cgx_runtime, C.cgx_device, error) {
 
 // NewBuilder returns a builder that can used for the tests.
 func NewBuilder() *builder.Builder {
-	return builder.New(importers.NewCacheLoader(
+	return builder.New(
 		stdlib.Importer(nil),
 		embedpkg.New(),
-	))
+	)
 }
 
 func clearLoaderCache(cdev C.cgx_device) {

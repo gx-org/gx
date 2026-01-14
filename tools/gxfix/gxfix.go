@@ -22,7 +22,6 @@ import (
 
 	"github.com/gx-org/gx/api"
 	"github.com/gx-org/gx/build/builder"
-	"github.com/gx-org/gx/build/importers"
 	"github.com/gx-org/gx/stdlib/impl"
 	"github.com/gx-org/gx/stdlib"
 	"github.com/gx-org/gx/tools/gxfix/fixers"
@@ -35,9 +34,9 @@ var (
 
 // NewBuilder returns a new builder given a standard library implementation.
 func NewBuilder(impl *impl.Stdlib) (*builder.Builder, error) {
-	return builder.New(importers.NewCacheLoader(
+	return builder.New(
 		stdlib.Importer(impl),
-	)), nil
+	), nil
 }
 
 // Fix the GX code base.

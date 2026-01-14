@@ -118,7 +118,7 @@ func NewBuilder(impargs ...importers.Importer) *builder.Builder {
 		},
 	}
 	all := append(impargs, imp)
-	imp.builder = builder.New(importers.NewCacheLoader(all...))
+	imp.builder = builder.New(all...)
 	return imp.builder
 }
 
