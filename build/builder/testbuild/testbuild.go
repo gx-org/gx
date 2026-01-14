@@ -325,8 +325,8 @@ func (b *Builder) Build(path, src string) (*builder.IncrementalPackage, error) {
 	return build(builder.New(&b.imp), path, src)
 }
 
-// Loader used to build a GX builder.
-func (b *Builder) Loader() builder.Loader {
+// Loader returns the package loader of the builder.
+func (b *Builder) Loader() importers.Loader {
 	return &b.imp
 }
 
