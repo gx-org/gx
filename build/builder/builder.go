@@ -37,25 +37,20 @@ import (
 	"io/fs"
 
 	"github.com/pkg/errors"
+	"github.com/gx-org/gx/build/importers"
 	"github.com/gx-org/gx/build/ir"
 )
 
 type (
-	// Package used by the builder to build a corresponding IR package.
-	Package interface {
-		// IR returns the current package intermediate representation.
-		IR() *ir.Package
-	}
-
 	// bPackage is a private package implemented by both *FilePackage and *IncrementalPackage.
 	bPackage interface {
-		Package
+		importers.Package
 		base() *basePackage
 	}
 
 	// Loader loads packages given their import path.
 	Loader interface {
-		Load(bld *Builder, path string) (Package, error)
+		Load(bld importers.Builder, path string) (importers.Package, error)
 	}
 
 	// Builder represents a build session from text to
@@ -73,7 +68,7 @@ func New(loader Loader) *Builder {
 }
 
 // Build a package given its path.
-func (b *Builder) Build(path string) (Package, error) {
+func (b *Builder) Build(path string) (importers.Package, error) {
 	return b.loader.Load(b, path)
 }
 
@@ -83,7 +78,7 @@ func (b *Builder) Loader() Loader {
 }
 
 // NewPackage returns a new builder package given the path of the package and its name.
-func (b *Builder) NewPackage(path, name string) (*FilePackage, error) {
+func (b *Builder) NewPackage(path, name string) (importers.FilePackage, error) {
 	if name == "" {
 		return nil, errors.Errorf("cannot create package at path %q with an empty name", path)
 	}
@@ -109,7 +104,7 @@ func (b *Builder) Import(path string) (*ir.Package, error) {
 
 // BuildFiles builds a package from a list of files.
 // Note that the package is not registered by the builder.
-func (b *Builder) BuildFiles(packagePath, packageName string, fs fs.FS, filenames []string) (Package, error) {
+func (b *Builder) BuildFiles(packagePath, packageName string, fs fs.FS, filenames []string) (importers.Package, error) {
 	pkg := b.newFilePackage(packagePath, packageName)
 	return pkg, pkg.BuildFiles(fs, filenames)
 }

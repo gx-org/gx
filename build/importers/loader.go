@@ -19,7 +19,6 @@ import (
 	"sync/atomic"
 
 	"github.com/pkg/errors"
-	"github.com/gx-org/gx/build/builder"
 )
 
 type (
@@ -44,15 +43,6 @@ func findImporter(importers []Importer, path string) Importer {
 	return nil
 }
 
-// Load a package given its path.
-func Load(bld *builder.Builder, importers []Importer, path string) (builder.Package, error) {
-	imp := findImporter(importers, path)
-	if imp == nil {
-		return nil, errors.Errorf("cannot find an importer for %s", path)
-	}
-	return imp.Import(bld, path)
-}
-
 type packageBuilder struct {
 	cl *CacheLoader
 
@@ -61,7 +51,7 @@ type packageBuilder struct {
 	// (prevent a deadlock when the builder is building a package while
 	// the loader is being reset)
 	done atomic.Bool
-	pkg  builder.Package
+	pkg  Package
 	err  error
 }
 
@@ -69,7 +59,15 @@ func (pb *packageBuilder) reset() {
 	pb.done.Store(false)
 }
 
-func (pb *packageBuilder) build(bld *builder.Builder, path string) (builder.Package, error) {
+func load(bld Builder, importers []Importer, path string) (Package, error) {
+	imp := findImporter(importers, path)
+	if imp == nil {
+		return nil, errors.Errorf("cannot find an importer for %s", path)
+	}
+	return imp.Import(bld, path)
+}
+
+func (pb *packageBuilder) build(bld Builder, path string) (Package, error) {
 	pb.mut.Lock()
 	defer pb.mut.Unlock()
 
@@ -78,7 +76,7 @@ func (pb *packageBuilder) build(bld *builder.Builder, path string) (builder.Pack
 	}
 
 	pb.done.Store(true)
-	pb.pkg, pb.err = Load(bld, pb.cl.importers, path)
+	pb.pkg, pb.err = load(bld, pb.cl.importers, path)
 	return pb.pkg, pb.err
 }
 
@@ -150,6 +148,6 @@ func (cl *CacheLoader) loadPackageBuilder(path string) *packageBuilder {
 }
 
 // Load a package given its path.
-func (cl *CacheLoader) Load(bld *builder.Builder, path string) (builder.Package, error) {
+func (cl *CacheLoader) Load(bld Builder, path string) (Package, error) {
 	return cl.loadPackageBuilder(path).build(bld, path)
 }

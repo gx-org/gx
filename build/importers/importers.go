@@ -16,13 +16,42 @@
 package importers
 
 import (
-	"github.com/gx-org/gx/build/builder"
+	"io/fs"
+
+	"github.com/gx-org/gx/build/ir"
 )
 
-// Importer loads a package given its path.
-type Importer interface {
-	// Support checks if the importer supports the import path given its prefix.
-	Support(path string) bool
-	// Import a path.
-	Import(bld *builder.Builder, path string) (builder.Package, error)
-}
+type (
+	// Package used by the builder to build a corresponding IR package.
+	Package interface {
+		// IR returns the current package intermediate representation.
+		IR() *ir.Package
+	}
+
+	// FilePackage is a package able to import IR.
+	FilePackage interface {
+		Package
+
+		// ImportIR imports an intermediate representation into the package.
+		ImportIR(*ir.Declarations) error
+
+		// BuildFiles incrementaly builds a package by building a set of files from a filesystem.
+		BuildFiles(fs fs.FS, filenames []string) (err error)
+	}
+
+	// Builder builds an IR package.
+	Builder interface {
+		// NewPackage returns a new GX package.
+		NewPackage(path, name string) (FilePackage, error)
+		// BuildFiles builds a package from a set of files from a filesystem.
+		BuildFiles(packagePath, packageName string, fs fs.FS, filenames []string) (Package, error)
+	}
+
+	// Importer loads a package given its path.
+	Importer interface {
+		// Support checks if the importer supports the import path given its prefix.
+		Support(path string) bool
+		// Import a path.
+		Import(bld Builder, path string) (Package, error)
+	}
+)

@@ -26,7 +26,7 @@ import (
 	"github.com/gx-org/gx/api"
 	"github.com/gx-org/gx/api/options"
 	"github.com/gx-org/gx/api/values"
-	"github.com/gx-org/gx/build/builder"
+	"github.com/gx-org/gx/build/importers"
 	"github.com/gx-org/gx/build/ir"
 	"github.com/gx-org/gx/build/ir/irkind"
 	"github.com/gx-org/gx/cgx/handle"
@@ -277,7 +277,7 @@ func cgx_package_ir_load(cgxRuntime C.cgx_runtime, pathPtr *C.cchar_t) C.struct_
 	pkg, err := rtm.Builder().Build(C.GoString(pathPtr))
 	return C.struct_cgx_package_ir_load_result{
 		error:    (C.cgx_error)(wrap[error](err)),
-		_package: (C.cgx_package_ir)(wrap[builder.Package](pkg)),
+		_package: (C.cgx_package_ir)(wrap[importers.Package](pkg)),
 	}
 }
 
@@ -286,19 +286,19 @@ func cgx_package_ir_load(cgxRuntime C.cgx_runtime, pathPtr *C.cchar_t) C.struct_
 //export cgx_package_ir_build_for
 func cgx_package_ir_build_for(cgxPackageIR C.cgx_package_ir, cgxDevice C.cgx_device) C.cgx_package {
 	dev := unwrap[*core.DeviceSetup](cgxDevice)
-	pkg := unwrap[builder.Package](cgxPackageIR)
+	pkg := unwrap[importers.Package](cgxPackageIR)
 	return C.cgx_package(wrap[*core.PackageCompileSetup](dev.PackageSetup(pkg)))
 }
 
 //export cgx_package_ir_name
 func cgx_package_ir_name(cgxPackageIR C.cgx_package_ir) *C.cchar_t {
-	pkg := unwrap[builder.Package](cgxPackageIR)
+	pkg := unwrap[importers.Package](cgxPackageIR)
 	return C.CString(pkg.IR().Name.Name)
 }
 
 //export cgx_package_ir_fullname
 func cgx_package_ir_fullname(cgxPackageIR C.cgx_package_ir) *C.cchar_t {
-	pkg := unwrap[builder.Package](cgxPackageIR)
+	pkg := unwrap[importers.Package](cgxPackageIR)
 	return C.CString(pkg.IR().FullName())
 }
 
@@ -414,7 +414,7 @@ func cgx_free_list_functions_result(res *C.struct_cgx_list_functions_result) {
 //export cgx_package_get_ir
 func cgx_package_get_ir(cgxPackage C.cgx_package) C.cgx_package_ir {
 	cpkg := unwrap[*core.PackageCompileSetup](cgxPackage)
-	return (C.cgx_package_ir)(wrap[builder.Package](cpkg.Package()))
+	return (C.cgx_package_ir)(wrap[importers.Package](cpkg.Package()))
 }
 
 //export cgx_package_list_interfaces

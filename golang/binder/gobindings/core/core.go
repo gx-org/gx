@@ -24,7 +24,7 @@ import (
 	"github.com/gx-org/gx/api/trace"
 	"github.com/gx-org/gx/api/tracer"
 	"github.com/gx-org/gx/api/values"
-	"github.com/gx-org/gx/build/builder"
+	"github.com/gx-org/gx/build/importers"
 	"github.com/gx-org/gx/build/ir"
 )
 
@@ -57,7 +57,7 @@ func (s *DeviceSetup) Runtime() *api.Runtime {
 }
 
 // PackageSetup returns a package using this device setup.
-func (s *DeviceSetup) PackageSetup(pkg builder.Package) *PackageCompileSetup {
+func (s *DeviceSetup) PackageSetup(pkg importers.Package) *PackageCompileSetup {
 	return &PackageCompileSetup{devSetup: s, pkg: pkg}
 }
 
@@ -69,7 +69,7 @@ func (s *DeviceSetup) Device() *api.Device {
 // PackageCompileSetup has all package level data to compile functions.
 type PackageCompileSetup struct {
 	devSetup *DeviceSetup
-	pkg      builder.Package
+	pkg      importers.Package
 }
 
 // Setup returns the device of the compile setup.
@@ -78,7 +78,7 @@ func (s *PackageCompileSetup) Setup() *DeviceSetup {
 }
 
 // Package returns the builder package.
-func (s *PackageCompileSetup) Package() builder.Package {
+func (s *PackageCompileSetup) Package() importers.Package {
 	return s.pkg
 }
 

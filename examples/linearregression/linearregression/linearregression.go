@@ -9,7 +9,7 @@ package linearregression
 import (
 	"embed"
 
-	"github.com/gx-org/gx/build/builder"
+	"github.com/gx-org/gx/build/importers"
 	"github.com/gx-org/gx/build/importers/embedpkg"
 
 )
@@ -28,6 +28,6 @@ func init() {
 var _ embedpkg.BuildFunc = Build
 
 // Build GX package.
-func Build(bld *builder.Builder) (builder.Package, error) {
+func Build(bld importers.Builder) (importers.Package, error) {
 	return bld.BuildFiles("github.com/gx-org/gx/examples/linearregression", "linearregression", srcs, inputFiles)
 }

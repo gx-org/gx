@@ -9,7 +9,7 @@ package imports
 import (
 	"embed"
 
-	"github.com/gx-org/gx/build/builder"
+	"github.com/gx-org/gx/build/importers"
 	"github.com/gx-org/gx/build/importers/embedpkg"
 
 	_ "github.com/gx-org/gx/tests/bindings/basic"
@@ -29,6 +29,6 @@ func init() {
 var _ embedpkg.BuildFunc = Build
 
 // Build GX package.
-func Build(bld *builder.Builder) (builder.Package, error) {
+func Build(bld importers.Builder) (importers.Package, error) {
 	return bld.BuildFiles("github.com/gx-org/gx/tests/bindings", "imports", srcs, inputFiles)
 }
