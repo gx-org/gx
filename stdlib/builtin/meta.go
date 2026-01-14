@@ -19,8 +19,8 @@ import (
 	"reflect"
 
 	"github.com/pkg/errors"
-	"github.com/gx-org/gx/build/builder"
 	"github.com/gx-org/gx/build/fmterr"
+	"github.com/gx-org/gx/build/importers"
 	"github.com/gx-org/gx/build/ir"
 	"github.com/gx-org/gx/stdlib/impl"
 )
@@ -38,7 +38,7 @@ func RegisterMacro(name string, impl ir.MacroImpl) Builder {
 	}
 }
 
-func (b *registerMacro) Build(bld *builder.Builder, _ *impl.Stdlib, pkg *builder.FilePackage) (err error) {
+func (b *registerMacro) Build(bld importers.Builder, _ *impl.Stdlib, pkg importers.FilePackage) (err error) {
 	pkgIR := pkg.IR()
 	defer func() {
 		if err != nil {
@@ -74,7 +74,7 @@ func RegisterAnnotator(name string, impl ir.AnnotatorImpl) Builder {
 	}
 }
 
-func (b *registerAnnotator) Build(bld *builder.Builder, _ *impl.Stdlib, pkg *builder.FilePackage) (err error) {
+func (b *registerAnnotator) Build(bld importers.Builder, _ *impl.Stdlib, pkg importers.FilePackage) (err error) {
 	pkgIR := pkg.IR()
 	defer func() {
 		if err != nil {

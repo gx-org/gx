@@ -30,6 +30,7 @@ import (
 	"github.com/gx-org/gx/base/ordered"
 	"github.com/gx-org/gx/base/uname"
 	"github.com/gx-org/gx/build/fmterr"
+	"github.com/gx-org/gx/build/importers"
 	"github.com/gx-org/gx/build/ir"
 )
 
@@ -151,7 +152,7 @@ type FilePackage struct {
 	irImports *file
 }
 
-var _ Package = (*FilePackage)(nil)
+var _ importers.Package = (*FilePackage)(nil)
 
 func (b *Builder) newFilePackage(path, name string) *FilePackage {
 	pkg := &FilePackage{
@@ -248,7 +249,7 @@ type IncrementalPackage struct {
 	next int
 }
 
-var _ Package = (*IncrementalPackage)(nil)
+var _ importers.Package = (*IncrementalPackage)(nil)
 
 // NewIncrementalPackage creates a new incremental package.
 func (b *Builder) NewIncrementalPackage(fullname string) *IncrementalPackage {

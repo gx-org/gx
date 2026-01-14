@@ -94,39 +94,43 @@ func appendAll(paths ...[]string) []string {
 
 type importer struct {
 	embedded map[string]testbuild.DeclarePackage
+	builder  *builder.Builder
 }
 
 // Support checks if the importer supports the import path given its prefix.
 func (imp importer) Support(path string) bool { return true }
 
 // Import a path.
-func (imp importer) Import(bld *builder.Builder, path string) (builder.Package, error) {
+func (imp importer) Import(bld importers.Builder, path string) (importers.Package, error) {
 	embedded, isEmbedded := imp.embedded[path]
 	if !isEmbedded {
 		return localfs.ImportAt(bld, FS, path, path)
 	}
-	return embedded.Build(bld)
+	return embedded.Build(imp.builder)
 }
 
-// Importer returns the importer for GX tests.
-func Importer() importers.Importer {
-	return importer{embedded: map[string]testbuild.DeclarePackage{
-		"testmacros": testmacros.DeclarePackage,
-	}}
+// NewBuilder returns a new builder given some importers.
+// An additional importer to load test files is automatically added.
+func NewBuilder(impargs ...importers.Importer) *builder.Builder {
+	imp := &importer{
+		embedded: map[string]testbuild.DeclarePackage{
+			"testmacros": testmacros.DeclarePackage,
+		},
+	}
+	all := append(impargs, imp)
+	imp.builder = builder.New(importers.NewCacheLoader(all...))
+	return imp.builder
 }
 
 // All includes all paths.
 var All = appendAll(Language, Stdlib)
 
 // CoreBuilder returns the builder to run core tests.
-func CoreBuilder(embedded ...testbuild.DeclarePackage) *builder.Builder {
-	return builder.New(importers.NewCacheLoader(Importer()))
+func CoreBuilder() *builder.Builder {
+	return NewBuilder()
 }
 
 // StdlibBuilder returns the builder to run tests with the standard library.
-func StdlibBuilder(stdlibImpl *impl.Stdlib, embedded ...testbuild.DeclarePackage) *builder.Builder {
-	return builder.New(importers.NewCacheLoader(
-		stdlib.Importer(stdlibImpl),
-		Importer(),
-	))
+func StdlibBuilder(stdlibImpl *impl.Stdlib) *builder.Builder {
+	return NewBuilder(stdlib.Importer(stdlibImpl))
 }

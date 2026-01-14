@@ -38,7 +38,7 @@ import (
 
 type (
 	// BuildFunc defines the function that a Go library packaging GX files needs to implement.
-	BuildFunc func(*builder.Builder) (builder.Package, error)
+	BuildFunc func(importers.Builder) (importers.Package, error)
 
 	// Importer maps GX package path to a Build function defined
 	// by the Go library packaging the GX files.
@@ -66,7 +66,7 @@ func (imp *Importer) Support(path string) bool {
 }
 
 // Import a package given its path.
-func (imp *Importer) Import(bld *builder.Builder, path string) (builder.Package, error) {
+func (imp *Importer) Import(bld importers.Builder, path string) (importers.Package, error) {
 	buildFunc, ok := registered[path]
 	if !ok {
 		return nil, errors.Errorf("cannot find package %s", path)

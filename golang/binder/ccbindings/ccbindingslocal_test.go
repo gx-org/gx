@@ -21,19 +21,22 @@ import (
 
 	"github.com/pkg/errors"
 	"github.com/gx-org/gx/build/builder"
+	"github.com/gx-org/gx/build/importers"
 	"github.com/gx-org/gx/golang/binder/bindings"
 	"github.com/gx-org/gx/golang/binder/ccbindings"
 	"github.com/gx-org/gx/golang/binder/ccbindings/fmtpath"
 )
 
-type loader struct{}
+type loader struct {
+	builder *builder.Builder
+}
 
-func (loader) Load(bld *builder.Builder, path string) (builder.Package, error) {
+func (l *loader) Load(bld importers.Builder, path string) (importers.Package, error) {
 	paths := strings.Split(path, "/")
 	if len(paths) != 1 {
 		return nil, errors.Errorf("cannot load path %q: not supported", path)
 	}
-	pkg := bld.NewIncrementalPackage(path)
+	pkg := l.builder.NewIncrementalPackage(path)
 	if err := pkg.Build(fmt.Sprintf(`
 package %s
 
@@ -81,7 +84,9 @@ func TestCCBindingsLocal(t *testing.T) {
 		},
 	}
 	for _, test := range tests {
-		bld := builder.New(loader{})
+		ld := &loader{}
+		bld := builder.New(ld)
+		ld.builder = bld
 		fmtpath.SetModuleName(test.pkgName)
 		pkg, err := bld.Build(test.pkgName)
 		if err != nil {

@@ -23,7 +23,7 @@ import (
 	"strings"
 
 	"github.com/pkg/errors"
-	"github.com/gx-org/gx/build/builder"
+	"github.com/gx-org/gx/build/importers"
 	"github.com/gx-org/gx/build/ir"
 	"github.com/gx-org/gx/interp"
 	"github.com/gx-org/gx/stdlib/impl"
@@ -31,7 +31,7 @@ import (
 
 type baseBuilder struct {
 	name  string
-	build func(*builder.Builder, *impl.Stdlib, *builder.FilePackage) error
+	build func(bld importers.Builder, impl *impl.Stdlib, pkg importers.FilePackage) error
 }
 
 var _ Builder = (*baseBuilder)(nil)
@@ -40,7 +40,7 @@ func (fb baseBuilder) Name() string {
 	return fb.name
 }
 
-func (fb baseBuilder) Build(bld *builder.Builder, impl *impl.Stdlib, pkg *builder.FilePackage) error {
+func (fb baseBuilder) Build(bld importers.Builder, impl *impl.Stdlib, pkg importers.FilePackage) error {
 	return fb.build(bld, impl, pkg)
 }
 
@@ -65,7 +65,7 @@ func (b *sourceParser) Name() string {
 	return fmt.Sprintf("%T%v", b, b.names)
 }
 
-func (b *sourceParser) Build(bld *builder.Builder, _ *impl.Stdlib, pkg *builder.FilePackage) (err error) {
+func (b *sourceParser) Build(bld importers.Builder, _ *impl.Stdlib, pkg importers.FilePackage) (err error) {
 	if len(b.names) == 0 {
 		if b.names, err = topLevelNames(b.fs); err != nil {
 			return err
@@ -95,7 +95,7 @@ func funcName(f any) string {
 
 // BuildFunc builds a function in a package.
 func BuildFunc(f FuncBuilder) Builder {
-	buildFunc := func(_ *builder.Builder, impl *impl.Stdlib, pkg *builder.FilePackage) error {
+	buildFunc := func(_ importers.Builder, impl *impl.Stdlib, pkg importers.FilePackage) error {
 		irPkg := pkg.IR()
 		fn, err := f.BuildFuncIR(impl, irPkg)
 		if err != nil {
@@ -163,7 +163,7 @@ func findFunc(pkg *ir.Package, name string) (*ir.FuncBuiltin, error) {
 func ImplementStubFunc(name string, slotFn func(impl *impl.Stdlib) interp.FuncBuiltin) Builder {
 	return baseBuilder{
 		name: name,
-		build: func(bld *builder.Builder, impl *impl.Stdlib, pkg *builder.FilePackage) error {
+		build: func(bld importers.Builder, impl *impl.Stdlib, pkg importers.FilePackage) error {
 			stub, err := findFunc(pkg.IR(), name)
 			if err != nil {
 				return err
@@ -206,7 +206,7 @@ func (s *graphFunc) Implementation() any {
 func ImplementGraphFunc(name string, slotFn interp.FuncBuiltin) Builder {
 	return baseBuilder{
 		name: name,
-		build: func(bld *builder.Builder, impl *impl.Stdlib, pkg *builder.FilePackage) error {
+		build: func(bld importers.Builder, impl *impl.Stdlib, pkg importers.FilePackage) error {
 			for _, fn := range pkg.IR().Decls.Funcs {
 				if fn.Name() == name {
 					stub := fn.(*ir.FuncBuiltin)
@@ -221,12 +221,12 @@ func ImplementGraphFunc(name string, slotFn interp.FuncBuiltin) Builder {
 
 // MethodBuilder builds a method for a package given its named type.
 type MethodBuilder interface {
-	BuildMethodIR(*impl.Stdlib, builder.Package, *ir.NamedType) (*ir.FuncBuiltin, error)
+	BuildMethodIR(*impl.Stdlib, importers.Package, *ir.NamedType) (*ir.FuncBuiltin, error)
 }
 
 // BuildMethod builds a method for a named type in a package.
 func BuildMethod(name string, f MethodBuilder) Builder {
-	buildMethod := func(bld *builder.Builder, impl *impl.Stdlib, pkg *builder.FilePackage) error {
+	buildMethod := func(bld importers.Builder, impl *impl.Stdlib, pkg importers.FilePackage) error {
 		irPkg := pkg.IR()
 		var namedType *ir.NamedType
 		for _, named := range irPkg.Decls.Types {
@@ -267,7 +267,7 @@ type TypeBuilder interface {
 
 // BuildType builds a function in a package.
 func BuildType(f TypeBuilder) Builder {
-	buildType := func(bld *builder.Builder, impl *impl.Stdlib, pkg *builder.FilePackage) error {
+	buildType := func(bld importers.Builder, impl *impl.Stdlib, pkg importers.FilePackage) error {
 		irPkg := pkg.IR()
 		tp, err := f.BuildNamedType(impl, irPkg)
 		if err != nil {
@@ -288,7 +288,7 @@ type ConstBuilder func(*ir.Package) (string, ir.Expr, ir.Type, error)
 
 // BuildConst builds a function in a package.
 func BuildConst(f ConstBuilder) Builder {
-	buildConst := func(bld *builder.Builder, _ *impl.Stdlib, pkg *builder.FilePackage) error {
+	buildConst := func(bld importers.Builder, _ *impl.Stdlib, pkg importers.FilePackage) error {
 		irPkg := pkg.IR()
 		name, expr, typ, err := f(irPkg)
 		if err != nil {

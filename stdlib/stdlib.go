@@ -21,7 +21,6 @@ import (
 	"slices"
 
 	"github.com/pkg/errors"
-	"github.com/gx-org/gx/build/builder"
 	"github.com/gx-org/gx/build/importers"
 	"github.com/gx-org/gx/stdlib/builtin"
 	"github.com/gx-org/gx/stdlib/control"
@@ -74,7 +73,7 @@ func (l *Stdlib) Support(path string) bool {
 }
 
 // Import a package given its path.
-func (l *Stdlib) Import(bld *builder.Builder, path string) (builder.Package, error) {
+func (l *Stdlib) Import(bld importers.Builder, path string) (importers.Package, error) {
 	pkgBuilder, ok := l.libs[path]
 	if !ok {
 		return nil, errors.Errorf("package %s is not in std", path)

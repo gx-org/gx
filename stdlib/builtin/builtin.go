@@ -19,7 +19,7 @@ import (
 	"go/ast"
 	"path/filepath"
 
-	"github.com/gx-org/gx/build/builder"
+	"github.com/gx-org/gx/build/importers"
 	"github.com/gx-org/gx/build/ir"
 	"github.com/gx-org/gx/interp/evaluator"
 	"github.com/gx-org/gx/interp"
@@ -33,7 +33,7 @@ type (
 		// Name of the builder (for debugging purpose only).
 		Name() string
 		// Build the given package.
-		Build(*builder.Builder, *impl.Stdlib, *builder.FilePackage) error
+		Build(importers.Builder, *impl.Stdlib, importers.FilePackage) error
 	}
 
 	// PackageBuilder builds a builtin package, that is a package composed of GX and Go code.
@@ -46,7 +46,7 @@ type (
 )
 
 // Build a package from its description.
-func Build(bld *builder.Builder, impl *impl.Stdlib, pkgBuilder PackageBuilder) (builder.Package, error) {
+func Build(bld importers.Builder, impl *impl.Stdlib, pkgBuilder PackageBuilder) (importers.Package, error) {
 	path, name := filepath.Split(pkgBuilder.FullPath)
 	if len(path) > 0 {
 		path = path[:len(path)-1]

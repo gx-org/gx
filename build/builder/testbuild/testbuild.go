@@ -30,6 +30,7 @@ import (
 	gxfmt "github.com/gx-org/gx/base/fmt"
 	"github.com/gx-org/gx/build/builder"
 	"github.com/gx-org/gx/build/fmterr"
+	"github.com/gx-org/gx/build/importers"
 	"github.com/gx-org/gx/build/ir"
 	"github.com/gx-org/gx/build/ir/irstring"
 )
@@ -120,7 +121,7 @@ func (tt DeclarePackage) Source() string {
 }
 
 // Build the package.
-func (tt DeclarePackage) Build(b *builder.Builder) (builder.Package, error) {
+func (tt DeclarePackage) Build(b *builder.Builder) (importers.Package, error) {
 	pkg, err := build(b, tt.Path, tt.Src)
 	if err != nil {
 		return nil, err
@@ -270,10 +271,10 @@ func (tt Expr) Source() string {
 }
 
 type localImporter struct {
-	pkgs map[string]builder.Package
+	pkgs map[string]importers.Package
 }
 
-func (imp *localImporter) Load(bld *builder.Builder, path string) (builder.Package, error) {
+func (imp *localImporter) Load(bld importers.Builder, path string) (importers.Package, error) {
 	pkg, ok := imp.pkgs[path]
 	if !ok {
 		return nil, errors.Errorf("package %s has not been built", path)
@@ -339,7 +340,7 @@ type Test interface {
 func Run(t *testing.T, tests ...Test) *Builder {
 	t.Helper()
 	ctx := &Builder{
-		imp: localImporter{pkgs: make(map[string]builder.Package)},
+		imp: localImporter{pkgs: make(map[string]importers.Package)},
 	}
 	ctx.Continue(t, tests...)
 	return ctx

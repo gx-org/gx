@@ -23,7 +23,7 @@ import (
 	"strings"
 
 	"golang.org/x/mod/module"
-	"github.com/gx-org/gx/build/builder"
+	"github.com/gx-org/gx/build/importers"
 )
 
 const goModCache = "GOMODCACHE"
@@ -63,7 +63,7 @@ func (imp *Importer) moduleOSPath(dep *module.Version) (string, error) {
 	return osPath, nil
 }
 
-func (imp *Importer) importFromGoCache(bld *builder.Builder, importPath string, dep *module.Version) (builder.Package, error) {
+func (imp *Importer) importFromGoCache(bld importers.Builder, importPath string, dep *module.Version) (importers.Package, error) {
 	osPath, err := imp.moduleOSPath(dep)
 	if err != nil {
 		return nil, err

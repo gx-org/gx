@@ -72,7 +72,7 @@ func (imp *Importer) Module() *gxmodule.Module {
 
 // NewBuilder returns a builder using the local filesystem to find package.
 // This function should only be used to generate bindings.
-func NewBuilder() (*builder.Builder, error) {
+func NewBuilder() (importers.Builder, error) {
 	importer, err := New("")
 	if err != nil {
 		return nil, err
@@ -101,7 +101,7 @@ func (imp *Importer) Support(path string) bool {
 }
 
 // Import a package given its path.
-func (imp *Importer) Import(bld *builder.Builder, importPath string) (builder.Package, error) {
+func (imp *Importer) Import(bld importers.Builder, importPath string) (importers.Package, error) {
 	if imp.mod.Belongs(importPath) {
 		return imp.importModuleFile(bld, importPath)
 	}
@@ -112,7 +112,7 @@ func (imp *Importer) Import(bld *builder.Builder, importPath string) (builder.Pa
 	return imp.importFromGoCache(bld, importPath, dep)
 }
 
-func (imp *Importer) importModuleFile(bld *builder.Builder, importPath string) (builder.Package, error) {
+func (imp *Importer) importModuleFile(bld importers.Builder, importPath string) (importers.Package, error) {
 	packagePath, packageName, err := imp.mod.Split(importPath)
 	if err != nil {
 		return nil, errors.Errorf("cannot import path %s: %v", importPath, err)
@@ -130,7 +130,7 @@ func (imp *Importer) importModuleFile(bld *builder.Builder, importPath string) (
 // ImportAt imports a package given a path on the virtual file system.
 // The last element of the import path needs to match the package names in all the GX source files
 // present in the folder on the file system.
-func ImportAt(bld *builder.Builder, vfs fs.ReadDirFS, importPath, fsPath string) (builder.Package, error) {
+func ImportAt(bld importers.Builder, vfs fs.ReadDirFS, importPath, fsPath string) (importers.Package, error) {
 	if fsPath == "" {
 		fsPath = "."
 	}
