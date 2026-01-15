@@ -40,7 +40,10 @@ func (asg *identStorage) assign(rscope resolveScope, typ ir.Type) (_ ir.Storage,
 	name := asg.target.src
 	storage, ok := findStorage(rscope, name)
 	if !ok {
-		return nil, false, false
+		return invalidExpr().Store(), false, false
+	}
+	if builtins.Is(name.Name) {
+		return invalidExpr().Store(), false, rscope.Err().Appendf(asg.source(), "cannot assign to %s", name.Name)
 	}
 	return storage, false, true
 }
