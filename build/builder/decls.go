@@ -252,8 +252,8 @@ func (d *decls) buildFuncType(pkgScope *pkgResolveScope, pNode *processNodeT[fun
 	if !ok {
 		return irf, pkgScope.Err().AppendInternalf(recv.Node(), "cannot cast %T to %s", recv.Type(), reflect.TypeFor[*ir.NamedType]().Name())
 	}
-	assignMethod(fnScope.fileScope(), nType, irf)
-	return irf, true
+	ok = assignMethod(fnScope.fileScope(), nType, irf)
+	return irf, ok
 }
 
 func (d *decls) buildFunctions(pkgScope *pkgResolveScope, filter func(f *processNodeT[function]) bool) bool {
