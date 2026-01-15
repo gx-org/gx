@@ -227,5 +227,14 @@ func f() int64 {
 `,
 			Err: "undefined: state",
 		},
+		testbuild.Decl{
+			Src: `
+func f() bool {
+	true = true
+	return true
+}
+`,
+			Err: "cannot assign to true",
+		},
 	)
 }
