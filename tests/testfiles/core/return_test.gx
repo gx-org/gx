@@ -101,7 +101,7 @@ func TestTensorDimWithExpr() [4]float64 {
 }
 
 func TestTensor2DFloat64WithSubtypes() [4][4]float64 {
-	return [...]float64{
+	return [4][4]float64{
 		[...]float64{0, 1, 2, 3},
 		[...]float64{10, 11, 12, 13},
 		[...]float64{20, 21, 22, 23},
@@ -117,7 +117,7 @@ func TestTensor2DFloat64WithSubtypes() [4][4]float64 {
 }
 
 func TestTensor2DFloat64() [4][4]float64 {
-	return [...]float64{
+	return [4][4]float64{
 		{0, 1, 2, 3},
 		{10, 11, 12, 13},
 		{20, 21, 22, 23},
@@ -336,3 +336,4 @@ func TestNoReturnWithTrace() {
 	// return_test.gx:0
 	// 	[2]float32{2, 3}
 }
+

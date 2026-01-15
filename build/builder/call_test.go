@@ -172,5 +172,16 @@ func f() float32 {
 `,
 			Err: "undefined: somefunc",
 		},
+		testbuild.Decl{
+			Src: `
+func g() (int32, float32, int64)
+
+func f() (int32, float32) {
+	a, b := g()
+	return a, b
+}
+`,
+			Err: "assignment mismatch: 2 variable(s) but g() returns 3 values",
+		},
 	)
 }
