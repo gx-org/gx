@@ -229,5 +229,21 @@ func (a A) F() int32 {
 `,
 			Err: "undefined: AgeOfTheCaptain",
 		},
+		testbuild.Decl{
+			Src: `
+type A struct {
+	val int32
+}
+
+func (a A) F() int32 {
+	return a.val
+}
+
+func (a A) F() int32 {
+	return a.val
+}
+`,
+			Err: "method A.F already declared at 0:9:1",
+		},
 	)
 }

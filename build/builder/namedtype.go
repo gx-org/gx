@@ -109,7 +109,7 @@ func assignMethod(scope *fileResolveScope, ext *ir.NamedType, fn *irFunc) bool {
 		methods = ordered.NewMap[string, *irFunc]()
 		scope.methods.Store(ext, methods)
 	}
-	if prev, hasPrev := methods.Load(ext.Name()); hasPrev {
+	if prev, hasPrev := methods.Load(fn.irFunc.Name()); hasPrev {
 		return scope.Err().Appendf(fn.irFunc.Node(), "method %s.%s already declared at %s", ext.Name(), fn.irFunc.Name(), funcPos(scope, prev.bFunc))
 	}
 	methods.Store(fn.irFunc.Name(), fn)
