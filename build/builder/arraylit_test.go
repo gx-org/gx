@@ -144,5 +144,9 @@ func TestArrayLitError(t *testing.T) {
 			Src: `[2]float32{{1, 2, 3}, {4, 5, 6}}`,
 			Err: "unexpected literal for type float32",
 		},
+		testbuild.Expr{
+			Src: `[2][1]float32{[1]float64{10}, [1]float32{20}}`,
+			Err: "cannot use [1]float64 as [1]float32 value in assignment",
+		},
 	)
 }
