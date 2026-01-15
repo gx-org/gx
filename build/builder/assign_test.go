@@ -215,3 +215,17 @@ func f() int64 {
 		},
 	)
 }
+
+func TestAssignWithErrors(t *testing.T) {
+	testbuild.Run(t,
+		testbuild.Decl{
+			Src: `
+func f() int64 {
+	state.x, state.y = f(state)
+	return 0
+}
+`,
+			Err: "undefined: state",
+		},
+	)
+}

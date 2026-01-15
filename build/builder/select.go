@@ -101,15 +101,19 @@ func (n *selectorExpr) selectStorageFrom(scope resolveScope, sel *ir.SelectorExp
 	return n.selectFromExpr(scope, sel, sel.X.Type())
 }
 
-func (n *selectorExpr) buildSelectorExpr(scope resolveScope) (*ir.SelectorExpr, bool) {
-	ext := &ir.SelectorExpr{Src: n.src}
-	var ok bool
+func (n *selectorExpr) buildSelectorExpr(scope resolveScope) (ext *ir.SelectorExpr, ok bool) {
+	defer func() {
+		if ext.Stor == nil {
+			ext.Stor = invalidIdent.Store()
+		}
+	}()
+	ext = &ir.SelectorExpr{Src: n.src}
 	ext.X, ok = n.x.buildExpr(scope)
 	if !ok {
-		return ext, false
+		return
 	}
 	ext.Stor, ok = n.selectStorageFrom(scope, ext)
-	return ext, ok
+	return
 }
 
 func (n *selectorExpr) buildExpr(scope resolveScope) (ir.Expr, bool) {
