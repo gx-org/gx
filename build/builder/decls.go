@@ -250,7 +250,7 @@ func (d *decls) buildFuncType(pkgScope *pkgResolveScope, pNode *processNodeT[fun
 	}
 	nType, ok := recv.Type().(*ir.NamedType)
 	if !ok {
-		return irf, pkgScope.Err().AppendInternalf(recv.Node(), "cannot cast %T to %s", recv.Type(), reflect.TypeFor[*ir.NamedType]().Name())
+		return irf, pkgScope.Err().Appendf(recv.Node(), "cannot define new methods on non-local type %s", recv.Type().String())
 	}
 	ok = assignMethod(fnScope.fileScope(), nType, irf)
 	return irf, ok
