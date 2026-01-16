@@ -39,5 +39,9 @@ func TestIndex(t *testing.T) {
 			},
 			WantType: "float32",
 		},
+		testbuild.Expr{
+			Src: `[2]float32{3, 4}[float32(1)]`,
+			Err: "index float32(1) (of type float32) must be integer",
+		},
 	)
 }

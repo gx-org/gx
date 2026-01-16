@@ -164,7 +164,11 @@ func (n *indexExpr) buildExpr(rscope resolveScope) (ir.Expr, bool) {
 	if irkind.IsNumber(ext.Index.Type().Kind()) {
 		ext.Index, numberOk = castNumber(rscope, ext.Index, ir.Int64Type())
 	}
-	return ext, boundOk && numberOk
+	indexTypeOk := ir.IsIndexType(ext.Index.Type())
+	if !indexTypeOk {
+		rscope.Err().Appendf(n.source(), "index %s (of type %s) must be integer", ext.Index.String(), ext.Index.Type().String())
+	}
+	return ext, boundOk && numberOk && indexTypeOk
 }
 
 func (n *indexExpr) String() string {
