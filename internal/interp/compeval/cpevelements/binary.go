@@ -41,9 +41,10 @@ var (
 	_ materialise.ElementMaterialiser = (*binary)(nil)
 	_ ir.Canonical                    = (*binary)(nil)
 	_ canonical.Evaluable             = (*binary)(nil)
+	_ canonical.Canonical             = (*binary)(nil)
 	_ elements.ElementWithConstant    = (*binary)(nil)
 	_ fmt.Stringer                    = (*binary)(nil)
-	_ elements.WithAxes               = (*cast)(nil)
+	_ elements.WithAxes               = (*binary)(nil)
 )
 
 // NewBinary returns a binary operation between two elements.
@@ -219,6 +220,12 @@ func (a *binary) CanonicalExpr() canonical.Canonical {
 // Expr returns the IR expression represented by the variable.
 func (a *binary) Expr() (ir.Expr, error) {
 	return a.src.Node(), nil
+}
+
+func (a *binary) ShortString() string {
+	x := canonical.ToString(a.x)
+	y := canonical.ToString(a.y)
+	return fmt.Sprintf("%v%v%v", x, a.src.Node().Src.Op, y)
 }
 
 func (a *binary) String() string {

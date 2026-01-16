@@ -88,13 +88,16 @@ type basePackage struct {
 	macroRoot *uname.Root
 }
 
-func newBasePackage(b *Builder, path string) *basePackage {
+func newBasePackage(b *Builder, path, name string) *basePackage {
 	pkg := &basePackage{
 		bld:    b,
 		path:   path,
 		fset:   token.NewFileSet(),
 		files:  ordered.NewMap[string, *file](),
 		unames: uname.New(),
+	}
+	if name != "" {
+		pkg.name = &ast.Ident{Name: name}
 	}
 	pkg.macroRoot = pkg.unames.Root("_macro")
 	pkg.last = &lastBuild{
@@ -156,7 +159,7 @@ var _ importers.Package = (*FilePackage)(nil)
 
 func (b *Builder) newFilePackage(path, name string) *FilePackage {
 	pkg := &FilePackage{
-		basePackage: newBasePackage(b, path),
+		basePackage: newBasePackage(b, path, name),
 	}
 	pkg.irImports = newFile(pkg.basePackage, "", &ast.File{})
 	if name != "" {
@@ -256,16 +259,9 @@ func (b *Builder) NewIncrementalPackage(fullname string) *IncrementalPackage {
 	paths := strings.Split(fullname, "/")
 	name := paths[len(paths)-1]
 	path := strings.Join(paths[:len(paths)-1], "/")
-	pkg := &IncrementalPackage{
-		basePackage: newBasePackage(b, path),
+	return &IncrementalPackage{
+		basePackage: newBasePackage(b, path, name),
 	}
-	if name == "" {
-		return pkg
-	}
-	pkg.basePackage.name = &ast.Ident{
-		Name: name,
-	}
-	return pkg
 }
 
 // Build a AST source file. Definitions are added to the package or replace existing definitions.

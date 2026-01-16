@@ -188,7 +188,7 @@ func UniqueAxesFromExpr(fetcher ir.Fetcher, expr ir.Expr) (map[int]struct{}, err
 
 	axes := map[int]struct{}{}
 	for _, val := range sliceExpr.Elts {
-		axis, err := elements.EvalInt(fetcher, val)
+		axis, err := elements.MustEvalInt(fetcher, val)
 		if err != nil {
 			return nil, fmterr.Error(fetcher.File().FileSet(), expr.Node(), err)
 		}

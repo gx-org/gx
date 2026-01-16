@@ -34,6 +34,8 @@ type Element interface {
 	canonical.Comparable
 	fmt.Stringer
 
+	ShortString() string
+
 	// CanonicalExpr returns the canonical expression used for comparison.
 	CanonicalExpr() canonical.Canonical
 }

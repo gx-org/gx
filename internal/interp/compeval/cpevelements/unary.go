@@ -41,6 +41,7 @@ var (
 	_ materialise.ElementMaterialiser = (*unary)(nil)
 	_ elements.ElementWithConstant    = (*unary)(nil)
 	_ ir.Canonical                    = (*unary)(nil)
+	_ canonical.Canonical             = (*unary)(nil)
 	_ fmt.Stringer                    = (*unary)(nil)
 )
 
@@ -174,6 +175,10 @@ func (a *unary) toCanonical() canonical.Canonical {
 	default:
 		return a
 	}
+}
+
+func (a *unary) ShortString() string {
+	return a.String()
 }
 
 func (a *unary) String() string {

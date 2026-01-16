@@ -260,8 +260,29 @@ func SliceVals(expr ir.Expr, index evaluator.NumericalElement, vals []ir.Element
 	return vals[i], nil
 }
 
-// EvalInt evaluates an expression to return an int.
-func EvalInt(fetcher ir.Fetcher, expr ir.Expr) (int, error) {
+// EvalInt evaluates an expression to an int only if possible.
+func EvalInt(fetcher ir.Fetcher, expr ir.Expr) (n int, ok bool, err error) {
+	var el ir.Element
+	el, err = fetcher.EvalExpr(expr)
+	if err != nil {
+		return
+	}
+	val := canonical.ToValue(el)
+	if val == nil {
+		return
+	}
+	ok = val.IsInt()
+	if !ok {
+		return
+	}
+	var n64 int64
+	n64, _ = val.Int64()
+	n = int(n64)
+	return
+}
+
+// MustEvalInt evaluates an expression to return an int.
+func MustEvalInt(fetcher ir.Fetcher, expr ir.Expr) (int, error) {
 	el, err := fetcher.EvalExpr(expr)
 	if err != nil {
 		return 0, err

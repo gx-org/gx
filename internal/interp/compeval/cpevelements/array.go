@@ -101,6 +101,10 @@ func (a *array) OutNode() *ops.OutputNode {
 	return &ops.OutputNode{Node: a}
 }
 
+func (a *array) ShortString() string {
+	return a.String()
+}
+
 func (a *array) String() string {
 	return a.typ.String()
 }

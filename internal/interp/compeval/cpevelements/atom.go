@@ -145,6 +145,10 @@ func (a *atom) Float() *big.Float {
 	return a.float
 }
 
+func (a *atom) ShortString() string {
+	return a.String()
+}
+
 func (a *atom) String() string {
 	return a.val.String()
 }

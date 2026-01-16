@@ -16,6 +16,8 @@
 package numbers
 
 import (
+	"fmt"
+
 	"github.com/gx-org/backend/shape"
 	"github.com/gx-org/gx/build/ir"
 	"github.com/gx-org/gx/build/ir/irkind"
@@ -33,6 +35,7 @@ type Number interface {
 	canonical.Evaluable
 	elements.Copier
 	elements.ElementWithConstant
+	fmt.Stringer
 }
 
 func toConcrete(tps ...ir.Type) ir.Type {
