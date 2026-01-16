@@ -49,7 +49,7 @@ func checkBroadcastRanks(fetcher ir.Fetcher, call *ir.FuncCallExpr, src ir.Array
 	}
 	srcAxes := src.Axes()
 	if len(srcAxes) != len(targetElmts) {
-		return fmterr.Errorf(fetcher.File().FileSet(), call.Node(), "cannot broadcast array with %d axes to %d axes: the same number of axes is required", len(srcAxes), len(targetElmts))
+		return fmterr.Errorf(fetcher.File().FileSet(), call.Node(), "cannot broadcast array from %d to %d axes (expect an equal number)", len(srcAxes), len(targetElmts))
 	}
 
 	for i, targetElt := range targetElmts {
@@ -70,7 +70,7 @@ func checkBroadcastRanks(fetcher ir.Fetcher, call *ir.FuncCallExpr, src ir.Array
 			return fmterr.Internal(err)
 		}
 		if !tgOk && !oneAxisOk {
-			return fmterr.Errorf(fetcher.File().FileSet(), srcAxes[i].Node(), "cannot broadcast array with axis %d of size %d: size of 1 or %d required", i, srcElt, targetElt)
+			return fmterr.Errorf(fetcher.File().FileSet(), srcAxes[i].Node(), "cannot broadcast axis %d from length %s to %s (expect a source length of 1 or %s)", i, srcCan.ShortString(), targetElt.ShortString(), targetElt.ShortString())
 		}
 	}
 	return nil

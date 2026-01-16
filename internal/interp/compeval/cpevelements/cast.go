@@ -183,6 +183,10 @@ func (a *cast) CanonicalExpr() canonical.Canonical {
 	return a
 }
 
+func (a *cast) ShortString() string {
+	return a.String()
+}
+
 func (a *cast) String() string {
 	return fmt.Sprintf("%v(%v)", a.target, fmt.Sprint(a.x))
 }

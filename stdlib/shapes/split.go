@@ -35,6 +35,21 @@ func (f split) BuildFuncIR(impl *impl.Stdlib, pkg *ir.Package) (*ir.FuncBuiltin,
 	return builtin.IRFuncBuiltin[split]("Split", impl.Shapes.Split, pkg), nil
 }
 
+func computeRemainder(fetcher ir.Fetcher, x, y ir.Expr) (int, error) {
+	xInt, xOk, err := elements.EvalInt(fetcher, x)
+	if err != nil {
+		return 0, err
+	}
+	yInt, yOk, err := elements.EvalInt(fetcher, y)
+	if err != nil {
+		return 0, err
+	}
+	if !xOk || !yOk {
+		return 0, nil
+	}
+	return xInt % yInt, nil
+}
+
 func (f split) BuildFuncType(fetcher ir.Fetcher, call *ir.FuncCallExpr) (*ir.FuncType, error) {
 	params, err := builtins.BuildFuncParams(fetcher, call, f.Name(), []ir.Type{
 		ir.IntIndexType(),
@@ -45,7 +60,7 @@ func (f split) BuildFuncType(fetcher ir.Fetcher, call *ir.FuncCallExpr) (*ir.Fun
 		return nil, err
 	}
 
-	axis, err := elements.EvalInt(fetcher, call.Args[0])
+	axis, err := elements.MustEvalInt(fetcher, call.Args[0])
 	if err != nil {
 		return nil, fmterr.Errorf(fetcher.File().FileSet(), call.Node(), "unable to evaluate axis argument to %s: %s", f.Func.Name(), err)
 	}
@@ -67,6 +82,13 @@ func (f split) BuildFuncType(fetcher ir.Fetcher, call *ir.FuncCallExpr) (*ir.Fun
 	splitDimExpr, ok := dims[axis].(*ir.AxisExpr)
 	if !ok {
 		return nil, fmterr.Internalf(fetcher.File().FileSet(), call.Node(), "cannot split axis %s (%T)", dims[axis], dims[axis])
+	}
+	remainder, err := computeRemainder(fetcher, splitDimExpr.X, numSplit)
+	if err != nil {
+		return nil, fmterr.Error(fetcher.File().FileSet(), call.Node(), err)
+	}
+	if remainder != 0 {
+		return nil, fmterr.Errorf(fetcher.File().FileSet(), call.Node(), "cannot split axis %s of length %s by %s (expected a remainder of 0, found %d)", call.Args[0].String(), splitDimExpr.X.String(), numSplit.String(), remainder)
 	}
 	outputDims[axis+1] = &ir.AxisExpr{
 		X: builtins.ToBinaryExpr(token.QUO, splitDimExpr.X, numSplit),

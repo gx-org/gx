@@ -232,6 +232,11 @@ func (n *Int) Materialise(ao materialise.Materialiser) (materialise.Node, error)
 	return ao.NodeFromArray(n.expr.File(), n.expr.Node(), val)
 }
 
+// ShortString returns a short string representation of the value.
+func (n *Int) ShortString() string {
+	return n.expr.Node().String()
+}
+
 // String return the float literal.
 func (n *Int) String() string {
 	val := n.expr.Node().String()

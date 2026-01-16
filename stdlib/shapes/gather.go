@@ -56,7 +56,7 @@ func (f gather) BuildFuncType(fetcher ir.Fetcher, call *ir.FuncCallExpr) (*ir.Fu
 	sourceRank := sourceArray.Rank()
 	indicesRank := indexArray.Rank()
 	indexDims := indicesRank.Axes()[len(indicesRank.Axes())-1]
-	indexRank, err := elements.EvalInt(fetcher, indexDims.AsExpr())
+	indexRank, err := elements.MustEvalInt(fetcher, indexDims.AsExpr())
 	if err != nil {
 		return nil, err
 	}

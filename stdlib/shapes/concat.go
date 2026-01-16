@@ -79,7 +79,7 @@ func (f concat) resultsType(fetcher ir.Fetcher, call *ir.FuncCallExpr) (params [
 	if err != nil {
 		return nil, nil, err
 	}
-	axis, err := elements.EvalInt(fetcher, call.Args[0])
+	axis, err := elements.MustEvalInt(fetcher, call.Args[0])
 	if err != nil {
 		return nil, nil, err
 	}

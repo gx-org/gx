@@ -155,6 +155,11 @@ func (n *Slice) Compare(x canonical.Comparable) (bool, error) {
 	return true, nil
 }
 
+// ShortString returns a string representation of the slice.
+func (n *Slice) ShortString() string {
+	return n.String()
+}
+
 // String returns a string representation of the slice.
 func (n *Slice) String() string {
 	return gxfmt.String(n.values)

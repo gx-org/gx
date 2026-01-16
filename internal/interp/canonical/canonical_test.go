@@ -74,6 +74,10 @@ func (cv *cVar) Simplify() canonical.Simplifier {
 	return cv
 }
 
+func (cv *cVar) ShortString() string {
+	return cv.name
+}
+
 func (cv *cVar) String() string {
 	return cv.name
 }

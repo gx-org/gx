@@ -112,7 +112,7 @@ func (f argmax) BuildFuncType(fetcher ir.Fetcher, call *ir.FuncCallExpr) (*ir.Fu
 	}
 	arrayType := call.Args[0].Type().(ir.ArrayType)
 	rank := arrayType.Rank()
-	reduceAxis, err := elements.EvalInt(fetcher, call.Args[1])
+	reduceAxis, err := elements.MustEvalInt(fetcher, call.Args[1])
 	if err != nil {
 		return nil, err
 	}

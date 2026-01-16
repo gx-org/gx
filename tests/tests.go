@@ -43,7 +43,7 @@ var Errors = []string{
 	"errors/resolve",
 	"errors/redefined",
 	"errors/slices",
-	// "errors/stdlib", // TODO(degris): FIX ASAP
+	"errors/stdlib",
 }
 
 // AlgebraicCore is a set of paths only testing core algebraic operations.

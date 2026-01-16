@@ -117,6 +117,10 @@ func (a *variable) CanonicalExpr() canonical.Canonical {
 	return a
 }
 
+func (a *variable) ShortString() string {
+	return a.String()
+}
+
 func (a *variable) String() string {
 	return a.name
 }

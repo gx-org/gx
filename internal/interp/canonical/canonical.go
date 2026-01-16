@@ -50,6 +50,7 @@ type (
 	// Canonical is a canonical expression.
 	Canonical interface {
 		Comparable
+		ShortString() string
 		fmt.Stringer
 	}
 
@@ -226,6 +227,10 @@ func (pe add) Simplify() Simplifier {
 	return add{pExpr: prefixedExpr(simplifyArgs(pe)...)}
 }
 
+func (pe add) ShortString() string {
+	return pe.String()
+}
+
 func (pe add) String() string {
 	return pe.pExpr.string(pe)
 }
@@ -252,6 +257,10 @@ func (pe sub) Float() *big.Float {
 
 func (pe sub) Simplify() Simplifier {
 	return sub{pExpr: prefixedExpr(simplifyArgs(pe)...)}
+}
+
+func (pe sub) ShortString() string {
+	return pe.String()
 }
 
 func (pe sub) String() string {
@@ -295,6 +304,10 @@ func (pe mul) Simplify() Simplifier {
 	return mul{pExpr: prefixedExpr(args...)}
 }
 
+func (pe mul) ShortString() string {
+	return pe.String()
+}
+
 func (pe mul) String() string {
 	return pe.pExpr.string(pe)
 }
@@ -325,6 +338,10 @@ func (pe quo) Simplify() Simplifier {
 	return quo{pExpr: prefixedExpr(simplifyArgs(pe)...)}
 }
 
+func (pe quo) ShortString() string {
+	return pe.String()
+}
+
 func (pe quo) String() string {
 	return pe.pExpr.string(pe)
 }
@@ -343,6 +360,10 @@ func (pe unknown) Float() *big.Float {
 
 func (pe unknown) Simplify() Simplifier {
 	return pe
+}
+
+func (pe unknown) ShortString() string {
+	return pe.String()
 }
 
 func (pe unknown) String() string {

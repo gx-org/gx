@@ -125,7 +125,7 @@ func (f einsum) validateAxisExpr(fetcher ir.Fetcher, call *ir.FuncCallExpr, arg,
 
 	axes := make([]int, len(axisExpr.Elts))
 	for n, val := range axisExpr.Elts {
-		axisI64, err := elements.EvalInt(fetcher, val)
+		axisI64, err := elements.MustEvalInt(fetcher, val)
 		if err != nil {
 			return nil, err
 		}
