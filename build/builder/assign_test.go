@@ -236,5 +236,15 @@ func f() bool {
 `,
 			Err: "cannot assign to true",
 		},
+		testbuild.Decl{
+			Src: `
+func f() (int64, float32) {
+	a := 1
+	a, b := float32(2), float32(3)
+	return a, b
+}
+`,
+			Err: "cannot use float32 as int64 value in assignment",
+		},
 	)
 }

@@ -35,6 +35,7 @@ type storedValue struct {
 var (
 	_ Element                      = (*storedValue)(nil)
 	_ elements.WithAxes            = (*storedValue)(nil)
+	_ ir.WithStore                 = (*storedValue)(nil)
 	_ ir.Canonical                 = (*storedValue)(nil)
 	_ elements.Slicer              = (*storedValue)(nil)
 	_ elements.ElementWithConstant = (*storedValue)(nil)

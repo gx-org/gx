@@ -18,7 +18,6 @@ import (
 	"go/ast"
 	"go/token"
 
-	"github.com/gx-org/gx/build/builder/builtins"
 	"github.com/gx-org/gx/build/ir"
 	"github.com/gx-org/gx/build/ir/irkind"
 )
@@ -42,7 +41,7 @@ func (asg *identStorage) assign(rscope resolveScope, typ ir.Type) (_ ir.Storage,
 	if !ok {
 		return invalidExpr().Store(), false, false
 	}
-	if builtins.Is(name.Name) {
+	if ir.IsBuiltin(storage) {
 		return invalidExpr().Store(), false, rscope.Err().Appendf(asg.source(), "cannot assign to %s", name.Name)
 	}
 	return storage, false, true
@@ -51,20 +50,29 @@ func (asg *identStorage) assign(rscope resolveScope, typ ir.Type) (_ ir.Storage,
 func (asg *identStorage) define(rscope resolveScope, typ ir.Type) (_ ir.Storage, newName, ok bool) {
 	name := asg.target.src.Name
 	ns := rscope.nspace()
-	_, isDefined := ns.Find(name)
-	if builtins.Is(name) {
-		// If the name is a builtin, it will already be defined in one of the parent scope.
-		// Check if that builtin is defined in the local scope instead.
-		isDefined = rscope.nspace().IsLocal(name)
+	val, isDefined := ns.Find(name)
+	isBuiltin := false
+	if storer, isStorage := val.(ir.WithStore); isStorage {
+		isBuiltin = ir.IsBuiltin(storer.Store())
+	}
+	if isBuiltin {
+		// Defining a builtin: although the name is already defined,
+		// it does not count. For example: true := 3
+		isDefined = false
 	}
 	if irkind.IsNumber(typ.Kind()) {
 		typ = ir.DefaultNumberType(typ.Kind())
 	}
+	assignOk := true
+	if val != nil && !isBuiltin {
+		// Check the type if the variable has already been defined, except if that is a builtin.
+		assignOk = assignableToAt(rscope, asg.source(), typ, val.Type())
+	}
 	ext := &ir.LocalVarStorage{Src: asg.target.src, Typ: typ}
 	if !ir.ValidName(name) {
-		return ext, !isDefined, true
+		return ext, !isDefined, assignOk
 	}
-	return ext, !isDefined, true
+	return ext, !isDefined, assignOk
 }
 
 func (asg *identStorage) anonymousStorage(rscope resolveScope, typ ir.Type) (_ ir.Storage, newName, ok bool) {

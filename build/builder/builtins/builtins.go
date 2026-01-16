@@ -16,7 +16,6 @@
 package builtins
 
 import (
-	"go/ast"
 	"go/token"
 	"maps"
 
@@ -65,16 +64,7 @@ func registerBuiltinType(name string, typ ir.Type) {
 }
 
 func registerBuiltinFunc(impl ir.FuncImpl) {
-	registerBuiltinIR(token.FUNC, &ir.FuncBuiltin{
-		Src:  &ast.FuncDecl{Name: &ast.Ident{Name: impl.Name()}},
-		Impl: impl,
-	})
-}
-
-// Is returns true if name is a builtin.
-func Is(name string) bool {
-	_, ok := irBuiltins[name]
-	return ok
+	registerBuiltinIR(token.FUNC, ir.BuiltinFunction(impl))
 }
 
 // Register all the builtins.

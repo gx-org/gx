@@ -54,12 +54,38 @@ func (s *builtinStorage) Same(o Storage) bool {
 	return Storage(s) == o
 }
 
-// BuiltinStorage stores a value in a builtin storage.
+const numGXBuiltins = 17
+
+var builtins = make(map[Storage]bool, numGXBuiltins)
+
+func registerLanguageBuiltins(stor StorageWithValue) StorageWithValue {
+	if len(builtins) > numGXBuiltins {
+		// Check that builtins are not registered multiple times.
+		panic("too many GX builtins registered")
+	}
+	builtins[stor] = true
+	return stor
+}
+
+// BuiltinStorage stores a value in a builtin language storage.
 func BuiltinStorage(name string, val Expr) StorageWithValue {
-	return &builtinStorage{
+	return registerLanguageBuiltins(&builtinStorage{
 		name: &ast.Ident{Name: name},
 		val:  val,
-	}
+	})
+}
+
+// BuiltinFunction registers a language builtin function.
+func BuiltinFunction(impl FuncImpl) StorageWithValue {
+	return registerLanguageBuiltins(&FuncBuiltin{
+		Src:  &ast.FuncDecl{Name: &ast.Ident{Name: impl.Name()}},
+		Impl: impl,
+	})
+}
+
+// IsBuiltin returns true if the storage is GX language builtin (e.g. true, float32, append, ...)
+func IsBuiltin(stor Storage) bool {
+	return builtins[stor]
 }
 
 var (
