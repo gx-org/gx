@@ -37,8 +37,8 @@ import (
 	_ "github.com/gx-org/gx/examples/linearregression/linearregression"
 
 	gxdep0 "github.com/gx-org/gx/stdlib/bindings/go/num_go_gx"
-	gxdep1 "github.com/gx-org/gx/stdlib/bindings/go/rand_go_gx"
-	gxdep2 "github.com/gx-org/gx/stdlib/bindings/go/shapes_go_gx"
+	gxdep2 "github.com/gx-org/gx/stdlib/bindings/go/rand_go_gx"
+	gxdep1 "github.com/gx-org/gx/stdlib/bindings/go/shapes_go_gx"
 )
 
 // Force some package dependencies.
@@ -85,8 +85,8 @@ type PackageHandle struct {
 
 	// Package dependencies
 	gxdep0 *gxdep0.PackageHandle
-	gxdep1 *gxdep1.PackageHandle
 	gxdep2 *gxdep2.PackageHandle
+	gxdep1 *gxdep1.PackageHandle
 }
 
 // Package is a GX package for a given device.
@@ -118,13 +118,13 @@ func Build(dev *core.DeviceSetup) (*PackageHandle, error) {
 	if err != nil {
 		return nil, err
 	}
-	pkg.handle.gxdep1, err = gxdep1.Build(
+	pkg.handle.gxdep2, err = gxdep2.Build(
 		pkg.handle.PackageCompileSetup.Setup(),
 	)
 	if err != nil {
 		return nil, err
 	}
-	pkg.handle.gxdep2, err = gxdep2.Build(
+	pkg.handle.gxdep1, err = gxdep1.Build(
 		pkg.handle.PackageCompileSetup.Setup(),
 	)
 	if err != nil {
@@ -480,7 +480,7 @@ type Target struct {
 	handle handleTarget
 	value  *values.NamedType
 
-	rnd     *gxdep1.Rand
+	rnd     *gxdep2.Rand
 	weights types.Array[float32]
 	bias    types.Atom[float32]
 }
@@ -513,8 +513,8 @@ func (fty *Factory) MarshalTarget(val values.Value) (s *Target, err error) {
 	for i, field := range structVal.StructType().Fields.Fields() {
 		fields[i] = structVal.FieldValue(field.Name.Name)
 	}
-	var field0 *gxdep1.Rand
-	field0, err = fty.Package.handle.gxdep1.Factory.MarshalRand(fields[0])
+	var field0 *gxdep2.Rand
+	field0, err = fty.Package.handle.gxdep2.Factory.MarshalRand(fields[0])
 	if err != nil {
 		return
 	}
@@ -571,7 +571,7 @@ func (h *handleTarget) NewFromField(field *ir.Field) (types.Bridge, error) {
 	name := field.Name.Name
 	switch name {
 	case "rnd":
-		return h.pkg.handle.gxdep1.Factory.NewRand().Bridge(), nil
+		return h.pkg.handle.gxdep2.Factory.NewRand().Bridge(), nil
 	case "weights":
 		return nil, errors.Errorf("cannot create a new instance for field weights: type types.Array[float32] not supported")
 	case "bias":
@@ -594,9 +594,9 @@ func (h *handleTarget) SetField(field *ir.Field, val types.Bridge) error {
 
 	case "rnd":
 		bridger := val.Bridger()
-		fieldValue, ok := bridger.(*gxdep1.Rand)
+		fieldValue, ok := bridger.(*gxdep2.Rand)
 		if !ok {
-			return errors.Errorf("cannot set field rnd: cannot cast %T to *gxdep1.Rand", bridger)
+			return errors.Errorf("cannot set field rnd: cannot cast %T to *gxdep2.Rand", bridger)
 		}
 		h.owner.rnd = fieldValue
 		structVal.SetField("rnd", val.GXValue())
