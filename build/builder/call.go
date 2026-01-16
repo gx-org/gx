@@ -112,10 +112,10 @@ func (n *callExpr) buildTypeCast(rscope resolveScope, callee ir.Expr, store ir.S
 func checkNumArgs(rscope resolveScope, fn *ir.FuncValExpr, numArgs int) bool {
 	numParams := fn.FuncType().Params.Len()
 	if numArgs > numParams {
-		return rscope.Err().Appendf(fn.Node(), "too many arguments in call to %s", fn.ShortString())
+		return rscope.Err().Appendf(fn.Node(), "too many arguments in call to %s (expected %d, found %d)", fn.ShortString(), numParams, numArgs)
 	}
 	if numArgs < numParams {
-		return rscope.Err().Appendf(fn.Node(), "not enough arguments in call to %s", fn.ShortString())
+		return rscope.Err().Appendf(fn.Node(), "not enough arguments in call to %s (expected %d, found %d)", fn.ShortString(), numParams, numArgs)
 	}
 	return true
 }

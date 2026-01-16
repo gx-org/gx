@@ -183,5 +183,25 @@ func f() (int32, float32) {
 `,
 			Err: "assignment mismatch: 2 variable(s) but g() returns 3 values",
 		},
+		testbuild.Decl{
+			Src: `
+func g(int32, float64) int64
+
+func f() int64 {
+	return g(1)
+}
+`,
+			Err: "not enough arguments in call to g (expected 2, found 1)",
+		},
+		testbuild.Decl{
+			Src: `
+func g(int32, float64) int64
+
+func f() int64 {
+	return g(1, 2, 3)
+}
+`,
+			Err: "too many arguments in call to g (expected 2, found 3)",
+		},
 	)
 }
