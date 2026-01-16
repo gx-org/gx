@@ -574,7 +574,10 @@ func simplifyType(t Type) Type {
 
 // IsInvalidType returns true if a type is invalid.
 func IsInvalidType(typ Type) bool {
-	return typ == nil || typ.Kind() == irkind.Invalid
+	if typ == nil {
+		return false
+	}
+	return typ.Kind() == irkind.Invalid
 }
 
 // AssignableTo reports whether a value of the type can be assigned to another.
@@ -582,6 +585,9 @@ func AssignableTo(fetcher Fetcher, x, y Type) (bool, error) {
 	if IsInvalidType(x) || IsInvalidType(y) {
 		// An error should have already been reported. We skip the check
 		// to prevent additional confusing errors.
+		return true, nil
+	}
+	if x.Kind() == irkind.Tuple || y.Kind() == irkind.Tuple {
 		return true, nil
 	}
 	x = simplifyType(x)

@@ -1,0 +1,35 @@
+package functype
+
+func testUnknownKind() [2]whatIsThis { // ERROR undefined: whatIsThis
+	return [2]float64{1, 2}
+}
+
+func testFuncTypeParameters_Invalid[T invalid]() int32 { // ERROR undefined: invalid
+	return 0
+}
+
+func invalidReturnShape2() [X___]int32 { // ERROR undefined: X
+	return [5]int32{}
+}
+
+type someStruct struct {
+	a          int32
+	someMethod float64
+}
+
+func (someStruct) someMethod() float64 { // ERROR field and method with the same name
+	return 0
+}
+
+func (float32) cannotDefineMethodOnNonLocal() float32 { // ERROR cannot define new methods on non-local type float32
+	return 0
+}
+
+func (someStruct) duplicateMethod() float32 {
+	return 0
+}
+
+func (someStruct) duplicateMethod() float32 { // ERROR method someStruct.duplicateMethod already declared
+	return 0
+}
+

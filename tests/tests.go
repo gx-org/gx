@@ -38,8 +38,9 @@ var Errors = []string{
 	"errors/ellipsis",
 	"errors/meta",
 	"errors/process",
+	"errors/functype",
 	"errors/beforefunc",
-	// "errors/resolve", // TODO(degris): FIX ASAP
+	"errors/resolve",
 	"errors/redefined",
 	"errors/slices",
 	// "errors/stdlib", // TODO(degris): FIX ASAP
