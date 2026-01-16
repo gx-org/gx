@@ -36,6 +36,7 @@ var (
 	_ elements.WithAxes = (*variable)(nil)
 	_ ir.Canonical      = (*variable)(nil)
 	_ elements.Slicer   = (*variable)(nil)
+	_ ir.WithStore      = (*variable)(nil)
 )
 
 // NewVariable returns a new variable element given a GX variable name.

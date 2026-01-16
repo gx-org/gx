@@ -55,7 +55,7 @@ func f() int32 {
 		testbuild.Decl{
 			Src: `
 func f() int32 {
-	a := 2
+	a := intlen(2)
 	for a := range(5) {
 		return 2
 	}
@@ -65,7 +65,7 @@ func f() int32 {
 		testbuild.Decl{
 			Src: `
 func f() int32 {
-	a := 2
+	a := intlen(2)
 	for a := range(5) {
 	}
 }
