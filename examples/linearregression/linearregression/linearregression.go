@@ -1,10 +1,10 @@
-// Package imports encapsulates GX source files
+// Package linearregression encapsulates GX source files
 // into a Go package.
 //
 // Automatically generated from google3/third_party/gxlang/gx/golang/packager/package.go.
 //
 // DO NOT EDIT
-package imports
+package linearregression
 
 import (
 	"embed"
@@ -12,23 +12,22 @@ import (
 	"github.com/gx-org/gx/build/importers"
 	"github.com/gx-org/gx/build/importers/embedpkg"
 
-	_ "github.com/gx-org/gx/tests/bindings/basic"
 )
 
-//go:embed imports.gx 
+//go:embed learner.gx target.gx 
 var srcs embed.FS
 
 var inputFiles = []string{
-"imports.gx",
+"learner.gx","target.gx",
 }
 
 func init() {
-	embedpkg.RegisterPackage("github.com/gx-org/gx/tests/bindings/imports", Build)
+	embedpkg.RegisterPackage("github.com/gx-org/gx/examples/linearregression/linearregression", Build)
 }
 
 var _ embedpkg.BuildFunc = Build
 
 // Build GX package.
 func Build(bld importers.Builder) (importers.Package, error) {
-	return bld.BuildFiles("github.com/gx-org/gx/tests/bindings", "imports", srcs, inputFiles)
+	return bld.BuildFiles("github.com/gx-org/gx/examples/linearregression", "linearregression", srcs, inputFiles)
 }
