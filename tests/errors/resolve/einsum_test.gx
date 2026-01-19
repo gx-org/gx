@@ -1,0 +1,9 @@
+package resolve
+
+func testEinsumMissingSharedAxis() [2]float32 {
+	x := [1]float32{1}
+	y := [1]float32{3}
+	z{i, j} := einsum(x{i, j} * y{i, j}) // ERROR batch axis index [1] out of rank 1 of left array
+	return z
+}
+

@@ -195,6 +195,17 @@ func processTensorExpr(pscope procScope, target *tensorRef, expr ast.Expr, other
 	}, true
 }
 
+func checkAxisRank(scope resolveScope, axes []ir.AxisLengths, idxs []int) (out int, want int) {
+	want = len(axes)
+	for _, idx := range idxs {
+		if idx >= want {
+			out = idx
+			return
+		}
+	}
+	return -1, -1
+}
+
 func (s *tensorExpr) buildExpr(scope resolveScope) (ir.Expr, bool) {
 	lhs, xOk := s.lhs.buildExpr(scope)
 	rhs, yOk := s.rhs.buildExpr(scope)
@@ -217,10 +228,21 @@ func (s *tensorExpr) buildExpr(scope resolveScope) (ir.Expr, bool) {
 	// followed by RHS cross dimensions.
 	ext.BatchAxes = findBatchAxes(s.target, s.lhs, s.rhs, s.others...)
 	ext.ReduceAxes = findReduceAxes(s.target, s.lhs, s.rhs, s.others...)
+	if out, want := checkAxisRank(scope, leftRank.Axes(), ext.BatchAxes[0]); out >= 0 {
+		return ext, scope.Err().Appendf(s.source(), "batch axis index [%d] out of rank %d of left array", out, want)
+	}
 	for _, lhsAxis := range ext.BatchAxes[0] {
 		targetRank.Ax = append(targetRank.Ax, leftRank.Axes()[lhsAxis])
 	}
 	crossAxes := findCrossAxes(s.target, s.lhs, s.rhs, s.others...)
+
+	if out, want := checkAxisRank(scope, leftRank.Axes(), crossAxes[0]); out >= 0 {
+		return ext, scope.Err().Appendf(s.source(), "cross axis index [%d] out of rank %d of left array", out, want)
+	}
+	if out, want := checkAxisRank(scope, rightRank.Axes(), crossAxes[1]); out >= 0 {
+		return ext, scope.Err().Appendf(s.source(), "cross axis index [%d] out of rank %d of right array", out, want)
+	}
+
 	for _, axis := range crossAxes[0] {
 		targetRank.Ax = append(targetRank.Ax, leftRank.Axes()[axis])
 	}
