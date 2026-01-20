@@ -5,20 +5,20 @@ type myfloat float64
 func TestMyFloat() myfloat {
 	return -1
 	// Want:
-	// float64(-1)
+	// core.myfloat(-1)
 }
 
 func TestMyFloatUnaryOp() myfloat {
 	return -myfloat(4.2)
 	// Want:
-	// float64(-4.2)
+	// core.myfloat(-4.2)
 }
 
 func TestMyFloatBinaryOp() myfloat {
 	m := myfloat(4.2)
 	return m + m
 	// Want:
-	// float64(8.4)
+	// core.myfloat(8.4)
 }
 
 func TestConvertToNamedType() myfloat {
@@ -56,7 +56,7 @@ func TestMyStruct() (myfloat, [3]float64) {
 	}
 	return m.a, m.b
 	// Want:
-	// 0: float64(5)
+	// 0: core.myfloat(5)
 	// 1: [3]float64{1, 2, 3}
 }
 
@@ -71,14 +71,13 @@ func TestStructField() parent {
 	}
 	// Want:
 	// core.parent{
-	//	m: core.child{
-	//		a: float64(5),
-	//		b: [3]float64{1, 2, 3},
-	//	},
-	//	a: float32(3),
+	// 	m: core.child{
+	// 		a: core.myfloat(5),
+	// 		b: [3]float64{1, 2, 3},
+	// 	},
+	// 	a: float32(3),
 	// }
 }
-
 func TestNewParent() parent {
 	m := child{
 		a: 5.0,
@@ -88,10 +87,10 @@ func TestNewParent() parent {
 	// Want:
 	// core.parent{
 	// 	m: core.child{
-	// 		a: float64(5),
+	// 		a: core.myfloat(5),
 	// 		b: [3]float64{1, 2, 3},
 	// 	},
-	//	a: float32(3),
+	// 	a: float32(3),
 	// }
 }
 
@@ -106,7 +105,7 @@ func TestMultipleSelector() (float32, myfloat, [3]float64) {
 	return o.a, o.m.a, o.m.b
 	// Want:
 	// 0: float32(3)
-	// 1: float64(5)
+	// 1: core.myfloat(5)
 	// 2: [3]float64{1, 2, 3}
 }
 
@@ -121,7 +120,7 @@ func TestFunctionWithReceiverOnStruct() myfloat {
 	}
 	return m.scalar()
 	// Want:
-	// float64(5)
+	// core.myfloat(5)
 }
 
 func add(a, b [_ax0][_ax1]float32) [ax0][ax1]float32 {
@@ -134,7 +133,7 @@ func TestGenericDimensionsFloat32() [2][3]float32 {
 		[2][3]float32{{6, 5, 4}, {3, 2, 1}},
 	)
 	// Want:
-	// [2][3]float32{
+	// [_ax0][_ax1]float32{
 	// 	{7, 7, 7},
 	// 	{7, 7, 7},
 	// }
@@ -143,7 +142,7 @@ func TestGenericDimensionsFloat32() [2][3]float32 {
 type matrix [2][3]float32
 
 func (x matrix) top() [3]float32 {
-   return x[0]
+	return x[0]
 }
 
 func TestNamedTypeIndexing() [3]float32 {
@@ -154,5 +153,5 @@ func TestNamedTypeIndexing() [3]float32 {
 }
 
 type floats interface {
-  bfloat16 | float32 | float64
+	bfloat16 | float32 | float64
 }

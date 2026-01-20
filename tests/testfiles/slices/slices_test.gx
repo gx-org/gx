@@ -33,9 +33,9 @@ func TestBuildSlice() []intlen {
 	}
 	return a
 	// Want:
-	// 0: int64(0)
-	// 1: int64(1)
-	// 2: int64(2)
+	// 0: intlen(0)
+	// 1: intlen(1)
+	// 2: intlen(2)
 }
 
 func TestBuildSliceOfArray() [][2]int32 {

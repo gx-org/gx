@@ -97,7 +97,7 @@ func TestTensor1DFloat64() [4]float64 {
 func TestTensorDimWithExpr() [4]float64 {
 	return [2 + 2]float64{1.5, 2, 3.5, 4}
 	// Want:
-	// [4]float64{1.5, 2, 3.5, 4}
+	// [2+2]float64{1.5, 2, 3.5, 4}
 }
 
 func TestTensor2DFloat64WithSubtypes() [4][4]float64 {
@@ -203,13 +203,13 @@ func TestCallTuple() (int64, float32) {
 func TestSizeWithPackageVar() [staticIntTwo]float32 {
 	return [staticIntTwo]float32{}
 	// Want:
-	// [2]float32{0, 0}
+	// [staticIntTwo]float32{0, 0}
 }
 
 func TestSizeWithOpAndPackageVar() [staticIntTwo + 1]float32 {
 	return [staticIntTwo + 1]float32{}
 	// Want:
-	// [3]float32{0, 0, 0}
+	// [staticIntTwo+1]float32{0, 0, 0}
 }
 
 func TestTensorWithVars() [3]int64 {
@@ -303,9 +303,9 @@ func TestNamedReturnX() (x int64) {
 func TestLens() []intlen {
 	return axlengths([3][4][5]float32{})
 	// Want:
-	// 0: int64(3)
-	// 1: int64(4)
-	// 2: int64(5)
+	// 0: intlen(3)
+	// 1: intlen(4)
+	// 2: intlen(5)
 }
 
 const sizeA intlen = 3
@@ -314,7 +314,7 @@ const sizeB intlen = 2
 func TestAddInDim() [sizeA + sizeB]float32 {
 	return [sizeA + sizeB]float32{}
 	// Want:
-	// [5]float32{0, 0, 0, 0, 0}
+	// [sizeA+sizeB]float32{0, 0, 0, 0, 0}
 }
 
 const noType = 2
@@ -322,13 +322,14 @@ const noType = 2
 func TestConstNoTypeInDim() [noType]float32 {
 	return [noType]float32{}
 	// Want:
-	// [2]float32{0, 0}
+	// [noType]float32{0, 0}
 }
 
 func TestNoReturn() {
 	// Want:
-}
+	//
 
+}
 func TestNoReturnWithTrace() {
 	trace([2]float32{2, 3})
 	// Want:

@@ -393,7 +393,7 @@ func TestBitwiseOrAtomicAtomic() int32 {
 }
 
 func TestBitwiseXorAtomicAtomic() int32 {
-	return 6^3
+	return 6 ^ 3
 	// Want:
 	// int32(5)
 }

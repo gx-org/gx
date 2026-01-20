@@ -364,7 +364,7 @@ var (
 func TestMatmulVarsDimMatrixMatrix() [dim1][dim3]float32 {
 	return num.MatMul([dim1][dim2]float32{}, [dim2][dim3]float32{})
 	// Want:
-	// [2][4]float32{
+	// [dim1][dim3]float32{
 	// 	{0, 0, 0, 0},
 	// 	{0, 0, 0, 0},
 	// }
@@ -373,5 +373,6 @@ func TestMatmulVarsDimMatrixMatrix() [dim1][dim3]float32 {
 func TestMatmulVarsDimVectorMatrix() [dim1]float32 {
 	return num.MatMul([dim1][dim2]float32{}, [dim2]float32{})
 	// Want:
-	// [2]float32{0, 0}
+	// [dim1]float32{0, 0}
 }
+

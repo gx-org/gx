@@ -52,6 +52,9 @@ type (
 		// contains more than one value.
 		ToFloatNumber() (*big.Float, error)
 
+		// DataString representation of the array without the type.
+		DataString() string
+
 		// String representation of the array.
 		String() string
 	}

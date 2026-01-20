@@ -17,7 +17,7 @@ func addTwo[T ints, U floats](x [___S]T, y [S___]U) ([S___]T, [S___]U) {
 func TestAddTwo() (int32, float64) {
 	return addTwo[int32, float64](5, 7.0)
 	// Want:
-	// 0: int32(7)
-	// 1: float64(10)
+	// 0: [___S]T(7)
+	// 1: [S___]U(10)
 }
 

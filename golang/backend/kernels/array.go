@@ -63,6 +63,11 @@ func (a *arrayT[T]) Flat() []T {
 	return a.values
 }
 
+// DataString representation of the data in the array.
+func (a *arrayT[T]) DataString() string {
+	return fmtarray.SDataPrint[T](a.Flat(), a.Shape().AxisLengths)
+}
+
 // String representation of the array.
 func (a *arrayT[T]) String() string {
 	return fmtarray.Sprint[T](a.Flat(), a.Shape().AxisLengths)

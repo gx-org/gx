@@ -238,6 +238,7 @@ func (a *HostArray) String() string {
 	if err != nil {
 		return fmt.Sprintf("\nError parsing raw data:\n%+v\n", err)
 	}
+	return a.typ.String() + array.DataString()
 	return array.String()
 }
 

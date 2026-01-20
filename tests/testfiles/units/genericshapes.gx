@@ -18,16 +18,16 @@ func TestTraceGenericShapes() [2][3]int64 {
 		[4][5][6]float32{},
 	)
 	// Want:
-	// [2][3]int64{
+	// [A][B]int64{
 	// 	{0, 1, 2},
 	// 	{3, 4, 5},
 	// }
 	// Trace:
 	// genericshapes.gx:0
-	// 	int64(2)
+	// 	intlen(2)
 	// genericshapes.gx:1
-	// 	int64(3)
+	// 	intlen(3)
 	// genericshapes.gx:2
-	// 	[int64(4),int64(5),int64(6)]
+	// 	[intlen(4),intlen(5),intlen(6)]
 }
 

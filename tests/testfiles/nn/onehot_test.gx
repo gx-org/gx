@@ -15,9 +15,10 @@ func oneHot(x [3]int32, numClasses intlen) [3][numClasses]bool {
 func TestOneHot() [3][5]bool {
 	return oneHot([3]int32{1, 2, 3}, 5)
 	// Want:
-	// [3][5]bool{
+	// [3][numClasses]bool{
 	// 	{false, true, false, false, false},
 	// 	{false, false, true, false, false},
 	// 	{false, false, false, true, false},
 	// }
 }
+

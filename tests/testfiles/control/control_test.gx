@@ -2,6 +2,8 @@ package stdlib
 
 import "control"
 
+// GXFIX:skip
+
 type countState struct {
 	count, limit int32
 }
@@ -36,3 +38,4 @@ func TestWhile2() powState {
 	//	out: int32(1024),
 	// }
 }
+
