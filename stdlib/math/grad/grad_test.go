@@ -17,12 +17,12 @@ package grad_test
 import (
 	"testing"
 
-	_ "embed"
-
 	"github.com/gx-org/gx/build/builder/testbuild"
 	"github.com/gx-org/gx/build/ir"
 	"github.com/gx-org/gx/stdlib/math/grad"
 	"github.com/gx-org/gx/stdlib/math/grad/testgrad"
+
+	_ "embed"
 )
 
 //go:embed grad.gx
@@ -33,8 +33,8 @@ var (
 		Path: "math",
 		Src:  string(gradSrc),
 		Post: func(pkg *ir.Package) {
-			irVJP := pkg.FindFunc("VJP").(*ir.Macro)
-			irVJP.BuildSynthetic = ir.MacroImpl(grad.VJP)
+			irVJP := pkg.FindFunc("Reverse").(*ir.Macro)
+			irVJP.BuildSynthetic = ir.MacroImpl(grad.Reverse)
 			irFunc := pkg.FindFunc("Func").(*ir.Macro)
 			irFunc.BuildSynthetic = ir.MacroImpl(grad.FuncGrad)
 			irSet := pkg.FindFunc("Set").(*ir.Annotator)
@@ -69,7 +69,7 @@ func F(x float32) float32 {
 `,
 			Want: `
 func gradF(x float32) (float32, float32) {
-	y, xVJP := grad.VJP(F)(x)
+	y, xVJP := grad.Reverse(F)(x)
 	res := float32(1)
 	return y, xVJP(res)
 }
@@ -83,7 +83,7 @@ func F(x float32) [2]float32 {
 `,
 			Want: `
 func gradF(x float32) ([2]float32, float32) {
-	y, xVJP := grad.VJP(F)(x)
+	y, xVJP := grad.Reverse(F)(x)
 	res := [2]float32(1)
 	return y, xVJP(res)
 }

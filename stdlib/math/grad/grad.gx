@@ -1,8 +1,8 @@
 package grad
 
-// VJP computes the Vector-Jacobian product of a GX function.
+// Reverse computes the Vector-Jacobian product of a GX function using reverse mode.
 // gx:irmacro
-func VJP(fn any) any
+func Reverse(fn any) any
 
 // Func computes the gradient of a GX function.
 // gx:irmacro
@@ -15,3 +15,4 @@ func Set(gradF any) any
 // SetFor sets the gradient of a GX function with respect to a specific parameter, identified by its name.
 // gx:annotator
 func SetFor(parameter string, gradF any) any
+

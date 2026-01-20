@@ -24,8 +24,8 @@ import (
 	"github.com/gx-org/gx/build/builder/testbuild"
 )
 
-// VJP tests the computation of the Vector-Jacobian product of a function.
-type VJP struct {
+// Reverse tests the computation of the Vector-Jacobian product of a function.
+type Reverse struct {
 	// Src declares the function (which must be named `F`) to compute the VJP of.
 	Src string
 
@@ -51,11 +51,11 @@ type VJP struct {
 }
 
 // Source code of the declarations.
-func (tt VJP) Source() string {
+func (tt Reverse) Source() string {
 	return tt.Src
 }
 
-func (tt VJP) buildSourceCode() string {
+func (tt Reverse) buildSourceCode() string {
 	declImportName := ""
 	callImportName := "grad"
 	if tt.GradImportName != "" {
@@ -66,7 +66,7 @@ func (tt VJP) buildSourceCode() string {
 	for _, fnName := range tt.GradOf {
 		fmt.Fprintf(grads,
 			`
-//gx:=%s.VJP(%s)
+//gx:=%s.Reverse(%s)
 func vjp%s()
 `,
 			callImportName, fnName, fnName)
@@ -92,7 +92,7 @@ var gradImport = &ast.ImportSpec{
 }
 
 // Run builds the declarations as a package, then compare to an expected outcome.
-func (tt VJP) Run(b *testbuild.Builder) error {
+func (tt Reverse) Run(b *testbuild.Builder) error {
 	if len(tt.GradOf) == 0 {
 		tt.GradOf = []string{"F"}
 	}

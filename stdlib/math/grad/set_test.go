@@ -24,7 +24,7 @@ import (
 func TestSet(t *testing.T) {
 	testbuild.Run(t,
 		declareGradPackage,
-		testgrad.VJP{
+		testgrad.Reverse{
 			Src: `
 func g(float32) float32
 
@@ -43,7 +43,7 @@ func vjpF(x float32) (float32, func(res float32) float32) {
 }
 `,
 		},
-		testgrad.VJP{
+		testgrad.Reverse{
 			Src: `
 func gradOfG(x float32) float32 {
 	return x
@@ -61,7 +61,7 @@ func F(x float32) float32 {
 			Want: `
 func vjpF(x float32) (float32, func(res float32) float32) {
 	fwd0 := x*x
-	fwd1, gVJP := grad.VJP(g)(fwd0)
+	fwd1, gVJP := grad.Reverse(g)(fwd0)
 	selfVJPFunc := func(res float32) float32 {
 		bck1 := gVJP(res)
 		bck0x := bck1*x
@@ -72,7 +72,7 @@ func vjpF(x float32) (float32, func(res float32) float32) {
 }
 `,
 		},
-		testgrad.VJP{
+		testgrad.Reverse{
 			Src: `
 func gradOfG(x float32) float32
 
@@ -86,7 +86,7 @@ func F(x float32) float32 {
 			Want: `
 func vjpF(x float32) (float32, func(res float32) float32) {
 	fwd0 := x*x
-	fwd1, gVJP := grad.VJP(g)(fwd0)
+	fwd1, gVJP := grad.Reverse(g)(fwd0)
 	selfVJPFunc := func(res float32) float32 {
 		bck1 := gVJP(res)
 		bck0x := bck1*x
@@ -97,7 +97,7 @@ func vjpF(x float32) (float32, func(res float32) float32) {
 }
 `,
 		},
-		testgrad.VJP{
+		testgrad.Reverse{
 			Src: `
 //gx:@grad.Set(g)
 func g(x float32) float32
@@ -109,7 +109,7 @@ func F(x float32) float32 {
 			Want: `
 func vjpF(x float32) (float32, func(res float32) float32) {
 	fwd0 := x*x
-	fwd1, gVJP := grad.VJP(g)(fwd0)
+	fwd1, gVJP := grad.Reverse(g)(fwd0)
 	selfVJPFunc := func(res float32) float32 {
 		bck1 := gVJP(res)
 		bck0x := bck1*x
@@ -126,7 +126,7 @@ func vjpF(x float32) (float32, func(res float32) float32) {
 func TestSetFor(t *testing.T) {
 	testbuild.Run(t,
 		declareGradPackage,
-		testgrad.VJP{
+		testgrad.Reverse{
 			Src: `
 func gradOfGx(x, y float32) float32 {
 	return x
@@ -155,7 +155,7 @@ func vjpF(x, y float32) (float32, func(res float32) float32, func(res float32) f
 }
 `,
 		},
-		testgrad.VJP{
+		testgrad.Reverse{
 			Src: `
 func gradOfGx(x, y float32) float32 {
 	return x
@@ -184,7 +184,7 @@ func vjpF(x, y float32) (float32, func(res float32) float32, func(res float32) f
 }
 `,
 		},
-		testgrad.VJP{
+		testgrad.Reverse{
 			Src: `
 func g(float32) float32
 
@@ -208,7 +208,7 @@ func vjpF(x float32) (float32, func(res float32) float32) {
 func TestSetGeneric(t *testing.T) {
 	testbuild.Run(t,
 		declareGradPackage,
-		testgrad.VJP{
+		testgrad.Reverse{
 			Src: `
 type floats interface {
 	float32 | float64
@@ -231,7 +231,7 @@ func vjpF[T floats](x T) (T, func(res T) T) {
 }
 `,
 		},
-		testgrad.VJP{
+		testgrad.Reverse{
 			Src: `
 type floats interface {
 	float32 | float64
@@ -248,7 +248,7 @@ func F(x float32) float32 {
 `,
 			Want: `
 func vjpF(x float32) (float32, func(res float32) float32) {
-	fwd0, forwardVJP := grad.VJP(forward)[float32](x)
+	fwd0, forwardVJP := grad.Reverse(forward)[float32](x)
 	selfVJPFunc := func(res float32) float32 {
 		bck0 := forwardVJP(res)
 		return bck0
@@ -257,7 +257,7 @@ func vjpF(x float32) (float32, func(res float32) float32) {
 }
 `,
 			WantExprs: map[string]string{
-				"grad.VJP(forward)": `
+				"grad.Reverse(forward)": `
 func[T floats](x T) (T, func(res T) T) {
 	fwd0 := forward[T](x)
 	selfVJPFunc := func(res T) T {
@@ -268,7 +268,7 @@ func[T floats](x T) (T, func(res T) T) {
 `,
 			},
 		},
-		testgrad.VJP{
+		testgrad.Reverse{
 			Src: `
 type floats interface {
 	float32 | float64
@@ -295,7 +295,7 @@ func vjpF[T floats](x [___M]T) ([M___]T, func(res [M___]T) [M___]T) {
 func TestSetErrors(t *testing.T) {
 	testbuild.Run(t,
 		declareGradPackage,
-		testgrad.VJP{
+		testgrad.Reverse{
 			Src: `
 //gx:@grad.Set(missingGrad)
 func F(x float32) float32 {
@@ -303,7 +303,7 @@ func F(x float32) float32 {
 }`,
 			Err: "undefined: missingGrad",
 		},
-		testgrad.VJP{
+		testgrad.Reverse{
 			Src: `
 var v int32
 //gx:@grad.Set(v)
@@ -312,7 +312,7 @@ func F(x float32) float32 {
 }`,
 			Err: "int32 is not a function",
 		},
-		testgrad.VJP{
+		testgrad.Reverse{
 			Src: `
 func g(x float64) float32
 
@@ -321,7 +321,7 @@ func F(x, y float32) float32
 `,
 			Err: "use test.SetFor to set the gradient of a function with more than one parameter",
 		},
-		testgrad.VJP{
+		testgrad.Reverse{
 			Src: `
 func gradOfF(x, y float32) float32
 
@@ -332,7 +332,7 @@ func F(x, y float32) float32 {
 `,
 			Err: "function F has no parameter z",
 		},
-		testgrad.VJP{
+		testgrad.Reverse{
 			Src: `
 func gradOfF(x, y float32) float32
 
@@ -344,7 +344,7 @@ func F(x, y float32) float32 {
 `,
 			Err: "gradient for parameter x has already been set",
 		},
-		testgrad.VJP{
+		testgrad.Reverse{
 			Src: `
 func g(float32) float32
 

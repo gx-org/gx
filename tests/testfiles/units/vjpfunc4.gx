@@ -10,7 +10,7 @@ func F(x float32) float32 {
 }
 
 func TestVJPAssign() (float32, float32) {
-	revF := grad.VJP(F)
+	revF := grad.Reverse(F)
 	trace(revF)
 	y, backward := revF(3.0)
 	return y, backward(1.0)
