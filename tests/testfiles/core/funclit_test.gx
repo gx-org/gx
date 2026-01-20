@@ -1,6 +1,5 @@
 package core
 
-
 func TestCallLambda() int32 {
 	return func() int32 {
 		return 10
@@ -60,7 +59,7 @@ func TestBuildFN() float32 {
 }
 
 func captureFN(a float32) func() (float32, float32) {
-	twiceA := a*2
+	twiceA := a * 2
 	return func() (float32, float32) {
 		return a, twiceA
 	}
@@ -78,4 +77,3 @@ func TestCaptureFN() (float32, float32, float32, float32) {
 	// 2: float32(-20)
 	// 3: float32(-40)
 }
-

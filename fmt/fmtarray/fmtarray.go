@@ -19,6 +19,7 @@ import (
 	"fmt"
 	"strings"
 
+	"github.com/pkg/errors"
 	"github.com/gx-org/backend/dtype"
 	"github.com/gx-org/gx/build/ir/irkind"
 )
@@ -36,6 +37,23 @@ type builder[T dtype.GoDataType] struct {
 	data    []T
 	axes    []int
 	offsets []int
+}
+
+func newBuilder[T dtype.GoDataType](data []T, axes []int) (*builder[T], error) {
+	b := &builder[T]{
+		w:       &strings.Builder{},
+		data:    data,
+		axes:    axes,
+		offsets: axesOffsets(axes),
+	}
+	total := 1
+	for _, size := range b.axes {
+		total *= size
+	}
+	if total != len(data) {
+		return b, errors.Errorf("len(data)=%d does not match axes %v=%d", len(data), axes, total)
+	}
+	return b, nil
 }
 
 func (b *builder[T]) toValue(x T) string {
@@ -127,16 +145,13 @@ func (b *builder[T]) printRec(indent string, parentPosition []int) {
 	b.w.WriteString(indent + "}")
 }
 
-func (b *builder[T]) printType() int {
+func (b *builder[T]) printType() {
 	shapes := make([]string, len(b.axes))
-	total := 1
 	for i, size := range b.axes {
 		shapes[i] = fmt.Sprintf("[%d]", size)
-		total *= size
 	}
 	shapes = append(shapes, irkind.KindGeneric[T]().String())
 	b.w.WriteString(strings.Join(shapes, ""))
-	return total
 }
 
 func axesOffsets(axes []int) []int {
@@ -150,18 +165,7 @@ func axesOffsets(axes []int) []int {
 	return offsets
 }
 
-// Sprint returns a string representation of a tensor.
-func Sprint[T dtype.GoDataType](data []T, axes []int) string {
-	b := builder[T]{
-		w:       &strings.Builder{},
-		data:    data,
-		axes:    axes,
-		offsets: axesOffsets(axes),
-	}
-	total := b.printType()
-	if total != len(data) {
-		return fmt.Sprintf("len(data)=%d does not match axes %v=%d", len(data), axes, total)
-	}
+func (b *builder[T]) sDataPrint(data []T, axes []int) {
 	switch len(b.axes) {
 	case 0:
 		b.printScalar()
@@ -172,5 +176,25 @@ func Sprint[T dtype.GoDataType](data []T, axes []int) string {
 	default:
 		b.printRec("", nil)
 	}
+}
+
+// SDataPrint returns a string representation of the content of an array without the type.
+func SDataPrint[T dtype.GoDataType](data []T, axes []int) string {
+	b, err := newBuilder[T](data, axes)
+	if err != nil {
+		return err.Error()
+	}
+	b.sDataPrint(data, axes)
+	return b.w.String()
+}
+
+// Sprint returns a string representation of an array.
+func Sprint[T dtype.GoDataType](data []T, axes []int) string {
+	b, err := newBuilder[T](data, axes)
+	if err != nil {
+		return err.Error()
+	}
+	b.printType()
+	b.sDataPrint(data, axes)
 	return b.w.String()
 }

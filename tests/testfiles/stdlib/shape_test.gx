@@ -11,7 +11,8 @@ func TestShape() shapes.Shape {
 	}
 	// Want:
 	// shapes.Shape{
-	// 	DType: int32(1),
-	// 	Dimensions: [int64(1),int64(2)],
+	// 	DType: shapes.DType(1),
+	// 	Dimensions: [intlen(1),intlen(2)],
 	// }
 }
+

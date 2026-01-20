@@ -14,5 +14,5 @@ func TestFunctionAsAxisLength() [returnTwo()]int32 {
 func TestFunctionAsAxisLength2() [returnTwo()]int32 {
 	return [returnTwo()]int32{1, 2}
 	// Want:
-	// [2]int32{1, 2}
+	// [returnTwo()]int32{1, 2}
 }

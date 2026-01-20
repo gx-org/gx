@@ -16,6 +16,7 @@ package fixers
 
 import (
 	"fmt"
+	"go/ast"
 	"go/format"
 	"go/parser"
 	"go/token"
@@ -70,6 +71,15 @@ func isGXFile(fi fileInfo) bool {
 	return !fi.IsDir() && strings.HasSuffix(fi.Name(), ".gx")
 }
 
+func canSkip(f *ast.File) bool {
+	for _, comment := range f.Comments {
+		if strings.TrimSpace(comment.Text()) == "GXFIX:skip" {
+			return true
+		}
+	}
+	return false
+}
+
 // Fix a path.
 func (w *Walker) Fix(path string, info fs.FileInfo, err error) error {
 	if err != nil {
@@ -87,6 +97,9 @@ func (w *Walker) Fix(path string, info fs.FileInfo, err error) error {
 	f, err := parser.ParseFile(fset, path, data, parser.ParseComments|parser.SkipObjectResolution)
 	if err != nil {
 		return err
+	}
+	if canSkip(f) {
+		return nil
 	}
 	fixed := false
 	for _, fix := range Fixers {

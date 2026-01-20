@@ -131,7 +131,7 @@ func (s sample) State() ([2]float32, float32) {
 func TestMultipleSteps() ([2]float32, float32, [2]float32, float32, [2]float32, float32) {
 	s := NewSample().setField()
 	t := s.setField()
-	t.y = 3	
+	t.y = 3
 	u := t.setField()
 
 	sx, sy := s.State()

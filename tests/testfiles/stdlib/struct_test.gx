@@ -24,6 +24,7 @@ func TestDeterministic() (sample1, sample2 [2]float32) {
 	_, sample2 = sampler2.sample()
 	return
 	// Want:
-	// 0: [2]float32{0.962697, 0.135473}
-	// 1: [2]float32{0.962697, 0.135473}
+	// 0: [dims___]float32{0.962697, 0.135473}
+	// 1: [dims___]float32{0.962697, 0.135473}
 }
+
