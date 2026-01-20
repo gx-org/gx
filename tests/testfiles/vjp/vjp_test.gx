@@ -10,10 +10,10 @@ func F(x float32) float32 {
 }
 
 func TestVJPF() func(x float32) (float32, func(res float32) float32) {
-	return grad.VJP(F)
+	return grad.Reverse(F)
 	// Want:
 	// func(x float32) (float32, func(res float32) float32) {
-	// 	fwd0, SinVJP := grad.VJP(math.Sin)[float32](x)
+	// 	fwd0, SinVJP := grad.Reverse(math.Sin)[float32](x)
 	// 	selfVJPFunc := func(res float32) float32 {
 	// 		bck0 := SinVJP(res)
 	// 		return bck0
@@ -27,7 +27,7 @@ func SoftMax(x float32) float32 {
 }
 
 func TestVJPSoftMax() (float32, float32) {
-	vjp := grad.VJP(SoftMax)
+	vjp := grad.Reverse(SoftMax)
 	trace(vjp)
 	y, bck := vjp(0.8)
 	return y, bck(1)
@@ -38,7 +38,7 @@ func TestVJPSoftMax() (float32, float32) {
 	// vjp_test.gx:0
 	// 	func(x float32) (float32, func(res float32) float32) {
 	// 		fwd0 := -x
-	// 		fwd1, ExpVJP := grad.VJP(math.Exp)[float32](fwd0)
+	// 		fwd1, ExpVJP := grad.Reverse(math.Exp)[float32](fwd0)
 	// 		fwd2 := 1+fwd1
 	// 		fwd3 := 1/fwd2
 	// 		selfVJPFunc := func(res float32) float32 {
@@ -57,7 +57,7 @@ func f1(x float32) float32 {
 }
 
 func TestF1() (float32, float32) {
-	y, bck := grad.VJP(f1)(3)
+	y, bck := grad.Reverse(f1)(3)
 	return y, bck(1)
 	// Want:
 	// 0: float32(9)
@@ -71,7 +71,7 @@ func f2(x float32) float32 {
 }
 
 func TestF2() (float32, float32) {
-	y, bck := grad.VJP(f2)(3)
+	y, bck := grad.Reverse(f2)(3)
 	return y, bck(1)
 	// Want:
 	// 0: float32(6)
@@ -85,7 +85,7 @@ func f3(x float32) float32 {
 }
 
 func TestF3() (float32, float32) {
-	y, bck := grad.VJP(f3)(3)
+	y, bck := grad.Reverse(f3)(3)
 	return y, bck(1)
 	// Want:
 	// 0: float32(18)
@@ -101,7 +101,7 @@ func arrayLiteral(x float32) [3][2]float32 {
 }
 
 func TestArrayLiteral() ([3][2]float32, float32) {
-	y, bck := grad.VJP(arrayLiteral)(2)
+	y, bck := grad.Reverse(arrayLiteral)(2)
 	return y, bck([3][2]float32(1))
 	// Want:
 	// 0: [3][2]float32{
@@ -113,7 +113,7 @@ func TestArrayLiteral() ([3][2]float32, float32) {
 }
 
 func TestVJPLog() (float64, float64) {
-	vjp := grad.VJP(math.Log)
+	vjp := grad.Reverse(math.Log)
 	trace(vjp)
 	y, bck := vjp(0.8)
 	return y, bck(0.4)
@@ -130,3 +130,4 @@ func TestVJPLog() (float64, float64) {
 	// 		return fwd0, selfVJPFunc
 	// 	}
 }
+

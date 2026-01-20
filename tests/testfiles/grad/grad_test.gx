@@ -38,7 +38,7 @@ func TestXAsElementGrad() ([2]float32, float32) {
 	// Trace:
 	// grad_test.gx:0
 	// 	func XAsElementGrad(x float32) ([2]float32, float32) {
-	// 		y, xVJP := grad.VJP(XAsElement)(x)
+	// 		y, xVJP := grad.Reverse(XAsElement)(x)
 	// 		res := [2]float32(1)
 	// 		return y, xVJP(res)
 	// 	}
@@ -61,3 +61,4 @@ func TestOverShadowGrad() (float32, float32) {
 	// 0: float32(27)
 	// 1: float32(18)
 }
+

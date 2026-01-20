@@ -41,7 +41,7 @@ var Package = builtin.PackageBuilder{
 	Builders: []builtin.Builder{
 		builtin.ParseSource(&fs),
 		builtin.RegisterMacro("Func", FuncGrad),
-		builtin.RegisterMacro("VJP", VJP),
+		builtin.RegisterMacro("Reverse", Reverse),
 		builtin.RegisterAnnotator("Set", SetGrad),
 		builtin.RegisterAnnotator("SetFor", SetGradFor),
 	},
@@ -162,7 +162,7 @@ func (m *gradMacro) BuildBody(fetcher ir.Fetcher, fn ir.Func) (*ast.BlockStmt, b
 					Fun: &ast.CallExpr{
 						Fun: &ast.SelectorExpr{
 							X:   imp.NameDef(),
-							Sel: &ast.Ident{Name: "VJP"},
+							Sel: &ast.Ident{Name: "Reverse"},
 						},
 						Args: []ast.Expr{m.call.Node().Args[0].Expr()},
 					},

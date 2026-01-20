@@ -24,7 +24,7 @@ import (
 func TestVJPExpressions(t *testing.T) {
 	testbuild.Run(t,
 		declareGradPackage,
-		testgrad.VJP{
+		testgrad.Reverse{
 			Src: `
 func F(x float32) float32 {
 	return 2.0
@@ -39,7 +39,7 @@ func vjpF(x float32) (float32, func(res float32) float32) {
 }
 `,
 		},
-		testgrad.VJP{
+		testgrad.Reverse{
 			Src: `
 func F(x float32) float32 {
 	return x
@@ -54,7 +54,7 @@ func vjpF(x float32) (float32, func(res float32) float32) {
 }
 `,
 		},
-		testgrad.VJP{
+		testgrad.Reverse{
 			Src: `
 func F(x float32) float32 {
 	return x+2
@@ -70,7 +70,7 @@ func vjpF(x float32) (float32, func(res float32) float32) {
 }
 `,
 		},
-		testgrad.VJP{
+		testgrad.Reverse{
 			Src: `
 func F(x float32) float32 {
 	return x+x
@@ -86,7 +86,7 @@ func vjpF(x float32) (float32, func(res float32) float32) {
 }
 `,
 		},
-		testgrad.VJP{
+		testgrad.Reverse{
 			Src: `
 func F(x float32) float32 {
 	return x-2
@@ -103,7 +103,7 @@ func vjpF(x float32) (float32, func(res float32) float32) {
 }
 `,
 		},
-		testgrad.VJP{
+		testgrad.Reverse{
 			Src: `
 func F(x float32) float32 {
 	return x-x
@@ -120,7 +120,7 @@ func vjpF(x float32) (float32, func(res float32) float32) {
 }
 `,
 		},
-		testgrad.VJP{
+		testgrad.Reverse{
 			Src: `
 func F(x float32) float32 {
 	return 2*x
@@ -138,7 +138,7 @@ func vjpF(x float32) (float32, func(res float32) float32) {
 }
 `,
 		},
-		testgrad.VJP{
+		testgrad.Reverse{
 			Src: `
 func F(x float32) float32 {
 	return -2
@@ -153,7 +153,7 @@ func vjpF(x float32) (float32, func(res float32) float32) {
 }
 `,
 		},
-		testgrad.VJP{
+		testgrad.Reverse{
 			Src: `
 func F(x float32) float32 {
 	return -x
@@ -170,7 +170,7 @@ func vjpF(x float32) (float32, func(res float32) float32) {
 }
 `,
 		},
-		testgrad.VJP{
+		testgrad.Reverse{
 			Src: `
 func F(x float32) float32 {
 	return x*x
@@ -188,7 +188,7 @@ func vjpF(x float32) (float32, func(res float32) float32) {
 }
 `,
 		},
-		testgrad.VJP{
+		testgrad.Reverse{
 			Src: `
 func F(x, y float32) float32 {
 	return x*y
@@ -211,7 +211,7 @@ func vjpF(x, y float32) (float32, func(res float32) float32, func(res float32) f
 }
 `,
 		},
-		testgrad.VJP{
+		testgrad.Reverse{
 			Src: `
 func F(x float32) float32 {
 	return x*(2+x)
@@ -230,7 +230,7 @@ func vjpF(x float32) (float32, func(res float32) float32) {
 }
 `,
 		},
-		testgrad.VJP{
+		testgrad.Reverse{
 			Src: `
 func F(x float32) float32 {
 	return 1/x
@@ -248,7 +248,7 @@ func vjpF(x float32) (float32, func(res float32) float32) {
 }
 `,
 		},
-		testgrad.VJP{
+		testgrad.Reverse{
 			Src: `
 func F(x float32) float32 {
 	return 1.0/x
@@ -266,7 +266,7 @@ func vjpF(x float32) (float32, func(res float32) float32) {
 }
 `,
 		},
-		testgrad.VJP{
+		testgrad.Reverse{
 			Src: `
 func F(x, y float32) float32 {
 	return x/y
@@ -289,7 +289,7 @@ func vjpF(x, y float32) (float32, func(res float32) float32, func(res float32) f
 }
 `,
 		},
-		testgrad.VJP{
+		testgrad.Reverse{
 			Src: `
 func F(x float32) float32 {
 	return -(x*x)
@@ -308,7 +308,7 @@ func vjpF(x float32) (float32, func(res float32) float32) {
 	return fwd1, selfVJPFunc
 }`,
 		},
-		testgrad.VJP{
+		testgrad.Reverse{
 			Src: `
 func F(x float32) [2]float32 {
 	return [2]float32{x*x, 2}
@@ -326,7 +326,7 @@ func vjpF(x float32) ([2]float32, func(res [2]float32) float32) {
 }
 `,
 		},
-		testgrad.VJP{
+		testgrad.Reverse{
 			Src: `
 func F(x float32) [3][2]float32 {
 	return [3][2]float32{
@@ -368,7 +368,7 @@ func vjpF(x float32) ([3][2]float32, func(res [3][2]float32) float32) {
 func TestVJPFunctions(t *testing.T) {
 	testbuild.Run(t,
 		declareGradPackage,
-		testgrad.VJP{
+		testgrad.Reverse{
 			Src: `
 func f(x float32) float32 {
 	return x
@@ -380,7 +380,7 @@ func F(x float32) float32 {
 `,
 			Want: `
 func vjpF(x float32) (float32, func(res float32) float32) {
-	fwd0, fVJP := grad.VJP(f)(x)
+	fwd0, fVJP := grad.Reverse(f)(x)
 	selfVJPFunc := func(res float32) float32 {
 		bck0 := fVJP(res)
 		return bck0
@@ -389,7 +389,7 @@ func vjpF(x float32) (float32, func(res float32) float32) {
 }
 `,
 		},
-		testgrad.VJP{
+		testgrad.Reverse{
 			Src: `
 func f(x float32) float32 {
 	return x
@@ -401,8 +401,8 @@ func F(x float32) float32 {
 `,
 			Want: `
 func vjpF(x float32) (float32, func(res float32) float32) {
-	fwd0, fVJP := grad.VJP(f)(x)
-	fwd1, fVJP1 := grad.VJP(f)(x)
+	fwd0, fVJP := grad.Reverse(f)(x)
+	fwd1, fVJP1 := grad.Reverse(f)(x)
 	fwd2 := fwd0+fwd1
 	selfVJPFunc := func(res float32) float32 {
 		bck1 := fVJP1(res)
@@ -413,7 +413,7 @@ func vjpF(x float32) (float32, func(res float32) float32) {
 }
 `,
 			WantExprs: map[string]string{
-				"grad.VJP(f)": `
+				"grad.Reverse(f)": `
 func(x float32) (float32, func(res float32) float32) {
 	selfVJPFunc := func(res float32) float32 {
 		return res
@@ -423,7 +423,7 @@ func(x float32) (float32, func(res float32) float32) {
 `,
 			},
 		},
-		testgrad.VJP{
+		testgrad.Reverse{
 			Src: `
 func f(x float32) float32 {
 	return x
@@ -435,8 +435,8 @@ func F(x float32) float32 {
 `,
 			Want: `
 func vjpF(x float32) (float32, func(res float32) float32) {
-	fwd0, fVJP := grad.VJP(f)(x)
-	fwd1, fVJP1 := grad.VJP(f)(x)
+	fwd0, fVJP := grad.Reverse(f)(x)
+	fwd1, fVJP1 := grad.Reverse(f)(x)
 	fwd2 := fwd0-fwd1
 	selfVJPFunc := func(res float32) float32 {
 		bck2y := -res
@@ -448,7 +448,7 @@ func vjpF(x float32) (float32, func(res float32) float32) {
 }
 `,
 		},
-		testgrad.VJP{
+		testgrad.Reverse{
 			Src: `
 func f(x float32) float32 {
 	return x
@@ -464,8 +464,8 @@ func F(x float32) float32 {
 `,
 			Want: `
 func vjpF(x float32) (float32, func(res float32) float32) {
-	fwd0, fVJP := grad.VJP(f)(x)
-	fwd1, gVJP := grad.VJP(g)(x)
+	fwd0, fVJP := grad.Reverse(f)(x)
+	fwd1, gVJP := grad.Reverse(g)(x)
 	fwd2 := fwd0+fwd1
 	selfVJPFunc := func(res float32) float32 {
 		bck1 := gVJP(res)
@@ -476,7 +476,7 @@ func vjpF(x float32) (float32, func(res float32) float32) {
 }
 `,
 		},
-		testgrad.VJP{
+		testgrad.Reverse{
 			Src: `
 func f(x float32) float32 {
 	return x
@@ -492,8 +492,8 @@ func F(x float32) float32 {
 `,
 			Want: `
 func vjpF(x float32) (float32, func(res float32) float32) {
-	fwd0, gVJP := grad.VJP(g)(x)
-	fwd1, fVJP := grad.VJP(f)(fwd0)
+	fwd0, gVJP := grad.Reverse(g)(x)
+	fwd1, fVJP := grad.Reverse(f)(fwd0)
 	selfVJPFunc := func(res float32) float32 {
 		bck1 := fVJP(res)
 		bck0 := gVJP(bck1)
@@ -503,7 +503,7 @@ func vjpF(x float32) (float32, func(res float32) float32) {
 }
 `,
 		},
-		testgrad.VJP{
+		testgrad.Reverse{
 			Src: `
 func f0(x float32) float32 {
 	return x
@@ -531,11 +531,11 @@ func F(x float32) float32 {
 `,
 			Want: `
 func vjpF(x float32) (float32, func(res float32) float32) {
-	fwd0, f0VJP := grad.VJP(f0)(x)
-	fwd1, f1VJP := grad.VJP(f1)(fwd0)
-	fwd2, f2VJP := grad.VJP(f2)(fwd1)
-	fwd3, f3VJP := grad.VJP(f3)(fwd2)
-	fwd4, f4VJP := grad.VJP(f4)(fwd3)
+	fwd0, f0VJP := grad.Reverse(f0)(x)
+	fwd1, f1VJP := grad.Reverse(f1)(fwd0)
+	fwd2, f2VJP := grad.Reverse(f2)(fwd1)
+	fwd3, f3VJP := grad.Reverse(f3)(fwd2)
+	fwd4, f4VJP := grad.Reverse(f4)(fwd3)
 	selfVJPFunc := func(res float32) float32 {
 		bck4 := f4VJP(res)
 		bck3 := f3VJP(bck4)
@@ -554,7 +554,7 @@ func vjpF(x float32) (float32, func(res float32) float32) {
 func TestVJPFunctionsFanInFanOut(t *testing.T) {
 	testbuild.Run(t,
 		declareGradPackage,
-		testgrad.VJP{
+		testgrad.Reverse{
 			Src: `
 func F(x, y float32) float32 {
 	return x+y
@@ -573,7 +573,7 @@ func vjpF(x, y float32) (float32, func(res float32) float32, func(res float32) f
 }
 `,
 		},
-		testgrad.VJP{
+		testgrad.Reverse{
 			Src: `
 func F(x, y float32) float32 {
 	return 2*x+3*y
@@ -602,7 +602,7 @@ func vjpF(x, y float32) (float32, func(res float32) float32, func(res float32) f
 }
 `,
 		},
-		testgrad.VJP{
+		testgrad.Reverse{
 			Src: `
 func h(a, b float32) float32 {
 	return a+b
@@ -614,7 +614,7 @@ func F(x float32) float32 {
 `,
 			Want: `
 func vjpF(x float32) (float32, func(res float32) float32) {
-	fwd0, hVJPa, hVJPb := grad.VJP(h)(x, x)
+	fwd0, hVJPa, hVJPb := grad.Reverse(h)(x, x)
 	selfVJPFunc := func(res float32) float32 {
 		bck0a := hVJPa(res)
 		bck0b := hVJPb(res)
@@ -624,7 +624,7 @@ func vjpF(x float32) (float32, func(res float32) float32) {
 }
 `,
 		},
-		testgrad.VJP{
+		testgrad.Reverse{
 			Src: `
 func f(x float32) float32 {
 	return x
@@ -644,9 +644,9 @@ func F(x float32) float32 {
 `,
 			Want: `
 func vjpF(x float32) (float32, func(res float32) float32) {
-	fwd0, fVJP := grad.VJP(f)(x)
-	fwd1, gVJP := grad.VJP(g)(x)
-	fwd2, hVJPa, hVJPb := grad.VJP(h)(fwd0, fwd1)
+	fwd0, fVJP := grad.Reverse(f)(x)
+	fwd1, gVJP := grad.Reverse(g)(x)
+	fwd2, hVJPa, hVJPb := grad.Reverse(h)(fwd0, fwd1)
 	selfVJPFunc := func(res float32) float32 {
 		bck2a := hVJPa(res)
 		bck2b := hVJPb(res)
@@ -664,7 +664,7 @@ func vjpF(x float32) (float32, func(res float32) float32) {
 func TestVJPFunctionsInExpressions(t *testing.T) {
 	testbuild.Run(t,
 		declareGradPackage,
-		testgrad.VJP{
+		testgrad.Reverse{
 			Src: `
 func f(x float32) float32 {
 	return x
@@ -680,8 +680,8 @@ func F(x float32) float32 {
 `,
 			Want: `
 func vjpF(x float32) (float32, func(res float32) float32) {
-	fwd0, fVJP := grad.VJP(f)(x)
-	fwd1, gVJP := grad.VJP(g)(x)
+	fwd0, fVJP := grad.Reverse(f)(x)
+	fwd1, gVJP := grad.Reverse(g)(x)
 	fwd2 := fwd0*fwd1
 	selfVJPFunc := func(res float32) float32 {
 		bck2x := res*fwd1
@@ -701,7 +701,7 @@ func TestVJPPackageBuiltins(t *testing.T) {
 	testbuild.Run(t,
 		declareGradPackage,
 		declareMathPackage,
-		testgrad.VJP{
+		testgrad.Reverse{
 			Imports: []string{"math"},
 			Src: `
 func F(x float32) float32 {
@@ -710,7 +710,7 @@ func F(x float32) float32 {
 `,
 			Want: `
 func vjpF(x float32) (float32, func(res float32) float32) {
-	fwd0, SinVJP := grad.VJP(math.Sin)(x)
+	fwd0, SinVJP := grad.Reverse(math.Sin)(x)
 	selfVJPFunc := func(res float32) float32 {
 		bck0 := SinVJP(res)
 		return bck0
@@ -726,7 +726,7 @@ func TestVJPGenerics(t *testing.T) {
 	testbuild.Run(t,
 		declareGradPackage,
 		declareMathPackage,
-		testgrad.VJP{
+		testgrad.Reverse{
 			Imports: []string{"math"},
 			Src: `
 type floats interface {
@@ -746,7 +746,7 @@ func vjpF[T floats](x T) (T, func(res T) T) {
 }
 `,
 		},
-		testgrad.VJP{
+		testgrad.Reverse{
 			Imports: []string{"math"},
 			Src: `
 type floats interface {
@@ -763,7 +763,7 @@ func F[T floats](x T) T {
 `,
 			Want: `
 func vjpF[T floats](x T) (T, func(res T) T) {
-	fwd0, gVJP := grad.VJP(g)[T](x)
+	fwd0, gVJP := grad.Reverse(g)[T](x)
 	selfVJPFunc := func(res T) T {
 		bck0 := gVJP(res)
 		return bck0
@@ -778,7 +778,7 @@ func vjpF[T floats](x T) (T, func(res T) T) {
 func TestVJPAssignments(t *testing.T) {
 	testbuild.Run(t,
 		declareGradPackage,
-		testgrad.VJP{
+		testgrad.Reverse{
 			Src: `
 func F(x float32) float32 {
 	a := 2*x
@@ -799,7 +799,7 @@ func vjpF(x float32) (float32, func(res float32) float32) {
 }
 `,
 		},
-		testgrad.VJP{
+		testgrad.Reverse{
 			Src: `
 func F(x float32) float32 {
 	a := 2*x
@@ -823,7 +823,7 @@ func vjpF(x float32) (float32, func(res float32) float32) {
 }
 `,
 		},
-		testgrad.VJP{
+		testgrad.Reverse{
 			Src: `
 func F(x float32) float32 {
 	a := 2*x
@@ -850,7 +850,7 @@ func vjpF(x float32) (float32, func(res float32) float32) {
 }
 `,
 		},
-		testgrad.VJP{
+		testgrad.Reverse{
 			Src: `
 func F(x float32) (float32, float32, float32) {
 	a, b, c := x, 2*x, 2+x
@@ -874,7 +874,7 @@ func vjpF(x float32) (float32, float32, float32, func(res float32, res1 float32,
 }
 `,
 		},
-		testgrad.VJP{
+		testgrad.Reverse{
 			Src: `
 func F(x float32) float32 {
 	a := x
@@ -896,7 +896,7 @@ func vjpF(x float32) (float32, func(res float32) float32) {
 }
 `,
 		},
-		testgrad.VJP{
+		testgrad.Reverse{
 			Src: `
 func F(x float32) float32 {
 	a := x
@@ -920,7 +920,7 @@ func vjpF(x float32) (float32, func(res float32) float32) {
 }
 `,
 		},
-		testgrad.VJP{
+		testgrad.Reverse{
 			Src: `
 func F(x float32) float32 {
 	a := x
@@ -949,7 +949,7 @@ func vjpF(x float32) (float32, func(res float32) float32) {
 func TestVJPArrays(t *testing.T) {
 	testbuild.Run(t,
 		declareGradPackage,
-		testgrad.VJP{
+		testgrad.Reverse{
 			Src: `
 func F(x [2]float32) [2]float32 {
 	return x
@@ -964,7 +964,7 @@ func vjpF(x [2]float32) ([2]float32, func(res [2]float32) [2]float32) {
 }
 `,
 		},
-		testgrad.VJP{
+		testgrad.Reverse{
 			Src: `
 func F(x [2][3]float32) [2][3]float32 {
 	return x
@@ -979,7 +979,7 @@ func vjpF(x [2][3]float32) ([2][3]float32, func(res [2][3]float32) [2][3]float32
 }
 `,
 		},
-		testgrad.VJP{
+		testgrad.Reverse{
 			Src: `
 func F(x [_A]float32) [A]float32 {
 	return x
@@ -994,7 +994,7 @@ func vjpF(x [_A]float32) ([A]float32, func(res [A]float32) [A]float32) {
 }
 `,
 		},
-		testgrad.VJP{
+		testgrad.Reverse{
 			Src: `
 func F(x [___S]float32) [S___]float32 {
 	return x
@@ -1009,7 +1009,7 @@ func vjpF(x [___S]float32) ([S___]float32, func(res [S___]float32) [S___]float32
 }
 `,
 		},
-		testgrad.VJP{
+		testgrad.Reverse{
 			Src: `
 type floats interface {
 	float32 | float64
@@ -1034,7 +1034,7 @@ func vjpF[T floats](x [___S]T) ([S___]T, func(res [S___]T) [S___]T) {
 func TestVJPDuplicatedNames(t *testing.T) {
 	testbuild.Run(t,
 		declareGradPackage,
-		testgrad.VJP{
+		testgrad.Reverse{
 			Src: `
 func F(fwd0 [___S]float32) [S___]float32 {
 	return 2*fwd0
@@ -1052,7 +1052,7 @@ func vjpF(fwd0 [___S]float32) ([S___]float32, func(res [S___]float32) [S___]floa
 }
 `,
 		},
-		testgrad.VJP{
+		testgrad.Reverse{
 			Src: `
 func F(x [___fwd0]float32) [fwd0___]float32 {
 	return 2*x
@@ -1070,7 +1070,7 @@ func vjpF(x [___fwd0]float32) ([fwd0___]float32, func(res [fwd0___]float32) [fwd
 }
 `,
 		},
-		testgrad.VJP{
+		testgrad.Reverse{
 			Src: `
 type floats interface {
 	float32 | float64
@@ -1092,7 +1092,7 @@ func vjpF[fwd0 floats](x [___S]fwd0) ([S___]fwd0, func(res [S___]fwd0) [S___]fwd
 }
 `,
 		},
-		testgrad.VJP{
+		testgrad.Reverse{
 			Src: `
 func F(x float32) float32 {
 	x = x*x
