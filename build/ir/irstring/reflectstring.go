@@ -115,7 +115,7 @@ func rank(done map[any]bool, val reflect.Value, proc processor) string {
 func typeValExpr(done map[any]bool, val reflect.Value, proc processor) string {
 	ref := val.Interface().(*ir.TypeValExpr)
 	switch typT := ref.Val().(type) {
-	case *ir.FuncType, ir.ArrayType, *ir.TypeParam:
+	case *ir.FuncType, ir.ArrayType, *ir.TypeParam, *ir.StructType:
 		return reflectString(done, reflect.ValueOf(typT), proc)
 	default:
 		return typT.String()
@@ -208,21 +208,15 @@ func init() {
 }
 
 func reflectStructString(done map[any]bool, val reflect.Value, proc processor) string {
-	// Filter structures we care about.
-	typ := val.Type()
-	process, processOk := typeToProcess[typ.PkgPath()+"."+typ.Name()]
-	if processOk && (process.debug || ReflectStringOutput != VerboseStringType) {
-		return process.stringer(done, val.Addr(), proc)
-	}
 	if val.CanAddr() && val.Addr().CanInterface() && proc != nil {
 		if s := proc(done, val.Addr()); s != "" {
 			return s
 		}
 	}
-	if !strings.Contains(typ.PkgPath(), "gx/build/ir") {
+	if !strings.Contains(val.Type().PkgPath(), "gx/build/ir") {
 		return ""
 	}
-
+	typ := val.Type()
 	s := strings.Builder{}
 	fmt.Fprintf(&s, "%s {", typ.Name())
 	for i := range typ.NumField() {
@@ -283,6 +277,8 @@ func toPointer(val reflect.Value) any {
 		return val
 	case reflect.Interface:
 		return val.Elem().Interface()
+	case reflect.Pointer:
+		return val
 	default:
 		if !val.CanInterface() {
 			return fmt.Sprintf("cannot interface from %s", val.String())
@@ -295,6 +291,14 @@ func reflectString(done map[any]bool, val reflect.Value, proc processor) string 
 	if done[val] {
 		return fmt.Sprintf("<ref:%s>", val.Type().Name())
 	}
+	// Filter structures we care about.
+	typ := val.Type()
+	typKey := typ.PkgPath() + "." + typ.Name()
+	process, processOk := typeToProcess[typKey]
+	if processOk && (process.debug || ReflectStringOutput != VerboseStringType) {
+		return process.stringer(done, val.Addr(), proc)
+	}
+	// Fallback to the default representation.
 	ptr := toPointer(val)
 	if ptr != nil {
 		done[ptr] = true

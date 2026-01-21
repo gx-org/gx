@@ -284,19 +284,19 @@ func TypeSet(types ...ir.Type) *ir.TypeSet {
 
 // StructType builds a structure type.
 func StructType(fields ...*ir.Field) *ir.StructType {
+	stype := &ir.StructType{
+		BaseType: ir.BaseType[*ast.StructType]{Src: &ast.StructType{}},
+		Fields:   &ir.FieldList{},
+	}
 	done := make(map[*ir.FieldGroup]bool)
-	list := &ir.FieldList{}
 	for _, field := range fields {
 		if done[field.Group] {
 			continue
 		}
-		list.List = append(list.List, field.Group)
+		stype.Fields.List = append(stype.Fields.List, field.Group)
 		done[field.Group] = true
 	}
-	return &ir.StructType{
-		BaseType: ir.BaseType[*ast.StructType]{Src: &ast.StructType{}},
-		Fields:   list,
-	}
+	return stype
 }
 
 // FuncType builds a compeval function type .
