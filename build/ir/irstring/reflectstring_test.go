@@ -73,6 +73,22 @@ FuncDecl {
 }`,
 		},
 		{
+			code: &ir.NamedType{
+				Underlying: ir.TypeExpr(nil, irhelper.StructType(
+					irhelper.Fields("a", "b", ir.Float32Type()).List[0].Fields...,
+				)),
+			},
+			want: `
+NamedType {
+	Underlying: StructType {
+		BaseType: BaseType[*go/ast.StructType] {
+		}
+		Fields: FieldList{a,b float32}
+	}
+}
+`,
+		},
+		{
 			code: irhelper.IntNumberAs(2, ir.IntLenType()),
 			want: `
 NumberCastExpr {
