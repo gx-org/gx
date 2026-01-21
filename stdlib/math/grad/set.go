@@ -24,7 +24,7 @@ import (
 )
 
 // SetGrad sets the gradient of a function.
-func SetGrad(fetcher ir.Fetcher, ann *ir.Annotator, fn ir.PkgFunc, call *ir.FuncCallExpr, args []ir.Element) bool {
+func SetGrad(fetcher ir.Fetcher, ann *ir.AnnotatorFunc, fn ir.PkgFunc, call *ir.FuncCallExpr, args []ir.Element) bool {
 	params := fn.FuncType().Params.Fields()
 	switch len(params) {
 	case 0:
@@ -42,7 +42,7 @@ func SetGrad(fetcher ir.Fetcher, ann *ir.Annotator, fn ir.PkgFunc, call *ir.Func
 }
 
 // SetGradFor sets the gradient of a function.
-func SetGradFor(fetcher ir.Fetcher, ann *ir.Annotator, fn ir.PkgFunc, call *ir.FuncCallExpr, args []ir.Element) bool {
+func SetGradFor(fetcher ir.Fetcher, ann *ir.AnnotatorFunc, fn ir.PkgFunc, call *ir.FuncCallExpr, args []ir.Element) bool {
 	arg0, err := fetcher.EvalExpr(call.Args[0])
 	if err != nil {
 		return fetcher.Err().AppendAt(call.Args[0].Node(), err)
@@ -58,7 +58,7 @@ func SetGradFor(fetcher ir.Fetcher, ann *ir.Annotator, fn ir.PkgFunc, call *ir.F
 	return annotate(fetcher, ann, fn, call, paramName, paramPos, args[1])
 }
 
-func annotate(fetcher ir.Fetcher, ann *ir.Annotator, fn ir.PkgFunc, call *ir.FuncCallExpr, paramName string, paramPos int, gradEl ir.Element) bool {
+func annotate(fetcher ir.Fetcher, ann *ir.AnnotatorFunc, fn ir.PkgFunc, call *ir.FuncCallExpr, paramName string, paramPos int, gradEl ir.Element) bool {
 	paramToFunc := setann.GetDef(fn)
 	prev := paramToFunc.Partials[paramPos]
 	if prev != nil {

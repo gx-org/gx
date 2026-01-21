@@ -22,14 +22,14 @@ import (
 
 // FuncAnnotator is a macro function to build synthetic functions.
 type FuncAnnotator struct {
-	ann  *ir.Annotator
+	ann  *ir.AnnotatorFunc
 	recv *fun.Receiver
 }
 
 var _ ir.FuncAnnotator = (*FuncAnnotator)(nil)
 
 // NewAnnotator creates a new macro given its definition and a receiver.
-func NewAnnotator(fn *ir.Annotator, recv *fun.Receiver) fun.Func {
+func NewAnnotator(fn *ir.AnnotatorFunc, recv *fun.Receiver) fun.Func {
 	return &FuncAnnotator{ann: fn, recv: recv}
 }
 

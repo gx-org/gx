@@ -22,11 +22,11 @@ import (
 )
 
 type (
-	// Annotator of a function: add meta-data to a declared function.
-	Annotator struct {
+	// AnnotatorFunc of a function: add meta-data to a declared function.
+	AnnotatorFunc struct {
 		MetaCore
 
-		Annotate AnnotatorImpl
+		Annotate AnnotatorFuncImpl
 	}
 
 	// MetaCore is the core shared amongst meta functions:

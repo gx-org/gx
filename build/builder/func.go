@@ -237,7 +237,7 @@ func (bFile *file) processFunc(fileScope procScope, src *ast.FuncDecl) bool {
 		fn, ok = bFile.processIRMacroFunc(fileScope, src, dirComment)
 	case cpeval:
 		fn, ok = bFile.processDeclaredFunc(fileScope, src, true)
-	case annotator:
+	case funcAnnotator:
 		fn, ok = bFile.processAnnotatorFunc(fileScope, src, dirComment)
 	default:
 		return fileScope.Err().AppendInternalf(dirComment, "directive %d not supported", dir)

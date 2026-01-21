@@ -76,19 +76,19 @@ func (f *funcMacro) buildSignature(fScope *fileResolveScope) (ir.Func, fnResolve
 	return &ir.Macro{MetaCore: core}, fnScope, ok
 }
 
-type funcAnnotator struct {
+type funcAnnotatorBuilder struct {
 	funcMeta
 }
 
 func (bFile *file) processAnnotatorFunc(scope procScope, src *ast.FuncDecl, comment *ast.Comment) (function, bool) {
 	fDecl, declOk := newFuncDecl(scope, src, false)
-	fn := &funcAnnotator{funcMeta{funcDecl: fDecl}}
+	fn := &funcAnnotatorBuilder{funcMeta{funcDecl: fDecl}}
 	return fn, declOk
 }
 
-func (f *funcAnnotator) buildSignature(fScope *fileResolveScope) (ir.Func, fnResolveScope, bool) {
+func (f *funcAnnotatorBuilder) buildSignature(fScope *fileResolveScope) (ir.Func, fnResolveScope, bool) {
 	core, fnScope, ok := f.funcMeta.buildSignature(fScope)
-	return &ir.Annotator{MetaCore: core}, fnScope, ok
+	return &ir.AnnotatorFunc{MetaCore: core}, fnScope, ok
 }
 
 type irExpr struct {

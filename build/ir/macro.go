@@ -51,8 +51,8 @@ type (
 	// MacroImpl is a builtin opaque function to produce an IR.
 	MacroImpl func(file *File, call *FuncCallExpr, fn *Macro, args []Element) (MacroElement, error)
 
-	// AnnotatorImpl is an annotation implementation.
-	AnnotatorImpl func(Fetcher, *Annotator, PkgFunc, *FuncCallExpr, []Element) bool
+	// AnnotatorFuncImpl is an annotation implementation.
+	AnnotatorFuncImpl func(Fetcher, *AnnotatorFunc, PkgFunc, *FuncCallExpr, []Element) bool
 )
 
 // MacroCallExpr calls a macro.
