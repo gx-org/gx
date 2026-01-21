@@ -52,7 +52,7 @@ func (ts *tagStr) String() string {
 	return ts.s
 }
 
-func tagFunc(fetcher ir.Fetcher, annotator *ir.Annotator, fn ir.PkgFunc, call *ir.FuncCallExpr, args []ir.Element) bool {
+func tagFunc(fetcher ir.Fetcher, annotator *ir.AnnotatorFunc, fn ir.PkgFunc, call *ir.FuncCallExpr, args []ir.Element) bool {
 	var tag string
 	switch argT := args[0].(type) {
 	case *elements.String:
@@ -100,9 +100,9 @@ func (m *macroBuildReturn) BuildBody(fetcher ir.Fetcher, fn ir.Func) (*ast.Block
 	}}, true
 }
 
-func annotationPackage(tag **ir.Annotator, buildReturn **ir.Macro) testbuild.DeclarePackage {
+func annotationPackage(tag **ir.AnnotatorFunc, buildReturn **ir.Macro) testbuild.DeclarePackage {
 	if tag == nil {
-		var tagM *ir.Annotator
+		var tagM *ir.AnnotatorFunc
 		tag = &tagM
 		var buildReturnM *ir.Macro
 		buildReturn = &buildReturnM
@@ -111,15 +111,15 @@ func annotationPackage(tag **ir.Annotator, buildReturn **ir.Macro) testbuild.Dec
 		Src: `
 package annotation
 
-// gx:annotator
+// gx:funcAnnotator
 func Tag(any)
 
 // gx:irmacro
 func BuildReturn(any) any
 `,
 		Post: func(pkg *ir.Package) {
-			*tag = pkg.FindFunc("Tag").(*ir.Annotator)
-			(*tag).Annotate = ir.AnnotatorImpl(tagFunc)
+			*tag = pkg.FindFunc("Tag").(*ir.AnnotatorFunc)
+			(*tag).Annotate = ir.AnnotatorFuncImpl(tagFunc)
 			*buildReturn = pkg.FindFunc("BuildReturn").(*ir.Macro)
 			(*buildReturn).BuildSynthetic = ir.MacroImpl(newBuildReturn)
 		},
@@ -127,7 +127,7 @@ func BuildReturn(any) any
 }
 
 func TestAnnotation(t *testing.T) {
-	var tag *ir.Annotator
+	var tag *ir.AnnotatorFunc
 	var buildReturn *ir.Macro
 	bld := testbuild.Run(t, annotationPackage(&tag, &buildReturn))
 	bld.Continue(t,

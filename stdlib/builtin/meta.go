@@ -63,11 +63,11 @@ func (b *registerMacro) Name() string {
 
 type registerAnnotator struct {
 	name string
-	impl ir.AnnotatorImpl
+	impl ir.AnnotatorFuncImpl
 }
 
 // RegisterAnnotator registers the implementation of a annotator.
-func RegisterAnnotator(name string, impl ir.AnnotatorImpl) Builder {
+func RegisterAnnotator(name string, impl ir.AnnotatorFuncImpl) Builder {
 	return &registerAnnotator{
 		name: name,
 		impl: impl,
@@ -85,7 +85,7 @@ func (b *registerAnnotator) Build(bld importers.Builder, _ *impl.Stdlib, pkg imp
 	if fun == nil {
 		return errors.Errorf("cannot find the function in the package IR")
 	}
-	macro, ok := fun.(*ir.Annotator)
+	macro, ok := fun.(*ir.AnnotatorFunc)
 	if !ok {
 		return errors.Errorf("type %T is not %s", fun, reflect.TypeFor[*ir.Macro]())
 	}

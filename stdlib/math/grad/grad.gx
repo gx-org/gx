@@ -9,10 +9,9 @@ func Reverse(fn any) any
 func Func(fn any, wrtArg string) any
 
 // Set the gradient of a GX function.
-// gx:annotator
+// gx:funcAnnotator
 func Set(gradF any) any
 
 // SetFor sets the gradient of a GX function with respect to a specific parameter, identified by its name.
-// gx:annotator
+// gx:funcAnnotator
 func SetFor(parameter string, gradF any) any
-

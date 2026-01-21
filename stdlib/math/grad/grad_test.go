@@ -37,10 +37,10 @@ var (
 			irVJP.BuildSynthetic = ir.MacroImpl(grad.Reverse)
 			irFunc := pkg.FindFunc("Func").(*ir.Macro)
 			irFunc.BuildSynthetic = ir.MacroImpl(grad.FuncGrad)
-			irSet := pkg.FindFunc("Set").(*ir.Annotator)
-			irSet.Annotate = ir.AnnotatorImpl(grad.SetGrad)
-			irSetFor := pkg.FindFunc("SetFor").(*ir.Annotator)
-			irSetFor.Annotate = ir.AnnotatorImpl(grad.SetGradFor)
+			irSet := pkg.FindFunc("Set").(*ir.AnnotatorFunc)
+			irSet.Annotate = ir.AnnotatorFuncImpl(grad.SetGrad)
+			irSetFor := pkg.FindFunc("SetFor").(*ir.AnnotatorFunc)
+			irSetFor.Annotate = ir.AnnotatorFuncImpl(grad.SetGradFor)
 		},
 	}
 
