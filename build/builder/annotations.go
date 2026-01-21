@@ -48,7 +48,7 @@ func (m *annotateFuncFromMacro) buildAnnotations(fScope *fileResolveScope, fn *i
 	if !ok {
 		return false
 	}
-	call, annotator, ok := evalMetaCallee[*cpevelements.Annotator](fnScope, compEval, m.macroCall)
+	call, annotator, ok := evalMetaCallee[*cpevelements.FuncAnnotator](fnScope, compEval, m.macroCall)
 	if !ok {
 		return false
 	}
