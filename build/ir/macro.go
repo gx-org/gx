@@ -51,8 +51,18 @@ type (
 	// MacroImpl is a builtin opaque function to produce an IR.
 	MacroImpl func(file *File, call *FuncCallExpr, fn *Macro, args []Element) (MacroElement, error)
 
-	// AnnotatorFuncImpl is an annotation implementation.
+	// AnnotatorFuncImpl annotates a function.
 	AnnotatorFuncImpl func(Fetcher, *AnnotatorFunc, PkgFunc, *FuncCallExpr, []Element) bool
+
+	// FieldListCheckImpl checks a field list after groups in that list have been annotated.
+	FieldListCheckImpl interface {
+		Check(Fetcher, *FieldList) bool
+	}
+
+	// AnnotatorFieldImpl annotates a structure field.
+	// It returns a check function to call once all fields have been annotated.
+	// If the same function is returned multiple times, it is only called once.
+	AnnotatorFieldImpl func(Fetcher, *AnnotatorField, *FieldGroup, *FuncCallExpr, []Element) (FieldListCheckImpl, bool)
 )
 
 // MacroCallExpr calls a macro.

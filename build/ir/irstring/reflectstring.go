@@ -71,9 +71,13 @@ func fieldList(done map[any]bool, val reflect.Value, proc processor) string {
 			return "<type:nil>"
 		}
 		typeS := reflectString(done, reflect.ValueOf(group.Type), proc)
-		all = append(all, allNames+typeS)
+		annS := group.Anns.String()
+		if annS != "" {
+			annS = fmt.Sprintf(" `%s`", annS)
+		}
+		all = append(all, "\t"+allNames+typeS+annS)
 	}
-	return fmt.Sprintf("FieldList{%s}", strings.Join(all, ","))
+	return fmt.Sprintf("FieldList{\n%s\n}", strings.Join(all, "\n"))
 }
 
 func typeParam(done map[any]bool, val reflect.Value, proc processor) string {

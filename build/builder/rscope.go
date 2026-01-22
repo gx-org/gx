@@ -230,6 +230,10 @@ func (s *pkgResolveScope) newFuncScope(f *file, ftype *ir.FuncType) (*funcResolv
 	return newFuncScope(fScope, ftype)
 }
 
+func (s *fileResolveScope) procScope() procScope {
+	return s.pkgProcScope.newFilePScope(s.bFile())
+}
+
 func (s *fileResolveScope) newCompEval() (*compileEvaluator, bool) {
 	pkgitp := s.pkgResolveScope.packageInterpreter()
 	fitp, err := pkgitp.ForFile(s.irFile())

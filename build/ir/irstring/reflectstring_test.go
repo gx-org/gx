@@ -54,8 +54,12 @@ func TestReflectString(t *testing.T) {
 			want: `
 FuncDecl {
 	FType: FuncType {
-		Params: FieldList{a,b float32}
-		Results: FieldList{float32}
+		Params: FieldList{
+			a,b float32
+		}
+		Results: FieldList{
+			float32
+		}
 	}
 	Body: BlockStmt {
 		List: [
@@ -83,7 +87,9 @@ NamedType {
 	Underlying: StructType {
 		BaseType: BaseType[*go/ast.StructType] {
 		}
-		Fields: FieldList{a,b float32}
+		Fields: FieldList{
+			a,b float32
+		}
 	}
 }
 `,

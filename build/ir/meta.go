@@ -29,6 +29,13 @@ type (
 		Annotate AnnotatorFuncImpl
 	}
 
+	// AnnotatorField of a function: add meta-data to a declared function.
+	AnnotatorField struct {
+		MetaCore
+
+		Annotate AnnotatorFieldImpl
+	}
+
 	// MetaCore is the core shared amongst meta functions:
 	// macros and annotations.
 	MetaCore struct {

@@ -55,6 +55,10 @@ func (f *fieldList) buildFieldList(dscope *defineLocalScope) (*ir.FieldList, boo
 		fList.List[i], fieldOk = group.build(dscope)
 		ok = fieldOk && ok
 	}
+	if !ok {
+		return fList, false
+	}
+	ok = buildTags(dscope, f, fList)
 	return fList, ok
 }
 
@@ -92,6 +96,7 @@ type fieldGroup struct {
 	src  *ast.Field
 	list []*field
 	typ  typeExprNode
+	tag  *tag
 }
 
 func processFieldGroup(pscope typeProcScope, src *ast.Field, assign func(procScope, *field) bool) (*fieldGroup, bool) {
@@ -107,7 +112,9 @@ func processFieldGroup(pscope typeProcScope, src *ast.Field, assign func(procSco
 		ok = ok && assignOk
 		grp.list[i] = field
 	}
-	return grp, ok
+	var tagOk bool
+	grp.tag, tagOk = processTag(pscope, src.Tag)
+	return grp, ok && tagOk
 }
 
 func (f *fieldGroup) build(dscope *defineLocalScope) (*ir.FieldGroup, bool) {

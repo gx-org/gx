@@ -52,19 +52,48 @@ func (ts *tagStr) String() string {
 	return ts.s
 }
 
-func tagFunc(fetcher ir.Fetcher, annotator *ir.AnnotatorFunc, fn ir.PkgFunc, call *ir.FuncCallExpr, args []ir.Element) bool {
-	var tag string
-	switch argT := args[0].(type) {
+func toTagString(arg ir.Element) string {
+	switch argT := arg.(type) {
 	case *elements.String:
-		tag = argT.StringValue().String()
+		return argT.StringValue().String()
 	case fun.Func:
-		tag = argT.Func().FuncType().String()
+		return argT.Func().FuncType().String()
 	default:
-		tag = fmt.Sprintf("%T", argT)
+		return fmt.Sprintf("%T", argT)
 	}
+}
+
+func tagFunc(fetcher ir.Fetcher, annotator *ir.AnnotatorFunc, fn ir.PkgFunc, call *ir.FuncCallExpr, args []ir.Element) bool {
 	tg := annotations.GetDef[*tagStr](fn, tagKey, newTag)
-	tg.append(tag)
+	tg.append(toTagString(args[0]))
 	return true
+}
+
+type tagCheck struct{}
+
+var tagChecker = &tagCheck{}
+
+func (tagCheck) Check(fetcher ir.Fetcher, list *ir.FieldList) bool {
+	found := make(map[string]*ir.FieldGroup)
+	ok := true
+	for _, grp := range list.List {
+		tag := annotations.Get[*tagStr](grp, tagKey)
+		if tag == nil {
+			continue
+		}
+		if prev := found[tag.s]; prev != nil {
+			ok = fetcher.Err().Appendf(grp.Src, "tag %s has already been used", tag.s)
+			continue
+		}
+		found[tag.s] = grp
+	}
+	return ok
+}
+
+func tagField(fetcher ir.Fetcher, annotator *ir.AnnotatorField, field *ir.FieldGroup, call *ir.FuncCallExpr, args []ir.Element) (ir.FieldListCheckImpl, bool) {
+	tg := annotations.GetDef[*tagStr](field, tagKey, newTag)
+	tg.append(toTagString(args[0]))
+	return tagChecker, true
 }
 
 type macroBuildReturn struct {
@@ -107,18 +136,23 @@ package annotation
 // gx:funcAnnotator
 func Tag(any)
 
+// gx:fieldAnnotator
+func TagField(any)
+
 // gx:irmacro
 func BuildReturn(any) any
 `,
 	Post: func(pkg *ir.Package) {
 		tag := pkg.FindFunc("Tag").(*ir.AnnotatorFunc)
 		tag.Annotate = ir.AnnotatorFuncImpl(tagFunc)
+		tagFld := pkg.FindFunc("TagField").(*ir.AnnotatorField)
+		tagFld.Annotate = ir.AnnotatorFieldImpl(tagField)
 		buildReturn := pkg.FindFunc("BuildReturn").(*ir.Macro)
 		buildReturn.BuildSynthetic = ir.MacroImpl(newBuildReturn)
 	},
 }
 
-func TestAnnotation(t *testing.T) {
+func TestFuncAnnotation(t *testing.T) {
 	testbuild.Run(t,
 		annotationPackage,
 		testbuild.Decl{
@@ -230,7 +264,7 @@ func f() int32
 	)
 }
 
-func TestAnnotationError(t *testing.T) {
+func TestFuncAnnotationError(t *testing.T) {
 	testbuild.Run(t,
 		annotationPackage,
 		testbuild.Decl{
@@ -242,6 +276,79 @@ func f() string {
 }
 `,
 			Err: "annotator gx:@annotation.Tag only valid in a function annotation context",
+		},
+	)
+}
+
+func TestFieldAnnotation(t *testing.T) {
+	testbuild.Run(t,
+		annotationPackage,
+		testbuild.Decl{
+			Src: `
+import "annotation"
+
+type S struct {	
+	A int32 ` + "`gx:@annotation.TagField(\"hello\")`" + `
+	B int32 ` + "`gx:@annotation.TagField(\"bonjour\")`" + `
+}
+`,
+			Want: []ir.IR{
+				&ir.NamedType{
+					File: wantFile,
+					Src:  &ast.TypeSpec{Name: irh.IdentAST("A")},
+					Underlying: ir.TypeExpr(nil, irh.StructType(
+						irh.Field(
+							"A", nil,
+							&ir.FieldGroup{
+								Type: ir.TypeExpr(nil, ir.Int32Type()),
+								Anns: irh.Annotations(tagKey, &tagStr{s: "hello"}),
+							}),
+						irh.Field(
+							"B", nil,
+							&ir.FieldGroup{
+								Type: ir.TypeExpr(nil, ir.Int32Type()),
+								Anns: irh.Annotations(tagKey, &tagStr{s: "bonjour"}),
+							}),
+					)),
+				},
+			},
+		},
+	)
+}
+
+func TestFieldAnnotationError(t *testing.T) {
+	testbuild.Run(t,
+		annotationPackage,
+		testbuild.Decl{
+			Src: `
+import "annotation"
+
+type S struct {	
+	A int32 ` + "`gx:annotation.Tag(\"params\")`" + `
+}
+`,
+			Err: "expect annotation gx:@... but found gx:annotation.Tag",
+		},
+		testbuild.Decl{
+			Src: `
+import "annotation"
+
+type S struct {	
+	A int32 ` + "`gx:@annotation.Tag(\"params\")`" + `
+}
+`,
+			Err: "cannot use annotation.Tag to annotate the field of a structure",
+		},
+		testbuild.Decl{
+			Src: `
+import "annotation"
+
+type S struct {	
+	A int32 ` + "`gx:@annotation.TagField(\"hello\")`" + `
+	B int32 ` + "`gx:@annotation.TagField(\"hello\")`" + `
+}
+`,
+			Err: "tag hello has already been used",
 		},
 	)
 }
