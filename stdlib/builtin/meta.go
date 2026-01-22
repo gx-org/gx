@@ -66,8 +66,8 @@ type registerAnnotator struct {
 	impl ir.AnnotatorFuncImpl
 }
 
-// RegisterAnnotator registers the implementation of a annotator.
-func RegisterAnnotator(name string, impl ir.AnnotatorFuncImpl) Builder {
+// RegisterFuncAnnotator registers the implementation of a annotator.
+func RegisterFuncAnnotator(name string, impl ir.AnnotatorFuncImpl) Builder {
 	return &registerAnnotator{
 		name: name,
 		impl: impl,

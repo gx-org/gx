@@ -42,8 +42,8 @@ var Package = builtin.PackageBuilder{
 		builtin.ParseSource(&fs),
 		builtin.RegisterMacro("Func", FuncGrad),
 		builtin.RegisterMacro("Reverse", Reverse),
-		builtin.RegisterAnnotator("Set", SetGrad),
-		builtin.RegisterAnnotator("SetFor", SetGradFor),
+		builtin.RegisterFuncAnnotator("Set", SetGrad),
+		builtin.RegisterFuncAnnotator("SetFor", SetGradFor),
 	},
 }
 
