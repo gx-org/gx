@@ -28,6 +28,7 @@ const (
 	invalid funcAttribute = iota
 	irmacro
 	funcAnnotator
+	fieldAnnotator
 	cpeval
 	none
 )
@@ -40,6 +41,8 @@ func (d funcAttribute) String() string {
 		return "irmacro"
 	case funcAnnotator:
 		return "funcAnnotator"
+	case fieldAnnotator:
+		return "fieldAnnotator"
 	case cpeval:
 		return "compeval"
 	default:
@@ -47,20 +50,76 @@ func (d funcAttribute) String() string {
 	}
 }
 
-const funcAttributePrefix = "gx:"
+const directivePrefix = "gx:"
 
 var directives = map[string]funcAttribute{
-	irmacro.String():       irmacro,
-	funcAnnotator.String(): funcAnnotator,
-	cpeval.String():        cpeval,
-	none.String():          none,
+	irmacro.String():        irmacro,
+	funcAnnotator.String():  funcAnnotator,
+	fieldAnnotator.String(): fieldAnnotator,
+	cpeval.String():         cpeval,
+	none.String():           none,
 }
 
-func trimCommentPrefix(cmt *ast.Comment) string {
+type directive struct {
+	prefix string
+	code   string
+}
+
+func newDirective(text string) directive {
+	text = strings.TrimSpace(text)
+	if !strings.HasPrefix(text, directivePrefix) {
+		return directive{}
+	}
+	return directive{
+		prefix: directivePrefix,
+		code:   text[len(directivePrefix):],
+	}
+}
+
+func (d directive) empty() bool {
+	return d.code == ""
+}
+
+func (d directive) addPrefix(prefix string) directive {
+	if !strings.HasPrefix(d.code, prefix) {
+		return directive{}
+	}
+	return directive{
+		prefix: d.prefix + prefix,
+		code:   d.code[len(prefix):],
+	}
+}
+
+func (d directive) addPrefixLen(l int) directive {
+	if len(d.code) < l {
+		return directive{}
+	}
+	return directive{
+		prefix: d.prefix + d.code[:l],
+		code:   d.code[l:],
+	}
+}
+
+func (d directive) process(pscope procScope, src ast.Node) (*callExpr, bool) {
+	astExpr, err := parser.ParseExprFrom(pscope.pkg().fset, pscope.file().name, d.code, parser.SkipObjectResolution)
+	if err != nil {
+		return nil, processScannerError(pscope, src, err)
+	}
+	expr, ok := processExpr(pscope, astExpr)
+	if !ok {
+		return nil, false
+	}
+	macroCall, ok := expr.(*callExpr)
+	if !ok {
+		return nil, pscope.Err().Appendf(src, "GX directive (%s) only accept function call expression", d.prefix)
+	}
+	return macroCall, ok
+}
+
+func trimCommentPrefix(cmt *ast.Comment) directive {
 	text := cmt.Text
 	text = strings.TrimPrefix(text, "//")
-	text = strings.TrimSpace(text)
-	return text
+	return newDirective(text)
 }
 
 func processFuncAttribute(pscope procScope, fn *ast.FuncDecl) (funcAttribute, *ast.Comment, bool) {
@@ -70,20 +129,19 @@ func processFuncAttribute(pscope procScope, fn *ast.FuncDecl) (funcAttribute, *a
 	dir := none
 	var comment *ast.Comment
 	for _, doc := range fn.Doc.List {
-		text := trimCommentPrefix(doc)
-		if !strings.HasPrefix(text, funcAttributePrefix) {
+		genericDir := trimCommentPrefix(doc)
+		if genericDir.empty() {
 			continue
 		}
-		if _, fnProc := funcProcessorFromDirective(text); fnProc != nil {
+		if _, fnProc := funcProcessorFromDirective(genericDir); fnProc != nil {
 			continue
 		}
-		dirS := text[len(funcAttributePrefix):]
-		docDir := directives[dirS]
+		docDir := directives[genericDir.code]
 		if docDir == invalid {
 			return dir, doc, pscope.Err().Appendf(doc, "undefined directive %s", doc.Text)
 		}
 		if dir != none {
-			return dir, doc, pscope.Err().Appendf(doc, "a function can only have one GX directive")
+			return dir, doc, pscope.Err().Appendf(doc, "directive %s incompatible with previous directive %s%s", genericDir, directivePrefix, dir)
 		}
 		dir = docDir
 		comment = doc
@@ -92,7 +150,7 @@ func processFuncAttribute(pscope procScope, fn *ast.FuncDecl) (funcAttribute, *a
 }
 
 type astErrorNode struct {
-	doc *ast.Comment
+	doc ast.Node
 	err *scanner.Error
 }
 
@@ -106,7 +164,7 @@ func (n astErrorNode) End() token.Pos {
 	return n.doc.End()
 }
 
-func processScannerError(pscope procScope, doc *ast.Comment, errScanner error) bool {
+func processScannerError(pscope procScope, doc ast.Node, errScanner error) bool {
 	errList, ok := errScanner.(scanner.ErrorList)
 	if !ok {
 		// Unknown error: we build a new error at the comment position
@@ -126,16 +184,16 @@ var funcProcessors = map[string]funcProcessor{
 	annotatePrefix: processFuncAnnotation,
 }
 
-func funcProcessorFromDirective(text string) (string, funcProcessor) {
-	if len(text) <= 4 {
-		return "", nil
+func funcProcessorFromDirective(dir directive) (directive, funcProcessor) {
+	nextDir := dir.addPrefixLen(1)
+	if nextDir.empty() {
+		return directive{}, nil
 	}
-	prefix := text[:4]
-	fnProc := funcProcessors[prefix]
+	fnProc := funcProcessors[nextDir.prefix]
 	if fnProc == nil {
-		return "", nil
+		return directive{}, nil
 	}
-	return prefix, fnProc
+	return nextDir, fnProc
 }
 
 func processFuncAnnotations(pscope procScope, src *ast.FuncDecl, fn function) (function, bool) {
@@ -143,23 +201,14 @@ func processFuncAnnotations(pscope procScope, src *ast.FuncDecl, fn function) (f
 		return fn, true
 	}
 	for _, doc := range src.Doc.List {
-		text := trimCommentPrefix(doc)
-		prefix, fnProc := funcProcessorFromDirective(text)
+		dir := trimCommentPrefix(doc)
+		dir, fnProc := funcProcessorFromDirective(dir)
 		if fnProc == nil {
 			continue
 		}
-		text = strings.TrimPrefix(text, prefix)
-		astExpr, err := parser.ParseExprFrom(pscope.pkg().fset, pscope.file().name+":"+src.Name.Name, text, parser.SkipObjectResolution)
-		if err != nil {
-			return nil, processScannerError(pscope, doc, err)
-		}
-		expr, ok := processExpr(pscope, astExpr)
+		macroCall, ok := dir.process(pscope, doc)
 		if !ok {
 			return nil, false
-		}
-		macroCall, ok := expr.(*callExpr)
-		if !ok {
-			return nil, pscope.Err().Appendf(doc, "GX directive (%s) only accept function call expression", prefix)
 		}
 		fn = fnProc(pscope, src, fn, macroCall)
 	}

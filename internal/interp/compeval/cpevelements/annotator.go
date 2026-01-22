@@ -20,55 +20,83 @@ import (
 	"github.com/gx-org/gx/interp/fun"
 )
 
-// FuncAnnotator is a macro function to build synthetic functions.
-type FuncAnnotator struct {
-	ann  *ir.AnnotatorFunc
+type coreAnnotator struct {
+	ann  ir.Func
 	recv *fun.Receiver
 }
 
-var _ ir.FuncAnnotator = (*FuncAnnotator)(nil)
-
-// NewAnnotator creates a new macro given its definition and a receiver.
-func NewAnnotator(fn *ir.AnnotatorFunc, recv *fun.Receiver) fun.Func {
-	return &FuncAnnotator{ann: fn, recv: recv}
-}
-
 // Func returns the macro function.
-func (f *FuncAnnotator) Func() ir.Func {
+func (f *coreAnnotator) Func() ir.Func {
 	return f.ann
 }
 
 // Recv returns the receiver of the macro function.
-func (f *FuncAnnotator) Recv() *fun.Receiver {
+func (f *coreAnnotator) Recv() *fun.Receiver {
 	return f.recv
 }
 
 // Call the macro to build the synthetic element.
-func (f *FuncAnnotator) Call(fctx *fun.CallEnv, call *ir.FuncCallExpr, args []ir.Element) ([]ir.Element, error) {
-	return nil, errors.Errorf("annotator gx:@%s only valid in a function annotation context", f.Name())
+func (f *coreAnnotator) Call(fctx *fun.CallEnv, call *ir.FuncCallExpr, args []ir.Element) ([]ir.Element, error) {
+	return nil, errors.Errorf("annotator gx:@%s only valid in a function annotation context", f.ann.ShortString())
 }
 
 // IR of the macro function.
-func (f *FuncAnnotator) IR() ir.Func {
+func (f *coreAnnotator) IR() ir.Func {
 	return f.ann
 }
 
-// Name of the annotator.
-func (f *FuncAnnotator) Name() string {
-	return f.ann.File().Package.Name.Name + "." + f.ann.Name()
+// ShortString returns the name of the annotator.
+func (f *coreAnnotator) ShortString() string {
+	return f.ann.ShortString()
 }
 
-// ShortString returns the name of the annotator.
-func (f *FuncAnnotator) ShortString() string {
-	return f.Name()
+// Type returns the type of the function.
+func (f *coreAnnotator) Type() ir.Type {
+	return f.ann.Type()
+}
+
+// FuncAnnotator is a macro function to annotate functions.
+type FuncAnnotator struct {
+	coreAnnotator
+	fn *ir.AnnotatorFunc
+}
+
+var _ ir.FuncAnnotator = (*FuncAnnotator)(nil)
+
+// NewFuncAnnotator creates a new function annotator.
+func NewFuncAnnotator(fn *ir.AnnotatorFunc, recv *fun.Receiver) fun.Func {
+	return &FuncAnnotator{
+		coreAnnotator: coreAnnotator{
+			ann:  fn,
+			recv: recv,
+		},
+		fn: fn,
+	}
 }
 
 // Annotate a given function for a given call.
 func (f *FuncAnnotator) Annotate(fetcher ir.Fetcher, fn ir.PkgFunc, call *ir.FuncCallExpr, args []ir.Element) bool {
-	return f.ann.Annotate(fetcher, f.ann, fn, call, args)
+	return f.fn.Annotate(fetcher, f.fn, fn, call, args)
 }
 
-// Type returns the type of the function.
-func (f *FuncAnnotator) Type() ir.Type {
-	return f.ann.Type()
+// FieldAnnotator is a macro function to annotate fields in structures.
+type FieldAnnotator struct {
+	coreAnnotator
+	fn *ir.AnnotatorField
+}
+
+// NewFieldAnnotator creates a new field annotator.
+func NewFieldAnnotator(fn *ir.AnnotatorField, recv *fun.Receiver) fun.Func {
+	return &FieldAnnotator{
+		coreAnnotator: coreAnnotator{
+			ann:  fn,
+			recv: recv,
+		},
+		fn: fn,
+	}
+}
+
+// Annotate a given field group for a given call.
+func (f *FieldAnnotator) Annotate(fetcher ir.Fetcher, grp *ir.FieldGroup, call *ir.FuncCallExpr, args []ir.Element) (ir.FieldListCheckImpl, bool) {
+	return f.fn.Annotate(fetcher, f.fn, grp, call, args)
 }

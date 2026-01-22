@@ -1851,6 +1851,7 @@ type (
 		Src    *ast.Field
 		Fields []*Field
 		Type   *TypeValExpr
+		Anns   annotations.Annotations
 	}
 
 	// Field is a field belonging to a field group.
@@ -1958,6 +1959,19 @@ func (s *FieldGroup) NumFields() int {
 		return 1
 	}
 	return len(s.Fields)
+}
+
+// Annotations returns the annotations attached to the field group.
+func (s *FieldGroup) Annotations() *annotations.Annotations {
+	return &s.Anns
+}
+
+// ShortString returns a short string representing the field group.
+func (s *FieldGroup) ShortString() string {
+	if len(s.Fields) == 0 {
+		return s.Type.String()
+	}
+	return s.Fields[0].Name.Name
 }
 
 func (s *Field) node() {}

@@ -239,6 +239,8 @@ func (bFile *file) processFunc(fileScope procScope, src *ast.FuncDecl) bool {
 		fn, ok = bFile.processDeclaredFunc(fileScope, src, true)
 	case funcAnnotator:
 		fn, ok = bFile.processAnnotatorFunc(fileScope, src, dirComment)
+	case fieldAnnotator:
+		fn, ok = bFile.processAnnotatorField(fileScope, src, dirComment)
 	default:
 		return fileScope.Err().AppendInternalf(dirComment, "directive %d not supported", dir)
 	}

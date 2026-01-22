@@ -16,9 +16,9 @@ package builder
 
 import (
 	"go/ast"
-	"reflect"
 
 	"github.com/gx-org/gx/build/ir"
+	"github.com/gx-org/gx/internal/interp/compeval/cpevelements"
 )
 
 type funcMeta struct {
@@ -91,6 +91,21 @@ func (f *funcAnnotatorBuilder) buildSignature(fScope *fileResolveScope) (ir.Func
 	return &ir.AnnotatorFunc{MetaCore: core}, fnScope, ok
 }
 
+type fieldAnnotatorBuilder struct {
+	funcMeta
+}
+
+func (bFile *file) processAnnotatorField(scope procScope, src *ast.FuncDecl, comment *ast.Comment) (function, bool) {
+	fDecl, declOk := newFuncDecl(scope, src, false)
+	fn := &fieldAnnotatorBuilder{funcMeta{funcDecl: fDecl}}
+	return fn, declOk
+}
+
+func (f *fieldAnnotatorBuilder) buildSignature(fScope *fileResolveScope) (ir.Func, fnResolveScope, bool) {
+	core, fnScope, ok := f.funcMeta.buildSignature(fScope)
+	return &ir.AnnotatorField{MetaCore: core}, fnScope, ok
+}
+
 type irExpr struct {
 	expr ir.Expr
 }
@@ -111,7 +126,19 @@ type funcWithIR interface {
 	Func() ir.Func
 }
 
-func evalMetaCallee[T funcWithIR](rscope resolveScope, compEval *compileEvaluator, macroCall *callExpr) (*ir.FuncCallExpr, T, bool) {
+func evalFuncAnnotator(rscope resolveScope, compEval *compileEvaluator, macroCall *callExpr) (*ir.FuncCallExpr, *cpevelements.FuncAnnotator, bool) {
+	return evalMetaCallee[*cpevelements.FuncAnnotator](rscope, compEval, macroCall, "to annotate a function")
+}
+
+func evalFieldAnnotator(rscope resolveScope, compEval *compileEvaluator, macroCall *callExpr) (*ir.FuncCallExpr, *cpevelements.FieldAnnotator, bool) {
+	return evalMetaCallee[*cpevelements.FieldAnnotator](rscope, compEval, macroCall, "to annotate the field of a structure")
+}
+
+func evalMacro(rscope resolveScope, compEval *compileEvaluator, macroCall *callExpr) (*ir.FuncCallExpr, *cpevelements.Macro, bool) {
+	return evalMetaCallee[*cpevelements.Macro](rscope, compEval, macroCall, "as a macro")
+}
+
+func evalMetaCallee[T funcWithIR](rscope resolveScope, compEval *compileEvaluator, macroCall *callExpr, target string) (*ir.FuncCallExpr, T, bool) {
 	var zero T
 	callee, calleeOk := buildAExpr(rscope, macroCall.callee)
 	if !calleeOk {
@@ -123,13 +150,26 @@ func evalMetaCallee[T funcWithIR](rscope resolveScope, compEval *compileEvaluato
 	}
 	elT, ok := el.(T)
 	if !ok {
-		return nil, zero, rscope.Err().Appendf(callee.Node(), "cannot use %s as %s", callee.String(), reflect.TypeFor[T]())
+		return nil, zero, rscope.Err().Appendf(callee.Node(), "cannot use %s %s", callee.String(), target)
 	}
 	call, ok := macroCall.buildFuncCallExpr(rscope, ir.NewFuncValExpr(
 		callee,
 		elT.Func(),
 	))
 	return call, elT, ok
+}
+
+func evalCallArgs(rscope resolveScope, compEval *compileEvaluator, call *ir.FuncCallExpr) ([]ir.Element, bool) {
+	els := make([]ir.Element, len(call.Args))
+	ok := true
+	for i, arg := range call.Args {
+		var err error
+		els[i], err = compEval.EvalExpr(arg)
+		if err != nil {
+			ok = rscope.Err().AppendAt(arg.Node(), err)
+		}
+	}
+	return els, ok
 }
 
 func evalMacroCall(compEval *compileEvaluator, call *ir.FuncCallExpr) (ir.MacroElement, bool) {

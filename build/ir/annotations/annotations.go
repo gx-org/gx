@@ -97,6 +97,9 @@ func (anns *Annotations) get(key Key) annotation {
 
 // String representation of the annotations.
 func (anns *Annotations) String() string {
+	if anns.anns == nil {
+		return ""
+	}
 	var b strings.Builder
 	for k, v := range anns.anns.Iter() {
 		b.WriteString(fmt.Sprintf("%s: %s", k.FullName(), v.String()))
