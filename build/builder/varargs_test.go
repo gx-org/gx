@@ -15,16 +15,64 @@
 package builder_test
 
 import (
+	"go/ast"
 	"testing"
 
 	"github.com/gx-org/gx/build/builder/testbuild"
+	"github.com/gx-org/gx/build/ir"
+	irh "github.com/gx-org/gx/build/ir/irhelper"
 )
 
 func TestVarArgs(t *testing.T) {
+	varargsType := &ir.VarArgsType{
+		Slice: &ir.SliceType{
+			BaseType: ir.BaseType[ast.Expr]{Src: &ast.Ident{}},
+			DType:    ir.TypeExpr(nil, ir.Int32Type()),
+			Rank:     1,
+		},
+	}
+	field := irh.Field("a", varargsType, nil)
+	ftype := irh.FuncType(nil, nil,
+		irh.Fields(field),
+		irh.Fields(ir.Int32Type()),
+	)
+	ftype.VarArgs = varargsType
 	testbuild.Run(t,
 		testbuild.Decl{
 			Src: `
 func f(a ...int32) int32
+`,
+			Want: []ir.IR{
+				&ir.FuncBuiltin{
+					FType: ftype,
+				},
+			},
+		},
+		testbuild.Decl{
+			Src: `
+func f(a ...int32) int32
+
+func g() int32 {
+	return f()
+}
+`,
+		},
+		testbuild.Decl{
+			Src: `
+func f(a ...int32) int32
+
+func g() int32 {
+	return f(1)
+}
+`,
+		},
+		testbuild.Decl{
+			Src: `
+func f(a ...int32) int32
+
+func g() int32 {
+	return f(1, 2, 3)
+}
 `,
 		},
 	)

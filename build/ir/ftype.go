@@ -49,6 +49,8 @@ type (
 		Params     *FieldList
 		Results    *FieldList
 
+		VarArgs *VarArgsType
+
 		AxisLengths      []AxisValue
 		TypeParamsValues []TypeParamValue
 

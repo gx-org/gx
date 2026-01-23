@@ -74,6 +74,8 @@ type funcType struct {
 	params  *fieldList
 	results *fieldList
 
+	varargs *varargs
+
 	namedResults bool
 }
 
@@ -177,6 +179,11 @@ func (n *funcType) buildFuncType(rscope resolveScope) (*ir.FuncType, *funcResolv
 	ext.Params, paramsOk = n.params.buildFieldList(paramScope)
 	if !paramsOk {
 		return ext, nil, false
+	}
+	if n.varargs != nil {
+		if params := ext.Params.Fields(); len(params) > 0 {
+			ext.VarArgs = params[len(params)-1].Type().(*ir.VarArgsType)
+		}
 	}
 	resultScope := newDefineScope(sigscope, defineLocalVar, nil)
 	ext.Results, resultsOk = n.results.buildFieldList(resultScope)
@@ -418,14 +425,18 @@ func (fn *funcLiteral) String() string {
 
 func convertArgNumbers(rscope resolveScope, fType *ir.FuncType, args []ir.Expr) ([]ir.Expr, bool) {
 	args = append([]ir.Expr{}, args...)
-	params := fType.Params.Fields()
 	argsOk := true
 	for i, arg := range args {
 		if !irkind.IsNumber(arg.Type().Kind()) {
 			continue
 		}
+		param, isVarArg := argIndexToParamField(fType, i)
+		target := param.Type()
+		if isVarArg {
+			target = fType.VarArgs.Slice.DType.Val()
+		}
 		var iOk bool
-		args[i], iOk = castNumber(rscope, arg, params[i].Type())
+		args[i], iOk = castNumber(rscope, arg, target)
 		argsOk = argsOk && iOk
 	}
 	return args, argsOk
@@ -493,23 +504,47 @@ func buildSliceAxisValue(rscope resolveScope, arg ir.Expr, elts []ir.Element) (a
 	return elements.NewSlice(arg.Type(), elts), nil
 }
 
-func assignArgValueToName(rscope resolveScope, compEval *compileEvaluator, params map[string]ir.Element, param *ir.Field, arg ir.Expr, argVal ir.Element) bool {
+type paramNameToElement struct {
+	rscope     resolveScope
+	compEval   *compileEvaluator
+	fields     []*ir.Field
+	params     map[string]ir.Element
+	varArgsElt *elements.Slice
+	done       map[*ir.Field]bool
+}
+
+func (pte *paramNameToElement) assignToName(param *ir.Field, val ir.Element) {
+	if param.Name == nil {
+		return
+	}
 	name := param.Name.Name
 	if ir.ValidName(name) {
-		params[name] = argVal
+		pte.params[name] = val
 	}
+}
+
+func (pte *paramNameToElement) assignToVarArg(param *ir.Field, val ir.Element) {
+	pte.varArgsElt.Append(val)
+}
+
+func (pte *paramNameToElement) assignArgValueToName(param *ir.Field, arg ir.Expr, assign func(*ir.Field, ir.Element)) bool {
+	argVal, err := pte.compEval.fitp.EvalExpr(arg)
+	if err != nil {
+		return pte.rscope.Err().AppendAt(arg.Node(), err)
+	}
+	assign(param, argVal)
 	paramArrayType, ok := param.Type().(ir.ArrayType)
 	if !ok {
 		// The parameter type is not an array: nothing is left to assign,
 		// we can return.
 		return true
 	}
-	axisValues, ok := axisValuesFromArgumentValue(rscope, compEval, param, argVal)
+	axisValues, ok := axisValuesFromArgumentValue(pte.rscope, pte.compEval, param, argVal)
 	if !ok {
 		return ok
 	}
 	for _, axis := range paramArrayType.Rank().Axes() {
-		axExpr, axisOk := axisExprFrom(rscope, axis)
+		axExpr, axisOk := axisExprFrom(pte.rscope, axis)
 		if !axisOk {
 			ok = false
 			continue
@@ -527,38 +562,59 @@ func assignArgValueToName(rscope resolveScope, compEval *compileEvaluator, param
 		} else {
 			buildAxisValue = buildSliceAxisValue
 		}
-		params[ident.Src.Name], axisValues = buildAxisValue(rscope, arg, axisValues)
+		pte.params[ident.Src.Name], axisValues = buildAxisValue(pte.rscope, arg, axisValues)
 	}
 	return ok
 }
 
-func assignArgValueToParamName(rscope resolveScope, fExpr *ir.FuncValExpr, args []ir.Expr) (map[string]ir.Element, bool) {
-	params := make(map[string]ir.Element)
-	compEval, ok := rscope.compEval()
-	if !ok {
-		return params, false
+func argIndexToParamField(ftype *ir.FuncType, i int) (*ir.Field, bool) {
+	fields := ftype.Params.Fields()
+	if i >= len(fields) {
+		i = len(fields) - 1
 	}
-	for i, param := range fExpr.FuncType().Params.Fields() {
-		if param.Name == nil {
-			continue
+	return fields[i], ftype.VarArgs != nil && i+1 == len(fields)
+}
+
+func assignArgValueToParamName(rscope resolveScope, fExpr *ir.FuncValExpr, args []ir.Expr) (map[string]ir.Element, bool) {
+	pte := &paramNameToElement{
+		rscope: rscope,
+		params: make(map[string]ir.Element),
+		fields: fExpr.FuncType().Params.Fields(),
+	}
+	var ok bool
+	pte.compEval, ok = rscope.compEval()
+	if !ok {
+		return pte.params, false
+	}
+	ftype := fExpr.FuncType()
+	varArgs := ftype.VarArgs
+	if varArgs != nil {
+		pte.varArgsElt = elements.NewSlice(varArgs.Type(), nil)
+		pte.assignToName(pte.fields[len(pte.fields)-1], pte.varArgsElt)
+	}
+	for i, arg := range args {
+		param, isVarArg := argIndexToParamField(ftype, i)
+		assign := pte.assignToName
+		if isVarArg {
+			assign = pte.assignToVarArg
 		}
-		argVal, err := compEval.fitp.EvalExpr(args[i])
-		if err != nil {
-			return nil, rscope.Err().AppendAt(fExpr.Node(), err)
-		}
-		if !assignArgValueToName(rscope, compEval, params, param, args[i], argVal) {
+		if !pte.assignArgValueToName(param, arg, assign) {
 			return nil, false
 		}
 	}
-	return params, true
+	return pte.params, true
 }
 
 func checkArgsForCall(ce *compileEvaluator, fExpr *ir.FuncValExpr, args []ir.Expr) bool {
 	ok := true
-	wants := fExpr.FuncType().Params.Fields()
+	ftype := fExpr.FuncType()
 	for i, arg := range args {
-		param := wants[i]
-		assignable, err := ir.AssignableTo(ce, arg.Type(), param.Type())
+		param, isVarArg := argIndexToParamField(ftype, i)
+		target := param.Type()
+		if isVarArg {
+			target = ftype.VarArgs.Slice.DType.Val()
+		}
+		assignable, err := ir.AssignableTo(ce, arg.Type(), target)
 		if err != nil {
 			return ce.Err().AppendAt(arg.Node(), err)
 		}
