@@ -94,6 +94,11 @@ func (*Slice) Kind() irkind.Kind {
 	return irkind.Slice
 }
 
+// Append an element to the slice.
+func (n *Slice) Append(el ir.Element) {
+	n.values = append(n.values, el)
+}
+
 // Unflatten consumes the next handles to return a GX value.
 func (n *Slice) Unflatten(handles *flatten.Parser) (values.Value, error) {
 	return handles.ParseComposite(flatten.ParseCompositeOf(values.NewSlice), n.typ, n.values)

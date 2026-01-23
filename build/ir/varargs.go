@@ -22,8 +22,8 @@ import (
 
 // VarArgsType represents a type defined by a varargs expression.
 type VarArgsType struct {
-	Src *ast.Ellipsis
-	Elt *SliceType
+	Src   *ast.Ellipsis
+	Slice *SliceType
 }
 
 var _ Type = (*VarArgsType)(nil)
@@ -54,7 +54,7 @@ func (tp *VarArgsType) Value(x Expr) Expr {
 
 // Kind of the type.
 func (tp *VarArgsType) Kind() irkind.Kind {
-	return tp.Elt.Kind()
+	return tp.Slice.Kind()
 }
 
 // Type returns the type of the varargs type.
@@ -64,38 +64,38 @@ func (tp *VarArgsType) Type() Type {
 
 // Equal returns true if other is the same type.
 func (tp *VarArgsType) Equal(fetcher Fetcher, target Type) (bool, error) {
-	return tp.Elt.Equal(fetcher, target)
+	return tp.Slice.Equal(fetcher, target)
 }
 
 // AssignableTo reports whether a value of the type can be assigned to another.
 func (tp *VarArgsType) AssignableTo(fetcher Fetcher, target Type) (bool, error) {
-	return tp.Elt.AssignableTo(fetcher, target)
+	return tp.Slice.AssignableTo(fetcher, target)
 }
 
 // ConvertibleTo reports whether a value of the type can be converted to another
 // (using static type casting).
 func (tp *VarArgsType) ConvertibleTo(fetcher Fetcher, target Type) (bool, error) {
-	return tp.Elt.ConvertibleTo(fetcher, target)
+	return tp.Slice.ConvertibleTo(fetcher, target)
 }
 
 // Specialise a type to a given target.
 func (tp *VarArgsType) Specialise(spec Specialiser) (Type, error) {
-	return tp.Elt.Specialise(spec)
+	return tp.Slice.Specialise(spec)
 }
 
 // UnifyWith recursively unifies a type parameters with types.
 func (tp *VarArgsType) UnifyWith(uni Unifier, typ Type) bool {
-	return tp.Elt.UnifyWith(uni, typ)
+	return tp.Slice.UnifyWith(uni, typ)
 }
 
 // SourceString returns a reference to the type given a file context.
 func (tp *VarArgsType) SourceString(file *File) string {
-	return "..." + tp.Elt.SourceString(file)
+	return "..." + tp.Slice.SourceString(file)
 }
 
 // String representation of the type.
 func (tp *VarArgsType) String() string {
-	return "..." + tp.Elt.String()
+	return "..." + tp.Slice.String()
 }
 
 // VarArgsExpr represents a type expression to represent a varargs type.
@@ -124,5 +124,5 @@ func (expr *VarArgsExpr) Type() Type {
 
 // String returns a string representation of the expression.
 func (expr *VarArgsExpr) String() string {
-	return "..." + expr.Elt.Elt.DType.String()
+	return "..." + expr.Elt.Slice.DType.String()
 }

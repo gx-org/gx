@@ -99,7 +99,7 @@ func testLenExtraArguments() int64 {
 }
 
 func testLenMismatchedType() int64 {
-	return shapes.Len[int64]([]float64{1.75}) // ERROR cannot use type []float64 as [___M]int64 in argument to shapes.Len
+	return shapes.Len[int64]([]float64{1.75}) // ERROR cannot use type []float64 as int64 in argument to shapes.Len
 }
 
 func testConcatWithInsufficientArgs() [3]float32 {
@@ -291,4 +291,3 @@ func testControlWithInvalidBodyResult() loopState {
 func testMathCeilWithMismatchedShape() [1]float32 {
 	return math.Ceil[float32]([2]float32{1, 2}) // ERROR cannot use [2]float32 as [1]float32 value in return statement
 }
-

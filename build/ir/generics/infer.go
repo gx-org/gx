@@ -179,6 +179,14 @@ func Infer(fetcher ir.Fetcher, fExpr *ir.FuncValExpr, args []ir.Expr) (*ir.FuncV
 	}
 	ok := true
 	for i, param := range ftype.Params.Fields() {
+		if i >= len(args) {
+			// We may have less argument than parameters.
+			// For example:
+			//   func f(...int32)
+			// called with:
+			//   f()
+			break
+		}
 		argUni := &argUnifier{unifier: uni, arg: args[i]}
 		if argOk := param.Type().UnifyWith(argUni, argUni.arg.Type()); !argOk {
 			ok = false

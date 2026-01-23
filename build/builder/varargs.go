@@ -28,17 +28,24 @@ type varargs struct {
 
 func processVarArgsType(pscope typeProcScope, src *ast.Ellipsis) (typeExprNode, bool) {
 	elt, ok := processTypeExpr(pscope, src.Elt)
-	if grpScope, _ := pscope.(*fieldGroupProcScope); grpScope == nil {
+	grpScope, _ := pscope.(*fieldGroupProcScope)
+	var fnParamScope *funcParamScope
+	if grpScope != nil {
+		fnParamScope = grpScope.fieldListProcScope.typeProcScope.(*funcParamScope)
+	}
+	n := &varargs{
+		src: src,
+		elt: elt,
+	}
+	if grpScope == nil || fnParamScope == nil {
 		ok = pscope.Err().Appendf(src, "unexpected ..., expected type")
 	} else {
 		if !grpScope.isLast() {
 			ok = pscope.Err().Appendf(src, "can only use ... with final parameter")
 		}
+		fnParamScope.ftype.varargs = n
 	}
-	return &varargs{
-		src: src,
-		elt: elt,
-	}, ok
+	return n, ok
 }
 
 func (n *varargs) source() ast.Node {
@@ -49,7 +56,7 @@ func (n *varargs) buildTypeExpr(rscope resolveScope) (*ir.TypeValExpr, bool) {
 	elt, ok := n.elt.buildTypeExpr(rscope)
 	typ := &ir.VarArgsType{
 		Src: n.src,
-		Elt: &ir.SliceType{
+		Slice: &ir.SliceType{
 			BaseType: ir.BaseType[ast.Expr]{Src: n.src},
 			DType:    elt,
 			Rank:     1,
