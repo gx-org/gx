@@ -21,10 +21,17 @@ import (
 	"github.com/gx-org/gx/build/ir"
 )
 
-type fieldList struct {
-	src  *ast.FieldList
-	list []*fieldGroup
-}
+type (
+	fieldList struct {
+		src  *ast.FieldList
+		list []*fieldGroup
+	}
+
+	fieldListProcScope struct {
+		typeProcScope
+		list *fieldList
+	}
+)
 
 func processFieldList(pscope typeProcScope, src *ast.FieldList, assign func(procScope, *field) bool) (*fieldList, bool) {
 	if src == nil {
@@ -35,7 +42,10 @@ func processFieldList(pscope typeProcScope, src *ast.FieldList, assign func(proc
 	ok := true
 	for i, astField := range src.List {
 		var groupOk bool
-		f.list[i], groupOk = processFieldGroup(pscope, astField, assign)
+		f.list[i], groupOk = processFieldGroup(&fieldListProcScope{
+			typeProcScope: pscope,
+			list:          f,
+		}, astField, i, assign)
 		ok = ok && groupOk
 	}
 	return f, ok
@@ -92,20 +102,37 @@ func (f *fieldList) String() string {
 	return strings.Join(s, ",")
 }
 
-type fieldGroup struct {
-	src  *ast.Field
-	list []*field
-	typ  typeExprNode
-	tag  *tag
+type (
+	fieldGroup struct {
+		src   *ast.Field
+		index int
+		list  []*field
+		typ   typeExprNode
+		tag   *tag
+	}
+
+	fieldGroupProcScope struct {
+		*fieldListProcScope
+		grp *fieldGroup
+	}
+)
+
+func (grpScope *fieldGroupProcScope) isLast() bool {
+	return (grpScope.grp.index == len(grpScope.fieldListProcScope.list.list)-1 &&
+		len(grpScope.grp.list) <= 1)
 }
 
-func processFieldGroup(pscope typeProcScope, src *ast.Field, assign func(procScope, *field) bool) (*fieldGroup, bool) {
-	typ, ok := processTypeExpr(pscope, src.Type)
+func processFieldGroup(pscope *fieldListProcScope, src *ast.Field, grpIndex int, assign func(procScope, *field) bool) (*fieldGroup, bool) {
 	grp := &fieldGroup{
-		src:  src,
-		list: make([]*field, len(src.Names)),
-		typ:  typ,
+		src:   src,
+		index: grpIndex,
+		list:  make([]*field, len(src.Names)),
 	}
+	var ok bool
+	grp.typ, ok = processTypeExpr(&fieldGroupProcScope{
+		fieldListProcScope: pscope,
+		grp:                grp,
+	}, src.Type)
 	for i, ident := range src.Names {
 		field := processField(grp, ident)
 		assignOk := assign(pscope, field)
