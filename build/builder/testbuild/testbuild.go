@@ -306,14 +306,17 @@ func (b *Builder) nextTestName() string {
 
 func build(bld *builder.Builder, path, src string) (*builder.IncrementalPackage, error) {
 	fileDecl, err := parser.ParseFile(token.NewFileSet(), "", src, parser.ParseComments|parser.SkipObjectResolution)
-	if err != nil {
-		return nil, &compileError{src: src, err: err}
+	fullPath := "<unknown>"
+	if fileDecl != nil && fileDecl.Name != nil {
+		fullPath = fileDecl.Name.Name
 	}
-	fullPath := fileDecl.Name.Name
 	if path != "" {
 		fullPath = path + "/" + fullPath
 	}
 	pkg := bld.NewIncrementalPackage(fullPath)
+	if err != nil {
+		return pkg, &compileError{src: src, err: err}
+	}
 	if err := pkg.Build(src); err != nil {
 		return pkg, &compileError{src: src, err: err}
 	}

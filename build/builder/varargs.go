@@ -28,6 +28,13 @@ type varargs struct {
 
 func processVarArgsType(pscope typeProcScope, src *ast.Ellipsis) (typeExprNode, bool) {
 	elt, ok := processTypeExpr(pscope, src.Elt)
+	if grpScope, _ := pscope.(*fieldGroupProcScope); grpScope == nil {
+		ok = pscope.Err().Appendf(src, "unexpected ..., expected type")
+	} else {
+		if !grpScope.isLast() {
+			ok = pscope.Err().Appendf(src, "can only use ... with final parameter")
+		}
+	}
 	return &varargs{
 		src: src,
 		elt: elt,
