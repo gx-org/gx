@@ -213,7 +213,7 @@ func ArrayType(dtype ir.Type, axes ...any) ir.ArrayType {
 // SliceType returns a new slice type.
 func SliceType(dtype *ir.TypeValExpr, rank int) *ir.SliceType {
 	return &ir.SliceType{
-		BaseType: ir.BaseType[*ast.ArrayType]{Src: &ast.ArrayType{}},
+		BaseType: ir.BaseType[ast.Expr]{Src: &ast.ArrayType{}},
 		DType:    dtype,
 		Rank:     rank,
 	}
