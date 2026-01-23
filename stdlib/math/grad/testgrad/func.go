@@ -28,11 +28,11 @@ type Func struct {
 	Src string
 
 	// WRT defines the variables to compute the gradient w.r.t.
-	WRT string
+	WRT []string
 
-	// GradOf lists all the functions for which we compute the gradient of.
+	// GradOf is the name of the function for which we compute the VJP of.
 	// If GradOf is empty, we compute the gradient of F.
-	GradOf []string
+	GradOf string
 
 	// Want stores the source code of the expected gradient of the function
 	Want string
@@ -60,18 +60,17 @@ func (tt Func) buildSourceCode() string {
 		declImportName = tt.GradImportName
 		callImportName = tt.GradImportName
 	}
-	if tt.WRT == "" {
-		tt.WRT = "x"
+	if len(tt.WRT) == 0 {
+		tt.WRT = []string{`"x"`}
 	}
 	grads := &strings.Builder{}
-	for _, fnName := range tt.GradOf {
-		fmt.Fprintf(grads,
-			`
-//gx:=%s.Func(%s, "%s")
+	fmt.Fprintf(
+		grads,
+		`
+//gx:=%s.Func(%s, %s)
 func grad%s()
 `,
-			callImportName, fnName, tt.WRT, fnName)
-	}
+		callImportName, tt.GradOf, strings.Join(tt.WRT, ", "), tt.GradOf)
 	return fmt.Sprintf(`
 package test
 
@@ -85,8 +84,8 @@ import %s"math/grad"
 
 // Run builds the declarations as a package, then compare to an expected outcome.
 func (tt Func) Run(b *testbuild.Builder) error {
-	if len(tt.GradOf) == 0 {
-		tt.GradOf = []string{"F"}
+	if tt.GradOf == "" {
+		tt.GradOf = "F"
 	}
 	// Build the package.
 	src := tt.buildSourceCode()
