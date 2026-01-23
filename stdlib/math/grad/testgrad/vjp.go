@@ -29,9 +29,9 @@ type Reverse struct {
 	// Src declares the function (which must be named `F`) to compute the VJP of.
 	Src string
 
-	// GradOf lists all the functions for which we compute the VJP of.
+	// GradOf is the name of the function for which we compute the VJP of.
 	// If GradOf is empty, we compute the VJP of F.
-	GradOf []string
+	GradOf string
 
 	// Want stores the source code of the expected VJP of the function
 	Want string
@@ -63,14 +63,12 @@ func (tt Reverse) buildSourceCode() string {
 		callImportName = tt.GradImportName
 	}
 	grads := &strings.Builder{}
-	for _, fnName := range tt.GradOf {
-		fmt.Fprintf(grads,
-			`
+	fmt.Fprintf(grads,
+		`
 //gx:=%s.Reverse(%s)
 func vjp%s()
 `,
-			callImportName, fnName, fnName)
-	}
+		callImportName, tt.GradOf, tt.GradOf)
 	var imports string
 	for _, imp := range tt.Imports {
 		imports += fmt.Sprintf("import \"%s\"\n", imp)
@@ -93,8 +91,8 @@ var gradImport = &ast.ImportSpec{
 
 // Run builds the declarations as a package, then compare to an expected outcome.
 func (tt Reverse) Run(b *testbuild.Builder) error {
-	if len(tt.GradOf) == 0 {
-		tt.GradOf = []string{"F"}
+	if tt.GradOf == "" {
+		tt.GradOf = "F"
 	}
 	// Build the package.
 	src := tt.buildSourceCode()
