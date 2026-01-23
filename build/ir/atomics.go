@@ -154,7 +154,7 @@ type intlenType struct {
 var (
 	intlenT         = &intlenType{atomicType: atomicType{Knd: irkind.IntLen}}
 	axisLengthsType = &SliceType{
-		BaseType: BaseType[*ast.ArrayType]{Src: &ast.ArrayType{}},
+		BaseType: BaseType[ast.Expr]{Src: &ast.ArrayType{}},
 		DType:    TypeExpr(nil, IntLenType()),
 		Rank:     1,
 	}

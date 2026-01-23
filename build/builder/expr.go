@@ -68,6 +68,8 @@ func processTypeExpr(pscope typeProcScope, expr ast.Node) (typeExprNode, bool) {
 		return processInterfaceType(pscope, exprT)
 	case *ast.FuncType:
 		return processFuncType(pscope, exprT, nil, false)
+	case *ast.Ellipsis:
+		return processVarArgsType(pscope, exprT)
 	default:
 		pscope.Err().Appendf(expr, "type expression %T not supported", expr)
 	}

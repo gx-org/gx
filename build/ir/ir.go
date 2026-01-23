@@ -213,7 +213,7 @@ type (
 
 	// SliceType defines the type for a slice.
 	SliceType struct {
-		BaseType[*ast.ArrayType]
+		BaseType[ast.Expr]
 
 		DType *TypeValExpr
 		Rank  int
