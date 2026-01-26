@@ -677,7 +677,7 @@ func set(fitp *FileScope, tok token.Token, dest ir.Storage, value ir.Element) er
 			return nil
 		}
 		if tok == token.DEFINE {
-			fitp.ctx.CurrentFrame().Define(destT.Src.Name, value)
+			fitp.ctx.CurrentFrame().Define(destT.Src, value)
 			return nil
 		}
 		return fitp.ctx.CurrentFrame().Assign(destT.Src.Name, value)

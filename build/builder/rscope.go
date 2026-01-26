@@ -30,6 +30,7 @@ import (
 	"github.com/gx-org/gx/internal/base/scope"
 	"github.com/gx-org/gx/internal/interp/compeval"
 	"github.com/gx-org/gx/internal/interp/compeval/cpevelements"
+	"github.com/gx-org/gx/interp/context"
 	"github.com/gx-org/gx/interp/elements"
 	"github.com/gx-org/gx/interp"
 )
@@ -288,16 +289,17 @@ func compEvalForFuncType(rscope resolveScope, src ast.Node, ftype *ir.FuncType) 
 	if !compEvalOk {
 		return nil, false
 	}
-	funcVars := make(map[string]ir.Element)
+	axisNameToVal := make(map[string]ir.Element)
 	for _, axLen := range ftype.AxisLengths {
 		storeAt := elements.NewNodeAt[ir.Storage](rscope.fileScope().irFile(), axLen.Axis)
-		funcVars[axLen.Name()] = cpevelements.NewVariable(storeAt)
+		axisNameToVal[axLen.Name()] = cpevelements.NewVariable(storeAt)
 	}
+	funcVars := context.NewSubMap(axisNameToVal)
 	for _, tParam := range ftype.TypeParams.Fields() {
 		if tParam == nil {
 			continue
 		}
-		funcVars[tParam.Name.Name] = &ir.TypeParam{Field: tParam}
+		funcVars.Define(tParam.Name, &ir.TypeParam{Field: tParam})
 	}
 	irFile := rscope.fileScope().irFile()
 	var fields []*ir.Field
@@ -313,7 +315,7 @@ func compEvalForFuncType(rscope resolveScope, src ast.Node, ftype *ir.FuncType) 
 		if err != nil {
 			return nil, rscope.Err().AppendAt(src, err)
 		}
-		funcVars[field.Name.Name] = cpevelements.NewStoredValue(irFile, storage, el)
+		funcVars.Define(field.Name, cpevelements.NewStoredValue(irFile, storage, el))
 	}
 	return compEval.sub(funcVars)
 }
@@ -344,14 +346,14 @@ func (s *funcResolveScope) nspace() *scope.RWScope[ir.Element] {
 
 func (s *funcResolveScope) setFuncValue(fn ir.PkgFunc) (*funcResolveScope, bool) {
 	var ok bool
-	s.bodyCE, ok = s.bodyCE.sub(map[string]ir.Element{
+	s.bodyCE, ok = s.bodyCE.sub(context.NewSubMap(map[string]ir.Element{
 		fn.Name(): cpevelements.NewFunc(fn, nil),
-	})
+	}))
 	return s, ok
 }
 
 func (s *funcResolveScope) compEval() (*compileEvaluator, bool) {
-	return s.bodyCE.sub(s.names)
+	return s.bodyCE.sub(context.NewSubMap(s.names))
 }
 
 func (s *funcResolveScope) String() string {

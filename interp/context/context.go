@@ -116,13 +116,41 @@ func (ctx *Context) CurrentFunc() ir.Func {
 	return ctx.currentFrame().owner.function
 }
 
+// SubMap defines a mapping from names to element.
+type SubMap struct {
+	m map[string]ir.Element
+}
+
+// NewSubMap returns a new map from name to element.
+func NewSubMap(m map[string]ir.Element) *SubMap {
+	sm := &SubMap{m: make(map[string]ir.Element)}
+	if m == nil {
+		return sm
+	}
+	for k, v := range m {
+		sm.m[k] = v
+	}
+	return sm
+}
+
+// Define a new variable in the frame.
+func (sm *SubMap) Define(name *ast.Ident, value ir.Element) {
+	if !ir.ValidIdent(name) {
+		return
+	}
+	sm.m[name.Name] = value
+}
+
 // Sub returns a child context given a set of elements.
-func (ctx *Context) Sub(elts map[string]ir.Element) *Context {
+func (ctx *Context) Sub(sm *SubMap) *Context {
 	sub := &Context{core: ctx.core}
 	sub.stack = append([]*blockFrame{}, ctx.stack...)
 	bFrame := sub.PushBlockFrame()
-	for n, elt := range elts {
-		bFrame.Define(n, elt)
+	if sm == nil {
+		return sub
+	}
+	for n, elt := range sm.m {
+		bFrame.defineS(n, elt)
 	}
 	return sub
 }
