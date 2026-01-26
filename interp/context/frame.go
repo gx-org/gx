@@ -29,7 +29,14 @@ type Frame struct {
 }
 
 // Define a new variable in the frame.
-func (fr *Frame) Define(name string, value ir.Element) {
+func (fr *Frame) Define(name *ast.Ident, value ir.Element) {
+	if !ir.ValidIdent(name) {
+		return
+	}
+	fr.defineS(name.Name, value)
+}
+
+func (fr *Frame) defineS(name string, value ir.Element) {
 	fr.scope.Define(name, value)
 }
 

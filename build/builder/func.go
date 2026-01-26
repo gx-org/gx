@@ -30,6 +30,7 @@ import (
 	"github.com/gx-org/gx/build/ir"
 	"github.com/gx-org/gx/build/ir/irkind"
 	"github.com/gx-org/gx/internal/interp/compeval/cpevelements"
+	"github.com/gx-org/gx/interp/context"
 	"github.com/gx-org/gx/interp/elements"
 )
 
@@ -508,19 +509,13 @@ type paramNameToElement struct {
 	rscope     resolveScope
 	compEval   *compileEvaluator
 	fields     []*ir.Field
-	params     map[string]ir.Element
+	params     *context.SubMap
 	varArgsElt *elements.Slice
 	done       map[*ir.Field]bool
 }
 
 func (pte *paramNameToElement) assignToName(param *ir.Field, val ir.Element) {
-	if param.Name == nil {
-		return
-	}
-	name := param.Name.Name
-	if ir.ValidName(name) {
-		pte.params[name] = val
-	}
+	pte.params.Define(param.Name, val)
 }
 
 func (pte *paramNameToElement) assignToVarArg(param *ir.Field, val ir.Element) {
@@ -562,15 +557,17 @@ func (pte *paramNameToElement) assignArgValueToName(param *ir.Field, arg ir.Expr
 		} else {
 			buildAxisValue = buildSliceAxisValue
 		}
-		pte.params[ident.Src.Name], axisValues = buildAxisValue(pte.rscope, arg, axisValues)
+		var axisEl ir.Element
+		axisEl, axisValues = buildAxisValue(pte.rscope, arg, axisValues)
+		pte.params.Define(ident.Src, axisEl)
 	}
 	return ok
 }
 
-func assignArgValueToParamName(rscope resolveScope, fExpr *ir.FuncValExpr, args []ir.Expr) (map[string]ir.Element, bool) {
+func assignArgValueToParamName(rscope resolveScope, fExpr *ir.FuncValExpr, args []ir.Expr) (*context.SubMap, bool) {
 	pte := &paramNameToElement{
 		rscope: rscope,
-		params: make(map[string]ir.Element),
+		params: context.NewSubMap(nil),
 		fields: fExpr.FuncType().Params.Fields(),
 	}
 	var ok bool

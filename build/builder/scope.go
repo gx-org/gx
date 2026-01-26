@@ -24,6 +24,7 @@ import (
 	"github.com/gx-org/gx/build/ir"
 	"github.com/gx-org/gx/internal/base/scope"
 	"github.com/gx-org/gx/internal/interp/compeval/cpevelements"
+	"github.com/gx-org/gx/interp/context"
 	"github.com/gx-org/gx/interp"
 )
 
@@ -60,23 +61,24 @@ func newEvaluator(scope resolveScope, ctx *interp.FileScope) *compileEvaluator {
 }
 
 func (ev *compileEvaluator) update(rscope resolveScope, store ir.Storage, el ir.Element) (*compileEvaluator, bool) {
-	name := store.NameDef().Name
 	storeEl := cpevelements.NewStoredValue(
 		rscope.fileScope().irFile(),
 		store,
 		el,
 	)
-	subEval := ev.fitp.Sub(map[string]ir.Element{name: storeEl})
+	sm := context.NewSubMap(nil)
+	sm.Define(store.NameDef(), storeEl)
+	subEval := ev.fitp.Sub(sm)
 	return newEvaluator(rscope, subEval), true
 }
 
-func (ev *compileEvaluator) sub(vals map[string]ir.Element) (*compileEvaluator, bool) {
+func (ev *compileEvaluator) sub(vals *context.SubMap) (*compileEvaluator, bool) {
 	ctx := ev.fitp.Sub(vals)
 	return newEvaluator(ev.scope, ctx), true
 }
 
 func (ev *compileEvaluator) Sub(vals map[string]ir.Element) (ir.Fetcher, bool) {
-	return ev.sub(vals)
+	return ev.sub(context.NewSubMap(vals))
 }
 
 func (ev *compileEvaluator) File() *ir.File {

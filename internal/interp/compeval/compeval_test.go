@@ -30,6 +30,7 @@ import (
 	"github.com/gx-org/gx/build/ir/irkind"
 	"github.com/gx-org/gx/internal/interp/compeval"
 	"github.com/gx-org/gx/internal/interp/compeval/cpevelements"
+	"github.com/gx-org/gx/interp/context"
 	"github.com/gx-org/gx/interp/elements"
 	"github.com/gx-org/gx/interp"
 )
@@ -483,9 +484,9 @@ func TestSubContext(t *testing.T) {
 	if err != nil {
 		t.Fatal(err)
 	}
-	sub := itp.Sub(map[string]ir.Element{
+	sub := itp.Sub(context.NewSubMap(map[string]ir.Element{
 		"b": bValue,
-	})
+	}))
 	val, err := compeval.EvalExpr(sub, expr)
 	if err != nil {
 		t.Error(err)

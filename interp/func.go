@@ -135,14 +135,14 @@ func (f *funcDecl) Call(env *fun.CallEnv, call *ir.FuncCallExpr, args []ir.Eleme
 	results := f.fnT.FType.Results
 	if results != nil {
 		for _, resultName := range fieldNames(results.List) {
-			funcFrame.Define(resultName.Name, nil)
+			funcFrame.Define(resultName, nil)
 		}
 	}
 	// Add the receiver name to the function frame if present.
 	if recv := f.Recv(); recv != nil {
 		recvNode := recv.Element.RecvCopy()
 		if recv.Ident != nil {
-			funcFrame.Define(recv.Ident.Name, recvNode)
+			funcFrame.Define(recv.Ident, recvNode)
 		}
 	}
 	assignTypeParameters(call.Callee, funcFrame)
@@ -230,7 +230,7 @@ func assignAxisLengths(callee ir.Callee, funcFrame *context.Frame) {
 		if axLen.Value == nil {
 			continue
 		}
-		funcFrame.Define(axLen.Name(), axLen.Value)
+		funcFrame.Define(&ast.Ident{Name: axLen.Name()}, axLen.Value)
 	}
 }
 
@@ -240,7 +240,7 @@ func assignTypeParameters(callee ir.Callee, funcFrame *context.Frame) {
 		return
 	}
 	for _, tpParam := range funRef.FuncType().TypeParamsValues {
-		funcFrame.Define(tpParam.Field.Name.Name, tpParam.Typ)
+		funcFrame.Define(tpParam.Field.Name, tpParam.Typ)
 	}
 }
 
@@ -249,7 +249,7 @@ func assignArgumentValues(ftype *ir.FuncType, funcFrame *context.Frame, args []i
 	if ftype.VarArgs != nil {
 		varargs = elements.NewSlice(ftype.VarArgs.Slice.Type(), nil)
 		params := ftype.Params.Fields()
-		funcFrame.Define(params[len(params)-1].Name.Name, varargs)
+		funcFrame.Define(params[len(params)-1].Name, varargs)
 	}
 	// For each parameter of the function, assign its argument value to the frame.
 	for i, arg := range args {
@@ -262,7 +262,7 @@ func assignArgumentValues(ftype *ir.FuncType, funcFrame *context.Frame, args []i
 		if ok {
 			arg = copyable.Copy()
 		}
-		funcFrame.Define(field.Name.Name, arg)
+		funcFrame.Define(field.Name, arg)
 	}
 }
 
@@ -284,7 +284,7 @@ func (itp *Interpreter) EvalFunc(fn *ir.FuncDecl, in *elements.InputElements) (o
 	// Add the result names to the Context.
 	if fn.FType.Results != nil {
 		for _, resultName := range fieldNames(fn.FType.Results.List) {
-			frame.Define(resultName.Name, nil)
+			frame.Define(resultName, nil)
 		}
 	}
 	// Add the receiver to the Context.
@@ -293,7 +293,7 @@ func (itp *Interpreter) EvalFunc(fn *ir.FuncDecl, in *elements.InputElements) (o
 		if in.Receiver == nil {
 			return nil, errors.Errorf("function has a receiver but a nil value has been passed as a receiver value")
 		}
-		frame.Define(recv.Name.Name, in.Receiver)
+		frame.Define(recv.Name, in.Receiver)
 	}
 	// Add the parameters to the Context.
 	paramFields := fn.FType.Params.Fields()
@@ -309,7 +309,7 @@ func (itp *Interpreter) EvalFunc(fn *ir.FuncDecl, in *elements.InputElements) (o
 			}
 			return nil, errors.Errorf("missing parameter(s): %s", builder.String())
 		}
-		frame.Define(param.Name.Name, in.Args[i])
+		frame.Define(param.Name, in.Args[i])
 	}
 	// Evaluate the function body.
 	outs, err = evalFuncBody(fitp, fn.Body)

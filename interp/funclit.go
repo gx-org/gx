@@ -46,7 +46,7 @@ func (litp *FuncLitScope) RunFuncLit(args []ir.Element) ([]ir.Element, error) {
 	fType := litp.lit.FuncType()
 	assignArgumentValues(fType, funcFrame, args)
 	for _, resultName := range fieldNames(fType.Results.List) {
-		funcFrame.Define(resultName.Name, nil)
+		funcFrame.Define(resultName, nil)
 	}
 	defer litp.ctx.PopFrame()
 	fitp := newFileScope(litp.ctx, litp.eval, litp.lit.File())
