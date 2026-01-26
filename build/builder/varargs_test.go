@@ -75,6 +75,11 @@ func g() int32 {
 }
 `,
 		},
+		testbuild.Decl{
+			Src: `
+func f(a ...intlen) [a]int32
+`,
+		},
 	)
 }
 

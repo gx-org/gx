@@ -105,8 +105,14 @@ func IsAxisLengthType(typ Type) bool {
 	case irkind.IntLen:
 		return true
 	case irkind.Slice:
-		sliceType, ok := Underlying(typ).(*SliceType)
-		if !ok {
+		varargType, _ := typ.(*VarArgsType)
+		var sliceType *SliceType
+		if varargType != nil {
+			sliceType = varargType.Slice
+		} else {
+			sliceType, _ = Underlying(typ).(*SliceType)
+		}
+		if sliceType == nil {
 			return false
 		}
 		return sliceType.DType.Val().Kind() == irkind.IntLen
