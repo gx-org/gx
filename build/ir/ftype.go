@@ -198,6 +198,15 @@ func (s *FuncType) SpecialiseFType(spec Specialiser) (*FuncType, error) {
 	return &res, nil
 }
 
+// ArgIndexToParamField returns the field corresponding to an argument index.
+func (s *FuncType) ArgIndexToParamField(i int) (*Field, bool) {
+	fields := s.Params.Fields()
+	if i >= len(fields) {
+		i = len(fields) - 1
+	}
+	return fields[i], s.VarArgs != nil && i+1 == len(fields)
+}
+
 // UnifyWith recursively unifies a type parameters with types.
 func (s *FuncType) UnifyWith(unifier Unifier, typ Type) bool {
 	return true

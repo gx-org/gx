@@ -1,0 +1,29 @@
+// Package varargs tests passing a variable number of arguments to a function.
+package varargs
+
+import "num"
+
+func iota(lens ...intlen) [lens]int64 {
+	return num.IotaFull(lens)
+}
+
+func Test0() any {
+	return iota()
+	// Want:
+	// [lens___]int64(0)
+}
+
+func Test1() [2]int64 {
+	return iota(2)
+	// Want:
+	// [lens___]int64{0, 1}
+}
+
+func Test3() [2][3]int64 {
+	return iota(2, 3)
+	// Want:
+	// [lens___]int64{
+	// 	{0, 1, 2},
+	// 	{3, 4, 5},
+	// }
+}

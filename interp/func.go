@@ -244,15 +244,25 @@ func assignTypeParameters(callee ir.Callee, funcFrame *context.Frame) {
 	}
 }
 
-func assignArgumentValues(funcType *ir.FuncType, funcFrame *context.Frame, args []ir.Element) {
+func assignArgumentValues(ftype *ir.FuncType, funcFrame *context.Frame, args []ir.Element) {
+	var varargs *elements.Slice
+	if ftype.VarArgs != nil {
+		varargs = elements.NewSlice(ftype.VarArgs.Slice.Type(), nil)
+		params := ftype.Params.Fields()
+		funcFrame.Define(params[len(params)-1].Name.Name, varargs)
+	}
 	// For each parameter of the function, assign its argument value to the frame.
-	names := fieldNames(funcType.Params.List)
 	for i, arg := range args {
+		field, isVarArgs := ftype.ArgIndexToParamField(i)
+		if isVarArgs {
+			varargs.Append(arg)
+			continue
+		}
 		copyable, ok := arg.(elements.Copier)
 		if ok {
 			arg = copyable.Copy()
 		}
-		funcFrame.Define(names[i].Name, arg)
+		funcFrame.Define(field.Name.Name, arg)
 	}
 }
 

@@ -430,7 +430,7 @@ func convertArgNumbers(rscope resolveScope, fType *ir.FuncType, args []ir.Expr) 
 		if !irkind.IsNumber(arg.Type().Kind()) {
 			continue
 		}
-		param, isVarArg := argIndexToParamField(fType, i)
+		param, isVarArg := fType.ArgIndexToParamField(i)
 		target := param.Type()
 		if isVarArg {
 			target = fType.VarArgs.Slice.DType.Val()
@@ -567,14 +567,6 @@ func (pte *paramNameToElement) assignArgValueToName(param *ir.Field, arg ir.Expr
 	return ok
 }
 
-func argIndexToParamField(ftype *ir.FuncType, i int) (*ir.Field, bool) {
-	fields := ftype.Params.Fields()
-	if i >= len(fields) {
-		i = len(fields) - 1
-	}
-	return fields[i], ftype.VarArgs != nil && i+1 == len(fields)
-}
-
 func assignArgValueToParamName(rscope resolveScope, fExpr *ir.FuncValExpr, args []ir.Expr) (map[string]ir.Element, bool) {
 	pte := &paramNameToElement{
 		rscope: rscope,
@@ -593,7 +585,7 @@ func assignArgValueToParamName(rscope resolveScope, fExpr *ir.FuncValExpr, args 
 		pte.assignToName(pte.fields[len(pte.fields)-1], pte.varArgsElt)
 	}
 	for i, arg := range args {
-		param, isVarArg := argIndexToParamField(ftype, i)
+		param, isVarArg := ftype.ArgIndexToParamField(i)
 		assign := pte.assignToName
 		if isVarArg {
 			assign = pte.assignToVarArg
@@ -609,7 +601,7 @@ func checkArgsForCall(ce *compileEvaluator, fExpr *ir.FuncValExpr, args []ir.Exp
 	ok := true
 	ftype := fExpr.FuncType()
 	for i, arg := range args {
-		param, isVarArg := argIndexToParamField(ftype, i)
+		param, isVarArg := ftype.ArgIndexToParamField(i)
 		target := param.Type()
 		if isVarArg {
 			target = ftype.VarArgs.Slice.DType.Val()
