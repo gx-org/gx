@@ -33,6 +33,7 @@ import (
 	"github.com/gx-org/gx/build/importers"
 	"github.com/gx-org/gx/build/ir"
 	"github.com/gx-org/gx/build/ir/irstring"
+	gxtesting "github.com/gx-org/gx/tests/testing"
 )
 
 // CompareString compares two string and build an error message if the strings do not match.
@@ -305,7 +306,8 @@ func (b *Builder) nextTestName() string {
 }
 
 func build(bld *builder.Builder, path, src string) (*builder.IncrementalPackage, error) {
-	fileDecl, err := parser.ParseFile(token.NewFileSet(), "", src, parser.ParseComments|parser.SkipObjectResolution)
+	// Construct the full path of the package.
+	fileDecl, err := parser.ParseFile(token.NewFileSet(), "", src, parser.PackageClauseOnly)
 	fullPath := "<unknown>"
 	if fileDecl != nil && fileDecl.Name != nil {
 		fullPath = fileDecl.Name.Name
@@ -313,13 +315,19 @@ func build(bld *builder.Builder, path, src string) (*builder.IncrementalPackage,
 	if path != "" {
 		fullPath = path + "/" + fullPath
 	}
+	// Build the package given its full path.
 	pkg := bld.NewIncrementalPackage(fullPath)
 	if err != nil {
 		return pkg, &compileError{src: src, err: err}
 	}
-	if err := pkg.Build(src); err != nil {
+	err = pkg.Build(src)
+	// Compare errors to what we expect from the package source code.
+	_, err = gxtesting.CompareToExpectedErrors(pkg.IR(), err)
+	if err != nil {
+		// Some errors are unexpected: return.
 		return pkg, &compileError{src: src, err: err}
 	}
+	// Everything is fine: returns the package.
 	return pkg, nil
 }
 

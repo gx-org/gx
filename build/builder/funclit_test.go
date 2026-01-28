@@ -231,13 +231,12 @@ func g(int32) int32
 
 func f() int32 {
 	fn := func() int32 {
-		a := g()
+		a := g() // ERROR not enough arguments in call to g
 		return a
 	}
 	return fn()
 }
 `,
-			Err: "not enough arguments in call to g",
 		},
 	)
 }

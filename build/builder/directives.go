@@ -18,8 +18,10 @@ import (
 	"go/ast"
 	"go/parser"
 	"go/scanner"
-	"go/token"
 	"strings"
+
+	"github.com/pkg/errors"
+	"github.com/gx-org/gx/build/fmterr"
 )
 
 type funcAttribute int
@@ -103,7 +105,7 @@ func (d directive) addPrefixLen(l int) directive {
 func (d directive) process(pscope procScope, src ast.Node) (*callExpr, bool) {
 	astExpr, err := parser.ParseExprFrom(pscope.pkg().fset, pscope.file().name, d.code, parser.SkipObjectResolution)
 	if err != nil {
-		return nil, processScannerError(pscope, src, err)
+		return nil, processScannerError(pscope.Err(), src, err)
 	}
 	expr, ok := processExpr(pscope, astExpr)
 	if !ok {
@@ -149,30 +151,19 @@ func processFuncAttribute(pscope procScope, fn *ast.FuncDecl) (funcAttribute, *a
 	return dir, comment, true
 }
 
-type astErrorNode struct {
-	doc ast.Node
-	err *scanner.Error
-}
-
-var _ ast.Node = (*astErrorNode)(nil)
-
-func (n astErrorNode) Pos() token.Pos {
-	return n.doc.Pos() + token.Pos(n.err.Pos.Column) + token.Pos(len(assignPrefix)) - 1
-}
-
-func (n astErrorNode) End() token.Pos {
-	return n.doc.End()
-}
-
-func processScannerError(pscope procScope, doc ast.Node, errScanner error) bool {
+func processScannerError(appender *fmterr.Appender, src ast.Node, errScanner error) bool {
 	errList, ok := errScanner.(scanner.ErrorList)
 	if !ok {
 		// Unknown error: we build a new error at the comment position
 		// that includes the error type and its message.
-		return pscope.Err().Appendf(doc, "%T:%s", errScanner, errScanner.Error())
+		return appender.Appendf(src, "%T:%s", errScanner, errScanner.Error())
 	}
 	for _, err := range errList {
-		pscope.Err().Appendf(astErrorNode{doc: doc, err: err}, "%s", err.Msg)
+		pos := fmterr.Pos{Begin: err.Pos}
+		if src != nil {
+			pos = appender.FSet().Pos(src)
+		}
+		appender.Append(pos.Error(errors.New(err.Msg)))
 	}
 	return false
 }

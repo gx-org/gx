@@ -219,15 +219,14 @@ func TestMethodsWithErrors(t *testing.T) {
 		testbuild.Decl{
 			Src: `
 type A struct {
-	a [AgeOfTheCaptain]float32
-	val int32 
+	a [AgeOfTheCaptain]float32 // ERROR undefined: AgeOfTheCaptain
+	val int32
 }
 
 func (a A) F() int32 {
 	return a.val
 }
 `,
-			Err: "undefined: AgeOfTheCaptain",
 		},
 		testbuild.Decl{
 			Src: `
@@ -239,11 +238,10 @@ func (a A) F() int32 {
 	return a.val
 }
 
-func (a A) F() int32 {
+func (a A) F() int32 { // ERROR method A.F already declared
 	return a.val
 }
 `,
-			Err: "method A.F already declared at 0:9:1",
 		},
 	)
 }

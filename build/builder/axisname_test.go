@@ -458,9 +458,8 @@ func TestAxisErrors(t *testing.T) {
 	testbuild.Run(t,
 		testbuild.Decl{
 			Src: `
-func f([___M]float32) [___M]float32
+func f([___M]float32) [___M]float32 // ERROR shape M using ___M can only be defined in function parameters
 `,
-			Err: "shape M using ___M can only be defined in function parameters",
 		},
 	)
 }

@@ -87,15 +87,13 @@ func TestVarArgsErrors(t *testing.T) {
 	testbuild.Run(t,
 		testbuild.Decl{
 			Src: `
-func f(a,b ...int32) int32
+func f(a,b ...int32) int32 // ERROR can only use ... with final parameter
 `,
-			Err: "can only use ... with final parameter",
 		},
 		testbuild.Decl{
 			Src: `
-func f(a ...int32, b ...int32) int32
+func f(a ...int32, b ...int32) int32 // ERROR can only use ... with final parameter
 `,
-			Err: "can only use ... with final parameter",
 		},
 	)
 }

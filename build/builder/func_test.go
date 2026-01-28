@@ -65,8 +65,7 @@ func TestBuiltin(t *testing.T) {
 			},
 		},
 		testbuild.Decl{
-			Src: `func returnTwo(x int32) x`,
-			Err: "x undefined",
+			Src: `func returnTwo(x int32) x // ERROR x undefined`,
 		},
 	)
 }
@@ -292,19 +291,17 @@ func TestUndefinedCallee(t *testing.T) {
 		testbuild.Decl{
 			Src: `
 func f() float32 {
-	return g()()
+	return g()() // ERROR undefined: g
 }
 `,
-			Err: "undefined: g",
 		},
 		testbuild.Decl{
 			Src: `
 func f() float32 {
-	a := g()()
+	a := g()() // ERROR undefined: g
 	return a
 }
 `,
-			Err: "undefined: g",
 		},
 	)
 
