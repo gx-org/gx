@@ -31,10 +31,7 @@ func PrefixWith(s string, o ...any) func(err error) error {
 
 // PosPrefixWith returns a function to prefix errors with a formatted string.
 func PosPrefixWith(fset *token.FileSet, node ast.Node, prefix func() string) func(err error) error {
-	pos := Pos{
-		FileSet: FileSet{FSet: fset},
-		Node:    node,
-	}
+	pos := At(fset, node)
 	return func(err error) error {
 		pr := prefix()
 		return fmt.Errorf("%s%s%w", pos.String(), pr, err)
