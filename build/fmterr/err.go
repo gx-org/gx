@@ -27,7 +27,6 @@ type (
 	// ErrorWithPos is an error attached to a position in GX code.
 	ErrorWithPos interface {
 		error
-		FSet() *token.FileSet
 		Pos() Pos
 		Err() error
 	}
@@ -86,10 +85,6 @@ func (err errorWithPos) Unwrap() error {
 // Format writes the error into the state of the formatter.
 func (err errorWithPos) Format(s fmt.State, verb rune) {
 	format(err, s, verb)
-}
-
-func (err errorWithPos) FSet() *token.FileSet {
-	return err.pos.FileSet.FSet
 }
 
 func (err errorWithPos) Err() error {

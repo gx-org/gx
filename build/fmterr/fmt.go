@@ -29,18 +29,21 @@ type FileSet struct {
 
 // Pos returns a formatter with a fileset and a position as a context.
 func (f FileSet) Pos(node ast.Node) Pos {
-	return Pos{FileSet: f, Node: node}
+	return At(f.FSet, node)
 }
 
 // Pos builds errors for a position in a file set.
 type Pos struct {
-	FileSet
-	Node ast.Node
+	Begin token.Position
+	End   token.Position
 }
 
 // At returns a position given the file set and node.
 func At(fset *token.FileSet, node ast.Node) Pos {
-	return Pos{FileSet: FileSet{FSet: fset}, Node: node}
+	return Pos{
+		Begin: fset.Position(node.Pos()),
+		End:   fset.Position(node.Pos()),
+	}
 }
 
 // Error returns a new error at the position.
@@ -53,7 +56,7 @@ func (f Pos) Error(err error) ErrorWithPos {
 
 // Position positions an error in GX.
 func (f Pos) Position() token.Position {
-	return f.FSet.Position(f.Node.Pos())
+	return f.Begin
 }
 
 // Errorf returns a formatted compiler error for the user.
