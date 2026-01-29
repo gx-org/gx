@@ -317,8 +317,8 @@ func (pkg *Package) AddInt(arg0 types.Atom[int64], arg1 types.Atom[int64]) (_ ty
 // Add x and y.
 func (pkg *Package) AddFloat32s(arg0 types.Array[float32], arg1 types.Array[float32]) (_ types.Array[float32], err error) {
 	var args []values.Value = []values.Value{
-		arg0.Bridge().GXValue(), // x [a]float32
-		arg1.Bridge().GXValue(), // y [a]float32
+		arg0.Bridge().GXValue(), // x [_a]float32
+		arg1.Bridge().GXValue(), // y [_a]float32
 	}
 	var runner tracer.CompiledFunc
 	runner, err = pkg.cacheAddFloat32s.Runner(nil, args)
@@ -344,8 +344,8 @@ func (pkg *Package) AddFloat32s(arg0 types.Array[float32], arg1 types.Array[floa
 // AddInts x and y.
 func (pkg *Package) AddInts(arg0 types.Array[int64], arg1 types.Array[int64]) (_ types.Array[int64], err error) {
 	var args []values.Value = []values.Value{
-		arg0.Bridge().GXValue(), // x [a]int64
-		arg1.Bridge().GXValue(), // y [a]int64
+		arg0.Bridge().GXValue(), // x [_a]int64
+		arg1.Bridge().GXValue(), // y [_a]int64
 	}
 	var runner tracer.CompiledFunc
 	runner, err = pkg.cacheAddInts.Runner(nil, args)
@@ -371,7 +371,7 @@ func (pkg *Package) AddInts(arg0 types.Array[int64], arg1 types.Array[int64]) (_
 // Len returns the outmost dimension of x.
 func (pkg *Package) Len(arg0 types.Array[float32]) (_ types.Atom[int64], err error) {
 	var args []values.Value = []values.Value{
-		arg0.Bridge().GXValue(), // x []float32
+		arg0.Bridge().GXValue(), // x [_]float32
 	}
 	var runner tracer.CompiledFunc
 	runner, err = pkg.cacheLen.Runner(nil, args)
