@@ -1132,3 +1132,36 @@ func vjpF(x float32) (float32, func(res float32) float32) {
 		},
 	)
 }
+
+func TestVJPSelectors(t *testing.T) {
+	testbuild.Run(t,
+		declareGradPackage,
+		testgrad.Reverse{
+			Src: `
+type S struct {
+	a float32
+}
+
+func F(s S, x float32) float32 {
+	return s.a * x
+}
+`,
+			Want: `
+func vjpF(s S, x float32) (float32, func(res float32) float32, func(res float32) float32) {
+	fwd0 := s.a*x
+	selfVJPFuncWRTs_a := func(res float32) float32 {
+		bck0x := res*x
+		bck0y := s.a*res
+		return bck0x
+	}
+	selfVJPFuncWRTx := func(res float32) float32 {
+		bck0x1 := res*x
+		bck0y1 := s.a*res
+		return bck0y1
+	}
+	return fwd0, selfVJPFuncWRTs_a, selfVJPFuncWRTx
+}
+`,
+		},
+	)
+}

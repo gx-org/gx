@@ -48,6 +48,8 @@ func (p *processor) processExpr(isrc ir.Expr) (expr, bool) {
 		return p.processFuncCallExpr(isrcT)
 	case *ir.ParenExpr:
 		return p.processParenExpr(isrcT)
+	case *ir.SelectorExpr:
+		return p.processSelectorExpr(isrcT)
 	default:
 		return nil, p.fetcher.Err().Appendf(isrc.Node(), "%T not supported", isrcT)
 	}
@@ -452,4 +454,38 @@ func (n *arrayLitExpr) buildBackward(bckstmts *astOutWRT, bck *special.Expr) (*s
 		bcks[i] = xBack
 	}
 	return special.Add(bcks...), true
+}
+
+type selectorExpr struct {
+	node[*ir.SelectorExpr]
+	x, sel expr
+	fwd    ast.SelectorExpr
+}
+
+func (p *processor) processSelectorExpr(isrc *ir.SelectorExpr) (*selectorExpr, bool) {
+	x, xOk := p.processExpr(isrc.X)
+	sel, selOk := p.processIdent(&ir.Ident{
+		Src:  isrc.Src.Sel,
+		Stor: isrc.Stor,
+	})
+	return &selectorExpr{
+		fwd:  *isrc.Src,
+		node: newNodeNoID[*ir.SelectorExpr](p, isrc),
+		x:    x,
+		sel:  sel,
+	}, xOk && selOk
+}
+
+func (n *selectorExpr) buildForward(astmts *fwdStmts) ([]ast.Expr, bool) {
+	var ok bool
+	n.fwd.X, ok = buildSingleForward(astmts, n.x)
+	return []ast.Expr{&n.fwd}, ok
+}
+
+func (n *selectorExpr) forwardValue() (*special.Expr, bool) {
+	return special.New(&n.fwd), true
+}
+
+func (n *selectorExpr) buildBackward(bckstmts *astOutWRT, bck *special.Expr) (*special.Expr, bool) {
+	return n.sel.buildBackward(bckstmts, bck)
 }
