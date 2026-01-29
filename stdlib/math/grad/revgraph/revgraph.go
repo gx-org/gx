@@ -25,6 +25,7 @@ import (
 	"github.com/gx-org/gx/internal/astbuilder"
 	"github.com/gx-org/gx/internal/interp/compeval/cpevelements"
 	"github.com/gx-org/gx/stdlib/math/grad/setann"
+	"github.com/gx-org/gx/stdlib/math/grad/wrt"
 )
 
 var traceAll = false
@@ -66,7 +67,7 @@ func (n *node[T]) String() string {
 // VJPParam is a parameter in a function that the gradient is going to be computed with respect to.
 type VJPParam struct {
 	field    *ir.Field
-	wrt      withRespectTo
+	wrt      *wrt.WithRespectTo
 	vjpFType *ast.FuncType
 }
 
@@ -102,19 +103,11 @@ func New(macro *cpevelements.CoreMacroElement, fn ir.Func) (*Graph, error) {
 		fn:     fn,
 	}
 	fType := g.fn.FuncType()
-	g.params = make([]VJPParam, fType.Params.Len())
 	g.nResults = nameFields(g.unames, "res", fType.Results.Src)
 	g.nParams = nameFields(g.unames, "par", fType.Params.Src)
-	for i, param := range fType.Params.Fields() {
-		wrt := newWRT(param)
-		backwardSig, err := g.buildBackwardSignature(fType, wrt, g.nResults.fields)
-		if err != nil {
+	for _, param := range fType.Params.Fields() {
+		if err := g.buildWRTFromField(param); err != nil {
 			return nil, err
-		}
-		g.params[i] = VJPParam{
-			field:    param,
-			wrt:      wrt,
-			vjpFType: backwardSig,
 		}
 	}
 	for _, axisVal := range fType.AxisLengths {
@@ -122,6 +115,21 @@ func New(macro *cpevelements.CoreMacroElement, fn ir.Func) (*Graph, error) {
 	}
 	g.unames.RegisterFieldNames(fType.TypeParams)
 	return g, nil
+}
+
+func (g *Graph) buildWRTFromField(field *ir.Field) error {
+	for _, wrt := range wrt.New(field) {
+		backwardSig, err := g.buildBackwardSignature(g.fn.FuncType(), wrt, g.nResults.fields)
+		if err != nil {
+			return err
+		}
+		g.params = append(g.params, VJPParam{
+			field:    field,
+			wrt:      wrt,
+			vjpFType: backwardSig,
+		})
+	}
+	return nil
 }
 
 func concatFieldList(lists ...*ast.FieldList) *ast.FieldList {
@@ -208,10 +216,10 @@ func (p *processor) processFuncWithoutAnn() (stmt, bool) {
 	return root, ok
 }
 
-func (g *Graph) buildBackwardSignature(fType *ir.FuncType, wrt withRespectTo, namedResultFields *ast.FieldList) (*ast.FuncType, error) {
+func (g *Graph) buildBackwardSignature(fType *ir.FuncType, wrt *wrt.WithRespectTo, namedResultFields *ast.FieldList) (*ast.FuncType, error) {
 	results, err := astbuilder.Clone(&ast.FieldList{
 		List: []*ast.Field{&ast.Field{
-			Type: wrt.fieldType(),
+			Type: wrt.FieldType(),
 		}},
 	}, astbuilder.AssignToExpandShape)
 	if err != nil {

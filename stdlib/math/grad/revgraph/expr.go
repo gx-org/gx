@@ -326,7 +326,7 @@ func (n *fieldRef) forwardValue() (*special.Expr, bool) {
 }
 
 func (n *fieldRef) buildBackward(bckstmts *astOutWRT, bck *special.Expr) (*special.Expr, bool) {
-	if bckstmts.wrt.same(n.irnode.Field) {
+	if bckstmts.wrt.Same(n.irnode.Field) {
 		return bck, true
 	}
 	return special.ZeroExpr(), true

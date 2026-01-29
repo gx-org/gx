@@ -137,7 +137,7 @@ func (n *returnStmt) build(outStmts *astOut) bool {
 		}
 		root := "selfVJPFunc"
 		if len(names) > 1 {
-			root += "WRT" + param.wrt.name()
+			root += "WRT" + toIdentName(param.wrt.Name())
 		}
 		vjpFuncName := n.graph.unames.Name(root)
 		outStmts.append(&ast.AssignStmt{

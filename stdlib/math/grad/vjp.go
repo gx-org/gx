@@ -25,20 +25,13 @@ import (
 	"github.com/gx-org/gx/internal/interp/flatten"
 	"github.com/gx-org/gx/interp"
 	"github.com/gx-org/gx/stdlib/math/grad/revgraph"
+	"github.com/gx-org/gx/stdlib/math/grad/wrt"
 )
 
-type (
-	vjpParam struct {
-		field    *ir.Field
-		wrt      withRespectTo
-		vjpFType *ast.FuncType
-	}
-
-	vjpMacro struct {
-		cpevelements.CoreMacroElement
-		graph *revgraph.Graph
-	}
-)
+type vjpMacro struct {
+	cpevelements.CoreMacroElement
+	graph *revgraph.Graph
+}
 
 var _ ir.FuncASTBuilder = (*vjpMacro)(nil)
 
@@ -66,10 +59,10 @@ func (m vjpMacro) newMacro(fn ir.PkgFunc) (*vjpMacro, error) {
 	return &m, nil
 }
 
-func (m *vjpMacro) buildBackwardSignature(fType *ir.FuncType, wrt withRespectTo, namedResultFields *ast.FieldList) (*ast.FuncType, error) {
+func (m *vjpMacro) buildBackwardSignature(fType *ir.FuncType, wrt *wrt.WithRespectTo, namedResultFields *ast.FieldList) (*ast.FuncType, error) {
 	results, err := astbuilder.Clone(&ast.FieldList{
 		List: []*ast.Field{&ast.Field{
-			Type: wrt.fieldType(),
+			Type: wrt.FieldType(),
 		}},
 	}, astbuilder.AssignToExpandShape)
 	if err != nil {

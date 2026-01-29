@@ -30,6 +30,7 @@ import (
 	"github.com/gx-org/gx/stdlib/builtin"
 	"github.com/gx-org/gx/stdlib/math/grad/revgraph"
 	"github.com/gx-org/gx/stdlib/math/grad/special"
+	"github.com/gx-org/gx/stdlib/math/grad/wrt"
 )
 
 //go:embed *.gx
@@ -52,24 +53,24 @@ type gradMacro struct {
 	call   elements.CallAt
 	unames *uname.Unique
 
-	wrt      withRespectTo
+	wrt      *wrt.WithRespectTo
 	revgraph *revgraph.Graph
 }
 
 var _ ir.FuncASTBuilder = (*gradMacro)(nil)
 
-func findParamStorage(file *ir.File, src ir.Node, fn ir.Func, name string) (withRespectTo, error) {
+func findParamStorage(file *ir.File, src ir.Node, fn ir.Func, name string) (*wrt.WithRespectTo, error) {
 	recv := fn.FuncType().ReceiverField()
 	if recv != nil && recv.Name != nil {
 		if recv.Name.Name == name {
-			return newWRT(recv), nil
+			return wrt.New(recv)[0], nil
 		}
 	}
 	field := fn.FuncType().Params.FindField(name)
 	if field == nil {
 		return nil, fmterr.Errorf(file.FileSet(), src.Node(), "no parameter named %s in %s", name, fn.ShortString())
 	}
-	return newWRT(field), nil
+	return wrt.New(field)[0], nil
 }
 
 // FuncGrad computes the gradient of a function.

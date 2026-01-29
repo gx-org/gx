@@ -24,6 +24,7 @@ import (
 	"github.com/gx-org/gx/build/ir"
 	"github.com/gx-org/gx/internal/base/scope"
 	"github.com/gx-org/gx/stdlib/math/grad/special"
+	"github.com/gx-org/gx/stdlib/math/grad/wrt"
 )
 
 type astOut struct {
@@ -172,10 +173,10 @@ func (a *astOut) newStmt() *fwdStmts {
 
 type astOutWRT struct {
 	astOut
-	wrt withRespectTo
+	wrt *wrt.WithRespectTo
 }
 
-func (a *astOut) newASTOutWRT(wrt withRespectTo) *astOutWRT {
+func (a *astOut) newASTOutWRT(wrt *wrt.WithRespectTo) *astOutWRT {
 	return &astOutWRT{
 		astOut: astOut{
 			graph:   a.graph,

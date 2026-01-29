@@ -18,6 +18,7 @@ import (
 	"go/ast"
 	"go/token"
 	"reflect"
+	"strings"
 
 	"github.com/gx-org/gx/build/ir"
 	"github.com/gx-org/gx/stdlib/math/grad/setann"
@@ -65,6 +66,10 @@ func (n *annFunc) buildVJPFunctionWRTFromAnn(astmts *astOut, grad ir.PkgFunc, pa
 	}, true
 }
 
+func toIdentName(names []string) string {
+	return strings.Join(names, "_")
+}
+
 func (n *annFunc) build(astmts *astOut) bool {
 	// Build the arguments to call the forward functions.
 	args := make([]ast.Expr, len(n.graph.nParams.names))
@@ -102,7 +107,7 @@ func (n *annFunc) build(astmts *astOut) bool {
 		}
 		root := "selfVJPFunc"
 		if len(names) > 1 {
-			root += "WRT" + param.wrt.name()
+			root += "WRT" + param.wrt.Name()[0]
 		}
 		vjpFuncName := n.graph.unames.Name(root)
 		astmts.append(&ast.AssignStmt{
