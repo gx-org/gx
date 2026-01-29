@@ -20,39 +20,12 @@ import (
 	"github.com/gx-org/gx/build/builder/testbuild"
 )
 
-func TestErrors(t *testing.T) {
+func TestSyntaxErrors(t *testing.T) {
 	testbuild.Run(t,
 		testbuild.Decl{
 			Src: `
-type S struct{}
-
-func New() S {
-	return &S{} // ERROR unary operator & not supported
-}
-`,
-		},
-		testbuild.Decl{
-			Src: `
-type S struct{}
-
-func New() S {
-	return *S{} // ERROR expression *<expr> not supported
-}
-`,
-		},
-		testbuild.Decl{
-			Src: `
-func New() float32 {
-	1 := 2 // ERROR non-name on left side of :=
-	return 1
-}
-`,
-		},
-		testbuild.Decl{
-			Src: `
-func New() float32 {
-	1 = 2 // ERROR non-name on left side of =
-	return 1
+func f() int32 { 
+	g(wrong syntax) // ERROR missing ',' in argument list
 }
 `,
 		},

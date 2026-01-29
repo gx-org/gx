@@ -158,50 +158,46 @@ func TestCallErrors(t *testing.T) {
 func g() (float32, float32)
 
 func f() float32 {
-	return g()()
+	return g()() // ERROR multiple value g() in single-value context
 }
 `,
-			Err: "multiple value g() in single-value context",
 		},
 		testbuild.Decl{
 			Src: `
 func f() float32 {
-	c, d = somefunc()
+	c, d = somefunc() // ERROR undefined: somefunc
 	return c
 }
 `,
-			Err: "undefined: somefunc",
 		},
 		testbuild.Decl{
 			Src: `
 func g() (int32, float32, int64)
 
 func f() (int32, float32) {
-	a, b := g()
-	return a, b
+	a, b := g() // ERROR assignment mismatch: 2 variable(s) but g() returns 3 values
+	return a, b // ERROR undefined: a
 }
 `,
-			Err: "assignment mismatch: 2 variable(s) but g() returns 3 values",
+			Err: "undefined: b",
 		},
 		testbuild.Decl{
 			Src: `
 func g(int32, float64) int64
 
 func f() int64 {
-	return g(1)
+	return g(1) // ERROR not enough arguments in call to g (expected 2, found 1)
 }
 `,
-			Err: "not enough arguments in call to g (expected 2, found 1)",
 		},
 		testbuild.Decl{
 			Src: `
 func g(int32, float64) int64
 
 func f() int64 {
-	return g(1, 2, 3)
+	return g(1, 2, 3) // ERROR too many arguments in call to g (expected 2, found 3)
 }
 `,
-			Err: "too many arguments in call to g (expected 2, found 3)",
 		},
 	)
 }

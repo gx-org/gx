@@ -22,7 +22,6 @@ import (
 	"io"
 	"io/fs"
 	"sort"
-	"strconv"
 	"strings"
 	"sync"
 
@@ -269,17 +268,25 @@ func (pkg *IncrementalPackage) Build(src string) error {
 	pkg.mut.Lock()
 	defer pkg.mut.Unlock()
 
-	name := strconv.Itoa(pkg.next)
-	astFile, err := parser.ParseFile(pkg.fset, name, src, parser.ParseComments)
-	if err != nil {
-		return err
-	}
+	name := fmt.Sprintf("src%d.gx", pkg.next)
+	pkg.next++
 	errs := &fmterr.Errors{}
 	pscope := newPackageProcScope(true, pkg.basePackage, errs)
-	if _, ok := processFile(pscope, name, astFile); !ok {
+	astFile, err := parser.ParseFile(pkg.fset, name, src, parser.ParseComments)
+	if err != nil {
+		processScannerError(pscope.Err(), nil, err)
+		newFile(pkg.basePackage, name, astFile)
+		pkgScope, _ := newPackageResolveScope(pscope)
+		pkg.last.pkg = pkgScope.irBuilder().Pkg()
 		return errs
 	}
-	if _, ok := pkg.resolveBuild(pscope); !ok {
+	if _, ok := processFile(pscope, name, astFile); !ok {
+		pkgScope, _ := newPackageResolveScope(pscope)
+		pkg.last.pkg = pkgScope.irBuilder().Pkg()
+		return errs
+	}
+	if pkgScope, ok := pkg.resolveBuild(pscope); !ok {
+		pkg.last.pkg = pkgScope.irBuilder().Pkg()
 		return errs
 	}
 	return nil

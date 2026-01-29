@@ -100,8 +100,7 @@ func TestGenericSignature(t *testing.T) {
 			},
 		},
 		testbuild.Decl{
-			Src: `func f(x [_X][_X]int32) [X]int32`,
-			Err: "axis length X can only be defined once",
+			Src: `func f(x [_X][_X]int32) [X]int32 // ERROR axis length X can only be defined once`,
 		},
 		testbuild.Decl{
 			Src: `func f([___X]int32) [X___]int32`,
@@ -316,10 +315,9 @@ import "dtype"
 func g[T dtype.Ints](a T, x [___X]T) [X___]T
 
 func f() [2][3]int32 {
-	return g(10.0, [2][3]int32{{1, 2, 3}, {4, 5, 6}})
+	return g(10.0, [2][3]int32{{1, 2, 3}, {4, 5, 6}}) // ERROR float number does not satisfy dtype.Ints for T
 }
 `,
-			Err: "float number does not satisfy dtype.Ints for T",
 		},
 	)
 }
@@ -408,10 +406,9 @@ func cast[T someInt]() T {
 }
 
 func callCast() int32 {
-	return cast[cast]()
+	return cast[cast]() // ERROR cast not a type
 }
 `,
-			Err: "cast not a type",
 		},
 		testbuild.Decl{
 			Src: `
@@ -422,10 +419,9 @@ func cast[T someInt]() T {
 }
 
 func callCast() int32 {
-	return cast[float32]()
+	return cast[float32]() // ERROR float32 does not satisfy test.someInt
 }
 `,
-			Err: "float32 does not satisfy test.someInt",
 		},
 		testbuild.Decl{
 			Src: `
@@ -436,10 +432,9 @@ func f[T someInt](x [___S]T) [S___]T {
 }
 
 func callF() [2]int64 {
-	return f[int32]([2]int64{1, 2})
+	return f[int32]([2]int64{1, 2}) // ERROR cannot use type [2]int64 as [2]int32 in argument to f
 }
 `,
-			Err: "cannot use type [2]int64 as [2]int32 in argument to f",
 		},
 	)
 }
@@ -614,10 +609,9 @@ func cast[T someInt](val T) T {
 }
 
 func callCast() int32 {
-	return cast(float32(2))
+	return cast(float32(2)) // ERROR float32 does not satisfy test.someInt
 }
 `,
-			Err: "float32 does not satisfy test.someInt",
 		},
 	)
 
@@ -628,22 +622,19 @@ func TestGenericErrors(t *testing.T) {
 		testbuild.Decl{
 			Src: `
 type Floats interface {
-	float32 | float
+	float32 | float // ERROR undefined: float
 }
 `,
-			Err: "undefined: float",
 		},
 		testbuild.Decl{
 			Src: `
-func F[t interface{}](a [BatchSize]T) [BatchSize]T
+func F[t interface{}](a [BatchSize]T) [BatchSize]T // ERROR undefined: T
 `,
-			Err: "undefined: T",
 		},
 		testbuild.Decl{
 			Src: `
-func F[T whatisai.X]() T
+func F[T whatisai.X]() T // ERROR undefined: whatisai
 `,
-			Err: "undefined: whatisai",
 		},
 	)
 

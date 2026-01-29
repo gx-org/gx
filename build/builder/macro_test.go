@@ -115,11 +115,11 @@ func f(x int32) int32 {
 }
 
 func F() (int32, bool) {
-	fn, ok := testmacros.IDWithBool(f)
-	return fn(2), ok
+	fn, ok := testmacros.IDWithBool(f) // ERROR assignment mismatch: 2 variable(s) but testmacros.IDWithBool(f) returns 1 values
+	return fn(2), ok // ERROR undefined: fn
 }
 `,
-			Err: "assignment mismatch: 2 variable(s) but testmacros.IDWithBool(f) returns 1 values",
+			Err: "undefined: ok",
 		},
 	)
 }
@@ -264,14 +264,13 @@ import "testmacros"
 
 type S struct{}
 
-//gx:=testmacros.ID(S.f)
-func synthetic()
+//gx:=testmacros.ID(S.f) 
+func synthetic() // ERROR synthetic requires a test.S type receiver
 
 func (S) f() int32 {
 	return 2
 }
 `,
-			Err: "synthetic requires a test.S type receiver",
 		},
 		testbuild.Decl{
 			Src: `
@@ -280,13 +279,12 @@ import "testmacros"
 type S struct{}
 
 //gx:=testmacros.ID(f)
-func (S) synthetic()
+func (S) synthetic() // ERROR synthetic requires no receiver
 
 func f() int32 {
 	return 2
 }
 `,
-			Err: "synthetic requires no receiver",
 		},
 		testbuild.Decl{
 			Src: `
@@ -297,13 +295,12 @@ type S struct{}
 type T struct{}
 
 //gx:=testmacros.ID(S.f)
-func (T) synthetic()
+func (T) synthetic() // ERROR cannot assign S.synthetic to T.synthetic
 
 func (S) f() int32 {
 	return 2
 }
 `,
-			Err: "cannot assign S.synthetic to T.synthetic",
 		},
 	)
 }
@@ -350,10 +347,9 @@ func f[T floats](x T) T {
 }
 
 func g[T floats](x T) T {
-	return testmacros.ID(f)[T]()
+	return testmacros.ID(f)[T]() // ERROR not enough arguments in call to testmacros.ID(f)
 }
 `,
-			Err: "not enough arguments in call to testmacros.ID(f)",
 		},
 	)
 }

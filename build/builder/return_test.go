@@ -24,10 +24,9 @@ func TestMissingReturns(t *testing.T) {
 	testbuild.Run(t,
 		testbuild.Decl{
 			Src: `
-func f() int32 {
+func f() int32 { // ERROR missing return
 }
 `,
-			Err: "missing return",
 		},
 		testbuild.Decl{
 			Src: `
@@ -43,14 +42,13 @@ func f() int32 {
 		},
 		testbuild.Decl{
 			Src: `
-func f() int32 {
+func f() int32 { // ERROR missing return
 	a := 2
 	if a > 2 {
 		return 1
 	}
 }
 `,
-			Err: "missing return",
 		},
 		testbuild.Decl{
 			Src: `
@@ -64,13 +62,12 @@ func f() int32 {
 		},
 		testbuild.Decl{
 			Src: `
-func f() int32 {
+func f() int32 { // ERROR missing return
 	a := intlen(2)
 	for a := range(5) {
 	}
 }
 `,
-			Err: "missing return",
 		},
 	)
 }
@@ -87,10 +84,9 @@ func f() (a int32) {
 		testbuild.Decl{
 			Src: `
 func f() int32 {
-	return
+	return // ERROR not enough return values
 }
 `,
-			Err: "not enough return values",
 		},
 	)
 }
@@ -101,23 +97,21 @@ func TestUnreachable(t *testing.T) {
 			Src: `
 func f() int32 {
 	return 2
-	a := 2
+	a := 2 // ERROR unreachable code
 }
 `,
-			Err: "unreachable code",
 		},
 		testbuild.Decl{
 			Src: `
-func f() int32 {
+func f(a int64) int64 {
 	if a > 2 {
 		return 1
 	} else {
 		return 2
 	}
-	a := 2
+	a = 2 // ERROR unreachable code
 }
 `,
-			Err: "unreachable code",
 		},
 	)
 }

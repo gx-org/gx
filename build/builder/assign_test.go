@@ -183,11 +183,11 @@ func a() st {
 		testbuild.Decl{
 			Src: `
 func f() int64 {
-	x = 0
-	return x
+	x = 0 // ERROR undefined: x
+	return x // ERROR undefined: x
+
 }
 `,
-			Err: "undefined: x",
 		},
 		testbuild.Decl{
 			Src: `
@@ -197,21 +197,19 @@ type st struct {
 
 func a() st {
 	r := st{a:2}
-	r.a = int32(3)
+	r.a = int32(3) // ERROR cannot use int32 as float32
 	return r
 }
 `,
-			Err: "cannot use int32 as float32",
 		},
 		testbuild.Decl{
 			Src: `
 func f() int64 {
 	a := 2
-	a := 3
+	a := 3 // ERROR no new variables on left side of :=
 	return a
 }
 `,
-			Err: "no new variables on left side of :=",
 		},
 	)
 }
@@ -221,7 +219,7 @@ func TestAssignWithErrors(t *testing.T) {
 		testbuild.Decl{
 			Src: `
 func f() int64 {
-	state.x, state.y = f(state)
+	state.x, state.y = f(state) // ERROR undefined: state
 	return 0
 }
 `,
@@ -230,21 +228,19 @@ func f() int64 {
 		testbuild.Decl{
 			Src: `
 func f() bool {
-	true = true
+	true = true // ERROR cannot assign to true
 	return true
 }
 `,
-			Err: "cannot assign to true",
 		},
 		testbuild.Decl{
 			Src: `
 func f() (int64, float32) {
 	a := 1
-	a, b := float32(2), float32(3)
+	a, b := float32(2), float32(3) // ERROR cannot use float32 as int64 value in assignment
 	return a, b
 }
 `,
-			Err: "cannot use float32 as int64 value in assignment",
 		},
 	)
 }

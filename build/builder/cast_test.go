@@ -246,10 +246,9 @@ type Floats interface {
 }
 
 func ToInts[T Floats](a T) Ints {
-    return Ints(a)
+    return Ints(a) // ERROR cannot convert T to test.Ints
 }
 `,
-			Err: "cannot convert T to test.Ints",
 		},
 	)
 }
