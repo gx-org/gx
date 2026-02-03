@@ -1,0 +1,9 @@
+// Package generics is used to test bindings for generics.
+package generics
+
+import "dtype"
+
+// Floats returns an array of generic floats.
+func Floats[T dtype.Floats]() [2]T {
+	return [2]T{2, 3}
+}

@@ -94,6 +94,12 @@ var tests = []struct {
 			"Uint64",
 		},
 	},
+	{
+		path: "github.com/gx-org/gx/tests/bindings/generics",
+		wants: []string{
+			"PackageHandle",
+		},
+	},
 }
 
 func run(t *testing.T, bld *builder.Builder, path string, wants []string) {

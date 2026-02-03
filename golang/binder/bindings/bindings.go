@@ -50,6 +50,9 @@ func CanBeOnDeviceFunc(gxFunc ir.Func) bool {
 		return false
 	}
 	tp := gxFunc.FuncType()
+	if tp.TypeParams != nil && tp.TypeParams.Len() > 0 {
+		return false
+	}
 	for _, arg := range tp.Params.Fields() {
 		if err := CanBeOnDevice(arg.Type()); err != nil {
 			return false

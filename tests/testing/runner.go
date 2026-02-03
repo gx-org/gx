@@ -40,6 +40,7 @@ import (
 	_ "github.com/gx-org/gx/tests/bindings/cartpole"
 	_ "github.com/gx-org/gx/tests/bindings/dtypes"
 	_ "github.com/gx-org/gx/tests/bindings/encoding"
+	_ "github.com/gx-org/gx/tests/bindings/generics"
 	_ "github.com/gx-org/gx/tests/bindings/imports"
 	_ "github.com/gx-org/gx/tests/bindings/math"
 	_ "github.com/gx-org/gx/tests/bindings/parameters"
