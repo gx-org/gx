@@ -151,7 +151,3 @@ func TestNamedTypeIndexing() [3]float32 {
 	// Want:
 	// [3]float32{1, 2, 3}
 }
-
-type floats interface {
-	bfloat16 | float32 | float64
-}

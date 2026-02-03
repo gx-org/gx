@@ -636,6 +636,22 @@ func F[t interface{}](a [BatchSize]T) [BatchSize]T // ERROR undefined: T
 func F[T whatisai.X]() T // ERROR undefined: whatisai
 `,
 		},
+		testbuild.Decl{
+			Src: `
+func f[T interface{ float32 | float64 }]() T {
+	T := 3 // ERROR cannot assign to T
+	return T
+}
+`,
+		},
+		testbuild.Decl{
+			Src: `
+func f[T interface{ float32 | float64 }]() T {
+	T = 3 // ERROR cannot assign to T
+	return T
+}
+`,
+		},
 	)
 
 }
