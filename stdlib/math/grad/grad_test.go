@@ -41,6 +41,8 @@ var (
 			irSet.Annotate = ir.AnnotatorFuncImpl(grad.SetGrad)
 			irSetFor := pkg.FindFunc("SetFor").(*ir.AnnotatorFunc)
 			irSetFor.Annotate = ir.AnnotatorFuncImpl(grad.SetGradFor)
+			irLabel := pkg.FindFunc("Label").(*ir.AnnotatorField)
+			irLabel.Annotate = ir.AnnotatorFieldImpl(grad.Label)
 		},
 	}
 

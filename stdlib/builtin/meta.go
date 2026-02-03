@@ -62,16 +62,8 @@ func (b *registerMacro) Name() string {
 }
 
 type registerAnnotator struct {
-	name string
-	impl ir.AnnotatorFuncImpl
-}
-
-// RegisterFuncAnnotator registers the implementation of a annotator.
-func RegisterFuncAnnotator(name string, impl ir.AnnotatorFuncImpl) Builder {
-	return &registerAnnotator{
-		name: name,
-		impl: impl,
-	}
+	name    string
+	setImpl func(ir.PkgFunc) error
 }
 
 func (b *registerAnnotator) Build(bld importers.Builder, _ *impl.Stdlib, pkg importers.FilePackage) (err error) {
@@ -85,14 +77,41 @@ func (b *registerAnnotator) Build(bld importers.Builder, _ *impl.Stdlib, pkg imp
 	if fun == nil {
 		return errors.Errorf("cannot find the function in the package IR")
 	}
-	macro, ok := fun.(*ir.AnnotatorFunc)
-	if !ok {
-		return errors.Errorf("type %T is not %s", fun, reflect.TypeFor[*ir.Macro]())
-	}
-	macro.Annotate = b.impl
-	return nil
+	return b.setImpl(fun)
 }
 
 func (b *registerAnnotator) Name() string {
 	return fmt.Sprintf("%T:%s", b, b.name)
+}
+
+// RegisterFuncAnnotator registers the implementation of a function annotator.
+func RegisterFuncAnnotator(name string, impl ir.AnnotatorFuncImpl) Builder {
+	setImpl := func(fun ir.PkgFunc) error {
+		macro, ok := fun.(*ir.AnnotatorFunc)
+		if !ok {
+			return errors.Errorf("type %T is not %s", fun, reflect.TypeFor[*ir.Macro]())
+		}
+		macro.Annotate = impl
+		return nil
+	}
+	return &registerAnnotator{
+		name:    name,
+		setImpl: setImpl,
+	}
+}
+
+// RegisterFieldAnnotator registers the implementation of a field annotator.
+func RegisterFieldAnnotator(name string, impl ir.AnnotatorFieldImpl) Builder {
+	setImpl := func(fun ir.PkgFunc) error {
+		macro, ok := fun.(*ir.AnnotatorField)
+		if !ok {
+			return errors.Errorf("type %T is not %s", fun, reflect.TypeFor[*ir.Macro]())
+		}
+		macro.Annotate = impl
+		return nil
+	}
+	return &registerAnnotator{
+		name:    name,
+		setImpl: setImpl,
+	}
 }

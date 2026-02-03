@@ -45,6 +45,7 @@ var Package = builtin.PackageBuilder{
 		builtin.RegisterMacro("Reverse", Reverse),
 		builtin.RegisterFuncAnnotator("Set", SetGrad),
 		builtin.RegisterFuncAnnotator("SetFor", SetGradFor),
+		builtin.RegisterFieldAnnotator("Label", Label),
 	},
 }
 
