@@ -250,5 +250,23 @@ func ToInts[T Floats](a T) Ints {
 }
 `,
 		},
+		testbuild.Decl{
+			Src: `
+type Floats interface {
+	float32 | float64
+}
+
+func f(shape []intlen) [shape]float32
+
+func g[T Floats](shape ...intlen) [shape]T {
+	x := f(shape)
+	return [shape]T(x)
+}
+
+func h() [2][3]float64 {
+	return g[float64](2,3)
+}
+`,
+		},
 	)
 }
