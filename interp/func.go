@@ -126,6 +126,7 @@ func (f *funcDecl) Call(env *fun.CallEnv, call *ir.FuncCallExpr, args []ir.Eleme
 	if f.fnT.Body == nil {
 		return nil, fmterr.Errorf(env.File().FileSet(), f.fnT.Node(), "missing function body")
 	}
+	callerFrame := env.Context().CurrentFrame()
 	// Create a new function frame.
 	funcFrame, err := env.Context().PushFuncFrame(f.fnT)
 	if err != nil {
@@ -145,7 +146,9 @@ func (f *funcDecl) Call(env *fun.CallEnv, call *ir.FuncCallExpr, args []ir.Eleme
 			funcFrame.Define(recv.Ident, recvNode)
 		}
 	}
-	assignTypeParameters(call.Callee, funcFrame)
+	if err := assignTypeParameters(env.Context(), call.Callee, callerFrame, funcFrame); err != nil {
+		return nil, err
+	}
 	assignAxisLengths(call.Callee, funcFrame)
 	assignArgumentValues(f.fnT.FType, funcFrame, args)
 	ctx := newFileScope(env.Context(), env.FuncEval(), f.fnT.File())
@@ -234,14 +237,35 @@ func assignAxisLengths(callee ir.Callee, funcFrame *context.Frame) {
 	}
 }
 
-func assignTypeParameters(callee ir.Callee, funcFrame *context.Frame) {
+func toConcreteType(ctx *context.Context, src ast.Node, frame *context.Frame, tp ir.Type) (ir.Type, error) {
+	typeParam, isTypeParam := tp.(*ir.TypeParam)
+	if !isTypeParam {
+		return tp, nil
+	}
+	el, err := frame.Find(typeParam.Field.Name)
+	if err != nil {
+		return nil, fmterr.Internalf(ctx.File().FileSet(), src, "cannot cast to %s: %v", tp.String(), err)
+	}
+	tp, isType := el.(ir.Type)
+	if !isType {
+		return nil, fmterr.Internalf(ctx.File().FileSet(), src, "element %T is not a type", el)
+	}
+	return tp, nil
+}
+
+func assignTypeParameters(ctx *context.Context, callee ir.Callee, callerFrame, targetFrame *context.Frame) error {
 	funRef, ok := callee.(*ir.FuncValExpr)
 	if !ok {
-		return
+		return nil
 	}
 	for _, tpParam := range funRef.FuncType().TypeParamsValues {
-		funcFrame.Define(tpParam.Field.Name, tpParam.Typ)
+		cType, err := toConcreteType(ctx, callee.Node(), callerFrame, tpParam.Typ)
+		if err != nil {
+			return err
+		}
+		targetFrame.Define(tpParam.Field.Name, cType)
 	}
+	return nil
 }
 
 func assignArgumentValues(ftype *ir.FuncType, funcFrame *context.Frame, args []ir.Element) {

@@ -15,7 +15,6 @@
 package interp
 
 import (
-	"go/ast"
 	"go/token"
 	"reflect"
 
@@ -320,22 +319,6 @@ func evalArrayAxes(fitp *FileScope, src ir.Node, typ ir.ArrayType) ([]evaluator.
 
 var one, _ = values.AtomIntegerValue(ir.IntLenType(), ir.Int(1))
 
-func toConcreteType(fitp *FileScope, src ast.Node, tp ir.Type) (ir.Type, error) {
-	typeParam, isTypeParam := tp.(*ir.TypeParam)
-	if !isTypeParam {
-		return tp, nil
-	}
-	el, err := fitp.ctx.CurrentFrame().Find(typeParam.Field.Name)
-	if err != nil {
-		return nil, fmterr.Internalf(fitp.File().FileSet(), src, "cannot cast to %s: %v", tp.String(), err)
-	}
-	tp, isType := el.(ir.Type)
-	if !isType {
-		return nil, fmterr.Internalf(fitp.File().FileSet(), src, "element %T is not a type", el)
-	}
-	return tp, nil
-}
-
 func evalCastAtomToArrayExpr(fitp *FileScope, expr ir.TypeCastExpr, x evaluator.NumericalElement, axes []evaluator.NumericalElement) (ir.Element, error) {
 	srcExpr := elements.NewExprAt(fitp.File(), expr)
 	arrayOps := fitp.Evaluator().ArrayOps()
@@ -357,7 +340,7 @@ func evalCastAtomToArrayExpr(fitp *FileScope, expr ir.TypeCastExpr, x evaluator.
 func evalCastToArrayExpr(fitp *FileScope, expr ir.TypeCastExpr, x evaluator.NumericalElement, targetType ir.ArrayType) (ir.Element, error) {
 	origType := expr.Orig().Type()
 	origRank, xDType := ir.Shape(origType)
-	targetDType, err := toConcreteType(fitp, expr.Node(), targetType.DataType())
+	targetDType, err := toConcreteType(fitp.ctx, expr.Node(), fitp.ctx.CurrentFrame(), targetType.DataType())
 	if err != nil {
 		return nil, err
 	}

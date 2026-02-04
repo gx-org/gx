@@ -13,3 +13,13 @@ func TestGenericCast() [2]float64 {
 	// Want:
 	// [2]T{1, 2}
 }
+
+func callGenericCast[T floats](x [2]float32) [2]T {
+	return genericCast[T](x)
+}
+
+func TestGenericCallGenericCast() [2]float64 {
+	return callGenericCast[float64]([2]float32{1, 2})
+	// Want:
+	// [2]T{1, 2}
+}
