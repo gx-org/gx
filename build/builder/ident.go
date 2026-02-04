@@ -53,7 +53,7 @@ func (n *ident) buildExpr(rscope resolveScope) (ir.Expr, bool) {
 func (n *ident) buildTypeExpr(rscope resolveScope) (*ir.TypeValExpr, bool) {
 	idt, ok := n.buildIdent(rscope)
 	if !ok {
-		return nil, false
+		return invalidTypeExprVal, false
 	}
 	return typeFromStorage(rscope, idt, idt.Stor)
 }

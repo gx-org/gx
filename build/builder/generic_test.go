@@ -617,45 +617,6 @@ func callCast() int32 {
 
 }
 
-func TestGenericErrors(t *testing.T) {
-	testbuild.Run(t,
-		testbuild.Decl{
-			Src: `
-type Floats interface {
-	float32 | float // ERROR undefined: float
-}
-`,
-		},
-		testbuild.Decl{
-			Src: `
-func F[t interface{}](a [BatchSize]T) [BatchSize]T // ERROR undefined: T
-`,
-		},
-		testbuild.Decl{
-			Src: `
-func F[T whatisai.X]() T // ERROR undefined: whatisai
-`,
-		},
-		testbuild.Decl{
-			Src: `
-func f[T interface{ float32 | float64 }]() T {
-	T := 3 // ERROR cannot assign to T
-	return T
-}
-`,
-		},
-		testbuild.Decl{
-			Src: `
-func f[T interface{ float32 | float64 }]() T {
-	T = 3 // ERROR cannot assign to T
-	return T
-}
-`,
-		},
-	)
-
-}
-
 func TestGenericExpression(t *testing.T) {
 	testbuild.Run(t,
 		testbuild.Decl{
@@ -764,4 +725,49 @@ func g(x float32) float32 {
 `,
 		},
 	)
+}
+
+func TestGenericErrors(t *testing.T) {
+	testbuild.Run(t,
+		testbuild.Decl{
+			Src: `
+type Floats interface {
+	float32 | float // ERROR undefined: float
+}
+`,
+		},
+		testbuild.Decl{
+			Src: `
+func F[t interface{}](a [BatchSize]T) [BatchSize]T // ERROR undefined: T
+`,
+		},
+		testbuild.Decl{
+			Src: `
+func F[T whatisai.X]() T // ERROR undefined: whatisai
+`,
+		},
+		testbuild.Decl{
+			Src: `
+func f[T interface{ float32 | float64 }]() T {
+	T := 3 // ERROR cannot assign to T
+	return T
+}
+`,
+		},
+		testbuild.Decl{
+			Src: `
+func f[T interface{ float32 | float64 }]() T {
+	T = 3 // ERROR cannot assign to T
+	return T
+}
+`,
+		},
+		testbuild.Decl{
+			Src: `
+func f[T AgeOfTheCaptain](shape []intlen) [shape___]T // ERROR undefined: AgeOfTheCaptain
+`,
+			Err: "array of T not supported",
+		},
+	)
+
 }
