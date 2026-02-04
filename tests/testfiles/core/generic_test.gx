@@ -11,7 +11,7 @@ func genericCast[T floats](x [2]float32) [2]T {
 func TestGenericCast() [2]float64 {
 	return genericCast[float64]([2]float32{1, 2})
 	// Want:
-	// [2]T{1, 2}
+	// [2]float64{1, 2}
 }
 
 func callGenericCast[T floats](x [2]float32) [2]T {
@@ -21,7 +21,7 @@ func callGenericCast[T floats](x [2]float32) [2]T {
 func TestGenericCallGenericCast() [2]float64 {
 	return callGenericCast[float64]([2]float32{1, 2})
 	// Want:
-	// [2]T{1, 2}
+	// [2]float64{1, 2}
 }
 
 func newFloat32(shape []intlen) [shape___]float32 {
@@ -35,7 +35,7 @@ func genericNewFloat32[T floats](shape []intlen) [shape___]T {
 func TestGenericCastWithGenericShape() [2][3]float64 {
 	return genericNewFloat32[float64]([]intlen{2, 3})
 	// Want:
-	// [shape___]T{
+	// [shape___]float64{
 	// 	{0, 0, 0},
 	// 	{0, 0, 0},
 	// }

@@ -368,6 +368,12 @@ func evalCastToArrayExpr(fitp *FileScope, expr ir.TypeCastExpr, x evaluator.Nume
 	if err != nil {
 		return nil, err
 	}
+	targetArrayType := ir.NewArrayType(expr.Expr(), targetDType, targetType.Rank())
+	expr = &ir.CastExpr{
+		Src: expr.Expr(),
+		Typ: targetArrayType,
+		X:   expr.Orig(),
+	}
 	targetDTypeKind := targetDType.Kind()
 	if xDType.Kind() != targetDTypeKind {
 		var err error
