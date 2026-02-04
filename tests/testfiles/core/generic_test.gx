@@ -23,3 +23,20 @@ func TestGenericCallGenericCast() [2]float64 {
 	// Want:
 	// [2]T{1, 2}
 }
+
+func newFloat32(shape []intlen) [shape___]float32 {
+	return [shape___]float32{}
+}
+
+func genericNewFloat32[T floats](shape []intlen) [shape___]T {
+	return [shape___]T(newFloat32(shape))
+}
+
+func TestGenericCastWithGenericShape() [2][3]float64 {
+	return genericNewFloat32[float64]([]intlen{2, 3})
+	// Want:
+	// [shape___]T{
+	// 	{0, 0, 0},
+	// 	{0, 0, 0},
+	// }
+}

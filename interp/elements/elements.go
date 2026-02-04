@@ -19,6 +19,7 @@ import (
 	"fmt"
 	"go/ast"
 	"go/token"
+	"reflect"
 
 	"github.com/pkg/errors"
 	"github.com/gx-org/backend/dtype"
@@ -325,4 +326,13 @@ func EvalRank(fetcher ir.Fetcher, expr ir.Expr) (ir.ArrayRank, []canonical.Canon
 		cans[i] = el.(canonical.Canonical)
 	}
 	return &ir.Rank{Ax: axes}, cans, nil
+}
+
+// ToNumericalElement converts an element into a numerical element.
+func ToNumericalElement(el ir.Element) (evaluator.NumericalElement, error) {
+	numEl, ok := Underlying(el).(evaluator.NumericalElement)
+	if !ok {
+		return nil, errors.Errorf("cannot cast %T to %s", el, reflect.TypeFor[evaluator.NumericalElement]())
+	}
+	return numEl, nil
 }

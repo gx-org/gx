@@ -15,6 +15,7 @@
 package interp
 
 import (
+	"fmt"
 	"go/token"
 	"reflect"
 
@@ -301,18 +302,41 @@ func evalCastToScalarExpr(fitp *FileScope, expr ir.TypeCastExpr, x evaluator.Num
 	return x.Cast(fitp.env, expr, targetType)
 }
 
+func evalArrayAxis(fitp *FileScope, src ir.Node, axLen ir.AxisLengths) ([]evaluator.NumericalElement, error) {
+	el, err := evalExpr(fitp, axLen.AsExpr())
+	if err != nil {
+		return nil, err
+	}
+	switch elT := elements.Underlying(el).(type) {
+	case evaluator.NumericalElement:
+		return []evaluator.NumericalElement{elT}, nil
+	case *elements.Slice:
+		numEls := make([]evaluator.NumericalElement, elT.Len())
+		for i, eli := range elT.Elements() {
+			var err error
+			numEls[i], err = elements.ToNumericalElement(eli)
+			if err != nil {
+				return nil, err
+			}
+		}
+		return numEls, nil
+	default:
+		return nil, errors.Errorf("cannot %T to an axis length: not supported", elT)
+	}
+}
+
 func evalArrayAxes(fitp *FileScope, src ir.Node, typ ir.ArrayType) ([]evaluator.NumericalElement, error) {
 	rank, err := rankOf(fitp.env, src, typ)
 	if err != nil {
 		return nil, err
 	}
-	axes := make([]evaluator.NumericalElement, len(rank.Axes()))
-	for i, axis := range rank.Axes() {
-		var err error
-		axes[i], err = evalNumExpr(fitp, axis.AsExpr())
+	var axes []evaluator.NumericalElement
+	for _, axLen := range rank.Axes() {
+		axis, err := evalArrayAxis(fitp, src, axLen)
 		if err != nil {
 			return nil, err
 		}
+		axes = append(axes, axis...)
 	}
 	return axes, nil
 }
@@ -458,7 +482,12 @@ func evalSliceLiteral(fitp *FileScope, expr *ir.SliceLitExpr) (ir.Element, error
 }
 
 // evalExpr evaluates an expression within the Context.
-func evalExpr(fitp *FileScope, expr ir.Expr) (ir.Element, error) {
+func evalExpr(fitp *FileScope, expr ir.Expr) (_ ir.Element, err error) {
+	defer func() {
+		if err != nil {
+			err = fmt.Errorf("cannot evaluate expression %q:\n%w", expr.String(), err)
+		}
+	}()
 	if expr == nil {
 		return nil, errors.Errorf("cannot evaluate a nil expression")
 	}
@@ -538,11 +567,7 @@ func evalNumExpr(fitp *FileScope, expr ir.Expr) (evaluator.NumericalElement, err
 	if err != nil {
 		return nil, err
 	}
-	numEl, ok := elements.Underlying(el).(evaluator.NumericalElement)
-	if !ok {
-		return nil, errors.Errorf("cannot cast %T to %s", el, reflect.TypeFor[evaluator.NumericalElement]())
-	}
-	return numEl, nil
+	return elements.ToNumericalElement(el)
 }
 
 func evalNumberCastExpr(fitp *FileScope, expr *ir.NumberCastExpr) (evaluator.NumericalElement, error) {

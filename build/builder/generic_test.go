@@ -319,6 +319,23 @@ func f() [2][3]int32 {
 }
 `,
 		},
+		testbuild.Decl{
+			Src: `
+import "dtype"
+
+func newFloat32(shape []intlen) [shape___]float32 {
+	return [shape___]float32{}
+}
+
+func genericNewFloat32[T dtype.Ints](shape []intlen) [shape___]T {
+	return [shape___]T(newFloat32(shape))
+}
+
+func TestGenericCastWithGenericShape() [2][3]int64 {
+	return genericNewFloat32[int64]([]intlen{2, 3})
+}
+`,
+		},
 	)
 }
 
