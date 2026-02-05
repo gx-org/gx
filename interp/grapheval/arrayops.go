@@ -75,7 +75,7 @@ func (ao *arrayOps) Einsum(ctx ir.Evaluator, ref *ir.EinsumExpr, x, y evaluator.
 	}
 	return NewBackendNode(
 		ao.ev,
-		elements.NewExprAt(ctx.File(), ref),
+		ref.Typ,
 		&ops.OutputNode{
 			Node:  dotNode,
 			Shape: targetShape,
@@ -121,7 +121,7 @@ func (ao *arrayOps) BroadcastInDim(ctx ir.Evaluator, expr ir.Expr, x evaluator.N
 	}
 	return NewBackendNode(
 		ao.ev,
-		elements.NewExprAt(ctx.File(), expr),
+		expr.Type(),
 		&ops.OutputNode{
 			Node:  reshaped,
 			Shape: targetShape,
@@ -151,7 +151,7 @@ func (ao *arrayOps) Concat(ctx ir.Evaluator, expr ir.Expr, xs []evaluator.Numeri
 	}
 	return NewBackendNode(
 		ao.ev,
-		elements.NewExprAt(ctx.File(), expr),
+		expr.Type(),
 		&ops.OutputNode{
 			Node: array1d,
 			Shape: &shape.Shape{
@@ -173,7 +173,7 @@ func (ao *arrayOps) Set(ctx ir.Evaluator, expr *ir.FuncCallExpr, x, updates, ind
 	}
 	return NewBackendNode(
 		ao.ev,
-		elements.NewExprAt(ctx.File(), expr),
+		expr.Type(),
 		&ops.OutputNode{
 			Node:  setNode,
 			Shape: nodes[0].Shape,
@@ -195,11 +195,11 @@ func (ao *arrayOps) NodeFromArray(file *ir.File, expr ir.Expr, val values.Array)
 }
 
 // ElementsFromNodes returns a slice of elements from nodes
-func (ao *arrayOps) ElementsFromNodes(file *ir.File, expr ir.Expr, nodes ...*ops.OutputNode) ([]ir.Element, error) {
+func (ao *arrayOps) ElementsFromNodes(file *ir.File, nodes []*ops.OutputNode, types []ir.Type) ([]ir.Element, error) {
 	els := make([]ir.Element, len(nodes))
 	for i, node := range nodes {
 		var err error
-		els[i], err = NewBackendNode(ao.ev, elements.NewExprAt(file, expr), node)
+		els[i], err = NewBackendNode(ao.ev, types[i], node)
 		if err != nil {
 			return nil, err
 		}
@@ -208,13 +208,13 @@ func (ao *arrayOps) ElementsFromNodes(file *ir.File, expr ir.Expr, nodes ...*ops
 }
 
 // Tuple packs multiple nodes into a single tuple node.
-func (ao *arrayOps) Tuple(nodes []ops.Node) (materialise.Node, error) {
+func (ao *arrayOps) Tuple(typ *ir.TupleType, nodes []ops.Node) (materialise.Node, error) {
 	node, err := ao.graph.Core().Tuple(nodes)
 	if err != nil {
 		return nil, err
 	}
 	return NewBackendNode(ao.ev,
-		elements.NewExprAt(nil, nil),
+		typ,
 		&ops.OutputNode{Node: node},
 	)
 }

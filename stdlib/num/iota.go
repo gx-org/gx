@@ -26,6 +26,7 @@ import (
 	"github.com/gx-org/gx/interp/evaluator"
 	"github.com/gx-org/gx/interp/fun"
 	"github.com/gx-org/gx/interp/grapheval"
+	"github.com/gx-org/gx/interp/materialise"
 	"github.com/gx-org/gx/stdlib/builtin"
 	"github.com/gx-org/gx/stdlib/impl"
 )
@@ -78,8 +79,9 @@ func evalIotaFull(ctx evaluator.Env, call elements.CallAt, fn fun.Func, irFunc *
 	if err != nil {
 		return nil, err
 	}
-	return builtin.Materialiser(ctx).ElementsFromNodes(call.File(), call.Node(), &ops.OutputNode{
+	mat := builtin.Materialiser(ctx)
+	return materialise.ElementFromNode(call.File(), mat, &ops.OutputNode{
 		Node:  op,
 		Shape: targetShape,
-	})
+	}, call.Node().Type())
 }

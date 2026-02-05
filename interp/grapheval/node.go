@@ -31,9 +31,9 @@ import (
 
 // BackendNode is a state element owning a node in the backend graph.
 type BackendNode struct {
-	ev   *Evaluator
-	nod  *ops.OutputNode
-	expr elements.ExprAt
+	ev  *Evaluator
+	nod *ops.OutputNode
+	typ ir.Type
 }
 
 var (
@@ -44,17 +44,17 @@ var (
 )
 
 // NewBackendNode returns an element representing a node in the backend graph.
-func NewBackendNode(ev *Evaluator, expr elements.ExprAt, node *ops.OutputNode) (*BackendNode, error) {
+func NewBackendNode(ev *Evaluator, typ ir.Type, node *ops.OutputNode) (*BackendNode, error) {
 	if err := checkShape(node); err != nil {
 		return nil, err
 	}
-	if _, err := ir.ToArrayTypeGivenShape(expr.Node().Type(), node.Shape); err != nil {
+	if _, err := ir.ToArrayTypeGivenShape(typ, node.Shape); err != nil {
 		return nil, errors.Errorf("cannot create a backend node: %v", err)
 	}
 	return &BackendNode{
-		ev:   ev,
-		expr: expr,
-		nod:  node,
+		ev:  ev,
+		typ: typ,
+		nod: node,
 	}, nil
 }
 
@@ -81,14 +81,14 @@ func checkShape(node *ops.OutputNode) error {
 }
 
 // elementFromTuple converts a backend tuple to a Tuple element.
-func (ev *Evaluator) elementFromTuple(src elements.ExprAt, tpl ops.Tuple, shps []*shape.Shape) (*interp.Tuple, error) {
-	elts := make([]ir.Element, tpl.Size())
-	for i := range tpl.Size() {
-		node, err := tpl.Element(i)
+func (ev *Evaluator) elementFromTuple(types []ir.Type, nodeTuple ops.Tuple, shps []*shape.Shape) (*interp.Tuple, error) {
+	elts := make([]ir.Element, nodeTuple.Size())
+	for i := range nodeTuple.Size() {
+		node, err := nodeTuple.Element(i)
 		if err != nil {
 			return nil, err
 		}
-		elts[i], err = NewBackendNode(ev, src.ToExprAt(), &ops.OutputNode{
+		elts[i], err = NewBackendNode(ev, types[i], &ops.OutputNode{
 			Node:  node,
 			Shape: shps[i],
 		})
@@ -126,7 +126,7 @@ func (n *BackendNode) BinaryOp(env evaluator.Env, expr *ir.BinaryExpr, x, y eval
 	}
 	return NewBackendNode(
 		n.ev,
-		elements.NewExprAt(env.File(), expr),
+		expr.Type(),
 		&ops.OutputNode{
 			Node:  binaryNode,
 			Shape: targetShape,
@@ -142,7 +142,7 @@ func (n *BackendNode) UnaryOp(env evaluator.Env, expr *ir.UnaryExpr) (evaluator.
 	}
 	return NewBackendNode(
 		n.ev,
-		elements.NewExprAt(env.File(), expr),
+		expr.Type(),
 		&ops.OutputNode{
 			Node:  unaryNode,
 			Shape: n.nod.Shape,
@@ -159,7 +159,7 @@ func (n *BackendNode) Cast(env evaluator.Env, expr ir.Expr, target ir.Type) (eva
 	}
 	return NewBackendNode(
 		n.ev,
-		elements.NewExprAt(env.File(), expr),
+		expr.Type(),
 		&ops.OutputNode{
 			Node: casted,
 			Shape: &shape.Shape{
@@ -186,7 +186,7 @@ func (n *BackendNode) Reshape(env evaluator.Env, expr ir.Expr, axisLengths []eva
 	}
 	return NewBackendNode(
 		n.ev,
-		elements.NewExprAt(env.File(), expr),
+		expr.Type(),
 		&ops.OutputNode{
 			Node: reshaped,
 			Shape: &shape.Shape{
@@ -211,7 +211,7 @@ func (n *BackendNode) SliceArray(expr ir.Expr, index evaluator.NumericalElement)
 	if err != nil {
 		return nil, err
 	}
-	return NewBackendNode(n.ev, elements.NewExprAt(n.expr.File(), expr), &ops.OutputNode{
+	return NewBackendNode(n.ev, expr.Type(), &ops.OutputNode{
 		Node: sliceNode,
 		Shape: &shape.Shape{
 			DType:       n.Shape().DType,
@@ -222,7 +222,7 @@ func (n *BackendNode) SliceArray(expr ir.Expr, index evaluator.NumericalElement)
 
 // Unflatten consumes the next handles to return a GX value.
 func (n *BackendNode) Unflatten(handles *flatten.Parser) (values.Value, error) {
-	return handles.ParseArray(n.expr.Node().Type())
+	return handles.ParseArray(n.typ)
 }
 
 // Copy the node by returning itself.
@@ -237,7 +237,7 @@ func (n *BackendNode) Shape() *shape.Shape {
 
 // Type of the element.
 func (n *BackendNode) Type() ir.Type {
-	return n.expr.Node().Type()
+	return n.typ
 }
 
 // Materialise returns itself.
@@ -253,25 +253,4 @@ func (n *BackendNode) OutNode() *ops.OutputNode {
 // String representation of the backend node.
 func (n *BackendNode) String() string {
 	return n.nod.String()
-}
-
-// extractGraphNodes extracts all the graph nodes from an element and its children.
-// It first flattens the element, then extracts all the BackendNodes (that is, any elements
-// representing a node in the backend graph).
-func extractGraphNodes(els []ir.Element) ([]ir.Expr, []*ops.OutputNode, error) {
-	flatten, err := flatten.Flatten(els...)
-	if err != nil {
-		return nil, nil, err
-	}
-	var graphNodes []*ops.OutputNode
-	var exprs []ir.Expr
-	for _, elt := range flatten {
-		node, ok := elt.(*BackendNode)
-		if !ok {
-			continue
-		}
-		graphNodes = append(graphNodes, node.nod)
-		exprs = append(exprs, node.expr.Node())
-	}
-	return exprs, graphNodes, nil
 }

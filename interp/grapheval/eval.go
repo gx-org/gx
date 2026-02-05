@@ -134,35 +134,34 @@ func (ev *Evaluator) outputNodesFromElements(file *ir.File, fType *ir.FuncType, 
 	if len(nodes) == 1 {
 		out := &ops.OutputNode{Node: nodes[0], Shape: shapes[0]}
 		return func(outputNode ops.Node) ([]ir.Element, error) {
-			expr := &ir.Ident{
-				Stor: &ir.FieldStorage{Field: results.Fields()[0]},
-			}
-			return ev.ao.ElementsFromNodes(file, expr, out)
+			field := results.Fields()[0]
+			return materialise.ElementFromNode(file, ev.ao, out, field.Type())
 		}, out, nil
 	}
-	exprs := make([]ir.Expr, len(nodes))
-	for i := range nodes {
-		exprs[i] = &ir.Ident{
-			Stor: &ir.FieldStorage{Field: results.Fields()[0]},
-		}
+	tupleType := &ir.TupleType{
+		Types: make([]ir.Type, len(nodes)),
+	}
+	fields := results.Fields()
+	for i, field := range fields {
+		tupleType.Types[i] = field.Type()
 	}
 	tupleNode, err := ev.ao.Graph().Core().Tuple(nodes)
 	if err != nil {
 		return nil, nil, err
 	}
 	return func(outputNode ops.Node) ([]ir.Element, error) {
-		return ev.elementsFromTupleNode(file, tupleNode, exprs, shapes)
+		return ev.elementsFromTupleNode(file, tupleNode, tupleType, shapes)
 	}, &ops.OutputNode{Node: tupleNode}, nil
 }
 
-func (ev *Evaluator) elementsFromTupleNode(file *ir.File, tpl ops.Tuple, elExprs []ir.Expr, shps []*shape.Shape) ([]ir.Element, error) {
-	elts := make([]ir.Element, tpl.Size())
-	for i := range tpl.Size() {
-		node, err := tpl.Element(i)
+func (ev *Evaluator) elementsFromTupleNode(file *ir.File, tupleNode ops.Tuple, tupleType *ir.TupleType, shps []*shape.Shape) ([]ir.Element, error) {
+	elts := make([]ir.Element, tupleNode.Size())
+	for i := range tupleNode.Size() {
+		node, err := tupleNode.Element(i)
 		if err != nil {
 			return nil, err
 		}
-		elts[i], err = NewBackendNode(ev, elements.NewExprAt(file, elExprs[i]), &ops.OutputNode{
+		elts[i], err = NewBackendNode(ev, tupleType.Types[i], &ops.OutputNode{
 			Node:  node,
 			Shape: shps[i],
 		})
@@ -196,14 +195,11 @@ func (ev *Evaluator) ElementFromTuple(file *ir.File, expr ir.Expr, tpl ops.Tuple
 		return nil, err
 	}
 	// Construct dummy expressions for all the fields of the structure to keep track of the value types.
-	fieldExprs := make([]ir.Expr, structTyp.NumFields())
+	structTuple := &ir.TupleType{Types: make([]ir.Type, structTyp.NumFields())}
 	for i, field := range structTyp.Fields.Fields() {
-		fieldExprs[i] = &ir.Ident{
-			Src:  field.Name,
-			Stor: field.Storage(),
-		}
+		structTuple.Types[i] = field.Type()
 	}
-	els, err := ev.elementsFromTupleNode(file, tpl, fieldExprs, shapes)
+	els, err := ev.elementsFromTupleNode(file, tpl, structTuple, shapes)
 	if err != nil {
 		return nil, err
 	}

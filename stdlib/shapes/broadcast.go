@@ -124,8 +124,8 @@ func evalBroadcast(env evaluator.Env, call elements.CallAt, fn fun.Func, irFunc 
 	if err != nil {
 		return nil, err
 	}
-	return mat.ElementsFromNodes(call.File(), call.Node(), &ops.OutputNode{
+	return materialise.ElementFromNode(call.File(), mat, &ops.OutputNode{
 		Node:  op,
 		Shape: targetShape,
-	})
+	}, call.Node().Type())
 }

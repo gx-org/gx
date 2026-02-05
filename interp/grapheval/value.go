@@ -50,7 +50,7 @@ func newValueElement(ev *Evaluator, src elements.ExprAt, value values.Array) (*v
 	if err != nil {
 		return nil, err
 	}
-	node, err := NewBackendNode(ev, src.ToExprAt(), &ops.OutputNode{
+	node, err := NewBackendNode(ev, src.Node().Type(), &ops.OutputNode{
 		Node:  cstNode,
 		Shape: value.Shape(),
 	})

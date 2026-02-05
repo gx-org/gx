@@ -137,9 +137,9 @@ func buildUnary(name string, f func(graph ops.Graph) unaryFunc) builtin.Builder 
 		if err != nil {
 			return nil, err
 		}
-		return mat.ElementsFromNodes(call.File(), call.Node(), &ops.OutputNode{
+		return materialise.ElementFromNode(call.File(), mat, &ops.OutputNode{
 			Node:  node,
 			Shape: xShape,
-		})
+		}, call.Node().Type())
 	})
 }

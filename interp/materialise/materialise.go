@@ -40,8 +40,8 @@ type (
 		// Materialise returns the element with all its values from the graph.
 		NodeFromArray(file *ir.File, expr ir.Expr, val values.Array) (Node, error)
 
-		// ElementsFromNodes returns a slice of elements from nodes
-		ElementsFromNodes(file *ir.File, expr ir.Expr, nodes ...*ops.OutputNode) ([]ir.Element, error)
+		// ElementsFromNodes returns a slice of elements from nodes and their types.
+		ElementsFromNodes(file *ir.File, nodes []*ops.OutputNode, types []ir.Type) ([]ir.Element, error)
 	}
 
 	// ElementMaterialiser is an element that can return an instance of itself composed only of elements from the backend ops.
@@ -116,4 +116,9 @@ func Flatten(mat Materialiser, elts ...ir.Element) ([]ops.Node, []*shape.Shape, 
 		shapes[i] = output.Shape
 	}
 	return result, shapes, nil
+}
+
+// ElementFromNode converts a node and its type into an element.
+func ElementFromNode(file *ir.File, mat Materialiser, node *ops.OutputNode, typ ir.Type) ([]ir.Element, error) {
+	return mat.ElementsFromNodes(file, []*ops.OutputNode{node}, []ir.Type{typ})
 }
