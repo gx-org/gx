@@ -20,6 +20,7 @@ import (
 
 	"github.com/gx-org/gx/build/ir"
 	"github.com/gx-org/gx/stdlib/math/grad/special"
+	"github.com/gx-org/gx/stdlib/math/grad/wrt/param"
 )
 
 type coreStmt[T ir.Stmt] struct {
@@ -93,8 +94,8 @@ func (p *processor) processReturnStmt(isrc *ir.ReturnStmt) (*returnStmt, bool) {
 	return out, true
 }
 
-func (n *returnStmt) buildVJPFunctionWRT(outStmts *astOut, param VJPParam) (*ast.FuncLit, bool) {
-	outWRT := outStmts.newASTOutWRT(param.wrt)
+func (n *returnStmt) buildVJPFunctionWRT(outStmts *astOut, gradParam param.Param) (*ast.FuncLit, bool) {
+	outWRT := outStmts.newASTOutWRT(gradParam.WRT)
 	rets := make([]*special.Expr, len(n.exprs))
 	for i, expr := range n.exprs {
 		var ok bool
@@ -111,7 +112,7 @@ func (n *returnStmt) buildVJPFunctionWRT(outStmts *astOut, param VJPParam) (*ast
 		Results: []ast.Expr{special.Add(rets...).RemoveParen().AST()},
 	})
 	return &ast.FuncLit{
-		Type: param.vjpFType,
+		Type: gradParam.FType,
 		Body: &ast.BlockStmt{List: body},
 	}, true
 }
@@ -129,15 +130,15 @@ func (n *returnStmt) build(outStmts *astOut) bool {
 		}
 	}
 	// Build a backward function for each function parameter.
-	names := make([]ast.Expr, len(n.graph.params))
-	for _, param := range n.graph.params {
-		vjpFuncLit, ok := n.buildVJPFunctionWRT(outStmts, param)
+	names := make([]ast.Expr, len(n.graph.gradParams))
+	for _, gradParam := range n.graph.gradParams {
+		vjpFuncLit, ok := n.buildVJPFunctionWRT(outStmts, gradParam)
 		if !ok {
 			return false
 		}
 		root := "selfVJPFunc"
 		if len(names) > 1 {
-			root += "WRT" + toIdentName(param.wrt.Name())
+			root += "WRT" + toIdentName(gradParam.WRT.Name())
 		}
 		vjpFuncName := n.graph.unames.Name(root)
 		outStmts.append(&ast.AssignStmt{

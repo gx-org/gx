@@ -150,14 +150,14 @@ func (n *funcCallExpr) buildBackward(bckstmts *astOutWRT, bck *special.Expr) (*s
 	}
 	calleeParams := n.irnode.Callee.FuncType().Params.Fields()
 	backwardIdents := make([]*special.Expr, len(calleeParams))
-	for i, param := range calleeParams {
+	for i, calleeParam := range calleeParams {
 		vjpCall := &ast.CallExpr{
 			Fun:  &ast.Ident{Name: n.vjps[i]},
 			Args: []ast.Expr{bck.AST()},
 		}
 		bckSuffix := ""
 		if len(calleeParams) > 1 {
-			bckSuffix = param.Name.Name
+			bckSuffix = calleeParam.Name.Name
 		}
 		bckIdent := bckstmts.assignExprs(n.id, []ast.Expr{vjpCall}, 1, bckSuffix)
 		backwardIdents[i] = special.New(bckIdent[0])

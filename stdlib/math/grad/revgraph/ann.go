@@ -23,6 +23,7 @@ import (
 	"github.com/gx-org/gx/build/ir"
 	"github.com/gx-org/gx/stdlib/math/grad/setann"
 	"github.com/gx-org/gx/stdlib/math/grad/special"
+	"github.com/gx-org/gx/stdlib/math/grad/wrt/param"
 )
 
 type annFunc struct {
@@ -41,8 +42,8 @@ func (p *processor) processFuncWithAnn(ann *setann.Annotation) (stmt, bool) {
 	}, true
 }
 
-func (n *annFunc) buildVJPFunctionWRTFromAnn(astmts *astOut, grad ir.PkgFunc, param VJPParam, args []ast.Expr) (*ast.FuncLit, bool) {
-	backwarder := astmts.newASTOutWRT(param.wrt)
+func (n *annFunc) buildVJPFunctionWRTFromAnn(astmts *astOut, grad ir.PkgFunc, gradParam param.Param, args []ast.Expr) (*ast.FuncLit, bool) {
+	backwarder := astmts.newASTOutWRT(gradParam.WRT)
 	// For each result of the function, builds a VJP for all parameters.
 	// Return the forward results, and all the VJPs.
 	ret := &ast.ReturnStmt{Results: make([]ast.Expr, len(n.graph.nResults.names))}
@@ -61,7 +62,7 @@ func (n *annFunc) buildVJPFunctionWRTFromAnn(astmts *astOut, grad ir.PkgFunc, pa
 	body = append(body, backwarder.stmts...)
 	body = append(body, ret)
 	return &ast.FuncLit{
-		Type: param.vjpFType,
+		Type: gradParam.FType,
 		Body: &ast.BlockStmt{List: body},
 	}, true
 }
@@ -99,15 +100,15 @@ func (n *annFunc) build(astmts *astOut) bool {
 	}
 
 	// Build a backward function for each function parameter.
-	names := make([]ast.Expr, len(n.graph.params))
-	for i, param := range n.graph.params {
-		vjpFuncLit, ok := n.buildVJPFunctionWRTFromAnn(astmts, n.ann.Partials[i], param, args)
+	names := make([]ast.Expr, len(n.graph.gradParams))
+	for i, gradParam := range n.graph.gradParams {
+		vjpFuncLit, ok := n.buildVJPFunctionWRTFromAnn(astmts, n.ann.Partials[i], gradParam, args)
 		if !ok {
 			return false
 		}
 		root := "selfVJPFunc"
 		if len(names) > 1 {
-			root += "WRT" + toIdentName(param.wrt.Name())
+			root += "WRT" + toIdentName(gradParam.WRT.Name())
 		}
 		vjpFuncName := n.graph.unames.Name(root)
 		astmts.append(&ast.AssignStmt{

@@ -142,10 +142,10 @@ func (a *astOut) assignFuncCall(id nodeID, ftype *ir.FuncType, calleeName string
 	root := fmt.Sprintf("%sVJP", calleeName)
 	calleeParams := ftype.Params.Fields()
 	vjps := make([]string, len(calleeParams))
-	for i, param := range calleeParams {
+	for i, calleeParam := range calleeParams {
 		vjpFuncName := root
 		if len(calleeParams) > 1 {
-			vjpFuncName += param.Name.Name
+			vjpFuncName += calleeParam.Name.Name
 		}
 		vjps[i] = a.graph.unames.Name(vjpFuncName)
 		stmt.Lhs = append(stmt.Lhs, &ast.Ident{Name: vjps[i]})

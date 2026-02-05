@@ -22,10 +22,9 @@ import (
 	"github.com/gx-org/gx/base/uname"
 	"github.com/gx-org/gx/build/fmterr"
 	"github.com/gx-org/gx/build/ir"
-	"github.com/gx-org/gx/internal/astbuilder"
 	"github.com/gx-org/gx/internal/interp/compeval/cpevelements"
 	"github.com/gx-org/gx/stdlib/math/grad/setann"
-	"github.com/gx-org/gx/stdlib/math/grad/wrt"
+	"github.com/gx-org/gx/stdlib/math/grad/wrt/param"
 )
 
 var traceAll = false
@@ -64,23 +63,6 @@ func (n *node[T]) String() string {
 	return fmt.Sprint(n.irnode)
 }
 
-// VJPParam is a parameter in a function that the gradient is going to be computed with respect to.
-type VJPParam struct {
-	field    *ir.Field
-	wrt      *wrt.WithRespectTo
-	vjpFType *ast.FuncType
-}
-
-// Name of the field.
-func (p *VJPParam) Name() string {
-	return p.field.Name.Name
-}
-
-// Type of the field.
-func (p *VJPParam) Type() ir.Type {
-	return p.field.Type()
-}
-
 // Graph representing the compute done in a root block.
 type Graph struct {
 	macro  *cpevelements.CoreMacroElement
@@ -89,7 +71,7 @@ type Graph struct {
 	root   stmt
 	nextID int
 
-	params         []VJPParam
+	gradParams     []param.Param
 	nResults       *namedFields
 	nParams        *namedFields
 	typeParamsExpr []ast.Expr
@@ -103,33 +85,20 @@ func New(macro *cpevelements.CoreMacroElement, fn ir.Func) (*Graph, error) {
 		fn:     fn,
 	}
 	fType := g.fn.FuncType()
+	// Register all names to avoid duplicates.
 	g.nResults = nameFields(g.unames, "res", fType.Results.Src)
 	g.nParams = nameFields(g.unames, "par", fType.Params.Src)
-	for _, param := range fType.Params.Fields() {
-		if err := g.buildWRTFromField(param); err != nil {
-			return nil, err
-		}
-	}
 	for _, axisVal := range fType.AxisLengths {
 		g.unames.Register(axisVal.Name())
 	}
 	g.unames.RegisterFieldNames(fType.TypeParams)
-	return g, nil
-}
-
-func (g *Graph) buildWRTFromField(field *ir.Field) error {
-	for _, wrt := range wrt.New(field) {
-		backwardSig, err := g.buildBackwardSignature(g.fn.FuncType(), wrt, g.nResults.fields)
-		if err != nil {
-			return err
-		}
-		g.params = append(g.params, VJPParam{
-			field:    field,
-			wrt:      wrt,
-			vjpFType: backwardSig,
-		})
+	// Build the VJP params and function signatures.
+	var err error
+	g.gradParams, err = param.Build(fType, g.nResults.fields)
+	if err != nil {
+		return nil, err
 	}
-	return nil
+	return g, nil
 }
 
 func concatFieldList(lists ...*ast.FieldList) *ast.FieldList {
@@ -143,10 +112,10 @@ func concatFieldList(lists ...*ast.FieldList) *ast.FieldList {
 // BuildType builds the type of the function.
 func (g *Graph) BuildType() *ast.FuncType {
 	fType := g.fn.FuncType()
-	vjpFuncs := make([]*ast.Field, len(g.params))
-	for i, param := range g.params {
+	vjpFuncs := make([]*ast.Field, len(g.gradParams))
+	for i, gradParam := range g.gradParams {
 		vjpFuncs[i] = &ast.Field{
-			Type: param.vjpFType,
+			Type: gradParam.FType,
 		}
 	}
 	vjpType := &ast.FuncType{
@@ -165,8 +134,8 @@ func (g *Graph) BuildType() *ast.FuncType {
 }
 
 // VJPs returns all the parameters with which the gradient is going to be computed with respect to.
-func (g *Graph) VJPs() []VJPParam {
-	return g.params
+func (g *Graph) VJPs() []param.Param {
+	return g.gradParams
 }
 
 // Func returns the function represented by the graph.
@@ -214,24 +183,6 @@ func (p *processor) processFuncWithoutAnn() (stmt, bool) {
 		p.typeParamsExpr[i] = &ast.Ident{Name: typeParam.Name.Name}
 	}
 	return root, ok
-}
-
-func (g *Graph) buildBackwardSignature(fType *ir.FuncType, wrt *wrt.WithRespectTo, namedResultFields *ast.FieldList) (*ast.FuncType, error) {
-	results, err := astbuilder.Clone(&ast.FieldList{
-		List: []*ast.Field{&ast.Field{
-			Type: wrt.FieldType(),
-		}},
-	}, astbuilder.AssignToExpandShape)
-	if err != nil {
-		return nil, err
-	}
-
-	return &ast.FuncType{
-		// Gradient coming from the output values of the function.
-		Params: namedResultFields,
-		// Return the gradient.
-		Results: results,
-	}, nil
 }
 
 func (g *Graph) funcNameWithTypeParamsExpr(fn ast.Expr) ast.Expr {
