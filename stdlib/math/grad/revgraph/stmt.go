@@ -94,7 +94,7 @@ func (p *processor) processReturnStmt(isrc *ir.ReturnStmt) (*returnStmt, bool) {
 	return out, true
 }
 
-func (n *returnStmt) buildVJPFunctionWRT(outStmts *astOut, gradParam param.Param) (*ast.FuncLit, bool) {
+func (n *returnStmt) buildVJPFunctionWRT(outStmts *astOut, gradParam *param.Array) (*ast.FuncLit, bool) {
 	outWRT := outStmts.newASTOutWRT(gradParam.WRT)
 	rets := make([]*special.Expr, len(n.exprs))
 	for i, expr := range n.exprs {
@@ -112,7 +112,7 @@ func (n *returnStmt) buildVJPFunctionWRT(outStmts *astOut, gradParam param.Param
 		Results: []ast.Expr{special.Add(rets...).RemoveParen().AST()},
 	})
 	return &ast.FuncLit{
-		Type: gradParam.FType,
+		Type: gradParam.FuncType(),
 		Body: &ast.BlockStmt{List: body},
 	}, true
 }
@@ -131,7 +131,7 @@ func (n *returnStmt) build(outStmts *astOut) bool {
 	}
 	// Build a backward function for each function parameter.
 	names := make([]ast.Expr, len(n.graph.gradParams))
-	for _, gradParam := range n.graph.gradParams {
+	for _, gradParam := range n.graph.gradParams.Arrays() {
 		vjpFuncLit, ok := n.buildVJPFunctionWRT(outStmts, gradParam)
 		if !ok {
 			return false

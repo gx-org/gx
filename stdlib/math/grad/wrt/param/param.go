@@ -23,22 +23,38 @@ import (
 	"github.com/gx-org/gx/stdlib/math/grad/wrt"
 )
 
-// Param is a parameter in a function that the gradient is going to be computed with respect to.
-type Param struct {
+type core struct {
 	field *ir.Field
-	WRT   *wrt.WithRespectTo
-	FType *ast.FuncType
+	ftype *ast.FuncType
+}
+
+// FuncType returns the type of the function computing the gradient.
+func (p *core) FuncType() *ast.FuncType {
+	return p.ftype
 }
 
 // Name of the field.
-func (p *Param) Name() string {
+func (p *core) Name() string {
 	return p.field.Name.Name
 }
 
 // Type of the field.
-func (p *Param) Type() ir.Type {
+func (p *core) Type() ir.Type {
 	return p.field.Type()
 }
+
+type (
+	// Param is a parameter in a function with the array type.
+	Param interface {
+		Arrays() []*Array
+		FuncType() *ast.FuncType
+		Name() string
+		Type() ir.Type
+	}
+
+	// Params groups all the parameters of a function.
+	Params []Param
+)
 
 // Build builds the gradient parameters given a function type.
 func Build(fType *ir.FuncType, backwardValues *ast.FieldList) ([]Param, error) {
@@ -53,6 +69,14 @@ func Build(fType *ir.FuncType, backwardValues *ast.FieldList) ([]Param, error) {
 	return params, nil
 }
 
+// Arrays returns all the arrays for which the gradient needs to be computed for.
+func (p Params) Arrays() (arrays []*Array) {
+	for _, param := range p {
+		arrays = append(arrays, param.Arrays()...)
+	}
+	return arrays
+}
+
 func buildWRTFromField(fType *ir.FuncType, backwardValues *ast.FieldList, field *ir.Field) ([]Param, error) {
 	var params []Param
 	for _, wrt := range wrt.New(field) {
@@ -60,10 +84,12 @@ func buildWRTFromField(fType *ir.FuncType, backwardValues *ast.FieldList, field 
 		if err != nil {
 			return nil, err
 		}
-		params = append(params, Param{
-			field: field,
-			WRT:   wrt,
-			FType: backwardSig,
+		params = append(params, &Array{
+			core: core{
+				field: field,
+				ftype: backwardSig,
+			},
+			WRT: wrt,
 		})
 	}
 	return params, nil

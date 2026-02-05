@@ -71,7 +71,7 @@ type Graph struct {
 	root   stmt
 	nextID int
 
-	gradParams     []param.Param
+	gradParams     param.Params
 	nResults       *namedFields
 	nParams        *namedFields
 	typeParamsExpr []ast.Expr
@@ -115,7 +115,7 @@ func (g *Graph) BuildType() *ast.FuncType {
 	vjpFuncs := make([]*ast.Field, len(g.gradParams))
 	for i, gradParam := range g.gradParams {
 		vjpFuncs[i] = &ast.Field{
-			Type: gradParam.FType,
+			Type: gradParam.FuncType(),
 		}
 	}
 	vjpType := &ast.FuncType{
