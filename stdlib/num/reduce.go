@@ -17,6 +17,7 @@ package num
 import (
 	"go/ast"
 
+	"github.com/pkg/errors"
 	"github.com/gx-org/gx/build/builtins"
 	"github.com/gx-org/gx/build/fmterr"
 	"github.com/gx-org/gx/build/ir"
@@ -38,6 +39,9 @@ func reductionFuncSig(fetcher ir.Fetcher, f builtin.Func, call *ir.FuncCallExpr)
 		return nil, err
 	}
 	arrayType := call.Args[0].Type().(ir.ArrayType)
+	if !irkind.IsAlgebra(arrayType.DataType().Kind()) {
+		return nil, errors.Errorf("expect an array with an algebra data type (found %s)", arrayType.DataType().Kind())
+	}
 	rank := arrayType.Rank()
 	reduceAxes, err := builtins.UniqueAxesFromExpr(fetcher, call.Args[1])
 	if err != nil {

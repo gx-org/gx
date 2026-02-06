@@ -15,7 +15,9 @@
 // Package irkind defines kind for the GX intermediate representation (IR).
 package irkind
 
-import "github.com/gx-org/backend/dtype"
+import (
+	"github.com/gx-org/backend/dtype"
+)
 
 // Kind of a type.
 type Kind uint
@@ -212,4 +214,9 @@ func IsFloatKind(kind Kind) bool {
 		return true
 	}
 	return false
+}
+
+// IsAlgebra returns true if kind can be used in algebraic operations (+, -, *, /).
+func IsAlgebra(kind Kind) bool {
+	return IsFloatKind(kind) || IsIntegerKind(kind)
 }

@@ -291,3 +291,7 @@ func testControlWithInvalidBodyResult() loopState {
 func testMathCeilWithMismatchedShape() [1]float32 {
 	return math.Ceil[float32]([2]float32{1, 2}) // ERROR cannot use [2]float32 as [1]float32 value in return statement
 }
+
+func testSumWithBool() [1]float32 {
+	return num.Sum([2]bool{}, []intidx{0}) // ERROR expect an array with an algebra data type (found bool)
+}
