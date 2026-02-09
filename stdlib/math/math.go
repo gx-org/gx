@@ -17,7 +17,6 @@
 package math
 
 import (
-	"embed"
 	"go/ast"
 	"go/token"
 	"math"
@@ -37,9 +36,6 @@ import (
 	"github.com/gx-org/gx/stdlib/impl"
 )
 
-//go:embed *.gx
-var fs embed.FS
-
 // Package description of the GX num package.
 var Package = builtin.PackageBuilder{
 	FullPath: "math",
@@ -49,7 +45,7 @@ var Package = builtin.PackageBuilder{
 		buildConstScalar("NegInfFloat32", float32(math.Inf(-1))),
 		buildConstScalar("InfFloat64", math.Inf(1)),
 		buildConstScalar("NegInfFloat64", math.Inf(-1)),
-		builtin.ParseSource(&fs),
+		builtin.ParseSource(),
 		builtin.BuildFunc(pow{}),
 		builtin.BuildFunc(minFunc{}),
 		builtin.BuildFunc(maxFunc{}),

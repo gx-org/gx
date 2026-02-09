@@ -16,21 +16,16 @@
 package dtype
 
 import (
-	"embed"
-
 	"github.com/gx-org/gx/interp"
 	"github.com/gx-org/gx/stdlib/builtin"
 	"github.com/gx-org/gx/stdlib/impl"
 )
 
-//go:embed *.gx
-var fs embed.FS
-
 // Package description of the GX dtype package.
 var Package = builtin.PackageBuilder{
 	FullPath: "dtype",
 	Builders: []builtin.Builder{
-		builtin.ParseSource(&fs),
+		builtin.ParseSource(),
 		builtin.ImplementStubFunc("Reinterpret", func(impl *impl.Stdlib) interp.FuncBuiltin {
 			return impl.Dtype.Reinterpret
 		}),

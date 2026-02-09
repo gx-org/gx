@@ -17,6 +17,7 @@
 package stdlib
 
 import (
+	"embed"
 	"maps"
 	"slices"
 
@@ -33,10 +34,14 @@ import (
 	"github.com/gx-org/gx/stdlib/shapes"
 )
 
+//go:embed dtype/*.gx num/*.gx math/grad/*.gx math/*.gx shapes/*.gx rand/*.gx
+var fs embed.FS
+
 // Stdlib builds the standard library given import paths.
 type Stdlib struct {
 	impl *impl.Stdlib
 	libs map[string]builtin.PackageBuilder
+	fs   *embed.FS
 }
 
 var _ importers.Importer = (*Stdlib)(nil)
@@ -59,6 +64,7 @@ func Importer(stdlibImpl *impl.Stdlib) *Stdlib {
 	lib := &Stdlib{
 		impl: stdlibImpl,
 		libs: make(map[string]builtin.PackageBuilder),
+		fs:   &fs,
 	}
 	for _, pkgBuilder := range packages {
 		lib.libs[pkgBuilder.FullPath] = pkgBuilder
@@ -78,7 +84,11 @@ func (l *Stdlib) Import(bld importers.Builder, path string) (importers.Package, 
 	if !ok {
 		return nil, errors.Errorf("package %s is not in std", path)
 	}
-	return builtin.Build(bld, l.impl, pkgBuilder)
+	return builtin.BuilderParam{
+		Builder: bld,
+		Imp:     l.impl,
+		FS:      l.fs,
+	}.Build(pkgBuilder)
 }
 
 // Paths returns all the paths in the standard library

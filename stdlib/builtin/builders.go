@@ -18,6 +18,7 @@ import (
 	"embed"
 	"fmt"
 	"go/ast"
+	"path"
 	"reflect"
 	"runtime"
 	"strings"
@@ -31,7 +32,7 @@ import (
 
 type baseBuilder struct {
 	name  string
-	build func(bld importers.Builder, impl *impl.Stdlib, pkg importers.FilePackage) error
+	build func(param *BuilderParam, pkg importers.FilePackage) error
 }
 
 var _ Builder = (*baseBuilder)(nil)
@@ -40,23 +41,25 @@ func (fb baseBuilder) Name() string {
 	return fb.name
 }
 
-func (fb baseBuilder) Build(bld importers.Builder, impl *impl.Stdlib, pkg importers.FilePackage) error {
-	return fb.build(bld, impl, pkg)
+func (fb baseBuilder) Build(param *BuilderParam, pkg importers.FilePackage) error {
+	return fb.build(param, pkg)
 }
 
 type sourceParser struct {
-	fs    *embed.FS
 	names []string
 }
 
-func topLevelNames(fs *embed.FS) ([]string, error) {
-	entries, err := fs.ReadDir(".")
+func topLevelNames(fs *embed.FS, pkgPath string) ([]string, error) {
+	entries, err := fs.ReadDir(pkgPath)
 	if err != nil {
 		return nil, fmt.Errorf("cannot read GX files directory: %w", err)
 	}
-	names := make([]string, len(entries))
-	for i, entry := range entries {
-		names[i] = entry.Name()
+	var names []string
+	for _, entry := range entries {
+		if entry.IsDir() {
+			continue
+		}
+		names = append(names, entry.Name())
 	}
 	return names, nil
 }
@@ -65,19 +68,24 @@ func (b *sourceParser) Name() string {
 	return fmt.Sprintf("%T%v", b, b.names)
 }
 
-func (b *sourceParser) Build(bld importers.Builder, _ *impl.Stdlib, pkg importers.FilePackage) (err error) {
+func (b *sourceParser) Build(param *BuilderParam, pkg importers.FilePackage) (err error) {
+	pkgPath := pkg.IR().FullName()
 	if len(b.names) == 0 {
-		if b.names, err = topLevelNames(b.fs); err != nil {
+		if b.names, err = topLevelNames(param.FS, pkgPath); err != nil {
 			return err
 		}
 	}
-	return pkg.BuildFiles(b.fs, b.names)
+	names := make([]string, len(b.names))
+	for i, name := range b.names {
+		names[i] = path.Join(pkgPath, name)
+	}
+	return pkg.BuildFiles(param.FS, names)
 }
 
 // ParseSource builds a package by parsing source files.
 // If names is empty, all files at the top-level will parsed.
-func ParseSource(fs *embed.FS, names ...string) Builder {
-	return &sourceParser{fs: fs, names: names}
+func ParseSource(names ...string) Builder {
+	return &sourceParser{names: names}
 }
 
 // FuncBuilder builds a function for a package.
@@ -95,9 +103,9 @@ func funcName(f any) string {
 
 // BuildFunc builds a function in a package.
 func BuildFunc(f FuncBuilder) Builder {
-	buildFunc := func(_ importers.Builder, impl *impl.Stdlib, pkg importers.FilePackage) error {
+	buildFunc := func(param *BuilderParam, pkg importers.FilePackage) error {
 		irPkg := pkg.IR()
-		fn, err := f.BuildFuncIR(impl, irPkg)
+		fn, err := f.BuildFuncIR(param.Imp, irPkg)
 		if err != nil {
 			return err
 		}
@@ -163,7 +171,7 @@ func findFunc(pkg *ir.Package, name string) (*ir.FuncBuiltin, error) {
 func ImplementStubFunc(name string, slotFn func(impl *impl.Stdlib) interp.FuncBuiltin) Builder {
 	return baseBuilder{
 		name: name,
-		build: func(bld importers.Builder, impl *impl.Stdlib, pkg importers.FilePackage) error {
+		build: func(param *BuilderParam, pkg importers.FilePackage) error {
 			stub, err := findFunc(pkg.IR(), name)
 			if err != nil {
 				return err
@@ -171,7 +179,7 @@ func ImplementStubFunc(name string, slotFn func(impl *impl.Stdlib) interp.FuncBu
 			if stub == nil {
 				return errors.Errorf("failed to replace function stub %q: builtin function declaration not found", name)
 			}
-			stub.Impl = &stubFunc{name: name, ftype: stub.FuncType(), impl: slotFn(impl)}
+			stub.Impl = &stubFunc{name: name, ftype: stub.FuncType(), impl: slotFn(param.Imp)}
 			return nil
 		},
 	}
@@ -206,7 +214,7 @@ func (s *graphFunc) Implementation() any {
 func ImplementGraphFunc(name string, slotFn interp.FuncBuiltin) Builder {
 	return baseBuilder{
 		name: name,
-		build: func(bld importers.Builder, impl *impl.Stdlib, pkg importers.FilePackage) error {
+		build: func(param *BuilderParam, pkg importers.FilePackage) error {
 			for _, fn := range pkg.IR().Decls.Funcs {
 				if fn.Name() == name {
 					stub := fn.(*ir.FuncBuiltin)
@@ -226,7 +234,7 @@ type MethodBuilder interface {
 
 // BuildMethod builds a method for a named type in a package.
 func BuildMethod(name string, f MethodBuilder) Builder {
-	buildMethod := func(bld importers.Builder, impl *impl.Stdlib, pkg importers.FilePackage) error {
+	buildMethod := func(param *BuilderParam, pkg importers.FilePackage) error {
 		irPkg := pkg.IR()
 		var namedType *ir.NamedType
 		for _, named := range irPkg.Decls.Types {
@@ -238,7 +246,7 @@ func BuildMethod(name string, f MethodBuilder) Builder {
 		if namedType == nil {
 			return errors.Errorf("type %s undefined", name)
 		}
-		fn, err := f.BuildMethodIR(impl, pkg, namedType)
+		fn, err := f.BuildMethodIR(param.Imp, pkg, namedType)
 		if err != nil {
 			return err
 		}
@@ -267,9 +275,9 @@ type TypeBuilder interface {
 
 // BuildType builds a function in a package.
 func BuildType(f TypeBuilder) Builder {
-	buildType := func(bld importers.Builder, impl *impl.Stdlib, pkg importers.FilePackage) error {
+	buildType := func(param *BuilderParam, pkg importers.FilePackage) error {
 		irPkg := pkg.IR()
-		tp, err := f.BuildNamedType(impl, irPkg)
+		tp, err := f.BuildNamedType(param.Imp, irPkg)
 		if err != nil {
 			return err
 		}
@@ -288,7 +296,7 @@ type ConstBuilder func(*ir.Package) (string, ir.Expr, ir.Type, error)
 
 // BuildConst builds a function in a package.
 func BuildConst(f ConstBuilder) Builder {
-	buildConst := func(bld importers.Builder, _ *impl.Stdlib, pkg importers.FilePackage) error {
+	buildConst := func(param *BuilderParam, pkg importers.FilePackage) error {
 		irPkg := pkg.IR()
 		name, expr, typ, err := f(irPkg)
 		if err != nil {

@@ -50,8 +50,8 @@ var Package = builtin.PackageBuilder{
 			}
 			return "maxFloat64BelowOne", value, value.Type(), nil
 		}),
-		builtin.ParseSource(&fs, "philox.gx"),
-		builtin.ParseSource(&fs, "rand.gx"),
+		builtin.ParseSource("philox.gx"),
+		builtin.ParseSource("rand.gx"),
 		builtin.ImplementBuiltin("newBootstrapGenerator", evalNewBootstrapGenerator),
 		builtin.ImplementBuiltin("bootstrapGenerator.next", evalBootstrapGeneratorNext),
 		builtin.ImplementStubFunc("Philox.Uint32", func(impl *impl.Stdlib) interp.FuncBuiltin { return impl.Rand.PhiloxUint32 }),

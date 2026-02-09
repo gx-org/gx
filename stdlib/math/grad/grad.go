@@ -16,7 +16,6 @@
 package grad
 
 import (
-	"embed"
 	"go/ast"
 	"go/token"
 
@@ -33,14 +32,11 @@ import (
 	"github.com/gx-org/gx/stdlib/math/grad/wrt"
 )
 
-//go:embed *.gx
-var fs embed.FS
-
 // Package description of the GX meta/grad package.
 var Package = builtin.PackageBuilder{
 	FullPath: "math/grad",
 	Builders: []builtin.Builder{
-		builtin.ParseSource(&fs),
+		builtin.ParseSource(),
 		builtin.RegisterMacro("Func", FuncGrad),
 		builtin.RegisterMacro("Reverse", Reverse),
 		builtin.RegisterFuncAnnotator("Set", SetGrad),

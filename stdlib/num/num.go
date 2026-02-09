@@ -16,19 +16,14 @@
 package num
 
 import (
-	"embed"
-
 	"github.com/gx-org/gx/stdlib/builtin"
 )
-
-//go:embed *.gx
-var fs embed.FS
 
 // Package description of the GX num package.
 var Package = builtin.PackageBuilder{
 	FullPath: "num",
 	Builders: []builtin.Builder{
-		builtin.ParseSource(&fs, "num.gx"),
+		builtin.ParseSource("num.gx"),
 		builtin.BuildFunc(reduceSum{}),
 		builtin.BuildFunc(transpose{}),
 		builtin.BuildFunc(einsum{}),

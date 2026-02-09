@@ -22,7 +22,6 @@ import (
 	"github.com/gx-org/gx/build/fmterr"
 	"github.com/gx-org/gx/build/importers"
 	"github.com/gx-org/gx/build/ir"
-	"github.com/gx-org/gx/stdlib/impl"
 )
 
 type registerMacro struct {
@@ -38,7 +37,7 @@ func RegisterMacro(name string, impl ir.MacroImpl) Builder {
 	}
 }
 
-func (b *registerMacro) Build(bld importers.Builder, _ *impl.Stdlib, pkg importers.FilePackage) (err error) {
+func (b *registerMacro) Build(param *BuilderParam, pkg importers.FilePackage) (err error) {
 	pkgIR := pkg.IR()
 	defer func() {
 		if err != nil {
@@ -66,7 +65,7 @@ type registerAnnotator struct {
 	setImpl func(ir.PkgFunc) error
 }
 
-func (b *registerAnnotator) Build(bld importers.Builder, _ *impl.Stdlib, pkg importers.FilePackage) (err error) {
+func (b *registerAnnotator) Build(param *BuilderParam, pkg importers.FilePackage) (err error) {
 	pkgIR := pkg.IR()
 	defer func() {
 		if err != nil {

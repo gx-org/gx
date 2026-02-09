@@ -16,6 +16,7 @@
 package builtin
 
 import (
+	"embed"
 	"go/ast"
 	"path/filepath"
 
@@ -28,12 +29,19 @@ import (
 )
 
 type (
+	// BuilderParam groups all the parameters to build the IR of builtin packages.
+	BuilderParam struct {
+		Builder importers.Builder
+		Imp     *impl.Stdlib
+		FS      *embed.FS
+	}
+
 	// Builder a builtin package.
 	Builder interface {
 		// Name of the builder (for debugging purpose only).
 		Name() string
 		// Build the given package.
-		Build(importers.Builder, *impl.Stdlib, importers.FilePackage) error
+		Build(*BuilderParam, importers.FilePackage) error
 	}
 
 	// PackageBuilder builds a builtin package, that is a package composed of GX and Go code.
@@ -46,17 +54,17 @@ type (
 )
 
 // Build a package from its description.
-func Build(bld importers.Builder, impl *impl.Stdlib, pkgBuilder PackageBuilder) (importers.Package, error) {
+func (param BuilderParam) Build(pkgBuilder PackageBuilder) (importers.Package, error) {
 	path, name := filepath.Split(pkgBuilder.FullPath)
 	if len(path) > 0 {
 		path = path[:len(path)-1]
 	}
-	pkg, err := bld.NewPackage(path, name)
+	pkg, err := param.Builder.NewPackage(path, name)
 	if err != nil {
 		return nil, err
 	}
 	for _, builder := range pkgBuilder.Builders {
-		if err := builder.Build(bld, impl, pkg); err != nil {
+		if err := builder.Build(&param, pkg); err != nil {
 			return nil, err
 		}
 	}

@@ -16,21 +16,16 @@
 package shapes
 
 import (
-	"embed"
-
 	"github.com/gx-org/gx/interp"
 	"github.com/gx-org/gx/stdlib/builtin"
 	"github.com/gx-org/gx/stdlib/impl"
 )
 
-//go:embed *.gx
-var fs embed.FS
-
 // Package description of the GX shapes package.
 var Package = builtin.PackageBuilder{
 	FullPath: "shapes",
 	Builders: []builtin.Builder{
-		builtin.ParseSource(&fs),
+		builtin.ParseSource(),
 		builtin.BuildFunc(concat{}),
 		builtin.BuildFunc(split{}),
 		builtin.BuildFunc(broadcast{}),
