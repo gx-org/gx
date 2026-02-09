@@ -19,7 +19,6 @@ import (
 	"go/ast"
 	"path/filepath"
 	"strings"
-	"testing"
 
 	"github.com/google/go-cmp/cmp"
 	"github.com/gx-org/gx/api"
@@ -76,7 +75,12 @@ func NewRunner(rtm *api.Runtime, devID int) (*Runner, error) {
 	if err != nil {
 		return nil, err
 	}
-	return &Runner{dev: dev}, nil
+	return NewRunnerDevice(dev), nil
+}
+
+// NewRunnerDevice returns a new runner given a device.
+func NewRunnerDevice(dev *api.Device) *Runner {
+	return &Runner{dev: dev}
 }
 
 // Run compiles a function into a XLA graph, runs it, and returns the result.
@@ -202,22 +206,20 @@ func textFromComment(cmt *ast.CommentGroup, prefix string) string {
 	return strings.TrimSpace(text)
 }
 
-func (r *Runner) run(t *testing.T, fn *ir.FuncDecl, options []options.PackageOption) {
+// Test runs a GX test and returns an error if the test fails.
+func (r *Runner) Test(fn *ir.FuncDecl, options []options.PackageOption) error {
 	values, got, err := r.Run(fn, options)
 	if err != nil {
-		t.Errorf("runner.Run error:\n%+v", err)
-		return
+		return fmt.Errorf("runner.Run error:\n%+v", err)
 	}
 	wantOutCmt, err := wantOutput(fn)
 	if err != nil {
-		t.Errorf("%s: incorrect output declaration: %v",
+		return fmt.Errorf("%s: incorrect output declaration: %v",
 			fmterr.At(fn.File().Package.FSet, fn.Src).String(),
 			err)
-		return
 	}
 	if wantOutCmt == nil {
-		t.Errorf("%s expected a Want: directive", fmterr.At(fn.File().Package.FSet, fn.Src))
-		return
+		return fmt.Errorf("%s expected a Want: directive", fmterr.At(fn.File().Package.FSet, fn.Src))
 	}
 	want := textFromComment(wantOutCmt, WantPrefix)
 	if got != want {
@@ -225,7 +227,8 @@ func (r *Runner) run(t *testing.T, fn *ir.FuncDecl, options []options.PackageOpt
 		for i, val := range values {
 			gotTypes[i] = fmt.Sprintf("%T", val)
 		}
-		t.Errorf("test run error:\n%s: incorrect output:\ngot (%s):\n%s\nwant:\n%s\ndiff:\n%s\n",
+		return fmt.Errorf("test run error:\n%s: incorrect output:\ngot (%s):\n%s\nwant:\n%s\ndiff:\n%s",
 			fmterr.At(fn.File().Package.FSet, wantOutCmt), strings.Join(gotTypes, ","), got, want, cmp.Diff(got, want))
 	}
+	return nil
 }

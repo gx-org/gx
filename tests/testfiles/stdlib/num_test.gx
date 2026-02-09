@@ -375,4 +375,3 @@ func TestMatmulVarsDimVectorMatrix() [dim1]float32 {
 	// Want:
 	// [dim1]float32{0, 0}
 }
-

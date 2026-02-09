@@ -168,6 +168,11 @@ func (c *FuncCache) Runner(recv values.Value, args []values.Value) (tracer.Compi
 }
 
 // Func returns the function being cached.
-func (c *FuncCache) Func() ir.PkgFunc {
+func (c *FuncCache) Func() *ir.FuncDecl {
 	return c.fn
+}
+
+// Device on which the function is going to run.
+func (c *FuncCache) Device() *api.Device {
+	return c.pkg.devSetup.Device()
 }

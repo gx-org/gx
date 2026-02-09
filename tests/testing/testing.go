@@ -199,7 +199,9 @@ func RunAll(t *testing.T, rtm *api.Runtime, pkg *ir.Package, err error) (numTest
 		name := fn.File().Package.Name.Name + "." + fn.Name()
 		t.Run(name, func(t *testing.T) {
 			numTests++
-			tRunner.run(t, fn, options)
+			if err := tRunner.Test(fn, options); err != nil {
+				t.Error(err)
+			}
 		})
 	}
 	return
