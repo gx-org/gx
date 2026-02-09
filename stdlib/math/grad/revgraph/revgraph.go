@@ -24,7 +24,7 @@ import (
 	"github.com/gx-org/gx/build/ir"
 	"github.com/gx-org/gx/internal/interp/compeval/cpevelements"
 	"github.com/gx-org/gx/stdlib/math/grad/setann"
-	"github.com/gx-org/gx/stdlib/math/grad/wrt/param"
+	"github.com/gx-org/gx/stdlib/math/grad/wrt"
 )
 
 var traceAll = false
@@ -71,7 +71,7 @@ type Graph struct {
 	root   stmt
 	nextID int
 
-	gradParams     param.Params
+	gradParams     wrt.WRTs
 	nResults       *namedFields
 	nParams        *namedFields
 	typeParamsExpr []ast.Expr
@@ -94,7 +94,7 @@ func New(macro *cpevelements.CoreMacroElement, fn ir.Func) (*Graph, error) {
 	g.unames.RegisterFieldNames(fType.TypeParams)
 	// Build the VJP params and function signatures.
 	var err error
-	g.gradParams, err = param.Build(fType, g.nResults.fields)
+	g.gradParams, err = wrt.Build(fType, g.nResults.fields)
 	if err != nil {
 		return nil, err
 	}
@@ -112,8 +112,9 @@ func concatFieldList(lists ...*ast.FieldList) *ast.FieldList {
 // BuildType builds the type of the function.
 func (g *Graph) BuildType() *ast.FuncType {
 	fType := g.fn.FuncType()
-	vjpFuncs := make([]*ast.Field, len(g.gradParams))
-	for i, gradParam := range g.gradParams {
+	flatResults := g.gradParams.Arrays()
+	vjpFuncs := make([]*ast.Field, len(flatResults))
+	for i, gradParam := range flatResults {
 		vjpFuncs[i] = &ast.Field{
 			Type: gradParam.FuncType(),
 		}
@@ -134,7 +135,7 @@ func (g *Graph) BuildType() *ast.FuncType {
 }
 
 // VJPs returns all the parameters with which the gradient is going to be computed with respect to.
-func (g *Graph) VJPs() []param.Param {
+func (g *Graph) VJPs() []wrt.WRT {
 	return g.gradParams
 }
 

@@ -12,18 +12,22 @@
 // See the License for the specific language governing permissions and
 // limitations under the License.
 
-package param
+package wrt
 
-import "github.com/gx-org/gx/stdlib/math/grad/wrt"
+import "github.com/gx-org/gx/build/ir"
 
 // Array is a parameter in a function with the array type.
 type Array struct {
-	core
-	WRT *wrt.WithRespectTo
+	*core
 }
 
 // Arrays returns the list of array for which the gradient needs to be computed with respect to.
 // In this case, it just returns itself.
-func (p *Array) Arrays() []*Array {
-	return []*Array{p}
+func (arr *Array) Arrays() []*Array {
+	return []*Array{arr}
+}
+
+// Same returns true if src matches the field of the receiver.
+func (arr *Array) Same(src *ir.Field) bool {
+	return src == arr.field
 }

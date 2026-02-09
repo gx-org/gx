@@ -50,24 +50,25 @@ type gradMacro struct {
 	call   elements.CallAt
 	unames *uname.Unique
 
-	wrt      *wrt.WithRespectTo
+	wrt      wrt.WRT
 	revgraph *revgraph.Graph
 }
 
 var _ ir.FuncASTBuilder = (*gradMacro)(nil)
 
-func findParamStorage(file *ir.File, src ir.Node, fn ir.Func, name string) (*wrt.WithRespectTo, error) {
-	recv := fn.FuncType().ReceiverField()
+func findParamStorage(file *ir.File, src ir.Node, fn ir.Func, name string) (wrt.WRT, error) {
+	ftype := fn.FuncType()
+	recv := ftype.ReceiverField()
 	if recv != nil && recv.Name != nil {
 		if recv.Name.Name == name {
-			return wrt.New(recv)[0], nil
+			return wrt.BuildFromField(nil, recv)
 		}
 	}
 	field := fn.FuncType().Params.FindField(name)
 	if field == nil {
 		return nil, fmterr.Errorf(file.FileSet(), src.Node(), "no parameter named %s in %s", name, fn.ShortString())
 	}
-	return wrt.New(field)[0], nil
+	return wrt.BuildFromField(nil, field)
 }
 
 // FuncGrad computes the gradient of a function.
@@ -145,7 +146,7 @@ func (m *gradMacro) BuildBody(fetcher ir.Fetcher, fn ir.Func) (*ast.BlockStmt, b
 	vjpVars := make([]ast.Expr, len(vjps))
 	vjpCalls := make([]ast.Expr, len(vjps))
 	for i, vjp := range vjps {
-		vjpVars[i] = &ast.Ident{Name: m.unames.Name(vjp.Name() + "VJP")}
+		vjpVars[i] = &ast.Ident{Name: m.unames.Name(wrt.ToName(vjp.Name()) + "VJP")}
 		vjpCalls[i] = &ast.CallExpr{
 			Fun:  vjpVars[i],
 			Args: []ast.Expr{resIdent},

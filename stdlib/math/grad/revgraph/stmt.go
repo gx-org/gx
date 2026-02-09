@@ -20,7 +20,7 @@ import (
 
 	"github.com/gx-org/gx/build/ir"
 	"github.com/gx-org/gx/stdlib/math/grad/special"
-	"github.com/gx-org/gx/stdlib/math/grad/wrt/param"
+	"github.com/gx-org/gx/stdlib/math/grad/wrt"
 )
 
 type coreStmt[T ir.Stmt] struct {
@@ -94,8 +94,8 @@ func (p *processor) processReturnStmt(isrc *ir.ReturnStmt) (*returnStmt, bool) {
 	return out, true
 }
 
-func (n *returnStmt) buildVJPFunctionWRT(outStmts *astOut, gradParam *param.Array) (*ast.FuncLit, bool) {
-	outWRT := outStmts.newASTOutWRT(gradParam.WRT)
+func (n *returnStmt) buildVJPFunctionWRT(outStmts *astOut, gradParam *wrt.Array) (*ast.FuncLit, bool) {
+	outWRT := outStmts.newASTOutWRT(gradParam)
 	rets := make([]*special.Expr, len(n.exprs))
 	for i, expr := range n.exprs {
 		var ok bool
@@ -138,7 +138,7 @@ func (n *returnStmt) build(outStmts *astOut) bool {
 		}
 		root := "selfVJPFunc"
 		if len(names) > 1 {
-			root += "WRT" + toIdentName(gradParam.WRT.Name())
+			root += "WRT" + wrt.ToName(gradParam.Name())
 		}
 		vjpFuncName := n.graph.unames.Name(root)
 		outStmts.append(&ast.AssignStmt{

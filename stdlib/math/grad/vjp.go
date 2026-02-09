@@ -20,12 +20,10 @@ import (
 	"github.com/pkg/errors"
 	"github.com/gx-org/gx/api/values"
 	"github.com/gx-org/gx/build/ir"
-	"github.com/gx-org/gx/internal/astbuilder"
 	"github.com/gx-org/gx/internal/interp/compeval/cpevelements"
 	"github.com/gx-org/gx/internal/interp/flatten"
 	"github.com/gx-org/gx/interp"
 	"github.com/gx-org/gx/stdlib/math/grad/revgraph"
-	"github.com/gx-org/gx/stdlib/math/grad/wrt"
 )
 
 type vjpMacro struct {
@@ -57,24 +55,6 @@ func (m vjpMacro) newMacro(fn ir.PkgFunc) (*vjpMacro, error) {
 		return nil, err
 	}
 	return &m, nil
-}
-
-func (m *vjpMacro) buildBackwardSignature(fType *ir.FuncType, wrt *wrt.WithRespectTo, namedResultFields *ast.FieldList) (*ast.FuncType, error) {
-	results, err := astbuilder.Clone(&ast.FieldList{
-		List: []*ast.Field{&ast.Field{
-			Type: wrt.FieldType(),
-		}},
-	}, astbuilder.AssignToExpandShape)
-	if err != nil {
-		return nil, err
-	}
-
-	return &ast.FuncType{
-		// Gradient coming from the output values of the function.
-		Params: namedResultFields,
-		// Return the gradient.
-		Results: results,
-	}, nil
 }
 
 func (m *vjpMacro) BuildDecl(ir.PkgFunc) (*ir.File, *ast.FuncDecl, bool) {

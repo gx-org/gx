@@ -173,10 +173,10 @@ func (a *astOut) newStmt() *fwdStmts {
 
 type astOutWRT struct {
 	astOut
-	wrt *wrt.WithRespectTo
+	wrt *wrt.Array
 }
 
-func (a *astOut) newASTOutWRT(wrt *wrt.WithRespectTo) *astOutWRT {
+func (a *astOut) newASTOutWRT(wrt *wrt.Array) *astOutWRT {
 	return &astOutWRT{
 		astOut: astOut{
 			graph:   a.graph,
