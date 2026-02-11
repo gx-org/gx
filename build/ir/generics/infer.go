@@ -161,6 +161,9 @@ func (uni *argUnifier) DefineAxis(param *ir.AxisStmt, targets []ir.AxisLengths) 
 	switch param.Type().Kind() {
 	case irkind.IntLen:
 		ok := uni.defineAxis(param, targets)
+		if len(targets) < 1 {
+			return nil, true
+		}
 		return targets[1:], ok
 	case irkind.Slice:
 		return uni.defineGroupAxis(param, targets)

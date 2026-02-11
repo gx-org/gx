@@ -461,6 +461,16 @@ func TestAxisErrors(t *testing.T) {
 func f([___M]float32) [___M]float32 // ERROR shape M using ___M can only be defined in function parameters
 `,
 		},
+		testbuild.Decl{
+			Src: `
+func f([_a]float32) [a]float32
+
+func g(x float32) [2]float32 {
+	return f(x) // ERROR cannot use type float32 as [0]float32 in argument to test.f
+}
+`,
+			Err: "no axis left to define a",
+		},
 	)
 }
 
