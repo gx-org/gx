@@ -15,9 +15,9 @@
 package builtin
 
 import (
-	"embed"
 	"fmt"
 	"go/ast"
+	"io/fs"
 	"path"
 	"reflect"
 	"runtime"
@@ -49,7 +49,7 @@ type sourceParser struct {
 	names []string
 }
 
-func topLevelNames(fs *embed.FS, pkgPath string) ([]string, error) {
+func topLevelNames(fs fs.ReadDirFS, pkgPath string) ([]string, error) {
 	entries, err := fs.ReadDir(pkgPath)
 	if err != nil {
 		return nil, fmt.Errorf("cannot read GX files directory: %w", err)
@@ -57,6 +57,9 @@ func topLevelNames(fs *embed.FS, pkgPath string) ([]string, error) {
 	var names []string
 	for _, entry := range entries {
 		if entry.IsDir() {
+			continue
+		}
+		if !strings.HasSuffix(entry.Name(), ".gx") {
 			continue
 		}
 		names = append(names, entry.Name())

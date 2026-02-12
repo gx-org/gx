@@ -1,4 +1,4 @@
-package stdlib
+package stdlib_test
 
 import (
 	"shapes"
@@ -267,4 +267,3 @@ func TestBroadcastWithVar() [size][2]float32 {
 	// 	{0.5, 0.5},
 	// }
 }
-

@@ -16,8 +16,8 @@
 package builtin
 
 import (
-	"embed"
 	"go/ast"
+	"io/fs"
 	"path/filepath"
 
 	"github.com/gx-org/gx/build/importers"
@@ -33,7 +33,7 @@ type (
 	BuilderParam struct {
 		Builder importers.Builder
 		Imp     *impl.Stdlib
-		FS      *embed.FS
+		FS      fs.ReadDirFS
 	}
 
 	// Builder a builtin package.

@@ -18,6 +18,7 @@ package stdlib
 
 import (
 	"embed"
+	"io/fs"
 	"maps"
 	"slices"
 
@@ -35,13 +36,13 @@ import (
 )
 
 //go:embed dtype/*.gx num/*.gx math/grad/*.gx math/*.gx shapes/*.gx rand/*.gx
-var fs embed.FS
+var staticFS embed.FS
 
 // Stdlib builds the standard library given import paths.
 type Stdlib struct {
 	impl *impl.Stdlib
 	libs map[string]builtin.PackageBuilder
-	fs   *embed.FS
+	fs   fs.ReadDirFS
 }
 
 var _ importers.Importer = (*Stdlib)(nil)
@@ -58,13 +59,18 @@ var packages = []builtin.PackageBuilder{
 
 // Importer returns the standard library importer.
 func Importer(stdlibImpl *impl.Stdlib) *Stdlib {
+	return ImporterWithFS(staticFS, stdlibImpl)
+}
+
+// ImporterWithFS returns the standard library importer.
+func ImporterWithFS(stdlibFS fs.ReadDirFS, stdlibImpl *impl.Stdlib) *Stdlib {
 	if stdlibImpl == nil {
 		stdlibImpl = &impl.Stdlib{}
 	}
 	lib := &Stdlib{
 		impl: stdlibImpl,
 		libs: make(map[string]builtin.PackageBuilder),
-		fs:   &fs,
+		fs:   stdlibFS,
 	}
 	for _, pkgBuilder := range packages {
 		lib.libs[pkgBuilder.FullPath] = pkgBuilder

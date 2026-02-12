@@ -1,4 +1,4 @@
-package stdlib
+package stdlib_test
 
 import (
 	"shapes"
@@ -15,4 +15,3 @@ func TestShape() shapes.Shape {
 	// 	Dimensions: [intlen(1),intlen(2)],
 	// }
 }
-

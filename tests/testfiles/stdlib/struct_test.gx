@@ -1,4 +1,4 @@
-package stdlib
+package stdlib_test
 
 import "rand"
 
@@ -27,4 +27,3 @@ func TestDeterministic() (sample1, sample2 [2]float32) {
 	// 0: [dims___]float32{0.962697, 0.135473}
 	// 1: [dims___]float32{0.962697, 0.135473}
 }
-

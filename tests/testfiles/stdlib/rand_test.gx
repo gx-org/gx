@@ -1,4 +1,4 @@
-package stdlib
+package stdlib_test
 
 import (
 	"math"
@@ -104,4 +104,3 @@ func TestFloat64MinMax() [5]float64 {
 	// Want:
 	// [dims___]float64{-39.1233905713, 67.0834894428, -93.5118532834, -38.9040065512, 5.7039784557}
 }
-
