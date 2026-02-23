@@ -55,11 +55,18 @@ func (errs *Errors) Pop() {
 
 // Append an error to the list of errors.
 func (errs *Errors) Append(err error) bool {
-	if len(errs.stack) == 0 {
-		errs.errs = append(errs.errs, err)
-	} else {
-		errs.stack[len(errs.stack)-1].errors.Append(err)
+	if err == nil {
+		return true
 	}
+	if len(errs.stack) > 0 {
+		errs.stack[len(errs.stack)-1].errors.Append(err)
+		return false
+	}
+	others := []error{err}
+	if ferrs, ok := err.(*Errors); ok {
+		others = ferrs.errs
+	}
+	errs.errs = append(errs.errs, others...)
 	return false
 }
 
