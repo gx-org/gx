@@ -19,6 +19,7 @@ import (
 
 	"github.com/gx-org/gx/build/fmterr"
 	"github.com/gx-org/gx/build/ir"
+	"github.com/gx-org/gx/build/ir/irkind"
 )
 
 type (
@@ -147,7 +148,7 @@ func buildTypeExpr(rscope resolveScope, node exprNode) (*ir.TypeValExpr, bool) {
 	if ok {
 		return typExpr.buildTypeExpr(rscope)
 	}
-	expr, ok := buildAExpr(rscope, node)
+	expr, ok := buildCoreExpr(rscope, node)
 	if !ok {
 		return nil, false
 	}
@@ -317,7 +318,7 @@ var invalidGroup = &ir.FieldGroup{
 	Type: invalidTypeExprVal,
 }
 
-func buildAExpr(rscope resolveScope, expr exprNode) (ir.Expr, bool) {
+func buildCoreExpr(rscope resolveScope, expr exprNode) (ir.Expr, bool) {
 	ext, exprOk := expr.buildExpr(rscope)
 	if !exprOk {
 		return invalidExpr(), false
@@ -327,4 +328,15 @@ func buildAExpr(rscope resolveScope, expr exprNode) (ir.Expr, bool) {
 		return invalidExpr(), rscope.Err().Appendf(expr.source(), "%s %s is not assignable", ext.String(), ext.Type().Kind().String())
 	}
 	return asExt, exprOk && !isInvalidExpr(ext)
+}
+
+func buildExpr(rscope resolveScope, expr exprNode) (ir.Expr, bool) {
+	ext, ok := buildCoreExpr(rscope, expr)
+	if !ok {
+		return ext, false
+	}
+	if ext.Type().Kind() == irkind.MetaType {
+		return ext, rscope.Err().Appendf(expr.source(), "%s (type) is not an expression", ext.String())
+	}
+	return ext, true
 }

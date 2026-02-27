@@ -128,7 +128,7 @@ func (cst *constExpr) buildExpression(ibld irBuilder, ext *ir.ConstExpr) bool {
 	if !ok {
 		return false
 	}
-	ext.Val, ok = buildAExpr(fScope, cst.value)
+	ext.Val, ok = buildExpr(fScope, cst.value)
 	if !ok {
 		return false
 	}

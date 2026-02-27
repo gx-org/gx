@@ -76,7 +76,7 @@ func (n *ifStmt) buildStmt(rscope fnResolveScope) (ir.Stmt, bool, bool) {
 	if n.init != nil {
 		init, _, initOk = n.init.buildStmt(bScope)
 	}
-	cond, condOk := buildAExpr(bScope, n.cond)
+	cond, condOk := buildExpr(bScope, n.cond)
 	if condOk {
 		condOk = n.checkConditionType(bScope, cond.Type())
 	}

@@ -292,7 +292,7 @@ func checkNewVariables(scope resolveScope, stmt *ast.AssignStmt, newVariables bo
 func buildAssignExpr(rscope resolveScope, asgm *assignment) (*ir.AssignExpr, bool, bool) {
 	ext := &ir.AssignExpr{}
 	var exprOk bool
-	ext.X, exprOk = buildAExpr(rscope, asgm.expr)
+	ext.X, exprOk = buildExpr(rscope, asgm.expr)
 	if tpl, isTuple := ext.X.Type().(*ir.TupleType); exprOk && isTuple {
 		if len(tpl.Types) != 1 {
 			exprOk = rscope.Err().Appendf(asgm.expr.source(), "multiple-value (value of type %s) in single-value context", tpl.String())

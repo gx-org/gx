@@ -119,7 +119,7 @@ func (n *returnStmt) buildStmt(scope fnResolveScope) (ir.Stmt, bool, bool) {
 	ext.Results = make([]ir.Expr, len(n.results))
 	for i, expr := range n.results {
 		var exprOk bool
-		ext.Results[i], exprOk = expr.buildExpr(scope)
+		ext.Results[i], exprOk = buildExpr(scope, expr)
 		ok = exprOk && ok
 	}
 	if !ok {

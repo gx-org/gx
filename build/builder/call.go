@@ -75,7 +75,7 @@ func (n *callExpr) buildArgs(scope resolveScope) ([]ir.Expr, bool) {
 	args := make([]ir.Expr, len(n.args))
 	for i, arg := range n.args {
 		var argOk bool
-		args[i], argOk = buildAExpr(scope, arg)
+		args[i], argOk = buildExpr(scope, arg)
 		ok = ok && argOk
 	}
 	return args, ok
@@ -250,7 +250,7 @@ func (n *callExpr) buildCallExpr(rscope resolveScope, callee ir.Expr) (ir.Expr, 
 }
 
 func (n *callExpr) buildExpr(rscope resolveScope) (ir.Expr, bool) {
-	callee, calleeOk := buildAExpr(rscope, n.callee)
+	callee, calleeOk := buildCoreExpr(rscope, n.callee)
 	if !calleeOk {
 		return nil, false
 	}

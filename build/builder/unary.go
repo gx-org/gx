@@ -43,7 +43,7 @@ func (n *unaryExpr) source() ast.Node {
 }
 
 func (n *unaryExpr) buildExpr(scope resolveScope) (ir.Expr, bool) {
-	x, ok := buildAExpr(scope, n.x)
+	x, ok := buildExpr(scope, n.x)
 	return &ir.UnaryExpr{Src: n.src, X: x}, ok
 }
 

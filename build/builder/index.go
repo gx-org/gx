@@ -134,7 +134,7 @@ func specializeFunc(rscope resolveScope, x ir.Expr, indices []ir.Expr) (ir.Expr,
 
 func (n *indexExpr) buildExpr(rscope resolveScope) (ir.Expr, bool) {
 	x, xOk := n.x.buildExpr(rscope)
-	idx, idxOk := buildAExpr(rscope, n.index)
+	idx, idxOk := buildCoreExpr(rscope, n.index)
 	if !xOk || !idxOk {
 		return nil, false
 	}
@@ -204,7 +204,7 @@ func (n *indexListExpr) buildExpr(rscope resolveScope) (ir.Expr, bool) {
 	indicesOk := true
 	for i, index := range n.indices {
 		var iOk bool
-		indices[i], iOk = buildAExpr(rscope, index)
+		indices[i], iOk = buildCoreExpr(rscope, index)
 		indicesOk = indicesOk && iOk
 	}
 	if !xOk || !indicesOk {

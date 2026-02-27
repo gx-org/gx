@@ -99,8 +99,8 @@ func (n *binaryExpr) determineOutputType(scope resolveScope, ops ir.Type) (resul
 }
 
 func (n *binaryExpr) buildOperands(scope resolveScope) (ir.Expr, ir.Expr, ir.Type) {
-	xExpr, xOk := buildAExpr(scope, n.x)
-	yExpr, yOk := buildAExpr(scope, n.y)
+	xExpr, xOk := buildExpr(scope, n.x)
+	yExpr, yOk := buildExpr(scope, n.y)
 	if !xOk || !yOk {
 		return xExpr, yExpr, ir.InvalidType()
 	}

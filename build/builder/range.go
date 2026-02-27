@@ -90,7 +90,7 @@ func (n *rangeStmt) buildStmt(parent fnResolveScope) (ir.Stmt, bool, bool) {
 	if !ok {
 		return ext, false, false
 	}
-	ext.X, ok = buildAExpr(rscope, n.x)
+	ext.X, ok = buildExpr(rscope, n.x)
 	if !ok {
 		return ext, false, false
 	}

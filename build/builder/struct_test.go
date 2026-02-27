@@ -119,3 +119,20 @@ func CallNew() S {
 		},
 	)
 }
+
+func TestStructErrors(t *testing.T) {
+	testbuild.Run(t,
+		testbuild.Decl{
+			Src: `
+type A struct {
+	a int32
+	b float32
+}
+
+func a() A {
+	return A // ERROR A (type) is not an expression
+}
+`,
+		},
+	)
+}

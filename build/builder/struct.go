@@ -180,7 +180,7 @@ func (n *structLiteral) buildExpr(rscope resolveScope) (ir.Expr, bool) {
 		fieldLit := &ir.FieldLit{FieldStorage: field.Storage()}
 		ext.Elts[i] = fieldLit
 		fieldNameExpr := n.fields[valueFieldIndex]
-		fieldLit.X, valueOk = buildAExpr(rscope, fieldNameExpr.expr)
+		fieldLit.X, valueOk = buildExpr(rscope, fieldNameExpr.expr)
 		if !valueOk {
 			fieldsOk = false
 			continue

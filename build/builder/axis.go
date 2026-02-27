@@ -87,7 +87,7 @@ func processExprAxisLength(axScope procAxLenScope, src ast.Expr) (*exprAxisLengt
 func (dim *exprAxisLength) build(rscope *defineLocalScope) (ir.AxisLengths, bool) {
 	ext := &ir.AxisExpr{}
 	var xOk bool
-	ext.X, xOk = buildAExpr(rscope, dim.x)
+	ext.X, xOk = buildExpr(rscope, dim.x)
 	if !xOk {
 		return ext, false
 	}

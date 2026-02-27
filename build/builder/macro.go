@@ -140,7 +140,7 @@ func evalMacro(rscope resolveScope, compEval *compileEvaluator, macroCall *callE
 
 func evalMetaCallee[T funcWithIR](rscope resolveScope, compEval *compileEvaluator, macroCall *callExpr, target string) (*ir.FuncCallExpr, T, bool) {
 	var zero T
-	callee, calleeOk := buildAExpr(rscope, macroCall.callee)
+	callee, calleeOk := buildExpr(rscope, macroCall.callee)
 	if !calleeOk {
 		return nil, zero, false
 	}
