@@ -102,9 +102,9 @@ func (a *array) OutNode() *ops.OutputNode {
 }
 
 func (a *array) ShortString() string {
-	return a.String()
+	return a.SourceString(nil)
 }
 
-func (a *array) String() string {
-	return a.typ.String()
+func (a *array) SourceString(from *ir.File) string {
+	return a.typ.ReferString(from)
 }

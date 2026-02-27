@@ -136,10 +136,10 @@ func (n *funcCallExpr) buildForward(astmts *fwdStmts) ([]ast.Expr, bool) {
 
 func (n *funcCallExpr) forwardValue() (*special.Expr, bool) {
 	if len(n.fwds) < 1 {
-		return nil, n.err().Appendf(n.irnode.Src, "%s used as value", n.irnode.Callee.ShortString())
+		return nil, n.err().Appendf(n.irnode.Src, "%s used as value", n.irnode.Callee.SourceString(n.file()))
 	}
 	if len(n.fwds) > 1 {
-		return nil, n.err().Appendf(n.irnode.Src, "multiple-value %s in single-value context", n.irnode.Callee.ShortString())
+		return nil, n.err().Appendf(n.irnode.Src, "multiple-value %s in single-value context", n.irnode.Callee.SourceString(n.file()))
 	}
 	return special.New(n.fwds[0]), true
 }

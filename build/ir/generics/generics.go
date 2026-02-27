@@ -45,7 +45,8 @@ func typeInclude(fetcher ir.Fetcher, set ir.Type, typ ir.Type) bool {
 	}
 	if !isIn {
 		return fetcher.Err().Appendf(typ.Node(), "%s does not satisfy %s",
-			ir.TypeString(typ), ir.TypeString(set))
+			typ.ReferString(fetcher.File()),
+			set.ReferString(fetcher.File()))
 	}
 	return true
 }

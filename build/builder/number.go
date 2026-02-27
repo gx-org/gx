@@ -39,7 +39,7 @@ func (n *numberLit) source() ast.Node {
 }
 
 func (n *numberLit) String() string {
-	return n.ext.String()
+	return n.ext.SourceString(nil)
 }
 
 func castNumber(scope resolveScope, expr ir.Expr, target ir.Type) (*ir.NumberCastExpr, bool) {
@@ -67,10 +67,11 @@ func castNumber(scope resolveScope, expr ir.Expr, target ir.Type) (*ir.NumberCas
 		cast.Typ = arrayType.DataType()
 	}
 	if !ir.CanBeNumber(cast.Typ) {
-		return cast, scope.Err().Appendf(expr.Node(), "cannot use a number as %v", cast.Typ)
+		return cast, scope.Err().Appendf(expr.Node(), "cannot use a number as %v", cast.Typ.ReferString(scope.fileScope().irFile()))
 	}
 	if ir.IsFloat(expr.Type()) && ir.IsInteger(cast.Typ) {
-		return cast, scope.Err().Appendf(expr.Node(), "cannot use %s (untyped FLOAT constant) as %s value", expr.String(), cast.Typ.String())
+		from := scope.fileScope().irFile()
+		return cast, scope.Err().Appendf(expr.Node(), "cannot use %s (untyped FLOAT constant) as %s value", expr.SourceString(from), cast.Typ.ReferString(from))
 	}
 	return cast, true
 }

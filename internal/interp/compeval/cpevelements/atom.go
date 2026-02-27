@@ -146,11 +146,11 @@ func (a *atom) Float() *big.Float {
 }
 
 func (a *atom) ShortString() string {
-	return a.String()
+	return a.SourceString(nil)
 }
 
-func (a *atom) String() string {
-	return a.val.String()
+func (a *atom) SourceString(from *ir.File) string {
+	return a.val.SourceString(from)
 }
 
 type releaseFunc func()

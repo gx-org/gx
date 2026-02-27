@@ -195,7 +195,7 @@ func (n *declStmt) buildStmt(scope fnResolveScope) (ir.Stmt, bool, bool) {
 func (n *exprStmt) buildStmt(scope fnResolveScope) (ir.Stmt, bool, bool) {
 	x, ok := n.x.buildExpr(scope)
 	if ok && x.Type().Kind() != irkind.Void {
-		scope.Err().Appendf(n.src, "cannot use an expression returning a value as a statement")
+		ok = scope.Err().Appendf(n.src, "cannot use an expression returning a value as a statement")
 	}
 	return &ir.ExprStmt{Src: n.src, X: x}, false, ok
 }

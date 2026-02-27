@@ -19,7 +19,6 @@ import (
 	"strings"
 	"testing"
 
-	gxfmt "github.com/gx-org/gx/base/fmt"
 	"github.com/gx-org/gx/build/builder"
 )
 
@@ -126,7 +125,7 @@ func TestResolveType(t *testing.T) {
 				t.Errorf("unexpected error for expression %q: %+v", test.code, err)
 				return
 			}
-			got := gxfmt.String(node.Type())
+			got := node.Type().ReferString(nil)
 			if got != test.typ {
 				t.Errorf("test %d: %s\nincorrect type: got %q want %q", i, test.code, got, test.typ)
 			}

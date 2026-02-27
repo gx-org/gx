@@ -87,7 +87,7 @@ func (atom *DeviceAtom[T]) toDeviceBridger(val *values.DeviceArray) ArrayBridge 
 }
 
 func (atom *DeviceAtom[T]) String() string {
-	return atom.GXValue().String()
+	return atom.GXValue().SourceString(nil)
 }
 
 // HostAtom is an array stored on a host.
@@ -136,7 +136,7 @@ func (atom *HostAtom[T]) toDeviceBridger(val *values.DeviceArray) ArrayBridge {
 }
 
 func (atom *HostAtom[T]) String() string {
-	return atom.GXValue().String()
+	return atom.GXValue().SourceString(nil)
 }
 
 func newAtom[T dtype.GoDataType](dt irkind.Kind, array kernels.Array) *HostAtom[T] {

@@ -62,7 +62,7 @@ func (f *setFunc) BuildFuncType(fetcher ir.Fetcher, call *ir.FuncCallExpr) (*ir.
 		return ext, errors.Errorf("cannot compare datatypes: %v", err)
 	}
 	if !sameDType {
-		return ext, errors.Errorf("cannot set a slice of a [...]%s array with a [...]%s array", arrayParams[0].DataType().String(), arrayParams[1].DataType().String())
+		return ext, errors.Errorf("cannot set a slice of a [...]%s array with a [...]%s array", arrayParams[0].DataType().ReferString(fetcher.File()), arrayParams[1].DataType().ReferString(fetcher.File()))
 	}
 	ext.Params = builtins.Fields(call, params...)
 	xResolver := arrayParams[0].Rank()

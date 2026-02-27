@@ -93,10 +93,10 @@ func (n *callExpr) buildTypeCast(rscope resolveScope, callee ir.Expr, store ir.S
 		return ext, false
 	}
 	if len(args) == 0 {
-		return ext, rscope.Err().Appendf(n.src, "missing argument in conversion to %s", ext.Typ.String())
+		return ext, rscope.Err().Appendf(n.src, "missing argument in conversion to %s", ext.Typ.ReferString(rscope.fileScope().irFile()))
 	}
 	if len(args) > 1 {
-		return ext, rscope.Err().Appendf(n.src, "too many arguments in conversion to %s", ext.Typ.String())
+		return ext, rscope.Err().Appendf(n.src, "too many arguments in conversion to %s", ext.Typ.ReferString(rscope.fileScope().irFile()))
 	}
 	ext.X = args[0]
 	if irkind.IsNumber(ext.X.Type().Kind()) {
@@ -118,10 +118,10 @@ func checkNumArgs(rscope resolveScope, fn *ir.FuncValExpr, numArgs int) bool {
 		maxNumParams = -1
 	}
 	if maxNumParams >= 0 && numArgs > maxNumParams {
-		return rscope.Err().Appendf(fn.Node(), "too many arguments in call to %s (expected %d, found %d)", fn.ShortString(), numParams, numArgs)
+		return rscope.Err().Appendf(fn.Node(), "too many arguments in call to %s (expected %d, found %d)", fn.SourceString(rscope.fileScope().irFile()), numParams, numArgs)
 	}
 	if numArgs < minNumParams {
-		return rscope.Err().Appendf(fn.Node(), "not enough arguments in call to %s (expected %d, found %d)", fn.ShortString(), numParams, numArgs)
+		return rscope.Err().Appendf(fn.Node(), "not enough arguments in call to %s (expected %d, found %d)", fn.SourceString(rscope.fileScope().irFile()), numParams, numArgs)
 	}
 	return true
 }
@@ -138,7 +138,7 @@ func (n *callExpr) completeFuncType(rscope resolveScope, callee *ir.FuncValExpr,
 	case *ir.FuncKeyword:
 		impl = fT.Impl
 	default:
-		return nil, rscope.Err().AppendInternalf(callee.Node(), "missing function type but function %s:%T is not a builtin function", callee.ShortString(), callee)
+		return nil, rscope.Err().AppendInternalf(callee.Node(), "missing function type but function %s:%T is not a builtin function", callee.SourceString(rscope.fileScope().irFile()), callee)
 	}
 	compEval, ok := rscope.compEval()
 	if !ok {
@@ -198,7 +198,7 @@ func (n *callExpr) buildMacroCall(rscope resolveScope, compEval *compileEvaluato
 		return invalidExpr(), rscope.Err().Appendf(n.source(), "macro %s does not build functions", mac.ShortString())
 	}
 	rscope.Err().Push(fmterr.PosPrefixWith(rscope.fileScope().pkg().fset, callExpr.Src.Fun, func() string {
-		return fmt.Sprintf("error while calling macro %s:\n", callExpr.String())
+		return fmt.Sprintf("error while calling macro %s:\n", callExpr.SourceString(rscope.fileScope().irFile()))
 	}))
 	defer rscope.Err().Pop()
 
@@ -243,9 +243,9 @@ func (n *callExpr) buildCallExpr(rscope resolveScope, callee ir.Expr) (ir.Expr, 
 	case ir.FuncElement:
 		return n.buildCallExpr(rscope, ir.NewFuncValExpr(callee, elT.Func()))
 	case *interp.Tuple:
-		return invalidExpr(), rscope.Err().Appendf(callee.Node(), "multiple value %s in single-value context", callee.String())
+		return invalidExpr(), rscope.Err().Appendf(callee.Node(), "multiple value %s in single-value context", callee.SourceString(rscope.fileScope().irFile()))
 	default:
-		return invalidExpr(), rscope.Err().AppendInternalf(callee.Node(), "expression %s evaluated to element of type %T that is not callable. Scope:\n%s\nCompEval:\n%s", callee.String(), elT, rscope.String(), compEval.String())
+		return invalidExpr(), rscope.Err().AppendInternalf(callee.Node(), "expression %s evaluated to element of type %T that is not callable. Scope:\n%s\nCompEval:\n%s", callee.SourceString(rscope.fileScope().irFile()), elT, rscope.String(), compEval.String())
 	}
 }
 

@@ -99,9 +99,16 @@ func (r *Runner) RunWithArgs(fn *ir.FuncDecl, recv values.Value, args []values.V
 	if err != nil {
 		return nil, "", err
 	}
-	all := buildGot(values) + tracer.trace.String()
+	all := buildGot(fn.File(), values) + tracer.trace.String()
 	all = strings.TrimSpace(all)
 	return values, all, nil
+}
+
+func valueToString(file *ir.File, val values.Value) string {
+	if src, isSrc := val.(ir.StringDefiner); isSrc {
+		return src.DefineString(file)
+	}
+	return val.SourceString(file)
 }
 
 func (r *testTracer) Trace(file *ir.File, call *ir.FuncCallExpr, vals []values.Value) error {
@@ -117,7 +124,7 @@ func (r *testTracer) Trace(file *ir.File, call *ir.FuncCallExpr, vals []values.V
 	r.nTrace++
 	r.trace.WriteString("\n")
 	for _, val := range vals {
-		valS := fmt.Sprint(val)
+		valS := valueToString(file, val)
 		valS = gxfmt.Indent(valS)
 		r.trace.WriteString(valS)
 	}
@@ -160,7 +167,7 @@ func flatten(out []values.Value) []values.Value {
 	return flat
 }
 
-func buildGot(out []values.Value) string {
+func buildGot(from *ir.File, out []values.Value) string {
 	out, err := values.ToHost(kernels.Allocator(), flatten(out))
 	if err != nil {
 		return err.Error()
@@ -169,11 +176,11 @@ func buildGot(out []values.Value) string {
 		return ""
 	}
 	if len(out) == 1 {
-		return fmt.Sprint(out[0])
+		return valueToString(from, out[0])
 	}
 	bld := strings.Builder{}
 	for i, s := range out {
-		fmt.Fprintf(&bld, "%d: %v\n", i, s)
+		fmt.Fprintf(&bld, "%d: %s\n", i, valueToString(from, s))
 	}
 	return strings.TrimSpace(bld.String())
 }

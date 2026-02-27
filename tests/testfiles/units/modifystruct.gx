@@ -14,29 +14,28 @@ func (s Struct) Modify() Struct {
 }
 
 func TestModify() Struct {
-	a := Struct{A:2}
+	a := Struct{A: 2}
 	trace(a)
 	a.NoOp()
 	trace(a)
 	a = a.Modify()
 	trace(a)
 	return a
-    	// Want:
-	// modifystruct.Struct{
+	// Want:
+	// Struct{
 	// 	A: int32(4),
 	// }
 	// Trace:
 	// modifystruct.gx:0
-	// 	modifystruct.Struct{
+	// 	Struct{
 	// 		A: int32(2),
 	// 	}
 	// modifystruct.gx:1
-	// 	modifystruct.Struct{
+	// 	Struct{
 	// 		A: int32(2),
 	// 	}
 	// modifystruct.gx:2
-	// 	modifystruct.Struct{
+	// 	Struct{
 	// 		A: int32(4),
 	// 	}
 }
-

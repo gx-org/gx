@@ -168,7 +168,7 @@ func (n *Float) Copy() elements.Copier {
 // NumericalConstant returns the value of a constant represented by a node.
 func (n *Float) NumericalConstant() (*values.HostArray, error) {
 	if n.concrete == nil {
-		return nil, fmterr.Internalf(n.expr.File().FileSet(), n.expr.Source(), "number %s:%s has no concrete type", n.expr.String(), n.expr.Node().Type().String())
+		return nil, fmterr.Internalf(n.expr.File().FileSet(), n.expr.Source(), "number %s:%s has no concrete type", n.expr.String(), n.expr.Node().Type().ReferString(nil))
 	}
 	return values.AtomNumberFloat(n.val, n.concrete)
 }
@@ -189,14 +189,14 @@ func (n *Float) Materialise(ao materialise.Materialiser) (materialise.Node, erro
 
 // ShortString returns a short string representation of the value.
 func (n *Float) ShortString() string {
-	return n.expr.Node().String()
+	return n.SourceString(nil)
 }
 
-// String return the float literal.
-func (n *Float) String() string {
-	val := n.expr.Node().String()
+// SourceString returns the GX source code to represent the float.
+func (n *Float) SourceString(from *ir.File) string {
+	val := n.expr.Node().SourceString(from)
 	if n.Type().Kind() == irkind.NumberFloat {
 		return val
 	}
-	return fmt.Sprintf("%s(%s)", n.Type(), val)
+	return fmt.Sprintf("%s(%s)", n.Type().ReferString(from), val)
 }

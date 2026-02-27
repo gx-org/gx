@@ -365,7 +365,7 @@ func cgx_static_set(cgxStatic C.cgx_static, val int64) C.cgx_error {
 	case ir.IntLenType():
 		gxValue, err = values.AtomIntegerValue[int64](ir.IntLenType(), val)
 	default:
-		err = errors.Errorf("cannot set static variable: type %s not supported", tp.String())
+		err = errors.Errorf("cannot set static variable: type %s not supported", tp.ReferString(nil))
 	}
 	if err != nil {
 		return (C.cgx_error)(wrap[error](err))
@@ -510,7 +510,7 @@ func cgx_function_name(cgxFunction C.cgx_function) *C.cchar_t {
 //export cgx_function_string
 func cgx_function_string(cgxFunction C.cgx_function) *C.cchar_t {
 	function := unwrap[*core.FuncCache](cgxFunction)
-	return C.CString(function.Func().String())
+	return C.CString(function.Func().DefineString(nil))
 }
 
 //export cgx_function_doc
@@ -789,7 +789,7 @@ func cgx_value_get_interface_type(cgxPackage C.cgx_package, cgxValue C.cgx_value
 //export cgx_value_string
 func cgx_value_string(cgxValue C.cgx_value) *C.cchar_t {
 	value := unwrap[values.Value](cgxValue)
-	return C.CString(value.String())
+	return C.CString(value.SourceString(nil))
 }
 
 /* cgx_shape */

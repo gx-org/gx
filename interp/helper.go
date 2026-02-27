@@ -37,7 +37,7 @@ func PkgFuncFromElement(el ir.Element) (ir.PkgFunc, error) {
 func FuncFromElement(el ir.Element) (ir.Func, error) {
 	fEl, ok := el.(fun.Func)
 	if !ok {
-		return nil, errors.Errorf("%s is not a function", el.Type().String())
+		return nil, errors.Errorf("%s is not a function", el.Type().ReferString(nil))
 	}
 	return fEl.Func(), nil
 }
@@ -50,7 +50,7 @@ func FuncDeclFromElement(el ir.Element) (*ir.FuncDecl, error) {
 	}
 	fDecl, ok := fun.(*ir.FuncDecl)
 	if !ok {
-		return nil, errors.Errorf("%s is not a GX user function", fun.FuncType().String())
+		return nil, errors.Errorf("%s is not a GX user function", fun.FuncType().ReferString(nil))
 	}
 	return fDecl, nil
 }

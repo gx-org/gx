@@ -52,9 +52,6 @@ type (
 
 		// SubRank returns the rank with the top-axis removed.
 		SubRank() (ArrayRank, bool)
-
-		// String representation of the rank.
-		String() string
 	}
 
 	// Rank with a known number of axes.
@@ -247,14 +244,14 @@ func (r *Rank) SubRank() (ArrayRank, bool) {
 	return &Rank{Ax: append([]AxisLengths{}, r.Ax[1:]...)}, true
 }
 
-// String returns a string representation of the rank.
-func (r *Rank) String() string {
+// SourceString returns the GX source code of the rank.
+func (r *Rank) SourceString(from *File) string {
 	if r == nil {
 		return ""
 	}
 	bld := strings.Builder{}
 	for _, dim := range r.Ax {
-		bld.WriteString(dim.String())
+		bld.WriteString(dim.SourceString(from))
 	}
 	return bld.String()
 }
@@ -348,10 +345,10 @@ func (r *RankInfer) UnifyWith(uni Unifier, target ArrayRank) bool {
 	return r.Rnk.UnifyWith(uni, target)
 }
 
-// String returns a string representation of the rank.
-func (r *RankInfer) String() string {
+// SourceString returns the GX source code of the rank.
+func (r *RankInfer) SourceString(from *File) string {
 	if r.Rnk == nil {
 		return "[...]"
 	}
-	return r.Rnk.String()
+	return r.Rnk.SourceString(from)
 }

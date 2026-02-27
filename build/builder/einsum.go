@@ -95,7 +95,7 @@ func (r *tensorRef) buildExpr(rscope resolveScope) (ir.Expr, bool) {
 		return x, false
 	}
 	if x.Type().Kind() != irkind.Array {
-		return x, rscope.Err().Appendf(r.base, "tensor statements must only reference tensors; %s is %s", r.base, x.Type().String())
+		return x, rscope.Err().Appendf(r.base, "tensor statements must only reference tensors; %s is %s", r.base, x.Type().ReferString(rscope.fileScope().irFile()))
 	}
 	return x, true
 }
@@ -215,11 +215,13 @@ func (s *tensorExpr) buildExpr(scope resolveScope) (ir.Expr, bool) {
 	}
 	lhsTyp, xOk := lhs.Type().(ir.ArrayType)
 	if !xOk {
-		return ext, scope.Err().AppendInternalf(lhs.Node(), "%s:%s:%T is not an array type", lhs.String(), lhs.Type().String(), lhs.Type())
+		from := scope.fileScope().irFile()
+		return ext, scope.Err().AppendInternalf(lhs.Node(), "%s:%s:%T is not an array type", lhs.SourceString(from), lhs.Type().ReferString(from), lhs.Type())
 	}
 	rhsTyp, yOk := rhs.Type().(ir.ArrayType)
 	if !yOk {
-		return ext, scope.Err().AppendInternalf(rhs.Node(), "%s:%s:%T is not an array type", rhs.String(), rhs.Type().String(), rhs.Type())
+		from := scope.fileScope().irFile()
+		return ext, scope.Err().AppendInternalf(rhs.Node(), "%s:%s:%T is not an array type", rhs.SourceString(from), rhs.Type().ReferString(from), rhs.Type())
 	}
 	leftRank := lhsTyp.Rank()
 	rightRank := rhsTyp.Rank()

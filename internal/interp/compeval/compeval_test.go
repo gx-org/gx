@@ -274,7 +274,7 @@ func TestExprEval(t *testing.T) {
 			if err != nil {
 				t.Fatalf("\n%+v", err)
 			}
-			got := element.(fmt.Stringer).String()
+			got := element.(ir.StringSourcer).SourceString(nil)
 			if got != test.want {
 				t.Errorf("%s: got %q but want %q", test.desc, got, test.want)
 			}
@@ -492,7 +492,7 @@ func TestSubContext(t *testing.T) {
 		t.Error(err)
 	}
 	want := "a-int32(3)"
-	got := val.String()
+	got := ir.Stringer(val).String()
 	if got != want {
 		t.Errorf("incorrect evaluation expression: got %s but want %s", got, want)
 	}

@@ -59,7 +59,7 @@ func Specialise(fetcher ir.Fetcher, expr ir.Expr, fun *ir.FuncValExpr, typs []*i
 			continue
 		}
 		if !assignedOk {
-			ok = fetcher.Err().Appendf(expr.Node(), "%s does not satisfy %s", ir.TypeString(gotType), ir.TypeString(wantType))
+			ok = fetcher.Err().Appendf(expr.Node(), "%s does not satisfy %s", gotType.ReferString(fetcher.File()), wantType.ReferString(fetcher.File()))
 			continue
 		}
 		definedTypeParams[typeParam.Name.Name] = typeValExpr.Val()

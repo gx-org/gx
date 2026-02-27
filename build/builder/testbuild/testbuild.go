@@ -168,13 +168,11 @@ func CheckExpandedExpr(pkg *builder.IncrementalPackage, src string, want string,
 	if err != nil {
 		return errors.Errorf("cannot build expression %q:\n%+v", src, err)
 	}
-	var got string
-	switch irExprT := irExpr.(type) {
-	case *ir.MacroCallExpr:
-		got = irExprT.F.String()
-	default:
-		got = irExpr.String()
+	macExpr, ok := irExpr.(*ir.MacroCallExpr)
+	if !ok {
+		return errors.Errorf("%T is not a call to a macro", irExpr)
 	}
+	got := macExpr.F.DefineString(macExpr.Func().File())
 	return CompareString(got, want)
 }
 
@@ -259,7 +257,7 @@ func (tt Expr) Run(ctx *Builder) error {
 	if tt.WantType == "" {
 		return nil
 	}
-	gotType := got.Type().String()
+	gotType := got.Type().ReferString(nil)
 	if gotType != tt.WantType {
 		return errors.Errorf("incorrect type string: got %q want %q", gotType, tt.WantType)
 	}

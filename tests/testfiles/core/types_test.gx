@@ -5,20 +5,20 @@ type myfloat float64
 func TestMyFloat() myfloat {
 	return -1
 	// Want:
-	// core.myfloat(-1)
+	// myfloat(-1)
 }
 
 func TestMyFloatUnaryOp() myfloat {
 	return -myfloat(4.2)
 	// Want:
-	// core.myfloat(-4.2)
+	// myfloat(-4.2)
 }
 
 func TestMyFloatBinaryOp() myfloat {
 	m := myfloat(4.2)
 	return m + m
 	// Want:
-	// core.myfloat(8.4)
+	// myfloat(8.4)
 }
 
 func TestConvertToNamedType() myfloat {
@@ -56,7 +56,7 @@ func TestMyStruct() (myfloat, [3]float64) {
 	}
 	return m.a, m.b
 	// Want:
-	// 0: core.myfloat(5)
+	// 0: myfloat(5)
 	// 1: [3]float64{1, 2, 3}
 }
 
@@ -70,9 +70,9 @@ func TestStructField() parent {
 		a: 3,
 	}
 	// Want:
-	// core.parent{
-	// 	m: core.child{
-	// 		a: core.myfloat(5),
+	// parent{
+	// 	m: child{
+	// 		a: myfloat(5),
 	// 		b: [3]float64{1, 2, 3},
 	// 	},
 	// 	a: float32(3),
@@ -85,9 +85,9 @@ func TestNewParent() parent {
 	}
 	return newParent(m, 3)
 	// Want:
-	// core.parent{
-	// 	m: core.child{
-	// 		a: core.myfloat(5),
+	// parent{
+	// 	m: child{
+	// 		a: myfloat(5),
 	// 		b: [3]float64{1, 2, 3},
 	// 	},
 	// 	a: float32(3),
@@ -105,7 +105,7 @@ func TestMultipleSelector() (float32, myfloat, [3]float64) {
 	return o.a, o.m.a, o.m.b
 	// Want:
 	// 0: float32(3)
-	// 1: core.myfloat(5)
+	// 1: myfloat(5)
 	// 2: [3]float64{1, 2, 3}
 }
 
@@ -120,7 +120,7 @@ func TestFunctionWithReceiverOnStruct() myfloat {
 	}
 	return m.scalar()
 	// Want:
-	// core.myfloat(5)
+	// myfloat(5)
 }
 
 func add(a, b [_ax0][_ax1]float32) [ax0][ax1]float32 {

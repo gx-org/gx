@@ -295,7 +295,7 @@ func buildAssignExpr(rscope resolveScope, asgm *assignment) (*ir.AssignExpr, boo
 	ext.X, exprOk = buildExpr(rscope, asgm.expr)
 	if tpl, isTuple := ext.X.Type().(*ir.TupleType); exprOk && isTuple {
 		if len(tpl.Types) != 1 {
-			exprOk = rscope.Err().Appendf(asgm.expr.source(), "multiple-value (value of type %s) in single-value context", tpl.String())
+			exprOk = rscope.Err().Appendf(asgm.expr.source(), "multiple-value (value of type %s) in single-value context", tpl.ReferString(rscope.fileScope().irFile()))
 		}
 	}
 	var newAsgm, targetOk bool
@@ -364,7 +364,7 @@ func (n *assignCallStmt) buildStmt(rscope fnResolveScope) (ir.Stmt, bool, bool) 
 	}
 	lenCallResults := funType.Results.Len()
 	if lenTargets != funType.Results.Len() {
-		return ext, false, rscope.Err().Appendf(n.source(), "assignment mismatch: %d variable(s) but %s returns %d values", lenTargets, ext.Call.String(), lenCallResults)
+		return ext, false, rscope.Err().Appendf(n.source(), "assignment mismatch: %d variable(s) but %s returns %d values", lenTargets, ext.Call.SourceString(rscope.fileScope().irFile()), lenCallResults)
 	}
 	ext.List = make([]*ir.AssignCallResult, lenCallResults)
 	total := min(lenTargets, lenCallResults)

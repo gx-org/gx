@@ -42,7 +42,6 @@ var (
 	_ elements.ElementWithConstant    = (*unary)(nil)
 	_ ir.Canonical                    = (*unary)(nil)
 	_ canonical.Canonical             = (*unary)(nil)
-	_ fmt.Stringer                    = (*unary)(nil)
 )
 
 func newUnary(env evaluator.Env, expr *ir.UnaryExpr, xEl Element) (_ *unary, err error) {
@@ -178,9 +177,9 @@ func (a *unary) toCanonical() canonical.Canonical {
 }
 
 func (a *unary) ShortString() string {
-	return a.String()
+	return a.SourceString(nil)
 }
 
-func (a *unary) String() string {
-	return fmt.Sprintf("%v%v", a.src.Node().Src.Op, fmt.Sprint(a.x))
+func (a *unary) SourceString(from *ir.File) string {
+	return fmt.Sprintf("%v%v", a.src.Node().Src.Op, a.x.SourceString(from))
 }

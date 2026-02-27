@@ -110,11 +110,11 @@ func indent(s string) string {
 	return strings.Join(ss, "\n")
 }
 
-func (vs *Struct) toString(prefix string) string {
+func (vs *Struct) toString(from *ir.File, prefix string) string {
 	fields := vs.structType.Fields.Fields()
 	fieldStrs := make([]string, len(fields))
 	for i, field := range fields {
-		childS := fmt.Sprint(vs.FieldValue(field.Name.Name))
+		childS := vs.FieldValue(field.Name.Name).SourceString(from)
 		if strings.Index(childS, "\n") > 0 {
 			childS = indent(childS)
 		}
@@ -124,7 +124,7 @@ func (vs *Struct) toString(prefix string) string {
 	return fmt.Sprintf("%s{%s}", prefix, fieldsStr)
 }
 
-// String representation of the structure.
-func (vs *Struct) String() string {
-	return vs.toString("struct")
+// SourceString returns the GX source code of the implementation.
+func (vs *Struct) SourceString(from *ir.File) string {
+	return vs.toString(from, "struct")
 }

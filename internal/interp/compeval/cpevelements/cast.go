@@ -42,7 +42,6 @@ var (
 	_ elements.Copier                 = (*cast)(nil)
 	_ elements.ElementWithConstant    = (*cast)(nil)
 	_ ir.StorageElement               = (*cast)(nil)
-	_ fmt.Stringer                    = (*cast)(nil)
 )
 
 func newCast(env evaluator.Env, expr ir.Expr, xEl Element, target ir.Type) (*cast, error) {
@@ -184,9 +183,9 @@ func (a *cast) CanonicalExpr() canonical.Canonical {
 }
 
 func (a *cast) ShortString() string {
-	return a.String()
+	return a.SourceString(nil)
 }
 
-func (a *cast) String() string {
-	return fmt.Sprintf("%v(%v)", a.target, fmt.Sprint(a.x))
+func (a *cast) SourceString(from *ir.File) string {
+	return fmt.Sprintf("%v(%v)", ir.StringerWithFrom(from, a.target), ir.StringerWithFrom(from, a.x))
 }

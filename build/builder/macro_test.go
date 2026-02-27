@@ -265,7 +265,7 @@ import "testmacros"
 type S struct{}
 
 //gx:=testmacros.ID(S.f) 
-func synthetic() // ERROR synthetic requires a test.S type receiver
+func synthetic() // ERROR synthetic requires a S type receiver
 
 func (S) f() int32 {
 	return 2

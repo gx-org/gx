@@ -50,7 +50,7 @@ func instantiateAxisExpr(fetcher ir.Fetcher, axis *ir.AxisExpr) ([]ir.AxisLength
 	case ir.Expr:
 		return []ir.AxisLengths{&ir.AxisExpr{X: valT}}, true
 	default:
-		return nil, fetcher.Err().AppendInternalf(axis.Node(), "cannot instantiate axis %s: value type %T not supported", axis.String(), valT)
+		return nil, fetcher.Err().AppendInternalf(axis.Node(), "cannot instantiate axis %s: value type %T not supported", axis.SourceString(fetcher.File()), valT)
 	}
 }
 

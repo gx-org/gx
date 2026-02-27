@@ -62,7 +62,7 @@ func TestOpAssignFields() point {
 	p.y *= 2
 	return p
 	// Want:
-	// core.point{
+	// point{
 	// 	x: float32(3.5),
 	// 	y: float32(8),
 	// }

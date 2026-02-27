@@ -77,13 +77,11 @@ func (n *NamedType) ToHost(alloc platform.Allocator) (Value, error) {
 	return NewNamedType(hostVal, n.typ), nil
 }
 
-// String representation of the value.
-// The returned string is a string reported to the user.
-func (n *NamedType) String() string {
+// SourceString returns the GX source code of the implementation.
+func (n *NamedType) SourceString(from *ir.File) string {
 	underStruct, ok := n.val.(*Struct)
 	if ok {
-		typName := fmt.Sprintf("%s.%s", n.typ.Package().Name, n.typ.Name())
-		return underStruct.toString(typName)
+		return underStruct.toString(from, n.typ.ReferString(from))
 	}
-	return fmt.Sprintf("%s(%s)", n.typ.Name(), n.val.String())
+	return fmt.Sprintf("%s(%s)", n.typ.ReferString(from), n.val.SourceString(from))
 }

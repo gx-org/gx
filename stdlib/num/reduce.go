@@ -54,9 +54,10 @@ func reductionFuncSig(fetcher ir.Fetcher, f builtin.Func, call *ir.FuncCallExpr)
 	var resultDims []ir.AxisLengths
 	for axis := range reduceAxes {
 		if len(rank.Axes()) > 0 && (axis < 0 || axis >= len(rank.Axes())) {
-			return nil, fmterr.Errorf(fetcher.File().FileSet(), call.Node(),
+			from := fetcher.File()
+			return nil, fmterr.Errorf(from.FileSet(), call.Node(),
 				"invalid reduction axis in call to %s: axis %d does not exist in input %s",
-				f.Name(), axis, arrayType)
+				f.Name(), axis, arrayType.ReferString(from))
 		}
 	}
 
@@ -127,7 +128,7 @@ func (f argmax) BuildFuncType(fetcher ir.Fetcher, call *ir.FuncCallExpr) (*ir.Fu
 	if len(rank.Axes()) > 0 && (reduceAxis < 0 || int(reduceAxis) >= len(rank.Axes())) {
 		return nil, fmterr.Errorf(fetcher.File().FileSet(), call.Node(),
 			"invalid reduction axis in call to %s: axis %d does not exist in input %s",
-			f.Name(), reduceAxis, arrayType)
+			f.Name(), reduceAxis, arrayType.ReferString(fetcher.File()))
 	}
 
 	var resultDims []ir.AxisLengths

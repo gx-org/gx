@@ -30,16 +30,13 @@ type (
 	// Value is a GX value.
 	Value interface {
 		value() // Make sure all GX types are implemented in this package.
+		ir.StringSourcer
 
 		// Type returns the type of the value.
 		Type() ir.Type
 
 		// ToHost transfers the value to host given an allocator.
 		ToHost(platform.Allocator) (Value, error)
-
-		// String representation of the value.
-		// The returned string is a string reported to the user.
-		String() string
 	}
 
 	// Valuer is an instance able to produce a GX value.
@@ -195,7 +192,7 @@ func AtomNumberInt(x *big.Int, typ ir.Type) (*HostArray, error) {
 	case irkind.IntIdx:
 		return AtomIntegerValue[ir.Int](typ, bigIntToInt[ir.Int](x))
 	}
-	return nil, errors.Errorf("cannot convert %T(%s) to %s: not implemented", x, x, typ.String())
+	return nil, errors.Errorf("cannot convert %T(%s) to %s: not implemented", x, x, typ.ReferString(nil))
 }
 
 func bigFloatCast[T dtype.AlgebraType](x *big.Float) T {
@@ -226,7 +223,7 @@ func AtomNumberFloat(x *big.Float, typ ir.Type) (*HostArray, error) {
 	case irkind.IntIdx:
 		return AtomIntegerValue[ir.Int](typ, bigFloatCast[ir.Int](x))
 	}
-	return nil, errors.Errorf("cannot convert %T(%s) to %s: not implemented", x, x, typ.String())
+	return nil, errors.Errorf("cannot convert %T(%s) to %s: not implemented", x, x, typ.ReferString(nil))
 }
 
 // Underlying returns the underlying element.

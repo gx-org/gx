@@ -66,5 +66,5 @@ func (n *stringLit) source() ast.Node {
 }
 
 func (n *stringLit) String() string {
-	return n.ext.String()
+	return n.ext.SourceString(nil)
 }

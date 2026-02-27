@@ -45,10 +45,6 @@ func (s *builtinStorage) Value(Expr) Expr {
 	return s.val
 }
 
-func (s *builtinStorage) String() string {
-	return s.val.String()
-}
-
 // Same returns true if the other storage is this storage.
 func (s *builtinStorage) Same(o Storage) bool {
 	return Storage(s) == o

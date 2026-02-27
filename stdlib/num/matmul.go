@@ -48,15 +48,16 @@ func (f matmul) resultsType(fetcher ir.Fetcher, call *ir.FuncCallExpr) ([]ir.Typ
 	left := arrays[0]
 	right := arrays[1]
 	if left.DataType().Kind() != right.DataType().Kind() {
-		return nil, nil, fmterr.Errorf(fetcher.File().FileSet(), call.Node(), "mismatched argument types %s and %s in %s call", left.DataType().String(), right.DataType().String(), f.Name())
+		from := fetcher.File()
+		return nil, nil, fmterr.Errorf(fetcher.File().FileSet(), call.Node(), "mismatched argument types %s and %s in %s call", left.DataType().ReferString(from), right.DataType().ReferString(from), f.Name())
 	}
 	leftRank := left.Rank()
 	if len(leftRank.Axes()) > 2 {
-		return nil, nil, fmterr.Errorf(fetcher.File().FileSet(), call.Node(), "more than 2-axis for the left argument (shape: %v) not supported in %s call", left.Rank(), f.Name())
+		return nil, nil, fmterr.Errorf(fetcher.File().FileSet(), call.Node(), "more than 2-axis for the left argument (shape: %s) not supported in %s call", left.Rank().SourceString(fetcher.File()), f.Name())
 	}
 	rightRank := right.Rank()
 	if len(rightRank.Axes()) > 2 {
-		return nil, nil, fmterr.Errorf(fetcher.File().FileSet(), call.Node(), "more than 2-axis for the right argument (shape: %v) not supported in %s call", right.Rank(), f.Name())
+		return nil, nil, fmterr.Errorf(fetcher.File().FileSet(), call.Node(), "more than 2-axis for the right argument (shape: %s) not supported in %s call", right.Rank().SourceString(fetcher.File()), f.Name())
 	}
 	leftDims := leftRank.Axes()
 	rightDims := rightRank.Axes()
@@ -75,7 +76,8 @@ func (f matmul) resultsType(fetcher ir.Fetcher, call *ir.FuncCallExpr) ([]ir.Typ
 		return nil, nil, fmterr.Error(fetcher.File().FileSet(), call.Node(), err)
 	}
 	if !ok {
-		return nil, nil, fmterr.Errorf(fetcher.File().FileSet(), call.Node(), "left argument (shape: %v) not compatible with right argument (shape: %v) in %s call", left.Rank(), right.Rank(), f.Name())
+		from := fetcher.File()
+		return nil, nil, fmterr.Errorf(fetcher.File().FileSet(), call.Node(), "left argument (shape: %v) not compatible with right argument (shape: %v) in %s call", left.Rank().SourceString(from), right.Rank().SourceString(from), f.Name())
 	}
 	resultRank := ir.Rank{}
 	if len(leftDims) == 2 && len(rightDims) == 2 {
@@ -120,7 +122,7 @@ func (f einsum) BuildFuncIR(impl *impl.Stdlib, pkg *ir.Package) (*ir.FuncBuiltin
 func (f einsum) validateAxisExpr(fetcher ir.Fetcher, call *ir.FuncCallExpr, arg, maxRank int, seen map[int]bool) ([]int, error) {
 	axisExpr, ok := call.Args[arg].(*ir.SliceLitExpr)
 	if !ok {
-		return nil, fmterr.Errorf(fetcher.File().FileSet(), call.Node(), "argument %d to %s must be []intidx (got %s)", arg, f.Name(), call.Args[arg].String())
+		return nil, fmterr.Errorf(fetcher.File().FileSet(), call.Node(), "argument %d to %s must be []intidx (got %s)", arg, f.Name(), call.Args[arg].SourceString(fetcher.File()))
 	}
 
 	axes := make([]int, len(axisExpr.Elts))
@@ -158,7 +160,8 @@ func (f einsum) resultsType(fetcher ir.Fetcher, call *ir.FuncCallExpr) ([]ir.Typ
 	left := params[0].(ir.ArrayType)
 	right := params[3].(ir.ArrayType)
 	if left.DataType().Kind() != right.DataType().Kind() {
-		return nil, nil, fmterr.Errorf(fetcher.File().FileSet(), call.Node(), "mismatched argument types %s and %s in %s call", left.DataType().String(), right.DataType().String(), f.Name())
+		from := fetcher.File()
+		return nil, nil, fmterr.Errorf(fetcher.File().FileSet(), call.Node(), "mismatched argument types %s and %s in %s call", left.DataType().ReferString(from), right.DataType().ReferString(from), f.Name())
 	}
 	leftRank := left.Rank()
 	rightRank := right.Rank()
@@ -200,9 +203,10 @@ func (f einsum) resultsType(fetcher ir.Fetcher, call *ir.FuncCallExpr) ([]ir.Typ
 			return nil, nil, fmterr.Error(fetcher.File().FileSet(), call.Node(), err)
 		}
 		if !ok {
+			from := fetcher.File()
 			return nil, nil, fmterr.Errorf(fetcher.File().FileSet(), call.Node(),
-				"left argument (shape: %v) not compatible with right argument (shape: %v) in %s call: cannot contract lhs dimension %s with rhs dimension %s",
-				left.Rank(), right.Rank(), f.Name(), lhsDim, rhsDim)
+				"left argument (shape: %s) not compatible with right argument (shape: %s) in %s call: cannot contract lhs dimension %s with rhs dimension %s",
+				left.Rank().SourceString(from), right.Rank().SourceString(from), f.Name(), lhsDim.SourceString(from), rhsDim.SourceString(from))
 		}
 	}
 	if len(lhsBatchDims) != len(rhsBatchDims) {
@@ -218,9 +222,10 @@ func (f einsum) resultsType(fetcher ir.Fetcher, call *ir.FuncCallExpr) ([]ir.Typ
 			return nil, nil, fmterr.Error(fetcher.File().FileSet(), call.Node(), err)
 		}
 		if !ok {
+			from := fetcher.File()
 			return nil, nil, fmterr.Errorf(fetcher.File().FileSet(), call.Node(),
-				"left argument (shape: %v) not compatible with right argument (shape: %v) in %s call: cannot batch lhs dimension %s with rhs dimension %s",
-				left.Rank(), right.Rank(), f.Name(), lhsDim, rhsDim)
+				"left argument (shape: %s) not compatible with right argument (shape: %s) in %s call: cannot batch lhs dimension %s with rhs dimension %s",
+				left.Rank().SourceString(from), right.Rank().SourceString(from), f.Name(), lhsDim.SourceString(from), rhsDim.SourceString(from))
 		}
 	}
 	// Infer output dimensions: batch dimensions (in the LHS order) become the outermost dimensions,

@@ -74,7 +74,7 @@ func (uni *argUnifier) DefineTParam(tp *ir.TypeParam, typ ir.Type) bool {
 	}
 	if !ok {
 		uni.defined[name] = ir.InvalidType()
-		return uni.Err().Appendf(uni.arg.Node(), "%s does not satisfy %s for %s", typ.String(), tp.Field.Type().String(), tp.Field.Name.Name)
+		return uni.Err().Appendf(uni.arg.Node(), "%s does not satisfy %s for %s", typ.ReferString(uni.File()), tp.Field.Type().ReferString(uni.File()), tp.Field.Name.Name)
 	}
 	defined := uni.defined[name]
 	if defined == nil {
@@ -90,7 +90,7 @@ func (uni *argUnifier) DefineTParam(tp *ir.TypeParam, typ ir.Type) bool {
 		return uni.Err().AppendAt(uni.arg.Node(), err)
 	}
 	if !eq {
-		return uni.Err().Appendf(uni.arg.Node(), "type %s does not match type %s for %s", typ.String(), defined.String(), tp.Field.Name.Name)
+		return uni.Err().Appendf(uni.arg.Node(), "type %s does not match type %s for %s", typ.ReferString(uni.File()), defined.ReferString(uni.File()), tp.Field.Name.Name)
 	}
 	return true
 }
@@ -153,7 +153,7 @@ func (uni *argUnifier) defineGroupAxis(param *ir.AxisStmt, targets []ir.AxisLeng
 		return targets[1:], ok
 	default:
 		arg := targets[0]
-		return nil, uni.Err().Appendf(uni.Node(), "cannot unify axis length %s of type %s in parameters with axis length %s of type %s: not supported", param.String(), param.Type().String(), arg.String(), arg.Type().String())
+		return nil, uni.Err().Appendf(uni.Node(), "cannot unify axis length %s of type %s in parameters with axis length %s of type %s: not supported", param.SourceString(uni.File()), param.Type().ReferString(uni.File()), arg.SourceString(uni.File()), arg.Type().ReferString(uni.File()))
 	}
 }
 
@@ -168,7 +168,7 @@ func (uni *argUnifier) DefineAxis(param *ir.AxisStmt, targets []ir.AxisLengths) 
 	case irkind.Slice:
 		return uni.defineGroupAxis(param, targets)
 	default:
-		return nil, uni.Err().Appendf(uni.Node(), "cannot unify axis expression of type %s in parameters: not supported", param.Type().String())
+		return nil, uni.Err().Appendf(uni.Node(), "cannot unify axis expression of type %s in parameters: not supported", param.Type().ReferString(uni.File()))
 	}
 }
 

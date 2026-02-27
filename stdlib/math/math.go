@@ -89,7 +89,7 @@ func mainAuxArgsToTypes(funcName string, fetcher ir.Fetcher, call *ir.FuncCallEx
 		return nil, nil, nil, fmterr.Internalf(fetcher.File().FileSet(), call.Node(), "cannot compare arguments type: %v", err)
 	}
 	if !kindEq {
-		return nil, nil, nil, fmterr.Errorf(fetcher.File().FileSet(), call.Node(), "mismatch types %s and %s", baseType.String(), auxType.String())
+		return nil, nil, nil, fmterr.Errorf(fetcher.File().FileSet(), call.Node(), "mismatch types %s and %s", baseType.ReferString(fetcher.File()), auxType.ReferString(fetcher.File()))
 	}
 	if auxType.(ir.ArrayType).Rank().IsAtomic() {
 		return baseType, auxType, baseType, nil
@@ -99,7 +99,7 @@ func mainAuxArgsToTypes(funcName string, fetcher ir.Fetcher, call *ir.FuncCallEx
 		return nil, nil, nil, fmterr.Internalf(fetcher.File().FileSet(), call.Node(), "cannot compare arguments type: %v", err)
 	}
 	if !shapeEq {
-		return nil, nil, nil, fmterr.Errorf(fetcher.File().FileSet(), call.Node(), "mismatch types %s and %s", baseType.String(), auxType.String())
+		return nil, nil, nil, fmterr.Errorf(fetcher.File().FileSet(), call.Node(), "mismatch types %s and %s", baseType.ReferString(fetcher.File()), auxType.ReferString(fetcher.File()))
 	}
 	return baseType, auxType, baseType, nil
 }

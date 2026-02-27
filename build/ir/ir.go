@@ -36,6 +36,7 @@ import (
 	"github.com/pkg/errors"
 	"github.com/gx-org/backend/dtype"
 	"github.com/gx-org/backend/shape"
+	gxfmt "github.com/gx-org/gx/base/fmt"
 	"github.com/gx-org/gx/build/ir/annotations"
 	"github.com/gx-org/gx/build/ir/irkind"
 )
@@ -109,6 +110,8 @@ type (
 
 	// Type of a value.
 	Type interface {
+		StringDefiner
+		StringReferer
 		StorageWithValue
 
 		// Kind of the type.
@@ -129,12 +132,6 @@ type (
 
 		// UnifyWith recursively unifies a type parameters with types.
 		UnifyWith(Unifier, Type) bool
-
-		// SourceString returns a reference to the type given a file context.
-		SourceString(file *File) string
-
-		// String representation of the type.
-		String() string
 	}
 
 	// Zeroer is a type able to create a zero value of the type as an expression.
@@ -317,18 +314,18 @@ func (s *TupleType) Value(x Expr) Expr {
 	return TypeExpr(x, s)
 }
 
-// SourceString returns a string representation of the signature of a function.
-func (s *TupleType) SourceString(context *File) string {
-	return s.String()
-}
-
-// String representation of the type.
-func (s *TupleType) String() string {
+// DefineString returns a reference to the type given a file context.
+func (s *TupleType) DefineString(from *File) string {
 	ss := make([]string, len(s.Types))
 	for i, typ := range s.Types {
-		ss[i] = typ.String()
+		ss[i] = typ.DefineString(from)
 	}
 	return fmt.Sprintf("(%s)", strings.Join(ss, ","))
+}
+
+// ReferString returns a reference to the type given a file context.
+func (s *TupleType) ReferString(from *File) string {
+	return s.DefineString(from)
 }
 
 func (*InterfaceType) node() {}
@@ -352,13 +349,11 @@ func (s *InterfaceType) Value(x Expr) Expr {
 	return TypeExpr(x, s)
 }
 
-// SourceString returns a reference to the type given a file context.
-func (s *InterfaceType) SourceString(context *File) string {
-	return s.String()
-}
+// DefineString representation of the type.
+func (s *InterfaceType) DefineString(*File) string { return s.Kind().String() }
 
-// String representation of the type.
-func (s *InterfaceType) String() string { return s.Kind().String() }
+// ReferString returns a reference to the type given a file context.
+func (s *InterfaceType) ReferString(*File) string { return s.Kind().String() }
 
 // IsValid returns true if the type is valid.
 func IsValid(tp Type) bool {
@@ -395,13 +390,13 @@ func (s *BuiltinType) Value(x Expr) Expr {
 	return TypeExpr(x, s)
 }
 
-// SourceString returns a string representation of the signature of a function.
-func (s *BuiltinType) SourceString(context *File) string {
-	return s.String()
+// DefineString returns the GX source code to define the type.
+func (s *BuiltinType) DefineString(from *File) string {
+	return s.ReferString(from)
 }
 
-// String representation of the type.
-func (s *BuiltinType) String() string {
+// ReferString returns the GX source to refer to the type.
+func (s *BuiltinType) ReferString(*File) string {
 	return fmt.Sprint(s.Impl)
 }
 
@@ -529,13 +524,13 @@ func (s *atomicType) Zero() Expr {
 	}
 }
 
-// SourceString returns a reference to the type given a file context.
-func (s *atomicType) SourceString(*File) string {
-	return s.String()
+// ReferString returns the string representation of the node in an error message.
+func (s *atomicType) ReferString(from *File) string {
+	return s.DefineString(from)
 }
 
-// String representation of the type.
-func (s *atomicType) String() string {
+// DefineString returns the GX source code of the node.
+func (s *atomicType) DefineString(*File) string {
 	return s.Kind().String()
 }
 
@@ -633,20 +628,14 @@ func (s *NamedType) Same(o Storage) bool {
 	return Storage(s) == o
 }
 
-// SourceString returns a reference to the type given a file context.
-func (s *NamedType) SourceString(context *File) string {
-	if context == nil {
-		return s.String()
-	}
-	if s.File == nil || s.File.Package == context.Package {
-		return s.Name()
-	}
-	return s.File.Package.Name.Name + "." + s.Name()
+// DefineString returns the GX code source of the receiver.
+func (s *NamedType) DefineString(from *File) string {
+	return s.ReferString(from)
 }
 
-// String representation of the type.
-func (s *NamedType) String() string {
-	if s.File == nil {
+// ReferString returns a reference to the type given a file context.
+func (s *NamedType) ReferString(from *File) string {
+	if from != nil && s.File != nil && s.File.Package == from.Package {
 		return s.Name()
 	}
 	return s.File.Package.Name.Name + "." + s.Name()
@@ -708,13 +697,13 @@ func (s *StructType) Value(x Expr) Expr {
 	return TypeExpr(x, s)
 }
 
-// SourceString returns a reference to the type given a file context.
-func (s *StructType) SourceString(context *File) string {
-	return s.String()
+// DefineString returns a reference to the type given a file context.
+func (s *StructType) DefineString(from *File) string {
+	return s.Kind().String()
 }
 
-// String representation of the type.
-func (s *StructType) String() string {
+// ReferString returns a reference to the type given a file context.
+func (s *StructType) ReferString(from *File) string {
 	return s.Kind().String()
 }
 
@@ -791,9 +780,18 @@ func (s *SliceType) rankString(dtype string) string {
 	return rank + dtype
 }
 
-// SourceString returns a reference to the type given a file context.
-func (s *SliceType) SourceString(context *File) string {
-	return s.rankString(s.DType.Val().SourceString(context))
+// DefineString returns a reference to the type given a file context.
+func (s *SliceType) DefineString(from *File) string {
+	dtype := "unknown"
+	if s.DType != nil {
+		dtype = s.DType.SourceString(from)
+	}
+	return s.rankString(dtype)
+}
+
+// ReferString returns a reference to the type given a file context.
+func (s *SliceType) ReferString(from *File) string {
+	return s.DefineString(from)
 }
 
 // Specialise a type to a given target.
@@ -804,15 +802,6 @@ func (s *SliceType) Specialise(spec Specialiser) (Type, error) {
 // UnifyWith recursively unifies a type parameters with types.
 func (s *SliceType) UnifyWith(Unifier, Type) bool {
 	return true
-}
-
-// String representation of the type.
-func (s *SliceType) String() string {
-	dtype := "unknown"
-	if s.DType != nil {
-		dtype = s.DType.String()
-	}
-	return s.rankString(dtype)
 }
 
 func (*arrayType) node() {}
@@ -990,26 +979,22 @@ func (s *arrayType) Zero() Expr {
 	}
 }
 
-func (s *arrayType) rankString(dtype string) string {
+func (s *arrayType) rankString(from *File, dtype string) string {
 	rank := "[invalid]"
 	if s.RankF != nil {
-		rank = s.RankF.String()
+		rank = s.RankF.SourceString(from)
 	}
 	return rank + dtype
 }
 
-// SourceString returns a reference to the type given a file context.
-func (s *arrayType) SourceString(context *File) string {
-	return s.rankString(s.DTypeF.SourceString(context))
+// ReferString returns the string representation of the node in an error message.
+func (s *arrayType) ReferString(from *File) string {
+	return s.DefineString(from)
 }
 
-// String representation of the tensor type.
-func (s *arrayType) String() string {
-	dtype := "dtype"
-	if s.DTypeF != nil {
-		dtype = s.DTypeF.String()
-	}
-	return s.rankString(dtype)
+// DefineString returns the GX source code of the node.
+func (s *arrayType) DefineString(from *File) string {
+	return s.rankString(from, s.DTypeF.ReferString(from))
 }
 
 func (*TypeParam) node() {}
@@ -1083,8 +1068,13 @@ func (s *TypeParam) Value(x Expr) Expr {
 	return TypeExpr(x, s)
 }
 
-// SourceString returns a reference to the type given a file context.
-func (s *TypeParam) SourceString(context *File) string {
+// DefineString returns the GX source code of the node.
+func (s *TypeParam) DefineString(from *File) string {
+	return s.Field.Name.Name
+}
+
+// ReferString returns the string representation of the node in an error message.
+func (s *TypeParam) ReferString(from *File) string {
 	return s.Field.Name.Name
 }
 
@@ -1100,11 +1090,6 @@ func (s *TypeParam) Specialise(spec Specialiser) (Type, error) {
 // UnifyWith recursively unifies a type parameters with types.
 func (s *TypeParam) UnifyWith(uni Unifier, typ Type) bool {
 	return uni.DefineTParam(s, typ)
-}
-
-// String representation of the type.
-func (s *TypeParam) String() string {
-	return s.Field.Name.Name
 }
 
 // IsStatic return true if the type is static, that is if the instance of the type
@@ -1171,6 +1156,7 @@ type (
 	Func interface {
 		Node
 		annotations.Annotated
+		StringDefiner
 
 		// File owning the function.
 		File() *File
@@ -1181,14 +1167,8 @@ type (
 		// value, though FuncType returns the concrete type.
 		FuncType() *FuncType
 
-		// ShortString returns a human readable representation of the function.
-		ShortString() string
-
 		// Type of the function.
 		Type() Type
-
-		// String representation of the function.
-		String() string
 	}
 
 	// PkgFunc is a function declared at the package level.
@@ -1304,6 +1284,7 @@ var (
 	_ PkgFunc          = (*FuncDecl)(nil)
 	_ Func             = (*FuncLit)(nil)
 	_ PkgFunc          = (*Macro)(nil)
+	_ Expr             = (*FuncLit)(nil)
 	_ WithStore        = (*FuncLit)(nil)
 	_ StorageWithValue = (*FuncLit)(nil)
 )
@@ -1430,7 +1411,7 @@ func (pkg *Package) ExportedStatics() []*VarExpr {
 }
 
 // String representation of the package.
-func (pkg *Package) String() string {
+func (pkg *Package) DefineString(*File) string {
 	return pkg.FullName()
 }
 
@@ -1530,13 +1511,28 @@ func (s *FuncDecl) New() PkgFunc {
 	return &n
 }
 
-// ShortString returns the name of the function.
-func (s *FuncDecl) ShortString() string {
+// ReferString returns the string representation of the node in an error message.
+func (s *FuncDecl) ReferString(from *File) string {
 	name := s.Name()
 	if name != "" {
 		return name
 	}
-	return s.FuncType().String()
+	return s.FuncType().ReferString(from)
+}
+
+// DefineString returns the GX source code of the node.
+func (s *FuncDecl) DefineString(from *File) string {
+	sig := s.FType.SourceSignature(from, s.Src.Name)
+	if s.Body == nil {
+		return sig
+	}
+	body := gxfmt.Indent(s.Body.SourceString(from))
+	return fmt.Sprintf("%s {\n%s}", sig, body)
+}
+
+// ShortString returns a short string for error messages related to annotations.
+func (s *FuncDecl) ShortString() string {
+	return s.ReferString(nil)
 }
 
 func (*FuncBuiltin) node()         {}
@@ -1558,9 +1554,19 @@ func (s *FuncBuiltin) NameDef() *ast.Ident {
 	return s.Src.Name
 }
 
-// ShortString returns the name of the function.
+// DefineString returns the GX source code of the receiver.
+func (s *FuncBuiltin) DefineString(from *File) string {
+	return s.Name()
+}
+
+// ReferString returns the string representing the function in an error message.
+func (s *FuncBuiltin) ReferString(from *File) string {
+	return s.File().Package.Name.Name + "." + s.Name()
+}
+
+// ShortString returns a short string for error messages related to annotations.
 func (s *FuncBuiltin) ShortString() string {
-	return s.FFile.Package.Name.Name + "." + s.Name()
+	return s.ReferString(nil)
 }
 
 // Value returns a reference to the function.
@@ -1650,14 +1656,19 @@ func (s *FuncKeyword) Same(o Storage) bool {
 	return Storage(s) == o
 }
 
-// ShortString returns a short string representation of the keyword.
-func (s *FuncKeyword) ShortString() string {
-	return s.String()
+// DefineString return the name of the keyword.
+func (s *FuncKeyword) DefineString(*File) string {
+	return s.ID.Name
 }
 
-// String return the name of the keyword.
-func (s *FuncKeyword) String() string {
-	return s.ID.Name
+// ReferString returns the string representing the function in an error message.
+func (s *FuncKeyword) ReferString(from *File) string {
+	return s.DefineString(from)
+}
+
+// ShortString returns a short string for error messages related to annotations.
+func (s *FuncKeyword) ShortString() string {
+	return s.ReferString(nil)
 }
 
 func (*FuncLit) node()         {}
@@ -1685,9 +1696,26 @@ func (s *FuncLit) Value(x Expr) Expr {
 	return NewFuncValExpr(x, s)
 }
 
-// ShortString returns the name of the function.
+// DefineString returns the name of the function.
+func (s *FuncLit) DefineString(from *File) string {
+	sig := s.FType.DefineString(from)
+	body := gxfmt.Indent(s.Body.SourceString(from))
+	return fmt.Sprintf("%s {\n%s}", sig, body)
+}
+
+// ReferString returns the string representation of the node in an error message.
+func (s *FuncLit) ReferString(from *File) string {
+	return s.FType.ReferString(from)
+}
+
+// ShortString returns a short string for error messages related to annotations.
 func (s *FuncLit) ShortString() string {
-	return s.FType.String()
+	return s.ReferString(nil)
+}
+
+// SourceString returns the GX source code of the expression.
+func (s *FuncLit) SourceString(from *File) string {
+	return s.DefineString(from)
 }
 
 // Doc returns associated documentation or nil.
@@ -1773,10 +1801,6 @@ func (s *ImportDecl) Same(o Storage) bool {
 	return Storage(s) == o
 }
 
-func (s *ImportDecl) String() string {
-	return s.Path
-}
-
 func (*ConstSpec) node() {}
 
 func (*ConstExpr) node()         {}
@@ -1811,6 +1835,10 @@ func (cst *ConstExpr) Value(Expr) Expr {
 	return cst.Val
 }
 
+// SourceString returns the GX source code of the expression.
+func (cst *ConstExpr) SourceString() string {
+	return fmt.Sprintf("const %s", cst.VName.Name)
+}
 func (*VarSpec) node() {}
 
 func (*VarExpr) node()    {}
@@ -1865,7 +1893,7 @@ type (
 var (
 	_ Node = (*FieldList)(nil)
 	_ Node = (*FieldGroup)(nil)
-	_ Expr = (*Field)(nil)
+	_ Node = (*Field)(nil)
 )
 
 func (*FieldList) node() {}
@@ -1966,12 +1994,23 @@ func (s *FieldGroup) Annotations() *annotations.Annotations {
 	return &s.Anns
 }
 
-// ShortString returns a short string representing the field group.
-func (s *FieldGroup) ShortString() string {
-	if len(s.Fields) == 0 {
-		return s.Type.String()
+// SourceString returns the GX source code to define the field group.
+func (s *FieldGroup) SourceString(from *File) string {
+	var fNames []string
+	for _, field := range s.Fields {
+		fNames = append(fNames, field.Name.Name)
 	}
-	return s.Fields[0].Name.Name
+	typ := s.Type.SourceString(from)
+	names := ""
+	if len(fNames) > 0 {
+		names = strings.Join(fNames, ", ") + " "
+	}
+	return names + typ
+}
+
+// ShortString representation of the group.
+func (s *FieldGroup) ShortString() string {
+	return s.SourceString(nil)
 }
 
 func (s *Field) node() {}
@@ -2002,23 +2041,18 @@ func (s *Field) Type() Type {
 	return s.Group.Type.Val()
 }
 
-// String returns a string representation of the field.
-func (s *Field) String() string {
-	if s.Name == nil {
-		return s.Group.Type.String()
-	}
-	return fmt.Sprintf("%s %s", s.Name.Name, s.Group.Type.String())
-}
-
 // ----------------------------------------------------------------------------
 // Expressions.
 type (
 	// Expr is an expression that returns a (typed) result.
 	Expr interface {
 		Node
+		StringSourcer
+
+		// Expr returns the syntax tree of the expression.
 		Expr() ast.Expr
+		// Type of the expression.
 		Type() Type
-		String() string
 	}
 
 	// StringLiteral is a string defined by a literal.
@@ -2126,11 +2160,9 @@ type (
 
 	// Callee function being called from a call expression.
 	Callee interface {
-		Node
+		Expr
 		Func() Func
 		FuncType() *FuncType
-		ShortString() string
-		SourceString() string
 	}
 
 	// FuncCallExpr is an expression calling a function.
@@ -2219,24 +2251,6 @@ type (
 		Type() Type
 	}
 
-	// RuntimeValueExpr is an expression representing a runtime value.
-	// Such expression will never be present in a compiled package.
-	// This type is used by the interpreter to represent a GX value
-	// as an expression.
-	RuntimeValueExpr interface {
-		Expr
-		Value(Expr) RuntimeValue
-	}
-
-	// RuntimeValueExprT is a runtime expression specialised for a value type.
-	// The Src field can be nil if the value was not computed from an expression
-	// in the source code (e.g. a value given as a static value programmatically).
-	RuntimeValueExprT[T RuntimeValue] struct {
-		Src ast.Expr
-		Typ Type
-		Val T
-	}
-
 	// Tuple is a group of expression.
 	Tuple struct {
 		Exprs []Expr
@@ -2269,7 +2283,6 @@ var (
 	_ Expr             = (*IndexExpr)(nil)
 	_ Expr             = (*IndexListExpr)(nil)
 	_ Expr             = (*EinsumExpr)(nil)
-	_ RuntimeValueExpr = (*RuntimeValueExprT[RuntimeValue])(nil)
 	_ Node             = (*Tuple)(nil)
 
 	_ Expr      = (*FuncValExpr)(nil)
@@ -2298,6 +2311,14 @@ func (s *NumberFloat) Type() Type { return NumberFloatType() }
 // DefaultType returns the default type of the number.
 func (s NumberFloat) DefaultType() Type { return TypeFromKind(irkind.Float64) }
 
+// SourceString returns a reference to the type given a file context.
+func (s *NumberFloat) SourceString(*File) string {
+	if s.Src != nil {
+		return s.Src.Value
+	}
+	return s.Val.String()
+}
+
 func (s *NumberInt) node()       {}
 func (s *NumberInt) numberExpr() {}
 
@@ -2318,6 +2339,14 @@ func (s *NumberInt) Type() Type { return NumberIntType() }
 // DefaultType returns the default type of the number.
 func (s NumberInt) DefaultType() Type { return TypeFromKind(irkind.Int64) }
 
+// SourceString returns a reference to the type given a file context.
+func (s *NumberInt) SourceString(*File) string {
+	if s.Src != nil && s.Src.Value != "" {
+		return s.Src.Value
+	}
+	return s.Val.String()
+}
+
 func (s *NumberCastExpr) node()        {}
 func (s *NumberCastExpr) staticValue() {}
 
@@ -2330,9 +2359,9 @@ func (s *NumberCastExpr) Expr() ast.Expr { return s.X.Expr() }
 // Type returns the type returned by the function call.
 func (s *NumberCastExpr) Type() Type { return s.Typ }
 
-// String representation of the number.
-func (s *NumberCastExpr) String() string {
-	return s.X.String()
+// SourceString representation of the number.
+func (s *NumberCastExpr) SourceString(from *File) string {
+	return s.X.SourceString(from)
 }
 
 func (s *StringLiteral) node()        {}
@@ -2347,8 +2376,10 @@ func (s *StringLiteral) Node() ast.Node { return s.Src }
 // Type returns the type returned by the function call.
 func (s *StringLiteral) Type() Type { return StringType() }
 
-// String representation of the number.
-func (s *StringLiteral) String() string { return s.Src.Value }
+// SourceString representation of the number.
+func (s *StringLiteral) SourceString(*File) string {
+	return s.Src.Value
+}
 
 func (s *AtomicValueT[T]) node()        {}
 func (s *AtomicValueT[T]) atomicValue() {}
@@ -2362,8 +2393,10 @@ func (s *AtomicValueT[T]) Node() ast.Node { return s.Src }
 // Type returns the type returned by the function call.
 func (s *AtomicValueT[T]) Type() Type { return s.Typ }
 
-// String representation.
-func (s *AtomicValueT[T]) String() string { return fmt.Sprint(s.Val) }
+// SourceString returns the GX source code of the atomic value.
+func (s *AtomicValueT[T]) SourceString(*File) string {
+	return fmt.Sprint(s.Val)
+}
 
 func (s *ArrayLitExpr) node() {}
 
@@ -2389,6 +2422,11 @@ func (s *ArrayLitExpr) NewFromValues(elts []Expr) *ArrayLitExpr {
 	}
 }
 
+// SourceString returns the GX source code of the node.
+func (s *ArrayLitExpr) SourceString(from *File) string {
+	return fmt.Sprintf("%s%s", s.Typ.DefineString(from), sourceStringLiteral(from, s.Elts))
+}
+
 func (s *StructLitExpr) node() {}
 
 // Node returns the node in the AST tree.
@@ -2400,8 +2438,10 @@ func (s *StructLitExpr) Type() Type { return s.Typ }
 // Expr returns the AST expression.
 func (s *StructLitExpr) Expr() ast.Expr { return s.Src }
 
-// String representation.
-func (s *StructLitExpr) String() string { return s.Type().String() }
+// SourceString returns the GX source code of the node.
+func (s *StructLitExpr) SourceString(from *File) string {
+	return s.Type().ReferString(from)
+}
 
 func (s *SliceLitExpr) node() {}
 
@@ -2414,6 +2454,11 @@ func (s *SliceLitExpr) Type() Type { return s.Typ }
 // Expr returns the AST expression.
 func (s *SliceLitExpr) Expr() ast.Expr { return s.Src }
 
+// SourceString returns the GX source code of the node.
+func (s *SliceLitExpr) SourceString(from *File) string {
+	return fmt.Sprintf("%s%s", s.Typ.ReferString(from), sourceStringLiteral(from, s.Elts))
+}
+
 func (s *UnaryExpr) node() {}
 
 // Node returns the node in the AST tree.
@@ -2425,8 +2470,10 @@ func (s *UnaryExpr) Type() Type { return s.X.Type() }
 // Expr returns the expression in the source code.
 func (s *UnaryExpr) Expr() ast.Expr { return s.Src }
 
-// String representation.
-func (s *UnaryExpr) String() string { return s.Src.Op.String() + s.X.String() }
+// SourceString returns the GX source code of the expression.
+func (s *UnaryExpr) SourceString(from *File) string {
+	return s.Src.Op.String() + s.X.SourceString(from)
+}
 
 func (s *ParenExpr) node() {}
 
@@ -2448,8 +2495,10 @@ func (s *ParenExpr) Store() Storage {
 	return withStore.Store()
 }
 
-// String representation.
-func (s *ParenExpr) String() string { return "(" + s.X.String() + ")" }
+// SourceString returns the GX source code of the node.
+func (s *ParenExpr) SourceString(from *File) string {
+	return "(" + s.X.SourceString(from) + ")"
+}
 
 func (s *BinaryExpr) node() {}
 
@@ -2462,12 +2511,31 @@ func (s *BinaryExpr) Type() Type { return s.Typ }
 // Expr returns the expression in the source code.
 func (s *BinaryExpr) Expr() ast.Expr { return s.Src }
 
+func (s *BinaryExpr) binaryElementString(from *File, x Expr) string {
+	bx, isXBinary := x.(*BinaryExpr)
+	if !isXBinary {
+		return x.SourceString(from)
+	}
+	if (s.Src.Op == token.SUB || s.Src.Op == token.ADD) &&
+		(bx.Src.Op == token.MUL || bx.Src.Op == token.QUO) {
+		return x.SourceString(from)
+	}
+	return fmt.Sprintf("(%s)", x.SourceString(from))
+}
+
+// SourceString returns the GX source code of the node.
+func (s *BinaryExpr) SourceString(from *File) string {
+	return (s.binaryElementString(from, s.X) +
+		s.Src.Op.String() +
+		s.binaryElementString(from, s.Y))
+}
+
 // TypeExpr builds an expression given a type.
 func TypeExpr(x Expr, t Type) *TypeValExpr {
 	if x == nil {
 		x = &Ident{
 			Stor: t,
-			Src:  &ast.Ident{Name: t.String()},
+			Src:  &ast.Ident{Name: t.ReferString(nil)},
 		}
 	}
 	return &TypeValExpr{x: x, val: t}
@@ -2502,8 +2570,10 @@ func (s *TypeValExpr) Val() Type {
 // Store storing the type.
 func (s *TypeValExpr) Store() Storage { return s.val }
 
-// String representation.
-func (s *TypeValExpr) String() string { return s.X().String() }
+// SourceString represents the field list as GX source code.
+func (s *TypeValExpr) SourceString(from *File) string {
+	return s.x.SourceString(from)
+}
 
 // NewFuncValExpr returns a new expression referencing a function.
 func NewFuncValExpr(x Expr, fn Func) *FuncValExpr {
@@ -2544,26 +2614,16 @@ func (s *FuncValExpr) Type() Type {
 	return s.t
 }
 
-// ShortString representing the function being called.
-func (s *FuncValExpr) ShortString() string {
-	return s.x.String()
-}
-
-// SourceString returns GX code representing the call to the function.
-func (s *FuncValExpr) SourceString() string {
-	return s.String()
-}
-
-// String representation.
-func (s *FuncValExpr) String() string {
-	callee := s.x.String()
+// SourceString representation.
+func (s *FuncValExpr) SourceString(from *File) string {
+	callee := s.x.SourceString(from)
 	spec := ""
 	fType := s.t
 	numTypeParamValues := len(fType.TypeParamsValues)
 	if numTypeParamValues > 0 {
 		types := make([]string, numTypeParamValues)
 		for i, val := range fType.TypeParamsValues {
-			types[i] = val.Typ.String()
+			types[i] = val.Typ.ReferString(from)
 		}
 		spec = "[" + strings.Join(types, ",") + "]"
 	}
@@ -2603,6 +2663,19 @@ func (s *FuncCallExpr) ExprFromResult(i int) *CallResultExpr {
 	}
 }
 
+// SourceString returns the GX source code of the node.
+func (s *FuncCallExpr) SourceString(from *File) string {
+	var b strings.Builder
+	fmt.Fprintf(&b, "%s(", s.Callee.SourceString(from))
+	args := make([]string, len(s.Args))
+	for i, arg := range s.Args {
+		args[i] = arg.SourceString(from)
+	}
+	b.WriteString(strings.Join(args, ", "))
+	b.WriteString(")")
+	return b.String()
+}
+
 func (s *CallResultExpr) node() {}
 
 // Node returns the node in the AST tree.
@@ -2617,8 +2690,10 @@ func (s *CallResultExpr) Type() Type {
 // Expr returns the expression in the source code.
 func (s *CallResultExpr) Expr() ast.Expr { return s.Call.Expr() }
 
-// String representation.
-func (s *CallResultExpr) String() string { return fmt.Sprintf("%T", s) }
+// SourceString returns the GX source code of the node.
+func (s *CallResultExpr) SourceString(*File) string {
+	return fmt.Sprintf("%T", s)
+}
 
 func (s *CastExpr) node() {}
 
@@ -2634,6 +2709,18 @@ func (s *CastExpr) Expr() ast.Expr { return s.Src }
 // Orig returns the expression being casted.
 func (s *CastExpr) Orig() Expr { return s.X }
 
+// SourceString returns the GX source code of the node.
+func (s *CastExpr) SourceString(from *File) string {
+	switch s.Typ.(type) {
+	case *NamedType:
+		return fmt.Sprintf("%s(%s)", s.Typ.ReferString(from), s.X.SourceString(from))
+	case ArrayType:
+		return fmt.Sprintf("%s(%s)", s.Typ.ReferString(from), s.X.SourceString(from))
+	default:
+		return fmt.Sprintf("(%s)(%s)", s.Typ.ReferString(from), s.X.SourceString(from))
+	}
+}
+
 func (s *TypeAssertExpr) node() {}
 
 // Node returns the node in the AST tree.
@@ -2647,6 +2734,11 @@ func (s *TypeAssertExpr) Expr() ast.Expr { return s.Src }
 
 // Orig returns the expression being casted.
 func (s *TypeAssertExpr) Orig() Expr { return s.X }
+
+// SourceString returns the GX source code of the node.
+func (s *TypeAssertExpr) SourceString(from *File) string {
+	return fmt.Sprintf("%s.(%s)", s.X.SourceString(from), s.Typ.ReferString(from))
+}
 
 func (s *Ident) node() {}
 
@@ -2663,8 +2755,8 @@ func (s *Ident) Expr() ast.Expr { return s.Src }
 // Store returns the storage referenced by this expression.
 func (s *Ident) Store() Storage { return s.Stor }
 
-// String representation.
-func (s *Ident) String() string { return s.Src.Name }
+// SourceString returns the GX source code of the expression.
+func (s *Ident) SourceString(*File) string { return s.Src.Name }
 
 func (s *PackageRef) node() {}
 
@@ -2677,8 +2769,10 @@ func (s *PackageRef) Expr() ast.Expr { return s.X.Expr() }
 // Type returns the package type.
 func (s *PackageRef) Type() Type { return PackageType() }
 
-// String representation.
-func (s *PackageRef) String() string { return s.X.String() }
+// SourceString returns the GX source code of the expression.
+func (s *PackageRef) SourceString(from *File) string {
+	return s.X.SourceString(from)
+}
 
 func (*FieldLit) node()         {}
 func (*FieldLit) storageValue() {}
@@ -2727,6 +2821,11 @@ func (s *SelectorExpr) Store() Storage {
 	return s.Stor
 }
 
+// SourceString returns the GX source code of the expression.
+func (s *SelectorExpr) SourceString(from *File) string {
+	return fmt.Sprintf("%s.%s", s.X.SourceString(from), s.Src.Sel.Name)
+}
+
 func (s *IndexExpr) node() {}
 
 // Node returns the node in the AST tree.
@@ -2737,6 +2836,11 @@ func (s *IndexExpr) Type() Type { return s.Typ }
 
 // Expr returns the AST expression.
 func (s *IndexExpr) Expr() ast.Expr { return s.Src }
+
+// SourceString returns the GX source code of the expression.
+func (s *IndexExpr) SourceString(from *File) string {
+	return fmt.Sprintf("%s[%s]", s.X.SourceString(from), s.Index.SourceString(from))
+}
 
 func (s *IndexListExpr) node() {}
 
@@ -2749,8 +2853,10 @@ func (s *IndexListExpr) Type() Type { return s.Typ }
 // Expr returns the AST expression.
 func (s *IndexListExpr) Expr() ast.Expr { return s.Src }
 
-// String representation.
-func (s *IndexListExpr) String() string { return fmt.Sprintf("%T", s) }
+// SourceString returns the GX source code of the expression.
+func (s *IndexListExpr) SourceString(*File) string {
+	return fmt.Sprintf("%T", s)
+}
 
 func (s *EinsumExpr) node() {}
 
@@ -2763,26 +2869,9 @@ func (s *EinsumExpr) Type() Type { return s.Typ }
 // Expr returns the expression in the source code.
 func (s *EinsumExpr) Expr() ast.Expr { return s.Src }
 
-// String representation.
-func (s *EinsumExpr) String() string { return fmt.Sprintf("%T", s) }
-
-func (s *RuntimeValueExprT[T]) node() {}
-
-// Node returns the node in the AST tree.
-func (s *RuntimeValueExprT[T]) Node() ast.Node { return s.Src }
-
-// Expr returns the expression in the source code.
-func (s *RuntimeValueExprT[T]) Expr() ast.Expr { return s.Src }
-
-// Type returns the type referenced by the expression.
-func (s *RuntimeValueExprT[T]) Type() Type { return s.Typ }
-
-// Value returns the runtime value stored in the expression.
-func (s *RuntimeValueExprT[T]) Value(Expr) RuntimeValue { return s.Val }
-
-// String representation of the type.
-func (s *RuntimeValueExprT[T]) String() string {
-	return fmt.Sprintf("runtime(%T)", s.Val)
+// SourceString returns the GX source code of the expression.
+func (s *EinsumExpr) SourceString(*File) string {
+	return fmt.Sprintf("%T", s)
 }
 
 func (s *Tuple) node() {}
@@ -2942,9 +3031,10 @@ type (
 	// No value is being returned.
 	Stmt interface {
 		Node
+		StringSourcer
+
 		// stmtNode marks a structure as a statement structure.
 		stmtNode()
-		String() string
 	}
 
 	// ReturnStmt is a return statement in a function.
@@ -3036,6 +3126,15 @@ func (*BlockStmt) node()     {}
 // Node returns the node in the AST tree.
 func (s *BlockStmt) Node() ast.Node { return s.Src }
 
+// SourceString returns the GX source code of the block.
+func (s *BlockStmt) SourceString(from *File) string {
+	stmts := make([]string, len(s.List))
+	for i, stmt := range s.List {
+		stmts[i] = stmt.SourceString(from)
+	}
+	return strings.Join(stmts, "\n") + "\n"
+}
+
 func (*ReturnStmt) stmtNode() {}
 func (*ReturnStmt) node()     {}
 
@@ -3054,8 +3153,26 @@ func (s *ReturnStmt) Type() Type {
 	}
 }
 
+// SourceString returns the GX source code of the expression.
+func (s *ReturnStmt) SourceString(from *File) string {
+	vals := make([]string, len(s.Results))
+	for i, res := range s.Results {
+		vals[i] = res.SourceString(from)
+	}
+	return "return " + strings.Join(vals, ", ")
+}
+
 func (*AssignCallStmt) stmtNode() {}
 func (*AssignCallStmt) node()     {}
+
+// SourceString returns the GX source code of the expression.
+func (s *AssignCallStmt) SourceString(from *File) string {
+	assigned := make([]string, len(s.List))
+	for i, v := range s.List {
+		assigned[i] = v.NameDef().Name
+	}
+	return fmt.Sprintf("%s := %s", strings.Join(assigned, ", "), s.Call.SourceString(from))
+}
 
 // Node returns the node in the AST tree.
 func (s *AssignCallStmt) Node() ast.Node { return s.Src }
@@ -3066,8 +3183,24 @@ func (*AssignExprStmt) node()     {}
 // Node returns the node in the AST tree.
 func (s *AssignExprStmt) Node() ast.Node { return s.Src }
 
+// SourceString returns the GX source code of the expression.
+func (s *AssignExprStmt) SourceString(from *File) string {
+	assigned := make([]string, len(s.List))
+	exprs := make([]string, len(s.List))
+	for i, v := range s.List {
+		assigned[i] = v.NameDef().Name
+		exprs[i] = v.X.SourceString(from)
+	}
+	return fmt.Sprintf("%s %s %s", strings.Join(assigned, ", "), s.Src.Tok, strings.Join(exprs, ", "))
+}
+
 func (*RangeStmt) stmtNode() {}
 func (*RangeStmt) node()     {}
+
+// SourceString returns the GX source code of the expression.
+func (*RangeStmt) SourceString(*File) string {
+	return "RangeStmt"
+}
 
 // Node returns the node in the AST tree.
 func (s *RangeStmt) Node() ast.Node { return s.Src }
@@ -3078,11 +3211,21 @@ func (*IfStmt) node()     {}
 // Node returns the node in the AST tree.
 func (s *IfStmt) Node() ast.Node { return s.Src }
 
+// SourceString returns the GX source code of the expression.
+func (*IfStmt) SourceString(*File) string {
+	return "IfStmt"
+}
+
 func (*ExprStmt) stmtNode() {}
 func (*ExprStmt) node()     {}
 
 // Node returns the node in the AST tree.
 func (s *ExprStmt) Node() ast.Node { return s.Src }
+
+// SourceString returns the GX source code of the expression.
+func (s *ExprStmt) SourceString(from *File) string {
+	return s.X.SourceString(from)
+}
 
 func (*DeclStmt) node() {}
 
@@ -3090,6 +3233,11 @@ func (*DeclStmt) node() {}
 func (s *DeclStmt) Node() ast.Node { return s.Src }
 
 func (*DeclStmt) stmtNode() {}
+
+// SourceString returns the GX source code of the expression.
+func (s *DeclStmt) SourceString(*File) string {
+	return "DeclStmt"
+}
 
 func (*AssignExpr) storageValue() {}
 
@@ -3157,11 +3305,11 @@ const enforceArrayChecks = false
 
 // ToArrayTypeGivenShape converts a type to the underlying array type.
 // Returns an error with the array type does not match the shape.
-func ToArrayTypeGivenShape(typ Type, sh *shape.Shape) (ArrayType, error) {
+func ToArrayTypeGivenShape(from *File, typ Type, sh *shape.Shape) (ArrayType, error) {
 	under := Underlying(typ)
 	array, ok := under.(ArrayType)
 	if !ok {
-		return nil, errors.Errorf("cannot create array value: type %s has underlying type %s but want array type", typ.String(), under.String())
+		return nil, errors.Errorf("cannot create array value: type %s has underlying type %s but want array type", typ.ReferString(from), under.ReferString(from))
 	}
 	if !enforceArrayChecks {
 		return array, nil
@@ -3173,7 +3321,7 @@ func ToArrayTypeGivenShape(typ Type, sh *shape.Shape) (ArrayType, error) {
 	}
 	dt := arrayElementKind.DType()
 	if dt != sh.DType {
-		return array, errors.Errorf("cannot create array value: type %s has data type %s but shape has data type %s", typ.String(), dt, sh.DType.String())
+		return array, errors.Errorf("cannot create array value: type %s has data type %s but shape has data type %s", typ.ReferString(from), dt, sh.DType.String())
 	}
 	return array, nil
 }

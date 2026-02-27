@@ -499,11 +499,11 @@ func (s *arrayResolveScope) appendAxisToInferredRanks(ax ir.AxisLengths) {
 func (s *arrayResolveScope) sub(src ast.Node) (compositeLitResolveScope, bool) {
 	elt, ok := s.current.ElementType()
 	if !ok {
-		return s, s.Err().Appendf(src, "unexpected literal for type %s ", s.current.String())
+		return s, s.Err().Appendf(src, "unexpected literal for type %s ", s.current.ReferString(s.fileScope().irFile()))
 	}
 	eltArray := ir.ToArrayType(elt)
 	if eltArray == nil {
-		return s, s.Err().AppendInternalf(src, "invalid element type %s ", elt.String())
+		return s, s.Err().AppendInternalf(src, "invalid element type %s ", elt.ReferString(s.fileScope().irFile()))
 	}
 	currentRank := s.currentRank + 1
 	if infer := toInferRank(s.current.Rank()); infer != nil {
@@ -578,7 +578,7 @@ func (s *arrayResolveScope) newInferCompositeType(src *ast.CompositeLit, exprs [
 		}
 	}
 	if !axisEqual(s, src, axis, got) {
-		return ext, s.Err().Appendf(src, "cannot assign %d element(s) to axis length %s", numExprs, axis.String())
+		return ext, s.Err().Appendf(src, "cannot assign %d element(s) to axis length %s", numExprs, axis.SourceString(s.fileScope().irFile()))
 	}
 	return ext, true
 }
@@ -606,11 +606,11 @@ func (s *sliceResolveScope) dtype() ir.Type {
 func (s *sliceResolveScope) sub(src ast.Node) (compositeLitResolveScope, bool) {
 	slicer, ok := s.typ.(ir.SlicerType)
 	if !ok {
-		return s, s.Err().AppendInternalf(src, "invalid composite literal element type %s ", s.typ.String())
+		return s, s.Err().AppendInternalf(src, "invalid composite literal element type %s ", s.typ.ReferString(s.fileScope().irFile()))
 	}
 	elt, ok := slicer.ElementType()
 	if !ok {
-		return s, s.Err().AppendInternalf(src, "unexpected literal for type %s ", slicer.String())
+		return s, s.Err().AppendInternalf(src, "unexpected literal for type %s ", slicer.ReferString(s.fileScope().irFile()))
 	}
 	return &sliceResolveScope{
 		resolveScope: s,

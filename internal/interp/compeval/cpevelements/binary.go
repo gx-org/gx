@@ -43,7 +43,6 @@ var (
 	_ canonical.Evaluable             = (*binary)(nil)
 	_ canonical.Canonical             = (*binary)(nil)
 	_ elements.ElementWithConstant    = (*binary)(nil)
-	_ fmt.Stringer                    = (*binary)(nil)
 	_ elements.WithAxes               = (*binary)(nil)
 )
 
@@ -228,7 +227,7 @@ func (a *binary) ShortString() string {
 	return fmt.Sprintf("%v%v%v", x, a.src.Node().Src.Op, y)
 }
 
-func (a *binary) String() string {
+func (a *binary) SourceString(from *ir.File) string {
 	x := canonical.ToString(a.x)
 	y := canonical.ToString(a.y)
 	return fmt.Sprintf("%v%v%v", x, a.src.Node().Src.Op, y)

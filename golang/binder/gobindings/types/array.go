@@ -79,7 +79,7 @@ func (array *DeviceArray[T]) toDeviceBridger(val *values.DeviceArray) ArrayBridg
 }
 
 func (array *DeviceArray[T]) String() string {
-	return array.GXValue().String()
+	return array.GXValue().SourceString(nil)
 }
 
 // HostArray is an array stored on a host.
@@ -120,7 +120,7 @@ func (array *HostArray[T]) toDeviceBridger(val *values.DeviceArray) ArrayBridge 
 }
 
 func (array *HostArray[T]) String() string {
-	return array.GXValue().String()
+	return array.GXValue().SourceString(nil)
 }
 
 // ArrayBool returns a new Go host array of bool.

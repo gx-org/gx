@@ -118,9 +118,9 @@ func (a *variable) CanonicalExpr() canonical.Canonical {
 }
 
 func (a *variable) ShortString() string {
-	return a.String()
+	return a.SourceString(nil)
 }
 
-func (a *variable) String() string {
+func (a *variable) SourceString(*ir.File) string {
 	return a.name
 }

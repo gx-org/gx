@@ -41,7 +41,7 @@ func (f transpose) resultsType(fetcher ir.Fetcher, call *ir.FuncCallExpr) (ir.Ty
 	argType := arg.Type()
 	arrayType, ok := argType.(ir.ArrayType)
 	if !ok {
-		return nil, nil, fmterr.Errorf(fetcher.File().FileSet(), call.Node(), "argument type %s not supported in call to %s", arg.Type().String(), f.Name())
+		return nil, nil, fmterr.Errorf(fetcher.File().FileSet(), call.Node(), "argument type %s not supported in call to %s", arg.Type().ReferString(fetcher.File()), f.Name())
 	}
 	rank := arrayType.Rank()
 	inferredAxes := slices.Clone(rank.Axes())

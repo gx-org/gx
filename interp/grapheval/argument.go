@@ -232,7 +232,7 @@ func (sel *fieldSelectorArgument) ValueFromContext(ctx *values.FuncInputs) (ir.E
 	}
 	structValue, ok := val.(elements.Selector)
 	if !ok {
-		return nil, errors.Errorf("%s is not a structure instance (type %s)", sel.parent.Name(), sel.parent.typ.String())
+		return nil, errors.Errorf("%s is not a structure instance (type %s)", sel.parent.Name(), sel.parent.typ.ReferString(nil))
 	}
 	fieldVal, err := structValue.Select(&ir.SelectorExpr{
 		Src: &ast.SelectorExpr{Sel: &ast.Ident{Name: sel.fieldName}},
@@ -241,7 +241,7 @@ func (sel *fieldSelectorArgument) ValueFromContext(ctx *values.FuncInputs) (ir.E
 		return nil, err
 	}
 	if fieldVal == nil {
-		return nil, errors.Errorf("no field %s in structure instance passed as argument %s (type %s)", sel.fieldName, sel.parent.Name(), sel.parent.typ.String())
+		return nil, errors.Errorf("no field %s in structure instance passed as argument %s (type %s)", sel.fieldName, sel.parent.Name(), sel.parent.typ.ReferString(nil))
 	}
 	return fieldVal, nil
 }
@@ -276,7 +276,7 @@ func (vis *inputVisitor) newSliceArgument(parent parentArgument, typ *ir.SliceTy
 	}
 	elType, ok := typ.ElementType()
 	if !ok {
-		return nil, errors.Errorf("atomic type %s cannot be indexed", typ.String())
+		return nil, errors.Errorf("atomic type %s cannot be indexed", typ.ReferString(nil))
 	}
 	args := make([]ir.Element, fixed.Len())
 	for i, iProxy := range fixed.Elements() {
@@ -306,11 +306,11 @@ func (sel *indexSelectorArgument) ValueFromContext(ctx *values.FuncInputs) (ir.E
 	}
 	sliceValue, ok := el.(*values.Slice)
 	if !ok {
-		return nil, errors.Errorf("%s is not a structure instance (type %s)", sel.parent.Name(), sel.parent.typ.String())
+		return nil, errors.Errorf("%s is not a structure instance (type %s)", sel.parent.Name(), sel.parent.typ.ReferString(nil))
 	}
 	val := sliceValue.Element(sel.index)
 	if val == nil {
-		return nil, errors.Errorf("no element at %d in slice instance passed as argument %s (type %s)", sel.index, sel.parent.Name(), sel.parent.typ.String())
+		return nil, errors.Errorf("no element at %d in slice instance passed as argument %s (type %s)", sel.index, sel.parent.Name(), sel.parent.typ.ReferString(nil))
 	}
 	return val, nil
 }

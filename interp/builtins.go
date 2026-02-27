@@ -65,7 +65,7 @@ func (itp *Interpreter) InitBuiltins(ctx *context.Context, scope *scope.RWScope[
 		ir.IntLenType(),
 		ir.IntIndexType(),
 	} {
-		scope.Define(tp.String(), tp)
+		scope.Define(tp.ReferString(nil), tp)
 	}
 	return nil
 }

@@ -116,10 +116,10 @@ func (n *Struct) SetField(name string, value ir.Element) {
 
 func (n *Struct) String() string {
 	var b strings.Builder
-	b.WriteString(n.StructType().String())
+	b.WriteString(n.StructType().ReferString(nil))
 	b.WriteString("{\n")
 	for i, fld := range n.typ.Fields.Fields() {
-		b.WriteString(gxfmt.Indent(fmt.Sprintf("%d: %s %s = %v\n", i, fld.Name.Name, fld.Type().String(), gxfmt.String(n.fields[fld.Name.Name]))))
+		b.WriteString(gxfmt.Indent(fmt.Sprintf("%d: %s %s = %v\n", i, fld.Name.Name, fld.Type().ReferString(nil), gxfmt.String(n.fields[fld.Name.Name]))))
 	}
 	b.WriteString("}")
 	return b.String()

@@ -106,18 +106,18 @@ func (s *MetaCore) Annotations() *annotations.Annotations {
 	return &annotations.Annotations{}
 }
 
-// String representation of the literal.
-func (s *MetaCore) String() string {
-	return fmt.Sprintf("metafunc %s", s.Name())
-}
-
 // New returns a new function given a source, a file, and a type.
 func (s *MetaCore) New() PkgFunc {
 	n := *s
 	return &n
 }
 
-// ShortString returns the name of the function.
+// DefineString returns the GX source code of the node.
+func (s *MetaCore) DefineString(from *File) string {
+	return fmt.Sprintf("%s.%s", s.File().Package.Name, s.Name())
+}
+
+// ShortString returns a string representation of the expression calling the macro.
 func (s *MetaCore) ShortString() string {
-	return s.File().Package.Name.Name + "." + s.Name()
+	return s.DefineString(nil)
 }

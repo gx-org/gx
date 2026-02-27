@@ -436,7 +436,7 @@ func cast[T someInt]() T {
 }
 
 func callCast() int32 {
-	return cast[float32]() // ERROR float32 does not satisfy test.someInt
+	return cast[float32]() // ERROR float32 does not satisfy someInt
 }
 `,
 		},
@@ -626,7 +626,7 @@ func cast[T someInt](val T) T {
 }
 
 func callCast() int32 {
-	return cast(float32(2)) // ERROR float32 does not satisfy test.someInt
+	return cast(float32(2)) // ERROR float32 does not satisfy someInt
 }
 `,
 		},

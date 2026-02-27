@@ -160,7 +160,7 @@ func makeArrayTypes(types []ir.Type, ranker rankFunc) []ir.Type {
 
 func makeNamedType(typ ir.Type) *ir.NamedType {
 	return &ir.NamedType{
-		Src:        &ast.TypeSpec{Name: irhelper.IdentAST("named_" + typ.String())},
+		Src:        &ast.TypeSpec{Name: irhelper.IdentAST("named_" + typ.ReferString(nil))},
 		File:       testFile,
 		Underlying: ir.TypeExpr(nil, typ),
 		Methods:    []ir.PkgFunc{},
@@ -247,7 +247,7 @@ func TestIsExported(t *testing.T) {
 func testTypeMatrix(t *testing.T, a, b []ir.Type, f typeFunc) string {
 	maxLen := 0
 	for _, typ := range a {
-		maxLen = max(maxLen, len(typ.String()))
+		maxLen = max(maxLen, len(typ.ReferString(nil)))
 	}
 
 	fetcher, err := newFetcherTesting()
@@ -258,7 +258,7 @@ func testTypeMatrix(t *testing.T, a, b []ir.Type, f typeFunc) string {
 	var result strings.Builder
 	result.WriteString("---\n")
 	for _, typeA := range a {
-		fmt.Fprintf(&result, "%*s: ", maxLen, typeA)
+		fmt.Fprintf(&result, "%*s: ", maxLen, ir.Stringer(typeA))
 		for _, typeB := range b {
 			ok, err := f(typeA, fetcher, typeB)
 			if err != nil {
@@ -378,7 +378,7 @@ func TestArrayAtomicEqual(t *testing.T) {
 		{genericRankFunc, false},
 	}
 	for _, testCase := range cases {
-		t.Run(testCase.ranker().String(), func(t *testing.T) {
+		t.Run(testCase.ranker().SourceString(nil), func(t *testing.T) {
 			for _, typ := range primitiveTypes {
 				arrayType := ir.NewArrayType(&ast.ArrayType{}, typ, testCase.ranker())
 				equal, err := arrayType.Equal(nil, typ)
@@ -449,7 +449,7 @@ func TestNamedTypes(t *testing.T) {
 func testRankMatrix(t *testing.T, ranks []rankFunc, f typeFunc) string {
 	maxLen := 0
 	for _, rank := range ranks {
-		maxLen = max(maxLen, len(rank().String()))
+		maxLen = max(maxLen, len(rank().SourceString(nil)))
 	}
 
 	fetcher, err := newFetcherTesting()
@@ -460,7 +460,7 @@ func testRankMatrix(t *testing.T, ranks []rankFunc, f typeFunc) string {
 	var result strings.Builder
 	result.WriteString("---\n")
 	for _, rankA := range ranks {
-		fmt.Fprintf(&result, "%*s: ", maxLen, rankA())
+		fmt.Fprintf(&result, "%*s: ", maxLen, ir.String(rankA()))
 		for _, rankB := range ranks {
 			ok := true
 			for _, typ := range primitiveTypes {
@@ -468,7 +468,7 @@ func testRankMatrix(t *testing.T, ranks []rankFunc, f typeFunc) string {
 				typeB := ir.NewArrayType(&ast.ArrayType{}, typ, rankB())
 				typeOk, err := f(typeA, fetcher, typeB)
 				if err != nil {
-					t.Errorf("error with types %s and %s:\n%+v", typeA.String(), typeB.String(), err)
+					t.Errorf("error with types %s and %s:\n%+v", typeA.ReferString(nil), typeB.ReferString(nil), err)
 				}
 				ok = ok && typeOk
 			}
@@ -668,7 +668,7 @@ func TestTypeSetCapabilities(t *testing.T) {
 		{makeTypeSet(ir.DefaultFloatType), true, true, false, true},
 	}
 	for _, testCase := range cases {
-		t.Run(testCase.set.String(), func(t *testing.T) {
+		t.Run(testCase.set.ReferString(nil), func(t *testing.T) {
 			if got := ir.SupportOperators(testCase.set); got != testCase.supportOperators {
 				t.Errorf("SupportsOperator(%s) returned %v; want %v", testCase.set, got, testCase.supportOperators)
 			}

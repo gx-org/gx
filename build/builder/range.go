@@ -74,11 +74,11 @@ func (n *rangeStmt) buildBodyOverArray(rscope resolveScope, x ir.Expr) (ir.Stora
 	xUnder := ir.Underlying(x.Type())
 	xArrayType, ok := xUnder.(ir.ArrayType)
 	if !ok {
-		return key, nil, rscope.Err().Appendf(n.x.source(), "%s is not an array type", x.Type().String())
+		return key, nil, rscope.Err().Appendf(n.x.source(), "%s is not an array type", x.Type().ReferString(rscope.fileScope().irFile()))
 	}
 	valueType, ok := xArrayType.ElementType()
 	if !ok {
-		return key, nil, rscope.Err().Appendf(n.x.source(), "cannot range over array %s with 0 axis", x.Type().String())
+		return key, nil, rscope.Err().Appendf(n.x.source(), "cannot range over array %s with 0 axis", x.Type().ReferString(rscope.fileScope().irFile()))
 	}
 	value, _, valueOk := n.value.buildStorage(rscope, valueType)
 	return key, value, keyOk && valueOk
@@ -105,7 +105,7 @@ func (n *rangeStmt) buildStmt(parent fnResolveScope) (ir.Stmt, bool, bool) {
 	} else if ext.X.Type().Kind() == irkind.Array {
 		ext.Key, ext.Value, ok = n.buildBodyOverArray(rscope, ext.X)
 	} else {
-		return ext, false, rscope.Err().Appendf(n.src, "cannot range over %s", ext.X.Type().String())
+		return ext, false, rscope.Err().Appendf(n.src, "cannot range over %s", ext.X.Type().ReferString(parent.fileScope().irFile()))
 	}
 	if !ok {
 		return ext, false, false

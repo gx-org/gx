@@ -166,7 +166,7 @@ func testBroadcastIncorrectNumberOfAxes() [4][3][6]float32 {
 }
 
 func testBroadcastIncorrectNumberOfAxisSize() [4][3]float32 {
-	return shapes.Broadcast( // ERROR cannot broadcast axis 0 from length 2 to 4 (expect a source length of 1 or 4)
+	return shapes.Broadcast( // ERROR cannot broadcast axis 0 from length intlen(2) to intlen(4) (expect a source length of 1 or intlen(4))
 		[2][3]float32{
 			{1, 2, 3},
 			{4, 5, 6},
@@ -241,29 +241,29 @@ func testControlWithMismatchedState() loopState {
 	s := -0.5
 	return control.While(
 		s,
-		func(s loopState) bool { return false }, // ERROR cannot use type func(s stdlib.loopState) bool as func(float64) bool in argument to control.While
-		func(s loopState) loopState { return loopState{} }, // ERROR cannot use type func(s stdlib.loopState) stdlib.loopState as func(float64) float64 in argument to control.While
+		func(s loopState) bool { return false }, // ERROR cannot use type func(s loopState) bool as func(float64) bool in argument to control.While
+		func(s loopState) loopState { return loopState{} }, // ERROR cannot use type func(s loopState) loopState as func(float64) float64 in argument to control.While
 	)
 }
 
 func testControlWithInvalidCondType() loopState {
 	return control.While(
 		loopState{},
-		loopState{}, // ERROR type stdlib.loopState as func(stdlib.loopState) bool in argument to control.While
+		loopState{}, // ERROR type loopState as func(loopState) bool in argument to control.While
 		func(s loopState) loopState { return loopState{} })
 }
 
 func testControlWithInvalidCondParameter() loopState {
 	return control.While(
 		loopState{},
-		func(x int32) bool { return false }, // ERROR cannot use type func(x int32) bool as func(stdlib.loopState) bool in argument to control.While
+		func(x int32) bool { return false }, // ERROR cannot use type func(x int32) bool as func(loopState) bool in argument to control.While
 		func(s loopState) loopState { return loopState{} })
 }
 
 func testControlWithInvalidCondResult() loopState {
 	return control.While(
 		loopState{},
-		func(x int32) int32 { return 1 }, // ERROR cannot use type func(x int32) int32 as func(stdlib.loopState) bool in argument to control.While
+		func(x int32) int32 { return 1 }, // ERROR cannot use type func(x int32) int32 as func(loopState) bool in argument to control.While
 		func(s loopState) loopState { return loopState{} })
 }
 
@@ -271,21 +271,21 @@ func testControlWithInvalidBodyType() loopState {
 	return control.While(
 		loopState{},
 		func(s loopState) bool { return false },
-		loopState{}) // ERROR cannot use type stdlib.loopState as func(stdlib.loopState) stdlib.loopState in argument to control.While
+		loopState{}) // ERROR cannot use type loopState as func(loopState) loopState in argument to control.While
 }
 
 func testControlWithInvalidBodyParameter() loopState {
 	return control.While(
 		loopState{},
 		func(x loopState) bool { return false },
-		func(s int32) loopState { return loopState{} }) // ERROR cannot use type func(s int32) stdlib.loopState as func(stdlib.loopState) stdlib.loopState in argument to control.While
+		func(s int32) loopState { return loopState{} }) // ERROR cannot use type func(s int32) loopState as func(loopState) loopState in argument to control.While
 }
 
 func testControlWithInvalidBodyResult() loopState {
 	return control.While(
 		loopState{},
 		func(x loopState) bool { return false },
-		func(s loopState) int32 { return 2 }) // ERROR cannot use type func(s stdlib.loopState) int32 as func(stdlib.loopState) stdlib.loopState in argument to control.While
+		func(s loopState) int32 { return 2 }) // ERROR cannot use type func(s loopState) int32 as func(loopState) loopState in argument to control.While
 }
 
 func testMathCeilWithMismatchedShape() [1]float32 {

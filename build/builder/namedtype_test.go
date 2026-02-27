@@ -106,3 +106,17 @@ func f() [2][3]A
 		},
 	)
 }
+
+func TestNamedTypeErrors(t *testing.T) {
+	testbuild.Run(t,
+		testbuild.Decl{
+			Src: `
+type A float32
+
+func f(x float32, y A) float32 {
+	return x+y // ERROR mismatched types A and float32
+}
+`,
+		},
+	)
+}

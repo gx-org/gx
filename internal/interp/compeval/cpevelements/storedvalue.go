@@ -181,8 +181,8 @@ func (v *storedValue) ShortString() string {
 	return fmt.Sprint(v.val)
 }
 
-func (v *storedValue) String() string {
-	return fmt.Sprintf("%s -> %T:%v", v.storage.String(), v.val, v.val)
+func (v *storedValue) SourceString(from *ir.File) string {
+	return fmt.Sprintf("%s -> %T:%s", v.storage.SourceString(from), v.val, v.val.Type().ReferString(from))
 }
 
 // StoredValueOf returns the value encapsulated and it has been associated with its storage.

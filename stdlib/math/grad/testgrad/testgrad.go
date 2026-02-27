@@ -16,7 +16,6 @@
 package testgrad
 
 import (
-	"fmt"
 	"strings"
 
 	"github.com/pkg/errors"
@@ -38,13 +37,14 @@ func checkFunc(pkg *ir.Package, name string, want string) error {
 		return nil
 	}
 	names := strings.Split(name, ".")
-	var gotF fmt.Stringer
+	var got string
 	switch len(names) {
 	case 1:
-		gotF = pkg.FindFunc(name)
-		if gotF == nil {
+		fn := pkg.FindFunc(name)
+		if fn == nil {
 			return errors.Errorf("cannot find function %s. Available functions are %v", name, listFunc(pkg))
 		}
+		got = fn.DefineString(fn.File())
 	case 2:
 		tpName := names[0]
 		methodName := names[1]
@@ -52,12 +52,13 @@ func checkFunc(pkg *ir.Package, name string, want string) error {
 		if tp == nil {
 			return errors.Errorf("type name %s not found", tpName)
 		}
-		gotF = tp.MethodByName(methodName)
-		if gotF == nil {
+		fn := tp.MethodByName(methodName)
+		if fn == nil {
 			return errors.Errorf("method %s not found for type %s", methodName, tpName)
 		}
+		got = fn.DefineString(fn.File())
 	default:
 		return errors.Errorf("cannot find %s: not supported", name)
 	}
-	return testbuild.CompareString(gotF.String(), want)
+	return testbuild.CompareString(got, want)
 }

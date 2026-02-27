@@ -88,14 +88,14 @@ func (tp *VarArgsType) UnifyWith(uni Unifier, typ Type) bool {
 	return tp.Slice.UnifyWith(uni, typ)
 }
 
-// SourceString returns a reference to the type given a file context.
-func (tp *VarArgsType) SourceString(file *File) string {
-	return "..." + tp.Slice.SourceString(file)
+// DefineString returns a reference to the type given a file context.
+func (tp *VarArgsType) DefineString(from *File) string {
+	return "..." + tp.Slice.DefineString(from)
 }
 
-// String representation of the type.
-func (tp *VarArgsType) String() string {
-	return "..." + tp.Slice.String()
+// ReferString returns the GX source to refer to the type.
+func (tp *VarArgsType) ReferString(from *File) string {
+	return tp.DefineString(from)
 }
 
 // VarArgsExpr represents a type expression to represent a varargs type.
@@ -122,7 +122,7 @@ func (expr *VarArgsExpr) Type() Type {
 	return expr.Elt.Type()
 }
 
-// String returns a string representation of the expression.
-func (expr *VarArgsExpr) String() string {
-	return "..." + expr.Elt.Slice.DType.String()
+// SourceString returns the GX source code of the expression.
+func (expr *VarArgsExpr) SourceString(from *File) string {
+	return "..." + expr.Elt.Slice.DType.SourceString(from)
 }

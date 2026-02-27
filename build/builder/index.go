@@ -64,7 +64,7 @@ func (n *indexExpr) checkIndexType(scope *fileResolveScope, index ir.Expr) (ir.E
 		return index, false
 	}
 	if !ir.IsIndexType(index.Type()) {
-		return index, scope.Err().Appendf(n.source(), "invalid argument: index %s must be integer", index.Type().String())
+		return index, scope.Err().Appendf(n.source(), "invalid argument: index %s must be integer", index.Type().ReferString(scope.irFile()))
 	}
 	return index, true
 }
@@ -144,7 +144,8 @@ func (n *indexExpr) buildExpr(rscope resolveScope) (ir.Expr, bool) {
 	}
 	ext := &ir.IndexExpr{Src: n.src, X: x, Index: idx, Typ: ir.InvalidType()}
 	if !ir.IsSlicingOk(xType) {
-		return ext, rscope.Err().Appendf(n.source(), "cannot index %s (type: %s)", ext.X, xType)
+		from := rscope.fileScope().irFile()
+		return ext, rscope.Err().Appendf(n.source(), "cannot index %s (type: %s)", ext.X.SourceString(from), xType.ReferString(from))
 	}
 	slicerType, ok := ir.Underlying(xType).(ir.SlicerType)
 	if !ok {
@@ -152,7 +153,7 @@ func (n *indexExpr) buildExpr(rscope resolveScope) (ir.Expr, bool) {
 	}
 	ext.Typ, ok = slicerType.ElementType()
 	if !ok {
-		return ext, rscope.Err().Appendf(n.source(), "cannot index %s", xType)
+		return ext, rscope.Err().Appendf(n.source(), "cannot index %s", xType.ReferString(rscope.fileScope().irFile()))
 	}
 	aType, isArray := xType.(ir.ArrayType)
 	boundOk := true
@@ -166,7 +167,7 @@ func (n *indexExpr) buildExpr(rscope resolveScope) (ir.Expr, bool) {
 	}
 	indexTypeOk := ir.IsIndexType(ext.Index.Type())
 	if !indexTypeOk {
-		rscope.Err().Appendf(n.source(), "index %s (of type %s) must be integer", ext.Index.String(), ext.Index.Type().String())
+		rscope.Err().Appendf(n.source(), "index %s (of type %s) must be integer", ext.Index.SourceString(rscope.fileScope().irFile()), ext.Index.Type().ReferString(rscope.fileScope().irFile()))
 	}
 	return ext, boundOk && numberOk && indexTypeOk
 }

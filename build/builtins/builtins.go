@@ -88,7 +88,7 @@ func InferFromNumericalType(fetcher ir.Fetcher, call *ir.FuncCallExpr, argNum in
 	}
 	arrayType, arrayOk := argType.(ir.ArrayType)
 	if !arrayOk {
-		return nil, nil, fmterr.Errorf(fetcher.File().FileSet(), call.Args[argNum].Node(), "argument type %s not supported", arg.Type().String())
+		return nil, nil, fmterr.Errorf(fetcher.File().FileSet(), call.Args[argNum].Node(), "argument type %s not supported", arg.Type().ReferString(fetcher.File()))
 	}
 	return arrayType, arrayType.DataType(), nil
 }
@@ -105,14 +105,22 @@ func joinSignature[T any](sig []T, f func(T) string) string {
 	w.WriteString(")")
 	return w.String()
 }
-func fmtType(typ ir.Type) string {
-	if typ == nil {
-		return "?"
+
+func fmtType(from *ir.File) func(ir.Type) string {
+	return func(typ ir.Type) string {
+		if typ == nil {
+			return "?"
+		}
+		return typ.ReferString(from)
 	}
-	return typ.String()
 }
 
-func fmtExprType(e ir.Expr) string { return fmtType(e.Type()) }
+func fmtExprType(from *ir.File) func(ir.Expr) string {
+	fType := fmtType(from)
+	return func(e ir.Expr) string {
+		return fType(e.Type())
+	}
+}
 
 // BuildFuncParams takes a function call and list of required argument types
 // and returns a list of parameters for the function.
@@ -120,8 +128,8 @@ func fmtExprType(e ir.Expr) string { return fmtType(e.Type()) }
 // It returns an error if a call's arguments don't match the given signature.
 func BuildFuncParams(fetcher ir.Fetcher, call *ir.FuncCallExpr, name string, sig []ir.Type) ([]ir.Type, error) {
 	if len(sig) != len(call.Args) {
-		actual := joinSignature[ir.Expr](call.Args, fmtExprType)
-		wanted := joinSignature[ir.Type](sig, fmtType)
+		actual := joinSignature[ir.Expr](call.Args, fmtExprType(fetcher.File()))
+		wanted := joinSignature[ir.Type](sig, fmtType(fetcher.File()))
 		return nil, fmterr.Errorf(fetcher.File().FileSet(), call.Node(), "wrong number of arguments in call to %s: got %s but want %s", name, actual, wanted)
 	}
 	params := make([]ir.Type, len(sig))
@@ -148,8 +156,8 @@ func BuildFuncParams(fetcher ir.Fetcher, call *ir.FuncCallExpr, name string, sig
 			ok = assignable
 		}
 		if !ok {
-			actual := joinSignature[ir.Expr](call.Args, fmtExprType)
-			wanted := joinSignature[ir.Type](sig, fmtType)
+			actual := joinSignature[ir.Expr](call.Args, fmtExprType(fetcher.File()))
+			wanted := joinSignature[ir.Type](sig, fmtType(fetcher.File()))
 			return nil, fmterr.Errorf(fetcher.File().FileSet(), call.Node(), "signature mismatch in call to %s: got %s but want %s", name, actual, wanted)
 		}
 	}
@@ -183,7 +191,7 @@ func NarrowTypes[T ir.Type](fetcher ir.Fetcher, call *ir.FuncCallExpr, args []ir
 func UniqueAxesFromExpr(fetcher ir.Fetcher, expr ir.Expr) (map[int]struct{}, error) {
 	sliceExpr, ok := expr.(*ir.SliceLitExpr)
 	if !ok {
-		return nil, fmterr.Errorf(fetcher.File().FileSet(), expr.Node(), "expected axes slice literal, but got %s", expr.String())
+		return nil, fmterr.Errorf(fetcher.File().FileSet(), expr.Node(), "expected axes slice literal, but got %s", expr.SourceString(fetcher.File()))
 	}
 
 	axes := map[int]struct{}{}

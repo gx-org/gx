@@ -96,7 +96,7 @@ func (dim *exprAxisLength) build(rscope *defineLocalScope) (ir.AxisLengths, bool
 	}
 	xType := ext.X.Type()
 	if !ir.IsAxisLengthType(xType) {
-		xOk = rscope.Err().Appendf(dim.src, "cannot use type %s as axis length: want type intlen or []intlen", xType.String())
+		xOk = rscope.Err().Appendf(dim.src, "cannot use type %s as axis length: want type intlen or []intlen", xType.ReferString(rscope.fileScope().irFile()))
 	}
 	return ext, xOk
 }

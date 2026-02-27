@@ -15,7 +15,6 @@
 package values
 
 import (
-	"fmt"
 	"reflect"
 	"strings"
 
@@ -106,11 +105,11 @@ func (s *Slice) SliceType() *ir.SliceType {
 	return s.sliceType
 }
 
-// String representation of the slice.
-func (s *Slice) String() string {
+// SourceString returns the GX source code of the implementation.
+func (s *Slice) SourceString(from *ir.File) string {
 	ss := make([]string, len(s.vals))
 	for i, val := range s.vals {
-		ss[i] = fmt.Sprint(val)
+		ss[i] = val.SourceString(from)
 	}
 	return "[" + strings.Join(ss, ",") + "]"
 }

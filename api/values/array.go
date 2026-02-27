@@ -54,7 +54,7 @@ type baseArray struct {
 }
 
 func newBaseArray(typ ir.Type, sh *shape.Shape) (*baseArray, error) {
-	arrayType, err := ir.ToArrayTypeGivenShape(typ, sh)
+	arrayType, err := ir.ToArrayTypeGivenShape(nil, typ, sh)
 	if err != nil {
 		return nil, err
 	}
@@ -133,14 +133,14 @@ func (a *DeviceArray) ToDevice(dev platform.Device) (*DeviceArray, error) {
 	return NewDeviceArray(a.typ, handle)
 }
 
-// String representation of the array.
-func (a *DeviceArray) String() string {
+// SourceString returns the GX source code of the implementation.
+func (a *DeviceArray) SourceString(from *ir.File) string {
 	host, err := a.ToHost(kernels.Allocator())
 	var hostS string
 	if err != nil {
 		hostS = err.Error()
 	} else {
-		hostS = host.String()
+		hostS = host.SourceString(from)
 	}
 	return fmt.Sprintf("DeviceArray{DeviceID: %d}: %s", a.handle.Device().Ordinal(), hostS)
 }
@@ -230,16 +230,15 @@ func (a *HostArray) ToFloatNumber() (*big.Float, error) {
 	return array.ToFloatNumber()
 }
 
-// String representation of the array.
-func (a *HostArray) String() string {
+// SourceString returns the GX source code of the implementation.
+func (a *HostArray) SourceString(from *ir.File) string {
 	data := a.Buffer().Acquire()
 	defer a.Buffer().Release()
 	array, err := kernels.NewArrayFromRaw(data, a.Shape())
 	if err != nil {
 		return fmt.Sprintf("\nError parsing raw data:\n%+v\n", err)
 	}
-	return a.typ.String() + array.DataString()
-	return array.String()
+	return a.typ.ReferString(from) + array.DataString()
 }
 
 // ToAtom converts an array on the host into a Go atom value.

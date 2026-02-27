@@ -48,7 +48,7 @@ func NewBackendNode(ev *Evaluator, typ ir.Type, node *ops.OutputNode) (*BackendN
 	if err := checkShape(node); err != nil {
 		return nil, err
 	}
-	if _, err := ir.ToArrayTypeGivenShape(typ, node.Shape); err != nil {
+	if _, err := ir.ToArrayTypeGivenShape(nil, typ, node.Shape); err != nil {
 		return nil, errors.Errorf("cannot create a backend node: %v", err)
 	}
 	return &BackendNode{

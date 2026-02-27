@@ -18,6 +18,7 @@ import (
 	"fmt"
 	"go/ast"
 	"slices"
+	"strings"
 
 	"github.com/gx-org/gx/build/ir/irkind"
 )
@@ -59,7 +60,10 @@ type (
 	}
 )
 
-var _ Type = (*FuncType)(nil)
+var (
+	_ Type = (*FuncType)(nil)
+	_ Expr = (*FuncType)(nil)
+)
 
 func (*FuncType) node() {}
 
@@ -153,7 +157,7 @@ func (s *FuncType) SpecialiseFType(spec Specialiser) (*FuncType, error) {
 		group: func(grp *FieldGroup) (*FieldGroup, error) {
 			specType, err := grp.Type.Val().Specialise(spec)
 			if err != nil {
-				return nil, fmt.Errorf("cannot specialise %s: %v", s.String(), err)
+				return nil, fmt.Errorf("cannot specialise %s: %v", s.ReferString(spec.File()), err)
 			}
 			return &FieldGroup{
 				Src: grp.Src,
@@ -217,3 +221,47 @@ func (s *FuncType) Expr() ast.Expr { return s.Src }
 
 // Node returns the node in the AST tree.
 func (s *FuncType) Node() ast.Node { return s.Src }
+
+// DefineString returns a string representation of the signature of a function.
+func (s *FuncType) DefineString(from *File) string {
+	return s.SourceSignature(from, nil)
+}
+
+// ReferString returns a string representation of the signature of a function.
+func (s *FuncType) ReferString(from *File) string {
+	return s.SourceSignature(from, nil)
+}
+
+// SourceSignature returns a string representation of a signature given a name.
+// The name can be empty.
+func (s *FuncType) SourceSignature(from *File, name *ast.Ident) string {
+	var b strings.Builder
+	b.WriteString("func")
+	if s.Receiver != nil {
+		fmt.Fprintf(&b, " (%s)", s.Receiver.SourceString(from))
+	}
+	if name != nil && name.Name != "" {
+		b.WriteString(" " + name.Name)
+	}
+	if s.TypeParams != nil {
+		fmt.Fprintf(&b, "[%s]", s.TypeParams.SourceString(from))
+	}
+	b.WriteString("(" + s.Params.SourceString(from) + ")")
+	if s.Results.Len() == 0 {
+		return b.String()
+	}
+	b.WriteRune(' ')
+	if s.Results.Len() > 1 {
+		b.WriteString("(")
+	}
+	b.WriteString(s.Results.SourceString(from))
+	if s.Results.Len() > 1 {
+		b.WriteString(")")
+	}
+	return b.String()
+}
+
+// SourceString returns GX code defining the function type.
+func (s *FuncType) SourceString(from *File) string {
+	return s.SourceSignature(from, nil)
+}

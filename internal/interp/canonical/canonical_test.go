@@ -216,17 +216,17 @@ func TestCanonicalEval(t *testing.T) {
 		},
 	}
 	for i, test := range tests {
-		reprGot := test.Expr.String()
+		reprGot := test.Expr.ShortString()
 		if reprGot != test.Str {
 			t.Errorf("test %d: incorrect expression representation: got %s but want %s", i, reprGot, test.Str)
 		}
 		want := big.NewFloat(test.Want)
 		valueGot := test.Expr.(canonical.Evaluable).Float()
 		if valueGot == nil && test.Want != 0 {
-			t.Errorf("test %d: incorrect expression value %s: got nil but want %v", i, test.Expr.String(), want)
+			t.Errorf("test %d: incorrect expression value %s: got nil but want %v", i, test.Expr.ShortString(), want)
 		}
 		if valueGot != nil && valueGot.Cmp(want) != 0 {
-			t.Errorf("test %d: incorrect expression value %s: got %v but want %v", i, test.Expr.String(), valueGot, want)
+			t.Errorf("test %d: incorrect expression value %s: got %v but want %v", i, test.Expr.ShortString(), valueGot, want)
 		}
 		if test.Simplified == "" {
 			continue
@@ -236,7 +236,7 @@ func TestCanonicalEval(t *testing.T) {
 		if simplifiedGot != nil && simplifiedGot.Cmp(want) != 0 {
 			t.Errorf("test %d: incorrect simplified expression value: got %v but want %v", i, simplifiedGot, want)
 		}
-		simplifiedReprGot := simplified.String()
+		simplifiedReprGot := simplified.ShortString()
 		if simplifiedReprGot != test.Simplified {
 			t.Errorf("test %d: incorrect simplified expression representation: got %s but want %s", i, simplifiedReprGot, test.Simplified)
 		}
@@ -287,7 +287,7 @@ func TestCanonicalSimplify(t *testing.T) {
 	numNoValues := 0
 	for i, expr := range exprs {
 		wantVal := expr.(canonical.Evaluable).Float()
-		wantRepr := expr.String()
+		wantRepr := expr.ShortString()
 		simplified := expr.Simplify()
 		simplifiedVal := simplified.(canonical.Evaluable).Float()
 		wantValAfter := expr.(canonical.Evaluable).Float()
@@ -297,7 +297,7 @@ func TestCanonicalSimplify(t *testing.T) {
 		}
 		numValChecks++
 		if wantVal.Cmp(wantValAfter) != 0 {
-			t.Errorf("test %d: expression %s with value %s has been modified to %s and %s", i, wantRepr, wantVal.String(), expr.String(), wantValAfter.String())
+			t.Errorf("test %d: expression %s with value %s has been modified to %s and %s", i, wantRepr, wantVal.String(), expr.ShortString(), wantValAfter.String())
 			continue
 		}
 		diff := new(big.Float).Abs(new(big.Float).Sub(wantVal, simplifiedVal))
@@ -307,7 +307,7 @@ func TestCanonicalSimplify(t *testing.T) {
 		relativeDiff := new(big.Float).Quo(diff, wantVal)
 		if relativeDiff.Cmp(relativePrecision) > 0 {
 			relPercent := new(big.Float).Mul(relativeDiff, big.NewFloat(100))
-			t.Errorf("test %d: simplified expression %s value is not equal to the original expression %s value: got %s but want %s (relative difference=%s%%)", i, expr.String(), simplified.String(), simplifiedVal.String(), wantVal.String(), relPercent.String())
+			t.Errorf("test %d: simplified expression %s value is not equal to the original expression %s value: got %s but want %s (relative difference=%s%%)", i, expr.ShortString(), simplified.ShortString(), simplifiedVal.String(), wantVal.String(), relPercent.String())
 		}
 	}
 	// Check that the evaluation of expressions with named variables have been generated sometimes, but not too often.

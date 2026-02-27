@@ -379,7 +379,7 @@ func evalCastToArrayExpr(fitp *FileScope, expr ir.TypeCastExpr, x evaluator.Nume
 		var err error
 		x, err = x.Cast(fitp.env, expr, targetDType)
 		if err != nil {
-			return nil, fmterr.Errorf(fitp.File().FileSet(), expr.Node(), "cannot cast expression %q to %s: %v", expr.String(), targetDType, err)
+			return nil, fmterr.Errorf(fitp.File().FileSet(), expr.Node(), "cannot cast expression %q to %s: %v", expr.SourceString(fitp.File()), targetDType, err)
 		}
 	}
 	axes, err := evalArrayAxes(fitp, expr, targetType)
@@ -418,7 +418,7 @@ func evalCastExpr(fitp *FileScope, expr ir.TypeCastExpr) (ir.Element, error) {
 	}
 	arrayType, ok := target.(ir.ArrayType)
 	if !ok {
-		return nil, fmterr.Errorf(fitp.File().FileSet(), expr.Node(), "cast to %s not supported", target.String())
+		return nil, fmterr.Errorf(fitp.File().FileSet(), expr.Node(), "cast to %s not supported", target.ReferString(fitp.File()))
 	}
 	xNum, ok := elements.Underlying(x).(evaluator.NumericalElement)
 	if !ok {
@@ -491,7 +491,7 @@ func evalSliceLiteral(fitp *FileScope, expr *ir.SliceLitExpr) (ir.Element, error
 func evalExpr(fitp *FileScope, expr ir.Expr) (_ ir.Element, err error) {
 	defer func() {
 		if err != nil {
-			err = fmt.Errorf("cannot evaluate expression %q:\n%w", expr.String(), err)
+			err = fmt.Errorf("cannot evaluate expression %q:\n%w", expr.SourceString(fitp.File()), err)
 		}
 	}()
 	if expr == nil {

@@ -15,8 +15,6 @@
 package values
 
 import (
-	"fmt"
-
 	"github.com/gx-org/backend/platform"
 	"github.com/gx-org/gx/build/ir"
 	"github.com/gx-org/gx/build/ir/irkind"
@@ -51,8 +49,17 @@ func (s *IRNode) ToHost(platform.Allocator) (Value, error) {
 	return s, nil
 }
 
-// IR representation of the value.
-// The returned string is a string reported to the user.
-func (s *IRNode) String() string {
-	return fmt.Sprint(s.node)
+// DefineString returns the GX source code to define the value.
+// If not possible, fall back to SourceString.
+func (s *IRNode) DefineString(from *ir.File) string {
+	definer, isDefiner := s.node.(ir.StringDefiner)
+	if !isDefiner {
+		return s.SourceString(from)
+	}
+	return definer.DefineString(from)
+}
+
+// SourceString returns the GX source code of the implementation.
+func (s *IRNode) SourceString(from *ir.File) string {
+	return ir.StringerWithFrom(from, s.node).String()
 }

@@ -166,7 +166,7 @@ func (n *structLiteral) buildExpr(rscope resolveScope) (ir.Expr, bool) {
 	underlying := ir.Underlying(ext.Typ)
 	structType, ok := underlying.(*ir.StructType)
 	if !ok {
-		return ext, rscope.Err().Appendf(n.source(), "%s (type %T) is not a structure type", ext.Typ.String(), underlying.Type().String())
+		return ext, rscope.Err().Appendf(n.source(), "%s (type %T) is not a structure type", ext.Typ.ReferString(rscope.fileScope().irFile()), underlying.Type().ReferString(rscope.fileScope().irFile()))
 	}
 	ext.Elts = make([]*ir.FieldLit, structType.Fields.Len())
 	fieldsOk := true
@@ -197,7 +197,7 @@ func (n *structLiteral) buildExpr(rscope resolveScope) (ir.Expr, bool) {
 	}
 	for _, fieldNameExpr := range n.fields {
 		if field := structType.Fields.FindField(fieldNameExpr.ident.Name); field == nil {
-			return ext, rscope.Err().Appendf(fieldNameExpr.ident, "type %s has no field or method %s", ext.Typ.String(), fieldNameExpr.ident.Name)
+			return ext, rscope.Err().Appendf(fieldNameExpr.ident, "type %s has no field or method %s", ext.Typ.ReferString(rscope.fileScope().irFile()), fieldNameExpr.ident.Name)
 		}
 	}
 	return ext, fieldsOk

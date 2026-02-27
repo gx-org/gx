@@ -85,12 +85,12 @@ func (*metaType) ConvertibleTo(fetcher Fetcher, target Type) (bool, error) {
 
 func (t *metaType) Kind() irkind.Kind { return irkind.MetaType }
 
-func (t *metaType) SourceString(*File) string {
-	return t.String()
+func (t *metaType) DefineString(*File) string {
+	return irkind.MetaType.String()
 }
 
-func (t *metaType) String() string {
-	return irkind.MetaType.String()
+func (t *metaType) ReferString(from *File) string {
+	return t.DefineString(from)
 }
 
 var metaTypeT = &metaType{
@@ -149,12 +149,12 @@ func (*invalidType) Type() Type { return InvalidType() }
 
 func (*invalidType) Value(Expr) Expr { return nil }
 
-func (*invalidType) SourceString(*File) string {
+func (*invalidType) DefineString(*File) string {
 	return irkind.Invalid.String()
 }
 
-func (*invalidType) String() string {
-	return irkind.Invalid.String()
+func (t *invalidType) ReferString(from *File) string {
+	return t.DefineString(from)
 }
 
 // Specialise a type to a given target.
@@ -196,12 +196,12 @@ func (t *distinctType) ConvertibleTo(fetcher Fetcher, target Type) (bool, error)
 
 func (t *distinctType) Kind() irkind.Kind { return t.kind }
 
-func (t *distinctType) SourceString(*File) string {
-	return t.String()
+func (t *distinctType) DefineString(*File) string {
+	return t.kind.String()
 }
 
-func (t *distinctType) String() string {
-	return t.kind.String()
+func (t *distinctType) ReferString(from *File) string {
+	return t.DefineString(from)
 }
 
 // unknownType is the type returned by function with no results.
@@ -450,22 +450,18 @@ func (s *TypeSet) interfaceString(types []string) string {
 	return b.String()
 }
 
-// SourceString returns a string representation of the signature of a function.
-func (s *TypeSet) SourceString(context *File) string {
+// DefineString returns the GX source code to define the type.
+func (s *TypeSet) DefineString(from *File) string {
 	types := make([]string, len(s.types))
 	for i, typ := range s.types {
-		types[i] = typ.SourceString(context)
+		types[i] = typ.ReferString(from)
 	}
 	return s.interfaceString(types)
 }
 
-// String representation of the type.
-func (s *TypeSet) String() string {
-	types := make([]string, len(s.types))
-	for i, typ := range s.types {
-		types[i] = typ.String()
-	}
-	return s.interfaceString(types)
+// ReferString returns the GX source to refer to the type.
+func (s *TypeSet) ReferString(from *File) string {
+	return s.DefineString(from)
 }
 
 func (s *TypeSet) equalArray(fetcher Fetcher, target ArrayType) (bool, error) {
@@ -610,7 +606,7 @@ func AssignableToAt(fetcher Fetcher, pos ast.Node, src, dst Type) bool {
 		return fetcher.Err().AppendAt(pos, err)
 	}
 	if !assignable {
-		return fetcher.Err().Appendf(pos, "cannot use %s as %s value in assignment", src.String(), dst.String())
+		return fetcher.Err().Appendf(pos, "cannot use %s as %s value in assignment", src.ReferString(fetcher.File()), dst.ReferString(fetcher.File()))
 	}
 	return true
 }

@@ -18,6 +18,7 @@ import (
 	"fmt"
 	"go/ast"
 	"go/token"
+	"strconv"
 
 	"github.com/pkg/errors"
 
@@ -37,30 +38,34 @@ func (f concat) BuildFuncIR(impl *impl.Stdlib, pkg *ir.Package) (*ir.FuncBuiltin
 	return builtin.IRFuncBuiltin[concat]("Concat", impl.Shapes.Concat, pkg), nil
 }
 
-func checkConsistent[R any](values []ir.ArrayType, extractFn func(v ir.ArrayType) (R, error), equalityFn func(lhs R, rhs R) bool) (result R, err error) {
+func checkConsistent[R any](values []ir.ArrayType, extractFn func(v ir.ArrayType) (R, func() string, error), equalityFn func(lhs R, rhs R) bool) (result R, err error) {
 	var empty R
 	if len(values) == 0 {
 		return empty, errors.Errorf("must have at least one value")
 	}
-	result, err = extractFn(values[0])
+	var resultStringer func() string
+	result, resultStringer, err = extractFn(values[0])
 	if err != nil {
 		return empty, err
 	}
 	for i := 1; i < len(values); i++ {
-		thisResult, err := extractFn(values[i])
+		thisResult, thisStringer, err := extractFn(values[i])
 		if err != nil {
 			return empty, err
 		}
 		if !equalityFn(thisResult, result) {
-			return empty, fmt.Errorf("inconsistent values, %v vs %v", result, thisResult)
+			return empty, fmt.Errorf("inconsistent values, %s vs %s", resultStringer(), thisStringer())
 		}
 	}
 	return result, nil
 }
 
-func numAxes(fetcher ir.Fetcher, call *ir.FuncCallExpr) func(ir.ArrayType) (int, error) {
-	return func(a ir.ArrayType) (int, error) {
-		return len(a.Rank().Axes()), nil
+func numAxes(fetcher ir.Fetcher, call *ir.FuncCallExpr) func(ir.ArrayType) (int, func() string, error) {
+	return func(a ir.ArrayType) (int, func() string, error) {
+		val := len(a.Rank().Axes())
+		return val, func() string {
+			return strconv.Itoa(val)
+		}, nil
 	}
 }
 
@@ -87,7 +92,11 @@ func (f concat) resultsType(fetcher ir.Fetcher, call *ir.FuncCallExpr) (params [
 	if err != nil {
 		return nil, nil, fmterr.Errorf(fetcher.File().FileSet(), call.Node(), "expected all arguments but the first to be arrays in call to %s, but %s", f.Func.Name(), err)
 	}
-	arrayDataType := func(t ir.ArrayType) (ir.Type, error) { return t.DataType(), nil }
+	arrayDataType := func(t ir.ArrayType) (ir.Type, func() string, error) {
+		return t.DataType(), func() string {
+			return t.DataType().ReferString(fetcher.File())
+		}, nil
+	}
 	isSameKind := func(lhs, rhs ir.Type) bool { return lhs.Kind() == rhs.Kind() }
 	dtype, err := checkConsistent(arrayTypes, arrayDataType, isSameKind)
 	if err != nil {
@@ -120,9 +129,11 @@ func (f concat) resultsType(fetcher ir.Fetcher, call *ir.FuncCallExpr) (params [
 				return nil, nil, fmterr.Error(fetcher.File().FileSet(), call.Node(), err)
 			}
 			if !ok {
-				return nil, nil, fmterr.Errorf(fetcher.File().FileSet(), call.Node(),
-					"argument %d (shape: %v) incompatible with initial shape (%v) in %s call: dimension %d, %s != %s",
-					i+1, arrayTypes[i].Rank(), arrayTypes[0].Rank(), f.Name(), j, axJ, outputDims[j])
+				from := fetcher.File()
+				return nil, nil, fmterr.Errorf(from.FileSet(), call.Node(),
+					"argument %d (shape: %v) incompatible with initial shape (%s) in %s call: dimension %d, %s != %s",
+					i+1, arrayTypes[i].Rank().SourceString(from), arrayTypes[0].Rank().SourceString(from),
+					f.Name(), j, axJ.SourceString(from), outputDims[j].SourceString(from))
 			}
 		}
 		outputExpr = builtins.ToBinaryExpr(token.ADD, outputExpr, rank.Axes()[axis].AsExpr())

@@ -14,6 +14,11 @@
 
 package ir
 
+import (
+	"fmt"
+	"strings"
+)
+
 type (
 	groupCloner func(*FieldGroup) (*FieldGroup, error)
 	fieldCloner func(*FieldGroup, int, *Field) (*Field, error)
@@ -23,6 +28,24 @@ type (
 		field fieldCloner
 	}
 )
+
+// SourceString represents the field list as GX source code.
+func (l *FieldList) SourceString(from *File) string {
+	groups := make([]string, len(l.List))
+	for grpI, grp := range l.List {
+		typeS := grp.Type.Val().ReferString(from)
+		if len(grp.Fields) == 0 {
+			groups[grpI] = typeS
+			continue
+		}
+		names := make([]string, len(grp.Fields))
+		for nameI, name := range grp.Fields {
+			names[nameI] = name.Name.Name
+		}
+		groups[grpI] = fmt.Sprintf("%s %s", strings.Join(names, ", "), typeS)
+	}
+	return strings.Join(groups, ", ")
+}
 
 func cloneFields(list *FieldList, cl *cloner) (*FieldList, error) {
 	if cl == nil || list == nil {

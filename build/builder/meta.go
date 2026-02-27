@@ -190,7 +190,7 @@ func (f *syntheticFunc) checkSyntheticSignature(fScope *fileResolveScope, fInput
 		return true
 	}
 	if fInputRecv == nil && fOutputRecv != nil {
-		return fScope.Err().Appendf(f.src, "%s requires a %s type receiver", f.src.Name.Name, fOutputRecv.Type().String())
+		return fScope.Err().Appendf(f.src, "%s requires a %s type receiver", f.src.Name.Name, fOutputRecv.Type().ReferString(fScope.irFile()))
 	}
 	if fInputRecv != nil && fOutputRecv == nil {
 		return fScope.Err().Appendf(f.src, "%s requires no receiver", f.src.Name.Name)

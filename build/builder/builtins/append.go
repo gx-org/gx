@@ -59,7 +59,8 @@ func (f *appendFunc) BuildFuncType(fetcher ir.Fetcher, call *ir.FuncCallExpr) (*
 			return ext, errors.Errorf("cannot evaluate the type of argument %d to append", i)
 		}
 		if !eq {
-			return ext, errors.Errorf("cannot use %v as %v in argument %d to append", argType, dtype, i)
+			from := fetcher.File()
+			return ext, errors.Errorf("cannot use %v as %v in argument %d to append", argType.ReferString(from), dtype.SourceString(from), i)
 		}
 	}
 	containerGroup := &ir.FieldGroup{

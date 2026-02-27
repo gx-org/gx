@@ -122,17 +122,12 @@ func (s *MacroCallExpr) Node() ast.Node { return s.Expr() }
 // Call returns the source of the call.
 func (s *MacroCallExpr) Call() *ast.CallExpr { return s.X.Src }
 
-// ShortString returns a string representation of the expression calling the macro.
-func (s *MacroCallExpr) ShortString() string {
-	return s.X.String()
+// SourceString returns the GX source code of the node.
+func (s *MacroCallExpr) SourceString(from *File) string {
+	return s.X.SourceString(from)
 }
 
-// SourceString returns GX code representing the call to the macro.
-func (s *MacroCallExpr) SourceString() string {
-	return s.String()
-}
-
-// String representation of the macro.
-func (s *MacroCallExpr) String() string {
-	return s.ShortString()
+// ErrorString returns the string representation of the node in an error message.
+func (s *MacroCallExpr) ErrorString(from *File) string {
+	return s.SourceString(from)
 }

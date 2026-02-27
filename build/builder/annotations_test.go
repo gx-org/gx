@@ -55,9 +55,9 @@ func (ts *tagStr) String() string {
 func toTagString(arg ir.Element) string {
 	switch argT := arg.(type) {
 	case *elements.String:
-		return argT.StringValue().String()
+		return argT.StringValue().SourceString(nil)
 	case fun.Func:
-		return argT.Func().FuncType().String()
+		return argT.Func().FuncType().ReferString(nil)
 	default:
 		return fmt.Sprintf("%T", argT)
 	}

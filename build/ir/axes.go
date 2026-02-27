@@ -32,7 +32,9 @@ type (
 	// AxisLengths specification of an array.
 	AxisLengths interface {
 		Node
-		axExprString() string
+		StringSourcer
+
+		axExprString(*File) string
 
 		// Type of the axis.
 		Type() Type
@@ -53,9 +55,6 @@ type (
 
 		// UnifyWith unifies axis lengths with a given target.
 		UnifyWith(Unifier, []AxisLengths) ([]AxisLengths, bool)
-
-		// String representation of the axis length.
-		String() string
 	}
 
 	// AxisExpr is an array axis specified using an expression.
@@ -120,17 +119,17 @@ func (dm *AxisExpr) AsExpr() Expr { return dm.X }
 // Type of the expression.
 func (dm *AxisExpr) Type() Type { return dm.X.Type() }
 
-func (dm *AxisExpr) axExprString() string {
+func (dm *AxisExpr) axExprString(from *File) string {
 	suffix := ""
 	if typ := dm.X.Type(); typ.Kind() == irkind.Slice {
 		suffix = "___"
 	}
-	return dm.X.String() + suffix
+	return dm.X.SourceString(from) + suffix
 }
 
-// String representation of the axis length.
-func (dm *AxisExpr) String() string {
-	return fmt.Sprintf("[%s]", dm.axExprString())
+// SourceString returns the GX source code of the axis length.
+func (dm *AxisExpr) SourceString(from *File) string {
+	return fmt.Sprintf("[%s]", dm.axExprString(from))
 }
 
 // AxisInfer is an array axis specified as "_" and inferred by the compiler.
@@ -180,16 +179,16 @@ func (dm *AxisInfer) UnifyWith(uni Unifier, target []AxisLengths) ([]AxisLengths
 	return dm.X.UnifyWith(uni, target)
 }
 
-func (dm *AxisInfer) axExprString() string {
-	return dm.X.axExprString()
+func (dm *AxisInfer) axExprString(from *File) string {
+	return dm.X.axExprString(from)
 }
 
-// String representation of the dimension.
-func (dm *AxisInfer) String() string {
+// SourceString returns the GX source code of the axis length.
+func (dm *AxisInfer) SourceString(from *File) string {
 	if dm.X == nil {
 		return "[_]"
 	}
-	return fmt.Sprintf("[%s]", dm.axExprString())
+	return fmt.Sprintf("[%s]", dm.axExprString(from))
 }
 
 // AxisStmt is an array axis specified using a statement.
@@ -271,7 +270,7 @@ func (dm *AxisStmt) Type() Type {
 	return dm.Typ
 }
 
-func (dm *AxisStmt) axExprString() string {
+func (dm *AxisStmt) axExprString(from *File) string {
 	prefix := DefineAxisLength
 	if dm.Typ.Kind() == irkind.Slice {
 		prefix = DefineAxisGroup
@@ -279,7 +278,7 @@ func (dm *AxisStmt) axExprString() string {
 	return prefix + dm.Src.Name
 }
 
-// String representation of the axis length.
-func (dm *AxisStmt) String() string {
-	return fmt.Sprintf("[%s]", dm.axExprString())
+// SourceString returns the GX source code of the axis length.
+func (dm *AxisStmt) SourceString(from *File) string {
+	return fmt.Sprintf("[%s]", dm.axExprString(from))
 }

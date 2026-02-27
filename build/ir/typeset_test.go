@@ -61,7 +61,7 @@ func TestTypeSetSlice(t *testing.T) {
 				return
 			}
 			if !eq {
-				t.Errorf("unexpected type: got %s but want %s", got.String(), test.want.String())
+				t.Errorf("unexpected type: got %s but want %s", got.ReferString(nil), test.want.ReferString(nil))
 			}
 		})
 	}

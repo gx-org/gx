@@ -50,7 +50,7 @@ func valueToString(done map[any]bool, val reflect.Value, proc processor) string 
 	if !val.CanInterface() {
 		return val.String()
 	}
-	return val.Interface().(fmt.Stringer).String()
+	return ir.String(val.Interface())
 }
 
 func fieldList(done map[any]bool, val reflect.Value, proc processor) string {
@@ -93,7 +93,7 @@ func constExpr(done map[any]bool, val reflect.Value, proc processor) string {
 
 func arrayType(done map[any]bool, val reflect.Value, proc processor) string {
 	array := val.Interface().(ir.ArrayType)
-	return fmt.Sprintf("%s%s", array.DataType().String(), reflectString(done, reflect.ValueOf(array.Rank()), proc))
+	return fmt.Sprintf("%s%s", array.DataType().ReferString(nil), reflectString(done, reflect.ValueOf(array.Rank()), proc))
 }
 
 func skip(map[any]bool, reflect.Value, processor) string {
@@ -106,9 +106,9 @@ func rank(done map[any]bool, val reflect.Value, proc processor) string {
 	for i, ax := range rnk.Ax {
 		switch ax.Type().Kind() {
 		case irkind.Slice:
-			axes[i] = fmt.Sprintf("[group<%s>]", ax.String())
+			axes[i] = fmt.Sprintf("[group<%s>]", ax.SourceString(nil))
 		case irkind.IntLen:
-			axes[i] = ax.String()
+			axes[i] = ax.SourceString(nil)
 		default:
 			axes[i] = "invalid"
 		}
@@ -122,7 +122,7 @@ func typeValExpr(done map[any]bool, val reflect.Value, proc processor) string {
 	case *ir.FuncType, ir.ArrayType, *ir.TypeParam, *ir.StructType:
 		return reflectString(done, reflect.ValueOf(typT), proc)
 	default:
-		return typT.String()
+		return typT.ReferString(nil)
 	}
 }
 
@@ -133,7 +133,7 @@ func funcValExpr(done map[any]bool, val reflect.Value, proc processor) string {
 		return reflectString(done, reflect.ValueOf(fT), proc)
 	default:
 		if ref.FuncType() != nil {
-			return ref.FuncType().String()
+			return ref.FuncType().ReferString(nil)
 		}
 		return ref.Func().ShortString()
 	}
@@ -264,7 +264,7 @@ func stmtProc(done map[any]bool, val reflect.Value) string {
 	case *ir.FuncType:
 		return reflectString(done, val, nil)
 	case ir.Type:
-		return aT.String()
+		return aT.ReferString(nil)
 	default:
 		return ""
 	}

@@ -49,8 +49,7 @@ func (s *String) ToHost(platform.Allocator) (Value, error) {
 	return s, nil
 }
 
-// String representation of the value.
-// The returned string is a string reported to the user.
-func (s *String) String() string {
+// SourceString returns the GX source code of the implementation.
+func (s *String) SourceString(from *ir.File) string {
 	return s.str
 }

@@ -16,7 +16,6 @@
 package cpevelements
 
 import (
-	"fmt"
 	"go/ast"
 	"reflect"
 
@@ -32,7 +31,7 @@ import (
 type Element interface {
 	evaluator.NumericalElement
 	canonical.Comparable
-	fmt.Stringer
+	ir.StringSourcer
 
 	ShortString() string
 

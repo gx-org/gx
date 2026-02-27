@@ -91,7 +91,7 @@ func (n *valueElement) Kind() irkind.Kind {
 }
 
 func (n *valueElement) String() string {
-	return n.value.String()
+	return n.value.SourceString(nil)
 }
 
 // Materialise returns itself.

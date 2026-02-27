@@ -114,7 +114,7 @@ func (st *funcBase) Call(ctx *fun.CallEnv, call *ir.FuncCallExpr, args []ir.Elem
 
 // String representation of the node.
 func (st *funcBase) String() string {
-	return st.fn.String()
+	return st.fn.DefineString(nil)
 }
 
 type funcDecl struct {
@@ -244,7 +244,7 @@ func toConcreteType(ctx *context.Context, src ast.Node, frame *context.Frame, tp
 	}
 	el, err := frame.Find(typeParam.Field.Name)
 	if err != nil {
-		return nil, fmterr.Internalf(ctx.File().FileSet(), src, "cannot cast to %s: %v", tp.String(), err)
+		return nil, fmterr.Internalf(ctx.File().FileSet(), src, "cannot cast to %s: %v", tp.ReferString(ctx.File()), err)
 	}
 	tp, isType := el.(ir.Type)
 	if !isType {

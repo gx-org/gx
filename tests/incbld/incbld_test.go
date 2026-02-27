@@ -249,7 +249,7 @@ func TestStructOverCell(t *testing.T) {
 		{
 			runFunc: "New",
 			want: `
-test.S{
+S{
 	A: float32(5),
 }
 `,

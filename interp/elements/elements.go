@@ -246,7 +246,7 @@ func StringFromElement(el ir.Element) (string, error) {
 	if !ok {
 		return "", errors.Errorf("cannot convert element %T is not a string literal", el)
 	}
-	return sEl.StringValue().String(), nil
+	return sEl.StringValue().SourceString(nil), nil
 }
 
 // SliceVals slices a slice of elements.
@@ -290,7 +290,7 @@ func MustEvalInt(fetcher ir.Fetcher, expr ir.Expr) (int, error) {
 	}
 	val := canonical.ToValue(el)
 	if val == nil {
-		return 0, fmterr.Errorf(fetcher.File().FileSet(), expr.Node(), "expected axis literals, but expression %s cannot be evaluated at compile time", expr.String())
+		return 0, fmterr.Errorf(fetcher.File().FileSet(), expr.Node(), "expected axis literals, but expression %s cannot be evaluated at compile time", expr.SourceString(fetcher.File()))
 	}
 	if !val.IsInt() {
 		return 0, fmterr.Errorf(fetcher.File().FileSet(), expr.Node(), "cannot use %s as static int value in axis specification", val.String())
@@ -307,7 +307,7 @@ func EvalRank(fetcher ir.Fetcher, expr ir.Expr) (ir.ArrayRank, []canonical.Canon
 	}
 	slice, ok := Underlying(rankVal).(*Slice)
 	if !ok {
-		return nil, nil, fmterr.Internalf(fetcher.File().FileSet(), expr.Node(), "cannot build a rank from %s (%T): not supported", expr.String(), rankVal)
+		return nil, nil, fmterr.Internalf(fetcher.File().FileSet(), expr.Node(), "cannot build a rank from %s (%T): not supported", expr.SourceString(fetcher.File()), rankVal)
 	}
 	axes := make([]ir.AxisLengths, slice.Len())
 	cans := make([]canonical.Canonical, slice.Len())

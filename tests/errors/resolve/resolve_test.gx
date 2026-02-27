@@ -221,11 +221,11 @@ var (
 )
 
 func testExplicitCastMyFloatToFloat64() float64 {
-	return varMyFloat // ERROR cannot use resolve.myfloat as float64 value in return statement
+	return varMyFloat // ERROR cannot use myfloat as float64 value in return statement
 }
 
 func testExplicitCastFloat64ToMyFloat() myfloat {
-	return varFloat64 // ERROR cannot use float64 as resolve.myfloat value in return statement
+	return varFloat64 // ERROR cannot use float64 as myfloat value in return statement
 }
 
 func testExpIntTensor() [2]float32 {
@@ -303,7 +303,7 @@ func testIncorrectIndexTarget() float32 {
 
 func testIncorrectIndexTarget2() float32 {
 	v := someStruct{a: 1, someMethod: 1}
-	return v[0] // ERROR cannot index v (type: resolve.someStruct)
+	return v[0] // ERROR cannot index v (type: someStruct)
 }
 
 func testIncorrectIndexType() float32 {
@@ -365,7 +365,7 @@ func shiftFloat() float32 {
 
 func shiftNamedType() myfloat {
 	a := myfloat(5.2)
-	return a >> 1 // ERROR operator >> not defined on resolve.myfloat
+	return a >> 1 // ERROR operator >> not defined on myfloat
 }
 
 func identity(a [___X]int32) [X___]int32 {
@@ -436,4 +436,3 @@ func testFunctionTypeConstraint2() int32 {
 func testInvalidShr[T dtype.Floats](a, b T) T {
 	return a >> b // ERROR operator >> not defined on T
 }
-

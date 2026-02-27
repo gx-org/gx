@@ -66,7 +66,7 @@ func (f split) BuildFuncType(fetcher ir.Fetcher, call *ir.FuncCallExpr) (*ir.Fun
 	}
 	arrayType, ok := params[1].(ir.ArrayType)
 	if !ok {
-		return nil, fmterr.Errorf(fetcher.File().FileSet(), call.Node(), "expected second argument to be an array in call to %s, but got %s", f.Func.Name(), call.Args[0].Type().String())
+		return nil, fmterr.Errorf(fetcher.File().FileSet(), call.Node(), "expected second argument to be an array in call to %s, but got %s", f.Func.Name(), call.Args[0].Type().ReferString(fetcher.File()))
 	}
 	rank := arrayType.Rank()
 	// Determine dimensions after split.
@@ -88,7 +88,8 @@ func (f split) BuildFuncType(fetcher ir.Fetcher, call *ir.FuncCallExpr) (*ir.Fun
 		return nil, fmterr.Error(fetcher.File().FileSet(), call.Node(), err)
 	}
 	if remainder != 0 {
-		return nil, fmterr.Errorf(fetcher.File().FileSet(), call.Node(), "cannot split axis %s of length %s by %s (expected a remainder of 0, found %d)", call.Args[0].String(), splitDimExpr.X.String(), numSplit.String(), remainder)
+		from := fetcher.File()
+		return nil, fmterr.Errorf(fetcher.File().FileSet(), call.Node(), "cannot split axis %s of length %s by %s (expected a remainder of 0, found %d)", call.Args[0].SourceString(from), splitDimExpr.X.SourceString(from), numSplit.SourceString(from), remainder)
 	}
 	outputDims[axis+1] = &ir.AxisExpr{
 		X: builtins.ToBinaryExpr(token.QUO, splitDimExpr.X, numSplit),

@@ -59,6 +59,10 @@ func (n *node[T]) err() *fmterr.Appender {
 	return n.fetcher.Err()
 }
 
+func (n *node[T]) file() *ir.File {
+	return n.fetcher.File()
+}
+
 func (n *node[T]) String() string {
 	return fmt.Sprint(n.irnode)
 }

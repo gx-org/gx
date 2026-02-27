@@ -79,7 +79,8 @@ func returnAs(rscope resolveScope, pos ast.Node, src, dst ir.Type) bool {
 		return rscope.Err().AppendAt(pos, err)
 	}
 	if !assignable {
-		return rscope.Err().Appendf(pos, "cannot use %s as %s value in return statement", src.String(), dst.String())
+		from := rscope.fileScope().irFile()
+		return rscope.Err().Appendf(pos, "cannot use %s as %s value in return statement", src.ReferString(from), dst.ReferString(from))
 	}
 	return true
 }

@@ -455,7 +455,7 @@ func axisExprFrom(rscope resolveScope, ax ir.AxisLengths) (*ir.AxisExpr, bool) {
 	case *ir.AxisStmt:
 		return &ir.AxisExpr{X: axisT.AsExpr()}, true
 	}
-	return nil, rscope.Err().AppendInternalf(ax.Node(), "unknown axis length type: %T:%s", ax, ax.String())
+	return nil, rscope.Err().AppendInternalf(ax.Node(), "unknown axis length type: %T:%s", ax, ax.SourceString(rscope.fileScope().irFile()))
 }
 
 func axisValuesFromArgumentValue(rscope resolveScope, compEval *compileEvaluator, src *ir.Field, val ir.Element) ([]ir.Element, bool) {
@@ -608,7 +608,8 @@ func checkArgsForCall(ce *compileEvaluator, fExpr *ir.FuncValExpr, args []ir.Exp
 			return ce.Err().AppendAt(arg.Node(), err)
 		}
 		if !assignable {
-			ok = ce.Err().Appendf(arg.Node(), "cannot use type %s as %s in argument to %s", arg.Type().String(), param.Type().String(), fExpr.Func().ShortString())
+			from := ce.File()
+			ok = ce.Err().Appendf(arg.Node(), "cannot use type %s as %s in argument to %s", arg.Type().ReferString(from), param.Type().ReferString(from), fExpr.SourceString(from))
 		}
 	}
 	return ok

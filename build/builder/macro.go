@@ -119,7 +119,7 @@ func (e *irExpr) buildExpr(rScope resolveScope) (ir.Expr, bool) {
 }
 
 func (e *irExpr) String() string {
-	return "irexpr: " + e.expr.String()
+	return "irexpr: " + e.expr.SourceString(nil)
 }
 
 type funcWithIR interface {
@@ -150,7 +150,7 @@ func evalMetaCallee[T funcWithIR](rscope resolveScope, compEval *compileEvaluato
 	}
 	elT, ok := el.(T)
 	if !ok {
-		return nil, zero, rscope.Err().Appendf(callee.Node(), "cannot use %s %s", callee.String(), target)
+		return nil, zero, rscope.Err().Appendf(callee.Node(), "cannot use %s %s", callee.SourceString(rscope.fileScope().irFile()), target)
 	}
 	call, ok := macroCall.buildFuncCallExpr(rscope, ir.NewFuncValExpr(
 		callee,
@@ -179,7 +179,8 @@ func evalMacroCall(compEval *compileEvaluator, call *ir.FuncCallExpr) (ir.MacroE
 	}
 	macroEl, ok := el.(ir.MacroElement)
 	if !ok {
-		return nil, compEval.Err().AppendInternalf(call.Node(), "unexpected element type %s returned by macro %s", el.Type().String(), call.Callee.Func().ShortString())
+		from := compEval.File()
+		return nil, compEval.Err().AppendInternalf(call.Node(), "unexpected element type %s returned by macro %s", el.Type().ReferString(from), call.Callee.SourceString(from))
 	}
 	return macroEl, true
 }

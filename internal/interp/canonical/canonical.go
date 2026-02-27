@@ -51,7 +51,6 @@ type (
 	Canonical interface {
 		Comparable
 		ShortString() string
-		fmt.Stringer
 	}
 
 	// Evaluable is a canonical that can be evaluated to a float.
@@ -145,7 +144,7 @@ func prefixedExpr(xs ...Canonical) *pExpr {
 	for i, x := range xs {
 		cexprs[i] = &exprStr{
 			expr: x,
-			str:  x.String(),
+			str:  x.ShortString(),
 		}
 	}
 	sort.Slice(cexprs, func(i, j int) bool {
@@ -415,8 +414,8 @@ func ToValue(el any) *big.Float {
 }
 
 // ToString converts an instance into a string, adding parenthesis when necessary.
-func ToString(a fmt.Stringer) string {
-	s := a.String()
+func ToString(a Canonical) string {
+	s := a.ShortString()
 	_, isAtomString := a.(AtomString)
 	if isAtomString {
 		return s
