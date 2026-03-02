@@ -26,15 +26,17 @@ import (
 )
 
 type core struct {
-	parent *Struct
-	field  *ir.Field
-	ftype  *ast.FuncType
+	parent         *Struct
+	field          *ir.Field
+	ftype          *ast.FuncType
+	backwardValues *ast.FieldList
 }
 
 func newCore(backwardValues *ast.FieldList, parent *Struct, field *ir.Field) (*core, error) {
 	cr := &core{
-		parent: parent,
-		field:  field,
+		parent:         parent,
+		field:          field,
+		backwardValues: backwardValues,
 	}
 	var err error
 	cr.ftype, err = cr.buildBackwardSignature(backwardValues)

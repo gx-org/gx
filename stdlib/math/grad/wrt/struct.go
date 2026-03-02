@@ -44,6 +44,11 @@ func (cr *core) parseStructure(backwardValues *ast.FieldList, tp *ir.StructType)
 	return st, nil
 }
 
+// Fields returns a list of all the fields of the structure.
+func (st *Struct) Fields() []*ir.Field {
+	return st.typ.Fields.Fields()
+}
+
 // Arrays returns the list of array for which the gradient needs to be computed with respect to.
 func (st *Struct) Arrays() []*Array {
 	var arrays []*Array
@@ -51,4 +56,9 @@ func (st *Struct) Arrays() []*Array {
 		arrays = append(arrays, child.Arrays()...)
 	}
 	return arrays
+}
+
+// NewFromField returns a new WRT instance from a field and using the same backward values.
+func (st *Struct) NewFromField(field *ir.Field) (WRT, error) {
+	return BuildFromField(st.backwardValues, field)
 }

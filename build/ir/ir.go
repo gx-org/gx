@@ -2440,7 +2440,14 @@ func (s *StructLitExpr) Expr() ast.Expr { return s.Src }
 
 // SourceString returns the GX source code of the node.
 func (s *StructLitExpr) SourceString(from *File) string {
-	return s.Type().ReferString(from)
+	if len(s.Elts) == 0 {
+		return fmt.Sprintf("%s{}", s.Type().ReferString(from))
+	}
+	elts := make([]string, len(s.Elts))
+	for i, elt := range s.Elts {
+		elts[i] = fmt.Sprintf("\t%s: %s,", elt.Field.Name.Name, elt.X.SourceString(from))
+	}
+	return fmt.Sprintf("%s{\n%s\n}", s.Type().ReferString(from), strings.Join(elts, "\n"))
 }
 
 func (s *SliceLitExpr) node() {}

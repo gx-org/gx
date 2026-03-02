@@ -1147,19 +1147,21 @@ func F(s S, x float32) float32 {
 }
 `,
 			Want: `
-func vjpF(s S, x float32) (float32, func(res float32) float32, func(res float32) float32) {
+func vjpF(s S, x float32) (float32, func(res float32) S, func(res float32) float32) {
 	fwd0 := s.a*x
-	selfVJPFuncWRTs_a := func(res float32) float32 {
+	selfVJPFuncWRTs := func(res float32) S {
 		bck0x := res*x
 		bck0y := s.a*res
-		return bck0x
+		return S{
+			a: bck0x,
+		}
 	}
 	selfVJPFuncWRTx := func(res float32) float32 {
 		bck0x1 := res*x
 		bck0y1 := s.a*res
 		return bck0y1
 	}
-	return fwd0, selfVJPFuncWRTs_a, selfVJPFuncWRTx
+	return fwd0, selfVJPFuncWRTs, selfVJPFuncWRTx
 }
 `,
 		},

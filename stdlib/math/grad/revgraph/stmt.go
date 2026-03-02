@@ -94,8 +94,61 @@ func (p *processor) processReturnStmt(isrc *ir.ReturnStmt) (*returnStmt, bool) {
 	return out, true
 }
 
-func (n *returnStmt) buildVJPFunctionWRT(outStmts *astOut, gradParam *wrt.Array) (*ast.FuncLit, bool) {
-	outWRT := outStmts.newASTOutWRT(gradParam)
+func (n *returnStmt) buildVJPExprWRT(out *astOutWRT) (ast.Expr, bool) {
+	switch wrtT := out.wrt.(type) {
+	case *wrt.Array:
+		astOutArray := out.newASTOutWRTArray(wrtT)
+		return n.buildVJPBodyWRTArray(astOutArray)
+	case *wrt.Struct:
+		astOutStruct := out.newASTOutWRTStruct(wrtT)
+		return n.buildVJPBodyWRTStruct(astOutStruct)
+	default:
+		return nil, n.err().AppendInternalf(out.wrt.FuncType(), "gradient with respect to %T not supported", wrtT)
+	}
+}
+
+func (n *returnStmt) buildVJPFunctionWRT(outCore *astOutCore, gradParam wrt.WRT) (*ast.FuncLit, bool) {
+	outWRT := outCore.newASTOutWRT(gradParam)
+	ret, ok := n.buildVJPExprWRT(outWRT)
+	if !ok {
+		return nil, false
+	}
+	var body []ast.Stmt
+	body = append(body, outWRT.stmts...)
+	body = append(body, &ast.ReturnStmt{
+		Results: []ast.Expr{ret},
+	})
+	return &ast.FuncLit{
+		Type: gradParam.FuncType(),
+		Body: &ast.BlockStmt{List: body},
+	}, true
+}
+
+func (n *returnStmt) buildVJPBodyWRTStruct(outWRT *astOutWRTStruct) (ast.Expr, bool) {
+	fields := outWRT.wrtStruct.Fields()
+	elts := make([]ast.Expr, len(fields))
+	for i, field := range fields {
+		outField, err := outWRT.newASTOutFromField(field)
+		if err != nil {
+			return nil, n.err().AppendAt(n.source(), err)
+		}
+		val, ok := n.buildVJPExprWRT(outField)
+		if !ok {
+			return nil, false
+		}
+		elts[i] = &ast.KeyValueExpr{
+			Key:   field.Storage().NameDef(),
+			Value: val,
+		}
+
+	}
+	return &ast.CompositeLit{
+		Type: outWRT.wrtStruct.Type().NameDef(),
+		Elts: elts,
+	}, true
+}
+
+func (n *returnStmt) buildVJPBodyWRTArray(outWRT *astOutWRTArray) (ast.Expr, bool) {
 	rets := make([]*special.Expr, len(n.exprs))
 	for i, expr := range n.exprs {
 		var ok bool
@@ -106,33 +159,25 @@ func (n *returnStmt) buildVJPFunctionWRT(outStmts *astOut, gradParam *wrt.Array)
 			return nil, false
 		}
 	}
-	var body []ast.Stmt
-	body = append(body, outWRT.stmts...)
-	body = append(body, &ast.ReturnStmt{
-		Results: []ast.Expr{special.Add(rets...).RemoveParen().AST()},
-	})
-	return &ast.FuncLit{
-		Type: gradParam.FuncType(),
-		Body: &ast.BlockStmt{List: body},
-	}, true
+	return special.Add(rets...).RemoveParen().AST(), true
 }
 
-func (n *returnStmt) build(outStmts *astOut) bool {
-	out := &ast.ReturnStmt{
+func (n *returnStmt) build(out *astOut) bool {
+	retStmt := &ast.ReturnStmt{
 		Results: make([]ast.Expr, len(n.irnode.Results)),
 	}
-	n.fwdStmts = outStmts.newStmt()
+	n.fwdStmts = out.newStmt()
 	for i, expr := range n.exprs {
 		var ok bool
-		out.Results[i], ok = buildSingleForward(n.fwdStmts, expr)
+		retStmt.Results[i], ok = buildSingleForward(n.fwdStmts, expr)
 		if !ok {
 			return false
 		}
 	}
 	// Build a backward function for each function parameter.
-	names := make([]ast.Expr, len(n.graph.gradParams))
-	for _, gradParam := range n.graph.gradParams.Arrays() {
-		vjpFuncLit, ok := n.buildVJPFunctionWRT(outStmts, gradParam)
+	names := make([]ast.Expr, len(n.graph.wrts))
+	for _, gradParam := range n.graph.wrts {
+		vjpFuncLit, ok := n.buildVJPFunctionWRT(out.astOutCore, gradParam)
 		if !ok {
 			return false
 		}
@@ -141,14 +186,14 @@ func (n *returnStmt) build(outStmts *astOut) bool {
 			root += "WRT" + wrt.ToName(gradParam.Name())
 		}
 		vjpFuncName := n.graph.unames.Name(root)
-		outStmts.append(&ast.AssignStmt{
+		out.append(&ast.AssignStmt{
 			Tok: token.DEFINE,
 			Lhs: []ast.Expr{&ast.Ident{Name: vjpFuncName}},
 			Rhs: []ast.Expr{vjpFuncLit},
 		})
-		out.Results = append(out.Results, &ast.Ident{Name: vjpFuncName})
+		retStmt.Results = append(retStmt.Results, &ast.Ident{Name: vjpFuncName})
 	}
-	outStmts.append(out)
+	out.append(retStmt)
 	return true
 }
 

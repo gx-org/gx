@@ -27,20 +27,30 @@ import (
 	"github.com/gx-org/gx/stdlib/math/grad/wrt"
 )
 
-type astOut struct {
+type astOutCore struct {
 	graph       *Graph
 	fetcher     ir.Fetcher
 	uroot       string
-	stmts       []ast.Stmt
 	identToExpr *scope.RWScope[expr]
+}
+
+func (a *astOut) err() *fmterr.Appender {
+	return a.fetcher.Err()
+}
+
+type astOut struct {
+	*astOutCore
+	stmts []ast.Stmt
 }
 
 func (g *Graph) newASTOut(fetcher ir.Fetcher) *astOut {
 	return &astOut{
-		graph:       g,
-		fetcher:     fetcher,
-		uroot:       "fwd",
-		identToExpr: scope.NewScope[expr](nil),
+		astOutCore: &astOutCore{
+			graph:       g,
+			fetcher:     fetcher,
+			uroot:       "fwd",
+			identToExpr: scope.NewScope[expr](nil),
+		},
 	}
 }
 
@@ -154,10 +164,6 @@ func (a *astOut) assignFuncCall(id nodeID, ftype *ir.FuncType, calleeName string
 	return idents, vjps
 }
 
-func (a *astOut) err() *fmterr.Appender {
-	return a.fetcher.Err()
-}
-
 type fwdStmts struct {
 	*astOut
 
@@ -172,28 +178,65 @@ func (a *astOut) newStmt() *fwdStmts {
 }
 
 type astOutWRT struct {
-	astOut
-	wrt *wrt.Array
+	*astOut
+	wrt wrt.WRT
 }
 
-func (a *astOut) newASTOutWRT(wrt *wrt.Array) *astOutWRT {
+func (a *astOutCore) newASTOutWRT(w wrt.WRT) *astOutWRT {
 	return &astOutWRT{
-		astOut: astOut{
-			graph:   a.graph,
-			fetcher: a.fetcher,
-			uroot:   "bck",
+		astOut: &astOut{
+			astOutCore: &astOutCore{
+				graph:   a.graph,
+				fetcher: a.fetcher,
+				uroot:   "bck",
+			},
 		},
-		wrt: wrt,
+		wrt: w,
 	}
 }
 
-func (b *astOutWRT) assignSpecialExpr(id nodeID, expr *special.Expr) *special.Expr {
+type astOutWRTArray struct {
+	*astOutWRT
+	wrtArray *wrt.Array
+}
+
+func (a *astOutWRT) newASTOutWRTArray(param *wrt.Array) *astOutWRTArray {
+	return &astOutWRTArray{
+		astOutWRT: a,
+		wrtArray:  param,
+	}
+}
+
+func (b *astOutWRTArray) assignSpecialExpr(id nodeID, expr *special.Expr) *special.Expr {
 	return b.assignSpecialExprSuffix(id, expr, "")
 }
 
-func (b *astOutWRT) assignSpecialExprSuffix(id nodeID, expr *special.Expr, suffix string) *special.Expr {
+func (b *astOutWRTArray) assignSpecialExprSuffix(id nodeID, expr *special.Expr, suffix string) *special.Expr {
 	if !expr.IsAny() {
 		return expr
 	}
 	return special.New(b.assignExprs(id, []ast.Expr{expr.AST()}, 1, suffix)[0])
+}
+
+type astOutWRTStruct struct {
+	*astOutWRT
+	wrtStruct *wrt.Struct
+}
+
+func (a *astOutWRT) newASTOutWRTStruct(param *wrt.Struct) *astOutWRTStruct {
+	return &astOutWRTStruct{
+		astOutWRT: a,
+		wrtStruct: param,
+	}
+}
+
+func (a *astOutWRTStruct) newASTOutFromField(field *ir.Field) (*astOutWRT, error) {
+	wrtField, err := a.wrtStruct.NewFromField(field)
+	if err != nil {
+		return nil, err
+	}
+	return &astOutWRT{
+		astOut: a.astOut,
+		wrt:    wrtField,
+	}, nil
 }

@@ -75,7 +75,7 @@ type Graph struct {
 	root   stmt
 	nextID int
 
-	gradParams     wrt.WRTs
+	wrts           wrt.WRTs
 	nResults       *namedFields
 	nParams        *namedFields
 	typeParamsExpr []ast.Expr
@@ -98,7 +98,7 @@ func New(macro *cpevelements.CoreMacroElement, fn ir.Func) (*Graph, error) {
 	g.unames.RegisterFieldNames(fType.TypeParams)
 	// Build the VJP params and function signatures.
 	var err error
-	g.gradParams, err = wrt.Build(fType, g.nResults.fields)
+	g.wrts, err = wrt.Build(fType, g.nResults.fields)
 	if err != nil {
 		return nil, err
 	}
@@ -116,9 +116,8 @@ func concatFieldList(lists ...*ast.FieldList) *ast.FieldList {
 // BuildType builds the type of the function.
 func (g *Graph) BuildType() *ast.FuncType {
 	fType := g.fn.FuncType()
-	flatResults := g.gradParams.Arrays()
-	vjpFuncs := make([]*ast.Field, len(flatResults))
-	for i, gradParam := range flatResults {
+	vjpFuncs := make([]*ast.Field, len(g.wrts))
+	for i, gradParam := range g.wrts {
 		vjpFuncs[i] = &ast.Field{
 			Type: gradParam.FuncType(),
 		}
@@ -140,7 +139,7 @@ func (g *Graph) BuildType() *ast.FuncType {
 
 // VJPs returns all the parameters with which the gradient is going to be computed with respect to.
 func (g *Graph) VJPs() []wrt.WRT {
-	return g.gradParams
+	return g.wrts
 }
 
 // Func returns the function represented by the graph.
