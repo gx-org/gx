@@ -1167,3 +1167,18 @@ func vjpF(s S, x float32) (float32, func(res float32) S, func(res float32) float
 		},
 	)
 }
+
+func TestVJPErrors(t *testing.T) {
+	testbuild.Run(t,
+		declareGradPackage,
+		testgrad.Reverse{
+			Src: `
+type S struct {}
+
+func F(s S, x float32) float32 {
+	return s * x // ERROR invalid operation: operator * not defined on type S
+}
+`,
+		},
+	)
+}

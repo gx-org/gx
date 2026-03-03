@@ -33,6 +33,10 @@ type (
 )
 
 func (p *processor) processExpr(isrc ir.Expr) (expr, bool) {
+	if !ir.IsValid(isrc.Type()) {
+		// Invalid type: abort and an error should already has been reported.
+		return nil, false
+	}
 	switch isrcT := isrc.(type) {
 	case *ir.ArrayLitExpr:
 		return p.processArrayLitExpr(isrcT)
