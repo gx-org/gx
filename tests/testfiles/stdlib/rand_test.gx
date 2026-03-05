@@ -4,6 +4,7 @@ import (
 	"math"
 	"num"
 	"rand"
+	"shapes"
 )
 
 // Test options:
@@ -103,4 +104,21 @@ func TestFloat64MinMax() [5]float64 {
 	return a
 	// Want:
 	// [dims___]float64{-39.1233905713, 67.0834894428, -93.5118532834, -38.9040065512, 5.7039784557}
+}
+
+const numSamples = 10000
+
+func TestCategorical() bool {
+	rnd := rand.New(rand.NewSource(0))
+	probs := [1][3]float32{{0.1, 0.2, 0.7}}
+	expandedProbs := shapes.Broadcast(probs, []intlen{numSamples, 3})
+	_, labels := rand.Categorical[float32](rnd, expandedProbs)
+	numZero := num.Sum([___]int64(labels == 0), []intidx{0})
+	numOne := num.Sum([___]int64(labels == 1), []intidx{0})
+	numTwo := num.Sum([___]int64(labels == 2), []intidx{0})
+	distribution := [3]float32([3]int64{numZero, numOne, numTwo}) / numSamples
+	diff := distribution - probs[0]
+	return num.ReduceMax(math.Abs(diff), []intidx{0}) < 0.01
+	// Want:
+	// bool(true)
 }
