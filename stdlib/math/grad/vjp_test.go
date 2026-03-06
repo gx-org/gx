@@ -585,18 +585,14 @@ func vjpF(x, y float32) (float32, func(res float32) float32, func(res float32) f
 	fwd1 := 3*y
 	fwd2 := fwd0+fwd1
 	selfVJPFuncWRTx := func(res float32) float32 {
-		bck1x := res*y
-		bck1y := 3*res
 		bck0x := res*x
 		bck0y := 2*res
 		return bck0y
 	}
 	selfVJPFuncWRTy := func(res float32) float32 {
-		bck1x1 := res*y
-		bck1y1 := 3*res
-		bck0x1 := res*x
-		bck0y1 := 2*res
-		return bck1y1
+		bck1x := res*y
+		bck1y := 3*res
+		return bck1y
 	}
 	return fwd2, selfVJPFuncWRTx, selfVJPFuncWRTy
 }

@@ -71,6 +71,13 @@ func buildSingleForward(astmts *fwdStmts, node expr) (ast.Expr, bool) {
 	return exprs[0], true
 }
 
+func buildBackward(bckstmts *astOutWRT, bck *special.Expr, x expr) (*special.Expr, bool) {
+	if !x.dependsOn(bckstmts) {
+		return special.ZeroExpr(), true
+	}
+	return x.buildBackward(bckstmts, bck)
+}
+
 type funcCallExpr struct {
 	node[*ir.FuncCallExpr]
 	args []expr
@@ -180,7 +187,7 @@ func (n *funcCallExpr) buildBackward(bckstmts *astOutWRT, bck *special.Expr) (*s
 	argsGrad := make([]*special.Expr, len(n.args))
 	for i := len(n.args) - 1; i >= 0; i-- {
 		var ok bool
-		argsGrad[i], ok = n.args[i].buildBackward(bckstmts, backwardIdents[i])
+		argsGrad[i], ok = buildBackward(bckstmts, backwardIdents[i], n.args[i])
 		if !ok {
 			return nil, false
 		}
@@ -235,7 +242,7 @@ func (n *unaryExpr) buildBackward(bckstmts *astOutWRT, bck *special.Expr) (*spec
 		return nil, bckstmts.err().Appendf(n.irnode.Src, "gradient of unary operator %s not supported", n.irnode.Src.Op)
 	}
 	xbck = bckstmts.assignSpecialExpr(n.id, xbck)
-	return n.x.buildBackward(bckstmts, xbck)
+	return buildBackward(bckstmts, xbck, n.x)
 }
 
 type binaryExpr struct {
@@ -310,8 +317,8 @@ func (n *binaryExpr) buildBackward(bckstmts *astOutWRT, bck *special.Expr) (*spe
 	if yres != bck {
 		yres = bckstmts.assignSpecialExprSuffix(n.id, yres, "y")
 	}
-	ybck, yok := n.y.buildBackward(bckstmts, yres)
-	xbck, xok := n.x.buildBackward(bckstmts, xres)
+	ybck, yok := buildBackward(bckstmts, yres, n.y)
+	xbck, xok := buildBackward(bckstmts, xres, n.x)
 	return special.Paren(special.Add(xbck, ybck)), xok && yok
 }
 
@@ -400,7 +407,7 @@ func (n *ident) forwardValue() (*special.Expr, bool) {
 }
 
 func (n *ident) buildBackward(bckstmts *astOutWRT, bck *special.Expr) (*special.Expr, bool) {
-	bckExpr, ok := n.fwd.buildBackward(bckstmts, bck)
+	bckExpr, ok := buildBackward(bckstmts, bck, n.fwd)
 	if !ok {
 		return nil, false
 	}
@@ -436,7 +443,7 @@ func (n *parenExpr) forwardValue() (*special.Expr, bool) {
 }
 
 func (n *parenExpr) buildBackward(bckstmts *astOutWRT, bck *special.Expr) (*special.Expr, bool) {
-	xBack, xOk := n.x.buildBackward(bckstmts, bck)
+	xBack, xOk := buildBackward(bckstmts, bck, n.x)
 	if !xOk {
 		return nil, false
 	}
@@ -494,7 +501,7 @@ func (n *arrayLitExpr) forwardValue() (*special.Expr, bool) {
 func (n *arrayLitExpr) buildBackward(bckstmts *astOutWRT, bck *special.Expr) (*special.Expr, bool) {
 	bcks := make([]*special.Expr, len(n.xs))
 	for i, x := range n.xs {
-		xBack, xOk := x.buildBackward(bckstmts, bck.Index(i))
+		xBack, xOk := buildBackward(bckstmts, bck.Index(i), x)
 		if !xOk {
 			return nil, false
 		}
@@ -542,5 +549,5 @@ func (n *selectorExpr) forwardValue() (*special.Expr, bool) {
 }
 
 func (n *selectorExpr) buildBackward(bckstmts *astOutWRT, bck *special.Expr) (*special.Expr, bool) {
-	return n.sel.buildBackward(bckstmts, bck)
+	return buildBackward(bckstmts, bck, n.sel)
 }

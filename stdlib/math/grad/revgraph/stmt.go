@@ -150,11 +150,11 @@ func (n *returnStmt) buildVJPBodyWRTStruct(outWRT *astOutWRTStruct) (ast.Expr, b
 
 func (n *returnStmt) buildVJPBodyWRTArray(outWRT *astOutWRTArray) (ast.Expr, bool) {
 	rets := make([]*special.Expr, len(n.exprs))
-	for i, expr := range n.exprs {
+	for i, x := range n.exprs {
 		var ok bool
-		rets[i], ok = expr.buildBackward(outWRT.astOutWRT, special.New(
+		rets[i], ok = buildBackward(outWRT.astOutWRT, special.New(
 			&ast.Ident{Name: n.graph.nResults.names[i]},
-		))
+		), x)
 		if !ok {
 			return nil, false
 		}
