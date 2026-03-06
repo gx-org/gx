@@ -311,13 +311,13 @@ func (n *binaryExpr) buildBackward(bckstmts *astOutWRT, bck *special.Expr) (*spe
 	default:
 		return nil, bckstmts.err().Appendf(n.irnode.Src, "gradient of binary operator %s not supported", n.irnode.Src.Op)
 	}
-	if xres != bck {
-		xres = bckstmts.assignSpecialExprSuffix(n.id, xres, "x")
-	}
 	if yres != bck {
 		yres = bckstmts.assignSpecialExprSuffix(n.id, yres, "y")
 	}
 	ybck, yok := buildBackward(bckstmts, yres, n.y)
+	if xres != bck {
+		xres = bckstmts.assignSpecialExprSuffix(n.id, xres, "x")
+	}
 	xbck, xok := buildBackward(bckstmts, xres, n.x)
 	return special.Paren(special.Add(xbck, ybck)), xok && yok
 }

@@ -64,8 +64,8 @@ func vjpF(x float32) (float32, func(res float32) float32) {
 	fwd1, gVJP := grad.Reverse(g)(fwd0)
 	selfVJPFunc := func(res float32) float32 {
 		bck1 := gVJP(res)
-		bck0x := bck1*x
 		bck0y := x*bck1
+		bck0x := bck1*x
 		return bck0x+bck0y
 	}
 	return fwd1, selfVJPFunc
@@ -89,8 +89,8 @@ func vjpF(x float32) (float32, func(res float32) float32) {
 	fwd1, gVJP := grad.Reverse(g)(fwd0)
 	selfVJPFunc := func(res float32) float32 {
 		bck1 := gVJP(res)
-		bck0x := bck1*x
 		bck0y := x*bck1
+		bck0x := bck1*x
 		return bck0x+bck0y
 	}
 	return fwd1, selfVJPFunc
@@ -112,8 +112,8 @@ func vjpF(x float32) (float32, func(res float32) float32) {
 	fwd1, gVJP := grad.Reverse(g)(fwd0)
 	selfVJPFunc := func(res float32) float32 {
 		bck1 := gVJP(res)
-		bck0x := bck1*x
 		bck0y := x*bck1
+		bck0x := bck1*x
 		return bck0x+bck0y
 	}
 	return fwd1, selfVJPFunc

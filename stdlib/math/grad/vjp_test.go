@@ -130,8 +130,8 @@ func F(x float32) float32 {
 func vjpF(x float32) (float32, func(res float32) float32) {
 	fwd0 := 2*x
 	selfVJPFunc := func(res float32) float32 {
-		bck0x := res*x
 		bck0y := 2*res
+		bck0x := res*x
 		return bck0y
 	}
 	return fwd0, selfVJPFunc
@@ -180,8 +180,8 @@ func F(x float32) float32 {
 func vjpF(x float32) (float32, func(res float32) float32) {
 	fwd0 := x*x
 	selfVJPFunc := func(res float32) float32 {
-		bck0x := res*x
 		bck0y := x*res
+		bck0x := res*x
 		return bck0x+bck0y
 	}
 	return fwd0, selfVJPFunc
@@ -198,13 +198,13 @@ func F(x, y float32) float32 {
 func vjpF(x, y float32) (float32, func(res float32) float32, func(res float32) float32) {
 	fwd0 := x*y
 	selfVJPFuncWRTx := func(res float32) float32 {
-		bck0x := res*y
 		bck0y := x*res
+		bck0x := res*y
 		return bck0x
 	}
 	selfVJPFuncWRTy := func(res float32) float32 {
-		bck0x1 := res*y
 		bck0y1 := x*res
+		bck0x1 := res*y
 		return bck0y1
 	}
 	return fwd0, selfVJPFuncWRTx, selfVJPFuncWRTy
@@ -222,8 +222,8 @@ func vjpF(x float32) (float32, func(res float32) float32) {
 	fwd0 := 2+x
 	fwd1 := x*fwd0
 	selfVJPFunc := func(res float32) float32 {
-		bck1x := res*fwd0
 		bck1y := x*res
+		bck1x := res*fwd0
 		return bck1x+bck1y
 	}
 	return fwd1, selfVJPFunc
@@ -240,8 +240,8 @@ func F(x float32) float32 {
 func vjpF(x float32) (float32, func(res float32) float32) {
 	fwd0 := 1/x
 	selfVJPFunc := func(res float32) float32 {
-		bck0x := res/x
 		bck0y := -res/(x*x)
+		bck0x := res/x
 		return bck0y
 	}
 	return fwd0, selfVJPFunc
@@ -258,8 +258,8 @@ func F(x float32) float32 {
 func vjpF(x float32) (float32, func(res float32) float32) {
 	fwd0 := 1.0/x
 	selfVJPFunc := func(res float32) float32 {
-		bck0x := res/x
 		bck0y := -res/(x*x)
+		bck0x := res/x
 		return bck0y
 	}
 	return fwd0, selfVJPFunc
@@ -276,13 +276,13 @@ func F(x, y float32) float32 {
 func vjpF(x, y float32) (float32, func(res float32) float32, func(res float32) float32) {
 	fwd0 := x/y
 	selfVJPFuncWRTx := func(res float32) float32 {
-		bck0x := res/y
 		bck0y := -(x*res)/(y*y)
+		bck0x := res/y
 		return bck0x
 	}
 	selfVJPFuncWRTy := func(res float32) float32 {
-		bck0x1 := res/y
 		bck0y1 := -(x*res)/(y*y)
+		bck0x1 := res/y
 		return bck0y1
 	}
 	return fwd0, selfVJPFuncWRTx, selfVJPFuncWRTy
@@ -301,8 +301,8 @@ func vjpF(x float32) (float32, func(res float32) float32) {
 	fwd1 := -fwd0
 	selfVJPFunc := func(res float32) float32 {
 		bck1 := -res
-		bck0x := bck1*x
 		bck0y := x*bck1
+		bck0x := bck1*x
 		return bck0x+bck0y
 	}
 	return fwd1, selfVJPFunc
@@ -318,8 +318,8 @@ func F(x float32) [2]float32 {
 func vjpF(x float32) ([2]float32, func(res [2]float32) float32) {
 	fwd0 := x*x
 	selfVJPFunc := func(res [2]float32) float32 {
-		bck0x := res[0]*x
 		bck0y := x*res[0]
+		bck0x := res[0]*x
 		return bck0x+bck0y
 	}
 	return [2]float32{fwd0, 2}, selfVJPFunc
@@ -346,16 +346,16 @@ func vjpF(x float32) ([3][2]float32, func(res [3][2]float32) float32) {
 	fwd5 := 6*x
 	selfVJPFunc := func(res [3][2]float32) float32 {
 		bck0x := res[0][0]*x
-		bck1x := res[0][1]*x
 		bck1y := 2*res[0][1]
-		bck2x := res[1][0]*x
+		bck1x := res[0][1]*x
 		bck2y := 3*res[1][0]
-		bck3x := res[1][1]*x
+		bck2x := res[1][0]*x
 		bck3y := 4*res[1][1]
-		bck4x := res[2][0]*x
+		bck3x := res[1][1]*x
 		bck4y := 5*res[2][0]
-		bck5x := res[2][1]*x
+		bck4x := res[2][0]*x
 		bck5y := 6*res[2][1]
+		bck5x := res[2][1]*x
 		return ((res[0][0])+bck1y)+((bck2y+bck3y)+(bck4y+bck5y))
 	}
 	return [3][2]float32{[2]float32{fwd0, fwd1}, [2]float32{fwd2, fwd3}, [2]float32{fwd4, fwd5}}, selfVJPFunc
@@ -585,13 +585,13 @@ func vjpF(x, y float32) (float32, func(res float32) float32, func(res float32) f
 	fwd1 := 3*y
 	fwd2 := fwd0+fwd1
 	selfVJPFuncWRTx := func(res float32) float32 {
-		bck0x := res*x
 		bck0y := 2*res
+		bck0x := res*x
 		return bck0y
 	}
 	selfVJPFuncWRTy := func(res float32) float32 {
-		bck1x := res*y
 		bck1y := 3*res
+		bck1x := res*y
 		return bck1y
 	}
 	return fwd2, selfVJPFuncWRTx, selfVJPFuncWRTy
@@ -680,9 +680,9 @@ func vjpF(x float32) (float32, func(res float32) float32) {
 	fwd1, gVJP := grad.Reverse(g)(x)
 	fwd2 := fwd0*fwd1
 	selfVJPFunc := func(res float32) float32 {
-		bck2x := res*fwd1
 		bck2y := fwd0*res
 		bck1 := gVJP(bck2y)
+		bck2x := res*fwd1
 		bck0 := fVJP(bck2x)
 		return bck0+bck1
 	}
@@ -786,8 +786,8 @@ func vjpF(x float32) (float32, func(res float32) float32) {
 	fwd0 := 2*x
 	a := fwd0
 	selfVJPFunc := func(res float32) float32 {
-		bck0x := res*x
 		bck0y := 2*res
+		bck0x := res*x
 		bcka := bck0y
 		return bcka
 	}
@@ -810,8 +810,8 @@ func vjpF(x float32) (float32, func(res float32) float32) {
 	fwd1 := 3*x
 	a1 := fwd1
 	selfVJPFunc := func(res float32) float32 {
-		bck1x := res*x
 		bck1y := 3*res
+		bck1x := res*x
 		bcka := bck1y
 		return bcka
 	}
@@ -835,10 +835,10 @@ func vjpF(x float32) (float32, func(res float32) float32) {
 	a1 := fwd1
 	fwd2 := a1*x
 	selfVJPFunc := func(res float32) float32 {
-		bck2x := res*x
 		bck2y := a1*res
-		bck1x := bck2x*x
+		bck2x := res*x
 		bck1y := 3*bck2x
+		bck1x := bck2x*x
 		bcka := bck1y
 		return bcka+bck2y
 	}
@@ -860,8 +860,8 @@ func vjpF(x float32) (float32, float32, float32, func(res float32, res1 float32,
 	a, b, c := x, fwd0, fwd1
 	selfVJPFunc := func(res float32, res1 float32, res2 float32) float32 {
 		bcka := res
-		bck0x := res1*x
 		bck0y := 2*res1
+		bck0x := res1*x
 		bckb := bck0y
 		bckc := res2
 		return bcka+(bckb+bckc)
@@ -906,9 +906,9 @@ func vjpF(x float32) (float32, func(res float32) float32) {
 	fwd0 := x*a
 	a1 := fwd0
 	selfVJPFunc := func(res float32) float32 {
-		bck0x := res*a
 		bck0y := x*res
 		bcka := bck0y
+		bck0x := res*a
 		bcka1 := (bck0x+bcka)
 		return bcka1
 	}
@@ -930,8 +930,8 @@ func vjpF(x float32) (float32, func(res float32) float32) {
 	x1 := float32(2)
 	fwd0 := a*x1
 	selfVJPFunc := func(res float32) float32 {
-		bck0x := res*x1
 		bck0y := a*res
+		bck0x := res*x1
 		bcka := bck0x
 		return bcka
 	}
@@ -1040,8 +1040,8 @@ func F(fwd0 [___S]float32) [S___]float32 {
 func vjpF(fwd0 [___S]float32) ([S___]float32, func(res [S___]float32) [S___]float32) {
 	fwd01 := 2*fwd0
 	selfVJPFunc := func(res [S___]float32) [S___]float32 {
-		bck0x := res*fwd0
 		bck0y := 2*res
+		bck0x := res*fwd0
 		return bck0y
 	}
 	return fwd01, selfVJPFunc
@@ -1058,8 +1058,8 @@ func F(x [___fwd0]float32) [fwd0___]float32 {
 func vjpF(x [___fwd0]float32) ([fwd0___]float32, func(res [fwd0___]float32) [fwd0___]float32) {
 	fwd0_1 := 2*x
 	selfVJPFunc := func(res [fwd0___]float32) [fwd0___]float32 {
-		bck0x := res*x
 		bck0y := 2*res
+		bck0x := res*x
 		return bck0y
 	}
 	return fwd0_1, selfVJPFunc
@@ -1080,8 +1080,8 @@ func F[fwd0 floats](x [___S]fwd0) [S___]fwd0 {
 func vjpF[fwd0 floats](x [___S]fwd0) ([S___]fwd0, func(res [S___]fwd0) [S___]fwd0) {
 	fwd0_1 := 2*x
 	selfVJPFunc := func(res [S___]fwd0) [S___]fwd0 {
-		bck0x := res*x
 		bck0y := 2*res
+		bck0x := res*x
 		return bck0y
 	}
 	return fwd0_1, selfVJPFunc
@@ -1108,16 +1108,16 @@ func vjpF(x float32) (float32, func(res float32) float32) {
 	x2_1 := x2
 	fwd2 := x1_1+x2_1
 	selfVJPFunc := func(res float32) float32 {
-		bck0x := res*x
 		bck0y := x*res
+		bck0x := res*x
 		bckx := (bck0x+bck0y)
-		bck0x1 := res*x
 		bck0y1 := x*res
+		bck0x1 := res*x
 		bckx1 := (bck0x1+bck0y1)
 		bckx2 := (bckx1+bckx)
 		bckx2_1 := bckx2
-		bck0x2 := res*x
 		bck0y2 := x*res
+		bck0x2 := res*x
 		bckx3 := (bck0x2+bck0y2)
 		bckx1_1 := bckx3
 		return bckx1_1+bckx2_1
@@ -1228,15 +1228,15 @@ func F(s S, x float32) float32 {
 func vjpF(s S, x float32) (float32, func(res float32) S, func(res float32) float32) {
 	fwd0 := s.a*x
 	selfVJPFuncWRTs := func(res float32) S {
-		bck0x := res*x
 		bck0y := s.a*res
+		bck0x := res*x
 		return S{
 			a: bck0x,
 		}
 	}
 	selfVJPFuncWRTx := func(res float32) float32 {
-		bck0x1 := res*x
 		bck0y1 := s.a*res
+		bck0x1 := res*x
 		return bck0y1
 	}
 	return fwd0, selfVJPFuncWRTs, selfVJPFuncWRTx
