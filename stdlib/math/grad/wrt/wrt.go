@@ -68,6 +68,10 @@ func (cr *core) Type() ir.Type {
 	return cr.field.Type()
 }
 
+// Same returns true if src matches the field of the receiver.
+func (cr *core) Same(src *ir.Field) bool {
+	return src == cr.field
+}
 func (cr *core) buildBackwardSignature(backwardValues *ast.FieldList) (*ast.FuncType, error) {
 	results, err := astbuilder.Clone(&ast.FieldList{
 		List: []*ast.Field{&ast.Field{
@@ -93,6 +97,7 @@ type (
 		FuncType() *ast.FuncType
 		Name() []string
 		Type() ir.Type
+		Same(src *ir.Field) bool
 	}
 
 	// WRTs groups all the parameters of a function.

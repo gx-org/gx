@@ -152,7 +152,7 @@ func (n *returnStmt) buildVJPBodyWRTArray(outWRT *astOutWRTArray) (ast.Expr, boo
 	rets := make([]*special.Expr, len(n.exprs))
 	for i, expr := range n.exprs {
 		var ok bool
-		rets[i], ok = expr.buildBackward(outWRT, special.New(
+		rets[i], ok = expr.buildBackward(outWRT.astOutWRT, special.New(
 			&ast.Ident{Name: n.graph.nResults.names[i]},
 		))
 		if !ok {

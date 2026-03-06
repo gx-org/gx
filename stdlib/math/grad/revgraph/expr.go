@@ -27,7 +27,7 @@ type (
 		source() ast.Node
 		forwardValue() (*special.Expr, bool)
 		buildForward(astmts *fwdStmts) ([]ast.Expr, bool)
-		buildBackward(bckstmts *astOutWRTArray, bck *special.Expr) (*special.Expr, bool)
+		buildBackward(bckstmts *astOutWRT, bck *special.Expr) (*special.Expr, bool)
 		String() string
 	}
 )
@@ -148,7 +148,7 @@ func (n *funcCallExpr) forwardValue() (*special.Expr, bool) {
 	return special.New(n.fwds[0]), true
 }
 
-func (n *funcCallExpr) buildBackward(bckstmts *astOutWRTArray, bck *special.Expr) (*special.Expr, bool) {
+func (n *funcCallExpr) buildBackward(bckstmts *astOutWRT, bck *special.Expr) (*special.Expr, bool) {
 	if len(n.args) == 0 {
 		return special.ZeroExpr(), true
 	}
@@ -212,7 +212,7 @@ func (n *unaryExpr) forwardValue() (*special.Expr, bool) {
 	return special.New(n.fwd), true
 }
 
-func (n *unaryExpr) buildBackward(bckstmts *astOutWRTArray, bck *special.Expr) (*special.Expr, bool) {
+func (n *unaryExpr) buildBackward(bckstmts *astOutWRT, bck *special.Expr) (*special.Expr, bool) {
 	var xbck *special.Expr
 	switch n.irnode.Src.Op {
 	case token.SUB:
@@ -260,7 +260,7 @@ func (n *binaryExpr) forwardValue() (*special.Expr, bool) {
 	return special.New(n.fwd), true
 }
 
-func (n *binaryExpr) buildBackward(bckstmts *astOutWRTArray, bck *special.Expr) (*special.Expr, bool) {
+func (n *binaryExpr) buildBackward(bckstmts *astOutWRT, bck *special.Expr) (*special.Expr, bool) {
 	x, xOk := n.x.forwardValue()
 	y, yOk := n.y.forwardValue()
 	if !xOk || !yOk {
@@ -315,7 +315,7 @@ func (n *numberCastExpr) forwardValue() (*special.Expr, bool) {
 	return special.NewFromIR(n.irnode.X), true
 }
 
-func (n *numberCastExpr) buildBackward(bckstmts *astOutWRTArray, bck *special.Expr) (*special.Expr, bool) {
+func (n *numberCastExpr) buildBackward(bckstmts *astOutWRT, bck *special.Expr) (*special.Expr, bool) {
 	return special.ZeroExpr(), true
 }
 
@@ -331,8 +331,8 @@ func (n *fieldRef) forwardValue() (*special.Expr, bool) {
 	return special.New(n.irnode.Field.Name), true
 }
 
-func (n *fieldRef) buildBackward(bckstmts *astOutWRTArray, bck *special.Expr) (*special.Expr, bool) {
-	if bckstmts.wrtArray.Same(n.irnode.Field) {
+func (n *fieldRef) buildBackward(bckstmts *astOutWRT, bck *special.Expr) (*special.Expr, bool) {
+	if bckstmts.wrt.Same(n.irnode.Field) {
 		return bck, true
 	}
 	return special.ZeroExpr(), true
@@ -369,7 +369,7 @@ func (n *ident) forwardValue() (*special.Expr, bool) {
 	return n.fwd.forwardValue()
 }
 
-func (n *ident) buildBackward(bckstmts *astOutWRTArray, bck *special.Expr) (*special.Expr, bool) {
+func (n *ident) buildBackward(bckstmts *astOutWRT, bck *special.Expr) (*special.Expr, bool) {
 	bckExpr, ok := n.fwd.buildBackward(bckstmts, bck)
 	if !ok {
 		return nil, false
@@ -401,7 +401,7 @@ func (n *parenExpr) forwardValue() (*special.Expr, bool) {
 	return special.New(n.fwd), true
 }
 
-func (n *parenExpr) buildBackward(bckstmts *astOutWRTArray, bck *special.Expr) (*special.Expr, bool) {
+func (n *parenExpr) buildBackward(bckstmts *astOutWRT, bck *special.Expr) (*special.Expr, bool) {
 	xBack, xOk := n.x.buildBackward(bckstmts, bck)
 	if !xOk {
 		return nil, false
@@ -448,7 +448,7 @@ func (n *arrayLitExpr) forwardValue() (*special.Expr, bool) {
 	return special.New(n.fwd), true
 }
 
-func (n *arrayLitExpr) buildBackward(bckstmts *astOutWRTArray, bck *special.Expr) (*special.Expr, bool) {
+func (n *arrayLitExpr) buildBackward(bckstmts *astOutWRT, bck *special.Expr) (*special.Expr, bool) {
 	bcks := make([]*special.Expr, len(n.xs))
 	for i, x := range n.xs {
 		xBack, xOk := x.buildBackward(bckstmts, bck.Index(i))
@@ -490,6 +490,6 @@ func (n *selectorExpr) forwardValue() (*special.Expr, bool) {
 	return special.New(&n.fwd), true
 }
 
-func (n *selectorExpr) buildBackward(bckstmts *astOutWRTArray, bck *special.Expr) (*special.Expr, bool) {
+func (n *selectorExpr) buildBackward(bckstmts *astOutWRT, bck *special.Expr) (*special.Expr, bool) {
 	return n.sel.buildBackward(bckstmts, bck)
 }

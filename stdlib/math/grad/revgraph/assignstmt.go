@@ -195,6 +195,17 @@ func (a *astOutCore) newASTOutWRT(w wrt.WRT) *astOutWRT {
 	}
 }
 
+func (b *astOutWRT) assignSpecialExpr(id nodeID, expr *special.Expr) *special.Expr {
+	return b.assignSpecialExprSuffix(id, expr, "")
+}
+
+func (b *astOutWRT) assignSpecialExprSuffix(id nodeID, expr *special.Expr, suffix string) *special.Expr {
+	if !expr.IsAny() {
+		return expr
+	}
+	return special.New(b.assignExprs(id, []ast.Expr{expr.AST()}, 1, suffix)[0])
+}
+
 type astOutWRTArray struct {
 	*astOutWRT
 	wrtArray *wrt.Array
@@ -205,17 +216,6 @@ func (a *astOutWRT) newASTOutWRTArray(param *wrt.Array) *astOutWRTArray {
 		astOutWRT: a,
 		wrtArray:  param,
 	}
-}
-
-func (b *astOutWRTArray) assignSpecialExpr(id nodeID, expr *special.Expr) *special.Expr {
-	return b.assignSpecialExprSuffix(id, expr, "")
-}
-
-func (b *astOutWRTArray) assignSpecialExprSuffix(id nodeID, expr *special.Expr, suffix string) *special.Expr {
-	if !expr.IsAny() {
-		return expr
-	}
-	return special.New(b.assignExprs(id, []ast.Expr{expr.AST()}, 1, suffix)[0])
 }
 
 type astOutWRTStruct struct {

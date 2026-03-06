@@ -14,8 +14,6 @@
 
 package wrt
 
-import "github.com/gx-org/gx/build/ir"
-
 // Array is a parameter in a function with the array type.
 type Array struct {
 	*core
@@ -25,9 +23,4 @@ type Array struct {
 // In this case, it just returns itself.
 func (arr *Array) Arrays() []*Array {
 	return []*Array{arr}
-}
-
-// Same returns true if src matches the field of the receiver.
-func (arr *Array) Same(src *ir.Field) bool {
-	return src == arr.field
 }
