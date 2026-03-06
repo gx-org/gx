@@ -28,6 +28,7 @@ type (
 		forwardValue() (*special.Expr, bool)
 		buildForward(astmts *fwdStmts) ([]ast.Expr, bool)
 		buildBackward(bckstmts *astOutWRT, bck *special.Expr) (*special.Expr, bool)
+		dependsOn(bckstmts *astOutWRT) bool
 		String() string
 	}
 )
@@ -148,8 +149,17 @@ func (n *funcCallExpr) forwardValue() (*special.Expr, bool) {
 	return special.New(n.fwds[0]), true
 }
 
+func (n *funcCallExpr) dependsOn(bckstmts *astOutWRT) bool {
+	for _, arg := range n.args {
+		if arg.dependsOn(bckstmts) {
+			return true
+		}
+	}
+	return false
+}
+
 func (n *funcCallExpr) buildBackward(bckstmts *astOutWRT, bck *special.Expr) (*special.Expr, bool) {
-	if len(n.args) == 0 {
+	if !n.dependsOn(bckstmts) {
 		return special.ZeroExpr(), true
 	}
 	calleeParams := n.irnode.Callee.FuncType().Params.Fields()
@@ -196,6 +206,10 @@ func (p *processor) processUnaryExpr(isrc *ir.UnaryExpr) (*unaryExpr, bool) {
 	}, ok
 }
 
+func (n *unaryExpr) dependsOn(bckstmts *astOutWRT) bool {
+	return n.x.dependsOn(bckstmts)
+}
+
 func (n *unaryExpr) buildForward(astmts *fwdStmts) ([]ast.Expr, bool) {
 	x, ok := buildSingleForward(astmts, n.x)
 	if !ok {
@@ -240,6 +254,10 @@ func (p *processor) processBinaryExpr(isrc *ir.BinaryExpr) (*binaryExpr, bool) {
 		x:    x,
 		y:    y,
 	}, xOk && yOk
+}
+
+func (n *binaryExpr) dependsOn(bckstmts *astOutWRT) bool {
+	return n.x.dependsOn(bckstmts) || n.y.dependsOn(bckstmts)
 }
 
 func (n *binaryExpr) buildForward(astmts *fwdStmts) ([]ast.Expr, bool) {
@@ -307,6 +325,10 @@ func (p *processor) processNumberCastExpr(isrc *ir.NumberCastExpr) (*numberCastE
 	}, true
 }
 
+func (n *numberCastExpr) dependsOn(bckstmts *astOutWRT) bool {
+	return false
+}
+
 func (n *numberCastExpr) buildForward(astmts *fwdStmts) ([]ast.Expr, bool) {
 	return []ast.Expr{n.irnode.X.Expr()}, true
 }
@@ -323,6 +345,10 @@ type fieldRef struct {
 	node[*ir.FieldStorage]
 }
 
+func (n *fieldRef) dependsOn(bckstmts *astOutWRT) bool {
+	return bckstmts.wrt.Same(n.irnode.Field)
+}
+
 func (n *fieldRef) buildForward(astmts *fwdStmts) ([]ast.Expr, bool) {
 	return []ast.Expr{n.irnode.Field.Name}, true
 }
@@ -332,10 +358,10 @@ func (n *fieldRef) forwardValue() (*special.Expr, bool) {
 }
 
 func (n *fieldRef) buildBackward(bckstmts *astOutWRT, bck *special.Expr) (*special.Expr, bool) {
-	if bckstmts.wrt.Same(n.irnode.Field) {
-		return bck, true
+	if !n.dependsOn(bckstmts) {
+		return special.ZeroExpr(), true
 	}
-	return special.ZeroExpr(), true
+	return bck, true
 }
 
 type ident struct {
@@ -354,6 +380,10 @@ func (p *processor) processIdent(isrc *ir.Ident) (expr, bool) {
 	return &ident{
 		node: newNodeNoID[*ir.Ident](p, isrc),
 	}, true
+}
+
+func (n *ident) dependsOn(bckstmts *astOutWRT) bool {
+	return n.fwd.dependsOn(bckstmts)
 }
 
 func (n *ident) buildForward(astmts *fwdStmts) ([]ast.Expr, bool) {
@@ -389,6 +419,10 @@ func (p *processor) processParenExpr(isrc *ir.ParenExpr) (*parenExpr, bool) {
 		node: newNodeNoID[*ir.ParenExpr](p, isrc),
 		x:    x,
 	}, ok
+}
+
+func (n *parenExpr) dependsOn(bckstmts *astOutWRT) bool {
+	return n.x.dependsOn(bckstmts)
 }
 
 func (n *parenExpr) buildForward(astmts *fwdStmts) ([]ast.Expr, bool) {
@@ -427,6 +461,15 @@ func (p *processor) processArrayLitExpr(isrc *ir.ArrayLitExpr) (*arrayLitExpr, b
 		node: newNodeNoID[*ir.ArrayLitExpr](p, isrc),
 		xs:   xs,
 	}, ok
+}
+
+func (n *arrayLitExpr) dependsOn(bckstmts *astOutWRT) bool {
+	for _, x := range n.xs {
+		if x.dependsOn(bckstmts) {
+			return true
+		}
+	}
+	return false
 }
 
 func (n *arrayLitExpr) buildForward(astmts *fwdStmts) ([]ast.Expr, bool) {
@@ -478,6 +521,14 @@ func (p *processor) processSelectorExpr(isrc *ir.SelectorExpr) (*selectorExpr, b
 		x:    x,
 		sel:  sel,
 	}, xOk && selOk
+}
+
+func (n *selectorExpr) dependsOn(bckstmts *astOutWRT) bool {
+	fieldStorage, isFieldStorage := n.node.irnode.Stor.(*ir.FieldStorage)
+	if !isFieldStorage {
+		return false
+	}
+	return bckstmts.wrt.Same(fieldStorage.Field)
 }
 
 func (n *selectorExpr) buildForward(astmts *fwdStmts) ([]ast.Expr, bool) {

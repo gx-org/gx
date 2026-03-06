@@ -1133,6 +1133,88 @@ func vjpF(x float32) (float32, func(res float32) float32) {
 	)
 }
 
+func TestVJPDependsOn(t *testing.T) {
+	testbuild.Run(t,
+		declareGradPackage,
+		testgrad.Reverse{
+			Src: `
+func f(x float32) float32 {
+	return x
+}
+
+func F(x, y float32) float32 {
+	return f(x)
+}
+`,
+			Want: `
+func vjpF(x, y float32) (float32, func(res float32) float32, func(res float32) float32) {
+	fwd0, fVJP := grad.Reverse(f)(x)
+	selfVJPFuncWRTx := func(res float32) float32 {
+		bck0 := fVJP(res)
+		return bck0
+	}
+	selfVJPFuncWRTy := func(res float32) float32 {
+		return 0
+	}
+	return fwd0, selfVJPFuncWRTx, selfVJPFuncWRTy
+}
+`,
+		},
+		testgrad.Reverse{
+			Src: `
+func f(x float32) float32 {
+	return x
+}
+
+func F(x, y float32) float32 {
+	return f(-x)
+}
+`,
+			Want: `
+func vjpF(x, y float32) (float32, func(res float32) float32, func(res float32) float32) {
+	fwd0 := -x
+	fwd1, fVJP := grad.Reverse(f)(fwd0)
+	selfVJPFuncWRTx := func(res float32) float32 {
+		bck1 := fVJP(res)
+		bck0 := -bck1
+		return bck0
+	}
+	selfVJPFuncWRTy := func(res float32) float32 {
+		return 0
+	}
+	return fwd1, selfVJPFuncWRTx, selfVJPFuncWRTy
+}
+`,
+		},
+		testgrad.Reverse{
+			Src: `
+func f(x float32) float32 {
+	return x
+}
+
+func F(x, y float32) float32 {
+	return f(x+y)
+}
+`,
+			Want: `
+func vjpF(x, y float32) (float32, func(res float32) float32, func(res float32) float32) {
+	fwd0 := x+y
+	fwd1, fVJP := grad.Reverse(f)(fwd0)
+	selfVJPFuncWRTx := func(res float32) float32 {
+		bck1 := fVJP(res)
+		return bck1
+	}
+	selfVJPFuncWRTy := func(res float32) float32 {
+		bck11 := fVJP(res)
+		return bck11
+	}
+	return fwd1, selfVJPFuncWRTx, selfVJPFuncWRTy
+}
+`,
+		},
+	)
+}
+
 func TestVJPSelectors(t *testing.T) {
 	testbuild.Run(t,
 		declareGradPackage,
