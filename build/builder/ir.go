@@ -143,18 +143,6 @@ func valueFromStorage(rscope resolveScope, expr ir.Expr, store ir.Storage) (ir.E
 	return withValue.Value(expr), true
 }
 
-func buildTypeExpr(rscope resolveScope, node exprNode) (*ir.TypeValExpr, bool) {
-	typExpr, ok := node.(typeExprNode)
-	if ok {
-		return typExpr.buildTypeExpr(rscope)
-	}
-	expr, ok := buildCoreExpr(rscope, node)
-	if !ok {
-		return nil, false
-	}
-	return typeFromExpr(rscope, expr)
-}
-
 var invalidArrayType = ir.NewArrayType(&ast.ArrayType{}, ir.InvalidType(), nil)
 
 func buildArrayType(rscope resolveScope, eNode typeExprNode) (ir.ArrayType, bool) {

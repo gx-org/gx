@@ -118,5 +118,18 @@ func f(x float32, y A) float32 {
 }
 `,
 		},
+		testbuild.Decl{
+			Src: `
+type A struct {
+	a [2]ageOfTheCaptain // ERROR undefined: ageOfTheCaptain
+}
+
+func f() A {
+	return A{
+		a: [2]float32{2, 3},
+	}
+}
+`,
+		},
 	)
 }

@@ -45,7 +45,7 @@ func (n *typeAssertExpr) source() ast.Node {
 
 // resolveType recursively calls resolveTypes in the underlying subtree of nodes.
 func (n *typeAssertExpr) buildExpr(rscope resolveScope) (ir.Expr, bool) {
-	x, xOk := n.x.buildExpr(rscope)
+	x, xOk := buildExpr(rscope, n.x)
 	typeExpr, toTypOk := n.typ.buildTypeExpr(rscope)
 	return &ir.TypeAssertExpr{
 		Src: n.src,

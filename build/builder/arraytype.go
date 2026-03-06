@@ -50,7 +50,7 @@ func (n *arrayType) buildTypeExpr(rscope resolveScope) (*ir.TypeValExpr, bool) {
 		dtypeOk = false
 	}
 	if !dtypeOk {
-		return nil, false
+		return dtyp, false
 	}
 	lscope, ok := rscope.(localScope)
 	if !ok {
