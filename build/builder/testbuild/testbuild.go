@@ -43,7 +43,7 @@ func CompareString(got, want string) error {
 	if got == want {
 		return nil
 	}
-	return fmt.Errorf("diff:\n%s\ngot:\n%s\nwant:\n%s", cmp.Diff(got, want), gxfmt.Number(got), gxfmt.Number(want))
+	return fmt.Errorf("got:\n%s\nwant:\n%s\ndiff:\n%s", gxfmt.Number(got), gxfmt.Number(want), cmp.Diff(got, want))
 }
 
 func compare(done map[any]bool, got, want ir.IR) error {
