@@ -72,13 +72,13 @@ func (ev *compileEvaluator) update(rscope resolveScope, store ir.Storage, el ir.
 	return newEvaluator(rscope, subEval), true
 }
 
-func (ev *compileEvaluator) sub(vals *context.SubMap) (*compileEvaluator, bool) {
+func (ev *compileEvaluator) sub(vals *context.SubMap) *compileEvaluator {
 	ctx := ev.fitp.Sub(vals)
-	return newEvaluator(ev.scope, ctx), true
+	return newEvaluator(ev.scope, ctx)
 }
 
 func (ev *compileEvaluator) Sub(vals map[string]ir.Element) (ir.Fetcher, bool) {
-	return ev.sub(context.NewSubMap(vals))
+	return ev.sub(context.NewSubMap(vals)), true
 }
 
 func (ev *compileEvaluator) File() *ir.File {
