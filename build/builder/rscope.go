@@ -224,11 +224,9 @@ func (s *pkgResolveScope) newFileRScope(f *file) (*fileResolveScope, bool) {
 }
 
 func (s *pkgResolveScope) newFuncScope(f *file, ftype *ir.FuncType) (*funcResolveScope, bool) {
-	fScope, ok := s.newFileRScope(f)
-	if !ok {
-		return nil, false
-	}
-	return newFuncScope(fScope, ftype)
+	fScope, fOk := s.newFileRScope(f)
+	fnScope, fnOk := newFuncScope(fScope, ftype)
+	return fnScope, fOk && fnOk
 }
 
 func (s *fileResolveScope) procScope() procScope {
@@ -238,10 +236,12 @@ func (s *fileResolveScope) procScope() procScope {
 func (s *fileResolveScope) newCompEval() (*compileEvaluator, bool) {
 	pkgitp := s.pkgResolveScope.packageInterpreter()
 	fitp, err := pkgitp.ForFile(s.irFile())
+	ok := true
 	if err != nil {
-		return nil, s.Err().Append(err)
+		s.Err().Append(err)
+		ok = false
 	}
-	return newEvaluator(s, fitp), true
+	return newEvaluator(s, fitp), ok
 }
 
 func (s *fileResolveScope) compEval() (*compileEvaluator, bool) {

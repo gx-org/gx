@@ -80,11 +80,8 @@ type Context struct {
 func (core *Core) NewFileContext(file *ir.File) (*Context, error) {
 	n := &Context{core: core}
 	flFrame, err := n.core.fileFrame(file)
-	if err != nil {
-		return nil, err
-	}
 	flFrame.pushFuncFrame(n, nil)
-	return n, nil
+	return n, err
 }
 
 func (ctx *Context) pushFrame(fr *blockFrame) *blockFrame {

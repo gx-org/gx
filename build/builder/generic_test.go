@@ -757,6 +757,7 @@ type Floats interface {
 			Src: `
 func F[t interface{}](a [BatchSize]T) [BatchSize]T // ERROR undefined: T
 `,
+			Err: "undefined: T",
 		},
 		testbuild.Decl{
 			Src: `

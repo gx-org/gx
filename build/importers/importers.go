@@ -16,7 +16,10 @@
 package importers
 
 import (
+	"go/ast"
+	"go/token"
 	"io/fs"
+	"path"
 
 	"github.com/gx-org/gx/build/ir"
 )
@@ -55,3 +58,25 @@ type (
 		Import(bld Builder, path string) (Package, error)
 	}
 )
+
+type proxyPackage struct {
+	ir *ir.Package
+}
+
+// NewProxyPackage returns an empty package given a path.
+// Used as a replacement when a package cannot be built.
+func NewProxyPackage(pkgpath string) Package {
+	dir, name := path.Split(pkgpath)
+	irpkg := &ir.Package{
+		FSet:  token.NewFileSet(),
+		Files: make(map[string]*ir.File),
+		Name:  &ast.Ident{Name: name},
+		Path:  dir,
+	}
+	irpkg.Decls = &ir.Declarations{Package: irpkg}
+	return &proxyPackage{ir: irpkg}
+}
+
+func (pkg *proxyPackage) IR() *ir.Package {
+	return pkg.ir
+}

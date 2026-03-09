@@ -87,15 +87,16 @@ type packageFrame struct {
 }
 
 func (core *Core) importPackage(imp *ir.ImportDecl) (ir.Element, error) {
+	var errs fmterr.Errors
 	pkg, err := core.importer.Import(imp.Path)
 	if err != nil {
-		return nil, err
+		errs.Append(err)
 	}
 	pFrame, err := core.packageFrame(pkg)
 	if err != nil {
-		return nil, err
+		errs.Append(err)
 	}
-	return core.interp.PackageToImport(imp, pFrame.el), nil
+	return core.interp.PackageToImport(imp, pFrame.el), errs.ToError()
 }
 
 func (core *Core) packageFrame(pkg *ir.Package) (*packageFrame, error) {
@@ -141,15 +142,16 @@ func (fr *packageFrame) fileFrame(core *Core, file *ir.File) (*fileFrame, error)
 		parent: fr,
 		file:   file,
 	}
+	var errs fmterr.Errors
 	for _, imp := range file.Imports {
 		el, err := core.importPackage(imp)
 		if err != nil {
-			return nil, err
+			errs.Append(err)
 		}
 		flFrame.Define(imp.NameDef().Name, el)
 	}
 	fr.fileToFrame[file] = flFrame
-	return flFrame, nil
+	return flFrame, errs.ToError()
 }
 
 func (flFrame *fileFrame) pushFuncFrame(ctx *Context, fn ir.Func) *blockFrame {
@@ -171,11 +173,16 @@ type functionFrame struct {
 }
 
 func (core *Core) fileFrame(file *ir.File) (*fileFrame, error) {
+	var errs fmterr.Errors
 	pkgFrame, err := core.packageFrame(file.Package)
 	if err != nil {
-		return nil, err
+		errs.Append(err)
 	}
-	return pkgFrame.fileFrame(core, file)
+	fFrame, err := pkgFrame.fileFrame(core, file)
+	if err != nil {
+		errs.Append(err)
+	}
+	return fFrame, errs.ToError()
 }
 
 // PushFuncFrame pushes a function frame to the stack.

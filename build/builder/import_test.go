@@ -161,3 +161,32 @@ func f() [2]float32 {
 		},
 	)
 }
+
+func TestImportError(t *testing.T) {
+	testbuild.Run(t,
+		testbuild.DeclarePackage{
+			Src: `
+package math
+`,
+		},
+		testbuild.Decl{
+			Src: `
+import "math"
+
+func f() [2]math { // ERROR math not a type
+	return [2]float32{1, 2}
+}
+`,
+		},
+		testbuild.Decl{
+			Src: `
+import "undefined" // ERROR package undefined has not been built
+
+func f() [2]undefined {
+        return [2]float32{1, 2}
+}
+`,
+			Err: "package undefined has not been built",
+		},
+	)
+}

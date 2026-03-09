@@ -163,10 +163,7 @@ func (n *funcType) buildFuncType(rscope resolveScope) (*ir.FuncType, *funcResolv
 		CompEval: n.compEval,
 	}
 	var tParamsOk, recvOk, paramsOk, resultsOk bool
-	sigscope, ok := newEphemeralResolveScope(rscope, n.src)
-	if !ok {
-		return ext, nil, false
-	}
+	sigscope, ephemeralOk := newEphemeralResolveScope(rscope, n.src)
 	typeParamsScope := newDefineScope(sigscope, defineTypeParam, nil)
 	ext.TypeParams, tParamsOk = n.typeParams.buildFieldList(typeParamsScope)
 	ext.Receiver, recvOk = n.recv.buildFieldList(newDefineScope(sigscope, nil, nil))
@@ -178,9 +175,6 @@ func (n *funcType) buildFuncType(rscope resolveScope) (*ir.FuncType, *funcResolv
 	axisLengths := &ftypeAxisLengths{}
 	paramScope := newDefineScope(sigscope, defineLocalVar, axisLengths.define)
 	ext.Params, paramsOk = n.params.buildFieldList(paramScope)
-	if !paramsOk {
-		return ext, nil, false
-	}
 	if n.varargs != nil {
 		if params := ext.Params.Fields(); len(params) > 0 {
 			ext.VarArgs = params[len(params)-1].Type().(*ir.VarArgsType)
@@ -197,7 +191,7 @@ func (n *funcType) buildFuncType(rscope resolveScope) (*ir.FuncType, *funcResolv
 	}
 	ext.AxisLengths = axisLengths.axLens
 	fnscope, fnscopeOk := newFuncScope(rscope, ext)
-	return ext, fnscope, tParamsOk && paramsOk && resultsOk && recvOk && fnscopeOk
+	return ext, fnscope, tParamsOk && paramsOk && resultsOk && recvOk && fnscopeOk && ephemeralOk
 }
 
 func (n *funcType) source() ast.Node {

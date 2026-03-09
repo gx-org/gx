@@ -23,6 +23,7 @@ package interp
 
 import (
 	"github.com/gx-org/gx/api/options"
+	"github.com/gx-org/gx/build/fmterr"
 	"github.com/gx-org/gx/build/ir"
 	"github.com/gx-org/gx/interp/context"
 	"github.com/gx-org/gx/interp/evaluator"
@@ -42,15 +43,16 @@ type Interpreter struct {
 // New returns a new interpreter.
 func New(eval fun.Evaluator, options []options.PackageOption) (*Interpreter, error) {
 	itp := &Interpreter{eval: eval}
+	var errs fmterr.Errors
 	var err error
 	if itp.options, err = procoptions.New(eval, options); err != nil {
-		return nil, err
+		errs.Append(err)
 	}
 	itp.core, err = context.New(itp, eval.Importer())
 	if err != nil {
-		return nil, err
+		errs.Append(err)
 	}
-	return itp, nil
+	return itp, errs.ToError()
 }
 
 // Core returns the core context.
@@ -78,10 +80,7 @@ func newFileScope(ctx *context.Context, eval fun.Evaluator, file *ir.File) *File
 // ForFile returns an interpreter for a file context.
 func (itp *Interpreter) ForFile(file *ir.File) (*FileScope, error) {
 	ctx, err := itp.core.NewFileContext(file)
-	if err != nil {
-		return nil, err
-	}
-	return newFileScope(ctx, itp.eval, file), nil
+	return newFileScope(ctx, itp.eval, file), err
 }
 
 // EvalExpr evaluates an expression for a given context.

@@ -38,7 +38,7 @@ func (n *ident) source() ast.Node {
 func (n *ident) buildIdent(rscope resolveScope) (*ir.Ident, bool) {
 	storage, ok := findStorage(rscope, n.src)
 	if !ok {
-		return nil, false
+		return invalidExpr(), false
 	}
 	return &ir.Ident{
 		Src:  n.src,

@@ -96,10 +96,10 @@ func (b *Builder) importPath(path string) (bPackage, error) {
 // Import a package from its path using the builder.
 func (b *Builder) Import(path string) (*ir.Package, error) {
 	pkg, err := b.loader.Load(b, path)
-	if err != nil {
-		return nil, err
+	if pkg == nil {
+		pkg = importers.NewProxyPackage(path)
 	}
-	return pkg.IR(), nil
+	return pkg.IR(), err
 }
 
 // BuildFiles builds a package from a list of files.

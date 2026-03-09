@@ -273,10 +273,10 @@ type localImporter struct {
 	pkgs map[string]importers.Package
 }
 
-func (imp *localImporter) Load(bld importers.Builder, path string) (importers.Package, error) {
-	pkg, ok := imp.pkgs[path]
+func (imp *localImporter) Load(bld importers.Builder, pkgpath string) (importers.Package, error) {
+	pkg, ok := imp.pkgs[pkgpath]
 	if !ok {
-		return nil, errors.Errorf("package %s has not been built", path)
+		return importers.NewProxyPackage(pkgpath), errors.Errorf("package %s has not been built", pkgpath)
 	}
 	return pkg, nil
 }
