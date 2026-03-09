@@ -82,16 +82,10 @@ func (n *namedType) build(ibld irBuilder) (*irNamedType, bool) {
 
 func (n *namedType) buildUnderlying(pkgScope *pkgResolveScope, nType *ir.NamedType) bool {
 	rscope, scopeOk := pkgScope.newFileRScope(n.file)
-	if !scopeOk {
-		return false
-	}
-	ephemeral, ok := newEphemeralResolveScope(rscope, n.src)
-	if !ok {
-		return false
-	}
+	ephemeral, ephemeralOk := newEphemeralResolveScope(rscope, n.src)
 	var underOk bool
 	nType.Underlying, underOk = n.underlying.buildTypeExpr(ephemeral)
-	return underOk
+	return scopeOk && ephemeralOk && underOk
 }
 
 func assignMethod(scope *fileResolveScope, ext *ir.NamedType, fn *irFunc) bool {

@@ -113,11 +113,11 @@ func typeFromStorage(rscope resolveScope, x ir.Expr, store ir.Storage) (*ir.Type
 	}
 	value, ok := valueFromStorage(rscope, x, store)
 	if !ok {
-		return nil, false
+		return invalidTypeExprVal, false
 	}
 	typeRef, ok := value.(*ir.TypeValExpr)
 	if !ok {
-		return nil, rscope.Err().Appendf(x.Node(), "%s not a type", x.SourceString(rscope.fileScope().irFile()))
+		return invalidTypeExprVal, rscope.Err().Appendf(x.Node(), "%s not a type", x.SourceString(rscope.fileScope().irFile()))
 	}
 	return typeRef, true
 }

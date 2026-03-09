@@ -131,5 +131,25 @@ func f() A {
 }
 `,
 		},
+		testbuild.DeclarePackage{
+			Src: `
+package pkg
+`,
+		},
+		testbuild.Decl{
+			Src: `
+import "pkg"
+
+type A struct {
+	a [2]pkg // ERROR pkg not a type
+}
+
+func f() A {
+	return A{
+		a: [2]float32{2, 3},
+	}
+}
+`,
+		},
 	)
 }

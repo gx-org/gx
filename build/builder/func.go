@@ -306,8 +306,8 @@ func (f *funcDecl) resolveOrder() int {
 
 func (f *funcDecl) buildSignature(fScope *fileResolveScope) (ir.Func, fnResolveScope, bool) {
 	ext := &ir.FuncDecl{Src: f.src, FFile: fScope.irFile()}
-	var ok bool
 	var fnscope *funcResolveScope
+	var ok bool
 	ext.FType, fnscope, ok = f.fType.buildFuncType(fScope)
 	fnscope.setFuncValue(ext)
 	return ext, fnscope, ok
@@ -356,8 +356,8 @@ func (bFile *file) processBuiltinFunc(scope procScope, src *ast.FuncDecl, compEv
 
 func (f *funcBuiltin) buildSignature(fScope *fileResolveScope) (ir.Func, fnResolveScope, bool) {
 	ext := &ir.FuncBuiltin{Src: f.src, FFile: fScope.irFile()}
-	var ok bool
 	var fnScope *funcResolveScope
+	var ok bool
 	ext.FType, fnScope, ok = f.fType.buildFuncType(fScope)
 	if !ok {
 		return ext, nil, false
