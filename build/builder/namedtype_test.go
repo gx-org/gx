@@ -151,5 +151,19 @@ func f() A {
 }
 `,
 		},
+		testbuild.Decl{
+			Src: `
+type A struct {
+	a [2]ageOfTheCaptain // ERROR undefined: ageOfTheCaptain
+}
+
+func g([2]float32) [2]float32
+
+func f(a A) A {
+	a.a = g(a.a)
+	return a
+}
+`,
+		},
 	)
 }
