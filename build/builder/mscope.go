@@ -56,6 +56,7 @@ func ephemeralPkgScope(fscope *fileResolveScope, src ast.Node, pkgPath string) (
 	return &pkgResolveScope{
 		pkgProcScope: newPackageProcScope(false, pkg.base(), pscope.Err().Errors()),
 		state:        pkg.base().last.builderState,
+		fileScopes:   make(map[*file]*fileResolveScope),
 	}, true
 }
 
@@ -95,5 +96,5 @@ func (m *macroProcScope) filePScope() *fileProcScope {
 }
 
 func (m *macroProcScope) newResolveScope() (*fileResolveScope, bool) {
-	return m.rscope.newFileRScope(m.file)
+	return m.rscope.fileScope(m.file)
 }

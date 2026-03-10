@@ -309,7 +309,7 @@ func (f *funcDecl) buildSignature(fScope *fileResolveScope) (ir.Func, fnResolveS
 
 func (f *funcDecl) buildBody(fnscope fnResolveScope, extF *irFunc) bool {
 	// Rebuilding the function scope to make sure all function declarations are included.
-	fScope, ok := fnscope.fileScope().pkgResolveScope.newFileRScope(f.bFile)
+	fScope, ok := fnscope.fileScope().pkgResolveScope.fileScope(f.bFile)
 	if !ok {
 		return false
 	}

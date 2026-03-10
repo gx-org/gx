@@ -76,7 +76,7 @@ func (spec *varSpec) Build(ibld irBuilder) (ir.IR, bool) {
 	if spec.typ == nil {
 		return ext, false
 	}
-	fScope, ok := ibld.Scope().newFileRScope(spec.bFile)
+	fScope, ok := ibld.Scope().fileScope(spec.bFile)
 	if !ok {
 		return nil, false
 	}

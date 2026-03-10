@@ -81,7 +81,7 @@ func (n *namedType) build(ibld irBuilder) (*irNamedType, bool) {
 }
 
 func (n *namedType) buildUnderlying(pkgScope *pkgResolveScope, nType *ir.NamedType) bool {
-	rscope, scopeOk := pkgScope.newFileRScope(n.file)
+	rscope, scopeOk := pkgScope.fileScope(n.file)
 	ephemeral, ephemeralOk := newEphemeralResolveScope(rscope, n.src)
 	var underOk bool
 	nType.Underlying, underOk = n.underlying.buildTypeExpr(ephemeral)

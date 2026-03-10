@@ -322,7 +322,7 @@ func (pkg *IncrementalPackage) BuildExpr(src string, imports ...*ast.ImportSpec)
 	if !ok {
 		return nil, errs
 	}
-	rScope, ok := pkgRScope.newFileRScope(file)
+	rScope, ok := pkgRScope.fileScope(file)
 	if !ok {
 		return nil, errs
 	}
@@ -352,7 +352,7 @@ func (pkg *IncrementalPackage) Fetcher() (ir.Fetcher, error) {
 		return nil, errs.ToError()
 	}
 	file := newFile(pkg.basePackage, "", &ast.File{})
-	fScope, ok := pkgRScope.newFileRScope(file)
+	fScope, ok := pkgRScope.fileScope(file)
 	if !ok {
 		return nil, errs.ToError()
 	}

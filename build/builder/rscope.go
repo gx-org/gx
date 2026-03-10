@@ -94,6 +94,8 @@ type (
 		namedTypes map[*namedType]*ir.NamedType
 		// methods is a mapping from type name to method name to method
 		methods *ordered.Map[*ir.NamedType, *ordered.Map[string, *irFunc]]
+		// fileScopes maps a builder file to its scope.
+		fileScopes map[*file]*fileResolveScope
 	}
 )
 
@@ -102,15 +104,11 @@ func newPackageResolveScope(pscope *pkgProcScope) (*pkgResolveScope, bool) {
 		pkgProcScope: pscope,
 		methods:      ordered.NewMap[*ir.NamedType, *ordered.Map[string, *irFunc]](),
 		state:        &pkgState{dcls: pscope.decls()},
+		fileScopes:   make(map[*file]*fileResolveScope),
 	}
 	pkg := pscope.bpkg.newPackageIR()
 	s.state.ibld = irb.New(s, pkg)
 	ok := true
-	for bFile := range pscope.bpkg.files.Values() {
-		irFile, fileOk := irBuild[*ir.File](s.state.ibld, bFile)
-		ok = ok && fileOk
-		pkg.Files[irFile.Name()] = irFile
-	}
 	irBuiltins := make(map[string]processNode)
 	builtinFile := newFile(s.bpkg, "", &ast.File{})
 	_, builtinFileOk := irBuild[*ir.File](s.state.ibld, builtinFile)
@@ -128,6 +126,13 @@ func newPackageResolveScope(pscope *pkgProcScope) (*pkgResolveScope, bool) {
 	})
 	builtinNS := scope.NewScopeWithValues(irBuiltins)
 	s.state.nspc = scope.NewReadOnly[processNode](builtinNS, pscope.decls())
+
+	for bFile := range pscope.bpkg.files.Values() {
+		fscope, fileOk := s.prepareFileRScope(bFile)
+		ok = ok && fileOk
+		pkg.Files[fscope.irFile().Name()] = fscope.irFile()
+		s.fileScopes[bFile] = fscope
+	}
 	return s, ok
 }
 
@@ -202,7 +207,7 @@ type (
 
 var _ resolveScope = (*fileResolveScope)(nil)
 
-func (s *pkgResolveScope) newFileRScope(f *file) (*fileResolveScope, bool) {
+func (s *pkgResolveScope) prepareFileRScope(f *file) (*fileResolveScope, bool) {
 	fScope := &fileResolveScope{
 		pkgResolveScope: s,
 		bF:              f,
@@ -218,13 +223,22 @@ func (s *pkgResolveScope) newFileRScope(f *file) (*fileResolveScope, bool) {
 	}
 	var fileOk bool
 	fScope.irF, fileOk = irBuild[*ir.File](s.state.ibld, fScope.bFile())
+	return fScope, ok && fileOk
+}
+
+func (s *pkgResolveScope) fileScope(f *file) (*fileResolveScope, bool) {
+	fScope, ok := s.fileScopes[f]
+	if !ok {
+		fScope, ok = s.prepareFileRScope(f)
+		s.fileScopes[f] = fScope
+	}
 	var evOk bool
 	fScope.ev, evOk = fScope.newCompEval()
-	return fScope, ok && fileOk && evOk
+	return fScope, ok && evOk
 }
 
 func (s *pkgResolveScope) newFuncScope(f *file, ftype *ir.FuncType) (*funcResolveScope, bool) {
-	fScope, fOk := s.newFileRScope(f)
+	fScope, fOk := s.fileScope(f)
 	fnScope, fnOk := newFuncScope(fScope, ftype)
 	return fnScope, fOk && fnOk
 }

@@ -176,7 +176,7 @@ type syntheticFunc struct {
 }
 
 func (f *syntheticFunc) buildSignature(pkgScope *pkgResolveScope) (ir.Func, fnResolveScope, bool) {
-	fScope, ok := pkgScope.newFileRScope(f.bFile)
+	fScope, ok := pkgScope.fileScope(f.bFile)
 	if !ok {
 		return nil, nil, false
 	}

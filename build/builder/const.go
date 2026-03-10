@@ -74,7 +74,7 @@ func processConstSpec(pscope procScope, src *ast.ValueSpec) bool {
 }
 
 func (spec *constSpec) Build(irb irBuilder) (ir.IR, bool) {
-	fScope, ok := irb.Scope().newFileRScope(spec.bFile)
+	fScope, ok := irb.Scope().fileScope(spec.bFile)
 	if !ok {
 		return nil, false
 	}
@@ -124,7 +124,7 @@ func (cst *constExpr) buildDeclaration(ibld irBuilder) (*ir.ConstExpr, []*ast.Id
 }
 
 func (cst *constExpr) buildExpression(ibld irBuilder, ext *ir.ConstExpr) bool {
-	fScope, ok := ibld.Scope().newFileRScope(cst.spec.bFile)
+	fScope, ok := ibld.Scope().fileScope(cst.spec.bFile)
 	if !ok {
 		return false
 	}
