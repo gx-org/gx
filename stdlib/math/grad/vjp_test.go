@@ -1334,6 +1334,94 @@ func vjpF(s S, x float32) (float32, func(res float32) S, func(res float32) float
 }
 `,
 		},
+		testgrad.Reverse{
+			Src: `
+type Layer struct {
+	w float32
+}
+
+type S struct {
+	l1 Layer
+	l2 Layer
+}
+
+func F(s S, x float32) float32 {
+	return s.l1.w * x + s.l2.w * x
+}
+`,
+			Want: `
+func vjpF(s S, x float32) (float32, func(res float32) S, func(res float32) float32) {
+	fwd0 := s.l1.w*x
+	fwd1 := s.l2.w*x
+	fwd2 := fwd0+fwd1
+	selfVJPFuncWRTs := func(res float32) S {
+		bck0x := res*x
+		bck1x := res*x
+		return S{
+			l1: Layer{
+				w: bck0x,
+			},
+			l2: Layer{
+				w: bck1x,
+			},
+		}
+	}
+	selfVJPFuncWRTx := func(res float32) float32 {
+		bck1y := s.l2.w*res
+		bck0y := s.l1.w*res
+		return bck0y+bck1y
+	}
+	return fwd2, selfVJPFuncWRTs, selfVJPFuncWRTx
+}
+`,
+		},
+		testgrad.Reverse{
+			Src: `
+type Layer struct {
+	w float32
+}
+
+type S struct {
+	l1 Layer
+	l2 Layer
+}
+
+func F(s S, x float32) float32 {
+	w1 := s.l1.w
+	w2 := s.l2.w
+	return w1 * x + w2 * x
+}
+`,
+			Want: `
+func vjpF(s S, x float32) (float32, func(res float32) S, func(res float32) float32) {
+	w1 := s.l1.w
+	w2 := s.l2.w
+	fwd0 := w1*x
+	fwd1 := w2*x
+	fwd2 := fwd0+fwd1
+	selfVJPFuncWRTs := func(res float32) S {
+		bck0x := res*x
+		bckw1 := bck0x
+		bck1x := res*x
+		bckw2 := bck1x
+		return S{
+			l1: Layer{
+				w: bckw1,
+			},
+			l2: Layer{
+				w: bckw2,
+			},
+		}
+	}
+	selfVJPFuncWRTx := func(res float32) float32 {
+		bck1y := w2*res
+		bck0y := w1*res
+		return bck0y+bck1y
+	}
+	return fwd2, selfVJPFuncWRTs, selfVJPFuncWRTx
+}
+`,
+		},
 	)
 }
 

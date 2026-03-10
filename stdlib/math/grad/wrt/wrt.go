@@ -83,8 +83,16 @@ func (cr *core) Type() ir.Type {
 }
 
 // Same returns true if src matches the field of the receiver.
-func (cr *core) Same(src *ir.Field) bool {
-	return src == cr.field()
+func (cr *core) Same(other []*ir.Field) bool {
+	if len(cr.fieldPath) != len(other) {
+		return false
+	}
+	for i, field := range cr.fieldPath {
+		if field != other[i] {
+			return false
+		}
+	}
+	return true
 }
 func (cr *core) buildBackwardSignature(backwardValues *ast.FieldList) (*ast.FuncType, error) {
 	results, err := astbuilder.Clone(&ast.FieldList{
@@ -119,7 +127,7 @@ type (
 		FuncType() *ast.FuncType
 		Name() []string
 		Type() ir.Type
-		Same(src *ir.Field) bool
+		Same([]*ir.Field) bool
 		String() string
 	}
 

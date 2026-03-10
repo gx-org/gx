@@ -29,6 +29,7 @@ type (
 		buildForward(astmts *fwdStmts) ([]ast.Expr, bool)
 		buildBackward(bckstmts *astOutWRT, bck *special.Expr) (*special.Expr, bool)
 		dependsOn(bckstmts *astOutWRT) bool
+		fieldPath() []*ir.Field
 		String() string
 	}
 )
@@ -165,6 +166,10 @@ func (n *funcCallExpr) dependsOn(bckstmts *astOutWRT) bool {
 	return false
 }
 
+func (n *funcCallExpr) fieldPath() []*ir.Field {
+	return nil
+}
+
 func (n *funcCallExpr) buildBackward(bckstmts *astOutWRT, bck *special.Expr) (*special.Expr, bool) {
 	if !n.dependsOn(bckstmts) {
 		return special.ZeroExpr(), true
@@ -248,6 +253,10 @@ func (n *unaryExpr) buildBackward(bckstmts *astOutWRT, bck *special.Expr) (*spec
 	return buildBackward(bckstmts, xbck, n.x)
 }
 
+func (n *unaryExpr) fieldPath() []*ir.Field {
+	return nil
+}
+
 type binaryExpr struct {
 	node[*ir.BinaryExpr]
 	x expr
@@ -268,6 +277,10 @@ func (p *processor) processBinaryExpr(isrc *ir.BinaryExpr) (*binaryExpr, bool) {
 
 func (n *binaryExpr) dependsOn(bckstmts *astOutWRT) bool {
 	return n.x.dependsOn(bckstmts) || n.y.dependsOn(bckstmts)
+}
+
+func (n *binaryExpr) fieldPath() []*ir.Field {
+	return nil
 }
 
 func (n *binaryExpr) buildForward(astmts *fwdStmts) ([]ast.Expr, bool) {
@@ -339,6 +352,10 @@ func (n *numberCastExpr) dependsOn(bckstmts *astOutWRT) bool {
 	return false
 }
 
+func (n *numberCastExpr) fieldPath() []*ir.Field {
+	return nil
+}
+
 func (n *numberCastExpr) buildForward(astmts *fwdStmts) ([]ast.Expr, bool) {
 	return []ast.Expr{n.irnode.X.Expr()}, true
 }
@@ -356,7 +373,11 @@ type fieldRef struct {
 }
 
 func (n *fieldRef) dependsOn(bckstmts *astOutWRT) bool {
-	return bckstmts.wrt.Same(n.irnode.Field)
+	return bckstmts.wrt.Same(n.fieldPath())
+}
+
+func (n *fieldRef) fieldPath() []*ir.Field {
+	return []*ir.Field{n.irnode.Field}
 }
 
 func (n *fieldRef) buildForward(astmts *fwdStmts) ([]ast.Expr, bool) {
@@ -396,6 +417,10 @@ func (n *ident) dependsOn(bckstmts *astOutWRT) bool {
 	return n.fwd.dependsOn(bckstmts)
 }
 
+func (n *ident) fieldPath() []*ir.Field {
+	return n.fwd.fieldPath()
+}
+
 func (n *ident) buildForward(astmts *fwdStmts) ([]ast.Expr, bool) {
 	var ok bool
 	n.fwd, ok = astmts.idents.Find(n.irnode.Src.Name)
@@ -433,6 +458,10 @@ func (p *processor) processParenExpr(isrc *ir.ParenExpr) (*parenExpr, bool) {
 
 func (n *parenExpr) dependsOn(bckstmts *astOutWRT) bool {
 	return n.x.dependsOn(bckstmts)
+}
+
+func (n *parenExpr) fieldPath() []*ir.Field {
+	return n.x.fieldPath()
 }
 
 func (n *parenExpr) buildForward(astmts *fwdStmts) ([]ast.Expr, bool) {
@@ -480,6 +509,10 @@ func (n *arrayLitExpr) dependsOn(bckstmts *astOutWRT) bool {
 		}
 	}
 	return false
+}
+
+func (n *arrayLitExpr) fieldPath() []*ir.Field {
+	return nil
 }
 
 func (n *arrayLitExpr) buildForward(astmts *fwdStmts) ([]ast.Expr, bool) {
@@ -535,11 +568,11 @@ func (p *processor) processSelectorExpr(isrc *ir.SelectorExpr) (*selectorExpr, b
 }
 
 func (n *selectorExpr) dependsOn(bckstmts *astOutWRT) bool {
-	fieldStorage, isFieldStorage := n.node.irnode.Stor.(*ir.FieldStorage)
-	if !isFieldStorage {
-		return false
-	}
-	return bckstmts.wrt.Same(fieldStorage.Field)
+	return bckstmts.wrt.Same(n.fieldPath())
+}
+
+func (n *selectorExpr) fieldPath() []*ir.Field {
+	return append(n.x.fieldPath(), n.fieldStorage.Field)
 }
 
 func (n *selectorExpr) buildForward(astmts *fwdStmts) ([]ast.Expr, bool) {
@@ -553,7 +586,7 @@ func (n *selectorExpr) forwardValue() (*special.Expr, bool) {
 }
 
 func (n *selectorExpr) buildBackward(bckstmts *astOutWRT, bck *special.Expr) (*special.Expr, bool) {
-	if !bckstmts.wrt.Same(n.fieldStorage.Field) {
+	if !bckstmts.wrt.Same(n.fieldPath()) {
 		return special.ZeroExpr(), true
 	}
 	return bck, true
