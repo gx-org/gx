@@ -27,20 +27,33 @@ import (
 
 type core struct {
 	parent         *Struct
-	field          *ir.Field
 	ftype          *ast.FuncType
 	backwardValues *ast.FieldList
+
+	fieldPath []*ir.Field
 }
 
 func newCore(backwardValues *ast.FieldList, parent *Struct, field *ir.Field) (*core, error) {
+	var parentPath []*ir.Field
+	if parent != nil {
+		parentPath = parent.fPath()
+	}
 	cr := &core{
 		parent:         parent,
-		field:          field,
+		fieldPath:      append(parentPath, field),
 		backwardValues: backwardValues,
 	}
 	var err error
 	cr.ftype, err = cr.buildBackwardSignature(backwardValues)
 	return cr, err
+}
+
+func (cr *core) fPath() []*ir.Field {
+	return append([]*ir.Field{}, cr.fieldPath...)
+}
+
+func (cr *core) field() *ir.Field {
+	return cr.fieldPath[len(cr.fieldPath)-1]
 }
 
 // FuncType returns the type of the function computing the gradient.
@@ -53,9 +66,10 @@ func (cr *core) Name() []string {
 	if cr == nil {
 		return nil
 	}
+	field := cr.field()
 	var name string
-	if cr.field != nil && ir.ValidIdent(cr.field.Name) {
-		name = cr.field.Name.Name
+	if field != nil && ir.ValidIdent(field.Name) {
+		name = field.Name.Name
 	}
 	if cr.parent == nil {
 		return []string{name}
@@ -65,17 +79,17 @@ func (cr *core) Name() []string {
 
 // Type of the field.
 func (cr *core) Type() ir.Type {
-	return cr.field.Type()
+	return cr.field().Type()
 }
 
 // Same returns true if src matches the field of the receiver.
 func (cr *core) Same(src *ir.Field) bool {
-	return src == cr.field
+	return src == cr.field()
 }
 func (cr *core) buildBackwardSignature(backwardValues *ast.FieldList) (*ast.FuncType, error) {
 	results, err := astbuilder.Clone(&ast.FieldList{
 		List: []*ast.Field{&ast.Field{
-			Type: cr.field.Group.Src.Type,
+			Type: cr.field().Group.Src.Type,
 		}},
 	}, astbuilder.AssignToExpandShape)
 	if err != nil {
@@ -95,7 +109,7 @@ func (cr *core) String() string {
 	if cr.parent != nil {
 		parent = "(" + cr.parent.String() + ")."
 	}
-	return parent + cr.field.Name.Name + ":" + cr.field.Type().ReferString(nil)
+	return parent + cr.field().Name.Name + ":" + cr.Type().ReferString(nil)
 }
 
 type (

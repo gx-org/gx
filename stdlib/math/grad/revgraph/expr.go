@@ -521,11 +521,11 @@ type selectorExpr struct {
 }
 
 func (p *processor) processSelectorExpr(isrc *ir.SelectorExpr) (*selectorExpr, bool) {
-	x, xOk := p.processExpr(isrc.X)
 	fieldStorage, isFieldStorage := isrc.Store().(*ir.FieldStorage)
 	if !isFieldStorage {
 		return nil, p.fetcher.Err().Appendf(isrc.Src, "reverse of type %T not supported", isrc.Store())
 	}
+	x, xOk := p.processExpr(isrc.X)
 	return &selectorExpr{
 		fwd:          *isrc.Src,
 		fieldStorage: fieldStorage,
