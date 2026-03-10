@@ -172,6 +172,9 @@ func (n *funcCallExpr) buildBackward(bckstmts *astOutWRT, bck *special.Expr) (*s
 	calleeParams := n.irnode.Callee.FuncType().Params.Fields()
 	backwardIdents := make([]*special.Expr, len(calleeParams))
 	for i, calleeParam := range calleeParams {
+		if !n.args[i].dependsOn(bckstmts) {
+			continue
+		}
 		vjpCall := &ast.CallExpr{
 			Fun:  &ast.Ident{Name: n.vjps[i]},
 			Args: []ast.Expr{bck.AST()},
@@ -512,22 +515,23 @@ func (n *arrayLitExpr) buildBackward(bckstmts *astOutWRT, bck *special.Expr) (*s
 
 type selectorExpr struct {
 	node[*ir.SelectorExpr]
-	x, sel expr
-	fwd    ast.SelectorExpr
+	x            expr
+	fieldStorage *ir.FieldStorage
+	fwd          ast.SelectorExpr
 }
 
 func (p *processor) processSelectorExpr(isrc *ir.SelectorExpr) (*selectorExpr, bool) {
 	x, xOk := p.processExpr(isrc.X)
-	sel, selOk := p.processIdent(&ir.Ident{
-		Src:  isrc.Src.Sel,
-		Stor: isrc.Stor,
-	})
+	fieldStorage, isFieldStorage := isrc.Store().(*ir.FieldStorage)
+	if !isFieldStorage {
+		return nil, p.fetcher.Err().Appendf(isrc.Src, "reverse of type %T not supported", isrc.Store())
+	}
 	return &selectorExpr{
-		fwd:  *isrc.Src,
-		node: newNodeNoID[*ir.SelectorExpr](p, isrc),
-		x:    x,
-		sel:  sel,
-	}, xOk && selOk
+		fwd:          *isrc.Src,
+		fieldStorage: fieldStorage,
+		node:         newNodeNoID[*ir.SelectorExpr](p, isrc),
+		x:            x,
+	}, xOk
 }
 
 func (n *selectorExpr) dependsOn(bckstmts *astOutWRT) bool {
@@ -549,5 +553,8 @@ func (n *selectorExpr) forwardValue() (*special.Expr, bool) {
 }
 
 func (n *selectorExpr) buildBackward(bckstmts *astOutWRT, bck *special.Expr) (*special.Expr, bool) {
-	return buildBackward(bckstmts, bck, n.sel)
+	if !bckstmts.wrt.Same(n.fieldStorage.Field) {
+		return special.ZeroExpr(), true
+	}
+	return bck, true
 }

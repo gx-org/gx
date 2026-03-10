@@ -17,9 +17,11 @@ package special
 
 import (
 	"go/ast"
+	"go/format"
 	"go/token"
 	"math/big"
 	"strconv"
+	"strings"
 
 	"github.com/gx-org/gx/build/ir"
 )
@@ -142,9 +144,26 @@ func (r *Expr) RemoveParen() *Expr {
 	return (&Expr{expr: parent.X}).RemoveParen()
 }
 
-// Print the expression (only used for debugging).
-func (r *Expr) Print() {
-	ast.Print(token.NewFileSet(), r.expr)
+// Select builds a selector expression.
+func (r *Expr) Select(sel *ast.Ident) *Expr {
+	if r.IsZero() {
+		return ZeroExpr()
+	}
+	return &Expr{
+		expr: &ast.SelectorExpr{
+			X:   r.AST(),
+			Sel: sel,
+		},
+	}
+}
+
+// String returns the expression as a string
+func (r *Expr) String() string {
+	var s strings.Builder
+	if err := format.Node(&s, token.NewFileSet(), r.expr); err != nil {
+		s.WriteString(err.Error())
+	}
+	return s.String()
 }
 
 // Add builds an add expression, simplifying if possible.

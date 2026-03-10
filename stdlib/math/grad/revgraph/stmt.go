@@ -94,7 +94,7 @@ func (p *processor) processReturnStmt(isrc *ir.ReturnStmt) (*returnStmt, bool) {
 	return out, true
 }
 
-func (n *returnStmt) buildVJPExprWRT(out *astOutWRT) (ast.Expr, bool) {
+func (n *returnStmt) buildVJPExprWRT(out *astOutWRT) (*special.Expr, bool) {
 	switch wrtT := out.wrt.(type) {
 	case *wrt.Array:
 		astOutArray := out.newASTOutWRTArray(wrtT)
@@ -116,7 +116,7 @@ func (n *returnStmt) buildVJPFunctionWRT(outCore *astOutCore, gradParam wrt.WRT)
 	var body []ast.Stmt
 	body = append(body, outWRT.stmts...)
 	body = append(body, &ast.ReturnStmt{
-		Results: []ast.Expr{ret},
+		Results: []ast.Expr{ret.AST()},
 	})
 	return &ast.FuncLit{
 		Type: gradParam.FuncType(),
@@ -124,31 +124,7 @@ func (n *returnStmt) buildVJPFunctionWRT(outCore *astOutCore, gradParam wrt.WRT)
 	}, true
 }
 
-func (n *returnStmt) buildVJPBodyWRTStruct(outWRT *astOutWRTStruct) (ast.Expr, bool) {
-	fields := outWRT.wrtStruct.Fields()
-	elts := make([]ast.Expr, len(fields))
-	for i, field := range fields {
-		outField, err := outWRT.newASTOutFromField(field)
-		if err != nil {
-			return nil, n.err().AppendAt(n.source(), err)
-		}
-		val, ok := n.buildVJPExprWRT(outField)
-		if !ok {
-			return nil, false
-		}
-		elts[i] = &ast.KeyValueExpr{
-			Key:   field.Storage().NameDef(),
-			Value: val,
-		}
-
-	}
-	return &ast.CompositeLit{
-		Type: outWRT.wrtStruct.Type().NameDef(),
-		Elts: elts,
-	}, true
-}
-
-func (n *returnStmt) buildVJPBodyWRTArray(outWRT *astOutWRTArray) (ast.Expr, bool) {
+func (n *returnStmt) buildVJPBodyWRTWholeStruct(outWRT *astOutWRTStruct) ([]*special.Expr, bool) {
 	rets := make([]*special.Expr, len(n.exprs))
 	for i, x := range n.exprs {
 		var ok bool
@@ -159,7 +135,48 @@ func (n *returnStmt) buildVJPBodyWRTArray(outWRT *astOutWRTArray) (ast.Expr, boo
 			return nil, false
 		}
 	}
-	return special.Add(rets...).RemoveParen().AST(), true
+	return rets, true
+}
+
+func (n *returnStmt) buildVJPBodyWRTStruct(outWRT *astOutWRTStruct) (*special.Expr, bool) {
+	wholeStructAddToFields, ok := n.buildVJPBodyWRTWholeStruct(outWRT)
+	if !ok {
+		return nil, false
+	}
+	fields := outWRT.wrtStruct.Fields()
+	ext := &ast.CompositeLit{
+		Type: outWRT.wrtStruct.Type().NameDef(),
+		Elts: make([]ast.Expr, len(fields)),
+	}
+	for i, field := range fields {
+		outField, err := outWRT.newASTOutFromField(wholeStructAddToFields, field)
+		if err != nil {
+			return nil, n.err().AppendAt(n.source(), err)
+		}
+		val, ok := n.buildVJPExprWRT(outField)
+		if !ok {
+			return nil, false
+		}
+		ext.Elts[i] = &ast.KeyValueExpr{
+			Key:   field.Storage().NameDef(),
+			Value: outField.addToRets(field, val).AST(),
+		}
+	}
+	return special.New(ext), true
+}
+
+func (n *returnStmt) buildVJPBodyWRTArray(outWRT *astOutWRTArray) (*special.Expr, bool) {
+	rets := make([]*special.Expr, len(n.exprs))
+	for i, expr := range n.exprs {
+		var ok bool
+		rets[i], ok = expr.buildBackward(outWRT.astOutWRT, special.New(
+			&ast.Ident{Name: n.graph.nResults.names[i]},
+		))
+		if !ok {
+			return nil, false
+		}
+	}
+	return special.Add(rets...).RemoveParen(), true
 }
 
 func (n *returnStmt) build(out *astOut) bool {

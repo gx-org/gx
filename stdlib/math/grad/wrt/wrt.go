@@ -90,6 +90,14 @@ func (cr *core) buildBackwardSignature(backwardValues *ast.FieldList) (*ast.Func
 	}, nil
 }
 
+func (cr *core) String() string {
+	parent := ""
+	if cr.parent != nil {
+		parent = "(" + cr.parent.String() + ")."
+	}
+	return parent + cr.field.Name.Name + ":" + cr.field.Type().ReferString(nil)
+}
+
 type (
 	// WRT is a parameter in a function with the array type.
 	WRT interface {
@@ -98,6 +106,7 @@ type (
 		Name() []string
 		Type() ir.Type
 		Same(src *ir.Field) bool
+		String() string
 	}
 
 	// WRTs groups all the parameters of a function.

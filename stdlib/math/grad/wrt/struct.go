@@ -60,5 +60,5 @@ func (st *Struct) Arrays() []*Array {
 
 // NewFromField returns a new WRT instance from a field and using the same backward values.
 func (st *Struct) NewFromField(field *ir.Field) (WRT, error) {
-	return BuildFromField(st.backwardValues, field)
+	return parse(st.backwardValues, st, field)
 }

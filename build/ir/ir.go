@@ -2445,7 +2445,10 @@ func (s *StructLitExpr) SourceString(from *File) string {
 	}
 	elts := make([]string, len(s.Elts))
 	for i, elt := range s.Elts {
-		elts[i] = fmt.Sprintf("\t%s: %s,", elt.Field.Name.Name, elt.X.SourceString(from))
+		fieldName := elt.Field.Name.Name
+		fieldValue := elt.X.SourceString(from)
+		fieldValue = gxfmt.IndentSkip(1, fieldValue)
+		elts[i] = fmt.Sprintf("\t%s: %s,", fieldName, fieldValue)
 	}
 	return fmt.Sprintf("%s{\n%s\n}", s.Type().ReferString(from), strings.Join(elts, "\n"))
 }

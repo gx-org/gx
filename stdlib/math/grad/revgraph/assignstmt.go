@@ -17,8 +17,10 @@ package revgraph
 import (
 	"fmt"
 	"go/ast"
+	"go/format"
 	"go/token"
 	"strconv"
+	"strings"
 
 	"github.com/gx-org/gx/build/fmterr"
 	"github.com/gx-org/gx/build/ir"
@@ -164,6 +166,18 @@ func (a *astOut) assignFuncCall(id nodeID, ftype *ir.FuncType, calleeName string
 	return idents, vjps
 }
 
+func (a *astOut) String() string {
+	var s strings.Builder
+	fset := token.NewFileSet()
+	for _, stmt := range a.stmts {
+		if err := format.Node(&s, fset, stmt); err != nil {
+			s.WriteString(err.Error())
+		}
+		fmt.Fprintln(&s)
+	}
+	return s.String()
+}
+
 type fwdStmts struct {
 	*astOut
 
@@ -179,7 +193,8 @@ func (a *astOut) newStmt() *fwdStmts {
 
 type astOutWRT struct {
 	*astOut
-	wrt wrt.WRT
+	wrt  wrt.WRT
+	rets []*special.Expr
 }
 
 func (a *astOutCore) newASTOutWRT(w wrt.WRT) *astOutWRT {
@@ -195,15 +210,24 @@ func (a *astOutCore) newASTOutWRT(w wrt.WRT) *astOutWRT {
 	}
 }
 
-func (b *astOutWRT) assignSpecialExpr(id nodeID, expr *special.Expr) *special.Expr {
-	return b.assignSpecialExprSuffix(id, expr, "")
+func (a *astOutWRT) assignSpecialExpr(id nodeID, expr *special.Expr) *special.Expr {
+	return a.assignSpecialExprSuffix(id, expr, "")
 }
 
-func (b *astOutWRT) assignSpecialExprSuffix(id nodeID, expr *special.Expr, suffix string) *special.Expr {
+func (a *astOutWRT) assignSpecialExprSuffix(id nodeID, expr *special.Expr, suffix string) *special.Expr {
 	if !expr.IsAny() {
 		return expr
 	}
-	return special.New(b.assignExprs(id, []ast.Expr{expr.AST()}, 1, suffix)[0])
+	return special.New(a.assignExprs(id, []ast.Expr{expr.AST()}, 1, suffix)[0])
+}
+
+func (a *astOutWRT) addToRets(field *ir.Field, x *special.Expr) *special.Expr {
+	all := make([]*special.Expr, len(a.rets))
+	for i, ret := range a.rets {
+		all[i] = ret.Select(field.Name)
+	}
+	all = append(all, x)
+	return special.Add(all...)
 }
 
 type astOutWRTArray struct {
@@ -230,13 +254,18 @@ func (a *astOutWRT) newASTOutWRTStruct(param *wrt.Struct) *astOutWRTStruct {
 	}
 }
 
-func (a *astOutWRTStruct) newASTOutFromField(field *ir.Field) (*astOutWRT, error) {
+func (a *astOutWRTStruct) newASTOutFromField(rets []*special.Expr, field *ir.Field) (*astOutWRT, error) {
 	wrtField, err := a.wrtStruct.NewFromField(field)
 	if err != nil {
 		return nil, err
 	}
+	retsWithField := make([]*special.Expr, len(rets))
+	for i, ret := range rets {
+		retsWithField[i] = ret.Select(field.Name)
+	}
 	return &astOutWRT{
 		astOut: a.astOut,
 		wrt:    wrtField,
+		rets:   rets,
 	}, nil
 }

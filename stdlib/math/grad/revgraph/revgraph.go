@@ -16,8 +16,10 @@
 package revgraph
 
 import (
-	"fmt"
 	"go/ast"
+	"go/format"
+	"go/token"
+	"strings"
 
 	"github.com/gx-org/gx/base/uname"
 	"github.com/gx-org/gx/build/fmterr"
@@ -64,7 +66,11 @@ func (n *node[T]) file() *ir.File {
 }
 
 func (n *node[T]) String() string {
-	return fmt.Sprint(n.irnode)
+	var s strings.Builder
+	if err := format.Node(&s, token.NewFileSet(), n.irnode.Node()); err != nil {
+		s.WriteString(err.Error())
+	}
+	return s.String()
 }
 
 // Graph representing the compute done in a root block.

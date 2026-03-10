@@ -1217,6 +1217,123 @@ func vjpF(s S, x float32) (float32, func(res float32) S, func(res float32) float
 }
 `,
 		},
+		testgrad.Reverse{
+			Src: `
+type S struct {
+	a float32
+}
+
+func f(s S, x float32) float32 {
+	return s.a * x
+}
+
+func F(s S, x float32) float32 {
+	return f(s, x)
+}
+`,
+			Want: `
+func vjpF(s S, x float32) (float32, func(res float32) S, func(res float32) float32) {
+	fwd0, fVJPs, fVJPx := grad.Reverse(f)(s, x)
+	selfVJPFuncWRTs := func(res float32) S {
+		bck0s := fVJPs(res)
+		return S{
+			a: bck0s.a,
+		}
+	}
+	selfVJPFuncWRTx := func(res float32) float32 {
+		bck0x := fVJPx(res)
+		return bck0x
+	}
+	return fwd0, selfVJPFuncWRTs, selfVJPFuncWRTx
+}
+`,
+		},
+		testgrad.Reverse{
+			Src: `
+type Layer struct {
+	w float32
+}
+
+func f(l Layer, x float32) float32 {
+	return l.w*x
+}
+
+type S struct {
+	l1 Layer
+	l2 Layer
+}
+
+func F(s S, x float32) float32 {
+	return f(s.l1, x) + f(s.l2, x)
+}
+`,
+			Want: `
+func vjpF(s S, x float32) (float32, func(res float32) S, func(res float32) float32) {
+	fwd0, fVJPl, fVJPx := grad.Reverse(f)(s.l1, x)
+	fwd1, fVJPl1, fVJPx1 := grad.Reverse(f)(s.l2, x)
+	fwd2 := fwd0+fwd1
+	selfVJPFuncWRTs := func(res float32) S {
+		bck0l := fVJPl(res)
+		bck1l := fVJPl1(res)
+		return S{
+			l1: Layer{
+				w: bck0l.w,
+			},
+			l2: Layer{
+				w: bck1l.w,
+			},
+		}
+	}
+	selfVJPFuncWRTx := func(res float32) float32 {
+		bck1x := fVJPx1(res)
+		bck0x := fVJPx(res)
+		return bck0x+bck1x
+	}
+	return fwd2, selfVJPFuncWRTs, selfVJPFuncWRTx
+}
+`,
+		},
+		testgrad.Reverse{
+			Src: `
+type Layer struct {
+	w float32
+}
+
+func f(l Layer, x float32) float32 {
+	return l.w*x
+}
+
+type S struct {
+	l Layer
+}
+
+func F(s S, x float32) float32 {
+	return f(s.l, x) + s.l.w*x
+}
+`,
+			Want: `
+func vjpF(s S, x float32) (float32, func(res float32) S, func(res float32) float32) {
+	fwd0, fVJPl, fVJPx := grad.Reverse(f)(s.l, x)
+	fwd1 := s.l.w*x
+	fwd2 := fwd0+fwd1
+	selfVJPFuncWRTs := func(res float32) S {
+		bck0l := fVJPl(res)
+		bck1x := res*x
+		return S{
+			l: Layer{
+				w: bck0l.w+bck1x,
+			},
+		}
+	}
+	selfVJPFuncWRTx := func(res float32) float32 {
+		bck1y := s.l.w*res
+		bck0x := fVJPx(res)
+		return bck0x+bck1y
+	}
+	return fwd2, selfVJPFuncWRTs, selfVJPFuncWRTx
+}
+`,
+		},
 	)
 }
 
