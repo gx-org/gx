@@ -18,6 +18,7 @@ import (
 	"fmt"
 	"go/ast"
 	"go/parser"
+	"go/scanner"
 	"go/token"
 	"io"
 	"io/fs"
@@ -196,6 +197,21 @@ func (pkg *FilePackage) BuildFiles(fs fs.FS, filenames []string) (err error) {
 	return nil
 }
 
+func processParseError(errs *fmterr.Appender, filename string, file *ast.File, err error) bool {
+	errList, ok := err.(scanner.ErrorList)
+	if !ok {
+		return errs.Append(errors.Errorf("cannot parse file %s:\n\t%v", filename, err))
+	}
+	for _, err := range errList {
+		pos := fmterr.Pos{
+			Begin: err.Pos,
+			End:   err.Pos,
+		}
+		errs.Append(pos.Error(errors.New(err.Msg)))
+	}
+	return false
+}
+
 // buildFile processes a file. Returned false if the file could not be parsed.
 // Process errors are accumulated in the package and functions.
 func (pkg *FilePackage) buildFile(pscope *pkgProcScope, fs fs.FS, filename string) bool {
@@ -210,7 +226,7 @@ func (pkg *FilePackage) buildFile(pscope *pkgProcScope, fs fs.FS, filename strin
 
 	fileDecl, err := parser.ParseFile(pkg.fset, filename, src, parser.ParseComments|parser.SkipObjectResolution)
 	if err != nil {
-		return pscope.Err().Append(errors.Errorf("cannot parse file %s:\n\t%v", filename, err))
+		return processParseError(pscope.errs, filename, fileDecl, err)
 	}
 	_, ok := processFile(pscope, filename, fileDecl)
 	return ok
