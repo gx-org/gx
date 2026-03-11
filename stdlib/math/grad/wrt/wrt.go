@@ -142,7 +142,9 @@ func BuildFromField(backwardValues *ast.FieldList, field *ir.Field) (WRT, error)
 
 // Build builds the gradient parameters given a function type.
 func Build(fType *ir.FuncType, backwardValues *ast.FieldList) ([]WRT, error) {
-	fields := fType.Params.Fields()
+	var fields []*ir.Field
+	fields = append(fields, fType.Receiver.Fields()...)
+	fields = append(fields, fType.Params.Fields()...)
 	params := make([]WRT, len(fields))
 	for i, field := range fields {
 		param, err := BuildFromField(backwardValues, field)

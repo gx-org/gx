@@ -96,8 +96,9 @@ func New(macro *cpevelements.CoreMacroElement, fn ir.Func) (*Graph, error) {
 	}
 	fType := g.fn.FuncType()
 	// Register all names to avoid duplicates.
-	g.nResults = nameFields(g.unames, "res", fType.Results.Src)
-	g.nParams = nameFields(g.unames, "par", fType.Params.Src)
+	nameFields(g.unames, "recv", fType.Receiver)
+	g.nResults = nameFields(g.unames, "res", fType.Results)
+	g.nParams = nameFields(g.unames, "par", fType.Params)
 	for _, axisVal := range fType.AxisLengths {
 		g.unames.Register(axisVal.Name())
 	}

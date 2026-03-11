@@ -18,6 +18,7 @@ import (
 	"go/ast"
 
 	"github.com/gx-org/gx/base/uname"
+	"github.com/gx-org/gx/build/ir"
 )
 
 type namedFields struct {
@@ -25,12 +26,19 @@ type namedFields struct {
 	names  []string
 }
 
-func nameFields(unames *uname.Unique, root string, fields *ast.FieldList) *namedFields {
+func nameFields(unames *uname.Unique, root string, lists ...*ir.FieldList) *namedFields {
+	var fields []*ast.Field
+	for _, list := range lists {
+		if list == nil {
+			continue
+		}
+		fields = append(fields, list.Src.List...)
+	}
 	all := ast.FieldList{
-		List: make([]*ast.Field, len(fields.List)),
+		List: make([]*ast.Field, len(fields)),
 	}
 	var names []string
-	for iField, field := range fields.List {
+	for iField, field := range fields {
 		named := *field
 		if len(named.Names) == 0 {
 			named.Names = []*ast.Ident{&ast.Ident{}}

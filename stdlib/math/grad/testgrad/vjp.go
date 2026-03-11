@@ -55,20 +55,29 @@ func (tt Reverse) Source() string {
 	return tt.Src
 }
 
-func (tt Reverse) buildSourceCode() string {
+func (tt Reverse) buildSourceCode() (string, string) {
 	declImportName := ""
 	callImportName := "grad"
 	if tt.GradImportName != "" {
 		declImportName = tt.GradImportName
 		callImportName = tt.GradImportName
 	}
+	funcRef := strings.Split(tt.GradOf, ".")
+	funcRecv := ""
+	funcName := tt.GradOf
+	gradFunc := fmt.Sprintf("vjp%s", funcName)
+	if len(funcRef) == 2 {
+		funcRecv = fmt.Sprintf("(%s)", funcRef[0])
+		funcName = funcRef[1]
+		gradFunc = fmt.Sprintf("%s.vjp%s", funcRef[0], funcName)
+	}
 	grads := &strings.Builder{}
 	fmt.Fprintf(grads,
 		`
 //gx:=%s.Reverse(%s)
-func vjp%s()
+func %s vjp%s()
 `,
-		callImportName, tt.GradOf, tt.GradOf)
+		callImportName, tt.GradOf, funcRecv, funcName)
 	var imports string
 	for _, imp := range tt.Imports {
 		imports += fmt.Sprintf("import \"%s\"\n", imp)
@@ -82,7 +91,7 @@ import %s"math/grad"
 %s
 
 %s
-`, imports, declImportName+" ", grads.String(), tt.Src)
+`, imports, declImportName+" ", grads.String(), tt.Src), gradFunc
 }
 
 var gradImport = &ast.ImportSpec{
@@ -95,7 +104,7 @@ func (tt Reverse) Run(b *testbuild.Builder) error {
 		tt.GradOf = "F"
 	}
 	// Build the package.
-	src := tt.buildSourceCode()
+	src, gradFunc := tt.buildSourceCode()
 	pkg, err := b.Build("", src)
 	if err != nil {
 		return testbuild.CheckError(tt.Err, err)
@@ -103,7 +112,7 @@ func (tt Reverse) Run(b *testbuild.Builder) error {
 	pkgIR := pkg.IR()
 	// Check the VJP of the default function F.
 	// checkVJP returns a nil error if tt.Want is empty.
-	if err := checkFunc(pkgIR, "vjpF", tt.Want); err != nil {
+	if err := checkFunc(pkgIR, gradFunc, tt.Want); err != nil {
 		return err
 	}
 	// Check other functions we expect.
