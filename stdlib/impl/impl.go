@@ -52,7 +52,6 @@ type (
 
 	// Num is the implementation of the num package.
 	Num struct {
-		Iota      interp.FuncBuiltin
 		Einsum    interp.FuncBuiltin
 		MatMul    interp.FuncBuiltin
 		Sum       interp.FuncBuiltin

@@ -28,9 +28,9 @@ var Package = builtin.PackageBuilder{
 		builtin.BuildFunc(transpose{}),
 		builtin.BuildFunc(einsum{}),
 		builtin.BuildFunc(matmul{}),
-		builtin.BuildFunc(iotaWithAxis{}),
 		builtin.BuildFunc(reduceMax{}),
 		builtin.BuildFunc(argmax{}),
+		builtin.ImplementGraphFunc("Iota", evalIota),
 		builtin.ImplementGraphFunc("IotaFull", evalIotaFull),
 	},
 }

@@ -15,11 +15,8 @@
 package num
 
 import (
-	"go/ast"
-
 	"github.com/gx-org/backend/ops"
 	"github.com/gx-org/backend/shape"
-	"github.com/gx-org/gx/build/builtins"
 	"github.com/gx-org/gx/build/ir"
 	"github.com/gx-org/gx/build/ir/irkind"
 	"github.com/gx-org/gx/interp/elements"
@@ -28,33 +25,32 @@ import (
 	"github.com/gx-org/gx/interp/grapheval"
 	"github.com/gx-org/gx/interp/materialise"
 	"github.com/gx-org/gx/stdlib/builtin"
-	"github.com/gx-org/gx/stdlib/impl"
 )
 
-type iotaWithAxis struct {
-	builtin.Func
-}
-
-func (f iotaWithAxis) BuildFuncIR(impl *impl.Stdlib, pkg *ir.Package) (*ir.FuncBuiltin, error) {
-	return builtin.IRFuncBuiltin[iotaWithAxis]("Iota", impl.Num.Iota, pkg), nil
-}
-
-func (f iotaWithAxis) BuildFuncType(fetcher ir.Fetcher, call *ir.FuncCallExpr) (*ir.FuncType, error) {
-	params, err := builtins.BuildFuncParams(fetcher, call, f.Name(), []ir.Type{
-		ir.IntLenSliceType(),
-		ir.IntIndexType(),
-	})
+func evalIota(ctx evaluator.Env, call elements.CallAt, fn fun.Func, irFunc *ir.FuncBuiltin, args []ir.Element) ([]ir.Element, error) {
+	axes, err := elements.AxesFromElement(args[0])
 	if err != nil {
 		return nil, err
 	}
-	rank, _, err := elements.EvalRank(fetcher, call.Args[0])
+	axisIndex, err := elements.ConstantIntFromElement(args[1])
 	if err != nil {
 		return nil, err
 	}
-	return &ir.FuncType{
-		Params:  builtins.Fields(call, params...),
-		Results: builtins.Fields(call, ir.NewArrayType(&ast.ArrayType{}, ir.DefaultIntType, rank)),
-	}, nil
+	targetShape := &shape.Shape{
+		DType:       irkind.DefaultInt.DType(),
+		AxisLengths: axes,
+	}
+	ev := ctx.Evaluator().(*grapheval.Evaluator)
+	gr := ev.ArrayOps().Graph()
+	op, err := gr.Num().Iota(targetShape, axisIndex)
+	if err != nil {
+		return nil, err
+	}
+	mat := builtin.Materialiser(ctx)
+	return materialise.ElementFromNode(call.File(), mat, &ops.OutputNode{
+		Node:  op,
+		Shape: targetShape,
+	}, call.Node().Type())
 }
 
 func evalIotaFull(ctx evaluator.Env, call elements.CallAt, fn fun.Func, irFunc *ir.FuncBuiltin, args []ir.Element) ([]ir.Element, error) {

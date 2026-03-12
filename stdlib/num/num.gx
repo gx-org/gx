@@ -1,5 +1,8 @@
 // Package num provides core numerical functions operating on arrays.
 package num
 
+// Iota generates an array given a shape where elements starts from 0 and are incremented by 1 along a given axis index.
+func Iota(shape []intlen, ax intidx) [shape___]int64
+
 // IotaFull generates an array given a shape where elements starts from 0 and are incremented by 1.
 func IotaFull(shape []intlen) [shape___]int64
