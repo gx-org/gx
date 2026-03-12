@@ -375,3 +375,15 @@ func TestMatmulVarsDimVectorMatrix() [dim1]float32 {
 	// Want:
 	// [dim1]float32{0, 0}
 }
+
+func TestOneHot() [5][3]bool {
+	return num.OneHot([...]int32{3, 2, 1, 0, 2}, 3)
+	// Want:
+	// [axlen][numClasses]bool{
+	// 	{false, false, false},
+	// 	{false, false, true},
+	// 	{false, true, false},
+	// 	{true, false, false},
+	// 	{false, false, true},
+	// }
+}
