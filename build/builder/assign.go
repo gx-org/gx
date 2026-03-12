@@ -51,7 +51,7 @@ func (asg *identStorage) assign(rscope resolveScope, typ ir.Type) (_ ir.Storage,
 	if ir.IsBuiltin(storage) {
 		return invalidExpr().Store(), false, rscope.Err().Appendf(asg.source(), "cannot assign to %s", name.Name)
 	}
-	return storage, false, true
+	return storage, false, assignableToAt(rscope, asg.source(), typ, storage.Type())
 }
 
 func (asg *identStorage) define(rscope resolveScope, typ ir.Type) (_ ir.Storage, newName, ok bool) {

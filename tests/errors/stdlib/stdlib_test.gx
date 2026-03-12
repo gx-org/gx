@@ -295,3 +295,10 @@ func testMathCeilWithMismatchedShape() [1]float32 {
 func testSumWithBool() [1]float32 {
 	return num.Sum([2]bool{}, []intidx{0}) // ERROR expect an array with an algebra data type (found bool)
 }
+
+func testRandUint32() int32 {
+	rnd := rand.New(rand.NewSource(0))
+	var a [1]int32
+	_, a = rnd.Uint32([]intlen{}) // ERROR cannot use uint32 as [1]int32 value in assignment
+	return a[0]
+}

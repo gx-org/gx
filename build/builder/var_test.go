@@ -127,3 +127,30 @@ func F() int32 {
 		},
 	)
 }
+
+func TestLocalVarErrors(t *testing.T) {
+	testbuild.Run(t,
+		testbuild.Decl{
+			Src: `
+func f() uint32
+
+func F() int32 {
+	var a int32
+	a = f() // ERROR cannot use uint32 as int32 value in assignment
+	return a
+}
+`,
+		},
+		testbuild.Decl{
+			Src: `
+func f() (float32, uint32)
+
+func F() int32 {
+	var a int32
+	_, a = f() // ERROR cannot use uint32 as int32 value in assignment
+	return a
+}
+`,
+		},
+	)
+}

@@ -393,6 +393,15 @@ func f(a [A]int32) [A][B][1]int32 {
 }
 `,
 		},
+		testbuild.Decl{
+			Src: `
+func newArray(dims []intlen) [dims___]float32
+
+func f() float32  {
+	return newArray([]intlen{})
+}
+`,
+		},
 	)
 }
 
@@ -470,6 +479,17 @@ func g(x float32) [2]float32 {
 }
 `,
 			Err: "no axis left to define a",
+		},
+		testbuild.Decl{
+			Src: `
+func newArray(lens []intlen) [lens___]float32
+
+func f() float32 {
+	var a [1]float32
+	a = newArray([]intlen{}) // ERROR cannot use float32 as [1]float32 value in assignment
+	return a[0]
+}
+`,
 		},
 	)
 }

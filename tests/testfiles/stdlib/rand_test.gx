@@ -58,6 +58,14 @@ func TestRandUniformFloat32() ([2][3]float32, [2][3]float32) {
 	// }
 }
 
+func TestFloat32NoAxis() uint32 {
+	rnd := rand.New(rand.NewSource(0))
+	_, smpl := rnd.Uint32([]intlen{})
+	return smpl
+	// Want:
+	// [dims___]uint32(1087794774)
+}
+
 func TestFloat32Axis1() [2]float32 {
 	rnd := rand.New(rand.NewSource(0))
 	_, smpl := rnd.Float32([]intlen{2})
