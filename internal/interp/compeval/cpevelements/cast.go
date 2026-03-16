@@ -151,7 +151,7 @@ func (a *cast) Store() ir.Storage {
 
 // Materialise returns the element with all its values from the graph.
 func (a *cast) Materialise(ao materialise.Materialiser) (materialise.Node, error) {
-	return ao.NodeFromArray(a.src.File(), a.src.Node(), a.val)
+	return ao.NodeFromArray(a.val)
 }
 
 // Axes of the result of the cast.

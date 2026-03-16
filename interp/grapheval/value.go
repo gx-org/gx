@@ -41,7 +41,7 @@ var (
 	_ elements.WithAxes               = (*valueElement)(nil)
 )
 
-func newValueElement(ev *Evaluator, src elements.ExprAt, value values.Array) (*valueElement, error) {
+func newValueElement(ev *Evaluator, value values.Array) (*valueElement, error) {
 	hostValue, err := value.ToHostArray(kernels.Allocator())
 	if err != nil {
 		return nil, err
@@ -50,7 +50,7 @@ func newValueElement(ev *Evaluator, src elements.ExprAt, value values.Array) (*v
 	if err != nil {
 		return nil, err
 	}
-	node, err := NewBackendNode(ev, src.Node().Type(), &ops.OutputNode{
+	node, err := NewBackendNode(ev, value.Type(), &ops.OutputNode{
 		Node:  cstNode,
 		Shape: value.Shape(),
 	})

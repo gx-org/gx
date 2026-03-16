@@ -184,7 +184,7 @@ func (n *Float) Materialise(ao materialise.Materialiser) (materialise.Node, erro
 	if err != nil {
 		return nil, err
 	}
-	return ao.NodeFromArray(n.expr.File(), n.expr.Node(), val)
+	return ao.NodeFromArray(val)
 }
 
 // ShortString returns a short string representation of the value.

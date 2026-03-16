@@ -134,7 +134,7 @@ func (a *unary) NumericalConstant() (*values.HostArray, error) {
 
 // Materialise returns the element with all its values from the graph.
 func (a *unary) Materialise(ao materialise.Materialiser) (materialise.Node, error) {
-	return ao.NodeFromArray(a.src.File(), a.src.Node(), a.val)
+	return ao.NodeFromArray(a.val)
 }
 
 func (a *unary) Expr() (ir.Expr, error) {
