@@ -168,6 +168,9 @@ func (n *structLiteral) buildExpr(rscope resolveScope) (ir.Expr, bool) {
 	ext.Elts = make([]*ir.FieldLit, structType.Fields.Len())
 	fieldsOk := true
 	for i, field := range structType.Fields.Fields() {
+		if !ir.ValidIdent(field.Name) {
+			continue
+		}
 		name := field.Name.Name
 		valueFieldIndex, valueOk := n.nameToElt[name]
 		if !valueOk {

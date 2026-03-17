@@ -117,6 +117,28 @@ func CallNew() S {
 }
 `,
 		},
+		testbuild.Decl{
+			Src: `
+type S struct {
+	F int32
+	int32
+}
+
+func F(s S) S
+`,
+		},
+		testbuild.Decl{
+			Src: `
+type S struct {
+	F int32
+	int32
+}
+
+func F() S {
+	return S{F:0}
+}
+`,
+		},
 	)
 }
 

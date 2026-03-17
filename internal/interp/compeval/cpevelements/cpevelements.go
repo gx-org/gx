@@ -97,6 +97,9 @@ func NewRuntimeValue(file *ir.File, store ir.Storage) (ir.Element, error) {
 	case *ir.StructType:
 		fields := make(map[string]ir.Element)
 		for _, field := range typT.Fields.Fields() {
+			if !ir.ValidIdent(field.Name) {
+				continue
+			}
 			var err error
 			fields[field.Name.Name], err = NewRuntimeValue(file, field.Storage())
 			if err != nil {
