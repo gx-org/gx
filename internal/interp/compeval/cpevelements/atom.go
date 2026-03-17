@@ -31,8 +31,9 @@ import (
 
 type atom struct {
 	canonical.AtomStringImpl
-	src   elements.ExprAt
 	val   *values.HostArray
+	expr  ir.Expr
+	typ   ir.Type
 	float *big.Float
 }
 
@@ -47,16 +48,13 @@ var (
 )
 
 // NewAtom returns a new atom element given a GX atom value.
-func NewAtom(src elements.ExprAt, val *values.HostArray) (Element, error) {
+func NewAtom(val *values.HostArray, expr ir.Expr, typ ir.Type) (Element, error) {
 	var float *big.Float
+	var err error
 	if dtype.IsAlgebra(val.Shape().DType) {
-		var err error
 		float, err = val.ToFloatNumber()
-		if err != nil {
-			return nil, err
-		}
 	}
-	return &atom{src: src, val: val, float: float}, nil
+	return &atom{val: val, expr: expr, float: float, typ: typ}, err
 }
 
 // UnaryOp applies a unary operator on x.
@@ -66,11 +64,7 @@ func (a *atom) UnaryOp(env evaluator.Env, expr *ir.UnaryExpr) (evaluator.Numeric
 
 // Copy the atom.
 func (a *atom) Copy() elements.Copier {
-	return &atom{
-		src:   a.src,
-		val:   a.val,
-		float: a.float,
-	}
+	return a
 }
 
 // BinaryOp applies a binary operator to x and y.
@@ -99,17 +93,17 @@ func (a *atom) NumericalConstant() (*values.HostArray, error) {
 
 // Unflatten creates a GX value from the next handles available in the parser.
 func (a *atom) Unflatten(handles *flatten.Parser) (values.Value, error) {
-	return handles.ParseArray(a.src.Node().Type())
+	return handles.ParseArray(a.typ)
 }
 
 // Type of the element.
 func (a *atom) Type() ir.Type {
-	return a.val.Type()
+	return a.typ
 }
 
 // Materialise the value into a node in the backend graph.
 func (a *atom) Materialise(ao materialise.Materialiser) (materialise.Node, error) {
-	return ao.NodeFromArray(a.val)
+	return ao.NodeFromArray(a.val, a.typ)
 }
 
 // Compare to another element.
@@ -134,7 +128,7 @@ func (a *atom) Axes(ir.Evaluator) (*elements.Slice, error) {
 
 // Expr returns the IR expression represented by the variable.
 func (a *atom) Expr() (ir.Expr, error) {
-	return a.src.Node(), nil
+	return a.expr, nil
 }
 
 func (a *atom) CanonicalExpr() canonical.Canonical {

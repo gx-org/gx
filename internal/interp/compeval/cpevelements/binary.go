@@ -16,6 +16,7 @@ package cpevelements
 
 import (
 	"fmt"
+	"go/token"
 	"math/big"
 
 	"github.com/gx-org/backend/shape"
@@ -32,7 +33,8 @@ import (
 
 type binary struct {
 	canonical canonical.Canonical
-	src       elements.NodeFile[*ir.BinaryExpr]
+	expr      *ir.BinaryExpr
+	typ       ir.Type
 	x, y      Element
 	cst       *values.HostArray
 }
@@ -63,16 +65,18 @@ func NewBinary(env evaluator.Env, expr *ir.BinaryExpr, xEl, yEl evaluator.Numeri
 			err = fmterr.Error(env.File().FileSet(), expr.Src, err)
 		}
 	}()
+	typ, err := env.ToConcrete(expr.Src, expr.Typ)
 	el := &binary{
-		src: elements.NewNodeAt(env.File(), expr),
-		x:   x,
-		y:   y,
+		expr: expr,
+		typ:  typ,
+		x:    x,
+		y:    y,
 	}
 	el.canonical = canonical.FromBinary(expr.Src.Op, x.CanonicalExpr(), y.CanonicalExpr()).Simplify()
 	return el, err
 }
 
-func buildBinaryVal(expr *ir.BinaryExpr, cx, cy *values.HostArray) (*values.HostArray, error) {
+func buildBinaryVal(operator token.Token, cx, cy *values.HostArray, typ ir.Type) (*values.HostArray, error) {
 	// Both x and y are host atomic value.
 	kx, kxRelease, err := toKernelArray(cx)
 	if err != nil {
@@ -94,7 +98,7 @@ func buildBinaryVal(expr *ir.BinaryExpr, cx, cy *values.HostArray) (*values.Host
 	}
 	// Convert the interpreter element a.x into a GX value.
 	// Use the factory to get the kernel matching the binary operator.
-	op, _, err := kx.Factory().BinaryOp(expr.Src.Op, kx.Shape(), ky.Shape())
+	op, _, err := kx.Factory().BinaryOp(operator, kx.Shape(), ky.Shape())
 	if err != nil {
 		return nil, err
 	}
@@ -104,7 +108,7 @@ func buildBinaryVal(expr *ir.BinaryExpr, cx, cy *values.HostArray) (*values.Host
 		return nil, err
 	}
 	// Return the result as a GX value.
-	val, err := values.NewHostArray(expr.Type(), kernels.NewBuffer(res))
+	val, err := values.NewHostArray(typ, kernels.NewBuffer(res))
 	if err != nil {
 		return nil, err
 	}
@@ -142,7 +146,7 @@ func (a *binary) Shape() (*shape.Shape, error) {
 
 // Axes returns the axes of the value as a slice element.
 func (a *binary) Axes(ev ir.Evaluator) (*elements.Slice, error) {
-	return axesFromType(ev, a.src.Node().Type())
+	return axesFromType(ev, a.typ)
 }
 
 func (a *binary) Float() *big.Float {
@@ -150,17 +154,17 @@ func (a *binary) Float() *big.Float {
 }
 
 func (a *binary) Value() ir.Expr {
-	return a.src.Node()
+	return a.expr
 }
 
 // Type of the element.
 func (a *binary) Type() ir.Type {
-	return a.src.Node().Type()
+	return a.typ
 }
 
 // Unflatten creates a GX value from the next handles available in the parser.
 func (a *binary) Unflatten(handles *flatten.Parser) (values.Value, error) {
-	return handles.ParseArray(a.src.Node().Type())
+	return handles.ParseArray(a.typ)
 }
 
 // NumericalConstant returns the value of a constant represented by a node.
@@ -178,7 +182,7 @@ func (a *binary) NumericalConstant() (*values.HostArray, error) {
 	}
 	if cx != nil && cy != nil {
 		// Both operand values are known: compute the constant for this operand.
-		a.cst, err = buildBinaryVal(a.src.Node(), cx, cy)
+		a.cst, err = buildBinaryVal(a.expr.Src.Op, cx, cy, a.typ)
 		if err != nil {
 			return nil, err
 		}
@@ -192,7 +196,7 @@ func (a *binary) Materialise(ao materialise.Materialiser) (materialise.Node, err
 	if err != nil {
 		return nil, nil
 	}
-	return ao.NodeFromArray(cst)
+	return ao.NodeFromArray(cst, a.typ)
 }
 
 // Compare to another element.
@@ -218,17 +222,17 @@ func (a *binary) CanonicalExpr() canonical.Canonical {
 
 // Expr returns the IR expression represented by the variable.
 func (a *binary) Expr() (ir.Expr, error) {
-	return a.src.Node(), nil
+	return a.expr, nil
 }
 
 func (a *binary) ShortString() string {
 	x := canonical.ToString(a.x)
 	y := canonical.ToString(a.y)
-	return fmt.Sprintf("%v%v%v", x, a.src.Node().Src.Op, y)
+	return fmt.Sprintf("%v%v%v", x, a.expr.Src.Op, y)
 }
 
 func (a *binary) SourceString(from *ir.File) string {
 	x := canonical.ToString(a.x)
 	y := canonical.ToString(a.y)
-	return fmt.Sprintf("%v%v%v", x, a.src.Node().Src.Op, y)
+	return fmt.Sprintf("%v%v%v", x, a.expr.Src.Op, y)
 }

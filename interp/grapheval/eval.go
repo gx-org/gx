@@ -95,11 +95,6 @@ func (ev *Evaluator) Materialiser() materialise.Materialiser {
 	return ev.ao
 }
 
-// ElementFromAtom returns an element from a GX value.
-func (ev *Evaluator) ElementFromAtom(file *ir.File, src ir.Expr, val values.Array) (evaluator.NumericalElement, error) {
-	return ev.hostEval.ElementFromAtom(file, src, val)
-}
-
 // ElementFromStorage returns an element from an atomic GX value and its storage.
 func (ev *Evaluator) ElementFromStorage(file *ir.File, expr ir.StorageWithValue, val ir.Element) ir.Element {
 	return val
@@ -292,7 +287,7 @@ func (ev *Evaluator) axesFromShape(file *ir.File, shape *shape.Shape) (*elements
 		if err != nil {
 			return nil, err
 		}
-		axes[i], err = ev.ElementFromAtom(file, iExpr, iValue)
+		axes[i], err = ev.ArrayOps().ElementFromAtom(file, iValue, iExpr, iExpr.Type())
 		if err != nil {
 			return nil, err
 		}

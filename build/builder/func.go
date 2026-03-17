@@ -478,7 +478,7 @@ var (
 		Typ: ir.IntLenType(),
 	}
 	zeroValue, _ = values.AtomNumberInt(&big.Int{}, zeroExpr.Type())
-	zeroLen, _   = cpevelements.NewAtom(elements.NewExprAt(cstFile, zeroExpr), zeroValue)
+	zeroLen, _   = cpevelements.NewAtom(zeroValue, zeroExpr, ir.IntLenType())
 	emptySlice   = elements.NewSlice(ir.IntLenSliceType(), nil)
 )
 

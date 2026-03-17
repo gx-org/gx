@@ -16,6 +16,8 @@
 package evaluator
 
 import (
+	"go/ast"
+
 	"github.com/gx-org/backend/ops"
 	"github.com/gx-org/backend/shape"
 	"github.com/gx-org/gx/api/values"
@@ -34,6 +36,9 @@ type (
 
 		// Evaluator returns the evaluator used by the interpreter.
 		Evaluator() Evaluator
+
+		// ToConcrete returns the concrete type given the current context.
+		ToConcrete(ast.Expr, ir.Type) (ir.Type, error)
 	}
 
 	// Evaluator implements GX operators.
@@ -46,9 +51,6 @@ type (
 
 		// Processor returns the used by the array evaluator.
 		Processor() *processor.Processor
-
-		// ElementFromAtom returns an element from an atomic GX value.
-		ElementFromAtom(file *ir.File, expr ir.Expr, val values.Array) (NumericalElement, error)
 
 		// ElementFromStorage returns an element from an atomic GX value and its storage.
 		ElementFromStorage(file *ir.File, expr ir.StorageWithValue, val ir.Element) ir.Element
@@ -95,7 +97,35 @@ type (
 		// Set a slice in an array.
 		Set(ctx ir.Evaluator, expr *ir.FuncCallExpr, x, updates, index ir.Element) (ir.Element, error)
 
+		// ElementFromAtom returns an element from an atomic GX value.
+		ElementFromAtom(ctx *ir.File, val values.Array, expr ir.Expr, typ ir.Type) (NumericalElement, error)
+
 		// ElementFromArray returns an element from an array GX value.
-		ElementFromArray(ctx ir.Evaluator, expr ir.Expr, val values.Array) (NumericalElement, error)
+		ElementFromArray(ctx *ir.File, val values.Array, typ ir.Type) (NumericalElement, error)
 	}
 )
+
+type evalEnv struct{}
+
+func (evalEnv) File() *ir.File {
+	return nil
+}
+
+func (evalEnv) ExprEval() ir.Evaluator {
+	return nil
+}
+
+func (evalEnv) Evaluator() Evaluator {
+	return nil
+}
+
+func (evalEnv) ToConcrete(_ ast.Expr, tp ir.Type) (ir.Type, error) {
+	return tp, nil
+}
+
+var env evalEnv
+
+// ProxyEnv returns a proxy implementation of the Env interface.
+func ProxyEnv() Env {
+	return env
+}

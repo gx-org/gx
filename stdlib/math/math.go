@@ -27,6 +27,7 @@ import (
 	"github.com/gx-org/gx/build/fmterr"
 	"github.com/gx-org/gx/build/ir"
 	"github.com/gx-org/gx/build/ir/irkind"
+	"github.com/gx-org/gx/internal/concrete"
 	"github.com/gx-org/gx/interp/elements"
 	"github.com/gx-org/gx/interp/evaluator"
 	"github.com/gx-org/gx/interp/fun"
@@ -133,9 +134,13 @@ func buildUnary(name string, f func(graph ops.Graph) unaryFunc) builtin.Builder 
 		if err != nil {
 			return nil, err
 		}
+		typ, err := concrete.Concrete(env.ExprEval(), call.Node().Expr(), call.Node().Type())
+		if err != nil {
+			return nil, err
+		}
 		return materialise.ElementFromNode(call.File(), mat, &ops.OutputNode{
 			Node:  node,
 			Shape: xShape,
-		}, call.Node().Type())
+		}, typ)
 	})
 }

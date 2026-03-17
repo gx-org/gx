@@ -17,9 +17,11 @@ package fun
 
 import (
 	"fmt"
+	"go/ast"
 	"strings"
 
 	"github.com/gx-org/gx/build/ir"
+	"github.com/gx-org/gx/internal/concrete"
 	"github.com/gx-org/gx/interp/context"
 	"github.com/gx-org/gx/interp/evaluator"
 )
@@ -93,6 +95,11 @@ func (env *CallEnv) FuncEval() Evaluator {
 // Evaluator returns the core evaluator.
 func (env *CallEnv) Evaluator() evaluator.Evaluator {
 	return env.fun
+}
+
+// ToConcrete returns the concrete type given the current context.
+func (env *CallEnv) ToConcrete(src ast.Expr, tp ir.Type) (ir.Type, error) {
+	return concrete.Concrete(env.ExprEval(), src, tp)
 }
 
 func (env *CallEnv) String() string {

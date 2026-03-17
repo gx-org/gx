@@ -13,8 +13,8 @@ func TestVJPSin() (float32, float32) {
 	trace(backward)
 	return y, backward(1.0)
 	// Want:
-	// 0: [M___]T(0.14112)
-	// 1: [M___]T(-0.989992)
+	// 0: float32(0.14112)
+	// 1: float32(-0.989992)
 	// Trace:
 	// vjpfunc3.gx:0
 	// 	func(res float32) float32 {
@@ -22,4 +22,3 @@ func TestVJPSin() (float32, float32) {
 	// 		return bck0
 	// 	}
 }
-

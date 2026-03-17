@@ -22,6 +22,7 @@ import (
 	"github.com/gx-org/gx/api/values"
 	"github.com/gx-org/gx/build/fmterr"
 	"github.com/gx-org/gx/build/ir"
+	"github.com/gx-org/gx/build/ir/irkind"
 	"github.com/gx-org/gx/internal/interp/flatten"
 	"github.com/gx-org/gx/interp/elements"
 	"github.com/gx-org/gx/interp/evaluator"
@@ -46,6 +47,9 @@ var (
 // NewBackendNode returns an element representing a node in the backend graph.
 func NewBackendNode(ev *Evaluator, typ ir.Type, node *ops.OutputNode) (*BackendNode, error) {
 	if err := checkShape(node); err != nil {
+		return nil, err
+	}
+	if err := checkIsConcrete(typ); err != nil {
 		return nil, err
 	}
 	if _, err := ir.ToArrayTypeGivenShape(nil, typ, node.Shape); err != nil {
@@ -76,6 +80,19 @@ func checkShape(node *ops.OutputNode) error {
 	}
 	if got.Size() != want.Size() {
 		return errors.Errorf("backend returned a buffer with axis lengths %v but GX expects %v", got.AxisLengths, want.AxisLengths)
+	}
+	return nil
+}
+
+func checkIsConcrete(typ ir.Type) error {
+	arrayType, isArray := ir.Underlying(typ).(ir.ArrayType)
+	if !isArray {
+		return errors.Errorf("%T is not an array type", typ)
+	}
+	dtype := arrayType.DataType()
+	dtypeKind := dtype.Kind()
+	if !irkind.IsConcrete(dtypeKind) {
+		return errors.Errorf("array type %s has not been resolved", typ.ReferString(nil))
 	}
 	return nil
 }
@@ -124,9 +141,13 @@ func (n *BackendNode) BinaryOp(env evaluator.Env, expr *ir.BinaryExpr, x, y eval
 	if len(yShape.AxisLengths) > 0 {
 		targetShape.AxisLengths = yShape.AxisLengths
 	}
+	typ, err := env.ToConcrete(expr.Src, expr.Typ)
+	if err != nil {
+		return nil, err
+	}
 	return NewBackendNode(
 		n.ev,
-		expr.Type(),
+		typ,
 		&ops.OutputNode{
 			Node:  binaryNode,
 			Shape: targetShape,
@@ -140,9 +161,13 @@ func (n *BackendNode) UnaryOp(env evaluator.Env, expr *ir.UnaryExpr) (evaluator.
 	if err != nil {
 		return nil, err
 	}
+	typ, err := env.ToConcrete(expr.Src, expr.Type())
+	if err != nil {
+		return nil, err
+	}
 	return NewBackendNode(
 		n.ev,
-		expr.Type(),
+		typ,
 		&ops.OutputNode{
 			Node:  unaryNode,
 			Shape: n.nod.Shape,
@@ -157,9 +182,13 @@ func (n *BackendNode) Cast(env evaluator.Env, expr ir.Expr, target ir.Type) (eva
 	if err != nil {
 		return nil, err
 	}
+	typ, err := env.ToConcrete(expr.Expr(), expr.Type())
+	if err != nil {
+		return nil, err
+	}
 	return NewBackendNode(
 		n.ev,
-		expr.Type(),
+		typ,
 		&ops.OutputNode{
 			Node: casted,
 			Shape: &shape.Shape{

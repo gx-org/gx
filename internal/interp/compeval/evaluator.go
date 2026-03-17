@@ -16,12 +16,9 @@ package compeval
 
 import (
 	"github.com/pkg/errors"
-	"github.com/gx-org/gx/api/values"
 	"github.com/gx-org/gx/build/ir"
-	"github.com/gx-org/gx/golang/backend/kernels"
 	"github.com/gx-org/gx/internal/interp/compeval/cpevelements"
 	"github.com/gx-org/gx/internal/tracer/processor"
-	"github.com/gx-org/gx/interp/elements"
 	"github.com/gx-org/gx/interp/evaluator"
 	"github.com/gx-org/gx/interp/fun"
 )
@@ -80,15 +77,6 @@ func (ev *CompEval) Importer() ir.Importer {
 // ArrayOps returns the implementation used for array operations.
 func (ev *CompEval) ArrayOps() evaluator.ArrayOps {
 	return hostArrayOps
-}
-
-// ElementFromAtom returns an element from a GX value.
-func (ev *CompEval) ElementFromAtom(file *ir.File, expr ir.Expr, val values.Array) (evaluator.NumericalElement, error) {
-	hostValue, err := val.ToHostArray(kernels.Allocator())
-	if err != nil {
-		return nil, err
-	}
-	return cpevelements.NewAtom(elements.NewExprAt(file, expr), hostValue)
 }
 
 // ElementFromStorage returns an element from an atomic GX value and its storage.

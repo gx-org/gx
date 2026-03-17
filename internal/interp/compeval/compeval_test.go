@@ -478,8 +478,9 @@ func TestSubContext(t *testing.T) {
 		t.Fatal(err)
 	}
 	bValue, err := cpevelements.NewAtom(
-		elements.NewExprAt(nil, irhelper.IntNumberAs(3, ir.Int32Type())),
 		cstVal,
+		irhelper.IntNumberAs(3, ir.Int32Type()),
+		ir.Int32Type(),
 	)
 	if err != nil {
 		t.Fatal(err)

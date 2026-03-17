@@ -23,6 +23,7 @@ package interp
 
 import (
 	"github.com/gx-org/gx/api/options"
+	"github.com/gx-org/gx/api/values"
 	"github.com/gx-org/gx/build/fmterr"
 	"github.com/gx-org/gx/build/ir"
 	"github.com/gx-org/gx/interp/context"
@@ -125,6 +126,14 @@ func (fitp *FileScope) Context() *context.Context {
 // File returns the current file of the current execution.
 func (fitp *FileScope) File() *ir.File {
 	return fitp.ctx.File()
+}
+
+func (fitp *FileScope) elementFromAtom(expr ir.Expr, val values.Array) (evaluator.NumericalElement, error) {
+	typ, err := fitp.env.ToConcrete(expr.Expr(), expr.Type())
+	if err != nil {
+		return nil, err
+	}
+	return fitp.Evaluator().ArrayOps().ElementFromAtom(fitp.File(), val, expr, typ)
 }
 
 // String representation of the receiver.

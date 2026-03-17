@@ -30,10 +30,10 @@ import (
 
 type cast struct {
 	canonical.AtomStringImpl
-	src    elements.ExprAt
-	target ir.Type
-	x      Element
-	val    *values.HostArray
+	expr ir.Expr
+	typ  ir.Type
+	x    Element
+	val  *values.HostArray
 }
 
 var (
@@ -45,14 +45,18 @@ var (
 )
 
 func newCast(env evaluator.Env, expr ir.Expr, xEl Element, target ir.Type) (*cast, error) {
-	opEl := &cast{
-		src:    elements.NewNodeAt(env.File(), expr),
-		target: target,
-		x:      xEl,
-	}
 	x, err := elements.ConstantFromElement(xEl)
 	if err != nil {
 		return nil, err
+	}
+	typ, err := env.ToConcrete(expr.Expr(), target)
+	opEl := &cast{
+		expr: expr,
+		typ:  typ,
+		x:    xEl,
+	}
+	if err != nil {
+		return opEl, nil
 	}
 	if x == nil {
 		return opEl, nil
@@ -92,16 +96,17 @@ func NewReshape(env evaluator.Env, expr ir.Expr, xEl Element, axisLengths []eval
 	if x == nil {
 		return xEl, nil
 	}
-	val, err := values.NewHostArray(expr.Type(), x.Buffer())
-	if err != nil {
-		return nil, err
+	typ, err := env.ToConcrete(expr.Expr(), expr.Type())
+	c := &cast{
+		expr: expr,
+		typ:  typ,
+		x:    xEl,
 	}
-	return &cast{
-		src:    elements.NewExprAt(env.File(), expr),
-		target: expr.Type(),
-		x:      xEl,
-		val:    val,
-	}, nil
+	if err != nil {
+		return c, err
+	}
+	c.val, err = values.NewHostArray(typ, x.Buffer())
+	return c, err
 }
 
 func (a *cast) UnaryOp(env evaluator.Env, expr *ir.UnaryExpr) (evaluator.NumericalElement, error) {
@@ -127,12 +132,12 @@ func (a *cast) Shape() *shape.Shape {
 
 // Type of the element.
 func (a *cast) Type() ir.Type {
-	return a.src.Node().Type()
+	return a.typ
 }
 
 // Unflatten creates a GX value from the next handles available in the parser.
 func (a *cast) Unflatten(handles *flatten.Parser) (values.Value, error) {
-	return handles.ParseArray(a.src.Node().Type())
+	return handles.ParseArray(a.typ)
 }
 
 // NumericalConstant returns the value of a constant represented by a node.
@@ -146,17 +151,17 @@ func (a *cast) Copy() elements.Copier {
 }
 
 func (a *cast) Store() ir.Storage {
-	return a.target
+	return a.typ
 }
 
 // Materialise returns the element with all its values from the graph.
 func (a *cast) Materialise(ao materialise.Materialiser) (materialise.Node, error) {
-	return ao.NodeFromArray(a.val)
+	return ao.NodeFromArray(a.val, a.typ)
 }
 
 // Axes of the result of the cast.
 func (a *cast) Axes(ev ir.Evaluator) (*elements.Slice, error) {
-	return axesFromType(ev, a.target)
+	return axesFromType(ev, a.typ)
 }
 
 // Compare to another element.
@@ -172,7 +177,7 @@ func (a *cast) Compare(x canonical.Comparable) (bool, error) {
 	if !ok {
 		return false, nil
 	}
-	if a.target != other.target {
+	if a.typ != other.typ {
 		return false, nil
 	}
 	return a.x.Compare(other.x)
@@ -187,5 +192,5 @@ func (a *cast) ShortString() string {
 }
 
 func (a *cast) SourceString(from *ir.File) string {
-	return fmt.Sprintf("%v(%v)", ir.StringerWithFrom(from, a.target), ir.StringerWithFrom(from, a.x))
+	return fmt.Sprintf("%v(%v)", ir.StringerWithFrom(from, a.typ), ir.StringerWithFrom(from, a.x))
 }

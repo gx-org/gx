@@ -76,7 +76,7 @@ func (itp *Interpreter) defineBoolConstant(scope *scope.RWScope[ir.Element], ctx
 		return err
 	}
 	var el ir.Element
-	el, err = itp.eval.ElementFromAtom(ctx.File(), val.Value(nil), gxValue)
+	el, err = itp.eval.ArrayOps().ElementFromAtom(ctx.File(), gxValue, val.Value(nil), ir.BoolType())
 	if err != nil {
 		return err
 	}

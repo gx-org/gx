@@ -20,6 +20,7 @@ import (
 	"github.com/gx-org/backend/shape"
 	"github.com/gx-org/gx/api/values"
 	"github.com/gx-org/gx/build/ir"
+	"github.com/gx-org/gx/golang/backend/kernels"
 	"github.com/gx-org/gx/internal/interp/compeval/cpevelements"
 	"github.com/gx-org/gx/interp/elements"
 	"github.com/gx-org/gx/interp/evaluator"
@@ -64,7 +65,21 @@ func (compArrayOps) Set(ctx ir.Evaluator, expr *ir.FuncCallExpr, x, updates, ind
 	return cpevelements.NewArray(expr.Type().(ir.ArrayType)), nil
 }
 
+// ElementFromAtom returns an element from a GX value.
+func (compArrayOps) ElementFromAtom(file *ir.File, val values.Array, expr ir.Expr, typ ir.Type) (evaluator.NumericalElement, error) {
+	hostValue, err := val.ToHostArray(kernels.Allocator())
+	if err != nil {
+		return nil, err
+	}
+	return cpevelements.NewAtom(hostValue, expr, typ)
+}
+
 // ElementFromArray returns an element from an array GX value.
-func (compArrayOps) ElementFromArray(ctx ir.Evaluator, expr ir.Expr, val values.Array) (evaluator.NumericalElement, error) {
-	return cpevelements.NewArray(val.Type().(ir.ArrayType)), nil
+func (compArrayOps) ElementFromArray(file *ir.File, val values.Array, typ ir.Type) (evaluator.NumericalElement, error) {
+	arrayType := ir.ToArrayType(typ)
+	var err error
+	if arrayType == nil {
+		err = errors.Errorf("%s is not an array type", typ.ReferString(file))
+	}
+	return cpevelements.NewArray(arrayType), err
 }

@@ -73,7 +73,7 @@ func (rb *randBootstrap) nextConstant(env evaluator.Env) (evaluator.NumericalEle
 	if err != nil {
 		return nil, err
 	}
-	return rb.eval.ElementFromAtom(env.File(), expr, value)
+	return rb.eval.ArrayOps().ElementFromAtom(env.File(), value, expr, expr.Type())
 }
 
 type randBootstrapArg struct {

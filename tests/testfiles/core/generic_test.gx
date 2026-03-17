@@ -35,7 +35,7 @@ func genericNewFloat32[T floats](shape []intlen) [shape___]T {
 func TestGenericCastWithGenericShape() [2][3]float64 {
 	return genericNewFloat32[float64]([]intlen{2, 3})
 	// Want:
-	// [shape___]float64{
+	// [2][3]float64{
 	// 	{0, 0, 0},
 	// 	{0, 0, 0},
 	// }

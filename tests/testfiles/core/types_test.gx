@@ -133,7 +133,7 @@ func TestGenericDimensionsFloat32() [2][3]float32 {
 		[2][3]float32{{6, 5, 4}, {3, 2, 1}},
 	)
 	// Want:
-	// [_ax0][_ax1]float32{
+	// [2][3]float32{
 	// 	{7, 7, 7},
 	// 	{7, 7, 7},
 	// }

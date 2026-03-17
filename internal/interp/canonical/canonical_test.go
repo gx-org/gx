@@ -25,16 +25,20 @@ import (
 	"github.com/gx-org/gx/build/ir"
 	"github.com/gx-org/gx/internal/interp/canonical"
 	"github.com/gx-org/gx/internal/interp/compeval/cpevelements"
-	"github.com/gx-org/gx/interp/elements"
+	"github.com/gx-org/gx/interp/evaluator"
 	"github.com/gx-org/gx/interp/numbers"
 	"github.com/gx-org/gx/tests/testing/prime"
 )
 
 func newFloat(f float64) *numbers.Float {
 	bf := big.NewFloat(f)
-	return numbers.NewFloat(elements.NewExprAt(nil, &ir.NumberFloat{
+	val, err := numbers.NewFloat(evaluator.ProxyEnv(), &ir.NumberFloat{
 		Src: &ast.BasicLit{Value: bf.String()},
-	}), bf)
+	}, bf)
+	if err != nil {
+		panic(err)
+	}
+	return val
 }
 
 func newInt64(i int64) canonical.Canonical {
@@ -42,12 +46,14 @@ func newInt64(i int64) canonical.Canonical {
 	if err != nil {
 		panic(err)
 	}
-	can, err := cpevelements.NewAtom(elements.NewExprAt(nil, &ir.NumberCastExpr{
-		X: &ir.NumberInt{
-			Src: &ast.BasicLit{Value: fmt.Sprint(i)},
-		},
-		Typ: ir.Int64Type(),
-	}), val)
+	can, err := cpevelements.NewAtom(
+		val,
+		&ir.NumberCastExpr{
+			X: &ir.NumberInt{
+				Src: &ast.BasicLit{Value: fmt.Sprint(i)},
+			},
+			Typ: ir.Int64Type(),
+		}, ir.Int64Type())
 	if err != nil {
 		panic(err)
 	}

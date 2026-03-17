@@ -23,6 +23,7 @@ import (
 	"github.com/gx-org/gx/build/builtins"
 	"github.com/gx-org/gx/build/fmterr"
 	"github.com/gx-org/gx/build/ir"
+	"github.com/gx-org/gx/internal/concrete"
 	"github.com/gx-org/gx/internal/interp/canonical"
 	"github.com/gx-org/gx/interp/elements"
 	"github.com/gx-org/gx/interp/evaluator"
@@ -41,7 +42,7 @@ func (f broadcast) BuildFuncIR(impl *impl.Stdlib, pkg *ir.Package) (*ir.FuncBuil
 	return builtin.IRFuncBuiltin[broadcast]("Broadcast", evalBroadcast, pkg), nil
 }
 
-var oneAxisLength = numbers.NewInt(elements.NewExprAt(nil, &ir.NumberInt{}), big.NewInt(1))
+var oneAxisLength = numbers.NewIntForType(&ir.NumberInt{}, big.NewInt(1), ir.IntLenType())
 
 func checkBroadcastRanks(fetcher ir.Fetcher, call *ir.FuncCallExpr, src ir.ArrayRank, target ir.ArrayRank, targetElmts []canonical.Canonical) error {
 	if src == nil || target == nil {
@@ -124,8 +125,12 @@ func evalBroadcast(env evaluator.Env, call elements.CallAt, fn fun.Func, irFunc 
 	if err != nil {
 		return nil, err
 	}
+	tp, err := concrete.Concrete(env.ExprEval(), call.Node().Expr(), call.Node().Type())
+	if err != nil {
+		return nil, err
+	}
 	return materialise.ElementFromNode(call.File(), mat, &ops.OutputNode{
 		Node:  op,
 		Shape: targetShape,
-	}, call.Node().Type())
+	}, tp)
 }

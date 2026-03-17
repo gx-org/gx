@@ -190,8 +190,8 @@ func unpackOutputs(outputs []*ops.OutputNode) (nodes []ops.Node, shapes []*shape
 }
 
 // ElementFromArray returns an element from an array GX value.
-func (ao *arrayOps) NodeFromArray(val values.Array) (materialise.Node, error) {
-	return newValueElement(ao.ev, val)
+func (ao *arrayOps) NodeFromArray(val values.Array, typ ir.Type) (materialise.Node, error) {
+	return newValueElement(ao.ev, val, typ)
 }
 
 // ElementsFromNodes returns a slice of elements from nodes
@@ -219,7 +219,12 @@ func (ao *arrayOps) Tuple(typ *ir.TupleType, nodes []ops.Node) (materialise.Node
 	)
 }
 
+// ElementFromAtom returns an element from a GX value.
+func (ao *arrayOps) ElementFromAtom(file *ir.File, val values.Array, src ir.Expr, typ ir.Type) (evaluator.NumericalElement, error) {
+	return ao.ev.hostEval.ArrayOps().ElementFromAtom(file, val, src, typ)
+}
+
 // ElementFromArray returns an element from an array GX value.
-func (ao *arrayOps) ElementFromArray(ctx ir.Evaluator, expr ir.Expr, val values.Array) (evaluator.NumericalElement, error) {
-	return newValueElement(ao.ev, val)
+func (ao *arrayOps) ElementFromArray(file *ir.File, val values.Array, typ ir.Type) (evaluator.NumericalElement, error) {
+	return newValueElement(ao.ev, val, typ)
 }

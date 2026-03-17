@@ -88,7 +88,7 @@ func evalRangeForLoopOverInteger[T dtype.AlgebraType](fitp *FileScope, stmt *ir.
 		if err != nil {
 			return nil, true, err
 		}
-		iElement, err := fitp.Evaluator().ElementFromAtom(fitp.File(), iExpr, iValue)
+		iElement, err := fitp.elementFromAtom(iExpr, iValue)
 		if err != nil {
 			return nil, true, err
 		}
@@ -141,7 +141,7 @@ func evalRangeStmtForLoopOverArray[T dtype.AlgebraType](fitp *FileScope, stmt *i
 		if err != nil {
 			return nil, false, err
 		}
-		iElement, err := fitp.Evaluator().ElementFromAtom(fitp.File(), iExpr, iValue)
+		iElement, err := fitp.elementFromAtom(iExpr, iValue)
 		if err != nil {
 			return nil, false, err
 		}
@@ -349,7 +349,7 @@ func evalCastAtomToArrayExpr(fitp *FileScope, expr ir.TypeCastExpr, x evaluator.
 	shapeOfOnes := make([]evaluator.NumericalElement, len(axes))
 	for i := range axes {
 		var err error
-		shapeOfOnes[i], err = fitp.Evaluator().ElementFromAtom(fitp.File(), expr, one)
+		shapeOfOnes[i], err = fitp.elementFromAtom(expr, one)
 		if err != nil {
 			return nil, err
 		}
@@ -537,9 +537,9 @@ func evalExpr(fitp *FileScope, expr ir.Expr) (_ ir.Element, err error) {
 	case *ir.StringLiteral:
 		return elements.NewString(exprT)
 	case *ir.NumberFloat:
-		return numbers.NewFloat(elements.NewExprAt(fitp.File(), exprT), exprT.Val), nil
+		return numbers.NewFloat(fitp.env, exprT, exprT.Val)
 	case *ir.NumberInt:
-		return numbers.NewInt(elements.NewExprAt(fitp.File(), exprT), exprT.Val), nil
+		return numbers.NewInt(fitp.env, exprT, exprT.Val)
 	case ir.AtomicValue:
 		return evalAtomicValue(fitp, exprT)
 	case *ir.PackageRef:
@@ -758,7 +758,7 @@ func dimsAsElements(fitp *FileScope, expr ir.Expr, dims []int) ([]evaluator.Nume
 		if err != nil {
 			return nil, err
 		}
-		els[i], err = fitp.Evaluator().ElementFromAtom(fitp.File(), expr, val)
+		els[i], err = fitp.elementFromAtom(expr, val)
 		if err != nil {
 			return nil, err
 		}

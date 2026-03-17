@@ -32,7 +32,8 @@ import (
 
 type unary struct {
 	canonical canonical.Canonical
-	src       elements.NodeFile[*ir.UnaryExpr]
+	expr      *ir.UnaryExpr
+	typ       ir.Type
 	x         Element
 	val       *values.HostArray
 }
@@ -50,13 +51,18 @@ func newUnary(env evaluator.Env, expr *ir.UnaryExpr, xEl Element) (_ *unary, err
 			err = fmterr.Error(env.File().FileSet(), expr.Src, err)
 		}
 	}()
+	typ, err := env.ToConcrete(expr.Src, expr.Type())
 	opEl := &unary{
-		src: elements.NewNodeAt(env.File(), expr),
-		x:   xEl,
+		expr: expr,
+		typ:  typ,
+		x:    xEl,
 	}
 	defer func() {
 		opEl.canonical = opEl.toCanonical()
 	}()
+	if err != nil {
+		return opEl, err
+	}
 	x, err := elements.ConstantFromElement(xEl)
 	if err != nil {
 		return nil, err
@@ -119,12 +125,12 @@ func (a *unary) Shape() *shape.Shape {
 
 // Type of the element.
 func (a *unary) Type() ir.Type {
-	return a.src.Node().Type()
+	return a.typ
 }
 
 // Unflatten creates a GX value from the next handles available in the parser.
 func (a *unary) Unflatten(handles *flatten.Parser) (values.Value, error) {
-	return handles.ParseArray(a.src.Node().Type())
+	return handles.ParseArray(a.typ)
 }
 
 // NumericalConstant returns the value of a constant represented by a node.
@@ -134,11 +140,11 @@ func (a *unary) NumericalConstant() (*values.HostArray, error) {
 
 // Materialise returns the element with all its values from the graph.
 func (a *unary) Materialise(ao materialise.Materialiser) (materialise.Node, error) {
-	return ao.NodeFromArray(a.val)
+	return ao.NodeFromArray(a.val, a.typ)
 }
 
 func (a *unary) Expr() (ir.Expr, error) {
-	return a.src.Node(), nil
+	return a.expr, nil
 }
 
 // Compare to another element.
@@ -154,7 +160,7 @@ func (a *unary) Compare(x canonical.Comparable) (bool, error) {
 	if !ok {
 		return false, nil
 	}
-	if a.src.Node().Src.Op != other.src.Node().Src.Op {
+	if a.expr.Src.Op != other.expr.Src.Op {
 		return false, nil
 	}
 	return a.x.Compare(other.x)
@@ -166,7 +172,7 @@ func (a *unary) CanonicalExpr() canonical.Canonical {
 
 func (a *unary) toCanonical() canonical.Canonical {
 	x := a.x.CanonicalExpr()
-	switch a.src.Node().Src.Op {
+	switch a.expr.Src.Op {
 	case token.ADD:
 		return x
 	case token.SUB:
@@ -181,5 +187,5 @@ func (a *unary) ShortString() string {
 }
 
 func (a *unary) SourceString(from *ir.File) string {
-	return fmt.Sprintf("%v%v", a.src.Node().Src.Op, a.x.SourceString(from))
+	return fmt.Sprintf("%v%v", a.expr.Src.Op, a.x.SourceString(from))
 }

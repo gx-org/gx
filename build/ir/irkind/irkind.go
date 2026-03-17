@@ -220,3 +220,14 @@ func IsFloatKind(kind Kind) bool {
 func IsAlgebra(kind Kind) bool {
 	return IsFloatKind(kind) || IsIntegerKind(kind)
 }
+
+// IsConcrete returns true if kind is a concrete kind that can be used in an array.
+func IsConcrete(kind Kind) bool {
+	if IsIntegerKind(kind) {
+		return true
+	}
+	if IsFloatKind(kind) {
+		return true
+	}
+	return kind == Bool
+}

@@ -15,6 +15,7 @@
 package interp
 
 import (
+	"fmt"
 	"go/ast"
 	"strings"
 
@@ -23,6 +24,7 @@ import (
 	"github.com/gx-org/gx/build/fmterr"
 	"github.com/gx-org/gx/build/ir"
 	"github.com/gx-org/gx/build/ir/irkind"
+	"github.com/gx-org/gx/internal/concrete"
 	"github.com/gx-org/gx/internal/interp/flatten"
 	"github.com/gx-org/gx/interp/context"
 	"github.com/gx-org/gx/interp/elements"
@@ -333,7 +335,9 @@ func (itp *Interpreter) EvalFunc(fn *ir.FuncDecl, in *elements.InputElements) (o
 			}
 			return nil, errors.Errorf("missing parameter(s): %s", builder.String())
 		}
-		frame.Define(param.Name, in.Args[i])
+		if err := concrete.Define(fitp, frame, param, in.Args[i]); err != nil {
+			return nil, fmt.Errorf("cannot define argument %s: %w", param.Name.Name, err)
+		}
 	}
 	// Evaluate the function body.
 	outs, err = evalFuncBody(fitp, fn.Body)

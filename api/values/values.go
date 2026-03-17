@@ -192,7 +192,7 @@ func AtomNumberInt(x *big.Int, typ ir.Type) (*HostArray, error) {
 	case irkind.IntIdx:
 		return AtomIntegerValue[ir.Int](typ, bigIntToInt[ir.Int](x))
 	}
-	return nil, errors.Errorf("cannot convert %T(%s) to %s: not implemented", x, x, typ.ReferString(nil))
+	return nil, errors.Errorf("cannot convert value %s of type %s (kind: %s) to an atomic integer value", x.String(), typ.ReferString(nil), typ.Kind().String())
 }
 
 func bigFloatCast[T dtype.AlgebraType](x *big.Float) T {

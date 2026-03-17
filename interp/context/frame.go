@@ -118,10 +118,7 @@ func (core *Core) packageFrame(pkg *ir.Package) (*packageFrame, error) {
 	core.packageToFrame[pkg] = pkgFrame
 	var err error
 	pkgFrame.el, err = core.interp.InitPkgScope(pkg, pkgFrame.scope)
-	if err != nil {
-		return nil, err
-	}
-	return pkgFrame, nil
+	return pkgFrame, err
 }
 
 type fileFrame struct {
