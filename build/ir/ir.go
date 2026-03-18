@@ -320,7 +320,7 @@ func (s *TupleType) DefineString(from *File) string {
 	for i, typ := range s.Types {
 		ss[i] = typ.DefineString(from)
 	}
-	return fmt.Sprintf("(%s)", strings.Join(ss, ","))
+	return fmt.Sprintf("(%s)", strings.Join(ss, ", "))
 }
 
 // ReferString returns a reference to the type given a file context.

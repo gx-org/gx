@@ -177,7 +177,7 @@ func testIncorrectSelectorType() float32 {
 }
 
 func testMultipleValueError() float32 {
-	a := tuples() // ERROR multiple-value (value of type (float32,[4]float64,[2][2]float64)) in single-value context
+	a := tuples() // ERROR multiple-value (value of type (float32, [4]float64, [2][2]float64)) in single-value context
 	return a
 }
 
