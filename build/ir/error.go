@@ -14,20 +14,83 @@
 
 package ir
 
+import (
+	"go/ast"
+
+	"github.com/gx-org/gx/build/ir/irkind"
+)
+
 type errorType struct {
-	Interface
+	iface Interface
 }
 
 var errorTyp = &errorType{}
+var errorIdent = &ast.Ident{Name: "error"}
 
 // ErrorType returns the type for the keyword error.
 func ErrorType() Type {
 	return errorTyp
 }
 
+func (*errorType) node()         {}
+func (*errorType) storage()      {}
+func (*errorType) storageValue() {}
+
+// Kind returns the scalar kind.
+func (s *errorType) Kind() irkind.Kind { return irkind.Interface }
+
+// Equal returns true if other is the exact same type set.
+func (s *errorType) Equal(fetcher Fetcher, target Type) (bool, error) {
+	return s.iface.Equal(fetcher, target)
+}
+
+// AssignableTo reports whether a value of the type can be assigned to another.
+func (s *errorType) AssignableTo(fetcher Fetcher, target Type) (bool, error) {
+	return s.iface.AssignableTo(fetcher, target)
+}
+
+// ConvertibleTo reports whether a value of the type can be converted to another
+// (using static type casting).
+func (s *errorType) ConvertibleTo(fetcher Fetcher, target Type) (bool, error) {
+	return s.iface.ConvertibleTo(fetcher, target)
+}
+
 // DefineString returns the GX source code to define the type.
 func (s *errorType) DefineString(from *File) string {
 	return "error"
+}
+
+// NameDef of the base type always returns a nil name definition.
+func (s *errorType) NameDef() *ast.Ident { return errorIdent }
+
+// Node returns the source node defining the type.
+func (s *errorType) Node() ast.Node {
+	return s.iface.Node()
+}
+
+// Same returns true if the other storage is this storage.
+func (s *errorType) Same(o Storage) bool {
+	return Storage(s) == o
+}
+
+// Specialise a type to a given target.
+func (s *errorType) Specialise(spec Specialiser) (Type, error) {
+	return s, nil
+}
+
+// Value returns a value pointing to the receiver.
+func (s *errorType) Value(x Expr) Expr {
+	return TypeExpr(x, s)
+}
+
+// UnifyWith recursively unifies a type parameters with types.
+func (s *errorType) UnifyWith(unifier Unifier, typ Type) bool {
+	return true
+}
+
+// Type of a type: always return metatype.
+func (s *errorType) Type() Type {
+	return MetaType()
 }
 
 // ReferString returns the GX source to refer to the type.
