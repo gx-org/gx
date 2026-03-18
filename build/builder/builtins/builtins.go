@@ -30,6 +30,7 @@ var irBuiltins = map[string]func(Registerer){}
 func init() {
 	// Builtin types.
 	registerBuiltinType("any", ir.AnyType())
+	registerBuiltinType("error", ir.ErrorType())
 	registerBuiltinType("bool", ir.BoolType())
 	registerBuiltinType("bfloat16", ir.Bfloat16Type())
 	registerBuiltinType("float32", ir.Float32Type())

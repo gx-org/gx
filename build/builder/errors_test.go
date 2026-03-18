@@ -18,7 +18,28 @@ import (
 	"testing"
 
 	"github.com/gx-org/gx/build/builder/testbuild"
+	"github.com/gx-org/gx/build/ir"
+	irh "github.com/gx-org/gx/build/ir/irhelper"
 )
+
+func TestErrorBuiltin(t *testing.T) {
+	testbuild.Run(t,
+		testbuild.Decl{
+			Src: `
+func someError() error
+`,
+			Want: []ir.IR{
+				&ir.FuncBuiltin{
+					FType: irh.FuncType(
+						nil, nil,
+						irh.Fields(),
+						irh.Fields(ir.ErrorType()),
+					),
+				},
+			},
+		},
+	)
+}
 
 func TestErrors(t *testing.T) {
 	testbuild.Run(t,

@@ -158,12 +158,12 @@ func (t *invalidType) ReferString(from *File) string {
 }
 
 // Specialise a type to a given target.
-func (m *invalidType) Specialise(spec Specialiser) (Type, error) {
-	return m, nil
+func (t *invalidType) Specialise(spec Specialiser) (Type, error) {
+	return t, nil
 }
 
 // UnifyWith recursively unifies a type parameters with types.
-func (m *invalidType) UnifyWith(unifier Unifier, typ Type) bool {
+func (*invalidType) UnifyWith(unifier Unifier, typ Type) bool {
 	return true
 }
 
@@ -257,10 +257,9 @@ type Interface struct {
 }
 
 var (
-	anyType             = &Interface{}
-	_       Type        = (*Interface)(nil)
-	_       ArrayType   = (*Interface)(nil)
-	_       assignsFrom = (*Interface)(nil)
+	_ Type        = (*Interface)(nil)
+	_ ArrayType   = (*Interface)(nil)
+	_ assignsFrom = (*Interface)(nil)
 )
 
 // NewInterface returns a new type set given a set of types.
@@ -272,11 +271,6 @@ func NewInterface(src *ast.InterfaceType, types []Type) *Interface {
 		BaseType: BaseType[*ast.InterfaceType]{Src: src},
 		types:    types,
 	}
-}
-
-// AnyType returns the type for the keyword any.
-func AnyType() Type {
-	return anyType
 }
 
 func (*Interface) node() {}
@@ -373,6 +367,34 @@ func (s *Interface) Specialise(Specialiser) (Type, error) {
 // UnifyWith recursively unifies a type parameters with types.
 func (*Interface) UnifyWith(unifier Unifier, typ Type) bool {
 	return true
+}
+
+var anyType = &Interface{}
+
+// AnyType returns the type for the keyword any.
+func AnyType() Type {
+	return anyType
+}
+
+type errorType struct {
+	Interface
+}
+
+var errorTyp = &errorType{}
+
+// ErrorType returns the type for the keyword error.
+func ErrorType() Type {
+	return errorTyp
+}
+
+// DefineString returns the GX source code to define the type.
+func (s *errorType) DefineString(from *File) string {
+	return "error"
+}
+
+// ReferString returns the GX source to refer to the type.
+func (s *errorType) ReferString(from *File) string {
+	return s.DefineString(from)
 }
 
 // TypeInclude returns if a typ is included in a type or not.

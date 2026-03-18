@@ -53,6 +53,7 @@ func (itp *Interpreter) InitBuiltins(ctx *context.Context, scope *scope.RWScope[
 	}
 	for _, tp := range []ir.Type{
 		ir.AnyType(),
+		ir.ErrorType(),
 		ir.BoolType(),
 		ir.Bfloat16Type(),
 		ir.Float32Type(),
