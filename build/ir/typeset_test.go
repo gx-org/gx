@@ -24,7 +24,7 @@ import (
 
 func TestTypeSetSlice(t *testing.T) {
 	tests := []struct {
-		typeSet *ir.TypeSet
+		typeSet *ir.Interface
 		want    ir.Type
 		ok      bool
 	}{

@@ -16,8 +16,8 @@ package ir
 
 import "github.com/gx-org/gx/build/ir/irkind"
 
-func toTypeSet(typ Type) (*TypeSet, bool) {
-	typSet, ok := Underlying(typ).(*TypeSet)
+func toInterface(typ Type) (*Interface, bool) {
+	typSet, ok := Underlying(typ).(*Interface)
 	return typSet, ok
 }
 
@@ -37,7 +37,7 @@ func SupportOperators(typ Type) bool {
 	case irkind.Uint32, irkind.Uint64:
 		return true
 	case irkind.Interface:
-		if typSet, ok := toTypeSet(typ); ok {
+		if typSet, ok := toInterface(typ); ok {
 			return typSet.hasCapability(SupportOperators)
 		}
 		return false
@@ -55,7 +55,7 @@ func IsDataType(typ Type) bool {
 	case irkind.Int32, irkind.Int64:
 	case irkind.Uint32, irkind.Uint64:
 	case irkind.Interface:
-		if typSet, ok := toTypeSet(typ); ok {
+		if typSet, ok := toInterface(typ); ok {
 			return typSet.hasCapability(IsDataType)
 		}
 		return false
@@ -74,7 +74,7 @@ func IsIndexType(typ Type) bool {
 	case irkind.Uint64:
 	case irkind.IntLen:
 	case irkind.Interface:
-		if typSet, ok := toTypeSet(typ); ok {
+		if typSet, ok := toInterface(typ); ok {
 			return typSet.hasCapability(IsIndexType)
 		}
 		return false
@@ -91,7 +91,7 @@ func IsSlicingOk(typ Type) bool {
 	case irkind.Slice, irkind.Array:
 		return true
 	case irkind.Interface:
-		if typSet, ok := toTypeSet(typ); ok {
+		if typSet, ok := toInterface(typ); ok {
 			return typSet.hasCapability(IsSlicingOk)
 		}
 		return false
@@ -117,7 +117,7 @@ func IsAxisLengthType(typ Type) bool {
 		}
 		return sliceType.DType.Val().Kind() == irkind.IntLen
 	case irkind.Interface:
-		if typSet, ok := toTypeSet(typ); ok {
+		if typSet, ok := toInterface(typ); ok {
 			return typSet.hasCapability(IsInteger)
 		}
 		return false
@@ -128,7 +128,7 @@ func IsAxisLengthType(typ Type) bool {
 // IsInteger return true if kind is an integer.
 func IsInteger(typ Type) bool {
 	if typ.Kind() == irkind.Interface {
-		if typSet, ok := toTypeSet(typ); ok {
+		if typSet, ok := toInterface(typ); ok {
 			return typSet.hasCapability(IsInteger)
 		}
 		return false
@@ -139,7 +139,7 @@ func IsInteger(typ Type) bool {
 // IsFloat return true if type is a float.
 func IsFloat(typ Type) bool {
 	if typ.Kind() == irkind.Interface {
-		if typSet, ok := toTypeSet(typ); ok {
+		if typSet, ok := toInterface(typ); ok {
 			return typSet.hasCapability(IsFloat)
 		}
 		return false
@@ -153,7 +153,7 @@ func CanBeNumber(typ Type) bool {
 	case irkind.IntLen, irkind.IntIdx:
 		return true
 	case irkind.Interface:
-		if typSet, ok := toTypeSet(typ); ok {
+		if typSet, ok := toInterface(typ); ok {
 			return typSet.hasCapability(CanBeNumber)
 		}
 		return false

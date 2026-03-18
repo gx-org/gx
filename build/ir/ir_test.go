@@ -539,8 +539,8 @@ func TestArrayRanksConvertibleTo(t *testing.T) {
 	}
 }
 
-func makeTypeSet(typs ...ir.Type) *ir.TypeSet {
-	return ir.NewTypeSet(nil, typs)
+func makeTypeSet(typs ...ir.Type) *ir.Interface {
+	return ir.NewInterface(nil, typs)
 }
 
 var (
@@ -655,7 +655,7 @@ interface { int32|int64|uint32|uint64 }: XXXXXXXXXX
 
 func TestTypeSetCapabilities(t *testing.T) {
 	cases := []struct {
-		set *ir.TypeSet
+		set *ir.Interface
 
 		supportOperators bool
 		isDataType       bool

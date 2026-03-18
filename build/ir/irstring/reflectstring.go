@@ -203,7 +203,7 @@ func init() {
 	typeToProcess["github.com/gx-org/gx/build/ir.Ident"] = debugOk(identToString)
 	typeToProcess["github.com/gx-org/gx/build/annotations/annotations.Annotations"] = debugOk(valueToString)
 	typeToProcess["github.com/gx-org/gx/build/ir.StringLiteral"] = debugOk(stringLiteral)
-	typeToProcess["github.com/gx-org/gx/build/ir.TypeSet"] = notOnDebug(valueToString)
+	typeToProcess["github.com/gx-org/gx/build/ir.Interface"] = notOnDebug(valueToString)
 	typeToProcess["github.com/gx-org/gx/build/ir.Rank"] = notOnDebug(rank)
 	typeToProcess["github.com/gx-org/gx/build/ir.FuncValExpr"] = notOnDebug(funcValExpr)
 	typeToProcess["github.com/gx-org/gx/build/ir.File"] = debugOk(func(map[any]bool, reflect.Value, processor) string {

@@ -76,7 +76,7 @@ func (s *typeSet) buildTypeExpr(rscope resolveScope) (*ir.TypeValExpr, bool) {
 		}
 		rtypeNames[typeExpr.SourceString(rscope.fileScope().irFile())] = typeExpr.Val()
 	}
-	return ir.TypeExpr(nil, ir.NewTypeSet(s.src, types)), ok
+	return ir.TypeExpr(nil, ir.NewInterface(s.src, types)), ok
 }
 
 func (s *typeSet) source() ast.Node {

@@ -250,25 +250,25 @@ func PackageType() Type {
 	return packageT
 }
 
-// TypeSet represents a set of types.
-type TypeSet struct {
+// Interface represents a set of types.
+type Interface struct {
 	BaseType[*ast.InterfaceType]
 	types []Type
 }
 
 var (
-	anyType             = &TypeSet{}
-	_       Type        = (*TypeSet)(nil)
-	_       ArrayType   = (*TypeSet)(nil)
-	_       assignsFrom = (*TypeSet)(nil)
+	anyType             = &Interface{}
+	_       Type        = (*Interface)(nil)
+	_       ArrayType   = (*Interface)(nil)
+	_       assignsFrom = (*Interface)(nil)
 )
 
-// NewTypeSet returns a new type set given a set of types.
-func NewTypeSet(src *ast.InterfaceType, types []Type) *TypeSet {
+// NewInterface returns a new type set given a set of types.
+func NewInterface(src *ast.InterfaceType, types []Type) *Interface {
 	if src == nil {
 		src = &ast.InterfaceType{}
 	}
-	return &TypeSet{
+	return &Interface{
 		BaseType: BaseType[*ast.InterfaceType]{Src: src},
 		types:    types,
 	}
@@ -279,28 +279,28 @@ func AnyType() Type {
 	return anyType
 }
 
-func (*TypeSet) node() {}
+func (*Interface) node() {}
 
 // Rank of the array.
-func (*TypeSet) Rank() ArrayRank { return scalarRank }
+func (*Interface) Rank() ArrayRank { return scalarRank }
 
 // DataType returns the type of the element.
-func (s *TypeSet) DataType() Type {
+func (s *Interface) DataType() Type {
 	return s
 }
 
 // ArrayType returns the source code defining the type.
 // Always returns nil.
-func (s *TypeSet) ArrayType() ast.Expr {
+func (s *Interface) ArrayType() ast.Expr {
 	return s.BaseType.Src
 }
 
 // Kind returns the scalar kind.
-func (s *TypeSet) Kind() irkind.Kind { return irkind.Interface }
+func (s *Interface) Kind() irkind.Kind { return irkind.Interface }
 
 // Equal returns true if other is the exact same type set.
-func (s *TypeSet) Equal(fetcher Fetcher, target Type) (bool, error) {
-	targetSet, ok := target.(*TypeSet)
+func (s *Interface) Equal(fetcher Fetcher, target Type) (bool, error) {
+	targetSet, ok := target.(*Interface)
 	if !ok {
 		return false, nil
 	}
@@ -322,8 +322,8 @@ func (s *TypeSet) Equal(fetcher Fetcher, target Type) (bool, error) {
 }
 
 // AssignableTo reports whether a value of the type can be assigned to another.
-func (s *TypeSet) AssignableTo(fetcher Fetcher, target Type) (bool, error) {
-	if targetSet, ok := target.(*TypeSet); ok {
+func (s *Interface) AssignableTo(fetcher Fetcher, target Type) (bool, error) {
+	if targetSet, ok := target.(*Interface); ok {
 		return targetSet.assignableFrom(fetcher, s)
 	}
 	for _, typ := range s.types {
@@ -335,12 +335,12 @@ func (s *TypeSet) AssignableTo(fetcher Fetcher, target Type) (bool, error) {
 }
 
 // AssignableFrom reports whether a given source type is assignable to any members of the set.
-func (s *TypeSet) assignableFrom(fetcher Fetcher, source Type) (bool, error) {
+func (s *Interface) assignableFrom(fetcher Fetcher, source Type) (bool, error) {
 	if len(s.types) == 0 {
 		return true, nil
 	}
 
-	if sourceSet, ok := source.(*TypeSet); ok {
+	if sourceSet, ok := source.(*Interface); ok {
 		return s.containsTypes(fetcher, sourceSet), nil
 	}
 	for _, typ := range s.types {
@@ -353,8 +353,8 @@ func (s *TypeSet) assignableFrom(fetcher Fetcher, source Type) (bool, error) {
 
 // ConvertibleTo reports whether a value of the type can be converted to another
 // (using static type casting).
-func (s *TypeSet) ConvertibleTo(fetcher Fetcher, target Type) (bool, error) {
-	if _, ok := target.(*TypeSet); ok {
+func (s *Interface) ConvertibleTo(fetcher Fetcher, target Type) (bool, error) {
+	if _, ok := target.(*Interface); ok {
 		return s.Equal(fetcher, target)
 	}
 	for _, typ := range s.types {
@@ -366,12 +366,12 @@ func (s *TypeSet) ConvertibleTo(fetcher Fetcher, target Type) (bool, error) {
 }
 
 // Specialise a type to a given target.
-func (s *TypeSet) Specialise(Specialiser) (Type, error) {
+func (s *Interface) Specialise(Specialiser) (Type, error) {
 	return s, nil
 }
 
 // UnifyWith recursively unifies a type parameters with types.
-func (*TypeSet) UnifyWith(unifier Unifier, typ Type) bool {
+func (*Interface) UnifyWith(unifier Unifier, typ Type) bool {
 	return true
 }
 
@@ -389,7 +389,7 @@ func TypeInclude(fetcher Fetcher, set Type, typ Type) (bool, error) {
 
 func typeInclude(fetcher Fetcher, set Type, typ Type) (bool, error) {
 	set = Underlying(set)
-	typeSet, typeSetOk := set.(*TypeSet)
+	typeSet, typeSetOk := set.(*Interface)
 	if !typeSetOk {
 		return set.Equal(fetcher, typ)
 	}
@@ -407,16 +407,16 @@ func typeInclude(fetcher Fetcher, set Type, typ Type) (bool, error) {
 
 // Source returns the source code defining the type.
 // Always returns nil.
-func (s *TypeSet) Source() ast.Node { return s.ArrayType() }
+func (s *Interface) Source() ast.Node { return s.ArrayType() }
 
 // Zero returns a zero expression of the same type.
-func (s *TypeSet) Zero() Expr {
+func (s *Interface) Zero() Expr {
 	panic("unimplemented")
 }
 
 // ElementType returns the type of an element.
-func (s *TypeSet) ElementType() (Type, bool) {
-	sub := &TypeSet{}
+func (s *Interface) ElementType() (Type, bool) {
+	sub := &Interface{}
 	ok := true
 	for _, typ := range s.types {
 		aType, eltOk := typ.(SlicerType)
@@ -435,11 +435,11 @@ func (s *TypeSet) ElementType() (Type, bool) {
 }
 
 // Value returns a value pointing to the receiver.
-func (s *TypeSet) Value(x Expr) Expr {
+func (s *Interface) Value(x Expr) Expr {
 	return TypeExpr(x, s)
 }
 
-func (s *TypeSet) interfaceString(types []string) string {
+func (s *Interface) interfaceString(types []string) string {
 	if len(types) == 0 {
 		return "any"
 	}
@@ -451,7 +451,7 @@ func (s *TypeSet) interfaceString(types []string) string {
 }
 
 // DefineString returns the GX source code to define the type.
-func (s *TypeSet) DefineString(from *File) string {
+func (s *Interface) DefineString(from *File) string {
 	types := make([]string, len(s.types))
 	for i, typ := range s.types {
 		types[i] = typ.ReferString(from)
@@ -460,17 +460,17 @@ func (s *TypeSet) DefineString(from *File) string {
 }
 
 // ReferString returns the GX source to refer to the type.
-func (s *TypeSet) ReferString(from *File) string {
+func (s *Interface) ReferString(from *File) string {
 	return s.DefineString(from)
 }
 
-func (s *TypeSet) equalArray(fetcher Fetcher, target ArrayType) (bool, error) {
+func (s *Interface) equalArray(fetcher Fetcher, target ArrayType) (bool, error) {
 	return s.Equal(fetcher, target)
 }
 
 // hasCapability returns true if and only if the capability applies to all types in the set.
 // Returns false if the type set is empty.
-func (s *TypeSet) hasCapability(f func(Type) bool) bool {
+func (s *Interface) hasCapability(f func(Type) bool) bool {
 	for _, typ := range s.types {
 		if !f(typ) {
 			return false
@@ -480,7 +480,7 @@ func (s *TypeSet) hasCapability(f func(Type) bool) bool {
 }
 
 // containsType returns true if the given type is present in the set.
-func (s *TypeSet) containsType(fetcher Fetcher, wantType Type) bool {
+func (s *Interface) containsType(fetcher Fetcher, wantType Type) bool {
 	for _, typ := range s.types {
 		if eq, _ := wantType.Equal(fetcher, typ); eq {
 			return true
@@ -490,7 +490,7 @@ func (s *TypeSet) containsType(fetcher Fetcher, wantType Type) bool {
 }
 
 // containsTypes returns true if all the given types are present in the set.
-func (s *TypeSet) containsTypes(fetcher Fetcher, types *TypeSet) bool {
+func (s *Interface) containsTypes(fetcher Fetcher, types *Interface) bool {
 	for _, wantType := range types.types {
 		if !s.containsType(fetcher, wantType) {
 			return false
@@ -529,7 +529,7 @@ func ToArrayType(typ Type) ArrayType {
 		return ToArrayType(typT.Field.Group.Type.Val())
 	case *NamedType:
 		return ToArrayType(typT.Underlying.Val())
-	case *TypeSet:
+	case *Interface:
 		if !typT.hasCapability(IsDataType) {
 			return nil
 		}
