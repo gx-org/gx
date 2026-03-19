@@ -27,6 +27,7 @@ import (
 	"iter"
 	"maps"
 	"math/big"
+	"path"
 	"path/filepath"
 	"slices"
 	"strings"
@@ -597,7 +598,7 @@ func (s *NamedType) convertibleFrom(fetcher Fetcher, source Type) (bool, error) 
 
 // FullName returns the full name of the type, that is the full package path and the type name.
 func (s *NamedType) FullName() string {
-	return s.File.Package.Path + "." + s.Name()
+	return s.File.Package.FullName() + "." + s.Name()
 }
 
 // Node returns the node in the AST tree.
@@ -1307,10 +1308,7 @@ func (pkg *Package) File(name string) *File {
 
 // FullName returns the full name of the package, including its path.
 func (pkg *Package) FullName() string {
-	if pkg.Path == "" {
-		return pkg.Name.Name
-	}
-	return pkg.Path + "/" + pkg.Name.Name
+	return path.Join(pkg.Path, pkg.Name.Name)
 }
 
 // TypeByName returns a type defined in the package given its name.
