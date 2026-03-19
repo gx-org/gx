@@ -135,3 +135,40 @@ func TestConstWithType(t *testing.T) {
 		},
 	)
 }
+
+func TestConstAxes(t *testing.T) {
+	testbuild.Run(t,
+		testbuild.Decl{
+			Src: `
+const A = 2
+
+func F() [A]int32 {
+	return [2]int32{1, 2}
+}
+`,
+		},
+	)
+}
+
+func TestConstErrors(t *testing.T) {
+	testbuild.Run(t,
+		testbuild.Decl{
+			Src: `
+const A = 3
+
+func F() [A]int32 {
+	return [2]int32{1, 2} // ERROR cannot use [2]int32 as [A]int32 value in return statement
+}
+`,
+		},
+		testbuild.Decl{
+			Src: `
+const A = 3
+
+func F() [2]int32 {
+	return [A]int32{1, 2, 3} // ERROR cannot use [A]int32 as [2]int32 value in return statement
+}
+`,
+		},
+	)
+}
