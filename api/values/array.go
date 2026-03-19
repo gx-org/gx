@@ -241,6 +241,11 @@ func (a *HostArray) SourceString(from *ir.File) string {
 	return a.typ.ReferString(from) + array.DataString()
 }
 
+// String representation of the array and its type.
+func (a *HostArray) String(from *ir.File) string {
+	return a.SourceString(nil)
+}
+
 // ToAtom converts an array on the host into a Go atom value.
 func ToAtom[T dtype.GoDataType](a *HostArray) (T, error) {
 	data := a.Buffer().Acquire()

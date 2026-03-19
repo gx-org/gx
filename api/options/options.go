@@ -16,6 +16,8 @@
 package options
 
 import (
+	"fmt"
+
 	"github.com/gx-org/backend/platform"
 	"github.com/gx-org/gx/api/values"
 )
@@ -27,6 +29,8 @@ type (
 	// PackageOption is an option specific to a package.
 	PackageOption interface {
 		Package() string
+
+		String() string
 	}
 
 	// PackageVarSetValue sets the value of a package level static variable.
@@ -43,6 +47,11 @@ type (
 // Package for which the option has been built.
 func (p PackageVarSetValue) Package() string {
 	return p.Pkg
+}
+
+// String representation of the option.
+func (p PackageVarSetValue) String() string {
+	return fmt.Sprintf("%s.%s=%T:%v", p.Pkg, p.Var, p.Value, p.Value)
 }
 
 // Process options for a given platform.

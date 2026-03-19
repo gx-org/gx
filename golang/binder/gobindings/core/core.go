@@ -16,8 +16,12 @@
 package core
 
 import (
+	"fmt"
+	"strings"
 	"sync"
+	"time"
 
+	"google3/base/go/log"
 	"github.com/pkg/errors"
 	"github.com/gx-org/gx/api"
 	"github.com/gx-org/gx/api/options"
@@ -150,7 +154,20 @@ func (s *PackageCompileSetup) NewCacheFromFunc(fn *ir.FuncDecl) *FuncCache {
 	return &FuncCache{pkg: s, fn: fn}
 }
 
-func (c *FuncCache) buildRunner(recv values.Value, args []values.Value) (tracer.CompiledFunc, error) {
+func optionsToString(opts []options.PackageOption) string {
+	optsS := make([]string, len(opts))
+	for i, opt := range opts {
+		optsS[i] = opt.String()
+	}
+	return fmt.Sprintf("{%s}", strings.Join(optsS, ", "))
+}
+
+func (c *FuncCache) buildRunner(recv values.Value, args []values.Value) (_ tracer.CompiledFunc, err error) {
+	log.Infof("GX Tracing %s.%s with options %s", c.fn.FFile.Package.Name.Name, c.fn.Name(), optionsToString(c.pkg.devSetup.opts))
+	now := time.Now()
+	defer func() {
+		log.Infof("GX Tracing %s.%s: DONE. Time: %v.", c.fn.FFile.Package.Name.Name, c.fn.Name(), time.Since(now))
+	}()
 	runner, err := tracer.Trace(c.pkg.devSetup.device, c.fn, recv, args, c.pkg.devSetup.opts)
 	if err != nil {
 		return nil, err

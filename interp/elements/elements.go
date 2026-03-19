@@ -240,6 +240,11 @@ func (p PackageVarSetElement) Package() string {
 	return p.Pkg
 }
 
+// String representation of the option.
+func (p PackageVarSetElement) String() string {
+	return fmt.Sprintf("%s.%s=%T:%v", p.Pkg, p.Var, p.Value, p.Value)
+}
+
 // StringFromElement returns the string value stored in a element.
 func StringFromElement(el ir.Element) (string, error) {
 	sEl, ok := el.(*String)
