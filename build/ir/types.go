@@ -471,16 +471,3 @@ func AssignableTo(fetcher Fetcher, x, y Type) (bool, error) {
 	}
 	return x.AssignableTo(fetcher, y)
 }
-
-// AssignableToAt reports whether a value of the type can be assigned to another.
-// An error is added at the specified code location if the value cannot be assigned.
-func AssignableToAt(fetcher Fetcher, pos ast.Node, src, dst Type) bool {
-	assignable, err := AssignableTo(fetcher, src, dst)
-	if err != nil {
-		return fetcher.Err().AppendAt(pos, err)
-	}
-	if !assignable {
-		return fetcher.Err().Appendf(pos, "cannot use %s as %s value in assignment", src.ReferString(fetcher.File()), dst.ReferString(fetcher.File()))
-	}
-	return true
-}

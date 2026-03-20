@@ -192,7 +192,14 @@ func assignableToAt(rscope resolveScope, pos ast.Node, src, dst ir.Type) bool {
 	if !compEvalOk {
 		return false
 	}
-	return ir.AssignableToAt(compEval, pos, src, dst)
+	assignable, err := ir.AssignableTo(compEval, src, dst)
+	if err != nil {
+		return compEval.Err().AppendAt(pos, err)
+	}
+	if !assignable {
+		return compEval.Err().Appendf(pos, "cannot use %s as %s value in assignment", src.ReferString(compEval.File()), dst.ReferString(compEval.File()))
+	}
+	return true
 }
 
 func assignableTo(rscope resolveScope, src, dst ir.Type) (bool, error) {
