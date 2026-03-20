@@ -70,16 +70,16 @@ type metaType struct {
 
 func (*metaType) node() {}
 
-func (*metaType) Equal(Fetcher, Type) (bool, error) {
-	return false, nil
+func (*metaType) Equal(Fetcher, Type) (bool, CompEvalError, error) {
+	return false, nil, nil
 }
 
-func (*metaType) AssignableTo(Fetcher, Type) (bool, error) {
-	return false, nil
+func (*metaType) AssignableTo(Fetcher, Type) (bool, CompEvalError, error) {
+	return false, nil, nil
 }
 
-func (*metaType) ConvertibleTo(fetcher Fetcher, target Type) (bool, error) {
-	return false, nil
+func (*metaType) ConvertibleTo(fetcher Fetcher, target Type) (bool, CompEvalError, error) {
+	return false, nil, nil
 }
 
 func (t *metaType) Kind() irkind.Kind { return irkind.MetaType }
@@ -122,21 +122,21 @@ func (*invalidType) Same(Storage) bool {
 	return true
 }
 
-func (*invalidType) Equal(Fetcher, Type) (bool, error) {
+func (*invalidType) Equal(Fetcher, Type) (bool, CompEvalError, error) {
 	// If the type is invalid, an error has already been emitted.
 	// We disable any checks to avoid reporting unhelpful errors.
-	return false, nil
+	return false, nil, nil
 }
 
-func (*invalidType) AssignableTo(Fetcher, Type) (bool, error) {
+func (*invalidType) AssignableTo(Fetcher, Type) (bool, CompEvalError, error) {
 	return (*invalidType).Equal(nil, nil, nil)
 }
 
-func (*invalidType) assignableFrom(Fetcher, Type) (bool, error) {
+func (*invalidType) assignableFrom(Fetcher, Type) (bool, CompEvalError, error) {
 	return (*invalidType).Equal(nil, nil, nil)
 }
 
-func (*invalidType) ConvertibleTo(Fetcher, Type) (bool, error) {
+func (*invalidType) ConvertibleTo(Fetcher, Type) (bool, CompEvalError, error) {
 	return (*invalidType).Equal(nil, nil, nil)
 }
 
@@ -177,19 +177,19 @@ func (t *distinctType) distinct() *distinctType {
 	return t
 }
 
-func (t *distinctType) Equal(_ Fetcher, target Type) (bool, error) {
+func (t *distinctType) Equal(_ Fetcher, target Type) (bool, CompEvalError, error) {
 	other, ok := target.(interface{ distinct() *distinctType })
 	if !ok {
-		return false, nil
+		return false, nil, nil
 	}
-	return t == other.distinct(), nil
+	return t == other.distinct(), nil, nil
 }
 
-func (t *distinctType) AssignableTo(fetcher Fetcher, target Type) (bool, error) {
+func (t *distinctType) AssignableTo(fetcher Fetcher, target Type) (bool, CompEvalError, error) {
 	return t.Equal(fetcher, target)
 }
 
-func (t *distinctType) ConvertibleTo(fetcher Fetcher, target Type) (bool, error) {
+func (t *distinctType) ConvertibleTo(fetcher Fetcher, target Type) (bool, CompEvalError, error) {
 	return t.Equal(fetcher, target)
 }
 
@@ -250,7 +250,7 @@ func PackageType() Type {
 }
 
 // TypeInclude returns if a typ is included in a type or not.
-func TypeInclude(fetcher Fetcher, set Type, typ Type) (bool, error) {
+func TypeInclude(fetcher Fetcher, set Type, typ Type) (bool, CompEvalError, error) {
 	set = simplifyType(set)
 	typ = simplifyType(typ)
 	_, isSetNamed := set.(*NamedType)
@@ -261,22 +261,22 @@ func TypeInclude(fetcher Fetcher, set Type, typ Type) (bool, error) {
 	return typeInclude(fetcher, set, typ)
 }
 
-func typeInclude(fetcher Fetcher, set Type, typ Type) (bool, error) {
+func typeInclude(fetcher Fetcher, set Type, typ Type) (bool, CompEvalError, error) {
 	set = Underlying(set)
 	typeSet, typeSetOk := set.(*Interface)
 	if !typeSetOk {
 		return set.Equal(fetcher, typ)
 	}
 	for _, sub := range typeSet.types {
-		in, err := typeInclude(fetcher, sub, typ)
-		if err != nil {
-			return false, err
+		in, cpErr, err := typeInclude(fetcher, sub, typ)
+		if cpErr != nil || err != nil {
+			return false, nil, err
 		}
 		if in {
-			return true, nil
+			return true, nil, nil
 		}
 	}
-	return false, nil
+	return false, nil, nil
 }
 
 // Source returns the source code defining the type.
@@ -338,7 +338,7 @@ func (s *Interface) ReferString(from *File) string {
 	return s.DefineString(from)
 }
 
-func (s *Interface) equalArray(fetcher Fetcher, target ArrayType) (bool, error) {
+func (s *Interface) equalArray(fetcher Fetcher, target ArrayType) (bool, CompEvalError, error) {
 	return s.Equal(fetcher, target)
 }
 
@@ -354,23 +354,31 @@ func (s *Interface) hasCapability(f func(Type) bool) bool {
 }
 
 // containsType returns true if the given type is present in the set.
-func (s *Interface) containsType(fetcher Fetcher, wantType Type) bool {
+func (s *Interface) containsType(fetcher Fetcher, wantType Type) (bool, CompEvalError, error) {
 	for _, typ := range s.types {
-		if eq, _ := wantType.Equal(fetcher, typ); eq {
-			return true
+		eq, cpErr, err := wantType.Equal(fetcher, typ)
+		if cpErr != nil || err != nil {
+			return false, cpErr, err
+		}
+		if eq {
+			return true, nil, nil
 		}
 	}
-	return false
+	return false, nil, nil
 }
 
 // containsTypes returns true if all the given types are present in the set.
-func (s *Interface) containsTypes(fetcher Fetcher, types *Interface) bool {
+func (s *Interface) containsTypes(fetcher Fetcher, types *Interface) (bool, CompEvalError, error) {
 	for _, wantType := range types.types {
-		if !s.containsType(fetcher, wantType) {
-			return false
+		eq, cpErr, err := s.containsType(fetcher, wantType)
+		if cpErr != nil || err != nil {
+			return false, cpErr, err
+		}
+		if !eq {
+			return false, nil, nil
 		}
 	}
-	return true
+	return true, nil, nil
 }
 
 func fieldListAtomicIR() *FieldList {
@@ -415,13 +423,13 @@ func ToArrayType(typ Type) ArrayType {
 }
 
 type equaler interface {
-	equal(fetcher Fetcher, x Type) (bool, error)
+	equal(fetcher Fetcher, x Type) (bool, CompEvalError, error)
 }
 
 // Equal returns true if x and y are the same type.
-func Equal(fetcher Fetcher, x, y Type) (bool, error) {
+func Equal(fetcher Fetcher, x, y Type) (bool, CompEvalError, error) {
 	if x == y {
-		return true, nil
+		return true, nil, nil
 	}
 	ey, isEqualer := y.(equaler)
 	if isEqualer {
@@ -431,7 +439,7 @@ func Equal(fetcher Fetcher, x, y Type) (bool, error) {
 }
 
 type assigner interface {
-	assignableFrom(fetcher Fetcher, x Type) (bool, error)
+	assignableFrom(fetcher Fetcher, x Type) (bool, CompEvalError, error)
 }
 
 func simplifyType(t Type) Type {
@@ -451,19 +459,19 @@ func IsInvalidType(typ Type) bool {
 }
 
 // AssignableTo reports whether a value of the type can be assigned to another.
-func AssignableTo(fetcher Fetcher, x, y Type) (bool, error) {
+func AssignableTo(fetcher Fetcher, x, y Type) (bool, CompEvalError, error) {
 	if IsInvalidType(x) || IsInvalidType(y) {
 		// An error should have already been reported. We skip the check
 		// to prevent additional confusing errors.
-		return true, nil
+		return true, nil, nil
 	}
 	if x.Kind() == irkind.Tuple || y.Kind() == irkind.Tuple {
-		return true, nil
+		return true, nil, nil
 	}
 	x = simplifyType(x)
 	y = simplifyType(y)
 	if x == y {
-		return true, nil
+		return true, nil, nil
 	}
 	ey, isAssigner := y.(assigner)
 	if isAssigner {

@@ -594,9 +594,12 @@ func checkArgsForCall(ce *compileEvaluator, fExpr *ir.FuncValExpr, args []ir.Exp
 		if isVarArg {
 			target = ftype.VarArgs.Slice.DType.Val()
 		}
-		assignable, err := ir.AssignableTo(ce, arg.Type(), target)
+		assignable, cpErr, err := ir.AssignableTo(ce, arg.Type(), target)
 		if err != nil {
 			return ce.Err().AppendAt(arg.Node(), err)
+		}
+		if cpErr != nil {
+			return ce.Err().AppendAt(arg.Node(), cpErr)
 		}
 		if !assignable {
 			from := ce.File()

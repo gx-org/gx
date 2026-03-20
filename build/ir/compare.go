@@ -14,18 +14,45 @@
 
 package ir
 
-import "github.com/gx-org/gx/internal/interp/canonical"
+import (
+	"github.com/pkg/errors"
+	"github.com/gx-org/gx/internal/interp/canonical"
+)
 
-func areEqual(fetcher Fetcher, x, y Expr) (bool, error) {
-	xExpr, err := fetcher.EvalExpr(x)
+// TupleElement is a tuple evaluated by the interpreter.
+type TupleElement interface {
+	Element
+	TupleElements() []Element
+}
+
+func evalExpr(fetcher Fetcher, x Expr) (Element, CompEvalError, error) {
+	el, err := fetcher.EvalExpr(x)
 	if err != nil {
-		return false, err
+		return el, nil, err
 	}
-	yExpr, err := fetcher.EvalExpr(y)
-	if err != nil {
-		return false, err
+	tuple, isTuple := el.(TupleElement)
+	if !isTuple {
+		return el, nil, nil
 	}
-	return ElementEqual(xExpr, yExpr)
+	els := tuple.TupleElements()
+	if len(els) != 2 {
+		return el, nil, errors.Errorf("invalid tuple length: got %d but want 2", len(els))
+	}
+	cpErr, err := fetcher.ToCompEvalError(els[1])
+	return els[0], cpErr, err
+}
+
+func areEqual(fetcher Fetcher, x, y Expr) (bool, CompEvalError, error) {
+	xExpr, xCPErr, err := evalExpr(fetcher, x)
+	if xCPErr != nil || err != nil {
+		return false, xCPErr, err
+	}
+	yExpr, yCPErr, err := evalExpr(fetcher, y)
+	if yCPErr != nil || err != nil {
+		return false, yCPErr, err
+	}
+	ok, err := ElementEqual(xExpr, yExpr)
+	return ok, nil, err
 }
 
 // ElementEqual compares if two runtime elements are equal.

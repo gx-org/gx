@@ -149,9 +149,12 @@ func BuildFuncParams(fetcher ir.Fetcher, call *ir.FuncCallExpr, name string, sig
 			ok = got.Kind() == irkind.Slice
 			params[i] = got
 		default:
-			assignable, err := got.AssignableTo(fetcher, want)
+			assignable, cpErr, err := got.AssignableTo(fetcher, want)
 			if err != nil {
 				return nil, err
+			}
+			if cpErr != nil {
+				return nil, fmterr.Error(fetcher.File().FileSet(), call.Node(), cpErr)
 			}
 			ok = assignable
 		}

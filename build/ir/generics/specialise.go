@@ -53,10 +53,13 @@ func Specialise(fetcher ir.Fetcher, expr ir.Expr, fun *ir.FuncValExpr, typs []*i
 			continue
 		}
 		gotType, wantType := typeValExpr.Val(), typeParam.Group.Type.Val()
-		assignedOk, err := gotType.AssignableTo(fetcher, wantType)
+		assignedOk, cpErr, err := gotType.AssignableTo(fetcher, wantType)
 		if err != nil {
-			ok = fetcher.Err().Append(err)
+			ok = fetcher.Err().AppendAt(expr.Node(), err)
 			continue
+		}
+		if cpErr != nil {
+			ok = fetcher.Err().AppendAt(expr.Node(), cpErr)
 		}
 		if !assignedOk {
 			ok = fetcher.Err().Appendf(expr.Node(), "%s does not satisfy %s", gotType.ReferString(fetcher.File()), wantType.ReferString(fetcher.File()))

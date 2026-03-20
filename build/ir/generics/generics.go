@@ -39,9 +39,12 @@ func newAxisLengthsDefinition(ftype *ir.FuncType) map[string]ir.Element {
 }
 
 func typeInclude(fetcher ir.Fetcher, set ir.Type, typ ir.Type) bool {
-	isIn, err := ir.TypeInclude(fetcher, set, typ)
+	isIn, cpErr, err := ir.TypeInclude(fetcher, set, typ)
 	if err != nil {
 		return fetcher.Err().Append(err)
+	}
+	if cpErr != nil {
+		return fetcher.Err().AppendAt(typ.Node(), cpErr)
 	}
 	if !isIn {
 		return fetcher.Err().Appendf(typ.Node(), "%s does not satisfy %s",

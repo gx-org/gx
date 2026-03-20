@@ -85,9 +85,12 @@ func mainAuxArgsToTypes(funcName string, fetcher ir.Fetcher, call *ir.FuncCallEx
 	if err != nil {
 		return nil, nil, nil, err
 	}
-	kindEq, err := baseNumType.Equal(fetcher, auxNumTyp)
+	kindEq, cpErr, err := baseNumType.Equal(fetcher, auxNumTyp)
 	if err != nil {
 		return nil, nil, nil, fmterr.Internalf(fetcher.File().FileSet(), call.Node(), "cannot compare arguments type: %v", err)
+	}
+	if cpErr != nil {
+		return nil, nil, nil, fmterr.Errorf(fetcher.File().FileSet(), call.Node(), "mismatch types %s and %s: %s", baseType.ReferString(fetcher.File()), auxType.ReferString(fetcher.File()), cpErr.Error())
 	}
 	if !kindEq {
 		return nil, nil, nil, fmterr.Errorf(fetcher.File().FileSet(), call.Node(), "mismatch types %s and %s", baseType.ReferString(fetcher.File()), auxType.ReferString(fetcher.File()))
@@ -95,9 +98,12 @@ func mainAuxArgsToTypes(funcName string, fetcher ir.Fetcher, call *ir.FuncCallEx
 	if auxType.(ir.ArrayType).Rank().IsAtomic() {
 		return baseType, auxType, baseType, nil
 	}
-	shapeEq, err := baseType.Equal(fetcher, auxType)
+	shapeEq, cpErr, err := baseType.Equal(fetcher, auxType)
 	if err != nil {
 		return nil, nil, nil, fmterr.Internalf(fetcher.File().FileSet(), call.Node(), "cannot compare arguments type: %v", err)
+	}
+	if cpErr != nil {
+		return nil, nil, nil, fmterr.Errorf(fetcher.File().FileSet(), call.Node(), "mismatch types %s and %s: %s", baseType.ReferString(fetcher.File()), auxType.ReferString(fetcher.File()), cpErr.Error())
 	}
 	if !shapeEq {
 		return nil, nil, nil, fmterr.Errorf(fetcher.File().FileSet(), call.Node(), "mismatch types %s and %s", baseType.ReferString(fetcher.File()), auxType.ReferString(fetcher.File()))

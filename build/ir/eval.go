@@ -66,6 +66,10 @@ type (
 		EvalExpr(Expr) (Element, error)
 	}
 
+	// CompEvalError is an error generated from evaluating GX code
+	// and returned to the user as a compiler error.
+	CompEvalError error
+
 	// Fetcher represents a scope in the compiler.
 	Fetcher interface {
 		Evaluator
@@ -73,6 +77,7 @@ type (
 		BuildExpr(ast.Expr) (Expr, bool)
 		IsDefined(string) bool
 		Sub(map[string]Element) (Fetcher, bool)
+		ToCompEvalError(Element) (CompEvalError, error)
 	}
 )
 

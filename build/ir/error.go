@@ -40,18 +40,18 @@ func (*errorType) storageValue() {}
 func (s *errorType) Kind() irkind.Kind { return irkind.Interface }
 
 // Equal returns true if other is the exact same type set.
-func (s *errorType) Equal(fetcher Fetcher, target Type) (bool, error) {
+func (s *errorType) Equal(fetcher Fetcher, target Type) (bool, CompEvalError, error) {
 	return s.iface.Equal(fetcher, target)
 }
 
 // AssignableTo reports whether a value of the type can be assigned to another.
-func (s *errorType) AssignableTo(fetcher Fetcher, target Type) (bool, error) {
+func (s *errorType) AssignableTo(fetcher Fetcher, target Type) (bool, CompEvalError, error) {
 	return s.iface.AssignableTo(fetcher, target)
 }
 
 // ConvertibleTo reports whether a value of the type can be converted to another
 // (using static type casting).
-func (s *errorType) ConvertibleTo(fetcher Fetcher, target Type) (bool, error) {
+func (s *errorType) ConvertibleTo(fetcher Fetcher, target Type) (bool, CompEvalError, error) {
 	return s.iface.ConvertibleTo(fetcher, target)
 }
 

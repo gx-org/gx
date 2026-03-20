@@ -54,9 +54,12 @@ func (f *appendFunc) BuildFuncType(fetcher ir.Fetcher, call *ir.FuncCallExpr) (*
 	dtype := container.DType
 	for i, arg := range call.Args[1:] {
 		argType := arg.Type()
-		eq, err := argType.AssignableTo(fetcher, container.DType.Val())
+		eq, cpErr, err := argType.AssignableTo(fetcher, container.DType.Val())
 		if err != nil {
 			return ext, errors.Errorf("cannot evaluate the type of argument %d to append", i)
+		}
+		if cpErr != nil {
+			return ext, cpErr
 		}
 		if !eq {
 			from := fetcher.File()

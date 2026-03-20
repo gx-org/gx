@@ -45,10 +45,10 @@ type (
 
 		// Equal returns true if two axis lengths have been resolved and are equal.
 		// Returns an error if one of the axis has not been resolved.
-		Equal(Fetcher, AxisLengths) (bool, error)
+		Equal(Fetcher, AxisLengths) (bool, CompEvalError, error)
 
 		// AssignableTo returns true if this axis length can be assigned to another.
-		AssignableTo(Fetcher, AxisLengths) (bool, error)
+		AssignableTo(Fetcher, AxisLengths) (bool, CompEvalError, error)
 
 		// Specialise the axis length given a context.
 		Specialise(Specialiser) ([]AxisLengths, error)
@@ -78,12 +78,12 @@ func (dm *AxisExpr) Expr() ast.Expr { return dm.X.Expr() }
 func (dm *AxisExpr) NumAxes() int { return 1 }
 
 // AssignableTo returns true if an axis length can be assigned to another.
-func (dm *AxisExpr) AssignableTo(fetcher Fetcher, dst AxisLengths) (bool, error) {
+func (dm *AxisExpr) AssignableTo(fetcher Fetcher, dst AxisLengths) (bool, CompEvalError, error) {
 	return dm.Equal(fetcher, dst)
 }
 
 // Equal returns true if other has the axis length.
-func (dm *AxisExpr) Equal(fetcher Fetcher, other AxisLengths) (bool, error) {
+func (dm *AxisExpr) Equal(fetcher Fetcher, other AxisLengths) (bool, CompEvalError, error) {
 	return areEqual(fetcher, dm.X, other.AsExpr())
 }
 
@@ -152,12 +152,12 @@ func (dm *AxisInfer) Type() Type { return IntLenType() }
 func (dm *AxisInfer) Expr() ast.Expr { return dm.Src }
 
 // Equal returns true if other has the axis length.
-func (dm *AxisInfer) Equal(fetcher Fetcher, other AxisLengths) (bool, error) {
+func (dm *AxisInfer) Equal(fetcher Fetcher, other AxisLengths) (bool, CompEvalError, error) {
 	return areEqual(fetcher, dm.AsExpr(), other.AsExpr())
 }
 
 // AssignableTo returns true if a dimension can be assigned to another.
-func (dm *AxisInfer) AssignableTo(fetcher Fetcher, dst AxisLengths) (bool, error) {
+func (dm *AxisInfer) AssignableTo(fetcher Fetcher, dst AxisLengths) (bool, CompEvalError, error) {
 	return dm.Equal(fetcher, dst)
 }
 
@@ -215,12 +215,12 @@ func (dm *AxisStmt) NameDef() *ast.Ident { return dm.Src }
 func (dm *AxisStmt) NumAxes() int { return 1 }
 
 // AssignableTo returns true if an axis length can be assigned to another.
-func (dm *AxisStmt) AssignableTo(fetcher Fetcher, dst AxisLengths) (bool, error) {
+func (dm *AxisStmt) AssignableTo(fetcher Fetcher, dst AxisLengths) (bool, CompEvalError, error) {
 	return dm.Equal(fetcher, dst)
 }
 
 // Equal returns true if other has the axis length.
-func (dm *AxisStmt) Equal(fetcher Fetcher, other AxisLengths) (bool, error) {
+func (dm *AxisStmt) Equal(fetcher Fetcher, other AxisLengths) (bool, CompEvalError, error) {
 	return areEqual(fetcher, dm.AsExpr(), other.AsExpr())
 }
 

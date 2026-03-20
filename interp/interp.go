@@ -22,11 +22,14 @@
 package interp
 
 import (
+	"errors"
+
 	"github.com/gx-org/gx/api/options"
 	"github.com/gx-org/gx/api/values"
 	"github.com/gx-org/gx/build/fmterr"
 	"github.com/gx-org/gx/build/ir"
 	"github.com/gx-org/gx/interp/context"
+	"github.com/gx-org/gx/interp/elements"
 	"github.com/gx-org/gx/interp/evaluator"
 	"github.com/gx-org/gx/interp/fun"
 	"github.com/gx-org/gx/interp/materialise"
@@ -82,6 +85,22 @@ func newFileScope(ctx *context.Context, eval fun.Evaluator, file *ir.File) *File
 func (itp *Interpreter) ForFile(file *ir.File) (*FileScope, error) {
 	ctx, err := itp.core.NewFileContext(file)
 	return newFileScope(ctx, itp.eval, file), err
+}
+
+// ToCompEvalError converts an element to an error.
+// If the conversion goes wrong, then the first error (corresponding to the element) is nil,
+// and the second error indicates the conversion error.
+// In other word, the first error is an error that needs to be reported to the user,
+// the second error is an internal error in the compiler.
+func (fitp *FileScope) ToCompEvalError(el ir.Element) (ir.CompEvalError, error) {
+	if el == nil {
+		return nil, nil
+	}
+	errS, err := elements.StringFromElement(el)
+	if err != nil {
+		return nil, err
+	}
+	return ir.CompEvalError(errors.New(errS)), nil
 }
 
 // EvalExpr evaluates an expression for a given context.

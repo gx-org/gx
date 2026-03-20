@@ -36,13 +36,13 @@ type (
 		Axes() []AxisLengths
 
 		// Equal returns true if two ranks are equal.
-		Equal(Fetcher, ArrayRank) (bool, error)
+		Equal(Fetcher, ArrayRank) (bool, CompEvalError, error)
 
 		// AssignableTo returns true if this rank can be assigned to the destination rank.
-		AssignableTo(Fetcher, ArrayRank) (bool, error)
+		AssignableTo(Fetcher, ArrayRank) (bool, CompEvalError, error)
 
 		// ConvertibleTo returns true if this rank can be converted to the destination rank.
-		ConvertibleTo(Fetcher, ArrayRank) (bool, error)
+		ConvertibleTo(Fetcher, ArrayRank) (bool, CompEvalError, error)
 
 		// Specialise a type to a given target.
 		Specialise(Specialiser) (ArrayRank, error)
@@ -94,81 +94,81 @@ func (r *Rank) Expr() ast.Expr { return r.Src.Len }
 func (r *Rank) Axes() []AxisLengths { return r.Ax }
 
 // Equal returns true if other has the same number of axes and each axis has the same length.
-func (r *Rank) Equal(fetcher Fetcher, other ArrayRank) (bool, error) {
+func (r *Rank) Equal(fetcher Fetcher, other ArrayRank) (bool, CompEvalError, error) {
 	switch otherT := other.(type) {
 	case *RankInfer:
 		if otherT.Rnk == nil {
-			return false, errors.Errorf("rank not inferred")
+			return false, nil, errors.Errorf("rank not inferred")
 		}
 		return r.equalRank(fetcher, otherT.Rnk)
 	case *Rank:
 		return r.equalRank(fetcher, otherT)
 	default:
-		return false, errors.Errorf("rank type %T not supported", otherT)
+		return false, nil, errors.Errorf("rank type %T not supported", otherT)
 	}
 }
 
-func (r *Rank) equalRank(fetcher Fetcher, other ArrayRank) (bool, error) {
+func (r *Rank) equalRank(fetcher Fetcher, other ArrayRank) (bool, CompEvalError, error) {
 	// Check the number of axes.
 	otherAx := other.Axes()
 	if len(r.Ax) != len(otherAx) {
-		return false, nil
+		return false, nil, nil
 	}
 	// Check each axis.
 	for i, dimX := range r.Ax {
-		dimEq, err := dimX.Equal(fetcher, otherAx[i])
-		if err != nil {
-			return false, err
+		dimEq, cpErr, err := dimX.Equal(fetcher, otherAx[i])
+		if cpErr != nil || err != nil {
+			return false, cpErr, err
 		}
 		if !dimEq {
-			return false, nil
+			return false, nil, nil
 		}
 	}
-	return true, nil
+	return true, nil, nil
 }
 
-func (r *Rank) assignableTo(fetcher Fetcher, dst ArrayRank) (bool, error) {
+func (r *Rank) assignableTo(fetcher Fetcher, dst ArrayRank) (bool, CompEvalError, error) {
 	dstAx := dst.Axes()
 	if len(r.Ax) != len(dstAx) {
-		return false, nil
+		return false, nil, nil
 	}
 	for i, dimThis := range r.Ax {
-		ok, err := dimThis.AssignableTo(fetcher, dstAx[i])
-		if !ok || err != nil {
-			return ok, err
+		ok, cpErr, err := dimThis.AssignableTo(fetcher, dstAx[i])
+		if !ok || cpErr != nil || err != nil {
+			return ok, cpErr, err
 		}
 	}
-	return true, nil
+	return true, nil, nil
 }
 
 // AssignableTo returns true if this rank can be assigned to the destination rank.
-func (r *Rank) AssignableTo(fetcher Fetcher, dst ArrayRank) (bool, error) {
+func (r *Rank) AssignableTo(fetcher Fetcher, dst ArrayRank) (bool, CompEvalError, error) {
 	switch dstT := dst.(type) {
 	case *RankInfer:
 		if dstT.Rnk == nil {
-			return true, nil
+			return true, nil, nil
 		}
 		return r.assignableTo(fetcher, dstT.Rnk)
 	case *Rank:
 		return r.assignableTo(fetcher, dstT)
 	default:
-		return false, errors.Errorf("rank type %T not supported", dstT)
+		return false, nil, errors.Errorf("rank type %T not supported", dstT)
 	}
 }
 
 // ConvertibleTo returns true if this rank can be converted to the destination rank.
-func (r *Rank) ConvertibleTo(fetcher Fetcher, dst ArrayRank) (bool, error) {
+func (r *Rank) ConvertibleTo(fetcher Fetcher, dst ArrayRank) (bool, CompEvalError, error) {
 	var dstR ArrayRank
 	switch dstT := dst.(type) {
 	case *RankInfer:
 		if dstT.Rnk == nil {
-			return true, nil
+			return true, nil, nil
 		}
 		dstR = dstT.Rnk
 	case *Rank:
 		dstR = dstT
 	default:
-		return false, errors.Errorf("rank type %T not supported", dstT)
+		return false, nil, errors.Errorf("rank type %T not supported", dstT)
 	}
 	thisSize := RankSize(r)
 	otherSize := RankSize(dstR)
@@ -286,34 +286,34 @@ func (r *RankInfer) Axes() []AxisLengths {
 }
 
 // Equal returns true if other has the same rank and dimensions.
-func (r *RankInfer) Equal(fetcher Fetcher, other ArrayRank) (bool, error) {
+func (r *RankInfer) Equal(fetcher Fetcher, other ArrayRank) (bool, CompEvalError, error) {
 	if r.Rnk != nil {
 		return r.Rnk.Equal(fetcher, other)
 	}
 	switch otherT := other.(type) {
 	case *RankInfer:
-		return otherT.Rnk == nil, nil
+		return otherT.Rnk == nil, nil, nil
 	case *Rank:
-		return false, nil
+		return false, nil, nil
 	default:
-		return false, errors.Errorf("rank type %T not supported", otherT)
+		return false, nil, errors.Errorf("rank type %T not supported", otherT)
 	}
 }
 
 // AssignableTo returns true if this rank can be assigned to the destination rank.
-func (r *RankInfer) AssignableTo(fetcher Fetcher, dst ArrayRank) (bool, error) {
+func (r *RankInfer) AssignableTo(fetcher Fetcher, dst ArrayRank) (bool, CompEvalError, error) {
 	if r.Rnk != nil {
 		return r.Rnk.AssignableTo(fetcher, dst)
 	}
-	return true, nil
+	return true, nil, nil
 }
 
 // ConvertibleTo returns true if this rank can be converted to the destination rank.
-func (r *RankInfer) ConvertibleTo(fetcher Fetcher, dst ArrayRank) (bool, error) {
+func (r *RankInfer) ConvertibleTo(fetcher Fetcher, dst ArrayRank) (bool, CompEvalError, error) {
 	if r.Rnk != nil {
 		return r.Rnk.ConvertibleTo(fetcher, dst)
 	}
-	return true, nil
+	return true, nil, nil
 }
 
 // IsAtomic returns true if the rank has no axes.

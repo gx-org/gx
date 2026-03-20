@@ -74,9 +74,12 @@ func resultTypes(exprs []ir.Expr) ([]ir.Type, bool) {
 }
 
 func returnAs(rscope resolveScope, pos ast.Node, src, dst ir.Type) bool {
-	assignable, err := assignableTo(rscope, src, dst)
+	assignable, cpErr, err := assignableTo(rscope, src, dst)
 	if err != nil {
 		return rscope.Err().AppendAt(pos, err)
+	}
+	if cpErr != nil {
+		return rscope.Err().AppendAt(pos, cpErr)
 	}
 	if !assignable {
 		from := rscope.fileScope().irFile()

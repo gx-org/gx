@@ -56,9 +56,12 @@ func (n *ifStmt) checkConditionType(scope resolveScope, typ ir.Type) bool {
 	if !compEvalOk {
 		return false
 	}
-	ok, err := typ.Equal(compEval, ir.BoolType())
+	ok, cpErr, err := typ.Equal(compEval, ir.BoolType())
 	if err != nil {
 		return scope.Err().Appendf(n.cond.source(), "cannot evaluatate expression type: %v", err)
+	}
+	if cpErr != nil {
+		return scope.Err().AppendAt(n.cond.source(), cpErr)
 	}
 	if !ok {
 		return scope.Err().Appendf(n.cond.source(), "non-boolean condition in if statement")

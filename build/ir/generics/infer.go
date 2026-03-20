@@ -67,10 +67,14 @@ func (uni *argUnifier) specialiseNumber(name string, defined, typ ir.Type) ir.Ty
 
 func (uni *argUnifier) DefineTParam(tp *ir.TypeParam, typ ir.Type) bool {
 	name := tp.Field.Name.Name
-	ok, err := ir.AssignableTo(uni, typ, tp.Field.Type())
+	ok, cpErr, err := ir.AssignableTo(uni, typ, tp.Field.Type())
 	if err != nil {
 		uni.defined[name] = ir.InvalidType()
 		return uni.Err().AppendAt(uni.arg.Node(), err)
+	}
+	if cpErr != nil {
+		uni.defined[name] = ir.InvalidType()
+		return uni.Err().AppendAt(uni.arg.Node(), cpErr)
 	}
 	if !ok {
 		uni.defined[name] = ir.InvalidType()
@@ -85,9 +89,12 @@ func (uni *argUnifier) DefineTParam(tp *ir.TypeParam, typ ir.Type) bool {
 	if !ir.IsValid(defined) || !ir.IsValid(typ) {
 		return false
 	}
-	eq, err := defined.Equal(uni, typ)
+	eq, cpErr, err := defined.Equal(uni, typ)
 	if err != nil {
 		return uni.Err().AppendAt(uni.arg.Node(), err)
+	}
+	if cpErr != nil {
+		return uni.Err().AppendAt(uni.arg.Node(), cpErr)
 	}
 	if !eq {
 		return uni.Err().Appendf(uni.arg.Node(), "type %s does not match type %s for %s", typ.ReferString(uni.File()), defined.ReferString(uni.File()), tp.Field.Name.Name)

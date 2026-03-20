@@ -26,8 +26,137 @@ type atomicType struct {
 	Knd irkind.Kind
 }
 
+func (*atomicType) node()   {}
+func (*atomicType) atomic() {}
+
+// Kind returns the scalar kind.
+func (s *atomicType) Kind() irkind.Kind { return s.Knd }
+
+func (s *atomicType) equalAtomic(other ArrayType) (bool, CompEvalError, error) {
+	return s.Knd == other.Kind(), nil, nil
+}
+
+func (s *atomicType) equalArray(fetcher Fetcher, other ArrayType) (bool, CompEvalError, error) {
+	dtypeEq, cpErr, err := s.Equal(fetcher, other.DataType())
+	if !dtypeEq || cpErr != nil || err != nil {
+		return false, cpErr, err
+	}
+	return s.Rank().Equal(fetcher, other.Rank())
+}
+
+// Equal returns true if other is the same type.
+func (s *atomicType) Equal(fetcher Fetcher, other Type) (bool, CompEvalError, error) {
+	otherT, ok := other.(ArrayType)
+	if !ok {
+		return false, nil, nil
+	}
+	if otherT.Rank().IsAtomic() {
+		return s.equalAtomic(otherT)
+	}
+	return s.equalArray(fetcher, otherT)
+}
+
+var scalarRank = &Rank{}
+
+// Rank of the array.
+func (s *atomicType) Rank() ArrayRank { return scalarRank }
+
+// AssignableTo reports if the type can be assigned to other.
+func (s *atomicType) AssignableTo(fetcher Fetcher, target Type) (bool, CompEvalError, error) {
+	if assignFrom, ok := target.(assignsFrom); ok {
+		return assignFrom.assignableFrom(fetcher, s)
+	}
+
+	targetT, ok := target.(ArrayType)
+	if !ok {
+		return false, nil, nil
+	}
+	if targetT.Rank().IsAtomic() {
+		if s.Knd == irkind.NumberInt && (IsInteger(target) || IsFloat(target)) {
+			return true, nil, nil
+		}
+		if s.Knd == irkind.NumberFloat && IsFloat(target) {
+			return true, nil, nil
+		}
+		return s.equalAtomic(targetT)
+	}
+	dtypeEq, cpErr, err := s.AssignableTo(fetcher, targetT.DataType())
+	if !dtypeEq || cpErr != nil || err != nil {
+		return false, cpErr, err
+	}
+	rankOk, cpErr, err := s.Rank().AssignableTo(fetcher, targetT.Rank())
+	if !rankOk || cpErr != nil || err != nil {
+		return rankOk, cpErr, err
+	}
+	return true, nil, nil
+}
+
+// ConvertibleTo reports whether a value of the type can be converted to another
+// (using static type casting).
+func (s *atomicType) ConvertibleTo(fetcher Fetcher, target Type) (bool, CompEvalError, error) {
+	if convertFrom, ok := target.(convertsFrom); ok {
+		return convertFrom.convertibleFrom(fetcher, s)
+	}
+
+	targetT, ok := target.(ArrayType)
+	if !ok {
+		return false, nil, nil
+	}
+	return SupportOperators(s) == SupportOperators(targetT.DataType()), nil, nil
+}
+
+// Specialise a type to a given target.
+func (s *atomicType) Specialise(Specialiser) (Type, error) {
+	return s, nil
+}
+
+// Node returns the source code defining the type.
+// Always returns nil.
+func (s *atomicType) Node() ast.Node {
+	return s.ArrayType()
+}
+
+// Value returns a value pointing to the receiver.
+func (s *atomicType) Value(x Expr) Expr {
+	return TypeExpr(x, s)
+}
+
+// ElementType returns an invalid type because an atomic type cannot be sliced.
+func (s *atomicType) ElementType() (Type, bool) {
+	return InvalidType(), false
+}
+
+// DataType returns the type of the element.
+func (s *atomicType) DataType() Type {
+	return s
+}
+
+// ArrayType returns the source code defining the type.
+// Always returns nil.
+func (s *atomicType) ArrayType() ast.Expr {
+	return &ast.Ident{Name: s.Knd.String()}
+}
+
 func (*atomicType) UnifyWith(unifier Unifier, typ Type) bool {
 	return true
+}
+
+// Zero returns a zero expression of the same type.
+func (s *atomicType) Zero() Expr {
+	return &NumberCastExpr{
+		X:   zero,
+		Typ: s,
+	}
+}
+
+// ReferString returns the string representation of the node in an error message.
+func (s *atomicType) ReferString(from *File) string {
+	return s.DefineString(from)
+}
+
+// DefineString returns the GX source code of the node.
+func (s *atomicType) DefineString(*File) string {
+	return s.Kind().String()
 }
 
 type rankType struct {

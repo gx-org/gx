@@ -71,9 +71,12 @@ func (f matmul) resultsType(fetcher ir.Fetcher, call *ir.FuncCallExpr) ([]ir.Typ
 		dotDimIndex = len(rightDims) - 2
 	}
 	dotDim := rightDims[dotDimIndex]
-	ok, err := lastLeft.AssignableTo(fetcher, dotDim)
+	ok, cpErr, err := lastLeft.AssignableTo(fetcher, dotDim)
 	if err != nil {
 		return nil, nil, fmterr.Error(fetcher.File().FileSet(), call.Node(), err)
+	}
+	if cpErr != nil {
+		return nil, nil, fmterr.Error(fetcher.File().FileSet(), call.Node(), cpErr)
 	}
 	if !ok {
 		from := fetcher.File()
@@ -198,9 +201,12 @@ func (f einsum) resultsType(fetcher ir.Fetcher, call *ir.FuncCallExpr) ([]ir.Typ
 	for n := range lhsContractingDims {
 		lhsDim := leftDims[lhsContractingDims[n]]
 		rhsDim := rightDims[rhsContractingDims[n]]
-		ok, err := lhsDim.AssignableTo(fetcher, rhsDim)
+		ok, cpErr, err := lhsDim.AssignableTo(fetcher, rhsDim)
 		if err != nil {
 			return nil, nil, fmterr.Error(fetcher.File().FileSet(), call.Node(), err)
+		}
+		if cpErr != nil {
+			return nil, nil, fmterr.Error(fetcher.File().FileSet(), call.Node(), cpErr)
 		}
 		if !ok {
 			from := fetcher.File()
@@ -217,9 +223,12 @@ func (f einsum) resultsType(fetcher ir.Fetcher, call *ir.FuncCallExpr) ([]ir.Typ
 	for n := range min(len(lhsBatchDims), len(rhsBatchDims)) {
 		lhsDim := leftDims[lhsBatchDims[n]]
 		rhsDim := rightDims[rhsBatchDims[n]]
-		ok, err := lhsDim.AssignableTo(fetcher, rhsDim)
+		ok, cpErr, err := lhsDim.AssignableTo(fetcher, rhsDim)
 		if err != nil {
 			return nil, nil, fmterr.Error(fetcher.File().FileSet(), call.Node(), err)
+		}
+		if cpErr != nil {
+			return nil, nil, fmterr.Error(fetcher.File().FileSet(), call.Node(), cpErr)
 		}
 		if !ok {
 			from := fetcher.File()

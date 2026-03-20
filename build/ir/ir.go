@@ -119,14 +119,14 @@ type (
 		Kind() irkind.Kind
 
 		// Equal returns true if other is the same type.
-		Equal(Fetcher, Type) (bool, error)
+		Equal(Fetcher, Type) (bool, CompEvalError, error)
 
 		// AssignableTo reports whether a value of the type can be assigned to another.
-		AssignableTo(Fetcher, Type) (bool, error)
+		AssignableTo(Fetcher, Type) (bool, CompEvalError, error)
 
 		// ConvertibleTo reports whether a value of the type can be converted to another
 		// (using static type casting).
-		ConvertibleTo(Fetcher, Type) (bool, error)
+		ConvertibleTo(Fetcher, Type) (bool, CompEvalError, error)
 
 		// Specialise a type to a given target.
 		Specialise(Specialiser) (Type, error)
@@ -176,21 +176,21 @@ type (
 		// DataType returns the element type of the array.
 		DataType() Type
 
-		equalArray(Fetcher, ArrayType) (bool, error)
+		equalArray(Fetcher, ArrayType) (bool, CompEvalError, error)
 	}
 
 	// assignsFrom allows types to control how they are assigned to; other types may opt to use this
 	// logic when present (but aren't currently required to).
 	assignsFrom interface {
 		// assignableFrom reports whether a value of some type can be assigned to the receiver.
-		assignableFrom(Fetcher, Type) (bool, error)
+		assignableFrom(Fetcher, Type) (bool, CompEvalError, error)
 	}
 
 	// convertsFrom allows types to control how they are converted to; other types may opt to use this
 	// logic when present (but aren't currently required to).
 	convertsFrom interface {
 		// convertibleFrom reports whether a value of some type can be converted to the receiver.
-		convertibleFrom(Fetcher, Type) (bool, error)
+		convertibleFrom(Fetcher, Type) (bool, CompEvalError, error)
 	}
 
 	// NamedType defines a new type from an existing type.
@@ -285,35 +285,39 @@ func (*TupleType) node() {}
 // Kind returns the scalar kind.
 func (s *TupleType) Kind() irkind.Kind { return irkind.Tuple }
 
-func (s *TupleType) apply(fetcher Fetcher, target Type, f func(Type, Fetcher, Type) (bool, error)) (bool, error) {
+func (s *TupleType) apply(fetcher Fetcher, target Type, f func(Type, Fetcher, Type) (bool, CompEvalError, error)) (bool, CompEvalError, error) {
 	targetTuple, ok := target.(*TupleType)
 	if !ok {
-		return false, nil
+		return false, nil, nil
 	}
 	if len(s.Types) != len(targetTuple.Types) {
-		return false, nil
+		return false, nil, nil
 	}
 	for n, typ := range s.Types {
-		if ok, err := f(typ, fetcher, targetTuple.Types[n]); !ok {
-			return ok, err
+		ok, cpErr, err := f(typ, fetcher, targetTuple.Types[n])
+		if cpErr != nil || err != nil {
+			return false, cpErr, err
+		}
+		if !ok {
+			return false, nil, nil
 		}
 	}
-	return true, nil
+	return true, nil, nil
 }
 
 // Equal returns true if other is the same type.
-func (s *TupleType) Equal(fetcher Fetcher, target Type) (bool, error) {
+func (s *TupleType) Equal(fetcher Fetcher, target Type) (bool, CompEvalError, error) {
 	return s.apply(fetcher, target, (Type).Equal)
 }
 
 // AssignableTo reports whether a value of the type can be assigned to another.
-func (s *TupleType) AssignableTo(fetcher Fetcher, target Type) (bool, error) {
+func (s *TupleType) AssignableTo(fetcher Fetcher, target Type) (bool, CompEvalError, error) {
 	return s.apply(fetcher, target, (Type).AssignableTo)
 }
 
 // ConvertibleTo reports whether a value of the type can be converted to another
 // (using static type casting). Always returns false.
-func (s *TupleType) ConvertibleTo(fetcher Fetcher, target Type) (bool, error) {
+func (s *TupleType) ConvertibleTo(fetcher Fetcher, target Type) (bool, CompEvalError, error) {
 	return s.apply(fetcher, target, (Type).ConvertibleTo)
 }
 
@@ -342,15 +346,19 @@ func (*InterfaceType) node() {}
 func (s *InterfaceType) Kind() irkind.Kind { return irkind.Interface }
 
 // Equal returns true if other is the same type.
-func (s *InterfaceType) Equal(Fetcher, Type) (bool, error) { return false, nil }
+func (s *InterfaceType) Equal(Fetcher, Type) (bool, CompEvalError, error) { return false, nil, nil }
 
 // AssignableTo reports whether a value of the type can be assigned to another.
 // Always returns false.
-func (s *InterfaceType) AssignableTo(Fetcher, Type) (bool, error) { return false, nil }
+func (s *InterfaceType) AssignableTo(Fetcher, Type) (bool, CompEvalError, error) {
+	return false, nil, nil
+}
 
 // ConvertibleTo reports whether a value of the type can be converted to another
 // (using static type casting). Always returns false.
-func (s *InterfaceType) ConvertibleTo(Fetcher, Type) (bool, error) { return false, nil }
+func (s *InterfaceType) ConvertibleTo(Fetcher, Type) (bool, CompEvalError, error) {
+	return false, nil, nil
+}
 
 // Value returns a value pointing to the receiver.
 func (s *InterfaceType) Value(x Expr) Expr {
@@ -374,22 +382,22 @@ func (*BuiltinType) node() {}
 func (s *BuiltinType) Kind() irkind.Kind { return irkind.Builtin }
 
 // Equal returns true if other is the same type.
-func (s *BuiltinType) Equal(_ Fetcher, other Type) (bool, error) {
+func (s *BuiltinType) Equal(_ Fetcher, other Type) (bool, CompEvalError, error) {
 	otherT, ok := other.(*BuiltinType)
 	if !ok {
-		return false, nil
+		return false, nil, nil
 	}
-	return s.Impl == otherT.Impl, nil
+	return s.Impl == otherT.Impl, nil, nil
 }
 
 // AssignableTo reports if the type can be assigned to other.
-func (s *BuiltinType) AssignableTo(fetcher Fetcher, target Type) (bool, error) {
+func (s *BuiltinType) AssignableTo(fetcher Fetcher, target Type) (bool, CompEvalError, error) {
 	return s.Equal(fetcher, target)
 }
 
 // ConvertibleTo reports whether a value of the type can be converted to another
 // (using static type casting).
-func (s *BuiltinType) ConvertibleTo(fetcher Fetcher, target Type) (bool, error) {
+func (s *BuiltinType) ConvertibleTo(fetcher Fetcher, target Type) (bool, CompEvalError, error) {
 	return s.Equal(fetcher, target)
 }
 
@@ -408,139 +416,10 @@ func (s *BuiltinType) ReferString(*File) string {
 	return fmt.Sprint(s.Impl)
 }
 
-func (*atomicType) node()   {}
-func (*atomicType) atomic() {}
-
-// Kind returns the scalar kind.
-func (s *atomicType) Kind() irkind.Kind { return s.Knd }
-
-func (s *atomicType) equalAtomic(other ArrayType) (bool, error) {
-	return s.Knd == other.Kind(), nil
-}
-
-func (s *atomicType) equalArray(fetcher Fetcher, other ArrayType) (bool, error) {
-	dtypeEq, err := s.Equal(fetcher, other.DataType())
-	if !dtypeEq || err != nil {
-		return false, err
-	}
-	return s.Rank().Equal(fetcher, other.Rank())
-}
-
-// Equal returns true if other is the same type.
-func (s *atomicType) Equal(fetcher Fetcher, other Type) (bool, error) {
-	otherT, ok := other.(ArrayType)
-	if !ok {
-		return false, nil
-	}
-	if otherT.Rank().IsAtomic() {
-		return s.equalAtomic(otherT)
-	}
-	return s.equalArray(fetcher, otherT)
-}
-
-var scalarRank = &Rank{}
-
-// Rank of the array.
-func (s *atomicType) Rank() ArrayRank { return scalarRank }
-
-// AssignableTo reports if the type can be assigned to other.
-func (s *atomicType) AssignableTo(fetcher Fetcher, target Type) (bool, error) {
-	if assignFrom, ok := target.(assignsFrom); ok {
-		return assignFrom.assignableFrom(fetcher, s)
-	}
-
-	targetT, ok := target.(ArrayType)
-	if !ok {
-		return false, nil
-	}
-	if targetT.Rank().IsAtomic() {
-		if s.Knd == irkind.NumberInt && (IsInteger(target) || IsFloat(target)) {
-			return true, nil
-		}
-		if s.Knd == irkind.NumberFloat && IsFloat(target) {
-			return true, nil
-		}
-		return s.equalAtomic(targetT)
-	}
-	dtypeEq, err := s.AssignableTo(fetcher, targetT.DataType())
-	if !dtypeEq || err != nil {
-		return false, err
-	}
-	rankOk, err := s.Rank().AssignableTo(fetcher, targetT.Rank())
-	if !rankOk || err != nil {
-		return rankOk, err
-	}
-	return true, nil
-}
-
-// ConvertibleTo reports whether a value of the type can be converted to another
-// (using static type casting).
-func (s *atomicType) ConvertibleTo(fetcher Fetcher, target Type) (bool, error) {
-	if convertFrom, ok := target.(convertsFrom); ok {
-		return convertFrom.convertibleFrom(fetcher, s)
-	}
-
-	targetT, ok := target.(ArrayType)
-	if !ok {
-		return false, nil
-	}
-	return SupportOperators(s) == SupportOperators(targetT.DataType()), nil
-}
-
-// Specialise a type to a given target.
-func (s *atomicType) Specialise(Specialiser) (Type, error) {
-	return s, nil
-}
-
-// Node returns the source code defining the type.
-// Always returns nil.
-func (s *atomicType) Node() ast.Node {
-	return s.ArrayType()
-}
-
-// Value returns a value pointing to the receiver.
-func (s *atomicType) Value(x Expr) Expr {
-	return TypeExpr(x, s)
-}
-
-// ElementType returns an invalid type because an atomic type cannot be sliced.
-func (s *atomicType) ElementType() (Type, bool) {
-	return InvalidType(), false
-}
-
-// DataType returns the type of the element.
-func (s *atomicType) DataType() Type {
-	return s
-}
-
-// ArrayType returns the source code defining the type.
-// Always returns nil.
-func (s *atomicType) ArrayType() ast.Expr {
-	return &ast.Ident{Name: s.Knd.String()}
-}
-
 var (
 	zero      = &NumberInt{Src: &ast.BasicLit{Value: "0"}, Val: big.NewInt(0)}
 	zeroFloat = &NumberFloat{Src: &ast.BasicLit{Value: "0.0"}, Val: big.NewFloat(0)}
 )
-
-// Zero returns a zero expression of the same type.
-func (s *atomicType) Zero() Expr {
-	return &NumberCastExpr{
-		X:   zero,
-		Typ: s,
-	}
-}
-
-// ReferString returns the string representation of the node in an error message.
-func (s *atomicType) ReferString(from *File) string {
-	return s.DefineString(from)
-}
-
-// DefineString returns the GX source code of the node.
-func (s *atomicType) DefineString(*File) string {
-	return s.Kind().String()
-}
 
 // MethodByName returns a method given its name, or nil if not method has that name.
 func (s *NamedType) MethodByName(name string) PkgFunc {
@@ -556,27 +435,27 @@ func (s *NamedType) MethodByName(name string) PkgFunc {
 func (s *NamedType) Kind() irkind.Kind { return s.Underlying.Val().Kind() }
 
 // Equal returns true if other is the same type.
-func (s *NamedType) Equal(fetcher Fetcher, other Type) (bool, error) {
+func (s *NamedType) Equal(fetcher Fetcher, other Type) (bool, CompEvalError, error) {
 	otherT, ok := other.(*NamedType)
 	if !ok {
-		return false, nil
+		return false, nil, nil
 	}
 	if s == otherT {
-		return true, nil
+		return true, nil, nil
 	}
 	if s.FullName() != otherT.FullName() {
-		return false, nil
+		return false, nil, nil
 	}
 	return s.Underlying.Val().Equal(fetcher, otherT.Underlying.Val())
 }
 
 // AssignableTo reports if the type can be assigned to other.
-func (s *NamedType) AssignableTo(fetcher Fetcher, target Type) (bool, error) {
+func (s *NamedType) AssignableTo(fetcher Fetcher, target Type) (bool, CompEvalError, error) {
 	return s.Equal(fetcher, target)
 }
 
 // AssignableFrom reports whether a given source type is assignable to a named type.
-func (s *NamedType) assignableFrom(fetcher Fetcher, source Type) (bool, error) {
+func (s *NamedType) assignableFrom(fetcher Fetcher, source Type) (bool, CompEvalError, error) {
 	if target, ok := s.Underlying.Val().(assignsFrom); ok {
 		return target.assignableFrom(fetcher, source)
 	}
@@ -585,7 +464,7 @@ func (s *NamedType) assignableFrom(fetcher Fetcher, source Type) (bool, error) {
 
 // ConvertibleTo reports whether a value of the type can be converted to another
 // (using static type casting).
-func (s *NamedType) ConvertibleTo(fetcher Fetcher, target Type) (bool, error) {
+func (s *NamedType) ConvertibleTo(fetcher Fetcher, target Type) (bool, CompEvalError, error) {
 	typeSet, ok := Underlying(s.Underlying.Val()).(*Interface)
 	if ok {
 		return typeSet.ConvertibleTo(fetcher, target)
@@ -599,7 +478,7 @@ func (s *NamedType) ConvertibleTo(fetcher Fetcher, target Type) (bool, error) {
 	return s.Underlying.Val().ConvertibleTo(fetcher, target)
 }
 
-func (s *NamedType) convertibleFrom(fetcher Fetcher, source Type) (bool, error) {
+func (s *NamedType) convertibleFrom(fetcher Fetcher, source Type) (bool, CompEvalError, error) {
 	return source.ConvertibleTo(fetcher, s.Underlying.Val())
 }
 
@@ -683,23 +562,23 @@ func (*StructType) node() {}
 func (s *StructType) Kind() irkind.Kind { return irkind.Struct }
 
 // Equal returns true if other is the same type.
-func (s *StructType) Equal(_ Fetcher, other Type) (bool, error) {
+func (s *StructType) Equal(_ Fetcher, other Type) (bool, CompEvalError, error) {
 	otherT, ok := other.(*StructType)
 	if !ok {
-		return false, nil
+		return false, nil, nil
 	}
-	return s == otherT, nil
+	return s == otherT, nil, nil
 }
 
 // AssignableTo reports if the type can be assigned to other.
-func (s *StructType) AssignableTo(fetcher Fetcher, target Type) (bool, error) {
+func (s *StructType) AssignableTo(fetcher Fetcher, target Type) (bool, CompEvalError, error) {
 	return s.Equal(fetcher, target)
 }
 
 // ConvertibleTo reports whether a value of the type can be converted to another
 // (using static type casting).
-func (s *StructType) ConvertibleTo(fetcher Fetcher, target Type) (bool, error) {
-	return false, nil
+func (s *StructType) ConvertibleTo(fetcher Fetcher, target Type) (bool, CompEvalError, error) {
+	return false, nil, nil
 }
 
 // Node returns the node in the AST tree.
@@ -740,26 +619,26 @@ func (*SliceType) node() {}
 func (s *SliceType) Kind() irkind.Kind { return irkind.Slice }
 
 // Equal returns true if other is the same type.
-func (s *SliceType) Equal(fetcher Fetcher, other Type) (bool, error) {
+func (s *SliceType) Equal(fetcher Fetcher, other Type) (bool, CompEvalError, error) {
 	otherT, ok := other.(*SliceType)
 	if !ok {
-		return false, nil
+		return false, nil, nil
 	}
 	if s.Rank != otherT.Rank {
-		return false, nil
+		return false, nil, nil
 	}
 	return otherT.DType.Val().Equal(fetcher, s.DType.Val())
 }
 
 // AssignableTo reports if the type can be assigned to other.
-func (s *SliceType) AssignableTo(fetcher Fetcher, target Type) (bool, error) {
+func (s *SliceType) AssignableTo(fetcher Fetcher, target Type) (bool, CompEvalError, error) {
 	return s.Equal(fetcher, target)
 }
 
 // ConvertibleTo reports whether a value of the type can be converted to another
 // (using static type casting).
-func (s *SliceType) ConvertibleTo(fetcher Fetcher, target Type) (bool, error) {
-	return false, nil
+func (s *SliceType) ConvertibleTo(fetcher Fetcher, target Type) (bool, CompEvalError, error) {
+	return false, nil, nil
 }
 
 // Value returns a value pointing to the receiver.
@@ -869,27 +748,27 @@ func (s *arrayType) DataType() Type { return s.DTypeF }
 // Rank of the array.
 func (s *arrayType) Rank() ArrayRank { return s.RankF }
 
-func (s *arrayType) assignableToArray(fetcher Fetcher, other ArrayType) (bool, error) {
-	dtypeEq, err := s.DataType().AssignableTo(fetcher, other.DataType())
-	if !dtypeEq || err != nil {
-		return dtypeEq, err
+func (s *arrayType) assignableToArray(fetcher Fetcher, other ArrayType) (bool, CompEvalError, error) {
+	dtypeEq, cpErr, err := s.DataType().AssignableTo(fetcher, other.DataType())
+	if !dtypeEq || cpErr != nil || err != nil {
+		return dtypeEq, cpErr, err
 	}
 	return s.Rank().AssignableTo(fetcher, other.Rank())
 }
 
-func (s *arrayType) equalArray(fetcher Fetcher, other ArrayType) (bool, error) {
-	dtypeEq, err := s.DataType().Equal(fetcher, other.DataType())
-	if !dtypeEq || err != nil {
-		return dtypeEq, err
+func (s *arrayType) equalArray(fetcher Fetcher, other ArrayType) (bool, CompEvalError, error) {
+	dtypeEq, cpErr, err := s.DataType().Equal(fetcher, other.DataType())
+	if !dtypeEq || cpErr != nil || err != nil {
+		return dtypeEq, cpErr, err
 	}
 	return s.Rank().Equal(fetcher, other.Rank())
 }
 
 // Equal returns true if other is the same type.
-func (s *arrayType) Equal(fetcher Fetcher, other Type) (bool, error) {
+func (s *arrayType) Equal(fetcher Fetcher, other Type) (bool, CompEvalError, error) {
 	otherT, ok := other.(ArrayType)
 	if !ok {
-		return false, nil
+		return false, nil, nil
 	}
 	if otherT.Rank().IsAtomic() {
 		return otherT.equalArray(fetcher, s)
@@ -897,22 +776,22 @@ func (s *arrayType) Equal(fetcher Fetcher, other Type) (bool, error) {
 	return s.equalArray(fetcher, otherT)
 }
 
-func (s *arrayType) assignableFrom(fetcher Fetcher, x Type) (bool, error) {
+func (s *arrayType) assignableFrom(fetcher Fetcher, x Type) (bool, CompEvalError, error) {
 	arrayType, isArrayType := x.(ArrayType)
 	if isArrayType {
 		return s.assignableToArray(fetcher, arrayType)
 	}
 	if !s.RankF.IsAtomic() {
-		return false, nil
+		return false, nil, nil
 	}
 	return AssignableTo(fetcher, x, s.DataType())
 }
 
 // AssignableTo reports if the type can be assigned to other.
-func (s *arrayType) AssignableTo(fetcher Fetcher, target Type) (bool, error) {
+func (s *arrayType) AssignableTo(fetcher Fetcher, target Type) (bool, CompEvalError, error) {
 	targetT, ok := target.(ArrayType)
 	if !ok {
-		return false, nil
+		return false, nil, nil
 	}
 	if targetT.Rank().IsAtomic() {
 		return targetT.equalArray(fetcher, s)
@@ -922,18 +801,18 @@ func (s *arrayType) AssignableTo(fetcher Fetcher, target Type) (bool, error) {
 
 // ConvertibleTo reports whether a value of the type can be converted to another
 // (using static type casting).
-func (s *arrayType) ConvertibleTo(fetcher Fetcher, target Type) (bool, error) {
+func (s *arrayType) ConvertibleTo(fetcher Fetcher, target Type) (bool, CompEvalError, error) {
 	target = Underlying(target)
 	targetT, ok := target.(ArrayType)
 	if !ok {
-		return false, nil
+		return false, nil, nil
 	}
 	if targetT.Rank().IsAtomic() {
 		return s.RankF.ConvertibleTo(fetcher, scalarRank)
 	}
-	dtypeOk, err := s.DTypeF.ConvertibleTo(fetcher, targetT.DataType())
-	if !dtypeOk || err != nil {
-		return dtypeOk, err
+	dtypeOk, cpErr, err := s.DTypeF.ConvertibleTo(fetcher, targetT.DataType())
+	if !dtypeOk || cpErr != nil || err != nil {
+		return dtypeOk, cpErr, err
 	}
 	return s.RankF.ConvertibleTo(fetcher, targetT.Rank())
 }
@@ -1017,47 +896,47 @@ func (s *TypeParam) Kind() irkind.Kind {
 	return s.Field.Type().Kind()
 }
 
-func (s *TypeParam) equal(fetcher Fetcher, typ Type) (bool, error) {
+func (s *TypeParam) equal(fetcher Fetcher, typ Type) (bool, CompEvalError, error) {
 	switch typT := typ.(type) {
 	case *atomicType:
-		return false, nil
+		return false, nil, nil
 	case *TypeParam:
 		if s.Field == typT.Field {
-			return true, nil
+			return true, nil, nil
 		}
 	case *NamedType:
 		return s.Field.Type().Equal(fetcher, typ)
 	case ArrayType:
 		if !typT.Rank().IsAtomic() {
-			return false, nil
+			return false, nil, nil
 		}
 		return s.Equal(fetcher, typT.DataType())
 	}
-	return false, nil
+	return false, nil, nil
 }
 
 // Equal returns true if other is the same type.
-func (s *TypeParam) Equal(fetcher Fetcher, typ Type) (bool, error) {
+func (s *TypeParam) Equal(fetcher Fetcher, typ Type) (bool, CompEvalError, error) {
 	return s.equal(fetcher, typ)
 }
 
-func (s *TypeParam) assignableFrom(fetcher Fetcher, other Type) (bool, error) {
+func (s *TypeParam) assignableFrom(fetcher Fetcher, other Type) (bool, CompEvalError, error) {
 	return other.AssignableTo(fetcher, s.Field.Type())
 }
 
 // AssignableTo reports whether a value of the type can be assigned to another.
-func (s *TypeParam) AssignableTo(fetcher Fetcher, typ Type) (bool, error) {
+func (s *TypeParam) AssignableTo(fetcher Fetcher, typ Type) (bool, CompEvalError, error) {
 	return s.Equal(fetcher, typ)
 }
 
 // ConvertibleTo reports whether a value of the type can be converted to another
 // (using static type casting).
-func (s *TypeParam) ConvertibleTo(fetcher Fetcher, typ Type) (bool, error) {
+func (s *TypeParam) ConvertibleTo(fetcher Fetcher, typ Type) (bool, CompEvalError, error) {
 	return s.Field.Type().ConvertibleTo(fetcher, typ)
 }
 
 // convertibleFrom reports whether a value of some type can be converted to the receiver.
-func (s *TypeParam) convertibleFrom(fetcher Fetcher, from Type) (bool, error) {
+func (s *TypeParam) convertibleFrom(fetcher Fetcher, from Type) (bool, CompEvalError, error) {
 	return from.ConvertibleTo(fetcher, s.Field.Type())
 }
 

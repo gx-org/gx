@@ -40,7 +40,7 @@ func names(vals []*ast.Ident) []string {
 
 type (
 	rankFunc func() ir.ArrayRank
-	typeFunc func(ir.Type, ir.Fetcher, ir.Type) (bool, error)
+	typeFunc func(ir.Type, ir.Fetcher, ir.Type) (bool, ir.CompEvalError, error)
 )
 
 var (
@@ -213,6 +213,10 @@ func (f *fetcherTesting) Sub(map[string]ir.Element) (ir.Fetcher, bool) {
 	panic("not implemented")
 }
 
+func (f *fetcherTesting) ToCompEvalError(ir.Element) (ir.CompEvalError, error) {
+	return nil, nil
+}
+
 func (f *fetcherTesting) Err() *fmterr.Appender {
 	return nil
 }
@@ -260,11 +264,13 @@ func testTypeMatrix(t *testing.T, a, b []ir.Type, f typeFunc) string {
 	for _, typeA := range a {
 		fmt.Fprintf(&result, "%*s: ", maxLen, ir.Stringer(typeA))
 		for _, typeB := range b {
-			ok, err := f(typeA, fetcher, typeB)
+			ok, cpErr, err := f(typeA, fetcher, typeB)
 			if err != nil {
 				t.Error(err)
 			}
-
+			if cpErr != nil {
+				t.Error(cpErr)
+			}
 			if ok {
 				result.WriteRune('X')
 			} else {
@@ -381,16 +387,22 @@ func TestArrayAtomicEqual(t *testing.T) {
 		t.Run(testCase.ranker().SourceString(nil), func(t *testing.T) {
 			for _, typ := range primitiveTypes {
 				arrayType := ir.NewArrayType(&ast.ArrayType{}, typ, testCase.ranker())
-				equal, err := arrayType.Equal(nil, typ)
+				equal, cpErr, err := arrayType.Equal(nil, typ)
 				if err != nil {
 					t.Error(err)
+				}
+				if cpErr != nil {
+					t.Error(cpErr)
 				}
 				if equal != testCase.equal {
 					t.Errorf("Expected %s.Equal(%s) = %v, got %v", arrayType, typ, testCase.equal, equal)
 				}
 
-				equal, err = typ.Equal(nil, arrayType)
+				equal, cpErr, err = typ.Equal(nil, arrayType)
 				if err != nil {
+					t.Error(err)
+				}
+				if cpErr != nil {
 					t.Error(err)
 				}
 				if equal != testCase.equal {
@@ -406,35 +418,35 @@ func TestNamedTypes(t *testing.T) {
 		// Named types define a new type that is distinct from the underlying type.
 		namedType := makeNamedType(typ)
 
-		if eq, err := namedType.Equal(nil, namedType); !eq || err != nil {
-			t.Errorf("Expected %s.Equal(%s) = (true, nil); got (%v, %v)", namedType, namedType, eq, err)
+		if eq, cpErr, err := namedType.Equal(nil, namedType); !eq || cpErr != nil || err != nil {
+			t.Errorf("Expected %s.Equal(%s) = (true, nil); got (%v, %v, %v)", namedType.Name(), namedType.Name(), eq, cpErr, err)
 		}
-		if eq, err := namedType.Equal(nil, typ); eq || err != nil {
-			t.Errorf("Expected %s.Equal(%s) = (false, nil); got (%v, %v)", namedType, typ, eq, err)
+		if eq, cpErr, err := namedType.Equal(nil, typ); eq || cpErr != nil || err != nil {
+			t.Errorf("Expected %s.Equal(%s) = (false, nil); got (%v, %v, %v)", namedType.Name(), typ, eq, cpErr, err)
 		}
-		if eq, err := typ.Equal(nil, namedType); eq || err != nil {
-			t.Errorf("Expected %s.Equal(%s) = (false, nil); got (%v, %v)", typ, namedType, eq, err)
+		if eq, cpErr, err := typ.Equal(nil, namedType); eq || cpErr != nil || err != nil {
+			t.Errorf("Expected %s.Equal(%s) = (false, nil); got (%v, %v, %v)", typ, namedType.Name(), eq, cpErr, err)
 		}
 
-		if eq, err := namedType.AssignableTo(nil, namedType); !eq || err != nil {
-			t.Errorf("Expected %s.AssignableTo(%s) = (true, nil); got (%v, %v)", namedType, namedType, eq, err)
+		if eq, cpErr, err := namedType.AssignableTo(nil, namedType); !eq || cpErr != nil || err != nil {
+			t.Errorf("Expected %s.AssignableTo(%s) = (true, nil); got (%v, %v, %v)", namedType.Name(), namedType.Name(), eq, cpErr, err)
 		}
-		if eq, err := namedType.AssignableTo(nil, typ); eq || err != nil {
-			t.Errorf("Expected %s.AssignableTo(%s) = (false, nil); got (%v, %v)", namedType, typ, eq, err)
+		if eq, cpErr, err := namedType.AssignableTo(nil, typ); eq || cpErr != nil || err != nil {
+			t.Errorf("Expected %s.AssignableTo(%s) = (false, nil); got (%v, %v, %v)", namedType.Name(), typ, eq, cpErr, err)
 		}
-		if eq, err := typ.AssignableTo(nil, namedType); eq || err != nil {
-			t.Errorf("Expected %s.AssignableTo(%s) = (false, nil); got (%v, %v)", typ, namedType, eq, err)
+		if eq, cpErr, err := typ.AssignableTo(nil, namedType); eq || cpErr != nil || err != nil {
+			t.Errorf("Expected %s.AssignableTo(%s) = (false, nil); got (%v, %v, %v)", typ, namedType.Name(), eq, cpErr, err)
 		}
 
 		// Named types are convertible to themselves, plus their exact underlying type and vice-versa.
-		if eq, err := namedType.ConvertibleTo(nil, namedType); !eq || err != nil {
-			t.Errorf("Expected %s.ConvertibleTo(%s) = (true, nil); got (%v, %v)", namedType, namedType, eq, err)
+		if eq, cpErr, err := namedType.ConvertibleTo(nil, namedType); !eq || cpErr != nil || err != nil {
+			t.Errorf("Expected %s.ConvertibleTo(%s) = (true, nil); got (%v, %v, %v)", namedType.Name(), namedType.Name(), eq, cpErr, err)
 		}
-		if eq, err := namedType.ConvertibleTo(nil, typ); !eq || err != nil {
-			t.Errorf("Expected %s.ConvertibleTo(%s) = (true, nil); got (%v, %v)", namedType, typ, eq, err)
+		if eq, cpErr, err := namedType.ConvertibleTo(nil, typ); !eq || cpErr != nil || err != nil {
+			t.Errorf("Expected %s.ConvertibleTo(%s) = (true, nil); got (%v, %v, %v)", namedType.Name(), typ, eq, cpErr, err)
 		}
-		if eq, err := typ.ConvertibleTo(nil, namedType); !eq || err != nil {
-			t.Errorf("Expected %s.ConvertibleTo(%s) = (true, nil); got (%v, %v)", typ, namedType, eq, err)
+		if eq, cpErr, err := typ.ConvertibleTo(nil, namedType); !eq || cpErr != nil || err != nil {
+			t.Errorf("Expected %s.ConvertibleTo(%s) = (true, nil); got (%v, %v, %v)", typ, namedType.Name(), eq, cpErr, err)
 		}
 	}
 }
@@ -466,9 +478,12 @@ func testRankMatrix(t *testing.T, ranks []rankFunc, f typeFunc) string {
 			for _, typ := range primitiveTypes {
 				typeA := ir.NewArrayType(&ast.ArrayType{}, typ, rankA())
 				typeB := ir.NewArrayType(&ast.ArrayType{}, typ, rankB())
-				typeOk, err := f(typeA, fetcher, typeB)
+				typeOk, cpErr, err := f(typeA, fetcher, typeB)
 				if err != nil {
 					t.Errorf("error with types %s and %s:\n%+v", typeA.ReferString(nil), typeB.ReferString(nil), err)
+				}
+				if cpErr != nil {
+					t.Errorf("compeval error with types %s and %s:\n%+v", typeA.ReferString(nil), typeB.ReferString(nil), cpErr)
 				}
 				ok = ok && typeOk
 			}
