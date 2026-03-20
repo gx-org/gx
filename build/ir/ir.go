@@ -135,6 +135,13 @@ type (
 		UnifyWith(Unifier, Type) bool
 	}
 
+	// TypeMethods is a type which provides a set of methods (e.g. an interface).
+	TypeMethods interface {
+		Type
+		// Methods available with the type.
+		Methods() []PkgFunc
+	}
+
 	// Zeroer is a type able to create a zero value of the type as an expression.
 	Zeroer interface {
 		Type
@@ -194,7 +201,7 @@ type (
 		File       *File
 		Underlying *TypeValExpr
 
-		Methods []PkgFunc
+		Meths []PkgFunc
 	}
 
 	// StructType defines the type of a structure.
@@ -250,7 +257,7 @@ type (
 
 var (
 	_ StorageWithValue = (*NamedType)(nil)
-	_ Type             = (*NamedType)(nil)
+	_ TypeMethods      = (*NamedType)(nil)
 	_ Type             = (*StructType)(nil)
 	_ Type             = (*InterfaceType)(nil)
 	_ SlicerType       = (*SliceType)(nil)
@@ -537,7 +544,7 @@ func (s *atomicType) DefineString(*File) string {
 
 // MethodByName returns a method given its name, or nil if not method has that name.
 func (s *NamedType) MethodByName(name string) PkgFunc {
-	for _, method := range s.Methods {
+	for _, method := range s.Meths {
 		if method.Name() == name {
 			return method
 		}
@@ -607,6 +614,11 @@ func (s *NamedType) Node() ast.Node { return s.Src }
 // Name of the type.
 func (s *NamedType) Name() string {
 	return s.NameDef().Name
+}
+
+// Methods returns the list of methods provided by the named type.
+func (s *NamedType) Methods() []PkgFunc {
+	return s.Meths
 }
 
 // NameDef returns the name defining the storage.

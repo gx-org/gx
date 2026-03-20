@@ -25,13 +25,13 @@ import (
 // NamedType is the GX runtime value of a named type.
 type NamedType struct {
 	val Value
-	typ *ir.NamedType
+	typ ir.TypeMethods
 }
 
 var _ Value = (*NamedType)(nil)
 
 // NewNamedType returns a new named type from a GX runtime value and a named type.
-func NewNamedType(val Value, typ *ir.NamedType) *NamedType {
+func NewNamedType(val Value, typ ir.TypeMethods) *NamedType {
 	return &NamedType{val: val, typ: typ}
 }
 
@@ -63,8 +63,8 @@ func (n *NamedType) Select(expr *ir.SelectorExpr) (ir.Element, error) {
 	return sel.Select(expr)
 }
 
-// NamedType returns the IR named type of the value.
-func (n *NamedType) NamedType() *ir.NamedType {
+// TypeMethods returns the IR named type of the value.
+func (n *NamedType) TypeMethods() ir.TypeMethods {
 	return n.typ
 }
 

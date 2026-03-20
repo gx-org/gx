@@ -107,7 +107,7 @@ func assignMethod(scope *fileResolveScope, ext *ir.NamedType, fn *irFunc) bool {
 		return scope.Err().Appendf(fn.irFunc.Node(), "method %s.%s already declared at %s", ext.Name(), fn.irFunc.Name(), funcPos(scope, prev.bFunc))
 	}
 	methods.Store(fn.irFunc.Name(), fn)
-	ext.Methods = updateMethods(scope.pkgResolveScope, ext)
+	ext.Meths = updateMethods(scope.pkgResolveScope, ext)
 	return true
 }
 

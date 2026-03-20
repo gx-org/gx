@@ -229,7 +229,7 @@ func TestMacroOnMethod(t *testing.T) {
 		irh.Fields(ir.Int32Type()),
 	)
 	body := irh.SingleReturn(irh.IntNumberAs(2, ir.Int32Type()))
-	typeS.Methods = []ir.PkgFunc{
+	typeS.Meths = []ir.PkgFunc{
 		&ir.FuncDecl{
 			FType: fType,
 			Body:  body,

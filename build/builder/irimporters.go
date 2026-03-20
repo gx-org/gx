@@ -89,7 +89,7 @@ func pNodeFromFunc(pkgScope *pkgProcScope, file *file, fn ir.PkgFunc) (*processN
 func importNamedTypes(pkgScope *pkgProcScope, bFile *file, types []*ir.NamedType) bool {
 	for _, typ := range types {
 		if _, exist := pkgScope.decls().declarations.Load(typ.Name()); exist {
-			for _, method := range typ.Methods {
+			for _, method := range typ.Meths {
 				if !importFunc(pkgScope, bFile, method) {
 					return false
 				}

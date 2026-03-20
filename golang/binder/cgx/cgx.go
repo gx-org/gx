@@ -970,7 +970,7 @@ func cgx_interface_package_name(cgxIFace C.cgx_interface) *C.cchar_t {
 func cgx_interface_list_methods(cgxIFace C.cgx_interface) C.struct_cgx_list_functions_result {
 	iface := unwrap[*interfaceHandle](cgxIFace)
 	var funcs []*core.FuncCache
-	for _, fn := range iface.typ.Methods {
+	for _, fn := range iface.typ.Meths {
 		if !ir.IsExported(fn.Name()) {
 			continue
 		}

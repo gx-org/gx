@@ -154,7 +154,7 @@ func findFunc(pkg *ir.Package, name string) (*ir.FuncBuiltin, error) {
 		if typ == nil {
 			return nil, errors.Errorf("cannot find type %s in package %s", typeName, pkg.Path())
 		}
-		fns = typ.Methods
+		fns = typ.Meths
 	}
 	for _, fn := range fns {
 		if fn.Name() != name {
@@ -259,8 +259,8 @@ func BuildMethod(name string, f MethodBuilder) Builder {
 		return pkg.ImportIR(&ir.Declarations{
 			Types: []*ir.NamedType{
 				&ir.NamedType{
-					Src:     namedType.Src,
-					Methods: []ir.PkgFunc{fn},
+					Src:   namedType.Src,
+					Meths: []ir.PkgFunc{fn},
 				},
 			},
 		})

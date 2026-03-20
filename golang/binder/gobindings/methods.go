@@ -34,7 +34,7 @@ type (
 
 func (b *binder) buildMethods(r receiver) []method {
 	var methods []method
-	for i, fun := range r.named().Methods {
+	for i, fun := range r.named().Meths {
 		if !ir.IsExported(fun.Name()) {
 			continue
 		}

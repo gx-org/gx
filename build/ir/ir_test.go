@@ -163,7 +163,7 @@ func makeNamedType(typ ir.Type) *ir.NamedType {
 		Src:        &ast.TypeSpec{Name: irhelper.IdentAST("named_" + typ.ReferString(nil))},
 		File:       testFile,
 		Underlying: ir.TypeExpr(nil, typ),
-		Methods:    []ir.PkgFunc{},
+		Meths:      []ir.PkgFunc{},
 	}
 }
 

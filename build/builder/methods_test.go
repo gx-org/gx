@@ -48,7 +48,7 @@ func TestMethods(t *testing.T) {
 				}},
 			},
 		)}
-	typeA.Methods = []ir.PkgFunc{fI}
+	typeA.Meths = []ir.PkgFunc{fI}
 	testbuild.Run(t,
 		testbuild.Decl{
 			Src: `
@@ -152,7 +152,7 @@ func TestMethodOnNamedTypes(t *testing.T) {
 				}},
 			},
 		)}
-	typeA.Methods = []ir.PkgFunc{val}
+	typeA.Meths = []ir.PkgFunc{val}
 	testbuild.Run(t,
 		testbuild.Decl{
 			Src: `

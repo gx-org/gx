@@ -27,7 +27,7 @@ import (
 // NamedType references a type exported by an imported package.
 type NamedType struct {
 	newFunc NewFunc
-	typ     *ir.NamedType
+	typ     ir.TypeMethods
 	funcs   map[string]ir.PkgFunc
 	under   elements.Copier
 }
@@ -41,9 +41,9 @@ var (
 )
 
 // NewNamedType returns a new node representing an exported type.
-func NewNamedType(newFunc NewFunc, typ *ir.NamedType, under elements.Copier) *NamedType {
+func NewNamedType(newFunc NewFunc, typ ir.TypeMethods, under elements.Copier) *NamedType {
 	funcs := make(map[string]ir.PkgFunc)
-	for _, fun := range typ.Methods {
+	for _, fun := range typ.Methods() {
 		funcs[fun.Name()] = fun
 	}
 	return &NamedType{
@@ -88,8 +88,8 @@ func (n *NamedType) Flatten() ([]ir.Element, error) {
 	return flatten.Flatten(n.under)
 }
 
-// NamedType returns the type of the element.
-func (n *NamedType) NamedType() *ir.NamedType {
+// TypeMethods returns the type of the element.
+func (n *NamedType) TypeMethods() ir.TypeMethods {
 	return n.typ
 }
 
@@ -114,7 +114,7 @@ func (n *NamedType) Store() ir.Storage {
 
 // String returns a string representation of the node.
 func (n *NamedType) String() string {
-	return n.typ.FullName()
+	return n.typ.ReferString(nil)
 }
 
 // Receiver of a function.

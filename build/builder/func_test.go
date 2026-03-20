@@ -84,7 +84,7 @@ func TestBuiltinMethods(t *testing.T) {
 			irh.Fields(ir.Uint32Type()),
 		),
 	}
-	typeA.Methods = []ir.PkgFunc{funF}
+	typeA.Meths = []ir.PkgFunc{funF}
 	testbuild.Run(t,
 		testbuild.Decl{
 			Src: `
