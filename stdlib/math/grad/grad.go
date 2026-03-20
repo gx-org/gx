@@ -137,7 +137,7 @@ func (m *gradMacro) BuildDecl(fn ir.PkgFunc) (*ir.File, *ast.FuncDecl, bool) {
 }
 
 func (m *gradMacro) BuildBody(fetcher ir.Fetcher, fn ir.Func) (*ast.BlockStmt, bool) {
-	gradPkgFullName := m.CoreMacroElement.From().File().Package.FullName()
+	gradPkgFullName := m.CoreMacroElement.From().File().Package.Path()
 	imp := m.call.File().FindImport(gradPkgFullName)
 	y := &ast.Ident{Name: m.unames.Name("y")}
 	resIdent := &ast.Ident{Name: m.unames.Name("res")}

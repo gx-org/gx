@@ -266,8 +266,8 @@ func (c *checkUnique) checkName(kind string, n string) {
 }
 
 func (v *validator) validatePackage(pkg *ir.Package) {
-	if pkg.Dir != "" && pkg.Dir+"/"+pkg.Name.Name != pkg.FullName() {
-		v.errs.Append(errors.Errorf("pkg.Dir=%s / pkg.Name=%s is not equal to the path full name %s", pkg.Dir, pkg.Name, pkg.FullName()))
+	if pkg.Dir != "" && pkg.Dir+"/"+pkg.Name.Name != pkg.Path() {
+		v.errs.Append(errors.Errorf("pkg.Dir=%s / pkg.Name=%s is not equal to the path full name %s", pkg.Dir, pkg.Name, pkg.Path()))
 	}
 	for _, file := range pkg.Files {
 		v.validate(file)

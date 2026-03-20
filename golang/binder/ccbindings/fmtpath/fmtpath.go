@@ -90,6 +90,6 @@ func (Functions) Namespace(path string) string {
 
 // PackagePath prepares a package path.
 func (Functions) PackagePath(pkg *ir.Package) string {
-	paths := strings.Split(pkg.FullName(), "/")
+	paths := strings.Split(pkg.Path(), "/")
 	return filepath.Join(paths...)
 }

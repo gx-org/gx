@@ -61,8 +61,8 @@ func ephemeralPkgScope(fscope *fileResolveScope, src ast.Node, pkgPath string) (
 }
 
 func newMacroProcScope(pScope *fileResolveScope, src ast.Node, macroFile *ir.File) (*macroProcScope, bool) {
-	currentPackagePath := pScope.irBuilder().Pkg().FullName()
-	pkgPath := macroFile.Package.FullName()
+	currentPackagePath := pScope.irBuilder().Pkg().Path()
+	pkgPath := macroFile.Package.Path()
 	var rscope *pkgResolveScope
 	if currentPackagePath == pkgPath {
 		rscope = pScope.pkgResolveScope

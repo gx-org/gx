@@ -47,7 +47,7 @@ func Trace(dev *api.Device, fn *ir.FuncDecl, receiver values.Value, args []value
 			if recv := fn.FType.ReceiverField(); recv != nil {
 				recvName = recv.Name.Name + "."
 			}
-			err = fmt.Errorf("%s.%s%s evaluation error:\n%w", fn.File().Package.FullName(), recvName, fn.Name(), err)
+			err = fmt.Errorf("%s.%s%s evaluation error:\n%w", fn.File().Package.Path(), recvName, fn.Name(), err)
 		}
 		err = fmterr.ToStackTraceError(err)
 	}()

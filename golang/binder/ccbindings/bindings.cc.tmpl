@@ -69,7 +69,7 @@ namespace {{.Namespace}} {
 
 absl::StatusOr<{{.Class}}IR> {{.Class}}IR::Load(const ::gxlang::cppgx::Runtime& runtime) {
   absl::StatusOr<::gxlang::cppgx::PackageIR>
-      result(runtime.Load("{{.Package.FullName}}"));
+      result(runtime.Load("{{.Package.Path}}"));
   if (!result.ok()) return result.status();
   return {{.Class}}IR(std::move(result).value());
 }

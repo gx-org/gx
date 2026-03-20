@@ -66,7 +66,7 @@ func (b *binder) registerImport(path string) {
 }
 
 func (b *binder) packageToPath(pkg *ir.Package) string {
-	packagePath := pkg.FullName()
+	packagePath := pkg.Path()
 	if b.stdlib.Support(packagePath) {
 		return b.builder.StdlibDependencyImport(packagePath)
 	}

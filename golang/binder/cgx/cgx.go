@@ -299,7 +299,7 @@ func cgx_package_ir_name(cgxPackageIR C.cgx_package_ir) *C.cchar_t {
 //export cgx_package_ir_fullname
 func cgx_package_ir_fullname(cgxPackageIR C.cgx_package_ir) *C.cchar_t {
 	pkg := unwrap[importers.Package](cgxPackageIR)
-	return C.CString(pkg.IR().FullName())
+	return C.CString(pkg.IR().Path())
 }
 
 type staticVariable struct {
@@ -372,7 +372,7 @@ func cgx_static_set(cgxStatic C.cgx_static, val int64) C.cgx_error {
 	}
 	cvr.pkg.Setup().AppendOptions(func(plat platform.Platform) options.PackageOption {
 		return options.PackageVarSetValue{
-			Pkg:   cvr.pkg.IR().FullName(),
+			Pkg:   cvr.pkg.IR().Path(),
 			Var:   cvr.vr.VName.Name,
 			Value: gxValue,
 		}
@@ -963,7 +963,7 @@ func cgx_interface_name(cgxIFace C.cgx_interface) *C.cchar_t {
 //export cgx_interface_package_name
 func cgx_interface_package_name(cgxIFace C.cgx_interface) *C.cchar_t {
 	iface := unwrap[*interfaceHandle](cgxIFace)
-	return C.CString(iface.typ.File.Package.FullName())
+	return C.CString(iface.typ.File.Package.Path())
 }
 
 //export cgx_interface_list_methods

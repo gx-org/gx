@@ -88,7 +88,7 @@ func (b *binder) Files() []bindings.File {
 }
 
 func (b *binder) Namespace() string {
-	return b.fmtpath.Namespace(b.Package.FullName())
+	return b.fmtpath.Namespace(b.Package.Path())
 }
 
 type headerFile struct {
@@ -105,7 +105,7 @@ func (f headerFile) WriteBindings(w io.Writer) error {
 }
 
 func (f headerFile) HeaderGuard() string {
-	return f.fmtpath.HeaderGuard(f.Package.FullName())
+	return f.fmtpath.HeaderGuard(f.Package.Path())
 }
 
 type sourceFile struct {
@@ -122,5 +122,5 @@ func (f sourceFile) WriteBindings(w io.Writer) error {
 }
 
 func (f sourceFile) HeaderPath() string {
-	return f.fmtpath.HeaderPath(f.Package.FullName())
+	return f.fmtpath.HeaderPath(f.Package.Path())
 }

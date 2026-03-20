@@ -598,7 +598,7 @@ func (s *NamedType) convertibleFrom(fetcher Fetcher, source Type) (bool, error) 
 
 // FullName returns the full name of the type, that is the full package path and the type name.
 func (s *NamedType) FullName() string {
-	return s.File.Package.FullName() + "." + s.Name()
+	return s.File.Package.Path() + "." + s.Name()
 }
 
 // Node returns the node in the AST tree.
@@ -1306,8 +1306,8 @@ func (pkg *Package) File(name string) *File {
 	return pkg.Files[name]
 }
 
-// FullName returns the full name of the package, including its path.
-func (pkg *Package) FullName() string {
+// Path of the package as it would be imported from another package.
+func (pkg *Package) Path() string {
 	return path.Join(pkg.Dir, pkg.Name.Name)
 }
 
@@ -1410,7 +1410,7 @@ func (pkg *Package) ExportedStatics() []*VarExpr {
 
 // String representation of the package.
 func (pkg *Package) DefineString(*File) string {
-	return pkg.FullName()
+	return pkg.Path()
 }
 
 func (*File) node() {}
@@ -1470,7 +1470,7 @@ func (s *FuncDecl) Value(x Expr) Expr {
 // FullyQualifiedName returns a fully qualified function name, that is
 // the full package path and the name of the function.
 func (s *FuncDecl) FullyQualifiedName() string {
-	return s.FFile.Package.FullName() + "." + s.Name()
+	return s.FFile.Package.Path() + "." + s.Name()
 }
 
 // Doc returns associated documentation or nil.
@@ -3335,5 +3335,5 @@ func ToArrayTypeGivenShape(from *File, typ Type, sh *shape.Shape) (ArrayType, er
 }
 
 func fullName(f PkgFunc) string {
-	return f.File().Package.FullName() + "." + f.Name()
+	return f.File().Package.Path() + "." + f.Name()
 }

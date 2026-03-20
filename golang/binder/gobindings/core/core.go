@@ -113,7 +113,7 @@ func findFunction(pkg *ir.Package, fnName string) (*ir.FuncDecl, error) {
 	}
 	fDecl, ok := fn.(*ir.FuncDecl)
 	if !ok {
-		return nil, errors.Errorf("cannot compile function %s in package %s: incorrect type %T", fnName, pkg.FullName(), fn)
+		return nil, errors.Errorf("cannot compile function %s in package %s: incorrect type %T", fnName, pkg.Path(), fn)
 	}
 	return fDecl, nil
 }

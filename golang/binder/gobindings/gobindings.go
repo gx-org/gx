@@ -71,7 +71,7 @@ type (
 )
 
 func (b *binder) GXImportBindedLibrary() string {
-	if b.stdlib.Support(b.Package.FullName()) {
+	if b.stdlib.Support(b.Package.Path()) {
 		// Standard library package does not need to load GX source code.
 		return ""
 	}

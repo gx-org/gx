@@ -42,7 +42,7 @@ func (v *staticVar) Name() string {
 }
 
 func (v *staticVar) PkgPath() string {
-	return v.VarExpr.Decl.FFile.Package.FullName()
+	return v.VarExpr.Decl.FFile.Package.Path()
 }
 
 func (v *staticVar) CCType() (string, error) {

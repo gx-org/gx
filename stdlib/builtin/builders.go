@@ -72,7 +72,7 @@ func (b *sourceParser) Name() string {
 }
 
 func (b *sourceParser) Build(param *BuilderParam, pkg importers.FilePackage) (err error) {
-	pkgPath := pkg.IR().FullName()
+	pkgPath := pkg.IR().Path()
 	if len(b.names) == 0 {
 		if b.names, err = topLevelNames(param.FS, pkgPath); err != nil {
 			return err
@@ -152,7 +152,7 @@ func findFunc(pkg *ir.Package, name string) (*ir.FuncBuiltin, error) {
 		name = splt[1]
 		typ := pkg.Decls.TypeByName(typeName)
 		if typ == nil {
-			return nil, errors.Errorf("cannot find type %s in package %s", typeName, pkg.FullName())
+			return nil, errors.Errorf("cannot find type %s in package %s", typeName, pkg.Path())
 		}
 		fns = typ.Methods
 	}

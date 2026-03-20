@@ -139,7 +139,7 @@ func (tt DeclarePackage) Run(b *Builder) error {
 	if err != nil {
 		return err
 	}
-	b.imp.pkgs[pkg.IR().FullName()] = pkg
+	b.imp.pkgs[pkg.IR().Path()] = pkg
 	return nil
 }
 

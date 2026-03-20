@@ -71,7 +71,7 @@ func findVarDecl(pkg *ir.Package, name string) (*ir.VarExpr, error) {
 			}
 		}
 	}
-	return nil, errors.Errorf("cannot find variable %s in package %s", name, pkg.FullName())
+	return nil, errors.Errorf("cannot find variable %s in package %s", name, pkg.Path())
 }
 
 func buildSetStaticOption(rtm *api.Runtime, pkg *ir.Package, cmdS []string) (options.PackageOption, error) {
@@ -113,7 +113,7 @@ func buildSetStaticOption(rtm *api.Runtime, pkg *ir.Package, cmdS []string) (opt
 		return nil, errors.Errorf("type %q not supported", valType)
 	}
 	return options.PackageVarSetValue{
-		Pkg:   pkg.FullName(),
+		Pkg:   pkg.Path(),
 		Var:   valName,
 		Value: val.Bridge().GXValue(),
 	}, nil

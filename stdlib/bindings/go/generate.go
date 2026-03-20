@@ -34,7 +34,7 @@ var (
 )
 
 func newSourceFile(pkg *ir.Package) (io.WriteCloser, error) {
-	bindingsPath := filepath.Join(*outputFolder, pkg.FullName()) + *packageFolderSuffix
+	bindingsPath := filepath.Join(*outputFolder, pkg.Path()) + *packageFolderSuffix
 	if err := os.MkdirAll(bindingsPath, 0777); err != nil {
 		return nil, fmt.Errorf("cannot create package path %s: %v", bindingsPath, err)
 	}

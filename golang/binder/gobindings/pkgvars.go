@@ -66,7 +66,7 @@ func (v pkgVar) GoType() (string, error) {
 }
 
 func (v pkgVar) PackagePath() string {
-	return v.Package.FullName()
+	return v.Package.Path()
 }
 
 func (b *binder) buildPkgVars() (string, error) {

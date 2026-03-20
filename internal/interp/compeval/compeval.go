@@ -42,7 +42,7 @@ func EvalExpr(eval ir.Evaluator, expr ir.Expr) (cpevelements.Element, error) {
 func NewOptionVariable(vr *ir.VarExpr) options.PackageOption {
 	src := elements.NewNodeAt[ir.Storage](vr.Decl.FFile, vr)
 	return elements.PackageVarSetElement{
-		Pkg:   vr.Decl.FFile.Package.FullName(),
+		Pkg:   vr.Decl.FFile.Package.Path(),
 		Var:   vr.VName.Name,
 		Value: cpevelements.NewVariable(src),
 	}

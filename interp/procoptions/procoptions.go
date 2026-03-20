@@ -65,7 +65,7 @@ func New(eval evaluator.Evaluator, opts []options.PackageOption) (*Options, erro
 
 // Eval evaluates options for a given package.
 func (o *Options) Eval(pkg *ir.Package, scope *scope.RWScope[ir.Element]) error {
-	options := o.packageOptions[pkg.FullName()]
+	options := o.packageOptions[pkg.Path()]
 	for _, option := range options {
 		if err := option(pkg, scope); err != nil {
 			return err
@@ -82,7 +82,7 @@ func findVarExpr(pkg *ir.Package, name string) (*ir.VarExpr, error) {
 			}
 		}
 	}
-	return nil, errors.Errorf("cannot find static variable %s in package %s", name, pkg.FullName())
+	return nil, errors.Errorf("cannot find static variable %s in package %s", name, pkg.Path())
 }
 
 func (o *Options) processPackageVarSetGXValue(opt options.PackageVarSetValue) (packageOption, error) {
