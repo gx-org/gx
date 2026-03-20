@@ -247,11 +247,11 @@ func (p PackageVarSetElement) String() string {
 
 // StringFromElement returns the string value stored in a element.
 func StringFromElement(el ir.Element) (string, error) {
-	sEl, ok := el.(*String)
+	sEl, ok := Underlying(el).(*String)
 	if !ok {
 		return "", errors.Errorf("cannot convert element %T is not a string literal", el)
 	}
-	return sEl.StringValue().SourceString(nil), nil
+	return sEl.StringValue(), nil
 }
 
 // SliceVals slices a slice of elements.

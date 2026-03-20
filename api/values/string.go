@@ -51,5 +51,10 @@ func (s *String) ToHost(platform.Allocator) (Value, error) {
 
 // SourceString returns the GX source code of the implementation.
 func (s *String) SourceString(from *ir.File) string {
+	return s.StringValue()
+}
+
+// StringValue returns the value of the receiver.
+func (s *String) StringValue() string {
 	return s.str
 }

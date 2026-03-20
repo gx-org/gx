@@ -535,7 +535,7 @@ func evalExpr(fitp *FileScope, expr ir.Expr) (_ ir.Element, err error) {
 	case *ir.EinsumExpr:
 		return evalEinsumExpr(fitp, exprT)
 	case *ir.StringLiteral:
-		return elements.NewString(exprT)
+		return elements.NewStringFromLit(exprT)
 	case *ir.NumberFloat:
 		return numbers.NewFloat(fitp.env, exprT, exprT.Val)
 	case *ir.NumberInt:

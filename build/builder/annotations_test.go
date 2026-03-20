@@ -55,7 +55,7 @@ func (ts *tagStr) String() string {
 func toTagString(arg ir.Element) string {
 	switch argT := arg.(type) {
 	case *elements.String:
-		return argT.StringValue().SourceString(nil)
+		return argT.StringValue()
 	case fun.Func:
 		return argT.Func().FuncType().ReferString(nil)
 	default:

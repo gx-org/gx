@@ -24,24 +24,27 @@ import (
 
 // String is a GX string.
 type String struct {
-	str *ir.StringLiteral
 	val *values.String
 }
 
 var _ ir.Element = (*String)(nil)
 
-// NewString returns a state element storing a string GX value.
-func NewString(str *ir.StringLiteral) (*String, error) {
+// NewStringFromLit returns a state element storing a string GX value.
+func NewStringFromLit(str *ir.StringLiteral) (*String, error) {
 	val, err := strconv.Unquote(str.Src.Value)
 	if err != nil {
 		return nil, err
 	}
-	gxVal, err := values.NewString(str.Type(), val)
+	return NewString(val, str.Type())
+}
+
+// NewString returns a new element containing a string.
+func NewString(val string, typ ir.Type) (*String, error) {
+	gxVal, err := values.NewString(typ, val)
 	if err != nil {
 		return nil, err
 	}
 	return &String{
-		str: str,
 		val: gxVal,
 	}, nil
 }
@@ -52,11 +55,11 @@ func (n *String) Unflatten(handles *flatten.Parser) (values.Value, error) {
 }
 
 // StringValue returns the string value as a GX value.
-func (n *String) StringValue() *values.String {
-	return n.val
+func (n *String) StringValue() string {
+	return n.val.StringValue()
 }
 
 // Type of the element.
 func (n *String) Type() ir.Type {
-	return n.str.Type()
+	return n.val.Type()
 }
