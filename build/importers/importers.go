@@ -71,7 +71,7 @@ func NewProxyPackage(pkgpath string) Package {
 		FSet:  token.NewFileSet(),
 		Files: make(map[string]*ir.File),
 		Name:  &ast.Ident{Name: name},
-		Path:  dir,
+		Dir:   dir,
 	}
 	irpkg.Decls = &ir.Declarations{Package: irpkg}
 	return &proxyPackage{ir: irpkg}

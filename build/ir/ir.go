@@ -1114,7 +1114,7 @@ type (
 		Files map[string]*File
 
 		Name *ast.Ident
-		Path string
+		Dir  string
 
 		Decls *Declarations
 	}
@@ -1308,7 +1308,7 @@ func (pkg *Package) File(name string) *File {
 
 // FullName returns the full name of the package, including its path.
 func (pkg *Package) FullName() string {
-	return path.Join(pkg.Path, pkg.Name.Name)
+	return path.Join(pkg.Dir, pkg.Name.Name)
 }
 
 // TypeByName returns a type defined in the package given its name.

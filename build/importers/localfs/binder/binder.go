@@ -35,7 +35,7 @@ func (GenImports) SourceImport(pkg *ir.Package) string {
 
 // DependencyImport generates the import to insert in the package source code.
 func (GenImports) DependencyImport(pkg *ir.Package) string {
-	return fmt.Sprintf("%s/%s/%s_go_gx", pkg.Path, pkg.Name.Name, pkg.Name.Name)
+	return fmt.Sprintf("%s/%s/%s_go_gx", pkg.Dir, pkg.Name.Name, pkg.Name.Name)
 }
 
 // StdlibDependencyImport returns the path to the Go bindings of a GX standard library given

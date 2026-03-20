@@ -141,7 +141,7 @@ func (pkg *basePackage) newPackageIR() *ir.Package {
 	return &ir.Package{
 		FSet:  pkg.fset,
 		Name:  pkg.name,
-		Path:  pkg.path,
+		Dir:   pkg.path,
 		Files: make(map[string]*ir.File),
 		Decls: &ir.Declarations{},
 	}
