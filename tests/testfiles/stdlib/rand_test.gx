@@ -1,10 +1,10 @@
-package stdlib_test
+package stdlib
 
 import (
 	"math"
 	"num"
 	"rand"
-	"shapes"
+	"shape"
 )
 
 // Test options:
@@ -119,7 +119,7 @@ const numSamples = 10000
 func TestCategorical() bool {
 	rnd := rand.New(rand.NewSource(0))
 	probs := [1][3]float32{{0.1, 0.2, 0.7}}
-	expandedProbs := shapes.Broadcast(probs, []intlen{numSamples, 3})
+	expandedProbs := shape.Broadcast(probs, []intlen{numSamples, 3})
 	_, labels := rand.Categorical[float32](rnd, expandedProbs)
 	numZero := num.Sum([___]int64(labels == 0), []intidx{0})
 	numOne := num.Sum([___]int64(labels == 1), []intidx{0})

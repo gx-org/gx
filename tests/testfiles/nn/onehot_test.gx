@@ -2,13 +2,13 @@ package nn
 
 import (
 	"num"
-	"shapes"
+	"shape"
 )
 
 // oneHot returns a 2-axis array where the position of the elements in x are set to 1 and the rest is 0.
 func oneHot(x [3]int32, numClasses intlen) [3][numClasses]bool {
 	axes := append(axlengths(x), numClasses)
-	xx := shapes.Broadcast(([3][1]int32)(x), axes)
+	xx := shape.Broadcast(([3][1]int32)(x), axes)
 	return ([...]int32)(num.Iota(axes, 1)) == xx
 }
 

@@ -3,7 +3,7 @@ package num
 
 import (
 	"dtype"
-	"shapes"
+	"shape"
 )
 
 // Iota generates an array given a shape where elements starts from 0 and are incremented by 1 along a given axis index.
@@ -15,6 +15,6 @@ func IotaFull(shape []intlen) [shape___]int64
 // OneHot returns a one-hot encoded array given a number of classes.
 func OneHot[T dtype.Ints](x [_axlen]T, numClasses intlen) [axlen][numClasses]bool {
 	ax := append([]intlen{axlen}, numClasses)
-	xx := shapes.Broadcast(([axlen][1]T)(x), ax)
+	xx := shape.Broadcast(([axlen][1]T)(x), ax)
 	return ([axlen][numClasses]T)(Iota(ax, 1)) == xx
 }

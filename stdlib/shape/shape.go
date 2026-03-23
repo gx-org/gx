@@ -12,8 +12,8 @@
 // See the License for the specific language governing permissions and
 // limitations under the License.
 
-// Package shapes provides functions to manipulate the shape of tensors.
-package shapes
+// Package shape provides functions to manipulate the shape of tensors.
+package shape
 
 import (
 	"github.com/gx-org/gx/interp"
@@ -21,9 +21,9 @@ import (
 	"github.com/gx-org/gx/stdlib/impl"
 )
 
-// Package description of the GX shapes package.
+// Package description of the GX shape package.
 var Package = builtin.PackageBuilder{
-	FullPath: "shapes",
+	FullPath: "shape",
 	Builders: []builtin.Builder{
 		builtin.ParseSource(),
 		builtin.BuildFunc(concat{}),

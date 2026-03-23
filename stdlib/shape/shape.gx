@@ -1,4 +1,4 @@
-package shapes
+package shape
 
 import "dtype"
 

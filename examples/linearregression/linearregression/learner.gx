@@ -2,7 +2,7 @@ package linearregression
 
 import (
 	"num"
-	"shapes"
+	"shape"
 )
 
 // Learner learns a set of Weights from samples.
@@ -21,7 +21,7 @@ func NewLearner(stepSize float32) Learner {
 
 // Sample generates a new vector of features and the corresponding prediction.
 func (l Learner) Update(features [Size]float32, target float32) (Learner, float32) {
-	featuresWithBias := shapes.Concat(0, features, [1]float32{1})
+	featuresWithBias := shape.Concat(0, features, [1]float32{1})
 	prediction := float32(num.Sum(l.Weights*featuresWithBias, []intidx{0}))
 	predictionError := target - prediction
 	l.Weights = l.Weights + l.stepSize*predictionError*featuresWithBias

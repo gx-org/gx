@@ -1,17 +1,17 @@
-package stdlib_test
+package stdlib
 
 import (
-	"shapes"
+	"shape"
 )
 
-func TestShape() shapes.Shape {
-	return shapes.Shape{
+func TestShape() shape.Shape {
+	return shape.Shape{
 		DType:      1,
 		Dimensions: []intlen{1, 2},
 	}
 	// Want:
-	// shapes.Shape{
-	// 	DType: shapes.DType(1),
+	// shape.Shape{
+	// 	DType: shape.DType(1),
 	// 	Dimensions: [intlen(1),intlen(2)],
 	// }
 }

@@ -182,7 +182,7 @@ def go_gx_library(name, lib, deps = [], tags = [], visibility = None, testonly =
             "//third_party/gxlang/gx/stdlib/bindings/go/dtype:dtype_go_gx",
             "//third_party/gxlang/gx/stdlib/bindings/go/math:math_go_gx",
             "//third_party/gxlang/gx/stdlib/bindings/go/num:num_go_gx",
-            "//third_party/gxlang/gx/stdlib/bindings/go/shapes:shapes_go_gx",
+            "//third_party/gxlang/gx/stdlib/bindings/go/shape:shape_go_gx",
         ] + deps,
         visibility = visibility,
     )

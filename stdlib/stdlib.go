@@ -33,10 +33,10 @@ import (
 	"github.com/gx-org/gx/stdlib/math"
 	"github.com/gx-org/gx/stdlib/num"
 	"github.com/gx-org/gx/stdlib/rand"
-	"github.com/gx-org/gx/stdlib/shapes"
+	"github.com/gx-org/gx/stdlib/shape"
 )
 
-//go:embed dtype/*.gx num/*.gx math/grad/*.gx math/*.gx shapes/*.gx rand/*.gx fmt/*.gx
+//go:embed dtype/*.gx num/*.gx math/grad/*.gx math/*.gx shape/*.gx rand/*.gx fmt/*.gx
 var staticFS embed.FS
 
 // Stdlib builds the standard library given import paths.
@@ -55,7 +55,7 @@ var packages = []builtin.PackageBuilder{
 	math.Package,
 	num.Package,
 	rand.Package,
-	shapes.Package,
+	shape.Package,
 	fmt.Package,
 }
 

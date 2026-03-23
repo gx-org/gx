@@ -4,7 +4,7 @@ import (
 	"dtype"
 	"math"
 	"num"
-	"shapes"
+	"shape"
 )
 
 func testDoesNotExist() int64 {
@@ -229,7 +229,7 @@ func testExplicitCastFloat64ToMyFloat() myfloat {
 }
 
 func testExpIntTensor() [2]float32 {
-	a := shapes.Shape{DType: 0, Dimensions: []intlen{}}
+	a := shape.Shape{DType: 0, Dimensions: []intlen{}}
 	return math.Exp(a) // ERROR cannot infer type parameter T
 }
 
@@ -247,19 +247,19 @@ func testIncorrectShape() [3]float64 {
 }
 
 func testConcatInferredType() [2]float32 {
-	a := shapes.Concat(0, [2]float32{1, 2}, [2]float32{3, 4})
+	a := shape.Concat(0, [2]float32{1, 2}, [2]float32{3, 4})
 	b := [2]float32{1, 2}
 	return a + b // ERROR mismatched types
 }
 
 func testConcatShapeError() [2]float32 {
-	a := shapes.Concat(0, [2]float32{2, 3}, [2]float32{4, 5})
+	a := shape.Concat(0, [2]float32{2, 3}, [2]float32{4, 5})
 	return a + [2]float32{6, 7} // ERROR mismatched types [2+2]float32 and [2]float32
 }
 
 func testIncorrectTypeBinaryOperator() float64 {
-	a := shapes.Shape{DType: 0, Dimensions: []intlen{}}
-	b := shapes.Shape{DType: 0, Dimensions: []intlen{}}
+	a := shape.Shape{DType: 0, Dimensions: []intlen{}}
+	b := shape.Shape{DType: 0, Dimensions: []intlen{}}
 	c := a + b // ERROR invalid
 	return c
 }

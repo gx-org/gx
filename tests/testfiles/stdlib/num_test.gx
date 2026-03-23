@@ -1,4 +1,4 @@
-package stdlib_test
+package stdlib
 
 import (
 	"num"
