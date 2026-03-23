@@ -28,20 +28,9 @@ type (
 
 	// Math is the implementation of the math package.
 	Math struct {
-		Abs      interp.FuncBuiltin
-		Ceil     interp.FuncBuiltin
-		Erf      interp.FuncBuiltin
-		Expm1    interp.FuncBuiltin
-		Floor    interp.FuncBuiltin
-		Log1p    interp.FuncBuiltin
-		Logistic interp.FuncBuiltin
-		Max      interp.FuncBuiltin
-		Min      interp.FuncBuiltin
-		Pow      interp.FuncBuiltin
-		Round    interp.FuncBuiltin
-		Rsqrt    interp.FuncBuiltin
-		Sign     interp.FuncBuiltin
-		Sqrt     interp.FuncBuiltin
+		Max interp.FuncBuiltin
+		Min interp.FuncBuiltin
+		Pow interp.FuncBuiltin
 	}
 
 	// Num is the implementation of the num package.

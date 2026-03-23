@@ -31,10 +31,8 @@ import (
 	"github.com/gx-org/gx/interp/elements"
 	"github.com/gx-org/gx/interp/evaluator"
 	"github.com/gx-org/gx/interp/fun"
-	"github.com/gx-org/gx/interp"
 	"github.com/gx-org/gx/interp/materialise"
 	"github.com/gx-org/gx/stdlib/builtin"
-	"github.com/gx-org/gx/stdlib/impl"
 )
 
 // Package description of the GX num package.
@@ -50,21 +48,21 @@ var Package = builtin.PackageBuilder{
 		builtin.BuildFunc(pow{}),
 		builtin.BuildFunc(minFunc{}),
 		builtin.BuildFunc(maxFunc{}),
-		builtin.ImplementStubFunc("Abs", func(impl *impl.Stdlib) interp.FuncBuiltin { return impl.Math.Abs }),
-		builtin.ImplementStubFunc("Ceil", func(impl *impl.Stdlib) interp.FuncBuiltin { return impl.Math.Ceil }),
+		buildUnary("Abs", func(g ops.Graph) unaryFunc { return g.Math().Abs }),
+		buildUnary("Ceil", func(g ops.Graph) unaryFunc { return g.Math().Ceil }),
 		buildUnary("Cos", func(g ops.Graph) unaryFunc { return g.Math().Cos }),
-		builtin.ImplementStubFunc("Erf", func(impl *impl.Stdlib) interp.FuncBuiltin { return impl.Math.Erf }),
-		builtin.ImplementStubFunc("Expm1", func(impl *impl.Stdlib) interp.FuncBuiltin { return impl.Math.Expm1 }),
+		buildUnary("Erf", func(g ops.Graph) unaryFunc { return g.Math().Erf }),
+		buildUnary("Expm1", func(g ops.Graph) unaryFunc { return g.Math().Expm1 }),
 		buildUnary("Exp", func(g ops.Graph) unaryFunc { return g.Math().Exp }),
-		builtin.ImplementStubFunc("Floor", func(impl *impl.Stdlib) interp.FuncBuiltin { return impl.Math.Floor }),
-		builtin.ImplementStubFunc("Log1p", func(impl *impl.Stdlib) interp.FuncBuiltin { return impl.Math.Log1p }),
-		builtin.ImplementStubFunc("Logistic", func(impl *impl.Stdlib) interp.FuncBuiltin { return impl.Math.Logistic }),
+		buildUnary("Floor", func(g ops.Graph) unaryFunc { return g.Math().Floor }),
+		buildUnary("Log1p", func(g ops.Graph) unaryFunc { return g.Math().Log1p }),
+		buildUnary("Logistic", func(g ops.Graph) unaryFunc { return g.Math().Logistic }),
 		buildUnary("Log", func(g ops.Graph) unaryFunc { return g.Math().Log }),
-		builtin.ImplementStubFunc("Round", func(impl *impl.Stdlib) interp.FuncBuiltin { return impl.Math.Round }),
-		builtin.ImplementStubFunc("Rsqrt", func(impl *impl.Stdlib) interp.FuncBuiltin { return impl.Math.Rsqrt }),
-		builtin.ImplementStubFunc("Sign", func(impl *impl.Stdlib) interp.FuncBuiltin { return impl.Math.Sign }),
+		buildUnary("Round", func(g ops.Graph) unaryFunc { return g.Math().Round }),
+		buildUnary("Rsqrt", func(g ops.Graph) unaryFunc { return g.Math().Rsqrt }),
+		buildUnary("Sign", func(g ops.Graph) unaryFunc { return g.Math().Sign }),
 		buildUnary("Sin", func(g ops.Graph) unaryFunc { return g.Math().Sin }),
-		builtin.ImplementStubFunc("Sqrt", func(impl *impl.Stdlib) interp.FuncBuiltin { return impl.Math.Sqrt }),
+		buildUnary("Sqrt", func(g ops.Graph) unaryFunc { return g.Math().Sqrt }),
 		buildUnary("Tanh", func(g ops.Graph) unaryFunc { return g.Math().Tanh }),
 	},
 }

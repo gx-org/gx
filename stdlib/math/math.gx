@@ -46,32 +46,57 @@ const (
 	MaxUint64 = 18446744073709551615
 )
 
-// Declare built-ins: these are typechecked like normal GX functions.
-func Abs[T dtype.Num]([___M]T) [M___]T
-func Ceil[T dtype.Num]([___M]T) [M___]T
-func Cos[T dtype.Num]([___M]T) [M___]T
-func Erf[T dtype.Num]([___M]T) [M___]T
-func Expm1[T dtype.Num]([___M]T) [M___]T
+// Abs returns the absolute value of x.
+func Abs[T dtype.Num]([___S]T) [S___]T
 
+// Ceil returns the ceiling of x.
+func Ceil[T dtype.Num]([___S]T) [S___]T
+
+// Cos returns the cosine of x.
+func Cos[T dtype.Num]([___S]T) [S___]T
+
+// Erf returns the error function of x.
+func Erf[T dtype.Num]([___S]T) [S___]T
+
+// Expm1 returns Exp(x)-1.
+func Expm1[T dtype.Num]([___S]T) [S___]T
+
+// Exp returns the exponential of x.
 // gx:@grad.Set(Exp)
-func Exp[T dtype.Num]([___M]T) [M___]T
-func Floor[T dtype.Num]([___M]T) [M___]T
-func Log1p[T dtype.Num]([___M]T) [M___]T
-func Logistic[T dtype.Num]([___M]T) [M___]T
+func Exp[T dtype.Num]([___S]T) [S___]T
 
-func inverse[T dtype.Num](x [___M]T) [M___]T {
+// Floor returns the floor of x.
+func Floor[T dtype.Num]([___S]T) [S___]T
+
+// Log1p returns log(1+x).
+func Log1p[T dtype.Num]([___S]T) [S___]T
+
+// Logistic returns 1/(1+exp(-x)).
+func Logistic[T dtype.Num]([___S]T) [S___]T
+
+func inverse[T dtype.Num](x [___S]T) [S___]T {
 	return 1 / x
 }
 
+// Log returns the natural logarithm of x.
 // gx:@grad.Set(inverse)
-func Log[T dtype.Num]([___M]T) [M___]T
+func Log[T dtype.Num]([___S]T) [S___]T
 
-func Round[T dtype.Num]([___M]T) [M___]T
-func Rsqrt[T dtype.Num]([___M]T) [M___]T
-func Sign[T dtype.Num]([___M]T) [M___]T
+// Round returns the nearest integer of x.
+func Round[T dtype.Num]([___S]T) [S___]T
 
+// Rsqrt returns 1/sqrt(x).
+func Rsqrt[T dtype.Num]([___S]T) [S___]T
+
+// Sign returns the sign of x.
+func Sign[T dtype.Num]([___S]T) [S___]T
+
+// Sin returns the sine of x.
 // gx:@grad.Set(Cos)
-func Sin[T dtype.Num]([___M]T) [M___]T
-func Sqrt[T dtype.Num]([___M]T) [M___]T
-func Tanh[T dtype.Num]([___M]T) [M___]T
+func Sin[T dtype.Num]([___S]T) [S___]T
 
+// Sqrt returns sqrt(x).
+func Sqrt[T dtype.Num]([___S]T) [S___]T
+
+// Tanh returns the hyperbolic tangent of x.
+func Tanh[T dtype.Num]([___S]T) [S___]T
