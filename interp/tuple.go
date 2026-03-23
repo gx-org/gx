@@ -33,6 +33,7 @@ type Tuple struct {
 var (
 	_ elements.Slicer = (*Tuple)(nil)
 	_ ir.Element      = (*Tuple)(nil)
+	_ ir.TupleElement = (*Tuple)(nil)
 )
 
 // NewTuple returns a tuple to store the result of a function returning more than one value.
@@ -49,6 +50,11 @@ func (n *Tuple) Flatten() ([]ir.Element, error) {
 
 // Elements returns the elements stored in the tuple.
 func (n *Tuple) Elements() []ir.Element {
+	return n.elements
+}
+
+// TupleElements returns the elements stored in the tuple.
+func (n *Tuple) TupleElements() []ir.Element {
 	return n.elements
 }
 

@@ -95,10 +95,26 @@ func (dim *exprAxisLength) build(rscope *defineLocalScope) (ir.AxisLengths, bool
 		ext.X, xOk = castNumber(rscope, ext.X, ir.IntLenType())
 	}
 	xType := ext.X.Type()
-	if !ir.IsAxisLengthType(xType) {
-		xOk = rscope.Err().Appendf(dim.src, "cannot use type %s as axis length: want type intlen or []intlen", xType.ReferString(rscope.fileScope().irFile()))
+	if ir.IsAxisLengthType(xType) {
+		return ext, xOk
+	}
+	tuple, isTuple := xType.(*ir.TupleType)
+	if !isTuple {
+		goto invalidSignature
+	}
+	if len(tuple.Types) != 2 {
+		goto invalidSignature
+	}
+	if !ir.IsAxisLengthType(tuple.Types[0]) {
+		goto invalidSignature
+	}
+	if !ir.ErrorType().Same(tuple.Types[1]) {
+		goto invalidSignature
 	}
 	return ext, xOk
+invalidSignature:
+	ext.X = invalidExpr()
+	return ext, rscope.Err().Appendf(dim.src, "cannot use type %s as axis length: want type intlen or []intlen with an optional error", xType.ReferString(rscope.fileScope().irFile()))
 }
 
 const cannotInferAxisLength = "cannot infer array axis length"

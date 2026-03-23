@@ -59,6 +59,11 @@ func (n *String) StringValue() string {
 	return n.val.StringValue()
 }
 
+// Copy returns the receiver.
+func (n *String) Copy() Copier {
+	return n
+}
+
 // Type of the element.
 func (n *String) Type() ir.Type {
 	return n.val.Type()

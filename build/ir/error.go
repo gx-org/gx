@@ -28,7 +28,7 @@ var errorTyp = &errorType{}
 var errorIdent = &ast.Ident{Name: "error"}
 
 // ErrorType returns the type for the keyword error.
-func ErrorType() Type {
+func ErrorType() TypeMethods {
 	return errorTyp
 }
 
@@ -58,6 +58,10 @@ func (s *errorType) ConvertibleTo(fetcher Fetcher, target Type) (bool, CompEvalE
 // DefineString returns the GX source code to define the type.
 func (s *errorType) DefineString(from *File) string {
 	return "error"
+}
+
+func (*errorType) Methods() []PkgFunc {
+	return nil
 }
 
 // NameDef of the base type always returns a nil name definition.

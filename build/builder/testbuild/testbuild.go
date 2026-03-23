@@ -33,6 +33,7 @@ import (
 	"github.com/gx-org/gx/build/importers"
 	"github.com/gx-org/gx/build/ir"
 	"github.com/gx-org/gx/build/ir/irstring"
+	"github.com/gx-org/gx/stdlib"
 	gxtesting "github.com/gx-org/gx/tests/testing"
 )
 
@@ -116,6 +117,8 @@ type DeclarePackage struct {
 	Post func(*ir.Package)
 }
 
+var _ NoSubTest = DeclarePackage{}
+
 // Source code of the package.
 func (tt DeclarePackage) Source() string {
 	return tt.Src
@@ -142,6 +145,9 @@ func (tt DeclarePackage) Run(b *Builder) error {
 	b.imp.pkgs[pkg.IR().Path()] = pkg
 	return nil
 }
+
+// NoSubTest forces the execution of this test.
+func (tt DeclarePackage) NoSubTest() {}
 
 // Decl specifies a test with GX code declarations.
 type Decl struct {
@@ -345,6 +351,11 @@ type Test interface {
 	Run(*Builder) error
 }
 
+// NoSubTest is an interface to signal that the test should be run but not counted as a test.
+type NoSubTest interface {
+	NoSubTest()
+}
+
 // Run all the test.
 func Run(t *testing.T, tests ...Test) *Builder {
 	t.Helper()
@@ -363,6 +374,12 @@ func (b *Builder) Continue(t *testing.T, tests ...Test) {
 				t.Fatal(err)
 			}
 		}
+		_, noSubTest := test.(NoSubTest)
+		if noSubTest {
+			if err := test.Run(b); err != nil {
+				t.Errorf("\n%s\n%+v", test.Source(), fmterr.ToStackTraceError(err))
+			}
+		}
 		t.Run(b.nextTestName(), func(t *testing.T) {
 			t.Helper()
 			if err := test.Run(b); err != nil {
@@ -371,3 +388,32 @@ func (b *Builder) Continue(t *testing.T, tests ...Test) {
 		})
 	}
 }
+
+type loadStdlib struct {
+	path string
+}
+
+var _ NoSubTest = loadStdlib{}
+
+// LoadStdlib loads a standard library package.
+func LoadStdlib(path string) Test {
+	return loadStdlib{path: path}
+}
+
+// Source code of the package.
+func (tt loadStdlib) Source() string {
+	return tt.path
+}
+
+// Run the source code to declare it as an importable package.
+func (tt loadStdlib) Run(b *Builder) error {
+	stdlib := stdlib.Importer(nil)
+	pkg, err := stdlib.Import(builder.NewWithLoader(&b.imp), tt.path)
+	if err != nil {
+		return err
+	}
+	b.imp.pkgs[pkg.IR().Path()] = pkg
+	return nil
+}
+
+func (loadStdlib) NoSubTest() {}

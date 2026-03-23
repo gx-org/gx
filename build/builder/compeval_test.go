@@ -38,3 +38,23 @@ func TestFunctionAsAxisLength() [returnTwo()]int32 {
 		},
 	)
 }
+
+func TestCompevalError(t *testing.T) {
+	testbuild.Run(t,
+		testbuild.LoadStdlib("fmt"),
+		testbuild.Decl{
+			Src: `
+import "fmt"
+
+//gx:compeval
+func returnTwo() (intlen, error) {
+	return 2, fmt.Errorf("a compeval test error")
+}
+
+func f() [returnTwo()]int32 { 
+	return [2]int32{1, 2} // ERROR a compeval test error
+}
+`,
+		},
+	)
+}
