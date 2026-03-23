@@ -16,9 +16,17 @@
 package dtype
 
 import (
-	"github.com/gx-org/gx/interp"
+	"fmt"
+
+	"github.com/gx-org/backend/ops"
+	"github.com/gx-org/backend/shape"
+	"github.com/gx-org/gx/build/ir"
+	"github.com/gx-org/gx/interp/elements"
+	"github.com/gx-org/gx/interp/evaluator"
+	"github.com/gx-org/gx/interp/fun"
+	"github.com/gx-org/gx/interp/grapheval"
+	"github.com/gx-org/gx/interp/materialise"
 	"github.com/gx-org/gx/stdlib/builtin"
-	"github.com/gx-org/gx/stdlib/impl"
 )
 
 // Package description of the GX dtype package.
@@ -26,8 +34,33 @@ var Package = builtin.PackageBuilder{
 	FullPath: "dtype",
 	Builders: []builtin.Builder{
 		builtin.ParseSource(),
-		builtin.ImplementStubFunc("Reinterpret", func(impl *impl.Stdlib) interp.FuncBuiltin {
-			return impl.Dtype.Reinterpret
-		}),
+		builtin.ImplementGraphFunc("Reinterpret", evalReinterpret),
 	},
+}
+
+func evalReinterpret(env evaluator.Env, call elements.CallAt, fn fun.Func, irFunc *ir.FuncBuiltin, args []ir.Element) ([]ir.Element, error) {
+	mat := builtin.Materialiser(env)
+	argNode, _, err := materialise.Element(mat, args[0])
+	if err != nil {
+		return nil, err
+	}
+	retType := call.Node().Callee.FuncType().Results.List[0].Type.Val()
+	arrayType, ok := ir.Underlying(retType).(ir.ArrayType)
+	if !ok {
+		return nil, fmt.Errorf("%T is not an array type", retType)
+	}
+	dtype := arrayType.DataType().Kind().DType()
+	ev := env.Evaluator().(*grapheval.Evaluator)
+	gr := ev.ArrayOps().Graph()
+	op, err := gr.DType().Bitcast(argNode, dtype)
+	if err != nil {
+		return nil, err
+	}
+	return materialise.ElementFromNode(call.File(), mat, &ops.OutputNode{
+		Node: op,
+		Shape: &shape.Shape{
+			DType:       dtype,
+			AxisLengths: op.(interface{ PJRTDims() []int }).PJRTDims(),
+		},
+	}, call.Node().Type())
 }
