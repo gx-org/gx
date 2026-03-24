@@ -133,7 +133,7 @@ func IsInteger(typ Type) bool {
 		}
 		return false
 	}
-	return irkind.IsIntegerKind(typ.Kind())
+	return irkind.IsInteger(typ.Kind())
 }
 
 // IsFloat return true if type is a float.
@@ -144,7 +144,7 @@ func IsFloat(typ Type) bool {
 		}
 		return false
 	}
-	return irkind.IsFloatKind(typ.Kind())
+	return irkind.IsFloat(typ.Kind())
 }
 
 // CanBeNumber returns true if the value of a kind can be a number.

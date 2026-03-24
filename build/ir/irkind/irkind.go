@@ -190,8 +190,8 @@ func IsRangeOk(k Kind) bool {
 	return true
 }
 
-// IsIntegerKind return true if kind is an integer.
-func IsIntegerKind(kind Kind) bool {
+// IsInteger return true if kind is an integer.
+func IsInteger(kind Kind) bool {
 	switch kind {
 	case IntLen, IntIdx:
 		return true
@@ -203,8 +203,8 @@ func IsIntegerKind(kind Kind) bool {
 	return false
 }
 
-// IsFloatKind returns true if kind is a float.
-func IsFloatKind(kind Kind) bool {
+// IsFloat returns true if kind is a float.
+func IsFloat(kind Kind) bool {
 	switch kind {
 	case Bfloat16:
 		return true
@@ -218,15 +218,15 @@ func IsFloatKind(kind Kind) bool {
 
 // IsAlgebra returns true if kind can be used in algebraic operations (+, -, *, /).
 func IsAlgebra(kind Kind) bool {
-	return IsFloatKind(kind) || IsIntegerKind(kind)
+	return IsFloat(kind) || IsInteger(kind)
 }
 
 // IsConcrete returns true if kind is a concrete kind that can be used in an array.
 func IsConcrete(kind Kind) bool {
-	if IsIntegerKind(kind) {
+	if IsInteger(kind) {
 		return true
 	}
-	if IsFloatKind(kind) {
+	if IsFloat(kind) {
 		return true
 	}
 	return kind == Bool

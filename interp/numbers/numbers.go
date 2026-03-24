@@ -44,7 +44,7 @@ func toConcrete(tps ...ir.Type) ir.Type {
 		if irkind.IsNumber(knd) {
 			continue
 		}
-		if irkind.IsIntegerKind(knd) || irkind.IsFloatKind(knd) {
+		if irkind.IsInteger(knd) || irkind.IsFloat(knd) {
 			return tp
 		}
 	}
