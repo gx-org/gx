@@ -28,7 +28,6 @@ import (
 	"github.com/gx-org/gx/build/fmterr"
 	"github.com/gx-org/gx/build/ir"
 	"github.com/gx-org/gx/internal/interp/canonical"
-	"github.com/gx-org/gx/internal/interp/flatten"
 	"github.com/gx-org/gx/interp/evaluator"
 )
 
@@ -151,12 +150,12 @@ func (ea NodeFile[T]) String() string {
 // AxesFromElement returns a shape from a state element.
 // An error is returned if a concrete shape cannot be returned.
 func AxesFromElement(el ir.Element) ([]int, error) {
-	dimElements, err := flatten.Flatten(el)
-	if err != nil {
-		return nil, err
+	slice, isSlice := el.(*Slice)
+	if !isSlice {
+		return nil, errors.Errorf("cannot convert %T to %s", el, reflect.TypeFor[*Slice]().String())
 	}
-	dimensions := make([]int, len(dimElements))
-	for i, dimElement := range dimElements {
+	dimensions := make([]int, slice.Len())
+	for i, dimElement := range slice.Elements() {
 		var err error
 		dimScalarI, err := ConstantIntFromElement(dimElement)
 		if err != nil {

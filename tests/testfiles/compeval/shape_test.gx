@@ -1,0 +1,21 @@
+package compeval
+
+import "shape"
+
+func TestSameSlice() bool {
+	return shape.SameSlice([]intlen{1, 2}, []intlen{1, 2})
+	// Want:
+	// bool(true)
+}
+
+func TestDiffSlice1() bool {
+	return shape.SameSlice([]intlen{1, 2}, []intlen{})
+	// Want:
+	// bool(false)
+}
+
+func TestDiffSlice2() bool {
+	return shape.SameSlice([]intlen{1, 2}, []intlen{1, 3})
+	// Want:
+	// bool(false)
+}
