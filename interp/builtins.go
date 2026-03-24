@@ -15,7 +15,10 @@
 package interp
 
 import (
+	"fmt"
 	"go/ast"
+	"go/token"
+	"math/big"
 	"reflect"
 
 	"github.com/pkg/errors"
@@ -24,6 +27,7 @@ import (
 	"github.com/gx-org/gx/build/fmterr"
 	"github.com/gx-org/gx/build/ir"
 	"github.com/gx-org/gx/internal/base/scope"
+	"github.com/gx-org/gx/internal/interp/compeval/cpevelements"
 	"github.com/gx-org/gx/interp/context"
 	"github.com/gx-org/gx/interp/elements"
 	"github.com/gx-org/gx/interp/evaluator"
@@ -41,6 +45,7 @@ func (itp *Interpreter) InitBuiltins(ctx *context.Context, scope *scope.RWScope[
 	for _, impl := range []ir.FuncImpl{
 		appendF,
 		axlengthsF,
+		lenF,
 		setF,
 		traceF,
 	} {
@@ -104,6 +109,10 @@ var (
 		FuncImpl: builtins.AxLengths(),
 		impl:     axlengthsImpl,
 	}
+	lenF = &builtinFunc{
+		FuncImpl: builtins.Len(),
+		impl:     lenImpl,
+	}
 	setF = &builtinFunc{
 		FuncImpl: builtins.Set(),
 		impl:     setImpl,
@@ -135,6 +144,35 @@ func axlengthsImpl(env evaluator.Env, call elements.CallAt, fn fun.Func, irFunc 
 		return nil, fmterr.Error(file.FileSet(), call.Node().Src, err)
 	}
 	return []ir.Element{shape}, nil
+}
+
+func lenImpl(env evaluator.Env, call elements.CallAt, fn fun.Func, irFunc *ir.FuncBuiltin, args []ir.Element) ([]ir.Element, error) {
+	withLen, ok := args[0].(ir.WithLength)
+	if !ok {
+		return nil, errors.Errorf("cannot cast %T to %s", args[0], reflect.TypeFor[ir.WithLength]())
+	}
+	l, err := withLen.Length(env.ExprEval())
+	if err != nil {
+		return nil, fmt.Errorf("cannot evaluate %s: %w", call.Node().SourceString(env.File()), err)
+	}
+	i64Val := int64(l)
+	val, err := values.AtomIntegerValue(ir.Int64Type(), i64Val)
+	if err != nil {
+		return nil, fmt.Errorf("cannot create atomic array: %w", err)
+	}
+	bVal := big.NewInt(i64Val)
+	expr := &ir.NumberCastExpr{
+		Typ: ir.Int64Type(),
+		X: &ir.NumberInt{
+			Src: &ast.BasicLit{
+				Kind:  token.INT,
+				Value: bVal.String(),
+			},
+			Val: bVal,
+		},
+	}
+	atom, err := cpevelements.NewAtom(val, expr, expr.Type())
+	return []ir.Element{atom}, err
 }
 
 func setImpl(env evaluator.Env, call elements.CallAt, fn fun.Func, irFunc *ir.FuncBuiltin, args []ir.Element) ([]ir.Element, error) {

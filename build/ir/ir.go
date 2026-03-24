@@ -1864,10 +1864,7 @@ func (*FieldGroup) node() {}
 
 // Node returns the node in the AST tree.
 func (s *FieldGroup) Node() ast.Node {
-	if len(s.Src.Names) > 0 {
-		return s.Src.Names[0]
-	}
-	return s.Src.Type
+	return s.Src
 }
 
 // NumFields returns the number of field in the group.
@@ -2518,6 +2515,9 @@ func (s *FuncValExpr) SourceString(from *File) string {
 	callee := s.x.SourceString(from)
 	spec := ""
 	fType := s.t
+	if fType == nil {
+		return callee
+	}
 	numTypeParamValues := len(fType.TypeParamsValues)
 	if numTypeParamValues > 0 {
 		types := make([]string, numTypeParamValues)

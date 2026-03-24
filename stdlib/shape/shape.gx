@@ -25,9 +25,6 @@ type Shape struct {
 	Dimensions []intlen
 }
 
-// Declare built-ins: these are typechecked like normal GX functions.
-func Len[T dtype.Num]([___M]T) int64
-
 // gx:compeval
 // SameSlice returns true if the x and y are the same.
 func SameSlice(x, y []intlen) bool

@@ -91,15 +91,17 @@ func testEinsumDimReused() [2]float32 {
 }
 
 func testLenMissingArguments() int64 {
-	return shape.Len() // ERROR not enough arguments in call to shape.Len
+	return len() // ERROR incorrect number of arguments for len() (expected 1, found 0)
 }
 
 func testLenExtraArguments() int64 {
-	return shape.Len([1]float32{0}, 100) // ERROR too many arguments in call to shape.Len
+	return len([1]float32{0}, 100) // ERROR incorrect number of arguments for len([1]float32{0}, 100) (expected 1, found 2)
 }
 
+type noLength struct{}
+
 func testLenMismatchedType() int64 {
-	return shape.Len[int64]([]float64{1.75}) // ERROR cannot use type []float64 as int64 in argument to shape.Len
+	return len(noLength{}) // ERROR invalid argument: noLength{} (noLength) for built-in len
 }
 
 func testConcatWithInsufficientArgs() [3]float32 {

@@ -50,6 +50,7 @@ func init() {
 	// Builtin functions.
 	registerBuiltinFunc(Append())
 	registerBuiltinFunc(AxLengths())
+	registerBuiltinFunc(Len())
 	registerBuiltinFunc(Set())
 	registerBuiltinFunc(Trace())
 }

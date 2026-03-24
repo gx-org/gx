@@ -33,23 +33,6 @@ type (
 		Import(pkgPath string) (*Package, error)
 	}
 
-	// Element is a value returned by the evaluator.
-	Element interface {
-		Type() Type
-	}
-
-	// PackageElement is an element encapsulating a package.
-	PackageElement interface {
-		Element
-		Package() *Package
-	}
-
-	// StorageElement represents an element able to store values.
-	StorageElement interface {
-		Element
-		WithStore
-	}
-
 	// FuncElement converts an element into an IR expressions.
 	FuncElement interface {
 		Func() Func

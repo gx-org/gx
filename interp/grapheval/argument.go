@@ -254,7 +254,7 @@ type (
 	sliceArgument struct {
 		parentArgument
 		typ   *ir.SliceType
-		proxy elements.FixedSlice
+		proxy ir.FixedSlice
 	}
 
 	indexSelectorArgument struct {
@@ -265,9 +265,9 @@ type (
 )
 
 func (vis *inputVisitor) newSliceArgument(parent parentArgument, typ *ir.SliceType, proxy ir.Element) (*elements.Slice, error) {
-	fixed, ok := proxy.(elements.FixedSlice)
+	fixed, ok := proxy.(ir.FixedSlice)
 	if !ok {
-		return nil, errors.Errorf("%T does not support %s", proxy, reflect.TypeFor[elements.FixedSlice]().Name())
+		return nil, errors.Errorf("%T does not support %s", proxy, reflect.TypeFor[ir.FixedSlice]().Name())
 	}
 	sliceArg := &sliceArgument{
 		parentArgument: parent,
@@ -337,6 +337,7 @@ var (
 	_ materialise.ElementMaterialiser = (*arrayArgument)(nil)
 	_ flatten.Unflattener             = (*arrayArgument)(nil)
 	_ elements.Slicer                 = (*arrayArgument)(nil)
+	_ ir.WithLength                   = (*arrayArgument)(nil)
 	_ elements.WithAxes               = (*arrayArgument)(nil)
 )
 
@@ -432,6 +433,10 @@ func (n *arrayArgument) Shape() *shape.Shape {
 
 func (n *arrayArgument) Axes(ev ir.Evaluator) (*elements.Slice, error) {
 	return n.node.ev.axesFromShape(ev.File(), n.shape)
+}
+
+func (n *arrayArgument) Length(ev ir.Evaluator) (int, error) {
+	return n.shape.OuterAxisLength(), nil
 }
 
 func (n *arrayArgument) ToDeviceHandle(dev platform.Device, in *values.FuncInputs) (platform.DeviceHandle, error) {

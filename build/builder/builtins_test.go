@@ -32,5 +32,51 @@ func f() [2][2]int32 {
 }
 `,
 		},
+		testbuild.Decl{
+			Src: `
+func f() int64 {
+	a := [2]int32{0, 1}
+	return len(a)
+}
+`,
+		},
+		testbuild.Decl{
+			Src: `
+func f() float32 {
+	a := [2]int32{0, 1}
+	return float32(len(a))
+}
+`,
+		},
+	)
+}
+
+func TestBuiltinErrors(t *testing.T) {
+	testbuild.Run(t,
+		testbuild.Decl{
+			Src: `
+func f() int64 {
+	return len() // ERROR incorrect number of arguments for len() (expected 1, found 0)
+}
+`,
+		},
+		testbuild.Decl{
+			Src: `
+func f() float32 {
+	a := [2]int32{0, 1}
+	return float32(len(a, a)) // ERROR incorrect number of arguments for len(a, a) (expected 1, found 2)
+}
+`,
+		},
+		testbuild.Decl{
+			Src: `
+type A struct{}
+
+func f() float32 {
+	a := A{}
+	return float32(len(a)) // ERROR invalid argument: a (A) for built-in len
+}
+`,
+		},
 	)
 }

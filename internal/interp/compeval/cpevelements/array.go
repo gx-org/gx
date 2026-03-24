@@ -36,6 +36,7 @@ var (
 	_ Element           = (*array)(nil)
 	_ elements.Slicer   = (*array)(nil)
 	_ elements.Copier   = (*array)(nil)
+	_ ir.WithLength     = (*array)(nil)
 )
 
 // NewArray returns a new array from a code position and a type.
@@ -87,6 +88,11 @@ func (a *array) Shape() *shape.Shape {
 
 func (a *array) Graph() ops.Graph {
 	return nil
+}
+
+// Length returns the evaluation of the len built-in.
+func (a *array) Length(ev ir.Evaluator) (int, error) {
+	return a.Shape().OuterAxisLength(), nil
 }
 
 func (a *array) Compare(x canonical.Comparable) (bool, error) {

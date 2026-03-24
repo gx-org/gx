@@ -97,43 +97,6 @@ func TestConcat3D() [4][2][2]float32 {
 	// }
 }
 
-func LenUnknownRank(x [_]float32) int64 {
-	return shape.Len[float32](x)
-}
-
-func TestLen1a() int64 {
-	return shape.Len[float32]([3]float32{1, 2, 3})
-	// Want:
-	// int64(3)
-}
-
-func TestLen1b() int64 {
-	return shape.Len[float32]([...]float32{1, 2, 3})
-	// Want:
-	// int64(3)
-}
-
-func TestLen1c() int64 {
-	return LenUnknownRank([...]float32{1, 2, 3})
-	// Want:
-	// int64(3)
-}
-
-// Note that LenUnknownRank appears to get bound to [...=3]float32, such that this now fails:
-//   LenUnknownRank([...]float32{1, 2, 3, 4, 5, 6})
-
-func TestLen2a() int64 {
-	return shape.Len[float32]([2][3]float32{{1, 2, 3}, {4, 5, 6}})
-	// Want:
-	// int64(2)
-}
-
-func TestLen2b() int64 {
-	return shape.Len[float32]([...]float32{{1, 2, 3}, {4, 5, 6}})
-	// Want:
-	// int64(2)
-}
-
 func TestSplit1Da() [2][2]float32 {
 	return shape.Split(0, [4]float32{1, 2, 3, 4}, 2)
 	// Want:

@@ -30,7 +30,10 @@ type Slice struct {
 	sliceType *ir.SliceType
 }
 
-var _ Value = (*Slice)(nil)
+var (
+	_ Value         = (*Slice)(nil)
+	_ ir.FixedSlice = (*Slice)(nil)
+)
 
 // NewSlice returns a new slice of GX values.
 // vals can be nil when the slice will be allocated
@@ -67,6 +70,11 @@ func (s *Slice) Allocate(size int) {
 // Set the ith element of the slice.
 func (s *Slice) Set(i int, val Value) {
 	s.vals[i] = val
+}
+
+// Length returns the evaluation of the len built-in.
+func (s *Slice) Length(ev ir.Evaluator) (int, error) {
+	return s.Len(), nil
 }
 
 // Len returns the size of the slice.

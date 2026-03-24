@@ -24,9 +24,7 @@ import (
 	"github.com/gx-org/gx/interp/elements"
 	"github.com/gx-org/gx/interp/evaluator"
 	"github.com/gx-org/gx/interp/fun"
-	"github.com/gx-org/gx/interp"
 	"github.com/gx-org/gx/stdlib/builtin"
-	"github.com/gx-org/gx/stdlib/impl"
 )
 
 // Package description of the GX shape package.
@@ -39,7 +37,6 @@ var Package = builtin.PackageBuilder{
 		builtin.BuildFunc(broadcast{}),
 		builtin.BuildFunc(gather{}),
 		builtin.ImplementBuiltin("SameSlice", sameSlice),
-		builtin.ImplementStubFunc("Len", func(impl *impl.Stdlib) interp.FuncBuiltin { return impl.Shapes.Len }),
 	},
 }
 

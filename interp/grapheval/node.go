@@ -42,6 +42,7 @@ var (
 	_ elements.Copier                 = (*BackendNode)(nil)
 	_ materialise.ElementMaterialiser = (*BackendNode)(nil)
 	_ evaluator.NumericalElement      = (*BackendNode)(nil)
+	_ ir.WithLength                   = (*BackendNode)(nil)
 )
 
 // NewBackendNode returns an element representing a node in the backend graph.
@@ -247,6 +248,11 @@ func (n *BackendNode) SliceArray(expr ir.Expr, index evaluator.NumericalElement)
 			AxisLengths: n.Shape().AxisLengths[1:],
 		},
 	})
+}
+
+// Length returns the evaluation of the len built-in.
+func (n *BackendNode) Length(ev ir.Evaluator) (int, error) {
+	return n.Shape().OuterAxisLength(), nil
 }
 
 // Unflatten consumes the next handles to return a GX value.

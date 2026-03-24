@@ -50,7 +50,7 @@ func (s *builtinStorage) Same(o Storage) bool {
 	return Storage(s) == o
 }
 
-const numGXBuiltins = 18
+const numGXBuiltins = 19
 
 var builtins = make(map[Storage]bool, numGXBuiltins)
 

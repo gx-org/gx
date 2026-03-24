@@ -39,6 +39,7 @@ var (
 	_ materialise.Node                = (*valueElement)(nil)
 	_ elements.Copier                 = (*valueElement)(nil)
 	_ elements.WithAxes               = (*valueElement)(nil)
+	_ ir.WithLength                   = (*valueElement)(nil)
 )
 
 func newValueElement(ev *Evaluator, value values.Array, typ ir.Type) (*valueElement, error) {
@@ -80,6 +81,11 @@ func (n *valueElement) Copy() elements.Copier {
 
 func (n *valueElement) Axes(ev ir.Evaluator) (*elements.Slice, error) {
 	return n.ev.axesFromShape(ev.File(), n.value.Shape())
+}
+
+// Length returns the value corresponding to calling the built-in len.
+func (n *valueElement) Length(ev ir.Evaluator) (int, error) {
+	return n.value.Shape().OuterAxisLength(), nil
 }
 
 func (n *valueElement) Type() ir.Type {

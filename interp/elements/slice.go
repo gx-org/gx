@@ -43,13 +43,6 @@ type (
 	WithAxes interface {
 		Axes(ev ir.Evaluator) (*Slice, error)
 	}
-
-	// FixedSlice is a slice where the number of elements is known.
-	FixedSlice interface {
-		ir.Element
-		Elements() []ir.Element
-		Len() int
-	}
 )
 
 // Slice element storing a slice of elements.
@@ -60,7 +53,7 @@ type Slice struct {
 
 var (
 	_ Slicer              = (*Slice)(nil)
-	_ FixedSlice          = (*Slice)(nil)
+	_ ir.FixedSlice       = (*Slice)(nil)
 	_ ir.Element          = (*Slice)(nil)
 	_ ir.Canonical        = (*Slice)(nil)
 	_ canonical.Canonical = (*Slice)(nil)
@@ -127,6 +120,11 @@ func (n *Slice) Expr() (ir.Expr, error) {
 // Elements stored in the slice.
 func (n *Slice) Elements() []ir.Element {
 	return n.values
+}
+
+// Length returns the value corresponding to calling the built-in len.
+func (n *Slice) Length(ev ir.Evaluator) (int, error) {
+	return n.Len(), nil
 }
 
 // Len returns the number of elements in the slice.
