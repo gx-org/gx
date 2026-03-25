@@ -16,6 +16,7 @@
 package builtins
 
 import (
+	"go/ast"
 	"go/token"
 	"maps"
 
@@ -46,6 +47,7 @@ func init() {
 	// Builtin values.
 	registerBuiltinIR(token.CONST, ir.FalseStorage())
 	registerBuiltinIR(token.CONST, ir.TrueStorage())
+	registerBuiltinIR(token.ILLEGAL, NilStorage())
 
 	// Builtin functions.
 	registerBuiltinFunc(Append())
@@ -67,6 +69,16 @@ func registerBuiltinType(name string, typ ir.Type) {
 
 func registerBuiltinFunc(impl ir.FuncImpl) {
 	registerBuiltinIR(token.FUNC, ir.BuiltinFunction(impl))
+}
+
+var (
+	nilIdent   = &ast.Ident{Name: "nil"}
+	nilStorage = ir.NilStorage(nilIdent)
+)
+
+// NilStorage returns the nil built-in storage singleton.
+func NilStorage() *ir.Nil {
+	return nilStorage
 }
 
 // Register all the builtins.

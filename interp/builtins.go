@@ -36,6 +36,8 @@ import (
 
 // InitBuiltins initializes the builtins.
 func (itp *Interpreter) InitBuiltins(ctx *context.Context, scope *scope.RWScope[ir.Element]) error {
+	nilStorage := builtins.NilStorage()
+	scope.Define(nilStorage.NameDef().Name, nilStorage)
 	if err := itp.defineBoolConstant(scope, ctx, ir.FalseStorage()); err != nil {
 		return err
 	}

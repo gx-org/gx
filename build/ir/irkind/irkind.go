@@ -47,6 +47,8 @@ const (
 	Void
 	// Interface is an interface.
 	Interface
+	// Nil kind for nil built-in.
+	Nil
 	// NumberFloat is a float number with no concrete type.
 	NumberFloat
 	// NumberInt is an integer number with no concrete type.
@@ -77,6 +79,8 @@ func (k Kind) String() string {
 		return "void"
 	case Interface:
 		return "interface"
+	case Nil:
+		return "nil"
 	case NumberFloat:
 		return "float number"
 	case NumberInt:
