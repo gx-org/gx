@@ -96,6 +96,9 @@ func (fitp *FileScope) ToCompEvalError(el ir.Element) (ir.CompEvalError, error) 
 	if el == nil {
 		return nil, nil
 	}
+	if elements.IsNil(el) {
+		return nil, nil
+	}
 	errS, err := elements.StringFromElement(el)
 	if err != nil {
 		return nil, err

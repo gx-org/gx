@@ -504,6 +504,8 @@ func evalExpr(fitp *FileScope, expr ir.Expr) (_ ir.Element, err error) {
 		return evalExpr(fitp, exprT.X)
 	case *ir.AxisInfer:
 		return evalExpr(fitp, exprT.X.AsExpr())
+	case *ir.NilCastExpr:
+		return elements.NewNil(exprT.Typ), nil
 	case *ir.NumberCastExpr:
 		return evalNumberCastExpr(fitp, exprT)
 	case *ir.SliceLitExpr:

@@ -44,7 +44,7 @@ func returnTwo() (intlen, error) {
 }
 
 func f() [returnTwo()]int32 {
-	return [2]int32{1, 2} // ERROR cannot evaluate expression
+	return [2]int32{1, 2}
 	// Want:
 	// [2]int32{1, 2}
 }
