@@ -38,6 +38,17 @@ func someError() error
 				},
 			},
 		},
+		testbuild.Decl{
+			Src: `
+type ArgError struct {
+	Error error
+}
+
+// gx:compeval
+func f() ArgError {
+	return ArgError{Error: nil}
+}`,
+		},
 	)
 }
 

@@ -151,14 +151,14 @@ func (d *decls) resolveAll(pkgScope *pkgResolveScope) bool {
 	if compEvalOk := d.buildConstants(pkgScope); !compEvalOk {
 		return false
 	}
-	// Build compeval function signature.
-	if compEvalOk := d.buildFunctions(pkgScope, filterCompEval(true)); !compEvalOk {
-		return false
-	}
 	// Resolve underlying types.
 	for _, namedType := range nTypes {
 		underOk := namedType.bType.buildUnderlying(pkgScope, namedType.ext)
 		ok = ok && underOk
+	}
+	// Build compeval function signature.
+	if compEvalOk := d.buildFunctions(pkgScope, filterCompEval(true)); !compEvalOk {
+		return false
 	}
 	// Build functions and methods.
 	funOk := d.buildFunctions(pkgScope, filterCompEval(false))
