@@ -88,10 +88,13 @@ func returnAs(rscope resolveScope, pos ast.Node, src, dst ir.Type) bool {
 	return true
 }
 
-func (n *returnStmt) castNumber(scope fnResolveScope, expr ir.Expr, want ir.Type) (ir.Expr, bool) {
-	ret, ok := castNumber(scope, expr, want)
+func (n *returnStmt) castValue(scope fnResolveScope, expr ir.Expr, want ir.Type) (ir.Expr, bool) {
+	ret, ok := castNilAndNumber(scope, expr, want)
 	if !ok {
 		return expr, false
+	}
+	if expr.Type().Kind() == irkind.Nil {
+		return ret, true
 	}
 	arrayWant := ir.Underlying(want).(ir.ArrayType)
 	if arrayWant.Rank().IsAtomic() {
@@ -145,7 +148,7 @@ func (n *returnStmt) buildStmt(scope fnResolveScope) (ir.Stmt, bool, bool) {
 	for i, wantI := range wants {
 		retOk := true
 		if irkind.IsNumber(rTypes[i].Kind()) {
-			ext.Results[i], retOk = n.castNumber(scope, ext.Results[i], wantI.Type())
+			ext.Results[i], retOk = n.castValue(scope, ext.Results[i], wantI.Type())
 			rTypes[i] = ext.Results[i].Type()
 		}
 		if !retOk {

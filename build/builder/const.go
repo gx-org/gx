@@ -21,7 +21,6 @@ import (
 
 	"github.com/gx-org/gx/build/builder/irb"
 	"github.com/gx-org/gx/build/ir"
-	"github.com/gx-org/gx/build/ir/irkind"
 	"github.com/gx-org/gx/internal/exprdeps"
 )
 
@@ -136,9 +135,7 @@ func (cst *constExpr) buildExpression(ibld irBuilder, ext *ir.ConstExpr) bool {
 		return true
 	}
 	targetType := ext.Decl.Type.Val()
-	if irkind.IsNumber(ext.Val.Type().Kind()) {
-		ext.Val, ok = castNumber(fScope, ext.Val, targetType)
-	}
+	ext.Val, ok = castNilAndNumber(fScope, ext.Val, targetType)
 	if !ok {
 		return false
 	}

@@ -56,10 +56,8 @@ func (n *indexExpr) source() ast.Node {
 
 func (n *indexExpr) checkIndexType(scope *fileResolveScope, index ir.Expr) (ir.Expr, bool) {
 	var ok bool
-	if irkind.IsNumber(index.Type().Kind()) {
-		// Coerce index type to a concrete integer type.
-		index, ok = castNumber(scope, index, ir.DefaultIntType)
-	}
+	// Coerce index type to a concrete integer type.
+	index, ok = castNilAndNumber(scope, index, ir.DefaultIntType)
 	if !ok {
 		return index, false
 	}
@@ -161,10 +159,8 @@ func (n *indexExpr) buildExpr(rscope resolveScope) (ir.Expr, bool) {
 		boundOk = n.checkIndexBounds(rscope, aType.Rank().Axes()[0], ext.Index)
 
 	}
-	numberOk := true
-	if irkind.IsNumber(ext.Index.Type().Kind()) {
-		ext.Index, numberOk = castNumber(rscope, ext.Index, ir.Int64Type())
-	}
+	var numberOk bool
+	ext.Index, numberOk = castNilAndNumber(rscope, ext.Index, ir.Int64Type())
 	indexTypeOk := ir.IsIndexType(ext.Index.Type())
 	if !indexTypeOk {
 		rscope.Err().Appendf(n.source(), "index %s (of type %s) must be integer", ext.Index.SourceString(rscope.fileScope().irFile()), ext.Index.Type().ReferString(rscope.fileScope().irFile()))

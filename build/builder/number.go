@@ -61,7 +61,6 @@ func castNumber(scope resolveScope, expr ir.Expr, target ir.Type) (*ir.NumberCas
 		underlying := ir.Underlying(cast.Typ)
 		arrayType, ok := underlying.(ir.ArrayType)
 		if !ok {
-
 			return cast, scope.Err().AppendInternalf(expr.Node(), "type %T has %s but does not implement %s", underlying, irkind.Array.String(), reflect.TypeFor[ir.ArrayType]().Name())
 		}
 		cast.Typ = arrayType.DataType()

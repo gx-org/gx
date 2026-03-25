@@ -94,9 +94,7 @@ func (n *rangeStmt) buildStmt(parent fnResolveScope) (ir.Stmt, bool, bool) {
 	if !ok {
 		return ext, false, false
 	}
-	if irkind.IsNumber(ext.X.Type().Kind()) {
-		ext.X, ok = castNumber(rscope, ext.X, ir.IntLenType())
-	}
+	ext.X, ok = castNilAndNumber(rscope, ext.X, ir.IntLenType())
 	if !ok {
 		return ext, false, false
 	}

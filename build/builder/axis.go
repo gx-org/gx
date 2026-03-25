@@ -19,7 +19,6 @@ import (
 	"math/big"
 
 	"github.com/gx-org/gx/build/ir"
-	"github.com/gx-org/gx/build/ir/irkind"
 )
 
 // axisLengthNode defines the dimension of an array.
@@ -91,9 +90,7 @@ func (dim *exprAxisLength) build(rscope *defineLocalScope) (ir.AxisLengths, bool
 	if !xOk {
 		return ext, false
 	}
-	if irkind.IsNumber(ext.X.Type().Kind()) {
-		ext.X, xOk = castNumber(rscope, ext.X, ir.IntLenType())
-	}
+	ext.X, xOk = castNilAndNumber(rscope, ext.X, ir.IntLenType())
 	xType := ext.X.Type()
 	if ir.IsAxisLengthType(xType) {
 		return ext, xOk

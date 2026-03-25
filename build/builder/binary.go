@@ -117,12 +117,8 @@ func (n *binaryExpr) buildOperands(scope resolveScope) (ir.Expr, ir.Expr, ir.Typ
 		return xExpr, yExpr, typ
 	}
 	// Only one operand is a number, so we cast the number operand to the other type operand.
-	if irkind.IsNumber(xKind) {
-		xExpr, xOk = castNumber(scope, xExpr, yExpr.Type())
-	}
-	if irkind.IsNumber(yKind) {
-		yExpr, yOk = castNumber(scope, yExpr, xExpr.Type())
-	}
+	xExpr, xOk = castNilAndNumber(scope, xExpr, yExpr.Type())
+	yExpr, yOk = castNilAndNumber(scope, yExpr, xExpr.Type())
 	if !xOk || !yOk {
 		return xExpr, yExpr, ir.InvalidType()
 	}
@@ -198,10 +194,10 @@ func (n *binaryExpr) buildExpr(scope resolveScope) (ir.Expr, bool) {
 	if !ok {
 		return invalidExpr(), false
 	}
-	if forceCastNumber && irkind.IsNumber(expr.Typ.Kind()) {
+	if forceCastNumber {
 		var xOk, yOk bool
-		expr.X, xOk = castNumber(scope, expr.X, ir.UnknownType())
-		expr.Y, yOk = castNumber(scope, expr.Y, ir.UnknownType())
+		expr.X, xOk = castNilAndNumber(scope, expr.X, ir.UnknownType())
+		expr.Y, yOk = castNilAndNumber(scope, expr.Y, ir.UnknownType())
 		ok = xOk && yOk
 	}
 	expr.Typ = outTyp

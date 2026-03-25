@@ -349,3 +349,17 @@ func buildExpr(rscope resolveScope, expr exprNode) (ir.Expr, bool) {
 	}
 	return ext, true
 }
+
+func castNilAndNumber(scope resolveScope, expr ir.Expr, target ir.Type) (ir.Expr, bool) {
+	if isInvalidExpr(expr) || !ir.IsValid(target) {
+		return expr, false
+	}
+	knd := expr.Type().Kind()
+	if irkind.IsNumber(knd) {
+		return castNumber(scope, expr, target)
+	}
+	if knd == irkind.Nil {
+		return castNil(scope, expr, target)
+	}
+	return expr, !isInvalidExpr(expr) && ir.IsValid(target)
+}

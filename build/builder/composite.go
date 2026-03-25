@@ -20,7 +20,6 @@ import (
 	"strings"
 
 	"github.com/gx-org/gx/build/ir"
-	"github.com/gx-org/gx/build/ir/irkind"
 )
 
 type compositeLit struct {
@@ -57,8 +56,8 @@ func (n *compositeLit) buildElements(ascope compositeLitResolveScope) ([]ir.Expr
 	for i, elt := range n.elts {
 		var eltOk bool
 		elts[i], eltOk = buildExpr(subScope, elt)
-		if eltOk && irkind.IsNumber(elts[i].Type().Kind()) {
-			elts[i], eltOk = castNumber(subScope, elts[i], subScope.dtype())
+		if eltOk {
+			elts[i], eltOk = castNilAndNumber(subScope, elts[i], subScope.dtype())
 		}
 		if !eltOk {
 			ok = false

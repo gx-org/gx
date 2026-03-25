@@ -428,7 +428,7 @@ func convertArgNumbers(rscope resolveScope, fType *ir.FuncType, args []ir.Expr) 
 			target = fType.VarArgs.Slice.DType.Val()
 		}
 		var iOk bool
-		args[i], iOk = castNumber(rscope, arg, target)
+		args[i], iOk = castNilAndNumber(rscope, arg, target)
 		argsOk = argsOk && iOk
 	}
 	return args, argsOk

@@ -303,9 +303,7 @@ func buildAssignExpr(rscope resolveScope, asgm *assignment) (*ir.AssignExpr, boo
 	if !targetOk {
 		return ext, false, false
 	}
-	if irkind.IsNumber(ext.X.Type().Kind()) {
-		ext.X, exprOk = castNumber(rscope, ext.X, ext.Storage.Type())
-	}
+	ext.X, exprOk = castNilAndNumber(rscope, ext.X, ext.Storage.Type())
 	assignOk := assignableToAt(rscope, asgm.expr.source(), ext.X.Type(), ext.Storage.Type())
 	definedOk := defineLocalVar(rscope, ext)
 	return ext, newAsgm, exprOk && targetOk && definedOk && assignOk
