@@ -17,5 +17,11 @@ package builder
 import "github.com/gx-org/gx/build/ir"
 
 func castNil(scope resolveScope, expr ir.Expr, target ir.Type) (ir.Expr, bool) {
-	return expr, true
+	if target != ir.ErrorType() {
+		return expr, scope.Err().Appendf(expr.Node(), "cannot cast nil to %s", target.ReferString(scope.fileScope().irFile()))
+	}
+	return &ir.NilCastExpr{
+		X:   expr,
+		Typ: target,
+	}, true
 }

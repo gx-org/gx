@@ -98,7 +98,7 @@ func (A) F(uint32) uint32
 	)
 }
 
-func TestFuncDecl(t *testing.T) {
+func TestFuncDecl1(t *testing.T) {
 	aField := irh.Field("a", ir.Int32Type(), nil)
 	returnTwoFunc := &ir.FuncDecl{
 		Src: &ast.FuncDecl{Name: &ast.Ident{Name: "returnTwo"}},
@@ -194,6 +194,9 @@ func namedReturn() (a int32) {
 			},
 		},
 	)
+}
+
+func TestFuncDecl2(t *testing.T) {
 	returnTupleFunc := &ir.FuncDecl{
 		Src: &ast.FuncDecl{Name: &ast.Ident{Name: "returnTuple"}},
 		FType: irh.FuncType(

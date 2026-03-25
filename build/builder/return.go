@@ -91,7 +91,7 @@ func returnAs(rscope resolveScope, pos ast.Node, src, dst ir.Type) bool {
 func (n *returnStmt) castValue(scope fnResolveScope, expr ir.Expr, want ir.Type) (ir.Expr, bool) {
 	ret, ok := castNilAndNumber(scope, expr, want)
 	if !ok {
-		return expr, false
+		return expr, ok
 	}
 	if expr.Type().Kind() == irkind.Nil {
 		return ret, true
@@ -147,7 +147,8 @@ func (n *returnStmt) buildStmt(scope fnResolveScope) (ir.Stmt, bool, bool) {
 	// Check if the types being returned are assignable to the types declared by the signature.
 	for i, wantI := range wants {
 		retOk := true
-		if irkind.IsNumber(rTypes[i].Kind()) {
+		kndI := rTypes[i].Kind()
+		if irkind.IsNumber(kndI) || kndI == irkind.Nil {
 			ext.Results[i], retOk = n.castValue(scope, ext.Results[i], wantI.Type())
 			rTypes[i] = ext.Results[i].Type()
 		}

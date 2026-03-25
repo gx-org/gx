@@ -67,3 +67,33 @@ func (*Nil) Same(other Storage) bool {
 func (*Nil) Type() Type {
 	return NilType()
 }
+
+// NilCastExpr casts nil to a given type.
+type NilCastExpr struct {
+	X   Expr
+	Typ Type
+}
+
+var _ Expr = (*NilCastExpr)(nil)
+
+func (*NilCastExpr) node() {}
+
+// Node returns the AST node of the storage.
+func (n *NilCastExpr) Node() ast.Node {
+	return n.X.Node()
+}
+
+// SourceString returns a string representing the expression.
+func (n *NilCastExpr) SourceString(from *File) string {
+	return n.X.SourceString(from)
+}
+
+// Expr returns the syntax tree of the expression.
+func (n *NilCastExpr) Expr() ast.Expr {
+	return n.X.Expr()
+}
+
+// Type of the expression.
+func (n *NilCastExpr) Type() Type {
+	return n.Typ
+}

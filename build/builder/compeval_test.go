@@ -29,7 +29,7 @@ func returnTwo() intlen {
 	return 2
 }
 
-func TestFunctionAsAxisLength() [returnTwo()]int32 {
+func f() [returnTwo()]int32 {
 	return [2]int32{1, 2}
 	// Want:
 	// [2]int32{1, 2}
@@ -40,11 +40,11 @@ func TestFunctionAsAxisLength() [returnTwo()]int32 {
 			Src: `
 //gx:compeval
 func returnTwo() (intlen, error) {
-	return 2, nil // ERROR cannot use nil as error value in return statement
+	return 2, nil
 }
 
-func TestFunctionAsAxisLength() [returnTwo()]int32 {
-	return [2]int32{1, 2}
+func f() [returnTwo()]int32 {
+	return [2]int32{1, 2} // ERROR cannot evaluate expression
 	// Want:
 	// [2]int32{1, 2}
 }
