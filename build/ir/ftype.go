@@ -85,9 +85,13 @@ func (s *FuncType) equal(fetcher Fetcher, other *FuncType) (bool, CompEvalError,
 		return true, nil, nil
 	}
 	recvOk, cpErr, err := s.Receiver.Type().Equal(fetcher, other.Receiver.Type())
-	if cpErr != nil || err != nil {
-		return false, cpErr, err
+	if !recvOk || cpErr != nil || err != nil {
+		return recvOk, cpErr, err
 	}
+	return s.equalParamsResults(fetcher, other)
+}
+
+func (s *FuncType) equalParamsResults(fetcher Fetcher, other *FuncType) (bool, CompEvalError, error) {
 	paramsOk, cpErr, err := s.Params.Type().Equal(fetcher, other.Params.Type())
 	if cpErr != nil || err != nil {
 		return false, cpErr, err
@@ -96,7 +100,7 @@ func (s *FuncType) equal(fetcher Fetcher, other *FuncType) (bool, CompEvalError,
 	if cpErr != nil || err != nil {
 		return false, cpErr, err
 	}
-	return recvOk && paramsOk && resultsOk, nil, nil
+	return paramsOk && resultsOk, nil, nil
 }
 
 // ReceiverField returns a field representing the receiver of the function, or nil if the function has no receiver.
@@ -235,9 +239,15 @@ func (s *FuncType) ReferString(from *File) string {
 // SourceSignature returns a string representation of a signature given a name.
 // The name can be empty.
 func (s *FuncType) SourceSignature(from *File, name *ast.Ident) string {
+	return s.sourceSignature(from, name, false)
+}
+
+// SourceSignature returns a string representation of a signature given a name.
+// The name can be empty.
+func (s *FuncType) sourceSignature(from *File, name *ast.Ident, skipRecv bool) string {
 	var b strings.Builder
 	b.WriteString("func")
-	if s.Receiver != nil {
+	if s.Receiver != nil && !skipRecv {
 		fmt.Fprintf(&b, " (%s)", s.Receiver.SourceString(from))
 	}
 	if name != nil && name.Name != "" {

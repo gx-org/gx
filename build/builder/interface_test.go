@@ -61,5 +61,22 @@ func f() I {
 }
 `,
 		},
+		testbuild.Decl{
+			Src: `
+type I interface {
+	A() string
+}
+
+type S struct {}
+
+func (S) A() int32 {
+	return 0
+}
+
+func f() I {
+	return S{} // ERROR cannot use S as I value in return statement: I does not implement S (wrong type for method A)
+}
+`,
+		},
 	)
 }

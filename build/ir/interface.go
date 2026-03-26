@@ -22,22 +22,25 @@ import (
 	"github.com/gx-org/gx/build/ir/irkind"
 )
 
-type (
-	// IMethod is a method defined in an interface.
-	IMethod struct {
-		// Name of the method.
-		Name *ast.Ident
-		// FType is the function signature of the method.
-		FType *FuncType
-	}
+// IMethod is a method defined in an interface.
+type IMethod struct {
+	// Name of the method.
+	Name *ast.Ident
+	// FType is the function signature of the method.
+	FType *FuncType
+}
 
-	// Interface represents a set of types.
-	Interface struct {
-		BaseType[*ast.InterfaceType]
-		types   []Type
-		methods []*IMethod
-	}
-)
+// SourceSignature returns a string representing the method.
+func (m *IMethod) SourceSignature(from *File) string {
+	return m.FType.SourceSignature(from, m.Name)
+}
+
+// Interface represents a set of types.
+type Interface struct {
+	BaseType[*ast.InterfaceType]
+	types   []Type
+	methods []*IMethod
+}
 
 var (
 	_ Type        = (*Interface)(nil)
@@ -138,9 +141,19 @@ func (s *Interface) checkTypesAssignableFrom(fetcher Fetcher, source Type) (bool
 type toString func(file *File) string
 
 func checkHasMethod(fetcher Fetcher, ifaceName toString, source *NamedType, imeth *IMethod) (bool, CompEvalError, error) {
-	meth := source.MethodByName(imeth.Name.Name)
+	methName := imeth.Name.Name
+	meth := source.MethodByName(methName)
 	if meth == nil {
-		return false, CompEvalError(errors.Errorf("%s does not implement %s (missing method %s)", ifaceName(fetcher.File()), source.ReferString(fetcher.File()), imeth.Name.Name)), nil
+		from := fetcher.File()
+		return false, CompEvalError(errors.Errorf("%s does not implement %s (missing method %s)", ifaceName(from), source.ReferString(from), methName)), nil
+	}
+	eq, cpErr, err := meth.FuncType().equalParamsResults(fetcher, imeth.FType)
+	if cpErr != nil || err != nil {
+		return false, cpErr, err
+	}
+	if !eq {
+		from := fetcher.File()
+		return false, CompEvalError(errors.Errorf("%s does not implement %s (wrong type for method %s)\n\thave %s\n\twant %s", ifaceName(from), source.ReferString(from), methName, meth.FuncType().sourceSignature(from, imeth.Name, true), imeth.SourceSignature(from))), nil
 	}
 	return true, nil, nil
 }
