@@ -15,6 +15,7 @@
 package builder
 
 import (
+	"fmt"
 	"go/ast"
 
 	"github.com/gx-org/gx/build/ir"
@@ -78,12 +79,14 @@ func returnAs(rscope resolveScope, pos ast.Node, src, dst ir.Type) bool {
 	if err != nil {
 		return rscope.Err().AppendAt(pos, err)
 	}
+	const errFormat = "cannot use %s as %s value in return statement"
 	if cpErr != nil {
-		return rscope.Err().AppendAt(pos, cpErr)
+		from := rscope.fileScope().irFile()
+		return rscope.Err().AppendAt(pos, fmt.Errorf(errFormat+": %w", src.ReferString(from), dst.ReferString(from), cpErr))
 	}
 	if !assignable {
 		from := rscope.fileScope().irFile()
-		return rscope.Err().Appendf(pos, "cannot use %s as %s value in return statement", src.ReferString(from), dst.ReferString(from))
+		return rscope.Err().Appendf(pos, errFormat, src.ReferString(from), dst.ReferString(from))
 	}
 	return true
 }

@@ -555,7 +555,7 @@ func TestArrayRanksConvertibleTo(t *testing.T) {
 }
 
 func makeTypeSet(typs ...ir.Type) *ir.Interface {
-	return ir.NewInterface(nil, typs)
+	return ir.NewInterface(nil, typs, nil)
 }
 
 var (

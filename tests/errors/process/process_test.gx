@@ -58,9 +58,3 @@ func testFuncTypeParameters_Redeclared[T int32, T int32]() int32 { // ERROR type
 }
 
 type testTypeParameters[T any] struct{} // ERROR type may not have type parameters
-
-type testInterfaceMethods interface {
-	Print()         // ERROR interface element not supported
-	String() string // ERROR interface element not supported
-}
-

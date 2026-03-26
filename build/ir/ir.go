@@ -456,7 +456,12 @@ func (s *NamedType) AssignableTo(fetcher Fetcher, target Type) (bool, CompEvalEr
 
 // AssignableFrom reports whether a given source type is assignable to a named type.
 func (s *NamedType) assignableFrom(fetcher Fetcher, source Type) (bool, CompEvalError, error) {
-	if target, ok := s.Underlying.Val().(assignsFrom); ok {
+	under := Underlying(s)
+	underIFace, isIFace := under.(*Interface)
+	if isIFace {
+		return underIFace.assignableFromWithName(fetcher, source, s.ReferString)
+	}
+	if target, ok := under.(assignsFrom); ok {
 		return target.assignableFrom(fetcher, source)
 	}
 	return s.Equal(fetcher, source)

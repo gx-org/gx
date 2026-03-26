@@ -18,25 +18,51 @@ import (
 	"fmt"
 	"go/ast"
 	"go/token"
+	"reflect"
 	"strings"
 
 	"github.com/gx-org/gx/build/ir"
 )
 
-type typeSet struct {
-	src *ast.InterfaceType
+type (
+	iMethod struct {
+		name  *ast.Ident
+		fType *funcType
+	}
 
-	typs []typeExprNode
+	iface struct {
+		src *ast.InterfaceType
+
+		typs    []typeExprNode
+		methods []*iMethod
+	}
+)
+
+var _ typeExprNode = (*iface)(nil)
+
+func toStringList(names []*ast.Ident) []string {
+	ss := make([]string, len(names))
+	for i, name := range names {
+		ss[i] = name.Name
+	}
+	return ss
 }
 
-var _ typeExprNode = (*typeSet)(nil)
-
-func processInterfaceType(pscope procScope, src *ast.InterfaceType) (*typeSet, bool) {
-	s := &typeSet{src: src}
+func processInterfaceType(pscope procScope, src *ast.InterfaceType) (*iface, bool) {
+	s := &iface{src: src}
 	ok := true
 	for _, elem := range src.Methods.List {
-		if len(elem.Names) > 0 {
-			ok = pscope.Err().Appendf(elem, "interface element not supported")
+		if len(elem.Names) > 1 {
+			ok = pscope.Err().Appendf(elem, "more than one interface elements not supported: got %v", toStringList(elem.Names))
+			continue
+		}
+		if len(elem.Names) == 1 {
+			method, methodOk := processMethodSignature(pscope, elem.Names[0], elem.Type)
+			if !methodOk {
+				ok = false
+				continue
+			}
+			s.methods = append(s.methods, method)
 			continue
 		}
 		var elemOk bool
@@ -44,6 +70,21 @@ func processInterfaceType(pscope procScope, src *ast.InterfaceType) (*typeSet, b
 		ok = ok && elemOk
 	}
 	return s, ok
+}
+
+func processMethodSignature(pscope procScope, name *ast.Ident, tp ast.Expr) (*iMethod, bool) {
+	astFType, isFType := tp.(*ast.FuncType)
+	if !isFType {
+		return nil, pscope.Err().Appendf(name, "cannot process method definition: expected type %s but got %T", reflect.TypeFor[*ast.FuncType]().String(), tp)
+	}
+	ftype, ok := processFuncType(pscope, astFType, nil, false)
+	if !ok {
+		return nil, false
+	}
+	return &iMethod{
+		name:  name,
+		fType: ftype,
+	}, true
 }
 
 func flattenTypeList(pscope procScope, list []typeExprNode, expr ast.Expr) ([]typeExprNode, bool) {
@@ -60,7 +101,7 @@ func flattenTypeList(pscope procScope, list []typeExprNode, expr ast.Expr) ([]ty
 	return append(result, typ), ok
 }
 
-func (s *typeSet) buildTypeExpr(rscope resolveScope) (*ir.TypeValExpr, bool) {
+func (s *iface) buildTypeExpr(rscope resolveScope) (*ir.TypeValExpr, bool) {
 	ok := true
 	types := make([]ir.Type, 0, len(s.typs)) // Do not use s.typs length because we exclude types with errors.
 	rtypeNames := map[string]ir.Type{}
@@ -76,14 +117,26 @@ func (s *typeSet) buildTypeExpr(rscope resolveScope) (*ir.TypeValExpr, bool) {
 		}
 		rtypeNames[typeExpr.SourceString(rscope.fileScope().irFile())] = typeExpr.Val()
 	}
-	return ir.TypeExpr(nil, ir.NewInterface(s.src, types)), ok
+	var imeths []*ir.IMethod
+	for _, method := range s.methods {
+		methType, _, methOk := method.fType.buildFuncType(rscope)
+		if !methOk {
+			ok = false
+			continue
+		}
+		imeths = append(imeths, &ir.IMethod{
+			Name:  method.name,
+			FType: methType,
+		})
+	}
+	return ir.TypeExpr(nil, ir.NewInterface(s.src, types, imeths)), ok
 }
 
-func (s *typeSet) source() ast.Node {
+func (s *iface) source() ast.Node {
 	return s.src
 }
 
-func (s *typeSet) String() string {
+func (s *iface) String() string {
 	all := make([]string, len(s.typs))
 	for i, typ := range s.typs {
 		all[i] = typ.String()

@@ -18,14 +18,26 @@ import (
 	"fmt"
 	"go/ast"
 
+	"github.com/pkg/errors"
 	"github.com/gx-org/gx/build/ir/irkind"
 )
 
-// Interface represents a set of types.
-type Interface struct {
-	BaseType[*ast.InterfaceType]
-	types []Type
-}
+type (
+	// IMethod is a method defined in an interface.
+	IMethod struct {
+		// Name of the method.
+		Name *ast.Ident
+		// FType is the function signature of the method.
+		FType *FuncType
+	}
+
+	// Interface represents a set of types.
+	Interface struct {
+		BaseType[*ast.InterfaceType]
+		types   []Type
+		methods []*IMethod
+	}
+)
 
 var (
 	_ Type        = (*Interface)(nil)
@@ -34,13 +46,14 @@ var (
 )
 
 // NewInterface returns a new type set given a set of types.
-func NewInterface(src *ast.InterfaceType, types []Type) *Interface {
+func NewInterface(src *ast.InterfaceType, types []Type, meths []*IMethod) *Interface {
 	if src == nil {
 		src = &ast.InterfaceType{}
 	}
 	return &Interface{
 		BaseType: BaseType[*ast.InterfaceType]{Src: src},
 		types:    types,
+		methods:  meths,
 	}
 }
 
@@ -102,8 +115,7 @@ func (s *Interface) AssignableTo(fetcher Fetcher, target Type) (bool, CompEvalEr
 	return len(s.types) > 0, nil, nil
 }
 
-// AssignableFrom reports whether a given source type is assignable to any members of the set.
-func (s *Interface) assignableFrom(fetcher Fetcher, source Type) (bool, CompEvalError, error) {
+func (s *Interface) checkTypesAssignableFrom(fetcher Fetcher, source Type) (bool, CompEvalError, error) {
 	if len(s.types) == 0 {
 		return true, nil, nil
 	}
@@ -121,6 +133,46 @@ func (s *Interface) assignableFrom(fetcher Fetcher, source Type) (bool, CompEval
 		}
 	}
 	return false, nil, nil
+}
+
+type toString func(file *File) string
+
+func checkHasMethod(fetcher Fetcher, ifaceName toString, source *NamedType, imeth *IMethod) (bool, CompEvalError, error) {
+	meth := source.MethodByName(imeth.Name.Name)
+	if meth == nil {
+		return false, CompEvalError(errors.Errorf("%s does not implement %s (missing method %s)", ifaceName(fetcher.File()), source.ReferString(fetcher.File()), imeth.Name.Name)), nil
+	}
+	return true, nil, nil
+}
+
+func (s *Interface) checkImplement(fetcher Fetcher, source Type, ifaceName toString) (bool, CompEvalError, error) {
+	named, ok := source.(*NamedType)
+	if !ok {
+		return len(s.methods) == 0, nil, nil
+	}
+	for _, method := range s.methods {
+		ok, cpErr, err := checkHasMethod(fetcher, ifaceName, named, method)
+		if !ok || cpErr != nil || err != nil {
+			return ok, cpErr, err
+		}
+	}
+	return true, nil, nil
+}
+
+func (s *Interface) assignableFromWithName(fetcher Fetcher, source Type, name toString) (bool, CompEvalError, error) {
+	typeOk, cpErr, err := s.checkTypesAssignableFrom(fetcher, source)
+	if cpErr != nil || err != nil {
+		return false, cpErr, err
+	}
+	methodOk, cpErr, err := s.checkImplement(fetcher, source, name)
+	if cpErr != nil || err != nil {
+		return false, cpErr, err
+	}
+	return typeOk && methodOk, nil, nil
+}
+
+func (s *Interface) assignableFrom(fetcher Fetcher, source Type) (bool, CompEvalError, error) {
+	return s.assignableFromWithName(fetcher, source, s.ReferString)
 }
 
 // ConvertibleTo reports whether a value of the type can be converted to another
