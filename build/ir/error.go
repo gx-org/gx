@@ -24,8 +24,31 @@ type errorType struct {
 	iface Interface
 }
 
-var errorTyp = &errorType{}
+var errorTyp = &errorType{
+	iface: Interface{
+		methods: []*IMethod{&IMethod{
+			// Define method: error() string
+			Name: &ast.Ident{Name: "Error"},
+			FType: &FuncType{
+				BaseType: BaseType[*ast.FuncType]{
+					Src: &ast.FuncType{},
+				},
+				Params: &FieldList{},
+				Results: &FieldList{
+					List: []*FieldGroup{
+						&FieldGroup{Type: TypeExpr(nil, StringType())},
+					},
+				},
+			},
+		}},
+	},
+}
 var errorIdent = &ast.Ident{Name: "error"}
+
+var (
+	_ Type     = errorTyp
+	_ assigner = errorTyp
+)
 
 // ErrorType returns the type for the keyword error.
 func ErrorType() TypeMethods {
@@ -47,6 +70,10 @@ func (s *errorType) Equal(fetcher Fetcher, target Type) (bool, CompEvalError, er
 // AssignableTo reports whether a value of the type can be assigned to another.
 func (s *errorType) AssignableTo(fetcher Fetcher, target Type) (bool, CompEvalError, error) {
 	return s.iface.AssignableTo(fetcher, target)
+}
+
+func (s *errorType) assignableFrom(fetcher Fetcher, x Type) (bool, CompEvalError, error) {
+	return s.iface.assignableFromWithName(fetcher, x, s.DefineString)
 }
 
 // ConvertibleTo reports whether a value of the type can be converted to another

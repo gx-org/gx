@@ -41,12 +41,16 @@ func someError() error
 		testbuild.Decl{
 			Src: `
 type ArgError struct {
-	Error error
 }
 
 // gx:compeval
-func f() ArgError {
-	return ArgError{Error: nil}
+func (ArgError) Error() string {
+	return "Hello"
+}
+
+// gx:compeval
+func f() error {
+	return ArgError{}
 }`,
 		},
 	)
@@ -87,6 +91,29 @@ func New() float32 {
 	return 1
 }
 `,
+		},
+		testbuild.Decl{
+			Src: `
+type ArgError struct {
+	Error error
+}
+
+// gx:compeval
+func f() error {
+	return ArgError{Error: nil} // ERROR cannot use ArgError as error value in return statement: error does not implement ArgError (missing method Error)
+}`,
+		},
+		testbuild.Decl{
+			Src: `
+type ArgError struct {}
+
+func (ArgError) Error() int32 {
+	return 0
+}
+
+func f() error {
+	return ArgError{} // ERROR cannot use ArgError as error value in return statement: error does not implement ArgError (wrong type for method Error)
+}`,
 		},
 	)
 }
