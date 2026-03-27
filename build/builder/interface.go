@@ -26,7 +26,7 @@ import (
 
 type (
 	iMethod struct {
-		name  *ast.Ident
+		src   *ast.Field
 		fType *funcType
 	}
 
@@ -57,7 +57,7 @@ func processInterfaceType(pscope procScope, src *ast.InterfaceType) (*iface, boo
 			continue
 		}
 		if len(elem.Names) == 1 {
-			method, methodOk := processMethodSignature(pscope, elem.Names[0], elem.Type)
+			method, methodOk := processMethodSignature(pscope, elem, elem.Type)
 			if !methodOk {
 				ok = false
 				continue
@@ -72,7 +72,8 @@ func processInterfaceType(pscope procScope, src *ast.InterfaceType) (*iface, boo
 	return s, ok
 }
 
-func processMethodSignature(pscope procScope, name *ast.Ident, tp ast.Expr) (*iMethod, bool) {
+func processMethodSignature(pscope procScope, field *ast.Field, tp ast.Expr) (*iMethod, bool) {
+	name := field.Names[0]
 	astFType, isFType := tp.(*ast.FuncType)
 	if !isFType {
 		return nil, pscope.Err().Appendf(name, "cannot process method definition: expected type %s but got %T", reflect.TypeFor[*ast.FuncType]().String(), tp)
@@ -82,7 +83,7 @@ func processMethodSignature(pscope procScope, name *ast.Ident, tp ast.Expr) (*iM
 		return nil, false
 	}
 	return &iMethod{
-		name:  name,
+		src:   field,
 		fType: ftype,
 	}, true
 }
@@ -115,7 +116,8 @@ func (s *iface) buildTypeExpr(rscope resolveScope) (*ir.TypeValExpr, bool) {
 		if prev, exists := rtypeNames[s.typs[i].String()]; exists {
 			ok = rscope.Err().Appendf(s.source(), "overlapping terms %s and %s", prev, typeExpr)
 		}
-		rtypeNames[typeExpr.SourceString(rscope.fileScope().irFile())] = typeExpr.Val()
+		from := rscope.fileScope().irFile()
+		rtypeNames[typeExpr.SourceString(from)] = typeExpr.Val()
 	}
 	var imeths []*ir.IMethod
 	for _, method := range s.methods {
@@ -125,7 +127,7 @@ func (s *iface) buildTypeExpr(rscope resolveScope) (*ir.TypeValExpr, bool) {
 			continue
 		}
 		imeths = append(imeths, &ir.IMethod{
-			Name:  method.name,
+			Src:   method.src,
 			FType: methType,
 		})
 	}

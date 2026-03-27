@@ -123,7 +123,7 @@ func findMethod(pkg *ir.Package, recvName, fnName string) (*ir.FuncDecl, error) 
 	if nType == nil {
 		return nil, errors.Errorf("package %s has no type %s", pkg.Name.Name, recvName)
 	}
-	fn := nType.MethodByName(fnName)
+	fn := ir.MethodByName(nType, fnName)
 	if fn == nil {
 		return nil, errors.Errorf("type %s.%s has no method %s", pkg.Name.Name, recvName, fnName)
 	}

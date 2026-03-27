@@ -128,10 +128,13 @@ func NewReceiver(el *NamedType, fn ir.Func) *Receiver {
 	if el == nil {
 		return nil
 	}
-	names := fn.FuncType().Receiver.Src.List[0].Names
 	var name *ast.Ident
-	if len(names) > 0 {
-		name = names[0]
+	recv := fn.FuncType().Receiver
+	if recv != nil {
+		names := recv.Src.List[0].Names
+		if len(names) > 0 {
+			name = names[0]
+		}
 	}
 	return &Receiver{
 		Ident:   name,

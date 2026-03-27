@@ -39,6 +39,27 @@ func f() I {
 }
 `,
 		},
+		testbuild.Decl{
+			Src: `
+type I interface {
+	A() string
+}
+
+type S struct {}
+
+func (S) A() string {
+	return "Hi!"
+}
+
+func f() I {
+	return S{}
+}
+
+func g() string {
+	return f().A()
+}
+`,
+		},
 	)
 }
 

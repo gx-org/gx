@@ -19,25 +19,114 @@ import (
 	"go/ast"
 
 	"github.com/pkg/errors"
+	"github.com/gx-org/gx/build/ir/annotations"
 	"github.com/gx-org/gx/build/ir/irkind"
 )
 
 // IMethod is a method defined in an interface.
 type IMethod struct {
-	// Name of the method.
-	Name *ast.Ident
+	// Anns are annotations attached to the method.
+	Anns annotations.Annotations
+	// IFace is the interface owning the method.
+	IFace *Interface
+
+	// Src is the source defining the method.
+	Src *ast.Field
 	// FType is the function signature of the method.
 	FType *FuncType
 }
 
+var _ PkgFunc = (*IMethod)(nil)
+
+func (*IMethod) node()         {}
+func (*IMethod) staticValue()  {}
+func (*IMethod) storage()      {}
+func (*IMethod) storageValue() {}
+func (*IMethod) pkgFunc()      {}
+
+// Node returns the node in the AST tree.
+func (m *IMethod) Node() ast.Node { return m.Src }
+
+// New returns a new function given a source, a file, and a type.
+func (m *IMethod) New() PkgFunc {
+	n := *m
+	return &n
+}
+
+// Same returns true if the other storage is this storage.
+func (m *IMethod) Same(o Storage) bool {
+	return Storage(m) == o
+}
+
 // SourceSignature returns a string representing the method.
 func (m *IMethod) SourceSignature(from *File) string {
-	return m.FType.SourceSignature(from, m.Name)
+	return m.FType.SourceSignature(from, m.NameDef())
+}
+
+// Annotations returns the annotations attached to the function.
+func (m *IMethod) Annotations() *annotations.Annotations {
+	return &m.Anns
+}
+
+// Doc returns associated documentation or nil.
+func (m *IMethod) Doc() *ast.CommentGroup {
+	return m.Src.Doc
+}
+
+// FuncType returns the concrete type of the function.
+func (m *IMethod) FuncType() *FuncType {
+	return m.FType
+}
+
+// Type returns the type of the function.
+func (m *IMethod) Type() Type {
+	return m.FType
+}
+
+// Name of the function.
+func (m *IMethod) Name() string {
+	return m.NameDef().Name
+}
+
+// NameDef returns the name identifier of the method.
+func (m *IMethod) NameDef() *ast.Ident {
+	return m.Src.Names[0]
+}
+
+// File owning the function.
+func (m *IMethod) File() *File {
+	return m.IFace.File()
+}
+
+// DefineString returns the GX source code of the node.
+func (m *IMethod) DefineString(from *File) string {
+	return m.FType.SourceSignature(from, m.NameDef())
+}
+
+// ShortString returns a short string for error messages related to annotations.
+func (m *IMethod) ShortString() string {
+	return m.ReferString(nil)
+}
+
+// ReferString returns the string representation of the node in an error message.
+func (m *IMethod) ReferString(from *File) string {
+	name := m.Name()
+	if name != "" {
+		return name
+	}
+	return m.FuncType().ReferString(from)
+}
+
+// Value returns a reference to the function.
+func (m *IMethod) Value(x Expr) Expr {
+	return NewFuncValExpr(x, m)
 }
 
 // Interface represents a set of types.
 type Interface struct {
 	BaseType[*ast.InterfaceType]
+	FFile *File
+
 	types   []Type
 	methods []*IMethod
 }
@@ -46,6 +135,7 @@ var (
 	_ Type        = (*Interface)(nil)
 	_ ArrayType   = (*Interface)(nil)
 	_ assignsFrom = (*Interface)(nil)
+	_ TypeMethods = (*Interface)(nil)
 )
 
 // NewInterface returns a new type set given a set of types.
@@ -53,11 +143,15 @@ func NewInterface(src *ast.InterfaceType, types []Type, meths []*IMethod) *Inter
 	if src == nil {
 		src = &ast.InterfaceType{}
 	}
-	return &Interface{
+	iface := &Interface{
 		BaseType: BaseType[*ast.InterfaceType]{Src: src},
 		types:    types,
 		methods:  meths,
 	}
+	for _, meth := range meths {
+		meth.IFace = iface
+	}
+	return iface
 }
 
 func (*Interface) node() {}
@@ -141,8 +235,8 @@ func (s *Interface) checkTypesAssignableFrom(fetcher Fetcher, source Type) (bool
 type toString func(file *File) string
 
 func checkHasMethod(fetcher Fetcher, ifaceName toString, source *NamedType, imeth *IMethod) (bool, CompEvalError, error) {
-	methName := imeth.Name.Name
-	meth := source.MethodByName(methName)
+	methName := imeth.Name()
+	meth := MethodByName(source, methName)
 	if meth == nil {
 		from := fetcher.File()
 		return false, CompEvalError(errors.Errorf("%s does not implement %s (missing method %s)", ifaceName(from), source.ReferString(from), methName)), nil
@@ -153,7 +247,7 @@ func checkHasMethod(fetcher Fetcher, ifaceName toString, source *NamedType, imet
 	}
 	if !eq {
 		from := fetcher.File()
-		return false, CompEvalError(errors.Errorf("%s does not implement %s (wrong type for method %s)\n\thave %s\n\twant %s", ifaceName(from), source.ReferString(from), methName, meth.FuncType().sourceSignature(from, imeth.Name, true), imeth.SourceSignature(from))), nil
+		return false, CompEvalError(errors.Errorf("%s does not implement %s (wrong type for method %s)\n\thave %s\n\twant %s", ifaceName(from), source.ReferString(from), methName, meth.FuncType().sourceSignature(from, imeth.NameDef(), true), imeth.SourceSignature(from))), nil
 	}
 	return true, nil, nil
 }
@@ -204,6 +298,20 @@ func (s *Interface) ConvertibleTo(fetcher Fetcher, target Type) (bool, CompEvalE
 		}
 	}
 	return false, nil, nil
+}
+
+// Methods returns the list of methods available for the interface.
+func (s *Interface) Methods() []PkgFunc {
+	methods := make([]PkgFunc, len(s.methods))
+	for i, meth := range s.methods {
+		methods[i] = meth
+	}
+	return methods
+}
+
+// File owning the function.
+func (s *Interface) File() *File {
+	return s.FFile
 }
 
 // Specialise a type to a given target.

@@ -1,0 +1,23 @@
+package core
+
+type ifaceA interface {
+	f() int32
+}
+
+type sA struct {
+	val int32
+}
+
+func (s sA) f() int32 {
+	return s.val
+}
+
+func newIAF() ifaceA {
+	return sA{val: 5}
+}
+
+func TestInterface() int32 {
+	return newIAF().f()
+	// Want:
+	// int32(5)
+}

@@ -421,16 +421,6 @@ var (
 	zeroFloat = &NumberFloat{Src: &ast.BasicLit{Value: "0.0"}, Val: big.NewFloat(0)}
 )
 
-// MethodByName returns a method given its name, or nil if not method has that name.
-func (s *NamedType) MethodByName(name string) PkgFunc {
-	for _, method := range s.Meths {
-		if method.Name() == name {
-			return method
-		}
-	}
-	return nil
-}
-
 // Kind of the underlying type.
 func (s *NamedType) Kind() irkind.Kind { return s.Underlying.Val().Kind() }
 
@@ -502,7 +492,19 @@ func (s *NamedType) Name() string {
 
 // Methods returns the list of methods provided by the named type.
 func (s *NamedType) Methods() []PkgFunc {
-	return s.Meths
+	if len(s.Meths) > 0 {
+		// Methods attached to the type using the func notation.
+		return s.Meths
+	}
+	if s.Underlying != nil {
+		iface, ok := Underlying(s).(*Interface)
+		if ok {
+			// Methods coming from an interface definition.
+			return iface.Methods()
+		}
+	}
+	// No methods.
+	return nil
 }
 
 // NameDef returns the name defining the storage.
@@ -2704,9 +2706,9 @@ func (s *SelectorExpr) Expr() ast.Expr { return s.Src }
 
 // Select finds a method on a named type or a field in a structure.
 func (s *SelectorExpr) Select(typ Type) (method PkgFunc, field *Field) {
-	named, ok := typ.(*NamedType)
+	withMethods, ok := typ.(TypeMethods)
 	if ok {
-		method = named.MethodByName(s.Src.Sel.Name)
+		method = MethodByName(withMethods, s.Src.Sel.Name)
 	}
 	if method != nil {
 		return
@@ -3232,4 +3234,14 @@ func ToArrayTypeGivenShape(from *File, typ Type, sh *shape.Shape) (ArrayType, er
 
 func fullName(f PkgFunc) string {
 	return f.File().Package.Path() + "." + f.Name()
+}
+
+// MethodByName returns a method given its name, or nil if not method has that name.
+func MethodByName(typ TypeMethods, name string) PkgFunc {
+	for _, method := range typ.Methods() {
+		if method.Name() == name {
+			return method
+		}
+	}
+	return nil
 }

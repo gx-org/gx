@@ -169,7 +169,7 @@ func testStructNumberAssignment() int64 {
 }
 
 func testMissingField() float32 {
-	return funcWith2Args.a // ERROR undefined: funcWith2Args.a
+	return funcWith2Args.a // ERROR funcWith2Args.a undefined (type func(a, b float32) (float32, float32) has no field or method a)
 }
 
 func testIncorrectSelectorType() float32 {
@@ -210,7 +210,7 @@ func testAddAssignOperandMismatch() int64 {
 }
 
 func testImportIsUndefined() float32 {
-	return num.DoesNotExist // ERROR undefined: num.DoesNotExist
+	return num.DoesNotExist // ERROR num.DoesNotExist undefined (type invalid has no field or method DoesNotExist)
 }
 
 type myfloat float64

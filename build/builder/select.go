@@ -46,7 +46,10 @@ func (n *selectorExpr) source() ast.Node {
 }
 
 func (n *selectorExpr) returnUndefined(scope resolveScope, x ir.Expr) (ir.Storage, bool) {
-	return nil, scope.Err().Appendf(n.src.Sel, "undefined: %s.%s", n.x.String(), n.src.Sel.Name)
+	if isInvalidExpr(x) {
+		return invalidIdent.Store(), false
+	}
+	return invalidIdent.Store(), scope.Err().Appendf(n.src.Sel, "%s.%s undefined (type %s has no field or method %s)", x.SourceString(scope.fileScope().irFile()), n.src.Sel.Name, x.Type().ReferString(scope.fileScope().irFile()), n.src.Sel.Name)
 }
 
 func (n *selectorExpr) selectFromPackage(scope resolveScope, sel *ir.SelectorExpr) (ir.Storage, bool) {

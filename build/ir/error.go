@@ -24,23 +24,32 @@ type errorType struct {
 	iface Interface
 }
 
+var errorSrc = &ast.Field{
+	Names: []*ast.Ident{
+		&ast.Ident{Name: "Error"},
+	},
+	Type: &ast.FuncType{},
+}
+
 var errorTyp = &errorType{
 	iface: Interface{
-		methods: []*IMethod{&IMethod{
+		methods: []*IMethod{
 			// Define method: error() string
-			Name: &ast.Ident{Name: "Error"},
-			FType: &FuncType{
-				BaseType: BaseType[*ast.FuncType]{
-					Src: &ast.FuncType{},
-				},
-				Params: &FieldList{},
-				Results: &FieldList{
-					List: []*FieldGroup{
-						&FieldGroup{Type: TypeExpr(nil, StringType())},
+			&IMethod{
+				Src: errorSrc,
+				FType: &FuncType{
+					BaseType: BaseType[*ast.FuncType]{
+						Src: errorSrc.Type.(*ast.FuncType),
+					},
+					Params: &FieldList{},
+					Results: &FieldList{
+						List: []*FieldGroup{
+							&FieldGroup{Type: TypeExpr(nil, StringType())},
+						},
 					},
 				},
 			},
-		}},
+		},
 	},
 }
 var errorIdent = &ast.Ident{Name: "error"}

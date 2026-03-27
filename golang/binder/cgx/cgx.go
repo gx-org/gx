@@ -937,7 +937,7 @@ func newInterfaceHandle(pkg *core.PackageCompileSetup, typ *ir.NamedType) *inter
 func cgx_interface_method_find(cgxIFace C.cgx_interface, methodNamePtr *C.cchar_t) (res C.struct_cgx_function_find_result) {
 	iface := unwrap[*interfaceHandle](cgxIFace)
 	methodName := C.GoString(methodNamePtr)
-	method := iface.typ.MethodByName(methodName)
+	method := ir.MethodByName(iface.typ, methodName)
 	if method == nil {
 		packageName := iface.typ.File.Package.Name.Name
 		typeName := iface.typ.Name()

@@ -52,7 +52,7 @@ func checkFunc(pkg *ir.Package, name string, want string) error {
 		if tp == nil {
 			return errors.Errorf("type name %s not found", tpName)
 		}
-		fn := tp.MethodByName(methodName)
+		fn := ir.MethodByName(tp, methodName)
 		if fn == nil {
 			return errors.Errorf("method %s not found for type %s", methodName, tpName)
 		}
