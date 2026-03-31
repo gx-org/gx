@@ -16,6 +16,7 @@ package cpevelements
 
 import (
 	"fmt"
+	"go/ast"
 	"go/token"
 
 	"github.com/gx-org/backend/shape"
@@ -146,7 +147,7 @@ func (a *unary) Materialise(ao materialise.Materialiser) (materialise.Node, erro
 	return ao.NodeFromArray(a.val, a.typ)
 }
 
-func (a *unary) Expr(ir.Evaluator) (ir.Expr, ir.CompEvalError, error) {
+func (a *unary) Expr(ir.Evaluator, ast.Expr) (ir.Expr, ir.CompEvalError, error) {
 	return a.expr, nil, nil
 }
 

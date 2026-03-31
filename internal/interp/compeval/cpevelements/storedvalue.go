@@ -16,6 +16,7 @@ package cpevelements
 
 import (
 	"fmt"
+	"go/ast"
 
 	"github.com/pkg/errors"
 	"github.com/gx-org/backend/shape"
@@ -146,12 +147,12 @@ func (v *storedValue) Slice(expr *ir.IndexExpr, index evaluator.NumericalElement
 }
 
 // Expr returns the IR expression represented by the variable.
-func (v *storedValue) Expr(ev ir.Evaluator) (ir.Expr, ir.CompEvalError, error) {
+func (v *storedValue) Expr(ev ir.Evaluator, src ast.Expr) (ir.Expr, ir.CompEvalError, error) {
 	valExpr, ok := v.val.(ir.WithExpr)
 	if ok {
-		return valExpr.Expr(ev)
+		return valExpr.Expr(ev, src)
 	}
-	return v.storage.Expr(ev)
+	return v.storage.Expr(ev, src)
 }
 
 func (v *storedValue) CanonicalExpr() canonical.Canonical {

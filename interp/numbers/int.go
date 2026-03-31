@@ -16,6 +16,7 @@ package numbers
 
 import (
 	"fmt"
+	"go/ast"
 	"go/token"
 	"math/big"
 
@@ -153,7 +154,7 @@ func (n *Int) Shape() *shape.Shape {
 }
 
 // Expr returns the expression representing the integer.
-func (n *Int) Expr(ir.Evaluator) (ir.Expr, ir.CompEvalError, error) {
+func (n *Int) Expr(ir.Evaluator, ast.Expr) (ir.Expr, ir.CompEvalError, error) {
 	return n.expr, nil, nil
 }
 

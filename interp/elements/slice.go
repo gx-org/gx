@@ -15,6 +15,8 @@
 package elements
 
 import (
+	"go/ast"
+
 	"github.com/pkg/errors"
 	"github.com/gx-org/gx/api/values"
 	gxfmt "github.com/gx-org/gx/base/fmt"
@@ -98,7 +100,7 @@ func (n *Slice) Unflatten(handles *flatten.Parser) (values.Value, error) {
 }
 
 // Expr returns the IR expression representing the slice.
-func (n *Slice) Expr(ev ir.Evaluator) (ir.Expr, ir.CompEvalError, error) {
+func (n *Slice) Expr(ev ir.Evaluator, src ast.Expr) (ir.Expr, ir.CompEvalError, error) {
 	ext := &ir.SliceLitExpr{
 		Typ:  n.typ,
 		Elts: make([]ir.Expr, n.Len()),
@@ -110,7 +112,7 @@ func (n *Slice) Expr(ev ir.Evaluator) (ir.Expr, ir.CompEvalError, error) {
 		}
 		var cpErr ir.CompEvalError
 		var err error
-		ext.Elts[i], cpErr, err = irEl.Expr(ev)
+		ext.Elts[i], cpErr, err = irEl.Expr(ev, src)
 		if cpErr != nil || err != nil {
 			return nil, cpErr, err
 		}

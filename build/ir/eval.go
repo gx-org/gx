@@ -40,7 +40,7 @@ type (
 
 	// WithExpr converts an element into an IR expressions.
 	WithExpr interface {
-		Expr(Evaluator) (Expr, CompEvalError, error)
+		Expr(Evaluator, ast.Expr) (Expr, CompEvalError, error)
 	}
 
 	// Evaluator evaluates IR expressions into canonical values.
@@ -70,10 +70,10 @@ type (
 )
 
 // ToExpr converts an element from the interpreter to an IR expression.
-func ToExpr(ev Evaluator, el Element) (Expr, CompEvalError, error) {
+func ToExpr(ev Evaluator, src ast.Expr, el Element) (Expr, CompEvalError, error) {
 	toExpr, ok := el.(WithExpr)
 	if !ok {
 		return nil, nil, errors.Errorf("cannot convert %T to an IR expression", el)
 	}
-	return toExpr.Expr(ev)
+	return toExpr.Expr(ev, src)
 }
