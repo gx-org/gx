@@ -106,8 +106,8 @@ func (s *atomicType) ConvertibleTo(fetcher Fetcher, target Type) (bool, CompEval
 }
 
 // Specialise a type to a given target.
-func (s *atomicType) Specialise(Specialiser) (Type, error) {
-	return s, nil
+func (s *atomicType) Specialise(Specialiser) (Type, CompEvalError, error) {
+	return s, nil, nil
 }
 
 // Node returns the source code defining the type.
@@ -176,7 +176,7 @@ type boolType struct {
 
 var boolT = &boolType{atomicType: atomicType{Knd: irkind.Bool}}
 
-func (s *boolType) Specialise(spec Specialiser) (Type, error) { return boolT, nil }
+func (s *boolType) Specialise(spec Specialiser) (Type, CompEvalError, error) { return boolT, nil, nil }
 
 // BoolType returns the type for a boolean.
 func BoolType() Type {
@@ -189,7 +189,9 @@ type bfloat16Type struct {
 
 var bfloat16T = &bfloat16Type{atomicType: atomicType{Knd: irkind.Bfloat16}}
 
-func (s *bfloat16Type) Specialise(spec Specialiser) (Type, error) { return bfloat16T, nil }
+func (s *bfloat16Type) Specialise(spec Specialiser) (Type, CompEvalError, error) {
+	return bfloat16T, nil, nil
+}
 
 // Bfloat16Type returns the type for a bfloat16.
 func Bfloat16Type() Type {
@@ -202,7 +204,9 @@ type float32Type struct {
 
 var float32T = &float32Type{atomicType: atomicType{Knd: irkind.Float32}}
 
-func (s *float32Type) Specialise(spec Specialiser) (Type, error) { return float32T, nil }
+func (s *float32Type) Specialise(spec Specialiser) (Type, CompEvalError, error) {
+	return float32T, nil, nil
+}
 
 // Float32Type returns the type for a float32.
 func Float32Type() Type {
@@ -215,7 +219,9 @@ type float64Type struct {
 
 var float64T = &float64Type{atomicType: atomicType{Knd: irkind.Float64}}
 
-func (s *float64Type) Specialise(spec Specialiser) (Type, error) { return float64T, nil }
+func (s *float64Type) Specialise(spec Specialiser) (Type, CompEvalError, error) {
+	return float64T, nil, nil
+}
 
 // Float64Type returns the type for a float64.
 func Float64Type() Type {
@@ -228,7 +234,9 @@ type int32Type struct {
 
 var int32T = &int32Type{atomicType: atomicType{Knd: irkind.Int32}}
 
-func (s *int32Type) Specialise(spec Specialiser) (Type, error) { return int32T, nil }
+func (s *int32Type) Specialise(spec Specialiser) (Type, CompEvalError, error) {
+	return int32T, nil, nil
+}
 
 // Int32Type returns the type for a int32.
 func Int32Type() Type {
@@ -241,7 +249,9 @@ type int64Type struct {
 
 var int64T = &int64Type{atomicType: atomicType{Knd: irkind.Int64}}
 
-func (s *int64Type) Specialise(spec Specialiser) (Type, error) { return int64T, nil }
+func (s *int64Type) Specialise(spec Specialiser) (Type, CompEvalError, error) {
+	return int64T, nil, nil
+}
 
 // Int64Type returns the type for a int64.
 func Int64Type() Type {
@@ -289,7 +299,9 @@ var (
 	}
 )
 
-func (s *intlenType) Specialise(spec Specialiser) (Type, error) { return intlenT, nil }
+func (s *intlenType) Specialise(spec Specialiser) (Type, CompEvalError, error) {
+	return intlenT, nil, nil
+}
 
 // IntLenType returns the type for intlen, that is the length of an axis.
 func IntLenType() Type {
@@ -323,7 +335,9 @@ type stringType struct {
 
 var stringT = &stringType{atomicType: atomicType{Knd: irkind.String}}
 
-func (s *stringType) Specialise(spec Specialiser) (Type, error) { return stringT, nil }
+func (s *stringType) Specialise(spec Specialiser) (Type, CompEvalError, error) {
+	return stringT, nil, nil
+}
 
 // StringType returns the type for a string.
 func StringType() Type {
@@ -336,7 +350,9 @@ type uint32Type struct {
 
 var uint32T = &uint32Type{atomicType: atomicType{Knd: irkind.Uint32}}
 
-func (s *uint32Type) Specialise(spec Specialiser) (Type, error) { return uint32T, nil }
+func (s *uint32Type) Specialise(spec Specialiser) (Type, CompEvalError, error) {
+	return uint32T, nil, nil
+}
 
 // Uint32Type returns the type for a uint32.
 func Uint32Type() Type {
@@ -349,7 +365,9 @@ type uint64Type struct {
 
 var uint64T = &uint64Type{atomicType: atomicType{Knd: irkind.Uint64}}
 
-func (s *uint64Type) Specialise(spec Specialiser) (Type, error) { return uint64T, nil }
+func (s *uint64Type) Specialise(spec Specialiser) (Type, CompEvalError, error) {
+	return uint64T, nil, nil
+}
 
 // Uint64Type returns the type for a uint64.
 func Uint64Type() ArrayType {

@@ -51,7 +51,7 @@ type (
 		AssignableTo(Fetcher, AxisLengths) (bool, CompEvalError, error)
 
 		// Specialise the axis length given a context.
-		Specialise(Specialiser) ([]AxisLengths, error)
+		Specialise(Specialiser) ([]AxisLengths, CompEvalError, error)
 
 		// UnifyWith unifies axis lengths with a given target.
 		UnifyWith(Unifier, []AxisLengths) ([]AxisLengths, bool)
@@ -88,24 +88,24 @@ func (dm *AxisExpr) Equal(fetcher Fetcher, other AxisLengths) (bool, CompEvalErr
 }
 
 // Specialise the axis length given a context.
-func (dm *AxisExpr) Specialise(spec Specialiser) ([]AxisLengths, error) {
+func (dm *AxisExpr) Specialise(spec Specialiser) ([]AxisLengths, CompEvalError, error) {
 	el, err := spec.EvalExpr(dm.X)
 	if err != nil {
-		return []AxisLengths{dm}, err
+		return []AxisLengths{dm}, nil, err
 	}
 	exprIR, err := toExpr(el)
 	if err != nil {
-		return []AxisLengths{dm}, err
+		return []AxisLengths{dm}, nil, err
 	}
 	sliceLit, isSliceLit := exprIR.(*SliceLitExpr)
 	if !isSliceLit {
-		return []AxisLengths{&AxisExpr{X: exprIR}}, nil
+		return []AxisLengths{&AxisExpr{X: exprIR}}, nil, nil
 	}
 	axes := make([]AxisLengths, len(sliceLit.Elts))
 	for i, expr := range sliceLit.Elts {
 		axes[i] = &AxisExpr{X: expr}
 	}
-	return axes, nil
+	return axes, nil, nil
 }
 
 // UnifyWith unifies axis lengths with a given target.
@@ -170,7 +170,7 @@ func (dm *AxisInfer) AsExpr() Expr {
 }
 
 // Specialise the axis length given a context.
-func (dm *AxisInfer) Specialise(spec Specialiser) ([]AxisLengths, error) {
+func (dm *AxisInfer) Specialise(spec Specialiser) ([]AxisLengths, CompEvalError, error) {
 	return dm.X.Specialise(spec)
 }
 
@@ -230,14 +230,14 @@ func (dm *AxisStmt) Same(o Storage) bool {
 }
 
 // Specialise the axis length given a context.
-func (dm *AxisStmt) Specialise(spec Specialiser) ([]AxisLengths, error) {
+func (dm *AxisStmt) Specialise(spec Specialiser) ([]AxisLengths, CompEvalError, error) {
 	el, err := spec.EvalExpr(dm.AsExpr())
 	if err != nil {
-		return []AxisLengths{dm}, err
+		return []AxisLengths{dm}, nil, err
 	}
 	exprIR, err := toExpr(el)
 	if err != nil {
-		return []AxisLengths{dm}, err
+		return []AxisLengths{dm}, nil, err
 	}
 	switch exprT := exprIR.(type) {
 	case *SliceLitExpr:
@@ -245,14 +245,14 @@ func (dm *AxisStmt) Specialise(spec Specialiser) ([]AxisLengths, error) {
 		for i, expr := range exprT.Elts {
 			axes[i] = &AxisExpr{X: expr}
 		}
-		return axes, nil
+		return axes, nil, nil
 	case WithStore:
 		ax, isAxisStmt := exprT.Store().(*AxisStmt)
 		if isAxisStmt {
-			return []AxisLengths{ax}, nil
+			return []AxisLengths{ax}, nil, nil
 		}
 	}
-	return []AxisLengths{&AxisExpr{X: exprIR}}, nil
+	return []AxisLengths{&AxisExpr{X: exprIR}}, nil, nil
 }
 
 // UnifyWith unifies axis lengths with a given target.

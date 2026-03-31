@@ -45,7 +45,7 @@ type (
 		ConvertibleTo(Fetcher, ArrayRank) (bool, CompEvalError, error)
 
 		// Specialise a type to a given target.
-		Specialise(Specialiser) (ArrayRank, error)
+		Specialise(Specialiser) (ArrayRank, CompEvalError, error)
 
 		// UnifyWith unifies the rank with a given target.
 		UnifyWith(Unifier, ArrayRank) bool
@@ -176,16 +176,16 @@ func (r *Rank) ConvertibleTo(fetcher Fetcher, dst ArrayRank) (bool, CompEvalErro
 }
 
 // Specialise a type to a given target.
-func (r *Rank) Specialise(spec Specialiser) (ArrayRank, error) {
+func (r *Rank) Specialise(spec Specialiser) (ArrayRank, CompEvalError, error) {
 	var axes []AxisLengths
 	for _, ax := range r.Ax {
-		subs, err := ax.Specialise(spec)
-		if err != nil {
-			return r, err
+		subs, cpErr, err := ax.Specialise(spec)
+		if cpErr != nil || err != nil {
+			return r, cpErr, err
 		}
 		axes = append(axes, subs...)
 	}
-	return &Rank{Src: r.Src, Ax: axes}, nil
+	return &Rank{Src: r.Src, Ax: axes}, nil, nil
 }
 
 // UnifyWith unifies the rank with a given target.
@@ -330,9 +330,9 @@ func (r *RankInfer) SubRank() (ArrayRank, bool) {
 }
 
 // Specialise a type to a given target.
-func (r *RankInfer) Specialise(spec Specialiser) (ArrayRank, error) {
+func (r *RankInfer) Specialise(spec Specialiser) (ArrayRank, CompEvalError, error) {
 	if r.Rnk == nil {
-		return r, nil
+		return r, nil, nil
 	}
 	return r.Rnk.Specialise(spec)
 }

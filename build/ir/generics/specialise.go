@@ -70,10 +70,13 @@ func Specialise(fetcher ir.Fetcher, expr ir.Expr, fun *ir.FuncValExpr, typs []*i
 	if !ok {
 		return nil, false
 	}
-	specType, err := fType.SpecialiseFType(&specialiser{
+	specType, cpErr, err := fType.SpecialiseFType(&specialiser{
 		Fetcher: fetcher,
 		defined: definedTypeParams,
 	})
+	if cpErr != nil {
+		return nil, fetcher.Err().AppendAt(fun.Node(), cpErr)
+	}
 	if err != nil {
 		return nil, fetcher.Err().AppendAt(fun.Node(), err)
 	}
@@ -84,7 +87,7 @@ func Specialise(fetcher ir.Fetcher, expr ir.Expr, fun *ir.FuncValExpr, typs []*i
 }
 
 // Instantiate replaces data types either specified or inferred.
-func Instantiate(fetcher ir.Fetcher, ftype *ir.FuncType) (*ir.FuncType, error) {
+func Instantiate(fetcher ir.Fetcher, ftype *ir.FuncType) (*ir.FuncType, ir.CompEvalError, error) {
 	return ftype.SpecialiseFType(&specialiser{
 		Fetcher: fetcher,
 		defined: newTypeParamDefinition(ftype),

@@ -79,7 +79,7 @@ func (tp *VarArgsType) ConvertibleTo(fetcher Fetcher, target Type) (bool, CompEv
 }
 
 // Specialise a type to a given target.
-func (tp *VarArgsType) Specialise(spec Specialiser) (Type, error) {
+func (tp *VarArgsType) Specialise(spec Specialiser) (Type, CompEvalError, error) {
 	return tp.Slice.Specialise(spec)
 }
 

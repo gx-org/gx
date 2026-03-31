@@ -20,8 +20,8 @@ import (
 )
 
 type (
-	groupCloner func(*FieldGroup) (*FieldGroup, error)
-	fieldCloner func(*FieldGroup, int, *Field) (*Field, error)
+	groupCloner func(*FieldGroup) (*FieldGroup, CompEvalError, error)
+	fieldCloner func(*FieldGroup, int, *Field) (*Field, CompEvalError, error)
 
 	cloner struct {
 		group groupCloner
@@ -47,20 +47,20 @@ func (l *FieldList) SourceString(from *File) string {
 	return strings.Join(groups, ", ")
 }
 
-func cloneFields(list *FieldList, cl *cloner) (*FieldList, error) {
+func cloneFields(list *FieldList, cl *cloner) (*FieldList, CompEvalError, error) {
 	if cl == nil || list == nil {
-		return list, nil
+		return list, nil, nil
 	}
 	ext := &FieldList{Src: list.Src}
 	for _, group := range list.List {
-		cloneGroup, err := cl.group(group)
-		if err != nil {
-			return nil, err
+		cloneGroup, cpErr, err := cl.group(group)
+		if cpErr != nil || err != nil {
+			return nil, cpErr, err
 		}
 		for i, field := range group.Fields {
-			cloneField, err := cl.field(cloneGroup, i, field)
+			cloneField, cpErr, err := cl.field(cloneGroup, i, field)
 			if err != nil {
-				return nil, err
+				return nil, cpErr, err
 			}
 			if cloneField == nil {
 				continue
@@ -73,13 +73,13 @@ func cloneFields(list *FieldList, cl *cloner) (*FieldList, error) {
 		}
 		ext.List = append(ext.List, cloneGroup)
 	}
-	return ext, nil
+	return ext, nil, nil
 }
 
-func cloneGroup(grp *FieldGroup) (*FieldGroup, error) {
-	return &FieldGroup{Src: grp.Src, Type: grp.Type}, nil
+func cloneGroup(grp *FieldGroup) (*FieldGroup, CompEvalError, error) {
+	return &FieldGroup{Src: grp.Src, Type: grp.Type}, nil, nil
 }
 
-func cloneField(grp *FieldGroup, _ int, field *Field) (*Field, error) {
-	return &Field{Name: field.Name, Group: grp}, nil
+func cloneField(grp *FieldGroup, _ int, field *Field) (*Field, CompEvalError, error) {
+	return &Field{Name: field.Name, Group: grp}, nil, nil
 }

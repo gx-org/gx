@@ -55,8 +55,8 @@ func (m *BaseType[T]) Same(o Storage) bool {
 }
 
 // Specialise a type to a given target.
-func (*BaseType[T]) Specialise(spec Specialiser) (Type, error) {
-	return nil, errors.Errorf("type specialisation not supported")
+func (*BaseType[T]) Specialise(spec Specialiser) (Type, CompEvalError, error) {
+	return nil, nil, errors.Errorf("type specialisation not supported")
 }
 
 // UnifyWith recursively unifies a type parameters with types.
@@ -157,8 +157,8 @@ func (t *invalidType) ReferString(from *File) string {
 }
 
 // Specialise a type to a given target.
-func (t *invalidType) Specialise(spec Specialiser) (Type, error) {
-	return t, nil
+func (t *invalidType) Specialise(spec Specialiser) (Type, CompEvalError, error) {
+	return t, nil, nil
 }
 
 // UnifyWith recursively unifies a type parameters with types.

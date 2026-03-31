@@ -129,7 +129,7 @@ type (
 		ConvertibleTo(Fetcher, Type) (bool, CompEvalError, error)
 
 		// Specialise a type to a given target.
-		Specialise(Specialiser) (Type, error)
+		Specialise(Specialiser) (Type, CompEvalError, error)
 
 		// UnifyWith recursively unifies a type parameters with types.
 		UnifyWith(Unifier, Type) bool
@@ -541,9 +541,9 @@ func (s *NamedType) ReferString(from *File) string {
 }
 
 // Specialise a type to a given target.
-func (s *NamedType) Specialise(spec Specialiser) (Type, error) {
-	_, err := s.Underlying.Val().Specialise(spec)
-	return s, err
+func (s *NamedType) Specialise(spec Specialiser) (Type, CompEvalError, error) {
+	_, cpErr, err := s.Underlying.Val().Specialise(spec)
+	return s, cpErr, err
 }
 
 // Package returns the package to which the type belongs to.
@@ -607,8 +607,8 @@ func (s *StructType) ReferString(from *File) string {
 }
 
 // Specialise a type to a given target.
-func (s *StructType) Specialise(spec Specialiser) (Type, error) {
-	return s, nil
+func (s *StructType) Specialise(spec Specialiser) (Type, CompEvalError, error) {
+	return s, nil, nil
 }
 
 // NumFields returns the number of fields in a structure.
@@ -694,8 +694,8 @@ func (s *SliceType) ReferString(from *File) string {
 }
 
 // Specialise a type to a given target.
-func (s *SliceType) Specialise(spec Specialiser) (Type, error) {
-	return s, nil
+func (s *SliceType) Specialise(spec Specialiser) (Type, CompEvalError, error) {
+	return s, nil, nil
 }
 
 // UnifyWith recursively unifies a type parameters with types.
@@ -825,16 +825,16 @@ func (s *arrayType) ConvertibleTo(fetcher Fetcher, target Type) (bool, CompEvalE
 }
 
 // Specialise a type to a given target.
-func (s *arrayType) Specialise(spec Specialiser) (Type, error) {
-	dtype, err := s.DTypeF.Specialise(spec)
-	if err != nil {
-		return InvalidType(), err
+func (s *arrayType) Specialise(spec Specialiser) (Type, CompEvalError, error) {
+	dtype, cpErr, err := s.DTypeF.Specialise(spec)
+	if cpErr != nil || err != nil {
+		return InvalidType(), cpErr, err
 	}
-	rank, err := s.RankF.Specialise(spec)
-	if err != nil {
-		return InvalidType(), err
+	rank, cpErr, err := s.RankF.Specialise(spec)
+	if cpErr != nil || err != nil {
+		return InvalidType(), cpErr, err
 	}
-	return NewArrayType(s.Src, dtype, rank), nil
+	return NewArrayType(s.Src, dtype, rank), nil, nil
 }
 
 // UnifyWith recursively unifies a type parameters with types.
@@ -978,12 +978,12 @@ func (s *TypeParam) ReferString(from *File) string {
 }
 
 // Specialise a type to a given target.
-func (s *TypeParam) Specialise(spec Specialiser) (Type, error) {
+func (s *TypeParam) Specialise(spec Specialiser) (Type, CompEvalError, error) {
 	tp := spec.TypeOf(s.Field.Name.Name)
 	if tp == nil {
-		return s, nil
+		return s, nil, nil
 	}
-	return tp, nil
+	return tp, nil, nil
 }
 
 // UnifyWith recursively unifies a type parameters with types.

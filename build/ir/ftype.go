@@ -140,28 +140,30 @@ func (s *FuncType) Value(x Expr) Expr {
 }
 
 // Specialise a type to a given target.
-func (s *FuncType) Specialise(spec Specialiser) (Type, error) {
+func (s *FuncType) Specialise(spec Specialiser) (Type, CompEvalError, error) {
 	return s.SpecialiseFType(spec)
 }
 
 func skipIfDefined(spec Specialiser) fieldCloner {
-	return func(grp *FieldGroup, i int, field *Field) (*Field, error) {
+	return func(grp *FieldGroup, i int, field *Field) (*Field, CompEvalError, error) {
 		if spec.TypeOf(field.Name.Name) != nil {
-			return nil, nil
+			return nil, nil, nil
 		}
 		return cloneField(grp, i, field)
 	}
 }
 
 // SpecialiseFType specialises a function type.
-func (s *FuncType) SpecialiseFType(spec Specialiser) (*FuncType, error) {
+func (s *FuncType) SpecialiseFType(spec Specialiser) (*FuncType, CompEvalError, error) {
 	res := *s
-	var err error
 	specialiser := &cloner{
-		group: func(grp *FieldGroup) (*FieldGroup, error) {
-			specType, err := grp.Type.Val().Specialise(spec)
+		group: func(grp *FieldGroup) (*FieldGroup, CompEvalError, error) {
+			specType, cpErr, err := grp.Type.Val().Specialise(spec)
+			if cpErr != nil {
+				return nil, cpErr, err
+			}
 			if err != nil {
-				return nil, fmt.Errorf("cannot specialise %s: %v", s.ReferString(spec.File()), err)
+				return nil, nil, fmt.Errorf("cannot specialise %s: %v", s.ReferString(spec.File()), err)
 			}
 			return &FieldGroup{
 				Src: grp.Src,
@@ -169,24 +171,26 @@ func (s *FuncType) SpecialiseFType(spec Specialiser) (*FuncType, error) {
 					grp.Type.X(),
 					specType,
 				),
-			}, nil
+			}, nil, nil
 		},
 		field: cloneField,
 	}
-	res.Params, err = cloneFields(s.Params, specialiser)
-	if err != nil {
-		return nil, err
+	var err error
+	var cpErr CompEvalError
+	res.Params, cpErr, err = cloneFields(s.Params, specialiser)
+	if cpErr != nil || err != nil {
+		return nil, cpErr, err
 	}
-	res.Results, err = cloneFields(s.Results, specialiser)
-	if err != nil {
-		return nil, err
+	res.Results, cpErr, err = cloneFields(s.Results, specialiser)
+	if cpErr != nil || err != nil {
+		return nil, cpErr, err
 	}
-	res.TypeParams, err = cloneFields(s.TypeParams, &cloner{
+	res.TypeParams, cpErr, err = cloneFields(s.TypeParams, &cloner{
 		group: cloneGroup,
 		field: skipIfDefined(spec),
 	})
-	if err != nil {
-		return nil, err
+	if cpErr != nil || err != nil {
+		return nil, cpErr, err
 	}
 
 	for _, typeParam := range s.TypeParams.Fields() {
@@ -203,7 +207,7 @@ func (s *FuncType) SpecialiseFType(spec Specialiser) (*FuncType, error) {
 	for i, axis := range s.AxisLengths {
 		res.AxisLengths[i].Value = spec.ValueOf(axis.Name())
 	}
-	return &res, nil
+	return &res, nil, nil
 }
 
 // ArgIndexToParamField returns the field corresponding to an argument index.

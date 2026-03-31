@@ -315,8 +315,8 @@ func (s *Interface) File() *File {
 }
 
 // Specialise a type to a given target.
-func (s *Interface) Specialise(Specialiser) (Type, error) {
-	return s, nil
+func (s *Interface) Specialise(Specialiser) (Type, CompEvalError, error) {
+	return s, nil, nil
 }
 
 // UnifyWith recursively unifies a type parameters with types.
