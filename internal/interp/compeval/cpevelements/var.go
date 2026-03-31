@@ -104,13 +104,13 @@ func (a *variable) Compare(x canonical.Comparable) (bool, error) {
 }
 
 // Expr returns the IR expression represented by the variable.
-func (a *variable) Expr() (ir.Expr, error) {
+func (a *variable) Expr() (ir.Expr, ir.CompEvalError, error) {
 	return &ir.Ident{
 		Src: &ast.Ident{
 			Name: a.name,
 		},
 		Stor: a.src.Node(),
-	}, nil
+	}, nil, nil
 }
 
 func (a *variable) CanonicalExpr() canonical.Canonical {

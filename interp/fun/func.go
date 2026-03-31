@@ -98,7 +98,7 @@ func (env *CallEnv) Evaluator() evaluator.Evaluator {
 }
 
 // ToConcrete returns the concrete type given the current context.
-func (env *CallEnv) ToConcrete(src ast.Expr, tp ir.Type) (ir.Type, error) {
+func (env *CallEnv) ToConcrete(src ast.Expr, tp ir.Type) (ir.Type, ir.CompEvalError, error) {
 	return concrete.Concrete(env.ExprEval(), src, tp)
 }
 

@@ -38,7 +38,7 @@ type (
 		Evaluator() Evaluator
 
 		// ToConcrete returns the concrete type given the current context.
-		ToConcrete(ast.Expr, ir.Type) (ir.Type, error)
+		ToConcrete(ast.Expr, ir.Type) (ir.Type, ir.CompEvalError, error)
 	}
 
 	// Evaluator implements GX operators.
@@ -119,8 +119,8 @@ func (evalEnv) Evaluator() Evaluator {
 	return nil
 }
 
-func (evalEnv) ToConcrete(_ ast.Expr, tp ir.Type) (ir.Type, error) {
-	return tp, nil
+func (evalEnv) ToConcrete(_ ast.Expr, tp ir.Type) (ir.Type, ir.CompEvalError, error) {
+	return tp, nil, nil
 }
 
 var env evalEnv

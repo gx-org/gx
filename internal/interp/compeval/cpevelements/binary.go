@@ -65,7 +65,7 @@ func NewBinary(env evaluator.Env, expr *ir.BinaryExpr, xEl, yEl evaluator.Numeri
 			err = fmterr.Error(env.File().FileSet(), expr.Src, err)
 		}
 	}()
-	typ, err := env.ToConcrete(expr.Src, expr.Typ)
+	typ, cpErr, err := env.ToConcrete(expr.Src, expr.Typ)
 	el := &binary{
 		expr: expr,
 		typ:  typ,
@@ -73,7 +73,7 @@ func NewBinary(env evaluator.Env, expr *ir.BinaryExpr, xEl, yEl evaluator.Numeri
 		y:    y,
 	}
 	el.canonical = canonical.FromBinary(expr.Src.Op, x.CanonicalExpr(), y.CanonicalExpr()).Simplify()
-	return el, err
+	return el, ir.UnifyErr(cpErr, err)
 }
 
 func buildBinaryVal(operator token.Token, cx, cy *values.HostArray, typ ir.Type) (*values.HostArray, error) {
@@ -221,8 +221,8 @@ func (a *binary) CanonicalExpr() canonical.Canonical {
 }
 
 // Expr returns the IR expression represented by the variable.
-func (a *binary) Expr() (ir.Expr, error) {
-	return a.expr, nil
+func (a *binary) Expr() (ir.Expr, ir.CompEvalError, error) {
+	return a.expr, nil, nil
 }
 
 func (a *binary) ShortString() string {

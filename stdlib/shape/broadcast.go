@@ -89,9 +89,9 @@ func (f broadcast) BuildFuncType(fetcher ir.Fetcher, call *ir.FuncCallExpr) (*ir
 	if err != nil {
 		return nil, err
 	}
-	targetRank, targetElmts, err := elements.EvalRank(fetcher, call.Args[1])
-	if err != nil {
-		return nil, err
+	targetRank, targetElmts, cpErr, err := elements.EvalRank(fetcher, call.Args[1])
+	if unErr := ir.UnifyErr(cpErr, err); unErr != nil {
+		return nil, unErr
 	}
 	if err := checkBroadcastRanks(fetcher, call, arrayType.Rank(), targetRank, targetElmts); err != nil {
 		return nil, err
@@ -125,9 +125,9 @@ func evalBroadcast(env evaluator.Env, call elements.CallAt, fn fun.Func, irFunc 
 	if err != nil {
 		return nil, err
 	}
-	tp, err := concrete.Concrete(env.ExprEval(), call.Node().Expr(), call.Node().Type())
-	if err != nil {
-		return nil, err
+	tp, cpErr, err := concrete.Concrete(env.ExprEval(), call.Node().Expr(), call.Node().Type())
+	if unErr := ir.UnifyErr(cpErr, err); unErr != nil {
+		return nil, unErr
 	}
 	return materialise.ElementFromNode(call.File(), mat, &ops.OutputNode{
 		Node:  op,

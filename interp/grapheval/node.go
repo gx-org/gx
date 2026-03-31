@@ -142,9 +142,9 @@ func (n *BackendNode) BinaryOp(env evaluator.Env, expr *ir.BinaryExpr, x, y eval
 	if len(yShape.AxisLengths) > 0 {
 		targetShape.AxisLengths = yShape.AxisLengths
 	}
-	typ, err := env.ToConcrete(expr.Src, expr.Typ)
-	if err != nil {
-		return nil, err
+	typ, cpErr, err := env.ToConcrete(expr.Src, expr.Typ)
+	if unErr := ir.UnifyErr(cpErr, err); unErr != nil {
+		return nil, unErr
 	}
 	return NewBackendNode(
 		n.ev,
@@ -162,9 +162,9 @@ func (n *BackendNode) UnaryOp(env evaluator.Env, expr *ir.UnaryExpr) (evaluator.
 	if err != nil {
 		return nil, err
 	}
-	typ, err := env.ToConcrete(expr.Src, expr.Type())
-	if err != nil {
-		return nil, err
+	typ, cpErr, err := env.ToConcrete(expr.Src, expr.Type())
+	if unErr := ir.UnifyErr(cpErr, err); unErr != nil {
+		return nil, unErr
 	}
 	return NewBackendNode(
 		n.ev,
@@ -183,9 +183,9 @@ func (n *BackendNode) Cast(env evaluator.Env, expr ir.Expr, target ir.Type) (eva
 	if err != nil {
 		return nil, err
 	}
-	typ, err := env.ToConcrete(expr.Expr(), expr.Type())
-	if err != nil {
-		return nil, err
+	typ, cpErr, err := env.ToConcrete(expr.Expr(), expr.Type())
+	if unErr := ir.UnifyErr(cpErr, err); unErr != nil {
+		return nil, unErr
 	}
 	return NewBackendNode(
 		n.ev,

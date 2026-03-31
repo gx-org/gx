@@ -118,9 +118,9 @@ func (v valuerT[T]) buildStaticArray(fitp *FileScope, lit *ir.ArrayLitExpr, axes
 	if err != nil {
 		return nil, false, err
 	}
-	typ, err := fitp.env.ToConcrete(lit.Src, lit.Typ)
-	if err != nil {
-		return nil, false, err
+	typ, cpErr, err := fitp.env.ToConcrete(lit.Src, lit.Typ)
+	if unErr := ir.UnifyErr(cpErr, err); unErr != nil {
+		return nil, false, unErr
 	}
 	// All elements of the literal are scalars already known.
 	node, err := fitp.Evaluator().ArrayOps().ElementFromArray(fitp.File(), array, typ)

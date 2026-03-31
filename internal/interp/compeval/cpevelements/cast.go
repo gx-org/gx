@@ -49,7 +49,7 @@ func newCast(env evaluator.Env, expr ir.Expr, xEl Element, target ir.Type) (*cas
 	if err != nil {
 		return nil, err
 	}
-	typ, err := env.ToConcrete(expr.Expr(), target)
+	typ, cpErr, err := env.ToConcrete(expr.Expr(), target)
 	opEl := &cast{
 		expr: expr,
 		typ:  typ,
@@ -57,6 +57,9 @@ func newCast(env evaluator.Env, expr ir.Expr, xEl Element, target ir.Type) (*cas
 	}
 	if err != nil {
 		return opEl, nil
+	}
+	if cpErr != nil {
+		return opEl, cpErr
 	}
 	if x == nil {
 		return opEl, nil
@@ -96,7 +99,7 @@ func NewReshape(env evaluator.Env, expr ir.Expr, xEl Element, axisLengths []eval
 	if x == nil {
 		return xEl, nil
 	}
-	typ, err := env.ToConcrete(expr.Expr(), expr.Type())
+	typ, cpErr, err := env.ToConcrete(expr.Expr(), expr.Type())
 	c := &cast{
 		expr: expr,
 		typ:  typ,
@@ -104,6 +107,9 @@ func NewReshape(env evaluator.Env, expr ir.Expr, xEl Element, axisLengths []eval
 	}
 	if err != nil {
 		return c, err
+	}
+	if cpErr != nil {
+		return c, cpErr
 	}
 	c.val, err = values.NewHostArray(typ, x.Buffer())
 	return c, err

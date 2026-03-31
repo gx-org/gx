@@ -47,12 +47,12 @@ var (
 
 // NewFloat returns a new element Float number element.
 func NewFloat(env evaluator.Env, expr ir.Expr, val *big.Float) (*Float, error) {
-	typ, err := env.ToConcrete(expr.Expr(), expr.Type())
+	typ, cpErr, err := env.ToConcrete(expr.Expr(), expr.Type())
 	return &Float{
 		val:  val,
 		expr: expr,
 		typ:  typ,
-	}, err
+	}, ir.UnifyErr(cpErr, err)
 }
 
 // UnaryOp applies a unary operator on x.
@@ -98,18 +98,21 @@ func binaryFloat(env evaluator.Env, expr *ir.BinaryExpr, xFloat, yFloat *Float) 
 	default:
 		return nil, fmterr.Errorf(env.File().FileSet(), expr.Src, "number int binary operator %s not implemented", expr.Src.Op)
 	}
-	typ, err := env.ToConcrete(expr.Src, expr.Typ)
-	return &Float{val: val, expr: expr, typ: typ}, err
+	fl := &Float{val: val, expr: expr}
+	var cpErr ir.CompEvalError
+	var err error
+	fl.typ, cpErr, err = env.ToConcrete(expr.Src, expr.Typ)
+	return fl, ir.UnifyErr(cpErr, err)
 }
 
 // Cast an element into a given data type.
 func (n *Float) Cast(env evaluator.Env, expr ir.Expr, target ir.Type) (evaluator.NumericalElement, error) {
-	typ, err := env.ToConcrete(expr.Expr(), target)
+	typ, cpErr, err := env.ToConcrete(expr.Expr(), target)
 	return &Float{
 		val:  n.val,
 		expr: expr,
 		typ:  typ,
-	}, err
+	}, ir.UnifyErr(cpErr, err)
 }
 
 // Reshape the number into an array.

@@ -137,3 +137,11 @@ func (s *errorType) Type() Type {
 func (s *errorType) ReferString(from *File) string {
 	return s.DefineString(from)
 }
+
+// UnifyErr returns a system error if not nil, return the compile error otherwise.
+func UnifyErr(cpErr CompEvalError, err error) error {
+	if err != nil {
+		return err
+	}
+	return cpErr
+}

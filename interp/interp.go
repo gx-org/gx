@@ -151,9 +151,9 @@ func (fitp *FileScope) File() *ir.File {
 }
 
 func (fitp *FileScope) elementFromAtom(expr ir.Expr, val values.Array) (evaluator.NumericalElement, error) {
-	typ, err := fitp.env.ToConcrete(expr.Expr(), expr.Type())
-	if err != nil {
-		return nil, err
+	typ, cpErr, err := fitp.env.ToConcrete(expr.Expr(), expr.Type())
+	if unErr := ir.UnifyErr(cpErr, err); unErr != nil {
+		return nil, unErr
 	}
 	return fitp.Evaluator().ArrayOps().ElementFromAtom(fitp.File(), val, expr, typ)
 }

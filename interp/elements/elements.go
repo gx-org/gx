@@ -304,32 +304,32 @@ func MustEvalInt(fetcher ir.Fetcher, expr ir.Expr) (int, error) {
 }
 
 // EvalRank evaluates an expression to build the rank of an array.
-func EvalRank(fetcher ir.Fetcher, expr ir.Expr) (ir.ArrayRank, []canonical.Canonical, error) {
+func EvalRank(fetcher ir.Fetcher, expr ir.Expr) (ir.ArrayRank, []canonical.Canonical, ir.CompEvalError, error) {
 	rankVal, err := fetcher.EvalExpr(expr)
 	if err != nil {
-		return nil, nil, err
+		return nil, nil, nil, err
 	}
 	slice, ok := Underlying(rankVal).(*Slice)
 	if !ok {
-		return nil, nil, fmterr.Internalf(fetcher.File().FileSet(), expr.Node(), "cannot build a rank from %s (%T): not supported", expr.SourceString(fetcher.File()), rankVal)
+		return nil, nil, nil, fmterr.Internalf(fetcher.File().FileSet(), expr.Node(), "cannot build a rank from %s (%T): not supported", expr.SourceString(fetcher.File()), rankVal)
 	}
 	axes := make([]ir.AxisLengths, slice.Len())
 	cans := make([]canonical.Canonical, slice.Len())
 	for i, el := range slice.Elements() {
 		ex, ok := el.(ir.Canonical)
 		if !ok {
-			return nil, nil, fmterr.Internalf(fetcher.File().FileSet(), expr.Node(), "cannot build an axis expression from element %T: not supported", el)
+			return nil, nil, nil, fmterr.Internalf(fetcher.File().FileSet(), expr.Node(), "cannot build an axis expression from element %T: not supported", el)
 		}
-		irExpr, err := ex.Expr()
-		if err != nil {
-			return nil, nil, err
+		irExpr, cpErr, err := ex.Expr()
+		if cpErr != nil || err != nil {
+			return nil, nil, cpErr, err
 		}
 		axes[i] = &ir.AxisExpr{
 			X: irExpr,
 		}
 		cans[i] = el.(canonical.Canonical)
 	}
-	return &ir.Rank{Ax: axes}, cans, nil
+	return &ir.Rank{Ax: axes}, cans, nil, nil
 }
 
 // ToNumericalElement converts an element into a numerical element.

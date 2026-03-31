@@ -71,7 +71,10 @@ func instantiateExpr(fetcher ir.Fetcher, expr ir.Expr) (ir.Value, bool) {
 	if !ok {
 		return expr, fetcher.Err().AppendInternalf(expr.Node(), "cannot convert %T to %s", val, reflect.TypeFor[ir.Canonical]())
 	}
-	irExpr, err := irVal.Expr()
+	irExpr, cpErr, err := irVal.Expr()
+	if cpErr != nil {
+		return expr, fetcher.Err().AppendAt(expr.Node(), cpErr)
+	}
 	if err != nil {
 		return expr, fetcher.Err().AppendAt(expr.Node(), err)
 	}

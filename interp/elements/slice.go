@@ -98,7 +98,7 @@ func (n *Slice) Unflatten(handles *flatten.Parser) (values.Value, error) {
 }
 
 // Expr returns the IR expression representing the slice.
-func (n *Slice) Expr() (ir.Expr, error) {
+func (n *Slice) Expr() (ir.Expr, ir.CompEvalError, error) {
 	ext := &ir.SliceLitExpr{
 		Typ:  n.typ,
 		Elts: make([]ir.Expr, n.Len()),
@@ -106,15 +106,16 @@ func (n *Slice) Expr() (ir.Expr, error) {
 	for i, el := range n.values {
 		irEl, ok := el.(ir.Canonical)
 		if !ok {
-			return nil, errors.Errorf("cannot build an IR expression from %T", el)
+			return nil, nil, errors.Errorf("cannot build an IR expression from %T", el)
 		}
+		var cpErr ir.CompEvalError
 		var err error
-		ext.Elts[i], err = irEl.Expr()
-		if err != nil {
-			return nil, err
+		ext.Elts[i], cpErr, err = irEl.Expr()
+		if cpErr != nil || err != nil {
+			return nil, cpErr, err
 		}
 	}
-	return ext, nil
+	return ext, nil, nil
 }
 
 // Elements stored in the slice.

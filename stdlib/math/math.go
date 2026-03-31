@@ -138,9 +138,9 @@ func buildUnary(name string, f func(graph ops.Graph) unaryFunc) builtin.Builder 
 		if err != nil {
 			return nil, err
 		}
-		typ, err := concrete.Concrete(env.ExprEval(), call.Node().Expr(), call.Node().Type())
-		if err != nil {
-			return nil, err
+		typ, cpErr, err := concrete.Concrete(env.ExprEval(), call.Node().Expr(), call.Node().Type())
+		if unErr := ir.UnifyErr(cpErr, err); err != nil {
+			return nil, unErr
 		}
 		return materialise.ElementFromNode(call.File(), mat, &ops.OutputNode{
 			Node:  node,

@@ -146,7 +146,7 @@ func (v *storedValue) Slice(expr *ir.IndexExpr, index evaluator.NumericalElement
 }
 
 // Expr returns the IR expression represented by the variable.
-func (v *storedValue) Expr() (ir.Expr, error) {
+func (v *storedValue) Expr() (ir.Expr, ir.CompEvalError, error) {
 	valExpr, ok := v.val.(ir.WithExpr)
 	if ok {
 		return valExpr.Expr()

@@ -93,9 +93,9 @@ func (dm *AxisExpr) Specialise(spec Specialiser) ([]AxisLengths, CompEvalError, 
 	if err != nil {
 		return []AxisLengths{dm}, nil, err
 	}
-	exprIR, err := toExpr(el)
-	if err != nil {
-		return []AxisLengths{dm}, nil, err
+	exprIR, cpErr, err := toExpr(el)
+	if cpErr != nil || err != nil {
+		return []AxisLengths{dm}, cpErr, err
 	}
 	sliceLit, isSliceLit := exprIR.(*SliceLitExpr)
 	if !isSliceLit {
@@ -235,9 +235,9 @@ func (dm *AxisStmt) Specialise(spec Specialiser) ([]AxisLengths, CompEvalError, 
 	if err != nil {
 		return []AxisLengths{dm}, nil, err
 	}
-	exprIR, err := toExpr(el)
-	if err != nil {
-		return []AxisLengths{dm}, nil, err
+	exprIR, cpErr, err := toExpr(el)
+	if cpErr != nil || err != nil {
+		return []AxisLengths{dm}, cpErr, err
 	}
 	switch exprT := exprIR.(type) {
 	case *SliceLitExpr:
