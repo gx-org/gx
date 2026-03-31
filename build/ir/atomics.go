@@ -36,16 +36,16 @@ func (s *atomicType) equalAtomic(other ArrayType) (bool, CompEvalError, error) {
 	return s.Knd == other.Kind(), nil, nil
 }
 
-func (s *atomicType) equalArray(fetcher Fetcher, other ArrayType) (bool, CompEvalError, error) {
-	dtypeEq, cpErr, err := s.Equal(fetcher, other.DataType())
+func (s *atomicType) equalArray(tpcmp TypeCmp, other ArrayType) (bool, CompEvalError, error) {
+	dtypeEq, cpErr, err := s.Equal(tpcmp, other.DataType())
 	if !dtypeEq || cpErr != nil || err != nil {
 		return false, cpErr, err
 	}
-	return s.Rank().Equal(fetcher, other.Rank())
+	return s.Rank().Equal(tpcmp, other.Rank())
 }
 
 // Equal returns true if other is the same type.
-func (s *atomicType) Equal(fetcher Fetcher, other Type) (bool, CompEvalError, error) {
+func (s *atomicType) Equal(tpcmp TypeCmp, other Type) (bool, CompEvalError, error) {
 	otherT, ok := other.(ArrayType)
 	if !ok {
 		return false, nil, nil
@@ -53,7 +53,7 @@ func (s *atomicType) Equal(fetcher Fetcher, other Type) (bool, CompEvalError, er
 	if otherT.Rank().IsAtomic() {
 		return s.equalAtomic(otherT)
 	}
-	return s.equalArray(fetcher, otherT)
+	return s.equalArray(tpcmp, otherT)
 }
 
 var scalarRank = &Rank{}
@@ -62,9 +62,9 @@ var scalarRank = &Rank{}
 func (s *atomicType) Rank() ArrayRank { return scalarRank }
 
 // AssignableTo reports if the type can be assigned to other.
-func (s *atomicType) AssignableTo(fetcher Fetcher, target Type) (bool, CompEvalError, error) {
+func (s *atomicType) AssignableTo(tpcmp TypeCmp, target Type) (bool, CompEvalError, error) {
 	if assignFrom, ok := target.(assignsFrom); ok {
-		return assignFrom.assignableFrom(fetcher, s)
+		return assignFrom.assignableFrom(tpcmp, s)
 	}
 
 	targetT, ok := target.(ArrayType)
@@ -80,11 +80,11 @@ func (s *atomicType) AssignableTo(fetcher Fetcher, target Type) (bool, CompEvalE
 		}
 		return s.equalAtomic(targetT)
 	}
-	dtypeEq, cpErr, err := s.AssignableTo(fetcher, targetT.DataType())
+	dtypeEq, cpErr, err := s.AssignableTo(tpcmp, targetT.DataType())
 	if !dtypeEq || cpErr != nil || err != nil {
 		return false, cpErr, err
 	}
-	rankOk, cpErr, err := s.Rank().AssignableTo(fetcher, targetT.Rank())
+	rankOk, cpErr, err := s.Rank().AssignableTo(tpcmp, targetT.Rank())
 	if !rankOk || cpErr != nil || err != nil {
 		return rankOk, cpErr, err
 	}
@@ -93,9 +93,9 @@ func (s *atomicType) AssignableTo(fetcher Fetcher, target Type) (bool, CompEvalE
 
 // ConvertibleTo reports whether a value of the type can be converted to another
 // (using static type casting).
-func (s *atomicType) ConvertibleTo(fetcher Fetcher, target Type) (bool, CompEvalError, error) {
+func (s *atomicType) ConvertibleTo(tpcmp TypeCmp, target Type) (bool, CompEvalError, error) {
 	if convertFrom, ok := target.(convertsFrom); ok {
-		return convertFrom.convertibleFrom(fetcher, s)
+		return convertFrom.convertibleFrom(tpcmp, s)
 	}
 
 	targetT, ok := target.(ArrayType)

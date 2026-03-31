@@ -153,7 +153,7 @@ func (n *Int) Shape() *shape.Shape {
 }
 
 // Expr returns the expression representing the integer.
-func (n *Int) Expr() (ir.Expr, ir.CompEvalError, error) {
+func (n *Int) Expr(ir.Evaluator) (ir.Expr, ir.CompEvalError, error) {
 	return n.expr, nil, nil
 }
 

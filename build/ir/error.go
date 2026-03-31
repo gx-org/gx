@@ -72,23 +72,23 @@ func (*errorType) storageValue() {}
 func (s *errorType) Kind() irkind.Kind { return irkind.Interface }
 
 // Equal returns true if other is the exact same type set.
-func (s *errorType) Equal(fetcher Fetcher, target Type) (bool, CompEvalError, error) {
-	return s.iface.Equal(fetcher, target)
+func (s *errorType) Equal(tpcmp TypeCmp, target Type) (bool, CompEvalError, error) {
+	return s.iface.Equal(tpcmp, target)
 }
 
 // AssignableTo reports whether a value of the type can be assigned to another.
-func (s *errorType) AssignableTo(fetcher Fetcher, target Type) (bool, CompEvalError, error) {
-	return s.iface.AssignableTo(fetcher, target)
+func (s *errorType) AssignableTo(tpcmp TypeCmp, target Type) (bool, CompEvalError, error) {
+	return s.iface.AssignableTo(tpcmp, target)
 }
 
-func (s *errorType) assignableFrom(fetcher Fetcher, x Type) (bool, CompEvalError, error) {
-	return s.iface.assignableFromWithName(fetcher, x, s.DefineString)
+func (s *errorType) assignableFrom(tpcmp TypeCmp, x Type) (bool, CompEvalError, error) {
+	return s.iface.assignableFromWithName(tpcmp, x, s.DefineString)
 }
 
 // ConvertibleTo reports whether a value of the type can be converted to another
 // (using static type casting).
-func (s *errorType) ConvertibleTo(fetcher Fetcher, target Type) (bool, CompEvalError, error) {
-	return s.iface.ConvertibleTo(fetcher, target)
+func (s *errorType) ConvertibleTo(tpcmp TypeCmp, target Type) (bool, CompEvalError, error) {
+	return s.iface.ConvertibleTo(tpcmp, target)
 }
 
 // DefineString returns the GX source code to define the type.

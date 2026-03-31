@@ -174,7 +174,7 @@ func (s *Interface) ArrayType() ast.Expr {
 func (s *Interface) Kind() irkind.Kind { return irkind.Interface }
 
 // Equal returns true if other is the exact same type set.
-func (s *Interface) Equal(fetcher Fetcher, target Type) (bool, CompEvalError, error) {
+func (s *Interface) Equal(tpcmp TypeCmp, target Type) (bool, CompEvalError, error) {
 	targetSet, ok := target.(*Interface)
 	if !ok {
 		return false, nil, nil
@@ -186,9 +186,9 @@ func (s *Interface) Equal(fetcher Fetcher, target Type) (bool, CompEvalError, er
 		return false, nil, nil
 	}
 	for i, typ := range s.types {
-		ok, cpErr, err := typ.Equal(fetcher, targetSet.types[i])
+		ok, cpErr, err := typ.Equal(tpcmp, targetSet.types[i])
 		if err != nil {
-			err = fmt.Errorf("cannot compare type set %s to %s: %w", s.ReferString(fetcher.File()), targetSet.ReferString(fetcher.File()), err)
+			err = fmt.Errorf("cannot compare type set %s to %s: %w", s.ReferString(tpcmp.File()), targetSet.ReferString(tpcmp.File()), err)
 			return false, nil, err
 		}
 		if cpErr != nil || !ok {
@@ -199,12 +199,12 @@ func (s *Interface) Equal(fetcher Fetcher, target Type) (bool, CompEvalError, er
 }
 
 // AssignableTo reports whether a value of the type can be assigned to another.
-func (s *Interface) AssignableTo(fetcher Fetcher, target Type) (bool, CompEvalError, error) {
+func (s *Interface) AssignableTo(tpcmp TypeCmp, target Type) (bool, CompEvalError, error) {
 	if targetSet, ok := target.(*Interface); ok {
-		return targetSet.assignableFrom(fetcher, s)
+		return targetSet.assignableFrom(tpcmp, s)
 	}
 	for _, typ := range s.types {
-		ok, cpErr, err := typ.AssignableTo(fetcher, target)
+		ok, cpErr, err := typ.AssignableTo(tpcmp, target)
 		if !ok || cpErr != nil || err != nil {
 			return false, cpErr, err
 		}
@@ -212,16 +212,16 @@ func (s *Interface) AssignableTo(fetcher Fetcher, target Type) (bool, CompEvalEr
 	return len(s.types) > 0, nil, nil
 }
 
-func (s *Interface) checkTypesAssignableFrom(fetcher Fetcher, source Type) (bool, CompEvalError, error) {
+func (s *Interface) checkTypesAssignableFrom(tpcmp TypeCmp, source Type) (bool, CompEvalError, error) {
 	if len(s.types) == 0 {
 		return true, nil, nil
 	}
 
 	if sourceSet, ok := source.(*Interface); ok {
-		return s.containsTypes(fetcher, sourceSet)
+		return s.containsTypes(tpcmp, sourceSet)
 	}
 	for _, typ := range s.types {
-		ok, cpErr, err := source.AssignableTo(fetcher, typ)
+		ok, cpErr, err := source.AssignableTo(tpcmp, typ)
 		if cpErr != nil || err != nil {
 			return false, cpErr, err
 		}
@@ -234,31 +234,31 @@ func (s *Interface) checkTypesAssignableFrom(fetcher Fetcher, source Type) (bool
 
 type toString func(file *File) string
 
-func checkHasMethod(fetcher Fetcher, ifaceName toString, source *NamedType, imeth *IMethod) (bool, CompEvalError, error) {
+func checkHasMethod(tpcmp TypeCmp, ifaceName toString, source *NamedType, imeth *IMethod) (bool, CompEvalError, error) {
 	methName := imeth.Name()
 	meth := MethodByName(source, methName)
 	if meth == nil {
-		from := fetcher.File()
+		from := tpcmp.File()
 		return false, CompEvalError(errors.Errorf("%s does not implement %s (missing method %s)", ifaceName(from), source.ReferString(from), methName)), nil
 	}
-	eq, cpErr, err := meth.FuncType().equalParamsResults(fetcher, imeth.FType)
+	eq, cpErr, err := meth.FuncType().equalParamsResults(tpcmp, imeth.FType)
 	if cpErr != nil || err != nil {
 		return false, cpErr, err
 	}
 	if !eq {
-		from := fetcher.File()
+		from := tpcmp.File()
 		return false, CompEvalError(errors.Errorf("%s does not implement %s (wrong type for method %s)\n\thave %s\n\twant %s", ifaceName(from), source.ReferString(from), methName, meth.FuncType().sourceSignature(from, imeth.NameDef(), true), imeth.SourceSignature(from))), nil
 	}
 	return true, nil, nil
 }
 
-func (s *Interface) checkImplement(fetcher Fetcher, source Type, ifaceName toString) (bool, CompEvalError, error) {
+func (s *Interface) checkImplement(tpcmp TypeCmp, source Type, ifaceName toString) (bool, CompEvalError, error) {
 	named, ok := source.(*NamedType)
 	if !ok {
 		return len(s.methods) == 0, nil, nil
 	}
 	for _, method := range s.methods {
-		ok, cpErr, err := checkHasMethod(fetcher, ifaceName, named, method)
+		ok, cpErr, err := checkHasMethod(tpcmp, ifaceName, named, method)
 		if !ok || cpErr != nil || err != nil {
 			return ok, cpErr, err
 		}
@@ -266,30 +266,30 @@ func (s *Interface) checkImplement(fetcher Fetcher, source Type, ifaceName toStr
 	return true, nil, nil
 }
 
-func (s *Interface) assignableFromWithName(fetcher Fetcher, source Type, name toString) (bool, CompEvalError, error) {
-	typeOk, cpErr, err := s.checkTypesAssignableFrom(fetcher, source)
+func (s *Interface) assignableFromWithName(tpcmp TypeCmp, source Type, name toString) (bool, CompEvalError, error) {
+	typeOk, cpErr, err := s.checkTypesAssignableFrom(tpcmp, source)
 	if cpErr != nil || err != nil {
 		return false, cpErr, err
 	}
-	methodOk, cpErr, err := s.checkImplement(fetcher, source, name)
+	methodOk, cpErr, err := s.checkImplement(tpcmp, source, name)
 	if cpErr != nil || err != nil {
 		return false, cpErr, err
 	}
 	return typeOk && methodOk, nil, nil
 }
 
-func (s *Interface) assignableFrom(fetcher Fetcher, source Type) (bool, CompEvalError, error) {
-	return s.assignableFromWithName(fetcher, source, s.ReferString)
+func (s *Interface) assignableFrom(tpcmp TypeCmp, source Type) (bool, CompEvalError, error) {
+	return s.assignableFromWithName(tpcmp, source, s.ReferString)
 }
 
 // ConvertibleTo reports whether a value of the type can be converted to another
 // (using static type casting).
-func (s *Interface) ConvertibleTo(fetcher Fetcher, target Type) (bool, CompEvalError, error) {
+func (s *Interface) ConvertibleTo(tpcmp TypeCmp, target Type) (bool, CompEvalError, error) {
 	if _, ok := target.(*Interface); ok {
-		return s.Equal(fetcher, target)
+		return s.Equal(tpcmp, target)
 	}
 	for _, typ := range s.types {
-		ok, cpErr, err := typ.ConvertibleTo(fetcher, target)
+		ok, cpErr, err := typ.ConvertibleTo(tpcmp, target)
 		if cpErr != nil || err != nil {
 			return false, cpErr, err
 		}

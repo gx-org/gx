@@ -40,7 +40,7 @@ func names(vals []*ast.Ident) []string {
 
 type (
 	rankFunc func() ir.ArrayRank
-	typeFunc func(ir.Type, ir.Fetcher, ir.Type) (bool, ir.CompEvalError, error)
+	typeFunc func(ir.Type, ir.TypeCmp, ir.Type) (bool, ir.CompEvalError, error)
 )
 
 var (
@@ -213,8 +213,11 @@ func (f *fetcherTesting) Sub(map[string]ir.Element) (ir.Fetcher, bool) {
 	panic("not implemented")
 }
 
-func (f *fetcherTesting) ToCompEvalError(ir.Element) (ir.CompEvalError, error) {
-	return nil, nil
+func (f *fetcherTesting) ToCompEvalError(el ir.Element) (ir.CompEvalError, error) {
+	if el == nil {
+		return nil, nil
+	}
+	panic("not implemented")
 }
 
 func (f *fetcherTesting) Err() *fmterr.Appender {
@@ -685,16 +688,16 @@ func TestTypeSetCapabilities(t *testing.T) {
 	for _, testCase := range cases {
 		t.Run(testCase.set.ReferString(nil), func(t *testing.T) {
 			if got := ir.SupportOperators(testCase.set); got != testCase.supportOperators {
-				t.Errorf("SupportsOperator(%s) returned %v; want %v", testCase.set, got, testCase.supportOperators)
+				t.Errorf("SupportsOperator(%s) returned %v; want %v", testCase.set.ReferString(nil), got, testCase.supportOperators)
 			}
 			if got := ir.IsDataType(testCase.set); got != testCase.isDataType {
-				t.Errorf("IsDataType(%s) returned %v; want %v", testCase.set, got, testCase.isDataType)
+				t.Errorf("IsDataType(%s) returned %v; want %v", testCase.set.ReferString(nil), got, testCase.isDataType)
 			}
 			if got := ir.IsInteger(testCase.set); got != testCase.isInteger {
-				t.Errorf("IsInteger(%s) returned %v; want %v", testCase.set, got, testCase.isInteger)
+				t.Errorf("IsInteger(%s) returned %v; want %v", testCase.set.ReferString(nil), got, testCase.isInteger)
 			}
 			if got := ir.IsFloat(testCase.set); got != testCase.isFloat {
-				t.Errorf("IsFloat(%s) returned %v; want %v", testCase.set, got, testCase.isFloat)
+				t.Errorf("IsFloat(%s) returned %v; want %v", testCase.set.ReferString(nil), got, testCase.isFloat)
 			}
 		})
 	}

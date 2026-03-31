@@ -51,7 +51,7 @@ func evalAxisExpr(fr ir.Evaluator, src ast.Expr, axis ir.AxisLengths, x ir.Expr)
 	if !isCan {
 		return []ir.AxisLengths{axis}, nil, err
 	}
-	canX, cpErr, err := elCan.Expr()
+	canX, cpErr, err := elCan.Expr(fr)
 	if cpErr != nil {
 		return []ir.AxisLengths{axis}, cpErr, err
 	}

@@ -96,14 +96,14 @@ type (
 type (
 	// Specialiser provides methods to specialise a type.
 	Specialiser interface {
-		Fetcher
+		TypeCmp
 		TypeOf(tParamName string) Type
 		ValueOf(axLengthname string) Element
 	}
 
 	// Unifier provides methods to unify types.
 	Unifier interface {
-		Fetcher
+		TypeCmp
 		Node() ast.Node
 		DefineTParam(tp *TypeParam, typ Type) bool
 		DefineAxis(*AxisStmt, []AxisLengths) ([]AxisLengths, bool)
@@ -119,14 +119,14 @@ type (
 		Kind() irkind.Kind
 
 		// Equal returns true if other is the same type.
-		Equal(Fetcher, Type) (bool, CompEvalError, error)
+		Equal(TypeCmp, Type) (bool, CompEvalError, error)
 
 		// AssignableTo reports whether a value of the type can be assigned to another.
-		AssignableTo(Fetcher, Type) (bool, CompEvalError, error)
+		AssignableTo(TypeCmp, Type) (bool, CompEvalError, error)
 
 		// ConvertibleTo reports whether a value of the type can be converted to another
 		// (using static type casting).
-		ConvertibleTo(Fetcher, Type) (bool, CompEvalError, error)
+		ConvertibleTo(TypeCmp, Type) (bool, CompEvalError, error)
 
 		// Specialise a type to a given target.
 		Specialise(Specialiser) (Type, CompEvalError, error)
@@ -176,21 +176,21 @@ type (
 		// DataType returns the element type of the array.
 		DataType() Type
 
-		equalArray(Fetcher, ArrayType) (bool, CompEvalError, error)
+		equalArray(TypeCmp, ArrayType) (bool, CompEvalError, error)
 	}
 
 	// assignsFrom allows types to control how they are assigned to; other types may opt to use this
 	// logic when present (but aren't currently required to).
 	assignsFrom interface {
 		// assignableFrom reports whether a value of some type can be assigned to the receiver.
-		assignableFrom(Fetcher, Type) (bool, CompEvalError, error)
+		assignableFrom(TypeCmp, Type) (bool, CompEvalError, error)
 	}
 
 	// convertsFrom allows types to control how they are converted to; other types may opt to use this
 	// logic when present (but aren't currently required to).
 	convertsFrom interface {
 		// convertibleFrom reports whether a value of some type can be converted to the receiver.
-		convertibleFrom(Fetcher, Type) (bool, CompEvalError, error)
+		convertibleFrom(TypeCmp, Type) (bool, CompEvalError, error)
 	}
 
 	// NamedType defines a new type from an existing type.
@@ -285,7 +285,7 @@ func (*TupleType) node() {}
 // Kind returns the scalar kind.
 func (s *TupleType) Kind() irkind.Kind { return irkind.Tuple }
 
-func (s *TupleType) apply(fetcher Fetcher, target Type, f func(Type, Fetcher, Type) (bool, CompEvalError, error)) (bool, CompEvalError, error) {
+func (s *TupleType) apply(tpcmp TypeCmp, target Type, f func(Type, TypeCmp, Type) (bool, CompEvalError, error)) (bool, CompEvalError, error) {
 	targetTuple, ok := target.(*TupleType)
 	if !ok {
 		return false, nil, nil
@@ -294,7 +294,7 @@ func (s *TupleType) apply(fetcher Fetcher, target Type, f func(Type, Fetcher, Ty
 		return false, nil, nil
 	}
 	for n, typ := range s.Types {
-		ok, cpErr, err := f(typ, fetcher, targetTuple.Types[n])
+		ok, cpErr, err := f(typ, tpcmp, targetTuple.Types[n])
 		if cpErr != nil || err != nil {
 			return false, cpErr, err
 		}
@@ -306,19 +306,19 @@ func (s *TupleType) apply(fetcher Fetcher, target Type, f func(Type, Fetcher, Ty
 }
 
 // Equal returns true if other is the same type.
-func (s *TupleType) Equal(fetcher Fetcher, target Type) (bool, CompEvalError, error) {
-	return s.apply(fetcher, target, (Type).Equal)
+func (s *TupleType) Equal(tpcmp TypeCmp, target Type) (bool, CompEvalError, error) {
+	return s.apply(tpcmp, target, (Type).Equal)
 }
 
 // AssignableTo reports whether a value of the type can be assigned to another.
-func (s *TupleType) AssignableTo(fetcher Fetcher, target Type) (bool, CompEvalError, error) {
-	return s.apply(fetcher, target, (Type).AssignableTo)
+func (s *TupleType) AssignableTo(tpcmp TypeCmp, target Type) (bool, CompEvalError, error) {
+	return s.apply(tpcmp, target, (Type).AssignableTo)
 }
 
 // ConvertibleTo reports whether a value of the type can be converted to another
 // (using static type casting). Always returns false.
-func (s *TupleType) ConvertibleTo(fetcher Fetcher, target Type) (bool, CompEvalError, error) {
-	return s.apply(fetcher, target, (Type).ConvertibleTo)
+func (s *TupleType) ConvertibleTo(tpcmp TypeCmp, target Type) (bool, CompEvalError, error) {
+	return s.apply(tpcmp, target, (Type).ConvertibleTo)
 }
 
 // Value returns a value pointing to the receiver.
@@ -346,17 +346,17 @@ func (*InterfaceType) node() {}
 func (s *InterfaceType) Kind() irkind.Kind { return irkind.Interface }
 
 // Equal returns true if other is the same type.
-func (s *InterfaceType) Equal(Fetcher, Type) (bool, CompEvalError, error) { return false, nil, nil }
+func (s *InterfaceType) Equal(TypeCmp, Type) (bool, CompEvalError, error) { return false, nil, nil }
 
 // AssignableTo reports whether a value of the type can be assigned to another.
 // Always returns false.
-func (s *InterfaceType) AssignableTo(Fetcher, Type) (bool, CompEvalError, error) {
+func (s *InterfaceType) AssignableTo(TypeCmp, Type) (bool, CompEvalError, error) {
 	return false, nil, nil
 }
 
 // ConvertibleTo reports whether a value of the type can be converted to another
 // (using static type casting). Always returns false.
-func (s *InterfaceType) ConvertibleTo(Fetcher, Type) (bool, CompEvalError, error) {
+func (s *InterfaceType) ConvertibleTo(TypeCmp, Type) (bool, CompEvalError, error) {
 	return false, nil, nil
 }
 
@@ -382,7 +382,7 @@ func (*BuiltinType) node() {}
 func (s *BuiltinType) Kind() irkind.Kind { return irkind.Builtin }
 
 // Equal returns true if other is the same type.
-func (s *BuiltinType) Equal(_ Fetcher, other Type) (bool, CompEvalError, error) {
+func (s *BuiltinType) Equal(_ TypeCmp, other Type) (bool, CompEvalError, error) {
 	otherT, ok := other.(*BuiltinType)
 	if !ok {
 		return false, nil, nil
@@ -391,14 +391,14 @@ func (s *BuiltinType) Equal(_ Fetcher, other Type) (bool, CompEvalError, error) 
 }
 
 // AssignableTo reports if the type can be assigned to other.
-func (s *BuiltinType) AssignableTo(fetcher Fetcher, target Type) (bool, CompEvalError, error) {
-	return s.Equal(fetcher, target)
+func (s *BuiltinType) AssignableTo(tpcmp TypeCmp, target Type) (bool, CompEvalError, error) {
+	return s.Equal(tpcmp, target)
 }
 
 // ConvertibleTo reports whether a value of the type can be converted to another
 // (using static type casting).
-func (s *BuiltinType) ConvertibleTo(fetcher Fetcher, target Type) (bool, CompEvalError, error) {
-	return s.Equal(fetcher, target)
+func (s *BuiltinType) ConvertibleTo(tpcmp TypeCmp, target Type) (bool, CompEvalError, error) {
+	return s.Equal(tpcmp, target)
 }
 
 // Value returns a value pointing to the receiver.
@@ -425,7 +425,7 @@ var (
 func (s *NamedType) Kind() irkind.Kind { return s.Underlying.Val().Kind() }
 
 // Equal returns true if other is the same type.
-func (s *NamedType) Equal(fetcher Fetcher, other Type) (bool, CompEvalError, error) {
+func (s *NamedType) Equal(tpcmp TypeCmp, other Type) (bool, CompEvalError, error) {
 	otherT, ok := other.(*NamedType)
 	if !ok {
 		return false, nil, nil
@@ -436,45 +436,45 @@ func (s *NamedType) Equal(fetcher Fetcher, other Type) (bool, CompEvalError, err
 	if s.FullName() != otherT.FullName() {
 		return false, nil, nil
 	}
-	return s.Underlying.Val().Equal(fetcher, otherT.Underlying.Val())
+	return s.Underlying.Val().Equal(tpcmp, otherT.Underlying.Val())
 }
 
 // AssignableTo reports if the type can be assigned to other.
-func (s *NamedType) AssignableTo(fetcher Fetcher, target Type) (bool, CompEvalError, error) {
-	return s.Equal(fetcher, target)
+func (s *NamedType) AssignableTo(tpcmp TypeCmp, target Type) (bool, CompEvalError, error) {
+	return s.Equal(tpcmp, target)
 }
 
 // AssignableFrom reports whether a given source type is assignable to a named type.
-func (s *NamedType) assignableFrom(fetcher Fetcher, source Type) (bool, CompEvalError, error) {
+func (s *NamedType) assignableFrom(tpcmp TypeCmp, source Type) (bool, CompEvalError, error) {
 	under := Underlying(s)
 	underIFace, isIFace := under.(*Interface)
 	if isIFace {
-		return underIFace.assignableFromWithName(fetcher, source, s.ReferString)
+		return underIFace.assignableFromWithName(tpcmp, source, s.ReferString)
 	}
 	if target, ok := under.(assignsFrom); ok {
-		return target.assignableFrom(fetcher, source)
+		return target.assignableFrom(tpcmp, source)
 	}
-	return s.Equal(fetcher, source)
+	return s.Equal(tpcmp, source)
 }
 
 // ConvertibleTo reports whether a value of the type can be converted to another
 // (using static type casting).
-func (s *NamedType) ConvertibleTo(fetcher Fetcher, target Type) (bool, CompEvalError, error) {
+func (s *NamedType) ConvertibleTo(tpcmp TypeCmp, target Type) (bool, CompEvalError, error) {
 	typeSet, ok := Underlying(s.Underlying.Val()).(*Interface)
 	if ok {
-		return typeSet.ConvertibleTo(fetcher, target)
+		return typeSet.ConvertibleTo(tpcmp, target)
 	}
 	switch targetT := target.(type) {
 	case *NamedType:
-		return s.Equal(fetcher, targetT)
+		return s.Equal(tpcmp, targetT)
 	case *TypeParam:
-		return s.ConvertibleTo(fetcher, targetT.Field.Group.Type.Val())
+		return s.ConvertibleTo(tpcmp, targetT.Field.Group.Type.Val())
 	}
-	return s.Underlying.Val().ConvertibleTo(fetcher, target)
+	return s.Underlying.Val().ConvertibleTo(tpcmp, target)
 }
 
-func (s *NamedType) convertibleFrom(fetcher Fetcher, source Type) (bool, CompEvalError, error) {
-	return source.ConvertibleTo(fetcher, s.Underlying.Val())
+func (s *NamedType) convertibleFrom(tpcmp TypeCmp, source Type) (bool, CompEvalError, error) {
+	return source.ConvertibleTo(tpcmp, s.Underlying.Val())
 }
 
 // FullName returns the full name of the type, that is the full package path and the type name.
@@ -569,7 +569,7 @@ func (*StructType) node() {}
 func (s *StructType) Kind() irkind.Kind { return irkind.Struct }
 
 // Equal returns true if other is the same type.
-func (s *StructType) Equal(_ Fetcher, other Type) (bool, CompEvalError, error) {
+func (s *StructType) Equal(_ TypeCmp, other Type) (bool, CompEvalError, error) {
 	otherT, ok := other.(*StructType)
 	if !ok {
 		return false, nil, nil
@@ -578,13 +578,13 @@ func (s *StructType) Equal(_ Fetcher, other Type) (bool, CompEvalError, error) {
 }
 
 // AssignableTo reports if the type can be assigned to other.
-func (s *StructType) AssignableTo(fetcher Fetcher, target Type) (bool, CompEvalError, error) {
-	return s.Equal(fetcher, target)
+func (s *StructType) AssignableTo(tpcmp TypeCmp, target Type) (bool, CompEvalError, error) {
+	return s.Equal(tpcmp, target)
 }
 
 // ConvertibleTo reports whether a value of the type can be converted to another
 // (using static type casting).
-func (s *StructType) ConvertibleTo(fetcher Fetcher, target Type) (bool, CompEvalError, error) {
+func (s *StructType) ConvertibleTo(tpcmp TypeCmp, target Type) (bool, CompEvalError, error) {
 	return false, nil, nil
 }
 
@@ -626,7 +626,7 @@ func (*SliceType) node() {}
 func (s *SliceType) Kind() irkind.Kind { return irkind.Slice }
 
 // Equal returns true if other is the same type.
-func (s *SliceType) Equal(fetcher Fetcher, other Type) (bool, CompEvalError, error) {
+func (s *SliceType) Equal(tpcmp TypeCmp, other Type) (bool, CompEvalError, error) {
 	otherT, ok := other.(*SliceType)
 	if !ok {
 		return false, nil, nil
@@ -634,17 +634,17 @@ func (s *SliceType) Equal(fetcher Fetcher, other Type) (bool, CompEvalError, err
 	if s.Rank != otherT.Rank {
 		return false, nil, nil
 	}
-	return otherT.DType.Val().Equal(fetcher, s.DType.Val())
+	return otherT.DType.Val().Equal(tpcmp, s.DType.Val())
 }
 
 // AssignableTo reports if the type can be assigned to other.
-func (s *SliceType) AssignableTo(fetcher Fetcher, target Type) (bool, CompEvalError, error) {
-	return s.Equal(fetcher, target)
+func (s *SliceType) AssignableTo(tpcmp TypeCmp, target Type) (bool, CompEvalError, error) {
+	return s.Equal(tpcmp, target)
 }
 
 // ConvertibleTo reports whether a value of the type can be converted to another
 // (using static type casting).
-func (s *SliceType) ConvertibleTo(fetcher Fetcher, target Type) (bool, CompEvalError, error) {
+func (s *SliceType) ConvertibleTo(tpcmp TypeCmp, target Type) (bool, CompEvalError, error) {
 	return false, nil, nil
 }
 
@@ -755,73 +755,73 @@ func (s *arrayType) DataType() Type { return s.DTypeF }
 // Rank of the array.
 func (s *arrayType) Rank() ArrayRank { return s.RankF }
 
-func (s *arrayType) assignableToArray(fetcher Fetcher, other ArrayType) (bool, CompEvalError, error) {
-	dtypeEq, cpErr, err := s.DataType().AssignableTo(fetcher, other.DataType())
+func (s *arrayType) assignableToArray(tpcmp TypeCmp, other ArrayType) (bool, CompEvalError, error) {
+	dtypeEq, cpErr, err := s.DataType().AssignableTo(tpcmp, other.DataType())
 	if !dtypeEq || cpErr != nil || err != nil {
 		return dtypeEq, cpErr, err
 	}
-	return s.Rank().AssignableTo(fetcher, other.Rank())
+	return s.Rank().AssignableTo(tpcmp, other.Rank())
 }
 
-func (s *arrayType) equalArray(fetcher Fetcher, other ArrayType) (bool, CompEvalError, error) {
-	dtypeEq, cpErr, err := s.DataType().Equal(fetcher, other.DataType())
+func (s *arrayType) equalArray(tpcmp TypeCmp, other ArrayType) (bool, CompEvalError, error) {
+	dtypeEq, cpErr, err := s.DataType().Equal(tpcmp, other.DataType())
 	if !dtypeEq || cpErr != nil || err != nil {
 		return dtypeEq, cpErr, err
 	}
-	return s.Rank().Equal(fetcher, other.Rank())
+	return s.Rank().Equal(tpcmp, other.Rank())
 }
 
 // Equal returns true if other is the same type.
-func (s *arrayType) Equal(fetcher Fetcher, other Type) (bool, CompEvalError, error) {
+func (s *arrayType) Equal(tpcmp TypeCmp, other Type) (bool, CompEvalError, error) {
 	otherT, ok := other.(ArrayType)
 	if !ok {
 		return false, nil, nil
 	}
 	if otherT.Rank().IsAtomic() {
-		return otherT.equalArray(fetcher, s)
+		return otherT.equalArray(tpcmp, s)
 	}
-	return s.equalArray(fetcher, otherT)
+	return s.equalArray(tpcmp, otherT)
 }
 
-func (s *arrayType) assignableFrom(fetcher Fetcher, x Type) (bool, CompEvalError, error) {
+func (s *arrayType) assignableFrom(tpcmp TypeCmp, x Type) (bool, CompEvalError, error) {
 	arrayType, isArrayType := x.(ArrayType)
 	if isArrayType {
-		return s.assignableToArray(fetcher, arrayType)
+		return s.assignableToArray(tpcmp, arrayType)
 	}
 	if !s.RankF.IsAtomic() {
 		return false, nil, nil
 	}
-	return AssignableTo(fetcher, x, s.DataType())
+	return AssignableTo(tpcmp, x, s.DataType())
 }
 
 // AssignableTo reports if the type can be assigned to other.
-func (s *arrayType) AssignableTo(fetcher Fetcher, target Type) (bool, CompEvalError, error) {
+func (s *arrayType) AssignableTo(tpcmp TypeCmp, target Type) (bool, CompEvalError, error) {
 	targetT, ok := target.(ArrayType)
 	if !ok {
 		return false, nil, nil
 	}
 	if targetT.Rank().IsAtomic() {
-		return targetT.equalArray(fetcher, s)
+		return targetT.equalArray(tpcmp, s)
 	}
-	return s.assignableToArray(fetcher, targetT)
+	return s.assignableToArray(tpcmp, targetT)
 }
 
 // ConvertibleTo reports whether a value of the type can be converted to another
 // (using static type casting).
-func (s *arrayType) ConvertibleTo(fetcher Fetcher, target Type) (bool, CompEvalError, error) {
+func (s *arrayType) ConvertibleTo(tpcmp TypeCmp, target Type) (bool, CompEvalError, error) {
 	target = Underlying(target)
 	targetT, ok := target.(ArrayType)
 	if !ok {
 		return false, nil, nil
 	}
 	if targetT.Rank().IsAtomic() {
-		return s.RankF.ConvertibleTo(fetcher, scalarRank)
+		return s.RankF.ConvertibleTo(tpcmp, scalarRank)
 	}
-	dtypeOk, cpErr, err := s.DTypeF.ConvertibleTo(fetcher, targetT.DataType())
+	dtypeOk, cpErr, err := s.DTypeF.ConvertibleTo(tpcmp, targetT.DataType())
 	if !dtypeOk || cpErr != nil || err != nil {
 		return dtypeOk, cpErr, err
 	}
-	return s.RankF.ConvertibleTo(fetcher, targetT.Rank())
+	return s.RankF.ConvertibleTo(tpcmp, targetT.Rank())
 }
 
 // Specialise a type to a given target.
@@ -903,7 +903,7 @@ func (s *TypeParam) Kind() irkind.Kind {
 	return s.Field.Type().Kind()
 }
 
-func (s *TypeParam) equal(fetcher Fetcher, typ Type) (bool, CompEvalError, error) {
+func (s *TypeParam) equal(tpcmp TypeCmp, typ Type) (bool, CompEvalError, error) {
 	switch typT := typ.(type) {
 	case *atomicType:
 		return false, nil, nil
@@ -912,39 +912,39 @@ func (s *TypeParam) equal(fetcher Fetcher, typ Type) (bool, CompEvalError, error
 			return true, nil, nil
 		}
 	case *NamedType:
-		return s.Field.Type().Equal(fetcher, typ)
+		return s.Field.Type().Equal(tpcmp, typ)
 	case ArrayType:
 		if !typT.Rank().IsAtomic() {
 			return false, nil, nil
 		}
-		return s.Equal(fetcher, typT.DataType())
+		return s.Equal(tpcmp, typT.DataType())
 	}
 	return false, nil, nil
 }
 
 // Equal returns true if other is the same type.
-func (s *TypeParam) Equal(fetcher Fetcher, typ Type) (bool, CompEvalError, error) {
-	return s.equal(fetcher, typ)
+func (s *TypeParam) Equal(tpcmp TypeCmp, typ Type) (bool, CompEvalError, error) {
+	return s.equal(tpcmp, typ)
 }
 
-func (s *TypeParam) assignableFrom(fetcher Fetcher, other Type) (bool, CompEvalError, error) {
-	return other.AssignableTo(fetcher, s.Field.Type())
+func (s *TypeParam) assignableFrom(tpcmp TypeCmp, other Type) (bool, CompEvalError, error) {
+	return other.AssignableTo(tpcmp, s.Field.Type())
 }
 
 // AssignableTo reports whether a value of the type can be assigned to another.
-func (s *TypeParam) AssignableTo(fetcher Fetcher, typ Type) (bool, CompEvalError, error) {
-	return s.Equal(fetcher, typ)
+func (s *TypeParam) AssignableTo(tpcmp TypeCmp, typ Type) (bool, CompEvalError, error) {
+	return s.Equal(tpcmp, typ)
 }
 
 // ConvertibleTo reports whether a value of the type can be converted to another
 // (using static type casting).
-func (s *TypeParam) ConvertibleTo(fetcher Fetcher, typ Type) (bool, CompEvalError, error) {
-	return s.Field.Type().ConvertibleTo(fetcher, typ)
+func (s *TypeParam) ConvertibleTo(tpcmp TypeCmp, typ Type) (bool, CompEvalError, error) {
+	return s.Field.Type().ConvertibleTo(tpcmp, typ)
 }
 
 // convertibleFrom reports whether a value of some type can be converted to the receiver.
-func (s *TypeParam) convertibleFrom(fetcher Fetcher, from Type) (bool, CompEvalError, error) {
-	return from.ConvertibleTo(fetcher, s.Field.Type())
+func (s *TypeParam) convertibleFrom(tpcmp TypeCmp, from Type) (bool, CompEvalError, error) {
+	return from.ConvertibleTo(tpcmp, s.Field.Type())
 }
 
 // Node defining the type.

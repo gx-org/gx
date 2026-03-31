@@ -63,19 +63,19 @@ func (tp *VarArgsType) Type() Type {
 }
 
 // Equal returns true if other is the same type.
-func (tp *VarArgsType) Equal(fetcher Fetcher, target Type) (bool, CompEvalError, error) {
-	return tp.Slice.Equal(fetcher, target)
+func (tp *VarArgsType) Equal(tpcmp TypeCmp, target Type) (bool, CompEvalError, error) {
+	return tp.Slice.Equal(tpcmp, target)
 }
 
 // AssignableTo reports whether a value of the type can be assigned to another.
-func (tp *VarArgsType) AssignableTo(fetcher Fetcher, target Type) (bool, CompEvalError, error) {
-	return tp.Slice.AssignableTo(fetcher, target)
+func (tp *VarArgsType) AssignableTo(tpcmp TypeCmp, target Type) (bool, CompEvalError, error) {
+	return tp.Slice.AssignableTo(tpcmp, target)
 }
 
 // ConvertibleTo reports whether a value of the type can be converted to another
 // (using static type casting).
-func (tp *VarArgsType) ConvertibleTo(fetcher Fetcher, target Type) (bool, CompEvalError, error) {
-	return tp.Slice.ConvertibleTo(fetcher, target)
+func (tp *VarArgsType) ConvertibleTo(tpcmp TypeCmp, target Type) (bool, CompEvalError, error) {
+	return tp.Slice.ConvertibleTo(tpcmp, target)
 }
 
 // Specialise a type to a given target.

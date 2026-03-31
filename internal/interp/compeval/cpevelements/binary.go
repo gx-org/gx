@@ -221,7 +221,7 @@ func (a *binary) CanonicalExpr() canonical.Canonical {
 }
 
 // Expr returns the IR expression represented by the variable.
-func (a *binary) Expr() (ir.Expr, ir.CompEvalError, error) {
+func (a *binary) Expr(ir.Evaluator) (ir.Expr, ir.CompEvalError, error) {
 	return a.expr, nil, nil
 }
 

@@ -40,13 +40,19 @@ type (
 
 	// WithExpr converts an element into an IR expressions.
 	WithExpr interface {
-		Expr() (Expr, CompEvalError, error)
+		Expr(Evaluator) (Expr, CompEvalError, error)
 	}
 
 	// Evaluator evaluates IR expressions into canonical values.
 	Evaluator interface {
 		File() *File
 		EvalExpr(Expr) (Element, error)
+		ToCompEvalError(Element) (CompEvalError, error)
+	}
+
+	// TypeCmp is the interface used to compare type to one another.
+	TypeCmp interface {
+		Evaluator
 	}
 
 	// CompEvalError is an error generated from evaluating GX code
@@ -60,15 +66,14 @@ type (
 		BuildExpr(ast.Expr) (Expr, bool)
 		IsDefined(string) bool
 		Sub(map[string]Element) (Fetcher, bool)
-		ToCompEvalError(Element) (CompEvalError, error)
 	}
 )
 
 // ToExpr converts an element from the interpreter to an IR expression.
-func ToExpr(el Element) (Expr, CompEvalError, error) {
+func ToExpr(ev Evaluator, el Element) (Expr, CompEvalError, error) {
 	toExpr, ok := el.(WithExpr)
 	if !ok {
 		return nil, nil, errors.Errorf("cannot convert %T to an IR expression", el)
 	}
-	return toExpr.Expr()
+	return toExpr.Expr(ev)
 }

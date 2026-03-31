@@ -71,32 +71,32 @@ func (*FuncType) node() {}
 func (s *FuncType) Kind() irkind.Kind { return irkind.Func }
 
 // Equal returns true if other is the same type.
-func (s *FuncType) Equal(fetcher Fetcher, other Type) (bool, CompEvalError, error) {
+func (s *FuncType) Equal(tpcmp TypeCmp, other Type) (bool, CompEvalError, error) {
 	otherT, ok := other.(*FuncType)
 	if !ok {
 		return false, nil, nil
 	}
-	return s.equal(fetcher, otherT)
+	return s.equal(tpcmp, otherT)
 }
 
 // Equal returns true if other is the same type.
-func (s *FuncType) equal(fetcher Fetcher, other *FuncType) (bool, CompEvalError, error) {
+func (s *FuncType) equal(tpcmp TypeCmp, other *FuncType) (bool, CompEvalError, error) {
 	if s == other {
 		return true, nil, nil
 	}
-	recvOk, cpErr, err := s.Receiver.Type().Equal(fetcher, other.Receiver.Type())
+	recvOk, cpErr, err := s.Receiver.Type().Equal(tpcmp, other.Receiver.Type())
 	if !recvOk || cpErr != nil || err != nil {
 		return recvOk, cpErr, err
 	}
-	return s.equalParamsResults(fetcher, other)
+	return s.equalParamsResults(tpcmp, other)
 }
 
-func (s *FuncType) equalParamsResults(fetcher Fetcher, other *FuncType) (bool, CompEvalError, error) {
-	paramsOk, cpErr, err := s.Params.Type().Equal(fetcher, other.Params.Type())
+func (s *FuncType) equalParamsResults(tpcmp TypeCmp, other *FuncType) (bool, CompEvalError, error) {
+	paramsOk, cpErr, err := s.Params.Type().Equal(tpcmp, other.Params.Type())
 	if cpErr != nil || err != nil {
 		return false, cpErr, err
 	}
-	resultsOk, cpErr, err := s.Results.Type().Equal(fetcher, other.Results.Type())
+	resultsOk, cpErr, err := s.Results.Type().Equal(tpcmp, other.Results.Type())
 	if cpErr != nil || err != nil {
 		return false, cpErr, err
 	}
@@ -116,22 +116,22 @@ func (s *FuncType) ReceiverField() *Field {
 }
 
 // AssignableTo reports if the type can be assigned to other.
-func (s *FuncType) AssignableTo(fetcher Fetcher, other Type) (bool, CompEvalError, error) {
+func (s *FuncType) AssignableTo(tpcmp TypeCmp, other Type) (bool, CompEvalError, error) {
 	otherT, ok := other.(*FuncType)
 	if ok {
-		return s.equal(fetcher, otherT)
+		return s.equal(tpcmp, otherT)
 	}
 	aFrom, ok := other.(assignsFrom)
 	if !ok {
 		return false, nil, nil
 	}
-	return aFrom.assignableFrom(fetcher, s)
+	return aFrom.assignableFrom(tpcmp, s)
 }
 
 // ConvertibleTo reports whether a value of the type can be converted to another
 // (using static type casting).
-func (s *FuncType) ConvertibleTo(fetcher Fetcher, target Type) (bool, CompEvalError, error) {
-	return s.Equal(fetcher, target)
+func (s *FuncType) ConvertibleTo(tpcmp TypeCmp, target Type) (bool, CompEvalError, error) {
+	return s.Equal(tpcmp, target)
 }
 
 // Value returns a value pointing to the receiver.

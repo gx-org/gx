@@ -25,8 +25,8 @@ type TupleElement interface {
 	TupleElements() []Element
 }
 
-func evalExpr(fetcher Fetcher, x Expr) (Element, CompEvalError, error) {
-	el, err := fetcher.EvalExpr(x)
+func evalExpr(tpcmp TypeCmp, x Expr) (Element, CompEvalError, error) {
+	el, err := tpcmp.EvalExpr(x)
 	if err != nil {
 		return el, nil, err
 	}
@@ -38,16 +38,16 @@ func evalExpr(fetcher Fetcher, x Expr) (Element, CompEvalError, error) {
 	if len(els) != 2 {
 		return el, nil, errors.Errorf("invalid tuple length: got %d but want 2", len(els))
 	}
-	cpErr, err := fetcher.ToCompEvalError(els[1])
+	cpErr, err := tpcmp.ToCompEvalError(els[1])
 	return els[0], cpErr, err
 }
 
-func areEqual(fetcher Fetcher, x, y Expr) (bool, CompEvalError, error) {
-	xExpr, xCPErr, err := evalExpr(fetcher, x)
+func areEqual(tpcmp TypeCmp, x, y Expr) (bool, CompEvalError, error) {
+	xExpr, xCPErr, err := evalExpr(tpcmp, x)
 	if xCPErr != nil || err != nil {
 		return false, xCPErr, err
 	}
-	yExpr, yCPErr, err := evalExpr(fetcher, y)
+	yExpr, yCPErr, err := evalExpr(tpcmp, y)
 	if yCPErr != nil || err != nil {
 		return false, yCPErr, err
 	}

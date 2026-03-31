@@ -70,15 +70,15 @@ type metaType struct {
 
 func (*metaType) node() {}
 
-func (*metaType) Equal(Fetcher, Type) (bool, CompEvalError, error) {
+func (*metaType) Equal(TypeCmp, Type) (bool, CompEvalError, error) {
 	return false, nil, nil
 }
 
-func (*metaType) AssignableTo(Fetcher, Type) (bool, CompEvalError, error) {
+func (*metaType) AssignableTo(TypeCmp, Type) (bool, CompEvalError, error) {
 	return false, nil, nil
 }
 
-func (*metaType) ConvertibleTo(fetcher Fetcher, target Type) (bool, CompEvalError, error) {
+func (*metaType) ConvertibleTo(TypeCmp, Type) (bool, CompEvalError, error) {
 	return false, nil, nil
 }
 
@@ -122,21 +122,21 @@ func (*invalidType) Same(Storage) bool {
 	return true
 }
 
-func (*invalidType) Equal(Fetcher, Type) (bool, CompEvalError, error) {
+func (*invalidType) Equal(TypeCmp, Type) (bool, CompEvalError, error) {
 	// If the type is invalid, an error has already been emitted.
 	// We disable any checks to avoid reporting unhelpful errors.
 	return false, nil, nil
 }
 
-func (*invalidType) AssignableTo(Fetcher, Type) (bool, CompEvalError, error) {
+func (*invalidType) AssignableTo(TypeCmp, Type) (bool, CompEvalError, error) {
 	return (*invalidType).Equal(nil, nil, nil)
 }
 
-func (*invalidType) assignableFrom(Fetcher, Type) (bool, CompEvalError, error) {
+func (*invalidType) assignableFrom(TypeCmp, Type) (bool, CompEvalError, error) {
 	return (*invalidType).Equal(nil, nil, nil)
 }
 
-func (*invalidType) ConvertibleTo(Fetcher, Type) (bool, CompEvalError, error) {
+func (*invalidType) ConvertibleTo(TypeCmp, Type) (bool, CompEvalError, error) {
 	return (*invalidType).Equal(nil, nil, nil)
 }
 
@@ -177,7 +177,7 @@ func (t *distinctType) distinct() *distinctType {
 	return t
 }
 
-func (t *distinctType) Equal(_ Fetcher, target Type) (bool, CompEvalError, error) {
+func (t *distinctType) Equal(_ TypeCmp, target Type) (bool, CompEvalError, error) {
 	other, ok := target.(interface{ distinct() *distinctType })
 	if !ok {
 		return false, nil, nil
@@ -185,12 +185,12 @@ func (t *distinctType) Equal(_ Fetcher, target Type) (bool, CompEvalError, error
 	return t == other.distinct(), nil, nil
 }
 
-func (t *distinctType) AssignableTo(fetcher Fetcher, target Type) (bool, CompEvalError, error) {
-	return t.Equal(fetcher, target)
+func (t *distinctType) AssignableTo(tpcmp TypeCmp, target Type) (bool, CompEvalError, error) {
+	return t.Equal(tpcmp, target)
 }
 
-func (t *distinctType) ConvertibleTo(fetcher Fetcher, target Type) (bool, CompEvalError, error) {
-	return t.Equal(fetcher, target)
+func (t *distinctType) ConvertibleTo(tpcmp TypeCmp, target Type) (bool, CompEvalError, error) {
+	return t.Equal(tpcmp, target)
 }
 
 func (t *distinctType) Kind() irkind.Kind { return t.kind }
@@ -250,25 +250,25 @@ func PackageType() Type {
 }
 
 // TypeInclude returns if a typ is included in a type or not.
-func TypeInclude(fetcher Fetcher, set Type, typ Type) (bool, CompEvalError, error) {
+func TypeInclude(tpcmp TypeCmp, set Type, typ Type) (bool, CompEvalError, error) {
 	set = simplifyType(set)
 	typ = simplifyType(typ)
 	_, isSetNamed := set.(*NamedType)
 	_, isTypeNamed := typ.(*NamedType)
 	if isSetNamed && isTypeNamed {
-		return set.Equal(fetcher, typ)
+		return set.Equal(tpcmp, typ)
 	}
-	return typeInclude(fetcher, set, typ)
+	return typeInclude(tpcmp, set, typ)
 }
 
-func typeInclude(fetcher Fetcher, set Type, typ Type) (bool, CompEvalError, error) {
+func typeInclude(tpcmp TypeCmp, set Type, typ Type) (bool, CompEvalError, error) {
 	set = Underlying(set)
 	typeSet, typeSetOk := set.(*Interface)
 	if !typeSetOk {
-		return set.Equal(fetcher, typ)
+		return set.Equal(tpcmp, typ)
 	}
 	for _, sub := range typeSet.types {
-		in, cpErr, err := typeInclude(fetcher, sub, typ)
+		in, cpErr, err := typeInclude(tpcmp, sub, typ)
 		if cpErr != nil || err != nil {
 			return false, nil, err
 		}
@@ -338,8 +338,8 @@ func (s *Interface) ReferString(from *File) string {
 	return s.DefineString(from)
 }
 
-func (s *Interface) equalArray(fetcher Fetcher, target ArrayType) (bool, CompEvalError, error) {
-	return s.Equal(fetcher, target)
+func (s *Interface) equalArray(tpcmp TypeCmp, target ArrayType) (bool, CompEvalError, error) {
+	return s.Equal(tpcmp, target)
 }
 
 // hasCapability returns true if and only if the capability applies to all types in the set.
@@ -354,9 +354,9 @@ func (s *Interface) hasCapability(f func(Type) bool) bool {
 }
 
 // containsType returns true if the given type is present in the set.
-func (s *Interface) containsType(fetcher Fetcher, wantType Type) (bool, CompEvalError, error) {
+func (s *Interface) containsType(tpcmp TypeCmp, wantType Type) (bool, CompEvalError, error) {
 	for _, typ := range s.types {
-		eq, cpErr, err := wantType.Equal(fetcher, typ)
+		eq, cpErr, err := wantType.Equal(tpcmp, typ)
 		if cpErr != nil || err != nil {
 			return false, cpErr, err
 		}
@@ -368,9 +368,9 @@ func (s *Interface) containsType(fetcher Fetcher, wantType Type) (bool, CompEval
 }
 
 // containsTypes returns true if all the given types are present in the set.
-func (s *Interface) containsTypes(fetcher Fetcher, types *Interface) (bool, CompEvalError, error) {
+func (s *Interface) containsTypes(tpcmp TypeCmp, types *Interface) (bool, CompEvalError, error) {
 	for _, wantType := range types.types {
-		eq, cpErr, err := s.containsType(fetcher, wantType)
+		eq, cpErr, err := s.containsType(tpcmp, wantType)
 		if cpErr != nil || err != nil {
 			return false, cpErr, err
 		}
@@ -423,23 +423,23 @@ func ToArrayType(typ Type) ArrayType {
 }
 
 type equaler interface {
-	equal(fetcher Fetcher, x Type) (bool, CompEvalError, error)
+	equal(tpcmp TypeCmp, x Type) (bool, CompEvalError, error)
 }
 
 // Equal returns true if x and y are the same type.
-func Equal(fetcher Fetcher, x, y Type) (bool, CompEvalError, error) {
+func Equal(tpcmp TypeCmp, x, y Type) (bool, CompEvalError, error) {
 	if x == y {
 		return true, nil, nil
 	}
 	ey, isEqualer := y.(equaler)
 	if isEqualer {
-		return ey.equal(fetcher, x)
+		return ey.equal(tpcmp, x)
 	}
-	return x.Equal(fetcher, y)
+	return x.Equal(tpcmp, y)
 }
 
 type assigner interface {
-	assignableFrom(fetcher Fetcher, x Type) (bool, CompEvalError, error)
+	assignableFrom(tpcmp TypeCmp, x Type) (bool, CompEvalError, error)
 }
 
 func simplifyType(t Type) Type {
@@ -459,7 +459,7 @@ func IsInvalidType(typ Type) bool {
 }
 
 // AssignableTo reports whether a value of the type can be assigned to another.
-func AssignableTo(fetcher Fetcher, x, y Type) (bool, CompEvalError, error) {
+func AssignableTo(tpcmp TypeCmp, x, y Type) (bool, CompEvalError, error) {
 	if IsInvalidType(x) || IsInvalidType(y) {
 		// An error should have already been reported. We skip the check
 		// to prevent additional confusing errors.
@@ -475,7 +475,7 @@ func AssignableTo(fetcher Fetcher, x, y Type) (bool, CompEvalError, error) {
 	}
 	ey, isAssigner := y.(assigner)
 	if isAssigner {
-		return ey.assignableFrom(fetcher, x)
+		return ey.assignableFrom(tpcmp, x)
 	}
-	return x.AssignableTo(fetcher, y)
+	return x.AssignableTo(tpcmp, y)
 }

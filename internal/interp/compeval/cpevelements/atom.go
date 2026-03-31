@@ -127,7 +127,7 @@ func (a *atom) Axes(ir.Evaluator) (*elements.Slice, error) {
 }
 
 // Expr returns the IR expression represented by the variable.
-func (a *atom) Expr() (ir.Expr, ir.CompEvalError, error) {
+func (a *atom) Expr(ir.Evaluator) (ir.Expr, ir.CompEvalError, error) {
 	return a.expr, nil, nil
 }
 

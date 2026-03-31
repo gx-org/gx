@@ -45,10 +45,10 @@ type (
 
 		// Equal returns true if two axis lengths have been resolved and are equal.
 		// Returns an error if one of the axis has not been resolved.
-		Equal(Fetcher, AxisLengths) (bool, CompEvalError, error)
+		Equal(TypeCmp, AxisLengths) (bool, CompEvalError, error)
 
 		// AssignableTo returns true if this axis length can be assigned to another.
-		AssignableTo(Fetcher, AxisLengths) (bool, CompEvalError, error)
+		AssignableTo(TypeCmp, AxisLengths) (bool, CompEvalError, error)
 
 		// Specialise the axis length given a context.
 		Specialise(Specialiser) ([]AxisLengths, CompEvalError, error)
@@ -78,13 +78,13 @@ func (dm *AxisExpr) Expr() ast.Expr { return dm.X.Expr() }
 func (dm *AxisExpr) NumAxes() int { return 1 }
 
 // AssignableTo returns true if an axis length can be assigned to another.
-func (dm *AxisExpr) AssignableTo(fetcher Fetcher, dst AxisLengths) (bool, CompEvalError, error) {
-	return dm.Equal(fetcher, dst)
+func (dm *AxisExpr) AssignableTo(tpcmp TypeCmp, dst AxisLengths) (bool, CompEvalError, error) {
+	return dm.Equal(tpcmp, dst)
 }
 
 // Equal returns true if other has the axis length.
-func (dm *AxisExpr) Equal(fetcher Fetcher, other AxisLengths) (bool, CompEvalError, error) {
-	return areEqual(fetcher, dm.X, other.AsExpr())
+func (dm *AxisExpr) Equal(tpcmp TypeCmp, other AxisLengths) (bool, CompEvalError, error) {
+	return areEqual(tpcmp, dm.X, other.AsExpr())
 }
 
 // Specialise the axis length given a context.
@@ -93,7 +93,7 @@ func (dm *AxisExpr) Specialise(spec Specialiser) ([]AxisLengths, CompEvalError, 
 	if err != nil {
 		return []AxisLengths{dm}, nil, err
 	}
-	exprIR, cpErr, err := ToExpr(el)
+	exprIR, cpErr, err := ToExpr(spec, el)
 	if cpErr != nil || err != nil {
 		return []AxisLengths{dm}, cpErr, err
 	}
@@ -152,13 +152,13 @@ func (dm *AxisInfer) Type() Type { return IntLenType() }
 func (dm *AxisInfer) Expr() ast.Expr { return dm.Src }
 
 // Equal returns true if other has the axis length.
-func (dm *AxisInfer) Equal(fetcher Fetcher, other AxisLengths) (bool, CompEvalError, error) {
-	return areEqual(fetcher, dm.AsExpr(), other.AsExpr())
+func (dm *AxisInfer) Equal(tpcmp TypeCmp, other AxisLengths) (bool, CompEvalError, error) {
+	return areEqual(tpcmp, dm.AsExpr(), other.AsExpr())
 }
 
 // AssignableTo returns true if a dimension can be assigned to another.
-func (dm *AxisInfer) AssignableTo(fetcher Fetcher, dst AxisLengths) (bool, CompEvalError, error) {
-	return dm.Equal(fetcher, dst)
+func (dm *AxisInfer) AssignableTo(tpcmp TypeCmp, dst AxisLengths) (bool, CompEvalError, error) {
+	return dm.Equal(tpcmp, dst)
 }
 
 // AsExpr returns the axis value as an expression.
@@ -215,13 +215,13 @@ func (dm *AxisStmt) NameDef() *ast.Ident { return dm.Src }
 func (dm *AxisStmt) NumAxes() int { return 1 }
 
 // AssignableTo returns true if an axis length can be assigned to another.
-func (dm *AxisStmt) AssignableTo(fetcher Fetcher, dst AxisLengths) (bool, CompEvalError, error) {
-	return dm.Equal(fetcher, dst)
+func (dm *AxisStmt) AssignableTo(tpcmp TypeCmp, dst AxisLengths) (bool, CompEvalError, error) {
+	return dm.Equal(tpcmp, dst)
 }
 
 // Equal returns true if other has the axis length.
-func (dm *AxisStmt) Equal(fetcher Fetcher, other AxisLengths) (bool, CompEvalError, error) {
-	return areEqual(fetcher, dm.AsExpr(), other.AsExpr())
+func (dm *AxisStmt) Equal(tpcmp TypeCmp, other AxisLengths) (bool, CompEvalError, error) {
+	return areEqual(tpcmp, dm.AsExpr(), other.AsExpr())
 }
 
 // Same returns true if the other storage is this storage.
@@ -235,7 +235,7 @@ func (dm *AxisStmt) Specialise(spec Specialiser) ([]AxisLengths, CompEvalError, 
 	if err != nil {
 		return []AxisLengths{dm}, nil, err
 	}
-	exprIR, cpErr, err := ToExpr(el)
+	exprIR, cpErr, err := ToExpr(spec, el)
 	if cpErr != nil || err != nil {
 		return []AxisLengths{dm}, cpErr, err
 	}
