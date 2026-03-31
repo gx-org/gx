@@ -53,8 +53,10 @@ func CanBeOnDeviceFunc(gxFunc ir.Func) bool {
 	if tp.TypeParams != nil && tp.TypeParams.Len() > 0 {
 		return false
 	}
-	for _, arg := range tp.Params.Fields() {
-		if err := CanBeOnDevice(arg.Type()); err != nil {
+	all := tp.Params.Fields()
+	all = append(all, tp.Results.Fields()...)
+	for _, field := range all {
+		if err := CanBeOnDevice(field.Type()); err != nil {
 			return false
 		}
 	}
