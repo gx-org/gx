@@ -64,7 +64,8 @@ type (
 	}
 )
 
-func toExpr(el Element) (Expr, CompEvalError, error) {
+// ToExpr converts an element from the interpreter to an IR expression.
+func ToExpr(el Element) (Expr, CompEvalError, error) {
 	toExpr, ok := el.(WithExpr)
 	if !ok {
 		return nil, nil, errors.Errorf("cannot convert %T to an IR expression", el)

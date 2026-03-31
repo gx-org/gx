@@ -93,7 +93,7 @@ func (dm *AxisExpr) Specialise(spec Specialiser) ([]AxisLengths, CompEvalError, 
 	if err != nil {
 		return []AxisLengths{dm}, nil, err
 	}
-	exprIR, cpErr, err := toExpr(el)
+	exprIR, cpErr, err := ToExpr(el)
 	if cpErr != nil || err != nil {
 		return []AxisLengths{dm}, cpErr, err
 	}
@@ -235,7 +235,7 @@ func (dm *AxisStmt) Specialise(spec Specialiser) ([]AxisLengths, CompEvalError, 
 	if err != nil {
 		return []AxisLengths{dm}, nil, err
 	}
-	exprIR, cpErr, err := toExpr(el)
+	exprIR, cpErr, err := ToExpr(el)
 	if cpErr != nil || err != nil {
 		return []AxisLengths{dm}, cpErr, err
 	}
