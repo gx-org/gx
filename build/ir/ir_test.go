@@ -213,7 +213,7 @@ func (f *fetcherTesting) Sub(map[string]ir.Element) (ir.Fetcher, bool) {
 	panic("not implemented")
 }
 
-func (f *fetcherTesting) ToCompEvalError(el ir.Element) (ir.CompEvalError, error) {
+func (f *fetcherTesting) ToCompEvalError(src ast.Expr, el ir.Element) (ir.CompEvalError, error) {
 	if el == nil {
 		return nil, nil
 	}

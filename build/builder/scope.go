@@ -95,8 +95,8 @@ func (ev *compileEvaluator) BuildExpr(src ast.Expr) (ir.Expr, bool) {
 	return expr.buildExpr(ev.scope)
 }
 
-func (ev *compileEvaluator) ToCompEvalError(el ir.Element) (ir.CompEvalError, error) {
-	return ev.fitp.ToCompEvalError(el)
+func (ev *compileEvaluator) ToCompEvalError(src ast.Expr, el ir.Element) (ir.CompEvalError, error) {
+	return ev.fitp.ToCompEvalError(src, el)
 }
 
 func (ev *compileEvaluator) EvalExpr(expr ir.Expr) (ir.Element, error) {

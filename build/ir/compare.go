@@ -38,7 +38,7 @@ func evalExpr(tpcmp TypeCmp, x Expr) (Element, CompEvalError, error) {
 	if len(els) != 2 {
 		return el, nil, errors.Errorf("invalid tuple length: got %d but want 2", len(els))
 	}
-	cpErr, err := tpcmp.ToCompEvalError(els[1])
+	cpErr, err := tpcmp.ToCompEvalError(x.Expr(), els[1])
 	return els[0], cpErr, err
 }
 

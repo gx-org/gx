@@ -47,7 +47,7 @@ type (
 	Evaluator interface {
 		File() *File
 		EvalExpr(Expr) (Element, error)
-		ToCompEvalError(Element) (CompEvalError, error)
+		ToCompEvalError(ast.Expr, Element) (CompEvalError, error)
 	}
 
 	// TypeCmp is the interface used to compare type to one another.

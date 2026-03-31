@@ -23,6 +23,7 @@ package interp
 
 import (
 	"errors"
+	"go/ast"
 
 	"github.com/gx-org/gx/api/options"
 	"github.com/gx-org/gx/api/values"
@@ -92,7 +93,7 @@ func (itp *Interpreter) ForFile(file *ir.File) (*FileScope, error) {
 // and the second error indicates the conversion error.
 // In other word, the first error is an error that needs to be reported to the user,
 // the second error is an internal error in the compiler.
-func (fitp *FileScope) ToCompEvalError(el ir.Element) (ir.CompEvalError, error) {
+func (fitp *FileScope) ToCompEvalError(src ast.Expr, el ir.Element) (ir.CompEvalError, error) {
 	if el == nil {
 		return nil, nil
 	}
