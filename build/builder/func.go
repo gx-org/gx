@@ -29,7 +29,7 @@ import (
 	"github.com/gx-org/gx/build/ir/generics"
 	"github.com/gx-org/gx/build/ir"
 	"github.com/gx-org/gx/build/ir/irkind"
-	"github.com/gx-org/gx/internal/interp/compeval/cpevelements"
+	"github.com/gx-org/gx/internal/interp/coreops"
 	"github.com/gx-org/gx/interp/context"
 	"github.com/gx-org/gx/interp/elements"
 )
@@ -478,7 +478,7 @@ var (
 		Typ: ir.IntLenType(),
 	}
 	zeroValue, _ = values.AtomNumberInt(&big.Int{}, zeroExpr.Type())
-	zeroLen, _   = cpevelements.NewAtom(zeroValue, zeroExpr, ir.IntLenType())
+	zeroLen, _   = coreops.NewAtom(zeroValue, zeroExpr, ir.IntLenType())
 	emptySlice   = elements.NewSlice(ir.IntLenSliceType(), nil)
 )
 

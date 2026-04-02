@@ -21,66 +21,18 @@ import (
 
 	"github.com/pkg/errors"
 	"github.com/gx-org/gx/build/ir"
-	"github.com/gx-org/gx/internal/interp/canonical"
+	"github.com/gx-org/gx/internal/interp/coreops"
 	"github.com/gx-org/gx/interp/elements"
 	"github.com/gx-org/gx/interp/evaluator"
 	"github.com/gx-org/gx/interp/fun"
 )
 
-// Element returned after an evaluation at compeval.
-type Element interface {
-	evaluator.NumericalElement
-	canonical.Comparable
-	ir.StringSourcer
-
-	ShortString() string
-
-	// CanonicalExpr returns the canonical expression used for comparison.
-	CanonicalExpr() canonical.Canonical
-}
-
-func toElement(x evaluator.NumericalElement) (Element, error) {
-	el, ok := x.(Element)
+func toElement(x evaluator.NumericalElement) (coreops.Element, error) {
+	el, ok := x.(coreops.Element)
 	if !ok {
-		return nil, errors.Errorf("cannot build static element: type %T does not implement %s", x, reflect.TypeFor[Element]().String())
+		return nil, errors.Errorf("cannot build static element: type %T does not implement %s", x, reflect.TypeFor[coreops.Element]().String())
 	}
 	return el, nil
-}
-
-func valEqual(x, y Element) (bool, error) {
-	xEl, err := elements.ConstantFromElement(x)
-	if err != nil {
-		return false, err
-	}
-	if xEl == nil {
-		return false, nil
-	}
-	yEl, err := elements.ConstantFromElement(y)
-	if err != nil {
-		return false, err
-	}
-	if yEl == nil {
-		return false, nil
-	}
-	return equalArray(xEl, yEl), nil
-}
-
-func axesFromType(ev ir.Evaluator, typ ir.Type) (*elements.Slice, error) {
-	aTyp, ok := typ.(ir.ArrayType)
-	if !ok {
-		return nil, nil
-	}
-	rank := aTyp.Rank()
-	axes := rank.Axes()
-	elts := make([]ir.Element, len(axes))
-	for i, ax := range axes {
-		var err error
-		elts[i], err = ev.EvalExpr(ax.AsExpr())
-		if err != nil {
-			return nil, err
-		}
-	}
-	return elements.NewSlice(ir.IntLenSliceType(), elts), nil
 }
 
 // NewRuntimeValue creates a new runtime value given an expression in a file.

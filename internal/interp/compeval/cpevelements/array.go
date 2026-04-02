@@ -19,6 +19,7 @@ import (
 	"github.com/gx-org/backend/shape"
 	"github.com/gx-org/gx/build/ir"
 	"github.com/gx-org/gx/internal/interp/canonical"
+	"github.com/gx-org/gx/internal/interp/coreops"
 	"github.com/gx-org/gx/interp/elements"
 	"github.com/gx-org/gx/interp/evaluator"
 	"github.com/gx-org/gx/interp/materialise"
@@ -33,7 +34,7 @@ type array struct {
 var (
 	_ materialise.Node  = (*array)(nil)
 	_ elements.WithAxes = (*array)(nil)
-	_ Element           = (*array)(nil)
+	_ coreops.Element   = (*array)(nil)
 	_ elements.Slicer   = (*array)(nil)
 	_ elements.Copier   = (*array)(nil)
 	_ ir.WithLength     = (*array)(nil)
@@ -55,7 +56,7 @@ func (a *array) Type() ir.Type {
 }
 
 func (a *array) Axes(fetcher ir.Evaluator) (*elements.Slice, error) {
-	return axesFromType(fetcher, a.typ)
+	return coreops.AxesFromType(fetcher, a.typ)
 }
 
 func (a *array) UnaryOp(env evaluator.Env, expr *ir.UnaryExpr) (evaluator.NumericalElement, error) {

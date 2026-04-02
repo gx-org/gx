@@ -23,6 +23,7 @@ import (
 	"github.com/gx-org/gx/api/values"
 	"github.com/gx-org/gx/build/ir"
 	"github.com/gx-org/gx/internal/interp/canonical"
+	"github.com/gx-org/gx/internal/interp/coreops"
 	"github.com/gx-org/gx/interp/elements"
 	"github.com/gx-org/gx/interp/evaluator"
 	"github.com/gx-org/gx/interp/fun"
@@ -34,7 +35,7 @@ type storedValue struct {
 }
 
 var (
-	_ Element                      = (*storedValue)(nil)
+	_ coreops.Element              = (*storedValue)(nil)
 	_ elements.WithAxes            = (*storedValue)(nil)
 	_ ir.WithStore                 = (*storedValue)(nil)
 	_ ir.Canonical                 = (*storedValue)(nil)
@@ -57,8 +58,8 @@ func (v *storedValue) NumericalConstant() (*values.HostArray, error) {
 	return elements.ConstantFromElement(v.val)
 }
 
-func (v *storedValue) canonical() (Element, error) {
-	can, ok := v.val.(Element)
+func (v *storedValue) canonical() (coreops.Element, error) {
+	can, ok := v.val.(coreops.Element)
 	if !ok {
 		return nil, errors.Errorf("%T is not a canonical element", v.val)
 	}
@@ -71,12 +72,12 @@ func (v *storedValue) UnaryOp(env evaluator.Env, expr *ir.UnaryExpr) (evaluator.
 	if err != nil {
 		return can, nil
 	}
-	return newUnary(env, expr, can)
+	return coreops.NewUnary(env, expr, can)
 }
 
 // BinaryOp applies a binary operator to x and y.
 func (v *storedValue) BinaryOp(env evaluator.Env, expr *ir.BinaryExpr, x, y evaluator.NumericalElement) (evaluator.NumericalElement, error) {
-	return NewBinary(env, expr, x, y)
+	return coreops.NewBinary(env, expr, x, y)
 }
 
 // Cast an element into a given data type.
@@ -85,7 +86,7 @@ func (v *storedValue) Cast(env evaluator.Env, expr ir.Expr, target ir.Type) (eva
 	if err != nil {
 		return can, nil
 	}
-	return newCast(env, expr, can, target)
+	return coreops.NewCast(env, expr, can, target)
 }
 
 // Reshape the variable into a different shape.
@@ -94,7 +95,7 @@ func (v *storedValue) Reshape(env evaluator.Env, expr ir.Expr, axisLengths []eva
 	if err != nil {
 		return can, nil
 	}
-	return NewReshape(env, expr, can, axisLengths)
+	return coreops.NewReshape(env, expr, can, axisLengths)
 }
 
 // Store returns the storage represented by this variable.
@@ -125,7 +126,7 @@ func (v *storedValue) Type() ir.Type {
 
 // Axes returns the axes of the value as a slice element.
 func (v *storedValue) Axes(ev ir.Evaluator) (*elements.Slice, error) {
-	return axesFromType(ev, v.Type())
+	return coreops.AxesFromType(ev, v.Type())
 }
 
 // Compare to another element.

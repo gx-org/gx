@@ -22,6 +22,7 @@ import (
 	"github.com/gx-org/gx/build/ir"
 	"github.com/gx-org/gx/golang/backend/kernels"
 	"github.com/gx-org/gx/internal/interp/compeval/cpevelements"
+	"github.com/gx-org/gx/internal/interp/coreops"
 	"github.com/gx-org/gx/interp/elements"
 	"github.com/gx-org/gx/interp/evaluator"
 )
@@ -71,7 +72,7 @@ func (compArrayOps) ElementFromAtom(file *ir.File, val values.Array, expr ir.Exp
 	if err != nil {
 		return nil, err
 	}
-	return cpevelements.NewAtom(hostValue, expr, typ)
+	return coreops.NewAtom(hostValue, expr, typ)
 }
 
 // ElementFromArray returns an element from an array GX value.

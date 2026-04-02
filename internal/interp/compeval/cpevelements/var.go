@@ -20,6 +20,7 @@ import (
 	"github.com/gx-org/backend/shape"
 	"github.com/gx-org/gx/build/ir"
 	"github.com/gx-org/gx/internal/interp/canonical"
+	"github.com/gx-org/gx/internal/interp/coreops"
 	"github.com/gx-org/gx/interp/elements"
 	"github.com/gx-org/gx/interp/evaluator"
 )
@@ -31,7 +32,7 @@ type variable struct {
 }
 
 var (
-	_ Element           = (*variable)(nil)
+	_ coreops.Element   = (*variable)(nil)
 	_ ir.StorageElement = (*variable)(nil)
 	_ elements.WithAxes = (*variable)(nil)
 	_ ir.Canonical      = (*variable)(nil)
@@ -50,22 +51,22 @@ func newVariable(src elements.StorageAt) *variable {
 
 // UnaryOp applies a unary operator on x.
 func (a *variable) UnaryOp(env evaluator.Env, expr *ir.UnaryExpr) (evaluator.NumericalElement, error) {
-	return newUnary(env, expr, a)
+	return coreops.NewUnary(env, expr, a)
 }
 
 // BinaryOp applies a binary operator to x and y.
 func (a *variable) BinaryOp(env evaluator.Env, expr *ir.BinaryExpr, x, y evaluator.NumericalElement) (evaluator.NumericalElement, error) {
-	return NewBinary(env, expr, x, y)
+	return coreops.NewBinary(env, expr, x, y)
 }
 
 // Cast an element into a given data type.
 func (a *variable) Cast(env evaluator.Env, expr ir.Expr, target ir.Type) (evaluator.NumericalElement, error) {
-	return newCast(env, expr, a, target)
+	return coreops.NewCast(env, expr, a, target)
 }
 
 // Reshape the variable into a different shape.
 func (a *variable) Reshape(env evaluator.Env, expr ir.Expr, axisLengths []evaluator.NumericalElement) (evaluator.NumericalElement, error) {
-	return NewReshape(env, expr, a, axisLengths)
+	return coreops.NewReshape(env, expr, a, axisLengths)
 }
 
 // Shape of the value represented by the element.
@@ -85,7 +86,7 @@ func (a *variable) Type() ir.Type {
 
 // Axes returns the axes of the value as a slice element.
 func (a *variable) Axes(ev ir.Evaluator) (*elements.Slice, error) {
-	return axesFromType(ev, a.src.Node().Type())
+	return coreops.AxesFromType(ev, a.src.Node().Type())
 }
 
 // Slice computes a slice from the variable.

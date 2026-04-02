@@ -25,7 +25,7 @@ import (
 	"github.com/gx-org/gx/build/ir"
 	"github.com/gx-org/gx/build/ir/irkind"
 	"github.com/gx-org/gx/internal/interp/canonical"
-	"github.com/gx-org/gx/internal/interp/compeval/cpevelements"
+	"github.com/gx-org/gx/internal/interp/coreops"
 	"github.com/gx-org/gx/internal/interp/flatten"
 	"github.com/gx-org/gx/interp/elements"
 	"github.com/gx-org/gx/interp/evaluator"
@@ -80,7 +80,7 @@ func (n *Float) BinaryOp(env evaluator.Env, expr *ir.BinaryExpr, x, y evaluator.
 	case *Int:
 		return binaryFloat(env, expr, n, yT.toFloat())
 	}
-	return cpevelements.NewBinary(env, expr, x, y)
+	return coreops.NewBinary(env, expr, x, y)
 }
 
 func binaryFloat(env evaluator.Env, expr *ir.BinaryExpr, xFloat, yFloat *Float) (evaluator.NumericalElement, error) {
@@ -117,7 +117,7 @@ func (n *Float) Cast(env evaluator.Env, expr ir.Expr, target ir.Type) (evaluator
 
 // Reshape the number into an array.
 func (n *Float) Reshape(env evaluator.Env, expr ir.Expr, axisLengths []evaluator.NumericalElement) (evaluator.NumericalElement, error) {
-	return cpevelements.NewReshape(env, expr, n, axisLengths)
+	return coreops.NewReshape(env, expr, n, axisLengths)
 }
 
 // Shape of the value represented by the element.

@@ -12,7 +12,7 @@
 // See the License for the specific language governing permissions and
 // limitations under the License.
 
-package cpevelements
+package coreops
 
 import (
 	"fmt"
@@ -46,7 +46,8 @@ var (
 	_ canonical.Canonical             = (*unary)(nil)
 )
 
-func newUnary(env evaluator.Env, expr *ir.UnaryExpr, xEl Element) (_ *unary, err error) {
+// NewUnary applies an unary operator to an element.
+func NewUnary(env evaluator.Env, expr *ir.UnaryExpr, xEl Element) (_ evaluator.NumericalElement, err error) {
 	defer func() {
 		if err != nil {
 			err = fmterr.Error(env.File().FileSet(), expr.Src, err)
@@ -106,7 +107,7 @@ func (a *unary) Reshape(env evaluator.Env, expr ir.Expr, axisLengths []evaluator
 
 // UnaryOp applies a unary operator on x.
 func (a *unary) UnaryOp(env evaluator.Env, expr *ir.UnaryExpr) (evaluator.NumericalElement, error) {
-	return newUnary(env, expr, a)
+	return NewUnary(env, expr, a)
 }
 
 // BinaryOp applies a binary operator to x and y.
@@ -116,7 +117,7 @@ func (a *unary) BinaryOp(env evaluator.Env, expr *ir.BinaryExpr, x, y evaluator.
 
 // Cast an element into a given data type.
 func (a *unary) Cast(env evaluator.Env, expr ir.Expr, target ir.Type) (evaluator.NumericalElement, error) {
-	return newCast(env, expr, a, target)
+	return NewCast(env, expr, a, target)
 }
 
 // Shape of the value represented by the element.

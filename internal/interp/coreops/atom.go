@@ -12,7 +12,7 @@
 // See the License for the specific language governing permissions and
 // limitations under the License.
 
-package cpevelements
+package coreops
 
 import (
 	"go/ast"
@@ -22,7 +22,6 @@ import (
 	"github.com/gx-org/backend/shape"
 	"github.com/gx-org/gx/api/values"
 	"github.com/gx-org/gx/build/ir"
-	"github.com/gx-org/gx/golang/backend/kernels"
 	"github.com/gx-org/gx/internal/interp/canonical"
 	"github.com/gx-org/gx/internal/interp/flatten"
 	"github.com/gx-org/gx/interp/elements"
@@ -60,7 +59,7 @@ func NewAtom(val *values.HostArray, expr ir.Expr, typ ir.Type) (Element, error) 
 
 // UnaryOp applies a unary operator on x.
 func (a *atom) UnaryOp(env evaluator.Env, expr *ir.UnaryExpr) (evaluator.NumericalElement, error) {
-	return newUnary(env, expr, a)
+	return NewUnary(env, expr, a)
 }
 
 // Copy the atom.
@@ -75,7 +74,7 @@ func (a *atom) BinaryOp(env evaluator.Env, expr *ir.BinaryExpr, x, y evaluator.N
 
 // Cast an element into a given data type.
 func (a *atom) Cast(env evaluator.Env, expr ir.Expr, dtype ir.Type) (evaluator.NumericalElement, error) {
-	return newCast(env, expr, a, dtype)
+	return NewCast(env, expr, a, dtype)
 }
 
 func (a *atom) Reshape(env evaluator.Env, expr ir.Expr, axisLengths []evaluator.NumericalElement) (evaluator.NumericalElement, error) {
@@ -120,7 +119,7 @@ func (a *atom) Compare(x canonical.Comparable) (bool, error) {
 	if cx == nil {
 		return false, nil
 	}
-	return equalArray(a.val, cx), nil
+	return EqualArray(a.val, cx), nil
 }
 
 func (a *atom) Axes(ir.Evaluator) (*elements.Slice, error) {
@@ -146,35 +145,4 @@ func (a *atom) ShortString() string {
 
 func (a *atom) SourceString(from *ir.File) string {
 	return a.val.SourceString(from)
-}
-
-type releaseFunc func()
-
-func toKernelArray(array *values.HostArray) (kernels.Array, releaseFunc, error) {
-	// Convert the GX value into a Go array with a kernel factory.
-	data := array.Buffer().Acquire()
-	kArray, err := kernels.NewArrayFromRaw(data, array.Shape())
-	if err != nil {
-		array.Buffer().Release()
-		return nil, nil, err
-	}
-	return kArray, array.Buffer().Release, nil
-}
-
-func equalArray(x, y *values.HostArray) bool {
-	if !x.Shape().Equal(y.Shape()) {
-		return false
-	}
-	xBuf := x.Buffer()
-	yBuf := y.Buffer()
-	xData := xBuf.Acquire()
-	defer xBuf.Release()
-	yData := yBuf.Acquire()
-	defer yBuf.Release()
-	for i, xi := range xData {
-		if yData[i] != xi {
-			return false
-		}
-	}
-	return true
 }

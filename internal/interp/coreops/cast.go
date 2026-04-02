@@ -12,7 +12,7 @@
 // See the License for the specific language governing permissions and
 // limitations under the License.
 
-package cpevelements
+package coreops
 
 import (
 	"fmt"
@@ -44,7 +44,8 @@ var (
 	_ ir.StorageElement               = (*cast)(nil)
 )
 
-func newCast(env evaluator.Env, expr ir.Expr, xEl Element, target ir.Type) (*cast, error) {
+// NewCast applies a cast operator to an element.
+func NewCast(env evaluator.Env, expr ir.Expr, xEl Element, target ir.Type) (evaluator.NumericalElement, error) {
 	x, err := elements.ConstantFromElement(xEl)
 	if err != nil {
 		return nil, err
@@ -116,7 +117,7 @@ func NewReshape(env evaluator.Env, expr ir.Expr, xEl Element, axisLengths []eval
 }
 
 func (a *cast) UnaryOp(env evaluator.Env, expr *ir.UnaryExpr) (evaluator.NumericalElement, error) {
-	return newUnary(env, expr, a)
+	return NewUnary(env, expr, a)
 }
 
 func (a *cast) BinaryOp(env evaluator.Env, expr *ir.BinaryExpr, x, y evaluator.NumericalElement) (evaluator.NumericalElement, error) {
@@ -124,7 +125,7 @@ func (a *cast) BinaryOp(env evaluator.Env, expr *ir.BinaryExpr, x, y evaluator.N
 }
 
 func (a *cast) Cast(env evaluator.Env, expr ir.Expr, target ir.Type) (evaluator.NumericalElement, error) {
-	return newCast(env, expr, a, target)
+	return NewCast(env, expr, a, target)
 }
 
 func (a *cast) Reshape(env evaluator.Env, expr ir.Expr, axisLengths []evaluator.NumericalElement) (evaluator.NumericalElement, error) {
@@ -167,7 +168,7 @@ func (a *cast) Materialise(ao materialise.Materialiser) (materialise.Node, error
 
 // Axes of the result of the cast.
 func (a *cast) Axes(ev ir.Evaluator) (*elements.Slice, error) {
-	return axesFromType(ev, a.typ)
+	return AxesFromType(ev, a.typ)
 }
 
 // Compare to another element.

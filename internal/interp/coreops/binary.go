@@ -12,7 +12,7 @@
 // See the License for the specific language governing permissions and
 // limitations under the License.
 
-package cpevelements
+package coreops
 
 import (
 	"fmt"
@@ -118,7 +118,7 @@ func buildBinaryVal(operator token.Token, cx, cy *values.HostArray, typ ir.Type)
 
 // UnaryOp applies a unary operator on x.
 func (a *binary) UnaryOp(env evaluator.Env, expr *ir.UnaryExpr) (evaluator.NumericalElement, error) {
-	return newUnary(env, expr, a)
+	return NewUnary(env, expr, a)
 }
 
 // BinaryOp applies a binary operator to x and y.
@@ -128,7 +128,7 @@ func (a *binary) BinaryOp(env evaluator.Env, expr *ir.BinaryExpr, x, y evaluator
 
 // Cast an element into a given data type.
 func (a *binary) Cast(env evaluator.Env, expr ir.Expr, target ir.Type) (evaluator.NumericalElement, error) {
-	return newCast(env, expr, a, target)
+	return NewCast(env, expr, a, target)
 }
 
 // Reshape the element into a new shape.
@@ -147,7 +147,7 @@ func (a *binary) Shape() (*shape.Shape, error) {
 
 // Axes returns the axes of the value as a slice element.
 func (a *binary) Axes(ev ir.Evaluator) (*elements.Slice, error) {
-	return axesFromType(ev, a.typ)
+	return AxesFromType(ev, a.typ)
 }
 
 func (a *binary) Float() *big.Float {
