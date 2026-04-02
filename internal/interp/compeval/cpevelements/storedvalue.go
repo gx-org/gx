@@ -17,6 +17,7 @@ package cpevelements
 import (
 	"fmt"
 	"go/ast"
+	"reflect"
 
 	"github.com/pkg/errors"
 	"github.com/gx-org/backend/shape"
@@ -38,6 +39,7 @@ var (
 	_ coreops.Element              = (*storedValue)(nil)
 	_ elements.WithAxes            = (*storedValue)(nil)
 	_ ir.WithStore                 = (*storedValue)(nil)
+	_ ir.WithLength                = (*storedValue)(nil)
 	_ ir.Canonical                 = (*storedValue)(nil)
 	_ elements.Slicer              = (*storedValue)(nil)
 	_ elements.ElementWithConstant = (*storedValue)(nil)
@@ -145,6 +147,14 @@ func (v *storedValue) Slice(expr *ir.IndexExpr, index evaluator.NumericalElement
 		return slicer.Slice(expr, index)
 	}
 	return v.storage.Slice(expr, index)
+}
+
+func (v *storedValue) Length(ev ir.Evaluator) (int, error) {
+	withLen, ok := v.val.(ir.WithLength)
+	if !ok {
+		return 0, errors.Errorf("cannot cast %T to %s", v.val, reflect.TypeFor[ir.WithLength]().Name())
+	}
+	return withLen.Length(ev)
 }
 
 // Expr returns the IR expression represented by the variable.

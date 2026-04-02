@@ -48,6 +48,18 @@ func f() float32 {
 }
 `,
 		},
+		testbuild.Decl{
+			Src: `
+func log([2]float32) [2]float32
+
+func cast(int64) float32
+
+func f(probs [2]float32) float32 {
+	logprobs := log(probs)
+	return cast(len(logprobs))
+}
+`,
+		},
 	)
 }
 
