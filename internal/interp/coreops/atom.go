@@ -24,6 +24,7 @@ import (
 	"github.com/gx-org/gx/build/ir"
 	"github.com/gx-org/gx/internal/interp/canonical"
 	"github.com/gx-org/gx/internal/interp/flatten"
+	"github.com/gx-org/gx/internal/togo"
 	"github.com/gx-org/gx/interp/elements"
 	"github.com/gx-org/gx/interp/evaluator"
 	"github.com/gx-org/gx/interp/materialise"
@@ -45,6 +46,7 @@ var (
 	_ canonical.Evaluable             = (*atom)(nil)
 	_ elements.WithAxes               = (*atom)(nil)
 	_ ir.Canonical                    = (*atom)(nil)
+	_ togo.WithGoValue                = (*atom)(nil)
 )
 
 // NewAtom returns a new atom element given a GX atom value.
@@ -55,6 +57,10 @@ func NewAtom(val *values.HostArray, expr ir.Expr, typ ir.Type) (Element, error) 
 		float, err = val.ToFloatNumber()
 	}
 	return &atom{val: val, expr: expr, float: float, typ: typ}, err
+}
+
+func (a *atom) GoValue() (any, error) {
+	return a.val.ToAtom()
 }
 
 // UnaryOp applies a unary operator on x.

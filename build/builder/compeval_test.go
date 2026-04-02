@@ -99,3 +99,37 @@ func f() [returnTwo()]int32 {
 		},
 	)
 }
+
+func TestCompevalErrorWithVarargs(t *testing.T) {
+	testbuild.Run(t,
+		testbuild.LoadStdlib("fmt"),
+		testbuild.Decl{
+			Src: `
+import "fmt"
+
+//gx:compeval
+func returnAnError(xs ...int32) (intlen, error) {
+	return 2, fmt.Errorf("xs length: %d", len(xs))
+}
+
+func f() [returnAnError(1, 2, 3)]int32 { 
+	return [2]int32{1, 2} // ERROR xs length: 3
+}
+`,
+		},
+		testbuild.Decl{
+			Src: `
+import "fmt"
+
+//gx:compeval
+func returnAnError(xs ...int32) (intlen, error) {
+	return 2, fmt.Errorf("xs length: %d", len(xs))
+}
+
+func f() [returnAnError()]int32 { 
+	return [2]int32{1, 2} // ERROR xs length: 0
+}
+`,
+		},
+	)
+}

@@ -54,7 +54,7 @@ func (itp *Interpreter) InitBuiltins(scope *scope.RWScope[ir.Element]) error {
 			ID:   &ast.Ident{Name: impl.Name()},
 			Impl: impl,
 		}
-		elFunc := NewRunFunc(irFunc, nil)
+		elFunc := itp.NewFunc(irFunc, nil)
 		scope.Define(impl.Name(), elFunc)
 	}
 	for _, tp := range []ir.Type{
