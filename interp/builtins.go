@@ -28,20 +28,19 @@ import (
 	"github.com/gx-org/gx/build/ir"
 	"github.com/gx-org/gx/internal/base/scope"
 	"github.com/gx-org/gx/internal/interp/coreops"
-	"github.com/gx-org/gx/interp/context"
 	"github.com/gx-org/gx/interp/elements"
 	"github.com/gx-org/gx/interp/evaluator"
 	"github.com/gx-org/gx/interp/fun"
 )
 
 // InitBuiltins initializes the builtins.
-func (itp *Interpreter) InitBuiltins(ctx *context.Context, scope *scope.RWScope[ir.Element]) error {
+func (itp *Interpreter) InitBuiltins(scope *scope.RWScope[ir.Element]) error {
 	nilStorage := builtins.NilStorage()
 	scope.Define(nilStorage.NameDef().Name, nilStorage)
-	if err := itp.defineBoolConstant(scope, ctx, ir.FalseStorage()); err != nil {
+	if err := itp.defineBoolConstant(scope, ir.FalseStorage()); err != nil {
 		return err
 	}
-	if err := itp.defineBoolConstant(scope, ctx, ir.TrueStorage()); err != nil {
+	if err := itp.defineBoolConstant(scope, ir.TrueStorage()); err != nil {
 		return err
 	}
 	for _, impl := range []ir.FuncImpl{
@@ -78,17 +77,25 @@ func (itp *Interpreter) InitBuiltins(ctx *context.Context, scope *scope.RWScope[
 	return nil
 }
 
-func (itp *Interpreter) defineBoolConstant(scope *scope.RWScope[ir.Element], ctx *context.Context, val ir.StorageWithValue) error {
+var builtinFile = &ir.File{
+	Src: &ast.File{Name: &ast.Ident{Name: "<builtin file>"}},
+	Package: &ir.Package{
+		Name:  &ast.Ident{Name: "<builtin package>"},
+		Decls: &ir.Declarations{},
+	},
+}
+
+func (itp *Interpreter) defineBoolConstant(scope *scope.RWScope[ir.Element], val ir.StorageWithValue) error {
 	gxValue, err := values.AtomBoolValue(ir.BoolType(), val.Value(nil).(*ir.AtomicValueT[bool]).Val)
 	if err != nil {
 		return err
 	}
 	var el ir.Element
-	el, err = itp.eval.ArrayOps().ElementFromAtom(ctx.File(), gxValue, val.Value(nil), ir.BoolType())
+	el, err = itp.eval.ArrayOps().ElementFromAtom(builtinFile, gxValue, val.Value(nil), ir.BoolType())
 	if err != nil {
 		return err
 	}
-	el = itp.eval.ElementFromStorage(ctx.File(), val, el)
+	el = itp.eval.ElementFromStorage(builtinFile, val, el)
 	scope.Define(val.NameDef().Name, el)
 	return nil
 }

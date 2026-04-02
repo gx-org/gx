@@ -32,7 +32,7 @@ type (
 		InitPkgScope(pkg *ir.Package, scope *scope.RWScope[ir.Element]) (ir.PackageElement, error)
 
 		// InitBuiltins initialises a namespace with GX builtins implementation.
-		InitBuiltins(ctx *Context, scope *scope.RWScope[ir.Element]) error
+		InitBuiltins(scope *scope.RWScope[ir.Element]) error
 
 		// PackageToImport encapsulates a package into its import declaration.
 		PackageToImport(imp *ir.ImportDecl, pkg ir.PackageElement) ir.Element
@@ -56,16 +56,7 @@ func New(interp Interpreter, importer ir.Importer) (*Core, error) {
 		importer:       importer,
 	}
 	core.builtin = &baseFrame{scope: scope.NewScope[ir.Element](nil)}
-	ctx, err := core.NewFileContext(&ir.File{
-		Package: &ir.Package{
-			Name:  &ast.Ident{Name: "<interp>"},
-			Decls: &ir.Declarations{},
-		},
-	})
-	if err != nil {
-		return nil, err
-	}
-	return core, interp.InitBuiltins(ctx, core.builtin.scope)
+	return core, interp.InitBuiltins(core.builtin.scope)
 }
 
 // Context of an evaluation while running the interpreter.

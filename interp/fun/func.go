@@ -27,6 +27,9 @@ import (
 )
 
 type (
+	// NewRunFunc is a function to create a function that will be executed by the interpreter.
+	NewRunFunc func(fn ir.Func, recv *Receiver) Func
+
 	// CallEnv is the environment of a function call.
 	CallEnv struct {
 		ctx  *context.Context
