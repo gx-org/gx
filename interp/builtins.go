@@ -55,7 +55,7 @@ func (itp *Interpreter) InitBuiltins(ctx *context.Context, scope *scope.RWScope[
 			ID:   &ast.Ident{Name: impl.Name()},
 			Impl: impl,
 		}
-		elFunc := itp.eval.NewFunc(irFunc, nil)
+		elFunc := NewRunFunc(irFunc, nil)
 		scope.Define(impl.Name(), elFunc)
 	}
 	for _, tp := range []ir.Type{
@@ -126,7 +126,7 @@ var (
 )
 
 func appendImpl(env evaluator.Env, call elements.CallAt, fn fun.Func, irFunc *ir.FuncBuiltin, args []ir.Element) ([]ir.Element, error) {
-	slice, ok := args[0].(*elements.Slice)
+	slice, ok := elements.Underlying(args[0]).(*elements.Slice)
 	if !ok {
 		return nil, errors.Errorf("cannot cast %T to %s", args[0], reflect.TypeFor[*elements.Slice]())
 	}

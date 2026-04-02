@@ -51,12 +51,12 @@ func (ev *CompEval) NewFunc(fn ir.Func, recv *fun.Receiver) fun.Func {
 	case *ir.Macro:
 		return cpevelements.NewMacro(fnT, recv)
 	}
-	return cpevelements.NewFunc(fn, recv)
+	return ev.newRunFunc(fn, recv)
 }
 
 // NewFuncLit creates a new function literal.
 func (ev *CompEval) NewFuncLit(env *fun.CallEnv, fn *ir.FuncLit) (fun.Func, error) {
-	return cpevelements.NewFunc(fn, nil), nil
+	return cpevelements.NewProxyFunc(fn, nil), nil
 }
 
 // NewRunFunc returns a function that will be run by the interpreter.

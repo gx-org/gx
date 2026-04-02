@@ -27,6 +27,7 @@ import (
 	"github.com/gx-org/gx/base/ordered"
 	"github.com/gx-org/gx/build/ir"
 	"github.com/gx-org/gx/internal/base/scope"
+	"github.com/gx-org/gx/internal/interp/compeval/cpevelements"
 )
 
 type decls struct {
@@ -156,11 +157,12 @@ func (d *decls) resolveAll(pkgScope *pkgResolveScope) bool {
 		underOk := namedType.bType.buildUnderlying(pkgScope, namedType.ext)
 		ok = ok && underOk
 	}
-	// Build compeval function signature.
+	// Build compeval functions.
 	if compEvalOk := d.buildFunctions(pkgScope, filterCompEval(true)); !compEvalOk {
 		return false
 	}
 	// Build functions and methods.
+	pkgScope.newFunc = cpevelements.NewMixFunc
 	funOk := d.buildFunctions(pkgScope, filterCompEval(false))
 	return funOk && ok
 }

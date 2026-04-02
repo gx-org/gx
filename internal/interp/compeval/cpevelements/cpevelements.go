@@ -64,13 +64,13 @@ func NewRuntimeValue(file *ir.File, store ir.Storage) (ir.Element, error) {
 		if err != nil {
 			return nil, err
 		}
-		return fun.NewNamedType(NewFunc, typT, under.(elements.Copier)), nil
+		return fun.NewNamedType(NewProxyFunc, typT, under.(elements.Copier)), nil
 	case ir.ArrayType:
 		if !ir.IsStatic(typT.DataType()) {
 			return NewArray(typT), nil
 		}
 	case *ir.FuncType:
-		return NewFunc(&ir.FuncLit{
+		return NewProxyFunc(&ir.FuncLit{
 			Src:   &ast.FuncLit{Type: typT.Src},
 			FType: typT,
 		}, nil), nil

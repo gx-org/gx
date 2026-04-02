@@ -19,41 +19,34 @@ import (
 
 	"github.com/gx-org/gx/build/ir"
 	"github.com/gx-org/gx/interp/fun"
+	"github.com/gx-org/gx/interp"
 )
 
-type function struct {
+type proxyFunction struct {
 	fn   ir.Func
 	recv *fun.Receiver
 }
 
 var (
-	_ ir.StorageElement = (*function)(nil)
-	_ ir.FuncElement    = (*function)(nil)
+	_ ir.StorageElement = (*proxyFunction)(nil)
+	_ ir.FuncElement    = (*proxyFunction)(nil)
 )
 
-// NewFunc creates a new function given its definition and a receiver.
-func NewFunc(fn ir.Func, recv *fun.Receiver) fun.Func {
-	return &function{fn: fn, recv: recv}
+// NewProxyFunc creates a new proxy function given its definition and a receiver.
+// A proxy function does not evaluate its body and all returned values are proxy values.
+func NewProxyFunc(fn ir.Func, recv *fun.Receiver) fun.Func {
+	return &proxyFunction{fn: fn, recv: recv}
 }
 
-func (f *function) Func() ir.Func {
+func (f *proxyFunction) Func() ir.Func {
 	return f.fn
 }
 
-func (f *function) Recv() *fun.Receiver {
+func (f *proxyFunction) Recv() *fun.Receiver {
 	return f.recv
 }
 
-func (f *function) Call(env *fun.CallEnv, call *ir.FuncCallExpr, args []ir.Element) ([]ir.Element, error) {
-	valArgs := make([]ir.Element, len(args))
-	for i, arg := range args {
-		valArgs[i] = StoredValueOf(arg)
-	}
-	_, isKeyword := f.fn.(*ir.FuncKeyword)
-	fType := f.fn.FuncType()
-	if isKeyword || fType != nil && fType.CompEval { // Some builtin functions have no type at the moment.
-		return env.Run(f.fn, f.recv, call, valArgs)
-	}
+func (f *proxyFunction) Call(env *fun.CallEnv, call *ir.FuncCallExpr, args []ir.Element) ([]ir.Element, error) {
 	res := call.Callee.FuncType().Results.Fields()
 	els := make([]ir.Element, len(res))
 	for i, ri := range res {
@@ -69,7 +62,7 @@ func (f *function) Call(env *fun.CallEnv, call *ir.FuncCallExpr, args []ir.Eleme
 	return els, nil
 }
 
-func (f *function) Store() ir.Storage {
+func (f *proxyFunction) Store() ir.Storage {
 	storage, ok := f.fn.(ir.Storage)
 	if !ok {
 		return nil
@@ -77,6 +70,39 @@ func (f *function) Store() ir.Storage {
 	return storage
 }
 
-func (f *function) Type() ir.Type {
+func (f *proxyFunction) Type() ir.Type {
 	return f.fn.Type()
+}
+
+type mixFunction struct {
+	proxyFunction
+}
+
+// NewMixFunc creates a new mix function given its definition and a receiver.
+// A mix function evaluates other functions as proxy functions except for compeval functions and keywords which are executed.
+func NewMixFunc(fn ir.Func, recv *fun.Receiver) fun.Func {
+	return &mixFunction{
+		proxyFunction: proxyFunction{fn: fn, recv: recv},
+	}
+}
+
+func (f *mixFunction) run(env *fun.CallEnv, call *ir.FuncCallExpr, args []ir.Element) ([]ir.Element, error) {
+	valArgs := make([]ir.Element, len(args))
+	for i, arg := range args {
+		valArgs[i] = StoredValueOf(arg)
+	}
+	fn := interp.NewRunFunc(f.fn, f.recv)
+	return fn.Call(env, call, valArgs)
+}
+
+func (f *mixFunction) Call(env *fun.CallEnv, call *ir.FuncCallExpr, args []ir.Element) ([]ir.Element, error) {
+	_, isKeyword := f.fn.(*ir.FuncKeyword)
+	if isKeyword {
+		return f.run(env, call, args)
+	}
+	fType := f.fn.FuncType()
+	if fType != nil && fType.CompEval {
+		return f.run(env, call, args)
+	}
+	return f.proxyFunction.Call(env, call, args)
 }

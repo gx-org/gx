@@ -50,6 +50,33 @@ func f() [returnTwo()]int32 {
 }
 `,
 		},
+		testbuild.Decl{
+			Src: `
+//gx:compeval
+func str() string
+
+//gx:compeval
+func f() string {
+	// Check that str() is not executed when f is compiled.
+	return str()
+}
+`,
+		},
+		testbuild.Decl{
+			Src: `
+//gx:compeval
+func str() string
+
+//gx:compeval
+func g(string) string
+
+//gx:compeval
+func f() string {
+	// Check that str() is not executed when f is compiled.
+	return g(str())
+}
+`,
+		},
 	)
 }
 

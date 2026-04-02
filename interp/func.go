@@ -36,34 +36,43 @@ import (
 type FuncBuiltin func(ctx evaluator.Env, call elements.CallAt, fn fun.Func, irFunc *ir.FuncBuiltin, args []ir.Element) ([]ir.Element, error)
 
 type funcBase struct {
-	fn   ir.Func
-	recv *fun.Receiver
+	fn      ir.Func
+	recv    *fun.Receiver
+	storage ir.Storage
 }
 
-var _ fun.Func = (*funcBase)(nil)
+var (
+	_ fun.Func     = (*funcBase)(nil)
+	_ ir.WithStore = (*funcBase)(nil)
+)
 
 // NewRunFunc creates a function given an IR and a receiver.
 // The function is run when being called.
 func NewRunFunc(fn ir.Func, recv *fun.Receiver) fun.Func {
+	base := funcBase{fn: fn, recv: recv}
 	switch fnT := fn.(type) {
 	case *ir.FuncDecl:
+		base.storage = fnT
 		return &funcDecl{
-			funcBase: funcBase{fn: fnT, recv: recv},
+			funcBase: base,
 			fnT:      fnT,
 		}
 	case *ir.FuncBuiltin:
+		base.storage = fnT
 		return &funcBuiltin{
-			funcBase: funcBase{fn: fnT, recv: recv},
+			funcBase: base,
 			fnT:      fnT,
 		}
 	case *ir.FuncKeyword:
+		base.storage = fnT
 		return &funcKeyword{
-			funcBase: funcBase{fn: fnT},
+			funcBase: base,
 			fnT:      fnT,
 		}
 	case *ir.Macro:
+		base.storage = fnT
 		return &funcMacro{
-			funcBase: funcBase{fn: fnT, recv: recv},
+			funcBase: base,
 			fnT:      fnT,
 		}
 	}
@@ -107,6 +116,11 @@ func (st *funcBase) Unflatten(handles *flatten.Parser) (values.Value, error) {
 // Kind of the element.
 func (*funcBase) Kind() irkind.Kind {
 	return irkind.Func
+}
+
+// Storage of the function.
+func (st *funcBase) Store() ir.Storage {
+	return st.storage
 }
 
 // Call the function.

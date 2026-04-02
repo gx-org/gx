@@ -54,6 +54,7 @@ func ephemeralPkgScope(fscope *fileResolveScope, src ast.Node, pkgPath string) (
 		dcls: base.last.builderState.dcls,
 	}
 	return &pkgResolveScope{
+		newFunc:      fscope.newFunc,
 		pkgProcScope: newPackageProcScope(false, pkg.base(), pscope.Err().Errors()),
 		state:        pkg.base().last.builderState,
 		fileScopes:   make(map[*file]*fileResolveScope),

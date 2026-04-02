@@ -32,6 +32,7 @@ import (
 	"github.com/gx-org/gx/internal/interp/compeval/cpevelements"
 	"github.com/gx-org/gx/interp/context"
 	"github.com/gx-org/gx/interp/elements"
+	"github.com/gx-org/gx/interp/fun"
 	"github.com/gx-org/gx/interp"
 )
 
@@ -89,7 +90,11 @@ type (
 	// This context is used in the resolve phase.
 	pkgResolveScope struct {
 		*pkgProcScope
+
+		newFunc func(fn ir.Func, recv *fun.Receiver) fun.Func
+
 		state *pkgState
+
 		// namedTypes maps build named types to IR named types.
 		namedTypes map[*namedType]*ir.NamedType
 		// methods is a mapping from type name to method name to method
@@ -102,6 +107,7 @@ type (
 func newPackageResolveScope(pscope *pkgProcScope) (*pkgResolveScope, bool) {
 	s := &pkgResolveScope{
 		pkgProcScope: pscope,
+		newFunc:      cpevelements.NewProxyFunc,
 		methods:      ordered.NewMap[*ir.NamedType, *ordered.Map[string, *irFunc]](),
 		state:        &pkgState{dcls: pscope.decls()},
 		fileScopes:   make(map[*file]*fileResolveScope),
@@ -153,7 +159,7 @@ func (s *pkgResolveScope) buildStorageProcessNode(tok token.Token, store ir.Stor
 }
 
 func (s *pkgResolveScope) packageInterpreter() *interp.Interpreter {
-	hostEval := compeval.NewHostEvaluator(s.bpkg.builder(), interp.NewRunFunc)
+	hostEval := compeval.NewHostEvaluator(s.bpkg.builder(), s.newFunc)
 	pkg := s.state.ibld.Pkg()
 	pkg.Decls = s.state.ibld.Decls()
 	var opts []options.PackageOption
@@ -360,7 +366,7 @@ func (s *funcResolveScope) nspace() *scope.RWScope[ir.Element] {
 
 func (s *funcResolveScope) setFuncValue(fn ir.PkgFunc) {
 	s.bodyCE = s.bodyCE.sub(context.NewSubMap(map[string]ir.Element{
-		fn.Name(): cpevelements.NewFunc(fn, nil),
+		fn.Name(): s.resolveScope.fileScope().newFunc(fn, nil),
 	}))
 }
 
