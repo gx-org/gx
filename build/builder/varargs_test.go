@@ -113,6 +113,44 @@ func g(a ...int32) []int32 {
 }
 `,
 		},
+		testbuild.Decl{
+			Src: `
+func f(...int32) []int32
+
+func g() []int32 {
+	return f()
+}
+`,
+		},
+		testbuild.Decl{
+			Src: `
+func f(string, ...int32) []int32
+
+func g() []int32 {
+	return f("a")
+}
+`,
+		},
+		testbuild.Decl{
+			Src: `
+func f1(string, ...int32) []int32
+
+func g() []int32 {
+	return f1("a")
+}
+`,
+		},
+		testbuild.Decl{
+			Src: `
+func f1(string, ...int32) []int32
+
+func f2([]int32) []int32
+
+func g() []int32 {
+	return f2(f1("a"))
+}
+`,
+		},
 	)
 }
 

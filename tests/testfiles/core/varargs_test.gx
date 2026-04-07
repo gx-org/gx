@@ -4,6 +4,11 @@ func identityWithVarArgs(a ...int32) []int32 {
 	return a
 }
 
+func TestVarArgs0() []int32 {
+	return identityWithVarArgs()
+	// Want:
+}
+
 func TestVarArgs() []int32 {
 	return identityWithVarArgs(1, 2, 3)
 	// Want:
@@ -19,4 +24,14 @@ func TestVarArgsUnpack() []int32 {
 	// 0: int32(1)
 	// 1: int32(2)
 	// 2: int32(3)
+}
+
+func varargsF(s string, is ...int32) string {
+	return s
+}
+
+func TestVarArgs01() string {
+	return varargsF("hello")
+	// Want:
+	// hello
 }
