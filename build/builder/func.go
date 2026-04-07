@@ -75,7 +75,7 @@ type funcType struct {
 	params  *fieldList
 	results *fieldList
 
-	varargs *varargs
+	varargs *varargsType
 
 	namedResults bool
 }
@@ -425,7 +425,7 @@ func convertArgNumbers(rscope resolveScope, fType *ir.FuncType, args []ir.Expr) 
 		param, isVarArg := fType.ArgIndexToParamField(i)
 		target := param.Type()
 		if isVarArg {
-			target = fType.VarArgs.Slice.DType.Val()
+			target = fType.VarArgs.Typ.DType.Val()
 		}
 		var iOk bool
 		args[i], iOk = castNilAndNumber(rscope, arg, target)
@@ -592,9 +592,13 @@ func checkArgsForCall(ce *compileEvaluator, fExpr *ir.FuncValExpr, args []ir.Exp
 		param, isVarArg := ftype.ArgIndexToParamField(i)
 		target := param.Type()
 		if isVarArg {
-			target = ftype.VarArgs.Slice.DType.Val()
+			target = ftype.VarArgs.Typ.DType.Val()
 		}
-		assignable, cpErr, err := ir.AssignableTo(ce, arg.Type(), target)
+		argType := arg.Type()
+		if unpack, isUnpack := arg.(*ir.UnpackExpr); isUnpack {
+			argType = unpack.ElementType
+		}
+		assignable, cpErr, err := ir.AssignableTo(ce, argType, target)
 		if err != nil {
 			return ce.Err().AppendAt(arg.Node(), err)
 		}
@@ -603,7 +607,7 @@ func checkArgsForCall(ce *compileEvaluator, fExpr *ir.FuncValExpr, args []ir.Exp
 		}
 		if !assignable {
 			from := ce.File()
-			ok = ce.Err().Appendf(arg.Node(), "cannot use type %s as %s in argument to %s", arg.Type().ReferString(from), param.Type().ReferString(from), fExpr.SourceString(from))
+			ok = ce.Err().Appendf(arg.Node(), "cannot use type %s as %s in argument to %s", argType.ReferString(from), target.ReferString(from), fExpr.SourceString(from))
 		}
 	}
 	return ok

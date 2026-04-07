@@ -16,11 +16,13 @@ package builder
 
 import (
 	"go/ast"
+	"reflect"
 
 	"github.com/gx-org/gx/build/ir"
+	"github.com/gx-org/gx/build/ir/irkind"
 )
 
-type varargs struct {
+type varargsType struct {
 	src *ast.Ellipsis
 
 	elt typeExprNode
@@ -33,7 +35,7 @@ func processVarArgsType(pscope typeProcScope, src *ast.Ellipsis) (typeExprNode, 
 	if grpScope != nil {
 		fnParamScope = grpScope.fieldListProcScope.typeProcScope.(*funcParamScope)
 	}
-	n := &varargs{
+	n := &varargsType{
 		src: src,
 		elt: elt,
 	}
@@ -48,15 +50,15 @@ func processVarArgsType(pscope typeProcScope, src *ast.Ellipsis) (typeExprNode, 
 	return n, ok
 }
 
-func (n *varargs) source() ast.Node {
+func (n *varargsType) source() ast.Node {
 	return n.src
 }
 
-func (n *varargs) buildTypeExpr(rscope resolveScope) (*ir.TypeValExpr, bool) {
+func (n *varargsType) buildTypeExpr(rscope resolveScope) (*ir.TypeValExpr, bool) {
 	elt, ok := n.elt.buildTypeExpr(rscope)
 	typ := &ir.VarArgsType{
 		Src: n.src,
-		Slice: &ir.SliceType{
+		Typ: &ir.SliceType{
 			BaseType: ir.BaseType[ast.Expr]{Src: n.src},
 			DType:    elt,
 			Rank:     1,
@@ -67,6 +69,45 @@ func (n *varargs) buildTypeExpr(rscope resolveScope) (*ir.TypeValExpr, bool) {
 	}, typ), ok
 }
 
-func (n *varargs) String() string {
+func (n *varargsType) String() string {
 	return "..." + n.elt.String()
+}
+
+type unpackExpr struct {
+	x exprNode
+}
+
+func processExprWithEllipsis(pscope procScope, expr ast.Expr) (exprNode, bool) {
+	x, ok := processExpr(pscope, expr)
+	return &unpackExpr{x: x}, ok
+}
+
+func (n *unpackExpr) source() ast.Node {
+	return n.x.source()
+}
+
+func (n *unpackExpr) buildExpr(rscope resolveScope) (ir.Expr, bool) {
+	var ok bool
+	ext := &ir.UnpackExpr{}
+	ext.X, ok = n.x.buildExpr(rscope)
+	if !ok {
+		return ext, false
+	}
+	xType := ext.X.Type()
+	if xType.Kind() != irkind.Slice {
+		return ext, rscope.Err().Appendf(n.source(), "cannot unpack type %s", xType.ReferString(rscope.fileScope().irFile()))
+	}
+	slType, ok := xType.(ir.SlicerType)
+	if !ok {
+		return ext, rscope.Err().AppendInternalf(n.source(), "cannot convert %T to %s", xType, reflect.TypeFor[ir.SlicerType]().String())
+	}
+	ext.ElementType, ok = slType.ElementType()
+	if !ok {
+		return ext, rscope.Err().AppendInternalf(n.source(), "cannot access element type of %s (implementation: %T)", slType.ReferString(rscope.fileScope().irFile()), slType)
+	}
+	return ext, ok
+}
+
+func (n *unpackExpr) String() string {
+	return n.x.String() + "..."
 }

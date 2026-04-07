@@ -520,6 +520,8 @@ func evalExpr(fitp *FileScope, expr ir.Expr) (_ ir.Element, err error) {
 		return evalCallExpr(fitp, exprT)
 	case *ir.UnaryExpr:
 		return evalUnaryExpression(fitp, exprT)
+	case *ir.UnpackExpr:
+		return evalExpr(fitp, exprT.X)
 	case *ir.ParenExpr:
 		return evalExpr(fitp, exprT.X)
 	case *ir.BinaryExpr:
@@ -674,19 +676,34 @@ func evalCallExpr(fitp *FileScope, expr *ir.FuncCallExpr) (ir.Element, error) {
 	return ToSingleElement(fitp, expr, outs)
 }
 
+func evalArgExpr(fitp *FileScope, expr ir.Expr) ([]ir.Element, error) {
+	el, err := evalExpr(fitp, expr)
+	if err != nil {
+		return nil, err
+	}
+	if _, isUnpack := expr.(*ir.UnpackExpr); !isUnpack {
+		return []ir.Element{el}, err
+	}
+	sl, err := elements.SliceFromElement(el)
+	if err != nil {
+		return nil, err
+	}
+	return sl.Elements(), nil
+}
+
 func evalCall(fitp *FileScope, expr *ir.FuncCallExpr) ([]ir.Element, error) {
 	callee, err := evalCallee(fitp, expr.Callee)
 	if err != nil {
 		return nil, err
 	}
 	// Evaluate the arguments to pass to the function.
-	args := make([]ir.Element, len(expr.Args))
-	for i, arg := range expr.Args {
-		el, err := fitp.EvalExpr(arg)
+	var args []ir.Element
+	for _, arg := range expr.Args {
+		el, err := evalArgExpr(fitp, arg)
 		if err != nil {
 			return nil, err
 		}
-		args[i] = el
+		args = append(args, el...)
 	}
 	return callee.Call(fitp.env, expr, args)
 }

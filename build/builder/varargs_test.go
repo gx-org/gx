@@ -25,7 +25,7 @@ import (
 
 func TestVarArgs(t *testing.T) {
 	varargsType := &ir.VarArgsType{
-		Slice: &ir.SliceType{
+		Typ: &ir.SliceType{
 			BaseType: ir.BaseType[ast.Expr]{Src: &ast.Ident{}},
 			DType:    ir.TypeExpr(nil, ir.Int32Type()),
 			Rank:     1,
@@ -80,6 +80,30 @@ func g() int32 {
 func f(a ...intlen) [a]int32
 `,
 		},
+		testbuild.Decl{
+			Src: `
+func f(a ...intlen) [a]int32
+`,
+		},
+		testbuild.Decl{
+			Src: `
+func f(...int32) []int32
+
+func g() []int32 {
+	a := []int32{1, 2, 3}
+	return f(a...)
+}
+`,
+		},
+		testbuild.Decl{
+			Src: `
+func f(... int32) []int32
+
+func g(a ...int32) []int32 {
+	return f(a...)
+}
+`,
+		},
 	)
 }
 
@@ -93,6 +117,26 @@ func f(a,b ...int32) int32 // ERROR can only use ... with final parameter
 		testbuild.Decl{
 			Src: `
 func f(a ...int32, b ...int32) int32 // ERROR can only use ... with final parameter
+`,
+		},
+		testbuild.Decl{
+			Src: `
+func f(...int32) []int32
+
+func g() []int32 {
+	a := []int32{1, 2, 3}
+	return f(a) // ERROR cannot use type []int32 as int32 in argument to f
+}
+`,
+		},
+		testbuild.Decl{
+			Src: `
+func f(...int32) []int32
+
+func g() []int32 {
+	a := int32(1)
+	return f(a...) // ERROR cannot unpack type int32
+}
 `,
 		},
 	)

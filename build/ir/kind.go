@@ -108,7 +108,7 @@ func IsAxisLengthType(typ Type) bool {
 		varargType, _ := typ.(*VarArgsType)
 		var sliceType *SliceType
 		if varargType != nil {
-			sliceType = varargType.Slice
+			sliceType = varargType.Typ
 		} else {
 			sliceType, _ = Underlying(typ).(*SliceType)
 		}

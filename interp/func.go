@@ -287,7 +287,7 @@ func assignTypeParameters(ctx *context.Context, callee ir.Callee, callerFrame, t
 func assignArgumentValues(ftype *ir.FuncType, funcFrame *context.Frame, args []ir.Element) {
 	var varargs *elements.Slice
 	if ftype.VarArgs != nil {
-		varargs = elements.NewSlice(ftype.VarArgs.Slice.Type(), nil)
+		varargs = elements.NewSlice(ftype.VarArgs.Typ, nil)
 		params := ftype.Params.Fields()
 		funcFrame.Define(params[len(params)-1].Name, varargs)
 	}

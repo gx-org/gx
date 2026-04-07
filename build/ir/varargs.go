@@ -22,11 +22,11 @@ import (
 
 // VarArgsType represents a type defined by a varargs expression.
 type VarArgsType struct {
-	Src   *ast.Ellipsis
-	Slice *SliceType
+	Src *ast.Ellipsis
+	Typ *SliceType
 }
 
-var _ Type = (*VarArgsType)(nil)
+var _ SlicerType = (*VarArgsType)(nil)
 
 func (*VarArgsType) node()         {}
 func (*VarArgsType) storage()      {}
@@ -54,7 +54,7 @@ func (tp *VarArgsType) Value(x Expr) Expr {
 
 // Kind of the type.
 func (tp *VarArgsType) Kind() irkind.Kind {
-	return tp.Slice.Kind()
+	return tp.Typ.Kind()
 }
 
 // Type returns the type of the varargs type.
@@ -62,35 +62,40 @@ func (tp *VarArgsType) Type() Type {
 	return MetaType()
 }
 
+// ElementType returns the type of the variable argument.
+func (tp *VarArgsType) ElementType() (Type, bool) {
+	return tp.Typ.ElementType()
+}
+
 // Equal returns true if other is the same type.
 func (tp *VarArgsType) Equal(tpcmp TypeCmp, target Type) (bool, CompEvalError, error) {
-	return tp.Slice.Equal(tpcmp, target)
+	return tp.Typ.Equal(tpcmp, target)
 }
 
 // AssignableTo reports whether a value of the type can be assigned to another.
 func (tp *VarArgsType) AssignableTo(tpcmp TypeCmp, target Type) (bool, CompEvalError, error) {
-	return tp.Slice.AssignableTo(tpcmp, target)
+	return tp.Typ.AssignableTo(tpcmp, target)
 }
 
 // ConvertibleTo reports whether a value of the type can be converted to another
 // (using static type casting).
 func (tp *VarArgsType) ConvertibleTo(tpcmp TypeCmp, target Type) (bool, CompEvalError, error) {
-	return tp.Slice.ConvertibleTo(tpcmp, target)
+	return tp.Typ.ConvertibleTo(tpcmp, target)
 }
 
 // Specialise a type to a given target.
 func (tp *VarArgsType) Specialise(spec Specialiser) (Type, CompEvalError, error) {
-	return tp.Slice.Specialise(spec)
+	return tp.Typ.Specialise(spec)
 }
 
 // UnifyWith recursively unifies a type parameters with types.
 func (tp *VarArgsType) UnifyWith(uni Unifier, typ Type) bool {
-	return tp.Slice.UnifyWith(uni, typ)
+	return tp.Typ.UnifyWith(uni, typ)
 }
 
 // DefineString returns a reference to the type given a file context.
 func (tp *VarArgsType) DefineString(from *File) string {
-	return "..." + tp.Slice.DefineString(from)
+	return "..." + tp.Typ.DefineString(from)
 }
 
 // ReferString returns the GX source to refer to the type.
@@ -124,5 +129,5 @@ func (expr *VarArgsExpr) Type() Type {
 
 // SourceString returns the GX source code of the expression.
 func (expr *VarArgsExpr) SourceString(from *File) string {
-	return "..." + expr.Elt.Slice.DType.SourceString(from)
+	return "..." + expr.Elt.Typ.DType.SourceString(from)
 }

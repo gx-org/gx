@@ -17,6 +17,7 @@ package builder
 import (
 	"fmt"
 	"go/ast"
+	"go/token"
 
 	"github.com/gx-org/gx/build/fmterr"
 	"github.com/gx-org/gx/build/ir"
@@ -54,7 +55,12 @@ func processCallExpr(pscope procScope, src *ast.CallExpr) (exprNode, bool) {
 	argsOk := true
 	for i, arg := range src.Args {
 		var argOk bool
-		n.args[i], argOk = processExpr(pscope, arg)
+		if i == len(src.Args)-1 && src.Ellipsis != token.NoPos {
+			// Process the last argument differently if we have an ellipsis in the function call.
+			n.args[i], argOk = processExprWithEllipsis(pscope, arg)
+		} else {
+			n.args[i], argOk = processExpr(pscope, arg)
+		}
 		argsOk = argsOk && argOk
 	}
 	return n, calleeOk && argsOk

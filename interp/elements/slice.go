@@ -170,3 +170,12 @@ func (n *Slice) ShortString() string {
 func (n *Slice) String() string {
 	return gxfmt.String(n.values)
 }
+
+// SliceFromElement returns the string value stored in a element.
+func SliceFromElement(el ir.Element) (*Slice, error) {
+	sl, ok := Underlying(el).(*Slice)
+	if !ok {
+		return nil, errors.Errorf("cannot convert element %T is not a slice element", el)
+	}
+	return sl, nil
+}
