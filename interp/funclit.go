@@ -44,7 +44,9 @@ func NewFuncLitScope(eval fun.Evaluator, ctx *context.Context, lit *ir.FuncLit) 
 func (litp *FuncLitScope) RunFuncLit(args []ir.Element) ([]ir.Element, error) {
 	funcFrame := litp.ctx.PushBlockFrame()
 	fType := litp.lit.FuncType()
-	assignArgumentValues(fType, funcFrame, args)
+	if err := assignArgumentValues(fType, funcFrame, args); err != nil {
+		return nil, err
+	}
 	for _, resultName := range fieldNames(fType.Results.List) {
 		funcFrame.Define(resultName, nil)
 	}

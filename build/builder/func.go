@@ -479,21 +479,30 @@ var (
 	}
 	zeroValue, _ = values.AtomNumberInt(&big.Int{}, zeroExpr.Type())
 	zeroLen, _   = coreops.NewAtom(zeroValue, zeroExpr, ir.IntLenType())
-	emptySlice   = elements.NewSlice(ir.IntLenSliceType(), nil)
+	emptySlice   *elements.Slice
 )
 
-func buildAtomicAxisValue(rscope resolveScope, arg ir.Expr, elts []ir.Element) (ax ir.Element, todo []ir.Element) {
-	if len(elts) == 0 {
-		return zeroLen, nil
+func init() {
+	var err error
+	emptySlice, err = elements.NewSlice(ir.IntLenSliceType(), nil)
+	if err != nil {
+		panic(err)
 	}
-	return elts[0], elts[1:]
 }
 
-func buildSliceAxisValue(rscope resolveScope, arg ir.Expr, elts []ir.Element) (ax ir.Element, todo []ir.Element) {
+func buildAtomicAxisValue(rscope resolveScope, arg ir.Expr, elts []ir.Element) (ax ir.Element, todo []ir.Element, err error) {
 	if len(elts) == 0 {
-		return emptySlice, nil
+		return zeroLen, nil, nil
 	}
-	return elements.NewSlice(arg.Type(), elts), nil
+	return elts[0], elts[1:], nil
+}
+
+func buildSliceAxisValue(rscope resolveScope, arg ir.Expr, elts []ir.Element) (ax ir.Element, todo []ir.Element, err error) {
+	if len(elts) == 0 {
+		return emptySlice, nil, nil
+	}
+	ax, err = elements.NewSlice(ir.IntLenSliceType(), elts)
+	return ax, nil, err
 }
 
 type paramNameToElement struct {
@@ -542,14 +551,17 @@ func (pte *paramNameToElement) assignArgValueToName(param *ir.Field, arg ir.Expr
 		if _, isAxisStmt := ident.Stor.(*ir.AxisStmt); !isAxisStmt {
 			continue
 		}
-		var buildAxisValue func(resolveScope, ir.Expr, []ir.Element) (ir.Element, []ir.Element)
+		var buildAxisValue func(resolveScope, ir.Expr, []ir.Element) (ir.Element, []ir.Element, error)
 		if axExpr.Type().Kind() == irkind.IntLen {
 			buildAxisValue = buildAtomicAxisValue
 		} else {
 			buildAxisValue = buildSliceAxisValue
 		}
 		var axisEl ir.Element
-		axisEl, axisValues = buildAxisValue(pte.rscope, arg, axisValues)
+		axisEl, axisValues, err = buildAxisValue(pte.rscope, arg, axisValues)
+		if err != nil {
+			ok = pte.rscope.Err().AppendAt(axis.Node(), err)
+		}
 		pte.params.Define(ident.Src, axisEl)
 	}
 	return ok
@@ -569,7 +581,11 @@ func assignArgValueToParamName(rscope resolveScope, fExpr *ir.FuncValExpr, args 
 	ftype := fExpr.FuncType()
 	varArgs := ftype.VarArgs
 	if varArgs != nil {
-		pte.varArgsElt = elements.NewSlice(varArgs.Type(), nil)
+		var err error
+		pte.varArgsElt, err = elements.NewSlice(varArgs, nil)
+		if err != nil {
+			return pte.params, rscope.Err().AppendAt(fExpr.Node(), err)
+		}
 		pte.assignToName(pte.fields[len(pte.fields)-1], pte.varArgsElt)
 	}
 	for i, arg := range args {

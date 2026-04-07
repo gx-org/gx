@@ -20,6 +20,7 @@ import (
 	"github.com/pkg/errors"
 	"github.com/gx-org/gx/api/values"
 	gxfmt "github.com/gx-org/gx/base/fmt"
+	"github.com/gx-org/gx/build/fmterr"
 	"github.com/gx-org/gx/build/ir"
 	"github.com/gx-org/gx/build/ir/irkind"
 	"github.com/gx-org/gx/internal/interp/canonical"
@@ -62,11 +63,15 @@ var (
 )
 
 // NewSlice returns a slice from a slice of elements.
-func NewSlice(typ ir.Type, elements []ir.Element) *Slice {
+func NewSlice(typ ir.Type, elements []ir.Element) (*Slice, error) {
+	var err error
+	if typ.Kind() != irkind.Slice {
+		err = fmterr.Internal(errors.Errorf("cannot create a slice of type %s", typ.ReferString(nil)))
+	}
 	return &Slice{
 		typ:    typ,
 		values: elements,
-	}
+	}, err
 }
 
 // Flatten returns the elements of the slice.

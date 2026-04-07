@@ -143,9 +143,14 @@ func (uni *argUnifier) defineGroupAsAllSingleAxes(param *ir.AxisStmt, targets []
 		}
 		singles = append(singles, el)
 	}
-	return targets[len(singles):], uni.defineAxisElement(param, elements.NewSlice(
+	slice, err := elements.NewSlice(
 		ir.IntLenSliceType(), singles,
-	))
+	)
+	sliceOk := true
+	if err != nil {
+		sliceOk = uni.Err().AppendAt(param.Node(), err)
+	}
+	return targets[len(singles):], uni.defineAxisElement(param, slice) && sliceOk
 }
 
 func (uni *argUnifier) defineGroupAxis(param *ir.AxisStmt, targets []ir.AxisLengths) ([]ir.AxisLengths, bool) {

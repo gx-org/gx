@@ -162,8 +162,9 @@ func Define(ev ir.Evaluator, fr Frame, field *ir.Field, el ir.Element) error {
 			continue
 		}
 		if axisStmt.Type().Kind() == irkind.Slice {
-			fr.Define(axisStmt.Src, elements.NewSlice(ir.IntLenSliceType(), argElts[i:]))
-			return nil
+			slice, err := elements.NewSlice(ir.IntLenSliceType(), argElts[i:])
+			fr.Define(axisStmt.Src, slice)
+			return err
 		}
 		if i >= len(argElts) {
 			return fmt.Errorf("cannot define axis length %s (position: %d) in parameter %s (type: %s): not enough axes", axisStmt.Src.Name, i, field.Name.Name, field.Type().ReferString(ev.File()))

@@ -292,7 +292,7 @@ func (vis *inputVisitor) newSliceArgument(parent parentArgument, typ *ir.SliceTy
 		}
 
 	}
-	return elements.NewSlice(typ, args), nil
+	return elements.NewSlice(typ, args)
 }
 
 func (sel *indexSelectorArgument) Name() string {

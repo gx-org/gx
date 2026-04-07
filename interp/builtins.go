@@ -139,7 +139,8 @@ func appendImpl(env evaluator.Env, call elements.CallAt, fn fun.Func, irFunc *ir
 	}
 	els := append([]ir.Element{}, slice.Elements()...)
 	els = append(els, args[1:]...)
-	return []ir.Element{elements.NewSlice(slice.Type(), els)}, nil
+	sliceEl, err := elements.NewSlice(slice.Type(), els)
+	return []ir.Element{sliceEl}, err
 }
 
 func axlengthsImpl(env evaluator.Env, call elements.CallAt, fn fun.Func, irFunc *ir.FuncBuiltin, args []ir.Element) ([]ir.Element, error) {

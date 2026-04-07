@@ -166,7 +166,9 @@ func (f *funcDecl) Call(env *fun.CallEnv, call *ir.FuncCallExpr, args []ir.Eleme
 		return nil, err
 	}
 	assignAxisLengths(call.Callee, funcFrame)
-	assignArgumentValues(f.fnT.FType, funcFrame, args)
+	if err := assignArgumentValues(f.fnT.FType, funcFrame, args); err != nil {
+		return nil, err
+	}
 	ctx := newFileScope(env.Context(), env.FuncEval(), f.fnT.File())
 	// Evaluate the function within the frame.
 	return evalFuncBody(ctx, f.fnT.Body)
@@ -284,10 +286,14 @@ func assignTypeParameters(ctx *context.Context, callee ir.Callee, callerFrame, t
 	return nil
 }
 
-func assignArgumentValues(ftype *ir.FuncType, funcFrame *context.Frame, args []ir.Element) {
+func assignArgumentValues(ftype *ir.FuncType, funcFrame *context.Frame, args []ir.Element) error {
 	var varargs *elements.Slice
 	if ftype.VarArgs != nil {
-		varargs = elements.NewSlice(ftype.VarArgs.Typ, nil)
+		var err error
+		varargs, err = elements.NewSlice(ftype.VarArgs.Typ, nil)
+		if err != nil {
+			return err
+		}
 		params := ftype.Params.Fields()
 		funcFrame.Define(params[len(params)-1].Name, varargs)
 	}
@@ -304,6 +310,7 @@ func assignArgumentValues(ftype *ir.FuncType, funcFrame *context.Frame, args []i
 		}
 		funcFrame.Define(field.Name, arg)
 	}
+	return nil
 }
 
 // EvalFunc evaluates a function.

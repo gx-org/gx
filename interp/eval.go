@@ -484,7 +484,7 @@ func evalSliceLiteral(fitp *FileScope, expr *ir.SliceLitExpr) (ir.Element, error
 		}
 		els[i] = elt
 	}
-	return elements.NewSlice(expr.Type(), els), nil
+	return elements.NewSlice(expr.Type(), els)
 }
 
 // evalExpr evaluates an expression within the Context.

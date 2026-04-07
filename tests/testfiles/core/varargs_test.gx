@@ -1,0 +1,22 @@
+package core
+
+func identityWithVarArgs(a ...int32) []int32 {
+	return a
+}
+
+func TestVarArgs() []int32 {
+	return identityWithVarArgs(1, 2, 3)
+	// Want:
+	// 0: int32(1)
+	// 1: int32(2)
+	// 2: int32(3)
+}
+
+func TestVarArgsUnpack() []int32 {
+	a := []int32{1, 2, 3}
+	return identityWithVarArgs(a...)
+	// Want:
+	// 0: int32(1)
+	// 1: int32(2)
+	// 2: int32(3)
+}

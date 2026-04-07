@@ -292,5 +292,5 @@ func (ev *Evaluator) axesFromShape(file *ir.File, shape *shape.Shape) (*elements
 			return nil, err
 		}
 	}
-	return elements.NewSlice(ir.IntLenSliceType(), axes), nil
+	return elements.NewSlice(ir.IntLenSliceType(), axes)
 }
