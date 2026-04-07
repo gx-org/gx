@@ -82,7 +82,6 @@ func f() string {
 
 func TestCompevalError(t *testing.T) {
 	testbuild.Run(t,
-		testbuild.LoadStdlib("fmt"),
 		testbuild.Decl{
 			Src: `
 import "fmt"
@@ -102,7 +101,6 @@ func f() [returnTwo()]int32 {
 
 func TestCompevalErrorWithVarargs(t *testing.T) {
 	testbuild.Run(t,
-		testbuild.LoadStdlib("fmt"),
 		testbuild.Decl{
 			Src: `
 import "fmt"

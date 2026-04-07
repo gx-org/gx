@@ -279,12 +279,31 @@ type localImporter struct {
 	pkgs map[string]importers.Package
 }
 
+var stdlibPaths = map[string]bool{
+	"fmt":    true,
+	"errors": true,
+}
+
+// Run the source code to declare it as an importable package.
+func (imp *localImporter) loadStdlib(bld importers.Builder, pkgpath string) (importers.Package, error) {
+	stdlib := stdlib.Importer(nil)
+	pkg, err := stdlib.Import(builder.NewWithLoader(imp), pkgpath)
+	if err != nil {
+		return importers.NewProxyPackage(pkgpath), err
+	}
+	imp.pkgs[pkg.IR().Path()] = pkg
+	return pkg, nil
+}
+
 func (imp *localImporter) Load(bld importers.Builder, pkgpath string) (importers.Package, error) {
 	pkg, ok := imp.pkgs[pkgpath]
-	if !ok {
-		return importers.NewProxyPackage(pkgpath), errors.Errorf("package %s has not been built", pkgpath)
+	if ok {
+		return pkg, nil
 	}
-	return pkg, nil
+	if stdlibPaths[pkgpath] {
+		return imp.loadStdlib(bld, pkgpath)
+	}
+	return importers.NewProxyPackage(pkgpath), errors.Errorf("package %s has not been built", pkgpath)
 }
 
 func (imp *localImporter) importSpecs() []*ast.ImportSpec {
@@ -388,32 +407,3 @@ func (b *Builder) Continue(t *testing.T, tests ...Test) {
 		})
 	}
 }
-
-type loadStdlib struct {
-	path string
-}
-
-var _ NoSubTest = loadStdlib{}
-
-// LoadStdlib loads a standard library package.
-func LoadStdlib(path string) Test {
-	return loadStdlib{path: path}
-}
-
-// Source code of the package.
-func (tt loadStdlib) Source() string {
-	return tt.path
-}
-
-// Run the source code to declare it as an importable package.
-func (tt loadStdlib) Run(b *Builder) error {
-	stdlib := stdlib.Importer(nil)
-	pkg, err := stdlib.Import(builder.NewWithLoader(&b.imp), tt.path)
-	if err != nil {
-		return err
-	}
-	b.imp.pkgs[pkg.IR().Path()] = pkg
-	return nil
-}
-
-func (loadStdlib) NoSubTest() {}
