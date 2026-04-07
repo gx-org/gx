@@ -46,6 +46,11 @@ type (
 	WithAxes interface {
 		Axes(ev ir.Evaluator) (*Slice, error)
 	}
+
+	// WithElement is an element able to returns the elements it contains.
+	WithElement interface {
+		Elements() []ir.Element
+	}
 )
 
 // Slice element storing a slice of elements.
@@ -60,6 +65,7 @@ var (
 	_ ir.Element          = (*Slice)(nil)
 	_ ir.Canonical        = (*Slice)(nil)
 	_ canonical.Canonical = (*Slice)(nil)
+	_ WithElement         = (*Slice)(nil)
 )
 
 // NewSlice returns a slice from a slice of elements.
@@ -177,10 +183,11 @@ func (n *Slice) String() string {
 }
 
 // SliceFromElement returns the string value stored in a element.
-func SliceFromElement(el ir.Element) (*Slice, error) {
-	sl, ok := Underlying(el).(*Slice)
+func SliceFromElement(el ir.Element) (WithElement, error) {
+	under := Underlying(el)
+	sl, ok := under.(WithElement)
 	if !ok {
-		return nil, errors.Errorf("cannot convert element %T is not a slice element", el)
+		return nil, errors.Errorf("cannot convert element %T (underlying: %T) to a slice element", el, under)
 	}
 	return sl, nil
 }

@@ -97,10 +97,19 @@ func g() []int32 {
 		},
 		testbuild.Decl{
 			Src: `
-func f(... int32) []int32
+func f(...int32) []int32
 
 func g(a ...int32) []int32 {
 	return f(a...)
+}
+`,
+		},
+		testbuild.Decl{
+			Src: `
+func f(...int32) []int32
+
+func g(a ...int32) []int32 {
+	return f(f(a...)...)
 }
 `,
 		},

@@ -32,12 +32,13 @@ type variable struct {
 }
 
 var (
-	_ coreops.Element   = (*variable)(nil)
-	_ ir.StorageElement = (*variable)(nil)
-	_ elements.WithAxes = (*variable)(nil)
-	_ ir.Canonical      = (*variable)(nil)
-	_ elements.Slicer   = (*variable)(nil)
-	_ ir.WithStore      = (*variable)(nil)
+	_ coreops.Element      = (*variable)(nil)
+	_ ir.StorageElement    = (*variable)(nil)
+	_ elements.WithAxes    = (*variable)(nil)
+	_ ir.Canonical         = (*variable)(nil)
+	_ elements.Slicer      = (*variable)(nil)
+	_ ir.WithStore         = (*variable)(nil)
+	_ elements.WithElement = (*variable)(nil)
 )
 
 // NewVariable returns a new variable element given a GX variable name.
@@ -112,6 +113,10 @@ func (a *variable) Expr(ir.Evaluator, ast.Expr) (ir.Expr, ir.CompEvalError, erro
 		},
 		Stor: a.src.Node(),
 	}, nil, nil
+}
+
+func (a *variable) Elements() []ir.Element {
+	return nil
 }
 
 func (a *variable) CanonicalExpr() canonical.Canonical {
