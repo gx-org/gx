@@ -59,6 +59,7 @@ var LanguageCore = appendAll(AlgebraicCore, []string{
 	"testfiles/ifstmts",
 	"testfiles/imports",
 	"testfiles/arrayslices",
+	"testfiles/slices",
 })
 
 // Language is a set of paths testing the GX language.

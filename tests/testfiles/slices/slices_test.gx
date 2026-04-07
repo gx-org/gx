@@ -1,0 +1,15 @@
+package slices
+
+func TestSliceInt32() []int32 {
+	return []int32{1, 2}
+	// Want:
+	// 0: int32(1)
+	// 1: int32(2)
+}
+
+func TestSliceString() []string {
+	return []string{"Hello", "world"}
+	// Want:
+	// 0: Hello
+	// 1: world
+}
