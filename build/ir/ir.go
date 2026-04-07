@@ -441,6 +441,14 @@ func (s *NamedType) Equal(tpcmp TypeCmp, other Type) (bool, CompEvalError, error
 
 // AssignableTo reports if the type can be assigned to other.
 func (s *NamedType) AssignableTo(tpcmp TypeCmp, target Type) (bool, CompEvalError, error) {
+	if s.Same(target) {
+		return true, nil, nil
+	}
+	if target.Kind() == irkind.Interface {
+		if target, ok := target.(assignsFrom); ok {
+			return target.assignableFrom(tpcmp, s)
+		}
+	}
 	return s.Equal(tpcmp, target)
 }
 

@@ -16,8 +16,10 @@ package interp
 
 import (
 	"fmt"
+	"go/ast"
 	"strings"
 
+	"github.com/pkg/errors"
 	"github.com/gx-org/gx/build/ir"
 	"github.com/gx-org/gx/internal/interp/flatten"
 	"github.com/gx-org/gx/interp/elements"
@@ -34,6 +36,7 @@ var (
 	_ elements.Slicer = (*Tuple)(nil)
 	_ ir.Element      = (*Tuple)(nil)
 	_ ir.TupleElement = (*Tuple)(nil)
+	_ ir.Canonical    = (*Tuple)(nil)
 )
 
 // NewTuple returns a tuple to store the result of a function returning more than one value.
@@ -51,6 +54,24 @@ func (n *Tuple) Flatten() ([]ir.Element, error) {
 // Elements returns the elements stored in the tuple.
 func (n *Tuple) Elements() []ir.Element {
 	return n.elements
+}
+
+// Expr converts a tuple of the form (Expr, error) to an expression.
+func (n *Tuple) Expr(ev ir.Evaluator, src ast.Expr) (_ ir.Expr, cpErr ir.CompEvalError, err error) {
+	defer func() {
+		if err != nil {
+			err = fmt.Errorf("cannot convert tuple %s to an IR expression: %w", n.Type().ReferString(nil), err)
+		}
+	}()
+	if len(n.elements) != 2 {
+		return nil, nil, errors.Errorf("expect 2 elements but got %d", len(n.elements))
+	}
+	expr, cpErr, err := ir.ToExpr(ev, src, n.elements[0])
+	if cpErr != nil || err != nil {
+		return expr, cpErr, err
+	}
+	cpErr, err = ev.ToCompEvalError(src, n.elements[1])
+	return expr, cpErr, err
 }
 
 // TupleElements returns the elements stored in the tuple.

@@ -42,6 +42,9 @@ func buildTypes(b *binder) ([]namedType, error) {
 		if ok {
 			continue
 		}
+		if bindings.CanBeOnDevice(gxType) != nil {
+			continue
+		}
 		typ, err := b.buildType(i, gxType)
 		if err != nil {
 			return nil, err

@@ -280,8 +280,9 @@ type localImporter struct {
 }
 
 var stdlibPaths = map[string]bool{
-	"fmt":    true,
-	"errors": true,
+	"fmt":      true,
+	"errors":   true,
+	"cperrors": true,
 }
 
 // Run the source code to declare it as an importable package.

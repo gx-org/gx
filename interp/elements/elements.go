@@ -244,15 +244,6 @@ func (p PackageVarSetElement) String() string {
 	return fmt.Sprintf("%s.%s=%T:%v", p.Pkg, p.Var, p.Value, p.Value)
 }
 
-// StringFromElement returns the string value stored in a element.
-func StringFromElement(el ir.Element) (string, error) {
-	sEl, ok := Underlying(el).(*String)
-	if !ok {
-		return "", errors.Errorf("cannot convert element %T is not a string literal", el)
-	}
-	return sEl.StringValue(), nil
-}
-
 // SliceVals slices a slice of elements.
 func SliceVals(expr ir.Expr, index evaluator.NumericalElement, vals []ir.Element) (ir.Element, error) {
 	i, err := ConstantIntFromElement(index)

@@ -81,6 +81,9 @@ func CanBeOnDevice(tp ir.Type) error {
 	if _, ok := tp.(ir.ArrayType); ok {
 		return nil
 	}
+	if tp == ir.ErrorType() {
+		return fmt.Errorf("cannot store %s on device", tp.Kind().String())
+	}
 	switch typT := tp.(type) {
 	case *ir.NamedType:
 		return CanBeOnDevice(typT.Underlying.Val())

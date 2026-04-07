@@ -56,6 +56,29 @@ func f() error {
 	)
 }
 
+func TestCPErrors(t *testing.T) {
+	testbuild.Run(t,
+		testbuild.Decl{
+			Src: `
+import "cperrors"
+
+//gx:compeval
+func argError() (intlen, error) {
+	return 2, cperrors.Argf(1, "some error about argument 1")
+}
+
+func f(a, b [2]float32) [argError()]float32
+
+func g() [2]float32 {
+	a := [2]float32{1, 2}
+	return f(a, a) // ERROR some error about argument 1
+}
+
+`,
+		},
+	)
+}
+
 func TestErrors(t *testing.T) {
 	testbuild.Run(t,
 		testbuild.Decl{

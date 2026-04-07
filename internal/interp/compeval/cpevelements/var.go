@@ -17,6 +17,7 @@ package cpevelements
 import (
 	"go/ast"
 
+	"github.com/pkg/errors"
 	"github.com/gx-org/backend/shape"
 	"github.com/gx-org/gx/build/ir"
 	"github.com/gx-org/gx/internal/interp/canonical"
@@ -37,6 +38,7 @@ var (
 	_ elements.WithAxes    = (*variable)(nil)
 	_ ir.Canonical         = (*variable)(nil)
 	_ elements.Slicer      = (*variable)(nil)
+	_ elements.Selector    = (*variable)(nil)
 	_ ir.WithStore         = (*variable)(nil)
 	_ elements.WithElement = (*variable)(nil)
 )
@@ -47,7 +49,8 @@ func NewVariable(src elements.StorageAt) ir.Element {
 }
 
 func newVariable(src elements.StorageAt) *variable {
-	return &variable{src: src, name: src.Node().NameDef().Name}
+	name := src.Node().NameDef().Name
+	return &variable{src: src, name: name}
 }
 
 // UnaryOp applies a unary operator on x.
@@ -73,6 +76,18 @@ func (a *variable) Reshape(env evaluator.Env, expr ir.Expr, axisLengths []evalua
 // Shape of the value represented by the element.
 func (a *variable) Shape() *shape.Shape {
 	return &shape.Shape{}
+}
+
+// Select a member.
+func (a *variable) Select(expr *ir.SelectorExpr) (ir.Element, error) {
+	method, field := expr.Select(a.Type())
+	if method == nil && field == nil {
+		return nil, errors.Errorf("%s is an invalid member", expr.SourceString(nil))
+	}
+	if field != nil {
+		return NewRuntimeValue(a.src.File(), field.Storage())
+	}
+	return NewRuntimeValue(a.src.File(), method)
 }
 
 // Store returns the storage represented by this variable.

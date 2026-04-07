@@ -270,3 +270,17 @@ func h() [2][3]float64 {
 		},
 	)
 }
+
+func TestCastError(t *testing.T) {
+	testbuild.Run(t,
+		testbuild.Decl{
+			Src: `
+type S struct {}
+
+func f() S {
+	return S(1, 2, 3) // ERROR too many arguments in conversion to S
+}
+`,
+		},
+	)
+}

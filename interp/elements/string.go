@@ -17,6 +17,7 @@ package elements
 import (
 	"strconv"
 
+	"github.com/pkg/errors"
 	"github.com/gx-org/gx/api/values"
 	"github.com/gx-org/gx/build/ir"
 	"github.com/gx-org/gx/internal/interp/flatten"
@@ -67,4 +68,13 @@ func (n *String) Copy() Copier {
 // Type of the element.
 func (n *String) Type() ir.Type {
 	return n.val.Type()
+}
+
+// StringFromElement returns the string value stored in a element.
+func StringFromElement(el ir.Element) (string, error) {
+	sEl, ok := Underlying(el).(*String)
+	if !ok {
+		return "", errors.Errorf("cannot convert element %T is not a string literal", el)
+	}
+	return sEl.StringValue(), nil
 }

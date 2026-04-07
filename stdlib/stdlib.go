@@ -26,6 +26,7 @@ import (
 	"github.com/gx-org/gx/build/importers"
 	"github.com/gx-org/gx/stdlib/builtin"
 	"github.com/gx-org/gx/stdlib/control"
+	"github.com/gx-org/gx/stdlib/cperrors"
 	"github.com/gx-org/gx/stdlib/dtype"
 	gxerrors "github.com/gx-org/gx/stdlib/errors"
 	"github.com/gx-org/gx/stdlib/fmt"
@@ -37,7 +38,7 @@ import (
 	"github.com/gx-org/gx/stdlib/shape"
 )
 
-//go:embed dtype/*.gx num/*.gx math/grad/*.gx math/*.gx shape/*.gx rand/*.gx fmt/*.gx errors/*.gx
+//go:embed dtype/*.gx num/*.gx math/grad/*.gx math/*.gx shape/*.gx rand/*.gx fmt/*.gx errors/*.gx cperrors/*.gx
 var staticFS embed.FS
 
 // Stdlib builds the standard library given import paths.
@@ -59,6 +60,7 @@ var packages = []builtin.PackageBuilder{
 	rand.Package,
 	shape.Package,
 	fmt.Package,
+	cperrors.Package,
 }
 
 // Importer returns the standard library importer.

@@ -32,13 +32,13 @@ var Package = builtin.PackageBuilder{
 	FullPath: "fmt",
 	Builders: []builtin.Builder{
 		builtin.ParseSource(),
-		builtin.ImplementBuiltin("Errorf", errorF),
+		builtin.ImplementBuiltin("sPrintf", sPrintf),
 	},
 }
 
-func errorF(ctx evaluator.Env, call elements.CallAt, fn fun.Func, irFunc *ir.FuncBuiltin, args []ir.Element) ([]ir.Element, error) {
+func sPrintf(ctx evaluator.Env, call elements.CallAt, fn fun.Func, irFunc *ir.FuncBuiltin, args []ir.Element) ([]ir.Element, error) {
 	if len(args) < 1 {
-		return nil, errors.Errorf("no enough arguments in call to fmt.errorF")
+		return nil, errors.Errorf("unexpected number of arguments to sPrintf: got %d but want (string, varargs)", len(args))
 	}
 	fString, err := elements.StringFromElement(args[0])
 	if err != nil {
@@ -48,11 +48,9 @@ func errorF(ctx evaluator.Env, call elements.CallAt, fn fun.Func, irFunc *ir.Fun
 	if err != nil {
 		return nil, err
 	}
-	s, err := elements.NewString(fmt.Sprintf(fString, goArgs...), ir.StringType())
+	res, err := elements.NewString(fmt.Sprintf(fString, goArgs...), ir.StringType())
 	if err != nil {
 		return nil, err
 	}
-	newFunc := ctx.Evaluator().(fun.Evaluator).NewFunc
-	res := fun.NewNamedType(newFunc, ir.ErrorType(), s)
 	return []ir.Element{res}, nil
 }

@@ -24,40 +24,78 @@ type errorType struct {
 	iface Interface
 }
 
+var errorIdent = &ast.Ident{Name: "Error"}
+
 var errorSrc = &ast.Field{
-	Names: []*ast.Ident{
-		&ast.Ident{Name: "Error"},
+	Names: []*ast.Ident{errorIdent},
+	Type:  &ast.FuncType{},
+}
+
+var errorFType = &FuncType{
+	BaseType: BaseType[*ast.FuncType]{
+		Src: errorSrc.Type.(*ast.FuncType),
 	},
-	Type: &ast.FuncType{},
+	Params: &FieldList{},
+	Results: &FieldList{
+		List: []*FieldGroup{
+			&FieldGroup{Type: TypeExpr(nil, StringType())},
+		},
+	},
 }
 
 var errorTyp = &errorType{
 	iface: Interface{
 		methods: []*IMethod{
-			// Define method: error() string
+			// Define method: Error() string
 			&IMethod{
-				Src: errorSrc,
-				FType: &FuncType{
-					BaseType: BaseType[*ast.FuncType]{
-						Src: errorSrc.Type.(*ast.FuncType),
-					},
-					Params: &FieldList{},
-					Results: &FieldList{
-						List: []*FieldGroup{
-							&FieldGroup{Type: TypeExpr(nil, StringType())},
-						},
-					},
-				},
+				Src:   errorSrc,
+				FType: errorFType,
 			},
 		},
 	},
 }
-var errorIdent = &ast.Ident{Name: "error"}
 
 var (
-	_ Type     = errorTyp
-	_ assigner = errorTyp
+	_ Type        = errorTyp
+	_ assigner    = errorTyp
+	_ TypeMethods = errorTyp
 )
+
+type errorCallee struct {
+	src   ast.Expr
+	ftype *FuncType
+}
+
+func (*errorCallee) node() {}
+
+func (ec *errorCallee) Node() ast.Node {
+	return ec.src
+}
+
+func (*errorCallee) Func() Func {
+	return nil
+}
+
+func (ec *errorCallee) FuncType() *FuncType {
+	return ec.ftype
+}
+
+func (*errorCallee) Type() Type {
+	return errorFType
+}
+
+func (*errorCallee) Expr() ast.Expr {
+	return nil
+}
+
+func (*errorCallee) SourceString(from *File) string {
+	return "<cperror>"
+}
+
+// ErrorCallee returns a proxy callee to call the Error method.
+func ErrorCallee(src ast.Expr, ftype *FuncType) Callee {
+	return &errorCallee{src: src, ftype: ftype}
+}
 
 // ErrorType returns the type for the keyword error.
 func ErrorType() TypeMethods {
@@ -96,8 +134,8 @@ func (s *errorType) DefineString(from *File) string {
 	return "error"
 }
 
-func (*errorType) Methods() []PkgFunc {
-	return nil
+func (s *errorType) Methods() []PkgFunc {
+	return s.iface.Methods()
 }
 
 // NameDef of the base type always returns a nil name definition.

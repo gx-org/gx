@@ -12,15 +12,17 @@
 // See the License for the specific language governing permissions and
 // limitations under the License.
 
-package fmt
+// Package cperrors provides string formatting functions.
+package cperrors
 
-import "errors"
+import (
+	"github.com/gx-org/gx/stdlib/builtin"
+)
 
-// gx:compeval
-func sPrintf(format string, a ...any) string
-
-// Errorf formats a string and returns it as an error.
-// gx:compeval
-func Errorf(format string, a ...any) error {
-	return errors.New(sPrintf(format, a...))
+// Package description of the GX cperrors package.
+var Package = builtin.PackageBuilder{
+	FullPath: "cperrors",
+	Builders: []builtin.Builder{
+		builtin.ParseSource(),
+	},
 }

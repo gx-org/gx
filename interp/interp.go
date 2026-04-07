@@ -22,9 +22,10 @@
 package interp
 
 import (
-	"errors"
+	"fmt"
 	"go/ast"
 
+	"github.com/pkg/errors"
 	"github.com/gx-org/gx/api/options"
 	"github.com/gx-org/gx/api/values"
 	"github.com/gx-org/gx/build/fmterr"
@@ -88,6 +89,14 @@ func (itp *Interpreter) ForFile(file *ir.File) (*FileScope, error) {
 	return newFileScope(ctx, itp.eval, file), err
 }
 
+var (
+	errorIdent  = &ast.Ident{Name: "Error"}
+	selectError = &ir.SelectorExpr{
+		Src:  &ast.SelectorExpr{Sel: errorIdent},
+		Stor: &ir.LocalVarStorage{Src: errorIdent},
+	}
+)
+
 // ToCompEvalError converts an element to an error.
 // If the conversion goes wrong, then the first error (corresponding to the element) is nil,
 // and the second error indicates the conversion error.
@@ -100,11 +109,43 @@ func (fitp *FileScope) ToCompEvalError(src ast.Expr, el ir.Element) (ir.CompEval
 	if elements.IsNil(el) {
 		return nil, nil
 	}
-	errS, err := elements.StringFromElement(el)
+	isErr, cpErr, err := el.Type().AssignableTo(fitp, ir.ErrorType())
+	if !isErr {
+		return nil, errors.Errorf("cannot convert %T to error", el.Type().ReferString(fitp.File()))
+	}
+	if unErr := ir.UnifyErr(cpErr, err); unErr != nil {
+		return nil, unErr
+	}
+	methods, isSelector := el.(*fun.NamedType)
+	if !isSelector {
+		return nil, errors.Errorf("cannot convert %T to a method selector", el)
+	}
+	errorMethod, err := methods.Select(selectError)
 	if err != nil {
 		return nil, err
 	}
-	return ir.CompEvalError(errors.New(errS)), nil
+	errorFun, isFun := errorMethod.(fun.Func)
+	if !isFun {
+		return nil, errors.Errorf("%T not a function", errorMethod)
+	}
+	recv := fun.NewReceiver(methods, errorFun.Func())
+	errorFun = NewRunFunc(errorFun.Func(), recv)
+	errorExpr := &ir.FuncCallExpr{
+		Callee: ir.ErrorCallee(src, errorFun.Func().FuncType()),
+	}
+	outs, err := errorFun.Call(fitp.env, errorExpr, nil)
+	if err != nil {
+		return nil, fmt.Errorf("cannot call Error function: %w", err)
+	}
+	errElement, err := ToSingleElement(fitp, errorExpr, outs)
+	if err != nil {
+		return nil, err
+	}
+	str, err := elements.StringFromElement(errElement)
+	if err != nil {
+		return nil, err
+	}
+	return ir.CompEvalError(errors.New(str)), nil
 }
 
 // EvalExpr evaluates an expression for a given context.
