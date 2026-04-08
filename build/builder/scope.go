@@ -19,13 +19,10 @@ import (
 	"go/ast"
 	"go/token"
 
-	gxfmt "github.com/gx-org/gx/base/fmt"
 	"github.com/gx-org/gx/build/fmterr"
 	"github.com/gx-org/gx/build/ir"
 	"github.com/gx-org/gx/internal/base/scope"
 	"github.com/gx-org/gx/internal/interp/compeval/cpevelements"
-	"github.com/gx-org/gx/interp/context"
-	"github.com/gx-org/gx/interp"
 )
 
 type pkgScope struct {
@@ -43,77 +40,6 @@ func (s *pkgScope) pkg() *basePackage {
 
 func (s *pkgScope) String() string {
 	return fmt.Sprintf("%s\nerrors:%s", s.bpkg.name.Name, s.errs.String())
-}
-
-type compileEvaluator struct {
-	scope resolveScope
-	irb   *irBuilder
-	fitp  *interp.FileScope
-}
-
-var _ ir.Fetcher = (*compileEvaluator)(nil)
-
-func newEvaluator(scope resolveScope, ctx *interp.FileScope) *compileEvaluator {
-	return &compileEvaluator{
-		scope: scope,
-		fitp:  ctx,
-	}
-}
-
-func (ev *compileEvaluator) update(rscope resolveScope, store ir.Storage, el ir.Element) (*compileEvaluator, bool) {
-	storeEl := cpevelements.NewStoredValue(
-		rscope.fileScope().irFile(),
-		store,
-		el,
-	)
-	sm := context.NewSubMap(nil)
-	sm.Define(store.NameDef(), storeEl)
-	subEval := ev.fitp.Sub(sm)
-	return newEvaluator(rscope, subEval), true
-}
-
-func (ev *compileEvaluator) sub(vals *context.SubMap) *compileEvaluator {
-	ctx := ev.fitp.Sub(vals)
-	return newEvaluator(ev.scope, ctx)
-}
-
-func (ev *compileEvaluator) Sub(vals map[string]ir.Element) (ir.Fetcher, bool) {
-	return ev.sub(context.NewSubMap(vals)), true
-}
-
-func (ev *compileEvaluator) File() *ir.File {
-	return ev.fitp.File()
-}
-
-func (ev *compileEvaluator) BuildExpr(src ast.Expr) (ir.Expr, bool) {
-	file := ev.scope.fileScope().bFile()
-	pscope := ev.scope.fileScope().newFilePScope(file)
-	expr, ok := processExpr(pscope, src)
-	if !ok {
-		return nil, false
-	}
-	return expr.buildExpr(ev.scope)
-}
-
-func (ev *compileEvaluator) ToCompEvalError(src ast.Expr, el ir.Element) (ir.CompEvalError, error) {
-	return ev.fitp.ToCompEvalError(src, el)
-}
-
-func (ev *compileEvaluator) EvalExpr(expr ir.Expr) (ir.Element, error) {
-	return ev.fitp.EvalExpr(expr)
-}
-
-func (ev *compileEvaluator) IsDefined(name string) bool {
-	_, found := ev.fitp.Context().Scope().Find(name)
-	return found
-}
-
-func (ev *compileEvaluator) Err() *fmterr.Appender {
-	return ev.scope.Err()
-}
-
-func (ev *compileEvaluator) String() string {
-	return gxfmt.String(ev.fitp)
 }
 
 func defineGlobal(s *scope.RWScope[processNode], tok token.Token, name *ast.Ident, node ir.Storage) {
@@ -142,7 +68,7 @@ func elementFromStorageWithValue(scope resolveScope, node ir.StorageWithValue) (
 	}
 	el, err := ev.fitp.EvalExpr(value)
 	if err != nil {
-		return nil, ev.scope.Err().AppendAt(node.Node(), err)
+		return nil, ev.Err().AppendAt(node.Node(), err)
 	}
 	return cpevelements.NewStoredValue(ev.File(), node, el), true
 }

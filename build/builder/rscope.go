@@ -255,13 +255,7 @@ func (s *fileResolveScope) procScope() procScope {
 
 func (s *fileResolveScope) newCompEval() (*compileEvaluator, bool) {
 	pkgitp := s.pkgResolveScope.packageInterpreter()
-	fitp, err := pkgitp.ForFile(s.irFile())
-	ok := true
-	if err != nil {
-		s.Err().Append(err)
-		ok = false
-	}
-	return newEvaluator(s, fitp), ok
+	return newEvaluator(pkgitp, s.irFile(), s.errs)
 }
 
 func (s *fileResolveScope) compEval() (*compileEvaluator, bool) {
@@ -405,7 +399,7 @@ func (s *blockResolveScope) nspace() *scope.RWScope[ir.Element] {
 
 func (s *blockResolveScope) update(store ir.Storage, el ir.Element) bool {
 	var ok bool
-	s.compeval, ok = s.compeval.update(s, store, el)
+	s.compeval, ok = s.compeval.update(store, el)
 	return ok
 }
 

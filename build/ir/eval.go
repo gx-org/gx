@@ -63,8 +63,6 @@ type (
 	Fetcher interface {
 		Evaluator
 		fmterr.ErrAppender
-		BuildExpr(ast.Expr) (Expr, bool)
-		IsDefined(string) bool
 		Sub(map[string]Element) (Fetcher, bool)
 	}
 )
