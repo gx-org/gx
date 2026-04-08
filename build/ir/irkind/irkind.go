@@ -121,6 +121,8 @@ func (k Kind) String() string {
 		return "builtin"
 	case MetaType:
 		return "metatype"
+	case Package:
+		return "package"
 	}
 	return "invalid"
 }

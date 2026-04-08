@@ -188,5 +188,14 @@ func f() [2]undefined {
 `,
 			Err: "package undefined has not been built",
 		},
+		testbuild.Decl{
+			Src: `
+import "math"
+
+func f() int32 {
+	return math.Undefined() // ERROR undefined: math.Undefined
+}
+`,
+		},
 	)
 }

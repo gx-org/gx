@@ -49,6 +49,9 @@ func (n *selectorExpr) returnUndefined(scope resolveScope, x ir.Expr) (ir.Storag
 	if isInvalidExpr(x) {
 		return invalidIdent.Store(), false
 	}
+	if x.Type().Kind() == irkind.Package {
+		return invalidIdent.Store(), scope.Err().Appendf(n.src.Sel, "undefined: %s.%s", x.SourceString(scope.fileScope().irFile()), n.src.Sel.Name)
+	}
 	return invalidIdent.Store(), scope.Err().Appendf(n.src.Sel, "%s.%s undefined (type %s has no field or method %s)", x.SourceString(scope.fileScope().irFile()), n.src.Sel.Name, x.Type().ReferString(scope.fileScope().irFile()), n.src.Sel.Name)
 }
 

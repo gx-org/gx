@@ -210,7 +210,7 @@ func testAddAssignOperandMismatch() int64 {
 }
 
 func testImportIsUndefined() float32 {
-	return num.DoesNotExist // ERROR num.DoesNotExist undefined (type invalid has no field or method DoesNotExist)
+	return num.DoesNotExist // ERROR undefined: num.DoesNotExist
 }
 
 type myfloat float64
