@@ -164,11 +164,13 @@ func (fitp *FileScope) Materialiser() materialise.Materialiser {
 }
 
 // Sub returns a new interpreter with additional values defined in the context.
-func (fitp *FileScope) Sub(vals *context.SubMap) *FileScope {
-	sub := *fitp
-	sub.ctx = fitp.ctx.Sub(vals)
-	sub.env = fun.NewCallEnv(fitp, fitp.env.FuncEval(), sub.ctx)
-	return &sub
+func (fitp *FileScope) Sub(file *ir.File, vals *context.SubMap) *FileScope {
+	if file != nil && file != fitp.File() {
+		fitp = newFileScope(fitp.ctx, fitp.env.FuncEval(), file)
+	}
+	sub := &FileScope{ctx: fitp.ctx.Sub(vals)}
+	sub.env = fun.NewCallEnv(sub, fitp.env.FuncEval(), sub.ctx)
+	return sub
 }
 
 // NewFunc creates function elements from function IRs.

@@ -213,10 +213,7 @@ func Infer(fetcher ir.Fetcher, fExpr *ir.FuncValExpr, args []ir.Expr) (*ir.FuncV
 	if !uni.specialiseRemainingNumbers() {
 		return fExpr, false
 	}
-	subFetcher, ok := fetcher.Sub(uni.axes)
-	if !ok {
-		return fExpr, false
-	}
+	subFetcher := fetcher.Sub(fExpr.Func().File(), uni.axes)
 	spec := &specialiser{
 		Fetcher: subFetcher,
 		defined: uni.defined,

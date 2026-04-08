@@ -485,7 +485,7 @@ func TestSubContext(t *testing.T) {
 	if err != nil {
 		t.Fatal(err)
 	}
-	sub := itp.Sub(context.NewSubMap(map[string]ir.Element{
+	sub := itp.Sub(itp.File(), context.NewSubMap(map[string]ir.Element{
 		"b": bValue,
 	}))
 	val, err := compeval.EvalExpr(sub, expr)

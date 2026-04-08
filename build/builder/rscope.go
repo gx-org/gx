@@ -398,9 +398,8 @@ func (s *blockResolveScope) nspace() *scope.RWScope[ir.Element] {
 }
 
 func (s *blockResolveScope) update(store ir.Storage, el ir.Element) bool {
-	var ok bool
-	s.compeval, ok = s.compeval.update(store, el)
-	return ok
+	s.compeval = s.compeval.update(store, el)
+	return true
 }
 
 func (s *blockResolveScope) compEval() (*compileEvaluator, bool) {

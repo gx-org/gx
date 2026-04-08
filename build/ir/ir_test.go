@@ -209,7 +209,7 @@ func (*fetcherTesting) IsDefined(string) bool {
 	return false
 }
 
-func (f *fetcherTesting) Sub(map[string]ir.Element) (ir.Fetcher, bool) {
+func (f *fetcherTesting) Sub(*ir.File, map[string]ir.Element) ir.Fetcher {
 	panic("not implemented")
 }
 
