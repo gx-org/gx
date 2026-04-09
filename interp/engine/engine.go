@@ -12,8 +12,8 @@
 // See the License for the specific language governing permissions and
 // limitations under the License.
 
-// Package evaluator defines interfaces for the interpreter to use to evaluate GX code.
-package evaluator
+// Package engine defines interfaces for the interpreter to use to evaluate GX code.
+package engine
 
 import (
 	"go/ast"
@@ -35,14 +35,14 @@ type (
 		ExprEval() ir.Evaluator
 
 		// Evaluator returns the evaluator used by the interpreter.
-		Evaluator() Evaluator
+		Evaluator() Engine
 
 		// ToConcrete returns the concrete type given the current context.
 		ToConcrete(ast.Expr, ir.Type) (ir.Type, ir.CompEvalError, error)
 	}
 
-	// Evaluator implements GX operators.
-	Evaluator interface {
+	// Engine provides the GX interpreter will all the required primitives.
+	Engine interface {
 		// Importer returns an importer to import package.
 		Importer() ir.Importer
 
@@ -115,7 +115,7 @@ func (evalEnv) ExprEval() ir.Evaluator {
 	return nil
 }
 
-func (evalEnv) Evaluator() Evaluator {
+func (evalEnv) Evaluator() Engine {
 	return nil
 }
 

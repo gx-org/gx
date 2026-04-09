@@ -27,7 +27,7 @@ import (
 	"github.com/gx-org/gx/internal/interp/canonical"
 	"github.com/gx-org/gx/internal/interp/flatten"
 	"github.com/gx-org/gx/interp/elements"
-	"github.com/gx-org/gx/interp/evaluator"
+	"github.com/gx-org/gx/interp/engine"
 	"github.com/gx-org/gx/interp/materialise"
 )
 
@@ -47,7 +47,7 @@ var (
 )
 
 // NewUnary applies an unary operator to an element.
-func NewUnary(env evaluator.Env, expr *ir.UnaryExpr, xEl Element) (_ evaluator.NumericalElement, err error) {
+func NewUnary(env engine.Env, expr *ir.UnaryExpr, xEl Element) (_ engine.NumericalElement, err error) {
 	defer func() {
 		if err != nil {
 			err = fmterr.Error(env.File().FileSet(), expr.Src, err)
@@ -101,22 +101,22 @@ func NewUnary(env evaluator.Env, expr *ir.UnaryExpr, xEl Element) (_ evaluator.N
 
 }
 
-func (a *unary) Reshape(env evaluator.Env, expr ir.Expr, axisLengths []evaluator.NumericalElement) (evaluator.NumericalElement, error) {
+func (a *unary) Reshape(env engine.Env, expr ir.Expr, axisLengths []engine.NumericalElement) (engine.NumericalElement, error) {
 	return NewReshape(env, expr, a, axisLengths)
 }
 
 // UnaryOp applies a unary operator on x.
-func (a *unary) UnaryOp(env evaluator.Env, expr *ir.UnaryExpr) (evaluator.NumericalElement, error) {
+func (a *unary) UnaryOp(env engine.Env, expr *ir.UnaryExpr) (engine.NumericalElement, error) {
 	return NewUnary(env, expr, a)
 }
 
 // BinaryOp applies a binary operator to x and y.
-func (a *unary) BinaryOp(env evaluator.Env, expr *ir.BinaryExpr, x, y evaluator.NumericalElement) (evaluator.NumericalElement, error) {
+func (a *unary) BinaryOp(env engine.Env, expr *ir.BinaryExpr, x, y engine.NumericalElement) (engine.NumericalElement, error) {
 	return NewBinary(env, expr, x, y)
 }
 
 // Cast an element into a given data type.
-func (a *unary) Cast(env evaluator.Env, expr ir.Expr, target ir.Type) (evaluator.NumericalElement, error) {
+func (a *unary) Cast(env engine.Env, expr ir.Expr, target ir.Type) (engine.NumericalElement, error) {
 	return NewCast(env, expr, a, target)
 }
 

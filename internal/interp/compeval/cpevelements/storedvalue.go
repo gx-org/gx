@@ -26,7 +26,7 @@ import (
 	"github.com/gx-org/gx/internal/interp/canonical"
 	"github.com/gx-org/gx/internal/interp/coreops"
 	"github.com/gx-org/gx/interp/elements"
-	"github.com/gx-org/gx/interp/evaluator"
+	"github.com/gx-org/gx/interp/engine"
 	"github.com/gx-org/gx/interp/fun"
 )
 
@@ -69,7 +69,7 @@ func (v *storedValue) canonical() (coreops.Element, error) {
 }
 
 // UnaryOp applies a unary operator on x.
-func (v *storedValue) UnaryOp(env evaluator.Env, expr *ir.UnaryExpr) (evaluator.NumericalElement, error) {
+func (v *storedValue) UnaryOp(env engine.Env, expr *ir.UnaryExpr) (engine.NumericalElement, error) {
 	can, err := v.canonical()
 	if err != nil {
 		return can, nil
@@ -78,12 +78,12 @@ func (v *storedValue) UnaryOp(env evaluator.Env, expr *ir.UnaryExpr) (evaluator.
 }
 
 // BinaryOp applies a binary operator to x and y.
-func (v *storedValue) BinaryOp(env evaluator.Env, expr *ir.BinaryExpr, x, y evaluator.NumericalElement) (evaluator.NumericalElement, error) {
+func (v *storedValue) BinaryOp(env engine.Env, expr *ir.BinaryExpr, x, y engine.NumericalElement) (engine.NumericalElement, error) {
 	return coreops.NewBinary(env, expr, x, y)
 }
 
 // Cast an element into a given data type.
-func (v *storedValue) Cast(env evaluator.Env, expr ir.Expr, target ir.Type) (evaluator.NumericalElement, error) {
+func (v *storedValue) Cast(env engine.Env, expr ir.Expr, target ir.Type) (engine.NumericalElement, error) {
 	can, err := v.canonical()
 	if err != nil {
 		return can, nil
@@ -92,7 +92,7 @@ func (v *storedValue) Cast(env evaluator.Env, expr ir.Expr, target ir.Type) (eva
 }
 
 // Reshape the variable into a different shape.
-func (v *storedValue) Reshape(env evaluator.Env, expr ir.Expr, axisLengths []evaluator.NumericalElement) (evaluator.NumericalElement, error) {
+func (v *storedValue) Reshape(env engine.Env, expr ir.Expr, axisLengths []engine.NumericalElement) (engine.NumericalElement, error) {
 	can, err := v.canonical()
 	if err != nil {
 		return can, nil
@@ -141,7 +141,7 @@ func (v *storedValue) Compare(x canonical.Comparable) (bool, error) {
 }
 
 // Slice computes a slice from the variable.
-func (v *storedValue) Slice(expr *ir.IndexExpr, index evaluator.NumericalElement) (ir.Element, error) {
+func (v *storedValue) Slice(expr *ir.IndexExpr, index engine.NumericalElement) (ir.Element, error) {
 	slicer, ok := v.val.(elements.Slicer)
 	if ok {
 		return slicer.Slice(expr, index)

@@ -32,7 +32,7 @@ import (
 	"github.com/gx-org/gx/build/ir"
 	"github.com/gx-org/gx/interp/context"
 	"github.com/gx-org/gx/interp/elements"
-	"github.com/gx-org/gx/interp/evaluator"
+	"github.com/gx-org/gx/interp/engine"
 	"github.com/gx-org/gx/interp/fun"
 	"github.com/gx-org/gx/interp/materialise"
 	"github.com/gx-org/gx/interp/procoptions"
@@ -156,7 +156,7 @@ func (fitp *FileScope) EvalExpr(expr ir.Expr) (ir.Element, error) {
 }
 
 // Evaluator returns the evaluator used by the interpreter
-func (fitp *FileScope) Evaluator() evaluator.Evaluator {
+func (fitp *FileScope) Evaluator() engine.Engine {
 	return fitp.env.FuncEval()
 }
 
@@ -197,7 +197,7 @@ func (fitp *FileScope) File() *ir.File {
 	return fitp.ctx.File()
 }
 
-func (fitp *FileScope) elementFromAtom(expr ir.Expr, val values.Array) (evaluator.NumericalElement, error) {
+func (fitp *FileScope) elementFromAtom(expr ir.Expr, val values.Array) (engine.NumericalElement, error) {
 	typ, cpErr, err := fitp.env.ToConcrete(expr.Expr(), expr.Type())
 	if unErr := ir.UnifyErr(cpErr, err); unErr != nil {
 		return nil, unErr

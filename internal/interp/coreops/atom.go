@@ -26,7 +26,7 @@ import (
 	"github.com/gx-org/gx/internal/interp/flatten"
 	"github.com/gx-org/gx/internal/togo"
 	"github.com/gx-org/gx/interp/elements"
-	"github.com/gx-org/gx/interp/evaluator"
+	"github.com/gx-org/gx/interp/engine"
 	"github.com/gx-org/gx/interp/materialise"
 )
 
@@ -64,7 +64,7 @@ func (a *atom) GoValue() (any, error) {
 }
 
 // UnaryOp applies a unary operator on x.
-func (a *atom) UnaryOp(env evaluator.Env, expr *ir.UnaryExpr) (evaluator.NumericalElement, error) {
+func (a *atom) UnaryOp(env engine.Env, expr *ir.UnaryExpr) (engine.NumericalElement, error) {
 	return NewUnary(env, expr, a)
 }
 
@@ -74,16 +74,16 @@ func (a *atom) Copy() elements.Copier {
 }
 
 // BinaryOp applies a binary operator to x and y.
-func (a *atom) BinaryOp(env evaluator.Env, expr *ir.BinaryExpr, x, y evaluator.NumericalElement) (evaluator.NumericalElement, error) {
+func (a *atom) BinaryOp(env engine.Env, expr *ir.BinaryExpr, x, y engine.NumericalElement) (engine.NumericalElement, error) {
 	return NewBinary(env, expr, x, y)
 }
 
 // Cast an element into a given data type.
-func (a *atom) Cast(env evaluator.Env, expr ir.Expr, dtype ir.Type) (evaluator.NumericalElement, error) {
+func (a *atom) Cast(env engine.Env, expr ir.Expr, dtype ir.Type) (engine.NumericalElement, error) {
 	return NewCast(env, expr, a, dtype)
 }
 
-func (a *atom) Reshape(env evaluator.Env, expr ir.Expr, axisLengths []evaluator.NumericalElement) (evaluator.NumericalElement, error) {
+func (a *atom) Reshape(env engine.Env, expr ir.Expr, axisLengths []engine.NumericalElement) (engine.NumericalElement, error) {
 	return NewReshape(env, expr, a, axisLengths)
 }
 

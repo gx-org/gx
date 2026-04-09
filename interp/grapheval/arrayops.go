@@ -21,7 +21,7 @@ import (
 	"github.com/gx-org/gx/api/values"
 	"github.com/gx-org/gx/build/ir"
 	"github.com/gx-org/gx/interp/elements"
-	"github.com/gx-org/gx/interp/evaluator"
+	"github.com/gx-org/gx/interp/engine"
 	"github.com/gx-org/gx/interp/materialise"
 )
 
@@ -31,7 +31,7 @@ type arrayOps struct {
 }
 
 var (
-	_ evaluator.ArrayOps       = (*arrayOps)(nil)
+	_ engine.ArrayOps          = (*arrayOps)(nil)
 	_ materialise.Materialiser = (*arrayOps)(nil)
 )
 
@@ -47,7 +47,7 @@ func computeEinsumAxisLengths(ref *ir.EinsumExpr, xShape, yShape *shape.Shape, n
 }
 
 // SubGraph returns a new graph builder.
-func (ao *arrayOps) SubGraph(name string, args []*shape.Shape) (evaluator.ArrayOps, error) {
+func (ao *arrayOps) SubGraph(name string, args []*shape.Shape) (engine.ArrayOps, error) {
 	sub, err := ao.graph.Core().Subgraph(name, args)
 	if err != nil {
 		return nil, err
@@ -56,7 +56,7 @@ func (ao *arrayOps) SubGraph(name string, args []*shape.Shape) (evaluator.ArrayO
 }
 
 // Einsum calls an einstein sum on x and y given the expression in ref.
-func (ao *arrayOps) Einsum(ctx ir.Evaluator, ref *ir.EinsumExpr, x, y evaluator.NumericalElement) (evaluator.NumericalElement, error) {
+func (ao *arrayOps) Einsum(ctx ir.Evaluator, ref *ir.EinsumExpr, x, y engine.NumericalElement) (engine.NumericalElement, error) {
 	xNode, xShape, err := materialise.Element(ao, x)
 	if err != nil {
 		return nil, err
@@ -82,7 +82,7 @@ func (ao *arrayOps) Einsum(ctx ir.Evaluator, ref *ir.EinsumExpr, x, y evaluator.
 		})
 }
 
-func elementsToInt(els []evaluator.NumericalElement) ([]int, error) {
+func elementsToInt(els []engine.NumericalElement) ([]int, error) {
 	axes := make([]int, len(els))
 	for i, el := range els {
 		var err error
@@ -95,7 +95,7 @@ func elementsToInt(els []evaluator.NumericalElement) ([]int, error) {
 }
 
 // BroadcastInDim the data of an array across dimensions.
-func (ao *arrayOps) BroadcastInDim(ctx ir.Evaluator, expr ir.Expr, x evaluator.NumericalElement, axisLengths []evaluator.NumericalElement) (evaluator.NumericalElement, error) {
+func (ao *arrayOps) BroadcastInDim(ctx ir.Evaluator, expr ir.Expr, x engine.NumericalElement, axisLengths []engine.NumericalElement) (engine.NumericalElement, error) {
 	axes, err := elementsToInt(axisLengths)
 	if err != nil {
 		return nil, err
@@ -129,7 +129,7 @@ func (ao *arrayOps) BroadcastInDim(ctx ir.Evaluator, expr ir.Expr, x evaluator.N
 }
 
 // Concat concatenates scalars elements into an array with one axis.
-func (ao *arrayOps) Concat(ctx ir.Evaluator, expr ir.Expr, xs []evaluator.NumericalElement) (evaluator.NumericalElement, error) {
+func (ao *arrayOps) Concat(ctx ir.Evaluator, expr ir.Expr, xs []engine.NumericalElement) (engine.NumericalElement, error) {
 	nodes := make([]ops.Node, len(xs))
 	var dtype dtype.DataType
 	for i, x := range xs {
@@ -220,11 +220,11 @@ func (ao *arrayOps) Tuple(typ *ir.TupleType, nodes []ops.Node) (materialise.Node
 }
 
 // ElementFromAtom returns an element from a GX value.
-func (ao *arrayOps) ElementFromAtom(file *ir.File, val values.Array, src ir.Expr, typ ir.Type) (evaluator.NumericalElement, error) {
+func (ao *arrayOps) ElementFromAtom(file *ir.File, val values.Array, src ir.Expr, typ ir.Type) (engine.NumericalElement, error) {
 	return ao.ev.hostEval.ArrayOps().ElementFromAtom(file, val, src, typ)
 }
 
 // ElementFromArray returns an element from an array GX value.
-func (ao *arrayOps) ElementFromArray(file *ir.File, val values.Array, typ ir.Type) (evaluator.NumericalElement, error) {
+func (ao *arrayOps) ElementFromArray(file *ir.File, val values.Array, typ ir.Type) (engine.NumericalElement, error) {
 	return newValueElement(ao.ev, val, typ)
 }

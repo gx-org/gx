@@ -19,7 +19,7 @@ import (
 	"github.com/gx-org/gx/build/ir"
 	"github.com/gx-org/gx/internal/interp/compeval/cpevelements"
 	"github.com/gx-org/gx/internal/tracer/processor"
-	"github.com/gx-org/gx/interp/evaluator"
+	"github.com/gx-org/gx/interp/engine"
 	"github.com/gx-org/gx/interp/fun"
 )
 
@@ -70,7 +70,7 @@ func (ev *CompEval) Importer() ir.Importer {
 }
 
 // ArrayOps returns the implementation used for array operations.
-func (ev *CompEval) ArrayOps() evaluator.ArrayOps {
+func (ev *CompEval) ArrayOps() engine.ArrayOps {
 	return hostArrayOps
 }
 

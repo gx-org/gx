@@ -25,14 +25,14 @@ import (
 	"github.com/gx-org/gx/build/ir"
 	"github.com/gx-org/gx/internal/interp/canonical"
 	"github.com/gx-org/gx/internal/interp/coreops"
-	"github.com/gx-org/gx/interp/evaluator"
+	"github.com/gx-org/gx/interp/engine"
 	"github.com/gx-org/gx/interp/numbers"
 	"github.com/gx-org/gx/tests/testing/prime"
 )
 
 func newFloat(f float64) *numbers.Float {
 	bf := big.NewFloat(f)
-	val, err := numbers.NewFloat(evaluator.ProxyEnv(), &ir.NumberFloat{
+	val, err := numbers.NewFloat(engine.ProxyEnv(), &ir.NumberFloat{
 		Src: &ast.BasicLit{Value: bf.String()},
 	}, bf)
 	if err != nil {

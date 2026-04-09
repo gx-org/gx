@@ -29,7 +29,7 @@ import (
 	"github.com/gx-org/gx/internal/base/scope"
 	"github.com/gx-org/gx/internal/interp/coreops"
 	"github.com/gx-org/gx/interp/elements"
-	"github.com/gx-org/gx/interp/evaluator"
+	"github.com/gx-org/gx/interp/engine"
 	"github.com/gx-org/gx/interp/fun"
 )
 
@@ -132,7 +132,7 @@ var (
 	}
 )
 
-func appendImpl(env evaluator.Env, call elements.CallAt, fn fun.Func, irFunc *ir.FuncBuiltin, args []ir.Element) ([]ir.Element, error) {
+func appendImpl(env engine.Env, call elements.CallAt, fn fun.Func, irFunc *ir.FuncBuiltin, args []ir.Element) ([]ir.Element, error) {
 	slice, ok := elements.Underlying(args[0]).(*elements.Slice)
 	if !ok {
 		return nil, errors.Errorf("cannot cast %T to %s", args[0], reflect.TypeFor[*elements.Slice]())
@@ -143,7 +143,7 @@ func appendImpl(env evaluator.Env, call elements.CallAt, fn fun.Func, irFunc *ir
 	return []ir.Element{sliceEl}, err
 }
 
-func axlengthsImpl(env evaluator.Env, call elements.CallAt, fn fun.Func, irFunc *ir.FuncBuiltin, args []ir.Element) ([]ir.Element, error) {
+func axlengthsImpl(env engine.Env, call elements.CallAt, fn fun.Func, irFunc *ir.FuncBuiltin, args []ir.Element) ([]ir.Element, error) {
 	file := env.ExprEval().File()
 	array, ok := args[0].(elements.WithAxes)
 	if !ok {
@@ -156,7 +156,7 @@ func axlengthsImpl(env evaluator.Env, call elements.CallAt, fn fun.Func, irFunc 
 	return []ir.Element{shape}, nil
 }
 
-func lenImpl(env evaluator.Env, call elements.CallAt, fn fun.Func, irFunc *ir.FuncBuiltin, args []ir.Element) ([]ir.Element, error) {
+func lenImpl(env engine.Env, call elements.CallAt, fn fun.Func, irFunc *ir.FuncBuiltin, args []ir.Element) ([]ir.Element, error) {
 	withLen, ok := args[0].(ir.WithLength)
 	if !ok {
 		return nil, errors.Errorf("cannot cast %T to %s", args[0], reflect.TypeFor[ir.WithLength]())
@@ -185,7 +185,7 @@ func lenImpl(env evaluator.Env, call elements.CallAt, fn fun.Func, irFunc *ir.Fu
 	return []ir.Element{atom}, err
 }
 
-func setImpl(env evaluator.Env, call elements.CallAt, fn fun.Func, irFunc *ir.FuncBuiltin, args []ir.Element) ([]ir.Element, error) {
+func setImpl(env engine.Env, call elements.CallAt, fn fun.Func, irFunc *ir.FuncBuiltin, args []ir.Element) ([]ir.Element, error) {
 	out, err := env.Evaluator().ArrayOps().Set(env.ExprEval(), call.Node(), args[0], args[1], args[2])
 	if err != nil {
 		return nil, err
@@ -193,6 +193,6 @@ func setImpl(env evaluator.Env, call elements.CallAt, fn fun.Func, irFunc *ir.Fu
 	return []ir.Element{out}, nil
 }
 
-func traceImpl(env evaluator.Env, call elements.CallAt, fn fun.Func, irFunc *ir.FuncBuiltin, args []ir.Element) ([]ir.Element, error) {
+func traceImpl(env engine.Env, call elements.CallAt, fn fun.Func, irFunc *ir.FuncBuiltin, args []ir.Element) ([]ir.Element, error) {
 	return nil, env.Evaluator().Trace(env.ExprEval(), call.Node(), args)
 }

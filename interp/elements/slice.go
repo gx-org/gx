@@ -25,20 +25,20 @@ import (
 	"github.com/gx-org/gx/build/ir/irkind"
 	"github.com/gx-org/gx/internal/interp/canonical"
 	"github.com/gx-org/gx/internal/interp/flatten"
-	"github.com/gx-org/gx/interp/evaluator"
+	"github.com/gx-org/gx/interp/engine"
 )
 
 type (
 
 	// Slicer is a state element that can be sliced.
 	Slicer interface {
-		Slice(expr *ir.IndexExpr, index evaluator.NumericalElement) (ir.Element, error)
+		Slice(expr *ir.IndexExpr, index engine.NumericalElement) (ir.Element, error)
 	}
 
 	// ArraySlicer is a state element with an array that can be sliced.
 	ArraySlicer interface {
-		evaluator.NumericalElement
-		SliceArray(expr ir.Expr, index evaluator.NumericalElement) (evaluator.NumericalElement, error)
+		engine.NumericalElement
+		SliceArray(expr ir.Expr, index engine.NumericalElement) (engine.NumericalElement, error)
 		Type() ir.Type
 	}
 
@@ -86,7 +86,7 @@ func (n *Slice) Flatten() ([]ir.Element, error) {
 }
 
 // Slice of the tuple.
-func (n *Slice) Slice(expr *ir.IndexExpr, index evaluator.NumericalElement) (ir.Element, error) {
+func (n *Slice) Slice(expr *ir.IndexExpr, index engine.NumericalElement) (ir.Element, error) {
 	return SliceVals(expr, index, n.values)
 }
 

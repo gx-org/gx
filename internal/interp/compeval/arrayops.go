@@ -24,12 +24,12 @@ import (
 	"github.com/gx-org/gx/internal/interp/compeval/cpevelements"
 	"github.com/gx-org/gx/internal/interp/coreops"
 	"github.com/gx-org/gx/interp/elements"
-	"github.com/gx-org/gx/interp/evaluator"
+	"github.com/gx-org/gx/interp/engine"
 )
 
 type compArrayOps struct{}
 
-var hostArrayOps evaluator.ArrayOps = &compArrayOps{}
+var hostArrayOps engine.ArrayOps = &compArrayOps{}
 
 // Graph returns the graph to which new nodes are being added.
 func (compArrayOps) Graph() ops.Graph {
@@ -37,27 +37,27 @@ func (compArrayOps) Graph() ops.Graph {
 }
 
 // SubGraph returns a new graph builder.
-func (compArrayOps) SubGraph(name string, args []*shape.Shape) (evaluator.ArrayOps, error) {
+func (compArrayOps) SubGraph(name string, args []*shape.Shape) (engine.ArrayOps, error) {
 	return nil, errors.Errorf("not implemented")
 }
 
 // Einsum calls an einstein sum on x and y given the expression in ref.
-func (compArrayOps) Einsum(ctx ir.Evaluator, expr *ir.EinsumExpr, x, y evaluator.NumericalElement) (evaluator.NumericalElement, error) {
+func (compArrayOps) Einsum(ctx ir.Evaluator, expr *ir.EinsumExpr, x, y engine.NumericalElement) (engine.NumericalElement, error) {
 	return cpevelements.NewArray(expr.Type().(ir.ArrayType)), nil
 }
 
 // BroadcastInDim the data of an array across dimensions.
-func (compArrayOps) BroadcastInDim(ctx ir.Evaluator, expr ir.Expr, x evaluator.NumericalElement, axisLengths []evaluator.NumericalElement) (evaluator.NumericalElement, error) {
+func (compArrayOps) BroadcastInDim(ctx ir.Evaluator, expr ir.Expr, x engine.NumericalElement, axisLengths []engine.NumericalElement) (engine.NumericalElement, error) {
 	return cpevelements.NewArray(expr.Type().(ir.ArrayType)), nil
 }
 
 // Reshape an element into a given shape.
-func (compArrayOps) Reshape(expr elements.ExprAt, x evaluator.NumericalElement, axisLengths []evaluator.NumericalElement) (evaluator.NumericalElement, error) {
+func (compArrayOps) Reshape(expr elements.ExprAt, x engine.NumericalElement, axisLengths []engine.NumericalElement) (engine.NumericalElement, error) {
 	return cpevelements.NewArray(expr.Node().Type().(ir.ArrayType)), nil
 }
 
 // Concat concatenates scalars elements into an array with one axis.
-func (compArrayOps) Concat(ctx ir.Evaluator, expr ir.Expr, xs []evaluator.NumericalElement) (evaluator.NumericalElement, error) {
+func (compArrayOps) Concat(ctx ir.Evaluator, expr ir.Expr, xs []engine.NumericalElement) (engine.NumericalElement, error) {
 	return cpevelements.NewArray(expr.Type().(ir.ArrayType)), nil
 }
 
@@ -67,7 +67,7 @@ func (compArrayOps) Set(ctx ir.Evaluator, expr *ir.FuncCallExpr, x, updates, ind
 }
 
 // ElementFromAtom returns an element from a GX value.
-func (compArrayOps) ElementFromAtom(file *ir.File, val values.Array, expr ir.Expr, typ ir.Type) (evaluator.NumericalElement, error) {
+func (compArrayOps) ElementFromAtom(file *ir.File, val values.Array, expr ir.Expr, typ ir.Type) (engine.NumericalElement, error) {
 	hostValue, err := val.ToHostArray(kernels.Allocator())
 	if err != nil {
 		return nil, err
@@ -76,7 +76,7 @@ func (compArrayOps) ElementFromAtom(file *ir.File, val values.Array, expr ir.Exp
 }
 
 // ElementFromArray returns an element from an array GX value.
-func (compArrayOps) ElementFromArray(file *ir.File, val values.Array, typ ir.Type) (evaluator.NumericalElement, error) {
+func (compArrayOps) ElementFromArray(file *ir.File, val values.Array, typ ir.Type) (engine.NumericalElement, error) {
 	arrayType := ir.ToArrayType(typ)
 	var err error
 	if arrayType == nil {

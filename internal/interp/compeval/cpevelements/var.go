@@ -23,7 +23,7 @@ import (
 	"github.com/gx-org/gx/internal/interp/canonical"
 	"github.com/gx-org/gx/internal/interp/coreops"
 	"github.com/gx-org/gx/interp/elements"
-	"github.com/gx-org/gx/interp/evaluator"
+	"github.com/gx-org/gx/interp/engine"
 )
 
 type variable struct {
@@ -54,22 +54,22 @@ func newVariable(src elements.StorageAt) *variable {
 }
 
 // UnaryOp applies a unary operator on x.
-func (a *variable) UnaryOp(env evaluator.Env, expr *ir.UnaryExpr) (evaluator.NumericalElement, error) {
+func (a *variable) UnaryOp(env engine.Env, expr *ir.UnaryExpr) (engine.NumericalElement, error) {
 	return coreops.NewUnary(env, expr, a)
 }
 
 // BinaryOp applies a binary operator to x and y.
-func (a *variable) BinaryOp(env evaluator.Env, expr *ir.BinaryExpr, x, y evaluator.NumericalElement) (evaluator.NumericalElement, error) {
+func (a *variable) BinaryOp(env engine.Env, expr *ir.BinaryExpr, x, y engine.NumericalElement) (engine.NumericalElement, error) {
 	return coreops.NewBinary(env, expr, x, y)
 }
 
 // Cast an element into a given data type.
-func (a *variable) Cast(env evaluator.Env, expr ir.Expr, target ir.Type) (evaluator.NumericalElement, error) {
+func (a *variable) Cast(env engine.Env, expr ir.Expr, target ir.Type) (engine.NumericalElement, error) {
 	return coreops.NewCast(env, expr, a, target)
 }
 
 // Reshape the variable into a different shape.
-func (a *variable) Reshape(env evaluator.Env, expr ir.Expr, axisLengths []evaluator.NumericalElement) (evaluator.NumericalElement, error) {
+func (a *variable) Reshape(env engine.Env, expr ir.Expr, axisLengths []engine.NumericalElement) (engine.NumericalElement, error) {
 	return coreops.NewReshape(env, expr, a, axisLengths)
 }
 
@@ -106,7 +106,7 @@ func (a *variable) Axes(ev ir.Evaluator) (*elements.Slice, error) {
 }
 
 // Slice computes a slice from the variable.
-func (a *variable) Slice(expr *ir.IndexExpr, index evaluator.NumericalElement) (ir.Element, error) {
+func (a *variable) Slice(expr *ir.IndexExpr, index engine.NumericalElement) (ir.Element, error) {
 	store := &ir.LocalVarStorage{Src: &ast.Ident{}, Typ: expr.Type()}
 	return NewRuntimeValue(a.src.File(), store)
 }

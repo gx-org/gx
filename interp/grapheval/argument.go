@@ -28,7 +28,7 @@ import (
 	"github.com/gx-org/gx/internal/interp/flatten"
 	"github.com/gx-org/gx/internal/tracer/processor"
 	"github.com/gx-org/gx/interp/elements"
-	"github.com/gx-org/gx/interp/evaluator"
+	"github.com/gx-org/gx/interp/engine"
 	"github.com/gx-org/gx/interp/fun"
 	"github.com/gx-org/gx/interp/materialise"
 )
@@ -333,7 +333,7 @@ type arrayArgument struct {
 
 var (
 	_ processor.Argument              = (*arrayArgument)(nil)
-	_ evaluator.NumericalElement      = (*arrayArgument)(nil)
+	_ engine.NumericalElement         = (*arrayArgument)(nil)
 	_ materialise.ElementMaterialiser = (*arrayArgument)(nil)
 	_ flatten.Unflattener             = (*arrayArgument)(nil)
 	_ elements.Slicer                 = (*arrayArgument)(nil)
@@ -364,7 +364,7 @@ func (vis *inputVisitor) newArrayArgument(parent parentArgument, typ ir.ArrayTyp
 }
 
 // UnaryOp applies a unary operator on x.
-func (n *arrayArgument) UnaryOp(env evaluator.Env, expr *ir.UnaryExpr) (evaluator.NumericalElement, error) {
+func (n *arrayArgument) UnaryOp(env engine.Env, expr *ir.UnaryExpr) (engine.NumericalElement, error) {
 	node, err := n.materialise(n.parentArgument.Evaluator().Materialiser())
 	if err != nil {
 		return nil, err
@@ -374,7 +374,7 @@ func (n *arrayArgument) UnaryOp(env evaluator.Env, expr *ir.UnaryExpr) (evaluato
 
 // BinaryOp applies a binary operator to x and y.
 // Note that the receiver can be either the left or right argument.
-func (n *arrayArgument) BinaryOp(env evaluator.Env, expr *ir.BinaryExpr, x, y evaluator.NumericalElement) (evaluator.NumericalElement, error) {
+func (n *arrayArgument) BinaryOp(env engine.Env, expr *ir.BinaryExpr, x, y engine.NumericalElement) (engine.NumericalElement, error) {
 	node, err := n.materialise(n.parentArgument.Evaluator().Materialiser())
 	if err != nil {
 		return nil, err
@@ -383,7 +383,7 @@ func (n *arrayArgument) BinaryOp(env evaluator.Env, expr *ir.BinaryExpr, x, y ev
 }
 
 // Cast an element into a given data type.
-func (n *arrayArgument) Cast(env evaluator.Env, expr ir.Expr, target ir.Type) (evaluator.NumericalElement, error) {
+func (n *arrayArgument) Cast(env engine.Env, expr ir.Expr, target ir.Type) (engine.NumericalElement, error) {
 	node, err := n.materialise(n.parentArgument.Evaluator().Materialiser())
 	if err != nil {
 		return nil, err
@@ -392,7 +392,7 @@ func (n *arrayArgument) Cast(env evaluator.Env, expr ir.Expr, target ir.Type) (e
 }
 
 // Reshape an element.
-func (n *arrayArgument) Reshape(env evaluator.Env, expr ir.Expr, axisLengths []evaluator.NumericalElement) (evaluator.NumericalElement, error) {
+func (n *arrayArgument) Reshape(env engine.Env, expr ir.Expr, axisLengths []engine.NumericalElement) (engine.NumericalElement, error) {
 	node, err := n.materialise(n.parentArgument.Evaluator().Materialiser())
 	if err != nil {
 		return nil, err
@@ -482,7 +482,7 @@ func (n *arrayArgument) Unflatten(handles *flatten.Parser) (values.Value, error)
 }
 
 // Slice of the value on the first axis given an index.
-func (n *arrayArgument) Slice(expr *ir.IndexExpr, index evaluator.NumericalElement) (ir.Element, error) {
+func (n *arrayArgument) Slice(expr *ir.IndexExpr, index engine.NumericalElement) (ir.Element, error) {
 	node, err := n.materialise(n.Evaluator().Materialiser())
 	if err != nil {
 		return nil, err
@@ -491,7 +491,7 @@ func (n *arrayArgument) Slice(expr *ir.IndexExpr, index evaluator.NumericalEleme
 }
 
 // SliceArray of the value on the first axis given an index.
-func (n *arrayArgument) SliceArray(expr ir.Expr, index evaluator.NumericalElement) (evaluator.NumericalElement, error) {
+func (n *arrayArgument) SliceArray(expr ir.Expr, index engine.NumericalElement) (engine.NumericalElement, error) {
 	node, err := n.materialise(n.Evaluator().Materialiser())
 	if err != nil {
 		return nil, err

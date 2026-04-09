@@ -23,7 +23,7 @@ import (
 	"github.com/gx-org/gx/build/ir/irkind"
 	"github.com/gx-org/gx/golang/backend/kernels"
 	"github.com/gx-org/gx/interp/elements"
-	"github.com/gx-org/gx/interp/evaluator"
+	"github.com/gx-org/gx/interp/engine"
 )
 
 type (
@@ -38,7 +38,7 @@ type (
 	}
 )
 
-func goValueFromElement[T dtype.GoDataType](el evaluator.NumericalElement) (T, bool, error) {
+func goValueFromElement[T dtype.GoDataType](el engine.NumericalElement) (T, bool, error) {
 	var t T
 	canonicalElt, ok := el.(elements.ElementWithConstant)
 	if !ok {
@@ -55,7 +55,7 @@ func goValueFromElement[T dtype.GoDataType](el evaluator.NumericalElement) (T, b
 	return t, err == nil, err
 }
 
-func goSliceFromArrayElement[T dtype.GoDataType](el evaluator.NumericalElement) ([]T, bool, error) {
+func goSliceFromArrayElement[T dtype.GoDataType](el engine.NumericalElement) ([]T, bool, error) {
 	canonicalElt, ok := el.(elements.ElementWithConstant)
 	if !ok {
 		return nil, false, nil
@@ -68,7 +68,7 @@ func goSliceFromArrayElement[T dtype.GoDataType](el evaluator.NumericalElement) 
 	return array.Flat(), true, nil
 }
 
-func goSliceFromElements[T dtype.GoDataType](els []evaluator.NumericalElement) ([]T, bool, error) {
+func goSliceFromElements[T dtype.GoDataType](els []engine.NumericalElement) ([]T, bool, error) {
 	var vals []T
 	for _, el := range els {
 		var subVals []T
@@ -91,7 +91,7 @@ func goSliceFromElements[T dtype.GoDataType](els []evaluator.NumericalElement) (
 	return vals, true, nil
 }
 
-func (v valuerT[T]) buildStaticArray(fitp *FileScope, lit *ir.ArrayLitExpr, axes, vals []evaluator.NumericalElement) (ir.Element, bool, error) {
+func (v valuerT[T]) buildStaticArray(fitp *FileScope, lit *ir.ArrayLitExpr, axes, vals []engine.NumericalElement) (ir.Element, bool, error) {
 	axesI64, ok, err := goSliceFromElements[int64](axes)
 	if !ok || err != nil {
 		return nil, false, err
@@ -136,7 +136,7 @@ func (v valuerT[T]) array(fitp *FileScope, lit *ir.ArrayLitExpr) (ir.Element, er
 		return nil, err
 	}
 	irVals := lit.Values()
-	elVals := make([]evaluator.NumericalElement, len(irVals))
+	elVals := make([]engine.NumericalElement, len(irVals))
 	for i, expr := range irVals {
 		elVals[i], err = evalNumExpr(fitp, expr)
 		if err != nil {
@@ -196,7 +196,7 @@ func evalArrayLiteral(fitp *FileScope, expr *ir.ArrayLitExpr) (ir.Element, error
 	return valuer.array(fitp, expr)
 }
 
-func toAtomElementInt[T dtype.IntegerType](fitp *FileScope, src elements.ExprAt, val T) (evaluator.NumericalElement, error) {
+func toAtomElementInt[T dtype.IntegerType](fitp *FileScope, src elements.ExprAt, val T) (engine.NumericalElement, error) {
 	hostVal, err := values.AtomIntegerValue(src.Node().Type(), val)
 	if err != nil {
 		return nil, err
@@ -204,7 +204,7 @@ func toAtomElementInt[T dtype.IntegerType](fitp *FileScope, src elements.ExprAt,
 	return fitp.elementFromAtom(src.Node(), hostVal)
 }
 
-func toAtomElementFloat[T dtype.Float](fitp *FileScope, src elements.ExprAt, val T) (evaluator.NumericalElement, error) {
+func toAtomElementFloat[T dtype.Float](fitp *FileScope, src elements.ExprAt, val T) (engine.NumericalElement, error) {
 	hostVal, err := values.AtomFloatValue(src.Node().Type(), val)
 	if err != nil {
 		return nil, err
@@ -212,7 +212,7 @@ func toAtomElementFloat[T dtype.Float](fitp *FileScope, src elements.ExprAt, val
 	return fitp.elementFromAtom(src.Node(), hostVal)
 }
 
-func toAtomElementBool(fitp *FileScope, src elements.ExprAt, val bool) (evaluator.NumericalElement, error) {
+func toAtomElementBool(fitp *FileScope, src elements.ExprAt, val bool) (engine.NumericalElement, error) {
 	hostVal, err := values.AtomBoolValue(src.Node().Type(), val)
 	if err != nil {
 		return nil, err
@@ -220,7 +220,7 @@ func toAtomElementBool(fitp *FileScope, src elements.ExprAt, val bool) (evaluato
 	return fitp.elementFromAtom(src.Node(), hostVal)
 }
 
-func evalAtomicValue(fitp *FileScope, expr ir.AtomicValue) (evaluator.NumericalElement, error) {
+func evalAtomicValue(fitp *FileScope, expr ir.AtomicValue) (engine.NumericalElement, error) {
 	kind := expr.Type().Kind()
 	exprAt := elements.NewExprAt(fitp.File(), expr)
 	switch kind {

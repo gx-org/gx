@@ -20,14 +20,14 @@ import (
 	"github.com/gx-org/gx/build/ir"
 	"github.com/gx-org/gx/build/ir/irkind"
 	"github.com/gx-org/gx/interp/elements"
-	"github.com/gx-org/gx/interp/evaluator"
+	"github.com/gx-org/gx/interp/engine"
 	"github.com/gx-org/gx/interp/fun"
 	"github.com/gx-org/gx/interp/grapheval"
 	"github.com/gx-org/gx/interp/materialise"
 	"github.com/gx-org/gx/stdlib/builtin"
 )
 
-func evalIota(ctx evaluator.Env, call elements.CallAt, fn fun.Func, irFunc *ir.FuncBuiltin, args []ir.Element) ([]ir.Element, error) {
+func evalIota(ctx engine.Env, call elements.CallAt, fn fun.Func, irFunc *ir.FuncBuiltin, args []ir.Element) ([]ir.Element, error) {
 	axes, err := elements.AxesFromElement(args[0])
 	if err != nil {
 		return nil, err
@@ -53,7 +53,7 @@ func evalIota(ctx evaluator.Env, call elements.CallAt, fn fun.Func, irFunc *ir.F
 	}, call.Node().Type())
 }
 
-func evalIotaFull(ctx evaluator.Env, call elements.CallAt, fn fun.Func, irFunc *ir.FuncBuiltin, args []ir.Element) ([]ir.Element, error) {
+func evalIotaFull(ctx engine.Env, call elements.CallAt, fn fun.Func, irFunc *ir.FuncBuiltin, args []ir.Element) ([]ir.Element, error) {
 	axes, err := elements.AxesFromElement(args[0])
 	if err != nil {
 		return nil, err

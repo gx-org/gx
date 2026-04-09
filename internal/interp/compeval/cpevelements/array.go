@@ -21,7 +21,7 @@ import (
 	"github.com/gx-org/gx/internal/interp/canonical"
 	"github.com/gx-org/gx/internal/interp/coreops"
 	"github.com/gx-org/gx/interp/elements"
-	"github.com/gx-org/gx/interp/evaluator"
+	"github.com/gx-org/gx/interp/engine"
 	"github.com/gx-org/gx/interp/materialise"
 )
 
@@ -41,7 +41,7 @@ var (
 )
 
 // NewArray returns a new array from a code position and a type.
-func NewArray(typ ir.ArrayType) evaluator.NumericalElement {
+func NewArray(typ ir.ArrayType) engine.NumericalElement {
 	shape := &shape.Shape{
 		DType: typ.DataType().Kind().DType(),
 	}
@@ -59,23 +59,23 @@ func (a *array) Axes(fetcher ir.Evaluator) (*elements.Slice, error) {
 	return coreops.AxesFromType(fetcher, a.typ)
 }
 
-func (a *array) UnaryOp(env evaluator.Env, expr *ir.UnaryExpr) (evaluator.NumericalElement, error) {
+func (a *array) UnaryOp(env engine.Env, expr *ir.UnaryExpr) (engine.NumericalElement, error) {
 	return NewArray(expr.Type().(ir.ArrayType)), nil
 }
 
-func (a *array) BinaryOp(env evaluator.Env, expr *ir.BinaryExpr, x, y evaluator.NumericalElement) (evaluator.NumericalElement, error) {
+func (a *array) BinaryOp(env engine.Env, expr *ir.BinaryExpr, x, y engine.NumericalElement) (engine.NumericalElement, error) {
 	return NewArray(expr.Type().(ir.ArrayType)), nil
 }
 
-func (a *array) Cast(env evaluator.Env, expr ir.Expr, target ir.Type) (evaluator.NumericalElement, error) {
+func (a *array) Cast(env engine.Env, expr ir.Expr, target ir.Type) (engine.NumericalElement, error) {
 	return NewArray(expr.Type().(ir.ArrayType)), nil
 }
 
-func (a *array) Reshape(env evaluator.Env, expr ir.Expr, axisLengths []evaluator.NumericalElement) (evaluator.NumericalElement, error) {
+func (a *array) Reshape(env engine.Env, expr ir.Expr, axisLengths []engine.NumericalElement) (engine.NumericalElement, error) {
 	return NewArray(expr.Type().(ir.ArrayType)), nil
 }
 
-func (a *array) Slice(expr *ir.IndexExpr, index evaluator.NumericalElement) (ir.Element, error) {
+func (a *array) Slice(expr *ir.IndexExpr, index engine.NumericalElement) (ir.Element, error) {
 	return NewArray(expr.Type().(ir.ArrayType)), nil
 }
 

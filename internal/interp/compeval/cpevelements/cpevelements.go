@@ -23,11 +23,11 @@ import (
 	"github.com/gx-org/gx/build/ir"
 	"github.com/gx-org/gx/internal/interp/coreops"
 	"github.com/gx-org/gx/interp/elements"
-	"github.com/gx-org/gx/interp/evaluator"
+	"github.com/gx-org/gx/interp/engine"
 	"github.com/gx-org/gx/interp/fun"
 )
 
-func toElement(x evaluator.NumericalElement) (coreops.Element, error) {
+func toElement(x engine.NumericalElement) (coreops.Element, error) {
 	el, ok := x.(coreops.Element)
 	if !ok {
 		return nil, errors.Errorf("cannot build static element: type %T does not implement %s", x, reflect.TypeFor[coreops.Element]().String())

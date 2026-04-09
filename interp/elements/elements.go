@@ -28,7 +28,7 @@ import (
 	"github.com/gx-org/gx/build/fmterr"
 	"github.com/gx-org/gx/build/ir"
 	"github.com/gx-org/gx/internal/interp/canonical"
-	"github.com/gx-org/gx/interp/evaluator"
+	"github.com/gx-org/gx/interp/engine"
 )
 
 // InputElements is the receiver and arguments with which the function was called.
@@ -245,7 +245,7 @@ func (p PackageVarSetElement) String() string {
 }
 
 // SliceVals slices a slice of elements.
-func SliceVals(expr ir.Expr, index evaluator.NumericalElement, vals []ir.Element) (ir.Element, error) {
+func SliceVals(expr ir.Expr, index engine.NumericalElement, vals []ir.Element) (ir.Element, error) {
 	i, err := ConstantIntFromElement(index)
 	if err != nil {
 		return nil, err
@@ -324,10 +324,10 @@ func EvalRank(fetcher ir.Fetcher, expr ir.Expr) (ir.ArrayRank, []canonical.Canon
 }
 
 // ToNumericalElement converts an element into a numerical element.
-func ToNumericalElement(el ir.Element) (evaluator.NumericalElement, error) {
-	numEl, ok := Underlying(el).(evaluator.NumericalElement)
+func ToNumericalElement(el ir.Element) (engine.NumericalElement, error) {
+	numEl, ok := Underlying(el).(engine.NumericalElement)
 	if !ok {
-		return nil, errors.Errorf("cannot cast %T to %s", el, reflect.TypeFor[evaluator.NumericalElement]())
+		return nil, errors.Errorf("cannot cast %T to %s", el, reflect.TypeFor[engine.NumericalElement]())
 	}
 	return numEl, nil
 }

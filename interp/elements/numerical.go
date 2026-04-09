@@ -16,13 +16,13 @@ package elements
 
 import (
 	"github.com/gx-org/gx/api/values"
-	"github.com/gx-org/gx/interp/evaluator"
+	"github.com/gx-org/gx/interp/engine"
 )
 
 type (
 	// ElementWithConstant is an element with a concrete value that is already known.
 	ElementWithConstant interface {
-		evaluator.NumericalElement
+		engine.NumericalElement
 
 		// NumericalConstant returns the value of a constant represented by a node.
 		NumericalConstant() (*values.HostArray, error)
@@ -31,7 +31,7 @@ type (
 	// ElementWithArrayFromContext is an element able to return a concrete value from the current context.
 	// For example, a value passed as an argument to the function.
 	ElementWithArrayFromContext interface {
-		evaluator.NumericalElement
+		engine.NumericalElement
 
 		// ArrayFromContext fetches an array from the argument.
 		ArrayFromContext(*values.FuncInputs) (values.Array, error)

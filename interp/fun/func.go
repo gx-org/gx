@@ -23,7 +23,7 @@ import (
 	"github.com/gx-org/gx/build/ir"
 	"github.com/gx-org/gx/internal/concrete"
 	"github.com/gx-org/gx/interp/context"
-	"github.com/gx-org/gx/interp/evaluator"
+	"github.com/gx-org/gx/interp/engine"
 )
 
 type (
@@ -39,7 +39,7 @@ type (
 
 	// Evaluator provides core primitives for the interpreter.
 	Evaluator interface {
-		evaluator.Evaluator
+		engine.Engine
 
 		// NewFunc creates a new function given its definition and a receiver.
 		NewFunc(ir.Func, *Receiver) Func
@@ -63,7 +63,7 @@ type (
 	NewFunc func(ir.Func, *Receiver) Func
 )
 
-var _ evaluator.Env = &CallEnv{}
+var _ engine.Env = &CallEnv{}
 
 // NewCallEnv returns a function context.
 func NewCallEnv(exprEval ir.Evaluator, funEval Evaluator, ctx *context.Context) *CallEnv {
@@ -96,7 +96,7 @@ func (env *CallEnv) FuncEval() Evaluator {
 }
 
 // Evaluator returns the core evaluator.
-func (env *CallEnv) Evaluator() evaluator.Evaluator {
+func (env *CallEnv) Evaluator() engine.Engine {
 	return env.fun
 }
 

@@ -28,7 +28,7 @@ import (
 	"github.com/gx-org/gx/internal/interp/canonical"
 	"github.com/gx-org/gx/internal/interp/flatten"
 	"github.com/gx-org/gx/interp/elements"
-	"github.com/gx-org/gx/interp/evaluator"
+	"github.com/gx-org/gx/interp/engine"
 	"github.com/gx-org/gx/interp/materialise"
 )
 
@@ -50,7 +50,7 @@ var (
 )
 
 // NewBinary returns a binary operation between two elements.
-func NewBinary(env evaluator.Env, expr *ir.BinaryExpr, xEl, yEl evaluator.NumericalElement) (_ evaluator.NumericalElement, err error) {
+func NewBinary(env engine.Env, expr *ir.BinaryExpr, xEl, yEl engine.NumericalElement) (_ engine.NumericalElement, err error) {
 	// If the other element is not a compeval element,
 	// we are not in compeval mode, so forward the binary operation to the other element.
 	x, xOk := xEl.(Element)
@@ -117,22 +117,22 @@ func buildBinaryVal(operator token.Token, cx, cy *values.HostArray, typ ir.Type)
 }
 
 // UnaryOp applies a unary operator on x.
-func (a *binary) UnaryOp(env evaluator.Env, expr *ir.UnaryExpr) (evaluator.NumericalElement, error) {
+func (a *binary) UnaryOp(env engine.Env, expr *ir.UnaryExpr) (engine.NumericalElement, error) {
 	return NewUnary(env, expr, a)
 }
 
 // BinaryOp applies a binary operator to x and y.
-func (a *binary) BinaryOp(env evaluator.Env, expr *ir.BinaryExpr, x, y evaluator.NumericalElement) (evaluator.NumericalElement, error) {
+func (a *binary) BinaryOp(env engine.Env, expr *ir.BinaryExpr, x, y engine.NumericalElement) (engine.NumericalElement, error) {
 	return NewBinary(env, expr, x, y)
 }
 
 // Cast an element into a given data type.
-func (a *binary) Cast(env evaluator.Env, expr ir.Expr, target ir.Type) (evaluator.NumericalElement, error) {
+func (a *binary) Cast(env engine.Env, expr ir.Expr, target ir.Type) (engine.NumericalElement, error) {
 	return NewCast(env, expr, a, target)
 }
 
 // Reshape the element into a new shape.
-func (a *binary) Reshape(env evaluator.Env, expr ir.Expr, axisLengths []evaluator.NumericalElement) (evaluator.NumericalElement, error) {
+func (a *binary) Reshape(env engine.Env, expr ir.Expr, axisLengths []engine.NumericalElement) (engine.NumericalElement, error) {
 	return NewReshape(env, expr, a, axisLengths)
 }
 

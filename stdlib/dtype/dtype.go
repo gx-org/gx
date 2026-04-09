@@ -22,7 +22,7 @@ import (
 	"github.com/gx-org/backend/shape"
 	"github.com/gx-org/gx/build/ir"
 	"github.com/gx-org/gx/interp/elements"
-	"github.com/gx-org/gx/interp/evaluator"
+	"github.com/gx-org/gx/interp/engine"
 	"github.com/gx-org/gx/interp/fun"
 	"github.com/gx-org/gx/interp/grapheval"
 	"github.com/gx-org/gx/interp/materialise"
@@ -38,7 +38,7 @@ var Package = builtin.PackageBuilder{
 	},
 }
 
-func evalReinterpret(env evaluator.Env, call elements.CallAt, fn fun.Func, irFunc *ir.FuncBuiltin, args []ir.Element) ([]ir.Element, error) {
+func evalReinterpret(env engine.Env, call elements.CallAt, fn fun.Func, irFunc *ir.FuncBuiltin, args []ir.Element) ([]ir.Element, error) {
 	mat := builtin.Materialiser(env)
 	argNode, _, err := materialise.Element(mat, args[0])
 	if err != nil {

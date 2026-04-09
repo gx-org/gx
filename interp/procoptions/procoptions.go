@@ -22,20 +22,20 @@ import (
 	"github.com/gx-org/gx/build/ir"
 	"github.com/gx-org/gx/internal/base/scope"
 	"github.com/gx-org/gx/interp/elements"
-	"github.com/gx-org/gx/interp/evaluator"
+	"github.com/gx-org/gx/interp/engine"
 )
 
 type packageOption func(pkg *ir.Package, scope *scope.RWScope[ir.Element]) error
 
 // Options set for an evaluation.
 type Options struct {
-	eval           evaluator.Evaluator
+	eval           engine.Engine
 	options        []options.PackageOption
 	packageOptions map[string][]packageOption
 }
 
 // New returns an option set.
-func New(eval evaluator.Evaluator, opts []options.PackageOption) (*Options, error) {
+func New(eval engine.Engine, opts []options.PackageOption) (*Options, error) {
 	o := &Options{
 		eval:           eval,
 		options:        opts,

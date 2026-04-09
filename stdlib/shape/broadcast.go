@@ -26,7 +26,7 @@ import (
 	"github.com/gx-org/gx/internal/concrete"
 	"github.com/gx-org/gx/internal/interp/canonical"
 	"github.com/gx-org/gx/interp/elements"
-	"github.com/gx-org/gx/interp/evaluator"
+	"github.com/gx-org/gx/interp/engine"
 	"github.com/gx-org/gx/interp/fun"
 	"github.com/gx-org/gx/interp/materialise"
 	"github.com/gx-org/gx/interp/numbers"
@@ -103,7 +103,7 @@ func (f broadcast) BuildFuncType(fetcher ir.Fetcher, call *ir.FuncCallExpr) (*ir
 	}, nil
 }
 
-func evalBroadcast(env evaluator.Env, call elements.CallAt, fn fun.Func, irFunc *ir.FuncBuiltin, args []ir.Element) ([]ir.Element, error) {
+func evalBroadcast(env engine.Env, call elements.CallAt, fn fun.Func, irFunc *ir.FuncBuiltin, args []ir.Element) ([]ir.Element, error) {
 	targetAxes, err := elements.AxesFromElement(args[1])
 	if err != nil {
 		return nil, err

@@ -29,7 +29,7 @@ import (
 	"github.com/gx-org/gx/internal/interp/coreops"
 	"github.com/gx-org/gx/internal/interp/flatten"
 	"github.com/gx-org/gx/interp/elements"
-	"github.com/gx-org/gx/interp/evaluator"
+	"github.com/gx-org/gx/interp/engine"
 	"github.com/gx-org/gx/interp/materialise"
 )
 
@@ -47,7 +47,7 @@ var (
 )
 
 // NewInt returns a new element Int number element.
-func NewInt(env evaluator.Env, expr ir.Expr, val *big.Int) (*Int, error) {
+func NewInt(env engine.Env, expr ir.Expr, val *big.Int) (*Int, error) {
 	typ, cpErr, err := env.ToConcrete(expr.Expr(), expr.Type())
 	return NewIntForType(expr, val, typ), ir.UnifyErr(cpErr, err)
 }
@@ -62,7 +62,7 @@ func NewIntForType(expr ir.Expr, val *big.Int, typ ir.Type) *Int {
 }
 
 // UnaryOp applies a unary operator on x.
-func (n *Int) UnaryOp(env evaluator.Env, expr *ir.UnaryExpr) (evaluator.NumericalElement, error) {
+func (n *Int) UnaryOp(env engine.Env, expr *ir.UnaryExpr) (engine.NumericalElement, error) {
 	switch expr.Src.Op {
 	case token.ADD:
 		return n, nil
@@ -79,7 +79,7 @@ func (n *Int) UnaryOp(env evaluator.Env, expr *ir.UnaryExpr) (evaluator.Numerica
 
 // BinaryOp applies a binary operator to x and y.
 // Note that the receiver can be either the left or right argument.
-func (n *Int) BinaryOp(env evaluator.Env, expr *ir.BinaryExpr, x, y evaluator.NumericalElement) (evaluator.NumericalElement, error) {
+func (n *Int) BinaryOp(env engine.Env, expr *ir.BinaryExpr, x, y engine.NumericalElement) (engine.NumericalElement, error) {
 	switch yT := y.(type) {
 	case *Float:
 		return binaryFloat(env, expr, n.toFloat(), yT)
@@ -98,7 +98,7 @@ func (n *Int) Float() *big.Float {
 	return new(big.Float).SetInt(n.val)
 }
 
-func binaryInt(env evaluator.Env, expr *ir.BinaryExpr, xInt, yInt *Int) (evaluator.NumericalElement, error) {
+func binaryInt(env engine.Env, expr *ir.BinaryExpr, xInt, yInt *Int) (engine.NumericalElement, error) {
 	x, y := xInt.val, yInt.val
 	var val *big.Int
 	switch expr.Src.Op {
@@ -134,7 +134,7 @@ func binaryInt(env evaluator.Env, expr *ir.BinaryExpr, xInt, yInt *Int) (evaluat
 }
 
 // Cast an element into a given data type.
-func (n *Int) Cast(env evaluator.Env, expr ir.Expr, target ir.Type) (evaluator.NumericalElement, error) {
+func (n *Int) Cast(env engine.Env, expr ir.Expr, target ir.Type) (engine.NumericalElement, error) {
 	typ, cpErr, err := env.ToConcrete(expr.Expr(), target)
 	return &Int{
 		val:  n.val,
@@ -144,7 +144,7 @@ func (n *Int) Cast(env evaluator.Env, expr ir.Expr, target ir.Type) (evaluator.N
 }
 
 // Reshape the number into an array.
-func (n *Int) Reshape(env evaluator.Env, expr ir.Expr, axisLengths []evaluator.NumericalElement) (evaluator.NumericalElement, error) {
+func (n *Int) Reshape(env engine.Env, expr ir.Expr, axisLengths []engine.NumericalElement) (engine.NumericalElement, error) {
 	return coreops.NewReshape(env, expr, n, axisLengths)
 }
 

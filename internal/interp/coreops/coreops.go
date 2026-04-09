@@ -21,12 +21,12 @@ import (
 	"github.com/gx-org/gx/golang/backend/kernels"
 	"github.com/gx-org/gx/internal/interp/canonical"
 	"github.com/gx-org/gx/interp/elements"
-	"github.com/gx-org/gx/interp/evaluator"
+	"github.com/gx-org/gx/interp/engine"
 )
 
 // Element returned after an evaluation at compeval.
 type Element interface {
-	evaluator.NumericalElement
+	engine.NumericalElement
 	canonical.Comparable
 	ir.StringSourcer
 

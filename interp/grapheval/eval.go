@@ -28,7 +28,7 @@ import (
 	"github.com/gx-org/gx/internal/interp/compeval/cpevelements"
 	"github.com/gx-org/gx/internal/tracer/processor"
 	"github.com/gx-org/gx/interp/elements"
-	"github.com/gx-org/gx/interp/evaluator"
+	"github.com/gx-org/gx/interp/engine"
 	"github.com/gx-org/gx/interp/fun"
 	"github.com/gx-org/gx/interp"
 	"github.com/gx-org/gx/interp/materialise"
@@ -45,7 +45,7 @@ type Evaluator struct {
 	process *processor.Processor
 	ao      *arrayOps
 
-	hostEval evaluator.Evaluator
+	hostEval engine.Engine
 }
 
 var _ fun.Evaluator = (*Evaluator)(nil)
@@ -86,7 +86,7 @@ func (ev *Evaluator) Graph() ops.Graph {
 }
 
 // ArrayOps returns the array operators implementation.
-func (ev *Evaluator) ArrayOps() evaluator.ArrayOps {
+func (ev *Evaluator) ArrayOps() engine.ArrayOps {
 	return ev.ao
 }
 

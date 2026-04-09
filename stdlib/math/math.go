@@ -29,7 +29,7 @@ import (
 	"github.com/gx-org/gx/build/ir/irkind"
 	"github.com/gx-org/gx/internal/concrete"
 	"github.com/gx-org/gx/interp/elements"
-	"github.com/gx-org/gx/interp/evaluator"
+	"github.com/gx-org/gx/interp/engine"
 	"github.com/gx-org/gx/interp/fun"
 	"github.com/gx-org/gx/interp/materialise"
 	"github.com/gx-org/gx/stdlib/builtin"
@@ -127,7 +127,7 @@ func buildConstScalar[T dtype.GoDataType](name string, value T) builtin.Builder 
 type unaryFunc = func(ops.Node) (ops.Node, error)
 
 func buildUnary(name string, f func(graph ops.Graph) unaryFunc) builtin.Builder {
-	return builtin.ImplementGraphFunc(name, func(env evaluator.Env, call elements.CallAt, fn fun.Func, irFunc *ir.FuncBuiltin, args []ir.Element) ([]ir.Element, error) {
+	return builtin.ImplementGraphFunc(name, func(env engine.Env, call elements.CallAt, fn fun.Func, irFunc *ir.FuncBuiltin, args []ir.Element) ([]ir.Element, error) {
 		mat := builtin.Materialiser(env)
 		x, xShape, err := materialise.Element(mat, args[0])
 		if err != nil {

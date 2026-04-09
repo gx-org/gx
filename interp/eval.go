@@ -26,7 +26,7 @@ import (
 	"github.com/gx-org/gx/build/ir"
 	"github.com/gx-org/gx/build/ir/irkind"
 	"github.com/gx-org/gx/interp/elements"
-	"github.com/gx-org/gx/interp/evaluator"
+	"github.com/gx-org/gx/interp/engine"
 	"github.com/gx-org/gx/interp/fun"
 	"github.com/gx-org/gx/interp/numbers"
 )
@@ -291,7 +291,7 @@ func evalReturnStmt(fitp *FileScope, ret *ir.ReturnStmt) ([]ir.Element, bool, er
 	return returns, true, nil
 }
 
-func evalCastToScalarExpr(fitp *FileScope, expr ir.TypeCastExpr, x evaluator.NumericalElement, targetType ir.ArrayType) (ir.Element, error) {
+func evalCastToScalarExpr(fitp *FileScope, expr ir.TypeCastExpr, x engine.NumericalElement, targetType ir.ArrayType) (ir.Element, error) {
 	xShape, err := elements.ShapeFromElement(x)
 	if err != nil {
 		return nil, fmterr.Error(fitp.File().FileSet(), expr.Node(), err)
@@ -302,16 +302,16 @@ func evalCastToScalarExpr(fitp *FileScope, expr ir.TypeCastExpr, x evaluator.Num
 	return x.Cast(fitp.env, expr, targetType)
 }
 
-func evalArrayAxis(fitp *FileScope, src ir.Node, axLen ir.AxisLengths) ([]evaluator.NumericalElement, error) {
+func evalArrayAxis(fitp *FileScope, src ir.Node, axLen ir.AxisLengths) ([]engine.NumericalElement, error) {
 	el, err := evalExpr(fitp, axLen.AsExpr())
 	if err != nil {
 		return nil, err
 	}
 	switch elT := elements.Underlying(el).(type) {
-	case evaluator.NumericalElement:
-		return []evaluator.NumericalElement{elT}, nil
+	case engine.NumericalElement:
+		return []engine.NumericalElement{elT}, nil
 	case *elements.Slice:
-		numEls := make([]evaluator.NumericalElement, elT.Len())
+		numEls := make([]engine.NumericalElement, elT.Len())
 		for i, eli := range elT.Elements() {
 			var err error
 			numEls[i], err = elements.ToNumericalElement(eli)
@@ -325,12 +325,12 @@ func evalArrayAxis(fitp *FileScope, src ir.Node, axLen ir.AxisLengths) ([]evalua
 	}
 }
 
-func evalArrayAxes(fitp *FileScope, src ir.Node, typ ir.ArrayType) ([]evaluator.NumericalElement, error) {
+func evalArrayAxes(fitp *FileScope, src ir.Node, typ ir.ArrayType) ([]engine.NumericalElement, error) {
 	rank, err := rankOf(fitp.env, src, typ)
 	if err != nil {
 		return nil, err
 	}
-	var axes []evaluator.NumericalElement
+	var axes []engine.NumericalElement
 	for _, axLen := range rank.Axes() {
 		axis, err := evalArrayAxis(fitp, src, axLen)
 		if err != nil {
@@ -343,10 +343,10 @@ func evalArrayAxes(fitp *FileScope, src ir.Node, typ ir.ArrayType) ([]evaluator.
 
 var one, _ = values.AtomIntegerValue(ir.IntLenType(), ir.Int(1))
 
-func evalCastAtomToArrayExpr(fitp *FileScope, expr ir.TypeCastExpr, x evaluator.NumericalElement, axes []evaluator.NumericalElement) (ir.Element, error) {
+func evalCastAtomToArrayExpr(fitp *FileScope, expr ir.TypeCastExpr, x engine.NumericalElement, axes []engine.NumericalElement) (ir.Element, error) {
 	srcExpr := elements.NewExprAt(fitp.File(), expr)
 	arrayOps := fitp.Evaluator().ArrayOps()
-	shapeOfOnes := make([]evaluator.NumericalElement, len(axes))
+	shapeOfOnes := make([]engine.NumericalElement, len(axes))
 	for i := range axes {
 		var err error
 		shapeOfOnes[i], err = fitp.elementFromAtom(expr, one)
@@ -361,7 +361,7 @@ func evalCastAtomToArrayExpr(fitp *FileScope, expr ir.TypeCastExpr, x evaluator.
 	return arrayOps.BroadcastInDim(fitp, expr, reshaped, axes)
 }
 
-func evalCastToArrayExpr(fitp *FileScope, expr ir.TypeCastExpr, x evaluator.NumericalElement, targetType ir.ArrayType) (ir.Element, error) {
+func evalCastToArrayExpr(fitp *FileScope, expr ir.TypeCastExpr, x engine.NumericalElement, targetType ir.ArrayType) (ir.Element, error) {
 	origType := expr.Orig().Type()
 	origRank, xDType := ir.Shape(origType)
 	targetDType, err := toConcreteType(fitp.ctx, expr.Node(), fitp.ctx.CurrentFrame(), targetType.DataType())
@@ -420,9 +420,9 @@ func evalCastExpr(fitp *FileScope, expr ir.TypeCastExpr) (ir.Element, error) {
 	if !ok {
 		return nil, fmterr.Errorf(fitp.File().FileSet(), expr.Node(), "cast to %s not supported", target.ReferString(fitp.File()))
 	}
-	xNum, ok := elements.Underlying(x).(evaluator.NumericalElement)
+	xNum, ok := elements.Underlying(x).(engine.NumericalElement)
 	if !ok {
-		return nil, fmterr.Errorf(fitp.File().FileSet(), expr.Node(), "cannot cast element of type %T to %s", x, reflect.TypeFor[evaluator.NumericalElement]().Name())
+		return nil, fmterr.Errorf(fitp.File().FileSet(), expr.Node(), "cannot cast element of type %T to %s", x, reflect.TypeFor[engine.NumericalElement]().Name())
 	}
 	if arrayType.Rank().IsAtomic() {
 		return evalCastToScalarExpr(fitp, expr, xNum, arrayType)
@@ -572,7 +572,7 @@ func evalIdent(fitp *FileScope, ref *ir.Ident) (ir.Element, error) {
 	return fitp.ctx.CurrentFrame().Find(ref.Src)
 }
 
-func evalNumExpr(fitp *FileScope, expr ir.Expr) (evaluator.NumericalElement, error) {
+func evalNumExpr(fitp *FileScope, expr ir.Expr) (engine.NumericalElement, error) {
 	el, err := evalExpr(fitp, expr)
 	if err != nil {
 		return nil, err
@@ -580,7 +580,7 @@ func evalNumExpr(fitp *FileScope, expr ir.Expr) (evaluator.NumericalElement, err
 	return elements.ToNumericalElement(el)
 }
 
-func evalNumberCastExpr(fitp *FileScope, expr *ir.NumberCastExpr) (evaluator.NumericalElement, error) {
+func evalNumberCastExpr(fitp *FileScope, expr *ir.NumberCastExpr) (engine.NumericalElement, error) {
 	number, err := evalNumExpr(fitp, expr.X)
 	if err != nil {
 		return nil, err
@@ -770,8 +770,8 @@ func ToSingleElement(ctx ir.Evaluator, node ir.Node, els []ir.Element) (ir.Eleme
 
 }
 
-func dimsAsElements(fitp *FileScope, expr ir.Expr, dims []int) ([]evaluator.NumericalElement, error) {
-	els := make([]evaluator.NumericalElement, len(dims))
+func dimsAsElements(fitp *FileScope, expr ir.Expr, dims []int) ([]engine.NumericalElement, error) {
+	els := make([]engine.NumericalElement, len(dims))
 	for i, di := range dims {
 		val, err := values.AtomIntegerValue[int64](ir.IntLenType(), int64(di))
 		if err != nil {
@@ -785,7 +785,7 @@ func dimsAsElements(fitp *FileScope, expr ir.Expr, dims []int) ([]evaluator.Nume
 	return els, nil
 }
 
-func rankOf(env evaluator.Env, src ir.Node, typ ir.ArrayType) (ir.ArrayRank, error) {
+func rankOf(env engine.Env, src ir.Node, typ ir.ArrayType) (ir.ArrayRank, error) {
 	switch rank := typ.Rank().(type) {
 	case *ir.Rank:
 		return rank, nil

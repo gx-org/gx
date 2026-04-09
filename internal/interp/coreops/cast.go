@@ -24,7 +24,7 @@ import (
 	"github.com/gx-org/gx/internal/interp/canonical"
 	"github.com/gx-org/gx/internal/interp/flatten"
 	"github.com/gx-org/gx/interp/elements"
-	"github.com/gx-org/gx/interp/evaluator"
+	"github.com/gx-org/gx/interp/engine"
 	"github.com/gx-org/gx/interp/materialise"
 )
 
@@ -45,7 +45,7 @@ var (
 )
 
 // NewCast applies a cast operator to an element.
-func NewCast(env evaluator.Env, expr ir.Expr, xEl Element, target ir.Type) (evaluator.NumericalElement, error) {
+func NewCast(env engine.Env, expr ir.Expr, xEl Element, target ir.Type) (engine.NumericalElement, error) {
 	x, err := elements.ConstantFromElement(xEl)
 	if err != nil {
 		return nil, err
@@ -92,7 +92,7 @@ func NewCast(env evaluator.Env, expr ir.Expr, xEl Element, target ir.Type) (eval
 }
 
 // NewReshape returns a reshape elements.
-func NewReshape(env evaluator.Env, expr ir.Expr, xEl Element, axisLengths []evaluator.NumericalElement) (Element, error) {
+func NewReshape(env engine.Env, expr ir.Expr, xEl Element, axisLengths []engine.NumericalElement) (Element, error) {
 	x, err := elements.ConstantFromElement(xEl)
 	if err != nil {
 		return xEl, err
@@ -116,19 +116,19 @@ func NewReshape(env evaluator.Env, expr ir.Expr, xEl Element, axisLengths []eval
 	return c, err
 }
 
-func (a *cast) UnaryOp(env evaluator.Env, expr *ir.UnaryExpr) (evaluator.NumericalElement, error) {
+func (a *cast) UnaryOp(env engine.Env, expr *ir.UnaryExpr) (engine.NumericalElement, error) {
 	return NewUnary(env, expr, a)
 }
 
-func (a *cast) BinaryOp(env evaluator.Env, expr *ir.BinaryExpr, x, y evaluator.NumericalElement) (evaluator.NumericalElement, error) {
+func (a *cast) BinaryOp(env engine.Env, expr *ir.BinaryExpr, x, y engine.NumericalElement) (engine.NumericalElement, error) {
 	return NewBinary(env, expr, x, y)
 }
 
-func (a *cast) Cast(env evaluator.Env, expr ir.Expr, target ir.Type) (evaluator.NumericalElement, error) {
+func (a *cast) Cast(env engine.Env, expr ir.Expr, target ir.Type) (engine.NumericalElement, error) {
 	return NewCast(env, expr, a, target)
 }
 
-func (a *cast) Reshape(env evaluator.Env, expr ir.Expr, axisLengths []evaluator.NumericalElement) (evaluator.NumericalElement, error) {
+func (a *cast) Reshape(env engine.Env, expr ir.Expr, axisLengths []engine.NumericalElement) (engine.NumericalElement, error) {
 	return NewReshape(env, expr, a, axisLengths)
 }
 

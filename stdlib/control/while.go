@@ -21,7 +21,7 @@ import (
 	"github.com/gx-org/gx/build/builtins"
 	"github.com/gx-org/gx/build/ir"
 	"github.com/gx-org/gx/interp/elements"
-	"github.com/gx-org/gx/interp/evaluator"
+	"github.com/gx-org/gx/interp/engine"
 	"github.com/gx-org/gx/interp/fun"
 	"github.com/gx-org/gx/interp/grapheval"
 	"github.com/gx-org/gx/interp/materialise"
@@ -63,7 +63,7 @@ func (f while) BuildFuncType(fetcher ir.Fetcher, call *ir.FuncCallExpr) (*ir.Fun
 	}, nil
 }
 
-func evalWhile(env evaluator.Env, call elements.CallAt, fn fun.Func, irFunc *ir.FuncBuiltin, args []ir.Element) ([]ir.Element, error) {
+func evalWhile(env engine.Env, call elements.CallAt, fn fun.Func, irFunc *ir.FuncBuiltin, args []ir.Element) ([]ir.Element, error) {
 	g := env.Evaluator().ArrayOps().Graph().Core()
 
 	cond, err := grapheval.GraphFromElement("while.cond", args[1])

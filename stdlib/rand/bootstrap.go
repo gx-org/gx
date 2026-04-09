@@ -25,7 +25,7 @@ import (
 	"github.com/gx-org/gx/golang/binder/gobindings/types"
 	"github.com/gx-org/gx/internal/interp/compeval/cpevelements"
 	"github.com/gx-org/gx/interp/elements"
-	"github.com/gx-org/gx/interp/evaluator"
+	"github.com/gx-org/gx/interp/engine"
 	"github.com/gx-org/gx/interp/fun"
 	"github.com/gx-org/gx/interp/grapheval"
 	"github.com/gx-org/gx/interp"
@@ -35,9 +35,9 @@ type randBootstrap struct {
 	eval *grapheval.Evaluator
 	call elements.CallAt
 
-	seed evaluator.NumericalElement
+	seed engine.NumericalElement
 	rand *rand.Rand
-	next func(evaluator.Env) (evaluator.NumericalElement, error)
+	next func(engine.Env) (engine.NumericalElement, error)
 }
 
 var _ elements.Copier = (*randBootstrap)(nil)
@@ -62,7 +62,7 @@ func (rb *randBootstrap) initRand(seed *values.HostArray) error {
 
 var uint64Type = ir.TypeFromKind(irkind.Uint64)
 
-func (rb *randBootstrap) nextConstant(env evaluator.Env) (evaluator.NumericalElement, error) {
+func (rb *randBootstrap) nextConstant(env engine.Env) (engine.NumericalElement, error) {
 	next := rb.rand.Uint64()
 	expr := &ir.AtomicValueT[uint64]{
 		Src: rb.call.Node().Expr(),
@@ -84,7 +84,7 @@ type randBootstrapArg struct {
 
 var seedType = ir.Uint64Type()
 
-func newRandBootstrapArg(ctx evaluator.Env, rb *randBootstrap, seed elements.ElementWithArrayFromContext) (*randBootstrapArg, error) {
+func newRandBootstrapArg(ctx engine.Env, rb *randBootstrap, seed elements.ElementWithArrayFromContext) (*randBootstrapArg, error) {
 	argFactory := &randBootstrapArg{
 		rb:    rb,
 		seed:  seed,
@@ -94,7 +94,7 @@ func newRandBootstrapArg(ctx evaluator.Env, rb *randBootstrap, seed elements.Ele
 	return argFactory, nil
 }
 
-func (arg *randBootstrapArg) next(env evaluator.Env) (evaluator.NumericalElement, error) {
+func (arg *randBootstrapArg) next(env engine.Env) (engine.NumericalElement, error) {
 	return arg.rb.eval.NewArrayArgument(env.File(), arg, seedType, arg.proxy)
 }
 
@@ -127,7 +127,7 @@ func (arg *randBootstrapArg) Evaluator() *grapheval.Evaluator {
 	return arg.rb.eval
 }
 
-func evalNewBootstrapGenerator(ctx evaluator.Env, call elements.CallAt, fn fun.Func, irFunc *ir.FuncBuiltin, args []ir.Element) ([]ir.Element, error) {
+func evalNewBootstrapGenerator(ctx engine.Env, call elements.CallAt, fn fun.Func, irFunc *ir.FuncBuiltin, args []ir.Element) ([]ir.Element, error) {
 	bootstrap := &randBootstrap{
 		eval: ctx.Evaluator().(*grapheval.Evaluator),
 		call: call,
@@ -162,7 +162,7 @@ func evalNewBootstrapGenerator(ctx evaluator.Env, call elements.CallAt, fn fun.F
 	)}, nil
 }
 
-func evalBootstrapGeneratorNext(ctx evaluator.Env, call elements.CallAt, fn fun.Func, irFunc *ir.FuncBuiltin, args []ir.Element) ([]ir.Element, error) {
+func evalBootstrapGeneratorNext(ctx engine.Env, call elements.CallAt, fn fun.Func, irFunc *ir.FuncBuiltin, args []ir.Element) ([]ir.Element, error) {
 	bootStrap := elements.Underlying(fn.Recv().Element).(*randBootstrap)
 	el, err := bootStrap.next(ctx)
 	if err != nil {

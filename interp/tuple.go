@@ -23,7 +23,7 @@ import (
 	"github.com/gx-org/gx/build/ir"
 	"github.com/gx-org/gx/internal/interp/flatten"
 	"github.com/gx-org/gx/interp/elements"
-	"github.com/gx-org/gx/interp/evaluator"
+	"github.com/gx-org/gx/interp/engine"
 )
 
 // Tuple value grouping multiple values together.
@@ -80,7 +80,7 @@ func (n *Tuple) TupleElements() []ir.Element {
 }
 
 // Slice of the tuple.
-func (n *Tuple) Slice(expr *ir.IndexExpr, index evaluator.NumericalElement) (ir.Element, error) {
+func (n *Tuple) Slice(expr *ir.IndexExpr, index engine.NumericalElement) (ir.Element, error) {
 	return elements.SliceVals(expr, index, n.elements)
 }
 
