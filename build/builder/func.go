@@ -303,8 +303,8 @@ func (f *funcDecl) buildSignature(fScope *fileResolveScope) (ir.Func, fnResolveS
 	var fnscope *funcResolveScope
 	var ok bool
 	ext.FType, fnscope, ok = f.fType.buildFuncType(fScope)
-	fnscope.setFuncValue(ext)
-	return ext, fnscope, ok
+	setOk := fnscope.setFuncValue(ext)
+	return ext, fnscope, ok && setOk
 }
 
 func (f *funcDecl) buildBody(fnscope fnResolveScope, extF *irFunc) bool {
@@ -356,8 +356,8 @@ func (f *funcBuiltin) buildSignature(fScope *fileResolveScope) (ir.Func, fnResol
 	if !ok {
 		return ext, nil, false
 	}
-	fnScope.setFuncValue(ext)
-	return ext, fnScope, ok
+	setOk := fnScope.setFuncValue(ext)
+	return ext, fnScope, ok && setOk
 }
 
 func (f *funcBuiltin) buildBody(fnResolveScope, *irFunc) bool {
@@ -658,7 +658,10 @@ func buildFuncForCall(rscope resolveScope, fExpr *ir.FuncValExpr, args []ir.Expr
 	if !ok {
 		return args, fExpr, false
 	}
-	ce := compEval.sub(argsVals)
+	ce, ok := compEval.sub(nil, argsVals)
+	if !ok {
+		return args, fExpr, false
+	}
 	fTypeInst, cpErr, err := generics.Instantiate(ce, fExpr.FuncType())
 	if cpErr != nil {
 		return args, fExpr, rscope.Err().AppendAt(fExpr.Node(), cpErr)

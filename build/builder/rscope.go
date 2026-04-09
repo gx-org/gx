@@ -331,7 +331,7 @@ func compEvalForFuncType(rscope resolveScope, src ast.Node, ftype *ir.FuncType) 
 		}
 		funcVars.Define(field.Name, cpevelements.NewStoredValue(irFile, storage, el))
 	}
-	return compEval.sub(funcVars), true
+	return compEval.sub(nil, funcVars)
 }
 
 func newFuncScope(rscope resolveScope, fType *ir.FuncType) (*funcResolveScope, bool) {
@@ -358,14 +358,16 @@ func (s *funcResolveScope) nspace() *scope.RWScope[ir.Element] {
 	return s.bodyCE.fitp.Context().Scope()
 }
 
-func (s *funcResolveScope) setFuncValue(fn ir.PkgFunc) {
-	s.bodyCE = s.bodyCE.sub(context.NewSubMap(map[string]ir.Element{
+func (s *funcResolveScope) setFuncValue(fn ir.PkgFunc) bool {
+	var ok bool
+	s.bodyCE, ok = s.bodyCE.sub(nil, context.NewSubMap(map[string]ir.Element{
 		fn.Name(): s.resolveScope.fileScope().newFunc(fn, nil),
 	}))
+	return ok
 }
 
 func (s *funcResolveScope) compEval() (*compileEvaluator, bool) {
-	return s.bodyCE.sub(context.NewSubMap(s.names)), true
+	return s.bodyCE.sub(nil, context.NewSubMap(s.names))
 }
 
 func (s *funcResolveScope) String() string {
@@ -388,9 +390,10 @@ var _ localScope = (*blockResolveScope)(nil)
 
 func newBlockScope(rscope fnResolveScope, block stmtNode) (*blockResolveScope, bool) {
 	s := &blockResolveScope{fnResolveScope: rscope}
-	parentCompEval, ok := s.fnResolveScope.compEval()
-	s.compeval = parentCompEval.sub(nil)
-	return s, ok
+	parentCompEval, cpok := s.fnResolveScope.compEval()
+	var subok bool
+	s.compeval, subok = parentCompEval.sub(nil, nil)
+	return s, cpok && subok
 }
 
 func (s *blockResolveScope) nspace() *scope.RWScope[ir.Element] {
@@ -398,8 +401,9 @@ func (s *blockResolveScope) nspace() *scope.RWScope[ir.Element] {
 }
 
 func (s *blockResolveScope) update(store ir.Storage, el ir.Element) bool {
-	s.compeval = s.compeval.update(store, el)
-	return true
+	var ok bool
+	s.compeval, ok = s.compeval.update(store, el)
+	return ok
 }
 
 func (s *blockResolveScope) compEval() (*compileEvaluator, bool) {
@@ -418,9 +422,10 @@ type ephemeralResolveScope struct {
 var _ localScope = (*ephemeralResolveScope)(nil)
 
 func newEphemeralResolveScope(parent resolveScope, src ast.Node) (*ephemeralResolveScope, bool) {
-	ce, ok := parent.compEval()
-	ce = ce.sub(nil)
-	return &ephemeralResolveScope{resolveScope: parent, ce: ce}, ok
+	ce, cpok := parent.compEval()
+	var sbok bool
+	ce, sbok = ce.sub(nil, nil)
+	return &ephemeralResolveScope{resolveScope: parent, ce: ce}, cpok && sbok
 }
 
 func (s *ephemeralResolveScope) update(store ir.Storage, el ir.Element) bool {

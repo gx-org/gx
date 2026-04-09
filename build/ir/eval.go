@@ -63,7 +63,7 @@ type (
 	Fetcher interface {
 		Evaluator
 		fmterr.ErrAppender
-		Sub(*File, map[string]Element) Fetcher
+		Sub(*File, map[string]Element) (Fetcher, bool)
 	}
 )
 

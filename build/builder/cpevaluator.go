@@ -48,21 +48,23 @@ func newFileEvaluator(ctx *interp.FileScope, ferr *fmterr.Appender) *compileEval
 	}
 }
 
-func (ev *compileEvaluator) update(store ir.Storage, el ir.Element) *compileEvaluator {
+func (ev *compileEvaluator) update(store ir.Storage, el ir.Element) (*compileEvaluator, bool) {
 	storeEl := cpevelements.NewStoredValue(ev.fitp.File(), store, el)
 	sm := context.NewSubMap(nil)
 	sm.Define(store.NameDef(), storeEl)
-	return ev.sub(sm)
+	return ev.sub(nil, sm)
 }
 
-func (ev *compileEvaluator) sub(vals *context.SubMap) *compileEvaluator {
-	ctx := ev.fitp.Sub(ev.File(), vals)
-	return newFileEvaluator(ctx, ev.ferr)
+func (ev *compileEvaluator) sub(file *ir.File, vals *context.SubMap) (*compileEvaluator, bool) {
+	if file == nil {
+		file = ev.File()
+	}
+	ctx, err := ev.fitp.Sub(file, vals)
+	return newFileEvaluator(ctx, ev.ferr), ev.Err().Append(err)
 }
 
-func (ev *compileEvaluator) Sub(file *ir.File, vals map[string]ir.Element) ir.Fetcher {
-	ctx := ev.fitp.Sub(file, context.NewSubMap(vals))
-	return newFileEvaluator(ctx, ev.ferr)
+func (ev *compileEvaluator) Sub(file *ir.File, vals map[string]ir.Element) (ir.Fetcher, bool) {
+	return ev.sub(file, context.NewSubMap(vals))
 }
 
 func (ev *compileEvaluator) File() *ir.File {

@@ -169,7 +169,10 @@ func (f *funcDecl) Call(env *fun.CallEnv, call *ir.FuncCallExpr, args []ir.Eleme
 	if err := assignArgumentValues(f.fnT.FType, funcFrame, args); err != nil {
 		return nil, err
 	}
-	ctx := newFileScope(env.Context(), env.FuncEval(), f.fnT.File())
+	ctx, err := newFileScope(env.Context(), env.FuncEval(), f.fnT.File())
+	if err != nil {
+		return nil, err
+	}
 	// Evaluate the function within the frame.
 	return evalFuncBody(ctx, f.fnT.Body)
 }

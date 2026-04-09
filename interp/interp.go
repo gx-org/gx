@@ -71,22 +71,24 @@ func (itp *Interpreter) NewFunc(fn ir.Func, recv *fun.Receiver) fun.Func {
 	return itp.eval.NewFunc(fn, recv)
 }
 
+// ForFile returns an interpreter for a file context.
+func (itp *Interpreter) ForFile(file *ir.File) (*FileScope, error) {
+	ctx, err := itp.core.NewFileContext(file)
+	fitp, _ := newFileScope(ctx, itp.eval, file)
+	return fitp, err
+
+}
+
 // FileScope returns an interpreter given the scope of a file from within a package.
 type FileScope struct {
 	ctx *context.Context
 	env *fun.CallEnv
 }
 
-func newFileScope(ctx *context.Context, eval fun.Evaluator, file *ir.File) *FileScope {
+func newFileScope(ctx *context.Context, eval fun.Evaluator, file *ir.File) (*FileScope, error) {
 	fitp := &FileScope{ctx: ctx}
 	fitp.env = fun.NewCallEnv(fitp, eval, fitp.ctx)
-	return fitp
-}
-
-// ForFile returns an interpreter for a file context.
-func (itp *Interpreter) ForFile(file *ir.File) (*FileScope, error) {
-	ctx, err := itp.core.NewFileContext(file)
-	return newFileScope(ctx, itp.eval, file), err
+	return fitp, nil
 }
 
 var (
@@ -164,13 +166,14 @@ func (fitp *FileScope) Materialiser() materialise.Materialiser {
 }
 
 // Sub returns a new interpreter with additional values defined in the context.
-func (fitp *FileScope) Sub(file *ir.File, vals *context.SubMap) *FileScope {
+func (fitp *FileScope) Sub(file *ir.File, vals *context.SubMap) (*FileScope, error) {
+	var err error
 	if file != nil && file != fitp.File() {
-		fitp = newFileScope(fitp.ctx, fitp.env.FuncEval(), file)
+		fitp, err = newFileScope(fitp.ctx, fitp.env.FuncEval(), file)
 	}
 	sub := &FileScope{ctx: fitp.ctx.Sub(vals)}
 	sub.env = fun.NewCallEnv(sub, fitp.env.FuncEval(), sub.ctx)
-	return sub
+	return sub, err
 }
 
 // NewFunc creates function elements from function IRs.

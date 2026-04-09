@@ -51,6 +51,9 @@ func (litp *FuncLitScope) RunFuncLit(args []ir.Element) ([]ir.Element, error) {
 		funcFrame.Define(resultName, nil)
 	}
 	defer litp.ctx.PopFrame()
-	fitp := newFileScope(litp.ctx, litp.eval, litp.lit.File())
+	fitp, err := newFileScope(litp.ctx, litp.eval, litp.lit.File())
+	if err != nil {
+		return nil, err
+	}
 	return evalFuncBody(fitp, litp.lit.Body)
 }
