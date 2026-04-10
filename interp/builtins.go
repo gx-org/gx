@@ -34,7 +34,7 @@ import (
 )
 
 // InitBuiltins initializes the builtins.
-func (itp *Interpreter) InitBuiltins(scope *scope.RWScope[ir.Element]) error {
+func (itp *Base) InitBuiltins(scope *scope.RWScope[ir.Element]) error {
 	nilStorage := builtins.NilStorage()
 	scope.Define(nilStorage.NameDef().Name, nilStorage)
 	if err := itp.defineBoolConstant(scope, ir.FalseStorage()); err != nil {
@@ -54,7 +54,7 @@ func (itp *Interpreter) InitBuiltins(scope *scope.RWScope[ir.Element]) error {
 			ID:   &ast.Ident{Name: impl.Name()},
 			Impl: impl,
 		}
-		elFunc := itp.NewFunc(irFunc, nil)
+		elFunc := itp.funFact.NewFunc(irFunc, nil)
 		scope.Define(impl.Name(), elFunc)
 	}
 	for _, tp := range []ir.Type{
@@ -85,7 +85,7 @@ var builtinFile = &ir.File{
 	},
 }
 
-func (itp *Interpreter) defineBoolConstant(scope *scope.RWScope[ir.Element], val ir.StorageWithValue) error {
+func (itp *Base) defineBoolConstant(scope *scope.RWScope[ir.Element], val ir.StorageWithValue) error {
 	gxValue, err := values.AtomBoolValue(ir.BoolType(), val.Value(nil).(*ir.AtomicValueT[bool]).Val)
 	if err != nil {
 		return err

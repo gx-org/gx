@@ -169,7 +169,7 @@ func (f *funcDecl) Call(env *fun.CallEnv, call *ir.FuncCallExpr, args []ir.Eleme
 	if err := assignArgumentValues(f.fnT.FType, funcFrame, args); err != nil {
 		return nil, err
 	}
-	ctx, err := newFileScope(env.Context(), env.FuncEval())
+	ctx, err := toInterp(env.Context(), env.FuncEval())
 	if err != nil {
 		return nil, err
 	}
@@ -231,7 +231,7 @@ func (f *funcMacro) Call(env *fun.CallEnv, call *ir.FuncCallExpr, args []ir.Elem
 	return []ir.Element{synth}, nil
 }
 
-func evalFuncBody(fitp *FileScope, body *ir.BlockStmt) ([]ir.Element, error) {
+func evalFuncBody(fitp *Interpreter, body *ir.BlockStmt) ([]ir.Element, error) {
 	outs, _, err := evalBlockStmt(fitp, body)
 	return outs, err
 }
@@ -317,7 +317,7 @@ func assignArgumentValues(ftype *ir.FuncType, funcFrame *context.Frame, args []i
 }
 
 // EvalFunc evaluates a function.
-func (itp *Interpreter) EvalFunc(fn *ir.FuncDecl, in *elements.InputElements) (outs []ir.Element, err error) {
+func (itp *Base) EvalFunc(fn *ir.FuncDecl, in *elements.InputElements) (outs []ir.Element, err error) {
 	if fn.Body == nil {
 		return nil, errors.Errorf("%s: missing function body", fn.Name())
 	}

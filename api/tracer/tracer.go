@@ -64,7 +64,7 @@ func Trace(dev *api.Device, fn *ir.FuncDecl, receiver values.Value, args []value
 		return nil, err
 	}
 	// Visit the receiver and arguments values to create elements for the interpreter.
-	in, err := ev.FuncInputsToElements(itp.NewFunc, fn, receiver, values.ToElements(args))
+	in, err := ev.FuncInputsToElements(ev.NewFunc, fn, receiver, values.ToElements(args))
 	if err != nil {
 		return nil, err
 	}

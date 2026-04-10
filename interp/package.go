@@ -21,12 +21,12 @@ import (
 )
 
 // InitPkgScope returns a package element with its scope.
-func (itp *Interpreter) InitPkgScope(pkg *ir.Package, scope *scope.RWScope[ir.Element]) (ir.PackageElement, error) {
+func (itp *Base) InitPkgScope(pkg *ir.Package, scope *scope.RWScope[ir.Element]) (ir.PackageElement, error) {
 	for _, f := range pkg.Decls.Funcs {
 		scope.Define(f.Name(), itp.funFact.NewFunc(f, nil))
 	}
 	for _, tp := range pkg.Decls.Types {
-		scope.Define(tp.Name(), fun.NewNamedType(itp.NewFunc, tp, nil))
+		scope.Define(tp.Name(), fun.NewNamedType(itp.funFact.NewFunc, tp, nil))
 	}
 	if err := itp.evalPackageConsts(pkg, scope); err != nil {
 		return nil, err
@@ -38,11 +38,11 @@ func (itp *Interpreter) InitPkgScope(pkg *ir.Package, scope *scope.RWScope[ir.El
 }
 
 // PackageToImport encapsulates a package into its import declaration.
-func (itp *Interpreter) PackageToImport(imp *ir.ImportDecl, pkg ir.PackageElement) ir.Element {
+func (itp *Base) PackageToImport(imp *ir.ImportDecl, pkg ir.PackageElement) ir.Element {
 	return fun.NewImport(imp, pkg)
 }
 
-func (itp *Interpreter) evalPackageConsts(pkg *ir.Package, scope *scope.RWScope[ir.Element]) error {
+func (itp *Base) evalPackageConsts(pkg *ir.Package, scope *scope.RWScope[ir.Element]) error {
 	exprs, err := pkg.Decls.ConstExprs()
 	if err != nil {
 		return err
@@ -58,7 +58,7 @@ func (itp *Interpreter) evalPackageConsts(pkg *ir.Package, scope *scope.RWScope[
 	return nil
 }
 
-func (itp *Interpreter) evalPackageConstExpr(scope *scope.RWScope[ir.Element], expr *ir.ConstExpr) error {
+func (itp *Base) evalPackageConstExpr(scope *scope.RWScope[ir.Element], expr *ir.ConstExpr) error {
 	fCtx, err := itp.ForFile(expr.Decl.FFile)
 	if err != nil {
 		return err

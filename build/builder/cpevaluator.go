@@ -26,13 +26,13 @@ import (
 )
 
 type compileEvaluator struct {
-	fitp *interp.FileScope
+	fitp *interp.Interpreter
 	ferr *fmterr.Appender
 }
 
 var _ ir.Fetcher = (*compileEvaluator)(nil)
 
-func newEvaluator(pkgitp *interp.Interpreter, file *ir.File, ferr *fmterr.Appender) (*compileEvaluator, bool) {
+func newEvaluator(pkgitp *interp.Base, file *ir.File, ferr *fmterr.Appender) (*compileEvaluator, bool) {
 	fitp, err := pkgitp.ForFile(file)
 	ok := true
 	if err != nil {
@@ -41,7 +41,7 @@ func newEvaluator(pkgitp *interp.Interpreter, file *ir.File, ferr *fmterr.Append
 	return newFileEvaluator(fitp, ferr), ok
 }
 
-func newFileEvaluator(ctx *interp.FileScope, ferr *fmterr.Appender) *compileEvaluator {
+func newFileEvaluator(ctx *interp.Interpreter, ferr *fmterr.Appender) *compileEvaluator {
 	return &compileEvaluator{
 		fitp: ctx,
 		ferr: ferr,

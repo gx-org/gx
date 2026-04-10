@@ -28,7 +28,7 @@ import (
 
 type (
 	valuer interface {
-		array(fitp *FileScope, expr *ir.ArrayLitExpr) (ir.Element, error)
+		array(fitp *Interpreter, expr *ir.ArrayLitExpr) (ir.Element, error)
 	}
 
 	valuerT[T dtype.GoDataType] struct {
@@ -91,7 +91,7 @@ func goSliceFromElements[T dtype.GoDataType](els []engine.NumericalElement) ([]T
 	return vals, true, nil
 }
 
-func (v valuerT[T]) buildStaticArray(fitp *FileScope, lit *ir.ArrayLitExpr, axes, vals []engine.NumericalElement) (ir.Element, bool, error) {
+func (v valuerT[T]) buildStaticArray(fitp *Interpreter, lit *ir.ArrayLitExpr, axes, vals []engine.NumericalElement) (ir.Element, bool, error) {
 	axesI64, ok, err := goSliceFromElements[int64](axes)
 	if !ok || err != nil {
 		return nil, false, err
@@ -130,7 +130,7 @@ func (v valuerT[T]) buildStaticArray(fitp *FileScope, lit *ir.ArrayLitExpr, axes
 	return node, true, nil
 }
 
-func (v valuerT[T]) array(fitp *FileScope, lit *ir.ArrayLitExpr) (ir.Element, error) {
+func (v valuerT[T]) array(fitp *Interpreter, lit *ir.ArrayLitExpr) (ir.Element, error) {
 	axes, err := evalArrayAxes(fitp, lit, lit.Typ)
 	if err != nil {
 		return nil, err
@@ -159,7 +159,7 @@ func (v valuerT[T]) array(fitp *FileScope, lit *ir.ArrayLitExpr) (ir.Element, er
 	return array1d.Reshape(fitp.env, lit, axes)
 }
 
-func newValuer(fitp *FileScope, expr ir.Expr, kind irkind.Kind) (v valuer, err error) {
+func newValuer(fitp *Interpreter, expr ir.Expr, kind irkind.Kind) (v valuer, err error) {
 	switch kind {
 	case irkind.IntIdx:
 		v = valuerT[ir.Int]{kind: kind, toAtomValue: values.AtomIntegerValue[ir.Int], toArrayValue: values.ArrayIntegerValue[ir.Int]}
@@ -187,7 +187,7 @@ func newValuer(fitp *FileScope, expr ir.Expr, kind irkind.Kind) (v valuer, err e
 	return
 }
 
-func evalArrayLiteral(fitp *FileScope, expr *ir.ArrayLitExpr) (ir.Element, error) {
+func evalArrayLiteral(fitp *Interpreter, expr *ir.ArrayLitExpr) (ir.Element, error) {
 	_, dtype := ir.Shape(expr.Type())
 	valuer, err := newValuer(fitp, expr, dtype.Kind())
 	if err != nil {
@@ -196,7 +196,7 @@ func evalArrayLiteral(fitp *FileScope, expr *ir.ArrayLitExpr) (ir.Element, error
 	return valuer.array(fitp, expr)
 }
 
-func toAtomElementInt[T dtype.IntegerType](fitp *FileScope, src elements.ExprAt, val T) (engine.NumericalElement, error) {
+func toAtomElementInt[T dtype.IntegerType](fitp *Interpreter, src elements.ExprAt, val T) (engine.NumericalElement, error) {
 	hostVal, err := values.AtomIntegerValue(src.Node().Type(), val)
 	if err != nil {
 		return nil, err
@@ -204,7 +204,7 @@ func toAtomElementInt[T dtype.IntegerType](fitp *FileScope, src elements.ExprAt,
 	return fitp.elementFromAtom(src.Node(), hostVal)
 }
 
-func toAtomElementFloat[T dtype.Float](fitp *FileScope, src elements.ExprAt, val T) (engine.NumericalElement, error) {
+func toAtomElementFloat[T dtype.Float](fitp *Interpreter, src elements.ExprAt, val T) (engine.NumericalElement, error) {
 	hostVal, err := values.AtomFloatValue(src.Node().Type(), val)
 	if err != nil {
 		return nil, err
@@ -212,7 +212,7 @@ func toAtomElementFloat[T dtype.Float](fitp *FileScope, src elements.ExprAt, val
 	return fitp.elementFromAtom(src.Node(), hostVal)
 }
 
-func toAtomElementBool(fitp *FileScope, src elements.ExprAt, val bool) (engine.NumericalElement, error) {
+func toAtomElementBool(fitp *Interpreter, src elements.ExprAt, val bool) (engine.NumericalElement, error) {
 	hostVal, err := values.AtomBoolValue(src.Node().Type(), val)
 	if err != nil {
 		return nil, err
@@ -220,7 +220,7 @@ func toAtomElementBool(fitp *FileScope, src elements.ExprAt, val bool) (engine.N
 	return fitp.elementFromAtom(src.Node(), hostVal)
 }
 
-func evalAtomicValue(fitp *FileScope, expr ir.AtomicValue) (engine.NumericalElement, error) {
+func evalAtomicValue(fitp *Interpreter, expr ir.AtomicValue) (engine.NumericalElement, error) {
 	kind := expr.Type().Kind()
 	exprAt := elements.NewExprAt(fitp.File(), expr)
 	switch kind {

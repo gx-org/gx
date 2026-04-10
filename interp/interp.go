@@ -38,8 +38,8 @@ import (
 	"github.com/gx-org/gx/interp/procoptions"
 )
 
-// Interpreter runs GX code given an evaluator and package options.
-type Interpreter struct {
+// Base provides everything required to create new interpreters.
+type Base struct {
 	eng     engine.Engine
 	funFact fun.Factory
 	core    *context.Core
@@ -48,8 +48,8 @@ type Interpreter struct {
 }
 
 // New returns a new interpreter.
-func New(eng engine.Engine, funFact fun.Factory, options []options.PackageOption) (*Interpreter, error) {
-	itp := &Interpreter{eng: eng, funFact: funFact}
+func New(eng engine.Engine, funFact fun.Factory, options []options.PackageOption) (*Base, error) {
+	itp := &Base{eng: eng, funFact: funFact}
 	var errs fmterr.Errors
 	var err error
 	if itp.options, err = procoptions.New(eng, options); err != nil {
@@ -62,36 +62,26 @@ func New(eng engine.Engine, funFact fun.Factory, options []options.PackageOption
 	return itp, errs.ToError()
 }
 
-// Core returns the core context.
-func (itp *Interpreter) Core() *context.Core {
-	return itp.core
-}
-
-// NewFunc creates function elements from function IRs.
-func (itp *Interpreter) NewFunc(fn ir.Func, recv *fun.Receiver) fun.Func {
-	return itp.funFact.NewFunc(fn, recv)
-}
-
 // ForFile returns an interpreter for a file context.
-func (itp *Interpreter) ForFile(file *ir.File) (*FileScope, error) {
+func (itp *Base) ForFile(file *ir.File) (*Interpreter, error) {
 	ctx, err := itp.core.NewFileContext(file)
-	fitp, _ := newFileScope(ctx, itp.funFact)
+	fitp, _ := toInterp(ctx, itp.funFact)
 	return fitp, err
 
 }
 
 // Engine returns the evaluator used by the interpreter
-func (itp *Interpreter) Engine() engine.Engine {
+func (itp *Base) Engine() engine.Engine {
 	return itp.eng
 }
 
-// FileScope returns an interpreter given the scope of a file from within a package.
-type FileScope struct {
+// Interpreter returns an interpreter given the scope of a file from within a package.
+type Interpreter struct {
 	env *fun.CallEnv
 }
 
-func newFileScope(ctx *context.Context, funFact fun.Factory) (*FileScope, error) {
-	fitp := &FileScope{}
+func toInterp(ctx *context.Context, funFact fun.Factory) (*Interpreter, error) {
+	fitp := &Interpreter{}
 	fitp.env = fun.NewCallEnv(ctx, fitp, funFact)
 	return fitp, nil
 }
@@ -109,7 +99,7 @@ var (
 // and the second error indicates the conversion error.
 // In other word, the first error is an error that needs to be reported to the user,
 // the second error is an internal error in the compiler.
-func (fitp *FileScope) ToCompEvalError(src ast.Expr, el ir.Element) (ir.CompEvalError, error) {
+func (fitp *Interpreter) ToCompEvalError(src ast.Expr, el ir.Element) (ir.CompEvalError, error) {
 	if el == nil {
 		return nil, nil
 	}
@@ -156,54 +146,54 @@ func (fitp *FileScope) ToCompEvalError(src ast.Expr, el ir.Element) (ir.CompEval
 }
 
 // EvalExpr evaluates an expression for a given context.
-func (fitp *FileScope) EvalExpr(expr ir.Expr) (ir.Element, error) {
+func (fitp *Interpreter) EvalExpr(expr ir.Expr) (ir.Element, error) {
 	return evalExpr(fitp, expr)
 }
 
 // Engine returns the evaluator used by the interpreter
-func (fitp *FileScope) Engine() engine.Engine {
+func (fitp *Interpreter) Engine() engine.Engine {
 	return fitp.env.Engine()
 }
 
 // Materialiser returns the materialiser to convert elements into graph nodes.
-func (fitp *FileScope) Materialiser() materialise.Materialiser {
+func (fitp *Interpreter) Materialiser() materialise.Materialiser {
 	return fitp.Engine().ArrayOps().(materialise.Materialiser)
 }
 
 // Sub returns a new interpreter with additional values defined in the context.
-func (fitp *FileScope) Sub(file *ir.File, vals *context.SubMap) (*FileScope, error) {
+func (fitp *Interpreter) Sub(file *ir.File, vals *context.SubMap) (*Interpreter, error) {
 	var err error
 	ctx := fitp.env.Context()
 	if file != nil && file != fitp.File() {
-		fitp, err = newFileScope(ctx, fitp.env.FuncEval())
+		fitp, err = toInterp(ctx, fitp.env.FuncEval())
 	}
-	sub := &FileScope{}
+	sub := &Interpreter{}
 	sub.env = fun.NewCallEnv(ctx.Sub(vals), sub, fitp.env.FuncEval())
 	return sub, err
 }
 
 // NewFunc creates function elements from function IRs.
-func (fitp *FileScope) NewFunc(fn ir.Func, recv *fun.Receiver) fun.Func {
+func (fitp *Interpreter) NewFunc(fn ir.Func, recv *fun.Receiver) fun.Func {
 	return fitp.env.FuncEval().NewFunc(fn, recv)
 }
 
 // EvalFunc evaluates a function.
-func (fitp *FileScope) EvalFunc(f ir.PkgFunc, call *ir.FuncCallExpr, args []ir.Element) ([]ir.Element, error) {
+func (fitp *Interpreter) EvalFunc(f ir.PkgFunc, call *ir.FuncCallExpr, args []ir.Element) ([]ir.Element, error) {
 	fnEl := NewRunFunc(f, nil)
 	return fnEl.Call(fitp.env, call, args)
 }
 
 // Context used by the interpreter.
-func (fitp *FileScope) Context() *context.Context {
+func (fitp *Interpreter) Context() *context.Context {
 	return fitp.env.Context()
 }
 
 // File returns the current file of the current execution.
-func (fitp *FileScope) File() *ir.File {
+func (fitp *Interpreter) File() *ir.File {
 	return fitp.Context().File()
 }
 
-func (fitp *FileScope) elementFromAtom(expr ir.Expr, val values.Array) (engine.NumericalElement, error) {
+func (fitp *Interpreter) elementFromAtom(expr ir.Expr, val values.Array) (engine.NumericalElement, error) {
 	typ, cpErr, err := fitp.env.ToConcrete(expr.Expr(), expr.Type())
 	if unErr := ir.UnifyErr(cpErr, err); unErr != nil {
 		return nil, unErr
@@ -212,6 +202,6 @@ func (fitp *FileScope) elementFromAtom(expr ir.Expr, val values.Array) (engine.N
 }
 
 // String representation of the receiver.
-func (fitp *FileScope) String() string {
+func (fitp *Interpreter) String() string {
 	return fitp.env.String()
 }
