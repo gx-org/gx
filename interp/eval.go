@@ -345,7 +345,7 @@ var one, _ = values.AtomIntegerValue(ir.IntLenType(), ir.Int(1))
 
 func evalCastAtomToArrayExpr(fitp *FileScope, expr ir.TypeCastExpr, x engine.NumericalElement, axes []engine.NumericalElement) (ir.Element, error) {
 	srcExpr := elements.NewExprAt(fitp.File(), expr)
-	arrayOps := fitp.Evaluator().ArrayOps()
+	arrayOps := fitp.Engine().ArrayOps()
 	shapeOfOnes := make([]engine.NumericalElement, len(axes))
 	for i := range axes {
 		var err error
@@ -637,7 +637,7 @@ func evalEinsumExpr(fitp *FileScope, ref *ir.EinsumExpr) (ir.Element, error) {
 	if err != nil {
 		return nil, err
 	}
-	return fitp.Evaluator().ArrayOps().Einsum(fitp, ref, x, y)
+	return fitp.Engine().ArrayOps().Einsum(fitp, ref, x, y)
 }
 
 func evalAtom[T dtype.GoDataType](fitp *FileScope, expr ir.Expr) (val T, err error) {

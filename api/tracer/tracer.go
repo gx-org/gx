@@ -59,7 +59,7 @@ func Trace(dev *api.Device, fn *ir.FuncDecl, receiver values.Value, args []value
 	}
 	ev := grapheval.New(dev.Runtime().Builder(), proc, graph)
 	// Create the interpreter.
-	itp, err := interp.New(ev, options)
+	itp, err := interp.New(ev, ev, options)
 	if err != nil {
 		return nil, err
 	}

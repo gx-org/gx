@@ -64,7 +64,7 @@ func (f while) BuildFuncType(fetcher ir.Fetcher, call *ir.FuncCallExpr) (*ir.Fun
 }
 
 func evalWhile(env engine.Env, call elements.CallAt, fn fun.Func, irFunc *ir.FuncBuiltin, args []ir.Element) ([]ir.Element, error) {
-	g := env.Evaluator().ArrayOps().Graph().Core()
+	g := env.Engine().ArrayOps().Graph().Core()
 
 	cond, err := grapheval.GraphFromElement("while.cond", args[1])
 	if err != nil {
@@ -88,7 +88,7 @@ func evalWhile(env engine.Env, call elements.CallAt, fn fun.Func, irFunc *ir.Fun
 	if err != nil {
 		return nil, err
 	}
-	ev := env.Evaluator().(*grapheval.Evaluator)
+	ev := env.Engine().(*grapheval.Evaluator)
 	out, err := ev.ElementFromTuple(env.File(), call.Node(), fnState.(ops.Tuple), stateShapes, args[0].Type())
 	if err != nil {
 		return nil, err

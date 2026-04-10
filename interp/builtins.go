@@ -91,11 +91,11 @@ func (itp *Interpreter) defineBoolConstant(scope *scope.RWScope[ir.Element], val
 		return err
 	}
 	var el ir.Element
-	el, err = itp.eval.ArrayOps().ElementFromAtom(builtinFile, gxValue, val.Value(nil), ir.BoolType())
+	el, err = itp.eng.ArrayOps().ElementFromAtom(builtinFile, gxValue, val.Value(nil), ir.BoolType())
 	if err != nil {
 		return err
 	}
-	el = itp.eval.ElementFromStorage(builtinFile, val, el)
+	el = itp.eng.ElementFromStorage(builtinFile, val, el)
 	scope.Define(val.NameDef().Name, el)
 	return nil
 }
@@ -186,7 +186,7 @@ func lenImpl(env engine.Env, call elements.CallAt, fn fun.Func, irFunc *ir.FuncB
 }
 
 func setImpl(env engine.Env, call elements.CallAt, fn fun.Func, irFunc *ir.FuncBuiltin, args []ir.Element) ([]ir.Element, error) {
-	out, err := env.Evaluator().ArrayOps().Set(env.ExprEval(), call.Node(), args[0], args[1], args[2])
+	out, err := env.Engine().ArrayOps().Set(env.ExprEval(), call.Node(), args[0], args[1], args[2])
 	if err != nil {
 		return nil, err
 	}
@@ -194,5 +194,5 @@ func setImpl(env engine.Env, call elements.CallAt, fn fun.Func, irFunc *ir.FuncB
 }
 
 func traceImpl(env engine.Env, call elements.CallAt, fn fun.Func, irFunc *ir.FuncBuiltin, args []ir.Element) ([]ir.Element, error) {
-	return nil, env.Evaluator().Trace(env.ExprEval(), call.Node(), args)
+	return nil, env.Engine().Trace(env.ExprEval(), call.Node(), args)
 }

@@ -29,7 +29,7 @@ type CompEval struct {
 	newRunFunc fun.NewRunFunc
 }
 
-var _ fun.Evaluator = (*CompEval)(nil)
+var _ fun.Factory = (*CompEval)(nil)
 
 // NewHostEvaluator returns a new evaluator for the host.
 func NewHostEvaluator(importer ir.Importer, newRunFunc fun.NewRunFunc) *CompEval {

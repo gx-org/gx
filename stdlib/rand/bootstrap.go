@@ -84,13 +84,13 @@ type randBootstrapArg struct {
 
 var seedType = ir.Uint64Type()
 
-func newRandBootstrapArg(ctx engine.Env, rb *randBootstrap, seed elements.ElementWithArrayFromContext) (*randBootstrapArg, error) {
+func newRandBootstrapArg(env engine.Env, rb *randBootstrap, seed elements.ElementWithArrayFromContext) (*randBootstrapArg, error) {
 	argFactory := &randBootstrapArg{
 		rb:    rb,
 		seed:  seed,
 		proxy: cpevelements.NewArray(seedType),
 	}
-	ctx.Evaluator().Processor().RegisterInit(argFactory)
+	env.Engine().Processor().RegisterInit(argFactory)
 	return argFactory, nil
 }
 
@@ -127,9 +127,9 @@ func (arg *randBootstrapArg) Evaluator() *grapheval.Evaluator {
 	return arg.rb.eval
 }
 
-func evalNewBootstrapGenerator(ctx engine.Env, call elements.CallAt, fn fun.Func, irFunc *ir.FuncBuiltin, args []ir.Element) ([]ir.Element, error) {
+func evalNewBootstrapGenerator(env engine.Env, call elements.CallAt, fn fun.Func, irFunc *ir.FuncBuiltin, args []ir.Element) ([]ir.Element, error) {
 	bootstrap := &randBootstrap{
-		eval: ctx.Evaluator().(*grapheval.Evaluator),
+		eval: env.Engine().(*grapheval.Evaluator),
 		call: call,
 	}
 	var err error
@@ -144,7 +144,7 @@ func evalNewBootstrapGenerator(ctx engine.Env, call elements.CallAt, fn fun.Func
 		err = bootstrap.initRand(cst)
 	case elements.ElementWithArrayFromContext:
 		var argFactory *randBootstrapArg
-		argFactory, err = newRandBootstrapArg(ctx, bootstrap, seedNode)
+		argFactory, err = newRandBootstrapArg(env, bootstrap, seedNode)
 		if err != nil {
 			return nil, err
 		}

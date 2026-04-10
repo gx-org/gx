@@ -121,7 +121,7 @@ func evalBroadcast(env engine.Env, call elements.CallAt, fn fun.Func, irFunc *ir
 		DType:       xShape.DType,
 		AxisLengths: targetAxes,
 	}
-	op, err := env.Evaluator().ArrayOps().Graph().Core().BroadcastInDim(x, targetShape, broadcastAxes)
+	op, err := env.Engine().ArrayOps().Graph().Core().BroadcastInDim(x, targetShape, broadcastAxes)
 	if err != nil {
 		return nil, err
 	}

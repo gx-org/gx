@@ -23,7 +23,7 @@ import (
 // InitPkgScope returns a package element with its scope.
 func (itp *Interpreter) InitPkgScope(pkg *ir.Package, scope *scope.RWScope[ir.Element]) (ir.PackageElement, error) {
 	for _, f := range pkg.Decls.Funcs {
-		scope.Define(f.Name(), itp.eval.NewFunc(f, nil))
+		scope.Define(f.Name(), itp.funFact.NewFunc(f, nil))
 	}
 	for _, tp := range pkg.Decls.Types {
 		scope.Define(tp.Name(), fun.NewNamedType(itp.NewFunc, tp, nil))
@@ -67,7 +67,7 @@ func (itp *Interpreter) evalPackageConstExpr(scope *scope.RWScope[ir.Element], e
 	if err != nil {
 		return err
 	}
-	el = itp.eval.ElementFromStorage(expr.Decl.FFile, expr, el)
+	el = itp.eng.ElementFromStorage(expr.Decl.FFile, expr, el)
 	scope.Define(expr.VName.Name, el)
 	return nil
 }

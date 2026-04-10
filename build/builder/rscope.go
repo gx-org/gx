@@ -169,7 +169,7 @@ func (s *pkgResolveScope) packageInterpreter() *interp.Interpreter {
 			opts = append(opts, opt)
 		}
 	}
-	itp, err := interp.New(hostEval, opts)
+	itp, err := interp.New(hostEval, hostEval, opts)
 	if err != nil {
 		s.Err().Append(err)
 		return nil

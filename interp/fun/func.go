@@ -34,13 +34,11 @@ type (
 	CallEnv struct {
 		ctx  *context.Context
 		expr ir.Evaluator
-		fun  Evaluator
+		fun  Factory
 	}
 
-	// Evaluator provides core primitives for the interpreter.
-	Evaluator interface {
-		engine.Engine
-
+	// Factory provides core primitives for the interpreter.
+	Factory interface {
 		// NewFunc creates a new function given its definition and a receiver.
 		NewFunc(ir.Func, *Receiver) Func
 
@@ -66,8 +64,8 @@ type (
 var _ engine.Env = &CallEnv{}
 
 // NewCallEnv returns a function context.
-func NewCallEnv(exprEval ir.Evaluator, funEval Evaluator, ctx *context.Context) *CallEnv {
-	return &CallEnv{ctx: ctx, expr: exprEval, fun: funEval}
+func NewCallEnv(ctx *context.Context, exprEval ir.Evaluator, fun Factory) *CallEnv {
+	return &CallEnv{ctx: ctx, expr: exprEval, fun: fun}
 }
 
 // Run a function by the interpreter.
@@ -91,13 +89,13 @@ func (env *CallEnv) ExprEval() ir.Evaluator {
 }
 
 // FuncEval returns the function evaluator of the environment.
-func (env *CallEnv) FuncEval() Evaluator {
+func (env *CallEnv) FuncEval() Factory {
 	return env.fun
 }
 
-// Evaluator returns the core evaluator.
-func (env *CallEnv) Evaluator() engine.Engine {
-	return env.fun
+// Engine returns the interpreter engine.
+func (env *CallEnv) Engine() engine.Engine {
+	return env.ctx.Engine()
 }
 
 // ToConcrete returns the concrete type given the current context.

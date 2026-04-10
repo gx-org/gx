@@ -42,7 +42,7 @@ func (ev *Evaluator) NewFuncLit(env *fun.CallEnv, lit *ir.FuncLit) (fun.Func, er
 		eval: ev,
 		env:  env,
 		lit:  lit,
-		litp: interp.NewFuncLitScope(ev, env.Context(), lit),
+		litp: interp.NewFuncLitScope(ev, env.Engine(), env.Context(), lit),
 	}, nil
 }
 
@@ -72,7 +72,7 @@ func (sg *funcLit) SubGraph(name string) (*ops.Subgraph, error) {
 	if err != nil {
 		return nil, err
 	}
-	litp := interp.NewFuncLitScope(subeval, sg.env.Context(), sg.lit)
+	litp := interp.NewFuncLitScope(subeval, sg.env.Engine(), sg.env.Context(), sg.lit)
 	outElts, err := litp.RunFuncLit(fnInputs.Args)
 	if err != nil {
 		return nil, err

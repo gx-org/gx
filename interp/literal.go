@@ -123,7 +123,7 @@ func (v valuerT[T]) buildStaticArray(fitp *FileScope, lit *ir.ArrayLitExpr, axes
 		return nil, false, unErr
 	}
 	// All elements of the literal are scalars already known.
-	node, err := fitp.Evaluator().ArrayOps().ElementFromArray(fitp.File(), array, typ)
+	node, err := fitp.Engine().ArrayOps().ElementFromArray(fitp.File(), array, typ)
 	if err != nil {
 		return nil, false, err
 	}
@@ -149,7 +149,7 @@ func (v valuerT[T]) array(fitp *FileScope, lit *ir.ArrayLitExpr) (ir.Element, er
 	}
 	// Some values will be known at runtime. We create one node for each element
 	// and concatenates everything into an array.
-	array1d, err := fitp.Evaluator().ArrayOps().Concat(fitp, lit, elVals)
+	array1d, err := fitp.Engine().ArrayOps().Concat(fitp, lit, elVals)
 	if err != nil {
 		return nil, err
 	}

@@ -133,7 +133,7 @@ func buildUnary(name string, f func(graph ops.Graph) unaryFunc) builtin.Builder 
 		if err != nil {
 			return nil, err
 		}
-		unaryF := f(env.Evaluator().ArrayOps().Graph())
+		unaryF := f(env.Engine().ArrayOps().Graph())
 		node, err := unaryF(x)
 		if err != nil {
 			return nil, err

@@ -24,7 +24,6 @@ import (
 	"github.com/gx-org/gx/interp/elements"
 	"github.com/gx-org/gx/interp/engine"
 	"github.com/gx-org/gx/interp/fun"
-	"github.com/gx-org/gx/interp/grapheval"
 	"github.com/gx-org/gx/interp/materialise"
 	"github.com/gx-org/gx/stdlib/builtin"
 )
@@ -50,8 +49,7 @@ func evalReinterpret(env engine.Env, call elements.CallAt, fn fun.Func, irFunc *
 		return nil, fmt.Errorf("%T is not an array type", retType)
 	}
 	dtype := arrayType.DataType().Kind().DType()
-	ev := env.Evaluator().(*grapheval.Evaluator)
-	gr := ev.ArrayOps().Graph()
+	gr := env.Engine().ArrayOps().Graph()
 	op, err := gr.DType().Bitcast(argNode, dtype)
 	if err != nil {
 		return nil, err

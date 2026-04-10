@@ -17,25 +17,28 @@ package interp
 import (
 	"github.com/gx-org/gx/build/ir"
 	"github.com/gx-org/gx/interp/context"
+	"github.com/gx-org/gx/interp/engine"
 	"github.com/gx-org/gx/interp/fun"
 )
 
 // FuncLitScope is an interpreter scope to evaluate function literals.
 type FuncLitScope struct {
-	eval  fun.Evaluator
-	ctx   *context.Context
-	lit   *ir.FuncLit
-	frame *context.Frame
+	funFact fun.Factory
+	eng     engine.Engine
+	ctx     *context.Context
+	lit     *ir.FuncLit
+	frame   *context.Frame
 }
 
 // NewFuncLitScope returns a new interpreter for a function literal.
-func NewFuncLitScope(eval fun.Evaluator, ctx *context.Context, lit *ir.FuncLit) *FuncLitScope {
+func NewFuncLitScope(funFact fun.Factory, eng engine.Engine, ctx *context.Context, lit *ir.FuncLit) *FuncLitScope {
 	ctx, frame := ctx.FuncLitFrame(lit)
 	litp := &FuncLitScope{
-		eval:  eval,
-		ctx:   ctx,
-		lit:   lit,
-		frame: frame,
+		funFact: funFact,
+		eng:     eng,
+		ctx:     ctx,
+		lit:     lit,
+		frame:   frame,
 	}
 	return litp
 }
@@ -51,7 +54,7 @@ func (litp *FuncLitScope) RunFuncLit(args []ir.Element) ([]ir.Element, error) {
 		funcFrame.Define(resultName, nil)
 	}
 	defer litp.ctx.PopFrame()
-	fitp, err := newFileScope(litp.ctx, litp.eval, litp.lit.File())
+	fitp, err := newFileScope(litp.ctx, litp.funFact, litp.lit.File())
 	if err != nil {
 		return nil, err
 	}

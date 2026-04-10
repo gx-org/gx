@@ -110,5 +110,5 @@ func IRFuncBuiltin[T builtinFuncImpl](name string, fnBuiltin interp.FuncBuiltin,
 
 // Materialiser returns the materialiser from the evaluation environment.
 func Materialiser(env engine.Env) materialise.Materialiser {
-	return env.Evaluator().ArrayOps().(materialise.Materialiser)
+	return env.Engine().ArrayOps().(materialise.Materialiser)
 }

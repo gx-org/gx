@@ -34,8 +34,8 @@ type (
 		// ExprEval returns an expression evaluator.
 		ExprEval() ir.Evaluator
 
-		// Evaluator returns the evaluator used by the interpreter.
-		Evaluator() Engine
+		// Engine returns the engine used by the interpreter environment.
+		Engine() Engine
 
 		// ToConcrete returns the concrete type given the current context.
 		ToConcrete(ast.Expr, ir.Type) (ir.Type, ir.CompEvalError, error)
@@ -115,7 +115,7 @@ func (evalEnv) ExprEval() ir.Evaluator {
 	return nil
 }
 
-func (evalEnv) Evaluator() Engine {
+func (evalEnv) Engine() Engine {
 	return nil
 }
 
