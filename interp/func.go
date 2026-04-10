@@ -169,7 +169,7 @@ func (f *funcDecl) Call(env *fun.CallEnv, call *ir.FuncCallExpr, args []ir.Eleme
 	if err := assignArgumentValues(f.fnT.FType, funcFrame, args); err != nil {
 		return nil, err
 	}
-	ctx, err := newFileScope(env.Context(), env.FuncEval(), f.fnT.File())
+	ctx, err := newFileScope(env.Context(), env.FuncEval())
 	if err != nil {
 		return nil, err
 	}
@@ -326,11 +326,11 @@ func (itp *Interpreter) EvalFunc(fn *ir.FuncDecl, in *elements.InputElements) (o
 		return nil, err
 	}
 	// Create a frame for the function to evaluate.
-	frame, err := fitp.ctx.PushFuncFrame(fn)
+	frame, err := fitp.Context().PushFuncFrame(fn)
 	if err != nil {
 		return nil, err
 	}
-	defer fitp.ctx.PopFrame()
+	defer fitp.Context().PopFrame()
 	// Add the result names to the Context.
 	if fn.FType.Results != nil {
 		for _, resultName := range fieldNames(fn.FType.Results.List) {

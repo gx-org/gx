@@ -76,8 +76,8 @@ func evalRangeForLoopOverInteger[T dtype.AlgebraType](fitp *FileScope, stmt *ir.
 	if err != nil {
 		return nil, true, err
 	}
-	fitp.ctx.PushBlockFrame()
-	defer fitp.ctx.PopFrame()
+	fitp.Context().PushBlockFrame()
+	defer fitp.Context().PopFrame()
 	for i := T(0); i < val; i++ {
 		iExpr := &ir.AtomicValueT[T]{
 			Src: stmt.X.Expr(),
@@ -268,9 +268,9 @@ func unpackIfTuple(el ir.Element) []ir.Element {
 func evalReturnStmt(fitp *FileScope, ret *ir.ReturnStmt) ([]ir.Element, bool, error) {
 	if len(ret.Results) == 0 {
 		// Naked return.
-		fields := fitp.ctx.CurrentFunc().FuncType().Results.Fields()
+		fields := fitp.Context().CurrentFunc().FuncType().Results.Fields()
 		nodes := make([]ir.Element, len(fields))
-		fr := fitp.ctx.CurrentFrame()
+		fr := fitp.Context().CurrentFrame()
 		for i, field := range fields {
 			var err error
 			nodes[i], err = fr.Find(field.Name)
@@ -364,7 +364,7 @@ func evalCastAtomToArrayExpr(fitp *FileScope, expr ir.TypeCastExpr, x engine.Num
 func evalCastToArrayExpr(fitp *FileScope, expr ir.TypeCastExpr, x engine.NumericalElement, targetType ir.ArrayType) (ir.Element, error) {
 	origType := expr.Orig().Type()
 	origRank, xDType := ir.Shape(origType)
-	targetDType, err := toConcreteType(fitp.ctx, expr.Node(), fitp.ctx.CurrentFrame(), targetType.DataType())
+	targetDType, err := toConcreteType(fitp.Context(), expr.Node(), fitp.Context().CurrentFrame(), targetType.DataType())
 	if err != nil {
 		return nil, err
 	}
@@ -547,7 +547,7 @@ func evalExpr(fitp *FileScope, expr ir.Expr) (_ ir.Element, err error) {
 	case ir.AtomicValue:
 		return evalAtomicValue(fitp, exprT)
 	case *ir.PackageRef:
-		return fitp.ctx.CurrentFrame().Find(exprT.X.Src)
+		return fitp.Context().CurrentFrame().Find(exprT.X.Src)
 	case *ir.FuncValExpr:
 		return evalFuncValExpr(fitp, exprT)
 	case *ir.TypeValExpr:
@@ -569,7 +569,7 @@ func evalIdent(fitp *FileScope, ref *ir.Ident) (ir.Element, error) {
 	if ref.Src == nil {
 		return ref.Stor, nil
 	}
-	return fitp.ctx.CurrentFrame().Find(ref.Src)
+	return fitp.Context().CurrentFrame().Find(ref.Src)
 }
 
 func evalNumExpr(fitp *FileScope, expr ir.Expr) (engine.NumericalElement, error) {
@@ -587,7 +587,7 @@ func evalNumberCastExpr(fitp *FileScope, expr *ir.NumberCastExpr) (engine.Numeri
 	}
 	tp := expr.Typ
 	if tpParam, ok := expr.Typ.(*ir.TypeParam); ok {
-		tpEl, err := fitp.ctx.CurrentFrame().Find(tpParam.Field.Name)
+		tpEl, err := fitp.Context().CurrentFrame().Find(tpParam.Field.Name)
 		if err != nil {
 			return nil, err
 		}
@@ -721,6 +721,7 @@ func evalFuncCall(fitp *FileScope, fn fun.Func, expr *ir.FuncCallExpr) ([]ir.Ele
 }
 
 func set(fitp *FileScope, tok token.Token, dest ir.Storage, value ir.Element) error {
+	ctx := fitp.Context()
 	switch destT := dest.(type) {
 	case *ir.LocalVarStorage:
 		if !ir.ValidIdent(destT.Src) {
@@ -730,10 +731,10 @@ func set(fitp *FileScope, tok token.Token, dest ir.Storage, value ir.Element) er
 			return nil
 		}
 		if tok == token.DEFINE {
-			fitp.ctx.CurrentFrame().Define(destT.Src, value)
+			ctx.CurrentFrame().Define(destT.Src, value)
 			return nil
 		}
-		return fitp.ctx.CurrentFrame().Assign(destT.Src.Name, value)
+		return ctx.CurrentFrame().Assign(destT.Src.Name, value)
 	case *ir.StructFieldStorage:
 		receiver, err := evalExpr(fitp, destT.Sel.X)
 		if err != nil {
@@ -746,11 +747,11 @@ func set(fitp *FileScope, tok token.Token, dest ir.Storage, value ir.Element) er
 		strt.SetField(destT.Sel.Src.Sel.Name, value)
 		return nil
 	case *ir.FieldStorage:
-		return fitp.ctx.CurrentFrame().Assign(destT.Field.Name.Name, value)
+		return ctx.CurrentFrame().Assign(destT.Field.Name.Name, value)
 	case *ir.AssignExpr:
-		return fitp.ctx.CurrentFrame().Assign(destT.NameDef().Name, value)
+		return ctx.CurrentFrame().Assign(destT.NameDef().Name, value)
 	case *ir.AssignCallResult:
-		return fitp.ctx.CurrentFrame().Assign(destT.NameDef().Name, value)
+		return ctx.CurrentFrame().Assign(destT.NameDef().Name, value)
 	default:
 		return fmterr.Errorf(fitp.File().FileSet(), dest.Node(), "cannot assign %v to %T: not supported", value, destT)
 	}

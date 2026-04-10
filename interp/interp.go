@@ -75,7 +75,7 @@ func (itp *Interpreter) NewFunc(fn ir.Func, recv *fun.Receiver) fun.Func {
 // ForFile returns an interpreter for a file context.
 func (itp *Interpreter) ForFile(file *ir.File) (*FileScope, error) {
 	ctx, err := itp.core.NewFileContext(file)
-	fitp, _ := newFileScope(ctx, itp.funFact, file)
+	fitp, _ := newFileScope(ctx, itp.funFact)
 	return fitp, err
 
 }
@@ -87,12 +87,11 @@ func (itp *Interpreter) Engine() engine.Engine {
 
 // FileScope returns an interpreter given the scope of a file from within a package.
 type FileScope struct {
-	ctx *context.Context
 	env *fun.CallEnv
 }
 
-func newFileScope(ctx *context.Context, funFact fun.Factory, file *ir.File) (*FileScope, error) {
-	fitp := &FileScope{ctx: ctx}
+func newFileScope(ctx *context.Context, funFact fun.Factory) (*FileScope, error) {
+	fitp := &FileScope{}
 	fitp.env = fun.NewCallEnv(ctx, fitp, funFact)
 	return fitp, nil
 }
@@ -174,11 +173,12 @@ func (fitp *FileScope) Materialiser() materialise.Materialiser {
 // Sub returns a new interpreter with additional values defined in the context.
 func (fitp *FileScope) Sub(file *ir.File, vals *context.SubMap) (*FileScope, error) {
 	var err error
+	ctx := fitp.env.Context()
 	if file != nil && file != fitp.File() {
-		fitp, err = newFileScope(fitp.ctx, fitp.env.FuncEval(), file)
+		fitp, err = newFileScope(ctx, fitp.env.FuncEval())
 	}
-	sub := &FileScope{ctx: fitp.ctx.Sub(vals)}
-	sub.env = fun.NewCallEnv(sub.ctx, sub, fitp.env.FuncEval())
+	sub := &FileScope{}
+	sub.env = fun.NewCallEnv(ctx.Sub(vals), sub, fitp.env.FuncEval())
 	return sub, err
 }
 
@@ -195,12 +195,12 @@ func (fitp *FileScope) EvalFunc(f ir.PkgFunc, call *ir.FuncCallExpr, args []ir.E
 
 // Context used by the interpreter.
 func (fitp *FileScope) Context() *context.Context {
-	return fitp.ctx
+	return fitp.env.Context()
 }
 
 // File returns the current file of the current execution.
 func (fitp *FileScope) File() *ir.File {
-	return fitp.ctx.File()
+	return fitp.Context().File()
 }
 
 func (fitp *FileScope) elementFromAtom(expr ir.Expr, val values.Array) (engine.NumericalElement, error) {
