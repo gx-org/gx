@@ -217,11 +217,7 @@ func Infer(fetcher ir.Fetcher, fExpr *ir.FuncValExpr, args []ir.Expr) (*ir.FuncV
 	if err != nil {
 		return fExpr, fetcher.Err().AppendAt(fExpr.Node(), err)
 	}
-	spec := &specialiser{
-		Fetcher: subFetcher,
-		defined: uni.defined,
-		axes:    uni.axes,
-	}
+	spec := newSpecialiser(subFetcher, uni.defined, uni.axes)
 	ftypeInfer, cpErr, err := ftype.SpecialiseFType(spec)
 	if cpErr != nil {
 		return fExpr, fetcher.Err().AppendAt(fExpr.Node(), cpErr)
