@@ -20,13 +20,15 @@ import (
 
 type specialiser struct {
 	ir.Fetcher
+	fun     ir.Func
 	defined map[string]ir.Type
 	axes    map[string]ir.Element
 }
 
-func newSpecialiser(fetcher ir.Fetcher, defined map[string]ir.Type, axes map[string]ir.Element) *specialiser {
+func newSpecialiser(fetcher ir.Fetcher, fun ir.Func, defined map[string]ir.Type, axes map[string]ir.Element) *specialiser {
 	return &specialiser{
 		Fetcher: fetcher,
+		fun:     fun,
 		defined: defined,
 		axes:    axes,
 	}
@@ -78,7 +80,7 @@ func Specialise(fetcher ir.Fetcher, expr ir.Expr, fun *ir.FuncValExpr, typs []*i
 	if !ok {
 		return nil, false
 	}
-	spec := newSpecialiser(fetcher, definedTypeParams, nil)
+	spec := newSpecialiser(fetcher, fun.Func(), definedTypeParams, nil)
 	specType, cpErr, err := fType.SpecialiseFType(spec)
 	if cpErr != nil {
 		return nil, fetcher.Err().AppendAt(fun.Node(), cpErr)
@@ -93,9 +95,10 @@ func Specialise(fetcher ir.Fetcher, expr ir.Expr, fun *ir.FuncValExpr, typs []*i
 }
 
 // Instantiate replaces data types either specified or inferred.
-func Instantiate(fetcher ir.Fetcher, ftype *ir.FuncType) (*ir.FuncType, ir.CompEvalError, error) {
+func Instantiate(fetcher ir.Fetcher, fexpr *ir.FuncValExpr) (*ir.FuncType, ir.CompEvalError, error) {
+	ftype := fexpr.FuncType()
 	defined := newTypeParamDefinition(ftype)
 	axes := newAxisLengthsDefinition(ftype)
-	spec := newSpecialiser(fetcher, defined, axes)
+	spec := newSpecialiser(fetcher, fexpr.Func(), defined, axes)
 	return ftype.SpecialiseFType(spec)
 }

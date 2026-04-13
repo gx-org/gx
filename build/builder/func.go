@@ -662,7 +662,7 @@ func buildFuncForCall(rscope resolveScope, fExpr *ir.FuncValExpr, args []ir.Expr
 	if !ok {
 		return args, fExpr, false
 	}
-	fTypeInst, cpErr, err := generics.Instantiate(ce, fExpr.FuncType())
+	fTypeInst, cpErr, err := generics.Instantiate(ce, fExpr)
 	if cpErr != nil {
 		return args, fExpr, rscope.Err().AppendAt(fExpr.Node(), cpErr)
 	}
