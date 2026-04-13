@@ -56,15 +56,13 @@ func (ev *compileEvaluator) update(store ir.Storage, el ir.Element) (*compileEva
 }
 
 func (ev *compileEvaluator) sub(file *ir.File, vals *context.SubMap) (*compileEvaluator, bool) {
-	if file == nil {
-		file = ev.File()
-	}
 	ctx, err := ev.fitp.Sub(file, vals)
 	return newFileEvaluator(ctx, ev.ferr), ev.Err().Append(err)
 }
 
-func (ev *compileEvaluator) Sub(file *ir.File, vals map[string]ir.Element) (ir.Fetcher, bool) {
-	return ev.sub(file, context.NewSubMap(vals))
+func (ev *compileEvaluator) Sub(file *ir.File, vals map[string]ir.Element) (ir.Fetcher, error) {
+	itp, err := ev.fitp.Sub(file, context.NewSubMap(vals))
+	return newFileEvaluator(itp, ev.ferr), err
 }
 
 func (ev *compileEvaluator) File() *ir.File {

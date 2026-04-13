@@ -213,9 +213,9 @@ func Infer(fetcher ir.Fetcher, fExpr *ir.FuncValExpr, args []ir.Expr) (*ir.FuncV
 	if !uni.specialiseRemainingNumbers() {
 		return fExpr, false
 	}
-	subFetcher, ok := fetcher.Sub(nil, uni.axes)
-	if !ok {
-		return fExpr, ok
+	subFetcher, err := fetcher.Sub(nil, uni.axes)
+	if err != nil {
+		return fExpr, fetcher.Err().AppendAt(fExpr.Node(), err)
 	}
 	spec := &specialiser{
 		Fetcher: subFetcher,

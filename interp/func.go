@@ -169,10 +169,7 @@ func (f *funcDecl) Call(env *fun.CallEnv, call *ir.FuncCallExpr, args []ir.Eleme
 	if err := assignArgumentValues(f.fnT.FType, funcFrame, args); err != nil {
 		return nil, err
 	}
-	ctx, err := toInterp(env.Context(), env.FuncEval())
-	if err != nil {
-		return nil, err
-	}
+	ctx := toInterp(env.Context(), env.FuncEval())
 	// Evaluate the function within the frame.
 	return evalFuncBody(ctx, f.fnT.Body)
 }
