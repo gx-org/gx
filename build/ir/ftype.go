@@ -153,35 +153,41 @@ func skipIfDefined(spec Specialiser) fieldCloner {
 	}
 }
 
-// SpecialiseFType specialises a function type.
-func (s *FuncType) SpecialiseFType(spec Specialiser) (*FuncType, CompEvalError, error) {
-	res := *s
-	specialiser := &cloner{
-		group: func(grp *FieldGroup) (*FieldGroup, CompEvalError, error) {
-			specType, cpErr, err := grp.Type.Val().Specialise(spec)
-			if cpErr != nil {
-				return nil, cpErr, err
-			}
-			if err != nil {
-				return nil, nil, fmt.Errorf("cannot specialise %s: %v", s.ReferString(spec.File()), err)
-			}
-			return &FieldGroup{
-				Src: grp.Src,
-				Type: TypeExpr(
-					grp.Type.X(),
-					specType,
-				),
-			}, nil, nil
-		},
-		field: cloneField,
+func specialiseGroup(spec Specialiser) groupCloner {
+	return func(grp *FieldGroup) (*FieldGroup, CompEvalError, error) {
+		specType, cpErr, err := grp.Type.Val().Specialise(spec)
+		if cpErr != nil || err != nil {
+			return nil, cpErr, err
+		}
+		return &FieldGroup{
+			Src: grp.Src,
+			Type: TypeExpr(
+				grp.Type.X(),
+				specType,
+			),
+		}, nil, nil
 	}
-	var err error
-	var cpErr CompEvalError
-	res.Params, cpErr, err = cloneFields(s.Params, specialiser)
+}
+
+// SpecialiseFType specialises a function type.
+func (s *FuncType) SpecialiseFType(spec Specialiser) (_ *FuncType, cpErr CompEvalError, err error) {
+	defer func() {
+		if err != nil {
+			err = fmt.Errorf("cannot specialise %s: %v", s.ReferString(spec.File()), err)
+		}
+	}()
+	res := *s
+	res.Params, cpErr, err = cloneFields(s.Params, &cloner{
+		group: specialiseGroup(spec),
+		field: cloneField,
+	})
 	if cpErr != nil || err != nil {
 		return nil, cpErr, err
 	}
-	res.Results, cpErr, err = cloneFields(s.Results, specialiser)
+	res.Results, cpErr, err = cloneFields(s.Results, &cloner{
+		group: specialiseGroup(spec),
+		field: cloneField,
+	})
 	if cpErr != nil || err != nil {
 		return nil, cpErr, err
 	}

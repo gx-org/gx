@@ -164,9 +164,6 @@ func (fitp *Interpreter) Materialiser() materialise.Materialiser {
 func (fitp *Interpreter) Sub(file *ir.File, vals *context.SubMap) (*Interpreter, error) {
 	var err error
 	ctx := fitp.env.Context()
-	if file != nil && file != fitp.File() {
-		fitp, err = toInterp(ctx, fitp.env.FuncEval())
-	}
 	sub := &Interpreter{}
 	sub.env = fun.NewCallEnv(ctx.Sub(vals), sub, fitp.env.FuncEval())
 	return sub, err
