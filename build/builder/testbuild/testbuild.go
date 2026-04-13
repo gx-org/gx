@@ -279,16 +279,11 @@ type localImporter struct {
 	pkgs map[string]importers.Package
 }
 
-var stdlibPaths = map[string]bool{
-	"fmt":      true,
-	"errors":   true,
-	"cperrors": true,
-}
+var stdlibPackages = stdlib.Importer(nil)
 
 // Run the source code to declare it as an importable package.
 func (imp *localImporter) loadStdlib(bld importers.Builder, pkgpath string) (importers.Package, error) {
-	stdlib := stdlib.Importer(nil)
-	pkg, err := stdlib.Import(builder.NewWithLoader(imp), pkgpath)
+	pkg, err := stdlibPackages.Import(builder.NewWithLoader(imp), pkgpath)
 	if err != nil {
 		return importers.NewProxyPackage(pkgpath), err
 	}
@@ -301,7 +296,7 @@ func (imp *localImporter) Load(bld importers.Builder, pkgpath string) (importers
 	if ok {
 		return pkg, nil
 	}
-	if stdlibPaths[pkgpath] {
+	if stdlibPackages.Support(pkgpath) {
 		return imp.loadStdlib(bld, pkgpath)
 	}
 	return importers.NewProxyPackage(pkgpath), errors.Errorf("package %s has not been built", pkgpath)
