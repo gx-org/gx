@@ -27,13 +27,13 @@ import (
 // CompEval is the evaluator used for compilation evaluation.
 type CompEval struct {
 	importer   ir.Importer
-	newRunFunc fun.NewRunFunc
+	newRunFunc fun.NewFunc
 }
 
 var _ fun.Factory = (*CompEval)(nil)
 
 // NewHostEvaluator returns a new evaluator for the host.
-func NewHostEvaluator(importer ir.Importer, newRunFunc fun.NewRunFunc) *CompEval {
+func NewHostEvaluator(importer ir.Importer, newRunFunc fun.NewFunc) *CompEval {
 	return &CompEval{importer: importer, newRunFunc: newRunFunc}
 }
 

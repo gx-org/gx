@@ -91,7 +91,7 @@ type (
 	pkgResolveScope struct {
 		*pkgProcScope
 
-		newFuncForEval fun.NewRunFunc
+		newFuncForEval fun.NewFunc
 
 		state *pkgState
 
