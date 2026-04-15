@@ -16,6 +16,7 @@ package fun
 
 import (
 	"go/ast"
+	"reflect"
 
 	"github.com/pkg/errors"
 	"github.com/gx-org/gx/api/values"
@@ -140,4 +141,13 @@ func NewReceiver(el *NamedType, fn ir.Func) *Receiver {
 		Ident:   name,
 		Element: el,
 	}
+}
+
+// ToNamedType converts a generic element to a named type.
+func ToNamedType(el ir.Element) (*NamedType, error) {
+	named, ok := el.(*NamedType)
+	if !ok {
+		return nil, errors.Errorf("cannot convert %T to %s", el, reflect.TypeFor[*NamedType]().Name())
+	}
+	return named, nil
 }

@@ -33,11 +33,11 @@ import (
 )
 
 // FuncBuiltin defines a builtin function provided by a backend.
-type FuncBuiltin func(ctx engine.Env, call elements.CallAt, fn fun.Func, irFunc *ir.FuncBuiltin, args []ir.Element) ([]ir.Element, error)
+type FuncBuiltin func(env engine.Env, call *ir.FuncCallExpr, recv ir.Element, args []ir.Element) ([]ir.Element, error)
 
-type caller func(env *fun.CallEnv, fn fun.Func, call *ir.FuncCallExpr, args []ir.Element) ([]ir.Element, error)
+type caller func(env *fun.CallEnv, call *ir.FuncCallExpr, recv elements.Copier, args []ir.Element) ([]ir.Element, error)
 
-type funcBase struct {
+type elFunc struct {
 	fn      ir.Func
 	recv    *fun.Receiver
 	storage ir.Storage
@@ -46,14 +46,14 @@ type funcBase struct {
 }
 
 var (
-	_ fun.Func     = (*funcBase)(nil)
-	_ ir.WithStore = (*funcBase)(nil)
+	_ fun.Func     = (*elFunc)(nil)
+	_ ir.WithStore = (*elFunc)(nil)
 )
 
 // NewRunFunc creates a function given an IR and a receiver.
 // The function is run when being called.
 func NewRunFunc(fn ir.Func, recv *fun.Receiver) fun.Func {
-	base := funcBase{fn: fn, recv: recv}
+	base := elFunc{fn: fn, recv: recv}
 	switch fnT := fn.(type) {
 	case *ir.FuncDecl:
 		base.storage = fnT
@@ -72,45 +72,49 @@ func NewRunFunc(fn ir.Func, recv *fun.Receiver) fun.Func {
 }
 
 // Type of the function.
-func (f *funcBase) Type() ir.Type {
+func (f *elFunc) Type() ir.Type {
 	return f.fn.FuncType()
 }
 
 // Func returns the function represented by the node.
-func (f *funcBase) Func() ir.Func {
+func (f *elFunc) Func() ir.Func {
 	return f.fn
 }
 
 // Recv returns the receiver of the function or nil if the function has no receiver.
-func (f *funcBase) Recv() *fun.Receiver {
+func (f *elFunc) Recv() *fun.Receiver {
 	return f.recv
 }
 
 // Unflatten creates a GX value from the next handles available in the parser.
-func (f *funcBase) Unflatten(handles *flatten.Parser) (values.Value, error) {
+func (f *elFunc) Unflatten(handles *flatten.Parser) (values.Value, error) {
 	return values.NewIRNode(f.fn)
 }
 
 // Kind of the element.
-func (*funcBase) Kind() irkind.Kind {
+func (*elFunc) Kind() irkind.Kind {
 	return irkind.Func
 }
 
 // Storage of the function.
-func (f *funcBase) Store() ir.Storage {
+func (f *elFunc) Store() ir.Storage {
 	return f.storage
 }
 
 // Call the function.
-func (f *funcBase) Call(env *fun.CallEnv, call *ir.FuncCallExpr, args []ir.Element) ([]ir.Element, error) {
+func (f *elFunc) Call(env *fun.CallEnv, call *ir.FuncCallExpr, args []ir.Element) ([]ir.Element, error) {
 	if f.call == nil {
 		return nil, fmterr.Internalf(env.File().FileSet(), f.fn.Node(), "function type %T not supported", f.fn)
 	}
-	return f.call(env, f, call, args)
+	var recv *fun.NamedType
+	if f.Recv() != nil {
+		recv = f.Recv().Element
+	}
+	return f.call(env, call, recv, args)
 }
 
 // String representation of the node.
-func (f *funcBase) String() string {
+func (f *elFunc) String() string {
 	return f.fn.DefineString(nil)
 }
 
@@ -118,7 +122,7 @@ type funcDecl struct {
 	fnT *ir.FuncDecl
 }
 
-func (f funcDecl) callDecl(env *fun.CallEnv, fn fun.Func, call *ir.FuncCallExpr, args []ir.Element) (outs []ir.Element, err error) {
+func (f funcDecl) callDecl(env *fun.CallEnv, call *ir.FuncCallExpr, recv elements.Copier, args []ir.Element) (outs []ir.Element, err error) {
 	if f.fnT.Body == nil {
 		return nil, fmterr.Errorf(f.fnT.File().FileSet(), f.fnT.Node(), "missing function body")
 	}
@@ -137,10 +141,11 @@ func (f funcDecl) callDecl(env *fun.CallEnv, fn fun.Func, call *ir.FuncCallExpr,
 		}
 	}
 	// Add the receiver name to the function frame if present.
-	if recv := fn.Recv(); recv != nil {
-		recvNode := recv.Element.RecvCopy()
-		if recv.Ident != nil {
-			funcFrame.Define(recv.Ident, recvNode)
+	if recv != nil {
+		recvField := f.fnT.FuncType().ReceiverField()
+		if recvField != nil && ir.ValidIdent(recvField.Name) {
+			recv = recv.Copy()
+			funcFrame.Define(recvField.Name, recv)
 		}
 	}
 	if err := assignTypeParameters(env.Context(), call.Callee, callerFrame, funcFrame); err != nil {
@@ -173,7 +178,7 @@ type funcBuiltin struct {
 	fnT *ir.FuncBuiltin
 }
 
-func (f funcBuiltin) callBuiltin(env *fun.CallEnv, fn fun.Func, call *ir.FuncCallExpr, args []ir.Element) (outs []ir.Element, err error) {
+func (f funcBuiltin) callBuiltin(env *fun.CallEnv, call *ir.FuncCallExpr, recv elements.Copier, args []ir.Element) (outs []ir.Element, err error) {
 	defer func() {
 		if err != nil {
 			err = fmterr.Error(env.File().FileSet(), call.Expr(), err)
@@ -183,15 +188,15 @@ func (f funcBuiltin) callBuiltin(env *fun.CallEnv, fn fun.Func, call *ir.FuncCal
 	if err != nil {
 		return nil, err
 	}
-	return impl(env, elements.NewNodeAt[*ir.FuncCallExpr](env.File(), call), fn, f.fnT, args)
+	return impl(env, call, recv, args)
 }
 
 type funcKeyword struct {
-	funcBase
+	elFunc
 	fnT *ir.FuncKeyword
 }
 
-func (f funcKeyword) callKeyword(env *fun.CallEnv, fn fun.Func, call *ir.FuncCallExpr, args []ir.Element) (outs []ir.Element, err error) {
+func (f funcKeyword) callKeyword(env *fun.CallEnv, call *ir.FuncCallExpr, _ elements.Copier, args []ir.Element) (outs []ir.Element, err error) {
 	defer func() {
 		if err != nil {
 			err = fmterr.Error(env.File().FileSet(), call.Expr(), err)
@@ -201,14 +206,14 @@ func (f funcKeyword) callKeyword(env *fun.CallEnv, fn fun.Func, call *ir.FuncCal
 	if err != nil {
 		return nil, err
 	}
-	return impl(env, elements.NewNodeAt[*ir.FuncCallExpr](env.File(), call), fn, nil, args)
+	return impl(env, call, nil, args)
 }
 
 type funcMacro struct {
 	fnT *ir.Macro
 }
 
-func (f funcMacro) callMacro(env *fun.CallEnv, fn fun.Func, call *ir.FuncCallExpr, args []ir.Element) (outs []ir.Element, err error) {
+func (f funcMacro) callMacro(env *fun.CallEnv, call *ir.FuncCallExpr, _ elements.Copier, args []ir.Element) (outs []ir.Element, err error) {
 	defer func() {
 		if err != nil {
 			err = fmterr.Error(env.File().FileSet(), call.Expr(), err)

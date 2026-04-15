@@ -28,9 +28,7 @@ import (
 	"github.com/gx-org/gx/build/ir"
 	"github.com/gx-org/gx/build/ir/irkind"
 	"github.com/gx-org/gx/internal/concrete"
-	"github.com/gx-org/gx/interp/elements"
 	"github.com/gx-org/gx/interp/engine"
-	"github.com/gx-org/gx/interp/fun"
 	"github.com/gx-org/gx/interp/materialise"
 	"github.com/gx-org/gx/stdlib/builtin"
 )
@@ -127,7 +125,7 @@ func buildConstScalar[T dtype.GoDataType](name string, value T) builtin.Builder 
 type unaryFunc = func(ops.Node) (ops.Node, error)
 
 func buildUnary(name string, f func(graph ops.Graph) unaryFunc) builtin.Builder {
-	return builtin.ImplementGraphFunc(name, func(env engine.Env, call elements.CallAt, fn fun.Func, irFunc *ir.FuncBuiltin, args []ir.Element) ([]ir.Element, error) {
+	return builtin.ImplementGraphFunc(name, func(env engine.Env, call *ir.FuncCallExpr, recv ir.Element, args []ir.Element) ([]ir.Element, error) {
 		mat := builtin.Materialiser(env)
 		x, xShape, err := materialise.Element(mat, args[0])
 		if err != nil {
@@ -138,11 +136,11 @@ func buildUnary(name string, f func(graph ops.Graph) unaryFunc) builtin.Builder 
 		if err != nil {
 			return nil, err
 		}
-		typ, cpErr, err := concrete.Concrete(env.ExprEval(), call.Node().Expr(), call.Node().Type())
+		typ, cpErr, err := concrete.Concrete(env.ExprEval(), call.Expr(), call.Type())
 		if unErr := ir.UnifyErr(cpErr, err); err != nil {
 			return nil, unErr
 		}
-		return materialise.ElementFromNode(call.File(), mat, &ops.OutputNode{
+		return materialise.ElementFromNode(env.File(), mat, &ops.OutputNode{
 			Node:  node,
 			Shape: xShape,
 		}, typ)

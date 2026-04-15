@@ -33,7 +33,7 @@ import (
 
 type randBootstrap struct {
 	eval *grapheval.Evaluator
-	call elements.CallAt
+	call *ir.FuncCallExpr
 
 	seed engine.NumericalElement
 	rand *rand.Rand
@@ -65,7 +65,7 @@ var uint64Type = ir.TypeFromKind(irkind.Uint64)
 func (rb *randBootstrap) nextConstant(env engine.Env) (engine.NumericalElement, error) {
 	next := rb.rand.Uint64()
 	expr := &ir.AtomicValueT[uint64]{
-		Src: rb.call.Node().Expr(),
+		Src: rb.call.Expr(),
 		Val: next,
 		Typ: uint64Type,
 	}
@@ -127,7 +127,7 @@ func (arg *randBootstrapArg) Evaluator() *grapheval.Evaluator {
 	return arg.rb.eval
 }
 
-func evalNewBootstrapGenerator(env engine.Env, call elements.CallAt, fn fun.Func, irFunc *ir.FuncBuiltin, args []ir.Element) ([]ir.Element, error) {
+func evalNewBootstrapGenerator(env engine.Env, call *ir.FuncCallExpr, recv ir.Element, args []ir.Element) ([]ir.Element, error) {
 	bootstrap := &randBootstrap{
 		eval: env.Engine().(*grapheval.Evaluator),
 		call: call,
@@ -157,14 +157,14 @@ func evalNewBootstrapGenerator(env engine.Env, call elements.CallAt, fn fun.Func
 	}
 	return []ir.Element{fun.NewNamedType(
 		interp.NewRunFunc,
-		call.Node().Type().(*ir.NamedType),
+		call.Type().(*ir.NamedType),
 		bootstrap,
 	)}, nil
 }
 
-func evalBootstrapGeneratorNext(ctx engine.Env, call elements.CallAt, fn fun.Func, irFunc *ir.FuncBuiltin, args []ir.Element) ([]ir.Element, error) {
-	bootStrap := elements.Underlying(fn.Recv().Element).(*randBootstrap)
-	el, err := bootStrap.next(ctx)
+func evalBootstrapGeneratorNext(env engine.Env, call *ir.FuncCallExpr, recv ir.Element, args []ir.Element) ([]ir.Element, error) {
+	bootStrap := elements.Underlying(recv).(*randBootstrap)
+	el, err := bootStrap.next(env)
 	if err != nil {
 		return nil, err
 	}

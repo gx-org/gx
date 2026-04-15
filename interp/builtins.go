@@ -30,7 +30,6 @@ import (
 	"github.com/gx-org/gx/internal/interp/coreops"
 	"github.com/gx-org/gx/interp/elements"
 	"github.com/gx-org/gx/interp/engine"
-	"github.com/gx-org/gx/interp/fun"
 )
 
 // InitBuiltins initializes the builtins.
@@ -132,7 +131,7 @@ var (
 	}
 )
 
-func appendImpl(env engine.Env, call elements.CallAt, fn fun.Func, irFunc *ir.FuncBuiltin, args []ir.Element) ([]ir.Element, error) {
+func appendImpl(env engine.Env, call *ir.FuncCallExpr, recv ir.Element, args []ir.Element) ([]ir.Element, error) {
 	slice, ok := elements.Underlying(args[0]).(*elements.Slice)
 	if !ok {
 		return nil, errors.Errorf("cannot cast %T to %s", args[0], reflect.TypeFor[*elements.Slice]())
@@ -143,27 +142,27 @@ func appendImpl(env engine.Env, call elements.CallAt, fn fun.Func, irFunc *ir.Fu
 	return []ir.Element{sliceEl}, err
 }
 
-func axlengthsImpl(env engine.Env, call elements.CallAt, fn fun.Func, irFunc *ir.FuncBuiltin, args []ir.Element) ([]ir.Element, error) {
+func axlengthsImpl(env engine.Env, call *ir.FuncCallExpr, recv ir.Element, args []ir.Element) ([]ir.Element, error) {
 	file := env.ExprEval().File()
 	array, ok := args[0].(elements.WithAxes)
 	if !ok {
-		return nil, fmterr.Internalf(file.FileSet(), call.Node().Src, "cannot get the shape of %T: not supported", args[0])
+		return nil, fmterr.Internalf(file.FileSet(), call.Src, "cannot get the shape of %T: not supported", args[0])
 	}
 	shape, err := array.Axes(env.ExprEval())
 	if err != nil {
-		return nil, fmterr.Error(file.FileSet(), call.Node().Src, err)
+		return nil, fmterr.Error(file.FileSet(), call.Src, err)
 	}
 	return []ir.Element{shape}, nil
 }
 
-func lenImpl(env engine.Env, call elements.CallAt, fn fun.Func, irFunc *ir.FuncBuiltin, args []ir.Element) ([]ir.Element, error) {
+func lenImpl(env engine.Env, call *ir.FuncCallExpr, recv ir.Element, args []ir.Element) ([]ir.Element, error) {
 	withLen, ok := args[0].(ir.WithLength)
 	if !ok {
 		return nil, errors.Errorf("cannot cast %T to %s", args[0], reflect.TypeFor[ir.WithLength]())
 	}
 	l, err := withLen.Length(env.ExprEval())
 	if err != nil {
-		return nil, fmt.Errorf("cannot evaluate %s: %w", call.Node().SourceString(env.File()), err)
+		return nil, fmt.Errorf("cannot evaluate %s: %w", call.SourceString(env.File()), err)
 	}
 	i64Val := int64(l)
 	val, err := values.AtomIntegerValue(ir.Int64Type(), i64Val)
@@ -185,14 +184,14 @@ func lenImpl(env engine.Env, call elements.CallAt, fn fun.Func, irFunc *ir.FuncB
 	return []ir.Element{atom}, err
 }
 
-func setImpl(env engine.Env, call elements.CallAt, fn fun.Func, irFunc *ir.FuncBuiltin, args []ir.Element) ([]ir.Element, error) {
-	out, err := env.Engine().ArrayOps().Set(env.ExprEval(), call.Node(), args[0], args[1], args[2])
+func setImpl(env engine.Env, call *ir.FuncCallExpr, recv ir.Element, args []ir.Element) ([]ir.Element, error) {
+	out, err := env.Engine().ArrayOps().Set(env.ExprEval(), call, args[0], args[1], args[2])
 	if err != nil {
 		return nil, err
 	}
 	return []ir.Element{out}, nil
 }
 
-func traceImpl(env engine.Env, call elements.CallAt, fn fun.Func, irFunc *ir.FuncBuiltin, args []ir.Element) ([]ir.Element, error) {
-	return nil, env.Engine().Trace(env.ExprEval(), call.Node(), args)
+func traceImpl(env engine.Env, call *ir.FuncCallExpr, recv ir.Element, args []ir.Element) ([]ir.Element, error) {
+	return nil, env.Engine().Trace(env.ExprEval(), call, args)
 }

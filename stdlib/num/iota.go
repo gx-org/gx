@@ -21,12 +21,11 @@ import (
 	"github.com/gx-org/gx/build/ir/irkind"
 	"github.com/gx-org/gx/interp/elements"
 	"github.com/gx-org/gx/interp/engine"
-	"github.com/gx-org/gx/interp/fun"
 	"github.com/gx-org/gx/interp/materialise"
 	"github.com/gx-org/gx/stdlib/builtin"
 )
 
-func evalIota(eng engine.Env, call elements.CallAt, fn fun.Func, irFunc *ir.FuncBuiltin, args []ir.Element) ([]ir.Element, error) {
+func evalIota(env engine.Env, call *ir.FuncCallExpr, recv ir.Element, args []ir.Element) ([]ir.Element, error) {
 	axes, err := elements.AxesFromElement(args[0])
 	if err != nil {
 		return nil, err
@@ -39,19 +38,19 @@ func evalIota(eng engine.Env, call elements.CallAt, fn fun.Func, irFunc *ir.Func
 		DType:       irkind.DefaultInt.DType(),
 		AxisLengths: axes,
 	}
-	gr := eng.Engine().ArrayOps().Graph()
+	gr := env.Engine().ArrayOps().Graph()
 	op, err := gr.Num().Iota(targetShape, axisIndex)
 	if err != nil {
 		return nil, err
 	}
-	mat := builtin.Materialiser(eng)
-	return materialise.ElementFromNode(call.File(), mat, &ops.OutputNode{
+	mat := builtin.Materialiser(env)
+	return materialise.ElementFromNode(env.File(), mat, &ops.OutputNode{
 		Node:  op,
 		Shape: targetShape,
-	}, call.Node().Type())
+	}, call.Type())
 }
 
-func evalIotaFull(eng engine.Env, call elements.CallAt, fn fun.Func, irFunc *ir.FuncBuiltin, args []ir.Element) ([]ir.Element, error) {
+func evalIotaFull(env engine.Env, call *ir.FuncCallExpr, recv ir.Element, args []ir.Element) ([]ir.Element, error) {
 	axes, err := elements.AxesFromElement(args[0])
 	if err != nil {
 		return nil, err
@@ -60,7 +59,7 @@ func evalIotaFull(eng engine.Env, call elements.CallAt, fn fun.Func, irFunc *ir.
 		DType:       irkind.DefaultInt.DType(),
 		AxisLengths: axes,
 	}
-	gr := eng.Engine().ArrayOps().Graph()
+	gr := env.Engine().ArrayOps().Graph()
 	iotaOp, err := gr.Num().Iota(&shape.Shape{
 		DType:       irkind.DefaultInt.DType(),
 		AxisLengths: []int{targetShape.Size()},
@@ -72,9 +71,9 @@ func evalIotaFull(eng engine.Env, call elements.CallAt, fn fun.Func, irFunc *ir.
 	if err != nil {
 		return nil, err
 	}
-	mat := builtin.Materialiser(eng)
-	return materialise.ElementFromNode(call.File(), mat, &ops.OutputNode{
+	mat := builtin.Materialiser(env)
+	return materialise.ElementFromNode(env.File(), mat, &ops.OutputNode{
 		Node:  op,
 		Shape: targetShape,
-	}, call.Node().Type())
+	}, call.Type())
 }

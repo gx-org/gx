@@ -27,7 +27,6 @@ import (
 	"github.com/gx-org/gx/internal/interp/canonical"
 	"github.com/gx-org/gx/interp/elements"
 	"github.com/gx-org/gx/interp/engine"
-	"github.com/gx-org/gx/interp/fun"
 	"github.com/gx-org/gx/interp/materialise"
 	"github.com/gx-org/gx/interp/numbers"
 	"github.com/gx-org/gx/stdlib/builtin"
@@ -103,7 +102,7 @@ func (f broadcast) BuildFuncType(fetcher ir.Fetcher, call *ir.FuncCallExpr) (*ir
 	}, nil
 }
 
-func evalBroadcast(env engine.Env, call elements.CallAt, fn fun.Func, irFunc *ir.FuncBuiltin, args []ir.Element) ([]ir.Element, error) {
+func evalBroadcast(env engine.Env, call *ir.FuncCallExpr, recv ir.Element, args []ir.Element) ([]ir.Element, error) {
 	targetAxes, err := elements.AxesFromElement(args[1])
 	if err != nil {
 		return nil, err
@@ -125,11 +124,11 @@ func evalBroadcast(env engine.Env, call elements.CallAt, fn fun.Func, irFunc *ir
 	if err != nil {
 		return nil, err
 	}
-	tp, cpErr, err := concrete.Concrete(env.ExprEval(), call.Node().Expr(), call.Node().Type())
+	tp, cpErr, err := concrete.Concrete(env.ExprEval(), call.Expr(), call.Type())
 	if unErr := ir.UnifyErr(cpErr, err); unErr != nil {
 		return nil, unErr
 	}
-	return materialise.ElementFromNode(call.File(), mat, &ops.OutputNode{
+	return materialise.ElementFromNode(env.File(), mat, &ops.OutputNode{
 		Node:  op,
 		Shape: targetShape,
 	}, tp)

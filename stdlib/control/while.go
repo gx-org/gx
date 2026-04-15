@@ -20,9 +20,7 @@ import (
 	"github.com/gx-org/backend/ops"
 	"github.com/gx-org/gx/build/builtins"
 	"github.com/gx-org/gx/build/ir"
-	"github.com/gx-org/gx/interp/elements"
 	"github.com/gx-org/gx/interp/engine"
-	"github.com/gx-org/gx/interp/fun"
 	"github.com/gx-org/gx/interp/grapheval"
 	"github.com/gx-org/gx/interp/materialise"
 	"github.com/gx-org/gx/stdlib/builtin"
@@ -63,7 +61,7 @@ func (f while) BuildFuncType(fetcher ir.Fetcher, call *ir.FuncCallExpr) (*ir.Fun
 	}, nil
 }
 
-func evalWhile(env engine.Env, call elements.CallAt, fn fun.Func, irFunc *ir.FuncBuiltin, args []ir.Element) ([]ir.Element, error) {
+func evalWhile(env engine.Env, call *ir.FuncCallExpr, recv ir.Element, args []ir.Element) ([]ir.Element, error) {
 	g := env.Engine().ArrayOps().Graph().Core()
 
 	cond, err := grapheval.GraphFromElement("while.cond", args[1])
@@ -89,7 +87,7 @@ func evalWhile(env engine.Env, call elements.CallAt, fn fun.Func, irFunc *ir.Fun
 		return nil, err
 	}
 	ev := env.Engine().(*grapheval.Evaluator)
-	out, err := ev.ElementFromTuple(env.File(), call.Node(), fnState.(ops.Tuple), stateShapes, args[0].Type())
+	out, err := ev.ElementFromTuple(env.File(), call, fnState.(ops.Tuple), stateShapes, args[0].Type())
 	if err != nil {
 		return nil, err
 	}

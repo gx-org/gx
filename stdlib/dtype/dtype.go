@@ -21,9 +21,7 @@ import (
 	"github.com/gx-org/backend/ops"
 	"github.com/gx-org/backend/shape"
 	"github.com/gx-org/gx/build/ir"
-	"github.com/gx-org/gx/interp/elements"
 	"github.com/gx-org/gx/interp/engine"
-	"github.com/gx-org/gx/interp/fun"
 	"github.com/gx-org/gx/interp/materialise"
 	"github.com/gx-org/gx/stdlib/builtin"
 )
@@ -37,13 +35,13 @@ var Package = builtin.PackageBuilder{
 	},
 }
 
-func evalReinterpret(env engine.Env, call elements.CallAt, fn fun.Func, irFunc *ir.FuncBuiltin, args []ir.Element) ([]ir.Element, error) {
+func evalReinterpret(env engine.Env, call *ir.FuncCallExpr, recv ir.Element, args []ir.Element) ([]ir.Element, error) {
 	mat := builtin.Materialiser(env)
 	argNode, _, err := materialise.Element(mat, args[0])
 	if err != nil {
 		return nil, err
 	}
-	retType := call.Node().Callee.FuncType().Results.List[0].Type.Val()
+	retType := call.Callee.FuncType().Results.List[0].Type.Val()
 	arrayType, ok := ir.Underlying(retType).(ir.ArrayType)
 	if !ok {
 		return nil, fmt.Errorf("%T is not an array type", retType)
@@ -54,11 +52,11 @@ func evalReinterpret(env engine.Env, call elements.CallAt, fn fun.Func, irFunc *
 	if err != nil {
 		return nil, err
 	}
-	return materialise.ElementFromNode(call.File(), mat, &ops.OutputNode{
+	return materialise.ElementFromNode(env.File(), mat, &ops.OutputNode{
 		Node: op,
 		Shape: &shape.Shape{
 			DType:       dtype,
 			AxisLengths: op.(interface{ PJRTDims() []int }).PJRTDims(),
 		},
-	}, call.Node().Type())
+	}, call.Type())
 }

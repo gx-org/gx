@@ -23,7 +23,6 @@ import (
 	"github.com/gx-org/gx/internal/togo"
 	"github.com/gx-org/gx/interp/elements"
 	"github.com/gx-org/gx/interp/engine"
-	"github.com/gx-org/gx/interp/fun"
 	"github.com/gx-org/gx/stdlib/builtin"
 )
 
@@ -36,7 +35,7 @@ var Package = builtin.PackageBuilder{
 	},
 }
 
-func sPrintf(ctx engine.Env, call elements.CallAt, fn fun.Func, irFunc *ir.FuncBuiltin, args []ir.Element) ([]ir.Element, error) {
+func sPrintf(env engine.Env, call *ir.FuncCallExpr, recv ir.Element, args []ir.Element) ([]ir.Element, error) {
 	if len(args) < 1 {
 		return nil, errors.Errorf("unexpected number of arguments to sPrintf: got %d but want (string, varargs)", len(args))
 	}

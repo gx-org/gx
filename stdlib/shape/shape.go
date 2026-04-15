@@ -23,7 +23,6 @@ import (
 	"github.com/gx-org/gx/build/ir"
 	"github.com/gx-org/gx/interp/elements"
 	"github.com/gx-org/gx/interp/engine"
-	"github.com/gx-org/gx/interp/fun"
 	"github.com/gx-org/gx/stdlib/builtin"
 )
 
@@ -40,7 +39,7 @@ var Package = builtin.PackageBuilder{
 	},
 }
 
-func sameSlice(ctx engine.Env, call elements.CallAt, fn fun.Func, irFunc *ir.FuncBuiltin, args []ir.Element) (_ []ir.Element, err error) {
+func sameSlice(env engine.Env, call *ir.FuncCallExpr, recv ir.Element, args []ir.Element) (_ []ir.Element, err error) {
 	defer func() {
 		if err != nil {
 			err = fmt.Errorf("cannot call fmt.SameSlice: %w", err)
