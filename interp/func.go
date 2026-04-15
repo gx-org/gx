@@ -60,10 +60,10 @@ func NewRunFunc(fn ir.Func, recv *fun.Receiver) fun.Func {
 		base.call = funcDecl{fnT: fnT}.callDecl
 	case *ir.FuncBuiltin:
 		base.storage = fnT
-		base.call = funcBuiltin{fnT: fnT}.callBuiltin
+		base.call = funcBuiltin{fun: fnT, impl: fnT.Impl}.callBuiltin
 	case *ir.FuncKeyword:
 		base.storage = fnT
-		base.call = funcKeyword{fnT: fnT}.callKeyword
+		base.call = funcBuiltin{impl: fnT.Impl}.callBuiltin
 	case *ir.Macro:
 		base.storage = fnT
 		base.call = funcMacro{fnT: fnT}.callMacro
@@ -160,22 +160,9 @@ func (f funcDecl) callDecl(env *fun.CallEnv, call *ir.FuncCallExpr, recv element
 	return evalFuncBody(fitp, f.fnT.Body)
 }
 
-func toFuncBuiltin(f ir.Func, impl ir.FuncImpl) (FuncBuiltin, error) {
-	if impl == nil {
-		return nil, errors.Errorf("function %s has no implementation", f.ShortString())
-	}
-	blt, isBuiltin := impl.Implementation().(FuncBuiltin)
-	if !isBuiltin {
-		return nil, errors.Errorf("type %T is not a function builtin implementation", impl)
-	}
-	if blt == nil {
-		return nil, errors.Errorf("function %s has no implementation", f.ShortString())
-	}
-	return blt, nil
-}
-
 type funcBuiltin struct {
-	fnT *ir.FuncBuiltin
+	fun  ir.Func
+	impl ir.FuncImpl
 }
 
 func (f funcBuiltin) callBuiltin(env *fun.CallEnv, call *ir.FuncCallExpr, recv elements.Copier, args []ir.Element) (outs []ir.Element, err error) {
@@ -184,29 +171,17 @@ func (f funcBuiltin) callBuiltin(env *fun.CallEnv, call *ir.FuncCallExpr, recv e
 			err = fmterr.Error(env.File().FileSet(), call.Expr(), err)
 		}
 	}()
-	impl, err := toFuncBuiltin(f.fnT, f.fnT.Impl)
-	if err != nil {
-		return nil, err
+	if f.impl == nil {
+		return nil, errors.Errorf("function %s has no implementation", f.fun.ShortString())
 	}
-	return impl(env, call, recv, args)
-}
-
-type funcKeyword struct {
-	elFunc
-	fnT *ir.FuncKeyword
-}
-
-func (f funcKeyword) callKeyword(env *fun.CallEnv, call *ir.FuncCallExpr, _ elements.Copier, args []ir.Element) (outs []ir.Element, err error) {
-	defer func() {
-		if err != nil {
-			err = fmterr.Error(env.File().FileSet(), call.Expr(), err)
-		}
-	}()
-	impl, err := toFuncBuiltin(f.fnT, f.fnT.Impl)
-	if err != nil {
-		return nil, err
+	builtin, isBuiltin := f.impl.Implementation().(FuncBuiltin)
+	if !isBuiltin {
+		return nil, errors.Errorf("type %T is not a function builtin implementation", f.impl)
 	}
-	return impl(env, call, nil, args)
+	if builtin == nil {
+		return nil, errors.Errorf("function %s has no implementation", f.fun.ShortString())
+	}
+	return builtin(env, call, recv, args)
 }
 
 type funcMacro struct {
