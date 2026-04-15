@@ -19,6 +19,7 @@ import (
 	"github.com/gx-org/gx/build/ir"
 	"github.com/gx-org/gx/internal/interp/compeval/cpevelements"
 	"github.com/gx-org/gx/internal/tracer/processor"
+	"github.com/gx-org/gx/interp/context"
 	"github.com/gx-org/gx/interp/engine"
 	"github.com/gx-org/gx/interp/fun"
 )
@@ -50,7 +51,7 @@ func (ev *CompEval) NewFunc(fn ir.Func, recv *fun.Receiver) fun.Func {
 }
 
 // NewFuncLit creates a new function literal.
-func (ev *CompEval) NewFuncLit(env *fun.CallEnv, fn *ir.FuncLit) (fun.Func, error) {
+func (ev *CompEval) NewFuncLit(fn *ir.FuncLit, _ engine.Engine, _ *context.Context) (fun.Func, error) {
 	return cpevelements.NewProxyFunc(fn, nil), nil
 }
 

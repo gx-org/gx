@@ -20,6 +20,8 @@ import (
 	"github.com/gx-org/gx/build/ir"
 	"github.com/gx-org/gx/internal/interp/flatten"
 	"github.com/gx-org/gx/internal/tracer/processor"
+	"github.com/gx-org/gx/interp/context"
+	"github.com/gx-org/gx/interp/engine"
 	"github.com/gx-org/gx/interp/fun"
 	"github.com/gx-org/gx/interp"
 )
@@ -29,20 +31,20 @@ type processCallResults func(ops.Node) ([]ir.Element, error)
 // funcLit is a function represented as a subgraph.
 type funcLit struct {
 	eval *Evaluator
-	env  *fun.CallEnv
 	lit  *ir.FuncLit
 	litp *interp.FuncLitScope
+	eng  engine.Engine
+	ctx  *context.Context
 }
 
 var _ fun.Func = (*funcLit)(nil)
 
 // NewFuncLit creates a new function literal.
-func (ev *Evaluator) NewFuncLit(env *fun.CallEnv, lit *ir.FuncLit) (fun.Func, error) {
+func (ev *Evaluator) NewFuncLit(lit *ir.FuncLit, eng engine.Engine, ctx *context.Context) (fun.Func, error) {
 	return &funcLit{
 		eval: ev,
-		env:  env,
 		lit:  lit,
-		litp: interp.NewFuncLitScope(ev, env.Engine(), env.Context(), lit),
+		litp: interp.NewFuncLitScope(ev, eng, ctx, lit),
 	}, nil
 }
 
@@ -72,7 +74,7 @@ func (sg *funcLit) SubGraph(name string) (*ops.Subgraph, error) {
 	if err != nil {
 		return nil, err
 	}
-	litp := interp.NewFuncLitScope(subeval, sg.env.Engine(), sg.env.Context(), sg.lit)
+	litp := interp.NewFuncLitScope(subeval, sg.eng, sg.ctx, sg.lit)
 	outElts, err := litp.RunFuncLit(fnInputs.Args)
 	if err != nil {
 		return nil, err

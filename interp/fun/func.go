@@ -44,7 +44,7 @@ type (
 		NewFunc(ir.Func, *Receiver) Func
 
 		// NewFuncLit calls a function literal.
-		NewFuncLit(*CallEnv, *ir.FuncLit) (Func, error)
+		NewFuncLit(*ir.FuncLit, engine.Engine, *context.Context) (Func, error)
 	}
 
 	// Func is an element owning a callable function.
