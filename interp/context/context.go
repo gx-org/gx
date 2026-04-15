@@ -23,7 +23,6 @@ import (
 	gxfmt "github.com/gx-org/gx/base/fmt"
 	"github.com/gx-org/gx/build/ir"
 	"github.com/gx-org/gx/internal/base/scope"
-	"github.com/gx-org/gx/interp/engine"
 )
 
 type (
@@ -37,9 +36,6 @@ type (
 
 		// PackageToImport encapsulates a package into its import declaration.
 		PackageToImport(imp *ir.ImportDecl, pkg ir.PackageElement) ir.Element
-
-		// Engine used by the interpreter.
-		Engine() engine.Engine
 	}
 
 	// Core contains everything in the context independent of code location.
@@ -106,11 +102,6 @@ func (ctx *Context) currentFrame() *blockFrame {
 // CurrentFunc returns the current function being run.
 func (ctx *Context) CurrentFunc() ir.Func {
 	return ctx.currentFrame().owner.function
-}
-
-// Engine used by the interpreter.
-func (ctx *Context) Engine() engine.Engine {
-	return ctx.core.interp.Engine()
 }
 
 // Sub returns a child context given a set of elements.

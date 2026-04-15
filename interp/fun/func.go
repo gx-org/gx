@@ -34,6 +34,7 @@ type (
 	CallEnv struct {
 		ctx  *context.Context
 		expr ir.Evaluator
+		eng  engine.Engine
 		fun  Factory
 	}
 
@@ -58,11 +59,9 @@ type (
 	NewFunc func(ir.Func, *Receiver) Func
 )
 
-var _ engine.Env = &CallEnv{}
-
 // NewCallEnv returns a function context.
-func NewCallEnv(ctx *context.Context, exprEval ir.Evaluator, fun Factory) *CallEnv {
-	return &CallEnv{ctx: ctx, expr: exprEval, fun: fun}
+func NewCallEnv(ctx *context.Context, exprEval ir.Evaluator, eng engine.Engine, fun Factory) *CallEnv {
+	return &CallEnv{ctx: ctx, expr: exprEval, eng: eng, fun: fun}
 }
 
 // File returns the current file where the code is being interpreted.
@@ -85,9 +84,9 @@ func (env *CallEnv) FuncEval() Factory {
 	return env.fun
 }
 
-// Engine returns the interpreter engine.
+// Engine returns the engine used for evaluations.
 func (env *CallEnv) Engine() engine.Engine {
-	return env.ctx.Engine()
+	return env.eng
 }
 
 // ToConcrete returns the concrete type given the current context.

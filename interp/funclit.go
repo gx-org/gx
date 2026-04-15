@@ -54,6 +54,6 @@ func (litp *FuncLitScope) RunFuncLit(args []ir.Element) ([]ir.Element, error) {
 		funcFrame.Define(resultName, nil)
 	}
 	defer litp.ctx.PopFrame()
-	fitp := toInterp(litp.ctx, litp.funFact)
+	fitp := toInterp(litp.ctx, litp.eng, litp.funFact)
 	return evalFuncBody(fitp, litp.lit.Body)
 }

@@ -48,7 +48,10 @@ type Evaluator struct {
 	hostEval engine.Engine
 }
 
-var _ fun.Factory = (*Evaluator)(nil)
+var (
+	_ fun.Factory   = (*Evaluator)(nil)
+	_ engine.Engine = (*Evaluator)(nil)
+)
 
 // New returns a new evaluator given a elements.
 func New(importer ir.Importer, pr *processor.Processor, gr ops.Graph) *Evaluator {

@@ -151,7 +151,7 @@ func (f funcDecl) callDecl(env *fun.CallEnv, fn fun.Func, call *ir.FuncCallExpr,
 		return nil, err
 	}
 	// Evaluate the function within the frame.
-	fitp := toInterp(env.Context(), env.FuncEval())
+	fitp := toInterp(env.Context(), env.Engine(), env.FuncEval())
 	return evalFuncBody(fitp, f.fnT.Body)
 }
 

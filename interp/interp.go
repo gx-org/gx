@@ -65,7 +65,7 @@ func New(eng engine.Engine, funFact fun.Factory, options []options.PackageOption
 // ForFile returns an interpreter for a file context.
 func (itp *Base) ForFile(file *ir.File) (*Interpreter, error) {
 	ctx, err := itp.core.NewFileContext(file)
-	return toInterp(ctx, itp.funFact), err
+	return toInterp(ctx, itp.eng, itp.funFact), err
 
 }
 
@@ -79,9 +79,9 @@ type Interpreter struct {
 	env *fun.CallEnv
 }
 
-func toInterp(ctx *context.Context, funFact fun.Factory) *Interpreter {
+func toInterp(ctx *context.Context, eng engine.Engine, funFact fun.Factory) *Interpreter {
 	fitp := &Interpreter{}
-	fitp.env = fun.NewCallEnv(ctx, fitp, funFact)
+	fitp.env = fun.NewCallEnv(ctx, fitp, eng, funFact)
 	return fitp
 }
 
@@ -164,7 +164,7 @@ func (fitp *Interpreter) Sub(file *ir.File, vals *context.SubMap) (*Interpreter,
 	var err error
 	ctx := fitp.env.Context()
 	sub := &Interpreter{}
-	sub.env = fun.NewCallEnv(ctx.Sub(vals), sub, fitp.env.FuncEval())
+	sub.env = fun.NewCallEnv(ctx.Sub(vals), sub, fitp.Engine(), fitp.env.FuncEval())
 	return sub, err
 }
 
