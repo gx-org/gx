@@ -630,6 +630,9 @@ func checkArgsForCall(ce *compileEvaluator, fExpr *ir.FuncValExpr, args []ir.Exp
 }
 
 func buildFuncForCall(rscope resolveScope, fExpr *ir.FuncValExpr, args []ir.Expr) ([]ir.Expr, *ir.FuncValExpr, bool) {
+	if rscope.requireCompevalCall() && !fExpr.Func().FuncType().CompEval {
+		return args, fExpr, rscope.Err().Appendf(fExpr.Node(), "expect a compeval function, function %s is not", fExpr.Func().ShortString())
+	}
 	compEval, compEvalOk := compEvalForFuncType(rscope, fExpr.Node(), fExpr.FuncType())
 	if !compEvalOk {
 		return args, fExpr, false

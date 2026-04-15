@@ -196,6 +196,7 @@ type (
 		fileScope() *fileResolveScope
 		toDefineScope() *defineLocalScope
 		compEval() (*compileEvaluator, bool)
+		requireCompevalCall() bool
 		irBuilder() irBuilder
 		String() string
 	}
@@ -256,6 +257,10 @@ func (s *fileResolveScope) procScope() procScope {
 func (s *fileResolveScope) newCompEval() (*compileEvaluator, bool) {
 	pkgitp := s.pkgResolveScope.packageInterpreter()
 	return newEvaluator(pkgitp, s.irFile(), s.errs)
+}
+
+func (s *fileResolveScope) requireCompevalCall() bool {
+	return false
 }
 
 func (s *fileResolveScope) compEval() (*compileEvaluator, bool) {
@@ -440,6 +445,18 @@ func (s *ephemeralResolveScope) nspace() *scope.RWScope[ir.Element] {
 
 func (s *ephemeralResolveScope) compEval() (*compileEvaluator, bool) {
 	return s.ce, true
+}
+
+type requireCompEval struct {
+	resolveScope
+}
+
+func newRequireCompEvalScope(parent resolveScope) *requireCompEval {
+	return &requireCompEval{resolveScope: parent}
+}
+
+func (s *requireCompEval) requireCompevalCall() bool {
+	return true
 }
 
 type arrayLitResolveScope struct {
