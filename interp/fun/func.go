@@ -44,9 +44,6 @@ type (
 
 		// NewFuncLit calls a function literal.
 		NewFuncLit(*CallEnv, *ir.FuncLit) (Func, error)
-
-		// NewRunFunc creates a function that will always be run by the interpreter.
-		NewRunFunc(ir.Func, *Receiver) Func
 	}
 
 	// Func is an element owning a callable function.
@@ -66,11 +63,6 @@ var _ engine.Env = &CallEnv{}
 // NewCallEnv returns a function context.
 func NewCallEnv(ctx *context.Context, exprEval ir.Evaluator, fun Factory) *CallEnv {
 	return &CallEnv{ctx: ctx, expr: exprEval, fun: fun}
-}
-
-// Run a function by the interpreter.
-func (env *CallEnv) Run(fn ir.Func, recv *Receiver, call *ir.FuncCallExpr, args []ir.Element) ([]ir.Element, error) {
-	return env.fun.NewRunFunc(fn, recv).Call(env, call, args)
 }
 
 // File returns the current file where the code is being interpreted.

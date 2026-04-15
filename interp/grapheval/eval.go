@@ -65,11 +65,6 @@ func (ev *Evaluator) NewFunc(fn ir.Func, recv *fun.Receiver) fun.Func {
 	return interp.NewRunFunc(fn, recv)
 }
 
-// NewRunFunc creates a new function given its definition and a receiver.
-func (ev *Evaluator) NewRunFunc(fn ir.Func, recv *fun.Receiver) fun.Func {
-	return interp.NewRunFunc(fn, recv)
-}
-
 // Processor returns the processor where init and debug traces are registered.
 func (ev *Evaluator) Processor() *processor.Processor {
 	return ev.process

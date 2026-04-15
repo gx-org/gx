@@ -54,11 +54,6 @@ func (ev *CompEval) NewFuncLit(env *fun.CallEnv, fn *ir.FuncLit) (fun.Func, erro
 	return cpevelements.NewProxyFunc(fn, nil), nil
 }
 
-// NewRunFunc returns a function that will be run by the interpreter.
-func (ev *CompEval) NewRunFunc(fn ir.Func, recv *fun.Receiver) fun.Func {
-	return ev.newRunFunc(fn, recv)
-}
-
 // Processor returns the processor used to process inits and traces for compiled function.
 func (ev *CompEval) Processor() *processor.Processor {
 	return nil
