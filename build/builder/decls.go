@@ -162,7 +162,7 @@ func (d *decls) resolveAll(pkgScope *pkgResolveScope) bool {
 		return false
 	}
 	// Build functions and methods.
-	pkgScope.newFunc = cpevelements.NewMixFunc
+	pkgScope.newFuncForEval = cpevelements.NewMixFunc
 	funOk := d.buildFunctions(pkgScope, filterCompEval(false))
 	return funOk && ok
 }

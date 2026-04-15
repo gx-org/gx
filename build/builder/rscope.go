@@ -91,7 +91,7 @@ type (
 	pkgResolveScope struct {
 		*pkgProcScope
 
-		newFunc func(fn ir.Func, recv *fun.Receiver) fun.Func
+		newFuncForEval fun.NewRunFunc
 
 		state *pkgState
 
@@ -106,11 +106,11 @@ type (
 
 func newPackageResolveScope(pscope *pkgProcScope) (*pkgResolveScope, bool) {
 	s := &pkgResolveScope{
-		pkgProcScope: pscope,
-		newFunc:      cpevelements.NewProxyFunc,
-		methods:      ordered.NewMap[*ir.NamedType, *ordered.Map[string, *irFunc]](),
-		state:        &pkgState{dcls: pscope.decls()},
-		fileScopes:   make(map[*file]*fileResolveScope),
+		pkgProcScope:   pscope,
+		newFuncForEval: cpevelements.NewProxyFunc,
+		methods:        ordered.NewMap[*ir.NamedType, *ordered.Map[string, *irFunc]](),
+		state:          &pkgState{dcls: pscope.decls()},
+		fileScopes:     make(map[*file]*fileResolveScope),
 	}
 	pkg := pscope.bpkg.newPackageIR()
 	s.state.ibld = irb.New(s, pkg)
@@ -159,7 +159,7 @@ func (s *pkgResolveScope) buildStorageProcessNode(tok token.Token, store ir.Stor
 }
 
 func (s *pkgResolveScope) packageInterpreter() *interp.Base {
-	hostEval := compeval.NewHostEvaluator(s.bpkg.builder(), s.newFunc)
+	hostEval := compeval.NewHostEvaluator(s.bpkg.builder(), s.newFuncForEval)
 	pkg := s.state.ibld.Pkg()
 	pkg.Decls = s.state.ibld.Decls()
 	var opts []options.PackageOption
@@ -366,7 +366,7 @@ func (s *funcResolveScope) nspace() *scope.RWScope[ir.Element] {
 func (s *funcResolveScope) setFuncValue(fn ir.PkgFunc) bool {
 	var ok bool
 	s.bodyCE, ok = s.bodyCE.sub(nil, context.NewSubMap(map[string]ir.Element{
-		fn.Name(): s.resolveScope.fileScope().newFunc(fn, nil),
+		fn.Name(): s.resolveScope.fileScope().newFuncForEval(fn, nil),
 	}))
 	return ok
 }
