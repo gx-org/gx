@@ -17,6 +17,7 @@ package interp
 import (
 	"github.com/gx-org/gx/build/ir"
 	"github.com/gx-org/gx/internal/base/scope"
+	"github.com/gx-org/gx/interp/elements"
 	"github.com/gx-org/gx/interp/fun"
 )
 
@@ -34,12 +35,12 @@ func (itp *Base) InitPkgScope(pkg *ir.Package, scope *scope.RWScope[ir.Element])
 	if err := itp.options.Eval(pkg, scope); err != nil {
 		return nil, err
 	}
-	return fun.NewPackage(pkg, scope), nil
+	return elements.NewPackage(pkg, scope), nil
 }
 
 // PackageToImport encapsulates a package into its import declaration.
 func (itp *Base) PackageToImport(imp *ir.ImportDecl, pkg ir.PackageElement) ir.Element {
-	return fun.NewImport(imp, pkg)
+	return elements.NewImport(imp, pkg)
 }
 
 func (itp *Base) evalPackageConsts(pkg *ir.Package, scope *scope.RWScope[ir.Element]) error {

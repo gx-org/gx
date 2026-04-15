@@ -12,13 +12,12 @@
 // See the License for the specific language governing permissions and
 // limitations under the License.
 
-package fun
+package elements
 
 import (
 	"github.com/pkg/errors"
 	"github.com/gx-org/gx/build/ir"
 	"github.com/gx-org/gx/internal/base/scope"
-	"github.com/gx-org/gx/interp/elements"
 )
 
 // Package groups elements exported by a package.
@@ -57,7 +56,7 @@ type Import struct {
 
 var (
 	_ ir.StorageElement = (*Import)(nil)
-	_ elements.Selector = (*Import)(nil)
+	_ Selector          = (*Import)(nil)
 )
 
 // NewImport returns a new import element for a given package.
