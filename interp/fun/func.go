@@ -17,11 +17,9 @@ package fun
 
 import (
 	"fmt"
-	"go/ast"
 	"strings"
 
 	"github.com/gx-org/gx/build/ir"
-	"github.com/gx-org/gx/internal/concrete"
 	"github.com/gx-org/gx/interp/context"
 	"github.com/gx-org/gx/interp/engine"
 )
@@ -87,11 +85,6 @@ func (env *CallEnv) FuncEval() Factory {
 // Engine returns the engine used for evaluations.
 func (env *CallEnv) Engine() engine.Engine {
 	return env.eng
-}
-
-// ToConcrete returns the concrete type given the current context.
-func (env *CallEnv) ToConcrete(src ast.Expr, tp ir.Type) (ir.Type, ir.CompEvalError, error) {
-	return concrete.Concrete(env.ExprEval(), src, tp)
 }
 
 func (env *CallEnv) String() string {

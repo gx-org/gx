@@ -30,6 +30,7 @@ import (
 	"github.com/gx-org/gx/api/values"
 	"github.com/gx-org/gx/build/fmterr"
 	"github.com/gx-org/gx/build/ir"
+	"github.com/gx-org/gx/internal/concrete"
 	"github.com/gx-org/gx/interp/context"
 	"github.com/gx-org/gx/interp/elements"
 	"github.com/gx-org/gx/interp/engine"
@@ -190,7 +191,7 @@ func (fitp *Interpreter) File() *ir.File {
 }
 
 func (fitp *Interpreter) elementFromAtom(expr ir.Expr, val values.Array) (engine.NumericalElement, error) {
-	typ, cpErr, err := fitp.env.ToConcrete(expr.Expr(), expr.Type())
+	typ, cpErr, err := concrete.Concrete(fitp.env.ExprEval(), expr.Expr(), expr.Type())
 	if unErr := ir.UnifyErr(cpErr, err); unErr != nil {
 		return nil, unErr
 	}

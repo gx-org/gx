@@ -24,6 +24,7 @@ import (
 	"github.com/gx-org/gx/build/fmterr"
 	"github.com/gx-org/gx/build/ir"
 	"github.com/gx-org/gx/build/ir/irkind"
+	"github.com/gx-org/gx/internal/concrete"
 	"github.com/gx-org/gx/internal/interp/canonical"
 	"github.com/gx-org/gx/internal/interp/coreops"
 	"github.com/gx-org/gx/internal/interp/flatten"
@@ -47,7 +48,7 @@ var (
 
 // NewFloat returns a new element Float number element.
 func NewFloat(env engine.Env, expr ir.Expr, val *big.Float) (*Float, error) {
-	typ, cpErr, err := env.ToConcrete(expr.Expr(), expr.Type())
+	typ, cpErr, err := concrete.Concrete(env.ExprEval(), expr.Expr(), expr.Type())
 	return &Float{
 		val:  val,
 		expr: expr,
@@ -101,13 +102,13 @@ func binaryFloat(env engine.Env, expr *ir.BinaryExpr, xFloat, yFloat *Float) (en
 	fl := &Float{val: val, expr: expr}
 	var cpErr ir.CompEvalError
 	var err error
-	fl.typ, cpErr, err = env.ToConcrete(expr.Src, expr.Typ)
+	fl.typ, cpErr, err = concrete.Concrete(env.ExprEval(), expr.Src, expr.Typ)
 	return fl, ir.UnifyErr(cpErr, err)
 }
 
 // Cast an element into a given data type.
 func (n *Float) Cast(env engine.Env, expr ir.Expr, target ir.Type) (engine.NumericalElement, error) {
-	typ, cpErr, err := env.ToConcrete(expr.Expr(), target)
+	typ, cpErr, err := concrete.Concrete(env.ExprEval(), expr.Expr(), target)
 	return &Float{
 		val:  n.val,
 		expr: expr,

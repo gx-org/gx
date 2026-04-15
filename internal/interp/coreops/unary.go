@@ -24,6 +24,7 @@ import (
 	"github.com/gx-org/gx/build/fmterr"
 	"github.com/gx-org/gx/build/ir"
 	"github.com/gx-org/gx/golang/backend/kernels"
+	"github.com/gx-org/gx/internal/concrete"
 	"github.com/gx-org/gx/internal/interp/canonical"
 	"github.com/gx-org/gx/internal/interp/flatten"
 	"github.com/gx-org/gx/interp/elements"
@@ -53,7 +54,7 @@ func NewUnary(env engine.Env, expr *ir.UnaryExpr, xEl Element) (_ engine.Numeric
 			err = fmterr.Error(env.File().FileSet(), expr.Src, err)
 		}
 	}()
-	typ, cpErr, err := env.ToConcrete(expr.Src, expr.Type())
+	typ, cpErr, err := concrete.Concrete(env.ExprEval(), expr.Src, expr.Type())
 	opEl := &unary{
 		expr: expr,
 		typ:  typ,

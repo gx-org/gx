@@ -23,6 +23,7 @@ import (
 	"github.com/gx-org/gx/build/fmterr"
 	"github.com/gx-org/gx/build/ir"
 	"github.com/gx-org/gx/build/ir/irkind"
+	"github.com/gx-org/gx/internal/concrete"
 	"github.com/gx-org/gx/internal/interp/flatten"
 	"github.com/gx-org/gx/interp/elements"
 	"github.com/gx-org/gx/interp/engine"
@@ -142,7 +143,7 @@ func (n *BackendNode) BinaryOp(env engine.Env, expr *ir.BinaryExpr, x, y engine.
 	if len(yShape.AxisLengths) > 0 {
 		targetShape.AxisLengths = yShape.AxisLengths
 	}
-	typ, cpErr, err := env.ToConcrete(expr.Src, expr.Typ)
+	typ, cpErr, err := concrete.Concrete(env.ExprEval(), expr.Src, expr.Typ)
 	if unErr := ir.UnifyErr(cpErr, err); unErr != nil {
 		return nil, unErr
 	}
@@ -162,7 +163,7 @@ func (n *BackendNode) UnaryOp(env engine.Env, expr *ir.UnaryExpr) (engine.Numeri
 	if err != nil {
 		return nil, err
 	}
-	typ, cpErr, err := env.ToConcrete(expr.Src, expr.Type())
+	typ, cpErr, err := concrete.Concrete(env.ExprEval(), expr.Src, expr.Type())
 	if unErr := ir.UnifyErr(cpErr, err); unErr != nil {
 		return nil, unErr
 	}
@@ -183,7 +184,7 @@ func (n *BackendNode) Cast(env engine.Env, expr ir.Expr, target ir.Type) (engine
 	if err != nil {
 		return nil, err
 	}
-	typ, cpErr, err := env.ToConcrete(expr.Expr(), expr.Type())
+	typ, cpErr, err := concrete.Concrete(env.ExprEval(), expr.Expr(), expr.Type())
 	if unErr := ir.UnifyErr(cpErr, err); unErr != nil {
 		return nil, unErr
 	}

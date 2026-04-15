@@ -25,6 +25,7 @@ import (
 	"github.com/gx-org/gx/build/fmterr"
 	"github.com/gx-org/gx/build/ir"
 	"github.com/gx-org/gx/build/ir/irkind"
+	"github.com/gx-org/gx/internal/concrete"
 	"github.com/gx-org/gx/internal/interp/canonical"
 	"github.com/gx-org/gx/internal/interp/coreops"
 	"github.com/gx-org/gx/internal/interp/flatten"
@@ -48,7 +49,7 @@ var (
 
 // NewInt returns a new element Int number element.
 func NewInt(env engine.Env, expr ir.Expr, val *big.Int) (*Int, error) {
-	typ, cpErr, err := env.ToConcrete(expr.Expr(), expr.Type())
+	typ, cpErr, err := concrete.Concrete(env.ExprEval(), expr.Expr(), expr.Type())
 	return NewIntForType(expr, val, typ), ir.UnifyErr(cpErr, err)
 }
 
@@ -125,7 +126,7 @@ func binaryInt(env engine.Env, expr *ir.BinaryExpr, xInt, yInt *Int) (engine.Num
 	default:
 		return coreops.NewBinary(env, expr, xInt, yInt)
 	}
-	typ, cpErr, err := env.ToConcrete(expr.Src, expr.Typ)
+	typ, cpErr, err := concrete.Concrete(env.ExprEval(), expr.Src, expr.Typ)
 	return &Int{
 		val:  val,
 		expr: expr,
@@ -135,7 +136,7 @@ func binaryInt(env engine.Env, expr *ir.BinaryExpr, xInt, yInt *Int) (engine.Num
 
 // Cast an element into a given data type.
 func (n *Int) Cast(env engine.Env, expr ir.Expr, target ir.Type) (engine.NumericalElement, error) {
-	typ, cpErr, err := env.ToConcrete(expr.Expr(), target)
+	typ, cpErr, err := concrete.Concrete(env.ExprEval(), expr.Expr(), target)
 	return &Int{
 		val:  n.val,
 		expr: expr,

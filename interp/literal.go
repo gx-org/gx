@@ -22,6 +22,7 @@ import (
 	"github.com/gx-org/gx/build/ir"
 	"github.com/gx-org/gx/build/ir/irkind"
 	"github.com/gx-org/gx/golang/backend/kernels"
+	"github.com/gx-org/gx/internal/concrete"
 	"github.com/gx-org/gx/interp/elements"
 	"github.com/gx-org/gx/interp/engine"
 )
@@ -118,7 +119,7 @@ func (v valuerT[T]) buildStaticArray(fitp *Interpreter, lit *ir.ArrayLitExpr, ax
 	if err != nil {
 		return nil, false, err
 	}
-	typ, cpErr, err := fitp.env.ToConcrete(lit.Src, lit.Typ)
+	typ, cpErr, err := concrete.Concrete(fitp.env.ExprEval(), lit.Src, lit.Typ)
 	if unErr := ir.UnifyErr(cpErr, err); unErr != nil {
 		return nil, false, unErr
 	}

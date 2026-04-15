@@ -25,6 +25,7 @@ import (
 	"github.com/gx-org/gx/build/fmterr"
 	"github.com/gx-org/gx/build/ir"
 	"github.com/gx-org/gx/golang/backend/kernels"
+	"github.com/gx-org/gx/internal/concrete"
 	"github.com/gx-org/gx/internal/interp/canonical"
 	"github.com/gx-org/gx/internal/interp/flatten"
 	"github.com/gx-org/gx/interp/elements"
@@ -66,7 +67,7 @@ func NewBinary(env engine.Env, expr *ir.BinaryExpr, xEl, yEl engine.NumericalEle
 			err = fmterr.Error(env.File().FileSet(), expr.Src, err)
 		}
 	}()
-	typ, cpErr, err := env.ToConcrete(expr.Src, expr.Typ)
+	typ, cpErr, err := concrete.Concrete(env.ExprEval(), expr.Src, expr.Typ)
 	el := &binary{
 		expr: expr,
 		typ:  typ,

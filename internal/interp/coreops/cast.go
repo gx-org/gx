@@ -21,6 +21,7 @@ import (
 	"github.com/gx-org/gx/api/values"
 	"github.com/gx-org/gx/build/ir"
 	"github.com/gx-org/gx/golang/backend/kernels"
+	"github.com/gx-org/gx/internal/concrete"
 	"github.com/gx-org/gx/internal/interp/canonical"
 	"github.com/gx-org/gx/internal/interp/flatten"
 	"github.com/gx-org/gx/interp/elements"
@@ -50,7 +51,7 @@ func NewCast(env engine.Env, expr ir.Expr, xEl Element, target ir.Type) (engine.
 	if err != nil {
 		return nil, err
 	}
-	typ, cpErr, err := env.ToConcrete(expr.Expr(), target)
+	typ, cpErr, err := concrete.Concrete(env.ExprEval(), expr.Expr(), target)
 	opEl := &cast{
 		expr: expr,
 		typ:  typ,
@@ -100,7 +101,7 @@ func NewReshape(env engine.Env, expr ir.Expr, xEl Element, axisLengths []engine.
 	if x == nil {
 		return xEl, nil
 	}
-	typ, cpErr, err := env.ToConcrete(expr.Expr(), expr.Type())
+	typ, cpErr, err := concrete.Concrete(env.ExprEval(), expr.Expr(), expr.Type())
 	c := &cast{
 		expr: expr,
 		typ:  typ,

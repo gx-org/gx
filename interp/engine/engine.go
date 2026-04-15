@@ -36,9 +36,6 @@ type (
 
 		// Engine returns the engine used by the interpreter environment.
 		Engine() Engine
-
-		// ToConcrete returns the concrete type given the current context.
-		ToConcrete(ast.Expr, ir.Type) (ir.Type, ir.CompEvalError, error)
 	}
 
 	// Engine provides the GX interpreter will all the required primitives.
