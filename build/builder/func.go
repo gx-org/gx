@@ -132,13 +132,17 @@ func rankInferOk(rscope resolveScope, src ast.Node, typ ir.Type) bool {
 }
 
 func defineTypeParam(s resolveScope, storage ir.Storage) bool {
+	storageType := ir.MetaType()
 	fieldStorage := storage.(*ir.FieldStorage)
+	switch fieldStorage.Type().Kind() {
+	case irkind.IntLen:
+		storageType = fieldStorage.Type()
+	}
 	typ := &ir.TypeParam{Field: fieldStorage.Field}
-	// Transform storage with a type to a storage with the type being assigned as a value.
 	return defineLocalVar(s, &ir.AssignExpr{
 		Storage: &ir.LocalVarStorage{
 			Src: storage.NameDef(),
-			Typ: ir.MetaType(),
+			Typ: storageType,
 		},
 		X: ir.TypeExpr(nil, typ),
 	})

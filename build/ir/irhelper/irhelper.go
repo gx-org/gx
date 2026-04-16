@@ -167,6 +167,10 @@ func Axis(ax any) ir.AxisLengths {
 		return axisT
 	case ir.Expr:
 		return &ir.AxisExpr{X: axisT}
+	case *ir.Field:
+		return &ir.AxisExpr{
+			X: &ir.Ident{Src: axisT.Name, Stor: axisT.Storage()},
+		}
 	case string:
 		if strings.HasPrefix(axisT, ir.DefineAxisGroup) {
 			name := strings.TrimPrefix(axisT, ir.DefineAxisGroup)

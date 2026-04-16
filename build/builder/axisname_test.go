@@ -300,6 +300,27 @@ func f() [2]float32 {
 	)
 }
 
+func TestGenericAxis(t *testing.T) {
+	dims := irh.Field("dims", ir.IntLenType(), nil)
+	testbuild.Run(t,
+		testbuild.Decl{
+			Src: `
+func f[dims intlen]() [dims]float32
+`,
+			Want: []ir.IR{
+				&ir.FuncBuiltin{
+					FType: irh.FuncType(
+						irh.Fields(dims),
+						nil,
+						irh.Fields(),
+						irh.Fields(irh.ArrayType(ir.Float32Type(), dims)),
+					),
+				},
+			},
+		},
+	)
+}
+
 func TestAxisName02(t *testing.T) {
 	newArrayFunc := &ir.FuncBuiltin{
 		Src: &ast.FuncDecl{Name: &ast.Ident{Name: "newArray"}},
