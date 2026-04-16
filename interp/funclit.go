@@ -15,22 +15,24 @@
 package interp
 
 import (
+	"github.com/gx-org/gx/api/values"
 	"github.com/gx-org/gx/build/ir"
+	"github.com/gx-org/gx/internal/interp/flatten"
 	"github.com/gx-org/gx/interp/context"
 	"github.com/gx-org/gx/interp/fun"
 )
 
-// FuncLitScope is an interpreter scope to evaluate function literals.
-type FuncLitScope struct {
+// funcLitScope is an interpreter scope to evaluate function literals.
+type funcLitScope struct {
 	ctx   *context.Context
 	lit   *ir.FuncLit
 	frame *context.Frame
 }
 
-// NewFuncLitScope returns a new interpreter for a function literal.
-func NewFuncLitScope(ctx *context.Context, lit *ir.FuncLit) *FuncLitScope {
+// newFuncLitScope returns a new interpreter for a function literal.
+func newFuncLitScope(ctx *context.Context, lit *ir.FuncLit) *funcLitScope {
 	ctx, frame := ctx.FuncLitFrame(lit)
-	litp := &FuncLitScope{
+	litp := &funcLitScope{
 		ctx:   ctx,
 		lit:   lit,
 		frame: frame,
@@ -39,7 +41,7 @@ func NewFuncLitScope(ctx *context.Context, lit *ir.FuncLit) *FuncLitScope {
 }
 
 // RunFuncLit runs a function literal given the current context.
-func (litp *FuncLitScope) RunFuncLit(env *fun.CallEnv, args []ir.Element) ([]ir.Element, error) {
+func (litp *funcLitScope) RunFuncLit(env *fun.CallEnv, args []ir.Element) ([]ir.Element, error) {
 	funcFrame := litp.ctx.PushBlockFrame()
 	fType := litp.lit.FuncType()
 	if err := assignArgumentValues(fType, funcFrame, args); err != nil {
@@ -51,4 +53,47 @@ func (litp *FuncLitScope) RunFuncLit(env *fun.CallEnv, args []ir.Element) ([]ir.
 	defer litp.ctx.PopFrame()
 	fitp := toInterp(litp.ctx, env.Engine(), env.FuncEval())
 	return evalFuncBody(fitp, litp.lit.Body)
+}
+
+// funcLit is a function represented as a subgraph.
+type funcLit struct {
+	lit  *ir.FuncLit
+	litp *funcLitScope
+	ctx  *context.Context
+}
+
+var _ fun.Func = (*funcLit)(nil)
+
+// NewFuncLit creates a new function literal.
+func NewFuncLit(lit *ir.FuncLit, ctx *context.Context) fun.Func {
+	return &funcLit{
+		lit:  lit,
+		litp: newFuncLitScope(ctx, lit),
+	}
+}
+
+// Func returns the IR function represented by the graph.
+func (sg *funcLit) Func() ir.Func {
+	return sg.lit
+}
+
+// Recv returns the receiver of the function.
+func (sg *funcLit) Recv() *fun.Receiver {
+	return nil
+}
+
+// Call the function literal given its set of arguments,
+// effectively inlining the function in the parent graph.
+func (sg *funcLit) Call(env *fun.CallEnv, call *ir.FuncCallExpr, args []ir.Element) ([]ir.Element, error) {
+	return sg.litp.RunFuncLit(env, args)
+}
+
+// Unflatten creates a GX value from the next handles available in the parser.
+func (sg *funcLit) Unflatten(handles *flatten.Parser) (values.Value, error) {
+	return values.NewIRNode(sg.lit)
+}
+
+// Type of the function.
+func (sg *funcLit) Type() ir.Type {
+	return sg.lit.Type()
 }

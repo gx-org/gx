@@ -51,8 +51,8 @@ func (ev *CompEval) NewFunc(fn ir.Func, recv *fun.Receiver) fun.Func {
 }
 
 // NewFuncLit creates a new function literal.
-func (ev *CompEval) NewFuncLit(fn *ir.FuncLit, _ *context.Context) (fun.Func, error) {
-	return cpevelements.NewProxyFunc(fn, nil), nil
+func (ev *CompEval) NewFuncLit(fn *ir.FuncLit, _ *context.Context) fun.Func {
+	return cpevelements.NewProxyFunc(fn, nil)
 }
 
 // Processor returns the processor used to process inits and traces for compiled function.

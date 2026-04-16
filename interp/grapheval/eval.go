@@ -27,6 +27,7 @@ import (
 	"github.com/gx-org/gx/internal/interp/compeval"
 	"github.com/gx-org/gx/internal/interp/compeval/cpevelements"
 	"github.com/gx-org/gx/internal/tracer/processor"
+	"github.com/gx-org/gx/interp/context"
 	"github.com/gx-org/gx/interp/elements"
 	"github.com/gx-org/gx/interp/engine"
 	"github.com/gx-org/gx/interp/fun"
@@ -66,6 +67,11 @@ func New(importer ir.Importer, pr *processor.Processor, gr ops.Graph) *Evaluator
 // NewFunc creates a new function given its definition and a receiver.
 func (ev *Evaluator) NewFunc(fn ir.Func, recv *fun.Receiver) fun.Func {
 	return interp.NewRunFunc(fn, recv)
+}
+
+// NewFuncLit creates a new function literal.
+func (ev *Evaluator) NewFuncLit(lit *ir.FuncLit, ctx *context.Context) fun.Func {
+	return interp.NewFuncLit(lit, ctx)
 }
 
 // Processor returns the processor where init and debug traces are registered.
@@ -111,6 +117,8 @@ func buildProxyArguments(file *ir.File, args []*ir.Field) ([]ir.Element, error) 
 	}
 	return els, nil
 }
+
+type processCallResults func(ops.Node) ([]ir.Element, error)
 
 func (ev *Evaluator) outputNodesFromElements(file *ir.File, fType *ir.FuncType, out []ir.Element) (processCallResults, *ops.OutputNode, error) {
 	if len(out) == 0 {
