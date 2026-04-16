@@ -22,44 +22,10 @@ import (
 	"github.com/gx-org/gx/interp/fun"
 )
 
-// funcLitScope is an interpreter scope to evaluate function literals.
-type funcLitScope struct {
-	ctx   *context.Context
-	lit   *ir.FuncLit
-	frame *context.Frame
-}
-
-// newFuncLitScope returns a new interpreter for a function literal.
-func newFuncLitScope(ctx *context.Context, lit *ir.FuncLit) *funcLitScope {
-	ctx, frame := ctx.FuncLitFrame(lit)
-	litp := &funcLitScope{
-		ctx:   ctx,
-		lit:   lit,
-		frame: frame,
-	}
-	return litp
-}
-
-// RunFuncLit runs a function literal given the current context.
-func (litp *funcLitScope) RunFuncLit(env *fun.CallEnv, args []ir.Element) ([]ir.Element, error) {
-	funcFrame := litp.ctx.PushBlockFrame()
-	fType := litp.lit.FuncType()
-	if err := assignArgumentValues(fType, funcFrame, args); err != nil {
-		return nil, err
-	}
-	for _, resultName := range fieldNames(fType.Results.List) {
-		funcFrame.Define(resultName, nil)
-	}
-	defer litp.ctx.PopFrame()
-	fitp := toInterp(litp.ctx, env.Engine(), env.FuncEval())
-	return evalFuncBody(fitp, litp.lit.Body)
-}
-
 // funcLit is a function represented as a subgraph.
 type funcLit struct {
-	lit  *ir.FuncLit
-	litp *funcLitScope
-	ctx  *context.Context
+	ctx *context.Context
+	lit *ir.FuncLit
 }
 
 var _ fun.Func = (*funcLit)(nil)
@@ -67,8 +33,8 @@ var _ fun.Func = (*funcLit)(nil)
 // NewFuncLit creates a new function literal.
 func NewFuncLit(lit *ir.FuncLit, ctx *context.Context) fun.Func {
 	return &funcLit{
-		lit:  lit,
-		litp: newFuncLitScope(ctx, lit),
+		ctx: ctx.FuncLitFrame(lit),
+		lit: lit,
 	}
 }
 
@@ -85,7 +51,17 @@ func (sg *funcLit) Recv() *fun.Receiver {
 // Call the function literal given its set of arguments,
 // effectively inlining the function in the parent graph.
 func (sg *funcLit) Call(env *fun.CallEnv, call *ir.FuncCallExpr, args []ir.Element) ([]ir.Element, error) {
-	return sg.litp.RunFuncLit(env, args)
+	funcFrame := sg.ctx.PushBlockFrame()
+	fType := sg.lit.FuncType()
+	if err := assignArgumentValues(fType, funcFrame, args); err != nil {
+		return nil, err
+	}
+	for _, resultName := range fieldNames(fType.Results.List) {
+		funcFrame.Define(resultName, nil)
+	}
+	defer sg.ctx.PopFrame()
+	fitp := toInterp(sg.ctx, env.Engine(), env.FuncEval())
+	return evalFuncBody(fitp, sg.lit.Body)
 }
 
 // Unflatten creates a GX value from the next handles available in the parser.

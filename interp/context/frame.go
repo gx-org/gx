@@ -193,7 +193,7 @@ func (ctx *Context) PushFuncFrame(fn ir.Func) (*Frame, error) {
 }
 
 // FuncLitFrame builds a read-only context for the evaluation of a function literal.
-func (ctx *Context) FuncLitFrame(lit *ir.FuncLit) (*Context, *Frame) {
+func (ctx *Context) FuncLitFrame(lit *ir.FuncLit) *Context {
 	current := ctx.currentFrame()
 	roScope := current.scope.Collect()
 	return &Context{
@@ -207,7 +207,7 @@ func (ctx *Context) FuncLitFrame(lit *ir.FuncLit) (*Context, *Frame) {
 				function: lit,
 			},
 		}},
-	}, &Frame{file: ctx.File(), scope: scope.NewScope(roScope)}
+	}
 }
 
 type blockFrame struct {
