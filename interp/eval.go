@@ -531,7 +531,7 @@ func evalExpr(fitp *Interpreter, expr ir.Expr) (_ ir.Element, err error) {
 	case *ir.SelectorExpr:
 		return evalSelectorExpr(fitp, exprT)
 	case *ir.FuncLit:
-		return fitp.env.FuncEval().NewFuncLit(exprT, fitp.Engine(), fitp.Context())
+		return fitp.env.FuncEval().NewFuncLit(exprT, fitp.Context())
 	case *ir.MacroCallExpr:
 		return fitp.env.FuncEval().NewFunc(exprT.F, nil), nil
 	case *ir.IndexExpr:
@@ -560,7 +560,7 @@ func evalExpr(fitp *Interpreter, expr ir.Expr) (_ ir.Element, err error) {
 func evalFuncValExpr(fitp *Interpreter, expr *ir.FuncValExpr) (ir.Element, error) {
 	lit, isLit := expr.Func().(*ir.FuncLit)
 	if isLit {
-		return fitp.env.FuncEval().NewFuncLit(lit, fitp.Engine(), fitp.Context())
+		return fitp.env.FuncEval().NewFuncLit(lit, fitp.Context())
 	}
 	return fitp.NewFunc(expr.Func(), nil), nil
 }

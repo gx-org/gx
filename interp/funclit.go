@@ -17,34 +17,29 @@ package interp
 import (
 	"github.com/gx-org/gx/build/ir"
 	"github.com/gx-org/gx/interp/context"
-	"github.com/gx-org/gx/interp/engine"
 	"github.com/gx-org/gx/interp/fun"
 )
 
 // FuncLitScope is an interpreter scope to evaluate function literals.
 type FuncLitScope struct {
-	funFact fun.Factory
-	eng     engine.Engine
-	ctx     *context.Context
-	lit     *ir.FuncLit
-	frame   *context.Frame
+	ctx   *context.Context
+	lit   *ir.FuncLit
+	frame *context.Frame
 }
 
 // NewFuncLitScope returns a new interpreter for a function literal.
-func NewFuncLitScope(funFact fun.Factory, eng engine.Engine, ctx *context.Context, lit *ir.FuncLit) *FuncLitScope {
+func NewFuncLitScope(ctx *context.Context, lit *ir.FuncLit) *FuncLitScope {
 	ctx, frame := ctx.FuncLitFrame(lit)
 	litp := &FuncLitScope{
-		funFact: funFact,
-		eng:     eng,
-		ctx:     ctx,
-		lit:     lit,
-		frame:   frame,
+		ctx:   ctx,
+		lit:   lit,
+		frame: frame,
 	}
 	return litp
 }
 
 // RunFuncLit runs a function literal given the current context.
-func (litp *FuncLitScope) RunFuncLit(args []ir.Element) ([]ir.Element, error) {
+func (litp *FuncLitScope) RunFuncLit(env *fun.CallEnv, args []ir.Element) ([]ir.Element, error) {
 	funcFrame := litp.ctx.PushBlockFrame()
 	fType := litp.lit.FuncType()
 	if err := assignArgumentValues(fType, funcFrame, args); err != nil {
@@ -54,6 +49,6 @@ func (litp *FuncLitScope) RunFuncLit(args []ir.Element) ([]ir.Element, error) {
 		funcFrame.Define(resultName, nil)
 	}
 	defer litp.ctx.PopFrame()
-	fitp := toInterp(litp.ctx, litp.eng, litp.funFact)
+	fitp := toInterp(litp.ctx, env.Engine(), env.FuncEval())
 	return evalFuncBody(fitp, litp.lit.Body)
 }

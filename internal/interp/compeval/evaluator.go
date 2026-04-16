@@ -51,7 +51,7 @@ func (ev *CompEval) NewFunc(fn ir.Func, recv *fun.Receiver) fun.Func {
 }
 
 // NewFuncLit creates a new function literal.
-func (ev *CompEval) NewFuncLit(fn *ir.FuncLit, _ engine.Engine, _ *context.Context) (fun.Func, error) {
+func (ev *CompEval) NewFuncLit(fn *ir.FuncLit, _ *context.Context) (fun.Func, error) {
 	return cpevelements.NewProxyFunc(fn, nil), nil
 }
 

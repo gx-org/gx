@@ -19,9 +19,7 @@ import (
 	"github.com/gx-org/gx/api/values"
 	"github.com/gx-org/gx/build/ir"
 	"github.com/gx-org/gx/internal/interp/flatten"
-	"github.com/gx-org/gx/internal/tracer/processor"
 	"github.com/gx-org/gx/interp/context"
-	"github.com/gx-org/gx/interp/engine"
 	"github.com/gx-org/gx/interp/fun"
 	"github.com/gx-org/gx/interp"
 )
@@ -30,21 +28,18 @@ type processCallResults func(ops.Node) ([]ir.Element, error)
 
 // funcLit is a function represented as a subgraph.
 type funcLit struct {
-	eval *Evaluator
 	lit  *ir.FuncLit
 	litp *interp.FuncLitScope
-	eng  engine.Engine
 	ctx  *context.Context
 }
 
 var _ fun.Func = (*funcLit)(nil)
 
 // NewFuncLit creates a new function literal.
-func (ev *Evaluator) NewFuncLit(lit *ir.FuncLit, eng engine.Engine, ctx *context.Context) (fun.Func, error) {
+func (ev *Evaluator) NewFuncLit(lit *ir.FuncLit, ctx *context.Context) (fun.Func, error) {
 	return &funcLit{
-		eval: ev,
 		lit:  lit,
-		litp: interp.NewFuncLitScope(ev, eng, ctx, lit),
+		litp: interp.NewFuncLitScope(ctx, lit),
 	}, nil
 }
 
@@ -58,41 +53,10 @@ func (sg *funcLit) Recv() *fun.Receiver {
 	return nil
 }
 
-// SubGraph represents the graph implementing the function.
-func (sg *funcLit) SubGraph(name string) (*ops.Subgraph, error) {
-	file := sg.lit.File()
-	proxyArgs, err := buildProxyArguments(file, sg.lit.FType.Params.Fields())
-	if err != nil {
-		return nil, err
-	}
-	proc := &processor.Processor{}
-	subeval, err := sg.eval.subEval(proc, name)
-	if err != nil {
-		return nil, err
-	}
-	fnInputs, err := subeval.FuncInputsToElements(interp.NewRunFunc, sg.lit, nil, proxyArgs)
-	if err != nil {
-		return nil, err
-	}
-	litp := interp.NewFuncLitScope(subeval, sg.eng, sg.ctx, sg.lit)
-	outElts, err := litp.RunFuncLit(fnInputs.Args)
-	if err != nil {
-		return nil, err
-	}
-	_, outNode, err := subeval.outputNodesFromElements(sg.lit.File(), sg.lit.FType, outElts)
-	if err != nil {
-		return nil, err
-	}
-	return &ops.Subgraph{
-		Graph:  subeval.ao.Graph(),
-		Result: *outNode,
-	}, nil
-}
-
 // Call the function literal given its set of arguments,
 // effectively inlining the function in the parent graph.
 func (sg *funcLit) Call(env *fun.CallEnv, call *ir.FuncCallExpr, args []ir.Element) ([]ir.Element, error) {
-	return sg.litp.RunFuncLit(args)
+	return sg.litp.RunFuncLit(env, args)
 }
 
 // Unflatten creates a GX value from the next handles available in the parser.
