@@ -24,8 +24,8 @@ import (
 
 // funcLit is a function represented as a subgraph.
 type funcLit struct {
-	ctx *context.Context
 	lit *ir.FuncLit
+	ctx *context.Context
 }
 
 var _ fun.Func = (*funcLit)(nil)
@@ -33,8 +33,8 @@ var _ fun.Func = (*funcLit)(nil)
 // NewFuncLit creates a new function literal.
 func NewFuncLit(lit *ir.FuncLit, ctx *context.Context) fun.Func {
 	return &funcLit{
-		ctx: ctx.FuncLitFrame(lit),
 		lit: lit,
+		ctx: ctx.FuncLitFrame(lit),
 	}
 }
 
@@ -51,17 +51,22 @@ func (sg *funcLit) Recv() *fun.Receiver {
 // Call the function literal given its set of arguments,
 // effectively inlining the function in the parent graph.
 func (sg *funcLit) Call(env *fun.CallEnv, call *ir.FuncCallExpr, args []ir.Element) ([]ir.Element, error) {
-	funcFrame := sg.ctx.PushBlockFrame()
-	fType := sg.lit.FuncType()
+	return env.Runners().FuncLit(sg.lit, env, sg.ctx, call, args)
+}
+
+// FuncLit runs a function literal.
+func (Runners) FuncLit(lit *ir.FuncLit, env *fun.CallEnv, ctx *context.Context, call *ir.FuncCallExpr, args []ir.Element) ([]ir.Element, error) {
+	funcFrame := ctx.PushBlockFrame()
+	fType := lit.FuncType()
 	if err := assignArgumentValues(fType, funcFrame, args); err != nil {
 		return nil, err
 	}
 	for _, resultName := range fieldNames(fType.Results.List) {
 		funcFrame.Define(resultName, nil)
 	}
-	defer sg.ctx.PopFrame()
-	fitp := toInterp(sg.ctx, env.Engine(), env.FuncEval())
-	return evalFuncBody(fitp, sg.lit.Body)
+	defer ctx.PopFrame()
+	fitp := toInterp(ctx, env.Engine(), env.FuncEval())
+	return evalFuncBody(fitp, lit.Body)
 }
 
 // Unflatten creates a GX value from the next handles available in the parser.

@@ -38,6 +38,8 @@ type (
 	Runners interface {
 		// FuncDecl runs a function implemented in GX.
 		FuncDecl(fDecl *ir.FuncDecl, env *CallEnv, call *ir.FuncCallExpr, recv engine.Copier, args []ir.Element) ([]ir.Element, error)
+		// FuncLit runs a function literal.
+		FuncLit(lit *ir.FuncLit, env *CallEnv, ctx *context.Context, call *ir.FuncCallExpr, args []ir.Element) ([]ir.Element, error)
 		// Builtin runs a function builtin in GX or provided by a backend.
 		Builtin(fn ir.Func, impl ir.FuncImpl, env *CallEnv, call *ir.FuncCallExpr, recv engine.Copier, args []ir.Element) ([]ir.Element, error)
 	}
