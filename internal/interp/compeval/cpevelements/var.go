@@ -22,6 +22,7 @@ import (
 	"github.com/gx-org/gx/build/ir"
 	"github.com/gx-org/gx/internal/interp/canonical"
 	"github.com/gx-org/gx/internal/interp/coreops"
+	"github.com/gx-org/gx/internal/interp/proxies"
 	"github.com/gx-org/gx/interp/elements"
 	"github.com/gx-org/gx/interp/engine"
 )
@@ -41,6 +42,7 @@ var (
 	_ elements.Selector    = (*variable)(nil)
 	_ ir.WithStore         = (*variable)(nil)
 	_ elements.WithElement = (*variable)(nil)
+	_ proxies.Proxy        = (*variable)(nil)
 )
 
 // NewVariable returns a new variable element given a GX variable name.
@@ -136,6 +138,10 @@ func (a *variable) Elements() []ir.Element {
 
 func (a *variable) CanonicalExpr() canonical.Canonical {
 	return a
+}
+
+func (a *variable) IsProxy() bool {
+	return true
 }
 
 func (a *variable) ShortString() string {

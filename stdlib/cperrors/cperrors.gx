@@ -22,6 +22,7 @@ type Arg struct {
 	Err error
 }
 
+// gx:compeval
 func (arg Arg) Error() string {
 	return arg.Err.Error()
 }

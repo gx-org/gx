@@ -22,13 +22,17 @@ import (
 	"github.com/gx-org/gx/interp/fun"
 )
 
-// Runners provide runners to the environment to execute functions.
-type Runners struct{}
+// runners provide runners to the environment to execute functions.
+type runners struct{}
 
-var _ fun.Runners = Runners{}
+var run = runners{}
 
-// FuncDecl runs a function implemented in GX.
-func (Runners) FuncDecl(fn *ir.FuncDecl, env *fun.CallEnv, call *ir.FuncCallExpr, recv engine.Copier, args []ir.Element) ([]ir.Element, error) {
+// Runners returns a set of runners to run all functions.
+func Runners() fun.Runners {
+	return run
+}
+
+func (runners) FuncDecl(fn *ir.FuncDecl, env *fun.CallEnv, call *ir.FuncCallExpr, recv engine.Copier, args []ir.Element) ([]ir.Element, error) {
 	if fn.Body == nil {
 		return nil, fmterr.Errorf(fn.File().FileSet(), fn.Node(), "missing function body")
 	}
@@ -62,12 +66,11 @@ func (Runners) FuncDecl(fn *ir.FuncDecl, env *fun.CallEnv, call *ir.FuncCallExpr
 		return nil, err
 	}
 	// Evaluate the function within the frame.
-	fitp := toInterp(env.Context(), env.Engine(), env.FuncEval())
+	fitp := toInterp(env.Context(), env.Engine(), env.FuncEval(), env.Runners())
 	return evalFuncBody(fitp, fn.Body)
 }
 
-// Builtin runs a function builtin in GX or provided by a backend.
-func (Runners) Builtin(fn ir.Func, impl ir.FuncImpl, env *fun.CallEnv, call *ir.FuncCallExpr, recv engine.Copier, args []ir.Element) (_ []ir.Element, err error) {
+func (runners) Builtin(fn ir.Func, impl ir.FuncImpl, env *fun.CallEnv, call *ir.FuncCallExpr, recv engine.Copier, args []ir.Element) (_ []ir.Element, err error) {
 	defer func() {
 		if err != nil {
 			err = fmterr.Error(env.File().FileSet(), call.Expr(), err)

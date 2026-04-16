@@ -97,6 +97,20 @@ func f() [returnTwo()]int32 {  // ERROR expect a compeval function, function ret
 		},
 		testbuild.Decl{
 			Src: `
+import "errors"
+
+//gx:compeval
+func returnTwo() (intlen, error) {
+	return 2, errors.New("a compeval test error")
+}
+
+func f() [returnTwo()]int32 { 
+	return [2]int32{1, 2} // ERROR a compeval test error
+}
+`,
+		},
+		testbuild.Decl{
+			Src: `
 import "fmt"
 
 //gx:compeval

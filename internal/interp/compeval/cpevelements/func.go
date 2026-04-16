@@ -92,7 +92,7 @@ func (f *mixFunction) run(env *fun.CallEnv, call *ir.FuncCallExpr, args []ir.Ele
 		valArgs[i] = StoredValueOf(arg)
 	}
 	fn := interp.NewRunFunc(f.fn, f.recv)
-	return fn.Call(env, call, valArgs)
+	return fn.Call(env.WithRunners(interp.Runners()), call, valArgs)
 }
 
 func (f *mixFunction) Call(env *fun.CallEnv, call *ir.FuncCallExpr, args []ir.Element) ([]ir.Element, error) {

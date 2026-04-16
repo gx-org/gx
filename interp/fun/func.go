@@ -70,6 +70,11 @@ func NewCallEnv(ctx *context.Context, exprEval ir.Evaluator, eng engine.Engine, 
 	return &CallEnv{ctx: ctx, expr: exprEval, eng: eng, fun: fun, run: run}
 }
 
+// WithRunners return a new function context for a given runners.
+func (env *CallEnv) WithRunners(run Runners) *CallEnv {
+	return NewCallEnv(env.ctx, env.expr, env.eng, env.fun, run)
+}
+
 // File returns the current file where the code is being interpreted.
 func (env *CallEnv) File() *ir.File {
 	return env.ctx.File()

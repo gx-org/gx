@@ -181,7 +181,7 @@ func newFetcherTesting() (*fetcherTesting, error) {
 		packageOptions = declareVariable(file, symbol, packageOptions)
 	}
 	hostEval := compeval.NewHostEvaluator(nil, interp.NewRunFunc)
-	itp, err := interp.New(hostEval, hostEval, packageOptions)
+	itp, err := interp.New(hostEval, hostEval, interp.Runners(), packageOptions)
 	if err != nil {
 		return nil, err
 	}

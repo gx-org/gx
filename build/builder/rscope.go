@@ -92,6 +92,7 @@ type (
 		*pkgProcScope
 
 		newFuncForEval fun.NewFunc
+		funcRunner     fun.Runners
 
 		state *pkgState
 
@@ -108,6 +109,7 @@ func newPackageResolveScope(pscope *pkgProcScope) (*pkgResolveScope, bool) {
 	s := &pkgResolveScope{
 		pkgProcScope:   pscope,
 		newFuncForEval: cpevelements.NewProxyFunc,
+		funcRunner:     cpevelements.ProxyRunner(),
 		methods:        ordered.NewMap[*ir.NamedType, *ordered.Map[string, *irFunc]](),
 		state:          &pkgState{dcls: pscope.decls()},
 		fileScopes:     make(map[*file]*fileResolveScope),
@@ -169,7 +171,7 @@ func (s *pkgResolveScope) packageInterpreter() *interp.Base {
 			opts = append(opts, opt)
 		}
 	}
-	itp, err := interp.New(hostEval, hostEval, opts)
+	itp, err := interp.New(hostEval, hostEval, s.funcRunner, opts)
 	if err != nil {
 		s.Err().Append(err)
 		return nil

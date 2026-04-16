@@ -130,7 +130,7 @@ func value(x int32) wantValue {
 
 func newInterpreter(opts []options.PackageOption) (*interp.Interpreter, error) {
 	hostEval := compeval.NewHostEvaluator(nil, interp.NewRunFunc)
-	itp, err := interp.New(hostEval, hostEval, opts)
+	itp, err := interp.New(hostEval, hostEval, interp.Runners(), opts)
 	if err != nil {
 		return nil, err
 	}

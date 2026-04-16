@@ -21,6 +21,7 @@ import (
 
 	"github.com/pkg/errors"
 	"github.com/gx-org/gx/build/ir"
+	"github.com/gx-org/gx/build/ir/irkind"
 	"github.com/gx-org/gx/internal/interp/coreops"
 	"github.com/gx-org/gx/interp/elements"
 	"github.com/gx-org/gx/interp/engine"
@@ -42,6 +43,9 @@ func NewRuntimeValue(file *ir.File, store ir.Storage) (ir.Element, error) {
 	if !ok { // Check if storage is a type itself.
 		// If not, then get the type from the storage.
 		typ = store.Type()
+	}
+	if typ.Kind() == irkind.String {
+		return NewVariable(elements.NewNodeAt(file, store)), nil
 	}
 	switch typT := typ.(type) {
 	case *ir.TypeParam:

@@ -55,7 +55,7 @@ func (sg *funcLit) Call(env *fun.CallEnv, call *ir.FuncCallExpr, args []ir.Eleme
 }
 
 // FuncLit runs a function literal.
-func (Runners) FuncLit(lit *ir.FuncLit, env *fun.CallEnv, ctx *context.Context, call *ir.FuncCallExpr, args []ir.Element) ([]ir.Element, error) {
+func (runners) FuncLit(lit *ir.FuncLit, env *fun.CallEnv, ctx *context.Context, call *ir.FuncCallExpr, args []ir.Element) ([]ir.Element, error) {
 	funcFrame := ctx.PushBlockFrame()
 	fType := lit.FuncType()
 	if err := assignArgumentValues(fType, funcFrame, args); err != nil {
@@ -65,7 +65,7 @@ func (Runners) FuncLit(lit *ir.FuncLit, env *fun.CallEnv, ctx *context.Context, 
 		funcFrame.Define(resultName, nil)
 	}
 	defer ctx.PopFrame()
-	fitp := toInterp(ctx, env.Engine(), env.FuncEval())
+	fitp := toInterp(ctx, env.Engine(), env.FuncEval(), env.Runners())
 	return evalFuncBody(fitp, lit.Body)
 }
 

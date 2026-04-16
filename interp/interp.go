@@ -31,6 +31,7 @@ import (
 	"github.com/gx-org/gx/build/fmterr"
 	"github.com/gx-org/gx/build/ir"
 	"github.com/gx-org/gx/internal/concrete"
+	"github.com/gx-org/gx/internal/interp/proxies"
 	"github.com/gx-org/gx/interp/context"
 	"github.com/gx-org/gx/interp/elements"
 	"github.com/gx-org/gx/interp/engine"
@@ -43,14 +44,15 @@ import (
 type Base struct {
 	eng     engine.Engine
 	funFact fun.Factory
+	runners fun.Runners
 	core    *context.Core
 
 	options *procoptions.Options
 }
 
 // New returns a new interpreter.
-func New(eng engine.Engine, funFact fun.Factory, options []options.PackageOption) (*Base, error) {
-	itp := &Base{eng: eng, funFact: funFact}
+func New(eng engine.Engine, funFact fun.Factory, runners fun.Runners, options []options.PackageOption) (*Base, error) {
+	itp := &Base{eng: eng, funFact: funFact, runners: runners}
 	var errs fmterr.Errors
 	var err error
 	if itp.options, err = procoptions.New(eng, options); err != nil {
@@ -66,7 +68,7 @@ func New(eng engine.Engine, funFact fun.Factory, options []options.PackageOption
 // ForFile returns an interpreter for a file context.
 func (itp *Base) ForFile(file *ir.File) (*Interpreter, error) {
 	ctx, err := itp.core.NewFileContext(file)
-	return toInterp(ctx, itp.eng, itp.funFact), err
+	return toInterp(ctx, itp.eng, itp.funFact, itp.runners), err
 
 }
 
@@ -80,9 +82,9 @@ type Interpreter struct {
 	env *fun.CallEnv
 }
 
-func toInterp(ctx *context.Context, eng engine.Engine, funFact fun.Factory) *Interpreter {
+func toInterp(ctx *context.Context, eng engine.Engine, funFact fun.Factory, runners fun.Runners) *Interpreter {
 	fitp := &Interpreter{}
-	fitp.env = fun.NewCallEnv(ctx, fitp, eng, funFact, Runners{})
+	fitp.env = fun.NewCallEnv(ctx, fitp, eng, funFact, runners)
 	return fitp
 }
 
@@ -137,6 +139,9 @@ func (fitp *Interpreter) ToCompEvalError(src ast.Expr, el ir.Element) (ir.CompEv
 	errElement, err := ToSingleElement(fitp, errorExpr, outs)
 	if err != nil {
 		return nil, err
+	}
+	if proxies.IsProxy(errElement) {
+		return nil, nil
 	}
 	str, err := elements.StringFromElement(errElement)
 	if err != nil {
