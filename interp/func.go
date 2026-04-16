@@ -123,41 +123,7 @@ type funcDecl struct {
 }
 
 func (f funcDecl) callDecl(env *fun.CallEnv, call *ir.FuncCallExpr, recv engine.Copier, args []ir.Element) (outs []ir.Element, err error) {
-	if f.fnT.Body == nil {
-		return nil, fmterr.Errorf(f.fnT.File().FileSet(), f.fnT.Node(), "missing function body")
-	}
-	callerFrame := env.Context().CurrentFrame()
-	// Create a new function frame.
-	funcFrame, err := env.Context().PushFuncFrame(f.fnT)
-	if err != nil {
-		return nil, err
-	}
-	defer env.Context().PopFrame()
-	ftype := f.fnT.FuncType()
-	results := ftype.Results
-	if results != nil {
-		for _, resultName := range fieldNames(results.List) {
-			funcFrame.Define(resultName, nil)
-		}
-	}
-	// Add the receiver name to the function frame if present.
-	if recv != nil {
-		recvField := f.fnT.FuncType().ReceiverField()
-		if recvField != nil && ir.ValidIdent(recvField.Name) {
-			recv = recv.Copy()
-			funcFrame.Define(recvField.Name, recv)
-		}
-	}
-	if err := assignTypeParameters(env.Context(), call.Callee, callerFrame, funcFrame); err != nil {
-		return nil, err
-	}
-	assignAxisLengths(call.Callee, funcFrame)
-	if err := assignArgumentValues(ftype, funcFrame, args); err != nil {
-		return nil, err
-	}
-	// Evaluate the function within the frame.
-	fitp := toInterp(env.Context(), env.Engine(), env.FuncEval())
-	return evalFuncBody(fitp, f.fnT.Body)
+	return env.Runners().FuncDecl(f.fnT, env, call, recv, args)
 }
 
 type funcBuiltin struct {
@@ -166,22 +132,7 @@ type funcBuiltin struct {
 }
 
 func (f funcBuiltin) callBuiltin(env *fun.CallEnv, call *ir.FuncCallExpr, recv engine.Copier, args []ir.Element) (outs []ir.Element, err error) {
-	defer func() {
-		if err != nil {
-			err = fmterr.Error(env.File().FileSet(), call.Expr(), err)
-		}
-	}()
-	if f.impl == nil {
-		return nil, errors.Errorf("function %s has no implementation", f.fun.ShortString())
-	}
-	builtin, isBuiltin := f.impl.Implementation().(FuncBuiltin)
-	if !isBuiltin {
-		return nil, errors.Errorf("type %T is not a function builtin implementation", f.impl)
-	}
-	if builtin == nil {
-		return nil, errors.Errorf("function %s has no implementation", f.fun.ShortString())
-	}
-	return builtin(env, call, recv, args)
+	return env.Runners().Builtin(f.fun, f.impl, env, call, recv, args)
 }
 
 type funcMacro struct {

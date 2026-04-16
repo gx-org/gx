@@ -82,7 +82,7 @@ type Interpreter struct {
 
 func toInterp(ctx *context.Context, eng engine.Engine, funFact fun.Factory) *Interpreter {
 	fitp := &Interpreter{}
-	fitp.env = fun.NewCallEnv(ctx, fitp, eng, funFact)
+	fitp.env = fun.NewCallEnv(ctx, fitp, eng, funFact, Runners{})
 	return fitp
 }
 
@@ -165,7 +165,7 @@ func (fitp *Interpreter) Sub(file *ir.File, vals *context.SubMap) (*Interpreter,
 	var err error
 	ctx := fitp.env.Context()
 	sub := &Interpreter{}
-	sub.env = fun.NewCallEnv(ctx.Sub(vals), sub, fitp.Engine(), fitp.env.FuncEval())
+	sub.env = fun.NewCallEnv(ctx.Sub(vals), sub, fitp.Engine(), fitp.env.FuncEval(), fitp.env.Runners())
 	return sub, err
 }
 

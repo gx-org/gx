@@ -31,6 +31,15 @@ type (
 		expr ir.Evaluator
 		eng  engine.Engine
 		fun  Factory
+		run  Runners
+	}
+
+	// Runners provides implementations to run functions.
+	Runners interface {
+		// FuncDecl runs a function implemented in GX.
+		FuncDecl(fDecl *ir.FuncDecl, env *CallEnv, call *ir.FuncCallExpr, recv engine.Copier, args []ir.Element) ([]ir.Element, error)
+		// Builtin runs a function builtin in GX or provided by a backend.
+		Builtin(fn ir.Func, impl ir.FuncImpl, env *CallEnv, call *ir.FuncCallExpr, recv engine.Copier, args []ir.Element) ([]ir.Element, error)
 	}
 
 	// Factory provides core primitives for the interpreter.
@@ -55,8 +64,8 @@ type (
 )
 
 // NewCallEnv returns a function context.
-func NewCallEnv(ctx *context.Context, exprEval ir.Evaluator, eng engine.Engine, fun Factory) *CallEnv {
-	return &CallEnv{ctx: ctx, expr: exprEval, eng: eng, fun: fun}
+func NewCallEnv(ctx *context.Context, exprEval ir.Evaluator, eng engine.Engine, fun Factory, run Runners) *CallEnv {
+	return &CallEnv{ctx: ctx, expr: exprEval, eng: eng, fun: fun, run: run}
 }
 
 // File returns the current file where the code is being interpreted.
@@ -82,6 +91,11 @@ func (env *CallEnv) FuncEval() Factory {
 // Engine returns the engine used for evaluations.
 func (env *CallEnv) Engine() engine.Engine {
 	return env.eng
+}
+
+// Runners used to run functions.
+func (env *CallEnv) Runners() Runners {
+	return env.run
 }
 
 func (env *CallEnv) String() string {
