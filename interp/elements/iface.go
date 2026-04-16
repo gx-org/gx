@@ -32,12 +32,6 @@ type (
 		Under() ir.Element
 	}
 
-	// Copier is an interface implemented by nodes that need to be copied when passed to a function.
-	Copier interface {
-		ir.Element
-		Copy() Copier
-	}
-
 	// Selector selects a field given its index.
 	Selector interface {
 		ir.Element

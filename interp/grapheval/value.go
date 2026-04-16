@@ -22,6 +22,7 @@ import (
 	"github.com/gx-org/gx/golang/backend/kernels"
 	"github.com/gx-org/gx/internal/interp/flatten"
 	"github.com/gx-org/gx/interp/elements"
+	"github.com/gx-org/gx/interp/engine"
 	"github.com/gx-org/gx/interp/materialise"
 )
 
@@ -37,7 +38,7 @@ var (
 	_ elements.Slicer                 = (*valueElement)(nil)
 	_ materialise.ElementMaterialiser = (*valueElement)(nil)
 	_ materialise.Node                = (*valueElement)(nil)
-	_ elements.Copier                 = (*valueElement)(nil)
+	_ engine.Copier                   = (*valueElement)(nil)
 	_ elements.WithAxes               = (*valueElement)(nil)
 	_ ir.WithLength                   = (*valueElement)(nil)
 )
@@ -75,7 +76,7 @@ func (n *valueElement) Unflatten(handles *flatten.Parser) (values.Value, error) 
 }
 
 // Copy the graph node by returning itself.
-func (n *valueElement) Copy() elements.Copier {
+func (n *valueElement) Copy() engine.Copier {
 	return n
 }
 

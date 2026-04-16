@@ -146,7 +146,7 @@ func (vis *inputVisitor) newNamedTypeArgument(parent parentArgument, typ *ir.Nam
 	if err != nil {
 		return nil, err
 	}
-	recvCopier, ok := recv.(elements.Copier)
+	recvCopier, ok := recv.(engine.Copier)
 	if !ok {
 		return nil, errors.Errorf("element %T cannot be used as a receiver", recv)
 	}
@@ -468,7 +468,7 @@ func (n *arrayArgument) ArrayFromContext(in *values.FuncInputs) (values.Array, e
 	return array, nil
 }
 
-func (n *arrayArgument) Copy() elements.Copier {
+func (n *arrayArgument) Copy() engine.Copier {
 	return n
 }
 

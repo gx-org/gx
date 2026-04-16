@@ -35,7 +35,7 @@ import (
 // FuncBuiltin defines a builtin function provided by a backend.
 type FuncBuiltin func(env engine.Env, call *ir.FuncCallExpr, recv ir.Element, args []ir.Element) ([]ir.Element, error)
 
-type caller func(env *fun.CallEnv, call *ir.FuncCallExpr, recv elements.Copier, args []ir.Element) ([]ir.Element, error)
+type caller func(env *fun.CallEnv, call *ir.FuncCallExpr, recv engine.Copier, args []ir.Element) ([]ir.Element, error)
 
 type elFunc struct {
 	fn      ir.Func
@@ -122,7 +122,7 @@ type funcDecl struct {
 	fnT *ir.FuncDecl
 }
 
-func (f funcDecl) callDecl(env *fun.CallEnv, call *ir.FuncCallExpr, recv elements.Copier, args []ir.Element) (outs []ir.Element, err error) {
+func (f funcDecl) callDecl(env *fun.CallEnv, call *ir.FuncCallExpr, recv engine.Copier, args []ir.Element) (outs []ir.Element, err error) {
 	if f.fnT.Body == nil {
 		return nil, fmterr.Errorf(f.fnT.File().FileSet(), f.fnT.Node(), "missing function body")
 	}
@@ -165,7 +165,7 @@ type funcBuiltin struct {
 	impl ir.FuncImpl
 }
 
-func (f funcBuiltin) callBuiltin(env *fun.CallEnv, call *ir.FuncCallExpr, recv elements.Copier, args []ir.Element) (outs []ir.Element, err error) {
+func (f funcBuiltin) callBuiltin(env *fun.CallEnv, call *ir.FuncCallExpr, recv engine.Copier, args []ir.Element) (outs []ir.Element, err error) {
 	defer func() {
 		if err != nil {
 			err = fmterr.Error(env.File().FileSet(), call.Expr(), err)
@@ -188,7 +188,7 @@ type funcMacro struct {
 	fnT *ir.Macro
 }
 
-func (f funcMacro) callMacro(env *fun.CallEnv, call *ir.FuncCallExpr, _ elements.Copier, args []ir.Element) (outs []ir.Element, err error) {
+func (f funcMacro) callMacro(env *fun.CallEnv, call *ir.FuncCallExpr, _ engine.Copier, args []ir.Element) (outs []ir.Element, err error) {
 	defer func() {
 		if err != nil {
 			err = fmterr.Error(env.File().FileSet(), call.Expr(), err)
@@ -277,7 +277,7 @@ func assignArgumentValues(ftype *ir.FuncType, funcFrame *context.Frame, args []i
 			varargs.Append(arg)
 			continue
 		}
-		copyable, ok := arg.(elements.Copier)
+		copyable, ok := arg.(engine.Copier)
 		if ok {
 			arg = copyable.Copy()
 		}

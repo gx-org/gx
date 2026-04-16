@@ -21,6 +21,7 @@ import (
 	"github.com/gx-org/gx/api/values"
 	"github.com/gx-org/gx/build/ir"
 	"github.com/gx-org/gx/internal/interp/flatten"
+	"github.com/gx-org/gx/interp/engine"
 )
 
 // String is a GX string.
@@ -61,7 +62,7 @@ func (n *String) StringValue() string {
 }
 
 // Copy returns the receiver.
-func (n *String) Copy() Copier {
+func (n *String) Copy() engine.Copier {
 	return n
 }
 

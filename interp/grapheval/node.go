@@ -40,7 +40,7 @@ type BackendNode struct {
 
 var (
 	_ elements.Slicer                 = (*BackendNode)(nil)
-	_ elements.Copier                 = (*BackendNode)(nil)
+	_ engine.Copier                   = (*BackendNode)(nil)
 	_ materialise.ElementMaterialiser = (*BackendNode)(nil)
 	_ engine.NumericalElement         = (*BackendNode)(nil)
 	_ ir.WithLength                   = (*BackendNode)(nil)
@@ -262,7 +262,7 @@ func (n *BackendNode) Unflatten(handles *flatten.Parser) (values.Value, error) {
 }
 
 // Copy the node by returning itself.
-func (n *BackendNode) Copy() elements.Copier {
+func (n *BackendNode) Copy() engine.Copier {
 	return n
 }
 

@@ -42,7 +42,7 @@ var (
 	_ elements.ElementWithConstant    = (*atom)(nil)
 	_ materialise.ElementMaterialiser = (*atom)(nil)
 	_ Element                         = (*atom)(nil)
-	_ elements.Copier                 = (*atom)(nil)
+	_ engine.Copier                   = (*atom)(nil)
 	_ canonical.Evaluable             = (*atom)(nil)
 	_ elements.WithAxes               = (*atom)(nil)
 	_ ir.Canonical                    = (*atom)(nil)
@@ -69,7 +69,7 @@ func (a *atom) UnaryOp(env engine.Env, expr *ir.UnaryExpr) (engine.NumericalElem
 }
 
 // Copy the atom.
-func (a *atom) Copy() elements.Copier {
+func (a *atom) Copy() engine.Copier {
 	return a
 }
 

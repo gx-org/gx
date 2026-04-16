@@ -23,6 +23,7 @@ import (
 	gxfmt "github.com/gx-org/gx/base/fmt"
 	"github.com/gx-org/gx/build/ir"
 	"github.com/gx-org/gx/internal/interp/flatten"
+	"github.com/gx-org/gx/interp/engine"
 )
 
 // Struct is an instance of a structure.
@@ -32,8 +33,8 @@ type Struct struct {
 }
 
 var (
-	_ Copier   = (*Struct)(nil)
-	_ Selector = (*Struct)(nil)
+	_ engine.Copier = (*Struct)(nil)
+	_ Selector      = (*Struct)(nil)
 )
 
 // NewStructFromElements returns a new node representing a structure instance given a slice of
@@ -94,13 +95,13 @@ func (n *Struct) Type() ir.Type {
 }
 
 // Copy the structure to a new node.
-func (n *Struct) Copy() Copier {
+func (n *Struct) Copy() engine.Copier {
 	cp := &Struct{
 		typ: n.typ,
 	}
 	cp.fields = make(map[string]ir.Element, len(n.fields))
 	for name, field := range n.fields {
-		copyable, ok := field.(Copier)
+		copyable, ok := field.(engine.Copier)
 		if ok {
 			field = copyable.Copy()
 		}

@@ -23,6 +23,7 @@ import (
 	"github.com/gx-org/gx/build/ir"
 	"github.com/gx-org/gx/internal/interp/flatten"
 	"github.com/gx-org/gx/interp/elements"
+	"github.com/gx-org/gx/interp/engine"
 )
 
 // NamedType references a type exported by an imported package.
@@ -30,19 +31,19 @@ type NamedType struct {
 	newFunc NewFunc
 	typ     ir.TypeMethods
 	funcs   map[string]ir.PkgFunc
-	under   elements.Copier
+	under   engine.Copier
 }
 
 var (
 	_ ir.StorageElement = (*NamedType)(nil)
 	_ elements.Selector = (*NamedType)(nil)
 	_ elements.NType    = (*NamedType)(nil)
-	_ elements.Copier   = (*NamedType)(nil)
+	_ engine.Copier     = (*NamedType)(nil)
 	_ elements.Under    = (*NamedType)(nil)
 )
 
 // NewNamedType returns a new node representing an exported type.
-func NewNamedType(newFunc NewFunc, typ ir.TypeMethods, under elements.Copier) *NamedType {
+func NewNamedType(newFunc NewFunc, typ ir.TypeMethods, under engine.Copier) *NamedType {
 	funcs := make(map[string]ir.PkgFunc)
 	for _, fun := range typ.Methods() {
 		funcs[fun.Name()] = fun
@@ -70,7 +71,7 @@ func (n *NamedType) Select(expr *ir.SelectorExpr) (ir.Element, error) {
 }
 
 // Copy the element.
-func (n *NamedType) Copy() elements.Copier {
+func (n *NamedType) Copy() engine.Copier {
 	return n.RecvCopy()
 }
 

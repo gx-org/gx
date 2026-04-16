@@ -28,7 +28,6 @@ import (
 	"github.com/gx-org/gx/internal/interp/canonical"
 	"github.com/gx-org/gx/internal/interp/coreops"
 	"github.com/gx-org/gx/internal/interp/flatten"
-	"github.com/gx-org/gx/interp/elements"
 	"github.com/gx-org/gx/interp/engine"
 	"github.com/gx-org/gx/interp/materialise"
 )
@@ -161,7 +160,7 @@ func (n *Float) Simplify() canonical.Simplifier {
 }
 
 // Copy returns the receiver.
-func (n *Float) Copy() elements.Copier {
+func (n *Float) Copy() engine.Copier {
 	return n
 }
 

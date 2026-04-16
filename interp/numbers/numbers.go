@@ -20,7 +20,6 @@ import (
 	"github.com/gx-org/gx/build/ir"
 	"github.com/gx-org/gx/build/ir/irkind"
 	"github.com/gx-org/gx/internal/interp/canonical"
-	"github.com/gx-org/gx/interp/elements"
 	"github.com/gx-org/gx/interp/engine"
 )
 
@@ -31,7 +30,7 @@ type Number interface {
 	engine.NumericalElement
 	canonical.Comparable
 	canonical.Evaluable
-	elements.Copier
+	engine.Copier
 	ir.StringSourcer
 }
 

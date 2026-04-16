@@ -36,7 +36,7 @@ var (
 	_ elements.WithAxes = (*array)(nil)
 	_ coreops.Element   = (*array)(nil)
 	_ elements.Slicer   = (*array)(nil)
-	_ elements.Copier   = (*array)(nil)
+	_ engine.Copier     = (*array)(nil)
 	_ ir.WithLength     = (*array)(nil)
 )
 
@@ -79,7 +79,7 @@ func (a *array) Slice(expr *ir.IndexExpr, index engine.NumericalElement) (ir.Ele
 	return NewArray(expr.Type().(ir.ArrayType)), nil
 }
 
-func (a *array) Copy() elements.Copier {
+func (a *array) Copy() engine.Copier {
 	return a
 }
 

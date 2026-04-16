@@ -40,7 +40,7 @@ type cast struct {
 var (
 	_ materialise.ElementMaterialiser = (*cast)(nil)
 	_ elements.WithAxes               = (*cast)(nil)
-	_ elements.Copier                 = (*cast)(nil)
+	_ engine.Copier                   = (*cast)(nil)
 	_ elements.ElementWithConstant    = (*cast)(nil)
 	_ ir.StorageElement               = (*cast)(nil)
 )
@@ -154,7 +154,7 @@ func (a *cast) NumericalConstant() (*values.HostArray, error) {
 }
 
 // Copy the element by returning itself.
-func (a *cast) Copy() elements.Copier {
+func (a *cast) Copy() engine.Copier {
 	return a
 }
 

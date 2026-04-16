@@ -410,7 +410,7 @@ func evalCastExpr(fitp *Interpreter, expr ir.TypeCastExpr) (ir.Element, error) {
 	}
 	target := expr.Type()
 	if named, ok := target.(*ir.NamedType); ok {
-		recv, ok := x.(elements.Copier)
+		recv, ok := x.(engine.Copier)
 		if !ok {
 			return nil, errors.Errorf("element %T cannot be copied", x)
 		}

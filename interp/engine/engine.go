@@ -100,6 +100,12 @@ type (
 		// ElementFromArray returns an element from an array GX value.
 		ElementFromArray(ctx *ir.File, val values.Array, typ ir.Type) (NumericalElement, error)
 	}
+
+	// Copier is an element that needs to be copied when passed to a function.
+	Copier interface {
+		ir.Element
+		Copy() Copier
+	}
 )
 
 type evalEnv struct{}

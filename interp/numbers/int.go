@@ -209,7 +209,7 @@ func (n *Int) CanonicalExpr() canonical.Canonical {
 }
 
 // Copy returns the receiver.
-func (n *Int) Copy() elements.Copier {
+func (n *Int) Copy() engine.Copier {
 	return n
 }
 

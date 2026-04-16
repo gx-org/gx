@@ -40,7 +40,7 @@ type randBootstrap struct {
 	next func(engine.Env) (engine.NumericalElement, error)
 }
 
-var _ elements.Copier = (*randBootstrap)(nil)
+var _ engine.Copier = (*randBootstrap)(nil)
 
 func (rb *randBootstrap) Type() ir.Type {
 	return &ir.BuiltinType{Impl: rb}
@@ -50,7 +50,7 @@ func (*randBootstrap) Kind() irkind.Kind {
 	return irkind.Interface
 }
 
-func (rb *randBootstrap) Copy() elements.Copier {
+func (rb *randBootstrap) Copy() engine.Copier {
 	return rb
 }
 
