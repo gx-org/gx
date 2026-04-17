@@ -94,19 +94,26 @@ func findStorage(scope resolveScope, name *ast.Ident) (ir.Storage, bool) {
 	}
 }
 
-func storageFromExpr(scope resolveScope, expr ir.Expr) (ir.Storage, bool) {
+func storageFromExpr(scope resolveScope, expr ir.Expr) ir.Storage {
 	withStore, ok := expr.(ir.WithStore)
 	if !ok {
-		return nil, scope.Err().AppendInternalf(expr.Node(), "%s:%T does not have a store", expr.SourceString(scope.fileScope().irFile()), expr)
+		return nil
 	}
 	store := withStore.Store()
 	if store == nil {
-		return nil, false
+		return nil
 	}
-	return store, true
+	return store
+}
+
+func typeError(rscope resolveScope, x ir.Expr) (*ir.TypeValExpr, bool) {
+	return invalidTypeExprVal, rscope.Err().Appendf(x.Node(), "%s is not a type", x.SourceString(rscope.fileScope().irFile()))
 }
 
 func typeFromStorage(rscope resolveScope, x ir.Expr, store ir.Storage) (*ir.TypeValExpr, bool) {
+	if store == nil {
+		return typeError(rscope, x)
+	}
 	tp, ok := store.(ir.Type)
 	if ok {
 		return ir.TypeExpr(x, tp), true
@@ -117,16 +124,13 @@ func typeFromStorage(rscope resolveScope, x ir.Expr, store ir.Storage) (*ir.Type
 	}
 	typeRef, ok := value.(*ir.TypeValExpr)
 	if !ok {
-		return invalidTypeExprVal, rscope.Err().Appendf(x.Node(), "%s not a type", x.SourceString(rscope.fileScope().irFile()))
+		return typeError(rscope, x)
 	}
 	return typeRef, true
 }
 
 func typeFromExpr(rscope resolveScope, x ir.Expr) (*ir.TypeValExpr, bool) {
-	store, ok := storageFromExpr(rscope, x)
-	if !ok {
-		return nil, false
-	}
+	store := storageFromExpr(rscope, x)
 	return typeFromStorage(rscope, x, store)
 }
 

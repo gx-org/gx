@@ -173,7 +173,7 @@ package math
 			Src: `
 import "math"
 
-func f() [2]math { // ERROR math not a type
+func f() [2]math { // ERROR math is not a type
 	return [2]float32{1, 2}
 }
 `,

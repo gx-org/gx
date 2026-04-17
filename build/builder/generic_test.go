@@ -423,7 +423,7 @@ func cast[T someInt]() T {
 }
 
 func callCast() int32 {
-	return cast[cast]() // ERROR cast not a type
+	return cast[cast]() // ERROR cast is not a type
 }
 `,
 		},
@@ -785,6 +785,19 @@ func f[T interface{ float32 | float64 }]() T {
 func f[T AgeOfTheCaptain](shape []intlen) [shape___]T // ERROR undefined: AgeOfTheCaptain
 `,
 			Err: "array of T not supported",
+		},
+		testbuild.Decl{
+			Src: `
+type Floats interface {
+	float32 | float64
+}
+
+func f[T Floats]() T
+
+func g() float32 {
+	return f[2]() // ERROR 2 is not a type
+}
+`,
 		},
 	)
 

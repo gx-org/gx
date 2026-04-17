@@ -141,7 +141,7 @@ package pkg
 import "pkg"
 
 type A struct {
-	a [2]pkg // ERROR pkg not a type
+	a [2]pkg // ERROR pkg is not a type
 }
 
 func f() A {
