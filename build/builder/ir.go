@@ -98,6 +98,10 @@ func typeError(rscope resolveScope, x ir.Expr) (*ir.TypeValExpr, bool) {
 	return invalidTypeExprVal, rscope.Err().Appendf(x.Node(), "%s is not a type", x.SourceString(rscope.fileScope().irFile()))
 }
 
+func funcError(rscope resolveScope, x ir.Expr) (ir.Expr, bool) {
+	return invalidExpr(), rscope.Err().Appendf(x.Node(), "%s is not a function", x.SourceString(rscope.fileScope().irFile()))
+}
+
 func typeFromStorage(rscope resolveScope, x ir.Expr, store ir.Storage) *ir.TypeValExpr {
 	if store == nil {
 		return nil
@@ -106,11 +110,11 @@ func typeFromStorage(rscope resolveScope, x ir.Expr, store ir.Storage) *ir.TypeV
 	if ok {
 		return ir.TypeExpr(x, tp)
 	}
-	value, ok := valueFromStorage(rscope, x, store)
+	withValue, ok := store.(ir.StorageWithValue)
 	if !ok {
-		return invalidTypeExprVal
+		return nil
 	}
-	typeRef, ok := value.(*ir.TypeValExpr)
+	typeRef, ok := withValue.Value(x).(*ir.TypeValExpr)
 	if !ok {
 		return nil
 	}
@@ -120,19 +124,6 @@ func typeFromStorage(rscope resolveScope, x ir.Expr, store ir.Storage) *ir.TypeV
 func typeFromExpr(rscope resolveScope, x ir.Expr) *ir.TypeValExpr {
 	store := ir.StorageFromExpr(x)
 	return typeFromStorage(rscope, x, store)
-}
-
-func valueFromStorage(rscope resolveScope, expr ir.Expr, store ir.Storage) (ir.Expr, bool) {
-	withValue, ok := store.(ir.StorageWithValue)
-	if !ok {
-		nameDef := store.NameDef()
-		name := "<anonymous>"
-		if nameDef != nil {
-			name = nameDef.Name
-		}
-		return nil, rscope.Err().Appendf(store.Node(), "%s undefined", name)
-	}
-	return withValue.Value(expr), true
 }
 
 var invalidArrayType = ir.NewArrayType(&ast.ArrayType{}, ir.InvalidType(), nil)

@@ -97,13 +97,13 @@ func specializeFunc(rscope resolveScope, x ir.Expr, indices []ir.Expr) (ir.Expr,
 	case *ir.MacroCallExpr:
 		fun = ir.NewFuncValExpr(x, xT.F).NewFType(xT.FuncType())
 	case ir.WithStore:
-		funValue, ok := valueFromStorage(rscope, x, xT.Store())
+		funStorage, ok := xT.Store().(ir.StorageWithValue)
 		if !ok {
-			return nil, false
+			return funcError(rscope, x)
 		}
-		fun, ok = funValue.(*ir.FuncValExpr)
+		fun, ok = funStorage.Value(x).(*ir.FuncValExpr)
 		if !ok {
-			return x, rscope.Err().AppendInternalf(x.Node(), "%s is not a function: %T", x, x)
+			return funcError(rscope, x)
 		}
 	default:
 		return invalidExpr(), rscope.Err().AppendInternalf(x.Node(), "cannot specialise function call %T: not supported", x)
