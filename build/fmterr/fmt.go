@@ -67,5 +67,5 @@ func (f Pos) Errorf(format string, a ...any) error {
 // PosString returns a position as a string that can be used for an error.
 func (f Pos) String() string {
 	pos := f.Position()
-	return fmt.Sprintf("%s:%d:%d", pos.Filename, pos.Line, pos.Column)
+	return fmt.Sprintf("%s:%d:%d:", pos.Filename, pos.Line, pos.Column)
 }
