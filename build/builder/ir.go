@@ -98,26 +98,26 @@ func typeError(rscope resolveScope, x ir.Expr) (*ir.TypeValExpr, bool) {
 	return invalidTypeExprVal, rscope.Err().Appendf(x.Node(), "%s is not a type", x.SourceString(rscope.fileScope().irFile()))
 }
 
-func typeFromStorage(rscope resolveScope, x ir.Expr, store ir.Storage) (*ir.TypeValExpr, bool) {
+func typeFromStorage(rscope resolveScope, x ir.Expr, store ir.Storage) *ir.TypeValExpr {
 	if store == nil {
-		return typeError(rscope, x)
+		return nil
 	}
 	tp, ok := store.(ir.Type)
 	if ok {
-		return ir.TypeExpr(x, tp), true
+		return ir.TypeExpr(x, tp)
 	}
 	value, ok := valueFromStorage(rscope, x, store)
 	if !ok {
-		return invalidTypeExprVal, false
+		return invalidTypeExprVal
 	}
 	typeRef, ok := value.(*ir.TypeValExpr)
 	if !ok {
-		return typeError(rscope, x)
+		return nil
 	}
-	return typeRef, true
+	return typeRef
 }
 
-func typeFromExpr(rscope resolveScope, x ir.Expr) (*ir.TypeValExpr, bool) {
+func typeFromExpr(rscope resolveScope, x ir.Expr) *ir.TypeValExpr {
 	store := ir.StorageFromExpr(x)
 	return typeFromStorage(rscope, x, store)
 }

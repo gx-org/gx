@@ -55,7 +55,14 @@ func (n *ident) buildTypeExpr(rscope resolveScope) (*ir.TypeValExpr, bool) {
 	if !ok {
 		return invalidTypeExprVal, false
 	}
-	return typeFromStorage(rscope, idt, idt.Stor)
+	if _, ok = idt.Stor.(ir.StorageWithValue); !ok {
+		return nil, rscope.Err().Appendf(n.source(), "%s undefined", n.src.Name)
+	}
+	typExpr := typeFromStorage(rscope, idt, idt.Stor)
+	if typExpr == nil {
+		return typeError(rscope, idt)
+	}
+	return typExpr, true
 }
 
 func (n *ident) String() string {

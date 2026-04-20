@@ -87,9 +87,9 @@ func (n *callExpr) buildArgs(scope resolveScope) ([]ir.Expr, bool) {
 }
 
 func (n *callExpr) buildTypeCast(rscope resolveScope, callee ir.Expr, store ir.Storage) (ir.Expr, bool) {
-	typRef, ok := typeFromStorage(rscope, callee, store)
-	if !ok {
-		return nil, false
+	typRef := typeFromStorage(rscope, callee, store)
+	if typRef == nil {
+		return typeError(rscope, callee)
 	}
 	dst := typRef.Val()
 	ext := &ir.CastExpr{Src: n.src, Typ: dst}
@@ -103,6 +103,7 @@ func (n *callExpr) buildTypeCast(rscope resolveScope, callee ir.Expr, store ir.S
 	if len(args) > 1 {
 		return ext, rscope.Err().Appendf(n.src, "too many arguments in conversion to %s", ext.Typ.ReferString(rscope.fileScope().irFile()))
 	}
+	var ok bool
 	ext.X = args[0]
 	ext.X, ok = castNilAndNumber(rscope, ext.X, ext.Typ)
 	if !ok {
