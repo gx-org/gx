@@ -129,7 +129,7 @@ func (n *selectorExpr) buildTypeExpr(rscope resolveScope) (*ir.TypeValExpr, bool
 	if !ok {
 		return invalidTypeExprVal, false
 	}
-	typeVal := typeFromStorage(rscope, sel, sel.Stor)
+	typeVal := ir.TypeFromStorage(sel, sel.Stor)
 	if typeVal == nil {
 		return typeError(rscope, sel)
 	}

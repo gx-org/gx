@@ -102,30 +102,6 @@ func funcError(rscope resolveScope, x ir.Expr) (ir.Expr, bool) {
 	return invalidExpr(), rscope.Err().Appendf(x.Node(), "%s is not a function", x.SourceString(rscope.fileScope().irFile()))
 }
 
-func typeFromStorage(rscope resolveScope, x ir.Expr, store ir.Storage) *ir.TypeValExpr {
-	if store == nil {
-		return nil
-	}
-	tp, ok := store.(ir.Type)
-	if ok {
-		return ir.TypeExpr(x, tp)
-	}
-	withValue, ok := store.(ir.StorageWithValue)
-	if !ok {
-		return nil
-	}
-	typeRef, ok := withValue.Value(x).(*ir.TypeValExpr)
-	if !ok {
-		return nil
-	}
-	return typeRef
-}
-
-func typeFromExpr(rscope resolveScope, x ir.Expr) *ir.TypeValExpr {
-	store := ir.StorageFromExpr(x)
-	return typeFromStorage(rscope, x, store)
-}
-
 var invalidArrayType = ir.NewArrayType(&ast.ArrayType{}, ir.InvalidType(), nil)
 
 func buildArrayType(rscope resolveScope, eNode typeExprNode) (ir.ArrayType, bool) {

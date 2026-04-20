@@ -87,7 +87,7 @@ func (n *callExpr) buildArgs(scope resolveScope) ([]ir.Expr, bool) {
 }
 
 func (n *callExpr) buildTypeCast(rscope resolveScope, callee ir.Expr, store ir.Storage) (ir.Expr, bool) {
-	typRef := typeFromStorage(rscope, callee, store)
+	typRef := ir.TypeFromStorage(callee, store)
 	if typRef == nil {
 		return typeError(rscope, callee)
 	}

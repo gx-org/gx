@@ -111,7 +111,7 @@ func specializeFunc(rscope resolveScope, x ir.Expr, indices []ir.Expr) (ir.Expr,
 	typeExprs := make([]*ir.TypeValExpr, len(indices))
 	indicesOk := true
 	for i, index := range indices {
-		typeExprs[i] = typeFromExpr(rscope, index)
+		typeExprs[i] = ir.TypeFromExpr(index)
 		if typeExprs[i] == nil {
 			typeExprs[i], indicesOk = typeError(rscope, index)
 		}

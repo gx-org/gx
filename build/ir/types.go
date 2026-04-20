@@ -488,3 +488,29 @@ func StorageFromExpr(expr Expr) Storage {
 	}
 	return withStore.Store()
 }
+
+// TypeFromStorage returns the type stored by the storage.
+func TypeFromStorage(x Expr, store Storage) *TypeValExpr {
+	if store == nil {
+		return nil
+	}
+	tp, ok := store.(Type)
+	if ok {
+		return TypeExpr(x, tp)
+	}
+	withValue, ok := store.(StorageWithValue)
+	if !ok {
+		return nil
+	}
+	typeRef, ok := withValue.Value(x).(*TypeValExpr)
+	if !ok {
+		return nil
+	}
+	return typeRef
+}
+
+// TypeFromExpr returns a type from an expression.
+func TypeFromExpr(x Expr) *TypeValExpr {
+	store := StorageFromExpr(x)
+	return TypeFromStorage(x, store)
+}
