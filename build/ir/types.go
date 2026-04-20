@@ -479,3 +479,12 @@ func AssignableTo(tpcmp TypeCmp, x, y Type) (bool, CompEvalError, error) {
 	}
 	return x.AssignableTo(tpcmp, y)
 }
+
+// StorageFromExpr returns the storage specified by an expression.
+func StorageFromExpr(expr Expr) Storage {
+	withStore, ok := expr.(WithStore)
+	if !ok {
+		return nil
+	}
+	return withStore.Store()
+}

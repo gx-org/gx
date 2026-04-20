@@ -94,18 +94,6 @@ func findStorage(scope resolveScope, name *ast.Ident) (ir.Storage, bool) {
 	}
 }
 
-func storageFromExpr(scope resolveScope, expr ir.Expr) ir.Storage {
-	withStore, ok := expr.(ir.WithStore)
-	if !ok {
-		return nil
-	}
-	store := withStore.Store()
-	if store == nil {
-		return nil
-	}
-	return store
-}
-
 func typeError(rscope resolveScope, x ir.Expr) (*ir.TypeValExpr, bool) {
 	return invalidTypeExprVal, rscope.Err().Appendf(x.Node(), "%s is not a type", x.SourceString(rscope.fileScope().irFile()))
 }
@@ -130,7 +118,7 @@ func typeFromStorage(rscope resolveScope, x ir.Expr, store ir.Storage) (*ir.Type
 }
 
 func typeFromExpr(rscope resolveScope, x ir.Expr) (*ir.TypeValExpr, bool) {
-	store := storageFromExpr(rscope, x)
+	store := ir.StorageFromExpr(x)
 	return typeFromStorage(rscope, x, store)
 }
 

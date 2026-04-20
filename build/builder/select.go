@@ -56,7 +56,7 @@ func (n *selectorExpr) returnUndefined(scope resolveScope, x ir.Expr) (ir.Storag
 }
 
 func (n *selectorExpr) selectFromPackage(scope resolveScope, sel *ir.SelectorExpr) (ir.Storage, bool) {
-	val := storageFromExpr(scope, sel.X)
+	val := ir.StorageFromExpr(sel.X)
 	_, isImpDecl := val.(*ir.ImportDecl)
 	if val == nil || !isImpDecl {
 		return nil, scope.Err().AppendInternalf(sel.X.Node(), "%T is not %s", val, reflect.TypeFor[*ir.ImportDecl]())
