@@ -108,23 +108,11 @@ func specializeFunc(rscope resolveScope, x ir.Expr, indices []ir.Expr) (ir.Expr,
 	default:
 		return invalidExpr(), rscope.Err().AppendInternalf(x.Node(), "cannot specialise function call %T: not supported", x)
 	}
-	typeExprs := make([]*ir.TypeValExpr, len(indices))
-	indicesOk := true
-	for i, index := range indices {
-		typeExprs[i] = ir.TypeFromExpr(index)
-		if typeExprs[i] == nil {
-			typeExprs[i], indicesOk = typeError(rscope, index)
-		}
-	}
-	if !indicesOk {
-		return x, false
-	}
 	compEval, compEvalOk := compEvalForFuncType(rscope, x.Node(), fun.FuncType())
 	if !compEvalOk {
 		return x, false
 	}
-
-	specFunType, ok := generics.Specialise(compEval, x, fun, typeExprs)
+	specFunType, ok := generics.Specialise(compEval, x, fun, indices)
 	if !ok {
 		return x, false
 	}

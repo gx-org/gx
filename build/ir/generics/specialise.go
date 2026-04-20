@@ -42,8 +42,27 @@ func (s *specialiser) ValueOf(name string) ir.Element {
 	return s.axes[name]
 }
 
+func toTypeValue(fetcher ir.Fetcher, typeParam *ir.Field, x ir.Expr) (ir.Type, bool) {
+	typeValExpr := ir.TypeFromExpr(x)
+	if typeValExpr == nil {
+		return ir.InvalidType(), fetcher.Err().Appendf(x.Node(), "%s is not a type", x.SourceString(fetcher.File()))
+	}
+	gotType, wantType := typeValExpr.Val(), typeParam.Group.Type.Val()
+	assignedOk, cpErr, err := gotType.AssignableTo(fetcher, wantType)
+	if err != nil {
+		return ir.InvalidType(), fetcher.Err().AppendAt(x.Node(), err)
+	}
+	if cpErr != nil {
+		return ir.InvalidType(), fetcher.Err().AppendAt(x.Node(), cpErr)
+	}
+	if !assignedOk {
+		return ir.InvalidType(), fetcher.Err().Appendf(x.Node(), "%s does not satisfy %s", gotType.ReferString(fetcher.File()), wantType.ReferString(fetcher.File()))
+	}
+	return typeValExpr.Val(), true
+}
+
 // Specialise a function signature for a given type.
-func Specialise(fetcher ir.Fetcher, expr ir.Expr, fun *ir.FuncValExpr, typs []*ir.TypeValExpr) (*ir.FuncValExpr, bool) {
+func Specialise(fetcher ir.Fetcher, expr ir.Expr, fun *ir.FuncValExpr, typs []ir.Expr) (*ir.FuncValExpr, bool) {
 	fType := fun.FuncType()
 	if fType == nil {
 		// This is a builtin function with the type built later.
@@ -57,25 +76,19 @@ func Specialise(fetcher ir.Fetcher, expr ir.Expr, fun *ir.FuncValExpr, typs []*i
 	}
 	definedTypeParams := make(map[string]ir.Type)
 	ok := true
-	for i, typeValExpr := range typs {
-		typeParam := typeParams[i]
+	for i, typeParam := range typeParams {
+		if i >= len(typs) {
+			// Not all type parameters are defined as in:
+			// f[float32]() for f[T, U floats]()
+			break
+		}
+		typeValExpr := typs[i]
 		if !ir.ValidName(typeParam.Name.Name) {
 			continue
 		}
-		gotType, wantType := typeValExpr.Val(), typeParam.Group.Type.Val()
-		assignedOk, cpErr, err := gotType.AssignableTo(fetcher, wantType)
-		if err != nil {
-			ok = fetcher.Err().AppendAt(expr.Node(), err)
-			continue
-		}
-		if cpErr != nil {
-			ok = fetcher.Err().AppendAt(expr.Node(), cpErr)
-		}
-		if !assignedOk {
-			ok = fetcher.Err().Appendf(expr.Node(), "%s does not satisfy %s", gotType.ReferString(fetcher.File()), wantType.ReferString(fetcher.File()))
-			continue
-		}
-		definedTypeParams[typeParam.Name.Name] = typeValExpr.Val()
+		paramValue, paramOk := toTypeValue(fetcher, typeParam, typeValExpr)
+		definedTypeParams[typeParam.Name.Name] = paramValue
+		ok = ok && paramOk
 	}
 	if !ok {
 		return nil, false
