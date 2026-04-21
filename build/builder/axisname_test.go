@@ -327,6 +327,15 @@ func g() [2]float32 {
 }
 `,
 		},
+		testbuild.Decl{
+			Src: `
+func f[axes []intlen]() [axes]float32
+
+func g() [2][3]float32 {
+	return f[[]intlen{2,3}]()
+}
+`,
+		},
 	)
 }
 

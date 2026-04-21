@@ -294,7 +294,7 @@ func IsAxisSpecType(tp Type) bool {
 		if !isSlice {
 			return false
 		}
-		return IsAxisSpecType(slice.DType.Type())
+		return IsAxisSpecType(slice.DType.Val())
 	}
 	return false
 }
