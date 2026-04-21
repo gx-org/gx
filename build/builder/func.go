@@ -134,8 +134,7 @@ func rankInferOk(rscope resolveScope, src ast.Node, typ ir.Type) bool {
 func defineTypeParam(s resolveScope, storage ir.Storage) bool {
 	storageType := ir.MetaType()
 	fieldStorage := storage.(*ir.FieldStorage)
-	switch fieldStorage.Type().Kind() {
-	case irkind.IntLen:
+	if ir.IsAxisSpecType(fieldStorage.Type()) {
 		storageType = fieldStorage.Type()
 	}
 	typ := &ir.TypeParam{Field: fieldStorage.Field}

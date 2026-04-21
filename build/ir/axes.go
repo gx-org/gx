@@ -282,3 +282,19 @@ func (dm *AxisStmt) axExprString(from *File) string {
 func (dm *AxisStmt) SourceString(from *File) string {
 	return fmt.Sprintf("[%s]", dm.axExprString(from))
 }
+
+// IsAxisSpecType returns true if the type is about an axis,
+// that is intlen, intidx, and slices of these types.
+func IsAxisSpecType(tp Type) bool {
+	switch tp.Kind() {
+	case irkind.IntLen, irkind.IntIdx:
+		return true
+	case irkind.Slice:
+		slice, isSlice := Underlying(tp).(*SliceType)
+		if !isSlice {
+			return false
+		}
+		return IsAxisSpecType(slice.DType.Type())
+	}
+	return false
+}

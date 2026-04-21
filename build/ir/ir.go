@@ -97,6 +97,7 @@ type (
 	// Specialiser provides methods to specialise a type.
 	Specialiser interface {
 		TypeCmp
+		IsDefined(name string) bool
 		TypeOf(tParamName string) Type
 		ValueOf(axLengthname string) Element
 	}

@@ -318,6 +318,15 @@ func f[dims intlen]() [dims]float32
 				},
 			},
 		},
+		testbuild.Decl{
+			Src: `
+func f[ax intlen]() [ax]float32
+
+func g() [2]float32 {
+	return f[2]()
+}
+`,
+		},
 	)
 }
 

@@ -146,7 +146,7 @@ func (s *FuncType) Specialise(spec Specialiser) (Type, CompEvalError, error) {
 
 func skipIfDefined(spec Specialiser) fieldCloner {
 	return func(grp *FieldGroup, i int, field *Field) (*Field, CompEvalError, error) {
-		if spec.TypeOf(field.Name.Name) != nil {
+		if spec.IsDefined(field.Name.Name) {
 			return nil, nil, nil
 		}
 		return cloneField(grp, i, field)
@@ -173,7 +173,7 @@ func specialiseGroup(spec Specialiser) groupCloner {
 func (s *FuncType) SpecialiseFType(spec Specialiser) (_ *FuncType, cpErr CompEvalError, err error) {
 	defer func() {
 		if err != nil {
-			err = fmt.Errorf("cannot specialise %s: %v", s.ReferString(spec.File()), err)
+			err = fmt.Errorf("cannot specialise %s: %w", s.ReferString(spec.File()), err)
 		}
 	}()
 	res := *s

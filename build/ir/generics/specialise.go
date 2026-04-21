@@ -15,7 +15,11 @@
 package generics
 
 import (
+	"fmt"
+	"strings"
+
 	"github.com/gx-org/gx/build/ir"
+	"github.com/gx-org/gx/build/ir/irkind"
 )
 
 type specialiser struct {
@@ -24,6 +28,8 @@ type specialiser struct {
 	defined map[string]ir.Type
 	axes    map[string]ir.Element
 }
+
+var _ ir.Specialiser = (*specialiser)(nil)
 
 func newSpecialiser(fetcher ir.Fetcher, fun ir.Func, defined map[string]ir.Type, axes map[string]ir.Element) *specialiser {
 	return &specialiser{
@@ -40,6 +46,30 @@ func (s *specialiser) TypeOf(name string) ir.Type {
 
 func (s *specialiser) ValueOf(name string) ir.Element {
 	return s.axes[name]
+}
+
+func (s *specialiser) IsDefined(name string) bool {
+	if _, ok := s.defined[name]; ok {
+		return true
+	}
+	if _, ok := s.axes[name]; ok {
+		return true
+	}
+	return false
+}
+
+func (s *specialiser) String() string {
+	b := strings.Builder{}
+	fmt.Fprintln(&b, "Scope:")
+	for k, v := range s.defined {
+		fmt.Fprintf(&b, "\t%s->%T\n", k, v)
+	}
+	for k, v := range s.axes {
+		fmt.Fprintf(&b, "\t%s->%T\n", k, v)
+	}
+	fmt.Fprintln(&b, "Fetcher:")
+	fmt.Fprint(&b, s.Fetcher)
+	return b.String()
 }
 
 func toTypeValue(fetcher ir.Fetcher, typeParam *ir.Field, x ir.Expr) (ir.Type, bool) {
@@ -61,6 +91,25 @@ func toTypeValue(fetcher ir.Fetcher, typeParam *ir.Field, x ir.Expr) (ir.Type, b
 	return typeValExpr.Val(), true
 }
 
+func toAxisValue(fetcher ir.Fetcher, typeParam *ir.Field, x ir.Expr) (ir.Element, bool) {
+	numberOk := true
+	if irkind.IsNumber(x.Type().Kind()) {
+		x, numberOk = ir.CastNumber(fetcher, x, typeParam.Type())
+	}
+	if !numberOk {
+		return ir.InvalidType(), false
+	}
+	el, err := fetcher.EvalExpr(x)
+	if err != nil {
+		return ir.InvalidType(), false
+	}
+	tp := el.Type()
+	if !ir.IsAxisLengthType(el.Type()) {
+		return ir.InvalidType(), fetcher.Err().Appendf(x.Node(), "%s is not an axis value", tp.ReferString(fetcher.File()))
+	}
+	return el, true
+}
+
 // Specialise a function signature for a given type.
 func Specialise(fetcher ir.Fetcher, expr ir.Expr, fun *ir.FuncValExpr, typs []ir.Expr) (*ir.FuncValExpr, bool) {
 	fType := fun.FuncType()
@@ -75,6 +124,7 @@ func Specialise(fetcher ir.Fetcher, expr ir.Expr, fun *ir.FuncValExpr, typs []ir
 		return nil, fetcher.Err().Appendf(expr.Node(), "got %d type arguments but want %d", gotN, wantN)
 	}
 	definedTypeParams := make(map[string]ir.Type)
+	definedAxesParams := make(map[string]ir.Element)
 	ok := true
 	for i, typeParam := range typeParams {
 		if i >= len(typs) {
@@ -86,14 +136,23 @@ func Specialise(fetcher ir.Fetcher, expr ir.Expr, fun *ir.FuncValExpr, typs []ir
 		if !ir.ValidName(typeParam.Name.Name) {
 			continue
 		}
-		paramValue, paramOk := toTypeValue(fetcher, typeParam, typeValExpr)
-		definedTypeParams[typeParam.Name.Name] = paramValue
+		name := typeParam.Name.Name
+		var paramOk bool
+		if ir.IsAxisSpecType(typeParam.Type()) {
+			definedAxesParams[name], paramOk = toAxisValue(fetcher, typeParam, typeValExpr)
+		} else {
+			definedTypeParams[name], paramOk = toTypeValue(fetcher, typeParam, typeValExpr)
+		}
 		ok = ok && paramOk
 	}
 	if !ok {
 		return nil, false
 	}
-	spec := newSpecialiser(fetcher, fun.Func(), definedTypeParams, nil)
+	fetcher, err := fetcher.Sub(nil, definedAxesParams)
+	if err != nil {
+		return nil, fetcher.Err().AppendAt(fun.Node(), err)
+	}
+	spec := newSpecialiser(fetcher, fun.Func(), definedTypeParams, definedAxesParams)
 	specType, cpErr, err := fType.SpecialiseFType(spec)
 	if cpErr != nil {
 		return nil, fetcher.Err().AppendAt(fun.Node(), cpErr)
