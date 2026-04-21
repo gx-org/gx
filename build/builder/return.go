@@ -156,6 +156,7 @@ func (n *returnStmt) buildStmt(scope fnResolveScope) (ir.Stmt, bool, bool) {
 			rTypes[i] = ext.Results[i].Type()
 		}
 		if !retOk {
+			ok = false
 			continue
 		}
 		gotType := rTypes[i]

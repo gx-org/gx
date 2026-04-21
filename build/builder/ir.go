@@ -315,10 +315,21 @@ func castNilAndNumber(scope resolveScope, expr ir.Expr, target ir.Type) (ir.Expr
 	}
 	knd := expr.Type().Kind()
 	if irkind.IsNumber(knd) {
-		return castNumber(scope, expr, target)
+		return ir.CastNumber(toFileWithError(scope), expr, target)
 	}
 	if knd == irkind.Nil {
 		return castNil(scope, expr, target)
 	}
 	return expr, !isInvalidExpr(expr) && ir.IsValid(target)
+}
+
+type fileWithError struct {
+	resolveScope
+}
+
+func toFileWithError(rscope resolveScope) ir.FileWithError {
+	return &fileWithError{resolveScope: rscope}
+}
+func (fwe *fileWithError) File() *ir.File {
+	return fwe.resolveScope.fileScope().irFile()
 }

@@ -60,6 +60,13 @@ func f() float32 {
 }
 `,
 		},
+		testbuild.Decl{
+			Src: `
+func f() string {
+	return 3 // ERROR cannot use a number as string
+}
+`,
+		},
 	)
 }
 
