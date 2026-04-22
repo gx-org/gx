@@ -107,7 +107,7 @@ type (
 		TypeCmp
 		Node() ast.Node
 		DefineTParam(tp *TypeParam, typ Type) bool
-		DefineAxis(*AxisStmt, []AxisLengths) ([]AxisLengths, bool)
+		DefineAxis(src ast.Node, name string, tp Type, args []AxisLengths) ([]AxisLengths, bool)
 	}
 
 	// Type of a value.

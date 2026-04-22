@@ -257,7 +257,14 @@ func (dm *AxisStmt) Specialise(spec Specialiser) ([]AxisLengths, CompEvalError, 
 
 // UnifyWith unifies axis lengths with a given target.
 func (dm *AxisStmt) UnifyWith(uni Unifier, targets []AxisLengths) ([]AxisLengths, bool) {
-	return uni.DefineAxis(dm, targets)
+	if dm.NameDef() == nil {
+		return []AxisLengths{dm}, true
+	}
+	src := dm.Node()
+	if len(targets) > 0 {
+		src = targets[0].Node()
+	}
+	return uni.DefineAxis(src, dm.NameDef().Name, dm.Type(), targets)
 }
 
 // AsExpr returns the value assigned to the axis.

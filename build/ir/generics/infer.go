@@ -102,20 +102,19 @@ func (uni *argUnifier) DefineTParam(tp *ir.TypeParam, typ ir.Type) bool {
 	return true
 }
 
-func (uni *argUnifier) defineAxis(param *ir.AxisStmt, targets []ir.AxisLengths) bool {
+func (uni *argUnifier) defineAxis(name string, targets []ir.AxisLengths) bool {
 	if len(targets) == 0 {
-		return uni.Err().Appendf(uni.arg.Node(), "no axis left to define %s", param.NameDef().Name)
+		return uni.Err().Appendf(uni.arg.Node(), "no axis left to define %s", name)
 	}
 	ax := targets[0]
 	el, err := uni.Fetcher.EvalExpr(ax.AsExpr())
 	if err != nil {
 		return uni.Err().AppendAt(uni.Node(), err)
 	}
-	return uni.defineAxisElement(param, el)
+	return uni.defineAxisElement(name, el)
 }
 
-func (uni *argUnifier) defineAxisElement(param *ir.AxisStmt, el ir.Element) bool {
-	name := param.NameDef().Name
+func (uni *argUnifier) defineAxisElement(name string, el ir.Element) bool {
 	defined, isDefined := uni.axes[name]
 	if !isDefined {
 		uni.axes[name] = el
@@ -131,7 +130,7 @@ func (uni *argUnifier) defineAxisElement(param *ir.AxisStmt, el ir.Element) bool
 	return true
 }
 
-func (uni *argUnifier) defineGroupAsAllSingleAxes(param *ir.AxisStmt, targets []ir.AxisLengths) ([]ir.AxisLengths, bool) {
+func (uni *argUnifier) defineGroupAsAllSingleAxes(src ast.Node, name string, targets []ir.AxisLengths) ([]ir.AxisLengths, bool) {
 	var singles []ir.Element
 	for _, axis := range targets {
 		if axis.Type().Kind() != irkind.IntLen {
@@ -148,39 +147,39 @@ func (uni *argUnifier) defineGroupAsAllSingleAxes(param *ir.AxisStmt, targets []
 	)
 	sliceOk := true
 	if err != nil {
-		sliceOk = uni.Err().AppendAt(param.Node(), err)
+		sliceOk = uni.Err().AppendAt(src, err)
 	}
-	return targets[len(singles):], uni.defineAxisElement(param, slice) && sliceOk
+	return targets[len(singles):], uni.defineAxisElement(name, slice) && sliceOk
 }
 
-func (uni *argUnifier) defineGroupAxis(param *ir.AxisStmt, targets []ir.AxisLengths) ([]ir.AxisLengths, bool) {
+func (uni *argUnifier) defineGroupAxis(src ast.Node, name string, tp ir.Type, targets []ir.AxisLengths) ([]ir.AxisLengths, bool) {
 	if len(targets) == 0 {
-		return uni.defineGroupAsAllSingleAxes(param, targets)
+		return uni.defineGroupAsAllSingleAxes(src, name, targets)
 	}
 	switch targets[0].Type().Kind() {
 	case irkind.IntLen:
-		return uni.defineGroupAsAllSingleAxes(param, targets)
+		return uni.defineGroupAsAllSingleAxes(src, name, targets)
 	case irkind.Slice:
-		ok := uni.defineAxis(param, targets)
+		ok := uni.defineAxis(name, targets)
 		return targets[1:], ok
 	default:
 		arg := targets[0]
-		return nil, uni.Err().Appendf(uni.Node(), "cannot unify axis length %s of type %s in parameters with axis length %s of type %s: not supported", param.SourceString(uni.File()), param.Type().ReferString(uni.File()), arg.SourceString(uni.File()), arg.Type().ReferString(uni.File()))
+		return nil, uni.Err().Appendf(uni.Node(), "cannot unify axis length %s of type %s in parameters with axis length %s of type %s: not supported", name, tp.ReferString(uni.File()), arg.SourceString(uni.File()), arg.Type().ReferString(uni.File()))
 	}
 }
 
-func (uni *argUnifier) DefineAxis(param *ir.AxisStmt, targets []ir.AxisLengths) ([]ir.AxisLengths, bool) {
-	switch param.Type().Kind() {
+func (uni *argUnifier) DefineAxis(src ast.Node, name string, tp ir.Type, targets []ir.AxisLengths) ([]ir.AxisLengths, bool) {
+	switch tp.Kind() {
 	case irkind.IntLen:
-		ok := uni.defineAxis(param, targets)
+		ok := uni.defineAxis(name, targets)
 		if len(targets) < 1 {
 			return nil, true
 		}
 		return targets[1:], ok
 	case irkind.Slice:
-		return uni.defineGroupAxis(param, targets)
+		return uni.defineGroupAxis(src, name, tp, targets)
 	default:
-		return nil, uni.Err().Appendf(uni.Node(), "cannot unify axis expression of type %s in parameters: not supported", param.Type().ReferString(uni.File()))
+		return nil, uni.Err().Appendf(uni.Node(), "cannot unify axis expression of type %s in parameters: not supported", tp.ReferString(uni.File()))
 	}
 }
 
