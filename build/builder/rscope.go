@@ -310,18 +310,26 @@ func compEvalForFuncType(rscope resolveScope, src ast.Node, ftype *ir.FuncType) 
 	if !compEvalOk {
 		return nil, false
 	}
-	axisNameToVal := make(map[string]ir.Element)
-	for _, axLen := range ftype.AxisLengths {
-		storeAt := elements.NewNodeAt[ir.Storage](rscope.fileScope().irFile(), axLen.Axis)
-		axisNameToVal[axLen.Name()] = cpevelements.NewVariable(storeAt)
-	}
-	funcVars := context.NewSubMap(axisNameToVal)
+	// Define all type parameters as generic.
+	typeParams := make(map[string]ir.Element)
 	for _, tParam := range ftype.TypeParams.Fields() {
-		if tParam == nil {
+		if !ir.ValidIdent(tParam.Name) {
 			continue
 		}
-		funcVars.Define(tParam.Name, &ir.TypeParam{Field: tParam})
+		name := tParam.Name.Name
+		if ir.IsAxisSpecType(tParam.Type()) {
+			storeAt := elements.NewNodeAt[ir.Storage](rscope.fileScope().irFile(), tParam.Storage())
+			typeParams[name] = cpevelements.NewVariable(storeAt)
+		} else {
+			typeParams[name] = &ir.TypeParam{Field: tParam}
+		}
 	}
+	funcVars := context.NewSubMap(typeParams)
+	// Re-define type parameters that have been resolved.
+	for _, axLen := range ftype.AxisLengths {
+		funcVars.Define(axLen.Axis.Src, axLen.Value)
+	}
+	// Define all arguments.
 	irFile := rscope.fileScope().irFile()
 	var fields []*ir.Field
 	fields = append(fields, ftype.Receiver.Fields()...)

@@ -303,7 +303,8 @@ func buildExpr(rscope resolveScope, expr exprNode) (ir.Expr, bool) {
 	if !ok {
 		return ext, false
 	}
-	if ext.Type().Kind() == irkind.MetaType {
+	knd := ext.Type().Kind()
+	if knd != irkind.Invalid && knd == irkind.MetaType {
 		return ext, rscope.Err().Appendf(expr.source(), "%s (type) is not an expression", ext.SourceString(rscope.fileScope().irFile()))
 	}
 	return ext, true

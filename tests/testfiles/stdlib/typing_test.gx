@@ -2,7 +2,7 @@ package stdlib
 
 import "num"
 
-func l2Squared(x [_]float32) float32 {
+func l2Squared(x [_a]float32) float32 {
 	return num.MatMul(x, x)
 }
 

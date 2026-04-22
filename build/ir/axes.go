@@ -110,7 +110,14 @@ func (dm *AxisExpr) Specialise(spec Specialiser) ([]AxisLengths, CompEvalError, 
 
 // UnifyWith unifies axis lengths with a given target.
 func (dm *AxisExpr) UnifyWith(uni Unifier, targets []AxisLengths) ([]AxisLengths, bool) {
-	return []AxisLengths{dm}, true
+	ident, isIdent := dm.X.(*Ident)
+	if !isIdent || !ValidIdent(ident.Src) || len(targets) == 0 {
+		return []AxisLengths{dm}, true
+	}
+	if !uni.IsTypeParam(ident) {
+		return []AxisLengths{dm}, true
+	}
+	return uni.DefineAxis(targets[0].Node(), ident.Src.Name, dm.Type(), targets)
 }
 
 // AsExpr returns the axis value as an expression.
@@ -257,9 +264,6 @@ func (dm *AxisStmt) Specialise(spec Specialiser) ([]AxisLengths, CompEvalError, 
 
 // UnifyWith unifies axis lengths with a given target.
 func (dm *AxisStmt) UnifyWith(uni Unifier, targets []AxisLengths) ([]AxisLengths, bool) {
-	if dm.NameDef() == nil {
-		return []AxisLengths{dm}, true
-	}
 	src := dm.Node()
 	if len(targets) > 0 {
 		src = targets[0].Node()

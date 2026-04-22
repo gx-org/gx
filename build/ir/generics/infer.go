@@ -25,6 +25,7 @@ import (
 type (
 	unifier struct {
 		ir.Fetcher
+		params  map[string]*ir.Field
 		defined map[string]ir.Type
 		axes    map[string]ir.Element
 	}
@@ -183,6 +184,24 @@ func (uni *argUnifier) DefineAxis(src ast.Node, name string, tp ir.Type, targets
 	}
 }
 
+func (uni *argUnifier) IsTypeParam(id *ir.Ident) bool {
+	if !ir.ValidIdent(id.Src) {
+		return false
+	}
+	return uni.params[id.Src.Name] != nil
+}
+
+func typeParametersMap(tparams *ir.FieldList) map[string]*ir.Field {
+	fields := make(map[string]*ir.Field)
+	for _, field := range tparams.Fields() {
+		if !ir.ValidIdent(field.Name) {
+			continue
+		}
+		fields[field.Name.Name] = field
+	}
+	return fields
+}
+
 // Infer the type parameters of a function given a list of argument expressions.
 func Infer(fetcher ir.Fetcher, fExpr *ir.FuncValExpr, args []ir.Expr) (*ir.FuncValExpr, bool) {
 	ftype := fExpr.FuncType()
@@ -190,6 +209,7 @@ func Infer(fetcher ir.Fetcher, fExpr *ir.FuncValExpr, args []ir.Expr) (*ir.FuncV
 		Fetcher: fetcher,
 		defined: newTypeParamDefinition(ftype),
 		axes:    make(map[string]ir.Element),
+		params:  typeParametersMap(fExpr.FuncType().TypeParams),
 	}
 	ok := true
 	for i, param := range ftype.Params.Fields() {

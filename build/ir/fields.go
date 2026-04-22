@@ -39,8 +39,12 @@ func (l *FieldList) SourceString(from *File) string {
 			continue
 		}
 		names := make([]string, len(grp.Fields))
-		for nameI, name := range grp.Fields {
-			names[nameI] = name.Name.Name
+		for fieldI, field := range grp.Fields {
+			name := "_"
+			if field.Name != nil {
+				name = field.Name.Name
+			}
+			names[fieldI] = name
 		}
 		groups[grpI] = fmt.Sprintf("%s %s", strings.Join(names, ", "), typeS)
 	}

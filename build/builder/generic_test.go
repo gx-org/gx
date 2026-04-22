@@ -237,19 +237,19 @@ func f[T someInt](x [___X]T) [X___]T {
 	return x / y
 }
 
-func g[T someInt](x [___X]T) T
+func g[T someInt, X []intlen](x [X]T) T
 `,
 		},
 		testbuild.Decl{
 			Src: `
 import "dtype"
 
-func f[T dtype.Num](x [___X]T) [X___]T {
-	y := g[T](x)
+func f[S []intlen, T dtype.Num](x [S]T) [S]T {
+	y := g[S,T](x)
 	return x / y
 }
 
-func g[T dtype.Num](x [___X]T) T
+func g[S []intlen, T dtype.Num](x [S]T) T
 `,
 		},
 		testbuild.Decl{

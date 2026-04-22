@@ -108,6 +108,7 @@ type (
 		Node() ast.Node
 		DefineTParam(tp *TypeParam, typ Type) bool
 		DefineAxis(src ast.Node, name string, tp Type, args []AxisLengths) ([]AxisLengths, bool)
+		IsTypeParam(id *Ident) bool
 	}
 
 	// Type of a value.

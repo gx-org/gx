@@ -29,6 +29,7 @@ import (
 	"github.com/gx-org/gx/build/ir/generics"
 	"github.com/gx-org/gx/build/ir"
 	"github.com/gx-org/gx/build/ir/irkind"
+	"github.com/gx-org/gx/internal/interp/compeval/cpevelements"
 	"github.com/gx-org/gx/internal/interp/coreops"
 	"github.com/gx-org/gx/interp/context"
 	"github.com/gx-org/gx/interp/elements"
@@ -156,7 +157,12 @@ func (axs *ftypeAxisLengths) define(s resolveScope, storage ir.Storage) bool {
 	if !ok {
 		return s.Err().AppendInternalf(storage.NameDef(), "cannot register axis %s: cannot cast %T to %s", storage.NameDef().Name, storage, reflect.TypeFor[*ir.AxisStmt]())
 	}
-	axs.axLens = append(axs.axLens, ir.AxisValue{Axis: axStmt})
+	storeAt := elements.NewNodeAt[ir.Storage](s.fileScope().irFile(), axStmt)
+	value := cpevelements.NewVariable(storeAt)
+	axs.axLens = append(axs.axLens, ir.AxisValue{
+		Axis:  axStmt,
+		Value: value,
+	})
 	return defineLocalVar(s, storage)
 }
 

@@ -192,11 +192,11 @@ func f() [4][3]float32 {
 			Src: `
 var numClasses intlen
 
-func newArray(dims []intlen) [dims___]float32
+func newArray[axes []intlen]() [axes]float32
 
-func f(x [___axes]float32) [axes___][numClasses]float32 {
+func f[axes []intlen](x [axes]float32) [axes][numClasses]float32 {
 	ax := append(axlengths(x), numClasses)
-	return newArray(ax)
+	return newArray[ax]()
 }
 `,
 		},
@@ -288,12 +288,19 @@ type floats interface {
 	float32 | float64
 }
 
-func g[T floats]([___S]T) [S___]T
+func g[T floats, S []intlen]([S]T) [S]T
 
 func f() [2]float32 {
 	return g[float32]([...]float32{
 		0, 1,
 	})
+}
+`,
+		},
+		testbuild.Decl{
+			Src: `
+func f(x [_ax]float32) int64 {
+	return len(x)
 }
 `,
 		},
@@ -321,6 +328,17 @@ func f[dims intlen]() [dims]float32
 		testbuild.Decl{
 			Src: `
 func f[ax intlen]() [ax]float32
+
+func g() [2]float32 {
+	return f[2]()
+}
+`,
+		},
+		testbuild.Decl{
+			Src: `
+func f[ax intlen]() [ax]float32 {
+	return [ax]float32{}
+}
 
 func g() [2]float32 {
 	return f[2]()
@@ -448,9 +466,9 @@ func TestAxisGroupOrigin(t *testing.T) {
 	testbuild.Run(t,
 		testbuild.Decl{
 			Src: `
-func f([___M]int32) [M___]int32
+func f[S []intlen]([S]int32) [S]int32
 
-func g(a [___dims]int32) [dims___]int32 {
+func g[S []intlen](a [S]int32) [S]int32 {
 	return a + f(a)
 }
 `,
@@ -458,9 +476,9 @@ func g(a [___dims]int32) [dims___]int32 {
 		},
 		testbuild.Decl{
 			Src: `
-func sum([___M]int32) int64
+func sum[S []intlen]([S]int32) int64
 
-func callCast(x [_]int32) int64 {
+func callCast[ax intlen](x [ax]int32) int64 {
 	return sum(x)
 }
 `,
@@ -492,7 +510,7 @@ func callAdd(x, y [2][3]float32) [2][3]float32 {
 		},
 		testbuild.Decl{
 			Src: `
-func g(x [_]float32) int64
+func g(x [_ax]float32) int64
 
 func f() int64 {
 	return g([...]float32{1, 2, 3})

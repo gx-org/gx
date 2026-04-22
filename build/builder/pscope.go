@@ -177,6 +177,13 @@ type procAxLenScope interface {
 	processAxisExpr(ast.Expr) (axisLengthNode, bool)
 }
 
+func checkValueTypeIdent(s procScope, ident *ast.Ident) bool {
+	if ident.Name == "_" {
+		return s.Err().Appendf(ident, "cannot use _ as value or type")
+	}
+	return true
+}
+
 // defaultAxLenTypeScope is the process scope used inside all axis length expressions,
 // except in function parameters.
 // It checks that no identifier starts with _.
@@ -200,6 +207,9 @@ func (s *defaultAxLenTypeScope) processAxisExpr(expr ast.Expr) (axisLengthNode, 
 }
 
 func (s *defaultAxLenTypeScope) processIdentExpr(ident *ast.Ident) (exprNode, bool) {
+	if !checkValueTypeIdent(s, ident) {
+		return nil, false
+	}
 	if strings.HasPrefix(ident.Name, ir.DefineAxisGroup) {
 		name := strings.TrimPrefix(ident.Name, ir.DefineAxisGroup)
 		return nil, s.Err().Appendf(ident, "shape %s using %s can only be defined in function parameters", name, ident.Name)
@@ -235,6 +245,9 @@ func (s *funcParamScope) registerAxis(axis *defineAxisLength) (*defineAxisLength
 }
 
 func (s *funcParamScope) processAxisIdent(ident *ast.Ident) (axisLengthNode, bool) {
+	if !checkValueTypeIdent(s, ident) {
+		return nil, false
+	}
 	if strings.HasPrefix(ident.Name, ir.DefineAxisGroup) {
 		name := strings.TrimPrefix(ident.Name, ir.DefineAxisGroup)
 		src := &ast.Ident{NamePos: ident.NamePos, Name: name}
