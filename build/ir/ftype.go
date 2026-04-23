@@ -17,7 +17,9 @@ package ir
 import (
 	"fmt"
 	"go/ast"
+	"maps"
 	"slices"
+	"sort"
 	"strings"
 
 	"github.com/gx-org/gx/build/ir/irkind"
@@ -26,6 +28,7 @@ import (
 // AxisValue assigns a value to an axis length.
 type AxisValue struct {
 	Axis  *AxisStmt
+	Expr  Expr
 	Value Element
 }
 
@@ -44,6 +47,7 @@ type (
 	// FuncType defines a function signature.
 	FuncType struct {
 		BaseType[*ast.FuncType]
+		Generic *FuncType
 
 		Receiver   *FieldList
 		TypeParams *FieldList
@@ -177,6 +181,9 @@ func (s *FuncType) SpecialiseFType(spec Specialiser) (_ *FuncType, cpErr CompEva
 		}
 	}()
 	res := *s
+	if res.Generic == nil {
+		res.Generic = s
+	}
 	res.Params, cpErr, err = cloneFields(s.Params, &cloner{
 		group: specialiseGroup(spec),
 		field: cloneField,
@@ -252,6 +259,55 @@ func (s *FuncType) SourceSignature(from *File, name *ast.Ident) string {
 	return s.sourceSignature(from, name, false)
 }
 
+func toUnorderedString(m map[string]string) string {
+	var b strings.Builder
+	fmt.Fprintf(&b, "unordered<%s>", b.String())
+	keys := slices.Collect(maps.Keys(m))
+	sort.Strings(keys)
+	for _, k := range keys {
+		fmt.Fprintf(&b, "[%s]", m[k])
+	}
+	return b.String()
+}
+
+func (s *FuncType) typeParamValuesString(from *File) string {
+	if s.Generic == nil {
+		return ""
+	}
+	values := make(map[string]string)
+	for _, tp := range s.TypeParamsValues {
+		if !ValidIdent(tp.Field.Name) {
+			continue
+		}
+		values[tp.Field.Name.Name] = tp.Typ.ReferString(from)
+	}
+	for _, tp := range s.AxisLengths {
+		if !ValidIdent(tp.Axis.Src) {
+			continue
+		}
+		src := ""
+		if tp.Expr != nil {
+			src = tp.Expr.SourceString(from)
+		}
+		values[tp.Name()] = src
+	}
+	if s.Generic == nil {
+		return toUnorderedString(values)
+	}
+	var b strings.Builder
+	for _, field := range s.Generic.TypeParams.Fields() {
+		if !ValidIdent(field.Name) {
+			continue
+		}
+		val, ok := values[field.Name.Name]
+		if !ok {
+			break
+		}
+		fmt.Fprintf(&b, "[%s]", val)
+	}
+	return b.String()
+}
+
 // SourceSignature returns a string representation of a signature given a name.
 // The name can be empty.
 func (s *FuncType) sourceSignature(from *File, name *ast.Ident, skipRecv bool) string {
@@ -263,7 +319,10 @@ func (s *FuncType) sourceSignature(from *File, name *ast.Ident, skipRecv bool) s
 	if name != nil && name.Name != "" {
 		b.WriteString(" " + name.Name)
 	}
-	if s.TypeParams != nil {
+	if len(s.AxisLengths) > 0 || len(s.TypeParamsValues) > 0 {
+		fmt.Fprint(&b, s.typeParamValuesString(from))
+	}
+	if s.TypeParams != nil && s.TypeParams.Len() > 0 {
 		fmt.Fprintf(&b, "[%s]", s.TypeParams.SourceString(from))
 	}
 	b.WriteString("(" + s.Params.SourceString(from) + ")")

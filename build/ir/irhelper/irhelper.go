@@ -23,6 +23,8 @@ import (
 
 	"github.com/gx-org/gx/build/ir/annotations"
 	"github.com/gx-org/gx/build/ir"
+	"github.com/gx-org/gx/interp/elements"
+	"github.com/gx-org/gx/interp/numbers"
 )
 
 // IdentAST returns an identifier.
@@ -303,17 +305,80 @@ func StructType(fields ...*ir.Field) *ir.StructType {
 	return stype
 }
 
+// FTypeOption modifies function types.
+type FTypeOption func(ftype *ir.FuncType) *ir.FuncType
+
 // FuncType builds a compeval function type .
-func FuncType(types, recv, params, results *ir.FieldList) *ir.FuncType {
+func FuncType(types, recv, params, results *ir.FieldList, opts ...FTypeOption) *ir.FuncType {
 	if params == nil {
 		params = &ir.FieldList{}
 	}
-	return &ir.FuncType{
+	ftype := &ir.FuncType{
 		BaseType:   ir.BaseType[*ast.FuncType]{Src: &ast.FuncType{}},
 		TypeParams: types,
 		Receiver:   recv,
 		Params:     params,
 		Results:    results,
+	}
+	for _, opt := range opts {
+		ftype = opt(ftype)
+	}
+	return ftype
+}
+
+func cloneFType(ftype *ir.FuncType) *ir.FuncType {
+	res := *ftype
+	if res.Generic == nil {
+		res.Generic = ftype
+	}
+	return &res
+}
+
+func setAxisLengthSlice(name string, vals []int, ftype *ir.FuncType) *ir.FuncType {
+	res := cloneFType(ftype)
+	els := make([]ir.Element, len(vals))
+	for i, val := range vals {
+		els[i] = numbers.NewIntForType(nil, big.NewInt(int64(val)), ir.IntLenType())
+	}
+	slice, err := elements.NewSlice(ir.IntLenSliceType(), els)
+	if err != nil {
+		panic(fmt.Sprintf("cannot create slice for function type: %v", err))
+	}
+	res.AxisLengths = append(res.AxisLengths, ir.AxisValue{
+		Axis: &ir.AxisStmt{
+			Src: &ast.Ident{Name: name},
+			Typ: ir.IntLenSliceType(),
+		},
+		Value: slice,
+	})
+	return res
+}
+
+// SetAxisLength returns an option to set axis length in a function type.
+func SetAxisLength(name string, vals any) FTypeOption {
+	return func(ftype *ir.FuncType) *ir.FuncType {
+		switch valsT := vals.(type) {
+		case []int:
+			return setAxisLengthSlice(name, valsT, ftype)
+		default:
+			panic(fmt.Sprintf("cannot build a function type option: type %T not supported", valsT))
+		}
+	}
+}
+
+// SetFuncTypeParams returns an option to set type params in a function type.
+func SetFuncTypeParams(types ...ir.Type) FTypeOption {
+	return func(ftype *ir.FuncType) *ir.FuncType {
+		res := cloneFType(ftype)
+		fields := res.Generic.TypeParams.Fields()
+		for i, tp := range types {
+			res.TypeParamsValues = append(res.TypeParamsValues, ir.TypeParamValue{
+				Typ:   tp,
+				Field: fields[i],
+			})
+		}
+		res.TypeParams = nil
+		return res
 	}
 }
 
@@ -340,7 +405,7 @@ func AxisLengths(ftype *ir.FuncType, axes ...string) *ir.FuncType {
 	return ftype
 }
 
-// CompEvalFuncType builds a compeval function type .
+// CompEvalFuncType builds a compeval function type.
 func CompEvalFuncType(params, results *ir.FieldList) *ir.FuncType {
 	return &ir.FuncType{
 		BaseType: ir.BaseType[*ast.FuncType]{Src: &ast.FuncType{}},

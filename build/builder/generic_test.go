@@ -198,9 +198,10 @@ func callCast() int32 {
 						&ir.ReturnStmt{Results: []ir.Expr{&ir.FuncCallExpr{
 							Callee: irhelper.FuncExpr(castNoArgFunc).NewFType(
 								irhelper.FuncType(
-									irhelper.Fields(),
+									castNoArgFunc.FType.TypeParams,
 									nil, nil,
 									irhelper.Fields(ir.Int32Type()),
+									irhelper.SetFuncTypeParams(ir.Int32Type()),
 								),
 							),
 						}}},
@@ -405,9 +406,11 @@ func callCast() [2][3]int32 {
 						&ir.ReturnStmt{Results: []ir.Expr{&ir.FuncCallExpr{
 							Callee: irhelper.FuncExpr(new2x3ArrayFunc).NewFType(
 								irhelper.FuncType(
-									irhelper.Fields(), nil,
+									new2x3ArrayFunc.FType.TypeParams,
+									nil,
 									irhelper.Fields(),
 									irhelper.Fields(irhelper.ArrayType(ir.Int32Type(), 2, 3)),
+									irhelper.SetFuncTypeParams(ir.Int32Type()),
 								)),
 						}}},
 					}},
@@ -506,9 +509,13 @@ func callCast() int32 {
 						&ir.ReturnStmt{Results: []ir.Expr{&ir.FuncCallExpr{
 							Callee: irhelper.FuncExpr(castAtomFunc).NewFType(
 								irhelper.FuncType(
-									irhelper.Fields(), nil,
+									irhelper.Fields(
+										irhelper.Field("T", someInt, nil),
+										irhelper.Field("S", someInt, nil),
+									), nil,
 									irhelper.Fields("val", ir.Int64Type()),
 									irhelper.Fields(ir.Int32Type()),
+									irhelper.SetFuncTypeParams(ir.Int32Type(), ir.Int64Type()),
 								)),
 							Args: []ir.Expr{
 								irhelper.IntNumberAs(2, ir.Int64Type()),
@@ -543,9 +550,13 @@ func callCast() int32 {
 						&ir.ReturnStmt{Results: []ir.Expr{&ir.FuncCallExpr{
 							Callee: irhelper.FuncExpr(castAtomFunc).NewFType(
 								irhelper.FuncType(
-									irhelper.Fields(), nil,
+									irhelper.Fields(
+										irhelper.Field("T", someInt, nil),
+										irhelper.Field("S", someInt, nil),
+									), nil,
 									irhelper.Fields("val", ir.Int64Type()),
 									irhelper.Fields(ir.Int32Type()),
+									irhelper.SetFuncTypeParams(ir.Int32Type(), ir.Int64Type()),
 								)),
 							Args: []ir.Expr{
 								&ir.CastExpr{
@@ -604,9 +615,13 @@ func callCast(x [2]int64) [2]int32 {
 						&ir.ReturnStmt{Results: []ir.Expr{&ir.FuncCallExpr{
 							Callee: irhelper.FuncExpr(castArrayFunc).NewFType(
 								irhelper.FuncType(
-									irhelper.Fields(), nil,
+									irhelper.Fields(
+										irhelper.Field("T", someInt, nil),
+										irhelper.Field("S", someInt, nil),
+									), nil,
 									irhelper.Fields(irhelper.ArrayType(ir.Int64Type(), 2)),
 									irhelper.Fields(irhelper.ArrayType(ir.Int32Type(), 2)),
+									irhelper.SetFuncTypeParams(ir.Int32Type(), ir.Int64Type()),
 								),
 							),
 							Args: []ir.Expr{
