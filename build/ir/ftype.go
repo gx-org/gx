@@ -28,7 +28,7 @@ import (
 // AxisValue assigns a value to an axis length.
 type AxisValue struct {
 	Axis  *AxisStmt
-	Expr  Expr
+	Exprs []AxisLengths
 	Value Element
 }
 
@@ -218,7 +218,9 @@ func (s *FuncType) SpecialiseFType(spec Specialiser) (_ *FuncType, cpErr CompEva
 	}
 	res.AxisLengths = slices.Clone(s.AxisLengths)
 	for i, axis := range s.AxisLengths {
-		res.AxisLengths[i].Value = spec.ValueOf(axis.Name())
+		axes, element := spec.ValueOf(axis.Name())
+		res.AxisLengths[i].Exprs = axes
+		res.AxisLengths[i].Value = element
 	}
 	return &res, nil, nil
 }
@@ -270,6 +272,14 @@ func toUnorderedString(m map[string]string) string {
 	return b.String()
 }
 
+func axisLengthsString(from *File, axes []AxisLengths) string {
+	var b strings.Builder
+	for _, axis := range axes {
+		fmt.Fprintf(&b, "%s", axis.SourceString(from))
+	}
+	return b.String()
+}
+
 func (s *FuncType) typeParamValuesString(from *File) string {
 	if s.Generic == nil {
 		return ""
@@ -285,9 +295,11 @@ func (s *FuncType) typeParamValuesString(from *File) string {
 		if !ValidIdent(tp.Axis.Src) {
 			continue
 		}
-		src := ""
-		if tp.Expr != nil {
-			src = tp.Expr.SourceString(from)
+		var src string
+		if tp.Exprs != nil {
+			src = axisLengthsString(from, tp.Exprs)
+		} else {
+			src = fmt.Sprintf("%s:<missing expression>", tp.Axis.Src.Name)
 		}
 		values[tp.Name()] = src
 	}

@@ -26,12 +26,12 @@ type specialiser struct {
 	ir.Fetcher
 	fun     ir.Func
 	defined map[string]ir.Type
-	axes    map[string]ir.Element
+	axes    map[string]ir.AxisValue
 }
 
 var _ ir.Specialiser = (*specialiser)(nil)
 
-func newSpecialiser(fetcher ir.Fetcher, fun ir.Func, defined map[string]ir.Type, axes map[string]ir.Element) *specialiser {
+func newSpecialiser(fetcher ir.Fetcher, fun ir.Func, defined map[string]ir.Type, axes map[string]ir.AxisValue) *specialiser {
 	return &specialiser{
 		Fetcher: fetcher,
 		fun:     fun,
@@ -44,8 +44,9 @@ func (s *specialiser) TypeOf(name string) ir.Type {
 	return s.defined[name]
 }
 
-func (s *specialiser) ValueOf(name string) ir.Element {
-	return s.axes[name]
+func (s *specialiser) ValueOf(name string) ([]ir.AxisLengths, ir.Element) {
+	val := s.axes[name]
+	return val.Exprs, val.Value
 }
 
 func (s *specialiser) IsDefined(name string) bool {
@@ -91,23 +92,27 @@ func toTypeValue(fetcher ir.Fetcher, typeParam *ir.Field, x ir.Expr) (ir.Type, b
 	return typeValExpr.Val(), true
 }
 
-func toAxisValue(fetcher ir.Fetcher, typeParam *ir.Field, x ir.Expr) (ir.Element, bool) {
+func toAxisValue(fetcher ir.Fetcher, typeParam *ir.Field, x ir.Expr) (ir.AxisValue, bool) {
 	numberOk := true
 	if irkind.IsNumber(x.Type().Kind()) {
 		x, numberOk = ir.CastNumber(fetcher, x, typeParam.Type())
 	}
+	res := ir.AxisValue{Value: ir.InvalidType(), Exprs: []ir.AxisLengths{
+		&ir.AxisExpr{X: x},
+	}}
 	if !numberOk {
-		return ir.InvalidType(), false
+		return res, false
 	}
-	el, err := fetcher.EvalExpr(x)
+	var err error
+	res.Value, err = fetcher.EvalExpr(x)
 	if err != nil {
-		return ir.InvalidType(), false
+		return res, false
 	}
-	tp := el.Type()
-	if !ir.IsAxisLengthType(el.Type()) {
-		return ir.InvalidType(), fetcher.Err().Appendf(x.Node(), "%s is not an axis value", tp.ReferString(fetcher.File()))
+	tp := res.Value.Type()
+	if !ir.IsAxisLengthType(res.Value.Type()) {
+		return res, fetcher.Err().Appendf(x.Node(), "%s is not an axis value", tp.ReferString(fetcher.File()))
 	}
-	return el, true
+	return res, true
 }
 
 // Specialise a function signature for a given type.
@@ -124,7 +129,7 @@ func Specialise(fetcher ir.Fetcher, expr ir.Expr, fun *ir.FuncValExpr, typs []ir
 		return nil, fetcher.Err().Appendf(expr.Node(), "got %d type arguments but want %d", gotN, wantN)
 	}
 	definedTypeParams := make(map[string]ir.Type)
-	definedAxesParams := make(map[string]ir.Element)
+	definedAxesParams := make(map[string]ir.AxisValue)
 	ok := true
 	for i, typeParam := range typeParams {
 		if i >= len(typs) {
@@ -148,7 +153,7 @@ func Specialise(fetcher ir.Fetcher, expr ir.Expr, fun *ir.FuncValExpr, typs []ir
 	if !ok {
 		return nil, false
 	}
-	fetcher, err := fetcher.Sub(nil, definedAxesParams)
+	fetcher, err := fetcher.Sub(nil, collectElements(definedAxesParams))
 	if err != nil {
 		return nil, fetcher.Err().AppendAt(fun.Node(), err)
 	}

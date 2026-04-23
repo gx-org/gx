@@ -27,7 +27,7 @@ type (
 		ir.Fetcher
 		params  map[string]*ir.Field
 		defined map[string]ir.Type
-		axes    map[string]ir.Element
+		axes    map[string]ir.AxisValue
 	}
 
 	argUnifier struct {
@@ -112,21 +112,21 @@ func (uni *argUnifier) defineAxis(name string, targets []ir.AxisLengths) bool {
 	if err != nil {
 		return uni.Err().AppendAt(uni.Node(), err)
 	}
-	return uni.defineAxisElement(name, el)
+	return uni.defineAxisElement(name, targets, el)
 }
 
-func (uni *argUnifier) defineAxisElement(name string, el ir.Element) bool {
+func (uni *argUnifier) defineAxisElement(name string, exprs []ir.AxisLengths, el ir.Element) bool {
 	defined, isDefined := uni.axes[name]
 	if !isDefined {
-		uni.axes[name] = el
+		uni.axes[name] = ir.AxisValue{Exprs: exprs, Value: el}
 		return true
 	}
-	eq, err := ir.ElementEqual(defined, el)
+	eq, err := ir.ElementEqual(defined.Value, el)
 	if err != nil {
 		return uni.Err().AppendAt(uni.arg.Node(), err)
 	}
 	if !eq {
-		return uni.Err().Appendf(uni.arg.Node(), "axis length %v does not match length %v for %s", defined, el, name)
+		return uni.Err().Appendf(uni.arg.Node(), "axis length %v does not match length %v for %s", defined.Value, el, name)
 	}
 	return true
 }
@@ -150,7 +150,7 @@ func (uni *argUnifier) defineGroupAsAllSingleAxes(src ast.Node, name string, tar
 	if err != nil {
 		sliceOk = uni.Err().AppendAt(src, err)
 	}
-	return targets[len(singles):], uni.defineAxisElement(name, slice) && sliceOk
+	return targets[len(singles):], uni.defineAxisElement(name, targets, slice) && sliceOk
 }
 
 func (uni *argUnifier) defineGroupAxis(src ast.Node, name string, tp ir.Type, targets []ir.AxisLengths) ([]ir.AxisLengths, bool) {
@@ -202,13 +202,21 @@ func typeParametersMap(tparams *ir.FieldList) map[string]*ir.Field {
 	return fields
 }
 
+func collectElements(m map[string]ir.AxisValue) map[string]ir.Element {
+	els := make(map[string]ir.Element, len(m))
+	for k, v := range m {
+		els[k] = v.Value
+	}
+	return els
+}
+
 // Infer the type parameters of a function given a list of argument expressions.
 func Infer(fetcher ir.Fetcher, fExpr *ir.FuncValExpr, args []ir.Expr) (*ir.FuncValExpr, bool) {
 	ftype := fExpr.FuncType()
 	uni := &unifier{
 		Fetcher: fetcher,
 		defined: newTypeParamDefinition(ftype),
-		axes:    make(map[string]ir.Element),
+		axes:    make(map[string]ir.AxisValue),
 		params:  typeParametersMap(fExpr.FuncType().TypeParams),
 	}
 	ok := true
@@ -232,7 +240,7 @@ func Infer(fetcher ir.Fetcher, fExpr *ir.FuncValExpr, args []ir.Expr) (*ir.FuncV
 	if !uni.specialiseRemainingNumbers() {
 		return fExpr, false
 	}
-	subFetcher, err := fetcher.Sub(nil, uni.axes)
+	subFetcher, err := fetcher.Sub(nil, collectElements(uni.axes))
 	if err != nil {
 		return fExpr, fetcher.Err().AppendAt(fExpr.Node(), err)
 	}

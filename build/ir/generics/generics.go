@@ -30,10 +30,10 @@ func newTypeParamDefinition(ftype *ir.FuncType) map[string]ir.Type {
 	return defined
 }
 
-func newAxisLengthsDefinition(ftype *ir.FuncType) map[string]ir.Element {
-	axes := make(map[string]ir.Element)
+func newAxisLengthsDefinition(ftype *ir.FuncType) map[string]ir.AxisValue {
+	axes := make(map[string]ir.AxisValue)
 	for _, axValue := range ftype.AxisLengths {
-		axes[axValue.Name()] = axValue.Value
+		axes[axValue.Name()] = axValue
 	}
 	return axes
 }

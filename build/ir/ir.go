@@ -99,7 +99,7 @@ type (
 		TypeCmp
 		IsDefined(name string) bool
 		TypeOf(tParamName string) Type
-		ValueOf(axLengthname string) Element
+		ValueOf(axLengthname string) ([]AxisLengths, Element)
 	}
 
 	// Unifier provides methods to unify types.

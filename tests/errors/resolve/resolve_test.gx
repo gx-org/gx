@@ -406,7 +406,7 @@ func repeatedShapeParameters2(a [___X]int32, b [X___]int32) int32 {
 }
 
 func testRepeatedShapeParameters() int32 {
-	return repeatedShapeParameters([10]int32{}, [20]int32{}) // ERROR axis length []ir.Element
+	return repeatedShapeParameters([10]int32{}, [20]int32{}) // ERROR axis length
 }
 
 func testRepeatedShapeParameters2() int32 {
