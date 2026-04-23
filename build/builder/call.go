@@ -159,33 +159,25 @@ func (n *callExpr) completeFuncType(rscope resolveScope, callee *ir.FuncValExpr,
 	return callee.NewFType(fType), true
 }
 
-func (n *callExpr) buildCallee(rscope resolveScope, expr *ir.FuncValExpr) ([]ir.Expr, *ir.FuncValExpr, bool) {
-	args, argsOk := n.buildArgs(rscope)
-	if !argsOk {
-		return nil, nil, false
+func (n *callExpr) buildFuncCallExpr(rscope resolveScope, expr *ir.FuncValExpr) (*ir.FuncCallExpr, bool) {
+	ext := &ir.FuncCallExpr{Src: n.src}
+	var ok bool
+	ext.Args, ok = n.buildArgs(rscope)
+	if !ok {
+		return ext, false
 	}
 	if expr.FuncType() == nil {
 		var ok bool
-		expr, ok = n.completeFuncType(rscope, expr, args)
+		expr, ok = n.completeFuncType(rscope, expr, ext.Args)
 		if !ok {
-			return nil, nil, false
+			return ext, false
 		}
 	}
-	if numArgsOk := checkNumArgs(rscope, expr, len(args)); !numArgsOk {
-		return nil, nil, false
+	if numArgsOk := checkNumArgs(rscope, expr, len(ext.Args)); !numArgsOk {
+		return ext, false
 	}
-	args, callee, callOk := buildFuncForCall(rscope, expr, args)
-	return args, callee, callOk
-}
-
-func (n *callExpr) buildFuncCallExpr(rscope resolveScope, expr *ir.FuncValExpr) (*ir.FuncCallExpr, bool) {
-	extCall := &ir.FuncCallExpr{Src: n.src}
-	var ok bool
-	extCall.Args, extCall.Callee, ok = n.buildCallee(rscope, expr)
-	if !ok {
-		return nil, false
-	}
-	return extCall, true
+	ext.Args, ext.Callee, ok = buildFuncForCall(rscope, expr, ext.Args)
+	return ext, ok
 }
 
 func (n *callExpr) buildMacroCall(rscope resolveScope, compEval *compileEvaluator, expr ir.Expr, mac *ir.Macro) (ir.Expr, bool) {
