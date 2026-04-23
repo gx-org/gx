@@ -39,6 +39,7 @@ var (
 	_ elements.WithAxes    = (*variable)(nil)
 	_ ir.Canonical         = (*variable)(nil)
 	_ elements.Slicer      = (*variable)(nil)
+	_ engine.Slice         = (*variable)(nil)
 	_ elements.Selector    = (*variable)(nil)
 	_ ir.WithStore         = (*variable)(nil)
 	_ elements.WithElement = (*variable)(nil)
@@ -73,6 +74,13 @@ func (a *variable) Cast(env engine.Env, expr ir.Expr, target ir.Type) (engine.Nu
 // Reshape the variable into a different shape.
 func (a *variable) Reshape(env engine.Env, expr ir.Expr, axisLengths []engine.NumericalElement) (engine.NumericalElement, error) {
 	return coreops.NewReshape(env, expr, a, axisLengths)
+}
+
+// Append elements to the slice.
+func (a *variable) Append([]ir.Element) engine.Slice {
+	stor := &ir.LocalVarStorage{Typ: a.Type()}
+	storage := elements.NewNodeAt[ir.Storage](a.src.File(), stor)
+	return &variable{src: storage}
 }
 
 // Shape of the value represented by the element.

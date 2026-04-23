@@ -226,7 +226,7 @@ func assignArgumentValues(ftype *ir.FuncType, funcFrame *context.Frame, args []i
 		field, isVarArgs := ftype.ArgIndexToParamField(i)
 		arg = engine.Copy(arg)
 		if isVarArgs {
-			varargs.Append(arg)
+			varargs.AppendInPlace(arg)
 			continue
 		}
 		funcFrame.Define(field.Name, arg)

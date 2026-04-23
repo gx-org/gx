@@ -66,6 +66,8 @@ var (
 	_ ir.Canonical        = (*Slice)(nil)
 	_ canonical.Canonical = (*Slice)(nil)
 	_ WithElement         = (*Slice)(nil)
+	_ engine.Copier       = (*Slice)(nil)
+	_ engine.Slice        = (*Slice)(nil)
 )
 
 // NewSlice returns a slice from a slice of elements.
@@ -100,8 +102,15 @@ func (*Slice) Kind() irkind.Kind {
 	return irkind.Slice
 }
 
-// Append an element to the slice.
-func (n *Slice) Append(el ir.Element) {
+// Append elements to a copy of the slice.
+func (n *Slice) Append(args []ir.Element) engine.Slice {
+	values := append([]ir.Element{}, n.values...)
+	values = append(values, args...)
+	return &Slice{typ: n.typ, values: values}
+}
+
+// AppendInPlace appends an element to the slice without creating a copy of the slice.
+func (n *Slice) AppendInPlace(el ir.Element) {
 	n.values = append(n.values, el)
 }
 
@@ -134,6 +143,15 @@ func (n *Slice) Expr(ev ir.Evaluator, src ast.Expr) (ir.Expr, ir.CompEvalError, 
 // Elements stored in the slice.
 func (n *Slice) Elements() []ir.Element {
 	return n.values
+}
+
+// Copy the slice.
+func (n *Slice) Copy() engine.Copier {
+	values := make([]ir.Element, len(n.values))
+	for i, val := range n.values {
+		values[i] = engine.Copy(val)
+	}
+	return &Slice{typ: n.typ, values: values}
 }
 
 // Length returns the value corresponding to calling the built-in len.

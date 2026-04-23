@@ -106,6 +106,12 @@ type (
 		ir.Element
 		Copy() Copier
 	}
+
+	// Slice is an element implementing a slice.
+	Slice interface {
+		ir.Element
+		Append([]ir.Element) Slice
+	}
 )
 
 // Copy an element if the element supports it.

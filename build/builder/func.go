@@ -528,7 +528,7 @@ func (pte *paramNameToElement) assignToName(param *ir.Field, val ir.Element) {
 }
 
 func (pte *paramNameToElement) assignToVarArg(param *ir.Field, val ir.Element) {
-	pte.varArgsElt.Append(val)
+	pte.varArgsElt.AppendInPlace(val)
 }
 
 func (pte *paramNameToElement) assignArgValueToName(param *ir.Field, arg ir.Expr, assign func(*ir.Field, ir.Element)) bool {

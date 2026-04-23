@@ -132,14 +132,11 @@ var (
 )
 
 func appendImpl(env engine.Env, call *ir.FuncCallExpr, recv ir.Element, args []ir.Element) ([]ir.Element, error) {
-	slice, ok := elements.Underlying(args[0]).(*elements.Slice)
+	slice, ok := elements.Underlying(args[0]).(engine.Slice)
 	if !ok {
-		return nil, errors.Errorf("cannot cast %T to %s", args[0], reflect.TypeFor[*elements.Slice]())
+		return nil, errors.Errorf("cannot cast %T to %s", args[0], reflect.TypeFor[engine.Slice]())
 	}
-	els := append([]ir.Element{}, slice.Elements()...)
-	els = append(els, args[1:]...)
-	sliceEl, err := elements.NewSlice(slice.Type(), els)
-	return []ir.Element{sliceEl}, err
+	return []ir.Element{slice.Append(args[1:])}, nil
 }
 
 func axlengthsImpl(env engine.Env, call *ir.FuncCallExpr, recv ir.Element, args []ir.Element) ([]ir.Element, error) {

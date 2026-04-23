@@ -13,3 +13,31 @@ func TestSliceString() []string {
 	// 0: Hello
 	// 1: world
 }
+
+func TestUnmutable01() ([]string, []string) {
+	s1 := []string{"Hello", "world"}
+	return s1, append(s1, "Bonjour")
+	// Want:
+	// 0: Hello
+	// 1: world
+	// 2: Hello
+	// 3: world
+	// 4: Bonjour
+}
+
+func appendBonjour(s []string) []string {
+	s = append(s, "Bonjour")
+	return s
+}
+
+func TestUnmutable02() ([]string, []string) {
+	s1 := []string{"Hello", "world"}
+	s2 := appendBonjour(s1)
+	return s1, s2
+	// Want:
+	// 0: Hello
+	// 1: world
+	// 2: Hello
+	// 3: world
+	// 4: Bonjour
+}

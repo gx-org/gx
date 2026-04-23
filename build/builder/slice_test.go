@@ -73,6 +73,14 @@ func f() [5][4][3][2]int32 {
 		},
 		testbuild.Decl{
 			Src: `
+func f(s []string) []string {
+	s = append(s, "Hello")
+	return s
+}
+`,
+		},
+		testbuild.Decl{
+			Src: `
 func testAppendNotEnough() []float32 {
 	return append() // ERROR wrong number of arguments
 }
