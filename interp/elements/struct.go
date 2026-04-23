@@ -96,16 +96,10 @@ func (n *Struct) Type() ir.Type {
 
 // Copy the structure to a new node.
 func (n *Struct) Copy() engine.Copier {
-	cp := &Struct{
-		typ: n.typ,
-	}
+	cp := &Struct{typ: n.typ}
 	cp.fields = make(map[string]ir.Element, len(n.fields))
 	for name, field := range n.fields {
-		copyable, ok := field.(engine.Copier)
-		if ok {
-			field = copyable.Copy()
-		}
-		cp.fields[name] = field
+		cp.fields[name] = engine.Copy(field)
 	}
 	return cp
 }

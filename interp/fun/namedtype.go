@@ -31,7 +31,7 @@ type NamedType struct {
 	newFunc NewFunc
 	typ     ir.TypeMethods
 	funcs   map[string]ir.PkgFunc
-	under   engine.Copier
+	under   ir.Element
 }
 
 var (
@@ -43,7 +43,7 @@ var (
 )
 
 // NewNamedType returns a new node representing an exported type.
-func NewNamedType(newFunc NewFunc, typ ir.TypeMethods, under engine.Copier) *NamedType {
+func NewNamedType(newFunc NewFunc, typ ir.TypeMethods, under ir.Element) *NamedType {
 	funcs := make(map[string]ir.PkgFunc)
 	for _, fun := range typ.Methods() {
 		funcs[fun.Name()] = fun
@@ -77,7 +77,7 @@ func (n *NamedType) Copy() engine.Copier {
 
 // RecvCopy copies the underlying element and returns the element encapsulated in this named type.
 func (n *NamedType) RecvCopy() *NamedType {
-	return NewNamedType(n.newFunc, n.typ, n.under.Copy())
+	return NewNamedType(n.newFunc, n.typ, engine.Copy(n.under))
 }
 
 // Under returns the underlying element of the named type.

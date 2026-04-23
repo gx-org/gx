@@ -224,13 +224,10 @@ func assignArgumentValues(ftype *ir.FuncType, funcFrame *context.Frame, args []i
 	// For each parameter of the function, assign its argument value to the frame.
 	for i, arg := range args {
 		field, isVarArgs := ftype.ArgIndexToParamField(i)
+		arg = engine.Copy(arg)
 		if isVarArgs {
 			varargs.Append(arg)
 			continue
-		}
-		copyable, ok := arg.(engine.Copier)
-		if ok {
-			arg = copyable.Copy()
 		}
 		funcFrame.Define(field.Name, arg)
 	}

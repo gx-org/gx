@@ -146,11 +146,7 @@ func (vis *inputVisitor) newNamedTypeArgument(parent parentArgument, typ *ir.Nam
 	if err != nil {
 		return nil, err
 	}
-	recvCopier, ok := recv.(engine.Copier)
-	if !ok {
-		return nil, errors.Errorf("element %T cannot be used as a receiver", recv)
-	}
-	return fun.NewNamedType(vis.newFunc, arg.typ, recvCopier), nil
+	return fun.NewNamedType(vis.newFunc, arg.typ, recv), nil
 }
 
 func (arg *namedTypeArgument) Name() string {

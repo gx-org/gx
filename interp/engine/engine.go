@@ -108,6 +108,16 @@ type (
 	}
 )
 
+// Copy an element if the element supports it.
+// Returns the same element otherwise.
+func Copy(el ir.Element) ir.Element {
+	copier, isCopier := el.(Copier)
+	if !isCopier {
+		return el
+	}
+	return copier.Copy()
+}
+
 type evalEnv struct{}
 
 func (evalEnv) File() *ir.File {
