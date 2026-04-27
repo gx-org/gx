@@ -31,7 +31,7 @@ import (
 )
 
 type storedValue struct {
-	storage *variable
+	storage *proxy
 	val     ir.Element
 }
 
@@ -50,7 +50,7 @@ var (
 // NewStoredValue returns a new element representing a value stored in a variable.
 func NewStoredValue(file *ir.File, storage ir.Storage, value ir.Element) ir.Element {
 	return &storedValue{
-		storage: newVariable(elements.NewNodeAt[ir.Storage](file, storage)),
+		storage: newProxy(elements.NewNodeAt[ir.Storage](file, storage)),
 		val:     value,
 	}
 }

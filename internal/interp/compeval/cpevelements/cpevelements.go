@@ -45,7 +45,7 @@ func NewRuntimeValue(file *ir.File, store ir.Storage) (ir.Element, error) {
 		typ = store.Type()
 	}
 	if typ.Kind() == irkind.String {
-		return NewVariable(elements.NewNodeAt(file, store)), nil
+		return NewProxy(elements.NewNodeAt(file, store)), nil
 	}
 	switch typT := typ.(type) {
 	case *ir.TypeParam:
@@ -79,5 +79,5 @@ func NewRuntimeValue(file *ir.File, store ir.Storage) (ir.Element, error) {
 			FType: typT,
 		}, nil), nil
 	}
-	return NewVariable(elements.NewNodeAt(file, store)), nil
+	return NewProxy(elements.NewNodeAt(file, store)), nil
 }

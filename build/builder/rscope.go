@@ -319,7 +319,7 @@ func compEvalForFuncType(rscope resolveScope, src ast.Node, ftype *ir.FuncType) 
 		name := tParam.Name.Name
 		if ir.IsAxisSpecType(tParam.Type()) {
 			storeAt := elements.NewNodeAt[ir.Storage](rscope.fileScope().irFile(), tParam.Storage())
-			typeParams[name] = cpevelements.NewVariable(storeAt)
+			typeParams[name] = cpevelements.NewProxy(storeAt)
 		} else {
 			typeParams[name] = &ir.TypeParam{Field: tParam}
 		}

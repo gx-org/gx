@@ -45,6 +45,6 @@ func NewOptionVariable(vr *ir.VarExpr) options.PackageOption {
 	return elements.PackageVarSetElement{
 		Pkg:   vr.Decl.FFile.Package.Path(),
 		Var:   vr.VName.Name,
-		Value: cpevelements.NewVariable(src),
+		Value: cpevelements.NewProxy(src),
 	}
 }

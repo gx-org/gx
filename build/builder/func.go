@@ -158,7 +158,7 @@ func (axs *ftypeAxisLengths) define(s resolveScope, storage ir.Storage) bool {
 		return s.Err().AppendInternalf(storage.NameDef(), "cannot register axis %s: cannot cast %T to %s", storage.NameDef().Name, storage, reflect.TypeFor[*ir.AxisStmt]())
 	}
 	storeAt := elements.NewNodeAt[ir.Storage](s.fileScope().irFile(), axStmt)
-	value := cpevelements.NewVariable(storeAt)
+	value := cpevelements.NewProxy(storeAt)
 	axs.axLens = append(axs.axLens, ir.AxisValue{
 		Axis:  axStmt,
 		Value: value,

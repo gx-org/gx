@@ -27,69 +27,69 @@ import (
 	"github.com/gx-org/gx/interp/engine"
 )
 
-type variable struct {
+type proxy struct {
 	canonical.AtomStringImpl
 	src  elements.StorageAt
 	name string
 }
 
 var (
-	_ coreops.Element      = (*variable)(nil)
-	_ ir.StorageElement    = (*variable)(nil)
-	_ elements.WithAxes    = (*variable)(nil)
-	_ ir.Canonical         = (*variable)(nil)
-	_ elements.Slicer      = (*variable)(nil)
-	_ engine.Slice         = (*variable)(nil)
-	_ elements.Selector    = (*variable)(nil)
-	_ ir.WithStore         = (*variable)(nil)
-	_ elements.WithElement = (*variable)(nil)
-	_ proxies.Proxy        = (*variable)(nil)
+	_ coreops.Element      = (*proxy)(nil)
+	_ ir.StorageElement    = (*proxy)(nil)
+	_ elements.WithAxes    = (*proxy)(nil)
+	_ ir.Canonical         = (*proxy)(nil)
+	_ elements.Slicer      = (*proxy)(nil)
+	_ engine.Slice         = (*proxy)(nil)
+	_ elements.Selector    = (*proxy)(nil)
+	_ ir.WithStore         = (*proxy)(nil)
+	_ elements.WithElement = (*proxy)(nil)
+	_ proxies.Proxy        = (*proxy)(nil)
 )
 
-// NewVariable returns a new variable element given a GX variable name.
-func NewVariable(src elements.StorageAt) ir.Element {
-	return newVariable(src)
+// NewProxy returns a new variable element given a GX variable name.
+func NewProxy(src elements.StorageAt) ir.Element {
+	return newProxy(src)
 }
 
-func newVariable(src elements.StorageAt) *variable {
+func newProxy(src elements.StorageAt) *proxy {
 	name := src.Node().NameDef().Name
-	return &variable{src: src, name: name}
+	return &proxy{src: src, name: name}
 }
 
 // UnaryOp applies a unary operator on x.
-func (a *variable) UnaryOp(env engine.Env, expr *ir.UnaryExpr) (engine.NumericalElement, error) {
+func (a *proxy) UnaryOp(env engine.Env, expr *ir.UnaryExpr) (engine.NumericalElement, error) {
 	return coreops.NewUnary(env, expr, a)
 }
 
 // BinaryOp applies a binary operator to x and y.
-func (a *variable) BinaryOp(env engine.Env, expr *ir.BinaryExpr, x, y engine.NumericalElement) (engine.NumericalElement, error) {
+func (a *proxy) BinaryOp(env engine.Env, expr *ir.BinaryExpr, x, y engine.NumericalElement) (engine.NumericalElement, error) {
 	return coreops.NewBinary(env, expr, x, y)
 }
 
 // Cast an element into a given data type.
-func (a *variable) Cast(env engine.Env, expr ir.Expr, target ir.Type) (engine.NumericalElement, error) {
+func (a *proxy) Cast(env engine.Env, expr ir.Expr, target ir.Type) (engine.NumericalElement, error) {
 	return coreops.NewCast(env, expr, a, target)
 }
 
 // Reshape the variable into a different shape.
-func (a *variable) Reshape(env engine.Env, expr ir.Expr, axisLengths []engine.NumericalElement) (engine.NumericalElement, error) {
+func (a *proxy) Reshape(env engine.Env, expr ir.Expr, axisLengths []engine.NumericalElement) (engine.NumericalElement, error) {
 	return coreops.NewReshape(env, expr, a, axisLengths)
 }
 
 // Append elements to the slice.
-func (a *variable) Append([]ir.Element) engine.Slice {
+func (a *proxy) Append([]ir.Element) engine.Slice {
 	stor := &ir.LocalVarStorage{Typ: a.Type()}
 	storage := elements.NewNodeAt[ir.Storage](a.src.File(), stor)
-	return &variable{src: storage}
+	return &proxy{src: storage}
 }
 
 // Shape of the value represented by the element.
-func (a *variable) Shape() *shape.Shape {
+func (a *proxy) Shape() *shape.Shape {
 	return &shape.Shape{}
 }
 
 // Select a member.
-func (a *variable) Select(expr *ir.SelectorExpr) (ir.Element, error) {
+func (a *proxy) Select(expr *ir.SelectorExpr) (ir.Element, error) {
 	method, field := expr.Select(a.Type())
 	if method == nil && field == nil {
 		return nil, errors.Errorf("%s is an invalid member", expr.SourceString(nil))
@@ -101,29 +101,29 @@ func (a *variable) Select(expr *ir.SelectorExpr) (ir.Element, error) {
 }
 
 // Store returns the storage represented by this variable.
-func (a *variable) Store() ir.Storage {
+func (a *proxy) Store() ir.Storage {
 	return a.src.Node()
 }
 
 // Type of the element.
-func (a *variable) Type() ir.Type {
+func (a *proxy) Type() ir.Type {
 	return a.src.Node().Type()
 }
 
 // Axes returns the axes of the value as a slice element.
-func (a *variable) Axes(ev ir.Evaluator) (*elements.Slice, error) {
+func (a *proxy) Axes(ev ir.Evaluator) (*elements.Slice, error) {
 	return coreops.AxesFromType(ev, a.src.Node().Type())
 }
 
 // Slice computes a slice from the variable.
-func (a *variable) Slice(expr *ir.IndexExpr, index engine.NumericalElement) (ir.Element, error) {
+func (a *proxy) Slice(expr *ir.IndexExpr, index engine.NumericalElement) (ir.Element, error) {
 	store := &ir.LocalVarStorage{Src: &ast.Ident{}, Typ: expr.Type()}
 	return NewRuntimeValue(a.src.File(), store)
 }
 
 // Compare to another element.
-func (a *variable) Compare(x canonical.Comparable) (bool, error) {
-	other, ok := x.(*variable)
+func (a *proxy) Compare(x canonical.Comparable) (bool, error) {
+	other, ok := x.(*proxy)
 	if !ok {
 		return false, nil
 	}
@@ -131,7 +131,7 @@ func (a *variable) Compare(x canonical.Comparable) (bool, error) {
 }
 
 // Expr returns the IR expression represented by the variable.
-func (a *variable) Expr(ir.Evaluator, ast.Expr) (ir.Expr, ir.CompEvalError, error) {
+func (a *proxy) Expr(ir.Evaluator, ast.Expr) (ir.Expr, ir.CompEvalError, error) {
 	return &ir.Ident{
 		Src: &ast.Ident{
 			Name: a.name,
@@ -140,22 +140,22 @@ func (a *variable) Expr(ir.Evaluator, ast.Expr) (ir.Expr, ir.CompEvalError, erro
 	}, nil, nil
 }
 
-func (a *variable) Elements() []ir.Element {
+func (a *proxy) Elements() []ir.Element {
 	return nil
 }
 
-func (a *variable) CanonicalExpr() canonical.Canonical {
+func (a *proxy) CanonicalExpr() canonical.Canonical {
 	return a
 }
 
-func (a *variable) IsProxy() bool {
+func (a *proxy) IsProxy() bool {
 	return true
 }
 
-func (a *variable) ShortString() string {
+func (a *proxy) ShortString() string {
 	return a.SourceString(nil)
 }
 
-func (a *variable) SourceString(*ir.File) string {
+func (a *proxy) SourceString(*ir.File) string {
 	return a.name
 }
