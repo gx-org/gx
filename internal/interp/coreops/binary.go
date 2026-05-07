@@ -198,7 +198,7 @@ func (a *binary) Materialise(ao materialise.Materialiser) (materialise.Node, err
 	if err != nil {
 		return nil, nil
 	}
-	return ao.NodeFromArray(cst, a.typ)
+	return ao.NodeFromArray(cst)
 }
 
 // Compare to another element.

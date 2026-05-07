@@ -109,7 +109,7 @@ func (a *atom) Type() ir.Type {
 
 // Materialise the value into a node in the backend graph.
 func (a *atom) Materialise(ao materialise.Materialiser) (materialise.Node, error) {
-	return ao.NodeFromArray(a.val, a.typ)
+	return ao.NodeFromArray(a.val)
 }
 
 // Compare to another element.

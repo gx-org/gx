@@ -38,7 +38,7 @@ type (
 		Graph() ops.Graph
 
 		// Materialise returns the element with all its values from the graph.
-		NodeFromArray(val values.Array, typ ir.Type) (Node, error)
+		NodeFromArray(val values.Array) (Node, error)
 
 		// ElementsFromNodes returns a slice of elements from nodes and their types.
 		ElementsFromNodes(file *ir.File, nodes []*ops.OutputNode, types []ir.Type) ([]ir.Element, error)

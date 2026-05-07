@@ -43,7 +43,7 @@ var (
 	_ ir.WithLength                   = (*valueElement)(nil)
 )
 
-func newValueElement(ev *Evaluator, value values.Array, typ ir.Type) (*valueElement, error) {
+func newValueElement(ev *Evaluator, value values.Array) (*valueElement, error) {
 	hostValue, err := value.ToHostArray(kernels.Allocator())
 	if err != nil {
 		return nil, err
@@ -52,7 +52,7 @@ func newValueElement(ev *Evaluator, value values.Array, typ ir.Type) (*valueElem
 	if err != nil {
 		return nil, err
 	}
-	node, err := NewBackendNode(ev, typ, &ops.OutputNode{
+	node, err := NewBackendNode(ev, value.Type(), &ops.OutputNode{
 		Node:  cstNode,
 		Shape: value.Shape(),
 	})
