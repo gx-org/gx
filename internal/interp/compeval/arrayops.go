@@ -76,7 +76,8 @@ func (compArrayOps) ElementFromAtom(file *ir.File, val values.Array, expr ir.Exp
 }
 
 // ElementFromArray returns an element from an array GX value.
-func (compArrayOps) ElementFromArray(file *ir.File, val values.Array, typ ir.Type) (engine.NumericalElement, error) {
+func (compArrayOps) ElementFromArray(file *ir.File, val values.Array) (engine.NumericalElement, error) {
+	typ := val.Type()
 	arrayType := ir.ToArrayType(typ)
 	var err error
 	if arrayType == nil {

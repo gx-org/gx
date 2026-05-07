@@ -115,16 +115,16 @@ func (v valuerT[T]) buildStaticArray(fitp *Interpreter, lit *ir.ArrayLitExpr, ax
 	if len(valsT) == 0 {
 		valsT = make([]T, size)
 	}
-	array, err := v.toArrayValue(lit.Type(), valsT, axesI)
-	if err != nil {
-		return nil, false, err
-	}
 	typ, cpErr, err := concrete.Concrete(fitp.env.ExprEval(), lit.Src, lit.Typ)
 	if unErr := ir.UnifyErr(cpErr, err); unErr != nil {
 		return nil, false, unErr
 	}
+	array, err := v.toArrayValue(typ, valsT, axesI)
+	if err != nil {
+		return nil, false, err
+	}
 	// All elements of the literal are scalars already known.
-	node, err := fitp.Engine().ArrayOps().ElementFromArray(fitp.File(), array, typ)
+	node, err := fitp.Engine().ArrayOps().ElementFromArray(fitp.File(), array)
 	if err != nil {
 		return nil, false, err
 	}
