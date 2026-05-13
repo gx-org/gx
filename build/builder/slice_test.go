@@ -88,3 +88,17 @@ func testAppendNotEnough() []float32 {
 		},
 	)
 }
+
+func TestSliceCompeval(t *testing.T) {
+	testbuild.Run(t,
+		testbuild.CompEval{
+			Src: `
+//gx:compeval
+func test() []string {
+	return []string{"a", "b", "c"}
+}
+`,
+			Wants: []string{`[]string{"a", "b", "c"}`},
+		},
+	)
+}

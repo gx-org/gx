@@ -158,3 +158,17 @@ func f() [returnAnError()]int32 {
 		},
 	)
 }
+
+func TestCompevalEval(t *testing.T) {
+	testbuild.Run(t,
+		testbuild.CompEval{
+			Src: `
+//gx:compeval
+func test() int32 {
+	return 2
+}
+`,
+			Wants: []string{"2"},
+		},
+	)
+}

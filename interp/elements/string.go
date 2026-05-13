@@ -15,6 +15,7 @@
 package elements
 
 import (
+	"go/ast"
 	"strconv"
 
 	"github.com/pkg/errors"
@@ -29,7 +30,10 @@ type String struct {
 	val *values.String
 }
 
-var _ ir.Element = (*String)(nil)
+var (
+	_ ir.Element  = (*String)(nil)
+	_ ir.WithExpr = (*String)(nil)
+)
 
 // NewStringFromLit returns a state element storing a string GX value.
 func NewStringFromLit(str *ir.StringLiteral) (*String, error) {
@@ -69,6 +73,13 @@ func (n *String) Copy() engine.Copier {
 // Type of the element.
 func (n *String) Type() ir.Type {
 	return n.val.Type()
+}
+
+// Expr returns the string as an IR expression.
+func (n *String) Expr(ir.Evaluator, ast.Expr) (ir.Expr, ir.CompEvalError, error) {
+	return &ir.StringLiteral{
+		Src: &ast.BasicLit{Value: strconv.Quote(n.val.StringValue())},
+	}, nil, nil
 }
 
 // StringFromElement returns the string value stored in a element.
