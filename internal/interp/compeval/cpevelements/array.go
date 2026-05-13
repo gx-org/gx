@@ -75,7 +75,7 @@ func (a *array) Reshape(env engine.Env, expr ir.Expr, axisLengths []engine.Numer
 	return NewArray(expr.Type().(ir.ArrayType)), nil
 }
 
-func (a *array) Slice(expr *ir.IndexExpr, index engine.NumericalElement) (ir.Element, error) {
+func (a *array) SliceAt(expr *ir.IndexExpr, index engine.NumericalElement) (ir.Element, error) {
 	return NewArray(expr.Type().(ir.ArrayType)), nil
 }
 

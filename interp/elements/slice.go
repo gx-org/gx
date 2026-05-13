@@ -32,7 +32,7 @@ type (
 
 	// Slicer is a state element that can be sliced.
 	Slicer interface {
-		Slice(expr *ir.IndexExpr, index engine.NumericalElement) (ir.Element, error)
+		SliceAt(expr *ir.IndexExpr, index engine.NumericalElement) (ir.Element, error)
 	}
 
 	// ArraySlicer is a state element with an array that can be sliced.
@@ -87,8 +87,8 @@ func (n *Slice) Flatten() ([]ir.Element, error) {
 	return flatten.Flatten(n.values...)
 }
 
-// Slice of the tuple.
-func (n *Slice) Slice(expr *ir.IndexExpr, index engine.NumericalElement) (ir.Element, error) {
+// SliceAt returns the element at a given position in the slice.
+func (n *Slice) SliceAt(expr *ir.IndexExpr, index engine.NumericalElement) (ir.Element, error) {
 	return SliceVals(expr, index, n.values)
 }
 

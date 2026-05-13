@@ -79,8 +79,8 @@ func (n *Tuple) TupleElements() []ir.Element {
 	return n.elements
 }
 
-// Slice of the tuple.
-func (n *Tuple) Slice(expr *ir.IndexExpr, index engine.NumericalElement) (ir.Element, error) {
+// SliceAt of the tuple.
+func (n *Tuple) SliceAt(expr *ir.IndexExpr, index engine.NumericalElement) (ir.Element, error) {
 	return elements.SliceVals(expr, index, n.elements)
 }
 

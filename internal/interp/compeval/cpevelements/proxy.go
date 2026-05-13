@@ -115,8 +115,8 @@ func (a *proxy) Axes(ev ir.Evaluator) (*elements.Slice, error) {
 	return coreops.AxesFromType(ev, a.src.Node().Type())
 }
 
-// Slice computes a slice from the variable.
-func (a *proxy) Slice(expr *ir.IndexExpr, index engine.NumericalElement) (ir.Element, error) {
+// SliceAt computes a slice from the variable.
+func (a *proxy) SliceAt(expr *ir.IndexExpr, index engine.NumericalElement) (ir.Element, error) {
 	store := &ir.LocalVarStorage{Src: &ast.Ident{}, Typ: expr.Type()}
 	return NewRuntimeValue(a.src.File(), store)
 }

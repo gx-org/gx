@@ -477,13 +477,13 @@ func (n *arrayArgument) Unflatten(handles *flatten.Parser) (values.Value, error)
 	return handles.ParseArray(n.typ)
 }
 
-// Slice of the value on the first axis given an index.
-func (n *arrayArgument) Slice(expr *ir.IndexExpr, index engine.NumericalElement) (ir.Element, error) {
+// SliceAt of the value on the first axis given an index.
+func (n *arrayArgument) SliceAt(expr *ir.IndexExpr, index engine.NumericalElement) (ir.Element, error) {
 	node, err := n.materialise(n.Evaluator().Materialiser())
 	if err != nil {
 		return nil, err
 	}
-	return node.Slice(expr, index)
+	return node.SliceAt(expr, index)
 }
 
 // SliceArray of the value on the first axis given an index.

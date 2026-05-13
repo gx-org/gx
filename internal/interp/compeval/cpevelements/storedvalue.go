@@ -140,13 +140,13 @@ func (v *storedValue) Compare(x canonical.Comparable) (bool, error) {
 	return v == other, nil
 }
 
-// Slice computes a slice from the variable.
-func (v *storedValue) Slice(expr *ir.IndexExpr, index engine.NumericalElement) (ir.Element, error) {
+// SliceAt computes a slice from the variable.
+func (v *storedValue) SliceAt(expr *ir.IndexExpr, index engine.NumericalElement) (ir.Element, error) {
 	slicer, ok := v.val.(elements.Slicer)
 	if ok {
-		return slicer.Slice(expr, index)
+		return slicer.SliceAt(expr, index)
 	}
-	return v.storage.Slice(expr, index)
+	return v.storage.SliceAt(expr, index)
 }
 
 func (v *storedValue) Length(ev ir.Evaluator) (int, error) {

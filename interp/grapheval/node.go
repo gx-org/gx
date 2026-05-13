@@ -227,8 +227,8 @@ func (n *BackendNode) Reshape(env engine.Env, expr ir.Expr, axisLengths []engine
 		})
 }
 
-// Slice of the value on the first axis given an index.
-func (n *BackendNode) Slice(expr *ir.IndexExpr, index engine.NumericalElement) (ir.Element, error) {
+// SliceAt of the value on the first axis given an index.
+func (n *BackendNode) SliceAt(expr *ir.IndexExpr, index engine.NumericalElement) (ir.Element, error) {
 	return n.SliceArray(expr, index)
 }
 

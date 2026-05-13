@@ -621,7 +621,7 @@ func evalIndexExpr(fitp *Interpreter, ref *ir.IndexExpr) (ir.Element, error) {
 	if err != nil {
 		return nil, err
 	}
-	return slicer.Slice(ref, index)
+	return slicer.SliceAt(ref, index)
 }
 
 func evalEinsumExpr(fitp *Interpreter, ref *ir.EinsumExpr) (ir.Element, error) {
