@@ -50,3 +50,27 @@ func TestSliceRange01() (string, string, string) {
 	// 1: b
 	// 2: c
 }
+
+func TestSliceRange02() []string {
+	s := []string{"a", "b", "c", "d"}
+	return s[1:]
+	// Want:
+	// 0: b
+	// 1: c
+	// 2: d
+}
+
+func TestSliceRange03() []string {
+	s := []string{"a", "b", "c", "d"}
+	return s[:2]
+	// Want:
+	// 0: a
+	// 1: b
+}
+
+func TestSliceRange04() []string {
+	s := []string{"a", "b", "c", "d"}
+	return s[1:2]
+	// Want:
+	// b
+}

@@ -471,6 +471,31 @@ func evalStructLiteral(fitp *Interpreter, expr *ir.StructLitExpr) (ir.Element, e
 	return fun.NewNamedType(fitp.NewFunc, nType, strct), nil
 }
 
+func evalSliceExpr(fitp *Interpreter, expr *ir.SliceExpr) (ir.Element, error) {
+	el, err := evalExpr(fitp, expr.X)
+	if err != nil {
+		return nil, err
+	}
+	var low, high engine.NumericalElement
+	if expr.Low != nil {
+		low, err = evalNumExpr(fitp, expr.Low)
+		if err != nil {
+			return nil, err
+		}
+	}
+	if expr.High != nil {
+		high, err = evalNumExpr(fitp, expr.High)
+		if err != nil {
+			return nil, err
+		}
+	}
+	slice, isSlice := el.(*elements.Slice)
+	if !isSlice {
+		return nil, fmterr.Errorf(fitp.File().FileSet(), expr.Node(), "index expression not supported for %s expression", expr.X.SourceString(nil))
+	}
+	return slice.Slice(expr, low, high)
+}
+
 func evalSliceLiteral(fitp *Interpreter, expr *ir.SliceLitExpr) (ir.Element, error) {
 	els := make([]ir.Element, len(expr.Elts))
 	for i, expr := range expr.Elts {
@@ -506,6 +531,8 @@ func evalExpr(fitp *Interpreter, expr ir.Expr) (_ ir.Element, err error) {
 		return evalNumberCastExpr(fitp, exprT)
 	case *ir.SliceLitExpr:
 		return evalSliceLiteral(fitp, exprT)
+	case *ir.SliceExpr:
+		return evalSliceExpr(fitp, exprT)
 	case *ir.StructLitExpr:
 		return evalStructLiteral(fitp, exprT)
 	case *ir.CastExpr:

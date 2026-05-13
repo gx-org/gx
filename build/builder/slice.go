@@ -160,6 +160,10 @@ func (n *sliceExpr) buildExpr(rscope resolveScope) (ir.Expr, bool) {
 	ext := &ir.SliceExpr{Src: n.src}
 	var xOk bool
 	ext.X, xOk = n.x.buildExpr(rscope)
+	if xOk && ext.X.Type().Kind() != irkind.Slice {
+		from := rscope.fileScope().irFile()
+		xOk = rscope.Err().Appendf(ext.Node(), "cannot slice %s (%s)", ext.X.SourceString(from), ext.X.Type().ReferString(from))
+	}
 	var lowOk, highOk bool
 	ext.Low, lowOk = buildBound(rscope, n.low)
 	ext.High, highOk = buildBound(rscope, n.high)

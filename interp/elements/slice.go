@@ -87,6 +87,47 @@ func (n *Slice) Flatten() ([]ir.Element, error) {
 	return flatten.Flatten(n.values...)
 }
 
+// Slice returns a slice of a slice.
+func (n *Slice) Slice(expr *ir.SliceExpr, low, high engine.NumericalElement) (ir.Element, error) {
+	lowIndex, err := n.lowBound(low)
+	if err != nil {
+		return nil, err
+	}
+	highIndex, err := n.highBound(high)
+	if err != nil {
+		return nil, err
+	}
+	return NewSlice(n.typ, n.values[lowIndex:highIndex])
+}
+
+func (n *Slice) highBound(high engine.NumericalElement) (int, error) {
+	if high == nil {
+		return len(n.values), nil
+	}
+	i, err := ConstantIntFromElement(high)
+	if err != nil {
+		return -1, err
+	}
+	if i < 0 || i > len(n.values) {
+		return -1, errors.Errorf("higher slice bound out of range [:%d] with %d elements", i, len(n.values))
+	}
+	return i, nil
+}
+
+func (n *Slice) lowBound(low engine.NumericalElement) (int, error) {
+	if low == nil {
+		return 0, nil
+	}
+	i, err := ConstantIntFromElement(low)
+	if err != nil {
+		return -1, err
+	}
+	if i < 0 || i >= len(n.values) {
+		return -1, errors.Errorf("lower slice bound out of range [%d:%d]", i, len(n.values))
+	}
+	return i, nil
+}
+
 // SliceAt returns the element at a given position in the slice.
 func (n *Slice) SliceAt(expr *ir.IndexExpr, index engine.NumericalElement) (ir.Element, error) {
 	return SliceVals(expr, index, n.values)

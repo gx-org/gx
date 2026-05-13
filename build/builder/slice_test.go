@@ -143,5 +143,46 @@ func test() []string {
 `,
 			Wants: []string{`[]string{"a", "b", "c"}`},
 		},
+		testbuild.CompEval{
+			Src: `
+//gx:compeval
+func test() []string {
+	s := []string{"a", "b", "c", "d"}
+	return s[1:]
+}
+`,
+			Wants: []string{`[]string{"b", "c", "d"}`},
+		},
+		testbuild.CompEval{
+			Src: `
+//gx:compeval
+func test() []string {
+	s := []string{"a", "b", "c", "d"}
+	return s[:2]
+}
+`,
+			Wants: []string{`[]string{"a", "b"}`},
+		},
+		testbuild.CompEval{
+			Src: `
+//gx:compeval
+func test() []string {
+	s := []string{"a", "b", "c", "d"}
+	return s[1:2]
+}
+`,
+			Wants: []string{`[]string{"b"}`},
+		},
+	)
+}
+
+func TestSliceErrors(t *testing.T) {
+	testbuild.Run(t,
+		testbuild.Decl{
+			Src: `
+func f() int64 {
+	return int64(2)[2:3] // ERROR cannot slice int64(2) (int64)
+}
+`},
 	)
 }
