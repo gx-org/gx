@@ -41,3 +41,12 @@ func TestUnmutable02() ([]string, []string) {
 	// 3: world
 	// 4: Bonjour
 }
+
+func TestSliceRange01() (string, string, string) {
+	s := []string{"a", "b", "c"}
+	return s[0], s[1], s[2]
+	// Want:
+	// 0: a
+	// 1: b
+	// 2: c
+}

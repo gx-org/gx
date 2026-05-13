@@ -20,6 +20,7 @@ import (
 	"strings"
 
 	"github.com/gx-org/gx/build/ir"
+	"github.com/gx-org/gx/build/ir/irkind"
 )
 
 // sliceType defines an slice (which only stays on host).
@@ -112,4 +113,67 @@ func (n *sliceLitExpr) buildExpr(rscope resolveScope) (ir.Expr, bool) {
 
 func (n *sliceLitExpr) String() string {
 	return n.typ.String() + n.lit.String()
+}
+
+type sliceExpr struct {
+	src       *ast.SliceExpr
+	x         exprNode
+	low, high exprNode
+}
+
+func processSliceExpr(pscope procScope, src *ast.SliceExpr) (exprNode, bool) {
+	if src.Slice3 {
+		return nil, pscope.Err().Appendf(src, "3-index slice expression not supported")
+	}
+	n := &sliceExpr{src: src}
+	var xOk bool
+	n.x, xOk = processExpr(pscope, src.X)
+	lowOk := true
+	if src.Low != nil {
+		n.low, lowOk = processExpr(pscope, src.Low)
+	}
+	highOk := true
+	if src.High != nil {
+		n.high, highOk = processExpr(pscope, src.High)
+	}
+	return n, xOk && lowOk && highOk
+}
+
+func (n *sliceExpr) source() ast.Node {
+	return n.src
+}
+
+func buildBound(rscope resolveScope, b exprNode) (ir.Expr, bool) {
+	if b == nil {
+		return nil, true
+	}
+	ext, ok := b.buildExpr(rscope)
+	if !ok {
+		return ext, ok
+	}
+	if !irkind.IsNumber(ext.Type().Kind()) {
+		return ext, ok
+	}
+	return castNilAndNumber(rscope, ext, ir.DefaultIntType)
+}
+func (n *sliceExpr) buildExpr(rscope resolveScope) (ir.Expr, bool) {
+	ext := &ir.SliceExpr{Src: n.src}
+	var xOk bool
+	ext.X, xOk = n.x.buildExpr(rscope)
+	var lowOk, highOk bool
+	ext.Low, lowOk = buildBound(rscope, n.low)
+	ext.High, highOk = buildBound(rscope, n.high)
+	return ext, xOk && lowOk && highOk
+}
+
+func (n *sliceExpr) String() string {
+	low := ""
+	if n.low != nil {
+		low = n.low.String()
+	}
+	high := ""
+	if n.high != nil {
+		high = n.high.String()
+	}
+	return fmt.Sprintf("%s[%s:%s]", n.x.String(), low, high)
 }

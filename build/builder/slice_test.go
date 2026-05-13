@@ -35,6 +35,49 @@ func TestSlice(t *testing.T) {
 				},
 			},
 		},
+		testbuild.Expr{
+			Src: `[]int32{1, 2, 3}[1:]`,
+			Want: &ir.SliceExpr{
+				X: &ir.SliceLitExpr{
+					Typ: irhelper.SliceType(ir.TypeExpr(nil, ir.Int32Type()), 1),
+					Elts: []ir.Expr{
+						irhelper.IntNumberAs(1, ir.Int32Type()),
+						irhelper.IntNumberAs(2, ir.Int32Type()),
+						irhelper.IntNumberAs(3, ir.Int32Type()),
+					},
+				},
+				Low: irhelper.IntNumberAs(1, ir.Int64Type()),
+			},
+		},
+		testbuild.Expr{
+			Src: `[]int32{1, 2, 3}[:2]`,
+			Want: &ir.SliceExpr{
+				X: &ir.SliceLitExpr{
+					Typ: irhelper.SliceType(ir.TypeExpr(nil, ir.Int32Type()), 1),
+					Elts: []ir.Expr{
+						irhelper.IntNumberAs(1, ir.Int32Type()),
+						irhelper.IntNumberAs(2, ir.Int32Type()),
+						irhelper.IntNumberAs(3, ir.Int32Type()),
+					},
+				},
+				High: irhelper.IntNumberAs(2, ir.Int64Type()),
+			},
+		},
+		testbuild.Expr{
+			Src: `[]int32{1, 2, 3}[1:2]`,
+			Want: &ir.SliceExpr{
+				X: &ir.SliceLitExpr{
+					Typ: irhelper.SliceType(ir.TypeExpr(nil, ir.Int32Type()), 1),
+					Elts: []ir.Expr{
+						irhelper.IntNumberAs(1, ir.Int32Type()),
+						irhelper.IntNumberAs(2, ir.Int32Type()),
+						irhelper.IntNumberAs(3, ir.Int32Type()),
+					},
+				},
+				Low:  irhelper.IntNumberAs(1, ir.Int64Type()),
+				High: irhelper.IntNumberAs(2, ir.Int64Type()),
+			},
+		},
 		testbuild.Decl{
 			Src: `
 func g(a int32) int32

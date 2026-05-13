@@ -47,6 +47,8 @@ func processExpr(pscope procScope, expr ast.Expr) (exprNode, bool) {
 		return processFuncLit(pscope, exprT)
 	case *ast.TypeAssertExpr:
 		return processTypeAssertExpr(pscope, exprT)
+	case *ast.SliceExpr:
+		return processSliceExpr(pscope, exprT)
 	case *ast.StarExpr:
 		return nil, pscope.Err().Appendf(exprT, "star expression *<expr> not supported")
 	}

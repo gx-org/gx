@@ -2007,13 +2007,6 @@ type (
 		Elts []Expr
 	}
 
-	// SliceLitExpr is a slice literal.
-	SliceLitExpr struct {
-		Src  ast.Expr
-		Typ  Type
-		Elts []Expr
-	}
-
 	// FieldLit assigns a value to a field in a structure literal.
 	FieldLit struct {
 		*FieldStorage
@@ -2167,7 +2160,6 @@ var (
 	_ AtomicValue      = (*AtomicValueT[int32])(nil)
 	_ Expr             = (*StringLiteral)(nil)
 	_ Expr             = (*ArrayLitExpr)(nil)
-	_ Expr             = (*SliceLitExpr)(nil)
 	_ Expr             = (*StructLitExpr)(nil)
 	_ StorageWithValue = (*FieldLit)(nil)
 	_ Expr             = (*UnaryExpr)(nil)
@@ -2354,22 +2346,6 @@ func (s *StructLitExpr) SourceString(from *File) string {
 		elts[i] = fmt.Sprintf("\t%s: %s,", fieldName, fieldValue)
 	}
 	return fmt.Sprintf("%s{\n%s\n}", s.Type().ReferString(from), strings.Join(elts, "\n"))
-}
-
-func (s *SliceLitExpr) node() {}
-
-// Node returns the node in the AST tree.
-func (s *SliceLitExpr) Node() ast.Node { return s.Src }
-
-// Type returns the type returned by the function call.
-func (s *SliceLitExpr) Type() Type { return s.Typ }
-
-// Expr returns the AST expression.
-func (s *SliceLitExpr) Expr() ast.Expr { return s.Src }
-
-// SourceString returns the GX source code of the node.
-func (s *SliceLitExpr) SourceString(from *File) string {
-	return fmt.Sprintf("%s%s", s.Typ.ReferString(from), sourceStringLiteral(from, s.Elts))
 }
 
 func (s *UnaryExpr) node() {}
