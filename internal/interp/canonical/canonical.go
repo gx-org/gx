@@ -106,25 +106,17 @@ type (
 // FromBinary returns a canonical expression from a binary expression.
 func FromBinary(op token.Token, x, y Canonical) Simplifier {
 	switch op {
-	case token.MUL:
-		return mul{pExpr: prefixedExpr(x, y)}
 	case token.QUO:
-		return mul{pExpr: prefixedExpr(x, quo{prefixedExpr(y)})}
-	case token.ADD:
-		return add{pExpr: prefixedExpr(x, y)}
+		return NewExpr(token.MUL, x, NewExpr(token.QUO, y))
 	case token.SUB:
-		return add{pExpr: prefixedExpr(x, sub{prefixedExpr(y)})}
+		return NewExpr(token.ADD, x, NewExpr(token.SUB, y))
 	default:
-		return unknown{tk: op, pExpr: prefixedExpr(x, y)}
+		return NewExpr(op, x, y)
 	}
 }
 
 // NewExpr returns a new canonical expression using a prefixed form.
 func NewExpr(op token.Token, xs ...Canonical) Simplifier {
-	return newExpr(op, xs...)
-}
-
-func newExpr(op token.Token, xs ...Canonical) Simplifier {
 	switch op {
 	case token.MUL:
 		return mul{pExpr: prefixedExpr(xs...)}
