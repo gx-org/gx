@@ -84,6 +84,11 @@ func (n *Tuple) SliceAt(expr *ir.IndexExpr, index engine.NumericalElement) (ir.E
 	return elements.SliceVals(expr, index, n.elements)
 }
 
+// Slice is not implemented for tuples.
+func (n *Tuple) Slice(expr *ir.SliceExpr, low, high engine.NumericalElement) (ir.Element, error) {
+	return n, errors.Errorf("not implemented for %T", n)
+}
+
 // Type of the element.
 func (n *Tuple) Type() ir.Type {
 	if n.typ != nil {

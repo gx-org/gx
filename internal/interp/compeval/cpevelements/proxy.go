@@ -121,6 +121,11 @@ func (a *proxy) SliceAt(expr *ir.IndexExpr, index engine.NumericalElement) (ir.E
 	return NewRuntimeValue(a.src.File(), store)
 }
 
+func (a *proxy) Slice(expr *ir.SliceExpr, low, high engine.NumericalElement) (ir.Element, error) {
+	store := &ir.LocalVarStorage{Src: &ast.Ident{}, Typ: expr.Type()}
+	return NewRuntimeValue(a.src.File(), store)
+}
+
 // Compare to another element.
 func (a *proxy) Compare(x canonical.Comparable) (bool, error) {
 	other, ok := x.(*proxy)

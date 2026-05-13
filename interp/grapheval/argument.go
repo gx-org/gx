@@ -486,6 +486,11 @@ func (n *arrayArgument) SliceAt(expr *ir.IndexExpr, index engine.NumericalElemen
 	return node.SliceAt(expr, index)
 }
 
+// Slice the argument.
+func (n *arrayArgument) Slice(expr *ir.SliceExpr, low, high engine.NumericalElement) (ir.Element, error) {
+	return nil, errors.Errorf("not implemented for %T", n)
+}
+
 // SliceArray of the value on the first axis given an index.
 func (n *arrayArgument) SliceArray(expr ir.Expr, index engine.NumericalElement) (engine.NumericalElement, error) {
 	node, err := n.materialise(n.Evaluator().Materialiser())

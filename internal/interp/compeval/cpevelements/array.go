@@ -79,6 +79,10 @@ func (a *array) SliceAt(expr *ir.IndexExpr, index engine.NumericalElement) (ir.E
 	return NewArray(expr.Type().(ir.ArrayType)), nil
 }
 
+func (a *array) Slice(expr *ir.SliceExpr, low, high engine.NumericalElement) (ir.Element, error) {
+	return NewArray(expr.Type().(ir.ArrayType)), nil
+}
+
 func (a *array) Copy() engine.Copier {
 	return a
 }

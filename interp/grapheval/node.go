@@ -232,6 +232,11 @@ func (n *BackendNode) SliceAt(expr *ir.IndexExpr, index engine.NumericalElement)
 	return n.SliceArray(expr, index)
 }
 
+// Slice returns a node slicing the array.
+func (n *BackendNode) Slice(expr *ir.SliceExpr, low, high engine.NumericalElement) (ir.Element, error) {
+	return nil, errors.Errorf("not implemented for %T", n)
+}
+
 // SliceArray of the value on the first axis given an index.
 func (n *BackendNode) SliceArray(expr ir.Expr, index engine.NumericalElement) (engine.NumericalElement, error) {
 	i, err := elements.ConstantIntFromElement(index)

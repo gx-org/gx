@@ -33,6 +33,7 @@ type (
 	// Slicer is a state element that can be sliced.
 	Slicer interface {
 		SliceAt(expr *ir.IndexExpr, index engine.NumericalElement) (ir.Element, error)
+		Slice(expr *ir.SliceExpr, low, high engine.NumericalElement) (ir.Element, error)
 	}
 
 	// ArraySlicer is a state element with an array that can be sliced.

@@ -489,9 +489,9 @@ func evalSliceExpr(fitp *Interpreter, expr *ir.SliceExpr) (ir.Element, error) {
 			return nil, err
 		}
 	}
-	slice, isSlice := el.(*elements.Slice)
+	slice, isSlice := el.(elements.Slicer)
 	if !isSlice {
-		return nil, fmterr.Errorf(fitp.File().FileSet(), expr.Node(), "index expression not supported for %s expression", expr.X.SourceString(nil))
+		return nil, fmterr.Internalf(fitp.File().FileSet(), expr.Node(), "index expression not supported for %s expression (element: %T)", expr.X.SourceString(nil), el)
 	}
 	return slice.Slice(expr, low, high)
 }

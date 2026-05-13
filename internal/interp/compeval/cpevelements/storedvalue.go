@@ -149,6 +149,14 @@ func (v *storedValue) SliceAt(expr *ir.IndexExpr, index engine.NumericalElement)
 	return v.storage.SliceAt(expr, index)
 }
 
+func (v *storedValue) Slice(expr *ir.SliceExpr, low, high engine.NumericalElement) (ir.Element, error) {
+	slicer, ok := v.val.(elements.Slicer)
+	if ok {
+		return slicer.Slice(expr, low, high)
+	}
+	return v.storage.Slice(expr, low, high)
+}
+
 func (v *storedValue) Length(ev ir.Evaluator) (int, error) {
 	withLen, ok := v.val.(ir.WithLength)
 	if !ok {
