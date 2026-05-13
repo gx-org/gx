@@ -95,7 +95,7 @@ func (tp *VarArgsType) UnifyWith(uni Unifier, typ Type) bool {
 
 // DefineString returns a reference to the type given a file context.
 func (tp *VarArgsType) DefineString(from *File) string {
-	return "..." + tp.Typ.DefineString(from)
+	return "..." + tp.Typ.DType.SourceString(from)
 }
 
 // ReferString returns the GX source to refer to the type.

@@ -17,8 +17,8 @@ package builtins
 import (
 	"go/ast"
 
-	"github.com/pkg/errors"
 	"github.com/gx-org/gx/build/builtins"
+	"github.com/gx-org/gx/build/fmterr"
 	"github.com/gx-org/gx/build/ir"
 )
 
@@ -43,42 +43,35 @@ func (f *appendFunc) BuildFuncType(fetcher ir.Fetcher, call *ir.FuncCallExpr) (*
 			Src: &ast.FuncType{Func: call.Src.Pos()},
 		},
 	}
+	if len(call.Args) == 0 {
+		return ext, fmterr.Errorf(fetcher.File().FileSet(), call.Node(), "not enough arguments for append() (expected 1, found 0)")
+	}
+	if len(call.Args) == 1 {
+		return ext, fmterr.Errorf(fetcher.File().FileSet(), call.Node(), "append with no values")
+	}
 	params, err := builtins.BuildFuncParams(fetcher, call, f.Name(), []ir.Type{
 		builtins.GenericSliceType,
-		nil,
+		builtins.VarArgsType,
 	})
 	if err != nil {
 		return ext, err
 	}
-	container := params[0].(*ir.SliceType)
-	dtype := container.DType
-	for i, arg := range call.Args[1:] {
-		argType := arg.Type()
-		eq, cpErr, err := argType.AssignableTo(fetcher, container.DType.Val())
-		if err != nil {
-			return ext, errors.Errorf("cannot evaluate the type of argument %d to append", i)
-		}
-		if cpErr != nil {
-			return ext, cpErr
-		}
-		if !eq {
-			from := fetcher.File()
-			return ext, errors.Errorf("cannot use %v as %v in argument %d to append", argType.ReferString(from), dtype.SourceString(from), i)
-		}
-	}
+	container := ir.Underlying(params[0]).(*ir.SliceType)
 	containerGroup := &ir.FieldGroup{
 		Src:  &ast.Field{Type: call.Src},
-		Type: ir.TypeExpr(call, params[0]),
+		Type: ir.TypeExpr(call, container),
 	}
 	containerGroup.Fields = []*ir.Field{&ir.Field{Group: containerGroup}}
+	ext.VarArgs = &ir.VarArgsType{
+		Typ: &ir.SliceType{
+			BaseType: ir.BaseType[ast.Expr]{Src: call.Expr()},
+			Rank:     container.Rank,
+			DType:    container.DType,
+		},
+	}
 	elementsGroup := &ir.FieldGroup{
 		Src:  &ast.Field{Type: call.Src},
-		Type: ir.TypeExpr(call, container.DType.Val()),
-	}
-	for range len(call.Args) - 1 {
-		elementsGroup.Fields = append(elementsGroup.Fields, &ir.Field{
-			Group: elementsGroup,
-		})
+		Type: ir.TypeExpr(call, ext.VarArgs),
 	}
 	srcFieldList := &ast.FieldList{Opening: call.Src.Lparen, Closing: call.Src.Rparen}
 	ext.Params = &ir.FieldList{

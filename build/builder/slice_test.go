@@ -124,8 +124,25 @@ func f(s []string) []string {
 		},
 		testbuild.Decl{
 			Src: `
+func f(s []string) []string {
+	s = append(s[2:], "Hello")
+	return s
+}
+`,
+		},
+		testbuild.Decl{
+			Src: `
+func f() []int32 {
+	s := []int32{0, 1, 2, 3, 4}
+	s = append(s[2:], s[:3]...)
+	return s
+}
+`,
+		},
+		testbuild.Decl{
+			Src: `
 func testAppendNotEnough() []float32 {
-	return append() // ERROR wrong number of arguments
+	return append() // ERROR not enough arguments for append() (expected 1, found 0)
 }
 `,
 		},

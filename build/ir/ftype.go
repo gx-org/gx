@@ -148,6 +148,11 @@ func (s *FuncType) Specialise(spec Specialiser) (Type, CompEvalError, error) {
 	return s.SpecialiseFType(spec)
 }
 
+// String representation of the function type (only used for debugging).
+func (s *FuncType) String() string {
+	return s.ReferString(nil)
+}
+
 func skipIfDefined(spec Specialiser) fieldCloner {
 	return func(grp *FieldGroup, i int, field *Field) (*Field, CompEvalError, error) {
 		if spec.IsDefined(field.Name.Name) {

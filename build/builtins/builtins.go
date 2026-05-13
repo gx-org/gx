@@ -34,6 +34,12 @@ var (
 	// GenericSliceType returns a generic slice type.
 	GenericSliceType = &ir.SliceType{}
 
+	// VarArgsType returns a generic var args type.
+	VarArgsType = &ir.VarArgsType{
+		Typ: &ir.SliceType{
+			DType: ir.TypeExpr(nil, ir.InvalidType()),
+		}}
+
 	// PositionsType returns a type for a slice of indices.
 	PositionsType = ir.NewArrayType(
 		&ast.ArrayType{},
@@ -138,6 +144,15 @@ func BuildFuncParams(fetcher ir.Fetcher, call *ir.FuncCallExpr, name string, sig
 		if want == nil {
 			params[i] = got
 			continue
+		}
+		if _, isVarargs := want.(*ir.VarArgsType); isVarargs {
+			params[i] = &ir.VarArgsType{
+				Typ: &ir.SliceType{
+					DType: ir.TypeExpr(nil, got),
+					Rank:  1,
+				},
+			}
+			break
 		}
 		params[i] = want
 		ok := false

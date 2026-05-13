@@ -5,15 +5,15 @@ func testSliceFloatIndex() float32 {
 }
 
 func testAppendNotEnough() []float32 {
-	return append() // ERROR wrong number of arguments
+	return append() // ERROR not enough arguments for append() (expected 1, found 0)
 }
 
 func testAppendNoValue() []float32 {
-	return append([]float32{}) // ERROR wrong number of arguments
+	return append([]float32{}) // ERROR append with no values
 }
 
 func testAppendCannotUse() []float32 {
-	return append([]float32{}, int32(3)) // ERROR cannot use int32 as float32
+	return append([]float32{}, int32(3)) // ERROR cannot use type int32 as float32 in argument to append
 }
 
 func testSetDTypeMismatch() [2][2]int32 {
@@ -45,4 +45,3 @@ func testSetIncorrectAxisSize() [2][2]int32 {
 	a = set(a, [3]int32{}, [1]int32{0}) // ERROR cannot set array
 	return a
 }
-

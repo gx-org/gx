@@ -74,3 +74,14 @@ func TestSliceRange04() []string {
 	// Want:
 	// b
 }
+
+func TestSliceRange05() []string {
+	s := []string{"a", "b", "c", "d", "e"}
+	return append(s[:2], s[3:]...)
+	// Want:
+	// 0: a
+	// 1: b
+	// 2: d
+	// 3: e
+}
+
