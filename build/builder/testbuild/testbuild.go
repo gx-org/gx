@@ -318,8 +318,17 @@ type Builder struct {
 	next int
 }
 
-func (b *Builder) nextTestName() string {
+// WithName is a test that can provide a name for the test.
+type WithName interface {
+	Test
+	Name() string
+}
+
+func (b *Builder) nextTestName(t Test) string {
 	name := fmt.Sprintf("test%d", b.next)
+	if withName, hasName := t.(WithName); hasName {
+		name = withName.Name()
+	}
 	b.next++
 	return name
 }
@@ -395,7 +404,7 @@ func (b *Builder) Continue(t *testing.T, tests ...Test) {
 				t.Errorf("\n%s\n%+v", test.Source(), fmterr.ToStackTraceError(err))
 			}
 		}
-		t.Run(b.nextTestName(), func(t *testing.T) {
+		t.Run(b.nextTestName(test), func(t *testing.T) {
 			t.Helper()
 			if err := test.Run(b); err != nil {
 				t.Errorf("\n%s\n%+v", test.Source(), fmterr.ToStackTraceError(err))

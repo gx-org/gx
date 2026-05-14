@@ -1,0 +1,7 @@
+package testdata
+
+import "num"
+
+func f() [2]int32 {
+	return num.Argmax([2][3]int32(1), 3) // ERROR invalid reduction axis in call to Argmax: axis 3 does not exist in input [2][3]int32
+}
