@@ -18,11 +18,15 @@ import (
 	"go/ast"
 	"go/token"
 
+	"github.com/gx-org/backend/ops"
+	"github.com/gx-org/backend/shape"
 	"github.com/gx-org/gx/build/builtins"
 	"github.com/gx-org/gx/build/fmterr"
 	"github.com/gx-org/gx/build/ir"
 	"github.com/gx-org/gx/build/ir/irkind"
 	"github.com/gx-org/gx/interp/elements"
+	"github.com/gx-org/gx/interp/engine"
+	"github.com/gx-org/gx/interp/materialise"
 	"github.com/gx-org/gx/stdlib/builtin"
 	"github.com/gx-org/gx/stdlib/impl"
 )
@@ -32,7 +36,7 @@ type split struct {
 }
 
 func (f split) BuildFuncIR(impl *impl.Stdlib, pkg *ir.Package) (*ir.FuncBuiltin, error) {
-	return builtin.IRFuncBuiltin[split]("Split", impl.Shapes.Split, pkg), nil
+	return builtin.IRFuncBuiltin[split]("Split", evalSplit, pkg), nil
 }
 
 func computeRemainder(fetcher ir.Fetcher, x, y ir.Expr) (int, error) {
@@ -100,4 +104,31 @@ func (f split) BuildFuncType(fetcher ir.Fetcher, call *ir.FuncCallExpr) (*ir.Fun
 		Params:   builtins.Fields(call, params...),
 		Results:  builtins.Fields(call, out),
 	}, nil
+}
+
+func evalSplit(env engine.Env, call *ir.FuncCallExpr, recv ir.Element, args []ir.Element) ([]ir.Element, error) {
+	mat := builtin.Materialiser(env)
+	node, firstArgShape, err := materialise.Element(mat, args[1])
+	if err != nil {
+		return nil, err
+	}
+	axis, err := elements.ConstantScalarFromElement[ir.Int](args[0])
+	if err != nil {
+		return nil, err
+	}
+	numSplits, err := elements.ConstantScalarFromElement[ir.Int](args[2])
+	if err != nil {
+		return nil, err
+	}
+	op, err := env.Engine().ArrayOps().Graph().Shape().Split(node, int(axis), int(numSplits))
+	if err != nil {
+		return nil, err
+	}
+	return materialise.ElementFromNode(env.File(), mat, &ops.OutputNode{
+		Node: op,
+		Shape: &shape.Shape{
+			DType:       firstArgShape.DType,
+			AxisLengths: op.(interface{ PJRTDims() []int }).PJRTDims(),
+		},
+	}, call.Type())
 }

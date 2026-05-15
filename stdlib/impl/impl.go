@@ -53,7 +53,6 @@ type (
 	Shapes struct {
 		Concat interp.FuncBuiltin
 		Len    interp.FuncBuiltin
-		Split  interp.FuncBuiltin
 		Gather interp.FuncBuiltin
 	}
 )
