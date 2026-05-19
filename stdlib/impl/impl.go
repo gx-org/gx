@@ -51,7 +51,6 @@ type (
 
 	// Shapes is the implementation of the shapes package.
 	Shapes struct {
-		Concat interp.FuncBuiltin
 		Len    interp.FuncBuiltin
 		Gather interp.FuncBuiltin
 	}

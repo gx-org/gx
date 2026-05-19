@@ -22,10 +22,14 @@ import (
 
 	"github.com/pkg/errors"
 
+	"github.com/gx-org/backend/ops"
+	"github.com/gx-org/backend/shape"
 	"github.com/gx-org/gx/build/builtins"
 	"github.com/gx-org/gx/build/fmterr"
 	"github.com/gx-org/gx/build/ir"
 	"github.com/gx-org/gx/interp/elements"
+	"github.com/gx-org/gx/interp/engine"
+	"github.com/gx-org/gx/interp/materialise"
 	"github.com/gx-org/gx/stdlib/builtin"
 	"github.com/gx-org/gx/stdlib/impl"
 )
@@ -35,7 +39,30 @@ type concat struct {
 }
 
 func (f concat) BuildFuncIR(impl *impl.Stdlib, pkg *ir.Package) (*ir.FuncBuiltin, error) {
-	return builtin.IRFuncBuiltin[concat]("Concat", impl.Shapes.Concat, pkg), nil
+	return builtin.IRFuncBuiltin[concat]("Concat", evalConcat, pkg), nil
+}
+
+func evalConcat(env engine.Env, call *ir.FuncCallExpr, recv ir.Element, args []ir.Element) ([]ir.Element, error) {
+	mat := builtin.Materialiser(env)
+	axis, err := elements.ConstantIntFromElement(args[0])
+	if err != nil {
+		return nil, err
+	}
+	nodes, firstShape, err := materialise.All(mat, args[1:])
+	if err != nil {
+		return nil, err
+	}
+	op, err := env.Engine().ArrayOps().Graph().Shape().Concat(axis, nodes)
+	if err != nil {
+		return nil, err
+	}
+	return materialise.ElementFromNode(env.File(), mat, &ops.OutputNode{
+		Node: op,
+		Shape: &shape.Shape{
+			DType:       firstShape.DType,
+			AxisLengths: op.(interface{ PJRTDims() []int }).PJRTDims(),
+		},
+	}, call.Type())
 }
 
 func checkConsistent[R any](values []ir.ArrayType, extractFn func(v ir.ArrayType) (R, func() string, error), equalityFn func(lhs R, rhs R) bool) (result R, err error) {

@@ -87,16 +87,21 @@ func AllWithShapes(am Materialiser, els []ir.Element) ([]*ops.OutputNode, error)
 }
 
 // All materialises a slice of elements into a slice of graph nodes.
-func All(am Materialiser, els []ir.Element) ([]ops.Node, error) {
+func All(am Materialiser, els []ir.Element) ([]ops.Node, *shape.Shape, error) {
 	nodes := make([]ops.Node, len(els))
+	var firstShape *shape.Shape
 	for i, el := range els {
+		var shapeI *shape.Shape
 		var err error
-		nodes[i], _, err = Element(am, el)
+		nodes[i], shapeI, err = Element(am, el)
 		if err != nil {
-			return nil, err
+			return nil, nil, err
+		}
+		if i == 0 {
+			firstShape = shapeI
 		}
 	}
-	return nodes, nil
+	return nodes, firstShape, nil
 }
 
 // Flatten first flatten all the elements, then materialise them all.

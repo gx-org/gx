@@ -69,7 +69,7 @@ func Trace(dev *api.Device, fn *ir.FuncDecl, receiver values.Value, args []value
 		return nil, err
 	}
 	// Add all the arguments to the graph.
-	if _, err := materialise.All(ev.Materialiser(), proc.ElementArgs()); err != nil {
+	if _, _, err := materialise.All(ev.Materialiser(), proc.ElementArgs()); err != nil {
 		return nil, err
 	}
 	// Interpret the function with the evaluator to build the graph.
