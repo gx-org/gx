@@ -132,7 +132,7 @@ func (f function) BackendArguments() (string, error) {
 	for i, field := range fields {
 		gxValue := fmt.Sprintf("%s.Bridge().GXValue()", argN(i))
 		args = append(args,
-			fmt.Sprintf("\t\t%s, // %s %s", gxValue, field.Name, field.Type()),
+			fmt.Sprintf("\t\t%s, // %s %s", gxValue, field.Name, field.Type().ReferString(nil)),
 		)
 	}
 	args = append(args, "\t}")
