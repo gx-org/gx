@@ -12,6 +12,8 @@
 
 #ifndef GO_CGO_GOSTRING_TYPEDEF
 typedef struct { const char *p; ptrdiff_t n; } _GoString_;
+extern size_t _GoStringLen(_GoString_ s);
+extern const char *_GoStringPtr(_GoString_ s);
 #endif
 
 #endif
@@ -19,7 +21,7 @@ typedef struct { const char *p; ptrdiff_t n; } _GoString_;
 /* Start of preamble from import "C" comments.  */
 
 
-#line 37 "cgx.go"
+#line 38 "cgx.go"
 
 
 
@@ -162,9 +164,15 @@ typedef size_t GoUintptr;
 typedef float GoFloat32;
 typedef double GoFloat64;
 #ifdef _MSC_VER
+#if !defined(__cplusplus) || _MSVC_LANG <= 201402L
 #include <complex.h>
 typedef _Fcomplex GoComplex64;
 typedef _Dcomplex GoComplex128;
+#else
+#include <complex>
+typedef std::complex<float> GoComplex64;
+typedef std::complex<double> GoComplex128;
+#endif
 #else
 typedef float _Complex GoComplex64;
 typedef double _Complex GoComplex128;
@@ -194,18 +202,8 @@ extern "C" {
 
 extern GoUintptr cgx_release_reference(cgx_handle h);
 extern GoUintptr cgx_release_references(cgx_handle* ptr, uint32_t size);
-
-// cgx_handle_count returns the number of outstanding handles.
-//
-// For testing only.
-//
-extern int64_t cgx_handle_count();
-
-// cgx_handle_dump returns a full list of all outstanding handles.
-//
-// For testing only.
-//
-extern cchar_t* cgx_handle_dump();
+extern int64_t cgx_handle_count(void);
+extern cchar_t* cgx_handle_dump(void);
 extern cchar_t* cgx_error_message(cgx_error cgxError);
 extern cchar_t* cgx_error_debug_message(cgx_error cgxError);
 extern cgx_error cgx_runtime_release(cgx_runtime cgxRuntime);

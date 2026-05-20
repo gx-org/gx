@@ -36,6 +36,7 @@ import (
 
 	gxdep0 "github.com/gx-org/gx/stdlib/bindings/go/dtype_go_gx"
 	gxdep1 "github.com/gx-org/gx/stdlib/bindings/go/math_go_gx"
+	gxdep2 "github.com/gx-org/gx/stdlib/bindings/go/num_go_gx"
 )
 
 // Force some package dependencies.
@@ -83,6 +84,7 @@ type PackageHandle struct {
 	// Package dependencies
 	gxdep0 *gxdep0.PackageHandle
 	gxdep1 *gxdep1.PackageHandle
+	gxdep2 *gxdep2.PackageHandle
 }
 
 // Package is a GX package for a given device.
@@ -123,6 +125,12 @@ func Build(dev *core.DeviceSetup) (*PackageHandle, error) {
 		return nil, err
 	}
 	pkg.handle.gxdep1, err = gxdep1.Build(
+		pkg.handle.PackageCompileSetup.Setup(),
+	)
+	if err != nil {
+		return nil, err
+	}
+	pkg.handle.gxdep2, err = gxdep2.Build(
 		pkg.handle.PackageCompileSetup.Setup(),
 	)
 	if err != nil {
