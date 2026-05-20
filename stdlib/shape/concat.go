@@ -151,7 +151,7 @@ func (f concat) resultsType(fetcher ir.Fetcher, call *ir.FuncCallExpr) (params [
 				// Ignore the concatenated dimension, it doesn't have to match.
 				continue
 			}
-			ok, cpErr, err := axJ.AssignableTo(fetcher, outputDims[j])
+			ok, cpErr, err := axJ.Equal(fetcher, outputDims[j])
 			if err != nil {
 				return nil, nil, fmterr.Error(fetcher.File().FileSet(), call.Node(), err)
 			}

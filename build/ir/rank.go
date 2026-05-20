@@ -108,37 +108,41 @@ func (r *Rank) Equal(tpcmp TypeCmp, other ArrayRank) (bool, CompEvalError, error
 	}
 }
 
-func (r *Rank) equalRank(tpcmp TypeCmp, other ArrayRank) (bool, CompEvalError, error) {
-	// Check the number of axes.
-	otherAx := other.Axes()
-	if len(r.Ax) != len(otherAx) {
-		return false, nil, nil
-	}
-	// Check each axis.
-	for i, dimX := range r.Ax {
-		dimEq, cpErr, err := dimX.Equal(tpcmp, otherAx[i])
+func evalAxes(tpcmp TypeCmp, r ArrayRank) ([]Element, CompEvalError, error) {
+	var els []Element
+	for _, ax := range r.Axes() {
+		el, cpErr, err := evalExpr(tpcmp, ax.AsExpr())
 		if cpErr != nil || err != nil {
-			return false, cpErr, err
+			return nil, cpErr, err
 		}
-		if !dimEq {
-			return false, nil, nil
+		els = append(els, el)
+	}
+	return els, nil, nil
+}
+
+func (r *Rank) equalRank(tpcmp TypeCmp, other ArrayRank) (bool, CompEvalError, error) {
+	rAxes, cpErr, err := evalAxes(tpcmp, r)
+	if cpErr != nil || err != nil {
+		return false, cpErr, err
+	}
+	otherAxes, cpErr, err := evalAxes(tpcmp, other)
+	if cpErr != nil || err != nil {
+		return false, cpErr, err
+	}
+	if len(rAxes) != len(otherAxes) {
+		return false, nil, err
+	}
+	for i, ri := range rAxes {
+		eq, err := ElementEqual(ri, otherAxes[i])
+		if !eq || err != nil {
+			return false, nil, err
 		}
 	}
 	return true, nil, nil
 }
 
 func (r *Rank) assignableTo(tpcmp TypeCmp, dst ArrayRank) (bool, CompEvalError, error) {
-	dstAx := dst.Axes()
-	if len(r.Ax) != len(dstAx) {
-		return false, nil, nil
-	}
-	for i, dimThis := range r.Ax {
-		ok, cpErr, err := dimThis.AssignableTo(tpcmp, dstAx[i])
-		if !ok || cpErr != nil || err != nil {
-			return ok, cpErr, err
-		}
-	}
-	return true, nil, nil
+	return r.equalRank(tpcmp, dst)
 }
 
 // AssignableTo returns true if this rank can be assigned to the destination rank.

@@ -43,12 +43,8 @@ type (
 		// Can return nil if the axis has not been resolved.
 		AsExpr() Expr
 
-		// Equal returns true if two axis lengths have been resolved and are equal.
-		// Returns an error if one of the axis has not been resolved.
+		// Equal returns true if two axis are equal.
 		Equal(TypeCmp, AxisLengths) (bool, CompEvalError, error)
-
-		// AssignableTo returns true if this axis length can be assigned to another.
-		AssignableTo(TypeCmp, AxisLengths) (bool, CompEvalError, error)
 
 		// Specialise the axis length given a context.
 		Specialise(Specialiser) ([]AxisLengths, CompEvalError, error)
@@ -77,14 +73,21 @@ func (dm *AxisExpr) Expr() ast.Expr { return dm.X.Expr() }
 // NumAxes returns the number of axis represented by the group.
 func (dm *AxisExpr) NumAxes() int { return 1 }
 
-// AssignableTo returns true if an axis length can be assigned to another.
-func (dm *AxisExpr) AssignableTo(tpcmp TypeCmp, dst AxisLengths) (bool, CompEvalError, error) {
-	return dm.Equal(tpcmp, dst)
-}
-
-// Equal returns true if other has the axis length.
+// Equal returns true if two axis are equal.
 func (dm *AxisExpr) Equal(tpcmp TypeCmp, other AxisLengths) (bool, CompEvalError, error) {
-	return areEqual(tpcmp, dm.X, other.AsExpr())
+	dmAx, cpErr, err := evalExpr(tpcmp, dm.X)
+	if cpErr != nil || err != nil {
+		return false, cpErr, err
+	}
+	otherAx, cpErr, err := evalExpr(tpcmp, other.AsExpr())
+	if cpErr != nil || err != nil {
+		return false, cpErr, err
+	}
+	eq, err := ElementEqual(dmAx, otherAx)
+	if !eq || err != nil {
+		return false, nil, err
+	}
+	return true, nil, nil
 }
 
 // Specialise the axis length given a context.
@@ -158,16 +161,6 @@ func (dm *AxisInfer) Type() Type { return IntLenType() }
 // Expr returns how to compute the expression defining the axis length.
 func (dm *AxisInfer) Expr() ast.Expr { return dm.Src }
 
-// Equal returns true if other has the axis length.
-func (dm *AxisInfer) Equal(tpcmp TypeCmp, other AxisLengths) (bool, CompEvalError, error) {
-	return areEqual(tpcmp, dm.AsExpr(), other.AsExpr())
-}
-
-// AssignableTo returns true if a dimension can be assigned to another.
-func (dm *AxisInfer) AssignableTo(tpcmp TypeCmp, dst AxisLengths) (bool, CompEvalError, error) {
-	return dm.Equal(tpcmp, dst)
-}
-
 // AsExpr returns the axis value as an expression.
 func (dm *AxisInfer) AsExpr() Expr {
 	if dm.X == nil {
@@ -188,6 +181,14 @@ func (dm *AxisInfer) UnifyWith(uni Unifier, target []AxisLengths) ([]AxisLengths
 
 func (dm *AxisInfer) axExprString(from *File) string {
 	return dm.X.axExprString(from)
+}
+
+// Equal returns true if two axis are equal.
+func (dm *AxisInfer) Equal(tpcmp TypeCmp, other AxisLengths) (bool, CompEvalError, error) {
+	if dm.X == nil {
+		return false, nil, nil
+	}
+	return dm.X.Equal(tpcmp, other)
 }
 
 // SourceString returns the GX source code of the axis length.
@@ -220,16 +221,6 @@ func (dm *AxisStmt) NameDef() *ast.Ident { return dm.Src }
 
 // NumAxes returns the number of axis represented by the group.
 func (dm *AxisStmt) NumAxes() int { return 1 }
-
-// AssignableTo returns true if an axis length can be assigned to another.
-func (dm *AxisStmt) AssignableTo(tpcmp TypeCmp, dst AxisLengths) (bool, CompEvalError, error) {
-	return dm.Equal(tpcmp, dst)
-}
-
-// Equal returns true if other has the axis length.
-func (dm *AxisStmt) Equal(tpcmp TypeCmp, other AxisLengths) (bool, CompEvalError, error) {
-	return areEqual(tpcmp, dm.AsExpr(), other.AsExpr())
-}
 
 // Same returns true if the other storage is this storage.
 func (dm *AxisStmt) Same(o Storage) bool {
@@ -279,6 +270,11 @@ func (dm *AxisStmt) AsExpr() Expr {
 // Type of the expression.
 func (dm *AxisStmt) Type() Type {
 	return dm.Typ
+}
+
+// Equal returns true if two axis are equal.
+func (dm *AxisStmt) Equal(tpcmp TypeCmp, other AxisLengths) (bool, CompEvalError, error) {
+	return (&AxisExpr{X: dm.AsExpr()}).Equal(tpcmp, other)
 }
 
 func (dm *AxisStmt) axExprString(from *File) string {

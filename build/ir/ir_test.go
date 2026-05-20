@@ -376,6 +376,10 @@ float number: XXXXXXXXXX
 }
 
 func TestArrayAtomicEqual(t *testing.T) {
+	fetcher, err := newFetcherTesting()
+	if err != nil {
+		t.Fatal(err)
+	}
 	cases := []struct {
 		ranker rankFunc
 		equal  bool
@@ -391,7 +395,7 @@ func TestArrayAtomicEqual(t *testing.T) {
 		t.Run(testCase.ranker().SourceString(nil), func(t *testing.T) {
 			for _, typ := range primitiveTypes {
 				arrayType := ir.NewArrayType(&ast.ArrayType{}, typ, testCase.ranker())
-				equal, cpErr, err := arrayType.Equal(nil, typ)
+				equal, cpErr, err := arrayType.Equal(fetcher, typ)
 				if err != nil {
 					t.Error(err)
 				}
@@ -402,7 +406,7 @@ func TestArrayAtomicEqual(t *testing.T) {
 					t.Errorf("Expected %s.Equal(%s) = %v, got %v", arrayType, typ, testCase.equal, equal)
 				}
 
-				equal, cpErr, err = typ.Equal(nil, arrayType)
+				equal, cpErr, err = typ.Equal(fetcher, arrayType)
 				if err != nil {
 					t.Error(err)
 				}
