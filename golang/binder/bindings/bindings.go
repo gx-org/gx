@@ -78,11 +78,14 @@ func canBeOnDeviceStruct(tp *ir.StructType) error {
 
 // CanBeOnDevice returns true if a type can be on device.
 func CanBeOnDevice(tp ir.Type) error {
-	if _, ok := tp.(ir.ArrayType); ok {
-		return nil
-	}
 	if tp == ir.ErrorType() {
 		return fmt.Errorf("cannot store %s on device", tp.Kind().String())
+	}
+	if tp.Kind() == irkind.String {
+		return fmt.Errorf("cannot store %s on device", tp.Kind().String())
+	}
+	if _, ok := tp.(ir.ArrayType); ok {
+		return nil
 	}
 	switch typT := tp.(type) {
 	case *ir.NamedType:
