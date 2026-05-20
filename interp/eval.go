@@ -258,7 +258,7 @@ func evalAssignCallStmt(fitp *Interpreter, stmt *ir.AssignCallStmt) error {
 }
 
 func unpackIfTuple(el ir.Element) []ir.Element {
-	tpl, ok := el.(*Tuple)
+	tpl, ok := el.(*elements.Tuple)
 	if !ok {
 		return []ir.Element{el}
 	}
@@ -589,7 +589,7 @@ func evalUnpackExpr(fitp *Interpreter, expr *ir.UnpackExpr) (ir.Element, error) 
 	if !isSlice {
 		return nil, errors.Errorf("cannot unpack %T", x)
 	}
-	return NewTuple(slice.Elements()), nil
+	return elements.NewTuple(slice.Elements()), nil
 }
 
 func evalFuncValExpr(fitp *Interpreter, expr *ir.FuncValExpr) (ir.Element, error) {
@@ -801,7 +801,7 @@ func ToSingleElement(ctx ir.Evaluator, node ir.Node, els []ir.Element) (ir.Eleme
 	case 1:
 		return els[0], nil
 	default:
-		return NewTuple(els), nil
+		return elements.NewTuple(els), nil
 	}
 
 }

@@ -27,7 +27,6 @@ import (
 	"github.com/gx-org/gx/internal/interp/flatten"
 	"github.com/gx-org/gx/interp/elements"
 	"github.com/gx-org/gx/interp/engine"
-	"github.com/gx-org/gx/interp"
 	"github.com/gx-org/gx/interp/materialise"
 )
 
@@ -100,7 +99,7 @@ func checkIsConcrete(typ ir.Type) error {
 }
 
 // elementFromTuple converts a backend tuple to a Tuple element.
-func (ev *Evaluator) elementFromTuple(types []ir.Type, nodeTuple ops.Tuple, shps []*shape.Shape) (*interp.Tuple, error) {
+func (ev *Evaluator) elementFromTuple(types []ir.Type, nodeTuple ops.Tuple, shps []*shape.Shape) (*elements.Tuple, error) {
 	elts := make([]ir.Element, nodeTuple.Size())
 	for i := range nodeTuple.Size() {
 		node, err := nodeTuple.Element(i)
@@ -115,7 +114,7 @@ func (ev *Evaluator) elementFromTuple(types []ir.Type, nodeTuple ops.Tuple, shps
 			return nil, err
 		}
 	}
-	return interp.NewTuple(elts), nil
+	return elements.NewTuple(elts), nil
 }
 
 // BinaryOp applies a binary operator to x and y.

@@ -12,7 +12,7 @@
 // See the License for the specific language governing permissions and
 // limitations under the License.
 
-package interp
+package elements
 
 import (
 	"fmt"
@@ -22,7 +22,6 @@ import (
 	"github.com/pkg/errors"
 	"github.com/gx-org/gx/build/ir"
 	"github.com/gx-org/gx/internal/interp/flatten"
-	"github.com/gx-org/gx/interp/elements"
 	"github.com/gx-org/gx/interp/engine"
 )
 
@@ -33,7 +32,7 @@ type Tuple struct {
 }
 
 var (
-	_ elements.Slicer = (*Tuple)(nil)
+	_ Slicer          = (*Tuple)(nil)
 	_ ir.Element      = (*Tuple)(nil)
 	_ ir.TupleElement = (*Tuple)(nil)
 	_ ir.Canonical    = (*Tuple)(nil)
@@ -81,7 +80,7 @@ func (n *Tuple) TupleElements() []ir.Element {
 
 // SliceAt of the tuple.
 func (n *Tuple) SliceAt(expr *ir.IndexExpr, index engine.NumericalElement) (ir.Element, error) {
-	return elements.SliceVals(expr, index, n.elements)
+	return SliceVals(expr, index, n.elements)
 }
 
 // Slice is not implemented for tuples.
