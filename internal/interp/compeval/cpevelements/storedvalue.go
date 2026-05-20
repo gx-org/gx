@@ -45,6 +45,7 @@ var (
 	_ elements.ElementWithConstant = (*storedValue)(nil)
 	_ elements.Selector            = (*storedValue)(nil)
 	_ elements.Under               = (*storedValue)(nil)
+	_ elements.WithElements        = (*storedValue)(nil)
 )
 
 // NewStoredValue returns a new element representing a value stored in a variable.
@@ -111,6 +112,15 @@ func (v *storedValue) Shape() *shape.Shape {
 		return nil
 	}
 	return val.Shape()
+}
+
+// Elements returns the elements of a slice.
+func (v *storedValue) Elements() []ir.Element {
+	val, ok := v.val.(elements.WithElements)
+	if !ok {
+		return nil
+	}
+	return val.Elements()
 }
 
 // Value returns the value being stored.

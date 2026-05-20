@@ -34,16 +34,16 @@ type proxy struct {
 }
 
 var (
-	_ coreops.Element      = (*proxy)(nil)
-	_ ir.StorageElement    = (*proxy)(nil)
-	_ elements.WithAxes    = (*proxy)(nil)
-	_ ir.Canonical         = (*proxy)(nil)
-	_ elements.Slicer      = (*proxy)(nil)
-	_ engine.Slice         = (*proxy)(nil)
-	_ elements.Selector    = (*proxy)(nil)
-	_ ir.WithStore         = (*proxy)(nil)
-	_ elements.WithElement = (*proxy)(nil)
-	_ proxies.Proxy        = (*proxy)(nil)
+	_ coreops.Element       = (*proxy)(nil)
+	_ ir.StorageElement     = (*proxy)(nil)
+	_ elements.WithAxes     = (*proxy)(nil)
+	_ ir.Canonical          = (*proxy)(nil)
+	_ elements.Slicer       = (*proxy)(nil)
+	_ engine.Slice          = (*proxy)(nil)
+	_ elements.Selector     = (*proxy)(nil)
+	_ ir.WithStore          = (*proxy)(nil)
+	_ elements.WithElements = (*proxy)(nil)
+	_ proxies.Proxy         = (*proxy)(nil)
 )
 
 // NewProxy returns a new variable element given a GX variable name.

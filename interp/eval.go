@@ -544,7 +544,7 @@ func evalExpr(fitp *Interpreter, expr ir.Expr) (_ ir.Element, err error) {
 	case *ir.UnaryExpr:
 		return evalUnaryExpression(fitp, exprT)
 	case *ir.UnpackExpr:
-		return evalExpr(fitp, exprT.X)
+		return evalUnpackExpr(fitp, exprT)
 	case *ir.ParenExpr:
 		return evalExpr(fitp, exprT.X)
 	case *ir.BinaryExpr:
@@ -578,6 +578,18 @@ func evalExpr(fitp *Interpreter, expr ir.Expr) (_ ir.Element, err error) {
 	default:
 		return nil, fmterr.Errorf(fitp.File().FileSet(), expr.Node(), "cannot evaluate GX expression: %T not supported", expr)
 	}
+}
+
+func evalUnpackExpr(fitp *Interpreter, expr *ir.UnpackExpr) (ir.Element, error) {
+	x, err := evalExpr(fitp, expr.X)
+	if err != nil {
+		return nil, err
+	}
+	slice, isSlice := x.(elements.WithElements)
+	if !isSlice {
+		return nil, errors.Errorf("cannot unpack %T", x)
+	}
+	return NewTuple(slice.Elements()), nil
 }
 
 func evalFuncValExpr(fitp *Interpreter, expr *ir.FuncValExpr) (ir.Element, error) {
