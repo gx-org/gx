@@ -194,17 +194,7 @@ extern "C" {
 
 extern GoUintptr cgx_release_reference(cgx_handle h);
 extern GoUintptr cgx_release_references(cgx_handle* ptr, uint32_t size);
-
-// cgx_handle_count returns the number of outstanding handles.
-//
-// For testing only.
-//
 extern int64_t cgx_handle_count();
-
-// cgx_handle_dump returns a full list of all outstanding handles.
-//
-// For testing only.
-//
 extern cchar_t* cgx_handle_dump();
 extern cchar_t* cgx_error_message(cgx_error cgxError);
 extern cchar_t* cgx_error_debug_message(cgx_error cgxError);
