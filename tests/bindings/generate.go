@@ -51,3 +51,6 @@ package bindings
 
 //go:generate go run ../../golang/packager --gx_package=github.com/gx-org/gx/examples/linearregression/linearregression
 //go:generate go run ../../golang/binder/genbind --gx_package=github.com/gx-org/gx/examples/linearregression/linearregression
+
+//go:generate go run ../../golang/packager --gx_package=github.com/gx-org/gx/golang/backend/tests/interperr
+//go:generate go run ../../golang/binder/genbind --gx_package=github.com/gx-org/gx/golang/backend/tests/interperr
