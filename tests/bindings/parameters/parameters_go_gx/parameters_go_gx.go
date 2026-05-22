@@ -371,7 +371,11 @@ func (pkg *Package) AddInts(arg0 types.Array[int64], arg1 types.Array[int64]) (_
 // Len returns the outmost dimension of x.
 func (pkg *Package) Len(arg0 types.Array[float32]) (_ types.Atom[int64], err error) {
 	var args []values.Value = []values.Value{
+<<<<<<< HEAD
 		arg0.Bridge().GXValue(), // x [_a]float32
+=======
+		arg0.Bridge().GXValue(), // x [_]float32
+>>>>>>> main
 	}
 	var runner tracer.CompiledFunc
 	runner, err = pkg.cacheLen.Runner(nil, args)
