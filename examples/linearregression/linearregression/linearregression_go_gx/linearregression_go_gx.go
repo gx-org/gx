@@ -38,11 +38,7 @@ import (
 
 	gxdep0 "github.com/gx-org/gx/stdlib/bindings/go/num_go_gx"
 	gxdep2 "github.com/gx-org/gx/stdlib/bindings/go/rand_go_gx"
-<<<<<<< HEAD
 	gxdep1 "github.com/gx-org/gx/stdlib/bindings/go/shape_go_gx"
-=======
-	gxdep1 "github.com/gx-org/gx/stdlib/bindings/go/shapes_go_gx"
->>>>>>> main
 )
 
 // Force some package dependencies.
