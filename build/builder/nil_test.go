@@ -1,4 +1,4 @@
-// Copyright 2024 Google LLC
+// Copyright 2025 Google LLC
 //
 // Licensed under the Apache License, Version 2.0 (the "License");
 // you may not use this file except in compliance with the License.
@@ -12,19 +12,24 @@
 // See the License for the specific language governing permissions and
 // limitations under the License.
 
-package builder
+package builder_test
 
 import (
-	"github.com/gx-org/gx/build/ir"
-	"github.com/gx-org/gx/build/ir/irkind"
+	"testing"
+
+	"github.com/gx-org/gx/build/builder/testbuild"
 )
 
-func castNil(scope resolveScope, expr ir.Expr, target ir.Type) (ir.Expr, bool) {
-	if target != ir.ErrorType() && target.Kind() != irkind.Slice {
-		return expr, scope.Err().Appendf(expr.Node(), "cannot cast nil to %s", target.ReferString(scope.fileScope().irFile()))
-	}
-	return &ir.NilCastExpr{
-		X:   expr,
-		Typ: target,
-	}, true
+func TestNilSlice(t *testing.T) {
+	testbuild.Run(t,
+		testbuild.CompEval{
+			Src: `
+//gx:compeval
+func test() []string {
+	return nil 
+}
+`,
+			Wants: []string{`nil`},
+		},
+	)
 }
