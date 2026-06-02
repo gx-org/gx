@@ -526,7 +526,7 @@ func evalExpr(fitp *Interpreter, expr ir.Expr) (_ ir.Element, err error) {
 	case *ir.AxisInfer:
 		return evalExpr(fitp, exprT.X.AsExpr())
 	case *ir.NilCastExpr:
-		return elements.NewNil(exprT.Typ), nil
+		return elements.NewNil(exprT), nil
 	case *ir.NumberCastExpr:
 		return evalNumberCastExpr(fitp, exprT)
 	case *ir.SliceLitExpr:

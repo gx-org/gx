@@ -14,21 +14,29 @@
 
 package elements
 
-import "github.com/gx-org/gx/build/ir"
+import (
+	"go/ast"
+
+	"github.com/gx-org/gx/build/ir"
+)
 
 type nilEl struct {
-	typ ir.Type
+	x *ir.NilCastExpr
 }
 
 var _ ir.Element = (*nilEl)(nil)
 
 // NewNil returns a new nil element.
-func NewNil(typ ir.Type) ir.Element {
-	return &nilEl{typ: typ}
+func NewNil(x *ir.NilCastExpr) ir.Element {
+	return &nilEl{x: x}
 }
 
 func (el *nilEl) Type() ir.Type {
-	return el.typ
+	return el.x.Typ
+}
+
+func (el *nilEl) Expr(ev ir.Evaluator, expr ast.Expr) (ir.Expr, ir.CompEvalError, error) {
+	return el.x, nil, nil
 }
 
 // IsNil returns true if the element is a nil element (whatever the type).
