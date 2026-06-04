@@ -99,9 +99,6 @@ func New(macro *cpevelements.CoreMacroElement, fn ir.Func) (*Graph, error) {
 	nameFields(g.unames, "recv", fType.Receiver)
 	g.nResults = nameFields(g.unames, "res", fType.Results)
 	g.nParams = nameFields(g.unames, "par", fType.Params)
-	for _, axisVal := range fType.AxisLengths {
-		g.unames.Register(axisVal.Name())
-	}
 	g.unames.RegisterFieldNames(fType.TypeParams)
 	// Build the VJP params and function signatures.
 	var err error

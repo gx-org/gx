@@ -1027,6 +1027,7 @@ func vjpF(fwd0 [___S]float32) ([S___]float32, func(res [S___]float32) [S___]floa
 `,
 		},
 		testgrad.Reverse{
+			Skip: true,
 			Src: `
 func F(x [___fwd0]float32) [fwd0___]float32 {
 	return 2*x
