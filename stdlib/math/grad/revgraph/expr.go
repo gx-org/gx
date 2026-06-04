@@ -369,7 +369,8 @@ func (n *numberCastExpr) buildBackward(bckstmts *astOutWRT, bck *special.Expr) (
 }
 
 type fieldRef struct {
-	node[*ir.FieldStorage]
+	*ident
+	field *ir.Field
 }
 
 func (n *fieldRef) dependsOn(bckstmts *astOutWRT) bool {
@@ -377,15 +378,15 @@ func (n *fieldRef) dependsOn(bckstmts *astOutWRT) bool {
 }
 
 func (n *fieldRef) fieldPath() []*ir.Field {
-	return []*ir.Field{n.irnode.Field}
+	return []*ir.Field{n.field}
 }
 
 func (n *fieldRef) buildForward(astmts *fwdStmts) ([]ast.Expr, bool) {
-	return []ast.Expr{n.irnode.Field.Name}, true
+	return []ast.Expr{n.field.Name}, true
 }
 
 func (n *fieldRef) forwardValue() (*special.Expr, bool) {
-	return special.New(n.irnode.Field.Name), true
+	return special.New(n.field.Name), true
 }
 
 func (n *fieldRef) buildBackward(bckstmts *astOutWRT, bck *special.Expr) (*special.Expr, bool) {
@@ -398,16 +399,11 @@ func (n *fieldRef) buildBackward(bckstmts *astOutWRT, bck *special.Expr) (*speci
 type ident struct {
 	node[*ir.Ident]
 
-	fwd expr
+	fwd                expr
+	skipBackwardAssign bool
 }
 
 func (p *processor) processIdent(isrc *ir.Ident) (expr, bool) {
-	fieldStorage, isField := isrc.Stor.(*ir.FieldStorage)
-	if isField {
-		return &fieldRef{
-			node: newNodeNoID[*ir.FieldStorage](p, fieldStorage),
-		}, true
-	}
 	return &ident{
 		node: newNodeNoID[*ir.Ident](p, isrc),
 	}, true
@@ -421,11 +417,27 @@ func (n *ident) fieldPath() []*ir.Field {
 	return n.fwd.fieldPath()
 }
 
+func (n *ident) buildForwardForField(astmts *fwdStmts) (expr, bool) {
+	fieldStorage, isField := n.irnode.Stor.(*ir.FieldStorage)
+	if !isField {
+		return nil, n.err().Appendf(n.irnode.Src, "identifier node %s has not been registered in the reverse graph and is not a field", n.irnode.Src.Name)
+	}
+	return &fieldRef{
+		ident: n,
+		field: fieldStorage.Field,
+	}, true
+}
+
 func (n *ident) buildForward(astmts *fwdStmts) ([]ast.Expr, bool) {
-	var ok bool
-	n.fwd, ok = astmts.idents.Find(n.irnode.Src.Name)
-	if !ok {
-		return nil, n.err().Appendf(n.irnode.Src, "identifier node %s has not been registered in the reverse graph", n.irnode.Src.Name)
+	var found bool
+	n.fwd, found = astmts.idents.Find(n.irnode.Src.Name)
+	if !found {
+		var ok bool
+		n.fwd, ok = n.buildForwardForField(astmts)
+		if !ok {
+			return nil, false
+		}
+		n.skipBackwardAssign = true
 	}
 	return n.fwd.buildForward(astmts)
 }
@@ -436,8 +448,8 @@ func (n *ident) forwardValue() (*special.Expr, bool) {
 
 func (n *ident) buildBackward(bckstmts *astOutWRT, bck *special.Expr) (*special.Expr, bool) {
 	bckExpr, ok := buildBackward(bckstmts, bck, n.fwd)
-	if !ok {
-		return nil, false
+	if n.skipBackwardAssign || !ok {
+		return bckExpr, ok
 	}
 	return bckstmts.assignSpecialExprSuffix(n.id, bckExpr, n.irnode.Src.Name), true
 }
