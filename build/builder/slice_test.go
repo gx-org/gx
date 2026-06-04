@@ -217,7 +217,24 @@ func g[T any](as []T) []T
 func f() []int64 {
 	return g([]int64{1, 2, 3})
 }
-`},
+`,
+		},
+		testbuild.CompEval{
+			EvalCanonical: true,
+			Src: `
+//gx:compeval
+func bigger(s []int32, i int64) bool {
+	return len(s) > i
+}
+
+//gx:compeval
+func test() (bool, bool) {
+	a := []int32{0, 1, 2, 3, 4}
+	return bigger(a, 2), bigger(a, 20)
+}
+`,
+			Wants: []string{`true`, `false`},
+		},
 	)
 }
 
