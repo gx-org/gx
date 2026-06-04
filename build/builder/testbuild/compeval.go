@@ -21,8 +21,11 @@ import (
 	"github.com/pkg/errors"
 	"github.com/gx-org/gx/build/builder"
 	"github.com/gx-org/gx/build/ir"
+	"github.com/gx-org/gx/internal/base/cast"
+	"github.com/gx-org/gx/internal/interp/canonical"
 	"github.com/gx-org/gx/internal/interp/compeval"
 	"github.com/gx-org/gx/internal/interp/compeval/cpevelements"
+	"github.com/gx-org/gx/internal/interp/coreops"
 	"github.com/gx-org/gx/interp/elements"
 	"github.com/gx-org/gx/interp"
 )
@@ -31,6 +34,8 @@ import (
 type CompEval struct {
 	// Src is the GX source code.
 	Src string
+	// EvalCanonical converts the output to a canonical value and use the string representation of that value.
+	EvalCanonical bool
 	// Want is the set of nodes that is expected from the compiler to build.
 	// If nil (or length 0), the output of the compiler is not checked.
 	Wants []string
@@ -39,6 +44,33 @@ type CompEval struct {
 // Source code of the declarations.
 func (tt CompEval) Source() string {
 	return tt.Src
+}
+
+func stringFromCanonical(el ir.Element) (string, error) {
+	coreEl, err := cast.To[coreops.Element](el)
+	if err != nil {
+		return "", err
+	}
+	boolVal, err := cast.To[canonical.WithBool](coreEl.CanonicalExpr())
+	if err != nil {
+		return "", err
+	}
+	bl, err := boolVal.Bool()
+	if err != nil {
+		return "", err
+	}
+	return fmt.Sprint(bl), nil
+}
+
+func (tt CompEval) stringFromElement(ev ir.Evaluator, el ir.Element) (string, error) {
+	if tt.EvalCanonical {
+		return stringFromCanonical(el)
+	}
+	expr, cpErr, err := ir.ToExpr(ev, &ast.Ident{}, el)
+	if uniErr := ir.UnifyErr(cpErr, err); uniErr != nil {
+		return "", uniErr
+	}
+	return expr.SourceString(nil), nil
 }
 
 // Run builds the declarations as a package, then compare to an expected outcome.
@@ -87,13 +119,12 @@ package test
 		return err
 	}
 	for i, out := range outs {
-		expr, cpErr, err := ir.ToExpr(fitp, &ast.Ident{}, out)
-		if uniErr := ir.UnifyErr(cpErr, err); uniErr != nil {
+		got, err := tt.stringFromElement(fitp, out)
+		if err != nil {
 			return err
 		}
-		got := expr.SourceString(nil)
 		want := tt.Wants[i]
-		if expr.SourceString(nil) != want {
+		if got != want {
 			return errors.Errorf("got expression %d:\n%s\nbut want:\n%s", i, got, want)
 		}
 	}

@@ -20,11 +20,43 @@ import (
 	"github.com/gx-org/gx/build/ir"
 )
 
+var (
+	nilIdent   = &ast.Ident{Name: "nil"}
+	nilStorage = &ir.Nil{Src: nilIdent}
+	nilExpr    = &ir.Ident{
+		Src:  nilIdent,
+		Stor: nilStorage,
+	}
+)
+
 type nilEl struct {
 	x *ir.NilCastExpr
 }
 
 var _ ir.Element = (*nilEl)(nil)
+
+var nilError = NewNil(&ir.NilCastExpr{
+	X:   nilExpr,
+	Typ: ir.ErrorType(),
+})
+
+// NilError returns a GX nil error element.
+func NilError() ir.Element {
+	return nilError
+}
+
+// NilStorage returns the nil built-in storage singleton.
+func NilStorage() *ir.Nil {
+	return nilStorage
+}
+
+// NilFromType returns a nil element for a given type.
+func NilFromType(tp ir.Type) ir.Element {
+	return NewNil(&ir.NilCastExpr{
+		X:   nilExpr,
+		Typ: tp,
+	})
+}
 
 // NewNil returns a new nil element.
 func NewNil(x *ir.NilCastExpr) ir.Element {

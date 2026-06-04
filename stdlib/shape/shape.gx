@@ -14,7 +14,10 @@
 
 package shape
 
-import "dtype"
+import (
+	"cperrors"
+	"dtype"
+)
 
 // DType is the datatype of an array.
 type DType int32
@@ -26,5 +29,49 @@ type Shape struct {
 }
 
 // gx:compeval
+func ReduceAxes(axes []intlen, i ...intidx) ([]intlen, error)
+
+// gx:compeval
+func ReverseAxes(axes []intlen) []intlen
+
 // SameSlice returns true if the x and y are the same.
+// gx:compeval
 func SameSlice(x, y []intlen) bool
+
+//gx:compeval
+func CheckBroadcast(s1, s2 []intlen) ([]intlen, error) {
+	if len(s1) != len(s2) {
+		return s2, cperrors.Argf(2, "cannot broadcast array from %d to %d axes (expect the same number)", s1, s2)
+	}
+	// TODO(degris): check the input shape against the target shape.
+	return s2, nil
+}
+
+// Broadcast a shape to another.
+func Broadcast[Dst []intlen, DT dtype.Num](x [___Src]DT) [CheckBroadcast(Src, Dst)]DT
+
+// gx:compeval
+// SplitAxis returns a shape after the ith axis has been split into n blocks.
+func SplitAxis(i intidx, n intlen, shape []intlen) ([]intlen, error)
+
+// Split an array along an axis.
+func Split[Axis intidx, NumSplit intlen, Shape []intlen, DType dtype.Num](x [Shape]DType) [SplitAxis(Axis, NumSplit, Shape)]DType
+
+// ConcatAxis computes the shape of a concat operation.
+//
+//gx:compeval
+func ConcatAxis(idx intidx, allAxes [][]intlen) ([]intlen, error)
+
+// Concat multiple arrays into one.
+func Concat[Axis intidx, Shapes [][]intlen, DType dtype.Num](x ...[unpack(varargsindex(Shapes))]DType) [ConcatAxis(Axis, Shapes)]DType
+
+// Transpose an array.
+func Transpose[Shape []intlen, DType dtype.Num](x [Shape]DType) [ReverseAxes(Shape)]DType
+
+// GatherAxis computes the shape of a gather operation.
+//
+//gx:compeval
+func GatherAxis(input []intlen, indices []intlen) ([]intlen, error)
+
+// Gather values from an array.
+func Gather[InputShape, SelectShape []intlen, DType dtype.Num](x [unpack(InputShape)]DType, indices [unpack(SelectShape)]int64) [GatherAxis(InputShape, SelectShape)]DType

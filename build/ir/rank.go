@@ -45,10 +45,16 @@ type (
 		ConvertibleTo(TypeCmp, ArrayRank) (bool, CompEvalError, error)
 
 		// Specialise a type to a given target.
-		Specialise(Specialiser) (ArrayRank, CompEvalError, error)
+		Specialise(Specialiser) ArrayRank
 
 		// UnifyWith unifies the rank with a given target.
 		UnifyWith(Unifier, ArrayRank) bool
+
+		// Instantiate the rank into another rank.
+		Instantiate(Fetcher, Specialiser) (ArrayRank, bool)
+
+		// IndexForVarArgs returns a rank specific to a given index in varargs.
+		IndexForVarArgs(i int) ArrayRank
 
 		// SubRank returns the rank with the top-axis removed.
 		SubRank() (ArrayRank, bool)
@@ -111,11 +117,15 @@ func (r *Rank) Equal(tpcmp TypeCmp, other ArrayRank) (bool, CompEvalError, error
 func evalAxes(tpcmp TypeCmp, r ArrayRank) ([]Element, CompEvalError, error) {
 	var els []Element
 	for _, ax := range r.Axes() {
-		el, cpErr, err := evalExpr(tpcmp, ax.AsExpr())
-		if cpErr != nil || err != nil {
-			return nil, cpErr, err
+		el, err := tpcmp.EvalExpr(ax.AsExpr())
+		if err != nil {
+			return nil, nil, err
 		}
-		els = append(els, el)
+		axElts := []Element{el}
+		if tuple, isTuple := el.(TupleElement); isTuple {
+			axElts = tuple.TupleElements()
+		}
+		els = append(els, axElts...)
 	}
 	return els, nil, nil
 }
@@ -180,16 +190,13 @@ func (r *Rank) ConvertibleTo(tpcmp TypeCmp, dst ArrayRank) (bool, CompEvalError,
 }
 
 // Specialise a type to a given target.
-func (r *Rank) Specialise(spec Specialiser) (ArrayRank, CompEvalError, error) {
+func (r *Rank) Specialise(spec Specialiser) ArrayRank {
 	var axes []AxisLengths
 	for _, ax := range r.Ax {
-		subs, cpErr, err := ax.Specialise(spec)
-		if cpErr != nil || err != nil {
-			return r, cpErr, err
-		}
+		subs := ax.Specialise(spec)
 		axes = append(axes, subs...)
 	}
-	return &Rank{Src: r.Src, Ax: axes}, nil, nil
+	return &Rank{Src: r.Src, Ax: axes}
 }
 
 // UnifyWith unifies the rank with a given target.
@@ -203,6 +210,27 @@ func (r *Rank) UnifyWith(uni Unifier, arg ArrayRank) bool {
 		}
 	}
 	return true
+}
+
+// Instantiate the rank into another rank.
+func (r *Rank) Instantiate(ev Fetcher, spec Specialiser) (ArrayRank, bool) {
+	var axes []AxisLengths
+	ok := true
+	for _, ax := range r.Ax {
+		subs, axOk := ax.Instantiate(ev, spec)
+		axes = append(axes, subs...)
+		ok = ok && axOk
+	}
+	return &Rank{Src: r.Src, Ax: axes}, ok
+}
+
+// IndexForVarArgs returns a rank specific to a given index in varargs.
+func (r *Rank) IndexForVarArgs(vri int) ArrayRank {
+	axes := make([]AxisLengths, len(r.Ax))
+	for i, ax := range r.Ax {
+		axes[i] = ax.IndexForVarArgs(vri)
+	}
+	return &Rank{Src: r.Src, Ax: axes}
 }
 
 var oneSize = &NumberCastExpr{
@@ -334,11 +362,19 @@ func (r *RankInfer) SubRank() (ArrayRank, bool) {
 }
 
 // Specialise a type to a given target.
-func (r *RankInfer) Specialise(spec Specialiser) (ArrayRank, CompEvalError, error) {
+func (r *RankInfer) Specialise(spec Specialiser) ArrayRank {
 	if r.Rnk == nil {
-		return r, nil, nil
+		return r
 	}
 	return r.Rnk.Specialise(spec)
+}
+
+// Instantiate the rank into another rank.
+func (r *RankInfer) Instantiate(ev Fetcher, spec Specialiser) (ArrayRank, bool) {
+	if r.Rnk == nil {
+		return r, true
+	}
+	return r.Rnk.Instantiate(ev, spec)
 }
 
 // UnifyWith unifies the rank with a given target.
@@ -347,6 +383,14 @@ func (r *RankInfer) UnifyWith(uni Unifier, target ArrayRank) bool {
 		return true
 	}
 	return r.Rnk.UnifyWith(uni, target)
+}
+
+// IndexForVarArgs returns a rank specific to a given index in varargs.
+func (r *RankInfer) IndexForVarArgs(i int) ArrayRank {
+	if r.Rnk == nil {
+		return r
+	}
+	return r.Rnk.IndexForVarArgs(i)
 }
 
 // SourceString returns the GX source code of the rank.

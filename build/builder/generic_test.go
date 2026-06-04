@@ -1,4 +1,5 @@
 // Copyright 2025 Google LLC
+
 //
 // Licensed under the Apache License, Version 2.0 (the "License");
 // you may not use this file except in compliance with the License.
@@ -30,6 +31,7 @@ func TestGenericSignature(t *testing.T) {
 	intsT := irhelper.Field("T", intTypeSet, nil)
 	xAxLen := irhelper.AxisLenName("X")
 	yAxLen := irhelper.AxisLenName("Y")
+	xAxGroup := irhelper.AxisGroup("X")
 	testbuild.Run(t,
 		testbuild.Decl{
 			Src: `func f[S any](S) S`,
@@ -38,8 +40,8 @@ func TestGenericSignature(t *testing.T) {
 					FType: irhelper.FuncType(
 						irhelper.Fields(anyS),
 						nil,
-						irhelper.Fields(&ir.TypeParam{Field: anyS}),
-						irhelper.Fields(&ir.TypeParam{Field: anyS}),
+						irhelper.Fields(ir.NewGenericTypeParam(anyS)),
+						irhelper.Fields(ir.NewGenericTypeParam(anyS)),
 					),
 				},
 			},
@@ -51,8 +53,8 @@ func TestGenericSignature(t *testing.T) {
 					FType: irhelper.FuncType(
 						irhelper.Fields(intsT),
 						nil,
-						irhelper.Fields(&ir.TypeParam{Field: intsT}),
-						irhelper.Fields(&ir.TypeParam{Field: intsT}),
+						irhelper.Fields(ir.NewGenericTypeParam(intsT)),
+						irhelper.Fields(ir.NewGenericTypeParam(intsT)),
 					),
 				},
 			},
@@ -64,8 +66,8 @@ func TestGenericSignature(t *testing.T) {
 					FType: irhelper.FuncType(
 						irhelper.Fields(anyS, intsT),
 						nil,
-						irhelper.Fields(&ir.TypeParam{Field: anyS}),
-						irhelper.Fields(&ir.TypeParam{Field: intsT}),
+						irhelper.Fields(ir.NewGenericTypeParam(anyS)),
+						irhelper.Fields(ir.NewGenericTypeParam(intsT)),
 					),
 				},
 			},
@@ -74,8 +76,9 @@ func TestGenericSignature(t *testing.T) {
 			Src: `func f(x [_X][_Y]int32) ([X]int32, [Y]int32)`,
 			Want: []ir.IR{
 				&ir.FuncBuiltin{
-					FType: irhelper.AxisLengths(irhelper.FuncType(
-						nil, nil,
+					FType: irhelper.FuncType(
+						irhelper.Fields(xAxLen, yAxLen),
+						nil,
 						irhelper.Fields(
 							"x",
 							irhelper.ArrayType(
@@ -87,15 +90,15 @@ func TestGenericSignature(t *testing.T) {
 							"",
 							irhelper.ArrayType(
 								ir.Int32Type(),
-								irhelper.Axis("X_"),
+								irhelper.Axis(xAxLen),
 							),
 							"",
 							irhelper.ArrayType(
 								ir.Int32Type(),
-								irhelper.Axis("Y_"),
+								irhelper.Axis(yAxLen),
 							),
 						),
-					), "_X", "_Y"),
+					),
 				},
 			},
 		},
@@ -106,22 +109,23 @@ func TestGenericSignature(t *testing.T) {
 			Src: `func f([___X]int32) [X___]int32`,
 			Want: []ir.IR{
 				&ir.FuncBuiltin{
-					FType: irhelper.AxisLengths(irhelper.FuncType(
-						nil, nil,
+					FType: irhelper.FuncType(
+						irhelper.Fields(xAxGroup),
+						nil,
 						irhelper.Fields(
 							"",
 							irhelper.ArrayType(
 								ir.Int32Type(),
-								irhelper.Axis("___X"),
+								irhelper.Axis(xAxGroup),
 							)),
 						irhelper.Fields(
 							"",
 							irhelper.ArrayType(
 								ir.Int32Type(),
-								irhelper.Axis("X___"),
+								irhelper.Axis(xAxGroup),
 							),
 						),
-					), "___X"),
+					),
 				},
 			},
 		},
@@ -135,7 +139,7 @@ func TestGenericCall(t *testing.T) {
 		Underlying: ir.TypeExpr(nil, irhelper.TypeSet(ir.Int32Type(), ir.Int64Type())),
 	}
 	someIntT := irhelper.Field("T", someInt, nil)
-	someIntTP := &ir.TypeParam{Field: someIntT}
+	someIntTP := ir.NewGenericTypeParam(someIntT)
 	castNoArgFunc := &ir.FuncDecl{
 		Src: &ast.FuncDecl{Name: &ast.Ident{Name: "cast"}},
 		FType: irhelper.FuncType(
@@ -201,7 +205,7 @@ func callCast() int32 {
 									castNoArgFunc.FType.TypeParams,
 									nil, nil,
 									irhelper.Fields(ir.Int32Type()),
-									irhelper.SetFuncTypeParams(ir.Int32Type()),
+									irhelper.SetTypeParams(ir.Int32Type()),
 								),
 							),
 						}}},
@@ -324,16 +328,27 @@ func f() [2][3]int32 {
 			Src: `
 import "dtype"
 
-func newFloat32(shape []intlen) [shape___]float32 {
-	return [shape___]float32{}
+func newFloat32[shape []intlen]() [shape]float32 {
+	return [shape]float32{}
 }
 
-func genericNewFloat32[T dtype.Ints](shape []intlen) [shape___]T {
-	return [shape___]T(newFloat32(shape))
+func genericNewFloat32[T dtype.Ints, S []intlen]() [S]T {
+	return [S]T(newFloat32[S]())
 }
 
 func TestGenericCastWithGenericShape() [2][3]int64 {
-	return genericNewFloat32[int64]([]intlen{2, 3})
+	return genericNewFloat32[int64][[]intlen{2, 3}]()
+}
+`,
+		},
+		testbuild.Decl{
+			Src: `
+import "dtype"
+
+func g[X, Y []intlen, T dtype.Num]([unpack(X)]T, [unpack(Y)]T) [unpack(X)]T
+
+func f() [2]float32 {
+	return g([2]float32{}, 2)
 }
 `,
 		},
@@ -347,7 +362,7 @@ func TestGenericArray(t *testing.T) {
 		Underlying: ir.TypeExpr(nil, irhelper.TypeSet(ir.Int32Type(), ir.Int64Type())),
 	}
 	typeParamFieldT := irhelper.Field("T", someInt, nil)
-	typeParamT := &ir.TypeParam{Field: typeParamFieldT}
+	typeParamT := ir.NewGenericTypeParam(typeParamFieldT)
 	new2x3ArrayFunc := &ir.FuncDecl{
 		Src: &ast.FuncDecl{Name: &ast.Ident{Name: "new2x3Array"}},
 		FType: irhelper.FuncType(
@@ -410,7 +425,7 @@ func callCast() [2][3]int32 {
 									nil,
 									irhelper.Fields(),
 									irhelper.Fields(irhelper.ArrayType(ir.Int32Type(), 2, 3)),
-									irhelper.SetFuncTypeParams(ir.Int32Type()),
+									irhelper.SetTypeParams(ir.Int32Type()),
 								)),
 						}}},
 					}},
@@ -466,15 +481,15 @@ func TestGenericConvert(t *testing.T) {
 		Underlying: ir.TypeExpr(nil, irhelper.TypeSet(ir.Int32Type(), ir.Int64Type())),
 	}
 	someIntT := irhelper.Field("T", someInt, nil)
-	someIntTP := &ir.TypeParam{Field: someIntT}
+	someIntTP := ir.NewGenericTypeParam(someIntT)
 	someIntS := irhelper.Field("S", someInt, someIntT.Group)
-	valField := irhelper.Field("val", &ir.TypeParam{Field: someIntS}, nil)
+	valField := irhelper.Field("val", ir.NewGenericTypeParam(someIntS), nil)
 	castAtomFunc := &ir.FuncDecl{
 		Src: &ast.FuncDecl{Name: &ast.Ident{Name: "cast"}},
 		FType: irhelper.FuncType(
 			irhelper.Fields(someIntT.Group),
 			nil,
-			irhelper.Fields("val", &ir.TypeParam{Field: someIntS}),
+			irhelper.Fields("val", ir.NewGenericTypeParam(someIntS)),
 			irhelper.Fields(someIntTP),
 		),
 		Body: &ir.BlockStmt{List: []ir.Stmt{
@@ -515,7 +530,7 @@ func callCast() int32 {
 									), nil,
 									irhelper.Fields("val", ir.Int64Type()),
 									irhelper.Fields(ir.Int32Type()),
-									irhelper.SetFuncTypeParams(ir.Int32Type(), ir.Int64Type()),
+									irhelper.SetTypeParams(ir.Int32Type(), ir.Int64Type()),
 								)),
 							Args: []ir.Expr{
 								irhelper.IntNumberAs(2, ir.Int64Type()),
@@ -556,7 +571,7 @@ func callCast() int32 {
 									), nil,
 									irhelper.Fields("val", ir.Int64Type()),
 									irhelper.Fields(ir.Int32Type()),
-									irhelper.SetFuncTypeParams(ir.Int32Type(), ir.Int64Type()),
+									irhelper.SetTypeParams(ir.Int32Type(), ir.Int64Type()),
 								)),
 							Args: []ir.Expr{
 								&ir.CastExpr{
@@ -578,17 +593,18 @@ func TestGenericCastArray(t *testing.T) {
 		File:       wantFile,
 		Underlying: ir.TypeExpr(nil, irhelper.TypeSet(ir.Int32Type(), ir.Int64Type())),
 	}
-	typeParams := irhelper.Fields("T", "S", someInt)
-	typeParamT := &ir.TypeParam{Field: typeParams.List[0].Fields[0]}
-	typeParamS := &ir.TypeParam{Field: typeParams.List[0].Fields[1]}
+	typeParamM := irhelper.Field("M", ir.IntLenSliceType(), nil)
+	typeParams := irhelper.Fields("T", "S", someInt, typeParamM)
+	typeParamT := ir.NewGenericTypeParam(typeParams.List[0].Fields[0])
+	typeParamS := ir.NewGenericTypeParam(typeParams.List[0].Fields[1])
 	castArrayFunc := &ir.FuncBuiltin{
 		Src: &ast.FuncDecl{Name: &ast.Ident{Name: "cast"}},
-		FType: irhelper.AxisLengths(irhelper.FuncType(
+		FType: irhelper.FuncType(
 			typeParams,
 			nil,
-			irhelper.Fields(irhelper.ArrayType(typeParamS, irhelper.Axis("___M"))),
-			irhelper.Fields(irhelper.ArrayType(typeParamT, irhelper.Axis("M___"))),
-		), "___M"),
+			irhelper.Fields(irhelper.ArrayType(typeParamS, irhelper.Axis(typeParamM))),
+			irhelper.Fields(irhelper.ArrayType(typeParamT, irhelper.Axis(typeParamM))),
+		),
 	}
 	xField := irhelper.Field("x", irhelper.ArrayType(ir.Int64Type(), 2), nil)
 	testbuild.Run(t,
@@ -618,10 +634,14 @@ func callCast(x [2]int64) [2]int32 {
 									irhelper.Fields(
 										irhelper.Field("T", someInt, nil),
 										irhelper.Field("S", someInt, nil),
+										irhelper.Field("M", ir.IntLenSliceType(), nil),
 									), nil,
 									irhelper.Fields(irhelper.ArrayType(ir.Int64Type(), 2)),
 									irhelper.Fields(irhelper.ArrayType(ir.Int32Type(), 2)),
-									irhelper.SetFuncTypeParams(ir.Int32Type(), ir.Int64Type()),
+									irhelper.SetTypeParams(
+										ir.Int32Type(),
+										ir.Int64Type(),
+										[]int{2}),
 								),
 							),
 							Args: []ir.Expr{
@@ -756,6 +776,22 @@ func g(x float32) float32 {
 }
 `,
 		},
+		testbuild.Decl{
+			Src: `
+type floats interface {
+	float32 | float64
+}
+
+func f[T floats]([___M]T) [M___]T
+
+func reverse[T floats](par [___M]T) func(res [M___]T) [M___]T {
+	selfVJPFunc := func(res [M___]T) [M___]T {
+		return f(par)
+	}
+	return selfVJPFunc
+}
+`,
+		},
 	)
 }
 
@@ -783,7 +819,7 @@ func F[T whatisai.X]() T // ERROR undefined: whatisai
 			Src: `
 func f[T interface{ float32 | float64 }]() T {
 	T := 3 // ERROR cannot assign to T
-	return T
+	return T // ERROR T (type) is not an expression
 }
 `,
 		},
@@ -791,7 +827,7 @@ func f[T interface{ float32 | float64 }]() T {
 			Src: `
 func f[T interface{ float32 | float64 }]() T {
 	T = 3 // ERROR cannot assign to T
-	return T
+	return T // ERROR T (type) is not an expression
 }
 `,
 		},

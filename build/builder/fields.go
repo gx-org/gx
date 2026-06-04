@@ -65,6 +65,9 @@ func (f *fieldList) buildFieldList(dscope *defineLocalScope) (*ir.FieldList, boo
 		fList.List[i], fieldOk = group.build(dscope)
 		ok = fieldOk && ok
 	}
+	for i, field := range fList.Fields() {
+		field.Pos = i
+	}
 	if !ok {
 		return fList, false
 	}

@@ -157,7 +157,7 @@ func TestConstErrors(t *testing.T) {
 const A = 3
 
 func F() [A]int32 {
-	return [2]int32{1, 2} // ERROR cannot use [2]int32 as [A]int32 value in return statement
+	return [2]int32{1, 2} // ERROR cannot use [2]int32 as [3]int32 value in return statement
 }
 `,
 		},

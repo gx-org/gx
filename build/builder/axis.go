@@ -135,14 +135,24 @@ func (dim *defineAxisLength) source() ast.Node {
 }
 
 func (dim *defineAxisLength) build(rscope *defineLocalScope) (ir.AxisLengths, bool) {
-	src := *dim.src
-	src.Name = dim.name
-	ax := &ir.AxisStmt{
-		Src: dim.src,
-		Typ: dim.typ,
+	field := &ir.Field{
+		Name: dim.src,
+		Pos:  rscope.ftype.TypeParams.Len(),
+		Group: &ir.FieldGroup{
+			Type: ir.TypeExpr(nil, dim.typ),
+		},
 	}
-	rscope.defineAxis(ax)
-	return ax, true
+	field.Group.Fields = append(field.Group.Fields, field)
+	if rscope.ftype.TypeParams == nil {
+		rscope.ftype.TypeParams = &ir.FieldList{}
+	}
+	rscope.ftype.TypeParams.List = append(rscope.ftype.TypeParams.List, field.Group)
+	ax := ir.NewGenericNonTypeParam(field)
+	rscope.define(ax)
+	return &ir.AxisExpr{X: &ir.Ident{
+		Src:  dim.src,
+		Stor: ax,
+	}}, true
 }
 
 func (dim *defineAxisLength) String() string {

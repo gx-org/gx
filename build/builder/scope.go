@@ -74,6 +74,11 @@ func elementFromStorageWithValue(scope resolveScope, node ir.StorageWithValue) (
 }
 
 func defineLocalVar(scope resolveScope, storage ir.Storage) bool {
+	if assignExpr, isAssignExpr := storage.(*ir.AssignExpr); isAssignExpr {
+		if _, isLocal := assignExpr.Storage.(*ir.LocalVarStorage); !isLocal {
+			return true
+		}
+	}
 	lScope, ok := scope.(localScope)
 	if !ok {
 		return scope.Err().AppendInternalf(storage.Node(), "%T is not a local scope", scope)

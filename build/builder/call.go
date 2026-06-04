@@ -18,10 +18,14 @@ import (
 	"fmt"
 	"go/ast"
 	"go/token"
+	"strings"
 
 	"github.com/gx-org/gx/build/fmterr"
+	"github.com/gx-org/gx/build/ir/generics"
 	"github.com/gx-org/gx/build/ir"
+	"github.com/gx-org/gx/build/ir/irkind"
 	"github.com/gx-org/gx/internal/interp/compeval/cpevelements"
+	"github.com/gx-org/gx/interp/elements"
 	"github.com/gx-org/gx/interp/fun"
 )
 
@@ -90,8 +94,7 @@ func (n *callExpr) buildTypeCast(rscope resolveScope, callee ir.Expr, store ir.S
 	if typRef == nil {
 		return typeError(rscope, callee)
 	}
-	dst := typRef.Val()
-	ext := &ir.CastExpr{Src: n.src, Typ: dst}
+	ext := &ir.CastExpr{Src: n.src, Typ: typRef.Val()}
 	args, argsOk := n.buildArgs(rscope)
 	if !argsOk {
 		return ext, false
@@ -108,7 +111,8 @@ func (n *callExpr) buildTypeCast(rscope resolveScope, callee ir.Expr, store ir.S
 	if !ok {
 		return ext, false
 	}
-	convertOk := convertToAt(rscope, n.src, ext.X.Type(), ext.Typ)
+	srcType := ext.X.Type()
+	convertOk := convertToAt(rscope, n.src, srcType, ext.Typ)
 	return ext, convertOk
 }
 
@@ -224,7 +228,7 @@ func (n *callExpr) buildCallExpr(rscope resolveScope, callee ir.Expr) (ir.Expr, 
 	if err != nil {
 		return invalidExpr(), rscope.Err().AppendAt(callee.Node(), err)
 	}
-	switch elT := el.(type) {
+	switch elT := ir.BareValue(el).(type) {
 	case *cpevelements.Macro:
 		return n.buildMacroCall(rscope, compEval, callee, elT.IR())
 	case ir.Type:
@@ -237,11 +241,28 @@ func (n *callExpr) buildCallExpr(rscope resolveScope, callee ir.Expr) (ir.Expr, 
 		return n.buildTypeCast(rscope, callee, elT.Store())
 	case ir.FuncElement:
 		return n.buildCallExpr(rscope, ir.NewFuncValExpr(callee, elT.Func()))
+	case *ir.MacroKeyword:
+		return n.callMacroKeyword(rscope, elT)
 	case ir.TupleElement:
-		return invalidExpr(), rscope.Err().Appendf(callee.Node(), "multiple value %s in single-value context", callee.SourceString(rscope.fileScope().irFile()))
+		return invalidExpr(), rscope.Err().Appendf(callee.Node(), "multiple values %s in single-value context", callee.SourceString(rscope.fileScope().irFile()))
 	default:
-		return invalidExpr(), rscope.Err().AppendInternalf(callee.Node(), "expression %s evaluated to element of type %T that is not callable. Scope:\n%s\nCompEval:\n%s", callee.SourceString(rscope.fileScope().irFile()), elT, rscope.String(), compEval.String())
+		return invalidExpr(), rscope.Err().Appendf(callee.Node(), "%s not callable", callee.SourceString(rscope.fileScope().irFile()))
 	}
+}
+
+func (n *callExpr) callMacroKeyword(rscope resolveScope, callee *ir.MacroKeyword) (ir.Expr, bool) {
+	if len(n.args) != 1 {
+		return invalidExpr(), rscope.Err().Appendf(n.src, "expect 1 argument, got %d", len(n.args))
+	}
+	args, ok := n.buildArgs(rscope)
+	if !ok {
+		return invalidExpr(), false
+	}
+	x, err := callee.BuildSynthetic(rscope.fileScope().irFile(), args[0])
+	if err != nil {
+		return x, rscope.Err().AppendAt(n.src, err)
+	}
+	return x, true
 }
 
 func (n *callExpr) buildExpr(rscope resolveScope) (ir.Expr, bool) {
@@ -250,4 +271,124 @@ func (n *callExpr) buildExpr(rscope resolveScope) (ir.Expr, bool) {
 		return nil, false
 	}
 	return n.buildCallExpr(rscope, callee)
+}
+
+func checkArgsForCall(rscope resolveScope, ce *compileEvaluator, fExpr *ir.FuncValExpr, args []ir.Expr) ([]ir.Expr, bool) {
+	ok := true
+	ftype := fExpr.FuncType()
+	out := make([]ir.Expr, len(args))
+	numParams := ftype.Params.Len()
+	for i, arg := range args {
+		param, isVarArg := ftype.ArgIndexToParamField(i)
+		target := param.Type()
+		if isVarArg {
+			target = ftype.VarArgs.IndexForVarArgs(i - (numParams - 1))
+		}
+		argType := arg.Type()
+		if unpack, isUnpack := arg.(*ir.UnpackExpr); isUnpack {
+			argType = unpack.EltTyp
+		}
+		if irkind.IsNumber(argType.Kind()) {
+			var argOk bool
+			arg, argOk = castNilAndNumber(rscope, arg, target)
+			argType = arg.Type()
+			if !argOk {
+				ok = argOk
+			}
+		}
+		assignable, cpErr, err := ir.AssignableTo(ce, argType, target)
+		if err != nil {
+			return args, ce.Err().AppendAt(arg.Node(), err)
+		}
+		if cpErr != nil {
+			return args, ce.Err().AppendAt(arg.Node(), cpErr)
+		}
+		if !assignable {
+			from := ce.File()
+			ok = ce.Err().Appendf(arg.Node(), "cannot use type %s as %s in argument to %s", argType.ReferString(from), target.ReferString(from), fExpr.SourceString(from))
+		}
+		out[i] = arg
+	}
+	return out, ok
+}
+
+func evalGenericValues(ce *compileEvaluator, ftype *ir.FuncType) (map[string]ir.Element, bool) {
+	out := make(map[string]ir.Element)
+	for _, tParam := range ftype.TypeParams.Fields() {
+		if !ir.ValidIdent(tParam.Name) {
+			continue
+		}
+		name := tParam.Name.Name
+		file := ce.File()
+		storage := tParam.Storage()
+		var el ir.Element
+		if ir.IsAxisSpecType(tParam.Type()) {
+			storeAt := elements.NewNodeAt[ir.Storage](file, storage)
+			el = cpevelements.NewProxy(storeAt)
+		} else {
+			genType := ir.NewGenericTypeParam(storage.Field)
+			el = cpevelements.NewStoredValue(file, genType, genType)
+		}
+		out[name] = el
+	}
+	ok := true
+	for _, genVal := range ftype.GenericValues {
+		if genVal == nil {
+			continue
+		}
+		field := genVal.Generic().OrigField()
+		if !ir.ValidIdent(field.Name) {
+			continue
+		}
+		var err error
+		out[field.Name.Name], err = ce.EvalExpr(genVal.Value())
+		if err != nil {
+			ok = ce.Err().AppendAt(genVal.Value().Node(), err)
+		}
+	}
+	return out, ok
+}
+
+func instantiateFType(ce *compileEvaluator, node ast.Node, funcFile *ir.File, ftype *ir.FuncType) (*ir.FuncType, bool) {
+	genVals, ok := evalGenericValues(ce, ftype)
+	if !ok {
+		return ftype, false
+	}
+	sigCE, ok := ce.sub(funcFile, genVals)
+	if !ok {
+		return ftype, false
+	}
+	return generics.Instantiate(sigCE, node, ftype, ftype.GenericValues)
+}
+
+func buildFuncForCall(rscope resolveScope, fExpr *ir.FuncValExpr, args []ir.Expr) ([]ir.Expr, *ir.FuncValExpr, bool) {
+	if rscope.requireCompevalCall() && !fExpr.Func().FuncType().CompEval {
+		return args, fExpr, rscope.Err().Appendf(fExpr.Node(), "expect a compeval function, function %s is not", fExpr.Func().ShortString())
+	}
+	compEval, compEvalOk := rscope.compEval()
+	if !compEvalOk {
+		return args, fExpr, false
+	}
+	var ok bool
+	fExpr, ok = generics.Infer(compEval, fExpr, args)
+	if !ok {
+		return args, fExpr, false
+	}
+	typeParams := fExpr.FuncType().TypeParams.Fields()
+	if len(typeParams) > 0 {
+		names := make([]string, len(typeParams))
+		for i, field := range typeParams {
+			names[i] = field.Name.Name
+		}
+		parameter := "parameter"
+		if len(names) > 1 {
+			parameter = "parameters"
+		}
+		return args, fExpr, rscope.Err().Appendf(fExpr.Node(), "cannot infer type %s %s", parameter, strings.Join(names, ","))
+	}
+	fTypeInst, instOk := instantiateFType(compEval, fExpr.Node(), fExpr.Func().File(), fExpr.FuncType())
+	fExprInst := fExpr.NewFType(fTypeInst)
+	var argsOk bool
+	args, argsOk = checkArgsForCall(rscope, compEval, fExprInst, args)
+	return args, fExprInst, instOk && argsOk
 }

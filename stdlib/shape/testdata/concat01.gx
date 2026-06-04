@@ -1,0 +1,13 @@
+package testdata
+
+import "shape"
+
+func TestConcat1Da() [6]float32 {
+	return shape.Concat[0](
+		[...]float32{1, 2},
+		[...]float32{3, 4},
+		[...]float32{5, 6},
+	)
+	// Want:
+	// [(2+2)+2]float32{1, 2, 3, 4, 5, 6}
+}

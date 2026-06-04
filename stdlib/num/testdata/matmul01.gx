@@ -1,0 +1,11 @@
+package testdata
+
+import "num"
+
+func TestMatMulScalars() float64 {
+	x := [1]float64{1}
+	y := [1]float64{-1}
+	return num.MatMul(x, y)
+	// Want:
+	// float64(-1)
+}

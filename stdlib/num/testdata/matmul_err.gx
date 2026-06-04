@@ -1,0 +1,34 @@
+package testdata
+
+import "num"
+
+func testMatmul1Axis() float32 {
+	a := [2]float32{}
+	b := [3]float32{}
+	return num.MatMul(a, b) // ERROR incompatible axis lengths: 2!=3
+
+}
+
+func testMatmul2Axis() float32 {
+	a := [2][4]float32{}
+	b := [3]float32{}
+	return num.MatMul(a, b) // ERROR incompatible axis lengths: 2!=3 in [2][4],[3]
+}
+
+func testMatmulLeftMoreThan2Axis() float32 {
+	a := [3][2][4]float32{}
+	b := [4][3]float32{}
+	return num.MatMul(a, b) // ERROR expects no more than 2 axes but got 3 axes ([3][2][4])
+}
+
+func testMatmulRightMoreThan2Axis() float32 {
+	a := [4][3]float32{}
+	b := [3][2][4]float32{}
+	return num.MatMul(a, b) // ERROR expects no more than 2 axes but got 3 axes ([3][2][4])
+}
+
+func testMatmulIncompatibleAxis() float32 {
+	a := [5][4]float32{}
+	b := [3][2]float32{}
+	return num.MatMul(a, b) // ERROR invalid axis length: 4!=3 in [5][4],[3][2]
+}

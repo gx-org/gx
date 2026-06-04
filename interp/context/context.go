@@ -105,14 +105,11 @@ func (ctx *Context) CurrentFunc() ir.Func {
 }
 
 // Sub returns a child context given a set of elements.
-func (ctx *Context) Sub(sm *SubMap) *Context {
+func (ctx *Context) Sub(m map[string]ir.Element) *Context {
 	sub := &Context{core: ctx.core}
 	sub.stack = append([]*blockFrame{}, ctx.stack...)
 	bFrame := sub.PushBlockFrame()
-	if sm == nil {
-		return sub
-	}
-	for n, elt := range sm.m {
+	for n, elt := range m {
 		bFrame.defineS(n, elt)
 	}
 	return sub
@@ -130,33 +127,19 @@ func (ctx *Context) File() *ir.File {
 
 func (ctx *Context) String() string {
 	s := strings.Builder{}
+	f := ctx.File()
+	s.WriteString(fmt.Sprintf("Package: %s file: %s\nFrame stack:\n", f.Package.Path(), f.Name()))
 	for i, fr := range ctx.stack {
-		fmt.Fprintf(&s, "Stack %d:\n%s", i, gxfmt.Indent(fr.String()))
+		fmt.Fprintln(&s, gxfmt.Indent(fmt.Sprintf("%d: %s", i, fr.String())))
 	}
+	fmt.Fprintf(&s, "Current scope (frame %d):\n%s\n", len(ctx.stack)-1, gxfmt.Indent(ctx.currentFrame().scope.String()))
 	return s.String()
 }
 
-// SubMap defines a mapping from names to element.
-type SubMap struct {
-	m map[string]ir.Element
-}
-
-// NewSubMap returns a new map from name to element.
-func NewSubMap(m map[string]ir.Element) *SubMap {
-	sm := &SubMap{m: make(map[string]ir.Element)}
-	if m == nil {
-		return sm
-	}
-	for k, v := range m {
-		sm.m[k] = v
-	}
-	return sm
-}
-
 // Define a new variable in the frame.
-func (sm *SubMap) Define(name *ast.Ident, value ir.Element) {
+func Define(m map[string]ir.Element, name *ast.Ident, value ir.Element) {
 	if !ir.ValidIdent(name) {
 		return
 	}
-	sm.m[name.Name] = value
+	m[name.Name] = value
 }

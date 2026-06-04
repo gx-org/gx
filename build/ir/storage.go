@@ -15,7 +15,9 @@
 package ir
 
 import (
+	"fmt"
 	"go/ast"
+	"maps"
 )
 
 type builtinStorage struct {
@@ -50,14 +52,18 @@ func (s *builtinStorage) Same(o Storage) bool {
 	return Storage(s) == o
 }
 
-const numGXBuiltins = 19
+const numGXBuiltins = 21
 
 var builtins = make(map[Storage]bool, numGXBuiltins)
 
 func registerLanguageBuiltins(stor StorageWithValue) StorageWithValue {
 	if len(builtins) > numGXBuiltins {
+		var names []string
+		for k := range maps.Keys(builtins) {
+			names = append(names, k.NameDef().Name)
+		}
 		// Check that builtins are not registered multiple times.
-		panic("too many GX builtins registered")
+		panic(fmt.Sprintf("too many GX builtins registered. Registering %s in %v", stor.NameDef().Name, names))
 	}
 	builtins[stor] = true
 	return stor
@@ -76,6 +82,16 @@ func BuiltinFunction(impl FuncImpl) StorageWithValue {
 	return registerLanguageBuiltins(&FuncBuiltin{
 		Src:  &ast.FuncDecl{Name: &ast.Ident{Name: impl.Name()}},
 		Impl: impl,
+	})
+}
+
+// BuiltinKeywordMacro registers a language builtin macro.
+func BuiltinKeywordMacro(name string, impl MacroKeywordImpl) StorageWithValue {
+	return registerLanguageBuiltins(&MacroKeyword{
+		MetaCore: MetaCore{
+			Src: &ast.FuncDecl{Name: &ast.Ident{Name: name}},
+		},
+		BuildSynthetic: impl,
 	})
 }
 

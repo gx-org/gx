@@ -62,12 +62,15 @@ func (n *Tuple) Expr(ev ir.Evaluator, src ast.Expr) (_ ir.Expr, cpErr ir.CompEva
 			err = fmt.Errorf("cannot convert tuple %s to an IR expression: %w", n.Type().ReferString(nil), err)
 		}
 	}()
-	if len(n.elements) != 2 {
-		return nil, nil, errors.Errorf("expect 2 elements but got %d", len(n.elements))
+	if len(n.elements) > 2 {
+		return nil, nil, errors.Errorf("expect less than 2 elements but got %d", len(n.elements))
 	}
 	expr, cpErr, err := ir.ToExpr(ev, src, n.elements[0])
 	if cpErr != nil || err != nil {
 		return expr, cpErr, err
+	}
+	if len(n.elements) == 1 {
+		return expr, nil, nil
 	}
 	cpErr, err = ev.ToCompEvalError(src, n.elements[1])
 	return expr, cpErr, err

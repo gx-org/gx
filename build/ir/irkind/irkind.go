@@ -235,5 +235,12 @@ func IsConcrete(kind Kind) bool {
 	if IsFloat(kind) {
 		return true
 	}
-	return kind == Bool
+	switch kind {
+	case Bool:
+		return true
+	case Invalid:
+		return true
+	default:
+		return false
+	}
 }

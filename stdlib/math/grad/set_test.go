@@ -280,10 +280,10 @@ func g[T floats](x [___M]T) [M___]T
 func F[T floats](x [___M]T) [M___]T
 `,
 			Want: `
-func vjpF[T floats](x [___M]T) ([M___]T, func(res [M___]T) [M___]T) {
-	fwd0 := F[T](x)
+func vjpF[T floats, M []intlen](x [M___]T) ([M___]T, func(res [M___]T) [M___]T) {
+	fwd0 := F[T][[]intlen{M}](x)
 	selfVJPFunc := func(res [M___]T) [M___]T {
-		return res*g[T](x)
+		return res*g[T][[]intlen{M}](x)
 	}
 	return fwd0, selfVJPFunc
 }

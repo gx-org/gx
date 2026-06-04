@@ -16,6 +16,7 @@ package numbers
 
 import (
 	"fmt"
+	"go/ast"
 	"go/token"
 	"math/big"
 
@@ -162,6 +163,14 @@ func (n *Float) Simplify() canonical.Simplifier {
 // Copy returns the receiver.
 func (n *Float) Copy() engine.Copier {
 	return n
+}
+
+// Expr returns the expression representing the integer.
+func (n *Float) Expr(ir.Evaluator, ast.Expr) (ir.Expr, ir.CompEvalError, error) {
+	return &ir.NumberCastExpr{
+		X:   &ir.NumberFloat{Val: n.val},
+		Typ: n.typ,
+	}, nil, nil
 }
 
 // NumericalConstant returns the value of a constant represented by a node.

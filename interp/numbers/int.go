@@ -29,6 +29,7 @@ import (
 	"github.com/gx-org/gx/internal/interp/canonical"
 	"github.com/gx-org/gx/internal/interp/coreops"
 	"github.com/gx-org/gx/internal/interp/flatten"
+	"github.com/gx-org/gx/internal/togo"
 	"github.com/gx-org/gx/interp/elements"
 	"github.com/gx-org/gx/interp/engine"
 	"github.com/gx-org/gx/interp/materialise"
@@ -43,8 +44,9 @@ type Int struct {
 }
 
 var (
-	_ Number       = (*Int)(nil)
-	_ ir.Canonical = (*Int)(nil)
+	_ Number           = (*Int)(nil)
+	_ ir.Canonical     = (*Int)(nil)
+	_ togo.WithGoValue = (*Int)(nil)
 )
 
 // NewInt returns a new element Int number element.
@@ -156,7 +158,10 @@ func (n *Int) Shape() *shape.Shape {
 
 // Expr returns the expression representing the integer.
 func (n *Int) Expr(ir.Evaluator, ast.Expr) (ir.Expr, ir.CompEvalError, error) {
-	return n.expr, nil, nil
+	return &ir.NumberCastExpr{
+		X:   &ir.NumberInt{Val: n.val},
+		Typ: n.typ,
+	}, nil, nil
 }
 
 // Type of the element.
@@ -232,9 +237,9 @@ func (n *Int) Materialise(ao materialise.Materialiser) (materialise.Node, error)
 	return ao.NodeFromArray(val)
 }
 
-// ShortString returns a short string representation of the value.
+// ShortString returns a short string representation for the integer.
 func (n *Int) ShortString() string {
-	return n.SourceString(nil)
+	return n.String()
 }
 
 // SourceString returns the GX source code to represent the float.
@@ -244,4 +249,15 @@ func (n *Int) SourceString(from *ir.File) string {
 		return val
 	}
 	return fmt.Sprintf("%s(%s)", n.Type().ReferString(from), val)
+}
+
+// GoValue of the underlying element.
+func (n *Int) GoValue() (any, error) {
+	return n.val, nil
+}
+
+// String representation of the integer.
+// Used in compiler error messages.
+func (n *Int) String() string {
+	return n.val.String()
 }

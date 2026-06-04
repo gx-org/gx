@@ -16,6 +16,7 @@ package elements
 
 import (
 	"go/ast"
+	"reflect"
 
 	"github.com/pkg/errors"
 	"github.com/gx-org/gx/api/values"
@@ -25,6 +26,7 @@ import (
 	"github.com/gx-org/gx/build/ir/irkind"
 	"github.com/gx-org/gx/internal/interp/canonical"
 	"github.com/gx-org/gx/internal/interp/flatten"
+	"github.com/gx-org/gx/internal/togo"
 	"github.com/gx-org/gx/interp/engine"
 )
 
@@ -232,6 +234,11 @@ func (n *Slice) Compare(x canonical.Comparable) (bool, error) {
 	return true, nil
 }
 
+// GoValue of the underlying element.
+func (n *Slice) GoValue() (any, error) {
+	return MapSlice(togo.Value, n.values)
+}
+
 // ShortString returns a string representation of the slice.
 func (n *Slice) ShortString() string {
 	return n.String()
@@ -242,12 +249,22 @@ func (n *Slice) String() string {
 	return gxfmt.String(n.values)
 }
 
-// SliceFromElement returns the string value stored in a element.
-func SliceFromElement(el ir.Element) (WithElements, error) {
+// ToWithElements returns the string value stored in a element.
+func ToWithElements(el ir.Element) (WithElements, error) {
 	under := Underlying(el)
 	sl, ok := under.(WithElements)
 	if !ok {
-		return nil, errors.Errorf("cannot convert element %T (underlying: %T) to a slice element", el, under)
+		return nil, errors.Errorf("cannot convert element %T (underlying: %T) to %s", el, under, reflect.TypeFor[WithElements]().String())
+	}
+	return sl, nil
+}
+
+// SliceFromElement returns a slice if the element is one, an error otherwise.
+func SliceFromElement(el ir.Element) (*Slice, error) {
+	under := Underlying(el)
+	sl, ok := under.(*Slice)
+	if !ok {
+		return nil, errors.Errorf("cannot convert element %T (underlying: %T) to %s", el, under, reflect.TypeFor[WithElements]().String())
 	}
 	return sl, nil
 }

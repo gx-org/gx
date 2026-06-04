@@ -20,27 +20,14 @@ import "github.com/gx-org/gx/interp"
 type (
 	// Stdlib is an implementation of the standard library functions by a backend.
 	Stdlib struct {
-		Math   Math
 		Num    Num
 		Rand   Rand
 		Shapes Shapes
 	}
 
-	// Math is the implementation of the math package.
-	Math struct {
-		Max interp.FuncBuiltin
-		Min interp.FuncBuiltin
-		Pow interp.FuncBuiltin
-	}
-
 	// Num is the implementation of the num package.
 	Num struct {
-		Einsum    interp.FuncBuiltin
-		MatMul    interp.FuncBuiltin
-		Sum       interp.FuncBuiltin
-		Transpose interp.FuncBuiltin
-		ReduceMax interp.FuncBuiltin
-		Argmax    interp.FuncBuiltin
+		Einsum interp.FuncBuiltin
 	}
 
 	// Rand of the rand package
@@ -51,7 +38,6 @@ type (
 
 	// Shapes is the implementation of the shapes package.
 	Shapes struct {
-		Len    interp.FuncBuiltin
-		Gather interp.FuncBuiltin
+		Len interp.FuncBuiltin
 	}
 )

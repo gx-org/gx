@@ -51,6 +51,7 @@ type Stdlib struct {
 var _ importers.Importer = (*Stdlib)(nil)
 
 var packages = []builtin.PackageBuilder{
+	cperrors.Package,
 	control.Package,
 	gxerrors.Package,
 	dtype.Package,

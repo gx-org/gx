@@ -15,6 +15,7 @@
 package builder_test
 
 import (
+	"fmt"
 	"testing"
 
 	"github.com/gx-org/gx/build/builder/testbuild"
@@ -77,6 +78,20 @@ func f() string {
 }
 `,
 		},
+		testbuild.Decl{
+			Src: `
+//gx:compeval
+func add(a, b intlen) intlen {
+	return a+b
+}
+
+func g[af, bf intlen]() [add(af,bf)]float32
+
+func f() [5]float32 {
+	return g[2][3]()
+}
+`,
+		},
 	)
 }
 
@@ -104,8 +119,8 @@ func returnTwo() (intlen, error) {
 	return 2, errors.New("a compeval test error")
 }
 
-func f() [returnTwo()]int32 { 
-	return [2]int32{1, 2} // ERROR a compeval test error
+func f() [returnTwo()]int32 { // ERROR a compeval test error
+	return [2]int32{1, 2}
 }
 `,
 		},
@@ -118,8 +133,8 @@ func returnTwo() (intlen, error) {
 	return 2, fmt.Errorf("a compeval test error")
 }
 
-func f() [returnTwo()]int32 { 
-	return [2]int32{1, 2} // ERROR a compeval test error
+func f() [returnTwo()]int32 { // ERROR a compeval test error
+	return [2]int32{1, 2}
 }
 `,
 		},
@@ -137,8 +152,8 @@ func returnAnError(xs ...int32) (intlen, error) {
 	return 2, fmt.Errorf("xs length: %d", len(xs))
 }
 
-func f() [returnAnError(1, 2, 3)]int32 { 
-	return [2]int32{1, 2} // ERROR xs length: 3
+func f() [returnAnError(1, 2, 3)]int32 { // ERROR xs length: 3
+	return [2]int32{1, 2}
 }
 `,
 		},
@@ -151,8 +166,8 @@ func returnAnError(xs ...int32) (intlen, error) {
 	return 2, fmt.Errorf("xs length: %d", len(xs))
 }
 
-func f() [returnAnError()]int32 { 
-	return [2]int32{1, 2} // ERROR xs length: 0
+func f() [returnAnError()]int32 { // ERROR xs length: 0 
+	return [2]int32{1, 2}
 }
 `,
 		},
@@ -169,6 +184,284 @@ func test() int32 {
 }
 `,
 			Wants: []string{"2"},
+		},
+	)
+}
+
+func TestCompevalBigFloatEqNeq(t *testing.T) {
+	testbuild.Run(t,
+		testbuild.CompEval{
+			EvalCanonical: true,
+			Src: `
+//gx:compeval
+func test() bool {
+	return 2 == 2
+}
+`,
+			Wants: []string{"true"},
+		},
+		testbuild.CompEval{
+			EvalCanonical: true,
+			Src: `
+//gx:compeval
+func test() bool {
+	return 2 == 3
+}
+`,
+			Wants: []string{"false"},
+		},
+		testbuild.CompEval{
+			EvalCanonical: true,
+			Src: `
+//gx:compeval
+func test() bool {
+	return 2 != 2
+}
+`,
+			Wants: []string{"false"},
+		},
+		testbuild.CompEval{
+			EvalCanonical: true,
+			Src: `
+//gx:compeval
+func test() bool {
+	return 2 != 3
+}
+`,
+			Wants: []string{"true"},
+		},
+	)
+}
+
+func TestCompevalBigFloatLSSGTR(t *testing.T) {
+	testbuild.Run(t,
+		testbuild.CompEval{
+			EvalCanonical: true,
+			Src: `
+//gx:compeval
+func test() bool {
+	return 2 > 3
+}
+`,
+			Wants: []string{"false"},
+		},
+		testbuild.CompEval{
+			EvalCanonical: true,
+			Src: `
+//gx:compeval
+func test() bool {
+	return 3 > 3
+}
+`,
+			Wants: []string{"false"},
+		},
+		testbuild.CompEval{
+			EvalCanonical: true,
+			Src: `
+//gx:compeval
+func test() bool {
+	return 3 > 2
+}
+`,
+			Wants: []string{"true"},
+		},
+		testbuild.CompEval{
+			EvalCanonical: true,
+			Src: `
+//gx:compeval
+func test() bool {
+	return 2 < 3
+}
+`,
+			Wants: []string{"true"},
+		},
+		testbuild.CompEval{
+			EvalCanonical: true,
+			Src: `
+//gx:compeval
+func test() bool {
+	return 3 < 3
+}
+`,
+			Wants: []string{"false"},
+		},
+		testbuild.CompEval{
+			EvalCanonical: true,
+			Src: `
+//gx:compeval
+func test() bool {
+	return 3 < 2
+}
+`,
+			Wants: []string{"false"},
+		},
+	)
+}
+
+func TestCompevalBigFloatLEQGEQ(t *testing.T) {
+	testbuild.Run(t,
+		testbuild.CompEval{
+			EvalCanonical: true,
+			Src: `
+//gx:compeval
+func test() bool {
+	return 2 >= 3
+}
+`,
+			Wants: []string{"false"},
+		},
+		testbuild.CompEval{
+			EvalCanonical: true,
+			Src: `
+//gx:compeval
+func test() bool {
+	return 3 >= 3
+}
+`,
+			Wants: []string{"true"},
+		},
+		testbuild.CompEval{
+			EvalCanonical: true,
+			Src: `
+//gx:compeval
+func test() bool {
+	return 3 >= 2
+}
+`,
+			Wants: []string{"true"},
+		},
+		testbuild.CompEval{
+			EvalCanonical: true,
+			Src: `
+//gx:compeval
+func test() bool {
+	return 2 <= 3
+}
+`,
+			Wants: []string{"true"},
+		},
+		testbuild.CompEval{
+			EvalCanonical: true,
+			Src: `
+//gx:compeval
+func test() bool {
+	return 3 <= 3
+}
+`,
+			Wants: []string{"true"},
+		},
+		testbuild.CompEval{
+			EvalCanonical: true,
+			Src: `
+//gx:compeval
+func test() bool {
+	return 3 <= 2
+}
+`,
+			Wants: []string{"false"},
+		},
+	)
+}
+
+func TestCompevalSliceLen(t *testing.T) {
+	testbuild.Run(t,
+		testbuild.CompEval{
+			EvalCanonical: true,
+			Src: `
+//gx:compeval
+func test() bool {
+	a := []intlen{2, 3}
+	return len(a) != len(a) 
+}
+`,
+			Wants: []string{"false"},
+		},
+		testbuild.CompEval{
+			EvalCanonical: true,
+			Src: `
+//gx:compeval
+func test() bool {
+	a := []intlen{2, 3}
+	b := []intlen{2}
+	return len(a) != len(b) 
+}
+`,
+			Wants: []string{"true"},
+		},
+	)
+}
+
+func atomicAtomicSource(tok string, a, b int, want bool) string {
+	out := "1"
+	if want {
+		out = "2"
+	}
+	return fmt.Sprintf(`
+//gx:compeval
+func cmp(a, b intlen) intlen {
+	if a %s b {
+		return 2
+	}
+	return 1
+}
+
+func f[a, b intlen](x [a]float32, y [b]float32) [cmp(a, b)]float32
+
+func test() [%s]float32 {
+	return f([%d]float32{}, [%d]float32{})
+}
+`, tok, out, a, b)
+}
+
+func TestCompevalAtomicAtomic(t *testing.T) {
+	testbuild.Run(t,
+		testbuild.Decl{
+			Src: atomicAtomicSource("==", 2, 2, true),
+		},
+		testbuild.Decl{
+			Src: atomicAtomicSource("==", 2, 3, false),
+		},
+		testbuild.Decl{
+			Src: atomicAtomicSource("!=", 2, 2, false),
+		},
+		testbuild.Decl{
+			Src: atomicAtomicSource("!=", 2, 3, true),
+		},
+		testbuild.Decl{
+			Src: atomicAtomicSource("<", 3, 2, false),
+		},
+		testbuild.Decl{
+			Src: atomicAtomicSource("<", 2, 3, true),
+		},
+		testbuild.Decl{
+			Src: atomicAtomicSource("<", 3, 3, false),
+		},
+		testbuild.Decl{
+			Src: atomicAtomicSource(">", 3, 2, true),
+		},
+		testbuild.Decl{
+			Src: atomicAtomicSource(">", 2, 3, false),
+		},
+		testbuild.Decl{
+			Src: atomicAtomicSource(">", 3, 3, false),
+		},
+		testbuild.Decl{
+			Src: atomicAtomicSource("<=", 3, 2, false),
+		},
+		testbuild.Decl{
+			Src: atomicAtomicSource("<=", 2, 3, true),
+		},
+		testbuild.Decl{
+			Src: atomicAtomicSource("<=", 3, 3, true),
+		},
+		testbuild.Decl{
+			Src: atomicAtomicSource(">=", 3, 2, true),
+		},
+		testbuild.Decl{
+			Src: atomicAtomicSource(">=", 2, 3, false),
+		},
+		testbuild.Decl{
+			Src: atomicAtomicSource(">=", 3, 3, true),
 		},
 	)
 }

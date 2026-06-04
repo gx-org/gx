@@ -139,6 +139,46 @@ func F() S {
 }
 `,
 		},
+		testbuild.Decl{
+			Src: `
+type S struct {
+	a float32 
+}
+
+func g(s S) S
+
+func f(s S) S {
+	return g(s)
+}
+`,
+		},
+		testbuild.Decl{
+			Src: `
+type S struct {
+	a float32
+}
+
+func (s S) New[Shape []intlen]() [Shape]float32 {
+	return [Shape]float32(s.a)
+}
+`,
+		},
+		testbuild.Decl{
+			Src: `
+type S struct {
+	a float32
+}
+
+func (s S) New[Shape []intlen]() [Shape]float32 {
+	return [Shape]float32(s.a)
+}
+
+func F() [3][2]float32 {
+	s := S{a:4}
+	return s.New[[]intlen{3,2}]()
+}
+`,
+		},
 	)
 }
 

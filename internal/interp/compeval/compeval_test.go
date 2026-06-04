@@ -30,7 +30,6 @@ import (
 	"github.com/gx-org/gx/build/ir/irkind"
 	"github.com/gx-org/gx/internal/interp/compeval"
 	"github.com/gx-org/gx/internal/interp/coreops"
-	"github.com/gx-org/gx/interp/context"
 	"github.com/gx-org/gx/interp/elements"
 	"github.com/gx-org/gx/interp"
 )
@@ -208,7 +207,7 @@ func TestExprEval(t *testing.T) {
 				ident("a"),
 				numberInt32(4),
 			),
-			want: "a-int32(4)",
+			want: "a-4",
 		},
 		{
 			desc: "binary int32, static variable",
@@ -216,7 +215,7 @@ func TestExprEval(t *testing.T) {
 				numberInt32(4),
 				ident("a"),
 			),
-			want: "int32(4)-a",
+			want: "4-a",
 		},
 		{
 			desc: "binary int32, unary static variable",
@@ -224,7 +223,7 @@ func TestExprEval(t *testing.T) {
 				numberInt32(4),
 				unaryExpr(token.SUB, ident("a")),
 			),
-			want: "int32(4)-(-a)",
+			want: "4-(-a)",
 		},
 		{
 			desc: "binary unary int32, static variable",
@@ -232,7 +231,7 @@ func TestExprEval(t *testing.T) {
 				unaryExpr(token.SUB, numberInt32(4)),
 				ident("a"),
 			),
-			want: "int32(-4)-a",
+			want: "-4-a",
 		},
 		{
 			desc: "numberInt",
@@ -486,9 +485,9 @@ func TestSubContext(t *testing.T) {
 	if err != nil {
 		t.Fatal(err)
 	}
-	sub, err := itp.Sub(itp.File(), context.NewSubMap(map[string]ir.Element{
+	sub, err := itp.Sub(itp.File(), map[string]ir.Element{
 		"b": bValue,
-	}))
+	})
 	if err != nil {
 		t.Fatal(err)
 	}

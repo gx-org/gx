@@ -18,7 +18,6 @@ import (
 	"go/ast"
 	"strings"
 
-	"github.com/pkg/errors"
 	"github.com/gx-org/gx/build/ir/irkind"
 )
 
@@ -54,11 +53,6 @@ func (m *BaseType[T]) Same(o Storage) bool {
 	return Storage(m) == o
 }
 
-// Specialise a type to a given target.
-func (*BaseType[T]) Specialise(spec Specialiser) (Type, CompEvalError, error) {
-	return nil, nil, errors.Errorf("type specialisation not supported")
-}
-
 // UnifyWith recursively unifies a type parameters with types.
 func (*BaseType[T]) UnifyWith(unifier Unifier, typ Type) bool {
 	return true
@@ -90,6 +84,19 @@ func (t *metaType) DefineString(*File) string {
 
 func (t *metaType) ReferString(from *File) string {
 	return t.DefineString(from)
+}
+
+// Specialise a type to a given target.
+func (t *metaType) Specialise(spec Specialiser) Type {
+	return t
+}
+
+func (t *metaType) Instantiate(Fetcher, Specialiser) (Type, bool) {
+	return t, true
+}
+
+func (t *metaType) IndexForVarArgs(int) Type {
+	return t
 }
 
 var metaTypeT = &metaType{
@@ -140,6 +147,10 @@ func (*invalidType) ConvertibleTo(TypeCmp, Type) (bool, CompEvalError, error) {
 	return (*invalidType).Equal(nil, nil, nil)
 }
 
+func (t *invalidType) Instantiate(Fetcher, Specialiser) (Type, bool) {
+	return t, true
+}
+
 func (*invalidType) Kind() irkind.Kind { return irkind.Invalid }
 
 func (*invalidType) NameDef() *ast.Ident { return nil }
@@ -157,8 +168,8 @@ func (t *invalidType) ReferString(from *File) string {
 }
 
 // Specialise a type to a given target.
-func (t *invalidType) Specialise(spec Specialiser) (Type, CompEvalError, error) {
-	return t, nil, nil
+func (t *invalidType) Specialise(spec Specialiser) Type {
+	return t
 }
 
 // UnifyWith recursively unifies a type parameters with types.
@@ -166,9 +177,21 @@ func (*invalidType) UnifyWith(unifier Unifier, typ Type) bool {
 	return true
 }
 
+func (t *invalidType) IndexForVarArgs(int) Type {
+	return t
+}
+
 type distinctType struct {
 	BaseType[ast.Expr]
 	kind irkind.Kind
+	tp   Type
+}
+
+func newDistinctType(kind irkind.Kind, tp Type) distinctType {
+	return distinctType{
+		kind: kind,
+		tp:   tp,
+	}
 }
 
 func (*distinctType) node() {}
@@ -203,12 +226,36 @@ func (t *distinctType) ReferString(from *File) string {
 	return t.DefineString(from)
 }
 
+func (t *distinctType) Specialise(Specialiser) Type {
+	return t.tp
+}
+
+func (t *distinctType) Instantiate(Fetcher, Specialiser) (Type, bool) {
+	return t.tp, true
+}
+
+func (t *distinctType) IndexForVarArgs(int) Type {
+	return t.tp
+}
+
+var (
+	unknownT = &unknownType{}
+	keywordT = &keywordTyp{}
+	voidT    = &voidType{}
+	nilT     = &nilType{}
+)
+
+func init() {
+	unknownT.distinctType = newDistinctType(irkind.Unknown, unknownT)
+	keywordT.distinctType = newDistinctType(irkind.Func, keywordT)
+	voidT.distinctType = newDistinctType(irkind.Void, voidT)
+	nilT.distinctType = newDistinctType(irkind.Nil, nilT)
+}
+
 // unknownType is the type returned by function with no results.
 type unknownType struct {
 	distinctType
 }
-
-var unknownT = &unknownType{distinctType: distinctType{kind: irkind.Unknown}}
 
 // UnknownType returns the unknown type.
 func UnknownType() Type {
@@ -220,8 +267,6 @@ type keywordTyp struct {
 	distinctType
 }
 
-var keywordT = &keywordTyp{distinctType: distinctType{kind: irkind.Func}}
-
 func keywordType() Type {
 	return keywordT
 }
@@ -230,8 +275,6 @@ func keywordType() Type {
 type voidType struct {
 	distinctType
 }
-
-var voidT = &voidType{distinctType: distinctType{kind: irkind.Void}}
 
 // VoidType returns the void type.
 func VoidType() Type {
@@ -407,8 +450,8 @@ func MetaFuncType() *FuncType {
 // Returns nil if the conversion is not possible
 func ToArrayType(typ Type) ArrayType {
 	switch typT := typ.(type) {
-	case *TypeParam:
-		return ToArrayType(typT.Field.Group.Type.Val())
+	case *GenericTypeParam:
+		return ToArrayType(typT.Type())
 	case *NamedType:
 		return ToArrayType(typT.Underlying.Val())
 	case *Interface:
@@ -443,11 +486,11 @@ type assigner interface {
 }
 
 func simplifyType(t Type) Type {
-	typeParam, ok := t.(*TypeParam)
+	typeParam, ok := t.(*GenericTypeParam)
 	if !ok {
 		return t
 	}
-	return typeParam.Field.Group.Type.Val()
+	return typeParam.OrigField().Type()
 }
 
 // IsInvalidType returns true if a type is invalid.

@@ -13,7 +13,7 @@ func TestVJPF() func(x float32) (float32, func(res float32) float32) {
 	return grad.Reverse(F)
 	// Want:
 	// func(x float32) (float32, func(res float32) float32) {
-	// 	fwd0, SinVJP := grad.Reverse(math.Sin)[float32](x)
+	// 	fwd0, SinVJP := grad.Reverse(math.Sin)[float32][[]intlen{}](x)
 	// 	selfVJPFunc := func(res float32) float32 {
 	// 		bck0 := SinVJP(res)
 	// 		return bck0
@@ -38,7 +38,7 @@ func TestVJPSoftMax() (float32, float32) {
 	// vjp_test.gx:0
 	// 	func(x float32) (float32, func(res float32) float32) {
 	// 		fwd0 := -x
-	// 		fwd1, ExpVJP := grad.Reverse(math.Exp)[float32](fwd0)
+	// 		fwd1, ExpVJP := grad.Reverse(math.Exp)[float32][[]intlen{}](fwd0)
 	// 		fwd2 := 1+fwd1
 	// 		fwd3 := 1/fwd2
 	// 		selfVJPFunc := func(res float32) float32 {
@@ -121,10 +121,10 @@ func TestVJPLog() (float64, float64) {
 	// 1: float64(0.5)
 	// Trace:
 	// vjp_test.gx:0
-	// 	func[T dtype.Num](par [___S]T) ([S___]T, func(res [S___]T) [S___]T) {
-	// 		fwd0 := Log[T](par)
+	// 	func[T dtype.Num, S []intlen](par [S___]T) ([S___]T, func(res [S___]T) [S___]T) {
+	// 		fwd0 := Log[T][[]intlen{S}](par)
 	// 		selfVJPFunc := func(res [S___]T) [S___]T {
-	// 			return res*inverse[T](par)
+	// 			return res*inverse[T][[]intlen{S}](par)
 	// 		}
 	// 		return fwd0, selfVJPFunc
 	// 	}

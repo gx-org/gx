@@ -71,14 +71,34 @@ func xorAtomicToAtomic[T dtype.IntegerType](xVal, yVal Array) (Array, error) {
 	return ToIntegerArray[T]([]T{x.values[0] ^ y.values[0]}, nil), nil
 }
 
-func equalAtomicToAtomic[T dtype.AlgebraType](xVal, yVal Array) (Array, error) {
+func eqlAtomicToAtomic[T dtype.AlgebraType](xVal, yVal Array) (Array, error) {
 	x, y := toArray[T](xVal), toArray[T](yVal)
 	return ToBoolArray([]bool{x.values[0] == y.values[0]}, nil), nil
 }
 
-func notEqualAtomicToAtomic[T dtype.AlgebraType](xVal, yVal Array) (Array, error) {
+func neqAtomicToAtomic[T dtype.AlgebraType](xVal, yVal Array) (Array, error) {
 	x, y := toArray[T](xVal), toArray[T](yVal)
 	return ToBoolArray([]bool{x.values[0] != y.values[0]}, nil), nil
+}
+
+func lssAtomicToAtomic[T dtype.AlgebraType](xVal, yVal Array) (Array, error) {
+	x, y := toArray[T](xVal), toArray[T](yVal)
+	return ToBoolArray([]bool{x.values[0] < y.values[0]}, nil), nil
+}
+
+func gtrAtomicToAtomic[T dtype.AlgebraType](xVal, yVal Array) (Array, error) {
+	x, y := toArray[T](xVal), toArray[T](yVal)
+	return ToBoolArray([]bool{x.values[0] > y.values[0]}, nil), nil
+}
+
+func leqAtomicToAtomic[T dtype.AlgebraType](xVal, yVal Array) (Array, error) {
+	x, y := toArray[T](xVal), toArray[T](yVal)
+	return ToBoolArray([]bool{x.values[0] <= y.values[0]}, nil), nil
+}
+
+func geqAtomicToAtomic[T dtype.AlgebraType](xVal, yVal Array) (Array, error) {
+	x, y := toArray[T](xVal), toArray[T](yVal)
+	return ToBoolArray([]bool{x.values[0] >= y.values[0]}, nil), nil
 }
 
 // AtomicToArray

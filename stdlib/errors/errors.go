@@ -16,6 +16,13 @@
 package errors
 
 import (
+	"fmt"
+	"go/ast"
+	"go/token"
+	"strconv"
+
+	"github.com/gx-org/gx/build/ir"
+	"github.com/gx-org/gx/interp/engine"
 	"github.com/gx-org/gx/stdlib/builtin"
 )
 
@@ -25,4 +32,29 @@ var Package = builtin.PackageBuilder{
 	Builders: []builtin.Builder{
 		builtin.ParseSource(),
 	},
+}
+
+// Errorf returns a GX error.
+func Errorf(env engine.Env, format string, a ...any) (ir.Element, error) {
+	pkg, err := env.Engine().Importer().Import("errors")
+	if err != nil {
+		return nil, err
+	}
+	fn := pkg.FindFunc("New")
+	eval, err := env.ExprEval().Sub(pkg.Files["errors/errors.gx"], nil)
+	if err != nil {
+		return nil, err
+	}
+	return eval.EvalExpr(&ir.FuncCallExpr{
+		Callee: ir.NewFuncValExpr(
+			&ir.Ident{Src: &ast.Ident{Name: "New"}, Stor: fn},
+			fn,
+		),
+		Args: []ir.Expr{&ir.StringLiteral{
+			Src: &ast.BasicLit{
+				Kind:  token.STRING,
+				Value: strconv.Quote(fmt.Sprintf(format, a...)),
+			},
+		}},
+	})
 }

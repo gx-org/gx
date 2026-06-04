@@ -88,7 +88,7 @@ func findStorage(scope resolveScope, name *ast.Ident) (ir.Storage, bool) {
 		if store == nil {
 			return nil, scope.Err().AppendInternalf(name, "name %q refers element %T which returned a nil storage", name.Name, el)
 		}
-		return elT.Store(), true
+		return store, true
 	default:
 		return nil, scope.Err().AppendInternalf(name, "element %T is not a storage", el)
 	}
@@ -268,13 +268,12 @@ func isInvalidExpr(expr ir.Expr) bool {
 	return ir.IsInvalidType(expr.Type())
 }
 
-var invalidIdent = &ir.Ident{
-	Src:  &ast.Ident{Name: "<<<invalid>>>"},
-	Stor: ir.InvalidType(),
+func invalidExpr() *ir.Ident {
+	return ir.InvalidIdent
 }
 
-func invalidExpr() *ir.Ident {
-	return invalidIdent
+func invalidStore() ir.Storage {
+	return ir.InvalidIdent.Stor
 }
 
 var invalidTypeExprVal = ir.TypeExpr(

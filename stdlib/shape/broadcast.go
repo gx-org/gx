@@ -103,7 +103,7 @@ func (f broadcast) BuildFuncType(fetcher ir.Fetcher, call *ir.FuncCallExpr) (*ir
 }
 
 func evalBroadcast(env engine.Env, call *ir.FuncCallExpr, recv ir.Element, args []ir.Element) ([]ir.Element, error) {
-	targetAxes, err := elements.AxesFromElement(args[1])
+	targetAxes, err := elements.AxesFromElement(args[0])
 	if err != nil {
 		return nil, err
 	}
@@ -112,7 +112,7 @@ func evalBroadcast(env engine.Env, call *ir.FuncCallExpr, recv ir.Element, args 
 		broadcastAxes[i] = i
 	}
 	mat := builtin.Materialiser(env)
-	x, xShape, err := materialise.Element(mat, args[0])
+	x, xShape, err := materialise.Element(mat, args[3])
 	if err != nil {
 		return nil, err
 	}

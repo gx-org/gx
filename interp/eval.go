@@ -15,7 +15,6 @@
 package interp
 
 import (
-	"fmt"
 	"go/token"
 	"reflect"
 
@@ -510,11 +509,6 @@ func evalSliceLiteral(fitp *Interpreter, expr *ir.SliceLitExpr) (ir.Element, err
 
 // evalExpr evaluates an expression within the Context.
 func evalExpr(fitp *Interpreter, expr ir.Expr) (_ ir.Element, err error) {
-	defer func() {
-		if err != nil {
-			err = fmt.Errorf("cannot evaluate expression %q:\n%w", expr.SourceString(fitp.File()), err)
-		}
-	}()
 	if expr == nil {
 		return nil, errors.Errorf("cannot evaluate a nil expression")
 	}
@@ -574,7 +568,7 @@ func evalExpr(fitp *Interpreter, expr ir.Expr) (_ ir.Element, err error) {
 	case *ir.FuncValExpr:
 		return evalFuncValExpr(fitp, exprT)
 	case *ir.TypeValExpr:
-		return exprT, nil
+		return exprT.Val(), nil
 	default:
 		return nil, fmterr.Errorf(fitp.File().FileSet(), expr.Node(), "cannot evaluate GX expression: %T not supported", expr)
 	}
@@ -620,18 +614,7 @@ func evalNumberCastExpr(fitp *Interpreter, expr *ir.NumberCastExpr) (engine.Nume
 	if err != nil {
 		return nil, err
 	}
-	tp := expr.Typ
-	if tpParam, ok := expr.Typ.(*ir.TypeParam); ok {
-		tpEl, err := fitp.Context().CurrentFrame().Find(tpParam.Field.Name)
-		if err != nil {
-			return nil, err
-		}
-		tp, ok = elements.Underlying(tpEl).(ir.Type)
-		if !ok {
-			return nil, errors.Errorf("%T is not a type", tpEl)
-		}
-	}
-	return number.Cast(fitp.env, expr, tp)
+	return number.Cast(fitp.env, expr, expr.Typ)
 }
 
 func evalSelectorExpr(fitp *Interpreter, ref *ir.SelectorExpr) (ir.Element, error) {
@@ -684,23 +667,26 @@ func evalAtom[T dtype.GoDataType](fitp *Interpreter, expr ir.Expr) (val T, err e
 	return elements.ConstantScalarFromElement[T](el)
 }
 
-func evalCallee(fitp *Interpreter, callee ir.Callee) (fun.Func, error) {
+func evalCallee(fitp *Interpreter, callee ir.Callee) (fun.Func, []ir.Element, error) {
 	switch calleeT := callee.(type) {
 	case *ir.FuncValExpr:
 		fnNode, err := fitp.EvalExpr(calleeT.X())
 		if err != nil {
-			return nil, err
+			return nil, nil, err
 		}
 		fn, ok := fnNode.(fun.Func)
 		if !ok {
-			return nil, fmterr.Errorf(fitp.File().FileSet(), callee.Node(), "%T is not callable", fnNode)
+			return nil, nil, fmterr.Errorf(fitp.File().FileSet(), callee.Node(), "%T is not callable", fnNode)
 		}
-		return fn, nil
+		tpArgs, err := evalTypeArgumentExprs(fitp, calleeT)
+		if err != nil {
+			return nil, nil, err
+		}
+		return fn, tpArgs, nil
 	case *ir.MacroCallExpr:
-		return fitp.NewFunc(calleeT.Func(), nil), nil
-	default:
-		return nil, errors.Errorf("callee type %T not supported", callee)
+		return fitp.NewFunc(calleeT.Func(), nil), nil, nil
 	}
+	return nil, nil, errors.Errorf("callee type %T not supported", callee)
 }
 
 func evalCallExpr(fitp *Interpreter, expr *ir.FuncCallExpr) (ir.Element, error) {
@@ -711,34 +697,60 @@ func evalCallExpr(fitp *Interpreter, expr *ir.FuncCallExpr) (ir.Element, error) 
 	return ToSingleElement(fitp, expr, outs)
 }
 
-func evalArgExpr(fitp *Interpreter, expr ir.Expr) ([]ir.Element, error) {
-	el, err := evalExpr(fitp, expr)
-	if err != nil {
-		return nil, err
-	}
-	if _, isUnpack := expr.(*ir.UnpackExpr); !isUnpack {
-		return []ir.Element{el}, err
-	}
-	sl, err := elements.SliceFromElement(el)
-	if err != nil {
-		return nil, err
-	}
-	return sl.Elements(), nil
-}
-
-func evalCall(fitp *Interpreter, expr *ir.FuncCallExpr) ([]ir.Element, error) {
-	callee, err := evalCallee(fitp, expr.Callee)
-	if err != nil {
-		return nil, err
-	}
-	// Evaluate the arguments to pass to the function.
-	var args []ir.Element
-	for _, arg := range expr.Args {
-		el, err := evalArgExpr(fitp, arg)
+func evalTypeArgumentExprs(fitp *Interpreter, callee *ir.FuncValExpr) ([]ir.Element, error) {
+	genVals := callee.FuncType().GenericValues
+	tpArgs := make([]ir.Element, len(genVals))
+	for i, expr := range genVals {
+		var err error
+		tpArgs[i], err = fitp.EvalExpr(expr.Value())
 		if err != nil {
 			return nil, err
 		}
-		args = append(args, el...)
+		tp, isType := tpArgs[i].(ir.Type)
+		if !isType {
+			continue
+		}
+		tpArgs[i], err = toConcreteType(fitp.Context(), callee.Node(), fitp.Context().CurrentFrame(), tp)
+		if err != nil {
+			return nil, err
+		}
+	}
+	return tpArgs, nil
+}
+
+func evalCall(fitp *Interpreter, expr *ir.FuncCallExpr) ([]ir.Element, error) {
+	callee, args, err := evalCallee(fitp, expr.Callee)
+	if err != nil {
+		return nil, err
+	}
+	ftype := expr.Callee.FuncType()
+	var varargs []ir.Element
+	// Evaluate the arguments to pass to the function and
+	// append them after the type arguments.
+	for i, arg := range expr.Args {
+		el, err := evalExpr(fitp, arg)
+		if err != nil {
+			return nil, err
+		}
+		if tuple, isTuple := el.(*elements.Tuple); isTuple {
+			// Expanding the last argument: add all the elements and we are done.
+			varargs = append(varargs, tuple.Elements()...)
+			break
+		}
+		if _, isVarArgs := ftype.ArgIndexToParamField(i); isVarArgs {
+			// Vararg argument: add it to the list, process to the next one.
+			varargs = append(varargs, el)
+			continue
+		}
+		// Nothing special: update the list of arguments.
+		args = append(args, el)
+	}
+	if ftype.VarArgs != nil {
+		varargsSlice, err := elements.NewSlice(ftype.VarArgs.Typ, varargs)
+		if err != nil {
+			return nil, err
+		}
+		args = append(args, varargsSlice)
 	}
 	return callee.Call(fitp.env, expr, args)
 }

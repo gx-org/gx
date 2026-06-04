@@ -17,11 +17,22 @@ package ir
 import (
 	"fmt"
 	"strings"
+
+	"github.com/gx-org/gx/internal/base/cast"
 )
 
 // StringSourcer returns the GX source code of the implementation.
 type StringSourcer interface {
 	SourceString(from *File) string
+}
+
+// SourceString returns the source string of an element.
+func SourceString(from *File, el Element) string {
+	src, err := cast.To[StringSourcer](el)
+	if err != nil {
+		return err.Error()
+	}
+	return src.SourceString(from)
 }
 
 // StringDefiner returns the GX source code to define the implementation.
@@ -37,6 +48,10 @@ type StringReferer interface {
 func sourceStringLiteral(from *File, elts []Expr) string {
 	ss := make([]string, len(elts))
 	for i, elt := range elts {
+		if elt == nil {
+			ss[i] = "ERROR:NIL"
+			continue
+		}
 		ss[i] = elt.SourceString(from)
 	}
 	return fmt.Sprintf("{%s}", strings.Join(ss, ", "))

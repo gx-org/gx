@@ -89,7 +89,7 @@ func NewMixFunc(fn ir.Func, recv *fun.Receiver) fun.Func {
 func (f *mixFunction) run(env *fun.CallEnv, call *ir.FuncCallExpr, args []ir.Element) ([]ir.Element, error) {
 	valArgs := make([]ir.Element, len(args))
 	for i, arg := range args {
-		valArgs[i] = StoredValueOf(arg)
+		valArgs[i] = ir.BareValue(arg)
 	}
 	fn := interp.NewRunFunc(f.fn, f.recv)
 	return fn.Call(env.WithRunners(interp.Runners()), call, valArgs)

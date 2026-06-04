@@ -36,42 +36,42 @@ type Rand struct {
 }
 
 // Bool returns pseudo-random boolean values as an array of bool.
-func (rnd Rand) Bool(dims []intlen) (Rand, [dims___]bool) {
-	src, vals := rnd.src.Uint32(dims)
+func (rnd Rand) Bool[dims []intlen]() (Rand, [dims___]bool) {
+	src, vals := rnd.src.Uint32[dims]()
 	return Rand{src: src}, vals > (math.MaxUint32 / 2)
 }
 
 // Uint32 returns pseudo-random 32-bit values as an array of uint32.
-func (rnd Rand) Uint32(dims []intlen) (Rand, [dims___]uint32) {
-	src, vals := rnd.src.Uint32(dims)
+func (rnd Rand) Uint32[dims []intlen]() (Rand, [dims___]uint32) {
+	src, vals := rnd.src.Uint32[dims]()
 	return Rand{src: src}, vals
 }
 
 // Uint64 returns pseudo-random 64-bit values as an array of uint64.
-func (rnd Rand) Uint64(dims []intlen) (Rand, [dims___]uint64) {
-	src, vals := rnd.src.Uint64(dims)
+func (rnd Rand) Uint64[dims []intlen]() (Rand, [dims___]uint64) {
+	src, vals := rnd.src.Uint64[dims]()
 	return Rand{src: src}, vals
 }
 
 // Int32 returns pseudo-random 32-bit values as an array of int32.
-func (rnd Rand) Int32(dims []intlen) (Rand, [dims___]int32) {
-	src, vals := rnd.src.Uint64(dims)
+func (rnd Rand) Int32[dims []intlen]() (Rand, [dims___]int32) {
+	src, vals := rnd.src.Uint64[dims]()
 	return Rand{src: src}, [...]int32(vals)
 }
 
 // Int64 returns pseudo-random 64-bit values as an array of int64.
-func (rnd Rand) Int64(dims []intlen) (Rand, [dims___]int64) {
-	src, vals := rnd.src.Uint64(dims)
+func (rnd Rand) Int64[dims []intlen]() (Rand, [dims___]int64) {
+	src, vals := rnd.src.Uint64[dims]()
 	return Rand{src: src}, [...]int64(vals)
 }
 
 // Float64MinMax samples uniform pseudo-random values in [min, max).
-func (rnd Rand) Float64MinMax(min, max float64, dims []intlen) (Rand, [dims___]float64) {
+func (rnd Rand) Float64MinMax[dims []intlen](min, max float64) (Rand, [dims]float64) {
 	nbits, nmant := 64, 52
 
 	// Emulate JAX: The strategy here is to randomize only the mantissa bits with an exponent of
 	// 1 (after applying the bias), then shift and scale to the desired range.
-	rnd, bits := rnd.Uint64(dims)
+	rnd, bits := rnd.Uint64[dims]()
 	float_bits := (bits >> uint64(nbits-nmant)) | dtype.Reinterpret[uint64, float64](float64(1.0))
 	floats := dtype.Reinterpret[float64, uint64](float_bits) - 1.0
 	return rnd, math.Max(floats*(max-min)+min, min)
@@ -79,17 +79,17 @@ func (rnd Rand) Float64MinMax(min, max float64, dims []intlen) (Rand, [dims___]f
 
 // Float64 returns pseudo-random values as an array of float64
 // uniformly distributed from [0.0, 1.0) (1.0 being excluded).
-func (rnd Rand) Float64(dims []intlen) (Rand, [dims___]float64) {
-	return rnd.Float64MinMax(0.0, 1.0, dims)
+func (rnd Rand) Float64[dims []intlen]() (Rand, [dims]float64) {
+	return rnd.Float64MinMax[dims](0.0, 1.0)
 }
 
 // Float32MinMax samples uniform pseudo-random values in [min, max).
-func (rnd Rand) Float32MinMax(min, max float32, dims []intlen) (Rand, [dims___]float32) {
+func (rnd Rand) Float32MinMax[dims []intlen](min, max float32) (Rand, [dims]float32) {
 	nbits, nmant := 32, 23
 
 	// Emulate JAX: The strategy here is to randomize only the mantissa bits with an exponent of
 	// 1 (after applying the bias), then shift and scale to the desired range.
-	rnd, bits := rnd.Uint32(dims)
+	rnd, bits := rnd.Uint32[dims]()
 	float_bits := (bits >> uint32(nbits-nmant)) | dtype.Reinterpret[uint32, float32](float32(1.0))
 	floats := dtype.Reinterpret[float32, uint32](float_bits) - 1.0
 	return rnd, math.Max(floats*(max-min)+min, min)
@@ -97,20 +97,20 @@ func (rnd Rand) Float32MinMax(min, max float32, dims []intlen) (Rand, [dims___]f
 
 // Float32 returns pseudo-random values as an array of float32
 // uniformly distributed from [0.0, 1.0) (1.0 being excluded).
-func (rnd Rand) Float32(dims []intlen) (Rand, [dims___]float32) {
-	return rnd.Float32MinMax(0.0, 1.0, dims)
+func (rnd Rand) Float32[dims []intlen]() (Rand, [dims___]float32) {
+	return rnd.Float32MinMax[dims](0.0, 1.0)
 }
 
 // Gumbel returns pseudo-random values from a Gumbel distribution as an array of floats.
 // See https://en.wikipedia.org/wiki/Gumbel_distribution.
-func Gumbel[T dtype.Floats](rnd Rand, shape []intlen) (Rand, [shape]T) {
-	rnd, uniform := rnd.Float32(shape)
-	return rnd, -math.Log(-math.Log([shape]T(uniform)))
+func Gumbel[Shape []intlen, T dtype.Floats](rnd Rand) (Rand, [Shape]T) {
+	rnd, uniform := rnd.Float32[Shape]()
+	return rnd, -math.Log(-math.Log([Shape]T(uniform)))
 }
 
 // Categorical returns pseudo-random values from a categorical distribution as an array of int64.
 func Categorical[T dtype.Floats](rnd Rand, probs [_Size][_NumClasses]T) (Rand, [Size]int64) {
-	rnd, samples := Gumbel[T](rnd, []intlen{Size, NumClasses})
+	rnd, samples := Gumbel[[]intlen{Size, NumClasses}][T](rnd)
 	biasedSamples := samples + math.Log(probs)
-	return rnd, num.Argmax(biasedSamples, 1)
+	return rnd, num.ArgMax[1](biasedSamples)
 }

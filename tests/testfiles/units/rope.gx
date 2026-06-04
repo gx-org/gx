@@ -7,13 +7,13 @@ import "math"
 var QKVDim intlen
 
 func rope(x [QKVDim]float32, pos float32) [QKVDim]float32 {
-	maxWavelength := shape.Broadcast([1]float32{10000}, []intlen{QKVDim / 2})
+	maxWavelength := shape.Broadcast[[]intlen{QKVDim / 2}]([1]float32{10000})
 	maxIota := 2 / float32(QKVDim)
-	freqExp := [...]float32(num.IotaFull([]intlen{QKVDim})) * maxIota
-	timescale := math.Pow(maxWavelength, freqExp) // ERROR  mismatch types [QKVDim/2]float32 and [QKVDim]float32
+	freqExp := [...]float32(num.IotaFull[[]intlen{QKVDim}]()) * maxIota
+	timescale := math.Pow(maxWavelength, freqExp) // ERROR cannot use array of shape []intlen{QKVDim/2} as scalar or array of shape []intlen{QKVDim} (expect same shape)
 	radians := pos / timescale
 	sin, cos := math.Sin[float32](radians), math.Cos[float32](radians)
-	xx := shape.Split(0, x, 2)
+	xx := shape.Split[0][2](x)
 	return shape.Concat(0,
 		xx[0]*cos-xx[1]*sin, xx[1]*cos+xx[0]*sin,
 	).([QKVDim]float32)

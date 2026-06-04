@@ -47,10 +47,23 @@ type (
 		Equal(TypeCmp, AxisLengths) (bool, CompEvalError, error)
 
 		// Specialise the axis length given a context.
-		Specialise(Specialiser) ([]AxisLengths, CompEvalError, error)
+		Specialise(Specialiser) []AxisLengths
 
 		// UnifyWith unifies axis lengths with a given target.
 		UnifyWith(Unifier, []AxisLengths) ([]AxisLengths, bool)
+
+		// Instantiate the rank into another rank.
+		Instantiate(Fetcher, Specialiser) ([]AxisLengths, bool)
+
+		// IndexForVarArgs returns an axis specific to a given index in varargs.
+		IndexForVarArgs(int) AxisLengths
+	}
+
+	// ExprUnpacker is an expression that can unpack into multiple expressions.
+	// Implemented by a slice literal.
+	ExprUnpacker interface {
+		Expr
+		Unpack() []Expr
 	}
 
 	// AxisExpr is an array axis specified using an expression.
@@ -91,36 +104,48 @@ func (dm *AxisExpr) Equal(tpcmp TypeCmp, other AxisLengths) (bool, CompEvalError
 }
 
 // Specialise the axis length given a context.
-func (dm *AxisExpr) Specialise(spec Specialiser) ([]AxisLengths, CompEvalError, error) {
-	el, err := spec.EvalExpr(dm.X)
-	if err != nil {
-		return []AxisLengths{dm}, nil, err
+func (dm *AxisExpr) Specialise(spec Specialiser) []AxisLengths {
+	x := specialiseExpr(spec, dm.X)
+	if x.Type().Kind() != irkind.Slice {
+		return []AxisLengths{&AxisExpr{X: x}}
 	}
-	exprIR, cpErr, err := ToExpr(spec, dm.Expr(), el)
-	if cpErr != nil || err != nil {
-		return []AxisLengths{dm}, cpErr, err
+	unpacker, canUnpack := x.(ExprUnpacker)
+	if !canUnpack {
+		return []AxisLengths{&AxisExpr{X: x}}
 	}
-	sliceLit, isSliceLit := exprIR.(*SliceLitExpr)
-	if !isSliceLit {
-		return []AxisLengths{&AxisExpr{X: exprIR}}, nil, nil
+	xs := unpacker.Unpack()
+	axlens := make([]AxisLengths, len(xs))
+	for i, x := range unpacker.Unpack() {
+		axlens[i] = &AxisExpr{X: x}
 	}
-	axes := make([]AxisLengths, len(sliceLit.Elts))
-	for i, expr := range sliceLit.Elts {
-		axes[i] = &AxisExpr{X: expr}
-	}
-	return axes, nil, nil
+	return axlens
 }
 
 // UnifyWith unifies axis lengths with a given target.
 func (dm *AxisExpr) UnifyWith(uni Unifier, targets []AxisLengths) ([]AxisLengths, bool) {
-	ident, isIdent := dm.X.(*Ident)
-	if !isIdent || !ValidIdent(ident.Src) || len(targets) == 0 {
-		return []AxisLengths{dm}, true
+	return unifyExpr(uni, targets, dm.X)
+}
+
+// Instantiate the rank into another rank.
+func (dm *AxisExpr) Instantiate(ev Fetcher, spec Specialiser) ([]AxisLengths, bool) {
+	x, ok := CompEvalExpr(ev, spec.Source(), dm.X)
+	if x.Type().Kind() != irkind.Slice {
+		return []AxisLengths{&AxisExpr{X: x}}, ok
 	}
-	if !uni.IsTypeParam(ident) {
-		return []AxisLengths{dm}, true
+	slice, isSliceLit := x.(*SliceLitExpr)
+	if !isSliceLit {
+		return []AxisLengths{&AxisExpr{X: x}}, ok
 	}
-	return uni.DefineAxis(targets[0].Node(), ident.Src.Name, dm.Type(), targets)
+	lens := make([]AxisLengths, len(slice.Elts))
+	for i, l := range slice.Elts {
+		lens[i] = &AxisExpr{X: l}
+	}
+	return lens, true
+}
+
+// IndexForVarArgs returns a type specific to a given index in varargs.
+func (dm *AxisExpr) IndexForVarArgs(i int) AxisLengths {
+	return &AxisExpr{X: varArgsIndexExpr(i, dm.X)}
 }
 
 // AsExpr returns the axis value as an expression.
@@ -170,13 +195,26 @@ func (dm *AxisInfer) AsExpr() Expr {
 }
 
 // Specialise the axis length given a context.
-func (dm *AxisInfer) Specialise(spec Specialiser) ([]AxisLengths, CompEvalError, error) {
+func (dm *AxisInfer) Specialise(spec Specialiser) []AxisLengths {
 	return dm.X.Specialise(spec)
+}
+
+// Instantiate the rank into another rank.
+func (dm *AxisInfer) Instantiate(Fetcher, Specialiser) ([]AxisLengths, bool) {
+	return []AxisLengths{dm}, true
 }
 
 // UnifyWith unifies axis lengths with a given target.
 func (dm *AxisInfer) UnifyWith(uni Unifier, target []AxisLengths) ([]AxisLengths, bool) {
 	return dm.X.UnifyWith(uni, target)
+}
+
+// IndexForVarArgs returns a type specific to a given index in varargs.
+func (dm *AxisInfer) IndexForVarArgs(i int) AxisLengths {
+	if dm.X == nil {
+		return nil
+	}
+	return dm.X.IndexForVarArgs(i)
 }
 
 func (dm *AxisInfer) axExprString(from *File) string {
@@ -196,97 +234,6 @@ func (dm *AxisInfer) SourceString(from *File) string {
 	if dm.X == nil {
 		return "[_]"
 	}
-	return fmt.Sprintf("[%s]", dm.axExprString(from))
-}
-
-// AxisStmt is an array axis specified using a statement.
-type AxisStmt struct {
-	Src *ast.Ident
-	Typ Type
-}
-
-var (
-	_ AxisLengths = (*AxisStmt)(nil)
-	_ Storage     = (*AxisStmt)(nil)
-)
-
-func (*AxisStmt) node()    {}
-func (*AxisStmt) storage() {}
-
-// Node returns the source expression specifying the axis length.
-func (dm *AxisStmt) Node() ast.Node { return dm.Src }
-
-// NameDef returns the identifier identifying the storage.
-func (dm *AxisStmt) NameDef() *ast.Ident { return dm.Src }
-
-// NumAxes returns the number of axis represented by the group.
-func (dm *AxisStmt) NumAxes() int { return 1 }
-
-// Same returns true if the other storage is this storage.
-func (dm *AxisStmt) Same(o Storage) bool {
-	return Storage(dm) == o
-}
-
-// Specialise the axis length given a context.
-func (dm *AxisStmt) Specialise(spec Specialiser) ([]AxisLengths, CompEvalError, error) {
-	el, err := spec.EvalExpr(dm.AsExpr())
-	if err != nil {
-		return []AxisLengths{dm}, nil, err
-	}
-	exprIR, cpErr, err := ToExpr(spec, dm.Src, el)
-	if cpErr != nil || err != nil {
-		return []AxisLengths{dm}, cpErr, err
-	}
-	switch exprT := exprIR.(type) {
-	case *SliceLitExpr:
-		axes := make([]AxisLengths, len(exprT.Elts))
-		for i, expr := range exprT.Elts {
-			axes[i] = &AxisExpr{X: expr}
-		}
-		return axes, nil, nil
-	case WithStore:
-		ax, isAxisStmt := exprT.Store().(*AxisStmt)
-		if isAxisStmt {
-			return []AxisLengths{ax}, nil, nil
-		}
-	}
-	return []AxisLengths{&AxisExpr{X: exprIR}}, nil, nil
-}
-
-// UnifyWith unifies axis lengths with a given target.
-func (dm *AxisStmt) UnifyWith(uni Unifier, targets []AxisLengths) ([]AxisLengths, bool) {
-	src := dm.Node()
-	if len(targets) > 0 {
-		src = targets[0].Node()
-	}
-	return uni.DefineAxis(src, dm.NameDef().Name, dm.Type(), targets)
-}
-
-// AsExpr returns the value assigned to the axis.
-func (dm *AxisStmt) AsExpr() Expr {
-	return &Ident{Src: dm.Src, Stor: dm}
-}
-
-// Type of the expression.
-func (dm *AxisStmt) Type() Type {
-	return dm.Typ
-}
-
-// Equal returns true if two axis are equal.
-func (dm *AxisStmt) Equal(tpcmp TypeCmp, other AxisLengths) (bool, CompEvalError, error) {
-	return (&AxisExpr{X: dm.AsExpr()}).Equal(tpcmp, other)
-}
-
-func (dm *AxisStmt) axExprString(from *File) string {
-	prefix := DefineAxisLength
-	if dm.Typ.Kind() == irkind.Slice {
-		prefix = DefineAxisGroup
-	}
-	return prefix + dm.Src.Name
-}
-
-// SourceString returns the GX source code of the axis length.
-func (dm *AxisStmt) SourceString(from *File) string {
 	return fmt.Sprintf("[%s]", dm.axExprString(from))
 }
 

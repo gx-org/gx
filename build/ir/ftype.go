@@ -17,37 +17,17 @@ package ir
 import (
 	"fmt"
 	"go/ast"
-	"maps"
-	"slices"
-	"sort"
 	"strings"
 
 	"github.com/gx-org/gx/build/ir/irkind"
 )
 
-// AxisValue assigns a value to an axis length.
-type AxisValue struct {
-	Axis  *AxisStmt
-	Exprs []AxisLengths
-	Value Element
-}
-
-// Name of the axis length.
-func (ax *AxisValue) Name() string {
-	return ax.Axis.NameDef().Name
-}
-
 type (
-	// TypeParamValue assigns a type to a field of a more generic type.
-	TypeParamValue struct {
-		Field *Field
-		Typ   Type
-	}
 
 	// FuncType defines a function signature.
 	FuncType struct {
 		BaseType[*ast.FuncType]
-		Generic *FuncType
+		origin *FuncType
 
 		Receiver   *FieldList
 		TypeParams *FieldList
@@ -56,18 +36,14 @@ type (
 
 		VarArgs *VarArgsType
 
-		AxisLengths      []AxisValue
-		TypeParamsValues []TypeParamValue
+		GenericValues []GenericValue
 
 		// CompEval is set to true if the function can be called at compilation time.
 		CompEval bool
 	}
 )
 
-var (
-	_ Type = (*FuncType)(nil)
-	_ Expr = (*FuncType)(nil)
-)
+var _ Type = (*FuncType)(nil)
 
 func (*FuncType) node() {}
 
@@ -144,8 +120,8 @@ func (s *FuncType) Value(x Expr) Expr {
 }
 
 // Specialise a type to a given target.
-func (s *FuncType) Specialise(spec Specialiser) (Type, CompEvalError, error) {
-	return s.SpecialiseFType(spec)
+func (s *FuncType) Specialise(spec Specialiser) Type {
+	return s.SpecialiseFType(spec, false)
 }
 
 // String representation of the function type (only used for debugging).
@@ -154,80 +130,72 @@ func (s *FuncType) String() string {
 }
 
 func skipIfDefined(spec Specialiser) fieldCloner {
-	return func(grp *FieldGroup, i int, field *Field) (*Field, CompEvalError, error) {
-		if spec.IsDefined(field.Name.Name) {
-			return nil, nil, nil
+	return func(grp *FieldGroup, field *Field) *Field {
+		if spec.IsDefined(field.Pos) {
+			return nil
 		}
-		return cloneField(grp, i, field)
+		return cloneField(grp, field)
 	}
 }
 
 func specialiseGroup(spec Specialiser) groupCloner {
-	return func(grp *FieldGroup) (*FieldGroup, CompEvalError, error) {
-		specType, cpErr, err := grp.Type.Val().Specialise(spec)
-		if cpErr != nil || err != nil {
-			return nil, cpErr, err
-		}
+	return func(grp *FieldGroup) *FieldGroup {
 		return &FieldGroup{
-			Src: grp.Src,
-			Type: TypeExpr(
-				grp.Type.X(),
-				specType,
-			),
-		}, nil, nil
+			Src:  grp.Src,
+			Type: grp.Type.Specialise(spec),
+		}
 	}
 }
 
+// Origin returns the original function type from which this type was defined, typically through specialisation.
+// If origin is nil, then it return itself.
+func (s *FuncType) Origin() *FuncType {
+	if s.origin == nil {
+		return s
+	}
+	return s.origin
+}
+
+func (s *FuncType) varArgs() *VarArgsType {
+	if s.origin.VarArgs == nil {
+		return nil
+	}
+	paramGroups := s.Params.List
+	if len(paramGroups) == 0 {
+		return nil
+	}
+	lastGroupType := paramGroups[len(paramGroups)-1].Type
+	lastAsSlice, isSlice := lastGroupType.Val().(*SliceType)
+	if !isSlice {
+		return nil
+	}
+	va := *s.origin.VarArgs
+	va.Typ = lastAsSlice
+	return &va
+}
+
 // SpecialiseFType specialises a function type.
-func (s *FuncType) SpecialiseFType(spec Specialiser) (_ *FuncType, cpErr CompEvalError, err error) {
-	defer func() {
-		if err != nil {
-			err = fmt.Errorf("cannot specialise %s: %w", s.ReferString(spec.File()), err)
-		}
-	}()
+func (s *FuncType) SpecialiseFType(spec Specialiser, skipResult bool) *FuncType {
 	res := *s
-	if res.Generic == nil {
-		res.Generic = s
-	}
-	res.Params, cpErr, err = cloneFields(s.Params, &cloner{
-		group: specialiseGroup(spec),
-		field: cloneField,
-	})
-	if cpErr != nil || err != nil {
-		return nil, cpErr, err
-	}
-	res.Results, cpErr, err = cloneFields(s.Results, &cloner{
-		group: specialiseGroup(spec),
-		field: cloneField,
-	})
-	if cpErr != nil || err != nil {
-		return nil, cpErr, err
-	}
-	res.TypeParams, cpErr, err = cloneFields(s.TypeParams, &cloner{
+	res.origin = s.Origin()
+	res.TypeParams = cloneFields(s.TypeParams, &cloner{
 		group: cloneGroup,
 		field: skipIfDefined(spec),
 	})
-	if cpErr != nil || err != nil {
-		return nil, cpErr, err
+	res.GenericValues = spec.Values()
+	res.Params = cloneFields(s.Params, &cloner{
+		group: specialiseGroup(spec),
+		field: cloneField,
+	})
+	if skipResult {
+		return &res
 	}
-
-	for _, typeParam := range s.TypeParams.Fields() {
-		defined := spec.TypeOf(typeParam.Name.Name)
-		if defined == nil {
-			break
-		}
-		res.TypeParamsValues = append(res.TypeParamsValues, TypeParamValue{
-			Field: typeParam,
-			Typ:   defined,
-		})
-	}
-	res.AxisLengths = slices.Clone(s.AxisLengths)
-	for i, axis := range s.AxisLengths {
-		axes, element := spec.ValueOf(axis.Name())
-		res.AxisLengths[i].Exprs = axes
-		res.AxisLengths[i].Value = element
-	}
-	return &res, nil, nil
+	res.Results = cloneFields(s.Results, &cloner{
+		group: specialiseGroup(spec),
+		field: cloneField,
+	})
+	res.VarArgs = res.varArgs()
+	return &res
 }
 
 // ArgIndexToParamField returns the field corresponding to an argument index.
@@ -242,6 +210,43 @@ func (s *FuncType) ArgIndexToParamField(i int) (*Field, bool) {
 // UnifyWith recursively unifies a type parameters with types.
 func (s *FuncType) UnifyWith(unifier Unifier, typ Type) bool {
 	return true
+}
+
+// Instantiate a function type.
+func (s *FuncType) Instantiate(fetcher Fetcher, spec Specialiser) (Type, bool) {
+	return s.InstantiateFType(fetcher, spec)
+}
+
+// InstantiateFType instantiate function type.
+func (s *FuncType) InstantiateFType(fetcher Fetcher, spec Specialiser) (*FuncType, bool) {
+	res := *s
+	res.origin = s.Origin()
+	res.Params = cloneFields(s.Params, &cloner{
+		group: specialiseGroup(spec),
+		field: cloneField,
+	})
+	ok := true
+	res.Results = cloneFields(s.Results, &cloner{
+		group: func(grp *FieldGroup) *FieldGroup {
+			grp = cloneGroup(grp)
+			var grpOk bool
+			grp.Type, grpOk = grp.Type.Instantiate(fetcher, spec)
+			ok = ok && grpOk
+			return grp
+		},
+		field: cloneField,
+	})
+	res.TypeParams = cloneFields(s.TypeParams, &cloner{
+		group: cloneGroup,
+		field: cloneField,
+	})
+	res.VarArgs = res.varArgs()
+	return &res, ok
+}
+
+// IndexForVarArgs returns a type specific to a given index in varargs.
+func (s *FuncType) IndexForVarArgs(int) Type {
+	return s
 }
 
 // Expr returns the expression AST.
@@ -263,85 +268,39 @@ func (s *FuncType) ReferString(from *File) string {
 // SourceSignature returns a string representation of a signature given a name.
 // The name can be empty.
 func (s *FuncType) SourceSignature(from *File, name *ast.Ident) string {
-	return s.sourceSignature(from, name, false)
+	nameS := ""
+	if name != nil {
+		nameS = name.Name
+	}
+	return s.sourceSignature(from, nameS, false)
 }
 
-func toUnorderedString(m map[string]string) string {
+func (s *FuncType) specializeString(from *File) string {
 	var b strings.Builder
-	fmt.Fprintf(&b, "unordered<%s>", b.String())
-	keys := slices.Collect(maps.Keys(m))
-	sort.Strings(keys)
-	for _, k := range keys {
-		fmt.Fprintf(&b, "[%s]", m[k])
-	}
-	return b.String()
-}
-
-func axisLengthsString(from *File, axes []AxisLengths) string {
-	var b strings.Builder
-	for _, axis := range axes {
-		fmt.Fprintf(&b, "%s", axis.SourceString(from))
-	}
-	return b.String()
-}
-
-func (s *FuncType) typeParamValuesString(from *File) string {
-	if s.Generic == nil {
-		return ""
-	}
-	values := make(map[string]string)
-	for _, tp := range s.TypeParamsValues {
-		if !ValidIdent(tp.Field.Name) {
+	for _, gval := range s.GenericValues {
+		if gval == nil {
 			continue
 		}
-		values[tp.Field.Name.Name] = tp.Typ.ReferString(from)
+		fmt.Fprintf(&b, "%s", gval.SourceString(from))
 	}
-	for _, tp := range s.AxisLengths {
-		if !ValidIdent(tp.Axis.Src) {
-			continue
-		}
-		var src string
-		if tp.Exprs != nil {
-			src = axisLengthsString(from, tp.Exprs)
-		} else {
-			src = fmt.Sprintf("%s:<missing expression>", tp.Axis.Src.Name)
-		}
-		values[tp.Name()] = src
-	}
-	if s.Generic == nil {
-		return toUnorderedString(values)
-	}
-	var b strings.Builder
-	for _, field := range s.Generic.TypeParams.Fields() {
-		if !ValidIdent(field.Name) {
-			continue
-		}
-		val, ok := values[field.Name.Name]
-		if !ok {
-			break
-		}
-		fmt.Fprintf(&b, "[%s]", val)
+	if s.TypeParams != nil && s.TypeParams.Len() > 0 {
+		fmt.Fprintf(&b, "[%s]", s.TypeParams.SourceString(from))
 	}
 	return b.String()
 }
 
 // SourceSignature returns a string representation of a signature given a name.
 // The name can be empty.
-func (s *FuncType) sourceSignature(from *File, name *ast.Ident, skipRecv bool) string {
+func (s *FuncType) sourceSignature(from *File, name string, skipRecv bool) string {
 	var b strings.Builder
 	b.WriteString("func")
 	if s.Receiver != nil && !skipRecv {
 		fmt.Fprintf(&b, " (%s)", s.Receiver.SourceString(from))
 	}
-	if name != nil && name.Name != "" {
-		b.WriteString(" " + name.Name)
+	if name != "" {
+		fmt.Fprintf(&b, " %s", name)
 	}
-	if len(s.AxisLengths) > 0 || len(s.TypeParamsValues) > 0 {
-		fmt.Fprint(&b, s.typeParamValuesString(from))
-	}
-	if s.TypeParams != nil && s.TypeParams.Len() > 0 {
-		fmt.Fprintf(&b, "[%s]", s.TypeParams.SourceString(from))
-	}
+	b.WriteString(s.specializeString(from))
 	b.WriteString("(" + s.Params.SourceString(from) + ")")
 	if s.Results.Len() == 0 {
 		return b.String()

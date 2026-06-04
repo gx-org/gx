@@ -16,166 +16,137 @@ package generics
 
 import (
 	"fmt"
+	"go/ast"
 	"strings"
 
 	"github.com/gx-org/gx/build/ir"
-	"github.com/gx-org/gx/build/ir/irkind"
 )
 
 type specialiser struct {
 	ir.Fetcher
-	fun     ir.Func
-	defined map[string]ir.Type
-	axes    map[string]ir.AxisValue
+	src          ast.Node
+	ftype        *ir.FuncType
+	defined      []ir.GenericValue
+	tparamFields []*ir.Field
 }
 
 var _ ir.Specialiser = (*specialiser)(nil)
 
-func newSpecialiser(fetcher ir.Fetcher, fun ir.Func, defined map[string]ir.Type, axes map[string]ir.AxisValue) *specialiser {
+func checkTypeParams(ftype *ir.FuncType, defined []ir.GenericValue) {
+	if len(defined) != ftype.Origin().TypeParams.Len() {
+		panic(fmt.Sprintf("defined: %d but TypeParams is %d", len(defined), ftype.Origin().TypeParams.Len()))
+	}
+}
+
+func newSpecialiser(fetcher ir.Fetcher, src ast.Node, ftype *ir.FuncType, defined []ir.GenericValue) *specialiser {
+	checkTypeParams(ftype, defined)
 	return &specialiser{
-		Fetcher: fetcher,
-		fun:     fun,
-		defined: defined,
-		axes:    axes,
+		src:          src,
+		Fetcher:      fetcher,
+		ftype:        ftype,
+		defined:      defined,
+		tparamFields: ftype.Origin().TypeParams.Fields(),
 	}
 }
 
-func (s *specialiser) TypeOf(name string) ir.Type {
-	return s.defined[name]
+func (s *specialiser) IsDefined(pos int) bool {
+	return s.defined[pos] != nil
 }
 
-func (s *specialiser) ValueOf(name string) ([]ir.AxisLengths, ir.Element) {
-	val := s.axes[name]
-	return val.Exprs, val.Value
+func (s *specialiser) valueOf(genParam ir.GenericParam) ir.GenericValue {
+	paramField := genParam.OrigField()
+	if paramField.Pos >= len(s.tparamFields) {
+		return nil
+	}
+	pos := genParam.OrigField().Pos
+	if paramField != s.tparamFields[pos] {
+		return nil
+	}
+	return s.defined[pos]
 }
 
-func (s *specialiser) IsDefined(name string) bool {
-	if _, ok := s.defined[name]; ok {
-		return true
+func (s *specialiser) NonTypeFor(genParam ir.GenericParam) *ir.NonTypeGenericValue {
+	val := s.valueOf(genParam)
+	if val == nil {
+		return nil
 	}
-	if _, ok := s.axes[name]; ok {
-		return true
+	axisVal, isAxis := val.(*ir.NonTypeGenericValue)
+	if !isAxis {
+		return nil
 	}
-	return false
+	return axisVal
+}
+
+func (s *specialiser) TypeFor(genParam ir.GenericParam) *ir.TypeGenericValue {
+	val := s.valueOf(genParam)
+	if val == nil {
+		return nil
+	}
+	typeVal, isType := val.(*ir.TypeGenericValue)
+	if !isType {
+		return nil
+	}
+	return typeVal
+}
+
+func (s *specialiser) Values() []ir.GenericValue {
+	return s.defined
+}
+
+func (s *specialiser) Source() ast.Node {
+	return s.src
 }
 
 func (s *specialiser) String() string {
 	b := strings.Builder{}
 	fmt.Fprintln(&b, "Scope:")
-	for k, v := range s.defined {
-		fmt.Fprintf(&b, "\t%s->%T\n", k, v)
-	}
-	for k, v := range s.axes {
-		fmt.Fprintf(&b, "\t%s->%T\n", k, v)
+	fields := s.ftype.Origin().TypeParams.Fields()
+	for i, v := range s.defined {
+		fmt.Fprintf(&b, "\t%d:%s %s->", i, fields[i].Name.Name, fields[i].Type().ReferString(nil))
+		s := "nil"
+		if v != nil {
+			s = v.SourceString(nil)
+		}
+		fmt.Fprintln(&b, s)
 	}
 	fmt.Fprintln(&b, "Fetcher:")
 	fmt.Fprint(&b, s.Fetcher)
 	return b.String()
 }
 
-func toTypeValue(fetcher ir.Fetcher, typeParam *ir.Field, x ir.Expr) (ir.Type, bool) {
+func toTypeValue(fetcher ir.Fetcher, field *ir.Field, x ir.Expr) (ir.GenericValue, bool) {
 	typeValExpr := ir.TypeFromExpr(x)
+	genericIdentType := ir.NewGenericTypeParam(field)
 	if typeValExpr == nil {
-		return ir.InvalidType(), fetcher.Err().Appendf(x.Node(), "%s is not a type", x.SourceString(fetcher.File()))
+		return invalidGenericType(genericIdentType), fetcher.Err().Appendf(x.Node(), "%s is not a type", x.SourceString(fetcher.File()))
 	}
-	gotType, wantType := typeValExpr.Val(), typeParam.Group.Type.Val()
+	gotType, wantType := typeValExpr.Val(), field.Group.Type.Val()
 	assignedOk, cpErr, err := gotType.AssignableTo(fetcher, wantType)
 	if err != nil {
-		return ir.InvalidType(), fetcher.Err().AppendAt(x.Node(), err)
+		return invalidGenericType(genericIdentType), fetcher.Err().AppendAt(x.Node(), err)
 	}
 	if cpErr != nil {
-		return ir.InvalidType(), fetcher.Err().AppendAt(x.Node(), cpErr)
+		return invalidGenericType(genericIdentType), fetcher.Err().AppendAt(x.Node(), cpErr)
 	}
 	if !assignedOk {
-		return ir.InvalidType(), fetcher.Err().Appendf(x.Node(), "%s does not satisfy %s", gotType.ReferString(fetcher.File()), wantType.ReferString(fetcher.File()))
+		return invalidGenericType(genericIdentType), fetcher.Err().Appendf(x.Node(), "%s does not satisfy %s", gotType.ReferString(fetcher.File()), wantType.ReferString(fetcher.File()))
 	}
-	return typeValExpr.Val(), true
+	return ir.NewTypeExprGenericValue(genericIdentType, typeValExpr), true
 }
 
-func toAxisValue(fetcher ir.Fetcher, typeParam *ir.Field, x ir.Expr) (ir.AxisValue, bool) {
-	numberOk := true
-	if irkind.IsNumber(x.Type().Kind()) {
-		x, numberOk = ir.CastNumber(fetcher, x, typeParam.Type())
-	}
-	res := ir.AxisValue{Value: ir.InvalidType(), Exprs: []ir.AxisLengths{
-		&ir.AxisExpr{X: x},
-	}}
-	if !numberOk {
-		return res, false
-	}
-	var err error
-	res.Value, err = fetcher.EvalExpr(x)
-	if err != nil {
-		return res, false
-	}
-	tp := res.Value.Type()
-	if !ir.IsAxisLengthType(res.Value.Type()) {
-		return res, fetcher.Err().Appendf(x.Node(), "%s is not an axis value", tp.ReferString(fetcher.File()))
-	}
-	return res, true
+// SpecialiseParams a function signature for a given type.
+func SpecialiseParams(fetcher ir.Fetcher, expr ir.Expr, fun *ir.FuncValExpr, typArgs []ir.GenericValue) *ir.FuncValExpr {
+	ftype := fun.FuncType()
+	spec := newSpecialiser(fetcher, expr.Node(), ftype, typArgs)
+	specType := ftype.SpecialiseFType(spec, true)
+	checkTypeParams(specType, specType.GenericValues)
+	return ir.NewFuncValExpr(expr, fun.Func()).NewFType(specType)
 }
 
-// Specialise a function signature for a given type.
-func Specialise(fetcher ir.Fetcher, expr ir.Expr, fun *ir.FuncValExpr, typs []ir.Expr) (*ir.FuncValExpr, bool) {
-	fType := fun.FuncType()
-	if fType == nil {
-		// This is a builtin function with the type built later.
-		// That should not be specialised by the user.
-		return nil, fetcher.Err().Appendf(expr.Node(), "builtin function does not support type arguments")
-	}
-	typeParams := fType.TypeParams.Fields()
-	gotN, wantN := len(typs), len(typeParams)
-	if gotN > wantN {
-		return nil, fetcher.Err().Appendf(expr.Node(), "got %d type arguments but want %d", gotN, wantN)
-	}
-	definedTypeParams := make(map[string]ir.Type)
-	definedAxesParams := make(map[string]ir.AxisValue)
-	ok := true
-	for i, typeParam := range typeParams {
-		if i >= len(typs) {
-			// Not all type parameters are defined as in:
-			// f[float32]() for f[T, U floats]()
-			break
-		}
-		typeValExpr := typs[i]
-		if !ir.ValidName(typeParam.Name.Name) {
-			continue
-		}
-		name := typeParam.Name.Name
-		var paramOk bool
-		if ir.IsAxisSpecType(typeParam.Type()) {
-			definedAxesParams[name], paramOk = toAxisValue(fetcher, typeParam, typeValExpr)
-		} else {
-			definedTypeParams[name], paramOk = toTypeValue(fetcher, typeParam, typeValExpr)
-		}
-		ok = ok && paramOk
-	}
-	if !ok {
-		return nil, false
-	}
-	fetcher, err := fetcher.Sub(nil, collectElements(definedAxesParams))
-	if err != nil {
-		return nil, fetcher.Err().AppendAt(fun.Node(), err)
-	}
-	spec := newSpecialiser(fetcher, fun.Func(), definedTypeParams, definedAxesParams)
-	specType, cpErr, err := fType.SpecialiseFType(spec)
-	if cpErr != nil {
-		return nil, fetcher.Err().AppendAt(fun.Node(), cpErr)
-	}
-	if err != nil {
-		return nil, fetcher.Err().AppendAt(fun.Node(), err)
-	}
-	if specType == nil {
-		return nil, false
-	}
-	return ir.NewFuncValExpr(expr, fun.Func()).NewFType(specType), ok
-}
-
-// Instantiate replaces data types either specified or inferred.
-func Instantiate(fetcher ir.Fetcher, fexpr *ir.FuncValExpr) (*ir.FuncType, ir.CompEvalError, error) {
-	ftype := fexpr.FuncType()
-	defined := newTypeParamDefinition(ftype)
-	axes := newAxisLengthsDefinition(ftype)
-	spec := newSpecialiser(fetcher, fexpr.Func(), defined, axes)
-	return ftype.SpecialiseFType(spec)
+// Instantiate specialises the result of a function.
+func Instantiate(fetcher ir.Fetcher, src ast.Node, ftype *ir.FuncType, typArgs []ir.GenericValue) (*ir.FuncType, bool) {
+	spec := newSpecialiser(fetcher, src, ftype, typArgs)
+	instantiateFType, ok := ftype.InstantiateFType(fetcher, spec)
+	checkTypeParams(instantiateFType, instantiateFType.GenericValues)
+	return instantiateFType, ok
 }

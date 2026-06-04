@@ -36,9 +36,6 @@ type Reverse struct {
 	// Want stores the source code of the expected VJP of the function
 	Want string
 
-	// Skip the test.
-	Skip bool
-
 	// GradImportName is the name of the import of the grad package.
 	// If empty, then the default import name is used.
 	GradImportName string
@@ -103,9 +100,6 @@ var gradImport = &ast.ImportSpec{
 
 // Run builds the declarations as a package, then compare to an expected outcome.
 func (tt Reverse) Run(b *testbuild.Builder) error {
-	if tt.Skip {
-		return nil
-	}
 	if tt.GradOf == "" {
 		tt.GradOf = "F"
 	}

@@ -16,6 +16,7 @@ package ir
 
 import (
 	"go/ast"
+	"math/big"
 
 	"github.com/gx-org/gx/build/ir/irkind"
 )
@@ -83,14 +84,24 @@ func (tp *VarArgsType) ConvertibleTo(tpcmp TypeCmp, target Type) (bool, CompEval
 	return tp.Typ.ConvertibleTo(tpcmp, target)
 }
 
+// IndexForVarArgs builds a type specific to a var arg position.
+func (tp *VarArgsType) IndexForVarArgs(i int) Type {
+	return tp.Typ.DType.Val().IndexForVarArgs(i)
+}
+
 // Specialise a type to a given target.
-func (tp *VarArgsType) Specialise(spec Specialiser) (Type, CompEvalError, error) {
+func (tp *VarArgsType) Specialise(spec Specialiser) Type {
 	return tp.Typ.Specialise(spec)
+}
+
+// Instantiate a type to a given target.
+func (tp *VarArgsType) Instantiate(ev Fetcher, spec Specialiser) (Type, bool) {
+	return tp, true
 }
 
 // UnifyWith recursively unifies a type parameters with types.
 func (tp *VarArgsType) UnifyWith(uni Unifier, typ Type) bool {
-	return tp.Typ.UnifyWith(uni, typ)
+	return tp.Typ.DType.Val().UnifyWith(uni, typ)
 }
 
 // DefineString returns a reference to the type given a file context.
@@ -130,4 +141,77 @@ func (expr *VarArgsExpr) Type() Type {
 // SourceString returns the GX source code of the expression.
 func (expr *VarArgsExpr) SourceString(from *File) string {
 	return "..." + expr.Elt.Typ.DType.SourceString(from)
+}
+
+// VarArgsIndexer is an expression able to add an index to access a generic varargs non-type parameter.
+type VarArgsIndexer interface {
+	Expr
+	IndexForVarArgs(i int) Expr
+}
+
+func varArgsIndexExpr(i int, x Expr) Expr {
+	xSpec, canIndex := x.(VarArgsIndexer)
+	if !canIndex {
+		return x
+	}
+	return xSpec.IndexForVarArgs(i)
+}
+
+// VarArgsIndex index an expression with a var args index.
+type VarArgsIndex struct {
+	X      Expr
+	EltTyp Type
+}
+
+var (
+	_ ExprWithSpecialise = (*VarArgsIndex)(nil)
+	_ VarArgsIndexer     = (*VarArgsIndex)(nil)
+)
+
+func (*VarArgsIndex) node() {}
+
+// Node in the source code representing the expression.
+func (s *VarArgsIndex) Node() ast.Node {
+	return s.X.Node()
+}
+
+// SourceString returns a GX code source string.
+func (s *VarArgsIndex) SourceString(from *File) string {
+	return s.X.SourceString(from)
+}
+
+// IndexForVarArgs returns a type specific to a given index in varargs.
+func (s *VarArgsIndex) IndexForVarArgs(i int) Expr {
+	return &IndexExpr{
+		X: varArgsIndexExpr(i, s.X),
+		Index: &NumberCastExpr{
+			X: &NumberInt{
+				Val: big.NewInt(int64(i)),
+			},
+			Typ: DefaultIntType,
+		},
+		Typ: s.EltTyp,
+	}
+}
+
+// Specialise the expression.
+func (s *VarArgsIndex) Specialise(spec Specialiser) Expr {
+	r := *s
+	r.X = specialiseExpr(spec, s.X)
+	return &r
+}
+
+// UnifyWith recursively unifies a type parameters with types.
+func (s *VarArgsIndex) UnifyWith(uni Unifier, targets []AxisLengths) ([]AxisLengths, bool) {
+	return unifyExpr(uni, targets, s.X)
+}
+
+// Expr returns the syntax tree of the expression.
+func (s *VarArgsIndex) Expr() ast.Expr {
+	return s.X.Expr()
+}
+
+// Type of the expression.
+func (s *VarArgsIndex) Type() Type {
+	return s.X.Type()
 }

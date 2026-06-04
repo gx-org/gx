@@ -1,0 +1,10 @@
+package testdata
+
+import "shape"
+
+func testConcatWithInconsistentSizeOnSecondaryAxis() [3][2]float32 {
+	return shape.Concat[0]( // ERROR argument 2 shape ([]intlen{2, 2}) incompatible with argument 1 shape ([]intlen{1, 3}): [2] != [3] for axis 0
+		[1][3]float32{{1, 2, 3}},
+		[2][2]float32{{3, 4}, {5, 6}},
+	)
+}

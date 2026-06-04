@@ -23,6 +23,20 @@ import (
 	"github.com/gx-org/gx/build/ir"
 )
 
+type builtinMacroKeyword struct {
+	bFile *file
+	fn    *ir.MacroKeyword
+}
+
+var _ irb.Node[*pkgResolveScope] = (*builtinMacroKeyword)(nil)
+
+func (f *builtinMacroKeyword) Build(ibld irBuilder) (ir.IR, bool) {
+	fn := *(f.fn)
+	var ok bool
+	fn.FFile, ok = irCache[*ir.File](ibld, f.fn.Src, f.bFile)
+	return &fn, ok
+}
+
 type importedFunc struct {
 	bFile *file
 	fn    *ir.FuncBuiltin

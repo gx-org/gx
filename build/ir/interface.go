@@ -232,6 +232,11 @@ func (s *Interface) checkTypesAssignableFrom(tpcmp TypeCmp, source Type) (bool, 
 	return false, nil, nil
 }
 
+// Instantiate the interface.
+func (s *Interface) Instantiate(Fetcher, Specialiser) (Type, bool) {
+	return s, true
+}
+
 type toString func(file *File) string
 
 func checkHasMethod(tpcmp TypeCmp, ifaceName toString, source *NamedType, imeth *IMethod) (bool, CompEvalError, error) {
@@ -247,7 +252,7 @@ func checkHasMethod(tpcmp TypeCmp, ifaceName toString, source *NamedType, imeth 
 	}
 	if !eq {
 		from := tpcmp.File()
-		return false, CompEvalError(errors.Errorf("%s does not implement %s (wrong type for method %s)\n\thave %s\n\twant %s", ifaceName(from), source.ReferString(from), methName, meth.FuncType().sourceSignature(from, imeth.NameDef(), true), imeth.SourceSignature(from))), nil
+		return false, CompEvalError(errors.Errorf("%s does not implement %s (wrong type for method %s)\n\thave %s\n\twant %s", ifaceName(from), source.ReferString(from), methName, meth.FuncType().sourceSignature(from, imeth.NameDef().Name, true), imeth.SourceSignature(from))), nil
 	}
 	return true, nil, nil
 }
@@ -315,13 +320,18 @@ func (s *Interface) File() *File {
 }
 
 // Specialise a type to a given target.
-func (s *Interface) Specialise(Specialiser) (Type, CompEvalError, error) {
-	return s, nil, nil
+func (s *Interface) Specialise(Specialiser) Type {
+	return s
 }
 
 // UnifyWith recursively unifies a type parameters with types.
 func (*Interface) UnifyWith(unifier Unifier, typ Type) bool {
 	return true
+}
+
+// IndexForVarArgs returns a type specific to a given index in varargs.
+func (s *Interface) IndexForVarArgs(int) Type {
+	return s
 }
 
 var anyType = &Interface{}

@@ -24,87 +24,86 @@ import (
 )
 
 func TestAxisName01(t *testing.T) {
-	sliceLiteral := &ir.SliceLitExpr{
-		Typ: ir.IntLenSliceType(),
-		Elts: []ir.Expr{
-			irh.IntNumberAs(2, ir.IntLenType()),
-			irh.IntNumberAs(3, ir.IntLenType()),
-		},
-	}
+	fieldS := irh.Field("S", ir.IntLenSliceType(), nil)
+	fieldDims := irh.Field("dims", ir.IntLenSliceType(), nil)
 	newArrayFunc := &ir.FuncBuiltin{
 		Src: &ast.FuncDecl{Name: &ast.Ident{Name: "newArray"}},
 		FType: irh.FuncType(
-			nil, nil,
-			irh.Fields("dims", ir.IntLenSliceType()),
-			irh.Fields(irh.ArrayType(ir.Float32Type(), irh.Axis("dims___"))),
+			irh.Fields(fieldS),
+			nil,
+			irh.Fields(),
+			irh.Fields(irh.ArrayType(ir.Float32Type(), irh.Axis(fieldS))),
 		),
 	}
 	castFunc := &ir.FuncBuiltin{
 		Src: &ast.FuncDecl{Name: &ast.Ident{Name: "cast"}},
-		FType: irh.AxisLengths(irh.FuncType(
-			nil, nil,
-			irh.Fields(irh.ArrayType(ir.Float32Type(), irh.Axis("___S"))),
-			irh.Fields(irh.ArrayType(ir.Float64Type(), irh.Axis("S___"))),
-		), "___S"),
+		FType: irh.FuncType(
+			irh.Fields(fieldS),
+			nil,
+			irh.Fields(irh.ArrayType(ir.Float32Type(), irh.Axis(fieldS))),
+			irh.Fields(irh.ArrayType(ir.Float64Type(), irh.Axis(fieldS))),
+		),
 	}
-	dimsField := irh.Field("dims", ir.IntLenSliceType(), nil)
 	aStorage := &ir.LocalVarStorage{
 		Src: &ast.Ident{Name: "a"},
-		Typ: irh.ArrayType(ir.Float32Type(), irh.Axis("dims___")),
+		Typ: irh.ArrayType(ir.Float32Type(), irh.Axis(fieldDims)),
 	}
 	aAssignment := &ir.AssignExpr{
 		Storage: aStorage,
 		X: &ir.FuncCallExpr{
-			Args: []ir.Expr{irh.Ident(dimsField.Storage())},
 			Callee: irh.FuncExpr(newArrayFunc).NewFType(
 				irh.FuncType(
-					nil, nil,
-					irh.Fields("dims", ir.TypeExpr(nil, ir.IntLenSliceType())),
+					irh.Fields(fieldS),
+					nil,
+					irh.Fields(),
 					irh.Fields(ir.TypeExpr(
 						nil,
-						irh.ArrayType(ir.Float32Type(), irh.Axis("dims___")),
+						irh.ArrayType(ir.Float32Type(), irh.Axis(fieldDims)),
 					)),
+					irh.SetTypeParams(fieldDims),
 				)),
 		},
 	}
 	testbuild.Run(t,
 		testbuild.Decl{
 			Src: `
-func newArray(dims []intlen) [dims___]float32
+func newArray[S []intlen]() [S]float32
 `,
 			Want: []ir.IR{newArrayFunc},
 		},
 		testbuild.Decl{
 			Src: `
-func newArray(dims []intlen) [dims___]float32
+func newArray[S []intlen]() [S]float32
 
-func f(dims []intlen) [dims___]float32 {
-	return newArray(dims)
+func f[dims []intlen]() [dims]float32 {
+	return newArray[dims]()
 }
 `,
 			Want: []ir.IR{
 				newArrayFunc,
 				&ir.FuncDecl{
 					FType: irh.FuncType(
-						nil, nil,
-						irh.Fields(dimsField),
+						irh.Fields(fieldDims),
+						nil,
+						irh.Fields(),
 						irh.Fields(ir.TypeExpr(nil, irh.ArrayType(
 							ir.Float32Type(),
-							irh.Axis("dims___"),
+							irh.Axis(fieldDims),
 						))),
 					),
 					Body: &ir.BlockStmt{List: []ir.Stmt{
 						&ir.ReturnStmt{Results: []ir.Expr{
 							&ir.FuncCallExpr{
-								Args: []ir.Expr{irh.Ident(dimsField.Storage())},
 								Callee: irh.FuncExpr(newArrayFunc).NewFType(
 									irh.FuncType(
-										nil, nil,
-										irh.Fields("dims", ir.IntLenSliceType()),
+										irh.Fields(fieldDims),
+										nil,
+										irh.Fields(),
 										irh.Fields(irh.ArrayType(
 											ir.Float32Type(),
-											irh.Axis("dims___")),
+											irh.Axis(fieldDims)),
 										),
+										irh.SetTypeParams(fieldDims),
 									),
 								),
 							},
@@ -115,10 +114,10 @@ func f(dims []intlen) [dims___]float32 {
 		},
 		testbuild.Decl{
 			Src: `
-func newArray(dims []intlen) [dims___]float32
+func newArray[S []intlen]() [S]float32
 
-func f(dims []intlen) [dims___]float32 {
-	a := newArray(dims)
+func f[dims []intlen]() [dims___]float32 {
+	a := newArray[dims]()
 	return a
 }
 
@@ -127,11 +126,12 @@ func f(dims []intlen) [dims___]float32 {
 				newArrayFunc,
 				&ir.FuncDecl{
 					FType: irh.FuncType(
-						nil, nil,
-						irh.Fields(dimsField),
+						irh.Fields(fieldDims),
+						nil,
+						irh.Fields(),
 						irh.Fields(irh.ArrayType(
 							ir.Float32Type(),
-							irh.Axis("dims___"),
+							irh.Axis(fieldDims),
 						)),
 					),
 					Body: &ir.BlockStmt{List: []ir.Stmt{
@@ -147,10 +147,10 @@ func f(dims []intlen) [dims___]float32 {
 		},
 		testbuild.Decl{
 			Src: `
-func newArray(dims []intlen) [dims___]float32
+func newArray[S []intlen]() [S]float32
 
 func f() [2][3]float32 {
-	return newArray([]intlen{2,3})
+	return newArray[[]intlen{2,3}]()
 }
 `,
 			Want: []ir.IR{
@@ -164,12 +164,13 @@ func f() [2][3]float32 {
 					Body: &ir.BlockStmt{List: []ir.Stmt{
 						&ir.ReturnStmt{Results: []ir.Expr{
 							&ir.FuncCallExpr{
-								Args: []ir.Expr{sliceLiteral},
 								Callee: irh.FuncExpr(newArrayFunc).NewFType(
 									irh.FuncType(
-										nil, nil,
-										irh.Fields("dims", ir.IntLenSliceType()),
+										irh.Fields(fieldDims),
+										nil,
+										irh.Fields(),
 										irh.Fields(irh.ArrayType(ir.Float32Type(), 2, 3)),
+										irh.SetTypeParams([]int{2, 3}),
 									),
 								)},
 						}},
@@ -179,12 +180,12 @@ func f() [2][3]float32 {
 		},
 		testbuild.Decl{
 			Src: `
-func newArray(dims []intlen) [dims___]float32
+func newArray[S []intlen]() [S]float32
 
 func f() [4][3]float32 {
 	oneAxis := []intlen{4}
 	twoAxis := append(oneAxis, 3)
-	return newArray(twoAxis)
+	return newArray[twoAxis]()
 }
 `,
 		},
@@ -192,11 +193,11 @@ func f() [4][3]float32 {
 			Src: `
 var numClasses intlen
 
-func newArray[axes []intlen]() [axes]float32
+func newArray[Axes []intlen]() [Axes]float32
 
-func f[axes []intlen](x [axes]float32) [axes][numClasses]float32 {
-	ax := append(axlengths(x), numClasses)
-	return newArray[ax]()
+func f[Axes []intlen](x [Axes]float32) [Axes][numClasses]float32 {
+	all := append(axlengths(x), numClasses)
+	return newArray[all]()
 }
 `,
 		},
@@ -228,9 +229,11 @@ func f() [2]float64 {
 								}},
 								Callee: irh.FuncExpr(castFunc).NewFType(
 									irh.FuncType(
-										nil, nil,
+										irh.Fields("S", ir.IntLenSliceType()),
+										nil,
 										irh.Fields(irh.ArrayType(ir.Float32Type(), 2)),
 										irh.Fields(irh.ArrayType(ir.Float64Type(), 2)),
+										irh.SetTypeParams([]int{2}),
 									)),
 							},
 						},
@@ -263,9 +266,11 @@ func f() float64 {
 								}},
 								Callee: irh.FuncExpr(castFunc).NewFType(
 									irh.FuncType(
-										nil, nil,
+										irh.Fields(fieldS),
+										nil,
 										irh.Fields(irh.ArrayType(ir.Float32Type())),
 										irh.Fields(irh.ArrayType(ir.Float64Type())),
+										irh.SetTypeParams([]int{}),
 									)),
 							},
 						}},
@@ -309,6 +314,17 @@ func f(x [_ax]float32) int64 {
 
 func TestGenericAxis(t *testing.T) {
 	ax := irh.Field("ax", ir.IntLenType(), nil)
+	newVector := &ir.FuncBuiltin{
+		Src: &ast.FuncDecl{
+			Name: &ast.Ident{Name: "newVector"},
+		},
+		FType: irh.FuncType(
+			irh.Fields(ax),
+			nil,
+			irh.Fields(),
+			irh.Fields(irh.ArrayType(ir.Float32Type(), ax)),
+		),
+	}
 	axes := irh.Field("axes", ir.IntLenSliceType(), nil)
 	newArray := &ir.FuncBuiltin{
 		Src: &ast.FuncDecl{
@@ -324,38 +340,37 @@ func TestGenericAxis(t *testing.T) {
 	testbuild.Run(t,
 		testbuild.Decl{
 			Src: `
-func f[ax intlen]() [ax]float32
+func newVector[ax intlen]() [ax]float32
+`,
+			Want: []ir.IR{newVector},
+		},
+		testbuild.Decl{
+			Src: `
+func newVector[ax intlen]() [ax]float32
+
+func g() [2]float32 {
+	return newVector[2]()
+}
 `,
 			Want: []ir.IR{
-				&ir.FuncBuiltin{
+				newVector,
+				&ir.FuncDecl{
 					FType: irh.FuncType(
-						irh.Fields(ax),
-						nil,
+						nil, nil,
 						irh.Fields(),
-						irh.Fields(irh.ArrayType(ir.Float32Type(), ax)),
+						irh.Fields(irh.ArrayType(ir.Float32Type(), 2)),
 					),
+					Body: irh.SingleReturn(&ir.FuncCallExpr{
+						Callee: irh.FuncExpr(newVector).NewFType(
+							irh.FuncType(
+								newVector.FType.TypeParams, nil,
+								irh.Fields(),
+								irh.Fields(irh.ArrayType(ir.Float32Type(), 2)),
+								irh.SetTypeParams(2),
+							)),
+					}),
 				},
 			},
-		},
-		testbuild.Decl{
-			Src: `
-func f[ax intlen]() [ax]float32
-
-func g() [2]float32 {
-	return f[2]()
-}
-`,
-		},
-		testbuild.Decl{
-			Src: `
-func f[ax intlen]() [ax]float32 {
-	return [ax]float32{}
-}
-
-func g() [2]float32 {
-	return f[2]()
-}
-`,
 		},
 		testbuild.Decl{
 			Src: `
@@ -375,10 +390,10 @@ func g() [2][3]float32 {
 					Body: irh.SingleReturn(&ir.FuncCallExpr{
 						Callee: irh.FuncExpr(newArray).NewFType(
 							irh.FuncType(
-								irh.Fields(), nil,
+								newArray.FType.TypeParams, nil,
 								irh.Fields(),
 								irh.Fields(irh.ArrayType(ir.Float32Type(), 2, 3)),
-								irh.SetAxisLength("axes", []int{2, 3}),
+								irh.SetTypeParams([]int{2, 3}),
 							)),
 					}),
 				},
@@ -388,12 +403,14 @@ func g() [2][3]float32 {
 }
 
 func TestAxisName02(t *testing.T) {
+	fieldS := irh.Field("S", ir.IntLenSliceType(), nil)
 	newArrayFunc := &ir.FuncBuiltin{
 		Src: &ast.FuncDecl{Name: &ast.Ident{Name: "newArray"}},
 		FType: irh.FuncType(
-			nil, nil,
-			irh.Fields("dims", ir.IntLenSliceType()),
-			irh.Fields(irh.ArrayType(ir.Float32Type(), irh.Axis("dims___"))),
+			irh.Fields(fieldS),
+			nil,
+			irh.Fields(),
+			irh.Fields(irh.ArrayType(ir.Float32Type(), irh.Axis(fieldS))),
 		),
 	}
 	fDims := &ir.LocalVarStorage{
@@ -413,11 +430,11 @@ func TestAxisName02(t *testing.T) {
 	testbuild.Run(t,
 		testbuild.Decl{
 			Src: `
-func newArray(dims []intlen) [dims___]float32
+func newArray[S []intlen]() [S]float32
 
 func f() [2][3]float32  {
 	fDims := []intlen{2, 3}
-	return newArray(fDims)
+	return newArray[fDims]()
 }
 `,
 			Want: []ir.IR{
@@ -434,12 +451,13 @@ func f() [2][3]float32  {
 						},
 						&ir.ReturnStmt{Results: []ir.Expr{
 							&ir.FuncCallExpr{
-								Args: []ir.Expr{irh.Ident(fDimsAssignment)},
 								Callee: irh.FuncExpr(newArrayFunc).NewFType(
 									irh.FuncType(
-										nil, nil,
-										irh.Fields("dims", ir.IntLenSliceType()),
+										irh.Fields(fieldS),
+										nil,
+										irh.Fields(),
 										irh.Fields(irh.ArrayType(ir.Float32Type(), 2, 3)),
+										irh.SetTypeParams([]int{2, 3}),
 									)),
 							},
 						}},
@@ -462,10 +480,10 @@ func f(x [A][B]float32) [A][B]float32 {
 			Src: `
 var A, B intlen
 
-func h(x [___]int32, dims []intlen) [dims___]int32
+func h[dims []intlen](x [___]int32) [dims___]int32
 
 func f(a [A]int32) [A][B][1]int32 {
-	return h(a, []intlen{A, B, 1})
+	return h[[]intlen{A, B, 1}](a)
 }
 `,
 		},
@@ -473,19 +491,19 @@ func f(a [A]int32) [A][B][1]int32 {
 			Src: `
 var A, B intlen
 
-func h(x [1][A]int32, dims []intlen) [dims___]int32
+func h[dims []intlen](x [1][A]int32) [dims___]int32
 
 func f(a [A]int32) [A][B][1]int32 {
-	return h([1][A]int32(a), []intlen{A, B, 1})
+	return h[[]intlen{A, B, 1}]([1][A]int32(a))
 }
 `,
 		},
 		testbuild.Decl{
 			Src: `
-func newArray(dims []intlen) [dims___]float32
+func newArray[dims []intlen]() [dims]float32
 
 func f() float32  {
-	return newArray([]intlen{})
+	return newArray[[]intlen{}]()
 }
 `,
 		},
@@ -502,7 +520,6 @@ func g[S []intlen](a [S]int32) [S]int32 {
 	return a + f(a)
 }
 `,
-			Want: []ir.IR{},
 		},
 		testbuild.Decl{
 			Src: `
@@ -547,6 +564,19 @@ func f() int64 {
 }
 `,
 		},
+		testbuild.Decl{
+			Src: `
+			type Num interface {
+				float32|int32
+			}
+
+			func Log[T Num]([___S]T) [S___]T
+
+			func f[DT Num](probs [_Size][_NumClasses]DT) [Size][NumClasses]DT {
+				return Log(probs)
+			}
+			`,
+		},
 	)
 }
 
@@ -565,16 +595,29 @@ func g(x float32) [2]float32 {
 	return f(x) // ERROR cannot use type float32 as [0]float32 in argument to test.f
 }
 `,
-			Err: "no axis left to define a",
+			Err: "no axis left to define generic parameter a",
 		},
 		testbuild.Decl{
 			Src: `
-func newArray(lens []intlen) [lens___]float32
+func newArray[lens []intlen]() [lens___]float32
 
 func f() float32 {
 	var a [1]float32
-	a = newArray([]intlen{}) // ERROR cannot use float32 as [1]float32 value in assignment
+	a = newArray[[]intlen{}]() // ERROR cannot use float32 as [1]float32 value in assignment
 	return a[0]
+}
+`,
+		},
+		testbuild.Decl{
+			Src: `
+type floats interface {
+	float32|float64
+}
+
+func g[Shape []intlen, T floats]([]intlen) [Shape]T
+
+func f[Shape []intlen, T floats]() [Shape]T {
+	return g[T](Shape) // ERROR cannot use metatype as []intlen generic value Shape
 }
 `,
 		},
@@ -583,6 +626,19 @@ func f() float32 {
 
 func TestAxisStatements(t *testing.T) {
 	testbuild.Run(t,
+		testbuild.Decl{
+			Src: `
+type floats interface {
+	float32 | float64
+}
+
+func reverse[S []intlen, T floats](par [S]T) ([S]T, func(res [S]T) [S]T)
+
+func f() (float64, func(float64) float64) {
+	return reverse(0.8)
+}
+`,
+		},
 		testbuild.Decl{
 			Src: `
 type floats interface {
@@ -607,6 +663,15 @@ func Test() (float64, float64) {
 	return y, yprime
 }
 `,
+		},
+		testbuild.Decl{
+			Src: `
+import "shape"
+
+func F[ax2 intlen](x [_ax1]int32) [ax1][ax2]int32 {
+	ax := append([]intlen{ax1}, ax2)
+	return shape.Broadcast[ax](([ax1][1]int32)(x))
+}`,
 		},
 	)
 }

@@ -1,0 +1,7 @@
+package testdata
+
+import "math"
+
+func f() [2]int32 {
+	return math.Min([2]int32{1, 2}, [3]int32{1, 2, 3}) // ERROR cannot use array of shape []intlen{2} as scalar or array of shape []intlen{3} (expect same shape)
+}

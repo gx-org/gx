@@ -26,7 +26,7 @@ type SliceLitExpr struct {
 	Elts []Expr
 }
 
-var _ Expr = (*SliceLitExpr)(nil)
+var _ ExprUnpacker = (*SliceLitExpr)(nil)
 
 func (s *SliceLitExpr) node() {}
 
@@ -42,6 +42,11 @@ func (s *SliceLitExpr) Expr() ast.Expr { return s.Src }
 // SourceString returns the GX source code of the node.
 func (s *SliceLitExpr) SourceString(from *File) string {
 	return fmt.Sprintf("%s%s", s.Typ.ReferString(from), sourceStringLiteral(from, s.Elts))
+}
+
+// Unpack the slice into a slice of expressions.
+func (s *SliceLitExpr) Unpack() []Expr {
+	return s.Elts
 }
 
 // SliceExpr is a slice expression to select elements in a sliceable elements.

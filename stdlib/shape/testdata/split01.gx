@@ -1,0 +1,7 @@
+package testdata
+
+import "shape"
+
+func Test() [3][24][8]float32 {
+	return shape.Split[1][3]([24][24]float32{})
+}

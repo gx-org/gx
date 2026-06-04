@@ -15,10 +15,12 @@
 package ir
 
 import (
+	"fmt"
 	"go/ast"
 
 	"github.com/pkg/errors"
 	"github.com/gx-org/gx/build/fmterr"
+	"github.com/gx-org/gx/build/ir/irkind"
 )
 
 type (
@@ -48,6 +50,7 @@ type (
 		File() *File
 		EvalExpr(Expr) (Element, error)
 		ToCompEvalError(ast.Expr, Element) (CompEvalError, error)
+		Sub(*File, map[string]Element) (Evaluator, error)
 	}
 
 	// TypeCmp is the interface used to compare type to one another.
@@ -63,9 +66,34 @@ type (
 	Fetcher interface {
 		Evaluator
 		fmterr.ErrAppender
-		Sub(*File, map[string]Element) (Fetcher, error)
 	}
 )
+
+// InvalidIdent is used as non-nil invalid expression.
+var InvalidIdent = &Ident{
+	Src:  &ast.Ident{Name: "<<<invalid>>>"},
+	Stor: InvalidType(),
+}
+
+// CompEvalExpr evaluates an expression at compile time and returns
+// the result of the evaluation as an IR expression.
+func CompEvalExpr(ev Fetcher, src ast.Node, x Expr) (Expr, bool) {
+	if x.Type().Kind() == irkind.MetaType {
+		return x, true
+	}
+	el, err := ev.EvalExpr(x)
+	if err != nil {
+		return InvalidIdent, ev.Err().Append(err)
+	}
+	res, cpErr, err := ToExpr(ev, x.Expr(), el)
+	if err != nil {
+		return InvalidIdent, ev.Err().AppendInternalf(x.Node(), "cannot convert element %T to an IR expression: %v", el, err)
+	}
+	if cpErr != nil {
+		return InvalidIdent, ev.Err().AppendAt(src, cpErr)
+	}
+	return res, true
+}
 
 // ToExpr converts an element from the interpreter to an IR expression.
 func ToExpr(ev Evaluator, src ast.Expr, el Element) (Expr, CompEvalError, error) {
@@ -74,4 +102,14 @@ func ToExpr(ev Evaluator, src ast.Expr, el Element) (Expr, CompEvalError, error)
 		return nil, nil, errors.Errorf("cannot convert %T to an IR expression", el)
 	}
 	return toExpr.Expr(ev, src)
+}
+
+// ExprString first converts an element to an IR expression, then converts
+// that expression into a GX source string.
+func ExprString(ev Evaluator, src ast.Expr, el Element) string {
+	expr, cpErr, err := ToExpr(ev, src, el)
+	if uniErr := UnifyErr(cpErr, err); uniErr != nil {
+		return fmt.Sprintf("<%s>", err)
+	}
+	return expr.SourceString(ev.File())
 }

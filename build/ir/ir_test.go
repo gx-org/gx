@@ -87,7 +87,8 @@ var (
 	}
 	axisGroupRankFunc = func() ir.ArrayRank {
 		symbolicAxisNames["M"] = true
-		return newRank(irhelper.AxisGroup("M").AsExpr())
+		m := irhelper.AxisGroup("M")
+		return newRank(irhelper.Ident(m.OrigField().Storage()))
 	}
 
 	exampleRanks = []rankFunc{
@@ -210,7 +211,7 @@ func (*fetcherTesting) IsDefined(string) bool {
 	return false
 }
 
-func (f *fetcherTesting) Sub(*ir.File, map[string]ir.Element) (ir.Fetcher, error) {
+func (f *fetcherTesting) Sub(*ir.File, map[string]ir.Element) (ir.Evaluator, error) {
 	panic("not implemented")
 }
 

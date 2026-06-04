@@ -18,11 +18,15 @@ import "go/ast"
 
 // UnpackExpr an expression.
 type UnpackExpr struct {
-	X           Expr
-	ElementType Type
+	X      Expr
+	EltTyp Type
 }
 
-var _ Expr = (*UnpackExpr)(nil)
+var (
+	_ ExprWithSpecialise = (*UnpackExpr)(nil)
+	_ ExprWithUnify      = (*UnpackExpr)(nil)
+	_ VarArgsIndexer     = (*VarArgsIndex)(nil)
+)
 
 func (*UnpackExpr) node() {}
 
@@ -39,6 +43,25 @@ func (u *UnpackExpr) Expr() ast.Expr {
 // Type returns the type of the expression.
 func (u *UnpackExpr) Type() Type {
 	return u.X.Type()
+}
+
+// UnifyWith recursively unifies a type parameters with types.
+func (u *UnpackExpr) UnifyWith(uni Unifier, targets []AxisLengths) ([]AxisLengths, bool) {
+	return unifyExpr(uni, targets, u.X)
+}
+
+// Specialise the expression.
+func (u *UnpackExpr) Specialise(spec Specialiser) Expr {
+	r := *u
+	r.X = specialiseExpr(spec, u.X)
+	return &r
+}
+
+// IndexForVarArgs returns a type specific to a given index in varargs.
+func (u *UnpackExpr) IndexForVarArgs(i int) Expr {
+	r := *u
+	r.X = varArgsIndexExpr(i, r.X)
+	return &r
 }
 
 // SourceString returns the GX source code of the expression.

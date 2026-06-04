@@ -36,7 +36,6 @@ func (runners) FuncDecl(fn *ir.FuncDecl, env *fun.CallEnv, call *ir.FuncCallExpr
 	if fn.Body == nil {
 		return nil, fmterr.Errorf(fn.File().FileSet(), fn.Node(), "missing function body")
 	}
-	callerFrame := env.Context().CurrentFrame()
 	// Create a new function frame.
 	funcFrame, err := env.Context().PushFuncFrame(fn)
 	if err != nil {
@@ -58,10 +57,7 @@ func (runners) FuncDecl(fn *ir.FuncDecl, env *fun.CallEnv, call *ir.FuncCallExpr
 			funcFrame.Define(recvField.Name, recv)
 		}
 	}
-	if err := assignTypeParameters(env.Context(), call.Callee, callerFrame, funcFrame); err != nil {
-		return nil, err
-	}
-	assignAxisLengths(call.Callee, funcFrame)
+	args = assignTypeParameters(env.Context(), call.Callee, funcFrame, args)
 	if err := assignArgumentValues(ftype, funcFrame, args); err != nil {
 		return nil, err
 	}

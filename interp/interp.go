@@ -165,13 +165,31 @@ func (fitp *Interpreter) Materialiser() materialise.Materialiser {
 	return fitp.Engine().ArrayOps().(materialise.Materialiser)
 }
 
-// Sub returns a new interpreter with additional values defined in the context.
-func (fitp *Interpreter) Sub(file *ir.File, vals *context.SubMap) (*Interpreter, error) {
-	var err error
+// SubInterp returns a new interpreter with additional values defined in the context.
+// If file is not nil, a new context is built for the file scope, discarding the
+// existing context.
+func (fitp *Interpreter) SubInterp(file *ir.File, vals map[string]ir.Element) (*Interpreter, error) {
 	ctx := fitp.env.Context()
+	var err error
+	if file != nil {
+		core := fitp.Context().Core()
+		ctx, err = core.NewFileContext(file)
+		fitp = toInterp(ctx, fitp.Engine(), fitp.env.FuncEval(), fitp.env.Runners())
+	}
+	if vals == nil {
+		return fitp, nil
+	}
+	ctx = ctx.Sub(vals)
 	sub := &Interpreter{}
-	sub.env = fun.NewCallEnv(ctx.Sub(vals), sub, fitp.Engine(), fitp.env.FuncEval(), fitp.env.Runners())
+	sub.env = fun.NewCallEnv(ctx, sub, fitp.Engine(), fitp.env.FuncEval(), fitp.env.Runners())
 	return sub, err
+}
+
+// Sub returns a new interpreter with additional values defined in the context.
+// If file is not nil, a new context is built for the file scope, discarding the
+// existing context.
+func (fitp *Interpreter) Sub(file *ir.File, vals map[string]ir.Element) (ir.Evaluator, error) {
+	return fitp.SubInterp(file, vals)
 }
 
 // NewFunc creates function elements from function IRs.

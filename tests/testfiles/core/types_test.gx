@@ -78,6 +78,7 @@ func TestStructField() parent {
 	// 	a: float32(3),
 	// }
 }
+
 func TestNewParent() parent {
 	m := child{
 		a: 5.0,

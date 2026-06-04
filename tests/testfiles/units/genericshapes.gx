@@ -9,7 +9,7 @@ func traceGenericShapes[T dtype.Num](a [_A][_B]T, b [___S]T) [A][B]int64 {
 	trace(A)
 	trace(B)
 	trace(S)
-	return num.IotaFull([]intlen{A, B})
+	return num.IotaFull[[]intlen{A, B}]()
 }
 
 func TestTraceGenericShapes() [2][3]int64 {
@@ -30,4 +30,3 @@ func TestTraceGenericShapes() [2][3]int64 {
 	// genericshapes.gx:2
 	// 	[intlen(4),intlen(5),intlen(6)]
 }
-

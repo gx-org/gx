@@ -38,7 +38,6 @@ func toElement(x engine.NumericalElement) (coreops.Element, error) {
 
 // NewRuntimeValue creates a new runtime value given an expression in a file.
 func NewRuntimeValue(file *ir.File, store ir.Storage) (ir.Element, error) {
-	ref := &ir.Ident{Src: store.NameDef(), Stor: store}
 	typ, ok := store.(ir.Type)
 	if !ok { // Check if storage is a type itself.
 		// If not, then get the type from the storage.
@@ -48,7 +47,8 @@ func NewRuntimeValue(file *ir.File, store ir.Storage) (ir.Element, error) {
 		return NewProxy(elements.NewNodeAt(file, store)), nil
 	}
 	switch typT := typ.(type) {
-	case *ir.TypeParam:
+	case *ir.GenericTypeParam:
+		ref := &ir.Ident{Src: store.NameDef(), Stor: store}
 		return newTypeParam(elements.NewExprAt(file, ref), typT), nil
 	case *ir.StructType:
 		fields := make(map[string]ir.Element)

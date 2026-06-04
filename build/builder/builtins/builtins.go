@@ -16,11 +16,11 @@
 package builtins
 
 import (
-	"go/ast"
 	"go/token"
 	"maps"
 
 	"github.com/gx-org/gx/build/ir"
+	"github.com/gx-org/gx/interp/elements"
 )
 
 // Registerer is a function registering a builtin.
@@ -47,7 +47,7 @@ func init() {
 	// Builtin values.
 	registerBuiltinIR(token.CONST, ir.FalseStorage())
 	registerBuiltinIR(token.CONST, ir.TrueStorage())
-	registerBuiltinIR(token.ILLEGAL, NilStorage())
+	registerBuiltinIR(token.ILLEGAL, elements.NilStorage())
 
 	// Builtin functions.
 	registerBuiltinFunc(Append())
@@ -55,6 +55,10 @@ func init() {
 	registerBuiltinFunc(Len())
 	registerBuiltinFunc(Set())
 	registerBuiltinFunc(Trace())
+
+	// Builtin macros.
+	registerBuiltinMacro(VarArgsIndex())
+	registerBuiltinMacro(Unpack())
 }
 
 func registerBuiltinIR(tok token.Token, store ir.Storage) {
@@ -71,14 +75,14 @@ func registerBuiltinFunc(impl ir.FuncImpl) {
 	registerBuiltinIR(token.FUNC, ir.BuiltinFunction(impl))
 }
 
-var (
-	nilIdent   = &ast.Ident{Name: "nil"}
-	nilStorage = ir.NilStorage(nilIdent)
-)
+// BuiltinMacro is a macro provided as a keyword in the language.
+type BuiltinMacro interface {
+	Name() string
+	Impl() ir.MacroKeywordImpl
+}
 
-// NilStorage returns the nil built-in storage singleton.
-func NilStorage() *ir.Nil {
-	return nilStorage
+func registerBuiltinMacro(m BuiltinMacro) {
+	registerBuiltinIR(token.FUNC, ir.BuiltinKeywordMacro(m.Name(), m.Impl()))
 }
 
 // Register all the builtins.

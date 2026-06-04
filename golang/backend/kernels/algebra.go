@@ -52,10 +52,22 @@ func (algebraicFactory[T]) BinaryOp(op token.Token, x, y *shape.Shape) (Binary, 
 			return quoAtomicToAtomic[T], out, nil
 		case token.EQL:
 			out.DType = dtype.Bool
-			return equalAtomicToAtomic[T], out, nil
+			return eqlAtomicToAtomic[T], out, nil
 		case token.NEQ:
 			out.DType = dtype.Bool
-			return notEqualAtomicToAtomic[T], out, nil
+			return neqAtomicToAtomic[T], out, nil
+		case token.LSS:
+			out.DType = dtype.Bool
+			return lssAtomicToAtomic[T], out, nil
+		case token.GTR:
+			out.DType = dtype.Bool
+			return gtrAtomicToAtomic[T], out, nil
+		case token.LEQ:
+			out.DType = dtype.Bool
+			return leqAtomicToAtomic[T], out, nil
+		case token.GEQ:
+			out.DType = dtype.Bool
+			return geqAtomicToAtomic[T], out, nil
 		default:
 			return nil, nil, errors.Errorf("operator %s not supported for %s atomic-atomic", op.String(), x.DType.String())
 		}

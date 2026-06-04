@@ -17,22 +17,10 @@ package builder
 import (
 	"fmt"
 	"go/ast"
-	"math/big"
-	"reflect"
-	"strings"
 
-	"github.com/pkg/errors"
-	"github.com/gx-org/gx/api/values"
 	"github.com/gx-org/gx/base/ordered"
 	"github.com/gx-org/gx/build/builder/irb"
-	"github.com/gx-org/gx/build/fmterr"
-	"github.com/gx-org/gx/build/ir/generics"
 	"github.com/gx-org/gx/build/ir"
-	"github.com/gx-org/gx/build/ir/irkind"
-	"github.com/gx-org/gx/internal/interp/compeval/cpevelements"
-	"github.com/gx-org/gx/internal/interp/coreops"
-	"github.com/gx-org/gx/interp/context"
-	"github.com/gx-org/gx/interp/elements"
 )
 
 type signatureNamespace struct {
@@ -133,37 +121,14 @@ func rankInferOk(rscope resolveScope, src ast.Node, typ ir.Type) bool {
 }
 
 func defineTypeParam(s resolveScope, storage ir.Storage) bool {
-	storageType := ir.MetaType()
 	fieldStorage := storage.(*ir.FieldStorage)
+	var generic ir.GenericParam
 	if ir.IsAxisSpecType(fieldStorage.Type()) {
-		storageType = fieldStorage.Type()
+		generic = ir.NewGenericNonTypeParam(fieldStorage.Field)
+	} else {
+		generic = ir.NewGenericTypeParam(fieldStorage.Field)
 	}
-	typ := &ir.TypeParam{Field: fieldStorage.Field}
-	return defineLocalVar(s, &ir.AssignExpr{
-		Storage: &ir.LocalVarStorage{
-			Src: storage.NameDef(),
-			Typ: storageType,
-		},
-		X: ir.TypeExpr(nil, typ),
-	})
-}
-
-type ftypeAxisLengths struct {
-	axLens []ir.AxisValue
-}
-
-func (axs *ftypeAxisLengths) define(s resolveScope, storage ir.Storage) bool {
-	axStmt, ok := storage.(*ir.AxisStmt)
-	if !ok {
-		return s.Err().AppendInternalf(storage.NameDef(), "cannot register axis %s: cannot cast %T to %s", storage.NameDef().Name, storage, reflect.TypeFor[*ir.AxisStmt]())
-	}
-	storeAt := elements.NewNodeAt[ir.Storage](s.fileScope().irFile(), axStmt)
-	value := cpevelements.NewProxy(storeAt)
-	axs.axLens = append(axs.axLens, ir.AxisValue{
-		Axis:  axStmt,
-		Value: value,
-	})
-	return defineLocalVar(s, storage)
+	return defineLocalVar(s, generic)
 }
 
 func (n *funcType) buildFuncType(rscope resolveScope) (*ir.FuncType, *funcResolveScope, bool) {
@@ -173,23 +138,24 @@ func (n *funcType) buildFuncType(rscope resolveScope) (*ir.FuncType, *funcResolv
 	}
 	var tParamsOk, recvOk, paramsOk, resultsOk bool
 	sigscope, ephemeralOk := newEphemeralResolveScope(rscope, n.src)
-	typeParamsScope := newDefineScope(sigscope, defineTypeParam, nil)
+	typeParamsScope := newDefineScope(sigscope, defineTypeParam)
 	ext.TypeParams, tParamsOk = n.typeParams.buildFieldList(typeParamsScope)
-	ext.Receiver, recvOk = n.recv.buildFieldList(newDefineScope(sigscope, nil, nil))
+	ext.Receiver, recvOk = n.recv.buildFieldList(newDefineScope(sigscope, nil))
 	if recvOk && ext.Receiver != nil {
 		if field := ext.ReceiverField(); field.Name != nil {
 			defineLocalVar(sigscope, field.Storage())
 		}
 	}
-	axisLengths := &ftypeAxisLengths{}
-	paramScope := newDefineScope(sigscope, defineLocalVar, axisLengths.define)
+	paramScope := newDefineScope(sigscope, defineLocalVar)
+	paramScope.ftype = ext
 	ext.Params, paramsOk = n.params.buildFieldList(paramScope)
 	if n.varargs != nil {
 		if params := ext.Params.Fields(); len(params) > 0 {
 			ext.VarArgs = params[len(params)-1].Type().(*ir.VarArgsType)
 		}
 	}
-	resultScope := newDefineScope(sigscope, defineLocalVar, nil)
+	ext.GenericValues = make([]ir.GenericValue, ext.TypeParams.Len())
+	resultScope := newDefineScope(sigscope, nil)
 	ext.Results, resultsOk = n.results.buildFieldList(resultScope)
 	if resultsOk {
 		for _, field := range ext.Results.Fields() {
@@ -198,7 +164,6 @@ func (n *funcType) buildFuncType(rscope resolveScope) (*ir.FuncType, *funcResolv
 			}
 		}
 	}
-	ext.AxisLengths = axisLengths.axLens
 	fnscope, fnscopeOk := newFuncScope(rscope, ext)
 	return ext, fnscope, tParamsOk && paramsOk && resultsOk && recvOk && fnscopeOk && ephemeralOk
 }
@@ -316,13 +281,25 @@ func (f *funcDecl) buildSignature(fScope *fileResolveScope) (ir.Func, fnResolveS
 	return ext, fnscope, ok && setOk
 }
 
+func (f *funcDecl) buildScopeBody(rscope resolveScope, ftype *ir.FuncType) (*funcResolveScope, bool) {
+	ce, compEvalOk := rscope.compEval()
+	if !compEvalOk {
+		return nil, false
+	}
+	ftype, ok := instantiateFType(ce, ftype.Node(), rscope.fileScope().irFile(), ftype)
+	if !ok {
+		return nil, false
+	}
+	return newFuncScope(rscope, ftype)
+}
+
 func (f *funcDecl) buildBody(fnscope fnResolveScope, extF *irFunc) bool {
 	// Rebuilding the function scope to make sure all function declarations are included.
 	fScope, ok := fnscope.fileScope().pkgResolveScope.fileScope(f.bFile)
 	if !ok {
 		return false
 	}
-	fnScope, ok := newFuncScope(fScope, extF.irFunc.FuncType())
+	fnScope, ok := f.buildScopeBody(fScope, extF.irFunc.FuncType())
 	if !ok {
 		return false
 	}
@@ -421,268 +398,7 @@ func (fn *funcLiteral) source() ast.Node {
 }
 
 func (fn *funcLiteral) String() string {
-	return fmt.Sprintf("func %s{...}", fn.ftype.String())
-}
-
-func convertArgNumbers(rscope resolveScope, fType *ir.FuncType, args []ir.Expr) ([]ir.Expr, bool) {
-	args = append([]ir.Expr{}, args...)
-	argsOk := true
-	for i, arg := range args {
-		if !irkind.IsNumber(arg.Type().Kind()) {
-			continue
-		}
-		param, isVarArg := fType.ArgIndexToParamField(i)
-		target := param.Type()
-		if isVarArg {
-			target = fType.VarArgs.Typ.DType.Val()
-		}
-		var iOk bool
-		args[i], iOk = castNilAndNumber(rscope, arg, target)
-		argsOk = argsOk && iOk
-	}
-	return args, argsOk
-}
-
-func axisExprFrom(rscope resolveScope, ax ir.AxisLengths) (*ir.AxisExpr, bool) {
-	if ax == nil {
-		return nil, rscope.Err().Append(fmterr.Internal(errors.Errorf("axis length is nil")))
-	}
-	switch axisT := ax.(type) {
-	case *ir.AxisExpr:
-		return axisT, true
-	case *ir.AxisInfer:
-		return axisExprFrom(rscope, axisT.X)
-	case *ir.AxisStmt:
-		return &ir.AxisExpr{X: axisT.AsExpr()}, true
-	}
-	return nil, rscope.Err().AppendInternalf(ax.Node(), "unknown axis length type: %T:%s", ax, ax.SourceString(rscope.fileScope().irFile()))
-}
-
-func axisValuesFromArgumentValue(rscope resolveScope, compEval *compileEvaluator, src *ir.Field, val ir.Element) ([]ir.Element, bool) {
-	arrayElement, axOk := val.(elements.WithAxes)
-	if !axOk {
-		return nil, true
-	}
-	axes, err := arrayElement.Axes(compEval)
-	if err != nil {
-		return nil, rscope.Err().AppendInternalf(src.Node(), "cannot get axes from element %T to assign to parameter %s: %v", val, src.Name, err)
-	}
-	if axes == nil {
-		return nil, true
-	}
-	return axes.Elements(), true
-}
-
-var (
-	cstFile = &ir.File{
-		Package: &ir.Package{
-			Name: &ast.Ident{Name: "__gx_builder_package"},
-		},
-		Src: &ast.File{Name: &ast.Ident{Name: "__gx_builder_file"}},
-	}
-	zeroExpr = &ir.NumberCastExpr{
-		X: &ir.NumberInt{
-			Val: &big.Int{},
-		},
-		Typ: ir.IntLenType(),
-	}
-	zeroValue, _ = values.AtomNumberInt(&big.Int{}, zeroExpr.Type())
-	zeroLen, _   = coreops.NewAtom(zeroValue, zeroExpr, ir.IntLenType())
-	emptySlice   *elements.Slice
-)
-
-func init() {
-	var err error
-	emptySlice, err = elements.NewSlice(ir.IntLenSliceType(), nil)
-	if err != nil {
-		panic(err)
-	}
-}
-
-func buildAtomicAxisValue(rscope resolveScope, arg ir.Expr, elts []ir.Element) (ax ir.Element, todo []ir.Element, err error) {
-	if len(elts) == 0 {
-		return zeroLen, nil, nil
-	}
-	return elts[0], elts[1:], nil
-}
-
-func buildSliceAxisValue(rscope resolveScope, arg ir.Expr, elts []ir.Element) (ax ir.Element, todo []ir.Element, err error) {
-	if len(elts) == 0 {
-		return emptySlice, nil, nil
-	}
-	ax, err = elements.NewSlice(ir.IntLenSliceType(), elts)
-	return ax, nil, err
-}
-
-type paramNameToElement struct {
-	rscope     resolveScope
-	compEval   *compileEvaluator
-	fields     []*ir.Field
-	params     *context.SubMap
-	varArgsElt *elements.Slice
-	done       map[*ir.Field]bool
-}
-
-func (pte *paramNameToElement) assignToName(param *ir.Field, val ir.Element) {
-	pte.params.Define(param.Name, val)
-}
-
-func (pte *paramNameToElement) assignToVarArg(param *ir.Field, val ir.Element) {
-	pte.varArgsElt.AppendInPlace(val)
-}
-
-func (pte *paramNameToElement) assignArgValueToName(param *ir.Field, arg ir.Expr, assign func(*ir.Field, ir.Element)) bool {
-	argVal, err := pte.compEval.fitp.EvalExpr(arg)
-	if err != nil {
-		return pte.rscope.Err().AppendAt(arg.Node(), err)
-	}
-	assign(param, argVal)
-	paramArrayType, ok := param.Type().(ir.ArrayType)
-	if !ok {
-		// The parameter type is not an array: nothing is left to assign,
-		// we can return.
-		return true
-	}
-	axisValues, ok := axisValuesFromArgumentValue(pte.rscope, pte.compEval, param, argVal)
-	if !ok {
-		return ok
-	}
-	for _, axis := range paramArrayType.Rank().Axes() {
-		axExpr, axisOk := axisExprFrom(pte.rscope, axis)
-		if !axisOk {
-			ok = false
-			continue
-		}
-		ident, isIdent := axExpr.X.(*ir.Ident)
-		if !isIdent {
-			continue
-		}
-		if _, isAxisStmt := ident.Stor.(*ir.AxisStmt); !isAxisStmt {
-			continue
-		}
-		var buildAxisValue func(resolveScope, ir.Expr, []ir.Element) (ir.Element, []ir.Element, error)
-		if axExpr.Type().Kind() == irkind.IntLen {
-			buildAxisValue = buildAtomicAxisValue
-		} else {
-			buildAxisValue = buildSliceAxisValue
-		}
-		var axisEl ir.Element
-		axisEl, axisValues, err = buildAxisValue(pte.rscope, arg, axisValues)
-		if err != nil {
-			ok = pte.rscope.Err().AppendAt(axis.Node(), err)
-		}
-		pte.params.Define(ident.Src, axisEl)
-	}
-	return ok
-}
-
-func assignArgValueToParamName(rscope resolveScope, fExpr *ir.FuncValExpr, args []ir.Expr) (*context.SubMap, bool) {
-	pte := &paramNameToElement{
-		rscope: rscope,
-		params: context.NewSubMap(nil),
-		fields: fExpr.FuncType().Params.Fields(),
-	}
-	var ok bool
-	pte.compEval, ok = rscope.compEval()
-	if !ok {
-		return pte.params, false
-	}
-	ftype := fExpr.FuncType()
-	varArgs := ftype.VarArgs
-	if varArgs != nil {
-		var err error
-		pte.varArgsElt, err = elements.NewSlice(varArgs, nil)
-		if err != nil {
-			return pte.params, rscope.Err().AppendAt(fExpr.Node(), err)
-		}
-		pte.assignToName(pte.fields[len(pte.fields)-1], pte.varArgsElt)
-	}
-	for i, arg := range args {
-		param, isVarArg := ftype.ArgIndexToParamField(i)
-		assign := pte.assignToName
-		if isVarArg {
-			assign = pte.assignToVarArg
-		}
-		if !pte.assignArgValueToName(param, arg, assign) {
-			return nil, false
-		}
-	}
-	return pte.params, true
-}
-
-func checkArgsForCall(ce *compileEvaluator, fExpr *ir.FuncValExpr, args []ir.Expr) bool {
-	ok := true
-	ftype := fExpr.FuncType()
-	for i, arg := range args {
-		param, isVarArg := ftype.ArgIndexToParamField(i)
-		target := param.Type()
-		if isVarArg {
-			target = ftype.VarArgs.Typ.DType.Val()
-		}
-		argType := arg.Type()
-		if unpack, isUnpack := arg.(*ir.UnpackExpr); isUnpack {
-			argType = unpack.ElementType
-		}
-		assignable, cpErr, err := ir.AssignableTo(ce, argType, target)
-		if err != nil {
-			return ce.Err().AppendAt(arg.Node(), err)
-		}
-		if cpErr != nil {
-			return ce.Err().AppendAt(arg.Node(), cpErr)
-		}
-		if !assignable {
-			from := ce.File()
-			ok = ce.Err().Appendf(arg.Node(), "cannot use type %s as %s in argument to %s", argType.ReferString(from), target.ReferString(from), fExpr.SourceString(from))
-		}
-	}
-	return ok
-}
-
-func buildFuncForCall(rscope resolveScope, fExpr *ir.FuncValExpr, args []ir.Expr) ([]ir.Expr, *ir.FuncValExpr, bool) {
-	if rscope.requireCompevalCall() && !fExpr.Func().FuncType().CompEval {
-		return args, fExpr, rscope.Err().Appendf(fExpr.Node(), "expect a compeval function, function %s is not", fExpr.Func().ShortString())
-	}
-	compEval, compEvalOk := compEvalForFuncType(rscope, fExpr.Node(), fExpr.FuncType())
-	if !compEvalOk {
-		return args, fExpr, false
-	}
-	var ok bool
-	fExpr, ok = generics.Infer(compEval, fExpr, args)
-	if !ok {
-		return args, fExpr, false
-	}
-	typeParams := fExpr.FuncType().TypeParams.Fields()
-	if len(typeParams) > 0 {
-		names := make([]string, len(typeParams))
-		for i, field := range typeParams {
-			names[i] = field.Name.Name
-		}
-		parameter := "parameter"
-		if len(names) > 1 {
-			parameter = "parameters"
-		}
-		return args, fExpr, rscope.Err().Appendf(fExpr.Node(), "cannot infer type %s %s", parameter, strings.Join(names, ","))
-	}
-	if args, ok = convertArgNumbers(rscope, fExpr.FuncType(), args); !ok {
-		return args, fExpr, false
-	}
-	argsVals, ok := assignArgValueToParamName(rscope, fExpr, args)
-	if !ok {
-		return args, fExpr, false
-	}
-	ce, ok := compEval.sub(nil, argsVals)
-	if !ok {
-		return args, fExpr, false
-	}
-	fTypeInst, cpErr, err := generics.Instantiate(ce, fExpr)
-	if cpErr != nil {
-		return args, fExpr, rscope.Err().AppendAt(fExpr.Node(), cpErr)
-	}
-	if err != nil {
-		return args, fExpr, rscope.Err().AppendAt(fExpr.Node(), err)
-	}
-	fExprInst := fExpr.NewFType(fTypeInst)
-	return args, fExprInst, ok && checkArgsForCall(ce, fExprInst, args)
+	return fmt.Sprintf("%s{...}", fn.ftype.String())
 }
 
 func funcDeclarator(fn ir.PkgFunc) irb.Declarator {

@@ -1,0 +1,8 @@
+package testdata
+
+import "shape"
+
+func splitErr() [3][24][8]float32 {
+	return shape.Split[2][3]([24][24]float32{}) // ERROR split axis 2 out of bound for array with 2 axes (with axis lengths: []intlen{24, 24})
+
+}

@@ -2,6 +2,7 @@ package stdlib
 
 import (
 	"num"
+	"shape"
 )
 
 // Test options:
@@ -10,23 +11,23 @@ import (
 // setStatic dim3 intlen 4
 
 func TestSumVector() int64 {
-	return num.Sum([...]int64{
+	return num.Sum[[]intidx{0}]([...]int64{
 		1, 2, 3,
-	}, []intidx{0})
+	})
 	// Want:
 	// int64(6)
 }
 
 func TestSumVectorWithoutAxes() [3]int64 {
-	return num.Sum([...]int64{
+	return num.Sum[[]intidx{}]([...]int64{
 		1, 2, 3,
-	}, []intidx{})
+	})
 	// Want:
 	// [3]int64{1, 2, 3}
 }
 
 func TestSumTensor3DFloat32() [2][2]float32 {
-	return num.Sum([...]float32{
+	return num.Sum[[]intidx{0}]([...]float32{
 		{
 			{0, 1},
 			{10, 11},
@@ -35,7 +36,7 @@ func TestSumTensor3DFloat32() [2][2]float32 {
 			{100, 101},
 			{110, 111},
 		},
-	}, []intidx{0})
+	})
 	// Want:
 	// [2][2]float32{
 	// 	{100, 102},
@@ -44,13 +45,13 @@ func TestSumTensor3DFloat32() [2][2]float32 {
 }
 
 func TestTranspose1Axis() [3]float32 {
-	return num.Transpose([...]float32{1, 2, 3})
+	return shape.Transpose([...]float32{1, 2, 3})
 	// Want:
 	// [3]float32{1, 2, 3}
 }
 
 func TestTranspose2Axes() [3][2]float32 {
-	return num.Transpose([2][3]float32{
+	return shape.Transpose([2][3]float32{
 		{1, 2, 3},
 		{4, 5, 6},
 	})
@@ -63,7 +64,7 @@ func TestTranspose2Axes() [3][2]float32 {
 }
 
 func TestTranspose3Axes() [4][3][2]float32 {
-	return num.Transpose([2][3][4]float32{
+	return shape.Transpose([2][3][4]float32{
 		{
 			{1, 2, 3, 4},
 			{5, 6, 7, 8},
@@ -187,7 +188,7 @@ func TestEinsum2CrossProduct() [2][2][2]float32 {
 func TestWeightedSum() [3]float32 {
 	x := [2]float32{0.25, 0.5}
 	y := [3]float32{4, 8, 12}
-	return num.Sum(num.Einsum(x, []intidx{}, []intidx{}, y, []intidx{}, []intidx{}), []intidx{0})
+	return num.Sum[[]intidx{0}](num.Einsum(x, []intidx{}, []intidx{}, y, []intidx{}, []intidx{}))
 	// Want:
 	// [3]float32{3, 6, 9}
 }
@@ -235,7 +236,7 @@ func TestMatMul4Axis() [5][7]float64 {
 }
 
 func TestIotaAxis0() [4][3]int64 {
-	return num.Iota([]intlen{4, 3}, 0)
+	return num.Iota[[]intlen{4, 3}](0)
 	// Want:
 	// [4][3]int64{
 	// 	{0, 0, 0},
@@ -246,7 +247,7 @@ func TestIotaAxis0() [4][3]int64 {
 }
 
 func TestIotaAxis1() [4][3]int64 {
-	return num.Iota([]intlen{4, 3}, 1)
+	return num.Iota[[]intlen{4, 3}](1)
 	// Want:
 	// [4][3]int64{
 	// 	{0, 1, 2},
@@ -257,7 +258,7 @@ func TestIotaAxis1() [4][3]int64 {
 }
 
 func TestIotaFull() [4][3]int64 {
-	return num.IotaFull([]intlen{4, 3})
+	return num.IotaFull[[]intlen{4, 3}]()
 	// Want:
 	// [4][3]int64{
 	// 	{0, 1, 2},
@@ -270,7 +271,7 @@ func TestIotaFull() [4][3]int64 {
 func TestIotaConstructAxes() [4][3]int64 {
 	oneAxis := []intlen{4}
 	twoAxis := append(oneAxis, 3)
-	return num.IotaFull(twoAxis)
+	return num.IotaFull[twoAxis]()
 	// Want:
 	// [4][3]int64{
 	// 	{0, 1, 2},
@@ -281,19 +282,19 @@ func TestIotaConstructAxes() [4][3]int64 {
 }
 
 func TestReduceMax1() [4]float64 {
-	return num.ReduceMax([4]float64{-1, 0, 2, -4}, []intidx{})
+	return num.ReduceMax[[]intidx{}]([4]float64{-1, 0, 2, -4})
 	// Want:
 	// [4]float64{-1, 0, 2, -4}
 }
 
 func TestReduceMax1b() float64 {
-	return num.ReduceMax([4]float64{-1, 0, 2, -4}, []intidx{0})
+	return num.ReduceMax[[]intidx{0}]([4]float64{-1, 0, 2, -4})
 	// Want:
 	// float64(2)
 }
 
 func TestReduceMax2() [2][4]float64 {
-	return num.ReduceMax([2][4]float64{{-1, 0, 2, -4}, {1, 0, 2, 4}}, []intidx{})
+	return num.ReduceMax[[]intidx{}]([2][4]float64{{-1, 0, 2, -4}, {1, 0, 2, 4}})
 	// Want:
 	// [2][4]float64{
 	// 	{-1, 0, 2, -4},
@@ -302,25 +303,25 @@ func TestReduceMax2() [2][4]float64 {
 }
 
 func TestReduceMax2b() [4]float64 {
-	return num.ReduceMax([2][4]float64{{-1, 0, 2, -4}, {1, 0, 2, 4}}, []intidx{0})
+	return num.ReduceMax[[]intidx{0}]([2][4]float64{{-1, 0, 2, -4}, {1, 0, 2, 4}})
 	// Want:
 	// [4]float64{1, 0, 2, 4}
 }
 
 func TestReduceMax2c() [2]float64 {
-	return num.ReduceMax([2][4]float64{{-1, 0, 2, -4}, {1, 0, 2, 4}}, []intidx{1})
+	return num.ReduceMax[[]intidx{1}]([2][4]float64{{-1, 0, 2, -4}, {1, 0, 2, 4}})
 	// Want:
 	// [2]float64{2, 4}
 }
 
 func TestReduceMax2d() float64 {
-	return num.ReduceMax([2][4]float64{{-1, 0, 2, -4}, {1, 0, 2, 4}}, []intidx{0, 1})
+	return num.ReduceMax[[]intidx{0, 1}]([2][4]float64{{-1, 0, 2, -4}, {1, 0, 2, 4}})
 	// Want:
 	// float64(4)
 }
 
 func TestReduceMax3() [2][2]float64 {
-	return num.ReduceMax([2][2][2]float64{{{1, 2}, {4, 8}}, {{8, 1}, {2, 4}}}, []intidx{1})
+	return num.ReduceMax[[]intidx{1}]([2][2][2]float64{{{1, 2}, {4, 8}}, {{8, 1}, {2, 4}}})
 	// Want:
 	// [2][2]float64{
 	// 	{4, 8},
@@ -329,7 +330,7 @@ func TestReduceMax3() [2][2]float64 {
 }
 
 func TestReduceMax3b() [2][2]float64 {
-	return num.ReduceMax([2][2][2]float64{{{1, 2}, {4, 8}}, {{8, 1}, {2, 4}}}, []intidx{0})
+	return num.ReduceMax[[]intidx{0}]([2][2][2]float64{{{1, 2}, {4, 8}}, {{8, 1}, {2, 4}}})
 	// Want:
 	// [2][2]float64{
 	// 	{8, 2},
@@ -338,19 +339,19 @@ func TestReduceMax3b() [2][2]float64 {
 }
 
 func TestReduceMax3c() float64 {
-	return num.ReduceMax([2][2][2]float64{{{1, 2}, {4, 8}}, {{8, 1}, {2, 4}}}, []intidx{0, 1, 2})
+	return num.ReduceMax[[]intidx{0, 1, 2}]([2][2][2]float64{{{1, 2}, {4, 8}}, {{8, 1}, {2, 4}}})
 	// Want:
 	// float64(8)
 }
 
 func TestArgmax0() int64 {
-	return num.Argmax([...]float32{-1, 2, -4, 8, -16}, 0)
+	return num.ArgMax[0]([...]float32{-1, 2, -4, 8, -16})
 	// Want:
 	// int64(3)
 }
 
 func TestArgmax1() [2]int64 {
-	return num.Argmax([2][2]float32{{-1, 4}, {0, 2}}, 0)
+	return num.ArgMax[0]([2][2]float32{{-1, 4}, {0, 2}})
 	// Want:
 	// [2]int64{1, 0}
 }
@@ -377,7 +378,7 @@ func TestMatmulVarsDimVectorMatrix() [dim1]float32 {
 }
 
 func TestOneHot() [5][3]bool {
-	return num.OneHot([...]int32{3, 2, 1, 0, 2}, 3)
+	return num.OneHot[3]([...]int32{3, 2, 1, 0, 2})
 	// Want:
 	// [5][3]bool{
 	// 	{false, false, false},

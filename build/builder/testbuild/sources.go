@@ -18,7 +18,6 @@ import (
 	"embed"
 	"io/fs"
 	"path"
-	"path/filepath"
 	"strings"
 	"testing"
 
@@ -81,6 +80,5 @@ func (t *source) Run(b *Builder) error {
 }
 
 func (t *source) Name() string {
-	baseName := path.Base(t.name)
-	return strings.TrimSuffix(baseName, filepath.Ext(baseName))
+	return path.Base(t.name)
 }

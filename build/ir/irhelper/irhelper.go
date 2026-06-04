@@ -19,12 +19,9 @@ import (
 	"fmt"
 	"go/ast"
 	"math/big"
-	"strings"
 
 	"github.com/gx-org/gx/build/ir/annotations"
 	"github.com/gx-org/gx/build/ir"
-	"github.com/gx-org/gx/interp/elements"
-	"github.com/gx-org/gx/interp/numbers"
 )
 
 // IdentAST returns an identifier.
@@ -97,6 +94,32 @@ func Field(name string, typ ir.Type, grp *ir.FieldGroup) *ir.Field {
 	return field
 }
 
+func cloneField(grp *ir.FieldGroup, field *ir.Field) *ir.Field {
+	ret := *field
+	ret.Group = grp
+	ret.Orig = field
+	return &ret
+}
+
+func cloneGroup(grp *ir.FieldGroup) *ir.FieldGroup {
+	ret := *grp
+	ret.Fields = make([]*ir.Field, len(grp.Fields))
+	for i, field := range grp.Fields {
+		ret.Fields[i] = cloneField(&ret, field)
+	}
+	return &ret
+}
+
+// CloneFields clones a list of fields
+func CloneFields(list *ir.FieldList) *ir.FieldList {
+	ret := *list
+	ret.List = make([]*ir.FieldGroup, len(list.List))
+	for i, grp := range list.List {
+		ret.List[i] = cloneGroup(grp)
+	}
+	return &ret
+}
+
 // Fields returns a list of fields.
 func Fields(vals ...any) *ir.FieldList {
 	list := &ir.FieldList{Src: &ast.FieldList{}}
@@ -122,6 +145,8 @@ func Fields(vals ...any) *ir.FieldList {
 			list.List = append(list.List, valT)
 		case *ir.Field:
 			list.List = append(list.List, valT.Group)
+		case *ir.GenericNonTypeParam:
+			list.List = append(list.List, valT.OrigField().Group)
 		default:
 			panic(fmt.Sprintf("%T not supported", valT))
 		}
@@ -143,19 +168,15 @@ func FieldLit(fields *ir.FieldList, name string, val ir.Expr) *ir.FieldLit {
 }
 
 // AxisLenName returns a new axis group given a name.
-func AxisLenName(name string) *ir.AxisStmt {
-	return &ir.AxisStmt{
-		Src: &ast.Ident{Name: name},
-		Typ: ir.IntLenType(),
-	}
+func AxisLenName(name string) *ir.GenericNonTypeParam {
+	field := Field(name, ir.IntLenType(), nil)
+	return ir.NewGenericNonTypeParam(field)
 }
 
 // AxisGroup returns a new axis group given a name.
-func AxisGroup(name string) *ir.AxisStmt {
-	return &ir.AxisStmt{
-		Src: &ast.Ident{Name: name},
-		Typ: ir.IntLenSliceType(),
-	}
+func AxisGroup(name string) *ir.GenericNonTypeParam {
+	field := Field(name, ir.IntLenSliceType(), nil)
+	return ir.NewGenericNonTypeParam(field)
 }
 
 // Axis builds an array axis length.
@@ -173,30 +194,10 @@ func Axis(ax any) ir.AxisLengths {
 		return &ir.AxisExpr{
 			X: &ir.Ident{Src: axisT.Name, Stor: axisT.Storage()},
 		}
-	case string:
-		if strings.HasPrefix(axisT, ir.DefineAxisGroup) {
-			name := strings.TrimPrefix(axisT, ir.DefineAxisGroup)
-			return AxisGroup(name)
+	case *ir.GenericNonTypeParam:
+		return &ir.AxisExpr{
+			X: &ir.Ident{Src: axisT.NameDef(), Stor: axisT},
 		}
-		if strings.HasSuffix(axisT, ir.DefineAxisGroup) {
-			name := strings.TrimSuffix(axisT, ir.DefineAxisGroup)
-			return &ir.AxisExpr{
-				X: &ir.Ident{
-					Src:  &ast.Ident{Name: name},
-					Stor: AxisGroup(name),
-				},
-			}
-		}
-		if strings.HasSuffix(axisT, ir.DefineAxisLength) {
-			name := strings.TrimSuffix(axisT, ir.DefineAxisLength)
-			return &ir.AxisExpr{
-				X: &ir.Ident{
-					Src:  &ast.Ident{Name: name},
-					Stor: AxisLenName(name),
-				},
-			}
-		}
-		panic(fmt.Sprintf("axis string %q not supported: pass a storage", axisT))
 	}
 	panic(fmt.Sprintf("axis type %T not supported", ax))
 }
@@ -295,12 +296,13 @@ func StructType(fields ...*ir.Field) *ir.StructType {
 		Fields:   &ir.FieldList{},
 	}
 	done := make(map[*ir.FieldGroup]bool)
-	for _, field := range fields {
+	for i, field := range fields {
 		if done[field.Group] {
 			continue
 		}
 		stype.Fields.List = append(stype.Fields.List, field.Group)
 		done[field.Group] = true
+		field.Pos = i
 	}
 	return stype
 }
@@ -320,6 +322,7 @@ func FuncType(types, recv, params, results *ir.FieldList, opts ...FTypeOption) *
 		Params:     params,
 		Results:    results,
 	}
+	ftype.GenericValues = make([]ir.GenericValue, ftype.TypeParams.Len())
 	for _, opt := range opts {
 		ftype = opt(ftype)
 	}
@@ -328,81 +331,76 @@ func FuncType(types, recv, params, results *ir.FieldList, opts ...FTypeOption) *
 
 func cloneFType(ftype *ir.FuncType) *ir.FuncType {
 	res := *ftype
-	if res.Generic == nil {
-		res.Generic = ftype
-	}
 	return &res
 }
 
-func setAxisLengthSlice(name string, vals []int, ftype *ir.FuncType) *ir.FuncType {
+type typeParamSetter struct {
+	vals []any
+}
+
+func (ts *typeParamSetter) set(ftype *ir.FuncType) *ir.FuncType {
+	fields := ftype.TypeParams.Fields()
+	if len(ts.vals) != len(fields) {
+		panic(fmt.Sprintf("expect %d values to set %d fields but got %d values", len(fields), len(fields), len(ts.vals)))
+	}
+	genVals := make([]ir.GenericValue, ftype.Origin().TypeParams.Len())
+	for i, field := range fields {
+		if ir.IsAxisSpecType(field.Type()) {
+			genVals[i] = setNonTypeParam(field, ts.vals[i])
+		} else {
+			genVals[i] = ir.NewTypeGenericValue(
+				ir.NewGenericTypeParam(field),
+				ts.vals[i].(ir.Type),
+			)
+		}
+	}
 	res := cloneFType(ftype)
-	els := make([]ir.Element, len(vals))
-	for i, val := range vals {
-		els[i] = numbers.NewIntForType(nil, big.NewInt(int64(val)), ir.IntLenType())
-	}
-	slice, err := elements.NewSlice(ir.IntLenSliceType(), els)
-	if err != nil {
-		panic(fmt.Sprintf("cannot create slice for function type: %v", err))
-	}
-	res.AxisLengths = append(res.AxisLengths, ir.AxisValue{
-		Axis: &ir.AxisStmt{
-			Src: &ast.Ident{Name: name},
-			Typ: ir.IntLenSliceType(),
-		},
-		Value: slice,
-	})
+	res.TypeParams = nil
+	res.GenericValues = genVals
 	return res
 }
 
-// SetAxisLength returns an option to set axis length in a function type.
-func SetAxisLength(name string, vals any) FTypeOption {
-	return func(ftype *ir.FuncType) *ir.FuncType {
-		switch valsT := vals.(type) {
-		case []int:
-			return setAxisLengthSlice(name, valsT, ftype)
-		default:
-			panic(fmt.Sprintf("cannot build a function type option: type %T not supported", valsT))
-		}
+func setAxisLengthSlice(genAxis *ir.GenericNonTypeParam, vals []int) ir.GenericValue {
+	slice := &ir.SliceLitExpr{
+		Typ:  ir.IntLenSliceType(),
+		Elts: make([]ir.Expr, len(vals)),
+	}
+	for i, val := range vals {
+		slice.Elts[i] = IntNumberAs(int64(val), ir.IntLenType())
+	}
+	return ir.NewAxisGenericValue(genAxis, slice)
+}
+
+func setAxisLength(genAxis *ir.GenericNonTypeParam, val int) ir.GenericValue {
+	return ir.NewAxisGenericValue(genAxis, IntNumberAs(int64(val), ir.IntLenType()))
+}
+
+func setAxisLengthFromField(genAxis *ir.GenericNonTypeParam, val ir.Storage) ir.GenericValue {
+	return ir.NewAxisGenericValue(genAxis, &ir.Ident{
+		Src:  val.NameDef(),
+		Stor: val,
+	})
+}
+
+func setNonTypeParam(field *ir.Field, val any) ir.GenericValue {
+	genAxis := ir.NewGenericNonTypeParam(field)
+	switch valT := val.(type) {
+	case int:
+		return setAxisLength(genAxis, valT)
+	case []int:
+		return setAxisLengthSlice(genAxis, valT)
+	case *ir.Field:
+		return setAxisLengthFromField(genAxis, valT.Storage())
+	case ir.Storage:
+		return setAxisLengthFromField(genAxis, valT)
+	default:
+		panic(fmt.Sprintf("cannot build a function type option: type %T not supported", valT))
 	}
 }
 
-// SetFuncTypeParams returns an option to set type params in a function type.
-func SetFuncTypeParams(types ...ir.Type) FTypeOption {
-	return func(ftype *ir.FuncType) *ir.FuncType {
-		res := cloneFType(ftype)
-		fields := res.Generic.TypeParams.Fields()
-		for i, tp := range types {
-			res.TypeParamsValues = append(res.TypeParamsValues, ir.TypeParamValue{
-				Typ:   tp,
-				Field: fields[i],
-			})
-		}
-		res.TypeParams = nil
-		return res
-	}
-}
-
-// AxisLengths defines axis lengths for a function type.
-func AxisLengths(ftype *ir.FuncType, axes ...string) *ir.FuncType {
-	ftype.AxisLengths = make([]ir.AxisValue, len(axes))
-	for i, axis := range axes {
-		typ := ir.IntLenType()
-		name := axis
-		if strings.HasPrefix(axis, ir.DefineAxisGroup) {
-			typ = ir.IntLenSliceType()
-			name = strings.TrimPrefix(name, ir.DefineAxisGroup)
-		}
-		if strings.HasPrefix(axis, ir.DefineAxisLength) {
-			name = strings.TrimPrefix(name, ir.DefineAxisLength)
-		}
-		ftype.AxisLengths[i] = ir.AxisValue{
-			Axis: &ir.AxisStmt{
-				Src: IdentAST(name),
-				Typ: typ,
-			},
-		}
-	}
-	return ftype
+// SetTypeParams returns an option to set type params in a function type.
+func SetTypeParams(vals ...any) FTypeOption {
+	return (&typeParamSetter{vals: vals}).set
 }
 
 // CompEvalFuncType builds a compeval function type.

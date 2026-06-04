@@ -256,15 +256,28 @@ type Floats interface {
 	float32 | float64
 }
 
-func f(shape []intlen) [shape]float32
+func f[T Floats, S []intlen]() [S]T
 
-func g[T Floats](shape ...intlen) [shape]T {
-	x := f(shape)
-	return [shape]T(x)
+func g() [2][3]float64 {
+     return f[float64][[]intlen{2,3}]()
+}
+`,
+		},
+		testbuild.Decl{
+			Src: `
+type Floats interface {
+	float32 | float64
+}
+
+func f[shape []intlen]() [shape]float32
+
+func g[T Floats, S []intlen]() [S]T {
+	x := f[S]()
+	return [S]T(x)
 }
 
 func h() [2][3]float64 {
-	return g[float64](2,3)
+	return g[float64][[]intlen{2,3}]()
 }
 `,
 		},

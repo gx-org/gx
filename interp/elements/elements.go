@@ -325,9 +325,32 @@ func EvalRank(fetcher ir.Fetcher, expr ir.Expr) (ir.ArrayRank, []canonical.Canon
 
 // ToNumericalElement converts an element into a numerical element.
 func ToNumericalElement(el ir.Element) (engine.NumericalElement, error) {
+	el = ir.BareValue(el)
 	numEl, ok := Underlying(el).(engine.NumericalElement)
 	if !ok {
 		return nil, errors.Errorf("cannot cast %T to %s", el, reflect.TypeFor[engine.NumericalElement]())
 	}
 	return numEl, nil
+}
+
+// Map transforms a collection of element into a different type.
+func Map[T any](f func(ir.Element) (T, error), el ir.Element) ([]T, error) {
+	slice, err := ToWithElements(el)
+	if err != nil {
+		return nil, err
+	}
+	return MapSlice[T](f, slice.Elements())
+}
+
+// MapSlice transforms a slice of elements into a different type.
+func MapSlice[T any](f func(ir.Element) (T, error), elts []ir.Element) ([]T, error) {
+	ts := make([]T, len(elts))
+	for i, el := range elts {
+		var err error
+		ts[i], err = f(el)
+		if err != nil {
+			return nil, err
+		}
+	}
+	return ts, nil
 }

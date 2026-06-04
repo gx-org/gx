@@ -25,14 +25,14 @@ type Target struct {
 // NewTarget generates a new target given a random seed.
 func NewTarget(seed int64, bias float32) Target {
 	rnd := rand.New(rand.NewSource(seed))
-	rnd, weights := rnd.Float32([]intlen{Size})
+	rnd, weights := rnd.Float32[[]intlen{Size}]()
 	return Target{rnd: rnd, weights: weights, bias: bias}
 }
 
 // Sample generates a new vector of features and the corresponding prediction.
 func (t Target) Sample() (t Target, features [Size]float32, prediction float32) {
-	newRnd, features := t.rnd.Float32([]intlen{Size})
-	prediction = float32(num.Sum(t.weights*features, []intidx{0})) + t.bias
+	newRnd, features := t.rnd.Float32[[]intlen{Size}]()
+	prediction = float32(num.Sum[[]intidx{0}](t.weights*features)) + t.bias
 	t.rnd = newRnd
 	return
 }

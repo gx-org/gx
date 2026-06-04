@@ -61,42 +61,6 @@ var (
 	_ TypeMethods = errorTyp
 )
 
-type errorCallee struct {
-	src   ast.Expr
-	ftype *FuncType
-}
-
-func (*errorCallee) node() {}
-
-func (ec *errorCallee) Node() ast.Node {
-	return ec.src
-}
-
-func (*errorCallee) Func() Func {
-	return nil
-}
-
-func (ec *errorCallee) FuncType() *FuncType {
-	return ec.ftype
-}
-
-func (*errorCallee) Type() Type {
-	return errorFType
-}
-
-func (*errorCallee) Expr() ast.Expr {
-	return nil
-}
-
-func (*errorCallee) SourceString(from *File) string {
-	return "<cperror>"
-}
-
-// ErrorCallee returns a proxy callee to call the Error method.
-func ErrorCallee(src ast.Expr, ftype *FuncType) Callee {
-	return &errorCallee{src: src, ftype: ftype}
-}
-
 // ErrorType returns the type for the keyword error.
 func ErrorType() TypeMethods {
 	return errorTyp
@@ -116,6 +80,9 @@ func (s *errorType) Equal(tpcmp TypeCmp, target Type) (bool, CompEvalError, erro
 
 // AssignableTo reports whether a value of the type can be assigned to another.
 func (s *errorType) AssignableTo(tpcmp TypeCmp, target Type) (bool, CompEvalError, error) {
+	if s.Same(target) {
+		return true, nil, nil
+	}
 	return s.iface.AssignableTo(tpcmp, target)
 }
 
@@ -152,13 +119,18 @@ func (s *errorType) Same(o Storage) bool {
 }
 
 // Specialise a type to a given target.
-func (s *errorType) Specialise(spec Specialiser) (Type, CompEvalError, error) {
-	return s, nil, nil
+func (s *errorType) Specialise(spec Specialiser) Type {
+	return s
 }
 
 // Value returns a value pointing to the receiver.
 func (s *errorType) Value(x Expr) Expr {
 	return TypeExpr(x, s)
+}
+
+// Instantiate a function type.
+func (s *errorType) Instantiate(Fetcher, Specialiser) (Type, bool) {
+	return s, true
 }
 
 // UnifyWith recursively unifies a type parameters with types.
@@ -171,9 +143,49 @@ func (s *errorType) Type() Type {
 	return MetaType()
 }
 
+func (s *errorType) IndexForVarArgs(int) Type {
+	return s
+}
+
 // ReferString returns the GX source to refer to the type.
 func (s *errorType) ReferString(from *File) string {
 	return s.DefineString(from)
+}
+
+type errorCallee struct {
+	src   ast.Expr
+	ftype *FuncType
+}
+
+func (*errorCallee) node() {}
+
+func (ec *errorCallee) Node() ast.Node {
+	return ec.src
+}
+
+func (*errorCallee) Func() Func {
+	return nil
+}
+
+func (ec *errorCallee) FuncType() *FuncType {
+	return ec.ftype
+}
+
+func (*errorCallee) Type() Type {
+	return errorFType
+}
+
+func (*errorCallee) Expr() ast.Expr {
+	return nil
+}
+
+func (*errorCallee) SourceString(from *File) string {
+	return "<cperror>"
+}
+
+// ErrorCallee returns a proxy callee to call the Error method.
+func ErrorCallee(src ast.Expr, ftype *FuncType) Callee {
+	return &errorCallee{src: src, ftype: ftype}
 }
 
 // UnifyErr returns a system error if not nil, return the compile error otherwise.

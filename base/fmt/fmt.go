@@ -57,8 +57,8 @@ func Indent(x string) string {
 
 func sliceString(x any) string {
 	var s strings.Builder
-	fmt.Fprintf(&s, "%T{\n", x)
 	val := reflect.ValueOf(x)
+	fmt.Fprintf(&s, "%T:%d{\n", x, val.Len())
 	for i := range val.Len() {
 		s.WriteString(Indent(fmt.Sprintf("%d: %s,\n", i, String(val.Index(i).Interface()))))
 	}

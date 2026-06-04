@@ -17,7 +17,7 @@ package ir
 import "github.com/gx-org/gx/build/ir/irkind"
 
 func toInterface(typ Type) (*Interface, bool) {
-	typSet, ok := Underlying(typ).(*Interface)
+	typSet, ok := Underlying(simplifyType(typ)).(*Interface)
 	return typSet, ok
 }
 
