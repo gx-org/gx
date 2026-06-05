@@ -195,41 +195,6 @@ func ImplementBuiltin(name string, fn interp.FuncBuiltin) Builder {
 	})
 }
 
-type graphFunc struct {
-	ftype *ir.FuncType
-	impl  interp.FuncBuiltin
-}
-
-var _ ir.FuncImpl = (*stubFunc)(nil)
-
-// BuildFuncType builds the type of a function given how it is called.
-func (s *graphFunc) BuildFuncType(fetcher ir.Fetcher, call *ir.FuncCallExpr) (*ir.FuncType, error) {
-	return s.ftype, nil
-}
-
-// Implementation of the function, provided by the backend.
-func (s *graphFunc) Implementation() any {
-	return s.impl
-}
-
-// ImplementGraphFunc sets the implementation in a function declaration.
-// The function declared type does not change.
-func ImplementGraphFunc(name string, slotFn interp.FuncBuiltin) Builder {
-	return baseBuilder{
-		name: name,
-		build: func(param *BuilderParam, pkg importers.FilePackage) error {
-			for _, fn := range pkg.IR().Decls.Funcs {
-				if fn.Name() == name {
-					stub := fn.(*ir.FuncBuiltin)
-					stub.Impl = &stubFunc{ftype: fn.FuncType(), impl: slotFn}
-					return nil
-				}
-			}
-			return fmt.Errorf("cannot set function implementation: cannot find function %q in package %s", name, pkg.IR().Name)
-		},
-	}
-}
-
 // MethodBuilder builds a method for a package given its named type.
 type MethodBuilder interface {
 	BuildMethodIR(*impl.Stdlib, importers.Package, *ir.NamedType) (*ir.FuncBuiltin, error)

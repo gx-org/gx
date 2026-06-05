@@ -31,7 +31,7 @@ var Package = builtin.PackageBuilder{
 	FullPath: "dtype",
 	Builders: []builtin.Builder{
 		builtin.ParseSource(),
-		builtin.ImplementGraphFunc("Reinterpret", evalReinterpret),
+		builtin.ImplementBuiltin("Reinterpret", evalReinterpret),
 	},
 }
 

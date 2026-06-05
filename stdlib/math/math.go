@@ -158,7 +158,7 @@ func buildConstScalar[T dtype.GoDataType](name string, value T) builtin.Builder 
 type unaryFunc = func(ops.Node) (ops.Node, error)
 
 func buildUnary(name string, f func(graph ops.Graph) unaryFunc) builtin.Builder {
-	return builtin.ImplementGraphFunc(name, func(env engine.Env, call *ir.FuncCallExpr, recv ir.Element, args []ir.Element) ([]ir.Element, error) {
+	return builtin.ImplementBuiltin(name, func(env engine.Env, call *ir.FuncCallExpr, recv ir.Element, args []ir.Element) ([]ir.Element, error) {
 		args = args[call.Callee.FuncType().Origin().TypeParams.Len():]
 		mat := builtin.Materialiser(env)
 		x, xShape, err := materialise.Element(mat, args[0])
@@ -184,7 +184,7 @@ func buildUnary(name string, f func(graph ops.Graph) unaryFunc) builtin.Builder 
 type binaryFunc = func(x, y ops.Node) (ops.Node, error)
 
 func buildBinary(name string, f func(graph ops.Graph) binaryFunc) builtin.Builder {
-	return builtin.ImplementGraphFunc(name, func(env engine.Env, call *ir.FuncCallExpr, recv ir.Element, args []ir.Element) ([]ir.Element, error) {
+	return builtin.ImplementBuiltin(name, func(env engine.Env, call *ir.FuncCallExpr, recv ir.Element, args []ir.Element) ([]ir.Element, error) {
 		args = args[call.Callee.FuncType().Origin().TypeParams.Len():]
 		mat := builtin.Materialiser(env)
 		x, xShape, err := materialise.Element(mat, args[0])

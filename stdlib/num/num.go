@@ -33,12 +33,12 @@ var Package = builtin.PackageBuilder{
 	Builders: []builtin.Builder{
 		builtin.ParseSource("num.gx"),
 		builtin.BuildFunc(einsum{}),
-		builtin.ImplementGraphFunc("ArgMax", evalArgMax),
-		builtin.ImplementGraphFunc("Iota", evalIota),
-		builtin.ImplementGraphFunc("IotaFull", evalIotaFull),
-		builtin.ImplementGraphFunc("ReduceMax", evalReduceMax),
-		builtin.ImplementGraphFunc("MatMul", evalMatMul),
-		builtin.ImplementGraphFunc("Sum", evalReduceSum),
+		builtin.ImplementBuiltin("ArgMax", evalArgMax),
+		builtin.ImplementBuiltin("Iota", evalIota),
+		builtin.ImplementBuiltin("IotaFull", evalIotaFull),
+		builtin.ImplementBuiltin("ReduceMax", evalReduceMax),
+		builtin.ImplementBuiltin("MatMul", evalMatMul),
+		builtin.ImplementBuiltin("Sum", evalReduceSum),
 		builtin.ImplementBuiltin("MatMulAxes", evalMatMulAxes),
 	},
 }
