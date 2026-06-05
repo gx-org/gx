@@ -207,7 +207,7 @@ func f([___M]float32) func ([___N]float32) [N___]float32
 		},
 		testbuild.Decl{
 			Src: `
-func f([___M]float32) func ([M___]float32) [M___]float32
+func f[M []intlen]([M]float32) func ([M]float32) [M]float32
 
 func g(x [3]float32) [3]float32 {
 	fun := f(x)

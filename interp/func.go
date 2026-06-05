@@ -61,7 +61,7 @@ func NewRunFunc(fn ir.Func, recv *fun.Receiver) fun.Func {
 		base.call = funcBuiltin{fun: fnT, impl: fnT.Impl}.callBuiltin
 	case *ir.FuncKeyword:
 		base.storage = fnT
-		base.call = funcBuiltin{impl: fnT.Impl}.callBuiltin
+		base.call = funcBuiltin{fun: fnT, impl: fnT.Impl}.callBuiltin
 	case *ir.Macro:
 		base.storage = fnT
 		base.call = funcMacro{fnT: fnT}.callMacro
