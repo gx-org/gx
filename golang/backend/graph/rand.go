@@ -12,25 +12,20 @@
 // See the License for the specific language governing permissions and
 // limitations under the License.
 
-// Package impl provides a structure pointing to standard library functions provided by a backend.
-package impl
+package graph
 
-import "github.com/gx-org/gx/interp"
-
-type (
-	// Stdlib is an implementation of the standard library functions by a backend.
-	Stdlib struct {
-		Num    Num
-		Shapes Shapes
-	}
-
-	// Num is the implementation of the num package.
-	Num struct {
-		Einsum interp.FuncBuiltin
-	}
-
-	// Shapes is the implementation of the shapes package.
-	Shapes struct {
-		Len interp.FuncBuiltin
-	}
+import (
+	"github.com/pkg/errors"
+	"github.com/gx-org/backend/ops"
+	"github.com/gx-org/backend/shape"
 )
+
+// Random returns the builder for the rand package.
+func (g *Graph) Random() ops.RandomBuilder {
+	return g
+}
+
+// RngBitGenerator generates random values of the given shape using the provided RNG state.
+func (g *Graph) RngBitGenerator(state ops.Node, shape *shape.Shape) (ops.Node, ops.Node, error) {
+	return nil, nil, errors.Errorf("not implemented in the Go backend")
+}
