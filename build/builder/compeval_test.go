@@ -465,3 +465,31 @@ func TestCompevalAtomicAtomic(t *testing.T) {
 		},
 	)
 }
+
+func TestCompevalAcrossPackages(t *testing.T) {
+	testbuild.Run(t,
+		testbuild.DeclarePackage{
+			Src: `
+package cp
+
+const c = 6
+
+//gx:compeval
+func add(a, b intlen) intlen {
+	return a+b
+}
+
+func F([_a]int32, [_b]int32) [add(a, b)+c]int32
+`,
+		},
+		testbuild.Decl{
+			Src: `
+import "cp"
+
+func f() [11]int32 {
+	return cp.F([2]int32{}, [3]int32{})
+}
+`,
+		},
+	)
+}
