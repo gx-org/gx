@@ -15,12 +15,17 @@
 package num
 
 import (
+	"fmt"
 	"go/ast"
 
+	"github.com/gx-org/backend/ops"
+	"github.com/gx-org/backend/shape"
 	"github.com/gx-org/gx/build/builtins"
 	"github.com/gx-org/gx/build/fmterr"
 	"github.com/gx-org/gx/build/ir"
 	"github.com/gx-org/gx/interp/elements"
+	"github.com/gx-org/gx/interp/engine"
+	"github.com/gx-org/gx/interp/materialise"
 	"github.com/gx-org/gx/stdlib/builtin"
 	"github.com/gx-org/gx/stdlib/impl"
 )
@@ -39,7 +44,7 @@ type einsum struct {
 }
 
 func (f einsum) BuildFuncIR(impl *impl.Stdlib, pkg *ir.Package) (*ir.FuncBuiltin, error) {
-	return builtin.IRFuncBuiltin[einsum]("Einsum", impl.Num.Einsum, pkg), nil
+	return builtin.IRFuncBuiltin[einsum]("Einsum", evalEinsum, pkg), nil
 }
 
 func (f einsum) validateAxisExpr(fetcher ir.Fetcher, call *ir.FuncCallExpr, arg, maxRank int, seen map[int]bool) ([]int, error) {
@@ -187,4 +192,46 @@ func (f einsum) BuildFuncType(fetcher ir.Fetcher, call *ir.FuncCallExpr) (*ir.Fu
 		Params:   builtins.Fields(call, params...),
 		Results:  builtins.Fields(call, result),
 	}, nil
+}
+
+func evalEinsum(env engine.Env, call *ir.FuncCallExpr, recv ir.Element, args []ir.Element) ([]ir.Element, error) {
+	mat := builtin.Materialiser(env)
+	left, leftShape, err := materialise.Element(mat, args[0])
+	if err != nil {
+		return nil, err
+	}
+	lhsContractingAxes, err := elements.AxesFromElement(args[1])
+	if err != nil {
+		return nil, err
+	}
+	lhsBatchAxes, err := elements.AxesFromElement(args[2])
+	if err != nil {
+		return nil, err
+	}
+	right, rightShape, err := materialise.Element(mat, args[3])
+	if err != nil {
+		return nil, err
+	}
+	rhsContractingAxes, err := elements.AxesFromElement(args[4])
+	if err != nil {
+		return nil, err
+	}
+	rhsBatchAxes, err := elements.AxesFromElement(args[5])
+	if err != nil {
+		return nil, err
+	}
+
+	op, err := env.Engine().ArrayOps().Graph().Num().DotGeneral(left, right,
+		[2][]int{lhsBatchAxes, rhsBatchAxes},
+		[2][]int{lhsContractingAxes, rhsContractingAxes})
+	if err != nil {
+		return nil, fmt.Errorf("\nlhsContractingAxes: %v\nlhsBatchAxes: %v\nrhsContractingAxes: %v\nrhsBatchAxes: %v\nleft: %v\nright: %v", lhsContractingAxes, lhsBatchAxes, rhsContractingAxes, rhsBatchAxes, leftShape, rightShape)
+	}
+	return materialise.ElementFromNode(env.File(), mat, &ops.OutputNode{
+		Node: op,
+		Shape: &shape.Shape{
+			DType:       leftShape.DType,
+			AxisLengths: op.(interface{ PJRTDims() []int }).PJRTDims(),
+		},
+	}, call.Type())
 }

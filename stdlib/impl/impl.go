@@ -20,13 +20,7 @@ import "github.com/gx-org/gx/interp"
 type (
 	// Stdlib is an implementation of the standard library functions by a backend.
 	Stdlib struct {
-		Num    Num
 		Shapes Shapes
-	}
-
-	// Num is the implementation of the num package.
-	Num struct {
-		Einsum interp.FuncBuiltin
 	}
 
 	// Shapes is the implementation of the shapes package.
