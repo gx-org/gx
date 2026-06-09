@@ -108,12 +108,12 @@ func (fitp *Interpreter) ToCompEvalError(src ast.Expr, el ir.Element) (ir.CompEv
 	if elements.IsNil(el) {
 		return nil, nil
 	}
-	isErr, cpErr, err := el.Type().AssignableTo(fitp, ir.ErrorType())
+	isErr, err := el.Type().AssignableTo(fitp, ir.ErrorType())
 	if !isErr {
 		return nil, errors.Errorf("cannot convert %T to error", el.Type().ReferString(fitp.File()))
 	}
-	if unErr := ir.UnifyErr(cpErr, err); unErr != nil {
-		return nil, unErr
+	if err != nil {
+		return nil, err
 	}
 	methods, isSelector := el.(*fun.NamedType)
 	if !isSelector {

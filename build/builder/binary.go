@@ -149,13 +149,9 @@ func (n *binaryExpr) buildOperands(scope resolveScope) (ir.Expr, ir.Expr, ir.Typ
 		// We have a scalar and an array:
 		// check that the scalar matches with the array data type.
 		dtype := arrayType.DataType()
-		eq, cpErr, err := dtype.Equal(compEval, scalarType)
+		eq, err := dtype.Equal(compEval, scalarType)
 		if err != nil {
 			scope.Err().Append(err)
-			return xExpr, yExpr, ir.InvalidType()
-		}
-		if cpErr != nil {
-			scope.Err().AppendAt(n.source(), cpErr)
 			return xExpr, yExpr, ir.InvalidType()
 		}
 		if !eq {
@@ -167,13 +163,9 @@ func (n *binaryExpr) buildOperands(scope resolveScope) (ir.Expr, ir.Expr, ir.Typ
 	}
 
 	// Default case: check that both sides have the same type.
-	eq, cpErr, err := xType.Equal(compEval, yType)
+	eq, err := xType.Equal(compEval, yType)
 	if err != nil {
 		scope.Err().AppendAt(n.source(), err)
-		return xExpr, yExpr, ir.InvalidType()
-	}
-	if cpErr != nil {
-		scope.Err().AppendAt(n.source(), cpErr)
 		return xExpr, yExpr, ir.InvalidType()
 	}
 	if !eq {

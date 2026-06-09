@@ -121,12 +121,9 @@ func toTypeValue(fetcher ir.Fetcher, field *ir.Field, x ir.Expr) (ir.GenericValu
 		return invalidGenericType(genericIdentType), fetcher.Err().Appendf(x.Node(), "%s is not a type", x.SourceString(fetcher.File()))
 	}
 	gotType, wantType := typeValExpr.Val(), field.Group.Type.Val()
-	assignedOk, cpErr, err := gotType.AssignableTo(fetcher, wantType)
+	assignedOk, err := gotType.AssignableTo(fetcher, wantType)
 	if err != nil {
 		return invalidGenericType(genericIdentType), fetcher.Err().AppendAt(x.Node(), err)
-	}
-	if cpErr != nil {
-		return invalidGenericType(genericIdentType), fetcher.Err().AppendAt(x.Node(), cpErr)
 	}
 	if !assignedOk {
 		return invalidGenericType(genericIdentType), fetcher.Err().Appendf(x.Node(), "%s does not satisfy %s", gotType.ReferString(fetcher.File()), wantType.ReferString(fetcher.File()))

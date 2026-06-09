@@ -125,12 +125,9 @@ func (f einsum) resultsType(fetcher ir.Fetcher, call *ir.FuncCallExpr) ([]ir.Typ
 	for n := range lhsContractingDims {
 		lhsDim := leftDims[lhsContractingDims[n]]
 		rhsDim := rightDims[rhsContractingDims[n]]
-		ok, cpErr, err := lhsDim.Equal(fetcher, rhsDim)
+		ok, err := lhsDim.Equal(fetcher, rhsDim)
 		if err != nil {
 			return nil, nil, fmterr.Error(fetcher.File().FileSet(), call.Node(), err)
-		}
-		if cpErr != nil {
-			return nil, nil, fmterr.Error(fetcher.File().FileSet(), call.Node(), cpErr)
 		}
 		if !ok {
 			from := fetcher.File()
@@ -147,12 +144,9 @@ func (f einsum) resultsType(fetcher ir.Fetcher, call *ir.FuncCallExpr) ([]ir.Typ
 	for n := range min(len(lhsBatchDims), len(rhsBatchDims)) {
 		lhsDim := leftDims[lhsBatchDims[n]]
 		rhsDim := rightDims[rhsBatchDims[n]]
-		ok, cpErr, err := lhsDim.Equal(fetcher, rhsDim)
+		ok, err := lhsDim.Equal(fetcher, rhsDim)
 		if err != nil {
 			return nil, nil, fmterr.Error(fetcher.File().FileSet(), call.Node(), err)
-		}
-		if cpErr != nil {
-			return nil, nil, fmterr.Error(fetcher.File().FileSet(), call.Node(), cpErr)
 		}
 		if !ok {
 			from := fetcher.File()

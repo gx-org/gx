@@ -44,7 +44,7 @@ type (
 		AsExpr() Expr
 
 		// Equal returns true if two axis are equal.
-		Equal(TypeCmp, AxisLengths) (bool, CompEvalError, error)
+		Equal(TypeCmp, AxisLengths) (bool, error)
 
 		// Specialise the axis length given a context.
 		Specialise(Specialiser) []AxisLengths
@@ -87,20 +87,20 @@ func (dm *AxisExpr) Expr() ast.Expr { return dm.X.Expr() }
 func (dm *AxisExpr) NumAxes() int { return 1 }
 
 // Equal returns true if two axis are equal.
-func (dm *AxisExpr) Equal(tpcmp TypeCmp, other AxisLengths) (bool, CompEvalError, error) {
-	dmAx, cpErr, err := evalExpr(tpcmp, dm.X)
-	if cpErr != nil || err != nil {
-		return false, cpErr, err
+func (dm *AxisExpr) Equal(tpcmp TypeCmp, other AxisLengths) (bool, error) {
+	dmAx, err := tpcmp.EvalExpr(dm.X)
+	if err != nil {
+		return false, err
 	}
-	otherAx, cpErr, err := evalExpr(tpcmp, other.AsExpr())
-	if cpErr != nil || err != nil {
-		return false, cpErr, err
+	otherAx, err := tpcmp.EvalExpr(other.AsExpr())
+	if err != nil {
+		return false, err
 	}
 	eq, err := ElementEqual(dmAx, otherAx)
 	if !eq || err != nil {
-		return false, nil, err
+		return false, err
 	}
-	return true, nil, nil
+	return true, nil
 }
 
 // Specialise the axis length given a context.
@@ -222,9 +222,9 @@ func (dm *AxisInfer) axExprString(from *File) string {
 }
 
 // Equal returns true if two axis are equal.
-func (dm *AxisInfer) Equal(tpcmp TypeCmp, other AxisLengths) (bool, CompEvalError, error) {
+func (dm *AxisInfer) Equal(tpcmp TypeCmp, other AxisLengths) (bool, error) {
 	if dm.X == nil {
-		return false, nil, nil
+		return false, nil
 	}
 	return dm.X.Equal(tpcmp, other)
 }

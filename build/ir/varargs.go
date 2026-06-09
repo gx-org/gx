@@ -69,18 +69,18 @@ func (tp *VarArgsType) ElementType() (Type, bool) {
 }
 
 // Equal returns true if other is the same type.
-func (tp *VarArgsType) Equal(tpcmp TypeCmp, target Type) (bool, CompEvalError, error) {
+func (tp *VarArgsType) Equal(tpcmp TypeCmp, target Type) (bool, error) {
 	return tp.Typ.Equal(tpcmp, target)
 }
 
 // AssignableTo reports whether a value of the type can be assigned to another.
-func (tp *VarArgsType) AssignableTo(tpcmp TypeCmp, target Type) (bool, CompEvalError, error) {
+func (tp *VarArgsType) AssignableTo(tpcmp TypeCmp, target Type) (bool, error) {
 	return tp.Typ.AssignableTo(tpcmp, target)
 }
 
 // ConvertibleTo reports whether a value of the type can be converted to another
 // (using static type casting).
-func (tp *VarArgsType) ConvertibleTo(tpcmp TypeCmp, target Type) (bool, CompEvalError, error) {
+func (tp *VarArgsType) ConvertibleTo(tpcmp TypeCmp, target Type) (bool, error) {
 	return tp.Typ.ConvertibleTo(tpcmp, target)
 }
 

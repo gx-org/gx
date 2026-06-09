@@ -15,7 +15,6 @@
 package ir
 
 import (
-	"github.com/pkg/errors"
 	"github.com/gx-org/gx/internal/interp/canonical"
 )
 
@@ -25,34 +24,16 @@ type TupleElement interface {
 	TupleElements() []Element
 }
 
-func evalExpr(tpcmp TypeCmp, x Expr) (Element, CompEvalError, error) {
-	el, err := tpcmp.EvalExpr(x)
+func areEqual(tpcmp TypeCmp, x, y Expr) (bool, error) {
+	xExpr, err := tpcmp.EvalExpr(x)
 	if err != nil {
-		return el, nil, err
+		return false, err
 	}
-	tuple, isTuple := el.(TupleElement)
-	if !isTuple {
-		return el, nil, nil
+	yExpr, err := tpcmp.EvalExpr(y)
+	if err != nil {
+		return false, err
 	}
-	els := tuple.TupleElements()
-	if len(els) != 2 {
-		return el, nil, errors.Errorf("invalid tuple length: got %d but want 2", len(els))
-	}
-	cpErr, err := tpcmp.ToCompEvalError(x.Expr(), els[1])
-	return els[0], cpErr, err
-}
-
-func areEqual(tpcmp TypeCmp, x, y Expr) (bool, CompEvalError, error) {
-	xExpr, xCPErr, err := evalExpr(tpcmp, x)
-	if xCPErr != nil || err != nil {
-		return false, xCPErr, err
-	}
-	yExpr, yCPErr, err := evalExpr(tpcmp, y)
-	if yCPErr != nil || err != nil {
-		return false, yCPErr, err
-	}
-	ok, err := ElementEqual(xExpr, yExpr)
-	return ok, nil, err
+	return ElementEqual(xExpr, yExpr)
 }
 
 // ElementEqual compares if two runtime elements are equal.

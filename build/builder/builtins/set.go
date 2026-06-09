@@ -57,12 +57,9 @@ func (f *setFunc) BuildFuncType(fetcher ir.Fetcher, call *ir.FuncCallExpr) (*ir.
 		return ext, errors.Errorf("cannot fetch array type: %v", err)
 	}
 	ext.Results = builtins.Fields(call, arrayParams[0])
-	sameDType, cpErr, err := arrayParams[0].DataType().Equal(fetcher, arrayParams[1].DataType())
+	sameDType, err := arrayParams[0].DataType().Equal(fetcher, arrayParams[1].DataType())
 	if err != nil {
 		return ext, errors.Errorf("cannot compare datatypes: %v", err)
-	}
-	if cpErr != nil {
-		return ext, cpErr
 	}
 	if !sameDType {
 		return ext, errors.Errorf("cannot set a slice of a [...]%s array with a [...]%s array", arrayParams[0].DataType().ReferString(fetcher.File()), arrayParams[1].DataType().ReferString(fetcher.File()))
@@ -89,12 +86,9 @@ func (f *setFunc) BuildFuncType(fetcher ir.Fetcher, call *ir.FuncCallExpr) (*ir.
 	wantUpdate := ir.NewArrayType(&ast.ArrayType{}, arrayParams[0].DataType(), &ir.Rank{
 		Ax: xRank.Axes()[posSize:],
 	})
-	ok, cpErr, err := arrayParams[1].Equal(fetcher, wantUpdate)
+	ok, err := arrayParams[1].Equal(fetcher, wantUpdate)
 	if err != nil {
 		return ext, errors.Errorf("cannot compare rank: %v", err)
-	}
-	if cpErr != nil {
-		return ext, cpErr
 	}
 	if !ok {
 		return ext, errors.Errorf("cannot set array: update slice is %s but requires %s", arrayParams[1], wantUpdate)

@@ -93,14 +93,10 @@ func invalidGenericType(genType *ir.GenericTypeParam) *ir.TypeGenericValue {
 func (uni *argUnifier) DefineType(genType *ir.GenericTypeParam, typ ir.Type) bool {
 	field := genType.OrigField()
 	pos := field.Pos
-	ok, cpErr, err := ir.AssignableTo(uni.fetcher, typ, field.Type())
+	ok, err := ir.AssignableTo(uni.fetcher, typ, field.Type())
 	if err != nil {
 		uni.defined[pos] = invalidGenericType(genType)
 		return uni.fetcher.Err().AppendAt(uni.arg.Node(), err)
-	}
-	if cpErr != nil {
-		uni.defined[pos] = invalidGenericType(genType)
-		return uni.fetcher.Err().AppendAt(uni.arg.Node(), cpErr)
 	}
 	if !ok {
 		uni.defined[pos] = invalidGenericType(genType)
@@ -117,12 +113,9 @@ func (uni *argUnifier) DefineType(genType *ir.GenericTypeParam, typ ir.Type) boo
 	if !ir.IsValid(definedType) || !ir.IsValid(typ) {
 		return false
 	}
-	eq, cpErr, err := typ.AssignableTo(uni.fetcher, definedType)
+	eq, err := typ.AssignableTo(uni.fetcher, definedType)
 	if err != nil {
 		return uni.fetcher.Err().AppendAt(uni.arg.Node(), err)
-	}
-	if cpErr != nil {
-		return uni.fetcher.Err().AppendAt(uni.arg.Node(), cpErr)
 	}
 	if !eq {
 		from := uni.fetcher.File()
@@ -184,8 +177,8 @@ func (uni *argUnifier) DefineNonType(genAxis *ir.GenericNonTypeParam, expr ir.Ex
 		from := uni.fetcher.File()
 		return uni.fetcher.Err().AppendInternalf(uni.arg.Node(), "cannot compare value %s to type parameter %s (type: %s)", expr.SourceString(from), defined.Name(), defined.DefinedType().ReferString(from))
 	}
-	isEqual, cpErr, err := nonType.Equal(uni.fetcher, expr)
-	if uniErr := ir.UnifyErr(cpErr, err); uniErr != nil {
+	isEqual, err := nonType.Equal(uni.fetcher, expr)
+	if err != nil {
 		return uni.fetcher.Err().AppendAt(uni.arg.Node(), err)
 	}
 	if !isEqual {

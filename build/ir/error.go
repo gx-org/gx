@@ -17,6 +17,7 @@ package ir
 import (
 	"go/ast"
 
+	"github.com/pkg/errors"
 	"github.com/gx-org/gx/build/ir/irkind"
 )
 
@@ -74,25 +75,25 @@ func (*errorType) storageValue() {}
 func (s *errorType) Kind() irkind.Kind { return irkind.Interface }
 
 // Equal returns true if other is the exact same type set.
-func (s *errorType) Equal(tpcmp TypeCmp, target Type) (bool, CompEvalError, error) {
+func (s *errorType) Equal(tpcmp TypeCmp, target Type) (bool, error) {
 	return s.iface.Equal(tpcmp, target)
 }
 
 // AssignableTo reports whether a value of the type can be assigned to another.
-func (s *errorType) AssignableTo(tpcmp TypeCmp, target Type) (bool, CompEvalError, error) {
+func (s *errorType) AssignableTo(tpcmp TypeCmp, target Type) (bool, error) {
 	if s.Same(target) {
-		return true, nil, nil
+		return true, nil
 	}
 	return s.iface.AssignableTo(tpcmp, target)
 }
 
-func (s *errorType) assignableFrom(tpcmp TypeCmp, x Type) (bool, CompEvalError, error) {
+func (s *errorType) assignableFrom(tpcmp TypeCmp, x Type) (bool, error) {
 	return s.iface.assignableFromWithName(tpcmp, x, s.DefineString)
 }
 
 // ConvertibleTo reports whether a value of the type can be converted to another
 // (using static type casting).
-func (s *errorType) ConvertibleTo(tpcmp TypeCmp, target Type) (bool, CompEvalError, error) {
+func (s *errorType) ConvertibleTo(tpcmp TypeCmp, target Type) (bool, error) {
 	return s.iface.ConvertibleTo(tpcmp, target)
 }
 
@@ -194,4 +195,26 @@ func UnifyErr(cpErr CompEvalError, err error) error {
 		return err
 	}
 	return cpErr
+}
+
+// CompileError is a normal error to be reported to the user as a compile error of the source code.
+type CompileError struct {
+	error
+}
+
+// CompileErrorF converts an error into a compilation error.
+func CompileErrorF(s string, as ...any) *CompileError {
+	return &CompileError{error: errors.Errorf(s, as...)}
+}
+
+// SplitErr checks if an error is a compile error.
+func SplitErr(err error) (*CompileError, error) {
+	if err == nil {
+		return nil, nil
+	}
+	cpErr, isCompileError := err.(*CompileError)
+	if isCompileError {
+		return cpErr, nil
+	}
+	return nil, err
 }

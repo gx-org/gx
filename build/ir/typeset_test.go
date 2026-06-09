@@ -55,12 +55,8 @@ func TestTypeSetSlice(t *testing.T) {
 			if gotOk != test.ok {
 				t.Errorf("unexpected ok value: got %v but want %v", gotOk, test.ok)
 			}
-			eq, cpErr, err := test.want.Equal(fetcher, got)
+			eq, err := test.want.Equal(fetcher, got)
 			if err != nil {
-				t.Error(err)
-				return
-			}
-			if cpErr != nil {
 				t.Error(err)
 				return
 			}

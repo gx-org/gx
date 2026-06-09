@@ -36,13 +36,13 @@ type (
 		Axes() []AxisLengths
 
 		// Equal returns true if two ranks are equal.
-		Equal(TypeCmp, ArrayRank) (bool, CompEvalError, error)
+		Equal(TypeCmp, ArrayRank) (bool, error)
 
 		// AssignableTo returns true if this rank can be assigned to the destination rank.
-		AssignableTo(TypeCmp, ArrayRank) (bool, CompEvalError, error)
+		AssignableTo(TypeCmp, ArrayRank) (bool, error)
 
 		// ConvertibleTo returns true if this rank can be converted to the destination rank.
-		ConvertibleTo(TypeCmp, ArrayRank) (bool, CompEvalError, error)
+		ConvertibleTo(TypeCmp, ArrayRank) (bool, error)
 
 		// Specialise a type to a given target.
 		Specialise(Specialiser) ArrayRank
@@ -100,26 +100,26 @@ func (r *Rank) Expr() ast.Expr { return r.Src.Len }
 func (r *Rank) Axes() []AxisLengths { return r.Ax }
 
 // Equal returns true if other has the same number of axes and each axis has the same length.
-func (r *Rank) Equal(tpcmp TypeCmp, other ArrayRank) (bool, CompEvalError, error) {
+func (r *Rank) Equal(tpcmp TypeCmp, other ArrayRank) (bool, error) {
 	switch otherT := other.(type) {
 	case *RankInfer:
 		if otherT.Rnk == nil {
-			return false, nil, errors.Errorf("rank not inferred")
+			return false, errors.Errorf("rank not inferred")
 		}
 		return r.equalRank(tpcmp, otherT.Rnk)
 	case *Rank:
 		return r.equalRank(tpcmp, otherT)
 	default:
-		return false, nil, errors.Errorf("rank type %T not supported", otherT)
+		return false, errors.Errorf("rank type %T not supported", otherT)
 	}
 }
 
-func evalAxes(tpcmp TypeCmp, r ArrayRank) ([]Element, CompEvalError, error) {
+func evalAxes(tpcmp TypeCmp, r ArrayRank) ([]Element, error) {
 	var els []Element
 	for _, ax := range r.Axes() {
 		el, err := tpcmp.EvalExpr(ax.AsExpr())
 		if err != nil {
-			return nil, nil, err
+			return nil, err
 		}
 		axElts := []Element{el}
 		if tuple, isTuple := el.(TupleElement); isTuple {
@@ -127,62 +127,62 @@ func evalAxes(tpcmp TypeCmp, r ArrayRank) ([]Element, CompEvalError, error) {
 		}
 		els = append(els, axElts...)
 	}
-	return els, nil, nil
+	return els, nil
 }
 
-func (r *Rank) equalRank(tpcmp TypeCmp, other ArrayRank) (bool, CompEvalError, error) {
-	rAxes, cpErr, err := evalAxes(tpcmp, r)
-	if cpErr != nil || err != nil {
-		return false, cpErr, err
+func (r *Rank) equalRank(tpcmp TypeCmp, other ArrayRank) (bool, error) {
+	rAxes, err := evalAxes(tpcmp, r)
+	if err != nil {
+		return false, err
 	}
-	otherAxes, cpErr, err := evalAxes(tpcmp, other)
-	if cpErr != nil || err != nil {
-		return false, cpErr, err
+	otherAxes, err := evalAxes(tpcmp, other)
+	if err != nil {
+		return false, err
 	}
 	if len(rAxes) != len(otherAxes) {
-		return false, nil, err
+		return false, err
 	}
 	for i, ri := range rAxes {
 		eq, err := ElementEqual(ri, otherAxes[i])
 		if !eq || err != nil {
-			return false, nil, err
+			return false, err
 		}
 	}
-	return true, nil, nil
+	return true, nil
 }
 
-func (r *Rank) assignableTo(tpcmp TypeCmp, dst ArrayRank) (bool, CompEvalError, error) {
+func (r *Rank) assignableTo(tpcmp TypeCmp, dst ArrayRank) (bool, error) {
 	return r.equalRank(tpcmp, dst)
 }
 
 // AssignableTo returns true if this rank can be assigned to the destination rank.
-func (r *Rank) AssignableTo(tpcmp TypeCmp, dst ArrayRank) (bool, CompEvalError, error) {
+func (r *Rank) AssignableTo(tpcmp TypeCmp, dst ArrayRank) (bool, error) {
 	switch dstT := dst.(type) {
 	case *RankInfer:
 		if dstT.Rnk == nil {
-			return true, nil, nil
+			return true, nil
 		}
 		return r.assignableTo(tpcmp, dstT.Rnk)
 	case *Rank:
 		return r.assignableTo(tpcmp, dstT)
 	default:
-		return false, nil, errors.Errorf("rank type %T not supported", dstT)
+		return false, errors.Errorf("rank type %T not supported", dstT)
 	}
 }
 
 // ConvertibleTo returns true if this rank can be converted to the destination rank.
-func (r *Rank) ConvertibleTo(tpcmp TypeCmp, dst ArrayRank) (bool, CompEvalError, error) {
+func (r *Rank) ConvertibleTo(tpcmp TypeCmp, dst ArrayRank) (bool, error) {
 	var dstR ArrayRank
 	switch dstT := dst.(type) {
 	case *RankInfer:
 		if dstT.Rnk == nil {
-			return true, nil, nil
+			return true, nil
 		}
 		dstR = dstT.Rnk
 	case *Rank:
 		dstR = dstT
 	default:
-		return false, nil, errors.Errorf("rank type %T not supported", dstT)
+		return false, errors.Errorf("rank type %T not supported", dstT)
 	}
 	thisSize := RankSize(r)
 	otherSize := RankSize(dstR)
@@ -318,34 +318,34 @@ func (r *RankInfer) Axes() []AxisLengths {
 }
 
 // Equal returns true if other has the same rank and dimensions.
-func (r *RankInfer) Equal(tpcmp TypeCmp, other ArrayRank) (bool, CompEvalError, error) {
+func (r *RankInfer) Equal(tpcmp TypeCmp, other ArrayRank) (bool, error) {
 	if r.Rnk != nil {
 		return r.Rnk.Equal(tpcmp, other)
 	}
 	switch otherT := other.(type) {
 	case *RankInfer:
-		return otherT.Rnk == nil, nil, nil
+		return otherT.Rnk == nil, nil
 	case *Rank:
-		return false, nil, nil
+		return false, nil
 	default:
-		return false, nil, errors.Errorf("rank type %T not supported", otherT)
+		return false, errors.Errorf("rank type %T not supported", otherT)
 	}
 }
 
 // AssignableTo returns true if this rank can be assigned to the destination rank.
-func (r *RankInfer) AssignableTo(tpcmp TypeCmp, dst ArrayRank) (bool, CompEvalError, error) {
+func (r *RankInfer) AssignableTo(tpcmp TypeCmp, dst ArrayRank) (bool, error) {
 	if r.Rnk != nil {
 		return r.Rnk.AssignableTo(tpcmp, dst)
 	}
-	return true, nil, nil
+	return true, nil
 }
 
 // ConvertibleTo returns true if this rank can be converted to the destination rank.
-func (r *RankInfer) ConvertibleTo(tpcmp TypeCmp, dst ArrayRank) (bool, CompEvalError, error) {
+func (r *RankInfer) ConvertibleTo(tpcmp TypeCmp, dst ArrayRank) (bool, error) {
 	if r.Rnk != nil {
 		return r.Rnk.ConvertibleTo(tpcmp, dst)
 	}
-	return true, nil, nil
+	return true, nil
 }
 
 // IsAtomic returns true if the rank has no axes.

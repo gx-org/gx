@@ -296,12 +296,9 @@ func checkArgsForCall(rscope resolveScope, ce *compileEvaluator, fExpr *ir.FuncV
 				ok = argOk
 			}
 		}
-		assignable, cpErr, err := ir.AssignableTo(ce, argType, target)
+		assignable, err := ir.AssignableTo(ce, argType, target)
 		if err != nil {
 			return args, ce.Err().AppendAt(arg.Node(), err)
-		}
-		if cpErr != nil {
-			return args, ce.Err().AppendAt(arg.Node(), cpErr)
 		}
 		if !assignable {
 			from := ce.File()

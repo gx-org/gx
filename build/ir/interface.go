@@ -18,7 +18,6 @@ import (
 	"fmt"
 	"go/ast"
 
-	"github.com/pkg/errors"
 	"github.com/gx-org/gx/build/ir/annotations"
 	"github.com/gx-org/gx/build/ir/irkind"
 )
@@ -174,62 +173,62 @@ func (s *Interface) ArrayType() ast.Expr {
 func (s *Interface) Kind() irkind.Kind { return irkind.Interface }
 
 // Equal returns true if other is the exact same type set.
-func (s *Interface) Equal(tpcmp TypeCmp, target Type) (bool, CompEvalError, error) {
+func (s *Interface) Equal(tpcmp TypeCmp, target Type) (bool, error) {
 	targetSet, ok := target.(*Interface)
 	if !ok {
-		return false, nil, nil
+		return false, nil
 	}
 	if s == targetSet {
-		return true, nil, nil
+		return true, nil
 	}
 	if len(s.types) != len(targetSet.types) {
-		return false, nil, nil
+		return false, nil
 	}
 	for i, typ := range s.types {
-		ok, cpErr, err := typ.Equal(tpcmp, targetSet.types[i])
+		ok, err := typ.Equal(tpcmp, targetSet.types[i])
 		if err != nil {
 			err = fmt.Errorf("cannot compare type set %s to %s: %w", s.ReferString(tpcmp.File()), targetSet.ReferString(tpcmp.File()), err)
-			return false, nil, err
+			return false, err
 		}
-		if cpErr != nil || !ok {
-			return false, cpErr, nil
+		if !ok {
+			return false, nil
 		}
 	}
-	return true, nil, nil
+	return true, nil
 }
 
 // AssignableTo reports whether a value of the type can be assigned to another.
-func (s *Interface) AssignableTo(tpcmp TypeCmp, target Type) (bool, CompEvalError, error) {
+func (s *Interface) AssignableTo(tpcmp TypeCmp, target Type) (bool, error) {
 	if targetSet, ok := target.(*Interface); ok {
 		return targetSet.assignableFrom(tpcmp, s)
 	}
 	for _, typ := range s.types {
-		ok, cpErr, err := typ.AssignableTo(tpcmp, target)
-		if !ok || cpErr != nil || err != nil {
-			return false, cpErr, err
+		ok, err := typ.AssignableTo(tpcmp, target)
+		if !ok || err != nil {
+			return false, err
 		}
 	}
-	return len(s.types) > 0, nil, nil
+	return len(s.types) > 0, nil
 }
 
-func (s *Interface) checkTypesAssignableFrom(tpcmp TypeCmp, source Type) (bool, CompEvalError, error) {
+func (s *Interface) checkTypesAssignableFrom(tpcmp TypeCmp, source Type) (bool, error) {
 	if len(s.types) == 0 {
-		return true, nil, nil
+		return true, nil
 	}
 
 	if sourceSet, ok := source.(*Interface); ok {
 		return s.containsTypes(tpcmp, sourceSet)
 	}
 	for _, typ := range s.types {
-		ok, cpErr, err := source.AssignableTo(tpcmp, typ)
-		if cpErr != nil || err != nil {
-			return false, cpErr, err
+		ok, err := source.AssignableTo(tpcmp, typ)
+		if err != nil {
+			return false, err
 		}
 		if ok {
-			return true, nil, nil
+			return true, nil
 		}
 	}
-	return false, nil, nil
+	return false, nil
 }
 
 // Instantiate the interface.
@@ -239,70 +238,70 @@ func (s *Interface) Instantiate(Fetcher, Specialiser) (Type, bool) {
 
 type toString func(file *File) string
 
-func checkHasMethod(tpcmp TypeCmp, ifaceName toString, source *NamedType, imeth *IMethod) (bool, CompEvalError, error) {
+func checkHasMethod(tpcmp TypeCmp, ifaceName toString, source *NamedType, imeth *IMethod) (bool, error) {
 	methName := imeth.Name()
 	meth := MethodByName(source, methName)
 	if meth == nil {
 		from := tpcmp.File()
-		return false, CompEvalError(errors.Errorf("%s does not implement %s (missing method %s)", ifaceName(from), source.ReferString(from), methName)), nil
+		return false, CompileErrorF("%s does not implement %s (missing method %s)", ifaceName(from), source.ReferString(from), methName)
 	}
-	eq, cpErr, err := meth.FuncType().equalParamsResults(tpcmp, imeth.FType)
-	if cpErr != nil || err != nil {
-		return false, cpErr, err
+	eq, err := meth.FuncType().equalParamsResults(tpcmp, imeth.FType)
+	if err != nil {
+		return false, err
 	}
 	if !eq {
 		from := tpcmp.File()
-		return false, CompEvalError(errors.Errorf("%s does not implement %s (wrong type for method %s)\n\thave %s\n\twant %s", ifaceName(from), source.ReferString(from), methName, meth.FuncType().sourceSignature(from, imeth.NameDef().Name, true), imeth.SourceSignature(from))), nil
+		return false, CompileErrorF("%s does not implement %s (wrong type for method %s)\n\thave %s\n\twant %s", ifaceName(from), source.ReferString(from), methName, meth.FuncType().sourceSignature(from, imeth.NameDef().Name, true), imeth.SourceSignature(from))
 	}
-	return true, nil, nil
+	return true, nil
 }
 
-func (s *Interface) checkImplement(tpcmp TypeCmp, source Type, ifaceName toString) (bool, CompEvalError, error) {
+func (s *Interface) checkImplement(tpcmp TypeCmp, source Type, ifaceName toString) (bool, error) {
 	named, ok := source.(*NamedType)
 	if !ok {
-		return len(s.methods) == 0, nil, nil
+		return len(s.methods) == 0, nil
 	}
 	for _, method := range s.methods {
-		ok, cpErr, err := checkHasMethod(tpcmp, ifaceName, named, method)
-		if !ok || cpErr != nil || err != nil {
-			return ok, cpErr, err
+		ok, err := checkHasMethod(tpcmp, ifaceName, named, method)
+		if !ok || err != nil {
+			return ok, err
 		}
 	}
-	return true, nil, nil
+	return true, nil
 }
 
-func (s *Interface) assignableFromWithName(tpcmp TypeCmp, source Type, name toString) (bool, CompEvalError, error) {
-	typeOk, cpErr, err := s.checkTypesAssignableFrom(tpcmp, source)
-	if cpErr != nil || err != nil {
-		return false, cpErr, err
+func (s *Interface) assignableFromWithName(tpcmp TypeCmp, source Type, name toString) (bool, error) {
+	typeOk, err := s.checkTypesAssignableFrom(tpcmp, source)
+	if err != nil {
+		return false, err
 	}
-	methodOk, cpErr, err := s.checkImplement(tpcmp, source, name)
-	if cpErr != nil || err != nil {
-		return false, cpErr, err
+	methodOk, err := s.checkImplement(tpcmp, source, name)
+	if err != nil {
+		return false, err
 	}
-	return typeOk && methodOk, nil, nil
+	return typeOk && methodOk, nil
 }
 
-func (s *Interface) assignableFrom(tpcmp TypeCmp, source Type) (bool, CompEvalError, error) {
+func (s *Interface) assignableFrom(tpcmp TypeCmp, source Type) (bool, error) {
 	return s.assignableFromWithName(tpcmp, source, s.ReferString)
 }
 
 // ConvertibleTo reports whether a value of the type can be converted to another
 // (using static type casting).
-func (s *Interface) ConvertibleTo(tpcmp TypeCmp, target Type) (bool, CompEvalError, error) {
+func (s *Interface) ConvertibleTo(tpcmp TypeCmp, target Type) (bool, error) {
 	if _, ok := target.(*Interface); ok {
 		return s.Equal(tpcmp, target)
 	}
 	for _, typ := range s.types {
-		ok, cpErr, err := typ.ConvertibleTo(tpcmp, target)
-		if cpErr != nil || err != nil {
-			return false, cpErr, err
+		ok, err := typ.ConvertibleTo(tpcmp, target)
+		if err != nil {
+			return false, err
 		}
 		if ok {
-			return true, nil, nil
+			return true, nil
 		}
 	}
-	return false, nil, nil
+	return false, nil
 }
 
 // Methods returns the list of methods available for the interface.

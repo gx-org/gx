@@ -32,23 +32,23 @@ func (*atomicType) atomic() {}
 // Kind returns the scalar kind.
 func (s *atomicType) Kind() irkind.Kind { return s.Knd }
 
-func (s *atomicType) equalAtomic(other ArrayType) (bool, CompEvalError, error) {
-	return s.Knd == other.Kind(), nil, nil
+func (s *atomicType) equalAtomic(other ArrayType) (bool, error) {
+	return s.Knd == other.Kind(), nil
 }
 
-func (s *atomicType) equalArray(tpcmp TypeCmp, other ArrayType) (bool, CompEvalError, error) {
-	dtypeEq, cpErr, err := s.Equal(tpcmp, other.DataType())
-	if !dtypeEq || cpErr != nil || err != nil {
-		return false, cpErr, err
+func (s *atomicType) equalArray(tpcmp TypeCmp, other ArrayType) (bool, error) {
+	dtypeEq, err := s.Equal(tpcmp, other.DataType())
+	if !dtypeEq || err != nil {
+		return false, err
 	}
 	return s.Rank().Equal(tpcmp, other.Rank())
 }
 
 // Equal returns true if other is the same type.
-func (s *atomicType) Equal(tpcmp TypeCmp, other Type) (bool, CompEvalError, error) {
+func (s *atomicType) Equal(tpcmp TypeCmp, other Type) (bool, error) {
 	otherT, ok := other.(ArrayType)
 	if !ok {
-		return false, nil, nil
+		return false, nil
 	}
 	if otherT.Rank().IsAtomic() {
 		return s.equalAtomic(otherT)
@@ -62,47 +62,47 @@ var scalarRank = &Rank{}
 func (s *atomicType) Rank() ArrayRank { return scalarRank }
 
 // AssignableTo reports if the type can be assigned to other.
-func (s *atomicType) AssignableTo(tpcmp TypeCmp, target Type) (bool, CompEvalError, error) {
+func (s *atomicType) AssignableTo(tpcmp TypeCmp, target Type) (bool, error) {
 	if assignFrom, ok := target.(assignsFrom); ok {
 		return assignFrom.assignableFrom(tpcmp, s)
 	}
 
 	targetT, ok := target.(ArrayType)
 	if !ok {
-		return false, nil, nil
+		return false, nil
 	}
 	if targetT.Rank().IsAtomic() {
 		if s.Knd == irkind.NumberInt && (IsInteger(target) || IsFloat(target)) {
-			return true, nil, nil
+			return true, nil
 		}
 		if s.Knd == irkind.NumberFloat && IsFloat(target) {
-			return true, nil, nil
+			return true, nil
 		}
 		return s.equalAtomic(targetT)
 	}
-	dtypeEq, cpErr, err := s.AssignableTo(tpcmp, targetT.DataType())
-	if !dtypeEq || cpErr != nil || err != nil {
-		return false, cpErr, err
+	dtypeEq, err := s.AssignableTo(tpcmp, targetT.DataType())
+	if !dtypeEq || err != nil {
+		return false, err
 	}
-	rankOk, cpErr, err := s.Rank().AssignableTo(tpcmp, targetT.Rank())
-	if !rankOk || cpErr != nil || err != nil {
-		return rankOk, cpErr, err
+	rankOk, err := s.Rank().AssignableTo(tpcmp, targetT.Rank())
+	if !rankOk || err != nil {
+		return rankOk, err
 	}
-	return true, nil, nil
+	return true, nil
 }
 
 // ConvertibleTo reports whether a value of the type can be converted to another
 // (using static type casting).
-func (s *atomicType) ConvertibleTo(tpcmp TypeCmp, target Type) (bool, CompEvalError, error) {
+func (s *atomicType) ConvertibleTo(tpcmp TypeCmp, target Type) (bool, error) {
 	if convertFrom, ok := target.(convertsFrom); ok {
 		return convertFrom.convertibleFrom(tpcmp, s)
 	}
 
 	targetT, ok := target.(ArrayType)
 	if !ok {
-		return false, nil, nil
+		return false, nil
 	}
-	return SupportOperators(s) == SupportOperators(targetT.DataType()), nil, nil
+	return SupportOperators(s) == SupportOperators(targetT.DataType()), nil
 }
 
 // Specialise a type to a given target.

@@ -23,12 +23,9 @@ import (
 )
 
 func typeInclude(fetcher ir.Fetcher, set ir.Type, typ ir.Type) bool {
-	isIn, cpErr, err := ir.TypeInclude(fetcher, set, typ)
+	isIn, err := ir.TypeInclude(fetcher, set, typ)
 	if err != nil {
 		return fetcher.Err().Append(err)
-	}
-	if cpErr != nil {
-		return fetcher.Err().AppendAt(typ.Node(), cpErr)
 	}
 	if !isIn {
 		return fetcher.Err().Appendf(typ.Node(), "%s does not satisfy %s",
@@ -67,9 +64,9 @@ func instantiateExpr(fetcher ir.Fetcher, expr ir.Expr) (ir.Value, bool) {
 
 // AssignTo checks if an expression can be assigned to a generic non-type parameter.
 func AssignTo(fetcher ir.Fetcher, x ir.Expr, genAxis *ir.GenericNonTypeParam, tp ir.Type) bool {
-	isAssignable, cpErr, err := x.Type().AssignableTo(fetcher, tp)
-	if uniErr := ir.UnifyErr(cpErr, err); uniErr != nil {
-		return fetcher.Err().Append(uniErr)
+	isAssignable, err := x.Type().AssignableTo(fetcher, tp)
+	if err != nil {
+		return fetcher.Err().Append(err)
 	}
 	if !isAssignable {
 		from := fetcher.File()

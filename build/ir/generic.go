@@ -130,47 +130,47 @@ func (s *GenericTypeParam) Kind() irkind.Kind {
 	return s.typ().Kind()
 }
 
-func (s *GenericTypeParam) equal(tpcmp TypeCmp, typ Type) (bool, CompEvalError, error) {
+func (s *GenericTypeParam) equal(tpcmp TypeCmp, typ Type) (bool, error) {
 	switch typT := typ.(type) {
 	case *atomicType:
-		return false, nil, nil
+		return false, nil
 	case *GenericTypeParam:
 		if s.pos() == typT.pos() {
-			return true, nil, nil
+			return true, nil
 		}
 	case *NamedType:
 		return s.typ().Equal(tpcmp, typ)
 	case ArrayType:
 		if !typT.Rank().IsAtomic() {
-			return false, nil, nil
+			return false, nil
 		}
 		return s.Equal(tpcmp, typT.DataType())
 	}
-	return false, nil, nil
+	return false, nil
 }
 
 // Equal returns true if other is the same type.
-func (s *GenericTypeParam) Equal(tpcmp TypeCmp, typ Type) (bool, CompEvalError, error) {
+func (s *GenericTypeParam) Equal(tpcmp TypeCmp, typ Type) (bool, error) {
 	return s.equal(tpcmp, typ)
 }
 
-func (s *GenericTypeParam) assignableFrom(tpcmp TypeCmp, other Type) (bool, CompEvalError, error) {
+func (s *GenericTypeParam) assignableFrom(tpcmp TypeCmp, other Type) (bool, error) {
 	return other.AssignableTo(tpcmp, s.typ())
 }
 
 // AssignableTo reports whether a value of the type can be assigned to another.
-func (s *GenericTypeParam) AssignableTo(tpcmp TypeCmp, typ Type) (bool, CompEvalError, error) {
+func (s *GenericTypeParam) AssignableTo(tpcmp TypeCmp, typ Type) (bool, error) {
 	return s.Equal(tpcmp, typ)
 }
 
 // ConvertibleTo reports whether a value of the type can be converted to another
 // (using static type casting).
-func (s *GenericTypeParam) ConvertibleTo(tpcmp TypeCmp, typ Type) (bool, CompEvalError, error) {
+func (s *GenericTypeParam) ConvertibleTo(tpcmp TypeCmp, typ Type) (bool, error) {
 	return s.typ().ConvertibleTo(tpcmp, typ)
 }
 
 // convertibleFrom reports whether a value of some type can be converted to the receiver.
-func (s *GenericTypeParam) convertibleFrom(tpcmp TypeCmp, from Type) (bool, CompEvalError, error) {
+func (s *GenericTypeParam) convertibleFrom(tpcmp TypeCmp, from Type) (bool, error) {
 	return from.ConvertibleTo(tpcmp, s.typ())
 }
 
@@ -233,12 +233,9 @@ func (s *GenericTypeParam) Assign(fetcher Fetcher, x Expr) (GenericValue, bool) 
 		return s.invalidValue(), fetcher.Err().Appendf(x.Node(), "%s is not a type", x.SourceString(fetcher.File()))
 	}
 	gotType, wantType := typeValExpr.Val(), s.field.Group.Type.Val()
-	assignedOk, cpErr, err := gotType.AssignableTo(fetcher, wantType)
+	assignedOk, err := gotType.AssignableTo(fetcher, wantType)
 	if err != nil {
 		return s.invalidValue(), fetcher.Err().AppendAt(x.Node(), err)
-	}
-	if cpErr != nil {
-		return s.invalidValue(), fetcher.Err().AppendAt(x.Node(), cpErr)
 	}
 	if !assignedOk {
 		return s.invalidValue(), fetcher.Err().Appendf(x.Node(), "%s does not satisfy %s", gotType.ReferString(fetcher.File()), wantType.ReferString(fetcher.File()))
@@ -273,9 +270,9 @@ func (s *GenericNonTypeParam) invalidValue() GenericValue {
 func (s *GenericNonTypeParam) Assign(fetcher Fetcher, x Expr) (GenericValue, bool) {
 	src := x.Type()
 	dst := s.Type()
-	assignable, cpErr, err := AssignableTo(fetcher, src, dst)
-	if uniErr := UnifyErr(cpErr, err); uniErr != nil {
-		return s.invalidValue(), fetcher.Err().AppendAt(x.Node(), uniErr)
+	assignable, err := AssignableTo(fetcher, src, dst)
+	if err != nil {
+		return s.invalidValue(), fetcher.Err().AppendAt(x.Node(), err)
 	}
 	if !assignable {
 		from := fetcher.File()
@@ -339,7 +336,7 @@ func NewAxisGenericValue(tparam *GenericNonTypeParam, x Expr) *NonTypeGenericVal
 }
 
 // Equal returns true if the set of axes is the same than the already attached rank.
-func (v *NonTypeGenericValue) Equal(tpcmp TypeCmp, x Expr) (bool, CompEvalError, error) {
+func (v *NonTypeGenericValue) Equal(tpcmp TypeCmp, x Expr) (bool, error) {
 	return areEqual(tpcmp, v.x, x)
 }
 
