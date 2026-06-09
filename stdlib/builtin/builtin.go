@@ -28,14 +28,12 @@ import (
 	"github.com/gx-org/gx/interp/engine"
 	"github.com/gx-org/gx/interp"
 	"github.com/gx-org/gx/interp/materialise"
-	"github.com/gx-org/gx/stdlib/impl"
 )
 
 type (
 	// BuilderParam groups all the parameters to build the IR of builtin packages.
 	BuilderParam struct {
 		Builder importers.Builder
-		Imp     *impl.Stdlib
 		FS      fs.ReadDirFS
 	}
 

@@ -23,7 +23,7 @@ import (
 )
 
 func newRuntime() (*api.Runtime, error) {
-	bld := tests.StdlibBuilder(nil)
+	bld := tests.StdlibBuilder()
 	return backend.New(bld), nil
 }
 

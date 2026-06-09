@@ -31,7 +31,6 @@ import (
 	"github.com/gx-org/gx/build/importers/embedpkg"
 	"github.com/gx-org/gx/build/ir"
 	"github.com/gx-org/gx/golang/backend/kernels"
-	"github.com/gx-org/gx/stdlib/impl"
 	"github.com/gx-org/gx/stdlib"
 
 	// Packages statically loaded for tests.
@@ -62,9 +61,9 @@ type (
 
 // NewBuilderStaticSource returns a builder using the embedpkg importer which
 // embeds GX testing source files into their corresponding Go package.
-func NewBuilderStaticSource(stdlibImpl *impl.Stdlib) *builder.Builder {
+func NewBuilderStaticSource() *builder.Builder {
 	return builder.New(
-		stdlib.Importer(stdlibImpl),
+		stdlib.Importer(),
 		embedpkg.New(),
 	)
 }

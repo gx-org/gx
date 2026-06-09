@@ -27,5 +27,5 @@ import "C"
 
 //export cgx_new_embed_builder
 func cgx_new_embed_builder() C.cgx_builder {
-	return C.cgx_builder(handle.Wrap[*builder.Builder](embedpkg.NewBuilder(nil)))
+	return C.cgx_builder(handle.Wrap[*builder.Builder](embedpkg.NewBuilder()))
 }

@@ -30,14 +30,13 @@ import (
 	"github.com/gx-org/gx/interp/materialise"
 	"github.com/gx-org/gx/interp/numbers"
 	"github.com/gx-org/gx/stdlib/builtin"
-	"github.com/gx-org/gx/stdlib/impl"
 )
 
 type broadcast struct {
 	builtin.Func
 }
 
-func (f broadcast) BuildFuncIR(impl *impl.Stdlib, pkg *ir.Package) (*ir.FuncBuiltin, error) {
+func (f broadcast) BuildFuncIR(pkg *ir.Package) (*ir.FuncBuiltin, error) {
 	return builtin.IRFuncBuiltin[broadcast]("Broadcast", evalBroadcast, pkg), nil
 }
 

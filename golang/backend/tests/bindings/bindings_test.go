@@ -37,7 +37,7 @@ var tests = []func(t *testing.T, dev *api.Device){
 }
 
 func TestGoBindings(t *testing.T) {
-	bld := gxtesting.NewBuilderStaticSource(nil)
+	bld := gxtesting.NewBuilderStaticSource()
 	rtm := backend.New(bld)
 	dev, err := rtm.Device(0)
 	if err != nil {

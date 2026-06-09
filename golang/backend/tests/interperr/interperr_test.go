@@ -28,7 +28,7 @@ import (
 
 func buildInterperr() (*interperr_go_gx.Package, error) {
 	bck := backend.New(builder.New(
-		stdlib.Importer(nil),
+		stdlib.Importer(),
 		embedpkg.New(),
 	))
 	dev, err := bck.Device(0)

@@ -25,7 +25,7 @@ import (
 )
 
 func TestLinearRegressionBindings(t *testing.T) {
-	bld := gxtesting.NewBuilderStaticSource(nil)
+	bld := gxtesting.NewBuilderStaticSource()
 	out := &strings.Builder{}
 	pkg, err := bld.Build("github.com/gx-org/gx/examples/linearregression/linearregression")
 	if err != nil {

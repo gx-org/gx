@@ -28,7 +28,7 @@ import (
 
 // BuildAll builds the bindings for the standard library package.
 func BuildAll(newWriter func(*ir.Package) (io.WriteCloser, error)) error {
-	libs := stdlib.Importer(nil)
+	libs := stdlib.Importer()
 	bld := builder.New(libs)
 	for _, path := range libs.Paths() {
 		bpkg, err := bld.Build(path)

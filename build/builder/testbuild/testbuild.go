@@ -279,7 +279,7 @@ type localImporter struct {
 	pkgs map[string]importers.Package
 }
 
-var stdlibPackages = stdlib.Importer(nil)
+var stdlibPackages = stdlib.Importer()
 
 // Run the source code to declare it as an importable package.
 func (imp *localImporter) loadStdlib(bld importers.Builder, pkgpath string) (importers.Package, error) {

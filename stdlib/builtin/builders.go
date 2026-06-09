@@ -27,7 +27,6 @@ import (
 	"github.com/gx-org/gx/build/importers"
 	"github.com/gx-org/gx/build/ir"
 	"github.com/gx-org/gx/interp"
-	"github.com/gx-org/gx/stdlib/impl"
 )
 
 type baseBuilder struct {
@@ -93,7 +92,7 @@ func ParseSource(names ...string) Builder {
 
 // FuncBuilder builds a function for a package.
 type FuncBuilder interface {
-	BuildFuncIR(*impl.Stdlib, *ir.Package) (*ir.FuncBuiltin, error)
+	BuildFuncIR(*ir.Package) (*ir.FuncBuiltin, error)
 }
 
 func funcName(f any) string {
@@ -108,7 +107,7 @@ func funcName(f any) string {
 func BuildFunc(f FuncBuilder) Builder {
 	buildFunc := func(param *BuilderParam, pkg importers.FilePackage) error {
 		irPkg := pkg.IR()
-		fn, err := f.BuildFuncIR(param.Imp, irPkg)
+		fn, err := f.BuildFuncIR(irPkg)
 		if err != nil {
 			return err
 		}
@@ -171,7 +170,7 @@ func findFunc(pkg *ir.Package, name string) (*ir.FuncBuiltin, error) {
 
 // ImplementStubFunc replaces a function declaration with a stdlib-provided implementation, while
 // keeping the function's declared type.
-func ImplementStubFunc(name string, slotFn func(impl *impl.Stdlib) interp.FuncBuiltin) Builder {
+func ImplementStubFunc(name string, slotFn func() interp.FuncBuiltin) Builder {
 	return baseBuilder{
 		name: name,
 		build: func(param *BuilderParam, pkg importers.FilePackage) error {
@@ -182,7 +181,7 @@ func ImplementStubFunc(name string, slotFn func(impl *impl.Stdlib) interp.FuncBu
 			if stub == nil {
 				return errors.Errorf("failed to replace function stub %q: builtin function declaration not found", name)
 			}
-			stub.Impl = &stubFunc{name: name, ftype: stub.FuncType(), impl: slotFn(param.Imp)}
+			stub.Impl = &stubFunc{name: name, ftype: stub.FuncType(), impl: slotFn()}
 			return nil
 		},
 	}
@@ -190,14 +189,14 @@ func ImplementStubFunc(name string, slotFn func(impl *impl.Stdlib) interp.FuncBu
 
 // ImplementBuiltin provides the implementation of a builtin function.
 func ImplementBuiltin(name string, fn interp.FuncBuiltin) Builder {
-	return ImplementStubFunc(name, func(*impl.Stdlib) interp.FuncBuiltin {
+	return ImplementStubFunc(name, func() interp.FuncBuiltin {
 		return fn
 	})
 }
 
 // MethodBuilder builds a method for a package given its named type.
 type MethodBuilder interface {
-	BuildMethodIR(*impl.Stdlib, importers.Package, *ir.NamedType) (*ir.FuncBuiltin, error)
+	BuildMethodIR(importers.Package, *ir.NamedType) (*ir.FuncBuiltin, error)
 }
 
 // BuildMethod builds a method for a named type in a package.
@@ -214,7 +213,7 @@ func BuildMethod(name string, f MethodBuilder) Builder {
 		if namedType == nil {
 			return errors.Errorf("type %s undefined", name)
 		}
-		fn, err := f.BuildMethodIR(param.Imp, pkg, namedType)
+		fn, err := f.BuildMethodIR(pkg, namedType)
 		if err != nil {
 			return err
 		}
@@ -238,14 +237,14 @@ func BuildMethod(name string, f MethodBuilder) Builder {
 
 // TypeBuilder builds a type for a package.
 type TypeBuilder interface {
-	BuildNamedType(*impl.Stdlib, *ir.Package) (*ir.NamedType, error)
+	BuildNamedType(*ir.Package) (*ir.NamedType, error)
 }
 
 // BuildType builds a function in a package.
 func BuildType(f TypeBuilder) Builder {
 	buildType := func(param *BuilderParam, pkg importers.FilePackage) error {
 		irPkg := pkg.IR()
-		tp, err := f.BuildNamedType(param.Imp, irPkg)
+		tp, err := f.BuildNamedType(irPkg)
 		if err != nil {
 			return err
 		}
