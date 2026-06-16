@@ -25,7 +25,6 @@ import (
 	"github.com/gx-org/gx/interp"
 	"github.com/gx-org/gx/interp/materialise"
 	"github.com/gx-org/gx/stdlib/builtin"
-	xlagraph "github.com/gx-org/xlapjrt/backend/graph"
 )
 
 var philoxStateShape = &shape.Shape{
@@ -57,9 +56,9 @@ func evalPhilox(env engine.Env, call *ir.FuncCallExpr, recv ir.Element, args []i
 	if err != nil {
 		return nil, err
 	}
-	bckGraph := eng.ArrayOps().Graph().(*xlagraph.Graph)
+	bckGraph := eng.ArrayOps().Graph()
 	targetShape := &shape.Shape{DType: dtyp, AxisLengths: dimensions}
-	newState, values, err := bckGraph.RngBitGenerator(stateNode, targetShape)
+	newState, values, err := bckGraph.Random().RngBitGenerator(stateNode, targetShape)
 	if err != nil {
 		return nil, err
 	}
