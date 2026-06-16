@@ -45,7 +45,7 @@ type (
 	}
 
 	// MacroKeywordImpl is a builtin opaque function to produce an IR.
-	MacroKeywordImpl func(from *File, expr Expr) (Expr, error)
+	MacroKeywordImpl func(tpcmp TypeCmp, expr Expr) (Expr, error)
 )
 
 var _ StorageWithValue = (*MacroKeyword)(nil)

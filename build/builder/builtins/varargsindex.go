@@ -37,13 +37,15 @@ func (varargsIndexFunc) Impl() ir.MacroKeywordImpl {
 	return varargsIndexImpl
 }
 
-func varargsIndexImpl(from *ir.File, expr ir.Expr) (ir.Expr, error) {
+func varargsIndexImpl(tpcmp ir.TypeCmp, expr ir.Expr) (ir.Expr, error) {
 	sliceTyp, isSliceType := ir.Underlying(expr.Type()).(*ir.SliceType)
 	if !isSliceType {
+		from := tpcmp.File()
 		return expr, errors.Errorf("%s is not a slice (type %s)", expr.SourceString(from), expr.Type().ReferString(from))
 	}
 	eltTyp, ok := sliceTyp.ElementType()
 	if !ok {
+		from := tpcmp.File()
 		return expr, errors.Errorf("cannot index type %s", expr.Type().ReferString(from))
 	}
 	return &ir.VarArgsIndex{X: expr, EltTyp: eltTyp}, nil

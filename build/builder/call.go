@@ -258,7 +258,11 @@ func (n *callExpr) callMacroKeyword(rscope resolveScope, callee *ir.MacroKeyword
 	if !ok {
 		return invalidExpr(), false
 	}
-	x, err := callee.BuildSynthetic(rscope.fileScope().irFile(), args[0])
+	cpev, ok := rscope.compEval()
+	if !ok {
+		return invalidExpr(), false
+	}
+	x, err := callee.BuildSynthetic(cpev, args[0])
 	if err != nil {
 		return x, rscope.Err().AppendAt(n.src, err)
 	}
