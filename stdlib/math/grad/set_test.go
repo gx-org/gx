@@ -274,16 +274,16 @@ type floats interface {
 	float32 | float64
 }
 
-func g[T floats](x [___M]T) [M___]T
+func g[T floats, M []intlen](x [unpack(M)]T) [unpack(M)]T
 
 //gx:@grad.Set(g)
-func F[T floats](x [___M]T) [M___]T
+func F[T floats, M []intlen](x [unpack(M)]T) [unpack(M)]T
 `,
 			Want: `
-func vjpF[T floats, M []intlen](x [M___]T) ([M___]T, func(res [M___]T) [M___]T) {
-	fwd0 := F[T][[]intlen{M}](x)
-	selfVJPFunc := func(res [M___]T) [M___]T {
-		return res*g[T][[]intlen{M}](x)
+func vjpF[T floats, M []intlen](x [unpack(M)]T) ([unpack(M)]T, func(res [unpack(M)]T) [unpack(M)]T) {
+	fwd0 := F[T][[]intlen{unpack(M)}](x)
+	selfVJPFunc := func(res [unpack(M)]T) [unpack(M)]T {
+		return res*g[T][[]intlen{unpack(M)}](x)
 	}
 	return fwd0, selfVJPFunc
 }

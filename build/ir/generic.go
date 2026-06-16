@@ -25,11 +25,11 @@ import (
 type (
 	// Specialiser provides methods to specialise a type.
 	Specialiser interface {
+		ErrSource
 		IsDefined(int) bool
 		NonTypeFor(GenericParam) *NonTypeGenericValue
 		TypeFor(GenericParam) *TypeGenericValue
 		Values() []GenericValue
-		Source() ast.Expr
 	}
 
 	// Unifier provides methods to unify types.
@@ -218,7 +218,7 @@ func (s *GenericTypeParam) UnifyWith(uni Unifier, typ Type) bool {
 }
 
 // IndexForVarArgs returns a type specific to a given index in varargs.
-func (s *GenericTypeParam) IndexForVarArgs(fmterr.ErrAppender, int) (Type, bool) {
+func (s *GenericTypeParam) IndexForVarArgs(ErrSource, int) (Type, bool) {
 	return s, true
 }
 
@@ -266,7 +266,7 @@ func (s *GenericNonTypeParam) invalidValue() GenericValue {
 	return NewAxisGenericValue(s, TypeExpr(nil, InvalidType()))
 }
 
-// Assign an expression to the generic type parameter.
+// Assign an expression to the generic non-type parameter.
 func (s *GenericNonTypeParam) Assign(fetcher Fetcher, x Expr) (GenericValue, bool) {
 	src := x.Type()
 	dst := s.Type()
@@ -278,11 +278,11 @@ func (s *GenericNonTypeParam) Assign(fetcher Fetcher, x Expr) (GenericValue, boo
 		from := fetcher.File()
 		return s.invalidValue(), fetcher.Err().Appendf(x.Node(), "cannot use %s as %s generic value %s", src.ReferString(from), dst.ReferString(from), s.OrigField().Name.Name)
 	}
-	xEval, ok := CompEvalExpr(fetcher, x.Node(), x)
+	xEval, ok := CompEvalExpr(fetcher, x.Expr(), x)
 	if !ok {
 		return s.invalidValue(), false
 	}
-	return NewAxisGenericValue(s, xEval), true
+	return NewAxisGenericValue(s, xEval[0]), true
 }
 
 type (

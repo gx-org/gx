@@ -18,7 +18,6 @@ import (
 	"go/ast"
 
 	"github.com/pkg/errors"
-	"github.com/gx-org/gx/build/fmterr"
 	"github.com/gx-org/gx/build/ir/irkind"
 )
 
@@ -145,7 +144,7 @@ func (s *errorType) Type() Type {
 	return MetaType()
 }
 
-func (s *errorType) IndexForVarArgs(fmterr.ErrAppender, int) (Type, bool) {
+func (s *errorType) IndexForVarArgs(ErrSource, int) (Type, bool) {
 	return s, true
 }
 
@@ -155,14 +154,13 @@ func (s *errorType) ReferString(from *File) string {
 }
 
 type errorCallee struct {
-	src   ast.Expr
-	ftype *FuncType
+	fun Func
 }
 
 func (*errorCallee) node() {}
 
 func (ec *errorCallee) Node() ast.Node {
-	return ec.src
+	return ec.fun.Node()
 }
 
 func (*errorCallee) Func() Func {
@@ -170,15 +168,15 @@ func (*errorCallee) Func() Func {
 }
 
 func (ec *errorCallee) FuncType() *FuncType {
-	return ec.ftype
+	return ec.fun.FuncType()
 }
 
 func (*errorCallee) Type() Type {
 	return errorFType
 }
 
-func (*errorCallee) Expr() ast.Expr {
-	return nil
+func (ec *errorCallee) Expr() ast.Expr {
+	return &ast.Ident{Name: "Error"}
 }
 
 func (*errorCallee) SourceString(from *File) string {
@@ -186,8 +184,8 @@ func (*errorCallee) SourceString(from *File) string {
 }
 
 // ErrorCallee returns a proxy callee to call the Error method.
-func ErrorCallee(src ast.Expr, ftype *FuncType) Callee {
-	return &errorCallee{src: src, ftype: ftype}
+func ErrorCallee(fun Func) Callee {
+	return &errorCallee{fun: fun}
 }
 
 // UnifyErr returns a system error if not nil, return the compile error otherwise.
@@ -203,9 +201,14 @@ type CompileError struct {
 	error
 }
 
-// CompileErrorF converts an error into a compilation error.
+// NewCompileError converts an error into a compilation error.
+func NewCompileError(err error) *CompileError {
+	return &CompileError{error: err}
+}
+
+// CompileErrorF formats an error into a compilation error.
 func CompileErrorF(s string, as ...any) *CompileError {
-	return &CompileError{error: errors.Errorf(s, as...)}
+	return NewCompileError(errors.Errorf(s, as...))
 }
 
 // SplitErr checks if an error is a compile error.
@@ -218,4 +221,60 @@ func SplitErr(err error) (*CompileError, error) {
 		return cpErr, nil
 	}
 	return nil, err
+}
+
+// SurfaceCompEvalErrorExpr converts an error returned by a function, if not nil, into a compiler error.
+type SurfaceCompEvalErrorExpr struct {
+	X   *FuncCallExpr
+	Typ Type
+}
+
+var _ Expr = (*SurfaceCompEvalErrorExpr)(nil)
+
+func (*SurfaceCompEvalErrorExpr) node() {}
+
+// Node returns the location of the source code.
+func (n *SurfaceCompEvalErrorExpr) Node() ast.Node {
+	return n.X.Node()
+}
+
+// Expr returns the syntax tree of the expression.
+func (n *SurfaceCompEvalErrorExpr) Expr() ast.Expr {
+	return n.X.Expr()
+}
+
+// Type of the expression.
+func (n *SurfaceCompEvalErrorExpr) Type() Type {
+	return n.Typ
+}
+
+// SourceString returns the GX source code of the expression.
+func (n *SurfaceCompEvalErrorExpr) SourceString(from *File) string {
+	return n.X.SourceString(from)
+}
+
+// SurfaceError transforms the last element of a tuple into a compiler error.
+func SurfaceError(ev TypeCmp, x Expr) (Expr, error) {
+	call, isCall := x.(*FuncCallExpr)
+	if !isCall {
+		return x, nil
+	}
+	tp := x.Type()
+	tuple, isTuple := tp.(*TupleType)
+	if !isTuple {
+		return x, nil
+	}
+	last := tuple.Types[len(tuple.Types)-1]
+	ok, err := last.AssignableTo(ev, ErrorType())
+	if !ok || err != nil {
+		return x, err
+	}
+	ext := &SurfaceCompEvalErrorExpr{X: call}
+	withoutLast := append([]Type{}, tuple.Types[:len(tuple.Types)-1]...)
+	if len(withoutLast) < 2 {
+		ext.Typ = withoutLast[0]
+	} else {
+		ext.Typ = &TupleType{Types: withoutLast}
+	}
+	return ext, nil
 }

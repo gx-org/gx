@@ -33,7 +33,10 @@ type nilEl struct {
 	x *ir.NilCastExpr
 }
 
-var _ ir.Element = (*nilEl)(nil)
+var (
+	_ ir.Element  = (*nilEl)(nil)
+	_ ir.WithExpr = (*nilEl)(nil)
+)
 
 var nilError = NewNil(&ir.NilCastExpr{
 	X:   nilExpr,
@@ -67,8 +70,8 @@ func (el *nilEl) Type() ir.Type {
 	return el.x.Typ
 }
 
-func (el *nilEl) Expr(ev ir.Evaluator, expr ast.Expr) (ir.Expr, ir.CompEvalError, error) {
-	return el.x, nil, nil
+func (el *nilEl) Expr(ev ir.Evaluator, expr ast.Expr) ([]ir.Expr, error) {
+	return []ir.Expr{el.x}, nil
 }
 
 // IsNil returns true if the element is a nil element (whatever the type).

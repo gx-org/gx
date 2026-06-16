@@ -60,13 +60,13 @@ func checkConsistent(env engine.Env, call *ir.FuncCallExpr, ref ir.Element, axis
 }
 
 func irAdd(env engine.Env, src ast.Expr, x, y engine.NumericalElement) (engine.NumericalElement, error) {
-	xExpr, gxErr, err := ir.ToExpr(env.ExprEval(), src, x)
-	if uniErr := ir.UnifyErr(gxErr, err); uniErr != nil {
-		return nil, uniErr
+	xExpr, err := ir.ToSingleExpr(env.ExprEval(), src, x)
+	if err != nil {
+		return nil, err
 	}
-	yExpr, gxErr, err := ir.ToExpr(env.ExprEval(), src, y)
-	if uniErr := ir.UnifyErr(gxErr, err); uniErr != nil {
-		return nil, uniErr
+	yExpr, err := ir.ToSingleExpr(env.ExprEval(), src, y)
+	if err != nil {
+		return nil, err
 	}
 	return x.BinaryOp(
 		env,

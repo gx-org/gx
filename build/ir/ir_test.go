@@ -215,13 +215,6 @@ func (f *fetcherTesting) Sub(*ir.File, map[string]ir.Element) (ir.Evaluator, err
 	panic("not implemented")
 }
 
-func (f *fetcherTesting) ToCompEvalError(src ast.Expr, el ir.Element) (ir.CompEvalError, error) {
-	if el == nil {
-		return nil, nil
-	}
-	panic("not implemented")
-}
-
 func (f *fetcherTesting) Err() *fmterr.Appender {
 	return nil
 }
@@ -472,7 +465,8 @@ func testRankMatrix(t *testing.T, ranks []rankFunc, f typeFunc) string {
 	var result strings.Builder
 	result.WriteString("---\n")
 	for _, rankA := range ranks {
-		fmt.Fprintf(&result, "%*s: ", maxLen, ir.String(rankA()))
+		srcA := ir.String(rankA())
+		fmt.Fprintf(&result, "%*s: ", maxLen, srcA)
 		for _, rankB := range ranks {
 			ok := true
 			for _, typ := range primitiveTypes {
@@ -505,7 +499,7 @@ func TestArrayRanksEqual(t *testing.T) {
  [a+a]:      X   
  [a*a]:       X  
    [a]:        X 
-[M___]:         X
+   [M]:         X
 `
 
 	matrix := testRankMatrix(t, exampleRanks, ir.Type.Equal)
@@ -524,7 +518,7 @@ func TestArrayRanksAssignableTo(t *testing.T) {
  [a+a]:      X   
  [a*a]:       X  
    [a]:        X 
-[M___]:         X
+   [M]:         X
 `
 
 	matrix := testRankMatrix(t, exampleRanks, ir.Type.AssignableTo)
@@ -543,7 +537,7 @@ func TestArrayRanksConvertibleTo(t *testing.T) {
  [a+a]:      X   
  [a*a]:     X X  
    [a]:        X 
-[M___]:         X
+   [M]:         X
 `
 	matrix := testRankMatrix(t, exampleRanks, ir.Type.ConvertibleTo)
 	if matrix != want {

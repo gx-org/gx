@@ -19,6 +19,7 @@ import (
 	"math/big"
 
 	"github.com/gx-org/gx/build/ir"
+	"github.com/gx-org/gx/build/ir/irkind"
 )
 
 // axisLengthNode defines the dimension of an array.
@@ -91,27 +92,23 @@ func (dim *exprAxisLength) build(rscope *defineLocalScope) (ir.AxisLengths, bool
 		return ext, false
 	}
 	ext.X, xOk = castNilAndNumber(rscope, ext.X, ir.IntLenType())
+	if !xOk {
+		return ext, false
+	}
+	cpev, ok := rscope.compEval()
+	if !ok {
+		return ext, false
+	}
+	var err error
+	ext.X, err = ir.SurfaceError(cpev, ext.X)
+	if err != nil {
+		return ext, rscope.Err().AppendAt(ext.X.Node(), err)
+	}
 	xType := ext.X.Type()
-	if ir.IsAxisLengthType(xType) {
-		return ext, xOk
+	if xType.Kind() != irkind.IntLen {
+		return ext, rscope.Err().Appendf(dim.src, "cannot use type %s as axis length: want type intlen or unpack([]intlen)", xType.ReferString(rscope.fileScope().irFile()))
 	}
-	tuple, isTuple := xType.(*ir.TupleType)
-	if !isTuple {
-		goto invalidSignature
-	}
-	if len(tuple.Types) != 2 {
-		goto invalidSignature
-	}
-	if !ir.IsAxisLengthType(tuple.Types[0]) {
-		goto invalidSignature
-	}
-	if !ir.ErrorType().Same(tuple.Types[1]) {
-		goto invalidSignature
-	}
-	return ext, xOk
-invalidSignature:
-	ext.X = invalidExpr()
-	return ext, rscope.Err().Appendf(dim.src, "cannot use type %s as axis length: want type intlen or []intlen with an optional error", xType.ReferString(rscope.fileScope().irFile()))
+	return ext, true
 }
 
 const cannotInferAxisLength = "cannot infer array axis length"

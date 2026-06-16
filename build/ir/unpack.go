@@ -15,16 +15,23 @@
 package ir
 
 import (
+	"fmt"
 	"go/ast"
-
-	"github.com/gx-org/gx/build/fmterr"
 )
 
-// UnpackExpr an expression.
-type UnpackExpr struct {
-	X      Expr
-	EltTyp Type
-}
+type (
+	// ExprUnpacker is an expression able to unpack into one or more expressions.
+	ExprUnpacker interface {
+		Expr
+		Unpack() []Expr
+	}
+
+	// UnpackExpr an expression.
+	UnpackExpr struct {
+		X      Expr
+		EltTyp Type
+	}
+)
 
 var (
 	_ ExprWithSpecialise = (*UnpackExpr)(nil)
@@ -46,7 +53,7 @@ func (u *UnpackExpr) Expr() ast.Expr {
 
 // Type returns the type of the expression.
 func (u *UnpackExpr) Type() Type {
-	return u.X.Type()
+	return u.EltTyp
 }
 
 // UnifyWith recursively unifies a type parameters with types.
@@ -62,15 +69,24 @@ func (u *UnpackExpr) Specialise(spec Specialiser) (Expr, bool) {
 	return &r, ok
 }
 
+// Unpack the underlying expressions into a tuple of expressions if supported.
+func (u *UnpackExpr) Unpack() Node {
+	unpacker, isUnpacker := u.X.(ExprUnpacker)
+	if !isUnpacker {
+		return u
+	}
+	return &Tuple{Exprs: unpacker.Unpack()}
+}
+
 // IndexForVarArgs returns a type specific to a given index in varargs.
-func (u *UnpackExpr) IndexForVarArgs(errapp fmterr.ErrAppender, i int) (Expr, bool) {
+func (u *UnpackExpr) IndexForVarArgs(errsrc ErrSource, i int) (Expr, bool) {
 	r := *u
 	var ok bool
-	r.X, ok = varArgsIndexExpr(errapp, i, r.X)
+	r.X, ok = varArgsIndexExpr(errsrc, i, r.X)
 	return &r, ok
 }
 
 // SourceString returns the GX source code of the expression.
 func (u *UnpackExpr) SourceString(from *File) string {
-	return u.X.SourceString(from) + "..."
+	return fmt.Sprintf("unpack(%s)", u.X.SourceString(from))
 }

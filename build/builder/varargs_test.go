@@ -77,16 +77,6 @@ func g() int32 {
 		},
 		testbuild.Decl{
 			Src: `
-func f(a ...intlen) [a]int32
-`,
-		},
-		testbuild.Decl{
-			Src: `
-func f(a ...intlen) [a]int32
-`,
-		},
-		testbuild.Decl{
-			Src: `
 func f(...int32) []int32
 
 func g() []int32 {
@@ -193,6 +183,15 @@ func g[Axis intidx, Shapes [][]intlen, DType ints](x ...[unpack(varargsindex(Sha
 
 func f() int32 {
 	return g[0]([2][3]int32{}, [4][5]int32{})
+}
+`,
+		},
+		testbuild.Decl{
+			Src: `
+func Concat[Lens [][]intlen](x ...[unpack(varargsindex(Lens))]float32) [unpack(Lens[0])]float32
+
+func f[Size intlen](x [Size]float32) [Size]float32 {
+	return Concat(x, [1]float32{})
 }
 `,
 		},

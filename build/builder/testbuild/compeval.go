@@ -66,9 +66,9 @@ func (tt CompEval) stringFromElement(ev ir.Evaluator, el ir.Element) (string, er
 	if tt.EvalCanonical {
 		return stringFromCanonical(el)
 	}
-	expr, cpErr, err := ir.ToExpr(ev, &ast.Ident{}, el)
-	if uniErr := ir.UnifyErr(cpErr, err); uniErr != nil {
-		return "", uniErr
+	expr, err := ir.ToSingleExpr(ev, &ast.Ident{}, el)
+	if err != nil {
+		return "", err
 	}
 	return expr.SourceString(nil), nil
 }

@@ -48,14 +48,14 @@ func CheckBroadcast(s1, s2 []intlen) ([]intlen, error) {
 }
 
 // Broadcast a shape to another.
-func Broadcast[Dst []intlen, DT dtype.Num](x [___Src]DT) [CheckBroadcast(Src, Dst)]DT
+func Broadcast[Dst []intlen, DT dtype.Num, Src []intlen](x [unpack(Src)]DT) [unpack(CheckBroadcast(Src, Dst))]DT
 
 // gx:compeval
 // SplitAxis returns a shape after the ith axis has been split into n blocks.
 func SplitAxis(i intidx, n intlen, shape []intlen) ([]intlen, error)
 
 // Split an array along an axis.
-func Split[Axis intidx, NumSplit intlen, Shape []intlen, DType dtype.Num](x [Shape]DType) [SplitAxis(Axis, NumSplit, Shape)]DType
+func Split[Axis intidx, NumSplit intlen, Shape []intlen, DType dtype.Num](x [unpack(Shape)]DType) [unpack(SplitAxis(Axis, NumSplit, Shape))]DType
 
 // ConcatAxis computes the shape of a concat operation.
 //
@@ -63,10 +63,10 @@ func Split[Axis intidx, NumSplit intlen, Shape []intlen, DType dtype.Num](x [Sha
 func ConcatAxis(idx intidx, allAxes [][]intlen) ([]intlen, error)
 
 // Concat multiple arrays into one.
-func Concat[Axis intidx, Shapes [][]intlen, DType dtype.Num](x ...[unpack(varargsindex(Shapes))]DType) [ConcatAxis(Axis, Shapes)]DType
+func Concat[Axis intidx, Shapes [][]intlen, DType dtype.Num](x ...[unpack(varargsindex(Shapes))]DType) [unpack(ConcatAxis(Axis, Shapes))]DType
 
 // Transpose an array.
-func Transpose[Shape []intlen, DType dtype.Num](x [Shape]DType) [ReverseAxes(Shape)]DType
+func Transpose[Shape []intlen, DType dtype.Num](x [unpack(Shape)]DType) [unpack(ReverseAxes(Shape))]DType
 
 // GatherAxis computes the shape of a gather operation.
 //
@@ -74,4 +74,4 @@ func Transpose[Shape []intlen, DType dtype.Num](x [Shape]DType) [ReverseAxes(Sha
 func GatherAxis(input []intlen, indices []intlen) ([]intlen, error)
 
 // Gather values from an array.
-func Gather[InputShape, SelectShape []intlen, DType dtype.Num](x [unpack(InputShape)]DType, indices [unpack(SelectShape)]int64) [GatherAxis(InputShape, SelectShape)]DType
+func Gather[InputShape, SelectShape []intlen, DType dtype.Num](x [unpack(InputShape)]DType, indices [unpack(SelectShape)]int64) [unpack(GatherAxis(InputShape, SelectShape))]DType

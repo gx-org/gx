@@ -18,7 +18,6 @@ import (
 	"fmt"
 	"go/ast"
 
-	"github.com/gx-org/gx/build/fmterr"
 	"github.com/gx-org/gx/build/ir/annotations"
 	"github.com/gx-org/gx/build/ir/irkind"
 )
@@ -330,7 +329,7 @@ func (*Interface) UnifyWith(unifier Unifier, typ Type) bool {
 }
 
 // IndexForVarArgs returns a type specific to a given index in varargs.
-func (s *Interface) IndexForVarArgs(fmterr.ErrAppender, int) (Type, bool) {
+func (s *Interface) IndexForVarArgs(ErrSource, int) (Type, bool) {
 	return s, true
 }
 

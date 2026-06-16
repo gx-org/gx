@@ -21,7 +21,7 @@ import (
 	"github.com/gx-org/gx/build/builder/testbuild"
 )
 
-func TestCompeval(t *testing.T) {
+func TestCompEvalFuncCall(t *testing.T) {
 	testbuild.Run(t,
 		testbuild.Decl{
 			Src: `
@@ -89,6 +89,34 @@ func g[af, bf intlen]() [add(af,bf)]float32
 
 func f() [5]float32 {
 	return g[2][3]()
+}
+`,
+		},
+		testbuild.Decl{
+			Src: `
+//gx:compeval
+func same(shape []intlen) ([]intlen, error) {
+	return shape, nil
+}
+
+func f[S []intlen]([unpack(S)]float32) [unpack(same(S))]float32
+`,
+		},
+		testbuild.Decl{
+			Src: `
+
+//gx:compeval
+func CheckBroadcast(s1, s2 []intlen) ([]intlen, error) {
+	return s2, nil
+}
+
+func Broadcast[Dst []intlen, Src []intlen](x [unpack(Src)]int32) [unpack(CheckBroadcast(Src, Dst))]int32
+
+
+func OneHot[numClasses intlen](x [_axlen]int32) [axlen][numClasses]int32 {
+	ax := []intlen{axlen, numClasses}
+	xx := Broadcast[ax](([axlen][1]int32)(x))
+	return xx
 }
 `,
 		},

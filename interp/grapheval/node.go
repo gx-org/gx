@@ -114,7 +114,7 @@ func (ev *Evaluator) elementFromTuple(types []ir.Type, nodeTuple ops.Tuple, shps
 			return nil, err
 		}
 	}
-	return elements.NewTuple(elts), nil
+	return elements.TupleFromElements(elts)
 }
 
 // BinaryOp applies a binary operator to x and y.
@@ -142,9 +142,9 @@ func (n *BackendNode) BinaryOp(env engine.Env, expr *ir.BinaryExpr, x, y engine.
 	if len(yShape.AxisLengths) > 0 {
 		targetShape.AxisLengths = yShape.AxisLengths
 	}
-	typ, cpErr, err := concrete.Concrete(env.ExprEval(), expr.Src, expr.Typ)
-	if unErr := ir.UnifyErr(cpErr, err); unErr != nil {
-		return nil, unErr
+	typ, err := concrete.Concrete(env.ExprEval(), expr.Src, expr.Typ)
+	if err != nil {
+		return nil, err
 	}
 	return NewBackendNode(
 		n.ev,
@@ -162,9 +162,9 @@ func (n *BackendNode) UnaryOp(env engine.Env, expr *ir.UnaryExpr) (engine.Numeri
 	if err != nil {
 		return nil, err
 	}
-	typ, cpErr, err := concrete.Concrete(env.ExprEval(), expr.Src, expr.Type())
-	if unErr := ir.UnifyErr(cpErr, err); unErr != nil {
-		return nil, unErr
+	typ, err := concrete.Concrete(env.ExprEval(), expr.Src, expr.Type())
+	if err != nil {
+		return nil, err
 	}
 	return NewBackendNode(
 		n.ev,
@@ -183,9 +183,9 @@ func (n *BackendNode) Cast(env engine.Env, expr ir.Expr, target ir.Type) (engine
 	if err != nil {
 		return nil, err
 	}
-	typ, cpErr, err := concrete.Concrete(env.ExprEval(), expr.Expr(), expr.Type())
-	if unErr := ir.UnifyErr(cpErr, err); unErr != nil {
-		return nil, unErr
+	typ, err := concrete.Concrete(env.ExprEval(), expr.Expr(), expr.Type())
+	if err != nil {
+		return nil, err
 	}
 	return NewBackendNode(
 		n.ev,

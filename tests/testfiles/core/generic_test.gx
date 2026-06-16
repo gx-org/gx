@@ -24,12 +24,12 @@ func TestGenericCallGenericCast() [2]float64 {
 	// [2]float64{1, 2}
 }
 
-func newFloat32[shape []intlen]() [shape]float32 {
-	return [shape]float32{}
+func newFloat32[shape []intlen]() [unpack(shape)]float32 {
+	return [unpack(shape)]float32{}
 }
 
-func genericNewFloat32[T floats, shape []intlen]() [shape]T {
-	return [shape]T(newFloat32[shape]())
+func genericNewFloat32[T floats, shape []intlen]() [unpack(shape)]T {
+	return [unpack(shape)]T(newFloat32[shape]())
 }
 
 func TestGenericCastWithGenericShape() [2][3]float64 {

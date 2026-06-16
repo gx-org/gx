@@ -133,8 +133,8 @@ func (a *atom) Axes(ir.Evaluator) (*elements.Slice, error) {
 }
 
 // Expr returns the IR expression represented by the variable.
-func (a *atom) Expr(ir.Evaluator, ast.Expr) (ir.Expr, ir.CompEvalError, error) {
-	return a.expr, nil, nil
+func (a *atom) Expr(ir.Evaluator, ast.Expr) ([]ir.Expr, error) {
+	return []ir.Expr{a.expr}, nil
 }
 
 func (a *atom) CanonicalExpr() canonical.Canonical {

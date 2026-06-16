@@ -24,6 +24,7 @@ import (
 	"github.com/gx-org/gx/build/fmterr"
 	"github.com/gx-org/gx/build/ir"
 	"github.com/gx-org/gx/build/ir/irkind"
+	"github.com/gx-org/gx/internal/base/cast"
 	"github.com/gx-org/gx/interp/elements"
 	"github.com/gx-org/gx/interp/engine"
 	"github.com/gx-org/gx/interp/fun"
@@ -310,17 +311,11 @@ func evalArrayAxis(fitp *Interpreter, src ir.Node, axLen ir.AxisLengths) ([]engi
 	case engine.NumericalElement:
 		return []engine.NumericalElement{elT}, nil
 	case *elements.Slice:
-		numEls := make([]engine.NumericalElement, elT.Len())
-		for i, eli := range elT.Elements() {
-			var err error
-			numEls[i], err = elements.ToNumericalElement(eli)
-			if err != nil {
-				return nil, err
-			}
-		}
-		return numEls, nil
+		return elements.MapSlice[engine.NumericalElement](elements.ToNumericalElement, elT.Elements())
+	case *elements.Tuple:
+		return elements.MapSlice[engine.NumericalElement](elements.ToNumericalElement, elT.Elements())
 	default:
-		return nil, errors.Errorf("cannot %T to an axis length: not supported", elT)
+		return nil, errors.Errorf("cannot convert %T to an axis length: not supported", elT)
 	}
 }
 
@@ -539,6 +534,8 @@ func evalExpr(fitp *Interpreter, expr ir.Expr) (_ ir.Element, err error) {
 		return evalUnaryExpression(fitp, exprT)
 	case *ir.UnpackExpr:
 		return evalUnpackExpr(fitp, exprT)
+	case *ir.SurfaceCompEvalErrorExpr:
+		return evalSurfaceCompEvalErrorExpr(fitp, exprT)
 	case *ir.ParenExpr:
 		return evalExpr(fitp, exprT.X)
 	case *ir.BinaryExpr:
@@ -579,11 +576,27 @@ func evalUnpackExpr(fitp *Interpreter, expr *ir.UnpackExpr) (ir.Element, error) 
 	if err != nil {
 		return nil, err
 	}
-	slice, isSlice := x.(elements.WithElements)
-	if !isSlice {
-		return nil, errors.Errorf("cannot unpack %T", x)
+	unpacker, err := cast.To[elements.Unpacker](x)
+	if err != nil {
+		return nil, err
 	}
-	return elements.NewTuple(slice.Elements()), nil
+	return unpacker.Unpack(fitp)
+}
+
+func evalSurfaceCompEvalErrorExpr(fitp *Interpreter, expr *ir.SurfaceCompEvalErrorExpr) (ir.Element, error) {
+	x, err := evalExpr(fitp, expr.X)
+	if err != nil {
+		return nil, err
+	}
+	tuple, err := cast.To[*elements.Tuple](x)
+	if err != nil {
+		return nil, err
+	}
+	val, cpErr, err := tuple.UnpackError(fitp)
+	if err != nil {
+		return nil, err
+	}
+	return val, fitp.toCompEvalError(cpErr)
 }
 
 func evalFuncValExpr(fitp *Interpreter, expr *ir.FuncValExpr) (ir.Element, error) {
@@ -694,7 +707,14 @@ func evalCallExpr(fitp *Interpreter, expr *ir.FuncCallExpr) (ir.Element, error) 
 	if err != nil {
 		return nil, err
 	}
-	return ToSingleElement(fitp, expr, outs)
+	switch len(outs) {
+	case 0:
+		return nil, nil
+	case 1:
+		return outs[0], nil
+	default:
+		return elements.NewTuple(expr.FuncCall().Callee.FuncType(), outs)
+	}
 }
 
 func evalTypeArgumentExprs(fitp *Interpreter, callee *ir.FuncValExpr) ([]ir.Element, error) {
@@ -802,20 +822,6 @@ func set(fitp *Interpreter, tok token.Token, dest ir.Storage, value ir.Element) 
 	default:
 		return fmterr.Errorf(fitp.File().FileSet(), dest.Node(), "cannot assign %v to %T: not supported", value, destT)
 	}
-}
-
-// ToSingleElement packs multiple elements into a tuple.
-// If the slice els contains only one element, this element is returned.
-func ToSingleElement(ctx ir.Evaluator, node ir.Node, els []ir.Element) (ir.Element, error) {
-	switch len(els) {
-	case 0:
-		return nil, nil
-	case 1:
-		return els[0], nil
-	default:
-		return elements.NewTuple(els), nil
-	}
-
 }
 
 func dimsAsElements(fitp *Interpreter, expr ir.Expr, dims []int) ([]engine.NumericalElement, error) {

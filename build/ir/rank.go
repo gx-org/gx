@@ -21,7 +21,6 @@ import (
 	"strings"
 
 	"github.com/pkg/errors"
-	"github.com/gx-org/gx/build/fmterr"
 )
 
 type (
@@ -55,7 +54,7 @@ type (
 		Instantiate(Fetcher, Specialiser) (ArrayRank, bool)
 
 		// IndexForVarArgs returns a rank specific to a given index in varargs.
-		IndexForVarArgs(errapp fmterr.ErrAppender, i int) (ArrayRank, bool)
+		IndexForVarArgs(errsrc ErrSource, i int) (ArrayRank, bool)
 
 		// SubRank returns the rank with the top-axis removed.
 		SubRank() (ArrayRank, bool)
@@ -124,7 +123,7 @@ func evalAxes(tpcmp TypeCmp, r ArrayRank) ([]Element, error) {
 		}
 		axElts := []Element{el}
 		if tuple, isTuple := el.(TupleElement); isTuple {
-			axElts = tuple.TupleElements()
+			axElts = tuple.Elements()
 		}
 		els = append(els, axElts...)
 	}
@@ -228,12 +227,12 @@ func (r *Rank) Instantiate(ev Fetcher, spec Specialiser) (ArrayRank, bool) {
 }
 
 // IndexForVarArgs returns a rank specific to a given index in varargs.
-func (r *Rank) IndexForVarArgs(errapp fmterr.ErrAppender, vri int) (ArrayRank, bool) {
-	axes := make([]AxisLengths, len(r.Ax))
+func (r *Rank) IndexForVarArgs(errsrc ErrSource, vri int) (ArrayRank, bool) {
+	var axes []AxisLengths
 	ok := true
-	for i, ax := range r.Ax {
-		var rankOk bool
-		axes[i], rankOk = ax.IndexForVarArgs(errapp, vri)
+	for _, ax := range r.Ax {
+		axesI, rankOk := ax.IndexForVarArgs(errsrc, vri)
+		axes = append(axes, axesI...)
 		ok = ok && rankOk
 	}
 	return &Rank{Src: r.Src, Ax: axes}, ok
@@ -295,7 +294,7 @@ func (r *Rank) SourceString(from *File) string {
 }
 
 // RankInfer is a rank determined at compile time
-// (specified using ___ or ...).
+// (specified using ...).
 type RankInfer struct {
 	Src *ast.ArrayType
 	Rnk ArrayRank
@@ -392,11 +391,11 @@ func (r *RankInfer) UnifyWith(uni Unifier, target ArrayRank) bool {
 }
 
 // IndexForVarArgs returns a rank specific to a given index in varargs.
-func (r *RankInfer) IndexForVarArgs(errapp fmterr.ErrAppender, i int) (ArrayRank, bool) {
+func (r *RankInfer) IndexForVarArgs(errsrc ErrSource, i int) (ArrayRank, bool) {
 	if r.Rnk == nil {
 		return r, true
 	}
-	return r.Rnk.IndexForVarArgs(errapp, i)
+	return r.Rnk.IndexForVarArgs(errsrc, i)
 }
 
 // SourceString returns the GX source code of the rank.

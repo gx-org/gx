@@ -16,9 +16,7 @@ package ir
 
 import (
 	"go/ast"
-	"math/big"
 
-	"github.com/gx-org/gx/build/fmterr"
 	"github.com/gx-org/gx/build/ir/irkind"
 )
 
@@ -86,8 +84,8 @@ func (tp *VarArgsType) ConvertibleTo(tpcmp TypeCmp, target Type) (bool, error) {
 }
 
 // IndexForVarArgs builds a type specific to a var arg position.
-func (tp *VarArgsType) IndexForVarArgs(errapp fmterr.ErrAppender, i int) (Type, bool) {
-	return tp.Typ.DType.Val().IndexForVarArgs(errapp, i)
+func (tp *VarArgsType) IndexForVarArgs(errsrc ErrSource, i int) (Type, bool) {
+	return tp.Typ.DType.Val().IndexForVarArgs(errsrc, i)
 }
 
 // Specialise a type to a given target.
@@ -147,15 +145,15 @@ func (expr *VarArgsExpr) SourceString(from *File) string {
 // VarArgsIndexer is an expression able to add an index to access a generic varargs non-type parameter.
 type VarArgsIndexer interface {
 	Expr
-	IndexForVarArgs(errapp fmterr.ErrAppender, i int) (Expr, bool)
+	IndexForVarArgs(errsrc ErrSource, i int) (Expr, bool)
 }
 
-func varArgsIndexExpr(errapp fmterr.ErrAppender, i int, x Expr) (Expr, bool) {
+func varArgsIndexExpr(errsrc ErrSource, i int, x Expr) (Expr, bool) {
 	xSpec, canIndex := x.(VarArgsIndexer)
 	if !canIndex {
 		return x, true
 	}
-	return xSpec.IndexForVarArgs(errapp, i)
+	return xSpec.IndexForVarArgs(errsrc, i)
 }
 
 // VarArgsIndex index an expression with a var args index.
@@ -181,19 +179,9 @@ func (s *VarArgsIndex) SourceString(from *File) string {
 	return s.X.SourceString(from)
 }
 
-// IndexForVarArgs returns a type specific to a given index in varargs.
-func (s *VarArgsIndex) IndexForVarArgs(errapp fmterr.ErrAppender, i int) (Expr, bool) {
-	x, ok := varArgsIndexExpr(errapp, i, s.X)
-	return &IndexExpr{
-		X: x,
-		Index: &NumberCastExpr{
-			X: &NumberInt{
-				Val: big.NewInt(int64(i)),
-			},
-			Typ: DefaultIntType,
-		},
-		Typ: s.EltTyp,
-	}, ok
+// IndexForVarArgs returns the expression at the ith position.
+func (s *VarArgsIndex) IndexForVarArgs(errsrc ErrSource, i int) (Expr, bool) {
+	return varArgsIndexExpr(errsrc, i, s.X)
 }
 
 // Specialise the expression.
@@ -216,5 +204,5 @@ func (s *VarArgsIndex) Expr() ast.Expr {
 
 // Type of the expression.
 func (s *VarArgsIndex) Type() Type {
-	return s.X.Type()
+	return s.EltTyp
 }

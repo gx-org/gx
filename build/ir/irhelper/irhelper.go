@@ -179,6 +179,23 @@ func AxisGroup(name string) *ir.GenericNonTypeParam {
 	return ir.NewGenericNonTypeParam(field)
 }
 
+// UnpackAxes unpacks a storage.
+func UnpackAxes(ax any) *ir.UnpackExpr {
+	switch axT := ax.(type) {
+	case ir.Storage:
+		return &ir.UnpackExpr{
+			X: &ir.Ident{
+				Src:  axT.NameDef(),
+				Stor: axT,
+			},
+			EltTyp: ir.IntLenType(),
+		}
+	case *ir.Field:
+		return UnpackAxes(axT.Storage())
+	}
+	panic(fmt.Sprintf("cannot unpack %T for an axis", ax))
+}
+
 // Axis builds an array axis length.
 func Axis(ax any) ir.AxisLengths {
 	switch axisT := ax.(type) {
@@ -191,9 +208,8 @@ func Axis(ax any) ir.AxisLengths {
 	case ir.Expr:
 		return &ir.AxisExpr{X: axisT}
 	case *ir.Field:
-		return &ir.AxisExpr{
-			X: &ir.Ident{Src: axisT.Name, Stor: axisT.Storage()},
-		}
+		var x ir.Expr = &ir.Ident{Src: axisT.Name, Stor: axisT.Storage()}
+		return &ir.AxisExpr{X: x}
 	case *ir.GenericNonTypeParam:
 		return &ir.AxisExpr{
 			X: &ir.Ident{Src: axisT.NameDef(), Stor: axisT},
@@ -310,7 +326,7 @@ func StructType(fields ...*ir.Field) *ir.StructType {
 // FTypeOption modifies function types.
 type FTypeOption func(ftype *ir.FuncType) *ir.FuncType
 
-// FuncType builds a compeval function type .
+// FuncType builds a compeval function type.
 func FuncType(types, recv, params, results *ir.FieldList, opts ...FTypeOption) *ir.FuncType {
 	if params == nil {
 		params = &ir.FieldList{}
@@ -322,6 +338,17 @@ func FuncType(types, recv, params, results *ir.FieldList, opts ...FTypeOption) *
 		Params:     params,
 		Results:    results,
 	}
+	ftype.GenericValues = make([]ir.GenericValue, ftype.TypeParams.Len())
+	for _, opt := range opts {
+		ftype = opt(ftype)
+	}
+	return ftype
+}
+
+// FuncTypeFrom builds a function type from an existing type.
+func FuncTypeFrom(orig *ir.FuncType, opts ...FTypeOption) *ir.FuncType {
+	ret := *orig
+	ftype := &ret
 	ftype.GenericValues = make([]ir.GenericValue, ftype.TypeParams.Len())
 	for _, opt := range opts {
 		ftype = opt(ftype)
@@ -393,6 +420,8 @@ func setNonTypeParam(field *ir.Field, val any) ir.GenericValue {
 		return setAxisLengthFromField(genAxis, valT.Storage())
 	case ir.Storage:
 		return setAxisLengthFromField(genAxis, valT)
+	case *ir.UnpackExpr:
+		return ir.NewAxisGenericValue(genAxis, valT)
 	default:
 		panic(fmt.Sprintf("cannot build a function type option: type %T not supported", valT))
 	}

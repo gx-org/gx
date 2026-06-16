@@ -44,6 +44,7 @@ var (
 	_ ir.WithStore          = (*proxy)(nil)
 	_ elements.WithElements = (*proxy)(nil)
 	_ proxies.Proxy         = (*proxy)(nil)
+	_ elements.Unpacker     = (*proxy)(nil)
 )
 
 // NewProxy returns a new variable element given a GX variable name.
@@ -109,6 +110,11 @@ func (a *proxy) Type() ir.Type {
 	return a.src.Node().Type()
 }
 
+// Unpack the proxy value.
+func (a *proxy) Unpack(ev ir.TypeCmp) (ir.Element, error) {
+	return a, nil
+}
+
 // Axes returns the axes of the value as a slice element.
 func (a *proxy) Axes(ev ir.Evaluator) (*elements.Slice, error) {
 	return coreops.AxesFromType(ev, a.src.Node().Type())
@@ -135,15 +141,15 @@ func (a *proxy) Compare(x canonical.Comparable) (bool, error) {
 }
 
 // Expr returns the IR expression represented by the variable.
-func (a *proxy) Expr(ir.Evaluator, ast.Expr) (ir.Expr, ir.CompEvalError, error) {
-	return &ir.Ident{
+func (a *proxy) Expr(ir.Evaluator, ast.Expr) ([]ir.Expr, error) {
+	return []ir.Expr{&ir.Ident{
 		Src:  a.src.Node().NameDef(),
 		Stor: a.src.Node(),
-	}, nil, nil
+	}}, nil
 }
 
 func (a *proxy) Elements() []ir.Element {
-	return nil
+	return []ir.Element{a}
 }
 
 func (a *proxy) CanonicalExpr() canonical.Canonical {

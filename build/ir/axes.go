@@ -18,7 +18,6 @@ import (
 	"fmt"
 	"go/ast"
 
-	"github.com/gx-org/gx/build/fmterr"
 	"github.com/gx-org/gx/build/ir/irkind"
 )
 
@@ -57,14 +56,7 @@ type (
 		Instantiate(Fetcher, Specialiser) ([]AxisLengths, bool)
 
 		// IndexForVarArgs returns an axis specific to a given index in varargs.
-		IndexForVarArgs(fmterr.ErrAppender, int) (AxisLengths, bool)
-	}
-
-	// ExprUnpacker is an expression that can unpack into multiple expressions.
-	// Implemented by a slice literal.
-	ExprUnpacker interface {
-		Expr
-		Unpack() []Expr
+		IndexForVarArgs(ErrSource, int) ([]AxisLengths, bool)
 	}
 
 	// AxisExpr is an array axis specified using an expression.
@@ -104,25 +96,32 @@ func (dm *AxisExpr) Equal(tpcmp TypeCmp, other AxisLengths) (bool, error) {
 	return true, nil
 }
 
+func (dm *AxisExpr) unpackExpr(errsrc ErrSource, x Expr) ([]AxisLengths, bool) {
+	unpacker, canUnpack := x.(*UnpackExpr)
+	if !canUnpack {
+		return []AxisLengths{&AxisExpr{X: x}}, true
+	}
+	unpacked := unpacker.Unpack()
+	switch unpackedT := unpacked.(type) {
+	case Expr:
+		return []AxisLengths{&AxisExpr{X: unpackedT}}, true
+	case *Tuple:
+		axlens := make([]AxisLengths, len(unpackedT.Exprs))
+		for i, x := range unpackedT.Exprs {
+			axlens[i] = &AxisExpr{X: x}
+		}
+		return axlens, true
+	}
+	return []AxisLengths{&AxisExpr{X: x}}, errsrc.Err().AppendInternalf(errsrc.Source(), "cannot specialise %s: type %T of the underlying expression not supported", dm.X.SourceString(nil), unpacked)
+}
+
 // Specialise the axis length given a context.
 func (dm *AxisExpr) Specialise(spec Specialiser) ([]AxisLengths, bool) {
 	x, ok := specialiseExpr(spec, dm.X)
 	if !ok {
-		return []AxisLengths{&AxisExpr{X: x}}, false
+		return []AxisLengths{&AxisExpr{X: x}}, ok
 	}
-	if x.Type().Kind() != irkind.Slice {
-		return []AxisLengths{&AxisExpr{X: x}}, true
-	}
-	unpacker, canUnpack := x.(ExprUnpacker)
-	if !canUnpack {
-		return []AxisLengths{&AxisExpr{X: x}}, true
-	}
-	xs := unpacker.Unpack()
-	axlens := make([]AxisLengths, len(xs))
-	for i, x := range unpacker.Unpack() {
-		axlens[i] = &AxisExpr{X: x}
-	}
-	return axlens, true
+	return dm.unpackExpr(spec, x)
 }
 
 // UnifyWith unifies axis lengths with a given target.
@@ -132,25 +131,24 @@ func (dm *AxisExpr) UnifyWith(uni Unifier, targets []AxisLengths) ([]AxisLengths
 
 // Instantiate the rank into another rank.
 func (dm *AxisExpr) Instantiate(ev Fetcher, spec Specialiser) ([]AxisLengths, bool) {
-	x, ok := CompEvalExpr(ev, spec.Source(), dm.X)
-	if x.Type().Kind() != irkind.Slice {
-		return []AxisLengths{&AxisExpr{X: x}}, ok
+	xs, ok := CompEvalExpr(ev, spec.Source(), dm.X)
+	if !ok {
+		return nil, false
 	}
-	slice, isSliceLit := x.(*SliceLitExpr)
-	if !isSliceLit {
-		return []AxisLengths{&AxisExpr{X: x}}, ok
+	axexprs := make([]AxisLengths, len(xs))
+	for i, x := range xs {
+		axexprs[i] = &AxisExpr{X: x}
 	}
-	lens := make([]AxisLengths, len(slice.Elts))
-	for i, l := range slice.Elts {
-		lens[i] = &AxisExpr{X: l}
-	}
-	return lens, true
+	return axexprs, true
 }
 
 // IndexForVarArgs returns a type specific to a given index in varargs.
-func (dm *AxisExpr) IndexForVarArgs(errapp fmterr.ErrAppender, i int) (AxisLengths, bool) {
-	x, ok := varArgsIndexExpr(errapp, i, dm.X)
-	return &AxisExpr{X: x}, ok
+func (dm *AxisExpr) IndexForVarArgs(errsrc ErrSource, i int) ([]AxisLengths, bool) {
+	x, ok := varArgsIndexExpr(errsrc, i, dm.X)
+	if !ok {
+		return []AxisLengths{dm}, ok
+	}
+	return dm.unpackExpr(errsrc, x)
 }
 
 // AsExpr returns the axis value as an expression.
@@ -160,15 +158,15 @@ func (dm *AxisExpr) AsExpr() Expr { return dm.X }
 func (dm *AxisExpr) Type() Type { return dm.X.Type() }
 
 func (dm *AxisExpr) axExprString(from *File) string {
-	suffix := ""
-	if typ := dm.X.Type(); typ.Kind() == irkind.Slice {
-		suffix = "___"
-	}
-	return dm.X.SourceString(from) + suffix
+	return dm.X.SourceString(from)
 }
 
 // SourceString returns the GX source code of the axis length.
 func (dm *AxisExpr) SourceString(from *File) string {
+	lit, isLit := dm.X.(*SliceLitExpr)
+	if isLit && len(lit.Elts) == 0 {
+		return ""
+	}
 	return fmt.Sprintf("[%s]", dm.axExprString(from))
 }
 
@@ -215,11 +213,11 @@ func (dm *AxisInfer) UnifyWith(uni Unifier, target []AxisLengths) ([]AxisLengths
 }
 
 // IndexForVarArgs returns a type specific to a given index in varargs.
-func (dm *AxisInfer) IndexForVarArgs(errapp fmterr.ErrAppender, i int) (AxisLengths, bool) {
+func (dm *AxisInfer) IndexForVarArgs(errsrc ErrSource, i int) ([]AxisLengths, bool) {
 	if dm.X == nil {
 		return nil, true
 	}
-	return dm.X.IndexForVarArgs(errapp, i)
+	return dm.X.IndexForVarArgs(errsrc, i)
 }
 
 func (dm *AxisInfer) axExprString(from *File) string {

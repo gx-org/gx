@@ -39,97 +39,94 @@ func concreteTypeParam(fr ir.Evaluator, src ast.Expr, tp *ir.GenericTypeParam) (
 	return elType, nil
 }
 
-func evalAxisExpr(fr ir.Evaluator, src ast.Expr, axis ir.AxisLengths, x ir.Expr) ([]ir.AxisLengths, ir.CompEvalError, error) {
+func evalAxisExpr(fr ir.Evaluator, src ast.Expr, axis ir.AxisLengths, x ir.Expr) ([]ir.AxisLengths, error) {
 	el, err := fr.EvalExpr(x)
 	if err != nil {
-		return []ir.AxisLengths{axis}, nil, err
+		return []ir.AxisLengths{axis}, err
 	}
 	elCan, isCan := el.(ir.Canonical)
 	if !isCan {
-		return []ir.AxisLengths{axis}, nil, err
+		return []ir.AxisLengths{axis}, err
 	}
-	canX, cpErr, err := elCan.Expr(fr, src)
-	if cpErr != nil {
-		return []ir.AxisLengths{axis}, cpErr, err
+	xs, err := ir.ToExpr(fr, src, elCan)
+	var axlens []ir.AxisLengths
+	for _, x := range xs {
+		sliceLit, isSliceLit := x.(*ir.SliceLitExpr)
+		if !isSliceLit {
+			axlens = append(axlens, &ir.AxisExpr{X: x})
+			continue
+		}
+		for _, elt := range sliceLit.Elts {
+			axlens = append(axlens, &ir.AxisExpr{X: elt})
+		}
 	}
-	if err != nil {
-		return []ir.AxisLengths{axis}, nil, err
-	}
-	slice, isSlice := canX.(*ir.SliceLitExpr)
-	if !isSlice {
-		return []ir.AxisLengths{&ir.AxisExpr{X: canX}}, nil, nil
-	}
-	ext := make([]ir.AxisLengths, len(slice.Elts))
-	for i, elt := range slice.Elts {
-		ext[i] = &ir.AxisExpr{X: elt}
-	}
-	return ext, nil, nil
+	return axlens, err
 }
 
-func concreteAxisLength(fr ir.Evaluator, src ast.Expr, axis ir.AxisLengths) ([]ir.AxisLengths, ir.CompEvalError, error) {
+func concreteAxisLength(fr ir.Evaluator, src ast.Expr, axis ir.AxisLengths) ([]ir.AxisLengths, error) {
 	switch axisT := axis.(type) {
 	case *ir.AxisExpr:
 		return evalAxisExpr(fr, src, axis, axisT.X)
 	case *ir.AxisInfer:
 		return concreteAxisLength(fr, src, axisT.X)
 	default:
-		return []ir.AxisLengths{axis}, nil, fmterr.Errorf(fr.File().FileSet(), src, "cannot convert axis %s:%T to a concrete axis", axisT.SourceString(fr.File()), axisT)
+		return []ir.AxisLengths{axis}, fmterr.Errorf(fr.File().FileSet(), src, "cannot convert axis %s:%T to a concrete axis", axisT.SourceString(fr.File()), axisT)
 	}
 }
 
-func concreteAxisLengths(fr ir.Evaluator, src ast.Expr, axes []ir.AxisLengths) ([]ir.AxisLengths, ir.CompEvalError, error) {
+func concreteAxisLengths(fr ir.Evaluator, src ast.Expr, axes []ir.AxisLengths) ([]ir.AxisLengths, error) {
 	var crs []ir.AxisLengths
 	for _, ax := range axes {
-		crAxis, cpErr, err := concreteAxisLength(fr, src, ax)
-		if cpErr != nil || err != nil {
-			return axes, cpErr, err
+		crAxis, err := concreteAxisLength(fr, src, ax)
+		if err != nil {
+			return axes, err
 		}
 		crs = append(crs, crAxis...)
 	}
-	return crs, nil, nil
+	return crs, nil
 }
 
-func concreteRank(fr ir.Evaluator, src ast.Expr, rnk ir.ArrayRank) (ir.ArrayRank, ir.CompEvalError, error) {
+func concreteRank(fr ir.Evaluator, src ast.Expr, rnk ir.ArrayRank) (ir.ArrayRank, error) {
 	switch rnkT := rnk.(type) {
 	case *ir.Rank:
-		axes, cpErr, err := concreteAxisLengths(fr, src, rnkT.Ax)
-		return &ir.Rank{Src: rnkT.Src, Ax: axes}, cpErr, err
+		axes, err := concreteAxisLengths(fr, src, rnkT.Ax)
+		return &ir.Rank{Src: rnkT.Src, Ax: axes}, err
 	case *ir.RankInfer:
 		return concreteRank(fr, src, rnkT.Rnk)
 	default:
-		return rnk, nil, fmterr.Errorf(fr.File().FileSet(), src, "cannot convert rank %s:%T to a concrete rank", rnk.SourceString(fr.File()), rnkT)
+		return rnk, fmterr.Errorf(fr.File().FileSet(), src, "cannot convert rank %s:%T to a concrete rank", rnk.SourceString(fr.File()), rnkT)
 	}
 }
 
-func concreteArrayType(fr ir.Evaluator, src ast.Expr, tp ir.ArrayType) (ir.Type, ir.CompEvalError, error) {
-	dtype, cpErr, err := Concrete(fr, src, tp.DataType())
-	if cpErr != nil || err != nil {
-		return tp, cpErr, err
+func concreteArrayType(fr ir.Evaluator, src ast.Expr, tp ir.ArrayType) (ir.Type, error) {
+	dtype, err := Concrete(fr, src, tp.DataType())
+	if err != nil {
+		return tp, err
 	}
-	rank, cpErr, err := concreteRank(fr, src, tp.Rank())
-	if cpErr != nil || err != nil {
-		return tp, cpErr, err
+	rank, err := concreteRank(fr, src, tp.Rank())
+	if err != nil {
+		return tp, err
 	}
-	return ir.NewArrayType(src, dtype, rank), nil, nil
+	return ir.NewArrayType(src, dtype, rank), nil
 }
 
 // Concrete converts a type to its concrete type given the context.
-func Concrete(fr ir.Evaluator, src ast.Expr, tp ir.Type) (ir.Type, ir.CompEvalError, error) {
+func Concrete(fr ir.Evaluator, src ast.Expr, tp ir.Type) (ir.Type, error) {
 	if irkind.IsConcrete(tp.Kind()) {
-		return tp, nil, nil
+		return tp, nil
 	}
 	switch tpT := tp.(type) {
 	case *ir.GenericTypeParam:
 		typ, err := concreteTypeParam(fr, src, tpT)
-		return typ, nil, err
+		return typ, err
 	case ir.ArrayType:
 		if tpT.Rank().IsAtomic() {
 			// Avoid a infinite loop on the data type of an array.
-			return tp, nil, nil
+			return tp, nil
 		}
 		return concreteArrayType(fr, src, tpT)
 	default:
-		return tp, nil, fmterr.Errorf(fr.File().FileSet(), src, "cannot compute the concrete type of %s:%T", tp.ReferString(fr.File()), tpT)
+		return tp, fmterr.Errorf(fr.File().FileSet(), src, "cannot compute the concrete type of %s:%T", tp.ReferString(fr.File()), tpT)
 	}
 }
 

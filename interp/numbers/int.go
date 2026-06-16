@@ -51,8 +51,8 @@ var (
 
 // NewInt returns a new element Int number element.
 func NewInt(env engine.Env, expr ir.Expr, val *big.Int) (*Int, error) {
-	typ, cpErr, err := concrete.Concrete(env.ExprEval(), expr.Expr(), expr.Type())
-	return NewIntForType(expr, val, typ), ir.UnifyErr(cpErr, err)
+	typ, err := concrete.Concrete(env.ExprEval(), expr.Expr(), expr.Type())
+	return NewIntForType(expr, val, typ), err
 }
 
 // NewIntForType returns a new element Int number element for a given type.
@@ -128,22 +128,22 @@ func binaryInt(env engine.Env, expr *ir.BinaryExpr, xInt, yInt *Int) (engine.Num
 	default:
 		return coreops.NewBinary(env, expr, xInt, yInt)
 	}
-	typ, cpErr, err := concrete.Concrete(env.ExprEval(), expr.Src, expr.Typ)
+	typ, err := concrete.Concrete(env.ExprEval(), expr.Src, expr.Typ)
 	return &Int{
 		val:  val,
 		expr: expr,
 		typ:  typ,
-	}, ir.UnifyErr(cpErr, err)
+	}, err
 }
 
 // Cast an element into a given data type.
 func (n *Int) Cast(env engine.Env, expr ir.Expr, target ir.Type) (engine.NumericalElement, error) {
-	typ, cpErr, err := concrete.Concrete(env.ExprEval(), expr.Expr(), target)
+	typ, err := concrete.Concrete(env.ExprEval(), expr.Expr(), target)
 	return &Int{
 		val:  n.val,
 		expr: expr,
 		typ:  typ,
-	}, ir.UnifyErr(cpErr, err)
+	}, err
 }
 
 // Reshape the number into an array.
@@ -157,11 +157,11 @@ func (n *Int) Shape() *shape.Shape {
 }
 
 // Expr returns the expression representing the integer.
-func (n *Int) Expr(ir.Evaluator, ast.Expr) (ir.Expr, ir.CompEvalError, error) {
-	return &ir.NumberCastExpr{
+func (n *Int) Expr(ir.Evaluator, ast.Expr) ([]ir.Expr, error) {
+	return []ir.Expr{&ir.NumberCastExpr{
 		X:   &ir.NumberInt{Val: n.val},
 		Typ: n.typ,
-	}, nil, nil
+	}}, nil
 }
 
 // Type of the element.

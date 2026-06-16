@@ -256,7 +256,7 @@ type Floats interface {
 	float32 | float64
 }
 
-func f[T Floats, S []intlen]() [S]T
+func f[T Floats, S []intlen]() [unpack(S)]T
 
 func g() [2][3]float64 {
      return f[float64][[]intlen{2,3}]()
@@ -269,11 +269,11 @@ type Floats interface {
 	float32 | float64
 }
 
-func f[shape []intlen]() [shape]float32
+func f[shape []intlen]() [unpack(shape)]float32
 
-func g[T Floats, S []intlen]() [S]T {
+func g[T Floats, S []intlen]() [unpack(S)]T {
 	x := f[S]()
-	return [S]T(x)
+	return [unpack(S)]T(x)
 }
 
 func h() [2][3]float64 {

@@ -51,7 +51,7 @@ func NewCast(env engine.Env, expr ir.Expr, xEl Element, target ir.Type) (engine.
 	if err != nil {
 		return nil, err
 	}
-	typ, cpErr, err := concrete.Concrete(env.ExprEval(), expr.Expr(), target)
+	typ, err := concrete.Concrete(env.ExprEval(), expr.Expr(), target)
 	opEl := &cast{
 		expr: expr,
 		typ:  typ,
@@ -59,9 +59,6 @@ func NewCast(env engine.Env, expr ir.Expr, xEl Element, target ir.Type) (engine.
 	}
 	if err != nil {
 		return opEl, nil
-	}
-	if cpErr != nil {
-		return opEl, cpErr
 	}
 	if x == nil {
 		return opEl, nil
@@ -101,7 +98,7 @@ func NewReshape(env engine.Env, expr ir.Expr, xEl Element, axisLengths []engine.
 	if x == nil {
 		return xEl, nil
 	}
-	typ, cpErr, err := concrete.Concrete(env.ExprEval(), expr.Expr(), expr.Type())
+	typ, err := concrete.Concrete(env.ExprEval(), expr.Expr(), expr.Type())
 	c := &cast{
 		expr: expr,
 		typ:  typ,
@@ -109,9 +106,6 @@ func NewReshape(env engine.Env, expr ir.Expr, xEl Element, axisLengths []engine.
 	}
 	if err != nil {
 		return c, err
-	}
-	if cpErr != nil {
-		return c, cpErr
 	}
 	c.val, err = values.NewHostArray(typ, x.Buffer())
 	return c, err

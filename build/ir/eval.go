@@ -26,6 +26,7 @@ import (
 type (
 	// Canonical is a canonical value with a IR representation.
 	Canonical interface {
+		Element
 		WithExpr
 	}
 
@@ -42,14 +43,13 @@ type (
 
 	// WithExpr converts an element into an IR expressions.
 	WithExpr interface {
-		Expr(Evaluator, ast.Expr) (Expr, CompEvalError, error)
+		Expr(Evaluator, ast.Expr) ([]Expr, error)
 	}
 
 	// Evaluator evaluates IR expressions into canonical values.
 	Evaluator interface {
 		File() *File
 		EvalExpr(Expr) (Element, error)
-		ToCompEvalError(ast.Expr, Element) (CompEvalError, error)
 		Sub(*File, map[string]Element) (Evaluator, error)
 	}
 
@@ -67,6 +67,12 @@ type (
 		Evaluator
 		fmterr.ErrAppender
 	}
+
+	// ErrSource appends errors at a code source location.
+	ErrSource interface {
+		fmterr.ErrAppender
+		Source() ast.Expr
+	}
 )
 
 // InvalidIdent is used as non-nil invalid expression.
@@ -77,38 +83,61 @@ var InvalidIdent = &Ident{
 
 // CompEvalExpr evaluates an expression at compile time and returns
 // the result of the evaluation as an IR expression.
-func CompEvalExpr(ev Fetcher, src ast.Node, x Expr) (Expr, bool) {
+func CompEvalExpr(ev Fetcher, src ast.Expr, x Expr) ([]Expr, bool) {
 	if x.Type().Kind() == irkind.MetaType {
-		return x, true
+		return []Expr{x}, true
 	}
 	el, err := ev.EvalExpr(x)
 	if err != nil {
-		return InvalidIdent, ev.Err().Append(err)
+		return []Expr{InvalidIdent}, ev.Err().AppendAt(src, err)
 	}
-	res, cpErr, err := ToExpr(ev, x.Expr(), el)
+	res, err := ToExpr(ev, x.Expr(), el)
 	if err != nil {
-		return InvalidIdent, ev.Err().AppendInternalf(x.Node(), "cannot convert element %T to an IR expression: %v", el, err)
-	}
-	if cpErr != nil {
-		return InvalidIdent, ev.Err().AppendAt(src, cpErr)
+		return nil, ev.Err().AppendAt(x.Node(), err)
 	}
 	return res, true
 }
 
+// CompEvalExprSingle evaluates an expression at compile time and returns
+// the result of the evaluation as a single IR expression.
+func CompEvalExprSingle(ev Fetcher, src ast.Expr, x Expr) (Expr, bool) {
+	exprs, ok := CompEvalExpr(ev, src, x)
+	if !ok {
+		return nil, ok
+	}
+	if len(exprs) != 1 {
+		return InvalidIdent, ev.Err().AppendInternalf(src, "compeval of %s error: got %d expression(s) but want 1", x.SourceString(ev.File()), len(exprs))
+	}
+	return exprs[0], true
+
+}
+
 // ToExpr converts an element from the interpreter to an IR expression.
-func ToExpr(ev Evaluator, src ast.Expr, el Element) (Expr, CompEvalError, error) {
+func ToExpr(ev Evaluator, src ast.Expr, el Element) ([]Expr, error) {
 	toExpr, ok := el.(WithExpr)
 	if !ok {
-		return nil, nil, errors.Errorf("cannot convert %T to an IR expression", el)
+		return nil, errors.Errorf("cannot convert %T to an IR expression", el)
 	}
 	return toExpr.Expr(ev, src)
+}
+
+// ToSingleExpr converts an element to a single expression.
+func ToSingleExpr(ev Evaluator, src ast.Expr, el Element) (Expr, error) {
+	exprs, err := ToExpr(ev, src, el)
+	if err != nil {
+		return nil, err
+	}
+	if len(exprs) != 1 {
+		return nil, fmterr.Internalf(ev.File().FileSet(), src, "got %d expression(s) but want 1", len(exprs))
+	}
+	return exprs[0], err
 }
 
 // ExprString first converts an element to an IR expression, then converts
 // that expression into a GX source string.
 func ExprString(ev Evaluator, src ast.Expr, el Element) string {
-	expr, cpErr, err := ToExpr(ev, src, el)
-	if uniErr := UnifyErr(cpErr, err); uniErr != nil {
+	expr, err := ToSingleExpr(ev, src, el)
+	if err != nil {
 		return fmt.Sprintf("<%s>", err)
 	}
 	return expr.SourceString(ev.File())

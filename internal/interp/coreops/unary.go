@@ -54,7 +54,7 @@ func NewUnary(env engine.Env, expr *ir.UnaryExpr, xEl Element) (_ engine.Numeric
 			err = fmterr.Error(env.File().FileSet(), expr.Src, err)
 		}
 	}()
-	typ, cpErr, err := concrete.Concrete(env.ExprEval(), expr.Src, expr.Type())
+	typ, err := concrete.Concrete(env.ExprEval(), expr.Src, expr.Type())
 	opEl := &unary{
 		expr: expr,
 		typ:  typ,
@@ -65,9 +65,6 @@ func NewUnary(env engine.Env, expr *ir.UnaryExpr, xEl Element) (_ engine.Numeric
 	}()
 	if err != nil {
 		return opEl, err
-	}
-	if cpErr != nil {
-		return opEl, cpErr
 	}
 	x, err := elements.ConstantFromElement(xEl)
 	if err != nil {
@@ -149,8 +146,8 @@ func (a *unary) Materialise(ao materialise.Materialiser) (materialise.Node, erro
 	return ao.NodeFromArray(a.val)
 }
 
-func (a *unary) Expr(ir.Evaluator, ast.Expr) (ir.Expr, ir.CompEvalError, error) {
-	return a.expr, nil, nil
+func (a *unary) Expr(ir.Evaluator, ast.Expr) ([]ir.Expr, error) {
+	return []ir.Expr{a.expr}, nil
 }
 
 // Compare to another element.

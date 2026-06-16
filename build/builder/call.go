@@ -277,6 +277,15 @@ func (n *callExpr) buildExpr(rscope resolveScope) (ir.Expr, bool) {
 	return n.buildCallExpr(rscope, callee)
 }
 
+type atSource struct {
+	fmterr.ErrAppender
+	src ast.Expr
+}
+
+func (s atSource) Source() ast.Expr {
+	return s.src
+}
+
 func checkArgsForCall(rscope resolveScope, ce *compileEvaluator, fExpr *ir.FuncValExpr, args []ir.Expr) ([]ir.Expr, bool) {
 	ok := true
 	ftype := fExpr.FuncType()
@@ -287,7 +296,10 @@ func checkArgsForCall(rscope resolveScope, ce *compileEvaluator, fExpr *ir.FuncV
 		target := param.Type()
 		if isVarArg {
 			var targetOk bool
-			target, targetOk = ftype.VarArgs.IndexForVarArgs(rscope, i-(numParams-1))
+			target, targetOk = ftype.VarArgs.IndexForVarArgs(&atSource{
+				ErrAppender: rscope,
+				src:         fExpr.Expr(),
+			}, i-(numParams-1))
 			ok = ok && targetOk
 		}
 		argType := arg.Type()

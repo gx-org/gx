@@ -19,13 +19,14 @@ import (
 	"reflect"
 
 	"github.com/pkg/errors"
+	"github.com/gx-org/gx/build/fmterr"
 )
 
 // To casts an instance to a given type.
 func To[T any](x any) (xT T, err error) {
 	xT, isT := x.(T)
 	if !isT {
-		err = errors.Errorf("cannot convert %T to %s", x, reflect.TypeFor[T]().String())
+		err = fmterr.Internal(errors.Errorf("cannot convert %T to %s", x, reflect.TypeFor[T]().String()))
 	}
 	return
 }

@@ -76,10 +76,10 @@ func (n *String) Type() ir.Type {
 }
 
 // Expr returns the string as an IR expression.
-func (n *String) Expr(ir.Evaluator, ast.Expr) (ir.Expr, ir.CompEvalError, error) {
-	return &ir.StringLiteral{
+func (n *String) Expr(ir.Evaluator, ast.Expr) ([]ir.Expr, error) {
+	return []ir.Expr{&ir.StringLiteral{
 		Src: &ast.BasicLit{Value: strconv.Quote(n.val.StringValue())},
-	}, nil, nil
+	}}, nil
 }
 
 // StringFromElement returns the string value stored in a element.

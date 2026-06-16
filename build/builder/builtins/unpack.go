@@ -38,10 +38,14 @@ func (unpackFunc) Impl() ir.MacroKeywordImpl {
 }
 
 func unpackImpl(tpcmp ir.TypeCmp, expr ir.Expr) (ir.Expr, error) {
+	expr, err := ir.SurfaceError(tpcmp, expr)
+	if err != nil {
+		return ir.InvalidIdent, nil
+	}
 	sliceTyp, isSliceType := ir.Underlying(expr.Type()).(*ir.SliceType)
 	if !isSliceType {
 		from := tpcmp.File()
-		return expr, errors.Errorf("%s is not a slice (type %s)", expr.SourceString(from), expr.Type().ReferString(from))
+		return expr, errors.Errorf("%s (type %s) is not a slice ", expr.SourceString(from), expr.Type().ReferString(from))
 	}
 	eltTyp, ok := sliceTyp.ElementType()
 	if !ok {

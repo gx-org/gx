@@ -54,13 +54,13 @@ func splitAxis(env engine.Env, call *ir.FuncCallExpr, recv ir.Element, args []ir
 	if err != nil {
 		return nil, err
 	}
-	numSplitExpr, cpErr, err := ir.ToExpr(env.ExprEval(), call.Src, numSplit)
-	if uniErr := ir.UnifyErr(cpErr, err); uniErr != nil {
-		return nil, uniErr
+	numSplitExpr, err := ir.ToSingleExpr(env.ExprEval(), call.Src, numSplit)
+	if err != nil {
+		return nil, err
 	}
-	splitAxisExpr, cpErr, err := ir.ToExpr(env.ExprEval(), call.Src, splitAxis)
-	if uniErr := ir.UnifyErr(cpErr, err); uniErr != nil {
-		return nil, uniErr
+	splitAxisExpr, err := ir.ToSingleExpr(env.ExprEval(), call.Src, splitAxis)
+	if err != nil {
+		return nil, err
 	}
 	axLens[idx], err = splitAxis.BinaryOp(env, &ir.BinaryExpr{
 		Src: &ast.BinaryExpr{

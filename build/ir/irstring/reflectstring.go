@@ -106,7 +106,7 @@ func rank(done map[any]bool, val reflect.Value, proc processor) string {
 	for i, ax := range rnk.Ax {
 		switch ax.Type().Kind() {
 		case irkind.Slice:
-			axes[i] = fmt.Sprintf("[group<%s>]", ax.SourceString(nil))
+			axes[i] = fmt.Sprintf("[%s]", ax.SourceString(nil))
 		case irkind.IntLen:
 			axes[i] = ax.SourceString(nil)
 		default:
@@ -144,7 +144,11 @@ func funcValExpr(done map[any]bool, val reflect.Value, proc processor) string {
 	fmt.Fprintln(&b, sig)
 	fmt.Fprintln(&b, "GenericValues: [")
 	for _, genVal := range ftype.GenericValues {
-		b.WriteString(gxfmt.Indent(reflectString(done, reflect.ValueOf(genVal), proc)))
+		genS := "nil"
+		if genVal != nil {
+			genS = reflectString(done, reflect.ValueOf(genVal), proc)
+		}
+		b.WriteString(gxfmt.Indent(genS))
 	}
 	fmt.Fprintln(&b, "\n]")
 	return b.String()

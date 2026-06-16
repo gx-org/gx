@@ -14,7 +14,6 @@ type (
 	}
 )
 
-
 // Source and target types must have the same size for now; different sizes requires calculating a
 // different result shape.
-func Reinterpret[T, S Num]([___M]S) [M___]T
+func Reinterpret[T, S Num, M []intlen]([unpack(M)]S) [unpack(M)]T

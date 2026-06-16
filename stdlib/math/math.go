@@ -164,9 +164,9 @@ func buildUnary(name string, f func(graph ops.Graph) unaryFunc) builtin.Builder 
 		if err != nil {
 			return nil, err
 		}
-		typ, cpErr, err := concrete.Concrete(env.ExprEval(), call.Expr(), call.Type())
-		if unErr := ir.UnifyErr(cpErr, err); err != nil {
-			return nil, unErr
+		typ, err := concrete.Concrete(env.ExprEval(), call.Expr(), call.Type())
+		if err != nil {
+			return nil, err
 		}
 		return materialise.ElementFromNode(env.File(), mat, &ops.OutputNode{
 			Node:  node,
@@ -194,9 +194,9 @@ func buildBinary(name string, f func(graph ops.Graph) binaryFunc) builtin.Builde
 		if err != nil {
 			return nil, err
 		}
-		typ, cpErr, err := concrete.Concrete(env.ExprEval(), call.Expr(), call.Type())
-		if unErr := ir.UnifyErr(cpErr, err); err != nil {
-			return nil, unErr
+		typ, err := concrete.Concrete(env.ExprEval(), call.Expr(), call.Type())
+		if err != nil {
+			return nil, err
 		}
 		return materialise.ElementFromNode(env.File(), mat, &ops.OutputNode{
 			Node:  node,

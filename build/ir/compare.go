@@ -21,7 +21,7 @@ import (
 // TupleElement is a tuple evaluated by the interpreter.
 type TupleElement interface {
 	Element
-	TupleElements() []Element
+	Elements() []Element
 }
 
 func areEqual(tpcmp TypeCmp, x, y Expr) (bool, error) {

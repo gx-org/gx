@@ -54,6 +54,11 @@ type (
 	WithElements interface {
 		Elements() []ir.Element
 	}
+
+	// Unpacker unpacks the elements it contains into a tuple.
+	Unpacker interface {
+		Unpack(ev ir.TypeCmp) (ir.Element, error)
+	}
 )
 
 // Slice element storing a slice of elements.
@@ -164,7 +169,7 @@ func (n *Slice) Unflatten(handles *flatten.Parser) (values.Value, error) {
 }
 
 // Expr returns the IR expression representing the slice.
-func (n *Slice) Expr(ev ir.Evaluator, src ast.Expr) (ir.Expr, ir.CompEvalError, error) {
+func (n *Slice) Expr(ev ir.Evaluator, src ast.Expr) ([]ir.Expr, error) {
 	ext := &ir.SliceLitExpr{
 		Typ:  n.typ,
 		Elts: make([]ir.Expr, n.Len()),
@@ -172,21 +177,25 @@ func (n *Slice) Expr(ev ir.Evaluator, src ast.Expr) (ir.Expr, ir.CompEvalError, 
 	for i, el := range n.values {
 		irEl, ok := el.(ir.Canonical)
 		if !ok {
-			return nil, nil, errors.Errorf("cannot build an IR expression from %T", el)
+			return nil, errors.Errorf("cannot build an IR expression from %T", el)
 		}
-		var cpErr ir.CompEvalError
 		var err error
-		ext.Elts[i], cpErr, err = irEl.Expr(ev, src)
-		if cpErr != nil || err != nil {
-			return nil, cpErr, err
+		ext.Elts[i], err = ir.ToSingleExpr(ev, src, irEl)
+		if err != nil {
+			return nil, err
 		}
 	}
-	return ext, nil, nil
+	return []ir.Expr{ext}, nil
 }
 
 // Elements stored in the slice.
 func (n *Slice) Elements() []ir.Element {
 	return n.values
+}
+
+// Unpack the values of the slice into a tuple.
+func (n *Slice) Unpack(ev ir.TypeCmp) (ir.Element, error) {
+	return TupleFromElements(n.values)
 }
 
 // Copy the slice.

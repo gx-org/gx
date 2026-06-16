@@ -70,10 +70,6 @@ func (ev *compileEvaluator) File() *ir.File {
 	return ev.fitp.File()
 }
 
-func (ev *compileEvaluator) ToCompEvalError(src ast.Expr, el ir.Element) (ir.CompEvalError, error) {
-	return ev.fitp.ToCompEvalError(src, el)
-}
-
 // evalName returns a string representing the element stored for a given variable name.
 // Only used for debugging.
 func (ev *compileEvaluator) evalName(name string) string {

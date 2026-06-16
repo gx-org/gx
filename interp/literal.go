@@ -115,9 +115,9 @@ func (v valuerT[T]) buildStaticArray(fitp *Interpreter, lit *ir.ArrayLitExpr, ax
 	if len(valsT) == 0 {
 		valsT = make([]T, size)
 	}
-	typ, cpErr, err := concrete.Concrete(fitp.env.ExprEval(), lit.Src, lit.Typ)
-	if unErr := ir.UnifyErr(cpErr, err); unErr != nil {
-		return nil, false, unErr
+	typ, err := concrete.Concrete(fitp.env.ExprEval(), lit.Src, lit.Typ)
+	if err != nil {
+		return nil, false, err
 	}
 	array, err := v.toArrayValue(typ, valsT, axesI)
 	if err != nil {

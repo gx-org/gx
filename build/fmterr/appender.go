@@ -34,6 +34,9 @@ type (
 
 // Append an error to the list of errors.
 func (app *Appender) Append(err error) bool {
+	if err == nil {
+		return true
+	}
 	return app.errors.Append(err)
 }
 

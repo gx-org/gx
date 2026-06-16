@@ -190,7 +190,7 @@ func (v *storedValue) Append(args []ir.Element) engine.Slice {
 }
 
 // Expr returns the IR expression represented by the variable.
-func (v *storedValue) Expr(ev ir.Evaluator, src ast.Expr) (ir.Expr, ir.CompEvalError, error) {
+func (v *storedValue) Expr(ev ir.Evaluator, src ast.Expr) ([]ir.Expr, error) {
 	valExpr, ok := v.val.(ir.WithExpr)
 	if ok {
 		return valExpr.Expr(ev, src)

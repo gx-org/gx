@@ -99,32 +99,6 @@ func IsSlicingOk(typ Type) bool {
 	return false
 }
 
-// IsAxisLengthType returns true if a type is the type for an array axis length.
-func IsAxisLengthType(typ Type) bool {
-	switch typ.Kind() {
-	case irkind.IntLen:
-		return true
-	case irkind.Slice:
-		varargType, _ := typ.(*VarArgsType)
-		var sliceType *SliceType
-		if varargType != nil {
-			sliceType = varargType.Typ
-		} else {
-			sliceType, _ = Underlying(typ).(*SliceType)
-		}
-		if sliceType == nil {
-			return false
-		}
-		return sliceType.DType.Val().Kind() == irkind.IntLen
-	case irkind.Interface:
-		if typSet, ok := toInterface(typ); ok {
-			return typSet.hasCapability(IsInteger)
-		}
-		return false
-	}
-	return false
-}
-
 // IsInteger return true if kind is an integer.
 func IsInteger(typ Type) bool {
 	if typ.Kind() == irkind.Interface {

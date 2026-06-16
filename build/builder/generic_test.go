@@ -73,7 +73,7 @@ func TestGenericSignature(t *testing.T) {
 			},
 		},
 		testbuild.Decl{
-			Src: `func f(x [_X][_Y]int32) ([X]int32, [Y]int32)`,
+			Src: `func f[X intlen, Y intlen](x [X][Y]int32) ([X]int32, [Y]int32)`,
 			Want: []ir.IR{
 				&ir.FuncBuiltin{
 					FType: irhelper.FuncType(
@@ -103,10 +103,10 @@ func TestGenericSignature(t *testing.T) {
 			},
 		},
 		testbuild.Decl{
-			Src: `func f(x [_X][_X]int32) [X]int32 // ERROR axis length X can only be defined once`,
+			Src: `func f[X, X intlen](x [X][X]int32) [X]int32 // ERROR type parameter X redeclared`,
 		},
 		testbuild.Decl{
-			Src: `func f([___X]int32) [X___]int32`,
+			Src: `func f[X []intlen]([unpack(X)]int32) [unpack(X)]int32`,
 			Want: []ir.IR{
 				&ir.FuncBuiltin{
 					FType: irhelper.FuncType(
@@ -116,13 +116,13 @@ func TestGenericSignature(t *testing.T) {
 							"",
 							irhelper.ArrayType(
 								ir.Int32Type(),
-								irhelper.Axis(xAxGroup),
+								irhelper.Axis(irhelper.UnpackAxes(xAxGroup)),
 							)),
 						irhelper.Fields(
 							"",
 							irhelper.ArrayType(
 								ir.Int32Type(),
-								irhelper.Axis(xAxGroup),
+								irhelper.Axis(irhelper.UnpackAxes(xAxGroup)),
 							),
 						),
 					),
@@ -228,7 +228,7 @@ func f[T someInt]() T {
 			Src: `
 import "dtype"
 
-func f[T dtype.Num](a [___S]T) [S___]T {
+func f[S []intlen, T dtype.Num](a [unpack(S)]T) [unpack(S)]T {
 	return a+2
 }
 `,
@@ -237,24 +237,24 @@ func f[T dtype.Num](a [___S]T) [S___]T {
 			Src: `
 type someInt interface{ int32 | int64 }
 
-func f[T someInt](x [___X]T) [X___]T {
+func f[T someInt, X []intlen](x [unpack(X)]T) [unpack(X)]T {
 	y := g[T](x)
 	return x / y
 }
 
-func g[T someInt, X []intlen](x [X]T) T
+func g[T someInt, X []intlen](x [unpack(X)]T) T
 `,
 		},
 		testbuild.Decl{
 			Src: `
 import "dtype"
 
-func f[S []intlen, T dtype.Num](x [S]T) [S]T {
+func f[S []intlen, T dtype.Num](x [unpack(S)]T) [unpack(S)]T {
 	y := g[S,T](x)
 	return x / y
 }
 
-func g[S []intlen, T dtype.Num](x [S]T) T
+func g[S []intlen, T dtype.Num](x [unpack(S)]T) T
 `,
 		},
 		testbuild.Decl{
@@ -295,7 +295,7 @@ func f() float32 {
 			Src: `
 import "dtype"
 
-func g[T dtype.Floats](a T, x [___X]T) [X___]T
+func g[T dtype.Floats, X []intlen](a T, x [unpack(X)]T) [unpack(X)]T
 
 func f() [2][3]float32 {
 	return g(10, [2][3]float32{{1, 2, 3}, {4, 5, 6}})
@@ -306,7 +306,7 @@ func f() [2][3]float32 {
 			Src: `
 import "dtype"
 
-func g[T dtype.Num](a T, x [___X]T) [X___]T
+func g[T dtype.Num, X []intlen](a T, x [unpack(X)]T) [unpack(X)]T
 
 func f() [2][3]float32 {
 	return g(10, [2][3]float32{{1, 2, 3}, {4, 5, 6}})
@@ -317,7 +317,7 @@ func f() [2][3]float32 {
 			Src: `
 import "dtype"
 
-func g[T dtype.Ints](a T, x [___X]T) [X___]T
+func g[T dtype.Ints, X []intlen](a T, x [unpack(X)]T) [unpack(X)]T
 
 func f() [2][3]int32 {
 	return g(10.0, [2][3]int32{{1, 2, 3}, {4, 5, 6}}) // ERROR float number does not satisfy dtype.Ints for T
@@ -328,12 +328,12 @@ func f() [2][3]int32 {
 			Src: `
 import "dtype"
 
-func newFloat32[shape []intlen]() [shape]float32 {
-	return [shape]float32{}
+func newFloat32[shape []intlen]() [unpack(shape)]float32 {
+	return [unpack(shape)]float32{}
 }
 
-func genericNewFloat32[T dtype.Ints, S []intlen]() [S]T {
-	return [S]T(newFloat32[S]())
+func genericNewFloat32[T dtype.Ints, S []intlen]() [unpack(S)]T {
+	return [unpack(S)]T(newFloat32[S]())
 }
 
 func TestGenericCastWithGenericShape() [2][3]int64 {
@@ -462,7 +462,7 @@ func callCast() int32 {
 			Src: `
 type someInt interface{ int32 | int64 }
 
-func f[T someInt](x [___S]T) [S___]T {
+func f[T someInt, S []intlen](x [unpack(S)]T) [unpack(S)]T {
 	return x
 }
 
@@ -602,8 +602,8 @@ func TestGenericCastArray(t *testing.T) {
 		FType: irhelper.FuncType(
 			typeParams,
 			nil,
-			irhelper.Fields(irhelper.ArrayType(typeParamS, irhelper.Axis(typeParamM))),
-			irhelper.Fields(irhelper.ArrayType(typeParamT, irhelper.Axis(typeParamM))),
+			irhelper.Fields(irhelper.ArrayType(typeParamS, irhelper.Axis(irhelper.UnpackAxes(typeParamM)))),
+			irhelper.Fields(irhelper.ArrayType(typeParamT, irhelper.Axis(irhelper.UnpackAxes(typeParamM)))),
 		),
 	}
 	xField := irhelper.Field("x", irhelper.ArrayType(ir.Int64Type(), 2), nil)
@@ -612,7 +612,7 @@ func TestGenericCastArray(t *testing.T) {
 			Src: `
 type someInt interface{ int32 | int64 }
 
-func cast[T, S someInt]([___M]S) [M___]T
+func cast[T, S someInt, M []intlen]([unpack(M)]S) [unpack(M)]T
 
 func callCast(x [2]int64) [2]int32 {
 	return cast[int32, int64](x)
@@ -693,7 +693,7 @@ type Floats interface {
 	float32 | float64
 }
 
-func F[T Floats](x [___M]T) [M___]T {
+func F[T Floats, M []intlen](x [unpack(M)]T) [unpack(M)]T {
 	return 2*x
 }
 
@@ -708,7 +708,7 @@ type Floats interface {
 	float32 | float64
 }
 
-func F[T Floats](x [___M]T) [M___]T {
+func F[T Floats, M []intlen](x [unpack(M)]T) [unpack(M)]T {
 	return 2*x
 }
 
@@ -765,8 +765,8 @@ type floats interface {
 	float32 | float64
 }
 
-func f[T floats](x [___M]T) func () [M___]T {
-	return func() [M___]T {
+func f[T floats, M []intlen](x [unpack(M)]T) func () [unpack(M)]T {
+	return func() [unpack(M)]T {
 		return x
 	}
 }
@@ -782,10 +782,10 @@ type floats interface {
 	float32 | float64
 }
 
-func f[T floats]([___M]T) [M___]T
+func f[T floats, M []intlen]([unpack(M)]T) [unpack(M)]T
 
-func reverse[T floats](par [___M]T) func(res [M___]T) [M___]T {
-	selfVJPFunc := func(res [M___]T) [M___]T {
+func reverse[T floats, M []intlen](par [unpack(M)]T) func(res [unpack(M)]T) [unpack(M)]T {
+	selfVJPFunc := func(res [unpack(M)]T) [unpack(M)]T {
 		return f(par)
 	}
 	return selfVJPFunc

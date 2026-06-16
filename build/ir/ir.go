@@ -38,7 +38,6 @@ import (
 	"github.com/gx-org/backend/dtype"
 	"github.com/gx-org/backend/shape"
 	gxfmt "github.com/gx-org/gx/base/fmt"
-	"github.com/gx-org/gx/build/fmterr"
 	"github.com/gx-org/gx/build/ir/annotations"
 	"github.com/gx-org/gx/build/ir/irkind"
 )
@@ -125,7 +124,7 @@ type (
 		Instantiate(Fetcher, Specialiser) (Type, bool)
 
 		// IndexForVarArgs returns a type specific to a given index in varargs.
-		IndexForVarArgs(fmterr.ErrAppender, int) (Type, bool)
+		IndexForVarArgs(ErrSource, int) (Type, bool)
 	}
 
 	// TypeMethods is a type which provides a set of methods (e.g. an interface).
@@ -340,7 +339,7 @@ func (s *TupleType) ReferString(from *File) string {
 }
 
 // IndexForVarArgs returns a type specific to a given index in varargs.
-func (s *TupleType) IndexForVarArgs(fmterr.ErrAppender, int) (Type, bool) {
+func (s *TupleType) IndexForVarArgs(ErrSource, int) (Type, bool) {
 	return s, true
 }
 
@@ -386,7 +385,7 @@ func (s *InterfaceType) Specialise(Specialiser) (Type, bool) {
 }
 
 // IndexForVarArgs returns a type specific to a given index in varargs.
-func (s *InterfaceType) IndexForVarArgs(fmterr.ErrAppender, int) (Type, bool) {
+func (s *InterfaceType) IndexForVarArgs(ErrSource, int) (Type, bool) {
 	return s, true
 }
 
@@ -446,7 +445,7 @@ func (s *BuiltinType) Specialise(Specialiser) (Type, bool) {
 }
 
 // IndexForVarArgs returns a type specific to a given index in varargs.
-func (s *BuiltinType) IndexForVarArgs(fmterr.ErrAppender, int) (Type, bool) {
+func (s *BuiltinType) IndexForVarArgs(ErrSource, int) (Type, bool) {
 	return s, true
 }
 
@@ -598,7 +597,7 @@ func (s *NamedType) Package() *Package {
 }
 
 // IndexForVarArgs returns a type specific to a given index in varargs.
-func (s *NamedType) IndexForVarArgs(fmterr.ErrAppender, int) (Type, bool) {
+func (s *NamedType) IndexForVarArgs(ErrSource, int) (Type, bool) {
 	return s, true
 }
 
@@ -667,7 +666,7 @@ func (s *StructType) Instantiate(Fetcher, Specialiser) (Type, bool) {
 }
 
 // IndexForVarArgs returns a type specific to a given index in varargs.
-func (s *StructType) IndexForVarArgs(fmterr.ErrAppender, int) (Type, bool) {
+func (s *StructType) IndexForVarArgs(ErrSource, int) (Type, bool) {
 	return s, true
 }
 
@@ -783,7 +782,7 @@ func (s *SliceType) UnifyWith(uni Unifier, typ Type) bool {
 }
 
 // IndexForVarArgs returns a type specific to a given index in varargs.
-func (s *SliceType) IndexForVarArgs(fmterr.ErrAppender, int) (Type, bool) {
+func (s *SliceType) IndexForVarArgs(ErrSource, int) (Type, bool) {
 	return s, true
 }
 
@@ -935,8 +934,8 @@ func (s *arrayType) UnifyWith(uni Unifier, typ Type) bool {
 }
 
 // IndexForVarArgs returns a type specific to a given index in varargs.
-func (s *arrayType) IndexForVarArgs(errapp fmterr.ErrAppender, i int) (Type, bool) {
-	rank, ok := s.RankF.IndexForVarArgs(errapp, i)
+func (s *arrayType) IndexForVarArgs(errsrc ErrSource, i int) (Type, bool) {
+	rank, ok := s.RankF.IndexForVarArgs(errsrc, i)
 	return NewArrayType(s.Src, s.DTypeF, rank), ok
 }
 
@@ -2464,10 +2463,10 @@ func (s *TypeValExpr) Instantiate(ev Fetcher, spec Specialiser) (*TypeValExpr, b
 }
 
 // IndexForVarArgs returns a type expression specific to a given index in varargs.
-func (s *TypeValExpr) IndexForVarArgs(errapp fmterr.ErrAppender, i int) (Expr, bool) {
+func (s *TypeValExpr) IndexForVarArgs(errsrc ErrSource, i int) (Expr, bool) {
 	tpExpr := *s
 	var ok bool
-	tpExpr.val, ok = tpExpr.val.IndexForVarArgs(errapp, i)
+	tpExpr.val, ok = tpExpr.val.IndexForVarArgs(errsrc, i)
 	return &tpExpr, ok
 }
 
