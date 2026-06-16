@@ -286,7 +286,7 @@ func (f *funcDecl) buildScopeBody(rscope resolveScope, ftype *ir.FuncType) (*fun
 	if !compEvalOk {
 		return nil, false
 	}
-	ftype, ok := instantiateFType(ce, ftype.Node(), rscope.fileScope().irFile(), ftype)
+	ftype, ok := instantiateFType(ce, ftype.Expr(), rscope.fileScope().irFile(), ftype)
 	if !ok {
 		return nil, false
 	}

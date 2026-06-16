@@ -24,7 +24,7 @@ import (
 
 type specialiser struct {
 	ir.Fetcher
-	src          ast.Node
+	src          ast.Expr
 	ftype        *ir.FuncType
 	defined      []ir.GenericValue
 	tparamFields []*ir.Field
@@ -38,7 +38,7 @@ func checkTypeParams(ftype *ir.FuncType, defined []ir.GenericValue) {
 	}
 }
 
-func newSpecialiser(fetcher ir.Fetcher, src ast.Node, ftype *ir.FuncType, defined []ir.GenericValue) *specialiser {
+func newSpecialiser(fetcher ir.Fetcher, src ast.Expr, ftype *ir.FuncType, defined []ir.GenericValue) *specialiser {
 	checkTypeParams(ftype, defined)
 	return &specialiser{
 		src:          src,
@@ -93,7 +93,7 @@ func (s *specialiser) Values() []ir.GenericValue {
 	return s.defined
 }
 
-func (s *specialiser) Source() ast.Node {
+func (s *specialiser) Source() ast.Expr {
 	return s.src
 }
 
@@ -134,14 +134,14 @@ func toTypeValue(fetcher ir.Fetcher, field *ir.Field, x ir.Expr) (ir.GenericValu
 // SpecialiseParams a function signature for a given type.
 func SpecialiseParams(fetcher ir.Fetcher, expr ir.Expr, fun *ir.FuncValExpr, typArgs []ir.GenericValue) (*ir.FuncValExpr, bool) {
 	ftype := fun.FuncType()
-	spec := newSpecialiser(fetcher, expr.Node(), ftype, typArgs)
+	spec := newSpecialiser(fetcher, expr.Expr(), ftype, typArgs)
 	specType, ok := ftype.SpecialiseFType(spec, true)
 	checkTypeParams(specType, specType.GenericValues)
 	return ir.NewFuncValExpr(expr, fun.Func()).NewFType(specType), ok
 }
 
 // Instantiate specialises the result of a function.
-func Instantiate(fetcher ir.Fetcher, src ast.Node, ftype *ir.FuncType, typArgs []ir.GenericValue) (*ir.FuncType, bool) {
+func Instantiate(fetcher ir.Fetcher, src ast.Expr, ftype *ir.FuncType, typArgs []ir.GenericValue) (*ir.FuncType, bool) {
 	spec := newSpecialiser(fetcher, src, ftype, typArgs)
 	instantiateFType, ok := ftype.InstantiateFType(fetcher, spec)
 	checkTypeParams(instantiateFType, instantiateFType.GenericValues)

@@ -29,7 +29,7 @@ type (
 		NonTypeFor(GenericParam) *NonTypeGenericValue
 		TypeFor(GenericParam) *TypeGenericValue
 		Values() []GenericValue
-		Source() ast.Node
+		Source() ast.Expr
 	}
 
 	// Unifier provides methods to unify types.
