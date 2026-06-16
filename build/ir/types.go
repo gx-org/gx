@@ -87,8 +87,8 @@ func (t *metaType) ReferString(from *File) string {
 }
 
 // Specialise a type to a given target.
-func (t *metaType) Specialise(spec Specialiser) Type {
-	return t
+func (t *metaType) Specialise(spec Specialiser) (Type, bool) {
+	return t, true
 }
 
 func (t *metaType) Instantiate(Fetcher, Specialiser) (Type, bool) {
@@ -168,8 +168,8 @@ func (t *invalidType) ReferString(from *File) string {
 }
 
 // Specialise a type to a given target.
-func (t *invalidType) Specialise(spec Specialiser) Type {
-	return t
+func (t *invalidType) Specialise(spec Specialiser) (Type, bool) {
+	return t, true
 }
 
 // UnifyWith recursively unifies a type parameters with types.
@@ -226,8 +226,8 @@ func (t *distinctType) ReferString(from *File) string {
 	return t.DefineString(from)
 }
 
-func (t *distinctType) Specialise(Specialiser) Type {
-	return t.tp
+func (t *distinctType) Specialise(Specialiser) (Type, bool) {
+	return t.tp, true
 }
 
 func (t *distinctType) Instantiate(Fetcher, Specialiser) (Type, bool) {

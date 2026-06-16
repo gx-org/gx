@@ -106,8 +106,8 @@ func (s *atomicType) ConvertibleTo(tpcmp TypeCmp, target Type) (bool, error) {
 }
 
 // Specialise a type to a given target.
-func (s *atomicType) Specialise(Specialiser) Type {
-	return s
+func (s *atomicType) Specialise(Specialiser) (Type, bool) {
+	return s, true
 }
 
 // Instantiate a function type.
@@ -185,7 +185,9 @@ type boolType struct {
 
 var boolT = &boolType{atomicType: atomicType{Knd: irkind.Bool}}
 
-func (s *boolType) Specialise(spec Specialiser) Type { return boolT }
+func (s *boolType) Specialise(spec Specialiser) (Type, bool) {
+	return boolT, true
+}
 
 // BoolType returns the type for a boolean.
 func BoolType() Type {
@@ -198,8 +200,8 @@ type bfloat16Type struct {
 
 var bfloat16T = &bfloat16Type{atomicType: atomicType{Knd: irkind.Bfloat16}}
 
-func (s *bfloat16Type) Specialise(spec Specialiser) Type {
-	return bfloat16T
+func (s *bfloat16Type) Specialise(spec Specialiser) (Type, bool) {
+	return bfloat16T, true
 }
 
 // Bfloat16Type returns the type for a bfloat16.
@@ -213,8 +215,8 @@ type float32Type struct {
 
 var float32T = &float32Type{atomicType: atomicType{Knd: irkind.Float32}}
 
-func (s *float32Type) Specialise(spec Specialiser) Type {
-	return float32T
+func (s *float32Type) Specialise(spec Specialiser) (Type, bool) {
+	return float32T, true
 }
 
 // Float32Type returns the type for a float32.
@@ -228,8 +230,8 @@ type float64Type struct {
 
 var float64T = &float64Type{atomicType: atomicType{Knd: irkind.Float64}}
 
-func (s *float64Type) Specialise(spec Specialiser) Type {
-	return float64T
+func (s *float64Type) Specialise(spec Specialiser) (Type, bool) {
+	return float64T, true
 }
 
 // Float64Type returns the type for a float64.
@@ -243,8 +245,8 @@ type int32Type struct {
 
 var int32T = &int32Type{atomicType: atomicType{Knd: irkind.Int32}}
 
-func (s *int32Type) Specialise(spec Specialiser) Type {
-	return int32T
+func (s *int32Type) Specialise(spec Specialiser) (Type, bool) {
+	return int32T, true
 }
 
 // Int32Type returns the type for a int32.
@@ -258,8 +260,8 @@ type int64Type struct {
 
 var int64T = &int64Type{atomicType: atomicType{Knd: irkind.Int64}}
 
-func (s *int64Type) Specialise(spec Specialiser) Type {
-	return int64T
+func (s *int64Type) Specialise(spec Specialiser) (Type, bool) {
+	return int64T, true
 }
 
 // Int64Type returns the type for a int64.
@@ -308,8 +310,8 @@ var (
 	}
 )
 
-func (s *intlenType) Specialise(spec Specialiser) Type {
-	return intlenT
+func (s *intlenType) Specialise(spec Specialiser) (Type, bool) {
+	return intlenT, true
 }
 
 // IntLenType returns the type for intlen, that is the length of an axis.
@@ -344,8 +346,8 @@ type stringType struct {
 
 var stringT = &stringType{atomicType: atomicType{Knd: irkind.String}}
 
-func (s *stringType) Specialise(spec Specialiser) Type {
-	return stringT
+func (s *stringType) Specialise(spec Specialiser) (Type, bool) {
+	return stringT, true
 }
 
 // StringType returns the type for a string.
@@ -359,8 +361,8 @@ type uint32Type struct {
 
 var uint32T = &uint32Type{atomicType: atomicType{Knd: irkind.Uint32}}
 
-func (s *uint32Type) Specialise(spec Specialiser) Type {
-	return uint32T
+func (s *uint32Type) Specialise(spec Specialiser) (Type, bool) {
+	return uint32T, true
 }
 
 // Uint32Type returns the type for a uint32.
@@ -374,8 +376,8 @@ type uint64Type struct {
 
 var uint64T = &uint64Type{atomicType: atomicType{Knd: irkind.Uint64}}
 
-func (s *uint64Type) Specialise(spec Specialiser) Type {
-	return uint64T
+func (s *uint64Type) Specialise(spec Specialiser) (Type, bool) {
+	return uint64T, true
 }
 
 // Uint64Type returns the type for a uint64.

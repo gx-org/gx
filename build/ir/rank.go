@@ -45,7 +45,7 @@ type (
 		ConvertibleTo(TypeCmp, ArrayRank) (bool, error)
 
 		// Specialise a type to a given target.
-		Specialise(Specialiser) ArrayRank
+		Specialise(Specialiser) (ArrayRank, bool)
 
 		// UnifyWith unifies the rank with a given target.
 		UnifyWith(Unifier, ArrayRank) bool
@@ -190,13 +190,15 @@ func (r *Rank) ConvertibleTo(tpcmp TypeCmp, dst ArrayRank) (bool, error) {
 }
 
 // Specialise a type to a given target.
-func (r *Rank) Specialise(spec Specialiser) ArrayRank {
+func (r *Rank) Specialise(spec Specialiser) (ArrayRank, bool) {
 	var axes []AxisLengths
+	ok := true
 	for _, ax := range r.Ax {
-		subs := ax.Specialise(spec)
+		subs, axOk := ax.Specialise(spec)
 		axes = append(axes, subs...)
+		ok = ok && axOk
 	}
-	return &Rank{Src: r.Src, Ax: axes}
+	return &Rank{Src: r.Src, Ax: axes}, ok
 }
 
 // UnifyWith unifies the rank with a given target.
@@ -362,9 +364,9 @@ func (r *RankInfer) SubRank() (ArrayRank, bool) {
 }
 
 // Specialise a type to a given target.
-func (r *RankInfer) Specialise(spec Specialiser) ArrayRank {
+func (r *RankInfer) Specialise(spec Specialiser) (ArrayRank, bool) {
 	if r.Rnk == nil {
-		return r
+		return r, true
 	}
 	return r.Rnk.Specialise(spec)
 }

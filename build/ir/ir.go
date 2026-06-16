@@ -114,7 +114,7 @@ type (
 		ConvertibleTo(TypeCmp, Type) (bool, error)
 
 		// Specialise a type to a given target.
-		Specialise(Specialiser) Type
+		Specialise(Specialiser) (Type, bool)
 
 		// UnifyWith recursively unifies a type parameters with types.
 		UnifyWith(Unifier, Type) bool
@@ -311,12 +311,12 @@ func (s *TupleType) Instantiate(Fetcher, Specialiser) (Type, bool) {
 }
 
 // Specialise the tuple type.
-func (s *TupleType) Specialise(Specialiser) Type {
+func (s *TupleType) Specialise(Specialiser) (Type, bool) {
 	tps := make([]Type, len(s.Types))
 	return &TupleType{
 		BaseType: s.BaseType,
 		Types:    tps,
-	}
+	}, true
 }
 
 // Value returns a value pointing to the receiver.
@@ -380,8 +380,8 @@ func (s *InterfaceType) DefineString(*File) string { return s.Kind().String() }
 func (s *InterfaceType) ReferString(*File) string { return s.Kind().String() }
 
 // Specialise a type to a given target.
-func (s *InterfaceType) Specialise(Specialiser) Type {
-	return s
+func (s *InterfaceType) Specialise(Specialiser) (Type, bool) {
+	return s, true
 }
 
 // IndexForVarArgs returns a type specific to a given index in varargs.
@@ -440,8 +440,8 @@ func (s *BuiltinType) ReferString(*File) string {
 }
 
 // Specialise a type to a given target.
-func (s *BuiltinType) Specialise(Specialiser) Type {
-	return s
+func (s *BuiltinType) Specialise(Specialiser) (Type, bool) {
+	return s, true
 }
 
 // IndexForVarArgs returns a type specific to a given index in varargs.
@@ -587,8 +587,8 @@ func (s *NamedType) ReferString(from *File) string {
 }
 
 // Specialise a type to a given target.
-func (s *NamedType) Specialise(spec Specialiser) Type {
-	return s
+func (s *NamedType) Specialise(spec Specialiser) (Type, bool) {
+	return s, true
 }
 
 // Package returns the package to which the type belongs to.
@@ -656,8 +656,8 @@ func (s *StructType) ReferString(from *File) string {
 }
 
 // Specialise a type to a given target.
-func (s *StructType) Specialise(spec Specialiser) Type {
-	return s
+func (s *StructType) Specialise(spec Specialiser) (Type, bool) {
+	return s, true
 }
 
 // Instantiate a function type.
@@ -763,12 +763,13 @@ func (s *SliceType) ReferString(from *File) string {
 }
 
 // Specialise a type to a given target.
-func (s *SliceType) Specialise(spec Specialiser) Type {
+func (s *SliceType) Specialise(spec Specialiser) (Type, bool) {
+	dtype, ok := s.DType.Specialise(spec)
 	return &SliceType{
 		BaseType: s.BaseType,
-		DType:    s.DType.Specialise(spec),
+		DType:    dtype,
 		Rank:     s.Rank,
-	}
+	}, ok
 }
 
 // UnifyWith recursively unifies a type parameters with types.
@@ -907,10 +908,10 @@ func (s *arrayType) ConvertibleTo(tpcmp TypeCmp, target Type) (bool, error) {
 }
 
 // Specialise a type to a given target.
-func (s *arrayType) Specialise(spec Specialiser) Type {
-	dtype := s.DTypeF.Specialise(spec)
-	rank := s.RankF.Specialise(spec)
-	return NewArrayType(s.Src, dtype, rank)
+func (s *arrayType) Specialise(spec Specialiser) (Type, bool) {
+	dtype, dtypeOk := s.DTypeF.Specialise(spec)
+	rank, rankOk := s.RankF.Specialise(spec)
+	return NewArrayType(s.Src, dtype, rank), dtypeOk && rankOk
 }
 
 // Instantiate a function type.
@@ -2254,8 +2255,8 @@ func (s *NumberCastExpr) SourceString(from *File) string {
 }
 
 // Specialise a type to a given target.
-func (s *NumberCastExpr) Specialise(Specialiser) Expr {
-	return s
+func (s *NumberCastExpr) Specialise(Specialiser) (Expr, bool) {
+	return s, true
 }
 
 func (s *StringLiteral) node()        {}
@@ -2446,10 +2447,11 @@ func (s *TypeValExpr) Type() Type {
 }
 
 // Specialise the type of the expression.
-func (s *TypeValExpr) Specialise(spec Specialiser) *TypeValExpr {
+func (s *TypeValExpr) Specialise(spec Specialiser) (*TypeValExpr, bool) {
 	tpExpr := *s
-	tpExpr.val = tpExpr.val.Specialise(spec)
-	return &tpExpr
+	var ok bool
+	tpExpr.val, ok = tpExpr.val.Specialise(spec)
+	return &tpExpr, ok
 }
 
 // Instantiate the type of the expression.
@@ -2650,16 +2652,16 @@ func (s *Ident) node() {}
 func (s *Ident) Node() ast.Node { return s.Src }
 
 // Specialise the identifier.
-func (s *Ident) Specialise(spec Specialiser) Expr {
+func (s *Ident) Specialise(spec Specialiser) (Expr, bool) {
 	nonTypeParam, isGeneric := s.Stor.(*GenericNonTypeParam)
 	if !isGeneric {
-		return s
+		return s, true
 	}
 	val := spec.NonTypeFor(nonTypeParam)
 	if val == nil {
-		return s
+		return s, true
 	}
-	return val.Value()
+	return val.Value(), true
 }
 
 // Type returns the type returned by the function call.

@@ -230,7 +230,7 @@ func Infer(fetcher ir.Fetcher, fExpr *ir.FuncValExpr, args []ir.Expr) (*ir.FuncV
 		return fExpr, false
 	}
 	spec := newSpecialiser(fetcher, fExpr.Node(), ftype, uni.defined)
-	ftypeInfer := ftype.SpecialiseFType(spec, true)
+	ftypeInfer, ok := ftype.SpecialiseFType(spec, true)
 	checkTypeParams(ftypeInfer, ftypeInfer.GenericValues)
 	return fExpr.NewFType(ftypeInfer), ok
 }

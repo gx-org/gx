@@ -132,12 +132,12 @@ func toTypeValue(fetcher ir.Fetcher, field *ir.Field, x ir.Expr) (ir.GenericValu
 }
 
 // SpecialiseParams a function signature for a given type.
-func SpecialiseParams(fetcher ir.Fetcher, expr ir.Expr, fun *ir.FuncValExpr, typArgs []ir.GenericValue) *ir.FuncValExpr {
+func SpecialiseParams(fetcher ir.Fetcher, expr ir.Expr, fun *ir.FuncValExpr, typArgs []ir.GenericValue) (*ir.FuncValExpr, bool) {
 	ftype := fun.FuncType()
 	spec := newSpecialiser(fetcher, expr.Node(), ftype, typArgs)
-	specType := ftype.SpecialiseFType(spec, true)
+	specType, ok := ftype.SpecialiseFType(spec, true)
 	checkTypeParams(specType, specType.GenericValues)
-	return ir.NewFuncValExpr(expr, fun.Func()).NewFType(specType)
+	return ir.NewFuncValExpr(expr, fun.Func()).NewFType(specType), ok
 }
 
 // Instantiate specialises the result of a function.

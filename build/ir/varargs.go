@@ -90,7 +90,7 @@ func (tp *VarArgsType) IndexForVarArgs(i int) Type {
 }
 
 // Specialise a type to a given target.
-func (tp *VarArgsType) Specialise(spec Specialiser) Type {
+func (tp *VarArgsType) Specialise(spec Specialiser) (Type, bool) {
 	return tp.Typ.Specialise(spec)
 }
 
@@ -195,10 +195,11 @@ func (s *VarArgsIndex) IndexForVarArgs(i int) Expr {
 }
 
 // Specialise the expression.
-func (s *VarArgsIndex) Specialise(spec Specialiser) Expr {
+func (s *VarArgsIndex) Specialise(spec Specialiser) (Expr, bool) {
 	r := *s
-	r.X = specialiseExpr(spec, s.X)
-	return &r
+	var ok bool
+	r.X, ok = specialiseExpr(spec, s.X)
+	return &r, ok
 }
 
 // UnifyWith recursively unifies a type parameters with types.

@@ -176,7 +176,7 @@ func (s *GenericTypeParam) convertibleFrom(tpcmp TypeCmp, from Type) (bool, erro
 
 // Instantiate the generic type parameter.
 func (s *GenericTypeParam) Instantiate(_ Fetcher, spec Specialiser) (Type, bool) {
-	return s.Specialise(spec), true
+	return s.Specialise(spec)
 }
 
 // Type of the type.
@@ -204,12 +204,12 @@ func (s *GenericTypeParam) ReferString(from *File) string {
 }
 
 // Specialise a type to a given target.
-func (s *GenericTypeParam) Specialise(spec Specialiser) Type {
+func (s *GenericTypeParam) Specialise(spec Specialiser) (Type, bool) {
 	tp := spec.TypeFor(s)
 	if tp == nil {
-		return s
+		return s, true
 	}
-	return tp.Type()
+	return tp.Type(), true
 }
 
 // UnifyWith recursively unifies a type parameters with types.
@@ -405,13 +405,13 @@ func (v *TypeGenericValue) Value() Expr {
 type ExprWithSpecialise interface {
 	Expr
 	// SpecialiseForAxis an expression.
-	Specialise(Specialiser) Expr
+	Specialise(Specialiser) (Expr, bool)
 }
 
-func specialiseExpr(spec Specialiser, x Expr) Expr {
+func specialiseExpr(spec Specialiser, x Expr) (Expr, bool) {
 	xSpec, canSpecialise := x.(ExprWithSpecialise)
 	if !canSpecialise {
-		return x
+		return x, true
 	}
 	return xSpec.Specialise(spec)
 }

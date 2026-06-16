@@ -51,10 +51,11 @@ func (u *UnpackExpr) UnifyWith(uni Unifier, targets []AxisLengths) ([]AxisLength
 }
 
 // Specialise the expression.
-func (u *UnpackExpr) Specialise(spec Specialiser) Expr {
+func (u *UnpackExpr) Specialise(spec Specialiser) (Expr, bool) {
 	r := *u
-	r.X = specialiseExpr(spec, u.X)
-	return &r
+	var ok bool
+	r.X, ok = specialiseExpr(spec, u.X)
+	return &r, ok
 }
 
 // IndexForVarArgs returns a type specific to a given index in varargs.

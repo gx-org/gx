@@ -120,8 +120,8 @@ func (s *errorType) Same(o Storage) bool {
 }
 
 // Specialise a type to a given target.
-func (s *errorType) Specialise(spec Specialiser) Type {
-	return s
+func (s *errorType) Specialise(spec Specialiser) (Type, bool) {
+	return s, true
 }
 
 // Value returns a value pointing to the receiver.

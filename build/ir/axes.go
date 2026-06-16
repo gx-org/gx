@@ -47,7 +47,7 @@ type (
 		Equal(TypeCmp, AxisLengths) (bool, error)
 
 		// Specialise the axis length given a context.
-		Specialise(Specialiser) []AxisLengths
+		Specialise(Specialiser) ([]AxisLengths, bool)
 
 		// UnifyWith unifies axis lengths with a given target.
 		UnifyWith(Unifier, []AxisLengths) ([]AxisLengths, bool)
@@ -104,21 +104,24 @@ func (dm *AxisExpr) Equal(tpcmp TypeCmp, other AxisLengths) (bool, error) {
 }
 
 // Specialise the axis length given a context.
-func (dm *AxisExpr) Specialise(spec Specialiser) []AxisLengths {
-	x := specialiseExpr(spec, dm.X)
+func (dm *AxisExpr) Specialise(spec Specialiser) ([]AxisLengths, bool) {
+	x, ok := specialiseExpr(spec, dm.X)
+	if !ok {
+		return []AxisLengths{&AxisExpr{X: x}}, false
+	}
 	if x.Type().Kind() != irkind.Slice {
-		return []AxisLengths{&AxisExpr{X: x}}
+		return []AxisLengths{&AxisExpr{X: x}}, true
 	}
 	unpacker, canUnpack := x.(ExprUnpacker)
 	if !canUnpack {
-		return []AxisLengths{&AxisExpr{X: x}}
+		return []AxisLengths{&AxisExpr{X: x}}, true
 	}
 	xs := unpacker.Unpack()
 	axlens := make([]AxisLengths, len(xs))
 	for i, x := range unpacker.Unpack() {
 		axlens[i] = &AxisExpr{X: x}
 	}
-	return axlens
+	return axlens, true
 }
 
 // UnifyWith unifies axis lengths with a given target.
@@ -195,7 +198,7 @@ func (dm *AxisInfer) AsExpr() Expr {
 }
 
 // Specialise the axis length given a context.
-func (dm *AxisInfer) Specialise(spec Specialiser) []AxisLengths {
+func (dm *AxisInfer) Specialise(spec Specialiser) ([]AxisLengths, bool) {
 	return dm.X.Specialise(spec)
 }
 

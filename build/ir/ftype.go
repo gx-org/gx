@@ -120,7 +120,7 @@ func (s *FuncType) Value(x Expr) Expr {
 }
 
 // Specialise a type to a given target.
-func (s *FuncType) Specialise(spec Specialiser) Type {
+func (s *FuncType) Specialise(spec Specialiser) (Type, bool) {
 	return s.SpecialiseFType(spec, false)
 }
 
@@ -138,11 +138,14 @@ func skipIfDefined(spec Specialiser) fieldCloner {
 	}
 }
 
-func specialiseGroup(spec Specialiser) groupCloner {
+func specialiseGroup(spec Specialiser, ok *bool) groupCloner {
+	*ok = true
 	return func(grp *FieldGroup) *FieldGroup {
+		grpType, grpOk := grp.Type.Specialise(spec)
+		*ok = *ok && grpOk
 		return &FieldGroup{
 			Src:  grp.Src,
-			Type: grp.Type.Specialise(spec),
+			Type: grpType,
 		}
 	}
 }
@@ -175,7 +178,7 @@ func (s *FuncType) varArgs() *VarArgsType {
 }
 
 // SpecialiseFType specialises a function type.
-func (s *FuncType) SpecialiseFType(spec Specialiser, skipResult bool) *FuncType {
+func (s *FuncType) SpecialiseFType(spec Specialiser, skipResult bool) (*FuncType, bool) {
 	res := *s
 	res.origin = s.Origin()
 	res.TypeParams = cloneFields(s.TypeParams, &cloner{
@@ -183,19 +186,21 @@ func (s *FuncType) SpecialiseFType(spec Specialiser, skipResult bool) *FuncType 
 		field: skipIfDefined(spec),
 	})
 	res.GenericValues = spec.Values()
+	var paramsOk bool
 	res.Params = cloneFields(s.Params, &cloner{
-		group: specialiseGroup(spec),
+		group: specialiseGroup(spec, &paramsOk),
 		field: cloneField,
 	})
 	if skipResult {
-		return &res
+		return &res, paramsOk
 	}
+	var resultsOk bool
 	res.Results = cloneFields(s.Results, &cloner{
-		group: specialiseGroup(spec),
+		group: specialiseGroup(spec, &resultsOk),
 		field: cloneField,
 	})
 	res.VarArgs = res.varArgs()
-	return &res
+	return &res, paramsOk && resultsOk
 }
 
 // ArgIndexToParamField returns the field corresponding to an argument index.
@@ -221,17 +226,18 @@ func (s *FuncType) Instantiate(fetcher Fetcher, spec Specialiser) (Type, bool) {
 func (s *FuncType) InstantiateFType(fetcher Fetcher, spec Specialiser) (*FuncType, bool) {
 	res := *s
 	res.origin = s.Origin()
+	var paramsOk bool
 	res.Params = cloneFields(s.Params, &cloner{
-		group: specialiseGroup(spec),
+		group: specialiseGroup(spec, &paramsOk),
 		field: cloneField,
 	})
-	ok := true
+	resultsOk := true
 	res.Results = cloneFields(s.Results, &cloner{
 		group: func(grp *FieldGroup) *FieldGroup {
 			grp = cloneGroup(grp)
 			var grpOk bool
 			grp.Type, grpOk = grp.Type.Instantiate(fetcher, spec)
-			ok = ok && grpOk
+			resultsOk = resultsOk && grpOk
 			return grp
 		},
 		field: cloneField,
@@ -241,7 +247,7 @@ func (s *FuncType) InstantiateFType(fetcher Fetcher, spec Specialiser) (*FuncTyp
 		field: cloneField,
 	})
 	res.VarArgs = res.varArgs()
-	return &res, ok
+	return &res, paramsOk && resultsOk
 }
 
 // IndexForVarArgs returns a type specific to a given index in varargs.

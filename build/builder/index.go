@@ -141,7 +141,7 @@ func specializeFuncType(rscope resolveScope, x ir.Expr, indices []ir.Expr, fun *
 			return x, false
 		}
 	}
-	return generics.SpecialiseParams(compEval, x, fun, genValues), true
+	return generics.SpecialiseParams(compEval, x, fun, genValues)
 }
 
 func specializeFunc(rscope resolveScope, x ir.Expr, indices []ir.Expr) (ir.Expr, bool) {
