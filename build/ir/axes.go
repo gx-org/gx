@@ -18,6 +18,7 @@ import (
 	"fmt"
 	"go/ast"
 
+	"github.com/gx-org/gx/build/fmterr"
 	"github.com/gx-org/gx/build/ir/irkind"
 )
 
@@ -56,7 +57,7 @@ type (
 		Instantiate(Fetcher, Specialiser) ([]AxisLengths, bool)
 
 		// IndexForVarArgs returns an axis specific to a given index in varargs.
-		IndexForVarArgs(int) AxisLengths
+		IndexForVarArgs(fmterr.ErrAppender, int) (AxisLengths, bool)
 	}
 
 	// ExprUnpacker is an expression that can unpack into multiple expressions.
@@ -147,8 +148,9 @@ func (dm *AxisExpr) Instantiate(ev Fetcher, spec Specialiser) ([]AxisLengths, bo
 }
 
 // IndexForVarArgs returns a type specific to a given index in varargs.
-func (dm *AxisExpr) IndexForVarArgs(i int) AxisLengths {
-	return &AxisExpr{X: varArgsIndexExpr(i, dm.X)}
+func (dm *AxisExpr) IndexForVarArgs(errapp fmterr.ErrAppender, i int) (AxisLengths, bool) {
+	x, ok := varArgsIndexExpr(errapp, i, dm.X)
+	return &AxisExpr{X: x}, ok
 }
 
 // AsExpr returns the axis value as an expression.
@@ -213,11 +215,11 @@ func (dm *AxisInfer) UnifyWith(uni Unifier, target []AxisLengths) ([]AxisLengths
 }
 
 // IndexForVarArgs returns a type specific to a given index in varargs.
-func (dm *AxisInfer) IndexForVarArgs(i int) AxisLengths {
+func (dm *AxisInfer) IndexForVarArgs(errapp fmterr.ErrAppender, i int) (AxisLengths, bool) {
 	if dm.X == nil {
-		return nil
+		return nil, true
 	}
-	return dm.X.IndexForVarArgs(i)
+	return dm.X.IndexForVarArgs(errapp, i)
 }
 
 func (dm *AxisInfer) axExprString(from *File) string {

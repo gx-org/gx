@@ -286,7 +286,9 @@ func checkArgsForCall(rscope resolveScope, ce *compileEvaluator, fExpr *ir.FuncV
 		param, isVarArg := ftype.ArgIndexToParamField(i)
 		target := param.Type()
 		if isVarArg {
-			target = ftype.VarArgs.IndexForVarArgs(i - (numParams - 1))
+			var targetOk bool
+			target, targetOk = ftype.VarArgs.IndexForVarArgs(rscope, i-(numParams-1))
+			ok = ok && targetOk
 		}
 		argType := arg.Type()
 		if unpack, isUnpack := arg.(*ir.UnpackExpr); isUnpack {

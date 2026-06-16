@@ -19,6 +19,7 @@ import (
 	"go/ast"
 	"strings"
 
+	"github.com/gx-org/gx/build/fmterr"
 	"github.com/gx-org/gx/build/ir/irkind"
 )
 
@@ -251,8 +252,8 @@ func (s *FuncType) InstantiateFType(fetcher Fetcher, spec Specialiser) (*FuncTyp
 }
 
 // IndexForVarArgs returns a type specific to a given index in varargs.
-func (s *FuncType) IndexForVarArgs(int) Type {
-	return s
+func (s *FuncType) IndexForVarArgs(fmterr.ErrAppender, int) (Type, bool) {
+	return s, true
 }
 
 // Expr returns the expression AST.

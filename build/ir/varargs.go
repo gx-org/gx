@@ -18,6 +18,7 @@ import (
 	"go/ast"
 	"math/big"
 
+	"github.com/gx-org/gx/build/fmterr"
 	"github.com/gx-org/gx/build/ir/irkind"
 )
 
@@ -85,8 +86,8 @@ func (tp *VarArgsType) ConvertibleTo(tpcmp TypeCmp, target Type) (bool, error) {
 }
 
 // IndexForVarArgs builds a type specific to a var arg position.
-func (tp *VarArgsType) IndexForVarArgs(i int) Type {
-	return tp.Typ.DType.Val().IndexForVarArgs(i)
+func (tp *VarArgsType) IndexForVarArgs(errapp fmterr.ErrAppender, i int) (Type, bool) {
+	return tp.Typ.DType.Val().IndexForVarArgs(errapp, i)
 }
 
 // Specialise a type to a given target.
@@ -146,15 +147,15 @@ func (expr *VarArgsExpr) SourceString(from *File) string {
 // VarArgsIndexer is an expression able to add an index to access a generic varargs non-type parameter.
 type VarArgsIndexer interface {
 	Expr
-	IndexForVarArgs(i int) Expr
+	IndexForVarArgs(errapp fmterr.ErrAppender, i int) (Expr, bool)
 }
 
-func varArgsIndexExpr(i int, x Expr) Expr {
+func varArgsIndexExpr(errapp fmterr.ErrAppender, i int, x Expr) (Expr, bool) {
 	xSpec, canIndex := x.(VarArgsIndexer)
 	if !canIndex {
-		return x
+		return x, true
 	}
-	return xSpec.IndexForVarArgs(i)
+	return xSpec.IndexForVarArgs(errapp, i)
 }
 
 // VarArgsIndex index an expression with a var args index.
@@ -181,9 +182,10 @@ func (s *VarArgsIndex) SourceString(from *File) string {
 }
 
 // IndexForVarArgs returns a type specific to a given index in varargs.
-func (s *VarArgsIndex) IndexForVarArgs(i int) Expr {
+func (s *VarArgsIndex) IndexForVarArgs(errapp fmterr.ErrAppender, i int) (Expr, bool) {
+	x, ok := varArgsIndexExpr(errapp, i, s.X)
 	return &IndexExpr{
-		X: varArgsIndexExpr(i, s.X),
+		X: x,
 		Index: &NumberCastExpr{
 			X: &NumberInt{
 				Val: big.NewInt(int64(i)),
@@ -191,7 +193,7 @@ func (s *VarArgsIndex) IndexForVarArgs(i int) Expr {
 			Typ: DefaultIntType,
 		},
 		Typ: s.EltTyp,
-	}
+	}, ok
 }
 
 // Specialise the expression.

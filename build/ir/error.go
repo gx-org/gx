@@ -18,6 +18,7 @@ import (
 	"go/ast"
 
 	"github.com/pkg/errors"
+	"github.com/gx-org/gx/build/fmterr"
 	"github.com/gx-org/gx/build/ir/irkind"
 )
 
@@ -144,8 +145,8 @@ func (s *errorType) Type() Type {
 	return MetaType()
 }
 
-func (s *errorType) IndexForVarArgs(int) Type {
-	return s
+func (s *errorType) IndexForVarArgs(fmterr.ErrAppender, int) (Type, bool) {
+	return s, true
 }
 
 // ReferString returns the GX source to refer to the type.

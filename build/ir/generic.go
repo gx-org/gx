@@ -218,8 +218,8 @@ func (s *GenericTypeParam) UnifyWith(uni Unifier, typ Type) bool {
 }
 
 // IndexForVarArgs returns a type specific to a given index in varargs.
-func (s *GenericTypeParam) IndexForVarArgs(int) Type {
-	return s
+func (s *GenericTypeParam) IndexForVarArgs(fmterr.ErrAppender, int) (Type, bool) {
+	return s, true
 }
 
 func (s *GenericTypeParam) invalidValue() GenericValue {

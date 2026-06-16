@@ -18,6 +18,7 @@ import (
 	"go/ast"
 	"strings"
 
+	"github.com/gx-org/gx/build/fmterr"
 	"github.com/gx-org/gx/build/ir/irkind"
 )
 
@@ -95,8 +96,8 @@ func (t *metaType) Instantiate(Fetcher, Specialiser) (Type, bool) {
 	return t, true
 }
 
-func (t *metaType) IndexForVarArgs(int) Type {
-	return t
+func (t *metaType) IndexForVarArgs(fmterr.ErrAppender, int) (Type, bool) {
+	return t, true
 }
 
 var metaTypeT = &metaType{
@@ -177,8 +178,8 @@ func (*invalidType) UnifyWith(unifier Unifier, typ Type) bool {
 	return true
 }
 
-func (t *invalidType) IndexForVarArgs(int) Type {
-	return t
+func (t *invalidType) IndexForVarArgs(fmterr.ErrAppender, int) (Type, bool) {
+	return t, true
 }
 
 type distinctType struct {
@@ -234,8 +235,8 @@ func (t *distinctType) Instantiate(Fetcher, Specialiser) (Type, bool) {
 	return t.tp, true
 }
 
-func (t *distinctType) IndexForVarArgs(int) Type {
-	return t.tp
+func (t *distinctType) IndexForVarArgs(fmterr.ErrAppender, int) (Type, bool) {
+	return t.tp, true
 }
 
 var (

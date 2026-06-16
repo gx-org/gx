@@ -17,6 +17,7 @@ package ir
 import (
 	"go/ast"
 
+	"github.com/gx-org/gx/build/fmterr"
 	"github.com/gx-org/gx/build/ir/irkind"
 )
 
@@ -146,8 +147,8 @@ func (*atomicType) UnifyWith(unifier Unifier, typ Type) bool {
 	return true
 }
 
-func (s *atomicType) IndexForVarArgs(int) Type {
-	return s
+func (s *atomicType) IndexForVarArgs(fmterr.ErrAppender, int) (Type, bool) {
+	return s, true
 }
 
 // Zero returns a zero expression of the same type.

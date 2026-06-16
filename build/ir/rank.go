@@ -21,6 +21,7 @@ import (
 	"strings"
 
 	"github.com/pkg/errors"
+	"github.com/gx-org/gx/build/fmterr"
 )
 
 type (
@@ -54,7 +55,7 @@ type (
 		Instantiate(Fetcher, Specialiser) (ArrayRank, bool)
 
 		// IndexForVarArgs returns a rank specific to a given index in varargs.
-		IndexForVarArgs(i int) ArrayRank
+		IndexForVarArgs(errapp fmterr.ErrAppender, i int) (ArrayRank, bool)
 
 		// SubRank returns the rank with the top-axis removed.
 		SubRank() (ArrayRank, bool)
@@ -227,12 +228,15 @@ func (r *Rank) Instantiate(ev Fetcher, spec Specialiser) (ArrayRank, bool) {
 }
 
 // IndexForVarArgs returns a rank specific to a given index in varargs.
-func (r *Rank) IndexForVarArgs(vri int) ArrayRank {
+func (r *Rank) IndexForVarArgs(errapp fmterr.ErrAppender, vri int) (ArrayRank, bool) {
 	axes := make([]AxisLengths, len(r.Ax))
+	ok := true
 	for i, ax := range r.Ax {
-		axes[i] = ax.IndexForVarArgs(vri)
+		var rankOk bool
+		axes[i], rankOk = ax.IndexForVarArgs(errapp, vri)
+		ok = ok && rankOk
 	}
-	return &Rank{Src: r.Src, Ax: axes}
+	return &Rank{Src: r.Src, Ax: axes}, ok
 }
 
 var oneSize = &NumberCastExpr{
@@ -388,11 +392,11 @@ func (r *RankInfer) UnifyWith(uni Unifier, target ArrayRank) bool {
 }
 
 // IndexForVarArgs returns a rank specific to a given index in varargs.
-func (r *RankInfer) IndexForVarArgs(i int) ArrayRank {
+func (r *RankInfer) IndexForVarArgs(errapp fmterr.ErrAppender, i int) (ArrayRank, bool) {
 	if r.Rnk == nil {
-		return r
+		return r, true
 	}
-	return r.Rnk.IndexForVarArgs(i)
+	return r.Rnk.IndexForVarArgs(errapp, i)
 }
 
 // SourceString returns the GX source code of the rank.

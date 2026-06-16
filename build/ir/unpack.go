@@ -14,7 +14,11 @@
 
 package ir
 
-import "go/ast"
+import (
+	"go/ast"
+
+	"github.com/gx-org/gx/build/fmterr"
+)
 
 // UnpackExpr an expression.
 type UnpackExpr struct {
@@ -59,10 +63,11 @@ func (u *UnpackExpr) Specialise(spec Specialiser) (Expr, bool) {
 }
 
 // IndexForVarArgs returns a type specific to a given index in varargs.
-func (u *UnpackExpr) IndexForVarArgs(i int) Expr {
+func (u *UnpackExpr) IndexForVarArgs(errapp fmterr.ErrAppender, i int) (Expr, bool) {
 	r := *u
-	r.X = varArgsIndexExpr(i, r.X)
-	return &r
+	var ok bool
+	r.X, ok = varArgsIndexExpr(errapp, i, r.X)
+	return &r, ok
 }
 
 // SourceString returns the GX source code of the expression.
