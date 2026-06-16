@@ -101,7 +101,12 @@ var (
 // and the second error indicates the conversion error.
 // In other word, the first error is an error that needs to be reported to the user,
 // the second error is an internal error in the compiler.
-func (fitp *Interpreter) ToCompEvalError(src ast.Expr, el ir.Element) (ir.CompEvalError, error) {
+func (fitp *Interpreter) ToCompEvalError(src ast.Expr, el ir.Element) (_ ir.CompEvalError, err error) {
+	defer func() {
+		if err != nil {
+			err = fmterr.Internal(err)
+		}
+	}()
 	if el == nil {
 		return nil, nil
 	}
@@ -110,7 +115,7 @@ func (fitp *Interpreter) ToCompEvalError(src ast.Expr, el ir.Element) (ir.CompEv
 	}
 	isErr, err := el.Type().AssignableTo(fitp, ir.ErrorType())
 	if !isErr {
-		return nil, errors.Errorf("cannot convert %T to error", el.Type().ReferString(fitp.File()))
+		return nil, fmterr.Internal(errors.Errorf("cannot convert %T to error", el.Type().ReferString(fitp.File())))
 	}
 	if err != nil {
 		return nil, err
@@ -136,10 +141,10 @@ func (fitp *Interpreter) ToCompEvalError(src ast.Expr, el ir.Element) (ir.CompEv
 	if err != nil {
 		return nil, fmt.Errorf("cannot call Error function: %w", err)
 	}
-	errElement, err := ToSingleElement(fitp, errorExpr, outs)
-	if err != nil {
-		return nil, err
+	if len(outs) != 1 {
+		return nil, fmt.Errorf("Error function returned %d element(s), expect 1", len(outs))
 	}
+	errElement := outs[0]
 	if proxies.IsProxy(errElement) {
 		return nil, nil
 	}
