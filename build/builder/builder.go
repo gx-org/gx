@@ -62,6 +62,14 @@ func New(imps ...importers.Importer) *Builder {
 	return NewWithLoader(importers.NewCacheLoader(imps...))
 }
 
+// NewSafe returns a new build session where panics are captured
+// and transformed into error messages.
+func NewSafe(imps ...importers.Importer) (*importers.SafeLoader, *Builder) {
+	cacheLoader := importers.NewCacheLoader(imps...)
+	safeLoader := importers.NewSafeLoader(cacheLoader)
+	return safeLoader, NewWithLoader(safeLoader)
+}
+
 // NewWithLoader returns a new build session.
 func NewWithLoader(loader importers.Loader) *Builder {
 	return &Builder{loader: loader}
