@@ -20,6 +20,7 @@ import (
 
 	"github.com/pkg/errors"
 	"github.com/gx-org/gx/build/builder/testbuild"
+	"github.com/gx-org/gx/build/ir"
 )
 
 // Method computes the gradient of methods and compare the result with an expected outcome.
@@ -90,29 +91,29 @@ import %s"math/grad"
 }
 
 // Run builds the declarations as a package, then compare to an expected outcome.
-func (tt Method) Run(b *testbuild.Builder) error {
+func (tt Method) Run(b *testbuild.Builder) (*ir.Package, error) {
 	if len(tt.GradOf) == 0 {
 		tt.GradOf = []string{"S.F"}
 	}
 	// Build the package.
 	src, err := tt.buildSourceCode()
 	if err != nil {
-		return err
+		return nil, err
 	}
 	pkg, err := b.Build("", src)
 	if err != nil {
-		return testbuild.CheckError(tt.Err, err)
+		return nil, testbuild.CheckError(tt.Err, err)
 	}
 	pkgIR := pkg.IR()
 	// Check the gradient of the default function F.
 	// checkFunc returns a nil error if tt.Want is empty.
 	if err := checkFunc(pkgIR, "S.gradF", tt.Want); err != nil {
-		return err
+		return nil, err
 	}
 	// Check other functions we expect.
 	for name, src := range tt.Wants {
 		if err := checkFunc(pkgIR, name, src); err != nil {
-			return err
+			return nil, err
 		}
 	}
 	// Check that functions have been built multiple times.
@@ -120,9 +121,9 @@ func (tt Method) Run(b *testbuild.Builder) error {
 	for _, fn := range pkg.IR().Decls.Funcs {
 		_, found := funcs[fn.Name()]
 		if found {
-			return errors.Errorf("function %s has been built more than one time", fn.Name())
+			return nil, errors.Errorf("function %s has been built more than one time", fn.Name())
 		}
 		funcs[fn.Name()] = true
 	}
-	return nil
+	return pkgIR, nil
 }

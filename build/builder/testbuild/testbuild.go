@@ -137,13 +137,14 @@ func (tt DeclarePackage) Build(b *builder.Builder) (importers.Package, error) {
 }
 
 // Run the source code to declare it as an importable package.
-func (tt DeclarePackage) Run(b *Builder) error {
+func (tt DeclarePackage) Run(b *Builder) (*ir.Package, error) {
 	pkg, err := tt.Build(builder.NewWithLoader(&b.imp))
 	if err != nil {
-		return err
+		return nil, err
 	}
-	b.imp.pkgs[pkg.IR().Path()] = pkg
-	return nil
+	irpkg := pkg.IR()
+	b.imp.pkgs[irpkg.Path()] = pkg
+	return irpkg, nil
 }
 
 // NoSubTest forces the execution of this test.
@@ -183,25 +184,25 @@ func CheckExpandedExpr(pkg *builder.IncrementalPackage, src string, want string,
 }
 
 // Run builds the declarations as a package, then compare to an expected outcome.
-func (tt Decl) Run(b *Builder) error {
+func (tt Decl) Run(b *Builder) (*ir.Package, error) {
 	pkg, err := b.Build("", fmt.Sprintf(`
 package test
 
 %s
 `, tt.Src))
 	if err := CheckError(tt.Err, err); err != nil {
-		return err
+		return nil, err
 	}
 	if err := checkAll(tt.Want, pkg.IR().Decls); err != nil {
-		return err
+		return nil, err
 	}
 	// Check other functions we expect.
 	for expr, want := range tt.WantExprs {
 		if err := CheckExpandedExpr(pkg, expr, want, b.imp.importSpecs()...); err != nil {
-			return err
+			return nil, err
 		}
 	}
-	return nil
+	return pkg.IR(), nil
 }
 
 // Expr specifies a test of a GX expression.
@@ -249,25 +250,25 @@ func CheckError(want string, err error) error {
 }
 
 // Run the expression test.
-func (tt Expr) Run(ctx *Builder) error {
+func (tt Expr) Run(ctx *Builder) (*ir.Package, error) {
 	done := map[any]bool{}
 	bld := builder.NewWithLoader(&ctx.imp)
 	pkg := bld.NewIncrementalPackage("test")
 	got, err := pkg.BuildExpr(tt.Src)
 	if err := CheckError(tt.Err, err); err != nil {
-		return err
+		return nil, err
 	}
 	if err := compare(done, got, tt.Want); err != nil {
-		return err
+		return nil, err
 	}
 	if tt.WantType == "" {
-		return nil
+		return nil, nil
 	}
 	gotType := got.Type().ReferString(nil)
 	if gotType != tt.WantType {
-		return errors.Errorf("incorrect type string: got %q want %q", gotType, tt.WantType)
+		return nil, errors.Errorf("incorrect type string: got %q want %q", gotType, tt.WantType)
 	}
-	return nil
+	return nil, nil
 }
 
 // Source code of the expression.
@@ -372,11 +373,12 @@ func (b *Builder) Loader() importers.Loader {
 // Test to run.
 type Test interface {
 	Source() string
-	Run(*Builder) error
+	Run(*Builder) (*ir.Package, error)
 }
 
 // NoSubTest is an interface to signal that the test should be run but not counted as a test.
 type NoSubTest interface {
+	Test
 	NoSubTest()
 }
 
@@ -411,22 +413,23 @@ func RunFactory(t *testing.T, factories ...TestFactory) *Builder {
 // Continue running tests with the same builder.
 func (b *Builder) Continue(t *testing.T, tests ...Test) {
 	for _, test := range tests {
-		if _, ok := test.(DeclarePackage); ok {
-			if err := test.Run(b); err != nil {
+		switch testT := test.(type) {
+		case DeclarePackage:
+			if _, err := testT.Run(b); err != nil {
 				t.Fatal(err)
 			}
-		}
-		_, noSubTest := test.(NoSubTest)
-		if noSubTest {
-			if err := test.Run(b); err != nil {
+		case NoSubTest:
+			_, err := testT.Run(b)
+			if err != nil {
 				t.Errorf("\n%s\n%+v", test.Source(), fmterr.ToStackTraceError(err))
 			}
+		default:
+			t.Run(b.nextTestName(test), func(t *testing.T) {
+				t.Helper()
+				if _, err := test.Run(b); err != nil {
+					t.Errorf("\n%s\n%+v", test.Source(), fmterr.ToStackTraceError(err))
+				}
+			})
 		}
-		t.Run(b.nextTestName(test), func(t *testing.T) {
-			t.Helper()
-			if err := test.Run(b); err != nil {
-				t.Errorf("\n%s\n%+v", test.Source(), fmterr.ToStackTraceError(err))
-			}
-		})
 	}
 }

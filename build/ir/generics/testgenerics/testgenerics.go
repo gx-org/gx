@@ -87,19 +87,19 @@ func (call Call) run(pkg *builder.IncrementalPackage, fnValRef *ir.FuncValExpr) 
 }
 
 // Run builds the declarations as a package, then compare to an expected outcome.
-func (tt Infer) Run(b *testbuild.Builder) error {
+func (tt Infer) Run(b *testbuild.Builder) (*ir.Package, error) {
 	// Build the package.
 	bld := builder.NewWithLoader(b.Loader())
 	pkg := bld.NewIncrementalPackage("test")
 	src := tt.Source()
 	if err := pkg.Build(src); err != nil {
-		return errors.Errorf("unexpected error in function signature: %v\nPackage source code:\n%s", err, src)
+		return nil, errors.Errorf("unexpected error in function signature: %v\nPackage source code:\n%s", err, src)
 	}
 	// Find the declared function.
 	pkgIR := pkg.IR()
 	funcs := pkgIR.Decls.Funcs
 	if len(funcs) != 1 {
-		return errors.Errorf("got %d function declarations but want only 1", len(funcs))
+		return nil, errors.Errorf("got %d function declarations but want only 1", len(funcs))
 	}
 	fn := funcs[0]
 	fnValRef := ir.NewFuncValExpr(&ir.Ident{Stor: fn}, fn)
@@ -111,5 +111,5 @@ func (tt Infer) Run(b *testbuild.Builder) error {
 			errs.Append(fmt.Errorf("call %d error: %v", i, err))
 		}
 	}
-	return errs.ToError()
+	return pkgIR, errs.ToError()
 }

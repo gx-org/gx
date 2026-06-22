@@ -74,7 +74,7 @@ func (tt CompEval) stringFromElement(ev ir.Evaluator, el ir.Element) (string, er
 }
 
 // Run builds the declarations as a package, then compare to an expected outcome.
-func (tt CompEval) Run(b *Builder) error {
+func (tt CompEval) Run(b *Builder) (*ir.Package, error) {
 	bld := builder.NewWithLoader(&b.imp)
 	pkg, err := build(bld, "", fmt.Sprintf(`
 package test
@@ -82,51 +82,51 @@ package test
 %s
 `, tt.Src))
 	if err != nil {
-		return err
+		return nil, err
 	}
 	const funcName = "test"
 	irPkg := pkg.IR()
 	fn := irPkg.FindFunc(funcName)
 	if fn == nil {
-		return errors.Errorf("%s function not found", funcName)
+		return nil, errors.Errorf("%s function not found", funcName)
 	}
 	if !fn.FuncType().CompEval {
-		return errors.Errorf("%s is not a compeval function", funcName)
+		return nil, errors.Errorf("%s is not a compeval function", funcName)
 	}
 	fnDecl, isFuncDecl := fn.(*ir.FuncDecl)
 	if !isFuncDecl {
-		return errors.Errorf("%s needs a body", funcName)
+		return nil, errors.Errorf("%s needs a body", funcName)
 	}
 	hostEval := compeval.NewHostEvaluator(bld, cpevelements.NewMixFunc)
 	itp, err := interp.New(hostEval, hostEval, cpevelements.MixedRunner(), nil)
 	if err != nil {
-		return err
+		return nil, err
 	}
 	outs, err := itp.EvalFunc(fnDecl, &elements.InputElements{})
 	if err != nil {
-		return err
+		return nil, err
 	}
 	if len(outs) != len(tt.Wants) {
-		return errors.Errorf("%s returned %d elements but want %d", funcName, len(outs), len(tt.Wants))
+		return nil, errors.Errorf("%s returned %d elements but want %d", funcName, len(outs), len(tt.Wants))
 	}
 	const fileName = "src0.gx"
 	file := irPkg.File(fileName)
 	if file == nil {
-		return errors.Errorf("cannot find file %s in package", fileName)
+		return nil, errors.Errorf("cannot find file %s in package", fileName)
 	}
 	fitp, err := itp.ForFile(file)
 	if err != nil {
-		return err
+		return nil, err
 	}
 	for i, out := range outs {
 		got, err := tt.stringFromElement(fitp, out)
 		if err != nil {
-			return err
+			return nil, err
 		}
 		want := tt.Wants[i]
 		if got != want {
-			return errors.Errorf("got expression %d:\n%s\nbut want:\n%s", i, got, want)
+			return nil, errors.Errorf("got expression %d:\n%s\nbut want:\n%s", i, got, want)
 		}
 	}
-	return nil
+	return irPkg, nil
 }

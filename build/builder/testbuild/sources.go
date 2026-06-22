@@ -22,6 +22,7 @@ import (
 
 	"github.com/gx-org/gx/api"
 	"github.com/gx-org/gx/build/builder"
+	"github.com/gx-org/gx/build/ir"
 	"github.com/gx-org/gx/internal/testing/cmperr"
 )
 
@@ -77,13 +78,13 @@ func (t *source) Source() string {
 	return t.src
 }
 
-func (t *source) Run(b *Builder) error {
+func (t *source) Run(b *Builder) (*ir.Package, error) {
 	bld := builder.NewWithLoader(&b.imp)
 	pkg, err := bld.BuildFiles("", "testdata", t.folder.FS, []string{t.name})
 	if _, err = cmperr.Compare(pkg.IR(), err); err != nil {
-		return &compileError{src: t.src, err: err}
+		return nil, &compileError{src: t.src, err: err}
 	}
-	return nil
+	return pkg.IR(), nil
 }
 
 func (t *source) Name() string {
