@@ -16,11 +16,11 @@ func TestRandUniformUint64() ([2][3]uint64, [2][3]uint64) {
 	rnd, b := rnd.Uint64[[]intlen{2, 3}]()
 	return a, b
 	// Want:
-	// 0: [Dims]uint64{
+	// 0: [2][3]uint64{
 	// 	{5593899049600577110, 15353157502835371651, 596190196732659588},
 	// 	{5614058057677614496, 9713047263490594073, 17857316907901081200},
 	// }
-	// 1: [Dims]uint64{
+	// 1: [2][3]uint64{
 	// 	{10826104460941062082, 13199785683230879330, 11346820297660219021},
 	// 	{5989968235824991032, 13384425856091111145, 3558705469962351023},
 	// }
@@ -63,7 +63,7 @@ func TestFloat32NoAxis() uint32 {
 	_, smpl := rnd.Uint32[[]intlen{}]()
 	return smpl
 	// Want:
-	// [Dims]uint32(1087794774)
+	// uint32(1087794774)
 }
 
 func TestFloat32Axis1() [2]float32 {
@@ -93,7 +93,7 @@ func TestRandUniformFloat32WithSize() [Size]float32 {
 	_, a := rnd.Float32[[]intlen{Size}]()
 	return a
 	// Want:
-	// [Size]float32{0.253272, 0.303246}
+	// [2]float32{0.253272, 0.303246}
 }
 
 func TestFloat32MinMax() ([5]bool, [5]bool, bool) {

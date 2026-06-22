@@ -325,6 +325,13 @@ type WithName interface {
 	Name() string
 }
 
+// NewLocalBuilder returns a builder using a local ephemeral importer.
+func NewLocalBuilder() *Builder {
+	return &Builder{
+		imp: localImporter{pkgs: make(map[string]importers.Package)},
+	}
+}
+
 func (b *Builder) nextTestName(t Test) string {
 	name := fmt.Sprintf("test%d", b.next)
 	if withName, hasName := t.(WithName); hasName {
@@ -385,11 +392,9 @@ type NoSubTest interface {
 // Run all the test.
 func Run(t *testing.T, tests ...Test) *Builder {
 	t.Helper()
-	ctx := &Builder{
-		imp: localImporter{pkgs: make(map[string]importers.Package)},
-	}
-	ctx.Continue(t, tests...)
-	return ctx
+	bld := NewLocalBuilder()
+	bld.Continue(t, tests...)
+	return bld
 }
 
 // TestFactory builds tests from an optional runtime.

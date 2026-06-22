@@ -11,5 +11,5 @@ func TestMatMul2AxisA() [3]float64 {
 	y := [2]float64{1., 2.}
 	return num.MatMul(x, y)
 	// Want:
-	// TODO
+	// [3]float64{14, 20, 26}
 }

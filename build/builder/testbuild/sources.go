@@ -81,12 +81,16 @@ func (t *source) Source() string {
 func (t *source) Run(b *Builder) (*ir.Package, error) {
 	bld := builder.NewWithLoader(&b.imp)
 	pkg, err := bld.BuildFiles("", "testdata", t.folder.FS, []string{t.name})
-	if _, err = cmperr.Compare(pkg.IR(), err); err != nil {
+	numExpectedErrors, err := cmperr.Compare(pkg.IR(), err)
+	if err != nil {
 		return nil, &compileError{src: t.src, err: err}
+	}
+	if numExpectedErrors != 0 {
+		return nil, nil
 	}
 	return pkg.IR(), nil
 }
 
 func (t *source) Name() string {
-	return path.Base(t.name)
+	return path.Join(t.folder.Name, t.name)
 }

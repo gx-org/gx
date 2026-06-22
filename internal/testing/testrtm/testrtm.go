@@ -23,6 +23,17 @@ import (
 	"github.com/gx-org/gx/build/ir"
 )
 
+func noTestFuncOk(pkg *ir.Package) bool {
+	for _, file := range pkg.Files {
+		for _, grp := range file.Src.Comments {
+			if strings.HasPrefix(grp.Text(), "No test function") {
+				return true
+			}
+		}
+	}
+	return false
+}
+
 func findTests(pkg *ir.Package) []*ir.FuncDecl {
 	var funs []*ir.FuncDecl
 	for fn := range pkg.ExportedFuncs() {
@@ -44,8 +55,8 @@ func findTests(pkg *ir.Package) []*ir.FuncDecl {
 // FindTests finds all the tests at the top-level of a filesystem.
 func FindTests(pkg *ir.Package) ([]*ir.FuncDecl, error) {
 	funs := findTests(pkg)
-	if len(funs) == 0 {
-		return nil, fmt.Errorf("no test found")
+	if len(funs) == 0 && !noTestFuncOk(pkg) {
+		return nil, fmt.Errorf("no test found. Add to the source file:\n\t// No test function\nif no test functions are expected")
 	}
 	return funs, nil
 }

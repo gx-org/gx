@@ -5,5 +5,5 @@ import "shape"
 func TestGather2a() [1][2]float32 {
 	return shape.Gather([3][2]float32{{1, 2}, {3, 4}, {5, 6}}, [1]int64{1})
 	// Want:
-	// [1][2]float32{3, 4}
+	// [2]float32{3, 4}
 }

@@ -10,5 +10,5 @@ func TestConcat1Db() [4]float32 {
 	b := [...]float32{1, 2, 3, 4}
 	return a + b
 	// Want:
-	// [2+2]float32{2, 4, 6, 8}
+	// [4]float32{2, 4, 6, 8}
 }

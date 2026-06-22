@@ -2,6 +2,21 @@ package testdata
 
 import "shape"
 
-func Test() [3][24][8]float32 {
-	return shape.Split[1][3]([24][24]float32{})
+func Test() [3][2][4]float32 {
+	return shape.Split[1][3]([2][12]float32{})
+	// Want:
+	// [3][2][4]float32{
+	// 	{
+	// 		{0, 0, 0, 0},
+	// 		{0, 0, 0, 0},
+	// 	},
+	// 	{
+	// 		{0, 0, 0, 0},
+	// 		{0, 0, 0, 0},
+	// 	},
+	// 	{
+	// 		{0, 0, 0, 0},
+	// 		{0, 0, 0, 0},
+	// 	},
+	// }
 }

@@ -18,7 +18,7 @@ func TestTraceGenericShapes() [2][3]int64 {
 		[4][5][6]float32{},
 	)
 	// Want:
-	// [A][B]int64{
+	// [2][3]int64{
 	// 	{0, 1, 2},
 	// 	{3, 4, 5},
 	// }
