@@ -30,6 +30,7 @@ import (
 	"github.com/gx-org/gx/build/fmterr"
 	"github.com/gx-org/gx/build/ir"
 	"github.com/gx-org/gx/golang/binder/gobindings/types"
+	"github.com/gx-org/gx/internal/testing/cmperr"
 )
 
 func findTests(pkg *ir.Package) []*ir.FuncDecl {
@@ -170,7 +171,7 @@ func RunAll(t *testing.T, rtm *api.Runtime, pkg *ir.Package, err error) (numTest
 			return
 		}
 	}
-	numExpectedErrors, err := CompareToExpectedErrors(pkg, errs)
+	numExpectedErrors, err := cmperr.Compare(pkg, errs)
 	if err != nil {
 		t.Errorf("\n%+v", err)
 		return

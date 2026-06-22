@@ -33,8 +33,8 @@ import (
 	"github.com/gx-org/gx/build/importers"
 	"github.com/gx-org/gx/build/ir"
 	"github.com/gx-org/gx/build/ir/irstring"
+	"github.com/gx-org/gx/internal/testing/cmperr"
 	"github.com/gx-org/gx/stdlib"
-	gxtesting "github.com/gx-org/gx/tests/testing"
 )
 
 // CompareString compares two string and build an error message if the strings do not match.
@@ -350,7 +350,7 @@ func build(bld *builder.Builder, path, src string) (*builder.IncrementalPackage,
 	}
 	err = pkg.Build(src)
 	// Compare errors to what we expect from the package source code.
-	_, err = gxtesting.CompareToExpectedErrors(pkg.IR(), err)
+	_, err = cmperr.Compare(pkg.IR(), err)
 	if err != nil {
 		// Some errors are unexpected: return.
 		return pkg, &compileError{src: src, err: err}

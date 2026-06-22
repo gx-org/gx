@@ -22,7 +22,7 @@ import (
 	"testing"
 
 	"github.com/gx-org/gx/build/builder"
-	gxtesting "github.com/gx-org/gx/tests/testing"
+	"github.com/gx-org/gx/internal/testing/cmperr"
 )
 
 // source runs a test from a source file loaded from a file system.
@@ -73,7 +73,7 @@ func (t *source) Source() string {
 func (t *source) Run(b *Builder) error {
 	bld := builder.NewWithLoader(&b.imp)
 	pkg, err := bld.BuildFiles("", testdata, t.fs, []string{t.name})
-	if _, err = gxtesting.CompareToExpectedErrors(pkg.IR(), err); err != nil {
+	if _, err = cmperr.Compare(pkg.IR(), err); err != nil {
 		return &compileError{src: t.src, err: err}
 	}
 	return nil
