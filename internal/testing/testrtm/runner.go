@@ -12,13 +12,14 @@
 // See the License for the specific language governing permissions and
 // limitations under the License.
 
-package testing
+package testrtm
 
 import (
 	"fmt"
 	"go/ast"
 	"path/filepath"
 	"strings"
+	"testing"
 
 	"github.com/google/go-cmp/cmp"
 	"github.com/gx-org/gx/api"
@@ -26,25 +27,9 @@ import (
 	"github.com/gx-org/gx/api/tracer"
 	"github.com/gx-org/gx/api/values"
 	gxfmt "github.com/gx-org/gx/base/fmt"
-	"github.com/gx-org/gx/build/builder"
 	"github.com/gx-org/gx/build/fmterr"
-	"github.com/gx-org/gx/build/importers/embedpkg"
 	"github.com/gx-org/gx/build/ir"
 	"github.com/gx-org/gx/golang/backend/kernels"
-	"github.com/gx-org/gx/stdlib"
-
-	// Packages statically loaded for tests.
-	_ "github.com/gx-org/gx/tests/bindings/basic"
-	_ "github.com/gx-org/gx/tests/bindings/cartpole"
-	_ "github.com/gx-org/gx/tests/bindings/dtypes"
-	_ "github.com/gx-org/gx/tests/bindings/encoding"
-	_ "github.com/gx-org/gx/tests/bindings/generics"
-	_ "github.com/gx-org/gx/tests/bindings/imports"
-	_ "github.com/gx-org/gx/tests/bindings/math"
-	_ "github.com/gx-org/gx/tests/bindings/parameters"
-	_ "github.com/gx-org/gx/tests/bindings/pkgvars"
-	_ "github.com/gx-org/gx/tests/bindings/rand"
-	_ "github.com/gx-org/gx/tests/bindings/unexported"
 )
 
 type (
@@ -58,15 +43,6 @@ type (
 		trace  strings.Builder
 	}
 )
-
-// NewBuilderStaticSource returns a builder using the embedpkg importer which
-// embeds GX testing source files into their corresponding Go package.
-func NewBuilderStaticSource() *builder.Builder {
-	return builder.New(
-		stdlib.Importer(),
-		embedpkg.New(),
-	)
-}
 
 // NewRunner returns a test runner given a device.
 func NewRunner(rtm *api.Runtime, devID int) (*Runner, error) {
@@ -237,4 +213,37 @@ func (r *Runner) Test(fn *ir.FuncDecl, options []options.PackageOption) error {
 			fmterr.At(fn.File().Package.FSet, wantOutCmt), strings.Join(gotTypes, ","), got, want, cmp.Diff(got, want))
 	}
 	return nil
+}
+
+// RunAll compiles and runs all the test at a specified path.
+// Returns the number of tests that have been run.
+func RunAll(t *testing.T, rtm *api.Runtime, pkg *ir.Package) {
+	fns, err := FindTests(pkg)
+	if err != nil {
+		t.Errorf("\n%+v", err)
+		return
+	}
+	options, err := BuildCompileOptions(rtm, pkg)
+	if err != nil {
+		t.Errorf("\n%+v", err)
+		return
+	}
+	tRunner, err := NewRunner(rtm, 0)
+	if err != nil {
+		t.Errorf("\n%+v", err)
+		return
+	}
+	numTests := 0
+	for _, fn := range fns {
+		name := fn.File().Package.Name.Name + "." + fn.Name()
+		t.Run(name, func(t *testing.T) {
+			numTests++
+			if err := tRunner.Test(fn, options); err != nil {
+				t.Error(err)
+			}
+		})
+	}
+	if numTests == 0 {
+		t.Errorf("no test found in %s", pkg.Path())
+	}
 }

@@ -22,5 +22,5 @@ import (
 )
 
 func TestNum(t *testing.T) {
-	testbuild.RunFactory(t, nil, testdata.Sources)
+	testbuild.RunFactory(t, testdata.Sources)
 }

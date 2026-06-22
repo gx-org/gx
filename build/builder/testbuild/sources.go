@@ -36,7 +36,7 @@ type SourceFolder struct {
 var _ TestFactory = SourceFolder{}
 
 // BuildTests creates a set of test from a file system with a testdata folder.
-func (sf SourceFolder) BuildTests(rtm *api.Runtime) ([]Test, error) {
+func (sf SourceFolder) BuildTests() ([]Test, error) {
 	dir, err := sf.FS.ReadDir(".")
 	if err != nil {
 		return nil, fmt.Errorf("cannot read filesystem: %w", err)
@@ -57,7 +57,6 @@ func (sf SourceFolder) BuildTests(rtm *api.Runtime) ([]Test, error) {
 		tests = append(tests, &source{
 			folder: sf,
 			name:   name,
-			rtm:    rtm,
 			src:    string(src),
 		})
 	}

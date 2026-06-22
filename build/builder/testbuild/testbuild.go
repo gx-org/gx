@@ -27,7 +27,6 @@ import (
 	"github.com/google/go-cmp/cmp"
 	"github.com/pkg/errors"
 	"golang.org/x/exp/maps"
-	"github.com/gx-org/gx/api"
 	gxfmt "github.com/gx-org/gx/base/fmt"
 	"github.com/gx-org/gx/build/builder"
 	"github.com/gx-org/gx/build/fmterr"
@@ -393,14 +392,14 @@ func Run(t *testing.T, tests ...Test) *Builder {
 
 // TestFactory builds tests from an optional runtime.
 type TestFactory interface {
-	BuildTests(rtm *api.Runtime) ([]Test, error)
+	BuildTests() ([]Test, error)
 }
 
 // RunFactory builds a set of tests from a factory then run them.
-func RunFactory(t *testing.T, rtm *api.Runtime, factories ...TestFactory) *Builder {
+func RunFactory(t *testing.T, factories ...TestFactory) *Builder {
 	var tests []Test
 	for _, factory := range factories {
-		fTests, err := factory.BuildTests(rtm)
+		fTests, err := factory.BuildTests()
 		if err != nil {
 			t.Fatal(err)
 		}
