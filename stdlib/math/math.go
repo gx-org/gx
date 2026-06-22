@@ -23,7 +23,7 @@ import (
 	"reflect"
 
 	"github.com/pkg/errors"
-	"github.com/gx-org/backend/dtype"
+	"github.com/gx-org/backend/dtypes"
 	"github.com/gx-org/backend/ops"
 	"github.com/gx-org/gx/build/builtins"
 	"github.com/gx-org/gx/build/fmterr"
@@ -134,7 +134,7 @@ func mainAuxArgsToTypes(funcName string, fetcher ir.Fetcher, call *ir.FuncCallEx
 	return baseType, auxType, baseType, nil
 }
 
-func buildConstScalar[T dtype.GoDataType](name string, value T) builtin.Builder {
+func buildConstScalar[T dtypes.GoDataType](name string, value T) builtin.Builder {
 	kind := irkind.KindGeneric[T]()
 	return builtin.BuildConst(func(*ir.Package) (string, ir.Expr, ir.Type, error) {
 		value := &ir.AtomicValueT[T]{

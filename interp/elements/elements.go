@@ -22,7 +22,7 @@ import (
 	"reflect"
 
 	"github.com/pkg/errors"
-	"github.com/gx-org/backend/dtype"
+	"github.com/gx-org/backend/dtypes"
 	"github.com/gx-org/gx/api/values"
 	gxfmt "github.com/gx-org/gx/base/fmt"
 	"github.com/gx-org/gx/build/fmterr"
@@ -167,7 +167,7 @@ func AxesFromElement(el ir.Element) ([]int, error) {
 }
 
 // ConstantScalarFromElement returns a scalar on a host given an element.
-func ConstantScalarFromElement[T dtype.GoDataType](el ir.Element) (val T, err error) {
+func ConstantScalarFromElement[T dtypes.GoDataType](el ir.Element) (val T, err error) {
 	var hostArray *values.HostArray
 	hostArray, err = ConstantFromElement(el)
 	if err != nil {
@@ -197,13 +197,13 @@ func ConstantIntFromElement(el ir.Element) (val int, err error) {
 func toGoInt(val *values.HostArray) (int, error) {
 	valT := val.Shape().DType
 	switch valT {
-	case dtype.Int32:
+	case dtypes.Int32:
 		i32, err := values.ToAtom[int32](val)
 		if err != nil {
 			return 0, err
 		}
 		return int(i32), nil
-	case dtype.Int64:
+	case dtypes.Int64:
 		i64, err := values.ToAtom[int64](val)
 		if err != nil {
 			return 0, err

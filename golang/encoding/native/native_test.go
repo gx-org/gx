@@ -20,7 +20,7 @@ import (
 	"testing"
 
 	"github.com/google/go-cmp/cmp"
-	"github.com/gx-org/backend/dtype"
+	"github.com/gx-org/backend/dtypes"
 	"github.com/gx-org/backend/shape"
 	"github.com/gx-org/gx/build/builder"
 	"github.com/gx-org/gx/build/fmterr"
@@ -34,7 +34,7 @@ import (
 
 var encodingGX *encoding_go_gx.PackageHandle
 
-func multiply[T dtype.AlgebraType](f int, x T) T {
+func multiply[T dtypes.AlgebraType](f int, x T) T {
 	return x * T(f)
 }
 
@@ -101,7 +101,7 @@ func checkArray(t *testing.T, factor int, arr *encoding_go_gx.Arrays) {
 	if !cmp.Equal(arrayGot, arrayWant) {
 		t.Errorf("got %v but want %v", arrayGot, arrayWant)
 	}
-	shapeWant := &shape.Shape{DType: dtype.Float32, AxisLengths: []int{2}}
+	shapeWant := &shape.Shape{DType: dtypes.Float32, AxisLengths: []int{2}}
 	if !cmp.Equal(arr.ArrayF32.Shape(), shapeWant) {
 		t.Errorf("got %v but want %v", arr.ArrayF32.Shape(), shapeWant)
 	}
@@ -113,7 +113,7 @@ func checkEncoding(t *testing.T, factor int, enc *encoding_go_gx.Encoding) {
 	checkArray(t, factor, enc.DataAsArrays)
 }
 
-type array[T dtype.AlgebraType] []T
+type array[T dtypes.AlgebraType] []T
 
 var _ shape.ArrayI[ir.Int] = (array[ir.Int])(nil)
 

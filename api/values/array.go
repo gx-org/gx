@@ -19,7 +19,7 @@ import (
 	"math/big"
 
 	"github.com/pkg/errors"
-	"github.com/gx-org/backend/dtype"
+	"github.com/gx-org/backend/dtypes"
 	"github.com/gx-org/backend/platform"
 	"github.com/gx-org/backend/shape"
 	"github.com/gx-org/gx/build/ir"
@@ -247,10 +247,10 @@ func (a *HostArray) String(from *ir.File) string {
 }
 
 // ToAtom converts an array on the host into a Go atom value.
-func ToAtom[T dtype.GoDataType](a *HostArray) (T, error) {
+func ToAtom[T dtypes.GoDataType](a *HostArray) (T, error) {
 	data := a.Buffer().Acquire()
 	defer a.Buffer().Release()
-	slice := dtype.ToSlice[T](data)
+	slice := dtypes.ToSlice[T](data)
 	if len(slice) != 1 {
 		var zero T
 		return zero, errors.Errorf("array (length=%d) is not an atom", len(slice))

@@ -21,7 +21,7 @@ import (
 	"math/big"
 	"testing"
 
-	"github.com/gx-org/backend/dtype"
+	"github.com/gx-org/backend/dtypes"
 	"github.com/gx-org/gx/api/options"
 	"github.com/gx-org/gx/api/values"
 	"github.com/gx-org/gx/build/fmterr"
@@ -94,7 +94,7 @@ func unaryExpr(op token.Token, x ir.Expr) *ir.UnaryExpr {
 	}
 }
 
-func castExpr(dt dtype.DataType, x ir.Expr) *ir.CastExpr {
+func castExpr(dt dtypes.DataType, x ir.Expr) *ir.CastExpr {
 	return &ir.CastExpr{
 		Typ: ir.TypeFromKind(irkind.Kind(dt)),
 		X:   x,
@@ -166,7 +166,7 @@ func TestExprEval(t *testing.T) {
 		},
 		{
 			desc: "cast expression",
-			expr: castExpr(dtype.Int32,
+			expr: castExpr(dtypes.Int32,
 				atomicFloat32(4),
 			),
 			value: value(4),
@@ -255,7 +255,7 @@ func TestExprEval(t *testing.T) {
 			desc: "binary numberInt numberFloat",
 			expr: binaryExpr(token.SUB,
 				unaryExpr(token.SUB, numberInt(4)),
-				castExpr(dtype.Int32, numberFloat(5.3)),
+				castExpr(dtypes.Int32, numberFloat(5.3)),
 			),
 			want: "int32(-4-int32(5.3))",
 		},
@@ -324,7 +324,7 @@ func TestExprEvalAndCompare(t *testing.T) {
 		},
 		{
 			desc: "cast expression",
-			x: castExpr(dtype.Int32,
+			x: castExpr(dtypes.Int32,
 				atomicFloat32(4),
 			),
 			is:    numberInt32(4),

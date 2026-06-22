@@ -16,7 +16,7 @@ package grapheval
 
 import (
 	"github.com/pkg/errors"
-	"github.com/gx-org/backend/dtype"
+	"github.com/gx-org/backend/dtypes"
 	"github.com/gx-org/backend/ops"
 	"github.com/gx-org/backend/shape"
 	"github.com/gx-org/gx/api/values"
@@ -137,7 +137,7 @@ func (n *BackendNode) BinaryOp(env engine.Env, expr *ir.BinaryExpr, x, y engine.
 		AxisLengths: xShape.AxisLengths,
 	}
 	if ir.IsBoolOp(expr.Src.Op) {
-		targetShape.DType = dtype.Bool
+		targetShape.DType = dtypes.Bool
 	}
 	if len(yShape.AxisLengths) > 0 {
 		targetShape.AxisLengths = yShape.AxisLengths

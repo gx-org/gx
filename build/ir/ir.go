@@ -35,7 +35,7 @@ import (
 	"unicode/utf8"
 
 	"github.com/pkg/errors"
-	"github.com/gx-org/backend/dtype"
+	"github.com/gx-org/backend/dtypes"
 	"github.com/gx-org/backend/shape"
 	gxfmt "github.com/gx-org/gx/base/fmt"
 	"github.com/gx-org/gx/build/ir/annotations"
@@ -1988,7 +1988,7 @@ type (
 	}
 
 	// AtomicValueT is a builtin constant.
-	AtomicValueT[T dtype.GoDataType] struct {
+	AtomicValueT[T dtypes.GoDataType] struct {
 		Src ast.Expr
 		Val T
 		Typ Type

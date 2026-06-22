@@ -15,7 +15,7 @@
 package rand
 
 import (
-	"github.com/gx-org/backend/dtype"
+	"github.com/gx-org/backend/dtypes"
 	"github.com/gx-org/backend/ops"
 	"github.com/gx-org/backend/shape"
 	"github.com/gx-org/gx/build/ir"
@@ -28,11 +28,11 @@ import (
 )
 
 var philoxStateShape = &shape.Shape{
-	DType:       dtype.Uint64,
+	DType:       dtypes.Uint64,
 	AxisLengths: []int{3},
 }
 
-func evalPhilox(env engine.Env, call *ir.FuncCallExpr, recv ir.Element, args []ir.Element, dtyp dtype.DataType) ([]ir.Element, error) {
+func evalPhilox(env engine.Env, call *ir.FuncCallExpr, recv ir.Element, args []ir.Element, dtyp dtypes.DataType) ([]ir.Element, error) {
 	philox, err := fun.ToNamedType(recv)
 	if err != nil {
 		return nil, err
@@ -93,9 +93,9 @@ func evalPhilox(env engine.Env, call *ir.FuncCallExpr, recv ir.Element, args []i
 }
 
 func evalPhiloxUint32(env engine.Env, call *ir.FuncCallExpr, recv ir.Element, args []ir.Element) ([]ir.Element, error) {
-	return evalPhilox(env, call, recv, args, dtype.Uint32)
+	return evalPhilox(env, call, recv, args, dtypes.Uint32)
 }
 
 func evalPhiloxUint64(env engine.Env, call *ir.FuncCallExpr, recv ir.Element, args []ir.Element) ([]ir.Element, error) {
-	return evalPhilox(env, call, recv, args, dtype.Uint64)
+	return evalPhilox(env, call, recv, args, dtypes.Uint64)
 }

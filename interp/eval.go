@@ -19,7 +19,7 @@ import (
 	"reflect"
 
 	"github.com/pkg/errors"
-	"github.com/gx-org/backend/dtype"
+	"github.com/gx-org/backend/dtypes"
 	"github.com/gx-org/gx/api/values"
 	"github.com/gx-org/gx/build/fmterr"
 	"github.com/gx-org/gx/build/ir"
@@ -69,7 +69,7 @@ func evalStmt(fitp *Interpreter, node ir.Stmt) ([]ir.Element, bool, error) {
 	}
 }
 
-func evalRangeForLoopOverInteger[T dtype.AlgebraType](fitp *Interpreter, stmt *ir.RangeStmt, toValue valuer) ([]ir.Element, bool, error) {
+func evalRangeForLoopOverInteger[T dtypes.AlgebraType](fitp *Interpreter, stmt *ir.RangeStmt, toValue valuer) ([]ir.Element, bool, error) {
 	toValueT := toValue.(valuerT[T])
 	indexType := ir.TypeFromKind(toValueT.kind)
 	val, err := evalAtom[T](fitp, stmt.X)
@@ -116,7 +116,7 @@ func evalRangeStmtInteger(fitp *Interpreter, stmt *ir.RangeStmt, xKind irkind.Ki
 	}
 }
 
-func evalRangeStmtForLoopOverArray[T dtype.AlgebraType](fitp *Interpreter, stmt *ir.RangeStmt, toValue valuer) ([]ir.Element, bool, error) {
+func evalRangeStmtForLoopOverArray[T dtypes.AlgebraType](fitp *Interpreter, stmt *ir.RangeStmt, toValue valuer) ([]ir.Element, bool, error) {
 	toValueT := toValue.(valuerT[T])
 	indexType := ir.TypeFromKind(toValueT.kind)
 	x, err := evalExpr(fitp, stmt.X)
@@ -671,7 +671,7 @@ func evalEinsumExpr(fitp *Interpreter, ref *ir.EinsumExpr) (ir.Element, error) {
 	return fitp.Engine().ArrayOps().Einsum(fitp, ref, x, y)
 }
 
-func evalAtom[T dtype.GoDataType](fitp *Interpreter, expr ir.Expr) (val T, err error) {
+func evalAtom[T dtypes.GoDataType](fitp *Interpreter, expr ir.Expr) (val T, err error) {
 	el, err := evalExpr(fitp, expr)
 	if err != nil {
 		var zero T

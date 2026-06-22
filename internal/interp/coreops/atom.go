@@ -18,7 +18,7 @@ import (
 	"go/ast"
 	"math/big"
 
-	"github.com/gx-org/backend/dtype"
+	"github.com/gx-org/backend/dtypes"
 	"github.com/gx-org/backend/shape"
 	"github.com/gx-org/gx/api/values"
 	"github.com/gx-org/gx/build/ir"
@@ -53,7 +53,7 @@ var (
 func NewAtom(val *values.HostArray, expr ir.Expr, typ ir.Type) (Element, error) {
 	var float *big.Float
 	var err error
-	if dtype.IsAlgebra(val.Shape().DType) {
+	if dtypes.IsAlgebra(val.Shape().DType) {
 		float, err = val.ToFloatNumber()
 	}
 	return &atom{val: val, expr: expr, float: float, typ: typ}, err

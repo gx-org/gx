@@ -16,7 +16,7 @@ package graph
 
 import (
 	"github.com/pkg/errors"
-	"github.com/gx-org/backend/dtype"
+	"github.com/gx-org/backend/dtypes"
 	"github.com/gx-org/backend/ops"
 	"github.com/gx-org/backend/shape"
 	"github.com/gx-org/gx/golang/backend/kernels"
@@ -74,10 +74,10 @@ func (g *Graph) Iota(sh *shape.Shape, iotaAxis int) (ops.Node, error) {
 	if iotaAxis != 0 {
 		return nil, errors.Errorf("op Iota: got axis %d but Iota only implemented axis 0", iotaAxis)
 	}
-	if sh.DType != dtype.Int64 {
-		return nil, errors.Errorf("op Iota: shape has datatype %s but want %s", sh.DType, dtype.Int64)
+	if sh.DType != dtypes.Int64 {
+		return nil, errors.Errorf("op Iota: shape has datatype %s but want %s", sh.DType, dtypes.Int64)
 	}
-	factory, err := kernels.FactoryFor(dtype.Int64)
+	factory, err := kernels.FactoryFor(dtypes.Int64)
 	if err != nil {
 		return nil, err
 	}
@@ -91,6 +91,6 @@ func (g *Graph) Iota(sh *shape.Shape, iotaAxis int) (ops.Node, error) {
 }
 
 // ArgMinMax applies a min or max operator over an axis
-func (g *Graph) ArgMinMax(x ops.Node, axis int, outputDType dtype.DataType, isMin bool) (ops.Node, error) {
+func (g *Graph) ArgMinMax(x ops.Node, axis int, outputDType dtypes.DataType, isMin bool) (ops.Node, error) {
 	return nil, errors.Errorf("ArgMinMax not implemented in the Go backend")
 }

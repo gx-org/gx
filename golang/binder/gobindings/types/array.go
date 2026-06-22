@@ -18,7 +18,7 @@ import (
 	"fmt"
 	"go/ast"
 
-	"github.com/gx-org/backend/dtype"
+	"github.com/gx-org/backend/dtypes"
 	"github.com/gx-org/backend/platform"
 	"github.com/gx-org/backend/shape"
 	"github.com/gx-org/gx/api/values"
@@ -28,7 +28,7 @@ import (
 )
 
 // Array managed by GX.
-type Array[T dtype.GoDataType] interface {
+type Array[T dtypes.GoDataType] interface {
 	Bridger
 
 	Fetch() (*HostArray[T], error)
@@ -37,18 +37,18 @@ type Array[T dtype.GoDataType] interface {
 }
 
 // DeviceArray is an array stored on a device.
-type DeviceArray[T dtype.GoDataType] struct {
+type DeviceArray[T dtypes.GoDataType] struct {
 	baseBridge[*DeviceArray[T], *values.DeviceArray]
 }
 
 var _ Array[int64] = (*DeviceArray[int64])(nil)
 
 // NewDeviceArray returns a new Go array given a device value managed by GX.
-func NewDeviceArray[T dtype.GoDataType](val *values.DeviceArray) *DeviceArray[T] {
+func NewDeviceArray[T dtypes.GoDataType](val *values.DeviceArray) *DeviceArray[T] {
 	array := &DeviceArray[T]{}
 	array.baseBridge = newBaseBridge(array, val)
 	dtypeGot := val.Shape().DType
-	dtypeWant := dtype.Generic[T]()
+	dtypeWant := dtypes.Generic[T]()
 	if dtypeGot != dtypeWant {
 		panic(fmt.Sprintf("assigning GX device value of shape %s to a Go binding array of data type %s", dtypeGot.String(), dtypeWant.String()))
 	}
@@ -83,14 +83,14 @@ func (array *DeviceArray[T]) String() string {
 }
 
 // HostArray is an array stored on a host.
-type HostArray[T dtype.GoDataType] struct {
+type HostArray[T dtypes.GoDataType] struct {
 	baseBridge[*HostArray[T], *values.HostArray]
 }
 
 var _ Array[int64] = (*HostArray[int64])(nil)
 
 // NewHostArray returns a new Go array given a device value managed by GX.
-func NewHostArray[T dtype.GoDataType](val *values.HostArray) *HostArray[T] {
+func NewHostArray[T dtypes.GoDataType](val *values.HostArray) *HostArray[T] {
 	array := &HostArray[T]{}
 	array.baseBridge = newBaseBridge(array, val)
 	return array
@@ -107,7 +107,7 @@ func (array *HostArray[T]) CopyFlat() []T {
 	src := buffer.Acquire()
 	defer buffer.Release()
 	dst := append([]uint8{}, src...)
-	return dtype.ToSlice[T](dst)
+	return dtypes.ToSlice[T](dst)
 }
 
 // Shape of the array.
@@ -141,14 +141,14 @@ func ArrayBool(vals []bool, dims ...int) *HostArray[bool] {
 	return NewHostArray[bool](hostArray)
 }
 
-func inferDims[T dtype.GoDataType](vals []T, dims []int) []int {
+func inferDims[T dtypes.GoDataType](vals []T, dims []int) []int {
 	if dims != nil {
 		return dims
 	}
 	return []int{len(vals)}
 }
 
-func newArray[T dtype.AlgebraType](dtypeKind irkind.Kind, array kernels.Array) *HostArray[T] {
+func newArray[T dtypes.AlgebraType](dtypeKind irkind.Kind, array kernels.Array) *HostArray[T] {
 	dims := array.Shape().AxisLengths
 	typ := ir.NewArrayType(&ast.ArrayType{}, ir.TypeFromKind(dtypeKind), ir.NewRank(dims))
 	buffer := kernels.NewBuffer(array)

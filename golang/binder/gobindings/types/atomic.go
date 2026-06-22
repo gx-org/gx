@@ -18,7 +18,7 @@ import (
 	"fmt"
 	"unsafe"
 
-	"github.com/gx-org/backend/dtype"
+	"github.com/gx-org/backend/dtypes"
 	"github.com/gx-org/backend/platform"
 	"github.com/gx-org/gx/api"
 	"github.com/gx-org/gx/api/values"
@@ -28,7 +28,7 @@ import (
 )
 
 // Atom managed by GX.
-type Atom[T dtype.GoDataType] interface {
+type Atom[T dtypes.GoDataType] interface {
 	Bridger
 
 	// Fetch the value from the device to the host and returns a handle to the host value.
@@ -39,18 +39,18 @@ type Atom[T dtype.GoDataType] interface {
 }
 
 // DeviceAtom is an array stored on a device.
-type DeviceAtom[T dtype.GoDataType] struct {
+type DeviceAtom[T dtypes.GoDataType] struct {
 	baseBridge[*DeviceAtom[T], *values.DeviceArray]
 }
 
 var _ Atom[int64] = (*DeviceAtom[int64])(nil)
 
 // NewDeviceAtom returns a new Go array given a device value managed by GX.
-func NewDeviceAtom[T dtype.GoDataType](val *values.DeviceArray) *DeviceAtom[T] {
+func NewDeviceAtom[T dtypes.GoDataType](val *values.DeviceArray) *DeviceAtom[T] {
 	atomic := &DeviceAtom[T]{}
 	atomic.baseBridge = newBaseBridge(atomic, val)
 	shapeGot := val.Shape()
-	dtypeWant := dtype.Generic[T]()
+	dtypeWant := dtypes.Generic[T]()
 	if shapeGot.DType != dtypeWant || !shapeGot.IsAtomic() {
 		panic(fmt.Sprintf("assigning GX device value of shape %s to a Go binding atom of type %s", shapeGot.String(), dtypeWant.String()))
 	}
@@ -91,14 +91,14 @@ func (atom *DeviceAtom[T]) String() string {
 }
 
 // HostAtom is an array stored on a host.
-type HostAtom[T dtype.GoDataType] struct {
+type HostAtom[T dtypes.GoDataType] struct {
 	baseBridge[*HostAtom[T], *values.HostArray]
 }
 
 var _ Atom[int64] = (*HostAtom[int64])(nil)
 
 // NewHostAtom returns a new Go array given a device value managed by GX.
-func NewHostAtom[T dtype.GoDataType](val *values.HostArray) *HostAtom[T] {
+func NewHostAtom[T dtypes.GoDataType](val *values.HostArray) *HostAtom[T] {
 	atomic := &HostAtom[T]{}
 	atomic.baseBridge = newBaseBridge(atomic, val)
 	return atomic
@@ -139,7 +139,7 @@ func (atom *HostAtom[T]) String() string {
 	return atom.GXValue().SourceString(nil)
 }
 
-func newAtom[T dtype.GoDataType](dt irkind.Kind, array kernels.Array) *HostAtom[T] {
+func newAtom[T dtypes.GoDataType](dt irkind.Kind, array kernels.Array) *HostAtom[T] {
 	typ := ir.TypeFromKind(dt)
 	buffer := kernels.NewBuffer(array)
 	hostArray, err := values.NewHostArray(typ, buffer)
@@ -193,6 +193,6 @@ func Uint64(val uint64) *HostAtom[uint64] {
 }
 
 // AtomFromHost returns an atom from a value stored on the host.
-func AtomFromHost[T dtype.GoDataType](hostValue *values.HostArray) T {
+func AtomFromHost[T dtypes.GoDataType](hostValue *values.HostArray) T {
 	return NewHostAtom[T](hostValue).Value()
 }

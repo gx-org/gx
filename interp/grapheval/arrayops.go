@@ -15,7 +15,7 @@
 package grapheval
 
 import (
-	"github.com/gx-org/backend/dtype"
+	"github.com/gx-org/backend/dtypes"
 	"github.com/gx-org/backend/ops"
 	"github.com/gx-org/backend/shape"
 	"github.com/gx-org/gx/api/values"
@@ -131,7 +131,7 @@ func (ao *arrayOps) BroadcastInDim(ctx ir.Evaluator, expr ir.Expr, x engine.Nume
 // Concat concatenates scalars elements into an array with one axis.
 func (ao *arrayOps) Concat(ctx ir.Evaluator, expr ir.Expr, xs []engine.NumericalElement) (engine.NumericalElement, error) {
 	nodes := make([]ops.Node, len(xs))
-	var dtype dtype.DataType
+	var dtype dtypes.DataType
 	for i, x := range xs {
 		iNode, iShape, err := materialise.Element(ao, x)
 		if err != nil {

@@ -20,7 +20,7 @@ import (
 	"math/big"
 
 	"github.com/pkg/errors"
-	"github.com/gx-org/backend/dtype"
+	"github.com/gx-org/backend/dtypes"
 	"github.com/gx-org/backend/shape"
 )
 
@@ -75,9 +75,9 @@ type (
 
 	// Factory creates kernels for arrays for all supported types.
 	Factory interface {
-		Concat(dtype.DataType, int) (NAry, *shape.Shape, error)
+		Concat(dtypes.DataType, int) (NAry, *shape.Shape, error)
 
-		Cast(target dtype.DataType, dims []int) (Unary, *shape.Shape, Factory, error)
+		Cast(target dtypes.DataType, dims []int) (Unary, *shape.Shape, Factory, error)
 
 		Slice(*shape.Shape, int) (Unary, *shape.Shape, error)
 
@@ -103,45 +103,45 @@ func NewArrayFromRaw(data []byte, sh *shape.Shape) (Array, error) {
 		return nil, errors.Errorf("buffer size is %d but shape specify a buffer size of %d", len(data), sh.ByteSize())
 	}
 	switch sh.DType {
-	case dtype.Bool:
-		return ToBoolArray(dtype.ToSlice[bool](data), sh.AxisLengths), nil
-	case dtype.Bfloat16:
-		return ToBfloat16Array(dtype.ToSlice[dtype.Bfloat16T](data), sh.AxisLengths), nil
-	case dtype.Float32:
-		return ToFloatArray(dtype.ToSlice[float32](data), sh.AxisLengths), nil
-	case dtype.Float64:
-		return ToFloatArray(dtype.ToSlice[float64](data), sh.AxisLengths), nil
-	case dtype.Uint32:
-		return ToIntegerArray(dtype.ToSlice[uint32](data), sh.AxisLengths), nil
-	case dtype.Uint64:
-		return ToIntegerArray(dtype.ToSlice[uint64](data), sh.AxisLengths), nil
-	case dtype.Int32:
-		return ToIntegerArray(dtype.ToSlice[int32](data), sh.AxisLengths), nil
-	case dtype.Int64:
-		return ToIntegerArray(dtype.ToSlice[int64](data), sh.AxisLengths), nil
+	case dtypes.Bool:
+		return ToBoolArray(dtypes.ToSlice[bool](data), sh.AxisLengths), nil
+	case dtypes.Bfloat16:
+		return ToBfloat16Array(dtypes.ToSlice[dtypes.Bfloat16T](data), sh.AxisLengths), nil
+	case dtypes.Float32:
+		return ToFloatArray(dtypes.ToSlice[float32](data), sh.AxisLengths), nil
+	case dtypes.Float64:
+		return ToFloatArray(dtypes.ToSlice[float64](data), sh.AxisLengths), nil
+	case dtypes.Uint32:
+		return ToIntegerArray(dtypes.ToSlice[uint32](data), sh.AxisLengths), nil
+	case dtypes.Uint64:
+		return ToIntegerArray(dtypes.ToSlice[uint64](data), sh.AxisLengths), nil
+	case dtypes.Int32:
+		return ToIntegerArray(dtypes.ToSlice[int32](data), sh.AxisLengths), nil
+	case dtypes.Int64:
+		return ToIntegerArray(dtypes.ToSlice[int64](data), sh.AxisLengths), nil
 	default:
 		return nil, errors.Errorf("cannot create an array from raw data: %s not supported", sh.DType.String())
 	}
 }
 
 // FactoryFor returns a factory given a data type.
-func FactoryFor(dt dtype.DataType) (Factory, error) {
+func FactoryFor(dt dtypes.DataType) (Factory, error) {
 	switch dt {
-	case dtype.Bool:
+	case dtypes.Bool:
 		return boolFactory{}, nil
-	case dtype.Bfloat16:
+	case dtypes.Bfloat16:
 		return bfloat16Factory{}, nil
-	case dtype.Float32:
+	case dtypes.Float32:
 		return algebraicFactory[float32]{}, nil
-	case dtype.Float64:
+	case dtypes.Float64:
 		return algebraicFactory[float64]{}, nil
-	case dtype.Uint32:
+	case dtypes.Uint32:
 		return integerFactory[uint32]{}, nil
-	case dtype.Uint64:
+	case dtypes.Uint64:
 		return integerFactory[uint64]{}, nil
-	case dtype.Int32:
+	case dtypes.Int32:
 		return integerFactory[int32]{}, nil
-	case dtype.Int64:
+	case dtypes.Int64:
 		return integerFactory[int64]{}, nil
 	default:
 		return nil, errors.Errorf("no factory for %s", dt.String())

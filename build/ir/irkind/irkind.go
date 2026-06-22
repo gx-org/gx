@@ -16,7 +16,7 @@
 package irkind
 
 import (
-	"github.com/gx-org/backend/dtype"
+	"github.com/gx-org/backend/dtypes"
 )
 
 // Kind of a type.
@@ -27,18 +27,18 @@ const DefaultInt = Int64
 
 // Kind of data supported by GX.
 const (
-	Invalid = Kind(dtype.Invalid)
+	Invalid = Kind(dtypes.Invalid)
 
-	Bool     = Kind(dtype.Bool)
-	Int32    = Kind(dtype.Int32)
-	Int64    = Kind(dtype.Int64)
-	Uint32   = Kind(dtype.Uint32)
-	Uint64   = Kind(dtype.Uint64)
-	Bfloat16 = Kind(dtype.Bfloat16)
-	Float32  = Kind(dtype.Float32)
-	Float64  = Kind(dtype.Float64)
+	Bool     = Kind(dtypes.Bool)
+	Int32    = Kind(dtypes.Int32)
+	Int64    = Kind(dtypes.Int64)
+	Uint32   = Kind(dtypes.Uint32)
+	Uint64   = Kind(dtypes.Uint64)
+	Bfloat16 = Kind(dtypes.Bfloat16)
+	Float32  = Kind(dtypes.Float32)
+	Float64  = Kind(dtypes.Float64)
 
-	IntIdx = Kind(iota + dtype.MaxDataType)
+	IntIdx = Kind(iota + dtypes.MaxDataType)
 	IntLen
 
 	// Unknown is a proxy type used while a type is being inferred by the compiler.
@@ -128,14 +128,14 @@ func (k Kind) String() string {
 }
 
 // DType converts a GX kind into an array data type.
-func (k Kind) DType() dtype.DataType {
+func (k Kind) DType() dtypes.DataType {
 	if k == IntIdx || k == IntLen {
 		return DefaultInt.DType()
 	}
-	if k >= dtype.MaxDataType {
-		return dtype.Invalid
+	if k >= dtypes.MaxDataType {
+		return dtypes.Invalid
 	}
-	return dtype.DataType(k)
+	return dtypes.DataType(k)
 }
 
 // KindFromString returns a kind given an identifier.
@@ -176,8 +176,8 @@ func KindFromString(ident string) Kind {
 
 // KindGeneric returns the kind of a variable from its generic type.
 // If the type is not supported, an invalid type is returned.
-func KindGeneric[T dtype.GoDataType]() Kind {
-	return Kind(dtype.Generic[T]())
+func KindGeneric[T dtypes.GoDataType]() Kind {
+	return Kind(dtypes.Generic[T]())
 }
 
 // IsNumber returns true if the kind is a number.

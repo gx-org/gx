@@ -18,7 +18,7 @@ package types
 import (
 	"fmt"
 
-	"github.com/gx-org/backend/dtype"
+	"github.com/gx-org/backend/dtypes"
 	"github.com/gx-org/backend/shape"
 	"github.com/gx-org/gx/api"
 	"github.com/gx-org/gx/api/values"
@@ -121,7 +121,7 @@ func (bb *baseBridge[B, V]) Bridger() Bridger {
 }
 
 // NewAtom returns a new Go atom bridge given a GX value of the same data type.
-func NewAtom[T dtype.GoDataType](arr values.Array) Atom[T] {
+func NewAtom[T dtypes.GoDataType](arr values.Array) Atom[T] {
 	hostValue, ok := arr.(*values.HostArray)
 	if ok {
 		return NewHostAtom[T](hostValue)
@@ -134,7 +134,7 @@ func NewAtom[T dtype.GoDataType](arr values.Array) Atom[T] {
 }
 
 // NewArray returns a new Go array bridge given a GX value of the same data type.
-func NewArray[T dtype.GoDataType](arr values.Array) Array[T] {
+func NewArray[T dtypes.GoDataType](arr values.Array) Array[T] {
 	hostValue, ok := arr.(*values.HostArray)
 	if ok {
 		return NewHostArray[T](hostValue)
