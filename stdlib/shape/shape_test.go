@@ -15,15 +15,12 @@
 package shape_test
 
 import (
-	"embed"
 	"testing"
 
 	"github.com/gx-org/gx/build/builder/testbuild"
+	"github.com/gx-org/gx/stdlib/shape/testdata"
 )
 
-//go:embed testdata/*.gx
-var sources embed.FS
-
 func TestShape(t *testing.T) {
-	testbuild.Run(t, testbuild.SourcesFrom(t, sources)...)
+	testbuild.RunFactory(t, nil, testdata.Sources)
 }

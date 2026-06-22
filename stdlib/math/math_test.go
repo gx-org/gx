@@ -15,15 +15,12 @@
 package math_test
 
 import (
-	"embed"
 	"testing"
 
 	"github.com/gx-org/gx/build/builder/testbuild"
+	"github.com/gx-org/gx/stdlib/math/testdata"
 )
 
-//go:embed testdata/*.gx
-var sources embed.FS
-
 func TestMath(t *testing.T) {
-	testbuild.Run(t, testbuild.SourcesFrom(t, sources)...)
+	testbuild.RunFactory(t, nil, testdata.Sources)
 }

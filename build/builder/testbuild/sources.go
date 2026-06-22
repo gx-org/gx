@@ -16,33 +16,30 @@ package testbuild
 
 import (
 	"embed"
-	"io/fs"
+	"fmt"
 	"path"
 	"strings"
-	"testing"
 
+	"github.com/gx-org/gx/api"
 	"github.com/gx-org/gx/build/builder"
 	"github.com/gx-org/gx/internal/testing/cmperr"
 )
 
-// source runs a test from a source file loaded from a file system.
-type source struct {
-	fs   fs.FS
-	name string
-
-	src string
+// SourceFolder is a folder with a name and a filesystem with the source files.
+type SourceFolder struct {
+	// Name of the folder.
+	Name string
+	// FS is the filesystem with the source files.
+	FS embed.FS
 }
 
-var _ WithName = (*source)(nil)
+var _ TestFactory = SourceFolder{}
 
-const testdata = "testdata"
-
-// SourcesFrom creates a set of test from a file system with a testdata folder.
-func SourcesFrom(t *testing.T, fs embed.FS) []Test {
-	dir, err := fs.ReadDir(testdata)
+// BuildTests creates a set of test from a file system with a testdata folder.
+func (sf SourceFolder) BuildTests(rtm *api.Runtime) ([]Test, error) {
+	dir, err := sf.FS.ReadDir(".")
 	if err != nil {
-		t.Fatalf("folder %s not found in the filesystem", testdata)
-		return nil
+		return nil, fmt.Errorf("cannot read filesystem: %w", err)
 	}
 	var tests []Test
 	for _, entry := range dir {
@@ -52,19 +49,30 @@ func SourcesFrom(t *testing.T, fs embed.FS) []Test {
 		if !strings.HasSuffix(entry.Name(), ".gx") {
 			continue
 		}
-		name := path.Join(testdata, entry.Name())
-		src, err := fs.ReadFile(name)
+		name := entry.Name()
+		src, err := sf.FS.ReadFile(name)
 		if err != nil {
-			t.Fatalf("cannot read %s: %v", entry.Name(), err)
+			return nil, fmt.Errorf("cannot read %s: %v", entry.Name(), err)
 		}
 		tests = append(tests, &source{
-			fs:   fs,
-			name: name,
-			src:  string(src),
+			folder: sf,
+			name:   name,
+			rtm:    rtm,
+			src:    string(src),
 		})
 	}
-	return tests
+	return tests, nil
 }
+
+// source runs a test from a source file loaded from a file system.
+type source struct {
+	folder SourceFolder
+	name   string
+	rtm    *api.Runtime
+	src    string
+}
+
+var _ WithName = (*source)(nil)
 
 func (t *source) Source() string {
 	return t.src
@@ -72,7 +80,7 @@ func (t *source) Source() string {
 
 func (t *source) Run(b *Builder) error {
 	bld := builder.NewWithLoader(&b.imp)
-	pkg, err := bld.BuildFiles("", testdata, t.fs, []string{t.name})
+	pkg, err := bld.BuildFiles("", "testdata", t.folder.FS, []string{t.name})
 	if _, err = cmperr.Compare(pkg.IR(), err); err != nil {
 		return &compileError{src: t.src, err: err}
 	}
