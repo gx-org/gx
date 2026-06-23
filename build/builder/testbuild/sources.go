@@ -22,6 +22,7 @@ import (
 
 	"github.com/gx-org/gx/api"
 	"github.com/gx-org/gx/build/builder"
+	"github.com/gx-org/gx/build/importers"
 	"github.com/gx-org/gx/build/ir"
 	"github.com/gx-org/gx/internal/testing/cmperr"
 )
@@ -37,7 +38,7 @@ type SourceFolder struct {
 var _ TestFactory = SourceFolder{}
 
 // BuildTests creates a set of test from a file system with a testdata folder.
-func (sf SourceFolder) BuildTests() ([]Test, error) {
+func (sf SourceFolder) BuildTests([]importers.Importer) ([]Test, error) {
 	dir, err := sf.FS.ReadDir(".")
 	if err != nil {
 		return nil, fmt.Errorf("cannot read filesystem: %w", err)
@@ -79,7 +80,7 @@ func (t *source) Source() string {
 }
 
 func (t *source) Run(b *Builder) (*ir.Package, error) {
-	bld := builder.NewWithLoader(&b.imp)
+	bld := builder.New(b.Importers()...)
 	pkg, err := bld.BuildFiles("", "testdata", t.folder.FS, []string{t.name})
 	numExpectedErrors, err := cmperr.Compare(pkg.IR(), err)
 	if err != nil {

@@ -18,9 +18,13 @@ import (
 	"testing"
 
 	"github.com/gx-org/gx/build/builder/testbuild"
+	"github.com/gx-org/gx/build/importers"
 	"github.com/gx-org/gx/stdlib/shape/testdata"
+	"github.com/gx-org/gx/stdlib"
 )
 
 func TestShape(t *testing.T) {
-	testbuild.RunFactory(t, testdata.Sources)
+	testbuild.RunFactory(t, []importers.Importer{
+		stdlib.Importer(),
+	}, testdata.Sources)
 }

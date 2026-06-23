@@ -75,7 +75,7 @@ func (tt CompEval) stringFromElement(ev ir.Evaluator, el ir.Element) (string, er
 
 // Run builds the declarations as a package, then compare to an expected outcome.
 func (tt CompEval) Run(b *Builder) (*ir.Package, error) {
-	bld := builder.NewWithLoader(&b.imp)
+	bld := builder.New(b.Importers()...)
 	pkg, err := build(bld, "", fmt.Sprintf(`
 package test
 

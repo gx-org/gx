@@ -18,6 +18,7 @@ import (
 	"github.com/gx-org/gx/api"
 	"github.com/gx-org/gx/api/options"
 	"github.com/gx-org/gx/build/builder/testbuild"
+	"github.com/gx-org/gx/build/importers"
 	"github.com/gx-org/gx/build/ir"
 )
 
@@ -63,11 +64,11 @@ func (f factory) compile(bld *testbuild.Builder, srcTest testbuild.WithName) ([]
 	return tests, nil
 }
 
-func (f factory) BuildTests() ([]testbuild.Test, error) {
-	bld := testbuild.NewLocalBuilder()
+func (f factory) BuildTests(imps []importers.Importer) ([]testbuild.Test, error) {
+	bld := testbuild.NewLocalBuilder(imps...)
 	var tests []testbuild.Test
 	for _, src := range f.srcs {
-		srcTests, err := src.BuildTests()
+		srcTests, err := src.BuildTests(imps)
 		if err != nil {
 			return nil, err
 		}

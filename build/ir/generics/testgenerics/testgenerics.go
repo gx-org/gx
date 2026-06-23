@@ -89,7 +89,7 @@ func (call Call) run(pkg *builder.IncrementalPackage, fnValRef *ir.FuncValExpr) 
 // Run builds the declarations as a package, then compare to an expected outcome.
 func (tt Infer) Run(b *testbuild.Builder) (*ir.Package, error) {
 	// Build the package.
-	bld := builder.NewWithLoader(b.Loader())
+	bld := builder.New(b.Importers()...)
 	pkg := bld.NewIncrementalPackage("test")
 	src := tt.Source()
 	if err := pkg.Build(src); err != nil {

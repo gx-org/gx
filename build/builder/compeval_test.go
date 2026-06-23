@@ -19,6 +19,8 @@ import (
 	"testing"
 
 	"github.com/gx-org/gx/build/builder/testbuild"
+	"github.com/gx-org/gx/build/importers"
+	"github.com/gx-org/gx/stdlib"
 )
 
 func TestCompEvalFuncCall(t *testing.T) {
@@ -124,7 +126,8 @@ func OneHot[numClasses intlen](x [_axlen]int32) [axlen][numClasses]int32 {
 }
 
 func TestCompevalError(t *testing.T) {
-	testbuild.Run(t,
+	testbuild.RunWith(t,
+		[]importers.Importer{stdlib.Importer()},
 		testbuild.Decl{
 			Src: `
 import "fmt"
@@ -170,7 +173,8 @@ func f() [returnTwo()]int32 { // ERROR a compeval test error
 }
 
 func TestCompevalErrorWithVarargs(t *testing.T) {
-	testbuild.Run(t,
+	testbuild.RunWith(t,
+		[]importers.Importer{stdlib.Importer()},
 		testbuild.Decl{
 			Src: `
 import "fmt"

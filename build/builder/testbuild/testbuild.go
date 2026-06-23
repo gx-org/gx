@@ -34,7 +34,6 @@ import (
 	"github.com/gx-org/gx/build/ir"
 	"github.com/gx-org/gx/build/ir/irstring"
 	"github.com/gx-org/gx/internal/testing/cmperr"
-	"github.com/gx-org/gx/stdlib"
 )
 
 // CompareString compares two string and build an error message if the strings do not match.
@@ -138,12 +137,12 @@ func (tt DeclarePackage) Build(b *builder.Builder) (importers.Package, error) {
 
 // Run the source code to declare it as an importable package.
 func (tt DeclarePackage) Run(b *Builder) (*ir.Package, error) {
-	pkg, err := tt.Build(builder.NewWithLoader(&b.imp))
+	pkg, err := tt.Build(builder.New(b.Importers()...))
 	if err != nil {
 		return nil, err
 	}
 	irpkg := pkg.IR()
-	b.imp.pkgs[irpkg.Path()] = pkg
+	b.local[irpkg.Path()] = pkg
 	return irpkg, nil
 }
 
@@ -198,7 +197,7 @@ package test
 	}
 	// Check other functions we expect.
 	for expr, want := range tt.WantExprs {
-		if err := CheckExpandedExpr(pkg, expr, want, b.imp.importSpecs()...); err != nil {
+		if err := CheckExpandedExpr(pkg, expr, want, b.importSpecs()...); err != nil {
 			return nil, err
 		}
 	}
@@ -250,9 +249,9 @@ func CheckError(want string, err error) error {
 }
 
 // Run the expression test.
-func (tt Expr) Run(ctx *Builder) (*ir.Package, error) {
+func (tt Expr) Run(b *Builder) (*ir.Package, error) {
 	done := map[any]bool{}
-	bld := builder.NewWithLoader(&ctx.imp)
+	bld := builder.New(b.Importers()...)
 	pkg := bld.NewIncrementalPackage("test")
 	got, err := pkg.BuildExpr(tt.Src)
 	if err := CheckError(tt.Err, err); err != nil {
@@ -277,46 +276,25 @@ func (tt Expr) Source() string {
 }
 
 type localImporter struct {
-	pkgs map[string]importers.Package
+	bld *Builder
 }
 
-var stdlibPackages = stdlib.Importer()
-
-// Run the source code to declare it as an importable package.
-func (imp *localImporter) loadStdlib(bld importers.Builder, pkgpath string) (importers.Package, error) {
-	pkg, err := stdlibPackages.Import(builder.NewWithLoader(imp), pkgpath)
-	if err != nil {
-		return importers.NewProxyPackage(pkgpath), err
-	}
-	imp.pkgs[pkg.IR().Path()] = pkg
-	return pkg, nil
+// Support checks if the importer supports the import path given its prefix.
+func (imp *localImporter) Support(path string) bool {
+	_, ok := imp.bld.local[path]
+	return ok
 }
 
-func (imp *localImporter) Load(bld importers.Builder, pkgpath string) (importers.Package, error) {
-	pkg, ok := imp.pkgs[pkgpath]
-	if ok {
-		return pkg, nil
-	}
-	if stdlibPackages.Support(pkgpath) {
-		return imp.loadStdlib(bld, pkgpath)
-	}
-	return importers.NewProxyPackage(pkgpath), errors.Errorf("package %s has not been built", pkgpath)
-}
-
-func (imp *localImporter) importSpecs() []*ast.ImportSpec {
-	specs := make([]*ast.ImportSpec, len(imp.pkgs))
-	for i, path := range maps.Keys(imp.pkgs) {
-		specs[i] = &ast.ImportSpec{
-			Path: &ast.BasicLit{Value: strconv.Quote(path)},
-		}
-	}
-	return specs
+// Import a path.
+func (imp *localImporter) Import(bld importers.Builder, path string) (importers.Package, error) {
+	return imp.bld.local[path], nil
 }
 
 // Builder builds test source code.
 type Builder struct {
-	imp  localImporter
-	next int
+	imps  []importers.Importer
+	local map[string]importers.Package
+	next  int
 }
 
 // WithName is a test that can provide a name for the test.
@@ -326,10 +304,21 @@ type WithName interface {
 }
 
 // NewLocalBuilder returns a builder using a local ephemeral importer.
-func NewLocalBuilder() *Builder {
+func NewLocalBuilder(imps ...importers.Importer) *Builder {
 	return &Builder{
-		imp: localImporter{pkgs: make(map[string]importers.Package)},
+		imps:  imps,
+		local: make(map[string]importers.Package),
 	}
+}
+
+func (b *Builder) importSpecs() []*ast.ImportSpec {
+	specs := make([]*ast.ImportSpec, len(b.local))
+	for i, path := range maps.Keys(b.local) {
+		specs[i] = &ast.ImportSpec{
+			Path: &ast.BasicLit{Value: strconv.Quote(path)},
+		}
+	}
+	return specs
 }
 
 func (b *Builder) nextTestName(t Test) string {
@@ -367,14 +356,16 @@ func build(bld *builder.Builder, path, src string) (*builder.IncrementalPackage,
 	return pkg, nil
 }
 
-// Build test source code.
-func (b *Builder) Build(path, src string) (*builder.IncrementalPackage, error) {
-	return build(builder.NewWithLoader(&b.imp), path, src)
+// Importers used for the tests.
+func (b *Builder) Importers() []importers.Importer {
+	imps := []importers.Importer{&localImporter{bld: b}}
+	imps = append(imps, b.imps...)
+	return imps
 }
 
-// Loader returns the package loader of the builder.
-func (b *Builder) Loader() importers.Loader {
-	return &b.imp
+// Build test source code.
+func (b *Builder) Build(path, src string) (*builder.IncrementalPackage, error) {
+	return build(builder.New(b.Importers()...), path, src)
 }
 
 // Test to run.
@@ -391,28 +382,33 @@ type NoSubTest interface {
 
 // Run all the test.
 func Run(t *testing.T, tests ...Test) *Builder {
+	return RunWith(t, nil, tests...)
+}
+
+// RunWith runs all the test with additional importers.
+func RunWith(t *testing.T, imps []importers.Importer, tests ...Test) *Builder {
 	t.Helper()
-	bld := NewLocalBuilder()
+	bld := NewLocalBuilder(imps...)
 	bld.Continue(t, tests...)
 	return bld
 }
 
 // TestFactory builds tests from an optional runtime.
 type TestFactory interface {
-	BuildTests() ([]Test, error)
+	BuildTests(imps []importers.Importer) ([]Test, error)
 }
 
 // RunFactory builds a set of tests from a factory then run them.
-func RunFactory(t *testing.T, factories ...TestFactory) *Builder {
+func RunFactory(t *testing.T, imps []importers.Importer, factories ...TestFactory) *Builder {
 	var tests []Test
 	for _, factory := range factories {
-		fTests, err := factory.BuildTests()
+		fTests, err := factory.BuildTests(imps)
 		if err != nil {
 			t.Fatal(err)
 		}
 		tests = append(tests, fTests...)
 	}
-	return Run(t, tests...)
+	return RunWith(t, imps, tests...)
 }
 
 // Continue running tests with the same builder.
