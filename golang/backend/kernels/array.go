@@ -76,7 +76,7 @@ func (a *arrayT[T]) String() string {
 // Buffer returns the data of the array as a generic []byte buffer.
 func (a *arrayT[T]) Buffer() []byte {
 	ptr := unsafe.Pointer(&(a.values[0]))
-	return unsafe.Slice((*byte)(ptr), a.shape.Size()*dtypes.Sizeof(a.shape.DType))
+	return unsafe.Slice((*byte)(ptr), a.shape.Size()*a.shape.DType.Size())
 }
 
 // Factory available for arrays.
