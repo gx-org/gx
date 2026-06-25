@@ -51,3 +51,8 @@ func (sl *SafeLoader) BuildFiles(bld Builder, packagePath, packageName string, f
 	}()
 	return bld.BuildFiles(packagePath, packageName, fs, filenames)
 }
+
+// Importers used by the loader.
+func (sl *SafeLoader) Importers() []Importer {
+	return sl.l.Importers()
+}

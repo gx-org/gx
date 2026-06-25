@@ -26,6 +26,7 @@ import (
 	"github.com/pkg/errors"
 	"github.com/gx-org/gx/build/importers"
 	"github.com/gx-org/gx/build/ir"
+	"github.com/gx-org/gx/internal/base/cast"
 	"github.com/gx-org/gx/interp"
 )
 
@@ -48,8 +49,12 @@ type sourceParser struct {
 	names []string
 }
 
-func topLevelNames(fs fs.ReadDirFS, pkgPath string) ([]string, error) {
-	entries, err := fs.ReadDir(pkgPath)
+func topLevelNames(vfs fs.FS, pkgPath string) ([]string, error) {
+	vfsDir, err := cast.To[fs.ReadDirFS](vfs)
+	if err != nil {
+		return nil, fmt.Errorf("cannot infer GX package file: %v", err)
+	}
+	entries, err := vfsDir.ReadDir(pkgPath)
 	if err != nil {
 		return nil, fmt.Errorf("cannot read GX files directory: %w", err)
 	}

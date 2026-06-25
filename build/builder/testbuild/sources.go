@@ -37,32 +37,45 @@ type SourceFolder struct {
 
 var _ TestFactory = SourceFolder{}
 
-// BuildTests creates a set of test from a file system with a testdata folder.
-func (sf SourceFolder) BuildTests([]importers.Importer) ([]Test, error) {
-	dir, err := sf.FS.ReadDir(".")
+func (sf SourceFolder) buildTests(name string) ([]Test, error) {
+	dirName := name
+	if dirName == "" {
+		dirName = "."
+	}
+	dir, err := sf.FS.ReadDir(dirName)
 	if err != nil {
 		return nil, fmt.Errorf("cannot read filesystem: %w", err)
 	}
 	var tests []Test
 	for _, entry := range dir {
+		entryName := path.Join(name, entry.Name())
 		if entry.IsDir() {
+			folderTests, err := sf.buildTests(entryName)
+			if err != nil {
+				return nil, err
+			}
+			tests = append(tests, folderTests...)
 			continue
 		}
-		if !strings.HasSuffix(entry.Name(), ".gx") {
+		if !strings.HasSuffix(entryName, ".gx") {
 			continue
 		}
-		name := entry.Name()
-		src, err := sf.FS.ReadFile(name)
+		src, err := sf.FS.ReadFile(entryName)
 		if err != nil {
-			return nil, fmt.Errorf("cannot read %s: %v", entry.Name(), err)
+			return nil, fmt.Errorf("cannot read %s: %v", entryName, err)
 		}
 		tests = append(tests, &source{
 			folder: sf,
-			name:   name,
+			name:   entryName,
 			src:    string(src),
 		})
 	}
 	return tests, nil
+}
+
+// BuildTests creates a set of test from a file system with a testdata folder.
+func (sf SourceFolder) BuildTests(imps []importers.Importer) ([]Test, error) {
+	return sf.buildTests("")
 }
 
 // source runs a test from a source file loaded from a file system.

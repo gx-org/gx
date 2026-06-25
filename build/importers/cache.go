@@ -60,6 +60,13 @@ func (cl *CacheLoader) Clear() {
 	}
 }
 
+// Importers used by the loader.
+func (cl *CacheLoader) Importers() []Importer {
+	cl.mut.Lock()
+	defer cl.mut.Unlock()
+	return append([]Importer{}, cl.importers...)
+}
+
 // AddImporter adds an importer.
 func (cl *CacheLoader) AddImporter(imp Importer) {
 	cl.mut.Lock()

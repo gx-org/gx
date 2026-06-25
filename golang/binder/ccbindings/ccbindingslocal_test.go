@@ -49,6 +49,10 @@ func Fun__%s__() float32 {
 	return pkg, nil
 }
 
+func (l *loader) Importers() []importers.Importer {
+	return nil
+}
+
 func compare(genFile bindings.File, want []string) error {
 	var out strings.Builder
 	if err := genFile.WriteBindings(&out); err != nil {

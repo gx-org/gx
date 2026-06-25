@@ -34,7 +34,7 @@ type (
 	// BuilderParam groups all the parameters to build the IR of builtin packages.
 	BuilderParam struct {
 		Builder importers.Builder
-		FS      fs.ReadDirFS
+		FS      fs.FS
 	}
 
 	// Builder a builtin package.
