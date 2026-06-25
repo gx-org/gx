@@ -44,7 +44,7 @@ func (dev *Device) Ordinal() int {
 
 // Send raw data to the device. Return a handle from this package.
 func (dev *Device) send(data []byte, sh *shape.Shape) (*Handle, error) {
-	if sh.DType == dtypes.Invalid {
+	if sh.DType == dtypes.InvalidDType {
 		return nil, errors.Errorf("GX %s data type not supported", sh.DType.String())
 	}
 	array, err := kernels.NewArrayFromRaw(data, sh)

@@ -813,7 +813,7 @@ func fromCGXValueKind(valueType C.enum_cgx_value_kind) dtypes.DType {
 	case C.CGX_UINT64:
 		return dtypes.Uint64
 	default:
-		return dtypes.Invalid
+		return dtypes.InvalidDType
 	}
 }
 

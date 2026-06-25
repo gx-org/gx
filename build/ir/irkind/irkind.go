@@ -27,7 +27,7 @@ const DefaultInt = Int64
 
 // Kind of data supported by GX.
 const (
-	Invalid = Kind(dtypes.Invalid)
+	Invalid = Kind(dtypes.InvalidDType)
 
 	Bool     = Kind(dtypes.Bool)
 	Int32    = Kind(dtypes.Int32)
@@ -133,7 +133,7 @@ func (k Kind) DType() dtypes.DType {
 		return DefaultInt.DType()
 	}
 	if k >= dtypes.MaxDataType {
-		return dtypes.Invalid
+		return dtypes.InvalidDType
 	}
 	return dtypes.DType(k)
 }
