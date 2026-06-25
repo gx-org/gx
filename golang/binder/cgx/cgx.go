@@ -799,7 +799,7 @@ func fromCGXValueKind(valueType C.enum_cgx_value_kind) dtypes.DType {
 	case C.CGX_BOOL:
 		return dtypes.Bool
 	case C.CGX_BFLOAT16:
-		return dtypes.Bfloat16
+		return dtypes.BFloat16
 	case C.CGX_FLOAT32:
 		return dtypes.Float32
 	case C.CGX_FLOAT64:

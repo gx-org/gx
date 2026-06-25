@@ -34,7 +34,7 @@ const (
 	Int64    = Kind(dtypes.Int64)
 	Uint32   = Kind(dtypes.Uint32)
 	Uint64   = Kind(dtypes.Uint64)
-	Bfloat16 = Kind(dtypes.Bfloat16)
+	Bfloat16 = Kind(dtypes.BFloat16)
 	Float32  = Kind(dtypes.Float32)
 	Float64  = Kind(dtypes.Float64)
 

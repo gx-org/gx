@@ -148,7 +148,7 @@ func (algebraicFactory[T]) Cast(kind dtypes.DType, dims []int) (Unary, *shape.Sh
 		AxisLengths: dims,
 	}
 	switch kind {
-	case dtypes.Bfloat16:
+	case dtypes.BFloat16:
 		return castToBfloat16Array[T], shap, bfloat16Factory{}, nil
 	case dtypes.Float32:
 		return castArray[T, float32](dims), shap, algebraicFactory[float32]{}, nil
@@ -273,7 +273,7 @@ func (f bfloat16Factory) Cast(kind dtypes.DType, dims []int) (Unary, *shape.Shap
 		AxisLengths: dims,
 	}
 	switch kind {
-	case dtypes.Bfloat16:
+	case dtypes.BFloat16:
 		return func(a Array) (Array, error) { return a, nil }, shap, f, nil
 	case dtypes.Float32:
 		return castFromBfloat16Array[float32], shap, algebraicFactory[float32]{}, nil
@@ -326,7 +326,7 @@ func ToBfloat16Array(values []dtypes.Bfloat16T, dims []int) Array {
 	arr := &bfloat16Array{&arrayT[dtypes.Bfloat16T]{
 		factory: bfloat16Factory{},
 		shape: shape.Shape{
-			DType:       dtypes.Bfloat16,
+			DType:       dtypes.BFloat16,
 			AxisLengths: dims,
 		},
 		values: values,
@@ -379,7 +379,7 @@ func Zero(sh *shape.Shape) (Array, error) {
 	switch sh.DType {
 	case dtypes.Bool:
 		return ToBoolArray(make([]bool, sh.Size()), sh.AxisLengths), nil
-	case dtypes.Bfloat16:
+	case dtypes.BFloat16:
 		return ToBfloat16Array(make([]dtypes.Bfloat16T, sh.Size()), sh.AxisLengths), nil
 	case dtypes.Float32:
 		return ToFloatArray(make([]float32, sh.Size()), sh.AxisLengths), nil

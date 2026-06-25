@@ -120,7 +120,7 @@ func ToBuffer[T dtypes.GoDataType](vals []T, sh *shape.Shape) *Buffer {
 	switch sh.DType {
 	case dtypes.Bool:
 		array = ToBoolArray(any(vals).([]bool), sh.AxisLengths)
-	case dtypes.Bfloat16:
+	case dtypes.BFloat16:
 		array = ToBfloat16Array(any(vals).([]dtypes.Bfloat16T), sh.AxisLengths)
 	case dtypes.Float32:
 		array = ToFloatArray[float32](any(vals).([]float32), sh.AxisLengths)

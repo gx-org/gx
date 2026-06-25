@@ -105,7 +105,7 @@ func NewArrayFromRaw(data []byte, sh *shape.Shape) (Array, error) {
 	switch sh.DType {
 	case dtypes.Bool:
 		return ToBoolArray(dtypes.ToSlice[bool](data), sh.AxisLengths), nil
-	case dtypes.Bfloat16:
+	case dtypes.BFloat16:
 		return ToBfloat16Array(dtypes.ToSlice[dtypes.Bfloat16T](data), sh.AxisLengths), nil
 	case dtypes.Float32:
 		return ToFloatArray(dtypes.ToSlice[float32](data), sh.AxisLengths), nil
@@ -129,7 +129,7 @@ func FactoryFor(dt dtypes.DType) (Factory, error) {
 	switch dt {
 	case dtypes.Bool:
 		return boolFactory{}, nil
-	case dtypes.Bfloat16:
+	case dtypes.BFloat16:
 		return bfloat16Factory{}, nil
 	case dtypes.Float32:
 		return algebraicFactory[float32]{}, nil
