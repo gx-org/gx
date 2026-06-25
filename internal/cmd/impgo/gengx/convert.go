@@ -22,11 +22,11 @@ import (
 	"github.com/gx-org/gx/internal/cmd/impgo/genast"
 )
 
-func (g *gen) gxTypeFromBasic(t *types.Basic) ast.Expr {
+func (g *gxGenerator) gxTypeFromBasic(t *types.Basic) ast.Expr {
 	return genast.Ident(t.Name()).X
 }
 
-func (g *gen) gxTypeFromGo(t types.Type) ast.Expr {
+func (g *gxGenerator) gxTypeFromGo(t types.Type) ast.Expr {
 	switch tT := t.(type) {
 	case *types.Basic:
 		return g.gxTypeFromBasic(tT)
@@ -34,7 +34,7 @@ func (g *gen) gxTypeFromGo(t types.Type) ast.Expr {
 	return genast.Ident(fmt.Sprintf("Unsupported(%T)", t)).X
 }
 
-func (g *gen) gxFieldsFromTuple(t *types.Tuple) *ast.FieldList {
+func (g *gxGenerator) gxFieldsFromTuple(t *types.Tuple) *ast.FieldList {
 	fields := make([]*ast.Field, t.Len())
 	for i := range t.Len() {
 		vr := t.At(i)
@@ -46,7 +46,7 @@ func (g *gen) gxFieldsFromTuple(t *types.Tuple) *ast.FieldList {
 	return &ast.FieldList{List: fields}
 }
 
-func (g *gen) gxFuncTypeFromGo(sig *types.Signature) *ast.FuncType {
+func (g *gxGenerator) gxFuncTypeFromGo(sig *types.Signature) *ast.FuncType {
 	return &ast.FuncType{
 		Params:  g.gxFieldsFromTuple(sig.Params()),
 		Results: g.gxFieldsFromTuple(sig.Results()),

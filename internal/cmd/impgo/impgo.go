@@ -18,9 +18,7 @@ package impgo
 import (
 	"fmt"
 	"os"
-	"path"
 	"path/filepath"
-	"strings"
 
 	"github.com/gx-org/gx/internal/cmd/impgo/gopkgbin"
 	"github.com/spf13/cobra"
@@ -29,79 +27,70 @@ import (
 	"github.com/gx-org/gx/internal/cmd/impgo/gengx"
 )
 
-const sourceFilenameFlag = "source_filename"
+const filenameSuffixFlag = "filenamesuffix"
 
 // Cmd is the implementation of the impgo command.
 func Cmd() *cobra.Command {
 	cmd := &cobra.Command{
-		Use:   "importgo <go_package>",
+		Use:   "importgo <go_packages>",
 		Short: "Generate the code to use a Go package from GX",
 		Args:  cobra.ExactArgs(1),
 		RunE:  goImport,
 	}
-	cmd.PersistentFlags().StringP(sourceFilenameFlag, "o", "", "name of the output files")
+	cmd.PersistentFlags().StringP(filenameSuffixFlag, "o", "", "name of the output files")
 	return cmd
 }
 
-// splitPath splits a path to a binary library file into a Go package path and a Go package name.
-// For instance "blaze-out/host/bin/learning/deepmind/golang/tools/packpy/tests/init/value.a"
-// is split into "learning/deepmind/golang/tools/packpy/tests/init" and "value".
-func splitPath(binPath string) (blazeOut, pkgDir, pkgName string) {
-	pkgSplit := strings.Split(binPath, "/")
-	blazeOut = strings.Join(pkgSplit[:3], "/")
-	pkgDir = strings.Join(pkgSplit[3:len(pkgSplit)-1], "/")
-	pkgName = pkgSplit[len(pkgSplit)-1]
-	pkgName = pkgName[:len(pkgName)-len(path.Ext(pkgName))]
-	return
+type impgo struct {
+	cmd            *cobra.Command
+	fileNameSuffix string
+	loader         *gopkgbin.Loader
 }
 
-// newPackage reads a library binary file and returns it as a Go package.
-func newPackage(name string) (generator.Pkg, error) {
+// FileNameSuffix returns the suffix used for the generated file names.
+func (ig *impgo) FileNameSuffix() string {
+	return ig.fileNameSuffix
+}
+
+func (ig *impgo) generate(pkgpath string) (err error) {
+	outFolder := filepath.Dir(pkgpath)
 	pkg := generator.Pkg{}
-	var blazeOut string
-	blazeOut, pkg.Dir, pkg.Name = splitPath(name)
-	imp, err := gopkgbin.NewImporter(blazeOut, "", "", "")
-	if err != nil {
-		return pkg, err
-	}
-	importPath := pkg.Dir + "/" + pkg.Name
-	pkg.Pkg, err = imp.Import(importPath)
-	if err != nil {
-		return pkg, fmt.Errorf("cannot import go library %s: %v", importPath, err)
-	}
-	return pkg, nil
-}
-
-func goImport(cmd *cobra.Command, args []string) (err error) {
-	cmd.SetErrPrefix(fmt.Sprintf("gx %s:", cmd.Name()))
-	outFolder := filepath.Dir(args[0])
-	target := generator.Target{}
-	target.Src, err = newPackage(args[0])
-	if err != nil {
-		return err
-	}
-	target.Name, err = cmd.Flags().GetString(sourceFilenameFlag)
-	if err != nil {
-		return err
-	}
-	if target.Name == "" {
-		target.Name = target.Src.Name
-	}
+	pkg.Dir, pkg.Name, pkg.Pkg, err = ig.loader.Load(pkgpath)
+	target := generator.Target{Src: pkg, Name: pkg.Name}
 	generators := []generator.New{
 		gengo.New,
 		gengx.New,
 	}
 	for _, newGen := range generators {
-		gen := newGen(target)
+		gen := newGen(ig, target)
 		src, err := gen.Generate()
 		if err != nil {
 			return err
 		}
-		outName := target.Name + "." + gen.FileExtension()
+		outName := "impgo" + ig.fileNameSuffix + "." + gen.FileExtension()
 		out := filepath.Join(outFolder, outName)
 		if err := os.WriteFile(out, []byte(src), 0644); err != nil {
 			return err
 		}
 	}
 	return nil
+}
+
+func goImport(cmd *cobra.Command, args []string) (err error) {
+	cmd.SetErrPrefix(fmt.Sprintf("gx %s:", cmd.Name()))
+	ig := impgo{cmd: cmd}
+	ig.loader, err = gopkgbin.New()
+	if err != nil {
+		return
+	}
+	ig.fileNameSuffix, err = ig.cmd.Flags().GetString(filenameSuffixFlag)
+	if err != nil {
+		return
+	}
+	for _, arg := range args {
+		if err = ig.generate(arg); err != nil {
+			return
+		}
+	}
+	return
 }

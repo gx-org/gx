@@ -21,21 +21,22 @@ import (
 	"golang.org/x/tools/go/packages"
 )
 
-// Importer satisfies the types.Importer interface, loading export data
-// files in gc, gccgo and appengine formats from a google3 build tree.
-type Importer struct{}
+// Loader loads go binary package.
+type Loader struct{}
 
-// NewImporter given options.
-func NewImporter(importDir, gccgo, installsuffix, goroot string) (*Importer, error) {
-	return &Importer{}, nil
+// New loader.
+func New() (*Loader, error) {
+	return &Loader{}, nil
 }
 
-// Import returns the imported package for the given import path.
-func (imp *Importer) Import(path string) (pkg *types.Package, err error) {
+// Load a package given the Go import path.
+func (*Loader) Load(path string) (pkgDir, pkgName string, pkg *types.Package, err error) {
 	cfg := &packages.Config{Mode: packages.NeedFiles | packages.NeedSyntax}
-	pkgs, err := packages.Load(cfg, path)
+	var pkgs []*packages.Package
+	pkgs, err = packages.Load(cfg, path)
 	if err != nil {
-		return nil, err
+		return
 	}
-	return pkgs[0].Types, nil
+	pkg = pkgs[0].Types
+	return
 }

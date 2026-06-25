@@ -25,6 +25,7 @@ import (
 )
 
 type goGenerator struct {
+	cfg    generator.Config
 	target generator.Target
 
 	file    *genast.File
@@ -36,13 +37,13 @@ type goGenerator struct {
 }
 
 // New Go code generator.
-func New(target generator.Target) generator.Generator {
-	return &goGenerator{target: target}
+func New(cfg generator.Config, target generator.Target) generator.Generator {
+	return &goGenerator{cfg: cfg, target: target}
 }
 
 func (g goGenerator) Generate() (string, error) {
 	g.file = genast.NewFile(g.target.Name)
-	gxSource := g.target.Name + ".gx"
+	gxSource := "impgo" + g.cfg.FileNameSuffix() + ".gx"
 
 	// Imports
 	embedPkg := g.file.Import("github.com/gx-org/gx/build/importers/embedpkg", false)

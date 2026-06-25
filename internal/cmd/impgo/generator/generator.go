@@ -42,8 +42,13 @@ func (t Target) Path() string {
 	return path.Join(t.Src.Dir, t.Name)
 }
 
+// Config used by the generators.
+type Config interface {
+	FileNameSuffix() string
+}
+
 // New is a function to create a new generator.
-type New func(Target) Generator
+type New func(Config, Target) Generator
 
 // Generator generates the source code for a file.
 type Generator interface {

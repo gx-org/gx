@@ -23,18 +23,19 @@ import (
 	"github.com/gx-org/gx/internal/cmd/impgo/parser"
 )
 
-type gen struct {
+type gxGenerator struct {
+	cfg    generator.Config
 	target generator.Target
 
 	file *genast.File
 }
 
 // New GX code generator.
-func New(target generator.Target) generator.Generator {
-	return &gen{target: target}
+func New(cfg generator.Config, target generator.Target) generator.Generator {
+	return &gxGenerator{cfg: cfg, target: target}
 }
 
-func (g *gen) Generate() (string, error) {
+func (g *gxGenerator) Generate() (string, error) {
 	g.file = genast.NewFile(g.target.Name)
 	if err := parser.Walk(g.target, g); err != nil {
 		return "", err
@@ -42,11 +43,11 @@ func (g *gen) Generate() (string, error) {
 	return g.file.Write()
 }
 
-func (*gen) FileExtension() string {
+func (*gxGenerator) FileExtension() string {
 	return "gx"
 }
 
-func (g *gen) Func(f *types.Func) error {
+func (g *gxGenerator) Func(f *types.Func) error {
 	g.file.FuncDecl(
 		f.Name(),
 		g.gxFuncTypeFromGo(f.Signature()),
@@ -54,9 +55,9 @@ func (g *gen) Func(f *types.Func) error {
 	return nil
 }
 
-func (*gen) Struct(name *types.TypeName, s *types.Struct) error {
+func (*gxGenerator) Struct(name *types.TypeName, s *types.Struct) error {
 	return nil
 }
-func (*gen) Interface(name *types.TypeName, s *types.Interface) error {
+func (*gxGenerator) Interface(name *types.TypeName, s *types.Interface) error {
 	return nil
 }

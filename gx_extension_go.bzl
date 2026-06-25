@@ -36,12 +36,12 @@ GxExtensionGoInfo = provider(
 
 def _generate_all(ctx):
     lib_name = ctx.label.name[:-4]
-    out_go_file = ctx.actions.declare_file(lib_name + ".go")
-    out_gx_file = ctx.actions.declare_file(lib_name + ".gx")
+    out_go_file = ctx.actions.declare_file("impgo_" + lib_name + ".go")
+    out_gx_file = ctx.actions.declare_file("impgo_" + lib_name + ".gx")
     lib_files = ctx.attr.lib[DefaultInfo].files.to_list()
     args = ctx.actions.args()
     args.add("importgo")
-    args.add("--source_filename=" + lib_name)
+    args.add("--filenamesuffix=" + "_" + lib_name)
     args.add(lib_files[1])
     ctx.actions.run(
         outputs = [out_gx_file, out_go_file],
