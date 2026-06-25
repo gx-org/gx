@@ -60,7 +60,7 @@ func toHostArray(typ ir.Type, h kernels.Array) (*HostArray, error) {
 }
 
 // AtomFloatValue returns an array GX value given a Go value.
-func AtomFloatValue[T dtypes.Float](typ ir.Type, val T) (*HostArray, error) {
+func AtomFloatValue[T dtypes.GoFloat](typ ir.Type, val T) (*HostArray, error) {
 	return toHostArray(typ, kernels.ToFloatAtom[T](val))
 }
 
@@ -85,7 +85,7 @@ func ArrayBfloat16Value(typ ir.Type, vals []dtypes.Bfloat16T, dims []int) (*Host
 }
 
 // ArrayFloatValue returns an array GX value given a Go value.
-func ArrayFloatValue[T dtypes.Float](typ ir.Type, vals []T, dims []int) (*HostArray, error) {
+func ArrayFloatValue[T dtypes.GoFloat](typ ir.Type, vals []T, dims []int) (*HostArray, error) {
 	return toHostArray(typ, kernels.ToFloatArray[T](vals, dims))
 }
 

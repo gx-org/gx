@@ -193,7 +193,7 @@ func (arrayFactory[T]) Concat(dt dtypes.DType, n int) (NAry, *shape.Shape, error
 
 type (
 	goAlgebra interface {
-		dtypes.Float | dtypes.IntegerType
+		dtypes.GoFloat | dtypes.IntegerType
 	}
 
 	algebraArray[T goAlgebra] struct {

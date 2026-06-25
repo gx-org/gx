@@ -205,7 +205,7 @@ func toAtomElementInt[T dtypes.IntegerType](fitp *Interpreter, src elements.Expr
 	return fitp.elementFromAtom(src.Node(), hostVal)
 }
 
-func toAtomElementFloat[T dtypes.Float](fitp *Interpreter, src elements.ExprAt, val T) (engine.NumericalElement, error) {
+func toAtomElementFloat[T dtypes.GoFloat](fitp *Interpreter, src elements.ExprAt, val T) (engine.NumericalElement, error) {
 	hostVal, err := values.AtomFloatValue(src.Node().Type(), val)
 	if err != nil {
 		return nil, err

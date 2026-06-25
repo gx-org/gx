@@ -312,7 +312,7 @@ func ToBfloat16Atom(val dtypes.Bfloat16T) Array {
 }
 
 // ToFloatAtom converts a value into an atom owned by a backend.
-func ToFloatAtom[T dtypes.Float](val T) Array {
+func ToFloatAtom[T dtypes.GoFloat](val T) Array {
 	return ToFloatArray([]T{val}, nil)
 }
 
@@ -338,7 +338,7 @@ func ToBfloat16Array(values []dtypes.Bfloat16T, dims []int) Array {
 }
 
 // ToAlgebraicArray converts values and a shape into a native multi-dimensional array owned by a backend.
-func ToAlgebraicArray[T dtypes.Float | dtypes.IntegerType](values []T, dims []int) Array {
+func ToAlgebraicArray[T dtypes.GoFloat | dtypes.IntegerType](values []T, dims []int) Array {
 	arr := &algebraArray[T]{&arrayT[T]{
 		factory: algebraicFactory[T]{},
 		shape: shape.Shape{
@@ -354,7 +354,7 @@ func ToAlgebraicArray[T dtypes.Float | dtypes.IntegerType](values []T, dims []in
 }
 
 // ToFloatArray converts values and a shape into a native multi-dimensional array owned by a backend.
-func ToFloatArray[T dtypes.Float](values []T, dims []int) Array {
+func ToFloatArray[T dtypes.GoFloat](values []T, dims []int) Array {
 	return ToAlgebraicArray(values, dims)
 }
 
