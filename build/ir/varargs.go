@@ -68,29 +68,39 @@ func (tp *VarArgsType) ElementType() (Type, bool) {
 }
 
 // Equal returns true if other is the same type.
-func (tp *VarArgsType) Equal(tpcmp TypeCmp, target Type) (bool, CompEvalError, error) {
+func (tp *VarArgsType) Equal(tpcmp TypeCmp, target Type) (bool, error) {
 	return tp.Typ.Equal(tpcmp, target)
 }
 
 // AssignableTo reports whether a value of the type can be assigned to another.
-func (tp *VarArgsType) AssignableTo(tpcmp TypeCmp, target Type) (bool, CompEvalError, error) {
+func (tp *VarArgsType) AssignableTo(tpcmp TypeCmp, target Type) (bool, error) {
 	return tp.Typ.AssignableTo(tpcmp, target)
 }
 
 // ConvertibleTo reports whether a value of the type can be converted to another
 // (using static type casting).
-func (tp *VarArgsType) ConvertibleTo(tpcmp TypeCmp, target Type) (bool, CompEvalError, error) {
+func (tp *VarArgsType) ConvertibleTo(tpcmp TypeCmp, target Type) (bool, error) {
 	return tp.Typ.ConvertibleTo(tpcmp, target)
 }
 
+// IndexForVarArgs builds a type specific to a var arg position.
+func (tp *VarArgsType) IndexForVarArgs(errsrc ErrSource, i int) (Type, bool) {
+	return tp.Typ.DType.Val().IndexForVarArgs(errsrc, i)
+}
+
 // Specialise a type to a given target.
-func (tp *VarArgsType) Specialise(spec Specialiser) (Type, CompEvalError, error) {
+func (tp *VarArgsType) Specialise(spec Specialiser) (Type, bool) {
 	return tp.Typ.Specialise(spec)
+}
+
+// Instantiate a type to a given target.
+func (tp *VarArgsType) Instantiate(ev Fetcher, spec Specialiser) (Type, bool) {
+	return tp, true
 }
 
 // UnifyWith recursively unifies a type parameters with types.
 func (tp *VarArgsType) UnifyWith(uni Unifier, typ Type) bool {
-	return tp.Typ.UnifyWith(uni, typ)
+	return tp.Typ.DType.Val().UnifyWith(uni, typ)
 }
 
 // DefineString returns a reference to the type given a file context.
@@ -130,4 +140,69 @@ func (expr *VarArgsExpr) Type() Type {
 // SourceString returns the GX source code of the expression.
 func (expr *VarArgsExpr) SourceString(from *File) string {
 	return "..." + expr.Elt.Typ.DType.SourceString(from)
+}
+
+// VarArgsIndexer is an expression able to add an index to access a generic varargs non-type parameter.
+type VarArgsIndexer interface {
+	Expr
+	IndexForVarArgs(errsrc ErrSource, i int) (Expr, bool)
+}
+
+func varArgsIndexExpr(errsrc ErrSource, i int, x Expr) (Expr, bool) {
+	xSpec, canIndex := x.(VarArgsIndexer)
+	if !canIndex {
+		return x, true
+	}
+	return xSpec.IndexForVarArgs(errsrc, i)
+}
+
+// VarArgsIndex index an expression with a var args index.
+type VarArgsIndex struct {
+	X      Expr
+	EltTyp Type
+}
+
+var (
+	_ ExprWithSpecialise = (*VarArgsIndex)(nil)
+	_ VarArgsIndexer     = (*VarArgsIndex)(nil)
+)
+
+func (*VarArgsIndex) node() {}
+
+// Node in the source code representing the expression.
+func (s *VarArgsIndex) Node() ast.Node {
+	return s.X.Node()
+}
+
+// SourceString returns a GX code source string.
+func (s *VarArgsIndex) SourceString(from *File) string {
+	return s.X.SourceString(from)
+}
+
+// IndexForVarArgs returns the expression at the ith position.
+func (s *VarArgsIndex) IndexForVarArgs(errsrc ErrSource, i int) (Expr, bool) {
+	return varArgsIndexExpr(errsrc, i, s.X)
+}
+
+// Specialise the expression.
+func (s *VarArgsIndex) Specialise(spec Specialiser) (Expr, bool) {
+	r := *s
+	var ok bool
+	r.X, ok = specialiseExpr(spec, s.X)
+	return &r, ok
+}
+
+// UnifyWith recursively unifies a type parameters with types.
+func (s *VarArgsIndex) UnifyWith(uni Unifier, targets []AxisLengths) ([]AxisLengths, bool) {
+	return unifyExpr(uni, targets, s.X)
+}
+
+// Expr returns the syntax tree of the expression.
+func (s *VarArgsIndex) Expr() ast.Expr {
+	return s.X.Expr()
+}
+
+// Type of the expression.
+func (s *VarArgsIndex) Type() Type {
+	return s.EltTyp
 }

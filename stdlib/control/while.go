@@ -24,14 +24,13 @@ import (
 	"github.com/gx-org/gx/interp/grapheval"
 	"github.com/gx-org/gx/interp/materialise"
 	"github.com/gx-org/gx/stdlib/builtin"
-	"github.com/gx-org/gx/stdlib/impl"
 )
 
 type while struct {
 	builtin.Func
 }
 
-func (f while) BuildFuncIR(impl *impl.Stdlib, pkg *ir.Package) (*ir.FuncBuiltin, error) {
+func (f while) BuildFuncIR(pkg *ir.Package) (*ir.FuncBuiltin, error) {
 	return builtin.IRFuncBuiltin[while]("While", evalWhile, pkg), nil
 }
 

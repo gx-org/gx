@@ -22,7 +22,7 @@ import (
 	"reflect"
 
 	"github.com/pkg/errors"
-	"github.com/gx-org/backend/dtype"
+	"github.com/gx-org/backend/dtypes"
 	"github.com/gx-org/gx/api/values"
 	gxfmt "github.com/gx-org/gx/base/fmt"
 	"github.com/gx-org/gx/build/fmterr"
@@ -167,7 +167,7 @@ func AxesFromElement(el ir.Element) ([]int, error) {
 }
 
 // ConstantScalarFromElement returns a scalar on a host given an element.
-func ConstantScalarFromElement[T dtype.GoDataType](el ir.Element) (val T, err error) {
+func ConstantScalarFromElement[T dtypes.Supported](el ir.Element) (val T, err error) {
 	var hostArray *values.HostArray
 	hostArray, err = ConstantFromElement(el)
 	if err != nil {
@@ -197,13 +197,13 @@ func ConstantIntFromElement(el ir.Element) (val int, err error) {
 func toGoInt(val *values.HostArray) (int, error) {
 	valT := val.Shape().DType
 	switch valT {
-	case dtype.Int32:
+	case dtypes.Int32:
 		i32, err := values.ToAtom[int32](val)
 		if err != nil {
 			return 0, err
 		}
 		return int(i32), nil
-	case dtype.Int64:
+	case dtypes.Int64:
 		i64, err := values.ToAtom[int64](val)
 		if err != nil {
 			return 0, err
@@ -295,39 +295,62 @@ func MustEvalInt(fetcher ir.Fetcher, expr ir.Expr) (int, error) {
 }
 
 // EvalRank evaluates an expression to build the rank of an array.
-func EvalRank(fetcher ir.Fetcher, expr ir.Expr) (ir.ArrayRank, []canonical.Canonical, ir.CompEvalError, error) {
+func EvalRank(fetcher ir.Fetcher, expr ir.Expr) (ir.ArrayRank, []canonical.Canonical, error) {
 	rankVal, err := fetcher.EvalExpr(expr)
 	if err != nil {
-		return nil, nil, nil, err
+		return nil, nil, err
 	}
 	slice, ok := Underlying(rankVal).(*Slice)
 	if !ok {
-		return nil, nil, nil, fmterr.Internalf(fetcher.File().FileSet(), expr.Node(), "cannot build a rank from %s (%T): not supported", expr.SourceString(fetcher.File()), rankVal)
+		return nil, nil, fmterr.Internalf(fetcher.File().FileSet(), expr.Node(), "cannot build a rank from %s (%T): not supported", expr.SourceString(fetcher.File()), rankVal)
 	}
 	axes := make([]ir.AxisLengths, slice.Len())
 	cans := make([]canonical.Canonical, slice.Len())
 	for i, el := range slice.Elements() {
 		ex, ok := el.(ir.Canonical)
 		if !ok {
-			return nil, nil, nil, fmterr.Internalf(fetcher.File().FileSet(), expr.Node(), "cannot build an axis expression from element %T: not supported", el)
+			return nil, nil, fmterr.Internalf(fetcher.File().FileSet(), expr.Node(), "cannot build an axis expression from element %T: not supported", el)
 		}
-		irExpr, cpErr, err := ex.Expr(fetcher, expr.Expr())
-		if cpErr != nil || err != nil {
-			return nil, nil, cpErr, err
+		irExpr, err := ir.ToSingleExpr(fetcher, expr.Expr(), ex)
+		if err != nil {
+			return nil, nil, err
 		}
 		axes[i] = &ir.AxisExpr{
 			X: irExpr,
 		}
 		cans[i] = el.(canonical.Canonical)
 	}
-	return &ir.Rank{Ax: axes}, cans, nil, nil
+	return &ir.Rank{Ax: axes}, cans, nil
 }
 
 // ToNumericalElement converts an element into a numerical element.
 func ToNumericalElement(el ir.Element) (engine.NumericalElement, error) {
+	el = ir.BareValue(el)
 	numEl, ok := Underlying(el).(engine.NumericalElement)
 	if !ok {
 		return nil, errors.Errorf("cannot cast %T to %s", el, reflect.TypeFor[engine.NumericalElement]())
 	}
 	return numEl, nil
+}
+
+// Map transforms a collection of element into a different type.
+func Map[T any](f func(ir.Element) (T, error), el ir.Element) ([]T, error) {
+	slice, err := ToWithElements(el)
+	if err != nil {
+		return nil, err
+	}
+	return MapSlice[T](f, slice.Elements())
+}
+
+// MapSlice transforms a slice of elements into a different type.
+func MapSlice[T any](f func(ir.Element) (T, error), elts []ir.Element) ([]T, error) {
+	ts := make([]T, len(elts))
+	for i, el := range elts {
+		var err error
+		ts[i], err = f(el)
+		if err != nil {
+			return nil, err
+		}
+	}
+	return ts, nil
 }

@@ -44,13 +44,8 @@ func (f *traceFunc) BuildFuncType(fetcher ir.Fetcher, call *ir.FuncCallExpr) (*i
 		},
 	}
 	params := make([]ir.Type, len(call.Args))
-	for i, arg := range call.Args {
-		params[i] = arg.Type()
-		argFType, isFuncType := ir.Underlying(params[i]).(*ir.FuncType)
-		if !isFuncType {
-			continue
-		}
-		ftype.AxisLengths = append(ftype.AxisLengths, argFType.AxisLengths...)
+	for i := range call.Args {
+		params[i] = ir.AnyType()
 	}
 	ftype.Params = builtins.Fields(call, params...)
 	return ftype, nil

@@ -1,0 +1,9 @@
+package testdata
+
+import "shape"
+
+// No test function
+
+func F[Shape intlen](x [Shape]float32) [Shape + 1]float32 {
+	return shape.Concat[0](x, [1]float32{})
+}

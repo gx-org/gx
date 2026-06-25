@@ -30,14 +30,13 @@ import (
 	"github.com/gx-org/gx/interp/materialise"
 	"github.com/gx-org/gx/interp/numbers"
 	"github.com/gx-org/gx/stdlib/builtin"
-	"github.com/gx-org/gx/stdlib/impl"
 )
 
 type broadcast struct {
 	builtin.Func
 }
 
-func (f broadcast) BuildFuncIR(impl *impl.Stdlib, pkg *ir.Package) (*ir.FuncBuiltin, error) {
+func (f broadcast) BuildFuncIR(pkg *ir.Package) (*ir.FuncBuiltin, error) {
 	return builtin.IRFuncBuiltin[broadcast]("Broadcast", evalBroadcast, pkg), nil
 }
 
@@ -88,9 +87,9 @@ func (f broadcast) BuildFuncType(fetcher ir.Fetcher, call *ir.FuncCallExpr) (*ir
 	if err != nil {
 		return nil, err
 	}
-	targetRank, targetElmts, cpErr, err := elements.EvalRank(fetcher, call.Args[1])
-	if unErr := ir.UnifyErr(cpErr, err); unErr != nil {
-		return nil, unErr
+	targetRank, targetElmts, err := elements.EvalRank(fetcher, call.Args[1])
+	if err != nil {
+		return nil, err
 	}
 	if err := checkBroadcastRanks(fetcher, call, arrayType.Rank(), targetRank, targetElmts); err != nil {
 		return nil, err
@@ -103,7 +102,7 @@ func (f broadcast) BuildFuncType(fetcher ir.Fetcher, call *ir.FuncCallExpr) (*ir
 }
 
 func evalBroadcast(env engine.Env, call *ir.FuncCallExpr, recv ir.Element, args []ir.Element) ([]ir.Element, error) {
-	targetAxes, err := elements.AxesFromElement(args[1])
+	targetAxes, err := elements.AxesFromElement(args[0])
 	if err != nil {
 		return nil, err
 	}
@@ -112,7 +111,7 @@ func evalBroadcast(env engine.Env, call *ir.FuncCallExpr, recv ir.Element, args 
 		broadcastAxes[i] = i
 	}
 	mat := builtin.Materialiser(env)
-	x, xShape, err := materialise.Element(mat, args[0])
+	x, xShape, err := materialise.Element(mat, args[3])
 	if err != nil {
 		return nil, err
 	}
@@ -124,9 +123,9 @@ func evalBroadcast(env engine.Env, call *ir.FuncCallExpr, recv ir.Element, args 
 	if err != nil {
 		return nil, err
 	}
-	tp, cpErr, err := concrete.Concrete(env.ExprEval(), call.Expr(), call.Type())
-	if unErr := ir.UnifyErr(cpErr, err); unErr != nil {
-		return nil, unErr
+	tp, err := concrete.Concrete(env.ExprEval(), call.Expr(), call.Type())
+	if err != nil {
+		return nil, err
 	}
 	return materialise.ElementFromNode(env.File(), mat, &ops.OutputNode{
 		Node:  op,

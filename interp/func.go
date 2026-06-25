@@ -15,7 +15,6 @@
 package interp
 
 import (
-	"fmt"
 	"go/ast"
 	"strings"
 
@@ -24,7 +23,6 @@ import (
 	"github.com/gx-org/gx/build/fmterr"
 	"github.com/gx-org/gx/build/ir"
 	"github.com/gx-org/gx/build/ir/irkind"
-	"github.com/gx-org/gx/internal/concrete"
 	"github.com/gx-org/gx/internal/interp/flatten"
 	"github.com/gx-org/gx/interp/context"
 	"github.com/gx-org/gx/interp/elements"
@@ -63,7 +61,7 @@ func NewRunFunc(fn ir.Func, recv *fun.Receiver) fun.Func {
 		base.call = funcBuiltin{fun: fnT, impl: fnT.Impl}.callBuiltin
 	case *ir.FuncKeyword:
 		base.storage = fnT
-		base.call = funcBuiltin{impl: fnT.Impl}.callBuiltin
+		base.call = funcBuiltin{fun: fnT, impl: fnT.Impl}.callBuiltin
 	case *ir.Macro:
 		base.storage = fnT
 		base.call = funcMacro{fnT: fnT}.callMacro
@@ -166,70 +164,43 @@ func fieldNames(fields []*ir.FieldGroup) (r []*ast.Ident) {
 	return
 }
 
-func assignAxisLengths(callee ir.Callee, funcFrame *context.Frame) {
-	funRef, ok := callee.(*ir.FuncValExpr)
-	if !ok {
-		return
-	}
-	for _, axLen := range funRef.FuncType().AxisLengths {
-		if axLen.Value == nil {
-			continue
-		}
-		funcFrame.Define(&ast.Ident{Name: axLen.Name()}, axLen.Value)
-	}
-}
-
 func toConcreteType(ctx *context.Context, src ast.Node, frame *context.Frame, tp ir.Type) (ir.Type, error) {
-	typeParam, isTypeParam := tp.(*ir.TypeParam)
+	typeParam, isTypeParam := tp.(*ir.GenericTypeParam)
 	if !isTypeParam {
 		return tp, nil
 	}
-	el, err := frame.Find(typeParam.Field.Name)
+	el, err := frame.Find(typeParam.OrigField().Name)
 	if err != nil {
 		return nil, fmterr.Internalf(ctx.File().FileSet(), src, "cannot cast to %s: %v", tp.ReferString(ctx.File()), err)
 	}
-	tp, isType := el.(ir.Type)
+	tp, isType := ir.BareValue(el).(ir.Type)
 	if !isType {
 		return nil, fmterr.Internalf(ctx.File().FileSet(), src, "element %T is not a type", el)
 	}
 	return tp, nil
 }
 
-func assignTypeParameters(ctx *context.Context, callee ir.Callee, callerFrame, targetFrame *context.Frame) error {
+func assignTypeParameters(ctx *context.Context, callee ir.Callee, funcFrame *context.Frame, args []ir.Element) []ir.Element {
 	funRef, ok := callee.(*ir.FuncValExpr)
 	if !ok {
-		return nil
+		return args
 	}
-	for _, tpParam := range funRef.FuncType().TypeParamsValues {
-		cType, err := toConcreteType(ctx, callee.Node(), callerFrame, tpParam.Typ)
-		if err != nil {
-			return err
-		}
-		targetFrame.Define(tpParam.Field.Name, cType)
+	genVals := funRef.FuncType().GenericValues
+	for i, genVal := range genVals {
+		funcFrame.Define(genVal.Generic().NameDef(), args[i])
 	}
-	return nil
+	return args[len(genVals):]
 }
 
 func assignArgumentValues(ftype *ir.FuncType, funcFrame *context.Frame, args []ir.Element) error {
-	var varargs *elements.Slice
-	if ftype.VarArgs != nil {
-		var err error
-		varargs, err = elements.NewSlice(ftype.VarArgs.Typ, nil)
-		if err != nil {
-			return err
-		}
-		params := ftype.Params.Fields()
-		funcFrame.Define(params[len(params)-1].Name, varargs)
+	fields := ftype.Params.Fields()
+	if len(args) != len(fields) {
+		return fmterr.Internal(errors.Errorf("number of arguments (%d) does not match the number of parameters (%d) in function type %s", len(args), len(fields), ftype.ReferString(nil)))
 	}
 	// For each parameter of the function, assign its argument value to the frame.
 	for i, arg := range args {
-		field, isVarArgs := ftype.ArgIndexToParamField(i)
 		arg = engine.Copy(arg)
-		if isVarArgs {
-			varargs.AppendInPlace(arg)
-			continue
-		}
-		funcFrame.Define(field.Name, arg)
+		funcFrame.Define(fields[i].Name, arg)
 	}
 	return nil
 }
@@ -277,9 +248,7 @@ func (itp *Base) EvalFunc(fn *ir.FuncDecl, in *elements.InputElements) (outs []i
 			}
 			return nil, errors.Errorf("missing parameter(s): %s", builder.String())
 		}
-		if err := concrete.Define(fitp, frame, param, in.Args[i]); err != nil {
-			return nil, fmt.Errorf("cannot define argument %s: %w", param.Name.Name, err)
-		}
+		frame.Define(param.Name, in.Args[i])
 	}
 	// Evaluate the function body.
 	outs, err = evalFuncBody(fitp, fn.Body)

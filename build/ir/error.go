@@ -17,6 +17,7 @@ package ir
 import (
 	"go/ast"
 
+	"github.com/pkg/errors"
 	"github.com/gx-org/gx/build/ir/irkind"
 )
 
@@ -61,42 +62,6 @@ var (
 	_ TypeMethods = errorTyp
 )
 
-type errorCallee struct {
-	src   ast.Expr
-	ftype *FuncType
-}
-
-func (*errorCallee) node() {}
-
-func (ec *errorCallee) Node() ast.Node {
-	return ec.src
-}
-
-func (*errorCallee) Func() Func {
-	return nil
-}
-
-func (ec *errorCallee) FuncType() *FuncType {
-	return ec.ftype
-}
-
-func (*errorCallee) Type() Type {
-	return errorFType
-}
-
-func (*errorCallee) Expr() ast.Expr {
-	return nil
-}
-
-func (*errorCallee) SourceString(from *File) string {
-	return "<cperror>"
-}
-
-// ErrorCallee returns a proxy callee to call the Error method.
-func ErrorCallee(src ast.Expr, ftype *FuncType) Callee {
-	return &errorCallee{src: src, ftype: ftype}
-}
-
 // ErrorType returns the type for the keyword error.
 func ErrorType() TypeMethods {
 	return errorTyp
@@ -110,22 +75,25 @@ func (*errorType) storageValue() {}
 func (s *errorType) Kind() irkind.Kind { return irkind.Interface }
 
 // Equal returns true if other is the exact same type set.
-func (s *errorType) Equal(tpcmp TypeCmp, target Type) (bool, CompEvalError, error) {
+func (s *errorType) Equal(tpcmp TypeCmp, target Type) (bool, error) {
 	return s.iface.Equal(tpcmp, target)
 }
 
 // AssignableTo reports whether a value of the type can be assigned to another.
-func (s *errorType) AssignableTo(tpcmp TypeCmp, target Type) (bool, CompEvalError, error) {
+func (s *errorType) AssignableTo(tpcmp TypeCmp, target Type) (bool, error) {
+	if s.Same(target) {
+		return true, nil
+	}
 	return s.iface.AssignableTo(tpcmp, target)
 }
 
-func (s *errorType) assignableFrom(tpcmp TypeCmp, x Type) (bool, CompEvalError, error) {
+func (s *errorType) assignableFrom(tpcmp TypeCmp, x Type) (bool, error) {
 	return s.iface.assignableFromWithName(tpcmp, x, s.DefineString)
 }
 
 // ConvertibleTo reports whether a value of the type can be converted to another
 // (using static type casting).
-func (s *errorType) ConvertibleTo(tpcmp TypeCmp, target Type) (bool, CompEvalError, error) {
+func (s *errorType) ConvertibleTo(tpcmp TypeCmp, target Type) (bool, error) {
 	return s.iface.ConvertibleTo(tpcmp, target)
 }
 
@@ -152,13 +120,18 @@ func (s *errorType) Same(o Storage) bool {
 }
 
 // Specialise a type to a given target.
-func (s *errorType) Specialise(spec Specialiser) (Type, CompEvalError, error) {
-	return s, nil, nil
+func (s *errorType) Specialise(spec Specialiser) (Type, bool) {
+	return s, true
 }
 
 // Value returns a value pointing to the receiver.
 func (s *errorType) Value(x Expr) Expr {
 	return TypeExpr(x, s)
+}
+
+// Instantiate a function type.
+func (s *errorType) Instantiate(Fetcher, Specialiser) (Type, bool) {
+	return s, true
 }
 
 // UnifyWith recursively unifies a type parameters with types.
@@ -171,9 +144,48 @@ func (s *errorType) Type() Type {
 	return MetaType()
 }
 
+func (s *errorType) IndexForVarArgs(ErrSource, int) (Type, bool) {
+	return s, true
+}
+
 // ReferString returns the GX source to refer to the type.
 func (s *errorType) ReferString(from *File) string {
 	return s.DefineString(from)
+}
+
+type errorCallee struct {
+	fun Func
+}
+
+func (*errorCallee) node() {}
+
+func (ec *errorCallee) Node() ast.Node {
+	return ec.fun.Node()
+}
+
+func (*errorCallee) Func() Func {
+	return nil
+}
+
+func (ec *errorCallee) FuncType() *FuncType {
+	return ec.fun.FuncType()
+}
+
+func (*errorCallee) Type() Type {
+	return errorFType
+}
+
+func (ec *errorCallee) Expr() ast.Expr {
+	return &ast.Ident{Name: "Error"}
+}
+
+func (*errorCallee) SourceString(from *File) string {
+	return "<cperror>"
+}
+
+// ErrorCallee returns a proxy callee to call the Error method.
+func ErrorCallee(fun Func) Callee {
+	return &errorCallee{fun: fun}
 }
 
 // UnifyErr returns a system error if not nil, return the compile error otherwise.
@@ -182,4 +194,87 @@ func UnifyErr(cpErr CompEvalError, err error) error {
 		return err
 	}
 	return cpErr
+}
+
+// CompileError is a normal error to be reported to the user as a compile error of the source code.
+type CompileError struct {
+	error
+}
+
+// NewCompileError converts an error into a compilation error.
+func NewCompileError(err error) *CompileError {
+	return &CompileError{error: err}
+}
+
+// CompileErrorF formats an error into a compilation error.
+func CompileErrorF(s string, as ...any) *CompileError {
+	return NewCompileError(errors.Errorf(s, as...))
+}
+
+// SplitErr checks if an error is a compile error.
+func SplitErr(err error) (*CompileError, error) {
+	if err == nil {
+		return nil, nil
+	}
+	cpErr, isCompileError := err.(*CompileError)
+	if isCompileError {
+		return cpErr, nil
+	}
+	return nil, err
+}
+
+// SurfaceCompEvalErrorExpr converts an error returned by a function, if not nil, into a compiler error.
+type SurfaceCompEvalErrorExpr struct {
+	X   *FuncCallExpr
+	Typ Type
+}
+
+var _ Expr = (*SurfaceCompEvalErrorExpr)(nil)
+
+func (*SurfaceCompEvalErrorExpr) node() {}
+
+// Node returns the location of the source code.
+func (n *SurfaceCompEvalErrorExpr) Node() ast.Node {
+	return n.X.Node()
+}
+
+// Expr returns the syntax tree of the expression.
+func (n *SurfaceCompEvalErrorExpr) Expr() ast.Expr {
+	return n.X.Expr()
+}
+
+// Type of the expression.
+func (n *SurfaceCompEvalErrorExpr) Type() Type {
+	return n.Typ
+}
+
+// SourceString returns the GX source code of the expression.
+func (n *SurfaceCompEvalErrorExpr) SourceString(from *File) string {
+	return n.X.SourceString(from)
+}
+
+// SurfaceError transforms the last element of a tuple into a compiler error.
+func SurfaceError(ev TypeCmp, x Expr) (Expr, error) {
+	call, isCall := x.(*FuncCallExpr)
+	if !isCall {
+		return x, nil
+	}
+	tp := x.Type()
+	tuple, isTuple := tp.(*TupleType)
+	if !isTuple {
+		return x, nil
+	}
+	last := tuple.Types[len(tuple.Types)-1]
+	ok, err := last.AssignableTo(ev, ErrorType())
+	if !ok || err != nil {
+		return x, err
+	}
+	ext := &SurfaceCompEvalErrorExpr{X: call}
+	withoutLast := append([]Type{}, tuple.Types[:len(tuple.Types)-1]...)
+	if len(withoutLast) < 2 {
+		ext.Typ = withoutLast[0]
+	} else {
+		ext.Typ = &TupleType{Types: withoutLast}
+	}
+	return ext, nil
 }

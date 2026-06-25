@@ -47,12 +47,12 @@ func (n *selectorExpr) source() ast.Node {
 
 func (n *selectorExpr) returnUndefined(scope resolveScope, x ir.Expr) (ir.Storage, bool) {
 	if isInvalidExpr(x) {
-		return invalidIdent.Store(), false
+		return invalidStore(), false
 	}
 	if x.Type().Kind() == irkind.Package {
-		return invalidIdent.Store(), scope.Err().Appendf(n.src.Sel, "undefined: %s.%s", x.SourceString(scope.fileScope().irFile()), n.src.Sel.Name)
+		return invalidStore(), scope.Err().Appendf(n.src.Sel, "undefined: %s.%s", x.SourceString(scope.fileScope().irFile()), n.src.Sel.Name)
 	}
-	return invalidIdent.Store(), scope.Err().Appendf(n.src.Sel, "%s.%s undefined (type %s has no field or method %s)", x.SourceString(scope.fileScope().irFile()), n.src.Sel.Name, x.Type().ReferString(scope.fileScope().irFile()), n.src.Sel.Name)
+	return invalidStore(), scope.Err().Appendf(n.src.Sel, "%s.%s undefined (type %s has no field or method %s)", x.SourceString(scope.fileScope().irFile()), n.src.Sel.Name, x.Type().ReferString(scope.fileScope().irFile()), n.src.Sel.Name)
 }
 
 func (n *selectorExpr) selectFromPackage(scope resolveScope, sel *ir.SelectorExpr) (ir.Storage, bool) {
@@ -108,7 +108,7 @@ func (n *selectorExpr) selectStorageFrom(scope resolveScope, sel *ir.SelectorExp
 func (n *selectorExpr) buildSelectorExpr(scope resolveScope) (ext *ir.SelectorExpr, ok bool) {
 	defer func() {
 		if ext.Stor == nil {
-			ext.Stor = invalidIdent.Store()
+			ext.Stor = invalidStore()
 		}
 	}()
 	ext = &ir.SelectorExpr{Src: n.src}

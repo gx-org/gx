@@ -16,7 +16,7 @@ package graph
 
 import (
 	"github.com/pkg/errors"
-	"github.com/gx-org/backend/dtype"
+	"github.com/gx-org/backend/dtypes"
 	"github.com/gx-org/backend/ops"
 )
 
@@ -26,6 +26,6 @@ func (g *Graph) DType() ops.DTypeBuilder {
 }
 
 // Bitcast casts a byte array into a given data type.
-func (g *Graph) Bitcast(x ops.Node, target dtype.DataType) (ops.Node, error) {
+func (g *Graph) Bitcast(x ops.Node, target dtypes.DType) (ops.Node, error) {
 	return nil, errors.Errorf("Bitcast not implemented in the Go backend")
 }

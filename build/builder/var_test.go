@@ -18,8 +18,10 @@ import (
 	"testing"
 
 	"github.com/gx-org/gx/build/builder/testbuild"
+	"github.com/gx-org/gx/build/importers"
 	"github.com/gx-org/gx/build/ir"
 	irh "github.com/gx-org/gx/build/ir/irhelper"
+	"github.com/gx-org/gx/stdlib"
 )
 
 func TestVars(t *testing.T) {
@@ -28,7 +30,8 @@ func TestVars(t *testing.T) {
 		VName: irh.IdentAST("a"),
 	}
 	vrA.Decl.Exprs = append(vrA.Decl.Exprs, vrA)
-	testbuild.Run(t,
+	testbuild.RunWith(t,
+		[]importers.Importer{stdlib.Importer()},
 		testbuild.Decl{
 			Src: `var a intlen`,
 			Want: []ir.IR{
@@ -37,13 +40,12 @@ func TestVars(t *testing.T) {
 		},
 		testbuild.Decl{
 			Src: `
-import "dtypes"
+import "dtype"
 
 var a intlen
 
-func f[T dtypes.Floats]([a]float32) [a]float32
+func f[T dtype.Floats]([a]float32) [a]float32
 `,
-			Err: "package dtypes",
 		},
 	)
 }

@@ -28,7 +28,7 @@ import (
 
 func buildInterperr() (*interperr_go_gx.Package, error) {
 	bck := backend.New(builder.New(
-		stdlib.Importer(nil),
+		stdlib.Importer(),
 		embedpkg.New(),
 	))
 	dev, err := bck.Device(0)
@@ -46,7 +46,7 @@ func TestNotImplemented(t *testing.T) {
 	}
 	_, err = interperr.CallSum()
 	got := err.Error()
-	want := "function num.Sum has no implementation"
+	want := "ReduceSum not implemented in the Go backend"
 	if !strings.Contains(got, want) {
 		t.Errorf("got error %q but want an error that contains %q", got, want)
 	}

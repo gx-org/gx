@@ -22,6 +22,7 @@ import (
 
 	"github.com/pkg/errors"
 	"github.com/gx-org/gx/build/builder/testbuild"
+	"github.com/gx-org/gx/build/ir"
 )
 
 // Reverse tests the computation of the Vector-Jacobian product of a function.
@@ -35,9 +36,6 @@ type Reverse struct {
 
 	// Want stores the source code of the expected VJP of the function
 	Want string
-
-	// Skip the test.
-	Skip bool
 
 	// GradImportName is the name of the import of the grad package.
 	// If empty, then the default import name is used.
@@ -102,10 +100,7 @@ var gradImport = &ast.ImportSpec{
 }
 
 // Run builds the declarations as a package, then compare to an expected outcome.
-func (tt Reverse) Run(b *testbuild.Builder) error {
-	if tt.Skip {
-		return nil
-	}
+func (tt Reverse) Run(b *testbuild.Builder) (*ir.Package, error) {
 	if tt.GradOf == "" {
 		tt.GradOf = "F"
 	}
@@ -113,18 +108,18 @@ func (tt Reverse) Run(b *testbuild.Builder) error {
 	src, gradFunc := tt.buildSourceCode()
 	pkg, err := b.Build("", src)
 	if err != nil {
-		return testbuild.CheckError(tt.Err, err)
+		return nil, testbuild.CheckError(tt.Err, err)
 	}
 	pkgIR := pkg.IR()
 	// Check the VJP of the default function F.
 	// checkVJP returns a nil error if tt.Want is empty.
 	if err := checkFunc(pkgIR, gradFunc, tt.Want); err != nil {
-		return err
+		return nil, err
 	}
 	// Check other functions we expect.
 	for expr, want := range tt.WantExprs {
 		if err := testbuild.CheckExpandedExpr(pkg, expr, want, gradImport); err != nil {
-			return err
+			return nil, err
 		}
 	}
 	// Check that functions have been built multiple times.
@@ -132,9 +127,9 @@ func (tt Reverse) Run(b *testbuild.Builder) error {
 	for _, fn := range pkg.IR().Decls.Funcs {
 		_, found := funcs[fn.Name()]
 		if found {
-			return errors.Errorf("function %s has been built more than one time", fn.Name())
+			return nil, errors.Errorf("function %s has been built more than one time", fn.Name())
 		}
 		funcs[fn.Name()] = true
 	}
-	return nil
+	return pkgIR, nil
 }

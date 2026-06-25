@@ -100,6 +100,21 @@ func (g *Graph) Logistic(x ops.Node) (ops.Node, error) {
 	return nil, errors.Errorf("Logistic not implemented in the Go backend")
 }
 
+// Min returns the minimum between x and y.
+func (g *Graph) Min(x, y ops.Node) (ops.Node, error) {
+	return nil, errors.Errorf("Min not implemented in the Go backend")
+}
+
+// Max returns the maximum between x and y.
+func (g *Graph) Max(x, y ops.Node) (ops.Node, error) {
+	return nil, errors.Errorf("Max not implemented in the Go backend")
+}
+
+// Pow returns x to the power of y.
+func (g *Graph) Pow(x, y ops.Node) (ops.Node, error) {
+	return nil, errors.Errorf("Pow not implemented in the Go backend")
+}
+
 // Round returns the nearest integer of x.
 func (g *Graph) Round(x ops.Node) (ops.Node, error) {
 	return newMathUnaryNode(g, x, math.Round)

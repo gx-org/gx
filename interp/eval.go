@@ -15,16 +15,16 @@
 package interp
 
 import (
-	"fmt"
 	"go/token"
 	"reflect"
 
 	"github.com/pkg/errors"
-	"github.com/gx-org/backend/dtype"
+	"github.com/gx-org/backend/dtypes"
 	"github.com/gx-org/gx/api/values"
 	"github.com/gx-org/gx/build/fmterr"
 	"github.com/gx-org/gx/build/ir"
 	"github.com/gx-org/gx/build/ir/irkind"
+	"github.com/gx-org/gx/internal/base/cast"
 	"github.com/gx-org/gx/interp/elements"
 	"github.com/gx-org/gx/interp/engine"
 	"github.com/gx-org/gx/interp/fun"
@@ -69,7 +69,7 @@ func evalStmt(fitp *Interpreter, node ir.Stmt) ([]ir.Element, bool, error) {
 	}
 }
 
-func evalRangeForLoopOverInteger[T dtype.AlgebraType](fitp *Interpreter, stmt *ir.RangeStmt, toValue valuer) ([]ir.Element, bool, error) {
+func evalRangeForLoopOverInteger[T dtypes.AlgebraType](fitp *Interpreter, stmt *ir.RangeStmt, toValue valuer) ([]ir.Element, bool, error) {
 	toValueT := toValue.(valuerT[T])
 	indexType := ir.TypeFromKind(toValueT.kind)
 	val, err := evalAtom[T](fitp, stmt.X)
@@ -116,7 +116,7 @@ func evalRangeStmtInteger(fitp *Interpreter, stmt *ir.RangeStmt, xKind irkind.Ki
 	}
 }
 
-func evalRangeStmtForLoopOverArray[T dtype.AlgebraType](fitp *Interpreter, stmt *ir.RangeStmt, toValue valuer) ([]ir.Element, bool, error) {
+func evalRangeStmtForLoopOverArray[T dtypes.AlgebraType](fitp *Interpreter, stmt *ir.RangeStmt, toValue valuer) ([]ir.Element, bool, error) {
 	toValueT := toValue.(valuerT[T])
 	indexType := ir.TypeFromKind(toValueT.kind)
 	x, err := evalExpr(fitp, stmt.X)
@@ -311,17 +311,11 @@ func evalArrayAxis(fitp *Interpreter, src ir.Node, axLen ir.AxisLengths) ([]engi
 	case engine.NumericalElement:
 		return []engine.NumericalElement{elT}, nil
 	case *elements.Slice:
-		numEls := make([]engine.NumericalElement, elT.Len())
-		for i, eli := range elT.Elements() {
-			var err error
-			numEls[i], err = elements.ToNumericalElement(eli)
-			if err != nil {
-				return nil, err
-			}
-		}
-		return numEls, nil
+		return elements.MapSlice[engine.NumericalElement](elements.ToNumericalElement, elT.Elements())
+	case *elements.Tuple:
+		return elements.MapSlice[engine.NumericalElement](elements.ToNumericalElement, elT.Elements())
 	default:
-		return nil, errors.Errorf("cannot %T to an axis length: not supported", elT)
+		return nil, errors.Errorf("cannot convert %T to an axis length: not supported", elT)
 	}
 }
 
@@ -510,11 +504,6 @@ func evalSliceLiteral(fitp *Interpreter, expr *ir.SliceLitExpr) (ir.Element, err
 
 // evalExpr evaluates an expression within the Context.
 func evalExpr(fitp *Interpreter, expr ir.Expr) (_ ir.Element, err error) {
-	defer func() {
-		if err != nil {
-			err = fmt.Errorf("cannot evaluate expression %q:\n%w", expr.SourceString(fitp.File()), err)
-		}
-	}()
 	if expr == nil {
 		return nil, errors.Errorf("cannot evaluate a nil expression")
 	}
@@ -545,6 +534,8 @@ func evalExpr(fitp *Interpreter, expr ir.Expr) (_ ir.Element, err error) {
 		return evalUnaryExpression(fitp, exprT)
 	case *ir.UnpackExpr:
 		return evalUnpackExpr(fitp, exprT)
+	case *ir.SurfaceCompEvalErrorExpr:
+		return evalSurfaceCompEvalErrorExpr(fitp, exprT)
 	case *ir.ParenExpr:
 		return evalExpr(fitp, exprT.X)
 	case *ir.BinaryExpr:
@@ -574,7 +565,7 @@ func evalExpr(fitp *Interpreter, expr ir.Expr) (_ ir.Element, err error) {
 	case *ir.FuncValExpr:
 		return evalFuncValExpr(fitp, exprT)
 	case *ir.TypeValExpr:
-		return exprT, nil
+		return exprT.Val(), nil
 	default:
 		return nil, fmterr.Errorf(fitp.File().FileSet(), expr.Node(), "cannot evaluate GX expression: %T not supported", expr)
 	}
@@ -585,11 +576,27 @@ func evalUnpackExpr(fitp *Interpreter, expr *ir.UnpackExpr) (ir.Element, error) 
 	if err != nil {
 		return nil, err
 	}
-	slice, isSlice := x.(elements.WithElements)
-	if !isSlice {
-		return nil, errors.Errorf("cannot unpack %T", x)
+	unpacker, err := cast.To[elements.Unpacker](x)
+	if err != nil {
+		return nil, err
 	}
-	return elements.NewTuple(slice.Elements()), nil
+	return unpacker.Unpack(fitp)
+}
+
+func evalSurfaceCompEvalErrorExpr(fitp *Interpreter, expr *ir.SurfaceCompEvalErrorExpr) (ir.Element, error) {
+	x, err := evalExpr(fitp, expr.X)
+	if err != nil {
+		return nil, err
+	}
+	tuple, err := cast.To[*elements.Tuple](x)
+	if err != nil {
+		return nil, err
+	}
+	val, cpErr, err := tuple.UnpackError(fitp)
+	if err != nil {
+		return nil, err
+	}
+	return val, fitp.toCompEvalError(cpErr)
 }
 
 func evalFuncValExpr(fitp *Interpreter, expr *ir.FuncValExpr) (ir.Element, error) {
@@ -620,18 +627,7 @@ func evalNumberCastExpr(fitp *Interpreter, expr *ir.NumberCastExpr) (engine.Nume
 	if err != nil {
 		return nil, err
 	}
-	tp := expr.Typ
-	if tpParam, ok := expr.Typ.(*ir.TypeParam); ok {
-		tpEl, err := fitp.Context().CurrentFrame().Find(tpParam.Field.Name)
-		if err != nil {
-			return nil, err
-		}
-		tp, ok = elements.Underlying(tpEl).(ir.Type)
-		if !ok {
-			return nil, errors.Errorf("%T is not a type", tpEl)
-		}
-	}
-	return number.Cast(fitp.env, expr, tp)
+	return number.Cast(fitp.env, expr, expr.Typ)
 }
 
 func evalSelectorExpr(fitp *Interpreter, ref *ir.SelectorExpr) (ir.Element, error) {
@@ -675,7 +671,7 @@ func evalEinsumExpr(fitp *Interpreter, ref *ir.EinsumExpr) (ir.Element, error) {
 	return fitp.Engine().ArrayOps().Einsum(fitp, ref, x, y)
 }
 
-func evalAtom[T dtype.GoDataType](fitp *Interpreter, expr ir.Expr) (val T, err error) {
+func evalAtom[T dtypes.Supported](fitp *Interpreter, expr ir.Expr) (val T, err error) {
 	el, err := evalExpr(fitp, expr)
 	if err != nil {
 		var zero T
@@ -684,23 +680,26 @@ func evalAtom[T dtype.GoDataType](fitp *Interpreter, expr ir.Expr) (val T, err e
 	return elements.ConstantScalarFromElement[T](el)
 }
 
-func evalCallee(fitp *Interpreter, callee ir.Callee) (fun.Func, error) {
+func evalCallee(fitp *Interpreter, callee ir.Callee) (fun.Func, []ir.Element, error) {
 	switch calleeT := callee.(type) {
 	case *ir.FuncValExpr:
 		fnNode, err := fitp.EvalExpr(calleeT.X())
 		if err != nil {
-			return nil, err
+			return nil, nil, err
 		}
 		fn, ok := fnNode.(fun.Func)
 		if !ok {
-			return nil, fmterr.Errorf(fitp.File().FileSet(), callee.Node(), "%T is not callable", fnNode)
+			return nil, nil, fmterr.Errorf(fitp.File().FileSet(), callee.Node(), "%T is not callable", fnNode)
 		}
-		return fn, nil
+		tpArgs, err := evalTypeArgumentExprs(fitp, calleeT)
+		if err != nil {
+			return nil, nil, err
+		}
+		return fn, tpArgs, nil
 	case *ir.MacroCallExpr:
-		return fitp.NewFunc(calleeT.Func(), nil), nil
-	default:
-		return nil, errors.Errorf("callee type %T not supported", callee)
+		return fitp.NewFunc(calleeT.Func(), nil), nil, nil
 	}
+	return nil, nil, errors.Errorf("callee type %T not supported", callee)
 }
 
 func evalCallExpr(fitp *Interpreter, expr *ir.FuncCallExpr) (ir.Element, error) {
@@ -708,37 +707,70 @@ func evalCallExpr(fitp *Interpreter, expr *ir.FuncCallExpr) (ir.Element, error) 
 	if err != nil {
 		return nil, err
 	}
-	return ToSingleElement(fitp, expr, outs)
+	switch len(outs) {
+	case 0:
+		return nil, nil
+	case 1:
+		return outs[0], nil
+	default:
+		return elements.NewTuple(expr.FuncCall().Callee.FuncType(), outs)
+	}
 }
 
-func evalArgExpr(fitp *Interpreter, expr ir.Expr) ([]ir.Element, error) {
-	el, err := evalExpr(fitp, expr)
-	if err != nil {
-		return nil, err
-	}
-	if _, isUnpack := expr.(*ir.UnpackExpr); !isUnpack {
-		return []ir.Element{el}, err
-	}
-	sl, err := elements.SliceFromElement(el)
-	if err != nil {
-		return nil, err
-	}
-	return sl.Elements(), nil
-}
-
-func evalCall(fitp *Interpreter, expr *ir.FuncCallExpr) ([]ir.Element, error) {
-	callee, err := evalCallee(fitp, expr.Callee)
-	if err != nil {
-		return nil, err
-	}
-	// Evaluate the arguments to pass to the function.
-	var args []ir.Element
-	for _, arg := range expr.Args {
-		el, err := evalArgExpr(fitp, arg)
+func evalTypeArgumentExprs(fitp *Interpreter, callee *ir.FuncValExpr) ([]ir.Element, error) {
+	genVals := callee.FuncType().GenericValues
+	tpArgs := make([]ir.Element, len(genVals))
+	for i, expr := range genVals {
+		var err error
+		tpArgs[i], err = fitp.EvalExpr(expr.Value())
 		if err != nil {
 			return nil, err
 		}
-		args = append(args, el...)
+		tp, isType := tpArgs[i].(ir.Type)
+		if !isType {
+			continue
+		}
+		tpArgs[i], err = toConcreteType(fitp.Context(), callee.Node(), fitp.Context().CurrentFrame(), tp)
+		if err != nil {
+			return nil, err
+		}
+	}
+	return tpArgs, nil
+}
+
+func evalCall(fitp *Interpreter, expr *ir.FuncCallExpr) ([]ir.Element, error) {
+	callee, args, err := evalCallee(fitp, expr.Callee)
+	if err != nil {
+		return nil, err
+	}
+	ftype := expr.Callee.FuncType()
+	var varargs []ir.Element
+	// Evaluate the arguments to pass to the function and
+	// append them after the type arguments.
+	for i, arg := range expr.Args {
+		el, err := evalExpr(fitp, arg)
+		if err != nil {
+			return nil, err
+		}
+		if tuple, isTuple := el.(*elements.Tuple); isTuple {
+			// Expanding the last argument: add all the elements and we are done.
+			varargs = append(varargs, tuple.Elements()...)
+			break
+		}
+		if _, isVarArgs := ftype.ArgIndexToParamField(i); isVarArgs {
+			// Vararg argument: add it to the list, process to the next one.
+			varargs = append(varargs, el)
+			continue
+		}
+		// Nothing special: update the list of arguments.
+		args = append(args, el)
+	}
+	if ftype.VarArgs != nil {
+		varargsSlice, err := elements.NewSlice(ftype.VarArgs.Typ, varargs)
+		if err != nil {
+			return nil, err
+		}
+		args = append(args, varargsSlice)
 	}
 	return callee.Call(fitp.env, expr, args)
 }
@@ -790,20 +822,6 @@ func set(fitp *Interpreter, tok token.Token, dest ir.Storage, value ir.Element) 
 	default:
 		return fmterr.Errorf(fitp.File().FileSet(), dest.Node(), "cannot assign %v to %T: not supported", value, destT)
 	}
-}
-
-// ToSingleElement packs multiple elements into a tuple.
-// If the slice els contains only one element, this element is returned.
-func ToSingleElement(ctx ir.Evaluator, node ir.Node, els []ir.Element) (ir.Element, error) {
-	switch len(els) {
-	case 0:
-		return nil, nil
-	case 1:
-		return els[0], nil
-	default:
-		return elements.NewTuple(els), nil
-	}
-
 }
 
 func dimsAsElements(fitp *Interpreter, expr ir.Expr, dims []int) ([]engine.NumericalElement, error) {

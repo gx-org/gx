@@ -19,20 +19,20 @@ import (
 	"unsafe"
 
 	"github.com/pkg/errors"
-	"github.com/gx-org/backend/dtype"
+	"github.com/gx-org/backend/dtypes"
 	"github.com/gx-org/backend/shape"
 	"github.com/gx-org/gx/fmt/fmtarray"
 )
 
 type (
-	arrayFactory[T dtype.GoDataType] struct{}
+	arrayFactory[T dtypes.Supported] struct{}
 
 	baseArray interface {
 		array()
 	}
 
 	// arrayT is a multi-dimensional array stored by the host or the device.
-	arrayT[T dtype.GoDataType] struct {
+	arrayT[T dtypes.Supported] struct {
 		shape   shape.Shape
 		values  []T
 		factory Factory
@@ -41,7 +41,7 @@ type (
 
 var _ baseArray = (*arrayT[int32])(nil)
 
-func toArray[T dtype.GoDataType](a Array) *arrayT[T] {
+func toArray[T dtypes.Supported](a Array) *arrayT[T] {
 	return a.base().(*arrayT[T])
 }
 
@@ -76,7 +76,7 @@ func (a *arrayT[T]) String() string {
 // Buffer returns the data of the array as a generic []byte buffer.
 func (a *arrayT[T]) Buffer() []byte {
 	ptr := unsafe.Pointer(&(a.values[0]))
-	return unsafe.Slice((*byte)(ptr), a.shape.Size()*dtype.Sizeof(a.shape.DType))
+	return unsafe.Slice((*byte)(ptr), a.shape.Size()*a.shape.DType.Size())
 }
 
 // Factory available for arrays.
@@ -120,7 +120,7 @@ func (a *arrayT[T]) reshapeArray(dims []int) arrayT[T] {
 	return arrayT[T]{
 		factory: a.factory,
 		shape: shape.Shape{
-			DType:       dtype.Generic[T](),
+			DType:       dtypes.FromGenericsType[T](),
 			AxisLengths: dims,
 		},
 		values: append([]T{}, a.values...),
@@ -145,7 +145,7 @@ func (f arrayFactory[T]) Slice(x *shape.Shape, index int) (Unary, *shape.Shape, 
 
 func (f arrayFactory[T]) Reshape(x *shape.Shape, axisLengths []int) (Unary, *shape.Shape, error) {
 	shapeOut := shape.Shape{
-		DType:       dtype.Generic[T](),
+		DType:       dtypes.FromGenericsType[T](),
 		AxisLengths: axisLengths,
 	}
 	return func(a Array) (Array, error) {
@@ -158,7 +158,7 @@ func (f arrayFactory[T]) Reshape(x *shape.Shape, axisLengths []int) (Unary, *sha
 	}, &shapeOut, nil
 }
 
-func broadcast[T dtype.GoDataType](vals []T, target int) ([]T, error) {
+func broadcast[T dtypes.Supported](vals []T, target int) ([]T, error) {
 	if len(vals) != 1 {
 		return nil, errors.Errorf("cannot broadcast more than one value")
 	}
@@ -184,7 +184,7 @@ func (f arrayFactory[T]) BroadcastInDim(targetShape *shape.Shape, broadcastAxes 
 	}, targetShape, nil
 }
 
-func (arrayFactory[T]) Concat(dt dtype.DataType, n int) (NAry, *shape.Shape, error) {
+func (arrayFactory[T]) Concat(dt dtypes.DType, n int) (NAry, *shape.Shape, error) {
 	return concat[T], &shape.Shape{
 		DType:       dt,
 		AxisLengths: []int{n},
@@ -193,7 +193,7 @@ func (arrayFactory[T]) Concat(dt dtype.DataType, n int) (NAry, *shape.Shape, err
 
 type (
 	goAlgebra interface {
-		dtype.Float | dtype.IntegerType
+		dtypes.GoFloat | dtypes.IntegerType
 	}
 
 	algebraArray[T goAlgebra] struct {
@@ -219,7 +219,7 @@ func (a *algebraArray[T]) ToFloatNumber() (*big.Float, error) {
 	return big.NewFloat(float64(val)), nil
 }
 
-type nonAlgebraArray[T dtype.NonAlgebraType] struct {
+type nonAlgebraArray[T dtypes.NonAlgebraType] struct {
 	*arrayT[T]
 }
 
@@ -238,13 +238,13 @@ func (a *nonAlgebraArray[T]) ToFloatNumber() (*big.Float, error) {
 }
 
 type bfloat16Array struct {
-	*arrayT[dtype.Bfloat16T]
+	*arrayT[dtypes.Bfloat16T]
 }
 
 var _ Array = (*bfloat16Array)(nil)
 
 func (a *bfloat16Array) newArray(b baseArray) Array {
-	return &bfloat16Array{arrayT: b.(*arrayT[dtype.Bfloat16T])}
+	return &bfloat16Array{arrayT: b.(*arrayT[dtypes.Bfloat16T])}
 }
 
 func (a *bfloat16Array) base() baseArray {

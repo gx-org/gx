@@ -18,7 +18,6 @@ import (
 	"go/ast"
 	"strings"
 
-	"github.com/pkg/errors"
 	"github.com/gx-org/gx/build/ir/irkind"
 )
 
@@ -54,11 +53,6 @@ func (m *BaseType[T]) Same(o Storage) bool {
 	return Storage(m) == o
 }
 
-// Specialise a type to a given target.
-func (*BaseType[T]) Specialise(spec Specialiser) (Type, CompEvalError, error) {
-	return nil, nil, errors.Errorf("type specialisation not supported")
-}
-
 // UnifyWith recursively unifies a type parameters with types.
 func (*BaseType[T]) UnifyWith(unifier Unifier, typ Type) bool {
 	return true
@@ -70,16 +64,16 @@ type metaType struct {
 
 func (*metaType) node() {}
 
-func (*metaType) Equal(TypeCmp, Type) (bool, CompEvalError, error) {
-	return false, nil, nil
+func (*metaType) Equal(TypeCmp, Type) (bool, error) {
+	return false, nil
 }
 
-func (*metaType) AssignableTo(TypeCmp, Type) (bool, CompEvalError, error) {
-	return false, nil, nil
+func (*metaType) AssignableTo(TypeCmp, Type) (bool, error) {
+	return false, nil
 }
 
-func (*metaType) ConvertibleTo(TypeCmp, Type) (bool, CompEvalError, error) {
-	return false, nil, nil
+func (*metaType) ConvertibleTo(TypeCmp, Type) (bool, error) {
+	return false, nil
 }
 
 func (t *metaType) Kind() irkind.Kind { return irkind.MetaType }
@@ -90,6 +84,19 @@ func (t *metaType) DefineString(*File) string {
 
 func (t *metaType) ReferString(from *File) string {
 	return t.DefineString(from)
+}
+
+// Specialise a type to a given target.
+func (t *metaType) Specialise(spec Specialiser) (Type, bool) {
+	return t, true
+}
+
+func (t *metaType) Instantiate(Fetcher, Specialiser) (Type, bool) {
+	return t, true
+}
+
+func (t *metaType) IndexForVarArgs(ErrSource, int) (Type, bool) {
+	return t, true
 }
 
 var metaTypeT = &metaType{
@@ -122,22 +129,26 @@ func (*invalidType) Same(Storage) bool {
 	return true
 }
 
-func (*invalidType) Equal(TypeCmp, Type) (bool, CompEvalError, error) {
+func (*invalidType) Equal(TypeCmp, Type) (bool, error) {
 	// If the type is invalid, an error has already been emitted.
 	// We disable any checks to avoid reporting unhelpful errors.
-	return false, nil, nil
+	return false, nil
 }
 
-func (*invalidType) AssignableTo(TypeCmp, Type) (bool, CompEvalError, error) {
+func (*invalidType) AssignableTo(TypeCmp, Type) (bool, error) {
 	return (*invalidType).Equal(nil, nil, nil)
 }
 
-func (*invalidType) assignableFrom(TypeCmp, Type) (bool, CompEvalError, error) {
+func (*invalidType) assignableFrom(TypeCmp, Type) (bool, error) {
 	return (*invalidType).Equal(nil, nil, nil)
 }
 
-func (*invalidType) ConvertibleTo(TypeCmp, Type) (bool, CompEvalError, error) {
+func (*invalidType) ConvertibleTo(TypeCmp, Type) (bool, error) {
 	return (*invalidType).Equal(nil, nil, nil)
+}
+
+func (t *invalidType) Instantiate(Fetcher, Specialiser) (Type, bool) {
+	return t, true
 }
 
 func (*invalidType) Kind() irkind.Kind { return irkind.Invalid }
@@ -157,8 +168,8 @@ func (t *invalidType) ReferString(from *File) string {
 }
 
 // Specialise a type to a given target.
-func (t *invalidType) Specialise(spec Specialiser) (Type, CompEvalError, error) {
-	return t, nil, nil
+func (t *invalidType) Specialise(spec Specialiser) (Type, bool) {
+	return t, true
 }
 
 // UnifyWith recursively unifies a type parameters with types.
@@ -166,9 +177,21 @@ func (*invalidType) UnifyWith(unifier Unifier, typ Type) bool {
 	return true
 }
 
+func (t *invalidType) IndexForVarArgs(ErrSource, int) (Type, bool) {
+	return t, true
+}
+
 type distinctType struct {
 	BaseType[ast.Expr]
 	kind irkind.Kind
+	tp   Type
+}
+
+func newDistinctType(kind irkind.Kind, tp Type) distinctType {
+	return distinctType{
+		kind: kind,
+		tp:   tp,
+	}
 }
 
 func (*distinctType) node() {}
@@ -177,19 +200,19 @@ func (t *distinctType) distinct() *distinctType {
 	return t
 }
 
-func (t *distinctType) Equal(_ TypeCmp, target Type) (bool, CompEvalError, error) {
+func (t *distinctType) Equal(_ TypeCmp, target Type) (bool, error) {
 	other, ok := target.(interface{ distinct() *distinctType })
 	if !ok {
-		return false, nil, nil
+		return false, nil
 	}
-	return t == other.distinct(), nil, nil
+	return t == other.distinct(), nil
 }
 
-func (t *distinctType) AssignableTo(tpcmp TypeCmp, target Type) (bool, CompEvalError, error) {
+func (t *distinctType) AssignableTo(tpcmp TypeCmp, target Type) (bool, error) {
 	return t.Equal(tpcmp, target)
 }
 
-func (t *distinctType) ConvertibleTo(tpcmp TypeCmp, target Type) (bool, CompEvalError, error) {
+func (t *distinctType) ConvertibleTo(tpcmp TypeCmp, target Type) (bool, error) {
 	return t.Equal(tpcmp, target)
 }
 
@@ -203,12 +226,36 @@ func (t *distinctType) ReferString(from *File) string {
 	return t.DefineString(from)
 }
 
+func (t *distinctType) Specialise(Specialiser) (Type, bool) {
+	return t.tp, true
+}
+
+func (t *distinctType) Instantiate(Fetcher, Specialiser) (Type, bool) {
+	return t.tp, true
+}
+
+func (t *distinctType) IndexForVarArgs(ErrSource, int) (Type, bool) {
+	return t.tp, true
+}
+
+var (
+	unknownT = &unknownType{}
+	keywordT = &keywordTyp{}
+	voidT    = &voidType{}
+	nilT     = &nilType{}
+)
+
+func init() {
+	unknownT.distinctType = newDistinctType(irkind.Unknown, unknownT)
+	keywordT.distinctType = newDistinctType(irkind.Func, keywordT)
+	voidT.distinctType = newDistinctType(irkind.Void, voidT)
+	nilT.distinctType = newDistinctType(irkind.Nil, nilT)
+}
+
 // unknownType is the type returned by function with no results.
 type unknownType struct {
 	distinctType
 }
-
-var unknownT = &unknownType{distinctType: distinctType{kind: irkind.Unknown}}
 
 // UnknownType returns the unknown type.
 func UnknownType() Type {
@@ -220,8 +267,6 @@ type keywordTyp struct {
 	distinctType
 }
 
-var keywordT = &keywordTyp{distinctType: distinctType{kind: irkind.Func}}
-
 func keywordType() Type {
 	return keywordT
 }
@@ -230,8 +275,6 @@ func keywordType() Type {
 type voidType struct {
 	distinctType
 }
-
-var voidT = &voidType{distinctType: distinctType{kind: irkind.Void}}
 
 // VoidType returns the void type.
 func VoidType() Type {
@@ -250,7 +293,7 @@ func PackageType() Type {
 }
 
 // TypeInclude returns if a typ is included in a type or not.
-func TypeInclude(tpcmp TypeCmp, set Type, typ Type) (bool, CompEvalError, error) {
+func TypeInclude(tpcmp TypeCmp, set Type, typ Type) (bool, error) {
 	set = simplifyType(set)
 	typ = simplifyType(typ)
 	_, isSetNamed := set.(*NamedType)
@@ -261,22 +304,22 @@ func TypeInclude(tpcmp TypeCmp, set Type, typ Type) (bool, CompEvalError, error)
 	return typeInclude(tpcmp, set, typ)
 }
 
-func typeInclude(tpcmp TypeCmp, set Type, typ Type) (bool, CompEvalError, error) {
+func typeInclude(tpcmp TypeCmp, set Type, typ Type) (bool, error) {
 	set = Underlying(set)
 	typeSet, typeSetOk := set.(*Interface)
 	if !typeSetOk {
 		return set.Equal(tpcmp, typ)
 	}
 	for _, sub := range typeSet.types {
-		in, cpErr, err := typeInclude(tpcmp, sub, typ)
-		if cpErr != nil || err != nil {
-			return false, nil, err
+		in, err := typeInclude(tpcmp, sub, typ)
+		if err != nil {
+			return false, err
 		}
 		if in {
-			return true, nil, nil
+			return true, nil
 		}
 	}
-	return false, nil, nil
+	return false, nil
 }
 
 // Source returns the source code defining the type.
@@ -338,7 +381,7 @@ func (s *Interface) ReferString(from *File) string {
 	return s.DefineString(from)
 }
 
-func (s *Interface) equalArray(tpcmp TypeCmp, target ArrayType) (bool, CompEvalError, error) {
+func (s *Interface) equalArray(tpcmp TypeCmp, target ArrayType) (bool, error) {
 	return s.Equal(tpcmp, target)
 }
 
@@ -351,34 +394,6 @@ func (s *Interface) hasCapability(f func(Type) bool) bool {
 		}
 	}
 	return len(s.types) > 0
-}
-
-// containsType returns true if the given type is present in the set.
-func (s *Interface) containsType(tpcmp TypeCmp, wantType Type) (bool, CompEvalError, error) {
-	for _, typ := range s.types {
-		eq, cpErr, err := wantType.Equal(tpcmp, typ)
-		if cpErr != nil || err != nil {
-			return false, cpErr, err
-		}
-		if eq {
-			return true, nil, nil
-		}
-	}
-	return false, nil, nil
-}
-
-// containsTypes returns true if all the given types are present in the set.
-func (s *Interface) containsTypes(tpcmp TypeCmp, types *Interface) (bool, CompEvalError, error) {
-	for _, wantType := range types.types {
-		eq, cpErr, err := s.containsType(tpcmp, wantType)
-		if cpErr != nil || err != nil {
-			return false, cpErr, err
-		}
-		if !eq {
-			return false, nil, nil
-		}
-	}
-	return true, nil, nil
 }
 
 func fieldListAtomicIR() *FieldList {
@@ -407,8 +422,8 @@ func MetaFuncType() *FuncType {
 // Returns nil if the conversion is not possible
 func ToArrayType(typ Type) ArrayType {
 	switch typT := typ.(type) {
-	case *TypeParam:
-		return ToArrayType(typT.Field.Group.Type.Val())
+	case *GenericTypeParam:
+		return ToArrayType(typT.Type())
 	case *NamedType:
 		return ToArrayType(typT.Underlying.Val())
 	case *Interface:
@@ -423,13 +438,13 @@ func ToArrayType(typ Type) ArrayType {
 }
 
 type equaler interface {
-	equal(tpcmp TypeCmp, x Type) (bool, CompEvalError, error)
+	equal(tpcmp TypeCmp, x Type) (bool, error)
 }
 
 // Equal returns true if x and y are the same type.
-func Equal(tpcmp TypeCmp, x, y Type) (bool, CompEvalError, error) {
+func Equal(tpcmp TypeCmp, x, y Type) (bool, error) {
 	if x == y {
-		return true, nil, nil
+		return true, nil
 	}
 	ey, isEqualer := y.(equaler)
 	if isEqualer {
@@ -439,15 +454,15 @@ func Equal(tpcmp TypeCmp, x, y Type) (bool, CompEvalError, error) {
 }
 
 type assigner interface {
-	assignableFrom(tpcmp TypeCmp, x Type) (bool, CompEvalError, error)
+	assignableFrom(tpcmp TypeCmp, x Type) (bool, error)
 }
 
 func simplifyType(t Type) Type {
-	typeParam, ok := t.(*TypeParam)
+	typeParam, ok := t.(*GenericTypeParam)
 	if !ok {
 		return t
 	}
-	return typeParam.Field.Group.Type.Val()
+	return typeParam.OrigField().Type()
 }
 
 // IsInvalidType returns true if a type is invalid.
@@ -459,19 +474,19 @@ func IsInvalidType(typ Type) bool {
 }
 
 // AssignableTo reports whether a value of the type can be assigned to another.
-func AssignableTo(tpcmp TypeCmp, x, y Type) (bool, CompEvalError, error) {
+func AssignableTo(tpcmp TypeCmp, x, y Type) (bool, error) {
 	if IsInvalidType(x) || IsInvalidType(y) {
 		// An error should have already been reported. We skip the check
 		// to prevent additional confusing errors.
-		return true, nil, nil
+		return true, nil
 	}
 	if x.Kind() == irkind.Tuple || y.Kind() == irkind.Tuple {
-		return true, nil, nil
+		return true, nil
 	}
 	x = simplifyType(x)
 	y = simplifyType(y)
 	if x == y {
-		return true, nil, nil
+		return true, nil
 	}
 	ey, isAssigner := y.(assigner)
 	if isAssigner {
@@ -513,4 +528,16 @@ func TypeFromStorage(x Expr, store Storage) *TypeValExpr {
 func TypeFromExpr(x Expr) *TypeValExpr {
 	store := StorageFromExpr(x)
 	return TypeFromStorage(x, store)
+}
+
+type typeSet interface {
+	buildTypeSet() []Type
+}
+
+func buildTypeSet(tp Type) []Type {
+	tset, tsetOk := tp.(typeSet)
+	if !tsetOk {
+		return []Type{tp}
+	}
+	return tset.buildTypeSet()
 }

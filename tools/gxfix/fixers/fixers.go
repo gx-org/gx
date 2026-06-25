@@ -25,7 +25,7 @@ import (
 
 	"github.com/gx-org/gx/api"
 	"github.com/gx-org/gx/build/ir"
-	gxtesting "github.com/gx-org/gx/tests/testing"
+	"github.com/gx-org/gx/internal/testing/testrtm"
 )
 
 // Fixers list all the fixers.
@@ -53,11 +53,11 @@ func commentsInFunc(file *ast.File, fun *ast.FuncDecl, prefix string) *ast.Comme
 const wantPrefix = "Want:"
 
 func runTestForResult(rtm *api.Runtime, pkg *ir.Package, funcDecl *ast.FuncDecl) (string, error) {
-	options, err := gxtesting.BuildCompileOptions(rtm, pkg)
+	options, err := testrtm.BuildCompileOptions(rtm, pkg)
 	if err != nil {
 		return "", err
 	}
-	runner, err := gxtesting.NewRunner(rtm, 0)
+	runner, err := testrtm.NewRunner(rtm, 0)
 	if err != nil {
 		return "", err
 	}
@@ -76,7 +76,7 @@ func findPackageFiles(path string, f *ast.File) (fs.FS, []string, error) {
 	if err != nil {
 		return nil, nil, err
 	}
-	names := []string{}
+	var names []string
 	for _, entry := range dirEntries {
 		if !isGXFile(entry) {
 			continue
@@ -114,7 +114,7 @@ func fixTestOutput(rtm *api.Runtime, path string, f *ast.File) (fixed bool, err 
 		if !strings.HasPrefix(funcDecl.Name.Name, "Test") {
 			continue
 		}
-		wantComment := commentsInFunc(f, funcDecl, gxtesting.WantPrefix)
+		wantComment := commentsInFunc(f, funcDecl, testrtm.WantPrefix)
 		if wantComment == nil {
 			continue
 		}

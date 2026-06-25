@@ -1,0 +1,9 @@
+package testdata
+
+import "shape"
+
+func TestGather1() [2]float32 {
+	return shape.Gather([4]float32{2, 4, 6, 8}, [2][1]int64{{1}, {2}})
+	// Want:
+	// [2]float32{4, 6}
+}

@@ -18,7 +18,7 @@ import (
 	"go/token"
 
 	"github.com/pkg/errors"
-	"github.com/gx-org/backend/dtype"
+	"github.com/gx-org/backend/dtypes"
 	"github.com/gx-org/backend/shape"
 )
 
@@ -54,7 +54,7 @@ func (boolFactory) UnaryOp(op token.Token, x *shape.Shape) (Unary, *shape.Shape,
 }
 
 // Cast an array to another
-func (boolFactory) Cast(dtype.DataType, []int) (Unary, *shape.Shape, Factory, error) {
+func (boolFactory) Cast(dtypes.DType, []int) (Unary, *shape.Shape, Factory, error) {
 	return nil, nil, nil, errors.Errorf("not implemented")
 }
 
@@ -62,7 +62,7 @@ func (boolFactory) Cast(dtype.DataType, []int) (Unary, *shape.Shape, Factory, er
 func ToBoolAtom(val bool) Array {
 	return &nonAlgebraArray[bool]{&arrayT[bool]{
 		factory: boolFactory{},
-		shape:   shape.Shape{DType: dtype.Bool},
+		shape:   shape.Shape{DType: dtypes.Bool},
 		values:  []bool{val},
 	}}
 }
@@ -73,7 +73,7 @@ func ToBoolArray(values []bool, dims []int) Array {
 		arrayT: &arrayT[bool]{
 			factory: boolFactory{},
 			shape: shape.Shape{
-				DType:       dtype.Bool,
+				DType:       dtypes.Bool,
 				AxisLengths: dims,
 			},
 			values: values,

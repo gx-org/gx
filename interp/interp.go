@@ -82,6 +82,8 @@ type Interpreter struct {
 	env *fun.CallEnv
 }
 
+var _ ir.Evaluator = (*Interpreter)(nil)
+
 func toInterp(ctx *context.Context, eng engine.Engine, funFact fun.Factory, runners fun.Runners) *Interpreter {
 	fitp := &Interpreter{}
 	fitp.env = fun.NewCallEnv(ctx, fitp, eng, funFact, runners)
@@ -96,58 +98,52 @@ var (
 	}
 )
 
-// ToCompEvalError converts an element to an error.
-// If the conversion goes wrong, then the first error (corresponding to the element) is nil,
-// and the second error indicates the conversion error.
-// In other word, the first error is an error that needs to be reported to the user,
-// the second error is an internal error in the compiler.
-func (fitp *Interpreter) ToCompEvalError(src ast.Expr, el ir.Element) (ir.CompEvalError, error) {
+// toCompEvalError converts an element to a compiler error.
+func (fitp *Interpreter) toCompEvalError(el ir.Element) (err error) {
+	defer func() {
+		if err != nil {
+			err = fmterr.Internal(err)
+		}
+	}()
 	if el == nil {
-		return nil, nil
+		return nil
 	}
 	if elements.IsNil(el) {
-		return nil, nil
-	}
-	isErr, cpErr, err := el.Type().AssignableTo(fitp, ir.ErrorType())
-	if !isErr {
-		return nil, errors.Errorf("cannot convert %T to error", el.Type().ReferString(fitp.File()))
-	}
-	if unErr := ir.UnifyErr(cpErr, err); unErr != nil {
-		return nil, unErr
+		return nil
 	}
 	methods, isSelector := el.(*fun.NamedType)
 	if !isSelector {
-		return nil, errors.Errorf("cannot convert %T to a method selector", el)
+		return errors.Errorf("cannot convert %T to a method selector", el)
 	}
 	errorMethod, err := methods.Select(selectError)
 	if err != nil {
-		return nil, err
+		return err
 	}
 	errorFun, isFun := errorMethod.(fun.Func)
 	if !isFun {
-		return nil, errors.Errorf("%T not a function", errorMethod)
+		return errors.Errorf("%T not a function", errorMethod)
 	}
 	recv := fun.NewReceiver(methods, errorFun.Func())
 	errorFun = NewRunFunc(errorFun.Func(), recv)
 	errorExpr := &ir.FuncCallExpr{
-		Callee: ir.ErrorCallee(src, errorFun.Func().FuncType()),
+		Callee: ir.ErrorCallee(errorFun.Func()),
 	}
 	outs, err := errorFun.Call(fitp.env, errorExpr, nil)
 	if err != nil {
-		return nil, fmt.Errorf("cannot call Error function: %w", err)
+		return fmt.Errorf("cannot call Error function: %w", err)
 	}
-	errElement, err := ToSingleElement(fitp, errorExpr, outs)
-	if err != nil {
-		return nil, err
+	if len(outs) != 1 {
+		return fmt.Errorf("Error function returned %d element(s), expect 1", len(outs))
 	}
+	errElement := outs[0]
 	if proxies.IsProxy(errElement) {
-		return nil, nil
+		return nil
 	}
 	str, err := elements.StringFromElement(errElement)
 	if err != nil {
-		return nil, err
+		return err
 	}
-	return ir.CompEvalError(errors.New(str)), nil
+	return ir.NewCompileError(errors.New(str))
 }
 
 // EvalExpr evaluates an expression for a given context.
@@ -165,13 +161,31 @@ func (fitp *Interpreter) Materialiser() materialise.Materialiser {
 	return fitp.Engine().ArrayOps().(materialise.Materialiser)
 }
 
-// Sub returns a new interpreter with additional values defined in the context.
-func (fitp *Interpreter) Sub(file *ir.File, vals *context.SubMap) (*Interpreter, error) {
-	var err error
+// SubInterp returns a new interpreter with additional values defined in the context.
+// If file is not nil, a new context is built for the file scope, discarding the
+// existing context.
+func (fitp *Interpreter) SubInterp(file *ir.File, vals map[string]ir.Element) (*Interpreter, error) {
 	ctx := fitp.env.Context()
+	var err error
+	if file != nil {
+		core := fitp.Context().Core()
+		ctx, err = core.NewFileContext(file)
+		fitp = toInterp(ctx, fitp.Engine(), fitp.env.FuncEval(), fitp.env.Runners())
+	}
+	if vals == nil {
+		return fitp, nil
+	}
+	ctx = ctx.Sub(vals)
 	sub := &Interpreter{}
-	sub.env = fun.NewCallEnv(ctx.Sub(vals), sub, fitp.Engine(), fitp.env.FuncEval(), fitp.env.Runners())
+	sub.env = fun.NewCallEnv(ctx, sub, fitp.Engine(), fitp.env.FuncEval(), fitp.env.Runners())
 	return sub, err
+}
+
+// Sub returns a new interpreter with additional values defined in the context.
+// If file is not nil, a new context is built for the file scope, discarding the
+// existing context.
+func (fitp *Interpreter) Sub(file *ir.File, vals map[string]ir.Element) (ir.Evaluator, error) {
+	return fitp.SubInterp(file, vals)
 }
 
 // NewFunc creates function elements from function IRs.
@@ -196,9 +210,9 @@ func (fitp *Interpreter) File() *ir.File {
 }
 
 func (fitp *Interpreter) elementFromAtom(expr ir.Expr, val values.Array) (engine.NumericalElement, error) {
-	typ, cpErr, err := concrete.Concrete(fitp.env.ExprEval(), expr.Expr(), expr.Type())
-	if unErr := ir.UnifyErr(cpErr, err); unErr != nil {
-		return nil, unErr
+	typ, err := concrete.Concrete(fitp.env.ExprEval(), expr.Expr(), expr.Type())
+	if err != nil {
+		return nil, err
 	}
 	return fitp.Engine().ArrayOps().ElementFromAtom(fitp.File(), val, expr, typ)
 }

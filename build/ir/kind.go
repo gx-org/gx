@@ -17,7 +17,7 @@ package ir
 import "github.com/gx-org/gx/build/ir/irkind"
 
 func toInterface(typ Type) (*Interface, bool) {
-	typSet, ok := Underlying(typ).(*Interface)
+	typSet, ok := Underlying(simplifyType(typ)).(*Interface)
 	return typSet, ok
 }
 
@@ -93,32 +93,6 @@ func IsSlicingOk(typ Type) bool {
 	case irkind.Interface:
 		if typSet, ok := toInterface(typ); ok {
 			return typSet.hasCapability(IsSlicingOk)
-		}
-		return false
-	}
-	return false
-}
-
-// IsAxisLengthType returns true if a type is the type for an array axis length.
-func IsAxisLengthType(typ Type) bool {
-	switch typ.Kind() {
-	case irkind.IntLen:
-		return true
-	case irkind.Slice:
-		varargType, _ := typ.(*VarArgsType)
-		var sliceType *SliceType
-		if varargType != nil {
-			sliceType = varargType.Typ
-		} else {
-			sliceType, _ = Underlying(typ).(*SliceType)
-		}
-		if sliceType == nil {
-			return false
-		}
-		return sliceType.DType.Val().Kind() == irkind.IntLen
-	case irkind.Interface:
-		if typSet, ok := toInterface(typ); ok {
-			return typSet.hasCapability(IsInteger)
 		}
 		return false
 	}

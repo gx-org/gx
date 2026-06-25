@@ -20,7 +20,7 @@ import (
 	"strings"
 
 	"github.com/pkg/errors"
-	"github.com/gx-org/backend/dtype"
+	"github.com/gx-org/backend/dtypes"
 	"github.com/gx-org/gx/build/ir/irkind"
 )
 
@@ -32,14 +32,14 @@ func computeIndex(offsets []int, p []int) int {
 	return index
 }
 
-type builder[T dtype.GoDataType] struct {
+type builder[T dtypes.Supported] struct {
 	w       *strings.Builder
 	data    []T
 	axes    []int
 	offsets []int
 }
 
-func newBuilder[T dtype.GoDataType](data []T, axes []int) (*builder[T], error) {
+func newBuilder[T dtypes.Supported](data []T, axes []int) (*builder[T], error) {
 	b := &builder[T]{
 		w:       &strings.Builder{},
 		data:    data,
@@ -179,7 +179,7 @@ func (b *builder[T]) sDataPrint(data []T, axes []int) {
 }
 
 // SDataPrint returns a string representation of the content of an array without the type.
-func SDataPrint[T dtype.GoDataType](data []T, axes []int) string {
+func SDataPrint[T dtypes.Supported](data []T, axes []int) string {
 	b, err := newBuilder[T](data, axes)
 	if err != nil {
 		return err.Error()
@@ -189,7 +189,7 @@ func SDataPrint[T dtype.GoDataType](data []T, axes []int) string {
 }
 
 // Sprint returns a string representation of an array.
-func Sprint[T dtype.GoDataType](data []T, axes []int) string {
+func Sprint[T dtypes.Supported](data []T, axes []int) string {
 	b, err := newBuilder[T](data, axes)
 	if err != nil {
 		return err.Error()

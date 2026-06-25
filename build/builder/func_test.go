@@ -185,7 +185,7 @@ func namedReturn() (a int32) {
 					Body: irh.Block(
 						&ir.AssignExprStmt{List: []*ir.AssignExpr{
 							{
-								Storage: irh.Fields("a", ir.Int32Type()).Fields()[0].Storage(),
+								Storage: irh.CloneFields(irh.Fields("a", ir.Int32Type())).Fields()[0].Storage(),
 								X:       irh.IntNumberAs(2, ir.Int32Type()),
 							},
 						}},

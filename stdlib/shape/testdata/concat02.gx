@@ -1,0 +1,14 @@
+package testdata
+
+import "shape"
+
+func TestConcat1Db() [4]float32 {
+	a := shape.Concat[0](
+		[...]float32{1, 2},
+		[...]float32{3, 4},
+	)
+	b := [...]float32{1, 2, 3, 4}
+	return a + b
+	// Want:
+	// [4]float32{2, 4, 6, 8}
+}

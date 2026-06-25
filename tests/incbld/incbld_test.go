@@ -24,7 +24,7 @@ import (
 	"github.com/gx-org/gx/build/builder"
 	"github.com/gx-org/gx/build/ir"
 	"github.com/gx-org/gx/golang/backend"
-	gxtesting "github.com/gx-org/gx/tests/testing"
+	"github.com/gx-org/gx/internal/testing/testrtm"
 	"github.com/gx-org/gx/tests"
 )
 
@@ -75,11 +75,11 @@ type cellTest struct {
 	src     string
 }
 
-func testCells(t *testing.T, cells []cellTest) (*gxtesting.Runner, *builder.IncrementalPackage) {
+func testCells(t *testing.T, cells []cellTest) (*testrtm.Runner, *builder.IncrementalPackage) {
 	t.Helper()
 	rtm := backend.New(tests.CoreBuilder())
 	pkg := rtm.Builder().NewIncrementalPackage(packageName)
-	runner, err := gxtesting.NewRunner(rtm, 0)
+	runner, err := testrtm.NewRunner(rtm, 0)
 	if err != nil {
 		t.Fatal(err)
 	}
@@ -87,7 +87,7 @@ func testCells(t *testing.T, cells []cellTest) (*gxtesting.Runner, *builder.Incr
 	return runner, pkg
 }
 
-func testCellsWithRunner(t *testing.T, cells []cellTest, pkg *builder.IncrementalPackage, runner *gxtesting.Runner) {
+func testCellsWithRunner(t *testing.T, cells []cellTest, pkg *builder.IncrementalPackage, runner *testrtm.Runner) {
 	t.Helper()
 	for id, cell := range cells {
 		err := pkg.Build(cell.src)

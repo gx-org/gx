@@ -202,12 +202,12 @@ func TestFunctionLiteralGeneric(t *testing.T) {
 	testbuild.Run(t,
 		testbuild.Decl{
 			Src: `
-func f([___M]float32) func ([___N]float32) [N___]float32
+func f[M,N []intlen]([unpack(M)]float32) func ([unpack(N)]float32) [unpack(N)]float32
 `,
 		},
 		testbuild.Decl{
 			Src: `
-func f([___M]float32) func ([M___]float32) [M___]float32
+func f[M []intlen]([unpack(M)]float32) func ([unpack(M)]float32) [unpack(M)]float32
 
 func g(x [3]float32) [3]float32 {
 	fun := f(x)
@@ -217,7 +217,7 @@ func g(x [3]float32) [3]float32 {
 		},
 		testbuild.Decl{
 			Src: `
-func f([___M]float32) func ([___M]float32) [M___]float32
+func f[M []intlen]([unpack(M)]float32) func ([unpack(M)]float32) [unpack(M)]float32
 `,
 		},
 	)
@@ -231,7 +231,7 @@ func g(int32) int32
 
 func f() int32 {
 	fn := func() int32 {
-		a := g() // ERROR not enough arguments in call to g
+		a := g() // ERROR not enough arguments in call to g (expected 1, found 0)
 		return a
 	}
 	return fn()

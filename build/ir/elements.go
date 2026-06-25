@@ -15,10 +15,15 @@
 package ir
 
 type (
-
 	// Element is a value returned by the evaluator.
 	Element interface {
 		Type() Type
+	}
+
+	// WithBareValue is an element encapsulating a bare value.
+	WithBareValue interface {
+		StorageElement
+		BareValue() Element
 	}
 
 	// PackageElement is an element encapsulating a package.
@@ -47,3 +52,11 @@ type (
 		Elements() []Element
 	}
 )
+
+// BareValue returns the value encapsulated by the element.
+func BareValue(el Element) Element {
+	if storedValue, ok := el.(WithBareValue); ok {
+		return storedValue.BareValue()
+	}
+	return el
+}

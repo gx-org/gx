@@ -1,6 +1,6 @@
 package generics
 
-func identity(a [___X]float32) [X___]float32 {
+func identity[X []intlen](a [unpack(X)]float32) [unpack(X)]float32 {
 	return a
 }
 
@@ -12,7 +12,7 @@ func TestIdentity() ([1]float32, [2]float32, [3]float32) {
 	// 2: [3]float32{1, 2, 3}
 }
 
-func add(a [___X]int32, b [X___]int32) [X___]int32 {
+func add[X []intlen](a [unpack(X)]int32, b [unpack(X)]int32) [unpack(X)]int32 {
 	return a + b
 }
 
@@ -48,7 +48,7 @@ func TestNegate() (int32, int64) {
 	// 1: int64(-3)
 }
 
-func addTwo[T ints](x [___S]T) [S___]T {
+func addTwo[T ints, S []intlen](x [unpack(S)]T) [unpack(S)]T {
 	return x + 2
 }
 

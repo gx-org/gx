@@ -22,9 +22,13 @@ import (
 	"github.com/gx-org/gx/build/builder/testbuild"
 	"github.com/gx-org/gx/build/importers"
 	"github.com/gx-org/gx/build/importers/localfs"
-	"github.com/gx-org/gx/stdlib/impl"
 	"github.com/gx-org/gx/stdlib"
 	"github.com/gx-org/gx/tests/testmacros"
+
+	// Testdata
+	math "github.com/gx-org/gx/stdlib/math/testdata"
+	num "github.com/gx-org/gx/stdlib/num/testdata"
+	shape "github.com/gx-org/gx/stdlib/shape/testdata"
 )
 
 // FS is the filesystem containing all GX test files.
@@ -76,6 +80,13 @@ var Stdlib = []string{
 	"testfiles/nn",
 	"testfiles/ellipsis",
 	"testfiles/compeval",
+}
+
+// StdlibUnits groups all the test in the standard library.
+var StdlibUnits = []testbuild.TestFactory{
+	shape.Sources,
+	math.Sources,
+	num.Sources,
 }
 
 // Units tests each file in the folder as its own package.
@@ -133,6 +144,6 @@ func CoreBuilder() *builder.Builder {
 }
 
 // StdlibBuilder returns the builder to run tests with the standard library.
-func StdlibBuilder(stdlibImpl *impl.Stdlib) *builder.Builder {
-	return NewBuilder(stdlib.Importer(stdlibImpl))
+func StdlibBuilder() *builder.Builder {
+	return NewBuilder(stdlib.Importer())
 }

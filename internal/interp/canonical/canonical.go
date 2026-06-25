@@ -126,6 +126,18 @@ func NewExpr(op token.Token, xs ...Canonical) Simplifier {
 		return add{pExpr: prefixedExpr(xs...)}
 	case token.SUB:
 		return sub{pExpr: prefixedExpr(xs...)}
+	case token.EQL:
+		return eq(xs)
+	case token.NEQ:
+		return neq(xs)
+	case token.LSS:
+		return lss(xs)
+	case token.GTR:
+		return gtr(xs)
+	case token.LEQ:
+		return leq(xs)
+	case token.GEQ:
+		return geq(xs)
 	default:
 		return unknown{tk: op, pExpr: prefixedExpr(xs...)}
 	}

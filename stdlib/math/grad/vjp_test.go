@@ -690,7 +690,7 @@ func F(x float32) float32 {
 `,
 			Want: `
 func vjpF(x float32) (float32, func(res float32) float32) {
-	fwd0, SinVJP := grad.Reverse(math.Sin)(x)
+	fwd0, SinVJP := grad.Reverse(math.Sin)[[]intlen{}](x)
 	selfVJPFunc := func(res float32) float32 {
 		bck0 := SinVJP(res)
 		return bck0
@@ -961,7 +961,7 @@ func F(x [_A]float32) [A]float32 {
 }
 `,
 			Want: `
-func vjpF(x [_A]float32) ([A]float32, func(res [A]float32) [A]float32) {
+func vjpF[A intlen](x [A]float32) ([A]float32, func(res [A]float32) [A]float32) {
 	selfVJPFunc := func(res [A]float32) [A]float32 {
 		return res
 	}
@@ -971,13 +971,13 @@ func vjpF(x [_A]float32) ([A]float32, func(res [A]float32) [A]float32) {
 		},
 		testgrad.Reverse{
 			Src: `
-func F(x [___S]float32) [S___]float32 {
+func F[S []intlen](x [unpack(S)]float32) [unpack(S)]float32 {
 	return x
 }
 `,
 			Want: `
-func vjpF(x [___S]float32) ([S___]float32, func(res [S___]float32) [S___]float32) {
-	selfVJPFunc := func(res [S___]float32) [S___]float32 {
+func vjpF[S []intlen](x [unpack(S)]float32) ([unpack(S)]float32, func(res [unpack(S)]float32) [unpack(S)]float32) {
+	selfVJPFunc := func(res [unpack(S)]float32) [unpack(S)]float32 {
 		return res
 	}
 	return x, selfVJPFunc
@@ -990,13 +990,13 @@ type floats interface {
 	float32 | float64
 }
 
-func F[T floats](x [___S]T) [S___]T {
+func F[T floats, S []intlen](x [unpack(S)]T) [unpack(S)]T {
 	return x
 }
 `,
 			Want: `
-func vjpF[T floats](x [___S]T) ([S___]T, func(res [S___]T) [S___]T) {
-	selfVJPFunc := func(res [S___]T) [S___]T {
+func vjpF[T floats, S []intlen](x [unpack(S)]T) ([unpack(S)]T, func(res [unpack(S)]T) [unpack(S)]T) {
+	selfVJPFunc := func(res [unpack(S)]T) [unpack(S)]T {
 		return res
 	}
 	return x, selfVJPFunc
@@ -1011,14 +1011,14 @@ func TestVJPDuplicatedNames(t *testing.T) {
 		declareGradPackage,
 		testgrad.Reverse{
 			Src: `
-func F(fwd0 [___S]float32) [S___]float32 {
+func F[S []intlen](fwd0 [unpack(S)]float32) [unpack(S)]float32 {
 	return 2*fwd0
 }
 `,
 			Want: `
-func vjpF(fwd0 [___S]float32) ([S___]float32, func(res [S___]float32) [S___]float32) {
+func vjpF[S []intlen](fwd0 [unpack(S)]float32) ([unpack(S)]float32, func(res [unpack(S)]float32) [unpack(S)]float32) {
 	fwd01 := 2*fwd0
-	selfVJPFunc := func(res [S___]float32) [S___]float32 {
+	selfVJPFunc := func(res [unpack(S)]float32) [unpack(S)]float32 {
 		bck0y := 2*res
 		return bck0y
 	}
@@ -1027,16 +1027,15 @@ func vjpF(fwd0 [___S]float32) ([S___]float32, func(res [S___]float32) [S___]floa
 `,
 		},
 		testgrad.Reverse{
-			Skip: true,
 			Src: `
-func F(x [___fwd0]float32) [fwd0___]float32 {
+func F[fwd0 []intlen](x [unpack(fwd0)]float32) [unpack(fwd0)]float32 {
 	return 2*x
 }
 `,
 			Want: `
-func vjpF(x [___fwd0]float32) ([fwd0___]float32, func(res [fwd0___]float32) [fwd0___]float32) {
+func vjpF[fwd0 []intlen](x [unpack(fwd0)]float32) ([unpack(fwd0)]float32, func(res [unpack(fwd0)]float32) [unpack(fwd0)]float32) {
 	fwd0_1 := 2*x
-	selfVJPFunc := func(res [fwd0___]float32) [fwd0___]float32 {
+	selfVJPFunc := func(res [unpack(fwd0)]float32) [unpack(fwd0)]float32 {
 		bck0y := 2*res
 		return bck0y
 	}
@@ -1050,14 +1049,14 @@ type floats interface {
 	float32 | float64
 }
 
-func F[fwd0 floats](x [___S]fwd0) [S___]fwd0 {
+func F[fwd0 floats, S []intlen](x [unpack(S)]fwd0) [unpack(S)]fwd0 {
 	return 2*x
 }
 `,
 			Want: `
-func vjpF[fwd0 floats](x [___S]fwd0) ([S___]fwd0, func(res [S___]fwd0) [S___]fwd0) {
+func vjpF[fwd0 floats, S []intlen](x [unpack(S)]fwd0) ([unpack(S)]fwd0, func(res [unpack(S)]fwd0) [unpack(S)]fwd0) {
 	fwd0_1 := 2*x
-	selfVJPFunc := func(res [S___]fwd0) [S___]fwd0 {
+	selfVJPFunc := func(res [unpack(S)]fwd0) [unpack(S)]fwd0 {
 		bck0y := 2*res
 		return bck0y
 	}

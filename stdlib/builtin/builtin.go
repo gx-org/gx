@@ -16,24 +16,25 @@
 package builtin
 
 import (
+	"fmt"
 	"go/ast"
 	"io/fs"
 	"path/filepath"
+	"strings"
 
 	"github.com/gx-org/gx/build/importers"
 	"github.com/gx-org/gx/build/ir"
+	"github.com/gx-org/gx/interp/elements"
 	"github.com/gx-org/gx/interp/engine"
 	"github.com/gx-org/gx/interp"
 	"github.com/gx-org/gx/interp/materialise"
-	"github.com/gx-org/gx/stdlib/impl"
 )
 
 type (
 	// BuilderParam groups all the parameters to build the IR of builtin packages.
 	BuilderParam struct {
 		Builder importers.Builder
-		Imp     *impl.Stdlib
-		FS      fs.ReadDirFS
+		FS      fs.FS
 	}
 
 	// Builder a builtin package.
@@ -52,6 +53,27 @@ type (
 		Builders []Builder
 	}
 )
+
+// NilShape is a nil value for a slice of axis length type intlen.
+var NilShape = elements.NilFromType(ir.IntLenSliceType())
+
+// ToShapeString represents elements into an array shape.
+func ToShapeString(els []ir.Element) string {
+	ss := make([]string, len(els))
+	for i, el := range els {
+		ss[i] = fmt.Sprintf("[%s]", el)
+	}
+	return strings.Join(ss, "")
+}
+
+// ToShapeResult converts elements into a slice of axis lengths and an error.
+func ToShapeResult(els ...ir.Element) ([]ir.Element, error) {
+	shape, err := elements.NewSlice(ir.IntLenSliceType(), els)
+	if err != nil {
+		return nil, err
+	}
+	return []ir.Element{shape, elements.NilError()}, nil
+}
 
 // Build a package from its description.
 func (param BuilderParam) Build(pkgBuilder PackageBuilder) (importers.Package, error) {

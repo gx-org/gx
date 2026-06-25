@@ -127,6 +127,10 @@ type fileFrame struct {
 	file   *ir.File
 }
 
+func (fr *fileFrame) String() string {
+	return fr.file.Name()
+}
+
 func (fr *packageFrame) fileFrame(core *Core, file *ir.File) (*fileFrame, error) {
 	flFrame := fr.fileToFrame[file]
 	if flFrame != nil {
@@ -151,14 +155,14 @@ func (fr *packageFrame) fileFrame(core *Core, file *ir.File) (*fileFrame, error)
 	return flFrame, errs.ToError()
 }
 
-func (flFrame *fileFrame) pushFuncFrame(ctx *Context, fn ir.Func) *blockFrame {
+func (fr *fileFrame) pushFuncFrame(ctx *Context, fn ir.Func) *blockFrame {
 	fnFrame := &functionFrame{
-		parent:   flFrame,
+		parent:   fr,
 		function: fn,
 	}
 	return ctx.pushFrame(&blockFrame{
 		baseFrame: baseFrame{
-			scope: scope.NewScope(flFrame.scope),
+			scope: scope.NewScope(fr.scope),
 		},
 		owner: fnFrame,
 	})
@@ -214,6 +218,13 @@ type blockFrame struct {
 	baseFrame
 	parent *blockFrame
 	owner  *functionFrame
+}
+
+func (fr *blockFrame) String() string {
+	if fr.owner.function == nil {
+		return fr.owner.parent.String()
+	}
+	return fr.owner.function.ShortString()
 }
 
 // PushBlockFrame pushes an empty new frame on the stack.

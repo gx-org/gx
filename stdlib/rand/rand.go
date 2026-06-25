@@ -22,9 +22,7 @@ import (
 
 	"github.com/gx-org/gx/build/ir"
 	"github.com/gx-org/gx/build/ir/irkind"
-	"github.com/gx-org/gx/interp"
 	"github.com/gx-org/gx/stdlib/builtin"
-	"github.com/gx-org/gx/stdlib/impl"
 )
 
 //go:embed *.gx
@@ -54,7 +52,7 @@ var Package = builtin.PackageBuilder{
 		builtin.ParseSource("rand.gx"),
 		builtin.ImplementBuiltin("newBootstrapGenerator", evalNewBootstrapGenerator),
 		builtin.ImplementBuiltin("bootstrapGenerator.next", evalBootstrapGeneratorNext),
-		builtin.ImplementStubFunc("Philox.Uint32", func(impl *impl.Stdlib) interp.FuncBuiltin { return impl.Rand.PhiloxUint32 }),
-		builtin.ImplementStubFunc("Philox.Uint64", func(impl *impl.Stdlib) interp.FuncBuiltin { return impl.Rand.PhiloxUint64 }),
+		builtin.ImplementBuiltin("Philox.Uint32", evalPhiloxUint32),
+		builtin.ImplementBuiltin("Philox.Uint64", evalPhiloxUint64),
 	},
 }

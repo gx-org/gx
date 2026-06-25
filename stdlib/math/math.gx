@@ -2,8 +2,10 @@
 package math
 
 import (
+	"cperrors"
 	"dtype"
 	"math/grad"
+	"shape"
 )
 
 // Mathematical constants.
@@ -47,56 +49,68 @@ const (
 )
 
 // Abs returns the absolute value of x.
-func Abs[T dtype.Num]([___S]T) [S___]T
+func Abs[T dtype.Num, S []intlen]([unpack(S)]T) [unpack(S)]T
 
 // Ceil returns the ceiling of x.
-func Ceil[T dtype.Num]([___S]T) [S___]T
+func Ceil[T dtype.Num, S []intlen]([unpack(S)]T) [unpack(S)]T
 
 // Cos returns the cosine of x.
-func Cos[T dtype.Num]([___S]T) [S___]T
+func Cos[T dtype.Num, S []intlen]([unpack(S)]T) [unpack(S)]T
 
 // Erf returns the error function of x.
-func Erf[T dtype.Num]([___S]T) [S___]T
+func Erf[T dtype.Num, S []intlen]([unpack(S)]T) [unpack(S)]T
 
 // Expm1 returns Exp(x)-1.
-func Expm1[T dtype.Num]([___S]T) [S___]T
+func Expm1[T dtype.Num, S []intlen]([unpack(S)]T) [unpack(S)]T
 
 // Exp returns the exponential of x.
 // gx:@grad.Set(Exp)
-func Exp[T dtype.Num]([___S]T) [S___]T
+func Exp[T dtype.Num, S []intlen]([unpack(S)]T) [unpack(S)]T
 
 // Floor returns the floor of x.
-func Floor[T dtype.Num]([___S]T) [S___]T
+func Floor[T dtype.Num, S []intlen]([unpack(S)]T) [unpack(S)]T
 
 // Log1p returns log(1+x).
-func Log1p[T dtype.Num]([___S]T) [S___]T
+func Log1p[T dtype.Num, S []intlen]([unpack(S)]T) [unpack(S)]T
 
 // Logistic returns 1/(1+exp(-x)).
-func Logistic[T dtype.Num]([___S]T) [S___]T
+func Logistic[T dtype.Num, S []intlen]([unpack(S)]T) [unpack(S)]T
 
-func inverse[T dtype.Num](x [___S]T) [S___]T {
+func inverse[T dtype.Num, S []intlen](x [unpack(S)]T) [unpack(S)]T {
 	return 1 / x
 }
 
 // Log returns the natural logarithm of x.
 // gx:@grad.Set(inverse)
-func Log[T dtype.Num]([___S]T) [S___]T
+func Log[T dtype.Num, S []intlen]([unpack(S)]T) [unpack(S)]T
+
+//gx:compeval
+func checkSameOrScalar(s1, s2 []intlen) ([]intlen, error)
+
+// Min returns the minimum value between two arguments.
+func Min[T dtype.Num, S1, S2 []intlen]([unpack(S1)]T, [unpack(S2)]T) [unpack(checkSameOrScalar(S1, S2))]T
+
+// Max returns the maximum value between two arguments.
+func Max[T dtype.Num, S1, S2 []intlen]([unpack(S1)]T, [unpack(S2)]T) [unpack(checkSameOrScalar(S1, S2))]T
+
+// Pow returns the first argument to the power of the second.
+func Pow[T dtype.Num, S1, S2 []intlen]([unpack(S1)]T, [unpack(S2)]T) [unpack(checkSameOrScalar(S1, S2))]T
 
 // Round returns the nearest integer of x.
-func Round[T dtype.Num]([___S]T) [S___]T
+func Round[T dtype.Num, S []intlen]([unpack(S)]T) [unpack(S)]T
 
 // Rsqrt returns 1/sqrt(x).
-func Rsqrt[T dtype.Num]([___S]T) [S___]T
+func Rsqrt[T dtype.Num, S []intlen]([unpack(S)]T) [unpack(S)]T
 
 // Sign returns the sign of x.
-func Sign[T dtype.Num]([___S]T) [S___]T
+func Sign[T dtype.Num, S []intlen]([unpack(S)]T) [unpack(S)]T
 
 // Sin returns the sine of x.
 // gx:@grad.Set(Cos)
-func Sin[T dtype.Num]([___S]T) [S___]T
+func Sin[T dtype.Num, S []intlen]([unpack(S)]T) [unpack(S)]T
 
 // Sqrt returns sqrt(x).
-func Sqrt[T dtype.Num]([___S]T) [S___]T
+func Sqrt[T dtype.Num, S []intlen]([unpack(S)]T) [unpack(S)]T
 
 // Tanh returns the hyperbolic tangent of x.
-func Tanh[T dtype.Num]([___S]T) [S___]T
+func Tanh[T dtype.Num, S []intlen]([unpack(S)]T) [unpack(S)]T

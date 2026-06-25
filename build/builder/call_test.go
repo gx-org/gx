@@ -158,7 +158,7 @@ func TestCallErrors(t *testing.T) {
 func g() (float32, float32)
 
 func f() float32 {
-	return g()() // ERROR multiple value g() in single-value context
+	return g()() // ERROR multiple values g() in single-value context
 }
 `,
 		},

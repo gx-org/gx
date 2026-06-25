@@ -20,6 +20,7 @@ import (
 	"math/big"
 	"reflect"
 
+	"github.com/pkg/errors"
 	"github.com/gx-org/gx/api/options"
 	gxfmt "github.com/gx-org/gx/base/fmt"
 	"github.com/gx-org/gx/base/ordered"
@@ -31,7 +32,6 @@ import (
 	"github.com/gx-org/gx/internal/interp/compeval"
 	"github.com/gx-org/gx/internal/interp/compeval/cpevelements"
 	"github.com/gx-org/gx/interp/context"
-	"github.com/gx-org/gx/interp/elements"
 	"github.com/gx-org/gx/interp/fun"
 	"github.com/gx-org/gx/interp"
 )
@@ -145,12 +145,24 @@ func newPackageResolveScope(pscope *pkgProcScope) (*pkgResolveScope, bool) {
 }
 
 func (s *pkgResolveScope) buildFuncProcessNode(bFile *file, store ir.Storage) (processNode, bool) {
-	fn := store.(*ir.FuncBuiltin)
-	pNode := newProcessNode[function](token.FUNC, fn.Src.Name, &importedFunc{
-		bFile: bFile,
-		fn:    fn,
-	})
-	_, ok := irBuild[*ir.FuncBuiltin](s.state.ibld, pNode)
+	var pNode processNode
+	var ok bool
+	switch storeT := store.(type) {
+	case *ir.FuncBuiltin:
+		pNode = newProcessNode[function](token.FUNC, storeT.Src.Name, &importedFunc{
+			bFile: bFile,
+			fn:    storeT,
+		})
+		_, ok = irBuild[*ir.FuncBuiltin](s.state.ibld, pNode)
+	case *ir.MacroKeyword:
+		pNode = newProcessNode[*builtinMacroKeyword](token.FUNC, storeT.Src.Name, &builtinMacroKeyword{
+			bFile: bFile,
+			fn:    storeT,
+		})
+		_, ok = irBuild[*ir.MacroKeyword](s.state.ibld, pNode)
+	default:
+		return nil, s.Err().Append(fmterr.Internal(errors.Errorf("cannot register %s: %T not supported", store.NameDef().Name, storeT)))
+	}
 	return pNode, ok
 }
 
@@ -298,7 +310,6 @@ type (
 	funcResolveScope struct {
 		resolveScope
 		fType *ir.FuncType
-		nspc  *scope.RWScope[processNode]
 
 		bodyCE *compileEvaluator
 		names  map[string]ir.Element
@@ -311,23 +322,9 @@ func compEvalForFuncType(rscope resolveScope, src ast.Node, ftype *ir.FuncType) 
 		return nil, false
 	}
 	// Define all type parameters as generic.
-	typeParams := make(map[string]ir.Element)
-	for _, tParam := range ftype.TypeParams.Fields() {
-		if !ir.ValidIdent(tParam.Name) {
-			continue
-		}
-		name := tParam.Name.Name
-		if ir.IsAxisSpecType(tParam.Type()) {
-			storeAt := elements.NewNodeAt[ir.Storage](rscope.fileScope().irFile(), tParam.Storage())
-			typeParams[name] = cpevelements.NewProxy(storeAt)
-		} else {
-			typeParams[name] = &ir.TypeParam{Field: tParam}
-		}
-	}
-	funcVars := context.NewSubMap(typeParams)
-	// Re-define type parameters that have been resolved.
-	for _, axLen := range ftype.AxisLengths {
-		funcVars.Define(axLen.Axis.Src, axLen.Value)
+	sigMap, ok := evalGenericValues(compEval, ftype)
+	if !ok {
+		return nil, false
 	}
 	// Define all arguments.
 	irFile := rscope.fileScope().irFile()
@@ -344,9 +341,9 @@ func compEvalForFuncType(rscope resolveScope, src ast.Node, ftype *ir.FuncType) 
 		if err != nil {
 			return nil, rscope.Err().AppendAt(src, err)
 		}
-		funcVars.Define(field.Name, cpevelements.NewStoredValue(irFile, storage, el))
+		context.Define(sigMap, field.Name, cpevelements.NewStoredValue(irFile, storage, el))
 	}
-	return compEval.sub(nil, funcVars)
+	return compEval.sub(nil, sigMap)
 }
 
 func newFuncScope(rscope resolveScope, fType *ir.FuncType) (*funcResolveScope, bool) {
@@ -375,18 +372,14 @@ func (s *funcResolveScope) nspace() *scope.RWScope[ir.Element] {
 
 func (s *funcResolveScope) setFuncValue(fn ir.PkgFunc) bool {
 	var ok bool
-	s.bodyCE, ok = s.bodyCE.sub(nil, context.NewSubMap(map[string]ir.Element{
+	s.bodyCE, ok = s.bodyCE.sub(nil, map[string]ir.Element{
 		fn.Name(): s.resolveScope.fileScope().newFuncForEval(fn, nil),
-	}))
+	})
 	return ok
 }
 
 func (s *funcResolveScope) compEval() (*compileEvaluator, bool) {
-	return s.bodyCE.sub(nil, context.NewSubMap(s.names))
-}
-
-func (s *funcResolveScope) String() string {
-	return s.nspc.String()
+	return s.bodyCE.sub(nil, s.names)
 }
 
 type (
@@ -455,6 +448,10 @@ func (s *ephemeralResolveScope) nspace() *scope.RWScope[ir.Element] {
 
 func (s *ephemeralResolveScope) compEval() (*compileEvaluator, bool) {
 	return s.ce, true
+}
+
+func (s *ephemeralResolveScope) String() string {
+	return "ephemeralResolveScope: \n" + s.ce.String()
 }
 
 type requireCompEval struct {
@@ -669,8 +666,8 @@ type (
 	defineLocalF     func(s resolveScope, storage ir.Storage) bool
 	defineLocalScope struct {
 		localScope
-		def     defineLocalF
-		defAxis defineLocalF
+		ftype *ir.FuncType
+		def   defineLocalF
 	}
 )
 
@@ -679,21 +676,14 @@ func toDefineScope(scope localScope) (*defineLocalScope, bool) {
 	if ok {
 		return dScope, true
 	}
-	return newDefineScope(scope, nil, nil), true
+	return newDefineScope(scope, nil), true
 }
 
-func newDefineScope(scope localScope, def defineLocalF, defAxis defineLocalF) *defineLocalScope {
+func newDefineScope(scope localScope, def defineLocalF) *defineLocalScope {
 	if scope == nil {
 		panic("nil scope")
 	}
-	return &defineLocalScope{localScope: scope, def: def, defAxis: defAxis}
-}
-
-func (s *defineLocalScope) defineAxis(storage *ir.AxisStmt) {
-	if s.defAxis == nil {
-		return
-	}
-	s.defAxis(s, storage)
+	return &defineLocalScope{localScope: scope, def: def}
 }
 
 func (s *defineLocalScope) define(storage ir.Storage) {

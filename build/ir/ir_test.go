@@ -40,7 +40,7 @@ func names(vals []*ast.Ident) []string {
 
 type (
 	rankFunc func() ir.ArrayRank
-	typeFunc func(ir.Type, ir.TypeCmp, ir.Type) (bool, ir.CompEvalError, error)
+	typeFunc func(ir.Type, ir.TypeCmp, ir.Type) (bool, error)
 )
 
 var (
@@ -87,7 +87,8 @@ var (
 	}
 	axisGroupRankFunc = func() ir.ArrayRank {
 		symbolicAxisNames["M"] = true
-		return newRank(irhelper.AxisGroup("M").AsExpr())
+		m := irhelper.AxisGroup("M")
+		return newRank(irhelper.Ident(m.OrigField().Storage()))
 	}
 
 	exampleRanks = []rankFunc{
@@ -210,14 +211,7 @@ func (*fetcherTesting) IsDefined(string) bool {
 	return false
 }
 
-func (f *fetcherTesting) Sub(*ir.File, map[string]ir.Element) (ir.Fetcher, error) {
-	panic("not implemented")
-}
-
-func (f *fetcherTesting) ToCompEvalError(src ast.Expr, el ir.Element) (ir.CompEvalError, error) {
-	if el == nil {
-		return nil, nil
-	}
+func (f *fetcherTesting) Sub(*ir.File, map[string]ir.Element) (ir.Evaluator, error) {
 	panic("not implemented")
 }
 
@@ -268,12 +262,9 @@ func testTypeMatrix(t *testing.T, a, b []ir.Type, f typeFunc) string {
 	for _, typeA := range a {
 		fmt.Fprintf(&result, "%*s: ", maxLen, ir.Stringer(typeA))
 		for _, typeB := range b {
-			ok, cpErr, err := f(typeA, fetcher, typeB)
+			ok, err := f(typeA, fetcher, typeB)
 			if err != nil {
 				t.Error(err)
-			}
-			if cpErr != nil {
-				t.Error(cpErr)
 			}
 			if ok {
 				result.WriteRune('X')
@@ -395,22 +386,16 @@ func TestArrayAtomicEqual(t *testing.T) {
 		t.Run(testCase.ranker().SourceString(nil), func(t *testing.T) {
 			for _, typ := range primitiveTypes {
 				arrayType := ir.NewArrayType(&ast.ArrayType{}, typ, testCase.ranker())
-				equal, cpErr, err := arrayType.Equal(fetcher, typ)
+				equal, err := arrayType.Equal(fetcher, typ)
 				if err != nil {
 					t.Error(err)
-				}
-				if cpErr != nil {
-					t.Error(cpErr)
 				}
 				if equal != testCase.equal {
 					t.Errorf("Expected %s.Equal(%s) = %v, got %v", arrayType, typ, testCase.equal, equal)
 				}
 
-				equal, cpErr, err = typ.Equal(fetcher, arrayType)
+				equal, err = typ.Equal(fetcher, arrayType)
 				if err != nil {
-					t.Error(err)
-				}
-				if cpErr != nil {
 					t.Error(err)
 				}
 				if equal != testCase.equal {
@@ -426,35 +411,35 @@ func TestNamedTypes(t *testing.T) {
 		// Named types define a new type that is distinct from the underlying type.
 		namedType := makeNamedType(typ)
 
-		if eq, cpErr, err := namedType.Equal(nil, namedType); !eq || cpErr != nil || err != nil {
-			t.Errorf("Expected %s.Equal(%s) = (true, nil); got (%v, %v, %v)", namedType.Name(), namedType.Name(), eq, cpErr, err)
+		if eq, err := namedType.Equal(nil, namedType); !eq || err != nil {
+			t.Errorf("Expected %s.Equal(%s) = (true, nil); got (%v, %v)", namedType.Name(), namedType.Name(), eq, err)
 		}
-		if eq, cpErr, err := namedType.Equal(nil, typ); eq || cpErr != nil || err != nil {
-			t.Errorf("Expected %s.Equal(%s) = (false, nil); got (%v, %v, %v)", namedType.Name(), typ, eq, cpErr, err)
+		if eq, err := namedType.Equal(nil, typ); eq || err != nil {
+			t.Errorf("Expected %s.Equal(%s) = (false, nil); got (%v, %v)", namedType.Name(), typ, eq, err)
 		}
-		if eq, cpErr, err := typ.Equal(nil, namedType); eq || cpErr != nil || err != nil {
-			t.Errorf("Expected %s.Equal(%s) = (false, nil); got (%v, %v, %v)", typ, namedType.Name(), eq, cpErr, err)
+		if eq, err := typ.Equal(nil, namedType); eq || err != nil {
+			t.Errorf("Expected %s.Equal(%s) = (false, nil); got (%v, %v)", typ, namedType.Name(), eq, err)
 		}
 
-		if eq, cpErr, err := namedType.AssignableTo(nil, namedType); !eq || cpErr != nil || err != nil {
-			t.Errorf("Expected %s.AssignableTo(%s) = (true, nil); got (%v, %v, %v)", namedType.Name(), namedType.Name(), eq, cpErr, err)
+		if eq, err := namedType.AssignableTo(nil, namedType); !eq || err != nil {
+			t.Errorf("Expected %s.AssignableTo(%s) = (true, nil); got (%v, %v)", namedType.Name(), namedType.Name(), eq, err)
 		}
-		if eq, cpErr, err := namedType.AssignableTo(nil, typ); eq || cpErr != nil || err != nil {
-			t.Errorf("Expected %s.AssignableTo(%s) = (false, nil); got (%v, %v, %v)", namedType.Name(), typ, eq, cpErr, err)
+		if eq, err := namedType.AssignableTo(nil, typ); eq || err != nil {
+			t.Errorf("Expected %s.AssignableTo(%s) = (false, nil); got (%v, %v)", namedType.Name(), typ, eq, err)
 		}
-		if eq, cpErr, err := typ.AssignableTo(nil, namedType); eq || cpErr != nil || err != nil {
-			t.Errorf("Expected %s.AssignableTo(%s) = (false, nil); got (%v, %v, %v)", typ, namedType.Name(), eq, cpErr, err)
+		if eq, err := typ.AssignableTo(nil, namedType); eq || err != nil {
+			t.Errorf("Expected %s.AssignableTo(%s) = (false, nil); got (%v, %v)", typ, namedType.Name(), eq, err)
 		}
 
 		// Named types are convertible to themselves, plus their exact underlying type and vice-versa.
-		if eq, cpErr, err := namedType.ConvertibleTo(nil, namedType); !eq || cpErr != nil || err != nil {
-			t.Errorf("Expected %s.ConvertibleTo(%s) = (true, nil); got (%v, %v, %v)", namedType.Name(), namedType.Name(), eq, cpErr, err)
+		if eq, err := namedType.ConvertibleTo(nil, namedType); !eq || err != nil {
+			t.Errorf("Expected %s.ConvertibleTo(%s) = (true, nil); got (%v, %v)", namedType.Name(), namedType.Name(), eq, err)
 		}
-		if eq, cpErr, err := namedType.ConvertibleTo(nil, typ); !eq || cpErr != nil || err != nil {
-			t.Errorf("Expected %s.ConvertibleTo(%s) = (true, nil); got (%v, %v, %v)", namedType.Name(), typ, eq, cpErr, err)
+		if eq, err := namedType.ConvertibleTo(nil, typ); !eq || err != nil {
+			t.Errorf("Expected %s.ConvertibleTo(%s) = (true, nil); got (%v, %v)", namedType.Name(), typ, eq, err)
 		}
-		if eq, cpErr, err := typ.ConvertibleTo(nil, namedType); !eq || cpErr != nil || err != nil {
-			t.Errorf("Expected %s.ConvertibleTo(%s) = (true, nil); got (%v, %v, %v)", typ, namedType.Name(), eq, cpErr, err)
+		if eq, err := typ.ConvertibleTo(nil, namedType); !eq || err != nil {
+			t.Errorf("Expected %s.ConvertibleTo(%s) = (true, nil); got (%v, %v)", typ, namedType.Name(), eq, err)
 		}
 	}
 }
@@ -480,18 +465,16 @@ func testRankMatrix(t *testing.T, ranks []rankFunc, f typeFunc) string {
 	var result strings.Builder
 	result.WriteString("---\n")
 	for _, rankA := range ranks {
-		fmt.Fprintf(&result, "%*s: ", maxLen, ir.String(rankA()))
+		srcA := ir.String(rankA())
+		fmt.Fprintf(&result, "%*s: ", maxLen, srcA)
 		for _, rankB := range ranks {
 			ok := true
 			for _, typ := range primitiveTypes {
 				typeA := ir.NewArrayType(&ast.ArrayType{}, typ, rankA())
 				typeB := ir.NewArrayType(&ast.ArrayType{}, typ, rankB())
-				typeOk, cpErr, err := f(typeA, fetcher, typeB)
+				typeOk, err := f(typeA, fetcher, typeB)
 				if err != nil {
 					t.Errorf("error with types %s and %s:\n%+v", typeA.ReferString(nil), typeB.ReferString(nil), err)
-				}
-				if cpErr != nil {
-					t.Errorf("compeval error with types %s and %s:\n%+v", typeA.ReferString(nil), typeB.ReferString(nil), cpErr)
 				}
 				ok = ok && typeOk
 			}
@@ -516,7 +499,7 @@ func TestArrayRanksEqual(t *testing.T) {
  [a+a]:      X   
  [a*a]:       X  
    [a]:        X 
-[M___]:         X
+   [M]:         X
 `
 
 	matrix := testRankMatrix(t, exampleRanks, ir.Type.Equal)
@@ -535,7 +518,7 @@ func TestArrayRanksAssignableTo(t *testing.T) {
  [a+a]:      X   
  [a*a]:       X  
    [a]:        X 
-[M___]:         X
+   [M]:         X
 `
 
 	matrix := testRankMatrix(t, exampleRanks, ir.Type.AssignableTo)
@@ -554,7 +537,7 @@ func TestArrayRanksConvertibleTo(t *testing.T) {
  [a+a]:      X   
  [a*a]:     X X  
    [a]:        X 
-[M___]:         X
+   [M]:         X
 `
 	matrix := testRankMatrix(t, exampleRanks, ir.Type.ConvertibleTo)
 	if matrix != want {
@@ -593,7 +576,7 @@ interface { int32|int64|uint32|uint64 }:     X
 
 func TestTypeSetAssignableTo(t *testing.T) {
 	const want = (`---
-                                    any: XXXXX
+                                    any: X    
                      interface { bool }: XX   
               interface { int32|int64 }: X X X
             interface { uint32|uint64 }: X  XX

@@ -21,10 +21,10 @@ import (
 
 type typeParam struct {
 	src elements.ExprAt
-	typ *ir.TypeParam
+	typ *ir.GenericTypeParam
 }
 
-func newTypeParam(src elements.ExprAt, typ *ir.TypeParam) ir.Element {
+func newTypeParam(src elements.ExprAt, typ *ir.GenericTypeParam) ir.Element {
 	return &typeParam{src: src, typ: typ}
 }
 

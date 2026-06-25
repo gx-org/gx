@@ -91,6 +91,59 @@ func (n *indexExpr) checkIndexBounds(rscope resolveScope, axLen ir.AxisLengths, 
 	return true
 }
 
+func buildGenericParams(tparams []*ir.Field, num int) []ir.GenericParam {
+	genFields := make([]ir.GenericParam, num)
+	for i := range num {
+		tparamField := tparams[i]
+		if ir.IsAxisSpecType(tparamField.Type()) {
+			genFields[i] = ir.NewGenericNonTypeParam(tparamField)
+		} else {
+			genFields[i] = ir.NewGenericTypeParam(tparamField)
+		}
+	}
+	return genFields
+}
+
+func specializeFuncType(rscope resolveScope, x ir.Expr, indices []ir.Expr, fun *ir.FuncValExpr) (ir.Expr, bool) {
+	ftype := fun.FuncType()
+	if ftype == nil {
+		// This is a builtin function with the type built later.
+		// That should not be specialised by the user.
+		return x, rscope.Err().Appendf(x.Node(), "builtin function does not support type arguments")
+	}
+	gotN, wantN := len(indices), ftype.TypeParams.Len()
+	if gotN > wantN {
+		return x, rscope.Err().Appendf(x.Node(), "got %d type arguments but want %d", gotN, wantN)
+	}
+	genParams := buildGenericParams(ftype.TypeParams.Fields(), len(indices))
+	compEval, compEvalOk := compEvalForFuncType(rscope, x.Node(), ftype)
+	if !compEvalOk {
+		return x, false
+	}
+	genValues := append([]ir.GenericValue{}, ftype.GenericValues...)
+	ok := true
+	for i, gParam := range genParams {
+		numberOk := true
+		if !gParam.IsTypeParam() && irkind.IsNumber(indices[i].Type().Kind()) {
+			indices[i], numberOk = castNilAndNumber(rscope, indices[i], gParam.Type())
+		}
+		var assignOk bool
+		genValues[gParam.OrigField().Pos], assignOk = gParam.Assign(compEval, indices[i])
+		ok = ok && assignOk && numberOk
+	}
+	if !ok {
+		return x, false
+	}
+	for i, indexExpr := range indices {
+		var ok bool
+		indices[i], ok = ir.CompEvalExprSingle(compEval, indexExpr.Expr(), indexExpr)
+		if !ok {
+			return x, false
+		}
+	}
+	return generics.SpecialiseParams(compEval, x, fun, genValues)
+}
+
 func specializeFunc(rscope resolveScope, x ir.Expr, indices []ir.Expr) (ir.Expr, bool) {
 	var fun *ir.FuncValExpr
 	switch xT := x.(type) {
@@ -105,18 +158,12 @@ func specializeFunc(rscope resolveScope, x ir.Expr, indices []ir.Expr) (ir.Expr,
 		if !ok {
 			return funcError(rscope, x)
 		}
+	case *ir.FuncValExpr:
+		fun = xT
 	default:
 		return invalidExpr(), rscope.Err().AppendInternalf(x.Node(), "cannot specialise function call %T: not supported", x)
 	}
-	compEval, compEvalOk := compEvalForFuncType(rscope, x.Node(), fun.FuncType())
-	if !compEvalOk {
-		return x, false
-	}
-	specFunType, ok := generics.Specialise(compEval, x, fun, indices)
-	if !ok {
-		return x, false
-	}
-	return specFunType, ok
+	return specializeFuncType(rscope, x, indices, fun)
 }
 
 func (n *indexExpr) buildExpr(rscope resolveScope) (ir.Expr, bool) {
@@ -130,6 +177,9 @@ func (n *indexExpr) buildExpr(rscope resolveScope) (ir.Expr, bool) {
 		return specializeFunc(rscope, x, []ir.Expr{idx})
 	}
 	ext := &ir.IndexExpr{Src: n.src, X: x, Index: idx, Typ: ir.InvalidType()}
+	if xType.Kind() == irkind.Invalid {
+		return ext, false
+	}
 	if !ir.IsSlicingOk(xType) {
 		from := rscope.fileScope().irFile()
 		return ext, rscope.Err().Appendf(n.source(), "cannot index %s (type: %s)", ext.X.SourceString(from), xType.ReferString(from))

@@ -1,0 +1,9 @@
+package testdata
+
+import "num"
+
+func TestReduceMax1() [4]float64 {
+	return num.ReduceMax[[]intidx{}]([4]float64{-1, 0, 2, -4})
+	// Want:
+	// [4]float64{-1, 0, 2, -4}
+}

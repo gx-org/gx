@@ -26,8 +26,8 @@ import (
 	"github.com/pkg/errors"
 	"github.com/gx-org/gx/build/importers"
 	"github.com/gx-org/gx/build/ir"
+	"github.com/gx-org/gx/internal/base/cast"
 	"github.com/gx-org/gx/interp"
-	"github.com/gx-org/gx/stdlib/impl"
 )
 
 type baseBuilder struct {
@@ -49,8 +49,12 @@ type sourceParser struct {
 	names []string
 }
 
-func topLevelNames(fs fs.ReadDirFS, pkgPath string) ([]string, error) {
-	entries, err := fs.ReadDir(pkgPath)
+func topLevelNames(vfs fs.FS, pkgPath string) ([]string, error) {
+	vfsDir, err := cast.To[fs.ReadDirFS](vfs)
+	if err != nil {
+		return nil, fmt.Errorf("cannot infer GX package file: %v", err)
+	}
+	entries, err := vfsDir.ReadDir(pkgPath)
 	if err != nil {
 		return nil, fmt.Errorf("cannot read GX files directory: %w", err)
 	}
@@ -93,7 +97,7 @@ func ParseSource(names ...string) Builder {
 
 // FuncBuilder builds a function for a package.
 type FuncBuilder interface {
-	BuildFuncIR(*impl.Stdlib, *ir.Package) (*ir.FuncBuiltin, error)
+	BuildFuncIR(*ir.Package) (*ir.FuncBuiltin, error)
 }
 
 func funcName(f any) string {
@@ -108,7 +112,7 @@ func funcName(f any) string {
 func BuildFunc(f FuncBuilder) Builder {
 	buildFunc := func(param *BuilderParam, pkg importers.FilePackage) error {
 		irPkg := pkg.IR()
-		fn, err := f.BuildFuncIR(param.Imp, irPkg)
+		fn, err := f.BuildFuncIR(irPkg)
 		if err != nil {
 			return err
 		}
@@ -171,7 +175,7 @@ func findFunc(pkg *ir.Package, name string) (*ir.FuncBuiltin, error) {
 
 // ImplementStubFunc replaces a function declaration with a stdlib-provided implementation, while
 // keeping the function's declared type.
-func ImplementStubFunc(name string, slotFn func(impl *impl.Stdlib) interp.FuncBuiltin) Builder {
+func ImplementStubFunc(name string, slotFn func() interp.FuncBuiltin) Builder {
 	return baseBuilder{
 		name: name,
 		build: func(param *BuilderParam, pkg importers.FilePackage) error {
@@ -182,7 +186,7 @@ func ImplementStubFunc(name string, slotFn func(impl *impl.Stdlib) interp.FuncBu
 			if stub == nil {
 				return errors.Errorf("failed to replace function stub %q: builtin function declaration not found", name)
 			}
-			stub.Impl = &stubFunc{name: name, ftype: stub.FuncType(), impl: slotFn(param.Imp)}
+			stub.Impl = &stubFunc{name: name, ftype: stub.FuncType(), impl: slotFn()}
 			return nil
 		},
 	}
@@ -190,49 +194,14 @@ func ImplementStubFunc(name string, slotFn func(impl *impl.Stdlib) interp.FuncBu
 
 // ImplementBuiltin provides the implementation of a builtin function.
 func ImplementBuiltin(name string, fn interp.FuncBuiltin) Builder {
-	return ImplementStubFunc(name, func(*impl.Stdlib) interp.FuncBuiltin {
+	return ImplementStubFunc(name, func() interp.FuncBuiltin {
 		return fn
 	})
 }
 
-type graphFunc struct {
-	ftype *ir.FuncType
-	impl  interp.FuncBuiltin
-}
-
-var _ ir.FuncImpl = (*stubFunc)(nil)
-
-// BuildFuncType builds the type of a function given how it is called.
-func (s *graphFunc) BuildFuncType(fetcher ir.Fetcher, call *ir.FuncCallExpr) (*ir.FuncType, error) {
-	return s.ftype, nil
-}
-
-// Implementation of the function, provided by the backend.
-func (s *graphFunc) Implementation() any {
-	return s.impl
-}
-
-// ImplementGraphFunc sets the implementation in a function declaration.
-// The function declared type does not change.
-func ImplementGraphFunc(name string, slotFn interp.FuncBuiltin) Builder {
-	return baseBuilder{
-		name: name,
-		build: func(param *BuilderParam, pkg importers.FilePackage) error {
-			for _, fn := range pkg.IR().Decls.Funcs {
-				if fn.Name() == name {
-					stub := fn.(*ir.FuncBuiltin)
-					stub.Impl = &stubFunc{ftype: fn.FuncType(), impl: slotFn}
-					return nil
-				}
-			}
-			return fmt.Errorf("cannot set function implementation: cannot find function %q in package %s", name, pkg.IR().Name)
-		},
-	}
-}
-
 // MethodBuilder builds a method for a package given its named type.
 type MethodBuilder interface {
-	BuildMethodIR(*impl.Stdlib, importers.Package, *ir.NamedType) (*ir.FuncBuiltin, error)
+	BuildMethodIR(importers.Package, *ir.NamedType) (*ir.FuncBuiltin, error)
 }
 
 // BuildMethod builds a method for a named type in a package.
@@ -249,7 +218,7 @@ func BuildMethod(name string, f MethodBuilder) Builder {
 		if namedType == nil {
 			return errors.Errorf("type %s undefined", name)
 		}
-		fn, err := f.BuildMethodIR(param.Imp, pkg, namedType)
+		fn, err := f.BuildMethodIR(pkg, namedType)
 		if err != nil {
 			return err
 		}
@@ -273,14 +242,14 @@ func BuildMethod(name string, f MethodBuilder) Builder {
 
 // TypeBuilder builds a type for a package.
 type TypeBuilder interface {
-	BuildNamedType(*impl.Stdlib, *ir.Package) (*ir.NamedType, error)
+	BuildNamedType(*ir.Package) (*ir.NamedType, error)
 }
 
 // BuildType builds a function in a package.
 func BuildType(f TypeBuilder) Builder {
 	buildType := func(param *BuilderParam, pkg importers.FilePackage) error {
 		irPkg := pkg.IR()
-		tp, err := f.BuildNamedType(param.Imp, irPkg)
+		tp, err := f.BuildNamedType(irPkg)
 		if err != nil {
 			return err
 		}

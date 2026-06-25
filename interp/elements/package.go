@@ -83,3 +83,7 @@ func (imp *Import) Select(expr *ir.SelectorExpr) (ir.Element, error) {
 	}
 	return el, nil
 }
+
+func (imp *Import) String() string {
+	return imp.pkg.pkg.Path()
+}

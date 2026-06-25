@@ -34,7 +34,7 @@ import (
 
 // InitBuiltins initializes the builtins.
 func (itp *Base) InitBuiltins(scope *scope.RWScope[ir.Element]) error {
-	nilStorage := builtins.NilStorage()
+	nilStorage := elements.NilStorage()
 	scope.Define(nilStorage.NameDef().Name, nilStorage)
 	if err := itp.defineBoolConstant(scope, ir.FalseStorage()); err != nil {
 		return err
@@ -72,6 +72,17 @@ func (itp *Base) InitBuiltins(scope *scope.RWScope[ir.Element]) error {
 		ir.IntIndexType(),
 	} {
 		scope.Define(tp.ReferString(nil), tp)
+	}
+	for _, mc := range []builtins.BuiltinMacro{
+		builtins.VarArgsIndex(),
+		builtins.Unpack(),
+	} {
+		scope.Define(mc.Name(), &ir.MacroKeyword{
+			MetaCore: ir.MetaCore{
+				Src: &ast.FuncDecl{Name: &ast.Ident{Name: mc.Name()}},
+			},
+			BuildSynthetic: mc.Impl(),
+		})
 	}
 	return nil
 }
@@ -136,7 +147,11 @@ func appendImpl(env engine.Env, call *ir.FuncCallExpr, recv ir.Element, args []i
 	if !ok {
 		return nil, errors.Errorf("cannot cast %T to %s", args[0], reflect.TypeFor[engine.Slice]())
 	}
-	return []ir.Element{slice.Append(args[1:])}, nil
+	withElts, err := elements.ToWithElements(args[1])
+	if err != nil {
+		return nil, err
+	}
+	return []ir.Element{slice.Append(withElts.Elements())}, nil
 }
 
 func axlengthsImpl(env engine.Env, call *ir.FuncCallExpr, recv ir.Element, args []ir.Element) ([]ir.Element, error) {
@@ -159,7 +174,7 @@ func lenImpl(env engine.Env, call *ir.FuncCallExpr, recv ir.Element, args []ir.E
 	}
 	l, err := withLen.Length(env.ExprEval())
 	if err != nil {
-		return nil, fmt.Errorf("cannot evaluate %s: %w", call.SourceString(env.File()), err)
+		return nil, err
 	}
 	i64Val := int64(l)
 	val, err := values.AtomIntegerValue(ir.Int64Type(), i64Val)

@@ -15,7 +15,10 @@
 // Package togo provides a mechanism to convert GX values to Go values.
 package togo
 
-import "github.com/gx-org/gx/build/ir"
+import (
+	"github.com/gx-org/gx/build/ir"
+	"github.com/gx-org/gx/internal/base/cast"
+)
 
 // WithGoValue is an element able to convert its value into an equivalent Go value.
 type WithGoValue interface {
@@ -27,22 +30,18 @@ type WithGoValue interface {
 // Value converts an element to its Go value.
 // If the conversion is not possible, returns the input element.
 func Value(el ir.Element) (any, error) {
-	togo, ok := el.(WithGoValue)
-	if !ok {
-		return togo, nil
+	togo, err := cast.To[WithGoValue](el)
+	if err != nil {
+		return nil, err
 	}
 	return togo.GoValue()
 }
 
-// Values converts a slice of an element to a slice of Go values.
-func Values(els []ir.Element) ([]any, error) {
-	vals := make([]any, len(els))
-	for i, el := range els {
-		var err error
-		vals[i], err = Value(el)
-		if err != nil {
-			return nil, err
-		}
+// ValueT converts an element to a specific Go value.
+func ValueT[T any](el ir.Element) (valT T, err error) {
+	valAny, err := Value(el)
+	if err != nil {
+		return
 	}
-	return vals, nil
+	return cast.To[T](valAny)
 }

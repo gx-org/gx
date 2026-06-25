@@ -203,18 +203,17 @@ func (s *RWScope[V]) localString() string {
 }
 
 func scopeString[V any](local any, parent Scope[V]) string {
-	parentS := "root"
+	parentS := "*"
 	if parent != nil {
-		if rws, ok := parent.(*RWScope[V]); ok {
-			parentS = rws.localString()
-		} else {
-			parentS = fmt.Sprint(parent)
-		}
+		parentS = fmt.Sprint(parent)
 	}
 	return fmt.Sprintf("%s\n-- %p --\n%v\n", parentS, local, local)
 }
 
 // String representation of the scope.
 func (s *RWScope[V]) String() string {
+	if s == nil {
+		return "<nil>"
+	}
 	return scopeString(s.local, s.parent)
 }

@@ -78,7 +78,7 @@ func NewBuilder() (importers.Builder, error) {
 		return nil, err
 	}
 	return builder.New(
-		stdlib.Importer(nil),
+		stdlib.Importer(),
 		importer,
 	), nil
 }

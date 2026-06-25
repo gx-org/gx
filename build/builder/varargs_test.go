@@ -77,16 +77,6 @@ func g() int32 {
 		},
 		testbuild.Decl{
 			Src: `
-func f(a ...intlen) [a]int32
-`,
-		},
-		testbuild.Decl{
-			Src: `
-func f(a ...intlen) [a]int32
-`,
-		},
-		testbuild.Decl{
-			Src: `
 func f(...int32) []int32
 
 func g() []int32 {
@@ -148,6 +138,60 @@ func f2([]int32) []int32
 
 func g() []int32 {
 	return f2(f1("a"))
+}
+`,
+		},
+	)
+}
+
+func TestGenericVarArgs(t *testing.T) {
+	testbuild.Run(t,
+		testbuild.Decl{
+			Src: `
+func g[T any](a ...T) T
+
+func f() int32 {
+	return g(int32(1), int32(2))
+}
+`,
+		},
+		testbuild.Decl{
+			Src: `
+func g[T any](a ...T) T
+
+func f() int32 {
+	return g(int32(1), int64(2)) // ERROR type int64 does not match type int32 for T
+}
+`,
+		},
+		testbuild.Decl{
+			Src: `
+func g[shapes [][]intlen](a ...[unpack(varargsindex(shapes))]int32) int32
+
+func f() int32 {
+	return g([2][3]int32{}, [4][5]int32{})
+}
+`,
+		},
+		testbuild.Decl{
+			Src: `
+type ints interface {
+	int32 | int64
+}
+
+func g[Axis intidx, Shapes [][]intlen, DType ints](x ...[unpack(varargsindex(Shapes))]DType) DType
+
+func f() int32 {
+	return g[0]([2][3]int32{}, [4][5]int32{})
+}
+`,
+		},
+		testbuild.Decl{
+			Src: `
+func Concat[Lens [][]intlen](x ...[unpack(varargsindex(Lens))]float32) [unpack(Lens[0])]float32
+
+func f[Size intlen](x [Size]float32) [Size]float32 {
+	return Concat(x, [1]float32{})
 }
 `,
 		},

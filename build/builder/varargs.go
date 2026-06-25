@@ -101,7 +101,7 @@ func (n *unpackExpr) buildExpr(rscope resolveScope) (ir.Expr, bool) {
 	if !ok {
 		return ext, rscope.Err().AppendInternalf(n.source(), "cannot convert %T to %s", xType, reflect.TypeFor[ir.SlicerType]().String())
 	}
-	ext.ElementType, ok = slType.ElementType()
+	ext.EltTyp, ok = slType.ElementType()
 	if !ok {
 		return ext, rscope.Err().AppendInternalf(n.source(), "cannot access element type of %s (implementation: %T)", slType.ReferString(rscope.fileScope().irFile()), slType)
 	}

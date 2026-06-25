@@ -75,14 +75,14 @@ func resultTypes(exprs []ir.Expr) ([]ir.Type, bool) {
 }
 
 func returnAs(rscope resolveScope, pos ast.Node, src, dst ir.Type) bool {
-	assignable, cpErr, err := assignableTo(rscope, src, dst)
+	assignable, err := assignableTo(rscope, src, dst)
+	cpErr, err := ir.SplitErr(err)
 	if err != nil {
 		return rscope.Err().AppendAt(pos, err)
 	}
-	const errFormat = "cannot use %s as %s value in return statement"
+	errFormat := "cannot use %s as %s value in return statement"
 	if cpErr != nil {
-		from := rscope.fileScope().irFile()
-		return rscope.Err().AppendAt(pos, fmt.Errorf(errFormat+": %w", src.ReferString(from), dst.ReferString(from), cpErr))
+		errFormat = fmt.Sprintf("%s: %s", errFormat, cpErr.Error())
 	}
 	if !assignable {
 		from := rscope.fileScope().irFile()

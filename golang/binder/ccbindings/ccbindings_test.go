@@ -73,7 +73,7 @@ func run(t *testing.T, bld *builder.Builder, path string, hWants, ccWants []stri
 }
 
 func TestCCBindings(t *testing.T) {
-	builder := gxtesting.NewBuilderStaticSource(nil)
+	builder := gxtesting.NewBuilderStaticSource()
 	for _, test := range tests {
 		_, name := filepath.Split(test.path)
 		t.Run(name, func(t *testing.T) {

@@ -81,9 +81,9 @@ func fieldList(done map[any]bool, val reflect.Value, proc processor) string {
 }
 
 func typeParam(done map[any]bool, val reflect.Value, proc processor) string {
-	tParam := val.Interface().(*ir.TypeParam)
-	typ := reflect.ValueOf(tParam.Field.Type())
-	return fmt.Sprintf("%s:%s", tParam.Field.Name.Name, reflectString(done, typ, proc))
+	tParam := val.Interface().(*ir.GenericTypeParam)
+	typ := reflect.ValueOf(tParam.Type())
+	return fmt.Sprintf("%s:%s", tParam.NameDef().Name, reflectString(done, typ, proc))
 }
 
 func constExpr(done map[any]bool, val reflect.Value, proc processor) string {
@@ -106,7 +106,7 @@ func rank(done map[any]bool, val reflect.Value, proc processor) string {
 	for i, ax := range rnk.Ax {
 		switch ax.Type().Kind() {
 		case irkind.Slice:
-			axes[i] = fmt.Sprintf("[group<%s>]", ax.SourceString(nil))
+			axes[i] = fmt.Sprintf("[%s]", ax.SourceString(nil))
 		case irkind.IntLen:
 			axes[i] = ax.SourceString(nil)
 		default:
@@ -119,7 +119,7 @@ func rank(done map[any]bool, val reflect.Value, proc processor) string {
 func typeValExpr(done map[any]bool, val reflect.Value, proc processor) string {
 	ref := val.Interface().(*ir.TypeValExpr)
 	switch typT := ref.Val().(type) {
-	case *ir.FuncType, ir.ArrayType, *ir.TypeParam, *ir.StructType:
+	case *ir.FuncType, ir.ArrayType, *ir.GenericTypeParam, *ir.StructType:
 		return reflectString(done, reflect.ValueOf(typT), proc)
 	default:
 		return typT.ReferString(nil)
@@ -131,12 +131,27 @@ func funcValExpr(done map[any]bool, val reflect.Value, proc processor) string {
 	switch fT := ref.Func().(type) {
 	case *ir.FuncLit:
 		return reflectString(done, reflect.ValueOf(fT), proc)
-	default:
-		if ref.FuncType() != nil {
-			return ref.FuncType().ReferString(nil)
-		}
+	}
+	ftype := ref.FuncType()
+	if ftype == nil {
 		return ref.Func().ShortString()
 	}
+	sig := ftype.ReferString(nil)
+	if len(ftype.GenericValues) == 0 {
+		return sig
+	}
+	var b strings.Builder
+	fmt.Fprintln(&b, sig)
+	fmt.Fprintln(&b, "GenericValues: [")
+	for _, genVal := range ftype.GenericValues {
+		genS := "nil"
+		if genVal != nil {
+			genS = reflectString(done, reflect.ValueOf(genVal), proc)
+		}
+		b.WriteString(gxfmt.Indent(genS))
+	}
+	fmt.Fprintln(&b, "\n]")
+	return b.String()
 }
 
 func stringLiteral(done map[any]bool, val reflect.Value, proc processor) string {
@@ -173,6 +188,11 @@ func notOnDebug(stringer stringerFunc) debugFunc {
 	}
 }
 
+func nonTypeGenericValueString(done map[any]bool, val reflect.Value, proc processor) string {
+	ref := val.Interface().(*ir.NonTypeGenericValue)
+	return reflectString(done, reflect.ValueOf(ref.Value()), proc)
+}
+
 var typeToProcess = map[string]debugFunc{}
 
 func init() {
@@ -200,6 +220,7 @@ func init() {
 	typeToProcess["github.com/gx-org/gx/build/ir.stringType"] = debugOk(valueToString)
 	typeToProcess["github.com/gx-org/gx/build/ir.numberIntType"] = debugOk(valueToString)
 	typeToProcess["github.com/gx-org/gx/build/ir.numberFloatType"] = debugOk(valueToString)
+	typeToProcess["github.com/gx-org/gx/build/ir.NonTypeGenericValue"] = debugOk(nonTypeGenericValueString)
 	typeToProcess["github.com/gx-org/gx/build/ir.Ident"] = debugOk(identToString)
 	typeToProcess["github.com/gx-org/gx/build/annotations/annotations.Annotations"] = debugOk(valueToString)
 	typeToProcess["github.com/gx-org/gx/build/ir.StringLiteral"] = debugOk(stringLiteral)
@@ -228,7 +249,11 @@ func reflectStructString(done map[any]bool, val reflect.Value, proc processor) s
 		if fieldVal.IsZero() {
 			continue
 		}
-		fieldName := typ.Field(i).Name
+		typField := typ.Field(i)
+		if !typField.IsExported() {
+			continue
+		}
+		fieldName := typField.Name
 		valS := reflectString(done, fieldVal, proc)
 		if valS == "" {
 			continue

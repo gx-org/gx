@@ -81,7 +81,7 @@ func (f *lenFunc) BuildFuncType(fetcher ir.Fetcher, call *ir.FuncCallExpr) (*ir.
 	}
 	argGroup := &ir.FieldGroup{
 		Src:  srcField,
-		Type: ir.TypeExpr(nil, arg.Type()),
+		Type: ir.TypeExpr(nil, ir.AnyType()),
 	}
 	argGroup.Fields = []*ir.Field{&ir.Field{Group: argGroup}}
 	ext.Params = &ir.FieldList{

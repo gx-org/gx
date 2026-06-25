@@ -15,6 +15,7 @@
 package cpevelements
 
 import (
+	"fmt"
 	"go/ast"
 
 	"github.com/pkg/errors"
@@ -29,8 +30,7 @@ import (
 
 type proxy struct {
 	canonical.AtomStringImpl
-	src  elements.StorageAt
-	name string
+	src elements.StorageAt
 }
 
 var (
@@ -44,6 +44,7 @@ var (
 	_ ir.WithStore          = (*proxy)(nil)
 	_ elements.WithElements = (*proxy)(nil)
 	_ proxies.Proxy         = (*proxy)(nil)
+	_ elements.Unpacker     = (*proxy)(nil)
 )
 
 // NewProxy returns a new variable element given a GX variable name.
@@ -52,8 +53,7 @@ func NewProxy(src elements.StorageAt) ir.Element {
 }
 
 func newProxy(src elements.StorageAt) *proxy {
-	name := src.Node().NameDef().Name
-	return &proxy{src: src, name: name}
+	return &proxy{src: src}
 }
 
 // UnaryOp applies a unary operator on x.
@@ -110,6 +110,11 @@ func (a *proxy) Type() ir.Type {
 	return a.src.Node().Type()
 }
 
+// Unpack the proxy value.
+func (a *proxy) Unpack(ev ir.TypeCmp) (ir.Element, error) {
+	return a, nil
+}
+
 // Axes returns the axes of the value as a slice element.
 func (a *proxy) Axes(ev ir.Evaluator) (*elements.Slice, error) {
 	return coreops.AxesFromType(ev, a.src.Node().Type())
@@ -132,21 +137,19 @@ func (a *proxy) Compare(x canonical.Comparable) (bool, error) {
 	if !ok {
 		return false, nil
 	}
-	return a.name == other.name, nil
+	return a.src.Node().Same(other.src.Node()), nil
 }
 
 // Expr returns the IR expression represented by the variable.
-func (a *proxy) Expr(ir.Evaluator, ast.Expr) (ir.Expr, ir.CompEvalError, error) {
-	return &ir.Ident{
-		Src: &ast.Ident{
-			Name: a.name,
-		},
+func (a *proxy) Expr(ir.Evaluator, ast.Expr) ([]ir.Expr, error) {
+	return []ir.Expr{&ir.Ident{
+		Src:  a.src.Node().NameDef(),
 		Stor: a.src.Node(),
-	}, nil, nil
+	}}, nil
 }
 
 func (a *proxy) Elements() []ir.Element {
-	return nil
+	return []ir.Element{a}
 }
 
 func (a *proxy) CanonicalExpr() canonical.Canonical {
@@ -161,6 +164,15 @@ func (a *proxy) ShortString() string {
 	return a.SourceString(nil)
 }
 
-func (a *proxy) SourceString(*ir.File) string {
-	return a.name
+func (a *proxy) SourceString(from *ir.File) string {
+	return a.src.Node().NameDef().Name
+}
+
+func (a *proxy) String() string {
+	namePrefix := "_"
+	nameDef := a.src.Node().NameDef()
+	if nameDef != nil {
+		namePrefix = nameDef.Name
+	}
+	return fmt.Sprintf("(proxy:%s %s)", namePrefix, a.Type().ReferString(nil))
 }

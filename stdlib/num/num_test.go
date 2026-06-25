@@ -1,4 +1,4 @@
-// Copyright 2024 Google LLC
+// Copyright 2026 Google LLC
 //
 // Licensed under the Apache License, Version 2.0 (the "License");
 // you may not use this file except in compliance with the License.
@@ -15,15 +15,16 @@
 package num_test
 
 import (
-	"embed"
 	"testing"
 
 	"github.com/gx-org/gx/build/builder/testbuild"
+	"github.com/gx-org/gx/build/importers"
+	"github.com/gx-org/gx/stdlib/num/testdata"
+	"github.com/gx-org/gx/stdlib"
 )
 
-//go:embed testdata/*.gx
-var sources embed.FS
-
 func TestNum(t *testing.T) {
-	testbuild.Run(t, testbuild.SourcesFrom(t, sources)...)
+	testbuild.RunFactory(t, []importers.Importer{
+		stdlib.Importer(),
+	}, testdata.Sources)
 }

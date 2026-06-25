@@ -49,9 +49,6 @@ func (n *arrayType) buildTypeExpr(rscope resolveScope) (*ir.TypeValExpr, bool) {
 		rscope.Err().Appendf(n.source(), "array of %s not supported", dtyp.SourceString(rscope.fileScope().irFile()))
 		dtypeOk = false
 	}
-	if !dtypeOk {
-		return dtyp, false
-	}
 	lscope, ok := rscope.(localScope)
 	if !ok {
 		return nil, rscope.Err().AppendInternalf(n.src, "%T is not a local scope", rscope)

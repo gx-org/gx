@@ -20,7 +20,7 @@ import (
 	"sync"
 
 	"github.com/pkg/errors"
-	"github.com/gx-org/backend/dtype"
+	"github.com/gx-org/backend/dtypes"
 	"github.com/gx-org/backend/platform"
 	"github.com/gx-org/backend/shape"
 )
@@ -115,24 +115,24 @@ func (buf *Buffer) Free() {
 }
 
 // ToBuffer converts Go values into a GX array.
-func ToBuffer[T dtype.GoDataType](vals []T, sh *shape.Shape) *Buffer {
+func ToBuffer[T dtypes.Supported](vals []T, sh *shape.Shape) *Buffer {
 	var array Array
 	switch sh.DType {
-	case dtype.Bool:
+	case dtypes.Bool:
 		array = ToBoolArray(any(vals).([]bool), sh.AxisLengths)
-	case dtype.Bfloat16:
-		array = ToBfloat16Array(any(vals).([]dtype.Bfloat16T), sh.AxisLengths)
-	case dtype.Float32:
+	case dtypes.BFloat16:
+		array = ToBfloat16Array(any(vals).([]dtypes.Bfloat16T), sh.AxisLengths)
+	case dtypes.Float32:
 		array = ToFloatArray[float32](any(vals).([]float32), sh.AxisLengths)
-	case dtype.Float64:
+	case dtypes.Float64:
 		array = ToFloatArray[float64](any(vals).([]float64), sh.AxisLengths)
-	case dtype.Int32:
+	case dtypes.Int32:
 		array = ToIntegerArray[int32](any(vals).([]int32), sh.AxisLengths)
-	case dtype.Int64:
+	case dtypes.Int64:
 		array = ToIntegerArray[int64](any(vals).([]int64), sh.AxisLengths)
-	case dtype.Uint32:
+	case dtypes.Uint32:
 		array = ToIntegerArray[uint32](any(vals).([]uint32), sh.AxisLengths)
-	case dtype.Uint64:
+	case dtypes.Uint64:
 		array = ToIntegerArray[uint64](any(vals).([]uint64), sh.AxisLengths)
 	default:
 		panic(fmt.Sprintf("cannot convert data type %s to a %s %s", sh.DType.String(), reflect.TypeFor[[]T]().String(), reflect.TypeFor[*Buffer]()))

@@ -15,20 +15,20 @@ func New(seed int64) rand.Rand {
 // Sample the first few numbers from a number generator.
 func Sample(seed int64) [3]float32 {
 	rnd := rand.New(rand.NewSource(seed))
-	_, sample := rnd.Float32([]intlen{3})
+	_, sample := rnd.Float32[[]intlen{3}]()
 	return sample
 }
 
 // SampleBool the first few booleans from a number generator.
 func SampleBool(seed int64) [100]bool {
 	rnd := rand.New(rand.NewSource(seed))
-	_, sample := rnd.Bool([]intlen{100})
+	_, sample := rnd.Bool[[]intlen{100}]()
 	return sample
 }
 
 // SampleUniformFloat64 a million uniform float64s from a number generator.
 func SampleUniformFloat64(seed int64) [1000000]float64 {
-  rnd := rand.New(rand.NewSource(seed))
-  _, sample := rnd.Float64MinMax(0, 1000, []intlen{1000000})
-  return sample
+	rnd := rand.New(rand.NewSource(seed))
+	_, sample := rnd.Float64MinMax[[]intlen{1000000}](0, 1000)
+	return sample
 }

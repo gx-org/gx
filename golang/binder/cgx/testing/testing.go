@@ -32,12 +32,12 @@ import "C"
 
 //export cgx_testing_builder
 func cgx_testing_builder() C.cgx_builder {
-	return C.cgx_builder(handle.Wrap[*builder.Builder](gxtesting.NewBuilderStaticSource(nil)))
+	return C.cgx_builder(handle.Wrap[*builder.Builder](gxtesting.NewBuilderStaticSource()))
 }
 
 //export cgx_testing_runtime
 func cgx_testing_runtime() C.struct_cgx_runtime_new_result {
-	bld := gxtesting.NewBuilderStaticSource(nil)
+	bld := gxtesting.NewBuilderStaticSource()
 	rtm := backend.New(bld)
 	return C.struct_cgx_runtime_new_result{
 		runtime: C.cgx_runtime(handle.Wrap[*api.Runtime](rtm)),

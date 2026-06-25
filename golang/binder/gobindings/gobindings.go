@@ -220,7 +220,7 @@ func NewWithImporter(importer DependenciesBuildCall, pkg *ir.Package) (bindings.
 	b := &binder{
 		Package: pkg,
 		builder: importer,
-		stdlib:  stdlib.Importer(nil),
+		stdlib:  stdlib.Importer(),
 	}
 	b.dependencies = b.buildDependencies()
 	var err error

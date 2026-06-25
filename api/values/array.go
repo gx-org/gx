@@ -17,9 +17,10 @@ package values
 import (
 	"fmt"
 	"math/big"
+	"strings"
 
 	"github.com/pkg/errors"
-	"github.com/gx-org/backend/dtype"
+	"github.com/gx-org/backend/dtypes"
 	"github.com/gx-org/backend/platform"
 	"github.com/gx-org/backend/shape"
 	"github.com/gx-org/gx/build/ir"
@@ -238,19 +239,28 @@ func (a *HostArray) SourceString(from *ir.File) string {
 	if err != nil {
 		return fmt.Sprintf("\nError parsing raw data:\n%+v\n", err)
 	}
-	return a.typ.ReferString(from) + array.DataString()
+	namedType, isNamed := a.typ.(*ir.NamedType)
+	if isNamed {
+		return fmt.Sprintf("%s%s", namedType.ReferString(from), array.DataString())
+	}
+	shape := a.buffer.Shape().AxisLengths
+	dims := make([]string, len(shape))
+	for i, axLen := range shape {
+		dims[i] = fmt.Sprintf("[%d]", axLen)
+	}
+	return fmt.Sprintf("%s%s%s", strings.Join(dims, ""), a.arrayType.DataType().ReferString(from), array.DataString())
 }
 
 // String representation of the array and its type.
-func (a *HostArray) String(from *ir.File) string {
+func (a *HostArray) String() string {
 	return a.SourceString(nil)
 }
 
 // ToAtom converts an array on the host into a Go atom value.
-func ToAtom[T dtype.GoDataType](a *HostArray) (T, error) {
+func ToAtom[T dtypes.Supported](a *HostArray) (T, error) {
 	data := a.Buffer().Acquire()
 	defer a.Buffer().Release()
-	slice := dtype.ToSlice[T](data)
+	slice := dtypes.ToSlice[T](data)
 	if len(slice) != 1 {
 		var zero T
 		return zero, errors.Errorf("array (length=%d) is not an atom", len(slice))

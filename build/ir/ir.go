@@ -35,7 +35,7 @@ import (
 	"unicode/utf8"
 
 	"github.com/pkg/errors"
-	"github.com/gx-org/backend/dtype"
+	"github.com/gx-org/backend/dtypes"
 	"github.com/gx-org/backend/shape"
 	gxfmt "github.com/gx-org/gx/base/fmt"
 	"github.com/gx-org/gx/build/ir/annotations"
@@ -94,23 +94,6 @@ type (
 // ----------------------------------------------------------------------------
 // Types definition.
 type (
-	// Specialiser provides methods to specialise a type.
-	Specialiser interface {
-		TypeCmp
-		IsDefined(name string) bool
-		TypeOf(tParamName string) Type
-		ValueOf(axLengthname string) ([]AxisLengths, Element)
-	}
-
-	// Unifier provides methods to unify types.
-	Unifier interface {
-		TypeCmp
-		Node() ast.Node
-		DefineTParam(tp *TypeParam, typ Type) bool
-		DefineAxis(src ast.Node, name string, tp Type, args []AxisLengths) ([]AxisLengths, bool)
-		IsTypeParam(id *Ident) bool
-	}
-
 	// Type of a value.
 	Type interface {
 		StringDefiner
@@ -121,20 +104,27 @@ type (
 		Kind() irkind.Kind
 
 		// Equal returns true if other is the same type.
-		Equal(TypeCmp, Type) (bool, CompEvalError, error)
+		Equal(TypeCmp, Type) (bool, error)
 
 		// AssignableTo reports whether a value of the type can be assigned to another.
-		AssignableTo(TypeCmp, Type) (bool, CompEvalError, error)
+		AssignableTo(TypeCmp, Type) (bool, error)
 
 		// ConvertibleTo reports whether a value of the type can be converted to another
 		// (using static type casting).
-		ConvertibleTo(TypeCmp, Type) (bool, CompEvalError, error)
+		ConvertibleTo(TypeCmp, Type) (bool, error)
 
 		// Specialise a type to a given target.
-		Specialise(Specialiser) (Type, CompEvalError, error)
+		Specialise(Specialiser) (Type, bool)
 
 		// UnifyWith recursively unifies a type parameters with types.
 		UnifyWith(Unifier, Type) bool
+
+		// Instantiate computes a type as concrete as possible.
+		// (e.g. the array [f()]float32 returns an array [result of f]float32)
+		Instantiate(Fetcher, Specialiser) (Type, bool)
+
+		// IndexForVarArgs returns a type specific to a given index in varargs.
+		IndexForVarArgs(ErrSource, int) (Type, bool)
 	}
 
 	// TypeMethods is a type which provides a set of methods (e.g. an interface).
@@ -178,21 +168,21 @@ type (
 		// DataType returns the element type of the array.
 		DataType() Type
 
-		equalArray(TypeCmp, ArrayType) (bool, CompEvalError, error)
+		equalArray(TypeCmp, ArrayType) (bool, error)
 	}
 
 	// assignsFrom allows types to control how they are assigned to; other types may opt to use this
 	// logic when present (but aren't currently required to).
 	assignsFrom interface {
 		// assignableFrom reports whether a value of some type can be assigned to the receiver.
-		assignableFrom(TypeCmp, Type) (bool, CompEvalError, error)
+		assignableFrom(TypeCmp, Type) (bool, error)
 	}
 
 	// convertsFrom allows types to control how they are converted to; other types may opt to use this
 	// logic when present (but aren't currently required to).
 	convertsFrom interface {
 		// convertibleFrom reports whether a value of some type can be converted to the receiver.
-		convertibleFrom(TypeCmp, Type) (bool, CompEvalError, error)
+		convertibleFrom(TypeCmp, Type) (bool, error)
 	}
 
 	// NamedType defines a new type from an existing type.
@@ -248,25 +238,18 @@ type (
 
 		Types []Type
 	}
-
-	// TypeParam is a type mapping to a field name in a function type parameters.
-	TypeParam struct {
-		BaseType[ast.Expr]
-
-		Field *Field
-	}
 )
 
 var (
 	_ StorageWithValue = (*NamedType)(nil)
 	_ TypeMethods      = (*NamedType)(nil)
+	_ typeSet          = (*NamedType)(nil)
 	_ Type             = (*StructType)(nil)
 	_ Type             = (*InterfaceType)(nil)
 	_ SlicerType       = (*SliceType)(nil)
 	_ Type             = (*TupleType)(nil)
 	_ ArrayType        = (*atomicType)(nil)
 	_ ArrayType        = (*arrayType)(nil)
-	_ Type             = (*TypeParam)(nil)
 )
 
 // DefaultFloatType is the default type used for a scalar.
@@ -287,40 +270,54 @@ func (*TupleType) node() {}
 // Kind returns the scalar kind.
 func (s *TupleType) Kind() irkind.Kind { return irkind.Tuple }
 
-func (s *TupleType) apply(tpcmp TypeCmp, target Type, f func(Type, TypeCmp, Type) (bool, CompEvalError, error)) (bool, CompEvalError, error) {
+func (s *TupleType) apply(tpcmp TypeCmp, target Type, f func(Type, TypeCmp, Type) (bool, error)) (bool, error) {
 	targetTuple, ok := target.(*TupleType)
 	if !ok {
-		return false, nil, nil
+		return false, nil
 	}
 	if len(s.Types) != len(targetTuple.Types) {
-		return false, nil, nil
+		return false, nil
 	}
 	for n, typ := range s.Types {
-		ok, cpErr, err := f(typ, tpcmp, targetTuple.Types[n])
-		if cpErr != nil || err != nil {
-			return false, cpErr, err
+		ok, err := f(typ, tpcmp, targetTuple.Types[n])
+		if err != nil {
+			return false, err
 		}
 		if !ok {
-			return false, nil, nil
+			return false, nil
 		}
 	}
-	return true, nil, nil
+	return true, nil
 }
 
 // Equal returns true if other is the same type.
-func (s *TupleType) Equal(tpcmp TypeCmp, target Type) (bool, CompEvalError, error) {
+func (s *TupleType) Equal(tpcmp TypeCmp, target Type) (bool, error) {
 	return s.apply(tpcmp, target, (Type).Equal)
 }
 
 // AssignableTo reports whether a value of the type can be assigned to another.
-func (s *TupleType) AssignableTo(tpcmp TypeCmp, target Type) (bool, CompEvalError, error) {
+func (s *TupleType) AssignableTo(tpcmp TypeCmp, target Type) (bool, error) {
 	return s.apply(tpcmp, target, (Type).AssignableTo)
 }
 
 // ConvertibleTo reports whether a value of the type can be converted to another
 // (using static type casting). Always returns false.
-func (s *TupleType) ConvertibleTo(tpcmp TypeCmp, target Type) (bool, CompEvalError, error) {
+func (s *TupleType) ConvertibleTo(tpcmp TypeCmp, target Type) (bool, error) {
 	return s.apply(tpcmp, target, (Type).ConvertibleTo)
+}
+
+// Instantiate a function type.
+func (s *TupleType) Instantiate(Fetcher, Specialiser) (Type, bool) {
+	return s, true
+}
+
+// Specialise the tuple type.
+func (s *TupleType) Specialise(Specialiser) (Type, bool) {
+	tps := make([]Type, len(s.Types))
+	return &TupleType{
+		BaseType: s.BaseType,
+		Types:    tps,
+	}, true
 }
 
 // Value returns a value pointing to the receiver.
@@ -342,24 +339,34 @@ func (s *TupleType) ReferString(from *File) string {
 	return s.DefineString(from)
 }
 
+// IndexForVarArgs returns a type specific to a given index in varargs.
+func (s *TupleType) IndexForVarArgs(ErrSource, int) (Type, bool) {
+	return s, true
+}
+
 func (*InterfaceType) node() {}
 
 // Kind returns the interface kind.
 func (s *InterfaceType) Kind() irkind.Kind { return irkind.Interface }
 
 // Equal returns true if other is the same type.
-func (s *InterfaceType) Equal(TypeCmp, Type) (bool, CompEvalError, error) { return false, nil, nil }
+func (s *InterfaceType) Equal(TypeCmp, Type) (bool, error) { return false, nil }
 
 // AssignableTo reports whether a value of the type can be assigned to another.
 // Always returns false.
-func (s *InterfaceType) AssignableTo(TypeCmp, Type) (bool, CompEvalError, error) {
-	return false, nil, nil
+func (s *InterfaceType) AssignableTo(TypeCmp, Type) (bool, error) {
+	return false, nil
 }
 
 // ConvertibleTo reports whether a value of the type can be converted to another
 // (using static type casting). Always returns false.
-func (s *InterfaceType) ConvertibleTo(TypeCmp, Type) (bool, CompEvalError, error) {
-	return false, nil, nil
+func (s *InterfaceType) ConvertibleTo(TypeCmp, Type) (bool, error) {
+	return false, nil
+}
+
+// Instantiate a function type.
+func (s *InterfaceType) Instantiate(ev Fetcher, spec Specialiser) (Type, bool) {
+	return s, true
 }
 
 // Value returns a value pointing to the receiver.
@@ -373,6 +380,16 @@ func (s *InterfaceType) DefineString(*File) string { return s.Kind().String() }
 // ReferString returns a reference to the type given a file context.
 func (s *InterfaceType) ReferString(*File) string { return s.Kind().String() }
 
+// Specialise a type to a given target.
+func (s *InterfaceType) Specialise(Specialiser) (Type, bool) {
+	return s, true
+}
+
+// IndexForVarArgs returns a type specific to a given index in varargs.
+func (s *InterfaceType) IndexForVarArgs(ErrSource, int) (Type, bool) {
+	return s, true
+}
+
 // IsValid returns true if the type is valid.
 func IsValid(tp Type) bool {
 	return tp.Kind() != irkind.Invalid
@@ -384,23 +401,28 @@ func (*BuiltinType) node() {}
 func (s *BuiltinType) Kind() irkind.Kind { return irkind.Builtin }
 
 // Equal returns true if other is the same type.
-func (s *BuiltinType) Equal(_ TypeCmp, other Type) (bool, CompEvalError, error) {
+func (s *BuiltinType) Equal(_ TypeCmp, other Type) (bool, error) {
 	otherT, ok := other.(*BuiltinType)
 	if !ok {
-		return false, nil, nil
+		return false, nil
 	}
-	return s.Impl == otherT.Impl, nil, nil
+	return s.Impl == otherT.Impl, nil
 }
 
 // AssignableTo reports if the type can be assigned to other.
-func (s *BuiltinType) AssignableTo(tpcmp TypeCmp, target Type) (bool, CompEvalError, error) {
+func (s *BuiltinType) AssignableTo(tpcmp TypeCmp, target Type) (bool, error) {
 	return s.Equal(tpcmp, target)
 }
 
 // ConvertibleTo reports whether a value of the type can be converted to another
 // (using static type casting).
-func (s *BuiltinType) ConvertibleTo(tpcmp TypeCmp, target Type) (bool, CompEvalError, error) {
+func (s *BuiltinType) ConvertibleTo(tpcmp TypeCmp, target Type) (bool, error) {
 	return s.Equal(tpcmp, target)
+}
+
+// Instantiate a function type.
+func (s *BuiltinType) Instantiate(Fetcher, Specialiser) (Type, bool) {
+	return s, true
 }
 
 // Value returns a value pointing to the receiver.
@@ -418,6 +440,16 @@ func (s *BuiltinType) ReferString(*File) string {
 	return fmt.Sprint(s.Impl)
 }
 
+// Specialise a type to a given target.
+func (s *BuiltinType) Specialise(Specialiser) (Type, bool) {
+	return s, true
+}
+
+// IndexForVarArgs returns a type specific to a given index in varargs.
+func (s *BuiltinType) IndexForVarArgs(ErrSource, int) (Type, bool) {
+	return s, true
+}
+
 var (
 	zero      = &NumberInt{Src: &ast.BasicLit{Value: "0"}, Val: big.NewInt(0)}
 	zeroFloat = &NumberFloat{Src: &ast.BasicLit{Value: "0.0"}, Val: big.NewFloat(0)}
@@ -427,24 +459,24 @@ var (
 func (s *NamedType) Kind() irkind.Kind { return s.Underlying.Val().Kind() }
 
 // Equal returns true if other is the same type.
-func (s *NamedType) Equal(tpcmp TypeCmp, other Type) (bool, CompEvalError, error) {
+func (s *NamedType) Equal(tpcmp TypeCmp, other Type) (bool, error) {
 	otherT, ok := other.(*NamedType)
 	if !ok {
-		return false, nil, nil
+		return false, nil
 	}
 	if s == otherT {
-		return true, nil, nil
+		return true, nil
 	}
 	if s.FullName() != otherT.FullName() {
-		return false, nil, nil
+		return false, nil
 	}
 	return s.Underlying.Val().Equal(tpcmp, otherT.Underlying.Val())
 }
 
 // AssignableTo reports if the type can be assigned to other.
-func (s *NamedType) AssignableTo(tpcmp TypeCmp, target Type) (bool, CompEvalError, error) {
+func (s *NamedType) AssignableTo(tpcmp TypeCmp, target Type) (bool, error) {
 	if s.Same(target) {
-		return true, nil, nil
+		return true, nil
 	}
 	if target.Kind() == irkind.Interface {
 		if target, ok := target.(assignsFrom); ok {
@@ -455,7 +487,7 @@ func (s *NamedType) AssignableTo(tpcmp TypeCmp, target Type) (bool, CompEvalErro
 }
 
 // AssignableFrom reports whether a given source type is assignable to a named type.
-func (s *NamedType) assignableFrom(tpcmp TypeCmp, source Type) (bool, CompEvalError, error) {
+func (s *NamedType) assignableFrom(tpcmp TypeCmp, source Type) (bool, error) {
 	under := Underlying(s)
 	underIFace, isIFace := under.(*Interface)
 	if isIFace {
@@ -469,7 +501,7 @@ func (s *NamedType) assignableFrom(tpcmp TypeCmp, source Type) (bool, CompEvalEr
 
 // ConvertibleTo reports whether a value of the type can be converted to another
 // (using static type casting).
-func (s *NamedType) ConvertibleTo(tpcmp TypeCmp, target Type) (bool, CompEvalError, error) {
+func (s *NamedType) ConvertibleTo(tpcmp TypeCmp, target Type) (bool, error) {
 	typeSet, ok := Underlying(s.Underlying.Val()).(*Interface)
 	if ok {
 		return typeSet.ConvertibleTo(tpcmp, target)
@@ -477,14 +509,19 @@ func (s *NamedType) ConvertibleTo(tpcmp TypeCmp, target Type) (bool, CompEvalErr
 	switch targetT := target.(type) {
 	case *NamedType:
 		return s.Equal(tpcmp, targetT)
-	case *TypeParam:
-		return s.ConvertibleTo(tpcmp, targetT.Field.Group.Type.Val())
+	case *GenericTypeParam:
+		return s.ConvertibleTo(tpcmp, targetT.Type())
 	}
 	return s.Underlying.Val().ConvertibleTo(tpcmp, target)
 }
 
-func (s *NamedType) convertibleFrom(tpcmp TypeCmp, source Type) (bool, CompEvalError, error) {
+func (s *NamedType) convertibleFrom(tpcmp TypeCmp, source Type) (bool, error) {
 	return source.ConvertibleTo(tpcmp, s.Underlying.Val())
+}
+
+// Instantiate the named type.
+func (s *NamedType) Instantiate(Fetcher, Specialiser) (Type, bool) {
+	return s, true
 }
 
 // FullName returns the full name of the type, that is the full package path and the type name.
@@ -551,9 +588,8 @@ func (s *NamedType) ReferString(from *File) string {
 }
 
 // Specialise a type to a given target.
-func (s *NamedType) Specialise(spec Specialiser) (Type, CompEvalError, error) {
-	_, cpErr, err := s.Underlying.Val().Specialise(spec)
-	return s, cpErr, err
+func (s *NamedType) Specialise(spec Specialiser) (Type, bool) {
+	return s, true
 }
 
 // Package returns the package to which the type belongs to.
@@ -561,13 +597,21 @@ func (s *NamedType) Package() *Package {
 	return s.File.Package
 }
 
+// IndexForVarArgs returns a type specific to a given index in varargs.
+func (s *NamedType) IndexForVarArgs(ErrSource, int) (Type, bool) {
+	return s, true
+}
+
+func (s *NamedType) buildTypeSet() []Type {
+	return buildTypeSet(s.Underlying.val)
+}
+
 // Underlying returns the underlying type of a type.
 func Underlying(typ Type) Type {
+	typ = simplifyType(typ)
 	switch typT := typ.(type) {
 	case *NamedType:
 		return Underlying(typT.Underlying.Val())
-	case *TypeParam:
-		return Underlying(typT.Field.Type())
 	default:
 		return typ
 	}
@@ -579,23 +623,23 @@ func (*StructType) node() {}
 func (s *StructType) Kind() irkind.Kind { return irkind.Struct }
 
 // Equal returns true if other is the same type.
-func (s *StructType) Equal(_ TypeCmp, other Type) (bool, CompEvalError, error) {
+func (s *StructType) Equal(_ TypeCmp, other Type) (bool, error) {
 	otherT, ok := other.(*StructType)
 	if !ok {
-		return false, nil, nil
+		return false, nil
 	}
-	return s == otherT, nil, nil
+	return s == otherT, nil
 }
 
 // AssignableTo reports if the type can be assigned to other.
-func (s *StructType) AssignableTo(tpcmp TypeCmp, target Type) (bool, CompEvalError, error) {
+func (s *StructType) AssignableTo(tpcmp TypeCmp, target Type) (bool, error) {
 	return s.Equal(tpcmp, target)
 }
 
 // ConvertibleTo reports whether a value of the type can be converted to another
 // (using static type casting).
-func (s *StructType) ConvertibleTo(tpcmp TypeCmp, target Type) (bool, CompEvalError, error) {
-	return false, nil, nil
+func (s *StructType) ConvertibleTo(tpcmp TypeCmp, target Type) (bool, error) {
+	return false, nil
 }
 
 // Node returns the node in the AST tree.
@@ -617,8 +661,18 @@ func (s *StructType) ReferString(from *File) string {
 }
 
 // Specialise a type to a given target.
-func (s *StructType) Specialise(spec Specialiser) (Type, CompEvalError, error) {
-	return s, nil, nil
+func (s *StructType) Specialise(spec Specialiser) (Type, bool) {
+	return s, true
+}
+
+// Instantiate a function type.
+func (s *StructType) Instantiate(Fetcher, Specialiser) (Type, bool) {
+	return s, true
+}
+
+// IndexForVarArgs returns a type specific to a given index in varargs.
+func (s *StructType) IndexForVarArgs(ErrSource, int) (Type, bool) {
+	return s, true
 }
 
 // NumFields returns the number of fields in a structure.
@@ -636,26 +690,36 @@ func (*SliceType) node() {}
 func (s *SliceType) Kind() irkind.Kind { return irkind.Slice }
 
 // Equal returns true if other is the same type.
-func (s *SliceType) Equal(tpcmp TypeCmp, other Type) (bool, CompEvalError, error) {
+func (s *SliceType) Equal(tpcmp TypeCmp, other Type) (bool, error) {
 	otherT, ok := other.(*SliceType)
 	if !ok {
-		return false, nil, nil
+		return false, nil
 	}
 	if s.Rank != otherT.Rank {
-		return false, nil, nil
+		return false, nil
 	}
 	return otherT.DType.Val().Equal(tpcmp, s.DType.Val())
 }
 
 // AssignableTo reports if the type can be assigned to other.
-func (s *SliceType) AssignableTo(tpcmp TypeCmp, target Type) (bool, CompEvalError, error) {
+func (s *SliceType) AssignableTo(tpcmp TypeCmp, target Type) (bool, error) {
 	return s.Equal(tpcmp, target)
 }
 
 // ConvertibleTo reports whether a value of the type can be converted to another
 // (using static type casting).
-func (s *SliceType) ConvertibleTo(tpcmp TypeCmp, target Type) (bool, CompEvalError, error) {
-	return false, nil, nil
+func (s *SliceType) ConvertibleTo(tpcmp TypeCmp, target Type) (bool, error) {
+	return false, nil
+}
+
+// Instantiate a function type.
+func (s *SliceType) Instantiate(ev Fetcher, spec Specialiser) (Type, bool) {
+	dtype, dtypeOk := s.DType.Instantiate(ev, spec)
+	return &SliceType{
+		BaseType: s.BaseType,
+		DType:    dtype,
+		Rank:     s.Rank,
+	}, dtypeOk
 }
 
 // Value returns a value pointing to the receiver.
@@ -704,13 +768,27 @@ func (s *SliceType) ReferString(from *File) string {
 }
 
 // Specialise a type to a given target.
-func (s *SliceType) Specialise(spec Specialiser) (Type, CompEvalError, error) {
-	return s, nil, nil
+func (s *SliceType) Specialise(spec Specialiser) (Type, bool) {
+	dtype, ok := s.DType.Specialise(spec)
+	return &SliceType{
+		BaseType: s.BaseType,
+		DType:    dtype,
+		Rank:     s.Rank,
+	}, ok
 }
 
 // UnifyWith recursively unifies a type parameters with types.
-func (s *SliceType) UnifyWith(Unifier, Type) bool {
-	return true
+func (s *SliceType) UnifyWith(uni Unifier, typ Type) bool {
+	other, ok := typ.(*SliceType)
+	if !ok {
+		return true
+	}
+	return s.DType.Val().UnifyWith(uni, other.DType.Val())
+}
+
+// IndexForVarArgs returns a type specific to a given index in varargs.
+func (s *SliceType) IndexForVarArgs(ErrSource, int) (Type, bool) {
+	return s, true
 }
 
 func (*arrayType) node() {}
@@ -765,27 +843,27 @@ func (s *arrayType) DataType() Type { return s.DTypeF }
 // Rank of the array.
 func (s *arrayType) Rank() ArrayRank { return s.RankF }
 
-func (s *arrayType) assignableToArray(tpcmp TypeCmp, other ArrayType) (bool, CompEvalError, error) {
-	dtypeEq, cpErr, err := s.DataType().AssignableTo(tpcmp, other.DataType())
-	if !dtypeEq || cpErr != nil || err != nil {
-		return dtypeEq, cpErr, err
+func (s *arrayType) assignableToArray(tpcmp TypeCmp, other ArrayType) (bool, error) {
+	dtypeEq, err := AssignableTo(tpcmp, s.DataType(), other.DataType())
+	if !dtypeEq || err != nil {
+		return dtypeEq, err
 	}
 	return s.Rank().AssignableTo(tpcmp, other.Rank())
 }
 
-func (s *arrayType) equalArray(tpcmp TypeCmp, other ArrayType) (bool, CompEvalError, error) {
-	dtypeEq, cpErr, err := s.DataType().Equal(tpcmp, other.DataType())
-	if !dtypeEq || cpErr != nil || err != nil {
-		return dtypeEq, cpErr, err
+func (s *arrayType) equalArray(tpcmp TypeCmp, other ArrayType) (bool, error) {
+	dtypeEq, err := s.DataType().Equal(tpcmp, other.DataType())
+	if !dtypeEq || err != nil {
+		return dtypeEq, err
 	}
 	return s.Rank().Equal(tpcmp, other.Rank())
 }
 
 // Equal returns true if other is the same type.
-func (s *arrayType) Equal(tpcmp TypeCmp, other Type) (bool, CompEvalError, error) {
+func (s *arrayType) Equal(tpcmp TypeCmp, other Type) (bool, error) {
 	otherT, ok := other.(ArrayType)
 	if !ok {
-		return false, nil, nil
+		return false, nil
 	}
 	if otherT.Rank().IsAtomic() {
 		return otherT.equalArray(tpcmp, s)
@@ -793,22 +871,22 @@ func (s *arrayType) Equal(tpcmp TypeCmp, other Type) (bool, CompEvalError, error
 	return s.equalArray(tpcmp, otherT)
 }
 
-func (s *arrayType) assignableFrom(tpcmp TypeCmp, x Type) (bool, CompEvalError, error) {
+func (s *arrayType) assignableFrom(tpcmp TypeCmp, x Type) (bool, error) {
 	arrayType, isArrayType := x.(ArrayType)
 	if isArrayType {
 		return s.assignableToArray(tpcmp, arrayType)
 	}
 	if !s.RankF.IsAtomic() {
-		return false, nil, nil
+		return false, nil
 	}
 	return AssignableTo(tpcmp, x, s.DataType())
 }
 
 // AssignableTo reports if the type can be assigned to other.
-func (s *arrayType) AssignableTo(tpcmp TypeCmp, target Type) (bool, CompEvalError, error) {
+func (s *arrayType) AssignableTo(tpcmp TypeCmp, target Type) (bool, error) {
 	targetT, ok := target.(ArrayType)
 	if !ok {
-		return false, nil, nil
+		return false, nil
 	}
 	if targetT.Rank().IsAtomic() {
 		return targetT.equalArray(tpcmp, s)
@@ -818,33 +896,34 @@ func (s *arrayType) AssignableTo(tpcmp TypeCmp, target Type) (bool, CompEvalErro
 
 // ConvertibleTo reports whether a value of the type can be converted to another
 // (using static type casting).
-func (s *arrayType) ConvertibleTo(tpcmp TypeCmp, target Type) (bool, CompEvalError, error) {
+func (s *arrayType) ConvertibleTo(tpcmp TypeCmp, target Type) (bool, error) {
 	target = Underlying(target)
 	targetT, ok := target.(ArrayType)
 	if !ok {
-		return false, nil, nil
+		return false, nil
 	}
 	if targetT.Rank().IsAtomic() {
 		return s.RankF.ConvertibleTo(tpcmp, scalarRank)
 	}
-	dtypeOk, cpErr, err := s.DTypeF.ConvertibleTo(tpcmp, targetT.DataType())
-	if !dtypeOk || cpErr != nil || err != nil {
-		return dtypeOk, cpErr, err
+	dtypeOk, err := s.DTypeF.ConvertibleTo(tpcmp, targetT.DataType())
+	if !dtypeOk || err != nil {
+		return dtypeOk, err
 	}
 	return s.RankF.ConvertibleTo(tpcmp, targetT.Rank())
 }
 
 // Specialise a type to a given target.
-func (s *arrayType) Specialise(spec Specialiser) (Type, CompEvalError, error) {
-	dtype, cpErr, err := s.DTypeF.Specialise(spec)
-	if cpErr != nil || err != nil {
-		return InvalidType(), cpErr, err
-	}
-	rank, cpErr, err := s.RankF.Specialise(spec)
-	if cpErr != nil || err != nil {
-		return InvalidType(), cpErr, err
-	}
-	return NewArrayType(s.Src, dtype, rank), nil, nil
+func (s *arrayType) Specialise(spec Specialiser) (Type, bool) {
+	dtype, dtypeOk := s.DTypeF.Specialise(spec)
+	rank, rankOk := s.RankF.Specialise(spec)
+	return NewArrayType(s.Src, dtype, rank), dtypeOk && rankOk
+}
+
+// Instantiate a function type.
+func (s *arrayType) Instantiate(ev Fetcher, spec Specialiser) (Type, bool) {
+	dtype, dtypeOk := s.DTypeF.Instantiate(ev, spec)
+	rank, rankOk := s.RankF.Instantiate(ev, spec)
+	return NewArrayType(s.Src, dtype, rank), dtypeOk && rankOk
 }
 
 // UnifyWith recursively unifies a type parameters with types.
@@ -857,6 +936,12 @@ func (s *arrayType) UnifyWith(uni Unifier, typ Type) bool {
 		return false
 	}
 	return s.RankF.UnifyWith(uni, other.Rank())
+}
+
+// IndexForVarArgs returns a type specific to a given index in varargs.
+func (s *arrayType) IndexForVarArgs(errsrc ErrSource, i int) (Type, bool) {
+	rank, ok := s.RankF.IndexForVarArgs(errsrc, i)
+	return NewArrayType(s.Src, s.DTypeF, rank), ok
 }
 
 // Value returns a value pointing to the receiver.
@@ -904,101 +989,6 @@ func (s *arrayType) ReferString(from *File) string {
 // DefineString returns the GX source code of the node.
 func (s *arrayType) DefineString(from *File) string {
 	return s.rankString(from, s.DTypeF.ReferString(from))
-}
-
-func (*TypeParam) node() {}
-
-// Kind of the type.
-func (s *TypeParam) Kind() irkind.Kind {
-	return s.Field.Type().Kind()
-}
-
-func (s *TypeParam) equal(tpcmp TypeCmp, typ Type) (bool, CompEvalError, error) {
-	switch typT := typ.(type) {
-	case *atomicType:
-		return false, nil, nil
-	case *TypeParam:
-		if s.Field == typT.Field {
-			return true, nil, nil
-		}
-	case *NamedType:
-		return s.Field.Type().Equal(tpcmp, typ)
-	case ArrayType:
-		if !typT.Rank().IsAtomic() {
-			return false, nil, nil
-		}
-		return s.Equal(tpcmp, typT.DataType())
-	}
-	return false, nil, nil
-}
-
-// Equal returns true if other is the same type.
-func (s *TypeParam) Equal(tpcmp TypeCmp, typ Type) (bool, CompEvalError, error) {
-	return s.equal(tpcmp, typ)
-}
-
-func (s *TypeParam) assignableFrom(tpcmp TypeCmp, other Type) (bool, CompEvalError, error) {
-	return other.AssignableTo(tpcmp, s.Field.Type())
-}
-
-// AssignableTo reports whether a value of the type can be assigned to another.
-func (s *TypeParam) AssignableTo(tpcmp TypeCmp, typ Type) (bool, CompEvalError, error) {
-	return s.Equal(tpcmp, typ)
-}
-
-// ConvertibleTo reports whether a value of the type can be converted to another
-// (using static type casting).
-func (s *TypeParam) ConvertibleTo(tpcmp TypeCmp, typ Type) (bool, CompEvalError, error) {
-	return s.Field.Type().ConvertibleTo(tpcmp, typ)
-}
-
-// convertibleFrom reports whether a value of some type can be converted to the receiver.
-func (s *TypeParam) convertibleFrom(tpcmp TypeCmp, from Type) (bool, CompEvalError, error) {
-	return from.ConvertibleTo(tpcmp, s.Field.Type())
-}
-
-// Node defining the type.
-func (s *TypeParam) Node() ast.Node {
-	return s.Field.Type().Node()
-}
-
-// Type of the type.
-func (s *TypeParam) Type() Type {
-	return s
-}
-
-// Same returns true if the other storage is this storage.
-func (s *TypeParam) Same(o Storage) bool {
-	return Storage(s) == o
-}
-
-// Value returns a value pointing to the receiver.
-func (s *TypeParam) Value(x Expr) Expr {
-	return TypeExpr(x, s)
-}
-
-// DefineString returns the GX source code of the node.
-func (s *TypeParam) DefineString(from *File) string {
-	return s.Field.Name.Name
-}
-
-// ReferString returns the string representation of the node in an error message.
-func (s *TypeParam) ReferString(from *File) string {
-	return s.Field.Name.Name
-}
-
-// Specialise a type to a given target.
-func (s *TypeParam) Specialise(spec Specialiser) (Type, CompEvalError, error) {
-	tp := spec.TypeOf(s.Field.Name.Name)
-	if tp == nil {
-		return s, nil, nil
-	}
-	return tp, nil, nil
-}
-
-// UnifyWith recursively unifies a type parameters with types.
-func (s *TypeParam) UnifyWith(uni Unifier, typ Type) bool {
-	return uni.DefineTParam(s, typ)
 }
 
 // IsStatic return true if the type is static, that is if the instance of the type
@@ -1316,7 +1306,7 @@ func (pkg *Package) ExportedStatics() []*VarExpr {
 	return exprs
 }
 
-// String representation of the package.
+// DefineString return the path to the package.
 func (pkg *Package) DefineString(*File) string {
 	return pkg.Path()
 }
@@ -1790,8 +1780,10 @@ type (
 
 	// Field is a field belonging to a field group.
 	Field struct {
+		Orig  *Field
 		Group *FieldGroup
 
+		Pos  int
 		Name *ast.Ident
 	}
 )
@@ -1936,6 +1928,14 @@ func (s *Field) Storage() *FieldStorage {
 	return &FieldStorage{Field: s}
 }
 
+// Origin from which this field derived from.
+func (s *Field) Origin() *Field {
+	if s.Orig == nil {
+		return s
+	}
+	return s.Orig
+}
+
 // Type returns the type of the field.
 func (s *Field) Type() Type {
 	if s.Group.Type == nil {
@@ -1951,7 +1951,6 @@ type (
 	Expr interface {
 		Node
 		StringSourcer
-
 		// Expr returns the syntax tree of the expression.
 		Expr() ast.Expr
 		// Type of the expression.
@@ -1994,7 +1993,7 @@ type (
 	}
 
 	// AtomicValueT is a builtin constant.
-	AtomicValueT[T dtype.GoDataType] struct {
+	AtomicValueT[T dtypes.Supported] struct {
 		Src ast.Expr
 		Val T
 		Typ Type
@@ -2154,31 +2153,32 @@ type (
 )
 
 var (
-	_ Number           = (*NumberFloat)(nil)
-	_ Number           = (*NumberInt)(nil)
-	_ Expr             = (*NumberCastExpr)(nil)
-	_ AtomicValue      = (*AtomicValueT[int32])(nil)
-	_ Expr             = (*StringLiteral)(nil)
-	_ Expr             = (*ArrayLitExpr)(nil)
-	_ Expr             = (*StructLitExpr)(nil)
-	_ StorageWithValue = (*FieldLit)(nil)
-	_ Expr             = (*UnaryExpr)(nil)
-	_ Expr             = (*ParenExpr)(nil)
-	_ WithStore        = (*ParenExpr)(nil)
-	_ Expr             = (*BinaryExpr)(nil)
-	_ CallExpr         = (*FuncCallExpr)(nil)
-	_ Expr             = (*CallResultExpr)(nil)
-	_ TypeCastExpr     = (*CastExpr)(nil)
-	_ TypeCastExpr     = (*TypeAssertExpr)(nil)
-	_ Expr             = (*Ident)(nil)
-	_ WithStore        = (*Ident)(nil)
-	_ Expr             = (*PackageRef)(nil)
-	_ Expr             = (*SelectorExpr)(nil)
-	_ WithStore        = (*SelectorExpr)(nil)
-	_ Expr             = (*IndexExpr)(nil)
-	_ Expr             = (*IndexListExpr)(nil)
-	_ Expr             = (*EinsumExpr)(nil)
-	_ Node             = (*Tuple)(nil)
+	_ Number             = (*NumberFloat)(nil)
+	_ Number             = (*NumberInt)(nil)
+	_ Expr               = (*NumberCastExpr)(nil)
+	_ AtomicValue        = (*AtomicValueT[int32])(nil)
+	_ Expr               = (*StringLiteral)(nil)
+	_ Expr               = (*ArrayLitExpr)(nil)
+	_ Expr               = (*StructLitExpr)(nil)
+	_ StorageWithValue   = (*FieldLit)(nil)
+	_ Expr               = (*UnaryExpr)(nil)
+	_ Expr               = (*ParenExpr)(nil)
+	_ WithStore          = (*ParenExpr)(nil)
+	_ Expr               = (*BinaryExpr)(nil)
+	_ CallExpr           = (*FuncCallExpr)(nil)
+	_ Expr               = (*CallResultExpr)(nil)
+	_ TypeCastExpr       = (*CastExpr)(nil)
+	_ TypeCastExpr       = (*TypeAssertExpr)(nil)
+	_ ExprWithSpecialise = (*Ident)(nil)
+	_ ExprWithUnify      = (*Ident)(nil)
+	_ WithStore          = (*Ident)(nil)
+	_ Expr               = (*PackageRef)(nil)
+	_ Expr               = (*SelectorExpr)(nil)
+	_ WithStore          = (*SelectorExpr)(nil)
+	_ Expr               = (*IndexExpr)(nil)
+	_ Expr               = (*IndexListExpr)(nil)
+	_ Expr               = (*EinsumExpr)(nil)
+	_ Node               = (*Tuple)(nil)
 
 	_ Expr      = (*FuncValExpr)(nil)
 	_ Callee    = (*FuncValExpr)(nil)
@@ -2257,6 +2257,11 @@ func (s *NumberCastExpr) Type() Type { return s.Typ }
 // SourceString representation of the number.
 func (s *NumberCastExpr) SourceString(from *File) string {
 	return s.X.SourceString(from)
+}
+
+// Specialise a type to a given target.
+func (s *NumberCastExpr) Specialise(Specialiser) (Expr, bool) {
+	return s, true
 }
 
 func (s *StringLiteral) node()        {}
@@ -2446,6 +2451,30 @@ func (s *TypeValExpr) Type() Type {
 	return MetaType()
 }
 
+// Specialise the type of the expression.
+func (s *TypeValExpr) Specialise(spec Specialiser) (*TypeValExpr, bool) {
+	tpExpr := *s
+	var ok bool
+	tpExpr.val, ok = tpExpr.val.Specialise(spec)
+	return &tpExpr, ok
+}
+
+// Instantiate the type of the expression.
+func (s *TypeValExpr) Instantiate(ev Fetcher, spec Specialiser) (*TypeValExpr, bool) {
+	tpExpr := *s
+	var ok bool
+	tpExpr.val, ok = tpExpr.val.Instantiate(ev, spec)
+	return &tpExpr, ok
+}
+
+// IndexForVarArgs returns a type expression specific to a given index in varargs.
+func (s *TypeValExpr) IndexForVarArgs(errsrc ErrSource, i int) (Expr, bool) {
+	tpExpr := *s
+	var ok bool
+	tpExpr.val, ok = tpExpr.val.IndexForVarArgs(errsrc, i)
+	return &tpExpr, ok
+}
+
 // X returns the IR expression representing the type.
 func (s *TypeValExpr) X() Expr {
 	return s.x
@@ -2461,7 +2490,7 @@ func (s *TypeValExpr) Store() Storage { return s.val }
 
 // SourceString represents the field list as GX source code.
 func (s *TypeValExpr) SourceString(from *File) string {
-	return s.x.SourceString(from)
+	return s.val.ReferString(from)
 }
 
 // NewFuncValExpr returns a new expression referencing a function.
@@ -2506,20 +2535,11 @@ func (s *FuncValExpr) Type() Type {
 // SourceString representation.
 func (s *FuncValExpr) SourceString(from *File) string {
 	callee := s.x.SourceString(from)
-	spec := ""
 	fType := s.t
 	if fType == nil {
 		return callee
 	}
-	numTypeParamValues := len(fType.TypeParamsValues)
-	if numTypeParamValues > 0 {
-		types := make([]string, numTypeParamValues)
-		for i, val := range fType.TypeParamsValues {
-			types[i] = val.Typ.ReferString(from)
-		}
-		spec = "[" + strings.Join(types, ",") + "]"
-	}
-	return callee + spec
+	return callee + fType.specializeString(from)
 }
 
 func (s *FuncCallExpr) node() {}
@@ -2637,6 +2657,19 @@ func (s *Ident) node() {}
 // Node returns the node in the AST tree.
 func (s *Ident) Node() ast.Node { return s.Src }
 
+// Specialise the identifier.
+func (s *Ident) Specialise(spec Specialiser) (Expr, bool) {
+	nonTypeParam, isGeneric := s.Stor.(*GenericNonTypeParam)
+	if !isGeneric {
+		return s, true
+	}
+	val := spec.NonTypeFor(nonTypeParam)
+	if val == nil {
+		return s, true
+	}
+	return val.Value(), true
+}
+
 // Type returns the type returned by the function call.
 // Use CallExpr.Func.Type to get the type of the function being called.
 func (s *Ident) Type() Type { return s.Stor.Type() }
@@ -2649,6 +2682,37 @@ func (s *Ident) Store() Storage { return s.Stor }
 
 // SourceString returns the GX source code of the expression.
 func (s *Ident) SourceString(*File) string { return s.Src.Name }
+
+func (s *Ident) defineSingleAxis(uni Unifier, targets []AxisLengths, genericAxis *GenericNonTypeParam) ([]AxisLengths, bool) {
+	if len(targets) == 0 {
+		return nil, uni.Err().Appendf(s.Node(), "no axis left to define generic parameter %s", genericAxis.NameDef().Name)
+	}
+	return targets[1:], uni.DefineNonType(genericAxis, targets[0].AsExpr())
+}
+
+func (s *Ident) defineShape(uni Unifier, targets []AxisLengths, genericAxis *GenericNonTypeParam) ([]AxisLengths, bool) {
+	sliceExpr := &SliceLitExpr{
+		Src:  &ast.ArrayType{},
+		Typ:  IntLenSliceType(),
+		Elts: make([]Expr, len(targets)),
+	}
+	for i, axlen := range targets {
+		sliceExpr.Elts[i] = axlen.AsExpr()
+	}
+	return nil, uni.DefineNonType(genericAxis, sliceExpr)
+}
+
+// UnifyWith an expression with a generic non parameter.
+func (s *Ident) UnifyWith(uni Unifier, targets []AxisLengths) ([]AxisLengths, bool) {
+	genericAxis, isGenericAxis := s.Stor.(*GenericNonTypeParam)
+	if !isGenericAxis {
+		return targets, true
+	}
+	if genericAxis.Type().Kind() != irkind.Slice {
+		return s.defineSingleAxis(uni, targets, genericAxis)
+	}
+	return s.defineShape(uni, targets, genericAxis)
+}
 
 func (s *PackageRef) node() {}
 
@@ -2840,6 +2904,7 @@ func (s *AnonymousStorage) Expr() ast.Expr { return s.Src }
 func (s *AnonymousStorage) Type() Type { return s.Typ }
 
 // NameDef returns the identifier identifying the storage.
+
 func (s *AnonymousStorage) NameDef() *ast.Ident { return s.Src }
 
 // Same returns true if the other storage is this storage.
@@ -2908,6 +2973,11 @@ func (s *FieldStorage) Same(o Storage) bool {
 		return false
 	}
 	return s.Field == oT.Field
+}
+
+// String representing the receiver for debugging.
+func (s *FieldStorage) String() string {
+	return fmt.Sprintf("%T: %s %s", s, s.Field.Name.Name, s.Type().ReferString(nil))
 }
 
 // ----------------------------------------------------------------------------
@@ -3104,8 +3174,18 @@ func (*IfStmt) node()     {}
 func (s *IfStmt) Node() ast.Node { return s.Src }
 
 // SourceString returns the GX source code of the expression.
-func (*IfStmt) SourceString(*File) string {
-	return "IfStmt"
+func (s *IfStmt) SourceString(from *File) string {
+	initS := ""
+	if s.Init != nil {
+		initS = s.Init.SourceString(from) + ";"
+	}
+	condS := s.Cond.SourceString(from)
+	bodyS := gxfmt.Indent(s.Body.SourceString(from))
+	elseS := ""
+	if s.Else != nil {
+		elseS = fmt.Sprintf(" else {\n%s}", gxfmt.Indent(s.Else.SourceString(from)))
+	}
+	return fmt.Sprintf("if %s%s {\n%s}%s\n", initS, condS, bodyS, elseS)
 }
 
 func (*ExprStmt) stmtNode() {}

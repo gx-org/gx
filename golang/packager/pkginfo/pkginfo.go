@@ -62,7 +62,7 @@ func Load(mod *module.Module, gxPackage string) (*PkgInfo, error) {
 	}
 	pkgInfo := &PkgInfo{
 		gxPackage: gxPackage,
-		stdlib:    stdlib.Importer(nil),
+		stdlib:    stdlib.Importer(),
 		mod:       mod,
 	}
 	var err error

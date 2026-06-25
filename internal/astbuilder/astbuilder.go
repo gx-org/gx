@@ -58,6 +58,9 @@ func (cl *cloner) clone(n ast.Node) ast.Node {
 	case *ast.BasicLit:
 		o := *nT
 		out = &o
+	case *ast.CallExpr:
+		o := *nT
+		out = &o
 	default:
 		cl.errs.Append(errors.Errorf("%T not supported", nT))
 	}

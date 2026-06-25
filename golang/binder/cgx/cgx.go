@@ -20,7 +20,7 @@ import (
 	"unsafe"
 
 	"github.com/pkg/errors"
-	"github.com/gx-org/backend/dtype"
+	"github.com/gx-org/backend/dtypes"
 	"github.com/gx-org/backend/platform"
 	"github.com/gx-org/backend/shape"
 	"github.com/gx-org/gx/api"
@@ -586,7 +586,7 @@ func cgx_free_function_run_result(cgxFunctionResult *C.struct_cgx_function_run_r
 
 /* cgx_value */
 
-func toValueResult[T dtype.GoDataType](devAtom *types.DeviceAtom[T], err error) C.struct_cgx_value_new_result {
+func toValueResult[T dtypes.Supported](devAtom *types.DeviceAtom[T], err error) C.struct_cgx_value_new_result {
 	if err != nil {
 		return C.struct_cgx_value_new_result{error: (C.cgx_error)(wrap[error](err))}
 	}
@@ -702,7 +702,7 @@ func cgx_value_shape(cgxValue C.cgx_value) C.cgx_shape {
 	return 0
 }
 
-func atomFromDeviceArray[T dtype.GoDataType](cgxValue C.cgx_value) T {
+func atomFromDeviceArray[T dtypes.Supported](cgxValue C.cgx_value) T {
 	value := unwrap[values.Value](cgxValue)
 	atomDevice := types.NewDeviceAtom[T](value.(*values.DeviceArray))
 	atomHost, err := atomDevice.Fetch()
@@ -794,26 +794,26 @@ func cgx_value_string(cgxValue C.cgx_value) *C.cchar_t {
 
 /* cgx_shape */
 
-func fromCGXValueKind(valueType C.enum_cgx_value_kind) dtype.DataType {
+func fromCGXValueKind(valueType C.enum_cgx_value_kind) dtypes.DType {
 	switch valueType {
 	case C.CGX_BOOL:
-		return dtype.Bool
+		return dtypes.Bool
 	case C.CGX_BFLOAT16:
-		return dtype.Bfloat16
+		return dtypes.BFloat16
 	case C.CGX_FLOAT32:
-		return dtype.Float32
+		return dtypes.Float32
 	case C.CGX_FLOAT64:
-		return dtype.Float64
+		return dtypes.Float64
 	case C.CGX_INT32:
-		return dtype.Int32
+		return dtypes.Int32
 	case C.CGX_INT64:
-		return dtype.Int64
+		return dtypes.Int64
 	case C.CGX_UINT32:
-		return dtype.Uint32
+		return dtypes.Uint32
 	case C.CGX_UINT64:
-		return dtype.Uint64
+		return dtypes.Uint64
 	default:
-		return dtype.Invalid
+		return dtypes.InvalidDType
 	}
 }
 
@@ -850,7 +850,7 @@ func cgx_shape_size(cgxShape C.cgx_shape) C.int {
 //export cgx_shape_element_kind
 func cgx_shape_element_kind(cgxShape C.cgx_shape) C.enum_cgx_value_kind {
 	shape := unwrap[*shape.Shape](cgxShape)
-	if shape.DType < dtype.MaxDataType {
+	if shape.DType < dtypes.MaxDType {
 		return toCGXValueKind(irkind.Kind(shape.DType))
 	}
 	return C.CGX_INVALID

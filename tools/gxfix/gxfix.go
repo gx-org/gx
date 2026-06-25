@@ -22,7 +22,6 @@ import (
 
 	"github.com/gx-org/gx/api"
 	"github.com/gx-org/gx/build/builder"
-	"github.com/gx-org/gx/stdlib/impl"
 	"github.com/gx-org/gx/stdlib"
 	"github.com/gx-org/gx/tools/gxfix/fixers"
 )
@@ -33,9 +32,9 @@ var (
 )
 
 // NewBuilder returns a new builder given a standard library implementation.
-func NewBuilder(impl *impl.Stdlib) (*builder.Builder, error) {
+func NewBuilder() (*builder.Builder, error) {
 	return builder.New(
-		stdlib.Importer(impl),
+		stdlib.Importer(),
 	), nil
 }
 

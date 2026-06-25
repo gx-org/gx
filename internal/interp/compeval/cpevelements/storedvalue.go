@@ -38,7 +38,7 @@ type storedValue struct {
 var (
 	_ coreops.Element              = (*storedValue)(nil)
 	_ elements.WithAxes            = (*storedValue)(nil)
-	_ ir.WithStore                 = (*storedValue)(nil)
+	_ ir.WithBareValue             = (*storedValue)(nil)
 	_ ir.WithLength                = (*storedValue)(nil)
 	_ ir.Canonical                 = (*storedValue)(nil)
 	_ elements.Slicer              = (*storedValue)(nil)
@@ -46,9 +46,14 @@ var (
 	_ elements.Selector            = (*storedValue)(nil)
 	_ elements.Under               = (*storedValue)(nil)
 	_ elements.WithElements        = (*storedValue)(nil)
+	_ engine.Slice                 = (*storedValue)(nil)
 )
 
-// NewStoredValue returns a new element representing a value stored in a variable.
+// NewStoredValue attaches a value to a storage so that the storage can be recovered when referenced.
+// As an example, in the following code:
+// x := 2
+// The value 2 is associated to a local storage 'x' so that when 'x' is referenced in an expression,
+// the value 2 and its local storage are both stored in the element.
 func NewStoredValue(file *ir.File, storage ir.Storage, value ir.Element) ir.Element {
 	return &storedValue{
 		storage: newProxy(elements.NewNodeAt[ir.Storage](file, storage)),
@@ -131,6 +136,11 @@ func (v *storedValue) Value() ir.Element {
 	return v.val
 }
 
+// BareValue returns the value being stored.
+func (v *storedValue) BareValue() ir.Element {
+	return ir.BareValue(v.val)
+}
+
 // Type of the element.
 func (v *storedValue) Type() ir.Type {
 	return v.val.Type()
@@ -175,8 +185,12 @@ func (v *storedValue) Length(ev ir.Evaluator) (int, error) {
 	return withLen.Length(ev)
 }
 
+func (v *storedValue) Append(args []ir.Element) engine.Slice {
+	return v.val.(engine.Slice).Append(args)
+}
+
 // Expr returns the IR expression represented by the variable.
-func (v *storedValue) Expr(ev ir.Evaluator, src ast.Expr) (ir.Expr, ir.CompEvalError, error) {
+func (v *storedValue) Expr(ev ir.Evaluator, src ast.Expr) ([]ir.Expr, error) {
 	valExpr, ok := v.val.(ir.WithExpr)
 	if ok {
 		return valExpr.Expr(ev, src)
@@ -212,13 +226,9 @@ func (v *storedValue) ShortString() string {
 }
 
 func (v *storedValue) SourceString(from *ir.File) string {
-	return fmt.Sprintf("%s -> %T:%s", v.storage.SourceString(from), v.val, v.val.Type().ReferString(from))
+	return v.ShortString()
 }
 
-// StoredValueOf returns the value encapsulated and it has been associated with its storage.
-func StoredValueOf(el ir.Element) ir.Element {
-	if storedValue, ok := el.(*storedValue); ok {
-		return storedValue.Value()
-	}
-	return el
+func (v *storedValue) String() string {
+	return fmt.Sprintf("{%T:%s -> %T:%s:%s}", v, v.storage.SourceString(nil), v.val, v.val.Type().ReferString(nil), v.val)
 }

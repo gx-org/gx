@@ -20,6 +20,7 @@ import (
 	"strings"
 
 	"github.com/pkg/errors"
+	"github.com/gx-org/gx/build/fmterr"
 	"github.com/gx-org/gx/build/ir"
 	"github.com/gx-org/gx/internal/interp/flatten"
 	"github.com/gx-org/gx/interp/engine"
@@ -27,8 +28,8 @@ import (
 
 // Tuple value grouping multiple values together.
 type Tuple struct {
-	elements []ir.Element
 	typ      *ir.TupleType
+	elements []ir.Element
 }
 
 var (
@@ -38,11 +39,37 @@ var (
 	_ ir.Canonical    = (*Tuple)(nil)
 )
 
-// NewTuple returns a tuple to store the result of a function returning more than one value.
-func NewTuple(values []ir.Element) *Tuple {
-	return &Tuple{
-		elements: values,
+// TupleFromElements creates a new tuple from a slice of elements.
+// The type of the tuple is inferred from the elements.
+// Such tuple can be of any size (for example, a slice can unpack into a tuple with no element).
+func TupleFromElements(elts []ir.Element) (*Tuple, error) {
+	types := make([]ir.Type, len(elts))
+	for i, val := range elts {
+		types[i] = val.Type()
 	}
+	return &Tuple{
+		typ:      &ir.TupleType{Types: types},
+		elements: elts,
+	}, nil
+}
+
+// NewTuple returns a tuple to store the result of a function returning more than one value.
+func NewTuple(ftyp *ir.FuncType, values []ir.Element) (*Tuple, error) {
+	resultFields := ftyp.Results.Fields()
+	tupleType := &ir.TupleType{
+		Types: make([]ir.Type, len(resultFields)),
+	}
+	for i, field := range resultFields {
+		tupleType.Types[i] = field.Type()
+	}
+	n := &Tuple{typ: tupleType, elements: values}
+	if len(n.typ.Types) <= 1 {
+		return n, fmterr.Internal(errors.Errorf("tuple of less than one element"))
+	}
+	if len(n.typ.Types) != len(n.elements) {
+		return n, fmterr.Internal(errors.Errorf("got tuple of %d elements but type %s composed of %d types", len(values), n.typ.ReferString(nil), len(n.typ.Types)))
+	}
+	return n, nil
 }
 
 // Flatten the tuple and all its elements.
@@ -56,21 +83,16 @@ func (n *Tuple) Elements() []ir.Element {
 }
 
 // Expr converts a tuple of the form (Expr, error) to an expression.
-func (n *Tuple) Expr(ev ir.Evaluator, src ast.Expr) (_ ir.Expr, cpErr ir.CompEvalError, err error) {
-	defer func() {
+func (n *Tuple) Expr(ev ir.Evaluator, src ast.Expr) ([]ir.Expr, error) {
+	var exprs []ir.Expr
+	for _, el := range n.elements {
+		elExprs, err := ir.ToExpr(ev, src, el)
 		if err != nil {
-			err = fmt.Errorf("cannot convert tuple %s to an IR expression: %w", n.Type().ReferString(nil), err)
+			return nil, err
 		}
-	}()
-	if len(n.elements) != 2 {
-		return nil, nil, errors.Errorf("expect 2 elements but got %d", len(n.elements))
+		exprs = append(exprs, elExprs...)
 	}
-	expr, cpErr, err := ir.ToExpr(ev, src, n.elements[0])
-	if cpErr != nil || err != nil {
-		return expr, cpErr, err
-	}
-	cpErr, err = ev.ToCompEvalError(src, n.elements[1])
-	return expr, cpErr, err
+	return exprs, nil
 }
 
 // TupleElements returns the elements stored in the tuple.
@@ -100,6 +122,25 @@ func (n *Tuple) Type() ir.Type {
 		n.typ.Types[i] = el.Type()
 	}
 	return n.typ
+}
+
+// UnpackError unpacks an error and its value.
+func (n *Tuple) UnpackError(ev ir.TypeCmp) (ir.Element, ir.Element, error) {
+	lastType := n.typ.Types[len(n.typ.Types)-1]
+	if ok, err := lastType.AssignableTo(ev, ir.ErrorType()); !ok || err != nil {
+		return n, nil, err
+	}
+	last := n.elements[len(n.elements)-1]
+	withoutLast := n.elements[:len(n.elements)-1]
+	if len(withoutLast) == 1 {
+		return withoutLast[0], last, nil
+	}
+	return &Tuple{
+		typ: &ir.TupleType{
+			Types: n.typ.Types[:len(n.elements)-1],
+		},
+		elements: n.elements[:len(n.elements)-1],
+	}, last, nil
 }
 
 func (n *Tuple) String() string {

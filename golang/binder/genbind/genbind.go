@@ -52,7 +52,7 @@ func main() {
 		exit("cannot create bindings for language %q: no binder available. Available binders are %v", *language, slices.Collect(maps.Keys(binder.Binders)))
 	}
 	bld := builder.New(
-		stdlib.Importer(nil),
+		stdlib.Importer(),
 		localImporter,
 	)
 	pkg, err := bld.Build(*gxPackage)

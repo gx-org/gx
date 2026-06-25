@@ -16,7 +16,7 @@ package interp
 
 import (
 	"github.com/pkg/errors"
-	"github.com/gx-org/backend/dtype"
+	"github.com/gx-org/backend/dtypes"
 	"github.com/gx-org/gx/api/values"
 	"github.com/gx-org/gx/build/fmterr"
 	"github.com/gx-org/gx/build/ir"
@@ -32,14 +32,14 @@ type (
 		array(fitp *Interpreter, expr *ir.ArrayLitExpr) (ir.Element, error)
 	}
 
-	valuerT[T dtype.GoDataType] struct {
+	valuerT[T dtypes.Supported] struct {
 		kind         irkind.Kind
 		toAtomValue  func(tp ir.Type, val T) (*values.HostArray, error)
 		toArrayValue func(tp ir.Type, val []T, dims []int) (*values.HostArray, error)
 	}
 )
 
-func goValueFromElement[T dtype.GoDataType](el engine.NumericalElement) (T, bool, error) {
+func goValueFromElement[T dtypes.Supported](el engine.NumericalElement) (T, bool, error) {
 	var t T
 	canonicalElt, ok := el.(elements.ElementWithConstant)
 	if !ok {
@@ -56,7 +56,7 @@ func goValueFromElement[T dtype.GoDataType](el engine.NumericalElement) (T, bool
 	return t, err == nil, err
 }
 
-func goSliceFromArrayElement[T dtype.GoDataType](el engine.NumericalElement) ([]T, bool, error) {
+func goSliceFromArrayElement[T dtypes.Supported](el engine.NumericalElement) ([]T, bool, error) {
 	canonicalElt, ok := el.(elements.ElementWithConstant)
 	if !ok {
 		return nil, false, nil
@@ -69,7 +69,7 @@ func goSliceFromArrayElement[T dtype.GoDataType](el engine.NumericalElement) ([]
 	return array.Flat(), true, nil
 }
 
-func goSliceFromElements[T dtype.GoDataType](els []engine.NumericalElement) ([]T, bool, error) {
+func goSliceFromElements[T dtypes.Supported](els []engine.NumericalElement) ([]T, bool, error) {
 	var vals []T
 	for _, el := range els {
 		var subVals []T
@@ -115,9 +115,9 @@ func (v valuerT[T]) buildStaticArray(fitp *Interpreter, lit *ir.ArrayLitExpr, ax
 	if len(valsT) == 0 {
 		valsT = make([]T, size)
 	}
-	typ, cpErr, err := concrete.Concrete(fitp.env.ExprEval(), lit.Src, lit.Typ)
-	if unErr := ir.UnifyErr(cpErr, err); unErr != nil {
-		return nil, false, unErr
+	typ, err := concrete.Concrete(fitp.env.ExprEval(), lit.Src, lit.Typ)
+	if err != nil {
+		return nil, false, err
 	}
 	array, err := v.toArrayValue(typ, valsT, axesI)
 	if err != nil {
@@ -169,7 +169,7 @@ func newValuer(fitp *Interpreter, expr ir.Expr, kind irkind.Kind) (v valuer, err
 	case irkind.Bool:
 		v = valuerT[bool]{kind: kind, toAtomValue: values.AtomBoolValue, toArrayValue: values.ArrayBoolValue}
 	case irkind.Bfloat16:
-		v = valuerT[dtype.Bfloat16T]{kind: kind, toAtomValue: values.AtomBfloat16Value, toArrayValue: values.ArrayBfloat16Value}
+		v = valuerT[dtypes.Bfloat16T]{kind: kind, toAtomValue: values.AtomBfloat16Value, toArrayValue: values.ArrayBfloat16Value}
 	case irkind.Float32:
 		v = valuerT[float32]{kind: kind, toAtomValue: values.AtomFloatValue[float32], toArrayValue: values.ArrayFloatValue[float32]}
 	case irkind.Float64:
@@ -197,7 +197,7 @@ func evalArrayLiteral(fitp *Interpreter, expr *ir.ArrayLitExpr) (ir.Element, err
 	return valuer.array(fitp, expr)
 }
 
-func toAtomElementInt[T dtype.IntegerType](fitp *Interpreter, src elements.ExprAt, val T) (engine.NumericalElement, error) {
+func toAtomElementInt[T dtypes.IntegerType](fitp *Interpreter, src elements.ExprAt, val T) (engine.NumericalElement, error) {
 	hostVal, err := values.AtomIntegerValue(src.Node().Type(), val)
 	if err != nil {
 		return nil, err
@@ -205,7 +205,7 @@ func toAtomElementInt[T dtype.IntegerType](fitp *Interpreter, src elements.ExprA
 	return fitp.elementFromAtom(src.Node(), hostVal)
 }
 
-func toAtomElementFloat[T dtype.Float](fitp *Interpreter, src elements.ExprAt, val T) (engine.NumericalElement, error) {
+func toAtomElementFloat[T dtypes.GoFloat](fitp *Interpreter, src elements.ExprAt, val T) (engine.NumericalElement, error) {
 	hostVal, err := values.AtomFloatValue(src.Node().Type(), val)
 	if err != nil {
 		return nil, err

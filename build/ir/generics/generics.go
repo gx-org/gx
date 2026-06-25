@@ -22,29 +22,10 @@ import (
 	"github.com/gx-org/gx/build/ir"
 )
 
-func newTypeParamDefinition(ftype *ir.FuncType) map[string]ir.Type {
-	defined := make(map[string]ir.Type)
-	for _, typeParamValue := range ftype.TypeParamsValues {
-		defined[typeParamValue.Field.Name.Name] = typeParamValue.Typ
-	}
-	return defined
-}
-
-func newAxisLengthsDefinition(ftype *ir.FuncType) map[string]ir.AxisValue {
-	axes := make(map[string]ir.AxisValue)
-	for _, axValue := range ftype.AxisLengths {
-		axes[axValue.Name()] = axValue
-	}
-	return axes
-}
-
 func typeInclude(fetcher ir.Fetcher, set ir.Type, typ ir.Type) bool {
-	isIn, cpErr, err := ir.TypeInclude(fetcher, set, typ)
+	isIn, err := ir.TypeInclude(fetcher, set, typ)
 	if err != nil {
 		return fetcher.Err().Append(err)
-	}
-	if cpErr != nil {
-		return fetcher.Err().AppendAt(typ.Node(), cpErr)
 	}
 	if !isIn {
 		return fetcher.Err().Appendf(typ.Node(), "%s does not satisfy %s",
@@ -71,12 +52,22 @@ func instantiateExpr(fetcher ir.Fetcher, expr ir.Expr) (ir.Value, bool) {
 	if !ok {
 		return expr, fetcher.Err().AppendInternalf(expr.Node(), "cannot convert %T to %s", val, reflect.TypeFor[ir.Canonical]())
 	}
-	irExpr, cpErr, err := irVal.Expr(fetcher, expr.Expr())
-	if cpErr != nil {
-		return expr, fetcher.Err().AppendAt(expr.Node(), cpErr)
-	}
+	irExpr, err := ir.ToSingleExpr(fetcher, expr.Expr(), irVal)
 	if err != nil {
 		return expr, fetcher.Err().AppendAt(expr.Node(), err)
 	}
 	return irExpr, true
+}
+
+// AssignTo checks if an expression can be assigned to a generic non-type parameter.
+func AssignTo(fetcher ir.Fetcher, x ir.Expr, genAxis *ir.GenericNonTypeParam, tp ir.Type) bool {
+	isAssignable, err := x.Type().AssignableTo(fetcher, tp)
+	if err != nil {
+		return fetcher.Err().Append(err)
+	}
+	if !isAssignable {
+		from := fetcher.File()
+		return fetcher.Err().Appendf(x.Node(), "cannot use %s (type: %s) as %s value in assignment for type parameter %s", x.SourceString(from), x.Type().ReferString(from), tp.ReferString(from), genAxis.NameDef().Name)
+	}
+	return true
 }

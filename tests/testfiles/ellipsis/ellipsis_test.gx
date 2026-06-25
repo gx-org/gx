@@ -3,8 +3,8 @@ package ellipsis
 import "shape"
 
 func TestEllipsisWithFunction() [4]float32 {
-	a := shape.Concat(0, [2]float32{2, 3}, [2]float32{4, 5})
+	a := shape.Concat[0]([2]float32{2, 3}, [2]float32{4, 5})
 	return a + [4]float32{6, 7, 8, 9}
 	// Want:
-	// [2+2]float32{8, 10, 12, 14}
+	// [4]float32{8, 10, 12, 14}
 }

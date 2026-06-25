@@ -20,11 +20,46 @@ import (
 	"github.com/gx-org/gx/build/ir"
 )
 
+var (
+	nilIdent   = &ast.Ident{Name: "nil"}
+	nilStorage = &ir.Nil{Src: nilIdent}
+	nilExpr    = &ir.Ident{
+		Src:  nilIdent,
+		Stor: nilStorage,
+	}
+)
+
 type nilEl struct {
 	x *ir.NilCastExpr
 }
 
-var _ ir.Element = (*nilEl)(nil)
+var (
+	_ ir.Element  = (*nilEl)(nil)
+	_ ir.WithExpr = (*nilEl)(nil)
+)
+
+var nilError = NewNil(&ir.NilCastExpr{
+	X:   nilExpr,
+	Typ: ir.ErrorType(),
+})
+
+// NilError returns a GX nil error element.
+func NilError() ir.Element {
+	return nilError
+}
+
+// NilStorage returns the nil built-in storage singleton.
+func NilStorage() *ir.Nil {
+	return nilStorage
+}
+
+// NilFromType returns a nil element for a given type.
+func NilFromType(tp ir.Type) ir.Element {
+	return NewNil(&ir.NilCastExpr{
+		X:   nilExpr,
+		Typ: tp,
+	})
+}
 
 // NewNil returns a new nil element.
 func NewNil(x *ir.NilCastExpr) ir.Element {
@@ -35,8 +70,8 @@ func (el *nilEl) Type() ir.Type {
 	return el.x.Typ
 }
 
-func (el *nilEl) Expr(ev ir.Evaluator, expr ast.Expr) (ir.Expr, ir.CompEvalError, error) {
-	return el.x, nil, nil
+func (el *nilEl) Expr(ev ir.Evaluator, expr ast.Expr) ([]ir.Expr, error) {
+	return []ir.Expr{el.x}, nil
 }
 
 // IsNil returns true if the element is a nil element (whatever the type).

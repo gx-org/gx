@@ -36,7 +36,8 @@ type (
 var _ assignable = (*identStorage)(nil)
 
 func (asg *identStorage) checkTypeParam(rscope resolveScope, storage ir.Element) bool {
-	if _, isTypeParam := storage.Type().(*ir.TypeParam); isTypeParam {
+	val := ir.BareValue(storage)
+	if _, isTypeParam := val.(*ir.GenericTypeParam); isTypeParam {
 		return rscope.Err().Appendf(asg.source(), "cannot assign to %s", asg.target.src.Name)
 	}
 	return true

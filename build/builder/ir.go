@@ -88,7 +88,7 @@ func findStorage(scope resolveScope, name *ast.Ident) (ir.Storage, bool) {
 		if store == nil {
 			return nil, scope.Err().AppendInternalf(name, "name %q refers element %T which returned a nil storage", name.Name, el)
 		}
-		return elT.Store(), true
+		return store, true
 	default:
 		return nil, scope.Err().AppendInternalf(name, "element %T is not a storage", el)
 	}
@@ -151,12 +151,9 @@ func assignableToAt(rscope resolveScope, pos ast.Node, src, dst ir.Type) bool {
 	if !compEvalOk {
 		return false
 	}
-	assignable, cpErr, err := ir.AssignableTo(compEval, src, dst)
+	assignable, err := ir.AssignableTo(compEval, src, dst)
 	if err != nil {
 		return compEval.Err().AppendAt(pos, err)
-	}
-	if cpErr != nil {
-		return compEval.Err().AppendAt(pos, cpErr)
 	}
 	if !assignable {
 		return compEval.Err().Appendf(pos, "cannot use %s as %s value in assignment", src.ReferString(compEval.File()), dst.ReferString(compEval.File()))
@@ -164,21 +161,18 @@ func assignableToAt(rscope resolveScope, pos ast.Node, src, dst ir.Type) bool {
 	return true
 }
 
-func assignableTo(rscope resolveScope, src, dst ir.Type) (bool, ir.CompEvalError, error) {
+func assignableTo(rscope resolveScope, src, dst ir.Type) (bool, error) {
 	compEval, compEvalOk := rscope.compEval()
 	if !compEvalOk {
-		return false, nil, nil
+		return false, nil
 	}
 	return ir.AssignableTo(compEval, src, dst)
 }
 
 func convertToAt(rscope resolveScope, pos ast.Node, src, dst ir.Type) bool {
-	convertOk, cpErr, err := convertTo(rscope, src, dst)
+	convertOk, err := convertTo(rscope, src, dst)
 	if err != nil {
 		return rscope.Err().AppendAt(pos, err)
-	}
-	if cpErr != nil {
-		return rscope.Err().AppendAt(pos, cpErr)
 	}
 	if !convertOk {
 		from := rscope.fileScope().irFile()
@@ -200,16 +194,16 @@ func reconcile(src, dst ir.Type) {
 	dstInfer.Rnk = srcArray.Rank()
 }
 
-func convertTo(rscope resolveScope, src, dst ir.Type) (bool, ir.CompEvalError, error) {
+func convertTo(rscope resolveScope, src, dst ir.Type) (bool, error) {
 	if ir.IsInvalidType(src) || ir.IsInvalidType(dst) {
 		// An error should have already been reported. We skip the check
 		// to prevent additional confusing errors.
-		return true, nil, nil
+		return true, nil
 	}
 	reconcile(src, dst)
 	compEval, compEvalOk := rscope.compEval()
 	if !compEvalOk {
-		return true, nil, nil
+		return true, nil
 	}
 	return src.ConvertibleTo(compEval, dst)
 }
@@ -224,13 +218,10 @@ func equalToAt(rscope resolveScope, pos ast.Node, src, dst ir.Type) bool {
 	if !compEvalOk {
 		return true
 	}
-	eq, cpErr, err := ir.Equal(compEval, src, dst)
+	eq, err := ir.Equal(compEval, src, dst)
 	if err != nil {
 		rscope.Err().AppendInternalf(pos, "cannot compare types: %v", err)
 		return true
-	}
-	if cpErr != nil {
-		return rscope.Err().AppendAt(pos, cpErr)
 	}
 	return eq
 }
@@ -240,13 +231,10 @@ func axisEqual(rscope resolveScope, pos ast.Node, src, dst ir.AxisLengths) bool 
 	if !compEvalOk {
 		return true
 	}
-	eq, cpErr, err := src.Equal(compEval, dst)
+	eq, err := src.Equal(compEval, dst)
 	if err != nil {
 		rscope.Err().AppendInternalf(pos, "cannot compare types: %v", err)
 		return true
-	}
-	if cpErr != nil {
-		return rscope.Err().AppendAt(pos, cpErr)
 	}
 	return eq
 }
@@ -268,13 +256,12 @@ func isInvalidExpr(expr ir.Expr) bool {
 	return ir.IsInvalidType(expr.Type())
 }
 
-var invalidIdent = &ir.Ident{
-	Src:  &ast.Ident{Name: "<<<invalid>>>"},
-	Stor: ir.InvalidType(),
+func invalidExpr() *ir.Ident {
+	return ir.InvalidIdent
 }
 
-func invalidExpr() *ir.Ident {
-	return invalidIdent
+func invalidStore() ir.Storage {
+	return ir.InvalidIdent.Stor
 }
 
 var invalidTypeExprVal = ir.TypeExpr(

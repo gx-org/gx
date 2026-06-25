@@ -26,7 +26,10 @@ type SliceLitExpr struct {
 	Elts []Expr
 }
 
-var _ Expr = (*SliceLitExpr)(nil)
+var (
+	_ ExprUnpacker   = (*SliceLitExpr)(nil)
+	_ VarArgsIndexer = (*SliceLitExpr)(nil)
+)
 
 func (s *SliceLitExpr) node() {}
 
@@ -38,6 +41,17 @@ func (s *SliceLitExpr) Type() Type { return s.Typ }
 
 // Expr returns the AST expression.
 func (s *SliceLitExpr) Expr() ast.Expr { return s.Src }
+
+// Unpack the slice literal expressions.
+func (s *SliceLitExpr) Unpack() []Expr { return s.Elts }
+
+// IndexForVarArgs returns the expression at the ith position.
+func (s *SliceLitExpr) IndexForVarArgs(errapp ErrSource, i int) (Expr, bool) {
+	if i >= len(s.Elts) {
+		return InvalidIdent, false
+	}
+	return s.Elts[i], true
+}
 
 // SourceString returns the GX source code of the node.
 func (s *SliceLitExpr) SourceString(from *File) string {

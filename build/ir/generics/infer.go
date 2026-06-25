@@ -15,35 +15,47 @@
 package generics
 
 import (
+	"fmt"
 	"go/ast"
+	"reflect"
 
+	"github.com/gx-org/gx/build/fmterr"
 	"github.com/gx-org/gx/build/ir"
 	"github.com/gx-org/gx/build/ir/irkind"
-	"github.com/gx-org/gx/interp/elements"
 )
 
 type (
 	unifier struct {
-		ir.Fetcher
-		params  map[string]*ir.Field
-		defined map[string]ir.Type
-		axes    map[string]ir.AxisValue
+		fetcher ir.Fetcher
+		defined []ir.GenericValue
 	}
 
 	argUnifier struct {
 		*unifier
-		arg ir.Expr
+		isVarArgs bool
+		param     *ir.Field
+		arg       ir.Expr
 	}
 )
 
 var _ = (ir.Unifier)(&argUnifier{})
 
 func (uni *unifier) specialiseRemainingNumbers() bool {
-	for name, v := range uni.defined {
-		if !irkind.IsNumber(v.Kind()) {
+	for i, v := range uni.defined {
+		if v == nil {
+			// The type has not been defined with inference.
 			continue
 		}
-		uni.defined[name] = ir.DefaultNumberType(v.Kind())
+		knd := v.DefinedType().Kind()
+		if !irkind.IsNumber(knd) {
+			continue
+		}
+		genericIdentType, ok := v.Generic().(*ir.GenericTypeParam)
+		if !ok {
+			continue
+		}
+		tp := ir.DefaultNumberType(knd)
+		uni.defined[i] = ir.NewTypeGenericValue(genericIdentType, tp)
 	}
 	return true
 }
@@ -52,143 +64,133 @@ func (uni *argUnifier) Node() ast.Node {
 	return uni.arg.Node()
 }
 
-func (uni *argUnifier) specialiseNumber(name string, defined, typ ir.Type) ir.Type {
-	if !irkind.IsNumber(defined.Kind()) {
-		return defined
+func (uni *argUnifier) Err() *fmterr.Appender {
+	return uni.fetcher.Err()
+}
+
+func (uni *argUnifier) specialiseNumber(genType *ir.GenericTypeParam, defined ir.GenericValue, typ ir.Type) ir.Type {
+	definedType := defined.DefinedType()
+	if !irkind.IsNumber(definedType.Kind()) {
+		return definedType
 	}
 	if irkind.IsNumber(typ.Kind()) {
-		return defined
+		return definedType
 	}
 	if !ir.CanBeNumber(typ) {
-		return defined
+		return definedType
 	}
-	uni.defined[name] = typ
+	genericIdentType, ok := defined.Generic().(*ir.GenericTypeParam)
+	if !ok {
+		return definedType
+	}
+	uni.defined[genType.OrigField().Pos] = ir.NewTypeGenericValue(genericIdentType, typ)
 	return typ
 }
 
-func (uni *argUnifier) DefineTParam(tp *ir.TypeParam, typ ir.Type) bool {
-	name := tp.Field.Name.Name
-	ok, cpErr, err := ir.AssignableTo(uni, typ, tp.Field.Type())
+func invalidGenericType(genType *ir.GenericTypeParam) *ir.TypeGenericValue {
+	return ir.NewTypeGenericValue(genType, ir.InvalidType())
+}
+
+func (uni *argUnifier) DefineType(genType *ir.GenericTypeParam, typ ir.Type) bool {
+	field := genType.OrigField()
+	pos := field.Pos
+	ok, err := ir.AssignableTo(uni.fetcher, typ, field.Type())
 	if err != nil {
-		uni.defined[name] = ir.InvalidType()
-		return uni.Err().AppendAt(uni.arg.Node(), err)
-	}
-	if cpErr != nil {
-		uni.defined[name] = ir.InvalidType()
-		return uni.Err().AppendAt(uni.arg.Node(), cpErr)
+		uni.defined[pos] = invalidGenericType(genType)
+		return uni.fetcher.Err().AppendAt(uni.arg.Node(), err)
 	}
 	if !ok {
-		uni.defined[name] = ir.InvalidType()
-		return uni.Err().Appendf(uni.arg.Node(), "%s does not satisfy %s for %s", typ.ReferString(uni.File()), tp.Field.Type().ReferString(uni.File()), tp.Field.Name.Name)
+		uni.defined[pos] = invalidGenericType(genType)
+		from := uni.fetcher.File()
+		field := genType.OrigField()
+		info := ""
+		if genType, isGenType := typ.(*ir.GenericTypeParam); isGenType {
+			info = fmt.Sprintf(" (%s)", genType.OrigField().Type().ReferString(from))
+		}
+		return uni.fetcher.Err().Appendf(uni.arg.Node(), "%s%s does not satisfy %s", typ.ReferString(from), info, field.Type().ReferString(from))
 	}
-	defined := uni.defined[name]
+	defined := uni.defined[pos]
 	if defined == nil {
-		uni.defined[name] = typ
+		uni.defined[pos] = ir.NewTypeGenericValue(genType, typ)
 		return true
 	}
-	defined = uni.specialiseNumber(name, defined, typ)
-	if !ir.IsValid(defined) || !ir.IsValid(typ) {
+	definedType := uni.specialiseNumber(genType, defined, typ)
+	if !ir.IsValid(definedType) || !ir.IsValid(typ) {
 		return false
 	}
-	eq, cpErr, err := defined.Equal(uni, typ)
+	eq, err := typ.AssignableTo(uni.fetcher, definedType)
 	if err != nil {
-		return uni.Err().AppendAt(uni.arg.Node(), err)
-	}
-	if cpErr != nil {
-		return uni.Err().AppendAt(uni.arg.Node(), cpErr)
+		return uni.fetcher.Err().AppendAt(uni.arg.Node(), err)
 	}
 	if !eq {
-		return uni.Err().Appendf(uni.arg.Node(), "type %s does not match type %s for %s", typ.ReferString(uni.File()), defined.ReferString(uni.File()), tp.Field.Name.Name)
+		from := uni.fetcher.File()
+		return uni.fetcher.Err().Appendf(uni.arg.Node(), "type %s does not match type %s for %s", typ.ReferString(from), definedType.ReferString(from), genType.OrigField().Name.Name)
 	}
 	return true
 }
 
-func (uni *argUnifier) defineAxis(name string, targets []ir.AxisLengths) bool {
-	if len(targets) == 0 {
-		return uni.Err().Appendf(uni.arg.Node(), "no axis left to define %s", name)
+func (uni *argUnifier) defineVarArgsNonType(genAxis *ir.GenericNonTypeParam, expr ir.Expr) bool {
+	nonTypeSlice, isSlice := ir.Underlying(genAxis.Type()).(*ir.SliceType)
+	if !isSlice {
+		from := uni.fetcher.File()
+		elType := expr.Type().ReferString(from)
+		return uni.fetcher.Err().Appendf(uni.arg.Node(), "cannot assign %s to %s (expect []%s)", elType, genAxis.Type().ReferString(from), elType)
 	}
-	ax := targets[0]
-	el, err := uni.Fetcher.EvalExpr(ax.AsExpr())
-	if err != nil {
-		return uni.Err().AppendAt(uni.Node(), err)
+	sliceElement, ok := nonTypeSlice.ElementType()
+	if !ok {
+		return false
 	}
-	return uni.defineAxisElement(name, targets, el)
-}
-
-func (uni *argUnifier) defineAxisElement(name string, exprs []ir.AxisLengths, el ir.Element) bool {
-	defined, isDefined := uni.axes[name]
-	if !isDefined {
-		uni.axes[name] = ir.AxisValue{Exprs: exprs, Value: el}
-		return true
+	if !AssignTo(uni.fetcher, expr, genAxis, sliceElement) {
+		return false
 	}
-	eq, err := ir.ElementEqual(defined.Value, el)
-	if err != nil {
-		return uni.Err().AppendAt(uni.arg.Node(), err)
+	pos := genAxis.OrigField().Pos
+	defined := uni.defined[pos]
+	var sliceLit *ir.SliceLitExpr
+	if defined == nil {
+		sliceLit = &ir.SliceLitExpr{
+			Src:  expr.Expr(),
+			Typ:  genAxis.Type(),
+			Elts: []ir.Expr{},
+		}
+		uni.defined[pos] = ir.NewAxisGenericValue(genAxis, sliceLit)
+	} else {
+		var sliceLitOk bool
+		sliceLit, sliceLitOk = defined.Value().(*ir.SliceLitExpr)
+		if !sliceLitOk {
+			return uni.fetcher.Err().AppendInternalf(uni.arg.Node(), "cannot convert %T to %s", defined.Value(), reflect.TypeFor[*ir.SliceLitExpr]().String())
+		}
 	}
-	if !eq {
-		return uni.Err().Appendf(uni.arg.Node(), "axis length %v does not match length %v for %s", defined.Value, el, name)
-	}
+	sliceLit.Elts = append(sliceLit.Elts, expr)
 	return true
 }
 
-func (uni *argUnifier) defineGroupAsAllSingleAxes(src ast.Node, name string, targets []ir.AxisLengths) ([]ir.AxisLengths, bool) {
-	var singles []ir.Element
-	for _, axis := range targets {
-		if axis.Type().Kind() != irkind.IntLen {
-			break
-		}
-		el, err := uni.Fetcher.EvalExpr(axis.AsExpr())
-		if err != nil {
-			return nil, uni.Fetcher.Err().AppendAt(uni.Node(), err)
-		}
-		singles = append(singles, el)
+func (uni *argUnifier) DefineNonType(genAxis *ir.GenericNonTypeParam, expr ir.Expr) bool {
+	if uni.isVarArgs {
+		return uni.defineVarArgsNonType(genAxis, expr)
 	}
-	slice, err := elements.NewSlice(
-		ir.IntLenSliceType(), singles,
-	)
-	sliceOk := true
-	if err != nil {
-		sliceOk = uni.Err().AppendAt(src, err)
-	}
-	return targets[len(singles):], uni.defineAxisElement(name, targets, slice) && sliceOk
-}
-
-func (uni *argUnifier) defineGroupAxis(src ast.Node, name string, tp ir.Type, targets []ir.AxisLengths) ([]ir.AxisLengths, bool) {
-	if len(targets) == 0 {
-		return uni.defineGroupAsAllSingleAxes(src, name, targets)
-	}
-	switch targets[0].Type().Kind() {
-	case irkind.IntLen:
-		return uni.defineGroupAsAllSingleAxes(src, name, targets)
-	case irkind.Slice:
-		ok := uni.defineAxis(name, targets)
-		return targets[1:], ok
-	default:
-		arg := targets[0]
-		return nil, uni.Err().Appendf(uni.Node(), "cannot unify axis length %s of type %s in parameters with axis length %s of type %s: not supported", name, tp.ReferString(uni.File()), arg.SourceString(uni.File()), arg.Type().ReferString(uni.File()))
-	}
-}
-
-func (uni *argUnifier) DefineAxis(src ast.Node, name string, tp ir.Type, targets []ir.AxisLengths) ([]ir.AxisLengths, bool) {
-	switch tp.Kind() {
-	case irkind.IntLen:
-		ok := uni.defineAxis(name, targets)
-		if len(targets) < 1 {
-			return nil, true
-		}
-		return targets[1:], ok
-	case irkind.Slice:
-		return uni.defineGroupAxis(src, name, tp, targets)
-	default:
-		return nil, uni.Err().Appendf(uni.Node(), "cannot unify axis expression of type %s in parameters: not supported", tp.ReferString(uni.File()))
-	}
-}
-
-func (uni *argUnifier) IsTypeParam(id *ir.Ident) bool {
-	if !ir.ValidIdent(id.Src) {
+	if !AssignTo(uni.fetcher, expr, genAxis, genAxis.Type()) {
 		return false
 	}
-	return uni.params[id.Src.Name] != nil
+	pos := genAxis.OrigField().Pos
+	defined := uni.defined[pos]
+	if defined == nil {
+		uni.defined[pos] = ir.NewAxisGenericValue(genAxis, expr)
+		return true
+	}
+	nonType, isNonType := defined.(*ir.NonTypeGenericValue)
+	if !isNonType {
+		from := uni.fetcher.File()
+		return uni.fetcher.Err().AppendInternalf(uni.arg.Node(), "cannot compare value %s to type parameter %s (type: %s)", expr.SourceString(from), defined.Name(), defined.DefinedType().ReferString(from))
+	}
+	isEqual, err := nonType.Equal(uni.fetcher, expr)
+	if err != nil {
+		return uni.fetcher.Err().AppendAt(uni.arg.Node(), err)
+	}
+	if !isEqual {
+		from := uni.fetcher.File()
+		return uni.fetcher.Err().Appendf(uni.arg.Node(), "%s does not match inferred value %s for %s", expr.SourceString(from), nonType.Value().SourceString(from), nonType.Generic().NameDef().Name)
+	}
+	return true
 }
 
 func typeParametersMap(tparams *ir.FieldList) map[string]*ir.Field {
@@ -202,35 +204,27 @@ func typeParametersMap(tparams *ir.FieldList) map[string]*ir.Field {
 	return fields
 }
 
-func collectElements(m map[string]ir.AxisValue) map[string]ir.Element {
-	els := make(map[string]ir.Element, len(m))
-	for k, v := range m {
-		els[k] = v.Value
-	}
-	return els
-}
-
 // Infer the type parameters of a function given a list of argument expressions.
 func Infer(fetcher ir.Fetcher, fExpr *ir.FuncValExpr, args []ir.Expr) (*ir.FuncValExpr, bool) {
 	ftype := fExpr.FuncType()
+	if ftype.TypeParams.Len() == 0 {
+		// Nothing left to infer.
+		return fExpr, true
+	}
 	uni := &unifier{
-		Fetcher: fetcher,
-		defined: newTypeParamDefinition(ftype),
-		axes:    make(map[string]ir.AxisValue),
-		params:  typeParametersMap(fExpr.FuncType().TypeParams),
+		fetcher: fetcher,
+		defined: append([]ir.GenericValue{}, ftype.GenericValues...),
 	}
 	ok := true
-	for i, param := range ftype.Params.Fields() {
-		if i >= len(args) {
-			// We may have less argument than parameters.
-			// For example:
-			//   func f(...int32)
-			// called with:
-			//   f()
-			break
+	params := ftype.Params.Fields()
+	for i := range max(len(args), len(params)) {
+		param, isVarArgs := ftype.ArgIndexToParamField(i)
+		argUni := &argUnifier{unifier: uni, param: param, arg: args[i], isVarArgs: isVarArgs}
+		toUnify := param.Type()
+		if isVarArgs {
+			toUnify = ftype.VarArgs.Typ.DType.Val()
 		}
-		argUni := &argUnifier{unifier: uni, arg: args[i]}
-		if argOk := param.Type().UnifyWith(argUni, argUni.arg.Type()); !argOk {
+		if argOk := toUnify.UnifyWith(argUni, argUni.arg.Type()); !argOk {
 			ok = false
 		}
 	}
@@ -240,17 +234,8 @@ func Infer(fetcher ir.Fetcher, fExpr *ir.FuncValExpr, args []ir.Expr) (*ir.FuncV
 	if !uni.specialiseRemainingNumbers() {
 		return fExpr, false
 	}
-	subFetcher, err := fetcher.Sub(nil, collectElements(uni.axes))
-	if err != nil {
-		return fExpr, fetcher.Err().AppendAt(fExpr.Node(), err)
-	}
-	spec := newSpecialiser(subFetcher, fExpr.Func(), uni.defined, uni.axes)
-	ftypeInfer, cpErr, err := ftype.SpecialiseFType(spec)
-	if cpErr != nil {
-		return fExpr, fetcher.Err().AppendAt(fExpr.Node(), cpErr)
-	}
-	if err != nil {
-		return fExpr, fetcher.Err().AppendAt(fExpr.Node(), err)
-	}
+	spec := newSpecialiser(fetcher, fExpr.Expr(), ftype, uni.defined)
+	ftypeInfer, ok := ftype.SpecialiseFType(spec, true)
+	checkTypeParams(ftypeInfer, ftypeInfer.GenericValues)
 	return fExpr.NewFType(ftypeInfer), ok
 }

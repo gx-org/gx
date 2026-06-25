@@ -15,40 +15,136 @@
 package shape
 
 import (
-	"fmt"
 	"go/ast"
 	"go/token"
-	"strconv"
-
-	"github.com/pkg/errors"
 
 	"github.com/gx-org/backend/ops"
 	"github.com/gx-org/backend/shape"
-	"github.com/gx-org/gx/build/builtins"
-	"github.com/gx-org/gx/build/fmterr"
 	"github.com/gx-org/gx/build/ir"
 	"github.com/gx-org/gx/interp/elements"
 	"github.com/gx-org/gx/interp/engine"
 	"github.com/gx-org/gx/interp/materialise"
 	"github.com/gx-org/gx/stdlib/builtin"
-	"github.com/gx-org/gx/stdlib/impl"
+	gxerrors "github.com/gx-org/gx/stdlib/errors"
 )
 
-type concat struct {
-	builtin.Func
+func checkConsistent(env engine.Env, call *ir.FuncCallExpr, ref ir.Element, axisIdx int, refShape []engine.NumericalElement, argNum int, el ir.Element) (engine.NumericalElement, ir.Element, error) {
+	argShape, err := elements.Map(elements.ToNumericalElement, el)
+	if err != nil {
+		return nil, nil, err
+	}
+	if len(argShape) != len(refShape) {
+		gxErr, err := gxerrors.Errorf(env, "argument %d has %d axe(s) but argument 1 has %d axe(s)", argNum, len(argShape), len(refShape))
+		return nil, gxErr, err
+	}
+	var concatAxis engine.NumericalElement
+	for i, axLen := range argShape {
+		if i == axisIdx {
+			concatAxis = axLen
+			continue
+		}
+		eq, err := ir.ElementEqual(refShape[i], axLen)
+		if err != nil {
+			return nil, nil, err
+		}
+		if !eq {
+			refShapeS := ir.ExprString(env.ExprEval(), call.Expr(), ref)
+			iRefS := ir.ExprString(env.ExprEval(), call.Expr(), refShape[i])
+			argShapeS := ir.ExprString(env.ExprEval(), call.Expr(), el)
+			iArgS := ir.ExprString(env.ExprEval(), call.Expr(), axLen)
+			gxErr, err := gxerrors.Errorf(env, "argument %d shape (%s) incompatible with argument 1 shape (%s): [%s] != [%s] for axis %d", argNum, argShapeS, refShapeS, iArgS, iRefS, axisIdx)
+			return nil, gxErr, err
+		}
+	}
+	return concatAxis, nil, nil
 }
 
-func (f concat) BuildFuncIR(impl *impl.Stdlib, pkg *ir.Package) (*ir.FuncBuiltin, error) {
-	return builtin.IRFuncBuiltin[concat]("Concat", evalConcat, pkg), nil
+func irAdd(env engine.Env, src ast.Expr, x, y engine.NumericalElement) (engine.NumericalElement, error) {
+	xExpr, err := ir.ToSingleExpr(env.ExprEval(), src, x)
+	if err != nil {
+		return nil, err
+	}
+	yExpr, err := ir.ToSingleExpr(env.ExprEval(), src, y)
+	if err != nil {
+		return nil, err
+	}
+	return x.BinaryOp(
+		env,
+		&ir.BinaryExpr{
+			Src: &ast.BinaryExpr{
+				Op: token.ADD,
+				X:  xExpr.Expr(),
+				Y:  yExpr.Expr(),
+			},
+			X:   xExpr,
+			Y:   yExpr,
+			Typ: ir.IntLenType(),
+		},
+		x, y,
+	)
+}
+
+func concatAxis(env engine.Env, call *ir.FuncCallExpr, recv ir.Element, args []ir.Element) (_ []ir.Element, err error) {
+	idx, err := elements.ConstantIntFromElement(args[0])
+	if err != nil {
+		return nil, err
+	}
+	varargsSlice, err := elements.ToWithElements(args[1])
+	if err != nil {
+		return nil, err
+	}
+	varargsElts := varargsSlice.Elements()
+	if len(varargsElts) == 0 {
+		gxErr, err := gxerrors.Errorf(env, "not enough arguments for concat() (expected 1, found 0)")
+		return []ir.Element{nil, gxErr}, err
+	}
+	firstShapeElts, err := elements.SliceFromElement(varargsElts[0])
+	if err != nil {
+		return nil, err
+	}
+	if idx >= firstShapeElts.Len() {
+		gxErr, err := outOfBoundAxis(env, call, firstShapeElts, idx, "concat")
+		return []ir.Element{args[0], gxErr}, err
+	}
+	firstShape, err := elements.Map(elements.ToNumericalElement, firstShapeElts)
+	if err != nil {
+		return nil, err
+	}
+	concatAxis := firstShape[idx]
+	for i, el := range varargsElts[1:] {
+		toAdd, gxErr, err := checkConsistent(env, call, firstShapeElts, idx, firstShape, i+2, el)
+		if err != nil {
+			return nil, err
+		}
+		if gxErr != nil {
+			return []ir.Element{args[0], gxErr}, err
+		}
+		concatAxis, err = irAdd(env, call.Expr(), concatAxis, toAdd)
+		if err != nil {
+			return nil, err
+		}
+	}
+	// Final shape.
+	final := append([]ir.Element{}, firstShapeElts.Elements()...)
+	final[idx] = concatAxis
+	finalShape, err := elements.NewSlice(ir.IntLenSliceType(), final)
+	if err != nil {
+		return nil, err
+	}
+	return []ir.Element{finalShape, elements.NilError()}, nil
 }
 
 func evalConcat(env engine.Env, call *ir.FuncCallExpr, recv ir.Element, args []ir.Element) ([]ir.Element, error) {
-	mat := builtin.Materialiser(env)
 	axis, err := elements.ConstantIntFromElement(args[0])
 	if err != nil {
 		return nil, err
 	}
-	nodes, firstShape, err := materialise.All(mat, args[1:])
+	arrays, err := elements.SliceFromElement(args[3])
+	if err != nil {
+		return nil, err
+	}
+	mat := builtin.Materialiser(env)
+	nodes, firstShape, err := materialise.All(mat, arrays.Elements())
 	if err != nil {
 		return nil, err
 	}
@@ -63,125 +159,4 @@ func evalConcat(env engine.Env, call *ir.FuncCallExpr, recv ir.Element, args []i
 			AxisLengths: op.(interface{ PJRTDims() []int }).PJRTDims(),
 		},
 	}, call.Type())
-}
-
-func checkConsistent[R any](values []ir.ArrayType, extractFn func(v ir.ArrayType) (R, func() string, error), equalityFn func(lhs R, rhs R) bool) (result R, err error) {
-	var empty R
-	if len(values) == 0 {
-		return empty, errors.Errorf("must have at least one value")
-	}
-	var resultStringer func() string
-	result, resultStringer, err = extractFn(values[0])
-	if err != nil {
-		return empty, err
-	}
-	for i := 1; i < len(values); i++ {
-		thisResult, thisStringer, err := extractFn(values[i])
-		if err != nil {
-			return empty, err
-		}
-		if !equalityFn(thisResult, result) {
-			return empty, fmt.Errorf("inconsistent values, %s vs %s", resultStringer(), thisStringer())
-		}
-	}
-	return result, nil
-}
-
-func numAxes(fetcher ir.Fetcher, call *ir.FuncCallExpr) func(ir.ArrayType) (int, func() string, error) {
-	return func(a ir.ArrayType) (int, func() string, error) {
-		val := len(a.Rank().Axes())
-		return val, func() string {
-			return strconv.Itoa(val)
-		}, nil
-	}
-}
-
-func (f concat) resultsType(fetcher ir.Fetcher, call *ir.FuncCallExpr) (params []ir.Type, out ir.Type, err error) {
-	want := []ir.Type{
-		ir.IntIndexType(),
-		builtins.GenericArrayType,
-		builtins.GenericArrayType,
-	}
-	if len(call.Args) > 3 {
-		for range len(call.Args) - 3 {
-			want = append(want, builtins.GenericArrayType)
-		}
-	}
-	params, err = builtins.BuildFuncParams(fetcher, call, f.Name(), want)
-	if err != nil {
-		return nil, nil, err
-	}
-	axis, err := elements.MustEvalInt(fetcher, call.Args[0])
-	if err != nil {
-		return nil, nil, err
-	}
-	arrayTypes, err := builtins.NarrowTypes[ir.ArrayType](fetcher, call, params[1:])
-	if err != nil {
-		return nil, nil, fmterr.Errorf(fetcher.File().FileSet(), call.Node(), "expected all arguments but the first to be arrays in call to %s, but %s", f.Func.Name(), err)
-	}
-	arrayDataType := func(t ir.ArrayType) (ir.Type, func() string, error) {
-		return t.DataType(), func() string {
-			return t.DataType().ReferString(fetcher.File())
-		}, nil
-	}
-	isSameKind := func(lhs, rhs ir.Type) bool { return lhs.Kind() == rhs.Kind() }
-	dtype, err := checkConsistent(arrayTypes, arrayDataType, isSameKind)
-	if err != nil {
-		return nil, nil, fmterr.Errorf(fetcher.File().FileSet(), call.Node(), "expected arrays of the same data type in call to %s, but %s", f.Func.Name(), err)
-	}
-	isEqual := func(lhs, rhs int) bool { return lhs == rhs }
-	_, err = checkConsistent(arrayTypes, numAxes(fetcher, call), isEqual)
-	if err != nil {
-		return nil, nil, fmterr.Errorf(fetcher.File().FileSet(), call.Node(), "expected all arguments to be arrays of the same rank in call to %s, but %s", f.Func.Name(), err)
-	}
-
-	// Check that all but the concatenated dimension match, determine dimensions after concat.
-	firstDims := arrayTypes[0].Rank().Axes()
-	if axis < 0 || int(axis) >= len(firstDims) {
-		return nil, nil, fmterr.Errorf(fetcher.File().FileSet(), call.Node(), "axis %d is out of bounds for array of rank %d in call to Concat", axis, len(firstDims))
-	}
-	var outputDims []ir.AxisLengths = make([]ir.AxisLengths, len(firstDims))
-	copy(outputDims, firstDims)
-	var outputExpr ir.Expr = firstDims[axis].AsExpr()
-
-	for i := 1; i < len(arrayTypes); i++ {
-		rank := arrayTypes[i].Rank()
-		for j, axJ := range rank.Axes() {
-			if j == int(axis) {
-				// Ignore the concatenated dimension, it doesn't have to match.
-				continue
-			}
-			ok, cpErr, err := axJ.Equal(fetcher, outputDims[j])
-			if err != nil {
-				return nil, nil, fmterr.Error(fetcher.File().FileSet(), call.Node(), err)
-			}
-			if cpErr != nil {
-				return nil, nil, fmterr.Error(fetcher.File().FileSet(), call.Node(), cpErr)
-			}
-			if !ok {
-				from := fetcher.File()
-				return nil, nil, fmterr.Errorf(from.FileSet(), call.Node(),
-					"argument %d (shape: %v) incompatible with initial shape (%s) in %s call: dimension %d, %s != %s",
-					i+1, arrayTypes[i].Rank().SourceString(from), arrayTypes[0].Rank().SourceString(from),
-					f.Name(), j, axJ.SourceString(from), outputDims[j].SourceString(from))
-			}
-		}
-		outputExpr = builtins.ToBinaryExpr(token.ADD, outputExpr, rank.Axes()[axis].AsExpr())
-	}
-	outputDims[axis] = &ir.AxisExpr{X: outputExpr}
-	return params, ir.NewArrayType(&ast.ArrayType{}, dtype, &ir.Rank{
-		Ax: outputDims,
-	}), nil
-}
-
-func (f concat) BuildFuncType(fetcher ir.Fetcher, call *ir.FuncCallExpr) (*ir.FuncType, error) {
-	params, result, err := f.resultsType(fetcher, call)
-	if err != nil {
-		return nil, err
-	}
-	return &ir.FuncType{
-		BaseType: ir.BaseType[*ast.FuncType]{Src: &ast.FuncType{Func: call.Node().Pos()}},
-		Params:   builtins.Fields(call, params...),
-		Results:  builtins.Fields(call, result),
-	}, nil
 }

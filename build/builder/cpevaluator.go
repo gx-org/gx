@@ -15,6 +15,7 @@
 package builder
 
 import (
+	"fmt"
 	"go/ast"
 
 	gxfmt "github.com/gx-org/gx/base/fmt"
@@ -50,18 +51,18 @@ func newFileEvaluator(ctx *interp.Interpreter, ferr *fmterr.Appender) *compileEv
 
 func (ev *compileEvaluator) update(store ir.Storage, el ir.Element) (*compileEvaluator, bool) {
 	storeEl := cpevelements.NewStoredValue(ev.fitp.File(), store, el)
-	sm := context.NewSubMap(nil)
-	sm.Define(store.NameDef(), storeEl)
-	return ev.sub(nil, sm)
+	m := make(map[string]ir.Element)
+	context.Define(m, store.NameDef(), storeEl)
+	return ev.sub(nil, m)
 }
 
-func (ev *compileEvaluator) sub(file *ir.File, vals *context.SubMap) (*compileEvaluator, bool) {
-	ctx, err := ev.fitp.Sub(file, vals)
+func (ev *compileEvaluator) sub(file *ir.File, vals map[string]ir.Element) (*compileEvaluator, bool) {
+	ctx, err := ev.fitp.SubInterp(file, vals)
 	return newFileEvaluator(ctx, ev.ferr), ev.Err().Append(err)
 }
 
-func (ev *compileEvaluator) Sub(file *ir.File, vals map[string]ir.Element) (ir.Fetcher, error) {
-	itp, err := ev.fitp.Sub(file, context.NewSubMap(vals))
+func (ev *compileEvaluator) Sub(file *ir.File, vals map[string]ir.Element) (ir.Evaluator, error) {
+	itp, err := ev.fitp.SubInterp(file, vals)
 	return newFileEvaluator(itp, ev.ferr), err
 }
 
@@ -69,8 +70,16 @@ func (ev *compileEvaluator) File() *ir.File {
 	return ev.fitp.File()
 }
 
-func (ev *compileEvaluator) ToCompEvalError(src ast.Expr, el ir.Element) (ir.CompEvalError, error) {
-	return ev.fitp.ToCompEvalError(src, el)
+// evalName returns a string representing the element stored for a given variable name.
+// Only used for debugging.
+func (ev *compileEvaluator) evalName(name string) string {
+	el, err := ev.EvalExpr(&ir.Ident{
+		Src: &ast.Ident{Name: name},
+	})
+	if err != nil {
+		return err.Error()
+	}
+	return fmt.Sprint(el)
 }
 
 func (ev *compileEvaluator) EvalExpr(expr ir.Expr) (ir.Element, error) {

@@ -32,23 +32,23 @@ func (*atomicType) atomic() {}
 // Kind returns the scalar kind.
 func (s *atomicType) Kind() irkind.Kind { return s.Knd }
 
-func (s *atomicType) equalAtomic(other ArrayType) (bool, CompEvalError, error) {
-	return s.Knd == other.Kind(), nil, nil
+func (s *atomicType) equalAtomic(other ArrayType) (bool, error) {
+	return s.Knd == other.Kind(), nil
 }
 
-func (s *atomicType) equalArray(tpcmp TypeCmp, other ArrayType) (bool, CompEvalError, error) {
-	dtypeEq, cpErr, err := s.Equal(tpcmp, other.DataType())
-	if !dtypeEq || cpErr != nil || err != nil {
-		return false, cpErr, err
+func (s *atomicType) equalArray(tpcmp TypeCmp, other ArrayType) (bool, error) {
+	dtypeEq, err := s.Equal(tpcmp, other.DataType())
+	if !dtypeEq || err != nil {
+		return false, err
 	}
 	return s.Rank().Equal(tpcmp, other.Rank())
 }
 
 // Equal returns true if other is the same type.
-func (s *atomicType) Equal(tpcmp TypeCmp, other Type) (bool, CompEvalError, error) {
+func (s *atomicType) Equal(tpcmp TypeCmp, other Type) (bool, error) {
 	otherT, ok := other.(ArrayType)
 	if !ok {
-		return false, nil, nil
+		return false, nil
 	}
 	if otherT.Rank().IsAtomic() {
 		return s.equalAtomic(otherT)
@@ -62,52 +62,57 @@ var scalarRank = &Rank{}
 func (s *atomicType) Rank() ArrayRank { return scalarRank }
 
 // AssignableTo reports if the type can be assigned to other.
-func (s *atomicType) AssignableTo(tpcmp TypeCmp, target Type) (bool, CompEvalError, error) {
+func (s *atomicType) AssignableTo(tpcmp TypeCmp, target Type) (bool, error) {
 	if assignFrom, ok := target.(assignsFrom); ok {
 		return assignFrom.assignableFrom(tpcmp, s)
 	}
 
 	targetT, ok := target.(ArrayType)
 	if !ok {
-		return false, nil, nil
+		return false, nil
 	}
 	if targetT.Rank().IsAtomic() {
 		if s.Knd == irkind.NumberInt && (IsInteger(target) || IsFloat(target)) {
-			return true, nil, nil
+			return true, nil
 		}
 		if s.Knd == irkind.NumberFloat && IsFloat(target) {
-			return true, nil, nil
+			return true, nil
 		}
 		return s.equalAtomic(targetT)
 	}
-	dtypeEq, cpErr, err := s.AssignableTo(tpcmp, targetT.DataType())
-	if !dtypeEq || cpErr != nil || err != nil {
-		return false, cpErr, err
+	dtypeEq, err := s.AssignableTo(tpcmp, targetT.DataType())
+	if !dtypeEq || err != nil {
+		return false, err
 	}
-	rankOk, cpErr, err := s.Rank().AssignableTo(tpcmp, targetT.Rank())
-	if !rankOk || cpErr != nil || err != nil {
-		return rankOk, cpErr, err
+	rankOk, err := s.Rank().AssignableTo(tpcmp, targetT.Rank())
+	if !rankOk || err != nil {
+		return rankOk, err
 	}
-	return true, nil, nil
+	return true, nil
 }
 
 // ConvertibleTo reports whether a value of the type can be converted to another
 // (using static type casting).
-func (s *atomicType) ConvertibleTo(tpcmp TypeCmp, target Type) (bool, CompEvalError, error) {
+func (s *atomicType) ConvertibleTo(tpcmp TypeCmp, target Type) (bool, error) {
 	if convertFrom, ok := target.(convertsFrom); ok {
 		return convertFrom.convertibleFrom(tpcmp, s)
 	}
 
 	targetT, ok := target.(ArrayType)
 	if !ok {
-		return false, nil, nil
+		return false, nil
 	}
-	return SupportOperators(s) == SupportOperators(targetT.DataType()), nil, nil
+	return SupportOperators(s) == SupportOperators(targetT.DataType()), nil
 }
 
 // Specialise a type to a given target.
-func (s *atomicType) Specialise(Specialiser) (Type, CompEvalError, error) {
-	return s, nil, nil
+func (s *atomicType) Specialise(Specialiser) (Type, bool) {
+	return s, true
+}
+
+// Instantiate a function type.
+func (s *atomicType) Instantiate(Fetcher, Specialiser) (Type, bool) {
+	return s, true
 }
 
 // Node returns the source code defining the type.
@@ -139,6 +144,10 @@ func (s *atomicType) ArrayType() ast.Expr {
 
 func (*atomicType) UnifyWith(unifier Unifier, typ Type) bool {
 	return true
+}
+
+func (s *atomicType) IndexForVarArgs(ErrSource, int) (Type, bool) {
+	return s, true
 }
 
 // Zero returns a zero expression of the same type.
@@ -176,7 +185,9 @@ type boolType struct {
 
 var boolT = &boolType{atomicType: atomicType{Knd: irkind.Bool}}
 
-func (s *boolType) Specialise(spec Specialiser) (Type, CompEvalError, error) { return boolT, nil, nil }
+func (s *boolType) Specialise(spec Specialiser) (Type, bool) {
+	return boolT, true
+}
 
 // BoolType returns the type for a boolean.
 func BoolType() Type {
@@ -189,8 +200,8 @@ type bfloat16Type struct {
 
 var bfloat16T = &bfloat16Type{atomicType: atomicType{Knd: irkind.Bfloat16}}
 
-func (s *bfloat16Type) Specialise(spec Specialiser) (Type, CompEvalError, error) {
-	return bfloat16T, nil, nil
+func (s *bfloat16Type) Specialise(spec Specialiser) (Type, bool) {
+	return bfloat16T, true
 }
 
 // Bfloat16Type returns the type for a bfloat16.
@@ -204,8 +215,8 @@ type float32Type struct {
 
 var float32T = &float32Type{atomicType: atomicType{Knd: irkind.Float32}}
 
-func (s *float32Type) Specialise(spec Specialiser) (Type, CompEvalError, error) {
-	return float32T, nil, nil
+func (s *float32Type) Specialise(spec Specialiser) (Type, bool) {
+	return float32T, true
 }
 
 // Float32Type returns the type for a float32.
@@ -219,8 +230,8 @@ type float64Type struct {
 
 var float64T = &float64Type{atomicType: atomicType{Knd: irkind.Float64}}
 
-func (s *float64Type) Specialise(spec Specialiser) (Type, CompEvalError, error) {
-	return float64T, nil, nil
+func (s *float64Type) Specialise(spec Specialiser) (Type, bool) {
+	return float64T, true
 }
 
 // Float64Type returns the type for a float64.
@@ -234,8 +245,8 @@ type int32Type struct {
 
 var int32T = &int32Type{atomicType: atomicType{Knd: irkind.Int32}}
 
-func (s *int32Type) Specialise(spec Specialiser) (Type, CompEvalError, error) {
-	return int32T, nil, nil
+func (s *int32Type) Specialise(spec Specialiser) (Type, bool) {
+	return int32T, true
 }
 
 // Int32Type returns the type for a int32.
@@ -249,8 +260,8 @@ type int64Type struct {
 
 var int64T = &int64Type{atomicType: atomicType{Knd: irkind.Int64}}
 
-func (s *int64Type) Specialise(spec Specialiser) (Type, CompEvalError, error) {
-	return int64T, nil, nil
+func (s *int64Type) Specialise(spec Specialiser) (Type, bool) {
+	return int64T, true
 }
 
 // Int64Type returns the type for a int64.
@@ -299,8 +310,8 @@ var (
 	}
 )
 
-func (s *intlenType) Specialise(spec Specialiser) (Type, CompEvalError, error) {
-	return intlenT, nil, nil
+func (s *intlenType) Specialise(spec Specialiser) (Type, bool) {
+	return intlenT, true
 }
 
 // IntLenType returns the type for intlen, that is the length of an axis.
@@ -335,8 +346,8 @@ type stringType struct {
 
 var stringT = &stringType{atomicType: atomicType{Knd: irkind.String}}
 
-func (s *stringType) Specialise(spec Specialiser) (Type, CompEvalError, error) {
-	return stringT, nil, nil
+func (s *stringType) Specialise(spec Specialiser) (Type, bool) {
+	return stringT, true
 }
 
 // StringType returns the type for a string.
@@ -350,8 +361,8 @@ type uint32Type struct {
 
 var uint32T = &uint32Type{atomicType: atomicType{Knd: irkind.Uint32}}
 
-func (s *uint32Type) Specialise(spec Specialiser) (Type, CompEvalError, error) {
-	return uint32T, nil, nil
+func (s *uint32Type) Specialise(spec Specialiser) (Type, bool) {
+	return uint32T, true
 }
 
 // Uint32Type returns the type for a uint32.
@@ -365,8 +376,8 @@ type uint64Type struct {
 
 var uint64T = &uint64Type{atomicType: atomicType{Knd: irkind.Uint64}}
 
-func (s *uint64Type) Specialise(spec Specialiser) (Type, CompEvalError, error) {
-	return uint64T, nil, nil
+func (s *uint64Type) Specialise(spec Specialiser) (Type, bool) {
+	return uint64T, true
 }
 
 // Uint64Type returns the type for a uint64.

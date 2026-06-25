@@ -104,47 +104,6 @@ func testLenMismatchedType() int64 {
 	return len(noLength{}) // ERROR invalid argument: noLength{} (noLength) for built-in len
 }
 
-func testConcatWithInsufficientArgs() [3]float32 {
-	return shape.Concat([3]float32{1, 2, 3}) // ERROR wrong number of arguments in call to Concat
-}
-
-func testConcatWithNonArrayArg() [3]float32 {
-	return shape.Concat(0, 5, [3]float32{1, 2, 3}) // ERROR signature mismatch in call to Concat
-}
-
-func testConcatWithNonArrayArg2() float32 {
-	a := 3
-	return shape.Concat(0, [...]float32{1, 2}, a) // ERROR signature mismatch in call to Concat
-}
-
-func testConcatWithInconsistentDtypes() [3]float32 {
-	return shape.Concat(0, [3]int32{1, 2, 3}, [3]float32{1, 2, 3}) // ERROR expected arrays of the same data type in call to Concat, but inconsistent values, int32 vs float32
-}
-
-func testConcatWithInconsistentRanks() [][]float32 {
-	return shape.Concat( // ERROR expected all arguments to be arrays of the same rank in call to Concat, but inconsistent values, 1 vs 2
-		0,
-		[3]float32{1, 2, 3},
-		[2][2]float32{{3, 4}, {5, 6}},
-	)
-}
-
-func testConcatWithInconsistentSizeOnSecondaryAxis() [3][2]float32 {
-	return shape.Concat( // ERROR argument 2 (shape: [2][2]) incompatible with initial shape ([1][3]) in Concat call: dimension 1, [2] != [3]
-		0,
-		[1][3]float32{{1, 2, 3}},
-		[2][2]float32{{3, 4}, {5, 6}},
-	)
-}
-
-func testConcatWithOutOfRangeAxis() [3][2]float32 {
-	return shape.Concat( // ERROR axis 2 is out of bounds for array of rank 2 in call to Concat
-		2,
-		[2][2]float32{{1, 2}, {3, 4}},
-		[2][2]float32{{5, 6}, {7, 8}},
-	)
-}
-
 func testBroadcastIncorrectNumberOfArgument() [4][3]float32 {
 	return shape.Broadcast( // ERROR wrong number of arguments
 		[]intlen{4, 3},

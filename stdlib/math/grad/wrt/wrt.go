@@ -88,7 +88,7 @@ func (cr *core) Same(other []*ir.Field) bool {
 		return false
 	}
 	for i, field := range cr.fieldPath {
-		if field != other[i] {
+		if field.Origin() != other[i].Origin() {
 			return false
 		}
 	}

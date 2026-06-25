@@ -30,7 +30,6 @@ import (
 	"github.com/gx-org/gx/stdlib/dtype"
 	gxerrors "github.com/gx-org/gx/stdlib/errors"
 	"github.com/gx-org/gx/stdlib/fmt"
-	"github.com/gx-org/gx/stdlib/impl"
 	"github.com/gx-org/gx/stdlib/math/grad"
 	"github.com/gx-org/gx/stdlib/math"
 	"github.com/gx-org/gx/stdlib/num"
@@ -43,7 +42,6 @@ var staticFS embed.FS
 
 // Stdlib builds the standard library given import paths.
 type Stdlib struct {
-	impl *impl.Stdlib
 	libs map[string]builtin.PackageBuilder
 	fs   fs.ReadDirFS
 }
@@ -51,6 +49,7 @@ type Stdlib struct {
 var _ importers.Importer = (*Stdlib)(nil)
 
 var packages = []builtin.PackageBuilder{
+	cperrors.Package,
 	control.Package,
 	gxerrors.Package,
 	dtype.Package,
@@ -64,17 +63,13 @@ var packages = []builtin.PackageBuilder{
 }
 
 // Importer returns the standard library importer.
-func Importer(stdlibImpl *impl.Stdlib) *Stdlib {
-	return ImporterWithFS(staticFS, stdlibImpl)
+func Importer() *Stdlib {
+	return ImporterWithFS(staticFS)
 }
 
 // ImporterWithFS returns the standard library importer.
-func ImporterWithFS(stdlibFS fs.ReadDirFS, stdlibImpl *impl.Stdlib) *Stdlib {
-	if stdlibImpl == nil {
-		stdlibImpl = &impl.Stdlib{}
-	}
+func ImporterWithFS(stdlibFS fs.ReadDirFS) *Stdlib {
 	lib := &Stdlib{
-		impl: stdlibImpl,
 		libs: make(map[string]builtin.PackageBuilder),
 		fs:   stdlibFS,
 	}
@@ -98,7 +93,6 @@ func (l *Stdlib) Import(bld importers.Builder, path string) (importers.Package, 
 	}
 	return builtin.BuilderParam{
 		Builder: bld,
-		Imp:     l.impl,
 		FS:      l.fs,
 	}.Build(pkgBuilder)
 }

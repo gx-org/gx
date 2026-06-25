@@ -1,0 +1,11 @@
+package testdata
+
+import "num"
+
+func TestMatMul1Axis() float64 {
+	x := [3]float64{1, 2, 3}
+	y := [3]float64{-1, -2, -3}
+	return num.MatMul(x, y)
+	// Want:
+	// float64(-14)
+}

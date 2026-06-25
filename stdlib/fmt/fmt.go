@@ -43,7 +43,7 @@ func sPrintf(env engine.Env, call *ir.FuncCallExpr, recv ir.Element, args []ir.E
 	if err != nil {
 		return nil, err
 	}
-	goArgs, err := togo.Values(args[1:])
+	goArgs, err := elements.Map(togo.Value, args[1])
 	if err != nil {
 		return nil, err
 	}

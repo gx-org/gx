@@ -19,7 +19,7 @@ import (
 	"math/big"
 
 	"github.com/pkg/errors"
-	"github.com/gx-org/backend/dtype"
+	"github.com/gx-org/backend/dtypes"
 	"github.com/gx-org/backend/platform"
 	"github.com/gx-org/gx/build/ir"
 	"github.com/gx-org/gx/build/ir/irkind"
@@ -60,12 +60,12 @@ func toHostArray(typ ir.Type, h kernels.Array) (*HostArray, error) {
 }
 
 // AtomFloatValue returns an array GX value given a Go value.
-func AtomFloatValue[T dtype.Float](typ ir.Type, val T) (*HostArray, error) {
+func AtomFloatValue[T dtypes.GoFloat](typ ir.Type, val T) (*HostArray, error) {
 	return toHostArray(typ, kernels.ToFloatAtom[T](val))
 }
 
 // AtomBfloat16Value returns an array GX value given a Go value.
-func AtomBfloat16Value(typ ir.Type, val dtype.Bfloat16T) (*HostArray, error) {
+func AtomBfloat16Value(typ ir.Type, val dtypes.Bfloat16T) (*HostArray, error) {
 	return toHostArray(typ, kernels.ToBfloat16Atom(val))
 }
 
@@ -75,17 +75,17 @@ func AtomBoolValue(typ ir.Type, val bool) (*HostArray, error) {
 }
 
 // AtomIntegerValue returns an array GX value given a Go value.
-func AtomIntegerValue[T dtype.IntegerType](typ ir.Type, val T) (*HostArray, error) {
+func AtomIntegerValue[T dtypes.IntegerType](typ ir.Type, val T) (*HostArray, error) {
 	return toHostArray(typ, kernels.ToIntegerAtom[T](val))
 }
 
 // ArrayBfloat16Value returns an array GX value given a Go value.
-func ArrayBfloat16Value(typ ir.Type, vals []dtype.Bfloat16T, dims []int) (*HostArray, error) {
+func ArrayBfloat16Value(typ ir.Type, vals []dtypes.Bfloat16T, dims []int) (*HostArray, error) {
 	return toHostArray(typ, kernels.ToBfloat16Array(vals, dims))
 }
 
 // ArrayFloatValue returns an array GX value given a Go value.
-func ArrayFloatValue[T dtype.Float](typ ir.Type, vals []T, dims []int) (*HostArray, error) {
+func ArrayFloatValue[T dtypes.GoFloat](typ ir.Type, vals []T, dims []int) (*HostArray, error) {
 	return toHostArray(typ, kernels.ToFloatArray[T](vals, dims))
 }
 
@@ -95,7 +95,7 @@ func ArrayBoolValue(typ ir.Type, vals []bool, dims []int) (*HostArray, error) {
 }
 
 // ArrayIntegerValue returns an array GX value given a Go value.
-func ArrayIntegerValue[T dtype.IntegerType](typ ir.Type, vals []T, dims []int) (*HostArray, error) {
+func ArrayIntegerValue[T dtypes.IntegerType](typ ir.Type, vals []T, dims []int) (*HostArray, error) {
 	return toHostArray(typ, kernels.ToIntegerArray[T](vals, dims))
 }
 
@@ -154,7 +154,7 @@ func ToHost(alloc platform.Allocator, vals []Value) ([]Value, error) {
 	return out, nil
 }
 
-func bigIntToInt[T dtype.IntegerType](x *big.Int) T {
+func bigIntToInt[T dtypes.IntegerType](x *big.Int) T {
 	xI64 := x.Int64()
 	return T(xI64)
 }
@@ -164,7 +164,7 @@ func bigIntToFloat[T float32 | float64](x *big.Int) T {
 	return T(xF64)
 }
 
-func bigIntToUint[T dtype.Unsigned](x *big.Int) T {
+func bigIntToUint[T dtypes.Unsigned](x *big.Int) T {
 	xI64 := x.Uint64()
 	return T(xI64)
 }
@@ -174,7 +174,7 @@ func AtomNumberInt(x *big.Int, typ ir.Type) (*HostArray, error) {
 	switch typ.Kind() {
 	case irkind.Bfloat16:
 		xF64, _ := x.Float64()
-		return AtomBfloat16Value(typ, dtype.BFloat16FromFloat64(xF64))
+		return AtomBfloat16Value(typ, dtypes.BFloat16FromFloat64(xF64))
 	case irkind.Float32:
 		return AtomFloatValue[float32](typ, bigIntToFloat[float32](x))
 	case irkind.Float64:
@@ -195,7 +195,7 @@ func AtomNumberInt(x *big.Int, typ ir.Type) (*HostArray, error) {
 	return nil, errors.Errorf("cannot convert value %s of type %s (kind: %s) to an atomic integer value", x.String(), typ.ReferString(nil), typ.Kind().String())
 }
 
-func bigFloatCast[T dtype.AlgebraType](x *big.Float) T {
+func bigFloatCast[T dtypes.AlgebraType](x *big.Float) T {
 	xF64, _ := x.Float64()
 	return T(xF64)
 }
@@ -205,7 +205,7 @@ func AtomNumberFloat(x *big.Float, typ ir.Type) (*HostArray, error) {
 	switch typ.Kind() {
 	case irkind.Bfloat16:
 		xF64, _ := x.Float64()
-		return AtomBfloat16Value(typ, dtype.BFloat16FromFloat64(xF64))
+		return AtomBfloat16Value(typ, dtypes.BFloat16FromFloat64(xF64))
 	case irkind.Float32:
 		return AtomFloatValue[float32](typ, bigFloatCast[float32](x))
 	case irkind.Float64:

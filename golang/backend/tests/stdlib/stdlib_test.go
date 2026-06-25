@@ -22,7 +22,7 @@ import (
 )
 
 func TestStdlib(t *testing.T) {
-	bck := backend.New(tests.StdlibBuilder(nil))
+	bck := backend.New(tests.StdlibBuilder())
 	session := gxtesting.NewSession(bck, tests.FS)
 	for _, path := range []string{
 		"testfiles/grad",

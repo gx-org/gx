@@ -18,8 +18,10 @@ import (
 	"testing"
 
 	"github.com/gx-org/gx/build/builder/testbuild"
+	"github.com/gx-org/gx/build/importers"
 	"github.com/gx-org/gx/build/ir"
 	irh "github.com/gx-org/gx/build/ir/irhelper"
+	"github.com/gx-org/gx/stdlib"
 )
 
 func TestErrorBuiltin(t *testing.T) {
@@ -57,7 +59,8 @@ func f() error {
 }
 
 func TestCPErrors(t *testing.T) {
-	testbuild.Run(t,
+	testbuild.RunWith(t,
+		[]importers.Importer{stdlib.Importer()},
 		testbuild.Decl{
 			Src: `
 import "cperrors"

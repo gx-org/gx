@@ -23,7 +23,7 @@ import (
 )
 
 func TestStdlibValid(t *testing.T) {
-	lib := stdlib.Importer(nil)
+	lib := stdlib.Importer()
 	bld := builder.New(lib)
 	for _, path := range lib.Paths() {
 		pkg, err := bld.Build(path)

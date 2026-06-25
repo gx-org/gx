@@ -16,8 +16,6 @@ package ir
 
 import (
 	"go/ast"
-
-	"github.com/gx-org/gx/build/ir/irkind"
 )
 
 // nilType is the type returned by function with no results.
@@ -25,11 +23,9 @@ type nilType struct {
 	distinctType
 }
 
-var nilTypeT = &nilType{distinctType: distinctType{kind: irkind.Nil}}
-
 // NilType returns the type for the nil identifier.
 func NilType() Type {
-	return nilTypeT
+	return nilT
 }
 
 // Nil implements the storage for the nil keyword.
@@ -38,11 +34,6 @@ type Nil struct {
 }
 
 var _ Storage = (*Nil)(nil)
-
-// NilStorage returns a nil storage given a nil identifier.
-func NilStorage(src *ast.Ident) *Nil {
-	return &Nil{Src: src}
-}
 
 func (*Nil) node()    {}
 func (*Nil) storage() {}
