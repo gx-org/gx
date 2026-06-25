@@ -167,7 +167,7 @@ func AxesFromElement(el ir.Element) ([]int, error) {
 }
 
 // ConstantScalarFromElement returns a scalar on a host given an element.
-func ConstantScalarFromElement[T dtypes.GoDataType](el ir.Element) (val T, err error) {
+func ConstantScalarFromElement[T dtypes.Supported](el ir.Element) (val T, err error) {
 	var hostArray *values.HostArray
 	hostArray, err = ConstantFromElement(el)
 	if err != nil {

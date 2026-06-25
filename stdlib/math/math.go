@@ -134,7 +134,7 @@ func mainAuxArgsToTypes(funcName string, fetcher ir.Fetcher, call *ir.FuncCallEx
 	return baseType, auxType, baseType, nil
 }
 
-func buildConstScalar[T dtypes.GoDataType](name string, value T) builtin.Builder {
+func buildConstScalar[T dtypes.Supported](name string, value T) builtin.Builder {
 	kind := irkind.KindGeneric[T]()
 	return builtin.BuildConst(func(*ir.Package) (string, ir.Expr, ir.Type, error) {
 		value := &ir.AtomicValueT[T]{

@@ -28,7 +28,7 @@ import (
 )
 
 // Atom managed by GX.
-type Atom[T dtypes.GoDataType] interface {
+type Atom[T dtypes.Supported] interface {
 	Bridger
 
 	// Fetch the value from the device to the host and returns a handle to the host value.
@@ -39,14 +39,14 @@ type Atom[T dtypes.GoDataType] interface {
 }
 
 // DeviceAtom is an array stored on a device.
-type DeviceAtom[T dtypes.GoDataType] struct {
+type DeviceAtom[T dtypes.Supported] struct {
 	baseBridge[*DeviceAtom[T], *values.DeviceArray]
 }
 
 var _ Atom[int64] = (*DeviceAtom[int64])(nil)
 
 // NewDeviceAtom returns a new Go array given a device value managed by GX.
-func NewDeviceAtom[T dtypes.GoDataType](val *values.DeviceArray) *DeviceAtom[T] {
+func NewDeviceAtom[T dtypes.Supported](val *values.DeviceArray) *DeviceAtom[T] {
 	atomic := &DeviceAtom[T]{}
 	atomic.baseBridge = newBaseBridge(atomic, val)
 	shapeGot := val.Shape()
@@ -91,14 +91,14 @@ func (atom *DeviceAtom[T]) String() string {
 }
 
 // HostAtom is an array stored on a host.
-type HostAtom[T dtypes.GoDataType] struct {
+type HostAtom[T dtypes.Supported] struct {
 	baseBridge[*HostAtom[T], *values.HostArray]
 }
 
 var _ Atom[int64] = (*HostAtom[int64])(nil)
 
 // NewHostAtom returns a new Go array given a device value managed by GX.
-func NewHostAtom[T dtypes.GoDataType](val *values.HostArray) *HostAtom[T] {
+func NewHostAtom[T dtypes.Supported](val *values.HostArray) *HostAtom[T] {
 	atomic := &HostAtom[T]{}
 	atomic.baseBridge = newBaseBridge(atomic, val)
 	return atomic
@@ -139,7 +139,7 @@ func (atom *HostAtom[T]) String() string {
 	return atom.GXValue().SourceString(nil)
 }
 
-func newAtom[T dtypes.GoDataType](dt irkind.Kind, array kernels.Array) *HostAtom[T] {
+func newAtom[T dtypes.Supported](dt irkind.Kind, array kernels.Array) *HostAtom[T] {
 	typ := ir.TypeFromKind(dt)
 	buffer := kernels.NewBuffer(array)
 	hostArray, err := values.NewHostArray(typ, buffer)
@@ -193,6 +193,6 @@ func Uint64(val uint64) *HostAtom[uint64] {
 }
 
 // AtomFromHost returns an atom from a value stored on the host.
-func AtomFromHost[T dtypes.GoDataType](hostValue *values.HostArray) T {
+func AtomFromHost[T dtypes.Supported](hostValue *values.HostArray) T {
 	return NewHostAtom[T](hostValue).Value()
 }

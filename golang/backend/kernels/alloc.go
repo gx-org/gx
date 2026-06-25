@@ -115,7 +115,7 @@ func (buf *Buffer) Free() {
 }
 
 // ToBuffer converts Go values into a GX array.
-func ToBuffer[T dtypes.GoDataType](vals []T, sh *shape.Shape) *Buffer {
+func ToBuffer[T dtypes.Supported](vals []T, sh *shape.Shape) *Buffer {
 	var array Array
 	switch sh.DType {
 	case dtypes.Bool:

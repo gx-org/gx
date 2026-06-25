@@ -257,7 +257,7 @@ func (a *HostArray) String() string {
 }
 
 // ToAtom converts an array on the host into a Go atom value.
-func ToAtom[T dtypes.GoDataType](a *HostArray) (T, error) {
+func ToAtom[T dtypes.Supported](a *HostArray) (T, error) {
 	data := a.Buffer().Acquire()
 	defer a.Buffer().Release()
 	slice := dtypes.ToSlice[T](data)

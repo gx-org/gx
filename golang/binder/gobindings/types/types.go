@@ -121,7 +121,7 @@ func (bb *baseBridge[B, V]) Bridger() Bridger {
 }
 
 // NewAtom returns a new Go atom bridge given a GX value of the same data type.
-func NewAtom[T dtypes.GoDataType](arr values.Array) Atom[T] {
+func NewAtom[T dtypes.Supported](arr values.Array) Atom[T] {
 	hostValue, ok := arr.(*values.HostArray)
 	if ok {
 		return NewHostAtom[T](hostValue)
@@ -134,7 +134,7 @@ func NewAtom[T dtypes.GoDataType](arr values.Array) Atom[T] {
 }
 
 // NewArray returns a new Go array bridge given a GX value of the same data type.
-func NewArray[T dtypes.GoDataType](arr values.Array) Array[T] {
+func NewArray[T dtypes.Supported](arr values.Array) Array[T] {
 	hostValue, ok := arr.(*values.HostArray)
 	if ok {
 		return NewHostArray[T](hostValue)

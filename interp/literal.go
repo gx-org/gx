@@ -32,14 +32,14 @@ type (
 		array(fitp *Interpreter, expr *ir.ArrayLitExpr) (ir.Element, error)
 	}
 
-	valuerT[T dtypes.GoDataType] struct {
+	valuerT[T dtypes.Supported] struct {
 		kind         irkind.Kind
 		toAtomValue  func(tp ir.Type, val T) (*values.HostArray, error)
 		toArrayValue func(tp ir.Type, val []T, dims []int) (*values.HostArray, error)
 	}
 )
 
-func goValueFromElement[T dtypes.GoDataType](el engine.NumericalElement) (T, bool, error) {
+func goValueFromElement[T dtypes.Supported](el engine.NumericalElement) (T, bool, error) {
 	var t T
 	canonicalElt, ok := el.(elements.ElementWithConstant)
 	if !ok {
@@ -56,7 +56,7 @@ func goValueFromElement[T dtypes.GoDataType](el engine.NumericalElement) (T, boo
 	return t, err == nil, err
 }
 
-func goSliceFromArrayElement[T dtypes.GoDataType](el engine.NumericalElement) ([]T, bool, error) {
+func goSliceFromArrayElement[T dtypes.Supported](el engine.NumericalElement) ([]T, bool, error) {
 	canonicalElt, ok := el.(elements.ElementWithConstant)
 	if !ok {
 		return nil, false, nil
@@ -69,7 +69,7 @@ func goSliceFromArrayElement[T dtypes.GoDataType](el engine.NumericalElement) ([
 	return array.Flat(), true, nil
 }
 
-func goSliceFromElements[T dtypes.GoDataType](els []engine.NumericalElement) ([]T, bool, error) {
+func goSliceFromElements[T dtypes.Supported](els []engine.NumericalElement) ([]T, bool, error) {
 	var vals []T
 	for _, el := range els {
 		var subVals []T

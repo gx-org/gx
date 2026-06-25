@@ -94,7 +94,7 @@ func NumberLines(s string) string {
 }
 
 // FetchAtom fetches an atomic value from a device.
-func FetchAtom[T dtypes.GoDataType](t *testing.T, atom types.Atom[T]) T {
+func FetchAtom[T dtypes.Supported](t *testing.T, atom types.Atom[T]) T {
 	if atom == nil {
 		t.Fatalf("cannot fetch value from a nil atom")
 	}
@@ -106,7 +106,7 @@ func FetchAtom[T dtypes.GoDataType](t *testing.T, atom types.Atom[T]) T {
 }
 
 // FetchArray fetches an array from a device.
-func FetchArray[T dtypes.GoDataType](t *testing.T, array types.Array[T]) []T {
+func FetchArray[T dtypes.Supported](t *testing.T, array types.Array[T]) []T {
 	if array == nil {
 		t.Fatalf("cannot fetch value from a nil array")
 	}

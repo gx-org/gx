@@ -671,7 +671,7 @@ func evalEinsumExpr(fitp *Interpreter, ref *ir.EinsumExpr) (ir.Element, error) {
 	return fitp.Engine().ArrayOps().Einsum(fitp, ref, x, y)
 }
 
-func evalAtom[T dtypes.GoDataType](fitp *Interpreter, expr ir.Expr) (val T, err error) {
+func evalAtom[T dtypes.Supported](fitp *Interpreter, expr ir.Expr) (val T, err error) {
 	el, err := evalExpr(fitp, expr)
 	if err != nil {
 		var zero T

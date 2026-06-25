@@ -416,7 +416,7 @@ func castArrayWithShape[T dtypes.AlgebraType, U goAlgebra](xVal Array, dims []in
 
 // N-ary Operators
 
-func concat[T dtypes.GoDataType](xVals []Array) (Array, error) {
+func concat[T dtypes.Supported](xVals []Array) (Array, error) {
 	xVal0 := xVals[0]
 	z := make([]T, len(xVals))
 	for i, x := range xVals {

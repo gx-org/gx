@@ -28,7 +28,7 @@ import (
 )
 
 // Array managed by GX.
-type Array[T dtypes.GoDataType] interface {
+type Array[T dtypes.Supported] interface {
 	Bridger
 
 	Fetch() (*HostArray[T], error)
@@ -37,14 +37,14 @@ type Array[T dtypes.GoDataType] interface {
 }
 
 // DeviceArray is an array stored on a device.
-type DeviceArray[T dtypes.GoDataType] struct {
+type DeviceArray[T dtypes.Supported] struct {
 	baseBridge[*DeviceArray[T], *values.DeviceArray]
 }
 
 var _ Array[int64] = (*DeviceArray[int64])(nil)
 
 // NewDeviceArray returns a new Go array given a device value managed by GX.
-func NewDeviceArray[T dtypes.GoDataType](val *values.DeviceArray) *DeviceArray[T] {
+func NewDeviceArray[T dtypes.Supported](val *values.DeviceArray) *DeviceArray[T] {
 	array := &DeviceArray[T]{}
 	array.baseBridge = newBaseBridge(array, val)
 	dtypeGot := val.Shape().DType
@@ -83,14 +83,14 @@ func (array *DeviceArray[T]) String() string {
 }
 
 // HostArray is an array stored on a host.
-type HostArray[T dtypes.GoDataType] struct {
+type HostArray[T dtypes.Supported] struct {
 	baseBridge[*HostArray[T], *values.HostArray]
 }
 
 var _ Array[int64] = (*HostArray[int64])(nil)
 
 // NewHostArray returns a new Go array given a device value managed by GX.
-func NewHostArray[T dtypes.GoDataType](val *values.HostArray) *HostArray[T] {
+func NewHostArray[T dtypes.Supported](val *values.HostArray) *HostArray[T] {
 	array := &HostArray[T]{}
 	array.baseBridge = newBaseBridge(array, val)
 	return array
@@ -141,7 +141,7 @@ func ArrayBool(vals []bool, dims ...int) *HostArray[bool] {
 	return NewHostArray[bool](hostArray)
 }
 
-func inferDims[T dtypes.GoDataType](vals []T, dims []int) []int {
+func inferDims[T dtypes.Supported](vals []T, dims []int) []int {
 	if dims != nil {
 		return dims
 	}

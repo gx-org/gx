@@ -25,14 +25,14 @@ import (
 )
 
 type (
-	arrayFactory[T dtypes.GoDataType] struct{}
+	arrayFactory[T dtypes.Supported] struct{}
 
 	baseArray interface {
 		array()
 	}
 
 	// arrayT is a multi-dimensional array stored by the host or the device.
-	arrayT[T dtypes.GoDataType] struct {
+	arrayT[T dtypes.Supported] struct {
 		shape   shape.Shape
 		values  []T
 		factory Factory
@@ -41,7 +41,7 @@ type (
 
 var _ baseArray = (*arrayT[int32])(nil)
 
-func toArray[T dtypes.GoDataType](a Array) *arrayT[T] {
+func toArray[T dtypes.Supported](a Array) *arrayT[T] {
 	return a.base().(*arrayT[T])
 }
 
@@ -158,7 +158,7 @@ func (f arrayFactory[T]) Reshape(x *shape.Shape, axisLengths []int) (Unary, *sha
 	}, &shapeOut, nil
 }
 
-func broadcast[T dtypes.GoDataType](vals []T, target int) ([]T, error) {
+func broadcast[T dtypes.Supported](vals []T, target int) ([]T, error) {
 	if len(vals) != 1 {
 		return nil, errors.Errorf("cannot broadcast more than one value")
 	}

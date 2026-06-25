@@ -1988,7 +1988,7 @@ type (
 	}
 
 	// AtomicValueT is a builtin constant.
-	AtomicValueT[T dtypes.GoDataType] struct {
+	AtomicValueT[T dtypes.Supported] struct {
 		Src ast.Expr
 		Val T
 		Typ Type

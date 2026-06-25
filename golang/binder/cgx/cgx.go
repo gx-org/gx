@@ -586,7 +586,7 @@ func cgx_free_function_run_result(cgxFunctionResult *C.struct_cgx_function_run_r
 
 /* cgx_value */
 
-func toValueResult[T dtypes.GoDataType](devAtom *types.DeviceAtom[T], err error) C.struct_cgx_value_new_result {
+func toValueResult[T dtypes.Supported](devAtom *types.DeviceAtom[T], err error) C.struct_cgx_value_new_result {
 	if err != nil {
 		return C.struct_cgx_value_new_result{error: (C.cgx_error)(wrap[error](err))}
 	}
@@ -702,7 +702,7 @@ func cgx_value_shape(cgxValue C.cgx_value) C.cgx_shape {
 	return 0
 }
 
-func atomFromDeviceArray[T dtypes.GoDataType](cgxValue C.cgx_value) T {
+func atomFromDeviceArray[T dtypes.Supported](cgxValue C.cgx_value) T {
 	value := unwrap[values.Value](cgxValue)
 	atomDevice := types.NewDeviceAtom[T](value.(*values.DeviceArray))
 	atomHost, err := atomDevice.Fetch()
