@@ -342,7 +342,7 @@ func ToAlgebraicArray[T dtypes.Float | dtypes.IntegerType](values []T, dims []in
 	arr := &algebraArray[T]{&arrayT[T]{
 		factory: algebraicFactory[T]{},
 		shape: shape.Shape{
-			DType:       dtypes.Generic[T](),
+			DType:       dtypes.FromGenericsType[T](),
 			AxisLengths: dims,
 		},
 		values: values,
@@ -363,7 +363,7 @@ func ToIntegerArray[T dtypes.IntegerType](values []T, dims []int) Array {
 	arr := &algebraArray[T]{&arrayT[T]{
 		factory: integerFactory[T]{},
 		shape: shape.Shape{
-			DType:       dtypes.Generic[T](),
+			DType:       dtypes.FromGenericsType[T](),
 			AxisLengths: dims,
 		},
 		values: values,

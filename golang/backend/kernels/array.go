@@ -120,7 +120,7 @@ func (a *arrayT[T]) reshapeArray(dims []int) arrayT[T] {
 	return arrayT[T]{
 		factory: a.factory,
 		shape: shape.Shape{
-			DType:       dtypes.Generic[T](),
+			DType:       dtypes.FromGenericsType[T](),
 			AxisLengths: dims,
 		},
 		values: append([]T{}, a.values...),
@@ -145,7 +145,7 @@ func (f arrayFactory[T]) Slice(x *shape.Shape, index int) (Unary, *shape.Shape, 
 
 func (f arrayFactory[T]) Reshape(x *shape.Shape, axisLengths []int) (Unary, *shape.Shape, error) {
 	shapeOut := shape.Shape{
-		DType:       dtypes.Generic[T](),
+		DType:       dtypes.FromGenericsType[T](),
 		AxisLengths: axisLengths,
 	}
 	return func(a Array) (Array, error) {

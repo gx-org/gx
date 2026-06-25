@@ -48,7 +48,7 @@ func NewDeviceArray[T dtypes.Supported](val *values.DeviceArray) *DeviceArray[T]
 	array := &DeviceArray[T]{}
 	array.baseBridge = newBaseBridge(array, val)
 	dtypeGot := val.Shape().DType
-	dtypeWant := dtypes.Generic[T]()
+	dtypeWant := dtypes.FromGenericsType[T]()
 	if dtypeGot != dtypeWant {
 		panic(fmt.Sprintf("assigning GX device value of shape %s to a Go binding array of data type %s", dtypeGot.String(), dtypeWant.String()))
 	}

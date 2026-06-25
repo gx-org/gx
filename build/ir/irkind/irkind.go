@@ -177,7 +177,7 @@ func KindFromString(ident string) Kind {
 // KindGeneric returns the kind of a variable from its generic type.
 // If the type is not supported, an invalid type is returned.
 func KindGeneric[T dtypes.Supported]() Kind {
-	return Kind(dtypes.Generic[T]())
+	return Kind(dtypes.FromGenericsType[T]())
 }
 
 // IsNumber returns true if the kind is a number.

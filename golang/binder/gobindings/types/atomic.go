@@ -50,7 +50,7 @@ func NewDeviceAtom[T dtypes.Supported](val *values.DeviceArray) *DeviceAtom[T] {
 	atomic := &DeviceAtom[T]{}
 	atomic.baseBridge = newBaseBridge(atomic, val)
 	shapeGot := val.Shape()
-	dtypeWant := dtypes.Generic[T]()
+	dtypeWant := dtypes.FromGenericsType[T]()
 	if shapeGot.DType != dtypeWant || !shapeGot.IsAtomic() {
 		panic(fmt.Sprintf("assigning GX device value of shape %s to a Go binding atom of type %s", shapeGot.String(), dtypeWant.String()))
 	}
