@@ -794,7 +794,7 @@ func cgx_value_string(cgxValue C.cgx_value) *C.cchar_t {
 
 /* cgx_shape */
 
-func fromCGXValueKind(valueType C.enum_cgx_value_kind) dtypes.DataType {
+func fromCGXValueKind(valueType C.enum_cgx_value_kind) dtypes.DType {
 	switch valueType {
 	case C.CGX_BOOL:
 		return dtypes.Bool

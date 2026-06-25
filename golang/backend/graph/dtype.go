@@ -26,6 +26,6 @@ func (g *Graph) DType() ops.DTypeBuilder {
 }
 
 // Bitcast casts a byte array into a given data type.
-func (g *Graph) Bitcast(x ops.Node, target dtypes.DataType) (ops.Node, error) {
+func (g *Graph) Bitcast(x ops.Node, target dtypes.DType) (ops.Node, error) {
 	return nil, errors.Errorf("Bitcast not implemented in the Go backend")
 }

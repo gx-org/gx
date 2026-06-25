@@ -54,7 +54,7 @@ func (boolFactory) UnaryOp(op token.Token, x *shape.Shape) (Unary, *shape.Shape,
 }
 
 // Cast an array to another
-func (boolFactory) Cast(dtypes.DataType, []int) (Unary, *shape.Shape, Factory, error) {
+func (boolFactory) Cast(dtypes.DType, []int) (Unary, *shape.Shape, Factory, error) {
 	return nil, nil, nil, errors.Errorf("not implemented")
 }
 

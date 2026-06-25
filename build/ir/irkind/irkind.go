@@ -128,14 +128,14 @@ func (k Kind) String() string {
 }
 
 // DType converts a GX kind into an array data type.
-func (k Kind) DType() dtypes.DataType {
+func (k Kind) DType() dtypes.DType {
 	if k == IntIdx || k == IntLen {
 		return DefaultInt.DType()
 	}
 	if k >= dtypes.MaxDataType {
 		return dtypes.Invalid
 	}
-	return dtypes.DataType(k)
+	return dtypes.DType(k)
 }
 
 // KindFromString returns a kind given an identifier.

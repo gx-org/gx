@@ -32,7 +32,7 @@ var philoxStateShape = &shape.Shape{
 	AxisLengths: []int{3},
 }
 
-func evalPhilox(env engine.Env, call *ir.FuncCallExpr, recv ir.Element, args []ir.Element, dtyp dtypes.DataType) ([]ir.Element, error) {
+func evalPhilox(env engine.Env, call *ir.FuncCallExpr, recv ir.Element, args []ir.Element, dtyp dtypes.DType) ([]ir.Element, error) {
 	philox, err := fun.ToNamedType(recv)
 	if err != nil {
 		return nil, err

@@ -75,9 +75,9 @@ type (
 
 	// Factory creates kernels for arrays for all supported types.
 	Factory interface {
-		Concat(dtypes.DataType, int) (NAry, *shape.Shape, error)
+		Concat(dtypes.DType, int) (NAry, *shape.Shape, error)
 
-		Cast(target dtypes.DataType, dims []int) (Unary, *shape.Shape, Factory, error)
+		Cast(target dtypes.DType, dims []int) (Unary, *shape.Shape, Factory, error)
 
 		Slice(*shape.Shape, int) (Unary, *shape.Shape, error)
 
@@ -125,7 +125,7 @@ func NewArrayFromRaw(data []byte, sh *shape.Shape) (Array, error) {
 }
 
 // FactoryFor returns a factory given a data type.
-func FactoryFor(dt dtypes.DataType) (Factory, error) {
+func FactoryFor(dt dtypes.DType) (Factory, error) {
 	switch dt {
 	case dtypes.Bool:
 		return boolFactory{}, nil

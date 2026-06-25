@@ -131,7 +131,7 @@ func (ao *arrayOps) BroadcastInDim(ctx ir.Evaluator, expr ir.Expr, x engine.Nume
 // Concat concatenates scalars elements into an array with one axis.
 func (ao *arrayOps) Concat(ctx ir.Evaluator, expr ir.Expr, xs []engine.NumericalElement) (engine.NumericalElement, error) {
 	nodes := make([]ops.Node, len(xs))
-	var dtype dtypes.DataType
+	var dtype dtypes.DType
 	for i, x := range xs {
 		iNode, iShape, err := materialise.Element(ao, x)
 		if err != nil {

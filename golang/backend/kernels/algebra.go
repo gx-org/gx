@@ -142,9 +142,9 @@ func castArray[T dtypes.AlgebraType, U goAlgebra](dims []int) Unary {
 	}
 }
 
-func (algebraicFactory[T]) Cast(kind dtypes.DataType, dims []int) (Unary, *shape.Shape, Factory, error) {
+func (algebraicFactory[T]) Cast(kind dtypes.DType, dims []int) (Unary, *shape.Shape, Factory, error) {
 	shap := &shape.Shape{
-		DType:       dtypes.DataType(kind),
+		DType:       dtypes.DType(kind),
 		AxisLengths: dims,
 	}
 	switch kind {
@@ -267,9 +267,9 @@ func (bfloat16Factory) UnaryOp(op token.Token, x *shape.Shape) (Unary, *shape.Sh
 }
 
 // Cast an array to another
-func (f bfloat16Factory) Cast(kind dtypes.DataType, dims []int) (Unary, *shape.Shape, Factory, error) {
+func (f bfloat16Factory) Cast(kind dtypes.DType, dims []int) (Unary, *shape.Shape, Factory, error) {
 	shap := &shape.Shape{
-		DType:       dtypes.DataType(kind),
+		DType:       dtypes.DType(kind),
 		AxisLengths: dims,
 	}
 	switch kind {

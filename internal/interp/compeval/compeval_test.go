@@ -94,7 +94,7 @@ func unaryExpr(op token.Token, x ir.Expr) *ir.UnaryExpr {
 	}
 }
 
-func castExpr(dt dtypes.DataType, x ir.Expr) *ir.CastExpr {
+func castExpr(dt dtypes.DType, x ir.Expr) *ir.CastExpr {
 	return &ir.CastExpr{
 		Typ: ir.TypeFromKind(irkind.Kind(dt)),
 		X:   x,

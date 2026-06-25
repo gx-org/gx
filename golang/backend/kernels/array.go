@@ -184,7 +184,7 @@ func (f arrayFactory[T]) BroadcastInDim(targetShape *shape.Shape, broadcastAxes 
 	}, targetShape, nil
 }
 
-func (arrayFactory[T]) Concat(dt dtypes.DataType, n int) (NAry, *shape.Shape, error) {
+func (arrayFactory[T]) Concat(dt dtypes.DType, n int) (NAry, *shape.Shape, error) {
 	return concat[T], &shape.Shape{
 		DType:       dt,
 		AxisLengths: []int{n},

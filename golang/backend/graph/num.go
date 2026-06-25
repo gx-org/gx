@@ -91,6 +91,6 @@ func (g *Graph) Iota(sh *shape.Shape, iotaAxis int) (ops.Node, error) {
 }
 
 // ArgMinMax applies a min or max operator over an axis
-func (g *Graph) ArgMinMax(x ops.Node, axis int, outputDType dtypes.DataType, isMin bool) (ops.Node, error) {
+func (g *Graph) ArgMinMax(x ops.Node, axis int, outputDType dtypes.DType, isMin bool) (ops.Node, error) {
 	return nil, errors.Errorf("ArgMinMax not implemented in the Go backend")
 }

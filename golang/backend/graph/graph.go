@@ -205,11 +205,11 @@ func (n unary) String() string {
 }
 
 // Cast returns a cast/convert operator node.
-func (g *Graph) Cast(x ops.Node, dt dtypes.DataType) (ops.Node, error) {
+func (g *Graph) Cast(x ops.Node, dt dtypes.DType) (ops.Node, error) {
 	return g.newCast(x.(execNode), dt)
 }
 
-func (g *Graph) newCast(x execNode, dt dtypes.DataType) (ops.Node, error) {
+func (g *Graph) newCast(x execNode, dt dtypes.DType) (ops.Node, error) {
 	xShape := x.shape()
 	kernel, shape, factory, err := x.kernelFactory().Cast(dt, xShape.AxisLengths)
 	if err != nil {
