@@ -850,7 +850,7 @@ func cgx_shape_size(cgxShape C.cgx_shape) C.int {
 //export cgx_shape_element_kind
 func cgx_shape_element_kind(cgxShape C.cgx_shape) C.enum_cgx_value_kind {
 	shape := unwrap[*shape.Shape](cgxShape)
-	if shape.DType < dtypes.MaxDataType {
+	if shape.DType < dtypes.MaxDType {
 		return toCGXValueKind(irkind.Kind(shape.DType))
 	}
 	return C.CGX_INVALID

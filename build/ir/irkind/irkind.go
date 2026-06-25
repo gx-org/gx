@@ -38,7 +38,7 @@ const (
 	Float32  = Kind(dtypes.Float32)
 	Float64  = Kind(dtypes.Float64)
 
-	IntIdx = Kind(iota + dtypes.MaxDataType)
+	IntIdx = Kind(iota + dtypes.MaxDType)
 	IntLen
 
 	// Unknown is a proxy type used while a type is being inferred by the compiler.
@@ -132,7 +132,7 @@ func (k Kind) DType() dtypes.DType {
 	if k == IntIdx || k == IntLen {
 		return DefaultInt.DType()
 	}
-	if k >= dtypes.MaxDataType {
+	if k >= dtypes.MaxDType {
 		return dtypes.InvalidDType
 	}
 	return dtypes.DType(k)
