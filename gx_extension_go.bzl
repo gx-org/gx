@@ -42,7 +42,7 @@ def _generate_all(ctx):
     args = ctx.actions.args()
     args.add("importgo")
     args.add("--source_filename=" + lib_name)
-    args.add_all(lib_files)
+    args.add(lib_files[1])
     ctx.actions.run(
         outputs = [out_gx_file, out_go_file],
         inputs = [lib_files[1]],

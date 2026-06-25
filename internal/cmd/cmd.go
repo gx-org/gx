@@ -29,6 +29,7 @@ var rootCmd = &cobra.Command{
 }
 
 func init() {
+	rootCmd.SetErrPrefix("gx:")
 	rootCmd.PersistentFlags().BoolVarP(&debug.Debug, "debug", "d", false, "print debug information")
 	rootCmd.AddCommand(impgo.Cmd())
 }
