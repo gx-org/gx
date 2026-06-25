@@ -396,34 +396,6 @@ func (s *Interface) hasCapability(f func(Type) bool) bool {
 	return len(s.types) > 0
 }
 
-// containsType returns true if the given type is present in the set.
-func (s *Interface) containsType(tpcmp TypeCmp, wantType Type) (bool, error) {
-	for _, typ := range s.types {
-		eq, err := wantType.Equal(tpcmp, typ)
-		if err != nil {
-			return false, err
-		}
-		if eq {
-			return true, nil
-		}
-	}
-	return false, nil
-}
-
-// containsTypes returns true if all the given types are present in the set.
-func (s *Interface) containsTypes(tpcmp TypeCmp, types *Interface) (bool, error) {
-	for _, wantType := range types.types {
-		eq, err := s.containsType(tpcmp, wantType)
-		if err != nil {
-			return false, err
-		}
-		if !eq {
-			return false, nil
-		}
-	}
-	return true, nil
-}
-
 func fieldListAtomicIR() *FieldList {
 	group := &FieldGroup{
 		Type: TypeExpr(nil, TypeFromKind(irkind.IR)),
@@ -556,4 +528,16 @@ func TypeFromStorage(x Expr, store Storage) *TypeValExpr {
 func TypeFromExpr(x Expr) *TypeValExpr {
 	store := StorageFromExpr(x)
 	return TypeFromStorage(x, store)
+}
+
+type typeSet interface {
+	buildTypeSet() []Type
+}
+
+func buildTypeSet(tp Type) []Type {
+	tset, tsetOk := tp.(typeSet)
+	if !tsetOk {
+		return []Type{tp}
+	}
+	return tset.buildTypeSet()
 }

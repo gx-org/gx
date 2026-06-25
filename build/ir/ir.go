@@ -243,6 +243,7 @@ type (
 var (
 	_ StorageWithValue = (*NamedType)(nil)
 	_ TypeMethods      = (*NamedType)(nil)
+	_ typeSet          = (*NamedType)(nil)
 	_ Type             = (*StructType)(nil)
 	_ Type             = (*InterfaceType)(nil)
 	_ SlicerType       = (*SliceType)(nil)
@@ -599,6 +600,10 @@ func (s *NamedType) Package() *Package {
 // IndexForVarArgs returns a type specific to a given index in varargs.
 func (s *NamedType) IndexForVarArgs(ErrSource, int) (Type, bool) {
 	return s, true
+}
+
+func (s *NamedType) buildTypeSet() []Type {
+	return buildTypeSet(s.Underlying.val)
 }
 
 // Underlying returns the underlying type of a type.

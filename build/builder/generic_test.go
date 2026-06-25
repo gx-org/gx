@@ -320,7 +320,7 @@ import "dtype"
 func g[T dtype.Ints, X []intlen](a T, x [unpack(X)]T) [unpack(X)]T
 
 func f() [2][3]int32 {
-	return g(10.0, [2][3]int32{{1, 2, 3}, {4, 5, 6}}) // ERROR float number does not satisfy dtype.Ints for T
+	return g(10.0, [2][3]int32{{1, 2, 3}, {4, 5, 6}}) // ERROR float number does not satisfy dtype.Ints
 }
 `,
 		},

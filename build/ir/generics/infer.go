@@ -15,6 +15,7 @@
 package generics
 
 import (
+	"fmt"
 	"go/ast"
 	"reflect"
 
@@ -102,7 +103,11 @@ func (uni *argUnifier) DefineType(genType *ir.GenericTypeParam, typ ir.Type) boo
 		uni.defined[pos] = invalidGenericType(genType)
 		from := uni.fetcher.File()
 		field := genType.OrigField()
-		return uni.fetcher.Err().Appendf(uni.arg.Node(), "%s does not satisfy %s for %s", typ.ReferString(from), field.Type().ReferString(from), field.Name.Name)
+		info := ""
+		if genType, isGenType := typ.(*ir.GenericTypeParam); isGenType {
+			info = fmt.Sprintf(" (%s)", genType.OrigField().Type().ReferString(from))
+		}
+		return uni.fetcher.Err().Appendf(uni.arg.Node(), "%s%s does not satisfy %s", typ.ReferString(from), info, field.Type().ReferString(from))
 	}
 	defined := uni.defined[pos]
 	if defined == nil {

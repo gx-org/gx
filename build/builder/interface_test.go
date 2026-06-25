@@ -60,6 +60,19 @@ func g() string {
 }
 `,
 		},
+		testbuild.Decl{
+			Src: `
+type Ints interface {
+	int32 | int64
+}
+
+func F(x any) int32
+
+func g[T Ints](x T) int32 {
+	return F(x)
+}
+`,
+		},
 	)
 }
 

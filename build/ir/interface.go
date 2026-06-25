@@ -135,6 +135,7 @@ var (
 	_ ArrayType   = (*Interface)(nil)
 	_ assignsFrom = (*Interface)(nil)
 	_ TypeMethods = (*Interface)(nil)
+	_ typeSet     = (*Interface)(nil)
 )
 
 // NewInterface returns a new type set given a set of types.
@@ -211,24 +212,50 @@ func (s *Interface) AssignableTo(tpcmp TypeCmp, target Type) (bool, error) {
 	return len(s.types) > 0, nil
 }
 
-func (s *Interface) checkTypesAssignableFrom(tpcmp TypeCmp, source Type) (bool, error) {
+func (s *Interface) buildTypeSet() []Type {
 	if len(s.types) == 0 {
-		return true, nil
+		return []Type{s}
 	}
+	var set []Type
+	for _, tp := range s.types {
+		set = append(set, buildTypeSet(tp)...)
+	}
+	return set
+}
 
-	if sourceSet, ok := source.(*Interface); ok {
-		return s.containsTypes(tpcmp, sourceSet)
-	}
-	for _, typ := range s.types {
-		ok, err := source.AssignableTo(tpcmp, typ)
+func isContained(tpcmp TypeCmp, set []Type, tp Type) (bool, error) {
+	for _, tpInSet := range set {
+		var isEq bool
+		var err error
+		if irkind.IsNumber(tp.Kind()) {
+			isEq, err = tp.AssignableTo(tpcmp, tpInSet)
+		} else {
+			isEq, err = tp.Equal(tpcmp, tpInSet)
+		}
 		if err != nil {
 			return false, err
 		}
-		if ok {
+		if isEq {
 			return true, nil
 		}
 	}
 	return false, nil
+}
+
+func (s *Interface) checkTypesAssignableFrom(tpcmp TypeCmp, source Type) (bool, error) {
+	targetSet := s.buildTypeSet()
+	if len(s.types) == 0 {
+		return true, nil
+	}
+	srcSet := buildTypeSet(source)
+	// Check that all the types in the source are contained in the target.
+	for _, src := range srcSet {
+		isIn, err := isContained(tpcmp, targetSet, src)
+		if err != nil || !isIn {
+			return false, err
+		}
+	}
+	return true, nil
 }
 
 // Instantiate the interface.

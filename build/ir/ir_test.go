@@ -576,7 +576,7 @@ interface { int32|int64|uint32|uint64 }:     X
 
 func TestTypeSetAssignableTo(t *testing.T) {
 	const want = (`---
-                                    any: XXXXX
+                                    any: X    
                      interface { bool }: XX   
               interface { int32|int64 }: X X X
             interface { uint32|uint64 }: X  XX
