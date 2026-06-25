@@ -22,8 +22,8 @@ import (
 	"path/filepath"
 	"strings"
 
-	"google3/gdm/gxlang/binder/impgo/importer"
-	"google3/third_party/golang/cobra/cobra"
+	"github.com/gx-org/gx/internal/cmd/impgo/gopkgbin"
+	"github.com/spf13/cobra"
 	"github.com/gx-org/gx/internal/cmd/impgo/generator"
 	"github.com/gx-org/gx/internal/cmd/impgo/gengo"
 	"github.com/gx-org/gx/internal/cmd/impgo/gengx"
@@ -60,11 +60,11 @@ func newPackage(name string) (generator.Pkg, error) {
 	pkg := generator.Pkg{}
 	var blazeOut string
 	blazeOut, pkg.Dir, pkg.Name = splitPath(name)
-	importPath := "google3/" + pkg.Dir + "/" + pkg.Name
-	imp, err := importer.NewImporter(blazeOut, "", "", "")
+	imp, err := gopkgbin.NewImporter(blazeOut, "", "", "")
 	if err != nil {
 		return pkg, err
 	}
+	importPath := pkg.Dir + "/" + pkg.Name
 	pkg.Pkg, err = imp.Import(importPath)
 	if err != nil {
 		return pkg, fmt.Errorf("cannot import go library %s: %v", importPath, err)

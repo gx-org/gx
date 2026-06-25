@@ -16,7 +16,7 @@
 package cmd
 
 import (
-	"google3/third_party/golang/cobra/cobra"
+	"github.com/spf13/cobra"
 	"github.com/gx-org/gx/internal/cmd/debug"
 	"github.com/gx-org/gx/internal/cmd/impgo"
 )
