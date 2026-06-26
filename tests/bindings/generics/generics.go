@@ -12,13 +12,13 @@
 // See the License for the specific language governing permissions and
 // limitations under the License.
 
-// Package imports encapsulates GX source files
+// Package generics encapsulates GX source files
 // into a Go package.
 //
 // Automatically generated from google3/third_party/gxlang/gx/golang/packager/package.go.
 //
 // DO NOT EDIT
-package imports
+package generics
 
 import (
 	"embed"
@@ -26,23 +26,22 @@ import (
 	"github.com/gx-org/gx/build/importers"
 	"github.com/gx-org/gx/build/importers/embedpkg"
 
-	_ "github.com/gx-org/gx/tests/bindings/basic"
 )
 
-//go:embed imports.gx 
+//go:embed generics.gx 
 var srcs embed.FS
 
 var inputFiles = []string{
-"imports.gx",
+"generics.gx",
 }
 
 func init() {
-	embedpkg.RegisterPackage("github.com/gx-org/gx/tests/bindings/imports", Build)
+	embedpkg.RegisterPackage("github.com/gx-org/gx/tests/bindings/generics", Build)
 }
 
 var _ embedpkg.BuildFunc = Build
 
 // Build GX package.
 func Build(bld importers.Builder) (importers.Package, error) {
-	return bld.BuildFiles("github.com/gx-org/gx/tests/bindings", "imports", srcs, inputFiles)
+	return bld.BuildFiles("github.com/gx-org/gx/tests/bindings", "generics", srcs, inputFiles)
 }
