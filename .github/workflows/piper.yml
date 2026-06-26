@@ -26,6 +26,7 @@ env:
   CGO_CPPFLAGS: -I${{ github.workspace }}/..
   CGO_CXXFLAGS: -I${{ github.workspace }}/..
   CGO_LDFLAGS: -labsl_status -labsl_statusor
+  GOTOOLCHAIN: go1.27rc1
 
 jobs:
 
