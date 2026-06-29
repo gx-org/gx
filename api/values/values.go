@@ -19,6 +19,7 @@ import (
 	"math/big"
 
 	"github.com/pkg/errors"
+	"google3/third_party/golang/github_com/gomlx/compute/v/v0/dtypes/bfloat16/bfloat16"
 	"github.com/gx-org/backend/dtypes"
 	"github.com/gx-org/backend/platform"
 	"github.com/gx-org/gx/build/ir"
@@ -65,7 +66,7 @@ func AtomFloatValue[T dtypes.GoFloat](typ ir.Type, val T) (*HostArray, error) {
 }
 
 // AtomBfloat16Value returns an array GX value given a Go value.
-func AtomBfloat16Value(typ ir.Type, val dtypes.Bfloat16T) (*HostArray, error) {
+func AtomBfloat16Value(typ ir.Type, val bfloat16.BFloat16) (*HostArray, error) {
 	return toHostArray(typ, kernels.ToBfloat16Atom(val))
 }
 
@@ -80,7 +81,7 @@ func AtomIntegerValue[T dtypes.IntegerType](typ ir.Type, val T) (*HostArray, err
 }
 
 // ArrayBfloat16Value returns an array GX value given a Go value.
-func ArrayBfloat16Value(typ ir.Type, vals []dtypes.Bfloat16T, dims []int) (*HostArray, error) {
+func ArrayBfloat16Value(typ ir.Type, vals []bfloat16.BFloat16, dims []int) (*HostArray, error) {
 	return toHostArray(typ, kernels.ToBfloat16Array(vals, dims))
 }
 
@@ -174,7 +175,7 @@ func AtomNumberInt(x *big.Int, typ ir.Type) (*HostArray, error) {
 	switch typ.Kind() {
 	case irkind.Bfloat16:
 		xF64, _ := x.Float64()
-		return AtomBfloat16Value(typ, dtypes.BFloat16FromFloat64(xF64))
+		return AtomBfloat16Value(typ, bfloat16.FromFloat64(xF64))
 	case irkind.Float32:
 		return AtomFloatValue[float32](typ, bigIntToFloat[float32](x))
 	case irkind.Float64:
@@ -205,7 +206,7 @@ func AtomNumberFloat(x *big.Float, typ ir.Type) (*HostArray, error) {
 	switch typ.Kind() {
 	case irkind.Bfloat16:
 		xF64, _ := x.Float64()
-		return AtomBfloat16Value(typ, dtypes.BFloat16FromFloat64(xF64))
+		return AtomBfloat16Value(typ, bfloat16.FromFloat64(xF64))
 	case irkind.Float32:
 		return AtomFloatValue[float32](typ, bigFloatCast[float32](x))
 	case irkind.Float64:

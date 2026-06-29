@@ -191,7 +191,7 @@ func (s *GenericTypeParam) Value(x Expr) Expr {
 
 // DefineString returns the GX source code of the node.
 func (s *GenericTypeParam) DefineString(from *File) string {
-	return s.typ().DefineString(from)
+	return fmt.Sprintf("%s %s", s.NameDef().Name, s.typ().ReferString(from))
 }
 
 // ReferString returns the string representation of the node in an error message.

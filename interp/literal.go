@@ -16,6 +16,7 @@ package interp
 
 import (
 	"github.com/pkg/errors"
+	"google3/third_party/golang/github_com/gomlx/compute/v/v0/dtypes/bfloat16/bfloat16"
 	"github.com/gx-org/backend/dtypes"
 	"github.com/gx-org/gx/api/values"
 	"github.com/gx-org/gx/build/fmterr"
@@ -169,7 +170,7 @@ func newValuer(fitp *Interpreter, expr ir.Expr, kind irkind.Kind) (v valuer, err
 	case irkind.Bool:
 		v = valuerT[bool]{kind: kind, toAtomValue: values.AtomBoolValue, toArrayValue: values.ArrayBoolValue}
 	case irkind.Bfloat16:
-		v = valuerT[dtypes.Bfloat16T]{kind: kind, toAtomValue: values.AtomBfloat16Value, toArrayValue: values.ArrayBfloat16Value}
+		v = valuerT[bfloat16.BFloat16]{kind: kind, toAtomValue: values.AtomBfloat16Value, toArrayValue: values.ArrayBfloat16Value}
 	case irkind.Float32:
 		v = valuerT[float32]{kind: kind, toAtomValue: values.AtomFloatValue[float32], toArrayValue: values.ArrayFloatValue[float32]}
 	case irkind.Float64:
