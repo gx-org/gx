@@ -1,4 +1,4 @@
-package testdata
+package types
 
 type myfloat float64
 

@@ -1,4 +1,4 @@
-package testdata
+package gather02
 
 import "shape"
 

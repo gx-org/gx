@@ -1,4 +1,4 @@
-package testdata
+package op
 
 func TestUnaryMinus() float64 {
 	return -1

@@ -99,7 +99,9 @@ func (t *source) Source() string {
 
 func (t *source) Run(b *Builder) (*ir.Package, error) {
 	bld := builder.New(b.Importers()...)
-	pkg, err := bld.BuildFiles("", "testdata", t.folder.FS, []string{t.name})
+	pkgName := path.Base(t.name)
+	pkgName = pkgName[:len(pkgName)-len(path.Ext(pkgName))]
+	pkg, err := bld.BuildFiles("", pkgName, t.folder.FS, []string{t.name})
 	numExpectedErrors, err := cmperr.Compare(pkg.IR(), err)
 	if err != nil {
 		return nil, &compileError{src: t.src, err: err}

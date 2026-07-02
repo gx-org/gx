@@ -1,4 +1,4 @@
-package testdata
+package typeassert
 
 // Test options:
 // setStatic sameDim1 intlen 2

@@ -1,4 +1,4 @@
-package testdata
+package structs
 
 type sample struct {
 	x [2]float32

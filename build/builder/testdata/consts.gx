@@ -1,4 +1,4 @@
-package testdata
+package consts
 
 const cstB = cstA
 const cstA = 5

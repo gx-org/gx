@@ -1,4 +1,4 @@
-package testdata
+package funclit
 
 // Test options:
 // setStatic staticValue int64 100

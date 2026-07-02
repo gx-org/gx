@@ -1,4 +1,4 @@
-package testdata
+package concat06
 
 import "shape"
 

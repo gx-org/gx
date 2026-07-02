@@ -1,4 +1,4 @@
-package testdata
+package strings
 
 func TestReturnStringLiteral() string {
 	return "Hello"

@@ -1,4 +1,4 @@
-package testdata
+package dynindex01
 
 import "num"
 
