@@ -180,6 +180,8 @@ func AtomNumberInt(x *big.Int, typ ir.Type) (*HostArray, error) {
 		return AtomFloatValue[float32](typ, bigIntToFloat[float32](x))
 	case irkind.Float64:
 		return AtomFloatValue[float64](typ, bigIntToFloat[float64](x))
+	case irkind.Int:
+		return AtomIntegerValue[int](typ, bigIntToInt[int](x))
 	case irkind.Int32:
 		return AtomIntegerValue[int32](typ, bigIntToInt[int32](x))
 	case irkind.Int64:

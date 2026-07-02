@@ -1,0 +1,7 @@
+package ints
+
+func TestReturnInt() int {
+	return 5
+	// Want:
+	// int(5)
+}

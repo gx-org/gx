@@ -30,6 +30,7 @@ const (
 	Invalid = Kind(dtypes.InvalidDType)
 
 	Bool     = Kind(dtypes.Bool)
+	Int      = Kind(dtypes.Int)
 	Int32    = Kind(dtypes.Int32)
 	Int64    = Kind(dtypes.Int64)
 	Uint32   = Kind(dtypes.Uint32)
@@ -91,6 +92,8 @@ func (k Kind) String() string {
 		return "intlen"
 	case Bool:
 		return "bool"
+	case Int:
+		return "int"
 	case Int32:
 		return "int32"
 	case Int64:
@@ -159,6 +162,8 @@ func KindFromString(ident string) Kind {
 		return Float32
 	case "float64":
 		return Float64
+	case "int":
+		return Int
 	case "int32":
 		return Int32
 	case "int64":
@@ -201,7 +206,7 @@ func IsInteger(kind Kind) bool {
 	switch kind {
 	case IntLen, IntIdx:
 		return true
-	case Int32, Int64, Uint32, Uint64:
+	case Int, Int32, Int64, Uint32, Uint64:
 		return true
 	case NumberInt:
 		return true

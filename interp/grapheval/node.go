@@ -76,7 +76,11 @@ func checkShape(node *ops.OutputNode) error {
 		return nil
 	}
 	got := nodeWithShape.BackendShape()
-	if got.DType != want.DType {
+	gotDType := got.DType
+	if gotDType == dtypes.Int64 && want.DType == dtypes.Int {
+		gotDType = want.DType
+	}
+	if gotDType != want.DType {
 		return errors.Errorf("backend returned a buffer with a %s data type but GX expects a %s data type", got.DType, want.DType)
 	}
 	if got.Size() != want.Size() {

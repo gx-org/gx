@@ -386,6 +386,8 @@ func Zero(sh *shape.Shape) (Array, error) {
 		return ToFloatArray(make([]float32, sh.Size()), sh.AxisLengths), nil
 	case dtypes.Float64:
 		return ToFloatArray(make([]float64, sh.Size()), sh.AxisLengths), nil
+	case dtypes.Int:
+		return ToIntegerArray(make([]int, sh.Size()), sh.AxisLengths), nil
 	case dtypes.Int32:
 		return ToIntegerArray(make([]int32, sh.Size()), sh.AxisLengths), nil
 	case dtypes.Int64:
@@ -395,7 +397,7 @@ func Zero(sh *shape.Shape) (Array, error) {
 	case dtypes.Uint64:
 		return ToIntegerArray(make([]uint64, sh.Size()), sh.AxisLengths), nil
 	default:
-		return nil, errors.Errorf("cannot an array of data type %s: not supported", sh.DType)
+		return nil, errors.Errorf("cannot create an array of data type %s: not supported", sh.DType)
 	}
 
 }

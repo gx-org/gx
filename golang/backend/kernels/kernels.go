@@ -116,6 +116,8 @@ func NewArrayFromRaw(data []byte, sh *shape.Shape) (Array, error) {
 		return ToIntegerArray(dtypes.ToSlice[uint32](data), sh.AxisLengths), nil
 	case dtypes.Uint64:
 		return ToIntegerArray(dtypes.ToSlice[uint64](data), sh.AxisLengths), nil
+	case dtypes.Int:
+		return ToIntegerArray(dtypes.ToSlice[int](data), sh.AxisLengths), nil
 	case dtypes.Int32:
 		return ToIntegerArray(dtypes.ToSlice[int32](data), sh.AxisLengths), nil
 	case dtypes.Int64:

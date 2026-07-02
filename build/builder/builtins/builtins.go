@@ -36,6 +36,7 @@ func init() {
 	registerBuiltinType("bfloat16", ir.Bfloat16Type())
 	registerBuiltinType("float32", ir.Float32Type())
 	registerBuiltinType("float64", ir.Float64Type())
+	registerBuiltinType("int", ir.IntType())
 	registerBuiltinType("int32", ir.Int32Type())
 	registerBuiltinType("int64", ir.Int64Type())
 	registerBuiltinType("string", ir.StringType())
