@@ -1,4 +1,4 @@
-package core
+package generic
 
 type floats interface {
 	bfloat16 | float32 | float64

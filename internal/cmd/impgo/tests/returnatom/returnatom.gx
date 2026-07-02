@@ -12,8 +12,7 @@
 // See the License for the specific language governing permissions and
 // limitations under the License.
 
-// Package testdata tests calling Go from GX.
-package testdata
+package returnatom
 
 import "github.com/gx-org/gx/internal/cmd/impgo/tests/returnatom"
 

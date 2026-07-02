@@ -239,6 +239,21 @@ func Float64Type() Type {
 	return float64T
 }
 
+type intType struct {
+	atomicType
+}
+
+var intT = &intType{atomicType: atomicType{Knd: irkind.Int}}
+
+func (s *intType) Specialise(spec Specialiser) (Type, bool) {
+	return intT, true
+}
+
+// IntType returns the type for a int32.
+func IntType() Type {
+	return intT
+}
+
 type int32Type struct {
 	atomicType
 }

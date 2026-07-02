@@ -19,6 +19,7 @@ import (
 	"go/token"
 
 	"github.com/pkg/errors"
+	"github.com/gomlx/compute/dtypes/bfloat16"
 	"github.com/gx-org/backend/dtypes"
 	"github.com/gx-org/backend/shape"
 	"github.com/gx-org/gx/build/ir"
@@ -248,7 +249,7 @@ func (f integerFactory[T]) BinaryOp(op token.Token, x, y *shape.Shape) (Binary, 
 }
 
 type bfloat16Factory struct {
-	arrayFactory[dtypes.Bfloat16T]
+	arrayFactory[bfloat16.BFloat16]
 }
 
 var _ Factory = (*bfloat16Factory)(nil)
@@ -290,15 +291,15 @@ func (f bfloat16Factory) Cast(kind dtypes.DType, dims []int) (Unary, *shape.Shap
 
 func castToBfloat16Array[T dtypes.AlgebraType](xVal Array) (Array, error) {
 	x := toArray[T](xVal)
-	z := make([]dtypes.Bfloat16T, x.shape.Size())
+	z := make([]bfloat16.BFloat16, x.shape.Size())
 	for i, xi := range x.values {
-		z[i] = dtypes.BFloat16FromFloat32((float32)(xi))
+		z[i] = bfloat16.FromFloat32((float32)(xi))
 	}
 	return ToBfloat16Array(z, x.shape.AxisLengths), nil
 }
 
 func castFromBfloat16Array[U goAlgebra](xVal Array) (Array, error) {
-	x := toArray[dtypes.Bfloat16T](xVal)
+	x := toArray[bfloat16.BFloat16](xVal)
 	z := make([]U, x.shape.Size())
 	for i, xi := range x.values {
 		z[i] = U(xi.Float32())
@@ -307,8 +308,8 @@ func castFromBfloat16Array[U goAlgebra](xVal Array) (Array, error) {
 }
 
 // ToBfloat16Atom converts a value into an atom owned by a backend.
-func ToBfloat16Atom(val dtypes.Bfloat16T) Array {
-	return ToBfloat16Array([]dtypes.Bfloat16T{val}, nil)
+func ToBfloat16Atom(val bfloat16.BFloat16) Array {
+	return ToBfloat16Array([]bfloat16.BFloat16{val}, nil)
 }
 
 // ToFloatAtom converts a value into an atom owned by a backend.
@@ -322,8 +323,8 @@ func ToIntegerAtom[T dtypes.IntegerType](val T) Array {
 }
 
 // ToBfloat16Array converts values and a shape into a native multi-dimensional array owned by a backend.
-func ToBfloat16Array(values []dtypes.Bfloat16T, dims []int) Array {
-	arr := &bfloat16Array{&arrayT[dtypes.Bfloat16T]{
+func ToBfloat16Array(values []bfloat16.BFloat16, dims []int) Array {
+	arr := &bfloat16Array{&arrayT[bfloat16.BFloat16]{
 		factory: bfloat16Factory{},
 		shape: shape.Shape{
 			DType:       dtypes.BFloat16,
@@ -380,11 +381,13 @@ func Zero(sh *shape.Shape) (Array, error) {
 	case dtypes.Bool:
 		return ToBoolArray(make([]bool, sh.Size()), sh.AxisLengths), nil
 	case dtypes.BFloat16:
-		return ToBfloat16Array(make([]dtypes.Bfloat16T, sh.Size()), sh.AxisLengths), nil
+		return ToBfloat16Array(make([]bfloat16.BFloat16, sh.Size()), sh.AxisLengths), nil
 	case dtypes.Float32:
 		return ToFloatArray(make([]float32, sh.Size()), sh.AxisLengths), nil
 	case dtypes.Float64:
 		return ToFloatArray(make([]float64, sh.Size()), sh.AxisLengths), nil
+	case dtypes.Int:
+		return ToIntegerArray(make([]int, sh.Size()), sh.AxisLengths), nil
 	case dtypes.Int32:
 		return ToIntegerArray(make([]int32, sh.Size()), sh.AxisLengths), nil
 	case dtypes.Int64:
@@ -394,7 +397,7 @@ func Zero(sh *shape.Shape) (Array, error) {
 	case dtypes.Uint64:
 		return ToIntegerArray(make([]uint64, sh.Size()), sh.AxisLengths), nil
 	default:
-		return nil, errors.Errorf("cannot an array of data type %s: not supported", sh.DType)
+		return nil, errors.Errorf("cannot create an array of data type %s: not supported", sh.DType)
 	}
 
 }

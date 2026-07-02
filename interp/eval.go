@@ -397,14 +397,20 @@ func evalCastToArrayExpr(fitp *Interpreter, expr ir.TypeCastExpr, x engine.Numer
 	return reshape.Cast(fitp.env, expr, targetDType)
 }
 
-func evalCastExpr(fitp *Interpreter, expr ir.TypeCastExpr) (ir.Element, error) {
-	x, err := evalExpr(fitp, expr.Orig())
-	if err != nil {
-		return nil, err
-	}
-	target := expr.Type()
-	if named, ok := target.(*ir.NamedType); ok {
-		return fun.NewNamedType(fitp.NewFunc, named, x), nil
+func evalCastExprTo(fitp *Interpreter, expr ir.TypeCastExpr, target ir.Type, x ir.Element) (ir.Element, error) {
+	switch targetT := target.(type) {
+	case *ir.NamedType:
+		return fun.NewNamedType(fitp.NewFunc, targetT, x), nil
+	case *ir.GenericTypeParam:
+		name := targetT.NameDef()
+		el, err := fitp.Context().CurrentFrame().Find(name)
+		if err != nil {
+			return nil, err
+		}
+		target, err = cast.To[ir.Type](el)
+		if err != nil {
+			return nil, err
+		}
 	}
 	arrayType, ok := target.(ir.ArrayType)
 	if !ok {
@@ -418,6 +424,15 @@ func evalCastExpr(fitp *Interpreter, expr ir.TypeCastExpr) (ir.Element, error) {
 		return evalCastToScalarExpr(fitp, expr, xNum, arrayType)
 	}
 	return evalCastToArrayExpr(fitp, expr, xNum, arrayType)
+
+}
+
+func evalCastExpr(fitp *Interpreter, expr ir.TypeCastExpr) (ir.Element, error) {
+	x, err := evalExpr(fitp, expr.Orig())
+	if err != nil {
+		return nil, err
+	}
+	return evalCastExprTo(fitp, expr, expr.Type(), x)
 }
 
 func evalUnaryExpression(fitp *Interpreter, expr *ir.UnaryExpr) (ir.Element, error) {

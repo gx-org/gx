@@ -223,8 +223,25 @@ func (a *binary) CanonicalExpr() canonical.Canonical {
 }
 
 // Expr returns the IR expression represented by the variable.
-func (a *binary) Expr(ir.Evaluator, ast.Expr) ([]ir.Expr, error) {
-	return []ir.Expr{a.expr}, nil
+func (a *binary) Expr(ev ir.Evaluator, src ast.Expr) ([]ir.Expr, error) {
+	x, err := ir.ToSingleExpr(ev, src, a.x)
+	if err != nil {
+		return nil, err
+	}
+	y, err := ir.ToSingleExpr(ev, src, a.y)
+	if err != nil {
+		return nil, err
+	}
+	return []ir.Expr{&ir.BinaryExpr{
+		Src: &ast.BinaryExpr{
+			Op: a.expr.Src.Op,
+			X:  x.Expr(),
+			Y:  y.Expr(),
+		},
+		X:   x,
+		Y:   y,
+		Typ: a.expr.Typ,
+	}}, nil
 }
 
 func (a *binary) ShortString() string {

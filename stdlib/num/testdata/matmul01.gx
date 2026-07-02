@@ -1,4 +1,4 @@
-package testdata
+package matmul01
 
 import "num"
 

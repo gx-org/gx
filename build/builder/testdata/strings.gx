@@ -1,4 +1,4 @@
-package core
+package strings
 
 func TestReturnStringLiteral() string {
 	return "Hello"

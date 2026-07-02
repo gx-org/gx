@@ -63,6 +63,7 @@ func (itp *Base) InitBuiltins(scope *scope.RWScope[ir.Element]) error {
 		ir.Bfloat16Type(),
 		ir.Float32Type(),
 		ir.Float64Type(),
+		ir.IntType(),
 		ir.Int32Type(),
 		ir.Int64Type(),
 		ir.StringType(),

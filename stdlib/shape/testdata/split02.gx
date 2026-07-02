@@ -1,4 +1,4 @@
-package testdata
+package split02
 
 import "shape"
 

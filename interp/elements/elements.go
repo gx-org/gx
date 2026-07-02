@@ -197,6 +197,12 @@ func ConstantIntFromElement(el ir.Element) (val int, err error) {
 func toGoInt(val *values.HostArray) (int, error) {
 	valT := val.Shape().DType
 	switch valT {
+	case dtypes.Int:
+		intV, err := values.ToAtom[int](val)
+		if err != nil {
+			return 0, err
+		}
+		return int(intV), nil
 	case dtypes.Int32:
 		i32, err := values.ToAtom[int32](val)
 		if err != nil {

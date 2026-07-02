@@ -122,6 +122,18 @@ func OneHot[numClasses intlen](x [_axlen]int32) [axlen][numClasses]int32 {
 }
 `,
 		},
+		testbuild.Decl{
+			Src: `
+//gx:compeval
+func isEven(a intlen) (intlen, error) {
+    return a+1, nil
+}
+
+func f[A intlen]() [isEven(A)]float32 {
+    return [A]float32{} // ERROR cannot use [A]float32 as [A+1]float32 value in return statement
+}
+`,
+		},
 	)
 }
 

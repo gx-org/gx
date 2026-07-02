@@ -19,6 +19,7 @@ import (
 	"unsafe"
 
 	"github.com/pkg/errors"
+	"github.com/gomlx/compute/dtypes/bfloat16"
 	"github.com/gx-org/backend/dtypes"
 	"github.com/gx-org/backend/shape"
 	"github.com/gx-org/gx/fmt/fmtarray"
@@ -238,13 +239,13 @@ func (a *nonAlgebraArray[T]) ToFloatNumber() (*big.Float, error) {
 }
 
 type bfloat16Array struct {
-	*arrayT[dtypes.Bfloat16T]
+	*arrayT[bfloat16.BFloat16]
 }
 
 var _ Array = (*bfloat16Array)(nil)
 
 func (a *bfloat16Array) newArray(b baseArray) Array {
-	return &bfloat16Array{arrayT: b.(*arrayT[dtypes.Bfloat16T])}
+	return &bfloat16Array{arrayT: b.(*arrayT[bfloat16.BFloat16])}
 }
 
 func (a *bfloat16Array) base() baseArray {

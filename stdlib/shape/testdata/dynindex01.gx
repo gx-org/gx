@@ -1,0 +1,15 @@
+package dynindex01
+
+import "num"
+
+func TestDyanmicIndex1Axis() []int64 {
+	indices := num.IotaFull[[]intlen{3}]()
+	a := num.IotaFull[[]intlen{3}]() + 10
+	return []int64{
+		a[indices[0]], a[indices[1]], a[indices[2]],
+	}
+	// Want:
+	// 0: int64(10)
+	// 1: int64(11)
+	// 2: int64(12)
+}

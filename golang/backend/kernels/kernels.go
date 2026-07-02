@@ -20,6 +20,7 @@ import (
 	"math/big"
 
 	"github.com/pkg/errors"
+	"github.com/gomlx/compute/dtypes/bfloat16"
 	"github.com/gx-org/backend/dtypes"
 	"github.com/gx-org/backend/shape"
 )
@@ -106,7 +107,7 @@ func NewArrayFromRaw(data []byte, sh *shape.Shape) (Array, error) {
 	case dtypes.Bool:
 		return ToBoolArray(dtypes.ToSlice[bool](data), sh.AxisLengths), nil
 	case dtypes.BFloat16:
-		return ToBfloat16Array(dtypes.ToSlice[dtypes.Bfloat16T](data), sh.AxisLengths), nil
+		return ToBfloat16Array(dtypes.ToSlice[bfloat16.BFloat16](data), sh.AxisLengths), nil
 	case dtypes.Float32:
 		return ToFloatArray(dtypes.ToSlice[float32](data), sh.AxisLengths), nil
 	case dtypes.Float64:
@@ -115,6 +116,8 @@ func NewArrayFromRaw(data []byte, sh *shape.Shape) (Array, error) {
 		return ToIntegerArray(dtypes.ToSlice[uint32](data), sh.AxisLengths), nil
 	case dtypes.Uint64:
 		return ToIntegerArray(dtypes.ToSlice[uint64](data), sh.AxisLengths), nil
+	case dtypes.Int:
+		return ToIntegerArray(dtypes.ToSlice[int](data), sh.AxisLengths), nil
 	case dtypes.Int32:
 		return ToIntegerArray(dtypes.ToSlice[int32](data), sh.AxisLengths), nil
 	case dtypes.Int64:

@@ -76,7 +76,11 @@ func checkShape(node *ops.OutputNode) error {
 		return nil
 	}
 	got := nodeWithShape.BackendShape()
-	if got.DType != want.DType {
+	gotDType := got.DType
+	if gotDType == dtypes.Int64 && want.DType == dtypes.Int {
+		gotDType = want.DType
+	}
+	if gotDType != want.DType {
 		return errors.Errorf("backend returned a buffer with a %s data type but GX expects a %s data type", got.DType, want.DType)
 	}
 	if got.Size() != want.Size() {
@@ -235,9 +239,7 @@ func (n *BackendNode) SliceAt(expr *ir.IndexExpr, index engine.NumericalElement)
 func (n *BackendNode) Slice(expr *ir.SliceExpr, low, high engine.NumericalElement) (ir.Element, error) {
 	return nil, errors.Errorf("not implemented for %T", n)
 }
-
-// SliceArray of the value on the first axis given an index.
-func (n *BackendNode) SliceArray(expr ir.Expr, index engine.NumericalElement) (engine.NumericalElement, error) {
+func (n *BackendNode) sliceArrayFromConstant(expr ir.Expr, index engine.NumericalElement) (engine.NumericalElement, error) {
 	i, err := elements.ConstantIntFromElement(index)
 	if err != nil {
 		return nil, err
@@ -253,6 +255,47 @@ func (n *BackendNode) SliceArray(expr ir.Expr, index engine.NumericalElement) (e
 			AxisLengths: n.Shape().AxisLengths[1:],
 		},
 	})
+}
+
+func (n *BackendNode) sliceArrayFromNode(expr ir.Expr, index *BackendNode) (engine.NumericalElement, error) {
+	remaining := n.Shape().AxisLengths[1:]
+
+	indexNode := index.nod.Node
+	// XLA Gather parameters for indexing axis 0 of the operand:
+	//   indexVectorAxis=0: dimension 0 of startIndices is the index vector.
+	//   startIndexMap=[0]: the single index element maps to operand axis 0.
+	//   collapsedSliceAxes=[0]: axis 0 is collapsed (removed) from the output.
+	//   sliceSizes=[1]+remaining: take 1 element along axis 0, full size along others.
+	//   offsetAxes=[0..len(remaining)-1]: window result axes appear first in output.
+	// XLA requires len(startIndexMap) == startIndices.shape[indexVectorAxis].
+	sliceSizes := append([]int{1}, remaining...)
+	offsetAxes := make([]int, len(remaining))
+	for i := range offsetAxes {
+		offsetAxes[i] = i
+	}
+	sliceNode, err := n.ev.ao.Graph().Shape().Gather(n.nod.Node, indexNode, 0, offsetAxes, []int{0}, []int{0}, sliceSizes, false)
+	if err != nil {
+		return nil, err
+	}
+	return NewBackendNode(n.ev, expr.Type(), &ops.OutputNode{
+		Node: sliceNode,
+		Shape: &shape.Shape{
+			DType:       n.Shape().DType,
+			AxisLengths: remaining,
+		},
+	})
+}
+
+// SliceArray of the value on the first axis given an index.
+func (n *BackendNode) SliceArray(expr ir.Expr, index engine.NumericalElement) (engine.NumericalElement, error) {
+	switch indexT := index.(type) {
+	case elements.ElementWithConstant:
+		return n.sliceArrayFromConstant(expr, indexT)
+	case *BackendNode:
+		return n.sliceArrayFromNode(expr, indexT)
+	default:
+		return nil, errors.Errorf("cannot use %T as an array index: not supported", indexT)
+	}
 }
 
 // Length returns the evaluation of the len built-in.

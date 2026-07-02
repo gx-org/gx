@@ -1,4 +1,4 @@
-package core
+package builtin
 
 func newForLen() [2][1]float32 {
 	return [2][1]float32{{1}, {2}}
