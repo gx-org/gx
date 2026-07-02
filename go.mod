@@ -3,6 +3,7 @@ module github.com/gx-org/gx
 go 1.26
 
 require (
+	github.com/gomlx/compute v0.0.0-20260628062407-1a23cf2ada5b
 	github.com/google/go-cmp v0.7.0
 	github.com/gx-org/backend v0.3.1-0.20260702145205-f205c968f773
 	github.com/pkg/errors v0.9.1
@@ -14,7 +15,6 @@ require (
 )
 
 require (
-	github.com/gomlx/compute v0.0.0-20260628062407-1a23cf2ada5b // indirect
 	github.com/inconshreveable/mousetrap v1.1.0 // indirect
 	github.com/spf13/pflag v1.0.9 // indirect
 	golang.org/x/sync v0.20.0 // indirect
