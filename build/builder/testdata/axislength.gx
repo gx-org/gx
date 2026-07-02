@@ -1,0 +1,11 @@
+package axislength
+
+func f[A int]() [A]float32 {
+	return [A]float32(3)
+}
+
+func TestIntAsGenericAxisLength() [4]float32 {
+	return f[4]()
+	// Want:
+	// [4]float32{3, 3, 3, 3}
+}

@@ -244,7 +244,7 @@ func (dm *AxisInfer) SourceString(from *File) string {
 // that is intlen, intidx, and slices of these types.
 func IsAxisSpecType(tp Type) bool {
 	switch tp.Kind() {
-	case irkind.IntLen, irkind.IntIdx:
+	case irkind.IntLen, irkind.IntIdx, irkind.Int:
 		return true
 	case irkind.Slice:
 		slice, isSlice := Underlying(tp).(*SliceType)
