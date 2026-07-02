@@ -3272,9 +3272,6 @@ func IsBoolOp(op token.Token) bool {
 	return false
 }
 
-// TODO(b/400359274): disable for now because of a bug in type inference.
-const enforceArrayChecks = false
-
 // ToArrayTypeGivenShape converts a type to the underlying array type.
 // Returns an error with the array type does not match the shape.
 func ToArrayTypeGivenShape(from *File, typ Type, sh *shape.Shape) (ArrayType, error) {
@@ -3283,13 +3280,9 @@ func ToArrayTypeGivenShape(from *File, typ Type, sh *shape.Shape) (ArrayType, er
 	if !ok {
 		return nil, errors.Errorf("cannot create array value: type %s has underlying type %s but want array type", typ.ReferString(from), under.ReferString(from))
 	}
-	if !enforceArrayChecks {
-		return array, nil
-	}
 	arrayElementKind := array.DataType().Kind()
-	if arrayElementKind == irkind.Unknown {
-		// TODO(396628508): result of a generic that has not been resolved by the compiler. Temporary until will support generics correctly.
-		return array, nil
+	if !irkind.IsArrayCore(arrayElementKind) {
+		return array, errors.Errorf("cannot create an array of %s (array type: %s)", arrayElementKind.DType().String(), typ.ReferString(from))
 	}
 	dt := arrayElementKind.DType()
 	if dt != sh.DType {

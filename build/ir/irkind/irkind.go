@@ -244,3 +244,19 @@ func IsConcrete(kind Kind) bool {
 		return false
 	}
 }
+
+// IsArrayCore returns true if kind can be stored inside an array.
+func IsArrayCore(kind Kind) bool {
+	if IsInteger(kind) {
+		return true
+	}
+	if IsFloat(kind) {
+		return true
+	}
+	switch kind {
+	case Bool:
+		return true
+	default:
+		return false
+	}
+}
