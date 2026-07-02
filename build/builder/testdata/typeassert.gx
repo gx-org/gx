@@ -1,4 +1,13 @@
-package core
+package testdata
+
+// Test options:
+// setStatic sameDim1 intlen 2
+// setStatic sameDim2 intlen 2
+
+var (
+	sameDim1 intlen
+	sameDim2 intlen
+)
 
 func TestTypeAssert() [sameDim1][sameDim2]float32 {
 	return [4]float32{1, 2, 3, 4}.([sameDim1][sameDim2]float32)

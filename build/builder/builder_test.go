@@ -15,6 +15,10 @@
 package builder_test
 
 import (
+	"testing"
+
+	"github.com/gx-org/gx/build/builder/testbuild"
+	"github.com/gx-org/gx/build/builder/testdata"
 	"github.com/gx-org/gx/build/ir"
 	"github.com/gx-org/gx/build/ir/irhelper"
 )
@@ -23,3 +27,7 @@ var (
 	wantPackage = &ir.Package{Name: irhelper.IdentAST("test")}
 	wantFile    = &ir.File{Package: wantPackage}
 )
+
+func TestBuilder(t *testing.T) {
+	testbuild.RunFactory(t, nil, testdata.Sources)
+}

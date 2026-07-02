@@ -1,4 +1,4 @@
-package core
+package testdata
 
 // Test options:
 // setStatic sameDim1 intlen 2

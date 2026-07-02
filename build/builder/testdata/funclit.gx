@@ -1,4 +1,9 @@
-package core
+package testdata
+
+// Test options:
+// setStatic staticValue int64 100
+
+var staticValue int64
 
 func TestCallLambda() int32 {
 	return func() int32 {

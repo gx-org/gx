@@ -26,6 +26,8 @@ import (
 	"github.com/gx-org/gx/tests/testmacros"
 
 	// Testdata
+	core "github.com/gx-org/gx/build/builder/testdata"
+
 	math "github.com/gx-org/gx/stdlib/math/testdata"
 	num "github.com/gx-org/gx/stdlib/num/testdata"
 	shape "github.com/gx-org/gx/stdlib/shape/testdata"
@@ -50,21 +52,15 @@ var Errors = []string{
 	"errors/stdlib",
 }
 
-// AlgebraicCore is a set of paths only testing core algebraic operations.
-var AlgebraicCore = []string{
-	"testfiles/core",
-	"testfiles/generics",
-}
-
 // LanguageCore is a set of paths testing the GX core language
 // without built-in like einsum.
-var LanguageCore = appendAll(AlgebraicCore, []string{
+var LanguageCore = []string{
 	"testfiles/forloops",
 	"testfiles/ifstmts",
 	"testfiles/imports",
 	"testfiles/arrayslices",
 	"testfiles/slices",
-})
+}
 
 // Language is a set of paths testing the GX language.
 var Language = appendAll(LanguageCore, []string{
@@ -80,6 +76,11 @@ var Stdlib = []string{
 	"testfiles/nn",
 	"testfiles/ellipsis",
 	"testfiles/compeval",
+}
+
+// CoreUnits tests core language features.
+var CoreUnits = []testbuild.TestFactory{
+	core.Sources,
 }
 
 // StdlibUnits groups all the test in the standard library.

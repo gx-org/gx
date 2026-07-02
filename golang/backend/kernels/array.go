@@ -19,7 +19,7 @@ import (
 	"unsafe"
 
 	"github.com/pkg/errors"
-	"google3/third_party/golang/github_com/gomlx/compute/v/v0/dtypes/bfloat16/bfloat16"
+	"github.com/gomlx/compute/dtypes/bfloat16"
 	"github.com/gx-org/backend/dtypes"
 	"github.com/gx-org/backend/shape"
 	"github.com/gx-org/gx/fmt/fmtarray"

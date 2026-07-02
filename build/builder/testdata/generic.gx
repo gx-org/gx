@@ -1,4 +1,4 @@
-package core
+package testdata
 
 type floats interface {
 	bfloat16 | float32 | float64

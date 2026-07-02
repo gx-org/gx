@@ -1,4 +1,4 @@
-package generics
+package testdata
 
 func identity[X []intlen](a [unpack(X)]float32) [unpack(X)]float32 {
 	return a
