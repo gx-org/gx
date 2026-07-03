@@ -30,12 +30,18 @@ import (
 	"github.com/gx-org/gx/interp/materialise"
 )
 
-// BackendNode is a state element owning a node in the backend graph.
-type BackendNode struct {
-	ev  *Evaluator
-	nod *ops.OutputNode
-	typ ir.Type
-}
+type (
+	graphNode interface {
+		out() ops.Node
+	}
+
+	// BackendNode is a state element owning a node in the backend graph.
+	BackendNode struct {
+		ev  *Evaluator
+		nod *ops.OutputNode
+		typ ir.Type
+	}
+)
 
 var (
 	_ elements.Slicer                 = (*BackendNode)(nil)
@@ -43,6 +49,7 @@ var (
 	_ materialise.ElementMaterialiser = (*BackendNode)(nil)
 	_ engine.NumericalElement         = (*BackendNode)(nil)
 	_ ir.WithLength                   = (*BackendNode)(nil)
+	_ graphNode                       = (*BackendNode)(nil)
 )
 
 // NewBackendNode returns an element representing a node in the backend graph.
@@ -119,6 +126,10 @@ func (ev *Evaluator) elementFromTuple(types []ir.Type, nodeTuple ops.Tuple, shps
 		}
 	}
 	return elements.TupleFromElements(elts)
+}
+
+func (n *BackendNode) out() ops.Node {
+	return n.nod.Node
 }
 
 // BinaryOp applies a binary operator to x and y.
@@ -257,10 +268,10 @@ func (n *BackendNode) sliceArrayFromConstant(expr ir.Expr, index engine.Numerica
 	})
 }
 
-func (n *BackendNode) sliceArrayFromNode(expr ir.Expr, index *BackendNode) (engine.NumericalElement, error) {
+func (n *BackendNode) sliceArrayFromNode(expr ir.Expr, index graphNode) (engine.NumericalElement, error) {
 	remaining := n.Shape().AxisLengths[1:]
 
-	indexNode := index.nod.Node
+	indexNode := index.out()
 	// XLA Gather parameters for indexing axis 0 of the operand:
 	//   indexVectorAxis=0: dimension 0 of startIndices is the index vector.
 	//   startIndexMap=[0]: the single index element maps to operand axis 0.
@@ -291,7 +302,7 @@ func (n *BackendNode) SliceArray(expr ir.Expr, index engine.NumericalElement) (e
 	switch indexT := index.(type) {
 	case elements.ElementWithConstant:
 		return n.sliceArrayFromConstant(expr, indexT)
-	case *BackendNode:
+	case graphNode:
 		return n.sliceArrayFromNode(expr, indexT)
 	default:
 		return nil, errors.Errorf("cannot use %T as an array index: not supported", indexT)
