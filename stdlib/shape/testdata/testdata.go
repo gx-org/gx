@@ -25,7 +25,7 @@ import (
 var fs embed.FS
 
 // Sources contains all the tests to run.
-var Sources = testbuild.SourceFolder{
+var Sources = &testbuild.SourceFolder{
 	Name: "shape",
 	FS:   fs,
 }
