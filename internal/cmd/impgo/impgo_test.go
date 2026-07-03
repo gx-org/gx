@@ -30,7 +30,7 @@ import (
 //go:embed tests
 var fs embed.FS
 
-var sources = testbuild.SourceFolder{
+var sources = &testbuild.SourceFolder{
 	Name: "goimp",
 	FS:   fs,
 	Filter: func(name string) bool {

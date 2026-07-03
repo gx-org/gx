@@ -37,9 +37,9 @@ type SourceFolder struct {
 	Filter func(name string) bool
 }
 
-var _ TestFactory = SourceFolder{}
+var _ TestFactory = (*SourceFolder)(nil)
 
-func (sf SourceFolder) buildTests(name string) ([]Test, error) {
+func (sf *SourceFolder) buildTests(name string) ([]Test, error) {
 	dirName := name
 	if dirName == "" {
 		dirName = "."
@@ -79,13 +79,13 @@ func (sf SourceFolder) buildTests(name string) ([]Test, error) {
 }
 
 // BuildTests creates a set of test from a file system with a testdata folder.
-func (sf SourceFolder) BuildTests(imps []importers.Importer) ([]Test, error) {
+func (sf *SourceFolder) BuildTests(imps []importers.Importer) ([]Test, error) {
 	return sf.buildTests("")
 }
 
 // source runs a test from a source file loaded from a file system.
 type source struct {
-	folder SourceFolder
+	folder *SourceFolder
 	name   string
 	rtm    *api.Runtime
 	src    string
