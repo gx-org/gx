@@ -20,7 +20,7 @@ import (
 	"github.com/pkg/errors"
 	"github.com/gx-org/gx/build/builtins"
 	"github.com/gx-org/gx/build/ir"
-	"github.com/gx-org/gx/interp/elements"
+	"github.com/gx-org/gx/build/ir/irkind"
 )
 
 type setFunc struct{}
@@ -44,54 +44,59 @@ func (f *setFunc) BuildFuncType(fetcher ir.Fetcher, call *ir.FuncCallExpr) (*ir.
 			Src: &ast.FuncType{Func: call.Src.Pos()},
 		},
 	}
-	params, err := builtins.BuildFuncParams(fetcher, call, f.Name(), []ir.Type{
-		builtins.GenericArrayType,
-		builtins.GenericArrayType,
-		builtins.PositionsType,
-	})
-	if err != nil {
-		return ext, err
+	if len(call.Args) < 3 {
+		return ext, errors.Errorf("not enough arguments to set: got %d but expect at least 3", len(call.Args))
 	}
-	arrayParams, err := builtins.NarrowTypes[ir.ArrayType](fetcher, call, params)
-	if err != nil {
-		return ext, errors.Errorf("cannot fetch array type: %v", err)
+	args0 := call.Args[0].Type()
+	xArray, isArray := ir.Underlying(args0).(ir.ArrayType)
+	if !isArray {
+		return ext, errors.Errorf("cannot use %s as array as value argument to set", args0.ReferString(fetcher.File()))
 	}
-	ext.Results = builtins.Fields(call, arrayParams[0])
-	sameDType, err := arrayParams[0].DataType().Equal(fetcher, arrayParams[1].DataType())
+	args1 := call.Args[1].Type()
+	upArray, isArray := ir.Underlying(args1).(ir.ArrayType)
+	if !isArray {
+		return ext, errors.Errorf("cannot use %s as array as update argument to set", args1.ReferString(fetcher.File()))
+	}
+	posCallArgs := call.Args[2:]
+	positions := make([]ir.Type, len(posCallArgs))
+	for i, posI := range posCallArgs {
+		positions[i] = posI.Type()
+		if positions[i].Kind() == irkind.NumberInt {
+			positions[i] = ir.IntType()
+		}
+		if !ir.IsIndexType(positions[i]) {
+			return ext, errors.Errorf("cannot use %s as position argument to set", positions[i].ReferString(fetcher.File()))
+		}
+	}
+	ext.Results = builtins.Fields(call, xArray)
+	sameDType, err := xArray.DataType().Equal(fetcher, upArray.DataType())
 	if err != nil {
 		return ext, errors.Errorf("cannot compare datatypes: %v", err)
 	}
 	if !sameDType {
-		return ext, errors.Errorf("cannot set a slice of a [...]%s array with a [...]%s array", arrayParams[0].DataType().ReferString(fetcher.File()), arrayParams[1].DataType().ReferString(fetcher.File()))
+		return ext, errors.Errorf("cannot set a slice of a [...]%s array with a [...]%s array", xArray.DataType().ReferString(fetcher.File()), upArray.DataType().ReferString(fetcher.File()))
 	}
+	params := append([]ir.Type{xArray, upArray}, positions...)
 	ext.Params = builtins.Fields(call, params...)
-	xResolver := arrayParams[0].Rank()
+	xResolver := xArray.Rank()
 	xRank := xResolver
-	updateRank := arrayParams[1].Rank()
-	posResolver := arrayParams[2].Rank()
-	posRank := posResolver
-	if xRank == nil || updateRank == nil || posRank == nil {
+	updateRank := upArray.Rank()
+	if xRank == nil || updateRank == nil {
 		return ext, nil
 	}
-	if len(posRank.Axes()) != 1 {
-		return ext, errors.Errorf("position has an invalid number of axes: got %d but want 1", len(posRank.Axes()))
+	if len(positions) > len(xRank.Axes()) {
+		return ext, errors.Errorf("position (length %d) exceeds operand rank (%d)", len(positions), len(xRank.Axes()))
 	}
-	posSize, err := elements.MustEvalInt(fetcher, posRank.Axes()[0].AsExpr())
-	if err != nil {
-		return ext, err
-	}
-	if int(posSize) > len(xRank.Axes()) {
-		return ext, errors.Errorf("position (length %d) exceeds operand rank (%d)", posSize, len(xRank.Axes()))
-	}
-	wantUpdate := ir.NewArrayType(&ast.ArrayType{}, arrayParams[0].DataType(), &ir.Rank{
-		Ax: xRank.Axes()[posSize:],
+	wantUpdate := ir.NewArrayType(&ast.ArrayType{}, xArray.DataType(), &ir.Rank{
+		Ax: xRank.Axes()[len(positions):],
 	})
-	ok, err := arrayParams[1].Equal(fetcher, wantUpdate)
+	ok, err := upArray.Equal(fetcher, wantUpdate)
 	if err != nil {
 		return ext, errors.Errorf("cannot compare rank: %v", err)
 	}
 	if !ok {
-		return ext, errors.Errorf("cannot set array: update slice is %s but requires %s", arrayParams[1], wantUpdate)
+		from := fetcher.File()
+		return ext, errors.Errorf("cannot set array: update slice is %s but requires %s", upArray.ReferString(from), wantUpdate.ReferString(from))
 	}
 	return ext, nil
 }

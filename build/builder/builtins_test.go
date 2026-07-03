@@ -26,8 +26,8 @@ func TestBuiltinFuncs(t *testing.T) {
 			Src: `
 func f() [2][2]int32 {
 	a := [2][2]int32{}
-	a = set(a, [2]int32{1, 2}, [1]int32{0})
-	a = set(a, [2]int32{3, 4}, [1]int32{1})
+	a = set(a, [2]int32{1, 2}, 0)
+	a = set(a, [2]int32{3, 4}, 1)
 	return a
 }
 `,

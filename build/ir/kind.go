@@ -71,6 +71,7 @@ func IsIndexType(typ Type) bool {
 	case irkind.Int64:
 	case irkind.Uint32:
 	case irkind.Uint64:
+	case irkind.NumberInt:
 	case irkind.Interface:
 		if typSet, ok := toInterface(typ); ok {
 			return typSet.hasCapability(IsIndexType)

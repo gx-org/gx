@@ -21,7 +21,7 @@ import (
 	"github.com/gx-org/gx/build/builder/testbuild"
 )
 
-//go:embed *.gx generics/*.gx
+//go:embed *.gx generics/*.gx set/*.gx
 var fs embed.FS
 
 // Sources contains all the tests to run.

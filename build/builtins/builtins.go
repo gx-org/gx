@@ -158,7 +158,7 @@ func BuildFuncParams(fetcher ir.Fetcher, call *ir.FuncCallExpr, name string, sig
 		ok := false
 		switch want.Kind() {
 		case irkind.Array:
-			ok = got.Kind() == irkind.Array
+			_, ok = ir.Underlying(got).(ir.ArrayType)
 			params[i] = got
 		case irkind.Slice:
 			ok = got.Kind() == irkind.Slice
