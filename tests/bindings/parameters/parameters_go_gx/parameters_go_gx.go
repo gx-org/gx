@@ -192,12 +192,12 @@ func Build(dev *core.DeviceSetup) (*PackageHandle, error) {
 var Size SizeStatic
 
 type SizeStatic struct {
-	value ir.Int
+	value int
 }
 
-func (SizeStatic) Set(value ir.Int) options.PackageOptionFactory {
+func (SizeStatic) Set(value int) options.PackageOptionFactory {
 	return func(plat platform.Platform) options.PackageOption {
-		hostValue := types.DefaultInt(value)
+		hostValue := types.Int(value)
 		return options.PackageVarSetValue{
 			Pkg:   "github.com/gx-org/gx/tests/bindings/parameters",
 			Var:   "Size",
