@@ -19,6 +19,7 @@ import (
 	"testing"
 
 	"github.com/gx-org/gx/api"
+	"github.com/gx-org/gx/golang/tests/arraystest"
 	"github.com/gx-org/gx/golang/tests/basictest"
 	"github.com/gx-org/gx/golang/tests/cartpoletest"
 	"github.com/gx-org/gx/golang/tests/dtypestest"
@@ -31,6 +32,7 @@ import (
 )
 
 var all = []func(t *testing.T, dev *api.Device){
+	arraystest.Run,
 	basictest.Run,
 	importtest.Run,
 	mathtest.Run,

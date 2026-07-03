@@ -335,12 +335,17 @@ var (
 	_ elements.Slicer                 = (*arrayArgument)(nil)
 	_ ir.WithLength                   = (*arrayArgument)(nil)
 	_ elements.WithAxes               = (*arrayArgument)(nil)
+	_ graphNode                       = (*arrayArgument)(nil)
 )
 
 // NewArrayArgument creates a new argument element that the graph can also use as an argument.
 func (ev *Evaluator) NewArrayArgument(file *ir.File, parent parentArgument, typ ir.ArrayType, proxy ir.Element) (elements.ElementWithArrayFromContext, error) {
 	vis := &inputVisitor{file: file, ev: ev}
 	return vis.newArrayArgument(parent, typ, proxy)
+}
+
+func (n *arrayArgument) out() ops.Node {
+	return n.node.out()
 }
 
 // NewArrayArgument creates a new argument element that the graph can also use as an argument.
