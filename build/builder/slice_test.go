@@ -193,17 +193,17 @@ func test() []string {
 		testbuild.CompEval{
 			Src: `
 //gx:compeval
-func removeAxis(axes []intlen, reduced intidx) []intlen {
+func removeAxis(axes []int, reduced int) []int {
 	return append(axes[:reduced], axes[reduced+1:]...)
 }
 
 //gx:compeval
-func test() []intlen {
-	a := []intlen{0, 1, 2, 3, 4}
+func test() []int {
+	a := []int{0, 1, 2, 3, 4}
 	return removeAxis(a, 3)
 }
 `,
-			Wants: []string{`[]intlen{0, 1, 2, 4}`},
+			Wants: []string{`[]int{0, 1, 2, 4}`},
 		},
 	)
 }

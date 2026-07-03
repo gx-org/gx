@@ -10,7 +10,7 @@ type (
 	}
 )
 
-func add[T ints, U floats, S []intlen](x [unpack(S)]T, y [unpack(S)]U) ([unpack(S)]T, [unpack(S)]U) {
+func add[T ints, U floats, S []int](x [unpack(S)]T, y [unpack(S)]U) ([unpack(S)]T, [unpack(S)]U) {
 	return x + 2, y + 3
 }
 

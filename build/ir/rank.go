@@ -80,7 +80,7 @@ func NewRank(axlens []int) *Rank {
 		axes[i] = &AxisExpr{
 			X: &NumberCastExpr{
 				X:   &NumberInt{Val: big.NewInt(int64(al))},
-				Typ: IntLenType(),
+				Typ: IntType(),
 			},
 		}
 	}
@@ -240,7 +240,7 @@ func (r *Rank) IndexForVarArgs(errsrc ErrSource, vri int) (ArrayRank, bool) {
 
 var oneSize = &NumberCastExpr{
 	X:   &NumberInt{Val: big.NewInt(1)},
-	Typ: IntLenType(),
+	Typ: IntType(),
 }
 
 // RankSize is the total number of elements across all axes.
@@ -255,7 +255,7 @@ func RankSize(r ArrayRank) Expr {
 			},
 			X:   expr,
 			Y:   axis.AsExpr(),
-			Typ: IntLenType(),
+			Typ: IntType(),
 		}
 	}
 	return expr

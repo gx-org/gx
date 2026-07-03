@@ -102,12 +102,12 @@ func TestCallSliceArgs(t *testing.T) {
 	testbuild.Run(t,
 		testbuild.Decl{
 			Src: `
-var A, B intlen
+var A, B int
 
-func f[T int32]([A][B][1]float32, []intidx) T
+func f[T int32]([A][B][1]float32, []int) T
 
 func fail(x [A][B][1]float32) float32 {
-	return float32(f[int32](x, []intidx{0}))
+	return float32(f[int32](x, []int{0}))
 }
 `,
 		},

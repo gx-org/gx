@@ -61,7 +61,7 @@ func (f *axlengthsFunc) BuildFuncType(fetcher ir.Fetcher, call *ir.FuncCallExpr)
 
 	resultsGroup := &ir.FieldGroup{
 		Src:  &ast.Field{Type: call.Src},
-		Type: ir.TypeExpr(nil, ir.IntLenSliceType()),
+		Type: ir.TypeExpr(nil, ir.IntSliceType()),
 	}
 	resultsGroup.Fields = []*ir.Field{{Group: resultsGroup}}
 

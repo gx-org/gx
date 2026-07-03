@@ -167,9 +167,9 @@ func Float64(val float64) *HostAtom[float64] {
 	return newAtom[float64](irkind.Float64, kernels.ToFloatAtom(val))
 }
 
-// DefaultInt returns a new Go host atom of int32.
-func DefaultInt(val ir.Int) *HostAtom[ir.Int] {
-	return newAtom[ir.Int](irkind.DefaultInt, kernels.ToIntegerAtom(val))
+// Int returns a new Go host atom of int.
+func Int(val ir.Int) *HostAtom[ir.Int] {
+	return newAtom[ir.Int](irkind.Int, kernels.ToIntegerAtom(val))
 }
 
 // Int32 returns a new Go host atom of int32.

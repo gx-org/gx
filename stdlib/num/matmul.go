@@ -49,7 +49,7 @@ func (f einsum) BuildFuncIR(pkg *ir.Package) (*ir.FuncBuiltin, error) {
 func (f einsum) validateAxisExpr(fetcher ir.Fetcher, call *ir.FuncCallExpr, arg, maxRank int, seen map[int]bool) ([]int, error) {
 	axisExpr, ok := call.Args[arg].(*ir.SliceLitExpr)
 	if !ok {
-		return nil, fmterr.Errorf(fetcher.File().FileSet(), call.Node(), "argument %d to %s must be []intidx (got %s)", arg, f.Name(), call.Args[arg].SourceString(fetcher.File()))
+		return nil, fmterr.Errorf(fetcher.File().FileSet(), call.Node(), "argument %d to %s must be []int (got %s)", arg, f.Name(), call.Args[arg].SourceString(fetcher.File()))
 	}
 
 	axes := make([]int, len(axisExpr.Elts))
@@ -74,11 +74,11 @@ func (f einsum) validateAxisExpr(fetcher ir.Fetcher, call *ir.FuncCallExpr, arg,
 func (f einsum) resultsType(fetcher ir.Fetcher, call *ir.FuncCallExpr) ([]ir.Type, ir.Type, error) {
 	params, err := builtins.BuildFuncParams(fetcher, call, f.Name(), []ir.Type{
 		builtins.GenericArrayType,
-		ir.IntIndexSliceType(),
-		ir.IntIndexSliceType(),
+		ir.IntSliceType(),
+		ir.IntSliceType(),
 		builtins.GenericArrayType,
-		ir.IntIndexSliceType(),
-		ir.IntIndexSliceType(),
+		ir.IntSliceType(),
+		ir.IntSliceType(),
 	})
 	if err != nil {
 		return nil, nil, err

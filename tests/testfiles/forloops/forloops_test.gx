@@ -22,7 +22,7 @@ func TestForLoopRangeIntegerIgnoreKey() int32 {
 
 func TestForLoopRangeAxisLength() int32 {
 	r := int32(10)
-	for i := range intlen(3) {
+	for i := range int(3) {
 		r = r + int32(i)
 	}
 	return r

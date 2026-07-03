@@ -6,12 +6,12 @@ import (
 )
 
 // Test options:
-// setStatic dim1 intlen 2
-// setStatic dim2 intlen 3
-// setStatic dim3 intlen 4
+// setStatic dim1 int 2
+// setStatic dim2 int 3
+// setStatic dim3 int 4
 
 func TestSumVector() int64 {
-	return num.Sum[[]intidx{0}]([...]int64{
+	return num.Sum[[]int{0}]([...]int64{
 		1, 2, 3,
 	})
 	// Want:
@@ -19,7 +19,7 @@ func TestSumVector() int64 {
 }
 
 func TestSumVectorWithoutAxes() [3]int64 {
-	return num.Sum[[]intidx{}]([...]int64{
+	return num.Sum[[]int{}]([...]int64{
 		1, 2, 3,
 	})
 	// Want:
@@ -27,7 +27,7 @@ func TestSumVectorWithoutAxes() [3]int64 {
 }
 
 func TestSumTensor3DFloat32() [2][2]float32 {
-	return num.Sum[[]intidx{0}]([...]float32{
+	return num.Sum[[]int{0}]([...]float32{
 		{
 			{0, 1},
 			{10, 11},
@@ -105,7 +105,7 @@ func TestEinsum1() float32 {
 	// Dot product: contracting LHS/RHS axis 0.
 	x := [...]float32{1, 2, 3}
 	y := [...]float32{4, 5, 6}
-	return num.Einsum(x, []intidx{0}, []intidx{}, y, []intidx{0}, []intidx{})
+	return num.Einsum(x, []int{0}, []int{}, y, []int{0}, []int{})
 	// Want:
 	// float32(32)
 }
@@ -114,7 +114,7 @@ func TestEinsum1Batched() [2]float32 {
 	// Batched dot product: contracting LHS/RHS axis 1, batch LHS/RHS axis 0.
 	x := [2][3]float32{{1, 2, 3}, {4, 5, 6}}
 	y := [2][3]float32{{7, 8, 9}, {1, 2, 3}}
-	return num.Einsum(x, []intidx{1}, []intidx{0}, y, []intidx{1}, []intidx{0})
+	return num.Einsum(x, []int{1}, []int{0}, y, []int{1}, []int{0})
 	// Want:
 	// [2]float32{50, 32}
 }
@@ -123,7 +123,7 @@ func TestEinsum2() [2][2]float32 {
 	// Regular matrix multiply: contract LHS axis 1 with RHS axis 0.
 	x := [2][2]float32{{1, 2}, {3, 4}}
 	y := [2][2]float32{{4, 5}, {6, 7}}
-	return num.Einsum(x, []intidx{1}, []intidx{}, y, []intidx{0}, []intidx{})
+	return num.Einsum(x, []int{1}, []int{}, y, []int{0}, []int{})
 	// Want:
 	// [2][2]float32{
 	// 	{16, 19},
@@ -135,7 +135,7 @@ func TestEinsum2Batched() [2][2][2]float32 {
 	// Batched matrix multiply: contract LHS axis 2 with RHS axis 1, batch LHS/RHS axis 0.
 	x := [2][2][2]float32{{{1, 2}, {3, 4}}, {{1, 2}, {3, 4}}}
 	y := [2][2][2]float32{{{1, 0}, {0, 1}}, {{0, 1}, {1, 0}}}
-	return num.Einsum(x, []intidx{2}, []intidx{0}, y, []intidx{1}, []intidx{0})
+	return num.Einsum(x, []int{2}, []int{0}, y, []int{1}, []int{0})
 	// Want:
 	// [2][2][2]float32{
 	// 	{
@@ -153,7 +153,7 @@ func TestEinsum2Batched2() [2][2][2]float64 {
 	// Batched matrix multiply: contract LHS axis 2 with RHS axis 1, batch LHS/RHS axis 0.
 	x := [2][2][1]float64{{{1}, {2}}, {{3}, {4}}}
 	y := [2][1][2]float64{{{5, 6}}, {{7, 8}}}
-	return num.Einsum(x, []intidx{2}, []intidx{0}, y, []intidx{1}, []intidx{0})
+	return num.Einsum(x, []int{2}, []int{0}, y, []int{1}, []int{0})
 	// Want:
 	// [2][2][2]float64{
 	// 	{
@@ -171,7 +171,7 @@ func TestEinsum2CrossProduct() [2][2][2]float32 {
 	// Cross-product matrix multiply: contract LHS axis 2 with RHS axis 0.
 	x := [2][2][2]float32{{{1, 2}, {3, 4}}, {{4, 3}, {2, 1}}}
 	y := [2][2]float32{{1, 0}, {0, 1}}
-	return num.Einsum(x, []intidx{2}, []intidx{}, y, []intidx{0}, []intidx{})
+	return num.Einsum(x, []int{2}, []int{}, y, []int{0}, []int{})
 	// Want:
 	// [2][2][2]float32{
 	// 	{
@@ -188,7 +188,7 @@ func TestEinsum2CrossProduct() [2][2][2]float32 {
 func TestWeightedSum() [3]float32 {
 	x := [2]float32{0.25, 0.5}
 	y := [3]float32{4, 8, 12}
-	return num.Sum[[]intidx{0}](num.Einsum(x, []intidx{}, []intidx{}, y, []intidx{}, []intidx{}))
+	return num.Sum[[]int{0}](num.Einsum(x, []int{}, []int{}, y, []int{}, []int{}))
 	// Want:
 	// [3]float32{3, 6, 9}
 }
@@ -236,7 +236,7 @@ func TestMatMul4Axis() [5][7]float64 {
 }
 
 func TestIotaAxis0() [4][3]int64 {
-	return num.Iota[[]intlen{4, 3}](0)
+	return num.Iota[[]int{4, 3}](0)
 	// Want:
 	// [4][3]int64{
 	// 	{0, 0, 0},
@@ -247,7 +247,7 @@ func TestIotaAxis0() [4][3]int64 {
 }
 
 func TestIotaAxis1() [4][3]int64 {
-	return num.Iota[[]intlen{4, 3}](1)
+	return num.Iota[[]int{4, 3}](1)
 	// Want:
 	// [4][3]int64{
 	// 	{0, 1, 2},
@@ -258,7 +258,7 @@ func TestIotaAxis1() [4][3]int64 {
 }
 
 func TestIotaFull() [4][3]int64 {
-	return num.IotaFull[[]intlen{4, 3}]()
+	return num.IotaFull[[]int{4, 3}]()
 	// Want:
 	// [4][3]int64{
 	// 	{0, 1, 2},
@@ -269,7 +269,7 @@ func TestIotaFull() [4][3]int64 {
 }
 
 func TestIotaConstructAxes() [4][3]int64 {
-	oneAxis := []intlen{4}
+	oneAxis := []int{4}
 	twoAxis := append(oneAxis, 3)
 	return num.IotaFull[twoAxis]()
 	// Want:
@@ -282,19 +282,19 @@ func TestIotaConstructAxes() [4][3]int64 {
 }
 
 func TestReduceMax1() [4]float64 {
-	return num.ReduceMax[[]intidx{}]([4]float64{-1, 0, 2, -4})
+	return num.ReduceMax[[]int{}]([4]float64{-1, 0, 2, -4})
 	// Want:
 	// [4]float64{-1, 0, 2, -4}
 }
 
 func TestReduceMax1b() float64 {
-	return num.ReduceMax[[]intidx{0}]([4]float64{-1, 0, 2, -4})
+	return num.ReduceMax[[]int{0}]([4]float64{-1, 0, 2, -4})
 	// Want:
 	// float64(2)
 }
 
 func TestReduceMax2() [2][4]float64 {
-	return num.ReduceMax[[]intidx{}]([2][4]float64{{-1, 0, 2, -4}, {1, 0, 2, 4}})
+	return num.ReduceMax[[]int{}]([2][4]float64{{-1, 0, 2, -4}, {1, 0, 2, 4}})
 	// Want:
 	// [2][4]float64{
 	// 	{-1, 0, 2, -4},
@@ -303,25 +303,25 @@ func TestReduceMax2() [2][4]float64 {
 }
 
 func TestReduceMax2b() [4]float64 {
-	return num.ReduceMax[[]intidx{0}]([2][4]float64{{-1, 0, 2, -4}, {1, 0, 2, 4}})
+	return num.ReduceMax[[]int{0}]([2][4]float64{{-1, 0, 2, -4}, {1, 0, 2, 4}})
 	// Want:
 	// [4]float64{1, 0, 2, 4}
 }
 
 func TestReduceMax2c() [2]float64 {
-	return num.ReduceMax[[]intidx{1}]([2][4]float64{{-1, 0, 2, -4}, {1, 0, 2, 4}})
+	return num.ReduceMax[[]int{1}]([2][4]float64{{-1, 0, 2, -4}, {1, 0, 2, 4}})
 	// Want:
 	// [2]float64{2, 4}
 }
 
 func TestReduceMax2d() float64 {
-	return num.ReduceMax[[]intidx{0, 1}]([2][4]float64{{-1, 0, 2, -4}, {1, 0, 2, 4}})
+	return num.ReduceMax[[]int{0, 1}]([2][4]float64{{-1, 0, 2, -4}, {1, 0, 2, 4}})
 	// Want:
 	// float64(4)
 }
 
 func TestReduceMax3() [2][2]float64 {
-	return num.ReduceMax[[]intidx{1}]([2][2][2]float64{{{1, 2}, {4, 8}}, {{8, 1}, {2, 4}}})
+	return num.ReduceMax[[]int{1}]([2][2][2]float64{{{1, 2}, {4, 8}}, {{8, 1}, {2, 4}}})
 	// Want:
 	// [2][2]float64{
 	// 	{4, 8},
@@ -330,7 +330,7 @@ func TestReduceMax3() [2][2]float64 {
 }
 
 func TestReduceMax3b() [2][2]float64 {
-	return num.ReduceMax[[]intidx{0}]([2][2][2]float64{{{1, 2}, {4, 8}}, {{8, 1}, {2, 4}}})
+	return num.ReduceMax[[]int{0}]([2][2][2]float64{{{1, 2}, {4, 8}}, {{8, 1}, {2, 4}}})
 	// Want:
 	// [2][2]float64{
 	// 	{8, 2},
@@ -339,27 +339,27 @@ func TestReduceMax3b() [2][2]float64 {
 }
 
 func TestReduceMax3c() float64 {
-	return num.ReduceMax[[]intidx{0, 1, 2}]([2][2][2]float64{{{1, 2}, {4, 8}}, {{8, 1}, {2, 4}}})
+	return num.ReduceMax[[]int{0, 1, 2}]([2][2][2]float64{{{1, 2}, {4, 8}}, {{8, 1}, {2, 4}}})
 	// Want:
 	// float64(8)
 }
 
-func TestArgmax0() int64 {
+func TestArgmax0() int {
 	return num.ArgMax[0]([...]float32{-1, 2, -4, 8, -16})
 	// Want:
-	// int64(3)
+	// int(3)
 }
 
-func TestArgmax1() [2]int64 {
+func TestArgmax1() [2]int {
 	return num.ArgMax[0]([2][2]float32{{-1, 4}, {0, 2}})
 	// Want:
-	// [2]int64{1, 0}
+	// [2]int{1, 0}
 }
 
 var (
-	dim1 intlen
-	dim2 intlen
-	dim3 intlen
+	dim1 int
+	dim2 int
+	dim3 int
 )
 
 func TestMatmulVarsDimMatrixMatrix() [dim1][dim3]float32 {

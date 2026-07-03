@@ -80,7 +80,7 @@ func TestResolveType(t *testing.T) {
 		{code: "[...]int32{1, 2} + int32(1)", typ: "[2]int32"},
 		{code: "int32(1) + [...]int32{1, 2}", typ: "[2]int32"},
 		{code: "float32(1) + 1", typ: "float32"},
-		{code: "intlen(1) + 1", typ: "intlen"},
+		{code: "int(1) + 1", typ: "int"},
 
 		{code: "1 > 2", typ: "bool"},
 		{code: "int32(1) > 2", typ: "bool"},

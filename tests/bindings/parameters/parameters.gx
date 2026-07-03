@@ -6,7 +6,7 @@ import (
 	"shape"
 )
 
-var Size intlen
+var Size int
 
 type (
 	// NotInSlice is a structure assigned to a field that is not
@@ -114,7 +114,7 @@ func Len(x [Size]float32) int64 {
 
 // Iota returns an array filled with numbers.
 func Iota() [Size + 1]int64 {
-	return num.IotaFull[[]intlen{Size + 1}]()
+	return num.IotaFull[[]int{Size + 1}]()
 }
 
 // SliceArrayArg checks that we can slice an array type argument.

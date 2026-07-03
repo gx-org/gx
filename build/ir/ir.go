@@ -263,7 +263,7 @@ var (
 
 // Int is the default integer for indices, for loops, etc.
 // It needs to match DefaultIntKind above
-type Int = int64
+type Int = int
 
 func (*TupleType) node() {}
 
@@ -989,18 +989,6 @@ func (s *arrayType) ReferString(from *File) string {
 // DefineString returns the GX source code of the node.
 func (s *arrayType) DefineString(from *File) string {
 	return s.rankString(from, s.DTypeF.ReferString(from))
-}
-
-// IsStatic return true if the type is static, that is if the instance of the type
-// can be evaluated when the graph is being constructed.
-func IsStatic(tp Type) bool {
-	switch tp.Kind() {
-	case irkind.Slice:
-		return IsStatic(tp.(*SliceType).DType.Val())
-	case irkind.IntIdx, irkind.IntLen:
-		return true
-	}
-	return false
 }
 
 // ----------------------------------------------------------------------------
@@ -2693,7 +2681,7 @@ func (s *Ident) defineSingleAxis(uni Unifier, targets []AxisLengths, genericAxis
 func (s *Ident) defineShape(uni Unifier, targets []AxisLengths, genericAxis *GenericNonTypeParam) ([]AxisLengths, bool) {
 	sliceExpr := &SliceLitExpr{
 		Src:  &ast.ArrayType{},
-		Typ:  IntLenSliceType(),
+		Typ:  IntSliceType(),
 		Elts: make([]Expr, len(targets)),
 	}
 	for i, axlen := range targets {
@@ -3280,11 +3268,11 @@ func ToArrayTypeGivenShape(from *File, typ Type, sh *shape.Shape) (ArrayType, er
 	if !ok {
 		return nil, errors.Errorf("cannot create array value: type %s has underlying type %s but want array type", typ.ReferString(from), under.ReferString(from))
 	}
-	arrayElementKind := array.DataType().Kind()
-	if !irkind.IsArrayCore(arrayElementKind) {
-		return array, errors.Errorf("cannot create an array of %s (array type: %s)", arrayElementKind.DType().String(), typ.ReferString(from))
+	dtype := array.DataType()
+	if !IsDataType(dtype) {
+		return array, errors.Errorf("cannot create an array of %s", dtype.ReferString(from))
 	}
-	dt := arrayElementKind.DType()
+	dt := dtype.Kind().DType()
 	if dt != sh.DType {
 		return array, errors.Errorf("cannot create array value: type %s has data type %s but shape has data type %s", typ.ReferString(from), dt, sh.DType.String())
 	}

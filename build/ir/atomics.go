@@ -243,10 +243,22 @@ type intType struct {
 	atomicType
 }
 
-var intT = &intType{atomicType: atomicType{Knd: irkind.Int}}
+var (
+	intT         = &intType{atomicType: atomicType{Knd: irkind.Int}}
+	intSliceType = &SliceType{
+		BaseType: BaseType[ast.Expr]{Src: &ast.ArrayType{}},
+		DType:    TypeExpr(nil, IntType()),
+		Rank:     1,
+	}
+)
 
 func (s *intType) Specialise(spec Specialiser) (Type, bool) {
 	return intT, true
+}
+
+// IntSliceType returns a slice of axis lengths type.
+func IntSliceType() *SliceType {
+	return intSliceType
 }
 
 // IntType returns the type for a int32.
@@ -289,55 +301,6 @@ type numberFloatType struct {
 }
 
 var numberFloatT = &numberFloatType{atomicType: atomicType{Knd: irkind.NumberFloat}}
-
-type intidxType struct {
-	atomicType
-}
-
-var (
-	intidxT         = &intidxType{atomicType: atomicType{Knd: irkind.IntIdx}}
-	axisIndicesType = &SliceType{
-		DType: TypeExpr(nil, IntIndexType()),
-		Rank:  1,
-	}
-)
-
-// IntIndexType returns the type for intidx, that is the length of an axis.
-func IntIndexType() Type {
-	return intidxT
-}
-
-// IntIndexSliceType returns a slice of axis lengths type.
-func IntIndexSliceType() *SliceType {
-	return axisIndicesType
-}
-
-type intlenType struct {
-	atomicType
-}
-
-var (
-	intlenT         = &intlenType{atomicType: atomicType{Knd: irkind.IntLen}}
-	axisLengthsType = &SliceType{
-		BaseType: BaseType[ast.Expr]{Src: &ast.ArrayType{}},
-		DType:    TypeExpr(nil, IntLenType()),
-		Rank:     1,
-	}
-)
-
-func (s *intlenType) Specialise(spec Specialiser) (Type, bool) {
-	return intlenT, true
-}
-
-// IntLenType returns the type for intlen, that is the length of an axis.
-func IntLenType() Type {
-	return intlenT
-}
-
-// IntLenSliceType returns a slice of axis lengths type.
-func IntLenSliceType() *SliceType {
-	return axisLengthsType
-}
 
 // NumberFloatType returns the type for a float number.
 func NumberFloatType() Type {

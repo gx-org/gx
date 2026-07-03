@@ -6,8 +6,8 @@ const (
 )
 
 var (
-	varAlreadyRedefined intlen
-	varAlreadyRedefined intlen // ERROR redeclared in this block
+	varAlreadyRedefined int
+	varAlreadyRedefined int // ERROR redeclared in this block
 )
 
 func funcAlreadyDefined() float64 {
@@ -19,6 +19,6 @@ func funcAlreadyDefined() float64 { // ERROR redeclared in this block
 }
 
 type (
-	typeAlreadyDefined intlen
-	typeAlreadyDefined intlen // ERROR redeclared in this block
+	typeAlreadyDefined int
+	typeAlreadyDefined int // ERROR redeclared in this block
 )

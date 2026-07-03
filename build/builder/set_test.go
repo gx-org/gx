@@ -24,7 +24,7 @@ func TestSet(t *testing.T) {
 	testbuild.Run(t,
 		testbuild.Decl{
 			Src: `
-var A,B intlen
+var A,B int
 
 func F(x [A][B]float32, subX [B]float32, i int64) [A][B]float32  {
 	return set(x, subX, [...]int64{i})

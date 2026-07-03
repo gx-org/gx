@@ -6,12 +6,12 @@ import (
 	"rand"
 )
 
-func TestReduceShapeInferenceError() [3]int64 {
+func TestReduceShapeInferenceError() [3]int {
 	rnd := rand.New(rand.NewSource(0))
-	rnd, samples := rnd.Float32[[]intlen{3, 2}]()
+	rnd, samples := rnd.Float32[[]int{3, 2}]()
 	return num.ArgMax[1](([3][2]float32)(samples))
 	// Want:
-	// [3]int64{1, 1, 0}
+	// [3]int{1, 1, 0}
 }
 
 func TestLen() int64 {

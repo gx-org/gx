@@ -70,9 +70,7 @@ func NewRuntimeValue(file *ir.File, store ir.Storage) (ir.Element, error) {
 		}
 		return fun.NewNamedType(NewProxyFunc, typT, under), nil
 	case ir.ArrayType:
-		if !ir.IsStatic(typT.DataType()) {
-			return NewArray(typT), nil
-		}
+		return NewArray(typT), nil
 	case *ir.FuncType:
 		return NewProxyFunc(&ir.FuncLit{
 			Src:   &ast.FuncLit{Type: typT.Src},

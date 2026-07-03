@@ -121,7 +121,7 @@ func TestCastStaticVar(t *testing.T) {
 	testbuild.Run(t,
 		testbuild.Decl{
 			Src: `
-var a intlen
+var a int
 
 func x(float32) float32
 
@@ -182,7 +182,7 @@ func f() [2][3]float64 {
 		},
 		testbuild.Decl{
 			Src: `
-var a intlen
+var a int
 
 func newArray() [a]float32
 func id([a]float32) float32
@@ -194,7 +194,7 @@ func f() float32 {
 		},
 		testbuild.Decl{
 			Src: `
-var a intlen
+var a int
 
 func newArray() [a]int32
 func id([a]float32) float32
@@ -256,10 +256,10 @@ type Floats interface {
 	float32 | float64
 }
 
-func f[T Floats, S []intlen]() [unpack(S)]T
+func f[T Floats, S []int]() [unpack(S)]T
 
 func g() [2][3]float64 {
-     return f[float64][[]intlen{2,3}]()
+     return f[float64][[]int{2,3}]()
 }
 `,
 		},
@@ -269,15 +269,15 @@ type Floats interface {
 	float32 | float64
 }
 
-func f[shape []intlen]() [unpack(shape)]float32
+func f[shape []int]() [unpack(shape)]float32
 
-func g[T Floats, S []intlen]() [unpack(S)]T {
+func g[T Floats, S []int]() [unpack(S)]T {
 	x := f[S]()
 	return [unpack(S)]T(x)
 }
 
 func h() [2][3]float64 {
-	return g[float64][[]intlen{2,3}]()
+	return g[float64][[]int{2,3}]()
 }
 `,
 		},

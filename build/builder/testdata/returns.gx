@@ -3,7 +3,7 @@ package returns
 // Test options:
 // setStatic staticInt64One int64 1
 // setStatic staticInt64Two int64 2
-// setStatic staticIntTwo intlen 2
+// setStatic staticIntTwo int 2
 
 func TestInt32() int32 {
 	return 5
@@ -167,9 +167,9 @@ var (
 	staticInt64One int64
 	staticInt64Two int64
 
-	staticIntTwo intlen
+	staticIntTwo int
 
-	staticUnassigned intlen
+	staticUnassigned int
 )
 
 func testStaticUnassigned() [staticUnassigned + 1]float32 {
@@ -300,16 +300,16 @@ func TestNamedReturnX() (x int64) {
 	// int64(5)
 }
 
-func TestLens() []intlen {
+func TestLens() []int {
 	return axlengths([3][4][5]float32{})
 	// Want:
-	// 0: intlen(3)
-	// 1: intlen(4)
-	// 2: intlen(5)
+	// 0: int(3)
+	// 1: int(4)
+	// 2: int(5)
 }
 
-const sizeA intlen = 3
-const sizeB intlen = 2
+const sizeA int = 3
+const sizeB int = 2
 
 func TestAddInDim() [sizeA + sizeB]float32 {
 	return [sizeA + sizeB]float32{}

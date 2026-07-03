@@ -107,7 +107,7 @@ func rank(done map[any]bool, val reflect.Value, proc processor) string {
 		switch ax.Type().Kind() {
 		case irkind.Slice:
 			axes[i] = fmt.Sprintf("[%s]", ax.SourceString(nil))
-		case irkind.IntLen:
+		case irkind.Int:
 			axes[i] = ax.SourceString(nil)
 		default:
 			axes[i] = "invalid"
@@ -209,9 +209,10 @@ func init() {
 		return val.Interface().(*big.Int).String()
 	})
 	typeToProcess["github.com/gx-org/gx/build/ir.atomicType"] = debugOk(valueToString)
+	typeToProcess["github.com/gx-org/gx/build/ir.intType"] = debugOk(valueToString)
 	typeToProcess["github.com/gx-org/gx/build/ir.int32Type"] = debugOk(valueToString)
 	typeToProcess["github.com/gx-org/gx/build/ir.int64Type"] = debugOk(valueToString)
-	typeToProcess["github.com/gx-org/gx/build/ir.intlenType"] = debugOk(valueToString)
+	typeToProcess["github.com/gx-org/gx/build/ir.intType"] = debugOk(valueToString)
 	typeToProcess["github.com/gx-org/gx/build/ir.float32Type"] = debugOk(valueToString)
 	typeToProcess["github.com/gx-org/gx/build/ir.float64Type"] = debugOk(valueToString)
 	typeToProcess["github.com/gx-org/gx/build/ir.boolType"] = debugOk(valueToString)

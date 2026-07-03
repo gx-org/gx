@@ -70,12 +70,12 @@ func buildSetStaticOption(rtm *api.Runtime, pkg *ir.Package, cmdS []string) (opt
 			return nil, err
 		}
 		val = types.Int64(int64(valInt))
-	case "intlen":
+	case "int":
 		valInt, err := strconv.Atoi(valS)
 		if err != nil {
 			return nil, err
 		}
-		val = types.DefaultInt(ir.Int(valInt))
+		val = types.Int(ir.Int(valInt))
 	default:
 		return nil, errors.Errorf("type %q not supported", valType)
 	}

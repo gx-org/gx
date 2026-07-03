@@ -53,7 +53,7 @@ func f() int32 { // ERROR missing return
 		testbuild.Decl{
 			Src: `
 func f() int32 {
-	a := intlen(2)
+	a := int(2)
 	for a := range(5) {
 		return 2
 	}
@@ -63,7 +63,7 @@ func f() int32 {
 		testbuild.Decl{
 			Src: `
 func f() int32 { // ERROR missing return
-	a := intlen(2)
+	a := int(2)
 	for a := range(5) {
 	}
 }

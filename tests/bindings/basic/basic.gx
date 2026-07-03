@@ -20,8 +20,8 @@ type Basic struct {
 	privateA int32
 	privateB int32
 
-	length intlen
-	index  intidx
+	length int
+	index  int
 }
 
 // ReturnFloat32 returns a float32.

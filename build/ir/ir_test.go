@@ -58,9 +58,9 @@ var (
 	rank2Plus2RankFunc = func() ir.ArrayRank {
 		return newRank(&ir.BinaryExpr{
 			Src: &ast.BinaryExpr{Op: token.ADD},
-			X:   irhelper.IntNumberAs(2, ir.IntLenType()),
-			Y:   irhelper.IntNumberAs(2, ir.IntLenType()),
-			Typ: ir.IntLenType(),
+			X:   irhelper.IntNumberAs(2, ir.IntType()),
+			Y:   irhelper.IntNumberAs(2, ir.IntType()),
+			Typ: ir.IntType(),
 		})
 	}
 	rank2SymbolicAxis = func() ir.ArrayRank {
@@ -71,7 +71,7 @@ var (
 			Src: &ast.BinaryExpr{Op: token.ADD},
 			X:   newSymbol("a"),
 			Y:   newSymbol("a"),
-			Typ: ir.IntLenType(),
+			Typ: ir.IntType(),
 		})
 	}
 	rank1SymbolicMulAxis = func() ir.ArrayRank {
@@ -79,7 +79,7 @@ var (
 			Src: &ast.BinaryExpr{Op: token.MUL},
 			X:   newSymbol("a"),
 			Y:   newSymbol("a"),
-			Typ: ir.IntLenType(),
+			Typ: ir.IntType(),
 		})
 	}
 	genericRankFunc = func() ir.ArrayRank {
@@ -131,7 +131,7 @@ func newRank(exprs ...ir.Expr) *ir.Rank {
 }
 
 func newSymbol(name string) *ir.Ident {
-	vr := irhelper.LocalVar(name, ir.IntLenType())
+	vr := irhelper.LocalVar(name, ir.IntType())
 	symbolicAxisNames[name] = true
 	return irhelper.Ident(vr)
 }
@@ -139,7 +139,7 @@ func newSymbol(name string) *ir.Ident {
 func declareVariable(file *ir.File, name string, opts []options.PackageOption) []options.PackageOption {
 	decl := &ir.VarSpec{
 		FFile: file,
-		TypeV: ir.IntLenType(),
+		TypeV: ir.IntType(),
 	}
 	varExpr := &ir.VarExpr{
 		Decl:  decl,

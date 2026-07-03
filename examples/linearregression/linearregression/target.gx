@@ -13,7 +13,7 @@ import (
 )
 
 // Size is the number of weights to learn in the target.
-var Size intlen
+var Size int
 
 // Target that the learner needs to converge to by learning from samples.
 type Target struct {
@@ -25,14 +25,14 @@ type Target struct {
 // NewTarget generates a new target given a random seed.
 func NewTarget(seed int64, bias float32) Target {
 	rnd := rand.New(rand.NewSource(seed))
-	rnd, weights := rnd.Float32[[]intlen{Size}]()
+	rnd, weights := rnd.Float32[[]int{Size}]()
 	return Target{rnd: rnd, weights: weights, bias: bias}
 }
 
 // Sample generates a new vector of features and the corresponding prediction.
 func (t Target) Sample() (t Target, features [Size]float32, prediction float32) {
-	newRnd, features := t.rnd.Float32[[]intlen{Size}]()
-	prediction = float32(num.Sum[[]intidx{0}](t.weights*features)) + t.bias
+	newRnd, features := t.rnd.Float32[[]int{Size}]()
+	prediction = float32(num.Sum[[]int{0}](t.weights*features)) + t.bias
 	t.rnd = newRnd
 	return
 }

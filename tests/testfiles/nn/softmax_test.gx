@@ -6,8 +6,8 @@ import (
 )
 
 func softmax(x [3]float32) [3]float32 {
-	exps := math.Exp[float32](x - float32(num.ReduceMax[[]intidx{0}](x)))
-	return exps / float32(num.Sum[[]intidx{0}](exps))
+	exps := math.Exp[float32](x - float32(num.ReduceMax[[]int{0}](x)))
+	return exps / float32(num.Sum[[]int{0}](exps))
 }
 
 func TestSoftmax() ([3]float32, [3]float32) {
@@ -19,7 +19,7 @@ func TestSoftmax() ([3]float32, [3]float32) {
 }
 
 func TestSoftmaxIota() [3]float32 {
-	x := [3]float32(num.IotaFull[[]intlen{3}]())
+	x := [3]float32(num.IotaFull[[]int{3}]())
 	return softmax(x)
 	// Want:
 	// [3]float32{0.090031, 0.244728, 0.665241}

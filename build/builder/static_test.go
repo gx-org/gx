@@ -31,21 +31,21 @@ func TestStaticVar(t *testing.T) {
 	xField := irh.Field("x", int32ArrayType, nil)
 	testbuild.Run(t,
 		testbuild.Decl{
-			Src: `var a intlen`,
+			Src: `var a int`,
 			Want: []ir.IR{
 				irh.VarSpec("a"),
 			},
 		},
 		testbuild.Decl{
-			Src: `var a, b intlen`,
+			Src: `var a, b int`,
 			Want: []ir.IR{
 				irh.VarSpec("a", "b"),
 			},
 		},
 		testbuild.Decl{
 			Src: `
-var a, b intlen
-var c, d intlen
+var a, b int
+var c, d int
 			`,
 			Want: []ir.IR{
 				irh.VarSpec("a", "b"),
@@ -54,7 +54,7 @@ var c, d intlen
 		},
 		testbuild.Decl{
 			Src: `
-var a intlen
+var a int
 
 func f(x [a]int32) [a]int32 {
 	return x
@@ -76,7 +76,7 @@ func f(x [a]int32) [a]int32 {
 		},
 		testbuild.Decl{
 			Src: `
-var a intlen
+var a int
 
 func f() [a]int32 {
 	x := [a]int32{}

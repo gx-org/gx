@@ -35,7 +35,7 @@ func evalIota(env engine.Env, call *ir.FuncCallExpr, recv ir.Element, args []ir.
 		return nil, err
 	}
 	targetShape := &shape.Shape{
-		DType:       irkind.DefaultInt.DType(),
+		DType:       irkind.Int64.DType(),
 		AxisLengths: axes,
 	}
 	gr := env.Engine().ArrayOps().Graph()
@@ -56,12 +56,12 @@ func evalIotaFull(env engine.Env, call *ir.FuncCallExpr, recv ir.Element, args [
 		return nil, err
 	}
 	targetShape := &shape.Shape{
-		DType:       irkind.DefaultInt.DType(),
+		DType:       irkind.Int64.DType(),
 		AxisLengths: axes,
 	}
 	gr := env.Engine().ArrayOps().Graph()
 	iotaOp, err := gr.Num().Iota(&shape.Shape{
-		DType:       irkind.DefaultInt.DType(),
+		DType:       irkind.Int64.DType(),
 		AxisLengths: []int{targetShape.Size()},
 	}, 0)
 	if err != nil {

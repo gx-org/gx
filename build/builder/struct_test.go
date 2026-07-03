@@ -158,7 +158,7 @@ type S struct {
 	a float32
 }
 
-func (s S) New[Shape []intlen]() [unpack(Shape)]float32 {
+func (s S) New[Shape []int]() [unpack(Shape)]float32 {
 	return [unpack(Shape)]float32(s.a)
 }
 `,
@@ -169,13 +169,13 @@ type S struct {
 	a float32
 }
 
-func (s S) New[Shape []intlen]() [unpack(Shape)]float32 {
+func (s S) New[Shape []int]() [unpack(Shape)]float32 {
 	return [unpack(Shape)]float32(s.a)
 }
 
 func F() [3][2]float32 {
 	s := S{a:4}
-	return s.New[[]intlen{3,2}]()
+	return s.New[[]int{3,2}]()
 }
 `,
 		},

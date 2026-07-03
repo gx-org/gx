@@ -31,6 +31,16 @@ import (
 	"github.com/gx-org/gx/interp/numbers"
 )
 
+var one *values.HostArray
+
+func init() {
+	var err error
+	one, err = values.AtomIntegerValue(ir.IntType(), ir.Int(1))
+	if err != nil {
+		panic(err.Error())
+	}
+}
+
 func evalBlockStmt(ctx *Interpreter, body *ir.BlockStmt) ([]ir.Element, bool, error) {
 	var outs []ir.Element
 	var stop bool
@@ -109,7 +119,7 @@ func evalRangeStmtInteger(fitp *Interpreter, stmt *ir.RangeStmt, xKind irkind.Ki
 		return nil, false, err
 	}
 	switch xKind {
-	case irkind.IntLen:
+	case irkind.Int:
 		return evalRangeForLoopOverInteger[ir.Int](fitp, stmt, toValue)
 	default:
 		return nil, true, fmterr.Errorf(fitp.File().FileSet(), stmt.Node(), "cannot range over %s", xKind.String())
@@ -185,7 +195,7 @@ func evalRangeStmtArray(fitp *Interpreter, stmt *ir.RangeStmt) ([]ir.Element, bo
 	}
 	switch keyKind {
 	case irkind.Int64:
-		return evalRangeStmtForLoopOverArray[ir.Int](fitp, stmt, toValue)
+		return evalRangeStmtForLoopOverArray[int64](fitp, stmt, toValue)
 	default:
 		return nil, true, fmterr.Errorf(fitp.File().FileSet(), stmt.Node(), "cannot range over %s", keyKind.String())
 	}
@@ -335,8 +345,6 @@ func evalArrayAxes(fitp *Interpreter, src ir.Node, typ ir.ArrayType) ([]engine.N
 	return axes, nil
 }
 
-var one, _ = values.AtomIntegerValue(ir.IntLenType(), ir.Int(1))
-
 func evalCastAtomToArrayExpr(fitp *Interpreter, expr ir.TypeCastExpr, x engine.NumericalElement, axes []engine.NumericalElement) (ir.Element, error) {
 	srcExpr := elements.NewExprAt(fitp.File(), expr)
 	arrayOps := fitp.Engine().ArrayOps()
@@ -439,9 +447,6 @@ func evalUnaryExpression(fitp *Interpreter, expr *ir.UnaryExpr) (ir.Element, err
 	x, err := evalNumExpr(fitp, expr.X)
 	if err != nil {
 		return nil, err
-	}
-	if ir.IsStatic(expr.Type()) {
-		return nil, errors.Errorf("not supported")
 	}
 	return x.UnaryOp(fitp.env, expr)
 }
@@ -842,7 +847,7 @@ func set(fitp *Interpreter, tok token.Token, dest ir.Storage, value ir.Element) 
 func dimsAsElements(fitp *Interpreter, expr ir.Expr, dims []int) ([]engine.NumericalElement, error) {
 	els := make([]engine.NumericalElement, len(dims))
 	for i, di := range dims {
-		val, err := values.AtomIntegerValue[int64](ir.IntLenType(), int64(di))
+		val, err := values.AtomIntegerValue[int](ir.IntType(), int(di))
 		if err != nil {
 			return nil, err
 		}

@@ -78,7 +78,7 @@ type floats interface {
 	float32 | float64
 }
 
-func f[T floats, S []intlen](x [unpack(S)]T) [unpack(S)]T {
+func f[T floats, S []int](x [unpack(S)]T) [unpack(S)]T {
 	a := x*2
 	return a
 }
@@ -90,7 +90,7 @@ type floats interface {
 	float32 | float64
 }
 
-func f[T floats, S []intlen](x [unpack(S)]T) [unpack(S)]T {
+func f[T floats, S []int](x [unpack(S)]T) [unpack(S)]T {
 	a := x*2.0
 	return a
 }

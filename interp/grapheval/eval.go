@@ -287,9 +287,9 @@ func (ev *Evaluator) axesFromShape(file *ir.File, shape *shape.Shape) (*elements
 	for i, axisSize := range shape.AxisLengths {
 		iExpr := &ir.AtomicValueT[ir.Int]{
 			Val: ir.Int(i),
-			Typ: ir.IntLenType(),
+			Typ: ir.IntType(),
 		}
-		iValue, err := values.AtomIntegerValue[ir.Int](ir.IntLenType(), ir.Int(axisSize))
+		iValue, err := values.AtomIntegerValue[ir.Int](ir.IntType(), ir.Int(axisSize))
 		if err != nil {
 			return nil, err
 		}
@@ -298,5 +298,5 @@ func (ev *Evaluator) axesFromShape(file *ir.File, shape *shape.Shape) (*elements
 			return nil, err
 		}
 	}
-	return elements.NewSlice(ir.IntLenSliceType(), axes)
+	return elements.NewSlice(ir.IntSliceType(), axes)
 }

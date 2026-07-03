@@ -23,8 +23,8 @@ import (
 	irh "github.com/gx-org/gx/build/ir/irhelper"
 )
 
-func TestAxisIntLen(t *testing.T) {
-	fieldS := irh.Field("S", ir.IntLenType(), nil)
+func TestAxisInt(t *testing.T) {
+	fieldS := irh.Field("S", ir.IntType(), nil)
 	newArrayFunc := &ir.FuncBuiltin{
 		Src: &ast.FuncDecl{Name: &ast.Ident{Name: "newArray"}},
 		FType: irh.FuncType(
@@ -37,7 +37,7 @@ func TestAxisIntLen(t *testing.T) {
 	testbuild.Run(t,
 		testbuild.Decl{
 			Src: `
-func newArray[S intlen]() [S]float32
+func newArray[S int]() [S]float32
 `,
 			Want: []ir.IR{newArrayFunc},
 		},
@@ -45,8 +45,8 @@ func newArray[S intlen]() [S]float32
 }
 
 func TestAxisName01(t *testing.T) {
-	fieldS := irh.Field("S", ir.IntLenSliceType(), nil)
-	fieldDims := irh.Field("dims", ir.IntLenSliceType(), nil)
+	fieldS := irh.Field("S", ir.IntSliceType(), nil)
+	fieldDims := irh.Field("dims", ir.IntSliceType(), nil)
 	newArrayFunc := &ir.FuncBuiltin{
 		Src: &ast.FuncDecl{Name: &ast.Ident{Name: "newArray"}},
 		FType: irh.FuncType(
@@ -91,15 +91,15 @@ func TestAxisName01(t *testing.T) {
 	testbuild.Run(t,
 		testbuild.Decl{
 			Src: `
-func newArray[S []intlen]() [unpack(S)]float32
+func newArray[S []int]() [unpack(S)]float32
 `,
 			Want: []ir.IR{newArrayFunc},
 		},
 		testbuild.Decl{
 			Src: `
-func newArray[S []intlen]() [unpack(S)]float32
+func newArray[S []int]() [unpack(S)]float32
 
-func f[dims []intlen]() [unpack(dims)]float32 {
+func f[dims []int]() [unpack(dims)]float32 {
 	return newArray[dims]()
 }
 `,
@@ -137,9 +137,9 @@ func f[dims []intlen]() [unpack(dims)]float32 {
 		},
 		testbuild.Decl{
 			Src: `
-func newArray[S []intlen]() [unpack(S)]float32
+func newArray[S []int]() [unpack(S)]float32
 
-func f[dims []intlen]() [unpack(dims)]float32 {
+func f[dims []int]() [unpack(dims)]float32 {
 	a := newArray[dims]()
 	return a
 }
@@ -170,10 +170,10 @@ func f[dims []intlen]() [unpack(dims)]float32 {
 		},
 		testbuild.Decl{
 			Src: `
-func newArray[S []intlen]() [unpack(S)]float32
+func newArray[S []int]() [unpack(S)]float32
 
 func f() [2][3]float32 {
-	return newArray[[]intlen{2,3}]()
+	return newArray[[]int{2,3}]()
 }
 `,
 			Want: []ir.IR{
@@ -203,10 +203,10 @@ func f() [2][3]float32 {
 		},
 		testbuild.Decl{
 			Src: `
-func newArray[S []intlen]() [unpack(S)]float32
+func newArray[S []int]() [unpack(S)]float32
 
 func f() [4][3]float32 {
-	oneAxis := []intlen{4}
+	oneAxis := []int{4}
 	twoAxis := append(oneAxis, 3)
 	return newArray[twoAxis]()
 }
@@ -214,11 +214,11 @@ func f() [4][3]float32 {
 		},
 		testbuild.Decl{
 			Src: `
-var numClasses intlen
+var numClasses int
 
-func newArray[Axes []intlen]() [unpack(Axes)]float32
+func newArray[Axes []int]() [unpack(Axes)]float32
 
-func f[Axes []intlen](x [unpack(Axes)]float32) [unpack(Axes)][numClasses]float32 {
+func f[Axes []int](x [unpack(Axes)]float32) [unpack(Axes)][numClasses]float32 {
 	all := append(axlengths(x), numClasses)
 	return newArray[all]()
 }
@@ -226,7 +226,7 @@ func f[Axes []intlen](x [unpack(Axes)]float32) [unpack(Axes)][numClasses]float32
 		},
 		testbuild.Decl{
 			Src: `
-func cast[S []intlen]([unpack(S)]float32) [unpack(S)]float64
+func cast[S []int]([unpack(S)]float32) [unpack(S)]float64
 
 func f() [2]float64 {
 	return cast([2]float32{3, 4})
@@ -252,7 +252,7 @@ func f() [2]float64 {
 								}},
 								Callee: irh.FuncExpr(castFunc).NewFType(
 									irh.FuncType(
-										irh.Fields("S", ir.IntLenSliceType()),
+										irh.Fields("S", ir.IntSliceType()),
 										nil,
 										irh.Fields(irh.ArrayType(ir.Float32Type(), 2)),
 										irh.Fields(irh.ArrayType(ir.Float64Type(), 2)),
@@ -266,7 +266,7 @@ func f() [2]float64 {
 		},
 		testbuild.Decl{
 			Src: `
-func cast[S []intlen]([unpack(S)]float32) [unpack(S)]float64
+func cast[S []int]([unpack(S)]float32) [unpack(S)]float64
 
 func f() float64 {
 	return cast(float32(1))
@@ -303,7 +303,7 @@ func f() float64 {
 		},
 		testbuild.Decl{
 			Src: `
-func cast[S []intlen]([unpack(S)]float32) [unpack(S)]float64
+func cast[S []int]([unpack(S)]float32) [unpack(S)]float64
 
 func f(a [2][2]float32) [2][2]float64 {
 	return cast(a+a)
@@ -316,7 +316,7 @@ type floats interface {
 	float32 | float64
 }
 
-func g[T floats, S []intlen]([unpack(S)]T) [unpack(S)]T
+func g[T floats, S []int]([unpack(S)]T) [unpack(S)]T
 
 func f() [2]float32 {
 	return g[float32]([...]float32{
@@ -336,7 +336,7 @@ func f(x [_ax]float32) int64 {
 }
 
 func TestGenericAxis(t *testing.T) {
-	ax := irh.Field("ax", ir.IntLenType(), nil)
+	ax := irh.Field("ax", ir.IntType(), nil)
 	newVector := &ir.FuncBuiltin{
 		Src: &ast.FuncDecl{
 			Name: &ast.Ident{Name: "newVector"},
@@ -348,7 +348,7 @@ func TestGenericAxis(t *testing.T) {
 			irh.Fields(irh.ArrayType(ir.Float32Type(), ax)),
 		),
 	}
-	axes := irh.Field("axes", ir.IntLenSliceType(), nil)
+	axes := irh.Field("axes", ir.IntSliceType(), nil)
 	newArray := &ir.FuncBuiltin{
 		Src: &ast.FuncDecl{
 			Name: &ast.Ident{Name: "newArray"},
@@ -363,13 +363,13 @@ func TestGenericAxis(t *testing.T) {
 	testbuild.Run(t,
 		testbuild.Decl{
 			Src: `
-func newVector[ax intlen]() [ax]float32
+func newVector[ax int]() [ax]float32
 `,
 			Want: []ir.IR{newVector},
 		},
 		testbuild.Decl{
 			Src: `
-func newVector[ax intlen]() [ax]float32
+func newVector[ax int]() [ax]float32
 
 func g() [2]float32 {
 	return newVector[2]()
@@ -397,10 +397,10 @@ func g() [2]float32 {
 		},
 		testbuild.Decl{
 			Src: `
-func f[axes []intlen]() [unpack(axes)]float32
+func f[axes []int]() [unpack(axes)]float32
 
 func g() [2][3]float32 {
-	return f[[]intlen{2,3}]()
+	return f[[]int{2,3}]()
 }
 `,
 			Want: []ir.IR{
@@ -426,7 +426,7 @@ func g() [2][3]float32 {
 }
 
 func TestAxisName02(t *testing.T) {
-	fieldS := irh.Field("S", ir.IntLenSliceType(), nil)
+	fieldS := irh.Field("S", ir.IntSliceType(), nil)
 	newArrayFunc := &ir.FuncBuiltin{
 		Src: &ast.FuncDecl{Name: &ast.Ident{Name: "newArray"}},
 		FType: irh.FuncType(
@@ -438,25 +438,25 @@ func TestAxisName02(t *testing.T) {
 	}
 	fDims := &ir.LocalVarStorage{
 		Src: irh.IdentAST("fDims"),
-		Typ: ir.IntLenSliceType(),
+		Typ: ir.IntSliceType(),
 	}
 	fDimsAssignment := &ir.AssignExpr{
 		Storage: fDims,
 		X: &ir.SliceLitExpr{
-			Typ: ir.IntLenSliceType(),
+			Typ: ir.IntSliceType(),
 			Elts: []ir.Expr{
-				irh.IntNumberAs(2, ir.IntLenType()),
-				irh.IntNumberAs(3, ir.IntLenType()),
+				irh.IntNumberAs(2, ir.IntType()),
+				irh.IntNumberAs(3, ir.IntType()),
 			},
 		},
 	}
 	testbuild.Run(t,
 		testbuild.Decl{
 			Src: `
-func newArray[S []intlen]() [unpack(S)]float32
+func newArray[S []int]() [unpack(S)]float32
 
 func f() [2][3]float32  {
-	fDims := []intlen{2, 3}
+	fDims := []int{2, 3}
 	return newArray[fDims]()
 }
 `,
@@ -490,9 +490,9 @@ func f() [2][3]float32  {
 		},
 		testbuild.Decl{
 			Src: `
-var A, B intlen
+var A, B int
 
-func g[M []intlen]([unpack(M)]float32) [unpack(M)]float32
+func g[M []int]([unpack(M)]float32) [unpack(M)]float32
 
 func f(x [A][B]float32) [A][B]float32 {
 	return g(x) 
@@ -501,32 +501,32 @@ func f(x [A][B]float32) [A][B]float32 {
 		},
 		testbuild.Decl{
 			Src: `
-var A, B intlen
+var A, B int
 
-func h[dims []intlen, in []intlen](x [unpack(in)]int32) [unpack(dims)]int32
+func h[dims []int, in []int](x [unpack(in)]int32) [unpack(dims)]int32
 
 func f(a [A]int32) [A][B][1]int32 {
-	return h[[]intlen{A, B, 1}](a)
+	return h[[]int{A, B, 1}](a)
 }
 `,
 		},
 		testbuild.Decl{
 			Src: `
-var A, B intlen
+var A, B int
 
-func h[dims []intlen](x [1][A]int32) [unpack(dims)]int32
+func h[dims []int](x [1][A]int32) [unpack(dims)]int32
 
 func f(a [A]int32) [A][B][1]int32 {
-	return h[[]intlen{A, B, 1}]([1][A]int32(a))
+	return h[[]int{A, B, 1}]([1][A]int32(a))
 }
 `,
 		},
 		testbuild.Decl{
 			Src: `
-func newArray[dims []intlen]() [unpack(dims)]float32
+func newArray[dims []int]() [unpack(dims)]float32
 
 func f() float32  {
-	return newArray[[]intlen{}]()
+	return newArray[[]int{}]()
 }
 `,
 		},
@@ -537,25 +537,25 @@ func TestAxisGroupOrigin(t *testing.T) {
 	testbuild.Run(t,
 		testbuild.Decl{
 			Src: `
-func f[S []intlen]([unpack(S)]int32) [unpack(S)]int32
+func f[S []int]([unpack(S)]int32) [unpack(S)]int32
 
-func g[S []intlen](a [unpack(S)]int32) [unpack(S)]int32 {
+func g[S []int](a [unpack(S)]int32) [unpack(S)]int32 {
 	return a + f(a)
 }
 `,
 		},
 		testbuild.Decl{
 			Src: `
-func sum[S []intlen]([unpack(S)]int32) int64
+func sum[S []int]([unpack(S)]int32) int64
 
-func callCast[ax intlen](x [ax]int32) int64 {
+func callCast[ax int](x [ax]int32) int64 {
 	return sum(x)
 }
 `,
 		},
 		testbuild.Decl{
 			Src: `
-func g[M []intlen]([unpack(M)]int32) [unpack(M)]int32 
+func g[M []int]([unpack(M)]int32) [unpack(M)]int32 
 
 func f() int32 {
 	return g(int32(1))
@@ -580,7 +580,7 @@ func callAdd(x, y [2][3]float32) [2][3]float32 {
 		},
 		testbuild.Decl{
 			Src: `
-func g[ax intlen](x [ax]float32) int64
+func g[ax int](x [ax]float32) int64
 
 func f() int64 {
 	return g([...]float32{1, 2, 3})
@@ -593,9 +593,9 @@ func f() int64 {
 				float32|int32
 			}
 
-			func Log[S []intlen, T Num]([unpack(S)]T) [unpack(S)]T
+			func Log[S []int, T Num]([unpack(S)]T) [unpack(S)]T
 
-			func f[Size intlen, NumClasses intlen, DT Num](probs [Size][NumClasses]DT) [Size][NumClasses]DT {
+			func f[Size int, NumClasses int, DT Num](probs [Size][NumClasses]DT) [Size][NumClasses]DT {
 				return Log(probs)
 			}
 			`,
@@ -607,7 +607,7 @@ func TestAxisErrors(t *testing.T) {
 	testbuild.Run(t,
 		testbuild.Decl{
 			Src: `
-func f[a intlen]([a]float32) [a]float32
+func f[a int]([a]float32) [a]float32
 
 func g(x float32) [2]float32 {
 	return f(x) // ERROR cannot use type float32 as [0]float32 in argument to test.f
@@ -617,11 +617,11 @@ func g(x float32) [2]float32 {
 		},
 		testbuild.Decl{
 			Src: `
-func newArray[lens []intlen]() [unpack(lens)]float32
+func newArray[lens []int]() [unpack(lens)]float32
 
 func f() float32 {
 	var a [1]float32
-	a = newArray[[]intlen{}]() // ERROR cannot use float32 as [1]float32 value in assignment
+	a = newArray[[]int{}]() // ERROR cannot use float32 as [1]float32 value in assignment
 	return a[0]
 }
 `,
@@ -632,10 +632,10 @@ type floats interface {
 	float32|float64
 }
 
-func g[Shape []intlen, T floats]([]intlen) [unpack(Shape)]T
+func g[Shape []int, T floats]([]int) [unpack(Shape)]T
 
-func f[Shape []intlen, T floats]() [unpack(Shape)]T {
-	return g[T](Shape) // ERROR cannot use metatype as []intlen generic value Shape
+func f[Shape []int, T floats]() [unpack(Shape)]T {
+	return g[T](Shape) // ERROR cannot use metatype as []int generic value Shape
 }
 `,
 		},
@@ -650,7 +650,7 @@ type floats interface {
 	float32 | float64
 }
 
-func reverse[S []intlen, T floats](par [unpack(S)]T) ([unpack(S)]T, func(res [unpack(S)]T) [unpack(S)]T)
+func reverse[S []int, T floats](par [unpack(S)]T) ([unpack(S)]T, func(res [unpack(S)]T) [unpack(S)]T)
 
 func f() (float64, func(float64) float64) {
 	return reverse(0.8)
@@ -663,11 +663,11 @@ type floats interface {
 	float32 | float64
 }
 
-func g[M []intlen, T floats](x [unpack(M)]T) [unpack(M)]T
+func g[M []int, T floats](x [unpack(M)]T) [unpack(M)]T
 
-func f[M []intlen, T floats]([unpack(M)]T) [unpack(M)]T
+func f[M []int, T floats]([unpack(M)]T) [unpack(M)]T
 
-func reverse[M []intlen, T floats](par [unpack(M)]T) ([unpack(M)]T, func(res [unpack(M)]T) [unpack(M)]T) {
+func reverse[M []int, T floats](par [unpack(M)]T) ([unpack(M)]T, func(res [unpack(M)]T) [unpack(M)]T) {
       fwd0 := f(par)
       selfVJPFunc := func(res [unpack(M)]T) [unpack(M)]T {
               return g(par)
@@ -684,10 +684,10 @@ func Test() (float64, float64) {
 		},
 		testbuild.Decl{
 			Src: `
-func Broadcast[Dst, Src []intlen](x [unpack(Src)]int32) [unpack(Dst)]int32
+func Broadcast[Dst, Src []int](x [unpack(Src)]int32) [unpack(Dst)]int32
 
-func F[ax1, ax2 intlen](x [ax1]int32) [ax1][ax2]int32 {
-	ax := append([]intlen{ax1}, ax2)
+func F[ax1, ax2 int](x [ax1]int32) [ax1][ax2]int32 {
+	ax := append([]int{ax1}, ax2)
 	return Broadcast[ax](([ax1][1]int32)(x))
 }`,
 		},
@@ -702,7 +702,7 @@ type floats interface {
 	float32 | float64
 }
 
-func f[M []intlen, T floats]([unpack(M)]T) [unpack(M)]T
+func f[M []int, T floats]([unpack(M)]T) [unpack(M)]T
 
 func Test() float64 {
 	trace(f)

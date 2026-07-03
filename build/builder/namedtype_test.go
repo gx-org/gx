@@ -29,10 +29,10 @@ func TestNamedTypes(t *testing.T) {
 	cField := irh.Field("c", ir.Float64Type(), nil)
 	testbuild.Run(t,
 		testbuild.Decl{
-			Src: `type A intlen`,
+			Src: `type A int`,
 			Want: []ir.IR{&ir.NamedType{
 				Src:        &ast.TypeSpec{Name: irh.IdentAST("A")},
-				Underlying: ir.TypeExpr(nil, ir.IntLenType()),
+				Underlying: ir.TypeExpr(nil, ir.IntType()),
 			}},
 		},
 		testbuild.Decl{
@@ -64,8 +64,8 @@ func TestNamedTypes(t *testing.T) {
 				Src: &ast.TypeSpec{Name: irh.IdentAST("A")},
 				Underlying: ir.TypeExpr(nil, irh.ArrayType(
 					ir.Float32Type(),
-					irh.IntNumberAs(2, ir.IntLenType()),
-					irh.IntNumberAs(3, ir.IntLenType()),
+					irh.IntNumberAs(2, ir.IntType()),
+					irh.IntNumberAs(3, ir.IntType()),
 				)),
 			}},
 		},
@@ -98,8 +98,8 @@ func f() [2][3]A
 						nil, nil,
 						irh.Fields(),
 						irh.Fields(irh.ArrayType(typeA,
-							irh.IntNumberAs(2, ir.IntLenType()),
-							irh.IntNumberAs(3, ir.IntLenType()),
+							irh.IntNumberAs(2, ir.IntType()),
+							irh.IntNumberAs(3, ir.IntType()),
 						))),
 				},
 			},

@@ -32,11 +32,11 @@ func TestForLoop(t *testing.T) {
 			Typ: ir.Int32Type(),
 		},
 	}
-	iStorage := irh.LocalVar("i", ir.IntLenType())
+	iStorage := irh.LocalVar("i", ir.IntType())
 	testbuild.Run(t,
 		testbuild.Decl{
 			Src: `
-var L intlen
+var L int
 func f() int32 {
 	x := int32(0)
 	for i := range L {

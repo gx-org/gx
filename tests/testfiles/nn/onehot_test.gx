@@ -6,7 +6,7 @@ import (
 )
 
 // oneHot returns a 2-axis array where the position of the elements in x are set to 1 and the rest is 0.
-func oneHot[numClasses intlen](x [3]int32) [3][numClasses]bool {
+func oneHot[numClasses int](x [3]int32) [3][numClasses]bool {
 	axes := append(axlengths(x), numClasses)
 	xx := shape.Broadcast[axes](([3][1]int32)(x))
 	return ([...]int32)(num.Iota[axes](1)) == xx

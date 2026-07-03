@@ -42,8 +42,6 @@ func init() {
 	registerBuiltinType("string", ir.StringType())
 	registerBuiltinType("uint32", ir.Uint32Type())
 	registerBuiltinType("uint64", ir.Uint64Type())
-	registerBuiltinType("intlen", ir.IntLenType())
-	registerBuiltinType("intidx", ir.IntIndexType())
 
 	// Builtin values.
 	registerBuiltinIR(token.CONST, ir.FalseStorage())

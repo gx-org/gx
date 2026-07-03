@@ -110,7 +110,7 @@ func checkNumExprAgainstAxis(rscope resolveScope, pos ast.Node, elts []ir.Expr, 
 	got := &ir.AxisExpr{
 		X: &ir.NumberCastExpr{
 			X:   &ir.NumberInt{Src: &ast.BasicLit{ValuePos: pos.Pos()}, Val: l},
-			Typ: ir.IntLenType(),
+			Typ: ir.IntType(),
 		}}
 	infer, inferOk := axis.(*ir.AxisInfer)
 	if inferOk {

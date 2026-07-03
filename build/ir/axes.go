@@ -184,7 +184,7 @@ func (*AxisInfer) node() {}
 func (dm *AxisInfer) Node() ast.Node { return dm.Src }
 
 // Type of the expression.
-func (dm *AxisInfer) Type() Type { return IntLenType() }
+func (dm *AxisInfer) Type() Type { return IntType() }
 
 // Expr returns how to compute the expression defining the axis length.
 func (dm *AxisInfer) Expr() ast.Expr { return dm.Src }
@@ -241,10 +241,10 @@ func (dm *AxisInfer) SourceString(from *File) string {
 }
 
 // IsAxisSpecType returns true if the type is about an axis,
-// that is intlen, intidx, and slices of these types.
+// that is int, int, and slices of these types.
 func IsAxisSpecType(tp Type) bool {
 	switch tp.Kind() {
-	case irkind.IntLen, irkind.IntIdx, irkind.Int:
+	case irkind.Int:
 		return true
 	case irkind.Slice:
 		slice, isSlice := Underlying(tp).(*SliceType)

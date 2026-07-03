@@ -3,7 +3,7 @@ package iota
 import "num"
 
 func TestIotaFull1() [2][3][4]int64 {
-	return num.IotaFull[[]intlen{2, 3, 4}]()
+	return num.IotaFull[[]int{2, 3, 4}]()
 	// Want:
 	// [2][3][4]int64{
 	// 	{
@@ -20,7 +20,7 @@ func TestIotaFull1() [2][3][4]int64 {
 }
 
 func TestIotaFull2() [4][3][2]int64 {
-	return num.IotaFull[[]intlen{4, 3, 2}]()
+	return num.IotaFull[[]int{4, 3, 2}]()
 	// Want:
 	// [4][3][2]int64{
 	// 	{

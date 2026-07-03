@@ -10,7 +10,7 @@ func ReturnVar1() int32 {
 }
 
 // Size of an array
-var Size intlen
+var Size int
 
 // New 1-axis array of size Size.
 func NewTwiceSize() [Size * 2]float32 {

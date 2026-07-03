@@ -115,7 +115,7 @@ func evalMatMulAxes(env engine.Env, call *ir.FuncCallExpr, recv ir.Element, args
 		if err != nil {
 			return nil, err
 		}
-		shape, err := elements.NewSlice(ir.IntLenSliceType(), []ir.Element{left[0], right[1]})
+		shape, err := elements.NewSlice(ir.IntSliceType(), []ir.Element{left[0], right[1]})
 		if err != nil {
 			return nil, err
 		}
@@ -159,14 +159,14 @@ func evalArgMax(env engine.Env, call *ir.FuncCallExpr, recv ir.Element, args []i
 		return nil, err
 	}
 	gr := env.Engine().ArrayOps().Graph()
-	op, err := gr.Num().ArgMinMax(argNode, int(axisIndex), irkind.DefaultInt.DType(), false)
+	op, err := gr.Num().ArgMinMax(argNode, int(axisIndex), irkind.Int.DType(), false)
 	if err != nil {
 		return nil, err
 	}
 	return materialise.ElementFromNode(env.File(), mat, &ops.OutputNode{
 		Node: op,
 		Shape: &shape.Shape{
-			DType:       irkind.DefaultInt.DType(),
+			DType:       irkind.Int.DType(),
 			AxisLengths: op.(interface{ PJRTDims() []int }).PJRTDims(),
 		},
 	}, call.Type())

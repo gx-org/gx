@@ -8,12 +8,12 @@ import (
 )
 
 // Test options:
-// setStatic Size intlen 2
+// setStatic Size int 2
 
 func TestRandUniformUint64() ([2][3]uint64, [2][3]uint64) {
 	rnd := rand.New(rand.NewSource(0))
-	rnd, a := rnd.Uint64[[]intlen{2, 3}]()
-	rnd, b := rnd.Uint64[[]intlen{2, 3}]()
+	rnd, a := rnd.Uint64[[]int{2, 3}]()
+	rnd, b := rnd.Uint64[[]int{2, 3}]()
 	return a, b
 	// Want:
 	// 0: [2][3]uint64{
@@ -28,8 +28,8 @@ func TestRandUniformUint64() ([2][3]uint64, [2][3]uint64) {
 
 func TestRandUniformFloat64() ([2][3]float64, [2][3]float64) {
 	rnd := rand.New(rand.NewSource(0))
-	rnd, a := rnd.Float64[[]intlen{2, 3}]()
-	rnd, b := rnd.Float64[[]intlen{2, 3}]()
+	rnd, a := rnd.Float64[[]int{2, 3}]()
+	rnd, b := rnd.Float64[[]int{2, 3}]()
 	return a, b
 	// Want:
 	// 0: [2][3]float64{
@@ -44,8 +44,8 @@ func TestRandUniformFloat64() ([2][3]float64, [2][3]float64) {
 
 func TestRandUniformFloat32() ([2][3]float32, [2][3]float32) {
 	rnd := rand.New(rand.NewSource(0))
-	rnd, a := rnd.Float32[[]intlen{2, 3}]()
-	rnd, b := rnd.Float32[[]intlen{2, 3}]()
+	rnd, a := rnd.Float32[[]int{2, 3}]()
+	rnd, b := rnd.Float32[[]int{2, 3}]()
 	return a, b
 	// Want:
 	// 0: [2][3]float32{
@@ -60,7 +60,7 @@ func TestRandUniformFloat32() ([2][3]float32, [2][3]float32) {
 
 func TestFloat32NoAxis() uint32 {
 	rnd := rand.New(rand.NewSource(0))
-	_, smpl := rnd.Uint32[[]intlen{}]()
+	_, smpl := rnd.Uint32[[]int{}]()
 	return smpl
 	// Want:
 	// uint32(1087794774)
@@ -68,7 +68,7 @@ func TestFloat32NoAxis() uint32 {
 
 func TestFloat32Axis1() [2]float32 {
 	rnd := rand.New(rand.NewSource(0))
-	_, smpl := rnd.Float32[[]intlen{2}]()
+	_, smpl := rnd.Float32[[]int{2}]()
 	return smpl
 	// Want:
 	// [2]float32{0.253272, 0.303246}
@@ -76,7 +76,7 @@ func TestFloat32Axis1() [2]float32 {
 
 func TestFloat32Axis2() [3][2]float32 {
 	rnd := rand.New(rand.NewSource(0))
-	_, smpl := rnd.Float32[[]intlen{3, 2}]()
+	_, smpl := rnd.Float32[[]int{3, 2}]()
 	return smpl
 	// Want:
 	// [3][2]float32{
@@ -86,11 +86,11 @@ func TestFloat32Axis2() [3][2]float32 {
 	// }
 }
 
-var Size intlen
+var Size int
 
 func TestRandUniformFloat32WithSize() [Size]float32 {
 	rnd := rand.New(rand.NewSource(0))
-	_, a := rnd.Float32[[]intlen{Size}]()
+	_, a := rnd.Float32[[]int{Size}]()
 	return a
 	// Want:
 	// [2]float32{0.253272, 0.303246}
@@ -98,8 +98,8 @@ func TestRandUniformFloat32WithSize() [Size]float32 {
 
 func TestFloat32MinMax() ([5]bool, [5]bool, bool) {
 	rnd := rand.New(rand.NewSource(0))
-	_, a := rnd.Float32MinMax[[]intlen{5}](-100.5, 100.75)
-	return a > -100.5, a < 100.75, num.Sum[[]intidx{0}](math.Abs[float32](a)) > 50
+	_, a := rnd.Float32MinMax[[]int{5}](-100.5, 100.75)
+	return a > -100.5, a < 100.75, num.Sum[[]int{0}](math.Abs[float32](a)) > 50
 	// Want:
 	// 0: [5]bool{true, true, true, true, true}
 	// 1: [5]bool{true, true, true, true, true}
@@ -108,7 +108,7 @@ func TestFloat32MinMax() ([5]bool, [5]bool, bool) {
 
 func TestFloat64MinMax() [5]float64 {
 	rnd := rand.New(rand.NewSource(0))
-	_, a := rnd.Float64MinMax[[]intlen{5}](-100, 100.75)
+	_, a := rnd.Float64MinMax[[]int{5}](-100, 100.75)
 	return a
 	// Want:
 	// [5]float64{-39.1233905713, 67.0834894428, -93.5118532834, -38.9040065512, 5.7039784557}
@@ -119,14 +119,14 @@ const numSamples = 10000
 func TestCategorical() bool {
 	rnd := rand.New(rand.NewSource(0))
 	probs := [1][3]float32{{0.1, 0.2, 0.7}}
-	expandedProbs := shape.Broadcast[[]intlen{numSamples, 3}](probs)
+	expandedProbs := shape.Broadcast[[]int{numSamples, 3}](probs)
 	_, labels := rand.Categorical[float32](rnd, expandedProbs)
-	numZero := num.Sum[[]intidx{0}]([___]int64(labels == 0))
-	numOne := num.Sum[[]intidx{0}]([___]int64(labels == 1))
-	numTwo := num.Sum[[]intidx{0}]([___]int64(labels == 2))
+	numZero := num.Sum[[]int{0}]([___]int64(labels == 0))
+	numOne := num.Sum[[]int{0}]([___]int64(labels == 1))
+	numTwo := num.Sum[[]int{0}]([___]int64(labels == 2))
 	distribution := [3]float32([3]int64{numZero, numOne, numTwo}) / numSamples
 	diff := distribution - probs[0]
-	return num.ReduceMax[[]intidx{0}](math.Abs(diff)) < 0.01
+	return num.ReduceMax[[]int{0}](math.Abs(diff)) < 0.01
 	// Want:
 	// bool(true)
 }

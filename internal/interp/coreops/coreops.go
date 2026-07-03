@@ -102,5 +102,5 @@ func AxesFromType(ev ir.Evaluator, typ ir.Type) (*elements.Slice, error) {
 			return nil, err
 		}
 	}
-	return elements.NewSlice(ir.IntLenSliceType(), elts)
+	return elements.NewSlice(ir.IntSliceType(), elts)
 }

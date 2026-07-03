@@ -129,7 +129,7 @@ func (a *atom) Compare(x canonical.Comparable) (bool, error) {
 }
 
 func (a *atom) Axes(ir.Evaluator) (*elements.Slice, error) {
-	return elements.NewSlice(ir.IntLenSliceType(), nil)
+	return elements.NewSlice(ir.IntSliceType(), nil)
 }
 
 // Expr returns the IR expression represented by the variable.

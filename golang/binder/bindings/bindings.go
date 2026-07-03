@@ -124,8 +124,3 @@ func BuildFuncs[T any](pkg *ir.Package, factory func(ir.PkgFunc, int) (*T, error
 	}
 	return funcs, nil
 }
-
-// IsDefaultInt returns true if the kind can be converted to the system default integer type.
-func IsDefaultInt(kind irkind.Kind) bool {
-	return kind == irkind.IntLen || kind == irkind.IntIdx
-}

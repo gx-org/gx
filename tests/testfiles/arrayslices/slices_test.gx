@@ -21,21 +21,21 @@ func TestSliceVariableOneElementOneAxis() float32 {
 
 func TestSliceVariableOneElementOneAxisIntlen() float32 {
 	a := [...]float32{1, 2, 3, 4}
-	return a[intlen(2)]
+	return a[int(2)]
 	// Want:
 	// float32(3)
 }
 
-func TestBuildSlice() []intlen {
-	a := []intlen{}
+func TestBuildSlice() []int {
+	a := []int{}
 	for i := range 3 {
 		a = append(a, i)
 	}
 	return a
 	// Want:
-	// 0: intlen(0)
-	// 1: intlen(1)
-	// 2: intlen(2)
+	// 0: int(0)
+	// 1: int(1)
+	// 2: int(2)
 }
 
 func TestBuildSliceOfArray() [][2]int32 {

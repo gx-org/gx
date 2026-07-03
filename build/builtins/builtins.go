@@ -58,7 +58,7 @@ func ToBinaryExpr(op token.Token, x, y ir.Expr) *ir.BinaryExpr {
 		},
 		X:   x,
 		Y:   y,
-		Typ: ir.IntLenType(),
+		Typ: ir.IntType(),
 	}
 }
 
