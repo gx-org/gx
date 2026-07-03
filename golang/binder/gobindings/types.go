@@ -20,7 +20,6 @@ import (
 
 	"github.com/pkg/errors"
 	"github.com/gx-org/gx/build/ir"
-	"github.com/gx-org/gx/golang/binder/bindings"
 )
 
 type pkgTypes struct {
@@ -98,11 +97,7 @@ func (b *binder) nameGoType(tp ir.Type) (string, error) {
 		if !typT.Rank().IsAtomic() {
 			return "", errors.Errorf("no Go type name for %T", typT)
 		}
-		kind := typT.Kind()
-		if bindings.IsDefaultInt(kind) {
-			return "ir.Int", nil
-		}
-		return kind.String(), nil
+		return typT.Kind().String(), nil
 	case *ir.NamedType:
 		return b.nameGoType(typT.Underlying.Val())
 	default:

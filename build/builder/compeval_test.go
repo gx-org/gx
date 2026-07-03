@@ -28,7 +28,7 @@ func TestCompEvalFuncCall(t *testing.T) {
 		testbuild.Decl{
 			Src: `
 //gx:compeval
-func returnTwo() intlen {
+func returnTwo() int {
 	return 2
 }
 
@@ -42,7 +42,7 @@ func f() [returnTwo()]int32 {
 		testbuild.Decl{
 			Src: `
 //gx:compeval
-func returnTwo() (intlen, error) {
+func returnTwo() (int, error) {
 	return 2, nil
 }
 
@@ -83,11 +83,11 @@ func f() string {
 		testbuild.Decl{
 			Src: `
 //gx:compeval
-func add(a, b intlen) intlen {
+func add(a, b int) int {
 	return a+b
 }
 
-func g[af, bf intlen]() [add(af,bf)]float32
+func g[af, bf int]() [add(af,bf)]float32
 
 func f() [5]float32 {
 	return g[2][3]()
@@ -97,26 +97,26 @@ func f() [5]float32 {
 		testbuild.Decl{
 			Src: `
 //gx:compeval
-func same(shape []intlen) ([]intlen, error) {
+func same(shape []int) ([]int, error) {
 	return shape, nil
 }
 
-func f[S []intlen]([unpack(S)]float32) [unpack(same(S))]float32
+func f[S []int]([unpack(S)]float32) [unpack(same(S))]float32
 `,
 		},
 		testbuild.Decl{
 			Src: `
 
 //gx:compeval
-func CheckBroadcast(s1, s2 []intlen) ([]intlen, error) {
+func CheckBroadcast(s1, s2 []int) ([]int, error) {
 	return s2, nil
 }
 
-func Broadcast[Dst []intlen, Src []intlen](x [unpack(Src)]int32) [unpack(CheckBroadcast(Src, Dst))]int32
+func Broadcast[Dst []int, Src []int](x [unpack(Src)]int32) [unpack(CheckBroadcast(Src, Dst))]int32
 
 
-func OneHot[numClasses intlen](x [_axlen]int32) [axlen][numClasses]int32 {
-	ax := []intlen{axlen, numClasses}
+func OneHot[numClasses int](x [_axlen]int32) [axlen][numClasses]int32 {
+	ax := []int{axlen, numClasses}
 	xx := Broadcast[ax](([axlen][1]int32)(x))
 	return xx
 }
@@ -125,11 +125,11 @@ func OneHot[numClasses intlen](x [_axlen]int32) [axlen][numClasses]int32 {
 		testbuild.Decl{
 			Src: `
 //gx:compeval
-func isEven(a intlen) (intlen, error) {
+func isEven(a int) (int, error) {
     return a+1, nil
 }
 
-func f[A intlen]() [isEven(A)]float32 {
+func f[A int]() [isEven(A)]float32 {
     return [A]float32{} // ERROR cannot use [A]float32 as [A+1]float32 value in return statement
 }
 `,
@@ -144,7 +144,7 @@ func TestCompevalError(t *testing.T) {
 			Src: `
 import "fmt"
 
-func returnTwo() intlen {
+func returnTwo() int {
 	return 2
 }
 
@@ -158,7 +158,7 @@ func f() [returnTwo()]int32 {  // ERROR expect a compeval function, function ret
 import "errors"
 
 //gx:compeval
-func returnTwo() (intlen, error) {
+func returnTwo() (int, error) {
 	return 2, errors.New("a compeval test error")
 }
 
@@ -172,7 +172,7 @@ func f() [returnTwo()]int32 { // ERROR a compeval test error
 import "fmt"
 
 //gx:compeval
-func returnTwo() (intlen, error) {
+func returnTwo() (int, error) {
 	return 2, fmt.Errorf("a compeval test error")
 }
 
@@ -192,7 +192,7 @@ func TestCompevalErrorWithVarargs(t *testing.T) {
 import "fmt"
 
 //gx:compeval
-func returnAnError(xs ...int32) (intlen, error) {
+func returnAnError(xs ...int32) (int, error) {
 	return 2, fmt.Errorf("xs length: %d", len(xs))
 }
 
@@ -206,7 +206,7 @@ func f() [returnAnError(1, 2, 3)]int32 { // ERROR xs length: 3
 import "fmt"
 
 //gx:compeval
-func returnAnError(xs ...int32) (intlen, error) {
+func returnAnError(xs ...int32) (int, error) {
 	return 2, fmt.Errorf("xs length: %d", len(xs))
 }
 
@@ -414,7 +414,7 @@ func TestCompevalSliceLen(t *testing.T) {
 			Src: `
 //gx:compeval
 func test() bool {
-	a := []intlen{2, 3}
+	a := []int{2, 3}
 	return len(a) != len(a) 
 }
 `,
@@ -425,8 +425,8 @@ func test() bool {
 			Src: `
 //gx:compeval
 func test() bool {
-	a := []intlen{2, 3}
-	b := []intlen{2}
+	a := []int{2, 3}
+	b := []int{2}
 	return len(a) != len(b) 
 }
 `,
@@ -442,14 +442,14 @@ func atomicAtomicSource(tok string, a, b int, want bool) string {
 	}
 	return fmt.Sprintf(`
 //gx:compeval
-func cmp(a, b intlen) intlen {
+func cmp(a, b int) int {
 	if a %s b {
 		return 2
 	}
 	return 1
 }
 
-func f[a, b intlen](x [a]float32, y [b]float32) [cmp(a, b)]float32
+func f[a, b int](x [a]float32, y [b]float32) [cmp(a, b)]float32
 
 func test() [%s]float32 {
 	return f([%d]float32{}, [%d]float32{})
@@ -519,7 +519,7 @@ package cp
 const c = 6
 
 //gx:compeval
-func add(a, b intlen) intlen {
+func add(a, b int) int {
 	return a+b
 }
 

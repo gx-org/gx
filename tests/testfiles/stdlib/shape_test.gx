@@ -7,11 +7,11 @@ import (
 func TestShape() shape.Shape {
 	return shape.Shape{
 		DType:      1,
-		Dimensions: []intlen{1, 2},
+		Dimensions: []int{1, 2},
 	}
 	// Want:
 	// shape.Shape{
 	// 	DType: shape.DType(1),
-	// 	Dimensions: [intlen(1),intlen(2)],
+	// 	Dimensions: [int(1),int(2)],
 	// }
 }

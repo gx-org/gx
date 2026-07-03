@@ -1,12 +1,12 @@
 package cast
 
 // Test options:
-// setStatic sameDim1 intlen 2
-// setStatic sameDim2 intlen 2
+// setStatic sameDim1 int 2
+// setStatic sameDim2 int 2
 
 var (
-	sameDim1 intlen
-	sameDim2 intlen
+	sameDim1 int
+	sameDim2 int
 )
 
 func TestCastScalar() float32 {

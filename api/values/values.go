@@ -121,6 +121,8 @@ func Zero(typ ir.Type) (Value, error) {
 		return AtomFloatValue[float32](typ, 0)
 	case irkind.Float64:
 		return AtomFloatValue[float64](typ, 0)
+	case irkind.Int:
+		return AtomIntegerValue[ir.Int](typ, 0)
 	case irkind.Int32:
 		return AtomIntegerValue[int32](typ, 0)
 	case irkind.Int64:
@@ -129,10 +131,6 @@ func Zero(typ ir.Type) (Value, error) {
 		return AtomIntegerValue[uint32](typ, 0)
 	case irkind.Uint64:
 		return AtomIntegerValue[uint64](typ, 0)
-	case irkind.IntLen:
-		return AtomIntegerValue[ir.Int](typ, 0)
-	case irkind.IntIdx:
-		return AtomIntegerValue[ir.Int](typ, 0)
 	case irkind.Array:
 		return arrayZeroValue(typ)
 	case irkind.Slice:
@@ -190,10 +188,6 @@ func AtomNumberInt(x *big.Int, typ ir.Type) (*HostArray, error) {
 		return AtomIntegerValue[uint32](typ, bigIntToUint[uint32](x))
 	case irkind.Uint64:
 		return AtomIntegerValue[uint64](typ, bigIntToUint[uint64](x))
-	case irkind.IntLen:
-		return AtomIntegerValue[ir.Int](typ, bigIntToInt[ir.Int](x))
-	case irkind.IntIdx:
-		return AtomIntegerValue[ir.Int](typ, bigIntToInt[ir.Int](x))
 	}
 	return nil, errors.Errorf("cannot convert value %s of type %s (kind: %s) to an atomic integer value", x.String(), typ.ReferString(nil), typ.Kind().String())
 }
@@ -213,6 +207,8 @@ func AtomNumberFloat(x *big.Float, typ ir.Type) (*HostArray, error) {
 		return AtomFloatValue[float32](typ, bigFloatCast[float32](x))
 	case irkind.Float64:
 		return AtomFloatValue[float64](typ, bigFloatCast[float64](x))
+	case irkind.Int:
+		return AtomIntegerValue[int](typ, bigFloatCast[int](x))
 	case irkind.Int32:
 		return AtomIntegerValue[int32](typ, bigFloatCast[int32](x))
 	case irkind.Int64:
@@ -221,10 +217,6 @@ func AtomNumberFloat(x *big.Float, typ ir.Type) (*HostArray, error) {
 		return AtomIntegerValue[uint32](typ, bigFloatCast[uint32](x))
 	case irkind.Uint64:
 		return AtomIntegerValue[uint64](typ, bigFloatCast[uint64](x))
-	case irkind.IntLen:
-		return AtomIntegerValue[ir.Int](typ, bigFloatCast[ir.Int](x))
-	case irkind.IntIdx:
-		return AtomIntegerValue[ir.Int](typ, bigFloatCast[ir.Int](x))
 	}
 	return nil, errors.Errorf("cannot convert %T(%s) to %s: not implemented", x, x, typ.ReferString(nil))
 }

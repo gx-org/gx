@@ -5,10 +5,10 @@ import (
 )
 
 func CallSum() float32 {
-	return num.Sum[[]intidx{0}]([2]float32{1, 2})
+	return num.Sum[[]int{0}]([2]float32{1, 2})
 }
 
-var Undef intlen
+var Undef int
 
 func NewUndef() [Undef]float32 {
 	return [Undef]float32(0)

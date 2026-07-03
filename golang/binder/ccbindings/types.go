@@ -31,6 +31,8 @@ func (b *binder) ccTypeFromKind(knd irkind.Kind) (string, error) {
 		return "float", nil
 	case irkind.Float64:
 		return "double", nil
+	case irkind.Int:
+		return "int", nil
 	case irkind.Int32:
 		return "int32_t", nil
 	case irkind.Int64:
@@ -38,8 +40,6 @@ func (b *binder) ccTypeFromKind(knd irkind.Kind) (string, error) {
 	case irkind.Uint32:
 		return "uint32_t", nil
 	case irkind.Uint64:
-		return "uint64_t", nil
-	case irkind.IntLen:
 		return "uint64_t", nil
 	default:
 		return "", errors.Errorf("cannot convert kind %s to a C++ type: not supported", knd.String())

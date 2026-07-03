@@ -26,14 +26,14 @@ import (
 
 func TestVars(t *testing.T) {
 	vrA := &ir.VarExpr{
-		Decl:  &ir.VarSpec{TypeV: ir.IntLenType()},
+		Decl:  &ir.VarSpec{TypeV: ir.IntType()},
 		VName: irh.IdentAST("a"),
 	}
 	vrA.Decl.Exprs = append(vrA.Decl.Exprs, vrA)
 	testbuild.RunWith(t,
 		[]importers.Importer{stdlib.Importer()},
 		testbuild.Decl{
-			Src: `var a intlen`,
+			Src: `var a int`,
 			Want: []ir.IR{
 				vrA.Decl,
 			},
@@ -42,7 +42,7 @@ func TestVars(t *testing.T) {
 			Src: `
 import "dtype"
 
-var a intlen
+var a int
 
 func f[T dtype.Floats]([a]float32) [a]float32
 `,

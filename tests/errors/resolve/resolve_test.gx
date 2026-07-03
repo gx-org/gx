@@ -229,7 +229,7 @@ func testExplicitCastFloat64ToMyFloat() myfloat {
 }
 
 func testExpIntTensor() [2]float32 {
-	a := shape.Shape{DType: 0, Dimensions: []intlen{}}
+	a := shape.Shape{DType: 0, Dimensions: []int{}}
 	return math.Exp(a) // ERROR cannot infer type parameter T
 }
 
@@ -258,8 +258,8 @@ func testConcatShapeError() [2]float32 {
 }
 
 func testIncorrectTypeBinaryOperator() float64 {
-	a := shape.Shape{DType: 0, Dimensions: []intlen{}}
-	b := shape.Shape{DType: 0, Dimensions: []intlen{}}
+	a := shape.Shape{DType: 0, Dimensions: []int{}}
+	b := shape.Shape{DType: 0, Dimensions: []int{}}
 	c := a + b // ERROR invalid
 	return c
 }

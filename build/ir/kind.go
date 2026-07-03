@@ -24,13 +24,11 @@ func toInterface(typ Type) (*Interface, bool) {
 // SupportOperators returns true if the type supports unary or binary operators.
 func SupportOperators(typ Type) bool {
 	switch typ.Kind() {
-	case irkind.IntIdx, irkind.IntLen:
-		return true
 	case irkind.Bool:
 		return true
 	case irkind.Bfloat16, irkind.Float32, irkind.Float64:
 		return true
-	case irkind.Int32, irkind.Int64:
+	case irkind.Int32, irkind.Int64, irkind.Int:
 		return true
 	case irkind.NumberFloat, irkind.NumberInt:
 		return true
@@ -52,7 +50,7 @@ func IsDataType(typ Type) bool {
 	case irkind.Bool:
 	case irkind.Bfloat16:
 	case irkind.Float32, irkind.Float64:
-	case irkind.Int32, irkind.Int64:
+	case irkind.Int, irkind.Int32, irkind.Int64:
 	case irkind.Uint32, irkind.Uint64:
 	case irkind.Interface:
 		if typSet, ok := toInterface(typ); ok {
@@ -68,11 +66,11 @@ func IsDataType(typ Type) bool {
 // IsIndexType returns true if the kind is a supported array index type.
 func IsIndexType(typ Type) bool {
 	switch typ.Kind() {
+	case irkind.Int:
 	case irkind.Int32:
 	case irkind.Int64:
 	case irkind.Uint32:
 	case irkind.Uint64:
-	case irkind.IntLen:
 	case irkind.Interface:
 		if typSet, ok := toInterface(typ); ok {
 			return typSet.hasCapability(IsIndexType)
@@ -124,8 +122,6 @@ func IsFloat(typ Type) bool {
 // CanBeNumber returns true if the value of a kind can be a number.
 func CanBeNumber(typ Type) bool {
 	switch typ.Kind() {
-	case irkind.IntLen, irkind.IntIdx:
-		return true
 	case irkind.Interface:
 		if typSet, ok := toInterface(typ); ok {
 			return typSet.hasCapability(CanBeNumber)
@@ -139,10 +135,6 @@ func CanBeNumber(typ Type) bool {
 // TypeFromKind returns a type from a kind.
 func TypeFromKind(kind irkind.Kind) Type {
 	switch kind {
-	case irkind.IntIdx:
-		return IntIndexType()
-	case irkind.IntLen:
-		return IntLenType()
 	case irkind.Bool:
 		return BoolType()
 	case irkind.Bfloat16:
@@ -151,6 +143,8 @@ func TypeFromKind(kind irkind.Kind) Type {
 		return Float32Type()
 	case irkind.Float64:
 		return Float64Type()
+	case irkind.Int:
+		return IntType()
 	case irkind.Int32:
 		return Int32Type()
 	case irkind.Int64:

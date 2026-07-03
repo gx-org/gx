@@ -22,9 +22,6 @@ import (
 // Kind of a type.
 type Kind uint
 
-// DefaultInt is the default kind for integer.
-const DefaultInt = Int64
-
 // Kind of data supported by GX.
 const (
 	Invalid = Kind(dtypes.InvalidDType)
@@ -39,11 +36,8 @@ const (
 	Float32  = Kind(dtypes.Float32)
 	Float64  = Kind(dtypes.Float64)
 
-	IntIdx = Kind(iota + dtypes.MaxDType)
-	IntLen
-
 	// Unknown is a proxy type used while a type is being inferred by the compiler.
-	Unknown
+	Unknown = Kind(iota + dtypes.MaxDType)
 	// Void is a type for expression returning nothing.
 	Void
 	// Interface is an interface.
@@ -86,10 +80,6 @@ func (k Kind) String() string {
 		return "float number"
 	case NumberInt:
 		return "int number"
-	case IntIdx:
-		return "intidx"
-	case IntLen:
-		return "intlen"
 	case Bool:
 		return "bool"
 	case Int:
@@ -132,9 +122,6 @@ func (k Kind) String() string {
 
 // DType converts a GX kind into an array data type.
 func (k Kind) DType() dtypes.DType {
-	if k == IntIdx || k == IntLen {
-		return DefaultInt.DType()
-	}
 	if k >= dtypes.MaxDType {
 		return dtypes.InvalidDType
 	}
@@ -150,10 +137,6 @@ func (k Kind) DType() dtypes.DType {
 //	var name unknown
 func KindFromString(ident string) Kind {
 	switch ident {
-	case "intidx":
-		return IntIdx
-	case "intlen":
-		return IntLen
 	case "bool":
 		return Bool
 	case "bfloat16":
@@ -192,20 +175,15 @@ func IsNumber(knd Kind) bool {
 
 // IsRangeOk returns true if the kind can be used to iterate in a for loop with a range statement.
 func IsRangeOk(k Kind) bool {
-	switch k {
-	case IntLen:
-	case NumberInt:
-	default:
-		return false
+	if IsInteger(k) {
+		return true
 	}
-	return true
+	return k == NumberInt
 }
 
 // IsInteger return true if kind is an integer.
 func IsInteger(kind Kind) bool {
 	switch kind {
-	case IntLen, IntIdx:
-		return true
 	case Int, Int32, Int64, Uint32, Uint64:
 		return true
 	case NumberInt:
@@ -244,22 +222,6 @@ func IsConcrete(kind Kind) bool {
 	case Bool:
 		return true
 	case Invalid:
-		return true
-	default:
-		return false
-	}
-}
-
-// IsArrayCore returns true if kind can be stored inside an array.
-func IsArrayCore(kind Kind) bool {
-	if IsInteger(kind) {
-		return true
-	}
-	if IsFloat(kind) {
-		return true
-	}
-	switch kind {
-	case Bool:
 		return true
 	default:
 		return false

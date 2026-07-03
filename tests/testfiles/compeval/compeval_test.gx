@@ -1,7 +1,7 @@
 package compeval
 
 //gx:compeval
-func returnTwo() intlen {
+func returnTwo() int {
 	return 2
 }
 

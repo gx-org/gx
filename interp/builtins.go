@@ -69,8 +69,6 @@ func (itp *Base) InitBuiltins(scope *scope.RWScope[ir.Element]) error {
 		ir.StringType(),
 		ir.Uint32Type(),
 		ir.Uint64Type(),
-		ir.IntLenType(),
-		ir.IntIndexType(),
 	} {
 		scope.Define(tp.ReferString(nil), tp)
 	}

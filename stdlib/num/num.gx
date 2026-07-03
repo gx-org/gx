@@ -9,29 +9,29 @@ import (
 )
 
 //gx:compeval
-func MatMulAxes(x, y []intlen) ([]intlen, error)
+func MatMulAxes(x, y []int) ([]int, error)
 
 // MatMul computes a matrix multiplication between two arrays.
-func MatMul[SX, SY []intlen, T dtype.Num](x [unpack(SX)]T, y [unpack(SY)]T) [unpack(MatMulAxes(SX, SY))]T
+func MatMul[SX, SY []int, T dtype.Num](x [unpack(SX)]T, y [unpack(SY)]T) [unpack(MatMulAxes(SX, SY))]T
 
 // ArgMax applies a max reduce operator over an axis.
-func ArgMax[Axis intidx, Shape []intlen, T dtype.Num](x [unpack(Shape)]T) [unpack(shape.ReduceAxes(Shape, Axis))]int64
+func ArgMax[Axis int, Shape []int, T dtype.Num](x [unpack(Shape)]T) [unpack(shape.ReduceAxes(Shape, Axis))]int
 
 // ReduceMax computes maximums along an axis.
-func ReduceMax[Axis []intidx, Shape []intlen, DType dtype.Num](x [unpack(Shape)]DType) [unpack(shape.ReduceAxes(Shape, Axis...))]DType
+func ReduceMax[Axis []int, Shape []int, DType dtype.Num](x [unpack(Shape)]DType) [unpack(shape.ReduceAxes(Shape, Axis...))]DType
 
 // Sum along axes.
-func Sum[Axis []intidx, Shape []intlen, DType dtype.Num](x [unpack(Shape)]DType) [unpack(shape.ReduceAxes(Shape, Axis...))]DType
+func Sum[Axis []int, Shape []int, DType dtype.Num](x [unpack(Shape)]DType) [unpack(shape.ReduceAxes(Shape, Axis...))]DType
 
 // Iota generates an array given a shape where elements starts from 0 and are incremented by 1 along a given axis index.
-func Iota[S []intlen](ax intidx) [unpack(S)]int64
+func Iota[S []int](ax int) [unpack(S)]int64
 
 // IotaFull generates an array given a shape where elements starts from 0 and are incremented by 1.
-func IotaFull[S []intlen]() [unpack(S)]int64
+func IotaFull[S []int]() [unpack(S)]int64
 
 // OneHot returns a one-hot encoded array given a number of classes.
-func OneHot[numClasses, axlen intlen, T dtype.Ints](x [axlen]T) [axlen][numClasses]bool {
-	axes := []intlen{axlen, numClasses}
+func OneHot[numClasses, axlen int, T dtype.Ints](x [axlen]T) [axlen][numClasses]bool {
+	axes := []int{axlen, numClasses}
 	xx := shape.Broadcast[axes](([axlen][1]T)(x))
 	return ([axlen][numClasses]T)(Iota[axes](1)) == xx
 }

@@ -13,7 +13,7 @@ func newSampler(seed int64) sampler {
 }
 
 func (s sampler) sample() (s sampler, smpl [2]float32) {
-	s.rnd, smpl = s.rnd.Float32[[]intlen{2}]()
+	s.rnd, smpl = s.rnd.Float32[[]int{2}]()
 	return
 }
 

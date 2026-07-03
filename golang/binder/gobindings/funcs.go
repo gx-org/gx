@@ -79,9 +79,6 @@ func argN(i int) string {
 
 func toKindSuffix(typ ir.Type) string {
 	kind := typ.Kind()
-	if kind == irkind.IntLen || kind == irkind.IntIdx {
-		return "DefaultInt" // Matches platform.Host.DefaultInt(ir.Int)
-	}
 	kindS := kind.String()
 	kindS = strings.ToUpper(kindS[:1]) + kindS[1:]
 	return kindS

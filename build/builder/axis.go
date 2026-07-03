@@ -62,7 +62,7 @@ func (dim *inferredFromLiteralAxisLength) build(rscope *defineLocalScope) (ir.Ax
 				Src: &ast.BasicLit{ValuePos: dim.src.Pos()},
 				Val: big.NewInt(int64(dim.val)),
 			},
-			Typ: ir.IntLenType(),
+			Typ: ir.IntType(),
 		},
 	}, true
 }
@@ -91,7 +91,7 @@ func (dim *exprAxisLength) build(rscope *defineLocalScope) (ir.AxisLengths, bool
 	if !xOk {
 		return ext, false
 	}
-	ext.X, xOk = castNilAndNumber(rscope, ext.X, ir.IntLenType())
+	ext.X, xOk = castNilAndNumber(rscope, ext.X, ir.IntType())
 	if !xOk {
 		return ext, false
 	}
@@ -105,8 +105,8 @@ func (dim *exprAxisLength) build(rscope *defineLocalScope) (ir.AxisLengths, bool
 		return ext, rscope.Err().AppendAt(ext.X.Node(), err)
 	}
 	xType := ext.X.Type()
-	if xType.Kind() != irkind.IntLen && xType.Kind() != irkind.Int {
-		return ext, rscope.Err().Appendf(dim.src, "cannot use type %s as axis length: want type intlen or unpack([]intlen)", xType.ReferString(rscope.fileScope().irFile()))
+	if xType.Kind() != irkind.Int {
+		return ext, rscope.Err().Appendf(dim.src, "cannot use type %s as axis length: want type int or unpack([]int)", xType.ReferString(rscope.fileScope().irFile()))
 	}
 	return ext, true
 }
@@ -118,7 +118,7 @@ func (dim *exprAxisLength) String() string {
 }
 
 // defineAxisLength is an axis that defines a name for an axis length
-// (e.g. [_X]int32 defines X as an axis length (of type intlen)
+// (e.g. [_X]int32 defines X as an axis length (of type int)
 type defineAxisLength struct {
 	src  *ast.Ident
 	name string

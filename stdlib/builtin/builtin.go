@@ -54,8 +54,8 @@ type (
 	}
 )
 
-// NilShape is a nil value for a slice of axis length type intlen.
-var NilShape = elements.NilFromType(ir.IntLenSliceType())
+// NilShape is a nil value for a slice of axis length.
+var NilShape = elements.NilFromType(ir.IntSliceType())
 
 // ToShapeString represents elements into an array shape.
 func ToShapeString(els []ir.Element) string {
@@ -68,7 +68,7 @@ func ToShapeString(els []ir.Element) string {
 
 // ToShapeResult converts elements into a slice of axis lengths and an error.
 func ToShapeResult(els ...ir.Element) ([]ir.Element, error) {
-	shape, err := elements.NewSlice(ir.IntLenSliceType(), els)
+	shape, err := elements.NewSlice(ir.IntSliceType(), els)
 	if err != nil {
 		return nil, err
 	}

@@ -66,7 +66,7 @@ func TestCPErrors(t *testing.T) {
 import "cperrors"
 
 //gx:compeval
-func argError() (intlen, error) {
+func argError() (int, error) {
 	return 2, cperrors.Argf(1, "some error about argument 1")
 }
 

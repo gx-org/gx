@@ -22,7 +22,6 @@ import (
 	"github.com/pkg/errors"
 	"github.com/gx-org/gx/base/tmpl"
 	"github.com/gx-org/gx/build/ir"
-	"github.com/gx-org/gx/build/ir/irkind"
 )
 
 var pkgVarsTmpl = template.Must(template.New("pkgVarsTMPL").Parse(`
@@ -52,9 +51,6 @@ type pkgVar struct {
 
 func (v pkgVar) ToHostValue() (string, error) {
 	kind := v.Type().Kind()
-	if kind == irkind.IntLen || kind == irkind.IntIdx {
-		return "types.DefaultInt(value)", nil
-	}
 	if ir.SupportOperators(v.Type()) {
 		return fmt.Sprintf("types.%s(value)", strings.Title(kind.String())), nil
 	}

@@ -142,6 +142,8 @@ func FactoryFor(dt dtypes.DType) (Factory, error) {
 		return integerFactory[uint32]{}, nil
 	case dtypes.Uint64:
 		return integerFactory[uint64]{}, nil
+	case dtypes.Int:
+		return integerFactory[int]{}, nil
 	case dtypes.Int32:
 		return integerFactory[int32]{}, nil
 	case dtypes.Int64:

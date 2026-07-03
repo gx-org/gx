@@ -95,13 +95,13 @@ NamedType {
 `,
 		},
 		{
-			code: irhelper.IntNumberAs(2, ir.IntLenType()),
+			code: irhelper.IntNumberAs(2, ir.IntType()),
 			want: `
 NumberCastExpr {
 	X: NumberInt {
 		Val: 2
 	}
-	Typ: intlen
+	Typ: int
 }`,
 		},
 	}

@@ -3,5 +3,5 @@ package argmax01
 import "num"
 
 func f() [2]int32 {
-	return num.ArgMax[3]([2][3]int32(1)) // ERROR reduce axis 3 out of bound for array with 2 axes (with axis lengths: []intlen{2, 3})
+	return num.ArgMax[3]([2][3]int32(1)) // ERROR reduce axis 3 out of bound for array with 2 axes (with axis lengths: []int{2, 3})
 }

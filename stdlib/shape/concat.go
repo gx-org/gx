@@ -78,7 +78,7 @@ func irAdd(env engine.Env, src ast.Expr, x, y engine.NumericalElement) (engine.N
 			},
 			X:   xExpr,
 			Y:   yExpr,
-			Typ: ir.IntLenType(),
+			Typ: ir.IntType(),
 		},
 		x, y,
 	)
@@ -127,7 +127,7 @@ func concatAxis(env engine.Env, call *ir.FuncCallExpr, recv ir.Element, args []i
 	// Final shape.
 	final := append([]ir.Element{}, firstShapeElts.Elements()...)
 	final[idx] = concatAxis
-	finalShape, err := elements.NewSlice(ir.IntLenSliceType(), final)
+	finalShape, err := elements.NewSlice(ir.IntSliceType(), final)
 	if err != nil {
 		return nil, err
 	}

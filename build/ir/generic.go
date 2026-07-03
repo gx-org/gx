@@ -41,7 +41,7 @@ type (
 
 	// GenericParam is a storage pointing to a type parameter field.
 	// In a function declared as:
-	//   func F[S []intlen, T Ints](array [S]T)
+	//   func F[S []int, T Ints](array [S]T)
 	// then S and T will be resolved as Ident using GenericParam as storage
 	// pointing to their respective fields.
 	//

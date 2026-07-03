@@ -28,7 +28,7 @@ var pkgvars *pkgvars_go_gx.Package
 
 var (
 	var1 int32 = 5
-	size int64 = 2
+	size int   = 2
 )
 
 func TestReturnVar1(t *testing.T) {

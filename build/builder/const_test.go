@@ -50,7 +50,7 @@ type Array [cstA]float32
 						ir.Float32Type(),
 						&ir.NumberCastExpr{
 							X:   irh.Ident(cstA),
-							Typ: ir.IntLenType(),
+							Typ: ir.IntType(),
 						},
 					)),
 				},

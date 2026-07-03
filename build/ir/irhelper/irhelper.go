@@ -169,13 +169,13 @@ func FieldLit(fields *ir.FieldList, name string, val ir.Expr) *ir.FieldLit {
 
 // AxisLenName returns a new axis group given a name.
 func AxisLenName(name string) *ir.GenericNonTypeParam {
-	field := Field(name, ir.IntLenType(), nil)
+	field := Field(name, ir.IntType(), nil)
 	return ir.NewGenericNonTypeParam(field)
 }
 
 // AxisGroup returns a new axis group given a name.
 func AxisGroup(name string) *ir.GenericNonTypeParam {
-	field := Field(name, ir.IntLenSliceType(), nil)
+	field := Field(name, ir.IntSliceType(), nil)
 	return ir.NewGenericNonTypeParam(field)
 }
 
@@ -188,7 +188,7 @@ func UnpackAxes(ax any) *ir.UnpackExpr {
 				Src:  axT.NameDef(),
 				Stor: axT,
 			},
-			EltTyp: ir.IntLenType(),
+			EltTyp: ir.IntType(),
 		}
 	case *ir.Field:
 		return UnpackAxes(axT.Storage())
@@ -201,7 +201,7 @@ func Axis(ax any) ir.AxisLengths {
 	switch axisT := ax.(type) {
 	case int:
 		return &ir.AxisExpr{
-			X: IntNumberAs(int64(axisT), ir.IntLenType()),
+			X: IntNumberAs(int64(axisT), ir.IntType()),
 		}
 	case ir.AxisLengths:
 		return axisT
@@ -272,7 +272,7 @@ func IntNumberAs(val int64, typ ir.Type) ir.Expr {
 // VarSpec returns the specification for static variables.
 func VarSpec(names ...string) *ir.VarSpec {
 	spec := &ir.VarSpec{
-		TypeV: ir.IntLenType(),
+		TypeV: ir.IntType(),
 		Exprs: make([]*ir.VarExpr, len(names)),
 	}
 	for i, name := range names {
@@ -389,17 +389,17 @@ func (ts *typeParamSetter) set(ftype *ir.FuncType) *ir.FuncType {
 
 func setAxisLengthSlice(genAxis *ir.GenericNonTypeParam, vals []int) ir.GenericValue {
 	slice := &ir.SliceLitExpr{
-		Typ:  ir.IntLenSliceType(),
+		Typ:  ir.IntSliceType(),
 		Elts: make([]ir.Expr, len(vals)),
 	}
 	for i, val := range vals {
-		slice.Elts[i] = IntNumberAs(int64(val), ir.IntLenType())
+		slice.Elts[i] = IntNumberAs(int64(val), ir.IntType())
 	}
 	return ir.NewAxisGenericValue(genAxis, slice)
 }
 
 func setAxisLength(genAxis *ir.GenericNonTypeParam, val int) ir.GenericValue {
-	return ir.NewAxisGenericValue(genAxis, IntNumberAs(int64(val), ir.IntLenType()))
+	return ir.NewAxisGenericValue(genAxis, IntNumberAs(int64(val), ir.IntType()))
 }
 
 func setAxisLengthFromField(genAxis *ir.GenericNonTypeParam, val ir.Storage) ir.GenericValue {

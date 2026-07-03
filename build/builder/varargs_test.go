@@ -166,7 +166,7 @@ func f() int32 {
 		},
 		testbuild.Decl{
 			Src: `
-func g[shapes [][]intlen](a ...[unpack(varargsindex(shapes))]int32) int32
+func g[shapes [][]int](a ...[unpack(varargsindex(shapes))]int32) int32
 
 func f() int32 {
 	return g([2][3]int32{}, [4][5]int32{})
@@ -179,7 +179,7 @@ type ints interface {
 	int32 | int64
 }
 
-func g[Axis intidx, Shapes [][]intlen, DType ints](x ...[unpack(varargsindex(Shapes))]DType) DType
+func g[Axis int, Shapes [][]int, DType ints](x ...[unpack(varargsindex(Shapes))]DType) DType
 
 func f() int32 {
 	return g[0]([2][3]int32{}, [4][5]int32{})
@@ -188,9 +188,9 @@ func f() int32 {
 		},
 		testbuild.Decl{
 			Src: `
-func Concat[Lens [][]intlen](x ...[unpack(varargsindex(Lens))]float32) [unpack(Lens[0])]float32
+func Concat[Lens [][]int](x ...[unpack(varargsindex(Lens))]float32) [unpack(Lens[0])]float32
 
-func f[Size intlen](x [Size]float32) [Size]float32 {
+func f[Size int](x [Size]float32) [Size]float32 {
 	return Concat(x, [1]float32{})
 }
 `,

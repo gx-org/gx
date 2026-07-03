@@ -3,8 +3,8 @@ package dynindex01
 import "num"
 
 func TestDyanmicIndex1Axis() []int64 {
-	indices := num.IotaFull[[]intlen{3}]()
-	a := num.IotaFull[[]intlen{3}]() + 10
+	indices := num.IotaFull[[]int{3}]()
+	a := num.IotaFull[[]int{3}]() + 10
 	return []int64{
 		a[indices[0]], a[indices[1]], a[indices[2]],
 	}

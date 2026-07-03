@@ -163,10 +163,6 @@ func (v valuerT[T]) array(fitp *Interpreter, lit *ir.ArrayLitExpr) (ir.Element, 
 
 func newValuer(fitp *Interpreter, expr ir.Expr, kind irkind.Kind) (v valuer, err error) {
 	switch kind {
-	case irkind.IntIdx:
-		v = valuerT[ir.Int]{kind: kind, toAtomValue: values.AtomIntegerValue[ir.Int], toArrayValue: values.ArrayIntegerValue[ir.Int]}
-	case irkind.IntLen:
-		v = valuerT[ir.Int]{kind: kind, toAtomValue: values.AtomIntegerValue[ir.Int], toArrayValue: values.ArrayIntegerValue[ir.Int]}
 	case irkind.Bool:
 		v = valuerT[bool]{kind: kind, toAtomValue: values.AtomBoolValue, toArrayValue: values.ArrayBoolValue}
 	case irkind.Bfloat16:
@@ -175,6 +171,8 @@ func newValuer(fitp *Interpreter, expr ir.Expr, kind irkind.Kind) (v valuer, err
 		v = valuerT[float32]{kind: kind, toAtomValue: values.AtomFloatValue[float32], toArrayValue: values.ArrayFloatValue[float32]}
 	case irkind.Float64:
 		v = valuerT[float64]{kind: kind, toAtomValue: values.AtomFloatValue[float64], toArrayValue: values.ArrayFloatValue[float64]}
+	case irkind.Int:
+		v = valuerT[int]{kind: kind, toAtomValue: values.AtomIntegerValue[int], toArrayValue: values.ArrayIntegerValue[int]}
 	case irkind.Int32:
 		v = valuerT[int32]{kind: kind, toAtomValue: values.AtomIntegerValue[int32], toArrayValue: values.ArrayIntegerValue[int32]}
 	case irkind.Int64:
@@ -226,16 +224,14 @@ func evalAtomicValue(fitp *Interpreter, expr ir.AtomicValue) (engine.NumericalEl
 	kind := expr.Type().Kind()
 	exprAt := elements.NewExprAt(fitp.File(), expr)
 	switch kind {
-	case irkind.IntIdx:
-		return toAtomElementInt(fitp, exprAt, expr.(*ir.AtomicValueT[ir.Int]).Val)
-	case irkind.IntLen:
-		return toAtomElementInt(fitp, exprAt, expr.(*ir.AtomicValueT[ir.Int]).Val)
 	case irkind.Bool:
 		return toAtomElementBool(fitp, exprAt, expr.(*ir.AtomicValueT[bool]).Val)
 	case irkind.Float32:
 		return toAtomElementFloat(fitp, exprAt, expr.(*ir.AtomicValueT[float32]).Val)
 	case irkind.Float64:
 		return toAtomElementFloat(fitp, exprAt, expr.(*ir.AtomicValueT[float64]).Val)
+	case irkind.Int:
+		return toAtomElementInt(fitp, exprAt, expr.(*ir.AtomicValueT[int]).Val)
 	case irkind.Int32:
 		return toAtomElementInt(fitp, exprAt, expr.(*ir.AtomicValueT[int32]).Val)
 	case irkind.Int64:

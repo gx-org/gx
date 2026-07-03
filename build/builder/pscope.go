@@ -254,7 +254,7 @@ func (s *funcParamScope) processAxisIdent(ident *ast.Ident) (axisLengthNode, boo
 		return s.registerAxis(&defineAxisLength{
 			src:  src,
 			name: name,
-			typ:  ir.IntLenSliceType(),
+			typ:  ir.IntSliceType(),
 		})
 	}
 	if strings.HasPrefix(ident.Name, ir.DefineAxisLength) {
@@ -263,7 +263,7 @@ func (s *funcParamScope) processAxisIdent(ident *ast.Ident) (axisLengthNode, boo
 		return s.registerAxis(&defineAxisLength{
 			src:  src,
 			name: name,
-			typ:  ir.IntLenType(),
+			typ:  ir.IntType(),
 		})
 	}
 	return processExprAxisLength(s.defaultAxLenTypeScope, ident)

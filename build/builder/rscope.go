@@ -598,7 +598,7 @@ func (s *arrayResolveScope) newInferCompositeType(src *ast.CompositeLit, exprs [
 			Src: &ast.BasicLit{ValuePos: src.Pos()},
 			Val: big.NewInt(int64(numExprs)),
 		},
-		Typ: ir.IntLenType(),
+		Typ: ir.IntType(),
 	}}
 	axis := s.current.Rank().Axes()[0]
 	toInfer, _ := axis.(*ir.AxisInfer)
