@@ -104,7 +104,7 @@ func TestCallSliceArgs(t *testing.T) {
 			Src: `
 var A, B int
 
-func f[T int32]([A][B][1]float32, []int) T
+func f[T interface{int32}]([A][B][1]float32, []int) T
 
 func fail(x [A][B][1]float32) float32 {
 	return float32(f[int32](x, []int{0}))

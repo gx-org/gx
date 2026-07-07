@@ -795,6 +795,33 @@ func reverse[T floats, M []int](par [unpack(M)]T) func(res [unpack(M)]T) [unpack
 	)
 }
 
+func TestGenericNonTypeStruct(t *testing.T) {
+	testbuild.Run(t,
+		testbuild.Decl{
+			Src: `
+type sizes struct {
+	a, b int
+}
+
+func f[s sizes]() [s.a][s.b]float32
+`,
+		},
+		testbuild.Decl{
+			Src: `
+type sizes struct {
+	a, b int
+}
+
+func f[s sizes]() [s.a][s.b]float32
+
+func g() [2][3]float32 {
+	return f[sizes{a:2, b:3}]()
+}
+`,
+		},
+	)
+}
+
 func TestGenericErrors(t *testing.T) {
 	testbuild.Run(t,
 		testbuild.Decl{
@@ -835,7 +862,6 @@ func f[T interface{ float32 | float64 }]() T {
 			Src: `
 func f[T AgeOfTheCaptain](shape []int) [unpack(shape)]T // ERROR undefined: AgeOfTheCaptain
 `,
-			Err: "array of T not supported",
 		},
 		testbuild.Decl{
 			Src: `

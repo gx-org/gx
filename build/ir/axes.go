@@ -17,8 +17,6 @@ package ir
 import (
 	"fmt"
 	"go/ast"
-
-	"github.com/gx-org/gx/build/ir/irkind"
 )
 
 type (
@@ -231,20 +229,4 @@ func (dm *AxisInfer) SourceString(from *File) string {
 		return "[_]"
 	}
 	return fmt.Sprintf("[%s]", dm.axExprString(from))
-}
-
-// IsAxisSpecType returns true if the type is about an axis,
-// that is int, int, and slices of these types.
-func IsAxisSpecType(tp Type) bool {
-	switch tp.Kind() {
-	case irkind.Int:
-		return true
-	case irkind.Slice:
-		slice, isSlice := Underlying(tp).(*SliceType)
-		if !isSlice {
-			return false
-		}
-		return IsAxisSpecType(slice.DType.Val())
-	}
-	return false
 }
