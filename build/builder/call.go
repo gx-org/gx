@@ -395,11 +395,7 @@ func buildFuncForCall(rscope resolveScope, fExpr *ir.FuncValExpr, args []ir.Expr
 		for i, field := range typeParams {
 			names[i] = field.Name.Name
 		}
-		parameter := "parameter"
-		if len(names) > 1 {
-			parameter = "parameters"
-		}
-		return args, fExpr, rscope.Err().Appendf(fExpr.Node(), "cannot infer type %s %s", parameter, strings.Join(names, ","))
+		return args, fExpr, rscope.Err().Appendf(fExpr.Node(), "in call to %s, cannot infer type %s", fExpr.Func().ShortString(), strings.Join(names, ","))
 	}
 	fTypeInst, instOk := instantiateFType(compEval, fExpr.Expr(), fExpr.Func().File(), fExpr.FuncType())
 	fExprInst := fExpr.NewFType(fTypeInst)
