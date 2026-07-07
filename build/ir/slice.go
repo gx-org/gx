@@ -91,3 +91,10 @@ func (s *SliceExpr) SourceString(from *File) string {
 	}
 	return fmt.Sprintf("%s[%s:%s]", s.X.SourceString(from), low, high)
 }
+
+// Store returns a storage for the expression.
+func (s *SliceExpr) Store() Storage {
+	return &AnonymousStorage{
+		Typ: s.Type(),
+	}
+}

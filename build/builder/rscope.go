@@ -337,7 +337,7 @@ func compEvalForFuncType(rscope resolveScope, src ast.Node, ftype *ir.FuncType) 
 			continue
 		}
 		storage := field.Storage()
-		el, err := cpevelements.NewRuntimeValue(irFile, storage)
+		el, err := cpevelements.NewRuntimeValue(irFile, ir.NewIdent(storage))
 		if err != nil {
 			return nil, rscope.Err().AppendAt(src, err)
 		}

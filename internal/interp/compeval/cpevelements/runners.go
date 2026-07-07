@@ -15,8 +15,6 @@
 package cpevelements
 
 import (
-	"go/ast"
-
 	"github.com/gx-org/gx/build/ir"
 	"github.com/gx-org/gx/interp/context"
 	"github.com/gx-org/gx/interp/engine"
@@ -39,10 +37,7 @@ func proxyCall(file *ir.File, ftype *ir.FuncType) ([]ir.Element, error) {
 	els := make([]ir.Element, len(res))
 	for i, ri := range res {
 		var err error
-		els[i], err = NewRuntimeValue(file, &ir.LocalVarStorage{
-			Src: &ast.Ident{},
-			Typ: ri.Type(),
-		})
+		els[i], err = NewRuntimeValue(file, ir.NewIdent(ri.Type()))
 		if err != nil {
 			return nil, err
 		}

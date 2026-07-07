@@ -108,9 +108,7 @@ func buildProxyArguments(file *ir.File, args []*ir.Field) ([]ir.Element, error) 
 	els := make([]ir.Element, len(args))
 	for i, arg := range args {
 		var err error
-		els[i], err = cpevelements.NewRuntimeValue(file, &ir.FieldStorage{
-			Field: arg,
-		})
+		els[i], err = cpevelements.NewRuntimeValue(file, ir.NewIdent(arg.Storage()))
 		if err != nil {
 			return nil, err
 		}

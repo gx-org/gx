@@ -94,10 +94,7 @@ func (a *proxy) Select(expr *ir.SelectorExpr) (ir.Element, error) {
 	if method == nil && field == nil {
 		return nil, errors.Errorf("%s is an invalid member", expr.SourceString(nil))
 	}
-	if field != nil {
-		return NewRuntimeValue(a.src.File(), field.Storage())
-	}
-	return NewRuntimeValue(a.src.File(), method)
+	return NewRuntimeValue(a.src.File(), expr)
 }
 
 // Store returns the storage represented by this variable.
@@ -122,13 +119,11 @@ func (a *proxy) Axes(ev ir.Evaluator) (*elements.Slice, error) {
 
 // SliceAt computes a slice from the variable.
 func (a *proxy) SliceAt(expr *ir.IndexExpr, index engine.NumericalElement) (ir.Element, error) {
-	store := &ir.LocalVarStorage{Src: &ast.Ident{}, Typ: expr.Type()}
-	return NewRuntimeValue(a.src.File(), store)
+	return NewRuntimeValue(a.src.File(), expr)
 }
 
 func (a *proxy) Slice(expr *ir.SliceExpr, low, high engine.NumericalElement) (ir.Element, error) {
-	store := &ir.LocalVarStorage{Src: &ast.Ident{}, Typ: expr.Type()}
-	return NewRuntimeValue(a.src.File(), store)
+	return NewRuntimeValue(a.src.File(), expr)
 }
 
 // Compare to another element.

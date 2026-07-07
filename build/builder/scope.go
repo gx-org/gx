@@ -46,21 +46,21 @@ func defineGlobal(s *scope.RWScope[processNode], tok token.Token, name *ast.Iden
 	s.Define(name.Name, newProcessNode(tok, name, node))
 }
 
-func elementFromStorage(scope resolveScope, node ir.Storage) (ir.Element, bool) {
-	el, err := cpevelements.NewRuntimeValue(scope.fileScope().irFile(), node)
+func elementFromStorage(scope resolveScope, store ir.Storage) (ir.Element, bool) {
+	el, err := cpevelements.NewRuntimeValue(scope.fileScope().irFile(), ir.NewIdent(store))
 	if err != nil {
 		return el, scope.Err().Append(err)
 	}
 	return el, true
 }
 
-func elementFromStorageWithValue(scope resolveScope, node ir.StorageWithValue) (ir.Element, bool) {
-	value := node.Value(&ir.Ident{
-		Src:  node.NameDef(),
-		Stor: node,
+func elementFromStorageWithValue(scope resolveScope, store ir.StorageWithValue) (ir.Element, bool) {
+	value := store.Value(&ir.Ident{
+		Src:  store.NameDef(),
+		Stor: store,
 	})
 	if ir.IsInvalidType(value.Type()) {
-		return elementFromStorage(scope, node)
+		return elementFromStorage(scope, store)
 	}
 	ev, ok := scope.compEval()
 	if !ok {
@@ -68,9 +68,9 @@ func elementFromStorageWithValue(scope resolveScope, node ir.StorageWithValue) (
 	}
 	el, err := ev.fitp.EvalExpr(value)
 	if err != nil {
-		return nil, ev.Err().AppendAt(node.Node(), err)
+		return nil, ev.Err().AppendAt(store.Node(), err)
 	}
-	return cpevelements.NewStoredValue(ev.File(), node, el), true
+	return cpevelements.NewStoredValue(ev.File(), store, el), true
 }
 
 func defineLocalVar(scope resolveScope, storage ir.Storage) bool {

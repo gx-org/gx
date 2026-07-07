@@ -51,10 +51,10 @@ func (f *proxyFunction) Call(env *fun.CallEnv, call *ir.FuncCallExpr, args []ir.
 	els := make([]ir.Element, len(res))
 	for i, ri := range res {
 		var err error
-		els[i], err = NewRuntimeValue(env.File(), &ir.LocalVarStorage{
+		els[i], err = NewRuntimeValue(env.File(), ir.NewIdent(&ir.LocalVarStorage{
 			Src: &ast.Ident{},
 			Typ: ri.Type(),
-		})
+		}))
 		if err != nil {
 			return nil, err
 		}
