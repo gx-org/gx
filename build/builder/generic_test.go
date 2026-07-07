@@ -833,7 +833,7 @@ func f[T interface{ float32 | float64 }]() T {
 		},
 		testbuild.Decl{
 			Src: `
-func f[T AgeOfTheCaptain](shape []int) [unshape(shape)]T // ERROR undefined: AgeOfTheCaptain
+func f[T AgeOfTheCaptain](shape []int) [unpack(shape)]T // ERROR undefined: AgeOfTheCaptain
 `,
 			Err: "array of T not supported",
 		},
