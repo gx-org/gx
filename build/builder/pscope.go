@@ -19,7 +19,6 @@ import (
 	"go/ast"
 	"go/token"
 	"reflect"
-	"strings"
 
 	"github.com/pkg/errors"
 	"github.com/gx-org/gx/build/builder/irb"
@@ -210,24 +209,11 @@ func (s *defaultAxLenTypeScope) processIdentExpr(ident *ast.Ident) (exprNode, bo
 	if !checkValueTypeIdent(s, ident) {
 		return nil, false
 	}
-	if strings.HasPrefix(ident.Name, ir.DefineAxisGroup) {
-		name := strings.TrimPrefix(ident.Name, ir.DefineAxisGroup)
-		return nil, s.Err().Appendf(ident, "shape %s using %s can only be defined in function parameters", name, ident.Name)
-	}
-	if strings.HasPrefix(ident.Name, "_") {
-		return nil, s.Err().Appendf(ident, "axis length %s can only be defined in function parameters", ident.Name)
-	}
-	if strings.HasSuffix(ident.Name, ir.DefineAxisGroup) {
-		grpIdent := *ident
-		grpIdent.Name = strings.TrimSuffix(grpIdent.Name, ir.DefineAxisGroup)
-		return processIdent(s, &grpIdent)
-	}
 	return processIdent(s, ident)
 }
 
 // funcParamScope is a process scope used inside all axis length expressions
 // in the parameters section of a function signature.
-// It returns axis length name definition when _ and ___ prefixes identifiers.
 // Also checks that names are not defined twice.
 type funcParamScope struct {
 	*defaultAxLenTypeScope
@@ -247,24 +233,6 @@ func (s *funcParamScope) registerAxis(axis *defineAxisLength) (*defineAxisLength
 func (s *funcParamScope) processAxisIdent(ident *ast.Ident) (axisLengthNode, bool) {
 	if !checkValueTypeIdent(s, ident) {
 		return nil, false
-	}
-	if strings.HasPrefix(ident.Name, ir.DefineAxisGroup) {
-		name := strings.TrimPrefix(ident.Name, ir.DefineAxisGroup)
-		src := &ast.Ident{NamePos: ident.NamePos, Name: name}
-		return s.registerAxis(&defineAxisLength{
-			src:  src,
-			name: name,
-			typ:  ir.IntSliceType(),
-		})
-	}
-	if strings.HasPrefix(ident.Name, ir.DefineAxisLength) {
-		name := strings.TrimPrefix(ident.Name, ir.DefineAxisLength)
-		src := &ast.Ident{NamePos: ident.NamePos, Name: name}
-		return s.registerAxis(&defineAxisLength{
-			src:  src,
-			name: name,
-			typ:  ir.IntType(),
-		})
 	}
 	return processExprAxisLength(s.defaultAxLenTypeScope, ident)
 }

@@ -115,7 +115,7 @@ func CheckBroadcast(s1, s2 []int) ([]int, error) {
 func Broadcast[Dst []int, Src []int](x [unpack(Src)]int32) [unpack(CheckBroadcast(Src, Dst))]int32
 
 
-func OneHot[numClasses int](x [_axlen]int32) [axlen][numClasses]int32 {
+func OneHot[numClasses, axlen int](x [axlen]int32) [axlen][numClasses]int32 {
 	ax := []int{axlen, numClasses}
 	xx := Broadcast[ax](([axlen][1]int32)(x))
 	return xx
@@ -523,7 +523,7 @@ func add(a, b int) int {
 	return a+b
 }
 
-func F([_a]int32, [_b]int32) [add(a, b)+c]int32
+func F[a, b int]([a]int32, [b]int32) [add(a, b)+c]int32
 `,
 		},
 		testbuild.Decl{

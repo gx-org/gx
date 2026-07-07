@@ -124,7 +124,7 @@ func TestFunctionWithReceiverOnStruct() myfloat {
 	// myfloat(5)
 }
 
-func add(a, b [_ax0][_ax1]float32) [ax0][ax1]float32 {
+func add[ax0, ax1 int](a, b [ax0][ax1]float32) [ax0][ax1]float32 {
 	return a + b
 }
 

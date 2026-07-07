@@ -36,9 +36,6 @@ func processAxisLengthExpr(axScope procAxLenScope, array *ast.ArrayType) (axis a
 	case *ast.Ellipsis:
 		return nil, true
 	case *ast.Ident:
-		if lenT.Name == ir.DefineAxisGroup {
-			return nil, true
-		}
 		return axScope.processAxisExpr(lenT)
 	case ast.Expr:
 		return axScope.processAxisExpr(lenT)

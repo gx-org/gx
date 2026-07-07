@@ -72,8 +72,8 @@ func (rnd Rand) Float64MinMax[Dims []int](min, max float64) (Rand, [unpack(Dims)
 	// Emulate JAX: The strategy here is to randomize only the mantissa bits with an exponent of
 	// 1 (after applying the bias), then shift and scale to the desired range.
 	rnd, bits := rnd.Uint64[Dims]()
-	float_bits := (bits >> uint64(nbits-nmant)) | dtype.Reinterpret[uint64, float64](float64(1.0))
-	floats := dtype.Reinterpret[float64, uint64](float_bits) - 1.0
+	floatBits := (bits >> uint64(nbits-nmant)) | dtype.Reinterpret[uint64, float64](float64(1.0))
+	floats := dtype.Reinterpret[float64, uint64](floatBits) - 1.0
 	return rnd, math.Max(floats*(max-min)+min, min)
 }
 
@@ -90,8 +90,8 @@ func (rnd Rand) Float32MinMax[Dims []int](min, max float32) (Rand, [unpack(Dims)
 	// Emulate JAX: The strategy here is to randomize only the mantissa bits with an exponent of
 	// 1 (after applying the bias), then shift and scale to the desired range.
 	rnd, bits := rnd.Uint32[Dims]()
-	float_bits := (bits >> uint32(nbits-nmant)) | dtype.Reinterpret[uint32, float32](float32(1.0))
-	floats := dtype.Reinterpret[float32, uint32](float_bits) - 1.0
+	floatBits := (bits >> uint32(nbits-nmant)) | dtype.Reinterpret[uint32, float32](float32(1.0))
+	floats := dtype.Reinterpret[float32, uint32](floatBits) - 1.0
 	return rnd, math.Max(floats*(max-min)+min, min)
 }
 
@@ -109,7 +109,7 @@ func Gumbel[Shape []int, T dtype.Floats](rnd Rand) (Rand, [unpack(Shape)]T) {
 }
 
 // Categorical returns pseudo-random values from a categorical distribution as an array of int64.
-func Categorical[T dtype.Floats](rnd Rand, probs [_Size][_NumClasses]T) (Rand, [Size]int) {
+func Categorical[T dtype.Floats, Size, NumClasses int](rnd Rand, probs [Size][NumClasses]T) (Rand, [Size]int) {
 	rnd, samples := Gumbel[[]int{Size, NumClasses}][T](rnd)
 	biasedSamples := samples + math.Log(probs)
 	return rnd, num.ArgMax[1](biasedSamples)

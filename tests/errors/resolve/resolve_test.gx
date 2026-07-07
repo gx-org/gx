@@ -368,7 +368,7 @@ func shiftNamedType() myfloat {
 	return a >> 1 // ERROR operator >> not defined on myfloat
 }
 
-func identity(a [___X]int32) [X___]int32 {
+func identity[X []int](a [unpack(X)]int32) [unpack(X)]int32 {
 	return a
 }
 
@@ -393,15 +393,15 @@ func invalidReturnShape3() [5]int32 {
 	return [X]int32{} // ERROR undefined: X
 }
 
-func invalidReturnShape5(a [___X]int32) int32 {
-	return a // ERROR cannot use [___X]int32 as int32 value in return statement
+func invalidReturnShape5[X []int](a [unpack(X)]int32) int32 {
+	return a // ERROR cannot use [unpack(X)]int32 as int32 value in return statement
 }
 
-func repeatedShapeParameters(a, b [___X]int32) int32 {
+func repeatedShapeParameters[X []int](a, b [unpack(X)]int32) int32 {
 	return 0
 }
 
-func repeatedShapeParameters2(a [___X]int32, b [X___]int32) int32 {
+func repeatedShapeParameters2[X []int](a [unpack(X)]int32, b [unpack(X)]int32) int32 {
 	return 0
 }
 

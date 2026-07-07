@@ -5,7 +5,7 @@ import (
 	"num"
 )
 
-func traceGenericShapes[T dtype.Num](a [_A][_B]T, b [___S]T) [A][B]int64 {
+func traceGenericShapes[T dtype.Num, A, B int, S []int](a [A][B]T, b [unpack(S)]T) [A][B]int64 {
 	trace(A)
 	trace(B)
 	trace(S)

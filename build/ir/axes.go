@@ -21,13 +21,6 @@ import (
 	"github.com/gx-org/gx/build/ir/irkind"
 )
 
-const (
-	// DefineAxisGroup is the prefix used in parameters to define an axis group.
-	DefineAxisGroup = "___"
-	// DefineAxisLength is the prefix used in parameters to define an axis length.
-	DefineAxisLength = "_"
-)
-
 type (
 	// AxisLengths specification of an array.
 	AxisLengths interface {
