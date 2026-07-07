@@ -65,7 +65,7 @@ func TestBuiltin(t *testing.T) {
 			},
 		},
 		testbuild.Decl{
-			Src: `func returnTwo(x int32) x // ERROR x undefined`,
+			Src: `func returnTwo(x int32) x // ERROR x not a type`,
 		},
 	)
 }

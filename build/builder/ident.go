@@ -18,6 +18,7 @@ import (
 	"go/ast"
 
 	"github.com/gx-org/gx/build/ir"
+	"github.com/gx-org/gx/build/ir/irkind"
 )
 
 // ident is a reference to a value by an identifier.
@@ -55,8 +56,11 @@ func (n *ident) buildTypeExpr(rscope resolveScope) (*ir.TypeValExpr, bool) {
 	if !ok {
 		return invalidTypeExprVal, false
 	}
+	if idt.Type().Kind() == irkind.Invalid {
+		return invalidTypeExprVal, false
+	}
 	if _, ok = idt.Stor.(ir.StorageWithValue); !ok {
-		return invalidTypeExprVal, rscope.Err().Appendf(n.source(), "%s undefined", n.src.Name)
+		return invalidTypeExprVal, rscope.Err().Appendf(n.source(), "%s not a type", n.src.Name)
 	}
 	typExpr := ir.TypeFromStorage(idt, idt.Stor)
 	if typExpr == nil {
