@@ -25,6 +25,7 @@ import (
 	"github.com/gx-org/backend/shape"
 	"github.com/gx-org/gx/api/values"
 	"github.com/gx-org/gx/build/ir"
+	"github.com/gx-org/gx/internal/base/cast"
 	"github.com/gx-org/gx/internal/interp/flatten"
 	"github.com/gx-org/gx/internal/tracer/processor"
 	"github.com/gx-org/gx/interp/elements"
@@ -122,7 +123,11 @@ func (vis *inputVisitor) newArg(parent parentArgument, typ ir.Type, proxy ir.Ele
 	case *ir.SliceType:
 		return vis.newSliceArgument(parent, typT, proxy)
 	case ir.ArrayType:
-		return vis.newArrayArgument(parent, typT, proxy)
+		withShape, err := cast.To[elements.FixedShape](proxy)
+		if err != nil {
+			return nil, err
+		}
+		return vis.newArrayArgument(parent, typT, withShape.Shape())
 	default:
 		return nil, errors.Errorf("argument type %T not supported", typT)
 	}
@@ -339,9 +344,9 @@ var (
 )
 
 // NewArrayArgument creates a new argument element that the graph can also use as an argument.
-func (ev *Evaluator) NewArrayArgument(file *ir.File, parent parentArgument, typ ir.ArrayType, proxy ir.Element) (elements.ElementWithArrayFromContext, error) {
+func (ev *Evaluator) NewArrayArgument(file *ir.File, parent parentArgument, typ ir.ArrayType, sh *shape.Shape) (elements.ElementWithArrayFromContext, error) {
 	vis := &inputVisitor{file: file, ev: ev}
-	return vis.newArrayArgument(parent, typ, proxy)
+	return vis.newArrayArgument(parent, typ, sh)
 }
 
 func (n *arrayArgument) out() ops.Node {
@@ -349,15 +354,11 @@ func (n *arrayArgument) out() ops.Node {
 }
 
 // NewArrayArgument creates a new argument element that the graph can also use as an argument.
-func (vis *inputVisitor) newArrayArgument(parent parentArgument, typ ir.ArrayType, proxy ir.Element) (elements.ElementWithArrayFromContext, error) {
-	fixed, ok := proxy.(elements.FixedShape)
-	if !ok {
-		return nil, errors.Errorf("%T does not support %s", proxy, reflect.TypeFor[elements.FixedShape]().Name())
-	}
+func (vis *inputVisitor) newArrayArgument(parent parentArgument, typ ir.ArrayType, sh *shape.Shape) (elements.ElementWithArrayFromContext, error) {
 	n := &arrayArgument{
 		parentArgument: parent,
 		typ:            typ,
-		shape:          fixed.Shape(),
+		shape:          sh,
 		file:           vis.file,
 	}
 	n.graphCallIndex = vis.ev.process.RegisterArg(n)
