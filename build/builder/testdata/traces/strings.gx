@@ -1,0 +1,14 @@
+package strings
+
+func TestString() string {
+	a := "Hello world"
+	trace(a)
+	return a
+	// Want:
+	// Hello world
+	// Trace:
+	// strings.gx:0
+	// 	Hello world
+
+}
+
