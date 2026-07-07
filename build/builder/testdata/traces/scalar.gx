@@ -1,0 +1,16 @@
+package scalar
+
+func TestTraceScalar() int64 {
+	a := 2
+	trace(a)
+	a = a + 1
+	trace(a)
+	return a
+	// Want:
+	// int64(3)
+	// Trace:
+	// scalar.gx:0
+	// 	int64(2)
+	// scalar.gx:1
+	// 	int64(3)
+}

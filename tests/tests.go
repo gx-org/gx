@@ -65,7 +65,6 @@ var LanguageCore = []string{
 // Language is a set of paths testing the GX language.
 var Language = appendAll(LanguageCore, []string{
 	"testfiles/einsum",
-	"testfiles/trace",
 })
 
 // Stdlib is a set of path testing the standard library or where a standard library implementation is required.
