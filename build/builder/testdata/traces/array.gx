@@ -1,0 +1,16 @@
+package array
+
+func TestTrace() [2]float64 {
+	a := [2]float64{} + 2
+	trace(a)
+	a = a + 1
+	trace(a)
+	return a
+	// Want:
+	// [2]float64{3, 3}
+	// Trace:
+	// array.gx:0
+	// 	[2]float64{2, 2}
+	// array.gx:1
+	// 	[2]float64{3, 3}
+}
