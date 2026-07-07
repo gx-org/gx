@@ -36,6 +36,7 @@ type NamedType struct {
 
 var (
 	_ ir.StorageElement = (*NamedType)(nil)
+	_ ir.WithExpr       = (*NamedType)(nil)
 	_ elements.Selector = (*NamedType)(nil)
 	_ elements.NType    = (*NamedType)(nil)
 	_ engine.Copier     = (*NamedType)(nil)
@@ -112,6 +113,16 @@ func (n *NamedType) Type() ir.Type {
 // Store returns the storage owning the type definition.
 func (n *NamedType) Store() ir.Storage {
 	return n.typ
+}
+
+// Expr returns an expression representing the named expression.
+func (n *NamedType) Expr(ev ir.Evaluator, src ast.Expr) ([]ir.Expr, error) {
+	switch underT := n.under.(type) {
+	case *elements.Struct:
+		return underT.ExprWithName(ev, src, n.typ)
+	default:
+		return ir.ToExpr(ev, src, n.under)
+	}
 }
 
 // String returns a string representation of the node.

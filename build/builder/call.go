@@ -337,7 +337,7 @@ func evalGenericValues(ce *compileEvaluator, ftype *ir.FuncType) (map[string]ir.
 		file := ce.File()
 		storage := tParam.Storage()
 		var el ir.Element
-		if ir.IsAxisSpecType(tParam.Type()) {
+		if ir.IsNonTypeGeneric(tParam.Type()) {
 			storeAt := elements.NewNodeAt[ir.Storage](file, storage)
 			el = cpevelements.NewProxy(storeAt)
 		} else {

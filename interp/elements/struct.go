@@ -16,6 +16,7 @@ package elements
 
 import (
 	"fmt"
+	"go/ast"
 	"strings"
 
 	"github.com/pkg/errors"
@@ -92,6 +93,27 @@ func (n *Struct) Select(expr *ir.SelectorExpr) (ir.Element, error) {
 // Type of the element.
 func (n *Struct) Type() ir.Type {
 	return n.typ
+}
+
+// ExprWithName returns a structure literal.
+func (n *Struct) ExprWithName(ev ir.Evaluator, src ast.Expr, tp ir.Type) ([]ir.Expr, error) {
+	fields := n.typ.Fields.Fields()
+	lit := &ir.StructLitExpr{Typ: tp}
+	for _, field := range fields {
+		fieldVal, has := n.fields[field.Name.Name]
+		if !has {
+			continue
+		}
+		x, err := ir.ToSingleExpr(ev, src, fieldVal)
+		if err != nil {
+			return nil, err
+		}
+		lit.Elts = append(lit.Elts, &ir.FieldLit{
+			FieldStorage: field.Storage(),
+			X:            x,
+		})
+	}
+	return []ir.Expr{lit}, nil
 }
 
 // Copy the structure to a new node.

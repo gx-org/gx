@@ -123,7 +123,7 @@ func rankInferOk(rscope resolveScope, src ast.Node, typ ir.Type) bool {
 func defineTypeParam(s resolveScope, storage ir.Storage) bool {
 	fieldStorage := storage.(*ir.FieldStorage)
 	var generic ir.GenericParam
-	if ir.IsAxisSpecType(fieldStorage.Type()) {
+	if ir.IsNonTypeGeneric(fieldStorage.Type()) {
 		generic = ir.NewGenericNonTypeParam(fieldStorage.Field)
 	} else {
 		generic = ir.NewGenericTypeParam(fieldStorage.Field)

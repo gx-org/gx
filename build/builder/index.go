@@ -95,7 +95,7 @@ func buildGenericParams(tparams []*ir.Field, num int) []ir.GenericParam {
 	genFields := make([]ir.GenericParam, num)
 	for i := range num {
 		tparamField := tparams[i]
-		if ir.IsAxisSpecType(tparamField.Type()) {
+		if ir.IsNonTypeGeneric(tparamField.Type()) {
 			genFields[i] = ir.NewGenericNonTypeParam(tparamField)
 		} else {
 			genFields[i] = ir.NewGenericTypeParam(tparamField)

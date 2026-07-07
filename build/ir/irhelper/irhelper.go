@@ -372,7 +372,7 @@ func (ts *typeParamSetter) set(ftype *ir.FuncType) *ir.FuncType {
 	}
 	genVals := make([]ir.GenericValue, ftype.Origin().TypeParams.Len())
 	for i, field := range fields {
-		if ir.IsAxisSpecType(field.Type()) {
+		if ir.IsNonTypeGeneric(field.Type()) {
 			genVals[i] = setNonTypeParam(field, ts.vals[i])
 		} else {
 			genVals[i] = ir.NewTypeGenericValue(

@@ -430,3 +430,8 @@ func unifyExpr(uni Unifier, targets []AxisLengths, x Expr) ([]AxisLengths, bool)
 	}
 	return xUni.UnifyWith(uni, targets)
 }
+
+// IsNonTypeGeneric returns true if the type is a non-type generic.
+func IsNonTypeGeneric(tp Type) bool {
+	return tp.Kind() != irkind.Interface
+}
