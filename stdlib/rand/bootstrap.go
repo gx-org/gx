@@ -18,12 +18,13 @@ import (
 	"math/rand"
 
 	"github.com/pkg/errors"
+	"github.com/gx-org/backend/dtypes"
+	"github.com/gx-org/backend/shape"
 	"github.com/gx-org/gx/api/values"
 	"github.com/gx-org/gx/build/ir"
 	"github.com/gx-org/gx/build/ir/irkind"
 	"github.com/gx-org/gx/golang/backend/kernels"
 	"github.com/gx-org/gx/golang/binder/gobindings/types"
-	"github.com/gx-org/gx/internal/interp/compeval/cpevelements"
 	"github.com/gx-org/gx/interp/elements"
 	"github.com/gx-org/gx/interp/engine"
 	"github.com/gx-org/gx/interp/fun"
@@ -82,20 +83,24 @@ type randBootstrapArg struct {
 	proxy ir.Element
 }
 
-var seedType = ir.Uint64Type()
+var (
+	seedType  = ir.Uint64Type()
+	seedShape = &shape.Shape{
+		DType: dtypes.Uint64,
+	}
+)
 
 func newRandBootstrapArg(env engine.Env, rb *randBootstrap, seed elements.ElementWithArrayFromContext) (*randBootstrapArg, error) {
 	argFactory := &randBootstrapArg{
-		rb:    rb,
-		seed:  seed,
-		proxy: cpevelements.NewArray(seedType),
+		rb:   rb,
+		seed: seed,
 	}
 	env.Engine().Processor().RegisterInit(argFactory)
 	return argFactory, nil
 }
 
 func (arg *randBootstrapArg) next(env engine.Env) (engine.NumericalElement, error) {
-	return arg.rb.eval.NewArrayArgument(env.File(), arg, seedType, arg.proxy)
+	return arg.rb.eval.NewArrayArgument(env.File(), arg, seedType, seedShape)
 }
 
 func (arg *randBootstrapArg) Init(ctx *values.FuncInputs) error {
