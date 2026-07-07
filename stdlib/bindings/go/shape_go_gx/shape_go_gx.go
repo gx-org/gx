@@ -265,7 +265,7 @@ type Shape struct {
 	value  *values.NamedType
 
 	DType      *DType
-	Dimensions *types.Slice[types.Atom[ir.Int]]
+	Dimensions *types.Slice[types.Atom[int]]
 }
 
 var (
@@ -307,7 +307,7 @@ func (fty *Factory) MarshalShape(val values.Value) (s *Shape, err error) {
 		err = fmt.Errorf("cannot use value %T to set []<no value>: not a slice", fields[1])
 		return
 	}
-	field1Elements := make([]types.Atom[ir.Int], field1Slice.Len())
+	field1Elements := make([]types.Atom[int], field1Slice.Len())
 	for i := 0; i < field1Slice.Len(); i++ {
 		field1HandleI := field1Slice.Element(i)
 
@@ -316,11 +316,11 @@ func (fty *Factory) MarshalShape(val values.Value) (s *Shape, err error) {
 			err = errors.Errorf("cannot cast %T to %s", field1HandleI, reflect.TypeFor[*values.DeviceArray]().Name())
 			return
 		}
-		field1ElmtI := types.NewAtom[ir.Int](field1ElmtIValue)
+		field1ElmtI := types.NewAtom[int](field1ElmtIValue)
 
 		field1Elements[i] = field1ElmtI
 	}
-	field1, err := types.NewSlice[types.Atom[ir.Int]](
+	field1, err := types.NewSlice[types.Atom[int]](
 		field1Slice.SliceType(),
 		field1Elements,
 	)
@@ -367,7 +367,7 @@ func (h *handleShape) NewFromField(field *ir.Field) (types.Bridge, error) {
 	case "DType":
 		return h.pkg.handle.Factory.NewDType().Bridge(), nil
 	case "Dimensions":
-		slice, err := types.NewEmptySlice[types.Atom[ir.Int]](field.Type(), nil)
+		slice, err := types.NewEmptySlice[types.Atom[int]](field.Type(), nil)
 		if err != nil {
 			return nil, err
 		}
@@ -400,9 +400,9 @@ func (h *handleShape) SetField(field *ir.Field, val types.Bridge) error {
 
 	case "Dimensions":
 		bridger := val.Bridger()
-		fieldValue, ok := bridger.(*types.Slice[types.Atom[ir.Int]])
+		fieldValue, ok := bridger.(*types.Slice[types.Atom[int]])
 		if !ok {
-			return errors.Errorf("cannot set field Dimensions: cannot cast %T to *types.Slice[types.Atom[ir.Int]]", bridger)
+			return errors.Errorf("cannot set field Dimensions: cannot cast %T to *types.Slice[types.Atom[int]]", bridger)
 		}
 		h.owner.Dimensions = fieldValue
 		structVal.SetField("Dimensions", val.GXValue())
