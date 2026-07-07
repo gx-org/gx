@@ -1945,6 +1945,12 @@ type (
 		Type() Type
 	}
 
+	// ExprToStorage is an expression pointing to a storage.
+	ExprToStorage interface {
+		Expr
+		WithStore
+	}
+
 	// StringLiteral is a string defined by a literal.
 	StringLiteral struct {
 		Src *ast.BasicLit
@@ -2642,6 +2648,14 @@ func (s *TypeAssertExpr) SourceString(from *File) string {
 
 func (s *Ident) node() {}
 
+// NewIdent returns a new ident pointing to a given storage.
+func NewIdent(s Storage) *Ident {
+	return &Ident{
+		Src:  s.NameDef(),
+		Stor: s,
+	}
+}
+
 // Node returns the node in the AST tree.
 func (s *Ident) Node() ast.Node { return s.Src }
 
@@ -2780,6 +2794,13 @@ func (s *IndexExpr) Type() Type { return s.Typ }
 
 // Expr returns the AST expression.
 func (s *IndexExpr) Expr() ast.Expr { return s.Src }
+
+// Store returns a storage for the expression.
+func (s *IndexExpr) Store() Storage {
+	return &AnonymousStorage{
+		Typ: s.Typ,
+	}
+}
 
 // SourceString returns the GX source code of the expression.
 func (s *IndexExpr) SourceString(from *File) string {

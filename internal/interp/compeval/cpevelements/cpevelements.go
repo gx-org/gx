@@ -37,7 +37,8 @@ func toElement(x engine.NumericalElement) (coreops.Element, error) {
 }
 
 // NewRuntimeValue creates a new runtime value given an expression in a file.
-func NewRuntimeValue(file *ir.File, store ir.Storage) (ir.Element, error) {
+func NewRuntimeValue(file *ir.File, expr ir.ExprToStorage) (ir.Element, error) {
+	store := expr.Store()
 	typ, ok := store.(ir.Type)
 	if !ok { // Check if storage is a type itself.
 		// If not, then get the type from the storage.
@@ -57,14 +58,18 @@ func NewRuntimeValue(file *ir.File, store ir.Storage) (ir.Element, error) {
 				continue
 			}
 			var err error
-			fields[field.Name.Name], err = NewRuntimeValue(file, field.Storage())
+			sel := &ir.SelectorExpr{
+				X:    expr,
+				Stor: field.Storage(),
+			}
+			fields[field.Name.Name], err = NewRuntimeValue(file, sel)
 			if err != nil {
 				return nil, err
 			}
 		}
 		return elements.NewStruct(typT, fields), nil
 	case *ir.NamedType:
-		under, err := NewRuntimeValue(file, typT.Underlying.Val())
+		under, err := NewRuntimeValue(file, typT.Underlying)
 		if err != nil {
 			return nil, err
 		}
