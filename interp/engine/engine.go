@@ -92,7 +92,7 @@ type (
 		Concat(ctx ir.Evaluator, expr ir.Expr, xs []NumericalElement) (NumericalElement, error)
 
 		// Set a slice in an array.
-		Set(ctx ir.Evaluator, expr *ir.FuncCallExpr, x, updates, index ir.Element) (ir.Element, error)
+		Set(ctx ir.Evaluator, expr *ir.FuncCallExpr, x, updates ir.Element, position []ir.Element) (ir.Element, error)
 
 		// ElementFromAtom returns an element from an atomic GX value.
 		ElementFromAtom(ctx *ir.File, val values.Array, expr ir.Expr, typ ir.Type) (NumericalElement, error)

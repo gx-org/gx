@@ -1,0 +1,9 @@
+package set01
+
+func TestSet() [3]float32 {
+	x := [3]float32{1, 5, 3}
+	x = set(x, float32(42), 1)
+	return x
+	// Want:
+	// [3]float32{1, 42, 3}
+}

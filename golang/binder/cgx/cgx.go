@@ -491,7 +491,7 @@ func cgx_function_run(cgxFunction C.cgx_function, cgxReceiver C.cgx_value, argCo
 	if err != nil {
 		return C.struct_cgx_function_run_result{error: (C.cgx_error)(wrap[error](err))}
 	}
-	results, err := runner.Run(recvValue, argValues, nil)
+	results, err := runner.Run(recvValue, argValues, function.Tracer())
 	if err != nil {
 		return C.struct_cgx_function_run_result{error: (C.cgx_error)(wrap[error](err))}
 	}

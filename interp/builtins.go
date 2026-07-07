@@ -196,7 +196,7 @@ func lenImpl(env engine.Env, call *ir.FuncCallExpr, recv ir.Element, args []ir.E
 }
 
 func setImpl(env engine.Env, call *ir.FuncCallExpr, recv ir.Element, args []ir.Element) ([]ir.Element, error) {
-	out, err := env.Engine().ArrayOps().Set(env.ExprEval(), call, args[0], args[1], args[2])
+	out, err := env.Engine().ArrayOps().Set(env.ExprEval(), call, args[0], args[1], args[2:])
 	if err != nil {
 		return nil, err
 	}

@@ -162,12 +162,20 @@ func (ao *arrayOps) Concat(ctx ir.Evaluator, expr ir.Expr, xs []engine.Numerical
 }
 
 // Set a slice in an array.
-func (ao *arrayOps) Set(ctx ir.Evaluator, expr *ir.FuncCallExpr, x, updates, index ir.Element) (ir.Element, error) {
-	nodes, err := materialise.AllWithShapes(ao, []ir.Element{x, updates, index})
+func (ao *arrayOps) Set(ctx ir.Evaluator, expr *ir.FuncCallExpr, x, updates ir.Element, position []ir.Element) (ir.Element, error) {
+	xNode, xShape, err := materialise.Element(ao, x)
 	if err != nil {
 		return nil, err
 	}
-	setNode, err := ao.graph.Core().Set(nodes[0].Node, nodes[1].Node, nodes[2].Node)
+	upNode, _, err := materialise.Element(ao, updates)
+	if err != nil {
+		return nil, err
+	}
+	positionNodes, _, err := materialise.All(ao, position)
+	if err != nil {
+		return nil, err
+	}
+	setNode, err := ao.graph.Core().Set(xNode, upNode, positionNodes)
 	if err != nil {
 		return nil, err
 	}
@@ -176,7 +184,7 @@ func (ao *arrayOps) Set(ctx ir.Evaluator, expr *ir.FuncCallExpr, x, updates, ind
 		expr.Type(),
 		&ops.OutputNode{
 			Node:  setNode,
-			Shape: nodes[0].Shape,
+			Shape: xShape,
 		})
 }
 

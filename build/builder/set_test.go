@@ -27,7 +27,7 @@ func TestSet(t *testing.T) {
 var A,B int
 
 func F(x [A][B]float32, subX [B]float32, i int64) [A][B]float32  {
-	return set(x, subX, [...]int64{i})
+	return set(x, subX, i)
 }
 `,
 		},

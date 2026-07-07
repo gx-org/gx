@@ -18,12 +18,21 @@ import (
 	"testing"
 
 	"github.com/gx-org/gx/build/builder/testbuild"
+	core "github.com/gx-org/gx/build/builder/testdata"
 	"github.com/gx-org/gx/golang/backend"
 	"github.com/gx-org/gx/internal/testing/testrtm"
 	"github.com/gx-org/gx/tests"
 )
 
+var skip = map[string]bool{
+	"set/set01.gx": true,
+}
+
 func TestCoreUnitGoBackend(t *testing.T) {
+	// Skip some tests.
+	core.Sources.Filter = func(name string) bool {
+		return !skip[name]
+	}
 	bck := backend.New(tests.CoreBuilder())
 	testbuild.RunFactory(t,
 		nil,

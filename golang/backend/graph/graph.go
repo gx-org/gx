@@ -293,7 +293,7 @@ func (g *Graph) DotGeneral(x, y ops.Node, batchAxes, reduceAxes [2][]int) (ops.N
 }
 
 // Set returns a node to set a slice in an array.
-func (g *Graph) Set(x, updates, index ops.Node) (ops.Node, error) {
+func (g *Graph) Set(x, updates ops.Node, index []ops.Node) (ops.Node, error) {
 	return nil, errors.Errorf("not implemented")
 }
 
