@@ -32,6 +32,10 @@ import (
 	"github.com/gx-org/gx/build/ir"
 )
 
+// DefaultTracer is the tracer used if the device does not define a tracer.
+// Nil by default.
+var DefaultTracer trace.Callback
+
 // DeviceSetup is a device with compile option.
 // All packages build for this device will share the same options.
 type DeviceSetup struct {
@@ -93,7 +97,10 @@ func (s *PackageCompileSetup) IR() *ir.Package {
 
 // Tracer returns the tracer used by the package.
 func (s *PackageCompileSetup) Tracer() trace.Callback {
-	return s.devSetup.tracer
+	if s.devSetup.tracer != nil {
+		return s.devSetup.tracer
+	}
+	return DefaultTracer
 }
 
 // FuncCache provides a compilation cache for a function.
@@ -192,4 +199,9 @@ func (c *FuncCache) Func() *ir.FuncDecl {
 // Device on which the function is going to run.
 func (c *FuncCache) Device() *api.Device {
 	return c.pkg.devSetup.Device()
+}
+
+// Tracer to use to run the function.
+func (c *FuncCache) Tracer() trace.Callback {
+	return c.pkg.Tracer()
 }
