@@ -70,7 +70,7 @@ func TestCast(t *testing.T) {
 			WantType: "[2]float32",
 		},
 		testbuild.Expr{
-			Src: `[___]float32([2]int64{3, 4})`,
+			Src: `[...]float32([2]int64{3, 4})`,
 			Want: &ir.CastExpr{
 				X: &ir.ArrayLitExpr{
 					Typ: irh.ArrayType(ir.Int64Type(), 2),
@@ -86,7 +86,7 @@ func TestCast(t *testing.T) {
 			WantType: "[2]float32",
 		},
 		testbuild.Expr{
-			Src: `[___]float32([2]bool{true, false})`,
+			Src: `[...]float32([2]bool{true, false})`,
 			Want: &ir.CastExpr{
 				X: &ir.ArrayLitExpr{
 					Typ: irh.ArrayType(ir.BoolType(), 2),

@@ -956,7 +956,7 @@ func vjpF(x [2][3]float32) ([2][3]float32, func(res [2][3]float32) [2][3]float32
 		},
 		testgrad.Reverse{
 			Src: `
-func F(x [_A]float32) [A]float32 {
+func F[A int](x [A]float32) [A]float32 {
 	return x
 }
 `,

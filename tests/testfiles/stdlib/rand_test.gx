@@ -121,9 +121,9 @@ func TestCategorical() bool {
 	probs := [1][3]float32{{0.1, 0.2, 0.7}}
 	expandedProbs := shape.Broadcast[[]int{numSamples, 3}](probs)
 	_, labels := rand.Categorical[float32](rnd, expandedProbs)
-	numZero := num.Sum[[]int{0}]([___]int64(labels == 0))
-	numOne := num.Sum[[]int{0}]([___]int64(labels == 1))
-	numTwo := num.Sum[[]int{0}]([___]int64(labels == 2))
+	numZero := num.Sum[[]int{0}]([...]int64(labels == 0))
+	numOne := num.Sum[[]int{0}]([...]int64(labels == 1))
+	numTwo := num.Sum[[]int{0}]([...]int64(labels == 2))
 	distribution := [3]float32([3]int64{numZero, numOne, numTwo}) / numSamples
 	diff := distribution - probs[0]
 	return num.ReduceMax[[]int{0}](math.Abs(diff)) < 0.01

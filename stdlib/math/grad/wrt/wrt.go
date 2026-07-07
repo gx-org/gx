@@ -99,7 +99,7 @@ func (cr *core) buildBackwardSignature(backwardValues *ast.FieldList) (*ast.Func
 		List: []*ast.Field{&ast.Field{
 			Type: cr.field().Group.Src.Type,
 		}},
-	}, astbuilder.AssignToExpandShape)
+	}, nil)
 	if err != nil {
 		return nil, err
 	}

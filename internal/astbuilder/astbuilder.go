@@ -19,7 +19,6 @@ import (
 	"fmt"
 	"go/ast"
 	"reflect"
-	"strings"
 
 	"github.com/pkg/errors"
 	"github.com/gx-org/gx/build/fmterr"
@@ -64,6 +63,9 @@ func (cl *cloner) clone(n ast.Node) ast.Node {
 	default:
 		cl.errs.Append(errors.Errorf("%T not supported", nT))
 	}
+	if cl.transform == nil {
+		return out
+	}
 	if err := cl.transform(out); err != nil {
 		cl.errs.Append(err)
 	}
@@ -92,23 +94,6 @@ func Clone[T ast.Node](n T, transform Transform) (outT T, err error) {
 	}
 	err = fmt.Errorf("cannot clone AST for synthetic code:\n%+v", cl.errs.ToError())
 	return
-}
-
-// AssignToExpandShape transforms shapes definitions like ___Shape to
-// shape expansion like Shape___.
-var AssignToExpandShape = toTransform(assignToExpandShape)
-
-func assignToExpandShape(id *ast.Ident) error {
-	if strings.HasPrefix(id.Name, ir.DefineAxisGroup) {
-		id.Name = strings.TrimPrefix(id.Name, ir.DefineAxisGroup)
-		id.Name += ir.DefineAxisGroup
-		return nil
-	}
-	if strings.HasPrefix(id.Name, ir.DefineAxisLength) {
-		id.Name = strings.TrimPrefix(id.Name, ir.DefineAxisLength)
-		return nil
-	}
-	return nil
 }
 
 func toTransform[T ast.Node](f func(T) error) Transform {

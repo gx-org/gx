@@ -327,7 +327,7 @@ func f() [2]float32 {
 		},
 		testbuild.Decl{
 			Src: `
-func f(x [_ax]float32) int64 {
+func f[ax int](x [ax]float32) int64 {
 	return len(x)
 }
 `,
@@ -569,7 +569,7 @@ func TestSingleAxisName(t *testing.T) {
 	testbuild.Run(t,
 		testbuild.Decl{
 			Src: `
-func add(x, y [_ax1][_ax2]float32) [ax1][ax2]float32 {
+func add[ax1, ax2 int](x, y [ax1][ax2]float32) [ax1][ax2]float32 {
 	return x + y
 }
 
