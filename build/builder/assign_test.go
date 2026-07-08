@@ -120,9 +120,9 @@ func callAssign() (float32, float32) {
 		},
 		testbuild.Decl{
 			Src: `
-func id(int64) int64
+func id(int) int
 
-func f() int64 {
+func f() int {
 	a, b := 2, 3
 	c := a+b
 	return id(c)
@@ -150,7 +150,7 @@ func f() uint32 {
 		},
 		testbuild.Decl{
 			Src: `
-func f() int64 {
+func f() int {
 	true := 3
 	return true
 }
@@ -204,7 +204,7 @@ func a() st {
 		},
 		testbuild.Decl{
 			Src: `
-func f() int64 {
+func f() int {
 	a := 2
 	a := 3 // ERROR no new variables on left side of :=
 	return a
@@ -235,9 +235,9 @@ func f() bool {
 		},
 		testbuild.Decl{
 			Src: `
-func f() (int64, float32) {
+func f() (int, float32) {
 	a := 1
-	a, b := float32(2), float32(3) // ERROR cannot use float32 as int64 value in assignment
+	a, b := float32(2), float32(3) // ERROR cannot use float32 as int value in assignment
 	return a, b
 }
 `,

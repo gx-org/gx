@@ -20,36 +20,36 @@ func TestAssignNumber() int32 {
 	// int32(4)
 }
 
-func TestAddAssign() int64 {
+func TestAddAssign() int {
 	x := 1
 	x += 1
 	return x
 	// Want:
-	// int64(2)
+	// int(2)
 }
 
-func TestMulAssign() int64 {
+func TestMulAssign() int {
 	x := 2
 	x *= 2
 	return x
 	// Want:
-	// int64(4)
+	// int(4)
 }
 
-func TestSubAssign() int64 {
+func TestSubAssign() int {
 	x := 8
 	x -= 2
 	return x
 	// Want:
-	// int64(6)
+	// int(6)
 }
 
-func TestDivAssign() int64 {
+func TestDivAssign() int {
 	x := 8
 	x /= 1
 	return x
 	// Want:
-	// int64(8)
+	// int(8)
 }
 
 type point struct {

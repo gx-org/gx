@@ -2226,7 +2226,7 @@ func (s *NumberInt) Node() ast.Node { return s.Src }
 func (s *NumberInt) Type() Type { return NumberIntType() }
 
 // DefaultType returns the default type of the number.
-func (s NumberInt) DefaultType() Type { return TypeFromKind(irkind.Int64) }
+func (s NumberInt) DefaultType() Type { return TypeFromKind(irkind.Int) }
 
 // SourceString returns a reference to the type given a file context.
 func (s *NumberInt) SourceString(*File) string {
