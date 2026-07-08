@@ -154,7 +154,8 @@ func NewInterface(src *ast.InterfaceType, types []Type, meths []*IMethod) *Inter
 	return iface
 }
 
-func (*Interface) node() {}
+func (*Interface) node()      {}
+func (*Interface) arrayType() {}
 
 // Rank of the array.
 func (*Interface) Rank() ArrayRank { return scalarRank }

@@ -1,0 +1,9 @@
+package number01
+
+func TestF() float32 {
+	a := float32(2)
+	a = 3
+	return a
+	// Want:
+	// float32(3)
+}

@@ -26,6 +26,7 @@ import (
 	"github.com/gx-org/gx/build/fmterr"
 	"github.com/gx-org/gx/build/ir"
 	"github.com/gx-org/gx/build/ir/irhelper"
+	"github.com/gx-org/gx/build/ir/irkind"
 	"github.com/gx-org/gx/internal/interp/compeval"
 	"github.com/gx-org/gx/interp"
 )
@@ -339,8 +340,8 @@ func TestTypeConvertibleTo(t *testing.T) {
      float64: XXXXXXXXXX 
       uint32: XXXXXXXXXX 
       uint64: XXXXXXXXXX 
-  int number: XXXXXXXXXX 
-float number: XXXXXXXXXX 
+  int number:            
+float number:            
       string:           X
 `)},
 		// [...]T converts to all other [...]U for primitive type T, U.
@@ -408,6 +409,9 @@ func TestArrayAtomicEqual(t *testing.T) {
 
 func TestNamedTypes(t *testing.T) {
 	for _, typ := range allTypes {
+		if irkind.IsNumber(typ.Kind()) {
+			continue
+		}
 		// Named types define a new type that is distinct from the underlying type.
 		namedType := makeNamedType(typ)
 
@@ -415,20 +419,20 @@ func TestNamedTypes(t *testing.T) {
 			t.Errorf("Expected %s.Equal(%s) = (true, nil); got (%v, %v)", namedType.Name(), namedType.Name(), eq, err)
 		}
 		if eq, err := namedType.Equal(nil, typ); eq || err != nil {
-			t.Errorf("Expected %s.Equal(%s) = (false, nil); got (%v, %v)", namedType.Name(), typ, eq, err)
+			t.Errorf("Expected %s.Equal(%s) = (false, nil); got (%v, %v)", namedType.Name(), typ.ReferString(nil), eq, err)
 		}
 		if eq, err := typ.Equal(nil, namedType); eq || err != nil {
-			t.Errorf("Expected %s.Equal(%s) = (false, nil); got (%v, %v)", typ, namedType.Name(), eq, err)
+			t.Errorf("Expected %s.Equal(%s) = (false, nil); got (%v, %v)", typ.ReferString(nil), namedType.Name(), eq, err)
 		}
 
 		if eq, err := namedType.AssignableTo(nil, namedType); !eq || err != nil {
 			t.Errorf("Expected %s.AssignableTo(%s) = (true, nil); got (%v, %v)", namedType.Name(), namedType.Name(), eq, err)
 		}
 		if eq, err := namedType.AssignableTo(nil, typ); eq || err != nil {
-			t.Errorf("Expected %s.AssignableTo(%s) = (false, nil); got (%v, %v)", namedType.Name(), typ, eq, err)
+			t.Errorf("Expected %s.AssignableTo(%s) = (false, nil); got (%v, %v)", namedType.Name(), typ.ReferString(nil), eq, err)
 		}
 		if eq, err := typ.AssignableTo(nil, namedType); eq || err != nil {
-			t.Errorf("Expected %s.AssignableTo(%s) = (false, nil); got (%v, %v)", typ, namedType.Name(), eq, err)
+			t.Errorf("Expected %s.AssignableTo(%s) = (false, nil); got (%v, %v)", typ.ReferString(nil), namedType.Name(), eq, err)
 		}
 
 		// Named types are convertible to themselves, plus their exact underlying type and vice-versa.
@@ -436,10 +440,10 @@ func TestNamedTypes(t *testing.T) {
 			t.Errorf("Expected %s.ConvertibleTo(%s) = (true, nil); got (%v, %v)", namedType.Name(), namedType.Name(), eq, err)
 		}
 		if eq, err := namedType.ConvertibleTo(nil, typ); !eq || err != nil {
-			t.Errorf("Expected %s.ConvertibleTo(%s) = (true, nil); got (%v, %v)", namedType.Name(), typ, eq, err)
+			t.Errorf("Expected %s.ConvertibleTo(%s) = (true, nil); got (%v, %v)", namedType.Name(), typ.ReferString(nil), eq, err)
 		}
 		if eq, err := typ.ConvertibleTo(nil, namedType); !eq || err != nil {
-			t.Errorf("Expected %s.ConvertibleTo(%s) = (true, nil); got (%v, %v)", typ, namedType.Name(), eq, err)
+			t.Errorf("Expected %s.ConvertibleTo(%s) = (true, nil); got (%v, %v)", typ.ReferString(nil), namedType.Name(), eq, err)
 		}
 	}
 }
@@ -616,8 +620,8 @@ func TestTypeSetAssignableFromAllTypes(t *testing.T) {
      float64: X    
       uint32: X  XX
       uint64: X  XX
-  int number: X XXX
-float number: X    
+  int number:   XXX
+float number:      
       string: X    
 `)
 

@@ -99,8 +99,8 @@ func (n *returnStmt) castValue(scope fnResolveScope, expr ir.Expr, want ir.Type)
 	if expr.Type().Kind() == irkind.Nil {
 		return ret, true
 	}
-	arrayWant := ir.Underlying(want).(ir.ArrayType)
-	if arrayWant.Rank().IsAtomic() {
+	arrayWant, isArray := ir.Underlying(want).(ir.ArrayType)
+	if !isArray || arrayWant.Rank().IsAtomic() {
 		return ret, true
 	}
 	return &ir.CastExpr{

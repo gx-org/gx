@@ -168,7 +168,7 @@ type (
 	}
 
 	Ints interface {
-		int32 | int64 | uint32 | uint64
+		int | int32 | int64 | uint32 | uint64
 	}
 
 	Num interface {

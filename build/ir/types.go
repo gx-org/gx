@@ -189,6 +189,9 @@ type distinctType struct {
 
 func newDistinctType(kind irkind.Kind, tp Type) distinctType {
 	return distinctType{
+		BaseType: BaseType[ast.Expr]{
+			Src: &ast.Ident{Name: kind.String()},
+		},
 		kind: kind,
 		tp:   tp,
 	}
@@ -201,19 +204,19 @@ func (t *distinctType) distinct() *distinctType {
 }
 
 func (t *distinctType) Equal(_ TypeCmp, target Type) (bool, error) {
-	other, ok := target.(interface{ distinct() *distinctType })
-	if !ok {
-		return false, nil
-	}
-	return t == other.distinct(), nil
+	return t.tp == target, nil
 }
 
 func (t *distinctType) AssignableTo(tpcmp TypeCmp, target Type) (bool, error) {
+	ey, isAssigner := target.(assigner)
+	if isAssigner {
+		return ey.assignableFrom(tpcmp, t)
+	}
 	return t.Equal(tpcmp, target)
 }
 
 func (t *distinctType) ConvertibleTo(tpcmp TypeCmp, target Type) (bool, error) {
-	return t.Equal(tpcmp, target)
+	return t.Kind() == target.Kind(), nil
 }
 
 func (t *distinctType) Kind() irkind.Kind { return t.kind }
@@ -243,6 +246,9 @@ var (
 	keywordT = &keywordTyp{}
 	voidT    = &voidType{}
 	nilT     = &nilType{}
+
+	stringT = &stringType{}
+	rankT   = &rankType{}
 )
 
 func init() {
@@ -250,6 +256,9 @@ func init() {
 	keywordT.distinctType = newDistinctType(irkind.Func, keywordT)
 	voidT.distinctType = newDistinctType(irkind.Void, voidT)
 	nilT.distinctType = newDistinctType(irkind.Nil, nilT)
+
+	stringT.distinctType = newDistinctType(irkind.String, stringT)
+	rankT.distinctType = newDistinctType(irkind.Rank, rankT)
 }
 
 // unknownType is the type returned by function with no results.
@@ -279,6 +288,26 @@ type voidType struct {
 // VoidType returns the void type.
 func VoidType() Type {
 	return voidT
+}
+
+// stringType is the type returned by function with no results.
+type stringType struct {
+	distinctType
+}
+
+// StringType returns the string type.
+func StringType() Type {
+	return stringT
+}
+
+// rankType is the type returned by function with no results.
+type rankType struct {
+	distinctType
+}
+
+// RankType returns the rank type.
+func RankType() Type {
+	return rankT
 }
 
 type packageType struct {

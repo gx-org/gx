@@ -15,11 +15,136 @@
 package ir
 
 import (
+	"go/ast"
 	"reflect"
 
 	"github.com/gx-org/gx/build/fmterr"
 	"github.com/gx-org/gx/build/ir/irkind"
 )
+
+var (
+	numberFloatT = &numberFloatType{}
+	numberIntT   = &numberIntType{}
+)
+
+func init() {
+	numberFloatT.numberType = newNumberT(irkind.NumberFloat, numberFloatT)
+	numberIntT.numberType = newNumberT(irkind.NumberInt, numberIntT)
+}
+
+type numberType struct {
+	BaseType[ast.Expr]
+	kind irkind.Kind
+	tp   ArrayType
+}
+
+func newNumberT(k irkind.Kind, tp ArrayType) *numberType {
+	return &numberType{
+		BaseType: BaseType[ast.Expr]{
+			Src: &ast.Ident{Name: k.String()},
+		},
+		kind: k,
+		tp:   tp,
+	}
+}
+
+func (*numberType) node()      {}
+func (*numberType) arrayType() {}
+
+func (t *numberType) ArrayType() ast.Expr {
+	return nil
+}
+
+func (t *numberType) Rank() ArrayRank {
+	return scalarRank
+}
+
+func (t *numberType) Kind() irkind.Kind {
+	return t.kind
+}
+
+func (t *numberType) Zero() Expr {
+	return zero
+}
+
+func (t *numberType) equalArray(tpcmp TypeCmp, other ArrayType) (bool, error) {
+	if !other.Rank().IsAtomic() {
+		return false, nil
+	}
+	return other.DataType() == t.tp, nil
+}
+
+func (t *numberType) Equal(tpcmp TypeCmp, other Type) (bool, error) {
+	return t.tp == other, nil
+}
+
+func (t *numberType) ConvertibleTo(tpcmp TypeCmp, target Type) (bool, error) {
+	return false, nil
+}
+
+func (t *numberType) Specialise(Specialiser) (Type, bool) {
+	return t.tp, true
+}
+
+func (t *numberType) Instantiate(Fetcher, Specialiser) (Type, bool) {
+	return t.tp, true
+}
+
+func (t *numberType) UnifyWith(uni Unifier, typ Type) bool {
+	return true
+}
+
+func (t *numberType) ReferString(from *File) string {
+	return t.DefineString(from)
+}
+
+func (t *numberType) DefineString(*File) string {
+	return t.Kind().String()
+}
+
+func (t *numberType) IndexForVarArgs(ErrSource, int) (Type, bool) {
+	return t.tp, true
+}
+
+func (t *numberType) ElementType() (Type, bool) {
+	return InvalidType(), false
+}
+
+func (t *numberType) DataType() Type {
+	return t.tp
+}
+
+// numberFloatType is the type returned by function with no results.
+type numberFloatType struct {
+	*numberType
+}
+
+var _ ArrayType = (*numberFloatType)(nil)
+
+func (t *numberFloatType) AssignableTo(tpcmp TypeCmp, target Type) (bool, error) {
+	return IsFloat(target), nil
+}
+
+// NumberFloatType returns the numberFloat type.
+func NumberFloatType() Type {
+	return numberFloatT
+}
+
+// numberIntType is the type returned by function with no results.
+type numberIntType struct {
+	*numberType
+}
+
+var _ ArrayType = (*numberIntType)(nil)
+
+func (t *numberIntType) AssignableTo(tpcmp TypeCmp, target Type) (bool, error) {
+	return IsInteger(target) || IsFloat(target), nil
+}
+
+// NumberIntType returns the numberInt type.
+func NumberIntType() Type {
+	return numberIntT
+}
 
 // FileWithError is an interface able to return a file context and an error appender.
 type FileWithError interface {
