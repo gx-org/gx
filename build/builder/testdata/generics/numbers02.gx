@@ -1,0 +1,13 @@
+package numbers02
+
+// No test function
+
+type num interface {
+	int
+}
+
+func g[X []int, T num]([unpack(X)]T) [unpack(X)]T
+
+func f() int {
+	return g(2)
+}

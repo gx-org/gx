@@ -132,8 +132,6 @@ func (s *GenericTypeParam) Kind() irkind.Kind {
 
 func (s *GenericTypeParam) equal(tpcmp TypeCmp, typ Type) (bool, error) {
 	switch typT := typ.(type) {
-	case *atomicType:
-		return false, nil
 	case *GenericTypeParam:
 		if s.pos() == typT.pos() {
 			return true, nil

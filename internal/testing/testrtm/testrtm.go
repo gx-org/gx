@@ -56,7 +56,7 @@ func findTests(pkg *ir.Package) []*ir.FuncDecl {
 func FindTests(pkg *ir.Package) ([]*ir.FuncDecl, error) {
 	funs := findTests(pkg)
 	if len(funs) == 0 && !noTestFuncOk(pkg) {
-		return nil, fmt.Errorf("no test found. Add to the source file:\n\t// No test function\nif no test functions are expected")
+		return nil, fmt.Errorf("no test found in package %s. Add to the source file:\n\t// No test function\nif no test functions are expected", pkg.Path())
 	}
 	return funs, nil
 }

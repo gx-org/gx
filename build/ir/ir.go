@@ -153,6 +153,8 @@ type (
 
 	// ArrayType is a type with a rank.
 	ArrayType interface {
+		arrayType()
+
 		Zeroer
 		Node
 		SlicerType
@@ -248,7 +250,6 @@ var (
 	_ Type             = (*InterfaceType)(nil)
 	_ SlicerType       = (*SliceType)(nil)
 	_ Type             = (*TupleType)(nil)
-	_ ArrayType        = (*atomicType)(nil)
 	_ ArrayType        = (*arrayType)(nil)
 )
 
@@ -791,7 +792,8 @@ func (s *SliceType) IndexForVarArgs(ErrSource, int) (Type, bool) {
 	return s, true
 }
 
-func (*arrayType) node() {}
+func (*arrayType) node()      {}
+func (*arrayType) arrayType() {}
 
 // NewArrayType returns a new array from a data type and a rank.
 func NewArrayType(src ast.Expr, dtype Type, rank ArrayRank) ArrayType {
@@ -2913,7 +2915,6 @@ func (s *AnonymousStorage) Expr() ast.Expr { return s.Src }
 func (s *AnonymousStorage) Type() Type { return s.Typ }
 
 // NameDef returns the identifier identifying the storage.
-
 func (s *AnonymousStorage) NameDef() *ast.Ident { return s.Src }
 
 // Same returns true if the other storage is this storage.

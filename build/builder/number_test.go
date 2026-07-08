@@ -28,6 +28,15 @@ func TestNumber(t *testing.T) {
 			Src: `
 func id(int) int
 
+func f() int64 {
+	return 2
+}
+`,
+		},
+		testbuild.Decl{
+			Src: `
+func id(int) int
+
 func f() int {
 	a := 2
 	return id(a)

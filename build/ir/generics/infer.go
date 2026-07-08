@@ -91,23 +91,30 @@ func invalidGenericType(genType *ir.GenericTypeParam) *ir.TypeGenericValue {
 	return ir.NewTypeGenericValue(genType, ir.InvalidType())
 }
 
-func (uni *argUnifier) DefineType(genType *ir.GenericTypeParam, typ ir.Type) bool {
+func (uni *argUnifier) assignableTo(genType *ir.GenericTypeParam, typ ir.Type) (int, bool) {
 	field := genType.OrigField()
 	pos := field.Pos
 	ok, err := ir.AssignableTo(uni.fetcher, typ, field.Type())
 	if err != nil {
 		uni.defined[pos] = invalidGenericType(genType)
-		return uni.fetcher.Err().AppendAt(uni.arg.Node(), err)
+		return pos, uni.fetcher.Err().AppendAt(uni.arg.Node(), err)
 	}
+	if ok {
+		return pos, true
+	}
+	uni.defined[pos] = invalidGenericType(genType)
+	from := uni.fetcher.File()
+	info := ""
+	if genType, isGenType := typ.(*ir.GenericTypeParam); isGenType {
+		info = fmt.Sprintf(" (%s)", genType.OrigField().Type().ReferString(from))
+	}
+	return pos, uni.fetcher.Err().Appendf(uni.arg.Node(), "%s%s does not satisfy %s", typ.ReferString(from), info, field.Type().ReferString(from))
+}
+
+func (uni *argUnifier) DefineType(genType *ir.GenericTypeParam, typ ir.Type) bool {
+	pos, ok := uni.assignableTo(genType, typ)
 	if !ok {
-		uni.defined[pos] = invalidGenericType(genType)
-		from := uni.fetcher.File()
-		field := genType.OrigField()
-		info := ""
-		if genType, isGenType := typ.(*ir.GenericTypeParam); isGenType {
-			info = fmt.Sprintf(" (%s)", genType.OrigField().Type().ReferString(from))
-		}
-		return uni.fetcher.Err().Appendf(uni.arg.Node(), "%s%s does not satisfy %s", typ.ReferString(from), info, field.Type().ReferString(from))
+		return false
 	}
 	defined := uni.defined[pos]
 	if defined == nil {
