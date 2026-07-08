@@ -347,19 +347,17 @@ func compEvalForFuncType(rscope resolveScope, src ast.Node, ftype *ir.FuncType) 
 }
 
 func newFuncScope(rscope resolveScope, fType *ir.FuncType) (*funcResolveScope, bool) {
-	if fType == nil {
-		return &funcResolveScope{resolveScope: rscope}, true
-	}
-	bodyCE, ok := compEvalForFuncType(rscope, fType.BaseType.Node(), fType)
-	if !ok {
-		return nil, false
-	}
-	return &funcResolveScope{
+	fnScope := &funcResolveScope{
+		names:        make(map[string]ir.Element),
 		resolveScope: rscope,
 		fType:        fType,
-		bodyCE:       bodyCE,
-		names:        make(map[string]ir.Element),
-	}, true
+	}
+	if fType == nil {
+		return fnScope, true
+	}
+	var ok bool
+	fnScope.bodyCE, ok = compEvalForFuncType(rscope, fType.BaseType.Node(), fType)
+	return fnScope, ok
 }
 
 func (s *funcResolveScope) funcType() *ir.FuncType {

@@ -125,7 +125,7 @@ func (v valuerT[T]) buildStaticArray(fitp *Interpreter, lit *ir.ArrayLitExpr, ax
 		return nil, false, err
 	}
 	// All elements of the literal are scalars already known.
-	node, err := fitp.Engine().ArrayOps().ElementFromArray(fitp.File(), array)
+	node, err := fitp.Engine().ArrayOps().ElementFromArray(fitp.File(), lit, array)
 	if err != nil {
 		return nil, false, err
 	}

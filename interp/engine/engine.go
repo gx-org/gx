@@ -98,7 +98,7 @@ type (
 		ElementFromAtom(ctx *ir.File, val values.Array, expr ir.Expr, typ ir.Type) (NumericalElement, error)
 
 		// ElementFromArray returns an element from an array GX value.
-		ElementFromArray(ctx *ir.File, val values.Array) (NumericalElement, error)
+		ElementFromArray(ctx *ir.File, lit *ir.ArrayLitExpr, val values.Array) (NumericalElement, error)
 	}
 
 	// Copier is an element that needs to be copied when passed to a function.

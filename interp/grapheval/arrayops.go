@@ -233,6 +233,6 @@ func (ao *arrayOps) ElementFromAtom(file *ir.File, val values.Array, src ir.Expr
 }
 
 // ElementFromArray returns an element from an array GX value.
-func (ao *arrayOps) ElementFromArray(file *ir.File, val values.Array) (engine.NumericalElement, error) {
+func (ao *arrayOps) ElementFromArray(file *ir.File, lit *ir.ArrayLitExpr, val values.Array) (engine.NumericalElement, error) {
 	return newValueElement(ao.ev, val)
 }

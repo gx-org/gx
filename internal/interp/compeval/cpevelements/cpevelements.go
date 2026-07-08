@@ -75,7 +75,7 @@ func NewRuntimeValue(file *ir.File, expr ir.ExprToStorage) (ir.Element, error) {
 		}
 		return fun.NewNamedType(NewProxyFunc, typT, under), nil
 	case ir.ArrayType:
-		return NewArray(typT), nil
+		return NewArray(expr)
 	case *ir.FuncType:
 		return NewProxyFunc(&ir.FuncLit{
 			Src:   &ast.FuncLit{Type: typT.Src},
