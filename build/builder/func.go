@@ -277,8 +277,7 @@ func (f *funcDecl) buildSignature(fScope *fileResolveScope) (ir.Func, fnResolveS
 	var fnscope *funcResolveScope
 	var ok bool
 	ext.FType, fnscope, ok = f.fType.buildFuncType(fScope)
-	setOk := fnscope.setFuncValue(ext)
-	return ext, fnscope, ok && setOk
+	return ext, fnscope, ok && fnscope.setFuncValue(ext)
 }
 
 func (f *funcDecl) buildScopeBody(rscope resolveScope, ftype *ir.FuncType) (*funcResolveScope, bool) {

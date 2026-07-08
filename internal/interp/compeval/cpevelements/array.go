@@ -15,9 +15,12 @@
 package cpevelements
 
 import (
+	"go/ast"
+
 	"github.com/gx-org/backend/ops"
 	"github.com/gx-org/backend/shape"
 	"github.com/gx-org/gx/build/ir"
+	"github.com/gx-org/gx/internal/base/cast"
 	"github.com/gx-org/gx/internal/interp/canonical"
 	"github.com/gx-org/gx/internal/interp/coreops"
 	"github.com/gx-org/gx/interp/elements"
@@ -27,6 +30,7 @@ import (
 
 // array element storing a GX value array.
 type array struct {
+	expr  ir.Expr
 	typ   ir.ArrayType
 	shape *shape.Shape
 }
@@ -38,17 +42,26 @@ var (
 	_ elements.Slicer   = (*array)(nil)
 	_ engine.Copier     = (*array)(nil)
 	_ ir.WithLength     = (*array)(nil)
+	_ ir.WithExpr       = (*array)(nil)
 )
 
 // NewArray returns a new array from a code position and a type.
-func NewArray(typ ir.ArrayType) engine.NumericalElement {
+func NewArray(expr ir.Expr) (engine.NumericalElement, error) {
+	typ := expr.Type()
+	if typeVal, isTypeVal := expr.(*ir.TypeValExpr); isTypeVal {
+		typ = typeVal.Val()
+	}
+	arrayType, err := cast.To[ir.ArrayType](typ)
+	if err != nil {
+		return nil, err
+	}
 	shape := &shape.Shape{
-		DType: typ.DataType().Kind().DType(),
+		DType: arrayType.DataType().Kind().DType(),
 	}
-	if !typ.Rank().IsAtomic() {
-		shape.AxisLengths = make([]int, len(typ.Rank().Axes()))
+	if !arrayType.Rank().IsAtomic() {
+		shape.AxisLengths = make([]int, len(arrayType.Rank().Axes()))
 	}
-	return &array{shape: shape, typ: typ}
+	return &array{expr: expr, typ: arrayType, shape: shape}, nil
 }
 
 func (a *array) Type() ir.Type {
@@ -60,27 +73,27 @@ func (a *array) Axes(fetcher ir.Evaluator) (*elements.Slice, error) {
 }
 
 func (a *array) UnaryOp(env engine.Env, expr *ir.UnaryExpr) (engine.NumericalElement, error) {
-	return NewArray(expr.Type().(ir.ArrayType)), nil
+	return NewArray(expr)
 }
 
 func (a *array) BinaryOp(env engine.Env, expr *ir.BinaryExpr, x, y engine.NumericalElement) (engine.NumericalElement, error) {
-	return NewArray(expr.Type().(ir.ArrayType)), nil
+	return NewArray(expr)
 }
 
 func (a *array) Cast(env engine.Env, expr ir.Expr, target ir.Type) (engine.NumericalElement, error) {
-	return NewArray(expr.Type().(ir.ArrayType)), nil
+	return NewArray(expr)
 }
 
 func (a *array) Reshape(env engine.Env, expr ir.Expr, axisLengths []engine.NumericalElement) (engine.NumericalElement, error) {
-	return NewArray(expr.Type().(ir.ArrayType)), nil
+	return NewArray(expr)
 }
 
 func (a *array) SliceAt(expr *ir.IndexExpr, index engine.NumericalElement) (ir.Element, error) {
-	return NewArray(expr.Type().(ir.ArrayType)), nil
+	return NewArray(expr)
 }
 
 func (a *array) Slice(expr *ir.SliceExpr, low, high engine.NumericalElement) (ir.Element, error) {
-	return NewArray(expr.Type().(ir.ArrayType)), nil
+	return NewArray(expr)
 }
 
 func (a *array) Copy() engine.Copier {
@@ -100,8 +113,28 @@ func (a *array) Length(ev ir.Evaluator) (int, error) {
 	return a.Shape().OuterAxisLength(), nil
 }
 
+func (a *array) storage() ir.Storage {
+	withStore, hasStorage := a.expr.(ir.WithStore)
+	if !hasStorage {
+		return nil
+	}
+	return withStore.Store()
+}
+
 func (a *array) Compare(x canonical.Comparable) (bool, error) {
-	return false, nil
+	otherT, isArray := x.(*array)
+	if !isArray {
+		return false, nil
+	}
+	aStorage := a.storage()
+	if aStorage == nil {
+		return false, nil
+	}
+	otherStorage := otherT.storage()
+	if otherStorage == nil {
+		return false, nil
+	}
+	return aStorage.Same(otherStorage), nil
 }
 
 func (a *array) CanonicalExpr() canonical.Canonical {
@@ -118,4 +151,8 @@ func (a *array) ShortString() string {
 
 func (a *array) SourceString(from *ir.File) string {
 	return a.typ.ReferString(from)
+}
+
+func (a *array) Expr(ir.Evaluator, ast.Expr) ([]ir.Expr, error) {
+	return []ir.Expr{a.expr}, nil
 }

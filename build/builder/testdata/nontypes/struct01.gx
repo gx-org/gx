@@ -1,0 +1,18 @@
+package struct01
+
+type sizes struct {
+	a, b int
+}
+
+func f[s sizes]() [s.a][s.b]float32 {
+	return [s.a][s.b]float32(3)
+}
+
+func TestSizesStruct() [2][3]float32 {
+	return f[sizes{a: 2, b: 3}]()
+	// Want:
+	// [2][3]float32{
+	// 	{3, 3, 3},
+	// 	{3, 3, 3},
+	// }
+}

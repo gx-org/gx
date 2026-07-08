@@ -43,27 +43,27 @@ func (compArrayOps) SubGraph(name string, args []*shape.Shape) (engine.ArrayOps,
 
 // Einsum calls an einstein sum on x and y given the expression in ref.
 func (compArrayOps) Einsum(ctx ir.Evaluator, expr *ir.EinsumExpr, x, y engine.NumericalElement) (engine.NumericalElement, error) {
-	return cpevelements.NewArray(expr.Type().(ir.ArrayType)), nil
+	return cpevelements.NewArray(expr)
 }
 
 // BroadcastInDim the data of an array across dimensions.
 func (compArrayOps) BroadcastInDim(ctx ir.Evaluator, expr ir.Expr, x engine.NumericalElement, axisLengths []engine.NumericalElement) (engine.NumericalElement, error) {
-	return cpevelements.NewArray(expr.Type().(ir.ArrayType)), nil
+	return cpevelements.NewArray(expr)
 }
 
 // Reshape an element into a given shape.
 func (compArrayOps) Reshape(expr elements.ExprAt, x engine.NumericalElement, axisLengths []engine.NumericalElement) (engine.NumericalElement, error) {
-	return cpevelements.NewArray(expr.Node().Type().(ir.ArrayType)), nil
+	return cpevelements.NewArray(expr.Node())
 }
 
 // Concat concatenates scalars elements into an array with one axis.
 func (compArrayOps) Concat(ctx ir.Evaluator, expr ir.Expr, xs []engine.NumericalElement) (engine.NumericalElement, error) {
-	return cpevelements.NewArray(expr.Type().(ir.ArrayType)), nil
+	return cpevelements.NewArray(expr)
 }
 
 // Set a slice in an array.
 func (compArrayOps) Set(ctx ir.Evaluator, expr *ir.FuncCallExpr, x, updates ir.Element, positions []ir.Element) (ir.Element, error) {
-	return cpevelements.NewArray(expr.Type().(ir.ArrayType)), nil
+	return cpevelements.NewArray(expr)
 }
 
 // ElementFromAtom returns an element from a GX value.
@@ -76,12 +76,6 @@ func (compArrayOps) ElementFromAtom(file *ir.File, val values.Array, expr ir.Exp
 }
 
 // ElementFromArray returns an element from an array GX value.
-func (compArrayOps) ElementFromArray(file *ir.File, val values.Array) (engine.NumericalElement, error) {
-	typ := val.Type()
-	arrayType := ir.ToArrayType(typ)
-	var err error
-	if arrayType == nil {
-		err = errors.Errorf("%s is not an array type", typ.ReferString(file))
-	}
-	return cpevelements.NewArray(arrayType), err
+func (compArrayOps) ElementFromArray(file *ir.File, lit *ir.ArrayLitExpr, val values.Array) (engine.NumericalElement, error) {
+	return cpevelements.NewArray(lit)
 }
