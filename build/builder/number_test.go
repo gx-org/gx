@@ -26,9 +26,9 @@ func TestNumber(t *testing.T) {
 	testbuild.Run(t,
 		testbuild.Decl{
 			Src: `
-func id(int64) int64
+func id(int) int
 
-func f() int64 {
+func f() int {
 	a := 2
 	return id(a)
 }

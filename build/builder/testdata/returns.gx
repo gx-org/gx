@@ -11,10 +11,10 @@ func TestInt32() int32 {
 	// int32(5)
 }
 
-func TestInt64() int64 {
+func TestInt64() int {
 	return 5
 	// Want:
-	// int64(5)
+	// int(5)
 }
 
 func TestFloat32() float32 {
@@ -156,11 +156,11 @@ func TestTensor3DFloat64() [2][2][2]float64 {
 	// }
 }
 
-func TestWithBlanks() int64 {
+func TestWithBlanks() int {
 	a, _, _ := 1, 2, 3
 	return a
 	// Want:
-	// int64(1)
+	// int(1)
 }
 
 var (
@@ -252,13 +252,13 @@ func TestNumberCastToArray() [2][3]float32 {
 	// }
 }
 
-func TestRedefineVariable() (int64, int64) {
+func TestRedefineVariable() (int, int) {
 	a := 4
 	a, b := 5, 6
 	return a, b
 	// Want:
-	// 0: int64(5)
-	// 1: int64(6)
+	// 0: int(5)
+	// 1: int(6)
 }
 
 const constant = 4.5
@@ -285,12 +285,12 @@ func TestConstantWithParen() int32 {
 	// int32(14)
 }
 
-func TestVariableWithParen() int64 {
+func TestVariableWithParen() int {
 	a := 4
 	b := 5
 	return b * (a + b)
 	// Want:
-	// int64(45)
+	// int(45)
 }
 
 func TestNamedReturnX() (x int64) {

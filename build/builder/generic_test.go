@@ -263,7 +263,7 @@ import "dtype"
 
 func g[T dtype.Num](a T) T
 
-func f() int64 {
+func f() int {
 	return g(10)
 }
 `,

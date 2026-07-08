@@ -48,11 +48,11 @@ func TestBinaryOpFloat32Number() float32 {
 	// float32(9)
 }
 
-func TestBinaryAddSelf() int64 {
+func TestBinaryAddSelf() int {
 	x := 1
 	return x + x
 	// Want:
-	// int64(2)
+	// int(2)
 }
 
 func TestParenFloat32() float32 {
@@ -237,12 +237,12 @@ func TestMulTensor1DScalarFloat32() [2]float32 {
 	// [2]float32{-6, 10}
 }
 
-func TestReAssignInt64() int64 {
+func TestReAssignInt() int {
 	a := 2
 	a = 3
 	return a
 	// Want:
-	// int64(3)
+	// int(3)
 }
 
 func TestEqualScalar() bool {
