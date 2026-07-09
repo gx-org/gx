@@ -575,7 +575,7 @@ func evalExpr(fitp *Interpreter, expr ir.Expr) (_ ir.Element, err error) {
 	case *ir.StringLiteral:
 		return elements.NewStringFromLit(exprT)
 	case *ir.NumberFloat:
-		return numbers.NewFloat(fitp.env, exprT, exprT.Val)
+		return numbers.NewFloat(exprT), nil
 	case *ir.NumberInt:
 		return numbers.NewInt(fitp.env, exprT, exprT.Val)
 	case ir.AtomicValue:
