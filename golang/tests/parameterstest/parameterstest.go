@@ -90,7 +90,7 @@ func TestLen(t *testing.T) {
 		t.Fatalf("%+v", err)
 	}
 	got := gxtesting.FetchAtom(t, length)
-	want := int64(3)
+	want := int(3)
 	if !cmp.Equal(got, want) {
 		t.Errorf("incorrect computation: got %T(%v) but want %T(%v)", got, got, want, want)
 	}

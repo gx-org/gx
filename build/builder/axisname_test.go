@@ -327,7 +327,7 @@ func f() [2]float32 {
 		},
 		testbuild.Decl{
 			Src: `
-func f[ax int](x [ax]float32) int64 {
+func f[ax int](x [ax]float32) int {
 	return len(x)
 }
 `,

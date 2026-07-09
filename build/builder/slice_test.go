@@ -223,7 +223,7 @@ func f() []int64 {
 			EvalCanonical: true,
 			Src: `
 //gx:compeval
-func bigger(s []int32, i int64) bool {
+func bigger(s []int32, i int) bool {
 	return len(s) > i
 }
 

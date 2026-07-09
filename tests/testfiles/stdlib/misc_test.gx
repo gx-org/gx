@@ -14,8 +14,8 @@ func TestReduceShapeInferenceError() [3]int {
 	// [3]int{1, 1, 0}
 }
 
-func TestLen() int64 {
+func TestLen() int {
 	return len(math.Exp([2][1]float32{{1}, {2}}))
 	// Want:
-	// int64(2)
+	// int(2)
 }

@@ -39,7 +39,7 @@ func (*lenFunc) Name() string {
 var srcField = &ast.Field{}
 var lenRetGroup = &ir.FieldGroup{
 	Src:  srcField,
-	Type: ir.TypeExpr(nil, ir.Int64Type()),
+	Type: ir.TypeExpr(nil, ir.IntType()),
 }
 var lenRetList = &ir.FieldList{
 	Src: &ast.FieldList{List: []*ast.Field{
