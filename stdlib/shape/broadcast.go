@@ -16,7 +16,6 @@ package shape
 
 import (
 	"go/ast"
-	"math/big"
 
 	"github.com/gx-org/backend/ops"
 	"github.com/gx-org/backend/shape"
@@ -40,7 +39,7 @@ func (f broadcast) BuildFuncIR(pkg *ir.Package) (*ir.FuncBuiltin, error) {
 	return builtin.IRFuncBuiltin[broadcast]("Broadcast", evalBroadcast, pkg), nil
 }
 
-var oneAxisLength = numbers.NewIntForType(&ir.NumberInt{}, big.NewInt(1), ir.IntType())
+var oneAxisLength = numbers.NewIntFromInt64(1, ir.IntType())
 
 func checkBroadcastRanks(fetcher ir.Fetcher, call *ir.FuncCallExpr, src ir.ArrayRank, target ir.ArrayRank, targetElmts []canonical.Canonical) error {
 	if src == nil || target == nil {
