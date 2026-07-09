@@ -50,18 +50,37 @@ var (
 )
 
 // NewInt returns a new element Int number element.
-func NewInt(env engine.Env, expr ir.Expr, val *big.Int) (*Int, error) {
-	typ, err := concrete.Concrete(env.ExprEval(), expr.Expr(), expr.Type())
-	return NewIntForType(expr, val, typ), err
+func NewInt(expr *ir.NumberInt) *Int {
+	return &Int{
+		val:  expr.Val,
+		expr: expr,
+		typ:  expr.Type(),
+	}
 }
 
-// NewIntForType returns a new element Int number element for a given type.
-func NewIntForType(expr ir.Expr, val *big.Int, typ ir.Type) *Int {
+// NewIntForType returns a new element Int number cast to given type.
+// Use Int.Cast instead of this function to make sure the type is concrete.
+func NewIntForType(expr *ir.NumberInt, typ ir.Type) *Int {
 	return &Int{
-		val:  val,
-		expr: expr,
-		typ:  typ,
+		val: expr.Val,
+		expr: &ir.NumberCastExpr{
+			X:   expr,
+			Typ: typ,
+		},
+		typ: typ,
 	}
+}
+
+// NewIntFromInt64 returns a new element Int number given an int64 value.
+func NewIntFromInt64(val int64, typ ir.Type) *Int {
+	bVal := big.NewInt(val)
+	return NewIntForType(&ir.NumberInt{
+		Src: &ast.BasicLit{
+			Kind:  token.INT,
+			Value: bVal.String(),
+		},
+		Val: bVal,
+	}, typ)
 }
 
 // UnaryOp applies a unary operator on x.

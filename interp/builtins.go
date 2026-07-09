@@ -16,8 +16,6 @@ package interp
 
 import (
 	"go/ast"
-	"go/token"
-	"math/big"
 	"reflect"
 
 	"github.com/pkg/errors"
@@ -174,19 +172,7 @@ func lenImpl(env engine.Env, call *ir.FuncCallExpr, recv ir.Element, args []ir.E
 	if err != nil {
 		return nil, err
 	}
-	bVal := big.NewInt(int64(l))
-	expr := &ir.NumberCastExpr{
-		Typ: ir.IntType(),
-		X: &ir.NumberInt{
-			Src: &ast.BasicLit{
-				Kind:  token.INT,
-				Value: bVal.String(),
-			},
-			Val: bVal,
-		},
-	}
-	atom, err := numbers.NewInt(env, expr, bVal)
-	return []ir.Element{atom}, err
+	return []ir.Element{numbers.NewIntFromInt64(int64(l), ir.IntType())}, err
 }
 
 func setImpl(env engine.Env, call *ir.FuncCallExpr, recv ir.Element, args []ir.Element) ([]ir.Element, error) {
