@@ -458,8 +458,8 @@ type Basic struct {
 	Array    types.Array[float32]
 	privateA types.Atom[int32]
 	privateB types.Atom[int32]
-	length   types.Atom[ir.Int]
-	index    types.Atom[ir.Int]
+	length   types.Atom[int]
+	index    types.Atom[int]
 }
 
 var (
@@ -531,14 +531,14 @@ func (fty *Factory) MarshalBasic(val values.Value) (s *Basic, err error) {
 		err = errors.Errorf("cannot cast %T to %s", fields[5], reflect.TypeFor[*values.DeviceArray]().Name())
 		return
 	}
-	field5 := types.NewAtom[ir.Int](field5Value)
+	field5 := types.NewAtom[int](field5Value)
 
 	field6Value, ok := fields[6].(values.Array)
 	if !ok {
 		err = errors.Errorf("cannot cast %T to %s", fields[6], reflect.TypeFor[*values.DeviceArray]().Name())
 		return
 	}
-	field6 := types.NewAtom[ir.Int](field6Value)
+	field6 := types.NewAtom[int](field6Value)
 
 	s.Int = field0
 	s.Float = field1
@@ -592,9 +592,9 @@ func (h *handleBasic) NewFromField(field *ir.Field) (types.Bridge, error) {
 	case "privateB":
 		return nil, errors.Errorf("cannot create a new instance for field privateB: type types.Atom[int32] not supported")
 	case "length":
-		return nil, errors.Errorf("cannot create a new instance for field length: type types.Atom[ir.Int] not supported")
+		return nil, errors.Errorf("cannot create a new instance for field length: type types.Atom[int] not supported")
 	case "index":
-		return nil, errors.Errorf("cannot create a new instance for field index: type types.Atom[ir.Int] not supported")
+		return nil, errors.Errorf("cannot create a new instance for field index: type types.Atom[int] not supported")
 
 	default:
 		return nil, errors.Errorf("structure Basic has no field %q", name)
@@ -663,9 +663,9 @@ func (h *handleBasic) SetField(field *ir.Field, val types.Bridge) error {
 
 	case "length":
 		bridger := val.Bridger()
-		fieldValue, ok := bridger.(types.Atom[ir.Int])
+		fieldValue, ok := bridger.(types.Atom[int])
 		if !ok {
-			return errors.Errorf("cannot set field length: cannot cast %T to types.Atom[ir.Int]", bridger)
+			return errors.Errorf("cannot set field length: cannot cast %T to types.Atom[int]", bridger)
 		}
 		h.owner.length = fieldValue
 		structVal.SetField("length", val.GXValue())
@@ -673,9 +673,9 @@ func (h *handleBasic) SetField(field *ir.Field, val types.Bridge) error {
 
 	case "index":
 		bridger := val.Bridger()
-		fieldValue, ok := bridger.(types.Atom[ir.Int])
+		fieldValue, ok := bridger.(types.Atom[int])
 		if !ok {
-			return errors.Errorf("cannot set field index: cannot cast %T to types.Atom[ir.Int]", bridger)
+			return errors.Errorf("cannot set field index: cannot cast %T to types.Atom[int]", bridger)
 		}
 		h.owner.index = fieldValue
 		structVal.SetField("index", val.GXValue())
