@@ -47,13 +47,8 @@ var (
 )
 
 // NewFloat returns a new element Float number element.
-func NewFloat(env engine.Env, expr ir.Expr, val *big.Float) (*Float, error) {
-	typ, err := concrete.Concrete(env.ExprEval(), expr.Expr(), expr.Type())
-	return &Float{
-		val:  val,
-		expr: expr,
-		typ:  typ,
-	}, err
+func NewFloat(expr *ir.NumberFloat) *Float {
+	return &Float{val: expr.Val, expr: expr, typ: expr.Type()}
 }
 
 // UnaryOp applies a unary operator on x.

@@ -26,19 +26,15 @@ import (
 	"github.com/gx-org/gx/internal/interp/canonical"
 	"github.com/gx-org/gx/internal/interp/compeval/cpevops"
 	"github.com/gx-org/gx/internal/interp/numbers"
-	"github.com/gx-org/gx/interp/engine"
 	"github.com/gx-org/gx/tests/testing/prime"
 )
 
 func newFloat(f float64) *numbers.Float {
 	bf := big.NewFloat(f)
-	val, err := numbers.NewFloat(engine.ProxyEnv(), &ir.NumberFloat{
+	return numbers.NewFloat(&ir.NumberFloat{
 		Src: &ast.BasicLit{Value: bf.String()},
-	}, bf)
-	if err != nil {
-		panic(err)
-	}
-	return val
+		Val: bf,
+	})
 }
 
 func newInt64(i int64) canonical.Canonical {
