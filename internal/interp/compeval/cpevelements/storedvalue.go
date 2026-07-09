@@ -24,7 +24,7 @@ import (
 	"github.com/gx-org/gx/api/values"
 	"github.com/gx-org/gx/build/ir"
 	"github.com/gx-org/gx/internal/interp/canonical"
-	"github.com/gx-org/gx/internal/interp/coreops"
+	"github.com/gx-org/gx/internal/interp/compeval/cpevops"
 	"github.com/gx-org/gx/interp/elements"
 	"github.com/gx-org/gx/interp/engine"
 	"github.com/gx-org/gx/interp/fun"
@@ -36,7 +36,7 @@ type storedValue struct {
 }
 
 var (
-	_ coreops.Element              = (*storedValue)(nil)
+	_ cpevops.Element              = (*storedValue)(nil)
 	_ elements.WithAxes            = (*storedValue)(nil)
 	_ ir.WithBareValue             = (*storedValue)(nil)
 	_ ir.WithLength                = (*storedValue)(nil)
@@ -66,8 +66,8 @@ func (v *storedValue) NumericalConstant() (*values.HostArray, error) {
 	return elements.ConstantFromElement(v.val)
 }
 
-func (v *storedValue) canonical() (coreops.Element, error) {
-	can, ok := v.val.(coreops.Element)
+func (v *storedValue) canonical() (cpevops.Element, error) {
+	can, ok := v.val.(cpevops.Element)
 	if !ok {
 		return nil, errors.Errorf("%T is not a canonical element", v.val)
 	}
@@ -80,12 +80,12 @@ func (v *storedValue) UnaryOp(env engine.Env, expr *ir.UnaryExpr) (engine.Numeri
 	if err != nil {
 		return can, nil
 	}
-	return coreops.NewUnary(env, expr, can)
+	return cpevops.NewUnary(env, expr, can)
 }
 
 // BinaryOp applies a binary operator to x and y.
 func (v *storedValue) BinaryOp(env engine.Env, expr *ir.BinaryExpr, x, y engine.NumericalElement) (engine.NumericalElement, error) {
-	return coreops.NewBinary(env, expr, x, y)
+	return cpevops.NewBinary(env, expr, x, y)
 }
 
 // Cast an element into a given data type.
@@ -94,7 +94,7 @@ func (v *storedValue) Cast(env engine.Env, expr ir.Expr, target ir.Type) (engine
 	if err != nil {
 		return can, nil
 	}
-	return coreops.NewCast(env, expr, can, target)
+	return cpevops.NewCast(env, expr, can, target)
 }
 
 // Reshape the variable into a different shape.
@@ -103,7 +103,7 @@ func (v *storedValue) Reshape(env engine.Env, expr ir.Expr, axisLengths []engine
 	if err != nil {
 		return can, nil
 	}
-	return coreops.NewReshape(env, expr, can, axisLengths)
+	return cpevops.NewReshape(env, expr, can, axisLengths)
 }
 
 // Store returns the storage represented by this variable.
@@ -148,7 +148,7 @@ func (v *storedValue) Type() ir.Type {
 
 // Axes returns the axes of the value as a slice element.
 func (v *storedValue) Axes(ev ir.Evaluator) (*elements.Slice, error) {
-	return coreops.AxesFromType(ev, v.Type())
+	return cpevops.AxesFromType(ev, v.Type())
 }
 
 // Compare to another element.

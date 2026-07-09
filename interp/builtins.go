@@ -27,7 +27,7 @@ import (
 	"github.com/gx-org/gx/build/fmterr"
 	"github.com/gx-org/gx/build/ir"
 	"github.com/gx-org/gx/internal/base/scope"
-	"github.com/gx-org/gx/internal/interp/coreops"
+	"github.com/gx-org/gx/internal/interp/compeval/cpevops"
 	"github.com/gx-org/gx/interp/elements"
 	"github.com/gx-org/gx/interp/engine"
 )
@@ -191,7 +191,7 @@ func lenImpl(env engine.Env, call *ir.FuncCallExpr, recv ir.Element, args []ir.E
 			Val: bVal,
 		},
 	}
-	atom, err := coreops.NewAtom(val, expr, expr.Type())
+	atom, err := cpevops.NewAtom(val, expr, expr.Type())
 	return []ir.Element{atom}, err
 }
 

@@ -29,7 +29,7 @@ import (
 	"github.com/gx-org/gx/build/ir/irhelper"
 	"github.com/gx-org/gx/build/ir/irkind"
 	"github.com/gx-org/gx/internal/interp/compeval"
-	"github.com/gx-org/gx/internal/interp/coreops"
+	"github.com/gx-org/gx/internal/interp/compeval/cpevops"
 	"github.com/gx-org/gx/interp/elements"
 	"github.com/gx-org/gx/interp"
 )
@@ -477,7 +477,7 @@ func TestSubContext(t *testing.T) {
 	if err != nil {
 		t.Fatal(err)
 	}
-	bValue, err := coreops.NewAtom(
+	bValue, err := cpevops.NewAtom(
 		cstVal,
 		irhelper.IntNumberAs(3, ir.Int32Type()),
 		ir.Int32Type(),

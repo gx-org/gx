@@ -22,16 +22,16 @@ import (
 	"github.com/pkg/errors"
 	"github.com/gx-org/gx/build/ir"
 	"github.com/gx-org/gx/build/ir/irkind"
-	"github.com/gx-org/gx/internal/interp/coreops"
+	"github.com/gx-org/gx/internal/interp/compeval/cpevops"
 	"github.com/gx-org/gx/interp/elements"
 	"github.com/gx-org/gx/interp/engine"
 	"github.com/gx-org/gx/interp/fun"
 )
 
-func toElement(x engine.NumericalElement) (coreops.Element, error) {
-	el, ok := x.(coreops.Element)
+func toElement(x engine.NumericalElement) (cpevops.Element, error) {
+	el, ok := x.(cpevops.Element)
 	if !ok {
-		return nil, errors.Errorf("cannot build static element: type %T does not implement %s", x, reflect.TypeFor[coreops.Element]().String())
+		return nil, errors.Errorf("cannot build static element: type %T does not implement %s", x, reflect.TypeFor[cpevops.Element]().String())
 	}
 	return el, nil
 }
