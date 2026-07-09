@@ -34,7 +34,7 @@ func f() [2][2]int32 {
 		},
 		testbuild.Decl{
 			Src: `
-func f() int64 {
+func f() int {
 	a := [2]int32{0, 1}
 	return len(a)
 }
@@ -52,7 +52,7 @@ func f() float32 {
 			Src: `
 func log([2]float32) [2]float32
 
-func cast(int64) float32
+func cast(int) float32
 
 func f(probs [2]float32) float32 {
 	logprobs := log(probs)

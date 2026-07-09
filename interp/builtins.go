@@ -15,7 +15,6 @@
 package interp
 
 import (
-	"fmt"
 	"go/ast"
 	"go/token"
 	"math/big"
@@ -27,7 +26,7 @@ import (
 	"github.com/gx-org/gx/build/fmterr"
 	"github.com/gx-org/gx/build/ir"
 	"github.com/gx-org/gx/internal/base/scope"
-	"github.com/gx-org/gx/internal/interp/compeval/cpevops"
+	"github.com/gx-org/gx/internal/interp/numbers"
 	"github.com/gx-org/gx/interp/elements"
 	"github.com/gx-org/gx/interp/engine"
 )
@@ -175,14 +174,9 @@ func lenImpl(env engine.Env, call *ir.FuncCallExpr, recv ir.Element, args []ir.E
 	if err != nil {
 		return nil, err
 	}
-	i64Val := int64(l)
-	val, err := values.AtomIntegerValue(ir.Int64Type(), i64Val)
-	if err != nil {
-		return nil, fmt.Errorf("cannot create atomic array: %w", err)
-	}
-	bVal := big.NewInt(i64Val)
+	bVal := big.NewInt(int64(l))
 	expr := &ir.NumberCastExpr{
-		Typ: ir.Int64Type(),
+		Typ: ir.IntType(),
 		X: &ir.NumberInt{
 			Src: &ast.BasicLit{
 				Kind:  token.INT,
@@ -191,7 +185,7 @@ func lenImpl(env engine.Env, call *ir.FuncCallExpr, recv ir.Element, args []ir.E
 			Val: bVal,
 		},
 	}
-	atom, err := cpevops.NewAtom(val, expr, expr.Type())
+	atom, err := numbers.NewInt(env, expr, bVal)
 	return []ir.Element{atom}, err
 }
 

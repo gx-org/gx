@@ -4,10 +4,10 @@ func newForLen() [2][1]float32 {
 	return [2][1]float32{{1}, {2}}
 }
 
-func TestLen2() int64 {
+func TestLen2() int {
 	return len(newForLen())
 	// Want:
-	// int64(2)
+	// int(2)
 }
 
 func TestLen3() float32 {
@@ -16,42 +16,42 @@ func TestLen3() float32 {
 	// float32(2)
 }
 
-func LenUnknownRank[ax int](x [ax]float32) int64 {
+func LenUnknownRank[ax int](x [ax]float32) int {
 	return len(x)
 }
 
-func TestLen1a() int64 {
+func TestLen1a() int {
 	return len([3]float32{1, 2, 3})
 	// Want:
-	// int64(3)
+	// int(3)
 }
 
-func TestLen1b() int64 {
+func TestLen1b() int {
 	return len([...]float32{1, 2, 3})
 	// Want:
-	// int64(3)
+	// int(3)
 }
 
-func TestLen1c() int64 {
+func TestLen1c() int {
 	return LenUnknownRank([...]float32{1, 2, 3})
 	// Want:
-	// int64(3)
+	// int(3)
 }
 
-func TestLen2a() int64 {
+func TestLen2a() int {
 	return len([2][3]float32{{1, 2, 3}, {4, 5, 6}})
 	// Want:
-	// int64(2)
+	// int(2)
 }
 
-func TestLen2b() int64 {
+func TestLen2b() int {
 	return len([...]float32{{1, 2, 3}, {4, 5, 6}})
 	// Want:
-	// int64(2)
+	// int(2)
 }
 
-func TestLen3b() int64 {
+func TestLen3b() int {
 	return LenUnknownRank([...]float32{1, 2, 3, 4, 5, 6})
 	// Want:
-	// int64(6)
+	// int(6)
 }

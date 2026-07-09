@@ -108,7 +108,7 @@ func AddInts(x, y [Size]int64) [Size]int64 {
 }
 
 // Len returns the outmost dimension of x.
-func Len(x [Size]float32) int64 {
+func Len(x [Size]float32) int {
 	return len(x)
 }
 
