@@ -25,7 +25,7 @@ import (
 	"github.com/gx-org/gx/internal/interp/canonical"
 	"github.com/gx-org/gx/internal/interp/compeval"
 	"github.com/gx-org/gx/internal/interp/compeval/cpevelements"
-	"github.com/gx-org/gx/internal/interp/coreops"
+	"github.com/gx-org/gx/internal/interp/compeval/cpevops"
 	"github.com/gx-org/gx/interp/elements"
 	"github.com/gx-org/gx/interp"
 )
@@ -47,7 +47,7 @@ func (tt CompEval) Source() string {
 }
 
 func stringFromCanonical(el ir.Element) (string, error) {
-	coreEl, err := cast.To[coreops.Element](el)
+	coreEl, err := cast.To[cpevops.Element](el)
 	if err != nil {
 		return "", err
 	}

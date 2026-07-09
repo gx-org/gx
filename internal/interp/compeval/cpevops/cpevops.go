@@ -12,8 +12,8 @@
 // See the License for the specific language governing permissions and
 // limitations under the License.
 
-// Package coreops provides core operators for numerical elements.
-package coreops
+// Package cpevops provides core operators for numerical elements.
+package cpevops
 
 import (
 	"github.com/gx-org/gx/api/values"

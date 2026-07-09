@@ -24,7 +24,7 @@ import (
 	"github.com/gx-org/gx/api/values"
 	"github.com/gx-org/gx/build/ir"
 	"github.com/gx-org/gx/internal/interp/canonical"
-	"github.com/gx-org/gx/internal/interp/coreops"
+	"github.com/gx-org/gx/internal/interp/compeval/cpevops"
 	"github.com/gx-org/gx/internal/interp/numbers"
 	"github.com/gx-org/gx/interp/engine"
 	"github.com/gx-org/gx/tests/testing/prime"
@@ -46,7 +46,7 @@ func newInt64(i int64) canonical.Canonical {
 	if err != nil {
 		panic(err)
 	}
-	can, err := coreops.NewAtom(
+	can, err := cpevops.NewAtom(
 		val,
 		&ir.NumberCastExpr{
 			X: &ir.NumberInt{

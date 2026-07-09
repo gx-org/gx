@@ -22,7 +22,7 @@ import (
 	"github.com/gx-org/gx/build/ir"
 	"github.com/gx-org/gx/internal/base/cast"
 	"github.com/gx-org/gx/internal/interp/canonical"
-	"github.com/gx-org/gx/internal/interp/coreops"
+	"github.com/gx-org/gx/internal/interp/compeval/cpevops"
 	"github.com/gx-org/gx/interp/elements"
 	"github.com/gx-org/gx/interp/engine"
 	"github.com/gx-org/gx/interp/materialise"
@@ -38,7 +38,7 @@ type array struct {
 var (
 	_ materialise.Node  = (*array)(nil)
 	_ elements.WithAxes = (*array)(nil)
-	_ coreops.Element   = (*array)(nil)
+	_ cpevops.Element   = (*array)(nil)
 	_ elements.Slicer   = (*array)(nil)
 	_ engine.Copier     = (*array)(nil)
 	_ ir.WithLength     = (*array)(nil)
@@ -69,7 +69,7 @@ func (a *array) Type() ir.Type {
 }
 
 func (a *array) Axes(fetcher ir.Evaluator) (*elements.Slice, error) {
-	return coreops.AxesFromType(fetcher, a.typ)
+	return cpevops.AxesFromType(fetcher, a.typ)
 }
 
 func (a *array) UnaryOp(env engine.Env, expr *ir.UnaryExpr) (engine.NumericalElement, error) {

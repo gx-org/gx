@@ -22,7 +22,7 @@ import (
 	"github.com/gx-org/backend/shape"
 	"github.com/gx-org/gx/build/ir"
 	"github.com/gx-org/gx/internal/interp/canonical"
-	"github.com/gx-org/gx/internal/interp/coreops"
+	"github.com/gx-org/gx/internal/interp/compeval/cpevops"
 	"github.com/gx-org/gx/internal/interp/proxies"
 	"github.com/gx-org/gx/interp/elements"
 	"github.com/gx-org/gx/interp/engine"
@@ -34,7 +34,7 @@ type proxy struct {
 }
 
 var (
-	_ coreops.Element       = (*proxy)(nil)
+	_ cpevops.Element       = (*proxy)(nil)
 	_ ir.StorageElement     = (*proxy)(nil)
 	_ elements.WithAxes     = (*proxy)(nil)
 	_ ir.Canonical          = (*proxy)(nil)
@@ -58,22 +58,22 @@ func newProxy(src elements.StorageAt) *proxy {
 
 // UnaryOp applies a unary operator on x.
 func (a *proxy) UnaryOp(env engine.Env, expr *ir.UnaryExpr) (engine.NumericalElement, error) {
-	return coreops.NewUnary(env, expr, a)
+	return cpevops.NewUnary(env, expr, a)
 }
 
 // BinaryOp applies a binary operator to x and y.
 func (a *proxy) BinaryOp(env engine.Env, expr *ir.BinaryExpr, x, y engine.NumericalElement) (engine.NumericalElement, error) {
-	return coreops.NewBinary(env, expr, x, y)
+	return cpevops.NewBinary(env, expr, x, y)
 }
 
 // Cast an element into a given data type.
 func (a *proxy) Cast(env engine.Env, expr ir.Expr, target ir.Type) (engine.NumericalElement, error) {
-	return coreops.NewCast(env, expr, a, target)
+	return cpevops.NewCast(env, expr, a, target)
 }
 
 // Reshape the variable into a different shape.
 func (a *proxy) Reshape(env engine.Env, expr ir.Expr, axisLengths []engine.NumericalElement) (engine.NumericalElement, error) {
-	return coreops.NewReshape(env, expr, a, axisLengths)
+	return cpevops.NewReshape(env, expr, a, axisLengths)
 }
 
 // Append elements to the slice.
@@ -114,7 +114,7 @@ func (a *proxy) Unpack(ev ir.TypeCmp) (ir.Element, error) {
 
 // Axes returns the axes of the value as a slice element.
 func (a *proxy) Axes(ev ir.Evaluator) (*elements.Slice, error) {
-	return coreops.AxesFromType(ev, a.src.Node().Type())
+	return cpevops.AxesFromType(ev, a.src.Node().Type())
 }
 
 // SliceAt computes a slice from the variable.

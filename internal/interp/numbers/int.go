@@ -27,7 +27,7 @@ import (
 	"github.com/gx-org/gx/build/ir/irkind"
 	"github.com/gx-org/gx/internal/concrete"
 	"github.com/gx-org/gx/internal/interp/canonical"
-	"github.com/gx-org/gx/internal/interp/coreops"
+	"github.com/gx-org/gx/internal/interp/compeval/cpevops"
 	"github.com/gx-org/gx/internal/interp/flatten"
 	"github.com/gx-org/gx/internal/togo"
 	"github.com/gx-org/gx/interp/elements"
@@ -89,7 +89,7 @@ func (n *Int) BinaryOp(env engine.Env, expr *ir.BinaryExpr, x, y engine.Numerica
 	case *Int:
 		return binaryInt(env, expr, n, yT)
 	}
-	return coreops.NewBinary(env, expr, x, y)
+	return cpevops.NewBinary(env, expr, x, y)
 }
 
 func (n *Int) toFloat() *Float {
@@ -126,7 +126,7 @@ func binaryInt(env engine.Env, expr *ir.BinaryExpr, xInt, yInt *Int) (engine.Num
 	case token.XOR:
 		val = new(big.Int).Xor(x, y)
 	default:
-		return coreops.NewBinary(env, expr, xInt, yInt)
+		return cpevops.NewBinary(env, expr, xInt, yInt)
 	}
 	typ, err := concrete.Concrete(env.ExprEval(), expr.Src, expr.Typ)
 	return &Int{
@@ -148,7 +148,7 @@ func (n *Int) Cast(env engine.Env, expr ir.Expr, target ir.Type) (engine.Numeric
 
 // Reshape the number into an array.
 func (n *Int) Reshape(env engine.Env, expr ir.Expr, axisLengths []engine.NumericalElement) (engine.NumericalElement, error) {
-	return coreops.NewReshape(env, expr, n, axisLengths)
+	return cpevops.NewReshape(env, expr, n, axisLengths)
 }
 
 // Shape of the value represented by the element.
