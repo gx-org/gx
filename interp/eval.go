@@ -25,10 +25,10 @@ import (
 	"github.com/gx-org/gx/build/ir"
 	"github.com/gx-org/gx/build/ir/irkind"
 	"github.com/gx-org/gx/internal/base/cast"
+	"github.com/gx-org/gx/internal/interp/numbers"
 	"github.com/gx-org/gx/interp/elements"
 	"github.com/gx-org/gx/interp/engine"
 	"github.com/gx-org/gx/interp/fun"
-	"github.com/gx-org/gx/interp/numbers"
 )
 
 var one *values.HostArray
