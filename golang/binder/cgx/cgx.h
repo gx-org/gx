@@ -107,6 +107,7 @@ enum cgx_value_kind {
   CGX_FLOAT64,
   CGX_INT32,
   CGX_INT64,
+  CGX_INT,
   CGX_UINT32,
   CGX_UINT64,
 

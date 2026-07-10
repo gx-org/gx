@@ -174,6 +174,12 @@ func ArrayFloat64(vals []float64, dims ...int) *HostArray[float64] {
 	return newArray[float64](irkind.Float64, kernels.ToFloatArray(vals, dims))
 }
 
+// ArrayInt returns a new Go host array of int32.
+func ArrayInt(vals []int, dims ...int) *HostArray[int] {
+	dims = inferDims(vals, dims)
+	return newArray[int](irkind.Int, kernels.ToIntegerArray(vals, dims))
+}
+
 // ArrayInt32 returns a new Go host array of int32.
 func ArrayInt32(vals []int32, dims ...int) *HostArray[int32] {
 	dims = inferDims(vals, dims)
