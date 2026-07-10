@@ -63,6 +63,8 @@ py::dtype to_dtype(enum cgx_value_kind type) {
       return py::dtype::of<int32_t>();
     case CGX_INT64:
       return py::dtype::of<int64_t>();
+    case CGX_INT:
+      return py::dtype::of<int64_t>();
     case CGX_UINT32:
       return py::dtype::of<uint32_t>();
     case CGX_UINT64:
@@ -265,6 +267,7 @@ PYBIND11_MODULE(pygx, m) {
       .value("CGX_FLOAT64", CGX_FLOAT64)
       .value("CGX_INT32", CGX_INT32)
       .value("CGX_INT64", CGX_INT64)
+      .value("CGX_INT", CGX_INT)
       .value("CGX_UINT32", CGX_UINT32)
       .value("CGX_UINT64", CGX_UINT64)
       .value("CGX_ARRAY", CGX_ARRAY);

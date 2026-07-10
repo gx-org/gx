@@ -85,6 +85,17 @@ TEST_F(dtypesgx, AtomicInt64) {
   EXPECT_EQ(got, -max);
 }
 
+TEST_F(dtypesgx, AtomicInt) {
+  const int64_t max = std::numeric_limits<int64_t>::max();
+  ASSERT_OK_AND_ASSIGN(Runtime runtime, TestRuntime());
+  ASSERT_OK_AND_ASSIGN(Device device, runtime.GetDevice(0));
+  ASSERT_OK_AND_ASSIGN(Dtypes pkg, Dtypes::BuildFor(device));
+  ASSERT_OK_AND_ASSIGN(DeviceAtomic<int64_t> in, device.Send<int64_t>(max));
+  ASSERT_OK_AND_ASSIGN(Atomic<int64_t> out, pkg.Int(in));
+  ASSERT_OK_AND_ASSIGN(int64_t got, out.get());
+  EXPECT_EQ(got, -max);
+}
+
 TEST_F(dtypesgx, AtomicFloat32) {
   const float max = std::numeric_limits<float>::max();
   ASSERT_OK_AND_ASSIGN(Runtime runtime, TestRuntime());

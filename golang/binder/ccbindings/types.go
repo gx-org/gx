@@ -32,7 +32,7 @@ func (b *binder) ccTypeFromKind(knd irkind.Kind) (string, error) {
 	case irkind.Float64:
 		return "double", nil
 	case irkind.Int:
-		return "int", nil
+		return "int64_t", nil
 	case irkind.Int32:
 		return "int32_t", nil
 	case irkind.Int64:

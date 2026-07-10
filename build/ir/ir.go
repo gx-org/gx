@@ -3295,7 +3295,7 @@ func ToArrayTypeGivenShape(from *File, typ Type, sh *shape.Shape) (ArrayType, er
 		return array, errors.Errorf("cannot create an array of %s", dtype.ReferString(from))
 	}
 	dt := dtype.Kind().DType()
-	if dt != sh.DType {
+	if dt != sh.DType && !(dt == dtypes.Int && sh.DType == dtypes.Int64) {
 		return array, errors.Errorf("cannot create array value: type %s has data type %s but shape has data type %s", typ.ReferString(from), dt, sh.DType.String())
 	}
 	return array, nil

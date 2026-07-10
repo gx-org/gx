@@ -13,6 +13,10 @@ func Float64(x float64) float64 {
 	return -x
 }
 
+func Int(x int) int {
+	return -x
+}
+
 func Int32(x int32) int32 {
 	return -x
 }
@@ -41,6 +45,10 @@ func ArrayFloat64(x [2][3]float64) [2][3]float64 {
 	return -x
 }
 
+func ArrayInt(x [2][3]int) [2][3]int {
+	return -x
+}
+
 func ArrayInt32(x [2][3]int32) [2][3]int32 {
 	return -x
 }
@@ -56,4 +64,3 @@ func ArrayUint32(x [2][3]uint32) [2][3]uint32 {
 func ArrayUint64(x [2][3]uint64) [2][3]uint64 {
 	return -x
 }
-

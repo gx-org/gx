@@ -22,8 +22,9 @@ import (
 	"github.com/google/go-cmp/cmp"
 	"github.com/gx-org/gx/api"
 	"github.com/gx-org/gx/golang/binder/gobindings/types"
-	"github.com/gx-org/gx/tests/bindings/dtypes/dtypes_go_gx"
 	gxtesting "github.com/gx-org/gx/tests/testing"
+
+	"github.com/gx-org/gx/tests/bindings/dtypes/dtypes_go_gx"
 )
 
 var dtypes *dtypes_go_gx.Package
@@ -56,6 +57,17 @@ func TestFloat64(t *testing.T) {
 		t.Fatalf("%+v", err)
 	}
 	const want = -math.MaxFloat64
+	if got := gxtesting.FetchAtom(t, atom); got != want {
+		t.Errorf("got %v but want %v", got, want)
+	}
+}
+
+func TestInt(t *testing.T) {
+	atom, err := dtypes.Int(types.Int(math.MaxInt))
+	if err != nil {
+		t.Fatalf("%+v", err)
+	}
+	const want = -math.MaxInt
 	if got := gxtesting.FetchAtom(t, atom); got != want {
 		t.Errorf("got %v but want %v", got, want)
 	}
@@ -150,6 +162,18 @@ func TestFloat64Array(t *testing.T) {
 		-math.MaxFloat64, math.MaxFloat64,
 		-math.SmallestNonzeroFloat64, math.SmallestNonzeroFloat64,
 	}
+	if got := gxtesting.FetchArray(t, array); !cmp.Equal(got, want) {
+		t.Errorf("got %v but want %v", got, want)
+	}
+}
+
+func TestIntArray(t *testing.T) {
+	arg := types.ArrayInt([]int{math.MaxInt, math.MinInt + 1}, 2)
+	array, err := dtypes.ArrayInt(arg)
+	if err != nil {
+		t.Fatalf("%+v", err)
+	}
+	want := []int{math.MinInt + 1, math.MaxInt}
 	if got := gxtesting.FetchArray(t, array); !cmp.Equal(got, want) {
 		t.Errorf("got %v but want %v", got, want)
 	}

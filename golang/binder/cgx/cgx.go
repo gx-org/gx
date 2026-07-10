@@ -672,6 +672,8 @@ func toCGXValueKind(kind irkind.Kind) C.enum_cgx_value_kind {
 		return C.CGX_INT32
 	case irkind.Int64:
 		return C.CGX_INT64
+	case irkind.Int:
+		return C.CGX_INT
 	case irkind.Uint32:
 		return C.CGX_UINT32
 	case irkind.Uint64:
