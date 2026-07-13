@@ -135,10 +135,10 @@ func specializeFuncType(rscope resolveScope, x ir.Expr, indices []ir.Expr, fun *
 		return x, false
 	}
 	for i, indexExpr := range indices {
-		var ok bool
-		indices[i], ok = ir.CompEvalExprSingle(compEval, indexExpr.Expr(), indexExpr)
-		if !ok {
-			return x, false
+		var err error
+		indices[i], err = ir.CompEvalExprSingle(compEval, indexExpr)
+		if err != nil {
+			return x, rscope.Err().AppendAt(indexExpr.Expr(), err)
 		}
 	}
 	return generics.SpecialiseParams(compEval, x, fun, genValues)

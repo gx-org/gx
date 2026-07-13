@@ -276,9 +276,9 @@ func (s *GenericNonTypeParam) Assign(fetcher Fetcher, x Expr) (GenericValue, boo
 		from := fetcher.File()
 		return s.invalidValue(), fetcher.Err().Appendf(x.Node(), "cannot use %s as %s generic value %s", src.ReferString(from), dst.ReferString(from), s.OrigField().Name.Name)
 	}
-	xEval, ok := CompEvalExpr(fetcher, x.Expr(), x)
-	if !ok {
-		return s.invalidValue(), false
+	xEval, err := CompEvalExpr(fetcher, x)
+	if err != nil {
+		return s.invalidValue(), fetcher.Err().AppendAt(x.Expr(), err)
 	}
 	return NewAxisGenericValue(s, xEval[0]), true
 }
