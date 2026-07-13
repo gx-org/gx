@@ -281,6 +281,10 @@ func (s *FuncType) SourceSignature(from *File, name *ast.Ident) string {
 	return s.sourceSignature(from, nameS, false)
 }
 
+func (s *FuncType) shortString(from *File) string {
+	return s.Params.ShortString(from)
+}
+
 func (s *FuncType) specializeString(from *File) string {
 	var b strings.Builder
 	for _, gval := range s.GenericValues {

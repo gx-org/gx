@@ -364,7 +364,8 @@ func evalGenericValues(ce *compileEvaluator, ftype *ir.FuncType) (map[string]ir.
 	return out, ok
 }
 
-func instantiateFType(ce *compileEvaluator, node ast.Expr, funcFile *ir.File, ftype *ir.FuncType) (*ir.FuncType, bool) {
+func instantiateFType(ce *compileEvaluator, fExpr *ir.FuncValExpr, funcFile *ir.File) (*ir.FuncType, bool) {
+	ftype := fExpr.FuncType()
 	genVals, ok := evalGenericValues(ce, ftype)
 	if !ok {
 		return ftype, false
@@ -373,7 +374,7 @@ func instantiateFType(ce *compileEvaluator, node ast.Expr, funcFile *ir.File, ft
 	if !ok {
 		return ftype, false
 	}
-	return generics.Instantiate(sigCE, node, ftype, ftype.GenericValues)
+	return generics.Instantiate(sigCE, fExpr, ftype.GenericValues)
 }
 
 func buildFuncForCall(rscope resolveScope, fExpr *ir.FuncValExpr, args []ir.Expr) ([]ir.Expr, *ir.FuncValExpr, bool) {
@@ -397,7 +398,7 @@ func buildFuncForCall(rscope resolveScope, fExpr *ir.FuncValExpr, args []ir.Expr
 		}
 		return args, fExpr, rscope.Err().Appendf(fExpr.Node(), "in call to %s, cannot infer type %s", fExpr.Func().ShortString(), strings.Join(names, ","))
 	}
-	fTypeInst, instOk := instantiateFType(compEval, fExpr.Expr(), fExpr.Func().File(), fExpr.FuncType())
+	fTypeInst, instOk := instantiateFType(compEval, fExpr, fExpr.Func().File())
 	fExprInst := fExpr.NewFType(fTypeInst)
 	var argsOk bool
 	args, argsOk = checkArgsForCall(rscope, compEval, fExprInst, args)

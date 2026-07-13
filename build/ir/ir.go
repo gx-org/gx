@@ -2538,6 +2538,16 @@ func (s *FuncValExpr) SourceString(from *File) string {
 	return callee + fType.specializeString(from)
 }
 
+// ShortString representation.
+func (s *FuncValExpr) ShortString(from *File) string {
+	callee := s.x.SourceString(from)
+	fType := s.t
+	if fType == nil {
+		return callee
+	}
+	return fmt.Sprintf("%s(%s)", callee, fType.shortString(from))
+}
+
 func (s *FuncCallExpr) node() {}
 
 // Node returns the node in the AST tree.

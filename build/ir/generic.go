@@ -30,6 +30,7 @@ type (
 		NonTypeFor(GenericParam) *NonTypeGenericValue
 		TypeFor(GenericParam) *TypeGenericValue
 		Values() []GenericValue
+		InstantiateError(error) bool
 	}
 
 	// Unifier provides methods to unify types.

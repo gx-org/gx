@@ -21,6 +21,23 @@ import (
 	"github.com/gx-org/gx/internal/base/cast"
 )
 
+// StringShorter returns a string to include in an error message for the user.
+type StringShorter interface {
+	ShortString() string
+}
+
+// ShortString converts an element to a short string for an error message.
+func ShortString(from *File, el Element) string {
+	switch elT := el.(type) {
+	case StringShorter:
+		return elT.ShortString()
+	case StringSourcer:
+		return elT.SourceString(from)
+	default:
+		return fmt.Sprintf("%T.ShortString()", el)
+	}
+}
+
 // StringSourcer returns the GX source code of the implementation.
 type StringSourcer interface {
 	SourceString(from *File) string

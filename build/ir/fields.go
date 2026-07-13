@@ -29,6 +29,16 @@ type (
 	}
 )
 
+// ShortString represents the field list for an error message.
+func (l *FieldList) ShortString(from *File) string {
+	fields := l.Fields()
+	types := make([]string, len(fields))
+	for i, field := range fields {
+		types[i] = field.Type().ReferString(from)
+	}
+	return strings.Join(types, ", ")
+}
+
 // SourceString represents the field list as GX source code.
 func (l *FieldList) SourceString(from *File) string {
 	groups := make([]string, len(l.List))
