@@ -289,7 +289,7 @@ class PygxTest(googletest.TestCase):
     package = device.build_package(self.BASIC_PACKAGE)
     basic = package.find_interface("Basic")
     funcs = basic.list_methods()
-    wants = ["AddPrivate", "SetFloat"]
+    wants = ["Add", "AddPrivate", "SetFloat"]
     self.assertLen(funcs, len(wants))
     for i, fn in enumerate(funcs):
       self.assertEqual(fn.name(), wants[i])

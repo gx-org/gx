@@ -429,7 +429,7 @@ TEST_F(cgx, InterfaceListMethods) {
   const auto ifacer = cgx_interface_find(pr.package, "Basic");
   CGX_ASSERT_OK(ifacer.error);
 
-  const char* wants[] = {"AddPrivate", "SetFloat"};
+  const char* wants[] = {"Add", "AddPrivate", "SetFloat"};
   auto result = cgx_interface_list_methods(ifacer.iface);
   CGX_ASSERT_OK(result.error);
   ASSERT_EQ(result.num_functions, std::size(wants));

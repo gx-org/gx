@@ -332,7 +332,7 @@ TEST_F(cppgx, Interface_ListMethods) {
   ASSERT_OK_AND_ASSIGN(Package package, device.BuildPackage(kBasicPackage));
   ASSERT_OK_AND_ASSIGN(Interface basic, package.FindInterface("Basic"));
   ASSERT_OK_AND_ASSIGN(std::vector<Function> functions, basic.ListMethods());
-  std::vector<std::string> wants{"AddPrivate", "SetFloat"};
+  std::vector<std::string> wants{"Add", "AddPrivate", "SetFloat"};
   ASSERT_EQ(functions.size(), wants.size());
   for (int i = 0; i < functions.size(); i++) {
     EXPECT_EQ(functions[i].name(), wants[i]);

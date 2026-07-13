@@ -59,6 +59,11 @@ func AddPrivate(b Basic) int32 {
 	return b.privateA + b.privateB
 }
 
+// Add returns the sum of two private fields.
+func (b Basic) Add(a Basic) int32 {
+	return a.privateA + b.privateA
+}
+
 // AddPrivate returns the sum of two private fields.
 func (b Basic) AddPrivate() int32 {
 	return b.privateA + b.privateB
