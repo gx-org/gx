@@ -122,9 +122,9 @@ func (dm *AxisExpr) UnifyWith(uni Unifier, targets []AxisLengths) ([]AxisLengths
 
 // Instantiate the rank into another rank.
 func (dm *AxisExpr) Instantiate(ev Fetcher, spec Specialiser) ([]AxisLengths, bool) {
-	xs, ok := CompEvalExpr(ev, spec.Source(), dm.X)
-	if !ok {
-		return nil, false
+	xs, err := CompEvalExpr(ev, dm.X)
+	if err != nil {
+		return nil, spec.Err().AppendAt(spec.Source(), err)
 	}
 	axexprs := make([]AxisLengths, len(xs))
 	for i, x := range xs {

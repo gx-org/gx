@@ -83,32 +83,32 @@ var InvalidIdent = &Ident{
 
 // CompEvalExpr evaluates an expression at compile time and returns
 // the result of the evaluation as an IR expression.
-func CompEvalExpr(ev Fetcher, src ast.Expr, x Expr) (_ []Expr, ok bool) {
+func CompEvalExpr(ev Fetcher, x Expr) (_ []Expr, err error) {
 	if x.Type().Kind() == irkind.MetaType {
-		return []Expr{x}, true
+		return []Expr{x}, nil
 	}
 	el, err := ev.EvalExpr(x)
 	if err != nil {
-		return []Expr{InvalidIdent}, ev.Err().AppendAt(src, err)
+		return nil, err
 	}
 	res, err := ToExpr(ev, x.Expr(), el)
 	if err != nil {
-		return nil, ev.Err().AppendAt(x.Node(), err)
+		return nil, err
 	}
-	return res, true
+	return res, nil
 }
 
 // CompEvalExprSingle evaluates an expression at compile time and returns
 // the result of the evaluation as a single IR expression.
-func CompEvalExprSingle(ev Fetcher, src ast.Expr, x Expr) (Expr, bool) {
-	exprs, ok := CompEvalExpr(ev, src, x)
-	if !ok {
-		return nil, ok
+func CompEvalExprSingle(ev Fetcher, x Expr) (Expr, error) {
+	exprs, err := CompEvalExpr(ev, x)
+	if err != nil {
+		return nil, err
 	}
 	if len(exprs) != 1 {
-		return InvalidIdent, ev.Err().AppendInternalf(src, "compeval of %s error: got %d expression(s) but want 1", x.SourceString(ev.File()), len(exprs))
+		return InvalidIdent, fmterr.Internal(errors.Errorf("compeval of %s error: got %d expression(s) but want 1", x.SourceString(ev.File()), len(exprs)))
 	}
-	return exprs[0], true
+	return exprs[0], nil
 
 }
 
