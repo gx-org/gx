@@ -94,6 +94,9 @@ type (
 		// Set a slice in an array.
 		Set(ctx ir.Evaluator, expr *ir.FuncCallExpr, x, updates ir.Element, position []ir.Element) (ir.Element, error)
 
+		// ElementFromAtomLit returns transforms an atomic literal element into an element specific to the ArrayOps implementation.
+		ElementFromAtomLit(ctx *ir.File, el ir.Element) (ir.Element, error)
+
 		// ElementFromAtom returns an element from an atomic GX value.
 		ElementFromAtom(ctx *ir.File, val values.Array, expr ir.Expr, typ ir.Type) (NumericalElement, error)
 

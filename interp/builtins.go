@@ -19,7 +19,6 @@ import (
 	"reflect"
 
 	"github.com/pkg/errors"
-	"github.com/gx-org/gx/api/values"
 	"github.com/gx-org/gx/build/builder/builtins"
 	"github.com/gx-org/gx/build/fmterr"
 	"github.com/gx-org/gx/build/ir"
@@ -92,17 +91,12 @@ var builtinFile = &ir.File{
 }
 
 func (itp *Base) defineBoolConstant(scope *scope.RWScope[ir.Element], val ir.StorageWithValue) error {
-	gxValue, err := values.AtomBoolValue(ir.BoolType(), val.Value(nil).(*ir.AtomicValueT[bool]).Val)
+	el := numbers.NewBoolFromStorage(val)
+	bckEl, err := itp.Engine().ArrayOps().ElementFromAtomLit(builtinFile, el)
 	if err != nil {
 		return err
 	}
-	var el ir.Element
-	el, err = itp.eng.ArrayOps().ElementFromAtom(builtinFile, gxValue, val.Value(nil), ir.BoolType())
-	if err != nil {
-		return err
-	}
-	el = itp.eng.ElementFromStorage(builtinFile, val, el)
-	scope.Define(val.NameDef().Name, el)
+	scope.Define(val.NameDef().Name, bckEl)
 	return nil
 }
 

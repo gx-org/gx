@@ -20,9 +20,11 @@ import (
 	"github.com/gx-org/backend/shape"
 	"github.com/gx-org/gx/api/values"
 	"github.com/gx-org/gx/build/ir"
+	"github.com/gx-org/gx/build/ir/irkind"
 	"github.com/gx-org/gx/golang/backend/kernels"
 	"github.com/gx-org/gx/internal/interp/compeval/cpevelements"
 	"github.com/gx-org/gx/internal/interp/compeval/cpevops"
+	"github.com/gx-org/gx/internal/interp/numbers"
 	"github.com/gx-org/gx/interp/elements"
 	"github.com/gx-org/gx/interp/engine"
 )
@@ -72,7 +74,21 @@ func (compArrayOps) ElementFromAtom(file *ir.File, val values.Array, expr ir.Exp
 	if err != nil {
 		return nil, err
 	}
-	return cpevops.NewAtom(hostValue, expr, typ)
+	switch typ.Kind() {
+	case irkind.Bool:
+		val, err := values.ToAtom[bool](hostValue)
+		if err != nil {
+			return nil, err
+		}
+		return numbers.NewBool(expr, val), nil
+	default:
+		return cpevops.NewAtom(hostValue, expr, typ)
+	}
+}
+
+// ElementFromAtomLit returns transforms an atomic literal element into an element specific to the ArrayOps implementation.
+func (compArrayOps) ElementFromAtomLit(ctx *ir.File, el ir.Element) (ir.Element, error) {
+	return el, nil
 }
 
 // ElementFromArray returns an element from an array GX value.
