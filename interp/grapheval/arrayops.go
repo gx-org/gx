@@ -20,6 +20,7 @@ import (
 	"github.com/gx-org/backend/shape"
 	"github.com/gx-org/gx/api/values"
 	"github.com/gx-org/gx/build/ir"
+	"github.com/gx-org/gx/internal/interp/numbers"
 	"github.com/gx-org/gx/interp/elements"
 	"github.com/gx-org/gx/interp/engine"
 	"github.com/gx-org/gx/interp/materialise"
@@ -225,6 +226,23 @@ func (ao *arrayOps) Tuple(typ *ir.TupleType, nodes []ops.Node) (materialise.Node
 		typ,
 		&ops.OutputNode{Node: node},
 	)
+}
+
+func (ao *arrayOps) newBool(el numbers.Bool) (ir.Element, error) {
+	val, err := values.AtomBoolValue(el.Type(), el.Value())
+	if err != nil {
+		return nil, err
+	}
+	return newValueElement(ao.ev, val)
+}
+
+// ElementFromAtomLit returns transforms an atomic literal element into an element specific to the ArrayOps implementation.
+func (ao *arrayOps) ElementFromAtomLit(file *ir.File, el ir.Element) (ir.Element, error) {
+	bl, isBool := el.(numbers.Bool)
+	if isBool {
+		return ao.newBool(bl)
+	}
+	return ao.ev.hostEval.ArrayOps().ElementFromAtomLit(file, el)
 }
 
 // ElementFromAtom returns an element from a GX value.
