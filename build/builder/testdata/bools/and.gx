@@ -1,0 +1,7 @@
+package and
+
+func TestBoolAnd() [2]bool {
+	return [2]bool{true, true} && [2]bool{true, false}
+	// Want:
+	// [2]bool{true, false}
+}

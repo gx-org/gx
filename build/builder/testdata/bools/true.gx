@@ -1,0 +1,7 @@
+package true
+
+func TestTrue() bool {
+	return true
+	// Want:
+	// bool(true)
+}

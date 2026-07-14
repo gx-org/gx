@@ -100,11 +100,6 @@ var (
 
 // toCompEvalError converts an element to a compiler error.
 func (fitp *Interpreter) toCompEvalError(el ir.Element) (err error) {
-	defer func() {
-		if err != nil {
-			err = fmterr.Internal(err)
-		}
-	}()
 	if el == nil {
 		return nil
 	}

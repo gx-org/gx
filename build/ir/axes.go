@@ -124,7 +124,7 @@ func (dm *AxisExpr) UnifyWith(uni Unifier, targets []AxisLengths) ([]AxisLengths
 func (dm *AxisExpr) Instantiate(ev Fetcher, spec Specialiser) ([]AxisLengths, bool) {
 	xs, err := CompEvalExpr(ev, dm.X)
 	if err != nil {
-		return nil, spec.Err().AppendAt(spec.Source(), err)
+		return nil, spec.InstantiateError(err)
 	}
 	axexprs := make([]AxisLengths, len(xs))
 	for i, x := range xs {

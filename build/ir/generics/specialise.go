@@ -24,7 +24,7 @@ import (
 
 type specialiser struct {
 	ir.Fetcher
-	src          ast.Expr
+	fn           *ir.FuncValExpr
 	ftype        *ir.FuncType
 	defined      []ir.GenericValue
 	tparamFields []*ir.Field
@@ -38,10 +38,10 @@ func checkTypeParams(ftype *ir.FuncType, defined []ir.GenericValue) {
 	}
 }
 
-func newSpecialiser(fetcher ir.Fetcher, src ast.Expr, ftype *ir.FuncType, defined []ir.GenericValue) *specialiser {
+func newSpecialiser(fetcher ir.Fetcher, fExpr *ir.FuncValExpr, ftype *ir.FuncType, defined []ir.GenericValue) *specialiser {
 	checkTypeParams(ftype, defined)
 	return &specialiser{
-		src:          src,
+		fn:           fExpr,
 		Fetcher:      fetcher,
 		ftype:        ftype,
 		defined:      defined,
@@ -94,7 +94,15 @@ func (s *specialiser) Values() []ir.GenericValue {
 }
 
 func (s *specialiser) Source() ast.Expr {
-	return s.src
+	return s.fn.Expr()
+}
+
+func (s *specialiser) InstantiateError(err error) bool {
+	compileErr, isCompileErr := err.(*ir.CompileError)
+	if !isCompileErr {
+		return s.Err().AppendAt(s.Source(), err)
+	}
+	return s.Err().Appendf(s.Source(), "in call to %s: %v", s.fn.ShortString(s.File()), compileErr)
 }
 
 func (s *specialiser) String() string {
@@ -134,15 +142,16 @@ func toTypeValue(fetcher ir.Fetcher, field *ir.Field, x ir.Expr) (ir.GenericValu
 // SpecialiseParams a function signature for a given type.
 func SpecialiseParams(fetcher ir.Fetcher, expr ir.Expr, fun *ir.FuncValExpr, typArgs []ir.GenericValue) (*ir.FuncValExpr, bool) {
 	ftype := fun.FuncType()
-	spec := newSpecialiser(fetcher, expr.Expr(), ftype, typArgs)
+	spec := newSpecialiser(fetcher, fun, ftype, typArgs)
 	specType, ok := ftype.SpecialiseFType(spec, true)
 	checkTypeParams(specType, specType.GenericValues)
 	return ir.NewFuncValExpr(expr, fun.Func()).NewFType(specType), ok
 }
 
 // Instantiate specialises the result of a function.
-func Instantiate(fetcher ir.Fetcher, src ast.Expr, ftype *ir.FuncType, typArgs []ir.GenericValue) (*ir.FuncType, bool) {
-	spec := newSpecialiser(fetcher, src, ftype, typArgs)
+func Instantiate(fetcher ir.Fetcher, fun *ir.FuncValExpr, typArgs []ir.GenericValue) (*ir.FuncType, bool) {
+	ftype := fun.FuncType()
+	spec := newSpecialiser(fetcher, fun, ftype, typArgs)
 	instantiateFType, ok := ftype.InstantiateFType(fetcher, spec)
 	checkTypeParams(instantiateFType, instantiateFType.GenericValues)
 	return instantiateFType, ok

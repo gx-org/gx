@@ -49,7 +49,8 @@ func vecVecMatMul(env engine.Env, left, right ir.Element) ([]ir.Element, error) 
 		return nil, err
 	}
 	if !eq {
-		gxErr, err := gxerrors.Errorf(env, "incompatible axis lengths: %s!=%s", left, right)
+		from := env.File()
+		gxErr, err := gxerrors.Errorf(env, "incompatible axis lengths: %s!=%s", ir.ShortString(from, left), ir.ShortString(from, right))
 		return []ir.Element{builtin.NilShape, gxErr}, err
 	}
 	return builtin.ToShapeResult()
@@ -61,7 +62,8 @@ func vecMatMatMul(env engine.Env, left ir.Element, right []ir.Element) ([]ir.Ele
 		return nil, err
 	}
 	if !eq {
-		gxErr, err := gxerrors.Errorf(env, "incompatible axis lengths: %s!=%s in %s,%s", left, right[0], builtin.ToShapeString([]ir.Element{left}), builtin.ToShapeString(right))
+		from := env.File()
+		gxErr, err := gxerrors.Errorf(env, "incompatible axis lengths: %s!=%s in %s,%s", ir.ShortString(from, left), ir.ShortString(from, right[0]), builtin.ToShapeString([]ir.Element{left}), builtin.ToShapeString(right))
 		return []ir.Element{builtin.NilShape, gxErr}, err
 	}
 	return builtin.ToShapeResult(right[1])
@@ -73,7 +75,8 @@ func matVecMatMul(env engine.Env, left []ir.Element, right ir.Element) ([]ir.Ele
 		return nil, err
 	}
 	if !eq {
-		gxErr, err := gxerrors.Errorf(env, "incompatible axis lengths: %s!=%s in %s,%s", left[0], right, builtin.ToShapeString(left), builtin.ToShapeString([]ir.Element{right}))
+		from := env.File()
+		gxErr, err := gxerrors.Errorf(env, "incompatible axis lengths: %s!=%s in %s,%s", ir.ShortString(from, left[0]), ir.ShortString(from, right), builtin.ToShapeString(left), builtin.ToShapeString([]ir.Element{right}))
 		return []ir.Element{builtin.NilShape, gxErr}, err
 	}
 	return builtin.ToShapeResult(left[0])

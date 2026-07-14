@@ -280,12 +280,14 @@ func (f *funcDecl) buildSignature(fScope *fileResolveScope) (ir.Func, fnResolveS
 	return ext, fnscope, ok && fnscope.setFuncValue(ext)
 }
 
-func (f *funcDecl) buildScopeBody(rscope resolveScope, ftype *ir.FuncType) (*funcResolveScope, bool) {
+func (f *funcDecl) buildScopeBody(rscope resolveScope, extF *irFunc) (*funcResolveScope, bool) {
 	ce, compEvalOk := rscope.compEval()
 	if !compEvalOk {
 		return nil, false
 	}
-	ftype, ok := instantiateFType(ce, ftype.Expr(), rscope.fileScope().irFile(), ftype)
+	ftype := extF.irFunc.FuncType()
+	call := ir.NewFuncValExpr(ftype, extF.irFunc)
+	ftype, ok := instantiateFType(ce, call, rscope.fileScope().irFile())
 	if !ok {
 		return nil, false
 	}
@@ -298,7 +300,7 @@ func (f *funcDecl) buildBody(fnscope fnResolveScope, extF *irFunc) bool {
 	if !ok {
 		return false
 	}
-	fnScope, ok := f.buildScopeBody(fScope, extF.irFunc.FuncType())
+	fnScope, ok := f.buildScopeBody(fScope, extF)
 	if !ok {
 		return false
 	}

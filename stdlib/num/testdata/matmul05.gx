@@ -1,0 +1,7 @@
+package matmul05
+
+import "num"
+
+func f[A, B int](x [A]float32, y [B]float32) [A]float32 {
+	return num.MatMul(x, y) // ERROR in call to num.MatMul([A]float32, [B]float32): incompatible axis lengths: A!=B
+}

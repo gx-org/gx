@@ -89,6 +89,7 @@ type Package struct {
 	handle PackageHandle
 
 	// Functions and methods cache
+	cacheBasicAdd           *core.FuncCache
 	cacheBasicAddPrivate    *core.FuncCache
 	cacheBasicSetFloat      *core.FuncCache
 	cacheReturnFloat32      *core.FuncCache
@@ -111,6 +112,10 @@ func Build(dev *core.DeviceSetup) (*PackageHandle, error) {
 	// Build dependencies.
 
 	// Initialise function and method caches.
+	pkg.cacheBasicAdd, err = pkg.handle.NewCache("Basic", "Add")
+	if err != nil {
+		return nil, err
+	}
 	pkg.cacheBasicAddPrivate, err = pkg.handle.NewCache("Basic", "AddPrivate")
 	if err != nil {
 		return nil, err
@@ -685,6 +690,32 @@ func (h *handleBasic) SetField(field *ir.Field, val types.Bridge) error {
 		return errors.Errorf("structure Basic has no field %q", name)
 	}
 
+}
+
+// Add returns the sum of two private fields.
+func (recv *Basic) Add(arg0 *Basic) (_ types.Atom[int32], err error) {
+	var args []values.Value = []values.Value{
+		arg0.Bridge().GXValue(), // a basic.Basic
+	}
+	var runner tracer.CompiledFunc
+	runner, err = recv.handle.pkg.cacheBasicAdd.Runner(recv.value, args)
+	if err != nil {
+		return
+	}
+	var outputs []values.Value
+	outputs, err = runner.Run(recv.value, args, recv.handle.pkg.handle.Tracer())
+	if err != nil {
+		return
+	}
+
+	out0Value, ok := outputs[0].(values.Array)
+	if !ok {
+		err = errors.Errorf("cannot cast %T to %s", outputs[0], reflect.TypeFor[*values.DeviceArray]().Name())
+		return
+	}
+	out0 := types.NewAtom[int32](out0Value)
+
+	return out0, nil
 }
 
 // AddPrivate returns the sum of two private fields.
