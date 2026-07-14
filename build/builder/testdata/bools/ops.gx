@@ -1,0 +1,7 @@
+package ops
+
+func TestScalarLogic() bool {
+	return ((false && true) || true)
+	// Want:
+	// bool(true)
+}

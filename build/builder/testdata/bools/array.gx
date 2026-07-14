@@ -1,0 +1,13 @@
+package array
+
+func TestBoolArray() [2][3]bool {
+	return [2][3]bool{
+		{true, false, true},
+		{false, true, false},
+	}
+	// Want:
+	// [2][3]bool{
+	// 	{true, false, true},
+	// 	{false, true, false},
+	// }
+}

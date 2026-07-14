@@ -1,0 +1,7 @@
+package false
+
+func TestFalse() bool {
+	return false
+	// Want:
+	// bool(false)
+}
