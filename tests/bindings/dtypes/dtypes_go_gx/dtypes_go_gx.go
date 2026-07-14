@@ -92,6 +92,7 @@ type Package struct {
 	cacheBool         *core.FuncCache
 	cacheFloat32      *core.FuncCache
 	cacheFloat64      *core.FuncCache
+	cacheInt          *core.FuncCache
 	cacheInt32        *core.FuncCache
 	cacheInt64        *core.FuncCache
 	cacheUint32       *core.FuncCache
@@ -99,6 +100,7 @@ type Package struct {
 	cacheArrayBool    *core.FuncCache
 	cacheArrayFloat32 *core.FuncCache
 	cacheArrayFloat64 *core.FuncCache
+	cacheArrayInt     *core.FuncCache
 	cacheArrayInt32   *core.FuncCache
 	cacheArrayInt64   *core.FuncCache
 	cacheArrayUint32  *core.FuncCache
@@ -130,6 +132,10 @@ func Build(dev *core.DeviceSetup) (*PackageHandle, error) {
 	if err != nil {
 		return nil, err
 	}
+	pkg.cacheInt, err = pkg.handle.NewCache("", "Int")
+	if err != nil {
+		return nil, err
+	}
 	pkg.cacheInt32, err = pkg.handle.NewCache("", "Int32")
 	if err != nil {
 		return nil, err
@@ -155,6 +161,10 @@ func Build(dev *core.DeviceSetup) (*PackageHandle, error) {
 		return nil, err
 	}
 	pkg.cacheArrayFloat64, err = pkg.handle.NewCache("", "ArrayFloat64")
+	if err != nil {
+		return nil, err
+	}
+	pkg.cacheArrayInt, err = pkg.handle.NewCache("", "ArrayInt")
 	if err != nil {
 		return nil, err
 	}
@@ -249,6 +259,31 @@ func (pkg *Package) Float64(arg0 types.Atom[float64]) (_ types.Atom[float64], er
 		return
 	}
 	out0 := types.NewAtom[float64](out0Value)
+
+	return out0, nil
+}
+
+func (pkg *Package) Int(arg0 types.Atom[int]) (_ types.Atom[int], err error) {
+	var args []values.Value = []values.Value{
+		arg0.Bridge().GXValue(), // x int
+	}
+	var runner tracer.CompiledFunc
+	runner, err = pkg.cacheInt.Runner(nil, args)
+	if err != nil {
+		return
+	}
+	var outputs []values.Value
+	outputs, err = runner.Run(nil, args, pkg.handle.Tracer())
+	if err != nil {
+		return
+	}
+
+	out0Value, ok := outputs[0].(values.Array)
+	if !ok {
+		err = errors.Errorf("cannot cast %T to %s", outputs[0], reflect.TypeFor[*values.DeviceArray]().Name())
+		return
+	}
+	out0 := types.NewAtom[int](out0Value)
 
 	return out0, nil
 }
@@ -424,6 +459,31 @@ func (pkg *Package) ArrayFloat64(arg0 types.Array[float64]) (_ types.Array[float
 		return
 	}
 	out0 := types.NewArray[float64](out0Value)
+
+	return out0, nil
+}
+
+func (pkg *Package) ArrayInt(arg0 types.Array[int]) (_ types.Array[int], err error) {
+	var args []values.Value = []values.Value{
+		arg0.Bridge().GXValue(), // x [2][3]int
+	}
+	var runner tracer.CompiledFunc
+	runner, err = pkg.cacheArrayInt.Runner(nil, args)
+	if err != nil {
+		return
+	}
+	var outputs []values.Value
+	outputs, err = runner.Run(nil, args, pkg.handle.Tracer())
+	if err != nil {
+		return
+	}
+
+	out0Value, ok := outputs[0].(values.Array)
+	if !ok {
+		err = errors.Errorf("cannot cast %T to %s", outputs[0], reflect.TypeFor[*values.DeviceArray]().Name())
+		return
+	}
+	out0 := types.NewArray[int](out0Value)
 
 	return out0, nil
 }
