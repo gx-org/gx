@@ -91,16 +91,7 @@ func evalRangeForLoopOverInteger[T dtypes.AlgebraType](fitp *Interpreter, stmt *
 	fitp.Context().PushBlockFrame()
 	defer fitp.Context().PopFrame()
 	for i := T(0); i < val; i++ {
-		iExpr := &ir.AtomicValueT[T]{
-			Src: stmt.X.Expr(),
-			Val: i,
-			Typ: indexType,
-		}
-		iValue, err := toValueT.toAtomValue(iExpr.Type(), i)
-		if err != nil {
-			return nil, true, err
-		}
-		iElement, err := fitp.elementFromAtom(iExpr, iValue)
+		iElement, err := elementFromInt(fitp, i, indexType)
 		if err != nil {
 			return nil, true, err
 		}
@@ -144,16 +135,7 @@ func evalRangeStmtForLoopOverArray[T dtypes.AlgebraType](fitp *Interpreter, stmt
 		return nil, false, fmterr.Error(fitp.File().FileSet(), stmt.Node(), err)
 	}
 	for i := 0; i < arrayShape.AxisLengths[0]; i++ {
-		iExpr := &ir.AtomicValueT[T]{
-			Src: stmt.X.Expr(),
-			Val: T(i),
-			Typ: indexType,
-		}
-		iValue, err := toValueT.toAtomValue(iExpr.Type(), T(i))
-		if err != nil {
-			return nil, false, err
-		}
-		iElement, err := fitp.elementFromAtom(iExpr, iValue)
+		iElement, err := elementFromInt(fitp, i, indexType)
 		if err != nil {
 			return nil, false, err
 		}
@@ -860,11 +842,8 @@ func set(fitp *Interpreter, tok token.Token, dest ir.Storage, value ir.Element) 
 func dimsAsElements(fitp *Interpreter, expr ir.Expr, dims []int) ([]engine.NumericalElement, error) {
 	els := make([]engine.NumericalElement, len(dims))
 	for i, di := range dims {
-		val, err := values.AtomIntegerValue[int](ir.IntType(), int(di))
-		if err != nil {
-			return nil, err
-		}
-		els[i], err = fitp.elementFromAtom(expr, val)
+		var err error
+		els[i], err = elementFromInt(fitp, di, ir.IntType())
 		if err != nil {
 			return nil, err
 		}

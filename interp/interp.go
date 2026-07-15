@@ -26,6 +26,7 @@ import (
 	"go/ast"
 
 	"github.com/pkg/errors"
+	"github.com/gx-org/backend/dtypes"
 	"github.com/gx-org/gx/api/options"
 	"github.com/gx-org/gx/api/values"
 	"github.com/gx-org/gx/build/fmterr"
@@ -203,6 +204,11 @@ func (fitp *Interpreter) Context() *context.Context {
 // File returns the current file of the current execution.
 func (fitp *Interpreter) File() *ir.File {
 	return fitp.Context().File()
+}
+
+func elementFromInt[T dtypes.AlgebraType](fitp *Interpreter, val T, tp ir.Type) (engine.NumericalElement, error) {
+	atomLit := numbers.NewIntFrom(int64(val), tp)
+	return fitp.Engine().ArrayOps().ElementFromAtomLit(fitp.File(), atomLit)
 }
 
 func (fitp *Interpreter) elementFromAtomLit(expr *ir.NumberCastExpr) (engine.NumericalElement, error) {
