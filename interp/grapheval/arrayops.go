@@ -15,6 +15,7 @@
 package grapheval
 
 import (
+	"github.com/pkg/errors"
 	"github.com/gx-org/backend/dtypes"
 	"github.com/gx-org/backend/ops"
 	"github.com/gx-org/backend/shape"
@@ -228,7 +229,7 @@ func (ao *arrayOps) Tuple(typ *ir.TupleType, nodes []ops.Node) (materialise.Node
 	)
 }
 
-func (ao *arrayOps) newBool(el numbers.Bool) (ir.Element, error) {
+func (ao *arrayOps) newBool(el numbers.Bool) (engine.NumericalElement, error) {
 	val, err := values.AtomBoolValue(el.Type(), el.Value())
 	if err != nil {
 		return nil, err
@@ -237,12 +238,13 @@ func (ao *arrayOps) newBool(el numbers.Bool) (ir.Element, error) {
 }
 
 // ElementFromAtomLit returns transforms an atomic literal element into an element specific to the ArrayOps implementation.
-func (ao *arrayOps) ElementFromAtomLit(file *ir.File, el ir.Element) (ir.Element, error) {
-	bl, isBool := el.(numbers.Bool)
-	if isBool {
-		return ao.newBool(bl)
+func (ao *arrayOps) ElementFromAtomLit(file *ir.File, el engine.AtomLitElement) (engine.NumericalElement, error) {
+	switch elT := el.(type) {
+	case numbers.Bool:
+		return ao.newBool(elT)
+	default:
+		return nil, errors.Errorf("cannot convert number %T to a graph element: not supported", elT)
 	}
-	return ao.ev.hostEval.ArrayOps().ElementFromAtomLit(file, el)
 }
 
 // ElementFromAtom returns an element from a GX value.

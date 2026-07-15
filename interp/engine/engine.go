@@ -22,6 +22,7 @@ import (
 	"github.com/gx-org/backend/shape"
 	"github.com/gx-org/gx/api/values"
 	"github.com/gx-org/gx/build/ir"
+	"github.com/gx-org/gx/internal/interp/canonical"
 	"github.com/gx-org/gx/internal/tracer/processor"
 )
 
@@ -74,6 +75,14 @@ type (
 		Reshape(env Env, expr ir.Expr, axisLengths []NumericalElement) (NumericalElement, error)
 	}
 
+	// AtomLitElement is an element representing a value known at compile time.
+	// For example: float32(1), int(5), true
+	AtomLitElement interface {
+		NumericalElement
+		canonical.Comparable
+		ir.WithExpr
+	}
+
 	// ArrayOps are the operator implementations for arrays.
 	ArrayOps interface {
 		// Graph returns the graph to which new nodes are being added.
@@ -94,8 +103,8 @@ type (
 		// Set a slice in an array.
 		Set(ctx ir.Evaluator, expr *ir.FuncCallExpr, x, updates ir.Element, position []ir.Element) (ir.Element, error)
 
-		// ElementFromAtomLit returns transforms an atomic literal element into an element specific to the ArrayOps implementation.
-		ElementFromAtomLit(ctx *ir.File, el ir.Element) (ir.Element, error)
+		// ElementFromAtomLit returns transforms a number element into an element specific to the ArrayOps implementation.
+		ElementFromAtomLit(ctx *ir.File, el AtomLitElement) (NumericalElement, error)
 
 		// ElementFromAtom returns an element from an atomic GX value.
 		ElementFromAtom(ctx *ir.File, val values.Array, expr ir.Expr, typ ir.Type) (NumericalElement, error)
