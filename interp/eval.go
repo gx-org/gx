@@ -15,7 +15,9 @@
 package interp
 
 import (
+	"go/ast"
 	"go/token"
+	"math/big"
 	"reflect"
 
 	"github.com/pkg/errors"
@@ -345,13 +347,24 @@ func evalArrayAxes(fitp *Interpreter, src ir.Node, typ ir.ArrayType) ([]engine.N
 	return axes, nil
 }
 
+var oneExpr = &ir.NumberCastExpr{
+	X: &ir.NumberInt{
+		Src: &ast.BasicLit{
+			Kind:  token.INT,
+			Value: "1",
+		},
+		Val: big.NewInt(1),
+	},
+	Typ: ir.IntType(),
+}
+
 func evalCastAtomToArrayExpr(fitp *Interpreter, expr ir.TypeCastExpr, x engine.NumericalElement, axes []engine.NumericalElement) (ir.Element, error) {
 	srcExpr := elements.NewExprAt(fitp.File(), expr)
 	arrayOps := fitp.Engine().ArrayOps()
 	shapeOfOnes := make([]engine.NumericalElement, len(axes))
 	for i := range axes {
 		var err error
-		shapeOfOnes[i], err = fitp.elementFromAtom(expr, one)
+		shapeOfOnes[i], err = fitp.elementFromAtomLit(oneExpr)
 		if err != nil {
 			return nil, err
 		}

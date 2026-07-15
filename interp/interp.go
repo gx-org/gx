@@ -31,6 +31,7 @@ import (
 	"github.com/gx-org/gx/build/fmterr"
 	"github.com/gx-org/gx/build/ir"
 	"github.com/gx-org/gx/internal/concrete"
+	"github.com/gx-org/gx/internal/interp/numbers"
 	"github.com/gx-org/gx/internal/interp/proxies"
 	"github.com/gx-org/gx/interp/context"
 	"github.com/gx-org/gx/interp/elements"
@@ -202,6 +203,19 @@ func (fitp *Interpreter) Context() *context.Context {
 // File returns the current file of the current execution.
 func (fitp *Interpreter) File() *ir.File {
 	return fitp.Context().File()
+}
+
+func (fitp *Interpreter) elementFromAtomLit(expr *ir.NumberCastExpr) (engine.NumericalElement, error) {
+	var number engine.AtomLitElement
+	switch xT := expr.X.(type) {
+	case *ir.NumberFloat:
+		number = numbers.NewFloat(xT.Val, expr)
+	case *ir.NumberInt:
+		number = numbers.NewInt(xT.Val, expr)
+	default:
+		return nil, errors.Errorf("cannot convert %T to an atomic literal element: not supported", xT)
+	}
+	return fitp.Engine().ArrayOps().ElementFromAtomLit(fitp.File(), number)
 }
 
 func (fitp *Interpreter) elementFromAtom(expr ir.Expr, val values.Array) (engine.NumericalElement, error) {

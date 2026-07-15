@@ -92,6 +92,16 @@ func (n *Int) UnaryOp(env engine.Env, expr *ir.UnaryExpr) (engine.NumericalEleme
 	}
 }
 
+// Int64 value of the integer.
+func (n *Int) Int64() int64 {
+	return n.val.Int64()
+}
+
+// Uint64 value of the integer.
+func (n *Int) Uint64() uint64 {
+	return n.val.Uint64()
+}
+
 // BinaryOp applies a binary operator to x and y.
 // Note that the receiver can be either the left or right argument.
 func (n *Int) BinaryOp(env engine.Env, expr *ir.BinaryExpr, x, y engine.NumericalElement) (engine.NumericalElement, error) {
