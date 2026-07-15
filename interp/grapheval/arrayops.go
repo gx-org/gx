@@ -21,6 +21,7 @@ import (
 	"github.com/gx-org/backend/shape"
 	"github.com/gx-org/gx/api/values"
 	"github.com/gx-org/gx/build/ir"
+	"github.com/gx-org/gx/build/ir/irkind"
 	"github.com/gx-org/gx/internal/interp/numbers"
 	"github.com/gx-org/gx/interp/elements"
 	"github.com/gx-org/gx/interp/engine"
@@ -237,11 +238,33 @@ func (ao *arrayOps) newBool(el numbers.Bool) (engine.NumericalElement, error) {
 	return newValueElement(ao.ev, val)
 }
 
+func (ao *arrayOps) newInt(el *numbers.Int) (engine.NumericalElement, error) {
+	var val *values.HostArray
+	var err error
+	kind := el.Type().Kind()
+	switch kind {
+	case irkind.Int:
+		val, err = values.AtomIntegerValue(el.Type(), int(el.Int64()))
+	case irkind.Int32:
+		val, err = values.AtomIntegerValue(el.Type(), int32(el.Int64()))
+	case irkind.Int64:
+		val, err = values.AtomIntegerValue(el.Type(), el.Int64())
+	default:
+		return nil, errors.Errorf("cannot convert integer kind %s to a graph element: not supported", kind)
+	}
+	if err != nil {
+		return nil, err
+	}
+	return newValueElement(ao.ev, val)
+}
+
 // ElementFromAtomLit returns transforms an atomic literal element into an element specific to the ArrayOps implementation.
 func (ao *arrayOps) ElementFromAtomLit(file *ir.File, el engine.AtomLitElement) (engine.NumericalElement, error) {
 	switch elT := el.(type) {
 	case numbers.Bool:
 		return ao.newBool(elT)
+	case *numbers.Int:
+		return ao.newInt(elT)
 	default:
 		return nil, errors.Errorf("cannot convert number %T to a graph element: not supported", elT)
 	}

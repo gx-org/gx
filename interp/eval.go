@@ -15,7 +15,9 @@
 package interp
 
 import (
+	"go/ast"
 	"go/token"
+	"math/big"
 	"reflect"
 
 	"github.com/pkg/errors"
@@ -89,16 +91,7 @@ func evalRangeForLoopOverInteger[T dtypes.AlgebraType](fitp *Interpreter, stmt *
 	fitp.Context().PushBlockFrame()
 	defer fitp.Context().PopFrame()
 	for i := T(0); i < val; i++ {
-		iExpr := &ir.AtomicValueT[T]{
-			Src: stmt.X.Expr(),
-			Val: i,
-			Typ: indexType,
-		}
-		iValue, err := toValueT.toAtomValue(iExpr.Type(), i)
-		if err != nil {
-			return nil, true, err
-		}
-		iElement, err := fitp.elementFromAtom(iExpr, iValue)
+		iElement, err := elementFromInt(fitp, i, indexType)
 		if err != nil {
 			return nil, true, err
 		}
@@ -142,16 +135,7 @@ func evalRangeStmtForLoopOverArray[T dtypes.AlgebraType](fitp *Interpreter, stmt
 		return nil, false, fmterr.Error(fitp.File().FileSet(), stmt.Node(), err)
 	}
 	for i := 0; i < arrayShape.AxisLengths[0]; i++ {
-		iExpr := &ir.AtomicValueT[T]{
-			Src: stmt.X.Expr(),
-			Val: T(i),
-			Typ: indexType,
-		}
-		iValue, err := toValueT.toAtomValue(iExpr.Type(), T(i))
-		if err != nil {
-			return nil, false, err
-		}
-		iElement, err := fitp.elementFromAtom(iExpr, iValue)
+		iElement, err := elementFromInt(fitp, i, indexType)
 		if err != nil {
 			return nil, false, err
 		}
@@ -345,13 +329,24 @@ func evalArrayAxes(fitp *Interpreter, src ir.Node, typ ir.ArrayType) ([]engine.N
 	return axes, nil
 }
 
+var oneExpr = &ir.NumberCastExpr{
+	X: &ir.NumberInt{
+		Src: &ast.BasicLit{
+			Kind:  token.INT,
+			Value: "1",
+		},
+		Val: big.NewInt(1),
+	},
+	Typ: ir.IntType(),
+}
+
 func evalCastAtomToArrayExpr(fitp *Interpreter, expr ir.TypeCastExpr, x engine.NumericalElement, axes []engine.NumericalElement) (ir.Element, error) {
 	srcExpr := elements.NewExprAt(fitp.File(), expr)
 	arrayOps := fitp.Engine().ArrayOps()
 	shapeOfOnes := make([]engine.NumericalElement, len(axes))
 	for i := range axes {
 		var err error
-		shapeOfOnes[i], err = fitp.elementFromAtom(expr, one)
+		shapeOfOnes[i], err = fitp.elementFromAtomLit(oneExpr)
 		if err != nil {
 			return nil, err
 		}
@@ -847,11 +842,8 @@ func set(fitp *Interpreter, tok token.Token, dest ir.Storage, value ir.Element) 
 func dimsAsElements(fitp *Interpreter, expr ir.Expr, dims []int) ([]engine.NumericalElement, error) {
 	els := make([]engine.NumericalElement, len(dims))
 	for i, di := range dims {
-		val, err := values.AtomIntegerValue[int](ir.IntType(), int(di))
-		if err != nil {
-			return nil, err
-		}
-		els[i], err = fitp.elementFromAtom(expr, val)
+		var err error
+		els[i], err = elementFromInt(fitp, di, ir.IntType())
 		if err != nil {
 			return nil, err
 		}

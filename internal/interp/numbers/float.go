@@ -178,11 +178,11 @@ func (n *Float) Copy() engine.Copier {
 }
 
 // Expr returns the expression representing the integer.
-func (n *Float) Expr(ir.Evaluator, ast.Expr) (ir.Expr, ir.CompEvalError, error) {
-	return &ir.NumberCastExpr{
+func (n *Float) Expr(ir.Evaluator, ast.Expr) ([]ir.Expr, error) {
+	return []ir.Expr{&ir.NumberCastExpr{
 		X:   &ir.NumberFloat{Val: n.val},
 		Typ: n.typ,
-	}, nil, nil
+	}}, nil
 }
 
 // NumericalConstant returns the value of a constant represented by a node.
