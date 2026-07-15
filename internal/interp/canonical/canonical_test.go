@@ -30,11 +30,7 @@ import (
 )
 
 func newFloat(f float64) *numbers.Float {
-	bf := big.NewFloat(f)
-	return numbers.NewFloat(&ir.NumberFloat{
-		Src: &ast.BasicLit{Value: bf.String()},
-		Val: bf,
-	})
+	return numbers.NewFloatFrom(f, ir.Float64Type())
 }
 
 func newInt64(i int64) canonical.Canonical {

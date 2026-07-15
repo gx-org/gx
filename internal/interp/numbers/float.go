@@ -47,8 +47,26 @@ var (
 )
 
 // NewFloat returns a new element Float number element.
-func NewFloat(expr *ir.NumberFloat) *Float {
-	return &Float{val: expr.Val, expr: expr, typ: expr.Type()}
+func NewFloat(val *big.Float, expr ir.Expr) *Float {
+	return &Float{val: val, expr: expr, typ: expr.Type()}
+}
+
+// NewFloatFrom returns a new element Float number given an int64 value.
+func NewFloatFrom(val float64, typ ir.Type) *Float {
+	bVal := big.NewFloat(val)
+	return NewFloat(
+		bVal,
+		&ir.NumberCastExpr{
+			X: &ir.NumberFloat{
+				Src: &ast.BasicLit{
+					Kind:  token.FLOAT,
+					Value: bVal.String(),
+				},
+				Val: bVal,
+			},
+			Typ: typ,
+		},
+	)
 }
 
 // UnaryOp applies a unary operator on x.
@@ -188,7 +206,7 @@ func (n *Float) Materialise(ao materialise.Materialiser) (materialise.Node, erro
 
 // ShortString returns a short string representation of the value.
 func (n *Float) ShortString() string {
-	return n.SourceString(nil)
+	return n.val.String()
 }
 
 // SourceString returns the GX source code to represent the float.

@@ -166,7 +166,7 @@ func lenImpl(env engine.Env, call *ir.FuncCallExpr, recv ir.Element, args []ir.E
 	if err != nil {
 		return nil, err
 	}
-	return []ir.Element{numbers.NewIntFromInt64(int64(l), ir.IntType())}, err
+	return []ir.Element{numbers.NewIntFrom(int64(l), ir.IntType())}, err
 }
 
 func setImpl(env engine.Env, call *ir.FuncCallExpr, recv ir.Element, args []ir.Element) ([]ir.Element, error) {
