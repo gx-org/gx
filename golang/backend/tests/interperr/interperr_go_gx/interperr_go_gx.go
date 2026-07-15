@@ -129,12 +129,12 @@ func Build(dev *core.DeviceSetup) (*PackageHandle, error) {
 var Undef UndefStatic
 
 type UndefStatic struct {
-	value ir.Int
+	value int
 }
 
-func (UndefStatic) Set(value ir.Int) options.PackageOptionFactory {
+func (UndefStatic) Set(value int) options.PackageOptionFactory {
 	return func(plat platform.Platform) options.PackageOption {
-		hostValue := types.DefaultInt(value)
+		hostValue := types.Int(value)
 		return options.PackageVarSetValue{
 			Pkg:   "github.com/gx-org/gx/golang/backend/tests/interperr",
 			Var:   "Undef",
