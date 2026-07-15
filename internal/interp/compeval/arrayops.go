@@ -87,7 +87,7 @@ func (compArrayOps) ElementFromAtom(file *ir.File, val values.Array, expr ir.Exp
 }
 
 // ElementFromAtomLit returns transforms an atomic literal element into an element specific to the ArrayOps implementation.
-func (compArrayOps) ElementFromAtomLit(ctx *ir.File, el ir.Element) (ir.Element, error) {
+func (compArrayOps) ElementFromAtomLit(file *ir.File, el engine.AtomLitElement) (engine.NumericalElement, error) {
 	return el, nil
 }
 

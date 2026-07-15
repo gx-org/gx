@@ -16,6 +16,7 @@ package numbers
 
 import (
 	"fmt"
+	"go/ast"
 	"go/token"
 
 	"github.com/gx-org/gx/api/values"
@@ -108,6 +109,11 @@ func (b *boolEl) Value() bool {
 	return b.val
 }
 
+// Expr returns the expression representing the boolean value.
+func (b *boolEl) Expr(ir.Evaluator, ast.Expr) ([]ir.Expr, error) {
+	return []ir.Expr{b.expr}, nil
+}
+
 func (b *boolEl) Unflatten(handles *flatten.Parser) (values.Value, error) {
 	return values.AtomBoolValue(b.Type(), b.val)
 }
@@ -121,7 +127,7 @@ type boolStorage struct {
 var _ ir.WithStore = (*boolStorage)(nil)
 
 // NewBoolFromStorage returns a new element to store a boolean value.
-func NewBoolFromStorage(storage ir.StorageWithValue) engine.NumericalElement {
+func NewBoolFromStorage(storage ir.StorageWithValue) engine.AtomLitElement {
 	val := storage.Value(nil).(*ir.AtomicValueT[bool]).Val
 	return &boolStorage{
 		boolEl:  newBool(ir.NewIdent(storage), val),
