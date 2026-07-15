@@ -50,37 +50,30 @@ var (
 )
 
 // NewInt returns a new element Int number element.
-func NewInt(expr *ir.NumberInt) *Int {
+func NewInt(val *big.Int, expr ir.Expr) *Int {
 	return &Int{
-		val:  expr.Val,
+		val:  val,
 		expr: expr,
 		typ:  expr.Type(),
 	}
 }
 
-// NewIntForType returns a new element Int number cast to given type.
-// Use Int.Cast instead of this function to make sure the type is concrete.
-func NewIntForType(expr *ir.NumberInt, typ ir.Type) *Int {
-	return &Int{
-		val: expr.Val,
-		expr: &ir.NumberCastExpr{
-			X:   expr,
+// NewIntFrom returns a new element Int number given an int64 value.
+func NewIntFrom(val int64, typ ir.Type) *Int {
+	bVal := big.NewInt(val)
+	return NewInt(
+		bVal,
+		&ir.NumberCastExpr{
+			X: &ir.NumberInt{
+				Src: &ast.BasicLit{
+					Kind:  token.INT,
+					Value: bVal.String(),
+				},
+				Val: bVal,
+			},
 			Typ: typ,
 		},
-		typ: typ,
-	}
-}
-
-// NewIntFromInt64 returns a new element Int number given an int64 value.
-func NewIntFromInt64(val int64, typ ir.Type) *Int {
-	bVal := big.NewInt(val)
-	return NewIntForType(&ir.NumberInt{
-		Src: &ast.BasicLit{
-			Kind:  token.INT,
-			Value: bVal.String(),
-		},
-		Val: bVal,
-	}, typ)
+	)
 }
 
 // UnaryOp applies a unary operator on x.
