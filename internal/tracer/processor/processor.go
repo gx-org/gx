@@ -24,6 +24,11 @@ import (
 )
 
 type (
+	// Shaper is an element with a concrete shape.
+	Shaper interface {
+		ir.Element
+		Shape() *shape.Shape
+	}
 
 	// Processor stores initializers and traces to process before and
 	// after calling a compiled function.
@@ -41,9 +46,7 @@ type (
 
 	// Argument provides an argument to pass to the backend.
 	Argument interface {
-		ir.Element
-
-		Shape() *shape.Shape
+		Shaper
 
 		ToDeviceHandle(platform.Device, *values.FuncInputs) (platform.DeviceHandle, error)
 	}

@@ -134,7 +134,7 @@ func (n *Float) Reshape(env engine.Env, expr ir.Expr, axisLengths []engine.Numer
 }
 
 // Shape of the value represented by the element.
-func (n *Float) Shape() *shape.Shape {
+func (n *Float) EvalShape() *shape.Shape {
 	return numberShape
 }
 
