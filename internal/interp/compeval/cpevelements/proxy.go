@@ -85,8 +85,8 @@ func (a *proxy) Append([]ir.Element) engine.Slice {
 }
 
 // Shape of the value represented by the element.
-func (a *proxy) EvalShape() *shape.Shape {
-	return &shape.Shape{}
+func (a *proxy) EvalShape() (*shape.Shape, error) {
+	return &shape.Shape{}, nil
 }
 
 // Select a member.

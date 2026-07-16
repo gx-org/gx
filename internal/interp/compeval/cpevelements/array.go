@@ -36,13 +36,14 @@ type array struct {
 }
 
 var (
-	_ materialise.Node  = (*array)(nil)
-	_ elements.WithAxes = (*array)(nil)
-	_ cpevops.Element   = (*array)(nil)
-	_ elements.Slicer   = (*array)(nil)
-	_ engine.Copier     = (*array)(nil)
-	_ ir.WithLength     = (*array)(nil)
-	_ ir.WithExpr       = (*array)(nil)
+	_ materialise.Node    = (*array)(nil)
+	_ elements.WithAxes   = (*array)(nil)
+	_ cpevops.Element     = (*array)(nil)
+	_ elements.Slicer     = (*array)(nil)
+	_ engine.Copier       = (*array)(nil)
+	_ ir.WithLength       = (*array)(nil)
+	_ ir.WithExpr         = (*array)(nil)
+	_ elements.EvalShaper = (*array)(nil)
 )
 
 // NewArray returns a new array from a code position and a type.
@@ -100,8 +101,8 @@ func (a *array) Copy() engine.Copier {
 	return a
 }
 
-func (a *array) EvalShape() *shape.Shape {
-	return a.shape
+func (a *array) EvalShape() (*shape.Shape, error) {
+	return a.shape, nil
 }
 
 func (a *array) Graph() ops.Graph {
@@ -110,7 +111,11 @@ func (a *array) Graph() ops.Graph {
 
 // Length returns the evaluation of the len built-in.
 func (a *array) Length(ev ir.Evaluator) (int, error) {
-	return a.EvalShape().OuterAxisLength(), nil
+	sh, err := a.EvalShape()
+	if err != nil {
+		return -1, err
+	}
+	return sh.OuterAxisLength(), nil
 }
 
 func (a *array) storage() ir.Storage {

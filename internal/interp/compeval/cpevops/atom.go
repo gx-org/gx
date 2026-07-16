@@ -47,6 +47,7 @@ var (
 	_ elements.WithAxes               = (*atom)(nil)
 	_ ir.Canonical                    = (*atom)(nil)
 	_ togo.WithGoValue                = (*atom)(nil)
+	_ elements.EvalShaper             = (*atom)(nil)
 )
 
 // NewAtom returns a new atom element given a GX atom value.
@@ -88,8 +89,8 @@ func (a *atom) Reshape(env engine.Env, expr ir.Expr, axisLengths []engine.Numeri
 }
 
 // Shape of the value represented by the element.
-func (a *atom) EvalShape() *shape.Shape {
-	return a.val.Shape()
+func (a *atom) EvalShape() (*shape.Shape, error) {
+	return a.val.Shape(), nil
 }
 
 // NumericalConstant returns the value of a constant represented by a node.
