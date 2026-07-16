@@ -45,6 +45,7 @@ var (
 	_ elements.WithElements = (*proxy)(nil)
 	_ proxies.Proxy         = (*proxy)(nil)
 	_ elements.Unpacker     = (*proxy)(nil)
+	_ elements.EvalShaper   = (*proxy)(nil)
 )
 
 // NewProxy returns a new variable element given a GX variable name.
@@ -84,7 +85,7 @@ func (a *proxy) Append([]ir.Element) engine.Slice {
 }
 
 // Shape of the value represented by the element.
-func (a *proxy) Shape() *shape.Shape {
+func (a *proxy) EvalShape() *shape.Shape {
 	return &shape.Shape{}
 }
 

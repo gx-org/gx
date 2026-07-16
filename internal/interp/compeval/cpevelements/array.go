@@ -100,7 +100,7 @@ func (a *array) Copy() engine.Copier {
 	return a
 }
 
-func (a *array) Shape() *shape.Shape {
+func (a *array) EvalShape() *shape.Shape {
 	return a.shape
 }
 
@@ -110,7 +110,7 @@ func (a *array) Graph() ops.Graph {
 
 // Length returns the evaluation of the len built-in.
 func (a *array) Length(ev ir.Evaluator) (int, error) {
-	return a.Shape().OuterAxisLength(), nil
+	return a.EvalShape().OuterAxisLength(), nil
 }
 
 func (a *array) storage() ir.Storage {

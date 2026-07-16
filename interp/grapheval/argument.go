@@ -123,7 +123,7 @@ func (vis *inputVisitor) newArg(parent parentArgument, typ ir.Type, proxy ir.Ele
 	case *ir.SliceType:
 		return vis.newSliceArgument(parent, typT, proxy)
 	case ir.ArrayType:
-		withShape, err := cast.To[elements.FixedShape](proxy)
+		withShape, err := cast.To[processor.Shaper](proxy)
 		if err != nil {
 			return nil, err
 		}
@@ -430,6 +430,11 @@ func (n *arrayArgument) Materialise(mat materialise.Materialiser) (materialise.N
 
 // Shape returns the shape of the element.
 func (n *arrayArgument) Shape() *shape.Shape {
+	return n.shape
+}
+
+// Shape returns the shape of the element.
+func (n *arrayArgument) EvalShape() *shape.Shape {
 	return n.shape
 }
 

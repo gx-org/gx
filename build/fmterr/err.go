@@ -40,6 +40,9 @@ type (
 // Error returns an error at a given position.
 func Error(fset *token.FileSet, node ast.Node, err error) ErrorWithPos {
 	var errPos ErrorWithPos
+	if node == nil {
+		return errorWithPos{err: err}
+	}
 	if errors.As(err, &errPos) {
 		return errPos
 	}

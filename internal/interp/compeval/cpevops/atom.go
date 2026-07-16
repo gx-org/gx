@@ -88,7 +88,7 @@ func (a *atom) Reshape(env engine.Env, expr ir.Expr, axisLengths []engine.Numeri
 }
 
 // Shape of the value represented by the element.
-func (a *atom) Shape() *shape.Shape {
+func (a *atom) EvalShape() *shape.Shape {
 	return a.val.Shape()
 }
 

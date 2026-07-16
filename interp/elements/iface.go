@@ -21,10 +21,10 @@ import (
 )
 
 type (
-	// FixedShape is an (array) element from which the shape has been fully determined.
-	FixedShape interface {
+	// EvalShaper is an (array) element from which the shape has been fully determined at evaluation time.
+	EvalShaper interface {
 		ir.Element
-		Shape() *shape.Shape
+		EvalShape() *shape.Shape
 	}
 
 	// NType is a named type.
@@ -46,11 +46,11 @@ type (
 
 // ShapeFromElement returns the shape of a numerical element.
 func ShapeFromElement(node ir.Element) (*shape.Shape, error) {
-	numerical, ok := node.(FixedShape)
+	numerical, ok := node.(EvalShaper)
 	if !ok {
 		return nil, errors.Errorf("cannot cast %T to a numerical element", node)
 	}
-	return numerical.Shape(), nil
+	return numerical.EvalShape(), nil
 }
 
 // Underlying returns the underlying element.

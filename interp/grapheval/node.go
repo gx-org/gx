@@ -329,6 +329,11 @@ func (n *BackendNode) Shape() *shape.Shape {
 	return n.nod.Shape
 }
 
+// EvalShape returns the shape of the element.
+func (n *BackendNode) EvalShape() *shape.Shape {
+	return n.nod.Shape
+}
+
 // Type of the element.
 func (n *BackendNode) Type() ir.Type {
 	return n.typ
