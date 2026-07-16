@@ -12,7 +12,7 @@
 // See the License for the specific language governing permissions and
 // limitations under the License.
 
-package cpevops
+package numbers
 
 import (
 	"go/ast"
@@ -23,6 +23,7 @@ import (
 	"github.com/gx-org/gx/api/values"
 	"github.com/gx-org/gx/build/ir"
 	"github.com/gx-org/gx/internal/interp/canonical"
+	"github.com/gx-org/gx/internal/interp/compeval/cpevops"
 	"github.com/gx-org/gx/internal/interp/flatten"
 	"github.com/gx-org/gx/internal/togo"
 	"github.com/gx-org/gx/interp/elements"
@@ -41,7 +42,7 @@ type atom struct {
 var (
 	_ elements.ElementWithConstant    = (*atom)(nil)
 	_ materialise.ElementMaterialiser = (*atom)(nil)
-	_ Element                         = (*atom)(nil)
+	_ cpevops.Element                 = (*atom)(nil)
 	_ engine.Copier                   = (*atom)(nil)
 	_ canonical.Evaluable             = (*atom)(nil)
 	_ elements.WithAxes               = (*atom)(nil)
@@ -51,7 +52,7 @@ var (
 )
 
 // NewAtom returns a new atom element given a GX atom value.
-func NewAtom(val *values.HostArray, expr ir.Expr, typ ir.Type) (Element, error) {
+func NewAtom(val *values.HostArray, expr ir.Expr, typ ir.Type) (cpevops.Element, error) {
 	var float *big.Float
 	var err error
 	if dtypes.IsAlgebra(val.Shape().DType) {
@@ -66,7 +67,7 @@ func (a *atom) GoValue() (any, error) {
 
 // UnaryOp applies a unary operator on x.
 func (a *atom) UnaryOp(env engine.Env, expr *ir.UnaryExpr) (engine.NumericalElement, error) {
-	return NewUnary(env, expr, a)
+	return cpevops.NewUnary(env, expr, a)
 }
 
 // Copy the atom.
@@ -76,16 +77,16 @@ func (a *atom) Copy() engine.Copier {
 
 // BinaryOp applies a binary operator to x and y.
 func (a *atom) BinaryOp(env engine.Env, expr *ir.BinaryExpr, x, y engine.NumericalElement) (engine.NumericalElement, error) {
-	return NewBinary(env, expr, x, y)
+	return cpevops.NewBinary(env, expr, x, y)
 }
 
 // Cast an element into a given data type.
 func (a *atom) Cast(env engine.Env, expr ir.Expr, dtype ir.Type) (engine.NumericalElement, error) {
-	return NewCast(env, expr, a, dtype)
+	return cpevops.NewCast(env, expr, a, dtype)
 }
 
 func (a *atom) Reshape(env engine.Env, expr ir.Expr, axisLengths []engine.NumericalElement) (engine.NumericalElement, error) {
-	return NewReshape(env, expr, a, axisLengths)
+	return cpevops.NewReshape(env, expr, a, axisLengths)
 }
 
 // Shape of the value represented by the element.
@@ -126,7 +127,7 @@ func (a *atom) Compare(x canonical.Comparable) (bool, error) {
 	if cx == nil {
 		return false, nil
 	}
-	return EqualArray(a.val, cx), nil
+	return cpevops.EqualArray(a.val, cx), nil
 }
 
 func (a *atom) Axes(ir.Evaluator) (*elements.Slice, error) {

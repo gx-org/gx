@@ -23,7 +23,6 @@ import (
 	"github.com/gx-org/gx/build/ir/irkind"
 	"github.com/gx-org/gx/golang/backend/kernels"
 	"github.com/gx-org/gx/internal/interp/compeval/cpevelements"
-	"github.com/gx-org/gx/internal/interp/compeval/cpevops"
 	"github.com/gx-org/gx/internal/interp/numbers"
 	"github.com/gx-org/gx/interp/elements"
 	"github.com/gx-org/gx/interp/engine"
@@ -82,7 +81,7 @@ func (compArrayOps) ElementFromAtom(file *ir.File, val values.Array, expr ir.Exp
 		}
 		return numbers.NewBool(expr, val), nil
 	default:
-		return cpevops.NewAtom(hostValue, expr, typ)
+		return numbers.NewAtom(hostValue, expr, typ)
 	}
 }
 
