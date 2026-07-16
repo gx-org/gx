@@ -17,7 +17,7 @@
 // Automatically generated from google3/third_party/gxlang/gx/golang/tools/testsmain.go.
 //
 // DO NOT EDIT
-package dtypestest
+package arraystest
 
 import (
 	"testing"
@@ -28,22 +28,7 @@ var tests = []struct{
   name string
   test func(*testing.T)
 }{
-	{name: "TestBool", test: TestBool},
-	{name: "TestFloat32", test: TestFloat32},
-	{name: "TestFloat64", test: TestFloat64},
-	{name: "TestInt", test: TestInt},
-	{name: "TestInt32", test: TestInt32},
-	{name: "TestInt64", test: TestInt64},
-	{name: "TestUint32", test: TestUint32},
-	{name: "TestUint64", test: TestUint64},
-	{name: "TestBoolArray", test: TestBoolArray},
-	{name: "TestFloat32Array", test: TestFloat32Array},
-	{name: "TestFloat64Array", test: TestFloat64Array},
-	{name: "TestIntArray", test: TestIntArray},
-	{name: "TestInt32Array", test: TestInt32Array},
-	{name: "TestInt64Array", test: TestInt64Array},
-	{name: "TestUint32Array", test: TestUint32Array},
-	{name: "TestUint64Array", test: TestUint64Array},
+	{name: "TestArgAsArrayIndex", test: TestArgAsArrayIndex},
 
 }
 
@@ -51,11 +36,11 @@ func Run(t *testing.T, dev *api.Device) {
 	t.Helper()
 	err := setupTest(dev)
 	if err != nil {
-		t.Errorf("cannot run dtypestest tests: %+v", err)
+		t.Errorf("cannot run arraystest tests: %+v", err)
 		return
 	}
 	for _, test := range tests {
-		t.Run("dtypestest."+test.name, test.test)
+		t.Run("arraystest."+test.name, test.test)
 	}
 }
 
