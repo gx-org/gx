@@ -111,12 +111,8 @@ func (v *storedValue) Store() ir.Storage {
 	return v.storage.Store()
 }
 
-func (v *storedValue) Shape() *shape.Shape {
-	val, ok := v.val.(elements.EvalShaper)
-	if !ok {
-		return nil
-	}
-	return val.EvalShape()
+func (v *storedValue) Shape() (*shape.Shape, error) {
+	return elements.ShapeFromElement(v.val)
 }
 
 // Elements returns the elements of a slice.

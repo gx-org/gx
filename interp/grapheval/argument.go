@@ -340,6 +340,7 @@ var (
 	_ elements.Slicer                 = (*arrayArgument)(nil)
 	_ ir.WithLength                   = (*arrayArgument)(nil)
 	_ elements.WithAxes               = (*arrayArgument)(nil)
+	_ elements.EvalShaper             = (*arrayArgument)(nil)
 	_ graphNode                       = (*arrayArgument)(nil)
 )
 
@@ -434,8 +435,8 @@ func (n *arrayArgument) Shape() *shape.Shape {
 }
 
 // Shape returns the shape of the element.
-func (n *arrayArgument) EvalShape() *shape.Shape {
-	return n.shape
+func (n *arrayArgument) EvalShape() (*shape.Shape, error) {
+	return n.shape, nil
 }
 
 func (n *arrayArgument) Axes(ev ir.Evaluator) (*elements.Slice, error) {

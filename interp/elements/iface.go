@@ -15,16 +15,16 @@
 package elements
 
 import (
-	"github.com/pkg/errors"
 	"github.com/gx-org/backend/shape"
 	"github.com/gx-org/gx/build/ir"
+	"github.com/gx-org/gx/internal/base/cast"
 )
 
 type (
 	// EvalShaper is an (array) element from which the shape has been fully determined at evaluation time.
 	EvalShaper interface {
 		ir.Element
-		EvalShape() *shape.Shape
+		EvalShape() (*shape.Shape, error)
 	}
 
 	// NType is a named type.
@@ -45,12 +45,12 @@ type (
 )
 
 // ShapeFromElement returns the shape of a numerical element.
-func ShapeFromElement(node ir.Element) (*shape.Shape, error) {
-	numerical, ok := node.(EvalShaper)
-	if !ok {
-		return nil, errors.Errorf("cannot cast %T to a numerical element", node)
+func ShapeFromElement(el ir.Element) (*shape.Shape, error) {
+	shaper, err := cast.To[EvalShaper](el)
+	if err != nil {
+		return nil, err
 	}
-	return numerical.EvalShape(), nil
+	return shaper.EvalShape()
 }
 
 // Underlying returns the underlying element.

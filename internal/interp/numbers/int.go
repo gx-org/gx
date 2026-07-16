@@ -173,9 +173,9 @@ func (n *Int) Reshape(env engine.Env, expr ir.Expr, axisLengths []engine.Numeric
 	return cpevops.NewReshape(env, expr, n, axisLengths)
 }
 
-// Shape of the value represented by the element.
-func (n *Int) EvalShape() *shape.Shape {
-	return numberShape
+// EvalShape of the value represented by the element.
+func (n *Int) EvalShape() (*shape.Shape, error) {
+	return numberShape, nil
 }
 
 // Expr returns the expression representing the integer.

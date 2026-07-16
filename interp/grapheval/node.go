@@ -50,6 +50,7 @@ var (
 	_ engine.NumericalElement         = (*BackendNode)(nil)
 	_ ir.WithLength                   = (*BackendNode)(nil)
 	_ graphNode                       = (*BackendNode)(nil)
+	_ elements.EvalShaper             = (*valueElement)(nil)
 )
 
 // NewBackendNode returns an element representing a node in the backend graph.
@@ -330,8 +331,8 @@ func (n *BackendNode) Shape() *shape.Shape {
 }
 
 // EvalShape returns the shape of the element.
-func (n *BackendNode) EvalShape() *shape.Shape {
-	return n.nod.Shape
+func (n *BackendNode) EvalShape() (*shape.Shape, error) {
+	return n.nod.Shape, nil
 }
 
 // Type of the element.

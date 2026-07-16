@@ -20,6 +20,7 @@ import (
 	"github.com/gx-org/gx/build/ir"
 	"github.com/gx-org/gx/build/ir/irkind"
 	"github.com/gx-org/gx/internal/interp/canonical"
+	"github.com/gx-org/gx/interp/elements"
 	"github.com/gx-org/gx/interp/engine"
 )
 
@@ -28,6 +29,7 @@ var numberShape = &shape.Shape{}
 // Number value in GX.
 type Number interface {
 	engine.NumericalElement
+	elements.EvalShaper
 	canonical.Comparable
 	canonical.Evaluable
 	engine.Copier

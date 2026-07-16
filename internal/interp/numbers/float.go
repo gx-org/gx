@@ -133,9 +133,9 @@ func (n *Float) Reshape(env engine.Env, expr ir.Expr, axisLengths []engine.Numer
 	return cpevops.NewReshape(env, expr, n, axisLengths)
 }
 
-// Shape of the value represented by the element.
-func (n *Float) EvalShape() *shape.Shape {
-	return numberShape
+// EvalShape of the value represented by the element.
+func (n *Float) EvalShape() (*shape.Shape, error) {
+	return numberShape, nil
 }
 
 // Type of the element.
