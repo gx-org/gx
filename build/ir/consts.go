@@ -21,26 +21,6 @@ import (
 	"github.com/gx-org/gx/internal/exprdeps"
 )
 
-var falseValue = &AtomicValueT[bool]{
-	Val: false,
-	Typ: BoolType(),
-}
-
-// False returns an atomic value equal to false.
-func False() *AtomicValueT[bool] {
-	return falseValue
-}
-
-var trueValue = &AtomicValueT[bool]{
-	Val: true,
-	Typ: BoolType(),
-}
-
-// True returns an atomic value equal to true.
-func True() *AtomicValueT[bool] {
-	return trueValue
-}
-
 // Deps returns the dependencies of a constant expression.
 func (expr *ConstExpr) Deps() []*ast.Ident {
 	if expr.Val == nil {
