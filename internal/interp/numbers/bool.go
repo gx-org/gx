@@ -128,7 +128,7 @@ var _ ir.WithStore = (*boolStorage)(nil)
 
 // NewBoolFromStorage returns a new element to store a boolean value.
 func NewBoolFromStorage(storage ir.StorageWithValue) engine.AtomLitElement {
-	val := storage.Value(nil).(*ir.AtomicValueT[bool]).Val
+	val := storage.Value(nil).(*ir.BoolValue).Val
 	return &boolStorage{
 		boolEl:  newBool(ir.NewIdent(storage), val),
 		storage: storage,
