@@ -80,15 +80,15 @@ func NewBinary(env engine.Env, expr *ir.BinaryExpr, xEl, yEl engine.NumericalEle
 
 func buildBinaryVal(operator token.Token, cx, cy *values.HostArray, typ ir.Type) (*values.HostArray, error) {
 	// Both x and y are host atomic value.
-	kx, kxRelease, err := toKernelArray(cx)
+	kx, kxRelease, err := values.ToKernel(cx)
 	if err != nil {
 		return nil, err
 	}
 	defer kxRelease()
 	var ky kernels.Array
 	if cx != cy {
-		var kyRelease releaseFunc
-		ky, kyRelease, err = toKernelArray(cy)
+		var kyRelease values.ReleaseFunc
+		ky, kyRelease, err = values.ToKernel(cy)
 		if err != nil {
 			return nil, err
 		}

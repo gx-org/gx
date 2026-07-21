@@ -238,3 +238,18 @@ func ToElements(vals []Value) []ir.Element {
 	}
 	return els
 }
+
+// ReleaseFunc needs to be called after a kernel has been returned.
+type ReleaseFunc func()
+
+// ToKernel returns the kernel of an array.
+func ToKernel(array *HostArray) (kernels.Array, ReleaseFunc, error) {
+	// Convert the GX value into a Go array with a kernel factory.
+	data := array.Buffer().Acquire()
+	kArray, err := kernels.NewArrayFromRaw(data, array.Shape())
+	if err != nil {
+		array.Buffer().Release()
+		return nil, nil, err
+	}
+	return kArray, array.Buffer().Release, nil
+}

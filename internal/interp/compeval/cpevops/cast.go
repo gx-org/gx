@@ -63,7 +63,7 @@ func NewCast(env engine.Env, expr ir.Expr, xEl Element, target ir.Type) (engine.
 	if x == nil {
 		return opEl, nil
 	}
-	kx, kxRelease, err := toKernelArray(x)
+	kx, kxRelease, err := values.ToKernel(x)
 	defer kxRelease()
 	if err != nil {
 		return nil, err
