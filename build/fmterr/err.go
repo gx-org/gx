@@ -60,9 +60,13 @@ func Internal(err error) error {
 }
 
 // Internalf returns a formatted compiler error for the user.
-func Internalf(fset *token.FileSet, src ast.Node, format string, a ...any) error {
-	err := Errorf(fset, src, format, a...)
-	return Internal(err)
+func Internalf(format string, a ...any) error {
+	return Internal(errors.Errorf(format, a...))
+}
+
+// InternalAt returns a formatted compiler error for the user at a given code position.
+func InternalAt(fset *token.FileSet, src ast.Node, format string, a ...any) error {
+	return Internal(Errorf(fset, src, format, a...))
 }
 
 // Error returns a string description of the error.

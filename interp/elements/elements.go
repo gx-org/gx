@@ -308,14 +308,14 @@ func EvalRank(fetcher ir.Fetcher, expr ir.Expr) (ir.ArrayRank, []canonical.Canon
 	}
 	slice, ok := Underlying(rankVal).(*Slice)
 	if !ok {
-		return nil, nil, fmterr.Internalf(fetcher.File().FileSet(), expr.Node(), "cannot build a rank from %s (%T): not supported", expr.SourceString(fetcher.File()), rankVal)
+		return nil, nil, fmterr.InternalAt(fetcher.File().FileSet(), expr.Node(), "cannot build a rank from %s (%T): not supported", expr.SourceString(fetcher.File()), rankVal)
 	}
 	axes := make([]ir.AxisLengths, slice.Len())
 	cans := make([]canonical.Canonical, slice.Len())
 	for i, el := range slice.Elements() {
 		ex, ok := el.(ir.Canonical)
 		if !ok {
-			return nil, nil, fmterr.Internalf(fetcher.File().FileSet(), expr.Node(), "cannot build an axis expression from element %T: not supported", el)
+			return nil, nil, fmterr.InternalAt(fetcher.File().FileSet(), expr.Node(), "cannot build an axis expression from element %T: not supported", el)
 		}
 		irExpr, err := ir.ToSingleExpr(fetcher, expr.Expr(), ex)
 		if err != nil {

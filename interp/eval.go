@@ -500,7 +500,7 @@ func evalSliceExpr(fitp *Interpreter, expr *ir.SliceExpr) (ir.Element, error) {
 	}
 	slice, isSlice := el.(elements.Slicer)
 	if !isSlice {
-		return nil, fmterr.Internalf(fitp.File().FileSet(), expr.Node(), "index expression not supported for %s expression (element: %T)", expr.X.SourceString(nil), el)
+		return nil, fmterr.InternalAt(fitp.File().FileSet(), expr.Node(), "index expression not supported for %s expression (element: %T)", expr.X.SourceString(nil), el)
 	}
 	return slice.Slice(expr, low, high)
 }
@@ -652,7 +652,7 @@ func evalSelectorExpr(fitp *Interpreter, ref *ir.SelectorExpr) (ir.Element, erro
 	}
 	slt, ok := node.(elements.Selector)
 	if !ok {
-		return nil, fmterr.Internalf(fitp.File().FileSet(), ref.Node(), "%T does not implement %s: cannot fetch member %s", node, reflect.TypeFor[elements.Selector](), ref.Src.Sel.Name)
+		return nil, fmterr.InternalAt(fitp.File().FileSet(), ref.Node(), "%T does not implement %s: cannot fetch member %s", node, reflect.TypeFor[elements.Selector](), ref.Src.Sel.Name)
 	}
 	return slt.Select(ref)
 }

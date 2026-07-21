@@ -128,7 +128,7 @@ func ToSingleExpr(ev Evaluator, src ast.Expr, el Element) (Expr, error) {
 		return nil, err
 	}
 	if len(exprs) != 1 {
-		return nil, fmterr.Internalf(ev.File().FileSet(), src, "got %d expression(s) but want 1", len(exprs))
+		return nil, fmterr.InternalAt(ev.File().FileSet(), src, "got %d expression(s) but want 1", len(exprs))
 	}
 	return exprs[0], err
 }

@@ -183,7 +183,7 @@ func unpackTypes(file *ir.File, src ir.Node, tp ir.Type) (*ir.StructType, []*ir.
 	case *ir.StructType:
 		return tpT, nil, nil
 	default:
-		return nil, nil, fmterr.Internalf(file.FileSet(), src.Node(), "cannot unpack a tuple to type %T: not supported", tp)
+		return nil, nil, fmterr.InternalAt(file.FileSet(), src.Node(), "cannot unpack a tuple to type %T: not supported", tp)
 	}
 }
 

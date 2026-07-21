@@ -148,7 +148,7 @@ func axlengthsImpl(env engine.Env, call *ir.FuncCallExpr, recv ir.Element, args 
 	file := env.ExprEval().File()
 	array, ok := args[0].(elements.WithAxes)
 	if !ok {
-		return nil, fmterr.Internalf(file.FileSet(), call.Src, "cannot get the shape of %T: not supported", args[0])
+		return nil, fmterr.InternalAt(file.FileSet(), call.Src, "cannot get the shape of %T: not supported", args[0])
 	}
 	shape, err := array.Axes(env.ExprEval())
 	if err != nil {
