@@ -18,7 +18,6 @@ package cpevops
 import (
 	"github.com/gx-org/gx/api/values"
 	"github.com/gx-org/gx/build/ir"
-	"github.com/gx-org/gx/golang/backend/kernels"
 	"github.com/gx-org/gx/internal/interp/canonical"
 	"github.com/gx-org/gx/interp/elements"
 	"github.com/gx-org/gx/interp/engine"
@@ -34,19 +33,6 @@ type Element interface {
 
 	// CanonicalExpr returns the canonical expression used for comparison.
 	CanonicalExpr() canonical.Canonical
-}
-
-type releaseFunc func()
-
-func toKernelArray(array *values.HostArray) (kernels.Array, releaseFunc, error) {
-	// Convert the GX value into a Go array with a kernel factory.
-	data := array.Buffer().Acquire()
-	kArray, err := kernels.NewArrayFromRaw(data, array.Shape())
-	if err != nil {
-		array.Buffer().Release()
-		return nil, nil, err
-	}
-	return kArray, array.Buffer().Release, nil
 }
 
 func valEqual(x, y Element) (bool, error) {
