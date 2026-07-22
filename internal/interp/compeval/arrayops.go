@@ -22,7 +22,7 @@ import (
 	"github.com/gx-org/gx/build/ir"
 	"github.com/gx-org/gx/build/ir/irkind"
 	"github.com/gx-org/gx/golang/backend/kernels"
-	"github.com/gx-org/gx/internal/interp/compeval/cpevelements"
+	"github.com/gx-org/gx/internal/interp/compeval/surrogates"
 	"github.com/gx-org/gx/internal/interp/numbers"
 	"github.com/gx-org/gx/interp/elements"
 	"github.com/gx-org/gx/interp/engine"
@@ -44,27 +44,27 @@ func (compArrayOps) SubGraph(name string, args []*shape.Shape) (engine.ArrayOps,
 
 // Einsum calls an einstein sum on x and y given the expression in ref.
 func (compArrayOps) Einsum(ctx ir.Evaluator, expr *ir.EinsumExpr, x, y engine.NumericalElement) (engine.NumericalElement, error) {
-	return cpevelements.NewArray(expr)
+	return surrogates.NewArray(expr)
 }
 
 // BroadcastInDim the data of an array across dimensions.
 func (compArrayOps) BroadcastInDim(ctx ir.Evaluator, expr ir.Expr, x engine.NumericalElement, axisLengths []engine.NumericalElement) (engine.NumericalElement, error) {
-	return cpevelements.NewArray(expr)
+	return surrogates.NewArray(expr)
 }
 
 // Reshape an element into a given shape.
 func (compArrayOps) Reshape(expr elements.ExprAt, x engine.NumericalElement, axisLengths []engine.NumericalElement) (engine.NumericalElement, error) {
-	return cpevelements.NewArray(expr.Node())
+	return surrogates.NewArray(expr.Node())
 }
 
 // Concat concatenates scalars elements into an array with one axis.
 func (compArrayOps) Concat(ctx ir.Evaluator, expr ir.Expr, xs []engine.NumericalElement) (engine.NumericalElement, error) {
-	return cpevelements.NewArray(expr)
+	return surrogates.NewArray(expr)
 }
 
 // Set a slice in an array.
 func (compArrayOps) Set(ctx ir.Evaluator, expr *ir.FuncCallExpr, x, updates ir.Element, positions []ir.Element) (ir.Element, error) {
-	return cpevelements.NewArray(expr)
+	return surrogates.NewArray(expr)
 }
 
 // ElementFromAtom returns an element from a GX value.
@@ -92,5 +92,5 @@ func (compArrayOps) ElementFromAtomLit(file *ir.File, el engine.AtomLitElement) 
 
 // ElementFromArray returns an element from an array GX value.
 func (compArrayOps) ElementFromArray(file *ir.File, lit *ir.ArrayLitExpr, val values.Array) (engine.NumericalElement, error) {
-	return cpevelements.NewArray(lit)
+	return surrogates.NewArray(lit)
 }
