@@ -57,7 +57,7 @@ func checkBroadcastRanks(fetcher ir.Fetcher, call *ir.FuncCallExpr, src ir.Array
 		}
 		srcCan, ok := srcElt.(canonical.Canonical)
 		if !ok {
-			return fmterr.Internalf(fetcher.File().FileSet(), call.Node(), "expression evaluation axis %d=%s did not return a canonical expression", i, srcAxes[i])
+			return fmterr.InternalAt(fetcher.File().FileSet(), call.Node(), "expression evaluation axis %d=%s did not return a canonical expression", i, srcAxes[i])
 		}
 		tgOk, err := targetElt.Compare(srcCan)
 		if err != nil {

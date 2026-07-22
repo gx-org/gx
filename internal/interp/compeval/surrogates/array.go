@@ -12,7 +12,7 @@
 // See the License for the specific language governing permissions and
 // limitations under the License.
 
-package cpevelements
+package surrogates
 
 import (
 	"go/ast"

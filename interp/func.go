@@ -102,7 +102,7 @@ func (f *elFunc) Store() ir.Storage {
 // Call the function.
 func (f *elFunc) Call(env *fun.CallEnv, call *ir.FuncCallExpr, args []ir.Element) ([]ir.Element, error) {
 	if f.call == nil {
-		return nil, fmterr.Internalf(env.File().FileSet(), f.fn.Node(), "function type %T not supported", f.fn)
+		return nil, fmterr.InternalAt(env.File().FileSet(), f.fn.Node(), "function type %T not supported", f.fn)
 	}
 	var recv *fun.NamedType
 	if f.Recv() != nil {
@@ -171,11 +171,11 @@ func toConcreteType(ctx *context.Context, src ast.Node, frame *context.Frame, tp
 	}
 	el, err := frame.Find(typeParam.OrigField().Name)
 	if err != nil {
-		return nil, fmterr.Internalf(ctx.File().FileSet(), src, "cannot cast to %s: %v", tp.ReferString(ctx.File()), err)
+		return nil, fmterr.InternalAt(ctx.File().FileSet(), src, "cannot cast to %s: %v", tp.ReferString(ctx.File()), err)
 	}
 	tp, isType := ir.BareValue(el).(ir.Type)
 	if !isType {
-		return nil, fmterr.Internalf(ctx.File().FileSet(), src, "element %T is not a type", el)
+		return nil, fmterr.InternalAt(ctx.File().FileSet(), src, "element %T is not a type", el)
 	}
 	return tp, nil
 }

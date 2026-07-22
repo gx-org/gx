@@ -23,6 +23,7 @@ import (
 	"github.com/gx-org/gx/build/ir"
 	"github.com/gx-org/gx/build/ir/irkind"
 	"github.com/gx-org/gx/internal/interp/compeval/cpevops"
+	"github.com/gx-org/gx/internal/interp/compeval/surrogates"
 	"github.com/gx-org/gx/interp/elements"
 	"github.com/gx-org/gx/interp/engine"
 	"github.com/gx-org/gx/interp/fun"
@@ -75,7 +76,7 @@ func NewRuntimeValue(file *ir.File, expr ir.ExprToStorage) (ir.Element, error) {
 		}
 		return fun.NewNamedType(NewProxyFunc, typT, under), nil
 	case ir.ArrayType:
-		return NewArray(expr)
+		return surrogates.NewArray(expr)
 	case *ir.FuncType:
 		return NewProxyFunc(&ir.FuncLit{
 			Src:   &ast.FuncLit{Type: typT.Src},

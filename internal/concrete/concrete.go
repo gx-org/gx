@@ -30,11 +30,11 @@ func concreteTypeParam(fr ir.Evaluator, src ast.Expr, tp *ir.GenericTypeParam) (
 	}
 	el, err := fr.EvalExpr(typeExpr)
 	if err != nil {
-		return nil, fmterr.Internalf(fr.File().FileSet(), src, "cannot cast to %s: %v", tp.ReferString(fr.File()), err)
+		return nil, fmterr.InternalAt(fr.File().FileSet(), src, "cannot cast to %s: %v", tp.ReferString(fr.File()), err)
 	}
 	elType, isType := ir.BareValue(el).(ir.Type)
 	if !isType {
-		return nil, fmterr.Internalf(fr.File().FileSet(), src, "element %T is not a type", el)
+		return nil, fmterr.InternalAt(fr.File().FileSet(), src, "element %T is not a type", el)
 	}
 	return elType, nil
 }
