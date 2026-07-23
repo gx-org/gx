@@ -78,7 +78,7 @@ func (a *proxy) Reshape(env engine.Env, expr ir.Expr, axisLengths []engine.Numer
 }
 
 // Append elements to the slice.
-func (a *proxy) Append([]ir.Element) engine.Slice {
+func (a *proxy) Append(*ir.FuncCallExpr, []ir.Element) engine.Slice {
 	stor := &ir.LocalVarStorage{Typ: a.Type()}
 	storage := elements.NewNodeAt[ir.Storage](a.src.File(), stor)
 	return &proxy{src: storage}

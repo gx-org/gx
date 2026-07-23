@@ -181,8 +181,8 @@ func (v *storedValue) Length(ev ir.Evaluator) (int, error) {
 	return withLen.Length(ev)
 }
 
-func (v *storedValue) Append(args []ir.Element) engine.Slice {
-	return v.val.(engine.Slice).Append(args)
+func (v *storedValue) Append(call *ir.FuncCallExpr, args []ir.Element) engine.Slice {
+	return v.val.(engine.Slice).Append(call, args)
 }
 
 // Expr returns the IR expression represented by the variable.
