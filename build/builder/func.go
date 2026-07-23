@@ -117,15 +117,18 @@ func rankInferOk(rscope resolveScope, src ast.Node, typ ir.Type) bool {
 	return true
 }
 
-func defineTypeParam(s localScope, storage ir.Storage) bool {
-	fieldStorage := storage.(*ir.FieldStorage)
+func defineTypeParam(s localScope, storage *ir.FieldStorage) bool {
 	var generic ir.GenericParam
-	if ir.IsNonTypeGeneric(fieldStorage.Type()) {
-		generic = ir.NewGenericNonTypeParam(fieldStorage.Field)
+	if ir.IsNonTypeGeneric(storage.Type()) {
+		generic = ir.NewGenericNonTypeParam(storage.Field)
 	} else {
-		generic = ir.NewGenericTypeParam(fieldStorage.Field)
+		generic = ir.NewGenericTypeParam(storage.Field)
 	}
 	return defineLocalVar(s, generic)
+}
+
+func defineParam(s localScope, storage *ir.FieldStorage) bool {
+	return defineLocalVar(s, storage)
 }
 
 func (n *funcType) buildFuncType(rscope resolveScope) (*ir.FuncType, *funcResolveScope, bool) {
@@ -143,7 +146,7 @@ func (n *funcType) buildFuncType(rscope resolveScope) (*ir.FuncType, *funcResolv
 			defineLocalVar(sigscope, field.Storage())
 		}
 	}
-	paramScope := newDefineScope(sigscope, defineLocalVar)
+	paramScope := newDefineScope(sigscope, defineParam)
 	paramScope.ftype = ext
 	ext.Params, paramsOk = n.params.buildFieldList(paramScope)
 	if n.varargs != nil {
