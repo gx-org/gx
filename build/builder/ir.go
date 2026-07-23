@@ -62,7 +62,7 @@ type (
 		nodePos
 		// buildStmt a statement.
 		// stop is set to true if the statement always return.
-		buildStmt(fnResolveScope) (_ ir.Stmt, stop bool, ok bool)
+		buildStmt(stmtResolveScope) (_ ir.Stmt, stop bool, ok bool)
 	}
 
 	cloner interface {

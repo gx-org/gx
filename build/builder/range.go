@@ -84,7 +84,7 @@ func (n *rangeStmt) buildBodyOverArray(rscope resolveScope, x ir.Expr) (ir.Stora
 	return key, value, keyOk && valueOk
 }
 
-func (n *rangeStmt) buildStmt(parent fnResolveScope) (ir.Stmt, bool, bool) {
+func (n *rangeStmt) buildStmt(parent stmtResolveScope) (ir.Stmt, bool, bool) {
 	ext := &ir.RangeStmt{Src: n.src}
 	rscope, ok := newBlockScope(parent, n)
 	if !ok {

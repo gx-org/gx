@@ -302,6 +302,11 @@ func (s *fileResolveScope) toDefineScope() *defineLocalScope {
 }
 
 type (
+	stmtResolveScope interface {
+		localScope
+		funcType() *ir.FuncType
+	}
+
 	fnResolveScope interface {
 		resolveScope
 		funcType() *ir.FuncType
@@ -661,7 +666,7 @@ func (s *sliceResolveScope) newInferCompositeType(src *ast.CompositeLit, exprs [
 }
 
 type (
-	defineLocalF     func(s resolveScope, storage ir.Storage) bool
+	defineLocalF     func(s localScope, storage ir.Storage) bool
 	defineLocalScope struct {
 		localScope
 		ftype *ir.FuncType

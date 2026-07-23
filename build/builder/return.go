@@ -113,7 +113,7 @@ func (n *returnStmt) castValue(scope fnResolveScope, expr ir.Expr, want ir.Type)
 	}, true
 }
 
-func (n *returnStmt) buildStmt(scope fnResolveScope) (ir.Stmt, bool, bool) {
+func (n *returnStmt) buildStmt(scope stmtResolveScope) (ir.Stmt, bool, bool) {
 	ext := &ir.ReturnStmt{Src: n.src}
 	fType := scope.funcType()
 	if fType == nil {

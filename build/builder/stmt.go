@@ -47,7 +47,7 @@ func (n *blockStmt) source() ast.Node {
 	return n.src
 }
 
-func (n *blockStmt) buildStmt(scope fnResolveScope) (ir.Stmt, bool, bool) {
+func (n *blockStmt) buildStmt(scope stmtResolveScope) (ir.Stmt, bool, bool) {
 	return n.buildBlockStmt(scope)
 }
 
@@ -169,7 +169,7 @@ func (n *declStmt) source() ast.Node {
 }
 
 // buildStmt builds the IR for a declaration statement.
-func (n *declStmt) buildStmt(scope fnResolveScope) (ir.Stmt, bool, bool) {
+func (n *declStmt) buildStmt(scope stmtResolveScope) (ir.Stmt, bool, bool) {
 	decls := make([]*ir.VarSpec, 0, len(n.decls))
 	declsOk := true
 
@@ -192,7 +192,7 @@ func (n *declStmt) buildStmt(scope fnResolveScope) (ir.Stmt, bool, bool) {
 	return &ir.DeclStmt{Src: n.src, Decls: decls}, false, declsOk
 }
 
-func (n *exprStmt) buildStmt(scope fnResolveScope) (ir.Stmt, bool, bool) {
+func (n *exprStmt) buildStmt(scope stmtResolveScope) (ir.Stmt, bool, bool) {
 	x, ok := n.x.buildExpr(scope)
 	if ok && x.Type().Kind() != irkind.Void {
 		ok = scope.Err().Appendf(n.src, "cannot use an expression returning a value as a statement")

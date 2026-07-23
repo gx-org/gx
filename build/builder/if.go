@@ -66,7 +66,7 @@ func (n *ifStmt) checkConditionType(scope resolveScope, typ ir.Type) bool {
 	return true
 }
 
-func (n *ifStmt) buildStmt(rscope fnResolveScope) (ir.Stmt, bool, bool) {
+func (n *ifStmt) buildStmt(rscope stmtResolveScope) (ir.Stmt, bool, bool) {
 	bScope, ok := newBlockScope(rscope, n)
 	if !ok {
 		return nil, false, false
