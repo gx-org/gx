@@ -222,14 +222,6 @@ type funcParamScope struct {
 
 var _ typeProcScope = (*funcParamScope)(nil)
 
-func (s *funcParamScope) registerAxis(axis *defineAxisLength) (*defineAxisLength, bool) {
-	if _, has := s.ftype.genShapes.Load(axis.name); has {
-		return axis, s.Err().Appendf(axis.src, "axis length %s can only be defined once", axis.name)
-	}
-	s.ftype.genShapes.Store(axis.name, newProcessNode(token.VAR, axis.src, axis))
-	return axis, true
-}
-
 func (s *funcParamScope) processAxisIdent(ident *ast.Ident) (axisLengthNode, bool) {
 	if !checkValueTypeIdent(s, ident) {
 		return nil, false

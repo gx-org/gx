@@ -18,7 +18,6 @@ import (
 	"fmt"
 	"go/ast"
 
-	"github.com/gx-org/gx/base/ordered"
 	"github.com/gx-org/gx/build/builder/irb"
 	"github.com/gx-org/gx/build/ir"
 )
@@ -58,7 +57,6 @@ type funcType struct {
 	receiver *namedType
 
 	typeParams *fieldList
-	genShapes  *ordered.Map[string, *processNodeT[*defineAxisLength]]
 
 	recv    *fieldList
 	params  *fieldList
@@ -71,9 +69,8 @@ type funcType struct {
 
 func processFuncType(pscope procScope, src *ast.FuncType, recv *ast.FieldList, compEval bool) (*funcType, bool) {
 	n := &funcType{
-		src:       src,
-		compEval:  compEval,
-		genShapes: ordered.NewMap[string, *processNodeT[*defineAxisLength]](),
+		src:      src,
+		compEval: compEval,
 	}
 	var recvOk, typesOk, paramsOk, resultsOk bool
 	sig := &signatureNamespace{fType: n, names: make(map[string]*field)}
