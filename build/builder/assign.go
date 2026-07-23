@@ -290,7 +290,7 @@ func checkNewVariables(scope resolveScope, stmt *ast.AssignStmt, newVariables bo
 	return true
 }
 
-func buildAssignExpr(rscope resolveScope, asgm *assignment) (*ir.AssignExpr, bool, bool) {
+func buildAssignExpr(rscope localScope, asgm *assignment) (*ir.AssignExpr, bool, bool) {
 	ext := &ir.AssignExpr{}
 	var exprOk bool
 	ext.X, exprOk = buildExpr(rscope, asgm.expr)
@@ -310,7 +310,7 @@ func buildAssignExpr(rscope resolveScope, asgm *assignment) (*ir.AssignExpr, boo
 	return ext, newAsgm, exprOk && targetOk && definedOk && assignOk
 }
 
-func (n *assignExprStmt) buildStmt(scope fnResolveScope) (ir.Stmt, bool, bool) {
+func (n *assignExprStmt) buildStmt(scope stmtResolveScope) (ir.Stmt, bool, bool) {
 	ext := &ir.AssignExprStmt{Src: n.src, List: make([]*ir.AssignExpr, len(n.assigns))}
 	ok := true
 	newVariables := false
@@ -342,7 +342,7 @@ func processAssignCall(pscope procScope, src *ast.AssignStmt, call *callExpr) (s
 		targets: targets,
 	}, ok
 }
-func (n *assignCallStmt) defineLeftAsInvalid(rscope fnResolveScope) bool {
+func (n *assignCallStmt) defineLeftAsInvalid(rscope stmtResolveScope) bool {
 	for _, target := range n.targets {
 		storage, _, _ := target.buildStorage(rscope, invalidExpr().Type())
 		defineLocalVar(rscope, storage)
@@ -350,7 +350,7 @@ func (n *assignCallStmt) defineLeftAsInvalid(rscope fnResolveScope) bool {
 	return false
 }
 
-func (n *assignCallStmt) buildStmt(rscope fnResolveScope) (ir.Stmt, bool, bool) {
+func (n *assignCallStmt) buildStmt(rscope stmtResolveScope) (ir.Stmt, bool, bool) {
 	ext := &ir.AssignCallStmt{Src: n.src}
 	var callOk bool
 	ext.Call, callOk = buildCall(rscope, n.call)

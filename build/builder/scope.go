@@ -73,18 +73,14 @@ func elementFromStorageWithValue(scope resolveScope, store ir.StorageWithValue) 
 	return cpevelements.NewStoredValue(ev.File(), store, el), true
 }
 
-func defineLocalVar(scope resolveScope, storage ir.Storage) bool {
+func defineLocalVar(scope localScope, storage ir.Storage) bool {
 	if assignExpr, isAssignExpr := storage.(*ir.AssignExpr); isAssignExpr {
 		if _, isLocal := assignExpr.Storage.(*ir.LocalVarStorage); !isLocal {
 			return true
 		}
 	}
-	lScope, ok := scope.(localScope)
-	if !ok {
-		return scope.Err().AppendInternalf(storage.Node(), "%T is not a local scope", scope)
-	}
 	if ir.IsInvalidType(storage.Type()) {
-		return lScope.update(storage, ir.InvalidType())
+		return scope.update(storage, ir.InvalidType())
 	}
 	var el ir.Element
 	var elOk bool
@@ -96,5 +92,5 @@ func defineLocalVar(scope resolveScope, storage ir.Storage) bool {
 	if !elOk {
 		return false
 	}
-	return lScope.update(storage, el)
+	return scope.update(storage, el)
 }
