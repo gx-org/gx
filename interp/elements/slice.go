@@ -152,7 +152,7 @@ func (*Slice) Kind() irkind.Kind {
 }
 
 // Append elements to a copy of the slice.
-func (n *Slice) Append(args []ir.Element) engine.Slice {
+func (n *Slice) Append(_ *ir.FuncCallExpr, args []ir.Element) engine.Slice {
 	values := append([]ir.Element{}, n.values...)
 	values = append(values, args...)
 	return &Slice{typ: n.typ, values: values}

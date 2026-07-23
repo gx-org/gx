@@ -122,7 +122,7 @@ type (
 	// Slice is an element implementing a slice.
 	Slice interface {
 		ir.Element
-		Append([]ir.Element) Slice
+		Append(*ir.FuncCallExpr, []ir.Element) Slice
 	}
 )
 

@@ -666,7 +666,7 @@ func (s *sliceResolveScope) newInferCompositeType(src *ast.CompositeLit, exprs [
 }
 
 type (
-	defineLocalF     func(s localScope, storage ir.Storage) bool
+	defineLocalF     func(s localScope, storage *ir.FieldStorage) bool
 	defineLocalScope struct {
 		localScope
 		ftype *ir.FuncType
@@ -689,7 +689,7 @@ func newDefineScope(scope localScope, def defineLocalF) *defineLocalScope {
 	return &defineLocalScope{localScope: scope, def: def}
 }
 
-func (s *defineLocalScope) define(storage ir.Storage) {
+func (s *defineLocalScope) define(storage *ir.FieldStorage) {
 	if s.def == nil {
 		return
 	}

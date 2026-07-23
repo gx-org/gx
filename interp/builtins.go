@@ -141,7 +141,7 @@ func appendImpl(env engine.Env, call *ir.FuncCallExpr, recv ir.Element, args []i
 	if err != nil {
 		return nil, err
 	}
-	return []ir.Element{slice.Append(withElts.Elements())}, nil
+	return []ir.Element{slice.Append(call, withElts.Elements())}, nil
 }
 
 func axlengthsImpl(env engine.Env, call *ir.FuncCallExpr, recv ir.Element, args []ir.Element) ([]ir.Element, error) {
