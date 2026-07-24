@@ -38,8 +38,8 @@ func NewFuncLit(lit *ir.FuncLit, ctx *context.Context) fun.Func {
 	}
 }
 
-// Func returns the IR function represented by the graph.
-func (sg *funcLit) Func() ir.Func {
+// IR returns the IR function represented by the graph.
+func (sg *funcLit) IR() ir.Func {
 	return sg.lit
 }
 

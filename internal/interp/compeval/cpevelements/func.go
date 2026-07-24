@@ -38,7 +38,7 @@ func NewProxyFunc(fn ir.Func, recv *fun.Receiver) fun.Func {
 	return &proxyFunction{fn: fn, recv: recv}
 }
 
-func (f *proxyFunction) Func() ir.Func {
+func (f *proxyFunction) IR() ir.Func {
 	return f.fn
 }
 

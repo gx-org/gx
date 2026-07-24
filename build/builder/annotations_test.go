@@ -57,7 +57,7 @@ func toTagString(arg ir.Element) string {
 	case *elements.String:
 		return argT.StringValue()
 	case fun.Func:
-		return argT.Func().FuncType().ReferString(nil)
+		return argT.IR().FuncType().ReferString(nil)
 	default:
 		return fmt.Sprintf("%T", argT)
 	}
@@ -106,7 +106,7 @@ var _ ir.FuncASTBuilder = (*macroBuildReturn)(nil)
 func newBuildReturn(file *ir.File, call *ir.FuncCallExpr, macro *ir.Macro, args []ir.Element) (ir.MacroElement, error) {
 	return &macroBuildReturn{
 		CoreMacroElement: cpevelements.MacroElement(macro, file, call),
-		tagFn:            args[0].(fun.Func).Func().(ir.PkgFunc),
+		tagFn:            args[0].(fun.Func).IR().(ir.PkgFunc),
 	}, nil
 }
 

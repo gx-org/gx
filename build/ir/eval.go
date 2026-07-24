@@ -38,7 +38,7 @@ type (
 
 	// FuncElement converts an element into an IR expressions.
 	FuncElement interface {
-		Func() Func
+		IR() Func
 	}
 
 	// WithExpr converts an element into an IR expressions.

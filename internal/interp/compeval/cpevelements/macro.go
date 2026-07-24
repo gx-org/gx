@@ -31,8 +31,8 @@ func NewMacro(fn *ir.Macro, recv *fun.Receiver) fun.Func {
 	return &Macro{macro: fn, recv: recv}
 }
 
-// Func returns the macro function.
-func (f *Macro) Func() ir.Func {
+// IR returns the macro function.
+func (f *Macro) IR() ir.Func {
 	return f.macro
 }
 
@@ -50,8 +50,8 @@ func (f *Macro) Call(fctx *fun.CallEnv, call *ir.FuncCallExpr, args []ir.Element
 	return []ir.Element{el}, err
 }
 
-// IR of the macro function.
-func (f *Macro) IR() *ir.Macro {
+// MacroIR of the macro function.
+func (f *Macro) MacroIR() *ir.Macro {
 	return f.macro
 }
 

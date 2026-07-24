@@ -56,7 +56,7 @@ type (
 	// Func is an element owning a callable function.
 	Func interface {
 		ir.Element
-		Func() ir.Func
+		IR() ir.Func
 		Recv() *Receiver
 		Call(env *CallEnv, call *ir.FuncCallExpr, args []ir.Element) ([]ir.Element, error)
 	}

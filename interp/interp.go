@@ -120,10 +120,10 @@ func (fitp *Interpreter) toCompEvalError(el ir.Element) (err error) {
 	if !isFun {
 		return errors.Errorf("%T not a function", errorMethod)
 	}
-	recv := fun.NewReceiver(methods, errorFun.Func())
-	errorFun = NewRunFunc(errorFun.Func(), recv)
+	recv := fun.NewReceiver(methods, errorFun.IR())
+	errorFun = NewRunFunc(errorFun.IR(), recv)
 	errorExpr := &ir.FuncCallExpr{
-		Callee: ir.ErrorCallee(errorFun.Func()),
+		Callee: ir.ErrorCallee(errorFun.IR()),
 	}
 	outs, err := errorFun.Call(fitp.env, errorExpr, nil)
 	if err != nil {
