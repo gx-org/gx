@@ -230,7 +230,7 @@ func (n *callExpr) buildCallExpr(rscope resolveScope, callee ir.Expr) (ir.Expr, 
 	}
 	switch elT := ir.BareValue(el).(type) {
 	case *cpevelements.Macro:
-		return n.buildMacroCall(rscope, compEval, callee, elT.IR())
+		return n.buildMacroCall(rscope, compEval, callee, elT.MacroIR())
 	case ir.Type:
 		return n.buildTypeCast(rscope, callee, elT)
 	case ir.FuncAnnotator:
@@ -240,7 +240,7 @@ func (n *callExpr) buildCallExpr(rscope resolveScope, callee ir.Expr) (ir.Expr, 
 	case *ir.TypeValExpr:
 		return n.buildTypeCast(rscope, callee, elT.Store())
 	case ir.FuncElement:
-		return n.buildCallExpr(rscope, ir.NewFuncValExpr(callee, elT.Func()))
+		return n.buildCallExpr(rscope, ir.NewFuncValExpr(callee, elT.IR()))
 	case *ir.MacroKeyword:
 		return n.callMacroKeyword(rscope, elT)
 	case ir.TupleElement:

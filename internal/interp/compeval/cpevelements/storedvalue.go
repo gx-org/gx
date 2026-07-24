@@ -197,8 +197,8 @@ func (v *storedValue) Expr(ev ir.Evaluator, src ast.Expr) ([]ir.Expr, error) {
 func (v *storedValue) CanonicalExpr() canonical.Canonical {
 	return v.storage
 }
-func (v *storedValue) Func() ir.Func {
-	return v.val.(fun.Func).Func()
+func (v *storedValue) IR() ir.Func {
+	return v.val.(fun.Func).IR()
 }
 
 func (v *storedValue) Recv() *fun.Receiver {

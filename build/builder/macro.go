@@ -123,7 +123,7 @@ func (e *irExpr) String() string {
 }
 
 type funcWithIR interface {
-	Func() ir.Func
+	IR() ir.Func
 }
 
 func evalFuncAnnotator(rscope resolveScope, compEval *compileEvaluator, macroCall *callExpr) (*ir.FuncCallExpr, *cpevelements.FuncAnnotator, bool) {
@@ -154,7 +154,7 @@ func evalMetaCallee[T funcWithIR](rscope resolveScope, compEval *compileEvaluato
 	}
 	call, ok := macroCall.buildFuncCallExpr(rscope, ir.NewFuncValExpr(
 		callee,
-		elT.Func(),
+		elT.IR(),
 	))
 	return call, elT, ok
 }

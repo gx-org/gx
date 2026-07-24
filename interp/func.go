@@ -74,8 +74,8 @@ func (f *elFunc) Type() ir.Type {
 	return f.fn.FuncType()
 }
 
-// Func returns the function represented by the node.
-func (f *elFunc) Func() ir.Func {
+// IR returns the function represented by the node.
+func (f *elFunc) IR() ir.Func {
 	return f.fn
 }
 
