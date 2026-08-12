@@ -73,8 +73,7 @@ func NewUnary(env engine.Env, expr *ir.UnaryExpr, xEl Element) (_ engine.Numeric
 	if x == nil {
 		return opEl, nil
 	}
-	kx, kxRelease, err := values.ToKernel(x)
-	defer kxRelease()
+	kx, err := values.ToKernel(x)
 	if err != nil {
 		return nil, err
 	}
