@@ -80,23 +80,13 @@ func NewBinary(env engine.Env, expr *ir.BinaryExpr, xEl, yEl engine.NumericalEle
 
 func buildBinaryVal(operator token.Token, cx, cy *values.HostArray, typ ir.Type) (*values.HostArray, error) {
 	// Both x and y are host atomic value.
-	kx, kxRelease, err := values.ToKernel(cx)
+	kx, err := values.ToKernel(cx)
 	if err != nil {
 		return nil, err
 	}
-	defer kxRelease()
-	var ky kernels.Array
-	if cx != cy {
-		var kyRelease values.ReleaseFunc
-		ky, kyRelease, err = values.ToKernel(cy)
-		if err != nil {
-			return nil, err
-		}
-		defer kyRelease()
-	} else {
-		// Take care to avoid acquiring an array twice (i.e. when LHS and RHS are the same), since that
-		// would cause a deadlock.
-		ky = kx
+	ky, err := values.ToKernel(cy)
+	if err != nil {
+		return nil, err
 	}
 	// Convert the interpreter element a.x into a GX value.
 	// Use the factory to get the kernel matching the binary operator.
