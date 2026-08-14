@@ -1,0 +1,15 @@
+package einsum02
+
+import "num"
+
+func TestEinsum() [2][2]float32 {
+	// Regular matrix multiply: contract LHS axis 1 with RHS axis 0.
+	x := [2][2]float32{{1, 2}, {3, 4}}
+	y := [2][2]float32{{4, 5}, {6, 7}}
+	return num.Einsum[[]int{1}][[]int{}][[]int{0}][[]int{}](x, y)
+	// Want:
+	// [2][2]float32{
+	// 	{16, 19},
+	// 	{36, 43},
+	// }
+}

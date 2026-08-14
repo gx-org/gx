@@ -35,3 +35,9 @@ func OneHot[numClasses, axlen int, T dtype.Ints](x [axlen]T) [axlen][numClasses]
 	xx := shape.Broadcast[axes](([axlen][1]T)(x))
 	return ([axlen][numClasses]T)(Iota[axes](1)) == xx
 }
+
+//gx:compeval
+func einsumAxes(xS, xContract, xBatch, yS, yContract, yBatch []int) ([]int, error)
+
+// Einsum between two arrays.
+func Einsum[XContract, XBatch, YContract, YBatch, XShape, YShape []int, T dtype.Num](x [unpack(XShape)]T, y [unpack(YShape)]T) [unpack(einsumAxes(XShape, XContract, XBatch, YShape, YContract, YBatch))]T

@@ -1,0 +1,21 @@
+package einsum02batched
+
+import "num"
+
+func TestEinsum() [2][2][2]float32 {
+	// Batched matrix multiply: contract LHS axis 2 with RHS axis 1, batch LHS/RHS axis 0.
+	x := [2][2][2]float32{{{1, 2}, {3, 4}}, {{1, 2}, {3, 4}}}
+	y := [2][2][2]float32{{{1, 0}, {0, 1}}, {{0, 1}, {1, 0}}}
+	return num.Einsum[[]int{2}][[]int{0}][[]int{1}][[]int{0}](x, y)
+	// Want:
+	// [2][2][2]float32{
+	// 	{
+	// 		{1, 2},
+	// 		{3, 4},
+	// 	},
+	// 	{
+	// 		{2, 1},
+	// 		{4, 3},
+	// 	},
+	// }
+}

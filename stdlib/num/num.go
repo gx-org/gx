@@ -32,7 +32,6 @@ var Package = builtin.PackageBuilder{
 	FullPath: "num",
 	Builders: []builtin.Builder{
 		builtin.ParseSource("num.gx"),
-		builtin.BuildFunc(einsum{}),
 		builtin.ImplementBuiltin("ArgMax", evalArgMax),
 		builtin.ImplementBuiltin("Iota", evalIota),
 		builtin.ImplementBuiltin("IotaFull", evalIotaFull),
@@ -40,6 +39,8 @@ var Package = builtin.PackageBuilder{
 		builtin.ImplementBuiltin("MatMul", evalMatMul),
 		builtin.ImplementBuiltin("Sum", evalReduceSum),
 		builtin.ImplementBuiltin("MatMulAxes", evalMatMulAxes),
+		builtin.ImplementBuiltin("einsumAxes", evalEinsumAxes),
+		builtin.ImplementBuiltin("Einsum", evalEinsum),
 	},
 }
 
