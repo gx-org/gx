@@ -16,200 +16,52 @@ package num
 
 import (
 	"fmt"
-	"go/ast"
 
 	"github.com/gx-org/backend/ops"
 	"github.com/gx-org/backend/shape"
-	"github.com/gx-org/gx/build/builtins"
-	"github.com/gx-org/gx/build/fmterr"
 	"github.com/gx-org/gx/build/ir"
 	"github.com/gx-org/gx/interp/elements"
 	"github.com/gx-org/gx/interp/engine"
 	"github.com/gx-org/gx/interp/materialise"
 	"github.com/gx-org/gx/stdlib/builtin"
+	gxerrors "github.com/gx-org/gx/stdlib/errors"
 )
 
-// num.Einsum(lhs, lhsContractingAxes, lhsBatchAxes, rhs, rhsContractingAxes, rhsBatchAxes)
-// evaluates the "Einstein summation" various types of products (inner/outer/batched)
-// between 2 tensors, on arbitrary numbered dimensions.
+// evalEinsum evaluates an Einsum op.
+// Arguments:
 //
-// The contraction axes must be specified as a pair (once each on the LHS and RHS sides). These
-// axes are multiplied and summed, as in a dot product with lhs[lhsContractingAxes[n]] on one side
-// and rhs[rhsContractingAxes[n]]) on the other.
-//
-// The batch axes specify a batch dimension.
-type einsum struct {
-	builtin.Func
-}
-
-func (f einsum) BuildFuncIR(pkg *ir.Package) (*ir.FuncBuiltin, error) {
-	return builtin.IRFuncBuiltin[einsum]("Einsum", evalEinsum, pkg), nil
-}
-
-func (f einsum) validateAxisExpr(fetcher ir.Fetcher, call *ir.FuncCallExpr, arg, maxRank int, seen map[int]bool) ([]int, error) {
-	axisExpr, ok := call.Args[arg].(*ir.SliceLitExpr)
-	if !ok {
-		return nil, fmterr.Errorf(fetcher.File().FileSet(), call.Node(), "argument %d to %s must be []int (got %s)", arg, f.Name(), call.Args[arg].SourceString(fetcher.File()))
-	}
-
-	axes := make([]int, len(axisExpr.Elts))
-	for n, val := range axisExpr.Elts {
-		axisI64, err := elements.MustEvalInt(fetcher, val)
-		if err != nil {
-			return nil, err
-		}
-		axis := int(axisI64)
-		if _, exists := seen[axis]; exists {
-			return nil, fmterr.Errorf(fetcher.File().FileSet(), call.Node(), "axis %d already specified in argument %d to %s: axes may only be contracted or batched once", axis, arg, f.Name())
-		}
-		if axis < 0 || axis >= maxRank {
-			return nil, fmterr.Errorf(fetcher.File().FileSet(), call.Node(), "axis %d specified in argument %d to %s is out-of-range: must be in [0, %d)", axis, arg, f.Name(), maxRank)
-		}
-		axes[n] = axis
-		seen[axis] = true
-	}
-	return axes, nil
-}
-
-func (f einsum) resultsType(fetcher ir.Fetcher, call *ir.FuncCallExpr) ([]ir.Type, ir.Type, error) {
-	params, err := builtins.BuildFuncParams(fetcher, call, f.Name(), []ir.Type{
-		builtins.GenericArrayType,
-		ir.IntSliceType(),
-		ir.IntSliceType(),
-		builtins.GenericArrayType,
-		ir.IntSliceType(),
-		ir.IntSliceType(),
-	})
-	if err != nil {
-		return nil, nil, err
-	}
-
-	left := params[0].(ir.ArrayType)
-	right := params[3].(ir.ArrayType)
-	if left.DataType().Kind() != right.DataType().Kind() {
-		from := fetcher.File()
-		return nil, nil, fmterr.Errorf(fetcher.File().FileSet(), call.Node(), "mismatched argument types %s and %s in %s call", left.DataType().ReferString(from), right.DataType().ReferString(from), f.Name())
-	}
-	leftRank := left.Rank()
-	rightRank := right.Rank()
-	if leftRank == nil || rightRank == nil {
-		// If either argument has unknown rank, the result has unknown rank too.
-		return params, ir.NewArrayType(nil, left.DataType(), &ir.RankInfer{}), nil
-	}
-	leftDims := leftRank.Axes()
-	rightDims := rightRank.Axes()
-
-	leftSeen := make(map[int]bool)
-	rightSeen := make(map[int]bool)
-	lhsContractingDims, err := f.validateAxisExpr(fetcher, call, 1, len(leftDims), leftSeen)
-	if err != nil {
-		return nil, nil, err
-	}
-	lhsBatchDims, err := f.validateAxisExpr(fetcher, call, 2, len(leftDims), leftSeen)
-	if err != nil {
-		return nil, nil, err
-	}
-	rhsContractingDims, err := f.validateAxisExpr(fetcher, call, 4, len(rightDims), rightSeen)
-	if err != nil {
-		return nil, nil, err
-	}
-	rhsBatchDims, err := f.validateAxisExpr(fetcher, call, 5, len(rightDims), rightSeen)
-	if err != nil {
-		return nil, nil, err
-	}
-	if len(lhsContractingDims) != len(rhsContractingDims) {
-		return nil, nil, fmterr.Errorf(fetcher.File().FileSet(), call.Node(),
-			"must specify the same number of lhs and rhs contracting dimensions for %s (got %d and %d)",
-			f.Name(), len(lhsContractingDims), len(rhsContractingDims))
-	}
-	for n := range lhsContractingDims {
-		lhsDim := leftDims[lhsContractingDims[n]]
-		rhsDim := rightDims[rhsContractingDims[n]]
-		ok, err := lhsDim.Equal(fetcher, rhsDim)
-		if err != nil {
-			return nil, nil, fmterr.Error(fetcher.File().FileSet(), call.Node(), err)
-		}
-		if !ok {
-			from := fetcher.File()
-			return nil, nil, fmterr.Errorf(fetcher.File().FileSet(), call.Node(),
-				"left argument (shape: %s) not compatible with right argument (shape: %s) in %s call: cannot contract lhs dimension %s with rhs dimension %s",
-				left.Rank().SourceString(from), right.Rank().SourceString(from), f.Name(), lhsDim.SourceString(from), rhsDim.SourceString(from))
-		}
-	}
-	if len(lhsBatchDims) != len(rhsBatchDims) {
-		return nil, nil, fmterr.Errorf(fetcher.File().FileSet(), call.Node(),
-			"must specify the same number of lhs and rhs batching dimensions for %s (got %d and %d)",
-			f.Name(), len(lhsBatchDims), len(rhsBatchDims))
-	}
-	for n := range min(len(lhsBatchDims), len(rhsBatchDims)) {
-		lhsDim := leftDims[lhsBatchDims[n]]
-		rhsDim := rightDims[rhsBatchDims[n]]
-		ok, err := lhsDim.Equal(fetcher, rhsDim)
-		if err != nil {
-			return nil, nil, fmterr.Error(fetcher.File().FileSet(), call.Node(), err)
-		}
-		if !ok {
-			from := fetcher.File()
-			return nil, nil, fmterr.Errorf(fetcher.File().FileSet(), call.Node(),
-				"left argument (shape: %s) not compatible with right argument (shape: %s) in %s call: cannot batch lhs dimension %s with rhs dimension %s",
-				left.Rank().SourceString(from), right.Rank().SourceString(from), f.Name(), lhsDim.SourceString(from), rhsDim.SourceString(from))
-		}
-	}
-	// Infer output dimensions: batch dimensions (in the LHS order) become the outermost dimensions,
-	// followed by LHS dimensions not used for batching nor contracting, then RHS dimensions not used
-	// for batching nor contracting.
-	var outDims []ir.AxisLengths
-	for _, lhsBatchDim := range lhsBatchDims {
-		outDims = append(outDims, leftDims[lhsBatchDim])
-	}
-	for n, lhsDim := range leftDims {
-		if !leftSeen[n] {
-			outDims = append(outDims, lhsDim)
-		}
-	}
-	for n, rhsDim := range rightDims {
-		if !rightSeen[n] {
-			outDims = append(outDims, rhsDim)
-		}
-	}
-	return params, ir.NewArrayType(&ast.ArrayType{}, left.DataType(), &ir.Rank{Ax: outDims}), nil
-}
-
-func (f einsum) BuildFuncType(fetcher ir.Fetcher, call *ir.FuncCallExpr) (*ir.FuncType, error) {
-	params, result, err := f.resultsType(fetcher, call)
-	if err != nil {
-		return nil, err
-	}
-	return &ir.FuncType{
-		BaseType: ir.BaseType[*ast.FuncType]{Src: &ast.FuncType{Func: call.Node().Pos()}},
-		Params:   builtins.Fields(call, params...),
-		Results:  builtins.Fields(call, result),
-	}, nil
-}
-
+//	0: XContract []int
+//	1: XBatch []int
+//	2: YContract []int
+//	3: YBatch []int
+//	4: XShape []int
+//	5: YShape []int
+//	6: T dtype.Num
+//	7: x [unpack(XShape)]T
+//	8: y [unpack(YShape)]T
 func evalEinsum(env engine.Env, call *ir.FuncCallExpr, recv ir.Element, args []ir.Element) ([]ir.Element, error) {
 	mat := builtin.Materialiser(env)
-	left, leftShape, err := materialise.Element(mat, args[0])
+	left, leftShape, err := materialise.Element(mat, args[7])
 	if err != nil {
 		return nil, err
 	}
-	lhsContractingAxes, err := elements.AxesFromElement(args[1])
+	lhsContractingAxes, err := elements.AxesFromElement(args[0])
 	if err != nil {
 		return nil, err
 	}
-	lhsBatchAxes, err := elements.AxesFromElement(args[2])
+	lhsBatchAxes, err := elements.AxesFromElement(args[1])
 	if err != nil {
 		return nil, err
 	}
-	right, rightShape, err := materialise.Element(mat, args[3])
+	right, rightShape, err := materialise.Element(mat, args[8])
 	if err != nil {
 		return nil, err
 	}
-	rhsContractingAxes, err := elements.AxesFromElement(args[4])
+	rhsContractingAxes, err := elements.AxesFromElement(args[2])
 	if err != nil {
 		return nil, err
 	}
-	rhsBatchAxes, err := elements.AxesFromElement(args[5])
+	rhsBatchAxes, err := elements.AxesFromElement(args[3])
 	if err != nil {
 		return nil, err
 	}
@@ -227,4 +79,137 @@ func evalEinsum(env engine.Env, call *ir.FuncCallExpr, recv ir.Element, args []i
 			AxisLengths: op.(interface{ PJRTDims() []int }).PJRTDims(),
 		},
 	}, call.Type())
+}
+
+func validateAxisExpr(env engine.Env, call *ir.FuncCallExpr, arg ir.Element, maxRank int, seen map[int]bool) ([]int, ir.Element, error) {
+	argSlice, err := elements.SliceFromElement(arg)
+	if err != nil {
+		return nil, nil, err
+	}
+	axes := make([]int, argSlice.Len())
+	for n, val := range argSlice.Elements() {
+		axis, err := elements.ConstantIntFromElement(val)
+		if err != nil {
+			return nil, nil, err
+		}
+		if _, exists := seen[axis]; exists {
+			gxerr, err := gxerrors.Errorf(env, "axis %d already specified in argument %d: axes may only be contracted or batched once", axis, arg)
+			return nil, gxerr, err
+		}
+		if axis < 0 || axis >= maxRank {
+			gxerr, err := gxerrors.Errorf(env, "axis %d specified in argument %d is out-of-range: must be in [0, %d)", axis, arg, maxRank)
+			return nil, gxerr, err
+		}
+		axes[n] = axis
+		seen[axis] = true
+	}
+	return axes, nil, nil
+}
+
+// evalEinsumAxes implement:
+//
+//	func einsumAxes(xS, xContract, xBatch, yS, yContract, yBatch)
+//
+// The contraction axes must be specified as a pair (once each on the LHS and RHS sides). These
+// axes are multiplied and summed, as in a dot product with lhs[lhsContractingAxes[n]] on one side
+// and rhs[rhsContractingAxes[n]]) on the other.
+//
+// The batch axes specify a batch dimension.
+func evalEinsumAxes(env engine.Env, call *ir.FuncCallExpr, recv ir.Element, args []ir.Element) ([]ir.Element, error) {
+	leftDims, err := elements.SliceFromElement(args[0])
+	if err != nil {
+		return nil, err
+	}
+	rightDims, err := elements.SliceFromElement(args[3])
+	if err != nil {
+		return nil, err
+	}
+	leftSeen := make(map[int]bool)
+	rightSeen := make(map[int]bool)
+	lhsContractingDims, gxErr, err := validateAxisExpr(env, call, args[1], leftDims.Len(), leftSeen)
+	if gxErr != nil {
+		return []ir.Element{builtin.NilShape, gxErr}, err
+	}
+	if err != nil {
+		return nil, err
+	}
+	lhsBatchDims, gxErr, err := validateAxisExpr(env, call, args[2], leftDims.Len(), leftSeen)
+	if gxErr != nil {
+		return []ir.Element{builtin.NilShape, gxErr}, err
+	}
+	if err != nil {
+		return nil, err
+	}
+	rhsContractingDims, gxErr, err := validateAxisExpr(env, call, args[4], rightDims.Len(), rightSeen)
+	if gxErr != nil {
+		return []ir.Element{builtin.NilShape, gxErr}, err
+	}
+	if err != nil {
+		return nil, err
+	}
+	rhsBatchDims, gxErr, err := validateAxisExpr(env, call, args[5], rightDims.Len(), rightSeen)
+	if gxErr != nil {
+		return []ir.Element{builtin.NilShape, gxErr}, err
+	}
+	if err != nil {
+		return nil, err
+	}
+	if len(lhsContractingDims) != len(rhsContractingDims) {
+		gxErr, err := gxerrors.Errorf(env,
+			"must specify the same number of lhs and rhs contracting dimensions (got %d and %d)",
+			len(lhsContractingDims), len(rhsContractingDims))
+		return []ir.Element{builtin.NilShape, gxErr}, err
+	}
+	for n := range lhsContractingDims {
+		lhsDim := leftDims.Elements()[lhsContractingDims[n]]
+		rhsDim := rightDims.Elements()[rhsContractingDims[n]]
+		eq, err := ir.ElementEqual(lhsDim, rhsDim)
+		if err != nil {
+			return nil, err
+		}
+		if !eq {
+			gxErr, err := gxerrors.Errorf(env,
+				"left argument (shape: %v) not compatible with right argument (shape: %v): cannot contract lhs dimension %v with rhs dimension %v",
+				leftDims, rightDims, lhsDim, rhsDim)
+			return []ir.Element{builtin.NilShape, gxErr}, err
+		}
+	}
+	if len(lhsBatchDims) != len(rhsBatchDims) {
+		gxErr, err := gxerrors.Errorf(env,
+			"must specify the same number of lhs and rhs batching dimensions (got %d and %d)",
+			len(lhsBatchDims), len(rhsBatchDims))
+		return []ir.Element{builtin.NilShape, gxErr}, err
+	}
+	for n := range min(len(lhsBatchDims), len(rhsBatchDims)) {
+		lhsDim := leftDims.Elements()[lhsBatchDims[n]]
+		rhsDim := rightDims.Elements()[rhsBatchDims[n]]
+		eq, err := ir.ElementEqual(lhsDim, rhsDim)
+		if err != nil {
+			return nil, err
+		}
+		if !eq {
+			gxErr, err := gxerrors.Errorf(env,
+				"left argument (shape: %v) not compatible with right argument (shape: %v): cannot batch lhs dimension %v with rhs dimension %v",
+				leftDims, rightDims, lhsDim, rhsDim)
+			return []ir.Element{builtin.NilShape, gxErr}, err
+		}
+	}
+	// Infer output dimensions: batch dimensions (in the LHS order) become the outermost dimensions,
+	// followed by LHS dimensions not used for batching nor contracting, then RHS dimensions not used
+	// for batching nor contracting.
+	var outDims []ir.Element
+	for _, lhsBatchDim := range lhsBatchDims {
+		outDims = append(outDims, leftDims.Elements()[lhsBatchDim])
+	}
+	for n, lhsDim := range leftDims.Elements() {
+		if !leftSeen[n] {
+			outDims = append(outDims, lhsDim)
+		}
+	}
+	for n, rhsDim := range rightDims.Elements() {
+		if !rightSeen[n] {
+			outDims = append(outDims, rhsDim)
+		}
+	}
+	return builtin.ToShapeResult(outDims...)
 }
