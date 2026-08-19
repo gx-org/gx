@@ -15,6 +15,8 @@
 package testrtm
 
 import (
+	"testing"
+
 	"github.com/gx-org/gx/api"
 	"github.com/gx-org/gx/api/options"
 	"github.com/gx-org/gx/build/builder/testbuild"
@@ -64,20 +66,24 @@ func (f factory) compile(bld *testbuild.Builder, srcTest testbuild.WithName) ([]
 	return tests, nil
 }
 
-func (f factory) BuildTests(imps []importers.Importer) ([]testbuild.Test, error) {
+func (f factory) BuildTests(t *testing.T, imps []importers.Importer) ([]testbuild.Test, error) {
 	bld := testbuild.NewLocalBuilder(imps...)
 	var tests []testbuild.Test
 	for _, src := range f.srcs {
-		srcTests, err := src.BuildTests(imps)
+		srcTests, err := src.BuildTests(t, imps)
 		if err != nil {
 			return nil, err
 		}
 		for _, srcTest := range srcTests {
-			srcTests, err = f.compile(bld, srcTest.(testbuild.WithName))
-			if err != nil {
-				return tests, err
-			}
-			tests = append(tests, srcTests...)
+			testWithName := srcTest.(testbuild.WithName)
+			t.Run(testWithName.Name(), func(t *testing.T) {
+				srcTests, err = f.compile(bld, testWithName)
+				if err != nil {
+					t.Error(err)
+					return
+				}
+				tests = append(tests, srcTests...)
+			})
 		}
 	}
 	return tests, nil

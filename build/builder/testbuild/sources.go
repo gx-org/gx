@@ -19,6 +19,7 @@ import (
 	"fmt"
 	"path"
 	"strings"
+	"testing"
 
 	"github.com/gx-org/gx/api"
 	"github.com/gx-org/gx/build/builder"
@@ -79,7 +80,7 @@ func (sf *SourceFolder) buildTests(name string) ([]Test, error) {
 }
 
 // BuildTests creates a set of test from a file system with a testdata folder.
-func (sf *SourceFolder) BuildTests(imps []importers.Importer) ([]Test, error) {
+func (sf *SourceFolder) BuildTests(t *testing.T, imps []importers.Importer) ([]Test, error) {
 	return sf.buildTests("")
 }
 
