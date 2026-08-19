@@ -395,14 +395,14 @@ func RunWith(t *testing.T, imps []importers.Importer, tests ...Test) *Builder {
 
 // TestFactory builds tests from an optional runtime.
 type TestFactory interface {
-	BuildTests(imps []importers.Importer) ([]Test, error)
+	BuildTests(t *testing.T, imps []importers.Importer) ([]Test, error)
 }
 
 // RunFactory builds a set of tests from a factory then run them.
 func RunFactory(t *testing.T, imps []importers.Importer, factories ...TestFactory) *Builder {
 	var tests []Test
 	for _, factory := range factories {
-		fTests, err := factory.BuildTests(imps)
+		fTests, err := factory.BuildTests(t, imps)
 		if err != nil {
 			t.Fatal(err)
 		}
