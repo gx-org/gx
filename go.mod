@@ -15,6 +15,7 @@ require (
 
 require (
 	github.com/gomlx/compute v0.0.0-20260628062407-1a23cf2ada5b // indirect
+	github.com/gomlx/gopjrt v0.10.0 // indirect
 	github.com/inconshreveable/mousetrap v1.1.0 // indirect
 	github.com/spf13/pflag v1.0.9 // indirect
 	golang.org/x/sync v0.20.0 // indirect
