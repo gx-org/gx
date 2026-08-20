@@ -1,0 +1,11 @@
+package varargs_err02
+
+//gx:compeval
+func returnAnError(xs ...int32) int {
+	require(false, "xs length: %d", len(xs))
+	return 2
+}
+
+func f() [returnAnError()]int32 { // ERROR xs length: 0
+	return [2]int32{1, 2}
+}

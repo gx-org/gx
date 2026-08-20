@@ -19,8 +19,6 @@ import (
 	"testing"
 
 	"github.com/gx-org/gx/build/builder/testbuild"
-	"github.com/gx-org/gx/build/importers"
-	"github.com/gx-org/gx/stdlib"
 )
 
 func TestCompEvalFuncCall(t *testing.T) {
@@ -117,95 +115,6 @@ func isEven(a int) int {
 
 func f[A int]() [isEven(A)]float32 {
     return [A]float32{} // ERROR cannot use [A]float32 as [A+1]float32 value in return statement
-}
-`,
-		},
-	)
-}
-
-const disableCompevalError = true
-
-func TestCompevalError(t *testing.T) {
-	if disableCompevalError {
-		t.SkipNow()
-	}
-	testbuild.RunWith(t,
-		[]importers.Importer{stdlib.Importer()},
-		testbuild.Decl{
-			Src: `
-import "fmt"
-
-func returnTwo() int {
-	return 2
-}
-
-func f() [returnTwo()]int32 {  // ERROR expect a compeval function, function returnTwo is not
-	return [2]int32{1, 2}
-}
-`,
-		},
-		testbuild.Decl{
-			Src: `
-import "errors"
-
-//gx:compeval
-func returnTwo() (int, error) {
-	return 2, errors.New("a compeval test error")
-}
-
-func f() [returnTwo()]int32 { // ERROR a compeval test error
-	return [2]int32{1, 2}
-}
-`,
-		},
-		testbuild.Decl{
-			Src: `
-import "fmt"
-
-//gx:compeval
-func returnTwo() (int, error) {
-	return 2, fmt.Errorf("a compeval test error")
-}
-
-func f() [returnTwo()]int32 { // ERROR a compeval test error
-	return [2]int32{1, 2}
-}
-`,
-		},
-	)
-}
-
-func TestCompevalErrorWithVarargs(t *testing.T) {
-	if disableCompevalError {
-		t.SkipNow()
-	}
-	testbuild.RunWith(t,
-		[]importers.Importer{stdlib.Importer()},
-		testbuild.Decl{
-			Src: `
-import "fmt"
-
-//gx:compeval
-func returnAnError(xs ...int32) (int, error) {
-	return 2, fmt.Errorf("xs length: %d", len(xs))
-}
-
-func f() [returnAnError(1, 2, 3)]int32 { // ERROR xs length: 3
-	return [2]int32{1, 2}
-}
-`,
-		},
-		testbuild.Decl{
-			Src: `
-import "fmt"
-
-//gx:compeval
-func returnAnError(xs ...int32) (int, error) {
-	return 2, fmt.Errorf("xs length: %d", len(xs))
-}
-
-func f() [returnAnError()]int32 { // ERROR xs length: 0 
-	return [2]int32{1, 2}
 }
 `,
 		},

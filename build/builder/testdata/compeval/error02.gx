@@ -1,0 +1,11 @@
+package error02
+
+//gx:compeval
+func returnTwo() int {
+	require(false, "a compeval test error")
+	return 2
+}
+
+func f() [returnTwo()]int32 { // ERROR a compeval test error
+	return [2]int32{1, 2}
+}
