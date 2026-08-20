@@ -17,132 +17,41 @@ package cpevops
 import (
 	"fmt"
 	"go/ast"
-	"go/token"
-	"math/big"
 
-	"github.com/gx-org/backend/shape"
-	"github.com/gx-org/gx/api/values"
 	"github.com/gx-org/gx/build/fmterr"
 	"github.com/gx-org/gx/build/ir"
-	"github.com/gx-org/gx/golang/backend/kernels"
-	"github.com/gx-org/gx/internal/concrete"
-	"github.com/gx-org/gx/internal/interp/canonical"
-	"github.com/gx-org/gx/internal/interp/flatten"
-	"github.com/gx-org/gx/interp/elements"
+	"github.com/gx-org/gx/internal/algexpr"
+	"github.com/gx-org/gx/internal/interp/compeval/cmp"
 	"github.com/gx-org/gx/interp/engine"
-	"github.com/gx-org/gx/interp/materialise"
 )
 
 type binary struct {
-	canonical canonical.Canonical
-	expr      *ir.BinaryExpr
-	typ       ir.Type
-	x, y      Element
-	cst       *values.HostArray
+	core
+	expr *ir.BinaryExpr
+	x, y Element
 }
 
-var (
-	_ materialise.ElementMaterialiser = (*binary)(nil)
-	_ ir.Canonical                    = (*binary)(nil)
-	_ canonical.Evaluable             = (*binary)(nil)
-	_ canonical.Canonical             = (*binary)(nil)
-	_ elements.ElementWithConstant    = (*binary)(nil)
-	_ elements.WithAxes               = (*binary)(nil)
-)
-
 // NewBinary returns a binary operation between two elements.
-func NewBinary(env engine.Env, expr *ir.BinaryExpr, xEl, yEl engine.NumericalElement) (_ engine.NumericalElement, err error) {
-	// If the other element is not a compeval element,
-	// we are not in compeval mode, so forward the binary operation to the other element.
-	x, xOk := xEl.(Element)
-	if !xOk {
-		return xEl.BinaryOp(env, expr, xEl, yEl)
-	}
-	y, yOk := yEl.(Element)
-	if !yOk {
-		return yEl.BinaryOp(env, expr, xEl, yEl)
-	}
-	defer func() {
-		if err != nil {
-			err = fmterr.Error(env.File().FileSet(), expr.Src, err)
-		}
-	}()
-	typ, err := concrete.Concrete(env.ExprEval(), expr.Src, expr.Typ)
+func NewBinary(env engine.Env, expr *ir.BinaryExpr, x, y Element) (_ Element, err error) {
 	el := &binary{
 		expr: expr,
-		typ:  typ,
 		x:    x,
 		y:    y,
 	}
-	el.canonical = canonical.FromBinary(expr.Src.Op, x.CanonicalExpr(), y.CanonicalExpr()).Simplify()
+	el.core = core{el: el}
 	return el, err
 }
 
-func buildBinaryVal(operator token.Token, cx, cy *values.HostArray, typ ir.Type) (*values.HostArray, error) {
-	// Both x and y are host atomic value.
-	kx, err := values.ToKernel(cx)
-	if err != nil {
-		return nil, err
+// NewBinaryFrom returns a new binary operator from a generic receiver.
+// This function is used when converting a constant into a proxy,
+// that is when a binary operator is used between constant and non-constant elements.
+func NewBinaryFrom(env engine.Env, expr *ir.BinaryExpr, x Element, y ir.Element) (_ Element, err error) {
+	yEl, yOk := y.(Element)
+	if !yOk {
+		from := env.File()
+		return nil, fmterr.InternalAt(from.FileSet(), expr.Src, "operator (%T)%s(%T) not supported for %T in %s", x, expr.Src.Op, y, y, expr.SourceString(from))
 	}
-	ky, err := values.ToKernel(cy)
-	if err != nil {
-		return nil, err
-	}
-	// Convert the interpreter element a.x into a GX value.
-	// Use the factory to get the kernel matching the binary operator.
-	op, _, err := kx.Factory().BinaryOp(operator, kx.Shape(), ky.Shape())
-	if err != nil {
-		return nil, err
-	}
-	// Apply the kernel.
-	res, err := op(kx, ky)
-	if err != nil {
-		return nil, err
-	}
-	// Return the result as a GX value.
-	val, err := values.NewHostArray(typ, kernels.NewBuffer(res))
-	if err != nil {
-		return nil, err
-	}
-	return val, nil
-}
-
-// UnaryOp applies a unary operator on x.
-func (a *binary) UnaryOp(env engine.Env, expr *ir.UnaryExpr) (engine.NumericalElement, error) {
-	return NewUnary(env, expr, a)
-}
-
-// BinaryOp applies a binary operator to x and y.
-func (a *binary) BinaryOp(env engine.Env, expr *ir.BinaryExpr, x, y engine.NumericalElement) (engine.NumericalElement, error) {
-	return NewBinary(env, expr, x, y)
-}
-
-// Cast an element into a given data type.
-func (a *binary) Cast(env engine.Env, expr ir.Expr, target ir.Type) (engine.NumericalElement, error) {
-	return NewCast(env, expr, a, target)
-}
-
-// Reshape the element into a new shape.
-func (a *binary) Reshape(env engine.Env, expr ir.Expr, axisLengths []engine.NumericalElement) (engine.NumericalElement, error) {
-	return NewReshape(env, expr, a, axisLengths)
-}
-
-// Shape of the value represented by the element.
-func (a *binary) Shape() (*shape.Shape, error) {
-	cst, err := a.NumericalConstant()
-	if err != nil {
-		return nil, err
-	}
-	return cst.Shape(), nil
-}
-
-// Axes returns the axes of the value as a slice element.
-func (a *binary) Axes(ev ir.Evaluator) (*elements.Slice, error) {
-	return AxesFromType(ev, a.typ)
-}
-
-func (a *binary) Float() *big.Float {
-	return canonical.ToValue(a.canonical)
+	return NewBinary(env, expr, x, yEl)
 }
 
 func (a *binary) Value() ir.Expr {
@@ -151,65 +60,19 @@ func (a *binary) Value() ir.Expr {
 
 // Type of the element.
 func (a *binary) Type() ir.Type {
-	return a.typ
+	return a.expr.Type()
 }
 
-// Unflatten creates a GX value from the next handles available in the parser.
-func (a *binary) Unflatten(handles *flatten.Parser) (values.Value, error) {
-	return handles.ParseArray(a.typ)
-}
-
-// NumericalConstant returns the value of a constant represented by a node.
-func (a *binary) NumericalConstant() (*values.HostArray, error) {
-	if a.cst != nil {
-		return a.cst, nil
-	}
-	cx, err := elements.ConstantFromElement(a.x)
+func (a *binary) AlgExpr(eva ir.Evaluator) (cmp.Expr, error) {
+	x, err := cmp.ToAlgExpr(eva, a.x)
 	if err != nil {
 		return nil, err
 	}
-	cy, err := elements.ConstantFromElement(a.y)
+	y, err := cmp.ToAlgExpr(eva, a.y)
 	if err != nil {
 		return nil, err
 	}
-	if cx != nil && cy != nil {
-		// Both operand values are known: compute the constant for this operand.
-		a.cst, err = buildBinaryVal(a.expr.Src.Op, cx, cy, a.typ)
-		if err != nil {
-			return nil, err
-		}
-	}
-	return a.cst, nil
-}
-
-// Materialise returns the element with all its values from the graph.
-func (a *binary) Materialise(ao materialise.Materialiser) (materialise.Node, error) {
-	cst, err := a.NumericalConstant()
-	if err != nil {
-		return nil, nil
-	}
-	return ao.NodeFromArray(cst)
-}
-
-// Compare to another element.
-func (a *binary) Compare(other canonical.Comparable) (bool, error) {
-	otherT, ok := other.(Element)
-	if !ok {
-		return false, nil
-	}
-	eq, err := valEqual(a, otherT)
-	if err != nil {
-		return false, err
-	}
-	if eq {
-		return true, nil
-	}
-	return a.canonical.Compare(otherT.CanonicalExpr())
-}
-
-// Canonical representation of the expression.
-func (a *binary) CanonicalExpr() canonical.Canonical {
-	return a.canonical
+	return algexpr.NewBinary(a.expr.Src.Op, a.Type(), x, y)
 }
 
 // Expr returns the IR expression represented by the variable.
@@ -234,14 +97,12 @@ func (a *binary) Expr(ev ir.Evaluator, src ast.Expr) ([]ir.Expr, error) {
 	}}, nil
 }
 
-func (a *binary) ShortString() string {
-	x := canonical.ToString(a.x)
-	y := canonical.ToString(a.y)
+func (a *binary) ShortString(from *ir.File) string {
+	x := a.x.ShortString(from)
+	y := a.y.ShortString(from)
 	return fmt.Sprintf("%v%v%v", x, a.expr.Src.Op, y)
 }
 
 func (a *binary) SourceString(from *ir.File) string {
-	x := canonical.ToString(a.x)
-	y := canonical.ToString(a.y)
-	return fmt.Sprintf("%v%v%v", x, a.expr.Src.Op, y)
+	return a.expr.SourceString(from)
 }

@@ -1,0 +1,7 @@
+package nuint64
+
+func TestUInt64() uint64 {
+	return 18446744073709551615 // MaxUint46
+	// Want:
+	// uint64(18446744073709551615)
+}

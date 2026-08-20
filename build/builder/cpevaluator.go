@@ -21,7 +21,7 @@ import (
 	gxfmt "github.com/gx-org/gx/base/fmt"
 	"github.com/gx-org/gx/build/fmterr"
 	"github.com/gx-org/gx/build/ir"
-	"github.com/gx-org/gx/internal/interp/compeval/cpevelements"
+	"github.com/gx-org/gx/internal/interp/compeval/cmp"
 	"github.com/gx-org/gx/interp/context"
 	"github.com/gx-org/gx/interp"
 )
@@ -50,9 +50,8 @@ func newFileEvaluator(ctx *interp.Interpreter, ferr *fmterr.Appender) *compileEv
 }
 
 func (ev *compileEvaluator) update(store ir.Storage, el ir.Element) (*compileEvaluator, bool) {
-	storeEl := cpevelements.NewStoredValue(ev.fitp.File(), store, el)
 	m := make(map[string]ir.Element)
-	context.Define(m, store.NameDef(), storeEl)
+	context.Define(m, store.NameDef(), el)
 	return ev.sub(nil, m)
 }
 
@@ -64,6 +63,10 @@ func (ev *compileEvaluator) sub(file *ir.File, vals map[string]ir.Element) (*com
 func (ev *compileEvaluator) Sub(file *ir.File, vals map[string]ir.Element) (ir.Evaluator, error) {
 	itp, err := ev.fitp.SubInterp(file, vals)
 	return newFileEvaluator(itp, ev.ferr), err
+}
+
+func (ev *compileEvaluator) Compare(x, y ir.Element) (bool, error) {
+	return cmp.Equal(ev.fitp.Env().ExprEval(), x, y)
 }
 
 func (ev *compileEvaluator) File() *ir.File {

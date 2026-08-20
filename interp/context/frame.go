@@ -96,7 +96,10 @@ func (core *Core) importPackage(imp *ir.ImportDecl) (ir.Element, error) {
 	if err != nil {
 		errs.Append(err)
 	}
-	return core.interp.PackageToImport(imp, pFrame.el), errs.ToError()
+	if !errs.Empty() {
+		return nil, errs.ToError()
+	}
+	return core.interp.PackageToImport(imp, pFrame.el), nil
 }
 
 func (core *Core) packageFrame(pkg *ir.Package) (*packageFrame, error) {
@@ -148,6 +151,7 @@ func (fr *packageFrame) fileFrame(core *Core, file *ir.File) (*fileFrame, error)
 		el, err := core.importPackage(imp)
 		if err != nil {
 			errs.Append(err)
+			break
 		}
 		flFrame.Define(imp.NameDef().Name, el)
 	}

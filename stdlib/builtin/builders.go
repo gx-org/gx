@@ -135,7 +135,7 @@ type stubFunc struct {
 var _ ir.FuncImpl = (*stubFunc)(nil)
 
 // BuildFuncType builds the type of a function given how it is called.
-func (s *stubFunc) BuildFuncType(fetcher ir.Fetcher, call *ir.FuncCallExpr) (*ir.FuncType, error) {
+func (s *stubFunc) BuildFuncType(ir.TypeCmp, *ir.FuncCallExpr) (*ir.FuncType, error) {
 	return s.ftype, nil
 }
 

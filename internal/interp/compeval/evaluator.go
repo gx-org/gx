@@ -18,6 +18,7 @@ import (
 	"github.com/pkg/errors"
 	"github.com/gx-org/gx/build/ir"
 	"github.com/gx-org/gx/internal/interp/compeval/cpevelements"
+	"github.com/gx-org/gx/internal/interp/compeval/surrogates"
 	"github.com/gx-org/gx/internal/tracer/processor"
 	"github.com/gx-org/gx/interp/context"
 	"github.com/gx-org/gx/interp/engine"
@@ -52,7 +53,7 @@ func (ev *CompEval) NewFunc(fn ir.Func, recv *fun.Receiver) fun.Func {
 
 // NewFuncLit creates a new function literal.
 func (ev *CompEval) NewFuncLit(fn *ir.FuncLit, _ *context.Context) fun.Func {
-	return cpevelements.NewProxyFunc(fn, nil)
+	return surrogates.NewFunc(fn, nil)
 }
 
 // Processor returns the processor used to process inits and traces for compiled function.
@@ -68,11 +69,6 @@ func (ev *CompEval) Importer() ir.Importer {
 // ArrayOps returns the implementation used for array operations.
 func (ev *CompEval) ArrayOps() engine.ArrayOps {
 	return hostArrayOps
-}
-
-// ElementFromStorage returns an element from an atomic GX value and its storage.
-func (ev *CompEval) ElementFromStorage(file *ir.File, storage ir.StorageWithValue, val ir.Element) ir.Element {
-	return cpevelements.NewStoredValue(file, storage, val)
 }
 
 // Trace register a call to the trace builtin function.

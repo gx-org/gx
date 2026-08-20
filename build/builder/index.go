@@ -23,7 +23,7 @@ import (
 	"github.com/gx-org/gx/build/ir/generics"
 	"github.com/gx-org/gx/build/ir"
 	"github.com/gx-org/gx/build/ir/irkind"
-	"github.com/gx-org/gx/internal/interp/canonical"
+	"github.com/gx-org/gx/internal/interp/constants"
 )
 
 type (
@@ -80,13 +80,13 @@ func (n *indexExpr) checkIndexBounds(rscope resolveScope, axLen ir.AxisLengths, 
 	if err != nil {
 		return rscope.Err().AppendInternalf(axLen.Node(), "cannot evaluate slice index expression: %v", err)
 	}
-	axisInt := canonical.ToValue(axisValue)
-	indexInt := canonical.ToValue(indexValue)
-	if axisInt == nil || indexInt == nil {
+	axisInt, axisOk := constants.ConvertOk(constants.CInt, axisValue)
+	indexInt, indexOk := constants.ConvertOk(constants.CInt, indexValue)
+	if !axisOk || !indexOk {
 		return true
 	}
-	if indexInt.Cmp(axisInt) >= 0 {
-		return rscope.Err().Appendf(n.source(), "index out of range: %s >= %s", indexInt.String(), axisInt.String())
+	if indexInt >= axisInt {
+		return rscope.Err().Appendf(n.source(), "index out of range: %d >= %d", indexInt, axisInt)
 	}
 	return true
 }
@@ -172,6 +172,12 @@ func (n *indexExpr) buildExpr(rscope resolveScope) (ir.Expr, bool) {
 	if !xOk || !idxOk {
 		return nil, false
 	}
+	if irkind.IsNumber(idx.Type().Kind()) {
+		idx, idxOk = ir.CastNumber(toFileWithError(rscope), idx, ir.IntType())
+	}
+	if !idxOk {
+		return nil, false
+	}
 	xType := x.Type()
 	if xType.Kind() == irkind.Func {
 		return specializeFunc(rscope, x, []ir.Expr{idx})
@@ -196,7 +202,6 @@ func (n *indexExpr) buildExpr(rscope resolveScope) (ir.Expr, bool) {
 	boundOk := true
 	if isArray {
 		boundOk = n.checkIndexBounds(rscope, aType.Rank().Axes()[0], ext.Index)
-
 	}
 	var numberOk bool
 	ext.Index, numberOk = castNilAndNumber(rscope, ext.Index, ir.Int64Type())

@@ -1,0 +1,11 @@
+package add01
+
+func add[X []int](a [unpack(X)]int32, b [unpack(X)]int32) [unpack(X)]int32 {
+	return a + b
+}
+
+func TestAdd() [2]int32 {
+	return add([...]int32{1, 2}, [...]int32{3, 4})
+	// Want:
+	// [2]int32{4, 6}
+}

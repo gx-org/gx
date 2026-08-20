@@ -37,7 +37,7 @@ func (*traceFunc) Name() string {
 }
 
 // BuildFuncType builds the type of a function given how it is called.
-func (f *traceFunc) BuildFuncType(fetcher ir.Fetcher, call *ir.FuncCallExpr) (*ir.FuncType, error) {
+func (f *traceFunc) BuildFuncType(tpcmp ir.TypeCmp, call *ir.FuncCallExpr) (*ir.FuncType, error) {
 	ftype := &ir.FuncType{
 		BaseType: ir.BaseType[*ast.FuncType]{
 			Src: &ast.FuncType{Func: call.Src.Pos()},

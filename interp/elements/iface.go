@@ -16,8 +16,10 @@ package elements
 
 import (
 	"github.com/gx-org/backend/shape"
+	"github.com/gx-org/gx/api/values"
 	"github.com/gx-org/gx/build/ir"
-	"github.com/gx-org/gx/internal/base/cast"
+	"github.com/gx-org/gx/internal/interp/coreiface"
+	"github.com/gx-org/gx/interp/engine"
 )
 
 type (
@@ -27,9 +29,10 @@ type (
 		EvalShape() (*shape.Shape, error)
 	}
 
-	// NType is a named type.
-	NType interface {
-		Under() ir.Element
+	// NamedTypeI is a named type.
+	NamedTypeI interface {
+		coreiface.Under
+		Selector
 	}
 
 	// Selector selects a field given its index.
@@ -38,26 +41,25 @@ type (
 		Select(expr *ir.SelectorExpr) (ir.Element, error)
 	}
 
-	// Under is an element with an underlying element.
-	Under interface {
-		Under() ir.Element
+	// Generic is an instance of a generic type.
+	Generic interface {
+		engine.NumericalElement
+	}
+
+	// IString is an element representing a string value.
+	IString interface {
+		ir.Element
+		StrEl()
+	}
+
+	// ElementWithArrayFromContext is an element able to return a concrete value from the current context.
+	// For example, a value passed as an argument to the function.
+	ElementWithArrayFromContext interface {
+		engine.NumericalElement
+
+		// ArrayFromContext fetches an array from the argument.
+		ArrayFromContext(*values.FuncInputs) (values.Array, error)
 	}
 )
 
-// ShapeFromElement returns the shape of a numerical element.
-func ShapeFromElement(el ir.Element) (*shape.Shape, error) {
-	shaper, err := cast.To[EvalShaper](el)
-	if err != nil {
-		return nil, err
-	}
-	return shaper.EvalShape()
-}
-
-// Underlying returns the underlying element.
-func Underlying(val ir.Element) ir.Element {
-	named, ok := val.(Under)
-	if !ok {
-		return val
-	}
-	return Underlying(named.Under())
-}
+var _ NamedTypeI = (*values.NamedType)(nil)

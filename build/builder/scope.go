@@ -21,8 +21,12 @@ import (
 
 	"github.com/gx-org/gx/build/fmterr"
 	"github.com/gx-org/gx/build/ir"
+	"github.com/gx-org/gx/internal/base/cast"
 	"github.com/gx-org/gx/internal/base/scope"
-	"github.com/gx-org/gx/internal/interp/compeval/cpevelements"
+	"github.com/gx-org/gx/internal/interp/compeval/srcstore"
+	"github.com/gx-org/gx/internal/interp/compeval/surrogates/storepath"
+	"github.com/gx-org/gx/internal/interp/compeval/surrogates"
+	"github.com/gx-org/gx/interp/elements"
 )
 
 type pkgScope struct {
@@ -46,51 +50,69 @@ func defineGlobal(s *scope.RWScope[processNode], tok token.Token, name *ast.Iden
 	s.Define(name.Name, newProcessNode(tok, name, node))
 }
 
-func elementFromStorage(scope resolveScope, store ir.Storage) (ir.Element, bool) {
-	el, err := cpevelements.NewRuntimeValue(scope.fileScope().irFile(), ir.NewIdent(store))
+func evalExpr(scope resolveScope, x ir.Expr) (ir.Element, bool) {
+	if isInvalidExpr(x) {
+		return surrogates.NewInvalid(), false
+	}
+	ev, ok := scope.compEval()
+	if !ok {
+		return ir.InvalidType(), false
+	}
+	el, err := ev.fitp.EvalExpr(x)
 	if err != nil {
-		return el, scope.Err().Append(err)
+		return ir.InvalidType(), ev.Err().AppendAt(x.Node(), err)
 	}
 	return el, true
 }
 
-func elementFromStorageWithValue(scope resolveScope, store ir.StorageWithValue) (ir.Element, bool) {
-	value := store.Value(&ir.Ident{
-		Src:  store.NameDef(),
-		Stor: store,
-	})
-	if ir.IsInvalidType(value.Type()) {
-		return elementFromStorage(scope, store)
-	}
-	ev, ok := scope.compEval()
-	if !ok {
-		return nil, false
-	}
-	el, err := ev.fitp.EvalExpr(value)
+func defineStoreWithValue(scope localScope, store ir.Storage, value ir.Expr) bool {
+	el, evalOk := evalExpr(scope, value)
+	el, err := srcstore.Link(store, el)
+	linkOk := true
 	if err != nil {
-		return nil, ev.Err().AppendAt(store.Node(), err)
+		linkOk = scope.Err().AppendAt(store.Node(), err)
 	}
-	return cpevelements.NewStoredValue(ev.File(), store, el), true
+	return scope.update(store, el) && evalOk && linkOk
 }
 
-func defineLocalVar(scope localScope, storage ir.Storage) bool {
-	if assignExpr, isAssignExpr := storage.(*ir.AssignExpr); isAssignExpr {
-		if _, isLocal := assignExpr.Storage.(*ir.LocalVarStorage); !isLocal {
-			return true
-		}
-	}
-	if ir.IsInvalidType(storage.Type()) {
-		return scope.update(storage, ir.InvalidType())
-	}
-	var el ir.Element
-	var elOk bool
-	if withValue, hasValue := storage.(ir.StorageWithValue); hasValue {
-		el, elOk = elementFromStorageWithValue(scope, withValue)
-	} else {
-		el, elOk = elementFromStorage(scope, storage)
-	}
-	if !elOk {
+func defineStoresFromCall(scope localScope, stmt *ir.AssignCallStmt) bool {
+	el, ok := evalExpr(scope, stmt.Call)
+	if !ok {
 		return false
 	}
-	return scope.update(storage, el)
+	tuple, err := cast.To[*elements.Tuple](el)
+	if err != nil {
+		return false
+	}
+	elts := tuple.Elements()
+	for i, el := range tuple.Elements() {
+		storage := stmt.List[i]
+		if storage == nil {
+			continue
+		}
+		elts[i], err = srcstore.Link(storage, el)
+		if err != nil {
+			ok = scope.Err().AppendAt(stmt.Node(), err)
+			continue
+		}
+		if !scope.update(storage, elts[i]) {
+			ok = false
+		}
+	}
+	return ok
+}
+
+func defineLocalVar(scope localScope, store ir.Storage) bool {
+	local, err := cast.To[*ir.LocalVarStorage](store)
+	if err != nil {
+		scope.update(store, ir.InvalidType())
+		return scope.Err().AppendAt(store.Node(), err)
+	}
+	path := storepath.NewLocal(local)
+	ok := true
+	el, err := surrogates.New(path, store.Type())
+	if err != nil {
+		ok = scope.Err().AppendAt(store.Node(), err)
+	}
+	return scope.update(store, el) && ok
 }

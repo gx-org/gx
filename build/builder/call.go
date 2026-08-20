@@ -25,7 +25,8 @@ import (
 	"github.com/gx-org/gx/build/ir"
 	"github.com/gx-org/gx/build/ir/irkind"
 	"github.com/gx-org/gx/internal/interp/compeval/cpevelements"
-	"github.com/gx-org/gx/interp/elements"
+	"github.com/gx-org/gx/internal/interp/compeval/srcstore"
+	"github.com/gx-org/gx/internal/interp/compeval/surrogates"
 	"github.com/gx-org/gx/interp/fun"
 )
 
@@ -328,25 +329,29 @@ func checkArgsForCall(rscope resolveScope, ce *compileEvaluator, fExpr *ir.FuncV
 }
 
 func evalGenericValues(ce *compileEvaluator, ftype *ir.FuncType) (map[string]ir.Element, bool) {
+	ok := true
 	out := make(map[string]ir.Element)
 	for _, tParam := range ftype.TypeParams.Fields() {
 		if !ir.ValidIdent(tParam.Name) {
 			continue
 		}
 		name := tParam.Name.Name
-		file := ce.File()
 		storage := tParam.Storage()
 		var el ir.Element
 		if ir.IsNonTypeGeneric(tParam.Type()) {
-			storeAt := elements.NewNodeAt[ir.Storage](file, storage)
-			el = cpevelements.NewProxy(storeAt)
+			surEl, err := surrogates.FieldRoot(tParam)
+			if err != nil {
+				ok = ce.Err().AppendAt(tParam.Node(), err)
+			}
+			el, err = srcstore.Link(storage, surEl)
+			if err != nil {
+				ok = ce.Err().AppendAt(tParam.Node(), err)
+			}
 		} else {
-			genType := ir.NewGenericTypeParam(storage.Field)
-			el = cpevelements.NewStoredValue(file, genType, genType)
+			el = ir.NewGenericTypeParam(storage.Field)
 		}
 		out[name] = el
 	}
-	ok := true
 	for _, genVal := range ftype.GenericValues {
 		if genVal == nil {
 			continue

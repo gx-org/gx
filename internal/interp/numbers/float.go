@@ -15,90 +15,73 @@
 package numbers
 
 import (
-	"fmt"
 	"go/ast"
 	"go/token"
 	"math/big"
 
-	"github.com/gx-org/backend/shape"
-	"github.com/gx-org/gx/api/values"
 	"github.com/gx-org/gx/build/fmterr"
 	"github.com/gx-org/gx/build/ir"
-	"github.com/gx-org/gx/build/ir/irkind"
-	"github.com/gx-org/gx/internal/concrete"
-	"github.com/gx-org/gx/internal/interp/canonical"
-	"github.com/gx-org/gx/internal/interp/compeval/cpevops"
-	"github.com/gx-org/gx/internal/interp/flatten"
+	"github.com/gx-org/gx/internal/interp/constants"
+	"github.com/gx-org/gx/internal/interp/fmtexpr"
 	"github.com/gx-org/gx/interp/engine"
-	"github.com/gx-org/gx/interp/materialise"
 )
 
-// Float is a GX number.
-type Float struct {
-	canonical.AtomStringImpl
-	val  *big.Float
-	expr ir.Expr
-	typ  ir.Type
+// elFloat is a GX number.
+type elFloat struct {
+	fmtexpr.AtomStringImpl
+	val *big.Float
 }
 
-var (
-	_ Number               = (*Float)(nil)
-	_ canonical.Simplifier = (*Float)(nil)
-)
-
-// NewFloat returns a new element Float number element.
-func NewFloat(val *big.Float, expr ir.Expr) *Float {
-	return &Float{val: val, expr: expr, typ: expr.Type()}
+func newFloat(f *big.Float) *elFloat {
+	return &elFloat{val: f}
 }
 
-// NewFloatFrom returns a new element Float number given an int64 value.
-func NewFloatFrom(val float64, typ ir.Type) *Float {
-	bVal := big.NewFloat(val)
-	return NewFloat(
-		bVal,
-		&ir.NumberCastExpr{
-			X: &ir.NumberFloat{
-				Src: &ast.BasicLit{
-					Kind:  token.FLOAT,
-					Value: bVal.String(),
-				},
-				Val: bVal,
-			},
-			Typ: typ,
-		},
-	)
+// NewFloatNumber returns a new element Float number element.
+func NewFloatNumber(x *ir.NumberFloat) engine.ScalarNumber {
+	return newFloat(x.Val)
+}
+
+// NewFloatIR returns the IR for a float.
+func NewFloatIR(val float64, typ ir.Type) (*ir.NumberFloat, *ir.NumberCastExpr) {
+	elF := newFloat(big.NewFloat(val))
+	irF := elF.buildIR()
+	return irF, &ir.NumberCastExpr{X: irF, Typ: typ}
+}
+
+func newFloatFrom(val float64, typ ir.Type) engine.Constant {
+	nb, x := NewFloatIR(val, typ)
+	return NewFloatNumber(nb).Cast(x)
+}
+
+// CmpOp compares x to y.
+// Returns a nil element if the operator is not a comparison operator.
+func (n *elFloat) CmpOp(env ir.SourceFile, expr *ir.BinaryExpr, y engine.ScalarNumber) engine.BoolConstant {
+	return compare(expr.Src.Op, n.Float(), y.Float())
 }
 
 // UnaryOp applies a unary operator on x.
-func (n *Float) UnaryOp(env engine.Env, expr *ir.UnaryExpr) (engine.NumericalElement, error) {
+func (n *elFloat) UnaryOp(env ir.SourceFile, expr *ir.UnaryExpr) (engine.ScalarNumber, error) {
 	switch expr.Src.Op {
 	case token.ADD:
 		return n, nil
 	case token.SUB:
-		return &Float{
-			val:  new(big.Float).Neg(n.val),
-			expr: expr,
-			typ:  n.typ,
-		}, nil
+		return newFloat(new(big.Float).Neg(n.val)), nil
 	default:
-		return nil, fmterr.Errorf(env.File().FileSet(), expr.Src, "number int unary operator %s not implemented", expr.Src.Op)
+		return nil, fmterr.InternalAt(env.File().FileSet(), expr.Src, "unary operator %s for %T not implemented", expr.Src.Op, n)
 	}
+}
+
+func notSupported(env ir.SourceFile, expr *ir.BinaryExpr, x, y engine.ScalarNumber) (engine.ScalarNumber, error) {
+	return nil, fmterr.InternalAt(env.File().FileSet(), expr.Src, "%T%s%T not supported", x, expr.Src.Op, y)
 }
 
 // BinaryOp applies a binary operator to x and y.
 // Note that the receiver can be either the left or right argument.
-func (n *Float) BinaryOp(env engine.Env, expr *ir.BinaryExpr, x, y engine.NumericalElement) (engine.NumericalElement, error) {
-	switch yT := y.(type) {
-	case *Float:
-		return binaryFloat(env, expr, n, yT)
-	case *Int:
-		return binaryFloat(env, expr, n, yT.toFloat())
-	}
-	return cpevops.NewBinary(env, expr, x, y)
+func (n *elFloat) BinaryOp(env ir.SourceFile, expr *ir.BinaryExpr, y engine.ScalarNumber) (engine.ScalarNumber, error) {
+	return binaryFloat(env, expr, n.val, y.Float())
 }
 
-func binaryFloat(env engine.Env, expr *ir.BinaryExpr, xFloat, yFloat *Float) (engine.NumericalElement, error) {
-	x, y := xFloat.val, yFloat.val
+func binaryFloat(env ir.SourceFile, expr *ir.BinaryExpr, x *big.Float, y *big.Float) (engine.ScalarNumber, error) {
 	var val *big.Float
 	switch expr.Src.Op {
 	case token.ADD:
@@ -110,110 +93,56 @@ func binaryFloat(env engine.Env, expr *ir.BinaryExpr, xFloat, yFloat *Float) (en
 	case token.QUO:
 		val = new(big.Float).Quo(x, y)
 	default:
-		return nil, fmterr.Errorf(env.File().FileSet(), expr.Src, "number int binary operator %s not implemented", expr.Src.Op)
+		return nil, fmterr.Errorf(env.File().FileSet(), expr.Src, "number float binary operator %s not implemented", expr.Src.Op)
 	}
-	fl := &Float{val: val, expr: expr}
-	var err error
-	fl.typ, err = concrete.Concrete(env.ExprEval(), expr.Src, expr.Typ)
-	return fl, err
+	return newFloat(val), nil
 }
 
 // Cast an element into a given data type.
-func (n *Float) Cast(env engine.Env, expr ir.Expr, target ir.Type) (engine.NumericalElement, error) {
-	typ, err := concrete.Concrete(env.ExprEval(), expr.Expr(), target)
-	return &Float{
-		val:  n.val,
-		expr: expr,
-		typ:  typ,
-	}, err
-}
-
-// Reshape the number into an array.
-func (n *Float) Reshape(env engine.Env, expr ir.Expr, axisLengths []engine.NumericalElement) (engine.NumericalElement, error) {
-	return cpevops.NewReshape(env, expr, n, axisLengths)
-}
-
-// EvalShape of the value represented by the element.
-func (n *Float) EvalShape() (*shape.Shape, error) {
-	return numberShape, nil
+func (n *elFloat) Cast(expr *ir.NumberCastExpr) engine.Constant {
+	return constants.NewScalar(expr.Type(), n)
 }
 
 // Type of the element.
-func (n *Float) Type() ir.Type {
-	return n.typ
+func (n *elFloat) Type() ir.Type {
+	return ir.NumberFloatType()
 }
 
 // Float value of the number.
-func (n *Float) Float() *big.Float {
+func (n *elFloat) Float() *big.Float {
 	return n.val
 }
 
-// Compare with another number.
-func (n *Float) Compare(x canonical.Comparable) (bool, error) {
-	switch xT := x.(type) {
-	case *Float:
-		return n.val.Cmp(xT.val) == 0, nil
-	case *Int:
-		return n.val.Cmp(xT.Float()) == 0, nil
+// BuildIR returns the IR expression for the float number.
+func (n *elFloat) BuildIR() ir.Expr {
+	return n.buildIR()
+}
+
+func (n *elFloat) buildIR() *ir.NumberFloat {
+	return &ir.NumberFloat{
+		Src: &ast.BasicLit{
+			Kind:  token.FLOAT,
+			Value: n.val.String(),
+		},
+		Val: n.val,
 	}
-	// Because the compiler cast numbers to concrete types,
-	// numbers should only be compared to other numbers.
-	// Always return false if that is not the case.
-	return false, nil
-}
-
-// CanonicalExpr returns the canonical expression used for comparison.
-func (n *Float) CanonicalExpr() canonical.Canonical {
-	return n
-}
-
-// Simplify returns the expression simplified.
-func (n *Float) Simplify() canonical.Simplifier {
-	return n
-}
-
-// Copy returns the receiver.
-func (n *Float) Copy() engine.Copier {
-	return n
 }
 
 // Expr returns the expression representing the integer.
-func (n *Float) Expr(ir.Evaluator, ast.Expr) ([]ir.Expr, error) {
-	return []ir.Expr{&ir.NumberCastExpr{
-		X:   &ir.NumberFloat{Val: n.val},
-		Typ: n.typ,
-	}}, nil
-}
-
-// NumericalConstant returns the value of a constant represented by a node.
-func (n *Float) NumericalConstant() (*values.HostArray, error) {
-	return values.AtomNumberFloat(n.val, n.typ)
-}
-
-// Unflatten creates a GX value from the next handles available in the parser.
-func (n *Float) Unflatten(handles *flatten.Parser) (values.Value, error) {
-	return handles.ParseArray(n.typ)
-}
-
-// Materialise the value into a node in the backend graph.
-func (n *Float) Materialise(ao materialise.Materialiser) (materialise.Node, error) {
-	val, err := n.NumericalConstant()
-	if err != nil {
-		return nil, err
-	}
-	return ao.NodeFromArray(val)
+func (n *elFloat) Expr(ir.Evaluator, ast.Expr) ([]ir.Expr, error) {
+	return []ir.Expr{n.BuildIR()}, nil
 }
 
 // ShortString returns a short string representation of the value.
-func (n *Float) ShortString() string {
-	return n.val.String()
+func (n *elFloat) ShortString(from *ir.File) string {
+	return n.Float().String()
 }
 
 // SourceString returns the GX source code to represent the float.
-func (n *Float) SourceString(from *ir.File) string {
-	val := n.expr.SourceString(from)
-	if n.Type().Kind() == irkind.NumberFloat {
-		return val
-	}
-	return fmt.Sprintf("%s(%s)", n.Type().ReferString(from), val)
+func (n *elFloat) SourceString(from *ir.File) string {
+	return n.ShortString(from)
+}
+
+func (n *elFloat) String() string {
+	return n.val.String()
 }

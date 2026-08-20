@@ -21,9 +21,12 @@ import (
 	"github.com/pkg/errors"
 	"github.com/gx-org/gx/api/options"
 	"github.com/gx-org/gx/build/ir"
-	"github.com/gx-org/gx/internal/interp/compeval/cpevelements"
 	"github.com/gx-org/gx/internal/interp/compeval/cpevops"
+	"github.com/gx-org/gx/internal/interp/compeval/surrogates/storepath"
+	"github.com/gx-org/gx/internal/interp/compeval/surrogates"
 	"github.com/gx-org/gx/interp/elements"
+	"github.com/gx-org/gx/interp/fun"
+	"github.com/gx-org/gx/interp"
 )
 
 // EvalExpr evaluates a GX expression into an interpreter element.
@@ -40,11 +43,45 @@ func EvalExpr(eval ir.Evaluator, expr ir.Expr) (cpevops.Element, error) {
 }
 
 // NewOptionVariable creates a package option to set a static variable of a package with its corresponding symbolic element.
-func NewOptionVariable(vr *ir.VarExpr) options.PackageOption {
-	src := elements.NewNodeAt[ir.Storage](vr.Decl.FFile, vr)
+func NewOptionVariable(vr *ir.VarExpr) (options.PackageOption, error) {
+	val, err := surrogates.New(storepath.NewVar(vr), vr.Type())
 	return elements.PackageVarSetElement{
 		Pkg:   vr.Decl.FFile.Package.Path(),
 		Var:   vr.VName.Name,
-		Value: cpevelements.NewProxy(src),
+		Value: val,
+	}, err
+}
+
+type mixFunction struct {
+	*surrogates.Function
+}
+
+func (f *mixFunction) run(env *fun.CallEnv, call *ir.FuncCallExpr, args []ir.Element) ([]ir.Element, error) {
+	valArgs := make([]ir.Element, len(args))
+	for i, arg := range args {
+		valArgs[i] = ir.BareValue(arg)
+	}
+	fn := interp.NewRunFunc(f.IR(), f.Recv())
+	return fn.Call(env.WithRunners(interp.Runners()), call, valArgs)
+}
+
+func (f *mixFunction) Call(env *fun.CallEnv, call *ir.FuncCallExpr, args []ir.Element) ([]ir.Element, error) {
+	fn := f.IR()
+	_, isKeyword := fn.(*ir.FuncKeyword)
+	if isKeyword {
+		return f.run(env, call, args)
+	}
+	fType := fn.FuncType()
+	if fType != nil && fType.CompEval {
+		return f.run(env, call, args)
+	}
+	return f.Function.Call(env, call, args)
+}
+
+// RunFunc creates functions such that compeval functions are evaluated
+// while non-compeval functions are simulated.
+func RunFunc(fn ir.Func, recv *fun.Receiver) fun.Func {
+	return &mixFunction{
+		Function: surrogates.NewSurFunc(fn, recv),
 	}
 }

@@ -52,20 +52,14 @@ var Errors = []string{
 	"errors/stdlib",
 }
 
-// LanguageCore is a set of paths testing the GX core language
-// without built-in like einsum.
-var LanguageCore = []string{
+// Language is a set of paths testing the GX core language.
+var Language = []string{
 	"testfiles/forloops",
 	"testfiles/ifstmts",
 	"testfiles/imports",
 	"testfiles/arrayslices",
 	"testfiles/slices",
 }
-
-// Language is a set of paths testing the GX language.
-var Language = appendAll(LanguageCore, []string{
-	"testfiles/einsum",
-})
 
 // Stdlib is a set of path testing the standard library or where a standard library implementation is required.
 var Stdlib = []string{

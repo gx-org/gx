@@ -22,7 +22,10 @@ import (
 	"github.com/gx-org/gx/build/builder/builtins"
 	"github.com/gx-org/gx/build/fmterr"
 	"github.com/gx-org/gx/build/ir"
+	"github.com/gx-org/gx/internal/base/cast"
 	"github.com/gx-org/gx/internal/base/scope"
+	"github.com/gx-org/gx/internal/interp/constants"
+	"github.com/gx-org/gx/internal/interp/coreiface"
 	"github.com/gx-org/gx/internal/interp/numbers"
 	"github.com/gx-org/gx/interp/elements"
 	"github.com/gx-org/gx/interp/engine"
@@ -91,12 +94,18 @@ var builtinFile = &ir.File{
 }
 
 func (itp *Base) defineBoolConstant(scope *scope.RWScope[ir.Element], val ir.StorageWithValue) error {
-	el := numbers.NewBoolFromStorage(val)
-	bckEl, err := itp.Engine().ArrayOps().ElementFromAtomLit(builtinFile, el)
+	el := constants.NewBoolFromStorage(val)
+	env := engine.ProxyEnv(itp.Engine(), builtinFile)
+	ao := env.Engine().ArrayOps()
+	boolEl, err := ao.ElementFromHostValue(env.ExprEval(), el)
 	if err != nil {
 		return err
 	}
-	scope.Define(val.NameDef().Name, bckEl)
+	linkEl, err := ao.DefineGlobalConst(val, boolEl)
+	if err != nil {
+		return err
+	}
+	scope.Define(val.NameDef().Name, linkEl)
 	return nil
 }
 
@@ -133,11 +142,15 @@ var (
 )
 
 func appendImpl(env engine.Env, call *ir.FuncCallExpr, recv ir.Element, args []ir.Element) ([]ir.Element, error) {
-	slice, ok := elements.Underlying(args[0]).(engine.Slice)
-	if !ok {
-		return nil, errors.Errorf("cannot cast %T to %s", args[0], reflect.TypeFor[engine.Slice]())
+	under, err := coreiface.Underlying(args[0])
+	if err != nil {
+		return nil, err
 	}
-	withElts, err := elements.ToWithElements(args[1])
+	slice, err := cast.To[engine.Slice](under)
+	if err != nil {
+		return nil, err
+	}
+	withElts, err := coreiface.ToWithElements(args[1])
 	if err != nil {
 		return nil, err
 	}
@@ -166,7 +179,8 @@ func lenImpl(env engine.Env, call *ir.FuncCallExpr, recv ir.Element, args []ir.E
 	if err != nil {
 		return nil, err
 	}
-	return []ir.Element{numbers.NewIntFrom(int64(l), ir.IntType())}, err
+	el, err := numbers.NewElement(env, ir.IntType(), l)
+	return []ir.Element{el}, err
 }
 
 func setImpl(env engine.Env, call *ir.FuncCallExpr, recv ir.Element, args []ir.Element) ([]ir.Element, error) {

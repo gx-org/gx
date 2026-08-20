@@ -18,12 +18,10 @@ import (
 	"github.com/pkg/errors"
 	"github.com/gx-org/backend/ops"
 	"github.com/gx-org/backend/shape"
-	"github.com/gx-org/gx/api/values"
 	"github.com/gx-org/gx/build/ir"
-	"github.com/gx-org/gx/build/ir/irkind"
-	"github.com/gx-org/gx/golang/backend/kernels"
+	"github.com/gx-org/gx/internal/interp/compeval/srcstore"
+	"github.com/gx-org/gx/internal/interp/compeval/surrogates/storepath"
 	"github.com/gx-org/gx/internal/interp/compeval/surrogates"
-	"github.com/gx-org/gx/internal/interp/numbers"
 	"github.com/gx-org/gx/interp/elements"
 	"github.com/gx-org/gx/interp/engine"
 )
@@ -44,53 +42,40 @@ func (compArrayOps) SubGraph(name string, args []*shape.Shape) (engine.ArrayOps,
 
 // Einsum calls an einstein sum on x and y given the expression in ref.
 func (compArrayOps) Einsum(ctx ir.Evaluator, expr *ir.EinsumExpr, x, y engine.NumericalElement) (engine.NumericalElement, error) {
-	return surrogates.NewArray(expr)
+	path := storepath.NewUniqueIR(expr)
+	return surrogates.NewArrayFrom(path, expr.Typ)
 }
 
 // BroadcastInDim the data of an array across dimensions.
 func (compArrayOps) BroadcastInDim(ctx ir.Evaluator, expr ir.Expr, x engine.NumericalElement, axisLengths []engine.NumericalElement) (engine.NumericalElement, error) {
-	return surrogates.NewArray(expr)
+	path := storepath.NewUniqueIR(expr)
+	return surrogates.NewArrayFrom(path, expr.Type())
 }
 
 // Reshape an element into a given shape.
 func (compArrayOps) Reshape(expr elements.ExprAt, x engine.NumericalElement, axisLengths []engine.NumericalElement) (engine.NumericalElement, error) {
-	return surrogates.NewArray(expr.Node())
+	path := storepath.NewUniqueIR(expr.Node())
+	return surrogates.NewArrayFrom(path, expr.Node().Type())
 }
 
 // Concat concatenates scalars elements into an array with one axis.
 func (compArrayOps) Concat(ctx ir.Evaluator, expr ir.Expr, xs []engine.NumericalElement) (engine.NumericalElement, error) {
-	return surrogates.NewArray(expr)
+	path := storepath.NewUniqueIR(expr)
+	return surrogates.NewArrayFrom(path, expr.Type())
 }
 
 // Set a slice in an array.
 func (compArrayOps) Set(ctx ir.Evaluator, expr *ir.FuncCallExpr, x, updates ir.Element, positions []ir.Element) (ir.Element, error) {
-	return surrogates.NewArray(expr)
+	path := storepath.NewUniqueIR(expr)
+	return surrogates.NewArrayFrom(path, expr.Type())
 }
 
-// ElementFromAtom returns an element from a GX value.
-func (compArrayOps) ElementFromAtom(file *ir.File, val values.Array, expr ir.Expr, typ ir.Type) (engine.NumericalElement, error) {
-	hostValue, err := val.ToHostArray(kernels.Allocator())
-	if err != nil {
-		return nil, err
-	}
-	switch typ.Kind() {
-	case irkind.Bool:
-		val, err := values.ToAtom[bool](hostValue)
-		if err != nil {
-			return nil, err
-		}
-		return numbers.NewBool(expr, val), nil
-	default:
-		return numbers.NewAtom(hostValue, expr, typ)
-	}
+// ElementFromHostValue returns transforms an atomic literal element into an element specific to the ArrayOps implementation.
+func (ao compArrayOps) ElementFromHostValue(ctx ir.Evaluator, el engine.Constant) (engine.ConstantElement, error) {
+	return newConstant(ao, el), nil
 }
 
-// ElementFromAtomLit returns transforms an atomic literal element into an element specific to the ArrayOps implementation.
-func (compArrayOps) ElementFromAtomLit(file *ir.File, el engine.AtomLitElement) (engine.NumericalElement, error) {
-	return el, nil
-}
-
-// ElementFromArray returns an element from an array GX value.
-func (compArrayOps) ElementFromArray(file *ir.File, lit *ir.ArrayLitExpr, val values.Array) (engine.NumericalElement, error) {
-	return surrogates.NewArray(lit)
+// DefineGlobalConst defines a global constant for the interpreter.
+func (ao compArrayOps) DefineGlobalConst(c ir.Storage, el ir.Element) (ir.Element, error) {
+	return srcstore.Link(c, el)
 }

@@ -17,147 +17,128 @@ package surrogates
 import (
 	"go/ast"
 
-	"github.com/gx-org/backend/ops"
 	"github.com/gx-org/backend/shape"
 	"github.com/gx-org/gx/build/ir"
+	"github.com/gx-org/gx/internal/algexpr"
 	"github.com/gx-org/gx/internal/base/cast"
-	"github.com/gx-org/gx/internal/interp/canonical"
+	"github.com/gx-org/gx/internal/interp/compeval/cmp"
 	"github.com/gx-org/gx/internal/interp/compeval/cpevops"
+	"github.com/gx-org/gx/internal/interp/compeval/surrogates/storepath"
 	"github.com/gx-org/gx/interp/elements"
 	"github.com/gx-org/gx/interp/engine"
-	"github.com/gx-org/gx/interp/materialise"
 )
+
+// Array is a surrogate array.
+type Array interface {
+	cpevops.Element
+	Element
+}
 
 // array element storing a GX value array.
 type array struct {
-	expr  ir.Expr
-	typ   ir.ArrayType
-	shape *shape.Shape
+	path storepath.Path
+	typ  ir.ArrayType
 }
 
-var (
-	_ materialise.Node    = (*array)(nil)
-	_ elements.WithAxes   = (*array)(nil)
-	_ cpevops.Element     = (*array)(nil)
-	_ elements.Slicer     = (*array)(nil)
-	_ engine.Copier       = (*array)(nil)
-	_ ir.WithLength       = (*array)(nil)
-	_ ir.WithExpr         = (*array)(nil)
-	_ elements.EvalShaper = (*array)(nil)
-)
+// Need to support canonical to be able to compare axes using unpack.
+var _ cmp.Canonical = (*array)(nil)
 
-// NewArray returns a new array from a code position and a type.
-func NewArray(expr ir.Expr) (engine.NumericalElement, error) {
-	typ := expr.Type()
-	if typeVal, isTypeVal := expr.(*ir.TypeValExpr); isTypeVal {
-		typ = typeVal.Val()
-	}
+// NewArrayFrom returns a new array from a type.
+func NewArrayFrom(p storepath.Path, typ ir.Type) (Array, error) {
 	arrayType, err := cast.To[ir.ArrayType](typ)
 	if err != nil {
 		return nil, err
 	}
-	shape := &shape.Shape{
-		DType: arrayType.DataType().Kind().DType(),
-	}
-	if !arrayType.Rank().IsAtomic() {
-		shape.AxisLengths = make([]int, len(arrayType.Rank().Axes()))
-	}
-	return &array{expr: expr, typ: arrayType, shape: shape}, nil
+	return NewArray(p, arrayType), nil
+}
+
+// NewArray returns a new array from a generic type.
+func NewArray(p storepath.Path, typ ir.ArrayType) Array {
+	return &array{path: p, typ: typ}
 }
 
 func (a *array) Type() ir.Type {
 	return a.typ
 }
 
-func (a *array) Axes(fetcher ir.Evaluator) (*elements.Slice, error) {
-	return cpevops.AxesFromType(fetcher, a.typ)
-}
-
-func (a *array) UnaryOp(env engine.Env, expr *ir.UnaryExpr) (engine.NumericalElement, error) {
-	return NewArray(expr)
-}
-
-func (a *array) BinaryOp(env engine.Env, expr *ir.BinaryExpr, x, y engine.NumericalElement) (engine.NumericalElement, error) {
-	return NewArray(expr)
-}
-
-func (a *array) Cast(env engine.Env, expr ir.Expr, target ir.Type) (engine.NumericalElement, error) {
-	return NewArray(expr)
-}
-
-func (a *array) Reshape(env engine.Env, expr ir.Expr, axisLengths []engine.NumericalElement) (engine.NumericalElement, error) {
-	return NewArray(expr)
-}
-
-func (a *array) SliceAt(expr *ir.IndexExpr, index engine.NumericalElement) (ir.Element, error) {
-	return NewArray(expr)
-}
-
-func (a *array) Slice(expr *ir.SliceExpr, low, high engine.NumericalElement) (ir.Element, error) {
-	return NewArray(expr)
-}
-
-func (a *array) Copy() engine.Copier {
-	return a
-}
-
 func (a *array) EvalShape() (*shape.Shape, error) {
-	return a.shape, nil
-}
-
-func (a *array) Graph() ops.Graph {
-	return nil
+	if a.typ.Rank().IsAtomic() {
+		return &shape.Shape{
+			DType: a.typ.DataType().Kind().DType(),
+		}, nil
+	}
+	return nil, nil
 }
 
 // Length returns the evaluation of the len built-in.
 func (a *array) Length(ev ir.Evaluator) (int, error) {
 	sh, err := a.EvalShape()
-	if err != nil {
+	if sh == nil || err != nil {
 		return -1, err
 	}
 	return sh.OuterAxisLength(), nil
 }
 
-func (a *array) storage() ir.Storage {
-	withStore, hasStorage := a.expr.(ir.WithStore)
-	if !hasStorage {
-		return nil
-	}
-	return withStore.Store()
+// UnaryOp applies a unary operator on x.
+func (a *array) UnaryOp(env engine.Env, expr *ir.UnaryExpr) (engine.NumericalElement, error) {
+	return cpevops.NewUnary(env, expr, a)
 }
 
-func (a *array) Compare(x canonical.Comparable) (bool, error) {
-	otherT, isArray := x.(*array)
-	if !isArray {
-		return false, nil
-	}
-	aStorage := a.storage()
-	if aStorage == nil {
-		return false, nil
-	}
-	otherStorage := otherT.storage()
-	if otherStorage == nil {
-		return false, nil
-	}
-	return aStorage.Same(otherStorage), nil
+func (a *array) Axes(ev ir.Evaluator) (*elements.Slice, error) {
+	return cpevops.AxesFromType(ev, a.typ)
 }
 
-func (a *array) CanonicalExpr() canonical.Canonical {
-	return a
+// BinaryOp applies a binary operator to x and y.
+func (a *array) BinaryOp(env engine.Env, expr *ir.BinaryExpr, y engine.NumericalElement) (engine.NumericalElement, error) {
+	return cpevops.NewBinaryFrom(env, expr, a, y)
 }
 
-func (a *array) OutNode() *ops.OutputNode {
-	return &ops.OutputNode{Node: a}
+// Cast an element into a given data type.
+func (a *array) Cast(env engine.Env, expr ir.Expr, target ir.Type) (engine.NumericalElement, error) {
+	return cpevops.NewCast(env, expr, a, target), nil
 }
 
-func (a *array) ShortString() string {
-	return a.SourceString(nil)
+// Reshape an element.
+func (a *array) Reshape(env engine.Env, expr ir.Expr, axisLengths []engine.NumericalElement) (engine.NumericalElement, error) {
+	return cpevops.NewReshape(env, expr, a, axisLengths)
+}
+
+// SliceAt returns an element of the array given an index.
+func (a *array) SliceAt(env engine.Env, expr *ir.IndexExpr, index engine.NumericalElement) (ir.Element, error) {
+	return cpevops.NewIndex(env, expr, a, index)
+}
+
+// Slice the array given a low and high value.
+func (a *array) Slice(env engine.Env, expr *ir.SliceExpr, low, high engine.NumericalElement) (ir.Element, error) {
+	return cpevops.NewSlice(env, expr, a, low, high)
+}
+
+// Expr returns the IR expression represented by the variable.
+func (a *array) Expr(ir.Evaluator, ast.Expr) ([]ir.Expr, error) {
+	return []ir.Expr{a.path.Expr()}, nil
+}
+
+// AlgExpr returns an algebraic expression.
+func (a *array) AlgExpr(eva ir.Evaluator) (cmp.Expr, error) {
+	return algexpr.NewSymbFrom(a, a.algCmp, a.path.Expr()), nil
+}
+
+func (a *array) algCmp(other ir.Element) bool {
+	otherT, ok := other.(*array)
+	if !ok {
+		return false
+	}
+	return a.path.Same(otherT.path)
+}
+
+func (a *array) Store() ir.Storage {
+	return a.path.Store()
+}
+
+func (a *array) ShortString(from *ir.File) string {
+	return a.SourceString(from)
 }
 
 func (a *array) SourceString(from *ir.File) string {
-	return a.typ.ReferString(from)
-}
-
-func (a *array) Expr(ir.Evaluator, ast.Expr) ([]ir.Expr, error) {
-	return []ir.Expr{a.expr}, nil
+	return a.path.Expr().SourceString(from)
 }

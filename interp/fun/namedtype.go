@@ -21,6 +21,7 @@ import (
 	"github.com/pkg/errors"
 	"github.com/gx-org/gx/api/values"
 	"github.com/gx-org/gx/build/ir"
+	"github.com/gx-org/gx/internal/interp/coreiface"
 	"github.com/gx-org/gx/internal/interp/flatten"
 	"github.com/gx-org/gx/interp/elements"
 	"github.com/gx-org/gx/interp/engine"
@@ -35,12 +36,12 @@ type NamedType struct {
 }
 
 var (
-	_ ir.StorageElement = (*NamedType)(nil)
-	_ ir.WithExpr       = (*NamedType)(nil)
-	_ elements.Selector = (*NamedType)(nil)
-	_ elements.NType    = (*NamedType)(nil)
-	_ engine.Copier     = (*NamedType)(nil)
-	_ elements.Under    = (*NamedType)(nil)
+	_ ir.StorageElement   = (*NamedType)(nil)
+	_ ir.WithExpr         = (*NamedType)(nil)
+	_ elements.Selector   = (*NamedType)(nil)
+	_ elements.NamedTypeI = (*NamedType)(nil)
+	_ engine.Copier       = (*NamedType)(nil)
+	_ coreiface.Under     = (*NamedType)(nil)
 )
 
 // NewNamedType returns a new node representing an exported type.
@@ -82,8 +83,8 @@ func (n *NamedType) RecvCopy() *NamedType {
 }
 
 // Under returns the underlying element of the named type.
-func (n *NamedType) Under() ir.Element {
-	return n.under
+func (n *NamedType) Under() (ir.Element, error) {
+	return n.under, nil
 }
 
 // Flatten returns the named type in a slice of elements.

@@ -81,16 +81,16 @@ func findStorage(scope resolveScope, name *ast.Ident) (ir.Storage, bool) {
 		return nil, scope.Err().Appendf(name, "undefined: %s", name.Name)
 	}
 	switch elT := el.(type) {
-	case ir.Storage:
-		return elT, true
 	case ir.WithStore:
 		store := elT.Store()
 		if store == nil {
 			return nil, scope.Err().AppendInternalf(name, "name %q refers element %T which returned a nil storage", name.Name, el)
 		}
 		return store, true
+	case ir.Storage:
+		return elT, true
 	default:
-		return nil, scope.Err().AppendInternalf(name, "element %T is not a storage", el)
+		return nil, scope.Err().AppendInternalf(name, "element %s->%T is not a storage", name.Name, el)
 	}
 }
 
@@ -191,7 +191,7 @@ func reconcile(src, dst ir.Type) {
 	if !ok {
 		return
 	}
-	dstInfer.Rnk = srcArray.Rank()
+	dstInfer.ArrayRank = srcArray.Rank()
 }
 
 func convertTo(rscope resolveScope, src, dst ir.Type) (bool, error) {

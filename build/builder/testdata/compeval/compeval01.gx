@@ -1,0 +1,10 @@
+package compeval01
+
+//gx:compeval
+func AddOne(a int) int {
+	return a + 1
+}
+
+func F[A int](x [A]float32) [AddOne(A)]float32 {
+	return x // ERROR: cannot use [A]float32 as [A+1]float32 value in return statement
+}

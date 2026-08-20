@@ -58,10 +58,10 @@ type (
 var NilShape = elements.NilFromType(ir.IntSliceType())
 
 // ToShapeString represents elements into an array shape.
-func ToShapeString(els []ir.Element) string {
+func ToShapeString(from *ir.File, els []ir.Element) string {
 	ss := make([]string, len(els))
 	for i, el := range els {
-		ss[i] = fmt.Sprintf("[%s]", el)
+		ss[i] = fmt.Sprintf("[%s]", ir.ShortString(from, el))
 	}
 	return strings.Join(ss, "")
 }

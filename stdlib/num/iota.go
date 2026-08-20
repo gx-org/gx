@@ -30,7 +30,7 @@ func evalIota(env engine.Env, call *ir.FuncCallExpr, recv ir.Element, args []ir.
 	if err != nil {
 		return nil, err
 	}
-	axisIndex, err := elements.ConstantIntFromElement(args[1])
+	axisIndex, err := elements.IntFromElement(args[1])
 	if err != nil {
 		return nil, err
 	}

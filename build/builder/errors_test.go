@@ -59,6 +59,9 @@ func f() error {
 }
 
 func TestCPErrors(t *testing.T) {
+	if disableCompevalError {
+		t.SkipNow()
+	}
 	testbuild.RunWith(t,
 		[]importers.Importer{stdlib.Importer()},
 		testbuild.Decl{

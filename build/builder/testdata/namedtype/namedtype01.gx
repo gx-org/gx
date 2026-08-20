@@ -1,0 +1,9 @@
+package namedtype01
+
+type myfloat float64
+
+func TestMyFloat() myfloat {
+	return -1
+	// Want:
+	// myfloat(-1)
+}

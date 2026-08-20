@@ -28,10 +28,8 @@ import (
 	"github.com/pkg/errors"
 	"github.com/gx-org/backend/dtypes"
 	"github.com/gx-org/gx/api/options"
-	"github.com/gx-org/gx/api/values"
 	"github.com/gx-org/gx/build/fmterr"
 	"github.com/gx-org/gx/build/ir"
-	"github.com/gx-org/gx/internal/concrete"
 	"github.com/gx-org/gx/internal/interp/numbers"
 	"github.com/gx-org/gx/internal/interp/proxies"
 	"github.com/gx-org/gx/interp/context"
@@ -148,6 +146,11 @@ func (fitp *Interpreter) EvalExpr(expr ir.Expr) (ir.Element, error) {
 	return evalExpr(fitp, expr)
 }
 
+// Env returns the environment.
+func (fitp *Interpreter) Env() engine.Env {
+	return fitp.env
+}
+
 // Engine returns the evaluator used by the interpreter
 func (fitp *Interpreter) Engine() engine.Engine {
 	return fitp.env.Engine()
@@ -164,7 +167,7 @@ func (fitp *Interpreter) Materialiser() materialise.Materialiser {
 func (fitp *Interpreter) SubInterp(file *ir.File, vals map[string]ir.Element) (*Interpreter, error) {
 	ctx := fitp.env.Context()
 	var err error
-	if file != nil {
+	if file != nil && file.Package != nil {
 		core := fitp.Context().Core()
 		ctx, err = core.NewFileContext(file)
 		fitp = toInterp(ctx, fitp.Engine(), fitp.env.FuncEval(), fitp.env.Runners())
@@ -207,29 +210,11 @@ func (fitp *Interpreter) File() *ir.File {
 }
 
 func elementFromInt[T dtypes.AlgebraType](fitp *Interpreter, val T, tp ir.Type) (engine.NumericalElement, error) {
-	atomLit := numbers.NewIntFrom(int64(val), tp)
-	return fitp.Engine().ArrayOps().ElementFromAtomLit(fitp.File(), atomLit)
-}
-
-func (fitp *Interpreter) elementFromAtomLit(expr *ir.NumberCastExpr) (engine.NumericalElement, error) {
-	var number engine.AtomLitElement
-	switch xT := expr.X.(type) {
-	case *ir.NumberFloat:
-		number = numbers.NewFloat(xT.Val, expr)
-	case *ir.NumberInt:
-		number = numbers.NewInt(xT.Val, expr)
-	default:
-		return nil, errors.Errorf("cannot convert %T to an atomic literal element: not supported", xT)
-	}
-	return fitp.Engine().ArrayOps().ElementFromAtomLit(fitp.File(), number)
-}
-
-func (fitp *Interpreter) elementFromAtom(expr ir.Expr, val values.Array) (engine.NumericalElement, error) {
-	typ, err := concrete.Concrete(fitp.env.ExprEval(), expr.Expr(), expr.Type())
+	cst, err := numbers.NewConstant(tp, val)
 	if err != nil {
 		return nil, err
 	}
-	return fitp.Engine().ArrayOps().ElementFromAtom(fitp.File(), val, expr, typ)
+	return fitp.Engine().ArrayOps().ElementFromHostValue(fitp.env.ExprEval(), cst)
 }
 
 // String representation of the receiver.

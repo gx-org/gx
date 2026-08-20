@@ -1,0 +1,16 @@
+package add02
+
+type ints interface {
+	int32 | int64
+}
+
+func addT[T ints](a, b T) T {
+	return a + b
+}
+
+func TestAddT() (int32, int64) {
+	return addT(int32(2), int32(4)), addT(int64(3), int64(5))
+	// Want:
+	// 0: int32(6)
+	// 1: int64(8)
+}

@@ -103,7 +103,7 @@ func reduceAxes(env engine.Env, call *ir.FuncCallExpr, recv ir.Element, args []i
 	if err != nil {
 		return nil, err
 	}
-	indices, err := elements.Map(elements.ConstantIntFromElement, args[1])
+	indices, err := elements.Map(elements.IntFromElement, args[1])
 	if err != nil {
 		return nil, fmt.Errorf("cannot get axis index from argument 1: %w", err)
 	}

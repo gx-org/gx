@@ -16,16 +16,13 @@ package testbuild
 
 import (
 	"fmt"
-	"go/ast"
 
 	"github.com/pkg/errors"
 	"github.com/gx-org/gx/build/builder"
 	"github.com/gx-org/gx/build/ir"
-	"github.com/gx-org/gx/internal/base/cast"
-	"github.com/gx-org/gx/internal/interp/canonical"
+	"github.com/gx-org/gx/internal/interp/compeval/cmp"
 	"github.com/gx-org/gx/internal/interp/compeval"
 	"github.com/gx-org/gx/internal/interp/compeval/cpevelements"
-	"github.com/gx-org/gx/internal/interp/compeval/cpevops"
 	"github.com/gx-org/gx/interp/elements"
 	"github.com/gx-org/gx/interp"
 )
@@ -46,31 +43,16 @@ func (tt CompEval) Source() string {
 	return tt.Src
 }
 
-func stringFromCanonical(el ir.Element) (string, error) {
-	coreEl, err := cast.To[cpevops.Element](el)
-	if err != nil {
-		return "", err
-	}
-	boolVal, err := cast.To[canonical.WithBool](coreEl.CanonicalExpr())
-	if err != nil {
-		return "", err
-	}
-	bl, err := boolVal.Bool()
-	if err != nil {
-		return "", err
-	}
-	return fmt.Sprint(bl), nil
-}
-
 func (tt CompEval) stringFromElement(ev ir.Evaluator, el ir.Element) (string, error) {
-	if tt.EvalCanonical {
-		return stringFromCanonical(el)
-	}
-	expr, err := ir.ToSingleExpr(ev, &ast.Ident{}, el)
+	algX, err := cmp.ToAlgExpr(ev, el)
 	if err != nil {
 		return "", err
 	}
-	return expr.SourceString(nil), nil
+	simpX, err := cmp.SimplifyIR(ev, algX)
+	if err != nil {
+		return "", err
+	}
+	return ir.SourceString(ev.File(), simpX), nil
 }
 
 // Run builds the declarations as a package, then compare to an expected outcome.
@@ -97,7 +79,7 @@ package test
 	if !isFuncDecl {
 		return nil, errors.Errorf("%s needs a body", funcName)
 	}
-	hostEval := compeval.NewHostEvaluator(bld, cpevelements.NewMixFunc)
+	hostEval := compeval.NewHostEvaluator(bld, compeval.RunFunc)
 	itp, err := interp.New(hostEval, hostEval, cpevelements.MixedRunner(), nil)
 	if err != nil {
 		return nil, err

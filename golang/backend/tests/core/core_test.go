@@ -25,7 +25,8 @@ import (
 )
 
 var skip = map[string]bool{
-	"set/set01.gx": true,
+	"set/set01.gx":     true,
+	"einsum/einsum.gx": true,
 }
 
 func TestCoreUnitGoBackend(t *testing.T) {

@@ -63,7 +63,12 @@ func (n *compositeLit) buildElements(ascope compositeLitResolveScope) ([]ir.Expr
 			ok = false
 			continue
 		}
-		eltOk = assignableToAt(subScope, elt.source(), elts[i].Type(), subScope.want())
+		want := subScope.want()
+		if want == nil {
+			// Skip checks because we do not know what we are looking for yet.
+			continue
+		}
+		eltOk = assignableToAt(subScope, elt.source(), elts[i].Type(), want)
 		ok = ok && eltOk
 	}
 	return elts, ok

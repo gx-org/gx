@@ -30,20 +30,20 @@ func TestForLoopRangeAxisLength() int32 {
 	// int32(13)
 }
 
-func TestForLoopRangeArrayKey() int64 {
+func TestForLoopRangeArrayKey() int {
 	a := [3]float32{3, 5, 7}
-	sumI := int64(100)
+	sumI := int(100)
 	for i := range a {
 		sumI = sumI + i
 	}
 	return sumI
 	// Want:
-	// int64(103)
+	// int(103)
 }
 
-func TestForLoopRangeArrayKeyValue() (int64, float32) {
+func TestForLoopRangeArrayKeyValue() (int, float32) {
 	a := [3]float32{3, 5, 7}
-	sumI := int64(100)
+	sumI := int(100)
 	sumV := float32(1000)
 	for i, v := range a {
 		sumI = sumI + i
@@ -51,7 +51,7 @@ func TestForLoopRangeArrayKeyValue() (int64, float32) {
 	}
 	return sumI, sumV
 	// Want:
-	// 0: int64(103)
+	// 0: int(103)
 	// 1: float32(1015)
 }
 
@@ -66,13 +66,13 @@ func TestForLoopRangeArrayValue() float32 {
 	// float32(1015)
 }
 
-func TestForLoopRangeArrayKeyValue2Axis() (int64, [2]float32) {
+func TestForLoopRangeArrayKeyValue2Axis() (int, [2]float32) {
 	a := [3][2]float32{
 		{3, 5},
 		{7, 11},
 		{13, 17},
 	}
-	sumI := int64(100)
+	sumI := int(100)
 	sumV := [2]float32{1000, 2000}
 	for i, v := range a {
 		sumI = sumI + i
@@ -80,6 +80,6 @@ func TestForLoopRangeArrayKeyValue2Axis() (int64, [2]float32) {
 	}
 	return sumI, sumV
 	// Want:
-	// 0: int64(103)
+	// 0: int(103)
 	// 1: [2]float32{1023, 2033}
 }

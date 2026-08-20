@@ -16,7 +16,6 @@ package elements
 
 import (
 	"go/ast"
-	"reflect"
 
 	"github.com/pkg/errors"
 	"github.com/gx-org/gx/api/values"
@@ -24,7 +23,10 @@ import (
 	"github.com/gx-org/gx/build/fmterr"
 	"github.com/gx-org/gx/build/ir"
 	"github.com/gx-org/gx/build/ir/irkind"
-	"github.com/gx-org/gx/internal/interp/canonical"
+	"github.com/gx-org/gx/internal/algexpr"
+	"github.com/gx-org/gx/internal/base/cast"
+	"github.com/gx-org/gx/internal/interp/compeval/cmp"
+	"github.com/gx-org/gx/internal/interp/coreiface"
 	"github.com/gx-org/gx/internal/interp/flatten"
 	"github.com/gx-org/gx/internal/togo"
 	"github.com/gx-org/gx/interp/engine"
@@ -34,8 +36,8 @@ type (
 
 	// Slicer is a state element that can be sliced.
 	Slicer interface {
-		SliceAt(expr *ir.IndexExpr, index engine.NumericalElement) (ir.Element, error)
-		Slice(expr *ir.SliceExpr, low, high engine.NumericalElement) (ir.Element, error)
+		SliceAt(env engine.Env, expr *ir.IndexExpr, index engine.NumericalElement) (ir.Element, error)
+		Slice(env engine.Env, expr *ir.SliceExpr, low, high engine.NumericalElement) (ir.Element, error)
 	}
 
 	// ArraySlicer is a state element with an array that can be sliced.
@@ -50,14 +52,18 @@ type (
 		Axes(ev ir.Evaluator) (*Slice, error)
 	}
 
-	// WithElements is an element able to returns the elements it contains.
-	WithElements interface {
-		Elements() []ir.Element
-	}
-
 	// Unpacker unpacks the elements it contains into a tuple.
 	Unpacker interface {
-		Unpack(ev ir.TypeCmp) (ir.Element, error)
+		Unpack(ev ir.Evaluator) (ir.Element, error)
+	}
+
+	// ISlice is an interface implemented by all slice elements.
+	ISlice interface {
+		ir.Element
+		ir.WithExpr
+		Slicer
+		engine.Slice
+		Unpacker
 	}
 )
 
@@ -68,14 +74,10 @@ type Slice struct {
 }
 
 var (
-	_ Slicer              = (*Slice)(nil)
-	_ ir.FixedSlice       = (*Slice)(nil)
-	_ ir.Element          = (*Slice)(nil)
-	_ ir.Canonical        = (*Slice)(nil)
-	_ canonical.Canonical = (*Slice)(nil)
-	_ WithElements        = (*Slice)(nil)
-	_ engine.Copier       = (*Slice)(nil)
-	_ engine.Slice        = (*Slice)(nil)
+	_ ISlice                 = (*Slice)(nil)
+	_ ir.FixedSlice          = (*Slice)(nil)
+	_ coreiface.WithElements = (*Slice)(nil)
+	_ engine.Copier          = (*Slice)(nil)
 )
 
 // NewSlice returns a slice from a slice of elements.
@@ -96,7 +98,7 @@ func (n *Slice) Flatten() ([]ir.Element, error) {
 }
 
 // Slice returns a slice of a slice.
-func (n *Slice) Slice(expr *ir.SliceExpr, low, high engine.NumericalElement) (ir.Element, error) {
+func (n *Slice) Slice(_ engine.Env, expr *ir.SliceExpr, low, high engine.NumericalElement) (ir.Element, error) {
 	lowIndex, err := n.lowBound(low)
 	if err != nil {
 		return nil, err
@@ -112,7 +114,7 @@ func (n *Slice) highBound(high engine.NumericalElement) (int, error) {
 	if high == nil {
 		return len(n.values), nil
 	}
-	i, err := ConstantIntFromElement(high)
+	i, err := IntFromElement(high)
 	if err != nil {
 		return -1, err
 	}
@@ -126,7 +128,7 @@ func (n *Slice) lowBound(low engine.NumericalElement) (int, error) {
 	if low == nil {
 		return 0, nil
 	}
-	i, err := ConstantIntFromElement(low)
+	i, err := IntFromElement(low)
 	if err != nil {
 		return -1, err
 	}
@@ -137,7 +139,7 @@ func (n *Slice) lowBound(low engine.NumericalElement) (int, error) {
 }
 
 // SliceAt returns the element at a given position in the slice.
-func (n *Slice) SliceAt(expr *ir.IndexExpr, index engine.NumericalElement) (ir.Element, error) {
+func (n *Slice) SliceAt(_ engine.Env, expr *ir.IndexExpr, index engine.NumericalElement) (ir.Element, error) {
 	return SliceVals(expr, index, n.values)
 }
 
@@ -175,17 +177,26 @@ func (n *Slice) Expr(ev ir.Evaluator, src ast.Expr) ([]ir.Expr, error) {
 		Elts: make([]ir.Expr, n.Len()),
 	}
 	for i, el := range n.values {
-		irEl, ok := el.(ir.Canonical)
-		if !ok {
-			return nil, errors.Errorf("cannot build an IR expression from %T", el)
-		}
 		var err error
-		ext.Elts[i], err = ir.ToSingleExpr(ev, src, irEl)
+		ext.Elts[i], err = ir.ToSingleExpr(ev, src, el)
 		if err != nil {
 			return nil, err
 		}
 	}
 	return []ir.Expr{ext}, nil
+}
+
+// AlgExpr returns an algebraic expression.
+func (n *Slice) AlgExpr(eva ir.Evaluator) (cmp.Expr, error) {
+	els := make([]cmp.Expr, len(n.values))
+	for i, el := range n.values {
+		var err error
+		els[i], err = cmp.ToAlgExpr(eva, el)
+		if err != nil {
+			return nil, err
+		}
+	}
+	return algexpr.NewSlice(n.Type(), els), nil
 }
 
 // Elements stored in the slice.
@@ -194,7 +205,7 @@ func (n *Slice) Elements() []ir.Element {
 }
 
 // Unpack the values of the slice into a tuple.
-func (n *Slice) Unpack(ev ir.TypeCmp) (ir.Element, error) {
+func (n *Slice) Unpack(ev ir.Evaluator) (ir.Element, error) {
 	return TupleFromElements(n.values)
 }
 
@@ -217,39 +228,13 @@ func (n *Slice) Len() int {
 	return len(n.values)
 }
 
-// Compare the slice to another canonical value.
-func (n *Slice) Compare(x canonical.Comparable) (bool, error) {
-	other, ok := x.(*Slice)
-	if !ok {
-		return false, nil
-	}
-	if len(n.values) != len(other.values) {
-		return false, nil
-	}
-	for i, vi := range n.values {
-		xComp, xOk := vi.(canonical.Canonical)
-		yComp, yOk := other.values[i].(canonical.Canonical)
-		if !xOk || !yOk {
-			return false, nil
-		}
-		cmp, err := xComp.Compare(yComp)
-		if err != nil {
-			return false, err
-		}
-		if !cmp {
-			return false, nil
-		}
-	}
-	return true, nil
-}
-
 // GoValue of the underlying element.
 func (n *Slice) GoValue() (any, error) {
-	return MapSlice(togo.Value, n.values)
+	return coreiface.MapSlice(togo.Value, n.values)
 }
 
 // ShortString returns a string representation of the slice.
-func (n *Slice) ShortString() string {
+func (n *Slice) ShortString(*ir.File) string {
 	return n.String()
 }
 
@@ -258,22 +243,11 @@ func (n *Slice) String() string {
 	return gxfmt.String(n.values)
 }
 
-// ToWithElements returns the string value stored in a element.
-func ToWithElements(el ir.Element) (WithElements, error) {
-	under := Underlying(el)
-	sl, ok := under.(WithElements)
-	if !ok {
-		return nil, errors.Errorf("cannot convert element %T (underlying: %T) to %s", el, under, reflect.TypeFor[WithElements]().String())
-	}
-	return sl, nil
-}
-
 // SliceFromElement returns a slice if the element is one, an error otherwise.
 func SliceFromElement(el ir.Element) (*Slice, error) {
-	under := Underlying(el)
-	sl, ok := under.(*Slice)
-	if !ok {
-		return nil, errors.Errorf("cannot convert element %T (underlying: %T) to %s", el, under, reflect.TypeFor[WithElements]().String())
+	under, err := coreiface.Underlying(el)
+	if err != nil {
+		return nil, err
 	}
-	return sl, nil
+	return cast.To[*Slice](under)
 }

@@ -24,7 +24,9 @@ import (
 	"github.com/gx-org/gx/build/ir"
 	"github.com/gx-org/gx/build/ir/irkind"
 	"github.com/gx-org/gx/golang/backend/kernels"
-	"github.com/gx-org/gx/golang/binder/gobindings/types"
+	"github.com/gx-org/gx/internal/base/cast"
+	"github.com/gx-org/gx/internal/interp/coreiface"
+	"github.com/gx-org/gx/internal/interp/numbers"
 	"github.com/gx-org/gx/interp/elements"
 	"github.com/gx-org/gx/interp/engine"
 	"github.com/gx-org/gx/interp/fun"
@@ -55,26 +57,13 @@ func (rb *randBootstrap) Copy() engine.Copier {
 	return rb
 }
 
-func (rb *randBootstrap) initRand(seed *values.HostArray) error {
-	seedValue := types.AtomFromHost[int64](seed)
-	rb.rand = rand.New(rand.NewSource(seedValue))
-	return nil
+func (rb *randBootstrap) initRand(seed int64) {
+	rb.rand = rand.New(rand.NewSource(seed))
 }
 
-var uint64Type = ir.TypeFromKind(irkind.Uint64)
-
 func (rb *randBootstrap) nextConstant(env engine.Env) (engine.NumericalElement, error) {
-	next := rb.rand.Uint64()
-	expr := &ir.AtomicValueT[uint64]{
-		Src: rb.call.Expr(),
-		Val: next,
-		Typ: uint64Type,
-	}
-	value, err := values.AtomIntegerValue(expr.Typ, next)
-	if err != nil {
-		return nil, err
-	}
-	return rb.eval.ArrayOps().ElementFromAtom(env.File(), value, expr, expr.Type())
+	cstUint64 := rb.rand.Uint64()
+	return numbers.NewElement(env, ir.Uint64Type(), cstUint64)
 }
 
 type randBootstrapArg struct {
@@ -116,7 +105,9 @@ func (arg *randBootstrapArg) Init(ctx *values.FuncInputs) error {
 	if !ok {
 		return errors.Errorf("cannot convert GX argument %T to %T: not supported", value, array)
 	}
-	return arg.rb.initRand(array)
+	val, err := values.ToAtom[int64](array)
+	arg.rb.initRand(val)
+	return err
 }
 
 func (arg *randBootstrapArg) Name() string {
@@ -139,14 +130,13 @@ func evalNewBootstrapGenerator(env engine.Env, call *ir.FuncCallExpr, recv ir.El
 	}
 	var err error
 	switch seedNode := args[0].(type) {
-	case elements.ElementWithConstant:
+	case engine.ConstantElement:
 		bootstrap.next = bootstrap.nextConstant
-		var cst *values.HostArray
-		cst, err = seedNode.NumericalConstant()
+		seed, err := elements.Int64FromElement(seedNode)
 		if err != nil {
 			return nil, err
 		}
-		err = bootstrap.initRand(cst)
+		bootstrap.initRand(seed)
 	case elements.ElementWithArrayFromContext:
 		var argFactory *randBootstrapArg
 		argFactory, err = newRandBootstrapArg(env, bootstrap, seedNode)
@@ -168,7 +158,14 @@ func evalNewBootstrapGenerator(env engine.Env, call *ir.FuncCallExpr, recv ir.El
 }
 
 func evalBootstrapGeneratorNext(env engine.Env, call *ir.FuncCallExpr, recv ir.Element, args []ir.Element) ([]ir.Element, error) {
-	bootStrap := elements.Underlying(recv).(*randBootstrap)
+	under, err := coreiface.Underlying(recv)
+	if err != nil {
+		return nil, err
+	}
+	bootStrap, err := cast.To[*randBootstrap](under)
+	if err != nil {
+		return nil, err
+	}
 	el, err := bootStrap.next(env)
 	if err != nil {
 		return nil, err

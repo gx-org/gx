@@ -192,19 +192,19 @@ func TestSliceBackendNode() [2]float32 {
 }
 
 func TestGather1() [2]float32 {
-	return shape.Gather([4]float32{2, 4, 6, 8}, [2][1]int64{{1}, {2}})
+	return shape.Gather([4]float32{2, 4, 6, 8}, [2][1]int{{1}, {2}})
 	// Want:
 	// [2]float32{4, 6}
 }
 
 func TestGather2a() [1][2]float32 {
-	return shape.Gather([3][2]float32{{1, 2}, {3, 4}, {5, 6}}, [1]int64{1})
+	return shape.Gather([3][2]float32{{1, 2}, {3, 4}, {5, 6}}, [1]int{1})
 	// Want:
 	// [2]float32{3, 4}
 }
 
 func TestGather2b() [2]float32 {
-	return shape.Gather([3][2]float32{{1, 2}, {3, 4}, {5, 6}}, [2][2]int64{{2, 0}, {0, 1}})
+	return shape.Gather([3][2]float32{{1, 2}, {3, 4}, {5, 6}}, [2][2]int{{2, 0}, {0, 1}})
 	// Want:
 	// [2]float32{5, 2}
 }

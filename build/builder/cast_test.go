@@ -80,7 +80,7 @@ func TestCast(t *testing.T) {
 					},
 				},
 				Typ: irh.ArrayType(ir.Float32Type(), &ir.RankInfer{
-					Rnk: &ir.Rank{Ax: []ir.AxisLengths{irh.Axis(2)}},
+					ArrayRank: &ir.Rank{Ax: []ir.AxisLengths{irh.Axis(2)}},
 				}),
 			},
 			WantType: "[2]float32",
@@ -100,7 +100,7 @@ func TestCast(t *testing.T) {
 					},
 				},
 				Typ: irh.ArrayType(ir.Float32Type(), &ir.RankInfer{
-					Rnk: &ir.Rank{Ax: []ir.AxisLengths{irh.Axis(2)}},
+					ArrayRank: &ir.Rank{Ax: []ir.AxisLengths{irh.Axis(2)}},
 				}),
 			},
 			WantType: "[2]float32",

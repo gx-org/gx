@@ -18,9 +18,11 @@ import (
 	"go/ast"
 	"strconv"
 
-	"github.com/pkg/errors"
 	"github.com/gx-org/gx/api/values"
 	"github.com/gx-org/gx/build/ir"
+	"github.com/gx-org/gx/internal/base/cast"
+	"github.com/gx-org/gx/internal/interp/compeval/cmp"
+	"github.com/gx-org/gx/internal/interp/coreiface"
 	"github.com/gx-org/gx/internal/interp/flatten"
 	"github.com/gx-org/gx/interp/engine"
 )
@@ -31,8 +33,8 @@ type String struct {
 }
 
 var (
-	_ ir.Element  = (*String)(nil)
-	_ ir.WithExpr = (*String)(nil)
+	_ IString       = (*String)(nil)
+	_ cmp.Canonical = (*String)(nil)
 )
 
 // NewStringFromLit returns a state element storing a string GX value.
@@ -55,14 +57,12 @@ func NewString(val string, typ ir.Type) (*String, error) {
 	}, nil
 }
 
+// StrEl is only useful to implement the IString interface and has no other purpose.
+func (*String) StrEl() {}
+
 // Unflatten consumes the next handles to return a GX value.
 func (n *String) Unflatten(handles *flatten.Parser) (values.Value, error) {
 	return n.val, nil
-}
-
-// StringValue returns the string value as a GX value.
-func (n *String) StringValue() string {
-	return n.val.StringValue()
 }
 
 // Copy returns the receiver.
@@ -70,23 +70,61 @@ func (n *String) Copy() engine.Copier {
 	return n
 }
 
+// Simplify the expression.
+func (n *String) Simplify(ir.SourceFile) (cmp.Comparable, error) {
+	return n, nil
+}
+
+// Equal compare the receiver with the argument.
+func (n *String) Equal(other cmp.Comparable) bool {
+	otherT, isString := other.(*String)
+	if !isString {
+		return false
+	}
+	return n.val == otherT.val
+}
+
+// AlgExpr converts the element into an algebra expression.
+func (n *String) AlgExpr(ir.Evaluator) (cmp.Expr, error) {
+	return n, nil
+}
+
 // Type of the element.
 func (n *String) Type() ir.Type {
 	return n.val.Type()
 }
 
+// BuildIR returns a string literal.
+func (n *String) BuildIR() ir.Expr {
+	return &ir.StringLiteral{
+		Src: &ast.BasicLit{Value: strconv.Quote(n.val.StringValue())},
+	}
+}
+
 // Expr returns the string as an IR expression.
 func (n *String) Expr(ir.Evaluator, ast.Expr) ([]ir.Expr, error) {
-	return []ir.Expr{&ir.StringLiteral{
-		Src: &ast.BasicLit{Value: strconv.Quote(n.val.StringValue())},
-	}}, nil
+	return []ir.Expr{n.BuildIR()}, nil
+}
+
+// ShortString returns the string value as a GX value.
+func (n *String) ShortString(*ir.File) string {
+	return n.String()
+}
+
+// String returns the string value as a GX value.
+func (n *String) String() string {
+	return n.val.StringValue()
 }
 
 // StringFromElement returns the string value stored in a element.
 func StringFromElement(el ir.Element) (string, error) {
-	sEl, ok := Underlying(el).(*String)
-	if !ok {
-		return "", errors.Errorf("cannot convert element %T is not a string literal", el)
+	under, err := coreiface.Underlying(el)
+	if err != nil {
+		return "", err
 	}
-	return sEl.StringValue(), nil
+	sEl, err := cast.To[*String](under)
+	if err != nil {
+		return "", err
+	}
+	return sEl.String(), nil
 }

@@ -16,123 +16,90 @@ package interp
 
 import (
 	"github.com/pkg/errors"
-	"github.com/gomlx/compute/dtypes/bfloat16"
-	"github.com/gx-org/backend/dtypes"
-	"github.com/gx-org/gx/api/values"
-	"github.com/gx-org/gx/build/fmterr"
 	"github.com/gx-org/gx/build/ir"
-	"github.com/gx-org/gx/build/ir/irkind"
-	"github.com/gx-org/gx/golang/backend/kernels"
-	"github.com/gx-org/gx/internal/concrete"
+	"github.com/gx-org/gx/internal/interp/constants"
+	"github.com/gx-org/gx/internal/interp/coreiface"
 	"github.com/gx-org/gx/interp/elements"
 	"github.com/gx-org/gx/interp/engine"
 )
 
-type (
-	valuer interface {
-		array(fitp *Interpreter, expr *ir.ArrayLitExpr) (ir.Element, error)
-	}
-
-	valuerT[T dtypes.Supported] struct {
-		kind         irkind.Kind
-		toAtomValue  func(tp ir.Type, val T) (*values.HostArray, error)
-		toArrayValue func(tp ir.Type, val []T, dims []int) (*values.HostArray, error)
-	}
-)
-
-func goValueFromElement[T dtypes.Supported](el engine.NumericalElement) (T, bool, error) {
-	var t T
-	canonicalElt, ok := el.(elements.ElementWithConstant)
-	if !ok {
-		return t, false, nil
-	}
-	cst, err := canonicalElt.NumericalConstant()
-	if err != nil {
-		return t, false, err
-	}
-	if cst == nil {
-		return t, false, nil
-	}
-	t, err = values.ToAtom[T](cst)
-	return t, err == nil, err
-}
-
-func goSliceFromArrayElement[T dtypes.Supported](el engine.NumericalElement) ([]T, bool, error) {
-	canonicalElt, ok := el.(elements.ElementWithConstant)
-	if !ok {
-		return nil, false, nil
-	}
-	val, err := canonicalElt.NumericalConstant()
-	if err != nil {
-		return nil, false, err
-	}
-	array := val.Handle().(*kernels.Buffer).KernelValue().(interface{ Flat() []T })
-	return array.Flat(), true, nil
-}
-
-func goSliceFromElements[T dtypes.Supported](els []engine.NumericalElement) ([]T, bool, error) {
-	var vals []T
+func mergeSubs(els []engine.NumericalElement) ([]engine.AtomConstant, bool) {
+	var all []engine.AtomConstant
 	for _, el := range els {
-		var subVals []T
-		var ok bool
-		var err error
-		if el.Type().Kind() == irkind.Array {
-			subVals, ok, err = goSliceFromArrayElement[T](el)
-		} else {
-			subVals = make([]T, 1)
-			subVals[0], ok, err = goValueFromElement[T](el)
+		cst, isConstant := el.(engine.ConstantElement)
+		if !isConstant {
+			return nil, false
 		}
-		if err != nil {
-			return nil, false, err
-		}
+		elVals, ok := constants.ArrayElements(cst.Constant())
 		if !ok {
-			return nil, false, nil
+			return nil, false
 		}
-		vals = append(vals, subVals...)
+		all = append(all, elVals...)
 	}
-	return vals, true, nil
+	return all, true
 }
 
-func (v valuerT[T]) buildStaticArray(fitp *Interpreter, lit *ir.ArrayLitExpr, axes, vals []engine.NumericalElement) (ir.Element, bool, error) {
-	axesI64, ok, err := goSliceFromElements[int64](axes)
+func buildStaticNonZeroArray(fitp *Interpreter, lit *ir.ArrayLitExpr, axes, vals []engine.NumericalElement) (engine.Constant, bool, error) {
+	var valsT []engine.AtomConstant
+	var err error
+	var ok bool
+	if len(axes) == 1 {
+		// Literal of atomic elements.
+		valsT, ok = coreiface.MapSliceOk(func(el ir.Element) (engine.AtomConstant, bool) {
+			cst, isConstant := el.(engine.ConstantElement)
+			if !isConstant {
+				return nil, false
+			}
+			var atom engine.AtomConstant
+			atom, err = coreiface.Cast[engine.AtomConstant](cst.Constant())
+			if err != nil {
+				return nil, false
+			}
+			return atom, true
+		}, vals)
+	} else {
+		// Literal of other composite literals.
+		valsT, ok = mergeSubs(vals)
+	}
 	if !ok || err != nil {
 		return nil, false, err
 	}
-	valsT, ok, err := goSliceFromElements[T](vals)
-	if !ok || err != nil {
+	axesInt, err := coreiface.MapSlice(elements.IntFromElement, axes)
+	if err != nil {
 		return nil, false, err
 	}
 	size := 1
-	for _, axis := range axesI64 {
+	for _, axis := range axesInt {
 		size *= int(axis)
 	}
 	if len(vals) > 0 && len(valsT) != size {
-		return nil, false, errors.Errorf("tensor has dimensions %v (size=%d) but has %d elements", axes, size, len(vals))
+		return nil, false, errors.Errorf("array has dimensions %v (size=%d) but has %d elements", axes, size, len(vals))
 	}
-	axesI := make([]int, len(axesI64))
-	for i, ax := range axesI64 {
-		axesI[i] = int(ax)
-	}
-	if len(valsT) == 0 {
-		valsT = make([]T, size)
-	}
-	typ, err := concrete.Concrete(fitp.env.ExprEval(), lit.Src, lit.Typ)
-	if err != nil {
-		return nil, false, err
-	}
-	array, err := v.toArrayValue(typ, valsT, axesI)
-	if err != nil {
-		return nil, false, err
-	}
-	// All elements of the literal are scalars already known.
-	node, err := fitp.Engine().ArrayOps().ElementFromArray(fitp.File(), lit, array)
-	if err != nil {
-		return nil, false, err
-	}
-	return node, true, nil
+	return constants.NewArray(lit, valsT, axes), true, nil
+
 }
 
-func (v valuerT[T]) array(fitp *Interpreter, lit *ir.ArrayLitExpr) (ir.Element, error) {
+func buildStaticArray(fitp *Interpreter, lit *ir.ArrayLitExpr, axes, vals []engine.NumericalElement) (ir.Element, bool, error) {
+	var array engine.Constant
+	static := true
+	var err error
+	if len(vals) > 0 {
+		array, static, err = buildStaticNonZeroArray(fitp, lit, axes, vals)
+	} else {
+		array = constants.NewArray(lit, nil, axes)
+	}
+	if err != nil {
+		return nil, false, err
+	}
+	if !static {
+		// Not all elements of the array are known.
+		return nil, false, nil
+	}
+	node, err := fitp.Engine().ArrayOps().ElementFromHostValue(fitp.env.ExprEval(), array)
+	return node, true, err
+}
+
+func evalArrayLiteral(fitp *Interpreter, lit *ir.ArrayLitExpr) (ir.Element, error) {
 	axes, err := evalArrayAxes(fitp, lit, lit.Typ)
 	if err != nil {
 		return nil, err
@@ -145,7 +112,7 @@ func (v valuerT[T]) array(fitp *Interpreter, lit *ir.ArrayLitExpr) (ir.Element, 
 			return nil, err
 		}
 	}
-	staticArray, staticOk, err := v.buildStaticArray(fitp, lit, axes, elVals)
+	staticArray, staticOk, err := buildStaticArray(fitp, lit, axes, elVals)
 	if staticOk || err != nil {
 		return staticArray, err
 	}
@@ -159,88 +126,4 @@ func (v valuerT[T]) array(fitp *Interpreter, lit *ir.ArrayLitExpr) (ir.Element, 
 		return array1d, nil
 	}
 	return array1d.Reshape(fitp.env, lit, axes)
-}
-
-func newValuer(fitp *Interpreter, expr ir.Expr, kind irkind.Kind) (v valuer, err error) {
-	switch kind {
-	case irkind.Bool:
-		v = valuerT[bool]{kind: kind, toAtomValue: values.AtomBoolValue, toArrayValue: values.ArrayBoolValue}
-	case irkind.Bfloat16:
-		v = valuerT[bfloat16.BFloat16]{kind: kind, toAtomValue: values.AtomBfloat16Value, toArrayValue: values.ArrayBfloat16Value}
-	case irkind.Float32:
-		v = valuerT[float32]{kind: kind, toAtomValue: values.AtomFloatValue[float32], toArrayValue: values.ArrayFloatValue[float32]}
-	case irkind.Float64:
-		v = valuerT[float64]{kind: kind, toAtomValue: values.AtomFloatValue[float64], toArrayValue: values.ArrayFloatValue[float64]}
-	case irkind.Int:
-		v = valuerT[int]{kind: kind, toAtomValue: values.AtomIntegerValue[int], toArrayValue: values.ArrayIntegerValue[int]}
-	case irkind.Int32:
-		v = valuerT[int32]{kind: kind, toAtomValue: values.AtomIntegerValue[int32], toArrayValue: values.ArrayIntegerValue[int32]}
-	case irkind.Int64:
-		v = valuerT[int64]{kind: kind, toAtomValue: values.AtomIntegerValue[int64], toArrayValue: values.ArrayIntegerValue[int64]}
-	case irkind.Uint32:
-		v = valuerT[uint32]{kind: kind, toAtomValue: values.AtomIntegerValue[uint32], toArrayValue: values.ArrayIntegerValue[uint32]}
-	case irkind.Uint64:
-		v = valuerT[uint64]{kind: kind, toAtomValue: values.AtomIntegerValue[uint64], toArrayValue: values.ArrayIntegerValue[uint64]}
-	default:
-		err = fmterr.Errorf(fitp.File().FileSet(), expr.Node(), "%s cannot be converted to backend numerical: not supported", kind)
-	}
-	return
-}
-
-func evalArrayLiteral(fitp *Interpreter, expr *ir.ArrayLitExpr) (ir.Element, error) {
-	_, dtype := ir.Shape(expr.Type())
-	valuer, err := newValuer(fitp, expr, dtype.Kind())
-	if err != nil {
-		return nil, err
-	}
-	return valuer.array(fitp, expr)
-}
-
-func toAtomElementInt[T dtypes.IntegerType](fitp *Interpreter, src elements.ExprAt, val T) (engine.NumericalElement, error) {
-	hostVal, err := values.AtomIntegerValue(src.Node().Type(), val)
-	if err != nil {
-		return nil, err
-	}
-	return fitp.elementFromAtom(src.Node(), hostVal)
-}
-
-func toAtomElementFloat[T dtypes.GoFloat](fitp *Interpreter, src elements.ExprAt, val T) (engine.NumericalElement, error) {
-	hostVal, err := values.AtomFloatValue(src.Node().Type(), val)
-	if err != nil {
-		return nil, err
-	}
-	return fitp.elementFromAtom(src.Node(), hostVal)
-}
-
-func toAtomElementBool(fitp *Interpreter, src elements.ExprAt, val bool) (engine.NumericalElement, error) {
-	hostVal, err := values.AtomBoolValue(src.Node().Type(), val)
-	if err != nil {
-		return nil, err
-	}
-	return fitp.elementFromAtom(src.Node(), hostVal)
-}
-
-func evalAtomicValue(fitp *Interpreter, expr ir.AtomicValue) (engine.NumericalElement, error) {
-	kind := expr.Type().Kind()
-	exprAt := elements.NewExprAt(fitp.File(), expr)
-	switch kind {
-	case irkind.Bool:
-		return toAtomElementBool(fitp, exprAt, expr.(*ir.AtomicValueT[bool]).Val)
-	case irkind.Float32:
-		return toAtomElementFloat(fitp, exprAt, expr.(*ir.AtomicValueT[float32]).Val)
-	case irkind.Float64:
-		return toAtomElementFloat(fitp, exprAt, expr.(*ir.AtomicValueT[float64]).Val)
-	case irkind.Int:
-		return toAtomElementInt(fitp, exprAt, expr.(*ir.AtomicValueT[int]).Val)
-	case irkind.Int32:
-		return toAtomElementInt(fitp, exprAt, expr.(*ir.AtomicValueT[int32]).Val)
-	case irkind.Int64:
-		return toAtomElementInt(fitp, exprAt, expr.(*ir.AtomicValueT[int64]).Val)
-	case irkind.Uint32:
-		return toAtomElementInt(fitp, exprAt, expr.(*ir.AtomicValueT[uint32]).Val)
-	case irkind.Uint64:
-		return toAtomElementInt(fitp, exprAt, expr.(*ir.AtomicValueT[uint64]).Val)
-	default:
-		return nil, fmterr.Errorf(fitp.File().FileSet(), expr.Node(), "%s cannot be converted to backend numerical: not supported", kind)
-	}
 }

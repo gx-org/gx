@@ -74,4 +74,4 @@ func Transpose[Shape []int, DType dtype.Num](x [unpack(Shape)]DType) [unpack(Rev
 func GatherAxis(input []int, indices []int) ([]int, error)
 
 // Gather values from an array.
-func Gather[InputShape, SelectShape []int, DType dtype.Num](x [unpack(InputShape)]DType, indices [unpack(SelectShape)]int64) [unpack(GatherAxis(InputShape, SelectShape))]DType
+func Gather[InputShape, SelectShape []int, DType dtype.Num](x [unpack(InputShape)]DType, indices [unpack(SelectShape)]int) [unpack(GatherAxis(InputShape, SelectShape))]DType

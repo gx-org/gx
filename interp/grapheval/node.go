@@ -50,7 +50,7 @@ var (
 	_ engine.NumericalElement         = (*BackendNode)(nil)
 	_ ir.WithLength                   = (*BackendNode)(nil)
 	_ graphNode                       = (*BackendNode)(nil)
-	_ elements.EvalShaper             = (*valueElement)(nil)
+	_ elements.EvalShaper             = (*constant)(nil)
 )
 
 // NewBackendNode returns an element representing a node in the backend graph.
@@ -134,19 +134,16 @@ func (n *BackendNode) out() ops.Node {
 }
 
 // BinaryOp applies a binary operator to x and y.
-func (n *BackendNode) BinaryOp(env engine.Env, expr *ir.BinaryExpr, x, y engine.NumericalElement) (engine.NumericalElement, error) {
+func (n *BackendNode) BinaryOp(env engine.Env, expr *ir.BinaryExpr, y engine.NumericalElement) (engine.NumericalElement, error) {
 	ao := n.ev.ArrayOps()
-	xNode, xShape, err := materialise.Element(n.ev.ao, x)
-	if err != nil {
-		return nil, err
-	}
+	xNode, xShape := n.nod.Node, n.nod.Shape
 	yNode, yShape, err := materialise.Element(n.ev.ao, y)
 	if err != nil {
 		return nil, err
 	}
 	binaryNode, err := ao.Graph().Core().Binary(expr.Src, xNode, yNode)
 	if err != nil {
-		return nil, fmterr.Errorf(env.File().FileSet(), expr.Src, "cannot create binary operation for %v%s%v: %v", x, expr.Src.Op, y, err)
+		return nil, fmterr.Errorf(env.File().FileSet(), expr.Src, "cannot create binary operation for %v%s%v: %v", n, expr.Src.Op, y, err)
 	}
 	targetShape := &shape.Shape{
 		DType:       xShape.DType,
@@ -158,9 +155,9 @@ func (n *BackendNode) BinaryOp(env engine.Env, expr *ir.BinaryExpr, x, y engine.
 	if len(yShape.AxisLengths) > 0 {
 		targetShape.AxisLengths = yShape.AxisLengths
 	}
-	typ, err := concrete.Concrete(env.ExprEval(), expr.Src, expr.Typ)
+	typ, err := concrete.Concrete(env.ExprEval(), expr.Typ)
 	if err != nil {
-		return nil, err
+		return nil, fmterr.Error(env.File().FileSet(), expr.Src, err)
 	}
 	return NewBackendNode(
 		n.ev,
@@ -178,9 +175,9 @@ func (n *BackendNode) UnaryOp(env engine.Env, expr *ir.UnaryExpr) (engine.Numeri
 	if err != nil {
 		return nil, err
 	}
-	typ, err := concrete.Concrete(env.ExprEval(), expr.Src, expr.Type())
+	typ, err := concrete.Concrete(env.ExprEval(), expr.Type())
 	if err != nil {
-		return nil, err
+		return nil, fmterr.Error(env.File().FileSet(), expr.Src, err)
 	}
 	return NewBackendNode(
 		n.ev,
@@ -199,9 +196,9 @@ func (n *BackendNode) Cast(env engine.Env, expr ir.Expr, target ir.Type) (engine
 	if err != nil {
 		return nil, err
 	}
-	typ, err := concrete.Concrete(env.ExprEval(), expr.Expr(), expr.Type())
+	typ, err := concrete.Concrete(env.ExprEval(), expr.Type())
 	if err != nil {
-		return nil, err
+		return nil, fmterr.Error(env.File().FileSet(), expr.Node(), err)
 	}
 	return NewBackendNode(
 		n.ev,
@@ -220,7 +217,7 @@ func (n *BackendNode) Reshape(env engine.Env, expr ir.Expr, axisLengths []engine
 	axes := make([]int, len(axisLengths))
 	for i, el := range axisLengths {
 		var err error
-		axes[i], err = elements.ConstantIntFromElement(el)
+		axes[i], err = elements.IntFromElement(el)
 		if err != nil {
 			return nil, err
 		}
@@ -243,16 +240,16 @@ func (n *BackendNode) Reshape(env engine.Env, expr ir.Expr, axisLengths []engine
 }
 
 // SliceAt of the value on the first axis given an index.
-func (n *BackendNode) SliceAt(expr *ir.IndexExpr, index engine.NumericalElement) (ir.Element, error) {
+func (n *BackendNode) SliceAt(env engine.Env, expr *ir.IndexExpr, index engine.NumericalElement) (ir.Element, error) {
 	return n.SliceArray(expr, index)
 }
 
 // Slice returns a node slicing the array.
-func (n *BackendNode) Slice(expr *ir.SliceExpr, low, high engine.NumericalElement) (ir.Element, error) {
+func (n *BackendNode) Slice(env engine.Env, expr *ir.SliceExpr, low, high engine.NumericalElement) (ir.Element, error) {
 	return nil, errors.Errorf("not implemented for %T", n)
 }
-func (n *BackendNode) sliceArrayFromConstant(expr ir.Expr, index engine.NumericalElement) (engine.NumericalElement, error) {
-	i, err := elements.ConstantIntFromElement(index)
+func (n *BackendNode) sliceArrayFromConstant(expr ir.Expr, index engine.ConstantElement) (engine.NumericalElement, error) {
+	i, err := elements.IntFromElement(index)
 	if err != nil {
 		return nil, err
 	}
@@ -301,7 +298,7 @@ func (n *BackendNode) sliceArrayFromNode(expr ir.Expr, index graphNode) (engine.
 // SliceArray of the value on the first axis given an index.
 func (n *BackendNode) SliceArray(expr ir.Expr, index engine.NumericalElement) (engine.NumericalElement, error) {
 	switch indexT := index.(type) {
-	case elements.ElementWithConstant:
+	case engine.ConstantElement:
 		return n.sliceArrayFromConstant(expr, indexT)
 	case graphNode:
 		return n.sliceArrayFromNode(expr, indexT)

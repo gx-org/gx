@@ -34,7 +34,7 @@ func TestIndex(t *testing.T) {
 						irh.IntNumberAs(4, ir.Float32Type()),
 					},
 				},
-				Index: irh.IntNumberAs(1, ir.Int64Type()),
+				Index: irh.IntNumberAs(1, ir.IntType()),
 				Typ:   ir.Float32Type(),
 			},
 			WantType: "float32",
@@ -42,6 +42,28 @@ func TestIndex(t *testing.T) {
 		testbuild.Expr{
 			Src: `[2]float32{3, 4}[float32(1)]`,
 			Err: "index float32(1) (of type float32) must be integer",
+		},
+		testbuild.Decl{
+			Src: `
+func f[A int](x, y [A]int, i int) int {
+	a := (x+y)[i]
+	return a
+}
+`,
+		},
+		testbuild.Decl{
+			Src: `
+func f() int32 {
+	return [2]int32{2, 3}[0]
+}
+`,
+		},
+		testbuild.Decl{
+			Src: `
+func f(i int) int32 {
+	return [2]int32{2, 3}[i]
+}
+`,
 		},
 	)
 }

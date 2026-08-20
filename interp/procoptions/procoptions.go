@@ -21,6 +21,7 @@ import (
 	"github.com/gx-org/gx/api/values"
 	"github.com/gx-org/gx/build/ir"
 	"github.com/gx-org/gx/internal/base/scope"
+	"github.com/gx-org/gx/internal/interp/numbers"
 	"github.com/gx-org/gx/interp/elements"
 	"github.com/gx-org/gx/interp/engine"
 )
@@ -92,18 +93,20 @@ func (o *Options) processPackageVarSetGXValue(opt options.PackageVarSetValue) (p
 			return err
 		}
 		ident := opt.Var
-		array, ok := opt.Value.(values.Array)
+		array, ok := opt.Value.(*values.HostArray)
 		if !ok {
 			return errors.Errorf("package variables of type %T (used in %s.%s) not supported", opt.Value, pkg.Name, opt.Var)
 		}
-		node, err := o.eval.ArrayOps().ElementFromAtom(vrExpr.Decl.FFile, array, &ir.Ident{
-			Src:  vrExpr.VName,
-			Stor: vrExpr,
-		}, vrExpr.Type())
+		val, err := array.ToAtom()
 		if err != nil {
 			return err
 		}
-		scope.Define(ident, node)
+		env := engine.ProxyEnv(o.eval, vrExpr.Decl.FFile)
+		el, err := numbers.NewElement(env, vrExpr.Type(), val)
+		if err != nil {
+			return err
+		}
+		scope.Define(ident, el)
 		return nil
 	}, nil
 }

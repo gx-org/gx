@@ -812,7 +812,7 @@ func NewArrayType(src ast.Expr, dtype Type, rank ArrayRank) ArrayType {
 
 // Kind returns the tensor kind.
 func (s *arrayType) Kind() irkind.Kind {
-	if s.RankF == nil {
+	if s.DTypeF.Kind() == irkind.Invalid || s.RankF == nil {
 		return irkind.Invalid
 	}
 	if s.RankF.IsAtomic() {
@@ -1035,7 +1035,7 @@ type (
 		Name() string
 
 		// BuildFuncType builds the type of a function given how it is called.
-		BuildFuncType(fetcher Fetcher, call *FuncCallExpr) (*FuncType, error)
+		BuildFuncType(tpcmp TypeCmp, call *FuncCallExpr) (*FuncType, error)
 
 		// Implementation of the function, provided by the backend.
 		Implementation() any
@@ -1982,19 +1982,6 @@ type (
 		Typ Type
 	}
 
-	// AtomicValue is implemented by all atomic values.
-	AtomicValue interface {
-		Expr
-		atomicValue()
-	}
-
-	// AtomicValueT is a builtin constant.
-	AtomicValueT[T dtypes.Supported] struct {
-		Src ast.Expr
-		Val T
-		Typ Type
-	}
-
 	// ArrayLitExpr is an array literal.
 	ArrayLitExpr struct {
 		Src  *ast.CompositeLit
@@ -2152,7 +2139,6 @@ var (
 	_ Number             = (*NumberFloat)(nil)
 	_ Number             = (*NumberInt)(nil)
 	_ Expr               = (*NumberCastExpr)(nil)
-	_ AtomicValue        = (*AtomicValueT[int32])(nil)
 	_ Expr               = (*StringLiteral)(nil)
 	_ Expr               = (*ArrayLitExpr)(nil)
 	_ Expr               = (*StructLitExpr)(nil)
@@ -2275,23 +2261,6 @@ func (s *StringLiteral) Type() Type { return StringType() }
 // SourceString representation of the number.
 func (s *StringLiteral) SourceString(*File) string {
 	return s.Src.Value
-}
-
-func (s *AtomicValueT[T]) node()        {}
-func (s *AtomicValueT[T]) atomicValue() {}
-
-// Expr returns the AST expression.
-func (s *AtomicValueT[T]) Expr() ast.Expr { return s.Src }
-
-// Node returns the node in the AST tree.
-func (s *AtomicValueT[T]) Node() ast.Node { return s.Src }
-
-// Type returns the type returned by the function call.
-func (s *AtomicValueT[T]) Type() Type { return s.Typ }
-
-// SourceString returns the GX source code of the atomic value.
-func (s *AtomicValueT[T]) SourceString(*File) string {
-	return fmt.Sprint(s.Val)
 }
 
 func (s *ArrayLitExpr) node() {}
@@ -2992,7 +2961,7 @@ func (s *FieldStorage) Same(o Storage) bool {
 	if !ok {
 		return false
 	}
-	return s.Field == oT.Field
+	return s.Field.Origin() == oT.Field.Origin()
 }
 
 // String representing the receiver for debugging.
@@ -3246,10 +3215,12 @@ func (a *AssignCallResult) Value(Expr) Expr {
 		Src: &ast.IndexExpr{X: a.Call.Call()},
 		X:   a.Call,
 		Typ: a.Type(),
-		Index: &AtomicValueT[int64]{
-			Src: &ast.BasicLit{},
-			Val: int64(a.ResultIndex),
-			Typ: Int64Type(),
+		Index: &NumberCastExpr{
+			X: &NumberInt{
+				Src: &ast.BasicLit{},
+				Val: big.NewInt(int64(a.ResultIndex)),
+			},
+			Typ: IntType(),
 		},
 	}
 }

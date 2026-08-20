@@ -1,0 +1,21 @@
+package namedtype03
+
+// No test function
+
+type myfloat float64
+
+type (
+	child struct {
+		a myfloat
+		b [3]float64
+	}
+
+	parent struct {
+		m child
+		a float32
+	}
+)
+
+func newParent(m child, a float32) parent {
+	return parent{m: m, a: a}
+}

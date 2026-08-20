@@ -78,9 +78,7 @@ func (b *builder[T]) toValue(x T) string {
 }
 
 func (b *builder[T]) printScalar() {
-	b.w.WriteString("(")
 	b.w.WriteString(b.toValue(b.data[0]))
-	b.w.WriteString(")")
 }
 
 const skipArrayValues = false
@@ -195,6 +193,12 @@ func Sprint[T dtypes.Supported](data []T, axes []int) string {
 		return err.Error()
 	}
 	b.printType()
+	if len(axes) == 0 {
+		b.w.WriteString("(")
+	}
 	b.sDataPrint(data, axes)
+	if len(axes) == 0 {
+		b.w.WriteString(")")
+	}
 	return b.w.String()
 }

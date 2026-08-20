@@ -17,6 +17,8 @@ package ir
 import (
 	"fmt"
 	"go/ast"
+
+	"github.com/gx-org/gx/internal/undef"
 )
 
 type (
@@ -80,7 +82,7 @@ func (dm *AxisExpr) Equal(tpcmp TypeCmp, other AxisLengths) (bool, error) {
 	if err != nil {
 		return false, err
 	}
-	eq, err := ElementEqual(dmAx, otherAx)
+	eq, err := tpcmp.Compare(dmAx, otherAx)
 	if !eq || err != nil {
 		return false, err
 	}
@@ -123,6 +125,9 @@ func (dm *AxisExpr) UnifyWith(uni Unifier, targets []AxisLengths) ([]AxisLengths
 // Instantiate the rank into another rank.
 func (dm *AxisExpr) Instantiate(ev Fetcher, spec Specialiser) ([]AxisLengths, bool) {
 	xs, err := CompEvalExpr(ev, dm.X)
+	if undef.Is(err) {
+		return []AxisLengths{dm}, true
+	}
 	if err != nil {
 		return nil, spec.InstantiateError(err)
 	}

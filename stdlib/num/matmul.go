@@ -20,6 +20,7 @@ import (
 	"github.com/gx-org/backend/ops"
 	"github.com/gx-org/backend/shape"
 	"github.com/gx-org/gx/build/ir"
+	"github.com/gx-org/gx/internal/interp/compeval/cmp"
 	"github.com/gx-org/gx/interp/elements"
 	"github.com/gx-org/gx/interp/engine"
 	"github.com/gx-org/gx/interp/materialise"
@@ -88,7 +89,7 @@ func validateAxisExpr(env engine.Env, call *ir.FuncCallExpr, arg ir.Element, max
 	}
 	axes := make([]int, argSlice.Len())
 	for n, val := range argSlice.Elements() {
-		axis, err := elements.ConstantIntFromElement(val)
+		axis, err := elements.IntFromElement(val)
 		if err != nil {
 			return nil, nil, err
 		}
@@ -163,7 +164,7 @@ func evalEinsumAxes(env engine.Env, call *ir.FuncCallExpr, recv ir.Element, args
 	for n := range lhsContractingDims {
 		lhsDim := leftDims.Elements()[lhsContractingDims[n]]
 		rhsDim := rightDims.Elements()[rhsContractingDims[n]]
-		eq, err := ir.ElementEqual(lhsDim, rhsDim)
+		eq, err := cmp.Equal(env.ExprEval(), lhsDim, rhsDim)
 		if err != nil {
 			return nil, err
 		}
@@ -183,7 +184,7 @@ func evalEinsumAxes(env engine.Env, call *ir.FuncCallExpr, recv ir.Element, args
 	for n := range min(len(lhsBatchDims), len(rhsBatchDims)) {
 		lhsDim := leftDims.Elements()[lhsBatchDims[n]]
 		rhsDim := rightDims.Elements()[rhsBatchDims[n]]
-		eq, err := ir.ElementEqual(lhsDim, rhsDim)
+		eq, err := cmp.Equal(env.ExprEval(), lhsDim, rhsDim)
 		if err != nil {
 			return nil, err
 		}

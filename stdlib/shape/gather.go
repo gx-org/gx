@@ -16,12 +16,10 @@ package shape
 
 import (
 	"fmt"
-	"math/big"
 
 	"github.com/gx-org/backend/ops"
 	"github.com/gx-org/backend/shape"
 	"github.com/gx-org/gx/build/ir"
-	"github.com/gx-org/gx/internal/togo"
 	"github.com/gx-org/gx/interp/elements"
 	"github.com/gx-org/gx/interp/engine"
 	"github.com/gx-org/gx/interp/materialise"
@@ -50,16 +48,15 @@ func gatherAxis(env engine.Env, call *ir.FuncCallExpr, recv ir.Element, args []i
 	}
 	numPositions := 1
 	if len(indices) == 2 {
-		numPosBig, err := togo.ValueT[*big.Int](indices[1])
+		numPositions, err = elements.IntFromElement(indices[1])
 		if err != nil {
 			return nil, err
 		}
-		numPositions = int(numPosBig.Int64())
 	}
 	out := []ir.Element{indices[0]}
 	if numPositions > len(input) {
 		from := env.File()
-		gxErr, err := gxerrors.Errorf(env, "cannot specify %s position(s) with %d axis indices (in %s) to specify values in input array of %d axis length(s)", ir.SourceString(from, indices[0]), numPositions, builtin.ToShapeString(indices), len(input))
+		gxErr, err := gxerrors.Errorf(env, "cannot specify %s position(s) with %d axis indices (in %s) to specify values in input array of %d axis length(s)", ir.SourceString(from, indices[0]), numPositions, builtin.ToShapeString(from, indices), len(input))
 		return []ir.Element{builtin.NilShape, gxErr}, err
 	}
 	out = append(out, input[numPositions:]...)
@@ -67,11 +64,11 @@ func gatherAxis(env engine.Env, call *ir.FuncCallExpr, recv ir.Element, args []i
 }
 
 func evalGather(env engine.Env, call *ir.FuncCallExpr, recv ir.Element, args []ir.Element) ([]ir.Element, error) {
-	inputShape, err := elements.Map(elements.ConstantIntFromElement, args[0])
+	inputShape, err := elements.Map(elements.IntFromElement, args[0])
 	if err != nil {
 		return nil, err
 	}
-	indicesShape, err := elements.Map(elements.ConstantIntFromElement, args[1])
+	indicesShape, err := elements.Map(elements.IntFromElement, args[1])
 	if err != nil {
 		return nil, err
 	}

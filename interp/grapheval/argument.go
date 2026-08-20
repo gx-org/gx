@@ -143,11 +143,15 @@ func (vis *inputVisitor) newNamedTypeArgument(parent parentArgument, typ *ir.Nam
 		parent: parent,
 		typ:    typ,
 	}
-	named, ok := el.(elements.NType)
+	named, ok := el.(elements.NamedTypeI)
 	if !ok {
 		return nil, errors.Errorf("element %T is not a named type element", el)
 	}
-	recv, err := vis.newArg(arg, typ.Underlying.Val(), named.Under())
+	under, err := named.Under()
+	if err != nil {
+		return nil, err
+	}
+	recv, err := vis.newArg(arg, typ.Underlying.Val(), under)
 	if err != nil {
 		return nil, err
 	}
@@ -377,12 +381,12 @@ func (n *arrayArgument) UnaryOp(env engine.Env, expr *ir.UnaryExpr) (engine.Nume
 
 // BinaryOp applies a binary operator to x and y.
 // Note that the receiver can be either the left or right argument.
-func (n *arrayArgument) BinaryOp(env engine.Env, expr *ir.BinaryExpr, x, y engine.NumericalElement) (engine.NumericalElement, error) {
+func (n *arrayArgument) BinaryOp(env engine.Env, expr *ir.BinaryExpr, y engine.NumericalElement) (engine.NumericalElement, error) {
 	node, err := n.materialise(n.parentArgument.Evaluator().Materialiser())
 	if err != nil {
 		return nil, err
 	}
-	return node.BinaryOp(env, expr, x, y)
+	return node.BinaryOp(env, expr, y)
 }
 
 // Cast an element into a given data type.
@@ -440,7 +444,7 @@ func (n *arrayArgument) EvalShape() (*shape.Shape, error) {
 }
 
 func (n *arrayArgument) Axes(ev ir.Evaluator) (*elements.Slice, error) {
-	return n.node.ev.axesFromShape(ev.File(), n.shape)
+	return n.node.ev.axesFromShape(ev, n.shape.AxisLengths)
 }
 
 func (n *arrayArgument) Length(ev ir.Evaluator) (int, error) {
@@ -490,16 +494,16 @@ func (n *arrayArgument) Unflatten(handles *flatten.Parser) (values.Value, error)
 }
 
 // SliceAt of the value on the first axis given an index.
-func (n *arrayArgument) SliceAt(expr *ir.IndexExpr, index engine.NumericalElement) (ir.Element, error) {
+func (n *arrayArgument) SliceAt(env engine.Env, expr *ir.IndexExpr, index engine.NumericalElement) (ir.Element, error) {
 	node, err := n.materialise(n.Evaluator().Materialiser())
 	if err != nil {
 		return nil, err
 	}
-	return node.SliceAt(expr, index)
+	return node.SliceAt(env, expr, index)
 }
 
 // Slice the argument.
-func (n *arrayArgument) Slice(expr *ir.SliceExpr, low, high engine.NumericalElement) (ir.Element, error) {
+func (n *arrayArgument) Slice(env engine.Env, expr *ir.SliceExpr, low, high engine.NumericalElement) (ir.Element, error) {
 	return nil, errors.Errorf("not implemented for %T", n)
 }
 

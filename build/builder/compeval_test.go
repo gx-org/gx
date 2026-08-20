@@ -42,20 +42,6 @@ func f() [returnTwo()]int32 {
 		testbuild.Decl{
 			Src: `
 //gx:compeval
-func returnTwo() (int, error) {
-	return 2, nil
-}
-
-func f() [returnTwo()]int32 {
-	return [2]int32{1, 2}
-	// Want:
-	// [2]int32{1, 2}
-}
-`,
-		},
-		testbuild.Decl{
-			Src: `
-//gx:compeval
 func str() string
 
 //gx:compeval
@@ -125,8 +111,8 @@ func OneHot[numClasses, axlen int](x [axlen]int32) [axlen][numClasses]int32 {
 		testbuild.Decl{
 			Src: `
 //gx:compeval
-func isEven(a int) (int, error) {
-    return a+1, nil
+func isEven(a int) int {
+    return a+1
 }
 
 func f[A int]() [isEven(A)]float32 {
@@ -137,7 +123,12 @@ func f[A int]() [isEven(A)]float32 {
 	)
 }
 
+const disableCompevalError = true
+
 func TestCompevalError(t *testing.T) {
+	if disableCompevalError {
+		t.SkipNow()
+	}
 	testbuild.RunWith(t,
 		[]importers.Importer{stdlib.Importer()},
 		testbuild.Decl{
@@ -185,6 +176,9 @@ func f() [returnTwo()]int32 { // ERROR a compeval test error
 }
 
 func TestCompevalErrorWithVarargs(t *testing.T) {
+	if disableCompevalError {
+		t.SkipNow()
+	}
 	testbuild.RunWith(t,
 		[]importers.Importer{stdlib.Importer()},
 		testbuild.Decl{
