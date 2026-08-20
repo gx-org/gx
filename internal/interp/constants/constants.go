@@ -190,29 +190,35 @@ var (
 	CUint64   = ConverterT[uint64]{Kind: irkind.Uint64, ToGo: ToUInt64}
 )
 
-// NewConverter returns a new converter given a kind.
-func NewConverter(kind irkind.Kind) (v Converter, err error) {
+func findConverter(kind irkind.Kind) Converter {
 	switch kind {
 	case irkind.Bool:
-		return CBool, nil
+		return CBool
 	case irkind.Bfloat16:
-		return CBFloat16, nil
+		return CBFloat16
 	case irkind.Float32:
-		return CFloat32, nil
+		return CFloat32
 	case irkind.Float64:
-		return CFloat64, nil
+		return CFloat64
 	case irkind.Int:
-		return CInt, nil
+		return CInt
 	case irkind.Int32:
-		return CInt32, nil
+		return CInt32
 	case irkind.Int64:
-		return CInt64, nil
+		return CInt64
 	case irkind.Uint32:
-		return CUint32, nil
+		return CUint32
 	case irkind.Uint64:
-		return CUint64, nil
-	default:
-		err = fmterr.Internalf("%s cannot be converted to backend numerical: not supported", kind)
+		return CUint64
 	}
-	return
+	return nil
+}
+
+// ConverterFromKind returns a new converter given a kind.
+func ConverterFromKind(kind irkind.Kind) (v Converter, err error) {
+	cvt := findConverter(kind)
+	if cvt == nil {
+		return nil, fmterr.Internalf("%s cannot be converted to backend numerical: not supported", kind)
+	}
+	return cvt, nil
 }

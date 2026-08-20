@@ -52,7 +52,7 @@ func (n *array) BuildNode(g ops.Graph, kind irkind.Kind) (ops.Node, error) {
 	for _, ax := range axes {
 		total *= ax
 	}
-	cvr, err := NewConverter(kind)
+	cvr, err := ConverterFromKind(kind)
 	if err != nil {
 		return nil, err
 	}

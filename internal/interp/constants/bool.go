@@ -117,6 +117,10 @@ func (b *boolEl) BuildIR() ir.Expr {
 	return ir.NewIdent(storage)
 }
 
+func (b *boolEl) GoValue() (any, error) {
+	return b.val, nil
+}
+
 func (b *boolEl) SourceString(from *ir.File) string {
 	return b.String()
 }

@@ -24,6 +24,7 @@ import (
 	"github.com/gx-org/gx/internal/interp/compeval/cmp"
 	"github.com/gx-org/gx/internal/interp/coreiface"
 	"github.com/gx-org/gx/internal/interp/flatten"
+	"github.com/gx-org/gx/internal/togo"
 	"github.com/gx-org/gx/interp/engine"
 )
 
@@ -33,8 +34,9 @@ type String struct {
 }
 
 var (
-	_ IString       = (*String)(nil)
-	_ cmp.Canonical = (*String)(nil)
+	_ IString          = (*String)(nil)
+	_ cmp.Canonical    = (*String)(nil)
+	_ togo.WithGoValue = (*String)(nil)
 )
 
 // NewStringFromLit returns a state element storing a string GX value.
@@ -104,6 +106,11 @@ func (n *String) BuildIR() ir.Expr {
 // Expr returns the string as an IR expression.
 func (n *String) Expr(ir.Evaluator, ast.Expr) ([]ir.Expr, error) {
 	return []ir.Expr{n.BuildIR()}, nil
+}
+
+// GoValue returns the string as a Go value.
+func (n *String) GoValue() (any, error) {
+	return n.String(), nil
 }
 
 // ShortString returns the string value as a GX value.

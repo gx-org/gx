@@ -30,7 +30,7 @@ type WithGoValue interface {
 // Value converts an element to its Go value.
 // If the conversion is not possible, returns the input element.
 func Value(el ir.Element) (any, error) {
-	togo, err := cast.To[WithGoValue](el)
+	togo, err := cast.To[WithGoValue](ir.BareValue(el))
 	if err != nil {
 		return nil, err
 	}

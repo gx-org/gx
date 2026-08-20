@@ -79,6 +79,9 @@ func Map[T any](f func(ir.Element) (T, error), el ir.Element) ([]T, error) {
 
 // MapSlice transforms a slice of elements into a different type.
 func MapSlice[T any, U ir.Element](f func(ir.Element) (T, error), elts []U) ([]T, error) {
+	if len(elts) == 0 {
+		return nil, nil
+	}
 	ts := make([]T, len(elts))
 	for i, el := range elts {
 		var err error

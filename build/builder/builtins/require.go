@@ -37,10 +37,11 @@ func (*requireFunc) Name() string {
 var requireVarargsType = &ir.VarArgsType{
 	Typ: &ir.SliceType{
 		BaseType: ir.BaseType[ast.Expr]{Src: &ast.Ident{}},
-		DType:    ir.TypeExpr(nil, ir.StringType()),
+		DType:    ir.TypeExpr(nil, ir.AnyType()),
 		Rank:     1,
 	},
 }
+var requireVarargsExpr = ir.TypeExpr(nil, requireVarargsType)
 
 // BuildFuncType builds the type of a function given how it is called.
 func (f *requireFunc) BuildFuncType(tpcmp ir.TypeCmp, call *ir.FuncCallExpr) (*ir.FuncType, error) {
@@ -66,6 +67,30 @@ func (f *requireFunc) BuildFuncType(tpcmp ir.TypeCmp, call *ir.FuncCallExpr) (*i
 		Group: condGroup,
 	}}
 	ext.Params.List = append(ext.Params.List, condGroup)
+	if len(call.Args) <= 1 {
+		return ext, nil
+	}
+	// Build the string parameter.
+	formatGroup := &ir.FieldGroup{
+		Src:  srcField,
+		Type: ir.TypeExpr(nil, ir.StringType()),
+	}
+	formatGroup.Fields = []*ir.Field{&ir.Field{
+		Name:  &ast.Ident{Name: "format"},
+		Group: formatGroup,
+	}}
+	ext.Params.List = append(ext.Params.List, formatGroup)
+	// Build the varargs
+	anysGroup := &ir.FieldGroup{
+		Src:  srcField,
+		Type: requireVarargsExpr,
+	}
+	anysGroup.Fields = []*ir.Field{&ir.Field{
+		Name:  &ast.Ident{Name: "a"},
+		Group: anysGroup,
+	}}
+	ext.Params.List = append(ext.Params.List, anysGroup)
+	ext.VarArgs = requireVarargsType
 	return ext, nil
 }
 

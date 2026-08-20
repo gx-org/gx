@@ -19,7 +19,9 @@ import (
 	"github.com/gx-org/gx/build/fmterr"
 	"github.com/gx-org/gx/build/ir"
 	"github.com/gx-org/gx/internal/interp/constants"
-	"github.com/gx-org/gx/internal/undef"
+	"github.com/gx-org/gx/internal/interp/coreiface"
+	"github.com/gx-org/gx/internal/togo"
+	"github.com/gx-org/gx/interp/elements"
 	"github.com/gx-org/gx/interp/engine"
 )
 
@@ -34,16 +36,29 @@ func ToError(err error) *Error {
 	return rErr
 }
 
+func toError(env engine.Env, call *ir.FuncCallExpr, format string, a ...any) error {
+	from := env.File()
+	err := fmterr.Errorf(from.FileSet(), call.Src, format, a...)
+	return &Error{ErrorWithPos: err}
+}
+
 // Impl is the implementation of the require builtin.
 func Impl(env engine.Env, call *ir.FuncCallExpr, recv ir.Element, args []ir.Element) ([]ir.Element, error) {
 	condValue, isCondDefined := constants.ConvertOk(constants.CBool, args[0])
-	if !isCondDefined {
-		return nil, undef.Err()
-	}
-	if condValue {
+	if condValue || !isCondDefined {
 		return nil, nil
 	}
-	from := env.File()
-	err := fmterr.Errorf(from.FileSet(), call.Src, "condition %s not satisfied", call.Args[0].SourceString(from))
-	return nil, &Error{ErrorWithPos: err}
+	if len(args) == 1 {
+		from := env.File()
+		return nil, toError(env, call, "condition %s not satisfied", call.Args[0].SourceString(from))
+	}
+	fString, err := elements.StringFromElement(args[1])
+	if err != nil {
+		return nil, err
+	}
+	goArgs, err := coreiface.Map(togo.Value, args[2])
+	if err != nil {
+		return nil, err
+	}
+	return nil, toError(env, call, fString, goArgs...)
 }

@@ -17,6 +17,7 @@ package constants
 import (
 	"fmt"
 	"go/ast"
+	"math/big"
 
 	"github.com/gx-org/backend/ops"
 	"github.com/gx-org/gx/build/ir"
@@ -24,6 +25,7 @@ import (
 	"github.com/gx-org/gx/internal/interp/compeval/cmp"
 	"github.com/gx-org/gx/internal/interp/coreiface"
 	"github.com/gx-org/gx/internal/interp/csteager"
+	"github.com/gx-org/gx/internal/togo"
 	"github.com/gx-org/gx/interp/engine"
 )
 
@@ -31,17 +33,14 @@ import (
 type Scalar interface {
 	Constant
 	engine.ScalarConstant
+	csteager.Eval
+	togo.WithGoValue
 }
 
 type scalar struct {
 	typ ir.Type
 	nb  engine.ScalarNumber
 }
-
-var (
-	_ cmp.Canonical = (*scalar)(nil)
-	_ csteager.Eval = (*scalar)(nil)
-)
 
 // NewScalar returns a new scalar element given a typed expression and a number.
 func NewScalar(typ ir.Type, nb engine.ScalarNumber) Scalar {
@@ -137,7 +136,7 @@ func (n *scalar) AxisLengths() ([]int, error) {
 
 // Atom returns the Go value of the scalar.
 func (n *scalar) Atom(kind irkind.Kind) (any, error) {
-	cvr, err := NewConverter(kind)
+	cvr, err := ConverterFromKind(kind)
 	if err != nil {
 		return nil, err
 	}
@@ -150,6 +149,19 @@ func (n *scalar) ShortString(from *ir.File) string {
 
 func (n *scalar) SourceString(from *ir.File) string {
 	return fmt.Sprintf("%s(%s)", n.Type().ReferString(from), n.nb.Float().String())
+}
+
+func (n *scalar) GoValue() (any, error) {
+	cvt := findConverter(n.typ.Kind())
+	if cvt != nil {
+		return cvt.Convert(n)
+	}
+	floatVal := n.nb.Float()
+	intVal, acc := floatVal.Int(nil)
+	if acc == big.Exact {
+		return intVal, nil
+	}
+	return floatVal, nil
 }
 
 func (n *scalar) String() string {
