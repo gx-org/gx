@@ -15,7 +15,8 @@
 package engine
 
 import (
-	"google3/third_party/cel/go/common/ast/ast"
+	"go/ast"
+
 	"github.com/gx-org/gx/build/fmterr"
 	"github.com/gx-org/gx/build/ir"
 )
