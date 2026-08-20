@@ -4,7 +4,7 @@
 // you may not use this file except in compliance with the License.
 // You may obtain a copy of the License at
 //
-//	http://www.apache.org/licenses/LICENSE-2.0
+//     http://www.apache.org/licenses/LICENSE-2.0
 //
 // Unless required by applicable law or agreed to in writing, software
 // distributed under the License is distributed on an "AS IS" BASIS,
@@ -12,20 +12,14 @@
 // See the License for the specific language governing permissions and
 // limitations under the License.
 
-// Package testdata stores the GX test files for the builder.
-package testdata
+package require01
 
-import (
-	"embed"
+// No runtime test function
 
-	"github.com/gx-org/gx/build/builder/testbuild"
-)
-
-//go:embed *.gx bools/*.gx cast/*gx compeval/*.gx const/*.gx einsum/*.gx generics/*.gx namedtype/*.gx nontypes/*.gx numbers/*.gx require/*.gx set/*.gx traces/*.gx
-var fs embed.FS
-
-// Sources contains all the tests to run.
-var Sources = &testbuild.SourceFolder{
-	Name: "builder",
-	FS:   fs,
+//gx:compeval
+func TestOk() int {
+	require(true)
+	return 1
+	// Want:
+	// 1
 }

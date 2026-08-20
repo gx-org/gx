@@ -29,6 +29,7 @@ import (
 	"github.com/gx-org/gx/internal/interp/numbers"
 	"github.com/gx-org/gx/interp/elements"
 	"github.com/gx-org/gx/interp/engine"
+	"github.com/gx-org/gx/interp/require"
 )
 
 // InitBuiltins initializes the builtins.
@@ -45,6 +46,7 @@ func (itp *Base) InitBuiltins(scope *scope.RWScope[ir.Element]) error {
 		appendF,
 		axlengthsF,
 		lenF,
+		requireF,
 		setF,
 		traceF,
 	} {
@@ -130,6 +132,10 @@ var (
 	lenF = &builtinFunc{
 		FuncImpl: builtins.Len(),
 		impl:     lenImpl,
+	}
+	requireF = &builtinFunc{
+		FuncImpl: builtins.Require(),
+		impl:     require.Impl,
 	}
 	setF = &builtinFunc{
 		FuncImpl: builtins.Set(),
