@@ -16,9 +16,11 @@ package testbuild
 
 import (
 	"fmt"
+	"testing"
 
 	"github.com/pkg/errors"
 	"github.com/gx-org/gx/build/builder"
+	"github.com/gx-org/gx/build/importers"
 	"github.com/gx-org/gx/build/ir"
 	"github.com/gx-org/gx/internal/interp/compeval/cmp"
 	"github.com/gx-org/gx/internal/interp/compeval"
@@ -43,7 +45,7 @@ func (tt CompEval) Source() string {
 	return tt.Src
 }
 
-func (tt CompEval) stringFromElement(ev ir.Evaluator, el ir.Element) (string, error) {
+func stringFromElement(ev ir.Evaluator, el ir.Element) (string, error) {
 	algX, err := cmp.ToAlgExpr(ev, el)
 	if err != nil {
 		return "", err
@@ -101,7 +103,7 @@ package test
 		return nil, err
 	}
 	for i, out := range outs {
-		got, err := tt.stringFromElement(fitp, out)
+		got, err := stringFromElement(fitp, out)
 		if err != nil {
 			return nil, err
 		}
@@ -111,4 +113,101 @@ package test
 		}
 	}
 	return irPkg, nil
+}
+
+type compevalFactory struct {
+	srcs []TestFactory
+}
+
+// CompEvalFactory returns a test factory to run GX code given a backend.
+func CompEvalFactory(srcs ...TestFactory) TestFactory {
+	return compevalFactory{
+		srcs: srcs,
+	}
+}
+
+func (f compevalFactory) compile(bld *Builder, srcTest WithName) ([]Test, error) {
+	pkg, err := srcTest.Run(bld)
+	if err != nil {
+		return nil, err
+	}
+	if pkg == nil {
+		return nil, nil
+	}
+	fns := FindTests(pkg, true)
+	var tests []Test
+	for _, fn := range fns {
+		tests = append(tests, compevalFuncTest{
+			factory: &f,
+			parent:  srcTest,
+			pkg:     pkg,
+			fun:     fn,
+		})
+	}
+	return tests, nil
+}
+
+func (f compevalFactory) BuildTests(t *testing.T, imps []importers.Importer) ([]Test, error) {
+	bld := NewLocalBuilder(imps...)
+	var tests []Test
+	for _, src := range f.srcs {
+		srcTests, err := src.BuildTests(t, imps)
+		if err != nil {
+			return nil, err
+		}
+		for _, srcTest := range srcTests {
+			testWithName := srcTest.(WithName)
+			t.Run(testWithName.Name(), func(t *testing.T) {
+				srcTests, err = f.compile(bld, testWithName)
+				if err != nil {
+					t.Error(err)
+					return
+				}
+				tests = append(tests, srcTests...)
+			})
+		}
+	}
+	return tests, nil
+}
+
+type compevalFuncTest struct {
+	factory *compevalFactory
+	parent  WithName
+	pkg     *ir.Package
+	fun     *ir.FuncDecl
+}
+
+var _ WithName = compevalFuncTest{}
+
+func (ft compevalFuncTest) Source() string {
+	return ft.parent.Source()
+}
+
+func (ft compevalFuncTest) Name() string {
+	return ft.parent.Name() + "/" + ft.fun.Name()
+}
+
+func (ft compevalFuncTest) Run(b *Builder) (*ir.Package, error) {
+	bld := builder.New(b.Importers()...)
+	hostEval := compeval.NewHostEvaluator(bld, compeval.RunFunc)
+	itp, err := interp.New(hostEval, hostEval, cpevelements.MixedRunner(), nil)
+	if err != nil {
+		return nil, err
+	}
+	outs, err := itp.EvalFunc(ft.fun, &elements.InputElements{})
+	if err != nil {
+		return nil, err
+	}
+	fitp, err := itp.ForFile(ft.fun.File())
+	if err != nil {
+		return nil, err
+	}
+	got := BuildGot(outs, func(el ir.Element) string {
+		s, err := stringFromElement(fitp, el)
+		if err != nil {
+			s += fmt.Sprintf(" EVAL ERROR: %v", err)
+		}
+		return s
+	})
+	return ft.pkg, CheckOutput(ft.fun, outs, got)
 }

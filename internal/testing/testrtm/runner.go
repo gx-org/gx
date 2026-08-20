@@ -16,18 +16,16 @@ package testrtm
 
 import (
 	"fmt"
-	"go/ast"
 	"path/filepath"
 	"strings"
 	"testing"
 
-	"github.com/google/go-cmp/cmp"
 	"github.com/gx-org/gx/api"
 	"github.com/gx-org/gx/api/options"
 	"github.com/gx-org/gx/api/tracer"
 	"github.com/gx-org/gx/api/values"
 	gxfmt "github.com/gx-org/gx/base/fmt"
-	"github.com/gx-org/gx/build/fmterr"
+	"github.com/gx-org/gx/build/builder/testbuild"
 	"github.com/gx-org/gx/build/ir"
 	"github.com/gx-org/gx/golang/backend/kernels"
 )
@@ -70,13 +68,20 @@ func (r *Runner) RunWithArgs(fn *ir.FuncDecl, recv values.Value, args []values.V
 		return nil, "", err
 	}
 	tracer := testTracer{}
-	values, err := runner.Run(nil, nil, &tracer)
+	outs, err := runner.Run(nil, nil, &tracer)
 	if err != nil {
 		return nil, "", err
 	}
-	all := buildGot(fn.File(), values) + tracer.trace.String()
+	flattenOuts, err := values.ToHost(kernels.Allocator(), flatten(outs))
+	if err != nil {
+		return outs, "", err
+	}
+	all := testbuild.BuildGot(flattenOuts, func(val values.Value) string {
+		return valueToString(fn.File(), val)
+	})
+	all += tracer.trace.String()
 	all = strings.TrimSpace(all)
-	return values, all, nil
+	return flattenOuts, all, nil
 }
 
 func valueToString(file *ir.File, val values.Value) string {
@@ -107,24 +112,6 @@ func (r *testTracer) Trace(file *ir.File, call *ir.FuncCallExpr, vals []values.V
 	return nil
 }
 
-// WantPrefix is the prefix in the comment indicating the result of a test.
-const WantPrefix = "Want:"
-
-func wantOutput(fn *ir.FuncDecl) (*ast.CommentGroup, error) {
-	cmts := commentsInFunc(fn, WantPrefix)
-	if len(cmts) == 0 {
-		return nil, nil
-	}
-	if len(cmts) > 1 {
-		return nil, fmterr.Errorf(
-			fn.File().Package.FSet,
-			cmts[1],
-			"function %s declares more than one Want",
-			fn.Name())
-	}
-	return cmts[0], nil
-}
-
 func flatten(out []values.Value) []values.Value {
 	var flat []values.Value
 	for _, v := range out {
@@ -142,83 +129,19 @@ func flatten(out []values.Value) []values.Value {
 	return flat
 }
 
-func buildGot(from *ir.File, out []values.Value) string {
-	out, err := values.ToHost(kernels.Allocator(), flatten(out))
-	if err != nil {
-		return err.Error()
-	}
-	if len(out) == 0 {
-		return ""
-	}
-	if len(out) == 1 {
-		return valueToString(from, out[0])
-	}
-	bld := strings.Builder{}
-	for i, s := range out {
-		fmt.Fprintf(&bld, "%d: %s\n", i, valueToString(from, s))
-	}
-	return strings.TrimSpace(bld.String())
-}
-
-func commentsInFunc(fn *ir.FuncDecl, prefix string) []*ast.CommentGroup {
-	pkg := fn.File().Package
-	startFunc := fn.Src.Pos()
-	fileName := pkg.FSet.Position(startFunc).Filename
-	fileDecl := pkg.File(fileName)
-	endFunc := fn.Src.End()
-	var cmts []*ast.CommentGroup
-	for _, cmt := range fileDecl.Src.Comments {
-		pos := cmt.Pos()
-		if pos < startFunc || pos > endFunc {
-			continue
-		}
-		if !strings.HasPrefix(strings.TrimSpace(cmt.Text()), prefix) {
-			continue
-		}
-		cmts = append(cmts, cmt)
-	}
-	return cmts
-}
-
-func textFromComment(cmt *ast.CommentGroup, prefix string) string {
-	text := strings.TrimPrefix(cmt.Text(), prefix)
-	for strings.HasSuffix(text, "\n") {
-		text = strings.TrimSuffix(text, "\n")
-	}
-	return strings.TrimSpace(text)
-}
-
 // Test runs a GX test and returns an error if the test fails.
 func (r *Runner) Test(fn *ir.FuncDecl, options []options.PackageOption) error {
 	values, got, err := r.Run(fn, options)
 	if err != nil {
 		return fmt.Errorf("runner.Run error:\n%+v", err)
 	}
-	wantOutCmt, err := wantOutput(fn)
-	if err != nil {
-		return fmt.Errorf("%s: incorrect output declaration: %v",
-			fmterr.At(fn.File().Package.FSet, fn.Src).String(),
-			err)
-	}
-	if wantOutCmt == nil {
-		return fmt.Errorf("%s expected a Want: directive", fmterr.At(fn.File().Package.FSet, fn.Src))
-	}
-	want := textFromComment(wantOutCmt, WantPrefix)
-	if got != want {
-		gotTypes := make([]string, len(values))
-		for i, val := range values {
-			gotTypes[i] = fmt.Sprintf("%T", val)
-		}
-		return fmt.Errorf("test run error:\n%s: incorrect output:\ngot (%s):\n%s\nwant:\n%s\ndiff:\n%s",
-			fmterr.At(fn.File().Package.FSet, wantOutCmt), strings.Join(gotTypes, ","), got, want, cmp.Diff(got, want))
-	}
-	return nil
+	return testbuild.CheckOutput(fn, values, got)
 }
 
 // RunAll compiles and runs all the test at a specified path.
 // Returns the number of tests that have been run.
 func RunAll(t *testing.T, rtm *api.Runtime, pkg *ir.Package) {
-	fns, err := FindTests(pkg)
+	fns, err := testbuild.MustFindTests(pkg, false)
 	if err != nil {
 		t.Errorf("\n%+v", err)
 		return

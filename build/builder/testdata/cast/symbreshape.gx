@@ -1,6 +1,6 @@
 package symbreshape
 
-// No test function
+// No runtime test function
 
 func f[A, B, C int](x [A][B * C]float32) [A][B][C]float32 {
 	return [A][B][C]float32(x)

@@ -23,6 +23,7 @@ import (
 
 	"github.com/gx-org/backend/dtypes"
 	"github.com/gx-org/gx/api"
+	"github.com/gx-org/gx/build/builder/testbuild"
 	"github.com/gx-org/gx/build/fmterr"
 	"github.com/gx-org/gx/build/ir"
 	"github.com/gx-org/gx/golang/binder/gobindings/types"
@@ -50,7 +51,7 @@ func RunAll(t *testing.T, rtm *api.Runtime, pkg *ir.Package, err error) (numTest
 	if numExpectedErrors > 0 {
 		return numExpectedErrors
 	}
-	fns, err := testrtm.FindTests(pkg)
+	fns, err := testbuild.MustFindTests(pkg, false)
 	if err != nil {
 		t.Errorf("\n%+v", err)
 		return

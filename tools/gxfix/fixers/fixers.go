@@ -24,6 +24,7 @@ import (
 	"strings"
 
 	"github.com/gx-org/gx/api"
+	"github.com/gx-org/gx/build/builder/testbuild"
 	"github.com/gx-org/gx/build/ir"
 	"github.com/gx-org/gx/internal/testing/testrtm"
 )
@@ -114,7 +115,7 @@ func fixTestOutput(rtm *api.Runtime, path string, f *ast.File) (fixed bool, err 
 		if !strings.HasPrefix(funcDecl.Name.Name, "Test") {
 			continue
 		}
-		wantComment := commentsInFunc(f, funcDecl, testrtm.WantPrefix)
+		wantComment := commentsInFunc(f, funcDecl, testbuild.WantPrefix)
 		if wantComment == nil {
 			continue
 		}

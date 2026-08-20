@@ -1,6 +1,6 @@
 package namedtype03
 
-// No test function
+// No runtime test function
 
 type myfloat float64
 
