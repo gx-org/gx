@@ -11,6 +11,8 @@ github.com/gx-org/backend v0.3.1-0.20260625164847-77049fefa9d8 h1:zeP+fX8iUXFH6d
 github.com/gx-org/backend v0.3.1-0.20260625164847-77049fefa9d8/go.mod h1:7/vxVrdZy+XCB2lXO+rCAhHrYlx3Byi6fivxAPVtRUE=
 github.com/gx-org/backend v0.3.1-0.20260702145205-f205c968f773 h1:BcCbH+xmIcyKXArXjtjxdWdUV2IWY2CfEM7UCP1gYJ4=
 github.com/gx-org/backend v0.3.1-0.20260702145205-f205c968f773/go.mod h1:7/vxVrdZy+XCB2lXO+rCAhHrYlx3Byi6fivxAPVtRUE=
+github.com/gx-org/backend v0.3.1-0.20260820192500-e317dd7d00dd h1:BFiyGRHBMI0GEULdsB71sqZVv8/wb3UuBulYdt3p4gw=
+github.com/gx-org/backend v0.3.1-0.20260820192500-e317dd7d00dd/go.mod h1:/FRuZHqsmK3FBVrlq8ZTjdamsxOL91X3FaxtUAzfNp4=
 github.com/inconshreveable/mousetrap v1.1.0 h1:wN+x4NVGpMsO7ErUn/mUI3vEoE6Jt13X2s0bqwp9tc8=
 github.com/inconshreveable/mousetrap v1.1.0/go.mod h1:vpF70FUmC8bwa3OWnCshd2FqLfsEA9PFc4w1p2J65bw=
 github.com/pkg/errors v0.9.1 h1:FEBLx1zS214owpjy7qsBeixbURkuhQAwrK5UwLGTwt4=

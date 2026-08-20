@@ -4,7 +4,7 @@ go 1.26
 
 require (
 	github.com/google/go-cmp v0.7.0
-	github.com/gx-org/backend v0.3.1-0.20260702145205-f205c968f773
+	github.com/gx-org/backend v0.3.1-0.20260820192500-e317dd7d00dd
 	github.com/pkg/errors v0.9.1
 	github.com/spf13/cobra v1.10.2
 	go.uber.org/multierr v1.11.0
