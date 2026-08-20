@@ -1,0 +1,10 @@
+package slicenil
+
+// No runtime test function
+
+//gx:compeval
+func Test() []string {
+	return nil
+	// Want:
+	// nil
+}

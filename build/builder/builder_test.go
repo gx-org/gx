@@ -29,5 +29,5 @@ var (
 )
 
 func TestBuilder(t *testing.T) {
-	testbuild.RunFactory(t, nil, testbuild.CompEvalFactory(testdata.Sources))
+	testbuild.RunFactory(t, nil, testbuild.CompEval(testdata.Sources))
 }

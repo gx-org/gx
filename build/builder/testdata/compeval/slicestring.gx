@@ -1,0 +1,34 @@
+package slicestring
+
+// No runtime test function
+
+//gx:compeval
+func Test01() []string {
+	return []string{"a", "b", "c"}
+	// Want:
+	// []string{"a", "b", "c"}
+}
+
+//gx:compeval
+func Test02() []string {
+	s := []string{"a", "b", "c", "d"}
+	return s[1:]
+	// Want:
+	// []string{"b", "c", "d"}
+}
+
+//gx:compeval
+func Test03() []string {
+	s := []string{"a", "b", "c", "d"}
+	return s[:2]
+	// Want:
+	// []string{"a", "b"}
+}
+
+//gx:compeval
+func Test() []string {
+	s := []string{"a", "b", "c", "d"}
+	return s[1:2]
+	// Want:
+	// []string{"b"}
+}
