@@ -116,7 +116,7 @@ func specializeFuncType(rscope resolveScope, x ir.Expr, indices []ir.Expr, fun *
 		return x, rscope.Err().Appendf(x.Node(), "got %d type arguments but want %d", gotN, wantN)
 	}
 	genParams := buildGenericParams(ftype.TypeParams.Fields(), len(indices))
-	compEval, compEvalOk := compEvalForFuncType(rscope, x.Node(), ftype)
+	compEval, _, compEvalOk := compEvalForFuncType(rscope, x.Node(), ftype)
 	if !compEvalOk {
 		return x, false
 	}

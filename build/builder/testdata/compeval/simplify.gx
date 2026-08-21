@@ -1,0 +1,17 @@
+package simplify
+
+// No runtime test function
+
+//gx:compeval
+func TestAdd(a, b int32) int32 {
+	return a + b
+	// Want:
+	// a+b
+}
+
+//gx:compeval
+func TestConstants(a int32) int32 {
+	return 2 + a + 3
+	// Want:
+	// a+5
+}
