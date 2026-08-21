@@ -1,0 +1,9 @@
+package struct_err01
+
+type sizes struct {
+	a, b int
+}
+
+func f[s, t sizes]() [s.a][t.b]float32 {
+	return [s.a][s.b]float32(3) // ERROR cannot use [s.a][s.b]float32 as [s.a][t.b]float32 value in return statement
+}
