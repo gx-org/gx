@@ -1,0 +1,11 @@
+package cast04
+
+func newFloat32G[X int]() [X]float32 {
+	return [X]float32{}
+}
+
+func TestGenericAxLen() [2]float32 {
+	return newFloat32G[2]()
+	// Want:
+	// [2]float32{0, 0}
+}

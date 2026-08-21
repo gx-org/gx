@@ -37,19 +37,19 @@ func (*appendFunc) Name() string {
 }
 
 // BuildFuncType builds the type of a function given how it is called.
-func (f *appendFunc) BuildFuncType(fetcher ir.Fetcher, call *ir.FuncCallExpr) (*ir.FuncType, error) {
+func (f *appendFunc) BuildFuncType(tpcmp ir.TypeCmp, call *ir.FuncCallExpr) (*ir.FuncType, error) {
 	ext := &ir.FuncType{
 		BaseType: ir.BaseType[*ast.FuncType]{
 			Src: &ast.FuncType{Func: call.Src.Pos()},
 		},
 	}
 	if len(call.Args) == 0 {
-		return ext, fmterr.Errorf(fetcher.File().FileSet(), call.Node(), "not enough arguments for append() (expected 1, found 0)")
+		return ext, fmterr.Errorf(tpcmp.File().FileSet(), call.Node(), "not enough arguments for append() (expected 1, found 0)")
 	}
 	if len(call.Args) == 1 {
-		return ext, fmterr.Errorf(fetcher.File().FileSet(), call.Node(), "append with no values")
+		return ext, fmterr.Errorf(tpcmp.File().FileSet(), call.Node(), "append with no values")
 	}
-	params, err := builtins.BuildFuncParams(fetcher, call, f.Name(), []ir.Type{
+	params, err := builtins.BuildFuncParams(tpcmp, call, f.Name(), []ir.Type{
 		builtins.GenericSliceType,
 		builtins.VarArgsType,
 	})

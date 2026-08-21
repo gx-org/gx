@@ -1,0 +1,10 @@
+package neq02
+
+// No runtime test function
+
+//gx:compeval
+func Test() bool {
+	return 2 != 3
+	// Want:
+	// true
+}

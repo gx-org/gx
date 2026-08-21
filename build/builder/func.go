@@ -20,6 +20,8 @@ import (
 
 	"github.com/gx-org/gx/build/builder/irb"
 	"github.com/gx-org/gx/build/ir"
+	"github.com/gx-org/gx/internal/interp/compeval/srcstore"
+	"github.com/gx-org/gx/internal/interp/compeval/surrogates"
 )
 
 type signatureNamespace struct {
@@ -117,18 +119,30 @@ func rankInferOk(rscope resolveScope, src ast.Node, typ ir.Type) bool {
 	return true
 }
 
-func defineTypeParam(s localScope, storage *ir.FieldStorage) bool {
-	var generic ir.GenericParam
-	if ir.IsNonTypeGeneric(storage.Type()) {
-		generic = ir.NewGenericNonTypeParam(storage.Field)
-	} else {
-		generic = ir.NewGenericTypeParam(storage.Field)
+func defineGenericParam(s localScope, storage *ir.FieldStorage) bool {
+	if !ir.IsNonTypeGeneric(storage.Type()) {
+		generic := ir.NewGenericTypeParam(storage.Field)
+		return s.update(storage, generic)
 	}
-	return defineLocalVar(s, generic)
+	generic := ir.NewGenericNonTypeParam(storage.Field)
+	return defineFieldForStorage(s, storage.Field, generic)
 }
 
-func defineParam(s localScope, storage *ir.FieldStorage) bool {
-	return defineLocalVar(s, storage)
+func defineFieldForStorage(s localScope, field *ir.Field, storage ir.Storage) bool {
+	el, err := surrogates.FieldRoot(field)
+	ok := true
+	if err != nil {
+		ok = s.Err().AppendAt(storage.Node(), err)
+	}
+	linkedEl, err := srcstore.Link(storage, el)
+	if err != nil {
+		ok = s.Err().AppendAt(storage.Node(), err)
+	}
+	return s.update(storage, linkedEl) && ok
+}
+
+func defineField(s localScope, storage *ir.FieldStorage) bool {
+	return defineFieldForStorage(s, storage.Field, storage)
 }
 
 func (n *funcType) buildFuncType(rscope resolveScope) (*ir.FuncType, *funcResolveScope, bool) {
@@ -138,15 +152,15 @@ func (n *funcType) buildFuncType(rscope resolveScope) (*ir.FuncType, *funcResolv
 	}
 	var tParamsOk, recvOk, paramsOk, resultsOk bool
 	sigscope, ephemeralOk := newEphemeralResolveScope(rscope, n.src)
-	typeParamsScope := newDefineScope(sigscope, defineTypeParam)
+	typeParamsScope := newDefineScope(sigscope, defineGenericParam)
 	ext.TypeParams, tParamsOk = n.typeParams.buildFieldList(typeParamsScope)
 	ext.Receiver, recvOk = n.recv.buildFieldList(newDefineScope(sigscope, nil))
 	if recvOk && ext.Receiver != nil {
 		if field := ext.ReceiverField(); field.Name != nil {
-			defineLocalVar(sigscope, field.Storage())
+			defineFieldForStorage(sigscope, field, field.Storage())
 		}
 	}
-	paramScope := newDefineScope(sigscope, defineParam)
+	paramScope := newDefineScope(sigscope, defineField)
 	paramScope.ftype = ext
 	ext.Params, paramsOk = n.params.buildFieldList(paramScope)
 	if n.varargs != nil {

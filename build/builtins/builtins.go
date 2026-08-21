@@ -24,7 +24,6 @@ import (
 	"github.com/gx-org/gx/build/fmterr"
 	"github.com/gx-org/gx/build/ir"
 	"github.com/gx-org/gx/build/ir/irkind"
-	"github.com/gx-org/gx/interp/elements"
 )
 
 var (
@@ -132,11 +131,11 @@ func fmtExprType(from *ir.File) func(ir.Expr) string {
 // and returns a list of parameters for the function.
 // Arguments with NumberKind are replaced by the target type.
 // It returns an error if a call's arguments don't match the given signature.
-func BuildFuncParams(fetcher ir.Fetcher, call *ir.FuncCallExpr, name string, sig []ir.Type) ([]ir.Type, error) {
+func BuildFuncParams(tpcmp ir.TypeCmp, call *ir.FuncCallExpr, name string, sig []ir.Type) ([]ir.Type, error) {
 	if len(sig) != len(call.Args) {
-		actual := joinSignature[ir.Expr](call.Args, fmtExprType(fetcher.File()))
-		wanted := joinSignature[ir.Type](sig, fmtType(fetcher.File()))
-		return nil, fmterr.Errorf(fetcher.File().FileSet(), call.Node(), "wrong number of arguments in call to %s: got %s but want %s", name, actual, wanted)
+		actual := joinSignature[ir.Expr](call.Args, fmtExprType(tpcmp.File()))
+		wanted := joinSignature[ir.Type](sig, fmtType(tpcmp.File()))
+		return nil, fmterr.Errorf(tpcmp.File().FileSet(), call.Node(), "wrong number of arguments in call to %s: got %s but want %s", name, actual, wanted)
 	}
 	params := make([]ir.Type, len(sig))
 	for i, want := range sig {
@@ -164,61 +163,40 @@ func BuildFuncParams(fetcher ir.Fetcher, call *ir.FuncCallExpr, name string, sig
 			ok = got.Kind() == irkind.Slice
 			params[i] = got
 		default:
-			assignable, err := got.AssignableTo(fetcher, want)
+			assignable, err := got.AssignableTo(tpcmp, want)
 			if err != nil {
 				return nil, err
 			}
 			ok = assignable
 		}
 		if !ok {
-			actual := joinSignature[ir.Expr](call.Args, fmtExprType(fetcher.File()))
-			wanted := joinSignature[ir.Type](sig, fmtType(fetcher.File()))
-			return nil, fmterr.Errorf(fetcher.File().FileSet(), call.Node(), "signature mismatch in call to %s: got %s but want %s", name, actual, wanted)
+			actual := joinSignature[ir.Expr](call.Args, fmtExprType(tpcmp.File()))
+			wanted := joinSignature[ir.Type](sig, fmtType(tpcmp.File()))
+			return nil, fmterr.Errorf(tpcmp.File().FileSet(), call.Node(), "signature mismatch in call to %s: got %s but want %s", name, actual, wanted)
 		}
 	}
 	return params, nil
 }
 
 // NarrowType converts an abstract type into more concrete type, typically *github.com/gx-org/gx/build/ir.ArrayType.
-func NarrowType[T ir.Type](fetcher ir.Fetcher, call *ir.FuncCallExpr, arg ir.Type) (t T, err error) {
+func NarrowType[T ir.Type](tpcmp ir.TypeCmp, call *ir.FuncCallExpr, arg ir.Type) (t T, err error) {
 	var ok bool
 	t, ok = arg.(T)
 	if !ok {
-		err = fmterr.Errorf(fetcher.File().FileSet(), call.Node(), "cannot convert %T to %s", arg, reflect.TypeFor[T]().String())
+		err = fmterr.Errorf(tpcmp.File().FileSet(), call.Node(), "cannot convert %T to %s", arg, reflect.TypeFor[T]().String())
 	}
 	return
 }
 
 // NarrowTypes converts abstract types into more concrete types, typically *ir.ArrayType.
-func NarrowTypes[T ir.Type](fetcher ir.Fetcher, call *ir.FuncCallExpr, args []ir.Type) ([]T, error) {
+func NarrowTypes[T ir.Type](tpcmp ir.TypeCmp, call *ir.FuncCallExpr, args []ir.Type) ([]T, error) {
 	res := make([]T, len(args))
 	for i, arg := range args {
 		var err error
-		res[i], err = NarrowType[T](fetcher, call, arg)
+		res[i], err = NarrowType[T](tpcmp, call, arg)
 		if err != nil {
 			return nil, err
 		}
 	}
 	return res, nil
-}
-
-// UniqueAxesFromExpr returns the set of unique axis indices found in a slice literal.
-func UniqueAxesFromExpr(fetcher ir.Fetcher, expr ir.Expr) (map[int]struct{}, error) {
-	sliceExpr, ok := expr.(*ir.SliceLitExpr)
-	if !ok {
-		return nil, fmterr.Errorf(fetcher.File().FileSet(), expr.Node(), "expected axes slice literal, but got %s", expr.SourceString(fetcher.File()))
-	}
-
-	axes := map[int]struct{}{}
-	for _, val := range sliceExpr.Elts {
-		axis, err := elements.MustEvalInt(fetcher, val)
-		if err != nil {
-			return nil, fmterr.Error(fetcher.File().FileSet(), expr.Node(), err)
-		}
-		if _, exists := axes[axis]; exists {
-			return nil, fmterr.Errorf(fetcher.File().FileSet(), expr.Node(), "axis index %d specified more than once", axis)
-		}
-		axes[axis] = struct{}{}
-	}
-	return axes, nil
 }

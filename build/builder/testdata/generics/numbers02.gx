@@ -1,6 +1,6 @@
 package numbers02
 
-// No test function
+// No runtime test function
 
 type num interface {
 	int

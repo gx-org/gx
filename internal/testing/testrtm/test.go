@@ -45,7 +45,7 @@ func (f factory) compile(bld *testbuild.Builder, srcTest testbuild.WithName) ([]
 	if pkg == nil {
 		return nil, nil
 	}
-	fns, err := FindTests(pkg)
+	fns, err := testbuild.MustFindTests(pkg, false)
 	if err != nil {
 		return nil, err
 	}

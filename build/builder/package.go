@@ -310,6 +310,11 @@ func (pkg *IncrementalPackage) Build(src string) error {
 
 // BuildExpr builds an expression.
 func (pkg *IncrementalPackage) BuildExpr(src string, imports ...*ast.ImportSpec) (ir.Expr, error) {
+	return pkg.BuildExprFrom(src, nil, imports...)
+}
+
+// BuildExprFrom builds an expression from a context and imports.
+func (pkg *IncrementalPackage) BuildExprFrom(src string, sub map[ir.Storage]ir.Element, imports ...*ast.ImportSpec) (ir.Expr, error) {
 	const fileName = "expression"
 	fset := &token.FileSet{}
 	fset.AddFile(fileName, -1, len(src))
@@ -350,6 +355,9 @@ func (pkg *IncrementalPackage) BuildExpr(src string, imports ...*ast.ImportSpec)
 		src: &ast.BlockStmt{},
 	})
 	if !ok {
+		return nil, errs
+	}
+	if ok := blockScope.updateAll(sub); !ok {
 		return nil, errs
 	}
 	irExpr, ok := expr.buildExpr(blockScope)

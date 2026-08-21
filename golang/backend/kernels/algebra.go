@@ -19,7 +19,7 @@ import (
 	"go/token"
 
 	"github.com/pkg/errors"
-	"github.com/gomlx/compute/dtypes/bfloat16"
+	"github.com/gomlx/gopjrt/dtypes/bfloat16"
 	"github.com/gx-org/backend/dtypes"
 	"github.com/gx-org/backend/shape"
 	"github.com/gx-org/gx/build/ir"
@@ -155,6 +155,8 @@ func (algebraicFactory[T]) Cast(kind dtypes.DType, dims []int) (Unary, *shape.Sh
 		return castArray[T, float32](dims), shap, algebraicFactory[float32]{}, nil
 	case dtypes.Float64:
 		return castArray[T, float64](dims), shap, algebraicFactory[float64]{}, nil
+	case dtypes.Int:
+		return castArray[T, int](dims), shap, integerFactory[int]{}, nil
 	case dtypes.Int32:
 		return castArray[T, int32](dims), shap, integerFactory[int32]{}, nil
 	case dtypes.Int64:

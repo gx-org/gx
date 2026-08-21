@@ -20,6 +20,7 @@ import (
 	"github.com/gx-org/backend/shape"
 	"github.com/gx-org/gx/build/ir"
 	"github.com/gx-org/gx/build/ir/irkind"
+	"github.com/gx-org/gx/internal/interp/compeval/cmp"
 	"github.com/gx-org/gx/interp/elements"
 	"github.com/gx-org/gx/interp/engine"
 	"github.com/gx-org/gx/interp/materialise"
@@ -45,7 +46,7 @@ var Package = builtin.PackageBuilder{
 }
 
 func vecVecMatMul(env engine.Env, left, right ir.Element) ([]ir.Element, error) {
-	eq, err := ir.ElementEqual(left, right)
+	eq, err := cmp.Equal(env.ExprEval(), left, right)
 	if err != nil {
 		return nil, err
 	}
@@ -58,26 +59,26 @@ func vecVecMatMul(env engine.Env, left, right ir.Element) ([]ir.Element, error) 
 }
 
 func vecMatMatMul(env engine.Env, left ir.Element, right []ir.Element) ([]ir.Element, error) {
-	eq, err := ir.ElementEqual(left, right[0])
+	eq, err := cmp.Equal(env.ExprEval(), left, right[0])
 	if err != nil {
 		return nil, err
 	}
 	if !eq {
 		from := env.File()
-		gxErr, err := gxerrors.Errorf(env, "incompatible axis lengths: %s!=%s in %s,%s", ir.ShortString(from, left), ir.ShortString(from, right[0]), builtin.ToShapeString([]ir.Element{left}), builtin.ToShapeString(right))
+		gxErr, err := gxerrors.Errorf(env, "incompatible axis lengths: %s!=%s in %s,%s", ir.ShortString(from, left), ir.ShortString(from, right[0]), builtin.ToShapeString(from, []ir.Element{left}), builtin.ToShapeString(from, right))
 		return []ir.Element{builtin.NilShape, gxErr}, err
 	}
 	return builtin.ToShapeResult(right[1])
 }
 
 func matVecMatMul(env engine.Env, left []ir.Element, right ir.Element) ([]ir.Element, error) {
-	eq, err := ir.ElementEqual(left[1], right)
+	eq, err := cmp.Equal(env.ExprEval(), left[1], right)
 	if err != nil {
 		return nil, err
 	}
 	if !eq {
 		from := env.File()
-		gxErr, err := gxerrors.Errorf(env, "incompatible axis lengths: %s!=%s in %s,%s", ir.ShortString(from, left[0]), ir.ShortString(from, right), builtin.ToShapeString(left), builtin.ToShapeString([]ir.Element{right}))
+		gxErr, err := gxerrors.Errorf(env, "incompatible axis lengths: %s!=%s in %s,%s", ir.ShortString(from, left[0]), ir.ShortString(from, right), builtin.ToShapeString(from, left), builtin.ToShapeString(from, []ir.Element{right}))
 		return []ir.Element{builtin.NilShape, gxErr}, err
 	}
 	return builtin.ToShapeResult(left[0])
@@ -94,11 +95,13 @@ func evalMatMulAxes(env engine.Env, call *ir.FuncCallExpr, recv ir.Element, args
 	}
 	left, right := leftSlice.Elements(), rightSlice.Elements()
 	if len(left) > 2 {
-		gxErr, err := gxerrors.Errorf(env, "expects no more than 2 axes but got %d axes (%s)", len(left), builtin.ToShapeString(left))
+		from := env.File()
+		gxErr, err := gxerrors.Errorf(env, "expects no more than 2 axes but got %d axes (%s)", len(left), builtin.ToShapeString(from, left))
 		return []ir.Element{builtin.NilShape, gxErr}, err
 	}
 	if len(right) > 2 {
-		gxErr, err := gxerrors.Errorf(env, "expects no more than 2 axes but got %d axes (%s)", len(right), builtin.ToShapeString(right))
+		from := env.File()
+		gxErr, err := gxerrors.Errorf(env, "expects no more than 2 axes but got %d axes (%s)", len(right), builtin.ToShapeString(from, right))
 		return []ir.Element{builtin.NilShape, gxErr}, err
 	}
 	if len(left) == 1 && len(right) == 1 {
@@ -110,12 +113,13 @@ func evalMatMulAxes(env engine.Env, call *ir.FuncCallExpr, recv ir.Element, args
 	if len(right) == 1 {
 		return matVecMatMul(env, left, right[0])
 	}
-	eq, err := ir.ElementEqual(left[1], right[0])
+	eq, err := cmp.Equal(env.ExprEval(), left[1], right[0])
 	if err != nil {
 		return nil, err
 	}
 	if !eq {
-		gxErr, err := gxerrors.Errorf(env, "invalid axis length: %s!=%s in %s,%s", left[1], right[0], builtin.ToShapeString(left), builtin.ToShapeString(right))
+		from := env.File()
+		gxErr, err := gxerrors.Errorf(env, "invalid axis length: %s!=%s in %s,%s", ir.ShortString(from, left[1]), ir.ShortString(from, right[0]), builtin.ToShapeString(from, left), builtin.ToShapeString(from, right))
 		if err != nil {
 			return nil, err
 		}
@@ -158,7 +162,7 @@ func evalArgMax(env engine.Env, call *ir.FuncCallExpr, recv ir.Element, args []i
 	if err != nil {
 		return nil, err
 	}
-	axisIndex, err := elements.ConstantScalarFromElement[ir.Int](args[0])
+	axisIndex, err := elements.IntFromElement(args[0])
 	if err != nil {
 		return nil, err
 	}
@@ -177,7 +181,7 @@ func evalArgMax(env engine.Env, call *ir.FuncCallExpr, recv ir.Element, args []i
 }
 
 func evalReduce(env engine.Env, call *ir.FuncCallExpr, recv ir.Element, args []ir.Element, reduce func(x ops.Node, axes []int) (ops.Node, error)) ([]ir.Element, error) {
-	axisIndices, err := elements.Map(elements.ConstantIntFromElement, args[0])
+	axisIndices, err := elements.Map(elements.IntFromElement, args[0])
 	if err != nil {
 		return nil, err
 	}

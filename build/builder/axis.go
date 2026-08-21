@@ -15,6 +15,7 @@
 package builder
 
 import (
+	"fmt"
 	"go/ast"
 	"math/big"
 
@@ -56,7 +57,10 @@ func (dim *inferredFromLiteralAxisLength) build(rscope *defineLocalScope) (ir.Ax
 	return &ir.AxisExpr{
 		X: &ir.NumberCastExpr{
 			X: &ir.NumberInt{
-				Src: &ast.BasicLit{ValuePos: dim.src.Pos()},
+				Src: &ast.BasicLit{
+					Value:    fmt.Sprint(dim.val),
+					ValuePos: dim.src.Pos(),
+				},
 				Val: big.NewInt(int64(dim.val)),
 			},
 			Typ: ir.IntType(),
@@ -92,17 +96,9 @@ func (dim *exprAxisLength) build(rscope *defineLocalScope) (ir.AxisLengths, bool
 	if !xOk {
 		return ext, false
 	}
-	cpev, ok := rscope.compEval()
-	if !ok {
-		return ext, false
-	}
-	var err error
-	ext.X, err = ir.SurfaceError(cpev, ext.X)
-	if err != nil {
-		return ext, rscope.Err().AppendAt(ext.X.Node(), err)
-	}
 	xType := ext.X.Type()
-	if xType.Kind() != irkind.Int {
+	xKind := xType.Kind()
+	if xKind != irkind.Int && xKind != irkind.Invalid {
 		return ext, rscope.Err().Appendf(dim.src, "cannot use type %s as axis length: want type int or unpack([]int)", xType.ReferString(rscope.fileScope().irFile()))
 	}
 	return ext, true

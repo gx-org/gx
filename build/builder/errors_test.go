@@ -18,10 +18,8 @@ import (
 	"testing"
 
 	"github.com/gx-org/gx/build/builder/testbuild"
-	"github.com/gx-org/gx/build/importers"
 	"github.com/gx-org/gx/build/ir"
 	irh "github.com/gx-org/gx/build/ir/irhelper"
-	"github.com/gx-org/gx/stdlib"
 )
 
 func TestErrorBuiltin(t *testing.T) {
@@ -54,30 +52,6 @@ func (ArgError) Error() string {
 func f() error {
 	return ArgError{}
 }`,
-		},
-	)
-}
-
-func TestCPErrors(t *testing.T) {
-	testbuild.RunWith(t,
-		[]importers.Importer{stdlib.Importer()},
-		testbuild.Decl{
-			Src: `
-import "cperrors"
-
-//gx:compeval
-func argError() (int, error) {
-	return 2, cperrors.Argf(1, "some error about argument 1")
-}
-
-func f(a, b [2]float32) [argError()]float32
-
-func g() [2]float32 {
-	a := [2]float32{1, 2}
-	return f(a, a) // ERROR some error about argument 1
-}
-
-`,
 		},
 	)
 }

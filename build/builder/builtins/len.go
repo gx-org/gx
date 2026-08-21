@@ -53,7 +53,7 @@ func init() {
 }
 
 // BuildFuncType builds the type of a function given how it is called.
-func (f *lenFunc) BuildFuncType(fetcher ir.Fetcher, call *ir.FuncCallExpr) (*ir.FuncType, error) {
+func (f *lenFunc) BuildFuncType(tpcmp ir.TypeCmp, call *ir.FuncCallExpr) (*ir.FuncType, error) {
 	ext := &ir.FuncType{
 		BaseType: ir.BaseType[*ast.FuncType]{
 			Src: &ast.FuncType{Func: call.Src.Pos()},
@@ -61,7 +61,7 @@ func (f *lenFunc) BuildFuncType(fetcher ir.Fetcher, call *ir.FuncCallExpr) (*ir.
 		Results: lenRetList,
 	}
 	if len(call.Args) != 1 {
-		return ext, errors.Errorf("incorrect number of arguments for %s (expected 1, found %d)", call.SourceString(fetcher.File()), len(call.Args))
+		return ext, errors.Errorf("incorrect number of arguments for %s (expected 1, found %d)", call.SourceString(tpcmp.File()), len(call.Args))
 	}
 	arg := call.Args[0]
 	knd := arg.Type().Kind()
@@ -77,7 +77,7 @@ func (f *lenFunc) BuildFuncType(fetcher ir.Fetcher, call *ir.FuncCallExpr) (*ir.
 		ok = true
 	}
 	if !ok {
-		return ext, errors.Errorf("invalid argument: %s (%s) for built-in len", arg.SourceString(fetcher.File()), arg.Type().ReferString(fetcher.File()))
+		return ext, errors.Errorf("invalid argument: %s (%s) for built-in len", arg.SourceString(tpcmp.File()), arg.Type().ReferString(tpcmp.File()))
 	}
 	argGroup := &ir.FieldGroup{
 		Src:  srcField,

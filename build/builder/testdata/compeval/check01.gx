@@ -1,0 +1,17 @@
+package check01
+
+//gx:compeval
+func check(a int) int {
+	require(a%2 == 0, "%d not even", a)
+	return a
+}
+
+func Add[A int](a, b [A]float32) [check(A)]float32 {
+	return a + b
+}
+
+func Main() [3]float32 {
+	a := [3]float32(3)
+	b := [3]float32(2)
+	return Add(a, b) // ERROR in call to Add([3]float32, [3]float32): 3 not even
+}

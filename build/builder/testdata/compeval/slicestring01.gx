@@ -1,0 +1,16 @@
+package slicestring01
+
+// No runtime test function
+
+//gx:compeval
+func removeAxis(axes []int, reduced int) []int {
+	return append(axes[:reduced], axes[reduced+1:]...)
+}
+
+//gx:compeval
+func Test() []int {
+	a := []int{0, 1, 2, 3, 4}
+	return removeAxis(a, 3)
+	// Want:
+	// []int{0, 1, 2, 4}
+}

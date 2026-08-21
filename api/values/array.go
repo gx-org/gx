@@ -155,12 +155,12 @@ type HostArray struct {
 var _ Array = (*HostArray)(nil)
 
 // NewHostArray returns a new array managed by GX.
-func NewHostArray(typ ir.Type, handle platform.HostBuffer) (*HostArray, error) {
-	base, err := newBaseArray(typ, handle.Shape())
+func NewHostArray(typ ir.Type, buffer platform.HostBuffer) (*HostArray, error) {
+	base, err := newBaseArray(typ, buffer.Shape())
 	if err != nil {
 		return nil, err
 	}
-	return &HostArray{baseArray: base, buffer: handle}, nil
+	return &HostArray{baseArray: base, buffer: buffer}, nil
 }
 
 func (*HostArray) value() {}
@@ -231,24 +231,40 @@ func (a *HostArray) ToFloatNumber() (*big.Float, error) {
 	return array.ToFloatNumber()
 }
 
+// ShortString returns the values of the array as a string without the type.
+func (a *HostArray) ShortString(from *ir.File) string {
+	return a.sourceString(from, true)
+}
+
 // SourceString returns the GX source code of the implementation.
 func (a *HostArray) SourceString(from *ir.File) string {
+	return a.sourceString(from, false)
+}
+
+func (a *HostArray) sourceString(from *ir.File, short bool) string {
 	data := a.Buffer().Acquire()
 	defer a.Buffer().Release()
 	array, err := kernels.NewArrayFromRaw(data, a.Shape())
 	if err != nil {
 		return fmt.Sprintf("\nError parsing raw data:\n%+v\n", err)
 	}
-	namedType, isNamed := a.typ.(*ir.NamedType)
-	if isNamed {
-		return fmt.Sprintf("%s%s", namedType.ReferString(from), array.DataString())
+	if short {
+		return array.DataString()
 	}
 	shape := a.buffer.Shape().AxisLengths
 	dims := make([]string, len(shape))
 	for i, axLen := range shape {
 		dims[i] = fmt.Sprintf("[%d]", axLen)
 	}
-	return fmt.Sprintf("%s%s%s", strings.Join(dims, ""), a.arrayType.DataType().ReferString(from), array.DataString())
+	dataS := array.DataString()
+	if len(shape) == 0 {
+		dataS = fmt.Sprintf("(%s)", dataS)
+	}
+	namedType, isNamed := a.typ.(*ir.NamedType)
+	if isNamed {
+		return fmt.Sprintf("%s%s", namedType.ReferString(from), dataS)
+	}
+	return fmt.Sprintf("%s%s%s", strings.Join(dims, ""), a.arrayType.DataType().ReferString(from), dataS)
 }
 
 // String representation of the array and its type.

@@ -1,0 +1,9 @@
+package axis01
+
+const noType = 2
+
+func TestConstNoTypeInDim() [noType]float32 {
+	return [noType]float32{}
+	// Want:
+	// [2]float32{0, 0}
+}

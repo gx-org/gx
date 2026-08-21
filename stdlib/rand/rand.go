@@ -17,11 +17,10 @@ package rand
 
 import (
 	"embed"
-	"go/ast"
 	"math"
 
 	"github.com/gx-org/gx/build/ir"
-	"github.com/gx-org/gx/build/ir/irkind"
+	"github.com/gx-org/gx/internal/interp/numbers"
 	"github.com/gx-org/gx/stdlib/builtin"
 )
 
@@ -33,19 +32,11 @@ var Package = builtin.PackageBuilder{
 	FullPath: "rand",
 	Builders: []builtin.Builder{
 		builtin.BuildConst(func(pkg *ir.Package) (string, ir.Expr, ir.Type, error) {
-			value := &ir.AtomicValueT[float64]{
-				Src: &ast.BasicLit{},
-				Val: float64(1 << 64),
-				Typ: ir.TypeFromKind(irkind.Float64),
-			}
+			_, value := numbers.NewFloatIR(float64(1<<64), ir.Float64Type())
 			return "rescaleRandFloat64", value, value.Type(), nil
 		}),
 		builtin.BuildConst(func(pkg *ir.Package) (string, ir.Expr, ir.Type, error) {
-			value := &ir.AtomicValueT[float64]{
-				Src: &ast.BasicLit{},
-				Val: math.Nextafter(1, 0),
-				Typ: ir.TypeFromKind(irkind.Float64),
-			}
+			_, value := numbers.NewFloatIR(math.Nextafter(1, 0), ir.Float64Type())
 			return "maxFloat64BelowOne", value, value.Type(), nil
 		}),
 		builtin.ParseSource("philox.gx"),

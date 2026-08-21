@@ -21,6 +21,8 @@ import (
 	"github.com/gx-org/gx/build/fmterr"
 	"github.com/gx-org/gx/build/ir"
 	"github.com/gx-org/gx/build/ir/irkind"
+	"github.com/gx-org/gx/internal/interp/compeval/surrogates/storepath"
+	"github.com/gx-org/gx/internal/interp/compeval/surrogates"
 )
 
 type blockStmt struct {
@@ -181,9 +183,12 @@ func (n *declStmt) buildStmt(scope stmtResolveScope) (ir.Stmt, bool, bool) {
 		}
 
 		for _, varExpr := range varSpec.Exprs {
-			if !defineLocalVar(scope, varExpr) {
-				declsOk = false
+			path := storepath.NewVar(varExpr)
+			value, err := surrogates.New(path, varExpr.Type())
+			if err != nil {
+				declsOk = scope.Err().AppendAt(varExpr.Node(), err)
 			}
+			declsOk = scope.update(varExpr, value) && declsOk
 		}
 
 		decls = append(decls, varSpec)

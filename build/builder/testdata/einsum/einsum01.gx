@@ -1,0 +1,8 @@
+package einsum01
+
+// No runtime test function
+
+func f[L1, L2, L3, L4 int](ks [L1][L2][1][L4]float32, qs [L3][L4]float32, layerIdx int) [L3][L2][1]float32 {
+	x{axA, axB, axC} := einsum(qs{axA, axD} * ks[layerIdx]{axB, axC, axD})
+	return x
+}

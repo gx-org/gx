@@ -22,12 +22,15 @@ import (
 	"reflect"
 
 	"github.com/pkg/errors"
-	"github.com/gx-org/backend/dtypes"
+	"github.com/gx-org/backend/shape"
 	"github.com/gx-org/gx/api/values"
 	gxfmt "github.com/gx-org/gx/base/fmt"
 	"github.com/gx-org/gx/build/fmterr"
 	"github.com/gx-org/gx/build/ir"
-	"github.com/gx-org/gx/internal/interp/canonical"
+	"github.com/gx-org/gx/internal/base/cast"
+	"github.com/gx-org/gx/internal/interp/compeval/cmp"
+	"github.com/gx-org/gx/internal/interp/constants"
+	"github.com/gx-org/gx/internal/interp/coreiface"
 	"github.com/gx-org/gx/interp/engine"
 )
 
@@ -73,6 +76,16 @@ type (
 	// StorageAt is a generic GX expression.
 	StorageAt = NodeFile[ir.Storage]
 )
+
+// Map transforms a collection of element into a different type.
+func Map[T any](f func(ir.Element) (T, error), el ir.Element) ([]T, error) {
+	return coreiface.Map(f, el)
+}
+
+// ToWithElements returns the string value stored in a element.
+func ToWithElements(el ir.Element) (coreiface.WithElements, error) {
+	return coreiface.ToWithElements(el)
+}
 
 // NewNodeAt returns a new expression at a given position.
 func NewNodeAt[T ir.IR](file *ir.File, expr T) NodeFile[T] {
@@ -147,6 +160,21 @@ func (ea NodeFile[T]) String() string {
 	)
 }
 
+// BoolFromElement converts an element to a bool.
+func BoolFromElement(el ir.Element) (bool, error) {
+	return constants.Convert(constants.CBool, el)
+}
+
+// IntFromElement converts an element to an int.
+func IntFromElement(el ir.Element) (int, error) {
+	return constants.Convert(constants.CInt, el)
+}
+
+// Int64FromElement converts an element to a bool.
+func Int64FromElement(el ir.Element) (int64, error) {
+	return constants.Convert(constants.CInt64, el)
+}
+
 // AxesFromElement returns a shape from a state element.
 // An error is returned if a concrete shape cannot be returned.
 func AxesFromElement(el ir.Element) ([]int, error) {
@@ -157,77 +185,13 @@ func AxesFromElement(el ir.Element) ([]int, error) {
 	dimensions := make([]int, slice.Len())
 	for i, dimElement := range slice.Elements() {
 		var err error
-		dimScalarI, err := ConstantIntFromElement(dimElement)
+		dimScalarI, err := IntFromElement(dimElement)
 		if err != nil {
 			return nil, err
 		}
 		dimensions[i] = dimScalarI
 	}
 	return dimensions, nil
-}
-
-// ConstantScalarFromElement returns a scalar on a host given an element.
-func ConstantScalarFromElement[T dtypes.Supported](el ir.Element) (val T, err error) {
-	var hostArray *values.HostArray
-	hostArray, err = ConstantFromElement(el)
-	if err != nil {
-		return
-	}
-	if hostArray == nil {
-		err = errors.Errorf("state element %T does not store a constant numerical value", el)
-		return
-	}
-	return values.ToAtom[T](hostArray)
-}
-
-// ConstantIntFromElement returns a scalar on a host given an element.
-func ConstantIntFromElement(el ir.Element) (val int, err error) {
-	var hostArray *values.HostArray
-	hostArray, err = ConstantFromElement(el)
-	if err != nil {
-		return
-	}
-	if hostArray == nil {
-		err = errors.Errorf("state element %T does not store a constant numerical value", el)
-		return
-	}
-	return toGoInt(hostArray)
-}
-
-func toGoInt(val *values.HostArray) (int, error) {
-	valT := val.Shape().DType
-	switch valT {
-	case dtypes.Int:
-		intV, err := values.ToAtom[int](val)
-		if err != nil {
-			return 0, err
-		}
-		return int(intV), nil
-	case dtypes.Int32:
-		i32, err := values.ToAtom[int32](val)
-		if err != nil {
-			return 0, err
-		}
-		return int(i32), nil
-	case dtypes.Int64:
-		i64, err := values.ToAtom[int64](val)
-		if err != nil {
-			return 0, err
-		}
-		return int(i64), nil
-	default:
-		return -1, errors.Errorf("cannot cast type %s to int", valT.String())
-	}
-}
-
-// ConstantFromElement returns the host value represented by an element.
-// The function returns (nil, nil) if the element does not host a numerical value.
-func ConstantFromElement(el ir.Element) (*values.HostArray, error) {
-	numerical, ok := el.(ElementWithConstant)
-	if !ok {
-		return nil, nil
-	}
-	return numerical.NumericalConstant()
 }
 
 // PackageVarSetElement is an option to set a package variable to an element.
@@ -252,7 +216,7 @@ func (p PackageVarSetElement) String() string {
 
 // SliceVals slices a slice of elements.
 func SliceVals(expr ir.Expr, index engine.NumericalElement, vals []ir.Element) (ir.Element, error) {
-	i, err := ConstantIntFromElement(index)
+	i, err := IntFromElement(index)
 	if err != nil {
 		return nil, err
 	}
@@ -262,101 +226,54 @@ func SliceVals(expr ir.Expr, index engine.NumericalElement, vals []ir.Element) (
 	return vals[i], nil
 }
 
-// EvalInt evaluates an expression to an int only if possible.
-func EvalInt(fetcher ir.Fetcher, expr ir.Expr) (n int, ok bool, err error) {
-	var el ir.Element
-	el, err = fetcher.EvalExpr(expr)
-	if err != nil {
-		return
-	}
-	val := canonical.ToValue(el)
-	if val == nil {
-		return
-	}
-	ok = val.IsInt()
-	if !ok {
-		return
-	}
-	var n64 int64
-	n64, _ = val.Int64()
-	n = int(n64)
-	return
-}
-
-// MustEvalInt evaluates an expression to return an int.
-func MustEvalInt(fetcher ir.Fetcher, expr ir.Expr) (int, error) {
-	el, err := fetcher.EvalExpr(expr)
-	if err != nil {
-		return 0, err
-	}
-	val := canonical.ToValue(el)
-	if val == nil {
-		return 0, fmterr.Errorf(fetcher.File().FileSet(), expr.Node(), "expected axis literals, but expression %s cannot be evaluated at compile time", expr.SourceString(fetcher.File()))
-	}
-	if !val.IsInt() {
-		return 0, fmterr.Errorf(fetcher.File().FileSet(), expr.Node(), "cannot use %s as static int value in axis specification", val.String())
-	}
-	valInt, _ := val.Int64()
-	return int(valInt), nil
-}
-
 // EvalRank evaluates an expression to build the rank of an array.
-func EvalRank(fetcher ir.Fetcher, expr ir.Expr) (ir.ArrayRank, []canonical.Canonical, error) {
-	rankVal, err := fetcher.EvalExpr(expr)
+func EvalRank(ev ir.Evaluator, expr ir.Expr) (ir.ArrayRank, []cmp.Canonical, error) {
+	rankVal, err := ev.EvalExpr(expr)
 	if err != nil {
 		return nil, nil, err
 	}
-	slice, ok := Underlying(rankVal).(*Slice)
-	if !ok {
-		return nil, nil, fmterr.InternalAt(fetcher.File().FileSet(), expr.Node(), "cannot build a rank from %s (%T): not supported", expr.SourceString(fetcher.File()), rankVal)
+	slice, err := cast.To[*Slice](rankVal)
+	if err != nil {
+		return nil, nil, fmterr.InternalAt(ev.File().FileSet(), expr.Node(), "cannot evaluate rank: %v", err)
 	}
 	axes := make([]ir.AxisLengths, slice.Len())
-	cans := make([]canonical.Canonical, slice.Len())
+	cans := make([]cmp.Canonical, slice.Len())
 	for i, el := range slice.Elements() {
-		ex, ok := el.(ir.Canonical)
+		ex, ok := el.(cmp.Canonical)
 		if !ok {
-			return nil, nil, fmterr.InternalAt(fetcher.File().FileSet(), expr.Node(), "cannot build an axis expression from element %T: not supported", el)
+			return nil, nil, fmterr.InternalAt(ev.File().FileSet(), expr.Node(), "cannot build an axis expression from element %T: not supported", el)
 		}
-		irExpr, err := ir.ToSingleExpr(fetcher, expr.Expr(), ex)
+		irExpr, err := ir.ToSingleExpr(ev, expr.Expr(), ex)
 		if err != nil {
 			return nil, nil, err
 		}
 		axes[i] = &ir.AxisExpr{
 			X: irExpr,
 		}
-		cans[i] = el.(canonical.Canonical)
+		cans[i] = el.(cmp.Canonical)
 	}
 	return &ir.Rank{Ax: axes}, cans, nil
 }
 
-// ToNumericalElement converts an element into a numerical element.
-func ToNumericalElement(el ir.Element) (engine.NumericalElement, error) {
-	el = ir.BareValue(el)
-	numEl, ok := Underlying(el).(engine.NumericalElement)
-	if !ok {
-		return nil, errors.Errorf("cannot cast %T to %s", el, reflect.TypeFor[engine.NumericalElement]())
-	}
-	return numEl, nil
-}
-
-// Map transforms a collection of element into a different type.
-func Map[T any](f func(ir.Element) (T, error), el ir.Element) ([]T, error) {
-	slice, err := ToWithElements(el)
+// ShapeFromElement returns the shape of a numerical element.
+func ShapeFromElement(el ir.Element) (*shape.Shape, error) {
+	shaper, err := coreiface.Cast[EvalShaper](el)
 	if err != nil {
 		return nil, err
 	}
-	return MapSlice[T](f, slice.Elements())
+	return shaper.EvalShape()
 }
 
-// MapSlice transforms a slice of elements into a different type.
-func MapSlice[T any](f func(ir.Element) (T, error), elts []ir.Element) ([]T, error) {
-	ts := make([]T, len(elts))
-	for i, el := range elts {
-		var err error
-		ts[i], err = f(el)
-		if err != nil {
-			return nil, err
-		}
+// ToNumericalElement converts an element into a numerical element.
+func ToNumericalElement(el ir.Element) (engine.NumericalElement, error) {
+	return coreiface.Cast[engine.NumericalElement](el)
+}
+
+// StringFrom converts an element into fmt.Stringer.
+func StringFrom(el ir.Element) (string, error) {
+	stringer, err := cast.To[fmt.Stringer](el)
+	if err != nil {
+		return "", err
 	}
-	return ts, nil
+	return stringer.String(), nil
 }

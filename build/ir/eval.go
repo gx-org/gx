@@ -24,12 +24,6 @@ import (
 )
 
 type (
-	// Canonical is a canonical value with a IR representation.
-	Canonical interface {
-		Element
-		WithExpr
-	}
-
 	// Importer imports packages given their path.
 	Importer interface {
 		// Import a package given its path.
@@ -46,9 +40,14 @@ type (
 		Expr(Evaluator, ast.Expr) ([]Expr, error)
 	}
 
+	// SourceFile is an interface able to return the file in which some code is evaluated.
+	SourceFile interface {
+		File() *File
+	}
+
 	// Evaluator evaluates IR expressions into canonical values.
 	Evaluator interface {
-		File() *File
+		SourceFile
 		EvalExpr(Expr) (Element, error)
 		Sub(*File, map[string]Element) (Evaluator, error)
 	}
@@ -56,6 +55,7 @@ type (
 	// TypeCmp is the interface used to compare type to one another.
 	TypeCmp interface {
 		Evaluator
+		Compare(x, y Element) (bool, error)
 	}
 
 	// CompEvalError is an error generated from evaluating GX code
@@ -64,7 +64,7 @@ type (
 
 	// Fetcher represents a scope in the compiler.
 	Fetcher interface {
-		Evaluator
+		TypeCmp
 		fmterr.ErrAppender
 	}
 

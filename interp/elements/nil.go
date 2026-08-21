@@ -18,6 +18,8 @@ import (
 	"go/ast"
 
 	"github.com/gx-org/gx/build/ir"
+	"github.com/gx-org/gx/internal/algexpr"
+	"github.com/gx-org/gx/internal/interp/compeval/cmp"
 )
 
 var (
@@ -33,10 +35,7 @@ type nilEl struct {
 	x *ir.NilCastExpr
 }
 
-var (
-	_ ir.Element  = (*nilEl)(nil)
-	_ ir.WithExpr = (*nilEl)(nil)
-)
+var _ cmp.Canonical = (*nilEl)(nil)
 
 var nilError = NewNil(&ir.NilCastExpr{
 	X:   nilExpr,
@@ -70,8 +69,16 @@ func (el *nilEl) Type() ir.Type {
 	return el.x.Typ
 }
 
+func (el *nilEl) AlgExpr(ev ir.Evaluator) (cmp.Expr, error) {
+	return algexpr.NewNil(el.x), nil
+}
+
 func (el *nilEl) Expr(ev ir.Evaluator, expr ast.Expr) ([]ir.Expr, error) {
 	return []ir.Expr{el.x}, nil
+}
+
+func (el *nilEl) ShortString(from *ir.File) string {
+	return "nil"
 }
 
 // IsNil returns true if the element is a nil element (whatever the type).

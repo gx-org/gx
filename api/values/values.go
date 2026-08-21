@@ -19,7 +19,7 @@ import (
 	"math/big"
 
 	"github.com/pkg/errors"
-	"github.com/gomlx/compute/dtypes/bfloat16"
+	"github.com/gomlx/gopjrt/dtypes/bfloat16"
 	"github.com/gx-org/backend/dtypes"
 	"github.com/gx-org/backend/platform"
 	"github.com/gx-org/gx/build/ir"
@@ -166,6 +166,28 @@ func bigIntToFloat[T float32 | float64](x *big.Int) T {
 func bigIntToUint[T dtypes.Unsigned](x *big.Int) T {
 	xI64 := x.Uint64()
 	return T(xI64)
+}
+
+// FromAtom converts a Go value into a host array.
+func FromAtom[T dtypes.Supported](x T, typ ir.Type) (*HostArray, error) {
+	switch xT := any(x).(type) {
+	case float32:
+		return AtomFloatValue[float32](typ, xT)
+	case float64:
+		return AtomFloatValue[float64](typ, xT)
+	case int:
+		return AtomIntegerValue[int](typ, xT)
+	case int32:
+		return AtomIntegerValue[int32](typ, xT)
+	case int64:
+		return AtomIntegerValue[int64](typ, xT)
+	case uint32:
+		return AtomIntegerValue[uint32](typ, xT)
+	case uint64:
+		return AtomIntegerValue[uint64](typ, xT)
+	default:
+		return nil, errors.Errorf("cannot convert Go value %T(%v) (GX type: %s) to a host array", xT, xT, typ.ReferString(nil))
+	}
 }
 
 // AtomNumberInt evaluates a big integer number into a GX array value.

@@ -20,6 +20,7 @@ import (
 	"go/ast"
 
 	"github.com/pkg/errors"
+	"github.com/gomlx/gopjrt/dtypes/bfloat16"
 	"github.com/gx-org/backend/dtypes"
 	"github.com/gx-org/backend/ops"
 	"github.com/gx-org/backend/platform"
@@ -96,6 +97,69 @@ type constant struct {
 }
 
 var _ execNode = (*constant)(nil)
+
+// NewAtomLiteral creates a node from a constant scalar.
+func (g *Graph) NewAtomLiteral(v any) (ops.Node, error) {
+	var arr kernels.Array
+	switch vT := v.(type) {
+	case bool:
+		arr = kernels.ToBoolAtom(vT)
+	case bfloat16.BFloat16:
+		arr = kernels.ToBfloat16Atom(vT)
+	case float32:
+		arr = kernels.ToFloatAtom(vT)
+	case float64:
+		arr = kernels.ToFloatAtom(vT)
+	case int:
+		arr = kernels.ToIntegerAtom(vT)
+	case int32:
+		arr = kernels.ToIntegerAtom(vT)
+	case int64:
+		arr = kernels.ToIntegerAtom(vT)
+	case uint32:
+		arr = kernels.ToIntegerAtom(vT)
+	case uint64:
+		arr = kernels.ToIntegerAtom(vT)
+	default:
+		return nil, errors.Errorf("cannot create an array literal for %T: not implemented", vT)
+	}
+	return g.constant(arr), nil
+}
+
+// NewArrayLiteral creates a node from a constant array.
+func (g *Graph) NewArrayLiteral(flat any, axlengths ...int) (ops.Node, error) {
+	var arr kernels.Array
+	switch flatT := flat.(type) {
+	case []bool:
+		arr = kernels.ToBoolArray(flatT, axlengths)
+	case []bfloat16.BFloat16:
+		arr = kernels.ToBfloat16Array(flatT, axlengths)
+	case []float32:
+		arr = kernels.ToFloatArray(flatT, axlengths)
+	case []float64:
+		arr = kernels.ToFloatArray(flatT, axlengths)
+	case []int:
+		arr = kernels.ToIntegerArray(flatT, axlengths)
+	case []int32:
+		arr = kernels.ToIntegerArray(flatT, axlengths)
+	case []int64:
+		arr = kernels.ToIntegerArray(flatT, axlengths)
+	case []uint32:
+		arr = kernels.ToIntegerArray(flatT, axlengths)
+	case []uint64:
+		arr = kernels.ToIntegerArray(flatT, axlengths)
+	default:
+		return nil, errors.Errorf("cannot create an array literal for %T: not implemented", flatT)
+	}
+	return g.constant(arr), nil
+}
+
+func (g *Graph) constant(array kernels.Array) ops.Node {
+	return &constant{
+		node:  g.node(array.Shape(), array.Factory()),
+		value: array,
+	}
+}
 
 // Constant returns a node representing a numerical constant value in the graph.
 func (g *Graph) Constant(value platform.HostBuffer) (ops.Node, error) {

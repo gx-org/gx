@@ -16,6 +16,7 @@ package cpevelements
 
 import (
 	"github.com/gx-org/gx/build/ir"
+	"github.com/gx-org/gx/internal/interp/compeval/surrogates"
 	"github.com/gx-org/gx/interp/context"
 	"github.com/gx-org/gx/interp/engine"
 	"github.com/gx-org/gx/interp/fun"
@@ -32,32 +33,19 @@ func ProxyRunner() fun.Runners {
 	return prxRunner
 }
 
-func proxyCall(file *ir.File, ftype *ir.FuncType) ([]ir.Element, error) {
-	res := ftype.Results.Fields()
-	els := make([]ir.Element, len(res))
-	for i, ri := range res {
-		var err error
-		els[i], err = NewRuntimeValue(file, ir.NewIdent(ri.Type()))
-		if err != nil {
-			return nil, err
-		}
-	}
-	return els, nil
-}
-
 // FuncDecl runs a function implemented in GX.
 func (proxyRunner) FuncDecl(fDecl *ir.FuncDecl, env *fun.CallEnv, call *ir.FuncCallExpr, recv engine.Copier, args []ir.Element) ([]ir.Element, error) {
-	return proxyCall(env.File(), call.Callee.FuncType())
+	return surrogates.Call(call)
 }
 
 // FuncLit runs a function literal.
 func (proxyRunner) FuncLit(lit *ir.FuncLit, env *fun.CallEnv, ctx *context.Context, call *ir.FuncCallExpr, args []ir.Element) ([]ir.Element, error) {
-	return proxyCall(env.File(), call.Callee.FuncType())
+	return surrogates.Call(call)
 }
 
 // Builtin runs a function builtin in GX or provided by a backend.
 func (proxyRunner) Builtin(fn ir.Func, impl ir.FuncImpl, env *fun.CallEnv, call *ir.FuncCallExpr, recv engine.Copier, args []ir.Element) ([]ir.Element, error) {
-	return proxyCall(env.File(), call.Callee.FuncType())
+	return surrogates.Call(call)
 }
 
 type mixedRunner struct{}
@@ -75,12 +63,12 @@ func (mixedRunner) FuncDecl(fDecl *ir.FuncDecl, env *fun.CallEnv, call *ir.FuncC
 	if fDecl.FuncType().CompEval {
 		return interp.Runners().FuncDecl(fDecl, env, call, recv, args)
 	}
-	return proxyCall(env.File(), call.Callee.FuncType())
+	return surrogates.Call(call)
 }
 
 // FuncLit runs a function literal.
 func (mixedRunner) FuncLit(lit *ir.FuncLit, env *fun.CallEnv, ctx *context.Context, call *ir.FuncCallExpr, args []ir.Element) ([]ir.Element, error) {
-	return proxyCall(env.File(), call.Callee.FuncType())
+	return surrogates.Call(call)
 }
 
 // Builtin runs a function builtin in GX or provided by a backend.
@@ -93,5 +81,5 @@ func (mixedRunner) Builtin(fn ir.Func, impl ir.FuncImpl, env *fun.CallEnv, call 
 	if fType != nil && fType.CompEval {
 		return interp.Runners().Builtin(fn, impl, env, call, recv, args)
 	}
-	return proxyCall(env.File(), fType)
+	return surrogates.Call(call)
 }

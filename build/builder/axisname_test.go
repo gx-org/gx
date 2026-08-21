@@ -70,7 +70,7 @@ func TestAxisName01(t *testing.T) {
 	}
 	aStorage := &ir.LocalVarStorage{
 		Src: &ast.Ident{Name: "a"},
-		Typ: irh.ArrayType(ir.Float32Type(), irh.Axis(fieldDims)),
+		Typ: irh.ArrayType(ir.Float32Type(), irh.Axis(irh.UnpackAxes(fieldDims))),
 	}
 	aAssignment := &ir.AssignExpr{
 		Storage: aStorage,
@@ -82,7 +82,7 @@ func TestAxisName01(t *testing.T) {
 					irh.Fields(),
 					irh.Fields(ir.TypeExpr(
 						nil,
-						irh.ArrayType(ir.Float32Type(), irh.Axis(fieldDims)),
+						irh.ArrayType(ir.Float32Type(), irh.Axis(irh.UnpackAxes(fieldDims))),
 					)),
 					irh.SetTypeParams(fieldDims),
 				)),
@@ -125,7 +125,7 @@ func f[dims []int]() [unpack(dims)]float32 {
 										irh.Fields(),
 										irh.Fields(irh.ArrayType(
 											ir.Float32Type(),
-											irh.Axis(fieldDims),
+											irh.Axis(irh.UnpackAxes(fieldDims)),
 										)),
 										irh.SetTypeParams(fieldDims),
 									)),

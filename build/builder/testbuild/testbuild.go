@@ -20,6 +20,7 @@ import (
 	"go/ast"
 	"go/parser"
 	"go/token"
+	"sort"
 	"strconv"
 	"strings"
 	"testing"
@@ -433,4 +434,48 @@ func (b *Builder) Continue(t *testing.T, tests ...Test) {
 			})
 		}
 	}
+}
+
+func noTestFuncOk(pkg *ir.Package) bool {
+	for _, file := range pkg.Files {
+		for _, grp := range file.Src.Comments {
+			if strings.HasPrefix(grp.Text(), "No runtime test function") {
+				return true
+			}
+		}
+	}
+	return false
+}
+
+// FindTests returns a list of exported functions starting with Test.
+// An empty list is returned if no function could be found.
+func FindTests(pkg *ir.Package, compeval bool) []*ir.FuncDecl {
+	var funs []*ir.FuncDecl
+	for fn := range pkg.ExportedFuncs() {
+		if !strings.HasPrefix(fn.Name(), "Test") {
+			continue
+		}
+		funcDecl, ok := fn.(*ir.FuncDecl)
+		if !ok {
+			continue
+		}
+		if funcDecl.FType.CompEval != compeval {
+			continue
+		}
+		funs = append(funs, funcDecl)
+	}
+	sort.Slice(funs, func(i, j int) bool {
+		return funs[i].Name() < funs[j].Name()
+	})
+	return funs
+}
+
+// MustFindTests finds all the tests at the top-level of a filesystem.
+// An error is returned if no function could be found.
+func MustFindTests(pkg *ir.Package, compeval bool) ([]*ir.FuncDecl, error) {
+	funs := FindTests(pkg, compeval)
+	if len(funs) == 0 && !noTestFuncOk(pkg) {
+		return nil, fmt.Errorf("no test found in package %s. Add to the source file:\n\t// No runtime test function\nif no test functions are expected", pkg.Path())
+	}
+	return funs, nil
 }

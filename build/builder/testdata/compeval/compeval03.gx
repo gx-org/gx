@@ -1,0 +1,10 @@
+package compeval03
+
+// No runtime test function
+
+//gx:compeval
+func Test() int32 {
+	return 2
+	// Want:
+	// 2
+}

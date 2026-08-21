@@ -31,6 +31,8 @@ import (
 	"github.com/gx-org/gx/internal/base/scope"
 	"github.com/gx-org/gx/internal/interp/compeval"
 	"github.com/gx-org/gx/internal/interp/compeval/cpevelements"
+	"github.com/gx-org/gx/internal/interp/compeval/srcstore"
+	"github.com/gx-org/gx/internal/interp/compeval/surrogates"
 	"github.com/gx-org/gx/interp/context"
 	"github.com/gx-org/gx/interp/fun"
 	"github.com/gx-org/gx/interp"
@@ -108,7 +110,7 @@ type (
 func newPackageResolveScope(pscope *pkgProcScope) (*pkgResolveScope, bool) {
 	s := &pkgResolveScope{
 		pkgProcScope:   pscope,
-		newFuncForEval: cpevelements.NewProxyFunc,
+		newFuncForEval: surrogates.NewFunc,
 		funcRunner:     cpevelements.ProxyRunner(),
 		methods:        ordered.NewMap[*ir.NamedType, *ordered.Map[string, *irFunc]](),
 		state:          &pkgState{dcls: pscope.decls()},
@@ -179,7 +181,10 @@ func (s *pkgResolveScope) packageInterpreter() *interp.Base {
 	var opts []options.PackageOption
 	for _, decl := range pkg.Decls.Vars {
 		for _, vr := range decl.Exprs {
-			opt := compeval.NewOptionVariable(vr)
+			opt, err := compeval.NewOptionVariable(vr)
+			if err != nil {
+				s.Err().Append(err)
+			}
 			opts = append(opts, opt)
 		}
 	}
@@ -332,7 +337,6 @@ func compEvalForFuncType(rscope resolveScope, src ast.Node, ftype *ir.FuncType) 
 		return nil, false
 	}
 	// Define all arguments.
-	irFile := rscope.fileScope().irFile()
 	var fields []*ir.Field
 	fields = append(fields, ftype.Receiver.Fields()...)
 	fields = append(fields, ftype.Params.Fields()...)
@@ -341,12 +345,15 @@ func compEvalForFuncType(rscope resolveScope, src ast.Node, ftype *ir.FuncType) 
 		if field.Name == nil {
 			continue
 		}
-		storage := field.Storage()
-		el, err := cpevelements.NewRuntimeValue(irFile, ir.NewIdent(storage))
+		srVal, err := surrogates.FieldRoot(field)
 		if err != nil {
 			return nil, rscope.Err().AppendAt(src, err)
 		}
-		context.Define(sigMap, field.Name, cpevelements.NewStoredValue(irFile, storage, el))
+		lkVal, err := srcstore.Link(field.Storage(), srVal)
+		if err != nil {
+			return nil, rscope.Err().AppendAt(src, err)
+		}
+		context.Define(sigMap, field.Name, lkVal)
 	}
 	return compEval.sub(nil, sigMap)
 }
@@ -417,6 +424,17 @@ func (s *blockResolveScope) update(store ir.Storage, el ir.Element) bool {
 	return ok
 }
 
+func (s *blockResolveScope) updateAll(sub map[ir.Storage]ir.Element) bool {
+	if sub == nil {
+		return true
+	}
+	ok := true
+	for k, v := range sub {
+		ok = s.update(k, v) && ok
+	}
+	return ok
+}
+
 func (s *blockResolveScope) compEval() (*compileEvaluator, bool) {
 	return s.compeval, true
 }
@@ -440,7 +458,6 @@ func newEphemeralResolveScope(parent resolveScope, src ast.Node) (*ephemeralReso
 }
 
 func (s *ephemeralResolveScope) update(store ir.Storage, el ir.Element) bool {
-	el = cpevelements.NewStoredValue(s.fileScope().irFile(), store, el)
 	s.ce.fitp.Context().Scope().Define(store.NameDef().Name, el)
 	return true
 }
@@ -514,6 +531,10 @@ func (s *arrayResolveScope) dtype() ir.Type {
 }
 
 func (s *arrayResolveScope) want() ir.Type {
+	infer := toInferRank(s.current.Rank())
+	if infer != nil {
+		return nil
+	}
 	return s.current
 }
 
@@ -541,8 +562,8 @@ func (s *arrayResolveScope) sub(src ast.Node) (compositeLitResolveScope, bool) {
 	}
 	currentRank := s.currentRank + 1
 	if infer := toInferRank(s.current.Rank()); infer != nil {
-		if infer.Rnk == nil {
-			infer.Rnk = &ir.Rank{
+		if infer.ArrayRank == nil {
+			infer.ArrayRank = &ir.Rank{
 				Ax: []ir.AxisLengths{&ir.AxisInfer{}},
 			}
 		}
@@ -560,10 +581,10 @@ func underlyingRank(r ir.ArrayRank) *ir.Rank {
 	case *ir.Rank:
 		return rT
 	case *ir.RankInfer:
-		if rT.Rnk == nil {
-			rT.Rnk = &ir.Rank{}
+		if rT.ArrayRank == nil {
+			rT.ArrayRank = &ir.Rank{}
 		}
-		return underlyingRank(rT.Rnk)
+		return underlyingRank(rT.ArrayRank)
 	}
 	return nil
 }

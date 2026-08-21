@@ -31,7 +31,7 @@ import (
 
 func splitAxis(env engine.Env, call *ir.FuncCallExpr, recv ir.Element, args []ir.Element) (_ []ir.Element, err error) {
 	// Fetch the axis index.
-	idx, err := elements.ConstantIntFromElement(args[0])
+	idx, err := elements.IntFromElement(args[0])
 	if err != nil {
 		return nil, err
 	}
@@ -65,11 +65,13 @@ func splitAxis(env engine.Env, call *ir.FuncCallExpr, recv ir.Element, args []ir
 	axLens[idx], err = splitAxis.BinaryOp(env, &ir.BinaryExpr{
 		Src: &ast.BinaryExpr{
 			Op: token.QUO,
+			X:  splitAxisExpr.Expr(),
+			Y:  numSplitExpr.Expr(),
 		},
 		X:   splitAxisExpr,
 		Y:   numSplitExpr,
 		Typ: ir.IntType(),
-	}, splitAxis, numSplit)
+	}, numSplit)
 	if err != nil {
 		return nil, err
 	}
@@ -84,15 +86,15 @@ func evalSplit(env engine.Env, call *ir.FuncCallExpr, recv ir.Element, args []ir
 	if err != nil {
 		return nil, err
 	}
-	axis, err := elements.ConstantScalarFromElement[ir.Int](args[0])
+	axis, err := elements.IntFromElement(args[0])
 	if err != nil {
 		return nil, err
 	}
-	numSplits, err := elements.ConstantScalarFromElement[ir.Int](args[1])
+	numSplits, err := elements.IntFromElement(args[1])
 	if err != nil {
 		return nil, err
 	}
-	op, err := env.Engine().ArrayOps().Graph().Shape().Split(node, int(axis), int(numSplits))
+	op, err := env.Engine().ArrayOps().Graph().Shape().Split(node, axis, numSplits)
 	if err != nil {
 		return nil, err
 	}

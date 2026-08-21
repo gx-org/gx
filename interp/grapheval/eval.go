@@ -25,7 +25,7 @@ import (
 	"github.com/gx-org/gx/build/fmterr"
 	"github.com/gx-org/gx/build/ir"
 	"github.com/gx-org/gx/internal/interp/compeval"
-	"github.com/gx-org/gx/internal/interp/compeval/cpevelements"
+	"github.com/gx-org/gx/internal/interp/numbers"
 	"github.com/gx-org/gx/internal/tracer/processor"
 	"github.com/gx-org/gx/interp/context"
 	"github.com/gx-org/gx/interp/elements"
@@ -97,23 +97,6 @@ func (ev *Evaluator) ArrayOps() engine.ArrayOps {
 // Materialiser returns an array materialiser.
 func (ev *Evaluator) Materialiser() materialise.Materialiser {
 	return ev.ao
-}
-
-// ElementFromStorage returns an element from an atomic GX value and its storage.
-func (ev *Evaluator) ElementFromStorage(file *ir.File, expr ir.StorageWithValue, val ir.Element) ir.Element {
-	return val
-}
-
-func buildProxyArguments(file *ir.File, args []*ir.Field) ([]ir.Element, error) {
-	els := make([]ir.Element, len(args))
-	for i, arg := range args {
-		var err error
-		els[i], err = cpevelements.NewRuntimeValue(file, ir.NewIdent(arg.Storage()))
-		if err != nil {
-			return nil, err
-		}
-	}
-	return els, nil
 }
 
 type processCallResults func(ops.Node) ([]ir.Element, error)
@@ -280,18 +263,14 @@ func GraphFromElement(name string, el ir.Element) (*ops.Subgraph, error) {
 	return grapher.SubGraph(name)
 }
 
-func (ev *Evaluator) axesFromShape(file *ir.File, shape *shape.Shape) (*elements.Slice, error) {
-	axes := make([]ir.Element, len(shape.AxisLengths))
-	for i, axisSize := range shape.AxisLengths {
-		iExpr := &ir.AtomicValueT[ir.Int]{
-			Val: ir.Int(i),
-			Typ: ir.IntType(),
-		}
-		iValue, err := values.AtomIntegerValue[ir.Int](ir.IntType(), ir.Int(axisSize))
+func (ev *Evaluator) axesFromShape(ctx ir.Evaluator, axlens []int) (*elements.Slice, error) {
+	axes := make([]ir.Element, len(axlens))
+	for i, axisSize := range axlens {
+		iEl, err := numbers.NewConstant(ir.IntType(), axisSize)
 		if err != nil {
 			return nil, err
 		}
-		axes[i], err = ev.ArrayOps().ElementFromAtom(file, iValue, iExpr, iExpr.Type())
+		axes[i], err = ev.ArrayOps().ElementFromHostValue(ctx, iEl)
 		if err != nil {
 			return nil, err
 		}

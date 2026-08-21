@@ -46,14 +46,19 @@ var errorFType = &FuncType{
 
 var errorTyp = &errorType{
 	iface: Interface{
-		methods: []*IMethod{
-			// Define method: Error() string
-			&IMethod{
-				Src:   errorSrc,
-				FType: errorFType,
-			},
-		},
+		FFile: &File{},
 	},
+}
+
+func init() {
+	errorTyp.iface.methods = []*IMethod{
+		// Define method: Error() string
+		&IMethod{
+			Src:   errorSrc,
+			FType: errorFType,
+			IFace: &errorTyp.iface,
+		},
+	}
 }
 
 var (

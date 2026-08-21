@@ -36,7 +36,6 @@ var (
 	_ Slicer          = (*Tuple)(nil)
 	_ ir.Element      = (*Tuple)(nil)
 	_ ir.TupleElement = (*Tuple)(nil)
-	_ ir.Canonical    = (*Tuple)(nil)
 )
 
 // TupleFromElements creates a new tuple from a slice of elements.
@@ -101,12 +100,12 @@ func (n *Tuple) TupleElements() []ir.Element {
 }
 
 // SliceAt of the tuple.
-func (n *Tuple) SliceAt(expr *ir.IndexExpr, index engine.NumericalElement) (ir.Element, error) {
+func (n *Tuple) SliceAt(_ engine.Env, expr *ir.IndexExpr, index engine.NumericalElement) (ir.Element, error) {
 	return SliceVals(expr, index, n.elements)
 }
 
 // Slice is not implemented for tuples.
-func (n *Tuple) Slice(expr *ir.SliceExpr, low, high engine.NumericalElement) (ir.Element, error) {
+func (n *Tuple) Slice(_ engine.Env, expr *ir.SliceExpr, low, high engine.NumericalElement) (ir.Element, error) {
 	return n, errors.Errorf("not implemented for %T", n)
 }
 
@@ -125,10 +124,10 @@ func (n *Tuple) Type() ir.Type {
 }
 
 // UnpackError unpacks an error and its value.
-func (n *Tuple) UnpackError(ev ir.TypeCmp) (ir.Element, ir.Element, error) {
+func (n *Tuple) UnpackError(ev ir.Evaluator) (ir.Element, ir.Element, error) {
 	lastType := n.typ.Types[len(n.typ.Types)-1]
-	if ok, err := lastType.AssignableTo(ev, ir.ErrorType()); !ok || err != nil {
-		return n, nil, err
+	if lastType != ir.ErrorType() {
+		return n, nil, nil
 	}
 	last := n.elements[len(n.elements)-1]
 	withoutLast := n.elements[:len(n.elements)-1]

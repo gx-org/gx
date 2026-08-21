@@ -152,20 +152,29 @@ type FileWithError interface {
 	fmterr.ErrAppender
 }
 
+func isAny(typ Type) bool {
+	iface, isInterface := Underlying(typ).(*Interface)
+	if !isInterface {
+		return false
+	}
+	return len(iface.types) == 0 && len(iface.methods) == 0
+}
+
 // CastNumber builds a number cast expression.
 func CastNumber(fetcher FileWithError, expr Expr, target Type) (*NumberCastExpr, bool) {
 	cast := &NumberCastExpr{
 		X:   expr,
 		Typ: target,
 	}
-	if cast.Typ.Kind() == irkind.Unknown {
+	targetKind := cast.Typ.Kind()
+	if targetKind == irkind.Unknown || isAny(target) {
 		// No specification on what we want.
 		// For example:
 		//   a := 5.2
 		// Then we cast the number, 5.2 in this example, to a default type.
 		cast.Typ = DefaultNumberType(expr.Type().Kind())
 	}
-	if cast.Typ.Kind() == irkind.Array {
+	if targetKind == irkind.Array {
 		// The required type is an array. For example:
 		//   a := 5 * [2]float32{1, 2}
 		// We cast the number, 5 in this example, to the data type of the array.

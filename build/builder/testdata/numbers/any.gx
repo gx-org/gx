@@ -1,0 +1,17 @@
+package any
+
+func f(x any) any {
+	return x
+}
+
+func TestIntAsAny() any {
+	return f(42)
+	// Want:
+	// int(42)
+}
+
+func TestFloatAsAny() any {
+	return f(4.2)
+	// Want:
+	// float64(4.2)
+}

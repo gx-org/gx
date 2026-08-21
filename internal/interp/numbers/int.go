@@ -15,116 +15,69 @@
 package numbers
 
 import (
-	"fmt"
 	"go/ast"
 	"go/token"
 	"math/big"
 
-	"github.com/gx-org/backend/shape"
-	"github.com/gx-org/gx/api/values"
 	"github.com/gx-org/gx/build/fmterr"
 	"github.com/gx-org/gx/build/ir"
-	"github.com/gx-org/gx/build/ir/irkind"
-	"github.com/gx-org/gx/internal/concrete"
-	"github.com/gx-org/gx/internal/interp/canonical"
-	"github.com/gx-org/gx/internal/interp/compeval/cpevops"
-	"github.com/gx-org/gx/internal/interp/flatten"
-	"github.com/gx-org/gx/internal/togo"
-	"github.com/gx-org/gx/interp/elements"
+	"github.com/gx-org/gx/internal/interp/constants"
+	"github.com/gx-org/gx/internal/interp/fmtexpr"
 	"github.com/gx-org/gx/interp/engine"
-	"github.com/gx-org/gx/interp/materialise"
 )
 
-// Int is a GX number.
-type Int struct {
-	canonical.AtomStringImpl
-	val  *big.Int
-	expr ir.Expr
-	typ  ir.Type
+// elInt is a GX number.
+type elInt struct {
+	fmtexpr.AtomStringImpl
+	val *big.Int
 }
 
-var (
-	_ Number           = (*Int)(nil)
-	_ ir.Canonical     = (*Int)(nil)
-	_ togo.WithGoValue = (*Int)(nil)
-)
-
-// NewInt returns a new element Int number element.
-func NewInt(val *big.Int, expr ir.Expr) *Int {
-	return &Int{
-		val:  val,
-		expr: expr,
-		typ:  expr.Type(),
-	}
+func newInt(f *big.Int) *elInt {
+	return &elInt{val: f}
 }
 
-// NewIntFrom returns a new element Int number given an int64 value.
-func NewIntFrom(val int64, typ ir.Type) *Int {
-	bVal := big.NewInt(val)
-	return NewInt(
-		bVal,
-		&ir.NumberCastExpr{
-			X: &ir.NumberInt{
-				Src: &ast.BasicLit{
-					Kind:  token.INT,
-					Value: bVal.String(),
-				},
-				Val: bVal,
-			},
-			Typ: typ,
-		},
-	)
+// NewIntNumber returns a new element Int number element.
+func NewIntNumber(x *ir.NumberInt) engine.ScalarNumber {
+	return newInt(x.Val)
+}
+
+func newIntFrom(val int64, typ ir.Type) engine.Constant {
+	elI := newInt(big.NewInt(val))
+	irI := elI.BuildIR()
+	return elI.Cast(&ir.NumberCastExpr{X: irI, Typ: typ})
 }
 
 // UnaryOp applies a unary operator on x.
-func (n *Int) UnaryOp(env engine.Env, expr *ir.UnaryExpr) (engine.NumericalElement, error) {
+func (n *elInt) UnaryOp(env ir.SourceFile, expr *ir.UnaryExpr) (engine.ScalarNumber, error) {
 	switch expr.Src.Op {
 	case token.ADD:
 		return n, nil
 	case token.SUB:
-		return &Int{
-			val:  new(big.Int).Neg(n.val),
-			expr: expr,
-			typ:  n.typ,
-		}, nil
+		return newInt(new(big.Int).Neg(n.val)), nil
 	default:
-		return nil, fmterr.Errorf(env.File().FileSet(), expr.Src, "number int unary operator %s not implemented", expr.Src.Op)
+		return nil, fmterr.InternalAt(env.File().FileSet(), expr.Src, "unary operator %s for %T not implemented", expr.Src.Op, n)
 	}
 }
 
-// Int64 value of the integer.
-func (n *Int) Int64() int64 {
-	return n.val.Int64()
-}
-
-// Uint64 value of the integer.
-func (n *Int) Uint64() uint64 {
-	return n.val.Uint64()
+// CmpOp compares x to y.
+// Returns a nil element if the operator is not a comparison operator.
+func (n *elInt) CmpOp(env ir.SourceFile, expr *ir.BinaryExpr, y engine.ScalarNumber) engine.BoolConstant {
+	return compare(expr.Src.Op, n.Float(), y.Float())
 }
 
 // BinaryOp applies a binary operator to x and y.
 // Note that the receiver can be either the left or right argument.
-func (n *Int) BinaryOp(env engine.Env, expr *ir.BinaryExpr, x, y engine.NumericalElement) (engine.NumericalElement, error) {
-	switch yT := y.(type) {
-	case *Float:
-		return binaryFloat(env, expr, n.toFloat(), yT)
-	case *Int:
-		return binaryInt(env, expr, n, yT)
+func (n *elInt) BinaryOp(env ir.SourceFile, expr *ir.BinaryExpr, yEl engine.ScalarNumber) (engine.ScalarNumber, error) {
+	var y *big.Int
+	switch yT := yEl.(type) {
+	case *elFloat:
+		return binaryFloat(env, expr, n.Float(), yT.val)
+	case *elInt:
+		y = yT.val
+	default:
+		return notSupported(env, expr, n, yEl)
 	}
-	return cpevops.NewBinary(env, expr, x, y)
-}
-
-func (n *Int) toFloat() *Float {
-	return &Float{val: n.Float(), expr: n.expr, typ: n.typ}
-}
-
-// Float value of the integer.
-func (n *Int) Float() *big.Float {
-	return new(big.Float).SetInt(n.val)
-}
-
-func binaryInt(env engine.Env, expr *ir.BinaryExpr, xInt, yInt *Int) (engine.NumericalElement, error) {
-	x, y := xInt.val, yInt.val
+	x := n.val
 	var val *big.Int
 	switch expr.Src.Op {
 	case token.ADD:
@@ -148,138 +101,52 @@ func binaryInt(env engine.Env, expr *ir.BinaryExpr, xInt, yInt *Int) (engine.Num
 	case token.XOR:
 		val = new(big.Int).Xor(x, y)
 	default:
-		return cpevops.NewBinary(env, expr, xInt, yInt)
+		return notSupported(env, expr, n, yEl)
 	}
-	typ, err := concrete.Concrete(env.ExprEval(), expr.Src, expr.Typ)
-	return &Int{
-		val:  val,
-		expr: expr,
-		typ:  typ,
-	}, err
+	return newInt(val), nil
+}
+
+// Float returns the integer value as a big float.
+func (n *elInt) Float() *big.Float {
+	return (&big.Float{}).SetInt(n.val)
 }
 
 // Cast an element into a given data type.
-func (n *Int) Cast(env engine.Env, expr ir.Expr, target ir.Type) (engine.NumericalElement, error) {
-	typ, err := concrete.Concrete(env.ExprEval(), expr.Expr(), target)
-	return &Int{
-		val:  n.val,
-		expr: expr,
-		typ:  typ,
-	}, err
-}
-
-// Reshape the number into an array.
-func (n *Int) Reshape(env engine.Env, expr ir.Expr, axisLengths []engine.NumericalElement) (engine.NumericalElement, error) {
-	return cpevops.NewReshape(env, expr, n, axisLengths)
-}
-
-// EvalShape of the value represented by the element.
-func (n *Int) EvalShape() (*shape.Shape, error) {
-	return numberShape, nil
+func (n *elInt) Cast(expr *ir.NumberCastExpr) engine.Constant {
+	return constants.NewScalar(expr.Type(), n)
 }
 
 // Expr returns the expression representing the integer.
-func (n *Int) Expr(ir.Evaluator, ast.Expr) ([]ir.Expr, error) {
-	return []ir.Expr{&ir.NumberCastExpr{
-		X:   &ir.NumberInt{Val: n.val},
-		Typ: n.typ,
-	}}, nil
+func (n *elInt) BuildIR() ir.Expr {
+	return &ir.NumberInt{
+		Src: &ast.BasicLit{
+			Kind:  token.INT,
+			Value: n.val.String(),
+		},
+		Val: n.val,
+	}
+}
+
+// Expr returns the expression representing the integer.
+func (n *elInt) Expr(ir.Evaluator, ast.Expr) ([]ir.Expr, error) {
+	return []ir.Expr{n.BuildIR()}, nil
 }
 
 // Type of the element.
-func (n *Int) Type() ir.Type {
-	return n.typ
-}
-
-// Compare with another number.
-func (n *Int) Compare(x canonical.Comparable) (bool, error) {
-	switch xT := x.(type) {
-	case *Float:
-		return n.Float().Cmp(xT.val) == 0, nil
-	case *Int:
-		return n.val.Cmp(xT.val) == 0, nil
-	case elements.ElementWithConstant:
-		val, err := xT.NumericalConstant()
-		if err != nil {
-			return false, err
-		}
-		if val == nil {
-			return false, nil
-		}
-		if !val.Shape().IsAtomic() {
-			return false, nil
-		}
-		other, err := val.ToAtom()
-		if err != nil {
-			return false, nil
-		}
-		var otherI *big.Int
-		switch otherT := other.(type) {
-		case int32:
-			otherI = big.NewInt(int64(otherT))
-		case int64:
-			otherI = big.NewInt(otherT)
-		default:
-			return false, nil
-		}
-		return n.val.Cmp(otherI) == 0, nil
-	}
-	// Because the compiler cast numbers to concrete types,
-	// numbers should only be compared to other numbers.
-	// Always return false if that is not the case.
-	return false, nil
-}
-
-// CanonicalExpr returns the canonical expression used for comparison.
-func (n *Int) CanonicalExpr() canonical.Canonical {
-	return n
-}
-
-// Copy returns the receiver.
-func (n *Int) Copy() engine.Copier {
-	return n
-}
-
-// NumericalConstant returns the value of a constant represented by a node.
-func (n *Int) NumericalConstant() (*values.HostArray, error) {
-	return values.AtomNumberInt(n.val, n.typ)
-}
-
-// Unflatten creates a GX value from the next handles available in the parser.
-func (n *Int) Unflatten(handles *flatten.Parser) (values.Value, error) {
-	return handles.ParseArray(n.typ)
-}
-
-// Materialise the value into a node in the backend graph.
-func (n *Int) Materialise(ao materialise.Materialiser) (materialise.Node, error) {
-	val, err := n.NumericalConstant()
-	if err != nil {
-		return nil, err
-	}
-	return ao.NodeFromArray(val)
+func (n *elInt) Type() ir.Type {
+	return ir.NumberIntType()
 }
 
 // ShortString returns a short string representation for the integer.
-func (n *Int) ShortString() string {
-	return n.String()
+func (n *elInt) ShortString(from *ir.File) string {
+	return n.val.String()
 }
 
 // SourceString returns the GX source code to represent the float.
-func (n *Int) SourceString(from *ir.File) string {
-	val := n.expr.SourceString(from)
-	if n.typ.Kind() == irkind.NumberInt {
-		return val
-	}
-	return fmt.Sprintf("%s(%s)", n.Type().ReferString(from), val)
+func (n *elInt) SourceString(from *ir.File) string {
+	return n.ShortString(from)
 }
 
-// GoValue of the underlying element.
-func (n *Int) GoValue() (any, error) {
-	return n.val, nil
-}
-
-// String representation of the integer.
-// Used in compiler error messages.
-func (n *Int) String() string {
+func (n *elInt) String() string {
 	return n.val.String()
 }

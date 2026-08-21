@@ -1,0 +1,15 @@
+package add03
+
+type ints interface {
+	int32 | int64
+}
+
+func addTwo[T ints, S []int](x [unpack(S)]T) [unpack(S)]T {
+	return x + 2
+}
+
+func TestAddTwo() [2]int32 {
+	return addTwo([2]int32{1, 2})
+	// Want:
+	// [2]int32{3, 4}
+}

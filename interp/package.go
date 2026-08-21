@@ -16,6 +16,7 @@ package interp
 
 import (
 	"github.com/gx-org/gx/build/ir"
+	"github.com/gx-org/gx/build/ir/irkind"
 	"github.com/gx-org/gx/internal/base/scope"
 	"github.com/gx-org/gx/interp/elements"
 	"github.com/gx-org/gx/interp/fun"
@@ -64,11 +65,19 @@ func (itp *Base) evalPackageConstExpr(scope *scope.RWScope[ir.Element], expr *ir
 	if err != nil {
 		return err
 	}
-	el, err := fCtx.EvalExpr(expr.Val)
+	var el ir.Element
+	if irkind.IsNumber(expr.Type().Kind()) {
+		el, err = fCtx.evalNumberExpr(expr.Val)
+	} else {
+		el, err = fCtx.EvalExpr(expr.Val)
+	}
 	if err != nil {
 		return err
 	}
-	el = itp.eng.ElementFromStorage(expr.Decl.FFile, expr, el)
+	el, err = itp.Engine().ArrayOps().DefineGlobalConst(expr, el)
+	if err != nil {
+		return err
+	}
 	scope.Define(expr.VName.Name, el)
 	return nil
 }

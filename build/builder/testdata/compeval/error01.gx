@@ -1,0 +1,9 @@
+package error01
+
+func returnTwo() int {
+	return 2
+}
+
+func f() [returnTwo()]int32 { // ERROR expect a compeval function, function returnTwo is not
+	return [2]int32{1, 2}
+}

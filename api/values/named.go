@@ -48,8 +48,8 @@ func (n *NamedType) Underlying() Value {
 }
 
 // Under returns the element stored by this type.
-func (n *NamedType) Under() ir.Element {
-	return n.val
+func (n *NamedType) Under() (ir.Element, error) {
+	return n.val, nil
 }
 
 // Select a field in the structure.

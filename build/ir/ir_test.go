@@ -27,7 +27,9 @@ import (
 	"github.com/gx-org/gx/build/ir"
 	"github.com/gx-org/gx/build/ir/irhelper"
 	"github.com/gx-org/gx/build/ir/irkind"
+	algcmp "github.com/gx-org/gx/internal/interp/compeval/cmp"
 	"github.com/gx-org/gx/internal/interp/compeval"
+	"github.com/gx-org/gx/interp/engine"
 	"github.com/gx-org/gx/interp"
 )
 
@@ -84,7 +86,7 @@ var (
 		})
 	}
 	genericRankFunc = func() ir.ArrayRank {
-		return &ir.RankInfer{Rnk: newRank(newSymbol("a"))}
+		return &ir.RankInfer{ArrayRank: newRank(newSymbol("a"))}
 	}
 	axisGroupRankFunc = func() ir.ArrayRank {
 		symbolicAxisNames["M"] = true
@@ -137,7 +139,7 @@ func newSymbol(name string) *ir.Ident {
 	return irhelper.Ident(vr)
 }
 
-func declareVariable(file *ir.File, name string, opts []options.PackageOption) []options.PackageOption {
+func declareVariable(file *ir.File, name string, opts []options.PackageOption) ([]options.PackageOption, error) {
 	decl := &ir.VarSpec{
 		FFile: file,
 		TypeV: ir.IntType(),
@@ -148,8 +150,12 @@ func declareVariable(file *ir.File, name string, opts []options.PackageOption) [
 	}
 	decl.Exprs = []*ir.VarExpr{varExpr}
 	file.Package.Decls.Vars = append(file.Package.Decls.Vars, decl)
-	opts = append(opts, compeval.NewOptionVariable(varExpr))
-	return opts
+	opt, err := compeval.NewOptionVariable(varExpr)
+	if err != nil {
+		return nil, err
+	}
+	opts = append(opts, opt)
+	return opts, nil
 }
 
 func makeArrayTypes(types []ir.Type, ranker rankFunc) []ir.Type {
@@ -180,7 +186,11 @@ func newFetcherTesting() (*fetcherTesting, error) {
 	file := testFile
 	var packageOptions []options.PackageOption
 	for symbol := range symbolicAxisNames {
-		packageOptions = declareVariable(file, symbol, packageOptions)
+		var err error
+		packageOptions, err = declareVariable(file, symbol, packageOptions)
+		if err != nil {
+			return nil, err
+		}
 	}
 	hostEval := compeval.NewHostEvaluator(nil, interp.NewRunFunc)
 	itp, err := interp.New(hostEval, hostEval, interp.Runners(), packageOptions)
@@ -218,6 +228,11 @@ func (f *fetcherTesting) Sub(*ir.File, map[string]ir.Element) (ir.Evaluator, err
 
 func (f *fetcherTesting) Err() *fmterr.Appender {
 	return nil
+}
+
+func (f *fetcherTesting) Compare(x, y ir.Element) (bool, error) {
+	env := engine.ProxyEnv(nil, nil)
+	return algcmp.Equal(env.ExprEval(), x, y)
 }
 
 func TestIsExported(t *testing.T) {

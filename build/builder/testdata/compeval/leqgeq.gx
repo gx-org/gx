@@ -1,0 +1,45 @@
+package leqgeq
+
+// No runtime test function
+
+//gx:compeval
+func TestLEQ01() bool {
+	return 2 <= 1
+	// Want:
+	// false
+}
+
+//gx:compeval
+func TestLEQ02() bool {
+	return 2 <= 2
+	// Want:
+	// true
+}
+
+//gx:compeval
+func TestLEQ03() bool {
+	return 2 <= 3
+	// Want:
+	// true
+}
+
+//gx:compeval
+func TestGEQ01() bool {
+	return 2 >= 1
+	// Want:
+	// true
+}
+
+//gx:compeval
+func TestGEQ02() bool {
+	return 2 >= 2
+	// Want:
+	// true
+}
+
+//gx:compeval
+func TestGEQ03() bool {
+	return 2 >= 3
+	// Want:
+	// false
+}

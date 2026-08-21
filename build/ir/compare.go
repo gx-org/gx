@@ -14,10 +14,6 @@
 
 package ir
 
-import (
-	"github.com/gx-org/gx/internal/interp/canonical"
-)
-
 // TupleElement is a tuple evaluated by the interpreter.
 type TupleElement interface {
 	Element
@@ -33,18 +29,5 @@ func areEqual(tpcmp TypeCmp, x, y Expr) (bool, error) {
 	if err != nil {
 		return false, err
 	}
-	return ElementEqual(xExpr, yExpr)
-}
-
-// ElementEqual compares if two runtime elements are equal.
-func ElementEqual(x, y Element) (bool, error) {
-	xCan, ok := x.(canonical.Canonical)
-	if !ok {
-		return false, nil
-	}
-	yCan, ok := y.(canonical.Canonical)
-	if !ok {
-		return false, nil
-	}
-	return xCan.Compare(yCan)
+	return tpcmp.Compare(xExpr, yExpr)
 }

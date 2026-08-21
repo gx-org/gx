@@ -17,19 +17,21 @@
 package math
 
 import (
+	"fmt"
 	"go/ast"
 	"go/token"
 	"math"
+	"math/big"
 	"reflect"
 
 	"github.com/pkg/errors"
-	"github.com/gx-org/backend/dtypes"
 	"github.com/gx-org/backend/ops"
 	"github.com/gx-org/gx/build/builtins"
 	"github.com/gx-org/gx/build/fmterr"
 	"github.com/gx-org/gx/build/ir"
 	"github.com/gx-org/gx/build/ir/irkind"
 	"github.com/gx-org/gx/internal/concrete"
+	"github.com/gx-org/gx/internal/interp/compeval/cmp"
 	"github.com/gx-org/gx/interp/elements"
 	"github.com/gx-org/gx/interp/engine"
 	"github.com/gx-org/gx/interp/materialise"
@@ -85,7 +87,7 @@ func checkSameOrScalar(env engine.Env, call *ir.FuncCallExpr, recv ir.Element, a
 	if ax2.Len() == 0 {
 		return []ir.Element{ax1, elements.NilError()}, nil
 	}
-	same, err := ax1.Compare(ax2)
+	same, err := cmp.Equal(env.ExprEval(), ax1, ax2)
 	if err != nil {
 		return nil, err
 	}
@@ -134,18 +136,24 @@ func mainAuxArgsToTypes(funcName string, fetcher ir.Fetcher, call *ir.FuncCallEx
 	return baseType, auxType, baseType, nil
 }
 
-func buildConstScalar[T dtypes.Supported](name string, value T) builtin.Builder {
+type goFloats interface {
+	float32 | float64
+}
+
+func buildConstScalar[T goFloats](name string, value T) builtin.Builder {
 	kind := irkind.KindGeneric[T]()
-	return builtin.BuildConst(func(*ir.Package) (string, ir.Expr, ir.Type, error) {
-		value := &ir.AtomicValueT[T]{
+	expr := &ir.NumberCastExpr{
+		X: &ir.NumberFloat{
 			Src: &ast.BasicLit{
-				Kind:  token.IDENT,
-				Value: name,
+				Kind:  token.FLOAT,
+				Value: fmt.Sprint(value),
 			},
-			Val: value,
-			Typ: ir.TypeFromKind(kind),
-		}
-		return name, value, value.Type(), nil
+			Val: big.NewFloat(float64(value)),
+		},
+		Typ: ir.TypeFromKind(kind),
+	}
+	return builtin.BuildConst(func(*ir.Package) (string, ir.Expr, ir.Type, error) {
+		return name, expr, expr.Type(), nil
 	})
 }
 
@@ -164,9 +172,9 @@ func buildUnary(name string, f func(graph ops.Graph) unaryFunc) builtin.Builder 
 		if err != nil {
 			return nil, err
 		}
-		typ, err := concrete.Concrete(env.ExprEval(), call.Expr(), call.Type())
+		typ, err := concrete.Concrete(env.ExprEval(), call.Type())
 		if err != nil {
-			return nil, err
+			return nil, fmterr.Error(env.File().FileSet(), call.Src, err)
 		}
 		return materialise.ElementFromNode(env.File(), mat, &ops.OutputNode{
 			Node:  node,
@@ -194,9 +202,9 @@ func buildBinary(name string, f func(graph ops.Graph) binaryFunc) builtin.Builde
 		if err != nil {
 			return nil, err
 		}
-		typ, err := concrete.Concrete(env.ExprEval(), call.Expr(), call.Type())
+		typ, err := concrete.Concrete(env.ExprEval(), call.Type())
 		if err != nil {
-			return nil, err
+			return nil, fmterr.Error(env.File().FileSet(), call.Src, err)
 		}
 		return materialise.ElementFromNode(env.File(), mat, &ops.OutputNode{
 			Node:  node,

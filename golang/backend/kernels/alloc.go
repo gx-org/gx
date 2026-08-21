@@ -20,7 +20,7 @@ import (
 	"sync"
 
 	"github.com/pkg/errors"
-	"github.com/gomlx/compute/dtypes/bfloat16"
+	"github.com/gomlx/gopjrt/dtypes/bfloat16"
 	"github.com/gx-org/backend/dtypes"
 	"github.com/gx-org/backend/platform"
 	"github.com/gx-org/backend/shape"

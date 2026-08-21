@@ -1,0 +1,13 @@
+package identity
+
+func identity[X []int](a [unpack(X)]float32) [unpack(X)]float32 {
+	return a
+}
+
+func TestIdentity() ([1]float32, [2]float32, [3]float32) {
+	return identity([1]float32{1}), identity([2]float32{1, 2}), identity([3]float32{1, 2, 3})
+	// Want:
+	// 0: [1]float32{1}
+	// 1: [2]float32{1, 2}
+	// 2: [3]float32{1, 2, 3}
+}

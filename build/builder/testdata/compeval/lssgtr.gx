@@ -1,0 +1,45 @@
+package lssgtr
+
+// No runtime test function
+
+//gx:compeval
+func TestLSS01() bool {
+	return 2 < 1
+	// Want:
+	// false
+}
+
+//gx:compeval
+func TestLSS02() bool {
+	return 2 < 2
+	// Want:
+	// false
+}
+
+//gx:compeval
+func TestLSS03() bool {
+	return 2 < 3
+	// Want:
+	// true
+}
+
+//gx:compeval
+func TestGTR01() bool {
+	return 2 > 1
+	// Want:
+	// true
+}
+
+//gx:compeval
+func TestGTR02() bool {
+	return 2 > 2
+	// Want:
+	// false
+}
+
+//gx:compeval
+func TestGTR03() bool {
+	return 2 > 3
+	// Want:
+	// false
+}

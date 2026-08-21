@@ -16,9 +16,9 @@
 package cpevops
 
 import (
-	"github.com/gx-org/gx/api/values"
+	"github.com/gx-org/backend/shape"
 	"github.com/gx-org/gx/build/ir"
-	"github.com/gx-org/gx/internal/interp/canonical"
+	"github.com/gx-org/gx/internal/base/cast"
 	"github.com/gx-org/gx/interp/elements"
 	"github.com/gx-org/gx/interp/engine"
 )
@@ -26,50 +26,12 @@ import (
 // Element returned after an evaluation at compeval.
 type Element interface {
 	engine.NumericalElement
-	canonical.Comparable
+	ir.WithExpr
+	ir.StringShorter
 	ir.StringSourcer
-
-	ShortString() string
-
-	// CanonicalExpr returns the canonical expression used for comparison.
-	CanonicalExpr() canonical.Canonical
-}
-
-func valEqual(x, y Element) (bool, error) {
-	xEl, err := elements.ConstantFromElement(x)
-	if err != nil {
-		return false, err
-	}
-	if xEl == nil {
-		return false, nil
-	}
-	yEl, err := elements.ConstantFromElement(y)
-	if err != nil {
-		return false, err
-	}
-	if yEl == nil {
-		return false, nil
-	}
-	return EqualArray(xEl, yEl), nil
-}
-
-// EqualArray returns true if two arrays are equal.
-func EqualArray(x, y *values.HostArray) bool {
-	if !x.Shape().Equal(y.Shape()) {
-		return false
-	}
-	xBuf := x.Buffer()
-	yBuf := y.Buffer()
-	xData := xBuf.Acquire()
-	defer xBuf.Release()
-	yData := yBuf.Acquire()
-	defer yBuf.Release()
-	for i, xi := range xData {
-		if yData[i] != xi {
-			return false
-		}
-	}
-	return true
+	elements.WithAxes
+	elements.EvalShaper
+	elements.Slicer
 }
 
 // AxesFromType returns a slice element of axis lengths from an array type.
@@ -89,4 +51,55 @@ func AxesFromType(ev ir.Evaluator, typ ir.Type) (*elements.Slice, error) {
 		}
 	}
 	return elements.NewSlice(ir.IntSliceType(), elts)
+}
+
+// EvalShape evaluates a shape given for a given array type.
+// Returns a nil shape if the shape is generic.
+func EvalShape(typ ir.Type) (*shape.Shape, error) {
+	atyp, err := cast.To[ir.ArrayType](typ)
+	if err != nil {
+		return nil, err
+	}
+	if atyp.Rank().IsAtomic() {
+		return &shape.Shape{
+			DType: atyp.DataType().Kind().DType(),
+		}, nil
+	}
+	return nil, nil
+}
+
+type core struct {
+	el Element
+}
+
+func (c *core) UnaryOp(env engine.Env, expr *ir.UnaryExpr) (engine.NumericalElement, error) {
+	return NewUnary(env, expr, c.el)
+}
+
+func (c *core) BinaryOp(env engine.Env, expr *ir.BinaryExpr, y engine.NumericalElement) (engine.NumericalElement, error) {
+	return NewBinaryFrom(env, expr, c.el, y)
+}
+
+func (c *core) Cast(env engine.Env, expr ir.Expr, target ir.Type) (engine.NumericalElement, error) {
+	return NewCast(env, expr, c.el, target), nil
+}
+
+func (c *core) Reshape(env engine.Env, expr ir.Expr, axisLengths []engine.NumericalElement) (engine.NumericalElement, error) {
+	return NewReshape(env, expr, c.el, axisLengths)
+}
+
+func (c *core) Axes(ev ir.Evaluator) (*elements.Slice, error) {
+	return AxesFromType(ev, c.el.Type())
+}
+
+func (c *core) EvalShape() (*shape.Shape, error) {
+	return EvalShape(c.el.Type())
+}
+
+func (c *core) SliceAt(env engine.Env, expr *ir.IndexExpr, index engine.NumericalElement) (ir.Element, error) {
+	return NewIndex(env, expr, c.el, index)
+}
+
+func (c *core) Slice(env engine.Env, expr *ir.SliceExpr, low, high engine.NumericalElement) (ir.Element, error) {
+	return NewSlice(env, expr, c.el, low, high)
 }

@@ -17,175 +17,54 @@ package cpevops
 import (
 	"fmt"
 	"go/ast"
-	"go/token"
 
-	"github.com/gx-org/backend/shape"
-	"github.com/gx-org/gx/api/values"
-	"github.com/gx-org/gx/build/fmterr"
 	"github.com/gx-org/gx/build/ir"
-	"github.com/gx-org/gx/golang/backend/kernels"
-	"github.com/gx-org/gx/internal/concrete"
-	"github.com/gx-org/gx/internal/interp/canonical"
-	"github.com/gx-org/gx/internal/interp/flatten"
-	"github.com/gx-org/gx/interp/elements"
+	"github.com/gx-org/gx/internal/algexpr"
+	"github.com/gx-org/gx/internal/interp/compeval/cmp"
 	"github.com/gx-org/gx/interp/engine"
-	"github.com/gx-org/gx/interp/materialise"
 )
 
 type unary struct {
-	canonical canonical.Canonical
-	expr      *ir.UnaryExpr
-	typ       ir.Type
-	x         Element
-	val       *values.HostArray
+	core
+	expr *ir.UnaryExpr
+	x    Element
 }
-
-var (
-	_ materialise.ElementMaterialiser = (*unary)(nil)
-	_ elements.ElementWithConstant    = (*unary)(nil)
-	_ ir.Canonical                    = (*unary)(nil)
-	_ canonical.Canonical             = (*unary)(nil)
-)
 
 // NewUnary applies an unary operator to an element.
-func NewUnary(env engine.Env, expr *ir.UnaryExpr, xEl Element) (_ engine.NumericalElement, err error) {
-	defer func() {
-		if err != nil {
-			err = fmterr.Error(env.File().FileSet(), expr.Src, err)
-		}
-	}()
-	typ, err := concrete.Concrete(env.ExprEval(), expr.Src, expr.Type())
-	opEl := &unary{
+func NewUnary(env engine.Env, expr *ir.UnaryExpr, xEl Element) (_ Element, err error) {
+	el := &unary{
 		expr: expr,
-		typ:  typ,
 		x:    xEl,
 	}
-	defer func() {
-		opEl.canonical = opEl.toCanonical()
-	}()
-	if err != nil {
-		return opEl, err
-	}
-	x, err := elements.ConstantFromElement(xEl)
-	if err != nil {
-		return nil, err
-	}
-	if x == nil {
-		return opEl, nil
-	}
-	kx, err := values.ToKernel(x)
-	if err != nil {
-		return nil, err
-	}
-	// Convert the interpreter element a.x into a GX value.
-	// Use the factory to get the kernel matching the binary operator.
-	op, _, err := kx.Factory().UnaryOp(expr.Src.Op, kx.Shape())
-	if err != nil {
-		return nil, err
-	}
-	// Apply the kernel.
-	res, err := op(kx)
-	if err != nil {
-		return nil, err
-	}
-	// Return the result as a GX value.
-	val, err := values.NewHostArray(expr.Type(), kernels.NewBuffer(res))
-	if err != nil {
-		return nil, err
-	}
-	opEl.val = val
-	return opEl, nil
+	el.core = core{el: el}
+	return el, err
 
-}
-
-func (a *unary) Reshape(env engine.Env, expr ir.Expr, axisLengths []engine.NumericalElement) (engine.NumericalElement, error) {
-	return NewReshape(env, expr, a, axisLengths)
-}
-
-// UnaryOp applies a unary operator on x.
-func (a *unary) UnaryOp(env engine.Env, expr *ir.UnaryExpr) (engine.NumericalElement, error) {
-	return NewUnary(env, expr, a)
-}
-
-// BinaryOp applies a binary operator to x and y.
-func (a *unary) BinaryOp(env engine.Env, expr *ir.BinaryExpr, x, y engine.NumericalElement) (engine.NumericalElement, error) {
-	return NewBinary(env, expr, x, y)
-}
-
-// Cast an element into a given data type.
-func (a *unary) Cast(env engine.Env, expr ir.Expr, target ir.Type) (engine.NumericalElement, error) {
-	return NewCast(env, expr, a, target)
-}
-
-// Shape of the value represented by the element.
-func (a *unary) Shape() *shape.Shape {
-	if a.val != nil {
-		return a.val.Shape()
-	}
-	return nil
 }
 
 // Type of the element.
 func (a *unary) Type() ir.Type {
-	return a.typ
+	return a.expr.Type()
 }
 
-// Unflatten creates a GX value from the next handles available in the parser.
-func (a *unary) Unflatten(handles *flatten.Parser) (values.Value, error) {
-	return handles.ParseArray(a.typ)
-}
-
-// NumericalConstant returns the value of a constant represented by a node.
-func (a *unary) NumericalConstant() (*values.HostArray, error) {
-	return a.val, nil
-}
-
-// Materialise returns the element with all its values from the graph.
-func (a *unary) Materialise(ao materialise.Materialiser) (materialise.Node, error) {
-	return ao.NodeFromArray(a.val)
-}
-
-func (a *unary) Expr(ir.Evaluator, ast.Expr) ([]ir.Expr, error) {
-	return []ir.Expr{a.expr}, nil
-}
-
-// Compare to another element.
-func (a *unary) Compare(x canonical.Comparable) (bool, error) {
-	eq, err := valEqual(a, x.(Element))
+func (a *unary) AlgExpr(eva ir.Evaluator) (cmp.Expr, error) {
+	x, err := cmp.ToAlgExpr(eva, a.x)
 	if err != nil {
-		return false, err
+		return nil, err
 	}
-	if eq {
-		return true, nil
-	}
-	other, ok := x.(*unary)
-	if !ok {
-		return false, nil
-	}
-	if a.expr.Src.Op != other.expr.Src.Op {
-		return false, nil
-	}
-	return a.x.Compare(other.x)
+	return algexpr.NewUnary(a.expr.Src.Op, x)
 }
 
-func (a *unary) CanonicalExpr() canonical.Canonical {
-	return a.canonical
+// Expr returns the IR expression represented by the variable.
+func (a *unary) Expr(ev ir.Evaluator, src ast.Expr) ([]ir.Expr, error) {
+	x, err := ir.ToSingleExpr(ev, src, a.x)
+	return []ir.Expr{&ir.UnaryExpr{
+		Src: a.expr.Src,
+		X:   x,
+	}}, err
 }
 
-func (a *unary) toCanonical() canonical.Canonical {
-	x := a.x.CanonicalExpr()
-	switch a.expr.Src.Op {
-	case token.ADD:
-		return x
-	case token.SUB:
-		return canonical.NewExpr(token.SUB, x)
-	default:
-		return a
-	}
-}
-
-func (a *unary) ShortString() string {
-	return a.SourceString(nil)
+func (a *unary) ShortString(from *ir.File) string {
+	return fmt.Sprintf("%v%v", a.expr.Src.Op, a.x.ShortString(from))
 }
 
 func (a *unary) SourceString(from *ir.File) string {

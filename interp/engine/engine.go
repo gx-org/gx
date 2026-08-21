@@ -16,13 +16,9 @@
 package engine
 
 import (
-	"go/ast"
-
 	"github.com/gx-org/backend/ops"
 	"github.com/gx-org/backend/shape"
-	"github.com/gx-org/gx/api/values"
 	"github.com/gx-org/gx/build/ir"
-	"github.com/gx-org/gx/internal/interp/canonical"
 	"github.com/gx-org/gx/internal/tracer/processor"
 )
 
@@ -50,14 +46,11 @@ type (
 		// Processor returns the used by the array evaluator.
 		Processor() *processor.Processor
 
-		// ElementFromStorage returns an element from an atomic GX value and its storage.
-		ElementFromStorage(file *ir.File, expr ir.StorageWithValue, val ir.Element) ir.Element
-
 		// Trace register a call to the trace builtin function.
 		Trace(ctx ir.Evaluator, call *ir.FuncCallExpr, args []ir.Element) error
 	}
 
-	// NumericalElement is a node representing a numerical value.
+	// NumericalElement is a node representing a numerical value manipulated by the interpreter.
 	NumericalElement interface {
 		ir.Element
 
@@ -66,7 +59,7 @@ type (
 
 		// BinaryOp applies a binary operator to x and y.
 		// Note that the receiver can be either the left or right argument.
-		BinaryOp(env Env, expr *ir.BinaryExpr, x, y NumericalElement) (NumericalElement, error)
+		BinaryOp(env Env, expr *ir.BinaryExpr, y NumericalElement) (NumericalElement, error)
 
 		// Cast an element into a given data type.
 		Cast(env Env, expr ir.Expr, target ir.Type) (NumericalElement, error)
@@ -75,12 +68,11 @@ type (
 		Reshape(env Env, expr ir.Expr, axisLengths []NumericalElement) (NumericalElement, error)
 	}
 
-	// AtomLitElement is an element representing a value known at compile time.
-	// For example: float32(1), int(5), true
-	AtomLitElement interface {
+	// ConstantElement is an element (created by the ArrayOps)
+	// with an underlying HostValueElement.
+	ConstantElement interface {
 		NumericalElement
-		canonical.Comparable
-		ir.WithExpr
+		Constant() Constant
 	}
 
 	// ArrayOps are the operator implementations for arrays.
@@ -103,14 +95,12 @@ type (
 		// Set a slice in an array.
 		Set(ctx ir.Evaluator, expr *ir.FuncCallExpr, x, updates ir.Element, position []ir.Element) (ir.Element, error)
 
-		// ElementFromAtomLit returns transforms a number element into an element specific to the ArrayOps implementation.
-		ElementFromAtomLit(ctx *ir.File, el AtomLitElement) (NumericalElement, error)
+		// ElementFromHostValue returns transforms a number element into an element specific to the ArrayOps implementation.
+		ElementFromHostValue(ctx ir.Evaluator, el Constant) (ConstantElement, error)
 
-		// ElementFromAtom returns an element from an atomic GX value.
-		ElementFromAtom(ctx *ir.File, val values.Array, expr ir.Expr, typ ir.Type) (NumericalElement, error)
-
-		// ElementFromArray returns an element from an array GX value.
-		ElementFromArray(ctx *ir.File, lit *ir.ArrayLitExpr, val values.Array) (NumericalElement, error)
+		// DefineGlobalConst defines a global constant for the interpreter.
+		// Called to define the builtin true and false.
+		DefineGlobalConst(c ir.Storage, el ir.Element) (ir.Element, error)
 	}
 
 	// Copier is an element that needs to be copied when passed to a function.
@@ -134,29 +124,4 @@ func Copy(el ir.Element) ir.Element {
 		return el
 	}
 	return copier.Copy()
-}
-
-type evalEnv struct{}
-
-func (evalEnv) File() *ir.File {
-	return nil
-}
-
-func (evalEnv) ExprEval() ir.Evaluator {
-	return nil
-}
-
-func (evalEnv) Engine() Engine {
-	return nil
-}
-
-func (evalEnv) ToConcrete(_ ast.Expr, tp ir.Type) (ir.Type, ir.CompEvalError, error) {
-	return tp, nil, nil
-}
-
-var env evalEnv
-
-// ProxyEnv returns a proxy implementation of the Env interface.
-func ProxyEnv() Env {
-	return env
 }

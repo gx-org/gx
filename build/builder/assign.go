@@ -194,7 +194,12 @@ func processOpAssignStmt(pscope procScope, stmt *ast.AssignStmt) (stmtNode, bool
 	}
 
 	target, targetOk := leftExprToTarget(pscope, stmt, stmt.Lhs[0], make(map[string]bool))
-	expr, exprOk := processBinaryExpr(pscope, &ast.BinaryExpr{X: stmt.Lhs[0], Y: stmt.Rhs[0], OpPos: stmt.TokPos, Op: op})
+	expr, exprOk := processBinaryExpr(pscope, &ast.BinaryExpr{
+		X:     stmt.Lhs[0],
+		Y:     stmt.Rhs[0],
+		OpPos: stmt.TokPos,
+		Op:    op,
+	})
 	n := assignExprStmt{
 		src:     stmt,
 		assigns: []*assignment{&assignment{target: target, expr: expr}},
@@ -306,7 +311,7 @@ func buildAssignExpr(rscope localScope, asgm *assignment) (*ir.AssignExpr, bool,
 	}
 	ext.X, exprOk = castNilAndNumber(rscope, ext.X, ext.Storage.Type())
 	assignOk := assignableToAt(rscope, asgm.expr.source(), ext.X.Type(), ext.Storage.Type())
-	definedOk := defineLocalVar(rscope, ext)
+	definedOk := defineStoreWithValue(rscope, ext, ext.X)
 	return ext, newAsgm, exprOk && targetOk && definedOk && assignOk
 }
 
@@ -345,7 +350,7 @@ func processAssignCall(pscope procScope, src *ast.AssignStmt, call *callExpr) (s
 func (n *assignCallStmt) defineLeftAsInvalid(rscope stmtResolveScope) bool {
 	for _, target := range n.targets {
 		storage, _, _ := target.buildStorage(rscope, invalidExpr().Type())
-		defineLocalVar(rscope, storage)
+		defineStoreWithValue(rscope, storage, invalidExpr())
 	}
 	return false
 }
@@ -381,10 +386,10 @@ func (n *assignCallStmt) buildStmt(rscope stmtResolveScope) (ir.Stmt, bool, bool
 			Call:        ext.Call,
 			ResultIndex: i,
 		}
-		if !defineLocalVar(rscope, ext.List[i]) {
-			ok = false
-		}
 		newVariables = newVariables || asgmNew
+	}
+	if !defineStoresFromCall(rscope, ext) {
+		ok = false
 	}
 	return ext, false, ok && callOk && checkNewVariables(rscope, n.src, newVariables)
 }

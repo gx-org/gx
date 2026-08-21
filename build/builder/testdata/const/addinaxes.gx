@@ -1,0 +1,10 @@
+package addinaxes
+
+const sizeA int = 3
+const sizeB int = 2
+
+func TestAddInAxes() [sizeA + sizeB]float32 {
+	return [sizeA + sizeB]float32{}
+	// Want:
+	// [5]float32{0, 0, 0, 0, 0}
+}

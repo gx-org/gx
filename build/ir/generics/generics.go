@@ -17,7 +17,6 @@ package generics
 
 import (
 	"go/ast"
-	"reflect"
 
 	"github.com/gx-org/gx/build/ir"
 )
@@ -48,11 +47,7 @@ func instantiateExpr(fetcher ir.Fetcher, expr ir.Expr) (ir.Value, bool) {
 	if err != nil {
 		return expr, fetcher.Err().Append(err)
 	}
-	irVal, ok := val.(ir.Canonical)
-	if !ok {
-		return expr, fetcher.Err().AppendInternalf(expr.Node(), "cannot convert %T to %s", val, reflect.TypeFor[ir.Canonical]())
-	}
-	irExpr, err := ir.ToSingleExpr(fetcher, expr.Expr(), irVal)
+	irExpr, err := ir.ToSingleExpr(fetcher, expr.Expr(), val)
 	if err != nil {
 		return expr, fetcher.Err().AppendAt(expr.Node(), err)
 	}

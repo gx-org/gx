@@ -103,10 +103,7 @@ func (r *Rank) Axes() []AxisLengths { return r.Ax }
 func (r *Rank) Equal(tpcmp TypeCmp, other ArrayRank) (bool, error) {
 	switch otherT := other.(type) {
 	case *RankInfer:
-		if otherT.Rnk == nil {
-			return false, errors.Errorf("rank not inferred")
-		}
-		return r.equalRank(tpcmp, otherT.Rnk)
+		return r.Equal(tpcmp, otherT.ArrayRank)
 	case *Rank:
 		return r.equalRank(tpcmp, otherT)
 	default:
@@ -143,7 +140,7 @@ func (r *Rank) equalRank(tpcmp TypeCmp, other ArrayRank) (bool, error) {
 		return false, err
 	}
 	for i, ri := range rAxes {
-		eq, err := ElementEqual(ri, otherAxes[i])
+		eq, err := tpcmp.Compare(ri, otherAxes[i])
 		if !eq || err != nil {
 			return false, err
 		}
@@ -159,10 +156,7 @@ func (r *Rank) assignableTo(tpcmp TypeCmp, dst ArrayRank) (bool, error) {
 func (r *Rank) AssignableTo(tpcmp TypeCmp, dst ArrayRank) (bool, error) {
 	switch dstT := dst.(type) {
 	case *RankInfer:
-		if dstT.Rnk == nil {
-			return true, nil
-		}
-		return r.assignableTo(tpcmp, dstT.Rnk)
+		return r.AssignableTo(tpcmp, dstT.ArrayRank)
 	case *Rank:
 		return r.assignableTo(tpcmp, dstT)
 	default:
@@ -172,20 +166,8 @@ func (r *Rank) AssignableTo(tpcmp TypeCmp, dst ArrayRank) (bool, error) {
 
 // ConvertibleTo returns true if this rank can be converted to the destination rank.
 func (r *Rank) ConvertibleTo(tpcmp TypeCmp, dst ArrayRank) (bool, error) {
-	var dstR ArrayRank
-	switch dstT := dst.(type) {
-	case *RankInfer:
-		if dstT.Rnk == nil {
-			return true, nil
-		}
-		dstR = dstT.Rnk
-	case *Rank:
-		dstR = dstT
-	default:
-		return false, errors.Errorf("rank type %T not supported", dstT)
-	}
 	thisSize := RankSize(r)
-	otherSize := RankSize(dstR)
+	otherSize := RankSize(dst)
 	return areEqual(tpcmp, thisSize, otherSize)
 }
 
@@ -239,7 +221,13 @@ func (r *Rank) IndexForVarArgs(errsrc ErrSource, vri int) (ArrayRank, bool) {
 }
 
 var oneSize = &NumberCastExpr{
-	X:   &NumberInt{Val: big.NewInt(1)},
+	X: &NumberInt{
+		Src: &ast.BasicLit{
+			Kind:  token.INT,
+			Value: "1",
+		},
+		Val: big.NewInt(1),
+	},
 	Typ: IntType(),
 }
 
@@ -296,8 +284,8 @@ func (r *Rank) SourceString(from *File) string {
 // RankInfer is a rank determined at compile time
 // (specified using ...).
 type RankInfer struct {
+	ArrayRank
 	Src *ast.ArrayType
-	Rnk ArrayRank
 }
 
 var _ ArrayRank = (*RankInfer)(nil)
@@ -314,45 +302,6 @@ func (r *RankInfer) Expr() ast.Expr { return r.Src.Len }
 // Type returns the rank type.
 func (r *RankInfer) Type() Type { return RankType() }
 
-// Axes returns all axis in the rank.
-func (r *RankInfer) Axes() []AxisLengths {
-	if r.Rnk == nil {
-		return nil
-	}
-	return r.Rnk.Axes()
-}
-
-// Equal returns true if other has the same rank and dimensions.
-func (r *RankInfer) Equal(tpcmp TypeCmp, other ArrayRank) (bool, error) {
-	if r.Rnk != nil {
-		return r.Rnk.Equal(tpcmp, other)
-	}
-	switch otherT := other.(type) {
-	case *RankInfer:
-		return otherT.Rnk == nil, nil
-	case *Rank:
-		return false, nil
-	default:
-		return false, errors.Errorf("rank type %T not supported", otherT)
-	}
-}
-
-// AssignableTo returns true if this rank can be assigned to the destination rank.
-func (r *RankInfer) AssignableTo(tpcmp TypeCmp, dst ArrayRank) (bool, error) {
-	if r.Rnk != nil {
-		return r.Rnk.AssignableTo(tpcmp, dst)
-	}
-	return true, nil
-}
-
-// ConvertibleTo returns true if this rank can be converted to the destination rank.
-func (r *RankInfer) ConvertibleTo(tpcmp TypeCmp, dst ArrayRank) (bool, error) {
-	if r.Rnk != nil {
-		return r.Rnk.ConvertibleTo(tpcmp, dst)
-	}
-	return true, nil
-}
-
 // IsAtomic returns true if the rank has no axes.
 func (r *RankInfer) IsAtomic() bool {
 	return false
@@ -360,48 +309,16 @@ func (r *RankInfer) IsAtomic() bool {
 
 // SubRank returns the rank with the top-axis removed.
 func (r *RankInfer) SubRank() (ArrayRank, bool) {
-	if r.Rnk == nil {
+	if r.ArrayRank == nil {
 		return &RankInfer{}, true
 	}
-	return r.Rnk.SubRank()
-}
-
-// Specialise a type to a given target.
-func (r *RankInfer) Specialise(spec Specialiser) (ArrayRank, bool) {
-	if r.Rnk == nil {
-		return r, true
-	}
-	return r.Rnk.Specialise(spec)
-}
-
-// Instantiate the rank into another rank.
-func (r *RankInfer) Instantiate(ev Fetcher, spec Specialiser) (ArrayRank, bool) {
-	if r.Rnk == nil {
-		return r, true
-	}
-	return r.Rnk.Instantiate(ev, spec)
-}
-
-// UnifyWith unifies the rank with a given target.
-func (r *RankInfer) UnifyWith(uni Unifier, target ArrayRank) bool {
-	if r.Rnk == nil {
-		return true
-	}
-	return r.Rnk.UnifyWith(uni, target)
-}
-
-// IndexForVarArgs returns a rank specific to a given index in varargs.
-func (r *RankInfer) IndexForVarArgs(errsrc ErrSource, i int) (ArrayRank, bool) {
-	if r.Rnk == nil {
-		return r, true
-	}
-	return r.Rnk.IndexForVarArgs(errsrc, i)
+	return r.ArrayRank.SubRank()
 }
 
 // SourceString returns the GX source code of the rank.
 func (r *RankInfer) SourceString(from *File) string {
-	if r.Rnk == nil {
-		return "[...]"
+	if r.ArrayRank == nil {
+		return "..."
 	}
-	return r.Rnk.SourceString(from)
+	return r.ArrayRank.SourceString(from)
 }

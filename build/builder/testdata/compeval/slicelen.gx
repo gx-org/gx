@@ -1,0 +1,20 @@
+package slicelen
+
+// No runtime test function
+
+//gx:compeval
+func Test01() bool {
+	a := []int{2, 3}
+	return len(a) != len(a)
+	// Want:
+	// false
+}
+
+//gx:compeval
+func Test02() bool {
+	a := []int{2, 3}
+	b := []int{2}
+	return len(a) != len(b)
+	// Want:
+	// true
+}

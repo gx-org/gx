@@ -23,14 +23,14 @@ import (
 
 // StringShorter returns a string to include in an error message for the user.
 type StringShorter interface {
-	ShortString() string
+	ShortString(from *File) string
 }
 
 // ShortString converts an element to a short string for an error message.
 func ShortString(from *File, el Element) string {
 	switch elT := el.(type) {
 	case StringShorter:
-		return elT.ShortString()
+		return elT.ShortString(from)
 	case StringSourcer:
 		return elT.SourceString(from)
 	default:

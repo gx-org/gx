@@ -452,7 +452,10 @@ func MetaFuncType() *FuncType {
 func ToArrayType(typ Type) ArrayType {
 	switch typT := typ.(type) {
 	case *GenericTypeParam:
-		return ToArrayType(typT.Type())
+		if ToArrayType(typT.field.Type()) == nil {
+			return nil
+		}
+		return NewArrayType(nil, typT, &Rank{})
 	case *NamedType:
 		return ToArrayType(typT.Underlying.Val())
 	case *Interface:

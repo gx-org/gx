@@ -21,6 +21,7 @@ import (
 	"github.com/gx-org/backend/ops"
 	"github.com/gx-org/backend/shape"
 	"github.com/gx-org/gx/build/ir"
+	"github.com/gx-org/gx/internal/interp/compeval/cmp"
 	"github.com/gx-org/gx/interp/elements"
 	"github.com/gx-org/gx/interp/engine"
 	"github.com/gx-org/gx/interp/materialise"
@@ -43,7 +44,7 @@ func checkConsistent(env engine.Env, call *ir.FuncCallExpr, ref ir.Element, axis
 			concatAxis = axLen
 			continue
 		}
-		eq, err := ir.ElementEqual(refShape[i], axLen)
+		eq, err := cmp.Equal(env.ExprEval(), refShape[i], axLen)
 		if err != nil {
 			return nil, nil, err
 		}
@@ -80,12 +81,12 @@ func irAdd(env engine.Env, src ast.Expr, x, y engine.NumericalElement) (engine.N
 			Y:   yExpr,
 			Typ: ir.IntType(),
 		},
-		x, y,
+		y,
 	)
 }
 
 func concatAxis(env engine.Env, call *ir.FuncCallExpr, recv ir.Element, args []ir.Element) (_ []ir.Element, err error) {
-	idx, err := elements.ConstantIntFromElement(args[0])
+	idx, err := elements.IntFromElement(args[0])
 	if err != nil {
 		return nil, err
 	}
@@ -135,7 +136,7 @@ func concatAxis(env engine.Env, call *ir.FuncCallExpr, recv ir.Element, args []i
 }
 
 func evalConcat(env engine.Env, call *ir.FuncCallExpr, recv ir.Element, args []ir.Element) ([]ir.Element, error) {
-	axis, err := elements.ConstantIntFromElement(args[0])
+	axis, err := elements.IntFromElement(args[0])
 	if err != nil {
 		return nil, err
 	}

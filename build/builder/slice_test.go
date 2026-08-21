@@ -149,65 +149,6 @@ func testAppendNotEnough() []float32 {
 	)
 }
 
-func TestSliceCompeval(t *testing.T) {
-	testbuild.Run(t,
-		testbuild.CompEval{
-			Src: `
-//gx:compeval
-func test() []string {
-	return []string{"a", "b", "c"}
-}
-`,
-			Wants: []string{`[]string{"a", "b", "c"}`},
-		},
-		testbuild.CompEval{
-			Src: `
-//gx:compeval
-func test() []string {
-	s := []string{"a", "b", "c", "d"}
-	return s[1:]
-}
-`,
-			Wants: []string{`[]string{"b", "c", "d"}`},
-		},
-		testbuild.CompEval{
-			Src: `
-//gx:compeval
-func test() []string {
-	s := []string{"a", "b", "c", "d"}
-	return s[:2]
-}
-`,
-			Wants: []string{`[]string{"a", "b"}`},
-		},
-		testbuild.CompEval{
-			Src: `
-//gx:compeval
-func test() []string {
-	s := []string{"a", "b", "c", "d"}
-	return s[1:2]
-}
-`,
-			Wants: []string{`[]string{"b"}`},
-		},
-		testbuild.CompEval{
-			Src: `
-//gx:compeval
-func removeAxis(axes []int, reduced int) []int {
-	return append(axes[:reduced], axes[reduced+1:]...)
-}
-
-//gx:compeval
-func test() []int {
-	a := []int{0, 1, 2, 3, 4}
-	return removeAxis(a, 3)
-}
-`,
-			Wants: []string{`[]int{0, 1, 2, 4}`},
-		},
-	)
-}
-
 func TestSliceGeneric(t *testing.T) {
 	testbuild.Run(t,
 		testbuild.Decl{
@@ -218,22 +159,6 @@ func f() []int64 {
 	return g([]int64{1, 2, 3})
 }
 `,
-		},
-		testbuild.CompEval{
-			EvalCanonical: true,
-			Src: `
-//gx:compeval
-func bigger(s []int32, i int) bool {
-	return len(s) > i
-}
-
-//gx:compeval
-func test() (bool, bool) {
-	a := []int32{0, 1, 2, 3, 4}
-	return bigger(a, 2), bigger(a, 20)
-}
-`,
-			Wants: []string{`true`, `false`},
 		},
 	)
 }

@@ -15,14 +15,11 @@
 package grapheval
 
 import (
-	"github.com/pkg/errors"
 	"github.com/gx-org/backend/dtypes"
 	"github.com/gx-org/backend/ops"
 	"github.com/gx-org/backend/shape"
 	"github.com/gx-org/gx/api/values"
 	"github.com/gx-org/gx/build/ir"
-	"github.com/gx-org/gx/build/ir/irkind"
-	"github.com/gx-org/gx/internal/interp/numbers"
 	"github.com/gx-org/gx/interp/elements"
 	"github.com/gx-org/gx/interp/engine"
 	"github.com/gx-org/gx/interp/materialise"
@@ -89,7 +86,7 @@ func elementsToInt(els []engine.NumericalElement) ([]int, error) {
 	axes := make([]int, len(els))
 	for i, el := range els {
 		var err error
-		axes[i], err = elements.ConstantIntFromElement(el)
+		axes[i], err = elements.IntFromElement(el)
 		if err != nil {
 			return nil, err
 		}
@@ -201,8 +198,15 @@ func unpackOutputs(outputs []*ops.OutputNode) (nodes []ops.Node, shapes []*shape
 }
 
 // ElementFromArray returns an element from an array GX value.
-func (ao *arrayOps) NodeFromArray(val values.Array) (materialise.Node, error) {
-	return newValueElement(ao.ev, val)
+func (ao *arrayOps) NodeFromArray(val *values.HostArray) (materialise.Node, error) {
+	cstNode, err := ao.graph.Core().Constant(val.Buffer())
+	if err != nil {
+		return nil, err
+	}
+	return NewBackendNode(ao.ev, val.Type(), &ops.OutputNode{
+		Node:  cstNode,
+		Shape: val.Shape(),
+	})
 }
 
 // ElementsFromNodes returns a slice of elements from nodes
@@ -230,52 +234,12 @@ func (ao *arrayOps) Tuple(typ *ir.TupleType, nodes []ops.Node) (materialise.Node
 	)
 }
 
-func (ao *arrayOps) newBool(el numbers.Bool) (engine.NumericalElement, error) {
-	val, err := values.AtomBoolValue(el.Type(), el.Value())
-	if err != nil {
-		return nil, err
-	}
-	return newValueElement(ao.ev, val)
+// ElementFromHostValue returns transforms an atomic literal element into an element specific to the ArrayOps implementation.
+func (ao *arrayOps) ElementFromHostValue(ctx ir.Evaluator, el engine.Constant) (engine.ConstantElement, error) {
+	return newConstant(ctx, ao.ev, el)
 }
 
-func (ao *arrayOps) newInt(el *numbers.Int) (engine.NumericalElement, error) {
-	var val *values.HostArray
-	var err error
-	kind := el.Type().Kind()
-	switch kind {
-	case irkind.Int:
-		val, err = values.AtomIntegerValue(el.Type(), int(el.Int64()))
-	case irkind.Int32:
-		val, err = values.AtomIntegerValue(el.Type(), int32(el.Int64()))
-	case irkind.Int64:
-		val, err = values.AtomIntegerValue(el.Type(), el.Int64())
-	default:
-		return nil, errors.Errorf("cannot convert integer kind %s to a graph element: not supported", kind)
-	}
-	if err != nil {
-		return nil, err
-	}
-	return newValueElement(ao.ev, val)
-}
-
-// ElementFromAtomLit returns transforms an atomic literal element into an element specific to the ArrayOps implementation.
-func (ao *arrayOps) ElementFromAtomLit(file *ir.File, el engine.AtomLitElement) (engine.NumericalElement, error) {
-	switch elT := el.(type) {
-	case numbers.Bool:
-		return ao.newBool(elT)
-	case *numbers.Int:
-		return ao.newInt(elT)
-	default:
-		return nil, errors.Errorf("cannot convert number %T to a graph element: not supported", elT)
-	}
-}
-
-// ElementFromAtom returns an element from a GX value.
-func (ao *arrayOps) ElementFromAtom(file *ir.File, val values.Array, src ir.Expr, typ ir.Type) (engine.NumericalElement, error) {
-	return ao.ev.hostEval.ArrayOps().ElementFromAtom(file, val, src, typ)
-}
-
-// ElementFromArray returns an element from an array GX value.
-func (ao *arrayOps) ElementFromArray(file *ir.File, lit *ir.ArrayLitExpr, val values.Array) (engine.NumericalElement, error) {
-	return newValueElement(ao.ev, val)
+// DefineGlobalConst defines a global constant for the interpreter.
+func (ao *arrayOps) DefineGlobalConst(_ ir.Storage, el ir.Element) (ir.Element, error) {
+	return el, nil
 }
