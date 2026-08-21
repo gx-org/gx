@@ -21,7 +21,6 @@ import (
 	"github.com/gx-org/gx/build/builder"
 	"github.com/gx-org/gx/build/importers"
 	"github.com/gx-org/gx/build/ir"
-	"github.com/gx-org/gx/internal/interp/compeval/cmp"
 )
 
 type compevalFactory struct {
@@ -96,18 +95,6 @@ func (ft compevalFuncTest) Name() string {
 	return ft.parent.Name() + "/" + ft.fun.Name()
 }
 
-func stringFromElement(ev ir.Evaluator, el ir.Element) (string, error) {
-	algX, err := cmp.ToAlgExpr(ev, el)
-	if err != nil {
-		return "", err
-	}
-	simpX, err := cmp.SimplifyIR(ev, algX)
-	if err != nil {
-		return "", err
-	}
-	return ir.SourceString(ev.File(), simpX), nil
-}
-
 func (ft compevalFuncTest) Run(b *Builder) (*ir.Package, error) {
 	bld := builder.New(b.Importers()...)
 	fitp, outs, err := builder.CompEvalFunc(bld, ft.fun)
@@ -119,12 +106,8 @@ func (ft compevalFuncTest) Run(b *Builder) (*ir.Package, error) {
 	if err != nil {
 		return nil, err
 	}
-	got := BuildGot(outs, func(el ir.Element) string {
-		s, err := stringFromElement(fitp, el)
-		if err != nil {
-			s += fmt.Sprintf(" STRING FROM ELEMENT ERROR: %v", err)
-		}
-		return s
+	got := BuildGot(outs, func(x ir.Expr) string {
+		return ir.SourceString(fitp.File(), x)
 	})
 	if gotRequire != "" {
 		if got != "" {
