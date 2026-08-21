@@ -192,12 +192,12 @@ func Build(dev *core.DeviceSetup) (*PackageHandle, error) {
 var Size SizeStatic
 
 type SizeStatic struct {
-	value ir.Int
+	value int
 }
 
-func (SizeStatic) Set(value ir.Int) options.PackageOptionFactory {
+func (SizeStatic) Set(value int) options.PackageOptionFactory {
 	return func(plat platform.Platform) options.PackageOption {
-		hostValue := types.DefaultInt(value)
+		hostValue := types.Int(value)
 		return options.PackageVarSetValue{
 			Pkg:   "github.com/gx-org/gx/tests/bindings/parameters",
 			Var:   "Size",
@@ -369,7 +369,7 @@ func (pkg *Package) AddInts(arg0 types.Array[int64], arg1 types.Array[int64]) (_
 }
 
 // Len returns the outmost dimension of x.
-func (pkg *Package) Len(arg0 types.Array[float32]) (_ types.Atom[int64], err error) {
+func (pkg *Package) Len(arg0 types.Array[float32]) (_ types.Atom[int], err error) {
 	var args []values.Value = []values.Value{
 		arg0.Bridge().GXValue(), // x [Size]float32
 	}
@@ -389,7 +389,7 @@ func (pkg *Package) Len(arg0 types.Array[float32]) (_ types.Atom[int64], err err
 		err = errors.Errorf("cannot cast %T to %s", outputs[0], reflect.TypeFor[*values.DeviceArray]().Name())
 		return
 	}
-	out0 := types.NewAtom[int64](out0Value)
+	out0 := types.NewAtom[int](out0Value)
 
 	return out0, nil
 }
