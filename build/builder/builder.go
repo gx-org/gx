@@ -37,8 +37,12 @@ import (
 	"io/fs"
 
 	"github.com/pkg/errors"
+	"github.com/gx-org/gx/build/fmterr"
 	"github.com/gx-org/gx/build/importers"
 	"github.com/gx-org/gx/build/ir"
+	"github.com/gx-org/gx/internal/interp/compeval"
+	"github.com/gx-org/gx/internal/interp/compeval/cpevelements"
+	"github.com/gx-org/gx/interp"
 )
 
 type (
@@ -115,4 +119,41 @@ func (b *Builder) Import(path string) (*ir.Package, error) {
 func (b *Builder) BuildFiles(packagePath, packageName string, fs fs.FS, filenames []string) (importers.Package, error) {
 	pkg := b.newFilePackage(packagePath, packageName)
 	return pkg, pkg.BuildFiles(fs, filenames)
+}
+
+type ephemeralCompEvalScope struct {
+	bld  *Builder
+	fn   *ir.FuncDecl
+	errs *fmterr.Appender
+}
+
+func (s *ephemeralCompEvalScope) Err() *fmterr.Appender {
+	return s.errs
+}
+
+func (s *ephemeralCompEvalScope) compEval() (*compileEvaluator, bool) {
+	hostEval := compeval.NewHostEvaluator(s.bld, compeval.RunFunc)
+	itp, err := interp.New(hostEval, hostEval, cpevelements.MixedRunner(), nil)
+	if err != nil {
+		return nil, s.errs.Append(err)
+	}
+	return newEvaluator(itp, s.fn.File(), s.errs)
+}
+
+// CompEvalFunc evaluates a compeval function.
+// Not used in the compilation process.
+// Only used in tests and interactive settings (e.g. demos).
+func CompEvalFunc(bld *Builder, fn *ir.FuncDecl) (*interp.Interpreter, []ir.Element, error) {
+	var errs fmterr.Errors
+	scope := &ephemeralCompEvalScope{
+		bld:  bld,
+		fn:   fn,
+		errs: errs.NewAppender(fn.File().FileSet()),
+	}
+	ev, args, ok := compEvalForFuncType(scope, fn.Node(), fn.FuncType())
+	if !ok {
+		return nil, nil, errs.ToError()
+	}
+	outs, err := ev.fitp.EvalFunc(fn, &ir.FuncCallExpr{}, args)
+	return ev.fitp, outs, err
 }

@@ -22,10 +22,6 @@ import (
 	"github.com/gx-org/gx/build/importers"
 	"github.com/gx-org/gx/build/ir"
 	"github.com/gx-org/gx/internal/interp/compeval/cmp"
-	"github.com/gx-org/gx/internal/interp/compeval"
-	"github.com/gx-org/gx/internal/interp/compeval/cpevelements"
-	"github.com/gx-org/gx/interp/elements"
-	"github.com/gx-org/gx/interp"
 )
 
 type compevalFactory struct {
@@ -114,21 +110,12 @@ func stringFromElement(ev ir.Evaluator, el ir.Element) (string, error) {
 
 func (ft compevalFuncTest) Run(b *Builder) (*ir.Package, error) {
 	bld := builder.New(b.Importers()...)
-	hostEval := compeval.NewHostEvaluator(bld, compeval.RunFunc)
-	itp, err := interp.New(hostEval, hostEval, cpevelements.MixedRunner(), nil)
-	if err != nil {
-		return nil, err
-	}
-	outs, err := itp.EvalFunc(ft.fun, &elements.InputElements{})
+	fitp, outs, err := builder.CompEvalFunc(bld, ft.fun)
 	var gotRequire string
 	if compErr, isCompErr := err.(*ir.CompileError); isCompErr {
 		gotRequire = compErr.Error()
 		err = nil
 	}
-	if err != nil {
-		return nil, err
-	}
-	fitp, err := itp.ForFile(ft.fun.File())
 	if err != nil {
 		return nil, err
 	}

@@ -209,12 +209,16 @@ func (s *pkgResolveScope) String() string {
 }
 
 type (
-	resolveScope interface {
+	compEvalScope interface {
 		fmterr.ErrAppender
+		compEval() (*compileEvaluator, bool)
+	}
+
+	resolveScope interface {
+		compEvalScope
 		nspace() *scope.RWScope[ir.Element]
 		fileScope() *fileResolveScope
 		toDefineScope() *defineLocalScope
-		compEval() (*compileEvaluator, bool)
 		requireCompevalCall() bool
 		irBuilder() irBuilder
 		String() string
@@ -326,36 +330,41 @@ type (
 	}
 )
 
-func compEvalForFuncType(rscope resolveScope, src ast.Node, ftype *ir.FuncType) (*compileEvaluator, bool) {
+func compEvalForFuncType(rscope compEvalScope, src ast.Node, ftype *ir.FuncType) (*compileEvaluator, []ir.Element, bool) {
 	compEval, compEvalOk := rscope.compEval()
 	if !compEvalOk {
-		return nil, false
+		return nil, nil, false
 	}
 	// Define all type parameters as generic.
 	sigMap, ok := evalGenericValues(compEval, ftype)
 	if !ok {
-		return nil, false
+		return nil, nil, false
 	}
 	// Define all arguments.
 	var fields []*ir.Field
 	fields = append(fields, ftype.Receiver.Fields()...)
 	fields = append(fields, ftype.Params.Fields()...)
-	fields = append(fields, ftype.Results.Fields()...)
-	for _, field := range fields {
+	args := make([]ir.Element, len(fields))
+	fields = append(fields, ftype.Results.Fields()...) // Results not included in the arguments.
+	for i, field := range fields {
 		if field.Name == nil {
 			continue
 		}
 		srVal, err := surrogates.FieldRoot(field)
 		if err != nil {
-			return nil, rscope.Err().AppendAt(src, err)
+			return nil, nil, rscope.Err().AppendAt(src, err)
 		}
 		lkVal, err := srcstore.Link(field.Storage(), srVal)
 		if err != nil {
-			return nil, rscope.Err().AppendAt(src, err)
+			return nil, nil, rscope.Err().AppendAt(src, err)
+		}
+		if i < len(args) {
+			args[i] = lkVal
 		}
 		context.Define(sigMap, field.Name, lkVal)
 	}
-	return compEval.sub(nil, sigMap)
+	sub, ok := compEval.sub(nil, sigMap)
+	return sub, args, ok
 }
 
 func newFuncScope(rscope resolveScope, fType *ir.FuncType) (*funcResolveScope, bool) {
@@ -368,7 +377,7 @@ func newFuncScope(rscope resolveScope, fType *ir.FuncType) (*funcResolveScope, b
 		return fnScope, true
 	}
 	var ok bool
-	fnScope.bodyCE, ok = compEvalForFuncType(rscope, fType.BaseType.Node(), fType)
+	fnScope.bodyCE, _, ok = compEvalForFuncType(rscope, fType.BaseType.Node(), fType)
 	return fnScope, ok
 }
 

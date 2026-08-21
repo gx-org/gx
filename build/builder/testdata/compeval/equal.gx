@@ -1,0 +1,25 @@
+package equal
+
+// No runtime test function
+
+//gx:compeval
+func Test01(a int) bool {
+	return a == a
+	// Want:
+	// true
+}
+
+//gx:compeval
+func Test02(a, b int) bool {
+	return a == b
+	// Want:
+	// false
+}
+
+//gx:compeval
+func Test03(a int) bool {
+	b := a
+	return a == b
+	// Want:
+	// true
+}
