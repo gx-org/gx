@@ -26,7 +26,6 @@ import (
 	"github.com/gx-org/gx/internal/interp/compeval/cpevelements"
 	"github.com/gx-org/gx/interp/elements"
 	"github.com/gx-org/gx/interp"
-	"github.com/gx-org/gx/interp/require"
 )
 
 type compevalFactory struct {
@@ -122,8 +121,8 @@ func (ft compevalFuncTest) Run(b *Builder) (*ir.Package, error) {
 	}
 	outs, err := itp.EvalFunc(ft.fun, &elements.InputElements{})
 	var gotRequire string
-	if rErr := require.ToError(err); rErr != nil {
-		gotRequire = rErr.Err().Error()
+	if compErr, isCompErr := err.(*ir.CompileError); isCompErr {
+		gotRequire = compErr.Error()
 		err = nil
 	}
 	if err != nil {

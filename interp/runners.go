@@ -68,9 +68,13 @@ func (runners) FuncDecl(fn *ir.FuncDecl, env *fun.CallEnv, call *ir.FuncCallExpr
 
 func (runners) Builtin(fn ir.Func, impl ir.FuncImpl, env *fun.CallEnv, call *ir.FuncCallExpr, recv engine.Copier, args []ir.Element) (_ []ir.Element, err error) {
 	defer func() {
-		if err != nil {
-			err = fmterr.Error(env.File().FileSet(), call.Expr(), err)
+		if err == nil {
+			return
 		}
+		if _, isCompErr := err.(*ir.CompileError); isCompErr {
+			return
+		}
+		err = fmterr.Error(env.File().FileSet(), call.Expr(), err)
 	}()
 	if impl == nil {
 		return nil, errors.Errorf("function %s has no implementation", fn.ShortString())
