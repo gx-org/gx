@@ -40,6 +40,7 @@ import (
 	"github.com/gx-org/gx/build/fmterr"
 	"github.com/gx-org/gx/build/importers"
 	"github.com/gx-org/gx/build/ir"
+	"github.com/gx-org/gx/internal/interp/compeval/cmp"
 	"github.com/gx-org/gx/internal/interp/compeval"
 	"github.com/gx-org/gx/internal/interp/compeval/cpevelements"
 	"github.com/gx-org/gx/interp"
@@ -143,7 +144,8 @@ func (s *ephemeralCompEvalScope) compEval() (*compileEvaluator, bool) {
 // CompEvalFunc evaluates a compeval function.
 // Not used in the compilation process.
 // Only used in tests and interactive settings (e.g. demos).
-func CompEvalFunc(bld *Builder, fn *ir.FuncDecl) (*interp.Interpreter, []ir.Element, error) {
+func CompEvalFunc(bld *Builder, fn *ir.FuncDecl) (*interp.Interpreter, []ir.Expr, error) {
+	// Create an interpreter.
 	var errs fmterr.Errors
 	scope := &ephemeralCompEvalScope{
 		bld:  bld,
@@ -154,6 +156,22 @@ func CompEvalFunc(bld *Builder, fn *ir.FuncDecl) (*interp.Interpreter, []ir.Elem
 	if !ok {
 		return nil, nil, errs.ToError()
 	}
+	// Run the compeval function.
 	outs, err := ev.fitp.EvalFunc(fn, &ir.FuncCallExpr{}, args)
-	return ev.fitp, outs, err
+	if err != nil {
+		return nil, nil, err
+	}
+	// Convert the elements back into IR expressions after their simplification.
+	outXs := make([]ir.Expr, len(outs))
+	for i, out := range outs {
+		algX, err := cmp.ToAlgExpr(ev, out)
+		if err != nil {
+			return nil, nil, err
+		}
+		outXs[i], err = cmp.SimplifyIR(ev, algX)
+		if err != nil {
+			return nil, nil, err
+		}
+	}
+	return ev.fitp, outXs, err
 }
