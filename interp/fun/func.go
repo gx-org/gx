@@ -90,8 +90,8 @@ func (env *CallEnv) ExprEval() ir.Evaluator {
 	return env.expr
 }
 
-// FuncEval returns the function evaluator of the environment.
-func (env *CallEnv) FuncEval() Factory {
+// FuncFactory returns the function evaluator of the environment.
+func (env *CallEnv) FuncFactory() Factory {
 	return env.fun
 }
 

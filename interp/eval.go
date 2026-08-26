@@ -558,9 +558,9 @@ func evalExpr(fitp *Interpreter, expr ir.Expr) (_ ir.Element, err error) {
 	case *ir.SelectorExpr:
 		return evalSelectorExpr(fitp, exprT)
 	case *ir.FuncLit:
-		return fitp.env.FuncEval().NewFuncLit(exprT, fitp.Context()), nil
+		return fitp.env.FuncFactory().NewFuncLit(exprT, fitp.Context()), nil
 	case *ir.MacroCallExpr:
-		return fitp.env.FuncEval().NewFunc(exprT.F, nil), nil
+		return fitp.env.FuncFactory().NewFunc(exprT.F, nil), nil
 	case *ir.IndexExpr:
 		return evalIndexExpr(fitp, exprT)
 	case *ir.EinsumExpr:
@@ -609,7 +609,7 @@ func evalSurfaceCompEvalErrorExpr(fitp *Interpreter, expr *ir.SurfaceCompEvalErr
 func evalFuncValExpr(fitp *Interpreter, expr *ir.FuncValExpr) (ir.Element, error) {
 	lit, isLit := expr.Func().(*ir.FuncLit)
 	if isLit {
-		return fitp.env.FuncEval().NewFuncLit(lit, fitp.Context()), nil
+		return fitp.env.FuncFactory().NewFuncLit(lit, fitp.Context()), nil
 	}
 	return fitp.NewFunc(expr.Func(), nil), nil
 }

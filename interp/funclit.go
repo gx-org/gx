@@ -65,7 +65,7 @@ func (runners) FuncLit(lit *ir.FuncLit, env *fun.CallEnv, ctx *context.Context, 
 		funcFrame.Define(resultName, nil)
 	}
 	defer ctx.PopFrame()
-	fitp := toInterp(ctx, env.Engine(), env.FuncEval(), env.Runners())
+	fitp := toInterp(ctx, env.Engine(), env.FuncFactory(), env.Runners())
 	return evalFuncBody(fitp, lit.Body)
 }
 

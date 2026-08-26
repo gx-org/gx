@@ -62,7 +62,7 @@ func (runners) FuncDecl(fn *ir.FuncDecl, env *fun.CallEnv, call *ir.FuncCallExpr
 		return nil, err
 	}
 	// Evaluate the function within the frame.
-	fitp := toInterp(env.Context(), env.Engine(), env.FuncEval(), env.Runners())
+	fitp := toInterp(env.Context(), env.Engine(), env.FuncFactory(), env.Runners())
 	return evalFuncBody(fitp, fn.Body)
 }
 

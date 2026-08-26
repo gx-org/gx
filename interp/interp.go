@@ -170,14 +170,14 @@ func (fitp *Interpreter) SubInterp(file *ir.File, vals map[string]ir.Element) (*
 	if file != nil && file.Package != nil {
 		core := fitp.Context().Core()
 		ctx, err = core.NewFileContext(file)
-		fitp = toInterp(ctx, fitp.Engine(), fitp.env.FuncEval(), fitp.env.Runners())
+		fitp = toInterp(ctx, fitp.Engine(), fitp.env.FuncFactory(), fitp.env.Runners())
 	}
 	if vals == nil {
 		return fitp, nil
 	}
 	ctx = ctx.Sub(vals)
 	sub := &Interpreter{}
-	sub.env = fun.NewCallEnv(ctx, sub, fitp.Engine(), fitp.env.FuncEval(), fitp.env.Runners())
+	sub.env = fun.NewCallEnv(ctx, sub, fitp.Engine(), fitp.env.FuncFactory(), fitp.env.Runners())
 	return sub, err
 }
 
@@ -190,7 +190,7 @@ func (fitp *Interpreter) Sub(file *ir.File, vals map[string]ir.Element) (ir.Eval
 
 // NewFunc creates function elements from function IRs.
 func (fitp *Interpreter) NewFunc(fn ir.Func, recv *fun.Receiver) fun.Func {
-	return fitp.env.FuncEval().NewFunc(fn, recv)
+	return fitp.env.FuncFactory().NewFunc(fn, recv)
 }
 
 // EvalFunc evaluates a function.
