@@ -1928,9 +1928,6 @@ func (s *Field) Origin() *Field {
 
 // Type returns the type of the field.
 func (s *Field) Type() Type {
-	if s.Group.Type == nil {
-		return nil
-	}
 	return s.Group.Type.Val()
 }
 

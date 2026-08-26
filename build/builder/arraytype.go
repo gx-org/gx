@@ -57,8 +57,11 @@ func (n *arrayType) buildTypeExpr(rscope resolveScope) (*ir.TypeValExpr, bool) {
 	// In that case, we return a new instance of arrayType (see below) and keep the generic arrayType
 	// and rank unchanged so they can be specialized again for the next call.
 	rank, rankOk := n.rnk.build(lscope)
-	arrayType, ok := ir.NewArrayType(n.src, dtyp.Val(), rank), dtypeOk && rankOk
-	return ir.TypeExpr(nil, arrayType), ok
+	if !rankOk {
+		return invalidTypeExprVal, false
+	}
+	arrayType := ir.NewArrayType(n.src, dtyp.Val(), rank)
+	return ir.TypeExpr(nil, arrayType), dtypeOk
 }
 
 func (n *arrayType) buildExpr(rscope resolveScope) (ir.Expr, bool) {
