@@ -18,7 +18,6 @@ import (
 	"github.com/gx-org/backend/shape"
 	"github.com/gx-org/gx/api/values"
 	"github.com/gx-org/gx/build/ir"
-	"github.com/gx-org/gx/internal/interp/coreiface"
 	"github.com/gx-org/gx/interp/engine"
 )
 
@@ -27,18 +26,6 @@ type (
 	EvalShaper interface {
 		ir.Element
 		EvalShape() (*shape.Shape, error)
-	}
-
-	// NamedTypeI is a named type.
-	NamedTypeI interface {
-		coreiface.Under
-		Selector
-	}
-
-	// Selector selects a field given its index.
-	Selector interface {
-		ir.Element
-		Select(expr *ir.SelectorExpr) (ir.Element, error)
 	}
 
 	// Generic is an instance of a generic type.
@@ -61,5 +48,3 @@ type (
 		ArrayFromContext(*values.FuncInputs) (values.Array, error)
 	}
 )
-
-var _ NamedTypeI = (*values.NamedType)(nil)

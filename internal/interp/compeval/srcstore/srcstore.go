@@ -67,7 +67,7 @@ func (n *number) BareValue() ir.Element {
 }
 
 type named struct {
-	named elements.NamedTypeI
+	named fun.NamedTypeI
 	store ir.Storage
 }
 
@@ -168,7 +168,7 @@ func Link(store ir.Storage, el ir.Element) (ir.Element, error) {
 		linkEl = &number{ScalarNumber: elT, store: store}
 	case elements.ISlice:
 		linkEl = &slice{ISlice: elT, store: store}
-	case elements.NamedTypeI:
+	case fun.NamedTypeI:
 		linkEl = &named{named: elT, store: store}
 	case fun.Func:
 		linkEl = &function{Func: elT, store: store}

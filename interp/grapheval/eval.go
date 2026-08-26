@@ -186,7 +186,7 @@ func (ev *Evaluator) ElementFromTuple(file *ir.File, expr ir.Expr, tpl ops.Tuple
 		return nil, err
 	}
 	var el engine.Copier
-	el = elements.NewStructFromElements(structTyp, els)
+	el = fun.NewStructFromElements(structTyp, els)
 	for _, nType := range namedTypes {
 		el = fun.NewNamedType(interp.NewRunFunc, nType, el)
 	}

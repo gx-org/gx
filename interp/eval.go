@@ -470,7 +470,7 @@ func evalStructLiteral(fitp *Interpreter, expr *ir.StructLitExpr) (ir.Element, e
 		}
 		fields[fieldLit.Field.Name.Name] = node
 	}
-	strct := elements.NewStruct(structType, fields)
+	strct := fun.NewStruct(structType, fields)
 	nType, ok := expr.Typ.(*ir.NamedType)
 	if !ok {
 		return strct, nil
@@ -558,9 +558,9 @@ func evalExpr(fitp *Interpreter, expr ir.Expr) (_ ir.Element, err error) {
 	case *ir.SelectorExpr:
 		return evalSelectorExpr(fitp, exprT)
 	case *ir.FuncLit:
-		return fitp.env.FuncEval().NewFuncLit(exprT, fitp.Context()), nil
+		return fitp.env.FuncFactory().NewFuncLit(exprT, fitp.Context()), nil
 	case *ir.MacroCallExpr:
-		return fitp.env.FuncEval().NewFunc(exprT.F, nil), nil
+		return fitp.env.FuncFactory().NewFunc(exprT.F, nil), nil
 	case *ir.IndexExpr:
 		return evalIndexExpr(fitp, exprT)
 	case *ir.EinsumExpr:
@@ -609,7 +609,7 @@ func evalSurfaceCompEvalErrorExpr(fitp *Interpreter, expr *ir.SurfaceCompEvalErr
 func evalFuncValExpr(fitp *Interpreter, expr *ir.FuncValExpr) (ir.Element, error) {
 	lit, isLit := expr.Func().(*ir.FuncLit)
 	if isLit {
-		return fitp.env.FuncEval().NewFuncLit(lit, fitp.Context()), nil
+		return fitp.env.FuncFactory().NewFuncLit(lit, fitp.Context()), nil
 	}
 	return fitp.NewFunc(expr.Func(), nil), nil
 }
@@ -642,7 +642,7 @@ func evalSelectorExpr(fitp *Interpreter, ref *ir.SelectorExpr) (ir.Element, erro
 	if err != nil {
 		return nil, err
 	}
-	slt, err := cast.To[elements.Selector](node)
+	slt, err := cast.To[fun.Selector](node)
 	if err != nil {
 		return nil, err
 	}
@@ -812,7 +812,7 @@ func set(fitp *Interpreter, tok token.Token, dest ir.Storage, value ir.Element) 
 		if err != nil {
 			return err
 		}
-		strt, ok := under.(*elements.Struct)
+		strt, ok := under.(*fun.Struct)
 		if !ok {
 			return fmterr.Errorf(fitp.File().FileSet(), dest.Node(), "cannot convert %T to %T", receiver, strt)
 		}

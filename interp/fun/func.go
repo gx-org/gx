@@ -19,7 +19,9 @@ import (
 	"fmt"
 	"strings"
 
+	"github.com/gx-org/gx/api/values"
 	"github.com/gx-org/gx/build/ir"
+	"github.com/gx-org/gx/internal/interp/coreiface"
 	"github.com/gx-org/gx/interp/context"
 	"github.com/gx-org/gx/interp/engine"
 )
@@ -63,7 +65,21 @@ type (
 
 	// NewFunc creates function elements from function IRs.
 	NewFunc func(ir.Func, *Receiver) Func
+
+	// NamedTypeI is a named type.
+	NamedTypeI interface {
+		coreiface.Under
+		Selector
+	}
+
+	// Selector selects a field given its index.
+	Selector interface {
+		ir.Element
+		Select(expr *ir.SelectorExpr) (ir.Element, error)
+	}
 )
+
+var _ NamedTypeI = (*values.NamedType)(nil)
 
 // NewCallEnv returns a function context.
 func NewCallEnv(ctx *context.Context, exprEval ir.Evaluator, eng engine.Engine, fun Factory, run Runners) *CallEnv {
@@ -90,8 +106,8 @@ func (env *CallEnv) ExprEval() ir.Evaluator {
 	return env.expr
 }
 
-// FuncEval returns the function evaluator of the environment.
-func (env *CallEnv) FuncEval() Factory {
+// FuncFactory returns the function evaluator of the environment.
+func (env *CallEnv) FuncFactory() Factory {
 	return env.fun
 }
 

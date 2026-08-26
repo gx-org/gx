@@ -23,7 +23,6 @@ import (
 	"github.com/gx-org/gx/build/ir"
 	"github.com/gx-org/gx/internal/interp/coreiface"
 	"github.com/gx-org/gx/internal/interp/flatten"
-	"github.com/gx-org/gx/interp/elements"
 	"github.com/gx-org/gx/interp/engine"
 )
 
@@ -36,12 +35,12 @@ type NamedType struct {
 }
 
 var (
-	_ ir.StorageElement   = (*NamedType)(nil)
-	_ ir.WithExpr         = (*NamedType)(nil)
-	_ elements.Selector   = (*NamedType)(nil)
-	_ elements.NamedTypeI = (*NamedType)(nil)
-	_ engine.Copier       = (*NamedType)(nil)
-	_ coreiface.Under     = (*NamedType)(nil)
+	_ ir.StorageElement = (*NamedType)(nil)
+	_ ir.WithExpr       = (*NamedType)(nil)
+	_ Selector          = (*NamedType)(nil)
+	_ NamedTypeI        = (*NamedType)(nil)
+	_ engine.Copier     = (*NamedType)(nil)
+	_ coreiface.Under   = (*NamedType)(nil)
 )
 
 // NewNamedType returns a new node representing an exported type.
@@ -65,7 +64,7 @@ func (n *NamedType) Select(expr *ir.SelectorExpr) (ir.Element, error) {
 	if fn := n.funcs[name]; fn != nil {
 		return n.newFunc(fn, NewReceiver(n, fn)), nil
 	}
-	under, ok := n.under.(elements.Selector)
+	under, ok := n.under.(Selector)
 	if !ok {
 		return nil, errors.Errorf("%s is undefined", name)
 	}
@@ -119,7 +118,7 @@ func (n *NamedType) Store() ir.Storage {
 // Expr returns an expression representing the named expression.
 func (n *NamedType) Expr(ev ir.Evaluator, src ast.Expr) ([]ir.Expr, error) {
 	switch underT := n.under.(type) {
-	case *elements.Struct:
+	case *Struct:
 		return underT.ExprWithName(ev, src, n.typ)
 	default:
 		return ir.ToExpr(ev, src, n.under)
