@@ -30,7 +30,6 @@ import (
 	"github.com/gx-org/gx/build/ir"
 	"github.com/gx-org/gx/internal/base/scope"
 	"github.com/gx-org/gx/internal/interp/compeval"
-	"github.com/gx-org/gx/internal/interp/compeval/cpevelements"
 	"github.com/gx-org/gx/internal/interp/compeval/srcstore"
 	"github.com/gx-org/gx/internal/interp/compeval/surrogates"
 	"github.com/gx-org/gx/interp/context"
@@ -111,7 +110,7 @@ func newPackageResolveScope(pscope *pkgProcScope) (*pkgResolveScope, bool) {
 	s := &pkgResolveScope{
 		pkgProcScope:   pscope,
 		newFuncForEval: surrogates.NewFunc,
-		funcRunner:     cpevelements.ProxyRunner(),
+		funcRunner:     surrogates.Runner(),
 		methods:        ordered.NewMap[*ir.NamedType, *ordered.Map[string, *irFunc]](),
 		state:          &pkgState{dcls: pscope.decls()},
 		fileScopes:     make(map[*file]*fileResolveScope),

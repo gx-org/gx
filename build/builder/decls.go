@@ -164,7 +164,7 @@ func (d *decls) resolveAll(pkgScope *pkgResolveScope) bool {
 	}
 	// Build functions and methods.
 	pkgScope.newFuncForEval = compeval.RunFunc
-	pkgScope.funcRunner = cpevelements.MixedRunner()
+	pkgScope.funcRunner = cpevelements.Runner()
 	funOk := d.buildFunctions(pkgScope, filterCompEval(false))
 	return funOk && ok
 }

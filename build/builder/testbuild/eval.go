@@ -39,7 +39,7 @@ type Evaluator struct {
 func (b *Builder) EvaluatorFor(pkg *builder.IncrementalPackage, sub map[string]ir.Type) (*Evaluator, error) {
 	importer := builder.New(b.Importers()...)
 	hostEval := compeval.NewHostEvaluator(importer, compeval.RunFunc)
-	itp, err := interp.New(hostEval, hostEval, cpevelements.MixedRunner(), nil)
+	itp, err := interp.New(hostEval, hostEval, cpevelements.Runner(), nil)
 	if err != nil {
 		return nil, err
 	}
