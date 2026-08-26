@@ -84,6 +84,14 @@ func (c *opCmp) BuildIR() ir.Expr {
 	if len(c.xs) == 1 {
 		return c.toUnaryIR()
 	}
+	if len(c.xs) == 2 {
+		return &ir.BinaryExpr{
+			Src: &ast.BinaryExpr{Op: c.op},
+			X:   c.xs[0].BuildIR(),
+			Y:   c.xs[1].BuildIR(),
+			Typ: c.typ,
+		}
+	}
 	return &ir.BinaryExpr{
 		Src: &ast.BinaryExpr{Op: c.op},
 		X:   c.xs[0].BuildIR(),
