@@ -152,8 +152,14 @@ func (n *funcType) buildFuncType(rscope resolveScope) (*ir.FuncType, *funcResolv
 	}
 	var tParamsOk, recvOk, paramsOk, resultsOk bool
 	sigscope, ephemeralOk := newEphemeralResolveScope(rscope, n.src)
+	if !ephemeralOk {
+		return ext, nil, false
+	}
 	typeParamsScope := newDefineScope(sigscope, defineGenericParam)
 	ext.TypeParams, tParamsOk = n.typeParams.buildFieldList(typeParamsScope)
+	if !tParamsOk {
+		return ext, nil, false
+	}
 	ext.Receiver, recvOk = n.recv.buildFieldList(newDefineScope(sigscope, nil))
 	if recvOk && ext.Receiver != nil {
 		if field := ext.ReceiverField(); field.Name != nil {
@@ -165,21 +171,24 @@ func (n *funcType) buildFuncType(rscope resolveScope) (*ir.FuncType, *funcResolv
 	ext.Params, paramsOk = n.params.buildFieldList(paramScope)
 	if n.varargs != nil {
 		if params := ext.Params.Fields(); len(params) > 0 {
-			ext.VarArgs = params[len(params)-1].Type().(*ir.VarArgsType)
+			// Use a dynamic cast in case the type is invalid.
+			varArgsType, _ := params[len(params)-1].Type().(*ir.VarArgsType)
+			ext.VarArgs = varArgsType
 		}
 	}
 	ext.GenericValues = make([]ir.GenericValue, ext.TypeParams.Len())
 	resultScope := newDefineScope(sigscope, nil)
 	ext.Results, resultsOk = n.results.buildFieldList(resultScope)
-	if resultsOk {
-		for _, field := range ext.Results.Fields() {
-			if !rankInferOk(rscope, field.Type().Node(), field.Type()) {
-				resultsOk = false
-			}
+	if !tParamsOk || !paramsOk || !resultsOk || !recvOk {
+		return ext, nil, false
+	}
+	for _, field := range ext.Results.Fields() {
+		if !rankInferOk(rscope, field.Type().Node(), field.Type()) {
+			resultsOk = false
 		}
 	}
 	fnscope, fnscopeOk := newFuncScope(rscope, ext)
-	return ext, fnscope, tParamsOk && paramsOk && resultsOk && recvOk && fnscopeOk && ephemeralOk
+	return ext, fnscope, resultsOk && fnscopeOk
 }
 
 func (n *funcType) source() ast.Node {
