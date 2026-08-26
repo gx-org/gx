@@ -31,7 +31,7 @@ type goGenerator struct {
 	builtin genast.IdentExpr
 	engine  genast.IdentExpr
 	ir      genast.IdentExpr
-	values  genast.IdentExpr
+	hostio  genast.IdentExpr
 	gopkg   genast.IdentExpr
 }
 
@@ -50,7 +50,7 @@ func (g goGenerator) Generate() (string, error) {
 	g.builtin = g.file.Import("github.com/gx-org/gx/stdlib/builtin", false)
 	g.engine = g.file.Import("github.com/gx-org/gx/interp/engine", false)
 	g.ir = g.file.Import("github.com/gx-org/gx/build/ir", false)
-	g.values = g.file.Import("github.com/gx-org/gx/api/values", false)
+	g.hostio = g.file.Import("github.com/gx-org/gx/api/hostio", false)
 	g.gopkg = g.file.Import(g.cfg.GoImportPath(g.target.Src.Path()), true)
 
 	// Embed the GX source code

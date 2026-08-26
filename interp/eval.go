@@ -20,7 +20,6 @@ import (
 
 	"github.com/pkg/errors"
 	"github.com/gx-org/backend/dtypes"
-	"github.com/gx-org/gx/api/values"
 	"github.com/gx-org/gx/build/fmterr"
 	"github.com/gx-org/gx/build/ir"
 	"github.com/gx-org/gx/build/ir/irkind"
@@ -33,16 +32,6 @@ import (
 	"github.com/gx-org/gx/interp/engine"
 	"github.com/gx-org/gx/interp/fun"
 )
-
-var one *values.HostArray
-
-func init() {
-	var err error
-	one, err = values.AtomIntegerValue(ir.IntType(), ir.Int(1))
-	if err != nil {
-		panic(err.Error())
-	}
-}
 
 func evalBlockStmt(ctx *Interpreter, body *ir.BlockStmt) ([]ir.Element, bool, error) {
 	var outs []ir.Element

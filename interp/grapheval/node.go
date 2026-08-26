@@ -19,7 +19,7 @@ import (
 	"github.com/gx-org/backend/dtypes"
 	"github.com/gx-org/backend/ops"
 	"github.com/gx-org/backend/shape"
-	"github.com/gx-org/gx/api/values"
+	"github.com/gx-org/gx/api/hostio"
 	"github.com/gx-org/gx/build/fmterr"
 	"github.com/gx-org/gx/build/ir"
 	"github.com/gx-org/gx/build/ir/irkind"
@@ -313,7 +313,7 @@ func (n *BackendNode) Length(ev ir.Evaluator) (int, error) {
 }
 
 // Unflatten consumes the next handles to return a GX value.
-func (n *BackendNode) Unflatten(handles *flatten.Parser) (values.Value, error) {
+func (n *BackendNode) Unflatten(handles *flatten.Parser) (hostio.Value, error) {
 	return handles.ParseArray(n.typ)
 }
 

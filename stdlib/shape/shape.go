@@ -22,7 +22,7 @@ import (
 	"github.com/pkg/errors"
 	"github.com/gx-org/backend/ops"
 	"github.com/gx-org/backend/shape"
-	"github.com/gx-org/gx/api/values"
+	"github.com/gx-org/gx/api/hostio"
 	"github.com/gx-org/gx/build/ir"
 	"github.com/gx-org/gx/interp/elements"
 	"github.com/gx-org/gx/interp/engine"
@@ -158,7 +158,7 @@ func sameSlice(env engine.Env, call *ir.FuncCallExpr, recv ir.Element, args []ir
 	}
 	ok = true
 ret:
-	boolValue, err := values.AtomBoolValue(ir.BoolType(), ok)
+	boolValue, err := hostio.AtomBoolValue(ir.BoolType(), ok)
 	if err != nil {
 		return nil, errors.Errorf("cannot create bool value in fmt.SameSlice")
 	}

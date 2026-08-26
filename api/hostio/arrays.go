@@ -1,4 +1,4 @@
-// Copyright 2024 Google LLC
+// Copyright 2026 Google LLC
 //
 // Licensed under the Apache License, Version 2.0 (the "License");
 // you may not use this file except in compliance with the License.
@@ -12,7 +12,7 @@
 // See the License for the specific language governing permissions and
 // limitations under the License.
 
-package values
+package hostio
 
 import (
 	"fmt"
@@ -81,8 +81,6 @@ func NewDeviceArray(typ ir.Type, handle platform.DeviceHandle) (*DeviceArray, er
 		handle:    handle,
 	}, nil
 }
-
-func (*DeviceArray) value() {}
 
 // ToHost transfers the value to the host.
 func (a *DeviceArray) ToHost(alloc platform.Allocator) (Value, error) {
@@ -162,8 +160,6 @@ func NewHostArray(typ ir.Type, buffer platform.HostBuffer) (*HostArray, error) {
 	}
 	return &HostArray{baseArray: base, buffer: buffer}, nil
 }
-
-func (*HostArray) value() {}
 
 // Type of the array.
 func (a *HostArray) Type() ir.Type {

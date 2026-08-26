@@ -17,8 +17,8 @@ package procoptions
 
 import (
 	"github.com/pkg/errors"
+	"github.com/gx-org/gx/api/hostio"
 	"github.com/gx-org/gx/api/options"
-	"github.com/gx-org/gx/api/values"
 	"github.com/gx-org/gx/build/ir"
 	"github.com/gx-org/gx/internal/base/scope"
 	"github.com/gx-org/gx/internal/interp/numbers"
@@ -93,7 +93,7 @@ func (o *Options) processPackageVarSetGXValue(opt options.PackageVarSetValue) (p
 			return err
 		}
 		ident := opt.Var
-		array, ok := opt.Value.(*values.HostArray)
+		array, ok := opt.Value.(*hostio.HostArray)
 		if !ok {
 			return errors.Errorf("package variables of type %T (used in %s.%s) not supported", opt.Value, pkg.Name, opt.Var)
 		}

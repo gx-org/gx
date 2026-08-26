@@ -19,7 +19,7 @@ import (
 	"github.com/pkg/errors"
 	"github.com/gx-org/backend/ops"
 	"github.com/gx-org/backend/shape"
-	"github.com/gx-org/gx/api/values"
+	"github.com/gx-org/gx/api/hostio"
 	"github.com/gx-org/gx/build/ir"
 	"github.com/gx-org/gx/internal/interp/flatten"
 )
@@ -38,7 +38,7 @@ type (
 		Graph() ops.Graph
 
 		// Materialise returns the element with all its values from the graph.
-		NodeFromArray(val *values.HostArray) (Node, error)
+		NodeFromArray(val *hostio.HostArray) (Node, error)
 
 		// ElementsFromNodes returns a slice of elements from nodes and their types.
 		ElementsFromNodes(file *ir.File, nodes []*ops.OutputNode, types []ir.Type) ([]ir.Element, error)

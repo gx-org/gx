@@ -23,6 +23,7 @@ import (
 	"github.com/gx-org/backend/ops"
 	"github.com/gx-org/backend/platform"
 	"github.com/gx-org/backend/shape"
+	"github.com/gx-org/gx/api/hostio"
 	"github.com/gx-org/gx/api/values"
 	"github.com/gx-org/gx/build/ir"
 	"github.com/gx-org/gx/internal/base/cast"
@@ -36,7 +37,7 @@ import (
 
 type (
 	argFetcher interface {
-		ValueFromContext(*values.FuncInputs) (ir.Element, error)
+		ValueFromContext(*hostio.FuncInputs) (ir.Element, error)
 	}
 
 	parameterFetcher struct {
@@ -46,11 +47,11 @@ type (
 	receiverFetcher struct{}
 )
 
-func (f parameterFetcher) ValueFromContext(in *values.FuncInputs) (ir.Element, error) {
+func (f parameterFetcher) ValueFromContext(in *hostio.FuncInputs) (ir.Element, error) {
 	return in.Args[f.paramIndex], nil
 }
 
-func (f receiverFetcher) ValueFromContext(in *values.FuncInputs) (ir.Element, error) {
+func (f receiverFetcher) ValueFromContext(in *hostio.FuncInputs) (ir.Element, error) {
 	return in.Receiver, nil
 }
 
@@ -77,7 +78,7 @@ func (vis *inputVisitor) visitReceiver(field *ir.Field, proxy ir.Element) (ir.El
 type (
 	parentArgument interface {
 		Name() string
-		ValueFromContext(*values.FuncInputs) (ir.Element, error)
+		ValueFromContext(*hostio.FuncInputs) (ir.Element, error)
 		Evaluator() *Evaluator
 	}
 
@@ -162,7 +163,7 @@ func (arg *namedTypeArgument) Name() string {
 	return arg.parent.Name() + "." + arg.typ.Name()
 }
 
-func (arg *namedTypeArgument) ValueFromContext(ctx *values.FuncInputs) (ir.Element, error) {
+func (arg *namedTypeArgument) ValueFromContext(ctx *hostio.FuncInputs) (ir.Element, error) {
 	return arg.parent.ValueFromContext(ctx)
 }
 
@@ -230,7 +231,7 @@ func (sel *fieldSelectorArgument) Name() string {
 	return sel.parent.Name() + "." + sel.fieldName
 }
 
-func (sel *fieldSelectorArgument) ValueFromContext(ctx *values.FuncInputs) (ir.Element, error) {
+func (sel *fieldSelectorArgument) ValueFromContext(ctx *hostio.FuncInputs) (ir.Element, error) {
 	val, err := sel.parent.ValueFromContext(ctx)
 	if err != nil {
 		return nil, err
@@ -304,7 +305,7 @@ func (sel *indexSelectorArgument) Name() string {
 	return sel.parent.Name() + "." + fmt.Sprintf("[%d]", sel.index)
 }
 
-func (sel *indexSelectorArgument) ValueFromContext(ctx *values.FuncInputs) (ir.Element, error) {
+func (sel *indexSelectorArgument) ValueFromContext(ctx *hostio.FuncInputs) (ir.Element, error) {
 	el, err := sel.parent.ValueFromContext(ctx)
 	if err != nil {
 		return nil, err
@@ -451,7 +452,7 @@ func (n *arrayArgument) Length(ev ir.Evaluator) (int, error) {
 	return n.shape.OuterAxisLength(), nil
 }
 
-func (n *arrayArgument) ToDeviceHandle(dev platform.Device, in *values.FuncInputs) (platform.DeviceHandle, error) {
+func (n *arrayArgument) ToDeviceHandle(dev platform.Device, in *hostio.FuncInputs) (platform.DeviceHandle, error) {
 	array, err := n.ArrayFromContext(in)
 	if err != nil {
 		return nil, err
@@ -459,7 +460,7 @@ func (n *arrayArgument) ToDeviceHandle(dev platform.Device, in *values.FuncInput
 	return toDevice(dev, array)
 }
 
-func toDevice(dev platform.Device, arr values.Array) (platform.DeviceHandle, error) {
+func toDevice(dev platform.Device, arr hostio.Array) (platform.DeviceHandle, error) {
 	deviceArray, err := arr.ToDevice(dev)
 	if err != nil {
 		return nil, err
@@ -468,12 +469,12 @@ func toDevice(dev platform.Device, arr values.Array) (platform.DeviceHandle, err
 }
 
 // NumericalConstant returns the value of a constant represented by a node.
-func (n *arrayArgument) ArrayFromContext(in *values.FuncInputs) (values.Array, error) {
+func (n *arrayArgument) ArrayFromContext(in *hostio.FuncInputs) (hostio.Array, error) {
 	value, err := n.parentArgument.ValueFromContext(in)
 	if err != nil {
 		return nil, err
 	}
-	array, ok := value.(values.Array)
+	array, ok := value.(hostio.Array)
 	if !ok {
 		return nil, errors.Errorf("%s:%T is not an assigned numerical value", n.parentArgument.Name(), value)
 	}
@@ -489,7 +490,7 @@ func (n *arrayArgument) Type() ir.Type {
 }
 
 // Unflatten consumes the next handles to return a GX value.
-func (n *arrayArgument) Unflatten(handles *flatten.Parser) (values.Value, error) {
+func (n *arrayArgument) Unflatten(handles *flatten.Parser) (hostio.Value, error) {
 	return handles.ParseArray(n.typ)
 }
 

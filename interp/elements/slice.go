@@ -18,6 +18,7 @@ import (
 	"go/ast"
 
 	"github.com/pkg/errors"
+	"github.com/gx-org/gx/api/hostio"
 	"github.com/gx-org/gx/api/values"
 	gxfmt "github.com/gx-org/gx/base/fmt"
 	"github.com/gx-org/gx/build/fmterr"
@@ -166,7 +167,7 @@ func (n *Slice) AppendInPlace(el ir.Element) {
 }
 
 // Unflatten consumes the next handles to return a GX value.
-func (n *Slice) Unflatten(handles *flatten.Parser) (values.Value, error) {
+func (n *Slice) Unflatten(handles *flatten.Parser) (hostio.Value, error) {
 	return handles.ParseComposite(flatten.ParseCompositeOf(values.NewSlice), n.typ, n.values)
 }
 

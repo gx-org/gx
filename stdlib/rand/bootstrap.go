@@ -20,7 +20,7 @@ import (
 	"github.com/pkg/errors"
 	"github.com/gx-org/backend/dtypes"
 	"github.com/gx-org/backend/shape"
-	"github.com/gx-org/gx/api/values"
+	"github.com/gx-org/gx/api/hostio"
 	"github.com/gx-org/gx/build/ir"
 	"github.com/gx-org/gx/build/ir/irkind"
 	"github.com/gx-org/gx/golang/backend/kernels"
@@ -92,7 +92,7 @@ func (arg *randBootstrapArg) next(env engine.Env) (engine.NumericalElement, erro
 	return arg.rb.eval.NewArrayArgument(env.File(), arg, seedType, seedShape)
 }
 
-func (arg *randBootstrapArg) Init(ctx *values.FuncInputs) error {
+func (arg *randBootstrapArg) Init(ctx *hostio.FuncInputs) error {
 	value, err := arg.seed.ArrayFromContext(ctx)
 	if err != nil {
 		return nil
@@ -101,11 +101,11 @@ func (arg *randBootstrapArg) Init(ctx *values.FuncInputs) error {
 	if err != nil {
 		return err
 	}
-	array, ok := hostValue.(*values.HostArray)
+	array, ok := hostValue.(*hostio.HostArray)
 	if !ok {
 		return errors.Errorf("cannot convert GX argument %T to %T: not supported", value, array)
 	}
-	val, err := values.ToAtom[int64](array)
+	val, err := hostio.ToAtom[int64](array)
 	arg.rb.initRand(val)
 	return err
 }
@@ -114,9 +114,9 @@ func (arg *randBootstrapArg) Name() string {
 	return "randBootstrapArg.next()"
 }
 
-func (arg *randBootstrapArg) ValueFromContext(ctx *values.FuncInputs) (ir.Element, error) {
+func (arg *randBootstrapArg) ValueFromContext(ctx *hostio.FuncInputs) (ir.Element, error) {
 	val := arg.rb.rand.Uint64()
-	return values.AtomIntegerValue[uint64](seedType, val)
+	return hostio.AtomIntegerValue[uint64](seedType, val)
 }
 
 func (arg *randBootstrapArg) Evaluator() *grapheval.Evaluator {

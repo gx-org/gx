@@ -29,6 +29,7 @@ import (
 	"github.com/gx-org/gx/api"
 	"github.com/gx-org/gx/api/options"
 	"github.com/gx-org/gx/api/values"
+	"github.com/gx-org/gx/api/hostio"
 	"github.com/gx-org/gx/build/ir"
 	"github.com/gx-org/gx/api/tracer"
 	"github.com/gx-org/gx/golang/binder/gobindings/core"
@@ -47,6 +48,7 @@ var (
 	_ = strings.Compare
 	_ = reflect.TypeFor[int]
 	_ = values.Struct{}
+	_ hostio.Value
 	_ = errors.Errorf
 	_ = types.NewSlice[types.Bridger]
 	_ = platform.HostTransfer
@@ -139,13 +141,13 @@ func Build(dev *core.DeviceSetup) (*PackageHandle, error) {
 {{.Text}}
 {{end}}{{end -}}
 func (pkg *Package) {{.Name}}({{.Parameters}}) ({{.Results}}, err error) {
-	var args []values.Value = {{.BackendArguments}}
+	var args []hostio.Value = {{.BackendArguments}}
 	var runner tracer.CompiledFunc
 	runner, err = pkg.cache{{.Name}}.Runner(nil, args)
 	if err != nil {
 		return
 	}
-	var outputs []values.Value
+	var outputs []hostio.Value
 	outputs, err = runner.Run(nil, args, pkg.handle.Tracer())
 	if err != nil {
 		return
@@ -223,13 +225,13 @@ func (h *handle{{.Named.Name}}) SetField(field *ir.Field, val types.Bridge) erro
 {{.Text}}
 {{end}}{{end -}}
 func (recv *{{.RecvTypeName}}) {{.Name}}({{.Parameters}}) ({{.Results}}, err error) {
-	var args []values.Value = {{.BackendArguments}}
+	var args []hostio.Value = {{.BackendArguments}}
 	var runner tracer.CompiledFunc
 	runner, err = recv.handle.pkg.cache{{.RecvTypeName}}{{.Name}}.Runner(recv.value, args)
 	if err != nil {
 		return
 	}
-	var outputs []values.Value
+	var outputs []hostio.Value
 	outputs, err = runner.Run(recv.value, args, recv.handle.pkg.handle.Tracer())
 	if err != nil {
 		return

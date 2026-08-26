@@ -19,23 +19,24 @@ import (
 
 	"github.com/pkg/errors"
 	"github.com/gx-org/backend/platform"
+	"github.com/gx-org/gx/api/hostio"
 	"github.com/gx-org/gx/build/ir"
+	"github.com/gx-org/gx/interp/fun"
 )
 
 // NamedType is the GX runtime value of a named type.
 type NamedType struct {
-	val Value
+	val hostio.Value
 	typ ir.TypeMethods
 }
 
-var _ Value = (*NamedType)(nil)
+var _ hostio.Value = (*NamedType)(nil)
+var _ fun.NamedTypeI = (*NamedType)(nil)
 
 // NewNamedType returns a new named type from a GX runtime value and a named type.
-func NewNamedType(val Value, typ ir.TypeMethods) *NamedType {
+func NewNamedType(val hostio.Value, typ ir.TypeMethods) *NamedType {
 	return &NamedType{val: val, typ: typ}
 }
-
-func (*NamedType) value() {}
 
 // Type returns the type of the value.
 func (n *NamedType) Type() ir.Type {
@@ -43,7 +44,7 @@ func (n *NamedType) Type() ir.Type {
 }
 
 // Underlying returns the underlying value.
-func (n *NamedType) Underlying() Value {
+func (n *NamedType) Underlying() hostio.Value {
 	return n.val
 }
 
@@ -69,7 +70,7 @@ func (n *NamedType) TypeMethods() ir.TypeMethods {
 }
 
 // ToHost transfers the value to host given an allocator.
-func (n *NamedType) ToHost(alloc platform.Allocator) (Value, error) {
+func (n *NamedType) ToHost(alloc platform.Allocator) (hostio.Value, error) {
 	hostVal, err := n.val.ToHost(alloc)
 	if err != nil {
 		return nil, err

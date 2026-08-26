@@ -19,7 +19,7 @@ package processor
 import (
 	"github.com/gx-org/backend/platform"
 	"github.com/gx-org/backend/shape"
-	"github.com/gx-org/gx/api/values"
+	"github.com/gx-org/gx/api/hostio"
 	"github.com/gx-org/gx/build/ir"
 )
 
@@ -34,23 +34,31 @@ type (
 	// after calling a compiled function.
 	Processor struct {
 		traces
-		inits []Initializer
-		args  []Argument
+		factory hostio.Factory
+		inits   []Initializer
+		args    []Argument
 	}
 
 	// Initializer is called at the beginning of a run before
 	// arguments for the backend are computed.
 	Initializer interface {
-		Init(*values.FuncInputs) error
+		Init(*hostio.FuncInputs) error
 	}
 
 	// Argument provides an argument to pass to the backend.
 	Argument interface {
 		Shaper
 
-		ToDeviceHandle(platform.Device, *values.FuncInputs) (platform.DeviceHandle, error)
+		ToDeviceHandle(platform.Device, *hostio.FuncInputs) (platform.DeviceHandle, error)
 	}
 )
+
+// New returns a new processor given a host value factory.
+func New(factory hostio.Factory) *Processor {
+	p := &Processor{factory: factory}
+	p.traces.proc = p
+	return p
+}
 
 // RegisterInit registers an Initializer to the graph.
 func (p *Processor) RegisterInit(init Initializer) {
@@ -85,7 +93,7 @@ func (p *Processor) ElementArgs() []ir.Element {
 }
 
 // ProcessInits calls all the initializers callbacks.
-func (p *Processor) ProcessInits(fc *values.FuncInputs) error {
+func (p *Processor) ProcessInits(fc *hostio.FuncInputs) error {
 	for _, init := range p.inits {
 		if err := init.Init(fc); err != nil {
 			return err

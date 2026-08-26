@@ -20,21 +20,22 @@ import (
 
 	"github.com/pkg/errors"
 	"github.com/gx-org/backend/platform"
+	"github.com/gx-org/gx/api/hostio"
 	"github.com/gx-org/gx/base/sync"
 	"github.com/gx-org/gx/build/ir"
 )
 
 // Struct stores the GX values of a structure.
 type Struct struct {
-	vals       sync.Map[string, Value]
+	vals       sync.Map[string, hostio.Value]
 	typ        ir.Type
 	structType *ir.StructType
 }
 
-var _ Value = (*Struct)(nil)
+var _ hostio.Value = (*Struct)(nil)
 
 // NewStruct returns a new structure given a set of values.
-func NewStruct(typ ir.Type, vals []Value) (*Struct, error) {
+func NewStruct(typ ir.Type, vals []hostio.Value) (*Struct, error) {
 	under := ir.Underlying(typ)
 	var ok bool
 	structType, ok := under.(*ir.StructType)
@@ -58,11 +59,9 @@ func NewStruct(typ ir.Type, vals []Value) (*Struct, error) {
 	return vs, nil
 }
 
-func (*Struct) value() {}
-
 // ToHost transfers all the elements of the slice to the host.
-func (vs *Struct) ToHost(alloc platform.Allocator) (Value, error) {
-	vals := make([]Value, vs.structType.NumFields())
+func (vs *Struct) ToHost(alloc platform.Allocator) (hostio.Value, error) {
+	vals := make([]hostio.Value, vs.structType.NumFields())
 	for i, field := range vs.structType.Fields.Fields() {
 		v := vs.FieldValue(field.Name.Name)
 		vHost, err := v.ToHost(alloc)
@@ -80,7 +79,7 @@ func (vs *Struct) Type() ir.Type {
 }
 
 // SetField sets a field value.
-func (vs *Struct) SetField(name string, val Value) {
+func (vs *Struct) SetField(name string, val hostio.Value) {
 	vs.vals.Store(name, val)
 }
 
@@ -90,7 +89,7 @@ func (vs *Struct) Select(expr *ir.SelectorExpr) (ir.Element, error) {
 }
 
 // FieldValue returns the value of the ith field.
-func (vs *Struct) FieldValue(name string) Value {
+func (vs *Struct) FieldValue(name string) hostio.Value {
 	return vs.vals.Load(name)
 }
 

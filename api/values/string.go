@@ -17,11 +17,12 @@ package values
 import (
 	"github.com/pkg/errors"
 	"github.com/gx-org/backend/platform"
+	"github.com/gx-org/gx/api/hostio"
 	"github.com/gx-org/gx/build/ir"
 	"github.com/gx-org/gx/build/ir/irkind"
 )
 
-var _ Value = (*String)(nil)
+var _ hostio.Value = (*String)(nil)
 
 // String is a GX string value.
 type String struct {
@@ -37,15 +38,13 @@ func NewString(typ ir.Type, str string) (*String, error) {
 	return &String{typ: typ, str: str}, nil
 }
 
-func (s *String) value() {}
-
 // Type returns the type of the value.
 func (s *String) Type() ir.Type {
 	return s.typ
 }
 
 // ToHost transfers the value to host given an allocator.
-func (s *String) ToHost(platform.Allocator) (Value, error) {
+func (s *String) ToHost(platform.Allocator) (hostio.Value, error) {
 	return s, nil
 }
 

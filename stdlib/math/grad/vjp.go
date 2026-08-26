@@ -18,6 +18,7 @@ import (
 	"go/ast"
 
 	"github.com/pkg/errors"
+	"github.com/gx-org/gx/api/hostio"
 	"github.com/gx-org/gx/api/values"
 	"github.com/gx-org/gx/build/ir"
 	"github.com/gx-org/gx/internal/interp/compeval/cpevelements"
@@ -72,6 +73,6 @@ func (m *vjpMacro) BuildBody(fetcher ir.Fetcher, _ ir.Func) (*ast.BlockStmt, boo
 }
 
 // Unflatten creates a GX value from the next handles available in the parser.
-func (m *vjpMacro) Unflatten(handles *flatten.Parser) (values.Value, error) {
+func (m *vjpMacro) Unflatten(handles *flatten.Parser) (hostio.Value, error) {
 	return values.NewIRNode(m.graph.Func())
 }

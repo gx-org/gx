@@ -21,7 +21,7 @@ import (
 	"github.com/pkg/errors"
 	"github.com/gx-org/backend/ops"
 	"github.com/gx-org/backend/shape"
-	"github.com/gx-org/gx/api/values"
+	"github.com/gx-org/gx/api/hostio"
 	"github.com/gx-org/gx/build/fmterr"
 	"github.com/gx-org/gx/build/ir"
 	"github.com/gx-org/gx/internal/interp/compeval"
@@ -245,7 +245,7 @@ func (ev *Evaluator) FuncInputsToElements(newFunc fun.NewFunc, fn ir.Func, recei
 		argsEl[i] = argNode
 	}
 	return &elements.InputElements{
-		Values: values.FuncInputs{
+		Values: hostio.FuncInputs{
 			Receiver: receiver,
 			Args:     args,
 		},

@@ -16,11 +16,12 @@
 package flatten
 
 import (
-	"github.com/gx-org/gx/api/values"
+	"github.com/gx-org/gx/api/hostio"
 	"github.com/gx-org/gx/build/ir"
 )
 
 type (
+
 	// Flattener is an element that can be flattened.
 	Flattener interface {
 		// Flatten the element, that is:
@@ -32,7 +33,7 @@ type (
 	// Unflattener uses the parser to build GX values.
 	Unflattener interface {
 		// Unflatten creates a GX value from the next handles available in the Unflattener.
-		Unflatten(handles *Parser) (values.Value, error)
+		Unflatten(handles *Parser) (hostio.Value, error)
 	}
 )
 

@@ -115,7 +115,7 @@ func (h *handle{{.Named.Name}}) Bridger() types.Bridger {
 }
 
 // GXValue returns the GX value.
-func (h *handle{{.Named.Name}}) GXValue() values.Value {
+func (h *handle{{.Named.Name}}) GXValue() hostio.Value {
 	return h.owner.value
 }
 
@@ -176,7 +176,7 @@ func (val {{.Named.Name}}) String() string {
 func (val *{{.Named.Name}}) Bridge() types.Bridge { return &val.handle }
 
 // Marshal{{.Named.Name}} populates the receiver fields with device handles.
-func (fty *Factory) Marshal{{.Named.Name}}(val values.Value) (s *{{.Named.Name}}, err error) {
+func (fty *Factory) Marshal{{.Named.Name}}(val hostio.Value) (s *{{.Named.Name}}, err error) {
 	s = fty.New{{.Named.Name}}()
 	if _, ok := val.(*values.Slice); ok {
 		err = fmt.Errorf("cannot use handle to set {{.Named.Name}}: got a tuple instead of a single value")
@@ -347,7 +347,7 @@ func (h *handle{{.Named.Name}}) StructValue() *values.Struct {
 }
 
 // Marshal{{.Named.Name}} populates the receiver fields with device handles.
-func (fty *Factory) Marshal{{.Named.Name}}(val values.Value) (s *{{.Named.Name}}, err error) {
+func (fty *Factory) Marshal{{.Named.Name}}(val hostio.Value) (s *{{.Named.Name}}, err error) {
 	s = fty.New{{.Named.Name}}()
 	var ok bool
 	s.value, ok = val.(*values.NamedType)
@@ -360,7 +360,7 @@ func (fty *Factory) Marshal{{.Named.Name}}(val values.Value) (s *{{.Named.Name}}
 		err = errors.Errorf("incorrect underlying value for named type {{.Named.Name}}: %T is not a %s", val, reflect.TypeFor[*values.Struct]().Name())
 		return
 	}
-	fields := make([]values.Value, structVal.StructType().NumFields())
+	fields := make([]hostio.Value, structVal.StructType().NumFields())
 	for i, field := range structVal.StructType().Fields.Fields() {
 		fields[i] = structVal.FieldValue(field.Name.Name)
 	}

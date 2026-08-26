@@ -17,7 +17,7 @@ package grapheval
 import (
 	"github.com/gx-org/backend/ops"
 	"github.com/gx-org/backend/shape"
-	"github.com/gx-org/gx/api/values"
+	"github.com/gx-org/gx/api/hostio"
 	"github.com/gx-org/gx/build/fmterr"
 	"github.com/gx-org/gx/build/ir"
 	"github.com/gx-org/gx/build/ir/irkind"
@@ -88,8 +88,8 @@ func (n *constant) Constant() engine.Constant {
 }
 
 // Unflatten creates a GX value from the next handles available in the parser.
-func (n *constant) Unflatten(handles *flatten.Parser) (values.Value, error) {
-	return values.NewDeviceArray(n.ctyp, handles.Next())
+func (n *constant) Unflatten(handles *flatten.Parser) (hostio.Value, error) {
+	return hostio.NewDeviceArray(n.ctyp, handles.Next())
 }
 
 // Copy the graph node by returning itself.

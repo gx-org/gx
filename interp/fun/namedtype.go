@@ -19,7 +19,7 @@ import (
 	"reflect"
 
 	"github.com/pkg/errors"
-	"github.com/gx-org/gx/api/values"
+	"github.com/gx-org/gx/api/hostio"
 	"github.com/gx-org/gx/build/ir"
 	"github.com/gx-org/gx/internal/interp/coreiface"
 	"github.com/gx-org/gx/internal/interp/flatten"
@@ -97,12 +97,12 @@ func (n *NamedType) TypeMethods() ir.TypeMethods {
 }
 
 // Unflatten consumes the next handles to return a GX value.
-func (n *NamedType) Unflatten(handles *flatten.Parser) (values.Value, error) {
-	val, err := handles.Unflatten(n.under)
+func (n *NamedType) Unflatten(parser *flatten.Parser) (hostio.Value, error) {
+	val, err := parser.Unflatten(n.under)
 	if err != nil {
 		return nil, err
 	}
-	return values.NewNamedType(val, n.typ), nil
+	return parser.Factory().NewNamedType(val, n.typ), nil
 }
 
 // Type of the element.

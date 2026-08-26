@@ -21,7 +21,7 @@ import (
 	"github.com/gx-org/backend/dtypes"
 	"github.com/gx-org/backend/platform"
 	"github.com/gx-org/backend/shape"
-	"github.com/gx-org/gx/api/values"
+	"github.com/gx-org/gx/api/hostio"
 	"github.com/gx-org/gx/build/ir"
 	"github.com/gx-org/gx/build/ir/irkind"
 	"github.com/gx-org/gx/golang/backend/kernels"
@@ -38,13 +38,13 @@ type Array[T dtypes.Supported] interface {
 
 // DeviceArray is an array stored on a device.
 type DeviceArray[T dtypes.Supported] struct {
-	baseBridge[*DeviceArray[T], *values.DeviceArray]
+	baseBridge[*DeviceArray[T], *hostio.DeviceArray]
 }
 
 var _ Array[int64] = (*DeviceArray[int64])(nil)
 
 // NewDeviceArray returns a new Go array given a device value managed by GX.
-func NewDeviceArray[T dtypes.Supported](val *values.DeviceArray) *DeviceArray[T] {
+func NewDeviceArray[T dtypes.Supported](val *hostio.DeviceArray) *DeviceArray[T] {
 	array := &DeviceArray[T]{}
 	array.baseBridge = newBaseBridge(array, val)
 	dtypeGot := val.Shape().DType
@@ -74,7 +74,7 @@ func (array *DeviceArray[T]) FetchWithAlloc(alloc platform.Allocator) (*HostArra
 	return NewHostArray[T](val), nil
 }
 
-func (array *DeviceArray[T]) toDeviceBridger(val *values.DeviceArray) ArrayBridge {
+func (array *DeviceArray[T]) toDeviceBridger(val *hostio.DeviceArray) ArrayBridge {
 	return NewDeviceArray[T](val)
 }
 
@@ -84,13 +84,13 @@ func (array *DeviceArray[T]) String() string {
 
 // HostArray is an array stored on a host.
 type HostArray[T dtypes.Supported] struct {
-	baseBridge[*HostArray[T], *values.HostArray]
+	baseBridge[*HostArray[T], *hostio.HostArray]
 }
 
 var _ Array[int64] = (*HostArray[int64])(nil)
 
 // NewHostArray returns a new Go array given a device value managed by GX.
-func NewHostArray[T dtypes.Supported](val *values.HostArray) *HostArray[T] {
+func NewHostArray[T dtypes.Supported](val *hostio.HostArray) *HostArray[T] {
 	array := &HostArray[T]{}
 	array.baseBridge = newBaseBridge(array, val)
 	return array
@@ -115,7 +115,7 @@ func (array *HostArray[T]) Shape() *shape.Shape {
 	return array.value.Shape()
 }
 
-func (array *HostArray[T]) toDeviceBridger(val *values.DeviceArray) ArrayBridge {
+func (array *HostArray[T]) toDeviceBridger(val *hostio.DeviceArray) ArrayBridge {
 	return NewDeviceArray[T](val)
 }
 
@@ -131,7 +131,7 @@ func ArrayBool(vals []bool, dims ...int) *HostArray[bool] {
 	typ := ir.NewArrayType(&ast.ArrayType{}, ir.TypeFromKind(irkind.Bool), ir.NewRank(dims))
 	array := kernels.ToBoolArray(vals, dims)
 	buffer := kernels.NewBuffer(array)
-	hostArray, err := values.NewHostArray(typ, buffer)
+	hostArray, err := hostio.NewHostArray(typ, buffer)
 	if err != nil {
 		// Should never happen.
 		// The only possible error is when an array is created with type
@@ -152,7 +152,7 @@ func newArray[T dtypes.AlgebraType](dtypeKind irkind.Kind, array kernels.Array) 
 	dims := array.Shape().AxisLengths
 	typ := ir.NewArrayType(&ast.ArrayType{}, ir.TypeFromKind(dtypeKind), ir.NewRank(dims))
 	buffer := kernels.NewBuffer(array)
-	hostArray, err := values.NewHostArray(typ, buffer)
+	hostArray, err := hostio.NewHostArray(typ, buffer)
 	if err != nil {
 		// Should never happen.
 		// The only possible error is when an array is created with type

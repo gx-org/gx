@@ -24,6 +24,7 @@ import (
 	"github.com/gx-org/backend/platform"
 	"github.com/gx-org/backend/shape"
 	"github.com/gx-org/gx/api"
+	"github.com/gx-org/gx/api/hostio"
 	"github.com/gx-org/gx/api/options"
 	"github.com/gx-org/gx/api/values"
 	"github.com/gx-org/gx/build/importers"
@@ -354,16 +355,16 @@ func cgx_static_name(cgxStatic C.cgx_static) *C.cchar_t {
 //export cgx_static_set
 func cgx_static_set(cgxStatic C.cgx_static, val int64) C.cgx_error {
 	cvr := unwrap[*staticVariable](cgxStatic)
-	var gxValue values.Value
+	var gxValue hostio.Value
 	var err error
 	tp := cvr.vr.Type()
 	switch tp {
 	case ir.Int32Type():
-		gxValue, err = values.AtomIntegerValue[int32](ir.Int32Type(), int32(val))
+		gxValue, err = hostio.AtomIntegerValue[int32](ir.Int32Type(), int32(val))
 	case ir.Int64Type():
-		gxValue, err = values.AtomIntegerValue[int64](ir.Int64Type(), val)
+		gxValue, err = hostio.AtomIntegerValue[int64](ir.Int64Type(), val)
 	case ir.IntType():
-		gxValue, err = values.AtomIntegerValue[int](ir.IntType(), int(val))
+		gxValue, err = hostio.AtomIntegerValue[int](ir.IntType(), int(val))
 	default:
 		err = errors.Errorf("cannot set static variable: type %s (%T:%s) not supported", tp.ReferString(nil), tp, tp.Kind())
 	}
@@ -481,11 +482,11 @@ func cgx_function_find(cgxPackage C.cgx_package, funcNamePtr *C.cchar_t) (res C.
 //export cgx_function_run
 func cgx_function_run(cgxFunction C.cgx_function, cgxReceiver C.cgx_value, argCount C.int, args *C.cgx_value) C.struct_cgx_function_run_result {
 	function := unwrap[*core.FuncCache](cgxFunction)
-	recvValue := unwrap[values.Value](cgxReceiver)
+	recvValue := unwrap[hostio.Value](cgxReceiver)
 	cgxValues := unsafe.Slice(args, argCount)
-	argValues := make([]values.Value, int(argCount))
+	argValues := make([]hostio.Value, int(argCount))
 	for i, cgxValue := range cgxValues {
-		argValues[i] = unwrap[values.Value](cgxValue)
+		argValues[i] = unwrap[hostio.Value](cgxValue)
 	}
 	runner, err := function.Runner(recvValue, argValues)
 	if err != nil {
@@ -591,7 +592,7 @@ func toValueResult[T dtypes.Supported](devAtom *types.DeviceAtom[T], err error) 
 		return C.struct_cgx_value_new_result{error: (C.cgx_error)(wrap[error](err))}
 	}
 	return C.struct_cgx_value_new_result{
-		value: (C.cgx_value)(wrap[values.Value](devAtom.GXValue())),
+		value: (C.cgx_value)(wrap[hostio.Value](devAtom.GXValue())),
 	}
 }
 
@@ -649,12 +650,12 @@ func cgx_value_send(cgxDevice C.cgx_device, cgxShape C.cgx_shape, data *C.cvoid_
 	}
 	dataType := ir.TypeFromKind(irkind.Kind(shape.DType))
 	valueType := ir.NewArrayType(nil, dataType, ir.NewRank(shape.AxisLengths))
-	value, err := values.NewDeviceArray(valueType, h)
+	value, err := hostio.NewDeviceArray(valueType, h)
 	if err != nil {
 		return C.struct_cgx_value_new_result{error: (C.cgx_error)(wrap[error](err))}
 	}
 	return C.struct_cgx_value_new_result{
-		value: (C.cgx_value)(wrap[values.Value](value)),
+		value: (C.cgx_value)(wrap[hostio.Value](value)),
 	}
 }
 
@@ -691,22 +692,22 @@ func toCGXValueKind(kind irkind.Kind) C.enum_cgx_value_kind {
 
 //export cgx_value_kind_of
 func cgx_value_kind_of(cgxValue C.cgx_value) C.enum_cgx_value_kind {
-	value := unwrap[values.Value](cgxValue)
+	value := unwrap[hostio.Value](cgxValue)
 	return toCGXValueKind(value.Type().Kind())
 }
 
 //export cgx_value_shape
 func cgx_value_shape(cgxValue C.cgx_value) C.cgx_shape {
-	value := unwrap[values.Value](cgxValue)
-	if array, ok := value.(values.Array); ok {
+	value := unwrap[hostio.Value](cgxValue)
+	if array, ok := value.(hostio.Array); ok {
 		return (C.cgx_shape)(wrap[*shape.Shape](array.Shape()))
 	}
 	return 0
 }
 
 func atomFromDeviceArray[T dtypes.Supported](cgxValue C.cgx_value) T {
-	value := unwrap[values.Value](cgxValue)
-	atomDevice := types.NewDeviceAtom[T](value.(*values.DeviceArray))
+	value := unwrap[hostio.Value](cgxValue)
+	atomDevice := types.NewDeviceAtom[T](value.(*hostio.DeviceArray))
 	atomHost, err := atomDevice.Fetch()
 	if err != nil {
 		panic(err)
@@ -751,8 +752,8 @@ func cgx_value_get_uint64(cgxValue C.cgx_value) C.uint64_t {
 
 //export cgx_value_host_buffer
 func cgx_value_host_buffer(cgxValue C.cgx_value) C.struct_cgx_value_host_buffer_result {
-	value := unwrap[values.Value](cgxValue)
-	deviceArray := value.(*values.DeviceArray)
+	value := unwrap[hostio.Value](cgxValue)
+	deviceArray := value.(*hostio.DeviceArray)
 	hostArray, err := deviceArray.ToHostArray(kernels.Allocator())
 	if err != nil {
 		return C.struct_cgx_value_host_buffer_result{}
@@ -764,7 +765,7 @@ func cgx_value_host_buffer(cgxValue C.cgx_value) C.struct_cgx_value_host_buffer_
 
 //export cgx_value_get_struct
 func cgx_value_get_struct(cgxValue C.cgx_value) C.struct_cgx_value_get_struct_result {
-	value := unwrap[values.Value](cgxValue)
+	value := unwrap[hostio.Value](cgxValue)
 	kind := value.Type().Kind()
 	if value.Type().Kind() != irkind.Struct {
 		return C.struct_cgx_value_get_struct_result{
@@ -779,7 +780,7 @@ func cgx_value_get_struct(cgxValue C.cgx_value) C.struct_cgx_value_get_struct_re
 
 //export cgx_value_get_interface_type
 func cgx_value_get_interface_type(cgxPackage C.cgx_package, cgxValue C.cgx_value) C.cgx_interface {
-	value := unwrap[values.Value](cgxValue)
+	value := unwrap[hostio.Value](cgxValue)
 	namedType, ok := value.Type().(*ir.NamedType)
 	if !ok {
 		return 0
@@ -790,7 +791,7 @@ func cgx_value_get_interface_type(cgxPackage C.cgx_package, cgxValue C.cgx_value
 
 //export cgx_value_string
 func cgx_value_string(cgxValue C.cgx_value) *C.cchar_t {
-	value := unwrap[values.Value](cgxValue)
+	value := unwrap[hostio.Value](cgxValue)
 	return C.CString(value.SourceString(nil))
 }
 
@@ -885,14 +886,14 @@ func cgx_struct_field_get(cgxStruct C.cgx_struct, fieldNamePtr *C.cchar_t) (res 
 	h := unwrap[*structHandle](cgxStruct)
 	fieldValue := h.value.FieldValue(C.GoString(fieldNamePtr))
 	return C.struct_cgx_value_new_result{
-		value: (C.cgx_value)(wrap[values.Value](fieldValue)),
+		value: (C.cgx_value)(wrap[hostio.Value](fieldValue)),
 	}
 }
 
 //export cgx_struct_field_set
 func cgx_struct_field_set(cgxStruct C.cgx_struct, fieldNamePtr *C.cchar_t, cgxValue C.cgx_value) C.cgx_error {
 	h := unwrap[*structHandle](cgxStruct)
-	value := unwrap[values.Value](cgxValue)
+	value := unwrap[hostio.Value](cgxValue)
 	h.value.SetField(C.GoString(fieldNamePtr), value)
 	return (C.cgx_error)(wrap[error](nil))
 }

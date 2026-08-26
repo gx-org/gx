@@ -81,7 +81,7 @@ func (b *binder) gxValueTypePointer(tp ir.Type) (string, error) {
 func (b *binder) gxValueType(tp ir.Type) (string, error) {
 	switch typT := tp.(type) {
 	case ir.ArrayType:
-		return "values.Array", nil
+		return "hostio.Array", nil
 	case *ir.NamedType:
 		return b.packagePrefixNameOf(typT) + typT.Name(), nil
 	case *ir.SliceType:

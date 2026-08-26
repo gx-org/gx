@@ -60,7 +60,7 @@ func (fb *funcBody) gxFromGoBasic(tp *types.Basic, name genast.IdentExpr) *ast.C
 	switch tp.Kind() {
 	case types.Float32:
 		return genast.CallExpr(
-			fb.dir.g.values.Select("AtomFloatValue").Index(genast.Ident("float32").X).X,
+			fb.dir.g.hostio.Select("AtomFloatValue").Index(genast.Ident("float32").X).X,
 			genast.CallExpr(fb.dir.g.ir.Select("Float32Type").X),
 			name.X,
 		)

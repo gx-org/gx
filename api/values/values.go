@@ -16,121 +16,60 @@
 package values
 
 import (
-	"math/big"
-
 	"github.com/pkg/errors"
-	"github.com/gomlx/gopjrt/dtypes/bfloat16"
-	"github.com/gx-org/backend/dtypes"
-	"github.com/gx-org/backend/platform"
+	"github.com/gx-org/gx/api/hostio"
 	"github.com/gx-org/gx/build/ir"
 	"github.com/gx-org/gx/build/ir/irkind"
-	"github.com/gx-org/gx/golang/backend/kernels"
 )
 
-type (
-	// Value is a GX value.
-	Value interface {
-		value() // Make sure all GX types are implemented in this package.
-		ir.StringSourcer
+type factory struct{}
 
-		// Type returns the type of the value.
-		Type() ir.Type
+var f factory
 
-		// ToHost transfers the value to host given an allocator.
-		ToHost(platform.Allocator) (Value, error)
-	}
-
-	// Valuer is an instance able to produce a GX value.
-	Valuer interface {
-		GXValue() Value
-	}
-
-	// FuncInputs are GX values passed to the function call.
-	FuncInputs struct {
-		// Receiver on which the function call was done.
-		// Can be nil.
-		Receiver ir.Element
-
-		// Args returns list of arguments passed to the interpreter at call time.
-		Args []ir.Element
-	}
-)
-
-func toHostArray(typ ir.Type, h kernels.Array) (*HostArray, error) {
-	return NewHostArray(typ, kernels.NewBuffer(h))
+// Factory to create host elements.
+func Factory() hostio.Factory {
+	return f
 }
 
-// AtomFloatValue returns an array GX value given a Go value.
-func AtomFloatValue[T dtypes.GoFloat](typ ir.Type, val T) (*HostArray, error) {
-	return toHostArray(typ, kernels.ToFloatAtom[T](val))
+func (factory) NewNamedType(val hostio.Value, typ ir.TypeMethods) hostio.Value {
+	return NewNamedType(val, typ)
 }
 
-// AtomBfloat16Value returns an array GX value given a Go value.
-func AtomBfloat16Value(typ ir.Type, val bfloat16.BFloat16) (*HostArray, error) {
-	return toHostArray(typ, kernels.ToBfloat16Atom(val))
-}
-
-// AtomBoolValue returns an array GX value given a boolean value.
-func AtomBoolValue(typ ir.Type, val bool) (*HostArray, error) {
-	return toHostArray(typ, kernels.ToBoolAtom(val))
-}
-
-// AtomIntegerValue returns an array GX value given a Go value.
-func AtomIntegerValue[T dtypes.IntegerType](typ ir.Type, val T) (*HostArray, error) {
-	return toHostArray(typ, kernels.ToIntegerAtom[T](val))
-}
-
-// ArrayBfloat16Value returns an array GX value given a Go value.
-func ArrayBfloat16Value(typ ir.Type, vals []bfloat16.BFloat16, dims []int) (*HostArray, error) {
-	return toHostArray(typ, kernels.ToBfloat16Array(vals, dims))
-}
-
-// ArrayFloatValue returns an array GX value given a Go value.
-func ArrayFloatValue[T dtypes.GoFloat](typ ir.Type, vals []T, dims []int) (*HostArray, error) {
-	return toHostArray(typ, kernels.ToFloatArray[T](vals, dims))
-}
-
-// ArrayBoolValue returns an array GX value given a boolean value.
-func ArrayBoolValue(typ ir.Type, vals []bool, dims []int) (*HostArray, error) {
-	return toHostArray(typ, kernels.ToBoolArray(vals, dims))
-}
-
-// ArrayIntegerValue returns an array GX value given a Go value.
-func ArrayIntegerValue[T dtypes.IntegerType](typ ir.Type, vals []T, dims []int) (*HostArray, error) {
-	return toHostArray(typ, kernels.ToIntegerArray[T](vals, dims))
-}
-
-func arrayZeroValue(typ ir.Type) (Array, error) {
-	// TODO(degris): not really implemented: should be enough for a workaround today.
-	return NewDeviceArray(typ, nil)
+func (factory) NewStruct(typ ir.Type, vals []hostio.Value) (hostio.Value, error) {
+	return NewStruct(typ, vals)
 }
 
 func sliceZeroValue(typ ir.Type) (*Slice, error) {
 	return NewSlice(typ, nil)
 }
 
+func arrayZeroValue(typ ir.Type) (hostio.Array, error) {
+	// TODO(degris): not really implemented: should be enough for a workaround today.
+	return hostio.NewDeviceArray(typ, nil)
+}
+
 // Zero returns a zero value given a GX type.
-func Zero(typ ir.Type) (Value, error) {
+func Zero(typ ir.Type) (hostio.Value, error) {
 	kind := typ.Kind()
 	switch kind {
 	case irkind.Bool:
-		return AtomBoolValue(typ, false)
+		return hostio.AtomBoolValue(typ, false)
 	case irkind.Bfloat16:
-		return AtomBfloat16Value(typ, 0)
+		return hostio.AtomBfloat16Value(typ, 0)
 	case irkind.Float32:
-		return AtomFloatValue[float32](typ, 0)
+		return hostio.AtomFloatValue[float32](typ, 0)
 	case irkind.Float64:
-		return AtomFloatValue[float64](typ, 0)
+		return hostio.AtomFloatValue[float64](typ, 0)
 	case irkind.Int:
-		return AtomIntegerValue[ir.Int](typ, 0)
+		return hostio.AtomIntegerValue[ir.Int](typ, 0)
 	case irkind.Int32:
-		return AtomIntegerValue[int32](typ, 0)
+		return hostio.AtomIntegerValue[int32](typ, 0)
 	case irkind.Int64:
-		return AtomIntegerValue[int64](typ, 0)
+		return hostio.AtomIntegerValue[int64](typ, 0)
 	case irkind.Uint32:
-		return AtomIntegerValue[uint32](typ, 0)
+		return hostio.AtomIntegerValue[uint32](typ, 0)
 	case irkind.Uint64:
-		return AtomIntegerValue[uint64](typ, 0)
+		return hostio.AtomIntegerValue[uint64](typ, 0)
 	case irkind.Array:
 		return arrayZeroValue(typ)
 	case irkind.Slice:
@@ -140,136 +79,11 @@ func Zero(typ ir.Type) (Value, error) {
 	}
 }
 
-// ToHost transfers all values recursively to the host.
-func ToHost(alloc platform.Allocator, vals []Value) ([]Value, error) {
-	out := make([]Value, len(vals))
-	for i, val := range vals {
-		var err error
-		out[i], err = val.ToHost(alloc)
-		if err != nil {
-			return nil, err
-		}
-	}
-	return out, nil
-}
-
-func bigIntToInt[T dtypes.IntegerType](x *big.Int) T {
-	xI64 := x.Int64()
-	return T(xI64)
-}
-
-func bigIntToFloat[T float32 | float64](x *big.Int) T {
-	xF64, _ := x.Float64()
-	return T(xF64)
-}
-
-func bigIntToUint[T dtypes.Unsigned](x *big.Int) T {
-	xI64 := x.Uint64()
-	return T(xI64)
-}
-
-// FromAtom converts a Go value into a host array.
-func FromAtom[T dtypes.Supported](x T, typ ir.Type) (*HostArray, error) {
-	switch xT := any(x).(type) {
-	case float32:
-		return AtomFloatValue[float32](typ, xT)
-	case float64:
-		return AtomFloatValue[float64](typ, xT)
-	case int:
-		return AtomIntegerValue[int](typ, xT)
-	case int32:
-		return AtomIntegerValue[int32](typ, xT)
-	case int64:
-		return AtomIntegerValue[int64](typ, xT)
-	case uint32:
-		return AtomIntegerValue[uint32](typ, xT)
-	case uint64:
-		return AtomIntegerValue[uint64](typ, xT)
-	default:
-		return nil, errors.Errorf("cannot convert Go value %T(%v) (GX type: %s) to a host array", xT, xT, typ.ReferString(nil))
-	}
-}
-
-// AtomNumberInt evaluates a big integer number into a GX array value.
-func AtomNumberInt(x *big.Int, typ ir.Type) (*HostArray, error) {
-	switch typ.Kind() {
-	case irkind.Bfloat16:
-		xF64, _ := x.Float64()
-		return AtomBfloat16Value(typ, bfloat16.FromFloat64(xF64))
-	case irkind.Float32:
-		return AtomFloatValue[float32](typ, bigIntToFloat[float32](x))
-	case irkind.Float64:
-		return AtomFloatValue[float64](typ, bigIntToFloat[float64](x))
-	case irkind.Int:
-		return AtomIntegerValue[int](typ, bigIntToInt[int](x))
-	case irkind.Int32:
-		return AtomIntegerValue[int32](typ, bigIntToInt[int32](x))
-	case irkind.Int64:
-		return AtomIntegerValue[int64](typ, bigIntToInt[int64](x))
-	case irkind.Uint32:
-		return AtomIntegerValue[uint32](typ, bigIntToUint[uint32](x))
-	case irkind.Uint64:
-		return AtomIntegerValue[uint64](typ, bigIntToUint[uint64](x))
-	}
-	return nil, errors.Errorf("cannot convert value %s of type %s (kind: %s) to an atomic integer value", x.String(), typ.ReferString(nil), typ.Kind().String())
-}
-
-func bigFloatCast[T dtypes.AlgebraType](x *big.Float) T {
-	xF64, _ := x.Float64()
-	return T(xF64)
-}
-
-// AtomNumberFloat  evaluates a big integer number into a GX array value.
-func AtomNumberFloat(x *big.Float, typ ir.Type) (*HostArray, error) {
-	switch typ.Kind() {
-	case irkind.Bfloat16:
-		xF64, _ := x.Float64()
-		return AtomBfloat16Value(typ, bfloat16.FromFloat64(xF64))
-	case irkind.Float32:
-		return AtomFloatValue[float32](typ, bigFloatCast[float32](x))
-	case irkind.Float64:
-		return AtomFloatValue[float64](typ, bigFloatCast[float64](x))
-	case irkind.Int:
-		return AtomIntegerValue[int](typ, bigFloatCast[int](x))
-	case irkind.Int32:
-		return AtomIntegerValue[int32](typ, bigFloatCast[int32](x))
-	case irkind.Int64:
-		return AtomIntegerValue[int64](typ, bigFloatCast[int64](x))
-	case irkind.Uint32:
-		return AtomIntegerValue[uint32](typ, bigFloatCast[uint32](x))
-	case irkind.Uint64:
-		return AtomIntegerValue[uint64](typ, bigFloatCast[uint64](x))
-	}
-	return nil, errors.Errorf("cannot convert %T(%s) to %s: not implemented", x, x, typ.ReferString(nil))
-}
-
 // Underlying returns the underlying element.
-func Underlying(val Value) Value {
+func Underlying(val hostio.Value) hostio.Value {
 	named, ok := val.(*NamedType)
 	if !ok {
 		return val
 	}
 	return Underlying(named.Underlying())
-}
-
-// ToElements converts a slice of values into a slice of elements.
-func ToElements(vals []Value) []ir.Element {
-	els := make([]ir.Element, len(vals))
-	for i, arg := range vals {
-		els[i] = arg
-	}
-	return els
-}
-
-// ToKernel returns the kernel of an array.
-func ToKernel(array *HostArray) (kernels.Array, error) {
-	// Convert the GX value into a Go array with a kernel factory.
-	data := array.Buffer().Acquire()
-	defer array.Buffer().Release()
-	data = append([]byte{}, data...)
-	kArray, err := kernels.NewArrayFromRaw(data, array.Shape())
-	if err != nil {
-		return nil, err
-	}
-	return kArray, nil
 }

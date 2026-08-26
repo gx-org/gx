@@ -20,7 +20,7 @@ import (
 	"strings"
 
 	"github.com/pkg/errors"
-	"github.com/gx-org/gx/api/values"
+	"github.com/gx-org/gx/api/hostio"
 	gxfmt "github.com/gx-org/gx/base/fmt"
 	"github.com/gx-org/gx/build/ir"
 	"github.com/gx-org/gx/internal/interp/flatten"
@@ -75,9 +75,10 @@ func (n *Struct) Flatten() ([]ir.Element, error) {
 }
 
 // Unflatten consumes the next handles to return a GX value.
-func (n *Struct) Unflatten(handles *flatten.Parser) (values.Value, error) {
+func (n *Struct) Unflatten(parser *flatten.Parser) (hostio.Value, error) {
 	elts := n.orderedFieldValues()
-	return handles.ParseComposite(flatten.ParseCompositeOf(values.NewStruct), n.typ, elts)
+	newStruct := parser.Factory().NewStruct
+	return parser.ParseComposite(flatten.ParseCompositeOf(newStruct), n.typ, elts)
 }
 
 // Select returns the value of a field of a structure given its index.

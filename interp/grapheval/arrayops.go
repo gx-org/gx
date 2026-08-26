@@ -18,7 +18,7 @@ import (
 	"github.com/gx-org/backend/dtypes"
 	"github.com/gx-org/backend/ops"
 	"github.com/gx-org/backend/shape"
-	"github.com/gx-org/gx/api/values"
+	"github.com/gx-org/gx/api/hostio"
 	"github.com/gx-org/gx/build/ir"
 	"github.com/gx-org/gx/interp/elements"
 	"github.com/gx-org/gx/interp/engine"
@@ -198,7 +198,7 @@ func unpackOutputs(outputs []*ops.OutputNode) (nodes []ops.Node, shapes []*shape
 }
 
 // ElementFromArray returns an element from an array GX value.
-func (ao *arrayOps) NodeFromArray(val *values.HostArray) (materialise.Node, error) {
+func (ao *arrayOps) NodeFromArray(val *hostio.HostArray) (materialise.Node, error) {
 	cstNode, err := ao.graph.Core().Constant(val.Buffer())
 	if err != nil {
 		return nil, err

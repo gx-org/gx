@@ -19,7 +19,6 @@ import (
 	"fmt"
 	"strings"
 
-	"github.com/gx-org/gx/api/values"
 	"github.com/gx-org/gx/build/ir"
 	"github.com/gx-org/gx/internal/interp/coreiface"
 	"github.com/gx-org/gx/interp/context"
@@ -78,8 +77,6 @@ type (
 		Select(expr *ir.SelectorExpr) (ir.Element, error)
 	}
 )
-
-var _ NamedTypeI = (*values.NamedType)(nil)
 
 // NewCallEnv returns a function context.
 func NewCallEnv(ctx *context.Context, exprEval ir.Evaluator, eng engine.Engine, fun Factory, run Runners) *CallEnv {
