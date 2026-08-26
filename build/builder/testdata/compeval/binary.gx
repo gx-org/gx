@@ -1,0 +1,31 @@
+package binary
+
+// No runtime test function
+
+//gx:compeval
+func TestAdd(a, b int) int {
+	return a + b
+	// Want:
+	// a+b
+}
+
+//gx:compeval
+func TestSub(a, b int) int {
+	return a - b
+	// Want:
+	// a-b
+}
+
+//gx:compeval
+func TestMul(a, b int) int {
+	return a * b
+	// Want:
+	// a*b
+}
+
+//gx:compeval
+func TestQuo(a, b int) int {
+	return a / b
+	// Want:
+	// a/b
+}
