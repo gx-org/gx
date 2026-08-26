@@ -84,7 +84,7 @@ func evalPhilox(env engine.Env, call *ir.FuncCallExpr, recv ir.Element, args []i
 		return nil, err
 	}
 	return []ir.Element{
-		fun.NewNamedType(interp.NewRunFunc, philox.TypeMethods(), elements.NewStruct(
+		fun.NewNamedType(interp.NewRunFunc, philox.TypeMethods(), fun.NewStruct(
 			philoxStruct,
 			map[string]ir.Element{"state": philoxStateElement[0]},
 		)),

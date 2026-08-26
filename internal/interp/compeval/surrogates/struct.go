@@ -17,12 +17,12 @@ package surrogates
 import (
 	"github.com/gx-org/gx/build/ir"
 	"github.com/gx-org/gx/internal/interp/compeval/surrogates/storepath"
-	"github.com/gx-org/gx/interp/elements"
+	"github.com/gx-org/gx/interp/fun"
 )
 
 type sStruct struct {
 	core
-	*elements.Struct
+	*fun.Struct
 }
 
 func newStruct(path storepath.Path, typ *ir.StructType) (Element, error) {
@@ -40,6 +40,6 @@ func newStruct(path storepath.Path, typ *ir.StructType) (Element, error) {
 	}
 	return &sStruct{
 		core:   core{path: path},
-		Struct: elements.NewStruct(typ, fields),
+		Struct: fun.NewStruct(typ, fields),
 	}, nil
 }

@@ -470,7 +470,7 @@ func evalStructLiteral(fitp *Interpreter, expr *ir.StructLitExpr) (ir.Element, e
 		}
 		fields[fieldLit.Field.Name.Name] = node
 	}
-	strct := elements.NewStruct(structType, fields)
+	strct := fun.NewStruct(structType, fields)
 	nType, ok := expr.Typ.(*ir.NamedType)
 	if !ok {
 		return strct, nil
@@ -642,7 +642,7 @@ func evalSelectorExpr(fitp *Interpreter, ref *ir.SelectorExpr) (ir.Element, erro
 	if err != nil {
 		return nil, err
 	}
-	slt, err := cast.To[elements.Selector](node)
+	slt, err := cast.To[fun.Selector](node)
 	if err != nil {
 		return nil, err
 	}
@@ -812,7 +812,7 @@ func set(fitp *Interpreter, tok token.Token, dest ir.Storage, value ir.Element) 
 		if err != nil {
 			return err
 		}
-		strt, ok := under.(*elements.Struct)
+		strt, ok := under.(*fun.Struct)
 		if !ok {
 			return fmterr.Errorf(fitp.File().FileSet(), dest.Node(), "cannot convert %T to %T", receiver, strt)
 		}

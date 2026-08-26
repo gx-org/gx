@@ -143,7 +143,7 @@ func (vis *inputVisitor) newNamedTypeArgument(parent parentArgument, typ *ir.Nam
 		parent: parent,
 		typ:    typ,
 	}
-	named, ok := el.(elements.NamedTypeI)
+	named, ok := el.(fun.NamedTypeI)
 	if !ok {
 		return nil, errors.Errorf("element %T is not a named type element", el)
 	}
@@ -174,7 +174,7 @@ type (
 	structArgument struct {
 		parentArgument
 		typ   *ir.StructType
-		proxy elements.Selector
+		proxy fun.Selector
 	}
 
 	fieldSelectorArgument struct {
@@ -186,10 +186,10 @@ type (
 
 var _ parentArgument = (*fieldSelectorArgument)(nil)
 
-func (vis *inputVisitor) newStructArgument(parent parentArgument, typ *ir.StructType, proxy ir.Element) (*elements.Struct, error) {
-	sel, ok := proxy.(elements.Selector)
+func (vis *inputVisitor) newStructArgument(parent parentArgument, typ *ir.StructType, proxy ir.Element) (*fun.Struct, error) {
+	sel, ok := proxy.(fun.Selector)
 	if !ok {
-		return nil, errors.Errorf("%T does not support %s", proxy, reflect.TypeFor[elements.Selector]().Name())
+		return nil, errors.Errorf("%T does not support %s", proxy, reflect.TypeFor[fun.Selector]().Name())
 	}
 	structArg := &structArgument{
 		parentArgument: parent,
@@ -223,7 +223,7 @@ func (vis *inputVisitor) newStructArgument(parent parentArgument, typ *ir.Struct
 		}
 		fields[name] = field
 	}
-	return elements.NewStruct(typ, fields), nil
+	return fun.NewStruct(typ, fields), nil
 }
 
 func (sel *fieldSelectorArgument) Name() string {
@@ -235,7 +235,7 @@ func (sel *fieldSelectorArgument) ValueFromContext(ctx *values.FuncInputs) (ir.E
 	if err != nil {
 		return nil, err
 	}
-	structValue, ok := val.(elements.Selector)
+	structValue, ok := val.(fun.Selector)
 	if !ok {
 		return nil, errors.Errorf("%s is not a structure instance (type %s)", sel.parent.Name(), sel.parent.typ.ReferString(nil))
 	}
