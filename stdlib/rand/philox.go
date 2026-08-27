@@ -21,7 +21,6 @@ import (
 	"github.com/gx-org/gx/build/ir"
 	"github.com/gx-org/gx/interp/elements"
 	"github.com/gx-org/gx/interp/engine"
-	"github.com/gx-org/gx/interp/fun"
 	"github.com/gx-org/gx/interp"
 	"github.com/gx-org/gx/interp/materialise"
 	"github.com/gx-org/gx/stdlib/builtin"
@@ -33,7 +32,7 @@ var philoxStateShape = &shape.Shape{
 }
 
 func evalPhilox(env *engine.Env, call *ir.FuncCallExpr, recv ir.Element, args []ir.Element, dtyp dtypes.DType) ([]ir.Element, error) {
-	philox, err := fun.ToNamedType(recv)
+	philox, err := elements.ToNamedType(recv)
 	if err != nil {
 		return nil, err
 	}
@@ -84,7 +83,7 @@ func evalPhilox(env *engine.Env, call *ir.FuncCallExpr, recv ir.Element, args []
 		return nil, err
 	}
 	return []ir.Element{
-		fun.NewNamedType(interp.NewRunFunc, philox.TypeMethods(), fun.NewStruct(
+		elements.NewNamedType(interp.NewRunFunc, philox.TypeMethods(), elements.NewStruct(
 			philoxStruct,
 			map[string]ir.Element{"state": philoxStateElement[0]},
 		)),

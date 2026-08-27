@@ -19,13 +19,13 @@ import (
 
 	"github.com/gx-org/gx/build/ir"
 	"github.com/gx-org/gx/internal/interp/compeval/surrogates/storepath"
+	"github.com/gx-org/gx/interp/elements"
 	"github.com/gx-org/gx/interp/engine"
-	"github.com/gx-org/gx/interp/fun"
 )
 
 type named struct {
 	path  storepath.Path
-	ntype *fun.NamedType
+	ntype *elements.NamedType
 }
 
 var _ engine.NamedType = (*named)(nil)
@@ -38,7 +38,7 @@ func newInterface(path storepath.Path, typ ir.TypeMethods) (Element, error) {
 	under, err := newStruct(path, emptyStruct)
 	return &named{
 		path:  path,
-		ntype: fun.NewNamedType(NewFunc, typ, under),
+		ntype: elements.NewNamedType(NewFunc, typ, under),
 	}, err
 }
 
@@ -49,7 +49,7 @@ func newNamedType(path storepath.Path, typ *ir.NamedType) (Element, error) {
 	}
 	return &named{
 		path:  path,
-		ntype: fun.NewNamedType(NewFunc, typ, under),
+		ntype: elements.NewNamedType(NewFunc, typ, under),
 	}, nil
 }
 

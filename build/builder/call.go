@@ -27,7 +27,7 @@ import (
 	"github.com/gx-org/gx/internal/interp/compeval/cpevelements"
 	"github.com/gx-org/gx/internal/interp/compeval/srcstore"
 	"github.com/gx-org/gx/internal/interp/compeval/surrogates"
-	"github.com/gx-org/gx/interp/fun"
+	"github.com/gx-org/gx/interp/elements"
 )
 
 func unpackIndexedExpr(n ast.Node) (ast.Expr, []ast.Expr) {
@@ -236,7 +236,7 @@ func (n *callExpr) buildCallExpr(rscope resolveScope, callee ir.Expr) (ir.Expr, 
 		return n.buildTypeCast(rscope, callee, elT)
 	case ir.FuncAnnotator:
 		return invalidExpr(), rscope.Err().Appendf(callee.Node(), "annotator gx:@%s only valid in a function annotation context", elT.ShortString())
-	case *fun.NamedType:
+	case *elements.NamedType:
 		return n.buildTypeCast(rscope, callee, elT.Type())
 	case *ir.TypeValExpr:
 		return n.buildTypeCast(rscope, callee, elT.Store())

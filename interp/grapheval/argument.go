@@ -139,7 +139,7 @@ type namedTypeArgument struct {
 	typ    *ir.NamedType
 }
 
-func (vis *inputVisitor) newNamedTypeArgument(parent parentArgument, typ *ir.NamedType, el ir.Element) (*fun.NamedType, error) {
+func (vis *inputVisitor) newNamedTypeArgument(parent parentArgument, typ *ir.NamedType, el ir.Element) (*elements.NamedType, error) {
 	arg := &namedTypeArgument{
 		parent: parent,
 		typ:    typ,
@@ -156,7 +156,7 @@ func (vis *inputVisitor) newNamedTypeArgument(parent parentArgument, typ *ir.Nam
 	if err != nil {
 		return nil, err
 	}
-	return fun.NewNamedType(vis.newFunc, arg.typ, recv), nil
+	return elements.NewNamedType(vis.newFunc, arg.typ, recv), nil
 }
 
 func (arg *namedTypeArgument) Name() string {
@@ -187,7 +187,7 @@ type (
 
 var _ parentArgument = (*fieldSelectorArgument)(nil)
 
-func (vis *inputVisitor) newStructArgument(parent parentArgument, typ *ir.StructType, proxy ir.Element) (*fun.Struct, error) {
+func (vis *inputVisitor) newStructArgument(parent parentArgument, typ *ir.StructType, proxy ir.Element) (*elements.Struct, error) {
 	sel, err := cast.To[engine.Selector](proxy)
 	if err != nil {
 		return nil, errors.Errorf("%T does not support %s", proxy, reflect.TypeFor[engine.Selector]().Name())
@@ -224,7 +224,7 @@ func (vis *inputVisitor) newStructArgument(parent parentArgument, typ *ir.Struct
 		}
 		fields[name] = field
 	}
-	return fun.NewStruct(typ, fields), nil
+	return elements.NewStruct(typ, fields), nil
 }
 
 func (sel *fieldSelectorArgument) Name() string {

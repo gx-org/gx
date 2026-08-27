@@ -29,7 +29,6 @@ import (
 	"github.com/gx-org/gx/internal/interp/numbers"
 	"github.com/gx-org/gx/interp/elements"
 	"github.com/gx-org/gx/interp/engine"
-	"github.com/gx-org/gx/interp/fun"
 	"github.com/gx-org/gx/interp/grapheval"
 	"github.com/gx-org/gx/interp"
 )
@@ -150,7 +149,7 @@ func evalNewBootstrapGenerator(env *engine.Env, call *ir.FuncCallExpr, recv ir.E
 	if err != nil {
 		return nil, err
 	}
-	return []ir.Element{fun.NewNamedType(
+	return []ir.Element{elements.NewNamedType(
 		interp.NewRunFunc,
 		call.Type().(*ir.NamedType),
 		bootstrap,

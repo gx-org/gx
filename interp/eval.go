@@ -30,7 +30,6 @@ import (
 	"github.com/gx-org/gx/internal/undef"
 	"github.com/gx-org/gx/interp/elements"
 	"github.com/gx-org/gx/interp/engine"
-	"github.com/gx-org/gx/interp/fun"
 )
 
 func evalBlockStmt(ctx *Interpreter, body *ir.BlockStmt) ([]ir.Element, bool, error) {
@@ -390,7 +389,7 @@ func evalCastToArrayExpr(fitp *Interpreter, expr ir.TypeCastExpr, x engine.Numer
 func evalCastExprTo(fitp *Interpreter, expr ir.TypeCastExpr, target ir.Type, x ir.Element) (ir.Element, error) {
 	switch targetT := target.(type) {
 	case *ir.NamedType:
-		return fun.NewNamedType(fitp.NewFunc, targetT, x), nil
+		return elements.NewNamedType(fitp.NewFunc, targetT, x), nil
 	case *ir.GenericTypeParam:
 		name := targetT.NameDef()
 		el, err := fitp.Context().CurrentFrame().Find(name)
@@ -459,12 +458,12 @@ func evalStructLiteral(fitp *Interpreter, expr *ir.StructLitExpr) (ir.Element, e
 		}
 		fields[fieldLit.Field.Name.Name] = node
 	}
-	strct := fun.NewStruct(structType, fields)
+	strct := elements.NewStruct(structType, fields)
 	nType, ok := expr.Typ.(*ir.NamedType)
 	if !ok {
 		return strct, nil
 	}
-	return fun.NewNamedType(fitp.NewFunc, nType, strct), nil
+	return elements.NewNamedType(fitp.NewFunc, nType, strct), nil
 }
 
 func evalSliceExpr(fitp *Interpreter, expr *ir.SliceExpr) (ir.Element, error) {
@@ -801,7 +800,7 @@ func set(fitp *Interpreter, tok token.Token, dest ir.Storage, value ir.Element) 
 		if err != nil {
 			return err
 		}
-		strt, ok := under.(*fun.Struct)
+		strt, ok := under.(*elements.Struct)
 		if !ok {
 			return fmterr.Errorf(fitp.File().FileSet(), dest.Node(), "cannot convert %T to %T", receiver, strt)
 		}

@@ -35,7 +35,6 @@ import (
 	"github.com/gx-org/gx/interp/context"
 	"github.com/gx-org/gx/interp/elements"
 	"github.com/gx-org/gx/interp/engine"
-	"github.com/gx-org/gx/interp/fun"
 	"github.com/gx-org/gx/interp/materialise"
 	"github.com/gx-org/gx/interp/procoptions"
 )
@@ -106,7 +105,7 @@ func (fitp *Interpreter) toCompEvalError(el ir.Element) (err error) {
 	if elements.IsNil(el) {
 		return nil
 	}
-	methods, isSelector := el.(*fun.NamedType)
+	methods, isSelector := el.(*elements.NamedType)
 	if !isSelector {
 		return errors.Errorf("cannot convert %T to a method selector", el)
 	}
@@ -118,7 +117,7 @@ func (fitp *Interpreter) toCompEvalError(el ir.Element) (err error) {
 	if !isFun {
 		return errors.Errorf("%T not a function", errorMethod)
 	}
-	recv := fun.NewReceiver(methods, errorFun.IR())
+	recv := elements.NewReceiver(methods, errorFun.IR())
 	errorFun = NewRunFunc(errorFun.IR(), recv)
 	errorExpr := &ir.FuncCallExpr{
 		Callee: ir.ErrorCallee(errorFun.IR()),

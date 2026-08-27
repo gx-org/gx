@@ -12,7 +12,7 @@
 // See the License for the specific language governing permissions and
 // limitations under the License.
 
-package fun
+package elements
 
 import (
 	"go/ast"
@@ -24,11 +24,12 @@ import (
 	"github.com/gx-org/gx/internal/base/cast"
 	"github.com/gx-org/gx/internal/interp/flatten"
 	"github.com/gx-org/gx/interp/engine"
+	"github.com/gx-org/gx/interp/fun"
 )
 
 // NamedType references a type exported by an imported package.
 type NamedType struct {
-	newFunc NewFunc
+	newFunc fun.NewFunc
 	typ     ir.TypeMethods
 	funcs   map[string]ir.PkgFunc
 	under   ir.Element
@@ -41,7 +42,7 @@ var (
 )
 
 // NewNamedType returns a new node representing an exported type.
-func NewNamedType(newFunc NewFunc, typ ir.TypeMethods, under ir.Element) *NamedType {
+func NewNamedType(newFunc fun.NewFunc, typ ir.TypeMethods, under ir.Element) *NamedType {
 	funcs := make(map[string]ir.PkgFunc)
 	for _, fun := range typ.Methods() {
 		funcs[fun.Name()] = fun
