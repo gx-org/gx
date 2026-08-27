@@ -9,7 +9,7 @@ import (
 )
 
 //gx:compeval
-func MatMulAxes(x, y []int) ([]int, error)
+func MatMulAxes(x, y []int) []int
 
 // MatMul computes a matrix multiplication between two arrays.
 func MatMul[SX, SY []int, T dtype.Num](x [unpack(SX)]T, y [unpack(SY)]T) [unpack(MatMulAxes(SX, SY))]T
@@ -37,7 +37,7 @@ func OneHot[numClasses, axlen int, T dtype.Ints](x [axlen]T) [axlen][numClasses]
 }
 
 //gx:compeval
-func einsumAxes(xS, xContract, xBatch, yS, yContract, yBatch []int) ([]int, error)
+func einsumAxes(xS, xContract, xBatch, yS, yContract, yBatch []int) []int
 
 // Einsum between two arrays.
 func Einsum[XContract, XBatch, YContract, YBatch, XShape, YShape []int, T dtype.Num](x [unpack(XShape)]T, y [unpack(YShape)]T) [unpack(einsumAxes(XShape, XContract, XBatch, YShape, YContract, YBatch))]T

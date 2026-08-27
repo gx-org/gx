@@ -535,8 +535,6 @@ func evalExpr(fitp *Interpreter, expr ir.Expr) (_ ir.Element, err error) {
 		return evalUnaryExpression(fitp, exprT)
 	case *ir.UnpackExpr:
 		return evalUnpackExpr(fitp, exprT)
-	case *ir.SurfaceCompEvalErrorExpr:
-		return evalSurfaceCompEvalErrorExpr(fitp, exprT)
 	case *ir.ParenExpr:
 		return evalExpr(fitp, exprT.X)
 	case *ir.BinaryExpr:
@@ -576,22 +574,6 @@ func evalUnpackExpr(fitp *Interpreter, expr *ir.UnpackExpr) (ir.Element, error) 
 		return nil, err
 	}
 	return unpacker.Unpack(fitp)
-}
-
-func evalSurfaceCompEvalErrorExpr(fitp *Interpreter, expr *ir.SurfaceCompEvalErrorExpr) (ir.Element, error) {
-	x, err := evalExpr(fitp, expr.X)
-	if err != nil {
-		return nil, err
-	}
-	tuple, err := cast.To[*elements.Tuple](x)
-	if err != nil {
-		return nil, err
-	}
-	val, cpErr, err := tuple.UnpackError(fitp)
-	if err != nil {
-		return nil, err
-	}
-	return val, fitp.toCompEvalError(cpErr)
 }
 
 func evalFuncValExpr(fitp *Interpreter, expr *ir.FuncValExpr) (ir.Element, error) {

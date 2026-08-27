@@ -46,8 +46,8 @@ func splitAxis(env *engine.Env, call *ir.FuncCallExpr, recv ir.Element, args []i
 		return nil, errors.Errorf("cannot convert %T to %s", args[0], reflect.TypeFor[*elements.Slice]().String())
 	}
 	if idx >= axes.Len() {
-		gxErr, err := outOfBoundAxis(env, call, axes, idx, "split")
-		return []ir.Element{axes, gxErr}, err
+		err := outOfBoundAxis(env, call, axes, idx, "split")
+		return []ir.Element{axes}, err
 	}
 	axLens := append([]ir.Element{}, axes.Elements()...)
 	splitAxis, err := elements.ToNumericalElement(axLens[idx])
@@ -77,7 +77,7 @@ func splitAxis(env *engine.Env, call *ir.FuncCallExpr, recv ir.Element, args []i
 	}
 	axLens = append([]ir.Element{numSplit}, axLens...)
 	out, err := elements.NewSlice(axes.Type(), axLens)
-	return []ir.Element{out, elements.NilError()}, err
+	return []ir.Element{out}, err
 }
 
 func evalSplit(env *engine.Env, call *ir.FuncCallExpr, recv ir.Element, args []ir.Element) ([]ir.Element, error) {

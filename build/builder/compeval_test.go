@@ -81,8 +81,8 @@ func f() [5]float32 {
 		testbuild.Decl{
 			Src: `
 //gx:compeval
-func same(shape []int) ([]int, error) {
-	return shape, nil
+func same(shape []int) []int {
+	return shape
 }
 
 func f[S []int]([unpack(S)]float32) [unpack(same(S))]float32
@@ -92,8 +92,8 @@ func f[S []int]([unpack(S)]float32) [unpack(same(S))]float32
 			Src: `
 
 //gx:compeval
-func CheckBroadcast(s1, s2 []int) ([]int, error) {
-	return s2, nil
+func CheckBroadcast(s1, s2 []int) []int {
+	return s2
 }
 
 func Broadcast[Dst []int, Src []int](x [unpack(Src)]int32) [unpack(CheckBroadcast(Src, Dst))]int32

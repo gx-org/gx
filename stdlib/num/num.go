@@ -25,7 +25,6 @@ import (
 	"github.com/gx-org/gx/interp/engine"
 	"github.com/gx-org/gx/interp/materialise"
 	"github.com/gx-org/gx/stdlib/builtin"
-	gxerrors "github.com/gx-org/gx/stdlib/errors"
 )
 
 // Package description of the GX num package.
@@ -52,8 +51,7 @@ func vecVecMatMul(env *engine.Env, left, right ir.Element) ([]ir.Element, error)
 	}
 	if !eq {
 		from := env.File()
-		gxErr, err := gxerrors.Errorf(env, "incompatible axis lengths: %s!=%s", ir.ShortString(from, left), ir.ShortString(from, right))
-		return []ir.Element{builtin.NilShape, gxErr}, err
+		return nil, ir.CompileErrorF("incompatible axis lengths: %s!=%s", ir.ShortString(from, left), ir.ShortString(from, right))
 	}
 	return builtin.ToShapeResult()
 }
@@ -65,8 +63,7 @@ func vecMatMatMul(env *engine.Env, left ir.Element, right []ir.Element) ([]ir.El
 	}
 	if !eq {
 		from := env.File()
-		gxErr, err := gxerrors.Errorf(env, "incompatible axis lengths: %s!=%s in %s,%s", ir.ShortString(from, left), ir.ShortString(from, right[0]), builtin.ToShapeString(from, []ir.Element{left}), builtin.ToShapeString(from, right))
-		return []ir.Element{builtin.NilShape, gxErr}, err
+		return nil, ir.CompileErrorF("incompatible axis lengths: %s!=%s in %s,%s", ir.ShortString(from, left), ir.ShortString(from, right[0]), builtin.ToShapeString(from, []ir.Element{left}), builtin.ToShapeString(from, right))
 	}
 	return builtin.ToShapeResult(right[1])
 }
@@ -78,8 +75,7 @@ func matVecMatMul(env *engine.Env, left []ir.Element, right ir.Element) ([]ir.El
 	}
 	if !eq {
 		from := env.File()
-		gxErr, err := gxerrors.Errorf(env, "incompatible axis lengths: %s!=%s in %s,%s", ir.ShortString(from, left[0]), ir.ShortString(from, right), builtin.ToShapeString(from, left), builtin.ToShapeString(from, []ir.Element{right}))
-		return []ir.Element{builtin.NilShape, gxErr}, err
+		return nil, ir.CompileErrorF("incompatible axis lengths: %s!=%s in %s,%s", ir.ShortString(from, left[0]), ir.ShortString(from, right), builtin.ToShapeString(from, left), builtin.ToShapeString(from, []ir.Element{right}))
 	}
 	return builtin.ToShapeResult(left[0])
 }
@@ -96,13 +92,11 @@ func evalMatMulAxes(env *engine.Env, call *ir.FuncCallExpr, recv ir.Element, arg
 	left, right := leftSlice.Elements(), rightSlice.Elements()
 	if len(left) > 2 {
 		from := env.File()
-		gxErr, err := gxerrors.Errorf(env, "expects no more than 2 axes but got %d axes (%s)", len(left), builtin.ToShapeString(from, left))
-		return []ir.Element{builtin.NilShape, gxErr}, err
+		return nil, ir.CompileErrorF("expects no more than 2 axes but got %d axes (%s)", len(left), builtin.ToShapeString(from, left))
 	}
 	if len(right) > 2 {
 		from := env.File()
-		gxErr, err := gxerrors.Errorf(env, "expects no more than 2 axes but got %d axes (%s)", len(right), builtin.ToShapeString(from, right))
-		return []ir.Element{builtin.NilShape, gxErr}, err
+		return nil, ir.CompileErrorF("expects no more than 2 axes but got %d axes (%s)", len(right), builtin.ToShapeString(from, right))
 	}
 	if len(left) == 1 && len(right) == 1 {
 		return vecVecMatMul(env, left[0], right[0])
@@ -119,15 +113,12 @@ func evalMatMulAxes(env *engine.Env, call *ir.FuncCallExpr, recv ir.Element, arg
 	}
 	if !eq {
 		from := env.File()
-		gxErr, err := gxerrors.Errorf(env, "invalid axis length: %s!=%s in %s,%s", ir.ShortString(from, left[1]), ir.ShortString(from, right[0]), builtin.ToShapeString(from, left), builtin.ToShapeString(from, right))
-		if err != nil {
-			return nil, err
-		}
+		return nil, ir.CompileErrorF("invalid axis length: %s!=%s in %s,%s", ir.ShortString(from, left[1]), ir.ShortString(from, right[0]), builtin.ToShapeString(from, left), builtin.ToShapeString(from, right))
 		shape, err := elements.NewSlice(ir.IntSliceType(), []ir.Element{left[0], right[1]})
 		if err != nil {
 			return nil, err
 		}
-		return []ir.Element{shape, gxErr}, nil
+		return []ir.Element{shape}, nil
 	}
 	return builtin.ToShapeResult(left[0], right[1])
 }

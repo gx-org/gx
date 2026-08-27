@@ -36,7 +36,6 @@ import (
 	"github.com/gx-org/gx/interp/engine"
 	"github.com/gx-org/gx/interp/materialise"
 	"github.com/gx-org/gx/stdlib/builtin"
-	gxerrors "github.com/gx-org/gx/stdlib/errors"
 )
 
 // Package description of the GX num package.
@@ -82,10 +81,10 @@ func checkSameOrScalar(env *engine.Env, call *ir.FuncCallExpr, recv ir.Element, 
 		return nil, errors.Errorf("cannot convert %T to %s", args[1], reflect.TypeFor[*elements.Slice]().String())
 	}
 	if ax1.Len() == 0 {
-		return []ir.Element{ax2, elements.NilError()}, nil
+		return []ir.Element{ax2}, nil
 	}
 	if ax2.Len() == 0 {
-		return []ir.Element{ax1, elements.NilError()}, nil
+		return []ir.Element{ax1}, nil
 	}
 	same, err := cmp.Equal(env.ExprEval(), ax1, ax2)
 	if err != nil {
@@ -94,10 +93,9 @@ func checkSameOrScalar(env *engine.Env, call *ir.FuncCallExpr, recv ir.Element, 
 	if !same {
 		ax1S := ir.ExprString(env.ExprEval(), call.Expr(), ax1)
 		ax2S := ir.ExprString(env.ExprEval(), call.Expr(), ax2)
-		gxErr, err := gxerrors.Errorf(env, "cannot use array of shape %s as scalar or array of shape %s (expect same shape)", ax1S, ax2S)
-		return []ir.Element{args[0], gxErr}, err
+		return []ir.Element{args[0]}, ir.CompileErrorF("cannot use array of shape %s as scalar or array of shape %s (expect same shape)", ax1S, ax2S)
 	}
-	return []ir.Element{ax1, elements.NilError()}, err
+	return []ir.Element{ax1}, err
 }
 
 // mainAuxArgsToTypes computes the signature of a function with two arguments.

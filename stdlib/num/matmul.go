@@ -25,7 +25,6 @@ import (
 	"github.com/gx-org/gx/interp/engine"
 	"github.com/gx-org/gx/interp/materialise"
 	"github.com/gx-org/gx/stdlib/builtin"
-	gxerrors "github.com/gx-org/gx/stdlib/errors"
 )
 
 // evalEinsum evaluates an Einsum op.
@@ -82,29 +81,27 @@ func evalEinsum(env *engine.Env, call *ir.FuncCallExpr, recv ir.Element, args []
 	}, call.Type())
 }
 
-func validateAxisExpr(env *engine.Env, call *ir.FuncCallExpr, arg ir.Element, maxRank int, seen map[int]bool) ([]int, ir.Element, error) {
+func validateAxisExpr(env *engine.Env, call *ir.FuncCallExpr, arg ir.Element, maxRank int, seen map[int]bool) ([]int, error) {
 	argSlice, err := elements.SliceFromElement(arg)
 	if err != nil {
-		return nil, nil, err
+		return nil, err
 	}
 	axes := make([]int, argSlice.Len())
 	for n, val := range argSlice.Elements() {
 		axis, err := elements.IntFromElement(val)
 		if err != nil {
-			return nil, nil, err
+			return nil, err
 		}
 		if _, exists := seen[axis]; exists {
-			gxerr, err := gxerrors.Errorf(env, "axis %d already specified in argument %d: axes may only be contracted or batched once", axis, arg)
-			return nil, gxerr, err
+			return nil, ir.CompileErrorF("axis %d already specified in argument %d: axes may only be contracted or batched once", axis, arg)
 		}
 		if axis < 0 || axis >= maxRank {
-			gxerr, err := gxerrors.Errorf(env, "axis %d specified in argument %d is out-of-range: must be in [0, %d)", axis, arg, maxRank)
-			return nil, gxerr, err
+			return nil, ir.CompileErrorF("axis %d specified in argument %d is out-of-range: must be in [0, %d)", axis, arg, maxRank)
 		}
 		axes[n] = axis
 		seen[axis] = true
 	}
-	return axes, nil, nil
+	return axes, nil
 }
 
 // evalEinsumAxes implement:
@@ -127,39 +124,26 @@ func evalEinsumAxes(env *engine.Env, call *ir.FuncCallExpr, recv ir.Element, arg
 	}
 	leftSeen := make(map[int]bool)
 	rightSeen := make(map[int]bool)
-	lhsContractingDims, gxErr, err := validateAxisExpr(env, call, args[1], leftDims.Len(), leftSeen)
-	if gxErr != nil {
-		return []ir.Element{builtin.NilShape, gxErr}, err
-	}
+	lhsContractingDims, err := validateAxisExpr(env, call, args[1], leftDims.Len(), leftSeen)
 	if err != nil {
 		return nil, err
 	}
-	lhsBatchDims, gxErr, err := validateAxisExpr(env, call, args[2], leftDims.Len(), leftSeen)
-	if gxErr != nil {
-		return []ir.Element{builtin.NilShape, gxErr}, err
-	}
+	lhsBatchDims, err := validateAxisExpr(env, call, args[2], leftDims.Len(), leftSeen)
 	if err != nil {
 		return nil, err
 	}
-	rhsContractingDims, gxErr, err := validateAxisExpr(env, call, args[4], rightDims.Len(), rightSeen)
-	if gxErr != nil {
-		return []ir.Element{builtin.NilShape, gxErr}, err
-	}
+	rhsContractingDims, err := validateAxisExpr(env, call, args[4], rightDims.Len(), rightSeen)
 	if err != nil {
 		return nil, err
 	}
-	rhsBatchDims, gxErr, err := validateAxisExpr(env, call, args[5], rightDims.Len(), rightSeen)
-	if gxErr != nil {
-		return []ir.Element{builtin.NilShape, gxErr}, err
-	}
+	rhsBatchDims, err := validateAxisExpr(env, call, args[5], rightDims.Len(), rightSeen)
 	if err != nil {
 		return nil, err
 	}
 	if len(lhsContractingDims) != len(rhsContractingDims) {
-		gxErr, err := gxerrors.Errorf(env,
+		return nil, ir.CompileErrorF(
 			"must specify the same number of lhs and rhs contracting dimensions (got %d and %d)",
 			len(lhsContractingDims), len(rhsContractingDims))
-		return []ir.Element{builtin.NilShape, gxErr}, err
 	}
 	for n := range lhsContractingDims {
 		lhsDim := leftDims.Elements()[lhsContractingDims[n]]
@@ -169,17 +153,15 @@ func evalEinsumAxes(env *engine.Env, call *ir.FuncCallExpr, recv ir.Element, arg
 			return nil, err
 		}
 		if !eq {
-			gxErr, err := gxerrors.Errorf(env,
+			return nil, ir.CompileErrorF(
 				"left argument (shape: %v) not compatible with right argument (shape: %v): cannot contract lhs dimension %v with rhs dimension %v",
 				leftDims, rightDims, lhsDim, rhsDim)
-			return []ir.Element{builtin.NilShape, gxErr}, err
 		}
 	}
 	if len(lhsBatchDims) != len(rhsBatchDims) {
-		gxErr, err := gxerrors.Errorf(env,
+		return nil, ir.CompileErrorF(
 			"must specify the same number of lhs and rhs batching dimensions (got %d and %d)",
 			len(lhsBatchDims), len(rhsBatchDims))
-		return []ir.Element{builtin.NilShape, gxErr}, err
 	}
 	for n := range min(len(lhsBatchDims), len(rhsBatchDims)) {
 		lhsDim := leftDims.Elements()[lhsBatchDims[n]]
@@ -189,10 +171,9 @@ func evalEinsumAxes(env *engine.Env, call *ir.FuncCallExpr, recv ir.Element, arg
 			return nil, err
 		}
 		if !eq {
-			gxErr, err := gxerrors.Errorf(env,
+			return nil, ir.CompileErrorF(
 				"left argument (shape: %v) not compatible with right argument (shape: %v): cannot batch lhs dimension %v with rhs dimension %v",
 				leftDims, rightDims, lhsDim, rhsDim)
-			return []ir.Element{builtin.NilShape, gxErr}, err
 		}
 	}
 	// Infer output dimensions: batch dimensions (in the LHS order) become the outermost dimensions,

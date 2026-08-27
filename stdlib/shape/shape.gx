@@ -29,7 +29,7 @@ type Shape struct {
 }
 
 // gx:compeval
-func ReduceAxes(axes []int, i ...int) ([]int, error)
+func ReduceAxes(axes []int, i ...int) []int
 
 // gx:compeval
 func ReverseAxes(axes []int) []int
@@ -39,12 +39,10 @@ func ReverseAxes(axes []int) []int
 func SameSlice(x, y []int) bool
 
 //gx:compeval
-func CheckBroadcast(s1, s2 []int) ([]int, error) {
-	if len(s1) != len(s2) {
-		return s2, cperrors.Argf(2, "cannot broadcast array from %d to %d axes (expect the same number)", s1, s2)
-	}
+func CheckBroadcast(s1, s2 []int) []int {
+	require(len(s1) == len(s2), "cannot broadcast array from %d to %d axes (expect the same number)", s1, s2)
 	// TODO(degris): check the input shape against the target shape.
-	return s2, nil
+	return s2
 }
 
 // Broadcast a shape to another.
@@ -52,7 +50,7 @@ func Broadcast[Dst []int, DT dtype.Num, Src []int](x [unpack(Src)]DT) [unpack(Ch
 
 // gx:compeval
 // SplitAxis returns a shape after the ith axis has been split into n blocks.
-func SplitAxis(i int, n int, shape []int) ([]int, error)
+func SplitAxis(i int, n int, shape []int) []int
 
 // Split an array along an axis.
 func Split[Axis int, NumSplit int, Shape []int, DType dtype.Num](x [unpack(Shape)]DType) [unpack(SplitAxis(Axis, NumSplit, Shape))]DType
@@ -60,7 +58,7 @@ func Split[Axis int, NumSplit int, Shape []int, DType dtype.Num](x [unpack(Shape
 // ConcatAxis computes the shape of a concat operation.
 //
 //gx:compeval
-func ConcatAxis(idx int, allAxes [][]int) ([]int, error)
+func ConcatAxis(idx int, allAxes [][]int) []int
 
 // Concat multiple arrays into one.
 func Concat[Axis int, Shapes [][]int, DType dtype.Num](x ...[unpack(varargsindex(Shapes))]DType) [unpack(ConcatAxis(Axis, Shapes))]DType
@@ -71,7 +69,7 @@ func Transpose[Shape []int, DType dtype.Num](x [unpack(Shape)]DType) [unpack(Rev
 // GatherAxis computes the shape of a gather operation.
 //
 //gx:compeval
-func GatherAxis(input []int, indices []int) ([]int, error)
+func GatherAxis(input []int, indices []int) []int
 
 // Gather values from an array.
 func Gather[InputShape, SelectShape []int, DType dtype.Num](x [unpack(InputShape)]DType, indices [unpack(SelectShape)]int) [unpack(GatherAxis(InputShape, SelectShape))]DType

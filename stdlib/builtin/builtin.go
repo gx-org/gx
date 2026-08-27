@@ -72,7 +72,7 @@ func ToShapeResult(els ...ir.Element) ([]ir.Element, error) {
 	if err != nil {
 		return nil, err
 	}
-	return []ir.Element{shape, elements.NilError()}, nil
+	return []ir.Element{shape}, nil
 }
 
 // Build a package from its description.

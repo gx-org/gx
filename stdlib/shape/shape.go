@@ -28,7 +28,6 @@ import (
 	"github.com/gx-org/gx/interp/engine"
 	"github.com/gx-org/gx/interp/materialise"
 	"github.com/gx-org/gx/stdlib/builtin"
-	gxerrors "github.com/gx-org/gx/stdlib/errors"
 )
 
 // Package description of the GX shape package.
@@ -79,9 +78,9 @@ func evalTranspose(env *engine.Env, call *ir.FuncCallExpr, recv ir.Element, args
 	}, call.Type())
 }
 
-func outOfBoundAxis(env *engine.Env, call *ir.FuncCallExpr, axes *elements.Slice, idx int, name string) (ir.Element, error) {
+func outOfBoundAxis(env *engine.Env, call *ir.FuncCallExpr, axes *elements.Slice, idx int, name string) error {
 	shapeS := ir.ExprString(env.ExprEval(), call.Expr(), axes)
-	return gxerrors.Errorf(env, "%s axis %d out of bound for array with %d axes (with axis lengths: %s)", name, idx, axes.Len(), shapeS)
+	return ir.CompileErrorF("%s axis %d out of bound for array with %d axes (with axis lengths: %s)", name, idx, axes.Len(), shapeS)
 }
 
 func reverseAxes(env *engine.Env, call *ir.FuncCallExpr, recv ir.Element, args []ir.Element) (_ []ir.Element, err error) {
@@ -113,8 +112,8 @@ func reduceAxes(env *engine.Env, call *ir.FuncCallExpr, recv ir.Element, args []
 	}
 	for _, axisIndex := range indices {
 		if axisIndex >= len(keep) {
-			gxErr, err := outOfBoundAxis(env, call, axes, axisIndex, "reduce")
-			return []ir.Element{args[0], gxErr}, err
+			err := outOfBoundAxis(env, call, axes, axisIndex, "reduce")
+			return []ir.Element{args[0]}, err
 		}
 		// Reduced over the axis: do not keep.
 		keep[axisIndex] = false
@@ -127,7 +126,7 @@ func reduceAxes(env *engine.Env, call *ir.FuncCallExpr, recv ir.Element, args []
 		eltsKeep = append(eltsKeep, ax)
 	}
 	out, err := elements.NewSlice(axes.Type(), eltsKeep)
-	return []ir.Element{out, elements.NilError()}, err
+	return []ir.Element{out}, err
 }
 
 func sameSlice(env *engine.Env, call *ir.FuncCallExpr, recv ir.Element, args []ir.Element) (_ []ir.Element, err error) {
