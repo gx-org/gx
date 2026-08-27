@@ -72,7 +72,7 @@ var Package = builtin.PackageBuilder{
 	},
 }
 
-func checkSameOrScalar(env engine.Env, call *ir.FuncCallExpr, recv ir.Element, args []ir.Element) (_ []ir.Element, err error) {
+func checkSameOrScalar(env *engine.Env, call *ir.FuncCallExpr, recv ir.Element, args []ir.Element) (_ []ir.Element, err error) {
 	ax1, isSlice := args[0].(*elements.Slice)
 	if !isSlice {
 		return nil, errors.Errorf("cannot convert %T to %s", args[0], reflect.TypeFor[*elements.Slice]().String())
@@ -160,7 +160,7 @@ func buildConstScalar[T goFloats](name string, value T) builtin.Builder {
 type unaryFunc = func(ops.Node) (ops.Node, error)
 
 func buildUnary(name string, f func(graph ops.Graph) unaryFunc) builtin.Builder {
-	return builtin.ImplementBuiltin(name, func(env engine.Env, call *ir.FuncCallExpr, recv ir.Element, args []ir.Element) ([]ir.Element, error) {
+	return builtin.ImplementBuiltin(name, func(env *engine.Env, call *ir.FuncCallExpr, recv ir.Element, args []ir.Element) ([]ir.Element, error) {
 		args = args[call.Callee.FuncType().Origin().TypeParams.Len():]
 		mat := builtin.Materialiser(env)
 		x, xShape, err := materialise.Element(mat, args[0])
@@ -186,7 +186,7 @@ func buildUnary(name string, f func(graph ops.Graph) unaryFunc) builtin.Builder 
 type binaryFunc = func(x, y ops.Node) (ops.Node, error)
 
 func buildBinary(name string, f func(graph ops.Graph) binaryFunc) builtin.Builder {
-	return builtin.ImplementBuiltin(name, func(env engine.Env, call *ir.FuncCallExpr, recv ir.Element, args []ir.Element) ([]ir.Element, error) {
+	return builtin.ImplementBuiltin(name, func(env *engine.Env, call *ir.FuncCallExpr, recv ir.Element, args []ir.Element) ([]ir.Element, error) {
 		args = args[call.Callee.FuncType().Origin().TypeParams.Len():]
 		mat := builtin.Materialiser(env)
 		x, xShape, err := materialise.Element(mat, args[0])

@@ -31,7 +31,7 @@ type arraySlice struct {
 }
 
 // NewSlice returns a slice operation.
-func NewSlice(env engine.Env, expr *ir.SliceExpr, x Element, low, high engine.NumericalElement) (_ Element, err error) {
+func NewSlice(env *engine.Env, expr *ir.SliceExpr, x Element, low, high engine.NumericalElement) (_ Element, err error) {
 	lowEl, err := cast.To[Element](low)
 	if err != nil {
 		return nil, err

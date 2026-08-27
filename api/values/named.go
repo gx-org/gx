@@ -21,7 +21,7 @@ import (
 	"github.com/gx-org/backend/platform"
 	"github.com/gx-org/gx/api/hostio"
 	"github.com/gx-org/gx/build/ir"
-	"github.com/gx-org/gx/interp/fun"
+	"github.com/gx-org/gx/interp/engine"
 )
 
 // NamedType is the GX runtime value of a named type.
@@ -31,7 +31,7 @@ type NamedType struct {
 }
 
 var _ hostio.Value = (*NamedType)(nil)
-var _ fun.NamedTypeI = (*NamedType)(nil)
+var _ engine.NamedType = (*NamedType)(nil)
 
 // NewNamedType returns a new named type from a GX runtime value and a named type.
 func NewNamedType(val hostio.Value, typ ir.TypeMethods) *NamedType {
@@ -62,6 +62,16 @@ func (n *NamedType) Select(expr *ir.SelectorExpr) (ir.Element, error) {
 		return nil, errors.Errorf("cannot select field %s from type %T", expr.Src.Sel.Name, n.val)
 	}
 	return sel.Select(expr)
+}
+
+// Copy the element.
+func (n *NamedType) Copy() engine.Copier {
+	return n.RecvCopy()
+}
+
+// RecvCopy copies the underlying element and returns the element encapsulated in this named type.
+func (n *NamedType) RecvCopy() engine.NamedType {
+	return NewNamedType(engine.Copy(n.val).(hostio.Value), n.typ)
 }
 
 // TypeMethods returns the IR named type of the value.

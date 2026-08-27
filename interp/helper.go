@@ -17,7 +17,7 @@ package interp
 import (
 	"github.com/pkg/errors"
 	"github.com/gx-org/gx/build/ir"
-	"github.com/gx-org/gx/interp/fun"
+	"github.com/gx-org/gx/interp/engine"
 )
 
 // PkgFuncFromElement extracts a function declaration from an element.
@@ -35,7 +35,7 @@ func PkgFuncFromElement(el ir.Element) (ir.PkgFunc, error) {
 
 // FuncFromElement extracts a function declaration from an element.
 func FuncFromElement(el ir.Element) (ir.Func, error) {
-	fEl, ok := el.(fun.Func)
+	fEl, ok := el.(engine.Func)
 	if !ok {
 		return nil, errors.Errorf("%s is not a function", el.Type().ReferString(nil))
 	}

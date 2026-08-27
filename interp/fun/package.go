@@ -18,6 +18,7 @@ import (
 	"github.com/pkg/errors"
 	"github.com/gx-org/gx/build/ir"
 	"github.com/gx-org/gx/internal/base/scope"
+	"github.com/gx-org/gx/interp/engine"
 )
 
 // Package groups elements exported by a package.
@@ -56,7 +57,7 @@ type Import struct {
 
 var (
 	_ ir.StorageElement = (*Import)(nil)
-	_ Selector          = (*Import)(nil)
+	_ engine.Selector   = (*Import)(nil)
 )
 
 // NewImport returns a new import element for a given package.

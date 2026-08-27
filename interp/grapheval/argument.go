@@ -144,7 +144,7 @@ func (vis *inputVisitor) newNamedTypeArgument(parent parentArgument, typ *ir.Nam
 		parent: parent,
 		typ:    typ,
 	}
-	named, ok := el.(fun.NamedTypeI)
+	named, ok := el.(engine.NamedType)
 	if !ok {
 		return nil, errors.Errorf("element %T is not a named type element", el)
 	}
@@ -175,7 +175,7 @@ type (
 	structArgument struct {
 		parentArgument
 		typ   *ir.StructType
-		proxy fun.Selector
+		proxy engine.Selector
 	}
 
 	fieldSelectorArgument struct {
@@ -188,9 +188,9 @@ type (
 var _ parentArgument = (*fieldSelectorArgument)(nil)
 
 func (vis *inputVisitor) newStructArgument(parent parentArgument, typ *ir.StructType, proxy ir.Element) (*fun.Struct, error) {
-	sel, ok := proxy.(fun.Selector)
-	if !ok {
-		return nil, errors.Errorf("%T does not support %s", proxy, reflect.TypeFor[fun.Selector]().Name())
+	sel, err := cast.To[engine.Selector](proxy)
+	if err != nil {
+		return nil, errors.Errorf("%T does not support %s", proxy, reflect.TypeFor[engine.Selector]().Name())
 	}
 	structArg := &structArgument{
 		parentArgument: parent,
@@ -236,8 +236,8 @@ func (sel *fieldSelectorArgument) ValueFromContext(ctx *hostio.FuncInputs) (ir.E
 	if err != nil {
 		return nil, err
 	}
-	structValue, ok := val.(fun.Selector)
-	if !ok {
+	structValue, err := cast.To[engine.Selector](val)
+	if err != nil {
 		return nil, errors.Errorf("%s is not a structure instance (type %s)", sel.parent.Name(), sel.parent.typ.ReferString(nil))
 	}
 	fieldVal, err := structValue.Select(&ir.SelectorExpr{
@@ -372,7 +372,7 @@ func (vis *inputVisitor) newArrayArgument(parent parentArgument, typ ir.ArrayTyp
 }
 
 // UnaryOp applies a unary operator on x.
-func (n *arrayArgument) UnaryOp(env engine.Env, expr *ir.UnaryExpr) (engine.NumericalElement, error) {
+func (n *arrayArgument) UnaryOp(env *engine.Env, expr *ir.UnaryExpr) (engine.NumericalElement, error) {
 	node, err := n.materialise(n.parentArgument.Evaluator().Materialiser())
 	if err != nil {
 		return nil, err
@@ -382,7 +382,7 @@ func (n *arrayArgument) UnaryOp(env engine.Env, expr *ir.UnaryExpr) (engine.Nume
 
 // BinaryOp applies a binary operator to x and y.
 // Note that the receiver can be either the left or right argument.
-func (n *arrayArgument) BinaryOp(env engine.Env, expr *ir.BinaryExpr, y engine.NumericalElement) (engine.NumericalElement, error) {
+func (n *arrayArgument) BinaryOp(env *engine.Env, expr *ir.BinaryExpr, y engine.NumericalElement) (engine.NumericalElement, error) {
 	node, err := n.materialise(n.parentArgument.Evaluator().Materialiser())
 	if err != nil {
 		return nil, err
@@ -391,7 +391,7 @@ func (n *arrayArgument) BinaryOp(env engine.Env, expr *ir.BinaryExpr, y engine.N
 }
 
 // Cast an element into a given data type.
-func (n *arrayArgument) Cast(env engine.Env, expr ir.Expr, target ir.Type) (engine.NumericalElement, error) {
+func (n *arrayArgument) Cast(env *engine.Env, expr ir.Expr, target ir.Type) (engine.NumericalElement, error) {
 	node, err := n.materialise(n.parentArgument.Evaluator().Materialiser())
 	if err != nil {
 		return nil, err
@@ -400,7 +400,7 @@ func (n *arrayArgument) Cast(env engine.Env, expr ir.Expr, target ir.Type) (engi
 }
 
 // Reshape an element.
-func (n *arrayArgument) Reshape(env engine.Env, expr ir.Expr, axisLengths []engine.NumericalElement) (engine.NumericalElement, error) {
+func (n *arrayArgument) Reshape(env *engine.Env, expr ir.Expr, axisLengths []engine.NumericalElement) (engine.NumericalElement, error) {
 	node, err := n.materialise(n.parentArgument.Evaluator().Materialiser())
 	if err != nil {
 		return nil, err
@@ -495,7 +495,7 @@ func (n *arrayArgument) Unflatten(handles *flatten.Parser) (hostio.Value, error)
 }
 
 // SliceAt of the value on the first axis given an index.
-func (n *arrayArgument) SliceAt(env engine.Env, expr *ir.IndexExpr, index engine.NumericalElement) (ir.Element, error) {
+func (n *arrayArgument) SliceAt(env *engine.Env, expr *ir.IndexExpr, index engine.NumericalElement) (ir.Element, error) {
 	node, err := n.materialise(n.Evaluator().Materialiser())
 	if err != nil {
 		return nil, err
@@ -504,7 +504,7 @@ func (n *arrayArgument) SliceAt(env engine.Env, expr *ir.IndexExpr, index engine
 }
 
 // Slice the argument.
-func (n *arrayArgument) Slice(env engine.Env, expr *ir.SliceExpr, low, high engine.NumericalElement) (ir.Element, error) {
+func (n *arrayArgument) Slice(env *engine.Env, expr *ir.SliceExpr, low, high engine.NumericalElement) (ir.Element, error) {
 	return nil, errors.Errorf("not implemented for %T", n)
 }
 

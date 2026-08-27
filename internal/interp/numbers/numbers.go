@@ -27,7 +27,7 @@ import (
 )
 
 // NewElement returns an engine constant from a Go value.
-func NewElement(env engine.Env, x ir.Type, val any) (engine.ConstantElement, error) {
+func NewElement(env *engine.Env, x ir.Type, val any) (engine.ConstantElement, error) {
 	cst, err := NewConstant(x, val)
 	if err != nil {
 		return nil, err

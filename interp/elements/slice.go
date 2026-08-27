@@ -37,8 +37,8 @@ type (
 
 	// Slicer is a state element that can be sliced.
 	Slicer interface {
-		SliceAt(env engine.Env, expr *ir.IndexExpr, index engine.NumericalElement) (ir.Element, error)
-		Slice(env engine.Env, expr *ir.SliceExpr, low, high engine.NumericalElement) (ir.Element, error)
+		SliceAt(env *engine.Env, expr *ir.IndexExpr, index engine.NumericalElement) (ir.Element, error)
+		Slice(env *engine.Env, expr *ir.SliceExpr, low, high engine.NumericalElement) (ir.Element, error)
 	}
 
 	// ArraySlicer is a state element with an array that can be sliced.
@@ -99,7 +99,7 @@ func (n *Slice) Flatten() ([]ir.Element, error) {
 }
 
 // Slice returns a slice of a slice.
-func (n *Slice) Slice(_ engine.Env, expr *ir.SliceExpr, low, high engine.NumericalElement) (ir.Element, error) {
+func (n *Slice) Slice(_ *engine.Env, expr *ir.SliceExpr, low, high engine.NumericalElement) (ir.Element, error) {
 	lowIndex, err := n.lowBound(low)
 	if err != nil {
 		return nil, err
@@ -140,7 +140,7 @@ func (n *Slice) lowBound(low engine.NumericalElement) (int, error) {
 }
 
 // SliceAt returns the element at a given position in the slice.
-func (n *Slice) SliceAt(_ engine.Env, expr *ir.IndexExpr, index engine.NumericalElement) (ir.Element, error) {
+func (n *Slice) SliceAt(_ *engine.Env, expr *ir.IndexExpr, index engine.NumericalElement) (ir.Element, error) {
 	return SliceVals(expr, index, n.values)
 }
 

@@ -28,30 +28,29 @@ import (
 	"github.com/gx-org/gx/interp/context"
 	"github.com/gx-org/gx/interp/elements"
 	"github.com/gx-org/gx/interp/engine"
-	"github.com/gx-org/gx/interp/fun"
 )
 
 // FuncBuiltin defines a builtin function provided by a backend.
-type FuncBuiltin func(env engine.Env, call *ir.FuncCallExpr, recv ir.Element, args []ir.Element) ([]ir.Element, error)
+type FuncBuiltin func(env *engine.Env, call *ir.FuncCallExpr, recv ir.Element, args []ir.Element) ([]ir.Element, error)
 
-type caller func(env *fun.CallEnv, call *ir.FuncCallExpr, recv engine.Copier, args []ir.Element) ([]ir.Element, error)
+type caller func(env *engine.Env, call *ir.FuncCallExpr, recv engine.Copier, args []ir.Element) ([]ir.Element, error)
 
 type elFunc struct {
 	fn      ir.Func
-	recv    *fun.Receiver
+	recv    *engine.Receiver
 	storage ir.Storage
 
 	call caller
 }
 
 var (
-	_ fun.Func     = (*elFunc)(nil)
+	_ engine.Func  = (*elFunc)(nil)
 	_ ir.WithStore = (*elFunc)(nil)
 )
 
 // NewRunFunc creates a function given an IR and a receiver.
 // The function is run when being called.
-func NewRunFunc(fn ir.Func, recv *fun.Receiver) fun.Func {
+func NewRunFunc(fn ir.Func, recv *engine.Receiver) engine.Func {
 	base := elFunc{fn: fn, recv: recv}
 	switch fnT := fn.(type) {
 	case *ir.FuncDecl:
@@ -81,7 +80,7 @@ func (f *elFunc) IR() ir.Func {
 }
 
 // Recv returns the receiver of the function or nil if the function has no receiver.
-func (f *elFunc) Recv() *fun.Receiver {
+func (f *elFunc) Recv() *engine.Receiver {
 	return f.recv
 }
 
@@ -101,11 +100,11 @@ func (f *elFunc) Store() ir.Storage {
 }
 
 // Call the function.
-func (f *elFunc) Call(env *fun.CallEnv, call *ir.FuncCallExpr, args []ir.Element) ([]ir.Element, error) {
+func (f *elFunc) Call(env *engine.Env, call *ir.FuncCallExpr, args []ir.Element) ([]ir.Element, error) {
 	if f.call == nil {
 		return nil, fmterr.InternalAt(env.File().FileSet(), f.fn.Node(), "function type %T not supported", f.fn)
 	}
-	var recv *fun.NamedType
+	var recv engine.NamedType
 	if f.Recv() != nil {
 		recv = f.Recv().Element
 	}
@@ -121,7 +120,7 @@ type funcDecl struct {
 	fnT *ir.FuncDecl
 }
 
-func (f funcDecl) callDecl(env *fun.CallEnv, call *ir.FuncCallExpr, recv engine.Copier, args []ir.Element) (outs []ir.Element, err error) {
+func (f funcDecl) callDecl(env *engine.Env, call *ir.FuncCallExpr, recv engine.Copier, args []ir.Element) (outs []ir.Element, err error) {
 	return env.Runners().FuncDecl(f.fnT, env, call, recv, args)
 }
 
@@ -130,7 +129,7 @@ type funcBuiltin struct {
 	impl ir.FuncImpl
 }
 
-func (f funcBuiltin) callBuiltin(env *fun.CallEnv, call *ir.FuncCallExpr, recv engine.Copier, args []ir.Element) (outs []ir.Element, err error) {
+func (f funcBuiltin) callBuiltin(env *engine.Env, call *ir.FuncCallExpr, recv engine.Copier, args []ir.Element) (outs []ir.Element, err error) {
 	return env.Runners().Builtin(f.fun, f.impl, env, call, recv, args)
 }
 
@@ -138,7 +137,7 @@ type funcMacro struct {
 	fnT *ir.Macro
 }
 
-func (f funcMacro) callMacro(env *fun.CallEnv, call *ir.FuncCallExpr, _ engine.Copier, args []ir.Element) (outs []ir.Element, err error) {
+func (f funcMacro) callMacro(env *engine.Env, call *ir.FuncCallExpr, _ engine.Copier, args []ir.Element) (outs []ir.Element, err error) {
 	defer func() {
 		if err != nil {
 			err = fmterr.Error(env.File().FileSet(), call.Expr(), err)

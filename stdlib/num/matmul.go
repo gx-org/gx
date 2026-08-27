@@ -40,7 +40,7 @@ import (
 //	6: T dtype.Num
 //	7: x [unpack(XShape)]T
 //	8: y [unpack(YShape)]T
-func evalEinsum(env engine.Env, call *ir.FuncCallExpr, recv ir.Element, args []ir.Element) ([]ir.Element, error) {
+func evalEinsum(env *engine.Env, call *ir.FuncCallExpr, recv ir.Element, args []ir.Element) ([]ir.Element, error) {
 	mat := builtin.Materialiser(env)
 	left, leftShape, err := materialise.Element(mat, args[7])
 	if err != nil {
@@ -82,7 +82,7 @@ func evalEinsum(env engine.Env, call *ir.FuncCallExpr, recv ir.Element, args []i
 	}, call.Type())
 }
 
-func validateAxisExpr(env engine.Env, call *ir.FuncCallExpr, arg ir.Element, maxRank int, seen map[int]bool) ([]int, ir.Element, error) {
+func validateAxisExpr(env *engine.Env, call *ir.FuncCallExpr, arg ir.Element, maxRank int, seen map[int]bool) ([]int, ir.Element, error) {
 	argSlice, err := elements.SliceFromElement(arg)
 	if err != nil {
 		return nil, nil, err
@@ -116,7 +116,7 @@ func validateAxisExpr(env engine.Env, call *ir.FuncCallExpr, arg ir.Element, max
 // and rhs[rhsContractingAxes[n]]) on the other.
 //
 // The batch axes specify a batch dimension.
-func evalEinsumAxes(env engine.Env, call *ir.FuncCallExpr, recv ir.Element, args []ir.Element) ([]ir.Element, error) {
+func evalEinsumAxes(env *engine.Env, call *ir.FuncCallExpr, recv ir.Element, args []ir.Element) ([]ir.Element, error) {
 	leftDims, err := elements.SliceFromElement(args[0])
 	if err != nil {
 		return nil, err

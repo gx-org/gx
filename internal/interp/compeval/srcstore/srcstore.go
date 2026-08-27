@@ -24,7 +24,6 @@ import (
 	"github.com/gx-org/gx/internal/interp/compeval/cpevops"
 	"github.com/gx-org/gx/interp/elements"
 	"github.com/gx-org/gx/interp/engine"
-	"github.com/gx-org/gx/interp/fun"
 )
 
 // Element returned after being linked.
@@ -67,9 +66,11 @@ func (n *number) BareValue() ir.Element {
 }
 
 type named struct {
-	named fun.NamedTypeI
+	named engine.NamedType
 	store ir.Storage
 }
+
+var _ engine.NamedType = (*named)(nil)
 
 func (n *named) Store() ir.Storage {
 	return n.store
@@ -81,6 +82,10 @@ func (n *named) Under() (ir.Element, error) {
 		return under, err
 	}
 	return Link(n.store, under)
+}
+
+func (n *named) Copy() engine.Copier {
+	return n
 }
 
 func (n *named) Select(expr *ir.SelectorExpr) (ir.Element, error) {
@@ -105,7 +110,7 @@ func (f *slice) Store() ir.Storage {
 }
 
 type function struct {
-	fun.Func
+	engine.Func
 	store ir.Storage
 }
 
@@ -168,9 +173,9 @@ func Link(store ir.Storage, el ir.Element) (ir.Element, error) {
 		linkEl = &number{ScalarNumber: elT, store: store}
 	case elements.ISlice:
 		linkEl = &slice{ISlice: elT, store: store}
-	case fun.NamedTypeI:
+	case engine.NamedType:
 		linkEl = &named{named: elT, store: store}
-	case fun.Func:
+	case engine.Func:
 		linkEl = &function{Func: elT, store: store}
 	case elements.Generic:
 		linkEl = &generic{Generic: elT, store: store}

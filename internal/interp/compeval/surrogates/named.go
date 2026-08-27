@@ -19,6 +19,7 @@ import (
 
 	"github.com/gx-org/gx/build/ir"
 	"github.com/gx-org/gx/internal/interp/compeval/surrogates/storepath"
+	"github.com/gx-org/gx/interp/engine"
 	"github.com/gx-org/gx/interp/fun"
 )
 
@@ -27,7 +28,7 @@ type named struct {
 	ntype *fun.NamedType
 }
 
-var _ fun.NamedTypeI = (*named)(nil)
+var _ engine.NamedType = (*named)(nil)
 
 var emptyStruct = &ir.StructType{
 	Fields: &ir.FieldList{},
@@ -58,6 +59,10 @@ func (n *named) Under() (ir.Element, error) {
 
 func (n *named) Select(expr *ir.SelectorExpr) (ir.Element, error) {
 	return n.ntype.Select(expr)
+}
+
+func (n *named) Copy() engine.Copier {
+	return n
 }
 
 func (n *named) Expr(ir.Evaluator, ast.Expr) ([]ir.Expr, error) {

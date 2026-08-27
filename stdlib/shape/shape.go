@@ -50,7 +50,7 @@ var Package = builtin.PackageBuilder{
 	},
 }
 
-func evalTranspose(env engine.Env, call *ir.FuncCallExpr, recv ir.Element, args []ir.Element) ([]ir.Element, error) {
+func evalTranspose(env *engine.Env, call *ir.FuncCallExpr, recv ir.Element, args []ir.Element) ([]ir.Element, error) {
 	mat := builtin.Materialiser(env)
 	argNode, argShape, err := materialise.Element(mat, args[2])
 	if err != nil {
@@ -79,12 +79,12 @@ func evalTranspose(env engine.Env, call *ir.FuncCallExpr, recv ir.Element, args 
 	}, call.Type())
 }
 
-func outOfBoundAxis(env engine.Env, call *ir.FuncCallExpr, axes *elements.Slice, idx int, name string) (ir.Element, error) {
+func outOfBoundAxis(env *engine.Env, call *ir.FuncCallExpr, axes *elements.Slice, idx int, name string) (ir.Element, error) {
 	shapeS := ir.ExprString(env.ExprEval(), call.Expr(), axes)
 	return gxerrors.Errorf(env, "%s axis %d out of bound for array with %d axes (with axis lengths: %s)", name, idx, axes.Len(), shapeS)
 }
 
-func reverseAxes(env engine.Env, call *ir.FuncCallExpr, recv ir.Element, args []ir.Element) (_ []ir.Element, err error) {
+func reverseAxes(env *engine.Env, call *ir.FuncCallExpr, recv ir.Element, args []ir.Element) (_ []ir.Element, err error) {
 	axes, err := elements.SliceFromElement(args[0])
 	if err != nil {
 		return nil, err
@@ -98,7 +98,7 @@ func reverseAxes(env engine.Env, call *ir.FuncCallExpr, recv ir.Element, args []
 	return []ir.Element{revAxes}, nil
 }
 
-func reduceAxes(env engine.Env, call *ir.FuncCallExpr, recv ir.Element, args []ir.Element) (_ []ir.Element, err error) {
+func reduceAxes(env *engine.Env, call *ir.FuncCallExpr, recv ir.Element, args []ir.Element) (_ []ir.Element, err error) {
 	axes, err := elements.SliceFromElement(args[0])
 	if err != nil {
 		return nil, err
@@ -130,7 +130,7 @@ func reduceAxes(env engine.Env, call *ir.FuncCallExpr, recv ir.Element, args []i
 	return []ir.Element{out, elements.NilError()}, err
 }
 
-func sameSlice(env engine.Env, call *ir.FuncCallExpr, recv ir.Element, args []ir.Element) (_ []ir.Element, err error) {
+func sameSlice(env *engine.Env, call *ir.FuncCallExpr, recv ir.Element, args []ir.Element) (_ []ir.Element, err error) {
 	defer func() {
 		if err != nil {
 			err = fmt.Errorf("cannot call fmt.SameSlice: %w", err)

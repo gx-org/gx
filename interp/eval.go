@@ -631,7 +631,7 @@ func evalSelectorExpr(fitp *Interpreter, ref *ir.SelectorExpr) (ir.Element, erro
 	if err != nil {
 		return nil, err
 	}
-	slt, err := cast.To[fun.Selector](node)
+	slt, err := cast.To[engine.Selector](node)
 	if err != nil {
 		return nil, err
 	}
@@ -670,14 +670,14 @@ func evalEinsumExpr(fitp *Interpreter, ref *ir.EinsumExpr) (ir.Element, error) {
 	return fitp.Engine().ArrayOps().Einsum(fitp, ref, x, y)
 }
 
-func evalCallee(fitp *Interpreter, callee ir.Callee) (fun.Func, []ir.Element, error) {
+func evalCallee(fitp *Interpreter, callee ir.Callee) (engine.Func, []ir.Element, error) {
 	switch calleeT := callee.(type) {
 	case *ir.FuncValExpr:
 		fnNode, err := fitp.EvalExpr(calleeT.X())
 		if err != nil {
 			return nil, nil, err
 		}
-		fn, ok := fnNode.(fun.Func)
+		fn, ok := fnNode.(engine.Func)
 		if !ok {
 			return nil, nil, fmterr.Errorf(fitp.File().FileSet(), callee.Node(), "%T is not callable", fnNode)
 		}
@@ -765,7 +765,7 @@ func evalCall(fitp *Interpreter, expr *ir.FuncCallExpr) ([]ir.Element, error) {
 	return callee.Call(fitp.env, expr, args)
 }
 
-func evalFuncCall(fitp *Interpreter, fn fun.Func, expr *ir.FuncCallExpr) ([]ir.Element, error) {
+func evalFuncCall(fitp *Interpreter, fn engine.Func, expr *ir.FuncCallExpr) ([]ir.Element, error) {
 	args := make([]ir.Element, len(expr.Args))
 	for i, arg := range expr.Args {
 		el, err := fitp.EvalExpr(arg)

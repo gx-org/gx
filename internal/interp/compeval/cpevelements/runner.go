@@ -19,7 +19,6 @@ import (
 	"github.com/gx-org/gx/internal/interp/compeval/surrogates"
 	"github.com/gx-org/gx/interp/context"
 	"github.com/gx-org/gx/interp/engine"
-	"github.com/gx-org/gx/interp/fun"
 	"github.com/gx-org/gx/interp"
 )
 
@@ -29,12 +28,12 @@ var rn = runner{}
 
 // Runner returns a function runner running compeval and keyword functions.
 // Other (non-compeval) functions are not being executed but use the proxy runner instead.
-func Runner() fun.Runners {
+func Runner() engine.Runners {
 	return rn
 }
 
 // FuncDecl runs a function implemented in GX.
-func (runner) FuncDecl(fDecl *ir.FuncDecl, env *fun.CallEnv, call *ir.FuncCallExpr, recv engine.Copier, args []ir.Element) ([]ir.Element, error) {
+func (runner) FuncDecl(fDecl *ir.FuncDecl, env *engine.Env, call *ir.FuncCallExpr, recv engine.Copier, args []ir.Element) ([]ir.Element, error) {
 	if fDecl.FuncType().CompEval {
 		return interp.Runners().FuncDecl(fDecl, env, call, recv, args)
 	}
@@ -42,12 +41,12 @@ func (runner) FuncDecl(fDecl *ir.FuncDecl, env *fun.CallEnv, call *ir.FuncCallEx
 }
 
 // FuncLit runs a function literal.
-func (runner) FuncLit(lit *ir.FuncLit, env *fun.CallEnv, ctx *context.Context, call *ir.FuncCallExpr, args []ir.Element) ([]ir.Element, error) {
+func (runner) FuncLit(lit *ir.FuncLit, env *engine.Env, ctx *context.Context, call *ir.FuncCallExpr, args []ir.Element) ([]ir.Element, error) {
 	return surrogates.Call(call)
 }
 
 // Builtin runs a function builtin in GX or provided by a backend.
-func (runner) Builtin(fn ir.Func, impl ir.FuncImpl, env *fun.CallEnv, call *ir.FuncCallExpr, recv engine.Copier, args []ir.Element) ([]ir.Element, error) {
+func (runner) Builtin(fn ir.Func, impl ir.FuncImpl, env *engine.Env, call *ir.FuncCallExpr, recv engine.Copier, args []ir.Element) ([]ir.Element, error) {
 	_, isKeyword := fn.(*ir.FuncKeyword)
 	if isKeyword {
 		return interp.Runners().Builtin(fn, impl, env, call, recv, args)

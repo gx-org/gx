@@ -34,8 +34,8 @@ type Struct struct {
 }
 
 var (
-	_ engine.Copier = (*Struct)(nil)
-	_ Selector      = (*Struct)(nil)
+	_ engine.Copier   = (*Struct)(nil)
+	_ engine.Selector = (*Struct)(nil)
 )
 
 // NewStructFromElements returns a new node representing a structure instance given a slice of

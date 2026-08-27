@@ -32,7 +32,7 @@ var philoxStateShape = &shape.Shape{
 	AxisLengths: []int{3},
 }
 
-func evalPhilox(env engine.Env, call *ir.FuncCallExpr, recv ir.Element, args []ir.Element, dtyp dtypes.DType) ([]ir.Element, error) {
+func evalPhilox(env *engine.Env, call *ir.FuncCallExpr, recv ir.Element, args []ir.Element, dtyp dtypes.DType) ([]ir.Element, error) {
 	philox, err := fun.ToNamedType(recv)
 	if err != nil {
 		return nil, err
@@ -92,10 +92,10 @@ func evalPhilox(env engine.Env, call *ir.FuncCallExpr, recv ir.Element, args []i
 	}, nil
 }
 
-func evalPhiloxUint32(env engine.Env, call *ir.FuncCallExpr, recv ir.Element, args []ir.Element) ([]ir.Element, error) {
+func evalPhiloxUint32(env *engine.Env, call *ir.FuncCallExpr, recv ir.Element, args []ir.Element) ([]ir.Element, error) {
 	return evalPhilox(env, call, recv, args, dtypes.Uint32)
 }
 
-func evalPhiloxUint64(env engine.Env, call *ir.FuncCallExpr, recv ir.Element, args []ir.Element) ([]ir.Element, error) {
+func evalPhiloxUint64(env *engine.Env, call *ir.FuncCallExpr, recv ir.Element, args []ir.Element) ([]ir.Element, error) {
 	return evalPhilox(env, call, recv, args, dtypes.Uint64)
 }

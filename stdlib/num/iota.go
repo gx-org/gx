@@ -25,7 +25,7 @@ import (
 	"github.com/gx-org/gx/stdlib/builtin"
 )
 
-func evalIota(env engine.Env, call *ir.FuncCallExpr, recv ir.Element, args []ir.Element) ([]ir.Element, error) {
+func evalIota(env *engine.Env, call *ir.FuncCallExpr, recv ir.Element, args []ir.Element) ([]ir.Element, error) {
 	axes, err := elements.AxesFromElement(args[0])
 	if err != nil {
 		return nil, err
@@ -50,7 +50,7 @@ func evalIota(env engine.Env, call *ir.FuncCallExpr, recv ir.Element, args []ir.
 	}, call.Type())
 }
 
-func evalIotaFull(env engine.Env, call *ir.FuncCallExpr, recv ir.Element, args []ir.Element) ([]ir.Element, error) {
+func evalIotaFull(env *engine.Env, call *ir.FuncCallExpr, recv ir.Element, args []ir.Element) ([]ir.Element, error) {
 	axes, err := elements.AxesFromElement(args[0])
 	if err != nil {
 		return nil, err

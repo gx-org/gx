@@ -35,7 +35,7 @@ var Package = builtin.PackageBuilder{
 }
 
 // Errorf returns a GX error.
-func Errorf(env engine.Env, format string, a ...any) (ir.Element, error) {
+func Errorf(env *engine.Env, format string, a ...any) (ir.Element, error) {
 	pkg, err := env.Engine().Importer().Import("errors")
 	if err != nil {
 		return nil, err

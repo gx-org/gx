@@ -100,12 +100,12 @@ func (n *Tuple) TupleElements() []ir.Element {
 }
 
 // SliceAt of the tuple.
-func (n *Tuple) SliceAt(_ engine.Env, expr *ir.IndexExpr, index engine.NumericalElement) (ir.Element, error) {
+func (n *Tuple) SliceAt(_ *engine.Env, expr *ir.IndexExpr, index engine.NumericalElement) (ir.Element, error) {
 	return SliceVals(expr, index, n.elements)
 }
 
 // Slice is not implemented for tuples.
-func (n *Tuple) Slice(_ engine.Env, expr *ir.SliceExpr, low, high engine.NumericalElement) (ir.Element, error) {
+func (n *Tuple) Slice(_ *engine.Env, expr *ir.SliceExpr, low, high engine.NumericalElement) (ir.Element, error) {
 	return n, errors.Errorf("not implemented for %T", n)
 }
 

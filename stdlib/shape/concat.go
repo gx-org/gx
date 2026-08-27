@@ -29,7 +29,7 @@ import (
 	gxerrors "github.com/gx-org/gx/stdlib/errors"
 )
 
-func checkConsistent(env engine.Env, call *ir.FuncCallExpr, ref ir.Element, axisIdx int, refShape []engine.NumericalElement, argNum int, el ir.Element) (engine.NumericalElement, ir.Element, error) {
+func checkConsistent(env *engine.Env, call *ir.FuncCallExpr, ref ir.Element, axisIdx int, refShape []engine.NumericalElement, argNum int, el ir.Element) (engine.NumericalElement, ir.Element, error) {
 	argShape, err := elements.Map(elements.ToNumericalElement, el)
 	if err != nil {
 		return nil, nil, err
@@ -60,7 +60,7 @@ func checkConsistent(env engine.Env, call *ir.FuncCallExpr, ref ir.Element, axis
 	return concatAxis, nil, nil
 }
 
-func irAdd(env engine.Env, src ast.Expr, x, y engine.NumericalElement) (engine.NumericalElement, error) {
+func irAdd(env *engine.Env, src ast.Expr, x, y engine.NumericalElement) (engine.NumericalElement, error) {
 	xExpr, err := ir.ToSingleExpr(env.ExprEval(), src, x)
 	if err != nil {
 		return nil, err
@@ -85,7 +85,7 @@ func irAdd(env engine.Env, src ast.Expr, x, y engine.NumericalElement) (engine.N
 	)
 }
 
-func concatAxis(env engine.Env, call *ir.FuncCallExpr, recv ir.Element, args []ir.Element) (_ []ir.Element, err error) {
+func concatAxis(env *engine.Env, call *ir.FuncCallExpr, recv ir.Element, args []ir.Element) (_ []ir.Element, err error) {
 	idx, err := elements.IntFromElement(args[0])
 	if err != nil {
 		return nil, err
@@ -135,7 +135,7 @@ func concatAxis(env engine.Env, call *ir.FuncCallExpr, recv ir.Element, args []i
 	return []ir.Element{finalShape, elements.NilError()}, nil
 }
 
-func evalConcat(env engine.Env, call *ir.FuncCallExpr, recv ir.Element, args []ir.Element) ([]ir.Element, error) {
+func evalConcat(env *engine.Env, call *ir.FuncCallExpr, recv ir.Element, args []ir.Element) ([]ir.Element, error) {
 	axis, err := elements.IntFromElement(args[0])
 	if err != nil {
 		return nil, err

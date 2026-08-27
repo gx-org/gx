@@ -27,7 +27,7 @@ import (
 	gxerrors "github.com/gx-org/gx/stdlib/errors"
 )
 
-func gatherAxis(env engine.Env, call *ir.FuncCallExpr, recv ir.Element, args []ir.Element) (_ []ir.Element, err error) {
+func gatherAxis(env *engine.Env, call *ir.FuncCallExpr, recv ir.Element, args []ir.Element) (_ []ir.Element, err error) {
 	inputSlice, err := elements.SliceFromElement(args[0])
 	if err != nil {
 		return nil, err
@@ -63,7 +63,7 @@ func gatherAxis(env engine.Env, call *ir.FuncCallExpr, recv ir.Element, args []i
 	return builtin.ToShapeResult(out...)
 }
 
-func evalGather(env engine.Env, call *ir.FuncCallExpr, recv ir.Element, args []ir.Element) ([]ir.Element, error) {
+func evalGather(env *engine.Env, call *ir.FuncCallExpr, recv ir.Element, args []ir.Element) ([]ir.Element, error) {
 	inputShape, err := elements.Map(elements.IntFromElement, args[0])
 	if err != nil {
 		return nil, err

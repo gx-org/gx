@@ -20,7 +20,7 @@ import (
 	"github.com/pkg/errors"
 	"github.com/gx-org/gx/build/ir"
 	"github.com/gx-org/gx/internal/interp/compeval/surrogates/storepath"
-	"github.com/gx-org/gx/interp/fun"
+	"github.com/gx-org/gx/interp/engine"
 )
 
 // Function is a surrogate function.
@@ -28,11 +28,11 @@ import (
 type Function struct {
 	store ir.Storage
 	fn    ir.Func
-	recv  *fun.Receiver
+	recv  *engine.Receiver
 }
 
 // NewSurFunc returns a new surrogate function.
-func NewSurFunc(fn ir.Func, recv *fun.Receiver) *Function {
+func NewSurFunc(fn ir.Func, recv *engine.Receiver) *Function {
 	store, _ := fn.(ir.Storage)
 	return &Function{
 		fn:    fn,
@@ -42,13 +42,13 @@ func NewSurFunc(fn ir.Func, recv *fun.Receiver) *Function {
 }
 
 // NewFunc returns a new surrogate function.
-func NewFunc(fn ir.Func, recv *fun.Receiver) fun.Func {
+func NewFunc(fn ir.Func, recv *engine.Receiver) engine.Func {
 	return NewSurFunc(fn, recv)
 }
 
 type surrogateFunction interface {
 	Element
-	fun.Func
+	engine.Func
 }
 
 func newSurrogateFunc(path storepath.Path, fType *ir.FuncType) surrogateFunction {
@@ -65,7 +65,7 @@ func (f *Function) IR() ir.Func {
 }
 
 // Recv returns the receiver for the function.
-func (f *Function) Recv() *fun.Receiver {
+func (f *Function) Recv() *engine.Receiver {
 	return f.recv
 }
 
@@ -84,7 +84,7 @@ func Call(call *ir.FuncCallExpr) ([]ir.Element, error) {
 }
 
 // Call the surrogate function.
-func (f *Function) Call(env *fun.CallEnv, call *ir.FuncCallExpr, args []ir.Element) ([]ir.Element, error) {
+func (f *Function) Call(env *engine.Env, call *ir.FuncCallExpr, args []ir.Element) ([]ir.Element, error) {
 	return Call(call)
 }
 

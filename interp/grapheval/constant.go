@@ -106,7 +106,7 @@ func (n *constant) Axes(ev ir.Evaluator) (*elements.Slice, error) {
 }
 
 // UnaryOp applies an unary operator to x.
-func (n *constant) UnaryOp(env engine.Env, expr *ir.UnaryExpr) (engine.NumericalElement, error) {
+func (n *constant) UnaryOp(env *engine.Env, expr *ir.UnaryExpr) (engine.NumericalElement, error) {
 	res, err := csteager.Unary(env, expr, n.cst)
 	if err != nil {
 		return nil, err
@@ -118,7 +118,7 @@ func (n *constant) UnaryOp(env engine.Env, expr *ir.UnaryExpr) (engine.Numerical
 }
 
 // BinaryOp applies a binary operator to x and y.
-func (n *constant) BinaryOp(env engine.Env, expr *ir.BinaryExpr, y engine.NumericalElement) (engine.NumericalElement, error) {
+func (n *constant) BinaryOp(env *engine.Env, expr *ir.BinaryExpr, y engine.NumericalElement) (engine.NumericalElement, error) {
 	res, err := csteager.Binary(env, expr, n.cst, y)
 	if err != nil {
 		return nil, err
@@ -130,7 +130,7 @@ func (n *constant) BinaryOp(env engine.Env, expr *ir.BinaryExpr, y engine.Numeri
 }
 
 // BinaryOp applies a binary operator to x and y.
-func (n *constant) Cast(env engine.Env, expr ir.Expr, target ir.Type) (engine.NumericalElement, error) {
+func (n *constant) Cast(env *engine.Env, expr ir.Expr, target ir.Type) (engine.NumericalElement, error) {
 	res, err := csteager.Cast(env, expr, target, n.cst)
 	if err != nil {
 		return nil, err

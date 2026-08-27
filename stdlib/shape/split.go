@@ -29,7 +29,7 @@ import (
 	"github.com/gx-org/gx/stdlib/builtin"
 )
 
-func splitAxis(env engine.Env, call *ir.FuncCallExpr, recv ir.Element, args []ir.Element) (_ []ir.Element, err error) {
+func splitAxis(env *engine.Env, call *ir.FuncCallExpr, recv ir.Element, args []ir.Element) (_ []ir.Element, err error) {
 	// Fetch the axis index.
 	idx, err := elements.IntFromElement(args[0])
 	if err != nil {
@@ -80,7 +80,7 @@ func splitAxis(env engine.Env, call *ir.FuncCallExpr, recv ir.Element, args []ir
 	return []ir.Element{out, elements.NilError()}, err
 }
 
-func evalSplit(env engine.Env, call *ir.FuncCallExpr, recv ir.Element, args []ir.Element) ([]ir.Element, error) {
+func evalSplit(env *engine.Env, call *ir.FuncCallExpr, recv ir.Element, args []ir.Element) ([]ir.Element, error) {
 	mat := builtin.Materialiser(env)
 	node, firstArgShape, err := materialise.Element(mat, args[4])
 	if err != nil {

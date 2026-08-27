@@ -32,7 +32,7 @@ type binary struct {
 }
 
 // NewBinary returns a binary operation between two elements.
-func NewBinary(env engine.Env, expr *ir.BinaryExpr, x, y Element) (_ Element, err error) {
+func NewBinary(env *engine.Env, expr *ir.BinaryExpr, x, y Element) (_ Element, err error) {
 	el := &binary{
 		expr: expr,
 		x:    x,
@@ -45,7 +45,7 @@ func NewBinary(env engine.Env, expr *ir.BinaryExpr, x, y Element) (_ Element, er
 // NewBinaryFrom returns a new binary operator from a generic receiver.
 // This function is used when converting a constant into a proxy,
 // that is when a binary operator is used between constant and non-constant elements.
-func NewBinaryFrom(env engine.Env, expr *ir.BinaryExpr, x Element, y ir.Element) (_ Element, err error) {
+func NewBinaryFrom(env *engine.Env, expr *ir.BinaryExpr, x Element, y ir.Element) (_ Element, err error) {
 	yEl, yOk := y.(Element)
 	if !yOk {
 		from := env.File()

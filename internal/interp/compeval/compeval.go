@@ -25,7 +25,7 @@ import (
 	"github.com/gx-org/gx/internal/interp/compeval/surrogates/storepath"
 	"github.com/gx-org/gx/internal/interp/compeval/surrogates"
 	"github.com/gx-org/gx/interp/elements"
-	"github.com/gx-org/gx/interp/fun"
+	"github.com/gx-org/gx/interp/engine"
 	"github.com/gx-org/gx/interp"
 )
 
@@ -56,7 +56,7 @@ type mixFunction struct {
 	*surrogates.Function
 }
 
-func (f *mixFunction) run(env *fun.CallEnv, call *ir.FuncCallExpr, args []ir.Element) ([]ir.Element, error) {
+func (f *mixFunction) run(env *engine.Env, call *ir.FuncCallExpr, args []ir.Element) ([]ir.Element, error) {
 	valArgs := make([]ir.Element, len(args))
 	for i, arg := range args {
 		valArgs[i] = ir.BareValue(arg)
@@ -65,7 +65,7 @@ func (f *mixFunction) run(env *fun.CallEnv, call *ir.FuncCallExpr, args []ir.Ele
 	return fn.Call(env.WithRunners(interp.Runners()), call, valArgs)
 }
 
-func (f *mixFunction) Call(env *fun.CallEnv, call *ir.FuncCallExpr, args []ir.Element) ([]ir.Element, error) {
+func (f *mixFunction) Call(env *engine.Env, call *ir.FuncCallExpr, args []ir.Element) ([]ir.Element, error) {
 	fn := f.IR()
 	_, isKeyword := fn.(*ir.FuncKeyword)
 	if isKeyword {
@@ -80,7 +80,7 @@ func (f *mixFunction) Call(env *fun.CallEnv, call *ir.FuncCallExpr, args []ir.El
 
 // RunFunc creates functions such that compeval functions are evaluated
 // while non-compeval functions are simulated.
-func RunFunc(fn ir.Func, recv *fun.Receiver) fun.Func {
+func RunFunc(fn ir.Func, recv *engine.Receiver) engine.Func {
 	return &mixFunction{
 		Function: surrogates.NewSurFunc(fn, recv),
 	}

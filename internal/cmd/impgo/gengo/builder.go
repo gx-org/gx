@@ -141,7 +141,7 @@ func (d *directives) buildFuncImpl(f *types.Func) (*ast.Ident, error) {
 		"eval"+f.Name(),
 		&ast.FuncType{
 			Params: genast.Fields(
-				genast.Field(body.env, d.g.engine.Select("Env").X),
+				genast.Field(body.env, d.g.engine.Select("Env").Star().X),
 				genast.Field(body.call, d.g.ir.Select("FuncCallExpr").Star().X),
 				genast.Field(body.recv, d.g.ir.Select("Element").X),
 				genast.Field(body.args, &ast.ArrayType{

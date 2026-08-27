@@ -19,7 +19,6 @@ import (
 	"github.com/gx-org/gx/build/fmterr"
 	"github.com/gx-org/gx/build/ir"
 	"github.com/gx-org/gx/interp/engine"
-	"github.com/gx-org/gx/interp/fun"
 )
 
 // runners provide runners to the environment to execute functions.
@@ -28,11 +27,11 @@ type runners struct{}
 var run = runners{}
 
 // Runners returns a set of runners to run all functions.
-func Runners() fun.Runners {
+func Runners() engine.Runners {
 	return run
 }
 
-func (runners) FuncDecl(fn *ir.FuncDecl, env *fun.CallEnv, call *ir.FuncCallExpr, recv engine.Copier, args []ir.Element) ([]ir.Element, error) {
+func (runners) FuncDecl(fn *ir.FuncDecl, env *engine.Env, call *ir.FuncCallExpr, recv engine.Copier, args []ir.Element) ([]ir.Element, error) {
 	if fn.Body == nil {
 		return nil, fmterr.Errorf(fn.File().FileSet(), fn.Node(), "missing function body")
 	}
@@ -66,7 +65,7 @@ func (runners) FuncDecl(fn *ir.FuncDecl, env *fun.CallEnv, call *ir.FuncCallExpr
 	return evalFuncBody(fitp, fn.Body)
 }
 
-func (runners) Builtin(fn ir.Func, impl ir.FuncImpl, env *fun.CallEnv, call *ir.FuncCallExpr, recv engine.Copier, args []ir.Element) (_ []ir.Element, err error) {
+func (runners) Builtin(fn ir.Func, impl ir.FuncImpl, env *engine.Env, call *ir.FuncCallExpr, recv engine.Copier, args []ir.Element) (_ []ir.Element, err error) {
 	defer func() {
 		if err == nil {
 			return

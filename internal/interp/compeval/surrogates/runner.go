@@ -18,7 +18,6 @@ import (
 	"github.com/gx-org/gx/build/ir"
 	"github.com/gx-org/gx/interp/context"
 	"github.com/gx-org/gx/interp/engine"
-	"github.com/gx-org/gx/interp/fun"
 )
 
 type runner struct{}
@@ -27,21 +26,21 @@ var rn = runner{}
 
 // Runner returns a function runner only building runtime values for results.
 // No function is being executed.
-func Runner() fun.Runners {
+func Runner() engine.Runners {
 	return rn
 }
 
 // FuncDecl runs a function implemented in GX.
-func (runner) FuncDecl(fDecl *ir.FuncDecl, env *fun.CallEnv, call *ir.FuncCallExpr, recv engine.Copier, args []ir.Element) ([]ir.Element, error) {
+func (runner) FuncDecl(fDecl *ir.FuncDecl, env *engine.Env, call *ir.FuncCallExpr, recv engine.Copier, args []ir.Element) ([]ir.Element, error) {
 	return Call(call)
 }
 
 // FuncLit runs a function literal.
-func (runner) FuncLit(lit *ir.FuncLit, env *fun.CallEnv, ctx *context.Context, call *ir.FuncCallExpr, args []ir.Element) ([]ir.Element, error) {
+func (runner) FuncLit(lit *ir.FuncLit, env *engine.Env, ctx *context.Context, call *ir.FuncCallExpr, args []ir.Element) ([]ir.Element, error) {
 	return Call(call)
 }
 
 // Builtin runs a function builtin in GX or provided by a backend.
-func (runner) Builtin(fn ir.Func, impl ir.FuncImpl, env *fun.CallEnv, call *ir.FuncCallExpr, recv engine.Copier, args []ir.Element) ([]ir.Element, error) {
+func (runner) Builtin(fn ir.Func, impl ir.FuncImpl, env *engine.Env, call *ir.FuncCallExpr, recv engine.Copier, args []ir.Element) ([]ir.Element, error) {
 	return Call(call)
 }

@@ -27,7 +27,7 @@ import (
 	irh "github.com/gx-org/gx/build/ir/irhelper"
 	"github.com/gx-org/gx/internal/interp/compeval/cpevelements"
 	"github.com/gx-org/gx/interp/elements"
-	"github.com/gx-org/gx/interp/fun"
+	"github.com/gx-org/gx/interp/engine"
 )
 
 type tagStr struct {
@@ -56,7 +56,7 @@ func toTagString(arg ir.Element) string {
 	switch argT := arg.(type) {
 	case *elements.String:
 		return argT.String()
-	case fun.Func:
+	case engine.Func:
 		return argT.IR().FuncType().ReferString(nil)
 	default:
 		return fmt.Sprintf("%T", argT)
@@ -106,7 +106,7 @@ var _ ir.FuncASTBuilder = (*macroBuildReturn)(nil)
 func newBuildReturn(file *ir.File, call *ir.FuncCallExpr, macro *ir.Macro, args []ir.Element) (ir.MacroElement, error) {
 	return &macroBuildReturn{
 		CoreMacroElement: cpevelements.MacroElement(macro, file, call),
-		tagFn:            args[0].(fun.Func).IR().(ir.PkgFunc),
+		tagFn:            args[0].(engine.Func).IR().(ir.PkgFunc),
 	}, nil
 }
 

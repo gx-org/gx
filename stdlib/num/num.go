@@ -45,7 +45,7 @@ var Package = builtin.PackageBuilder{
 	},
 }
 
-func vecVecMatMul(env engine.Env, left, right ir.Element) ([]ir.Element, error) {
+func vecVecMatMul(env *engine.Env, left, right ir.Element) ([]ir.Element, error) {
 	eq, err := cmp.Equal(env.ExprEval(), left, right)
 	if err != nil {
 		return nil, err
@@ -58,7 +58,7 @@ func vecVecMatMul(env engine.Env, left, right ir.Element) ([]ir.Element, error) 
 	return builtin.ToShapeResult()
 }
 
-func vecMatMatMul(env engine.Env, left ir.Element, right []ir.Element) ([]ir.Element, error) {
+func vecMatMatMul(env *engine.Env, left ir.Element, right []ir.Element) ([]ir.Element, error) {
 	eq, err := cmp.Equal(env.ExprEval(), left, right[0])
 	if err != nil {
 		return nil, err
@@ -71,7 +71,7 @@ func vecMatMatMul(env engine.Env, left ir.Element, right []ir.Element) ([]ir.Ele
 	return builtin.ToShapeResult(right[1])
 }
 
-func matVecMatMul(env engine.Env, left []ir.Element, right ir.Element) ([]ir.Element, error) {
+func matVecMatMul(env *engine.Env, left []ir.Element, right ir.Element) ([]ir.Element, error) {
 	eq, err := cmp.Equal(env.ExprEval(), left[1], right)
 	if err != nil {
 		return nil, err
@@ -84,7 +84,7 @@ func matVecMatMul(env engine.Env, left []ir.Element, right ir.Element) ([]ir.Ele
 	return builtin.ToShapeResult(left[0])
 }
 
-func evalMatMulAxes(env engine.Env, call *ir.FuncCallExpr, recv ir.Element, args []ir.Element) ([]ir.Element, error) {
+func evalMatMulAxes(env *engine.Env, call *ir.FuncCallExpr, recv ir.Element, args []ir.Element) ([]ir.Element, error) {
 	leftSlice, err := elements.SliceFromElement(args[0])
 	if err != nil {
 		return nil, err
@@ -132,7 +132,7 @@ func evalMatMulAxes(env engine.Env, call *ir.FuncCallExpr, recv ir.Element, args
 	return builtin.ToShapeResult(left[0], right[1])
 }
 
-func evalMatMul(env engine.Env, call *ir.FuncCallExpr, recv ir.Element, args []ir.Element) ([]ir.Element, error) {
+func evalMatMul(env *engine.Env, call *ir.FuncCallExpr, recv ir.Element, args []ir.Element) ([]ir.Element, error) {
 	mat := builtin.Materialiser(env)
 	xNode, xShape, err := materialise.Element(mat, args[3])
 	if err != nil {
@@ -156,7 +156,7 @@ func evalMatMul(env engine.Env, call *ir.FuncCallExpr, recv ir.Element, args []i
 	}, call.Type())
 }
 
-func evalArgMax(env engine.Env, call *ir.FuncCallExpr, recv ir.Element, args []ir.Element) ([]ir.Element, error) {
+func evalArgMax(env *engine.Env, call *ir.FuncCallExpr, recv ir.Element, args []ir.Element) ([]ir.Element, error) {
 	mat := builtin.Materialiser(env)
 	argNode, _, err := materialise.Element(mat, args[3])
 	if err != nil {
@@ -180,7 +180,7 @@ func evalArgMax(env engine.Env, call *ir.FuncCallExpr, recv ir.Element, args []i
 	}, call.Type())
 }
 
-func evalReduce(env engine.Env, call *ir.FuncCallExpr, recv ir.Element, args []ir.Element, reduce func(x ops.Node, axes []int) (ops.Node, error)) ([]ir.Element, error) {
+func evalReduce(env *engine.Env, call *ir.FuncCallExpr, recv ir.Element, args []ir.Element, reduce func(x ops.Node, axes []int) (ops.Node, error)) ([]ir.Element, error) {
 	axisIndices, err := elements.Map(elements.IntFromElement, args[0])
 	if err != nil {
 		return nil, err
@@ -206,10 +206,10 @@ func evalReduce(env engine.Env, call *ir.FuncCallExpr, recv ir.Element, args []i
 	}, call.Type())
 }
 
-func evalReduceSum(env engine.Env, call *ir.FuncCallExpr, recv ir.Element, args []ir.Element) ([]ir.Element, error) {
+func evalReduceSum(env *engine.Env, call *ir.FuncCallExpr, recv ir.Element, args []ir.Element) ([]ir.Element, error) {
 	return evalReduce(env, call, recv, args, env.Engine().ArrayOps().Graph().Num().ReduceSum)
 }
 
-func evalReduceMax(env engine.Env, call *ir.FuncCallExpr, recv ir.Element, args []ir.Element) ([]ir.Element, error) {
+func evalReduceMax(env *engine.Env, call *ir.FuncCallExpr, recv ir.Element, args []ir.Element) ([]ir.Element, error) {
 	return evalReduce(env, call, recv, args, env.Engine().ArrayOps().Graph().Num().ReduceMax)
 }

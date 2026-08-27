@@ -43,15 +43,15 @@ import (
 // Base provides everything required to create new interpreters.
 type Base struct {
 	eng     engine.Engine
-	funFact fun.Factory
-	runners fun.Runners
+	funFact engine.Factory
+	runners engine.Runners
 	core    *context.Core
 
 	options *procoptions.Options
 }
 
 // New returns a new interpreter.
-func New(eng engine.Engine, funFact fun.Factory, runners fun.Runners, options []options.PackageOption) (*Base, error) {
+func New(eng engine.Engine, funFact engine.Factory, runners engine.Runners, options []options.PackageOption) (*Base, error) {
 	itp := &Base{eng: eng, funFact: funFact, runners: runners}
 	var errs fmterr.Errors
 	var err error
@@ -79,14 +79,14 @@ func (itp *Base) Engine() engine.Engine {
 
 // Interpreter returns an interpreter given the scope of a file from within a package.
 type Interpreter struct {
-	env *fun.CallEnv
+	env *engine.Env
 }
 
 var _ ir.Evaluator = (*Interpreter)(nil)
 
-func toInterp(ctx *context.Context, eng engine.Engine, funFact fun.Factory, runners fun.Runners) *Interpreter {
+func toInterp(ctx *context.Context, eng engine.Engine, funFact engine.Factory, runners engine.Runners) *Interpreter {
 	fitp := &Interpreter{}
-	fitp.env = fun.NewCallEnv(ctx, fitp, eng, funFact, runners)
+	fitp.env = engine.NewEnv(ctx, fitp, eng, funFact, runners)
 	return fitp
 }
 
@@ -114,7 +114,7 @@ func (fitp *Interpreter) toCompEvalError(el ir.Element) (err error) {
 	if err != nil {
 		return err
 	}
-	errorFun, isFun := errorMethod.(fun.Func)
+	errorFun, isFun := errorMethod.(engine.Func)
 	if !isFun {
 		return errors.Errorf("%T not a function", errorMethod)
 	}
@@ -147,7 +147,7 @@ func (fitp *Interpreter) EvalExpr(expr ir.Expr) (ir.Element, error) {
 }
 
 // Env returns the environment.
-func (fitp *Interpreter) Env() engine.Env {
+func (fitp *Interpreter) Env() *engine.Env {
 	return fitp.env
 }
 
@@ -177,7 +177,7 @@ func (fitp *Interpreter) SubInterp(file *ir.File, vals map[string]ir.Element) (*
 	}
 	ctx = ctx.Sub(vals)
 	sub := &Interpreter{}
-	sub.env = fun.NewCallEnv(ctx, sub, fitp.Engine(), fitp.env.FuncFactory(), fitp.env.Runners())
+	sub.env = engine.NewEnv(ctx, sub, fitp.Engine(), fitp.env.FuncFactory(), fitp.env.Runners())
 	return sub, err
 }
 
@@ -189,7 +189,7 @@ func (fitp *Interpreter) Sub(file *ir.File, vals map[string]ir.Element) (ir.Eval
 }
 
 // NewFunc creates function elements from function IRs.
-func (fitp *Interpreter) NewFunc(fn ir.Func, recv *fun.Receiver) fun.Func {
+func (fitp *Interpreter) NewFunc(fn ir.Func, recv *engine.Receiver) engine.Func {
 	return fitp.env.FuncFactory().NewFunc(fn, recv)
 }
 

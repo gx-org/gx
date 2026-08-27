@@ -93,7 +93,7 @@ func (n *scalar) AlgExpr(eva ir.Evaluator) (cmp.Expr, error) {
 }
 
 // EvalUnary greedily evaluates an unary expression.
-func (n *scalar) EvalUnary(env engine.Env, expr *ir.UnaryExpr) (engine.Constant, error) {
+func (n *scalar) EvalUnary(env *engine.Env, expr *ir.UnaryExpr) (engine.Constant, error) {
 	nb, err := n.nb.UnaryOp(env, expr)
 	return NewScalar(expr.Type(), nb), err
 }
@@ -106,7 +106,7 @@ func (n *scalar) BuildIR() ir.Expr {
 }
 
 // EvalBinary greedily evaluates a binary expression.
-func (n *scalar) EvalBinary(env engine.Env, expr *ir.BinaryExpr, y engine.Constant) (engine.Constant, error) {
+func (n *scalar) EvalBinary(env *engine.Env, expr *ir.BinaryExpr, y engine.Constant) (engine.Constant, error) {
 	coreY, err := coreiface.ToCore(y)
 	if err != nil {
 		return nil, err
@@ -125,7 +125,7 @@ func (n *scalar) EvalBinary(env engine.Env, expr *ir.BinaryExpr, y engine.Consta
 }
 
 // EvalCast greedily casts an expression.
-func (n *scalar) EvalCast(env engine.Env, expr ir.Expr, tp ir.Type) (engine.Constant, error) {
+func (n *scalar) EvalCast(env *engine.Env, expr ir.Expr, tp ir.Type) (engine.Constant, error) {
 	return NewScalar(expr.Type(), n.nb), nil
 }
 

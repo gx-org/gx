@@ -147,7 +147,7 @@ var (
 	}
 )
 
-func appendImpl(env engine.Env, call *ir.FuncCallExpr, recv ir.Element, args []ir.Element) ([]ir.Element, error) {
+func appendImpl(env *engine.Env, call *ir.FuncCallExpr, recv ir.Element, args []ir.Element) ([]ir.Element, error) {
 	under, err := coreiface.Underlying(args[0])
 	if err != nil {
 		return nil, err
@@ -163,7 +163,7 @@ func appendImpl(env engine.Env, call *ir.FuncCallExpr, recv ir.Element, args []i
 	return []ir.Element{slice.Append(call, withElts.Elements())}, nil
 }
 
-func axlengthsImpl(env engine.Env, call *ir.FuncCallExpr, recv ir.Element, args []ir.Element) ([]ir.Element, error) {
+func axlengthsImpl(env *engine.Env, call *ir.FuncCallExpr, recv ir.Element, args []ir.Element) ([]ir.Element, error) {
 	file := env.ExprEval().File()
 	array, ok := args[0].(elements.WithAxes)
 	if !ok {
@@ -176,7 +176,7 @@ func axlengthsImpl(env engine.Env, call *ir.FuncCallExpr, recv ir.Element, args 
 	return []ir.Element{shape}, nil
 }
 
-func lenImpl(env engine.Env, call *ir.FuncCallExpr, recv ir.Element, args []ir.Element) ([]ir.Element, error) {
+func lenImpl(env *engine.Env, call *ir.FuncCallExpr, recv ir.Element, args []ir.Element) ([]ir.Element, error) {
 	withLen, ok := args[0].(ir.WithLength)
 	if !ok {
 		return nil, errors.Errorf("cannot cast %T to %s", args[0], reflect.TypeFor[ir.WithLength]())
@@ -189,7 +189,7 @@ func lenImpl(env engine.Env, call *ir.FuncCallExpr, recv ir.Element, args []ir.E
 	return []ir.Element{el}, err
 }
 
-func setImpl(env engine.Env, call *ir.FuncCallExpr, recv ir.Element, args []ir.Element) ([]ir.Element, error) {
+func setImpl(env *engine.Env, call *ir.FuncCallExpr, recv ir.Element, args []ir.Element) ([]ir.Element, error) {
 	out, err := env.Engine().ArrayOps().Set(env.ExprEval(), call, args[0], args[1], args[2:])
 	if err != nil {
 		return nil, err
@@ -197,6 +197,6 @@ func setImpl(env engine.Env, call *ir.FuncCallExpr, recv ir.Element, args []ir.E
 	return []ir.Element{out}, nil
 }
 
-func traceImpl(env engine.Env, call *ir.FuncCallExpr, recv ir.Element, args []ir.Element) ([]ir.Element, error) {
+func traceImpl(env *engine.Env, call *ir.FuncCallExpr, recv ir.Element, args []ir.Element) ([]ir.Element, error) {
 	return nil, env.Engine().Trace(env.ExprEval(), call, args)
 }

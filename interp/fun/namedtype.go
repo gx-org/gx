@@ -21,6 +21,7 @@ import (
 	"github.com/pkg/errors"
 	"github.com/gx-org/gx/api/hostio"
 	"github.com/gx-org/gx/build/ir"
+	"github.com/gx-org/gx/internal/base/cast"
 	"github.com/gx-org/gx/internal/interp/coreiface"
 	"github.com/gx-org/gx/internal/interp/flatten"
 	"github.com/gx-org/gx/interp/engine"
@@ -37,9 +38,7 @@ type NamedType struct {
 var (
 	_ ir.StorageElement = (*NamedType)(nil)
 	_ ir.WithExpr       = (*NamedType)(nil)
-	_ Selector          = (*NamedType)(nil)
-	_ NamedTypeI        = (*NamedType)(nil)
-	_ engine.Copier     = (*NamedType)(nil)
+	_ engine.NamedType  = (*NamedType)(nil)
 	_ coreiface.Under   = (*NamedType)(nil)
 )
 
@@ -64,9 +63,9 @@ func (n *NamedType) Select(expr *ir.SelectorExpr) (ir.Element, error) {
 	if fn := n.funcs[name]; fn != nil {
 		return n.newFunc(fn, NewReceiver(n, fn)), nil
 	}
-	under, ok := n.under.(Selector)
-	if !ok {
-		return nil, errors.Errorf("%s is undefined", name)
+	under, err := cast.To[engine.Selector](n.under)
+	if err != nil {
+		return nil, err
 	}
 	return under.Select(expr)
 }
@@ -77,7 +76,7 @@ func (n *NamedType) Copy() engine.Copier {
 }
 
 // RecvCopy copies the underlying element and returns the element encapsulated in this named type.
-func (n *NamedType) RecvCopy() *NamedType {
+func (n *NamedType) RecvCopy() engine.NamedType {
 	return NewNamedType(n.newFunc, n.typ, engine.Copy(n.under))
 }
 
@@ -130,14 +129,8 @@ func (n *NamedType) String() string {
 	return n.typ.ReferString(nil)
 }
 
-// Receiver of a function.
-type Receiver struct {
-	Ident   *ast.Ident
-	Element *NamedType
-}
-
 // NewReceiver returns a new receiver given a function definition and the element representing the receiver.
-func NewReceiver(el *NamedType, fn ir.Func) *Receiver {
+func NewReceiver(el *NamedType, fn ir.Func) *engine.Receiver {
 	if el == nil {
 		return nil
 	}
@@ -149,7 +142,7 @@ func NewReceiver(el *NamedType, fn ir.Func) *Receiver {
 			name = names[0]
 		}
 	}
-	return &Receiver{
+	return &engine.Receiver{
 		Ident:   name,
 		Element: el,
 	}

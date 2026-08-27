@@ -40,7 +40,7 @@ type randBootstrap struct {
 
 	seed engine.NumericalElement
 	rand *rand.Rand
-	next func(engine.Env) (engine.NumericalElement, error)
+	next func(*engine.Env) (engine.NumericalElement, error)
 }
 
 var _ engine.Copier = (*randBootstrap)(nil)
@@ -61,7 +61,7 @@ func (rb *randBootstrap) initRand(seed int64) {
 	rb.rand = rand.New(rand.NewSource(seed))
 }
 
-func (rb *randBootstrap) nextConstant(env engine.Env) (engine.NumericalElement, error) {
+func (rb *randBootstrap) nextConstant(env *engine.Env) (engine.NumericalElement, error) {
 	cstUint64 := rb.rand.Uint64()
 	return numbers.NewElement(env, ir.Uint64Type(), cstUint64)
 }
@@ -79,7 +79,7 @@ var (
 	}
 )
 
-func newRandBootstrapArg(env engine.Env, rb *randBootstrap, seed elements.ElementWithArrayFromContext) (*randBootstrapArg, error) {
+func newRandBootstrapArg(env *engine.Env, rb *randBootstrap, seed elements.ElementWithArrayFromContext) (*randBootstrapArg, error) {
 	argFactory := &randBootstrapArg{
 		rb:   rb,
 		seed: seed,
@@ -88,7 +88,7 @@ func newRandBootstrapArg(env engine.Env, rb *randBootstrap, seed elements.Elemen
 	return argFactory, nil
 }
 
-func (arg *randBootstrapArg) next(env engine.Env) (engine.NumericalElement, error) {
+func (arg *randBootstrapArg) next(env *engine.Env) (engine.NumericalElement, error) {
 	return arg.rb.eval.NewArrayArgument(env.File(), arg, seedType, seedShape)
 }
 
@@ -123,7 +123,7 @@ func (arg *randBootstrapArg) Evaluator() *grapheval.Evaluator {
 	return arg.rb.eval
 }
 
-func evalNewBootstrapGenerator(env engine.Env, call *ir.FuncCallExpr, recv ir.Element, args []ir.Element) ([]ir.Element, error) {
+func evalNewBootstrapGenerator(env *engine.Env, call *ir.FuncCallExpr, recv ir.Element, args []ir.Element) ([]ir.Element, error) {
 	bootstrap := &randBootstrap{
 		eval: env.Engine().(*grapheval.Evaluator),
 		call: call,
@@ -157,7 +157,7 @@ func evalNewBootstrapGenerator(env engine.Env, call *ir.FuncCallExpr, recv ir.El
 	)}, nil
 }
 
-func evalBootstrapGeneratorNext(env engine.Env, call *ir.FuncCallExpr, recv ir.Element, args []ir.Element) ([]ir.Element, error) {
+func evalBootstrapGeneratorNext(env *engine.Env, call *ir.FuncCallExpr, recv ir.Element, args []ir.Element) ([]ir.Element, error) {
 	under, err := coreiface.Underlying(recv)
 	if err != nil {
 		return nil, err

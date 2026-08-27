@@ -50,8 +50,8 @@ type Evaluator struct {
 }
 
 var (
-	_ fun.Factory   = (*Evaluator)(nil)
-	_ engine.Engine = (*Evaluator)(nil)
+	_ engine.Factory = (*Evaluator)(nil)
+	_ engine.Engine  = (*Evaluator)(nil)
 )
 
 // New returns a new evaluator given a elements.
@@ -65,12 +65,12 @@ func New(importer ir.Importer, pr *processor.Processor, gr ops.Graph) *Evaluator
 }
 
 // NewFunc creates a new function given its definition and a receiver.
-func (ev *Evaluator) NewFunc(fn ir.Func, recv *fun.Receiver) fun.Func {
+func (ev *Evaluator) NewFunc(fn ir.Func, recv *engine.Receiver) engine.Func {
 	return interp.NewRunFunc(fn, recv)
 }
 
 // NewFuncLit creates a new function literal.
-func (ev *Evaluator) NewFuncLit(lit *ir.FuncLit, ctx *context.Context) fun.Func {
+func (ev *Evaluator) NewFuncLit(lit *ir.FuncLit, ctx *context.Context) engine.Func {
 	return interp.NewFuncLit(lit, ctx)
 }
 

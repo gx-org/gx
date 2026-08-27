@@ -33,6 +33,7 @@ import (
 	"github.com/gx-org/gx/internal/interp/compeval/srcstore"
 	"github.com/gx-org/gx/internal/interp/compeval/surrogates"
 	"github.com/gx-org/gx/interp/context"
+	"github.com/gx-org/gx/interp/engine"
 	"github.com/gx-org/gx/interp/fun"
 	"github.com/gx-org/gx/interp"
 )
@@ -93,7 +94,7 @@ type (
 		*pkgProcScope
 
 		newFuncForEval fun.NewFunc
-		funcRunner     fun.Runners
+		funcRunner     engine.Runners
 
 		state *pkgState
 

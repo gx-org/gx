@@ -20,7 +20,7 @@ import (
 	"github.com/gx-org/gx/build/ir"
 	"github.com/gx-org/gx/internal/interp/flatten"
 	"github.com/gx-org/gx/interp/context"
-	"github.com/gx-org/gx/interp/fun"
+	"github.com/gx-org/gx/interp/engine"
 )
 
 // funcLit is a function represented as a subgraph.
@@ -29,10 +29,10 @@ type funcLit struct {
 	ctx *context.Context
 }
 
-var _ fun.Func = (*funcLit)(nil)
+var _ engine.Func = (*funcLit)(nil)
 
 // NewFuncLit creates a new function literal.
-func NewFuncLit(lit *ir.FuncLit, ctx *context.Context) fun.Func {
+func NewFuncLit(lit *ir.FuncLit, ctx *context.Context) engine.Func {
 	return &funcLit{
 		lit: lit,
 		ctx: ctx.FuncLitFrame(lit),
@@ -45,18 +45,18 @@ func (sg *funcLit) IR() ir.Func {
 }
 
 // Recv returns the receiver of the function.
-func (sg *funcLit) Recv() *fun.Receiver {
+func (sg *funcLit) Recv() *engine.Receiver {
 	return nil
 }
 
 // Call the function literal given its set of arguments,
 // effectively inlining the function in the parent graph.
-func (sg *funcLit) Call(env *fun.CallEnv, call *ir.FuncCallExpr, args []ir.Element) ([]ir.Element, error) {
+func (sg *funcLit) Call(env *engine.Env, call *ir.FuncCallExpr, args []ir.Element) ([]ir.Element, error) {
 	return env.Runners().FuncLit(sg.lit, env, sg.ctx, call, args)
 }
 
 // FuncLit runs a function literal.
-func (runners) FuncLit(lit *ir.FuncLit, env *fun.CallEnv, ctx *context.Context, call *ir.FuncCallExpr, args []ir.Element) ([]ir.Element, error) {
+func (runners) FuncLit(lit *ir.FuncLit, env *engine.Env, ctx *context.Context, call *ir.FuncCallExpr, args []ir.Element) ([]ir.Element, error) {
 	funcFrame := ctx.PushBlockFrame()
 	fType := lit.FuncType()
 	if err := assignArgumentValues(fType, funcFrame, args); err != nil {

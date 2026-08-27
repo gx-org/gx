@@ -31,7 +31,7 @@ type CompEval struct {
 	newRunFunc fun.NewFunc
 }
 
-var _ fun.Factory = (*CompEval)(nil)
+var _ engine.Factory = (*CompEval)(nil)
 
 // NewHostEvaluator returns a new evaluator for the host.
 func NewHostEvaluator(importer ir.Importer, newRunFunc fun.NewFunc) *CompEval {
@@ -39,7 +39,7 @@ func NewHostEvaluator(importer ir.Importer, newRunFunc fun.NewFunc) *CompEval {
 }
 
 // NewFunc creates a new function given its definition and a receiver.
-func (ev *CompEval) NewFunc(fn ir.Func, recv *fun.Receiver) fun.Func {
+func (ev *CompEval) NewFunc(fn ir.Func, recv *engine.Receiver) engine.Func {
 	switch fnT := fn.(type) {
 	case *ir.AnnotatorField:
 		return cpevelements.NewFieldAnnotator(fnT, recv)
@@ -52,7 +52,7 @@ func (ev *CompEval) NewFunc(fn ir.Func, recv *fun.Receiver) fun.Func {
 }
 
 // NewFuncLit creates a new function literal.
-func (ev *CompEval) NewFuncLit(fn *ir.FuncLit, _ *context.Context) fun.Func {
+func (ev *CompEval) NewFuncLit(fn *ir.FuncLit, _ *context.Context) engine.Func {
 	return surrogates.NewFunc(fn, nil)
 }
 
