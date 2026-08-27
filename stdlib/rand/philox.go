@@ -40,7 +40,7 @@ func evalPhilox(env *engine.Env, call *ir.FuncCallExpr, recv ir.Element, args []
 	mat := builtin.Materialiser(env)
 	philoxStruct := ir.Underlying(philox.Type()).(*ir.StructType)
 	stateArray := philoxStruct.Fields.FindField("state")
-	field, err := philox.Select(&ir.SelectorExpr{
+	field, err := philox.Select(env, &ir.SelectorExpr{
 		X:    call,
 		Stor: stateArray.Storage(),
 	})

@@ -17,10 +17,10 @@ package values
 import (
 	"fmt"
 
-	"github.com/pkg/errors"
 	"github.com/gx-org/backend/platform"
 	"github.com/gx-org/gx/api/hostio"
 	"github.com/gx-org/gx/build/ir"
+	"github.com/gx-org/gx/internal/base/cast"
 	"github.com/gx-org/gx/interp/engine"
 )
 
@@ -54,14 +54,12 @@ func (n *NamedType) Under() (ir.Element, error) {
 }
 
 // Select a field in the structure.
-func (n *NamedType) Select(expr *ir.SelectorExpr) (ir.Element, error) {
-	sel, ok := n.val.(interface {
-		Select(expr *ir.SelectorExpr) (ir.Element, error)
-	}) // TODO(degris): avoid creating a dependency cycle.
-	if !ok {
-		return nil, errors.Errorf("cannot select field %s from type %T", expr.Src.Sel.Name, n.val)
+func (n *NamedType) Select(env *engine.Env, expr *ir.SelectorExpr) (ir.Element, error) {
+	sel, err := cast.To[engine.Selector](n.val)
+	if err != nil {
+		return nil, err
 	}
-	return sel.Select(expr)
+	return sel.Select(env, expr)
 }
 
 // Copy the element.

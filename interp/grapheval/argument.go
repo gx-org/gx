@@ -211,7 +211,7 @@ func (vis *inputVisitor) newStructArgument(parent parentArgument, typ *ir.Struct
 			},
 			Stor: &ir.FieldStorage{Field: field},
 		}
-		fieldProxy, err := sel.Select(fieldExpr)
+		fieldProxy, err := sel.Select(nil, fieldExpr)
 		if err != nil {
 			return nil, err
 		}
@@ -240,7 +240,7 @@ func (sel *fieldSelectorArgument) ValueFromContext(ctx *hostio.FuncInputs) (ir.E
 	if err != nil {
 		return nil, errors.Errorf("%s is not a structure instance (type %s)", sel.parent.Name(), sel.parent.typ.ReferString(nil))
 	}
-	fieldVal, err := structValue.Select(&ir.SelectorExpr{
+	fieldVal, err := structValue.Select(nil, &ir.SelectorExpr{
 		Src: &ast.SelectorExpr{Sel: &ast.Ident{Name: sel.fieldName}},
 	})
 	if err != nil {

@@ -88,8 +88,8 @@ func (n *named) Copy() engine.Copier {
 	return n
 }
 
-func (n *named) Select(expr *ir.SelectorExpr) (ir.Element, error) {
-	field, err := n.named.Select(expr)
+func (n *named) Select(env *engine.Env, expr *ir.SelectorExpr) (ir.Element, error) {
+	field, err := n.named.Select(env, expr)
 	if err != nil {
 		return field, err
 	}

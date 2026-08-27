@@ -22,7 +22,6 @@ import (
 	"github.com/gx-org/gx/api/hostio"
 	"github.com/gx-org/gx/build/ir"
 	"github.com/gx-org/gx/internal/base/cast"
-	"github.com/gx-org/gx/internal/interp/coreiface"
 	"github.com/gx-org/gx/internal/interp/flatten"
 	"github.com/gx-org/gx/interp/engine"
 )
@@ -39,7 +38,6 @@ var (
 	_ ir.StorageElement = (*NamedType)(nil)
 	_ ir.WithExpr       = (*NamedType)(nil)
 	_ engine.NamedType  = (*NamedType)(nil)
-	_ coreiface.Under   = (*NamedType)(nil)
 )
 
 // NewNamedType returns a new node representing an exported type.
@@ -58,7 +56,7 @@ func NewNamedType(newFunc NewFunc, typ ir.TypeMethods, under ir.Element) *NamedT
 
 // Select returns the field given an index.
 // Returns nil if the receiver type cannot select fields.
-func (n *NamedType) Select(expr *ir.SelectorExpr) (ir.Element, error) {
+func (n *NamedType) Select(env *engine.Env, expr *ir.SelectorExpr) (ir.Element, error) {
 	name := expr.Stor.NameDef().Name
 	if fn := n.funcs[name]; fn != nil {
 		return n.newFunc(fn, NewReceiver(n, fn)), nil
@@ -67,7 +65,7 @@ func (n *NamedType) Select(expr *ir.SelectorExpr) (ir.Element, error) {
 	if err != nil {
 		return nil, err
 	}
-	return under.Select(expr)
+	return under.Select(env, expr)
 }
 
 // Copy the element.

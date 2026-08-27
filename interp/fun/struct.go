@@ -82,7 +82,7 @@ func (n *Struct) Unflatten(parser *flatten.Parser) (hostio.Value, error) {
 }
 
 // Select returns the value of a field of a structure given its index.
-func (n *Struct) Select(expr *ir.SelectorExpr) (ir.Element, error) {
+func (n *Struct) Select(env *engine.Env, expr *ir.SelectorExpr) (ir.Element, error) {
 	name := expr.Stor.NameDef().Name
 	val, ok := n.fields[name]
 	if !ok {

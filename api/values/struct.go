@@ -23,6 +23,7 @@ import (
 	"github.com/gx-org/gx/api/hostio"
 	"github.com/gx-org/gx/base/sync"
 	"github.com/gx-org/gx/build/ir"
+	"github.com/gx-org/gx/interp/engine"
 )
 
 // Struct stores the GX values of a structure.
@@ -32,7 +33,10 @@ type Struct struct {
 	structType *ir.StructType
 }
 
-var _ hostio.Value = (*Struct)(nil)
+var (
+	_ hostio.Value    = (*Struct)(nil)
+	_ engine.Selector = (*Struct)(nil)
+)
 
 // NewStruct returns a new structure given a set of values.
 func NewStruct(typ ir.Type, vals []hostio.Value) (*Struct, error) {
@@ -84,7 +88,7 @@ func (vs *Struct) SetField(name string, val hostio.Value) {
 }
 
 // Select a field in the structure.
-func (vs *Struct) Select(expr *ir.SelectorExpr) (ir.Element, error) {
+func (vs *Struct) Select(_ *engine.Env, expr *ir.SelectorExpr) (ir.Element, error) {
 	return vs.FieldValue(expr.Src.Sel.Name), nil
 }
 

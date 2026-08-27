@@ -110,7 +110,7 @@ func (fitp *Interpreter) toCompEvalError(el ir.Element) (err error) {
 	if !isSelector {
 		return errors.Errorf("cannot convert %T to a method selector", el)
 	}
-	errorMethod, err := methods.Select(selectError)
+	errorMethod, err := methods.Select(fitp.env, selectError)
 	if err != nil {
 		return err
 	}

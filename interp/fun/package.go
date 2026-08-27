@@ -76,7 +76,7 @@ func (imp *Import) Store() ir.Storage {
 }
 
 // Select a member of the package.
-func (imp *Import) Select(expr *ir.SelectorExpr) (ir.Element, error) {
+func (imp *Import) Select(env *engine.Env, expr *ir.SelectorExpr) (ir.Element, error) {
 	name := expr.Stor.NameDef().Name
 	el, ok := imp.pkg.defs.Find(name)
 	if !ok {

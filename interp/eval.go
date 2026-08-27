@@ -635,7 +635,7 @@ func evalSelectorExpr(fitp *Interpreter, ref *ir.SelectorExpr) (ir.Element, erro
 	if err != nil {
 		return nil, err
 	}
-	return slt.Select(ref)
+	return slt.Select(fitp.env, ref)
 }
 
 func evalIndexExpr(fitp *Interpreter, ref *ir.IndexExpr) (ir.Element, error) {

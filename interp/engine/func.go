@@ -52,13 +52,10 @@ type (
 		Call(env *Env, call *ir.FuncCallExpr, args []ir.Element) ([]ir.Element, error)
 	}
 
-	// NewFunc creates function elements from function IRs.
-	NewFunc func(ir.Func, *Receiver) Func
-
 	// Selector selects a field given its index.
 	Selector interface {
 		ir.Element
-		Select(expr *ir.SelectorExpr) (ir.Element, error)
+		Select(env *Env, expr *ir.SelectorExpr) (ir.Element, error)
 	}
 
 	// Runners provides implementations to run functions.

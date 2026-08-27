@@ -57,8 +57,8 @@ func (n *named) Under() (ir.Element, error) {
 	return n.ntype.Under()
 }
 
-func (n *named) Select(expr *ir.SelectorExpr) (ir.Element, error) {
-	return n.ntype.Select(expr)
+func (n *named) Select(env *engine.Env, expr *ir.SelectorExpr) (ir.Element, error) {
+	return n.ntype.Select(env, expr)
 }
 
 func (n *named) Copy() engine.Copier {
