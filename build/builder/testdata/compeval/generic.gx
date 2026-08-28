@@ -1,0 +1,6 @@
+package generic
+
+//gx:compeval
+func f[A int]() int { // ERROR compeval functions cannot have generic parameters
+	return A
+}
