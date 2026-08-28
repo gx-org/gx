@@ -1,0 +1,12 @@
+package array03
+
+func Test() int {
+	a := [3]float32{3, 5, 7}
+	x := 100
+	for i := range a {
+		x = x + i
+	}
+	return x
+	// Want:
+	// int(103)
+}

@@ -1,0 +1,12 @@
+package array01
+
+func Test() int32 {
+	a := [2]int32{2, 3}
+	x := int32(0)
+	for i := range a {
+		x += a[i]
+	}
+	return x
+	// Want:
+	// int32(5)
+}

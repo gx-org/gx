@@ -81,41 +81,5 @@ func f() int32 {
 				},
 			},
 		},
-		testbuild.Decl{
-			Src: `
-func f() int32 {
-	a := [2]int32{2, 3}
-	x := int32(0)
-	for i := range a {
-		x += a[i]
-	}
-	return x
-}
-`,
-		},
-		testbuild.Decl{
-			Src: `
-func f() int32 {
-	a := [2]int32{2, 3}
-	x := int32(0)
-	for i, ai := range a {
-		x += ai
-	}
-	return x
-}
-`,
-		},
-		testbuild.Decl{
-			Src: `
-func f() int {
-	a := [3]float32{3, 5, 7}
-	x := 100
-	for i := range a {
-		x = x + i
-	}
-	return x
-}
-`,
-		},
 	)
 }
