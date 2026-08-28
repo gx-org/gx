@@ -192,8 +192,8 @@ func newFetcherTesting() (*fetcherTesting, error) {
 			return nil, err
 		}
 	}
-	hostEval := compeval.NewHostEvaluator(nil, interp.NewRunFunc)
-	itp, err := interp.New(hostEval, hostEval, interp.Runners(), packageOptions)
+	hostEval := compeval.NewHostEvaluator(nil)
+	itp, err := interp.New(hostEval, interp.Runners(), packageOptions)
 	if err != nil {
 		return nil, err
 	}

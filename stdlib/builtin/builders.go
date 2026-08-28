@@ -27,7 +27,7 @@ import (
 	"github.com/gx-org/gx/build/importers"
 	"github.com/gx-org/gx/build/ir"
 	"github.com/gx-org/gx/internal/base/cast"
-	"github.com/gx-org/gx/interp"
+	"github.com/gx-org/gx/interp/elements"
 )
 
 type baseBuilder struct {
@@ -175,7 +175,7 @@ func findFunc(pkg *ir.Package, name string) (*ir.FuncBuiltin, error) {
 
 // ImplementStubFunc replaces a function declaration with a stdlib-provided implementation, while
 // keeping the function's declared type.
-func ImplementStubFunc(name string, slotFn func() interp.FuncBuiltin) Builder {
+func ImplementStubFunc(name string, slotFn func() elements.FuncBuiltin) Builder {
 	return baseBuilder{
 		name: name,
 		build: func(param *BuilderParam, pkg importers.FilePackage) error {
@@ -193,8 +193,8 @@ func ImplementStubFunc(name string, slotFn func() interp.FuncBuiltin) Builder {
 }
 
 // ImplementBuiltin provides the implementation of a builtin function.
-func ImplementBuiltin(name string, fn interp.FuncBuiltin) Builder {
-	return ImplementStubFunc(name, func() interp.FuncBuiltin {
+func ImplementBuiltin(name string, fn elements.FuncBuiltin) Builder {
+	return ImplementStubFunc(name, func() elements.FuncBuiltin {
 		return fn
 	})
 }

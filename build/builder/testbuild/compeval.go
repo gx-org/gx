@@ -68,7 +68,7 @@ func (f compevalFactory) BuildTests(t *testing.T, imps []importers.Importer) ([]
 			t.Run(testWithName.Name(), func(t *testing.T) {
 				srcTests, err = f.compile(bld, testWithName)
 				if err != nil {
-					t.Error(err)
+					t.Errorf("%+v", err)
 					return
 				}
 				tests = append(tests, srcTests...)

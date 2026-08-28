@@ -133,8 +133,8 @@ func (s *ephemeralCompEvalScope) Err() *fmterr.Appender {
 }
 
 func (s *ephemeralCompEvalScope) compEval() (*compileEvaluator, bool) {
-	hostEval := compeval.NewHostEvaluator(s.bld, compeval.RunFunc)
-	itp, err := interp.New(hostEval, hostEval, cpevelements.Runner(), nil)
+	hostEval := compeval.NewHostEvaluator(s.bld)
+	itp, err := interp.New(hostEval, cpevelements.Runner(), nil)
 	if err != nil {
 		return nil, s.errs.Append(err)
 	}

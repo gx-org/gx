@@ -389,7 +389,7 @@ func evalCastToArrayExpr(fitp *Interpreter, expr ir.TypeCastExpr, x engine.Numer
 func evalCastExprTo(fitp *Interpreter, expr ir.TypeCastExpr, target ir.Type, x ir.Element) (ir.Element, error) {
 	switch targetT := target.(type) {
 	case *ir.NamedType:
-		return elements.NewNamedType(fitp.NewFunc, targetT, x), nil
+		return elements.NewNamedType(targetT, x), nil
 	case *ir.GenericTypeParam:
 		name := targetT.NameDef()
 		el, err := fitp.Context().CurrentFrame().Find(name)
@@ -463,7 +463,7 @@ func evalStructLiteral(fitp *Interpreter, expr *ir.StructLitExpr) (ir.Element, e
 	if !ok {
 		return strct, nil
 	}
-	return elements.NewNamedType(fitp.NewFunc, nType, strct), nil
+	return elements.NewNamedType(nType, strct), nil
 }
 
 func evalSliceExpr(fitp *Interpreter, expr *ir.SliceExpr) (ir.Element, error) {
@@ -544,9 +544,9 @@ func evalExpr(fitp *Interpreter, expr ir.Expr) (_ ir.Element, err error) {
 	case *ir.SelectorExpr:
 		return evalSelectorExpr(fitp, exprT)
 	case *ir.FuncLit:
-		return fitp.env.FuncFactory().NewFuncLit(exprT, fitp.Context()), nil
+		return NewFuncLit(exprT, fitp.Context()), nil
 	case *ir.MacroCallExpr:
-		return fitp.env.FuncFactory().NewFunc(exprT.F, nil), nil
+		return elements.NewFunc(exprT.F, nil), nil
 	case *ir.IndexExpr:
 		return evalIndexExpr(fitp, exprT)
 	case *ir.EinsumExpr:
@@ -579,9 +579,9 @@ func evalUnpackExpr(fitp *Interpreter, expr *ir.UnpackExpr) (ir.Element, error) 
 func evalFuncValExpr(fitp *Interpreter, expr *ir.FuncValExpr) (ir.Element, error) {
 	lit, isLit := expr.Func().(*ir.FuncLit)
 	if isLit {
-		return fitp.env.FuncFactory().NewFuncLit(lit, fitp.Context()), nil
+		return NewFuncLit(lit, fitp.Context()), nil
 	}
-	return fitp.NewFunc(expr.Func(), nil), nil
+	return elements.NewFunc(expr.Func(), nil), nil
 }
 
 func evalIdent(fitp *Interpreter, ref *ir.Ident) (ir.Element, error) {
@@ -668,7 +668,7 @@ func evalCallee(fitp *Interpreter, callee ir.Callee) (engine.Func, []ir.Element,
 		}
 		return fn, tpArgs, nil
 	case *ir.MacroCallExpr:
-		return fitp.NewFunc(calleeT.Func(), nil), nil, nil
+		return elements.NewFunc(calleeT.Func(), nil), nil, nil
 	}
 	return nil, nil, errors.Errorf("callee type %T not supported", callee)
 }

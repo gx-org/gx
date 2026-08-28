@@ -38,7 +38,7 @@ func newInterface(path storepath.Path, typ ir.TypeMethods) (Element, error) {
 	under, err := newStruct(path, emptyStruct)
 	return &named{
 		path:  path,
-		ntype: elements.NewNamedType(NewFunc, typ, under),
+		ntype: elements.NewNamedType(typ, under),
 	}, err
 }
 
@@ -49,7 +49,7 @@ func newNamedType(path storepath.Path, typ *ir.NamedType) (Element, error) {
 	}
 	return &named{
 		path:  path,
-		ntype: elements.NewNamedType(NewFunc, typ, under),
+		ntype: elements.NewNamedType(typ, under),
 	}, nil
 }
 

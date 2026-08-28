@@ -33,8 +33,8 @@ import (
 	"github.com/gx-org/gx/internal/interp/compeval/srcstore"
 	"github.com/gx-org/gx/internal/interp/compeval/surrogates"
 	"github.com/gx-org/gx/interp/context"
+	"github.com/gx-org/gx/interp/elements"
 	"github.com/gx-org/gx/interp/engine"
-	"github.com/gx-org/gx/interp/fun"
 	"github.com/gx-org/gx/interp"
 )
 
@@ -93,8 +93,7 @@ type (
 	pkgResolveScope struct {
 		*pkgProcScope
 
-		newFuncForEval fun.NewFunc
-		funcRunner     engine.Runners
+		funcRunner engine.Runners
 
 		state *pkgState
 
@@ -109,12 +108,11 @@ type (
 
 func newPackageResolveScope(pscope *pkgProcScope) (*pkgResolveScope, bool) {
 	s := &pkgResolveScope{
-		pkgProcScope:   pscope,
-		newFuncForEval: surrogates.NewFunc,
-		funcRunner:     surrogates.Runner(),
-		methods:        ordered.NewMap[*ir.NamedType, *ordered.Map[string, *irFunc]](),
-		state:          &pkgState{dcls: pscope.decls()},
-		fileScopes:     make(map[*file]*fileResolveScope),
+		pkgProcScope: pscope,
+		funcRunner:   surrogates.Runner(),
+		methods:      ordered.NewMap[*ir.NamedType, *ordered.Map[string, *irFunc]](),
+		state:        &pkgState{dcls: pscope.decls()},
+		fileScopes:   make(map[*file]*fileResolveScope),
 	}
 	pkg := pscope.bpkg.newPackageIR()
 	s.state.ibld = irb.New(s, pkg)
@@ -175,7 +173,7 @@ func (s *pkgResolveScope) buildStorageProcessNode(tok token.Token, store ir.Stor
 }
 
 func (s *pkgResolveScope) packageInterpreter() *interp.Base {
-	hostEval := compeval.NewHostEvaluator(s.bpkg.builder(), s.newFuncForEval)
+	hostEval := compeval.NewHostEvaluator(s.bpkg.builder())
 	pkg := s.state.ibld.Pkg()
 	pkg.Decls = s.state.ibld.Decls()
 	var opts []options.PackageOption
@@ -188,7 +186,7 @@ func (s *pkgResolveScope) packageInterpreter() *interp.Base {
 			opts = append(opts, opt)
 		}
 	}
-	itp, err := interp.New(hostEval, hostEval, s.funcRunner, opts)
+	itp, err := interp.New(hostEval, s.funcRunner, opts)
 	if err != nil {
 		s.Err().Append(err)
 		return nil
@@ -392,7 +390,7 @@ func (s *funcResolveScope) nspace() *scope.RWScope[ir.Element] {
 func (s *funcResolveScope) setFuncValue(fn ir.PkgFunc) bool {
 	var ok bool
 	s.bodyCE, ok = s.bodyCE.sub(nil, map[string]ir.Element{
-		fn.Name(): s.resolveScope.fileScope().newFuncForEval(fn, nil),
+		fn.Name(): elements.NewFunc(fn, nil),
 	})
 	return ok
 }

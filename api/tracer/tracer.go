@@ -60,12 +60,12 @@ func Trace(dev *api.Device, fn *ir.FuncDecl, receiver hostio.Value, args []hosti
 	}
 	ev := grapheval.New(dev.Runtime().Builder(), proc, graph)
 	// Create the interpreter.
-	itp, err := interp.New(ev, ev, interp.Runners(), options)
+	itp, err := interp.New(ev, interp.Runners(), options)
 	if err != nil {
 		return nil, err
 	}
 	// Visit the receiver and arguments values to create elements for the interpreter.
-	in, err := ev.FuncInputsToElements(ev.NewFunc, fn, receiver, hostio.ToElements(args))
+	in, err := ev.FuncInputsToElements(fn, receiver, hostio.ToElements(args))
 	if err != nil {
 		return nil, err
 	}

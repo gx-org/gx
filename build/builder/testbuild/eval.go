@@ -38,8 +38,8 @@ type Evaluator struct {
 // EvaluatorFor returns an evaluator for an incremental package.
 func (b *Builder) EvaluatorFor(pkg *builder.IncrementalPackage, sub map[string]ir.Type) (*Evaluator, error) {
 	importer := builder.New(b.Importers()...)
-	hostEval := compeval.NewHostEvaluator(importer, compeval.RunFunc)
-	itp, err := interp.New(hostEval, hostEval, cpevelements.Runner(), nil)
+	hostEval := compeval.NewHostEvaluator(importer)
+	itp, err := interp.New(hostEval, cpevelements.Runner(), nil)
 	if err != nil {
 		return nil, err
 	}

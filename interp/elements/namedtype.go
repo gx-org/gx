@@ -24,15 +24,13 @@ import (
 	"github.com/gx-org/gx/internal/base/cast"
 	"github.com/gx-org/gx/internal/interp/flatten"
 	"github.com/gx-org/gx/interp/engine"
-	"github.com/gx-org/gx/interp/fun"
 )
 
 // NamedType references a type exported by an imported package.
 type NamedType struct {
-	newFunc fun.NewFunc
-	typ     ir.TypeMethods
-	funcs   map[string]ir.PkgFunc
-	under   ir.Element
+	typ   ir.TypeMethods
+	funcs map[string]ir.PkgFunc
+	under ir.Element
 }
 
 var (
@@ -42,16 +40,15 @@ var (
 )
 
 // NewNamedType returns a new node representing an exported type.
-func NewNamedType(newFunc fun.NewFunc, typ ir.TypeMethods, under ir.Element) *NamedType {
+func NewNamedType(typ ir.TypeMethods, under ir.Element) *NamedType {
 	funcs := make(map[string]ir.PkgFunc)
 	for _, fun := range typ.Methods() {
 		funcs[fun.Name()] = fun
 	}
 	return &NamedType{
-		newFunc: newFunc,
-		typ:     typ,
-		funcs:   funcs,
-		under:   under,
+		typ:   typ,
+		funcs: funcs,
+		under: under,
 	}
 }
 
@@ -60,7 +57,7 @@ func NewNamedType(newFunc fun.NewFunc, typ ir.TypeMethods, under ir.Element) *Na
 func (n *NamedType) Select(env *engine.Env, expr *ir.SelectorExpr) (ir.Element, error) {
 	name := expr.Stor.NameDef().Name
 	if fn := n.funcs[name]; fn != nil {
-		return n.newFunc(fn, NewReceiver(n, fn)), nil
+		return NewFunc(fn, NewReceiver(n, fn)), nil
 	}
 	under, err := cast.To[engine.Selector](n.under)
 	if err != nil {
@@ -76,7 +73,7 @@ func (n *NamedType) Copy() engine.Copier {
 
 // RecvCopy copies the underlying element and returns the element encapsulated in this named type.
 func (n *NamedType) RecvCopy() engine.NamedType {
-	return NewNamedType(n.newFunc, n.typ, engine.Copy(n.under))
+	return NewNamedType(n.typ, engine.Copy(n.under))
 }
 
 // Under returns the underlying element of the named type.

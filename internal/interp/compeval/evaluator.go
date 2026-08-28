@@ -17,43 +17,18 @@ package compeval
 import (
 	"github.com/pkg/errors"
 	"github.com/gx-org/gx/build/ir"
-	"github.com/gx-org/gx/internal/interp/compeval/cpevelements"
-	"github.com/gx-org/gx/internal/interp/compeval/surrogates"
 	"github.com/gx-org/gx/internal/tracer/processor"
-	"github.com/gx-org/gx/interp/context"
 	"github.com/gx-org/gx/interp/engine"
-	"github.com/gx-org/gx/interp/fun"
 )
 
 // CompEval is the evaluator used for compilation evaluation.
 type CompEval struct {
-	importer   ir.Importer
-	newRunFunc fun.NewFunc
+	importer ir.Importer
 }
-
-var _ engine.Factory = (*CompEval)(nil)
 
 // NewHostEvaluator returns a new evaluator for the host.
-func NewHostEvaluator(importer ir.Importer, newRunFunc fun.NewFunc) *CompEval {
-	return &CompEval{importer: importer, newRunFunc: newRunFunc}
-}
-
-// NewFunc creates a new function given its definition and a receiver.
-func (ev *CompEval) NewFunc(fn ir.Func, recv *engine.Receiver) engine.Func {
-	switch fnT := fn.(type) {
-	case *ir.AnnotatorField:
-		return cpevelements.NewFieldAnnotator(fnT, recv)
-	case *ir.AnnotatorFunc:
-		return cpevelements.NewFuncAnnotator(fnT, recv)
-	case *ir.Macro:
-		return cpevelements.NewMacro(fnT, recv)
-	}
-	return ev.newRunFunc(fn, recv)
-}
-
-// NewFuncLit creates a new function literal.
-func (ev *CompEval) NewFuncLit(fn *ir.FuncLit, _ *context.Context) engine.Func {
-	return surrogates.NewFunc(fn, nil)
+func NewHostEvaluator(importer ir.Importer) *CompEval {
+	return &CompEval{importer: importer}
 }
 
 // Processor returns the processor used to process inits and traces for compiled function.

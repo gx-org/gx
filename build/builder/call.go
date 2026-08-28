@@ -24,7 +24,6 @@ import (
 	"github.com/gx-org/gx/build/ir/generics"
 	"github.com/gx-org/gx/build/ir"
 	"github.com/gx-org/gx/build/ir/irkind"
-	"github.com/gx-org/gx/internal/interp/compeval/cpevelements"
 	"github.com/gx-org/gx/internal/interp/compeval/srcstore"
 	"github.com/gx-org/gx/internal/interp/compeval/surrogates"
 	"github.com/gx-org/gx/interp/elements"
@@ -230,7 +229,7 @@ func (n *callExpr) buildCallExpr(rscope resolveScope, callee ir.Expr) (ir.Expr, 
 		return invalidExpr(), rscope.Err().AppendAt(callee.Node(), err)
 	}
 	switch elT := ir.BareValue(el).(type) {
-	case *cpevelements.Macro:
+	case *elements.Macro:
 		return n.buildMacroCall(rscope, compEval, callee, elT.MacroIR())
 	case ir.Type:
 		return n.buildTypeCast(rscope, callee, elT)

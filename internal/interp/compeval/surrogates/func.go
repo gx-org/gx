@@ -31,21 +31,6 @@ type Function struct {
 	recv  *engine.Receiver
 }
 
-// NewSurFunc returns a new surrogate function.
-func NewSurFunc(fn ir.Func, recv *engine.Receiver) *Function {
-	store, _ := fn.(ir.Storage)
-	return &Function{
-		fn:    fn,
-		recv:  recv,
-		store: store,
-	}
-}
-
-// NewFunc returns a new surrogate function.
-func NewFunc(fn ir.Func, recv *engine.Receiver) engine.Func {
-	return NewSurFunc(fn, recv)
-}
-
 type surrogateFunction interface {
 	Element
 	engine.Func
@@ -67,20 +52,6 @@ func (f *Function) IR() ir.Func {
 // Recv returns the receiver for the function.
 func (f *Function) Recv() *engine.Receiver {
 	return f.recv
-}
-
-// Call returns surrogate values for all results of a function simulating a function call.
-func Call(call *ir.FuncCallExpr) ([]ir.Element, error) {
-	res := call.Callee.FuncType().Results.Fields()
-	els := make([]ir.Element, len(res))
-	for i, ri := range res {
-		var err error
-		els[i], err = New(storepath.NewUniqueIR(call), ri.Type())
-		if err != nil {
-			return nil, err
-		}
-	}
-	return els, nil
 }
 
 // Call the surrogate function.

@@ -21,7 +21,6 @@ import (
 	"github.com/gx-org/gx/build/ir"
 	"github.com/gx-org/gx/interp/elements"
 	"github.com/gx-org/gx/interp/engine"
-	"github.com/gx-org/gx/interp"
 	"github.com/gx-org/gx/interp/materialise"
 	"github.com/gx-org/gx/stdlib/builtin"
 )
@@ -83,7 +82,7 @@ func evalPhilox(env *engine.Env, call *ir.FuncCallExpr, recv ir.Element, args []
 		return nil, err
 	}
 	return []ir.Element{
-		elements.NewNamedType(interp.NewRunFunc, philox.TypeMethods(), elements.NewStruct(
+		elements.NewNamedType(philox.TypeMethods(), elements.NewStruct(
 			philoxStruct,
 			map[string]ir.Element{"state": philoxStateElement[0]},
 		)),

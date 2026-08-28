@@ -30,7 +30,6 @@ import (
 	"github.com/gx-org/gx/interp/elements"
 	"github.com/gx-org/gx/interp/engine"
 	"github.com/gx-org/gx/interp/grapheval"
-	"github.com/gx-org/gx/interp"
 )
 
 type randBootstrap struct {
@@ -150,7 +149,6 @@ func evalNewBootstrapGenerator(env *engine.Env, call *ir.FuncCallExpr, recv ir.E
 		return nil, err
 	}
 	return []ir.Element{elements.NewNamedType(
-		interp.NewRunFunc,
 		call.Type().(*ir.NamedType),
 		bootstrap,
 	)}, nil

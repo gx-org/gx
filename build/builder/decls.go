@@ -27,7 +27,6 @@ import (
 	"github.com/gx-org/gx/base/ordered"
 	"github.com/gx-org/gx/build/ir"
 	"github.com/gx-org/gx/internal/base/scope"
-	"github.com/gx-org/gx/internal/interp/compeval"
 	"github.com/gx-org/gx/internal/interp/compeval/cpevelements"
 )
 
@@ -163,7 +162,6 @@ func (d *decls) resolveAll(pkgScope *pkgResolveScope) bool {
 		return false
 	}
 	// Build functions and methods.
-	pkgScope.newFuncForEval = compeval.RunFunc
 	pkgScope.funcRunner = cpevelements.Runner()
 	funOk := d.buildFunctions(pkgScope, filterCompEval(false))
 	return funOk && ok

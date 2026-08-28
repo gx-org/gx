@@ -31,7 +31,6 @@ import (
 	"github.com/gx-org/gx/internal/tracer/processor"
 	"github.com/gx-org/gx/interp/elements"
 	"github.com/gx-org/gx/interp/engine"
-	"github.com/gx-org/gx/interp/fun"
 	"github.com/gx-org/gx/interp/materialise"
 )
 
@@ -56,13 +55,12 @@ func (f receiverFetcher) ValueFromContext(in *hostio.FuncInputs) (ir.Element, er
 }
 
 type inputVisitor struct {
-	newFunc fun.NewFunc
-	ev      *Evaluator
-	file    *ir.File
+	ev   *Evaluator
+	file *ir.File
 }
 
-func newInputVisitor(newFunc fun.NewFunc, ev *Evaluator, file *ir.File) *inputVisitor {
-	return &inputVisitor{newFunc: newFunc, ev: ev, file: file}
+func newInputVisitor(ev *Evaluator, file *ir.File) *inputVisitor {
+	return &inputVisitor{ev: ev, file: file}
 }
 
 // ArgGX represents a GX argument.
@@ -156,7 +154,7 @@ func (vis *inputVisitor) newNamedTypeArgument(parent parentArgument, typ *ir.Nam
 	if err != nil {
 		return nil, err
 	}
-	return elements.NewNamedType(vis.newFunc, arg.typ, recv), nil
+	return elements.NewNamedType(arg.typ, recv), nil
 }
 
 func (arg *namedTypeArgument) Name() string {

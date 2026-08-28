@@ -24,10 +24,10 @@ import (
 // InitPkgScope returns a package element with its scope.
 func (itp *Base) InitPkgScope(pkg *ir.Package, scope *scope.RWScope[ir.Element]) (ir.PackageElement, error) {
 	for _, f := range pkg.Decls.Funcs {
-		scope.Define(f.Name(), itp.funFact.NewFunc(f, nil))
+		scope.Define(f.Name(), elements.NewFunc(f, nil))
 	}
 	for _, tp := range pkg.Decls.Types {
-		scope.Define(tp.Name(), elements.NewNamedType(itp.funFact.NewFunc, tp, nil))
+		scope.Define(tp.Name(), elements.NewNamedType(tp, nil))
 	}
 	if err := itp.evalPackageConsts(pkg, scope); err != nil {
 		return nil, err

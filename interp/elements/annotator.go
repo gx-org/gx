@@ -12,7 +12,7 @@
 // See the License for the specific language governing permissions and
 // limitations under the License.
 
-package cpevelements
+package elements
 
 import (
 	"github.com/pkg/errors"
@@ -63,8 +63,7 @@ type FuncAnnotator struct {
 
 var _ ir.FuncAnnotator = (*FuncAnnotator)(nil)
 
-// NewFuncAnnotator creates a new function annotator.
-func NewFuncAnnotator(fn *ir.AnnotatorFunc, recv *engine.Receiver) engine.Func {
+func newFuncAnnotator(fn *ir.AnnotatorFunc, recv *engine.Receiver) engine.Func {
 	return &FuncAnnotator{
 		coreAnnotator: coreAnnotator{
 			ann:  fn,
@@ -85,8 +84,8 @@ type FieldAnnotator struct {
 	fn *ir.AnnotatorField
 }
 
-// NewFieldAnnotator creates a new field annotator.
-func NewFieldAnnotator(fn *ir.AnnotatorField, recv *engine.Receiver) engine.Func {
+// newFieldAnnotator creates a new field annotator.
+func newFieldAnnotator(fn *ir.AnnotatorField, recv *engine.Receiver) engine.Func {
 	return &FieldAnnotator{
 		coreAnnotator: coreAnnotator{
 			ann:  fn,

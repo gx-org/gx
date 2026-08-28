@@ -1,0 +1,7 @@
+package len01
+
+func TestLen() int {
+	return len([3][2]float32{})
+	// Want:
+	// int(3)
+}

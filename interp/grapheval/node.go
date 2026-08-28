@@ -50,7 +50,7 @@ var (
 	_ engine.NumericalElement         = (*BackendNode)(nil)
 	_ ir.WithLength                   = (*BackendNode)(nil)
 	_ graphNode                       = (*BackendNode)(nil)
-	_ elements.EvalShaper             = (*constant)(nil)
+	_ elements.EvalShaper             = (*BackendNode)(nil)
 )
 
 // NewBackendNode returns an element representing a node in the backend graph.

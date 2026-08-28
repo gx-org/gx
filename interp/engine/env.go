@@ -56,7 +56,6 @@ type Env struct {
 	ctx  envContext
 	expr ir.Evaluator
 	eng  Engine
-	fun  Factory
 	run  Runners
 }
 
@@ -66,13 +65,13 @@ func ProxyEnv(eng Engine, file *ir.File) *Env {
 }
 
 // NewEnv returns a new evaluation environment.
-func NewEnv(ctx *context.Context, exprEval ir.Evaluator, eng Engine, fun Factory, run Runners) *Env {
-	return &Env{ctx: evalContext{ctx: ctx}, expr: exprEval, eng: eng, fun: fun, run: run}
+func NewEnv(ctx *context.Context, exprEval ir.Evaluator, eng Engine, run Runners) *Env {
+	return &Env{ctx: evalContext{ctx: ctx}, expr: exprEval, eng: eng, run: run}
 }
 
 // WithRunners return a new function context for a given runners.
 func (env *Env) WithRunners(run Runners) *Env {
-	return NewEnv(env.ctx.context(), env.expr, env.eng, env.fun, run)
+	return NewEnv(env.ctx.context(), env.expr, env.eng, run)
 }
 
 // File returns the current file where the code is being interpreted.
@@ -90,11 +89,6 @@ func (env *Env) ExprEval() ir.Evaluator {
 	return env.expr
 }
 
-// FuncFactory returns the function evaluator of the environment.
-func (env *Env) FuncFactory() Factory {
-	return env.fun
-}
-
 // Engine returns the engine used for evaluations.
 func (env *Env) Engine() Engine {
 	return env.eng
@@ -108,7 +102,6 @@ func (env *Env) Runners() Runners {
 func (env *Env) String() string {
 	var b strings.Builder
 	b.WriteString(fmt.Sprintf("Expression evaluator: %T\n", env.expr))
-	b.WriteString(fmt.Sprintf("Function evaluator: %T\n", env.fun))
 	ctx := env.ctx.context()
 	if ctx == nil {
 		return b.String()

@@ -35,14 +35,6 @@ type (
 		Ident   *ast.Ident
 		Element NamedType
 	}
-	// Factory provides core primitives for the interpreter.
-	Factory interface {
-		// NewFunc creates a new function given its definition and a receiver.
-		NewFunc(ir.Func, *Receiver) Func
-
-		// NewFuncLit calls a function literal.
-		NewFuncLit(*ir.FuncLit, *context.Context) Func
-	}
 
 	// Func is an element owning a callable function.
 	Func interface {

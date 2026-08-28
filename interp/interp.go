@@ -22,16 +22,13 @@
 package interp
 
 import (
-	"fmt"
 	"go/ast"
 
-	"github.com/pkg/errors"
 	"github.com/gx-org/backend/dtypes"
 	"github.com/gx-org/gx/api/options"
 	"github.com/gx-org/gx/build/fmterr"
 	"github.com/gx-org/gx/build/ir"
 	"github.com/gx-org/gx/internal/interp/numbers"
-	"github.com/gx-org/gx/internal/interp/proxies"
 	"github.com/gx-org/gx/interp/context"
 	"github.com/gx-org/gx/interp/elements"
 	"github.com/gx-org/gx/interp/engine"
@@ -42,7 +39,6 @@ import (
 // Base provides everything required to create new interpreters.
 type Base struct {
 	eng     engine.Engine
-	funFact engine.Factory
 	runners engine.Runners
 	core    *context.Core
 
@@ -50,8 +46,8 @@ type Base struct {
 }
 
 // New returns a new interpreter.
-func New(eng engine.Engine, funFact engine.Factory, runners engine.Runners, options []options.PackageOption) (*Base, error) {
-	itp := &Base{eng: eng, funFact: funFact, runners: runners}
+func New(eng engine.Engine, runners engine.Runners, options []options.PackageOption) (*Base, error) {
+	itp := &Base{eng: eng, runners: runners}
 	var errs fmterr.Errors
 	var err error
 	if itp.options, err = procoptions.New(eng, options); err != nil {
@@ -67,7 +63,7 @@ func New(eng engine.Engine, funFact engine.Factory, runners engine.Runners, opti
 // ForFile returns an interpreter for a file context.
 func (itp *Base) ForFile(file *ir.File) (*Interpreter, error) {
 	ctx, err := itp.core.NewFileContext(file)
-	return toInterp(ctx, itp.eng, itp.funFact, itp.runners), err
+	return toInterp(ctx, itp.eng, itp.runners), err
 
 }
 
@@ -83,9 +79,9 @@ type Interpreter struct {
 
 var _ ir.Evaluator = (*Interpreter)(nil)
 
-func toInterp(ctx *context.Context, eng engine.Engine, funFact engine.Factory, runners engine.Runners) *Interpreter {
+func toInterp(ctx *context.Context, eng engine.Engine, runners engine.Runners) *Interpreter {
 	fitp := &Interpreter{}
-	fitp.env = engine.NewEnv(ctx, fitp, eng, funFact, runners)
+	fitp.env = engine.NewEnv(ctx, fitp, eng, runners)
 	return fitp
 }
 
@@ -96,49 +92,6 @@ var (
 		Stor: &ir.LocalVarStorage{Src: errorIdent},
 	}
 )
-
-// toCompEvalError converts an element to a compiler error.
-func (fitp *Interpreter) toCompEvalError(el ir.Element) (err error) {
-	if el == nil {
-		return nil
-	}
-	if elements.IsNil(el) {
-		return nil
-	}
-	methods, isSelector := el.(*elements.NamedType)
-	if !isSelector {
-		return errors.Errorf("cannot convert %T to a method selector", el)
-	}
-	errorMethod, err := methods.Select(fitp.env, selectError)
-	if err != nil {
-		return err
-	}
-	errorFun, isFun := errorMethod.(engine.Func)
-	if !isFun {
-		return errors.Errorf("%T not a function", errorMethod)
-	}
-	recv := elements.NewReceiver(methods, errorFun.IR())
-	errorFun = NewRunFunc(errorFun.IR(), recv)
-	errorExpr := &ir.FuncCallExpr{
-		Callee: ir.ErrorCallee(errorFun.IR()),
-	}
-	outs, err := errorFun.Call(fitp.env, errorExpr, nil)
-	if err != nil {
-		return fmt.Errorf("cannot call Error function: %w", err)
-	}
-	if len(outs) != 1 {
-		return fmt.Errorf("Error function returned %d element(s), expect 1", len(outs))
-	}
-	errElement := outs[0]
-	if proxies.IsProxy(errElement) {
-		return nil
-	}
-	str, err := elements.StringFromElement(errElement)
-	if err != nil {
-		return err
-	}
-	return ir.NewCompileError(errors.New(str))
-}
 
 // EvalExpr evaluates an expression for a given context.
 func (fitp *Interpreter) EvalExpr(expr ir.Expr) (ir.Element, error) {
@@ -169,14 +122,14 @@ func (fitp *Interpreter) SubInterp(file *ir.File, vals map[string]ir.Element) (*
 	if file != nil && file.Package != nil {
 		core := fitp.Context().Core()
 		ctx, err = core.NewFileContext(file)
-		fitp = toInterp(ctx, fitp.Engine(), fitp.env.FuncFactory(), fitp.env.Runners())
+		fitp = toInterp(ctx, fitp.Engine(), fitp.env.Runners())
 	}
 	if vals == nil {
 		return fitp, nil
 	}
 	ctx = ctx.Sub(vals)
 	sub := &Interpreter{}
-	sub.env = engine.NewEnv(ctx, sub, fitp.Engine(), fitp.env.FuncFactory(), fitp.env.Runners())
+	sub.env = engine.NewEnv(ctx, sub, fitp.Engine(), fitp.env.Runners())
 	return sub, err
 }
 
@@ -187,14 +140,9 @@ func (fitp *Interpreter) Sub(file *ir.File, vals map[string]ir.Element) (ir.Eval
 	return fitp.SubInterp(file, vals)
 }
 
-// NewFunc creates function elements from function IRs.
-func (fitp *Interpreter) NewFunc(fn ir.Func, recv *engine.Receiver) engine.Func {
-	return fitp.env.FuncFactory().NewFunc(fn, recv)
-}
-
 // EvalFunc evaluates a function.
 func (fitp *Interpreter) EvalFunc(f ir.PkgFunc, call *ir.FuncCallExpr, args []ir.Element) ([]ir.Element, error) {
-	fnEl := NewRunFunc(f, nil)
+	fnEl := elements.NewFunc(f, nil)
 	return fnEl.Call(fitp.env, call, args)
 }
 

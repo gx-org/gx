@@ -18,7 +18,7 @@ import (
 	"go/ast"
 
 	"github.com/gx-org/gx/build/ir"
-	"github.com/gx-org/gx/internal/interp/compeval/cpevelements"
+	"github.com/gx-org/gx/interp/elements"
 )
 
 type funcMeta struct {
@@ -126,16 +126,16 @@ type funcWithIR interface {
 	IR() ir.Func
 }
 
-func evalFuncAnnotator(rscope resolveScope, compEval *compileEvaluator, macroCall *callExpr) (*ir.FuncCallExpr, *cpevelements.FuncAnnotator, bool) {
-	return evalMetaCallee[*cpevelements.FuncAnnotator](rscope, compEval, macroCall, "to annotate a function")
+func evalFuncAnnotator(rscope resolveScope, compEval *compileEvaluator, macroCall *callExpr) (*ir.FuncCallExpr, *elements.FuncAnnotator, bool) {
+	return evalMetaCallee[*elements.FuncAnnotator](rscope, compEval, macroCall, "to annotate a function")
 }
 
-func evalFieldAnnotator(rscope resolveScope, compEval *compileEvaluator, macroCall *callExpr) (*ir.FuncCallExpr, *cpevelements.FieldAnnotator, bool) {
-	return evalMetaCallee[*cpevelements.FieldAnnotator](rscope, compEval, macroCall, "to annotate the field of a structure")
+func evalFieldAnnotator(rscope resolveScope, compEval *compileEvaluator, macroCall *callExpr) (*ir.FuncCallExpr, *elements.FieldAnnotator, bool) {
+	return evalMetaCallee[*elements.FieldAnnotator](rscope, compEval, macroCall, "to annotate the field of a structure")
 }
 
-func evalMacro(rscope resolveScope, compEval *compileEvaluator, macroCall *callExpr) (*ir.FuncCallExpr, *cpevelements.Macro, bool) {
-	return evalMetaCallee[*cpevelements.Macro](rscope, compEval, macroCall, "as a macro")
+func evalMacro(rscope resolveScope, compEval *compileEvaluator, macroCall *callExpr) (*ir.FuncCallExpr, *elements.Macro, bool) {
+	return evalMetaCallee[*elements.Macro](rscope, compEval, macroCall, "as a macro")
 }
 
 func evalMetaCallee[T funcWithIR](rscope resolveScope, compEval *compileEvaluator, macroCall *callExpr, target string) (*ir.FuncCallExpr, T, bool) {

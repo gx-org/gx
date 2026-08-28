@@ -25,8 +25,6 @@ import (
 	"github.com/gx-org/gx/internal/interp/compeval/surrogates/storepath"
 	"github.com/gx-org/gx/internal/interp/compeval/surrogates"
 	"github.com/gx-org/gx/interp/elements"
-	"github.com/gx-org/gx/interp/engine"
-	"github.com/gx-org/gx/interp"
 )
 
 // EvalExpr evaluates a GX expression into an interpreter element.
@@ -50,38 +48,4 @@ func NewOptionVariable(vr *ir.VarExpr) (options.PackageOption, error) {
 		Var:   vr.VName.Name,
 		Value: val,
 	}, err
-}
-
-type mixFunction struct {
-	*surrogates.Function
-}
-
-func (f *mixFunction) run(env *engine.Env, call *ir.FuncCallExpr, args []ir.Element) ([]ir.Element, error) {
-	valArgs := make([]ir.Element, len(args))
-	for i, arg := range args {
-		valArgs[i] = ir.BareValue(arg)
-	}
-	fn := interp.NewRunFunc(f.IR(), f.Recv())
-	return fn.Call(env.WithRunners(interp.Runners()), call, valArgs)
-}
-
-func (f *mixFunction) Call(env *engine.Env, call *ir.FuncCallExpr, args []ir.Element) ([]ir.Element, error) {
-	fn := f.IR()
-	_, isKeyword := fn.(*ir.FuncKeyword)
-	if isKeyword {
-		return f.run(env, call, args)
-	}
-	fType := fn.FuncType()
-	if fType != nil && fType.CompEval {
-		return f.run(env, call, args)
-	}
-	return f.Function.Call(env, call, args)
-}
-
-// RunFunc creates functions such that compeval functions are evaluated
-// while non-compeval functions are simulated.
-func RunFunc(fn ir.Func, recv *engine.Receiver) engine.Func {
-	return &mixFunction{
-		Function: surrogates.NewSurFunc(fn, recv),
-	}
 }

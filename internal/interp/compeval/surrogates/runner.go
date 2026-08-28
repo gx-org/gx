@@ -16,6 +16,7 @@ package surrogates
 
 import (
 	"github.com/gx-org/gx/build/ir"
+	"github.com/gx-org/gx/internal/interp/compeval/surrogates/storepath"
 	"github.com/gx-org/gx/interp/context"
 	"github.com/gx-org/gx/interp/engine"
 )
@@ -43,4 +44,18 @@ func (runner) FuncLit(lit *ir.FuncLit, env *engine.Env, ctx *context.Context, ca
 // Builtin runs a function builtin in GX or provided by a backend.
 func (runner) Builtin(fn ir.Func, impl ir.FuncImpl, env *engine.Env, call *ir.FuncCallExpr, recv engine.Copier, args []ir.Element) ([]ir.Element, error) {
 	return Call(call)
+}
+
+// Call returns surrogate values for all results of a function simulating a function call.
+func Call(call *ir.FuncCallExpr) ([]ir.Element, error) {
+	res := call.Callee.FuncType().Results.Fields()
+	els := make([]ir.Element, len(res))
+	for i, ri := range res {
+		var err error
+		els[i], err = New(storepath.NewUniqueIR(call), ri.Type())
+		if err != nil {
+			return nil, err
+		}
+	}
+	return els, nil
 }

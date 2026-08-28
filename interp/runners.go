@@ -18,6 +18,7 @@ import (
 	"github.com/pkg/errors"
 	"github.com/gx-org/gx/build/fmterr"
 	"github.com/gx-org/gx/build/ir"
+	"github.com/gx-org/gx/interp/elements"
 	"github.com/gx-org/gx/interp/engine"
 )
 
@@ -61,7 +62,7 @@ func (runners) FuncDecl(fn *ir.FuncDecl, env *engine.Env, call *ir.FuncCallExpr,
 		return nil, err
 	}
 	// Evaluate the function within the frame.
-	fitp := toInterp(env.Context(), env.Engine(), env.FuncFactory(), env.Runners())
+	fitp := toInterp(env.Context(), env.Engine(), env.Runners())
 	return evalFuncBody(fitp, fn.Body)
 }
 
@@ -78,7 +79,7 @@ func (runners) Builtin(fn ir.Func, impl ir.FuncImpl, env *engine.Env, call *ir.F
 	if impl == nil {
 		return nil, errors.Errorf("function %s has no implementation", fn.ShortString())
 	}
-	builtin, isBuiltin := impl.Implementation().(FuncBuiltin)
+	builtin, isBuiltin := impl.Implementation().(elements.FuncBuiltin)
 	if !isBuiltin {
 		return nil, errors.Errorf("type %T is not a function builtin implementation", impl)
 	}
