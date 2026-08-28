@@ -1,0 +1,8 @@
+package unroll01
+
+// No runtime test function
+
+//gx:unroll
+func Indices() []int {
+	return []int{1, 2, 3}
+}

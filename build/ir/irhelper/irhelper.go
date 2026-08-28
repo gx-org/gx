@@ -438,9 +438,11 @@ func SetTypeParams(vals ...any) FTypeOption {
 func CompEvalFuncType(params, results *ir.FieldList) *ir.FuncType {
 	return &ir.FuncType{
 		BaseType: ir.BaseType[*ast.FuncType]{Src: &ast.FuncType{}},
-		Params:   params,
-		Results:  results,
-		CompEval: true,
+		Nature: ir.FuncNature{
+			CompEval: true,
+		},
+		Params:  params,
+		Results: results,
 	}
 }
 

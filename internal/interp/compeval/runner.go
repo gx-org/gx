@@ -34,7 +34,7 @@ func Runner() engine.Runners {
 
 // FuncDecl runs a function implemented in GX.
 func (runner) FuncDecl(fDecl *ir.FuncDecl, env *engine.Env, call *ir.FuncCallExpr, recv engine.Copier, args []ir.Element) ([]ir.Element, error) {
-	if fDecl.FuncType().CompEval {
+	if fDecl.FuncType().Nature.CompEval {
 		return interp.Runners().FuncDecl(fDecl, env, call, recv, args)
 	}
 	return surrogates.Call(call)
@@ -52,7 +52,7 @@ func (runner) Builtin(fn ir.Func, impl ir.FuncImpl, env *engine.Env, call *ir.Fu
 		return interp.Runners().Builtin(fn, impl, env, call, recv, args)
 	}
 	fType := fn.FuncType()
-	if fType != nil && fType.CompEval {
+	if fType != nil && fType.Nature.CompEval {
 		return interp.Runners().Builtin(fn, impl, env, call, recv, args)
 	}
 	return surrogates.Call(call)

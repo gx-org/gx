@@ -216,7 +216,7 @@ func buildSyntheticFuncSig(parentScope *fileResolveScope, srcloc ast.Node, astBu
 	}
 	pMacroScope.Err().Push(fmterr.PrefixWith("cannot compile synthetic signature:\n%s\n", src))
 	defer pMacroScope.Err().Pop()
-	ft, ok := processFuncType(pMacroScope.filePScope(), synDecl.Type, synDecl.Recv, false)
+	ft, ok := processFuncType(pMacroScope.filePScope(), synDecl.Type, synDecl.Recv, ir.FuncNature{})
 	if !ok {
 		return nil, nil, false
 	}

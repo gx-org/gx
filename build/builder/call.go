@@ -383,7 +383,7 @@ func instantiateFType(ce *compileEvaluator, fExpr *ir.FuncValExpr, funcFile *ir.
 }
 
 func buildFuncForCall(rscope resolveScope, fExpr *ir.FuncValExpr, args []ir.Expr) ([]ir.Expr, *ir.FuncValExpr, bool) {
-	if rscope.requireCompevalCall() && !fExpr.Func().FuncType().CompEval {
+	if rscope.requireCompevalCall() && !fExpr.Func().FuncType().Nature.CompEval {
 		return args, fExpr, rscope.Err().Appendf(fExpr.Node(), "expect a compeval function, function %s is not", fExpr.Func().ShortString())
 	}
 	compEval, compEvalOk := rscope.compEval()

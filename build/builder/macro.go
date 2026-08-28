@@ -66,7 +66,7 @@ type funcMacro struct {
 }
 
 func (bFile *file) processIRMacroFunc(scope procScope, src *ast.FuncDecl, comment *ast.Comment) (function, bool) {
-	fDecl, declOk := newFuncDecl(scope, src, false)
+	fDecl, declOk := newFuncDecl(scope, src, ir.FuncNature{})
 	fn := &funcMacro{funcMeta{funcDecl: fDecl}}
 	return fn, declOk
 }
@@ -81,7 +81,7 @@ type funcAnnotatorBuilder struct {
 }
 
 func (bFile *file) processAnnotatorFunc(scope procScope, src *ast.FuncDecl, comment *ast.Comment) (function, bool) {
-	fDecl, declOk := newFuncDecl(scope, src, false)
+	fDecl, declOk := newFuncDecl(scope, src, ir.FuncNature{})
 	fn := &funcAnnotatorBuilder{funcMeta{funcDecl: fDecl}}
 	return fn, declOk
 }
@@ -96,7 +96,7 @@ type fieldAnnotatorBuilder struct {
 }
 
 func (bFile *file) processAnnotatorField(scope procScope, src *ast.FuncDecl, comment *ast.Comment) (function, bool) {
-	fDecl, declOk := newFuncDecl(scope, src, false)
+	fDecl, declOk := newFuncDecl(scope, src, ir.FuncNature{})
 	fn := &fieldAnnotatorBuilder{funcMeta{funcDecl: fDecl}}
 	return fn, declOk
 }

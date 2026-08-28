@@ -23,10 +23,19 @@ import (
 )
 
 type (
+	// FuncNature is the nature of a function.
+	FuncNature struct {
+		// CompEval is set to true if the function can be called at compilation time.
+		CompEval bool
+		// Unroll indicates to the compiler to unroll the for-loop iterating over the function.
+		// This forces the function to be used only as an iterator.
+		Unroll bool
+	}
 
 	// FuncType defines a function signature.
 	FuncType struct {
 		BaseType[*ast.FuncType]
+		Nature FuncNature
 		origin *FuncType
 
 		Receiver   *FieldList
@@ -37,9 +46,6 @@ type (
 		VarArgs *VarArgsType
 
 		GenericValues []GenericValue
-
-		// CompEval is set to true if the function can be called at compilation time.
-		CompEval bool
 	}
 )
 

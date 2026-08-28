@@ -465,7 +465,7 @@ func FindTests(pkg *ir.Package, compeval bool) []*ir.FuncDecl {
 		if !ok {
 			continue
 		}
-		if funcDecl.FType.CompEval != compeval {
+		if funcDecl.FType.Nature.CompEval != compeval {
 			continue
 		}
 		funs = append(funs, funcDecl)
