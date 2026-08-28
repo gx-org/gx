@@ -21,7 +21,6 @@ import (
 	"github.com/gx-org/gx/build/fmterr"
 	"github.com/gx-org/gx/build/ir"
 	"github.com/gx-org/gx/internal/interp/compeval"
-	"github.com/gx-org/gx/internal/interp/compeval/cpevelements"
 	"github.com/gx-org/gx/internal/interp/compeval/srcstore"
 	"github.com/gx-org/gx/internal/interp/compeval/surrogates"
 	"github.com/gx-org/gx/interp"
@@ -39,7 +38,7 @@ type Evaluator struct {
 func (b *Builder) EvaluatorFor(pkg *builder.IncrementalPackage, sub map[string]ir.Type) (*Evaluator, error) {
 	importer := builder.New(b.Importers()...)
 	hostEval := compeval.NewHostEvaluator(importer)
-	itp, err := interp.New(hostEval, cpevelements.Runner(), nil)
+	itp, err := interp.New(hostEval, compeval.Runner(), nil)
 	if err != nil {
 		return nil, err
 	}

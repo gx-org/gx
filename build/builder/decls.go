@@ -27,7 +27,7 @@ import (
 	"github.com/gx-org/gx/base/ordered"
 	"github.com/gx-org/gx/build/ir"
 	"github.com/gx-org/gx/internal/base/scope"
-	"github.com/gx-org/gx/internal/interp/compeval/cpevelements"
+	"github.com/gx-org/gx/internal/interp/compeval"
 )
 
 type decls struct {
@@ -162,7 +162,7 @@ func (d *decls) resolveAll(pkgScope *pkgResolveScope) bool {
 		return false
 	}
 	// Build functions and methods.
-	pkgScope.funcRunner = cpevelements.Runner()
+	pkgScope.funcRunner = compeval.Runner()
 	funOk := d.buildFunctions(pkgScope, filterCompEval(false))
 	return funOk && ok
 }
