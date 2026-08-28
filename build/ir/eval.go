@@ -103,7 +103,7 @@ func CompEvalExpr(ev Fetcher, x Expr) (_ []Expr, err error) {
 func CompEvalExprSingle(ev Fetcher, x Expr) (Expr, error) {
 	exprs, err := CompEvalExpr(ev, x)
 	if err != nil {
-		return nil, err
+		return InvalidIdent, err
 	}
 	if len(exprs) != 1 {
 		return InvalidIdent, fmterr.Internal(errors.Errorf("compeval of %s error: got %d expression(s) but want 1", x.SourceString(ev.File()), len(exprs)))

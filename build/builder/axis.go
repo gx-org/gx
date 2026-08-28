@@ -101,7 +101,9 @@ func (dim *exprAxisLength) build(rscope *defineLocalScope) (ir.AxisLengths, bool
 	if xKind != irkind.Int && xKind != irkind.Invalid {
 		return ext, rscope.Err().Appendf(dim.src, "cannot use type %s as axis length: want type int or unpack([]int)", xType.ReferString(rscope.fileScope().irFile()))
 	}
-	return ext, true
+	var ok bool
+	ext.X, ok = rscope.evalAxisExpr(ext.X)
+	return ext, ok
 }
 
 const cannotInferAxisLength = "cannot infer array axis length"

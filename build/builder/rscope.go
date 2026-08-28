@@ -348,7 +348,7 @@ func compEvalForFuncType(rscope compEvalScope, src ast.Node, ftype *ir.FuncType)
 		if field.Name == nil {
 			continue
 		}
-		srVal, err := surrogates.FieldRoot(field)
+		srVal, err := surrogates.FieldRoot(field, field.Storage())
 		if err != nil {
 			return nil, nil, rscope.Err().AppendAt(src, err)
 		}
@@ -403,6 +403,7 @@ type (
 	localScope interface {
 		resolveScope
 		update(s ir.Storage, el ir.Element) bool
+		evalAxisExpr(ir.Expr) (ir.Expr, bool)
 	}
 
 	blockResolveScope struct {
@@ -442,6 +443,22 @@ func (s *blockResolveScope) updateAll(sub map[ir.Storage]ir.Element) bool {
 	return ok
 }
 
+func evalAxisExpr(rscope resolveScope, x ir.Expr) (ir.Expr, bool) {
+	compeval, ok := rscope.compEval()
+	if !ok {
+		return x, false
+	}
+	evalX, err := ir.CompEvalExprSingle(compeval, x)
+	if err != nil {
+		return x, rscope.Err().AppendAt(x.Node(), err)
+	}
+	return evalX, true
+}
+
+func (s *blockResolveScope) evalAxisExpr(x ir.Expr) (ir.Expr, bool) {
+	return evalAxisExpr(s, x)
+}
+
 func (s *blockResolveScope) compEval() (*compileEvaluator, bool) {
 	return s.compeval, true
 }
@@ -477,6 +494,10 @@ func (s *ephemeralResolveScope) compEval() (*compileEvaluator, bool) {
 	return s.ce, true
 }
 
+func (s *ephemeralResolveScope) evalAxisExpr(x ir.Expr) (ir.Expr, bool) {
+	return x, true
+}
+
 func (s *ephemeralResolveScope) String() string {
 	return "ephemeralResolveScope: \n" + s.ce.String()
 }
@@ -505,6 +526,10 @@ func newArrayLitResolveScope(parent resolveScope) *arrayLitResolveScope {
 
 func (s *arrayLitResolveScope) update(store ir.Storage, el ir.Element) bool {
 	return s.Err().Appendf(store.Node(), "cannot define %s in an array literal expression", store.NameDef().Name)
+}
+
+func (s *arrayLitResolveScope) evalAxisExpr(x ir.Expr) (ir.Expr, bool) {
+	return x, true
 }
 
 type (

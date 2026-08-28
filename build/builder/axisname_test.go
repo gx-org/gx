@@ -84,7 +84,7 @@ func TestAxisName01(t *testing.T) {
 						nil,
 						irh.ArrayType(ir.Float32Type(), irh.Axis(irh.UnpackAxes(fieldDims))),
 					)),
-					irh.SetTypeParams(fieldDims),
+					irh.SetTypeParams(ir.NewGenericNonTypeParam(fieldDims)),
 				)),
 		},
 	}
@@ -127,7 +127,7 @@ func f[dims []int]() [unpack(dims)]float32 {
 											ir.Float32Type(),
 											irh.Axis(irh.UnpackAxes(fieldDims)),
 										)),
-										irh.SetTypeParams(fieldDims),
+										irh.SetTypeParams(ir.NewGenericNonTypeParam(fieldDims)),
 									)),
 							},
 						}},

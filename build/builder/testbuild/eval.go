@@ -74,7 +74,7 @@ func (ev *Evaluator) subIR(tpsub map[string]ir.Type) (*Evaluator, error) {
 				Name: name,
 			},
 		}
-		srVal, err := surrogates.FieldRoot(field)
+		srVal, err := surrogates.FieldRoot(field, field.Storage())
 		if err != nil {
 			return ev, err
 		}

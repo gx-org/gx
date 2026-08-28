@@ -38,8 +38,8 @@ type Element interface {
 }
 
 // FieldRoot returns a new surrogates from a root field.
-func FieldRoot(field *ir.Field) (Element, error) {
-	return New(storepath.NewRoot(field), field.Type())
+func FieldRoot(field *ir.Field, storage ir.Storage) (Element, error) {
+	return New(storepath.NewRoot(field, storage), field.Type())
 }
 
 type core struct {

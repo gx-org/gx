@@ -338,7 +338,8 @@ func evalGenericValues(ce *compileEvaluator, ftype *ir.FuncType) (map[string]ir.
 		storage := tParam.Storage()
 		var el ir.Element
 		if ir.IsNonTypeGeneric(tParam.Type()) {
-			surEl, err := surrogates.FieldRoot(tParam)
+			generic := ir.NewGenericNonTypeParam(storage.Field)
+			surEl, err := surrogates.FieldRoot(tParam, generic)
 			if err != nil {
 				ok = ce.Err().AppendAt(tParam.Node(), err)
 			}

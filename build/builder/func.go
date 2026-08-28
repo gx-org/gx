@@ -129,7 +129,7 @@ func defineGenericParam(s localScope, storage *ir.FieldStorage) bool {
 }
 
 func defineFieldForStorage(s localScope, field *ir.Field, storage ir.Storage) bool {
-	el, err := surrogates.FieldRoot(field)
+	el, err := surrogates.FieldRoot(field, storage)
 	ok := true
 	if err != nil {
 		ok = s.Err().AppendAt(storage.Node(), err)

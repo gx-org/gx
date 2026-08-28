@@ -1,0 +1,16 @@
+package recv
+
+// No runtime test function
+
+type Size struct {
+	width, height int
+}
+
+//gx:compeval
+func (s Size) Mul() int {
+	return s.width * s.height
+}
+
+func F[S Size](x [S.width][S.height]int32) [S.Mul()]int32 {
+	return [S.Mul()]int32(x)
+}
