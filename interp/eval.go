@@ -20,6 +20,7 @@ import (
 
 	"github.com/pkg/errors"
 	"github.com/gx-org/backend/dtypes"
+	"github.com/gx-org/backend/shape"
 	"github.com/gx-org/gx/build/fmterr"
 	"github.com/gx-org/gx/build/ir"
 	"github.com/gx-org/gx/build/ir/irkind"
@@ -117,20 +118,8 @@ func evalRangeStmtInteger(fitp *Interpreter, stmt *ir.RangeStmt, xKind irkind.Ki
 	}
 }
 
-func evalRangeStmtForLoopOverArray[T dtypes.AlgebraType](fitp *Interpreter, stmt *ir.RangeStmt, cvt constants.ConverterT[T]) ([]ir.Element, bool, error) {
+func evalRangeStmtForLoopOverArray[T dtypes.AlgebraType](fitp *Interpreter, stmt *ir.RangeStmt, array elements.ArraySlicer, arrayShape *shape.Shape, cvt constants.ConverterT[T]) ([]ir.Element, bool, error) {
 	indexType := ir.TypeFromKind(cvt.Kind)
-	x, err := evalExpr(fitp, stmt.X)
-	if err != nil {
-		return nil, false, err
-	}
-	value, ok := x.(elements.ArraySlicer)
-	if !ok {
-		return nil, false, fmterr.Errorf(fitp.File().FileSet(), stmt.Node(), "cannot range over %T", x)
-	}
-	arrayShape, err := elements.ShapeFromElement(value)
-	if err != nil {
-		return nil, false, fmterr.Error(fitp.File().FileSet(), stmt.Node(), err)
-	}
 	for i := 0; i < arrayShape.AxisLengths[0]; i++ {
 		iElement, err := elementFromInt(fitp, i, indexType)
 		if err != nil {
@@ -142,9 +131,9 @@ func evalRangeStmtForLoopOverArray[T dtypes.AlgebraType](fitp *Interpreter, stmt
 		if stmt.Value != nil {
 			valueExpr := &ir.SliceLitExpr{
 				Src: stmt.Src.X,
-				Typ: value.Type(), // TODO(396633820): compute the correct type (the dtype will be correct but not the shape)
+				Typ: array.Type(), // TODO(396633820): compute the correct type (the dtype will be correct but not the shape)
 			}
-			elementI, err := value.SliceArray(valueExpr, iElement)
+			elementI, err := array.SliceArray(valueExpr, iElement)
 			if err != nil {
 				return nil, false, err
 			}
@@ -169,22 +158,78 @@ func evalRangeStmtForLoopOverArray[T dtypes.AlgebraType](fitp *Interpreter, stmt
 }
 
 func evalRangeStmtArray(fitp *Interpreter, stmt *ir.RangeStmt) ([]ir.Element, bool, error) {
+	x, err := evalExpr(fitp, stmt.X)
+	if err != nil {
+		return nil, false, err
+	}
+	array, err := cast.To[elements.ArraySlicer](x)
+	if err != nil {
+		return nil, false, fmterr.Error(fitp.File().FileSet(), stmt.Node(), err)
+	}
+	arrayShape, err := elements.ShapeFromElement(array)
+	if err != nil {
+		return nil, false, fmterr.Error(fitp.File().FileSet(), stmt.Node(), err)
+	}
 	keyKind := stmt.Key.Type().Kind()
 	switch keyKind {
 	case irkind.Int:
-		return evalRangeStmtForLoopOverArray[int](fitp, stmt, constants.CInt)
+		return evalRangeStmtForLoopOverArray[int](fitp, stmt, array, arrayShape, constants.CInt)
 	default:
-		return nil, true, fmterr.Errorf(fitp.File().FileSet(), stmt.Node(), "cannot range over %s", keyKind.String())
+		return nil, true, fmterr.InternalAt(fitp.File().FileSet(), stmt.Node(), "cannot range over array with index type %s: not supported", keyKind.String())
+	}
+}
+
+func evalRangeStmtForLoopOverSlice[T dtypes.AlgebraType](fitp *Interpreter, stmt *ir.RangeStmt, slice *elements.Slice, cvt constants.ConverterT[T]) ([]ir.Element, bool, error) {
+	indexType := ir.TypeFromKind(cvt.Kind)
+	for i, el := range slice.Elements() {
+		iElement, err := elementFromInt(fitp, i, indexType)
+		if err != nil {
+			return nil, false, err
+		}
+		if err := set(fitp, stmt.Src.Tok, stmt.Key, iElement); err != nil {
+			return nil, false, err
+		}
+		if stmt.Value != nil {
+			if err := set(fitp, stmt.Src.Tok, stmt.Value, el); err != nil {
+				return nil, false, err
+			}
+		}
+		outs, stop, err := evalBlockStmt(fitp, stmt.Body)
+		if stop || err != nil {
+			return outs, stop, err
+		}
+	}
+	return nil, false, nil
+}
+
+func evalRangeStmtSlice(fitp *Interpreter, stmt *ir.RangeStmt) ([]ir.Element, bool, error) {
+	x, err := evalExpr(fitp, stmt.X)
+	if err != nil {
+		return nil, false, err
+	}
+	slice, err := coreiface.Cast[*elements.Slice](x)
+	if err != nil {
+		return nil, false, fmterr.Error(fitp.File().FileSet(), stmt.Node(), err)
+	}
+	keyKind := stmt.Key.Type().Kind()
+	switch keyKind {
+	case irkind.Int:
+		return evalRangeStmtForLoopOverSlice[int](fitp, stmt, slice, constants.CInt)
+	default:
+		return nil, true, fmterr.InternalAt(fitp.File().FileSet(), stmt.Node(), "cannot range over %s", keyKind.String())
 	}
 }
 
 func evalRangeStmt(fitp *Interpreter, stmt *ir.RangeStmt) ([]ir.Element, bool, error) {
 	kind := stmt.X.Type().Kind()
-	if irkind.IsRangeOk(kind) {
+	if irkind.IsInteger(kind) {
 		return evalRangeStmtInteger(fitp, stmt, kind)
 	}
 	if kind == irkind.Array {
 		return evalRangeStmtArray(fitp, stmt)
+	}
+	if kind == irkind.Slice {
+		return evalRangeStmtSlice(fitp, stmt)
 	}
 	return nil, true, errors.Errorf("cannot range over %s", kind.String())
 }

@@ -173,14 +173,6 @@ func IsNumber(knd Kind) bool {
 	return knd == NumberFloat || knd == NumberInt
 }
 
-// IsRangeOk returns true if the kind can be used to iterate in a for loop with a range statement.
-func IsRangeOk(k Kind) bool {
-	if IsInteger(k) {
-		return true
-	}
-	return k == NumberInt
-}
-
 // IsInteger return true if kind is an integer.
 func IsInteger(kind Kind) bool {
 	switch kind {
