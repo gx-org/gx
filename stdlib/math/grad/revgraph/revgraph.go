@@ -24,7 +24,7 @@ import (
 	"github.com/gx-org/gx/base/uname"
 	"github.com/gx-org/gx/build/fmterr"
 	"github.com/gx-org/gx/build/ir"
-	"github.com/gx-org/gx/internal/interp/compeval/cpevelements"
+	"github.com/gx-org/gx/interp/elements"
 	"github.com/gx-org/gx/stdlib/math/grad/setann"
 	"github.com/gx-org/gx/stdlib/math/grad/wrt"
 )
@@ -75,7 +75,7 @@ func (n *node[T]) String() string {
 
 // Graph representing the compute done in a root block.
 type Graph struct {
-	macro  *cpevelements.CoreMacroElement
+	macro  *elements.MacroCall
 	fn     ir.Func
 	unames *uname.Unique
 	root   stmt
@@ -88,7 +88,7 @@ type Graph struct {
 }
 
 // New reverse graph.
-func New(macro *cpevelements.CoreMacroElement, fn ir.Func) (*Graph, error) {
+func New(macro *elements.MacroCall, fn ir.Func) (*Graph, error) {
 	g := &Graph{
 		macro:  macro,
 		unames: uname.New(),

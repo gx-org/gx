@@ -18,12 +18,12 @@ import (
 	"go/ast"
 
 	"github.com/gx-org/gx/build/ir"
-	"github.com/gx-org/gx/internal/interp/compeval/cpevelements"
+	"github.com/gx-org/gx/interp/elements"
 	"github.com/gx-org/gx/interp"
 )
 
 type id struct {
-	cpevelements.CoreMacroElement
+	elements.MacroCall
 	fn *ir.FuncDecl
 }
 
@@ -34,7 +34,7 @@ func newID(file *ir.File, call *ir.FuncCallExpr, mac *ir.Macro, args []ir.Elemen
 	if err != nil {
 		return nil, err
 	}
-	return &id{CoreMacroElement: cpevelements.MacroElement(mac, file, call), fn: fn}, nil
+	return &id{MacroCall: elements.NewMacroCall(mac, file, call), fn: fn}, nil
 }
 
 func (m *id) BuildDecl(ir.PkgFunc) (*ir.File, *ast.FuncDecl, bool) {
@@ -46,7 +46,7 @@ func (m *id) BuildBody(fetcher ir.Fetcher, _ ir.Func) (*ast.BlockStmt, bool) {
 }
 
 type idWithBool struct {
-	cpevelements.CoreMacroElement
+	elements.MacroCall
 	fn *ir.FuncDecl
 }
 
@@ -57,7 +57,7 @@ func newIDWithBool(file *ir.File, call *ir.FuncCallExpr, mac *ir.Macro, args []i
 	if err != nil {
 		return nil, err
 	}
-	return &idWithBool{CoreMacroElement: cpevelements.MacroElement(mac, file, call), fn: fn}, nil
+	return &idWithBool{MacroCall: elements.NewMacroCall(mac, file, call), fn: fn}, nil
 }
 
 func (m *idWithBool) BuildDecl(ir.PkgFunc) (*ir.File, *ast.FuncDecl, bool) {

@@ -25,7 +25,6 @@ import (
 	"github.com/gx-org/gx/build/ir/annotations"
 	"github.com/gx-org/gx/build/ir"
 	irh "github.com/gx-org/gx/build/ir/irhelper"
-	"github.com/gx-org/gx/internal/interp/compeval/cpevelements"
 	"github.com/gx-org/gx/interp/elements"
 	"github.com/gx-org/gx/interp/engine"
 )
@@ -97,7 +96,7 @@ func tagField(fetcher ir.Fetcher, annotator *ir.AnnotatorField, field *ir.FieldG
 }
 
 type macroBuildReturn struct {
-	cpevelements.CoreMacroElement
+	elements.MacroCall
 	tagFn ir.PkgFunc
 }
 
@@ -105,8 +104,8 @@ var _ ir.FuncASTBuilder = (*macroBuildReturn)(nil)
 
 func newBuildReturn(file *ir.File, call *ir.FuncCallExpr, macro *ir.Macro, args []ir.Element) (ir.MacroElement, error) {
 	return &macroBuildReturn{
-		CoreMacroElement: cpevelements.MacroElement(macro, file, call),
-		tagFn:            args[0].(engine.Func).IR().(ir.PkgFunc),
+		MacroCall: elements.NewMacroCall(macro, file, call),
+		tagFn:     args[0].(engine.Func).IR().(ir.PkgFunc),
 	}, nil
 }
 

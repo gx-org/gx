@@ -23,7 +23,6 @@ import (
 	"github.com/gx-org/gx/base/uname"
 	"github.com/gx-org/gx/build/fmterr"
 	"github.com/gx-org/gx/build/ir"
-	"github.com/gx-org/gx/internal/interp/compeval/cpevelements"
 	"github.com/gx-org/gx/interp/elements"
 	"github.com/gx-org/gx/interp"
 	"github.com/gx-org/gx/stdlib/builtin"
@@ -46,7 +45,7 @@ var Package = builtin.PackageBuilder{
 }
 
 type gradMacro struct {
-	cpevelements.CoreMacroElement
+	elements.MacroCall
 	call   elements.CallAt
 	unames *uname.Unique
 
@@ -90,12 +89,12 @@ func FuncGrad(file *ir.File, call *ir.FuncCallExpr, mac *ir.Macro, args []ir.Ele
 		return nil, err
 	}
 	m := &gradMacro{
-		CoreMacroElement: cpevelements.MacroElement(mac, file, call),
-		call:             elements.NewNodeAt(file, call),
-		unames:           uname.New(),
-		wrt:              wrtF,
+		MacroCall: elements.NewMacroCall(mac, file, call),
+		call:      elements.NewNodeAt(file, call),
+		unames:    uname.New(),
+		wrt:       wrtF,
 	}
-	if m.revgraph, err = revgraph.New(&m.CoreMacroElement, fn); err != nil {
+	if m.revgraph, err = revgraph.New(&m.MacroCall, fn); err != nil {
 		return nil, err
 	}
 	m.unames.RegisterFieldNames(fType.Receiver)
@@ -137,7 +136,7 @@ func (m *gradMacro) BuildDecl(fn ir.PkgFunc) (*ir.File, *ast.FuncDecl, bool) {
 }
 
 func (m *gradMacro) BuildBody(fetcher ir.Fetcher, fn ir.Func) (*ast.BlockStmt, bool) {
-	gradPkgFullName := m.CoreMacroElement.From().File().Package.Path()
+	gradPkgFullName := m.MacroCall.From().File().Package.Path()
 	imp := m.call.File().FindImport(gradPkgFullName)
 	y := &ast.Ident{Name: m.unames.Name("y")}
 	resIdent := &ast.Ident{Name: m.unames.Name("res")}

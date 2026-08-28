@@ -21,14 +21,14 @@ import (
 	"github.com/gx-org/gx/api/hostio"
 	"github.com/gx-org/gx/api/values"
 	"github.com/gx-org/gx/build/ir"
-	"github.com/gx-org/gx/internal/interp/compeval/cpevelements"
 	"github.com/gx-org/gx/internal/interp/flatten"
+	"github.com/gx-org/gx/interp/elements"
 	"github.com/gx-org/gx/interp"
 	"github.com/gx-org/gx/stdlib/math/grad/revgraph"
 )
 
 type vjpMacro struct {
-	cpevelements.CoreMacroElement
+	elements.MacroCall
 	graph *revgraph.Graph
 }
 
@@ -45,13 +45,13 @@ func Reverse(file *ir.File, call *ir.FuncCallExpr, macro *ir.Macro, args []ir.El
 		return nil, errors.Errorf("cannot compute the gradient of function %T", fn)
 	}
 	return vjpMacro{
-		CoreMacroElement: cpevelements.MacroElement(macro, file, call),
+		MacroCall: elements.NewMacroCall(macro, file, call),
 	}.newMacro(fnT)
 }
 
 func (m vjpMacro) newMacro(fn ir.PkgFunc) (*vjpMacro, error) {
 	var err error
-	m.graph, err = revgraph.New(&m.CoreMacroElement, fn)
+	m.graph, err = revgraph.New(&m.MacroCall, fn)
 	if err != nil {
 		return nil, err
 	}
