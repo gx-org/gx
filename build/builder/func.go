@@ -20,6 +20,7 @@ import (
 
 	"github.com/gx-org/gx/build/builder/irb"
 	"github.com/gx-org/gx/build/ir"
+	"github.com/gx-org/gx/build/ir/irkind"
 	"github.com/gx-org/gx/internal/interp/compeval/srcstore"
 	"github.com/gx-org/gx/internal/interp/compeval/surrogates"
 )
@@ -145,6 +146,21 @@ func defineField(s localScope, storage *ir.FieldStorage) bool {
 	return defineFieldForStorage(s, storage.Field, storage)
 }
 
+func checkUnrollResultTypes(rscope resolveScope, ftype *ir.FuncType) bool {
+	fields := ftype.Results.Fields()
+	if len(fields) == 0 {
+		return rscope.Err().Appendf(ftype.Node(), "function missing results for unroll")
+	}
+	if len(fields) > 1 {
+		return rscope.Err().Appendf(ftype.Results.Node(), "function got %d results for unroll but expect 1", len(fields))
+	}
+	tp := fields[0].Type()
+	if tp.Kind() != irkind.Slice {
+		return rscope.Err().Appendf(ftype.Results.Node(), "function returns %s (kind %s) for unroll but expect slice", tp.ReferString(rscope.fileScope().irFile()), tp.Kind().String())
+	}
+	return true
+}
+
 func (n *funcType) buildFuncType(rscope resolveScope) (*ir.FuncType, *funcResolveScope, bool) {
 	ext := &ir.FuncType{
 		BaseType: ir.BaseType[*ast.FuncType]{Src: n.src},
@@ -189,6 +205,9 @@ func (n *funcType) buildFuncType(rscope resolveScope) (*ir.FuncType, *funcResolv
 		if !rankInferOk(rscope, field.Type().Node(), field.Type()) {
 			resultsOk = false
 		}
+	}
+	if ext.Nature.Unroll {
+		resultsOk = resultsOk && checkUnrollResultTypes(rscope, ext)
 	}
 	fnscope, fnscopeOk := newFuncScope(rscope, ext)
 	return ext, fnscope, resultsOk && fnscopeOk && tParamsOk

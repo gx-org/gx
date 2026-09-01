@@ -1,0 +1,17 @@
+package noslice
+
+//gx:unroll
+func NotEnoughResult() { // ERROR function missing results for unroll
+}
+
+//gx:unroll
+func TooManyResult() (int, int) { // ERROR function got 2 results for unroll but expect 1
+	return 2, 3
+}
+
+type A struct{}
+
+//gx:unroll
+func WrongKind() A { // ERROR function returns A (kind struct) for unroll but expect slice
+	return A{}
+}
