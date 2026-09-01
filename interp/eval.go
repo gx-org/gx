@@ -55,6 +55,8 @@ func evalStmt(fitp *Interpreter, node ir.Stmt) ([]ir.Element, bool, error) {
 		return nil, false, evalAssignCallStmt(fitp, nodeT)
 	case *ir.AssignExprStmt:
 		return nil, false, evalAssignExprStmt(fitp, nodeT)
+	case *ir.UnrollStmt:
+		return evalRangeStmt(fitp, nodeT.Range)
 	case *ir.RangeStmt:
 		return evalRangeStmt(fitp, nodeT)
 	case *ir.IfStmt:

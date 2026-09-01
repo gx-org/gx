@@ -434,6 +434,19 @@ func SetTypeParams(vals ...any) FTypeOption {
 	return (&typeParamSetter{vals: vals}).set
 }
 
+// UnrollFuncType builds an unroll function type.
+func UnrollFuncType(params, results *ir.FieldList) *ir.FuncType {
+	return &ir.FuncType{
+		BaseType: ir.BaseType[*ast.FuncType]{Src: &ast.FuncType{}},
+		Nature: ir.FuncNature{
+			CompEval: true,
+			Unroll:   true,
+		},
+		Params:  params,
+		Results: results,
+	}
+}
+
 // CompEvalFuncType builds a compeval function type.
 func CompEvalFuncType(params, results *ir.FieldList) *ir.FuncType {
 	return &ir.FuncType{

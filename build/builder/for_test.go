@@ -15,6 +15,7 @@
 package builder_test
 
 import (
+	"go/ast"
 	"testing"
 
 	"github.com/gx-org/gx/build/builder/testbuild"
@@ -73,6 +74,95 @@ func f() int32 {
 											Typ: ir.Int32Type(),
 										},
 									}}}),
+						},
+						&ir.ReturnStmt{Results: []ir.Expr{
+							irh.Ident(xAssign),
+						}},
+					),
+				},
+			},
+		},
+	)
+}
+
+func TestUnrollForLoop(t *testing.T) {
+	xStorage := irh.LocalVar("x", ir.Int32Type())
+	xAssign := &ir.AssignExpr{
+		Storage: xStorage,
+		X: &ir.CastExpr{
+			X:   irh.IntNumberAs(0, ir.Int32Type()),
+			Typ: ir.Int32Type(),
+		},
+	}
+	liStorage := irh.LocalVar("li", ir.Int32Type())
+	sliceType := &ir.SliceType{
+		BaseType: ir.BaseType[ast.Expr]{Src: &ast.ArrayType{}},
+		DType:    ir.TypeExpr(nil, ir.Int32Type()),
+		Rank:     1,
+	}
+	listFunc := &ir.FuncDecl{
+		FType: irh.UnrollFuncType(
+			irh.Fields(),
+			irh.Fields(sliceType),
+		),
+		Body: irh.Block(
+			&ir.ReturnStmt{Results: []ir.Expr{
+				&ir.SliceLitExpr{
+					Typ: sliceType,
+					Elts: []ir.Expr{
+						irh.IntNumberAs(7, ir.Int32Type()),
+						irh.IntNumberAs(8, ir.Int32Type()),
+					},
+				},
+			}},
+		),
+	}
+	testbuild.Run(t,
+		testbuild.Decl{
+			Src: `
+//gx:unroll
+func list() []int32 {
+	return []int32{7, 8}
+}
+
+func f() int32 {
+	x := int32(0)
+	for _, li := range list() {
+		x += li
+	}
+	return x
+}
+`,
+			Want: []ir.IR{
+				listFunc,
+				&ir.FuncDecl{
+					FType: irh.FuncType(
+						nil, nil,
+						irh.Fields(),
+						irh.Fields(ir.Int32Type()),
+					),
+					Body: irh.Block(
+						&ir.AssignExprStmt{List: []*ir.AssignExpr{
+							xAssign,
+						}},
+						&ir.UnrollStmt{
+							Range: &ir.RangeStmt{
+								Key:   irh.LocalVar("_", ir.IntType()),
+								Value: liStorage,
+								X: &ir.FuncCallExpr{
+									Callee: irh.FuncDeclCallee("list", listFunc.FType),
+								},
+								Body: irh.Block(
+									&ir.AssignExprStmt{List: []*ir.AssignExpr{
+										&ir.AssignExpr{
+											Storage: xStorage,
+											X: &ir.BinaryExpr{
+												X:   irh.Ident(xAssign),
+												Y:   irh.Ident(liStorage),
+												Typ: ir.Int32Type(),
+											},
+										}}}),
+							},
 						},
 						&ir.ReturnStmt{Results: []ir.Expr{
 							irh.Ident(xAssign),

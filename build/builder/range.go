@@ -85,6 +85,24 @@ func (n *rangeStmt) buildBodyOverSlicer(rscope resolveScope, x ir.Expr) (ir.Stor
 }
 
 func (n *rangeStmt) buildStmt(parent stmtResolveScope) (ir.Stmt, bool, bool) {
+	stmt, stop, ok := n.buildRangeStmt(parent)
+	if !ok {
+		return stmt, stop, ok
+	}
+	// Check if range calls a function that requires the loop to be unrolled.
+	callExpr, isCall := stmt.X.(*ir.FuncCallExpr)
+	if !isCall {
+		return stmt, stop, ok
+	}
+	if !callExpr.Callee.FuncType().Nature.Unroll {
+		return stmt, stop, ok
+	}
+	return &ir.UnrollStmt{
+		Range: stmt,
+	}, stop, ok
+}
+
+func (n *rangeStmt) buildRangeStmt(parent stmtResolveScope) (*ir.RangeStmt, bool, bool) {
 	ext := &ir.RangeStmt{Src: n.src}
 	rscope, ok := newBlockScope(parent, n)
 	if !ok {

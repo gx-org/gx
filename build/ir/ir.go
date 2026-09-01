@@ -3024,6 +3024,11 @@ type (
 		List []*AssignExpr
 	}
 
+	// UnrollStmt is a range statement in for loops that has been unrolled by the compiler.
+	UnrollStmt struct {
+		Range *RangeStmt
+	}
+
 	// RangeStmt is a range statement in for loops.
 	RangeStmt struct {
 		Src        *ast.RangeStmt
@@ -3152,6 +3157,17 @@ func (*RangeStmt) SourceString(*File) string {
 
 // Node returns the node in the AST tree.
 func (s *RangeStmt) Node() ast.Node { return s.Src }
+
+func (*UnrollStmt) stmtNode() {}
+func (*UnrollStmt) node()     {}
+
+// SourceString returns the GX source code of the expression.
+func (*UnrollStmt) SourceString(*File) string {
+	return "UnrollStmt"
+}
+
+// Node returns the node in the AST tree.
+func (s *UnrollStmt) Node() ast.Node { return s.Range.Src }
 
 func (*IfStmt) stmtNode() {}
 func (*IfStmt) node()     {}

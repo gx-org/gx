@@ -6,3 +6,13 @@ package unroll01
 func Indices() []int {
 	return []int{1, 2, 3}
 }
+
+func TestF() int {
+	sum := 0
+	for _, v := range Indices() {
+		sum += v
+	}
+	return sum
+	// Want:
+	// int(6)
+}
