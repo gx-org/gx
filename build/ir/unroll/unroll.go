@@ -55,6 +55,9 @@ func (urlr *unroller) Substitute(ev ir.Fetcher, id *ir.Ident) (ast.Expr, bool) {
 	if urlr.stmt.Key != nil && urlr.stmt.Key.Same(id.Store()) {
 		return urlr.idx, true
 	}
+	if urlr.stmt.Value != nil && urlr.stmt.Value.Same(id.Store()) {
+		return urlr.elIR.Expr(), true
+	}
 	return id.Src, true
 }
 

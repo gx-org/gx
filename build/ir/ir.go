@@ -40,6 +40,7 @@ import (
 	gxfmt "github.com/gx-org/gx/base/fmt"
 	"github.com/gx-org/gx/build/ir/annotations"
 	"github.com/gx-org/gx/build/ir/irkind"
+	"github.com/gx-org/gx/internal/base/cast"
 )
 
 // ----------------------------------------------------------------------------
@@ -3400,11 +3401,23 @@ func (s *AssignExprStmt) Unroll(ev Fetcher, urlr Unroller) (ast.Stmt, bool) {
 		rhs[i], liOk = li.X.Unroll(ev, urlr)
 		ok = ok && liOk
 	}
-	return &ast.AssignStmt{
+	src := &ast.AssignStmt{
 		Lhs: lhs,
 		Tok: s.Src.Tok,
 		Rhs: rhs,
-	}, ok
+	}
+	if !ok || s.Src.Tok == token.ASSIGN || s.Src.Tok == token.DEFINE {
+		return src, ok
+	}
+	rhsT, err := cast.To[*ast.BinaryExpr](src.Rhs[0])
+	if err != nil {
+		return src, ev.Err().AppendAt(s.Node(), err)
+	}
+	return &ast.AssignStmt{
+		Lhs: lhs,
+		Tok: s.Src.Tok,
+		Rhs: []ast.Expr{rhsT.Y},
+	}, true
 }
 
 // SourceString returns the GX source code of the expression.

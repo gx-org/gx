@@ -95,6 +95,7 @@ func TestUnrollForLoop(t *testing.T) {
 		},
 	}
 	iStorage := irh.LocalVar("i", ir.IntType())
+	vStorage := irh.LocalVar("v", ir.Int32Type())
 	sliceType := &ir.SliceType{
 		BaseType: ir.BaseType[ast.Expr]{Src: &ast.ArrayType{}},
 		DType:    ir.TypeExpr(nil, ir.Int32Type()),
@@ -147,7 +148,7 @@ func f() int32 {
 						}},
 						&ir.UnrollStmt{
 							Range: &ir.RangeStmt{
-								Key: irh.LocalVar("i", ir.IntType()),
+								Key: iStorage,
 								X: &ir.FuncCallExpr{
 									Callee: irh.FuncDeclCallee("list", listFunc.FType),
 								},
@@ -166,10 +167,70 @@ func f() int32 {
 										}}}),
 							},
 							Source: `{
-	x += x + int32(0)
+	x += int32(0)
 }
 {
-	x += x + int32(1)
+	x += int32(1)
+}
+`,
+						},
+						&ir.ReturnStmt{Results: []ir.Expr{
+							irh.Ident(xAssign),
+						}},
+					),
+				},
+			},
+		},
+		testbuild.Decl{
+			Src: `
+//gx:unroll
+func list() []int32 {
+	return []int32{7, 8}
+}
+
+func f() int32 {
+	x := int32(0)
+	for _, v := range list() {
+		x += v
+	}
+	return x
+}
+`,
+			Want: []ir.IR{
+				listFunc,
+				&ir.FuncDecl{
+					FType: irh.FuncType(
+						nil, nil,
+						irh.Fields(),
+						irh.Fields(ir.Int32Type()),
+					),
+					Body: irh.Block(
+						&ir.AssignExprStmt{List: []*ir.AssignExpr{
+							xAssign,
+						}},
+						&ir.UnrollStmt{
+							Range: &ir.RangeStmt{
+								Key:   irh.LocalVar("_", ir.IntType()),
+								Value: vStorage,
+								X: &ir.FuncCallExpr{
+									Callee: irh.FuncDeclCallee("list", listFunc.FType),
+								},
+								Body: irh.Block(
+									&ir.AssignExprStmt{List: []*ir.AssignExpr{
+										&ir.AssignExpr{
+											Storage: xStorage,
+											X: &ir.BinaryExpr{
+												X:   irh.Ident(xAssign),
+												Y:   irh.Ident(vStorage),
+												Typ: ir.Int32Type(),
+											},
+										}}}),
+							},
+							Source: `{
+	x += 7
+}
+{
+	x += 8
 }
 `,
 						},
