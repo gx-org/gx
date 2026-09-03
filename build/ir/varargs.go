@@ -32,6 +32,11 @@ func (*VarArgsType) node()         {}
 func (*VarArgsType) storage()      {}
 func (*VarArgsType) storageValue() {}
 
+// Refer to the type.
+func (tp *VarArgsType) Refer(file *File) ast.Expr {
+	return tp.Src
+}
+
 // Node returns the node in the AST tree.
 func (tp *VarArgsType) Node() ast.Node {
 	return tp.Src

@@ -38,6 +38,11 @@ func (m *BaseType[T]) Node() ast.Node {
 	return m.Src
 }
 
+// Refer to the type.
+func (m *BaseType[T]) Refer(file *File) ast.Expr {
+	return m.Src
+}
+
 // Value returns nil.
 func (BaseType[T]) Value(Expr) Expr {
 	return nil
@@ -124,6 +129,11 @@ func (*invalidType) storage()      {}
 func (*invalidType) storageValue() {}
 
 func (*invalidType) Node() ast.Node { return nil }
+
+// Refer to the type.
+func (*invalidType) Refer(file *File) ast.Expr {
+	return &ast.Ident{Name: "<invalid>"}
+}
 
 func (*invalidType) Same(Storage) bool {
 	return true

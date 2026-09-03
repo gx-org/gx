@@ -100,6 +100,9 @@ type (
 		StringReferer
 		StorageWithValue
 
+		// Expr returns a source expression to refer to the type.
+		Refer(*File) ast.Expr
+
 		// Kind of the type.
 		Kind() irkind.Kind
 
@@ -268,6 +271,11 @@ type Int = int
 
 func (*TupleType) node() {}
 
+// Refer to the function type.
+func (s *TupleType) Refer(file *File) ast.Expr {
+	return s.Src
+}
+
 // Kind returns the scalar kind.
 func (s *TupleType) Kind() irkind.Kind { return irkind.Tuple }
 
@@ -347,6 +355,11 @@ func (s *TupleType) IndexForVarArgs(ErrSource, int) (Type, bool) {
 
 func (*InterfaceType) node() {}
 
+// Refer to the function type.
+func (s *InterfaceType) Refer(file *File) ast.Expr {
+	return s.Src
+}
+
 // Kind returns the interface kind.
 func (s *InterfaceType) Kind() irkind.Kind { return irkind.Interface }
 
@@ -397,6 +410,11 @@ func IsValid(tp Type) bool {
 }
 
 func (*BuiltinType) node() {}
+
+// Refer to the function type.
+func (s *BuiltinType) Refer(file *File) ast.Expr {
+	return s.Src
+}
 
 // Kind returns the scalar kind.
 func (s *BuiltinType) Kind() irkind.Kind { return irkind.Builtin }
@@ -458,6 +476,11 @@ var (
 
 // Kind of the underlying type.
 func (s *NamedType) Kind() irkind.Kind { return s.Underlying.Val().Kind() }
+
+// Refer to the function type.
+func (s *NamedType) Refer(file *File) ast.Expr {
+	return s.Src.Name
+}
 
 // Equal returns true if other is the same type.
 func (s *NamedType) Equal(tpcmp TypeCmp, other Type) (bool, error) {

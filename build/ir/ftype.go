@@ -56,6 +56,11 @@ func (*FuncType) node() {}
 // Kind returns the function kind.
 func (s *FuncType) Kind() irkind.Kind { return irkind.Func }
 
+// Refer to the function type.
+func (s *FuncType) Refer(file *File) ast.Expr {
+	return s.Src
+}
+
 // Equal returns true if other is the same type.
 func (s *FuncType) Equal(tpcmp TypeCmp, other Type) (bool, error) {
 	otherT, ok := other.(*FuncType)

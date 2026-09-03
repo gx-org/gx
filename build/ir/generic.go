@@ -122,6 +122,11 @@ func NewGenericTypeParam(field *Field) *GenericTypeParam {
 	}
 }
 
+// Refer to the function type.
+func (s *GenericTypeParam) Refer(file *File) ast.Expr {
+	return s.field.Name
+}
+
 func (s *GenericTypeParam) typ() Type {
 	return s.field.Type()
 }

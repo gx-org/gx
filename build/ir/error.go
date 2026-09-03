@@ -25,10 +25,10 @@ type errorType struct {
 	iface Interface
 }
 
-var errorIdent = &ast.Ident{Name: "Error"}
+var errorMethodIdent = &ast.Ident{Name: "Error"}
 
 var errorSrc = &ast.Field{
-	Names: []*ast.Ident{errorIdent},
+	Names: []*ast.Ident{errorMethodIdent},
 	Type:  &ast.FuncType{},
 }
 
@@ -76,6 +76,12 @@ func (*errorType) node()         {}
 func (*errorType) storage()      {}
 func (*errorType) storageValue() {}
 
+var errorIdent = &ast.Ident{Name: "error"}
+
+func (s *errorType) Refer(file *File) ast.Expr {
+	return errorIdent
+}
+
 // Kind returns the scalar kind.
 func (s *errorType) Kind() irkind.Kind { return irkind.Interface }
 
@@ -112,7 +118,7 @@ func (s *errorType) Methods() []PkgFunc {
 }
 
 // NameDef of the base type always returns a nil name definition.
-func (s *errorType) NameDef() *ast.Ident { return errorIdent }
+func (s *errorType) NameDef() *ast.Ident { return errorMethodIdent }
 
 // Node returns the source node defining the type.
 func (s *errorType) Node() ast.Node {
