@@ -96,6 +96,28 @@ func (r *Rank) Node() ast.Node { return r.Src }
 // Expr returns the AST expression.
 func (r *Rank) Expr() ast.Expr { return r.Src.Len }
 
+// UnrollRank unrolls the expressions in the rank.
+func (r *Rank) UnrollRank(ev Fetcher, urlr Unroller) (*ast.ArrayType, bool) {
+	if len(r.Ax) == 0 {
+		return nil, true
+	}
+	ok := true
+	first := &ast.ArrayType{}
+	last := first
+	for _, ax := range r.Ax {
+		var axOk bool
+		last.Len, axOk = ax.AsExpr().Unroll(ev, urlr)
+		ok = ok && axOk
+		last = &ast.ArrayType{}
+	}
+	return first, ok
+}
+
+// Unroll the expression.
+func (r *Rank) Unroll(ev Fetcher, urlr Unroller) (ast.Expr, bool) {
+	return r.UnrollRank(ev, urlr)
+}
+
 // Axes returns all axis in the rank.
 func (r *Rank) Axes() []AxisLengths { return r.Ax }
 

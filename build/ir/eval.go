@@ -73,6 +73,11 @@ type (
 		fmterr.ErrAppender
 		Source() ast.Expr
 	}
+
+	// Unroller supports unrolling statements and expressions.
+	Unroller interface {
+		Substitute(ev Fetcher, id *Ident) (ast.Expr, bool)
+	}
 )
 
 // InvalidIdent is used as non-nil invalid expression.

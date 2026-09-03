@@ -222,7 +222,7 @@ func (n *funcType) buildTypeExpr(rscope resolveScope) (*ir.TypeValExpr, bool) {
 	if !ok {
 		return nil, false
 	}
-	return ir.TypeExpr(tp, tp), true
+	return ir.TypeExpr(nil, tp), true
 }
 
 func (n *funcType) String() string {
@@ -260,7 +260,7 @@ func (bFile *file) processFunc(fileScope procScope, src *ast.FuncDecl) bool {
 		fn, ok = bFile.processDeclaredFunc(fileScope, src, ir.FuncNature{
 			CompEval: true,
 		})
-	case unroll:
+	case unrollLoop:
 		fn, ok = bFile.processDeclaredFunc(fileScope, src, ir.FuncNature{
 			CompEval: true,
 			Unroll:   true,
@@ -338,8 +338,7 @@ func (f *funcDecl) buildScopeBody(rscope resolveScope, extF *irFunc) (*funcResol
 		return nil, false
 	}
 	ftype := extF.irFunc.FuncType()
-	call := ir.NewFuncValExpr(ftype, extF.irFunc)
-	ftype, ok := instantiateFType(ce, call, rscope.fileScope().irFile())
+	ftype, ok := instantiateFType(ce, nil, ftype, rscope.fileScope().irFile())
 	if !ok {
 		return nil, false
 	}

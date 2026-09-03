@@ -97,12 +97,22 @@ func (s *specialiser) Source() ast.Expr {
 	return s.fn.Expr()
 }
 
-func (s *specialiser) InstantiateError(err error) bool {
+func (s *specialiser) InstantiateError(sigSrc ast.Node, err error) bool {
+	// sigSrc is the call from the function signature.
+	src := sigSrc
+	if s.fn != nil {
+		// set the location of the error to the call site of the function instead of its signature.
+		src = s.fn.Node()
+	}
 	compileErr, isCompileErr := err.(*ir.CompileError)
 	if !isCompileErr {
-		return s.Err().AppendAt(s.Source(), err)
+		return s.Err().AppendAt(src, err)
 	}
-	return s.Err().Appendf(s.Source(), "in call to %s: %v", s.fn.ShortString(s.File()), compileErr)
+	if s.fn == nil {
+		// The error is from the function signature.
+		return s.Err().AppendAt(src, err)
+	}
+	return s.Err().Appendf(src, "in call to %s: %v", s.fn.ShortString(s.File()), compileErr)
 }
 
 func (s *specialiser) String() string {
@@ -149,8 +159,9 @@ func SpecialiseParams(fetcher ir.Fetcher, expr ir.Expr, fun *ir.FuncValExpr, typ
 }
 
 // Instantiate specialises the result of a function.
-func Instantiate(fetcher ir.Fetcher, fun *ir.FuncValExpr, typArgs []ir.GenericValue) (*ir.FuncType, bool) {
-	ftype := fun.FuncType()
+// fun can be nil when the type is instantiated for its definition.
+func Instantiate(fetcher ir.Fetcher, fun *ir.FuncValExpr, ftype *ir.FuncType) (*ir.FuncType, bool) {
+	typArgs := ftype.GenericValues
 	spec := newSpecialiser(fetcher, fun, ftype, typArgs)
 	instantiateFType, ok := ftype.InstantiateFType(fetcher, spec)
 	checkTypeParams(instantiateFType, instantiateFType.GenericValues)

@@ -88,3 +88,12 @@ func (n *NilCastExpr) Expr() ast.Expr {
 func (n *NilCastExpr) Type() Type {
 	return n.Typ
 }
+
+// Unroll the expression.
+func (n *NilCastExpr) Unroll(ev Fetcher, urlr Unroller) (ast.Expr, bool) {
+	x, ok := n.X.Unroll(ev, urlr)
+	return &ast.CallExpr{
+		Fun:  n.Typ.Refer(ev.File()),
+		Args: []ast.Expr{x},
+	}, ok
+}

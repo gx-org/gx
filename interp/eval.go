@@ -550,6 +550,17 @@ func evalSliceLiteral(fitp *Interpreter, expr *ir.SliceLitExpr) (ir.Element, err
 	return elements.NewSlice(expr.Type(), els)
 }
 
+func evalAxis(fitp *Interpreter, ax ir.AxisLengths) (_ ir.Element, err error) {
+	switch axT := ax.(type) {
+	case *ir.AxisExpr:
+		return evalExpr(fitp, axT.X)
+	case *ir.AxisInfer:
+		return evalExpr(fitp, axT.X.AsExpr())
+	default:
+		return nil, fmterr.Errorf(fitp.File().FileSet(), ax.Node(), "cannot evaluate GX axis expression: %T not supported", ax)
+	}
+}
+
 // evalExpr evaluates an expression within the Context.
 func evalExpr(fitp *Interpreter, expr ir.Expr) (_ ir.Element, err error) {
 	if expr == nil {
@@ -558,10 +569,6 @@ func evalExpr(fitp *Interpreter, expr ir.Expr) (_ ir.Element, err error) {
 	switch exprT := expr.(type) {
 	case *ir.ArrayLitExpr:
 		return evalArrayLiteral(fitp, exprT)
-	case *ir.AxisExpr:
-		return evalExpr(fitp, exprT.X)
-	case *ir.AxisInfer:
-		return evalExpr(fitp, exprT.X.AsExpr())
 	case *ir.NilCastExpr:
 		return elements.NewNil(exprT), nil
 	case *ir.NumberCastExpr:

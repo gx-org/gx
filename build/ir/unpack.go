@@ -69,6 +69,17 @@ func (u *UnpackExpr) Specialise(spec Specialiser) (Expr, bool) {
 	return &r, ok
 }
 
+var unpackIdent = &ast.Ident{Name: "unpack"}
+
+// Unroll the expression.
+func (u *UnpackExpr) Unroll(ev Fetcher, urlr Unroller) (ast.Expr, bool) {
+	x, ok := u.X.Unroll(ev, urlr)
+	return &ast.CallExpr{
+		Fun:  unpackIdent,
+		Args: []ast.Expr{x},
+	}, ok
+}
+
 // Unpack the underlying expressions into a tuple of expressions if supported.
 func (u *UnpackExpr) Unpack() Node {
 	unpacker, isUnpacker := u.X.(ExprUnpacker)

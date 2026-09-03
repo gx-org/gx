@@ -36,6 +36,21 @@ func (s *SliceLitExpr) node() {}
 // Node returns the node in the AST tree.
 func (s *SliceLitExpr) Node() ast.Node { return s.Src }
 
+// Unroll the expression.
+func (s *SliceLitExpr) Unroll(ev Fetcher, urlr Unroller) (ast.Expr, bool) {
+	elts := make([]ast.Expr, len(s.Elts))
+	ok := true
+	for i, elt := range s.Elts {
+		var eltOk bool
+		elts[i], eltOk = elt.Unroll(ev, urlr)
+		ok = ok && eltOk
+	}
+	return &ast.CompositeLit{
+		Type: s.Typ.Refer(ev.File()),
+		Elts: elts,
+	}, ok
+}
+
 // Type returns the type returned by the function call.
 func (s *SliceLitExpr) Type() Type { return s.Typ }
 
@@ -66,12 +81,27 @@ type SliceExpr struct {
 	High Expr
 }
 
-var _ Expr = (*SliceLitExpr)(nil)
+var (
+	_ Expr = (*SliceExpr)(nil)
+	_ Expr = (*SliceLitExpr)(nil)
+)
 
 func (s *SliceExpr) node() {}
 
 // Node returns the node in the AST tree.
 func (s *SliceExpr) Node() ast.Node { return s.Src }
+
+// Unroll the expression.
+func (s *SliceExpr) Unroll(ev Fetcher, urlr Unroller) (ast.Expr, bool) {
+	x, xOk := s.X.Unroll(ev, urlr)
+	low, lowOk := s.Low.Unroll(ev, urlr)
+	high, highOk := s.High.Unroll(ev, urlr)
+	return &ast.SliceExpr{
+		X:    x,
+		Low:  low,
+		High: high,
+	}, xOk && lowOk && highOk
+}
 
 // Type returns the type returned by the function call.
 func (s *SliceExpr) Type() Type { return s.X.Type() }

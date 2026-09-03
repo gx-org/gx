@@ -15,10 +15,15 @@
 package builder
 
 import (
+	"fmt"
 	"go/ast"
+	"go/format"
+	"go/token"
+	"strings"
 
 	"github.com/gx-org/gx/build/ir"
 	"github.com/gx-org/gx/build/ir/irkind"
+	"github.com/gx-org/gx/build/ir/unroll"
 )
 
 type rangeStmt struct {
@@ -84,8 +89,8 @@ func (n *rangeStmt) buildBodyOverSlicer(rscope resolveScope, x ir.Expr) (ir.Stor
 	return key, value, keyOk && valueOk
 }
 
-func (n *rangeStmt) buildStmt(parent stmtResolveScope) (ir.Stmt, bool, bool) {
-	stmt, stop, ok := n.buildRangeStmt(parent)
+func (n *rangeStmt) buildStmt(rscope stmtResolveScope) (ir.Stmt, bool, bool) {
+	stmt, stop, ok := n.buildRangeStmt(rscope)
 	if !ok {
 		return stmt, stop, ok
 	}
@@ -97,9 +102,27 @@ func (n *rangeStmt) buildStmt(parent stmtResolveScope) (ir.Stmt, bool, bool) {
 	if !callExpr.Callee.FuncType().Nature.Unroll {
 		return stmt, stop, ok
 	}
-	return &ir.UnrollStmt{
+	compEval, ok := rscope.compEval()
+	if !ok {
+		return stmt, stop, ok
+	}
+	ext := &ir.UnrollStmt{
 		Range: stmt,
-	}, stop, ok
+	}
+	bodiesSrc, ok := unroll.Unroll(compEval, stmt, callExpr)
+	if !ok {
+		return ext, stop, ok
+	}
+	fset := token.NewFileSet()
+	w := &strings.Builder{}
+	for _, body := range bodiesSrc {
+		if err := format.Node(w, fset, body); err != nil {
+			return ext, stop, rscope.Err().AppendAt(ext.Node(), err)
+		}
+		fmt.Fprintln(w)
+	}
+	ext.Source = w.String()
+	return ext, stop, ok
 }
 
 func (n *rangeStmt) buildRangeStmt(parent stmtResolveScope) (*ir.RangeStmt, bool, bool) {

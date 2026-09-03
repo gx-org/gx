@@ -30,7 +30,7 @@ type (
 		NonTypeFor(GenericParam) *NonTypeGenericValue
 		TypeFor(GenericParam) *TypeGenericValue
 		Values() []GenericValue
-		InstantiateError(error) bool
+		InstantiateError(ast.Node, error) bool
 	}
 
 	// Unifier provides methods to unify types.

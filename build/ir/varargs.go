@@ -132,6 +132,11 @@ func (expr *VarArgsExpr) Node() ast.Node {
 	return expr.Elt.Node()
 }
 
+// Unroll the expression.
+func (expr *VarArgsExpr) Unroll(ev Fetcher, urlr Unroller) (ast.Expr, bool) {
+	return nil, ev.Err().Appendf(expr.Node(), "cannot unroll %T", expr)
+}
+
 // Expr returns the source of the expression.
 func (expr *VarArgsExpr) Expr() ast.Expr {
 	return expr.Elt.Src
@@ -195,6 +200,11 @@ func (s *VarArgsIndex) Specialise(spec Specialiser) (Expr, bool) {
 	var ok bool
 	r.X, ok = specialiseExpr(spec, s.X)
 	return &r, ok
+}
+
+// Unroll the expression.
+func (s *VarArgsIndex) Unroll(ev Fetcher, urlr Unroller) (ast.Expr, bool) {
+	return nil, ev.Err().Appendf(s.Node(), "cannot unroll %T", s)
 }
 
 // UnifyWith recursively unifies a type parameters with types.

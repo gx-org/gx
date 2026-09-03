@@ -94,7 +94,7 @@ func TestUnrollForLoop(t *testing.T) {
 			Typ: ir.Int32Type(),
 		},
 	}
-	liStorage := irh.LocalVar("li", ir.Int32Type())
+	iStorage := irh.LocalVar("i", ir.IntType())
 	sliceType := &ir.SliceType{
 		BaseType: ir.BaseType[ast.Expr]{Src: &ast.ArrayType{}},
 		DType:    ir.TypeExpr(nil, ir.Int32Type()),
@@ -127,8 +127,8 @@ func list() []int32 {
 
 func f() int32 {
 	x := int32(0)
-	for _, li := range list() {
-		x += li
+	for i := range list() {
+		x += int32(i)
 	}
 	return x
 }
@@ -147,8 +147,7 @@ func f() int32 {
 						}},
 						&ir.UnrollStmt{
 							Range: &ir.RangeStmt{
-								Key:   irh.LocalVar("_", ir.IntType()),
-								Value: liStorage,
+								Key: irh.LocalVar("i", ir.IntType()),
 								X: &ir.FuncCallExpr{
 									Callee: irh.FuncDeclCallee("list", listFunc.FType),
 								},
@@ -157,12 +156,22 @@ func f() int32 {
 										&ir.AssignExpr{
 											Storage: xStorage,
 											X: &ir.BinaryExpr{
-												X:   irh.Ident(xAssign),
-												Y:   irh.Ident(liStorage),
+												X: irh.Ident(xAssign),
+												Y: &ir.CastExpr{
+													X:   irh.Ident(iStorage),
+													Typ: ir.Int32Type(),
+												},
 												Typ: ir.Int32Type(),
 											},
 										}}}),
 							},
+							Source: `{
+	x += x + int32(0)
+}
+{
+	x += x + int32(1)
+}
+`,
 						},
 						&ir.ReturnStmt{Results: []ir.Expr{
 							irh.Ident(xAssign),

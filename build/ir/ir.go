@@ -100,7 +100,7 @@ type (
 		StringReferer
 		StorageWithValue
 
-		// Expr returns a source expression to refer to the type.
+		// Refer returns a source expression to refer to the type.
 		Refer(*File) ast.Expr
 
 		// Kind of the type.
@@ -1595,6 +1595,15 @@ func (s *FuncLit) Store() Storage {
 	return s
 }
 
+// Unroll the expression.
+func (s *FuncLit) Unroll(ev Fetcher, urlr Unroller) (ast.Expr, bool) {
+	body, ok := s.Body.UnrollBlock(ev, urlr)
+	return &ast.FuncLit{
+		Type: s.FType.Src,
+		Body: body,
+	}, ok
+}
+
 // NameDef returns nil because function literals are anonymous.
 func (s *FuncLit) NameDef() *ast.Ident {
 	return nil
@@ -1961,6 +1970,8 @@ type (
 	Expr interface {
 		Node
 		StringSourcer
+		// Unroll the expression.
+		Unroll(Fetcher, Unroller) (ast.Expr, bool)
 		// Expr returns the syntax tree of the expression.
 		Expr() ast.Expr
 		// Type of the expression.
@@ -2194,6 +2205,11 @@ func (s *NumberFloat) numberExpr() {}
 // Expr returns the expression AST.
 func (s *NumberFloat) Expr() ast.Expr { return s.Src }
 
+// Unroll the expression.
+func (s *NumberFloat) Unroll(ev Fetcher, urlr Unroller) (ast.Expr, bool) {
+	return s.Expr(), true
+}
+
 // Zero returns a zero float number.
 func (s *NumberFloat) Zero() Expr {
 	return zeroFloat
@@ -2227,6 +2243,11 @@ func (s *NumberInt) Zero() Expr {
 	return zero
 }
 
+// Unroll the expression.
+func (s *NumberInt) Unroll(ev Fetcher, urlr Unroller) (ast.Expr, bool) {
+	return s.Expr(), true
+}
+
 // Node returns the node in the AST tree.
 func (s *NumberInt) Node() ast.Node { return s.Src }
 
@@ -2253,6 +2274,11 @@ func (s *NumberCastExpr) Node() ast.Node { return s.X.Node() }
 // Expr returns the expression AST.
 func (s *NumberCastExpr) Expr() ast.Expr { return s.X.Expr() }
 
+// Unroll the expression.
+func (s *NumberCastExpr) Unroll(ev Fetcher, urlr Unroller) (ast.Expr, bool) {
+	return s.Expr(), true
+}
+
 // Type returns the type returned by the function call.
 func (s *NumberCastExpr) Type() Type { return s.Typ }
 
@@ -2271,6 +2297,11 @@ func (s *StringLiteral) staticValue() {}
 
 // Expr returns the AST expression.
 func (s *StringLiteral) Expr() ast.Expr { return s.Src }
+
+// Unroll the expression.
+func (s *StringLiteral) Unroll(ev Fetcher, urlr Unroller) (ast.Expr, bool) {
+	return s.Expr(), true
+}
 
 // Node returns the node in the AST tree.
 func (s *StringLiteral) Node() ast.Node { return s.Src }
@@ -2295,6 +2326,21 @@ func (s *ArrayLitExpr) Type() Type { return s.Typ }
 
 // Expr returns the AST expression.
 func (s *ArrayLitExpr) Expr() ast.Expr { return s.Src }
+
+// Unroll the expression.
+func (s *ArrayLitExpr) Unroll(ev Fetcher, urlr Unroller) (ast.Expr, bool) {
+	elts := make([]ast.Expr, len(s.Elts))
+	ok := true
+	for i, elt := range s.Elts {
+		var eltOk bool
+		elts[i], eltOk = elt.Unroll(ev, urlr)
+		ok = ok && eltOk
+	}
+	return &ast.CompositeLit{
+		Type: s.Typ.Refer(ev.File()),
+		Elts: elts,
+	}, ok
+}
 
 // Values returns the expressions defining the values of the array.
 func (s *ArrayLitExpr) Values() []Expr { return s.Elts }
@@ -2323,6 +2369,21 @@ func (s *StructLitExpr) Type() Type { return s.Typ }
 // Expr returns the AST expression.
 func (s *StructLitExpr) Expr() ast.Expr { return s.Src }
 
+// Unroll the expression.
+func (s *StructLitExpr) Unroll(ev Fetcher, urlr Unroller) (ast.Expr, bool) {
+	elts := make([]ast.Expr, len(s.Elts))
+	ok := true
+	for i, elt := range s.Elts {
+		var eltOk bool
+		elts[i], eltOk = elt.Unroll(ev, urlr)
+		ok = ok && eltOk
+	}
+	return &ast.CompositeLit{
+		Type: s.Typ.Refer(ev.File()),
+		Elts: elts,
+	}, ok
+}
+
 // SourceString returns the GX source code of the node.
 func (s *StructLitExpr) SourceString(from *File) string {
 	if len(s.Elts) == 0 {
@@ -2346,6 +2407,12 @@ func (s *UnaryExpr) Node() ast.Node { return s.Src }
 // Type returns the type returned by the expression.
 func (s *UnaryExpr) Type() Type { return s.X.Type() }
 
+// Unroll the expression.
+func (s *UnaryExpr) Unroll(ev Fetcher, urlr Unroller) (ast.Expr, bool) {
+	x, ok := s.X.Unroll(ev, urlr)
+	return &ast.UnaryExpr{Op: s.Src.Op, X: x}, ok
+}
+
 // Expr returns the expression in the source code.
 func (s *UnaryExpr) Expr() ast.Expr { return s.Src }
 
@@ -2364,6 +2431,12 @@ func (s *ParenExpr) Type() Type { return s.X.Type() }
 
 // Expr returns the expression in the source code.
 func (s *ParenExpr) Expr() ast.Expr { return s.Src }
+
+// Unroll the expression.
+func (s *ParenExpr) Unroll(ev Fetcher, urlr Unroller) (ast.Expr, bool) {
+	x, ok := s.X.Unroll(ev, urlr)
+	return &ast.ParenExpr{X: x}, ok
+}
 
 // Store returns the storage referenced by this expression.
 func (s *ParenExpr) Store() Storage {
@@ -2389,6 +2462,13 @@ func (s *BinaryExpr) Type() Type { return s.Typ }
 
 // Expr returns the expression in the source code.
 func (s *BinaryExpr) Expr() ast.Expr { return s.Src }
+
+// Unroll the expression.
+func (s *BinaryExpr) Unroll(ev Fetcher, urlr Unroller) (ast.Expr, bool) {
+	x, xOk := s.X.Unroll(ev, urlr)
+	y, yOk := s.Y.Unroll(ev, urlr)
+	return &ast.BinaryExpr{Op: s.Src.Op, X: x, Y: y}, xOk && yOk
+}
 
 func (s *BinaryExpr) binaryElementString(from *File, x Expr) string {
 	bx, isXBinary := x.(*BinaryExpr)
@@ -2428,6 +2508,11 @@ func (s *TypeValExpr) Node() ast.Node { return s.Expr() }
 
 // Expr returns the AST expression.
 func (s *TypeValExpr) Expr() ast.Expr { return s.x.Expr() }
+
+// Unroll the expression.
+func (s *TypeValExpr) Unroll(ev Fetcher, urlr Unroller) (ast.Expr, bool) {
+	return s.val.Refer(ev.File()), true
+}
 
 // Type of the function being called.
 func (s *TypeValExpr) Type() Type {
@@ -2517,6 +2602,11 @@ func (s *FuncValExpr) Type() Type {
 	return s.t
 }
 
+// Unroll the expression.
+func (s *FuncValExpr) Unroll(ev Fetcher, urlr Unroller) (ast.Expr, bool) {
+	return s.x.Unroll(ev, urlr)
+}
+
 // SourceString representation.
 func (s *FuncValExpr) SourceString(from *File) string {
 	callee := s.x.SourceString(from)
@@ -2544,6 +2634,21 @@ func (s *FuncCallExpr) Node() ast.Node { return s.Call() }
 
 // Call returns the source of the call.
 func (s *FuncCallExpr) Call() *ast.CallExpr { return s.Src }
+
+// Unroll the expression.
+func (s *FuncCallExpr) Unroll(ev Fetcher, urlr Unroller) (ast.Expr, bool) {
+	fun, ok := s.Callee.Unroll(ev, urlr)
+	args := make([]ast.Expr, len(s.Args))
+	for i, arg := range s.Args {
+		var argOk bool
+		args[i], argOk = arg.Unroll(ev, urlr)
+		ok = ok && argOk
+	}
+	return &ast.CallExpr{
+		Fun:  fun,
+		Args: args,
+	}, ok
+}
 
 // Type returns the type returned by the function call.
 // Use CallExpr.Func.Type to get the type of the function being called.
@@ -2597,6 +2702,11 @@ func (s *CallResultExpr) Type() Type {
 // Expr returns the expression in the source code.
 func (s *CallResultExpr) Expr() ast.Expr { return s.Call.Expr() }
 
+// Unroll the expression.
+func (s *CallResultExpr) Unroll(ev Fetcher, urlr Unroller) (ast.Expr, bool) {
+	return s.Call.Unroll(ev, urlr)
+}
+
 // SourceString returns the GX source code of the node.
 func (s *CallResultExpr) SourceString(*File) string {
 	return fmt.Sprintf("%T", s)
@@ -2612,6 +2722,15 @@ func (s *CastExpr) Type() Type { return s.Typ }
 
 // Expr returns the expression in the source code.
 func (s *CastExpr) Expr() ast.Expr { return s.Src }
+
+// Unroll the expression.
+func (s *CastExpr) Unroll(ev Fetcher, urlr Unroller) (ast.Expr, bool) {
+	x, xOk := s.X.Unroll(ev, urlr)
+	return &ast.CallExpr{
+		Fun:  s.Typ.Refer(ev.File()),
+		Args: []ast.Expr{x},
+	}, xOk
+}
 
 // Orig returns the expression being casted.
 func (s *CastExpr) Orig() Expr { return s.X }
@@ -2639,6 +2758,15 @@ func (s *TypeAssertExpr) Type() Type { return s.Typ }
 // Expr returns the expression in the source code.
 func (s *TypeAssertExpr) Expr() ast.Expr { return s.Src }
 
+// Unroll the expression.
+func (s *TypeAssertExpr) Unroll(ev Fetcher, urlr Unroller) (ast.Expr, bool) {
+	x, xOk := s.X.Unroll(ev, urlr)
+	return &ast.TypeAssertExpr{
+		Type: s.Typ.Refer(ev.File()),
+		X:    x,
+	}, xOk
+}
+
 // Orig returns the expression being casted.
 func (s *TypeAssertExpr) Orig() Expr { return s.X }
 
@@ -2659,6 +2787,11 @@ func NewIdent(s Storage) *Ident {
 
 // Node returns the node in the AST tree.
 func (s *Ident) Node() ast.Node { return s.Src }
+
+// Unroll the expression.
+func (s *Ident) Unroll(ev Fetcher, urlr Unroller) (ast.Expr, bool) {
+	return urlr.Substitute(ev, s)
+}
 
 // Specialise the identifier.
 func (s *Ident) Specialise(spec Specialiser) (Expr, bool) {
@@ -2725,6 +2858,11 @@ func (s *PackageRef) Node() ast.Node { return s.Expr() }
 // Expr returns the AST expression.
 func (s *PackageRef) Expr() ast.Expr { return s.X.Expr() }
 
+// Unroll the expression.
+func (s *PackageRef) Unroll(ev Fetcher, urlr Unroller) (ast.Expr, bool) {
+	return s.X.Src, true
+}
+
 // Type returns the package type.
 func (s *PackageRef) Type() Type { return PackageType() }
 
@@ -2746,10 +2884,28 @@ func (lit *FieldLit) Same(o Storage) bool {
 	return Storage(lit) == o
 }
 
+// Unroll the expression.
+func (lit *FieldLit) Unroll(ev Fetcher, urlr Unroller) (ast.Expr, bool) {
+	x, ok := lit.X.Unroll(ev, urlr)
+	return &ast.KeyValueExpr{
+		Key:   lit.NameDef(),
+		Value: x,
+	}, ok
+}
+
 func (s *SelectorExpr) node() {}
 
 // Node returns the node in the AST tree.
 func (s *SelectorExpr) Node() ast.Node { return s.Src }
+
+// Unroll the expression.
+func (s *SelectorExpr) Unroll(ev Fetcher, urlr Unroller) (ast.Expr, bool) {
+	x, ok := s.X.Unroll(ev, urlr)
+	return &ast.SelectorExpr{
+		X:   x,
+		Sel: s.Src.Sel,
+	}, ok
+}
 
 // Type returns the type returned after the selection.
 func (s *SelectorExpr) Type() Type { return s.Stor.Type() }
@@ -2796,6 +2952,16 @@ func (s *IndexExpr) Type() Type { return s.Typ }
 // Expr returns the AST expression.
 func (s *IndexExpr) Expr() ast.Expr { return s.Src }
 
+// Unroll the expression.
+func (s *IndexExpr) Unroll(ev Fetcher, urlr Unroller) (ast.Expr, bool) {
+	x, xOk := s.X.Unroll(ev, urlr)
+	idx, idxOk := s.Index.Unroll(ev, urlr)
+	return &ast.IndexExpr{
+		X:     x,
+		Index: idx,
+	}, xOk && idxOk
+}
+
 // Store returns a storage for the expression.
 func (s *IndexExpr) Store() Storage {
 	return &AnonymousStorage{
@@ -2819,6 +2985,16 @@ func (s *IndexListExpr) Type() Type { return s.Typ }
 // Expr returns the AST expression.
 func (s *IndexListExpr) Expr() ast.Expr { return s.Src }
 
+// Unroll the expression.
+func (s *IndexListExpr) Unroll(ev Fetcher, urlr Unroller) (ast.Expr, bool) {
+	x, xOk := s.X.Unroll(ev, urlr)
+	idx, idxOk := s.Indices.Unroll(ev, urlr)
+	return &ast.IndexListExpr{
+		X:       x,
+		Indices: []ast.Expr{idx},
+	}, xOk && idxOk
+}
+
 // SourceString returns the GX source code of the expression.
 func (s *IndexListExpr) SourceString(*File) string {
 	return fmt.Sprintf("%T", s)
@@ -2834,6 +3010,11 @@ func (s *EinsumExpr) Type() Type { return s.Typ }
 
 // Expr returns the expression in the source code.
 func (s *EinsumExpr) Expr() ast.Expr { return s.Src }
+
+// Unroll the expression.
+func (s *EinsumExpr) Unroll(ev Fetcher, urlr Unroller) (ast.Expr, bool) {
+	return s.Src, ev.Err().Appendf(s.Node(), "cannot unroll einsum statement")
+}
 
 // SourceString returns the GX source code of the expression.
 func (s *EinsumExpr) SourceString(*File) string {
@@ -3006,6 +3187,9 @@ type (
 
 		// stmtNode marks a structure as a statement structure.
 		stmtNode()
+
+		// Unroll the statement.
+		Unroll(Fetcher, Unroller) (ast.Stmt, bool)
 	}
 
 	// ReturnStmt is a return statement in a function.
@@ -3049,7 +3233,8 @@ type (
 
 	// UnrollStmt is a range statement in for loops that has been unrolled by the compiler.
 	UnrollStmt struct {
-		Range *RangeStmt
+		Range  *RangeStmt
+		Source string
 	}
 
 	// RangeStmt is a range statement in for loops.
@@ -3102,6 +3287,25 @@ func (*BlockStmt) node()     {}
 // Node returns the node in the AST tree.
 func (s *BlockStmt) Node() ast.Node { return s.Src }
 
+// Unroll the statement.
+func (s *BlockStmt) Unroll(ev Fetcher, urlr Unroller) (ast.Stmt, bool) {
+	return s.UnrollBlock(ev, urlr)
+}
+
+// UnrollBlock unrolls a block statement.
+func (s *BlockStmt) UnrollBlock(ev Fetcher, urlr Unroller) (*ast.BlockStmt, bool) {
+	list := make([]ast.Stmt, len(s.List))
+	ok := true
+	for i, stmt := range s.List {
+		var stmtOk bool
+		list[i], stmtOk = stmt.Unroll(ev, urlr)
+		ok = ok && stmtOk
+	}
+	return &ast.BlockStmt{
+		List: list,
+	}, ok
+}
+
 // SourceString returns the GX source code of the block.
 func (s *BlockStmt) SourceString(from *File) string {
 	stmts := make([]string, len(s.List))
@@ -3116,6 +3320,18 @@ func (*ReturnStmt) node()     {}
 
 // Node returns the node in the AST tree.
 func (s *ReturnStmt) Node() ast.Node { return s.Src }
+
+// Unroll the statement.
+func (s *ReturnStmt) Unroll(ev Fetcher, urlr Unroller) (ast.Stmt, bool) {
+	results := make([]ast.Expr, len(s.Results))
+	ok := true
+	for i, x := range s.Results {
+		var xOk bool
+		results[i], xOk = x.Unroll(ev, urlr)
+		ok = ok && xOk
+	}
+	return &ast.ReturnStmt{Results: results}, ok
+}
 
 // Type of the result being returned.
 func (s *ReturnStmt) Type() Type {
@@ -3153,11 +3369,43 @@ func (s *AssignCallStmt) SourceString(from *File) string {
 // Node returns the node in the AST tree.
 func (s *AssignCallStmt) Node() ast.Node { return s.Src }
 
+// Unroll the statement.
+func (s *AssignCallStmt) Unroll(ev Fetcher, urlr Unroller) (ast.Stmt, bool) {
+	rhs, ok := s.Call.Unroll(ev, urlr)
+	lhs := make([]ast.Expr, len(s.List))
+	for i, li := range s.List {
+		lhs[i] = li.NameDef()
+	}
+	return &ast.AssignStmt{
+		Lhs: lhs,
+		Tok: s.Src.Tok,
+		Rhs: []ast.Expr{rhs},
+	}, ok
+}
+
 func (*AssignExprStmt) stmtNode() {}
 func (*AssignExprStmt) node()     {}
 
 // Node returns the node in the AST tree.
 func (s *AssignExprStmt) Node() ast.Node { return s.Src }
+
+// Unroll the statement.
+func (s *AssignExprStmt) Unroll(ev Fetcher, urlr Unroller) (ast.Stmt, bool) {
+	lhs := make([]ast.Expr, len(s.List))
+	rhs := make([]ast.Expr, len(s.List))
+	ok := true
+	for i, li := range s.List {
+		lhs[i] = li.NameDef()
+		var liOk bool
+		rhs[i], liOk = li.X.Unroll(ev, urlr)
+		ok = ok && liOk
+	}
+	return &ast.AssignStmt{
+		Lhs: lhs,
+		Tok: s.Src.Tok,
+		Rhs: rhs,
+	}, ok
+}
 
 // SourceString returns the GX source code of the expression.
 func (s *AssignExprStmt) SourceString(from *File) string {
@@ -3181,6 +3429,19 @@ func (*RangeStmt) SourceString(*File) string {
 // Node returns the node in the AST tree.
 func (s *RangeStmt) Node() ast.Node { return s.Src }
 
+// Unroll the statement.
+func (s *RangeStmt) Unroll(ev Fetcher, urlr Unroller) (ast.Stmt, bool) {
+	x, xOk := s.X.Unroll(ev, urlr)
+	body, bodyOk := s.Body.UnrollBlock(ev, urlr)
+	return &ast.RangeStmt{
+		Key:   s.Key.NameDef(),
+		Value: s.Value.NameDef(),
+		X:     x,
+		Body:  body,
+		Tok:   s.Src.Tok,
+	}, xOk && bodyOk
+}
+
 func (*UnrollStmt) stmtNode() {}
 func (*UnrollStmt) node()     {}
 
@@ -3192,11 +3453,34 @@ func (*UnrollStmt) SourceString(*File) string {
 // Node returns the node in the AST tree.
 func (s *UnrollStmt) Node() ast.Node { return s.Range.Src }
 
+// Unroll the statement.
+func (s *UnrollStmt) Unroll(ev Fetcher, urlr Unroller) (ast.Stmt, bool) {
+	return s.Range.Unroll(ev, urlr)
+}
+
 func (*IfStmt) stmtNode() {}
 func (*IfStmt) node()     {}
 
 // Node returns the node in the AST tree.
 func (s *IfStmt) Node() ast.Node { return s.Src }
+
+// Unroll the statement.
+func (s *IfStmt) Unroll(ev Fetcher, urlr Unroller) (ast.Stmt, bool) {
+	src := &ast.IfStmt{}
+	initOk := true
+	if s.Init != nil {
+		src.Init, initOk = s.Init.Unroll(ev, urlr)
+	}
+	var condOk bool
+	src.Cond, condOk = s.Cond.Unroll(ev, urlr)
+	var bodyOk bool
+	src.Body, bodyOk = s.Body.UnrollBlock(ev, urlr)
+	elseOk := true
+	if s.Else != nil {
+		src.Else, elseOk = s.Else.Unroll(ev, urlr)
+	}
+	return src, initOk && condOk && bodyOk && elseOk
+}
 
 // SourceString returns the GX source code of the expression.
 func (s *IfStmt) SourceString(from *File) string {
@@ -3219,6 +3503,12 @@ func (*ExprStmt) node()     {}
 // Node returns the node in the AST tree.
 func (s *ExprStmt) Node() ast.Node { return s.Src }
 
+// Unroll the statement.
+func (s *ExprStmt) Unroll(ev Fetcher, urlr Unroller) (ast.Stmt, bool) {
+	x, ok := s.X.Unroll(ev, urlr)
+	return &ast.ExprStmt{X: x}, ok
+}
+
 // SourceString returns the GX source code of the expression.
 func (s *ExprStmt) SourceString(from *File) string {
 	return s.X.SourceString(from)
@@ -3234,6 +3524,11 @@ func (*DeclStmt) stmtNode() {}
 // SourceString returns the GX source code of the expression.
 func (s *DeclStmt) SourceString(*File) string {
 	return "DeclStmt"
+}
+
+// Unroll the statement.
+func (s *DeclStmt) Unroll(ev Fetcher, urlr Unroller) (ast.Stmt, bool) {
+	return nil, ev.Err().Appendf(s.Src, "cannot unroll declaration statement: not supported")
 }
 
 func (*AssignExpr) storageValue() {}

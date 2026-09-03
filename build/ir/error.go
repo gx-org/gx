@@ -186,6 +186,11 @@ func (*errorCallee) Type() Type {
 	return errorFType
 }
 
+// Unroll the expression.
+func (*errorCallee) Unroll(ev Fetcher, urlr Unroller) (ast.Expr, bool) {
+	return &ast.Ident{Name: "Error"}, true
+}
+
 func (ec *errorCallee) Expr() ast.Expr {
 	return &ast.Ident{Name: "Error"}
 }
