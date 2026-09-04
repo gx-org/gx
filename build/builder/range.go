@@ -15,11 +15,7 @@
 package builder
 
 import (
-	"fmt"
 	"go/ast"
-	"go/format"
-	"go/token"
-	"strings"
 
 	"github.com/gx-org/gx/build/ir"
 	"github.com/gx-org/gx/build/ir/irkind"
@@ -113,15 +109,12 @@ func (n *rangeStmt) buildStmt(rscope stmtResolveScope) (ir.Stmt, bool, bool) {
 	if !ok {
 		return ext, stop, ok
 	}
-	fset := token.NewFileSet()
-	w := &strings.Builder{}
-	for _, body := range bodiesSrc {
-		if err := format.Node(w, fset, body); err != nil {
-			return ext, stop, rscope.Err().AppendAt(ext.Node(), err)
-		}
-		fmt.Fprintln(w)
+	ext.Bodies = make([]*ir.BlockStmt, len(bodiesSrc))
+	for i, bodySrc := range bodiesSrc {
+		var bodyOk bool
+		ext.Bodies[i], bodyOk = buildStmt(rscope, bodySrc)
+		ok = ok && bodyOk
 	}
-	ext.Source = w.String()
 	return ext, stop, ok
 }
 

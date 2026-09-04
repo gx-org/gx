@@ -226,3 +226,17 @@ func processStmt(pscope procScope, stmt ast.Stmt) (node stmtNode, ok bool) {
 	}
 	return
 }
+
+func buildStmt(rscope stmtResolveScope, block *ast.BlockStmt) (*ir.BlockStmt, bool) {
+	pscope := rscope.fileScope().procScope()
+	bBlock, ok := processBlockStmt(pscope, block)
+	if !ok {
+		return nil, false
+	}
+	bScope, ok := newBlockScope(rscope, bBlock)
+	if !ok {
+		return nil, false
+	}
+	irBlock, _, ok := bBlock.buildBlockStmt(bScope)
+	return irBlock, ok
+}

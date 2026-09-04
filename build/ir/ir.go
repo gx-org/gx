@@ -3235,7 +3235,7 @@ type (
 	// UnrollStmt is a range statement in for loops that has been unrolled by the compiler.
 	UnrollStmt struct {
 		Range  *RangeStmt
-		Source string
+		Bodies []*BlockStmt
 	}
 
 	// RangeStmt is a range statement in for loops.

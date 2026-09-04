@@ -483,3 +483,13 @@ func FuncDeclCallee(name string, ftype *ir.FuncType) *ir.FuncValExpr {
 func FuncExpr(fn ir.Func) *ir.FuncValExpr {
 	return ir.NewFuncValExpr(Ident(fn.(ir.Storage)), fn)
 }
+
+// AssignOp builds an assign operation as in x += 5.
+func AssignOp(st ir.Storage, x ir.Expr) *ir.AssignExprStmt {
+	return &ir.AssignExprStmt{
+		List: []*ir.AssignExpr{&ir.AssignExpr{
+			Storage: st,
+			X:       x,
+		}},
+	}
+}

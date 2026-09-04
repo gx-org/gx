@@ -166,13 +166,30 @@ func f() int32 {
 											},
 										}}}),
 							},
-							Source: `{
-	x += int32(0)
-}
-{
-	x += int32(1)
-}
-`,
+							Bodies: []*ir.BlockStmt{
+								irh.Block(irh.AssignOp(
+									xStorage,
+									&ir.BinaryExpr{
+										X: irh.Ident(xAssign),
+										Y: &ir.CastExpr{
+											X:   irh.IntNumberAs(0, ir.Int32Type()),
+											Typ: ir.Int32Type(),
+										},
+										Typ: ir.Int32Type(),
+									},
+								)),
+								irh.Block(irh.AssignOp(
+									xStorage,
+									&ir.BinaryExpr{
+										X: irh.Ident(xAssign),
+										Y: &ir.CastExpr{
+											X:   irh.IntNumberAs(1, ir.Int32Type()),
+											Typ: ir.Int32Type(),
+										},
+										Typ: ir.Int32Type(),
+									},
+								)),
+							},
 						},
 						&ir.ReturnStmt{Results: []ir.Expr{
 							irh.Ident(xAssign),
@@ -226,13 +243,24 @@ func f() int32 {
 											},
 										}}}),
 							},
-							Source: `{
-	x += 7
-}
-{
-	x += 8
-}
-`,
+							Bodies: []*ir.BlockStmt{
+								irh.Block(irh.AssignOp(
+									xStorage,
+									&ir.BinaryExpr{
+										X:   irh.Ident(xAssign),
+										Y:   irh.IntNumberAs(7, ir.Int32Type()),
+										Typ: ir.Int32Type(),
+									},
+								)),
+								irh.Block(irh.AssignOp(
+									xStorage,
+									&ir.BinaryExpr{
+										X:   irh.Ident(xAssign),
+										Y:   irh.IntNumberAs(8, ir.Int32Type()),
+										Typ: ir.Int32Type(),
+									},
+								)),
+							},
 						},
 						&ir.ReturnStmt{Results: []ir.Expr{
 							irh.Ident(xAssign),
