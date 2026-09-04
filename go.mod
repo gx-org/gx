@@ -1,6 +1,6 @@
 module github.com/gx-org/gx
 
-go 1.26
+go 1.27
 
 require (
 	github.com/gomlx/compute v0.0.0-20260628062407-1a23cf2ada5b
