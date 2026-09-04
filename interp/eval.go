@@ -848,6 +848,20 @@ func set(fitp *Interpreter, tok token.Token, dest ir.Storage, value ir.Element) 
 		return ctx.CurrentFrame().Assign(destT.NameDef().Name, value)
 	case *ir.AssignCallResult:
 		return ctx.CurrentFrame().Assign(destT.NameDef().Name, value)
+	case *ir.IndexStorage:
+		receiver, err := evalExpr(fitp, destT.Index.X)
+		if err != nil {
+			return err
+		}
+		slice, err := coreiface.Cast[*elements.Slice](receiver)
+		if err != nil {
+			return err
+		}
+		index, err := evalExpr(fitp, destT.Index.Index)
+		if err != nil {
+			return err
+		}
+		return slice.Set(index, value)
 	default:
 		return fmterr.Errorf(fitp.File().FileSet(), dest.Node(), "cannot assign %v to %T: not supported", value, destT)
 	}

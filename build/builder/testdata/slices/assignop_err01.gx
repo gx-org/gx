@@ -1,0 +1,7 @@
+package assignop_err01
+
+func Test() []int {
+	a := []int{1, 2, 3}
+	a[1] := 55 // ERROR: non-name a[1] on left side of :=
+	return a
+}

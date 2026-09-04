@@ -10,7 +10,7 @@ type S struct {
 func Test() S {
 	s := S{a: 5, b: 10}
 	for k := range reflect.Leaves[S]() {
-		s[k] += 2 // ERROR non-name on left side of +=
+		s[k] += 2 // ERROR: cannot index s (type: S)
 	}
 	return s
 }

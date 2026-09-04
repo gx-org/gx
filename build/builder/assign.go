@@ -131,6 +131,32 @@ func (asg *selectorStorage) buildStorage(scope resolveScope, typ ir.Type) (_ ir.
 	return ext, false, true
 }
 
+type indexStorage struct {
+	target *indexExpr
+}
+
+var _ assignable = (*indexStorage)(nil)
+
+func (asg *indexStorage) source() ast.Node {
+	return asg.target.source()
+}
+
+func (asg *indexStorage) buildStorage(scope resolveScope, typ ir.Type) (_ ir.Storage, newName, ok bool) {
+	ext := &ir.IndexStorage{}
+	if typ.Kind() == irkind.Invalid {
+		return ext, false, false
+	}
+	indexExpr, ok := asg.target.buildExpr(scope)
+	if !ok {
+		return ext, false, false
+	}
+	ext.Index, ok = indexExpr.(*ir.IndexExpr)
+	if !ok {
+		return ext, false, scope.Err().Appendf(asg.source(), "cannot assign to %s", indexExpr.Type().Kind().String())
+	}
+	return ext, false, true
+}
+
 type assignment struct {
 	target assignable
 	expr   exprNode
@@ -251,6 +277,14 @@ func leftExprToTarget(pscope procScope, stmt *ast.AssignStmt, expr ast.Expr, don
 		return target, ok && exprOk
 	case *ast.CompositeLit:
 		return leftExprToTarget(pscope, stmt, exprT.Type, done)
+	case *ast.IndexExpr:
+		target := &indexStorage{}
+		var exprOk bool
+		target.target, exprOk = processIndexExpr(pscope, exprT)
+		if stmt.Tok == token.DEFINE {
+			ok = pscope.Err().Appendf(exprT, "non-name %s on left side of :=", target.target.String())
+		}
+		return target, ok && exprOk
 	default:
 		return nil, pscope.Err().Appendf(expr, "non-name on left side of %s", stmt.Tok)
 	}

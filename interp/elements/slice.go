@@ -219,6 +219,20 @@ func (n *Slice) Copy() engine.Copier {
 	return &Slice{typ: n.typ, values: values}
 }
 
+// Set an element at a given index.
+// Returns an error if the index is out of bounds.
+func (n *Slice) Set(index ir.Element, val ir.Element) error {
+	i, err := IntFromElement(index)
+	if err != nil {
+		return err
+	}
+	if i < 0 || i >= len(n.values) {
+		return errors.Errorf("invalid argument: index %d out of bounds [0:%d]", i, len(n.values))
+	}
+	n.values[i] = val
+	return nil
+}
+
 // Length returns the value corresponding to calling the built-in len.
 func (n *Slice) Length(ev ir.Evaluator) (int, error) {
 	return n.Len(), nil

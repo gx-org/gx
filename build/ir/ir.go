@@ -3070,6 +3070,11 @@ type (
 		Sel *SelectorExpr
 	}
 
+	// IndexStorage is an index on an element.
+	IndexStorage struct {
+		Index *IndexExpr
+	}
+
 	// FieldStorage is a field to which values can be assigned to.
 	FieldStorage struct {
 		Field *Field
@@ -3081,6 +3086,7 @@ var (
 	_ Storage = (*LocalVarStorage)(nil)
 	_ Storage = (*StructFieldStorage)(nil)
 	_ Storage = (*FieldStorage)(nil)
+	_ Storage = (*IndexStorage)(nil)
 )
 
 func (*AnonymousStorage) node()    {}
@@ -3140,6 +3146,26 @@ func (s *StructFieldStorage) NameDef() *ast.Ident { return s.Sel.Src.Sel }
 
 // Same returns true if the other storage is this storage.
 func (s *StructFieldStorage) Same(o Storage) bool {
+	return Storage(s) == o
+}
+
+func (*IndexStorage) node()    {}
+func (*IndexStorage) storage() {}
+
+// Node returns the node in the AST tree.
+func (s *IndexStorage) Node() ast.Node { return s.Expr() }
+
+// Expr returns the expression in the AST tree.
+func (s *IndexStorage) Expr() ast.Expr { return s.Index.Expr() }
+
+// Type of the destination of the assignment.
+func (s *IndexStorage) Type() Type { return s.Index.Type() }
+
+// NameDef returns the identifier identifying the storage.
+func (s *IndexStorage) NameDef() *ast.Ident { return nil }
+
+// Same returns true if the other storage is this storage.
+func (s *IndexStorage) Same(o Storage) bool {
 	return Storage(s) == o
 }
 
