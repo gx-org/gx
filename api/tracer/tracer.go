@@ -20,6 +20,7 @@ import (
 	"fmt"
 
 	"github.com/gx-org/gx/api"
+	"github.com/gx-org/gx/api/hostio"
 	"github.com/gx-org/gx/api/options"
 	"github.com/gx-org/gx/api/trace"
 	"github.com/gx-org/gx/api/values"
@@ -36,11 +37,11 @@ import (
 // which is ready to run.
 type CompiledFunc interface {
 	// Run the function for the given GX values.
-	Run(receiver values.Value, args []values.Value, tracer trace.Callback) ([]values.Value, error)
+	Run(receiver hostio.Value, args []hostio.Value, tracer trace.Callback) ([]hostio.Value, error)
 }
 
 // Trace a function and returns a runner to run the function on the device.
-func Trace(dev *api.Device, fn *ir.FuncDecl, receiver values.Value, args []values.Value, options []options.PackageOption) (_ CompiledFunc, err error) {
+func Trace(dev *api.Device, fn *ir.FuncDecl, receiver hostio.Value, args []hostio.Value, options []options.PackageOption) (_ CompiledFunc, err error) {
 	defer func() {
 		if err != nil {
 			recvName := ""
@@ -52,19 +53,19 @@ func Trace(dev *api.Device, fn *ir.FuncDecl, receiver values.Value, args []value
 		err = fmterr.ToStackTraceError(err)
 	}()
 	// Create a new graph and evaluator for the interpreter.
-	proc := &processor.Processor{}
+	proc := processor.New(values.Factory())
 	graph, err := dev.Runtime().Backend().NewOps(fn.FullyQualifiedName())
 	if err != nil {
 		return nil, err
 	}
 	ev := grapheval.New(dev.Runtime().Builder(), proc, graph)
 	// Create the interpreter.
-	itp, err := interp.New(ev, ev, interp.Runners(), options)
+	itp, err := interp.New(ev, interp.Runners(), options)
 	if err != nil {
 		return nil, err
 	}
 	// Visit the receiver and arguments values to create elements for the interpreter.
-	in, err := ev.FuncInputsToElements(ev.NewFunc, fn, receiver, values.ToElements(args))
+	in, err := ev.FuncInputsToElements(fn, receiver, hostio.ToElements(args))
 	if err != nil {
 		return nil, err
 	}

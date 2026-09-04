@@ -21,8 +21,6 @@ import (
 	"github.com/gx-org/gx/build/ir"
 	"github.com/gx-org/gx/interp/elements"
 	"github.com/gx-org/gx/interp/engine"
-	"github.com/gx-org/gx/interp/fun"
-	"github.com/gx-org/gx/interp"
 	"github.com/gx-org/gx/interp/materialise"
 	"github.com/gx-org/gx/stdlib/builtin"
 )
@@ -32,15 +30,15 @@ var philoxStateShape = &shape.Shape{
 	AxisLengths: []int{3},
 }
 
-func evalPhilox(env engine.Env, call *ir.FuncCallExpr, recv ir.Element, args []ir.Element, dtyp dtypes.DType) ([]ir.Element, error) {
-	philox, err := fun.ToNamedType(recv)
+func evalPhilox(env *engine.Env, call *ir.FuncCallExpr, recv ir.Element, args []ir.Element, dtyp dtypes.DType) ([]ir.Element, error) {
+	philox, err := elements.ToNamedType(recv)
 	if err != nil {
 		return nil, err
 	}
 	mat := builtin.Materialiser(env)
 	philoxStruct := ir.Underlying(philox.Type()).(*ir.StructType)
 	stateArray := philoxStruct.Fields.FindField("state")
-	field, err := philox.Select(&ir.SelectorExpr{
+	field, err := philox.Select(env, &ir.SelectorExpr{
 		X:    call,
 		Stor: stateArray.Storage(),
 	})
@@ -84,7 +82,7 @@ func evalPhilox(env engine.Env, call *ir.FuncCallExpr, recv ir.Element, args []i
 		return nil, err
 	}
 	return []ir.Element{
-		fun.NewNamedType(interp.NewRunFunc, philox.TypeMethods(), fun.NewStruct(
+		elements.NewNamedType(philox.TypeMethods(), elements.NewStruct(
 			philoxStruct,
 			map[string]ir.Element{"state": philoxStateElement[0]},
 		)),
@@ -92,10 +90,10 @@ func evalPhilox(env engine.Env, call *ir.FuncCallExpr, recv ir.Element, args []i
 	}, nil
 }
 
-func evalPhiloxUint32(env engine.Env, call *ir.FuncCallExpr, recv ir.Element, args []ir.Element) ([]ir.Element, error) {
+func evalPhiloxUint32(env *engine.Env, call *ir.FuncCallExpr, recv ir.Element, args []ir.Element) ([]ir.Element, error) {
 	return evalPhilox(env, call, recv, args, dtypes.Uint32)
 }
 
-func evalPhiloxUint64(env engine.Env, call *ir.FuncCallExpr, recv ir.Element, args []ir.Element) ([]ir.Element, error) {
+func evalPhiloxUint64(env *engine.Env, call *ir.FuncCallExpr, recv ir.Element, args []ir.Element) ([]ir.Element, error) {
 	return evalPhilox(env, call, recv, args, dtypes.Uint64)
 }

@@ -19,6 +19,7 @@ import (
 
 	"github.com/gx-org/gx/build/ir"
 	"github.com/gx-org/gx/build/ir/irkind"
+	"github.com/gx-org/gx/build/ir/unroll"
 )
 
 type rangeStmt struct {
@@ -66,25 +67,58 @@ func (n *rangeStmt) buildBodyOverScalar(rscope resolveScope, x ir.Expr) (ir.Stor
 	return key, nil, keyOk
 }
 
-func (n *rangeStmt) buildBodyOverArray(rscope resolveScope, x ir.Expr) (ir.Storage, ir.Storage, bool) {
+func (n *rangeStmt) buildBodyOverSlicer(rscope resolveScope, x ir.Expr) (ir.Storage, ir.Storage, bool) {
 	key, _, keyOk := n.key.buildStorage(rscope, ir.IntType())
 	if n.value == nil {
 		return key, nil, keyOk
 	}
 	xUnder := ir.Underlying(x.Type())
-	xArrayType, ok := xUnder.(ir.ArrayType)
+	slicerType, ok := xUnder.(ir.SlicerType)
 	if !ok {
-		return key, nil, rscope.Err().Appendf(n.x.source(), "%s is not an array type", x.Type().ReferString(rscope.fileScope().irFile()))
+		return key, nil, rscope.Err().AppendInternalf(n.x.source(), "%s is not an array type", x.Type().ReferString(rscope.fileScope().irFile()))
 	}
-	valueType, ok := xArrayType.ElementType()
+	valueType, ok := slicerType.ElementType()
 	if !ok {
-		return key, nil, rscope.Err().Appendf(n.x.source(), "cannot range over array %s with 0 axis", x.Type().ReferString(rscope.fileScope().irFile()))
+		return key, nil, rscope.Err().Appendf(n.x.source(), "cannot range over %s", x.Type().ReferString(rscope.fileScope().irFile()))
 	}
 	value, _, valueOk := n.value.buildStorage(rscope, valueType)
 	return key, value, keyOk && valueOk
 }
 
-func (n *rangeStmt) buildStmt(parent stmtResolveScope) (ir.Stmt, bool, bool) {
+func (n *rangeStmt) buildStmt(rscope stmtResolveScope) (ir.Stmt, bool, bool) {
+	stmt, stop, ok := n.buildRangeStmt(rscope)
+	if !ok {
+		return stmt, stop, ok
+	}
+	// Check if range calls a function that requires the loop to be unrolled.
+	callExpr, isCall := stmt.X.(*ir.FuncCallExpr)
+	if !isCall {
+		return stmt, stop, ok
+	}
+	if !callExpr.Callee.FuncType().Nature.Unroll {
+		return stmt, stop, ok
+	}
+	compEval, ok := rscope.compEval()
+	if !ok {
+		return stmt, stop, ok
+	}
+	ext := &ir.UnrollStmt{
+		Range: stmt,
+	}
+	bodiesSrc, ok := unroll.Unroll(compEval, stmt, callExpr)
+	if !ok {
+		return ext, stop, ok
+	}
+	ext.Bodies = make([]*ir.BlockStmt, len(bodiesSrc))
+	for i, bodySrc := range bodiesSrc {
+		var bodyOk bool
+		ext.Bodies[i], bodyOk = buildStmt(rscope, bodySrc)
+		ok = ok && bodyOk
+	}
+	return ext, stop, ok
+}
+
+func (n *rangeStmt) buildRangeStmt(parent stmtResolveScope) (*ir.RangeStmt, bool, bool) {
 	ext := &ir.RangeStmt{Src: n.src}
 	rscope, ok := newBlockScope(parent, n)
 	if !ok {
@@ -98,11 +132,17 @@ func (n *rangeStmt) buildStmt(parent stmtResolveScope) (ir.Stmt, bool, bool) {
 	if !ok {
 		return ext, false, false
 	}
-	if irkind.IsRangeOk(ext.X.Type().Kind()) {
-		ext.Key, ext.Value, ok = n.buildBodyOverScalar(rscope, ext.X)
-	} else if ext.X.Type().Kind() == irkind.Array {
-		ext.Key, ext.Value, ok = n.buildBodyOverArray(rscope, ext.X)
-	} else {
+	kind := ext.X.Type().Kind()
+	switch kind {
+	case irkind.Array:
+		ext.Key, ext.Value, ok = n.buildBodyOverSlicer(rscope, ext.X)
+	case irkind.Slice:
+		ext.Key, ext.Value, ok = n.buildBodyOverSlicer(rscope, ext.X)
+	default:
+		if irkind.IsInteger(kind) {
+			ext.Key, ext.Value, ok = n.buildBodyOverScalar(rscope, ext.X)
+			break
+		}
 		return ext, false, rscope.Err().Appendf(n.src, "cannot range over %s", ext.X.Type().ReferString(parent.fileScope().irFile()))
 	}
 	if !ok {

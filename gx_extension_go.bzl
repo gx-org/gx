@@ -131,6 +131,7 @@ def gx_extension_go(name, lib, **kwargs):
         deps = [
             lib,
             "//third_party/gxlang/gx/api/values",
+            "//third_party/gxlang/gx/api/hostio",
             "//third_party/gxlang/gx/build/importers/embedpkg",
             "//third_party/gxlang/gx/build/importers",
             "//third_party/gxlang/gx/build/ir",

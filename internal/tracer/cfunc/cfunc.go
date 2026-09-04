@@ -20,6 +20,7 @@ import (
 	"github.com/gx-org/backend/platform"
 	"github.com/gx-org/backend/shape"
 	"github.com/gx-org/gx/api"
+	"github.com/gx-org/gx/api/hostio"
 	"github.com/gx-org/gx/api/trace"
 	"github.com/gx-org/gx/api/values"
 	"github.com/gx-org/gx/build/ir"
@@ -88,7 +89,7 @@ func Compile(dev *api.Device, fn ir.Func, p *processor.Processor, ao materialise
 	return cg, err
 }
 
-func (g *CompiledFunc) run(ctx *values.FuncInputs) (out, traces []platform.DeviceHandle, err error) {
+func (g *CompiledFunc) run(ctx *hostio.FuncInputs) (out, traces []platform.DeviceHandle, err error) {
 	if g.runner == nil {
 		// No runner: there is nothing to run in the graph.
 		return nil, nil, nil
@@ -106,8 +107,8 @@ func (g *CompiledFunc) run(ctx *values.FuncInputs) (out, traces []platform.Devic
 }
 
 // Run the graph.
-func (g *CompiledFunc) Run(receiver values.Value, args []values.Value, tracer trace.Callback) ([]values.Value, error) {
-	fc := &values.FuncInputs{Receiver: receiver, Args: values.ToElements(args)}
+func (g *CompiledFunc) Run(receiver hostio.Value, args []hostio.Value, tracer trace.Callback) ([]hostio.Value, error) {
+	fc := &hostio.FuncInputs{Receiver: receiver, Args: hostio.ToElements(args)}
 	if err := g.process.ProcessInits(fc); err != nil {
 		return nil, err
 	}
@@ -121,9 +122,9 @@ func (g *CompiledFunc) Run(receiver values.Value, args []values.Value, tracer tr
 	return g.handlesToValues(fc, out)
 }
 
-func (g *CompiledFunc) handlesToValues(in *values.FuncInputs, handles []platform.DeviceHandle) ([]values.Value, error) {
-	reader := flatten.NewParser(g.device.PlatformDevice(), in, handles)
-	values := make([]values.Value, len(g.outs))
+func (g *CompiledFunc) handlesToValues(in *hostio.FuncInputs, handles []platform.DeviceHandle) ([]hostio.Value, error) {
+	reader := flatten.NewParser(g.device.PlatformDevice(), in, values.Factory(), handles)
+	values := make([]hostio.Value, len(g.outs))
 	for i, el := range g.outs {
 		val, err := reader.Unflatten(el)
 		if err != nil {

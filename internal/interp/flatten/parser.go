@@ -20,7 +20,7 @@ import (
 
 	"github.com/pkg/errors"
 	"github.com/gx-org/backend/platform"
-	"github.com/gx-org/gx/api/values"
+	"github.com/gx-org/gx/api/hostio"
 	gxfmt "github.com/gx-org/gx/base/fmt"
 	"github.com/gx-org/gx/build/ir"
 )
@@ -28,16 +28,18 @@ import (
 // Parser unflattens the output of a graph computation
 // into GX values.
 type Parser struct {
+	factory    hostio.Factory
 	dev        platform.Device
-	callInputs *values.FuncInputs
+	callInputs *hostio.FuncInputs
 	// Handles to unflatten.
 	compOutput []platform.DeviceHandle
 	nextPos    int
 }
 
 // NewParser returns a new parser given the output of a graph computation.
-func NewParser(dev platform.Device, callInputs *values.FuncInputs, handles []platform.DeviceHandle) *Parser {
+func NewParser(dev platform.Device, callInputs *hostio.FuncInputs, factory hostio.Factory, handles []platform.DeviceHandle) *Parser {
 	return &Parser{
+		factory:    factory,
 		dev:        dev,
 		callInputs: callInputs,
 		compOutput: handles,
@@ -52,12 +54,17 @@ func (h *Parser) Next() platform.DeviceHandle {
 }
 
 // CallInputs returns the inputs with which the function was called.
-func (h *Parser) CallInputs() *values.FuncInputs {
+func (h *Parser) CallInputs() *hostio.FuncInputs {
 	return h.callInputs
 }
 
 func (h *Parser) size() int {
 	return len(h.compOutput)
+}
+
+// Factory to create value elements.
+func (h *Parser) Factory() hostio.Factory {
+	return h.factory
 }
 
 // Device returns to which transfers the host value to.
@@ -67,8 +74,8 @@ func (h *Parser) Device() platform.Device {
 }
 
 // Unflatten consumes the next available handles and returns a GX value matching the given element.
-func (h *Parser) Unflatten(el ir.Element) (values.Value, error) {
-	val, ok := el.(values.Value)
+func (h *Parser) Unflatten(el ir.Element) (hostio.Value, error) {
+	val, ok := el.(hostio.Value)
 	if ok {
 		return val, nil
 	}
@@ -86,16 +93,16 @@ func (h *Parser) Unflatten(el ir.Element) (values.Value, error) {
 	return val, nil
 }
 
-type newCompValue func(ir.Type, []values.Value) (values.Value, error)
+type newCompValue func(ir.Type, []hostio.Value) (hostio.Value, error)
 
 // ParseArray the next value as an array.
-func (h *Parser) ParseArray(typ ir.Type) (values.Array, error) {
-	return values.NewDeviceArray(typ, h.Next())
+func (h *Parser) ParseArray(typ ir.Type) (hostio.Array, error) {
+	return hostio.NewDeviceArray(typ, h.Next())
 }
 
 // ParseComposite unflatten a slice of elements into a single GX value.
-func (h *Parser) ParseComposite(ncv newCompValue, typ ir.Type, els []ir.Element) (values.Value, error) {
-	vals := make([]values.Value, len(els))
+func (h *Parser) ParseComposite(ncv newCompValue, typ ir.Type, els []ir.Element) (hostio.Value, error) {
+	vals := make([]hostio.Value, len(els))
 	for i, el := range els {
 		var err error
 		vals[i], err = h.Unflatten(el)
@@ -121,10 +128,10 @@ func (h *Parser) String() string {
 }
 
 // ParseCompositeOf returns a function to unflatten a composite value.
-func ParseCompositeOf[T values.Value](
-	f func(ir.Type, []values.Value) (T, error),
-) func(ir.Type, []values.Value) (values.Value, error) {
-	return func(typ ir.Type, vals []values.Value) (values.Value, error) {
+func ParseCompositeOf[T hostio.Value](
+	f func(ir.Type, []hostio.Value) (T, error),
+) func(ir.Type, []hostio.Value) (hostio.Value, error) {
+	return func(typ ir.Type, vals []hostio.Value) (hostio.Value, error) {
 		return f(typ, vals)
 	}
 }

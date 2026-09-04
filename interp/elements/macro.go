@@ -12,22 +12,22 @@
 // See the License for the specific language governing permissions and
 // limitations under the License.
 
-package cpevelements
+package elements
 
 import (
 	"github.com/pkg/errors"
 	"github.com/gx-org/gx/build/ir"
-	"github.com/gx-org/gx/interp/fun"
+	"github.com/gx-org/gx/interp/engine"
 )
 
 // Macro is a macro function to build synthetic functions.
 type Macro struct {
 	macro *ir.Macro
-	recv  *fun.Receiver
+	recv  *engine.Receiver
 }
 
 // NewMacro creates a new macro given its definition and a receiver.
-func NewMacro(fn *ir.Macro, recv *fun.Receiver) fun.Func {
+func NewMacro(fn *ir.Macro, recv *engine.Receiver) engine.Func {
 	return &Macro{macro: fn, recv: recv}
 }
 
@@ -37,12 +37,12 @@ func (f *Macro) IR() ir.Func {
 }
 
 // Recv returns the receiver of the macro function.
-func (f *Macro) Recv() *fun.Receiver {
+func (f *Macro) Recv() *engine.Receiver {
 	return f.recv
 }
 
 // Call the macro to build the synthetic element.
-func (f *Macro) Call(fctx *fun.CallEnv, call *ir.FuncCallExpr, args []ir.Element) ([]ir.Element, error) {
+func (f *Macro) Call(fctx *engine.Env, call *ir.FuncCallExpr, args []ir.Element) ([]ir.Element, error) {
 	if f.macro.BuildSynthetic == nil {
 		return nil, errors.Errorf("macro %s.%s has no implementation to build the synthetic function type", f.macro.FFile.Package.Name.Name, f.macro.Name())
 	}

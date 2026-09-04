@@ -1,0 +1,18 @@
+package unroll01
+
+// No runtime test function
+
+//gx:unroll
+func Indices() []int {
+	return []int{1, 2, 3}
+}
+
+func TestF() int {
+	sum := 0
+	for _, v := range Indices() {
+		sum += v
+	}
+	return sum
+	// Want:
+	// int(6)
+}

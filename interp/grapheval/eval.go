@@ -21,17 +21,14 @@ import (
 	"github.com/pkg/errors"
 	"github.com/gx-org/backend/ops"
 	"github.com/gx-org/backend/shape"
-	"github.com/gx-org/gx/api/values"
+	"github.com/gx-org/gx/api/hostio"
 	"github.com/gx-org/gx/build/fmterr"
 	"github.com/gx-org/gx/build/ir"
 	"github.com/gx-org/gx/internal/interp/compeval"
 	"github.com/gx-org/gx/internal/interp/numbers"
 	"github.com/gx-org/gx/internal/tracer/processor"
-	"github.com/gx-org/gx/interp/context"
 	"github.com/gx-org/gx/interp/elements"
 	"github.com/gx-org/gx/interp/engine"
-	"github.com/gx-org/gx/interp/fun"
-	"github.com/gx-org/gx/interp"
 	"github.com/gx-org/gx/interp/materialise"
 )
 
@@ -49,29 +46,16 @@ type Evaluator struct {
 	hostEval engine.Engine
 }
 
-var (
-	_ fun.Factory   = (*Evaluator)(nil)
-	_ engine.Engine = (*Evaluator)(nil)
-)
+var _ engine.Engine = (*Evaluator)(nil)
 
 // New returns a new evaluator given a elements.
 func New(importer ir.Importer, pr *processor.Processor, gr ops.Graph) *Evaluator {
 	ev := &Evaluator{
 		process:  pr,
-		hostEval: compeval.NewHostEvaluator(importer, interp.NewRunFunc),
+		hostEval: compeval.NewHostEvaluator(importer),
 	}
 	ev.ao = &arrayOps{graph: gr, ev: ev}
 	return ev
-}
-
-// NewFunc creates a new function given its definition and a receiver.
-func (ev *Evaluator) NewFunc(fn ir.Func, recv *fun.Receiver) fun.Func {
-	return interp.NewRunFunc(fn, recv)
-}
-
-// NewFuncLit creates a new function literal.
-func (ev *Evaluator) NewFuncLit(lit *ir.FuncLit, ctx *context.Context) fun.Func {
-	return interp.NewFuncLit(lit, ctx)
 }
 
 // Processor returns the processor where init and debug traces are registered.
@@ -186,9 +170,9 @@ func (ev *Evaluator) ElementFromTuple(file *ir.File, expr ir.Expr, tpl ops.Tuple
 		return nil, err
 	}
 	var el engine.Copier
-	el = fun.NewStructFromElements(structTyp, els)
+	el = elements.NewStructFromElements(structTyp, els)
 	for _, nType := range namedTypes {
-		el = fun.NewNamedType(interp.NewRunFunc, nType, el)
+		el = elements.NewNamedType(nType, el)
 	}
 	return el, nil
 }
@@ -212,8 +196,8 @@ func (ev *Evaluator) Trace(ctx ir.Evaluator, call *ir.FuncCallExpr, args []ir.El
 }
 
 // FuncInputsToElements converts values to a function input.
-func (ev *Evaluator) FuncInputsToElements(newFunc fun.NewFunc, fn ir.Func, receiver ir.Element, args []ir.Element) (*elements.InputElements, error) {
-	vis := newInputVisitor(newFunc, ev, fn.File())
+func (ev *Evaluator) FuncInputsToElements(fn ir.Func, receiver ir.Element, args []ir.Element) (*elements.InputElements, error) {
+	vis := newInputVisitor(ev, fn.File())
 	fType := fn.FuncType()
 	var recvEl ir.Element
 	if receiver != nil {
@@ -245,7 +229,7 @@ func (ev *Evaluator) FuncInputsToElements(newFunc fun.NewFunc, fn ir.Func, recei
 		argsEl[i] = argNode
 	}
 	return &elements.InputElements{
-		Values: values.FuncInputs{
+		Values: hostio.FuncInputs{
 			Receiver: receiver,
 			Args:     args,
 		},

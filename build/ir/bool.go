@@ -36,6 +36,11 @@ func (b *BoolValue) Expr() ast.Expr {
 	return b.Src
 }
 
+// Unroll the expression.
+func (b *BoolValue) Unroll(Fetcher, Unroller) (ast.Expr, bool) {
+	return b.Src, true
+}
+
 // Type of the expression.
 func (b *BoolValue) Type() Type {
 	return BoolType()

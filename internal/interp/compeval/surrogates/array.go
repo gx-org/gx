@@ -80,7 +80,7 @@ func (a *array) Length(ev ir.Evaluator) (int, error) {
 }
 
 // UnaryOp applies a unary operator on x.
-func (a *array) UnaryOp(env engine.Env, expr *ir.UnaryExpr) (engine.NumericalElement, error) {
+func (a *array) UnaryOp(env *engine.Env, expr *ir.UnaryExpr) (engine.NumericalElement, error) {
 	return cpevops.NewUnary(env, expr, a)
 }
 
@@ -89,27 +89,27 @@ func (a *array) Axes(ev ir.Evaluator) (*elements.Slice, error) {
 }
 
 // BinaryOp applies a binary operator to x and y.
-func (a *array) BinaryOp(env engine.Env, expr *ir.BinaryExpr, y engine.NumericalElement) (engine.NumericalElement, error) {
+func (a *array) BinaryOp(env *engine.Env, expr *ir.BinaryExpr, y engine.NumericalElement) (engine.NumericalElement, error) {
 	return cpevops.NewBinaryFrom(env, expr, a, y)
 }
 
 // Cast an element into a given data type.
-func (a *array) Cast(env engine.Env, expr ir.Expr, target ir.Type) (engine.NumericalElement, error) {
+func (a *array) Cast(env *engine.Env, expr ir.Expr, target ir.Type) (engine.NumericalElement, error) {
 	return cpevops.NewCast(env, expr, a, target), nil
 }
 
 // Reshape an element.
-func (a *array) Reshape(env engine.Env, expr ir.Expr, axisLengths []engine.NumericalElement) (engine.NumericalElement, error) {
+func (a *array) Reshape(env *engine.Env, expr ir.Expr, axisLengths []engine.NumericalElement) (engine.NumericalElement, error) {
 	return cpevops.NewReshape(env, expr, a, axisLengths)
 }
 
 // SliceAt returns an element of the array given an index.
-func (a *array) SliceAt(env engine.Env, expr *ir.IndexExpr, index engine.NumericalElement) (ir.Element, error) {
+func (a *array) SliceAt(env *engine.Env, expr *ir.IndexExpr, index engine.NumericalElement) (ir.Element, error) {
 	return cpevops.NewIndex(env, expr, a, index)
 }
 
 // Slice the array given a low and high value.
-func (a *array) Slice(env engine.Env, expr *ir.SliceExpr, low, high engine.NumericalElement) (ir.Element, error) {
+func (a *array) Slice(env *engine.Env, expr *ir.SliceExpr, low, high engine.NumericalElement) (ir.Element, error) {
 	return cpevops.NewSlice(env, expr, a, low, high)
 }
 

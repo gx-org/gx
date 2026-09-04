@@ -135,6 +135,11 @@ func (s *MacroCallExpr) FuncCall() *FuncCallExpr {
 	}
 }
 
+// Unroll the expression.
+func (s *MacroCallExpr) Unroll(ev Fetcher, urlr Unroller) (ast.Expr, bool) {
+	return s.X.Unroll(ev, urlr)
+}
+
 // Node returns the node in the AST tree.
 func (s *MacroCallExpr) Node() ast.Node { return s.Expr() }
 

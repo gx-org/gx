@@ -12,17 +12,17 @@
 // See the License for the specific language governing permissions and
 // limitations under the License.
 
-package cpevelements
+package elements
 
 import (
 	"github.com/pkg/errors"
 	"github.com/gx-org/gx/build/ir"
-	"github.com/gx-org/gx/interp/fun"
+	"github.com/gx-org/gx/interp/engine"
 )
 
 type coreAnnotator struct {
 	ann  ir.Func
-	recv *fun.Receiver
+	recv *engine.Receiver
 }
 
 // Func returns the macro function.
@@ -31,12 +31,12 @@ func (f *coreAnnotator) Func() ir.Func {
 }
 
 // Recv returns the receiver of the macro function.
-func (f *coreAnnotator) Recv() *fun.Receiver {
+func (f *coreAnnotator) Recv() *engine.Receiver {
 	return f.recv
 }
 
 // Call the macro to build the synthetic element.
-func (f *coreAnnotator) Call(fctx *fun.CallEnv, call *ir.FuncCallExpr, args []ir.Element) ([]ir.Element, error) {
+func (f *coreAnnotator) Call(fctx *engine.Env, call *ir.FuncCallExpr, args []ir.Element) ([]ir.Element, error) {
 	return nil, errors.Errorf("annotator gx:@%s only valid in a function annotation context", f.ann.ShortString())
 }
 
@@ -63,8 +63,7 @@ type FuncAnnotator struct {
 
 var _ ir.FuncAnnotator = (*FuncAnnotator)(nil)
 
-// NewFuncAnnotator creates a new function annotator.
-func NewFuncAnnotator(fn *ir.AnnotatorFunc, recv *fun.Receiver) fun.Func {
+func newFuncAnnotator(fn *ir.AnnotatorFunc, recv *engine.Receiver) engine.Func {
 	return &FuncAnnotator{
 		coreAnnotator: coreAnnotator{
 			ann:  fn,
@@ -85,8 +84,8 @@ type FieldAnnotator struct {
 	fn *ir.AnnotatorField
 }
 
-// NewFieldAnnotator creates a new field annotator.
-func NewFieldAnnotator(fn *ir.AnnotatorField, recv *fun.Receiver) fun.Func {
+// newFieldAnnotator creates a new field annotator.
+func newFieldAnnotator(fn *ir.AnnotatorField, recv *engine.Receiver) engine.Func {
 	return &FieldAnnotator{
 		coreAnnotator: coreAnnotator{
 			ann:  fn,

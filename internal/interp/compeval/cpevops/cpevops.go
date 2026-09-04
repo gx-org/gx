@@ -72,19 +72,19 @@ type core struct {
 	el Element
 }
 
-func (c *core) UnaryOp(env engine.Env, expr *ir.UnaryExpr) (engine.NumericalElement, error) {
+func (c *core) UnaryOp(env *engine.Env, expr *ir.UnaryExpr) (engine.NumericalElement, error) {
 	return NewUnary(env, expr, c.el)
 }
 
-func (c *core) BinaryOp(env engine.Env, expr *ir.BinaryExpr, y engine.NumericalElement) (engine.NumericalElement, error) {
+func (c *core) BinaryOp(env *engine.Env, expr *ir.BinaryExpr, y engine.NumericalElement) (engine.NumericalElement, error) {
 	return NewBinaryFrom(env, expr, c.el, y)
 }
 
-func (c *core) Cast(env engine.Env, expr ir.Expr, target ir.Type) (engine.NumericalElement, error) {
+func (c *core) Cast(env *engine.Env, expr ir.Expr, target ir.Type) (engine.NumericalElement, error) {
 	return NewCast(env, expr, c.el, target), nil
 }
 
-func (c *core) Reshape(env engine.Env, expr ir.Expr, axisLengths []engine.NumericalElement) (engine.NumericalElement, error) {
+func (c *core) Reshape(env *engine.Env, expr ir.Expr, axisLengths []engine.NumericalElement) (engine.NumericalElement, error) {
 	return NewReshape(env, expr, c.el, axisLengths)
 }
 
@@ -96,10 +96,10 @@ func (c *core) EvalShape() (*shape.Shape, error) {
 	return EvalShape(c.el.Type())
 }
 
-func (c *core) SliceAt(env engine.Env, expr *ir.IndexExpr, index engine.NumericalElement) (ir.Element, error) {
+func (c *core) SliceAt(env *engine.Env, expr *ir.IndexExpr, index engine.NumericalElement) (ir.Element, error) {
 	return NewIndex(env, expr, c.el, index)
 }
 
-func (c *core) Slice(env engine.Env, expr *ir.SliceExpr, low, high engine.NumericalElement) (ir.Element, error) {
+func (c *core) Slice(env *engine.Env, expr *ir.SliceExpr, low, high engine.NumericalElement) (ir.Element, error) {
 	return NewSlice(env, expr, c.el, low, high)
 }

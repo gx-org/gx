@@ -1,0 +1,11 @@
+package assignop01
+
+func Test() []int {
+	a := []int{1, 2, 3}
+	a[1] += 55
+	return a
+	// Want:
+	// 0: int(1)
+	// 1: int(57)
+	// 2: int(3)
+}

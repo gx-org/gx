@@ -19,15 +19,16 @@ import (
 
 	"github.com/gx-org/gx/build/ir"
 	"github.com/gx-org/gx/internal/interp/compeval/surrogates/storepath"
-	"github.com/gx-org/gx/interp/fun"
+	"github.com/gx-org/gx/interp/elements"
+	"github.com/gx-org/gx/interp/engine"
 )
 
 type named struct {
 	path  storepath.Path
-	ntype *fun.NamedType
+	ntype *elements.NamedType
 }
 
-var _ fun.NamedTypeI = (*named)(nil)
+var _ engine.NamedType = (*named)(nil)
 
 var emptyStruct = &ir.StructType{
 	Fields: &ir.FieldList{},
@@ -37,7 +38,7 @@ func newInterface(path storepath.Path, typ ir.TypeMethods) (Element, error) {
 	under, err := newStruct(path, emptyStruct)
 	return &named{
 		path:  path,
-		ntype: fun.NewNamedType(NewFunc, typ, under),
+		ntype: elements.NewNamedType(typ, under),
 	}, err
 }
 
@@ -48,7 +49,7 @@ func newNamedType(path storepath.Path, typ *ir.NamedType) (Element, error) {
 	}
 	return &named{
 		path:  path,
-		ntype: fun.NewNamedType(NewFunc, typ, under),
+		ntype: elements.NewNamedType(typ, under),
 	}, nil
 }
 
@@ -56,8 +57,12 @@ func (n *named) Under() (ir.Element, error) {
 	return n.ntype.Under()
 }
 
-func (n *named) Select(expr *ir.SelectorExpr) (ir.Element, error) {
-	return n.ntype.Select(expr)
+func (n *named) Select(env *engine.Env, expr *ir.SelectorExpr) (ir.Element, error) {
+	return n.ntype.Select(env, expr)
+}
+
+func (n *named) Copy() engine.Copier {
+	return n
 }
 
 func (n *named) Expr(ir.Evaluator, ast.Expr) ([]ir.Expr, error) {

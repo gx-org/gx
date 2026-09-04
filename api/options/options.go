@@ -19,7 +19,7 @@ import (
 	"fmt"
 
 	"github.com/gx-org/backend/platform"
-	"github.com/gx-org/gx/api/values"
+	"github.com/gx-org/gx/api/hostio"
 )
 
 type (
@@ -40,7 +40,7 @@ type (
 		// Index of the variable in the package definition.
 		Var string
 		// Value of the static variable for the compiler.
-		Value values.Value
+		Value hostio.Value
 	}
 )
 

@@ -16,11 +16,12 @@ package values
 
 import (
 	"github.com/gx-org/backend/platform"
+	"github.com/gx-org/gx/api/hostio"
 	"github.com/gx-org/gx/build/ir"
 	"github.com/gx-org/gx/build/ir/irkind"
 )
 
-var _ Value = (*IRNode)(nil)
+var _ hostio.Value = (*IRNode)(nil)
 
 // IRNode is a GX string value.
 type IRNode struct {
@@ -31,8 +32,6 @@ type IRNode struct {
 func NewIRNode(node ir.IR) (*IRNode, error) {
 	return &IRNode{node: node}, nil
 }
-
-func (s *IRNode) value() {}
 
 // Node stored in the value.
 func (s *IRNode) Node() ir.IR {
@@ -45,7 +44,7 @@ func (s *IRNode) Type() ir.Type {
 }
 
 // ToHost transfers the value to host given an allocator.
-func (s *IRNode) ToHost(platform.Allocator) (Value, error) {
+func (s *IRNode) ToHost(platform.Allocator) (hostio.Value, error) {
 	return s, nil
 }
 

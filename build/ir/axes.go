@@ -129,7 +129,7 @@ func (dm *AxisExpr) Instantiate(ev Fetcher, spec Specialiser) ([]AxisLengths, bo
 		return []AxisLengths{dm}, true
 	}
 	if err != nil {
-		return nil, spec.InstantiateError(err)
+		return nil, spec.InstantiateError(dm.X.Node(), err)
 	}
 	axexprs := make([]AxisLengths, len(xs))
 	for i, x := range xs {

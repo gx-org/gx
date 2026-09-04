@@ -1,4 +1,4 @@
-// Copyright 2025 Google LLC
+// Copyright 2026 Google LLC
 //
 // Licensed under the Apache License, Version 2.0 (the "License");
 // you may not use this file except in compliance with the License.
@@ -12,23 +12,14 @@
 // See the License for the specific language governing permissions and
 // limitations under the License.
 
-package cpevelements
+package reflect
 
 import (
+	"github.com/pkg/errors"
 	"github.com/gx-org/gx/build/ir"
-	"github.com/gx-org/gx/interp/elements"
+	"github.com/gx-org/gx/interp/engine"
 )
 
-type typeParam struct {
-	src elements.ExprAt
-	typ *ir.GenericTypeParam
-}
-
-func newTypeParam(src elements.ExprAt, typ *ir.GenericTypeParam) ir.Element {
-	return &typeParam{src: src, typ: typ}
-}
-
-// Type returns the type of the element.
-func (tp *typeParam) Type() ir.Type {
-	return tp.typ
+func evalLeaves(env *engine.Env, call *ir.FuncCallExpr, recv ir.Element, args []ir.Element) ([]ir.Element, error) {
+	return nil, errors.Errorf("TODO: %s", call.SourceString(env.File()))
 }

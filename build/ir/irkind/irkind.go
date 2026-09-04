@@ -59,6 +59,7 @@ const (
 	Tuple
 	IR
 	Package
+	FieldPath
 	MetaType
 
 	// Max value for a Kind constant.
@@ -112,6 +113,8 @@ func (k Kind) String() string {
 		return "struct"
 	case Builtin:
 		return "builtin"
+	case FieldPath:
+		return "fieldpath"
 	case MetaType:
 		return "metatype"
 	case Package:
@@ -171,14 +174,6 @@ func KindGeneric[T dtypes.Supported]() Kind {
 // IsNumber returns true if the kind is a number.
 func IsNumber(knd Kind) bool {
 	return knd == NumberFloat || knd == NumberInt
-}
-
-// IsRangeOk returns true if the kind can be used to iterate in a for loop with a range statement.
-func IsRangeOk(k Kind) bool {
-	if IsInteger(k) {
-		return true
-	}
-	return k == NumberInt
 }
 
 // IsInteger return true if kind is an integer.

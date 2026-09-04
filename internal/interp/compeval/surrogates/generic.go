@@ -48,33 +48,33 @@ func (g *genericType) Expr(ir.Evaluator, ast.Expr) ([]ir.Expr, error) {
 }
 
 // UnaryOp applies a unary operator on x.
-func (g *genericType) UnaryOp(env engine.Env, expr *ir.UnaryExpr) (engine.NumericalElement, error) {
+func (g *genericType) UnaryOp(env *engine.Env, expr *ir.UnaryExpr) (engine.NumericalElement, error) {
 	return cpevops.NewUnary(env, expr, g)
 }
 
 // BinaryOp applies a binary operator to x and y.
 // Note that the receiver can be either the left or right argument.
-func (g *genericType) BinaryOp(env engine.Env, expr *ir.BinaryExpr, y engine.NumericalElement) (engine.NumericalElement, error) {
+func (g *genericType) BinaryOp(env *engine.Env, expr *ir.BinaryExpr, y engine.NumericalElement) (engine.NumericalElement, error) {
 	return cpevops.NewBinaryFrom(env, expr, g, y)
 }
 
 // Cast an element into a given data type.
-func (g *genericType) Cast(env engine.Env, expr ir.Expr, target ir.Type) (engine.NumericalElement, error) {
+func (g *genericType) Cast(env *engine.Env, expr ir.Expr, target ir.Type) (engine.NumericalElement, error) {
 	return cpevops.NewCast(env, expr, g, target), nil
 }
 
 // SliceAt returns an element of the array given an index.
-func (g *genericType) SliceAt(env engine.Env, expr *ir.IndexExpr, index engine.NumericalElement) (ir.Element, error) {
+func (g *genericType) SliceAt(env *engine.Env, expr *ir.IndexExpr, index engine.NumericalElement) (ir.Element, error) {
 	return cpevops.NewIndex(env, expr, g, index)
 }
 
 // Slice the array given a low and high value.
-func (g *genericType) Slice(env engine.Env, expr *ir.SliceExpr, low, high engine.NumericalElement) (ir.Element, error) {
+func (g *genericType) Slice(env *engine.Env, expr *ir.SliceExpr, low, high engine.NumericalElement) (ir.Element, error) {
 	return cpevops.NewSlice(env, expr, g, low, high)
 }
 
 // Reshape an element.
-func (g *genericType) Reshape(env engine.Env, expr ir.Expr, axisLengths []engine.NumericalElement) (engine.NumericalElement, error) {
+func (g *genericType) Reshape(env *engine.Env, expr ir.Expr, axisLengths []engine.NumericalElement) (engine.NumericalElement, error) {
 	return cpevops.NewReshape(env, expr, g, axisLengths)
 }
 

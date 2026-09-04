@@ -17,25 +17,26 @@ package values
 import (
 	"fmt"
 
-	"github.com/pkg/errors"
 	"github.com/gx-org/backend/platform"
+	"github.com/gx-org/gx/api/hostio"
 	"github.com/gx-org/gx/build/ir"
+	"github.com/gx-org/gx/internal/base/cast"
+	"github.com/gx-org/gx/interp/engine"
 )
 
 // NamedType is the GX runtime value of a named type.
 type NamedType struct {
-	val Value
+	val hostio.Value
 	typ ir.TypeMethods
 }
 
-var _ Value = (*NamedType)(nil)
+var _ hostio.Value = (*NamedType)(nil)
+var _ engine.NamedType = (*NamedType)(nil)
 
 // NewNamedType returns a new named type from a GX runtime value and a named type.
-func NewNamedType(val Value, typ ir.TypeMethods) *NamedType {
+func NewNamedType(val hostio.Value, typ ir.TypeMethods) *NamedType {
 	return &NamedType{val: val, typ: typ}
 }
-
-func (*NamedType) value() {}
 
 // Type returns the type of the value.
 func (n *NamedType) Type() ir.Type {
@@ -43,7 +44,7 @@ func (n *NamedType) Type() ir.Type {
 }
 
 // Underlying returns the underlying value.
-func (n *NamedType) Underlying() Value {
+func (n *NamedType) Underlying() hostio.Value {
 	return n.val
 }
 
@@ -53,14 +54,22 @@ func (n *NamedType) Under() (ir.Element, error) {
 }
 
 // Select a field in the structure.
-func (n *NamedType) Select(expr *ir.SelectorExpr) (ir.Element, error) {
-	sel, ok := n.val.(interface {
-		Select(expr *ir.SelectorExpr) (ir.Element, error)
-	}) // TODO(degris): avoid creating a dependency cycle.
-	if !ok {
-		return nil, errors.Errorf("cannot select field %s from type %T", expr.Src.Sel.Name, n.val)
+func (n *NamedType) Select(env *engine.Env, expr *ir.SelectorExpr) (ir.Element, error) {
+	sel, err := cast.To[engine.Selector](n.val)
+	if err != nil {
+		return nil, err
 	}
-	return sel.Select(expr)
+	return sel.Select(env, expr)
+}
+
+// Copy the element.
+func (n *NamedType) Copy() engine.Copier {
+	return n.RecvCopy()
+}
+
+// RecvCopy copies the underlying element and returns the element encapsulated in this named type.
+func (n *NamedType) RecvCopy() engine.NamedType {
+	return NewNamedType(engine.Copy(n.val).(hostio.Value), n.typ)
 }
 
 // TypeMethods returns the IR named type of the value.
@@ -69,7 +78,7 @@ func (n *NamedType) TypeMethods() ir.TypeMethods {
 }
 
 // ToHost transfers the value to host given an allocator.
-func (n *NamedType) ToHost(alloc platform.Allocator) (Value, error) {
+func (n *NamedType) ToHost(alloc platform.Allocator) (hostio.Value, error) {
 	hostVal, err := n.val.ToHost(alloc)
 	if err != nil {
 		return nil, err

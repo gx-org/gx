@@ -18,8 +18,8 @@ import (
 	"github.com/pkg/errors"
 	"github.com/gx-org/gx/build/fmterr"
 	"github.com/gx-org/gx/build/ir"
+	"github.com/gx-org/gx/interp/elements"
 	"github.com/gx-org/gx/interp/engine"
-	"github.com/gx-org/gx/interp/fun"
 )
 
 // runners provide runners to the environment to execute functions.
@@ -28,11 +28,11 @@ type runners struct{}
 var run = runners{}
 
 // Runners returns a set of runners to run all functions.
-func Runners() fun.Runners {
+func Runners() engine.Runners {
 	return run
 }
 
-func (runners) FuncDecl(fn *ir.FuncDecl, env *fun.CallEnv, call *ir.FuncCallExpr, recv engine.Copier, args []ir.Element) ([]ir.Element, error) {
+func (runners) FuncDecl(fn *ir.FuncDecl, env *engine.Env, call *ir.FuncCallExpr, recv engine.Copier, args []ir.Element) ([]ir.Element, error) {
 	if fn.Body == nil {
 		return nil, fmterr.Errorf(fn.File().FileSet(), fn.Node(), "missing function body")
 	}
@@ -62,11 +62,11 @@ func (runners) FuncDecl(fn *ir.FuncDecl, env *fun.CallEnv, call *ir.FuncCallExpr
 		return nil, err
 	}
 	// Evaluate the function within the frame.
-	fitp := toInterp(env.Context(), env.Engine(), env.FuncFactory(), env.Runners())
+	fitp := toInterp(env.Context(), env.Engine(), env.Runners())
 	return evalFuncBody(fitp, fn.Body)
 }
 
-func (runners) Builtin(fn ir.Func, impl ir.FuncImpl, env *fun.CallEnv, call *ir.FuncCallExpr, recv engine.Copier, args []ir.Element) (_ []ir.Element, err error) {
+func (runners) Builtin(fn ir.Func, impl ir.FuncImpl, env *engine.Env, call *ir.FuncCallExpr, recv engine.Copier, args []ir.Element) (_ []ir.Element, err error) {
 	defer func() {
 		if err == nil {
 			return
@@ -79,7 +79,7 @@ func (runners) Builtin(fn ir.Func, impl ir.FuncImpl, env *fun.CallEnv, call *ir.
 	if impl == nil {
 		return nil, errors.Errorf("function %s has no implementation", fn.ShortString())
 	}
-	builtin, isBuiltin := impl.Implementation().(FuncBuiltin)
+	builtin, isBuiltin := impl.Implementation().(elements.FuncBuiltin)
 	if !isBuiltin {
 		return nil, errors.Errorf("type %T is not a function builtin implementation", impl)
 	}

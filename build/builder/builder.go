@@ -42,7 +42,6 @@ import (
 	"github.com/gx-org/gx/build/ir"
 	"github.com/gx-org/gx/internal/interp/compeval/cmp"
 	"github.com/gx-org/gx/internal/interp/compeval"
-	"github.com/gx-org/gx/internal/interp/compeval/cpevelements"
 	"github.com/gx-org/gx/interp"
 )
 
@@ -133,8 +132,8 @@ func (s *ephemeralCompEvalScope) Err() *fmterr.Appender {
 }
 
 func (s *ephemeralCompEvalScope) compEval() (*compileEvaluator, bool) {
-	hostEval := compeval.NewHostEvaluator(s.bld, compeval.RunFunc)
-	itp, err := interp.New(hostEval, hostEval, cpevelements.Runner(), nil)
+	hostEval := compeval.NewHostEvaluator(s.bld)
+	itp, err := interp.New(hostEval, compeval.Runner(), nil)
 	if err != nil {
 		return nil, s.errs.Append(err)
 	}

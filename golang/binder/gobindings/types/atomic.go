@@ -21,7 +21,7 @@ import (
 	"github.com/gx-org/backend/dtypes"
 	"github.com/gx-org/backend/platform"
 	"github.com/gx-org/gx/api"
-	"github.com/gx-org/gx/api/values"
+	"github.com/gx-org/gx/api/hostio"
 	"github.com/gx-org/gx/build/ir"
 	"github.com/gx-org/gx/build/ir/irkind"
 	"github.com/gx-org/gx/golang/backend/kernels"
@@ -40,13 +40,13 @@ type Atom[T dtypes.Supported] interface {
 
 // DeviceAtom is an array stored on a device.
 type DeviceAtom[T dtypes.Supported] struct {
-	baseBridge[*DeviceAtom[T], *values.DeviceArray]
+	baseBridge[*DeviceAtom[T], *hostio.DeviceArray]
 }
 
 var _ Atom[int64] = (*DeviceAtom[int64])(nil)
 
 // NewDeviceAtom returns a new Go array given a device value managed by GX.
-func NewDeviceAtom[T dtypes.Supported](val *values.DeviceArray) *DeviceAtom[T] {
+func NewDeviceAtom[T dtypes.Supported](val *hostio.DeviceArray) *DeviceAtom[T] {
 	atomic := &DeviceAtom[T]{}
 	atomic.baseBridge = newBaseBridge(atomic, val)
 	shapeGot := val.Shape()
@@ -82,7 +82,7 @@ func (atom *DeviceAtom[T]) FetchValue() (val T, err error) {
 	return
 }
 
-func (atom *DeviceAtom[T]) toDeviceBridger(val *values.DeviceArray) ArrayBridge {
+func (atom *DeviceAtom[T]) toDeviceBridger(val *hostio.DeviceArray) ArrayBridge {
 	return NewDeviceAtom[T](val)
 }
 
@@ -92,13 +92,13 @@ func (atom *DeviceAtom[T]) String() string {
 
 // HostAtom is an array stored on a host.
 type HostAtom[T dtypes.Supported] struct {
-	baseBridge[*HostAtom[T], *values.HostArray]
+	baseBridge[*HostAtom[T], *hostio.HostArray]
 }
 
 var _ Atom[int64] = (*HostAtom[int64])(nil)
 
 // NewHostAtom returns a new Go array given a device value managed by GX.
-func NewHostAtom[T dtypes.Supported](val *values.HostArray) *HostAtom[T] {
+func NewHostAtom[T dtypes.Supported](val *hostio.HostArray) *HostAtom[T] {
 	atomic := &HostAtom[T]{}
 	atomic.baseBridge = newBaseBridge(atomic, val)
 	return atomic
@@ -131,7 +131,7 @@ func (atom *HostAtom[T]) SendTo(dev *api.Device) (*DeviceAtom[T], error) {
 	return NewDeviceAtom[T](devArray), nil
 }
 
-func (atom *HostAtom[T]) toDeviceBridger(val *values.DeviceArray) ArrayBridge {
+func (atom *HostAtom[T]) toDeviceBridger(val *hostio.DeviceArray) ArrayBridge {
 	return NewDeviceAtom[T](val)
 }
 
@@ -142,7 +142,7 @@ func (atom *HostAtom[T]) String() string {
 func newAtom[T dtypes.Supported](dt irkind.Kind, array kernels.Array) *HostAtom[T] {
 	typ := ir.TypeFromKind(dt)
 	buffer := kernels.NewBuffer(array)
-	hostArray, err := values.NewHostArray(typ, buffer)
+	hostArray, err := hostio.NewHostArray(typ, buffer)
 	if err != nil {
 		// Should never happen.
 		// The only possible error is when an array is created with type
@@ -193,6 +193,6 @@ func Uint64(val uint64) *HostAtom[uint64] {
 }
 
 // AtomFromHost returns an atom from a value stored on the host.
-func AtomFromHost[T dtypes.Supported](hostValue *values.HostArray) T {
+func AtomFromHost[T dtypes.Supported](hostValue *hostio.HostArray) T {
 	return NewHostAtom[T](hostValue).Value()
 }

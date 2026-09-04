@@ -434,13 +434,28 @@ func SetTypeParams(vals ...any) FTypeOption {
 	return (&typeParamSetter{vals: vals}).set
 }
 
+// UnrollFuncType builds an unroll function type.
+func UnrollFuncType(params, results *ir.FieldList) *ir.FuncType {
+	return &ir.FuncType{
+		BaseType: ir.BaseType[*ast.FuncType]{Src: &ast.FuncType{}},
+		Nature: ir.FuncNature{
+			CompEval: true,
+			Unroll:   true,
+		},
+		Params:  params,
+		Results: results,
+	}
+}
+
 // CompEvalFuncType builds a compeval function type.
 func CompEvalFuncType(params, results *ir.FieldList) *ir.FuncType {
 	return &ir.FuncType{
 		BaseType: ir.BaseType[*ast.FuncType]{Src: &ast.FuncType{}},
-		Params:   params,
-		Results:  results,
-		CompEval: true,
+		Nature: ir.FuncNature{
+			CompEval: true,
+		},
+		Params:  params,
+		Results: results,
 	}
 }
 
@@ -467,4 +482,14 @@ func FuncDeclCallee(name string, ftype *ir.FuncType) *ir.FuncValExpr {
 // FuncExpr builds a function expression from a function.
 func FuncExpr(fn ir.Func) *ir.FuncValExpr {
 	return ir.NewFuncValExpr(Ident(fn.(ir.Storage)), fn)
+}
+
+// AssignOp builds an assign operation as in x += 5.
+func AssignOp(st ir.Storage, x ir.Expr) *ir.AssignExprStmt {
+	return &ir.AssignExprStmt{
+		List: []*ir.AssignExpr{&ir.AssignExpr{
+			Storage: st,
+			X:       x,
+		}},
+	}
 }

@@ -12,47 +12,46 @@
 // See the License for the specific language governing permissions and
 // limitations under the License.
 
-package cpevelements
+package elements
 
 import (
 	"go/ast"
 
 	"github.com/gx-org/gx/build/ir"
-	"github.com/gx-org/gx/interp/elements"
 )
 
-// CoreMacroElement is a helper structure to implement macros.
-type CoreMacroElement struct {
+// MacroCall is a helper structure to implement macros.
+type MacroCall struct {
 	mac  *ir.Macro
-	call elements.CallAt
+	call CallAt
 }
 
-var _ ir.MacroElement = (*CoreMacroElement)(nil)
+var _ ir.MacroElement = (*MacroCall)(nil)
 
-// MacroElement returns a core macro element for custom elements.
-func MacroElement(mac *ir.Macro, file *ir.File, call *ir.FuncCallExpr) CoreMacroElement {
-	return CoreMacroElement{
+// NewMacroCall returns a core macro element for custom elements.
+func NewMacroCall(mac *ir.Macro, file *ir.File, call *ir.FuncCallExpr) MacroCall {
+	return MacroCall{
 		mac:  mac,
-		call: elements.NewNodeAt(file, call),
+		call: NewNodeAt(file, call),
 	}
 }
 
 // Type returns the type of a macro function.
-func (CoreMacroElement) Type() ir.Type {
+func (MacroCall) Type() ir.Type {
 	return ir.UnknownType()
 }
 
 // From returns the macro function that has generated this macro element.
-func (m *CoreMacroElement) From() *ir.Macro {
+func (m *MacroCall) From() *ir.Macro {
 	return m.mac
 }
 
 // Call returns the source call from where the element was created.
-func (m *CoreMacroElement) Call() elements.CallAt {
+func (m *MacroCall) Call() CallAt {
 	return m.call
 }
 
 // Source returns the source call from where the element was created.
-func (m *CoreMacroElement) Source() ast.Node {
+func (m *MacroCall) Source() ast.Node {
 	return m.call.Source()
 }

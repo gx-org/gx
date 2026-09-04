@@ -20,7 +20,7 @@ import (
 	"github.com/pkg/errors"
 	"github.com/gx-org/backend/dtypes"
 	"github.com/gx-org/backend/shape"
-	"github.com/gx-org/gx/api/values"
+	"github.com/gx-org/gx/api/hostio"
 	"github.com/gx-org/gx/build/ir"
 	"github.com/gx-org/gx/build/ir/irkind"
 	"github.com/gx-org/gx/golang/backend/kernels"
@@ -29,9 +29,7 @@ import (
 	"github.com/gx-org/gx/internal/interp/numbers"
 	"github.com/gx-org/gx/interp/elements"
 	"github.com/gx-org/gx/interp/engine"
-	"github.com/gx-org/gx/interp/fun"
 	"github.com/gx-org/gx/interp/grapheval"
-	"github.com/gx-org/gx/interp"
 )
 
 type randBootstrap struct {
@@ -40,7 +38,7 @@ type randBootstrap struct {
 
 	seed engine.NumericalElement
 	rand *rand.Rand
-	next func(engine.Env) (engine.NumericalElement, error)
+	next func(*engine.Env) (engine.NumericalElement, error)
 }
 
 var _ engine.Copier = (*randBootstrap)(nil)
@@ -61,7 +59,7 @@ func (rb *randBootstrap) initRand(seed int64) {
 	rb.rand = rand.New(rand.NewSource(seed))
 }
 
-func (rb *randBootstrap) nextConstant(env engine.Env) (engine.NumericalElement, error) {
+func (rb *randBootstrap) nextConstant(env *engine.Env) (engine.NumericalElement, error) {
 	cstUint64 := rb.rand.Uint64()
 	return numbers.NewElement(env, ir.Uint64Type(), cstUint64)
 }
@@ -79,7 +77,7 @@ var (
 	}
 )
 
-func newRandBootstrapArg(env engine.Env, rb *randBootstrap, seed elements.ElementWithArrayFromContext) (*randBootstrapArg, error) {
+func newRandBootstrapArg(env *engine.Env, rb *randBootstrap, seed elements.ElementWithArrayFromContext) (*randBootstrapArg, error) {
 	argFactory := &randBootstrapArg{
 		rb:   rb,
 		seed: seed,
@@ -88,11 +86,11 @@ func newRandBootstrapArg(env engine.Env, rb *randBootstrap, seed elements.Elemen
 	return argFactory, nil
 }
 
-func (arg *randBootstrapArg) next(env engine.Env) (engine.NumericalElement, error) {
+func (arg *randBootstrapArg) next(env *engine.Env) (engine.NumericalElement, error) {
 	return arg.rb.eval.NewArrayArgument(env.File(), arg, seedType, seedShape)
 }
 
-func (arg *randBootstrapArg) Init(ctx *values.FuncInputs) error {
+func (arg *randBootstrapArg) Init(ctx *hostio.FuncInputs) error {
 	value, err := arg.seed.ArrayFromContext(ctx)
 	if err != nil {
 		return nil
@@ -101,11 +99,11 @@ func (arg *randBootstrapArg) Init(ctx *values.FuncInputs) error {
 	if err != nil {
 		return err
 	}
-	array, ok := hostValue.(*values.HostArray)
+	array, ok := hostValue.(*hostio.HostArray)
 	if !ok {
 		return errors.Errorf("cannot convert GX argument %T to %T: not supported", value, array)
 	}
-	val, err := values.ToAtom[int64](array)
+	val, err := hostio.ToAtom[int64](array)
 	arg.rb.initRand(val)
 	return err
 }
@@ -114,16 +112,16 @@ func (arg *randBootstrapArg) Name() string {
 	return "randBootstrapArg.next()"
 }
 
-func (arg *randBootstrapArg) ValueFromContext(ctx *values.FuncInputs) (ir.Element, error) {
+func (arg *randBootstrapArg) ValueFromContext(ctx *hostio.FuncInputs) (ir.Element, error) {
 	val := arg.rb.rand.Uint64()
-	return values.AtomIntegerValue[uint64](seedType, val)
+	return hostio.AtomIntegerValue[uint64](seedType, val)
 }
 
 func (arg *randBootstrapArg) Evaluator() *grapheval.Evaluator {
 	return arg.rb.eval
 }
 
-func evalNewBootstrapGenerator(env engine.Env, call *ir.FuncCallExpr, recv ir.Element, args []ir.Element) ([]ir.Element, error) {
+func evalNewBootstrapGenerator(env *engine.Env, call *ir.FuncCallExpr, recv ir.Element, args []ir.Element) ([]ir.Element, error) {
 	bootstrap := &randBootstrap{
 		eval: env.Engine().(*grapheval.Evaluator),
 		call: call,
@@ -150,14 +148,13 @@ func evalNewBootstrapGenerator(env engine.Env, call *ir.FuncCallExpr, recv ir.El
 	if err != nil {
 		return nil, err
 	}
-	return []ir.Element{fun.NewNamedType(
-		interp.NewRunFunc,
+	return []ir.Element{elements.NewNamedType(
 		call.Type().(*ir.NamedType),
 		bootstrap,
 	)}, nil
 }
 
-func evalBootstrapGeneratorNext(env engine.Env, call *ir.FuncCallExpr, recv ir.Element, args []ir.Element) ([]ir.Element, error) {
+func evalBootstrapGeneratorNext(env *engine.Env, call *ir.FuncCallExpr, recv ir.Element, args []ir.Element) ([]ir.Element, error) {
 	under, err := coreiface.Underlying(recv)
 	if err != nil {
 		return nil, err

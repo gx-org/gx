@@ -26,6 +26,7 @@ import (
 
 	"github.com/gx-org/backend/platform"
 	"github.com/gx-org/gx/api"
+	"github.com/gx-org/gx/api/hostio"
 	"github.com/gx-org/gx/api/options"
 	"github.com/gx-org/gx/api/tracer"
 	"github.com/gx-org/gx/api/values"
@@ -43,6 +44,7 @@ var (
 	_ = strings.Compare
 	_ = reflect.TypeFor[int]
 	_ = values.Struct{}
+	_ hostio.Value
 	_ = errors.Errorf
 	_ = types.NewSlice[types.Bridger]
 	_ = platform.HostTransfer
@@ -150,21 +152,21 @@ func Build(dev *core.DeviceSetup) (*PackageHandle, error) {
 
 // ReturnFloat32 returns a float32.
 func (pkg *Package) ReturnFloat32() (_ types.Atom[float32], err error) {
-	var args []values.Value = nil
+	var args []hostio.Value = nil
 	var runner tracer.CompiledFunc
 	runner, err = pkg.cacheReturnFloat32.Runner(nil, args)
 	if err != nil {
 		return
 	}
-	var outputs []values.Value
+	var outputs []hostio.Value
 	outputs, err = runner.Run(nil, args, pkg.handle.Tracer())
 	if err != nil {
 		return
 	}
 
-	out0Value, ok := outputs[0].(values.Array)
+	out0Value, ok := outputs[0].(hostio.Array)
 	if !ok {
-		err = errors.Errorf("cannot cast %T to %s", outputs[0], reflect.TypeFor[*values.DeviceArray]().Name())
+		err = errors.Errorf("cannot cast %T to %s", outputs[0], reflect.TypeFor[*hostio.DeviceArray]().Name())
 		return
 	}
 	out0 := types.NewAtom[float32](out0Value)
@@ -174,21 +176,21 @@ func (pkg *Package) ReturnFloat32() (_ types.Atom[float32], err error) {
 
 // ReturnArrayFloat32 returns a float32 tensor.
 func (pkg *Package) ReturnArrayFloat32() (_ types.Array[float32], err error) {
-	var args []values.Value = nil
+	var args []hostio.Value = nil
 	var runner tracer.CompiledFunc
 	runner, err = pkg.cacheReturnArrayFloat32.Runner(nil, args)
 	if err != nil {
 		return
 	}
-	var outputs []values.Value
+	var outputs []hostio.Value
 	outputs, err = runner.Run(nil, args, pkg.handle.Tracer())
 	if err != nil {
 		return
 	}
 
-	out0Value, ok := outputs[0].(values.Array)
+	out0Value, ok := outputs[0].(hostio.Array)
 	if !ok {
-		err = errors.Errorf("cannot cast %T to %s", outputs[0], reflect.TypeFor[*values.DeviceArray]().Name())
+		err = errors.Errorf("cannot cast %T to %s", outputs[0], reflect.TypeFor[*hostio.DeviceArray]().Name())
 		return
 	}
 	out0 := types.NewArray[float32](out0Value)
@@ -198,35 +200,35 @@ func (pkg *Package) ReturnArrayFloat32() (_ types.Array[float32], err error) {
 
 // ReturnMultiple returns multiple values.
 func (pkg *Package) ReturnMultiple() (_ types.Atom[int32], _ types.Atom[float32], _ types.Atom[float64], err error) {
-	var args []values.Value = nil
+	var args []hostio.Value = nil
 	var runner tracer.CompiledFunc
 	runner, err = pkg.cacheReturnMultiple.Runner(nil, args)
 	if err != nil {
 		return
 	}
-	var outputs []values.Value
+	var outputs []hostio.Value
 	outputs, err = runner.Run(nil, args, pkg.handle.Tracer())
 	if err != nil {
 		return
 	}
 
-	out0Value, ok := outputs[0].(values.Array)
+	out0Value, ok := outputs[0].(hostio.Array)
 	if !ok {
-		err = errors.Errorf("cannot cast %T to %s", outputs[0], reflect.TypeFor[*values.DeviceArray]().Name())
+		err = errors.Errorf("cannot cast %T to %s", outputs[0], reflect.TypeFor[*hostio.DeviceArray]().Name())
 		return
 	}
 	out0 := types.NewAtom[int32](out0Value)
 
-	out1Value, ok := outputs[1].(values.Array)
+	out1Value, ok := outputs[1].(hostio.Array)
 	if !ok {
-		err = errors.Errorf("cannot cast %T to %s", outputs[1], reflect.TypeFor[*values.DeviceArray]().Name())
+		err = errors.Errorf("cannot cast %T to %s", outputs[1], reflect.TypeFor[*hostio.DeviceArray]().Name())
 		return
 	}
 	out1 := types.NewAtom[float32](out1Value)
 
-	out2Value, ok := outputs[2].(values.Array)
+	out2Value, ok := outputs[2].(hostio.Array)
 	if !ok {
-		err = errors.Errorf("cannot cast %T to %s", outputs[2], reflect.TypeFor[*values.DeviceArray]().Name())
+		err = errors.Errorf("cannot cast %T to %s", outputs[2], reflect.TypeFor[*hostio.DeviceArray]().Name())
 		return
 	}
 	out2 := types.NewAtom[float64](out2Value)
@@ -236,13 +238,13 @@ func (pkg *Package) ReturnMultiple() (_ types.Atom[int32], _ types.Atom[float32]
 
 // New returns a new instance of the basic structure.
 func (pkg *Package) New() (_ *Basic, err error) {
-	var args []values.Value = nil
+	var args []hostio.Value = nil
 	var runner tracer.CompiledFunc
 	runner, err = pkg.cacheNew.Runner(nil, args)
 	if err != nil {
 		return
 	}
-	var outputs []values.Value
+	var outputs []hostio.Value
 	outputs, err = runner.Run(nil, args, pkg.handle.Tracer())
 	if err != nil {
 		return
@@ -261,7 +263,7 @@ func (pkg *Package) New() (_ *Basic, err error) {
 
 // AddPrivate returns the sum of two private fields.
 func (pkg *Package) AddPrivate(arg0 *Basic) (_ types.Atom[int32], err error) {
-	var args []values.Value = []values.Value{
+	var args []hostio.Value = []hostio.Value{
 		arg0.Bridge().GXValue(), // b basic.Basic
 	}
 	var runner tracer.CompiledFunc
@@ -269,15 +271,15 @@ func (pkg *Package) AddPrivate(arg0 *Basic) (_ types.Atom[int32], err error) {
 	if err != nil {
 		return
 	}
-	var outputs []values.Value
+	var outputs []hostio.Value
 	outputs, err = runner.Run(nil, args, pkg.handle.Tracer())
 	if err != nil {
 		return
 	}
 
-	out0Value, ok := outputs[0].(values.Array)
+	out0Value, ok := outputs[0].(hostio.Array)
 	if !ok {
-		err = errors.Errorf("cannot cast %T to %s", outputs[0], reflect.TypeFor[*values.DeviceArray]().Name())
+		err = errors.Errorf("cannot cast %T to %s", outputs[0], reflect.TypeFor[*hostio.DeviceArray]().Name())
 		return
 	}
 	out0 := types.NewAtom[int32](out0Value)
@@ -308,7 +310,7 @@ func (h *handleEmpty) Bridger() types.Bridger {
 }
 
 // GXValue returns the GX value.
-func (h *handleEmpty) GXValue() values.Value {
+func (h *handleEmpty) GXValue() hostio.Value {
 	return h.owner.value
 }
 
@@ -338,7 +340,7 @@ func (h *handleEmpty) StructValue() *values.Struct {
 }
 
 // MarshalEmpty populates the receiver fields with device handles.
-func (fty *Factory) MarshalEmpty(val values.Value) (s *Empty, err error) {
+func (fty *Factory) MarshalEmpty(val hostio.Value) (s *Empty, err error) {
 	s = fty.NewEmpty()
 	var ok bool
 	s.value, ok = val.(*values.NamedType)
@@ -351,7 +353,7 @@ func (fty *Factory) MarshalEmpty(val values.Value) (s *Empty, err error) {
 		err = errors.Errorf("incorrect underlying value for named type Empty: %T is not a %s", val, reflect.TypeFor[*values.Struct]().Name())
 		return
 	}
-	fields := make([]values.Value, structVal.StructType().NumFields())
+	fields := make([]hostio.Value, structVal.StructType().NumFields())
 	for i, field := range structVal.StructType().Fields.Fields() {
 		fields[i] = structVal.FieldValue(field.Name.Name)
 	}
@@ -426,7 +428,7 @@ func (h *handleBasic) Bridger() types.Bridger {
 }
 
 // GXValue returns the GX value.
-func (h *handleBasic) GXValue() values.Value {
+func (h *handleBasic) GXValue() hostio.Value {
 	return h.owner.value
 }
 
@@ -478,7 +480,7 @@ func (h *handleBasic) StructValue() *values.Struct {
 }
 
 // MarshalBasic populates the receiver fields with device handles.
-func (fty *Factory) MarshalBasic(val values.Value) (s *Basic, err error) {
+func (fty *Factory) MarshalBasic(val hostio.Value) (s *Basic, err error) {
 	s = fty.NewBasic()
 	var ok bool
 	s.value, ok = val.(*values.NamedType)
@@ -491,56 +493,56 @@ func (fty *Factory) MarshalBasic(val values.Value) (s *Basic, err error) {
 		err = errors.Errorf("incorrect underlying value for named type Basic: %T is not a %s", val, reflect.TypeFor[*values.Struct]().Name())
 		return
 	}
-	fields := make([]values.Value, structVal.StructType().NumFields())
+	fields := make([]hostio.Value, structVal.StructType().NumFields())
 	for i, field := range structVal.StructType().Fields.Fields() {
 		fields[i] = structVal.FieldValue(field.Name.Name)
 	}
 
-	field0Value, ok := fields[0].(values.Array)
+	field0Value, ok := fields[0].(hostio.Array)
 	if !ok {
-		err = errors.Errorf("cannot cast %T to %s", fields[0], reflect.TypeFor[*values.DeviceArray]().Name())
+		err = errors.Errorf("cannot cast %T to %s", fields[0], reflect.TypeFor[*hostio.DeviceArray]().Name())
 		return
 	}
 	field0 := types.NewAtom[int32](field0Value)
 
-	field1Value, ok := fields[1].(values.Array)
+	field1Value, ok := fields[1].(hostio.Array)
 	if !ok {
-		err = errors.Errorf("cannot cast %T to %s", fields[1], reflect.TypeFor[*values.DeviceArray]().Name())
+		err = errors.Errorf("cannot cast %T to %s", fields[1], reflect.TypeFor[*hostio.DeviceArray]().Name())
 		return
 	}
 	field1 := types.NewAtom[float32](field1Value)
 
-	field2Value, ok := fields[2].(values.Array)
+	field2Value, ok := fields[2].(hostio.Array)
 	if !ok {
-		err = errors.Errorf("cannot cast %T to %s", fields[2], reflect.TypeFor[*values.DeviceArray]().Name())
+		err = errors.Errorf("cannot cast %T to %s", fields[2], reflect.TypeFor[*hostio.DeviceArray]().Name())
 		return
 	}
 	field2 := types.NewArray[float32](field2Value)
 
-	field3Value, ok := fields[3].(values.Array)
+	field3Value, ok := fields[3].(hostio.Array)
 	if !ok {
-		err = errors.Errorf("cannot cast %T to %s", fields[3], reflect.TypeFor[*values.DeviceArray]().Name())
+		err = errors.Errorf("cannot cast %T to %s", fields[3], reflect.TypeFor[*hostio.DeviceArray]().Name())
 		return
 	}
 	field3 := types.NewAtom[int32](field3Value)
 
-	field4Value, ok := fields[4].(values.Array)
+	field4Value, ok := fields[4].(hostio.Array)
 	if !ok {
-		err = errors.Errorf("cannot cast %T to %s", fields[4], reflect.TypeFor[*values.DeviceArray]().Name())
+		err = errors.Errorf("cannot cast %T to %s", fields[4], reflect.TypeFor[*hostio.DeviceArray]().Name())
 		return
 	}
 	field4 := types.NewAtom[int32](field4Value)
 
-	field5Value, ok := fields[5].(values.Array)
+	field5Value, ok := fields[5].(hostio.Array)
 	if !ok {
-		err = errors.Errorf("cannot cast %T to %s", fields[5], reflect.TypeFor[*values.DeviceArray]().Name())
+		err = errors.Errorf("cannot cast %T to %s", fields[5], reflect.TypeFor[*hostio.DeviceArray]().Name())
 		return
 	}
 	field5 := types.NewAtom[int](field5Value)
 
-	field6Value, ok := fields[6].(values.Array)
+	field6Value, ok := fields[6].(hostio.Array)
 	if !ok {
-		err = errors.Errorf("cannot cast %T to %s", fields[6], reflect.TypeFor[*values.DeviceArray]().Name())
+		err = errors.Errorf("cannot cast %T to %s", fields[6], reflect.TypeFor[*hostio.DeviceArray]().Name())
 		return
 	}
 	field6 := types.NewAtom[int](field6Value)
@@ -694,7 +696,7 @@ func (h *handleBasic) SetField(field *ir.Field, val types.Bridge) error {
 
 // Add returns the sum of two private fields.
 func (recv *Basic) Add(arg0 *Basic) (_ types.Atom[int32], err error) {
-	var args []values.Value = []values.Value{
+	var args []hostio.Value = []hostio.Value{
 		arg0.Bridge().GXValue(), // a basic.Basic
 	}
 	var runner tracer.CompiledFunc
@@ -702,15 +704,15 @@ func (recv *Basic) Add(arg0 *Basic) (_ types.Atom[int32], err error) {
 	if err != nil {
 		return
 	}
-	var outputs []values.Value
+	var outputs []hostio.Value
 	outputs, err = runner.Run(recv.value, args, recv.handle.pkg.handle.Tracer())
 	if err != nil {
 		return
 	}
 
-	out0Value, ok := outputs[0].(values.Array)
+	out0Value, ok := outputs[0].(hostio.Array)
 	if !ok {
-		err = errors.Errorf("cannot cast %T to %s", outputs[0], reflect.TypeFor[*values.DeviceArray]().Name())
+		err = errors.Errorf("cannot cast %T to %s", outputs[0], reflect.TypeFor[*hostio.DeviceArray]().Name())
 		return
 	}
 	out0 := types.NewAtom[int32](out0Value)
@@ -720,21 +722,21 @@ func (recv *Basic) Add(arg0 *Basic) (_ types.Atom[int32], err error) {
 
 // AddPrivate returns the sum of two private fields.
 func (recv *Basic) AddPrivate() (_ types.Atom[int32], err error) {
-	var args []values.Value = nil
+	var args []hostio.Value = nil
 	var runner tracer.CompiledFunc
 	runner, err = recv.handle.pkg.cacheBasicAddPrivate.Runner(recv.value, args)
 	if err != nil {
 		return
 	}
-	var outputs []values.Value
+	var outputs []hostio.Value
 	outputs, err = runner.Run(recv.value, args, recv.handle.pkg.handle.Tracer())
 	if err != nil {
 		return
 	}
 
-	out0Value, ok := outputs[0].(values.Array)
+	out0Value, ok := outputs[0].(hostio.Array)
 	if !ok {
-		err = errors.Errorf("cannot cast %T to %s", outputs[0], reflect.TypeFor[*values.DeviceArray]().Name())
+		err = errors.Errorf("cannot cast %T to %s", outputs[0], reflect.TypeFor[*hostio.DeviceArray]().Name())
 		return
 	}
 	out0 := types.NewAtom[int32](out0Value)
@@ -744,7 +746,7 @@ func (recv *Basic) AddPrivate() (_ types.Atom[int32], err error) {
 
 // SetFloat sets the Float field.
 func (recv *Basic) SetFloat(arg0 types.Atom[float32]) (_ *Basic, err error) {
-	var args []values.Value = []values.Value{
+	var args []hostio.Value = []hostio.Value{
 		arg0.Bridge().GXValue(), // x float32
 	}
 	var runner tracer.CompiledFunc
@@ -752,7 +754,7 @@ func (recv *Basic) SetFloat(arg0 types.Atom[float32]) (_ *Basic, err error) {
 	if err != nil {
 		return
 	}
-	var outputs []values.Value
+	var outputs []hostio.Value
 	outputs, err = runner.Run(recv.value, args, recv.handle.pkg.handle.Tracer())
 	if err != nil {
 		return

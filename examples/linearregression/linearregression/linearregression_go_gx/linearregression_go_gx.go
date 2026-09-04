@@ -26,6 +26,7 @@ import (
 
 	"github.com/gx-org/backend/platform"
 	"github.com/gx-org/gx/api"
+	"github.com/gx-org/gx/api/hostio"
 	"github.com/gx-org/gx/api/options"
 	"github.com/gx-org/gx/api/tracer"
 	"github.com/gx-org/gx/api/values"
@@ -47,6 +48,7 @@ var (
 	_ = strings.Compare
 	_ = reflect.TypeFor[int]
 	_ = values.Struct{}
+	_ hostio.Value
 	_ = errors.Errorf
 	_ = types.NewSlice[types.Bridger]
 	_ = platform.HostTransfer
@@ -171,7 +173,7 @@ func (SizeStatic) Set(value int) options.PackageOptionFactory {
 
 // NewLearner returns a new learner ready to learn.
 func (pkg *Package) NewLearner(arg0 types.Atom[float32]) (_ *Learner, err error) {
-	var args []values.Value = []values.Value{
+	var args []hostio.Value = []hostio.Value{
 		arg0.Bridge().GXValue(), // stepSize float32
 	}
 	var runner tracer.CompiledFunc
@@ -179,7 +181,7 @@ func (pkg *Package) NewLearner(arg0 types.Atom[float32]) (_ *Learner, err error)
 	if err != nil {
 		return
 	}
-	var outputs []values.Value
+	var outputs []hostio.Value
 	outputs, err = runner.Run(nil, args, pkg.handle.Tracer())
 	if err != nil {
 		return
@@ -198,7 +200,7 @@ func (pkg *Package) NewLearner(arg0 types.Atom[float32]) (_ *Learner, err error)
 
 // NewTarget generates a new target given a random seed.
 func (pkg *Package) NewTarget(arg0 types.Atom[int64], arg1 types.Atom[float32]) (_ *Target, err error) {
-	var args []values.Value = []values.Value{
+	var args []hostio.Value = []hostio.Value{
 		arg0.Bridge().GXValue(), // seed int64
 		arg1.Bridge().GXValue(), // bias float32
 	}
@@ -207,7 +209,7 @@ func (pkg *Package) NewTarget(arg0 types.Atom[int64], arg1 types.Atom[float32]) 
 	if err != nil {
 		return
 	}
-	var outputs []values.Value
+	var outputs []hostio.Value
 	outputs, err = runner.Run(nil, args, pkg.handle.Tracer())
 	if err != nil {
 		return
@@ -247,7 +249,7 @@ func (h *handleLearner) Bridger() types.Bridger {
 }
 
 // GXValue returns the GX value.
-func (h *handleLearner) GXValue() values.Value {
+func (h *handleLearner) GXValue() hostio.Value {
 	return h.owner.value
 }
 
@@ -284,7 +286,7 @@ func (h *handleLearner) StructValue() *values.Struct {
 }
 
 // MarshalLearner populates the receiver fields with device handles.
-func (fty *Factory) MarshalLearner(val values.Value) (s *Learner, err error) {
+func (fty *Factory) MarshalLearner(val hostio.Value) (s *Learner, err error) {
 	s = fty.NewLearner()
 	var ok bool
 	s.value, ok = val.(*values.NamedType)
@@ -297,21 +299,21 @@ func (fty *Factory) MarshalLearner(val values.Value) (s *Learner, err error) {
 		err = errors.Errorf("incorrect underlying value for named type Learner: %T is not a %s", val, reflect.TypeFor[*values.Struct]().Name())
 		return
 	}
-	fields := make([]values.Value, structVal.StructType().NumFields())
+	fields := make([]hostio.Value, structVal.StructType().NumFields())
 	for i, field := range structVal.StructType().Fields.Fields() {
 		fields[i] = structVal.FieldValue(field.Name.Name)
 	}
 
-	field0Value, ok := fields[0].(values.Array)
+	field0Value, ok := fields[0].(hostio.Array)
 	if !ok {
-		err = errors.Errorf("cannot cast %T to %s", fields[0], reflect.TypeFor[*values.DeviceArray]().Name())
+		err = errors.Errorf("cannot cast %T to %s", fields[0], reflect.TypeFor[*hostio.DeviceArray]().Name())
 		return
 	}
 	field0 := types.NewAtom[float32](field0Value)
 
-	field1Value, ok := fields[1].(values.Array)
+	field1Value, ok := fields[1].(hostio.Array)
 	if !ok {
-		err = errors.Errorf("cannot cast %T to %s", fields[1], reflect.TypeFor[*values.DeviceArray]().Name())
+		err = errors.Errorf("cannot cast %T to %s", fields[1], reflect.TypeFor[*hostio.DeviceArray]().Name())
 		return
 	}
 	field1 := types.NewArray[float32](field1Value)
@@ -400,7 +402,7 @@ func (h *handleLearner) SetField(field *ir.Field, val types.Bridge) error {
 
 // Sample generates a new vector of features and the corresponding prediction.
 func (recv *Learner) Update(arg0 types.Array[float32], arg1 types.Atom[float32]) (_ *Learner, _ types.Atom[float32], err error) {
-	var args []values.Value = []values.Value{
+	var args []hostio.Value = []hostio.Value{
 		arg0.Bridge().GXValue(), // features [Size]float32
 		arg1.Bridge().GXValue(), // target float32
 	}
@@ -409,7 +411,7 @@ func (recv *Learner) Update(arg0 types.Array[float32], arg1 types.Atom[float32])
 	if err != nil {
 		return
 	}
-	var outputs []values.Value
+	var outputs []hostio.Value
 	outputs, err = runner.Run(recv.value, args, recv.handle.pkg.handle.Tracer())
 	if err != nil {
 		return
@@ -423,9 +425,9 @@ func (recv *Learner) Update(arg0 types.Array[float32], arg1 types.Atom[float32])
 		return
 	}
 
-	out1Value, ok := outputs[1].(values.Array)
+	out1Value, ok := outputs[1].(hostio.Array)
 	if !ok {
-		err = errors.Errorf("cannot cast %T to %s", outputs[1], reflect.TypeFor[*values.DeviceArray]().Name())
+		err = errors.Errorf("cannot cast %T to %s", outputs[1], reflect.TypeFor[*hostio.DeviceArray]().Name())
 		return
 	}
 	out1 := types.NewAtom[float32](out1Value)
@@ -456,7 +458,7 @@ func (h *handleTarget) Bridger() types.Bridger {
 }
 
 // GXValue returns the GX value.
-func (h *handleTarget) GXValue() values.Value {
+func (h *handleTarget) GXValue() hostio.Value {
 	return h.owner.value
 }
 
@@ -496,7 +498,7 @@ func (h *handleTarget) StructValue() *values.Struct {
 }
 
 // MarshalTarget populates the receiver fields with device handles.
-func (fty *Factory) MarshalTarget(val values.Value) (s *Target, err error) {
+func (fty *Factory) MarshalTarget(val hostio.Value) (s *Target, err error) {
 	s = fty.NewTarget()
 	var ok bool
 	s.value, ok = val.(*values.NamedType)
@@ -509,7 +511,7 @@ func (fty *Factory) MarshalTarget(val values.Value) (s *Target, err error) {
 		err = errors.Errorf("incorrect underlying value for named type Target: %T is not a %s", val, reflect.TypeFor[*values.Struct]().Name())
 		return
 	}
-	fields := make([]values.Value, structVal.StructType().NumFields())
+	fields := make([]hostio.Value, structVal.StructType().NumFields())
 	for i, field := range structVal.StructType().Fields.Fields() {
 		fields[i] = structVal.FieldValue(field.Name.Name)
 	}
@@ -519,16 +521,16 @@ func (fty *Factory) MarshalTarget(val values.Value) (s *Target, err error) {
 		return
 	}
 
-	field1Value, ok := fields[1].(values.Array)
+	field1Value, ok := fields[1].(hostio.Array)
 	if !ok {
-		err = errors.Errorf("cannot cast %T to %s", fields[1], reflect.TypeFor[*values.DeviceArray]().Name())
+		err = errors.Errorf("cannot cast %T to %s", fields[1], reflect.TypeFor[*hostio.DeviceArray]().Name())
 		return
 	}
 	field1 := types.NewArray[float32](field1Value)
 
-	field2Value, ok := fields[2].(values.Array)
+	field2Value, ok := fields[2].(hostio.Array)
 	if !ok {
-		err = errors.Errorf("cannot cast %T to %s", fields[2], reflect.TypeFor[*values.DeviceArray]().Name())
+		err = errors.Errorf("cannot cast %T to %s", fields[2], reflect.TypeFor[*hostio.DeviceArray]().Name())
 		return
 	}
 	field2 := types.NewAtom[float32](field2Value)
@@ -630,13 +632,13 @@ func (h *handleTarget) SetField(field *ir.Field, val types.Bridge) error {
 
 // Sample generates a new vector of features and the corresponding prediction.
 func (recv *Target) Sample() (_ *Target, _ types.Array[float32], _ types.Atom[float32], err error) {
-	var args []values.Value = nil
+	var args []hostio.Value = nil
 	var runner tracer.CompiledFunc
 	runner, err = recv.handle.pkg.cacheTargetSample.Runner(recv.value, args)
 	if err != nil {
 		return
 	}
-	var outputs []values.Value
+	var outputs []hostio.Value
 	outputs, err = runner.Run(recv.value, args, recv.handle.pkg.handle.Tracer())
 	if err != nil {
 		return
@@ -650,16 +652,16 @@ func (recv *Target) Sample() (_ *Target, _ types.Array[float32], _ types.Atom[fl
 		return
 	}
 
-	out1Value, ok := outputs[1].(values.Array)
+	out1Value, ok := outputs[1].(hostio.Array)
 	if !ok {
-		err = errors.Errorf("cannot cast %T to %s", outputs[1], reflect.TypeFor[*values.DeviceArray]().Name())
+		err = errors.Errorf("cannot cast %T to %s", outputs[1], reflect.TypeFor[*hostio.DeviceArray]().Name())
 		return
 	}
 	out1 := types.NewArray[float32](out1Value)
 
-	out2Value, ok := outputs[2].(values.Array)
+	out2Value, ok := outputs[2].(hostio.Array)
 	if !ok {
-		err = errors.Errorf("cannot cast %T to %s", outputs[2], reflect.TypeFor[*values.DeviceArray]().Name())
+		err = errors.Errorf("cannot cast %T to %s", outputs[2], reflect.TypeFor[*hostio.DeviceArray]().Name())
 		return
 	}
 	out2 := types.NewAtom[float32](out2Value)

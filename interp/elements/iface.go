@@ -16,7 +16,7 @@ package elements
 
 import (
 	"github.com/gx-org/backend/shape"
-	"github.com/gx-org/gx/api/values"
+	"github.com/gx-org/gx/api/hostio"
 	"github.com/gx-org/gx/build/ir"
 	"github.com/gx-org/gx/interp/engine"
 )
@@ -45,6 +45,6 @@ type (
 		engine.NumericalElement
 
 		// ArrayFromContext fetches an array from the argument.
-		ArrayFromContext(*values.FuncInputs) (values.Array, error)
+		ArrayFromContext(*hostio.FuncInputs) (hostio.Array, error)
 	}
 )

@@ -22,13 +22,12 @@ import (
 	"github.com/pkg/errors"
 	"github.com/gx-org/backend/ops"
 	"github.com/gx-org/backend/shape"
-	"github.com/gx-org/gx/api/values"
+	"github.com/gx-org/gx/api/hostio"
 	"github.com/gx-org/gx/build/ir"
 	"github.com/gx-org/gx/interp/elements"
 	"github.com/gx-org/gx/interp/engine"
 	"github.com/gx-org/gx/interp/materialise"
 	"github.com/gx-org/gx/stdlib/builtin"
-	gxerrors "github.com/gx-org/gx/stdlib/errors"
 )
 
 // Package description of the GX shape package.
@@ -50,7 +49,7 @@ var Package = builtin.PackageBuilder{
 	},
 }
 
-func evalTranspose(env engine.Env, call *ir.FuncCallExpr, recv ir.Element, args []ir.Element) ([]ir.Element, error) {
+func evalTranspose(env *engine.Env, call *ir.FuncCallExpr, recv ir.Element, args []ir.Element) ([]ir.Element, error) {
 	mat := builtin.Materialiser(env)
 	argNode, argShape, err := materialise.Element(mat, args[2])
 	if err != nil {
@@ -79,12 +78,12 @@ func evalTranspose(env engine.Env, call *ir.FuncCallExpr, recv ir.Element, args 
 	}, call.Type())
 }
 
-func outOfBoundAxis(env engine.Env, call *ir.FuncCallExpr, axes *elements.Slice, idx int, name string) (ir.Element, error) {
+func outOfBoundAxis(env *engine.Env, call *ir.FuncCallExpr, axes *elements.Slice, idx int, name string) error {
 	shapeS := ir.ExprString(env.ExprEval(), call.Expr(), axes)
-	return gxerrors.Errorf(env, "%s axis %d out of bound for array with %d axes (with axis lengths: %s)", name, idx, axes.Len(), shapeS)
+	return ir.CompileErrorF("%s axis %d out of bound for array with %d axes (with axis lengths: %s)", name, idx, axes.Len(), shapeS)
 }
 
-func reverseAxes(env engine.Env, call *ir.FuncCallExpr, recv ir.Element, args []ir.Element) (_ []ir.Element, err error) {
+func reverseAxes(env *engine.Env, call *ir.FuncCallExpr, recv ir.Element, args []ir.Element) (_ []ir.Element, err error) {
 	axes, err := elements.SliceFromElement(args[0])
 	if err != nil {
 		return nil, err
@@ -98,7 +97,7 @@ func reverseAxes(env engine.Env, call *ir.FuncCallExpr, recv ir.Element, args []
 	return []ir.Element{revAxes}, nil
 }
 
-func reduceAxes(env engine.Env, call *ir.FuncCallExpr, recv ir.Element, args []ir.Element) (_ []ir.Element, err error) {
+func reduceAxes(env *engine.Env, call *ir.FuncCallExpr, recv ir.Element, args []ir.Element) (_ []ir.Element, err error) {
 	axes, err := elements.SliceFromElement(args[0])
 	if err != nil {
 		return nil, err
@@ -113,8 +112,8 @@ func reduceAxes(env engine.Env, call *ir.FuncCallExpr, recv ir.Element, args []i
 	}
 	for _, axisIndex := range indices {
 		if axisIndex >= len(keep) {
-			gxErr, err := outOfBoundAxis(env, call, axes, axisIndex, "reduce")
-			return []ir.Element{args[0], gxErr}, err
+			err := outOfBoundAxis(env, call, axes, axisIndex, "reduce")
+			return []ir.Element{args[0]}, err
 		}
 		// Reduced over the axis: do not keep.
 		keep[axisIndex] = false
@@ -127,10 +126,10 @@ func reduceAxes(env engine.Env, call *ir.FuncCallExpr, recv ir.Element, args []i
 		eltsKeep = append(eltsKeep, ax)
 	}
 	out, err := elements.NewSlice(axes.Type(), eltsKeep)
-	return []ir.Element{out, elements.NilError()}, err
+	return []ir.Element{out}, err
 }
 
-func sameSlice(env engine.Env, call *ir.FuncCallExpr, recv ir.Element, args []ir.Element) (_ []ir.Element, err error) {
+func sameSlice(env *engine.Env, call *ir.FuncCallExpr, recv ir.Element, args []ir.Element) (_ []ir.Element, err error) {
 	defer func() {
 		if err != nil {
 			err = fmt.Errorf("cannot call fmt.SameSlice: %w", err)
@@ -158,7 +157,7 @@ func sameSlice(env engine.Env, call *ir.FuncCallExpr, recv ir.Element, args []ir
 	}
 	ok = true
 ret:
-	boolValue, err := values.AtomBoolValue(ir.BoolType(), ok)
+	boolValue, err := hostio.AtomBoolValue(ir.BoolType(), ok)
 	if err != nil {
 		return nil, errors.Errorf("cannot create bool value in fmt.SameSlice")
 	}

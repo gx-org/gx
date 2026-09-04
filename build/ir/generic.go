@@ -30,7 +30,7 @@ type (
 		NonTypeFor(GenericParam) *NonTypeGenericValue
 		TypeFor(GenericParam) *TypeGenericValue
 		Values() []GenericValue
-		InstantiateError(error) bool
+		InstantiateError(ast.Node, error) bool
 	}
 
 	// Unifier provides methods to unify types.
@@ -120,6 +120,11 @@ func NewGenericTypeParam(field *Field) *GenericTypeParam {
 	return &GenericTypeParam{
 		genericParamCore: newGenericParamCore(field, true),
 	}
+}
+
+// Refer to the function type.
+func (s *GenericTypeParam) Refer(file *File) ast.Expr {
+	return s.field.Name
 }
 
 func (s *GenericTypeParam) typ() Type {

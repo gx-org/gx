@@ -16,8 +16,8 @@ package processor
 
 import (
 	"github.com/gx-org/backend/platform"
+	"github.com/gx-org/gx/api/hostio"
 	"github.com/gx-org/gx/api/trace"
-	"github.com/gx-org/gx/api/values"
 	"github.com/gx-org/gx/build/ir"
 	"github.com/gx-org/gx/internal/interp/flatten"
 )
@@ -29,7 +29,7 @@ type traceProcessor struct {
 }
 
 func (t *traceProcessor) parse(tracer trace.Callback, parser *flatten.Parser) error {
-	vals := make([]values.Value, len(t.traced))
+	vals := make([]hostio.Value, len(t.traced))
 	for i, tr := range t.traced {
 		var err error
 		vals[i], err = parser.Unflatten(tr)
@@ -41,6 +41,7 @@ func (t *traceProcessor) parse(tracer trace.Callback, parser *flatten.Parser) er
 }
 
 type traces struct {
+	proc    *Processor
 	traces  []*traceProcessor
 	flatten []ir.Element
 }
@@ -63,11 +64,11 @@ func (ts *traces) RegisterTrace(ctx ir.Evaluator, call *ir.FuncCallExpr, args []
 }
 
 // ProcessTraces processes the graph outputs related to traces.
-func (ts *traces) ProcessTraces(dev platform.Device, in *values.FuncInputs, tracer trace.Callback, aux []platform.DeviceHandle) error {
+func (ts *traces) ProcessTraces(dev platform.Device, in *hostio.FuncInputs, tracer trace.Callback, aux []platform.DeviceHandle) error {
 	if tracer == nil || len(ts.traces) == 0 {
 		return nil
 	}
-	parser := flatten.NewParser(dev, in, aux)
+	parser := flatten.NewParser(dev, in, ts.proc.factory, aux)
 	for _, trace := range ts.traces {
 		if err := trace.parse(tracer, parser); err != nil {
 			return err

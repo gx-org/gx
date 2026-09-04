@@ -26,7 +26,6 @@ import (
 	"github.com/gx-org/gx/build/ir"
 	"github.com/gx-org/gx/interp/elements"
 	"github.com/gx-org/gx/interp/engine"
-	"github.com/gx-org/gx/interp"
 	"github.com/gx-org/gx/interp/materialise"
 )
 
@@ -72,7 +71,7 @@ func ToShapeResult(els ...ir.Element) ([]ir.Element, error) {
 	if err != nil {
 		return nil, err
 	}
-	return []ir.Element{shape, elements.NilError()}, nil
+	return []ir.Element{shape}, nil
 }
 
 // Build a package from its description.
@@ -96,7 +95,7 @@ func (param BuilderParam) Build(pkgBuilder PackageBuilder) (importers.Package, e
 // Func is a standard library builtin function.
 type Func struct {
 	Func *ir.FuncBuiltin
-	Impl interp.FuncBuiltin
+	Impl elements.FuncBuiltin
 }
 
 // Implementation of the builtin function.
@@ -118,7 +117,7 @@ type builtinFuncImpl interface {
 // (contained in type T), interpreter slot, and package. Satisfies FuncBuilder.BuildFuncIR.
 //
 // The type of the function is computed at compile time from the call to the function.
-func IRFuncBuiltin[T builtinFuncImpl](name string, fnBuiltin interp.FuncBuiltin, pkg *ir.Package) *ir.FuncBuiltin {
+func IRFuncBuiltin[T builtinFuncImpl](name string, fnBuiltin elements.FuncBuiltin, pkg *ir.Package) *ir.FuncBuiltin {
 	fn := &ir.FuncBuiltin{
 		Src:   &ast.FuncDecl{Name: &ast.Ident{Name: name}},
 		FFile: &ir.File{Package: pkg},
@@ -131,6 +130,6 @@ func IRFuncBuiltin[T builtinFuncImpl](name string, fnBuiltin interp.FuncBuiltin,
 }
 
 // Materialiser returns the materialiser from the evaluation environment.
-func Materialiser(env engine.Env) materialise.Materialiser {
+func Materialiser(env *engine.Env) materialise.Materialiser {
 	return env.Engine().ArrayOps().(materialise.Materialiser)
 }

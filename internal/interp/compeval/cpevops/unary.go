@@ -31,7 +31,7 @@ type unary struct {
 }
 
 // NewUnary applies an unary operator to an element.
-func NewUnary(env engine.Env, expr *ir.UnaryExpr, xEl Element) (_ Element, err error) {
+func NewUnary(env *engine.Env, expr *ir.UnaryExpr, xEl Element) (_ Element, err error) {
 	el := &unary{
 		expr: expr,
 		x:    xEl,

@@ -37,16 +37,6 @@ type nilEl struct {
 
 var _ cmp.Canonical = (*nilEl)(nil)
 
-var nilError = NewNil(&ir.NilCastExpr{
-	X:   nilExpr,
-	Typ: ir.ErrorType(),
-})
-
-// NilError returns a GX nil error element.
-func NilError() ir.Element {
-	return nilError
-}
-
 // NilStorage returns the nil built-in storage singleton.
 func NilStorage() *ir.Nil {
 	return nilStorage

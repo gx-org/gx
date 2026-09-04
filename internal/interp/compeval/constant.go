@@ -56,7 +56,7 @@ func (c *constant) Type() ir.Type {
 }
 
 // UnaryOp applies a unary operator on x.
-func (c *constant) UnaryOp(env engine.Env, expr *ir.UnaryExpr) (engine.NumericalElement, error) {
+func (c *constant) UnaryOp(env *engine.Env, expr *ir.UnaryExpr) (engine.NumericalElement, error) {
 	res, err := csteager.Unary(env, expr, c.cst)
 	if err != nil {
 		return nil, err
@@ -69,7 +69,7 @@ func (c *constant) UnaryOp(env engine.Env, expr *ir.UnaryExpr) (engine.Numerical
 
 // BinaryOp applies a binary operator to x and y.
 // Note that the receiver can be either the left or right argument.
-func (c *constant) BinaryOp(env engine.Env, expr *ir.BinaryExpr, y engine.NumericalElement) (engine.NumericalElement, error) {
+func (c *constant) BinaryOp(env *engine.Env, expr *ir.BinaryExpr, y engine.NumericalElement) (engine.NumericalElement, error) {
 	res, err := csteager.Binary(env, expr, c.cst, y)
 	if err != nil {
 		return nil, err
@@ -81,7 +81,7 @@ func (c *constant) BinaryOp(env engine.Env, expr *ir.BinaryExpr, y engine.Numeri
 }
 
 // Cast an element into a given data type.
-func (c *constant) Cast(env engine.Env, expr ir.Expr, target ir.Type) (engine.NumericalElement, error) {
+func (c *constant) Cast(env *engine.Env, expr ir.Expr, target ir.Type) (engine.NumericalElement, error) {
 	res, err := csteager.Cast(env, expr, target, c.cst)
 	if err != nil {
 		return nil, err
@@ -101,15 +101,15 @@ func (c *constant) toArraySurrogate(expr ir.Expr) (engine.NumericalElement, erro
 }
 
 // Reshape an element.
-func (c *constant) Reshape(env engine.Env, expr ir.Expr, axisLengths []engine.NumericalElement) (engine.NumericalElement, error) {
+func (c *constant) Reshape(env *engine.Env, expr ir.Expr, axisLengths []engine.NumericalElement) (engine.NumericalElement, error) {
 	return c.toArraySurrogate(expr)
 }
 
-func (c *constant) SliceAt(env engine.Env, expr *ir.IndexExpr, index engine.NumericalElement) (_ ir.Element, err error) {
+func (c *constant) SliceAt(env *engine.Env, expr *ir.IndexExpr, index engine.NumericalElement) (_ ir.Element, err error) {
 	return c.toArraySurrogate(expr)
 }
 
-func (c *constant) Slice(env engine.Env, expr *ir.SliceExpr, low, high engine.NumericalElement) (ir.Element, error) {
+func (c *constant) Slice(env *engine.Env, expr *ir.SliceExpr, low, high engine.NumericalElement) (ir.Element, error) {
 	return c.toArraySurrogate(expr)
 }
 

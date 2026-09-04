@@ -19,7 +19,7 @@ import (
 	"github.com/gx-org/backend/dtypes"
 	"github.com/gx-org/backend/ops"
 	"github.com/gx-org/backend/shape"
-	"github.com/gx-org/gx/api/values"
+	"github.com/gx-org/gx/api/hostio"
 	"github.com/gx-org/gx/build/fmterr"
 	"github.com/gx-org/gx/build/ir"
 	"github.com/gx-org/gx/build/ir/irkind"
@@ -50,7 +50,7 @@ var (
 	_ engine.NumericalElement         = (*BackendNode)(nil)
 	_ ir.WithLength                   = (*BackendNode)(nil)
 	_ graphNode                       = (*BackendNode)(nil)
-	_ elements.EvalShaper             = (*constant)(nil)
+	_ elements.EvalShaper             = (*BackendNode)(nil)
 )
 
 // NewBackendNode returns an element representing a node in the backend graph.
@@ -134,7 +134,7 @@ func (n *BackendNode) out() ops.Node {
 }
 
 // BinaryOp applies a binary operator to x and y.
-func (n *BackendNode) BinaryOp(env engine.Env, expr *ir.BinaryExpr, y engine.NumericalElement) (engine.NumericalElement, error) {
+func (n *BackendNode) BinaryOp(env *engine.Env, expr *ir.BinaryExpr, y engine.NumericalElement) (engine.NumericalElement, error) {
 	ao := n.ev.ArrayOps()
 	xNode, xShape := n.nod.Node, n.nod.Shape
 	yNode, yShape, err := materialise.Element(n.ev.ao, y)
@@ -169,7 +169,7 @@ func (n *BackendNode) BinaryOp(env engine.Env, expr *ir.BinaryExpr, y engine.Num
 }
 
 // UnaryOp applies a unary operator on x.
-func (n *BackendNode) UnaryOp(env engine.Env, expr *ir.UnaryExpr) (engine.NumericalElement, error) {
+func (n *BackendNode) UnaryOp(env *engine.Env, expr *ir.UnaryExpr) (engine.NumericalElement, error) {
 	ao := n.ev.ArrayOps()
 	unaryNode, err := ao.Graph().Core().Unary(expr.Src, n.nod.Node)
 	if err != nil {
@@ -189,7 +189,7 @@ func (n *BackendNode) UnaryOp(env engine.Env, expr *ir.UnaryExpr) (engine.Numeri
 }
 
 // Cast an element into a given data type.
-func (n *BackendNode) Cast(env engine.Env, expr ir.Expr, target ir.Type) (engine.NumericalElement, error) {
+func (n *BackendNode) Cast(env *engine.Env, expr ir.Expr, target ir.Type) (engine.NumericalElement, error) {
 	ao := n.ev.ArrayOps()
 	targetKind := target.Kind().DType()
 	casted, err := ao.Graph().Core().Cast(n.nod.Node, targetKind)
@@ -213,7 +213,7 @@ func (n *BackendNode) Cast(env engine.Env, expr ir.Expr, target ir.Type) (engine
 }
 
 // Reshape an element into a given shape.
-func (n *BackendNode) Reshape(env engine.Env, expr ir.Expr, axisLengths []engine.NumericalElement) (engine.NumericalElement, error) {
+func (n *BackendNode) Reshape(env *engine.Env, expr ir.Expr, axisLengths []engine.NumericalElement) (engine.NumericalElement, error) {
 	axes := make([]int, len(axisLengths))
 	for i, el := range axisLengths {
 		var err error
@@ -240,12 +240,12 @@ func (n *BackendNode) Reshape(env engine.Env, expr ir.Expr, axisLengths []engine
 }
 
 // SliceAt of the value on the first axis given an index.
-func (n *BackendNode) SliceAt(env engine.Env, expr *ir.IndexExpr, index engine.NumericalElement) (ir.Element, error) {
+func (n *BackendNode) SliceAt(env *engine.Env, expr *ir.IndexExpr, index engine.NumericalElement) (ir.Element, error) {
 	return n.SliceArray(expr, index)
 }
 
 // Slice returns a node slicing the array.
-func (n *BackendNode) Slice(env engine.Env, expr *ir.SliceExpr, low, high engine.NumericalElement) (ir.Element, error) {
+func (n *BackendNode) Slice(env *engine.Env, expr *ir.SliceExpr, low, high engine.NumericalElement) (ir.Element, error) {
 	return nil, errors.Errorf("not implemented for %T", n)
 }
 func (n *BackendNode) sliceArrayFromConstant(expr ir.Expr, index engine.ConstantElement) (engine.NumericalElement, error) {
@@ -313,7 +313,7 @@ func (n *BackendNode) Length(ev ir.Evaluator) (int, error) {
 }
 
 // Unflatten consumes the next handles to return a GX value.
-func (n *BackendNode) Unflatten(handles *flatten.Parser) (values.Value, error) {
+func (n *BackendNode) Unflatten(handles *flatten.Parser) (hostio.Value, error) {
 	return handles.ParseArray(n.typ)
 }
 

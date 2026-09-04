@@ -27,7 +27,7 @@ import (
 )
 
 // NewElement returns an engine constant from a Go value.
-func NewElement(env engine.Env, x ir.Type, val any) (engine.ConstantElement, error) {
+func NewElement(env *engine.Env, x ir.Type, val any) (engine.ConstantElement, error) {
 	cst, err := NewConstant(x, val)
 	if err != nil {
 		return nil, err
@@ -95,8 +95,9 @@ func NewConstantFromFloat(typ ir.Type, f *big.Float) constants.Scalar {
 }
 
 // NewInt returns a new int constant.
-func NewInt(val int) (engine.Constant, error) {
-	return NewConstant(ir.IntType(), val)
+func NewInt(val int) engine.Constant {
+	nb := newInt(big.NewInt(int64(val)))
+	return constants.NewScalar(ir.IntType(), nb)
 }
 
 func compare(op token.Token, x, y *big.Float) engine.BoolConstant {

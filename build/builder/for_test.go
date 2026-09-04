@@ -15,6 +15,7 @@
 package builder_test
 
 import (
+	"go/ast"
 	"testing"
 
 	"github.com/gx-org/gx/build/builder/testbuild"
@@ -81,41 +82,192 @@ func f() int32 {
 				},
 			},
 		},
+	)
+}
+
+func TestUnrollForLoop(t *testing.T) {
+	xStorage := irh.LocalVar("x", ir.Int32Type())
+	xAssign := &ir.AssignExpr{
+		Storage: xStorage,
+		X: &ir.CastExpr{
+			X:   irh.IntNumberAs(0, ir.Int32Type()),
+			Typ: ir.Int32Type(),
+		},
+	}
+	iStorage := irh.LocalVar("i", ir.IntType())
+	vStorage := irh.LocalVar("v", ir.Int32Type())
+	sliceType := &ir.SliceType{
+		BaseType: ir.BaseType[ast.Expr]{Src: &ast.ArrayType{}},
+		DType:    ir.TypeExpr(nil, ir.Int32Type()),
+		Rank:     1,
+	}
+	listFunc := &ir.FuncDecl{
+		FType: irh.UnrollFuncType(
+			irh.Fields(),
+			irh.Fields(sliceType),
+		),
+		Body: irh.Block(
+			&ir.ReturnStmt{Results: []ir.Expr{
+				&ir.SliceLitExpr{
+					Typ: sliceType,
+					Elts: []ir.Expr{
+						irh.IntNumberAs(7, ir.Int32Type()),
+						irh.IntNumberAs(8, ir.Int32Type()),
+					},
+				},
+			}},
+		),
+	}
+	testbuild.Run(t,
 		testbuild.Decl{
 			Src: `
+//gx:unroll
+func list() []int32 {
+	return []int32{7, 8}
+}
+
 func f() int32 {
-	a := [2]int32{2, 3}
 	x := int32(0)
-	for i := range a {
-		x += a[i]
+	for i := range list() {
+		x += int32(i)
 	}
 	return x
 }
 `,
+			Want: []ir.IR{
+				listFunc,
+				&ir.FuncDecl{
+					FType: irh.FuncType(
+						nil, nil,
+						irh.Fields(),
+						irh.Fields(ir.Int32Type()),
+					),
+					Body: irh.Block(
+						&ir.AssignExprStmt{List: []*ir.AssignExpr{
+							xAssign,
+						}},
+						&ir.UnrollStmt{
+							Range: &ir.RangeStmt{
+								Key: iStorage,
+								X: &ir.FuncCallExpr{
+									Callee: irh.FuncDeclCallee("list", listFunc.FType),
+								},
+								Body: irh.Block(
+									&ir.AssignExprStmt{List: []*ir.AssignExpr{
+										&ir.AssignExpr{
+											Storage: xStorage,
+											X: &ir.BinaryExpr{
+												X: irh.Ident(xAssign),
+												Y: &ir.CastExpr{
+													X:   irh.Ident(iStorage),
+													Typ: ir.Int32Type(),
+												},
+												Typ: ir.Int32Type(),
+											},
+										}}}),
+							},
+							Bodies: []*ir.BlockStmt{
+								irh.Block(irh.AssignOp(
+									xStorage,
+									&ir.BinaryExpr{
+										X: irh.Ident(xAssign),
+										Y: &ir.CastExpr{
+											X:   irh.IntNumberAs(0, ir.Int32Type()),
+											Typ: ir.Int32Type(),
+										},
+										Typ: ir.Int32Type(),
+									},
+								)),
+								irh.Block(irh.AssignOp(
+									xStorage,
+									&ir.BinaryExpr{
+										X: irh.Ident(xAssign),
+										Y: &ir.CastExpr{
+											X:   irh.IntNumberAs(1, ir.Int32Type()),
+											Typ: ir.Int32Type(),
+										},
+										Typ: ir.Int32Type(),
+									},
+								)),
+							},
+						},
+						&ir.ReturnStmt{Results: []ir.Expr{
+							irh.Ident(xAssign),
+						}},
+					),
+				},
+			},
 		},
 		testbuild.Decl{
 			Src: `
+//gx:unroll
+func list() []int32 {
+	return []int32{7, 8}
+}
+
 func f() int32 {
-	a := [2]int32{2, 3}
 	x := int32(0)
-	for i, ai := range a {
-		x += ai
+	for _, v := range list() {
+		x += v
 	}
 	return x
 }
 `,
-		},
-		testbuild.Decl{
-			Src: `
-func f() int {
-	a := [3]float32{3, 5, 7}
-	x := 100
-	for i := range a {
-		x = x + i
-	}
-	return x
-}
-`,
+			Want: []ir.IR{
+				listFunc,
+				&ir.FuncDecl{
+					FType: irh.FuncType(
+						nil, nil,
+						irh.Fields(),
+						irh.Fields(ir.Int32Type()),
+					),
+					Body: irh.Block(
+						&ir.AssignExprStmt{List: []*ir.AssignExpr{
+							xAssign,
+						}},
+						&ir.UnrollStmt{
+							Range: &ir.RangeStmt{
+								Key:   irh.LocalVar("_", ir.IntType()),
+								Value: vStorage,
+								X: &ir.FuncCallExpr{
+									Callee: irh.FuncDeclCallee("list", listFunc.FType),
+								},
+								Body: irh.Block(
+									&ir.AssignExprStmt{List: []*ir.AssignExpr{
+										&ir.AssignExpr{
+											Storage: xStorage,
+											X: &ir.BinaryExpr{
+												X:   irh.Ident(xAssign),
+												Y:   irh.Ident(vStorage),
+												Typ: ir.Int32Type(),
+											},
+										}}}),
+							},
+							Bodies: []*ir.BlockStmt{
+								irh.Block(irh.AssignOp(
+									xStorage,
+									&ir.BinaryExpr{
+										X:   irh.Ident(xAssign),
+										Y:   irh.IntNumberAs(7, ir.Int32Type()),
+										Typ: ir.Int32Type(),
+									},
+								)),
+								irh.Block(irh.AssignOp(
+									xStorage,
+									&ir.BinaryExpr{
+										X:   irh.Ident(xAssign),
+										Y:   irh.IntNumberAs(8, ir.Int32Type()),
+										Typ: ir.Int32Type(),
+									},
+								)),
+							},
+						},
+						&ir.ReturnStmt{Results: []ir.Expr{
+							irh.Ident(xAssign),
+						}},
+					),
+				},
+			},
 		},
 	)
 }

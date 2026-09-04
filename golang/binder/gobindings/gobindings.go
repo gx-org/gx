@@ -162,9 +162,9 @@ func (b *binder) processSliceOutput(target, src string, typ *ir.SliceType) ([]st
 
 var assignValueTmpl = template.Must(template.New("assignValueTMPL").Parse(
 	`
-	{{.Target}}Value, ok := {{.Source}}.(values.Array)
+	{{.Target}}Value, ok := {{.Source}}.(hostio.Array)
 	if !ok {
-		err = errors.Errorf("cannot cast %T to %s", {{.Source}}, reflect.TypeFor[*values.DeviceArray]().Name())
+		err = errors.Errorf("cannot cast %T to %s", {{.Source}}, reflect.TypeFor[*hostio.DeviceArray]().Name())
 		return
 	}
 	{{.Target}} := types.New{{.GoType}}[{{.GoDataType}}]({{.Target}}Value)

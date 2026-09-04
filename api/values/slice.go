@@ -20,25 +20,26 @@ import (
 
 	"github.com/pkg/errors"
 	"github.com/gx-org/backend/platform"
+	"github.com/gx-org/gx/api/hostio"
 	"github.com/gx-org/gx/build/ir"
 )
 
 // Slice of GX values.
 type Slice struct {
-	vals      []Value
+	vals      []hostio.Value
 	typ       ir.Type
 	sliceType *ir.SliceType
 }
 
 var (
-	_ Value         = (*Slice)(nil)
+	_ hostio.Value  = (*Slice)(nil)
 	_ ir.FixedSlice = (*Slice)(nil)
 )
 
 // NewSlice returns a new slice of GX values.
 // vals can be nil when the slice will be allocated
 // and constructed later.
-func NewSlice(typ ir.Type, vals []Value) (*Slice, error) {
+func NewSlice(typ ir.Type, vals []hostio.Value) (*Slice, error) {
 	under := ir.Underlying(typ)
 	sliceType, ok := under.(*ir.SliceType)
 	if !ok {
@@ -51,11 +52,9 @@ func NewSlice(typ ir.Type, vals []Value) (*Slice, error) {
 	}, nil
 }
 
-func (*Slice) value() {}
-
 // ToHost transfers all the elements of the slice to the host.
-func (s *Slice) ToHost(alloc platform.Allocator) (Value, error) {
-	vals, err := ToHost(alloc, s.vals)
+func (s *Slice) ToHost(alloc platform.Allocator) (hostio.Value, error) {
+	vals, err := hostio.ToHost(alloc, s.vals)
 	if err != nil {
 		return nil, err
 	}
@@ -64,11 +63,11 @@ func (s *Slice) ToHost(alloc platform.Allocator) (Value, error) {
 
 // Allocate a slice of GX values given a size.
 func (s *Slice) Allocate(size int) {
-	s.vals = make([]Value, size)
+	s.vals = make([]hostio.Value, size)
 }
 
 // Set the ith element of the slice.
-func (s *Slice) Set(i int, val Value) {
+func (s *Slice) Set(i int, val hostio.Value) {
 	s.vals[i] = val
 }
 
@@ -92,15 +91,15 @@ func (s *Slice) Elements() []ir.Element {
 }
 
 // Element at the ith position.
-func (s *Slice) Element(i int) Value {
+func (s *Slice) Element(i int) hostio.Value {
 	if i < 0 || i >= len(s.vals) {
 		return nil
 	}
 	var v any = s.vals[i]
-	if value, ok := v.(Value); ok {
+	if value, ok := v.(hostio.Value); ok {
 		return value
 	}
-	return v.(Valuer).GXValue()
+	return v.(hostio.Valuer).GXValue()
 }
 
 // Type of the slice.

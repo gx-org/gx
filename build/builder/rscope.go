@@ -33,7 +33,8 @@ import (
 	"github.com/gx-org/gx/internal/interp/compeval/srcstore"
 	"github.com/gx-org/gx/internal/interp/compeval/surrogates"
 	"github.com/gx-org/gx/interp/context"
-	"github.com/gx-org/gx/interp/fun"
+	"github.com/gx-org/gx/interp/elements"
+	"github.com/gx-org/gx/interp/engine"
 	"github.com/gx-org/gx/interp"
 )
 
@@ -92,8 +93,7 @@ type (
 	pkgResolveScope struct {
 		*pkgProcScope
 
-		newFuncForEval fun.NewFunc
-		funcRunner     fun.Runners
+		funcRunner engine.Runners
 
 		state *pkgState
 
@@ -108,12 +108,11 @@ type (
 
 func newPackageResolveScope(pscope *pkgProcScope) (*pkgResolveScope, bool) {
 	s := &pkgResolveScope{
-		pkgProcScope:   pscope,
-		newFuncForEval: surrogates.NewFunc,
-		funcRunner:     surrogates.Runner(),
-		methods:        ordered.NewMap[*ir.NamedType, *ordered.Map[string, *irFunc]](),
-		state:          &pkgState{dcls: pscope.decls()},
-		fileScopes:     make(map[*file]*fileResolveScope),
+		pkgProcScope: pscope,
+		funcRunner:   surrogates.Runner(),
+		methods:      ordered.NewMap[*ir.NamedType, *ordered.Map[string, *irFunc]](),
+		state:        &pkgState{dcls: pscope.decls()},
+		fileScopes:   make(map[*file]*fileResolveScope),
 	}
 	pkg := pscope.bpkg.newPackageIR()
 	s.state.ibld = irb.New(s, pkg)
@@ -174,7 +173,7 @@ func (s *pkgResolveScope) buildStorageProcessNode(tok token.Token, store ir.Stor
 }
 
 func (s *pkgResolveScope) packageInterpreter() *interp.Base {
-	hostEval := compeval.NewHostEvaluator(s.bpkg.builder(), s.newFuncForEval)
+	hostEval := compeval.NewHostEvaluator(s.bpkg.builder())
 	pkg := s.state.ibld.Pkg()
 	pkg.Decls = s.state.ibld.Decls()
 	var opts []options.PackageOption
@@ -187,7 +186,7 @@ func (s *pkgResolveScope) packageInterpreter() *interp.Base {
 			opts = append(opts, opt)
 		}
 	}
-	itp, err := interp.New(hostEval, hostEval, s.funcRunner, opts)
+	itp, err := interp.New(hostEval, s.funcRunner, opts)
 	if err != nil {
 		s.Err().Append(err)
 		return nil
@@ -349,7 +348,7 @@ func compEvalForFuncType(rscope compEvalScope, src ast.Node, ftype *ir.FuncType)
 		if field.Name == nil {
 			continue
 		}
-		srVal, err := surrogates.FieldRoot(field)
+		srVal, err := surrogates.FieldRoot(field, field.Storage())
 		if err != nil {
 			return nil, nil, rscope.Err().AppendAt(src, err)
 		}
@@ -391,7 +390,7 @@ func (s *funcResolveScope) nspace() *scope.RWScope[ir.Element] {
 func (s *funcResolveScope) setFuncValue(fn ir.PkgFunc) bool {
 	var ok bool
 	s.bodyCE, ok = s.bodyCE.sub(nil, map[string]ir.Element{
-		fn.Name(): s.resolveScope.fileScope().newFuncForEval(fn, nil),
+		fn.Name(): elements.NewFunc(fn, nil),
 	})
 	return ok
 }
@@ -404,6 +403,7 @@ type (
 	localScope interface {
 		resolveScope
 		update(s ir.Storage, el ir.Element) bool
+		evalAxisExpr(ir.Expr) (ir.Expr, bool)
 	}
 
 	blockResolveScope struct {
@@ -443,6 +443,22 @@ func (s *blockResolveScope) updateAll(sub map[ir.Storage]ir.Element) bool {
 	return ok
 }
 
+func evalAxisExpr(rscope resolveScope, x ir.Expr) (ir.Expr, bool) {
+	compeval, ok := rscope.compEval()
+	if !ok {
+		return x, false
+	}
+	evalX, err := ir.CompEvalExprSingle(compeval, x)
+	if err != nil {
+		return x, rscope.Err().AppendAt(x.Node(), err)
+	}
+	return evalX, true
+}
+
+func (s *blockResolveScope) evalAxisExpr(x ir.Expr) (ir.Expr, bool) {
+	return evalAxisExpr(s, x)
+}
+
 func (s *blockResolveScope) compEval() (*compileEvaluator, bool) {
 	return s.compeval, true
 }
@@ -478,6 +494,10 @@ func (s *ephemeralResolveScope) compEval() (*compileEvaluator, bool) {
 	return s.ce, true
 }
 
+func (s *ephemeralResolveScope) evalAxisExpr(x ir.Expr) (ir.Expr, bool) {
+	return x, true
+}
+
 func (s *ephemeralResolveScope) String() string {
 	return "ephemeralResolveScope: \n" + s.ce.String()
 }
@@ -506,6 +526,10 @@ func newArrayLitResolveScope(parent resolveScope) *arrayLitResolveScope {
 
 func (s *arrayLitResolveScope) update(store ir.Storage, el ir.Element) bool {
 	return s.Err().Appendf(store.Node(), "cannot define %s in an array literal expression", store.NameDef().Name)
+}
+
+func (s *arrayLitResolveScope) evalAxisExpr(x ir.Expr) (ir.Expr, bool) {
+	return x, true
 }
 
 type (

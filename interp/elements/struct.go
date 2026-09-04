@@ -12,7 +12,7 @@
 // See the License for the specific language governing permissions and
 // limitations under the License.
 
-package fun
+package elements
 
 import (
 	"fmt"
@@ -20,7 +20,7 @@ import (
 	"strings"
 
 	"github.com/pkg/errors"
-	"github.com/gx-org/gx/api/values"
+	"github.com/gx-org/gx/api/hostio"
 	gxfmt "github.com/gx-org/gx/base/fmt"
 	"github.com/gx-org/gx/build/ir"
 	"github.com/gx-org/gx/internal/interp/flatten"
@@ -34,8 +34,8 @@ type Struct struct {
 }
 
 var (
-	_ engine.Copier = (*Struct)(nil)
-	_ Selector      = (*Struct)(nil)
+	_ engine.Copier   = (*Struct)(nil)
+	_ engine.Selector = (*Struct)(nil)
 )
 
 // NewStructFromElements returns a new node representing a structure instance given a slice of
@@ -75,13 +75,14 @@ func (n *Struct) Flatten() ([]ir.Element, error) {
 }
 
 // Unflatten consumes the next handles to return a GX value.
-func (n *Struct) Unflatten(handles *flatten.Parser) (values.Value, error) {
+func (n *Struct) Unflatten(parser *flatten.Parser) (hostio.Value, error) {
 	elts := n.orderedFieldValues()
-	return handles.ParseComposite(flatten.ParseCompositeOf(values.NewStruct), n.typ, elts)
+	newStruct := parser.Factory().NewStruct
+	return parser.ParseComposite(flatten.ParseCompositeOf(newStruct), n.typ, elts)
 }
 
 // Select returns the value of a field of a structure given its index.
-func (n *Struct) Select(expr *ir.SelectorExpr) (ir.Element, error) {
+func (n *Struct) Select(env *engine.Env, expr *ir.SelectorExpr) (ir.Element, error) {
 	name := expr.Stor.NameDef().Name
 	val, ok := n.fields[name]
 	if !ok {

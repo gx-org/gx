@@ -101,7 +101,7 @@ func (f broadcast) BuildFuncType(tpcmp ir.TypeCmp, call *ir.FuncCallExpr) (*ir.F
 	}, nil
 }
 
-func evalBroadcast(env engine.Env, call *ir.FuncCallExpr, recv ir.Element, args []ir.Element) ([]ir.Element, error) {
+func evalBroadcast(env *engine.Env, call *ir.FuncCallExpr, recv ir.Element, args []ir.Element) ([]ir.Element, error) {
 	targetAxes, err := elements.AxesFromElement(args[0])
 	if err != nil {
 		return nil, err

@@ -21,6 +21,7 @@ import (
 	"testing"
 
 	"github.com/gx-org/gx/api"
+	"github.com/gx-org/gx/api/hostio"
 	"github.com/gx-org/gx/api/options"
 	"github.com/gx-org/gx/api/tracer"
 	"github.com/gx-org/gx/api/values"
@@ -57,12 +58,12 @@ func NewRunnerDevice(dev *api.Device) *Runner {
 }
 
 // Run compiles a function into a XLA graph, runs it, and returns the result.
-func (r *Runner) Run(fn *ir.FuncDecl, options []options.PackageOption) ([]values.Value, string, error) {
+func (r *Runner) Run(fn *ir.FuncDecl, options []options.PackageOption) ([]hostio.Value, string, error) {
 	return r.RunWithArgs(fn, nil, nil, options)
 }
 
 // RunWithArgs compiles a function into a XLA graph, runs it, and returns the result.
-func (r *Runner) RunWithArgs(fn *ir.FuncDecl, recv values.Value, args []values.Value, options []options.PackageOption) ([]values.Value, string, error) {
+func (r *Runner) RunWithArgs(fn *ir.FuncDecl, recv hostio.Value, args []hostio.Value, options []options.PackageOption) ([]hostio.Value, string, error) {
 	runner, err := tracer.Trace(r.dev, fn, recv, args, options)
 	if err != nil {
 		return nil, "", err
@@ -72,11 +73,11 @@ func (r *Runner) RunWithArgs(fn *ir.FuncDecl, recv values.Value, args []values.V
 	if err != nil {
 		return nil, "", err
 	}
-	flattenOuts, err := values.ToHost(kernels.Allocator(), flatten(outs))
+	flattenOuts, err := hostio.ToHost(kernels.Allocator(), flatten(outs))
 	if err != nil {
 		return outs, "", err
 	}
-	all := testbuild.BuildGot(flattenOuts, func(val values.Value) string {
+	all := testbuild.BuildGot(flattenOuts, func(val hostio.Value) string {
 		return valueToString(fn.File(), val)
 	})
 	all += tracer.trace.String()
@@ -84,18 +85,18 @@ func (r *Runner) RunWithArgs(fn *ir.FuncDecl, recv values.Value, args []values.V
 	return flattenOuts, all, nil
 }
 
-func valueToString(file *ir.File, val values.Value) string {
+func valueToString(file *ir.File, val hostio.Value) string {
 	if src, isSrc := val.(ir.StringDefiner); isSrc {
 		return src.DefineString(file)
 	}
 	return val.SourceString(file)
 }
 
-func (r *testTracer) Trace(file *ir.File, call *ir.FuncCallExpr, vals []values.Value) error {
+func (r *testTracer) Trace(file *ir.File, call *ir.FuncCallExpr, vals []hostio.Value) error {
 	if r.nTrace == 0 {
 		r.trace.WriteString("\nTrace:\n")
 	}
-	vals, err := values.ToHost(kernels.Allocator(), vals)
+	vals, err := hostio.ToHost(kernels.Allocator(), vals)
 	if err != nil {
 		return err
 	}
@@ -112,15 +113,15 @@ func (r *testTracer) Trace(file *ir.File, call *ir.FuncCallExpr, vals []values.V
 	return nil
 }
 
-func flatten(out []values.Value) []values.Value {
-	var flat []values.Value
+func flatten(out []hostio.Value) []hostio.Value {
+	var flat []hostio.Value
 	for _, v := range out {
 		slice, ok := v.(*values.Slice)
 		if !ok {
 			flat = append(flat, v)
 			continue
 		}
-		vals := make([]values.Value, slice.Len())
+		vals := make([]hostio.Value, slice.Len())
 		for i := 0; i < slice.Len(); i++ {
 			vals[i] = slice.Element(i)
 		}

@@ -73,6 +73,11 @@ type (
 		fmterr.ErrAppender
 		Source() ast.Expr
 	}
+
+	// Unroller supports unrolling statements and expressions.
+	Unroller interface {
+		Substitute(ev Fetcher, id *Ident) (ast.Expr, bool)
+	}
 )
 
 // InvalidIdent is used as non-nil invalid expression.
@@ -103,7 +108,7 @@ func CompEvalExpr(ev Fetcher, x Expr) (_ []Expr, err error) {
 func CompEvalExprSingle(ev Fetcher, x Expr) (Expr, error) {
 	exprs, err := CompEvalExpr(ev, x)
 	if err != nil {
-		return nil, err
+		return InvalidIdent, err
 	}
 	if len(exprs) != 1 {
 		return InvalidIdent, fmterr.Internal(errors.Errorf("compeval of %s error: got %d expression(s) but want 1", x.SourceString(ev.File()), len(exprs)))

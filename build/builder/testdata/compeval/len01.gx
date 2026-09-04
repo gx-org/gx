@@ -1,0 +1,10 @@
+package len01
+
+// No runtime test function
+
+//gx:compeval
+func TestLen() int {
+	return len([3][2]float32{})
+	// Want:
+	// 3
+}

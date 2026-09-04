@@ -35,6 +35,7 @@ import (
 	"github.com/gx-org/gx/build/ir"
 	"github.com/gx-org/gx/build/ir/irstring"
 	"github.com/gx-org/gx/internal/testing/cmperr"
+	"github.com/gx-org/gx/stdlib"
 )
 
 // CompareString compares two string and build an error message if the strings do not match.
@@ -99,7 +100,7 @@ type compileError struct {
 }
 
 func (ce *compileError) Error() string {
-	return fmt.Sprintf("%s\nTest source:\n%s", ce.err.Error(), gxfmt.Number(ce.src))
+	return fmt.Sprintf("%+v\nTest source:\n%s", ce.err, gxfmt.Number(ce.src))
 }
 
 func (ce *compileError) Unwrap() error {
@@ -399,6 +400,11 @@ type TestFactory interface {
 	BuildTests(t *testing.T, imps []importers.Importer) ([]Test, error)
 }
 
+// Stdlib returns the standard library importer.
+func Stdlib() []importers.Importer {
+	return []importers.Importer{stdlib.Importer()}
+}
+
 // RunFactory builds a set of tests from a factory then run them.
 func RunFactory(t *testing.T, imps []importers.Importer, factories ...TestFactory) *Builder {
 	var tests []Test
@@ -459,7 +465,7 @@ func FindTests(pkg *ir.Package, compeval bool) []*ir.FuncDecl {
 		if !ok {
 			continue
 		}
-		if funcDecl.FType.CompEval != compeval {
+		if funcDecl.FType.Nature.CompEval != compeval {
 			continue
 		}
 		funs = append(funs, funcDecl)

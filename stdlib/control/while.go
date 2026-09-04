@@ -60,7 +60,7 @@ func (f while) BuildFuncType(tpcmp ir.TypeCmp, call *ir.FuncCallExpr) (*ir.FuncT
 	}, nil
 }
 
-func evalWhile(env engine.Env, call *ir.FuncCallExpr, recv ir.Element, args []ir.Element) ([]ir.Element, error) {
+func evalWhile(env *engine.Env, call *ir.FuncCallExpr, recv ir.Element, args []ir.Element) ([]ir.Element, error) {
 	g := env.Engine().ArrayOps().Graph().Core()
 
 	cond, err := grapheval.GraphFromElement("while.cond", args[1])

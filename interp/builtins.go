@@ -16,9 +16,7 @@ package interp
 
 import (
 	"go/ast"
-	"reflect"
 
-	"github.com/pkg/errors"
 	"github.com/gx-org/gx/build/builder/builtins"
 	"github.com/gx-org/gx/build/fmterr"
 	"github.com/gx-org/gx/build/ir"
@@ -54,12 +52,15 @@ func (itp *Base) InitBuiltins(scope *scope.RWScope[ir.Element]) error {
 			ID:   &ast.Ident{Name: impl.Name()},
 			Impl: impl,
 		}
-		elFunc := itp.funFact.NewFunc(irFunc, nil)
+		elFunc := elements.NewFunc(irFunc, nil)
 		scope.Define(impl.Name(), elFunc)
 	}
 	for _, tp := range []ir.Type{
 		ir.AnyType(),
 		ir.ErrorType(),
+		ir.FieldPathType(),
+		ir.StringType(),
+
 		ir.BoolType(),
 		ir.Bfloat16Type(),
 		ir.Float32Type(),
@@ -67,7 +68,6 @@ func (itp *Base) InitBuiltins(scope *scope.RWScope[ir.Element]) error {
 		ir.IntType(),
 		ir.Int32Type(),
 		ir.Int64Type(),
-		ir.StringType(),
 		ir.Uint32Type(),
 		ir.Uint64Type(),
 	} {
@@ -113,7 +113,7 @@ func (itp *Base) defineBoolConstant(scope *scope.RWScope[ir.Element], val ir.Sto
 
 type builtinFunc struct {
 	ir.FuncImpl
-	impl FuncBuiltin
+	impl elements.FuncBuiltin
 }
 
 func (bf builtinFunc) Implementation() any {
@@ -147,7 +147,7 @@ var (
 	}
 )
 
-func appendImpl(env engine.Env, call *ir.FuncCallExpr, recv ir.Element, args []ir.Element) ([]ir.Element, error) {
+func appendImpl(env *engine.Env, call *ir.FuncCallExpr, recv ir.Element, args []ir.Element) ([]ir.Element, error) {
 	under, err := coreiface.Underlying(args[0])
 	if err != nil {
 		return nil, err
@@ -163,33 +163,49 @@ func appendImpl(env engine.Env, call *ir.FuncCallExpr, recv ir.Element, args []i
 	return []ir.Element{slice.Append(call, withElts.Elements())}, nil
 }
 
-func axlengthsImpl(env engine.Env, call *ir.FuncCallExpr, recv ir.Element, args []ir.Element) ([]ir.Element, error) {
-	file := env.ExprEval().File()
+func axlengthsImpl(env *engine.Env, call *ir.FuncCallExpr, recv ir.Element, args []ir.Element) ([]ir.Element, error) {
 	array, ok := args[0].(elements.WithAxes)
 	if !ok {
-		return nil, fmterr.InternalAt(file.FileSet(), call.Src, "cannot get the shape of %T: not supported", args[0])
+		return nil, fmterr.InternalAt(env.File().FileSet(), call.Src, "cannot get the axis lengths of %T: not supported", args[0])
 	}
-	shape, err := array.Axes(env.ExprEval())
+	axlens, err := array.Axes(env.ExprEval())
 	if err != nil {
-		return nil, fmterr.Error(file.FileSet(), call.Src, err)
+		return nil, fmterr.Error(env.File().FileSet(), call.Src, err)
 	}
-	return []ir.Element{shape}, nil
+	return []ir.Element{axlens}, nil
 }
 
-func lenImpl(env engine.Env, call *ir.FuncCallExpr, recv ir.Element, args []ir.Element) ([]ir.Element, error) {
-	withLen, ok := args[0].(ir.WithLength)
-	if !ok {
-		return nil, errors.Errorf("cannot cast %T to %s", args[0], reflect.TypeFor[ir.WithLength]())
-	}
-	l, err := withLen.Length(env.ExprEval())
+func lenAxesImpl(env *engine.Env, cal *ir.FuncCallExpr, arg elements.WithAxes) ([]ir.Element, error) {
+	axlens, err := arg.Axes(env.ExprEval())
 	if err != nil {
 		return nil, err
 	}
-	el, err := numbers.NewElement(env, ir.IntType(), l)
-	return []ir.Element{el}, err
+	els := axlens.Elements()
+	if len(els) == 0 {
+		one, err := env.Engine().ArrayOps().ElementFromHostValue(env.ExprEval(), numbers.OneInt())
+		return []ir.Element{one}, err
+	}
+	return []ir.Element{els[0]}, nil
 }
 
-func setImpl(env engine.Env, call *ir.FuncCallExpr, recv ir.Element, args []ir.Element) ([]ir.Element, error) {
+func lenImpl(env *engine.Env, call *ir.FuncCallExpr, recv ir.Element, args []ir.Element) ([]ir.Element, error) {
+	switch argsT := args[0].(type) {
+	case ir.WithLength:
+		l, err := argsT.Length(env.ExprEval())
+		if err != nil {
+			return nil, fmterr.Error(env.File().FileSet(), call.Node(), err)
+		}
+		nb := numbers.NewInt(l)
+		el, err := env.Engine().ArrayOps().ElementFromHostValue(env.ExprEval(), nb)
+		return []ir.Element{el}, err
+	case elements.WithAxes:
+		return lenAxesImpl(env, call, argsT)
+	default:
+		return nil, fmterr.InternalAt(env.File().FileSet(), call.Src, "cannot get the lengths of %T: not supported", args[0])
+	}
+}
+
+func setImpl(env *engine.Env, call *ir.FuncCallExpr, recv ir.Element, args []ir.Element) ([]ir.Element, error) {
 	out, err := env.Engine().ArrayOps().Set(env.ExprEval(), call, args[0], args[1], args[2:])
 	if err != nil {
 		return nil, err
@@ -197,6 +213,6 @@ func setImpl(env engine.Env, call *ir.FuncCallExpr, recv ir.Element, args []ir.E
 	return []ir.Element{out}, nil
 }
 
-func traceImpl(env engine.Env, call *ir.FuncCallExpr, recv ir.Element, args []ir.Element) ([]ir.Element, error) {
+func traceImpl(env *engine.Env, call *ir.FuncCallExpr, recv ir.Element, args []ir.Element) ([]ir.Element, error) {
 	return nil, env.Engine().Trace(env.ExprEval(), call, args)
 }

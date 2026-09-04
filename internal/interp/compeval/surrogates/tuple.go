@@ -72,23 +72,23 @@ func (t *tuple) Type() ir.Type {
 }
 
 // UnaryOp applies a unary operator on x.
-func (t *tuple) UnaryOp(env engine.Env, expr *ir.UnaryExpr) (engine.NumericalElement, error) {
+func (t *tuple) UnaryOp(env *engine.Env, expr *ir.UnaryExpr) (engine.NumericalElement, error) {
 	return cpevops.NewUnary(env, expr, t)
 }
 
 // BinaryOp applies a binary operator to x and y.
 // Note that the receiver can be either the left or right argument.
-func (t *tuple) BinaryOp(env engine.Env, expr *ir.BinaryExpr, y engine.NumericalElement) (engine.NumericalElement, error) {
+func (t *tuple) BinaryOp(env *engine.Env, expr *ir.BinaryExpr, y engine.NumericalElement) (engine.NumericalElement, error) {
 	return cpevops.NewBinaryFrom(env, expr, t, y)
 }
 
 // Cast an element into a given data type.
-func (t *tuple) Cast(env engine.Env, expr ir.Expr, target ir.Type) (engine.NumericalElement, error) {
+func (t *tuple) Cast(env *engine.Env, expr ir.Expr, target ir.Type) (engine.NumericalElement, error) {
 	return cpevops.NewCast(env, expr, t, target), nil
 }
 
 // Reshape an element.
-func (t *tuple) Reshape(env engine.Env, expr ir.Expr, axisLengths []engine.NumericalElement) (engine.NumericalElement, error) {
+func (t *tuple) Reshape(env *engine.Env, expr ir.Expr, axisLengths []engine.NumericalElement) (engine.NumericalElement, error) {
 	return cpevops.NewReshape(env, expr, t, axisLengths)
 }
 
@@ -105,11 +105,11 @@ func (t *tuple) algCmp(other ir.Element) bool {
 	return t.slice.path.Same(otherT.slice.path)
 }
 
-func (*tuple) SliceAt(env engine.Env, expr *ir.IndexExpr, index engine.NumericalElement) (ir.Element, error) {
+func (*tuple) SliceAt(env *engine.Env, expr *ir.IndexExpr, index engine.NumericalElement) (ir.Element, error) {
 	return nil, fmterr.InternalAt(env.File().FileSet(), expr.Node(), "cannot index a tuple")
 }
 
-func (*tuple) Slice(env engine.Env, expr *ir.SliceExpr, low, high engine.NumericalElement) (ir.Element, error) {
+func (*tuple) Slice(env *engine.Env, expr *ir.SliceExpr, low, high engine.NumericalElement) (ir.Element, error) {
 	return nil, fmterr.InternalAt(env.File().FileSet(), expr.Node(), "cannot slice a tuple")
 }
 

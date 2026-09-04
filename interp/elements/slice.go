@@ -18,6 +18,7 @@ import (
 	"go/ast"
 
 	"github.com/pkg/errors"
+	"github.com/gx-org/gx/api/hostio"
 	"github.com/gx-org/gx/api/values"
 	gxfmt "github.com/gx-org/gx/base/fmt"
 	"github.com/gx-org/gx/build/fmterr"
@@ -36,8 +37,8 @@ type (
 
 	// Slicer is a state element that can be sliced.
 	Slicer interface {
-		SliceAt(env engine.Env, expr *ir.IndexExpr, index engine.NumericalElement) (ir.Element, error)
-		Slice(env engine.Env, expr *ir.SliceExpr, low, high engine.NumericalElement) (ir.Element, error)
+		SliceAt(env *engine.Env, expr *ir.IndexExpr, index engine.NumericalElement) (ir.Element, error)
+		Slice(env *engine.Env, expr *ir.SliceExpr, low, high engine.NumericalElement) (ir.Element, error)
 	}
 
 	// ArraySlicer is a state element with an array that can be sliced.
@@ -98,7 +99,7 @@ func (n *Slice) Flatten() ([]ir.Element, error) {
 }
 
 // Slice returns a slice of a slice.
-func (n *Slice) Slice(_ engine.Env, expr *ir.SliceExpr, low, high engine.NumericalElement) (ir.Element, error) {
+func (n *Slice) Slice(_ *engine.Env, expr *ir.SliceExpr, low, high engine.NumericalElement) (ir.Element, error) {
 	lowIndex, err := n.lowBound(low)
 	if err != nil {
 		return nil, err
@@ -139,7 +140,7 @@ func (n *Slice) lowBound(low engine.NumericalElement) (int, error) {
 }
 
 // SliceAt returns the element at a given position in the slice.
-func (n *Slice) SliceAt(_ engine.Env, expr *ir.IndexExpr, index engine.NumericalElement) (ir.Element, error) {
+func (n *Slice) SliceAt(_ *engine.Env, expr *ir.IndexExpr, index engine.NumericalElement) (ir.Element, error) {
 	return SliceVals(expr, index, n.values)
 }
 
@@ -166,7 +167,7 @@ func (n *Slice) AppendInPlace(el ir.Element) {
 }
 
 // Unflatten consumes the next handles to return a GX value.
-func (n *Slice) Unflatten(handles *flatten.Parser) (values.Value, error) {
+func (n *Slice) Unflatten(handles *flatten.Parser) (hostio.Value, error) {
 	return handles.ParseComposite(flatten.ParseCompositeOf(values.NewSlice), n.typ, n.values)
 }
 
@@ -216,6 +217,20 @@ func (n *Slice) Copy() engine.Copier {
 		values[i] = engine.Copy(val)
 	}
 	return &Slice{typ: n.typ, values: values}
+}
+
+// Set an element at a given index.
+// Returns an error if the index is out of bounds.
+func (n *Slice) Set(index ir.Element, val ir.Element) error {
+	i, err := IntFromElement(index)
+	if err != nil {
+		return err
+	}
+	if i < 0 || i >= len(n.values) {
+		return errors.Errorf("invalid argument: index %d out of bounds [0:%d]", i, len(n.values))
+	}
+	n.values[i] = val
+	return nil
 }
 
 // Length returns the value corresponding to calling the built-in len.

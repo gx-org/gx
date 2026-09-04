@@ -31,7 +31,7 @@ type arrayIndex struct {
 }
 
 // NewIndex returns a binary operation between two elements.
-func NewIndex(env engine.Env, expr *ir.IndexExpr, x Element, idx engine.NumericalElement) (_ Element, err error) {
+func NewIndex(env *engine.Env, expr *ir.IndexExpr, x Element, idx engine.NumericalElement) (_ Element, err error) {
 	idxEl, err := cast.To[Element](idx)
 	el := &arrayIndex{
 		expr: expr,

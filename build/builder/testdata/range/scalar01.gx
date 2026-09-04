@@ -1,0 +1,11 @@
+package scalar01
+
+func TestScalar() int {
+	sum := 0
+	for i := range 5 {
+		sum += i
+	}
+	return sum
+	// Want:
+	// int(10)
+}

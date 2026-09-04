@@ -1,0 +1,12 @@
+package slice01
+
+func Test() int {
+	a := []int{1, 2, 3}
+	sum := 0
+	for _, v := range a {
+		sum += v
+	}
+	return sum
+	// Want:
+	// int(6)
+}

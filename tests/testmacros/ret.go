@@ -20,13 +20,12 @@ import (
 	"strconv"
 
 	"github.com/gx-org/gx/build/ir"
-	"github.com/gx-org/gx/internal/interp/compeval/cpevelements"
 	"github.com/gx-org/gx/interp/elements"
 	"github.com/gx-org/gx/interp"
 )
 
 type updateReturn struct {
-	cpevelements.CoreMacroElement
+	elements.MacroCall
 	fn  *ir.FuncDecl
 	str string
 }
@@ -43,9 +42,9 @@ func newUpdateReturn(file *ir.File, call *ir.FuncCallExpr, mac *ir.Macro, args [
 		return nil, err
 	}
 	return &updateReturn{
-		CoreMacroElement: cpevelements.MacroElement(mac, file, call),
-		fn:               fn,
-		str:              str,
+		MacroCall: elements.NewMacroCall(mac, file, call),
+		fn:        fn,
+		str:       str,
 	}, nil
 }
 

@@ -24,10 +24,9 @@ import (
 	"github.com/gx-org/gx/build/ir/generics"
 	"github.com/gx-org/gx/build/ir"
 	"github.com/gx-org/gx/build/ir/irkind"
-	"github.com/gx-org/gx/internal/interp/compeval/cpevelements"
 	"github.com/gx-org/gx/internal/interp/compeval/srcstore"
 	"github.com/gx-org/gx/internal/interp/compeval/surrogates"
-	"github.com/gx-org/gx/interp/fun"
+	"github.com/gx-org/gx/interp/elements"
 )
 
 func unpackIndexedExpr(n ast.Node) (ast.Expr, []ast.Expr) {
@@ -230,13 +229,13 @@ func (n *callExpr) buildCallExpr(rscope resolveScope, callee ir.Expr) (ir.Expr, 
 		return invalidExpr(), rscope.Err().AppendAt(callee.Node(), err)
 	}
 	switch elT := ir.BareValue(el).(type) {
-	case *cpevelements.Macro:
+	case *elements.Macro:
 		return n.buildMacroCall(rscope, compEval, callee, elT.MacroIR())
 	case ir.Type:
 		return n.buildTypeCast(rscope, callee, elT)
 	case ir.FuncAnnotator:
 		return invalidExpr(), rscope.Err().Appendf(callee.Node(), "annotator gx:@%s only valid in a function annotation context", elT.ShortString())
-	case *fun.NamedType:
+	case *elements.NamedType:
 		return n.buildTypeCast(rscope, callee, elT.Type())
 	case *ir.TypeValExpr:
 		return n.buildTypeCast(rscope, callee, elT.Store())
@@ -339,7 +338,8 @@ func evalGenericValues(ce *compileEvaluator, ftype *ir.FuncType) (map[string]ir.
 		storage := tParam.Storage()
 		var el ir.Element
 		if ir.IsNonTypeGeneric(tParam.Type()) {
-			surEl, err := surrogates.FieldRoot(tParam)
+			generic := ir.NewGenericNonTypeParam(storage.Field)
+			surEl, err := surrogates.FieldRoot(tParam, generic)
 			if err != nil {
 				ok = ce.Err().AppendAt(tParam.Node(), err)
 			}
@@ -369,8 +369,7 @@ func evalGenericValues(ce *compileEvaluator, ftype *ir.FuncType) (map[string]ir.
 	return out, ok
 }
 
-func instantiateFType(ce *compileEvaluator, fExpr *ir.FuncValExpr, funcFile *ir.File) (*ir.FuncType, bool) {
-	ftype := fExpr.FuncType()
+func instantiateFType(ce *compileEvaluator, fExpr *ir.FuncValExpr, ftype *ir.FuncType, funcFile *ir.File) (*ir.FuncType, bool) {
 	genVals, ok := evalGenericValues(ce, ftype)
 	if !ok {
 		return ftype, false
@@ -379,11 +378,11 @@ func instantiateFType(ce *compileEvaluator, fExpr *ir.FuncValExpr, funcFile *ir.
 	if !ok {
 		return ftype, false
 	}
-	return generics.Instantiate(sigCE, fExpr, ftype.GenericValues)
+	return generics.Instantiate(sigCE, fExpr, ftype)
 }
 
 func buildFuncForCall(rscope resolveScope, fExpr *ir.FuncValExpr, args []ir.Expr) ([]ir.Expr, *ir.FuncValExpr, bool) {
-	if rscope.requireCompevalCall() && !fExpr.Func().FuncType().CompEval {
+	if rscope.requireCompevalCall() && !fExpr.Func().FuncType().Nature.CompEval {
 		return args, fExpr, rscope.Err().Appendf(fExpr.Node(), "expect a compeval function, function %s is not", fExpr.Func().ShortString())
 	}
 	compEval, compEvalOk := rscope.compEval()
@@ -403,7 +402,7 @@ func buildFuncForCall(rscope resolveScope, fExpr *ir.FuncValExpr, args []ir.Expr
 		}
 		return args, fExpr, rscope.Err().Appendf(fExpr.Node(), "in call to %s, cannot infer type %s", fExpr.Func().ShortString(), strings.Join(names, ","))
 	}
-	fTypeInst, instOk := instantiateFType(compEval, fExpr, fExpr.Func().File())
+	fTypeInst, instOk := instantiateFType(compEval, fExpr, fExpr.FuncType(), fExpr.Func().File())
 	fExprInst := fExpr.NewFType(fTypeInst)
 	var argsOk bool
 	args, argsOk = checkArgsForCall(rscope, compEval, fExprInst, args)

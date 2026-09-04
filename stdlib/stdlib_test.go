@@ -22,16 +22,22 @@ import (
 	gxtesting "github.com/gx-org/gx/tests/testing"
 )
 
+func buildPath(t *testing.T, bld *builder.Builder, path string) {
+	pkg, err := bld.Build(path)
+	if err != nil {
+		t.Fatalf("\n%+v", err)
+	}
+	if err := gxtesting.Validate(pkg.IR(), gxtesting.CheckSource); err != nil {
+		t.Errorf("\n%s:\n%+v", path, err)
+	}
+}
+
 func TestStdlibValid(t *testing.T) {
 	lib := stdlib.Importer()
 	bld := builder.New(lib)
 	for _, path := range lib.Paths() {
-		pkg, err := bld.Build(path)
-		if err != nil {
-			t.Fatalf("\n%+v", err)
-		}
-		if err := gxtesting.Validate(pkg.IR(), gxtesting.CheckSource); err != nil {
-			t.Errorf("\n%s:\n%+v", path, err)
-		}
+		t.Run(path, func(t *testing.T) {
+			buildPath(t, bld, path)
+		})
 	}
 }

@@ -20,6 +20,7 @@ import (
 
 	"github.com/gx-org/gx/build/builder/irb"
 	"github.com/gx-org/gx/build/ir"
+	"github.com/gx-org/gx/build/ir/irkind"
 	"github.com/gx-org/gx/internal/interp/compeval/srcstore"
 	"github.com/gx-org/gx/internal/interp/compeval/surrogates"
 )
@@ -53,8 +54,8 @@ func (ns *signatureNamespace) assignResultField(pscope procScope, fld *field) bo
 }
 
 type funcType struct {
-	src      *ast.FuncType
-	compEval bool
+	src    *ast.FuncType
+	nature ir.FuncNature
 
 	receiver *namedType
 
@@ -69,10 +70,10 @@ type funcType struct {
 	namedResults bool
 }
 
-func processFuncType(pscope procScope, src *ast.FuncType, recv *ast.FieldList, compEval bool) (*funcType, bool) {
+func processFuncType(pscope procScope, src *ast.FuncType, recv *ast.FieldList, nature ir.FuncNature) (*funcType, bool) {
 	n := &funcType{
-		src:      src,
-		compEval: compEval,
+		src:    src,
+		nature: nature,
 	}
 	var recvOk, typesOk, paramsOk, resultsOk bool
 	sig := &signatureNamespace{fType: n, names: make(map[string]*field)}
@@ -129,7 +130,7 @@ func defineGenericParam(s localScope, storage *ir.FieldStorage) bool {
 }
 
 func defineFieldForStorage(s localScope, field *ir.Field, storage ir.Storage) bool {
-	el, err := surrogates.FieldRoot(field)
+	el, err := surrogates.FieldRoot(field, storage)
 	ok := true
 	if err != nil {
 		ok = s.Err().AppendAt(storage.Node(), err)
@@ -145,10 +146,25 @@ func defineField(s localScope, storage *ir.FieldStorage) bool {
 	return defineFieldForStorage(s, storage.Field, storage)
 }
 
+func checkUnrollResultTypes(rscope resolveScope, ftype *ir.FuncType) bool {
+	fields := ftype.Results.Fields()
+	if len(fields) == 0 {
+		return rscope.Err().Appendf(ftype.Node(), "function missing results for unroll")
+	}
+	if len(fields) > 1 {
+		return rscope.Err().Appendf(ftype.Results.Node(), "function got %d results for unroll but expect 1", len(fields))
+	}
+	tp := fields[0].Type()
+	if tp.Kind() != irkind.Slice {
+		return rscope.Err().Appendf(ftype.Results.Node(), "function returns %s (kind %s) for unroll but expect slice", tp.ReferString(rscope.fileScope().irFile()), tp.Kind().String())
+	}
+	return true
+}
+
 func (n *funcType) buildFuncType(rscope resolveScope) (*ir.FuncType, *funcResolveScope, bool) {
 	ext := &ir.FuncType{
 		BaseType: ir.BaseType[*ast.FuncType]{Src: n.src},
-		CompEval: n.compEval,
+		Nature:   n.nature,
 	}
 	var tParamsOk, recvOk, paramsOk, resultsOk bool
 	sigscope, ephemeralOk := newEphemeralResolveScope(rscope, n.src)
@@ -187,8 +203,11 @@ func (n *funcType) buildFuncType(rscope resolveScope) (*ir.FuncType, *funcResolv
 			resultsOk = false
 		}
 	}
+	if ext.Nature.Unroll {
+		resultsOk = resultsOk && checkUnrollResultTypes(rscope, ext)
+	}
 	fnscope, fnscopeOk := newFuncScope(rscope, ext)
-	return ext, fnscope, resultsOk && fnscopeOk
+	return ext, fnscope, resultsOk && fnscopeOk && tParamsOk
 }
 
 func (n *funcType) source() ast.Node {
@@ -200,7 +219,7 @@ func (n *funcType) buildTypeExpr(rscope resolveScope) (*ir.TypeValExpr, bool) {
 	if !ok {
 		return nil, false
 	}
-	return ir.TypeExpr(tp, tp), true
+	return ir.TypeExpr(nil, tp), true
 }
 
 func (n *funcType) String() string {
@@ -231,17 +250,24 @@ func (bFile *file) processFunc(fileScope procScope, src *ast.FuncDecl) bool {
 	var ok bool
 	switch dir {
 	case none:
-		fn, ok = bFile.processDeclaredFunc(fileScope, src, false)
+		fn, ok = bFile.processDeclaredFunc(fileScope, src, ir.FuncNature{})
 	case irmacro: // IR Macro function that will be called by the compiler via gx:irmacro
 		fn, ok = bFile.processIRMacroFunc(fileScope, src, dirComment)
 	case cpeval:
-		fn, ok = bFile.processDeclaredFunc(fileScope, src, true)
+		fn, ok = bFile.processDeclaredFunc(fileScope, src, ir.FuncNature{
+			CompEval: true,
+		})
+	case unrollLoop:
+		fn, ok = bFile.processDeclaredFunc(fileScope, src, ir.FuncNature{
+			CompEval: true,
+			Unroll:   true,
+		})
 	case funcAnnotator:
 		fn, ok = bFile.processAnnotatorFunc(fileScope, src, dirComment)
 	case fieldAnnotator:
 		fn, ok = bFile.processAnnotatorField(fileScope, src, dirComment)
 	default:
-		return fileScope.Err().AppendInternalf(dirComment, "directive %d not supported", dir)
+		return fileScope.Err().AppendInternalf(dirComment, "directive %s not supported", dir)
 	}
 	if !ok {
 		return false
@@ -254,22 +280,22 @@ func (bFile *file) processFunc(fileScope procScope, src *ast.FuncDecl) bool {
 	return dirOk && ok
 }
 
-func (bFile *file) processDeclaredFunc(fileScope procScope, src *ast.FuncDecl, compEval bool) (function, bool) {
+func (bFile *file) processDeclaredFunc(fileScope procScope, src *ast.FuncDecl, nature ir.FuncNature) (function, bool) {
 	if src.Body == nil {
-		return bFile.processBuiltinFunc(fileScope, src, compEval)
+		return bFile.processBuiltinFunc(fileScope, src, nature)
 	}
-	return bFile.processFuncDecl(fileScope, src, compEval)
+	return bFile.processFuncDecl(fileScope, src, nature)
 }
 
-func newFuncDecl(scope procScope, fn *ast.FuncDecl, compEval bool) (*funcDecl, bool) {
+func newFuncDecl(scope procScope, fn *ast.FuncDecl, nature ir.FuncNature) (*funcDecl, bool) {
 	f := &funcDecl{bFile: scope.file(), src: fn}
 	var ok bool
-	f.fType, ok = processFuncType(scope, fn.Type, fn.Recv, compEval)
+	f.fType, ok = processFuncType(scope, fn.Type, fn.Recv, nature)
 	return f, ok
 }
 
-func (bFile *file) processFuncDecl(pscope procScope, src *ast.FuncDecl, compEval bool) (function, bool) {
-	f, declOk := newFuncDecl(pscope, src, compEval)
+func (bFile *file) processFuncDecl(pscope procScope, src *ast.FuncDecl, nature ir.FuncNature) (function, bool) {
+	f, declOk := newFuncDecl(pscope, src, nature)
 	var bodyOk bool
 	f.body, bodyOk = processBlockStmt(pscope, f.src.Body)
 	return f, declOk && bodyOk
@@ -284,7 +310,7 @@ func (f *funcDecl) isMethod() bool {
 }
 
 func (f *funcDecl) compEval() bool {
-	return f.fType.compEval
+	return f.fType.nature.CompEval
 }
 
 func (f *funcDecl) source() ast.Node {
@@ -309,8 +335,7 @@ func (f *funcDecl) buildScopeBody(rscope resolveScope, extF *irFunc) (*funcResol
 		return nil, false
 	}
 	ftype := extF.irFunc.FuncType()
-	call := ir.NewFuncValExpr(ftype, extF.irFunc)
-	ftype, ok := instantiateFType(ce, call, rscope.fileScope().irFile())
+	ftype, ok := instantiateFType(ce, nil, ftype, rscope.fileScope().irFile())
 	if !ok {
 		return nil, false
 	}
@@ -352,8 +377,8 @@ type funcBuiltin struct {
 
 var _ function = (*funcBuiltin)(nil)
 
-func (bFile *file) processBuiltinFunc(scope procScope, src *ast.FuncDecl, compEval bool) (function, bool) {
-	fDecl, declOk := newFuncDecl(scope, src, compEval)
+func (bFile *file) processBuiltinFunc(scope procScope, src *ast.FuncDecl, nature ir.FuncNature) (function, bool) {
+	fDecl, declOk := newFuncDecl(scope, src, nature)
 	fn := &funcBuiltin{funcDecl: fDecl}
 	return fn, declOk
 }
@@ -384,7 +409,7 @@ type funcLiteral struct {
 var _ exprNode = (*funcLiteral)(nil)
 
 func processFuncLit(pscope procScope, src *ast.FuncLit) (*funcLiteral, bool) {
-	ftype, ftypeOk := processFuncType(pscope, src.Type, nil, false)
+	ftype, ftypeOk := processFuncType(pscope, src.Type, nil, ir.FuncNature{})
 	body, bodyOk := processBlockStmt(pscope, src.Body)
 	return &funcLiteral{
 		src:   src,

@@ -124,7 +124,7 @@ func (f function) BackendArguments() (string, error) {
 		return "nil", nil
 	}
 	args := []string{
-		"[]values.Value{",
+		"[]hostio.Value{",
 	}
 	for i, field := range fields {
 		gxValue := fmt.Sprintf("%s.Bridge().GXValue()", argN(i))

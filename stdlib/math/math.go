@@ -36,7 +36,6 @@ import (
 	"github.com/gx-org/gx/interp/engine"
 	"github.com/gx-org/gx/interp/materialise"
 	"github.com/gx-org/gx/stdlib/builtin"
-	gxerrors "github.com/gx-org/gx/stdlib/errors"
 )
 
 // Package description of the GX num package.
@@ -72,7 +71,7 @@ var Package = builtin.PackageBuilder{
 	},
 }
 
-func checkSameOrScalar(env engine.Env, call *ir.FuncCallExpr, recv ir.Element, args []ir.Element) (_ []ir.Element, err error) {
+func checkSameOrScalar(env *engine.Env, call *ir.FuncCallExpr, recv ir.Element, args []ir.Element) (_ []ir.Element, err error) {
 	ax1, isSlice := args[0].(*elements.Slice)
 	if !isSlice {
 		return nil, errors.Errorf("cannot convert %T to %s", args[0], reflect.TypeFor[*elements.Slice]().String())
@@ -82,10 +81,10 @@ func checkSameOrScalar(env engine.Env, call *ir.FuncCallExpr, recv ir.Element, a
 		return nil, errors.Errorf("cannot convert %T to %s", args[1], reflect.TypeFor[*elements.Slice]().String())
 	}
 	if ax1.Len() == 0 {
-		return []ir.Element{ax2, elements.NilError()}, nil
+		return []ir.Element{ax2}, nil
 	}
 	if ax2.Len() == 0 {
-		return []ir.Element{ax1, elements.NilError()}, nil
+		return []ir.Element{ax1}, nil
 	}
 	same, err := cmp.Equal(env.ExprEval(), ax1, ax2)
 	if err != nil {
@@ -94,10 +93,9 @@ func checkSameOrScalar(env engine.Env, call *ir.FuncCallExpr, recv ir.Element, a
 	if !same {
 		ax1S := ir.ExprString(env.ExprEval(), call.Expr(), ax1)
 		ax2S := ir.ExprString(env.ExprEval(), call.Expr(), ax2)
-		gxErr, err := gxerrors.Errorf(env, "cannot use array of shape %s as scalar or array of shape %s (expect same shape)", ax1S, ax2S)
-		return []ir.Element{args[0], gxErr}, err
+		return []ir.Element{args[0]}, ir.CompileErrorF("cannot use array of shape %s as scalar or array of shape %s (expect same shape)", ax1S, ax2S)
 	}
-	return []ir.Element{ax1, elements.NilError()}, err
+	return []ir.Element{ax1}, err
 }
 
 // mainAuxArgsToTypes computes the signature of a function with two arguments.
@@ -160,7 +158,7 @@ func buildConstScalar[T goFloats](name string, value T) builtin.Builder {
 type unaryFunc = func(ops.Node) (ops.Node, error)
 
 func buildUnary(name string, f func(graph ops.Graph) unaryFunc) builtin.Builder {
-	return builtin.ImplementBuiltin(name, func(env engine.Env, call *ir.FuncCallExpr, recv ir.Element, args []ir.Element) ([]ir.Element, error) {
+	return builtin.ImplementBuiltin(name, func(env *engine.Env, call *ir.FuncCallExpr, recv ir.Element, args []ir.Element) ([]ir.Element, error) {
 		args = args[call.Callee.FuncType().Origin().TypeParams.Len():]
 		mat := builtin.Materialiser(env)
 		x, xShape, err := materialise.Element(mat, args[0])
@@ -186,7 +184,7 @@ func buildUnary(name string, f func(graph ops.Graph) unaryFunc) builtin.Builder 
 type binaryFunc = func(x, y ops.Node) (ops.Node, error)
 
 func buildBinary(name string, f func(graph ops.Graph) binaryFunc) builtin.Builder {
-	return builtin.ImplementBuiltin(name, func(env engine.Env, call *ir.FuncCallExpr, recv ir.Element, args []ir.Element) ([]ir.Element, error) {
+	return builtin.ImplementBuiltin(name, func(env *engine.Env, call *ir.FuncCallExpr, recv ir.Element, args []ir.Element) ([]ir.Element, error) {
 		args = args[call.Callee.FuncType().Origin().TypeParams.Len():]
 		mat := builtin.Materialiser(env)
 		x, xShape, err := materialise.Element(mat, args[0])

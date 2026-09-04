@@ -107,7 +107,7 @@ func ToBFloat16(cst engine.Constant) (bfloat16.BFloat16, bool) {
 
 // ConvertOk converts an element to a Go value if possible.
 func ConvertOk[T dtypes.Supported](cvt ConverterT[T], el ir.Element) (T, bool) {
-	cstEl, ok := el.(engine.ConstantElement)
+	cstEl, ok := ir.BareValue(el).(engine.ConstantElement)
 	if !ok {
 		var zero T
 		return zero, false

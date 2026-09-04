@@ -25,7 +25,7 @@ import (
 )
 
 // Impl is the implementation of the require builtin.
-func Impl(env engine.Env, call *ir.FuncCallExpr, recv ir.Element, args []ir.Element) ([]ir.Element, error) {
+func Impl(env *engine.Env, call *ir.FuncCallExpr, recv ir.Element, args []ir.Element) ([]ir.Element, error) {
 	condValue, isCondDefined := constants.ConvertOk(constants.CBool, args[0])
 	if condValue || !isCondDefined {
 		return nil, nil

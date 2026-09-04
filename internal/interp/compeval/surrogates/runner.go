@@ -16,9 +16,9 @@ package surrogates
 
 import (
 	"github.com/gx-org/gx/build/ir"
+	"github.com/gx-org/gx/internal/interp/compeval/surrogates/storepath"
 	"github.com/gx-org/gx/interp/context"
 	"github.com/gx-org/gx/interp/engine"
-	"github.com/gx-org/gx/interp/fun"
 )
 
 type runner struct{}
@@ -27,21 +27,35 @@ var rn = runner{}
 
 // Runner returns a function runner only building runtime values for results.
 // No function is being executed.
-func Runner() fun.Runners {
+func Runner() engine.Runners {
 	return rn
 }
 
 // FuncDecl runs a function implemented in GX.
-func (runner) FuncDecl(fDecl *ir.FuncDecl, env *fun.CallEnv, call *ir.FuncCallExpr, recv engine.Copier, args []ir.Element) ([]ir.Element, error) {
+func (runner) FuncDecl(fDecl *ir.FuncDecl, env *engine.Env, call *ir.FuncCallExpr, recv engine.Copier, args []ir.Element) ([]ir.Element, error) {
 	return Call(call)
 }
 
 // FuncLit runs a function literal.
-func (runner) FuncLit(lit *ir.FuncLit, env *fun.CallEnv, ctx *context.Context, call *ir.FuncCallExpr, args []ir.Element) ([]ir.Element, error) {
+func (runner) FuncLit(lit *ir.FuncLit, env *engine.Env, ctx *context.Context, call *ir.FuncCallExpr, args []ir.Element) ([]ir.Element, error) {
 	return Call(call)
 }
 
 // Builtin runs a function builtin in GX or provided by a backend.
-func (runner) Builtin(fn ir.Func, impl ir.FuncImpl, env *fun.CallEnv, call *ir.FuncCallExpr, recv engine.Copier, args []ir.Element) ([]ir.Element, error) {
+func (runner) Builtin(fn ir.Func, impl ir.FuncImpl, env *engine.Env, call *ir.FuncCallExpr, recv engine.Copier, args []ir.Element) ([]ir.Element, error) {
 	return Call(call)
+}
+
+// Call returns surrogate values for all results of a function simulating a function call.
+func Call(call *ir.FuncCallExpr) ([]ir.Element, error) {
+	res := call.Callee.FuncType().Results.Fields()
+	els := make([]ir.Element, len(res))
+	for i, ri := range res {
+		var err error
+		els[i], err = New(storepath.NewUniqueIR(call), ri.Type())
+		if err != nil {
+			return nil, err
+		}
+	}
+	return els, nil
 }

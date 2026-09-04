@@ -12,12 +12,13 @@
 // See the License for the specific language governing permissions and
 // limitations under the License.
 
-package fun
+package elements
 
 import (
 	"github.com/pkg/errors"
 	"github.com/gx-org/gx/build/ir"
 	"github.com/gx-org/gx/internal/base/scope"
+	"github.com/gx-org/gx/interp/engine"
 )
 
 // Package groups elements exported by a package.
@@ -56,7 +57,7 @@ type Import struct {
 
 var (
 	_ ir.StorageElement = (*Import)(nil)
-	_ Selector          = (*Import)(nil)
+	_ engine.Selector   = (*Import)(nil)
 )
 
 // NewImport returns a new import element for a given package.
@@ -75,7 +76,7 @@ func (imp *Import) Store() ir.Storage {
 }
 
 // Select a member of the package.
-func (imp *Import) Select(expr *ir.SelectorExpr) (ir.Element, error) {
+func (imp *Import) Select(env *engine.Env, expr *ir.SelectorExpr) (ir.Element, error) {
 	name := expr.Stor.NameDef().Name
 	el, ok := imp.pkg.defs.Find(name)
 	if !ok {

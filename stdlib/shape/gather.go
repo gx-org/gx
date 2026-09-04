@@ -24,10 +24,9 @@ import (
 	"github.com/gx-org/gx/interp/engine"
 	"github.com/gx-org/gx/interp/materialise"
 	"github.com/gx-org/gx/stdlib/builtin"
-	gxerrors "github.com/gx-org/gx/stdlib/errors"
 )
 
-func gatherAxis(env engine.Env, call *ir.FuncCallExpr, recv ir.Element, args []ir.Element) (_ []ir.Element, err error) {
+func gatherAxis(env *engine.Env, call *ir.FuncCallExpr, recv ir.Element, args []ir.Element) (_ []ir.Element, err error) {
 	inputSlice, err := elements.SliceFromElement(args[0])
 	if err != nil {
 		return nil, err
@@ -39,12 +38,10 @@ func gatherAxis(env engine.Env, call *ir.FuncCallExpr, recv ir.Element, args []i
 	}
 	indices := indicesSlice.Elements()
 	if len(indices) < 1 {
-		gxErr, err := gxerrors.Errorf(env, "expect indices to have at least one axis but got zero")
-		return []ir.Element{builtin.NilShape, gxErr}, err
+		return nil, ir.CompileErrorF("expect indices to have at least one axis but got zero")
 	}
 	if len(indices) > 2 {
-		gxErr, err := gxerrors.Errorf(env, "expect indices to have maximum 2 axes but got %d", len(indices))
-		return []ir.Element{builtin.NilShape, gxErr}, err
+		return nil, ir.CompileErrorF("expect indices to have maximum 2 axes but got %d", len(indices))
 	}
 	numPositions := 1
 	if len(indices) == 2 {
@@ -56,14 +53,13 @@ func gatherAxis(env engine.Env, call *ir.FuncCallExpr, recv ir.Element, args []i
 	out := []ir.Element{indices[0]}
 	if numPositions > len(input) {
 		from := env.File()
-		gxErr, err := gxerrors.Errorf(env, "cannot specify %s position(s) with %d axis indices (in %s) to specify values in input array of %d axis length(s)", ir.SourceString(from, indices[0]), numPositions, builtin.ToShapeString(from, indices), len(input))
-		return []ir.Element{builtin.NilShape, gxErr}, err
+		return nil, ir.CompileErrorF("cannot specify %s position(s) with %d axis indices (in %s) to specify values in input array of %d axis length(s)", ir.SourceString(from, indices[0]), numPositions, builtin.ToShapeString(from, indices), len(input))
 	}
 	out = append(out, input[numPositions:]...)
 	return builtin.ToShapeResult(out...)
 }
 
-func evalGather(env engine.Env, call *ir.FuncCallExpr, recv ir.Element, args []ir.Element) ([]ir.Element, error) {
+func evalGather(env *engine.Env, call *ir.FuncCallExpr, recv ir.Element, args []ir.Element) ([]ir.Element, error) {
 	inputShape, err := elements.Map(elements.IntFromElement, args[0])
 	if err != nil {
 		return nil, err

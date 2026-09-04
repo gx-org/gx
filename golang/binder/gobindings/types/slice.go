@@ -18,6 +18,7 @@ import (
 	"reflect"
 
 	"github.com/pkg/errors"
+	"github.com/gx-org/gx/api/hostio"
 	"github.com/gx-org/gx/api/values"
 	gxfmt "github.com/gx-org/gx/base/fmt"
 	"github.com/gx-org/gx/build/ir"
@@ -34,7 +35,7 @@ var _ = (*Slice[Bridger])(nil)
 
 // NewSlice returns a new slice storing data on a device.
 func NewSlice[T Bridger](typ ir.Type, vals []T) (*Slice[T], error) {
-	gxVals := make([]values.Value, len(vals))
+	gxVals := make([]hostio.Value, len(vals))
 	for i, val := range vals {
 		gxVals[i] = val.Bridge().GXValue()
 	}
@@ -151,7 +152,7 @@ func (b *SliceBridge) Bridger() Bridger {
 }
 
 // GXValue returns the underlying GX value.
-func (b *SliceBridge) GXValue() values.Value {
+func (b *SliceBridge) GXValue() hostio.Value {
 	return b.gxSlice
 }
 

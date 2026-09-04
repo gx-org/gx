@@ -32,6 +32,7 @@ const (
 	funcAnnotator
 	fieldAnnotator
 	cpeval
+	unrollLoop
 	none
 )
 
@@ -47,6 +48,8 @@ func (d funcAttribute) String() string {
 		return "fieldAnnotator"
 	case cpeval:
 		return "compeval"
+	case unrollLoop:
+		return "unroll"
 	default:
 		return "invalid"
 	}
@@ -59,6 +62,7 @@ var directives = map[string]funcAttribute{
 	funcAnnotator.String():  funcAnnotator,
 	fieldAnnotator.String(): fieldAnnotator,
 	cpeval.String():         cpeval,
+	unrollLoop.String():     unrollLoop,
 	none.String():           none,
 }
 

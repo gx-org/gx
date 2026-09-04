@@ -85,7 +85,7 @@ func inverse[T dtype.Num, S []int](x [unpack(S)]T) [unpack(S)]T {
 func Log[T dtype.Num, S []int]([unpack(S)]T) [unpack(S)]T
 
 //gx:compeval
-func checkSameOrScalar(s1, s2 []int) ([]int, error)
+func checkSameOrScalar(s1, s2 []int) []int
 
 // Min returns the minimum value between two arguments.
 func Min[T dtype.Num, S1, S2 []int]([unpack(S1)]T, [unpack(S2)]T) [unpack(checkSameOrScalar(S1, S2))]T

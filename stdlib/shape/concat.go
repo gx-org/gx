@@ -26,17 +26,15 @@ import (
 	"github.com/gx-org/gx/interp/engine"
 	"github.com/gx-org/gx/interp/materialise"
 	"github.com/gx-org/gx/stdlib/builtin"
-	gxerrors "github.com/gx-org/gx/stdlib/errors"
 )
 
-func checkConsistent(env engine.Env, call *ir.FuncCallExpr, ref ir.Element, axisIdx int, refShape []engine.NumericalElement, argNum int, el ir.Element) (engine.NumericalElement, ir.Element, error) {
+func checkConsistent(env *engine.Env, call *ir.FuncCallExpr, ref ir.Element, axisIdx int, refShape []engine.NumericalElement, argNum int, el ir.Element) (engine.NumericalElement, error) {
 	argShape, err := elements.Map(elements.ToNumericalElement, el)
 	if err != nil {
-		return nil, nil, err
+		return nil, err
 	}
 	if len(argShape) != len(refShape) {
-		gxErr, err := gxerrors.Errorf(env, "argument %d has %d axe(s) but argument 1 has %d axe(s)", argNum, len(argShape), len(refShape))
-		return nil, gxErr, err
+		return nil, ir.CompileErrorF("argument %d has %d axe(s) but argument 1 has %d axe(s)", argNum, len(argShape), len(refShape))
 	}
 	var concatAxis engine.NumericalElement
 	for i, axLen := range argShape {
@@ -46,21 +44,20 @@ func checkConsistent(env engine.Env, call *ir.FuncCallExpr, ref ir.Element, axis
 		}
 		eq, err := cmp.Equal(env.ExprEval(), refShape[i], axLen)
 		if err != nil {
-			return nil, nil, err
+			return nil, err
 		}
 		if !eq {
 			refShapeS := ir.ExprString(env.ExprEval(), call.Expr(), ref)
 			iRefS := ir.ExprString(env.ExprEval(), call.Expr(), refShape[i])
 			argShapeS := ir.ExprString(env.ExprEval(), call.Expr(), el)
 			iArgS := ir.ExprString(env.ExprEval(), call.Expr(), axLen)
-			gxErr, err := gxerrors.Errorf(env, "argument %d shape (%s) incompatible with argument 1 shape (%s): [%s] != [%s] for axis %d", argNum, argShapeS, refShapeS, iArgS, iRefS, axisIdx)
-			return nil, gxErr, err
+			return nil, ir.CompileErrorF("argument %d shape (%s) incompatible with argument 1 shape (%s): [%s] != [%s] for axis %d", argNum, argShapeS, refShapeS, iArgS, iRefS, axisIdx)
 		}
 	}
-	return concatAxis, nil, nil
+	return concatAxis, nil
 }
 
-func irAdd(env engine.Env, src ast.Expr, x, y engine.NumericalElement) (engine.NumericalElement, error) {
+func irAdd(env *engine.Env, src ast.Expr, x, y engine.NumericalElement) (engine.NumericalElement, error) {
 	xExpr, err := ir.ToSingleExpr(env.ExprEval(), src, x)
 	if err != nil {
 		return nil, err
@@ -85,7 +82,7 @@ func irAdd(env engine.Env, src ast.Expr, x, y engine.NumericalElement) (engine.N
 	)
 }
 
-func concatAxis(env engine.Env, call *ir.FuncCallExpr, recv ir.Element, args []ir.Element) (_ []ir.Element, err error) {
+func concatAxis(env *engine.Env, call *ir.FuncCallExpr, recv ir.Element, args []ir.Element) (_ []ir.Element, err error) {
 	idx, err := elements.IntFromElement(args[0])
 	if err != nil {
 		return nil, err
@@ -96,16 +93,15 @@ func concatAxis(env engine.Env, call *ir.FuncCallExpr, recv ir.Element, args []i
 	}
 	varargsElts := varargsSlice.Elements()
 	if len(varargsElts) == 0 {
-		gxErr, err := gxerrors.Errorf(env, "not enough arguments for concat() (expected 1, found 0)")
-		return []ir.Element{nil, gxErr}, err
+		return nil, ir.CompileErrorF("not enough arguments for concat() (expected 1, found 0)")
 	}
 	firstShapeElts, err := elements.SliceFromElement(varargsElts[0])
 	if err != nil {
 		return nil, err
 	}
 	if idx >= firstShapeElts.Len() {
-		gxErr, err := outOfBoundAxis(env, call, firstShapeElts, idx, "concat")
-		return []ir.Element{args[0], gxErr}, err
+		err := outOfBoundAxis(env, call, firstShapeElts, idx, "concat")
+		return []ir.Element{args[0]}, err
 	}
 	firstShape, err := elements.Map(elements.ToNumericalElement, firstShapeElts)
 	if err != nil {
@@ -113,12 +109,9 @@ func concatAxis(env engine.Env, call *ir.FuncCallExpr, recv ir.Element, args []i
 	}
 	concatAxis := firstShape[idx]
 	for i, el := range varargsElts[1:] {
-		toAdd, gxErr, err := checkConsistent(env, call, firstShapeElts, idx, firstShape, i+2, el)
+		toAdd, err := checkConsistent(env, call, firstShapeElts, idx, firstShape, i+2, el)
 		if err != nil {
 			return nil, err
-		}
-		if gxErr != nil {
-			return []ir.Element{args[0], gxErr}, err
 		}
 		concatAxis, err = irAdd(env, call.Expr(), concatAxis, toAdd)
 		if err != nil {
@@ -132,10 +125,10 @@ func concatAxis(env engine.Env, call *ir.FuncCallExpr, recv ir.Element, args []i
 	if err != nil {
 		return nil, err
 	}
-	return []ir.Element{finalShape, elements.NilError()}, nil
+	return []ir.Element{finalShape}, nil
 }
 
-func evalConcat(env engine.Env, call *ir.FuncCallExpr, recv ir.Element, args []ir.Element) ([]ir.Element, error) {
+func evalConcat(env *engine.Env, call *ir.FuncCallExpr, recv ir.Element, args []ir.Element) ([]ir.Element, error) {
 	axis, err := elements.IntFromElement(args[0])
 	if err != nil {
 		return nil, err

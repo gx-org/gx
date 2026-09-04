@@ -20,7 +20,7 @@ import (
 	"github.com/pkg/errors"
 	"github.com/gx-org/gx/build/ir"
 	"github.com/gx-org/gx/internal/interp/compeval/surrogates/storepath"
-	"github.com/gx-org/gx/interp/fun"
+	"github.com/gx-org/gx/interp/engine"
 )
 
 // Function is a surrogate function.
@@ -28,27 +28,12 @@ import (
 type Function struct {
 	store ir.Storage
 	fn    ir.Func
-	recv  *fun.Receiver
-}
-
-// NewSurFunc returns a new surrogate function.
-func NewSurFunc(fn ir.Func, recv *fun.Receiver) *Function {
-	store, _ := fn.(ir.Storage)
-	return &Function{
-		fn:    fn,
-		recv:  recv,
-		store: store,
-	}
-}
-
-// NewFunc returns a new surrogate function.
-func NewFunc(fn ir.Func, recv *fun.Receiver) fun.Func {
-	return NewSurFunc(fn, recv)
+	recv  *engine.Receiver
 }
 
 type surrogateFunction interface {
 	Element
-	fun.Func
+	engine.Func
 }
 
 func newSurrogateFunc(path storepath.Path, fType *ir.FuncType) surrogateFunction {
@@ -65,26 +50,12 @@ func (f *Function) IR() ir.Func {
 }
 
 // Recv returns the receiver for the function.
-func (f *Function) Recv() *fun.Receiver {
+func (f *Function) Recv() *engine.Receiver {
 	return f.recv
 }
 
-// Call returns surrogate values for all results of a function simulating a function call.
-func Call(call *ir.FuncCallExpr) ([]ir.Element, error) {
-	res := call.Callee.FuncType().Results.Fields()
-	els := make([]ir.Element, len(res))
-	for i, ri := range res {
-		var err error
-		els[i], err = New(storepath.NewUniqueIR(call), ri.Type())
-		if err != nil {
-			return nil, err
-		}
-	}
-	return els, nil
-}
-
 // Call the surrogate function.
-func (f *Function) Call(env *fun.CallEnv, call *ir.FuncCallExpr, args []ir.Element) ([]ir.Element, error) {
+func (f *Function) Call(env *engine.Env, call *ir.FuncCallExpr, args []ir.Element) ([]ir.Element, error) {
 	return Call(call)
 }
 

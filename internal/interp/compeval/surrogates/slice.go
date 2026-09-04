@@ -43,11 +43,11 @@ func (f *slice) Unpack(ev ir.Evaluator) (ir.Element, error) {
 	return newTuple(f)
 }
 
-func (f *slice) SliceAt(_ engine.Env, expr *ir.IndexExpr, index engine.NumericalElement) (ir.Element, error) {
+func (f *slice) SliceAt(_ *engine.Env, expr *ir.IndexExpr, index engine.NumericalElement) (ir.Element, error) {
 	return New(storepath.NewUniqueIR(expr), f.typ.DType.Val())
 }
 
-func (f *slice) Slice(_ engine.Env, expr *ir.SliceExpr, low, high engine.NumericalElement) (ir.Element, error) {
+func (f *slice) Slice(_ *engine.Env, expr *ir.SliceExpr, low, high engine.NumericalElement) (ir.Element, error) {
 	return newSliceType(storepath.NewUniqueIR(expr), f.typ), nil
 }
 

@@ -23,18 +23,6 @@ import (
 )
 
 type (
-	// Env is the environment in which GX code is evaluated.
-	Env interface {
-		// File returns the file in which the code is currently being executed.
-		File() *ir.File
-
-		// ExprEval returns an expression evaluator.
-		ExprEval() ir.Evaluator
-
-		// Engine returns the engine used by the interpreter environment.
-		Engine() Engine
-	}
-
 	// Engine provides the GX interpreter will all the required primitives.
 	Engine interface {
 		// Importer returns an importer to import package.
@@ -55,17 +43,17 @@ type (
 		ir.Element
 
 		// UnaryOp applies a unary operator on x.
-		UnaryOp(env Env, expr *ir.UnaryExpr) (NumericalElement, error)
+		UnaryOp(env *Env, expr *ir.UnaryExpr) (NumericalElement, error)
 
 		// BinaryOp applies a binary operator to x and y.
 		// Note that the receiver can be either the left or right argument.
-		BinaryOp(env Env, expr *ir.BinaryExpr, y NumericalElement) (NumericalElement, error)
+		BinaryOp(env *Env, expr *ir.BinaryExpr, y NumericalElement) (NumericalElement, error)
 
 		// Cast an element into a given data type.
-		Cast(env Env, expr ir.Expr, target ir.Type) (NumericalElement, error)
+		Cast(env *Env, expr ir.Expr, target ir.Type) (NumericalElement, error)
 
 		// Reshape an element.
-		Reshape(env Env, expr ir.Expr, axisLengths []NumericalElement) (NumericalElement, error)
+		Reshape(env *Env, expr ir.Expr, axisLengths []NumericalElement) (NumericalElement, error)
 	}
 
 	// ConstantElement is an element (created by the ArrayOps)

@@ -24,10 +24,10 @@ import (
 
 	"github.com/pkg/errors"
 	"github.com/gx-org/gx/api"
+	"github.com/gx-org/gx/api/hostio"
 	"github.com/gx-org/gx/api/options"
 	"github.com/gx-org/gx/api/trace"
 	"github.com/gx-org/gx/api/tracer"
-	"github.com/gx-org/gx/api/values"
 	"github.com/gx-org/gx/build/importers"
 	"github.com/gx-org/gx/build/ir"
 )
@@ -169,7 +169,7 @@ func optionsToString(opts []options.PackageOption) string {
 	return fmt.Sprintf("{%s}", strings.Join(optsS, ", "))
 }
 
-func (c *FuncCache) buildRunner(recv values.Value, args []values.Value) (_ tracer.CompiledFunc, err error) {
+func (c *FuncCache) buildRunner(recv hostio.Value, args []hostio.Value) (_ tracer.CompiledFunc, err error) {
 	log.Printf("GX Tracing %s.%s with options %s", c.fn.FFile.Package.Name.Name, c.fn.Name(), optionsToString(c.pkg.devSetup.opts))
 	now := time.Now()
 	defer func() {
@@ -184,7 +184,7 @@ func (c *FuncCache) buildRunner(recv values.Value, args []values.Value) (_ trace
 
 // Runner compiles the function if it has not been done before.
 // Returns the function compiled or an error.
-func (c *FuncCache) Runner(recv values.Value, args []values.Value) (tracer.CompiledFunc, error) {
+func (c *FuncCache) Runner(recv hostio.Value, args []hostio.Value) (tracer.CompiledFunc, error) {
 	c.initOnce.Do(func() {
 		c.runner, c.err = c.buildRunner(recv, args)
 	})

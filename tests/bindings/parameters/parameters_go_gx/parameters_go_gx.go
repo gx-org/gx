@@ -26,6 +26,7 @@ import (
 
 	"github.com/gx-org/backend/platform"
 	"github.com/gx-org/gx/api"
+	"github.com/gx-org/gx/api/hostio"
 	"github.com/gx-org/gx/api/options"
 	"github.com/gx-org/gx/api/tracer"
 	"github.com/gx-org/gx/api/values"
@@ -46,6 +47,7 @@ var (
 	_ = strings.Compare
 	_ = reflect.TypeFor[int]
 	_ = values.Struct{}
+	_ hostio.Value
 	_ = errors.Errorf
 	_ = types.NewSlice[types.Bridger]
 	_ = platform.HostTransfer
@@ -208,7 +210,7 @@ func (SizeStatic) Set(value int) options.PackageOptionFactory {
 
 // New returns a new structure.
 func (pkg *Package) NewStruct(arg0 types.Atom[float32]) (_ *Struct, err error) {
-	var args []values.Value = []values.Value{
+	var args []hostio.Value = []hostio.Value{
 		arg0.Bridge().GXValue(), // offset float32
 	}
 	var runner tracer.CompiledFunc
@@ -216,7 +218,7 @@ func (pkg *Package) NewStruct(arg0 types.Atom[float32]) (_ *Struct, err error) {
 	if err != nil {
 		return
 	}
-	var outputs []values.Value
+	var outputs []hostio.Value
 	outputs, err = runner.Run(nil, args, pkg.handle.Tracer())
 	if err != nil {
 		return
@@ -235,7 +237,7 @@ func (pkg *Package) NewStruct(arg0 types.Atom[float32]) (_ *Struct, err error) {
 
 // AddToStruct adds a scalar to the structure field.
 func (pkg *Package) AddToStruct(arg0 *Struct) (_ *Struct, err error) {
-	var args []values.Value = []values.Value{
+	var args []hostio.Value = []hostio.Value{
 		arg0.Bridge().GXValue(), // a parameters.Struct
 	}
 	var runner tracer.CompiledFunc
@@ -243,7 +245,7 @@ func (pkg *Package) AddToStruct(arg0 *Struct) (_ *Struct, err error) {
 	if err != nil {
 		return
 	}
-	var outputs []values.Value
+	var outputs []hostio.Value
 	outputs, err = runner.Run(nil, args, pkg.handle.Tracer())
 	if err != nil {
 		return
@@ -262,7 +264,7 @@ func (pkg *Package) AddToStruct(arg0 *Struct) (_ *Struct, err error) {
 
 // AddFloat32 adds x and y.
 func (pkg *Package) AddFloat32(arg0 types.Atom[float32], arg1 types.Atom[float32]) (_ types.Atom[float32], err error) {
-	var args []values.Value = []values.Value{
+	var args []hostio.Value = []hostio.Value{
 		arg0.Bridge().GXValue(), // x float32
 		arg1.Bridge().GXValue(), // y float32
 	}
@@ -271,15 +273,15 @@ func (pkg *Package) AddFloat32(arg0 types.Atom[float32], arg1 types.Atom[float32
 	if err != nil {
 		return
 	}
-	var outputs []values.Value
+	var outputs []hostio.Value
 	outputs, err = runner.Run(nil, args, pkg.handle.Tracer())
 	if err != nil {
 		return
 	}
 
-	out0Value, ok := outputs[0].(values.Array)
+	out0Value, ok := outputs[0].(hostio.Array)
 	if !ok {
-		err = errors.Errorf("cannot cast %T to %s", outputs[0], reflect.TypeFor[*values.DeviceArray]().Name())
+		err = errors.Errorf("cannot cast %T to %s", outputs[0], reflect.TypeFor[*hostio.DeviceArray]().Name())
 		return
 	}
 	out0 := types.NewAtom[float32](out0Value)
@@ -289,7 +291,7 @@ func (pkg *Package) AddFloat32(arg0 types.Atom[float32], arg1 types.Atom[float32
 
 // AddInt adds x and y.
 func (pkg *Package) AddInt(arg0 types.Atom[int64], arg1 types.Atom[int64]) (_ types.Atom[int64], err error) {
-	var args []values.Value = []values.Value{
+	var args []hostio.Value = []hostio.Value{
 		arg0.Bridge().GXValue(), // x int64
 		arg1.Bridge().GXValue(), // y int64
 	}
@@ -298,15 +300,15 @@ func (pkg *Package) AddInt(arg0 types.Atom[int64], arg1 types.Atom[int64]) (_ ty
 	if err != nil {
 		return
 	}
-	var outputs []values.Value
+	var outputs []hostio.Value
 	outputs, err = runner.Run(nil, args, pkg.handle.Tracer())
 	if err != nil {
 		return
 	}
 
-	out0Value, ok := outputs[0].(values.Array)
+	out0Value, ok := outputs[0].(hostio.Array)
 	if !ok {
-		err = errors.Errorf("cannot cast %T to %s", outputs[0], reflect.TypeFor[*values.DeviceArray]().Name())
+		err = errors.Errorf("cannot cast %T to %s", outputs[0], reflect.TypeFor[*hostio.DeviceArray]().Name())
 		return
 	}
 	out0 := types.NewAtom[int64](out0Value)
@@ -316,7 +318,7 @@ func (pkg *Package) AddInt(arg0 types.Atom[int64], arg1 types.Atom[int64]) (_ ty
 
 // Add x and y.
 func (pkg *Package) AddFloat32s(arg0 types.Array[float32], arg1 types.Array[float32]) (_ types.Array[float32], err error) {
-	var args []values.Value = []values.Value{
+	var args []hostio.Value = []hostio.Value{
 		arg0.Bridge().GXValue(), // x [Size]float32
 		arg1.Bridge().GXValue(), // y [Size]float32
 	}
@@ -325,15 +327,15 @@ func (pkg *Package) AddFloat32s(arg0 types.Array[float32], arg1 types.Array[floa
 	if err != nil {
 		return
 	}
-	var outputs []values.Value
+	var outputs []hostio.Value
 	outputs, err = runner.Run(nil, args, pkg.handle.Tracer())
 	if err != nil {
 		return
 	}
 
-	out0Value, ok := outputs[0].(values.Array)
+	out0Value, ok := outputs[0].(hostio.Array)
 	if !ok {
-		err = errors.Errorf("cannot cast %T to %s", outputs[0], reflect.TypeFor[*values.DeviceArray]().Name())
+		err = errors.Errorf("cannot cast %T to %s", outputs[0], reflect.TypeFor[*hostio.DeviceArray]().Name())
 		return
 	}
 	out0 := types.NewArray[float32](out0Value)
@@ -343,7 +345,7 @@ func (pkg *Package) AddFloat32s(arg0 types.Array[float32], arg1 types.Array[floa
 
 // AddInts x and y.
 func (pkg *Package) AddInts(arg0 types.Array[int64], arg1 types.Array[int64]) (_ types.Array[int64], err error) {
-	var args []values.Value = []values.Value{
+	var args []hostio.Value = []hostio.Value{
 		arg0.Bridge().GXValue(), // x [Size]int64
 		arg1.Bridge().GXValue(), // y [Size]int64
 	}
@@ -352,15 +354,15 @@ func (pkg *Package) AddInts(arg0 types.Array[int64], arg1 types.Array[int64]) (_
 	if err != nil {
 		return
 	}
-	var outputs []values.Value
+	var outputs []hostio.Value
 	outputs, err = runner.Run(nil, args, pkg.handle.Tracer())
 	if err != nil {
 		return
 	}
 
-	out0Value, ok := outputs[0].(values.Array)
+	out0Value, ok := outputs[0].(hostio.Array)
 	if !ok {
-		err = errors.Errorf("cannot cast %T to %s", outputs[0], reflect.TypeFor[*values.DeviceArray]().Name())
+		err = errors.Errorf("cannot cast %T to %s", outputs[0], reflect.TypeFor[*hostio.DeviceArray]().Name())
 		return
 	}
 	out0 := types.NewArray[int64](out0Value)
@@ -370,7 +372,7 @@ func (pkg *Package) AddInts(arg0 types.Array[int64], arg1 types.Array[int64]) (_
 
 // Len returns the outmost dimension of x.
 func (pkg *Package) Len(arg0 types.Array[float32]) (_ types.Atom[int], err error) {
-	var args []values.Value = []values.Value{
+	var args []hostio.Value = []hostio.Value{
 		arg0.Bridge().GXValue(), // x [Size]float32
 	}
 	var runner tracer.CompiledFunc
@@ -378,15 +380,15 @@ func (pkg *Package) Len(arg0 types.Array[float32]) (_ types.Atom[int], err error
 	if err != nil {
 		return
 	}
-	var outputs []values.Value
+	var outputs []hostio.Value
 	outputs, err = runner.Run(nil, args, pkg.handle.Tracer())
 	if err != nil {
 		return
 	}
 
-	out0Value, ok := outputs[0].(values.Array)
+	out0Value, ok := outputs[0].(hostio.Array)
 	if !ok {
-		err = errors.Errorf("cannot cast %T to %s", outputs[0], reflect.TypeFor[*values.DeviceArray]().Name())
+		err = errors.Errorf("cannot cast %T to %s", outputs[0], reflect.TypeFor[*hostio.DeviceArray]().Name())
 		return
 	}
 	out0 := types.NewAtom[int](out0Value)
@@ -396,21 +398,21 @@ func (pkg *Package) Len(arg0 types.Array[float32]) (_ types.Atom[int], err error
 
 // Iota returns an array filled with numbers.
 func (pkg *Package) Iota() (_ types.Array[int64], err error) {
-	var args []values.Value = nil
+	var args []hostio.Value = nil
 	var runner tracer.CompiledFunc
 	runner, err = pkg.cacheIota.Runner(nil, args)
 	if err != nil {
 		return
 	}
-	var outputs []values.Value
+	var outputs []hostio.Value
 	outputs, err = runner.Run(nil, args, pkg.handle.Tracer())
 	if err != nil {
 		return
 	}
 
-	out0Value, ok := outputs[0].(values.Array)
+	out0Value, ok := outputs[0].(hostio.Array)
 	if !ok {
-		err = errors.Errorf("cannot cast %T to %s", outputs[0], reflect.TypeFor[*values.DeviceArray]().Name())
+		err = errors.Errorf("cannot cast %T to %s", outputs[0], reflect.TypeFor[*hostio.DeviceArray]().Name())
 		return
 	}
 	out0 := types.NewArray[int64](out0Value)
@@ -420,7 +422,7 @@ func (pkg *Package) Iota() (_ types.Array[int64], err error) {
 
 // SliceArrayArg checks that we can slice an array type argument.
 func (pkg *Package) SliceArrayArgConstIndex(arg0 types.Array[float32]) (_ types.Array[float32], _ types.Array[float32], _ types.Array[float32], err error) {
-	var args []values.Value = []values.Value{
+	var args []hostio.Value = []hostio.Value{
 		arg0.Bridge().GXValue(), // a [3][2]float32
 	}
 	var runner tracer.CompiledFunc
@@ -428,29 +430,29 @@ func (pkg *Package) SliceArrayArgConstIndex(arg0 types.Array[float32]) (_ types.
 	if err != nil {
 		return
 	}
-	var outputs []values.Value
+	var outputs []hostio.Value
 	outputs, err = runner.Run(nil, args, pkg.handle.Tracer())
 	if err != nil {
 		return
 	}
 
-	out0Value, ok := outputs[0].(values.Array)
+	out0Value, ok := outputs[0].(hostio.Array)
 	if !ok {
-		err = errors.Errorf("cannot cast %T to %s", outputs[0], reflect.TypeFor[*values.DeviceArray]().Name())
+		err = errors.Errorf("cannot cast %T to %s", outputs[0], reflect.TypeFor[*hostio.DeviceArray]().Name())
 		return
 	}
 	out0 := types.NewArray[float32](out0Value)
 
-	out1Value, ok := outputs[1].(values.Array)
+	out1Value, ok := outputs[1].(hostio.Array)
 	if !ok {
-		err = errors.Errorf("cannot cast %T to %s", outputs[1], reflect.TypeFor[*values.DeviceArray]().Name())
+		err = errors.Errorf("cannot cast %T to %s", outputs[1], reflect.TypeFor[*hostio.DeviceArray]().Name())
 		return
 	}
 	out1 := types.NewArray[float32](out1Value)
 
-	out2Value, ok := outputs[2].(values.Array)
+	out2Value, ok := outputs[2].(hostio.Array)
 	if !ok {
-		err = errors.Errorf("cannot cast %T to %s", outputs[2], reflect.TypeFor[*values.DeviceArray]().Name())
+		err = errors.Errorf("cannot cast %T to %s", outputs[2], reflect.TypeFor[*hostio.DeviceArray]().Name())
 		return
 	}
 	out2 := types.NewArray[float32](out2Value)
@@ -460,7 +462,7 @@ func (pkg *Package) SliceArrayArgConstIndex(arg0 types.Array[float32]) (_ types.
 
 // SliceArrayArg checks that we can slice an array type argument.
 func (pkg *Package) SliceArrayArg(arg0 types.Array[float32], arg1 types.Atom[int32]) (_ types.Array[float32], err error) {
-	var args []values.Value = []values.Value{
+	var args []hostio.Value = []hostio.Value{
 		arg0.Bridge().GXValue(), // a [3][2]float32
 		arg1.Bridge().GXValue(), // i int32
 	}
@@ -469,15 +471,15 @@ func (pkg *Package) SliceArrayArg(arg0 types.Array[float32], arg1 types.Atom[int
 	if err != nil {
 		return
 	}
-	var outputs []values.Value
+	var outputs []hostio.Value
 	outputs, err = runner.Run(nil, args, pkg.handle.Tracer())
 	if err != nil {
 		return
 	}
 
-	out0Value, ok := outputs[0].(values.Array)
+	out0Value, ok := outputs[0].(hostio.Array)
 	if !ok {
-		err = errors.Errorf("cannot cast %T to %s", outputs[0], reflect.TypeFor[*values.DeviceArray]().Name())
+		err = errors.Errorf("cannot cast %T to %s", outputs[0], reflect.TypeFor[*hostio.DeviceArray]().Name())
 		return
 	}
 	out0 := types.NewArray[float32](out0Value)
@@ -487,7 +489,7 @@ func (pkg *Package) SliceArrayArg(arg0 types.Array[float32], arg1 types.Atom[int
 
 // SliceSliceArg checks that we can slice a slice.
 func (pkg *Package) SliceSliceArg(arg0 *types.Slice[types.Array[float32]], arg1 types.Atom[int32]) (_ types.Array[float32], err error) {
-	var args []values.Value = []values.Value{
+	var args []hostio.Value = []hostio.Value{
 		arg0.Bridge().GXValue(), // a [][2]float32
 		arg1.Bridge().GXValue(), // i int32
 	}
@@ -496,15 +498,15 @@ func (pkg *Package) SliceSliceArg(arg0 *types.Slice[types.Array[float32]], arg1 
 	if err != nil {
 		return
 	}
-	var outputs []values.Value
+	var outputs []hostio.Value
 	outputs, err = runner.Run(nil, args, pkg.handle.Tracer())
 	if err != nil {
 		return
 	}
 
-	out0Value, ok := outputs[0].(values.Array)
+	out0Value, ok := outputs[0].(hostio.Array)
 	if !ok {
-		err = errors.Errorf("cannot cast %T to %s", outputs[0], reflect.TypeFor[*values.DeviceArray]().Name())
+		err = errors.Errorf("cannot cast %T to %s", outputs[0], reflect.TypeFor[*hostio.DeviceArray]().Name())
 		return
 	}
 	out0 := types.NewArray[float32](out0Value)
@@ -514,7 +516,7 @@ func (pkg *Package) SliceSliceArg(arg0 *types.Slice[types.Array[float32]], arg1 
 
 // NewNotInSlice returns a NotInSlice instance with its Val attributes assigned to val.
 func (pkg *Package) NewNotInSlice(arg0 types.Atom[int32]) (_ *NotInSlice, err error) {
-	var args []values.Value = []values.Value{
+	var args []hostio.Value = []hostio.Value{
 		arg0.Bridge().GXValue(), // val int32
 	}
 	var runner tracer.CompiledFunc
@@ -522,7 +524,7 @@ func (pkg *Package) NewNotInSlice(arg0 types.Atom[int32]) (_ *NotInSlice, err er
 	if err != nil {
 		return
 	}
-	var outputs []values.Value
+	var outputs []hostio.Value
 	outputs, err = runner.Run(nil, args, pkg.handle.Tracer())
 	if err != nil {
 		return
@@ -562,7 +564,7 @@ func (h *handleNotInSlice) Bridger() types.Bridger {
 }
 
 // GXValue returns the GX value.
-func (h *handleNotInSlice) GXValue() values.Value {
+func (h *handleNotInSlice) GXValue() hostio.Value {
 	return h.owner.value
 }
 
@@ -596,7 +598,7 @@ func (h *handleNotInSlice) StructValue() *values.Struct {
 }
 
 // MarshalNotInSlice populates the receiver fields with device handles.
-func (fty *Factory) MarshalNotInSlice(val values.Value) (s *NotInSlice, err error) {
+func (fty *Factory) MarshalNotInSlice(val hostio.Value) (s *NotInSlice, err error) {
 	s = fty.NewNotInSlice()
 	var ok bool
 	s.value, ok = val.(*values.NamedType)
@@ -609,14 +611,14 @@ func (fty *Factory) MarshalNotInSlice(val values.Value) (s *NotInSlice, err erro
 		err = errors.Errorf("incorrect underlying value for named type NotInSlice: %T is not a %s", val, reflect.TypeFor[*values.Struct]().Name())
 		return
 	}
-	fields := make([]values.Value, structVal.StructType().NumFields())
+	fields := make([]hostio.Value, structVal.StructType().NumFields())
 	for i, field := range structVal.StructType().Fields.Fields() {
 		fields[i] = structVal.FieldValue(field.Name.Name)
 	}
 
-	field0Value, ok := fields[0].(values.Array)
+	field0Value, ok := fields[0].(hostio.Array)
 	if !ok {
-		err = errors.Errorf("cannot cast %T to %s", fields[0], reflect.TypeFor[*values.DeviceArray]().Name())
+		err = errors.Errorf("cannot cast %T to %s", fields[0], reflect.TypeFor[*hostio.DeviceArray]().Name())
 		return
 	}
 	field0 := types.NewAtom[int32](field0Value)
@@ -713,7 +715,7 @@ func (h *handleInSlice) Bridger() types.Bridger {
 }
 
 // GXValue returns the GX value.
-func (h *handleInSlice) GXValue() values.Value {
+func (h *handleInSlice) GXValue() hostio.Value {
 	return h.owner.value
 }
 
@@ -747,7 +749,7 @@ func (h *handleInSlice) StructValue() *values.Struct {
 }
 
 // MarshalInSlice populates the receiver fields with device handles.
-func (fty *Factory) MarshalInSlice(val values.Value) (s *InSlice, err error) {
+func (fty *Factory) MarshalInSlice(val hostio.Value) (s *InSlice, err error) {
 	s = fty.NewInSlice()
 	var ok bool
 	s.value, ok = val.(*values.NamedType)
@@ -760,14 +762,14 @@ func (fty *Factory) MarshalInSlice(val values.Value) (s *InSlice, err error) {
 		err = errors.Errorf("incorrect underlying value for named type InSlice: %T is not a %s", val, reflect.TypeFor[*values.Struct]().Name())
 		return
 	}
-	fields := make([]values.Value, structVal.StructType().NumFields())
+	fields := make([]hostio.Value, structVal.StructType().NumFields())
 	for i, field := range structVal.StructType().Fields.Fields() {
 		fields[i] = structVal.FieldValue(field.Name.Name)
 	}
 
-	field0Value, ok := fields[0].(values.Array)
+	field0Value, ok := fields[0].(hostio.Array)
 	if !ok {
-		err = errors.Errorf("cannot cast %T to %s", fields[0], reflect.TypeFor[*values.DeviceArray]().Name())
+		err = errors.Errorf("cannot cast %T to %s", fields[0], reflect.TypeFor[*hostio.DeviceArray]().Name())
 		return
 	}
 	field0 := types.NewAtom[int32](field0Value)
@@ -864,7 +866,7 @@ func (h *handleStruct) Bridger() types.Bridger {
 }
 
 // GXValue returns the GX value.
-func (h *handleStruct) GXValue() values.Value {
+func (h *handleStruct) GXValue() hostio.Value {
 	return h.owner.value
 }
 
@@ -913,7 +915,7 @@ func (h *handleStruct) StructValue() *values.Struct {
 }
 
 // MarshalStruct populates the receiver fields with device handles.
-func (fty *Factory) MarshalStruct(val values.Value) (s *Struct, err error) {
+func (fty *Factory) MarshalStruct(val hostio.Value) (s *Struct, err error) {
 	s = fty.NewStruct()
 	var ok bool
 	s.value, ok = val.(*values.NamedType)
@@ -926,14 +928,14 @@ func (fty *Factory) MarshalStruct(val values.Value) (s *Struct, err error) {
 		err = errors.Errorf("incorrect underlying value for named type Struct: %T is not a %s", val, reflect.TypeFor[*values.Struct]().Name())
 		return
 	}
-	fields := make([]values.Value, structVal.StructType().NumFields())
+	fields := make([]hostio.Value, structVal.StructType().NumFields())
 	for i, field := range structVal.StructType().Fields.Fields() {
 		fields[i] = structVal.FieldValue(field.Name.Name)
 	}
 
-	field0Value, ok := fields[0].(values.Array)
+	field0Value, ok := fields[0].(hostio.Array)
 	if !ok {
-		err = errors.Errorf("cannot cast %T to %s", fields[0], reflect.TypeFor[*values.DeviceArray]().Name())
+		err = errors.Errorf("cannot cast %T to %s", fields[0], reflect.TypeFor[*hostio.DeviceArray]().Name())
 		return
 	}
 	field0 := types.NewArray[float32](field0Value)
@@ -947,9 +949,9 @@ func (fty *Factory) MarshalStruct(val values.Value) (s *Struct, err error) {
 	for i := 0; i < field1Slice.Len(); i++ {
 		field1HandleI := field1Slice.Element(i)
 
-		field1ElmtIValue, ok := field1HandleI.(values.Array)
+		field1ElmtIValue, ok := field1HandleI.(hostio.Array)
 		if !ok {
-			err = errors.Errorf("cannot cast %T to %s", field1HandleI, reflect.TypeFor[*values.DeviceArray]().Name())
+			err = errors.Errorf("cannot cast %T to %s", field1HandleI, reflect.TypeFor[*hostio.DeviceArray]().Name())
 			return
 		}
 		field1ElmtI := types.NewAtom[float32](field1ElmtIValue)
@@ -993,16 +995,16 @@ func (fty *Factory) MarshalStruct(val values.Value) (s *Struct, err error) {
 		return
 	}
 
-	field4Value, ok := fields[4].(values.Array)
+	field4Value, ok := fields[4].(hostio.Array)
 	if !ok {
-		err = errors.Errorf("cannot cast %T to %s", fields[4], reflect.TypeFor[*values.DeviceArray]().Name())
+		err = errors.Errorf("cannot cast %T to %s", fields[4], reflect.TypeFor[*hostio.DeviceArray]().Name())
 		return
 	}
 	field4 := types.NewAtom[int32](field4Value)
 
-	field5Value, ok := fields[5].(values.Array)
+	field5Value, ok := fields[5].(hostio.Array)
 	if !ok {
-		err = errors.Errorf("cannot cast %T to %s", fields[5], reflect.TypeFor[*values.DeviceArray]().Name())
+		err = errors.Errorf("cannot cast %T to %s", fields[5], reflect.TypeFor[*hostio.DeviceArray]().Name())
 		return
 	}
 	field5 := types.NewAtom[float32](field5Value)
@@ -1153,7 +1155,7 @@ func (h *handleStruct) SetField(field *ir.Field, val types.Bridge) error {
 
 // SetNotInSlice tests setting a structure field with a structure.
 func (recv *Struct) SetNotInSlice(arg0 *NotInSlice) (_ *Struct, err error) {
-	var args []values.Value = []values.Value{
+	var args []hostio.Value = []hostio.Value{
 		arg0.Bridge().GXValue(), // d parameters.NotInSlice
 	}
 	var runner tracer.CompiledFunc
@@ -1161,7 +1163,7 @@ func (recv *Struct) SetNotInSlice(arg0 *NotInSlice) (_ *Struct, err error) {
 	if err != nil {
 		return
 	}
-	var outputs []values.Value
+	var outputs []hostio.Value
 	outputs, err = runner.Run(recv.value, args, recv.handle.pkg.handle.Tracer())
 	if err != nil {
 		return

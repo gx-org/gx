@@ -70,12 +70,13 @@ func (p *unique) SourceString(from *ir.File) string {
 
 // fieldRoot of the path.
 type fieldRoot struct {
-	field *ir.Field
+	field   *ir.Field
+	storage ir.Storage
 }
 
 // NewRoot returns a new root path.
-func NewRoot(r *ir.Field) Path {
-	return &fieldRoot{r}
+func NewRoot(field *ir.Field, storage ir.Storage) Path {
+	return &fieldRoot{field: field, storage: storage}
 }
 
 func (p *fieldRoot) Same(other Path) bool {
@@ -87,7 +88,7 @@ func (p *fieldRoot) Same(other Path) bool {
 }
 
 func (p *fieldRoot) Expr() ir.Expr {
-	return ir.NewIdent(p.field.Storage())
+	return ir.NewIdent(p.storage)
 }
 
 func (p *fieldRoot) Store() ir.Storage {

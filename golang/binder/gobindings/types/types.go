@@ -21,6 +21,7 @@ import (
 	"github.com/gx-org/backend/dtypes"
 	"github.com/gx-org/backend/shape"
 	"github.com/gx-org/gx/api"
+	"github.com/gx-org/gx/api/hostio"
 	"github.com/gx-org/gx/api/values"
 	"github.com/gx-org/gx/build/ir"
 )
@@ -34,7 +35,7 @@ type (
 	// Bridge is implemented by all types used by the Go bindings.
 	// It provides the bridge between the Go instance and the GX value.
 	Bridge interface {
-		values.Valuer
+		hostio.Valuer
 
 		// Bridger returns the Go object owning the GX value.
 		Bridger() Bridger
@@ -76,23 +77,23 @@ type (
 	arrayBridger interface {
 		Bridger
 
-		toDeviceBridger(*values.DeviceArray) ArrayBridge
+		toDeviceBridger(*hostio.DeviceArray) ArrayBridge
 	}
 
-	baseBridge[B arrayBridger, V values.Array] struct {
+	baseBridge[B arrayBridger, V hostio.Array] struct {
 		owner B
 		value V
 	}
 )
 
-var _ ArrayBridge = (*baseBridge[arrayBridger, values.Array])(nil)
+var _ ArrayBridge = (*baseBridge[arrayBridger, hostio.Array])(nil)
 
-func newBaseBridge[B arrayBridger, V values.Array](owner B, value V) baseBridge[B, V] {
+func newBaseBridge[B arrayBridger, V hostio.Array](owner B, value V) baseBridge[B, V] {
 	return baseBridge[B, V]{owner: owner, value: value}
 }
 
 // GXValue returns the GX value storing the array data.
-func (bb *baseBridge[B, V]) GXValue() values.Value {
+func (bb *baseBridge[B, V]) GXValue() hostio.Value {
 	return bb.value
 }
 
@@ -121,12 +122,12 @@ func (bb *baseBridge[B, V]) Bridger() Bridger {
 }
 
 // NewAtom returns a new Go atom bridge given a GX value of the same data type.
-func NewAtom[T dtypes.Supported](arr values.Array) Atom[T] {
-	hostValue, ok := arr.(*values.HostArray)
+func NewAtom[T dtypes.Supported](arr hostio.Array) Atom[T] {
+	hostValue, ok := arr.(*hostio.HostArray)
 	if ok {
 		return NewHostAtom[T](hostValue)
 	}
-	deviceValue, ok := arr.(*values.DeviceArray)
+	deviceValue, ok := arr.(*hostio.DeviceArray)
 	if ok {
 		return NewDeviceAtom[T](deviceValue)
 	}
@@ -134,12 +135,12 @@ func NewAtom[T dtypes.Supported](arr values.Array) Atom[T] {
 }
 
 // NewArray returns a new Go array bridge given a GX value of the same data type.
-func NewArray[T dtypes.Supported](arr values.Array) Array[T] {
-	hostValue, ok := arr.(*values.HostArray)
+func NewArray[T dtypes.Supported](arr hostio.Array) Array[T] {
+	hostValue, ok := arr.(*hostio.HostArray)
 	if ok {
 		return NewHostArray[T](hostValue)
 	}
-	deviceValue, ok := arr.(*values.DeviceArray)
+	deviceValue, ok := arr.(*hostio.DeviceArray)
 	if ok {
 		return NewDeviceArray[T](deviceValue)
 	}

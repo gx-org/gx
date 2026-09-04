@@ -78,7 +78,7 @@ func processMethodSignature(pscope procScope, field *ast.Field, tp ast.Expr) (*i
 	if !isFType {
 		return nil, pscope.Err().Appendf(name, "cannot process method definition: expected type %s but got %T", reflect.TypeFor[*ast.FuncType]().String(), tp)
 	}
-	ftype, ok := processFuncType(pscope, astFType, nil, false)
+	ftype, ok := processFuncType(pscope, astFType, nil, ir.FuncNature{})
 	if !ok {
 		return nil, false
 	}

@@ -331,7 +331,7 @@ func (pkg *IncrementalPackage) BuildExprFrom(src string, sub map[ir.Storage]ir.E
 	if ok := file.processDecls(pscope, nil); !ok {
 		return nil, errs
 	}
-	bFType, ok := processFuncType(pscope, &ast.FuncType{}, nil, false)
+	bFType, ok := processFuncType(pscope, &ast.FuncType{}, nil, ir.FuncNature{})
 	if !ok {
 		return nil, errs
 	}

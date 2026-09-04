@@ -25,10 +25,10 @@ type errorType struct {
 	iface Interface
 }
 
-var errorIdent = &ast.Ident{Name: "Error"}
+var errorMethodIdent = &ast.Ident{Name: "Error"}
 
 var errorSrc = &ast.Field{
-	Names: []*ast.Ident{errorIdent},
+	Names: []*ast.Ident{errorMethodIdent},
 	Type:  &ast.FuncType{},
 }
 
@@ -76,6 +76,12 @@ func (*errorType) node()         {}
 func (*errorType) storage()      {}
 func (*errorType) storageValue() {}
 
+var errorIdent = &ast.Ident{Name: "error"}
+
+func (s *errorType) Refer(file *File) ast.Expr {
+	return errorIdent
+}
+
 // Kind returns the scalar kind.
 func (s *errorType) Kind() irkind.Kind { return irkind.Interface }
 
@@ -112,7 +118,7 @@ func (s *errorType) Methods() []PkgFunc {
 }
 
 // NameDef of the base type always returns a nil name definition.
-func (s *errorType) NameDef() *ast.Ident { return errorIdent }
+func (s *errorType) NameDef() *ast.Ident { return errorMethodIdent }
 
 // Node returns the source node defining the type.
 func (s *errorType) Node() ast.Node {
@@ -180,6 +186,11 @@ func (*errorCallee) Type() Type {
 	return errorFType
 }
 
+// Unroll the expression.
+func (*errorCallee) Unroll(ev Fetcher, urlr Unroller) (ast.Expr, bool) {
+	return &ast.Ident{Name: "Error"}, true
+}
+
 func (ec *errorCallee) Expr() ast.Expr {
 	return &ast.Ident{Name: "Error"}
 }
@@ -226,60 +237,4 @@ func SplitErr(err error) (*CompileError, error) {
 		return cpErr, nil
 	}
 	return nil, err
-}
-
-// SurfaceCompEvalErrorExpr converts an error returned by a function, if not nil, into a compiler error.
-type SurfaceCompEvalErrorExpr struct {
-	X   *FuncCallExpr
-	Typ Type
-}
-
-var _ Expr = (*SurfaceCompEvalErrorExpr)(nil)
-
-func (*SurfaceCompEvalErrorExpr) node() {}
-
-// Node returns the location of the source code.
-func (n *SurfaceCompEvalErrorExpr) Node() ast.Node {
-	return n.X.Node()
-}
-
-// Expr returns the syntax tree of the expression.
-func (n *SurfaceCompEvalErrorExpr) Expr() ast.Expr {
-	return n.X.Expr()
-}
-
-// Type of the expression.
-func (n *SurfaceCompEvalErrorExpr) Type() Type {
-	return n.Typ
-}
-
-// SourceString returns the GX source code of the expression.
-func (n *SurfaceCompEvalErrorExpr) SourceString(from *File) string {
-	return n.X.SourceString(from)
-}
-
-// SurfaceError transforms the last element of a tuple into a compiler error.
-func SurfaceError(ev TypeCmp, x Expr) (Expr, error) {
-	call, isCall := x.(*FuncCallExpr)
-	if !isCall {
-		return x, nil
-	}
-	tp := x.Type()
-	tuple, isTuple := tp.(*TupleType)
-	if !isTuple {
-		return x, nil
-	}
-	last := tuple.Types[len(tuple.Types)-1]
-	ok, err := last.AssignableTo(ev, ErrorType())
-	if !ok || err != nil {
-		return x, err
-	}
-	ext := &SurfaceCompEvalErrorExpr{X: call}
-	withoutLast := append([]Type{}, tuple.Types[:len(tuple.Types)-1]...)
-	if len(withoutLast) < 2 {
-		ext.Typ = withoutLast[0]
-	} else {
-		ext.Typ = &TupleType{Types: withoutLast}
-	}
-	return ext, nil
 }

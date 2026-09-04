@@ -23,7 +23,7 @@ import (
 
 	"github.com/pkg/errors"
 	"github.com/gx-org/backend/shape"
-	"github.com/gx-org/gx/api/values"
+	"github.com/gx-org/gx/api/hostio"
 	gxfmt "github.com/gx-org/gx/base/fmt"
 	"github.com/gx-org/gx/build/fmterr"
 	"github.com/gx-org/gx/build/ir"
@@ -38,7 +38,7 @@ import (
 type InputElements struct {
 	// Values are the initial input GX values passed to the function call
 	// before they were encapsulated in elements for the interpreter.
-	Values values.FuncInputs
+	Values hostio.FuncInputs
 
 	// Receiver on which the function call was done.
 	// Can be nil.
