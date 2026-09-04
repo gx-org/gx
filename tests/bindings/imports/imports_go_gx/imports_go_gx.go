@@ -26,6 +26,7 @@ import (
 
 	"github.com/gx-org/backend/platform"
 	"github.com/gx-org/gx/api"
+	"github.com/gx-org/gx/api/hostio"
 	"github.com/gx-org/gx/api/options"
 	"github.com/gx-org/gx/api/tracer"
 	"github.com/gx-org/gx/api/values"
@@ -45,6 +46,7 @@ var (
 	_ = strings.Compare
 	_ = reflect.TypeFor[int]
 	_ = values.Struct{}
+	_ hostio.Value
 	_ = errors.Errorf
 	_ = types.NewSlice[types.Bridger]
 	_ = platform.HostTransfer
@@ -138,13 +140,13 @@ func Build(dev *core.DeviceSetup) (*PackageHandle, error) {
 
 // NewBasic returns a new basic structure.
 func (pkg *Package) NewBasic() (_ *gxdep0.Basic, err error) {
-	var args []values.Value = nil
+	var args []hostio.Value = nil
 	var runner tracer.CompiledFunc
 	runner, err = pkg.cacheNewBasic.Runner(nil, args)
 	if err != nil {
 		return
 	}
-	var outputs []values.Value
+	var outputs []hostio.Value
 	outputs, err = runner.Run(nil, args, pkg.handle.Tracer())
 	if err != nil {
 		return
@@ -163,13 +165,13 @@ func (pkg *Package) NewBasic() (_ *gxdep0.Basic, err error) {
 
 // NewImported returns a new Imported structure.
 func (pkg *Package) NewImporter() (_ *Importer, err error) {
-	var args []values.Value = nil
+	var args []hostio.Value = nil
 	var runner tracer.CompiledFunc
 	runner, err = pkg.cacheNewImporter.Runner(nil, args)
 	if err != nil {
 		return
 	}
-	var outputs []values.Value
+	var outputs []hostio.Value
 	outputs, err = runner.Run(nil, args, pkg.handle.Tracer())
 	if err != nil {
 		return
@@ -188,21 +190,21 @@ func (pkg *Package) NewImporter() (_ *Importer, err error) {
 
 // ReturnFromBasic returns a float from the basic package.
 func (pkg *Package) ReturnFromBasic() (_ types.Atom[float32], err error) {
-	var args []values.Value = nil
+	var args []hostio.Value = nil
 	var runner tracer.CompiledFunc
 	runner, err = pkg.cacheReturnFromBasic.Runner(nil, args)
 	if err != nil {
 		return
 	}
-	var outputs []values.Value
+	var outputs []hostio.Value
 	outputs, err = runner.Run(nil, args, pkg.handle.Tracer())
 	if err != nil {
 		return
 	}
 
-	out0Value, ok := outputs[0].(values.Array)
+	out0Value, ok := outputs[0].(hostio.Array)
 	if !ok {
-		err = errors.Errorf("cannot cast %T to %s", outputs[0], reflect.TypeFor[*values.DeviceArray]().Name())
+		err = errors.Errorf("cannot cast %T to %s", outputs[0], reflect.TypeFor[*hostio.DeviceArray]().Name())
 		return
 	}
 	out0 := types.NewAtom[float32](out0Value)
@@ -233,7 +235,7 @@ func (h *handleImporter) Bridger() types.Bridger {
 }
 
 // GXValue returns the GX value.
-func (h *handleImporter) GXValue() values.Value {
+func (h *handleImporter) GXValue() hostio.Value {
 	return h.owner.value
 }
 
@@ -267,7 +269,7 @@ func (h *handleImporter) StructValue() *values.Struct {
 }
 
 // MarshalImporter populates the receiver fields with device handles.
-func (fty *Factory) MarshalImporter(val values.Value) (s *Importer, err error) {
+func (fty *Factory) MarshalImporter(val hostio.Value) (s *Importer, err error) {
 	s = fty.NewImporter()
 	var ok bool
 	s.value, ok = val.(*values.NamedType)
@@ -280,7 +282,7 @@ func (fty *Factory) MarshalImporter(val values.Value) (s *Importer, err error) {
 		err = errors.Errorf("incorrect underlying value for named type Importer: %T is not a %s", val, reflect.TypeFor[*values.Struct]().Name())
 		return
 	}
-	fields := make([]values.Value, structVal.StructType().NumFields())
+	fields := make([]hostio.Value, structVal.StructType().NumFields())
 	for i, field := range structVal.StructType().Fields.Fields() {
 		fields[i] = structVal.FieldValue(field.Name.Name)
 	}
@@ -360,21 +362,21 @@ func (h *handleImporter) SetField(field *ir.Field, val types.Bridge) error {
 
 // Add returns the result from Basic.AddPrivate.
 func (recv *Importer) Add() (_ types.Atom[int32], err error) {
-	var args []values.Value = nil
+	var args []hostio.Value = nil
 	var runner tracer.CompiledFunc
 	runner, err = recv.handle.pkg.cacheImporterAdd.Runner(recv.value, args)
 	if err != nil {
 		return
 	}
-	var outputs []values.Value
+	var outputs []hostio.Value
 	outputs, err = runner.Run(recv.value, args, recv.handle.pkg.handle.Tracer())
 	if err != nil {
 		return
 	}
 
-	out0Value, ok := outputs[0].(values.Array)
+	out0Value, ok := outputs[0].(hostio.Array)
 	if !ok {
-		err = errors.Errorf("cannot cast %T to %s", outputs[0], reflect.TypeFor[*values.DeviceArray]().Name())
+		err = errors.Errorf("cannot cast %T to %s", outputs[0], reflect.TypeFor[*hostio.DeviceArray]().Name())
 		return
 	}
 	out0 := types.NewAtom[int32](out0Value)

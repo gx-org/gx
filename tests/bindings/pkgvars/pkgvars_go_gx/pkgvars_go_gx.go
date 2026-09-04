@@ -26,6 +26,7 @@ import (
 
 	"github.com/gx-org/backend/platform"
 	"github.com/gx-org/gx/api"
+	"github.com/gx-org/gx/api/hostio"
 	"github.com/gx-org/gx/api/options"
 	"github.com/gx-org/gx/api/tracer"
 	"github.com/gx-org/gx/api/values"
@@ -43,6 +44,7 @@ var (
 	_ = strings.Compare
 	_ = reflect.TypeFor[int]
 	_ = values.Struct{}
+	_ hostio.Value
 	_ = errors.Errorf
 	_ = types.NewSlice[types.Bridger]
 	_ = platform.HostTransfer
@@ -138,12 +140,12 @@ func (Var1Static) Set(value int32) options.PackageOptionFactory {
 var Size SizeStatic
 
 type SizeStatic struct {
-	value ir.Int
+	value int
 }
 
-func (SizeStatic) Set(value ir.Int) options.PackageOptionFactory {
+func (SizeStatic) Set(value int) options.PackageOptionFactory {
 	return func(plat platform.Platform) options.PackageOption {
-		hostValue := types.DefaultInt(value)
+		hostValue := types.Int(value)
 		return options.PackageVarSetValue{
 			Pkg:   "github.com/gx-org/gx/tests/bindings/pkgvars",
 			Var:   "Size",
@@ -154,21 +156,21 @@ func (SizeStatic) Set(value ir.Int) options.PackageOptionFactory {
 
 // ReturnVar1 returns the value of the static variable Var1
 func (pkg *Package) ReturnVar1() (_ types.Atom[int32], err error) {
-	var args []values.Value = nil
+	var args []hostio.Value = nil
 	var runner tracer.CompiledFunc
 	runner, err = pkg.cacheReturnVar1.Runner(nil, args)
 	if err != nil {
 		return
 	}
-	var outputs []values.Value
+	var outputs []hostio.Value
 	outputs, err = runner.Run(nil, args, pkg.handle.Tracer())
 	if err != nil {
 		return
 	}
 
-	out0Value, ok := outputs[0].(values.Array)
+	out0Value, ok := outputs[0].(hostio.Array)
 	if !ok {
-		err = errors.Errorf("cannot cast %T to %s", outputs[0], reflect.TypeFor[*values.DeviceArray]().Name())
+		err = errors.Errorf("cannot cast %T to %s", outputs[0], reflect.TypeFor[*hostio.DeviceArray]().Name())
 		return
 	}
 	out0 := types.NewAtom[int32](out0Value)
@@ -178,21 +180,21 @@ func (pkg *Package) ReturnVar1() (_ types.Atom[int32], err error) {
 
 // New 1-axis array of size Size.
 func (pkg *Package) NewTwiceSize() (_ types.Array[float32], err error) {
-	var args []values.Value = nil
+	var args []hostio.Value = nil
 	var runner tracer.CompiledFunc
 	runner, err = pkg.cacheNewTwiceSize.Runner(nil, args)
 	if err != nil {
 		return
 	}
-	var outputs []values.Value
+	var outputs []hostio.Value
 	outputs, err = runner.Run(nil, args, pkg.handle.Tracer())
 	if err != nil {
 		return
 	}
 
-	out0Value, ok := outputs[0].(values.Array)
+	out0Value, ok := outputs[0].(hostio.Array)
 	if !ok {
-		err = errors.Errorf("cannot cast %T to %s", outputs[0], reflect.TypeFor[*values.DeviceArray]().Name())
+		err = errors.Errorf("cannot cast %T to %s", outputs[0], reflect.TypeFor[*hostio.DeviceArray]().Name())
 		return
 	}
 	out0 := types.NewArray[float32](out0Value)

@@ -26,6 +26,7 @@ import (
 
 	"github.com/gx-org/backend/platform"
 	"github.com/gx-org/gx/api"
+	"github.com/gx-org/gx/api/hostio"
 	"github.com/gx-org/gx/api/options"
 	"github.com/gx-org/gx/api/tracer"
 	"github.com/gx-org/gx/api/values"
@@ -46,6 +47,7 @@ var (
 	_ = strings.Compare
 	_ = reflect.TypeFor[int]
 	_ = values.Struct{}
+	_ hostio.Value
 	_ = errors.Errorf
 	_ = types.NewSlice[types.Bridger]
 	_ = platform.HostTransfer

@@ -26,6 +26,7 @@ import (
 
 	"github.com/gx-org/backend/platform"
 	"github.com/gx-org/gx/api"
+	"github.com/gx-org/gx/api/hostio"
 	"github.com/gx-org/gx/api/options"
 	"github.com/gx-org/gx/api/tracer"
 	"github.com/gx-org/gx/api/values"
@@ -45,6 +46,7 @@ var (
 	_ = strings.Compare
 	_ = reflect.TypeFor[int]
 	_ = values.Struct{}
+	_ hostio.Value
 	_ = errors.Errorf
 	_ = types.NewSlice[types.Bridger]
 	_ = platform.HostTransfer
@@ -138,7 +140,7 @@ func Build(dev *core.DeviceSetup) (*PackageHandle, error) {
 
 // New returns a new Rand instance given a seed.
 func (pkg *Package) New(arg0 types.Atom[int64]) (_ *gxdep0.Rand, err error) {
-	var args []values.Value = []values.Value{
+	var args []hostio.Value = []hostio.Value{
 		arg0.Bridge().GXValue(), // seed int64
 	}
 	var runner tracer.CompiledFunc
@@ -146,7 +148,7 @@ func (pkg *Package) New(arg0 types.Atom[int64]) (_ *gxdep0.Rand, err error) {
 	if err != nil {
 		return
 	}
-	var outputs []values.Value
+	var outputs []hostio.Value
 	outputs, err = runner.Run(nil, args, pkg.handle.Tracer())
 	if err != nil {
 		return
@@ -165,7 +167,7 @@ func (pkg *Package) New(arg0 types.Atom[int64]) (_ *gxdep0.Rand, err error) {
 
 // Sample the first few numbers from a number generator.
 func (pkg *Package) Sample(arg0 types.Atom[int64]) (_ types.Array[float32], err error) {
-	var args []values.Value = []values.Value{
+	var args []hostio.Value = []hostio.Value{
 		arg0.Bridge().GXValue(), // seed int64
 	}
 	var runner tracer.CompiledFunc
@@ -173,15 +175,15 @@ func (pkg *Package) Sample(arg0 types.Atom[int64]) (_ types.Array[float32], err 
 	if err != nil {
 		return
 	}
-	var outputs []values.Value
+	var outputs []hostio.Value
 	outputs, err = runner.Run(nil, args, pkg.handle.Tracer())
 	if err != nil {
 		return
 	}
 
-	out0Value, ok := outputs[0].(values.Array)
+	out0Value, ok := outputs[0].(hostio.Array)
 	if !ok {
-		err = errors.Errorf("cannot cast %T to %s", outputs[0], reflect.TypeFor[*values.DeviceArray]().Name())
+		err = errors.Errorf("cannot cast %T to %s", outputs[0], reflect.TypeFor[*hostio.DeviceArray]().Name())
 		return
 	}
 	out0 := types.NewArray[float32](out0Value)
@@ -191,7 +193,7 @@ func (pkg *Package) Sample(arg0 types.Atom[int64]) (_ types.Array[float32], err 
 
 // SampleBool the first few booleans from a number generator.
 func (pkg *Package) SampleBool(arg0 types.Atom[int64]) (_ types.Array[bool], err error) {
-	var args []values.Value = []values.Value{
+	var args []hostio.Value = []hostio.Value{
 		arg0.Bridge().GXValue(), // seed int64
 	}
 	var runner tracer.CompiledFunc
@@ -199,15 +201,15 @@ func (pkg *Package) SampleBool(arg0 types.Atom[int64]) (_ types.Array[bool], err
 	if err != nil {
 		return
 	}
-	var outputs []values.Value
+	var outputs []hostio.Value
 	outputs, err = runner.Run(nil, args, pkg.handle.Tracer())
 	if err != nil {
 		return
 	}
 
-	out0Value, ok := outputs[0].(values.Array)
+	out0Value, ok := outputs[0].(hostio.Array)
 	if !ok {
-		err = errors.Errorf("cannot cast %T to %s", outputs[0], reflect.TypeFor[*values.DeviceArray]().Name())
+		err = errors.Errorf("cannot cast %T to %s", outputs[0], reflect.TypeFor[*hostio.DeviceArray]().Name())
 		return
 	}
 	out0 := types.NewArray[bool](out0Value)
@@ -217,7 +219,7 @@ func (pkg *Package) SampleBool(arg0 types.Atom[int64]) (_ types.Array[bool], err
 
 // SampleUniformFloat64 a million uniform float64s from a number generator.
 func (pkg *Package) SampleUniformFloat64(arg0 types.Atom[int64]) (_ types.Array[float64], err error) {
-	var args []values.Value = []values.Value{
+	var args []hostio.Value = []hostio.Value{
 		arg0.Bridge().GXValue(), // seed int64
 	}
 	var runner tracer.CompiledFunc
@@ -225,15 +227,15 @@ func (pkg *Package) SampleUniformFloat64(arg0 types.Atom[int64]) (_ types.Array[
 	if err != nil {
 		return
 	}
-	var outputs []values.Value
+	var outputs []hostio.Value
 	outputs, err = runner.Run(nil, args, pkg.handle.Tracer())
 	if err != nil {
 		return
 	}
 
-	out0Value, ok := outputs[0].(values.Array)
+	out0Value, ok := outputs[0].(hostio.Array)
 	if !ok {
-		err = errors.Errorf("cannot cast %T to %s", outputs[0], reflect.TypeFor[*values.DeviceArray]().Name())
+		err = errors.Errorf("cannot cast %T to %s", outputs[0], reflect.TypeFor[*hostio.DeviceArray]().Name())
 		return
 	}
 	out0 := types.NewArray[float64](out0Value)
