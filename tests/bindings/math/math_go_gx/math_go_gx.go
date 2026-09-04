@@ -26,6 +26,7 @@ import (
 
 	"github.com/gx-org/backend/platform"
 	"github.com/gx-org/gx/api"
+	"github.com/gx-org/gx/api/hostio"
 	"github.com/gx-org/gx/api/options"
 	"github.com/gx-org/gx/api/tracer"
 	"github.com/gx-org/gx/api/values"
@@ -45,6 +46,7 @@ var (
 	_ = strings.Compare
 	_ = reflect.TypeFor[int]
 	_ = values.Struct{}
+	_ hostio.Value
 	_ = errors.Errorf
 	_ = types.NewSlice[types.Bridger]
 	_ = platform.HostTransfer
@@ -128,21 +130,21 @@ func Build(dev *core.DeviceSetup) (*PackageHandle, error) {
 
 // ReturnMaxFloat32 returns the maximum float32.
 func (pkg *Package) ReturnMaxFloat32() (_ types.Atom[float32], err error) {
-	var args []values.Value = nil
+	var args []hostio.Value = nil
 	var runner tracer.CompiledFunc
 	runner, err = pkg.cacheReturnMaxFloat32.Runner(nil, args)
 	if err != nil {
 		return
 	}
-	var outputs []values.Value
+	var outputs []hostio.Value
 	outputs, err = runner.Run(nil, args, pkg.handle.Tracer())
 	if err != nil {
 		return
 	}
 
-	out0Value, ok := outputs[0].(values.Array)
+	out0Value, ok := outputs[0].(hostio.Array)
 	if !ok {
-		err = errors.Errorf("cannot cast %T to %s", outputs[0], reflect.TypeFor[*values.DeviceArray]().Name())
+		err = errors.Errorf("cannot cast %T to %s", outputs[0], reflect.TypeFor[*hostio.DeviceArray]().Name())
 		return
 	}
 	out0 := types.NewAtom[float32](out0Value)
@@ -152,21 +154,21 @@ func (pkg *Package) ReturnMaxFloat32() (_ types.Atom[float32], err error) {
 
 // ReturnMaxFloat64 returns the maximum float64.
 func (pkg *Package) ReturnMaxFloat64() (_ types.Atom[float64], err error) {
-	var args []values.Value = nil
+	var args []hostio.Value = nil
 	var runner tracer.CompiledFunc
 	runner, err = pkg.cacheReturnMaxFloat64.Runner(nil, args)
 	if err != nil {
 		return
 	}
-	var outputs []values.Value
+	var outputs []hostio.Value
 	outputs, err = runner.Run(nil, args, pkg.handle.Tracer())
 	if err != nil {
 		return
 	}
 
-	out0Value, ok := outputs[0].(values.Array)
+	out0Value, ok := outputs[0].(hostio.Array)
 	if !ok {
-		err = errors.Errorf("cannot cast %T to %s", outputs[0], reflect.TypeFor[*values.DeviceArray]().Name())
+		err = errors.Errorf("cannot cast %T to %s", outputs[0], reflect.TypeFor[*hostio.DeviceArray]().Name())
 		return
 	}
 	out0 := types.NewAtom[float64](out0Value)

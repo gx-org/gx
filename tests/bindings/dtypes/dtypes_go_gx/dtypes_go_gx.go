@@ -26,6 +26,7 @@ import (
 
 	"github.com/gx-org/backend/platform"
 	"github.com/gx-org/gx/api"
+	"github.com/gx-org/gx/api/hostio"
 	"github.com/gx-org/gx/api/options"
 	"github.com/gx-org/gx/api/tracer"
 	"github.com/gx-org/gx/api/values"
@@ -43,6 +44,7 @@ var (
 	_ = strings.Compare
 	_ = reflect.TypeFor[int]
 	_ = values.Struct{}
+	_ hostio.Value
 	_ = errors.Errorf
 	_ = types.NewSlice[types.Bridger]
 	_ = platform.HostTransfer
@@ -92,6 +94,7 @@ type Package struct {
 	cacheBool         *core.FuncCache
 	cacheFloat32      *core.FuncCache
 	cacheFloat64      *core.FuncCache
+	cacheInt          *core.FuncCache
 	cacheInt32        *core.FuncCache
 	cacheInt64        *core.FuncCache
 	cacheUint32       *core.FuncCache
@@ -99,6 +102,7 @@ type Package struct {
 	cacheArrayBool    *core.FuncCache
 	cacheArrayFloat32 *core.FuncCache
 	cacheArrayFloat64 *core.FuncCache
+	cacheArrayInt     *core.FuncCache
 	cacheArrayInt32   *core.FuncCache
 	cacheArrayInt64   *core.FuncCache
 	cacheArrayUint32  *core.FuncCache
@@ -130,6 +134,10 @@ func Build(dev *core.DeviceSetup) (*PackageHandle, error) {
 	if err != nil {
 		return nil, err
 	}
+	pkg.cacheInt, err = pkg.handle.NewCache("", "Int")
+	if err != nil {
+		return nil, err
+	}
 	pkg.cacheInt32, err = pkg.handle.NewCache("", "Int32")
 	if err != nil {
 		return nil, err
@@ -158,6 +166,10 @@ func Build(dev *core.DeviceSetup) (*PackageHandle, error) {
 	if err != nil {
 		return nil, err
 	}
+	pkg.cacheArrayInt, err = pkg.handle.NewCache("", "ArrayInt")
+	if err != nil {
+		return nil, err
+	}
 	pkg.cacheArrayInt32, err = pkg.handle.NewCache("", "ArrayInt32")
 	if err != nil {
 		return nil, err
@@ -179,7 +191,7 @@ func Build(dev *core.DeviceSetup) (*PackageHandle, error) {
 }
 
 func (pkg *Package) Bool(arg0 types.Atom[bool]) (_ types.Atom[bool], err error) {
-	var args []values.Value = []values.Value{
+	var args []hostio.Value = []hostio.Value{
 		arg0.Bridge().GXValue(), // x bool
 	}
 	var runner tracer.CompiledFunc
@@ -187,15 +199,15 @@ func (pkg *Package) Bool(arg0 types.Atom[bool]) (_ types.Atom[bool], err error) 
 	if err != nil {
 		return
 	}
-	var outputs []values.Value
+	var outputs []hostio.Value
 	outputs, err = runner.Run(nil, args, pkg.handle.Tracer())
 	if err != nil {
 		return
 	}
 
-	out0Value, ok := outputs[0].(values.Array)
+	out0Value, ok := outputs[0].(hostio.Array)
 	if !ok {
-		err = errors.Errorf("cannot cast %T to %s", outputs[0], reflect.TypeFor[*values.DeviceArray]().Name())
+		err = errors.Errorf("cannot cast %T to %s", outputs[0], reflect.TypeFor[*hostio.DeviceArray]().Name())
 		return
 	}
 	out0 := types.NewAtom[bool](out0Value)
@@ -204,7 +216,7 @@ func (pkg *Package) Bool(arg0 types.Atom[bool]) (_ types.Atom[bool], err error) 
 }
 
 func (pkg *Package) Float32(arg0 types.Atom[float32]) (_ types.Atom[float32], err error) {
-	var args []values.Value = []values.Value{
+	var args []hostio.Value = []hostio.Value{
 		arg0.Bridge().GXValue(), // x float32
 	}
 	var runner tracer.CompiledFunc
@@ -212,15 +224,15 @@ func (pkg *Package) Float32(arg0 types.Atom[float32]) (_ types.Atom[float32], er
 	if err != nil {
 		return
 	}
-	var outputs []values.Value
+	var outputs []hostio.Value
 	outputs, err = runner.Run(nil, args, pkg.handle.Tracer())
 	if err != nil {
 		return
 	}
 
-	out0Value, ok := outputs[0].(values.Array)
+	out0Value, ok := outputs[0].(hostio.Array)
 	if !ok {
-		err = errors.Errorf("cannot cast %T to %s", outputs[0], reflect.TypeFor[*values.DeviceArray]().Name())
+		err = errors.Errorf("cannot cast %T to %s", outputs[0], reflect.TypeFor[*hostio.DeviceArray]().Name())
 		return
 	}
 	out0 := types.NewAtom[float32](out0Value)
@@ -229,7 +241,7 @@ func (pkg *Package) Float32(arg0 types.Atom[float32]) (_ types.Atom[float32], er
 }
 
 func (pkg *Package) Float64(arg0 types.Atom[float64]) (_ types.Atom[float64], err error) {
-	var args []values.Value = []values.Value{
+	var args []hostio.Value = []hostio.Value{
 		arg0.Bridge().GXValue(), // x float64
 	}
 	var runner tracer.CompiledFunc
@@ -237,15 +249,15 @@ func (pkg *Package) Float64(arg0 types.Atom[float64]) (_ types.Atom[float64], er
 	if err != nil {
 		return
 	}
-	var outputs []values.Value
+	var outputs []hostio.Value
 	outputs, err = runner.Run(nil, args, pkg.handle.Tracer())
 	if err != nil {
 		return
 	}
 
-	out0Value, ok := outputs[0].(values.Array)
+	out0Value, ok := outputs[0].(hostio.Array)
 	if !ok {
-		err = errors.Errorf("cannot cast %T to %s", outputs[0], reflect.TypeFor[*values.DeviceArray]().Name())
+		err = errors.Errorf("cannot cast %T to %s", outputs[0], reflect.TypeFor[*hostio.DeviceArray]().Name())
 		return
 	}
 	out0 := types.NewAtom[float64](out0Value)
@@ -253,8 +265,33 @@ func (pkg *Package) Float64(arg0 types.Atom[float64]) (_ types.Atom[float64], er
 	return out0, nil
 }
 
+func (pkg *Package) Int(arg0 types.Atom[int]) (_ types.Atom[int], err error) {
+	var args []hostio.Value = []hostio.Value{
+		arg0.Bridge().GXValue(), // x int
+	}
+	var runner tracer.CompiledFunc
+	runner, err = pkg.cacheInt.Runner(nil, args)
+	if err != nil {
+		return
+	}
+	var outputs []hostio.Value
+	outputs, err = runner.Run(nil, args, pkg.handle.Tracer())
+	if err != nil {
+		return
+	}
+
+	out0Value, ok := outputs[0].(hostio.Array)
+	if !ok {
+		err = errors.Errorf("cannot cast %T to %s", outputs[0], reflect.TypeFor[*hostio.DeviceArray]().Name())
+		return
+	}
+	out0 := types.NewAtom[int](out0Value)
+
+	return out0, nil
+}
+
 func (pkg *Package) Int32(arg0 types.Atom[int32]) (_ types.Atom[int32], err error) {
-	var args []values.Value = []values.Value{
+	var args []hostio.Value = []hostio.Value{
 		arg0.Bridge().GXValue(), // x int32
 	}
 	var runner tracer.CompiledFunc
@@ -262,15 +299,15 @@ func (pkg *Package) Int32(arg0 types.Atom[int32]) (_ types.Atom[int32], err erro
 	if err != nil {
 		return
 	}
-	var outputs []values.Value
+	var outputs []hostio.Value
 	outputs, err = runner.Run(nil, args, pkg.handle.Tracer())
 	if err != nil {
 		return
 	}
 
-	out0Value, ok := outputs[0].(values.Array)
+	out0Value, ok := outputs[0].(hostio.Array)
 	if !ok {
-		err = errors.Errorf("cannot cast %T to %s", outputs[0], reflect.TypeFor[*values.DeviceArray]().Name())
+		err = errors.Errorf("cannot cast %T to %s", outputs[0], reflect.TypeFor[*hostio.DeviceArray]().Name())
 		return
 	}
 	out0 := types.NewAtom[int32](out0Value)
@@ -279,7 +316,7 @@ func (pkg *Package) Int32(arg0 types.Atom[int32]) (_ types.Atom[int32], err erro
 }
 
 func (pkg *Package) Int64(arg0 types.Atom[int64]) (_ types.Atom[int64], err error) {
-	var args []values.Value = []values.Value{
+	var args []hostio.Value = []hostio.Value{
 		arg0.Bridge().GXValue(), // x int64
 	}
 	var runner tracer.CompiledFunc
@@ -287,15 +324,15 @@ func (pkg *Package) Int64(arg0 types.Atom[int64]) (_ types.Atom[int64], err erro
 	if err != nil {
 		return
 	}
-	var outputs []values.Value
+	var outputs []hostio.Value
 	outputs, err = runner.Run(nil, args, pkg.handle.Tracer())
 	if err != nil {
 		return
 	}
 
-	out0Value, ok := outputs[0].(values.Array)
+	out0Value, ok := outputs[0].(hostio.Array)
 	if !ok {
-		err = errors.Errorf("cannot cast %T to %s", outputs[0], reflect.TypeFor[*values.DeviceArray]().Name())
+		err = errors.Errorf("cannot cast %T to %s", outputs[0], reflect.TypeFor[*hostio.DeviceArray]().Name())
 		return
 	}
 	out0 := types.NewAtom[int64](out0Value)
@@ -304,7 +341,7 @@ func (pkg *Package) Int64(arg0 types.Atom[int64]) (_ types.Atom[int64], err erro
 }
 
 func (pkg *Package) Uint32(arg0 types.Atom[uint32]) (_ types.Atom[uint32], err error) {
-	var args []values.Value = []values.Value{
+	var args []hostio.Value = []hostio.Value{
 		arg0.Bridge().GXValue(), // x uint32
 	}
 	var runner tracer.CompiledFunc
@@ -312,15 +349,15 @@ func (pkg *Package) Uint32(arg0 types.Atom[uint32]) (_ types.Atom[uint32], err e
 	if err != nil {
 		return
 	}
-	var outputs []values.Value
+	var outputs []hostio.Value
 	outputs, err = runner.Run(nil, args, pkg.handle.Tracer())
 	if err != nil {
 		return
 	}
 
-	out0Value, ok := outputs[0].(values.Array)
+	out0Value, ok := outputs[0].(hostio.Array)
 	if !ok {
-		err = errors.Errorf("cannot cast %T to %s", outputs[0], reflect.TypeFor[*values.DeviceArray]().Name())
+		err = errors.Errorf("cannot cast %T to %s", outputs[0], reflect.TypeFor[*hostio.DeviceArray]().Name())
 		return
 	}
 	out0 := types.NewAtom[uint32](out0Value)
@@ -329,7 +366,7 @@ func (pkg *Package) Uint32(arg0 types.Atom[uint32]) (_ types.Atom[uint32], err e
 }
 
 func (pkg *Package) Uint64(arg0 types.Atom[uint64]) (_ types.Atom[uint64], err error) {
-	var args []values.Value = []values.Value{
+	var args []hostio.Value = []hostio.Value{
 		arg0.Bridge().GXValue(), // x uint64
 	}
 	var runner tracer.CompiledFunc
@@ -337,15 +374,15 @@ func (pkg *Package) Uint64(arg0 types.Atom[uint64]) (_ types.Atom[uint64], err e
 	if err != nil {
 		return
 	}
-	var outputs []values.Value
+	var outputs []hostio.Value
 	outputs, err = runner.Run(nil, args, pkg.handle.Tracer())
 	if err != nil {
 		return
 	}
 
-	out0Value, ok := outputs[0].(values.Array)
+	out0Value, ok := outputs[0].(hostio.Array)
 	if !ok {
-		err = errors.Errorf("cannot cast %T to %s", outputs[0], reflect.TypeFor[*values.DeviceArray]().Name())
+		err = errors.Errorf("cannot cast %T to %s", outputs[0], reflect.TypeFor[*hostio.DeviceArray]().Name())
 		return
 	}
 	out0 := types.NewAtom[uint64](out0Value)
@@ -354,7 +391,7 @@ func (pkg *Package) Uint64(arg0 types.Atom[uint64]) (_ types.Atom[uint64], err e
 }
 
 func (pkg *Package) ArrayBool(arg0 types.Array[bool]) (_ types.Array[bool], err error) {
-	var args []values.Value = []values.Value{
+	var args []hostio.Value = []hostio.Value{
 		arg0.Bridge().GXValue(), // x [2][3]bool
 	}
 	var runner tracer.CompiledFunc
@@ -362,15 +399,15 @@ func (pkg *Package) ArrayBool(arg0 types.Array[bool]) (_ types.Array[bool], err 
 	if err != nil {
 		return
 	}
-	var outputs []values.Value
+	var outputs []hostio.Value
 	outputs, err = runner.Run(nil, args, pkg.handle.Tracer())
 	if err != nil {
 		return
 	}
 
-	out0Value, ok := outputs[0].(values.Array)
+	out0Value, ok := outputs[0].(hostio.Array)
 	if !ok {
-		err = errors.Errorf("cannot cast %T to %s", outputs[0], reflect.TypeFor[*values.DeviceArray]().Name())
+		err = errors.Errorf("cannot cast %T to %s", outputs[0], reflect.TypeFor[*hostio.DeviceArray]().Name())
 		return
 	}
 	out0 := types.NewArray[bool](out0Value)
@@ -379,7 +416,7 @@ func (pkg *Package) ArrayBool(arg0 types.Array[bool]) (_ types.Array[bool], err 
 }
 
 func (pkg *Package) ArrayFloat32(arg0 types.Array[float32]) (_ types.Array[float32], err error) {
-	var args []values.Value = []values.Value{
+	var args []hostio.Value = []hostio.Value{
 		arg0.Bridge().GXValue(), // x [2][3]float32
 	}
 	var runner tracer.CompiledFunc
@@ -387,15 +424,15 @@ func (pkg *Package) ArrayFloat32(arg0 types.Array[float32]) (_ types.Array[float
 	if err != nil {
 		return
 	}
-	var outputs []values.Value
+	var outputs []hostio.Value
 	outputs, err = runner.Run(nil, args, pkg.handle.Tracer())
 	if err != nil {
 		return
 	}
 
-	out0Value, ok := outputs[0].(values.Array)
+	out0Value, ok := outputs[0].(hostio.Array)
 	if !ok {
-		err = errors.Errorf("cannot cast %T to %s", outputs[0], reflect.TypeFor[*values.DeviceArray]().Name())
+		err = errors.Errorf("cannot cast %T to %s", outputs[0], reflect.TypeFor[*hostio.DeviceArray]().Name())
 		return
 	}
 	out0 := types.NewArray[float32](out0Value)
@@ -404,7 +441,7 @@ func (pkg *Package) ArrayFloat32(arg0 types.Array[float32]) (_ types.Array[float
 }
 
 func (pkg *Package) ArrayFloat64(arg0 types.Array[float64]) (_ types.Array[float64], err error) {
-	var args []values.Value = []values.Value{
+	var args []hostio.Value = []hostio.Value{
 		arg0.Bridge().GXValue(), // x [2][3]float64
 	}
 	var runner tracer.CompiledFunc
@@ -412,15 +449,15 @@ func (pkg *Package) ArrayFloat64(arg0 types.Array[float64]) (_ types.Array[float
 	if err != nil {
 		return
 	}
-	var outputs []values.Value
+	var outputs []hostio.Value
 	outputs, err = runner.Run(nil, args, pkg.handle.Tracer())
 	if err != nil {
 		return
 	}
 
-	out0Value, ok := outputs[0].(values.Array)
+	out0Value, ok := outputs[0].(hostio.Array)
 	if !ok {
-		err = errors.Errorf("cannot cast %T to %s", outputs[0], reflect.TypeFor[*values.DeviceArray]().Name())
+		err = errors.Errorf("cannot cast %T to %s", outputs[0], reflect.TypeFor[*hostio.DeviceArray]().Name())
 		return
 	}
 	out0 := types.NewArray[float64](out0Value)
@@ -428,8 +465,33 @@ func (pkg *Package) ArrayFloat64(arg0 types.Array[float64]) (_ types.Array[float
 	return out0, nil
 }
 
+func (pkg *Package) ArrayInt(arg0 types.Array[int]) (_ types.Array[int], err error) {
+	var args []hostio.Value = []hostio.Value{
+		arg0.Bridge().GXValue(), // x [2][3]int
+	}
+	var runner tracer.CompiledFunc
+	runner, err = pkg.cacheArrayInt.Runner(nil, args)
+	if err != nil {
+		return
+	}
+	var outputs []hostio.Value
+	outputs, err = runner.Run(nil, args, pkg.handle.Tracer())
+	if err != nil {
+		return
+	}
+
+	out0Value, ok := outputs[0].(hostio.Array)
+	if !ok {
+		err = errors.Errorf("cannot cast %T to %s", outputs[0], reflect.TypeFor[*hostio.DeviceArray]().Name())
+		return
+	}
+	out0 := types.NewArray[int](out0Value)
+
+	return out0, nil
+}
+
 func (pkg *Package) ArrayInt32(arg0 types.Array[int32]) (_ types.Array[int32], err error) {
-	var args []values.Value = []values.Value{
+	var args []hostio.Value = []hostio.Value{
 		arg0.Bridge().GXValue(), // x [2][3]int32
 	}
 	var runner tracer.CompiledFunc
@@ -437,15 +499,15 @@ func (pkg *Package) ArrayInt32(arg0 types.Array[int32]) (_ types.Array[int32], e
 	if err != nil {
 		return
 	}
-	var outputs []values.Value
+	var outputs []hostio.Value
 	outputs, err = runner.Run(nil, args, pkg.handle.Tracer())
 	if err != nil {
 		return
 	}
 
-	out0Value, ok := outputs[0].(values.Array)
+	out0Value, ok := outputs[0].(hostio.Array)
 	if !ok {
-		err = errors.Errorf("cannot cast %T to %s", outputs[0], reflect.TypeFor[*values.DeviceArray]().Name())
+		err = errors.Errorf("cannot cast %T to %s", outputs[0], reflect.TypeFor[*hostio.DeviceArray]().Name())
 		return
 	}
 	out0 := types.NewArray[int32](out0Value)
@@ -454,7 +516,7 @@ func (pkg *Package) ArrayInt32(arg0 types.Array[int32]) (_ types.Array[int32], e
 }
 
 func (pkg *Package) ArrayInt64(arg0 types.Array[int64]) (_ types.Array[int64], err error) {
-	var args []values.Value = []values.Value{
+	var args []hostio.Value = []hostio.Value{
 		arg0.Bridge().GXValue(), // x [2][3]int64
 	}
 	var runner tracer.CompiledFunc
@@ -462,15 +524,15 @@ func (pkg *Package) ArrayInt64(arg0 types.Array[int64]) (_ types.Array[int64], e
 	if err != nil {
 		return
 	}
-	var outputs []values.Value
+	var outputs []hostio.Value
 	outputs, err = runner.Run(nil, args, pkg.handle.Tracer())
 	if err != nil {
 		return
 	}
 
-	out0Value, ok := outputs[0].(values.Array)
+	out0Value, ok := outputs[0].(hostio.Array)
 	if !ok {
-		err = errors.Errorf("cannot cast %T to %s", outputs[0], reflect.TypeFor[*values.DeviceArray]().Name())
+		err = errors.Errorf("cannot cast %T to %s", outputs[0], reflect.TypeFor[*hostio.DeviceArray]().Name())
 		return
 	}
 	out0 := types.NewArray[int64](out0Value)
@@ -479,7 +541,7 @@ func (pkg *Package) ArrayInt64(arg0 types.Array[int64]) (_ types.Array[int64], e
 }
 
 func (pkg *Package) ArrayUint32(arg0 types.Array[uint32]) (_ types.Array[uint32], err error) {
-	var args []values.Value = []values.Value{
+	var args []hostio.Value = []hostio.Value{
 		arg0.Bridge().GXValue(), // x [2][3]uint32
 	}
 	var runner tracer.CompiledFunc
@@ -487,15 +549,15 @@ func (pkg *Package) ArrayUint32(arg0 types.Array[uint32]) (_ types.Array[uint32]
 	if err != nil {
 		return
 	}
-	var outputs []values.Value
+	var outputs []hostio.Value
 	outputs, err = runner.Run(nil, args, pkg.handle.Tracer())
 	if err != nil {
 		return
 	}
 
-	out0Value, ok := outputs[0].(values.Array)
+	out0Value, ok := outputs[0].(hostio.Array)
 	if !ok {
-		err = errors.Errorf("cannot cast %T to %s", outputs[0], reflect.TypeFor[*values.DeviceArray]().Name())
+		err = errors.Errorf("cannot cast %T to %s", outputs[0], reflect.TypeFor[*hostio.DeviceArray]().Name())
 		return
 	}
 	out0 := types.NewArray[uint32](out0Value)
@@ -504,7 +566,7 @@ func (pkg *Package) ArrayUint32(arg0 types.Array[uint32]) (_ types.Array[uint32]
 }
 
 func (pkg *Package) ArrayUint64(arg0 types.Array[uint64]) (_ types.Array[uint64], err error) {
-	var args []values.Value = []values.Value{
+	var args []hostio.Value = []hostio.Value{
 		arg0.Bridge().GXValue(), // x [2][3]uint64
 	}
 	var runner tracer.CompiledFunc
@@ -512,15 +574,15 @@ func (pkg *Package) ArrayUint64(arg0 types.Array[uint64]) (_ types.Array[uint64]
 	if err != nil {
 		return
 	}
-	var outputs []values.Value
+	var outputs []hostio.Value
 	outputs, err = runner.Run(nil, args, pkg.handle.Tracer())
 	if err != nil {
 		return
 	}
 
-	out0Value, ok := outputs[0].(values.Array)
+	out0Value, ok := outputs[0].(hostio.Array)
 	if !ok {
-		err = errors.Errorf("cannot cast %T to %s", outputs[0], reflect.TypeFor[*values.DeviceArray]().Name())
+		err = errors.Errorf("cannot cast %T to %s", outputs[0], reflect.TypeFor[*hostio.DeviceArray]().Name())
 		return
 	}
 	out0 := types.NewArray[uint64](out0Value)

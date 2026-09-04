@@ -26,6 +26,7 @@ import (
 
 	"github.com/gx-org/backend/platform"
 	"github.com/gx-org/gx/api"
+	"github.com/gx-org/gx/api/hostio"
 	"github.com/gx-org/gx/api/options"
 	"github.com/gx-org/gx/api/tracer"
 	"github.com/gx-org/gx/api/values"
@@ -43,6 +44,7 @@ var (
 	_ = strings.Compare
 	_ = reflect.TypeFor[int]
 	_ = values.Struct{}
+	_ hostio.Value
 	_ = errors.Errorf
 	_ = types.NewSlice[types.Bridger]
 	_ = platform.HostTransfer
@@ -119,13 +121,13 @@ func Build(dev *core.DeviceSetup) (*PackageHandle, error) {
 }
 
 func (pkg *Package) New() (_ *unexported, err error) {
-	var args []values.Value = nil
+	var args []hostio.Value = nil
 	var runner tracer.CompiledFunc
 	runner, err = pkg.cacheNew.Runner(nil, args)
 	if err != nil {
 		return
 	}
-	var outputs []values.Value
+	var outputs []hostio.Value
 	outputs, err = runner.Run(nil, args, pkg.handle.Tracer())
 	if err != nil {
 		return
@@ -165,7 +167,7 @@ func (h *handleunexported) Bridger() types.Bridger {
 }
 
 // GXValue returns the GX value.
-func (h *handleunexported) GXValue() values.Value {
+func (h *handleunexported) GXValue() hostio.Value {
 	return h.owner.value
 }
 
@@ -199,7 +201,7 @@ func (h *handleunexported) StructValue() *values.Struct {
 }
 
 // Marshalunexported populates the receiver fields with device handles.
-func (fty *Factory) Marshalunexported(val values.Value) (s *unexported, err error) {
+func (fty *Factory) Marshalunexported(val hostio.Value) (s *unexported, err error) {
 	s = fty.Newunexported()
 	var ok bool
 	s.value, ok = val.(*values.NamedType)
@@ -212,14 +214,14 @@ func (fty *Factory) Marshalunexported(val values.Value) (s *unexported, err erro
 		err = errors.Errorf("incorrect underlying value for named type unexported: %T is not a %s", val, reflect.TypeFor[*values.Struct]().Name())
 		return
 	}
-	fields := make([]values.Value, structVal.StructType().NumFields())
+	fields := make([]hostio.Value, structVal.StructType().NumFields())
 	for i, field := range structVal.StructType().Fields.Fields() {
 		fields[i] = structVal.FieldValue(field.Name.Name)
 	}
 
-	field0Value, ok := fields[0].(values.Array)
+	field0Value, ok := fields[0].(hostio.Array)
 	if !ok {
-		err = errors.Errorf("cannot cast %T to %s", fields[0], reflect.TypeFor[*values.DeviceArray]().Name())
+		err = errors.Errorf("cannot cast %T to %s", fields[0], reflect.TypeFor[*hostio.DeviceArray]().Name())
 		return
 	}
 	field0 := types.NewAtom[float32](field0Value)
@@ -294,21 +296,21 @@ func (h *handleunexported) SetField(field *ir.Field, val types.Bridge) error {
 }
 
 func (recv *unexported) A() (_ types.Atom[float32], err error) {
-	var args []values.Value = nil
+	var args []hostio.Value = nil
 	var runner tracer.CompiledFunc
 	runner, err = recv.handle.pkg.cacheunexportedA.Runner(recv.value, args)
 	if err != nil {
 		return
 	}
-	var outputs []values.Value
+	var outputs []hostio.Value
 	outputs, err = runner.Run(recv.value, args, recv.handle.pkg.handle.Tracer())
 	if err != nil {
 		return
 	}
 
-	out0Value, ok := outputs[0].(values.Array)
+	out0Value, ok := outputs[0].(hostio.Array)
 	if !ok {
-		err = errors.Errorf("cannot cast %T to %s", outputs[0], reflect.TypeFor[*values.DeviceArray]().Name())
+		err = errors.Errorf("cannot cast %T to %s", outputs[0], reflect.TypeFor[*hostio.DeviceArray]().Name())
 		return
 	}
 	out0 := types.NewAtom[float32](out0Value)

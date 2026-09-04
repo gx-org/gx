@@ -26,6 +26,7 @@ import (
 
 	"github.com/gx-org/backend/platform"
 	"github.com/gx-org/gx/api"
+	"github.com/gx-org/gx/api/hostio"
 	"github.com/gx-org/gx/api/options"
 	"github.com/gx-org/gx/api/tracer"
 	"github.com/gx-org/gx/api/values"
@@ -43,6 +44,7 @@ var (
 	_ = strings.Compare
 	_ = reflect.TypeFor[int]
 	_ = values.Struct{}
+	_ hostio.Value
 	_ = errors.Errorf
 	_ = types.NewSlice[types.Bridger]
 	_ = platform.HostTransfer
@@ -136,7 +138,7 @@ func (h *handleScalars) Bridger() types.Bridger {
 }
 
 // GXValue returns the GX value.
-func (h *handleScalars) GXValue() values.Value {
+func (h *handleScalars) GXValue() hostio.Value {
 	return h.owner.value
 }
 
@@ -176,7 +178,7 @@ func (h *handleScalars) StructValue() *values.Struct {
 }
 
 // MarshalScalars populates the receiver fields with device handles.
-func (fty *Factory) MarshalScalars(val values.Value) (s *Scalars, err error) {
+func (fty *Factory) MarshalScalars(val hostio.Value) (s *Scalars, err error) {
 	s = fty.NewScalars()
 	var ok bool
 	s.value, ok = val.(*values.NamedType)
@@ -189,28 +191,28 @@ func (fty *Factory) MarshalScalars(val values.Value) (s *Scalars, err error) {
 		err = errors.Errorf("incorrect underlying value for named type Scalars: %T is not a %s", val, reflect.TypeFor[*values.Struct]().Name())
 		return
 	}
-	fields := make([]values.Value, structVal.StructType().NumFields())
+	fields := make([]hostio.Value, structVal.StructType().NumFields())
 	for i, field := range structVal.StructType().Fields.Fields() {
 		fields[i] = structVal.FieldValue(field.Name.Name)
 	}
 
-	field0Value, ok := fields[0].(values.Array)
+	field0Value, ok := fields[0].(hostio.Array)
 	if !ok {
-		err = errors.Errorf("cannot cast %T to %s", fields[0], reflect.TypeFor[*values.DeviceArray]().Name())
+		err = errors.Errorf("cannot cast %T to %s", fields[0], reflect.TypeFor[*hostio.DeviceArray]().Name())
 		return
 	}
 	field0 := types.NewAtom[int32](field0Value)
 
-	field1Value, ok := fields[1].(values.Array)
+	field1Value, ok := fields[1].(hostio.Array)
 	if !ok {
-		err = errors.Errorf("cannot cast %T to %s", fields[1], reflect.TypeFor[*values.DeviceArray]().Name())
+		err = errors.Errorf("cannot cast %T to %s", fields[1], reflect.TypeFor[*hostio.DeviceArray]().Name())
 		return
 	}
 	field1 := types.NewAtom[float32](field1Value)
 
-	field2Value, ok := fields[2].(values.Array)
+	field2Value, ok := fields[2].(hostio.Array)
 	if !ok {
-		err = errors.Errorf("cannot cast %T to %s", fields[2], reflect.TypeFor[*values.DeviceArray]().Name())
+		err = errors.Errorf("cannot cast %T to %s", fields[2], reflect.TypeFor[*hostio.DeviceArray]().Name())
 		return
 	}
 	field2 := types.NewAtom[float64](field2Value)
@@ -312,21 +314,21 @@ func (h *handleScalars) SetField(field *ir.Field, val types.Bridge) error {
 
 // GetTotal returns the sum of all fields.
 func (recv *Scalars) GetTotal() (_ types.Atom[float32], err error) {
-	var args []values.Value = nil
+	var args []hostio.Value = nil
 	var runner tracer.CompiledFunc
 	runner, err = recv.handle.pkg.cacheScalarsGetTotal.Runner(recv.value, args)
 	if err != nil {
 		return
 	}
-	var outputs []values.Value
+	var outputs []hostio.Value
 	outputs, err = runner.Run(recv.value, args, recv.handle.pkg.handle.Tracer())
 	if err != nil {
 		return
 	}
 
-	out0Value, ok := outputs[0].(values.Array)
+	out0Value, ok := outputs[0].(hostio.Array)
 	if !ok {
-		err = errors.Errorf("cannot cast %T to %s", outputs[0], reflect.TypeFor[*values.DeviceArray]().Name())
+		err = errors.Errorf("cannot cast %T to %s", outputs[0], reflect.TypeFor[*hostio.DeviceArray]().Name())
 		return
 	}
 	out0 := types.NewAtom[float32](out0Value)
@@ -357,7 +359,7 @@ func (h *handleArrays) Bridger() types.Bridger {
 }
 
 // GXValue returns the GX value.
-func (h *handleArrays) GXValue() values.Value {
+func (h *handleArrays) GXValue() hostio.Value {
 	return h.owner.value
 }
 
@@ -391,7 +393,7 @@ func (h *handleArrays) StructValue() *values.Struct {
 }
 
 // MarshalArrays populates the receiver fields with device handles.
-func (fty *Factory) MarshalArrays(val values.Value) (s *Arrays, err error) {
+func (fty *Factory) MarshalArrays(val hostio.Value) (s *Arrays, err error) {
 	s = fty.NewArrays()
 	var ok bool
 	s.value, ok = val.(*values.NamedType)
@@ -404,14 +406,14 @@ func (fty *Factory) MarshalArrays(val values.Value) (s *Arrays, err error) {
 		err = errors.Errorf("incorrect underlying value for named type Arrays: %T is not a %s", val, reflect.TypeFor[*values.Struct]().Name())
 		return
 	}
-	fields := make([]values.Value, structVal.StructType().NumFields())
+	fields := make([]hostio.Value, structVal.StructType().NumFields())
 	for i, field := range structVal.StructType().Fields.Fields() {
 		fields[i] = structVal.FieldValue(field.Name.Name)
 	}
 
-	field0Value, ok := fields[0].(values.Array)
+	field0Value, ok := fields[0].(hostio.Array)
 	if !ok {
-		err = errors.Errorf("cannot cast %T to %s", fields[0], reflect.TypeFor[*values.DeviceArray]().Name())
+		err = errors.Errorf("cannot cast %T to %s", fields[0], reflect.TypeFor[*hostio.DeviceArray]().Name())
 		return
 	}
 	field0 := types.NewArray[float32](field0Value)
@@ -508,7 +510,7 @@ func (h *handleEncoding) Bridger() types.Bridger {
 }
 
 // GXValue returns the GX value.
-func (h *handleEncoding) GXValue() values.Value {
+func (h *handleEncoding) GXValue() hostio.Value {
 	return h.owner.value
 }
 
@@ -548,7 +550,7 @@ func (h *handleEncoding) StructValue() *values.Struct {
 }
 
 // MarshalEncoding populates the receiver fields with device handles.
-func (fty *Factory) MarshalEncoding(val values.Value) (s *Encoding, err error) {
+func (fty *Factory) MarshalEncoding(val hostio.Value) (s *Encoding, err error) {
 	s = fty.NewEncoding()
 	var ok bool
 	s.value, ok = val.(*values.NamedType)
@@ -561,7 +563,7 @@ func (fty *Factory) MarshalEncoding(val values.Value) (s *Encoding, err error) {
 		err = errors.Errorf("incorrect underlying value for named type Encoding: %T is not a %s", val, reflect.TypeFor[*values.Struct]().Name())
 		return
 	}
-	fields := make([]values.Value, structVal.StructType().NumFields())
+	fields := make([]hostio.Value, structVal.StructType().NumFields())
 	for i, field := range structVal.StructType().Fields.Fields() {
 		fields[i] = structVal.FieldValue(field.Name.Name)
 	}
@@ -698,7 +700,7 @@ func (h *handleSlice) Bridger() types.Bridger {
 }
 
 // GXValue returns the GX value.
-func (h *handleSlice) GXValue() values.Value {
+func (h *handleSlice) GXValue() hostio.Value {
 	return h.owner.value
 }
 
@@ -735,7 +737,7 @@ func (h *handleSlice) StructValue() *values.Struct {
 }
 
 // MarshalSlice populates the receiver fields with device handles.
-func (fty *Factory) MarshalSlice(val values.Value) (s *Slice, err error) {
+func (fty *Factory) MarshalSlice(val hostio.Value) (s *Slice, err error) {
 	s = fty.NewSlice()
 	var ok bool
 	s.value, ok = val.(*values.NamedType)
@@ -748,7 +750,7 @@ func (fty *Factory) MarshalSlice(val values.Value) (s *Slice, err error) {
 		err = errors.Errorf("incorrect underlying value for named type Slice: %T is not a %s", val, reflect.TypeFor[*values.Struct]().Name())
 		return
 	}
-	fields := make([]values.Value, structVal.StructType().NumFields())
+	fields := make([]hostio.Value, structVal.StructType().NumFields())
 	for i, field := range structVal.StructType().Fields.Fields() {
 		fields[i] = structVal.FieldValue(field.Name.Name)
 	}

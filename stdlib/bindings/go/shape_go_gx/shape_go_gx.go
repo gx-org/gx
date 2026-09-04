@@ -26,6 +26,7 @@ import (
 
 	"github.com/gx-org/backend/platform"
 	"github.com/gx-org/gx/api"
+	"github.com/gx-org/gx/api/hostio"
 	"github.com/gx-org/gx/api/options"
 	"github.com/gx-org/gx/api/tracer"
 	"github.com/gx-org/gx/api/values"
@@ -44,6 +45,7 @@ var (
 	_ = strings.Compare
 	_ = reflect.TypeFor[int]
 	_ = values.Struct{}
+	_ hostio.Value
 	_ = errors.Errorf
 	_ = types.NewSlice[types.Bridger]
 	_ = platform.HostTransfer
@@ -91,7 +93,7 @@ type Package struct {
 	handle PackageHandle
 
 	// Functions and methods cache
-
+	cacheCheckBroadcast *core.FuncCache
 }
 
 // Build builds a package for a device once it has been loaded.
@@ -119,8 +121,58 @@ func Build(dev *core.DeviceSetup) (*PackageHandle, error) {
 	}
 
 	// Initialise function and method caches.
+	pkg.cacheCheckBroadcast, err = pkg.handle.NewCache("", "CheckBroadcast")
+	if err != nil {
+		return nil, err
+	}
 
 	return &pkg.handle, err
+}
+
+//gx:compeval
+func (pkg *Package) CheckBroadcast(arg0 *types.Slice[types.Atom[int]], arg1 *types.Slice[types.Atom[int]]) (_ *types.Slice[types.Atom[int]], err error) {
+	var args []hostio.Value = []hostio.Value{
+		arg0.Bridge().GXValue(), // s1 []int
+		arg1.Bridge().GXValue(), // s2 []int
+	}
+	var runner tracer.CompiledFunc
+	runner, err = pkg.cacheCheckBroadcast.Runner(nil, args)
+	if err != nil {
+		return
+	}
+	var outputs []hostio.Value
+	outputs, err = runner.Run(nil, args, pkg.handle.Tracer())
+	if err != nil {
+		return
+	}
+
+	out0Slice, ok := outputs[0].(*values.Slice)
+	if !ok {
+		err = fmt.Errorf("cannot use value %T to set []<no value>: not a slice", outputs[0])
+		return
+	}
+	out0Elements := make([]types.Atom[int], out0Slice.Len())
+	for i := 0; i < out0Slice.Len(); i++ {
+		out0HandleI := out0Slice.Element(i)
+
+		out0ElmtIValue, ok := out0HandleI.(hostio.Array)
+		if !ok {
+			err = errors.Errorf("cannot cast %T to %s", out0HandleI, reflect.TypeFor[*hostio.DeviceArray]().Name())
+			return
+		}
+		out0ElmtI := types.NewAtom[int](out0ElmtIValue)
+
+		out0Elements[i] = out0ElmtI
+	}
+	out0, err := types.NewSlice[types.Atom[int]](
+		out0Slice.SliceType(),
+		out0Elements,
+	)
+	if err != nil {
+		return nil, err
+	}
+
+	return out0, nil
 }
 
 // handleDType stores the backend handles of DType.
@@ -146,7 +198,7 @@ func (h *handleDType) Bridger() types.Bridger {
 }
 
 // GXValue returns the GX value.
-func (h *handleDType) GXValue() values.Value {
+func (h *handleDType) GXValue() hostio.Value {
 	return h.owner.value
 }
 
@@ -161,7 +213,7 @@ func (h *handleDType) String() string {
 
 // DType stores the handle of DType on a backend.
 type DType struct {
-	value  values.Array
+	value  hostio.Array
 	handle handleDType
 }
 
@@ -178,13 +230,13 @@ func (val DType) String() string {
 func (val *DType) Bridge() types.Bridge { return &val.handle }
 
 // MarshalDType populates the receiver fields with device handles.
-func (fty *Factory) MarshalDType(val values.Value) (s *DType, err error) {
+func (fty *Factory) MarshalDType(val hostio.Value) (s *DType, err error) {
 	s = fty.NewDType()
 	if _, ok := val.(*values.Slice); ok {
 		err = fmt.Errorf("cannot use handle to set DType: got a tuple instead of a single value")
 		return
 	}
-	s.value = val.(values.Array)
+	s.value = val.(hostio.Array)
 	return
 }
 
@@ -242,7 +294,7 @@ func (h *handleShape) Bridger() types.Bridger {
 }
 
 // GXValue returns the GX value.
-func (h *handleShape) GXValue() values.Value {
+func (h *handleShape) GXValue() hostio.Value {
 	return h.owner.value
 }
 
@@ -265,7 +317,7 @@ type Shape struct {
 	value  *values.NamedType
 
 	DType      *DType
-	Dimensions *types.Slice[types.Atom[ir.Int]]
+	Dimensions *types.Slice[types.Atom[int]]
 }
 
 var (
@@ -279,7 +331,7 @@ func (h *handleShape) StructValue() *values.Struct {
 }
 
 // MarshalShape populates the receiver fields with device handles.
-func (fty *Factory) MarshalShape(val values.Value) (s *Shape, err error) {
+func (fty *Factory) MarshalShape(val hostio.Value) (s *Shape, err error) {
 	s = fty.NewShape()
 	var ok bool
 	s.value, ok = val.(*values.NamedType)
@@ -292,7 +344,7 @@ func (fty *Factory) MarshalShape(val values.Value) (s *Shape, err error) {
 		err = errors.Errorf("incorrect underlying value for named type Shape: %T is not a %s", val, reflect.TypeFor[*values.Struct]().Name())
 		return
 	}
-	fields := make([]values.Value, structVal.StructType().NumFields())
+	fields := make([]hostio.Value, structVal.StructType().NumFields())
 	for i, field := range structVal.StructType().Fields.Fields() {
 		fields[i] = structVal.FieldValue(field.Name.Name)
 	}
@@ -307,20 +359,20 @@ func (fty *Factory) MarshalShape(val values.Value) (s *Shape, err error) {
 		err = fmt.Errorf("cannot use value %T to set []<no value>: not a slice", fields[1])
 		return
 	}
-	field1Elements := make([]types.Atom[ir.Int], field1Slice.Len())
+	field1Elements := make([]types.Atom[int], field1Slice.Len())
 	for i := 0; i < field1Slice.Len(); i++ {
 		field1HandleI := field1Slice.Element(i)
 
-		field1ElmtIValue, ok := field1HandleI.(values.Array)
+		field1ElmtIValue, ok := field1HandleI.(hostio.Array)
 		if !ok {
-			err = errors.Errorf("cannot cast %T to %s", field1HandleI, reflect.TypeFor[*values.DeviceArray]().Name())
+			err = errors.Errorf("cannot cast %T to %s", field1HandleI, reflect.TypeFor[*hostio.DeviceArray]().Name())
 			return
 		}
-		field1ElmtI := types.NewAtom[ir.Int](field1ElmtIValue)
+		field1ElmtI := types.NewAtom[int](field1ElmtIValue)
 
 		field1Elements[i] = field1ElmtI
 	}
-	field1, err := types.NewSlice[types.Atom[ir.Int]](
+	field1, err := types.NewSlice[types.Atom[int]](
 		field1Slice.SliceType(),
 		field1Elements,
 	)
@@ -367,7 +419,7 @@ func (h *handleShape) NewFromField(field *ir.Field) (types.Bridge, error) {
 	case "DType":
 		return h.pkg.handle.Factory.NewDType().Bridge(), nil
 	case "Dimensions":
-		slice, err := types.NewEmptySlice[types.Atom[ir.Int]](field.Type(), nil)
+		slice, err := types.NewEmptySlice[types.Atom[int]](field.Type(), nil)
 		if err != nil {
 			return nil, err
 		}
@@ -400,9 +452,9 @@ func (h *handleShape) SetField(field *ir.Field, val types.Bridge) error {
 
 	case "Dimensions":
 		bridger := val.Bridger()
-		fieldValue, ok := bridger.(*types.Slice[types.Atom[ir.Int]])
+		fieldValue, ok := bridger.(*types.Slice[types.Atom[int]])
 		if !ok {
-			return errors.Errorf("cannot set field Dimensions: cannot cast %T to *types.Slice[types.Atom[ir.Int]]", bridger)
+			return errors.Errorf("cannot set field Dimensions: cannot cast %T to *types.Slice[types.Atom[int]]", bridger)
 		}
 		h.owner.Dimensions = fieldValue
 		structVal.SetField("Dimensions", val.GXValue())

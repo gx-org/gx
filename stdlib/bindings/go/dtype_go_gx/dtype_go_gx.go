@@ -26,6 +26,7 @@ import (
 
 	"github.com/gx-org/backend/platform"
 	"github.com/gx-org/gx/api"
+	"github.com/gx-org/gx/api/hostio"
 	"github.com/gx-org/gx/api/options"
 	"github.com/gx-org/gx/api/tracer"
 	"github.com/gx-org/gx/api/values"
@@ -41,6 +42,7 @@ var (
 	_ = strings.Compare
 	_ = reflect.TypeFor[int]
 	_ = values.Struct{}
+	_ hostio.Value
 	_ = errors.Errorf
 	_ = types.NewSlice[types.Bridger]
 	_ = platform.HostTransfer
@@ -130,7 +132,7 @@ func (h *handleFloats) Bridger() types.Bridger {
 }
 
 // GXValue returns the GX value.
-func (h *handleFloats) GXValue() values.Value {
+func (h *handleFloats) GXValue() hostio.Value {
 	return h.owner.value
 }
 
@@ -145,7 +147,7 @@ func (h *handleFloats) String() string {
 
 // Floats stores the handle of Floats on a backend.
 type Floats struct {
-	value  values.Array
+	value  hostio.Array
 	handle handleFloats
 }
 
@@ -162,13 +164,13 @@ func (val Floats) String() string {
 func (val *Floats) Bridge() types.Bridge { return &val.handle }
 
 // MarshalFloats populates the receiver fields with device handles.
-func (fty *Factory) MarshalFloats(val values.Value) (s *Floats, err error) {
+func (fty *Factory) MarshalFloats(val hostio.Value) (s *Floats, err error) {
 	s = fty.NewFloats()
 	if _, ok := val.(*values.Slice); ok {
 		err = fmt.Errorf("cannot use handle to set Floats: got a tuple instead of a single value")
 		return
 	}
-	s.value = val.(values.Array)
+	s.value = val.(hostio.Array)
 	return
 }
 
@@ -226,7 +228,7 @@ func (h *handleInts) Bridger() types.Bridger {
 }
 
 // GXValue returns the GX value.
-func (h *handleInts) GXValue() values.Value {
+func (h *handleInts) GXValue() hostio.Value {
 	return h.owner.value
 }
 
@@ -241,7 +243,7 @@ func (h *handleInts) String() string {
 
 // Ints stores the handle of Ints on a backend.
 type Ints struct {
-	value  values.Array
+	value  hostio.Array
 	handle handleInts
 }
 
@@ -258,13 +260,13 @@ func (val Ints) String() string {
 func (val *Ints) Bridge() types.Bridge { return &val.handle }
 
 // MarshalInts populates the receiver fields with device handles.
-func (fty *Factory) MarshalInts(val values.Value) (s *Ints, err error) {
+func (fty *Factory) MarshalInts(val hostio.Value) (s *Ints, err error) {
 	s = fty.NewInts()
 	if _, ok := val.(*values.Slice); ok {
 		err = fmt.Errorf("cannot use handle to set Ints: got a tuple instead of a single value")
 		return
 	}
-	s.value = val.(values.Array)
+	s.value = val.(hostio.Array)
 	return
 }
 
@@ -322,7 +324,7 @@ func (h *handleNum) Bridger() types.Bridger {
 }
 
 // GXValue returns the GX value.
-func (h *handleNum) GXValue() values.Value {
+func (h *handleNum) GXValue() hostio.Value {
 	return h.owner.value
 }
 
@@ -337,7 +339,7 @@ func (h *handleNum) String() string {
 
 // Num stores the handle of Num on a backend.
 type Num struct {
-	value  values.Array
+	value  hostio.Array
 	handle handleNum
 }
 
@@ -354,13 +356,13 @@ func (val Num) String() string {
 func (val *Num) Bridge() types.Bridge { return &val.handle }
 
 // MarshalNum populates the receiver fields with device handles.
-func (fty *Factory) MarshalNum(val values.Value) (s *Num, err error) {
+func (fty *Factory) MarshalNum(val hostio.Value) (s *Num, err error) {
 	s = fty.NewNum()
 	if _, ok := val.(*values.Slice); ok {
 		err = fmt.Errorf("cannot use handle to set Num: got a tuple instead of a single value")
 		return
 	}
-	s.value = val.(values.Array)
+	s.value = val.(hostio.Array)
 	return
 }
 
