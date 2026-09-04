@@ -59,6 +59,7 @@ const (
 	Tuple
 	IR
 	Package
+	FieldPath
 	MetaType
 
 	// Max value for a Kind constant.
@@ -112,6 +113,8 @@ func (k Kind) String() string {
 		return "struct"
 	case Builtin:
 		return "builtin"
+	case FieldPath:
+		return "fieldpath"
 	case MetaType:
 		return "metatype"
 	case Package:
