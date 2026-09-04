@@ -58,6 +58,9 @@ func (itp *Base) InitBuiltins(scope *scope.RWScope[ir.Element]) error {
 	for _, tp := range []ir.Type{
 		ir.AnyType(),
 		ir.ErrorType(),
+		ir.FieldPathType(),
+		ir.StringType(),
+
 		ir.BoolType(),
 		ir.Bfloat16Type(),
 		ir.Float32Type(),
@@ -65,7 +68,6 @@ func (itp *Base) InitBuiltins(scope *scope.RWScope[ir.Element]) error {
 		ir.IntType(),
 		ir.Int32Type(),
 		ir.Int64Type(),
-		ir.StringType(),
 		ir.Uint32Type(),
 		ir.Uint64Type(),
 	} {

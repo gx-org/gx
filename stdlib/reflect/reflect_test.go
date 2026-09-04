@@ -1,4 +1,4 @@
-// Copyright 2024 Google LLC
+// Copyright 2026 Google LLC
 //
 // Licensed under the Apache License, Version 2.0 (the "License");
 // you may not use this file except in compliance with the License.
@@ -12,32 +12,19 @@
 // See the License for the specific language governing permissions and
 // limitations under the License.
 
-package stdlib_test
+package reflect_test
 
 import (
 	"testing"
 
-	"github.com/gx-org/gx/build/builder"
+	"github.com/gx-org/gx/build/builder/testbuild"
+	"github.com/gx-org/gx/build/importers"
+	"github.com/gx-org/gx/stdlib/reflect/testdata"
 	"github.com/gx-org/gx/stdlib"
-	gxtesting "github.com/gx-org/gx/tests/testing"
 )
 
-func buildPath(t *testing.T, bld *builder.Builder, path string) {
-	pkg, err := bld.Build(path)
-	if err != nil {
-		t.Fatalf("\n%+v", err)
-	}
-	if err := gxtesting.Validate(pkg.IR(), gxtesting.CheckSource); err != nil {
-		t.Errorf("\n%s:\n%+v", path, err)
-	}
-}
-
-func TestStdlibValid(t *testing.T) {
-	lib := stdlib.Importer()
-	bld := builder.New(lib)
-	for _, path := range lib.Paths() {
-		t.Run(path, func(t *testing.T) {
-			buildPath(t, bld, path)
-		})
-	}
+func TestReflect(t *testing.T) {
+	testbuild.RunFactory(t, []importers.Importer{
+		stdlib.Importer(),
+	}, testdata.Sources)
 }

@@ -1,0 +1,16 @@
+package leaves01
+
+import "reflect"
+
+type S struct {
+	a int32
+	b int32
+}
+
+func Test() S {
+	s := S{a: 5, b: 10}
+	for k := range reflect.Leaves[S]() {
+		s[k] += 2 // ERROR non-name on left side of +=
+	}
+	return s
+}
