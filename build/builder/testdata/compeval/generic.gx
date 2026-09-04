@@ -1,6 +1,16 @@
 package generic
 
+type ints interface {
+	int | int32
+}
+
 //gx:compeval
-func f[A int]() int { // ERROR compeval functions cannot have generic parameters
-	return A
+func f[T ints]() T {
+	return 2
+}
+
+func TestF() [f[int]()]float32 {
+	return [2]float32{}
+	// Want:
+	// [2]float32{0, 0}
 }

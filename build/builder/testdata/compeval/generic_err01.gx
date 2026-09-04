@@ -1,0 +1,14 @@
+package generic_err01
+
+type ints interface {
+	int | int32
+}
+
+//gx:compeval
+func f[T ints]() T {
+	return 2
+}
+
+func TestF() [f[int32]()]float32 { // ERROR: cannot use type int32 as axis length: want type int or unpack([]int)
+	return [2]float32{}
+}

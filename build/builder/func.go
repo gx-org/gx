@@ -176,9 +176,6 @@ func (n *funcType) buildFuncType(rscope resolveScope) (*ir.FuncType, *funcResolv
 	if !tParamsOk {
 		return ext, nil, false
 	}
-	if ext.Nature.CompEval && ext.TypeParams.Len() > 0 {
-		tParamsOk = rscope.Err().Appendf(ext.TypeParams.Node(), "compeval functions cannot have generic parameters")
-	}
 	ext.Receiver, recvOk = n.recv.buildFieldList(newDefineScope(sigscope, nil))
 	if recvOk && ext.Receiver != nil {
 		if field := ext.ReceiverField(); field.Name != nil {
