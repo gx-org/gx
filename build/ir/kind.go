@@ -83,21 +83,6 @@ func IsIndexType(typ Type) bool {
 	return true
 }
 
-// IsSlicingOk returns true if the type supports slicing,
-// (that is value_of_type[i]).
-func IsSlicingOk(typ Type) bool {
-	switch typ.Kind() {
-	case irkind.Slice, irkind.Array:
-		return true
-	case irkind.Interface:
-		if typSet, ok := toInterface(typ); ok {
-			return typSet.hasCapability(IsSlicingOk)
-		}
-		return false
-	}
-	return false
-}
-
 // IsInteger return true if kind is an integer.
 func IsInteger(typ Type) bool {
 	if typ.Kind() == irkind.Interface {

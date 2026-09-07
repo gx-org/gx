@@ -17,7 +17,6 @@ package builder
 import (
 	"fmt"
 	"go/ast"
-	"reflect"
 	"strings"
 
 	"github.com/gx-org/gx/build/ir/generics"
@@ -166,6 +165,26 @@ func specializeFunc(rscope resolveScope, x ir.Expr, indices []ir.Expr) (ir.Expr,
 	return specializeFuncType(rscope, x, indices, fun)
 }
 
+func (n *indexExpr) buildSlicerIndex(rscope resolveScope, ext *ir.IndexExpr, xType ir.SlicerType) (*ir.IndexExpr, bool) {
+	var ok bool
+	ext.Typ, ok = xType.ElementType()
+	if !ok {
+		return ext, rscope.Err().Appendf(n.source(), "cannot index %s", xType.ReferString(rscope.fileScope().irFile()))
+	}
+	aType, isArray := xType.(ir.ArrayType)
+	boundOk := true
+	if isArray {
+		boundOk = n.checkIndexBounds(rscope, aType.Rank().Axes()[0], ext.Index)
+	}
+	var numberOk bool
+	ext.Index, numberOk = castNilAndNumber(rscope, ext.Index, ir.Int64Type())
+	indexTypeOk := ir.IsIndexType(ext.Index.Type())
+	if !indexTypeOk {
+		rscope.Err().Appendf(n.source(), "index %s (of type %s) must be integer", ext.Index.SourceString(rscope.fileScope().irFile()), ext.Index.Type().ReferString(rscope.fileScope().irFile()))
+	}
+	return ext, boundOk && numberOk && indexTypeOk
+}
+
 func (n *indexExpr) buildExpr(rscope resolveScope) (ir.Expr, bool) {
 	x, xOk := n.x.buildExpr(rscope)
 	idx, idxOk := buildCoreExpr(rscope, n.index)
@@ -186,30 +205,15 @@ func (n *indexExpr) buildExpr(rscope resolveScope) (ir.Expr, bool) {
 	if xType.Kind() == irkind.Invalid {
 		return ext, false
 	}
-	if !ir.IsSlicingOk(xType) {
+	switch xTypeT := ir.Underlying(xType).(type) {
+	case *ir.SliceType:
+		return n.buildSlicerIndex(rscope, ext, xTypeT)
+	case ir.ArrayType:
+		return n.buildSlicerIndex(rscope, ext, xTypeT)
+	default:
 		from := rscope.fileScope().irFile()
-		return ext, rscope.Err().Appendf(n.source(), "cannot index %s (type: %s)", ext.X.SourceString(from), xType.ReferString(from))
+		return ext, rscope.Err().Appendf(x.Node(), "cannot index %s (type: %s)", ext.X.SourceString(from), xType.ReferString(from))
 	}
-	slicerType, ok := ir.Underlying(xType).(ir.SlicerType)
-	if !ok {
-		return ext, rscope.Err().AppendInternalf(n.source(), "type %T with kind %s supports slicing but does not implement %s", xType, xType.Kind().String(), reflect.TypeFor[ir.SlicerType]())
-	}
-	ext.Typ, ok = slicerType.ElementType()
-	if !ok {
-		return ext, rscope.Err().Appendf(n.source(), "cannot index %s", xType.ReferString(rscope.fileScope().irFile()))
-	}
-	aType, isArray := xType.(ir.ArrayType)
-	boundOk := true
-	if isArray {
-		boundOk = n.checkIndexBounds(rscope, aType.Rank().Axes()[0], ext.Index)
-	}
-	var numberOk bool
-	ext.Index, numberOk = castNilAndNumber(rscope, ext.Index, ir.Int64Type())
-	indexTypeOk := ir.IsIndexType(ext.Index.Type())
-	if !indexTypeOk {
-		rscope.Err().Appendf(n.source(), "index %s (of type %s) must be integer", ext.Index.SourceString(rscope.fileScope().irFile()), ext.Index.Type().ReferString(rscope.fileScope().irFile()))
-	}
-	return ext, boundOk && numberOk && indexTypeOk
 }
 
 func (n *indexExpr) String() string {
