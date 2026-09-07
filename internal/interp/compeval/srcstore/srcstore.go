@@ -100,6 +100,31 @@ func (n *named) Type() ir.Type {
 	return n.named.Type()
 }
 
+type structure struct {
+	structure *elements.Struct
+	store     ir.Storage
+}
+
+func (n *structure) Store() ir.Storage {
+	return n.store
+}
+
+func (n *structure) Copy() engine.Copier {
+	return n
+}
+
+func (n *structure) Select(env *engine.Env, expr *ir.SelectorExpr) (ir.Element, error) {
+	field, err := n.structure.Select(env, expr)
+	if err != nil {
+		return field, err
+	}
+	return Link(expr.Stor, field)
+}
+
+func (n *structure) Type() ir.Type {
+	return n.structure.Type()
+}
+
 type slice struct {
 	elements.ISlice
 	store ir.Storage
@@ -181,6 +206,8 @@ func Link(store ir.Storage, el ir.Element) (ir.Element, error) {
 		linkEl = &generic{Generic: elT, store: store}
 	case elements.IString:
 		linkEl = &str{IString: elT, store: store}
+	case *elements.Struct:
+		linkEl = &structure{structure: elT, store: store}
 	default:
 		return el, fmterr.Internalf("cannot link %T to a storage", elT)
 	}

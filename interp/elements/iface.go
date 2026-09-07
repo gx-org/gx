@@ -18,6 +18,7 @@ import (
 	"github.com/gx-org/backend/shape"
 	"github.com/gx-org/gx/api/hostio"
 	"github.com/gx-org/gx/build/ir"
+	"github.com/gx-org/gx/internal/interp/compeval/surrogates/storepath"
 	"github.com/gx-org/gx/interp/engine"
 )
 
@@ -46,5 +47,14 @@ type (
 
 		// ArrayFromContext fetches an array from the argument.
 		ArrayFromContext(*hostio.FuncInputs) (hostio.Array, error)
+	}
+
+	// FieldPath indicates a path to a field in a structure.
+	FieldPath interface {
+		ir.Element
+		// Root of the field path.
+		Root() (*storepath.Proxy, error)
+		// FollowOn follow the path on a given element.
+		FollowOn(ir.Element) (ir.Element, error)
 	}
 )

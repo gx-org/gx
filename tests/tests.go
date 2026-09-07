@@ -30,6 +30,7 @@ import (
 
 	math "github.com/gx-org/gx/stdlib/math/testdata"
 	num "github.com/gx-org/gx/stdlib/num/testdata"
+	reflect "github.com/gx-org/gx/stdlib/reflect/testdata"
 	shape "github.com/gx-org/gx/stdlib/shape/testdata"
 )
 
@@ -81,6 +82,7 @@ var StdlibUnits = []testbuild.TestFactory{
 	shape.Sources,
 	math.Sources,
 	num.Sources,
+	reflect.Sources,
 }
 
 // Units tests each file in the folder as its own package.

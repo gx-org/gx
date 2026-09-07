@@ -291,6 +291,16 @@ func UnknownType() Type {
 	return unknownT
 }
 
+// IsUnknown returns true if one of the type is unknown.
+func IsUnknown(types ...Type) bool {
+	for _, tp := range types {
+		if tp == unknownT {
+			return true
+		}
+	}
+	return false
+}
+
 // keywordTyp is the type returned by function with no results.
 type keywordTyp struct {
 	distinctType

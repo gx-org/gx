@@ -25,6 +25,8 @@ import (
 // Path to a store.
 type Path interface {
 	ir.WithStore
+	// Parent of the path.
+	Parent() Path
 	// Same returns true if the paths are the same.
 	Same(Path) bool
 	// Expr returns the IR expression.
@@ -54,6 +56,10 @@ func (p *unique) Same(other Path) bool {
 		return false
 	}
 	return p == otherT
+}
+
+func (*unique) Parent() Path {
+	return nil
 }
 
 func (p *unique) Expr() ir.Expr {
@@ -89,6 +95,10 @@ func (p *fieldRoot) Same(other Path) bool {
 
 func (p *fieldRoot) Expr() ir.Expr {
 	return ir.NewIdent(p.storage)
+}
+
+func (*fieldRoot) Parent() Path {
+	return nil
 }
 
 func (p *fieldRoot) Store() ir.Storage {
@@ -132,6 +142,10 @@ func (p *selectField) Expr() ir.Expr {
 	}
 }
 
+func (p *selectField) Parent() Path {
+	return p.parent
+}
+
 func (p *selectField) Store() ir.Storage {
 	return p.field.Storage()
 }
@@ -160,6 +174,10 @@ func (p *varRoot) Same(other Path) bool {
 
 func (p *varRoot) Expr() ir.Expr {
 	return ir.NewIdent(p.vr)
+}
+
+func (p *varRoot) Parent() Path {
+	return nil
 }
 
 func (p *varRoot) Store() ir.Storage {
@@ -195,6 +213,73 @@ func (p *localVar) Store() ir.Storage {
 	return p.s
 }
 
+func (p *localVar) Parent() Path {
+	return nil
+}
+
 func (p *localVar) SourceString(from *ir.File) string {
 	return p.s.NameDef().Name
+}
+
+// Proxy is a root path unknown at construction time.
+type Proxy struct {
+	x ir.Expr    // Will be set later.
+	s ir.Storage // Will be set later.
+}
+
+// NewProxy is a path starting with an element that will only be known later
+// (e.g. unrolling for loop: when a function returning field paths is unrolled, the variable used
+// to start these field paths will be known only later)
+func NewProxy() Path {
+	return &Proxy{}
+}
+
+// Set an IR expression to represent the proxy.
+func (p *Proxy) Set(x ir.Expr, s ir.Storage) {
+	p.x = x
+	p.s = s
+}
+
+// Same returns true if other is the same than the proxy.
+func (p *Proxy) Same(other Path) bool {
+	otherT, isProxy := other.(*Proxy)
+	if !isProxy {
+		return false
+	}
+	return p == otherT
+}
+
+// Parent of the proxy. Always returns nil.
+func (p *Proxy) Parent() Path {
+	return nil
+}
+
+// Expr returns the expression previously set.
+func (p *Proxy) Expr() ir.Expr {
+	return p.x
+}
+
+// Store returns the storage previously set.
+func (p *Proxy) Store() ir.Storage {
+	return p.s
+}
+
+// SourceString returns a string representing the path.
+func (p *Proxy) SourceString(from *ir.File) string {
+	if p.x == nil {
+		return "<<<expression not set>>>"
+	}
+	return p.x.SourceString(from)
+}
+
+// Root of a given path.
+func Root(path Path) Path {
+	current := path
+	for {
+		up := current.Parent()
+		if up == nil {
+			return current
+		}
+		current = up
+	}
 }

@@ -16,4 +16,6 @@
 package reflect
 
 // Leaves returns the path to all the leaves of a structure.
+//
+//gx:unroll
 func Leaves[T any]() []fieldpath

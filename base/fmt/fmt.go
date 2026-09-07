@@ -17,6 +17,8 @@ package fmt
 
 import (
 	"fmt"
+	"go/ast"
+	"go/token"
 	"math"
 	"reflect"
 	"runtime"
@@ -72,6 +74,13 @@ func Func(f any) string {
 		return "<nil>"
 	}
 	return runtime.FuncForPC(reflect.ValueOf(f).Pointer()).Name()
+}
+
+// PrintAST prints an AST tree.
+func PrintAST(s string, node ast.Node) {
+	fmt.Println(s)
+	fset := token.NewFileSet()
+	ast.Print(fset, node)
 }
 
 // String returns a human-friendly debugging string representation of a GX object.
