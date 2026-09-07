@@ -15,11 +15,54 @@
 package reflect
 
 import (
+	"go/ast"
+
 	"github.com/pkg/errors"
+	"github.com/gx-org/gx/build/fmterr"
 	"github.com/gx-org/gx/build/ir"
+	"github.com/gx-org/gx/internal/base/cast"
+	"github.com/gx-org/gx/internal/interp/compeval/surrogates/storepath"
+	"github.com/gx-org/gx/interp/elements"
 	"github.com/gx-org/gx/interp/engine"
 )
 
+var fieldPathSliceType = &ir.SliceType{
+	BaseType: ir.BaseType[ast.Expr]{Src: &ast.ArrayType{}},
+	DType:    ir.TypeExpr(nil, ir.FieldPathType()),
+	Rank:     1,
+}
+
 func evalLeaves(env *engine.Env, call *ir.FuncCallExpr, recv ir.Element, args []ir.Element) ([]ir.Element, error) {
-	return nil, errors.Errorf("TODO: %s", call.SourceString(env.File()))
+	ftype := call.Callee.FuncType()
+	if len(ftype.GenericValues) != 1 {
+		return nil, fmterr.Internalf("incorrect number of generic value: got %d but want 1", len(ftype.GenericValues))
+	}
+	genType, err := cast.To[*ir.TypeGenericValue](ftype.GenericValues[0])
+	if err != nil {
+		return nil, err
+	}
+	defType := genType.DefinedType()
+	under := ir.Underlying(defType)
+	structType, ok := under.(*ir.StructType)
+	if !ok {
+		return nil, errors.Errorf("type %s (kind: %s) not a structure", defType.ReferString(env.File()), defType.Kind().String())
+	}
+	root := storepath.NewProxy()
+	paths, err := parseType(root, structType)
+	if err != nil {
+		return nil, err
+	}
+	slice, err := elements.NewSlice(fieldPathSliceType, paths)
+	if err != nil {
+		return nil, err
+	}
+	return []ir.Element{slice}, nil
+}
+
+func parseType(prefix storepath.Path, tp *ir.StructType) ([]ir.Element, error) {
+	var leaves []ir.Element
+	for _, field := range tp.Fields.Fields() {
+		leaves = append(leaves, elements.NewFieldPath(prefix, field))
+	}
+	return leaves, nil
 }

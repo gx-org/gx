@@ -76,7 +76,8 @@ type (
 
 	// Unroller supports unrolling statements and expressions.
 	Unroller interface {
-		Substitute(ev Fetcher, id *Ident) (ast.Expr, bool)
+		SubstituteIdent(ev Fetcher, x *Ident) (ast.Expr, bool)
+		SubstituteIndex(ev Fetcher, x *IndexExpr) (ast.Expr, bool)
 	}
 )
 

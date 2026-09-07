@@ -52,7 +52,8 @@ func (n *binaryExpr) checkKind(scope resolveScope, x exprNode, typ ir.Type, appe
 	isScalar = ir.SupportOperators(typ)
 	var isArray bool
 	arrayType, isArray = typ.(ir.ArrayType)
-	if !isScalar && !isArray {
+	isUnknown := typ.Kind() == irkind.Unknown
+	if !isScalar && !isArray && !isUnknown {
 		if appendErr {
 			scope.Err().Appendf(x.source(), "invalid operation: operator %s not defined on type %s", n.src.Op.String(), typ.ReferString(scope.fileScope().irFile()))
 		}
@@ -64,6 +65,9 @@ func (n *binaryExpr) checkKind(scope resolveScope, x exprNode, typ ir.Type, appe
 }
 
 func (n *binaryExpr) determineOutputType(scope resolveScope, ops ir.Type) (result ir.Type, forceCastNumber, ok bool) {
+	if ops.Kind() == irkind.Unknown {
+		return ir.UnknownType(), false, true
+	}
 	result = ops
 	array, isArray := ops.(ir.ArrayType)
 	if isArray {
@@ -161,7 +165,9 @@ func (n *binaryExpr) buildOperands(scope resolveScope) (ir.Expr, ir.Expr, ir.Typ
 		}
 		return xExpr, yExpr, arrayType
 	}
-
+	if ir.IsUnknown(xType, yType) {
+		return xExpr, yExpr, ir.UnknownType()
+	}
 	// Default case: check that both sides have the same type.
 	eq, err := xType.Equal(compEval, yType)
 	if err != nil {

@@ -56,7 +56,7 @@ func evalStmt(fitp *Interpreter, node ir.Stmt) ([]ir.Element, bool, error) {
 	case *ir.AssignExprStmt:
 		return nil, false, evalAssignExprStmt(fitp, nodeT)
 	case *ir.UnrollStmt:
-		return evalRangeStmt(fitp, nodeT.Range)
+		return evalUnrollStmt(fitp, nodeT)
 	case *ir.RangeStmt:
 		return evalRangeStmt(fitp, nodeT)
 	case *ir.IfStmt:
@@ -220,6 +220,20 @@ func evalRangeStmtSlice(fitp *Interpreter, stmt *ir.RangeStmt) ([]ir.Element, bo
 	default:
 		return nil, true, fmterr.InternalAt(fitp.File().FileSet(), stmt.Node(), "cannot range over %s", keyKind.String())
 	}
+}
+
+func evalUnrollStmt(fitp *Interpreter, stmt *ir.UnrollStmt) ([]ir.Element, bool, error) {
+	var stop bool
+	var err error
+	for _, body := range stmt.Bodies {
+		fitp.Context().PushBlockFrame()
+		defer fitp.Context().PopFrame()
+		_, stop, err := evalBlockStmt(fitp, body)
+		if stop || err != nil {
+			break
+		}
+	}
+	return nil, stop, err
 }
 
 func evalRangeStmt(fitp *Interpreter, stmt *ir.RangeStmt) ([]ir.Element, bool, error) {
@@ -682,15 +696,22 @@ func evalIndexExpr(fitp *Interpreter, ref *ir.IndexExpr) (ir.Element, error) {
 	if err != nil {
 		return nil, err
 	}
-	slicer, ok := x.(elements.Slicer)
-	if !ok {
-		return nil, fmterr.Errorf(fitp.File().FileSet(), ref.Node(), "cannot index over %T", x)
-	}
-	index, err := evalNumExpr(fitp, ref.Index)
+	index, err := evalExpr(fitp, ref.Index)
 	if err != nil {
 		return nil, err
 	}
-	return slicer.SliceAt(fitp.env, ref, index)
+	switch indexT := index.(type) {
+	case engine.NumericalElement:
+		slicer, err := cast.To[elements.Slicer](x)
+		if err != nil {
+			return nil, err
+		}
+		return slicer.SliceAt(fitp.env, ref, indexT)
+	case elements.FieldPath:
+		return indexT.FollowOn(x)
+	default:
+		return nil, fmterr.Errorf(fitp.File().FileSet(), ref.Node(), "index %T not supported", indexT)
+	}
 }
 
 func evalEinsumExpr(fitp *Interpreter, ref *ir.EinsumExpr) (ir.Element, error) {

@@ -2837,7 +2837,7 @@ func (s *Ident) Node() ast.Node { return s.Src }
 
 // Unroll the expression.
 func (s *Ident) Unroll(ev Fetcher, urlr Unroller) (ast.Expr, bool) {
-	return urlr.Substitute(ev, s)
+	return urlr.SubstituteIdent(ev, s)
 }
 
 // Specialise the identifier.
@@ -3001,12 +3001,7 @@ func (s *IndexExpr) Expr() ast.Expr { return s.Src }
 
 // Unroll the expression.
 func (s *IndexExpr) Unroll(ev Fetcher, urlr Unroller) (ast.Expr, bool) {
-	x, xOk := s.X.Unroll(ev, urlr)
-	idx, idxOk := s.Index.Unroll(ev, urlr)
-	return &ast.IndexExpr{
-		X:     x,
-		Index: idx,
-	}, xOk && idxOk
+	return urlr.SubstituteIndex(ev, s)
 }
 
 // Store returns a storage for the expression.
@@ -3148,7 +3143,9 @@ func (s *AnonymousStorage) Expr() ast.Expr { return s.Src }
 func (s *AnonymousStorage) Type() Type { return s.Typ }
 
 // NameDef returns the identifier identifying the storage.
-func (s *AnonymousStorage) NameDef() *ast.Ident { return s.Src }
+func (s *AnonymousStorage) NameDef() *ast.Ident {
+	return s.Src
+}
 
 // Same returns true if the other storage is this storage.
 func (s *AnonymousStorage) Same(o Storage) bool {
@@ -3223,7 +3220,9 @@ func (s *IndexStorage) Expr() ast.Expr { return s.Index.Expr() }
 func (s *IndexStorage) Type() Type { return s.Index.Type() }
 
 // NameDef returns the identifier identifying the storage.
-func (s *IndexStorage) NameDef() *ast.Ident { return nil }
+func (s *IndexStorage) NameDef() *ast.Ident {
+	return nil
+}
 
 // Same returns true if the other storage is this storage.
 func (s *IndexStorage) Same(o Storage) bool {
@@ -3399,9 +3398,9 @@ func (s *BlockStmt) UnrollBlock(ev Fetcher, urlr Unroller) (*ast.BlockStmt, bool
 		list[i], stmtOk = stmt.Unroll(ev, urlr)
 		ok = ok && stmtOk
 	}
-	return &ast.BlockStmt{
-		List: list,
-	}, ok
+	src := *s.Src
+	src.List = list
+	return &src, ok
 }
 
 // SourceString returns the GX source code of the block.
@@ -3492,29 +3491,25 @@ func (s *AssignExprStmt) Unroll(ev Fetcher, urlr Unroller) (ast.Stmt, bool) {
 	lhs := make([]ast.Expr, len(s.List))
 	rhs := make([]ast.Expr, len(s.List))
 	ok := true
-	for i, li := range s.List {
-		lhs[i] = li.NameDef()
+	for i, pair := range s.List {
 		var liOk bool
-		rhs[i], liOk = li.X.Unroll(ev, urlr)
-		ok = ok && liOk
+		lhs[i], liOk = pair.Storage.Unroll(ev, urlr)
+		var riOk bool
+		rhs[i], riOk = pair.X.Unroll(ev, urlr)
+		ok = ok && liOk && riOk
 	}
-	src := &ast.AssignStmt{
-		Lhs: lhs,
-		Tok: s.Src.Tok,
-		Rhs: rhs,
-	}
+	src := *s.Src
+	src.Lhs = lhs
+	src.Rhs = rhs
 	if !ok || s.Src.Tok == token.ASSIGN || s.Src.Tok == token.DEFINE {
-		return src, ok
+		return &src, ok
 	}
 	rhsT, err := cast.To[*ast.BinaryExpr](src.Rhs[0])
 	if err != nil {
-		return src, ev.Err().AppendAt(s.Node(), err)
+		return &src, ev.Err().AppendAt(s.Node(), err)
 	}
-	return &ast.AssignStmt{
-		Lhs: lhs,
-		Tok: s.Src.Tok,
-		Rhs: []ast.Expr{rhsT.Y},
-	}, true
+	src.Rhs = []ast.Expr{rhsT.Y}
+	return &src, true
 }
 
 // SourceString returns the GX source code of the expression.

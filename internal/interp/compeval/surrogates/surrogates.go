@@ -77,6 +77,8 @@ func New(path storepath.Path, typ ir.Type) (Element, error) {
 		return NewString(path), nil
 	case irkind.Invalid:
 		return NewInvalid(), nil
+	case irkind.FieldPath:
+		return newFieldPath(path), nil
 	}
 	switch typT := typ.(type) {
 	case ir.ArrayType:

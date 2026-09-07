@@ -30,7 +30,8 @@ type unroller struct {
 	call *ir.FuncCallExpr
 	idx  *ast.BasicLit
 	el   ir.Element
-	elIR ir.Expr
+
+	path elements.FieldPath
 }
 
 func newUnroller(ev ir.Fetcher, stmt *ir.RangeStmt, call *ir.FuncCallExpr, i int, el ir.Element) (*unroller, error) {
@@ -43,22 +44,60 @@ func newUnroller(ev ir.Fetcher, stmt *ir.RangeStmt, call *ir.FuncCallExpr, i int
 		},
 		el: el,
 	}
-	var err error
-	urlr.elIR, err = ir.ToSingleExpr(ev, call.Expr(), el)
-	if err != nil {
-		return nil, err
-	}
+	urlr.path, _ = el.(elements.FieldPath)
 	return urlr, nil
 }
 
-func (urlr *unroller) Substitute(ev ir.Fetcher, id *ir.Ident) (ast.Expr, bool) {
+func (urlr *unroller) SubstituteIdent(ev ir.Fetcher, id *ir.Ident) (ast.Expr, bool) {
 	if urlr.stmt.Key != nil && urlr.stmt.Key.Same(id.Store()) {
 		return urlr.idx, true
 	}
-	if urlr.stmt.Value != nil && urlr.stmt.Value.Same(id.Store()) {
-		return urlr.elIR.Expr(), true
+	if urlr.stmt.Value == nil || !urlr.stmt.Value.Same(id.Store()) {
+		return id.Src, true
 	}
-	return id.Src, true
+	if urlr.path != nil {
+		return id.Src, true
+	}
+	elIR, err := ir.ToSingleExpr(ev, id.Src, urlr.el)
+	if err != nil {
+		return id.Src, ev.Err().AppendAt(id.Src, err)
+	}
+	return elIR.Expr(), true
+}
+
+func (urlr *unroller) SubstituteIndex(ev ir.Fetcher, indexExpr *ir.IndexExpr) (ast.Expr, bool) {
+	x, xOk := indexExpr.X.Unroll(ev, urlr)
+	idx, idxOk := indexExpr.Index.Unroll(ev, urlr)
+	src := *indexExpr.Src
+	if !xOk || !idxOk {
+		return &src, false
+	}
+	src.X = x
+	src.Index = idx
+	id, isIdent := indexExpr.Index.(*ir.Ident)
+	if !isIdent {
+		return &src, true
+	}
+	if urlr.stmt.Key != nil && urlr.stmt.Key.Same(id.Store()) {
+		src.Index = urlr.idx
+		return &src, true
+	}
+	if urlr.path == nil || urlr.stmt.Value == nil || !urlr.stmt.Value.Same(id.Store()) {
+		return &src, true
+	}
+	if !ir.FieldPathType().Same(urlr.stmt.Value.Type()) {
+		return &src, true
+	}
+	root, err := urlr.path.Root()
+	if err != nil {
+		return &src, ev.Err().AppendAt(indexExpr.Src, err)
+	}
+	root.Set(indexExpr.X, indexExpr.Store())
+	elIR, err := ir.ToSingleExpr(ev, indexExpr.Src, urlr.el)
+	if err != nil {
+		return &src, ev.Err().AppendAt(indexExpr.Src, err)
+	}
+	return elIR.Expr(), true
 }
 
 // Unroll a for-loop into multiple AST body blocks.
