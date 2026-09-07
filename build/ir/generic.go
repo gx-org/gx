@@ -153,6 +153,11 @@ func (s *GenericTypeParam) equal(tpcmp TypeCmp, typ Type) (bool, error) {
 	return false, nil
 }
 
+// Unroll the type.
+func (s *GenericTypeParam) Unroll(ev Fetcher, urlr Unroller) (ast.Expr, bool) {
+	return nil, ev.Err().AppendInternalf(s.NameDef(), "%T does not support unrolling", s)
+}
+
 // Equal returns true if other is the same type.
 func (s *GenericTypeParam) Equal(tpcmp TypeCmp, typ Type) (bool, error) {
 	return s.equal(tpcmp, typ)
@@ -287,6 +292,11 @@ func (s *GenericNonTypeParam) Assign(fetcher Fetcher, x Expr) (GenericValue, boo
 		return s.invalidValue(), fetcher.Err().AppendAt(x.Expr(), err)
 	}
 	return NewAxisGenericValue(s, xEval[0]), true
+}
+
+// Unroll the type.
+func (s *GenericNonTypeParam) Unroll(ev Fetcher, urlr Unroller) (ast.Expr, bool) {
+	return nil, ev.Err().AppendInternalf(s.NameDef(), "%T does not support unrolling", s)
 }
 
 type (

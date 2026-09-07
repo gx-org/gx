@@ -130,6 +130,11 @@ func (s *errorType) Same(o Storage) bool {
 	return Storage(s) == o
 }
 
+// Unroll the type.
+func (s *errorType) Unroll(ev Fetcher, urlr Unroller) (ast.Expr, bool) {
+	return errorIdent, true
+}
+
 // Specialise a type to a given target.
 func (s *errorType) Specialise(spec Specialiser) (Type, bool) {
 	return s, true

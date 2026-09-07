@@ -51,6 +51,11 @@ func (*MetaCore) storage()      {}
 func (*MetaCore) storageValue() {}
 func (*MetaCore) pkgFunc()      {}
 
+// Unroll returns an error because meta cores do not support unrolling.
+func (s *MetaCore) Unroll(ev Fetcher, urlr Unroller) (ast.Expr, bool) {
+	return nil, ev.Err().AppendInternalf(s.Src, "%T does not support unrolling", s)
+}
+
 // FullName returns the fully qualified name of the macro.
 func (s *MetaCore) FullName() string {
 	return fullName(s)

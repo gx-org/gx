@@ -65,6 +65,7 @@ type (
 	Storage interface {
 		Node
 		storage()
+		Unroll(ev Fetcher, urlr Unroller) (ast.Expr, bool)
 		NameDef() *ast.Ident
 		Same(Storage) bool
 		Type() Type
@@ -321,6 +322,11 @@ func (s *TupleType) Instantiate(Fetcher, Specialiser) (Type, bool) {
 	return s, true
 }
 
+// Unroll the type.
+func (s *TupleType) Unroll(ev Fetcher, urlr Unroller) (ast.Expr, bool) {
+	return nil, ev.Err().AppendInternalf(s.Src, "%T does not support unrolling", s)
+}
+
 // Specialise the tuple type.
 func (s *TupleType) Specialise(Specialiser) (Type, bool) {
 	tps := make([]Type, len(s.Types))
@@ -387,6 +393,11 @@ func (s *InterfaceType) Instantiate(ev Fetcher, spec Specialiser) (Type, bool) {
 // Value returns a value pointing to the receiver.
 func (s *InterfaceType) Value(x Expr) Expr {
 	return TypeExpr(x, s)
+}
+
+// Unroll the type.
+func (s *InterfaceType) Unroll(ev Fetcher, urlr Unroller) (ast.Expr, bool) {
+	return nil, ev.Err().AppendInternalf(s.Src, "%T does not support unrolling", s)
 }
 
 // DefineString representation of the type.
@@ -577,6 +588,11 @@ func (s *NamedType) Methods() []PkgFunc {
 	}
 	// No methods.
 	return nil
+}
+
+// Unroll the type.
+func (s *NamedType) Unroll(ev Fetcher, urlr Unroller) (ast.Expr, bool) {
+	return nil, ev.Err().AppendInternalf(s.Src, "%T does not support unrolling", s)
 }
 
 // NameDef returns the name defining the storage.
@@ -1357,6 +1373,11 @@ func (*FuncDecl) storage()      {}
 func (*FuncDecl) storageValue() {}
 func (*FuncDecl) pkgFunc()      {}
 
+// Unroll returns an error because function declarations do not support unrolling.
+func (s *FuncDecl) Unroll(ev Fetcher, urlr Unroller) (ast.Expr, bool) {
+	return nil, ev.Err().AppendInternalf(s.Src, "%T does not support unrolling", s)
+}
+
 // Node returns the node in the AST tree.
 func (s *FuncDecl) Node() ast.Node { return s.Src }
 
@@ -1451,6 +1472,11 @@ func (*FuncBuiltin) storage()      {}
 func (*FuncBuiltin) storageValue() {}
 func (*FuncBuiltin) pkgFunc()      {}
 
+// Unroll returns an error because builtin functions do not support unrolling.
+func (s *FuncBuiltin) Unroll(ev Fetcher, urlr Unroller) (ast.Expr, bool) {
+	return nil, ev.Err().AppendInternalf(s.Src, "%T does not support unrolling", s)
+}
+
 // Node returns the node in the AST tree.
 func (s *FuncBuiltin) Node() ast.Node { return s.Src }
 
@@ -1522,6 +1548,11 @@ func (s *FuncBuiltin) New() PkgFunc {
 
 func (*FuncKeyword) node()    {}
 func (*FuncKeyword) storage() {}
+
+// Unroll returns an error because keyword functions do not support unrolling.
+func (s *FuncKeyword) Unroll(ev Fetcher, urlr Unroller) (ast.Expr, bool) {
+	return nil, ev.Err().AppendInternalf(s.ID, "%T does not support unrolling", s)
+}
 
 // Node returns the node in the AST tree.
 func (s *FuncKeyword) Node() ast.Node { return s.ID }
@@ -1678,6 +1709,11 @@ func (*ImportDecl) staticValue()  {}
 func (*ImportDecl) storage()      {}
 func (*ImportDecl) storageValue() {}
 
+// Unroll returns an error because import declarations do not support unrolling.
+func (s *ImportDecl) Unroll(ev Fetcher, urlr Unroller) (ast.Expr, bool) {
+	return nil, ev.Err().AppendInternalf(s.Src, "%T does not support unrolling", s)
+}
+
 // Node returns the node in the AST tree.
 func (s *ImportDecl) Node() ast.Node {
 	return s.Src
@@ -1726,6 +1762,11 @@ func (*ConstExpr) node()         {}
 func (*ConstExpr) storage()      {}
 func (*ConstExpr) storageValue() {}
 
+// Unroll returns an error because constant expressions do not support unrolling.
+func (cst *ConstExpr) Unroll(ev Fetcher, urlr Unroller) (ast.Expr, bool) {
+	return nil, ev.Err().AppendInternalf(cst.VName, "%T does not support unrolling", cst)
+}
+
 // Node returns the node in the AST tree.
 func (cst *ConstExpr) Node() ast.Node {
 	return cst.VName
@@ -1762,6 +1803,11 @@ func (*VarSpec) node() {}
 
 func (*VarExpr) node()    {}
 func (*VarExpr) storage() {}
+
+// Unroll returns an error because variable expressions do not support unrolling.
+func (vr *VarExpr) Unroll(ev Fetcher, urlr Unroller) (ast.Expr, bool) {
+	return nil, ev.Err().AppendInternalf(vr.VName, "%T does not support unrolling", vr)
+}
 
 // Node returns the node in the AST tree.
 func (vr *VarExpr) Node() ast.Node {
@@ -3109,6 +3155,11 @@ func (s *AnonymousStorage) Same(o Storage) bool {
 	return Storage(s) == o
 }
 
+// Unroll returns the identifier of the anonymous storage.
+func (s *AnonymousStorage) Unroll(ev Fetcher, urlr Unroller) (ast.Expr, bool) {
+	return s.Src, true
+}
+
 func (*LocalVarStorage) node()    {}
 func (*LocalVarStorage) storage() {}
 
@@ -3127,6 +3178,11 @@ func (s *LocalVarStorage) NameDef() *ast.Ident { return s.Src }
 // Same returns true if the other storage is this storage.
 func (s *LocalVarStorage) Same(o Storage) bool {
 	return Storage(s) == o
+}
+
+// Unroll returns the identifier of the local variable storage.
+func (s *LocalVarStorage) Unroll(ev Fetcher, urlr Unroller) (ast.Expr, bool) {
+	return s.Src, true
 }
 
 func (*StructFieldStorage) node()    {}
@@ -3149,6 +3205,11 @@ func (s *StructFieldStorage) Same(o Storage) bool {
 	return Storage(s) == o
 }
 
+// Unroll delegates to the underlying SelectorExpr.
+func (s *StructFieldStorage) Unroll(ev Fetcher, urlr Unroller) (ast.Expr, bool) {
+	return s.Sel.Unroll(ev, urlr)
+}
+
 func (*IndexStorage) node()    {}
 func (*IndexStorage) storage() {}
 
@@ -3167,6 +3228,11 @@ func (s *IndexStorage) NameDef() *ast.Ident { return nil }
 // Same returns true if the other storage is this storage.
 func (s *IndexStorage) Same(o Storage) bool {
 	return Storage(s) == o
+}
+
+// Unroll delegates to the underlying IndexExpr.
+func (s *IndexStorage) Unroll(ev Fetcher, urlr Unroller) (ast.Expr, bool) {
+	return s.Index.Unroll(ev, urlr)
 }
 
 func (*FieldStorage) node()    {}
@@ -3190,6 +3256,11 @@ func (s *FieldStorage) Same(o Storage) bool {
 		return false
 	}
 	return s.Field.Origin() == oT.Field.Origin()
+}
+
+// Unroll returns the name of the field.
+func (s *FieldStorage) Unroll(ev Fetcher, urlr Unroller) (ast.Expr, bool) {
+	return s.Field.Name, true
 }
 
 // String representing the receiver for debugging.

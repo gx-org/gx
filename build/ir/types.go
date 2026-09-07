@@ -58,6 +58,11 @@ func (m *BaseType[T]) Same(o Storage) bool {
 	return Storage(m) == o
 }
 
+// Unroll returns an error because base types do not support unrolling.
+func (m *BaseType[T]) Unroll(ev Fetcher, urlr Unroller) (ast.Expr, bool) {
+	return nil, ev.Err().AppendInternalf(m.Src, "%T does not support unrolling", m)
+}
+
 // UnifyWith recursively unifies a type parameters with types.
 func (*BaseType[T]) UnifyWith(unifier Unifier, typ Type) bool {
 	return true
@@ -185,6 +190,11 @@ func (t *invalidType) Specialise(spec Specialiser) (Type, bool) {
 // UnifyWith recursively unifies a type parameters with types.
 func (*invalidType) UnifyWith(unifier Unifier, typ Type) bool {
 	return true
+}
+
+// Unroll returns false because invalid types do not support unrolling.
+func (t *invalidType) Unroll(ev Fetcher, urlr Unroller) (ast.Expr, bool) {
+	return nil, false
 }
 
 func (t *invalidType) IndexForVarArgs(ErrSource, int) (Type, bool) {
