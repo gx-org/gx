@@ -116,6 +116,11 @@ func (m *IMethod) ReferString(from *File) string {
 	return m.FuncType().ReferString(from)
 }
 
+// Unroll the type.
+func (m *IMethod) Unroll(ev Fetcher, urlr Unroller) (ast.Expr, bool) {
+	return nil, ev.Err().AppendInternalf(m.NameDef(), "%T does not support unrolling", m)
+}
+
 // Value returns a reference to the function.
 func (m *IMethod) Value(x Expr) Expr {
 	return NewFuncValExpr(x, m)
@@ -330,6 +335,11 @@ func (s *Interface) ConvertibleTo(tpcmp TypeCmp, target Type) (bool, error) {
 		}
 	}
 	return false, nil
+}
+
+// Unroll the type.
+func (s *Interface) Unroll(ev Fetcher, urlr Unroller) (ast.Expr, bool) {
+	return s.Src, true
 }
 
 // Methods returns the list of methods available for the interface.

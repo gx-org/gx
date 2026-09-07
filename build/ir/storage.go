@@ -52,6 +52,11 @@ func (s *builtinStorage) Same(o Storage) bool {
 	return Storage(s) == o
 }
 
+// Unroll returns the name of the builtin storage.
+func (s *builtinStorage) Unroll(ev Fetcher, urlr Unroller) (ast.Expr, bool) {
+	return s.name, true
+}
+
 const numGXBuiltins = 22
 
 var builtins = make(map[Storage]bool, numGXBuiltins)

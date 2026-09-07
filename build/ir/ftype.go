@@ -170,6 +170,11 @@ func (s *FuncType) Origin() *FuncType {
 	return s.origin
 }
 
+// Unroll the type.
+func (s *FuncType) Unroll(ev Fetcher, urlr Unroller) (ast.Expr, bool) {
+	return s.Src, true
+}
+
 func (s *FuncType) varArgs() *VarArgsType {
 	if s.origin.VarArgs == nil {
 		return nil

@@ -108,6 +108,11 @@ func (tp *VarArgsType) UnifyWith(uni Unifier, typ Type) bool {
 	return tp.Typ.DType.Val().UnifyWith(uni, typ)
 }
 
+// Unroll returns an error because varargs types do not support unrolling.
+func (tp *VarArgsType) Unroll(ev Fetcher, urlr Unroller) (ast.Expr, bool) {
+	return nil, ev.Err().AppendInternalf(tp.Src, "%T does not support unrolling", tp)
+}
+
 // DefineString returns a reference to the type given a file context.
 func (tp *VarArgsType) DefineString(from *File) string {
 	return "..." + tp.Typ.DType.SourceString(from)

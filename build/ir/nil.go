@@ -54,6 +54,11 @@ func (*Nil) Same(other Storage) bool {
 	return ok
 }
 
+// Unroll returns the nil identifier.
+func (n *Nil) Unroll(ev Fetcher, urlr Unroller) (ast.Expr, bool) {
+	return n.Src, true
+}
+
 // Type of the Nil storage.
 func (*Nil) Type() Type {
 	return NilType()

@@ -97,6 +97,11 @@ func (*fieldPathType) UnifyWith(unifier Unifier, typ Type) bool {
 	return true
 }
 
+// Unroll returns an error because fieldpath types do not support unrolling.
+func (t *fieldPathType) Unroll(ev Fetcher, urlr Unroller) (ast.Expr, bool) {
+	return nil, ev.Err().AppendInternalf(fieldPathIdent, "%T does not support unrolling", t)
+}
+
 func (t *fieldPathType) IndexForVarArgs(ErrSource, int) (Type, bool) {
 	return t, true
 }
