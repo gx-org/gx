@@ -1,3 +1,0 @@
-package returnatom
-
-func Float32() float32
