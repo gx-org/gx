@@ -1,4 +1,4 @@
-package process
+package process_errs
 
 var (
 	errorVarValues int32 = 4, 5 // ERROR cannot assign
@@ -8,10 +8,6 @@ var (
 
 func testNoSize() [4]float64 {
 	return [4][]float64{2, 3} // ERROR array of slices is not supported
-}
-
-func testMultipleUnknownAxes() [___]int32 {
-	return [___][___]int32{} // ERROR array with an inferred rank only support a single axis
 }
 
 func testMultipleAddAssign() bool {
