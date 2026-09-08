@@ -38,6 +38,7 @@ jobs:
     - uses: actions/checkout@v4
       with:
         fetch-depth: 0
+        persist-credentials: false
 
     - name: Set up Go
       uses: actions/setup-go@v4
@@ -87,11 +88,13 @@ jobs:
       run: go test -v ./...
 
     - name: Push to main
-      run: git push origin main
+      run: |
+        git remote set-url origin https://x-access-token:${GITHUB_TOKEN}@github.com/${{ github.repository }}.git
+        git push origin main
       env:
         GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
 
     - name: Trigger Main update on gx-org
       run: gh workflow run "Main update" -R gx-org/gx-org
       env:
-        GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+        GITHUB_TOKEN: ${{ secrets.GX_ORG_PAT }}
