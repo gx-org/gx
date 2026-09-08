@@ -1,0 +1,16 @@
+package struct01
+
+type S struct {
+	a int
+}
+
+func F[s S]() [s.a]float32 {
+	return [s.a]float32{}
+}
+
+func Test() [2]float32 {
+	st := S{a: 2}
+	return F[st]()
+	// Want:
+	// [2]float32{0, 0}
+}

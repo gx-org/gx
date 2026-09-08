@@ -100,6 +100,10 @@ func (n *named) Type() ir.Type {
 	return n.named.Type()
 }
 
+func (n *named) BareValue() ir.Element {
+	return n.named
+}
+
 type structure struct {
 	structure *elements.Struct
 	store     ir.Storage
