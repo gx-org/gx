@@ -90,3 +90,8 @@ jobs:
       run: git push origin main
       env:
         GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+
+    - name: Trigger Main update on gx-org
+      run: gh workflow run "Main update" -R gx-org/gx-org
+      env:
+        GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
