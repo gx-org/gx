@@ -120,9 +120,10 @@ func CompEvalExprSingle(ev Fetcher, x Expr) (Expr, error) {
 
 // ToExpr converts an element from the interpreter to an IR expression.
 func ToExpr(ev Evaluator, src ast.Expr, el Element) ([]Expr, error) {
-	toExpr, ok := el.(WithExpr)
+	bEl := BareValue(el)
+	toExpr, ok := bEl.(WithExpr)
 	if !ok {
-		return nil, errors.Errorf("cannot convert %T to an IR expression", el)
+		return nil, errors.Errorf("cannot convert %T (bare: %T) to an IR expression", el, bEl)
 	}
 	return toExpr.Expr(ev, src)
 }
