@@ -92,15 +92,6 @@ func rankInferOk(rscope resolveScope, src ast.Node, typ ir.Type) bool {
 	return true
 }
 
-func defineGenericParam(s localScope, storage *ir.FieldStorage) bool {
-	if !ir.IsNonTypeGeneric(storage.Type()) {
-		generic := ir.NewGenericTypeParam(storage.Field)
-		return s.update(storage, generic)
-	}
-	generic := ir.NewGenericNonTypeParam(storage.Field)
-	return defineFieldForStorage(s, storage.Field, generic)
-}
-
 func defineFieldForStorage(s localScope, field *ir.Field, storage ir.Storage) bool {
 	el, err := surrogates.FieldRoot(field, storage)
 	ok := true
