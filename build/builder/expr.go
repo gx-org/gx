@@ -58,14 +58,14 @@ func processExpr(pscope procScope, expr ast.Expr) (exprNode, bool) {
 }
 
 // processTypeExpr processes an expr in the context of defining a type.
-func processTypeExpr(pscope typeProcScope, expr ast.Node) (typeExprNode, bool) {
+func processTypeExpr(pscope typeProcScope, expr ast.Node, fieldNS *fieldNamespace) (typeExprNode, bool) {
 	switch exprT := expr.(type) {
 	case *ast.Ident:
 		return processIdent(pscope, exprT)
 	case *ast.ArrayType:
 		return processArraySliceType(pscope, exprT)
 	case *ast.StructType:
-		return processStructType(pscope, exprT)
+		return processStructType(pscope, exprT, fieldNS)
 	case *ast.SelectorExpr:
 		return processSelectorExpr(pscope, exprT)
 	case *ast.InterfaceType:

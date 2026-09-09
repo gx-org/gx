@@ -26,21 +26,21 @@ type structType struct {
 	src *ast.StructType
 
 	nameToField map[string]*field
-	fields      []*field
 	fieldList   *fieldList
 }
 
 var _ typeExprNode = (*structType)(nil)
 
-func processStructType(own typeProcScope, src *ast.StructType) (*structType, bool) {
+func processStructType(own typeProcScope, src *ast.StructType, fieldNS *fieldNamespace) (*structType, bool) {
+	if fieldNS == nil {
+		return nil, own.Err().Appendf(src, "structure declaration not supported in this context")
+	}
 	n := &structType{
 		src:         src,
-		nameToField: make(map[string]*field),
+		nameToField: fieldNS.names,
 	}
 	var ok bool
-	n.fieldList, ok = processFieldList(own, src.Fields, func(block procScope, field *field) bool {
-		return n.assign(block, field)
-	})
+	n.fieldList, ok = processFieldList(own, src.Fields, fieldNS.assignField)
 	return n, ok
 }
 
@@ -57,7 +57,6 @@ func (n *structType) assign(block procScope, fld *field) bool {
 		return false
 	}
 	n.nameToField[name] = fld
-	n.fields = append(n.fields, fld)
 	return true
 }
 
@@ -102,9 +101,10 @@ func processCompositeLitStruct(pscope procScope, src *ast.CompositeLit, typeExpr
 		fields:    make([]fieldExpr, len(src.Elts)),
 		nameToElt: make(map[string]int),
 	}
+	fieldNS := &fieldNamespace{names: make(map[string]*field)}
 	typScope := defaultTypeProcScope(pscope)
 	var typOk bool
-	n.typ, typOk = processTypeExpr(typScope, typeExpr)
+	n.typ, typOk = processTypeExpr(typScope, typeExpr, fieldNS)
 	eltsOk := true
 	for i, elt := range src.Elts {
 		switch eltT := elt.(type) {

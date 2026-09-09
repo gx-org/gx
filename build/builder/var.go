@@ -51,7 +51,7 @@ func processVarSpec(pscope procScope, src *ast.ValueSpec) bool {
 	var typeOk bool
 	if src.Type != nil {
 		typScope := defaultTypeProcScope(pscope)
-		spec.typ, typeOk = processTypeExpr(typScope, src.Type)
+		spec.typ, typeOk = processTypeExpr(typScope, src.Type, nil)
 	} else {
 		typeOk = pscope.Err().Appendf(src, "static variable has no type")
 	}

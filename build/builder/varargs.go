@@ -29,7 +29,7 @@ type varargsType struct {
 }
 
 func processVarArgsType(pscope typeProcScope, src *ast.Ellipsis) (typeExprNode, bool) {
-	elt, ok := processTypeExpr(pscope, src.Elt)
+	elt, ok := processTypeExpr(pscope, src.Elt, nil)
 	grpScope, _ := pscope.(*fieldGroupProcScope)
 	var fnParamScope *funcParamScope
 	if grpScope != nil {

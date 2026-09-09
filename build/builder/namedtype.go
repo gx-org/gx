@@ -45,7 +45,8 @@ func processType(pscope procScope, src *ast.TypeSpec) bool {
 		file: pscope.file(),
 	}
 	var ok bool
-	n.underlying, ok = processTypeExpr(defaultTypeProcScope(pscope), src.Type)
+	fieldNS := &fieldNamespace{names: make(map[string]*field)}
+	n.underlying, ok = processTypeExpr(defaultTypeProcScope(pscope), src.Type, fieldNS)
 	if !ok {
 		return false
 	}

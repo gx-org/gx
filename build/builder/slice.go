@@ -47,7 +47,7 @@ func processSliceType(pscope typeProcScope, src *ast.ArrayType) (*sliceType, boo
 			continue
 		}
 		// Process the data type of the slice.
-		dtype, ok := processTypeExpr(pscope, elt)
+		dtype, ok := processTypeExpr(pscope, elt, nil)
 		return &sliceType{
 			src:   src,
 			rank:  rank,
