@@ -54,7 +54,7 @@ func Trace(dev *api.Device, fn *ir.FuncDecl, receiver hostio.Value, args []hosti
 	}()
 	// Create a new graph and evaluator for the interpreter.
 	proc := processor.New(values.Factory())
-	graph, err := dev.Runtime().Backend().NewOps(fn.FullyQualifiedName())
+	graph, err := dev.Runtime().Backend().Builder(fn.FullyQualifiedName())
 	if err != nil {
 		return nil, err
 	}
