@@ -240,28 +240,3 @@ func (s *funcParamScope) processAxisExpr(expr ast.Expr) (axisLengthNode, bool) {
 func (s *funcParamScope) axisLengthScope() procAxLenScope {
 	return s
 }
-
-type fieldNamespace struct {
-	names map[string]*field
-}
-
-func (ns *fieldNamespace) assignTypeField(pscope procScope, fld *field) bool {
-	if prev := ns.names[fld.src.Name]; prev != nil {
-		pscope.Err().Appendf(fld.src, "type parameter %s redeclared", fld.src.Name)
-		return false
-	}
-	ns.names[fld.src.Name] = fld
-	return true
-}
-
-func (ns *fieldNamespace) assignField(pscope procScope, fld *field) bool {
-	if prev := ns.names[fld.src.Name]; prev != nil {
-		return appendRedeclaredError(pscope.Err(), fld.src.Name, prev.src, fld.src)
-	}
-	ns.names[fld.src.Name] = fld
-	return true
-}
-
-func (ns *fieldNamespace) assignResultField(pscope procScope, fld *field) bool {
-	return ns.assignField(pscope, fld)
-}

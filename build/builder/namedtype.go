@@ -28,6 +28,7 @@ import (
 type namedType struct {
 	src        *ast.TypeSpec
 	file       *file
+	typeParams *fieldList
 	underlying typeExprNode
 }
 
@@ -44,18 +45,20 @@ func processType(pscope procScope, src *ast.TypeSpec) bool {
 		src:  src,
 		file: pscope.file(),
 	}
-	var ok bool
+	var genParamOk bool
 	fieldNS := &fieldNamespace{names: make(map[string]*field)}
-	n.underlying, ok = processTypeExpr(defaultTypeProcScope(pscope), src.Type, fieldNS)
-	if !ok {
+	n.typeParams, genParamOk = processFieldList(
+		defaultTypeProcScope(pscope),
+		src.TypeParams,
+		fieldNS.assignTypeField,
+	)
+	var underOk bool
+	n.underlying, underOk = processTypeExpr(defaultTypeProcScope(pscope), src.Type, fieldNS)
+	if !genParamOk || !underOk {
 		return false
 	}
-	if src.TypeParams.NumFields() > 0 {
-		pscope.Err().Appendf(src, "type may not have type parameters")
-		ok = false
-	}
 	pNode := newProcessNode(token.TYPE, src.Name, n)
-	return pscope.decls().declarePackageName(pNode) && ok
+	return pscope.decls().declarePackageName(pNode) && underOk
 }
 
 func (n *namedType) source() ast.Node {
@@ -84,6 +87,12 @@ func (n *namedType) build(ibld irBuilder) (*irNamedType, bool) {
 func (n *namedType) buildUnderlying(pkgScope *pkgResolveScope, nType *ir.NamedType) bool {
 	rscope, scopeOk := pkgScope.fileScope(n.file)
 	ephemeral, ephemeralOk := newEphemeralResolveScope(rscope, n.src)
+	typeParamsScope := newDefineScope(ephemeral, defineGenericParam)
+	var tParamsOk bool
+	nType.TypeParams, tParamsOk = n.typeParams.buildFieldList(typeParamsScope)
+	if !tParamsOk {
+		return false
+	}
 	var underOk bool
 	nType.Underlying, underOk = n.underlying.buildTypeExpr(ephemeral)
 	return scopeOk && ephemeralOk && underOk

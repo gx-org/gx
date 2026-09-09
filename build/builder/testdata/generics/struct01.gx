@@ -1,0 +1,7 @@
+package struct01
+
+// No runtime test function
+
+type S[T any] struct {
+	a T
+}

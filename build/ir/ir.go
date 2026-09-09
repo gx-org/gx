@@ -199,6 +199,7 @@ type (
 		Src        *ast.TypeSpec
 		File       *File
 		Underlying *TypeValExpr
+		TypeParams *FieldList
 
 		Meths []PkgFunc
 	}
