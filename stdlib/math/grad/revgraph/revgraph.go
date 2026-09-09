@@ -99,7 +99,7 @@ func New(macro *elements.MacroCall, fn ir.Func) (*Graph, error) {
 	nameFields(g.unames, "recv", fType.Receiver)
 	g.nResults = nameFields(g.unames, "res", fType.Results)
 	g.nParams = nameFields(g.unames, "par", fType.Params)
-	g.unames.RegisterFieldNames(fType.TypeParams)
+	g.unames.RegisterFieldNames(fType.GenParams.Fields)
 	// Build the VJP params and function signatures.
 	var err error
 	g.wrts, err = wrt.Build(fType, g.nResults.fields)
@@ -182,7 +182,7 @@ func (p *processor) processFuncWithoutAnn() (stmt, bool) {
 		return nil, p.fetcher.Err().Appendf(p.fn.Node(), "function %s requires a gradient specification", p.fn.ShortString())
 	}
 	root, ok := p.processBlockStmt(fnWithBody.Body)
-	typeParams := p.fn.FuncType().TypeParams.Fields()
+	typeParams := p.fn.FuncType().GenParams.Fields.Fields()
 	if len(typeParams) == 0 {
 		return root, ok
 	}

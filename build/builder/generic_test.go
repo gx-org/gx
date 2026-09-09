@@ -202,7 +202,7 @@ func callCast() int32 {
 						&ir.ReturnStmt{Results: []ir.Expr{&ir.FuncCallExpr{
 							Callee: irhelper.FuncExpr(castNoArgFunc).NewFType(
 								irhelper.FuncType(
-									castNoArgFunc.FType.TypeParams,
+									castNoArgFunc.FType.GenParams.Fields,
 									nil, nil,
 									irhelper.Fields(ir.Int32Type()),
 									irhelper.SetTypeParams(ir.Int32Type()),
@@ -421,7 +421,7 @@ func callCast() [2][3]int32 {
 						&ir.ReturnStmt{Results: []ir.Expr{&ir.FuncCallExpr{
 							Callee: irhelper.FuncExpr(new2x3ArrayFunc).NewFType(
 								irhelper.FuncType(
-									new2x3ArrayFunc.FType.TypeParams,
+									new2x3ArrayFunc.FType.GenParams.Fields,
 									nil,
 									irhelper.Fields(),
 									irhelper.Fields(irhelper.ArrayType(ir.Int32Type(), 2, 3)),

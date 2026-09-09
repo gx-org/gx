@@ -50,7 +50,7 @@ func CanBeOnDeviceFunc(gxFunc ir.Func) bool {
 		return false
 	}
 	tp := gxFunc.FuncType()
-	if tp.TypeParams != nil && tp.TypeParams.Len() > 0 {
+	if tp.GenParams.Fields != nil && tp.GenParams.Fields.Len() > 0 {
 		return false
 	}
 	all := tp.Params.Fields()

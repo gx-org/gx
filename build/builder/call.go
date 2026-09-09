@@ -330,7 +330,7 @@ func checkArgsForCall(rscope resolveScope, ce *compileEvaluator, fExpr *ir.FuncV
 func evalGenericValues(ce *compileEvaluator, ftype *ir.FuncType) (map[string]ir.Element, bool) {
 	ok := true
 	out := make(map[string]ir.Element)
-	for _, tParam := range ftype.TypeParams.Fields() {
+	for _, tParam := range ftype.GenParams.Fields.Fields() {
 		if !ir.ValidIdent(tParam.Name) {
 			continue
 		}
@@ -352,7 +352,7 @@ func evalGenericValues(ce *compileEvaluator, ftype *ir.FuncType) (map[string]ir.
 		}
 		out[name] = el
 	}
-	for _, genVal := range ftype.GenericValues {
+	for _, genVal := range ftype.GenParams.Values {
 		if genVal == nil {
 			continue
 		}
@@ -394,7 +394,7 @@ func buildFuncForCall(rscope resolveScope, fExpr *ir.FuncValExpr, args []ir.Expr
 	if !ok {
 		return args, fExpr, false
 	}
-	typeParams := fExpr.FuncType().TypeParams.Fields()
+	typeParams := fExpr.FuncType().GenParams.Fields.Fields()
 	if len(typeParams) > 0 {
 		names := make([]string, len(typeParams))
 		for i, field := range typeParams {

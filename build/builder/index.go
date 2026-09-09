@@ -110,16 +110,16 @@ func specializeFuncType(rscope resolveScope, x ir.Expr, indices []ir.Expr, fun *
 		// That should not be specialised by the user.
 		return x, rscope.Err().Appendf(x.Node(), "builtin function does not support type arguments")
 	}
-	gotN, wantN := len(indices), ftype.TypeParams.Len()
+	gotN, wantN := len(indices), ftype.GenParams.Fields.Len()
 	if gotN > wantN {
 		return x, rscope.Err().Appendf(x.Node(), "got %d type arguments but want %d", gotN, wantN)
 	}
-	genParams := buildGenericParams(ftype.TypeParams.Fields(), len(indices))
+	genParams := buildGenericParams(ftype.GenParams.Fields.Fields(), len(indices))
 	compEval, _, compEvalOk := compEvalForFuncType(rscope, x.Node(), ftype)
 	if !compEvalOk {
 		return x, false
 	}
-	genValues := append([]ir.GenericValue{}, ftype.GenericValues...)
+	genValues := append([]ir.GenericValue{}, ftype.GenParams.Values...)
 	ok := true
 	for i, gParam := range genParams {
 		numberOk := true

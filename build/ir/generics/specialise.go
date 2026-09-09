@@ -33,8 +33,8 @@ type specialiser struct {
 var _ ir.Specialiser = (*specialiser)(nil)
 
 func checkTypeParams(ftype *ir.FuncType, defined []ir.GenericValue) {
-	if len(defined) != ftype.Origin().TypeParams.Len() {
-		panic(fmt.Sprintf("defined: %d but TypeParams is %d", len(defined), ftype.Origin().TypeParams.Len()))
+	if len(defined) != ftype.Origin().GenParams.Fields.Len() {
+		panic(fmt.Sprintf("defined: %d but TypeParams is %d", len(defined), ftype.Origin().GenParams.Fields.Len()))
 	}
 }
 
@@ -45,7 +45,7 @@ func newSpecialiser(fetcher ir.Fetcher, fExpr *ir.FuncValExpr, ftype *ir.FuncTyp
 		Fetcher:      fetcher,
 		ftype:        ftype,
 		defined:      defined,
-		tparamFields: ftype.Origin().TypeParams.Fields(),
+		tparamFields: ftype.Origin().GenParams.Fields.Fields(),
 	}
 }
 
@@ -118,7 +118,7 @@ func (s *specialiser) InstantiateError(sigSrc ast.Node, err error) bool {
 func (s *specialiser) String() string {
 	b := strings.Builder{}
 	fmt.Fprintln(&b, "Scope:")
-	fields := s.ftype.Origin().TypeParams.Fields()
+	fields := s.ftype.Origin().GenParams.Fields.Fields()
 	for i, v := range s.defined {
 		fmt.Fprintf(&b, "\t%d:%s %s->", i, fields[i].Name.Name, fields[i].Type().ReferString(nil))
 		s := "nil"
@@ -154,16 +154,16 @@ func SpecialiseParams(fetcher ir.Fetcher, expr ir.Expr, fun *ir.FuncValExpr, typ
 	ftype := fun.FuncType()
 	spec := newSpecialiser(fetcher, fun, ftype, typArgs)
 	specType, ok := ftype.SpecialiseFType(spec, true)
-	checkTypeParams(specType, specType.GenericValues)
+	checkTypeParams(specType, specType.GenParams.Values)
 	return ir.NewFuncValExpr(expr, fun.Func()).NewFType(specType), ok
 }
 
 // Instantiate specialises the result of a function.
 // fun can be nil when the type is instantiated for its definition.
 func Instantiate(fetcher ir.Fetcher, fun *ir.FuncValExpr, ftype *ir.FuncType) (*ir.FuncType, bool) {
-	typArgs := ftype.GenericValues
+	typArgs := ftype.GenParams.Values
 	spec := newSpecialiser(fetcher, fun, ftype, typArgs)
 	instantiateFType, ok := ftype.InstantiateFType(fetcher, spec)
-	checkTypeParams(instantiateFType, instantiateFType.GenericValues)
+	checkTypeParams(instantiateFType, instantiateFType.GenParams.Values)
 	return instantiateFType, ok
 }

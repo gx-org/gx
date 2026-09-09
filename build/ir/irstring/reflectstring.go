@@ -137,13 +137,13 @@ func funcValExpr(done map[any]bool, val reflect.Value, proc processor) string {
 		return ref.Func().ShortString()
 	}
 	sig := ftype.ReferString(nil)
-	if len(ftype.GenericValues) == 0 {
+	if len(ftype.GenParams.Values) == 0 {
 		return sig
 	}
 	var b strings.Builder
 	fmt.Fprintln(&b, sig)
 	fmt.Fprintln(&b, "GenericValues: [")
-	for _, genVal := range ftype.GenericValues {
+	for _, genVal := range ftype.GenParams.Values {
 		genS := "nil"
 		if genVal != nil {
 			genS = reflectString(done, reflect.ValueOf(genVal), proc)
@@ -245,6 +245,7 @@ func reflectStructString(done map[any]bool, val reflect.Value, proc processor) s
 	typ := val.Type()
 	s := strings.Builder{}
 	fmt.Fprintf(&s, "%s {", typ.Name())
+	nonZeros := 0
 	for i := range typ.NumField() {
 		fieldVal := val.Field(i)
 		if fieldVal.IsZero() {
@@ -259,10 +260,14 @@ func reflectStructString(done map[any]bool, val reflect.Value, proc processor) s
 		if valS == "" {
 			continue
 		}
+		nonZeros++
 		s.WriteString("\n\t")
 		s.WriteString(fieldName)
 		s.WriteString(": ")
 		s.WriteString(gxfmt.IndentSkip(1, valS))
+	}
+	if nonZeros == 0 {
+		return ""
 	}
 	s.WriteString("\n}")
 	return s.String()

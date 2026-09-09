@@ -124,7 +124,7 @@ func (m *gradMacro) BuildDecl(fn ir.PkgFunc) (*ir.File, *ast.FuncDecl, bool) {
 		})
 	}
 	fDecl := &ast.FuncDecl{Type: &ast.FuncType{
-		TypeParams: typeParamsOf(fType.TypeParams),
+		TypeParams: typeParamsOf(fType.GenParams.Fields),
 		Params:     fType.Params.Src,
 		Results:    results,
 	}}

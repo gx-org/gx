@@ -214,13 +214,13 @@ func typeParametersMap(tparams *ir.FieldList) map[string]*ir.Field {
 // Infer the type parameters of a function given a list of argument expressions.
 func Infer(fetcher ir.Fetcher, fExpr *ir.FuncValExpr, args []ir.Expr) (*ir.FuncValExpr, bool) {
 	ftype := fExpr.FuncType()
-	if ftype.TypeParams.Len() == 0 {
+	if ftype.GenParams.Fields.Len() == 0 {
 		// Nothing left to infer.
 		return fExpr, true
 	}
 	uni := &unifier{
 		fetcher: fetcher,
-		defined: append([]ir.GenericValue{}, ftype.GenericValues...),
+		defined: append([]ir.GenericValue{}, ftype.GenParams.Values...),
 	}
 	ok := true
 	params := ftype.Params.Fields()
@@ -243,6 +243,6 @@ func Infer(fetcher ir.Fetcher, fExpr *ir.FuncValExpr, args []ir.Expr) (*ir.FuncV
 	}
 	spec := newSpecialiser(fetcher, fExpr, fExpr.FuncType(), uni.defined)
 	ftypeInfer, ok := ftype.SpecialiseFType(spec, true)
-	checkTypeParams(ftypeInfer, ftypeInfer.GenericValues)
+	checkTypeParams(ftypeInfer, ftypeInfer.GenParams.Values)
 	return fExpr.NewFType(ftypeInfer), ok
 }
