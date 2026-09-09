@@ -25,34 +25,6 @@ import (
 	"github.com/gx-org/gx/internal/interp/compeval/surrogates"
 )
 
-type signatureNamespace struct {
-	fType *funcType
-	names map[string]*field
-}
-
-func (ns *signatureNamespace) assignTypeField(pscope procScope, fld *field) bool {
-	if prev := ns.names[fld.src.Name]; prev != nil {
-		pscope.Err().Appendf(fld.src, "type parameter %s redeclared", fld.src.Name)
-		return false
-	}
-	ns.names[fld.src.Name] = fld
-	return true
-}
-
-func (ns *signatureNamespace) assignField(pscope procScope, fld *field) bool {
-	if prev := ns.names[fld.src.Name]; prev != nil {
-		return appendRedeclaredError(pscope.Err(), fld.src.Name, prev.src, fld.src)
-	}
-	ns.names[fld.src.Name] = fld
-	return true
-}
-
-func (ns *signatureNamespace) assignResultField(pscope procScope, fld *field) bool {
-	// TODO(b/418153202): check that the types are the same.
-	ns.names[fld.src.Name] = fld
-	return true
-}
-
 type funcType struct {
 	src    *ast.FuncType
 	nature ir.FuncNature
@@ -76,11 +48,11 @@ func processFuncType(pscope procScope, src *ast.FuncType, recv *ast.FieldList, n
 		nature: nature,
 	}
 	var recvOk, typesOk, paramsOk, resultsOk bool
-	sig := &signatureNamespace{fType: n, names: make(map[string]*field)}
+	fieldNS := &fieldNamespace{names: make(map[string]*field)}
 	n.recv, recvOk = processFieldList(
 		defaultTypeProcScope(pscope),
 		recv,
-		sig.assignField,
+		fieldNS.assignField,
 	)
 	if n.recv != nil && n.recv.numFields() > 1 {
 		recvOk = pscope.Err().Appendf(recv, "method has multiple receivers")
@@ -88,7 +60,7 @@ func processFuncType(pscope procScope, src *ast.FuncType, recv *ast.FieldList, n
 	n.typeParams, typesOk = processFieldList(
 		defaultTypeProcScope(pscope),
 		src.TypeParams,
-		sig.assignTypeField,
+		fieldNS.assignTypeField,
 	)
 	n.params, paramsOk = processFieldList(
 		&funcParamScope{
@@ -98,12 +70,12 @@ func processFuncType(pscope procScope, src *ast.FuncType, recv *ast.FieldList, n
 			ftype: n,
 		},
 		src.Params,
-		sig.assignField,
+		fieldNS.assignField,
 	)
 	n.results, resultsOk = processFieldList(
 		defaultTypeProcScope(pscope),
 		src.Results,
-		sig.assignResultField,
+		fieldNS.assignResultField,
 	)
 	return n, recvOk && typesOk && paramsOk && resultsOk
 }

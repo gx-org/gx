@@ -53,4 +53,6 @@ func testFuncTypeParameters_Redeclared[T int32, T int32]() int32 { // ERROR type
 	return 0
 }
 
+func sameNames(a, a int) // ERROR a redeclared in this block
+
 type testTypeParameters[T any] struct{} // ERROR type may not have type parameters

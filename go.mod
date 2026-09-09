@@ -6,7 +6,7 @@ require (
 	github.com/gomlx/compute v0.0.0-20260628062407-1a23cf2ada5b
 	github.com/gomlx/gopjrt v0.10.0
 	github.com/google/go-cmp v0.7.0
-	github.com/gx-org/backend v0.3.1-0.20260820192500-e317dd7d00dd
+	github.com/gx-org/backend v0.3.1-0.20260909104736-d97af00b2500
 	github.com/pkg/errors v0.9.1
 	github.com/spf13/cobra v1.10.2
 	go.uber.org/multierr v1.11.0

@@ -12,9 +12,9 @@ func newSampler(seed int64) sampler {
 	}
 }
 
-func (s sampler) sample() (s sampler, smpl [2]float32) {
+func (s sampler) sample() (_ sampler, smpl [2]float32) {
 	s.rnd, smpl = s.rnd.Float32[[]int{2}]()
-	return
+	return s, smpl
 }
 
 func TestDeterministic() (sample1, sample2 [2]float32) {

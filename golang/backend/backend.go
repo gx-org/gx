@@ -41,7 +41,7 @@ func (bck *backend) Platform() platform.Platform {
 }
 
 // NewGraph returns a graph builder for native Go operations.
-func (bck *backend) NewOps(funcName string) (ops.Graph, error) {
+func (bck *backend) Builder(funcName string) (ops.Graph, error) {
 	return gograph.New(bck.plat, funcName), nil
 }
 
