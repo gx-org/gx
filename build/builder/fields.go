@@ -135,7 +135,7 @@ func processFieldGroup(pscope *fieldListProcScope, src *ast.Field, grpIndex int,
 	grp.typ, ok = processTypeExpr(&fieldGroupProcScope{
 		fieldListProcScope: pscope,
 		grp:                grp,
-	}, src.Type)
+	}, src.Type, nil)
 	for i, ident := range src.Names {
 		field := processField(grp, ident)
 		assignOk := assign(pscope, field)

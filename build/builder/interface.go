@@ -98,7 +98,7 @@ func flattenTypeList(pscope procScope, list []typeExprNode, expr ast.Expr) ([]ty
 		expr = bExpr.Y
 	}
 	typScope := defaultTypeProcScope(pscope)
-	typ, ok := processTypeExpr(typScope, expr)
+	typ, ok := processTypeExpr(typScope, expr, nil)
 	return append(result, typ), ok
 }
 

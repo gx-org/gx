@@ -48,7 +48,7 @@ func processConstSpec(pscope procScope, src *ast.ValueSpec) bool {
 	}
 	declaredTypeOk := true
 	if src.Type != nil {
-		spec.declaredType, declaredTypeOk = processTypeExpr(pscope.typeScope(), src.Type)
+		spec.declaredType, declaredTypeOk = processTypeExpr(pscope.typeScope(), src.Type, nil)
 	}
 	numOk := true
 	if len(src.Values) > len(src.Names) {

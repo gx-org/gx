@@ -47,7 +47,7 @@ func processDTypeRank(pscope typeProcScope, src *ast.ArrayType) (rankNode, typeE
 		switch eltT := elt.(type) {
 		case *ast.Ident:
 			var dtypeOk bool
-			dtype, dtypeOk = processTypeExpr(pscope, eltT)
+			dtype, dtypeOk = processTypeExpr(pscope, eltT, nil)
 			ok = ok && dtypeOk && eltT != nil
 		case *ast.ArrayType:
 			axis, axisOk := processAxisLengthExpr(axscope, eltT)
