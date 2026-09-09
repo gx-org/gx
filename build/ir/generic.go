@@ -23,6 +23,12 @@ import (
 )
 
 type (
+	// Generic groups the generic type parameters and their values.
+	Generic struct {
+		Fields *FieldList
+		Values []GenericValue
+	}
+
 	// Specialiser provides methods to specialise a type.
 	Specialiser interface {
 		ErrSource

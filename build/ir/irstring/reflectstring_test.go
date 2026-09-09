@@ -85,8 +85,6 @@ FuncDecl {
 			want: `
 NamedType {
 	Underlying: StructType {
-		BaseType: BaseType[*go/ast.StructType] {
-		}
 		Fields: FieldList{
 			a,b float32
 		}

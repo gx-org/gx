@@ -38,14 +38,12 @@ type (
 		Nature FuncNature
 		origin *FuncType
 
-		Receiver   *FieldList
-		TypeParams *FieldList
-		Params     *FieldList
-		Results    *FieldList
+		GenParams Generic
+		Receiver  *FieldList
+		Params    *FieldList
+		Results   *FieldList
 
 		VarArgs *VarArgsType
-
-		GenericValues []GenericValue
 	}
 )
 
@@ -197,11 +195,11 @@ func (s *FuncType) varArgs() *VarArgsType {
 func (s *FuncType) SpecialiseFType(spec Specialiser, skipResult bool) (*FuncType, bool) {
 	res := *s
 	res.origin = s.Origin()
-	res.TypeParams = cloneFields(s.TypeParams, &cloner{
+	res.GenParams.Fields = cloneFields(s.GenParams.Fields, &cloner{
 		group: cloneGroup,
 		field: skipIfDefined(spec),
 	})
-	res.GenericValues = spec.Values()
+	res.GenParams.Values = spec.Values()
 	var paramsOk bool
 	res.Params = cloneFields(s.Params, &cloner{
 		group: specialiseGroup(spec, &paramsOk),
@@ -258,7 +256,7 @@ func (s *FuncType) InstantiateFType(fetcher Fetcher, spec Specialiser) (*FuncTyp
 		},
 		field: cloneField,
 	})
-	res.TypeParams = cloneFields(s.TypeParams, &cloner{
+	res.GenParams.Fields = cloneFields(s.GenParams.Fields, &cloner{
 		group: cloneGroup,
 		field: cloneField,
 	})
@@ -303,14 +301,14 @@ func (s *FuncType) shortString(from *File) string {
 
 func (s *FuncType) specializeString(from *File) string {
 	var b strings.Builder
-	for _, gval := range s.GenericValues {
+	for _, gval := range s.GenParams.Values {
 		if gval == nil {
 			continue
 		}
 		fmt.Fprintf(&b, "%s", gval.SourceString(from))
 	}
-	if s.TypeParams != nil && s.TypeParams.Len() > 0 {
-		fmt.Fprintf(&b, "[%s]", s.TypeParams.SourceString(from))
+	if s.GenParams.Fields != nil && s.GenParams.Fields.Len() > 0 {
+		fmt.Fprintf(&b, "[%s]", s.GenParams.Fields.SourceString(from))
 	}
 	return b.String()
 }

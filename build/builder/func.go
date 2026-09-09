@@ -135,7 +135,7 @@ func (n *funcType) buildFuncType(rscope resolveScope) (*ir.FuncType, *funcResolv
 		return ext, nil, false
 	}
 	typeParamsScope := newDefineScope(sigscope, defineGenericParam)
-	ext.TypeParams, tParamsOk = n.typeParams.buildFieldList(typeParamsScope)
+	ext.GenParams.Fields, tParamsOk = n.typeParams.buildFieldList(typeParamsScope)
 	if !tParamsOk {
 		return ext, nil, false
 	}
@@ -155,7 +155,7 @@ func (n *funcType) buildFuncType(rscope resolveScope) (*ir.FuncType, *funcResolv
 			ext.VarArgs = varArgsType
 		}
 	}
-	ext.GenericValues = make([]ir.GenericValue, ext.TypeParams.Len())
+	ext.GenParams.Values = make([]ir.GenericValue, ext.GenParams.Fields.Len())
 	resultScope := newDefineScope(sigscope, nil)
 	ext.Results, resultsOk = n.results.buildFieldList(resultScope)
 	if !tParamsOk || !paramsOk || !resultsOk || !recvOk {

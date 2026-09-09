@@ -61,7 +61,7 @@ func assignTypeParameters(ctx *context.Context, callee ir.Callee, funcFrame *con
 	if !ok {
 		return args
 	}
-	genVals := funRef.FuncType().GenericValues
+	genVals := funRef.FuncType().GenParams.Values
 	for i, genVal := range genVals {
 		funcFrame.Define(genVal.Generic().NameDef(), args[i])
 	}

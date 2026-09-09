@@ -334,13 +334,15 @@ func FuncType(types, recv, params, results *ir.FieldList, opts ...FTypeOption) *
 		params = &ir.FieldList{}
 	}
 	ftype := &ir.FuncType{
-		BaseType:   ir.BaseType[*ast.FuncType]{Src: &ast.FuncType{}},
-		TypeParams: types,
-		Receiver:   recv,
-		Params:     params,
-		Results:    results,
+		BaseType: ir.BaseType[*ast.FuncType]{Src: &ast.FuncType{}},
+		GenParams: ir.Generic{
+			Fields: types,
+		},
+		Receiver: recv,
+		Params:   params,
+		Results:  results,
 	}
-	ftype.GenericValues = make([]ir.GenericValue, ftype.TypeParams.Len())
+	ftype.GenParams.Values = make([]ir.GenericValue, ftype.GenParams.Fields.Len())
 	for _, opt := range opts {
 		ftype = opt(ftype)
 	}
@@ -351,7 +353,7 @@ func FuncType(types, recv, params, results *ir.FieldList, opts ...FTypeOption) *
 func FuncTypeFrom(orig *ir.FuncType, opts ...FTypeOption) *ir.FuncType {
 	ret := *orig
 	ftype := &ret
-	ftype.GenericValues = make([]ir.GenericValue, ftype.TypeParams.Len())
+	ftype.GenParams.Values = make([]ir.GenericValue, ftype.GenParams.Fields.Len())
 	for _, opt := range opts {
 		ftype = opt(ftype)
 	}
@@ -368,11 +370,11 @@ type typeParamSetter struct {
 }
 
 func (ts *typeParamSetter) set(ftype *ir.FuncType) *ir.FuncType {
-	fields := ftype.TypeParams.Fields()
+	fields := ftype.GenParams.Fields.Fields()
 	if len(ts.vals) != len(fields) {
 		panic(fmt.Sprintf("expect %d values to set %d fields but got %d values", len(fields), len(fields), len(ts.vals)))
 	}
-	genVals := make([]ir.GenericValue, ftype.Origin().TypeParams.Len())
+	genVals := make([]ir.GenericValue, ftype.Origin().GenParams.Fields.Len())
 	for i, field := range fields {
 		if ir.IsNonTypeGeneric(field.Type()) {
 			genVals[i] = setNonTypeParam(field, ts.vals[i])
@@ -384,8 +386,8 @@ func (ts *typeParamSetter) set(ftype *ir.FuncType) *ir.FuncType {
 		}
 	}
 	res := cloneFType(ftype)
-	res.TypeParams = nil
-	res.GenericValues = genVals
+	res.GenParams.Fields = nil
+	res.GenParams.Values = genVals
 	return res
 }
 

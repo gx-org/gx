@@ -764,7 +764,7 @@ func evalCallExpr(fitp *Interpreter, expr *ir.FuncCallExpr) (ir.Element, error) 
 }
 
 func evalTypeArgumentExprs(fitp *Interpreter, callee *ir.FuncValExpr) ([]ir.Element, error) {
-	genVals := callee.FuncType().GenericValues
+	genVals := callee.FuncType().GenParams.Values
 	tpArgs := make([]ir.Element, len(genVals))
 	for i, expr := range genVals {
 		var err error

@@ -386,7 +386,7 @@ func g() [2]float32 {
 					Body: irh.SingleReturn(&ir.FuncCallExpr{
 						Callee: irh.FuncExpr(newVector).NewFType(
 							irh.FuncType(
-								newVector.FType.TypeParams, nil,
+								newVector.FType.GenParams.Fields, nil,
 								irh.Fields(),
 								irh.Fields(irh.ArrayType(ir.Float32Type(), 2)),
 								irh.SetTypeParams(2),
@@ -413,7 +413,7 @@ func g() [2][3]float32 {
 					Body: irh.SingleReturn(&ir.FuncCallExpr{
 						Callee: irh.FuncExpr(newArray).NewFType(
 							irh.FuncType(
-								newArray.FType.TypeParams, nil,
+								newArray.FType.GenParams.Fields, nil,
 								irh.Fields(),
 								irh.Fields(irh.ArrayType(ir.Float32Type(), 2, 3)),
 								irh.SetTypeParams([]int{2, 3}),

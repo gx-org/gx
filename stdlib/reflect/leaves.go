@@ -34,10 +34,10 @@ var fieldPathSliceType = &ir.SliceType{
 
 func evalLeaves(env *engine.Env, call *ir.FuncCallExpr, recv ir.Element, args []ir.Element) ([]ir.Element, error) {
 	ftype := call.Callee.FuncType()
-	if len(ftype.GenericValues) != 1 {
-		return nil, fmterr.Internalf("incorrect number of generic value: got %d but want 1", len(ftype.GenericValues))
+	if len(ftype.GenParams.Values) != 1 {
+		return nil, fmterr.Internalf("incorrect number of generic value: got %d but want 1", len(ftype.GenParams.Values))
 	}
-	genType, err := cast.To[*ir.TypeGenericValue](ftype.GenericValues[0])
+	genType, err := cast.To[*ir.TypeGenericValue](ftype.GenParams.Values[0])
 	if err != nil {
 		return nil, err
 	}
