@@ -16,12 +16,13 @@
 package concrete
 
 import (
-	"go/ast"
+	"fmt"
 
 	"github.com/gx-org/gx/build/fmterr"
 	"github.com/gx-org/gx/build/ir"
 	"github.com/gx-org/gx/build/ir/irkind"
 	"github.com/gx-org/gx/internal/interp/compeval/cmp"
+	"github.com/gx-org/gx/src/gx/ast"
 )
 
 func concreteTypeParam(fr ir.Evaluator, tp *ir.GenericTypeParam) (ir.Type, error) {
@@ -136,7 +137,12 @@ func concreteArrayType(fr ir.Evaluator, tp ir.ArrayType) (ir.ArrayType, error) {
 }
 
 // Concrete converts a type to its concrete type given the context.
-func Concrete(fr ir.Evaluator, tp ir.Type) (ir.Type, error) {
+func Concrete(fr ir.Evaluator, tp ir.Type) (_ ir.Type, err error) {
+	defer func() {
+		if err != nil {
+			err = fmt.Errorf("cannot resolve type %s: %w", tp.ReferString(fr.File()), err)
+		}
+	}()
 	arrayType, isArray := tp.(ir.ArrayType)
 	if !isArray {
 		return concrete(fr, tp)

@@ -15,12 +15,13 @@
 package ir
 
 import (
-	"go/ast"
 	"go/token"
 	"math/big"
 	"strings"
 
 	"github.com/pkg/errors"
+	"github.com/gx-org/gx/internal/undef"
+	"github.com/gx-org/gx/src/gx/ast"
 )
 
 type (
@@ -36,13 +37,13 @@ type (
 		Axes() []AxisLengths
 
 		// Equal returns true if two ranks are equal.
-		Equal(TypeCmp, ArrayRank) (bool, error)
+		Equal(TypeEval, ArrayRank) (bool, error)
 
 		// AssignableTo returns true if this rank can be assigned to the destination rank.
-		AssignableTo(TypeCmp, ArrayRank) (bool, error)
+		AssignableTo(TypeEval, ArrayRank) (bool, error)
 
 		// ConvertibleTo returns true if this rank can be converted to the destination rank.
-		ConvertibleTo(TypeCmp, ArrayRank) (bool, error)
+		ConvertibleTo(TypeEval, ArrayRank) (bool, error)
 
 		// Specialise a type to a given target.
 		Specialise(Specialiser) (ArrayRank, bool)
@@ -122,7 +123,7 @@ func (r *Rank) Unroll(ev Fetcher, urlr Unroller) (ast.Expr, bool) {
 func (r *Rank) Axes() []AxisLengths { return r.Ax }
 
 // Equal returns true if other has the same number of axes and each axis has the same length.
-func (r *Rank) Equal(tpcmp TypeCmp, other ArrayRank) (bool, error) {
+func (r *Rank) Equal(tpcmp TypeEval, other ArrayRank) (bool, error) {
 	switch otherT := other.(type) {
 	case *RankInfer:
 		return r.Equal(tpcmp, otherT.ArrayRank)
@@ -133,7 +134,7 @@ func (r *Rank) Equal(tpcmp TypeCmp, other ArrayRank) (bool, error) {
 	}
 }
 
-func evalAxes(tpcmp TypeCmp, r ArrayRank) ([]Element, error) {
+func evalAxes(tpcmp TypeEval, r ArrayRank) ([]Element, error) {
 	var els []Element
 	for _, ax := range r.Axes() {
 		el, err := tpcmp.EvalExpr(ax.AsExpr())
@@ -149,14 +150,21 @@ func evalAxes(tpcmp TypeCmp, r ArrayRank) ([]Element, error) {
 	return els, nil
 }
 
-func (r *Rank) equalRank(tpcmp TypeCmp, other ArrayRank) (bool, error) {
+func isUndef(err error) (bool, error) {
+	if undef.Is(err) {
+		return true, nil
+	}
+	return false, err
+}
+
+func (r *Rank) equalRank(tpcmp TypeEval, other ArrayRank) (bool, error) {
 	rAxes, err := evalAxes(tpcmp, r)
 	if err != nil {
-		return false, err
+		return isUndef(err)
 	}
 	otherAxes, err := evalAxes(tpcmp, other)
 	if err != nil {
-		return false, err
+		return isUndef(err)
 	}
 	if len(rAxes) != len(otherAxes) {
 		return false, err
@@ -170,12 +178,12 @@ func (r *Rank) equalRank(tpcmp TypeCmp, other ArrayRank) (bool, error) {
 	return true, nil
 }
 
-func (r *Rank) assignableTo(tpcmp TypeCmp, dst ArrayRank) (bool, error) {
+func (r *Rank) assignableTo(tpcmp TypeEval, dst ArrayRank) (bool, error) {
 	return r.equalRank(tpcmp, dst)
 }
 
 // AssignableTo returns true if this rank can be assigned to the destination rank.
-func (r *Rank) AssignableTo(tpcmp TypeCmp, dst ArrayRank) (bool, error) {
+func (r *Rank) AssignableTo(tpcmp TypeEval, dst ArrayRank) (bool, error) {
 	switch dstT := dst.(type) {
 	case *RankInfer:
 		return r.AssignableTo(tpcmp, dstT.ArrayRank)
@@ -187,7 +195,7 @@ func (r *Rank) AssignableTo(tpcmp TypeCmp, dst ArrayRank) (bool, error) {
 }
 
 // ConvertibleTo returns true if this rank can be converted to the destination rank.
-func (r *Rank) ConvertibleTo(tpcmp TypeCmp, dst ArrayRank) (bool, error) {
+func (r *Rank) ConvertibleTo(tpcmp TypeEval, dst ArrayRank) (bool, error) {
 	thisSize := RankSize(r)
 	otherSize := RankSize(dst)
 	return areEqual(tpcmp, thisSize, otherSize)

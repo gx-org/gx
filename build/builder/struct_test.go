@@ -15,12 +15,12 @@
 package builder_test
 
 import (
-	"go/ast"
 	"testing"
 
 	"github.com/gx-org/gx/build/builder/testbuild"
 	"github.com/gx-org/gx/build/ir"
 	irh "github.com/gx-org/gx/build/ir/irhelper"
+	"github.com/gx-org/gx/src/gx/ast"
 )
 
 func TestStruct(t *testing.T) {

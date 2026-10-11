@@ -15,8 +15,6 @@
 package testbuild
 
 import (
-	"go/ast"
-
 	"github.com/gx-org/gx/build/builder"
 	"github.com/gx-org/gx/build/fmterr"
 	"github.com/gx-org/gx/build/ir"
@@ -24,6 +22,7 @@ import (
 	"github.com/gx-org/gx/internal/interp/compeval/srcstore"
 	"github.com/gx-org/gx/internal/interp/compeval/surrogates"
 	"github.com/gx-org/gx/interp"
+	"github.com/gx-org/gx/src/gx/ast"
 )
 
 // Evaluator used for tests.
@@ -37,8 +36,8 @@ type Evaluator struct {
 // EvaluatorFor returns an evaluator for an incremental package.
 func (b *Builder) EvaluatorFor(pkg *builder.IncrementalPackage, sub map[string]ir.Type) (*Evaluator, error) {
 	importer := builder.New(b.Importers()...)
-	hostEval := compeval.NewHostEvaluator(importer)
-	itp, err := interp.New(hostEval, compeval.Runner(), nil)
+	hostEval := compeval.NewRegistry(importer, compeval.Runner())
+	itp, err := interp.New(hostEval, nil)
 	if err != nil {
 		return nil, err
 	}

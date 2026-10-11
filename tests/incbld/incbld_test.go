@@ -21,9 +21,10 @@ import (
 	"testing"
 
 	"github.com/google/go-cmp/cmp"
+	"github.com/gomlx/compute/gobackend"
+	"github.com/gx-org/gx/api"
 	"github.com/gx-org/gx/build/builder"
 	"github.com/gx-org/gx/build/ir"
-	"github.com/gx-org/gx/golang/backend"
 	"github.com/gx-org/gx/internal/testing/testrtm"
 	"github.com/gx-org/gx/tests"
 )
@@ -77,7 +78,11 @@ type cellTest struct {
 
 func testCells(t *testing.T, cells []cellTest) (*testrtm.Runner, *builder.IncrementalPackage) {
 	t.Helper()
-	rtm := backend.New(tests.CoreBuilder())
+	bck, err := gobackend.New("")
+	if err != nil {
+		t.Fatal(err)
+	}
+	rtm := api.NewRuntime(bck, tests.NewBuilder())
 	pkg := rtm.Builder().NewIncrementalPackage(packageName)
 	runner, err := testrtm.NewRunner(rtm, 0)
 	if err != nil {

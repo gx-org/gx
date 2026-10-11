@@ -16,7 +16,6 @@ package builder
 
 import (
 	"fmt"
-	"go/ast"
 	"go/token"
 
 	"github.com/gx-org/gx/build/fmterr"
@@ -26,7 +25,9 @@ import (
 	"github.com/gx-org/gx/internal/interp/compeval/srcstore"
 	"github.com/gx-org/gx/internal/interp/compeval/surrogates/storepath"
 	"github.com/gx-org/gx/internal/interp/compeval/surrogates"
+	"github.com/gx-org/gx/internal/undef"
 	"github.com/gx-org/gx/interp/elements"
+	"github.com/gx-org/gx/src/gx/ast"
 )
 
 type pkgScope struct {
@@ -59,6 +60,13 @@ func evalExpr(scope resolveScope, x ir.Expr) (ir.Element, bool) {
 		return ir.InvalidType(), false
 	}
 	el, err := ev.fitp.EvalExpr(x)
+	if undef.Is(err) {
+		el, err = surrogates.New(storepath.NewUniqueIR(x), x.Type())
+		if err != nil {
+			return ir.InvalidType(), ev.Err().AppendAt(x.Node(), err)
+		}
+		return el, true
+	}
 	if err != nil {
 		return ir.InvalidType(), ev.Err().AppendAt(x.Node(), err)
 	}

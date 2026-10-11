@@ -1,0 +1,30 @@
+package assign02
+
+// No runtime test function
+
+//gx:compeval
+func setOnes(axes []int, is ...int) []int {
+	for _, i := range is {
+		axes[i] = 1
+	}
+	return axes
+}
+
+//gx:compeval
+func reduceAxes(axes []int, is ...int) []int {
+	return axes[:len(is)]
+}
+
+func reduceMax[Axis []int, Shape []int](x [unpack(Shape)]float32) [unpack(reduceAxes(Shape, Axis...))]float32
+
+func broadcast[Dst []int, Src []int](x [unpack(Src)]float32) [unpack(Dst)]float32
+
+func vjpReduceMax[Axis []int, Shape []int](x [unpack(Shape)]float32) ([unpack(reduceAxes(Shape, Axis...))]float32, func([unpack(reduceAxes(Shape, Axis...))]float32) [unpack(Shape)]float32) {
+	fwd := reduceMax[Axis][Shape](x)
+	vjp := func(res [unpack(reduceAxes(Shape, Axis...))]float32) [unpack(Shape)]float32 {
+		targetShape := setOnes(Shape, Axis...)
+		d := [unpack(targetShape)]float32(res / fwd)
+		return x * broadcast[Shape](d)
+	}
+	return fwd, vjp
+}

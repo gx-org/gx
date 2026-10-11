@@ -16,13 +16,13 @@ package constants
 
 import (
 	"fmt"
-	"go/ast"
 
-	"github.com/gx-org/backend/ops"
+	"github.com/gomlx/compute"
 	"github.com/gx-org/gx/build/ir"
 	"github.com/gx-org/gx/build/ir/irkind"
 	"github.com/gx-org/gx/internal/interp/compeval/cmp"
 	"github.com/gx-org/gx/interp/engine"
+	"github.com/gx-org/gx/src/gx/ast"
 )
 
 // Bool constant.
@@ -91,8 +91,8 @@ func (b *boolEl) Atom(kind irkind.Kind) (any, error) {
 	return b.val, nil
 }
 
-func (b *boolEl) BuildNode(g ops.Graph, _ irkind.Kind) (ops.Node, error) {
-	return g.Core().NewAtomLiteral(b.val)
+func (b *boolEl) BuildNode(g compute.Function, _ irkind.Kind) (compute.Value, error) {
+	return g.Constant([]bool{b.val})
 }
 
 func (b *boolEl) Type() ir.Type {

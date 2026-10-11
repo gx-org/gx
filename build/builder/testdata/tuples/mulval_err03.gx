@@ -1,0 +1,7 @@
+package mulval_err03
+
+func f() (int, int)
+
+func F() [1]int {
+	return [1]int{f()} // ERROR multiple-value (value of type (int, int)) in single-value context
+}

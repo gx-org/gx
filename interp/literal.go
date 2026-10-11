@@ -95,7 +95,7 @@ func buildStaticArray(fitp *Interpreter, lit *ir.ArrayLitExpr, axes, vals []engi
 		// Not all elements of the array are known.
 		return nil, false, nil
 	}
-	node, err := fitp.Engine().ArrayOps().ElementFromHostValue(fitp.env.ExprEval(), array)
+	node, err := fitp.engine().ElementFromHostValue(fitp.env.ExprEval(), array)
 	return node, true, err
 }
 
@@ -118,7 +118,7 @@ func evalArrayLiteral(fitp *Interpreter, lit *ir.ArrayLitExpr) (ir.Element, erro
 	}
 	// Some values will be known at runtime. We create one node for each element
 	// and concatenates everything into an array.
-	array1d, err := fitp.Engine().ArrayOps().Concat(fitp, lit, elVals)
+	array1d, err := fitp.engine().Concat(fitp, lit, elVals)
 	if err != nil {
 		return nil, err
 	}

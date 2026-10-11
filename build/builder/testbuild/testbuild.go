@@ -17,9 +17,8 @@ package testbuild
 
 import (
 	"fmt"
-	"go/ast"
-	"go/parser"
 	"go/token"
+	"path"
 	"sort"
 	"strconv"
 	"strings"
@@ -35,7 +34,8 @@ import (
 	"github.com/gx-org/gx/build/ir"
 	"github.com/gx-org/gx/build/ir/irstring"
 	"github.com/gx-org/gx/internal/testing/cmperr"
-	"github.com/gx-org/gx/stdlib"
+	"github.com/gx-org/gx/src/gx/ast"
+	"github.com/gx-org/gx/src/gx/parser"
 )
 
 // CompareString compares two string and build an error message if the strings do not match.
@@ -116,9 +116,14 @@ type DeclarePackage struct {
 	// Function called (if not nil)  after the package has been built.
 	// Can be use to provide the implementation of builtin functions.
 	Post func(*ir.Package)
+
+	name string
 }
 
-var _ NoSubTest = DeclarePackage{}
+var (
+	_ NoSubTest          = DeclarePackage{}
+	_ importers.Importer = DeclarePackage{}
+)
 
 // Source code of the package.
 func (tt DeclarePackage) Source() string {
@@ -127,7 +132,7 @@ func (tt DeclarePackage) Source() string {
 
 // Build the package.
 func (tt DeclarePackage) Build(b *builder.Builder) (importers.Package, error) {
-	pkg, err := build(b, tt.Path, tt.Src)
+	pkg, err := build(b, tt.Path, tt.Source())
 	if err != nil {
 		return nil, err
 	}
@@ -146,6 +151,25 @@ func (tt DeclarePackage) Run(b *Builder) (*ir.Package, error) {
 	irpkg := pkg.IR()
 	b.local[irpkg.Path()] = pkg
 	return irpkg, nil
+}
+
+// Support returns true if the path is the same than the test.
+func (tt DeclarePackage) Support(pkgPath string) bool {
+	if tt.name == "" {
+		// Extract the name from the source string.
+		fset := token.NewFileSet()
+		src, err := parser.ParseFile(fset, "src.gx", tt.Source(), parser.PackageClauseOnly)
+		if err != nil {
+			panic(fmt.Sprintf("cannot parse: %s\n%s\n", err.Error(), tt.Source()))
+		}
+		tt.name = src.Name.Name
+	}
+	return path.Join(tt.Path, tt.name) == pkgPath
+}
+
+// Import the package given its path.
+func (tt DeclarePackage) Import(bld importers.Builder, path string) (importers.Package, error) {
+	return tt.Build(bld.(*builder.Builder))
 }
 
 // NoSubTest forces the execution of this test.
@@ -398,11 +422,6 @@ func RunWith(t *testing.T, imps []importers.Importer, tests ...Test) *Builder {
 // TestFactory builds tests from an optional runtime.
 type TestFactory interface {
 	BuildTests(t *testing.T, imps []importers.Importer) ([]Test, error)
-}
-
-// Stdlib returns the standard library importer.
-func Stdlib() []importers.Importer {
-	return []importers.Importer{stdlib.Importer()}
 }
 
 // RunFactory builds a set of tests from a factory then run them.

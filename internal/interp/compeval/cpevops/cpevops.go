@@ -16,7 +16,7 @@
 package cpevops
 
 import (
-	"github.com/gx-org/backend/shape"
+	"github.com/gomlx/compute/shapes"
 	"github.com/gx-org/gx/build/ir"
 	"github.com/gx-org/gx/internal/base/cast"
 	"github.com/gx-org/gx/interp/elements"
@@ -54,18 +54,18 @@ func AxesFromType(ev ir.Evaluator, typ ir.Type) (*elements.Slice, error) {
 }
 
 // EvalShape evaluates a shape given for a given array type.
-// Returns a nil shape if the shape is generic.
-func EvalShape(typ ir.Type) (*shape.Shape, error) {
+// Returns an invalid shape if the shape is generic.
+func EvalShape(typ ir.Type) (shapes.Shape, error) {
 	atyp, err := cast.To[ir.ArrayType](typ)
 	if err != nil {
-		return nil, err
+		return shapes.Invalid(), err
 	}
 	if atyp.Rank().IsAtomic() {
-		return &shape.Shape{
+		return shapes.Shape{
 			DType: atyp.DataType().Kind().DType(),
 		}, nil
 	}
-	return nil, nil
+	return shapes.Invalid(), nil
 }
 
 type core struct {
@@ -92,7 +92,7 @@ func (c *core) Axes(ev ir.Evaluator) (*elements.Slice, error) {
 	return AxesFromType(ev, c.el.Type())
 }
 
-func (c *core) EvalShape() (*shape.Shape, error) {
+func (c *core) EvalShape() (shapes.Shape, error) {
 	return EvalShape(c.el.Type())
 }
 

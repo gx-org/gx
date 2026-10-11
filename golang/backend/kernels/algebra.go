@@ -19,13 +19,14 @@ import (
 	"go/token"
 
 	"github.com/pkg/errors"
-	"github.com/gomlx/gopjrt/dtypes/bfloat16"
-	"github.com/gx-org/backend/dtypes"
-	"github.com/gx-org/backend/shape"
+	"github.com/gomlx/compute/dtypes/bfloat16"
+	"github.com/gomlx/compute/dtypes"
+	"github.com/gomlx/compute/dtypes/gotype"
+	"github.com/gomlx/compute/shapes"
 	"github.com/gx-org/gx/build/ir"
 )
 
-type algebraicFactory[T goAlgebra] struct {
+type algebraicFactory[T gotype.NumericNotComplex] struct {
 	arrayFactory[T]
 	mathFactory[T]
 }
@@ -37,11 +38,11 @@ func (f algebraicFactory[T]) Math() MathFactory {
 }
 
 // BinaryOp creates a new kernel for a binary operator.
-func (algebraicFactory[T]) BinaryOp(op token.Token, x, y *shape.Shape) (Binary, *shape.Shape, error) {
+func (algebraicFactory[T]) BinaryOp(op token.Token, x, y shapes.Shape) (Binary, shapes.Shape, error) {
 	xAtomic := isAtomic(x)
 	yAtomic := isAtomic(y)
 	if xAtomic && yAtomic {
-		out := &shape.Shape{DType: x.DType}
+		out := shapes.Make(x.DType)
 		switch op {
 		case token.ADD:
 			return addAtomicToAtomic[T], out, nil
@@ -52,29 +53,23 @@ func (algebraicFactory[T]) BinaryOp(op token.Token, x, y *shape.Shape) (Binary, 
 		case token.QUO:
 			return quoAtomicToAtomic[T], out, nil
 		case token.EQL:
-			out.DType = dtypes.Bool
-			return eqlAtomicToAtomic[T], out, nil
+			return eqlAtomicToAtomic[T], shapes.Make(dtypes.Bool), nil
 		case token.NEQ:
-			out.DType = dtypes.Bool
-			return neqAtomicToAtomic[T], out, nil
+			return neqAtomicToAtomic[T], shapes.Make(dtypes.Bool), nil
 		case token.LSS:
-			out.DType = dtypes.Bool
-			return lssAtomicToAtomic[T], out, nil
+			return lssAtomicToAtomic[T], shapes.Make(dtypes.Bool), nil
 		case token.GTR:
-			out.DType = dtypes.Bool
-			return gtrAtomicToAtomic[T], out, nil
+			return gtrAtomicToAtomic[T], shapes.Make(dtypes.Bool), nil
 		case token.LEQ:
-			out.DType = dtypes.Bool
-			return leqAtomicToAtomic[T], out, nil
+			return leqAtomicToAtomic[T], shapes.Make(dtypes.Bool), nil
 		case token.GEQ:
-			out.DType = dtypes.Bool
-			return geqAtomicToAtomic[T], out, nil
+			return geqAtomicToAtomic[T], shapes.Make(dtypes.Bool), nil
 		default:
-			return nil, nil, errors.Errorf("operator %s not supported for %s atomic-atomic", op.String(), x.DType.String())
+			return nil, shapes.Shape{}, errors.Errorf("operator %s not supported for %s atomic-atomic", op.String(), x.DType.String())
 		}
 	}
 	if xAtomic {
-		out := &shape.Shape{DType: x.DType, AxisLengths: y.AxisLengths}
+		out := shapes.Make(x.DType, y.Dimensions...)
 		switch op {
 		case token.ADD:
 			return addAtomicToArray[T], out, nil
@@ -85,14 +80,13 @@ func (algebraicFactory[T]) BinaryOp(op token.Token, x, y *shape.Shape) (Binary, 
 		case token.QUO:
 			return quoAtomicToArray[T], out, nil
 		case token.EQL:
-			out.DType = dtypes.Bool
-			return equalAtomicToArray[T], out, nil
+			return equalAtomicToArray[T], shapes.Make(dtypes.Bool, y.Dimensions...), nil
 		default:
-			return nil, nil, errors.Errorf("operator %s not supported for %s atomic-array", op.String(), x.DType.String())
+			return nil, shapes.Shape{}, errors.Errorf("operator %s not supported for %s atomic-array", op.String(), x.DType.String())
 		}
 	}
 	if yAtomic {
-		out := &shape.Shape{DType: x.DType, AxisLengths: x.AxisLengths}
+		out := shapes.Make(x.DType, x.Dimensions...)
 		switch op {
 		case token.ADD:
 			return addArrayToAtomic[T], out, nil
@@ -103,13 +97,12 @@ func (algebraicFactory[T]) BinaryOp(op token.Token, x, y *shape.Shape) (Binary, 
 		case token.QUO:
 			return quoArrayToAtomic[T], out, nil
 		case token.EQL:
-			out.DType = dtypes.Bool
-			return equalArrayToAtomic[T], out, nil
+			return equalArrayToAtomic[T], shapes.Make(dtypes.Bool, x.Dimensions...), nil
 		default:
-			return nil, nil, errors.Errorf("operator %s not supported for %s array-atomic", op.String(), x.DType.String())
+			return nil, shapes.Shape{}, errors.Errorf("operator %s not supported for %s array-atomic", op.String(), x.DType.String())
 		}
 	}
-	out := &shape.Shape{DType: x.DType, AxisLengths: y.AxisLengths}
+	out := shapes.Make(x.DType, y.Dimensions...)
 	switch op {
 	case token.ADD:
 		return addArrayToArray[T], out, nil
@@ -120,34 +113,30 @@ func (algebraicFactory[T]) BinaryOp(op token.Token, x, y *shape.Shape) (Binary, 
 	case token.QUO:
 		return quoArrayToArray[T], out, nil
 	case token.EQL:
-		out.DType = dtypes.Bool
-		return equalArrayToArray[T], out, nil
+		return equalArrayToArray[T], shapes.Make(dtypes.Bool, y.Dimensions...), nil
 	default:
-		return nil, nil, errors.Errorf("operator %s not supported for %s array-array", op.String(), x.DType.String())
+		return nil, shapes.Shape{}, errors.Errorf("operator %s not supported for %s array-array", op.String(), x.DType.String())
 	}
 }
 
 // UnaryOp creates a new kernel for a unary operator.
-func (algebraicFactory[T]) UnaryOp(op token.Token, x *shape.Shape) (Unary, *shape.Shape, error) {
+func (algebraicFactory[T]) UnaryOp(op token.Token, x shapes.Shape) (Unary, shapes.Shape, error) {
 	switch op {
 	case token.SUB:
 		return subArray[T], x, nil
 	default:
-		return nil, nil, errors.Errorf("operator %q supported", op.String())
+		return nil, shapes.Shape{}, errors.Errorf("operator %q supported", op.String())
 	}
 }
 
-func castArray[T dtypes.AlgebraType, U goAlgebra](dims []int) Unary {
+func castArray[T gotype.NumericNotComplex, U gotype.NumericNotComplex](dims []int) Unary {
 	return func(x Array) (Array, error) {
 		return castArrayWithShape[T, U](x, dims)
 	}
 }
 
-func (algebraicFactory[T]) Cast(kind dtypes.DType, dims []int) (Unary, *shape.Shape, Factory, error) {
-	shap := &shape.Shape{
-		DType:       dtypes.DType(kind),
-		AxisLengths: dims,
-	}
+func (algebraicFactory[T]) Cast(kind dtypes.DType, dims []int) (Unary, shapes.Shape, Factory, error) {
+	shap := shapes.Make(kind, dims...)
 	switch kind {
 	case dtypes.BFloat16:
 		return castToBfloat16Array[T], shap, bfloat16Factory{}, nil
@@ -155,8 +144,6 @@ func (algebraicFactory[T]) Cast(kind dtypes.DType, dims []int) (Unary, *shape.Sh
 		return castArray[T, float32](dims), shap, algebraicFactory[float32]{}, nil
 	case dtypes.Float64:
 		return castArray[T, float64](dims), shap, algebraicFactory[float64]{}, nil
-	case dtypes.Int:
-		return castArray[T, int](dims), shap, integerFactory[int]{}, nil
 	case dtypes.Int32:
 		return castArray[T, int32](dims), shap, integerFactory[int32]{}, nil
 	case dtypes.Int64:
@@ -166,20 +153,20 @@ func (algebraicFactory[T]) Cast(kind dtypes.DType, dims []int) (Unary, *shape.Sh
 	case dtypes.Uint64:
 		return castArray[T, uint64](dims), shap, integerFactory[uint64]{}, nil
 	default:
-		return nil, nil, nil, errors.Errorf("cast to %v not supported", kind)
+		return nil, shapes.Shape{}, nil, errors.Errorf("cast to %v not supported", kind)
 	}
 }
 
-type integerFactory[T dtypes.IntegerType] struct {
+type integerFactory[T gotype.Integer] struct {
 	algebraicFactory[T]
 }
 
 // BinaryOp creates a new kernel for a binary operator.
-func (f integerFactory[T]) BinaryOp(op token.Token, x, y *shape.Shape) (Binary, *shape.Shape, error) {
+func (f integerFactory[T]) BinaryOp(op token.Token, x, y shapes.Shape) (Binary, shapes.Shape, error) {
 	xAtomic := isAtomic(x)
 	yAtomic := isAtomic(y)
 	if xAtomic && yAtomic {
-		out := &shape.Shape{DType: x.DType}
+		out := shapes.Make(x.DType)
 		switch op {
 		case token.REM:
 			return remAtomicToAtomic[T], out, nil
@@ -197,7 +184,7 @@ func (f integerFactory[T]) BinaryOp(op token.Token, x, y *shape.Shape) (Binary, 
 		return f.algebraicFactory.BinaryOp(op, x, y)
 	}
 	if xAtomic {
-		out := &shape.Shape{DType: x.DType, AxisLengths: y.AxisLengths}
+		out := shapes.Make(x.DType, y.Dimensions...)
 		switch op {
 		case token.REM:
 			return remAtomicToArray[T], out, nil
@@ -215,7 +202,7 @@ func (f integerFactory[T]) BinaryOp(op token.Token, x, y *shape.Shape) (Binary, 
 		return f.algebraicFactory.BinaryOp(op, x, y)
 	}
 	if yAtomic {
-		out := &shape.Shape{DType: x.DType, AxisLengths: x.AxisLengths}
+		out := shapes.Make(x.DType, x.Dimensions...)
 		switch op {
 		case token.REM:
 			return remArrayToAtomic[T], out, nil
@@ -232,7 +219,7 @@ func (f integerFactory[T]) BinaryOp(op token.Token, x, y *shape.Shape) (Binary, 
 		}
 		return f.algebraicFactory.BinaryOp(op, x, y)
 	}
-	out := &shape.Shape{DType: x.DType, AxisLengths: y.AxisLengths}
+	out := shapes.Make(x.DType, y.Dimensions...)
 	switch op {
 	case token.REM:
 		return remArrayToArray[T], out, nil
@@ -260,21 +247,18 @@ func (bfloat16Factory) Math() MathFactory {
 	return nil
 }
 
-func (bfloat16Factory) BinaryOp(op token.Token, x, y *shape.Shape) (Binary, *shape.Shape, error) {
-	return nil, nil, errors.Errorf("operator %q not supported", op.String())
+func (bfloat16Factory) BinaryOp(op token.Token, x, y shapes.Shape) (Binary, shapes.Shape, error) {
+	return nil, shapes.Shape{}, errors.Errorf("operator %q not supported", op.String())
 }
 
 // UnaryOp creates a new kernel for a unary operator.
-func (bfloat16Factory) UnaryOp(op token.Token, x *shape.Shape) (Unary, *shape.Shape, error) {
-	return nil, nil, errors.Errorf("operator %q not supported", op.String())
+func (bfloat16Factory) UnaryOp(op token.Token, x shapes.Shape) (Unary, shapes.Shape, error) {
+	return nil, shapes.Shape{}, errors.Errorf("operator %q not supported", op.String())
 }
 
 // Cast an array to another
-func (f bfloat16Factory) Cast(kind dtypes.DType, dims []int) (Unary, *shape.Shape, Factory, error) {
-	shap := &shape.Shape{
-		DType:       dtypes.DType(kind),
-		AxisLengths: dims,
-	}
+func (f bfloat16Factory) Cast(kind dtypes.DType, dims []int) (Unary, shapes.Shape, Factory, error) {
+	shap := shapes.Make(kind, dims...)
 	switch kind {
 	case dtypes.BFloat16:
 		return func(a Array) (Array, error) { return a, nil }, shap, f, nil
@@ -283,30 +267,30 @@ func (f bfloat16Factory) Cast(kind dtypes.DType, dims []int) (Unary, *shape.Shap
 	case dtypes.Float64:
 		return castFromBfloat16Array[float64], shap, algebraicFactory[float64]{}, nil
 	case dtypes.Int32:
-		return castFromBfloat16Array[int32], shap, algebraicFactory[int32]{}, nil
+		return castFromBfloat16Array[int32], shap, integerFactory[int32]{}, nil
 	case dtypes.Int64:
-		return castFromBfloat16Array[int64], shap, algebraicFactory[int64]{}, nil
+		return castFromBfloat16Array[int64], shap, integerFactory[int64]{}, nil
 	default:
-		return nil, nil, nil, errors.Errorf("cast to %v not supported", kind)
+		return nil, shapes.Shape{}, nil, errors.Errorf("cast to %v not supported", kind)
 	}
 }
 
-func castToBfloat16Array[T dtypes.AlgebraType](xVal Array) (Array, error) {
+func castToBfloat16Array[T gotype.NumericNotComplex](xVal Array) (Array, error) {
 	x := toArray[T](xVal)
 	z := make([]bfloat16.BFloat16, x.shape.Size())
 	for i, xi := range x.values {
 		z[i] = bfloat16.FromFloat32((float32)(xi))
 	}
-	return ToBfloat16Array(z, x.shape.AxisLengths), nil
+	return ToBfloat16Array(z, x.shape.Dimensions), nil
 }
 
-func castFromBfloat16Array[U goAlgebra](xVal Array) (Array, error) {
+func castFromBfloat16Array[U gotype.NumericNotComplex](xVal Array) (Array, error) {
 	x := toArray[bfloat16.BFloat16](xVal)
 	z := make([]U, x.shape.Size())
 	for i, xi := range x.values {
 		z[i] = U(xi.Float32())
 	}
-	return ToAlgebraicArray[U](z, x.shape.AxisLengths), nil
+	return ToAlgebraicArray[U](z, x.shape.Dimensions), nil
 }
 
 // ToBfloat16Atom converts a value into an atom owned by a backend.
@@ -315,12 +299,12 @@ func ToBfloat16Atom(val bfloat16.BFloat16) Array {
 }
 
 // ToFloatAtom converts a value into an atom owned by a backend.
-func ToFloatAtom[T dtypes.GoFloat](val T) Array {
+func ToFloatAtom[T gotype.Float](val T) Array {
 	return ToFloatArray([]T{val}, nil)
 }
 
 // ToIntegerAtom converts a value into an atom owned by a backend.
-func ToIntegerAtom[T dtypes.IntegerType](val T) Array {
+func ToIntegerAtom[T gotype.Integer](val T) Array {
 	return ToIntegerArray([]T{val}, nil)
 }
 
@@ -328,11 +312,8 @@ func ToIntegerAtom[T dtypes.IntegerType](val T) Array {
 func ToBfloat16Array(values []bfloat16.BFloat16, dims []int) Array {
 	arr := &bfloat16Array{&arrayT[bfloat16.BFloat16]{
 		factory: bfloat16Factory{},
-		shape: shape.Shape{
-			DType:       dtypes.BFloat16,
-			AxisLengths: dims,
-		},
-		values: values,
+		shape:   shapes.Make(dtypes.BFloat16, dims...),
+		values:  values,
 	}}
 	if len(values) != arr.shape.Size() {
 		panic(fmt.Sprintf("mismatch between the number of values (=%d) and the number of elements (=%d) in shape %s", len(values), arr.shape.Size(), arr.shape.String()))
@@ -341,14 +322,11 @@ func ToBfloat16Array(values []bfloat16.BFloat16, dims []int) Array {
 }
 
 // ToAlgebraicArray converts values and a shape into a native multi-dimensional array owned by a backend.
-func ToAlgebraicArray[T dtypes.GoFloat | dtypes.IntegerType](values []T, dims []int) Array {
+func ToAlgebraicArray[T gotype.NumericNotComplex](values []T, dims []int) Array {
 	arr := &algebraArray[T]{&arrayT[T]{
 		factory: algebraicFactory[T]{},
-		shape: shape.Shape{
-			DType:       dtypes.FromGenericsType[T](),
-			AxisLengths: dims,
-		},
-		values: values,
+		shape:   shapes.Make(dtypes.FromGenericsType[T](), dims...),
+		values:  values,
 	}}
 	if len(values) != arr.shape.Size() {
 		panic(fmt.Sprintf("mismatch between the number of values (=%d) and the number of elements (=%d) in shape %s", len(values), arr.shape.Size(), arr.shape.String()))
@@ -357,19 +335,16 @@ func ToAlgebraicArray[T dtypes.GoFloat | dtypes.IntegerType](values []T, dims []
 }
 
 // ToFloatArray converts values and a shape into a native multi-dimensional array owned by a backend.
-func ToFloatArray[T dtypes.GoFloat](values []T, dims []int) Array {
+func ToFloatArray[T gotype.Float](values []T, dims []int) Array {
 	return ToAlgebraicArray(values, dims)
 }
 
 // ToIntegerArray converts values and a shape into a native multi-dimensional array owned by a backend.
-func ToIntegerArray[T dtypes.IntegerType](values []T, dims []int) Array {
+func ToIntegerArray[T gotype.Integer](values []T, dims []int) Array {
 	arr := &algebraArray[T]{&arrayT[T]{
 		factory: integerFactory[T]{},
-		shape: shape.Shape{
-			DType:       dtypes.FromGenericsType[T](),
-			AxisLengths: dims,
-		},
-		values: values,
+		shape:   shapes.Make(dtypes.FromGenericsType[T](), dims...),
+		values:  values,
 	}}
 	if len(values) != arr.shape.Size() {
 		panic(fmt.Sprintf("mismatch between the number of values (=%d) and the number of elements (=%d) in shape %s", len(values), arr.shape.Size(), arr.shape.String()))
@@ -378,28 +353,25 @@ func ToIntegerArray[T dtypes.IntegerType](values []T, dims []int) Array {
 }
 
 // Zero returns an array of zeros given a shape.
-func Zero(sh *shape.Shape) (Array, error) {
+func Zero(sh shapes.Shape) (Array, error) {
 	switch sh.DType {
 	case dtypes.Bool:
-		return ToBoolArray(make([]bool, sh.Size()), sh.AxisLengths), nil
+		return ToBoolArray(make([]bool, sh.Size()), sh.Dimensions), nil
 	case dtypes.BFloat16:
-		return ToBfloat16Array(make([]bfloat16.BFloat16, sh.Size()), sh.AxisLengths), nil
+		return ToBfloat16Array(make([]bfloat16.BFloat16, sh.Size()), sh.Dimensions), nil
 	case dtypes.Float32:
-		return ToFloatArray(make([]float32, sh.Size()), sh.AxisLengths), nil
+		return ToFloatArray(make([]float32, sh.Size()), sh.Dimensions), nil
 	case dtypes.Float64:
-		return ToFloatArray(make([]float64, sh.Size()), sh.AxisLengths), nil
-	case dtypes.Int:
-		return ToIntegerArray(make([]int, sh.Size()), sh.AxisLengths), nil
+		return ToFloatArray(make([]float64, sh.Size()), sh.Dimensions), nil
 	case dtypes.Int32:
-		return ToIntegerArray(make([]int32, sh.Size()), sh.AxisLengths), nil
+		return ToIntegerArray(make([]int32, sh.Size()), sh.Dimensions), nil
 	case dtypes.Int64:
-		return ToIntegerArray(make([]int64, sh.Size()), sh.AxisLengths), nil
+		return ToIntegerArray(make([]int64, sh.Size()), sh.Dimensions), nil
 	case dtypes.Uint32:
-		return ToIntegerArray(make([]uint32, sh.Size()), sh.AxisLengths), nil
+		return ToIntegerArray(make([]uint32, sh.Size()), sh.Dimensions), nil
 	case dtypes.Uint64:
-		return ToIntegerArray(make([]uint64, sh.Size()), sh.AxisLengths), nil
+		return ToIntegerArray(make([]uint64, sh.Size()), sh.Dimensions), nil
 	default:
 		return nil, errors.Errorf("cannot create an array of data type %s: not supported", sh.DType)
 	}
-
 }

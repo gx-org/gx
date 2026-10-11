@@ -15,13 +15,13 @@
 package builder_test
 
 import (
-	"go/ast"
 	"math/big"
 	"testing"
 
 	"github.com/gx-org/gx/build/builder/testbuild"
 	"github.com/gx-org/gx/build/ir"
 	"github.com/gx-org/gx/build/ir/irhelper"
+	"github.com/gx-org/gx/src/gx/ast"
 )
 
 func TestImportType(t *testing.T) {
@@ -133,7 +133,7 @@ type (
 		int32 | int64 | uint32 | uint64
 	}
 
-	Num interface {
+	Nums interface {
 		Floats | Ints
 	}
 )
@@ -145,7 +145,7 @@ package math
 
 import "dtype"
 
-func Exp[T dtype.Num, M []int]([unpack(M)]T) [unpack(M)]T
+func Exp[T dtype.Nums, M []int]([unpack(M)]T) [unpack(M)]T
 `,
 		},
 		testbuild.Decl{
@@ -167,6 +167,8 @@ func TestImportError(t *testing.T) {
 		testbuild.DeclarePackage{
 			Src: `
 package math
+
+func m() int
 `,
 		},
 		testbuild.Decl{
@@ -194,6 +196,15 @@ import "math"
 
 func f() int32 {
 	return math.Undefined() // ERROR undefined: math.Undefined
+}
+`,
+		},
+		testbuild.Decl{
+			Src: `
+import "math"
+
+func f() int32 {
+	return math.m() // ERROR m is not exported
 }
 `,
 		},

@@ -15,9 +15,8 @@
 package builtins
 
 import (
-	"go/ast"
-
 	"github.com/gx-org/gx/build/ir"
+	"github.com/gx-org/gx/src/gx/ast"
 )
 
 type requireFunc struct{}
@@ -44,11 +43,12 @@ var requireVarargsType = &ir.VarArgsType{
 var requireVarargsExpr = ir.TypeExpr(nil, requireVarargsType)
 
 // BuildFuncType builds the type of a function given how it is called.
-func (f *requireFunc) BuildFuncType(tpcmp ir.TypeCmp, call *ir.FuncCallExpr) (*ir.FuncType, error) {
+func (f *requireFunc) BuildFuncType(tpcmp ir.TypeEval, call *ir.FuncCallExpr) (*ir.FuncType, error) {
 	ext := &ir.FuncType{
 		BaseType: ir.BaseType[*ast.FuncType]{
 			Src: &ast.FuncType{Func: call.Src.Pos()},
 		},
+		Nature: ir.FuncNature{CompEval: true},
 		Params: &ir.FieldList{
 			Src: &ast.FieldList{},
 		},

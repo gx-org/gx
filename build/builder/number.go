@@ -15,9 +15,8 @@
 package builder
 
 import (
-	"go/ast"
-
 	"github.com/gx-org/gx/build/ir"
+	"github.com/gx-org/gx/src/gx/ast"
 )
 
 // numberLit is the literal of a number.

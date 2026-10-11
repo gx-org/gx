@@ -15,11 +15,11 @@
 package exprdeps_test
 
 import (
-	"go/ast"
 	"testing"
 
 	"github.com/google/go-cmp/cmp"
 	"github.com/gx-org/gx/internal/exprdeps"
+	"github.com/gx-org/gx/src/gx/ast"
 )
 
 func names(vals []*ast.Ident) []string {

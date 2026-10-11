@@ -1,0 +1,8 @@
+package noret_error
+
+func f() int
+
+func F() int {
+	f() // ERROR: cannot use an expression returning a value as a statement
+	return 2
+}

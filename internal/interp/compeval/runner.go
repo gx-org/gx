@@ -33,9 +33,9 @@ func Runner() engine.Runners {
 }
 
 // FuncDecl runs a function implemented in GX.
-func (runner) FuncDecl(fDecl *ir.FuncDecl, env *engine.Env, call *ir.FuncCallExpr, recv engine.Copier, args []ir.Element) ([]ir.Element, error) {
+func (runner) FuncDecl(fDecl *ir.FuncDecl, env *engine.Env, call *ir.FuncCallExpr, recv engine.Copier, genArgs, args []ir.Element) ([]ir.Element, error) {
 	if fDecl.FuncType().Nature.CompEval {
-		return interp.Runners().FuncDecl(fDecl, env, call, recv, args)
+		return interp.Runners().FuncDecl(fDecl, env, call, recv, genArgs, args)
 	}
 	return surrogates.Call(call)
 }
@@ -45,15 +45,16 @@ func (runner) FuncLit(lit *ir.FuncLit, env *engine.Env, ctx *context.Context, ca
 	return surrogates.Call(call)
 }
 
+// Keyword runs a keyword in GX.
+func (runner) Keyword(fn *ir.FuncKeyword, env *engine.Env, call *ir.FuncCallExpr, recv engine.Copier, genArgs, args []ir.Element) ([]ir.Element, error) {
+	return interp.Runners().Keyword(fn, env, call, recv, genArgs, args)
+}
+
 // Builtin runs a function builtin in GX or provided by a backend.
-func (runner) Builtin(fn ir.Func, impl ir.FuncImpl, env *engine.Env, call *ir.FuncCallExpr, recv engine.Copier, args []ir.Element) ([]ir.Element, error) {
-	_, isKeyword := fn.(*ir.FuncKeyword)
-	if isKeyword {
-		return interp.Runners().Builtin(fn, impl, env, call, recv, args)
-	}
+func (runner) Builtin(fn *ir.FuncBuiltin, env *engine.Env, call *ir.FuncCallExpr, recv engine.Copier, genArgs, args []ir.Element) ([]ir.Element, error) {
 	fType := fn.FuncType()
 	if fType != nil && fType.Nature.CompEval {
-		return interp.Runners().Builtin(fn, impl, env, call, recv, args)
+		return interp.Runners().Builtin(fn, env, call, recv, genArgs, args)
 	}
 	return surrogates.Call(call)
 }

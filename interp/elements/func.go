@@ -25,9 +25,27 @@ import (
 )
 
 // FuncBuiltin defines a builtin function provided by a backend.
-type FuncBuiltin func(env *engine.Env, call *ir.FuncCallExpr, recv ir.Element, args []ir.Element) ([]ir.Element, error)
+type FuncBuiltin func(env *engine.Env, call *ir.FuncCallExpr, recv ir.Element, genArgs, args []ir.Element) ([]ir.Element, error)
 
-type caller func(env *engine.Env, call *ir.FuncCallExpr, recv engine.Copier, args []ir.Element) ([]ir.Element, error)
+type caller func(env *engine.Env, call *ir.FuncCallExpr, recv engine.Copier, genArgs, args []ir.Element) ([]ir.Element, error)
+
+func funcDeclCaller(f *ir.FuncDecl) caller {
+	return func(env *engine.Env, call *ir.FuncCallExpr, recv engine.Copier, genArgs, args []ir.Element) (outs []ir.Element, err error) {
+		return env.Runners().FuncDecl(f, env.For(f.FType.Nature), call, recv, genArgs, args)
+	}
+}
+
+func funcBuiltinCaller(f *ir.FuncBuiltin) caller {
+	return func(env *engine.Env, call *ir.FuncCallExpr, recv engine.Copier, genArgs, args []ir.Element) (outs []ir.Element, err error) {
+		return env.Runners().Builtin(f, env.For(f.FType.Nature), call, recv, genArgs, args)
+	}
+}
+
+func funcKeywordCaller(f *ir.FuncKeyword) caller {
+	return func(env *engine.Env, call *ir.FuncCallExpr, recv engine.Copier, genArgs, args []ir.Element) (outs []ir.Element, err error) {
+		return env.Runners().Keyword(f, env.For(call.Callee.FuncType().Nature), call, recv, genArgs, args)
+	}
+}
 
 type elFunc struct {
 	fn      ir.Func
@@ -45,25 +63,25 @@ var (
 // NewFunc creates a function given an IR and a receiver.
 // The function is run when being called.
 func NewFunc(fn ir.Func, recv *engine.Receiver) engine.Func {
-	base := elFunc{fn: fn, recv: recv}
+	elfn := elFunc{fn: fn, recv: recv}
 	switch fnT := fn.(type) {
 	case *ir.AnnotatorField:
 		return newFieldAnnotator(fnT, recv)
 	case *ir.AnnotatorFunc:
 		return newFuncAnnotator(fnT, recv)
 	case *ir.FuncDecl:
-		base.storage = fnT
-		base.call = funcDecl{fnT: fnT}.callDecl
+		elfn.storage = fnT
+		elfn.call = funcDeclCaller(fnT)
 	case *ir.FuncBuiltin:
-		base.storage = fnT
-		base.call = funcBuiltin{fun: fnT, impl: fnT.Impl}.callBuiltin
+		elfn.storage = fnT
+		elfn.call = funcBuiltinCaller(fnT)
 	case *ir.FuncKeyword:
-		base.storage = fnT
-		base.call = funcBuiltin{fun: fnT, impl: fnT.Impl}.callBuiltin
+		elfn.storage = fnT
+		elfn.call = funcKeywordCaller(fnT)
 	case *ir.Macro:
 		return NewMacro(fnT, nil)
 	}
-	return &base
+	return &elfn
 }
 
 // Type of the function.
@@ -71,8 +89,8 @@ func (f *elFunc) Type() ir.Type {
 	return f.fn.FuncType()
 }
 
-// IR returns the function represented by the node.
-func (f *elFunc) IR() ir.Func {
+// FuncIR returns the function represented by the node.
+func (f *elFunc) FuncIR() ir.Func {
 	return f.fn
 }
 
@@ -97,7 +115,7 @@ func (f *elFunc) Store() ir.Storage {
 }
 
 // Call the function.
-func (f *elFunc) Call(env *engine.Env, call *ir.FuncCallExpr, args []ir.Element) ([]ir.Element, error) {
+func (f *elFunc) Call(env *engine.Env, call *ir.FuncCallExpr, genArgs, args []ir.Element) ([]ir.Element, error) {
 	if f.call == nil {
 		return nil, fmterr.InternalAt(env.File().FileSet(), f.fn.Node(), "function type %T not supported", f.fn)
 	}
@@ -105,27 +123,10 @@ func (f *elFunc) Call(env *engine.Env, call *ir.FuncCallExpr, args []ir.Element)
 	if f.Recv() != nil {
 		recv = f.Recv().Element
 	}
-	return f.call(env, call, recv, args)
+	return f.call(env, call, recv, genArgs, args)
 }
 
 // String representation of the node.
 func (f *elFunc) String() string {
 	return f.fn.DefineString(nil)
-}
-
-type funcDecl struct {
-	fnT *ir.FuncDecl
-}
-
-func (f funcDecl) callDecl(env *engine.Env, call *ir.FuncCallExpr, recv engine.Copier, args []ir.Element) (outs []ir.Element, err error) {
-	return env.Runners().FuncDecl(f.fnT, env, call, recv, args)
-}
-
-type funcBuiltin struct {
-	fun  ir.Func
-	impl ir.FuncImpl
-}
-
-func (f funcBuiltin) callBuiltin(env *engine.Env, call *ir.FuncCallExpr, recv engine.Copier, args []ir.Element) (outs []ir.Element, err error) {
-	return env.Runners().Builtin(f.fun, f.impl, env, call, recv, args)
 }

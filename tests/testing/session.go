@@ -74,7 +74,7 @@ func (s *UnitSession) runFileTest(t *testing.T, path, fileName, packageName stri
 	if err != nil {
 		return 0, err
 	}
-	defer rtm.Backend().Release()
+	defer rtm.Backend().Finalize()
 	pkg, err := rtm.Builder().BuildFiles(path, packageName, s.fs, []string{
 		filepath.Join(path, fileName),
 	})

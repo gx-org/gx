@@ -16,8 +16,6 @@
 package revgraph
 
 import (
-	"go/ast"
-	"go/format"
 	"go/token"
 	"strings"
 
@@ -25,7 +23,9 @@ import (
 	"github.com/gx-org/gx/build/fmterr"
 	"github.com/gx-org/gx/build/ir"
 	"github.com/gx-org/gx/interp/elements"
-	"github.com/gx-org/gx/stdlib/math/grad/setann"
+	"github.com/gx-org/gx/src/gx/ast"
+	"github.com/gx-org/gx/src/gx/format"
+	"github.com/gx-org/gx/stdlib/math/grad/gradann"
 	"github.com/gx-org/gx/stdlib/math/grad/wrt"
 )
 
@@ -161,7 +161,7 @@ func (g *Graph) Process(fetcher ir.Fetcher) (*ast.BlockStmt, bool) {
 	p := &processor{Graph: g, fetcher: fetcher}
 	var root stmt
 	var ok bool
-	if ann := setann.Get(g.fn); ann != nil {
+	if ann := gradann.Get(g.fn); ann != nil {
 		root, ok = p.processFuncWithAnn(ann)
 	} else {
 		root, ok = p.processFuncWithoutAnn()
@@ -191,22 +191,4 @@ func (p *processor) processFuncWithoutAnn() (stmt, bool) {
 		p.typeParamsExpr[i] = &ast.Ident{Name: typeParam.Name.Name}
 	}
 	return root, ok
-}
-
-func (g *Graph) funcNameWithTypeParamsExpr(fn ast.Expr) ast.Expr {
-	var callee ast.Expr = fn
-	switch len(g.typeParamsExpr) {
-	case 0:
-		return callee
-	case 1:
-		return &ast.IndexExpr{
-			X:     callee,
-			Index: g.typeParamsExpr[0],
-		}
-	default:
-		return &ast.IndexListExpr{
-			X:       callee,
-			Indices: g.typeParamsExpr,
-		}
-	}
 }

@@ -1,0 +1,14 @@
+package generic01
+
+import (
+	"dtype"
+	"shape"
+)
+
+// No runtime test function
+
+func ReduceMax[Axis []int, Shape []int, nums dtype.Nums](x [unpack(Shape)]nums) [unpack(shape.ReduceAxes(Shape, Axis...))]nums
+
+func F[Axis []int, Shape []int, nums dtype.Nums](x [unpack(Shape)]nums) [unpack(shape.ReduceAxes(Shape, Axis...))]nums {
+	return ReduceMax[Axis](x)
+}

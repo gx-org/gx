@@ -17,7 +17,6 @@ package builtin
 
 import (
 	"fmt"
-	"go/ast"
 	"io/fs"
 	"path/filepath"
 	"strings"
@@ -27,6 +26,7 @@ import (
 	"github.com/gx-org/gx/interp/elements"
 	"github.com/gx-org/gx/interp/engine"
 	"github.com/gx-org/gx/interp/materialise"
+	"github.com/gx-org/gx/src/gx/ast"
 )
 
 type (
@@ -131,5 +131,5 @@ func IRFuncBuiltin[T builtinFuncImpl](name string, fnBuiltin elements.FuncBuilti
 
 // Materialiser returns the materialiser from the evaluation environment.
 func Materialiser(env *engine.Env) materialise.Materialiser {
-	return env.Engine().ArrayOps().(materialise.Materialiser)
+	return env.Engine().(materialise.Materialiser)
 }

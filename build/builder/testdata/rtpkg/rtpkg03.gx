@@ -1,0 +1,11 @@
+package rtpkg03
+
+import "runtime:rtpkgbase/world"
+
+func Test() int {
+	// Call a function as a statement.
+	world.hello()
+	return 5
+	// Want:
+	// int(5)
+}

@@ -16,35 +16,42 @@
 package materialise
 
 import (
-	"github.com/pkg/errors"
-	"github.com/gx-org/backend/ops"
-	"github.com/gx-org/backend/shape"
+	"fmt"
+
+	"github.com/gomlx/compute"
+	"github.com/gomlx/compute/shapes"
 	"github.com/gx-org/gx/api/hostio"
 	"github.com/gx-org/gx/build/ir"
+	"github.com/gx-org/gx/internal/base/cast"
 	"github.com/gx-org/gx/internal/interp/flatten"
 )
 
 type (
+	// OutputNode is an output node in the graph.
+	OutputNode struct {
+		Node  compute.Value
+		Shape shapes.Shape
+	}
 
 	// Node is an element representing a numerical node in a compute graph.
 	Node interface {
 		ir.Element
-		OutNode() *ops.OutputNode
+		OutNode() *OutputNode
 	}
 
 	// Materialiser materialises an array.
 	Materialiser interface {
 		// Graph returns the graph to which new nodes are being added.
-		Graph() ops.Graph
+		Graph() compute.Function
 
 		// Materialise returns the element with all its values from the graph.
 		NodeFromArray(val *hostio.HostArray) (Node, error)
 
 		// ElementsFromNodes returns a slice of elements from nodes and their types.
-		ElementsFromNodes(file *ir.File, nodes []*ops.OutputNode, types []ir.Type) ([]ir.Element, error)
+		ElementsFromNodes(ev ir.Evaluator, nodes []*OutputNode, types []ir.Type) ([]ir.Element, error)
 	}
 
-	// ElementMaterialiser is an element that can return an instance of itself composed only of elements from the backend ops.
+	// ElementMaterialiser is an element that can return an instance of itself composed only of elements from the backend backend.
 	ElementMaterialiser interface {
 		ir.Element
 
@@ -53,49 +60,54 @@ type (
 	}
 )
 
+// String representation of an output node.
+func (out *OutputNode) String() string {
+	return fmt.Sprintf("%s: %v", out.Shape.String(), out.Node)
+}
+
 // Element converts an element into a graph node.
-// We unpack the value of *ops.OutputNode to prevent
+// We unpack the value of *OutputNode to prevent
 // from changing the output of Materialise accidentally.
 // Returns an error if the element is not a numerical element.
-func Element(am Materialiser, el ir.Element) (ops.Node, *shape.Shape, error) {
-	materialiser, ok := el.(ElementMaterialiser)
-	if !ok {
-		return nil, nil, errors.Errorf("cannot convert %T to a backend node graph: does not implement Materialiser", el)
+func Element(am Materialiser, el ir.Element) (compute.Value, shapes.Shape, error) {
+	materialiser, err := cast.To[ElementMaterialiser](el)
+	if err != nil {
+		return nil, shapes.Invalid(), err
 	}
 	outEl, err := materialiser.Materialise(am)
 	if err != nil {
-		return nil, nil, err
+		return nil, shapes.Invalid(), err
 	}
 	outNode := outEl.OutNode()
 	return outNode.Node, outNode.Shape, nil
 }
 
 // AllWithShapes materialises a slice of elements into a slice of output graph nodes.
-func AllWithShapes(am Materialiser, els []ir.Element) ([]*ops.OutputNode, error) {
-	nodes := make([]*ops.OutputNode, len(els))
+func AllWithShapes(am Materialiser, els []ir.Element) ([]*OutputNode, error) {
+	nodes := make([]*OutputNode, len(els))
 	for i, el := range els {
-		node, shape, err := Element(am, el)
+		node, sh, err := Element(am, el)
 		if err != nil {
 			return nil, err
 		}
-		nodes[i] = &ops.OutputNode{
+		nodes[i] = &OutputNode{
 			Node:  node,
-			Shape: shape,
+			Shape: sh,
 		}
 	}
 	return nodes, nil
 }
 
 // All materialises a slice of elements into a slice of graph nodes.
-func All(am Materialiser, els []ir.Element) ([]ops.Node, *shape.Shape, error) {
-	nodes := make([]ops.Node, len(els))
-	var firstShape *shape.Shape
+func All(am Materialiser, els []ir.Element) ([]compute.Value, shapes.Shape, error) {
+	nodes := make([]compute.Value, len(els))
+	var firstShape shapes.Shape
 	for i, el := range els {
-		var shapeI *shape.Shape
+		var shapeI shapes.Shape
 		var err error
 		nodes[i], shapeI, err = Element(am, el)
 		if err != nil {
-			return nil, nil, err
+			return nil, shapes.Invalid(), err
 		}
 		if i == 0 {
 			firstShape = shapeI
@@ -105,7 +117,7 @@ func All(am Materialiser, els []ir.Element) ([]ops.Node, *shape.Shape, error) {
 }
 
 // Flatten first flatten all the elements, then materialise them all.
-func Flatten(mat Materialiser, elts ...ir.Element) ([]ops.Node, []*shape.Shape, error) {
+func Flatten(mat Materialiser, elts ...ir.Element) ([]compute.Value, []shapes.Shape, error) {
 	elts, err := flatten.Flatten(elts...)
 	if err != nil {
 		return nil, nil, err
@@ -114,16 +126,20 @@ func Flatten(mat Materialiser, elts ...ir.Element) ([]ops.Node, []*shape.Shape, 
 	if err != nil {
 		return nil, nil, err
 	}
-	result := make([]ops.Node, len(outputs))
-	shapes := make([]*shape.Shape, len(outputs))
+	result := make([]compute.Value, len(outputs))
+	shs := make([]shapes.Shape, len(outputs))
 	for i, output := range outputs {
 		result[i] = output.Node
-		shapes[i] = output.Shape
+		shs[i] = output.Shape
 	}
-	return result, shapes, nil
+	return result, shs, nil
 }
 
 // ElementFromNode converts a node and its type into an element.
-func ElementFromNode(file *ir.File, mat Materialiser, node *ops.OutputNode, typ ir.Type) ([]ir.Element, error) {
-	return mat.ElementsFromNodes(file, []*ops.OutputNode{node}, []ir.Type{typ})
+func ElementFromNode(ev ir.Evaluator, mat Materialiser, op compute.Value, typ ir.Type) ([]ir.Element, error) {
+	sh, err := mat.Graph().Shape(op)
+	if err != nil {
+		return nil, err
+	}
+	return mat.ElementsFromNodes(ev, []*OutputNode{{Node: op, Shape: sh}}, []ir.Type{typ})
 }

@@ -15,18 +15,18 @@
 package builder_test
 
 import (
-	"go/ast"
 	"testing"
 
 	"github.com/gx-org/gx/build/builder/testbuild"
 	"github.com/gx-org/gx/build/ir"
 	irh "github.com/gx-org/gx/build/ir/irhelper"
-	"github.com/gx-org/gx/tests/testmacros"
+	"github.com/gx-org/gx/src/gx/ast"
+	"github.com/gx-org/gx/tests/testpkgs"
 )
 
 func TestMacro(t *testing.T) {
 	testbuild.Run(t,
-		testmacros.DeclarePackage,
+		testpkgs.TestMacros,
 		testbuild.Decl{
 			Src: `
 import "testmacros"
@@ -126,7 +126,7 @@ func F() (int32, bool) {
 
 func TestMacroWithGenerics(t *testing.T) {
 	testbuild.Run(t,
-		testmacros.DeclarePackage,
+		testpkgs.TestMacros,
 		testbuild.Decl{
 			Src: `
 import "testmacros"
@@ -240,7 +240,7 @@ func TestMacroOnMethod(t *testing.T) {
 		},
 	}
 	testbuild.Run(t,
-		testmacros.DeclarePackage,
+		testpkgs.TestMacros,
 		testbuild.Decl{
 			Src: `
 import "testmacros"
@@ -307,7 +307,7 @@ func (S) f() int32 {
 
 func TestMacroWithErrors(t *testing.T) {
 	testbuild.Run(t,
-		testmacros.DeclarePackage,
+		testpkgs.TestMacros,
 		// First: make sure testmacros.ID(f) as generic types.
 		testbuild.Decl{
 			Src: `

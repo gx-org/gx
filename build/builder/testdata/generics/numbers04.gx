@@ -1,0 +1,25 @@
+package numbers04
+
+//gx:compeval
+func undef(a int) int {
+	if a%2 == 0 {
+		return a * 2
+	}
+	return a * 3
+}
+
+func f[A int]() [undef(A)]float32 {
+	return 2 + [undef(A)]float32{}
+}
+
+func Test01() [3]float32 {
+	return f[1]()
+	// Want:
+	// [3]float32{2, 2, 2}
+}
+
+func Test02() [4]float32 {
+	return f[2]()
+	// Want:
+	// [4]float32{2, 2, 2, 2}
+}

@@ -15,9 +15,8 @@
 package ir
 
 import (
-	"go/ast"
-
 	"github.com/gx-org/gx/build/ir/irkind"
+	"github.com/gx-org/gx/src/gx/ast"
 )
 
 type fieldPathType struct {
@@ -47,7 +46,7 @@ func (*fieldPathType) Same(Storage) bool {
 	return true
 }
 
-func (t *fieldPathType) Equal(_ TypeCmp, other Type) (bool, error) {
+func (t *fieldPathType) Equal(_ TypeEval, other Type) (bool, error) {
 	otherT, ok := other.(*fieldPathType)
 	if !ok {
 		return false, nil
@@ -55,19 +54,19 @@ func (t *fieldPathType) Equal(_ TypeCmp, other Type) (bool, error) {
 	return t == otherT, nil
 }
 
-func (t *fieldPathType) AssignableTo(tpcmp TypeCmp, other Type) (bool, error) {
+func (t *fieldPathType) AssignableTo(tpcmp TypeEval, other Type) (bool, error) {
 	return t.Equal(tpcmp, other)
 }
 
-func (t *fieldPathType) assignableFrom(tpcmp TypeCmp, other Type) (bool, error) {
+func (t *fieldPathType) assignableFrom(tpcmp TypeEval, other Type) (bool, error) {
 	return t.Equal(tpcmp, other)
 }
 
-func (t *fieldPathType) ConvertibleTo(tpcmp TypeCmp, other Type) (bool, error) {
+func (t *fieldPathType) ConvertibleTo(tpcmp TypeEval, other Type) (bool, error) {
 	return t.Equal(tpcmp, other)
 }
 
-func (t *fieldPathType) Instantiate(Fetcher, Specialiser) (Type, bool) {
+func (t *fieldPathType) Instantiate(Fetcher, Instantiator) (Type, bool) {
 	return t, true
 }
 

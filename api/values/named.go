@@ -17,9 +17,9 @@ package values
 import (
 	"fmt"
 
-	"github.com/gx-org/backend/platform"
 	"github.com/gx-org/gx/api/hostio"
 	"github.com/gx-org/gx/build/ir"
+	"github.com/gx-org/gx/golang/backend/kernels"
 	"github.com/gx-org/gx/internal/base/cast"
 	"github.com/gx-org/gx/interp/engine"
 )
@@ -78,7 +78,7 @@ func (n *NamedType) TypeMethods() ir.TypeMethods {
 }
 
 // ToHost transfers the value to host given an allocator.
-func (n *NamedType) ToHost(alloc platform.Allocator) (hostio.Value, error) {
+func (n *NamedType) ToHost(alloc kernels.Allocator) (hostio.Value, error) {
 	hostVal, err := n.val.ToHost(alloc)
 	if err != nil {
 		return nil, err

@@ -57,8 +57,8 @@ func TestResolveType(t *testing.T) {
 	{20, 21, 22, 23},
 	{30, 31, 32, 33},
 }`, typ: "[4][4]float64"},
-		{code: "struct{}{}", typ: "struct"},
-		{code: "struct{x int32}{x: 1}", typ: "struct"},
+		{code: "struct{}{}", typ: "struct{}"},
+		{code: "struct{x int32}{x: 1}", typ: "struct{ x int32 }"},
 
 		{code: "func() bool { return true }", typ: "func() bool"},
 		{code: "func() bool { return true }()", typ: "bool"},

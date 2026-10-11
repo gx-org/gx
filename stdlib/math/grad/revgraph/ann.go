@@ -15,22 +15,22 @@
 package revgraph
 
 import (
-	"go/ast"
 	"go/token"
 	"reflect"
 
 	"github.com/gx-org/gx/build/ir"
-	"github.com/gx-org/gx/stdlib/math/grad/setann"
+	"github.com/gx-org/gx/src/gx/ast"
+	"github.com/gx-org/gx/stdlib/math/grad/gradann"
 	"github.com/gx-org/gx/stdlib/math/grad/special"
 	"github.com/gx-org/gx/stdlib/math/grad/wrt"
 )
 
 type annFunc struct {
 	node[ir.PkgFunc]
-	ann *setann.Annotation
+	ann *gradann.Annotation
 }
 
-func (p *processor) processFuncWithAnn(ann *setann.Annotation) (stmt, bool) {
+func (p *processor) processFuncWithAnn(ann *gradann.Annotation) (stmt, bool) {
 	fn, ok := p.fn.(ir.PkgFunc)
 	if !ok {
 		return nil, p.fetcher.Err().Appendf(p.fn.Node(), "cannot cast %T to %s", p.fn, reflect.TypeFor[ir.PkgFunc]().Name())
@@ -55,9 +55,7 @@ func (n *annFunc) buildVJPFunction(outCore *astOutCore, gradParam wrt.WRT, grad 
 		ret.Results[i] = special.Mul(
 			special.New(&ast.Ident{Name: res}),
 			special.New(&ast.CallExpr{
-				Fun: n.graph.funcNameWithTypeParamsExpr(
-					&ast.Ident{Name: grad.Name()},
-				),
+				Fun:  n.buildForwardCallee(&ast.Ident{Name: grad.Name()}),
 				Args: args,
 			}),
 		).AST()
@@ -69,6 +67,48 @@ func (n *annFunc) buildVJPFunction(outCore *astOutCore, gradParam wrt.WRT, grad 
 }
 
 func (n *annFunc) build(astmts *astOut) bool {
+	ann := gradann.Get(astmts.graph.Func())
+	if vjp := ann.VJP(); vjp != nil {
+		return n.forwardCall(astmts, vjp)
+	}
+	return n.buildBody(astmts)
+}
+
+func (n *annFunc) forwardCall(astmts *astOut, vjp ir.PkgFunc) bool {
+	ftype := n.graph.fn.FuncType()
+	params := ftype.Params.Fields()
+	args := make([]ast.Expr, len(params))
+	for i, field := range params {
+		args[i] = field.Storage().NameDef()
+	}
+	var callee ast.Expr = vjp.NameDef()
+	genFields := ftype.GenParams.Fields.Fields()
+	for _, field := range genFields {
+		callee = &ast.IndexExpr{
+			X:     callee,
+			Index: &ast.Ident{Name: field.Name.Name},
+		}
+	}
+	astmts.append(&ast.ReturnStmt{Results: []ast.Expr{
+		&ast.CallExpr{
+			Fun:  callee,
+			Args: args,
+		},
+	}})
+	return true
+}
+
+func (n *annFunc) buildForwardCallee(callee ast.Expr) ast.Expr {
+	for _, genParam := range n.irnode.FuncType().GenParams.Fields.Fields() {
+		callee = &ast.IndexExpr{
+			X:     callee,
+			Index: genParam.Name,
+		}
+	}
+	return callee
+}
+
+func (n *annFunc) buildBody(astmts *astOut) bool {
 	// Build the arguments to call the forward functions.
 	args := make([]ast.Expr, len(n.graph.nParams.names))
 	for i, fieldName := range n.graph.nParams.names {
@@ -83,13 +123,10 @@ func (n *annFunc) build(astmts *astOut) bool {
 		Tok: token.DEFINE,
 		Lhs: toExprs(idents),
 		Rhs: []ast.Expr{&ast.CallExpr{
-			Fun: n.graph.funcNameWithTypeParamsExpr(
-				&ast.Ident{Name: n.irnode.Name()},
-			),
+			Fun:  n.buildForwardCallee(n.irnode.NameDef()),
 			Args: args,
 		}},
 	})
-
 	// Generate forward statements for the expressions in the statement.
 	ret := &ast.ReturnStmt{Results: make([]ast.Expr, nVals)}
 	for i, expr := range idents {
@@ -99,7 +136,7 @@ func (n *annFunc) build(astmts *astOut) bool {
 	// Build a backward function for each function parameter.
 	names := make([]ast.Expr, len(n.graph.wrts))
 	for i, gradParam := range n.graph.wrts.Arrays() {
-		vjpFuncLit, ok := n.buildVJPFunction(astmts.astOutCore, gradParam, n.ann.Partials[i], args)
+		vjpFuncLit, ok := n.buildVJPFunction(astmts.astOutCore, gradParam, n.ann.Partial(i), args)
 		if !ok {
 			return false
 		}

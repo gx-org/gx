@@ -53,6 +53,10 @@ func (l *loader) Importers() []importers.Importer {
 	return nil
 }
 
+func (l *loader) Support(string) bool {
+	return true
+}
+
 func compare(genFile bindings.File, want []string) error {
 	var out strings.Builder
 	if err := genFile.WriteBindings(&out); err != nil {

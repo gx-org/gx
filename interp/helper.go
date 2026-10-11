@@ -39,7 +39,7 @@ func FuncFromElement(el ir.Element) (ir.Func, error) {
 	if !ok {
 		return nil, errors.Errorf("%s is not a function", el.Type().ReferString(nil))
 	}
-	return fEl.IR(), nil
+	return fEl.FuncIR(), nil
 }
 
 // FuncDeclFromElement extracts a function declaration from an element.

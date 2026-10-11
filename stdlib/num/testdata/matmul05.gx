@@ -2,6 +2,15 @@ package matmul05
 
 import "num"
 
-func f[A, B int](x [A]float32, y [B]float32) [A]float32 {
-	return num.MatMul(x, y) // ERROR in call to num.MatMul([A]float32, [B]float32): incompatible axis lengths: A!=B
+func f[LI, LJ, LK int](x [LI][LJ]float32, y [LJ][LK]float32) [LI][LK]float32 {
+	return num.MatMul(x, y)
+}
+
+func TestMatMul() [2][3]float32 {
+	return f([2][4]float32(2), [4][3]float32(3))
+	// Want:
+	// [2][3]float32{
+	// 	{24, 24, 24},
+	// 	{24, 24, 24},
+	// }
 }

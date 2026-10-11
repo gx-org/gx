@@ -31,8 +31,8 @@ func NewMacro(fn *ir.Macro, recv *engine.Receiver) engine.Func {
 	return &Macro{macro: fn, recv: recv}
 }
 
-// IR returns the macro function.
-func (f *Macro) IR() ir.Func {
+// FuncIR returns the macro function.
+func (f *Macro) FuncIR() ir.Func {
 	return f.macro
 }
 
@@ -42,7 +42,7 @@ func (f *Macro) Recv() *engine.Receiver {
 }
 
 // Call the macro to build the synthetic element.
-func (f *Macro) Call(fctx *engine.Env, call *ir.FuncCallExpr, args []ir.Element) ([]ir.Element, error) {
+func (f *Macro) Call(fctx *engine.Env, call *ir.FuncCallExpr, genArgs, args []ir.Element) ([]ir.Element, error) {
 	if f.macro.BuildSynthetic == nil {
 		return nil, errors.Errorf("macro %s.%s has no implementation to build the synthetic function type", f.macro.FFile.Package.Name.Name, f.macro.Name())
 	}

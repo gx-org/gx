@@ -19,9 +19,9 @@ import (
 	"strings"
 
 	"github.com/pkg/errors"
-	"github.com/gx-org/backend/platform"
 	"github.com/gx-org/gx/api/hostio"
 	"github.com/gx-org/gx/build/ir"
+	"github.com/gx-org/gx/golang/backend/kernels"
 )
 
 // Slice of GX values.
@@ -53,7 +53,7 @@ func NewSlice(typ ir.Type, vals []hostio.Value) (*Slice, error) {
 }
 
 // ToHost transfers all the elements of the slice to the host.
-func (s *Slice) ToHost(alloc platform.Allocator) (hostio.Value, error) {
+func (s *Slice) ToHost(alloc kernels.Allocator) (hostio.Value, error) {
 	vals, err := hostio.ToHost(alloc, s.vals)
 	if err != nil {
 		return nil, err

@@ -16,12 +16,12 @@ package testbuild
 
 import (
 	"fmt"
-	"go/ast"
 	"strings"
 
 	"github.com/google/go-cmp/cmp"
 	"github.com/gx-org/gx/build/fmterr"
 	"github.com/gx-org/gx/build/ir"
+	"github.com/gx-org/gx/src/gx/ast"
 )
 
 // WantPrefix is the prefix in the comment indicating the result of a test.

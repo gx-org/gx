@@ -32,7 +32,7 @@ func NewElement(env *engine.Env, x ir.Type, val any) (engine.ConstantElement, er
 	if err != nil {
 		return nil, err
 	}
-	return env.Engine().ArrayOps().ElementFromHostValue(env.ExprEval(), cst)
+	return env.Engine().ElementFromHostValue(env.ExprEval(), cst)
 }
 
 // NewConstant returns a new constant from an IR type and a Go value.

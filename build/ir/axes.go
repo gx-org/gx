@@ -16,9 +16,9 @@ package ir
 
 import (
 	"fmt"
-	"go/ast"
 
 	"github.com/gx-org/gx/internal/undef"
+	"github.com/gx-org/gx/src/gx/ast"
 )
 
 type (
@@ -37,7 +37,7 @@ type (
 		AsExpr() Expr
 
 		// Equal returns true if two axis are equal.
-		Equal(TypeCmp, AxisLengths) (bool, error)
+		Equal(TypeEval, AxisLengths) (bool, error)
 
 		// Specialise the axis length given a context.
 		Specialise(Specialiser) ([]AxisLengths, bool)
@@ -73,7 +73,7 @@ func (dm *AxisExpr) Expr() ast.Expr { return dm.X.Expr() }
 func (dm *AxisExpr) NumAxes() int { return 1 }
 
 // Equal returns true if two axis are equal.
-func (dm *AxisExpr) Equal(tpcmp TypeCmp, other AxisLengths) (bool, error) {
+func (dm *AxisExpr) Equal(tpcmp TypeEval, other AxisLengths) (bool, error) {
 	dmAx, err := tpcmp.EvalExpr(dm.X)
 	if err != nil {
 		return false, err
@@ -126,7 +126,7 @@ func (dm *AxisExpr) UnifyWith(uni Unifier, targets []AxisLengths) ([]AxisLengths
 func (dm *AxisExpr) Instantiate(ev Fetcher, spec Specialiser) ([]AxisLengths, bool) {
 	xs, err := CompEvalExpr(ev, dm.X)
 	if undef.Is(err) {
-		return []AxisLengths{dm}, true
+		return dm.Specialise(spec)
 	}
 	if err != nil {
 		return nil, spec.InstantiateError(dm.X.Node(), err)
@@ -221,7 +221,7 @@ func (dm *AxisInfer) axExprString(from *File) string {
 }
 
 // Equal returns true if two axis are equal.
-func (dm *AxisInfer) Equal(tpcmp TypeCmp, other AxisLengths) (bool, error) {
+func (dm *AxisInfer) Equal(tpcmp TypeEval, other AxisLengths) (bool, error) {
 	if dm.X == nil {
 		return false, nil
 	}

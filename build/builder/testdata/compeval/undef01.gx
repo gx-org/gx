@@ -1,0 +1,20 @@
+package undef01
+
+//gx:compeval
+func check(a []int) []int {
+	require(len(a) == 1)
+	require(a[0] == 3)
+	return a
+}
+
+func f[S []int](x [unpack(S)]float32) [unpack(check(S))]float32 {
+	return x
+}
+
+func callF01() [3]float32 {
+	return f([3]float32{1, 2, 3})
+}
+
+func callF02() [2]float32 {
+	return f([2]float32{1, 2}) // ERROR: condition a[0]==3 not satisfied
+}

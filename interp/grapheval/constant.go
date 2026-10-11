@@ -15,8 +15,7 @@
 package grapheval
 
 import (
-	"github.com/gx-org/backend/ops"
-	"github.com/gx-org/backend/shape"
+	"github.com/gomlx/compute/shapes"
 	"github.com/gx-org/gx/api/hostio"
 	"github.com/gx-org/gx/build/fmterr"
 	"github.com/gx-org/gx/build/ir"
@@ -24,6 +23,7 @@ import (
 	"github.com/gx-org/gx/internal/concrete"
 	"github.com/gx-org/gx/internal/interp/csteager"
 	"github.com/gx-org/gx/internal/interp/flatten"
+	"github.com/gx-org/gx/internal/togo"
 	"github.com/gx-org/gx/interp/elements"
 	"github.com/gx-org/gx/interp/engine"
 	"github.com/gx-org/gx/interp/materialise"
@@ -45,9 +45,10 @@ var (
 	_ engine.Copier                   = (*constant)(nil)
 	_ elements.WithAxes               = (*constant)(nil)
 	_ ir.WithLength                   = (*constant)(nil)
+	_ hostio.CompileValue             = (*constant)(nil)
 )
 
-func newConstant(ctx ir.Evaluator, ev *Evaluator, cst engine.Constant) (*constant, error) {
+func newConstant(ctx ir.Evaluator, ev *Ops, cst engine.Constant) (*constant, error) {
 	ctyp, err := concrete.Concrete(ctx, cst.Type())
 	if err != nil {
 		return nil, err
@@ -57,7 +58,7 @@ func newConstant(ctx ir.Evaluator, ev *Evaluator, cst engine.Constant) (*constan
 		return nil, fmterr.Internalf("cannot get array type from %s", ctyp.ReferString(ctx.File()))
 	}
 	kind := cArray.DataType().Kind()
-	cstNode, err := cst.BuildNode(ev.ao.graph, kind)
+	cstNode, err := cst.BuildNode(ev.graph, kind)
 	if err != nil {
 		return nil, err
 	}
@@ -65,11 +66,11 @@ func newConstant(ctx ir.Evaluator, ev *Evaluator, cst engine.Constant) (*constan
 	if err != nil {
 		return nil, err
 	}
-	shape := &shape.Shape{
-		DType:       kind.DType(),
-		AxisLengths: axlens,
+	shape := shapes.Shape{
+		DType:      kind.DType(),
+		Dimensions: axlens,
 	}
-	node, err := NewBackendNode(ev, ctyp, &ops.OutputNode{
+	node, err := NewBackendNode(ev, ctyp, &materialise.OutputNode{
 		Node:  cstNode,
 		Shape: shape,
 	})
@@ -102,7 +103,7 @@ func (n *constant) Axes(ev ir.Evaluator) (*elements.Slice, error) {
 	if err != nil {
 		return nil, err
 	}
-	return n.ev.axesFromShape(ev, axlens)
+	return n.ao.axesFromShape(ev, axlens)
 }
 
 // UnaryOp applies an unary operator to x.
@@ -114,7 +115,7 @@ func (n *constant) UnaryOp(env *engine.Env, expr *ir.UnaryExpr) (engine.Numerica
 	if res == nil {
 		return n.BackendNode.UnaryOp(env, expr)
 	}
-	return newConstant(env.ExprEval(), n.ev, res)
+	return newConstant(env.ExprEval(), n.ao, res)
 }
 
 // BinaryOp applies a binary operator to x and y.
@@ -126,7 +127,7 @@ func (n *constant) BinaryOp(env *engine.Env, expr *ir.BinaryExpr, y engine.Numer
 	if res == nil {
 		return n.BackendNode.BinaryOp(env, expr, y)
 	}
-	return newConstant(env.ExprEval(), n.ev, res)
+	return newConstant(env.ExprEval(), n.ao, res)
 }
 
 // BinaryOp applies a binary operator to x and y.
@@ -138,12 +139,12 @@ func (n *constant) Cast(env *engine.Env, expr ir.Expr, target ir.Type) (engine.N
 	if res == nil {
 		return n.BackendNode.Cast(env, expr, target)
 	}
-	return newConstant(env.ExprEval(), n.ev, res)
+	return newConstant(env.ExprEval(), n.ao, res)
 }
 
 // Length returns the value corresponding to calling the built-in len.
 func (n *constant) Length(ev ir.Evaluator) (int, error) {
-	return n.Shape().OuterAxisLength(), nil
+	return shapeLength(n.Shape())
 }
 
 func (n *constant) Type() ir.Type {
@@ -154,11 +155,16 @@ func (n *constant) Kind() irkind.Kind {
 	return n.cst.Type().Kind()
 }
 
-func (n *constant) String() string {
-	return n.cst.SourceString(nil)
+// GoValue of the underlying element.
+func (n *constant) GoValue() (any, error) {
+	return togo.CpValue(n.cst)
 }
 
 // Materialise returns itself.
 func (n *constant) Materialise(materialise.Materialiser) (materialise.Node, error) {
 	return n, nil
+}
+
+func (n *constant) String() string {
+	return n.cst.SourceString(nil)
 }

@@ -1,0 +1,10 @@
+package rtpkg02
+
+import "runtime:rtpkgbase/world"
+
+func Test() int {
+	// Call a function that normally would be not exported.
+	return world.hello()
+	// Want:
+	// int(5)
+}

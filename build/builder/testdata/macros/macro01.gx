@@ -1,0 +1,16 @@
+package macro01
+
+import "testmacros"
+
+// gx:=testmacros.ID(f)
+func synthetic()
+
+func f() int32 {
+	return 2
+}
+
+func Test() int32 {
+	return synthetic()
+	// Want:
+	// int32(2)
+}

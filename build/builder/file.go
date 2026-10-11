@@ -15,34 +15,36 @@
 package builder
 
 import (
-	"go/ast"
 	"go/token"
 
 	"github.com/gx-org/gx/build/builder/irb"
 	"github.com/gx-org/gx/build/ir"
+	"github.com/gx-org/gx/src/gx/ast"
 )
 
 type file struct {
 	pkg     *basePackage
 	src     *ast.File
-	name    string
 	imports []*ir.ImportDecl
 }
 
 var _ irb.Node[*pkgResolveScope] = (*file)(nil)
 
-func newFile(pkg *basePackage, name string, src *ast.File) *file {
+func (f *file) name() string {
+	return f.pkg.fset.Position(f.src.Pos()).Filename
+}
+
+func newFile(pkg *basePackage, src *ast.File) *file {
 	f := &file{
-		name: name,
-		src:  src,
-		pkg:  pkg,
+		src: src,
+		pkg: pkg,
 	}
-	pkg.files.Store(f.name, f)
+	pkg.files = append(pkg.files, f)
 	return f
 }
 
 func processFile(pkgctx *pkgProcScope, name string, src *ast.File) (*file, bool) {
-	f := newFile(pkgctx.pkg(), name, src)
+	f := newFile(pkgctx.pkg(), src)
 	nameOk := true
 	if err := f.pkg.setOrCheckName(src.Name); err != nil {
 		nameOk = pkgctx.Err().AppendAt(src.Name, err)

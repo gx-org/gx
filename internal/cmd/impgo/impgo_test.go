@@ -18,10 +18,11 @@ import (
 	"strings"
 	"testing"
 
+	"github.com/gomlx/compute/gobackend"
+	"github.com/gx-org/gx/api"
 	"github.com/gx-org/gx/build/builder"
 	"github.com/gx-org/gx/build/builder/testbuild"
 	"github.com/gx-org/gx/build/importers/embedpkg"
-	"github.com/gx-org/gx/golang/backend"
 	"github.com/gx-org/gx/internal/testing/testrtm"
 
 	_ "github.com/gx-org/gx/internal/cmd/impgo/tests/returnatom/returnatom_importgo"
@@ -40,8 +41,12 @@ var sources = &testbuild.SourceFolder{
 
 func TestImportGoPackage(t *testing.T) {
 	bld := builder.New(embedpkg.New())
-	bck := backend.New(bld)
+	bck, err := gobackend.New("")
+	if err != nil {
+		t.Fatal(err)
+	}
+	rtm := api.NewRuntime(bck, bld)
 	testbuild.RunFactory(t, bld.Loader().Importers(), testrtm.Factory(
-		bck, sources,
+		rtm, sources,
 	))
 }

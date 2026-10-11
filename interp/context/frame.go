@@ -15,11 +15,10 @@
 package context
 
 import (
-	"go/ast"
-
 	"github.com/gx-org/gx/build/fmterr"
 	"github.com/gx-org/gx/build/ir"
 	"github.com/gx-org/gx/internal/base/scope"
+	"github.com/gx-org/gx/src/gx/ast"
 )
 
 // Frame in the context.
@@ -59,6 +58,15 @@ func (fr *Frame) String() string {
 	return fr.scope.String()
 }
 
+// Keys returns all the defined keys.
+func (fr *Frame) Keys() []string {
+	var keys []string
+	for k := range fr.scope.Items().Keys() {
+		keys = append(keys, k)
+	}
+	return keys
+}
+
 type baseFrame struct {
 	scope *scope.RWScope[ir.Element]
 }
@@ -86,9 +94,10 @@ type packageFrame struct {
 	fileToFrame map[*ir.File]*fileFrame
 }
 
-func (core *Core) importPackage(imp *ir.ImportDecl) (ir.Element, error) {
+// ImportPackage imports a package as an element.
+func (core *Core) ImportPackage(path string, stor ir.Storage) (ir.Element, error) {
 	var errs fmterr.Errors
-	pkg, err := core.importer.Import(imp.Path)
+	pkg, err := core.importer.Import(path)
 	if err != nil {
 		errs.Append(err)
 	}
@@ -99,7 +108,7 @@ func (core *Core) importPackage(imp *ir.ImportDecl) (ir.Element, error) {
 	if !errs.Empty() {
 		return nil, errs.ToError()
 	}
-	return core.interp.PackageToImport(imp, pFrame.el), nil
+	return core.interp.PackageToImport(pFrame.el, stor), nil
 }
 
 func (core *Core) packageFrame(pkg *ir.Package) (*packageFrame, error) {
@@ -120,7 +129,11 @@ func (core *Core) packageFrame(pkg *ir.Package) (*packageFrame, error) {
 	}
 	core.packageToFrame[pkg] = pkgFrame
 	var err error
-	pkgFrame.el, err = core.interp.InitPkgScope(pkg, pkgFrame.scope)
+	if pkg.Runtime == nil {
+		pkgFrame.el, err = core.interp.InitPkgScope(pkg, pkgFrame.scope)
+	} else {
+		pkgFrame.el, err = pkg.Runtime()
+	}
 	return pkgFrame, err
 }
 
@@ -148,7 +161,7 @@ func (fr *packageFrame) fileFrame(core *Core, file *ir.File) (*fileFrame, error)
 	}
 	var errs fmterr.Errors
 	for _, imp := range file.Imports {
-		el, err := core.importPackage(imp)
+		el, err := core.ImportPackage(imp.Path, imp)
 		if err != nil {
 			errs.Append(err)
 			break

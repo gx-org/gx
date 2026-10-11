@@ -16,12 +16,12 @@ package generics
 
 import (
 	"fmt"
-	"go/ast"
 	"reflect"
 
 	"github.com/gx-org/gx/build/fmterr"
 	"github.com/gx-org/gx/build/ir"
 	"github.com/gx-org/gx/build/ir/irkind"
+	"github.com/gx-org/gx/src/gx/ast"
 )
 
 type (
@@ -60,8 +60,8 @@ func (uni *unifier) specialiseRemainingNumbers() bool {
 	return true
 }
 
-func (uni *argUnifier) Node() ast.Node {
-	return uni.arg.Node()
+func (uni *argUnifier) Source() ast.Expr {
+	return uni.arg.Expr()
 }
 
 func (uni *argUnifier) Err() *fmterr.Appender {
@@ -214,10 +214,6 @@ func typeParametersMap(tparams *ir.FieldList) map[string]*ir.Field {
 // Infer the type parameters of a function given a list of argument expressions.
 func Infer(fetcher ir.Fetcher, fExpr *ir.FuncValExpr, args []ir.Expr) (*ir.FuncValExpr, bool) {
 	ftype := fExpr.FuncType()
-	if ftype.GenParams.Fields.Len() == 0 {
-		// Nothing left to infer.
-		return fExpr, true
-	}
 	uni := &unifier{
 		fetcher: fetcher,
 		defined: append([]ir.GenericValue{}, ftype.GenParams.Values...),
@@ -226,6 +222,10 @@ func Infer(fetcher ir.Fetcher, fExpr *ir.FuncValExpr, args []ir.Expr) (*ir.FuncV
 	params := ftype.Params.Fields()
 	for i := range max(len(args), len(params)) {
 		param, isVarArgs := ftype.ArgIndexToParamField(i)
+		if isVarArgs && i >= len(args) {
+			// The var args has no argument.
+			continue
+		}
 		argUni := &argUnifier{unifier: uni, param: param, arg: args[i], isVarArgs: isVarArgs}
 		toUnify := param.Type()
 		if isVarArgs {
@@ -241,8 +241,7 @@ func Infer(fetcher ir.Fetcher, fExpr *ir.FuncValExpr, args []ir.Expr) (*ir.FuncV
 	if !uni.specialiseRemainingNumbers() {
 		return fExpr, false
 	}
-	spec := newSpecialiser(fetcher, fExpr, fExpr.FuncType(), uni.defined)
-	ftypeInfer, ok := ftype.SpecialiseFType(spec, true)
-	checkTypeParams(ftypeInfer, ftypeInfer.GenParams.Values)
+	spec := newSpecialiser(fetcher.File(), fExpr, fetcher, fTypeError(fExpr), fExpr.FuncType(), uni.defined)
+	ftypeInfer, ok := ftype.SpecialiseFType(spec)
 	return fExpr.NewFType(ftypeInfer), ok
 }

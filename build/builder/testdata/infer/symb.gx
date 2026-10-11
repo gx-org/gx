@@ -1,0 +1,9 @@
+package symb
+
+// No runtime test function
+
+func mul[LI, LJ int](x [LI]float64, y [LI][LJ]float64) [LJ]float64
+
+func f[LI, LJ int](x [LI]float64, y [LI][LJ]float64) [LJ]float64 {
+	return mul(x, y)
+}

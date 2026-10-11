@@ -16,7 +16,6 @@ package ir_test
 
 import (
 	"fmt"
-	"go/ast"
 	"go/token"
 	"strings"
 	"testing"
@@ -29,8 +28,8 @@ import (
 	"github.com/gx-org/gx/build/ir/irkind"
 	algcmp "github.com/gx-org/gx/internal/interp/compeval/cmp"
 	"github.com/gx-org/gx/internal/interp/compeval"
-	"github.com/gx-org/gx/interp/engine"
 	"github.com/gx-org/gx/interp"
+	"github.com/gx-org/gx/src/gx/ast"
 )
 
 func names(vals []*ast.Ident) []string {
@@ -43,7 +42,7 @@ func names(vals []*ast.Ident) []string {
 
 type (
 	rankFunc func() ir.ArrayRank
-	typeFunc func(ir.Type, ir.TypeCmp, ir.Type) (bool, error)
+	typeFunc func(ir.Type, ir.TypeEval, ir.Type) (bool, error)
 )
 
 var (
@@ -192,8 +191,8 @@ func newFetcherTesting() (*fetcherTesting, error) {
 			return nil, err
 		}
 	}
-	hostEval := compeval.NewHostEvaluator(nil)
-	itp, err := interp.New(hostEval, interp.Runners(), packageOptions)
+	hostEval := compeval.NewRegistry(nil, interp.Runners())
+	itp, err := interp.New(hostEval, packageOptions)
 	if err != nil {
 		return nil, err
 	}
@@ -231,8 +230,7 @@ func (f *fetcherTesting) Err() *fmterr.Appender {
 }
 
 func (f *fetcherTesting) Compare(x, y ir.Element) (bool, error) {
-	env := engine.ProxyEnv(nil, nil)
-	return algcmp.Equal(env.ExprEval(), x, y)
+	return algcmp.Equal(f.eval, x, y)
 }
 
 func TestIsExported(t *testing.T) {
@@ -686,11 +684,14 @@ func TestTypeSetCapabilities(t *testing.T) {
 		isDataType       bool
 		isInteger        bool
 		isFloat          bool
+		isSigned         bool
 	}{
-		{emptySet, false, false, false, false},
-		{boolSet, true, true, false, false},
-		{intSet, true, true, true, false},
-		{makeTypeSet(ir.DefaultFloatType), true, true, false, true},
+		{emptySet, false, false, false, false, false},
+		{boolSet, true, true, false, false, false},
+		{sintSet, true, true, true, false, true},
+		{uintSet, true, true, true, false, false},
+		{intSet, true, true, true, false, false},
+		{makeTypeSet(ir.DefaultFloatType), true, true, false, true, true},
 	}
 	for _, testCase := range cases {
 		t.Run(testCase.set.ReferString(nil), func(t *testing.T) {
@@ -705,6 +706,9 @@ func TestTypeSetCapabilities(t *testing.T) {
 			}
 			if got := ir.IsFloat(testCase.set); got != testCase.isFloat {
 				t.Errorf("IsFloat(%s) returned %v; want %v", testCase.set.ReferString(nil), got, testCase.isFloat)
+			}
+			if got := ir.IsSigned(testCase.set); got != testCase.isSigned {
+				t.Errorf("IsSigned(%s) returned %v; want %v", testCase.set.ReferString(nil), got, testCase.isSigned)
 			}
 		})
 	}

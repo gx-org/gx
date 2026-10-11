@@ -1,0 +1,140 @@
+package redmax_grad01
+
+import (
+	"math/grad"
+	"num"
+)
+
+func TestReduceMaxGrad() ([3]float64, [2][3]float64) {
+	vjp := grad.Reverse(num.ReduceMax)
+	trace(vjp)
+	x := [2][3]float64{
+		{2, 3, 5},
+		{7, 11, 13},
+	}
+	z, bckX := vjp[[]int{0}](x)
+	res := [3]float64{17, 19, 23}
+	return z, bckX(res)
+	// Want:
+	// 0: [3]float64{7, 11, 13}
+	// 1: [2][3]float64{
+	// 	{0, 0, 0},
+	// 	{17, 19, 23},
+	// }
+	// Trace:
+	// redmax_grad01.gx:0
+	// 	func[Axis []int, Shape []int, DType dtype.Nums](x [unpack(Shape)]DType) ([unpack(shape.ReduceAxes(Shape, unpack(Axis)))]DType, func(res [unpack(shape.ReduceAxes(Shape, unpack(Axis)))]DType) [unpack(Shape)]DType) {
+	// 		return vjpReduceMax[Axis][Shape][DType](x)
+	// 	}
+}
+
+func TestReduceMaxGradTies() ([3]float64, [2][3]float64) {
+	vjp := grad.Reverse(num.ReduceMax)
+	x := [2][3]float64{
+		{7, 3, 13},
+		{7, 11, 13},
+	}
+	z, bckX := vjp[[]int{0}](x)
+	res := [3]float64{17, 19, 23}
+	return z, bckX(res)
+	// Want:
+	// 0: [3]float64{7, 11, 13}
+	// 1: [2][3]float64{
+	// 	{8.5, 0, 11.5},
+	// 	{8.5, 19, 11.5},
+	// }
+}
+
+func TestReduceMaxGradAxis1() ([3]float64, [3][2]float64) {
+	vjp := grad.Reverse(num.ReduceMax)
+	x := [3][2]float64{
+		{2, 3},
+		{7, 5},
+		{11, 11},
+	}
+	z, bckX := vjp[[]int{1}](x)
+	res := [3]float64{17, 19, 23}
+	return z, bckX(res)
+	// Want:
+	// 0: [3]float64{3, 7, 11}
+	// 1: [3][2]float64{
+	// 	{0, 17},
+	// 	{19, 0},
+	// 	{11.5, 11.5},
+	// }
+}
+
+func TestReduceMaxGradAllAxes() (float64, [2][3]float64) {
+	vjp := grad.Reverse(num.ReduceMax)
+	x := [2][3]float64{
+		{2, 13, 5},
+		{7, 11, 13},
+	}
+	z, bckX := vjp[[]int{0, 1}](x)
+	res := float64(17)
+	return z, bckX(res)
+	// Want:
+	// 0: float64(13)
+	// 1: [2][3]float64{
+	// 	{0, 8.5, 0},
+	// 	{0, 0, 8.5},
+	// }
+}
+
+func TestReduceMaxGradAxes02() ([2]float64, [2][2][3]float64) {
+	vjp := grad.Reverse(num.ReduceMax)
+	x := [2][2][3]float64{
+		{
+			{2, 13, 5},
+			{7, 3, 5},
+		},
+		{
+			{3, 7, 13},
+			{11, 2, 7},
+		},
+	}
+	z, bckX := vjp[[]int{0, 2}](x)
+	res := [2]float64{17, 19}
+	return z, bckX(res)
+	// Want:
+	// 0: [2]float64{13, 11}
+	// 1: [2][2][3]float64{
+	// 	{
+	// 		{0, 8.5, 0},
+	// 		{0, 0, 0},
+	// 	},
+	// 	{
+	// 		{0, 0, 8.5},
+	// 		{19, 0, 0},
+	// 	},
+	// }
+}
+
+func TestReduceMaxGradAxes12() ([2]float64, [2][2][3]float64) {
+	vjp := grad.Reverse(num.ReduceMax)
+	x := [2][2][3]float64{
+		{
+			{2, 3, 11},
+			{11, 5, 7},
+		},
+		{
+			{13, 2, 3},
+			{5, 7, 11},
+		},
+	}
+	z, bckX := vjp[[]int{1, 2}](x)
+	res := [2]float64{17, 19}
+	return z, bckX(res)
+	// Want:
+	// 0: [2]float64{11, 13}
+	// 1: [2][2][3]float64{
+	// 	{
+	// 		{0, 0, 8.5},
+	// 		{8.5, 0, 0},
+	// 	},
+	// 	{
+	// 		{19, 0, 0},
+	// 		{0, 0, 0},
+	// 	},
+	// }
+}

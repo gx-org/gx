@@ -17,13 +17,13 @@ package genast
 import (
 	"bytes"
 	"fmt"
-	"go/ast"
-	"go/format"
-	"go/parser"
 	"go/token"
 	"sort"
 
 	gxfmt "github.com/gx-org/gx/base/fmt"
+	"github.com/gx-org/gx/src/gx/ast"
+	"github.com/gx-org/gx/src/gx/format"
+	"github.com/gx-org/gx/src/gx/parser"
 )
 
 func writeAndFormat(fset *token.FileSet, f *ast.File) (string, error) {

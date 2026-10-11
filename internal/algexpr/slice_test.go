@@ -18,6 +18,7 @@ import (
 	"testing"
 
 	"github.com/gx-org/gx/build/builder/testbuild"
+	"github.com/gx-org/gx/build/ir"
 	"github.com/gx-org/gx/internal/algexpr/testalgexpr"
 )
 
@@ -31,6 +32,29 @@ func TestSlice(t *testing.T) {
 			X:        "[]int{3, 2}",
 			Y:        "[]int{2, 3}",
 			NotEqual: true,
+		},
+		testalgexpr.Compare{
+			Vars: map[string]ir.Type{
+				"A": ir.IntSliceType(),
+			},
+			X: "A",
+			Y: "A",
+		},
+		testalgexpr.Compare{
+			Vars: map[string]ir.Type{
+				"A": ir.IntSliceType(),
+				"B": ir.IntSliceType(),
+			},
+			X:        "A",
+			Y:        "B",
+			NotEqual: true,
+		},
+		testalgexpr.Compare{
+			Vars: map[string]ir.Type{
+				"A": ir.IntSliceType(),
+			},
+			X: "A",
+			Y: "[]int{unpack(A)}",
 		},
 	)
 }

@@ -15,7 +15,6 @@
 package builder
 
 import (
-	"go/ast"
 	"go/token"
 	"math/big"
 	"reflect"
@@ -36,6 +35,7 @@ import (
 	"github.com/gx-org/gx/interp/elements"
 	"github.com/gx-org/gx/interp/engine"
 	"github.com/gx-org/gx/interp"
+	"github.com/gx-org/gx/src/gx/ast"
 )
 
 type (
@@ -118,7 +118,7 @@ func newPackageResolveScope(pscope *pkgProcScope) (*pkgResolveScope, bool) {
 	s.state.ibld = irb.New(s, pkg)
 	ok := true
 	irBuiltins := make(map[string]processNode)
-	builtinFile := newFile(s.bpkg, "", &ast.File{})
+	builtinFile := newFile(s.bpkg, &ast.File{Name: pscope.bpkg.name})
 	_, builtinFileOk := irBuild[*ir.File](s.state.ibld, builtinFile)
 	ok = ok && builtinFileOk
 	builtins.Register(func(tok token.Token, stor ir.Storage) {
@@ -135,7 +135,7 @@ func newPackageResolveScope(pscope *pkgProcScope) (*pkgResolveScope, bool) {
 	builtinNS := scope.NewScopeWithValues(irBuiltins)
 	s.state.nspc = scope.NewReadOnly[processNode](builtinNS, pscope.decls())
 
-	for bFile := range pscope.bpkg.files.Values() {
+	for _, bFile := range pscope.bpkg.files {
 		fscope, fileOk := s.prepareFileRScope(bFile)
 		ok = ok && fileOk
 		pkg.Files[fscope.irFile().Name()] = fscope.irFile()
@@ -173,7 +173,7 @@ func (s *pkgResolveScope) buildStorageProcessNode(tok token.Token, store ir.Stor
 }
 
 func (s *pkgResolveScope) packageInterpreter() *interp.Base {
-	hostEval := compeval.NewHostEvaluator(s.bpkg.builder())
+	hostEval := compeval.NewRegistry(s.bpkg.builder(), s.funcRunner)
 	pkg := s.state.ibld.Pkg()
 	pkg.Decls = s.state.ibld.Decls()
 	var opts []options.PackageOption
@@ -186,7 +186,7 @@ func (s *pkgResolveScope) packageInterpreter() *interp.Base {
 			opts = append(opts, opt)
 		}
 	}
-	itp, err := interp.New(hostEval, s.funcRunner, opts)
+	itp, err := interp.New(hostEval, opts)
 	if err != nil {
 		s.Err().Append(err)
 		return nil
@@ -324,7 +324,6 @@ type (
 		fType *ir.FuncType
 
 		bodyCE *compileEvaluator
-		names  map[string]ir.Element
 	}
 )
 
@@ -367,7 +366,6 @@ func compEvalForFuncType(rscope compEvalScope, src ast.Node, ftype *ir.FuncType)
 
 func newFuncScope(rscope resolveScope, fType *ir.FuncType) (*funcResolveScope, bool) {
 	fnScope := &funcResolveScope{
-		names:        make(map[string]ir.Element),
 		resolveScope: rscope,
 		fType:        fType,
 	}
@@ -396,7 +394,7 @@ func (s *funcResolveScope) setFuncValue(fn ir.PkgFunc) bool {
 }
 
 func (s *funcResolveScope) compEval() (*compileEvaluator, bool) {
-	return s.bodyCE.sub(nil, s.names)
+	return s.bodyCE, true
 }
 
 type (

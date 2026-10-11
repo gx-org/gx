@@ -16,14 +16,14 @@
 package special
 
 import (
-	"go/ast"
-	"go/format"
 	"go/token"
 	"math/big"
 	"strconv"
 	"strings"
 
 	"github.com/gx-org/gx/build/ir"
+	"github.com/gx-org/gx/src/gx/ast"
+	"github.com/gx-org/gx/src/gx/format"
 )
 
 // Value being represented.
@@ -108,10 +108,22 @@ func (r *Expr) IsZero() bool {
 	return r.value == zeroV
 }
 
-func addCast(expr ast.Expr, typ ir.Type) ast.Expr {
+// Cast builds a cast expression.
+func Cast(expr ast.Expr, typ ir.Type) ast.Expr {
 	return &ast.CallExpr{
 		Fun:  ir.TypeExpr(nil, typ).Expr(),
 		Args: []ast.Expr{expr},
+	}
+}
+
+// Cast returns a new expression with a cast to a target type.
+func (r *Expr) Cast(typ ir.Type) *Expr {
+	if r.IsZero() {
+		return r
+	}
+	return &Expr{
+		value: r.value,
+		expr:  Cast(r.expr, typ),
 	}
 }
 
@@ -124,7 +136,7 @@ func CastIfRequired(expr ast.Expr, typ ir.Type) ast.Expr {
 	if basic.Kind != token.INT && basic.Kind != token.FLOAT {
 		return expr
 	}
-	return addCast(expr, typ)
+	return Cast(expr, typ)
 }
 
 // CastIfRequired returns a new expression with a cast when the expression is a basic literal.

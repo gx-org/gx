@@ -15,12 +15,12 @@
 package builder
 
 import (
-	"go/ast"
 	"go/token"
 
 	"github.com/pkg/errors"
 	"github.com/gx-org/gx/build/builder/irb"
 	"github.com/gx-org/gx/build/ir"
+	"github.com/gx-org/gx/src/gx/ast"
 )
 
 type builtinMacroKeyword struct {

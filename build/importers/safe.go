@@ -52,6 +52,11 @@ func (sl *SafeLoader) BuildFiles(bld Builder, packagePath, packageName string, f
 	return bld.BuildFiles(packagePath, packageName, fs, filenames)
 }
 
+// Support returns true if an importer can be found for a given path.
+func (sl *SafeLoader) Support(path string) bool {
+	return sl.l.Support(path)
+}
+
 // Importers used by the loader.
 func (sl *SafeLoader) Importers() []Importer {
 	return sl.l.Importers()

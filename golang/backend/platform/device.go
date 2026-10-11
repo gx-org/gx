@@ -16,51 +16,20 @@ package platform
 
 import (
 	"github.com/pkg/errors"
-	"github.com/gx-org/backend/dtypes"
-	"github.com/gx-org/backend/platform"
-	"github.com/gx-org/backend/shape"
+	"github.com/gomlx/compute"
+	"github.com/gomlx/compute/dtypes"
+	"github.com/gomlx/compute/shapes"
 	"github.com/gx-org/gx/golang/backend/kernels"
 )
 
-// Device is a device for the Go backend, that is a CPU.
-type Device struct {
-	plat *Platform
-	ord  int
-}
-
-func newDevice(plat *Platform, ord int) *Device {
-	return &Device{plat: plat}
-}
-
-// Platform owning the device.
-func (dev *Device) Platform() platform.Platform {
-	return dev.plat
-}
-
-// Ordinal of the device on the platform.
-func (dev *Device) Ordinal() int {
-	return dev.ord
-}
-
-// Send raw data to the device. Return a handle from this package.
-func (dev *Device) send(data []byte, sh *shape.Shape) (*Handle, error) {
+// send raw data to the device. Return a handle from this package.
+func (plat *Platform) send(dev compute.DeviceNum, data []byte, sh shapes.Shape) (*Handle, error) {
 	if sh.DType == dtypes.InvalidDType {
-		return nil, errors.Errorf("GX %s data type not supported", sh.DType.String())
+		return nil, errors.Errorf("GX invalid data type not supported")
 	}
 	array, err := kernels.NewArrayFromRaw(data, sh)
 	if err != nil {
 		return nil, err
 	}
-	return NewDeviceHandle(dev, array), nil
-}
-
-func (dev *Device) sendFromHost(handle platform.HostBuffer) (*Handle, error) {
-	data := handle.Acquire()
-	defer handle.Release()
-	return dev.send(data, handle.Shape())
-}
-
-// Send raw data to the device.
-func (dev *Device) Send(buf []byte, sh *shape.Shape) (platform.DeviceHandle, error) {
-	return dev.send(buf, sh)
+	return NewDeviceHandle(plat, dev, array), nil
 }

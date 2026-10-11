@@ -1,0 +1,22 @@
+package generic05
+
+import "testcpundef"
+
+func f[A int](x [A]float32) (func([testcpundef.Undef(A)]float32) [testcpundef.Undef(A)]float32, func([testcpundef.Undef(A)]float32) [testcpundef.Undef(A)]float32) {
+	lit1 := func(x [testcpundef.Undef(A)]float32) [testcpundef.Undef(A)]float32 {
+		return x + 1
+	}
+	lit2 := func(x [testcpundef.Undef(A)]float32) [testcpundef.Undef(A)]float32 {
+		return x + 2
+	}
+	return lit1, lit2
+}
+
+func Test() ([4]float32, [4]float32) {
+	x := [2]float32{}
+	a1, a2 := f(x)
+	return a1([4]float32{}), a2([4]float32{})
+	// Want:
+	// 0: [4]float32{1, 1, 1, 1}
+	// 1: [4]float32{2, 2, 2, 2}
+}

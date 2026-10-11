@@ -1,0 +1,12 @@
+package struct_nontype01
+
+type S[Size int] struct {
+	a [Size]float32
+}
+
+func Test() [3]float32 {
+	s := S[3]{a: [3]float32{}}
+	return s.a
+	// Want:
+	// [3]float32{0, 0, 0}
+}

@@ -25,6 +25,7 @@ import (
 	"github.com/gx-org/gx/internal/interp/compeval/surrogates/storepath"
 	"github.com/gx-org/gx/internal/interp/compeval/surrogates"
 	"github.com/gx-org/gx/interp/elements"
+	"github.com/gx-org/gx/interp/engine"
 )
 
 // EvalExpr evaluates a GX expression into an interpreter element.
@@ -48,4 +49,22 @@ func NewOptionVariable(vr *ir.VarExpr) (options.PackageOption, error) {
 		Var:   vr.VName.Name,
 		Value: val,
 	}, err
+}
+
+// Engine returns the engine to use for compeval.
+func Engine() engine.Engine {
+	return hostArrayOps
+}
+
+// NewRegistry returns a new evaluator for the host.
+func NewRegistry(importer ir.Importer, runners engine.Runners) *engine.Registry {
+	return &engine.Registry{
+		Importer:       importer,
+		CompEvalEngine: hostArrayOps,
+		HostEngine:     hostArrayOps,
+		Runners:        runners,
+		Trace: func(ctx ir.Evaluator, call *ir.FuncCallExpr, args []ir.Element) error {
+			return errors.Errorf("not implemented")
+		},
+	}
 }

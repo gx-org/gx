@@ -16,7 +16,10 @@ package surrogates
 
 import (
 	"github.com/gx-org/gx/build/ir"
+	"github.com/gx-org/gx/internal/algexpr"
+	"github.com/gx-org/gx/internal/interp/compeval/cmp"
 	"github.com/gx-org/gx/internal/interp/compeval/surrogates/storepath"
+	"github.com/gx-org/gx/internal/undef"
 	"github.com/gx-org/gx/interp/elements"
 	"github.com/gx-org/gx/interp/engine"
 )
@@ -51,10 +54,27 @@ func (f *slice) Slice(_ *engine.Env, expr *ir.SliceExpr, low, high engine.Numeri
 	return newSliceType(storepath.NewUniqueIR(expr), f.typ), nil
 }
 
+func (f *slice) Length(ev ir.Evaluator) (int, error) {
+	return -1, undef.Err()
+}
+
 func (f *slice) Append(call *ir.FuncCallExpr, el []ir.Element) engine.Slice {
 	return newSliceType(storepath.NewUniqueIR(call), f.typ)
 }
 
 func (f *slice) ShortString(from *ir.File) string {
 	return f.path.SourceString(from)
+}
+
+// AlgExpr returns an algebraic expression.
+func (f *slice) AlgExpr(eva ir.Evaluator) (cmp.Expr, error) {
+	tp, err := f.Unpack(eva)
+	if err != nil {
+		return nil, err
+	}
+	tpExpr, err := cmp.ToAlgExpr(eva, tp)
+	if err != nil {
+		return nil, err
+	}
+	return algexpr.NewSlice(f.typ, []cmp.Expr{tpExpr}), nil
 }

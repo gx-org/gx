@@ -17,12 +17,11 @@ package elements
 
 import (
 	"fmt"
-	"go/ast"
 	"go/token"
 	"reflect"
 
 	"github.com/pkg/errors"
-	"github.com/gx-org/backend/shape"
+	"github.com/gomlx/compute/shapes"
 	"github.com/gx-org/gx/api/hostio"
 	gxfmt "github.com/gx-org/gx/base/fmt"
 	"github.com/gx-org/gx/build/fmterr"
@@ -32,6 +31,7 @@ import (
 	"github.com/gx-org/gx/internal/interp/constants"
 	"github.com/gx-org/gx/internal/interp/coreiface"
 	"github.com/gx-org/gx/interp/engine"
+	"github.com/gx-org/gx/src/gx/ast"
 )
 
 // InputElements is the receiver and arguments with which the function was called.
@@ -256,10 +256,10 @@ func EvalRank(ev ir.Evaluator, expr ir.Expr) (ir.ArrayRank, []cmp.Canonical, err
 }
 
 // ShapeFromElement returns the shape of a numerical element.
-func ShapeFromElement(el ir.Element) (*shape.Shape, error) {
+func ShapeFromElement(el ir.Element) (shapes.Shape, error) {
 	shaper, err := coreiface.Cast[EvalShaper](el)
 	if err != nil {
-		return nil, err
+		return shapes.Invalid(), err
 	}
 	return shaper.EvalShape()
 }

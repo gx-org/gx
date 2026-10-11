@@ -1,0 +1,15 @@
+package generic03
+
+import "testcpundef"
+
+func f[A int](x [A]float32) func([testcpundef.Undef(A)]float32) [testcpundef.Undef(A)]float32 {
+	return func(x [testcpundef.Undef(A)]float32) [testcpundef.Undef(A)]float32 {
+		return x * 2
+	}
+}
+
+func Test() [4]float32 {
+	x := [2]float32{}
+	a := f(x)
+	return a(x) // ERROR cannot use type [2]float32 as [4]float32 in argument to a
+}

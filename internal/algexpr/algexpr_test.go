@@ -87,7 +87,7 @@ func TestToExpr(t *testing.T) {
 				"A": ir.IntType(),
 			},
 			X:    "A==2",
-			Want: "false",
+			Want: "A==2",
 		},
 		testalgexpr.Simplify{
 			X:    "2>1",
@@ -164,6 +164,14 @@ func TestToExpr(t *testing.T) {
 			},
 			X:    "A<=2",
 			Want: "A<=2",
+		},
+		testalgexpr.Simplify{
+			Vars: map[string]ir.Type{
+				"A": ir.IntType(),
+				"B": ir.IntType(),
+			},
+			X:    "A==B",
+			Want: "false",
 		},
 	)
 }

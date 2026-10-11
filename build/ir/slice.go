@@ -16,7 +16,8 @@ package ir
 
 import (
 	"fmt"
-	"go/ast"
+
+	"github.com/gx-org/gx/src/gx/ast"
 )
 
 // SliceLitExpr is a slice literal.

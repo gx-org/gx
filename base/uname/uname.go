@@ -17,10 +17,10 @@ package uname
 
 import (
 	"fmt"
-	"go/ast"
 	"strconv"
 
 	"github.com/gx-org/gx/build/ir"
+	"github.com/gx-org/gx/src/gx/ast"
 )
 
 type (

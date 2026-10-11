@@ -16,11 +16,11 @@ package builder
 
 import (
 	"fmt"
-	"go/ast"
 	"go/token"
 
 	"github.com/gx-org/gx/build/builder/irb"
 	"github.com/gx-org/gx/build/ir"
+	"github.com/gx-org/gx/src/gx/ast"
 )
 
 type varSpec struct {

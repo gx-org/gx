@@ -16,30 +16,72 @@
 package togo
 
 import (
+	"github.com/pkg/errors"
+	"github.com/gx-org/gx/api/hostio"
 	"github.com/gx-org/gx/build/ir"
 	"github.com/gx-org/gx/internal/base/cast"
 )
 
-// WithGoValue is an element able to convert its value into an equivalent Go value.
-type WithGoValue interface {
-	ir.Element
-	// GoValue of the underlying element.
-	GoValue() (any, error)
-}
-
-// Value converts an element to its Go value.
-// If the conversion is not possible, returns the input element.
-func Value(el ir.Element) (any, error) {
-	togo, err := cast.To[WithGoValue](ir.BareValue(el))
+// CpValue converts an element to its Go value.
+func CpValue(el ir.Element) (any, error) {
+	togo, err := cast.To[hostio.CompileValue](ir.BareValue(el))
 	if err != nil {
 		return nil, err
 	}
 	return togo.GoValue()
 }
 
+// CpValueT converts an element to a specific Go value.
+func CpValueT[T any](el ir.Element) (valT T, err error) {
+	valAny, err := CpValue(el)
+	if err != nil {
+		return
+	}
+	return cast.To[T](valAny)
+}
+
+// RuntimeValue is an element able to convert its value into an equivalent Go value.
+type RuntimeValue interface {
+	ir.Element
+	// LastValue of the underlying element for the last call to GX.
+	LastValue(*hostio.FuncInputs) (any, error)
+}
+
+// RtValue converts an element to its Go value.
+func RtValue(fnin *hostio.FuncInputs, el ir.Element) (any, error) {
+	togo, err := cast.To[RuntimeValue](ir.BareValue(el))
+	if err != nil {
+		return nil, err
+	}
+	return togo.LastValue(fnin)
+}
+
+// RtValueT converts an element to a specific Go value.
+func RtValueT[T any](fnin *hostio.FuncInputs, el ir.Element) (valT T, err error) {
+	valAny, err := RtValue(fnin, el)
+	if err != nil {
+		return
+	}
+	return cast.To[T](valAny)
+}
+
+// Value converts an element to its Go value.
+func Value(fnin *hostio.FuncInputs, el ir.Element) (any, error) {
+	switch elT := el.(type) {
+	case hostio.CompileValue:
+		return elT.GoValue()
+	case RuntimeValue:
+		if fnin == nil {
+			return nil, errors.Errorf("no input set from the function call")
+		}
+		return elT.LastValue(fnin)
+	}
+	return nil, errors.Errorf("%T has no Go value", el)
+}
+
 // ValueT converts an element to a specific Go value.
-func ValueT[T any](el ir.Element) (valT T, err error) {
-	valAny, err := Value(el)
+func ValueT[T any](fnin *hostio.FuncInputs, el ir.Element) (valT T, err error) {
+	valAny, err := Value(fnin, el)
 	if err != nil {
 		return
 	}

@@ -15,10 +15,10 @@
 package builder
 
 import (
-	"go/ast"
-
 	"github.com/gx-org/gx/build/ir"
 	"github.com/gx-org/gx/interp/elements"
+	"github.com/gx-org/gx/interp/engine"
+	"github.com/gx-org/gx/src/gx/ast"
 )
 
 type funcMeta struct {
@@ -122,10 +122,6 @@ func (e *irExpr) String() string {
 	return "irexpr: " + e.expr.SourceString(nil)
 }
 
-type funcWithIR interface {
-	IR() ir.Func
-}
-
 func evalFuncAnnotator(rscope resolveScope, compEval *compileEvaluator, macroCall *callExpr) (*ir.FuncCallExpr, *elements.FuncAnnotator, bool) {
 	return evalMetaCallee[*elements.FuncAnnotator](rscope, compEval, macroCall, "to annotate a function")
 }
@@ -138,7 +134,7 @@ func evalMacro(rscope resolveScope, compEval *compileEvaluator, macroCall *callE
 	return evalMetaCallee[*elements.Macro](rscope, compEval, macroCall, "as a macro")
 }
 
-func evalMetaCallee[T funcWithIR](rscope resolveScope, compEval *compileEvaluator, macroCall *callExpr, target string) (*ir.FuncCallExpr, T, bool) {
+func evalMetaCallee[T engine.Func](rscope resolveScope, compEval *compileEvaluator, macroCall *callExpr, target string) (*ir.FuncCallExpr, T, bool) {
 	var zero T
 	callee, calleeOk := buildExpr(rscope, macroCall.callee)
 	if !calleeOk {
@@ -154,7 +150,7 @@ func evalMetaCallee[T funcWithIR](rscope resolveScope, compEval *compileEvaluato
 	}
 	call, ok := macroCall.buildFuncCallExpr(rscope, ir.NewFuncValExpr(
 		callee,
-		elT.IR(),
+		elT.FuncIR(),
 	))
 	return call, elT, ok
 }

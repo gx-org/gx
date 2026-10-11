@@ -17,7 +17,6 @@ package irstring
 
 import (
 	"fmt"
-	"go/ast"
 	"math/big"
 	"reflect"
 	"strings"
@@ -25,6 +24,7 @@ import (
 	gxfmt "github.com/gx-org/gx/base/fmt"
 	"github.com/gx-org/gx/build/ir"
 	"github.com/gx-org/gx/build/ir/irkind"
+	"github.com/gx-org/gx/src/gx/ast"
 )
 
 type rStringType int
@@ -202,7 +202,7 @@ func init() {
 	typeToProcess["github.com/gx-org/gx/build/ir.TypeParam"] = notOnDebug(typeParam)
 	typeToProcess["github.com/gx-org/gx/build/ir.ConstExpr"] = debugOk(constExpr)
 	typeToProcess["github.com/gx-org/gx/build/ir.TypeValExpr"] = debugOk(typeValExpr)
-	typeToProcess["go/ast.Ident"] = debugOk(func(done map[any]bool, val reflect.Value, proc processor) string {
+	typeToProcess["google3/third_party/gxlang/gx/src/gx/ast/ast.Ident"] = debugOk(func(done map[any]bool, val reflect.Value, proc processor) string {
 		return val.Interface().(*ast.Ident).Name
 	})
 	typeToProcess["math/big.Int"] = debugOk(func(done map[any]bool, val reflect.Value, proc processor) string {

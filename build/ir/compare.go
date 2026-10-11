@@ -20,7 +20,7 @@ type TupleElement interface {
 	Elements() []Element
 }
 
-func areEqual(tpcmp TypeCmp, x, y Expr) (bool, error) {
+func areEqual(tpcmp TypeEval, x, y Expr) (bool, error) {
 	xExpr, err := tpcmp.EvalExpr(x)
 	if err != nil {
 		return false, err

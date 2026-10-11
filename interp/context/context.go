@@ -17,12 +17,12 @@ package context
 
 import (
 	"fmt"
-	"go/ast"
 	"strings"
 
 	gxfmt "github.com/gx-org/gx/base/fmt"
 	"github.com/gx-org/gx/build/ir"
 	"github.com/gx-org/gx/internal/base/scope"
+	"github.com/gx-org/gx/src/gx/ast"
 )
 
 type (
@@ -31,11 +31,8 @@ type (
 		// InitPkgScope initialises the namespace of a package.
 		InitPkgScope(pkg *ir.Package, scope *scope.RWScope[ir.Element]) (ir.PackageElement, error)
 
-		// InitBuiltins initialises a namespace with GX builtins implementation.
-		InitBuiltins(scope *scope.RWScope[ir.Element]) error
-
 		// PackageToImport encapsulates a package into its import declaration.
-		PackageToImport(imp *ir.ImportDecl, pkg ir.PackageElement) ir.Element
+		PackageToImport(pkg ir.PackageElement, stor ir.Storage) ir.Element
 	}
 
 	// Core contains everything in the context independent of code location.
@@ -49,14 +46,13 @@ type (
 )
 
 // New returns a new interpreter context.
-func New(interp Interpreter, importer ir.Importer) (*Core, error) {
-	core := &Core{
+func New(interp Interpreter, importer ir.Importer) *Core {
+	return &Core{
 		interp:         interp,
 		packageToFrame: make(map[*ir.Package]*packageFrame),
 		importer:       importer,
+		builtin:        &baseFrame{scope: scope.NewScope[ir.Element](nil)},
 	}
-	core.builtin = &baseFrame{scope: scope.NewScope[ir.Element](nil)}
-	return core, interp.InitBuiltins(core.builtin.scope)
 }
 
 // Context of an evaluation while running the interpreter.
@@ -65,6 +61,11 @@ func New(interp Interpreter, importer ir.Importer) (*Core, error) {
 type Context struct {
 	core  *Core
 	stack []*blockFrame
+}
+
+// BuiltinScope returns the scope for builtins.
+func (core *Core) BuiltinScope() *scope.RWScope[ir.Element] {
+	return core.builtin.scope
 }
 
 // NewFileContext returns a context for a given file.

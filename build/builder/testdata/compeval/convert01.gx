@@ -1,0 +1,23 @@
+package convert01
+
+// No runtime test function
+
+//gx:compeval
+func addOnes(axes []int) []int {
+	ret := []int{}
+	for i, ax := range axes {
+		if i%2 == 0 {
+			ret = append(ret, 1)
+		}
+		ret = append(ret, ax)
+	}
+	return ret
+}
+
+func expand[Shape []int](x [unpack(Shape)]float32) [unpack(addOnes(Shape))]float32 {
+	return [unpack(addOnes(Shape))]float32(x)
+}
+
+func concrete() [1][2][3][1][4]float32 {
+	return expand([2][3][4]float32{})
+}

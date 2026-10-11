@@ -16,7 +16,6 @@ package elements
 
 import (
 	"fmt"
-	"go/ast"
 	"strings"
 
 	"github.com/pkg/errors"
@@ -24,6 +23,7 @@ import (
 	"github.com/gx-org/gx/build/ir"
 	"github.com/gx-org/gx/internal/interp/flatten"
 	"github.com/gx-org/gx/interp/engine"
+	"github.com/gx-org/gx/src/gx/ast"
 )
 
 // Tuple value grouping multiple values together.
@@ -123,23 +123,12 @@ func (n *Tuple) Type() ir.Type {
 	return n.typ
 }
 
-// UnpackError unpacks an error and its value.
-func (n *Tuple) UnpackError(ev ir.Evaluator) (ir.Element, ir.Element, error) {
-	lastType := n.typ.Types[len(n.typ.Types)-1]
-	if lastType != ir.ErrorType() {
-		return n, nil, nil
+func (n *Tuple) unpack() []ir.Element {
+	var els []ir.Element
+	for _, el := range n.elements {
+		els = append(els, unpack(el)...)
 	}
-	last := n.elements[len(n.elements)-1]
-	withoutLast := n.elements[:len(n.elements)-1]
-	if len(withoutLast) == 1 {
-		return withoutLast[0], last, nil
-	}
-	return &Tuple{
-		typ: &ir.TupleType{
-			Types: n.typ.Types[:len(n.elements)-1],
-		},
-		elements: n.elements[:len(n.elements)-1],
-	}, last, nil
+	return els
 }
 
 func (n *Tuple) String() string {
@@ -148,4 +137,12 @@ func (n *Tuple) String() string {
 		els[i] = fmt.Sprint(el)
 	}
 	return fmt.Sprintf("(%s)", strings.Join(els, ", "))
+}
+
+func unpack(el ir.Element) []ir.Element {
+	tuple, isTuple := el.(*Tuple)
+	if !isTuple {
+		return []ir.Element{el}
+	}
+	return tuple.unpack()
 }

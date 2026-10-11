@@ -16,9 +16,6 @@ package builder
 
 import (
 	"fmt"
-	"go/ast"
-	"go/format"
-	"go/parser"
 	"go/token"
 	"io"
 	"runtime/debug"
@@ -28,6 +25,9 @@ import (
 	gxfmt "github.com/gx-org/gx/base/fmt"
 	"github.com/gx-org/gx/build/fmterr"
 	"github.com/gx-org/gx/build/ir"
+	"github.com/gx-org/gx/src/gx/ast"
+	"github.com/gx-org/gx/src/gx/format"
+	"github.com/gx-org/gx/src/gx/parser"
 )
 
 type coreSyntheticFunc struct {
@@ -86,20 +86,19 @@ type (
 
 var unknownIdent = &ast.Ident{Name: "_"}
 
-func formatFunction(orig *ast.FuncDecl) (src string, decl *ast.FuncDecl, err error) {
+func formatFunction(fset *token.FileSet, fnBuilder ir.FuncASTBuilder, from *ir.File, orig *ast.FuncDecl) (src string, decl *ast.FuncDecl, err error) {
 	defer func() {
 		if r := recover(); r != nil {
 			err = errors.New(string(debug.Stack()))
 		}
 	}()
-	fset := token.NewFileSet()
 	w := &strings.Builder{}
 	w.WriteString("package _\n")
 	srcDecl := *orig
 	if srcDecl.Name == nil {
 		srcDecl.Name = unknownIdent
 	}
-	err = format.Node(w, fset, &srcDecl)
+	err = format.Node(w, token.NewFileSet(), &srcDecl)
 	src = w.String()
 	if err != nil { // No error: we are done here.
 		fmtMsg := fmt.Sprintf("Formatted:\n%s\nError:\n%v", src, err)
@@ -109,8 +108,8 @@ func formatFunction(orig *ast.FuncDecl) (src string, decl *ast.FuncDecl, err err
 		err = fmt.Errorf("cannot format synthetic body:\n%s", astMsg)
 		return
 	}
-	fs := token.NewFileSet()
-	astFile, err := parser.ParseFile(fs, "", w.String(), parser.ParseComments)
+	fileName := fmt.Sprintf("macro %s", fnBuilder.SourceString(from))
+	astFile, err := parser.ParseFile(fset, fileName, w.String(), parser.ParseComments)
 	if err != nil {
 		err = errors.Errorf("cannot parse the following source code: %v\n%s", err, src)
 		return
@@ -161,7 +160,8 @@ func (m *synthResolveScope) buildBody(fn *ir.FuncDecl, compEval *compileEvaluato
 	// Format the body to build line numbers.
 	var src string
 	var err error
-	src, fn.Src, err = formatFunction(fn.Src)
+	fScope := m.fileScope()
+	src, fn.Src, err = formatFunction(fScope.pkg().fset, m.fnBuilder, fScope.irFile(), fn.Src)
 	if err != nil {
 		return m.Err().Append(err)
 	}
@@ -206,13 +206,13 @@ func buildSyntheticFuncSig(parentScope *fileResolveScope, srcloc ast.Node, astBu
 	if !ok {
 		return nil, nil, false
 	}
-	src, synDecl, err := formatFunction(synDecl)
-	if err != nil {
-		return nil, nil, parentScope.Err().Append(err)
-	}
 	pMacroScope, ok := newMacroProcScope(parentScope, srcloc, macroFile)
 	if !ok {
 		return nil, nil, false
+	}
+	src, synDecl, err := formatFunction(pMacroScope.pkg().fset, astBuilder, parentScope.irFile(), synDecl)
+	if err != nil {
+		return nil, nil, parentScope.Err().Append(err)
 	}
 	pMacroScope.Err().Push(fmterr.PrefixWith("cannot compile synthetic signature:\n%s\n", src))
 	defer pMacroScope.Err().Pop()

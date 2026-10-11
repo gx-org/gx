@@ -15,7 +15,7 @@
 package builder
 
 import (
-	"go/ast"
+	"github.com/gx-org/gx/src/gx/ast"
 )
 
 const annotatePrefix = "gx:@"

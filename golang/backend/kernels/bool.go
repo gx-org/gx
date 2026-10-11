@@ -18,8 +18,8 @@ import (
 	"go/token"
 
 	"github.com/pkg/errors"
-	"github.com/gx-org/backend/dtypes"
-	"github.com/gx-org/backend/shape"
+	"github.com/gomlx/compute/dtypes"
+	"github.com/gomlx/compute/shapes"
 )
 
 type boolFactory struct {
@@ -32,37 +32,37 @@ func (boolFactory) Math() MathFactory {
 	return nil
 }
 
-func (boolFactory) BinaryOp(op token.Token, x, y *shape.Shape) (Binary, *shape.Shape, error) {
+func (boolFactory) BinaryOp(op token.Token, x, y shapes.Shape) (Binary, shapes.Shape, error) {
 	switch op {
 	case token.LAND:
 		return boolAndArray, x, nil
 	case token.LOR:
 		return boolOrArray, x, nil
 	default:
-		return nil, nil, errors.Errorf("operator %q not supported", op.String())
+		return nil, shapes.Shape{}, errors.Errorf("operator %q not supported", op.String())
 	}
 }
 
 // UnaryOp creates a new kernel for a unary operator.
-func (boolFactory) UnaryOp(op token.Token, x *shape.Shape) (Unary, *shape.Shape, error) {
+func (boolFactory) UnaryOp(op token.Token, x shapes.Shape) (Unary, shapes.Shape, error) {
 	switch op {
 	case token.NOT:
 		return boolNotArray, x, nil
 	default:
-		return nil, nil, errors.Errorf("operator %q not supported", op.String())
+		return nil, shapes.Shape{}, errors.Errorf("operator %q not supported", op.String())
 	}
 }
 
 // Cast an array to another
-func (boolFactory) Cast(dtypes.DType, []int) (Unary, *shape.Shape, Factory, error) {
-	return nil, nil, nil, errors.Errorf("not implemented")
+func (boolFactory) Cast(dtypes.DType, []int) (Unary, shapes.Shape, Factory, error) {
+	return nil, shapes.Shape{}, nil, errors.Errorf("not implemented")
 }
 
 // ToBoolAtom converts a value into an atom owned by a backend.
 func ToBoolAtom(val bool) Array {
 	return &nonAlgebraArray[bool]{&arrayT[bool]{
 		factory: boolFactory{},
-		shape:   shape.Shape{DType: dtypes.Bool},
+		shape:   shapes.Make(dtypes.Bool),
 		values:  []bool{val},
 	}}
 }
@@ -72,11 +72,8 @@ func ToBoolArray(values []bool, dims []int) Array {
 	return &nonAlgebraArray[bool]{
 		arrayT: &arrayT[bool]{
 			factory: boolFactory{},
-			shape: shape.Shape{
-				DType:       dtypes.Bool,
-				AxisLengths: dims,
-			},
-			values: values,
+			shape:   shapes.Make(dtypes.Bool, dims...),
+			values:  values,
 		},
 	}
 }

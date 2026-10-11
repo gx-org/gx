@@ -15,60 +15,77 @@
 package platform
 
 import (
+	"unsafe"
+
 	"github.com/pkg/errors"
-	"github.com/gx-org/backend/platform"
-	"github.com/gx-org/backend/shape"
+	"github.com/gomlx/compute"
+	"github.com/gomlx/compute/dtypes"
+	"github.com/gomlx/compute/shapes"
 	"github.com/gx-org/gx/golang/backend/kernels"
 )
 
 // Handle to a value stored by the backend.
 type Handle struct {
-	device *Device
+	plat   *Platform
+	device compute.DeviceNum
 	array  kernels.Array
 }
 
+var _ compute.Buffer = (*Handle)(nil)
+
 // NewDeviceHandle returns a new device handle given an array and a device.
-func NewDeviceHandle(dev *Device, array kernels.Array) *Handle {
-	return &Handle{device: dev, array: array}
+func NewDeviceHandle(plat *Platform, dev compute.DeviceNum, array kernels.Array) *Handle {
+	return &Handle{plat: plat, device: dev, array: array}
 }
 
-// Platform owning the handle.
-func (h *Handle) Platform() platform.Platform {
-	return h.device.plat
+// Backend returns the backend that owns this buffer.
+func (h *Handle) Backend() compute.Backend {
+	return h.plat.Backend()
 }
 
-// Device on which the handle is located.
-func (h *Handle) Device() platform.Device {
-	return h.device
-}
-
-// Shape of the data stored by the handle.
-func (h *Handle) Shape() *shape.Shape {
-	return h.array.Shape()
-}
-
-// ToHost fetches the data from the handle and write it to buffer.
-func (h *Handle) ToHost(buf platform.HostBuffer) error {
-	data := buf.Acquire()
-	defer buf.Release()
-	copy(data, h.array.Buffer())
+// Finalize allows the client to inform the backend that the buffer is no longer needed.
+func (h *Handle) Finalize() error {
 	return nil
 }
 
-// ToDevice transfers the handle to a device.
-func (h *Handle) ToDevice(dev platform.Device) (platform.DeviceHandle, error) {
-	goDev, ok := dev.(*Device)
-	if ok {
-		return ToDevice(goDev, h)
-	}
-	return nil, errors.Errorf("not implemented")
+// DeviceNum returns the deviceNum for the buffer.
+func (h *Handle) DeviceNum() (compute.DeviceNum, error) {
+	return h.device, nil
 }
 
-func (h *Handle) toDevice(dev *Device) (*Handle, error) {
+// Shape returns the shape for the buffer.
+func (h *Handle) Shape() (shapes.Shape, error) {
+	return h.array.Shape(), nil
+}
+
+// ToFlatData transfers the flat values of the buffer to the Go flat array.
+func (h *Handle) ToFlatData(flat any) error {
+	dst := dtypes.UnsafeByteSliceFromAny(flat)
+	src := h.array.Buffer()
+	if len(dst) != len(src) {
+		return errors.Errorf("cannot copy buffer of %d bytes into flat slice of %d bytes", len(src), len(dst))
+	}
+	copy(dst, src)
+	return nil
+}
+
+// Data returns a slice pointing to the buffer storage memory directly.
+func (h *Handle) Data() (flat any, err error) {
+	buf := h.array.Buffer()
+	sh := h.array.Shape()
+	return dtypes.UnsafeAnySliceFromBytes(unsafe.Pointer(unsafe.SliceData(buf)), sh.DType, sh.Size()), nil
+}
+
+// CopyToDevice copies the buffer to another device on the same backend.
+func (h *Handle) CopyToDevice(dev compute.DeviceNum) (compute.Buffer, error) {
+	return h.toDevice(dev)
+}
+
+func (h *Handle) toDevice(dev compute.DeviceNum) (*Handle, error) {
 	if h.device == dev {
 		return h, nil
 	}
-	return dev.send(h.array.Buffer(), h.Shape())
+	return h.plat.send(dev, h.array.Buffer(), h.array.Shape())
 }
 
 // Array returns the underlying array storing the data for the handle.
@@ -76,13 +93,19 @@ func (h *Handle) Array() kernels.Array {
 	return h.array
 }
 
-// ToDevice sends a generic handle to a device.
-func ToDevice(dev *Device, handle platform.Handle) (*Handle, error) {
-	switch handleT := handle.(type) {
-	case *Handle:
+// ToDevice sends a generic buffer to a device.
+func ToDevice(plat *Platform, dev compute.DeviceNum, handle compute.Buffer) (*Handle, error) {
+	if handleT, ok := handle.(*Handle); ok && handleT.plat == plat {
 		return handleT.toDevice(dev)
-	case platform.HostBuffer:
-		return dev.sendFromHost(handleT)
 	}
-	return nil, errors.Errorf("cross-backend transfers not implemented")
+	sh, err := handle.Shape()
+	if err != nil {
+		return nil, err
+	}
+	raw := make([]byte, sh.ByteSize())
+	flat := dtypes.UnsafeAnySliceFromBytes(unsafe.Pointer(unsafe.SliceData(raw)), sh.DType, sh.Size())
+	if err := handle.ToFlatData(flat); err != nil {
+		return nil, err
+	}
+	return plat.send(dev, raw, sh)
 }

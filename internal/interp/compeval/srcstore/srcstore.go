@@ -17,6 +17,7 @@
 package srcstore
 
 import (
+	gxfmt "github.com/gx-org/gx/base/fmt"
 	"github.com/gx-org/gx/build/fmterr"
 	"github.com/gx-org/gx/build/ir"
 	"github.com/gx-org/gx/build/ir/irkind"
@@ -136,6 +137,10 @@ type slice struct {
 
 func (f *slice) Store() ir.Storage {
 	return f.store
+}
+
+func (f *slice) String() string {
+	return gxfmt.String(f.ISlice)
 }
 
 type function struct {

@@ -1,0 +1,5 @@
+package composite
+
+func f(y float32) [2]float32 {
+	return {y, 0 * y} // ERROR missing type in composite literal
+}

@@ -22,54 +22,49 @@
 package interp
 
 import (
-	"go/ast"
-
-	"github.com/gx-org/backend/dtypes"
+	"github.com/gomlx/compute/dtypes/gotype"
 	"github.com/gx-org/gx/api/options"
-	"github.com/gx-org/gx/build/fmterr"
 	"github.com/gx-org/gx/build/ir"
 	"github.com/gx-org/gx/internal/interp/numbers"
 	"github.com/gx-org/gx/interp/context"
 	"github.com/gx-org/gx/interp/elements"
 	"github.com/gx-org/gx/interp/engine"
-	"github.com/gx-org/gx/interp/materialise"
 	"github.com/gx-org/gx/interp/procoptions"
+	"github.com/gx-org/gx/src/gx/ast"
 )
 
 // Base provides everything required to create new interpreters.
 type Base struct {
-	eng     engine.Engine
-	runners engine.Runners
-	core    *context.Core
+	reg  *engine.Registry
+	core *context.Core
 
 	options *procoptions.Options
 }
 
 // New returns a new interpreter.
-func New(eng engine.Engine, runners engine.Runners, options []options.PackageOption) (*Base, error) {
-	itp := &Base{eng: eng, runners: runners}
-	var errs fmterr.Errors
-	var err error
-	if itp.options, err = procoptions.New(eng, options); err != nil {
-		errs.Append(err)
-	}
-	itp.core, err = context.New(itp, eng.Importer())
+func New(reg *engine.Registry, options []options.PackageOption) (*Base, error) {
+	itp := &Base{reg: reg}
+	itp.core = context.New(itp, reg.Importer)
+	fitp, err := itp.ForFile(builtinFile)
 	if err != nil {
-		errs.Append(err)
+		return itp, err
 	}
-	return itp, errs.ToError()
+	itp.options, err = procoptions.New(fitp.env, options)
+	if err != nil {
+		return itp, nil
+	}
+	return itp, initBuiltinsFor(fitp)
 }
 
 // ForFile returns an interpreter for a file context.
 func (itp *Base) ForFile(file *ir.File) (*Interpreter, error) {
 	ctx, err := itp.core.NewFileContext(file)
-	return toInterp(ctx, itp.eng, itp.runners), err
-
+	return newInterp(itp.reg, ctx, itp.reg.HostEngine), err
 }
 
-// Engine returns the evaluator used by the interpreter
-func (itp *Base) Engine() engine.Engine {
-	return itp.eng
+// Registry used by the interpreter.
+func (itp *Base) Registry() *engine.Registry {
+	return itp.reg
 }
 
 // Interpreter returns an interpreter given the scope of a file from within a package.
@@ -79,9 +74,13 @@ type Interpreter struct {
 
 var _ ir.Evaluator = (*Interpreter)(nil)
 
-func toInterp(ctx *context.Context, eng engine.Engine, runners engine.Runners) *Interpreter {
+func newIREval(env *engine.Env) ir.Evaluator {
+	return newInterp(env.Registry(), env.Context(), env.Engine())
+}
+
+func newInterp(reg *engine.Registry, ctx *context.Context, eng engine.Engine) *Interpreter {
 	fitp := &Interpreter{}
-	fitp.env = engine.NewEnv(ctx, fitp, eng, runners)
+	fitp.env = engine.NewEnv(reg, ctx, newIREval, eng)
 	return fitp
 }
 
@@ -93,6 +92,12 @@ var (
 	}
 )
 
+var compEvalNature = ir.FuncNature{CompEval: true}
+
+func (fitp *Interpreter) compEvalExpr(expr ir.Expr) (ir.Element, error) {
+	return fitp.env.For(compEvalNature).ExprEval().EvalExpr(expr)
+}
+
 // EvalExpr evaluates an expression for a given context.
 func (fitp *Interpreter) EvalExpr(expr ir.Expr) (ir.Element, error) {
 	return evalExpr(fitp, expr)
@@ -101,16 +106,6 @@ func (fitp *Interpreter) EvalExpr(expr ir.Expr) (ir.Element, error) {
 // Env returns the environment.
 func (fitp *Interpreter) Env() *engine.Env {
 	return fitp.env
-}
-
-// Engine returns the evaluator used by the interpreter
-func (fitp *Interpreter) Engine() engine.Engine {
-	return fitp.env.Engine()
-}
-
-// Materialiser returns the materialiser to convert elements into graph nodes.
-func (fitp *Interpreter) Materialiser() materialise.Materialiser {
-	return fitp.Engine().ArrayOps().(materialise.Materialiser)
 }
 
 // SubInterp returns a new interpreter with additional values defined in the context.
@@ -122,15 +117,16 @@ func (fitp *Interpreter) SubInterp(file *ir.File, vals map[string]ir.Element) (*
 	if file != nil && file.Package != nil {
 		core := fitp.Context().Core()
 		ctx, err = core.NewFileContext(file)
-		fitp = toInterp(ctx, fitp.Engine(), fitp.env.Runners())
+		fitp = newInterp(fitp.env.Registry(), ctx, fitp.engine())
 	}
 	if vals == nil {
-		return fitp, nil
+		return fitp, err
 	}
-	ctx = ctx.Sub(vals)
-	sub := &Interpreter{}
-	sub.env = engine.NewEnv(ctx, sub, fitp.Engine(), fitp.env.Runners())
-	return sub, err
+	return newInterp(fitp.env.Registry(), ctx.Sub(vals), fitp.engine()), err
+}
+
+func (fitp *Interpreter) engine() engine.Engine {
+	return fitp.env.Engine()
 }
 
 // Sub returns a new interpreter with additional values defined in the context.
@@ -143,7 +139,7 @@ func (fitp *Interpreter) Sub(file *ir.File, vals map[string]ir.Element) (ir.Eval
 // EvalFunc evaluates a function.
 func (fitp *Interpreter) EvalFunc(f ir.PkgFunc, call *ir.FuncCallExpr, args []ir.Element) ([]ir.Element, error) {
 	fnEl := elements.NewFunc(f, nil)
-	return fnEl.Call(fitp.env, call, args)
+	return fnEl.Call(fitp.env, call, nil, args)
 }
 
 // Context used by the interpreter.
@@ -156,12 +152,12 @@ func (fitp *Interpreter) File() *ir.File {
 	return fitp.Context().File()
 }
 
-func elementFromInt[T dtypes.AlgebraType](fitp *Interpreter, val T, tp ir.Type) (engine.NumericalElement, error) {
+func elementFromInt[T gotype.ScalarNotComplex](fitp *Interpreter, val T, tp ir.Type) (engine.NumericalElement, error) {
 	cst, err := numbers.NewConstant(tp, val)
 	if err != nil {
 		return nil, err
 	}
-	return fitp.Engine().ArrayOps().ElementFromHostValue(fitp.env.ExprEval(), cst)
+	return fitp.engine().ElementFromHostValue(fitp.env.ExprEval(), cst)
 }
 
 // String representation of the receiver.

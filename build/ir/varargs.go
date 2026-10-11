@@ -15,9 +15,8 @@
 package ir
 
 import (
-	"go/ast"
-
 	"github.com/gx-org/gx/build/ir/irkind"
+	"github.com/gx-org/gx/src/gx/ast"
 )
 
 // VarArgsType represents a type defined by a varargs expression.
@@ -54,7 +53,7 @@ func (*VarArgsType) NameDef() *ast.Ident {
 
 // Value returns the value of the type.
 func (tp *VarArgsType) Value(x Expr) Expr {
-	return TypeExpr(x, tp)
+	return TypeExpr(x.Expr(), tp)
 }
 
 // Kind of the type.
@@ -73,18 +72,18 @@ func (tp *VarArgsType) ElementType() (Type, bool) {
 }
 
 // Equal returns true if other is the same type.
-func (tp *VarArgsType) Equal(tpcmp TypeCmp, target Type) (bool, error) {
+func (tp *VarArgsType) Equal(tpcmp TypeEval, target Type) (bool, error) {
 	return tp.Typ.Equal(tpcmp, target)
 }
 
 // AssignableTo reports whether a value of the type can be assigned to another.
-func (tp *VarArgsType) AssignableTo(tpcmp TypeCmp, target Type) (bool, error) {
+func (tp *VarArgsType) AssignableTo(tpcmp TypeEval, target Type) (bool, error) {
 	return tp.Typ.AssignableTo(tpcmp, target)
 }
 
 // ConvertibleTo reports whether a value of the type can be converted to another
 // (using static type casting).
-func (tp *VarArgsType) ConvertibleTo(tpcmp TypeCmp, target Type) (bool, error) {
+func (tp *VarArgsType) ConvertibleTo(tpcmp TypeEval, target Type) (bool, error) {
 	return tp.Typ.ConvertibleTo(tpcmp, target)
 }
 
@@ -99,7 +98,7 @@ func (tp *VarArgsType) Specialise(spec Specialiser) (Type, bool) {
 }
 
 // Instantiate a type to a given target.
-func (tp *VarArgsType) Instantiate(ev Fetcher, spec Specialiser) (Type, bool) {
+func (tp *VarArgsType) Instantiate(ev Fetcher, spec Instantiator) (Type, bool) {
 	return tp, true
 }
 

@@ -16,10 +16,10 @@ package builder
 
 import (
 	"fmt"
-	"go/ast"
 	"strings"
 
 	"github.com/gx-org/gx/build/ir"
+	"github.com/gx-org/gx/src/gx/ast"
 )
 
 type compositeLit struct {
@@ -59,6 +59,9 @@ func (n *compositeLit) buildElements(ascope compositeLitResolveScope) ([]ir.Expr
 		if eltOk {
 			elts[i], eltOk = castNilAndNumber(subScope, elts[i], subScope.dtype())
 		}
+		if eltOk {
+			eltOk = checkSingleValue(subScope, elt.source(), elts[i])
+		}
 		if !eltOk {
 			ok = false
 			continue
@@ -77,7 +80,7 @@ func (n *compositeLit) buildElements(ascope compositeLitResolveScope) ([]ir.Expr
 func (n *compositeLit) buildExpr(rscope resolveScope) (ir.Expr, bool) {
 	ascope, ok := rscope.(compositeLitResolveScope)
 	if !ok {
-		return nil, rscope.Err().AppendInternalf(n.src, "cannot build a composite expression without a composite scope")
+		return nil, rscope.Err().Appendf(n.src, "missing type in composite literal")
 	}
 	elts, ok := n.buildElements(ascope)
 	if !ok {

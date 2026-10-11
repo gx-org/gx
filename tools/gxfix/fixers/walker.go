@@ -16,15 +16,15 @@ package fixers
 
 import (
 	"fmt"
-	"go/ast"
-	"go/format"
-	"go/parser"
 	"go/token"
 	"io/fs"
 	"os"
 	"strings"
 
 	"github.com/gx-org/gx/api"
+	"github.com/gx-org/gx/src/gx/ast"
+	"github.com/gx-org/gx/src/gx/format"
+	"github.com/gx-org/gx/src/gx/parser"
 )
 
 type (

@@ -1,0 +1,10 @@
+package value
+
+import "math"
+
+// Test checks the conversion from a compeval constant to a node in the graph at runtime.
+func Test() float32 {
+	return math.Sin(float32(len(2)))
+	// Want:
+	// float32(0.841471)
+}

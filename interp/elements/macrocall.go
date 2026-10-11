@@ -15,9 +15,8 @@
 package elements
 
 import (
-	"go/ast"
-
 	"github.com/gx-org/gx/build/ir"
+	"github.com/gx-org/gx/src/gx/ast"
 )
 
 // MacroCall is a helper structure to implement macros.
@@ -54,4 +53,9 @@ func (m *MacroCall) Call() CallAt {
 // Source returns the source call from where the element was created.
 func (m *MacroCall) Source() ast.Node {
 	return m.call.Source()
+}
+
+// SourceString returns a string representation of the macro call.
+func (m *MacroCall) SourceString(from *ir.File) string {
+	return m.call.Node().SourceString(from)
 }

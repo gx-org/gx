@@ -18,8 +18,6 @@ package dtype
 import (
 	"fmt"
 
-	"github.com/gx-org/backend/ops"
-	"github.com/gx-org/backend/shape"
 	"github.com/gx-org/gx/build/ir"
 	"github.com/gx-org/gx/interp/engine"
 	"github.com/gx-org/gx/interp/materialise"
@@ -35,9 +33,9 @@ var Package = builtin.PackageBuilder{
 	},
 }
 
-func evalReinterpret(env *engine.Env, call *ir.FuncCallExpr, recv ir.Element, args []ir.Element) ([]ir.Element, error) {
+func evalReinterpret(env *engine.Env, call *ir.FuncCallExpr, recv ir.Element, genArgs, args []ir.Element) ([]ir.Element, error) {
 	mat := builtin.Materialiser(env)
-	argNode, _, err := materialise.Element(mat, args[3])
+	argNode, _, err := materialise.Element(mat, args[0])
 	if err != nil {
 		return nil, err
 	}
@@ -47,16 +45,10 @@ func evalReinterpret(env *engine.Env, call *ir.FuncCallExpr, recv ir.Element, ar
 		return nil, fmt.Errorf("%T is not an array type", retType)
 	}
 	dtype := arrayType.DataType().Kind().DType()
-	gr := env.Engine().ArrayOps().Graph()
-	op, err := gr.DType().Bitcast(argNode, dtype)
+	gr := env.Engine().Graph()
+	op, err := gr.Bitcast(argNode, dtype)
 	if err != nil {
 		return nil, err
 	}
-	return materialise.ElementFromNode(env.File(), mat, &ops.OutputNode{
-		Node: op,
-		Shape: &shape.Shape{
-			DType:       dtype,
-			AxisLengths: op.(interface{ PJRTDims() []int }).PJRTDims(),
-		},
-	}, call.Type())
+	return materialise.ElementFromNode(env.ExprEval(), mat, op, call.Type())
 }

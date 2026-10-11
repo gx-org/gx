@@ -19,10 +19,10 @@ package testing
 import (
 	"testing"
 
+	"github.com/gomlx/compute/gobackend"
 	"github.com/gx-org/gx/api"
 	"github.com/gx-org/gx/build/builder"
 	"github.com/gx-org/gx/cgx/handle"
-	"github.com/gx-org/gx/golang/backend"
 	gxtesting "github.com/gx-org/gx/tests/testing"
 )
 
@@ -38,7 +38,13 @@ func cgx_testing_builder() C.cgx_builder {
 //export cgx_testing_runtime
 func cgx_testing_runtime() C.struct_cgx_runtime_new_result {
 	bld := gxtesting.NewBuilderStaticSource()
-	rtm := backend.New(bld)
+	bck, err := gobackend.New("")
+	if err != nil {
+		return C.struct_cgx_runtime_new_result{
+			error: (C.cgx_error)(handle.Wrap[error](err)),
+		}
+	}
+	rtm := api.NewRuntime(bck, bld)
 	return C.struct_cgx_runtime_new_result{
 		runtime: C.cgx_runtime(handle.Wrap[*api.Runtime](rtm)),
 	}

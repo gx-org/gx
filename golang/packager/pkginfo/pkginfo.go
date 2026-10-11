@@ -19,7 +19,6 @@ package pkginfo
 import (
 	"flag"
 	"fmt"
-	"go/parser"
 	"go/token"
 	"io/ioutil"
 	"maps"
@@ -29,6 +28,7 @@ import (
 
 	"github.com/gx-org/gx/build/module"
 	"github.com/gx-org/gx/golang/packager/goembed"
+	"github.com/gx-org/gx/src/gx/parser"
 	"github.com/gx-org/gx/stdlib"
 )
 

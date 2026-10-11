@@ -79,7 +79,7 @@ func (call Call) run(pkg *builder.IncrementalPackage, fnValRef *ir.FuncValExpr) 
 	if call.Want == "" {
 		return nil
 	}
-	got := fnGot.FuncType().ReferString(nil)
+	got := fnGot.FuncType().SourceString(nil)
 	if got != call.Want {
 		return errors.Errorf("incorrect signature: got %s but want %s", got, call.Want)
 	}

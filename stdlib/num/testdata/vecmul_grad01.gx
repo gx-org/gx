@@ -1,0 +1,19 @@
+package vecmul_grad01
+
+import (
+	"math/grad"
+	"num"
+)
+
+func TestVecMulGrad() (float64, [3]float64, [3]float64) {
+	vjp := grad.Reverse(num.VecMul)
+	x := [3]float64{2, 3, 5}
+	y := [3]float64{7, 11, 13}
+	z, bckX, bckY := vjp(x, y)
+	res := float64(17)
+	return z, bckX(res), bckY(res)
+	// Want:
+	// 0: float64(112)
+	// 1: [3]float64{119, 187, 221}
+	// 2: [3]float64{34, 51, 85}
+}

@@ -17,8 +17,7 @@ package num
 import (
 	"fmt"
 
-	"github.com/gx-org/backend/ops"
-	"github.com/gx-org/backend/shape"
+	"github.com/gomlx/compute"
 	"github.com/gx-org/gx/build/ir"
 	"github.com/gx-org/gx/internal/interp/compeval/cmp"
 	"github.com/gx-org/gx/interp/elements"
@@ -28,7 +27,7 @@ import (
 )
 
 // evalEinsum evaluates an Einsum op.
-// Arguments:
+// Generic arguments:
 //
 //	0: XContract []int
 //	1: XBatch []int
@@ -36,49 +35,45 @@ import (
 //	3: YBatch []int
 //	4: XShape []int
 //	5: YShape []int
-//	6: T dtype.Num
-//	7: x [unpack(XShape)]T
-//	8: y [unpack(YShape)]T
-func evalEinsum(env *engine.Env, call *ir.FuncCallExpr, recv ir.Element, args []ir.Element) ([]ir.Element, error) {
+//	6: T dtype.Nums
+//
+// Arguments:
+//
+//	0: x [unpack(XShape)]T
+//	1: y [unpack(YShape)]T
+func evalEinsum(env *engine.Env, call *ir.FuncCallExpr, recv ir.Element, genArgs, args []ir.Element) ([]ir.Element, error) {
 	mat := builtin.Materialiser(env)
-	left, leftShape, err := materialise.Element(mat, args[7])
+	left, leftShape, err := materialise.Element(mat, args[0])
 	if err != nil {
 		return nil, err
 	}
-	lhsContractingAxes, err := elements.AxesFromElement(args[0])
+	lhsContractingAxes, err := elements.AxesFromElement(genArgs[0])
 	if err != nil {
 		return nil, err
 	}
-	lhsBatchAxes, err := elements.AxesFromElement(args[1])
+	lhsBatchAxes, err := elements.AxesFromElement(genArgs[1])
 	if err != nil {
 		return nil, err
 	}
-	right, rightShape, err := materialise.Element(mat, args[8])
+	right, rightShape, err := materialise.Element(mat, args[1])
 	if err != nil {
 		return nil, err
 	}
-	rhsContractingAxes, err := elements.AxesFromElement(args[2])
+	rhsContractingAxes, err := elements.AxesFromElement(genArgs[2])
 	if err != nil {
 		return nil, err
 	}
-	rhsBatchAxes, err := elements.AxesFromElement(args[3])
+	rhsBatchAxes, err := elements.AxesFromElement(genArgs[3])
 	if err != nil {
 		return nil, err
 	}
 
-	op, err := env.Engine().ArrayOps().Graph().Num().DotGeneral(left, right,
-		[2][]int{lhsBatchAxes, rhsBatchAxes},
-		[2][]int{lhsContractingAxes, rhsContractingAxes})
+	gr := env.Engine().Graph()
+	op, err := gr.DotGeneral(left, lhsContractingAxes, lhsBatchAxes, right, rhsContractingAxes, rhsBatchAxes, compute.DotGeneralConfig{})
 	if err != nil {
 		return nil, fmt.Errorf("\nlhsContractingAxes: %v\nlhsBatchAxes: %v\nrhsContractingAxes: %v\nrhsBatchAxes: %v\nleft: %v\nright: %v", lhsContractingAxes, lhsBatchAxes, rhsContractingAxes, rhsBatchAxes, leftShape, rightShape)
 	}
-	return materialise.ElementFromNode(env.File(), mat, &ops.OutputNode{
-		Node: op,
-		Shape: &shape.Shape{
-			DType:       leftShape.DType,
-			AxisLengths: op.(interface{ PJRTDims() []int }).PJRTDims(),
-		},
-	}, call.Type())
+	return materialise.ElementFromNode(env.ExprEval(), mat, op, call.Type())
 }
 
 func validateAxisExpr(env *engine.Env, call *ir.FuncCallExpr, arg ir.Element, maxRank int, seen map[int]bool) ([]int, error) {
@@ -113,7 +108,7 @@ func validateAxisExpr(env *engine.Env, call *ir.FuncCallExpr, arg ir.Element, ma
 // and rhs[rhsContractingAxes[n]]) on the other.
 //
 // The batch axes specify a batch dimension.
-func evalEinsumAxes(env *engine.Env, call *ir.FuncCallExpr, recv ir.Element, args []ir.Element) ([]ir.Element, error) {
+func evalEinsumAxes(env *engine.Env, call *ir.FuncCallExpr, recv ir.Element, genArgs, args []ir.Element) ([]ir.Element, error) {
 	leftDims, err := elements.SliceFromElement(args[0])
 	if err != nil {
 		return nil, err

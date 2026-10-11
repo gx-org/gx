@@ -15,11 +15,11 @@
 package builder
 
 import (
-	"go/ast"
 	"reflect"
 
 	"github.com/gx-org/gx/build/ir"
 	"github.com/gx-org/gx/build/ir/irkind"
+	"github.com/gx-org/gx/src/gx/ast"
 )
 
 type varargsType struct {
@@ -64,9 +64,7 @@ func (n *varargsType) buildTypeExpr(rscope resolveScope) (*ir.TypeValExpr, bool)
 			Rank:     1,
 		},
 	}
-	return ir.TypeExpr(&ir.VarArgsExpr{
-		Elt: typ,
-	}, typ), ok
+	return ir.TypeExpr(n.src, typ), ok
 }
 
 func (n *varargsType) String() string {

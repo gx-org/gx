@@ -35,6 +35,8 @@ package builder
 
 import (
 	"io/fs"
+	"path"
+	"strings"
 
 	"github.com/pkg/errors"
 	"github.com/gx-org/gx/build/fmterr"
@@ -81,7 +83,7 @@ func NewWithLoader(loader importers.Loader) *Builder {
 
 // Build a package given its path.
 func (b *Builder) Build(path string) (importers.Package, error) {
-	return b.loader.Load(b, path)
+	return b.loadPath(path)
 }
 
 // Loader returns the package loader of the builder.
@@ -97,20 +99,27 @@ func (b *Builder) NewPackage(path, name string) (importers.FilePackage, error) {
 	return b.newFilePackage(path, name), nil
 }
 
-func (b *Builder) importPath(path string) (bPackage, error) {
-	pkg, err := b.loader.Load(b, path)
-	if err != nil {
-		return nil, err
+func (b *Builder) loadPath(pkgpath string) (bPackage, error) {
+	if strings.HasPrefix(pkgpath, runtimePrefix) {
+		return b.loadRuntimePackage(pkgpath)
 	}
-	return pkg.(bPackage), nil
+	pkg, err := b.loader.Load(b, pkgpath)
+	var bpkg bPackage
+	if pkg == nil {
+		// Still returns a proxy package.
+		dir, name := path.Split(pkgpath)
+		bpkg = &runtimePackage{
+			basePackage: newBasePackage(b, dir, name),
+		}
+	} else {
+		bpkg = pkg.(bPackage)
+	}
+	return bpkg, err
 }
 
 // Import a package from its path using the builder.
 func (b *Builder) Import(path string) (*ir.Package, error) {
-	pkg, err := b.loader.Load(b, path)
-	if pkg == nil {
-		pkg = importers.NewProxyPackage(path)
-	}
+	pkg, err := b.loadPath(path)
 	return pkg.IR(), err
 }
 
@@ -132,8 +141,8 @@ func (s *ephemeralCompEvalScope) Err() *fmterr.Appender {
 }
 
 func (s *ephemeralCompEvalScope) compEval() (*compileEvaluator, bool) {
-	hostEval := compeval.NewHostEvaluator(s.bld)
-	itp, err := interp.New(hostEval, compeval.Runner(), nil)
+	hostEval := compeval.NewRegistry(s.bld, compeval.Runner())
+	itp, err := interp.New(hostEval, nil)
 	if err != nil {
 		return nil, s.errs.Append(err)
 	}

@@ -1,0 +1,11 @@
+package mulval_err02
+
+func f() (int, float32)
+
+type S struct {
+	a int
+}
+
+func F() S {
+	return S{a: f()} // ERROR multiple-value (value of type (int, float32)) in single-value context
+}

@@ -1,0 +1,20 @@
+package zerobck
+
+import "math/grad"
+
+func f(x [2]float32) [2]float32 {
+	return x
+}
+
+func net(x [2]float32) [2]float32 {
+	return 0 * f(x)
+}
+
+func TestZeroBck() ([2]float32, [2]float32) {
+	vjp := grad.Reverse(net)
+	y, bck := vjp([2]float32{1, 2})
+	return y, bck([2]float32{3, 4})
+	// Want:
+	// 0: [2]float32{0, 0}
+	// 1: [2]float32{0, 0}
+}

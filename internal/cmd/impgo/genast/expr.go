@@ -14,7 +14,7 @@
 
 package genast
 
-import "go/ast"
+import "github.com/gx-org/gx/src/gx/ast"
 
 // Expr is an AST expression with helper functions.
 type Expr[T ast.Expr] struct {

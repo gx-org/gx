@@ -1,0 +1,123 @@
+// Copyright 2026 Google LLC
+//
+// Licensed under the Apache License, Version 2.0 (the "License");
+// you may not use this file except in compliance with the License.
+// You may obtain a copy of the License at
+//
+//     http://www.apache.org/licenses/LICENSE-2.0
+//
+// Unless required by applicable law or agreed to in writing, software
+// distributed under the License is distributed on an "AS IS" BASIS,
+// WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
+// See the License for the specific language governing permissions and
+// limitations under the License.
+
+package algexpr_test
+
+import (
+	"testing"
+
+	"github.com/gx-org/gx/build/builder/testbuild"
+	"github.com/gx-org/gx/build/ir"
+	"github.com/gx-org/gx/internal/algexpr/testalgexpr"
+)
+
+func TestLogicalAnd(t *testing.T) {
+	testbuild.Run(t,
+		testalgexpr.Compare{
+			X: "true",
+			Ys: []string{
+				"true",
+				"true&&true",
+			},
+		},
+		testalgexpr.Compare{
+			X: "false",
+			Ys: []string{
+				"false",
+				"false&&true",
+				"true&&false",
+				"false&&false",
+			},
+		},
+		testalgexpr.Compare{
+			Vars: map[string]ir.Type{
+				"A": ir.BoolType(),
+				"B": ir.BoolType(),
+				"C": ir.BoolType(),
+				"D": ir.BoolType(),
+			},
+			X: "A&&B&&C&&D",
+			Ys: []string{
+				"(A&&B)&&(C&&D)",
+				"A&&(B&&C)&&D",
+				"A&&(B&&C&&D)",
+				"(A&&(B&&C&&D))",
+			},
+		},
+		testalgexpr.Compare{
+			Vars: map[string]ir.Type{
+				"A": ir.BoolType(),
+			},
+			X:  "true&&A",
+			Ys: []string{"true&&A&&true", "true&&true&&A"},
+		},
+		testalgexpr.Compare{
+			Vars: map[string]ir.Type{
+				"A": ir.BoolType(),
+			},
+			X:  "false&&A",
+			Ys: []string{"false&&A&&true", "false&&true&&A"},
+		},
+	)
+}
+
+func TestLogicalOr(t *testing.T) {
+	testbuild.Run(t,
+		testalgexpr.Compare{
+			X: "true",
+			Ys: []string{
+				"true",
+				"true||false",
+				"false||true",
+				"true||true",
+			},
+		},
+		testalgexpr.Compare{
+			X: "false",
+			Ys: []string{
+				"false",
+				"false||false",
+			},
+		},
+		testalgexpr.Compare{
+			Vars: map[string]ir.Type{
+				"A": ir.BoolType(),
+				"B": ir.BoolType(),
+				"C": ir.BoolType(),
+				"D": ir.BoolType(),
+			},
+			X: "A||B||C||D",
+			Ys: []string{
+				"(A||B)||(C||D)",
+				"A||(B||C)||D",
+				"A||(B||C||D)",
+				"(A||(B||C||D))",
+			},
+		},
+		testalgexpr.Compare{
+			Vars: map[string]ir.Type{
+				"A": ir.BoolType(),
+			},
+			X:  "false||A",
+			Ys: []string{"false||A||false", "false||false||A"},
+		},
+		testalgexpr.Compare{
+			Vars: map[string]ir.Type{
+				"A": ir.BoolType(),
+			},
+			X:  "true||A",
+			Ys: []string{"false||A||true", "false||true||A"},
+		},
+	)
+}

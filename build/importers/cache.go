@@ -90,6 +90,11 @@ func (cl *CacheLoader) loadPackageBuilder(path string) *packageBuilder {
 	return pkgBuilder
 }
 
+// Support returns true if an importer can be found for a given path.
+func (cl *CacheLoader) Support(path string) bool {
+	return findImporter(cl.importers, path) != nil
+}
+
 // Load a package given its path.
 func (cl *CacheLoader) Load(bld Builder, path string) (Package, error) {
 	return cl.loadPackageBuilder(path).build(bld, path)

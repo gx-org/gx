@@ -1,6 +1,6 @@
 package imports
 
-import "testfiles/imports/pkg1"
+import "github.com/gx-org/gx/tests/testfiles/imports/pkg1"
 
 // Var is a static of an imported type.
 var Var pkg1.Int

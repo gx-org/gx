@@ -18,23 +18,22 @@ package math
 
 import (
 	"fmt"
-	"go/ast"
 	"go/token"
 	"math"
 	"math/big"
 	"reflect"
 
 	"github.com/pkg/errors"
-	"github.com/gx-org/backend/ops"
+	"github.com/gomlx/compute"
 	"github.com/gx-org/gx/build/builtins"
 	"github.com/gx-org/gx/build/fmterr"
 	"github.com/gx-org/gx/build/ir"
 	"github.com/gx-org/gx/build/ir/irkind"
-	"github.com/gx-org/gx/internal/concrete"
 	"github.com/gx-org/gx/internal/interp/compeval/cmp"
 	"github.com/gx-org/gx/interp/elements"
 	"github.com/gx-org/gx/interp/engine"
 	"github.com/gx-org/gx/interp/materialise"
+	"github.com/gx-org/gx/src/gx/ast"
 	"github.com/gx-org/gx/stdlib/builtin"
 )
 
@@ -48,30 +47,30 @@ var Package = builtin.PackageBuilder{
 		buildConstScalar("InfFloat64", math.Inf(1)),
 		buildConstScalar("NegInfFloat64", math.Inf(-1)),
 		builtin.ParseSource(),
-		buildUnary("Abs", func(g ops.Graph) unaryFunc { return g.Math().Abs }),
-		buildUnary("Ceil", func(g ops.Graph) unaryFunc { return g.Math().Ceil }),
-		buildUnary("Cos", func(g ops.Graph) unaryFunc { return g.Math().Cos }),
-		buildUnary("Erf", func(g ops.Graph) unaryFunc { return g.Math().Erf }),
-		buildUnary("Expm1", func(g ops.Graph) unaryFunc { return g.Math().Expm1 }),
-		buildUnary("Exp", func(g ops.Graph) unaryFunc { return g.Math().Exp }),
-		buildUnary("Floor", func(g ops.Graph) unaryFunc { return g.Math().Floor }),
-		buildUnary("Log1p", func(g ops.Graph) unaryFunc { return g.Math().Log1p }),
-		buildUnary("Logistic", func(g ops.Graph) unaryFunc { return g.Math().Logistic }),
-		buildUnary("Log", func(g ops.Graph) unaryFunc { return g.Math().Log }),
-		buildBinary("Min", func(g ops.Graph) binaryFunc { return g.Math().Min }),
-		buildBinary("Max", func(g ops.Graph) binaryFunc { return g.Math().Max }),
-		buildBinary("Pow", func(g ops.Graph) binaryFunc { return g.Math().Pow }),
-		buildUnary("Round", func(g ops.Graph) unaryFunc { return g.Math().Round }),
-		buildUnary("Rsqrt", func(g ops.Graph) unaryFunc { return g.Math().Rsqrt }),
-		buildUnary("Sign", func(g ops.Graph) unaryFunc { return g.Math().Sign }),
-		buildUnary("Sin", func(g ops.Graph) unaryFunc { return g.Math().Sin }),
-		buildUnary("Sqrt", func(g ops.Graph) unaryFunc { return g.Math().Sqrt }),
-		buildUnary("Tanh", func(g ops.Graph) unaryFunc { return g.Math().Tanh }),
+		buildUnary("Abs", func(g compute.Function) unaryFunc { return g.Abs }),
+		buildUnary("Ceil", func(g compute.Function) unaryFunc { return g.Ceil }),
+		buildUnary("Cos", func(g compute.Function) unaryFunc { return g.Cos }),
+		buildUnary("Erf", func(g compute.Function) unaryFunc { return g.Erf }),
+		buildUnary("Expm1", func(g compute.Function) unaryFunc { return g.Expm1 }),
+		buildUnary("Exp", func(g compute.Function) unaryFunc { return g.Exp }),
+		buildUnary("Floor", func(g compute.Function) unaryFunc { return g.Floor }),
+		buildUnary("Log1p", func(g compute.Function) unaryFunc { return g.Log1p }),
+		buildUnary("Logistic", func(g compute.Function) unaryFunc { return g.Logistic }),
+		buildUnary("Log", func(g compute.Function) unaryFunc { return g.Log }),
+		buildBinary("Min", func(g compute.Function) binaryFunc { return g.Min }),
+		buildBinary("Max", func(g compute.Function) binaryFunc { return g.Max }),
+		buildBinary("Pow", func(g compute.Function) binaryFunc { return g.Pow }),
+		buildUnary("Round", func(g compute.Function) unaryFunc { return g.Round }),
+		buildUnary("Rsqrt", func(g compute.Function) unaryFunc { return g.Rsqrt }),
+		buildUnary("Sign", func(g compute.Function) unaryFunc { return g.Sign }),
+		buildUnary("Sin", func(g compute.Function) unaryFunc { return g.Sin }),
+		buildUnary("Sqrt", func(g compute.Function) unaryFunc { return g.Sqrt }),
+		buildUnary("Tanh", func(g compute.Function) unaryFunc { return g.Tanh }),
 		builtin.ImplementBuiltin("checkSameOrScalar", checkSameOrScalar),
 	},
 }
 
-func checkSameOrScalar(env *engine.Env, call *ir.FuncCallExpr, recv ir.Element, args []ir.Element) (_ []ir.Element, err error) {
+func checkSameOrScalar(env *engine.Env, call *ir.FuncCallExpr, recv ir.Element, genArgs, args []ir.Element) (_ []ir.Element, err error) {
 	ax1, isSlice := args[0].(*elements.Slice)
 	if !isSlice {
 		return nil, errors.Errorf("cannot convert %T to %s", args[0], reflect.TypeFor[*elements.Slice]().String())
@@ -155,39 +154,30 @@ func buildConstScalar[T goFloats](name string, value T) builtin.Builder {
 	})
 }
 
-type unaryFunc = func(ops.Node) (ops.Node, error)
+type unaryFunc = func(compute.Value) (compute.Value, error)
 
-func buildUnary(name string, f func(graph ops.Graph) unaryFunc) builtin.Builder {
-	return builtin.ImplementBuiltin(name, func(env *engine.Env, call *ir.FuncCallExpr, recv ir.Element, args []ir.Element) ([]ir.Element, error) {
-		args = args[call.Callee.FuncType().Origin().GenParams.Fields.Len():]
+func buildUnary(name string, f func(graph compute.Function) unaryFunc) builtin.Builder {
+	return builtin.ImplementBuiltin(name, func(env *engine.Env, call *ir.FuncCallExpr, recv ir.Element, genArgs, args []ir.Element) ([]ir.Element, error) {
 		mat := builtin.Materialiser(env)
-		x, xShape, err := materialise.Element(mat, args[0])
+		x, _, err := materialise.Element(mat, args[0])
 		if err != nil {
 			return nil, err
 		}
-		unaryF := f(env.Engine().ArrayOps().Graph())
+		unaryF := f(env.Engine().Graph())
 		node, err := unaryF(x)
 		if err != nil {
 			return nil, err
 		}
-		typ, err := concrete.Concrete(env.ExprEval(), call.Type())
-		if err != nil {
-			return nil, fmterr.Error(env.File().FileSet(), call.Src, err)
-		}
-		return materialise.ElementFromNode(env.File(), mat, &ops.OutputNode{
-			Node:  node,
-			Shape: xShape,
-		}, typ)
+		return materialise.ElementFromNode(env.ExprEval(), mat, node, call.Type())
 	})
 }
 
-type binaryFunc = func(x, y ops.Node) (ops.Node, error)
+type binaryFunc = func(x, y compute.Value) (compute.Value, error)
 
-func buildBinary(name string, f func(graph ops.Graph) binaryFunc) builtin.Builder {
-	return builtin.ImplementBuiltin(name, func(env *engine.Env, call *ir.FuncCallExpr, recv ir.Element, args []ir.Element) ([]ir.Element, error) {
-		args = args[call.Callee.FuncType().Origin().GenParams.Fields.Len():]
+func buildBinary(name string, f func(graph compute.Function) binaryFunc) builtin.Builder {
+	return builtin.ImplementBuiltin(name, func(env *engine.Env, call *ir.FuncCallExpr, recv ir.Element, genArgs, args []ir.Element) ([]ir.Element, error) {
 		mat := builtin.Materialiser(env)
-		x, xShape, err := materialise.Element(mat, args[0])
+		x, _, err := materialise.Element(mat, args[0])
 		if err != nil {
 			return nil, err
 		}
@@ -195,18 +185,11 @@ func buildBinary(name string, f func(graph ops.Graph) binaryFunc) builtin.Builde
 		if err != nil {
 			return nil, err
 		}
-		binaryF := f(env.Engine().ArrayOps().Graph())
+		binaryF := f(env.Engine().Graph())
 		node, err := binaryF(x, y)
 		if err != nil {
 			return nil, err
 		}
-		typ, err := concrete.Concrete(env.ExprEval(), call.Type())
-		if err != nil {
-			return nil, fmterr.Error(env.File().FileSet(), call.Src, err)
-		}
-		return materialise.ElementFromNode(env.File(), mat, &ops.OutputNode{
-			Node:  node,
-			Shape: xShape,
-		}, typ)
+		return materialise.ElementFromNode(env.ExprEval(), mat, node, call.Type())
 	})
 }

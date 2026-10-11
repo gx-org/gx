@@ -26,11 +26,11 @@ func Int64(x int64) int64 {
 }
 
 func Uint32(x uint32) uint32 {
-	return -x
+	return 0 - x
 }
 
 func Uint64(x uint64) uint64 {
-	return -x
+	return 0 - x
 }
 
 func ArrayBool(x [2][3]bool) [2][3]bool {
@@ -58,9 +58,9 @@ func ArrayInt64(x [2][3]int64) [2][3]int64 {
 }
 
 func ArrayUint32(x [2][3]uint32) [2][3]uint32 {
-	return -x
+	return 0 - x
 }
 
 func ArrayUint64(x [2][3]uint64) [2][3]uint64 {
-	return -x
+	return 0 - x
 }

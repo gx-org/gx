@@ -16,7 +16,6 @@ package builder
 
 import (
 	"fmt"
-	"go/ast"
 	"go/token"
 	"reflect"
 
@@ -24,6 +23,7 @@ import (
 	"github.com/gx-org/gx/build/builder/irb"
 	"github.com/gx-org/gx/build/fmterr"
 	"github.com/gx-org/gx/build/ir"
+	"github.com/gx-org/gx/src/gx/ast"
 )
 
 type (

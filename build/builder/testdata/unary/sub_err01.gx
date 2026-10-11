@@ -1,0 +1,35 @@
+package sub_err01
+
+import "dtype"
+
+func subUint32(x uint32) uint32 {
+	return -x // ERROR operator - not defined on uint32 (expect a signed type)
+}
+
+func subUint64(x uint64) uint64 {
+	return -x // ERROR operator - not defined on uint64 (expect a signed type)
+}
+
+func subArrayUint32(x [2]uint32) [2]uint32 {
+	return -x // ERROR operator - not defined on uint32 (expect a signed type)
+}
+
+func subArrayUint64(x [2]uint64) [2]uint64 {
+	return -x // ERROR operator - not defined on uint64 (expect a signed type)
+}
+
+func subBool(x bool) bool {
+	return -x // ERROR operator - not defined on bool (expect a signed type)
+}
+
+func subArrayBool(x [2]bool) [2]bool {
+	return -x // ERROR operator - not defined on bool (expect a signed type)
+}
+
+func subGeneric[T dtype.Ints](x T) T {
+	return -x // ERROR operator - not defined on T (expect a signed type)
+}
+
+func subGenericArray[T dtype.Ints](x [2]T) [2]T {
+	return -x // ERROR operator - not defined on T (expect a signed type)
+}

@@ -16,9 +16,8 @@
 package generics
 
 import (
-	"go/ast"
-
 	"github.com/gx-org/gx/build/ir"
+	"github.com/gx-org/gx/src/gx/ast"
 )
 
 func typeInclude(fetcher ir.Fetcher, set ir.Type, typ ir.Type) bool {

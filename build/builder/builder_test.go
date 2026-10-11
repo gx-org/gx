@@ -19,8 +19,12 @@ import (
 
 	"github.com/gx-org/gx/build/builder/testbuild"
 	"github.com/gx-org/gx/build/builder/testdata"
+	"github.com/gx-org/gx/build/importers"
 	"github.com/gx-org/gx/build/ir"
 	"github.com/gx-org/gx/build/ir/irhelper"
+	"github.com/gx-org/gx/stdlib"
+	"github.com/gx-org/gx/tests/rtpackages/base"
+	"github.com/gx-org/gx/tests/testpkgs"
 )
 
 var (
@@ -30,7 +34,16 @@ var (
 
 func TestBuilder(t *testing.T) {
 	testbuild.RunFactory(t,
-		testbuild.Stdlib(),
+		// Use a custom list of importers to make sure we do not need to compile GX code to run this test.
+		[]importers.Importer{
+			testpkgs.TestMacros,
+			testpkgs.TestMacroError,
+			testpkgs.TestCPUndef,
+			testpkgs.TestGenerics,
+			testpkgs.TestUnknow,
+			base.New(),
+			stdlib.Importer(),
+		},
 		testbuild.CompEval(
 			testdata.Sources,
 		))

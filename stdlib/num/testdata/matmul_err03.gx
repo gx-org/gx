@@ -5,17 +5,17 @@ import "num"
 func testMatmulLeftMoreThan2Axis() float32 {
 	a := [3][2][4]float32{}
 	b := [4][3]float32{}
-	return num.MatMul(a, b) // ERROR expects no more than 2 axes but got 3 axes ([3][2][4])
+	return num.MatMul(a, b) // ERROR 4 does not match inferred value 2 for LJ
 }
 
 func testMatmulRightMoreThan2Axis() float32 {
 	a := [4][3]float32{}
 	b := [3][2][4]float32{}
-	return num.MatMul(a, b) // ERROR expects no more than 2 axes but got 3 axes ([3][2][4])
+	return num.MatMul(a, b) // ERROR cannot use type [3][2][4]float32 as [3][2]float32 in argument to num.MatMul
 }
 
 func testMatmulIncompatibleAxis() float32 {
 	a := [5][4]float32{}
 	b := [3][2]float32{}
-	return num.MatMul(a, b) // ERROR invalid axis length: 4!=3 in [5][4],[3][2]
+	return num.MatMul(a, b) // ERROR 3 does not match inferred value 4 for L
 }

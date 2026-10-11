@@ -168,7 +168,6 @@ def go_gx_library(name, lib, deps = [], tags = [], visibility = None, testonly =
             lib + "_gx",
             "//third_party/golang/errors",
             "//third_party/gxlang/gx/api",
-            "//third_party/gxlang/backend/platform",
             "//third_party/gxlang/gx/interp",
             "//third_party/gxlang/gx/api/options",
             "//third_party/gxlang/gx/api/trace",

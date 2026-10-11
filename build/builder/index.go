@@ -16,28 +16,23 @@ package builder
 
 import (
 	"fmt"
-	"go/ast"
 	"strings"
 
 	"github.com/gx-org/gx/build/ir/generics"
 	"github.com/gx-org/gx/build/ir"
 	"github.com/gx-org/gx/build/ir/irkind"
+	"github.com/gx-org/gx/internal/base/cast"
 	"github.com/gx-org/gx/internal/interp/constants"
+	"github.com/gx-org/gx/src/gx/ast"
 )
 
-type (
-	rankableType interface {
-		rank() rankNode
-	}
+// indexExpr references an element (or subarray) of an array.
+type indexExpr struct {
+	src *ast.IndexExpr
 
-	// indexExpr references an element (or subarray) of an array.
-	indexExpr struct {
-		src *ast.IndexExpr
-
-		x     exprNode
-		index exprNode
-	}
-)
+	x     exprNode
+	index exprNode
+}
 
 var _ exprNode = (*indexExpr)(nil)
 
@@ -103,23 +98,13 @@ func buildGenericParams(tparams []*ir.Field, num int) []ir.GenericParam {
 	return genFields
 }
 
-func specializeFuncType(rscope resolveScope, x ir.Expr, indices []ir.Expr, fun *ir.FuncValExpr) (ir.Expr, bool) {
-	ftype := fun.FuncType()
-	if ftype == nil {
-		// This is a builtin function with the type built later.
-		// That should not be specialised by the user.
-		return x, rscope.Err().Appendf(x.Node(), "builtin function does not support type arguments")
-	}
-	gotN, wantN := len(indices), ftype.GenParams.Fields.Len()
+func buildGenericValues(rscope resolveScope, x ir.Expr, ce *compileEvaluator, gen *ir.GenericParams, indices []ir.Expr) ([]ir.GenericValue, bool) {
+	gotN, wantN := len(indices), gen.Fields.Len()
 	if gotN > wantN {
-		return x, rscope.Err().Appendf(x.Node(), "got %d type arguments but want %d", gotN, wantN)
+		return nil, rscope.Err().Appendf(x.Node(), "got %d type arguments but want %d", gotN, wantN)
 	}
-	genParams := buildGenericParams(ftype.GenParams.Fields.Fields(), len(indices))
-	compEval, _, compEvalOk := compEvalForFuncType(rscope, x.Node(), ftype)
-	if !compEvalOk {
-		return x, false
-	}
-	genValues := append([]ir.GenericValue{}, ftype.GenParams.Values...)
+	genParams := buildGenericParams(gen.Fields.Fields(), len(indices))
+	genValues := append([]ir.GenericValue{}, gen.Values...)
 	ok := true
 	for i, gParam := range genParams {
 		numberOk := true
@@ -127,20 +112,60 @@ func specializeFuncType(rscope resolveScope, x ir.Expr, indices []ir.Expr, fun *
 			indices[i], numberOk = castNilAndNumber(rscope, indices[i], gParam.Type())
 		}
 		var assignOk bool
-		genValues[gParam.OrigField().Pos], assignOk = gParam.Assign(compEval, indices[i])
+		genValues[gParam.OrigField().Pos], assignOk = gParam.Assign(ce, indices[i])
 		ok = ok && assignOk && numberOk
 	}
 	if !ok {
-		return x, false
+		return genValues, false
 	}
 	for i, indexExpr := range indices {
 		var err error
-		indices[i], err = ir.CompEvalExprSingle(compEval, indexExpr)
+		indices[i], err = ir.CompEvalExprSingle(ce, indexExpr)
 		if err != nil {
-			return x, rscope.Err().AppendAt(indexExpr.Expr(), err)
+			return genValues, rscope.Err().AppendAt(indexExpr.Expr(), err)
 		}
 	}
-	return generics.SpecialiseParams(compEval, x, fun, genValues)
+	return genValues, true
+}
+
+func specializeFuncType(rscope resolveScope, x ir.Expr, indices []ir.Expr, fun *ir.FuncValExpr) (ir.Expr, bool) {
+	ftype := fun.FuncType()
+	if ftype == nil {
+		// This is a builtin function with the type built later.
+		// That should not be specialised by the user.
+		return x, rscope.Err().Appendf(x.Node(), "builtin function does not support type arguments")
+	}
+	compEval, _, compEvalOk := compEvalForFuncType(rscope, x.Node(), ftype)
+	if !compEvalOk {
+		return x, false
+	}
+	if gotN, wantN := len(indices), ftype.GenParams.Fields.Len(); gotN > wantN {
+		return x, rscope.Err().Appendf(x.Node(), "got %d type arguments but want %d", gotN, wantN)
+	}
+	// Specialise the function one type argument at a time:
+	// each specialisation is applied on the result of the previous one.
+	specX := x
+	for _, genExpr := range indices {
+		genValues, ok := buildGenericValues(rscope, x, compEval, &fun.FuncType().GenParams, []ir.Expr{genExpr})
+		if !ok {
+			return x, false
+		}
+		specTypeExpr := &ir.SpecTypeExpr{
+			Src: &ast.IndexExpr{
+				X:     specX.Expr(),
+				Index: genExpr.Expr(),
+			},
+			X:     specX,
+			Index: genExpr,
+		}
+		fun, ok = generics.SpecialiseParams(compEval, specTypeExpr, fun, genValues)
+		specTypeExpr.Typ = fun.Type()
+		specX = fun
+		if !ok {
+			return specX, false
+		}
+	}
+	return specX, true
 }
 
 func specializeFunc(rscope resolveScope, x ir.Expr, indices []ir.Expr) (ir.Expr, bool) {
@@ -153,10 +178,14 @@ func specializeFunc(rscope resolveScope, x ir.Expr, indices []ir.Expr) (ir.Expr,
 		if !ok {
 			return funcError(rscope, x)
 		}
-		fun, ok = funStorage.Value(x).(*ir.FuncValExpr)
-		if !ok {
-			return funcError(rscope, x)
+		val := funStorage.Value(x)
+		valFun, isFun := val.(*ir.FuncValExpr)
+		if !isFun {
+			return specializeFunc(rscope, val, indices)
 		}
+		// Keep x (e.g. a method selector) as the callee expression
+		// so that the receiver is preserved when the function is evaluated.
+		fun = valFun
 	case *ir.FuncValExpr:
 		fun = xT
 	default:
@@ -284,4 +313,113 @@ func (n *indexListExpr) String() string {
 		indices[i] = index.String()
 	}
 	return fmt.Sprintf("%s[%s]", n.x.String(), strings.Join(indices, ","))
+}
+
+// indexExprType is used when a structure is specialised.
+type indexExprType struct {
+	src *ast.IndexExpr
+
+	x     typeExprNode
+	index exprNode
+}
+
+var _ typeExprNode = (*indexExprType)(nil)
+
+func processIndexExprType(pscope procScope, src *ast.IndexExpr) (*indexExprType, bool) {
+	n := &indexExprType{src: src}
+	var xOk, indexOk bool
+	n.x, xOk = processTypeExpr(defaultTypeProcScope(pscope), src.X, nil)
+	n.index, indexOk = processExpr(pscope, src.Index)
+	return n, xOk && indexOk
+}
+
+func (n *indexExprType) source() ast.Node {
+	return n.src
+}
+
+func specializeType(rscope resolveScope, x *ir.TypeValExpr, indices []ir.Expr) (*ir.TypeValExpr, bool) {
+	if x.Val().Kind() != irkind.Struct {
+		return invalidTypeExprVal, rscope.Err().Appendf(x.Node(), "%s is not a generic type", x.SourceString(rscope.fileScope().irFile()))
+	}
+	named, err := cast.To[*ir.NamedType](x.Val())
+	if err != nil {
+		return invalidTypeExprVal, rscope.Err().AppendAt(x.Node(), err)
+	}
+	ce, ok := rscope.compEval()
+	if !ok {
+		return invalidTypeExprVal, false
+	}
+	genValues, ok := buildGenericValues(rscope, x, ce, &named.GenParams, indices)
+	if !ok {
+		return invalidTypeExprVal, false
+	}
+	structType, err := cast.To[*ir.StructType](ir.Underlying(named))
+	if err != nil {
+		return invalidTypeExprVal, rscope.Err().AppendAt(x.Node(), err)
+	}
+	return generics.SpecialiseStruct(ce, x, structType, genValues)
+}
+
+func (n *indexExprType) buildTypeExpr(rscope resolveScope) (*ir.TypeValExpr, bool) {
+	xIR, xOk := n.x.buildTypeExpr(rscope)
+	idxIR, idxOk := n.index.buildExpr(rscope)
+	if !xOk || !idxOk {
+		return invalidTypeExprVal, false
+	}
+	return specializeType(rscope, xIR, []ir.Expr{idxIR})
+}
+
+func (n *indexExprType) String() string {
+	return fmt.Sprintf("%s[%s]", n.x.String(), n.index.String())
+
+}
+
+// indexExprListType is used when a structure is specialised.
+type indexExprListType struct {
+	src *ast.IndexListExpr
+
+	x       typeExprNode
+	indices []exprNode
+}
+
+var _ typeExprNode = (*indexExprListType)(nil)
+
+func processIndexListExprType(pscope procScope, src *ast.IndexListExpr) (*indexExprListType, bool) {
+	n := &indexExprListType{src: src}
+	var ok bool
+	n.x, ok = processTypeExpr(defaultTypeProcScope(pscope), src.X, nil)
+	n.indices = make([]exprNode, len(src.Indices))
+	for i, idx := range src.Indices {
+		var iok bool
+		n.indices[i], iok = processExpr(pscope, idx)
+		ok = ok && iok
+	}
+	return n, ok
+}
+
+func (n *indexExprListType) source() ast.Node {
+	return n.src
+}
+
+func (n *indexExprListType) buildTypeExpr(rscope resolveScope) (*ir.TypeValExpr, bool) {
+	xIR, ok := n.x.buildTypeExpr(rscope)
+	if !ok {
+		return invalidTypeExprVal, false
+	}
+	indices := make([]ir.Expr, len(n.indices))
+	for i, idx := range n.indices {
+		indices[i], ok = idx.buildExpr(rscope)
+		if !ok {
+			return invalidTypeExprVal, false
+		}
+	}
+	return specializeType(rscope, xIR, indices)
+}
+
+func (n *indexExprListType) String() string {
+	ss := make([]string, len(n.indices))
+	for i, idx := range n.indices {
+		ss[i] = idx.String()
+	}
+	return fmt.Sprintf("%s[%s]", n.x.String(), strings.Join(ss, ","))
 }

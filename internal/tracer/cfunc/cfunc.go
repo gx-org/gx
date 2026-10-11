@@ -16,9 +16,7 @@
 package cfunc
 
 import (
-	"github.com/gx-org/backend/ops"
-	"github.com/gx-org/backend/platform"
-	"github.com/gx-org/backend/shape"
+	"github.com/gomlx/compute"
 	"github.com/gx-org/gx/api"
 	"github.com/gx-org/gx/api/hostio"
 	"github.com/gx-org/gx/api/trace"
@@ -34,16 +32,17 @@ type CompiledFunc struct {
 	fn      ir.Func
 	process *processor.Processor
 	device  *api.Device
-	runner  ops.Runner
+	runner  compute.Executable
 	outs    []ir.Element
+	numOut  int
 }
 
-func extractGraphNodes(ao materialise.Materialiser, els []ir.Element) ([]*ops.OutputNode, error) {
+func extractGraphNodes(ao materialise.Materialiser, els []ir.Element) ([]compute.Value, error) {
 	flatten, err := flatten.Flatten(els...)
 	if err != nil {
 		return nil, err
 	}
-	var nodes []*ops.OutputNode
+	var nodes []compute.Value
 	for _, el := range flatten {
 		mat, ok := el.(materialise.ElementMaterialiser)
 		if !ok {
@@ -53,18 +52,13 @@ func extractGraphNodes(ao materialise.Materialiser, els []ir.Element) ([]*ops.Ou
 		if err != nil {
 			return nil, err
 		}
-		nodes = append(nodes, node.OutNode())
+		nodes = append(nodes, node.OutNode().Node)
 	}
 	return nodes, nil
 }
 
 // Compile a function that will be run on a device given some inputs.
-func Compile(dev *api.Device, fn ir.Func, p *processor.Processor, ao materialise.Materialiser, outs []ir.Element) (*CompiledFunc, error) {
-	args := p.Args()
-	paramShapes := make([]*shape.Shape, len(args))
-	for i, arg := range args {
-		paramShapes[i] = arg.Shape()
-	}
+func Compile(dev *api.Device, fn ir.Func, p *processor.Processor, ao materialise.Materialiser, bld compute.Builder, outs []ir.Element) (*CompiledFunc, error) {
 	cg := &CompiledFunc{
 		fn:      fn,
 		process: p,
@@ -76,6 +70,7 @@ func Compile(dev *api.Device, fn ir.Func, p *processor.Processor, ao materialise
 	if err != nil {
 		return nil, err
 	}
+	cg.numOut = len(graphOutNodes)
 	graphAuxNodes, err := extractGraphNodes(ao, p.Traces())
 	if err != nil {
 		return nil, err
@@ -85,30 +80,41 @@ func Compile(dev *api.Device, fn ir.Func, p *processor.Processor, ao materialise
 		// We do not need to compile and we leave cg.runner to nil.
 		return cg, nil
 	}
-	cg.runner, err = ao.Graph().Compile(dev.PlatformDevice(), graphOutNodes, graphAuxNodes, paramShapes)
+	if err := bld.DeviceAssignment(dev.PlatformDevice()); err != nil {
+		return nil, err
+	}
+	allOutNodes := append(append([]compute.Value{}, graphOutNodes...), graphAuxNodes...)
+	if err := bld.Main().Return(allOutNodes, nil); err != nil {
+		return nil, err
+	}
+	cg.runner, err = bld.Compile()
 	return cg, err
 }
 
-func (g *CompiledFunc) run(ctx *hostio.FuncInputs) (out, traces []platform.DeviceHandle, err error) {
+func (g *CompiledFunc) run(ctx *hostio.FuncInputs) (out, traces []compute.Buffer, err error) {
 	if g.runner == nil {
 		// No runner: there is nothing to run in the graph.
 		return nil, nil, nil
 	}
 	args := g.process.Args()
-	handles := make([]platform.Handle, len(args))
+	handles := make([]compute.Buffer, len(args))
 	for i, arg := range args {
 		var err error
-		handles[i], err = arg.ToDeviceHandle(g.device.PlatformDevice(), ctx)
+		handles[i], err = arg.ToDeviceHandle(g.device.Backend(), g.device.PlatformDevice(), ctx)
 		if err != nil {
 			return nil, nil, err
 		}
 	}
-	return g.runner.Run(handles)
+	results, err := g.runner.Execute(handles, nil, g.device.PlatformDevice())
+	if err != nil {
+		return nil, nil, err
+	}
+	return results[:g.numOut], results[g.numOut:], nil
 }
 
 // Run the graph.
 func (g *CompiledFunc) Run(receiver hostio.Value, args []hostio.Value, tracer trace.Callback) ([]hostio.Value, error) {
-	fc := &hostio.FuncInputs{Receiver: receiver, Args: hostio.ToElements(args)}
+	fc := &hostio.FuncInputs{Receiver: receiver, Args: args}
 	if err := g.process.ProcessInits(fc); err != nil {
 		return nil, err
 	}
@@ -122,7 +128,7 @@ func (g *CompiledFunc) Run(receiver hostio.Value, args []hostio.Value, tracer tr
 	return g.handlesToValues(fc, out)
 }
 
-func (g *CompiledFunc) handlesToValues(in *hostio.FuncInputs, handles []platform.DeviceHandle) ([]hostio.Value, error) {
+func (g *CompiledFunc) handlesToValues(in *hostio.FuncInputs, handles []compute.Buffer) ([]hostio.Value, error) {
 	reader := flatten.NewParser(g.device.PlatformDevice(), in, values.Factory(), handles)
 	values := make([]hostio.Value, len(g.outs))
 	for i, el := range g.outs {

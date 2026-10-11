@@ -1,0 +1,22 @@
+package matmul01
+
+// No runtime test function
+
+//gx:compeval
+func matMulAxes(x, y []int) []int {
+	require(len(x) <= 2)
+	require(len(y) <= 2)
+	if len(x) == 1 && len(y) == 1 {
+		require(x[0] == y[0])
+		return x
+	}
+	return []int{x[0], y[1]}
+}
+
+func matMul[SX, SY []int](x [unpack(SX)]float64, y [unpack(SY)]float64) [unpack(matMulAxes(SX, SY))]float64
+
+func matmalScalars() [1]float64 {
+	x := [1]float64{1}
+	y := [1]float64{-1}
+	return matMul(x, y)
+}

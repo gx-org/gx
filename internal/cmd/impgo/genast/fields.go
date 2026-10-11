@@ -14,7 +14,7 @@
 
 package genast
 
-import "go/ast"
+import "github.com/gx-org/gx/src/gx/ast"
 
 // Fields returns a field list from a list of fields.
 func Fields(fields ...*ast.Field) *ast.FieldList {

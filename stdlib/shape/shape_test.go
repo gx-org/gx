@@ -26,5 +26,10 @@ import (
 func TestShape(t *testing.T) {
 	testbuild.RunFactory(t, []importers.Importer{
 		stdlib.Importer(),
+	}, testbuild.CompEval(
+		testdata.Sources,
+	))
+	testbuild.RunFactory(t, []importers.Importer{
+		stdlib.Importer(),
 	}, testdata.Sources)
 }

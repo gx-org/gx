@@ -20,10 +20,10 @@ import (
 	"slices"
 
 	"github.com/pkg/errors"
-	"github.com/gx-org/backend/ops"
-	"github.com/gx-org/backend/shape"
 	"github.com/gx-org/gx/api/hostio"
 	"github.com/gx-org/gx/build/ir"
+	"github.com/gx-org/gx/internal/interp/coreiface"
+	"github.com/gx-org/gx/internal/undef"
 	"github.com/gx-org/gx/interp/elements"
 	"github.com/gx-org/gx/interp/engine"
 	"github.com/gx-org/gx/interp/materialise"
@@ -49,33 +49,24 @@ var Package = builtin.PackageBuilder{
 	},
 }
 
-func evalTranspose(env *engine.Env, call *ir.FuncCallExpr, recv ir.Element, args []ir.Element) ([]ir.Element, error) {
+func evalTranspose(env *engine.Env, call *ir.FuncCallExpr, recv ir.Element, genArgs, args []ir.Element) ([]ir.Element, error) {
 	mat := builtin.Materialiser(env)
-	argNode, argShape, err := materialise.Element(mat, args[2])
+	argNode, argShape, err := materialise.Element(mat, args[0])
 	if err != nil {
 		return nil, err
 	}
-	if len(argShape.AxisLengths) <= 1 {
-		return []ir.Element{args[2]}, nil
+	if len(argShape.Dimensions) <= 1 {
+		return []ir.Element{args[0]}, nil
 	}
-	wantAxes := make([]int, len(argShape.AxisLengths))
+	wantAxes := make([]int, len(argShape.Dimensions))
 	for i := range wantAxes {
 		wantAxes[i] = len(wantAxes) - i - 1
 	}
-	op, err := env.Engine().ArrayOps().Graph().Shape().Transpose(argNode, wantAxes)
+	op, err := env.Engine().Graph().Transpose(argNode, wantAxes...)
 	if err != nil {
 		return nil, err
 	}
-	targetLengths := append([]int{}, argShape.AxisLengths...)
-	slices.Reverse(targetLengths)
-	targetShape := &shape.Shape{
-		DType:       argShape.DType,
-		AxisLengths: targetLengths,
-	}
-	return materialise.ElementFromNode(env.File(), mat, &ops.OutputNode{
-		Node:  op,
-		Shape: targetShape,
-	}, call.Type())
+	return materialise.ElementFromNode(env.ExprEval(), mat, op, call.Type())
 }
 
 func outOfBoundAxis(env *engine.Env, call *ir.FuncCallExpr, axes *elements.Slice, idx int, name string) error {
@@ -83,7 +74,7 @@ func outOfBoundAxis(env *engine.Env, call *ir.FuncCallExpr, axes *elements.Slice
 	return ir.CompileErrorF("%s axis %d out of bound for array with %d axes (with axis lengths: %s)", name, idx, axes.Len(), shapeS)
 }
 
-func reverseAxes(env *engine.Env, call *ir.FuncCallExpr, recv ir.Element, args []ir.Element) (_ []ir.Element, err error) {
+func reverseAxes(env *engine.Env, call *ir.FuncCallExpr, recv ir.Element, genArgs, args []ir.Element) (_ []ir.Element, err error) {
 	axes, err := elements.SliceFromElement(args[0])
 	if err != nil {
 		return nil, err
@@ -97,12 +88,19 @@ func reverseAxes(env *engine.Env, call *ir.FuncCallExpr, recv ir.Element, args [
 	return []ir.Element{revAxes}, nil
 }
 
-func reduceAxes(env *engine.Env, call *ir.FuncCallExpr, recv ir.Element, args []ir.Element) (_ []ir.Element, err error) {
-	axes, err := elements.SliceFromElement(args[0])
+func reduceAxes(env *engine.Env, call *ir.FuncCallExpr, recv ir.Element, genArgs, args []ir.Element) (_ []ir.Element, err error) {
+	under, err := coreiface.Underlying(args[0])
 	if err != nil {
 		return nil, err
 	}
+	axes, ok := under.(*elements.Slice)
+	if !ok {
+		return nil, undef.Err()
+	}
 	indices, err := elements.Map(elements.IntFromElement, args[1])
+	if undef.Is(err) {
+		return nil, err
+	}
 	if err != nil {
 		return nil, fmt.Errorf("cannot get axis index from argument 1: %w", err)
 	}
@@ -129,7 +127,7 @@ func reduceAxes(env *engine.Env, call *ir.FuncCallExpr, recv ir.Element, args []
 	return []ir.Element{out}, err
 }
 
-func sameSlice(env *engine.Env, call *ir.FuncCallExpr, recv ir.Element, args []ir.Element) (_ []ir.Element, err error) {
+func sameSlice(env *engine.Env, call *ir.FuncCallExpr, recv ir.Element, genArgs, args []ir.Element) (_ []ir.Element, err error) {
 	defer func() {
 		if err != nil {
 			err = fmt.Errorf("cannot call fmt.SameSlice: %w", err)

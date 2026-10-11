@@ -16,8 +16,6 @@ package revgraph
 
 import (
 	"fmt"
-	"go/ast"
-	"go/format"
 	"go/token"
 	"strconv"
 	"strings"
@@ -25,6 +23,8 @@ import (
 	"github.com/gx-org/gx/build/fmterr"
 	"github.com/gx-org/gx/build/ir"
 	"github.com/gx-org/gx/internal/base/scope"
+	"github.com/gx-org/gx/src/gx/ast"
+	"github.com/gx-org/gx/src/gx/format"
 	"github.com/gx-org/gx/stdlib/math/grad/special"
 	"github.com/gx-org/gx/stdlib/math/grad/wrt"
 )
@@ -157,7 +157,7 @@ func (a *astOut) assignFuncCall(id nodeID, ftype *ir.FuncType, calleeName string
 	for i, calleeParam := range calleeParams {
 		vjpFuncName := root
 		if len(calleeParams) > 1 {
-			vjpFuncName += calleeParam.Name.Name
+			vjpFuncName += paramSuffix(i, calleeParam.Name)
 		}
 		vjps[i] = a.graph.unames.Name(vjpFuncName)
 		stmt.Lhs = append(stmt.Lhs, &ast.Ident{Name: vjps[i]})

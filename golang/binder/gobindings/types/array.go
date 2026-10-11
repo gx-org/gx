@@ -16,35 +16,35 @@ package types
 
 import (
 	"fmt"
-	"go/ast"
 
-	"github.com/gx-org/backend/dtypes"
-	"github.com/gx-org/backend/platform"
-	"github.com/gx-org/backend/shape"
+	"github.com/gomlx/compute/dtypes"
+	"github.com/gomlx/compute/dtypes/gotype"
+	"github.com/gomlx/compute/shapes"
 	"github.com/gx-org/gx/api/hostio"
 	"github.com/gx-org/gx/build/ir"
 	"github.com/gx-org/gx/build/ir/irkind"
 	"github.com/gx-org/gx/golang/backend/kernels"
+	"github.com/gx-org/gx/src/gx/ast"
 )
 
 // Array managed by GX.
-type Array[T dtypes.Supported] interface {
+type Array[T gotype.Supported] interface {
 	Bridger
 
 	Fetch() (*HostArray[T], error)
 
-	Shape() *shape.Shape
+	Shape() shapes.Shape
 }
 
 // DeviceArray is an array stored on a device.
-type DeviceArray[T dtypes.Supported] struct {
+type DeviceArray[T gotype.Supported] struct {
 	baseBridge[*DeviceArray[T], *hostio.DeviceArray]
 }
 
 var _ Array[int64] = (*DeviceArray[int64])(nil)
 
 // NewDeviceArray returns a new Go array given a device value managed by GX.
-func NewDeviceArray[T dtypes.Supported](val *hostio.DeviceArray) *DeviceArray[T] {
+func NewDeviceArray[T gotype.Supported](val *hostio.DeviceArray) *DeviceArray[T] {
 	array := &DeviceArray[T]{}
 	array.baseBridge = newBaseBridge(array, val)
 	dtypeGot := val.Shape().DType
@@ -57,16 +57,16 @@ func NewDeviceArray[T dtypes.Supported](val *hostio.DeviceArray) *DeviceArray[T]
 
 // Fetch the value from the device.
 func (array *DeviceArray[T]) Fetch() (*HostArray[T], error) {
-	return array.FetchWithAlloc(kernels.Allocator())
+	return array.FetchWithAlloc(kernels.DefaultAllocator())
 }
 
 // Shape of the array.
-func (array *DeviceArray[T]) Shape() *shape.Shape {
+func (array *DeviceArray[T]) Shape() shapes.Shape {
 	return array.value.Shape()
 }
 
 // FetchWithAlloc the value from the device given a specific allocator.
-func (array *DeviceArray[T]) FetchWithAlloc(alloc platform.Allocator) (*HostArray[T], error) {
+func (array *DeviceArray[T]) FetchWithAlloc(alloc kernels.Allocator) (*HostArray[T], error) {
 	val, err := array.value.ToHostArray(alloc)
 	if err != nil {
 		return nil, err
@@ -83,14 +83,14 @@ func (array *DeviceArray[T]) String() string {
 }
 
 // HostArray is an array stored on a host.
-type HostArray[T dtypes.Supported] struct {
+type HostArray[T gotype.Supported] struct {
 	baseBridge[*HostArray[T], *hostio.HostArray]
 }
 
 var _ Array[int64] = (*HostArray[int64])(nil)
 
 // NewHostArray returns a new Go array given a device value managed by GX.
-func NewHostArray[T dtypes.Supported](val *hostio.HostArray) *HostArray[T] {
+func NewHostArray[T gotype.Supported](val *hostio.HostArray) *HostArray[T] {
 	array := &HostArray[T]{}
 	array.baseBridge = newBaseBridge(array, val)
 	return array
@@ -107,11 +107,11 @@ func (array *HostArray[T]) CopyFlat() []T {
 	src := buffer.Acquire()
 	defer buffer.Release()
 	dst := append([]uint8{}, src...)
-	return dtypes.ToSlice[T](dst)
+	return kernels.ToSlice[T](dst)
 }
 
 // Shape of the array.
-func (array *HostArray[T]) Shape() *shape.Shape {
+func (array *HostArray[T]) Shape() shapes.Shape {
 	return array.value.Shape()
 }
 
@@ -141,15 +141,15 @@ func ArrayBool(vals []bool, dims ...int) *HostArray[bool] {
 	return NewHostArray[bool](hostArray)
 }
 
-func inferDims[T dtypes.Supported](vals []T, dims []int) []int {
+func inferDims[T gotype.Supported](vals []T, dims []int) []int {
 	if dims != nil {
 		return dims
 	}
 	return []int{len(vals)}
 }
 
-func newArray[T dtypes.AlgebraType](dtypeKind irkind.Kind, array kernels.Array) *HostArray[T] {
-	dims := array.Shape().AxisLengths
+func newArray[T gotype.Supported](dtypeKind irkind.Kind, array kernels.Array) *HostArray[T] {
+	dims := array.Shape().Dimensions
 	typ := ir.NewArrayType(&ast.ArrayType{}, ir.TypeFromKind(dtypeKind), ir.NewRank(dims))
 	buffer := kernels.NewBuffer(array)
 	hostArray, err := hostio.NewHostArray(typ, buffer)

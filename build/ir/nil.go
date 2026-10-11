@@ -15,7 +15,7 @@
 package ir
 
 import (
-	"go/ast"
+	"github.com/gx-org/gx/src/gx/ast"
 )
 
 // nilType is the type returned by function with no results.

@@ -16,11 +16,11 @@ package ir
 
 import (
 	"fmt"
-	"go/ast"
 
 	"github.com/pkg/errors"
 	"github.com/gx-org/gx/build/fmterr"
 	"github.com/gx-org/gx/build/ir/irkind"
+	"github.com/gx-org/gx/src/gx/ast"
 )
 
 type (
@@ -32,7 +32,8 @@ type (
 
 	// FuncElement converts an element into an IR expressions.
 	FuncElement interface {
-		IR() Func
+		Element
+		FuncIR() Func
 	}
 
 	// WithExpr converts an element into an IR expressions.
@@ -52,8 +53,8 @@ type (
 		Sub(*File, map[string]Element) (Evaluator, error)
 	}
 
-	// TypeCmp is the interface used to compare type to one another.
-	TypeCmp interface {
+	// TypeEval is the interface used to compare type to one another.
+	TypeEval interface {
 		Evaluator
 		Compare(x, y Element) (bool, error)
 	}
@@ -64,7 +65,7 @@ type (
 
 	// Fetcher represents a scope in the compiler.
 	Fetcher interface {
-		TypeCmp
+		TypeEval
 		fmterr.ErrAppender
 	}
 

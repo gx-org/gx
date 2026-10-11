@@ -15,11 +15,11 @@
 package ir_test
 
 import (
-	"go/ast"
 	"testing"
 
 	"github.com/google/go-cmp/cmp"
 	"github.com/gx-org/gx/build/ir"
+	"github.com/gx-org/gx/src/gx/ast"
 )
 
 func valRef(name string) ast.Expr {

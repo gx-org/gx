@@ -14,6 +14,8 @@
 
 package kernels
 
+import "github.com/gomlx/compute/dtypes/gotype"
+
 type (
 	// MathFactory returns a factory to implement functions from the math package.
 	MathFactory interface {
@@ -21,7 +23,7 @@ type (
 		Kernelize(func(float64) float64) Unary
 	}
 
-	mathFactory[T goAlgebra] struct{}
+	mathFactory[T gotype.NumericNotComplex] struct{}
 )
 
 func (m mathFactory[T]) Kernelize(f func(float64) float64) Unary {

@@ -15,10 +15,10 @@
 package builder
 
 import (
-	"go/ast"
 	"math/big"
 
 	"github.com/gx-org/gx/build/ir"
+	"github.com/gx-org/gx/src/gx/ast"
 )
 
 // arrayType defines an array type defined in the source.

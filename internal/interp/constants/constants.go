@@ -19,8 +19,8 @@ import (
 	"math/big"
 
 	"github.com/pkg/errors"
-	"github.com/gomlx/gopjrt/dtypes/bfloat16"
-	"github.com/gx-org/backend/dtypes"
+	"github.com/gomlx/compute/dtypes/bfloat16"
+	"github.com/gomlx/compute/dtypes/gotype"
 	"github.com/gx-org/gx/build/fmterr"
 	"github.com/gx-org/gx/build/ir"
 	"github.com/gx-org/gx/build/ir/irkind"
@@ -82,13 +82,13 @@ func ToBool(cst engine.Constant) (bool, bool) {
 }
 
 // ToInt converts a constant to integer, if possible.
-func ToInt[T dtypes.Signed](cst engine.Constant) (T, bool) {
+func ToInt[T gotype.Signed](cst engine.Constant) (T, bool) {
 	val, ok := ToInt64(cst)
 	return T(val), ok
 }
 
 // ToUInt converts a constant to integer, if possible.
-func ToUInt[T dtypes.Unsigned](cst engine.Constant) (T, bool) {
+func ToUInt[T gotype.Unsigned](cst engine.Constant) (T, bool) {
 	val, ok := ToUInt64(cst)
 	return T(val), ok
 }
@@ -106,7 +106,7 @@ func ToBFloat16(cst engine.Constant) (bfloat16.BFloat16, bool) {
 }
 
 // ConvertOk converts an element to a Go value if possible.
-func ConvertOk[T dtypes.Supported](cvt ConverterT[T], el ir.Element) (T, bool) {
+func ConvertOk[T gotype.Supported](cvt ConverterT[T], el ir.Element) (T, bool) {
 	cstEl, ok := ir.BareValue(el).(engine.ConstantElement)
 	if !ok {
 		var zero T
@@ -116,8 +116,8 @@ func ConvertOk[T dtypes.Supported](cvt ConverterT[T], el ir.Element) (T, bool) {
 }
 
 // Convert a constant into a Go value.
-func Convert[T dtypes.Supported](cvt ConverterT[T], el ir.Element) (T, error) {
-	cstEl, err := coreiface.Cast[engine.ConstantElement](el)
+func Convert[T gotype.Supported](cvt ConverterT[T], el ir.Element) (T, error) {
+	cstEl, err := coreiface.CastIfDef[engine.ConstantElement](el)
 	if err != nil {
 		var zero T
 		return zero, err
@@ -134,7 +134,7 @@ type (
 	}
 
 	// ConverterT converts constant element to Go.
-	ConverterT[T dtypes.Supported] struct {
+	ConverterT[T gotype.Supported] struct {
 		Kind irkind.Kind
 		ToGo func(engine.Constant) (T, bool)
 	}
@@ -221,4 +221,11 @@ func ConverterFromKind(kind irkind.Kind) (v Converter, err error) {
 		return nil, fmterr.Internalf("%s cannot be converted to backend numerical: not supported", kind)
 	}
 	return cvt, nil
+}
+
+func toBackendKind(kind irkind.Kind) irkind.Kind {
+	if kind == irkind.Int {
+		return irkind.Int64
+	}
+	return kind
 }

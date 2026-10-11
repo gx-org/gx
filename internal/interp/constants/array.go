@@ -15,13 +15,12 @@
 package constants
 
 import (
-	"go/ast"
-
-	"github.com/gx-org/backend/ops"
+	"github.com/gomlx/compute"
 	"github.com/gx-org/gx/build/ir"
 	"github.com/gx-org/gx/build/ir/irkind"
 	"github.com/gx-org/gx/internal/interp/coreiface"
 	"github.com/gx-org/gx/interp/engine"
+	"github.com/gx-org/gx/src/gx/ast"
 )
 
 type array struct {
@@ -43,7 +42,7 @@ func (n *array) Src() ast.Expr {
 	return n.lit.Expr()
 }
 
-func (n *array) BuildNode(g ops.Graph, kind irkind.Kind) (ops.Node, error) {
+func (n *array) BuildNode(g compute.Function, kind irkind.Kind) (compute.Value, error) {
 	axes, err := n.AxisLengths()
 	if err != nil {
 		return nil, err
@@ -52,7 +51,7 @@ func (n *array) BuildNode(g ops.Graph, kind irkind.Kind) (ops.Node, error) {
 	for _, ax := range axes {
 		total *= ax
 	}
-	cvr, err := ConverterFromKind(kind)
+	cvr, err := ConverterFromKind(toBackendKind(kind))
 	if err != nil {
 		return nil, err
 	}
@@ -60,7 +59,7 @@ func (n *array) BuildNode(g ops.Graph, kind irkind.Kind) (ops.Node, error) {
 	if err != nil {
 		return nil, err
 	}
-	return g.Core().NewArrayLiteral(vals, axes...)
+	return g.Constant(vals, axes...)
 }
 
 func (n *array) Type() ir.Type {

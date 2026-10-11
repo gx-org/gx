@@ -39,8 +39,8 @@ func (itp *Base) InitPkgScope(pkg *ir.Package, scope *scope.RWScope[ir.Element])
 }
 
 // PackageToImport encapsulates a package into its import declaration.
-func (itp *Base) PackageToImport(imp *ir.ImportDecl, pkg ir.PackageElement) ir.Element {
-	return elements.NewImport(imp, pkg)
+func (itp *Base) PackageToImport(pkg ir.PackageElement, stor ir.Storage) ir.Element {
+	return elements.NewImport(pkg, stor)
 }
 
 func (itp *Base) evalPackageConsts(pkg *ir.Package, scope *scope.RWScope[ir.Element]) error {
@@ -60,20 +60,20 @@ func (itp *Base) evalPackageConsts(pkg *ir.Package, scope *scope.RWScope[ir.Elem
 }
 
 func (itp *Base) evalPackageConstExpr(scope *scope.RWScope[ir.Element], expr *ir.ConstExpr) error {
-	fCtx, err := itp.ForFile(expr.Decl.FFile)
+	fitp, err := itp.ForFile(expr.Decl.FFile)
 	if err != nil {
 		return err
 	}
 	var el ir.Element
 	if irkind.IsNumber(expr.Type().Kind()) {
-		el, err = fCtx.evalNumberExpr(expr.Val)
+		el, err = fitp.evalNumberExpr(expr.Val)
 	} else {
-		el, err = fCtx.EvalExpr(expr.Val)
+		el, err = fitp.EvalExpr(expr.Val)
 	}
 	if err != nil {
 		return err
 	}
-	el, err = itp.Engine().ArrayOps().DefineGlobalConst(expr, el)
+	el, err = fitp.engine().DefineGlobalConst(expr, el)
 	if err != nil {
 		return err
 	}

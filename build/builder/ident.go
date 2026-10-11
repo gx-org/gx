@@ -15,10 +15,9 @@
 package builder
 
 import (
-	"go/ast"
-
 	"github.com/gx-org/gx/build/ir"
 	"github.com/gx-org/gx/build/ir/irkind"
+	"github.com/gx-org/gx/src/gx/ast"
 )
 
 // ident is a reference to a value by an identifier.

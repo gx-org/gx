@@ -18,8 +18,6 @@ package main
 import (
 	"flag"
 	"fmt"
-	"go/ast"
-	"go/parser"
 	"go/token"
 	"io/ioutil"
 	"os"
@@ -28,6 +26,8 @@ import (
 
 	"github.com/pkg/errors"
 	"github.com/gx-org/gx/golang/template"
+	"github.com/gx-org/gx/src/gx/ast"
+	"github.com/gx-org/gx/src/gx/parser"
 	"github.com/gx-org/gx/tools/gxflag"
 )
 

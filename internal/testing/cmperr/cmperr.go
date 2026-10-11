@@ -18,12 +18,12 @@ package cmperr
 
 import (
 	"fmt"
-	"go/ast"
 	"strings"
 
 	"github.com/pkg/errors"
 	"github.com/gx-org/gx/build/fmterr"
 	"github.com/gx-org/gx/build/ir"
+	"github.com/gx-org/gx/src/gx/ast"
 )
 
 const errorPrefix = "ERROR"

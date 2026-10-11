@@ -7,3 +7,8 @@ import "dtype"
 func Floats[T dtype.Floats]() [2]T {
 	return [2]T{2, 3}
 }
+
+// VecF32 returns an vector of float32 given a size.
+func VecF32[Size int]() [Size]float32 {
+	return [Size]float32{}
+}

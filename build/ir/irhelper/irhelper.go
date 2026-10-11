@@ -17,11 +17,11 @@ package irhelper
 
 import (
 	"fmt"
-	"go/ast"
 	"math/big"
 
 	"github.com/gx-org/gx/build/ir/annotations"
 	"github.com/gx-org/gx/build/ir"
+	"github.com/gx-org/gx/src/gx/ast"
 )
 
 // IdentAST returns an identifier.
@@ -70,6 +70,7 @@ func LocalVar(name string, typ ir.Type) *ir.LocalVarStorage {
 
 func fieldGroup(fields []*ir.Field, typeExpr *ir.TypeValExpr) *ir.FieldGroup {
 	group := &ir.FieldGroup{
+		Src:    &ast.Field{},
 		Fields: fields,
 		Type:   typeExpr,
 	}
@@ -83,6 +84,7 @@ func fieldGroup(fields []*ir.Field, typeExpr *ir.TypeValExpr) *ir.FieldGroup {
 func Field(name string, typ ir.Type, grp *ir.FieldGroup) *ir.Field {
 	if grp == nil {
 		grp = &ir.FieldGroup{
+			Src:  &ast.Field{},
 			Type: ir.TypeExpr(nil, typ),
 		}
 	}
@@ -309,9 +311,14 @@ func TypeSet(types ...ir.Type) *ir.Interface {
 
 // StructType builds a structure type.
 func StructType(fields ...*ir.Field) *ir.StructType {
+	srcList := &ast.FieldList{}
 	stype := &ir.StructType{
-		BaseType: ir.BaseType[*ast.StructType]{Src: &ast.StructType{}},
-		Fields:   &ir.FieldList{},
+		BaseType: ir.BaseType[*ast.StructType]{
+			Src: &ast.StructType{
+				Fields: srcList,
+			},
+		},
+		Fields: &ir.FieldList{Src: srcList},
 	}
 	done := make(map[*ir.FieldGroup]bool)
 	for i, field := range fields {
@@ -335,7 +342,7 @@ func FuncType(types, recv, params, results *ir.FieldList, opts ...FTypeOption) *
 	}
 	ftype := &ir.FuncType{
 		BaseType: ir.BaseType[*ast.FuncType]{Src: &ast.FuncType{}},
-		GenParams: ir.Generic{
+		GenParams: ir.GenericParams{
 			Fields: types,
 		},
 		Receiver: recv,
@@ -374,7 +381,7 @@ func (ts *typeParamSetter) set(ftype *ir.FuncType) *ir.FuncType {
 	if len(ts.vals) != len(fields) {
 		panic(fmt.Sprintf("expect %d values to set %d fields but got %d values", len(fields), len(fields), len(ts.vals)))
 	}
-	genVals := make([]ir.GenericValue, ftype.Origin().GenParams.Fields.Len())
+	genVals := make([]ir.GenericValue, ftype.Origin().Generics().Fields.Len())
 	for i, field := range fields {
 		if ir.IsNonTypeGeneric(field.Type()) {
 			genVals[i] = setNonTypeParam(field, ts.vals[i])
@@ -493,5 +500,12 @@ func AssignOp(st ir.Storage, x ir.Expr) *ir.AssignExprStmt {
 			Storage: st,
 			X:       x,
 		}},
+	}
+}
+
+// UnknownFunc returns an unknown function.
+func UnknownFunc() *ir.FuncBuiltin {
+	return &ir.FuncBuiltin{
+		FType: ir.UnknownFType(),
 	}
 }

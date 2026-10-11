@@ -17,8 +17,6 @@ package shape
 import (
 	"fmt"
 
-	"github.com/gx-org/backend/ops"
-	"github.com/gx-org/backend/shape"
 	"github.com/gx-org/gx/build/ir"
 	"github.com/gx-org/gx/interp/elements"
 	"github.com/gx-org/gx/interp/engine"
@@ -26,7 +24,7 @@ import (
 	"github.com/gx-org/gx/stdlib/builtin"
 )
 
-func gatherAxis(env *engine.Env, call *ir.FuncCallExpr, recv ir.Element, args []ir.Element) (_ []ir.Element, err error) {
+func gatherAxis(env *engine.Env, call *ir.FuncCallExpr, recv ir.Element, genArgs, args []ir.Element) (_ []ir.Element, err error) {
 	inputSlice, err := elements.SliceFromElement(args[0])
 	if err != nil {
 		return nil, err
@@ -59,12 +57,12 @@ func gatherAxis(env *engine.Env, call *ir.FuncCallExpr, recv ir.Element, args []
 	return builtin.ToShapeResult(out...)
 }
 
-func evalGather(env *engine.Env, call *ir.FuncCallExpr, recv ir.Element, args []ir.Element) ([]ir.Element, error) {
-	inputShape, err := elements.Map(elements.IntFromElement, args[0])
+func evalGather(env *engine.Env, call *ir.FuncCallExpr, recv ir.Element, genArgs, args []ir.Element) ([]ir.Element, error) {
+	inputShape, err := elements.Map(elements.IntFromElement, genArgs[0])
 	if err != nil {
 		return nil, err
 	}
-	indicesShape, err := elements.Map(elements.IntFromElement, args[1])
+	indicesShape, err := elements.Map(elements.IntFromElement, genArgs[1])
 	if err != nil {
 		return nil, err
 	}
@@ -104,24 +102,18 @@ func evalGather(env *engine.Env, call *ir.FuncCallExpr, recv ir.Element, args []
 	}
 
 	mat := builtin.Materialiser(env)
-	x, xShape, err := materialise.Element(mat, args[3])
+	x, _, err := materialise.Element(mat, args[0])
 	if err != nil {
 		return nil, err
 	}
-	indicesNode, _, err := materialise.Element(mat, args[4])
+	indicesNode, _, err := materialise.Element(mat, args[1])
 	if err != nil {
 		return nil, err
 	}
-	gr := env.Engine().ArrayOps().Graph()
-	op, err := gr.Shape().Gather(x, indicesNode, indexVectorDim, offsetDims, collapsedSliceDims, startIndexMap, sliceSizes, false)
+	gr := env.Engine().Graph()
+	op, err := gr.Gather(x, indicesNode, indexVectorDim, offsetDims, collapsedSliceDims, startIndexMap, sliceSizes, false)
 	if err != nil {
 		return nil, err
 	}
-	return materialise.ElementFromNode(env.File(), mat, &ops.OutputNode{
-		Node: op,
-		Shape: &shape.Shape{
-			DType:       xShape.DType,
-			AxisLengths: op.(interface{ PJRTDims() []int }).PJRTDims(),
-		},
-	}, call.Type())
+	return materialise.ElementFromNode(env.ExprEval(), mat, op, call.Type())
 }

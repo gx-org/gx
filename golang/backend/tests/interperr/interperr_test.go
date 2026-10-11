@@ -19,37 +19,28 @@ import (
 	"strings"
 	"testing"
 
+	"github.com/gomlx/compute/gobackend"
+	"github.com/gx-org/gx/api"
 	"github.com/gx-org/gx/build/builder"
 	"github.com/gx-org/gx/build/importers/embedpkg"
-	"github.com/gx-org/gx/golang/backend"
 	"github.com/gx-org/gx/golang/backend/tests/interperr/interperr_go_gx"
 	"github.com/gx-org/gx/stdlib"
 )
 
 func buildInterperr() (*interperr_go_gx.Package, error) {
-	bck := backend.New(builder.New(
+	bck, err := gobackend.New("")
+	if err != nil {
+		return nil, err
+	}
+	rtm := api.NewRuntime(bck, builder.New(
 		stdlib.Importer(),
 		embedpkg.New(),
 	))
-	dev, err := bck.Device(0)
+	dev, err := rtm.Device(0)
 	if err != nil {
 		return nil, err
 	}
 	return interperr_go_gx.BuildFor(dev)
-}
-
-// TestNotImplemented tests calling a function in the standard library which does not have an implementation.
-func TestNotImplemented(t *testing.T) {
-	interperr, err := buildInterperr()
-	if err != nil {
-		t.Fatal(t)
-	}
-	_, err = interperr.CallSum()
-	got := err.Error()
-	want := "ReduceSum not implemented in the Go backend"
-	if !strings.Contains(got, want) {
-		t.Errorf("got error %q but want an error that contains %q", got, want)
-	}
 }
 
 // TestUndef tests calling a function that use a static variable that has not been defined by the host.

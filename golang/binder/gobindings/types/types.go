@@ -18,8 +18,8 @@ package types
 import (
 	"fmt"
 
-	"github.com/gx-org/backend/dtypes"
-	"github.com/gx-org/backend/shape"
+	"github.com/gomlx/compute/dtypes/gotype"
+	"github.com/gomlx/compute/shapes"
 	"github.com/gx-org/gx/api"
 	"github.com/gx-org/gx/api/hostio"
 	"github.com/gx-org/gx/api/values"
@@ -46,7 +46,7 @@ type (
 		Bridge
 
 		// Shape returns the shape of the array.
-		Shape() *shape.Shape
+		Shape() shapes.Shape
 
 		// ToDevice transfers the array to a device.
 		ToDevice(*api.Device) (ArrayBridge, error)
@@ -103,13 +103,13 @@ func (bb *baseBridge[B, V]) Bridge() Bridge {
 }
 
 // Shape of the array.
-func (bb *baseBridge[B, V]) Shape() *shape.Shape {
+func (bb *baseBridge[B, V]) Shape() shapes.Shape {
 	return bb.value.Shape()
 }
 
 // ToDevice transfers the array to a device.
 func (bb *baseBridge[B, V]) ToDevice(dev *api.Device) (ArrayBridge, error) {
-	value, err := bb.value.ToDevice(dev.PlatformDevice())
+	value, err := bb.value.ToDevice(dev.Backend(), dev.PlatformDevice())
 	if err != nil {
 		return nil, err
 	}
@@ -122,7 +122,7 @@ func (bb *baseBridge[B, V]) Bridger() Bridger {
 }
 
 // NewAtom returns a new Go atom bridge given a GX value of the same data type.
-func NewAtom[T dtypes.Supported](arr hostio.Array) Atom[T] {
+func NewAtom[T gotype.Supported](arr hostio.Array) Atom[T] {
 	hostValue, ok := arr.(*hostio.HostArray)
 	if ok {
 		return NewHostAtom[T](hostValue)
@@ -135,7 +135,7 @@ func NewAtom[T dtypes.Supported](arr hostio.Array) Atom[T] {
 }
 
 // NewArray returns a new Go array bridge given a GX value of the same data type.
-func NewArray[T dtypes.Supported](arr hostio.Array) Array[T] {
+func NewArray[T gotype.Supported](arr hostio.Array) Array[T] {
 	hostValue, ok := arr.(*hostio.HostArray)
 	if ok {
 		return NewHostArray[T](hostValue)

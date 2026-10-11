@@ -16,48 +16,97 @@
 package platform
 
 import (
-	"github.com/gx-org/backend/platform"
+	"fmt"
+	"slices"
+
+	"github.com/gomlx/compute"
+	"github.com/gomlx/compute/dtypes"
+	"github.com/gomlx/compute/shapes"
 	"github.com/gx-org/gx/golang/backend/kernels"
 )
 
 // Platform implements a native platform in Go.
 type Platform struct {
-	dev *Device
+	bck       compute.Backend
+	finalized bool
 }
 
 // New returns a Go native platform.
-func New() *Platform {
-	plat := &Platform{}
-	plat.dev = newDevice(plat, 0)
-	return plat
+func New(bck compute.Backend) *Platform {
+	return &Platform{bck: bck}
 }
 
-// Name of the platform.
+// Backend returns the backend owning the platform.
+func (plat *Platform) Backend() compute.Backend {
+	return plat.bck
+}
+
+// Name of the backend.
 func (plat *Platform) Name() string {
 	return "gonative"
 }
 
-// GoDevice returns a Go CPU device.
-func (plat *Platform) GoDevice(ordinal int) (*Device, error) {
-	return plat.dev, nil
+// String returns the same as Name.
+func (plat *Platform) String() string {
+	return plat.Name()
 }
 
-// Device returns the CPU device.
-func (plat *Platform) Device(ordinal int) (platform.Device, error) {
-	return plat.GoDevice(ordinal)
+// Description is a longer description of the Backend that can be used to pretty-print.
+func (plat *Platform) Description() string {
+	return "Go Native Backend"
 }
 
-// Release everything linked to the platform.
-// It is invalid to use the platform or graph builder after this call.
-func (plat *Platform) Release() error {
-	plat.dev = nil
-	return nil
+// NumDevices returns the number of devices available for this Backend.
+func (plat *Platform) NumDevices() int {
+	return 1
+}
+
+// DeviceDescription returns a description of the device at the given deviceNum.
+func (plat *Platform) DeviceDescription(deviceNum compute.DeviceNum) string {
+	return fmt.Sprintf("Go CPU device #%d", deviceNum)
+}
+
+// Capabilities returns information about what is supported by this backend.
+func (plat *Platform) Capabilities() compute.Capabilities {
+	return compute.Capabilities{}
+}
+
+// BufferFromFlatData transfers data from Go given as a flat slice to the deviceNum, and returns the corresponding Buffer.
+func (plat *Platform) BufferFromFlatData(deviceNum compute.DeviceNum, flat any, shape shapes.Shape) (compute.Buffer, error) {
+	data := slices.Clone(dtypes.UnsafeByteSliceFromAny(flat))
+	return plat.send(deviceNum, data, shape)
+}
+
+// HasSharedBuffers returns whether the backend supports shared buffers.
+func (plat *Platform) HasSharedBuffers() bool {
+	return true
+}
+
+// NewSharedBuffer returns a shared buffer that can be both used as input for execution of computations and directly read or mutated by the clients.
+func (plat *Platform) NewSharedBuffer(deviceNum compute.DeviceNum, shape shapes.Shape) (buffer compute.Buffer, flat any, err error) {
+	arr, err := kernels.Zero(shape)
+	if err != nil {
+		return nil, nil, err
+	}
+	h := NewDeviceHandle(plat, deviceNum, arr)
+	flat, err = h.Data()
+	if err != nil {
+		return nil, nil, err
+	}
+	return h, flat, nil
+}
+
+// Finalize releases all the associated resources immediately, and makes the backend invalid.
+func (plat *Platform) Finalize() {
+	plat.finalized = true
+}
+
+// IsFinalized returns true if the backend is in an invalid state.
+func (plat *Platform) IsFinalized() bool {
+	return plat == nil || plat.finalized
 }
 
 // FromValue returns a handle on a value.
-func FromValue(dev platform.Device, x kernels.Array) platform.DeviceHandle {
-	return &Handle{
-		device: dev.(*Device),
-		array:  x,
-	}
+func FromValue(plat *Platform, dev compute.DeviceNum, x kernels.Array) compute.Buffer {
+	return NewDeviceHandle(plat, dev, x)
 }

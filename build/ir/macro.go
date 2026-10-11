@@ -15,7 +15,7 @@
 package ir
 
 import (
-	"go/ast"
+	"github.com/gx-org/gx/src/gx/ast"
 )
 
 type (
@@ -45,7 +45,7 @@ type (
 	}
 
 	// MacroKeywordImpl is a builtin opaque function to produce an IR.
-	MacroKeywordImpl func(tpcmp TypeCmp, expr Expr) (Expr, error)
+	MacroKeywordImpl func(tpcmp TypeEval, expr Expr) (Expr, error)
 )
 
 var _ StorageWithValue = (*MacroKeyword)(nil)
@@ -60,6 +60,7 @@ type (
 	// FuncASTBuilder builds GX functions programmatically.
 	FuncASTBuilder interface {
 		MacroElement
+		SourceString(from *File) string
 		BuildDecl(target PkgFunc) (*File, *ast.FuncDecl, bool)
 		BuildBody(Fetcher, Func) (*ast.BlockStmt, bool)
 	}
@@ -117,6 +118,11 @@ func (s *MacroCallExpr) Func() Func {
 // FuncType returns the concrete type of the function.
 func (s *MacroCallExpr) FuncType() *FuncType {
 	return s.F.FuncType()
+}
+
+// Specialise an expression.
+func (s *MacroCallExpr) Specialise(spec Specialiser) (Callee, bool) {
+	return s, spec.Err().AppendInternalf(s.Node(), "cannot specialise %s: not implemented", s.SourceString(nil))
 }
 
 // FuncCall returns the function call from the call.

@@ -17,11 +17,13 @@ package algexpr
 
 import (
 	"fmt"
+	"go/token"
 	"math/big"
 	"strings"
 
 	"github.com/gx-org/gx/build/ir"
 	"github.com/gx-org/gx/internal/interp/compeval/cmp"
+	"github.com/gx-org/gx/internal/interp/constants"
 	"github.com/gx-org/gx/internal/interp/numbers"
 	"github.com/gx-org/gx/interp/engine"
 )
@@ -45,9 +47,11 @@ func filterOut(cs []cmp.Comparable, out cmp.Comparable) []cmp.Comparable {
 	return keep
 }
 
-type opF func(typ ir.Type, x, y *big.Float) *big.Float
+type floatOp func(typ ir.Type, x, y *big.Float) *big.Float
 
-func evalValues(op opF, typ ir.Type, cs []cmp.Comparable) []cmp.Comparable {
+type boolOp func(x, y bool) bool
+
+func evalFloats(op floatOp, typ ir.Type, cs []cmp.Comparable) []cmp.Comparable {
 	var r []cmp.Comparable
 	var last *big.Float
 	for _, c := range cs {
@@ -66,4 +70,30 @@ func evalValues(op opF, typ ir.Type, cs []cmp.Comparable) []cmp.Comparable {
 		r = append(r, numbers.NewConstantFromFloat(typ, last))
 	}
 	return r
+}
+
+func evalBools(tok token.Token, fOp boolOp, cs []cmp.Comparable) cmp.Comparable {
+	var r []cmp.Comparable
+	var last bool
+	lastSet := false
+	for _, c := range cs {
+		val, isVal := c.(engine.BoolConstant)
+		if !isVal {
+			r = append(r, c)
+			continue
+		}
+		if !lastSet {
+			last = val.Bool()
+			lastSet = true
+			continue
+		}
+		last = fOp(last, val.Bool())
+	}
+	if lastSet {
+		r = append(r, constants.NewBool(last))
+	}
+	if len(r) == 1 {
+		return r[0]
+	}
+	return &opCmp{op: tok, xs: r}
 }

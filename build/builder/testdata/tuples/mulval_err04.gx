@@ -1,0 +1,9 @@
+package mulval_err04
+
+func g() (int32, float32)
+
+func h(int32) int32
+
+func f() int32 {
+	return h(g()) // ERROR multiple-value (value of type (int32, float32)) in single-value context
+}

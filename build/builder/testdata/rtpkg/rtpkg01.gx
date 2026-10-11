@@ -1,0 +1,9 @@
+package rtpkg01
+
+import "runtime:rtpkgbase/world"
+
+func Test() int {
+	return world.Hello()
+	// Want:
+	// int(5)
+}

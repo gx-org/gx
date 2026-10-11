@@ -32,7 +32,7 @@ func Runner() engine.Runners {
 }
 
 // FuncDecl runs a function implemented in GX.
-func (runner) FuncDecl(fDecl *ir.FuncDecl, env *engine.Env, call *ir.FuncCallExpr, recv engine.Copier, args []ir.Element) ([]ir.Element, error) {
+func (runner) FuncDecl(fDecl *ir.FuncDecl, env *engine.Env, call *ir.FuncCallExpr, recv engine.Copier, genArgs, args []ir.Element) ([]ir.Element, error) {
 	return Call(call)
 }
 
@@ -41,8 +41,13 @@ func (runner) FuncLit(lit *ir.FuncLit, env *engine.Env, ctx *context.Context, ca
 	return Call(call)
 }
 
-// Builtin runs a function builtin in GX or provided by a backend.
-func (runner) Builtin(fn ir.Func, impl ir.FuncImpl, env *engine.Env, call *ir.FuncCallExpr, recv engine.Copier, args []ir.Element) ([]ir.Element, error) {
+// Builtin runs a function provided by a backend.
+func (runner) Builtin(fn *ir.FuncBuiltin, env *engine.Env, call *ir.FuncCallExpr, recv engine.Copier, genArgs, args []ir.Element) ([]ir.Element, error) {
+	return Call(call)
+}
+
+// Keyword runs a keyword in GX.
+func (runner) Keyword(fn *ir.FuncKeyword, env *engine.Env, call *ir.FuncCallExpr, recv engine.Copier, genArgs, args []ir.Element) ([]ir.Element, error) {
 	return Call(call)
 }
 

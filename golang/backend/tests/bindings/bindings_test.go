@@ -17,8 +17,8 @@ package bindings_test
 import (
 	"testing"
 
+	"github.com/gomlx/compute/gobackend"
 	"github.com/gx-org/gx/api"
-	"github.com/gx-org/gx/golang/backend"
 	"github.com/gx-org/gx/golang/tests/basictest"
 	"github.com/gx-org/gx/golang/tests/dtypestest"
 	"github.com/gx-org/gx/golang/tests/importtest"
@@ -38,7 +38,11 @@ var tests = []func(t *testing.T, dev *api.Device){
 
 func TestGoBindings(t *testing.T) {
 	bld := gxtesting.NewBuilderStaticSource()
-	rtm := backend.New(bld)
+	bck, err := gobackend.New("")
+	if err != nil {
+		t.Fatal(err)
+	}
+	rtm := api.NewRuntime(bck, bld)
 	dev, err := rtm.Device(0)
 	if err != nil {
 		t.Fatal(err)

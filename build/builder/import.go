@@ -15,11 +15,11 @@
 package builder
 
 import (
-	"go/ast"
 	"path/filepath"
 	"strconv"
 
 	"github.com/gx-org/gx/build/ir"
+	"github.com/gx-org/gx/src/gx/ast"
 )
 
 // ----------------------------------------------------------------------------
@@ -60,12 +60,12 @@ func processImportDecl(pscope procScope, decl *ast.GenDecl) bool {
 }
 
 type importedPackage struct {
-	pkg   *ir.Package
-	names map[string]ir.Storage
+	pkg  *ir.Package
+	defs map[string]ir.Storage
 }
 
 func importPackage(pkgScope *pkgResolveScope, decl *ir.ImportDecl) (*importedPackage, bool) {
-	bPackage, err := pkgScope.pkg().builder().importPath(decl.Path)
+	bPackage, err := pkgScope.pkg().builder().loadPath(decl.Path)
 	ok := true
 	var irPackage *ir.Package
 	if err != nil {
@@ -76,17 +76,37 @@ func importPackage(pkgScope *pkgResolveScope, decl *ir.ImportDecl) (*importedPac
 	}
 	decl.Package = irPackage
 	imp := &importedPackage{
-		pkg:   irPackage,
-		names: make(map[string]ir.Storage),
+		pkg: irPackage,
 	}
+	if irPackage.Decls == nil && irPackage.Runtime == nil {
+		return imp, pkgScope.Err().Appendf(decl.Node(), "package %s has no declarations and no runtime", irPackage.Path())
+	}
+	if irPackage.Decls == nil {
+		return imp, ok
+	}
+	imp.defs = make(map[string]ir.Storage)
 	for fun := range irPackage.ExportedFuncs() {
-		imp.names[fun.Name()] = fun
+		imp.defs[fun.Name()] = fun
 	}
 	for _, typ := range irPackage.ExportedTypes() {
-		imp.names[typ.Name()] = typ
+		imp.defs[typ.Name()] = typ
 	}
 	for _, cst := range irPackage.ExportedConsts() {
-		imp.names[cst.VName.Name] = cst
+		imp.defs[cst.VName.Name] = cst
 	}
 	return imp, ok
+}
+
+func (ip *importedPackage) resolve(scope resolveScope, sel *ir.SelectorExpr) (ir.Storage, bool) {
+	name := sel.Src.Sel
+	if ip.pkg.Runtime != nil {
+		return &ir.LocalVarStorage{
+			Src: sel.Src.Sel,
+			Typ: ir.UnknownType(),
+		}, true
+	}
+	if !ir.IsExported(name.Name) {
+		return invalidStore(), scope.Err().Appendf(name, "%s is not exported", name.Name)
+	}
+	return ip.defs[name.Name], true
 }

@@ -55,7 +55,7 @@ func NewDeviceSetup(dev *api.Device, optionFactories []options.PackageOptionFact
 
 // AppendOptions returns the set of options used for compilation.
 func (s *DeviceSetup) AppendOptions(optionFactories ...options.PackageOptionFactory) {
-	plat := s.device.PlatformDevice().Platform()
+	plat := s.device.Backend()
 	s.opts = append(s.opts, options.Process(plat, optionFactories)...)
 }
 

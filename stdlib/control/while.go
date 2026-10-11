@@ -15,14 +15,12 @@
 package control
 
 import (
-	"go/ast"
-
-	"github.com/gx-org/backend/ops"
 	"github.com/gx-org/gx/build/builtins"
 	"github.com/gx-org/gx/build/ir"
 	"github.com/gx-org/gx/interp/engine"
 	"github.com/gx-org/gx/interp/grapheval"
 	"github.com/gx-org/gx/interp/materialise"
+	"github.com/gx-org/gx/src/gx/ast"
 	"github.com/gx-org/gx/stdlib/builtin"
 )
 
@@ -41,7 +39,7 @@ func (f while) BuildFuncIR(pkg *ir.Package) (*ir.FuncBuiltin, error) {
 // The `cond` and `body` functions must accept the iteration state through identical parameters, and
 // the body function must return a new iteration state. Last, the overall While() function takes an
 // initial iteration state and returns the final state.
-func (f while) BuildFuncType(tpcmp ir.TypeCmp, call *ir.FuncCallExpr) (*ir.FuncType, error) {
+func (f while) BuildFuncType(tpcmp ir.TypeEval, call *ir.FuncCallExpr) (*ir.FuncType, error) {
 	stateType := call.Args[0].Type()
 	condType := &ir.FuncType{ // `func(state T) bool`
 		BaseType: ir.BaseType[*ast.FuncType]{Src: &ast.FuncType{Func: call.Node().Pos()}},
@@ -60,9 +58,8 @@ func (f while) BuildFuncType(tpcmp ir.TypeCmp, call *ir.FuncCallExpr) (*ir.FuncT
 	}, nil
 }
 
-func evalWhile(env *engine.Env, call *ir.FuncCallExpr, recv ir.Element, args []ir.Element) ([]ir.Element, error) {
-	g := env.Engine().ArrayOps().Graph().Core()
-
+func evalWhile(env *engine.Env, call *ir.FuncCallExpr, recv ir.Element, genArgs, args []ir.Element) ([]ir.Element, error) {
+	g := env.Engine().Graph()
 	cond, err := grapheval.GraphFromElement("while.cond", args[1])
 	if err != nil {
 		return nil, err
@@ -76,17 +73,13 @@ func evalWhile(env *engine.Env, call *ir.FuncCallExpr, recv ir.Element, args []i
 	if err != nil {
 		return nil, err
 	}
-	stateTpl, err := g.Tuple(stateNodes)
-	if err != nil {
-		return nil, err
-	}
 
-	fnState, err := g.While(cond, body, stateTpl)
+	fnState, err := g.While(cond, body, stateNodes...)
 	if err != nil {
 		return nil, err
 	}
-	ev := env.Engine().(*grapheval.Evaluator)
-	out, err := ev.ElementFromTuple(env.File(), call, fnState.(ops.Tuple), stateShapes, args[0].Type())
+	ev := env.Engine().(*grapheval.Ops)
+	out, err := ev.ElementFromTuple(env.File(), call, fnState, stateShapes, args[0].Type())
 	if err != nil {
 		return nil, err
 	}

@@ -91,6 +91,19 @@ func g() int32 {
 }
 
 func TestFunctionLiteral(t *testing.T) {
+	funcLitType := func() *ir.FuncType {
+		return irh.FuncType(
+			nil, nil,
+			irh.Fields(),
+			irh.Fields(ir.Int32Type()),
+		)
+	}
+	funcLitDef := &ir.FuncLit{
+		FType: funcLitType(),
+		Body: irh.SingleReturn(
+			irh.IntNumberAs(10, ir.Int32Type()),
+		),
+	}
 	testbuild.Run(t,
 		testbuild.Decl{
 			Src: `
@@ -101,6 +114,29 @@ func f() int32 {
 	return fn()
 }
 `,
+			Want: []ir.IR{
+				&ir.FuncDecl{
+					FType: irh.FuncType(
+						nil, nil,
+						irh.Fields(),
+						irh.Fields(ir.Int32Type()),
+					),
+					Body: &ir.BlockStmt{List: []ir.Stmt{
+						&ir.AssignExprStmt{List: []*ir.AssignExpr{&ir.AssignExpr{
+							Storage: irh.LocalVar("fn", funcLitType()),
+							X:       funcLitDef,
+						}}},
+						&ir.ReturnStmt{Results: []ir.Expr{
+							&ir.FuncCallExpr{
+								Callee: ir.NewFuncValExpr(
+									irh.Ident(irh.LocalVar("fn", funcLitType())),
+									funcLitDef,
+								),
+							},
+						}},
+					}},
+				},
+			},
 		},
 		testbuild.Decl{
 			Src: `
@@ -235,6 +271,35 @@ func f() int32 {
 		return a
 	}
 	return fn()
+}
+`,
+		},
+	)
+}
+
+func TestFunctionLiteralCompevalAcrossPackage(t *testing.T) {
+	testbuild.Run(t,
+		testbuild.DeclarePackage{
+			Src: `
+package fnlit
+
+//gx:compeval
+func double(n int) int {
+	if n%2 == 0 {
+		return n*2
+	}
+	return n*2
+}
+
+func Lit[X int]() func([X]float32) [double(X)]float32
+`},
+		testbuild.Decl{
+			Src: `
+import "fnlit"
+
+func g[GX int]() [GX*2]float32 {
+	l := fnlit.Lit[GX]()
+	return l([GX]float32{})
 }
 `,
 		},

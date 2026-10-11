@@ -17,8 +17,8 @@ package gobindings
 
 import (
 	"bytes"
+	_ "embed"
 	"fmt"
-	"go/format"
 	"io"
 	"path/filepath"
 	"strings"
@@ -29,9 +29,8 @@ import (
 	"github.com/pkg/errors"
 	"github.com/gx-org/gx/build/ir"
 	"github.com/gx-org/gx/golang/binder/bindings"
+	"github.com/gx-org/gx/src/gx/format"
 	"github.com/gx-org/gx/stdlib"
-
-	_ "embed"
 )
 
 //go:embed bindings.go.tmpl

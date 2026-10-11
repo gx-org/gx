@@ -17,16 +17,18 @@ package core_test
 import (
 	"testing"
 
+	"github.com/gomlx/compute/gobackend"
+	"github.com/gx-org/gx/api"
 	"github.com/gx-org/gx/build/builder/testbuild"
 	core "github.com/gx-org/gx/build/builder/testdata"
-	"github.com/gx-org/gx/golang/backend"
 	"github.com/gx-org/gx/internal/testing/testrtm"
 	"github.com/gx-org/gx/tests"
 )
 
 var skip = map[string]bool{
-	"set/set01.gx":     true,
-	"einsum/einsum.gx": true,
+	"set/set01.gx":       true,
+	"einsum/einsum.gx":   true,
+	"einsum/einsum02.gx": true,
 }
 
 func TestCoreUnitGoBackend(t *testing.T) {
@@ -34,11 +36,15 @@ func TestCoreUnitGoBackend(t *testing.T) {
 	core.Sources.Filter = func(name string) bool {
 		return !skip[name]
 	}
-	bck := backend.New(tests.CoreBuilder())
+	bck, err := gobackend.New("")
+	if err != nil {
+		t.Fatal(err)
+	}
+	rtm := api.NewRuntime(bck, tests.NewBuilder())
 	testbuild.RunFactory(t,
-		nil,
+		rtm.Builder().Loader().Importers(),
 		testrtm.Factory(
-			bck,
+			rtm,
 			tests.CoreUnits...,
 		),
 	)

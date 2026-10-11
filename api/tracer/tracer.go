@@ -54,23 +54,26 @@ func Trace(dev *api.Device, fn *ir.FuncDecl, receiver hostio.Value, args []hosti
 	}()
 	// Create a new graph and evaluator for the interpreter.
 	proc := processor.New(values.Factory())
-	graph, err := dev.Runtime().Backend().Builder(fn.FullyQualifiedName())
+	fc := &hostio.FuncInputs{Receiver: receiver, Args: args}
+	proc.ProcessInits(fc)
+	builder := dev.Runtime().Backend().Builder(fn.FullyQualifiedName())
+	reg, mat := grapheval.New(dev.Runtime().Builder(), proc, builder.Main())
+	// Create the interpreter.
+	itp, err := interp.New(reg, options)
 	if err != nil {
 		return nil, err
 	}
-	ev := grapheval.New(dev.Runtime().Builder(), proc, graph)
-	// Create the interpreter.
-	itp, err := interp.New(ev, interp.Runners(), options)
+	fitp, err := itp.ForFile(fn.File())
 	if err != nil {
 		return nil, err
 	}
 	// Visit the receiver and arguments values to create elements for the interpreter.
-	in, err := ev.FuncInputsToElements(fn, receiver, hostio.ToElements(args))
+	in, err := mat.FuncInputsToElements(fitp, fn, receiver, args)
 	if err != nil {
 		return nil, err
 	}
 	// Add all the arguments to the graph.
-	if _, _, err := materialise.All(ev.Materialiser(), proc.ElementArgs()); err != nil {
+	if _, _, err := materialise.All(mat, proc.ElementArgs()); err != nil {
 		return nil, err
 	}
 	// Interpret the function with the evaluator to build the graph.
@@ -80,5 +83,5 @@ func Trace(dev *api.Device, fn *ir.FuncDecl, receiver hostio.Value, args []hosti
 		return nil, err
 	}
 	// Compile the resulting graph given the output element.
-	return cfunc.Compile(dev, fn, proc, ev.Materialiser(), outs)
+	return cfunc.Compile(dev, fn, proc, mat, builder, outs)
 }

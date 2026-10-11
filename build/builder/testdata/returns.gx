@@ -243,6 +243,16 @@ func TestTensorDynamic2DTensor() [2][3]float32 {
 	// }
 }
 
+func TestTensorDynamic2DFrom1D() [2][3]float32 {
+	a := [3]float32{1, 2, 3}
+	return [2][3]float32{a, a * 2}
+	// Want:
+	// [2][3]float32{
+	// 	{1, 2, 3},
+	// 	{2, 4, 6},
+	// }
+}
+
 func TestNumberCastToArray() [2][3]float32 {
 	return 0
 	// Want:

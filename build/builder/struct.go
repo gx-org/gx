@@ -15,10 +15,10 @@
 package builder
 
 import (
-	"go/ast"
-
 	"github.com/gx-org/gx/build/fmterr"
 	"github.com/gx-org/gx/build/ir"
+	"github.com/gx-org/gx/internal/base/scope"
+	"github.com/gx-org/gx/src/gx/ast"
 )
 
 // structType represents a structure type.
@@ -79,6 +79,58 @@ func (n *structType) String() string {
 
 // ----------------------------------------------------------------------------
 // Structure literal.
+
+type structResolveScope struct {
+	resolveScope
+	sType *ir.StructType
+
+	bodyCE *compileEvaluator
+}
+
+func compEvalForStructType(rscope compEvalScope, src ast.Node, gtype *ir.StructType) (*compileEvaluator, bool) {
+	compEval, compEvalOk := rscope.compEval()
+	if !compEvalOk {
+		return nil, false
+	}
+	if gtype.Generics() == nil {
+		return compEval, true
+	}
+	// Define all type parameters as generic.
+	sigMap, ok := evalGenericValues(compEval, gtype)
+	if !ok {
+		return nil, false
+	}
+	return compEval.sub(nil, sigMap)
+}
+
+func newStructScope(rscope resolveScope, sType *ir.StructType) (*structResolveScope, bool) {
+	s := &structResolveScope{
+		resolveScope: rscope,
+		sType:        sType,
+	}
+	if sType == nil {
+		return s, true
+	}
+	var ok bool
+	s.bodyCE, ok = compEvalForStructType(rscope, sType.BaseType.Node(), sType)
+	return s, ok
+}
+
+func (s *structResolveScope) nspace() *scope.RWScope[ir.Element] {
+	return s.bodyCE.fitp.Context().Scope()
+}
+
+func (s *structResolveScope) compEval() (*compileEvaluator, bool) {
+	return s.bodyCE, true
+}
+
+func (s *structResolveScope) evalAxisExpr(x ir.Expr) (ir.Expr, bool) {
+	return x, true
+}
+
+func (s *structResolveScope) update(stor ir.Storage, el ir.Element) bool {
+	return true
+}
 
 // structLiteral defines the value of a struct.
 type (
@@ -164,6 +216,11 @@ func (n *structLiteral) buildExpr(rscope resolveScope) (ir.Expr, bool) {
 	if !ok {
 		return ext, rscope.Err().Appendf(n.source(), "%s (type %T) is not a structure type", ext.Typ.ReferString(rscope.fileScope().irFile()), underlying.Type().ReferString(rscope.fileScope().irFile()))
 	}
+	stScope, ok := newStructScope(rscope, structType)
+	if !ok {
+		return ext, false
+	}
+	defScope := newDefineScope(stScope, nil)
 	ext.Elts = make([]*ir.FieldLit, structType.Fields.Len())
 	fieldsOk := true
 	for i, field := range structType.Fields.Fields() {
@@ -173,28 +230,32 @@ func (n *structLiteral) buildExpr(rscope resolveScope) (ir.Expr, bool) {
 		name := field.Name.Name
 		valueFieldIndex, valueOk := n.nameToElt[name]
 		if !valueOk {
-			fieldsOk = rscope.Err().Appendf(ext.Src, "field %s has not been assigned", name)
+			fieldsOk = stScope.Err().Appendf(ext.Src, "field %s has not been assigned", name)
 			continue
 		}
 		fieldLit := &ir.FieldLit{FieldStorage: field.Storage()}
 		ext.Elts[i] = fieldLit
 		fieldNameExpr := n.fields[valueFieldIndex]
-		fieldLit.X, valueOk = buildExpr(rscope, fieldNameExpr.expr)
+		fieldLit.X, valueOk = buildExpr(defScope, fieldNameExpr.expr)
+		if valueOk {
+			valueOk = checkSingleValue(defScope, fieldNameExpr.expr.source(), fieldLit.X)
+		}
 		if !valueOk {
 			fieldsOk = false
 			continue
 		}
-		fieldLit.X, valueOk = castNilAndNumber(rscope, fieldLit.X, field.Type())
+		fieldLit.X, valueOk = castNilAndNumber(defScope, fieldLit.X, field.Type())
 		if !valueOk {
 			fieldsOk = false
 			continue
 		}
-		valueOk = assignableToAt(rscope, fieldNameExpr.ident, fieldLit.X.Type(), field.Type())
+		valueOk = assignableToAt(defScope, fieldNameExpr.ident, fieldLit.X.Type(), field.Type())
 		fieldsOk = valueOk && fieldsOk
 	}
 	for _, fieldNameExpr := range n.fields {
 		if field := structType.Fields.FindField(fieldNameExpr.ident.Name); field == nil {
-			return ext, rscope.Err().Appendf(fieldNameExpr.ident, "type %s has no field or method %s", ext.Typ.ReferString(rscope.fileScope().irFile()), fieldNameExpr.ident.Name)
+			from := rscope.fileScope().irFile()
+			return ext, stScope.Err().Appendf(fieldNameExpr.ident, "type %s has no field or method %s", ext.Typ.ReferString(from), fieldNameExpr.ident.Name)
 		}
 	}
 	return ext, fieldsOk

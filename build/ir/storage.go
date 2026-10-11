@@ -16,8 +16,9 @@ package ir
 
 import (
 	"fmt"
-	"go/ast"
 	"maps"
+
+	"github.com/gx-org/gx/src/gx/ast"
 )
 
 type builtinStorage struct {

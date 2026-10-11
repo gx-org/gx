@@ -16,11 +16,11 @@ package fmterr
 
 import (
 	"fmt"
-	"go/ast"
 	"go/token"
 	"runtime/debug"
 
 	"github.com/pkg/errors"
+	"github.com/gx-org/gx/src/gx/ast"
 )
 
 type (
@@ -52,21 +52,6 @@ func Error(fset *token.FileSet, node ast.Node, err error) ErrorWithPos {
 // Errorf returns a formatted compiler error for the user.
 func Errorf(fset *token.FileSet, src ast.Node, format string, a ...any) ErrorWithPos {
 	return Error(fset, src, errors.Errorf(format, a...))
-}
-
-// Internal marks an error as internal, potentially adding additional information.
-func Internal(err error) error {
-	return fmt.Errorf("GX internal error. This is a bug in GX. Please report it. Error:\n%+v", err)
-}
-
-// Internalf returns a formatted compiler error for the user.
-func Internalf(format string, a ...any) error {
-	return Internal(errors.Errorf(format, a...))
-}
-
-// InternalAt returns a formatted compiler error for the user at a given code position.
-func InternalAt(fset *token.FileSet, src ast.Node, format string, a ...any) error {
-	return Internal(Errorf(fset, src, format, a...))
 }
 
 // Error returns a string description of the error.

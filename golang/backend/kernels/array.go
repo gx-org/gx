@@ -19,22 +19,23 @@ import (
 	"unsafe"
 
 	"github.com/pkg/errors"
-	"github.com/gomlx/gopjrt/dtypes/bfloat16"
-	"github.com/gx-org/backend/dtypes"
-	"github.com/gx-org/backend/shape"
+	"github.com/gomlx/compute/dtypes/bfloat16"
+	"github.com/gomlx/compute/dtypes"
+	"github.com/gomlx/compute/dtypes/gotype"
+	"github.com/gomlx/compute/shapes"
 	"github.com/gx-org/gx/fmt/fmtarray"
 )
 
 type (
-	arrayFactory[T dtypes.Supported] struct{}
+	arrayFactory[T gotype.Supported] struct{}
 
 	baseArray interface {
 		array()
 	}
 
 	// arrayT is a multi-dimensional array stored by the host or the device.
-	arrayT[T dtypes.Supported] struct {
-		shape   shape.Shape
+	arrayT[T gotype.Supported] struct {
+		shape   shapes.Shape
 		values  []T
 		factory Factory
 	}
@@ -42,15 +43,15 @@ type (
 
 var _ baseArray = (*arrayT[int32])(nil)
 
-func toArray[T dtypes.Supported](a Array) *arrayT[T] {
+func toArray[T gotype.Supported](a Array) *arrayT[T] {
 	return a.base().(*arrayT[T])
 }
 
 func (a *arrayT[T]) array() {}
 
 // Shape of the array.
-func (a *arrayT[T]) Shape() *shape.Shape {
-	return &a.shape
+func (a *arrayT[T]) Shape() shapes.Shape {
+	return a.shape
 }
 
 // Flat values of the array.
@@ -66,18 +67,18 @@ func (a *arrayT[T]) Flat() []T {
 
 // DataString representation of the data in the array.
 func (a *arrayT[T]) DataString() string {
-	return fmtarray.SDataPrint[T](a.Flat(), a.Shape().AxisLengths)
+	return fmtarray.SDataPrint[T](a.Flat(), a.shape.Dimensions)
 }
 
 // String representation of the array.
 func (a *arrayT[T]) String() string {
-	return fmtarray.Sprint[T](a.Flat(), a.Shape().AxisLengths)
+	return fmtarray.Sprint[T](a.Flat(), a.shape.Dimensions)
 }
 
 // Buffer returns the data of the array as a generic []byte buffer.
 func (a *arrayT[T]) Buffer() []byte {
 	ptr := unsafe.Pointer(&(a.values[0]))
-	return unsafe.Slice((*byte)(ptr), a.shape.Size()*a.shape.DType.Size())
+	return unsafe.Slice((*byte)(ptr), int(a.shape.ByteSize()))
 }
 
 // Factory available for arrays.
@@ -86,7 +87,7 @@ func (a *arrayT[T]) Factory() Factory {
 }
 
 func (a *arrayT[T]) toAtom() (val T, err error) {
-	if !a.shape.IsAtomic() {
+	if !a.shape.IsScalar() {
 		err = errors.Errorf("%s not atomic", a.shape.String())
 	}
 	val = a.values[0]
@@ -102,10 +103,7 @@ func (a *arrayT[T]) ToAtom() (any, error) {
 
 // ScalarToArray fills an array with a scalar value.
 func (a *arrayT[T]) ScalarToArray(dims []int) *arrayT[T] {
-	shape := shape.Shape{
-		DType:       a.shape.DType,
-		AxisLengths: dims,
-	}
+	shape := shapes.Make(a.shape.DType, dims...)
 	values := make([]T, shape.Size())
 	for i := range values {
 		values[i] = a.values[0]
@@ -120,19 +118,13 @@ func (a *arrayT[T]) ScalarToArray(dims []int) *arrayT[T] {
 func (a *arrayT[T]) reshapeArray(dims []int) arrayT[T] {
 	return arrayT[T]{
 		factory: a.factory,
-		shape: shape.Shape{
-			DType:       dtypes.FromGenericsType[T](),
-			AxisLengths: dims,
-		},
-		values: append([]T{}, a.values...),
+		shape:   shapes.Make(dtypes.FromGenericsType[T](), dims...),
+		values:  append([]T{}, a.values...),
 	}
 }
 
-func (f arrayFactory[T]) Slice(x *shape.Shape, index int) (Unary, *shape.Shape, error) {
-	shapeOut := shape.Shape{
-		DType:       x.DType,
-		AxisLengths: x.AxisLengths[1:],
-	}
+func (f arrayFactory[T]) Slice(x shapes.Shape, index int) (Unary, shapes.Shape, error) {
+	shapeOut := shapes.Make(x.DType, x.Dimensions[1:]...)
 	stride := shapeOut.Size()
 	return func(a Array) (Array, error) {
 		aT := toArray[T](a)
@@ -141,14 +133,11 @@ func (f arrayFactory[T]) Slice(x *shape.Shape, index int) (Unary, *shape.Shape, 
 			shape:   shapeOut,
 			values:  aT.values[index*stride : (index+1)*stride],
 		}), nil
-	}, &shapeOut, nil
+	}, shapeOut, nil
 }
 
-func (f arrayFactory[T]) Reshape(x *shape.Shape, axisLengths []int) (Unary, *shape.Shape, error) {
-	shapeOut := shape.Shape{
-		DType:       dtypes.FromGenericsType[T](),
-		AxisLengths: axisLengths,
-	}
+func (f arrayFactory[T]) Reshape(x shapes.Shape, axisLengths []int) (Unary, shapes.Shape, error) {
+	shapeOut := shapes.Make(dtypes.FromGenericsType[T](), axisLengths...)
 	return func(a Array) (Array, error) {
 		aT := toArray[T](a)
 		return a.newArray(&arrayT[T]{
@@ -156,10 +145,10 @@ func (f arrayFactory[T]) Reshape(x *shape.Shape, axisLengths []int) (Unary, *sha
 			shape:   shapeOut,
 			values:  aT.values,
 		}), nil
-	}, &shapeOut, nil
+	}, shapeOut, nil
 }
 
-func broadcast[T dtypes.Supported](vals []T, target int) ([]T, error) {
+func broadcast[T gotype.Supported](vals []T, target int) ([]T, error) {
 	if len(vals) != 1 {
 		return nil, errors.Errorf("cannot broadcast more than one value")
 	}
@@ -170,7 +159,7 @@ func broadcast[T dtypes.Supported](vals []T, target int) ([]T, error) {
 	return out, nil
 }
 
-func (f arrayFactory[T]) BroadcastInDim(targetShape *shape.Shape, broadcastAxes []int) (Unary, *shape.Shape, error) {
+func (f arrayFactory[T]) BroadcastInDim(targetShape shapes.Shape, broadcastAxes []int) (Unary, shapes.Shape, error) {
 	return func(a Array) (Array, error) {
 		aT := toArray[T](a)
 		vals, err := broadcast(aT.values, targetShape.Size())
@@ -179,25 +168,18 @@ func (f arrayFactory[T]) BroadcastInDim(targetShape *shape.Shape, broadcastAxes 
 		}
 		return a.newArray(&arrayT[T]{
 			factory: aT.factory,
-			shape:   *targetShape,
+			shape:   targetShape,
 			values:  vals,
 		}), nil
 	}, targetShape, nil
 }
 
-func (arrayFactory[T]) Concat(dt dtypes.DType, n int) (NAry, *shape.Shape, error) {
-	return concat[T], &shape.Shape{
-		DType:       dt,
-		AxisLengths: []int{n},
-	}, nil
+func (arrayFactory[T]) Concat(dt dtypes.DType, n int) (NAry, shapes.Shape, error) {
+	return concat[T], shapes.Make(dt, n), nil
 }
 
 type (
-	goAlgebra interface {
-		dtypes.GoFloat | dtypes.IntegerType
-	}
-
-	algebraArray[T goAlgebra] struct {
+	algebraArray[T gotype.NumericNotComplex] struct {
 		*arrayT[T]
 	}
 )
@@ -220,7 +202,7 @@ func (a *algebraArray[T]) ToFloatNumber() (*big.Float, error) {
 	return big.NewFloat(float64(val)), nil
 }
 
-type nonAlgebraArray[T dtypes.NonAlgebraType] struct {
+type nonAlgebraArray[T bool] struct {
 	*arrayT[T]
 }
 

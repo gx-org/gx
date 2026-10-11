@@ -14,7 +14,7 @@
 
 package genast
 
-import "go/ast"
+import "github.com/gx-org/gx/src/gx/ast"
 
 // FuncDecl declares a function.
 func (f *File) FuncDecl(name string, tp *ast.FuncType, body *Block) *ast.FuncDecl {

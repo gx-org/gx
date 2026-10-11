@@ -15,12 +15,11 @@
 package surrogates
 
 import (
-	"go/ast"
-
 	"github.com/pkg/errors"
 	"github.com/gx-org/gx/build/ir"
 	"github.com/gx-org/gx/internal/interp/compeval/surrogates/storepath"
 	"github.com/gx-org/gx/interp/engine"
+	"github.com/gx-org/gx/src/gx/ast"
 )
 
 // Function is a surrogate function.
@@ -44,8 +43,8 @@ func newSurrogateFunc(path storepath.Path, fType *ir.FuncType) surrogateFunction
 	return &Function{store: path.Store(), fn: fn}
 }
 
-// IR definition of the function.
-func (f *Function) IR() ir.Func {
+// FuncIR definition of the function.
+func (f *Function) FuncIR() ir.Func {
 	return f.fn
 }
 
@@ -55,7 +54,7 @@ func (f *Function) Recv() *engine.Receiver {
 }
 
 // Call the surrogate function.
-func (f *Function) Call(env *engine.Env, call *ir.FuncCallExpr, args []ir.Element) ([]ir.Element, error) {
+func (f *Function) Call(env *engine.Env, call *ir.FuncCallExpr, genArgs, args []ir.Element) ([]ir.Element, error) {
 	return Call(call)
 }
 

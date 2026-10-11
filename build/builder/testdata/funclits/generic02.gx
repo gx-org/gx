@@ -1,0 +1,24 @@
+package generic02
+
+import "testmacros"
+
+//gx:compeval
+func undef(a int) int {
+	if a%2 == 0 {
+		return a * 2
+	}
+	return a * 3
+}
+
+func f[A int](x [A]float32) func() [undef(A)]float32 {
+	return func() [undef(A)]float32 {
+		return [undef(A)]float32{}
+	}
+}
+
+func Test() [4]float32 {
+	a := testmacros.ID(f)([2]float32{})
+	return a()
+	// Want:
+	// [4]float32{0, 0, 0, 0}
+}

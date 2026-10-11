@@ -3,7 +3,7 @@ package stdlib
 import "num"
 
 func l2Squared[a int](x [a]float32) float32 {
-	return num.MatMul(x, x)
+	return num.VecMul(x, x)
 }
 
 func TestL2Squared() float32 {

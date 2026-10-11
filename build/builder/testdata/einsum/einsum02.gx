@@ -1,0 +1,14 @@
+package einsum02
+
+import "dtype"
+
+func dot[L int, T dtype.Ints](x, y [L]T) T {
+	z := einsum(x{i} * y{i})
+	return z
+}
+
+func TestTensorDot() int32 {
+	return dot([2]int32{2, 4}, [2]int32{6, 8})
+	// Want:
+	// int32(44)
+}

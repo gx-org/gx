@@ -19,10 +19,20 @@ import (
 	"reflect"
 
 	"github.com/pkg/errors"
-	"github.com/gx-org/backend/shape"
+	"github.com/gomlx/compute/dtypes/gotype"
 	"github.com/gx-org/gx/golang/binder/gobindings/types"
 	"github.com/gx-org/gx/golang/encoding"
 )
+
+// ArrayI is a minimum generic array interface.
+type ArrayI[T gotype.Supported] interface {
+	// Shape returns the size of all the axes of the array.
+	Shape() []int
+
+	// Flat returns the data stored by the array.
+	// The length of the returned slice should match the size of the shape.
+	Flat() []T
+}
 
 type (
 	walkerStruct struct{ data map[string]any }
@@ -105,17 +115,17 @@ func goNumericalToBridge(val any) (types.ArrayBridge, error) {
 		return types.ArrayUint32(valT), nil
 	case []uint64:
 		return types.ArrayUint64(valT), nil
-	case shape.ArrayI[float32]:
+	case ArrayI[float32]:
 		return types.ArrayFloat32(valT.Flat(), valT.Shape()...), nil
-	case shape.ArrayI[float64]:
+	case ArrayI[float64]:
 		return types.ArrayFloat64(valT.Flat(), valT.Shape()...), nil
-	case shape.ArrayI[int32]:
+	case ArrayI[int32]:
 		return types.ArrayInt32(valT.Flat(), valT.Shape()...), nil
-	case shape.ArrayI[int64]:
+	case ArrayI[int64]:
 		return types.ArrayInt64(valT.Flat(), valT.Shape()...), nil
-	case shape.ArrayI[uint32]:
+	case ArrayI[uint32]:
 		return types.ArrayUint32(valT.Flat(), valT.Shape()...), nil
-	case shape.ArrayI[uint64]:
+	case ArrayI[uint64]:
 		return types.ArrayUint64(valT.Flat(), valT.Shape()...), nil
 	default:
 		return nil, errors.Errorf("cannot convert %T to %s: not supported", val, reflect.TypeFor[types.Bridge]())

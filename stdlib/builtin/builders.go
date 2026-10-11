@@ -16,7 +16,6 @@ package builtin
 
 import (
 	"fmt"
-	"go/ast"
 	"io/fs"
 	"path"
 	"reflect"
@@ -28,6 +27,7 @@ import (
 	"github.com/gx-org/gx/build/ir"
 	"github.com/gx-org/gx/internal/base/cast"
 	"github.com/gx-org/gx/interp/elements"
+	"github.com/gx-org/gx/src/gx/ast"
 )
 
 type baseBuilder struct {
@@ -45,8 +45,10 @@ func (fb baseBuilder) Build(param *BuilderParam, pkg importers.FilePackage) erro
 	return fb.build(param, pkg)
 }
 
-type sourceParser struct {
-	names []string
+// SourceParser parses GX source files.
+type SourceParser struct {
+	absolutePath bool
+	names        []string
 }
 
 func topLevelNames(vfs fs.FS, pkgPath string) ([]string, error) {
@@ -71,28 +73,44 @@ func topLevelNames(vfs fs.FS, pkgPath string) ([]string, error) {
 	return names, nil
 }
 
-func (b *sourceParser) Name() string {
+// Name of the builder.
+func (b *SourceParser) Name() string {
 	return fmt.Sprintf("%T%v", b, b.names)
 }
 
-func (b *sourceParser) Build(param *BuilderParam, pkg importers.FilePackage) (err error) {
+func (b *SourceParser) filePaths(pkgPath string) []string {
+	if b.absolutePath {
+		return b.names
+	}
+	names := make([]string, len(b.names))
+	for i, name := range b.names {
+		names[i] = path.Join(pkgPath, name)
+	}
+	return names
+}
+
+// Build the package by parsing GX source files.
+func (b *SourceParser) Build(param *BuilderParam, pkg importers.FilePackage) (err error) {
 	pkgPath := pkg.IR().Path()
 	if len(b.names) == 0 {
 		if b.names, err = topLevelNames(param.FS, pkgPath); err != nil {
 			return err
 		}
 	}
-	names := make([]string, len(b.names))
-	for i, name := range b.names {
-		names[i] = path.Join(pkgPath, name)
-	}
+	names := b.filePaths(pkgPath)
 	return pkg.BuildFiles(param.FS, names)
+}
+
+// Absolute removes the package path prefix to read GX source files.
+func (b *SourceParser) Absolute() *SourceParser {
+	b.absolutePath = true
+	return b
 }
 
 // ParseSource builds a package by parsing source files.
 // If names is empty, all files at the top-level will parsed.
-func ParseSource(names ...string) Builder {
-	return &sourceParser{names: names}
+func ParseSource(names ...string) *SourceParser {
+	return &SourceParser{names: names}
 }
 
 // FuncBuilder builds a function for a package.
@@ -135,7 +153,7 @@ type stubFunc struct {
 var _ ir.FuncImpl = (*stubFunc)(nil)
 
 // BuildFuncType builds the type of a function given how it is called.
-func (s *stubFunc) BuildFuncType(ir.TypeCmp, *ir.FuncCallExpr) (*ir.FuncType, error) {
+func (s *stubFunc) BuildFuncType(ir.TypeEval, *ir.FuncCallExpr) (*ir.FuncType, error) {
 	return s.ftype, nil
 }
 

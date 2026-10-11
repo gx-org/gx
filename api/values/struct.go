@@ -19,10 +19,10 @@ import (
 	"strings"
 
 	"github.com/pkg/errors"
-	"github.com/gx-org/backend/platform"
 	"github.com/gx-org/gx/api/hostio"
 	"github.com/gx-org/gx/base/sync"
 	"github.com/gx-org/gx/build/ir"
+	"github.com/gx-org/gx/golang/backend/kernels"
 	"github.com/gx-org/gx/interp/engine"
 )
 
@@ -64,7 +64,7 @@ func NewStruct(typ ir.Type, vals []hostio.Value) (*Struct, error) {
 }
 
 // ToHost transfers all the elements of the slice to the host.
-func (vs *Struct) ToHost(alloc platform.Allocator) (hostio.Value, error) {
+func (vs *Struct) ToHost(alloc kernels.Allocator) (hostio.Value, error) {
 	vals := make([]hostio.Value, vs.structType.NumFields())
 	for i, field := range vs.structType.Fields.Fields() {
 		v := vs.FieldValue(field.Name.Name)

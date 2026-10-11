@@ -3,9 +3,9 @@ package matmul02
 import "num"
 
 func TestMatMul1Axis() float64 {
-	x := [3]float64{1, 2, 3}
-	y := [3]float64{-1, -2, -3}
-	return num.MatMul(x, y)
+	x := [3]float64{2, 3, 5}
+	y := [3]float64{-7, -11, -13}
+	return num.VecMul(x, y)
 	// Want:
-	// float64(-14)
+	// float64(-112)
 }

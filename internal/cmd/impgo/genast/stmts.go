@@ -15,8 +15,9 @@
 package genast
 
 import (
-	"go/ast"
 	"go/token"
+
+	"github.com/gx-org/gx/src/gx/ast"
 )
 
 // Block of statements.

@@ -1,0 +1,7 @@
+package macro_err01
+
+import "testmacroerror"
+
+func Test() int32 {
+	return testmacroerror.Error()() // ERROR macro testmacroerror.Error():3:9: undefined: undefinedIdentifier
+}

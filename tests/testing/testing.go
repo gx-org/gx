@@ -21,7 +21,7 @@ import (
 	"strings"
 	"testing"
 
-	"github.com/gx-org/backend/dtypes"
+	"github.com/gomlx/compute/dtypes/gotype"
 	"github.com/gx-org/gx/api"
 	"github.com/gx-org/gx/build/builder/testbuild"
 	"github.com/gx-org/gx/build/fmterr"
@@ -95,7 +95,7 @@ func NumberLines(s string) string {
 }
 
 // FetchAtom fetches an atomic value from a device.
-func FetchAtom[T dtypes.Supported](t *testing.T, atom types.Atom[T]) T {
+func FetchAtom[T gotype.Supported](t *testing.T, atom types.Atom[T]) T {
 	if atom == nil {
 		t.Fatalf("cannot fetch value from a nil atom")
 	}
@@ -107,7 +107,7 @@ func FetchAtom[T dtypes.Supported](t *testing.T, atom types.Atom[T]) T {
 }
 
 // FetchArray fetches an array from a device.
-func FetchArray[T dtypes.Supported](t *testing.T, array types.Array[T]) []T {
+func FetchArray[T gotype.Supported](t *testing.T, array types.Array[T]) []T {
 	if array == nil {
 		t.Fatalf("cannot fetch value from a nil array")
 	}

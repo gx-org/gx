@@ -32,14 +32,12 @@ type {{.VName.Name}}Static struct {
 }
 
 func ({{.VName.Name}}Static) Set(value {{.GoType}}) options.PackageOptionFactory {
-	return func(plat platform.Platform) options.PackageOption {
-		hostValue := {{.ToHostValue}}
-		return options.PackageVarSetValue{
-			Pkg: "{{.PackagePath}}",
-			Var: "{{.VName.Name}}",
-			Value: hostValue.GXValue(),
-		}
-	}
+	hostValue := {{.ToHostValue}}
+	return options.PackageVarSetValue{
+		Pkg: "{{.PackagePath}}",
+		Var: "{{.VName.Name}}",
+		Value: hostValue.GXValue(),
+	}.Factory()
 }
 `))
 

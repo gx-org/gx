@@ -15,11 +15,11 @@
 package builder
 
 import (
-	"go/ast"
 	"go/token"
 
 	"github.com/gx-org/gx/build/ir"
 	"github.com/gx-org/gx/build/ir/irkind"
+	"github.com/gx-org/gx/src/gx/ast"
 )
 
 type (
@@ -335,7 +335,7 @@ func buildAssignExpr(rscope localScope, asgm *assignment) (*ir.AssignExpr, bool,
 	ext.X, exprOk = buildExpr(rscope, asgm.expr)
 	if tpl, isTuple := ext.X.Type().(*ir.TupleType); exprOk && isTuple {
 		if len(tpl.Types) != 1 {
-			exprOk = rscope.Err().Appendf(asgm.expr.source(), "multiple-value (value of type %s) in single-value context", tpl.ReferString(rscope.fileScope().irFile()))
+			exprOk = checkSingleValue(rscope, asgm.expr.source(), ext.X)
 		}
 	}
 	var newAsgm, targetOk bool

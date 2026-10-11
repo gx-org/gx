@@ -18,8 +18,8 @@ import (
 	"fmt"
 	"unsafe"
 
-	"github.com/gx-org/backend/dtypes"
-	"github.com/gx-org/backend/platform"
+	"github.com/gomlx/compute/dtypes"
+	"github.com/gomlx/compute/dtypes/gotype"
 	"github.com/gx-org/gx/api"
 	"github.com/gx-org/gx/api/hostio"
 	"github.com/gx-org/gx/build/ir"
@@ -28,7 +28,7 @@ import (
 )
 
 // Atom managed by GX.
-type Atom[T dtypes.Supported] interface {
+type Atom[T gotype.Supported] interface {
 	Bridger
 
 	// Fetch the value from the device to the host and returns a handle to the host value.
@@ -39,19 +39,19 @@ type Atom[T dtypes.Supported] interface {
 }
 
 // DeviceAtom is an array stored on a device.
-type DeviceAtom[T dtypes.Supported] struct {
+type DeviceAtom[T gotype.Supported] struct {
 	baseBridge[*DeviceAtom[T], *hostio.DeviceArray]
 }
 
 var _ Atom[int64] = (*DeviceAtom[int64])(nil)
 
 // NewDeviceAtom returns a new Go array given a device value managed by GX.
-func NewDeviceAtom[T dtypes.Supported](val *hostio.DeviceArray) *DeviceAtom[T] {
+func NewDeviceAtom[T gotype.Supported](val *hostio.DeviceArray) *DeviceAtom[T] {
 	atomic := &DeviceAtom[T]{}
 	atomic.baseBridge = newBaseBridge(atomic, val)
 	shapeGot := val.Shape()
 	dtypeWant := dtypes.FromGenericsType[T]()
-	if shapeGot.DType != dtypeWant || !shapeGot.IsAtomic() {
+	if shapeGot.DType != dtypeWant || !shapeGot.IsScalar() {
 		panic(fmt.Sprintf("assigning GX device value of shape %s to a Go binding atom of type %s", shapeGot.String(), dtypeWant.String()))
 	}
 	return atomic
@@ -59,11 +59,11 @@ func NewDeviceAtom[T dtypes.Supported](val *hostio.DeviceArray) *DeviceAtom[T] {
 
 // Fetch the value from the device.
 func (atom *DeviceAtom[T]) Fetch() (*HostAtom[T], error) {
-	return atom.FetchWithAlloc(kernels.Allocator())
+	return atom.FetchWithAlloc(kernels.DefaultAllocator())
 }
 
 // FetchWithAlloc the value from the device given a specific allocator.
-func (atom *DeviceAtom[T]) FetchWithAlloc(alloc platform.Allocator) (*HostAtom[T], error) {
+func (atom *DeviceAtom[T]) FetchWithAlloc(alloc kernels.Allocator) (*HostAtom[T], error) {
 	val, err := atom.value.ToHostArray(alloc)
 	if err != nil {
 		return nil, err
@@ -91,14 +91,14 @@ func (atom *DeviceAtom[T]) String() string {
 }
 
 // HostAtom is an array stored on a host.
-type HostAtom[T dtypes.Supported] struct {
+type HostAtom[T gotype.Supported] struct {
 	baseBridge[*HostAtom[T], *hostio.HostArray]
 }
 
 var _ Atom[int64] = (*HostAtom[int64])(nil)
 
 // NewHostAtom returns a new Go array given a device value managed by GX.
-func NewHostAtom[T dtypes.Supported](val *hostio.HostArray) *HostAtom[T] {
+func NewHostAtom[T gotype.Supported](val *hostio.HostArray) *HostAtom[T] {
 	atomic := &HostAtom[T]{}
 	atomic.baseBridge = newBaseBridge(atomic, val)
 	return atomic
@@ -124,7 +124,7 @@ func (atom *HostAtom[T]) FetchValue() (val T, err error) {
 
 // SendTo sends the value to a device.
 func (atom *HostAtom[T]) SendTo(dev *api.Device) (*DeviceAtom[T], error) {
-	devArray, err := atom.value.ToDevice(dev.PlatformDevice())
+	devArray, err := atom.value.ToDevice(dev.Backend(), dev.PlatformDevice())
 	if err != nil {
 		return nil, err
 	}
@@ -139,7 +139,7 @@ func (atom *HostAtom[T]) String() string {
 	return atom.GXValue().SourceString(nil)
 }
 
-func newAtom[T dtypes.Supported](dt irkind.Kind, array kernels.Array) *HostAtom[T] {
+func newAtom[T gotype.Supported](dt irkind.Kind, array kernels.Array) *HostAtom[T] {
 	typ := ir.TypeFromKind(dt)
 	buffer := kernels.NewBuffer(array)
 	hostArray, err := hostio.NewHostArray(typ, buffer)
@@ -193,6 +193,6 @@ func Uint64(val uint64) *HostAtom[uint64] {
 }
 
 // AtomFromHost returns an atom from a value stored on the host.
-func AtomFromHost[T dtypes.Supported](hostValue *hostio.HostArray) T {
+func AtomFromHost[T gotype.Supported](hostValue *hostio.HostArray) T {
 	return NewHostAtom[T](hostValue).Value()
 }

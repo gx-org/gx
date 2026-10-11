@@ -15,8 +15,6 @@
 package reflect
 
 import (
-	"go/ast"
-
 	"github.com/pkg/errors"
 	"github.com/gx-org/gx/build/fmterr"
 	"github.com/gx-org/gx/build/ir"
@@ -24,6 +22,7 @@ import (
 	"github.com/gx-org/gx/internal/interp/compeval/surrogates/storepath"
 	"github.com/gx-org/gx/interp/elements"
 	"github.com/gx-org/gx/interp/engine"
+	"github.com/gx-org/gx/src/gx/ast"
 )
 
 var fieldPathSliceType = &ir.SliceType{
@@ -32,7 +31,7 @@ var fieldPathSliceType = &ir.SliceType{
 	Rank:     1,
 }
 
-func evalLeaves(env *engine.Env, call *ir.FuncCallExpr, recv ir.Element, args []ir.Element) ([]ir.Element, error) {
+func evalLeaves(env *engine.Env, call *ir.FuncCallExpr, recv ir.Element, genArgs, args []ir.Element) ([]ir.Element, error) {
 	ftype := call.Callee.FuncType()
 	if len(ftype.GenParams.Values) != 1 {
 		return nil, fmterr.Internalf("incorrect number of generic value: got %d but want 1", len(ftype.GenParams.Values))

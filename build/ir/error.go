@@ -15,10 +15,9 @@
 package ir
 
 import (
-	"go/ast"
-
 	"github.com/pkg/errors"
 	"github.com/gx-org/gx/build/ir/irkind"
+	"github.com/gx-org/gx/src/gx/ast"
 )
 
 type errorType struct {
@@ -86,25 +85,25 @@ func (s *errorType) Refer(file *File) ast.Expr {
 func (s *errorType) Kind() irkind.Kind { return irkind.Interface }
 
 // Equal returns true if other is the exact same type set.
-func (s *errorType) Equal(tpcmp TypeCmp, target Type) (bool, error) {
+func (s *errorType) Equal(tpcmp TypeEval, target Type) (bool, error) {
 	return s.iface.Equal(tpcmp, target)
 }
 
 // AssignableTo reports whether a value of the type can be assigned to another.
-func (s *errorType) AssignableTo(tpcmp TypeCmp, target Type) (bool, error) {
+func (s *errorType) AssignableTo(tpcmp TypeEval, target Type) (bool, error) {
 	if s.Same(target) {
 		return true, nil
 	}
 	return s.iface.AssignableTo(tpcmp, target)
 }
 
-func (s *errorType) assignableFrom(tpcmp TypeCmp, x Type) (bool, error) {
+func (s *errorType) assignableFrom(tpcmp TypeEval, x Type) (bool, error) {
 	return s.iface.assignableFromWithName(tpcmp, x, s.DefineString)
 }
 
 // ConvertibleTo reports whether a value of the type can be converted to another
 // (using static type casting).
-func (s *errorType) ConvertibleTo(tpcmp TypeCmp, target Type) (bool, error) {
+func (s *errorType) ConvertibleTo(tpcmp TypeEval, target Type) (bool, error) {
 	return s.iface.ConvertibleTo(tpcmp, target)
 }
 
@@ -142,11 +141,11 @@ func (s *errorType) Specialise(spec Specialiser) (Type, bool) {
 
 // Value returns a value pointing to the receiver.
 func (s *errorType) Value(x Expr) Expr {
-	return TypeExpr(x, s)
+	return TypeExpr(s.Refer(nil), s)
 }
 
 // Instantiate a function type.
-func (s *errorType) Instantiate(Fetcher, Specialiser) (Type, bool) {
+func (s *errorType) Instantiate(Fetcher, Instantiator) (Type, bool) {
 	return s, true
 }
 
@@ -181,6 +180,10 @@ func (ec *errorCallee) Node() ast.Node {
 
 func (*errorCallee) Func() Func {
 	return nil
+}
+
+func (ec *errorCallee) Specialise(Specialiser) (Callee, bool) {
+	return ec, true
 }
 
 func (ec *errorCallee) FuncType() *FuncType {

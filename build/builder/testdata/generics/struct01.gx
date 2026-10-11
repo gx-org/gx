@@ -1,7 +1,12 @@
 package struct01
 
-// No runtime test function
-
 type S[T any] struct {
 	a T
+}
+
+func Test() int {
+	s := S[int]{a: 2}
+	return s.a
+	// Want:
+	// int(2)
 }

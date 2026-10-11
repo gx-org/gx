@@ -1,0 +1,22 @@
+package struct_nontype02
+
+type Size struct {
+	A, B int
+}
+
+type T[S Size] struct {
+	a [S.A]float32
+	b [S.B]float32
+}
+
+func Test() ([2]float32, [3]float32) {
+	size := Size{A: 2, B: 3}
+	t := T[size]{
+		a: [size.A]float32{},
+		b: [size.B]float32{},
+	}
+	return t.a, t.b
+	// Want:
+	// 0: [2]float32{0, 0}
+	// 1: [3]float32{0, 0, 0}
+}

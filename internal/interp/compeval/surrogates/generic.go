@@ -15,14 +15,13 @@
 package surrogates
 
 import (
-	"go/ast"
-
-	"github.com/gx-org/backend/shape"
+	"github.com/gomlx/compute/shapes"
 	"github.com/gx-org/gx/build/ir"
 	"github.com/gx-org/gx/internal/interp/compeval/cpevops"
 	"github.com/gx-org/gx/internal/interp/compeval/surrogates/storepath"
 	"github.com/gx-org/gx/interp/elements"
 	"github.com/gx-org/gx/interp/engine"
+	"github.com/gx-org/gx/src/gx/ast"
 )
 
 type genericType struct {
@@ -83,7 +82,7 @@ func (g *genericType) Axes(ev ir.Evaluator) (*elements.Slice, error) {
 	return cpevops.AxesFromType(ev, g.GenericTypeParam.Type())
 }
 
-func (g *genericType) EvalShape() (*shape.Shape, error) {
+func (g *genericType) EvalShape() (shapes.Shape, error) {
 	return cpevops.EvalShape(g.GenericTypeParam.Type())
 }
 

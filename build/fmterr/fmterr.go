@@ -18,8 +18,9 @@ package fmterr
 
 import (
 	"fmt"
-	"go/ast"
 	"go/token"
+
+	"github.com/gx-org/gx/src/gx/ast"
 )
 
 // PrefixWith returns a function to prefix errors with a formatted string.
@@ -33,7 +34,6 @@ func PrefixWith(s string, o ...any) func(err error) error {
 func PosPrefixWith(fset *token.FileSet, node ast.Node, prefix func() string) func(err error) error {
 	pos := At(fset, node)
 	return func(err error) error {
-		pr := prefix()
-		return fmt.Errorf("%s%s%w", pos.String(), pr, err)
+		return pos.Errorf("%s%v", prefix(), err)
 	}
 }

@@ -15,16 +15,14 @@
 package shape
 
 import (
-	"go/ast"
 	"go/token"
 
-	"github.com/gx-org/backend/ops"
-	"github.com/gx-org/backend/shape"
 	"github.com/gx-org/gx/build/ir"
 	"github.com/gx-org/gx/internal/interp/compeval/cmp"
 	"github.com/gx-org/gx/interp/elements"
 	"github.com/gx-org/gx/interp/engine"
 	"github.com/gx-org/gx/interp/materialise"
+	"github.com/gx-org/gx/src/gx/ast"
 	"github.com/gx-org/gx/stdlib/builtin"
 )
 
@@ -82,7 +80,7 @@ func irAdd(env *engine.Env, src ast.Expr, x, y engine.NumericalElement) (engine.
 	)
 }
 
-func concatAxis(env *engine.Env, call *ir.FuncCallExpr, recv ir.Element, args []ir.Element) (_ []ir.Element, err error) {
+func concatAxis(env *engine.Env, call *ir.FuncCallExpr, recv ir.Element, genArgs, args []ir.Element) (_ []ir.Element, err error) {
 	idx, err := elements.IntFromElement(args[0])
 	if err != nil {
 		return nil, err
@@ -128,29 +126,24 @@ func concatAxis(env *engine.Env, call *ir.FuncCallExpr, recv ir.Element, args []
 	return []ir.Element{finalShape}, nil
 }
 
-func evalConcat(env *engine.Env, call *ir.FuncCallExpr, recv ir.Element, args []ir.Element) ([]ir.Element, error) {
-	axis, err := elements.IntFromElement(args[0])
+func evalConcat(env *engine.Env, call *ir.FuncCallExpr, recv ir.Element, genArgs, args []ir.Element) ([]ir.Element, error) {
+	axis, err := elements.IntFromElement(genArgs[0])
 	if err != nil {
 		return nil, err
 	}
-	arrays, err := elements.SliceFromElement(args[3])
+	arrays, err := elements.SliceFromElement(args[0])
 	if err != nil {
 		return nil, err
 	}
 	mat := builtin.Materialiser(env)
-	nodes, firstShape, err := materialise.All(mat, arrays.Elements())
+	nodes, _, err := materialise.All(mat, arrays.Elements())
 	if err != nil {
 		return nil, err
 	}
-	op, err := env.Engine().ArrayOps().Graph().Shape().Concat(axis, nodes)
+	gr := env.Engine().Graph()
+	op, err := gr.Concatenate(axis, nodes...)
 	if err != nil {
 		return nil, err
 	}
-	return materialise.ElementFromNode(env.File(), mat, &ops.OutputNode{
-		Node: op,
-		Shape: &shape.Shape{
-			DType:       firstShape.DType,
-			AxisLengths: op.(interface{ PJRTDims() []int }).PJRTDims(),
-		},
-	}, call.Type())
+	return materialise.ElementFromNode(env.ExprEval(), mat, op, call.Type())
 }

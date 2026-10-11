@@ -20,13 +20,15 @@ import (
 	"testing"
 
 	"github.com/google/go-cmp/cmp"
-	"github.com/gx-org/backend/dtypes"
-	"github.com/gx-org/backend/shape"
+	"github.com/gomlx/compute/dtypes"
+	"github.com/gomlx/compute/dtypes/gotype"
+	"github.com/gomlx/compute/gobackend"
+	"github.com/gomlx/compute/shapes"
+	"github.com/gx-org/gx/api"
 	"github.com/gx-org/gx/build/builder"
 	"github.com/gx-org/gx/build/fmterr"
 	"github.com/gx-org/gx/build/importers/embedpkg"
 	"github.com/gx-org/gx/build/ir"
-	"github.com/gx-org/gx/golang/backend"
 	"github.com/gx-org/gx/golang/encoding/native"
 	"github.com/gx-org/gx/tests/bindings/encoding/encoding_go_gx"
 	gxtesting "github.com/gx-org/gx/tests/testing"
@@ -34,7 +36,7 @@ import (
 
 var encodingGX *encoding_go_gx.PackageHandle
 
-func multiply[T dtypes.AlgebraType](f int, x T) T {
+func multiply[T gotype.NumericNotComplex](f int, x T) T {
 	return x * T(f)
 }
 
@@ -101,7 +103,7 @@ func checkArray(t *testing.T, factor int, arr *encoding_go_gx.Arrays) {
 	if !cmp.Equal(arrayGot, arrayWant) {
 		t.Errorf("got %v but want %v", arrayGot, arrayWant)
 	}
-	shapeWant := &shape.Shape{DType: dtypes.Float32, AxisLengths: []int{2}}
+	shapeWant := shapes.Shape{DType: dtypes.Float32, Dimensions: []int{2}}
 	if !cmp.Equal(arr.ArrayF32.Shape(), shapeWant) {
 		t.Errorf("got %v but want %v", arr.ArrayF32.Shape(), shapeWant)
 	}
@@ -113,9 +115,9 @@ func checkEncoding(t *testing.T, factor int, enc *encoding_go_gx.Encoding) {
 	checkArray(t, factor, enc.DataAsArrays)
 }
 
-type array[T dtypes.AlgebraType] []T
+type array[T gotype.NumericNotComplex] []T
 
-var _ shape.ArrayI[ir.Int] = (array[ir.Int])(nil)
+var _ native.ArrayI[ir.Int] = (array[ir.Int])(nil)
 
 func (a array[T]) Flat() []T { return a }
 
@@ -180,7 +182,12 @@ func TestRunUnmarshalledScalarsStruct(t *testing.T) {
 }
 
 func TestMain(m *testing.M) {
-	rtm := backend.New(builder.New(
+	bck, err := gobackend.New("")
+	if err != nil {
+		fmt.Fprintf(os.Stderr, "%+v", fmterr.ToStackTraceError(err))
+		return
+	}
+	rtm := api.NewRuntime(bck, builder.New(
 		embedpkg.New(),
 	))
 	dev, err := rtm.Device(0)

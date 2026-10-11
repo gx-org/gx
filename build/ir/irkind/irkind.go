@@ -16,7 +16,8 @@
 package irkind
 
 import (
-	"github.com/gx-org/backend/dtypes"
+	"github.com/gomlx/compute/dtypes"
+	"github.com/gomlx/compute/dtypes/gotype"
 )
 
 // Kind of a type.
@@ -27,7 +28,6 @@ const (
 	Invalid = Kind(dtypes.InvalidDType)
 
 	Bool     = Kind(dtypes.Bool)
-	Int      = Kind(dtypes.Int)
 	Int32    = Kind(dtypes.Int32)
 	Int64    = Kind(dtypes.Int64)
 	Uint32   = Kind(dtypes.Uint32)
@@ -38,6 +38,8 @@ const (
 
 	// Unknown is a proxy type used while a type is being inferred by the compiler.
 	Unknown = Kind(iota + dtypes.MaxDType)
+	// Int is an integer type with default size.
+	Int
 	// Void is a type for expression returning nothing.
 	Void
 	// Interface is an interface.
@@ -125,6 +127,9 @@ func (k Kind) String() string {
 
 // DType converts a GX kind into an array data type.
 func (k Kind) DType() dtypes.DType {
+	if k == Int {
+		return dtypes.Int64
+	}
 	if k >= dtypes.MaxDType {
 		return dtypes.InvalidDType
 	}
@@ -167,7 +172,7 @@ func KindFromString(ident string) Kind {
 
 // KindGeneric returns the kind of a variable from its generic type.
 // If the type is not supported, an invalid type is returned.
-func KindGeneric[T dtypes.Supported]() Kind {
+func KindGeneric[T gotype.Supported]() Kind {
 	return Kind(dtypes.FromGenericsType[T]())
 }
 
@@ -195,6 +200,18 @@ func IsFloat(kind Kind) bool {
 	case Float32, Float64:
 		return true
 	case NumberFloat:
+		return true
+	}
+	return false
+}
+
+// IsSigned returns true if kind is signed.
+func IsSigned(kind Kind) bool {
+	if IsFloat(kind) {
+		return true
+	}
+	switch kind {
+	case Int, Int32, Int64, NumberInt:
 		return true
 	}
 	return false

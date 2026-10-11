@@ -16,26 +16,40 @@
 package engine
 
 import (
-	"github.com/gx-org/backend/ops"
-	"github.com/gx-org/backend/shape"
+	"github.com/gomlx/compute"
 	"github.com/gx-org/gx/build/ir"
-	"github.com/gx-org/gx/internal/tracer/processor"
 )
 
 type (
-	// Engine provides the GX interpreter will all the required primitives.
+	// Engine are the operator implementations for arrays.
 	Engine interface {
-		// Importer returns an importer to import package.
-		Importer() ir.Importer
+		// Graph returns the graph to which new nodes are being added.
+		Graph() compute.Function
 
-		// ArrayOps returns the operator implementations for arrays.
-		ArrayOps() ArrayOps
+		// SubGraph returns a new graph builder.
+		SubGraph(name string) (Engine, error)
 
-		// Processor returns the used by the array evaluator.
-		Processor() *processor.Processor
+		// Einsum calls an einstein sum on x and y given the expression in ref.
+		Einsum(ctx ir.Evaluator, expr *ir.EinsumExpr, x, y NumericalElement) (NumericalElement, error)
 
-		// Trace register a call to the trace builtin function.
-		Trace(ctx ir.Evaluator, call *ir.FuncCallExpr, args []ir.Element) error
+		// BroadcastInDim the data of an array across dimensions.
+		BroadcastInDim(ctx ir.Evaluator, expr ir.Expr, x NumericalElement, axisLengths []NumericalElement) (NumericalElement, error)
+
+		// Concat concatenates scalars elements into an array with one axis.
+		Concat(ctx ir.Evaluator, expr ir.Expr, xs []NumericalElement) (NumericalElement, error)
+
+		// Set a slice in an array.
+		Set(ctx ir.Evaluator, expr *ir.FuncCallExpr, x, updates ir.Element, position []ir.Element) (ir.Element, error)
+
+		// ElementFromHostValue returns transforms a number element into an element specific to the ArrayOps implementation.
+		ElementFromHostValue(ctx ir.Evaluator, el Constant) (ConstantElement, error)
+
+		// DefineGlobalConst defines a global constant for the interpreter.
+		// Called to define the builtin true and false.
+		DefineGlobalConst(c ir.Storage, el ir.Element) (ir.Element, error)
+
+		// EvalCond evaluates a boolean condition, typically for an if statement.
+		EvalCond(ctx ir.Evaluator, el ir.Element) (bool, error)
 	}
 
 	// NumericalElement is a node representing a numerical value manipulated by the interpreter.
@@ -61,34 +75,6 @@ type (
 	ConstantElement interface {
 		NumericalElement
 		Constant() Constant
-	}
-
-	// ArrayOps are the operator implementations for arrays.
-	ArrayOps interface {
-		// Graph returns the graph to which new nodes are being added.
-		Graph() ops.Graph
-
-		// SubGraph returns a new graph builder.
-		SubGraph(name string, args []*shape.Shape) (ArrayOps, error)
-
-		// Einsum calls an einstein sum on x and y given the expression in ref.
-		Einsum(ctx ir.Evaluator, expr *ir.EinsumExpr, x, y NumericalElement) (NumericalElement, error)
-
-		// BroadcastInDim the data of an array across dimensions.
-		BroadcastInDim(ctx ir.Evaluator, expr ir.Expr, x NumericalElement, axisLengths []NumericalElement) (NumericalElement, error)
-
-		// Concat concatenates scalars elements into an array with one axis.
-		Concat(ctx ir.Evaluator, expr ir.Expr, xs []NumericalElement) (NumericalElement, error)
-
-		// Set a slice in an array.
-		Set(ctx ir.Evaluator, expr *ir.FuncCallExpr, x, updates ir.Element, position []ir.Element) (ir.Element, error)
-
-		// ElementFromHostValue returns transforms a number element into an element specific to the ArrayOps implementation.
-		ElementFromHostValue(ctx ir.Evaluator, el Constant) (ConstantElement, error)
-
-		// DefineGlobalConst defines a global constant for the interpreter.
-		// Called to define the builtin true and false.
-		DefineGlobalConst(c ir.Storage, el ir.Element) (ir.Element, error)
 	}
 
 	// Copier is an element that needs to be copied when passed to a function.

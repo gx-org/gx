@@ -16,11 +16,11 @@ package builder
 
 import (
 	"fmt"
-	"go/ast"
 	"strings"
 
 	"github.com/gx-org/gx/build/ir"
 	"github.com/gx-org/gx/build/ir/irkind"
+	"github.com/gx-org/gx/src/gx/ast"
 )
 
 // sliceType defines an slice (which only stays on host).

@@ -15,10 +15,9 @@
 package ir
 
 import (
-	"go/ast"
-
 	"github.com/pkg/errors"
 	"github.com/gx-org/gx/internal/exprdeps"
+	"github.com/gx-org/gx/src/gx/ast"
 )
 
 // Deps returns the dependencies of a constant expression.

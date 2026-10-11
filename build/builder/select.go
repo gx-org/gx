@@ -16,11 +16,11 @@ package builder
 
 import (
 	"fmt"
-	"go/ast"
 	"reflect"
 
 	"github.com/gx-org/gx/build/ir"
 	"github.com/gx-org/gx/build/ir/irkind"
+	"github.com/gx-org/gx/src/gx/ast"
 )
 
 // selectedExpr references an attribute in a package or a structure.
@@ -62,10 +62,10 @@ func (n *selectorExpr) selectFromPackage(scope resolveScope, sel *ir.SelectorExp
 		return nil, scope.Err().AppendInternalf(sel.X.Node(), "%T is not %s", val, reflect.TypeFor[*ir.ImportDecl]())
 	}
 	pkg := scope.fileScope().deps[val.NameDef().Name]
-	if !ir.IsExported(n.src.Sel.Name) {
-		return nil, scope.Err().Appendf(n.src.Sel, "%s is not exported", n.src.Sel.Name)
+	store, ok := pkg.resolve(scope, sel)
+	if !ok {
+		return store, ok
 	}
-	store := pkg.names[n.src.Sel.Name]
 	if store == nil {
 		return n.returnUndefined(scope, sel.X)
 	}

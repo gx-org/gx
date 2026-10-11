@@ -1,0 +1,34 @@
+package structs
+
+type SA struct {
+	A [2]int
+	B SB
+}
+
+type SB struct {
+	B [3]float32
+}
+
+func TestStruct() SA {
+	sa := SA{
+		A: [2]int{1, 2},
+		B: SB{B: [3]float32{3, 4, 5}},
+	}
+	trace(sa)
+	return sa
+	// Want:
+	// SA{
+	// 	A: [2]int{1, 2},
+	// 	B: SB{
+	// 		B: [3]float32{3, 4, 5},
+	// 	},
+	// }
+	// Trace:
+	// structs.gx:0
+	// 	SA{
+	// 		A: [2]int{1, 2},
+	// 		B: SB{
+	// 			B: [3]float32{3, 4, 5},
+	// 		},
+	// 	}
+}

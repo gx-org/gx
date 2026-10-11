@@ -15,9 +15,8 @@
 package builder
 
 import (
-	"go/ast"
-
 	"github.com/gx-org/gx/build/ir"
+	"github.com/gx-org/gx/src/gx/ast"
 )
 
 func processExpr(pscope procScope, expr ast.Expr) (exprNode, bool) {
@@ -72,6 +71,10 @@ func processTypeExpr(pscope typeProcScope, expr ast.Node, fieldNS *fieldNamespac
 		return processInterfaceType(pscope, exprT)
 	case *ast.FuncType:
 		return processFuncType(pscope, exprT, nil, ir.FuncNature{})
+	case *ast.IndexExpr:
+		return processIndexExprType(pscope, exprT)
+	case *ast.IndexListExpr:
+		return processIndexListExprType(pscope, exprT)
 	case *ast.Ellipsis:
 		return processVarArgsType(pscope, exprT)
 	default:

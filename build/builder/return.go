@@ -16,10 +16,10 @@ package builder
 
 import (
 	"fmt"
-	"go/ast"
 
 	"github.com/gx-org/gx/build/ir"
 	"github.com/gx-org/gx/build/ir/irkind"
+	"github.com/gx-org/gx/src/gx/ast"
 )
 
 type returnStmt struct {
@@ -105,7 +105,7 @@ func (n *returnStmt) castValue(scope fnResolveScope, expr ir.Expr, want ir.Type)
 	}
 	return &ir.CastExpr{
 		Src: &ast.CallExpr{
-			Fun:  arrayWant.Value(nil).Expr(),
+			Fun:  want.Refer(scope.fileScope().irFile()),
 			Args: []ast.Expr{expr.Expr()},
 		},
 		X:   ret,
@@ -126,14 +126,25 @@ func (n *returnStmt) buildStmt(scope stmtResolveScope) (ir.Stmt, bool, bool) {
 	}
 	// Resolve all the expressions composing the return.
 	ok := true
+	unknown := false
 	ext.Results = make([]ir.Expr, len(n.results))
 	for i, expr := range n.results {
 		var exprOk bool
 		ext.Results[i], exprOk = buildExpr(scope, expr)
-		ok = exprOk && ok
+		ok = ok && exprOk
+		if exprOk && len(n.results) > 1 {
+			exprOk = checkSingleValue(scope, expr.source(), ext.Results[i])
+		}
+		ok = ok && exprOk
+		if ext.Results[i].Type().Kind() == irkind.Unknown {
+			unknown = true
+		}
 	}
 	if !ok {
 		return ext, true, false
+	}
+	if unknown {
+		return ext, true, true
 	}
 	rTypes, isTuple := resultTypes(ext.Results)
 	// Compare the number of values being returned to the function results.

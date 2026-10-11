@@ -32,6 +32,10 @@ type binaryExpr struct {
 func NewBinary(op token.Token, typ ir.Type, x, y cmp.Expr) (cmp.Expr, error) {
 	bin := &binaryExpr{op: op, typ: typ, x: x, y: y}
 	switch op {
+	case token.LOR:
+		return &lor{binaryExpr: bin}, nil
+	case token.LAND:
+		return &land{binaryExpr: bin}, nil
 	case token.ADD:
 		return &add{binaryExpr: bin}, nil
 	case token.MUL:

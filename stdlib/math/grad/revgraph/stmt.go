@@ -15,10 +15,10 @@
 package revgraph
 
 import (
-	"go/ast"
 	"go/token"
 
 	"github.com/gx-org/gx/build/ir"
+	"github.com/gx-org/gx/src/gx/ast"
 	"github.com/gx-org/gx/stdlib/math/grad/special"
 	"github.com/gx-org/gx/stdlib/math/grad/wrt"
 )

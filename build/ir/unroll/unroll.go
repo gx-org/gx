@@ -16,13 +16,13 @@
 package unroll
 
 import (
-	"go/ast"
 	"go/token"
 	"strconv"
 
 	"github.com/gx-org/gx/build/ir"
 	"github.com/gx-org/gx/internal/base/cast"
 	"github.com/gx-org/gx/interp/elements"
+	"github.com/gx-org/gx/src/gx/ast"
 )
 
 type unroller struct {

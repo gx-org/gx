@@ -35,7 +35,7 @@ var Package = builtin.PackageBuilder{
 	},
 }
 
-func sPrintf(env *engine.Env, call *ir.FuncCallExpr, recv ir.Element, args []ir.Element) ([]ir.Element, error) {
+func sPrintf(env *engine.Env, call *ir.FuncCallExpr, recv ir.Element, genArgs, args []ir.Element) ([]ir.Element, error) {
 	if len(args) < 1 {
 		return nil, errors.Errorf("unexpected number of arguments to sPrintf: got %d but want (string, varargs)", len(args))
 	}
@@ -43,7 +43,7 @@ func sPrintf(env *engine.Env, call *ir.FuncCallExpr, recv ir.Element, args []ir.
 	if err != nil {
 		return nil, err
 	}
-	goArgs, err := elements.Map(togo.Value, args[1])
+	goArgs, err := elements.Map(togo.CpValue, args[1])
 	if err != nil {
 		return nil, err
 	}

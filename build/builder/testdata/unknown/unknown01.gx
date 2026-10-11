@@ -1,0 +1,9 @@
+package unknown01
+
+import "testunknow"
+
+// No runtime test function
+
+func Add(x, y testunknow.U) testunknow.U {
+	return x + y
+}

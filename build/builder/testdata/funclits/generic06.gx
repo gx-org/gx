@@ -1,0 +1,15 @@
+package generic06
+
+func f[A int](x [A]float32) func() [A]float32 {
+	return func() [A]float32 {
+		return [A]float32{}
+	}
+}
+
+func explicit() int {
+	return f[2]([2]float32{}) // ERROR cannot use func() [2]float32 as int value in return statement
+}
+
+func inferred() int {
+	return f([3]float32{}) // ERROR cannot use func() [3]float32 as int value in return statement
+}

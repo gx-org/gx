@@ -1,0 +1,50 @@
+package sub01
+
+func TestSubInt() int {
+	a := 3
+	return -a
+	// Want:
+	// int(-3)
+}
+
+func TestSubInt32() int32 {
+	a := int32(3)
+	return -a
+	// Want:
+	// int32(-3)
+}
+
+func TestSubInt64() int64 {
+	a := int64(3)
+	return -a
+	// Want:
+	// int64(-3)
+}
+
+func TestSubFloat32() float32 {
+	a := float32(3)
+	return -a
+	// Want:
+	// float32(-3)
+}
+
+func TestSubFloat64() float64 {
+	a := float64(3)
+	return -a
+	// Want:
+	// float64(-3)
+}
+
+func TestSubArrayInt32() [2]int32 {
+	a := [2]int32{1, -2}
+	return -a
+	// Want:
+	// [2]int32{-1, 2}
+}
+
+func TestSubArrayFloat32() [2]float32 {
+	a := [2]float32{1, -2}
+	return -a
+	// Want:
+	// [2]float32{-1, 2}
+}

@@ -15,7 +15,7 @@
 package processor
 
 import (
-	"github.com/gx-org/backend/platform"
+	"github.com/gomlx/compute"
 	"github.com/gx-org/gx/api/hostio"
 	"github.com/gx-org/gx/api/trace"
 	"github.com/gx-org/gx/build/ir"
@@ -64,7 +64,7 @@ func (ts *traces) RegisterTrace(ctx ir.Evaluator, call *ir.FuncCallExpr, args []
 }
 
 // ProcessTraces processes the graph outputs related to traces.
-func (ts *traces) ProcessTraces(dev platform.Device, in *hostio.FuncInputs, tracer trace.Callback, aux []platform.DeviceHandle) error {
+func (ts *traces) ProcessTraces(dev compute.DeviceNum, in *hostio.FuncInputs, tracer trace.Callback, aux []compute.Buffer) error {
 	if tracer == nil || len(ts.traces) == 0 {
 		return nil
 	}

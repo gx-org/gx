@@ -44,8 +44,7 @@ class FunctionResult;
 class FunctionSignature;
 class Shape;
 class Value;
-class Struct;
-class Interface;
+class Type;
 class StaticVar;
 
 // Handle is a move-only wrapper class that manages cgx opaque handles. Each
@@ -118,8 +117,8 @@ class Package {
     return PackageIR(cgx_package_get_ir(raw()));
   }
 
-  absl::StatusOr<Interface> FindInterface(const std::string& name) const;
-  absl::StatusOr<std::vector<Interface>> ListInterfaces() const;
+  absl::StatusOr<Type> FindInterface(const std::string& name) const;
+  absl::StatusOr<std::vector<Type>> ListInterfaces() const;
 
   bool HasStaticVar(const std::string& name) const;
   absl::StatusOr<StaticVar> FindStaticVar(const std::string& name) const;
@@ -232,6 +231,9 @@ class Value {
   template <typename T>
   T get() const;
 
+  absl::StatusOr<Value> GetField(const std::string& name) const;
+  absl::Status SetField(const std::string& name, const Value& value) const;
+
   bool bool_value() const { return cgx_value_get_bool(*value_); }
   float float32_value() const { return cgx_value_get_float32(*value_); }
   double float64_value() const { return cgx_value_get_float64(*value_); }
@@ -239,8 +241,7 @@ class Value {
   int64_t int64_value() const { return cgx_value_get_int64(*value_); }
   uint32_t uint32_value() const { return cgx_value_get_uint32(*value_); }
   uint64_t uint64_value() const { return cgx_value_get_uint64(*value_); }
-  absl::StatusOr<Struct> as_struct() const;
-  std::optional<Interface> interface_type(const Package& package) const;
+  Type get_type(const Package& package) const;
   std::string string() const;
 
  private:
@@ -350,37 +351,21 @@ class HostBuffer {
   char* data_;
 };
 
-class Struct {
+class Type {
  public:
-  struct Field {
-    const std::string name;
-    const cgx_value_kind kind;
-  };
-
-  Struct(cgx_struct strct) : strct_(strct) {}
-
-  absl::StatusOr<Value> GetField(const std::string& name) const;
-  absl::Status SetField(const std::string& name, const Value& value);
-  absl::StatusOr<std::vector<Field>> ListFields() const;
-  cgx_struct raw() const { return *strct_; }
-
- private:
-  Handle<cgx_struct> strct_;
-};
-
-class Interface {
- public:
-  Interface(cgx_interface iface) : iface_(iface) {}
+  Type(cgx_type typ) : typ_(typ) {}
 
   std::string name() const;
+  std::string string() const;
   std::string package_name() const;
   absl::StatusOr<Function> FindMethod(const std::string& name) const;
+  std::vector<std::string> ListFields() const;
   absl::StatusOr<std::vector<Function>> ListMethods() const;
 
-  cgx_interface raw() const { return *iface_; }
+  cgx_type raw() const { return *typ_; }
 
  private:
-  Handle<cgx_interface> iface_;
+  Handle<cgx_type> typ_;
 };
 
 template <typename T>

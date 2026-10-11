@@ -16,8 +16,6 @@ package builder
 
 import (
 	"fmt"
-	"go/ast"
-	"go/parser"
 	"go/scanner"
 	"go/token"
 	"io"
@@ -32,6 +30,8 @@ import (
 	"github.com/gx-org/gx/build/fmterr"
 	"github.com/gx-org/gx/build/importers"
 	"github.com/gx-org/gx/build/ir"
+	"github.com/gx-org/gx/src/gx/ast"
+	"github.com/gx-org/gx/src/gx/parser"
 )
 
 type lastBuild struct {
@@ -82,7 +82,7 @@ type basePackage struct {
 	name      *ast.Ident
 	path      string
 	fset      *token.FileSet
-	files     *ordered.Map[string, *file]
+	files     []*file
 	last      *lastBuild
 	unames    *uname.Unique
 	macroRoot *uname.Root
@@ -93,7 +93,6 @@ func newBasePackage(b *Builder, path, name string) *basePackage {
 		bld:    b,
 		path:   path,
 		fset:   token.NewFileSet(),
-		files:  ordered.NewMap[string, *file](),
 		unames: uname.New(),
 	}
 	if name != "" {
@@ -161,7 +160,7 @@ func (b *Builder) newFilePackage(path, name string) *FilePackage {
 	pkg := &FilePackage{
 		basePackage: newBasePackage(b, path, name),
 	}
-	pkg.irImports = newFile(pkg.basePackage, "", &ast.File{})
+	pkg.irImports = newFile(pkg.basePackage, &ast.File{Name: pkg.name})
 	if name != "" {
 		pkg.setOrCheckName(&ast.Ident{Name: name})
 	}
@@ -291,7 +290,7 @@ func (pkg *IncrementalPackage) Build(src string) error {
 	astFile, err := parser.ParseFile(pkg.fset, name, src, parser.ParseComments)
 	if err != nil {
 		processScannerError(pscope.Err(), nil, err)
-		newFile(pkg.basePackage, name, astFile)
+		newFile(pkg.basePackage, astFile)
 		pkgScope, _ := newPackageResolveScope(pscope)
 		pkg.last.pkg = pkgScope.irBuilder().Pkg()
 		return errs
@@ -324,7 +323,8 @@ func (pkg *IncrementalPackage) BuildExprFrom(src string, sub map[ir.Storage]ir.E
 	}
 	errs := &fmterr.Errors{}
 	pkgScope := newPackageProcScope(false, pkg.basePackage, errs)
-	file := newFile(pkg.basePackage, fileName, &ast.File{
+	file := newFile(pkg.basePackage, &ast.File{
+		Name:    pkg.name,
 		Imports: imports,
 	})
 	pscope := pkgScope.newFilePScope(file)
@@ -375,7 +375,7 @@ func (pkg *IncrementalPackage) Fetcher() (ir.Fetcher, error) {
 	if !ok {
 		return nil, errs.ToError()
 	}
-	file := newFile(pkg.basePackage, "", &ast.File{})
+	file := newFile(pkg.basePackage, &ast.File{Name: pkg.name})
 	fScope, ok := pkgRScope.fileScope(file)
 	if !ok {
 		return nil, errs.ToError()

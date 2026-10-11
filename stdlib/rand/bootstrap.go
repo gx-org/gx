@@ -18,8 +18,8 @@ import (
 	"math/rand"
 
 	"github.com/pkg/errors"
-	"github.com/gx-org/backend/dtypes"
-	"github.com/gx-org/backend/shape"
+	"github.com/gomlx/compute/dtypes"
+	"github.com/gomlx/compute/shapes"
 	"github.com/gx-org/gx/api/hostio"
 	"github.com/gx-org/gx/build/ir"
 	"github.com/gx-org/gx/build/ir/irkind"
@@ -27,13 +27,14 @@ import (
 	"github.com/gx-org/gx/internal/base/cast"
 	"github.com/gx-org/gx/internal/interp/coreiface"
 	"github.com/gx-org/gx/internal/interp/numbers"
+	"github.com/gx-org/gx/internal/togo"
 	"github.com/gx-org/gx/interp/elements"
 	"github.com/gx-org/gx/interp/engine"
 	"github.com/gx-org/gx/interp/grapheval"
 )
 
 type randBootstrap struct {
-	eval *grapheval.Evaluator
+	eval *grapheval.Ops
 	call *ir.FuncCallExpr
 
 	seed engine.NumericalElement
@@ -66,23 +67,23 @@ func (rb *randBootstrap) nextConstant(env *engine.Env) (engine.NumericalElement,
 
 type randBootstrapArg struct {
 	rb    *randBootstrap
-	seed  elements.ElementWithArrayFromContext
+	seed  togo.RuntimeValue
 	proxy ir.Element
 }
 
 var (
 	seedType  = ir.Uint64Type()
-	seedShape = &shape.Shape{
+	seedShape = shapes.Shape{
 		DType: dtypes.Uint64,
 	}
 )
 
-func newRandBootstrapArg(env *engine.Env, rb *randBootstrap, seed elements.ElementWithArrayFromContext) (*randBootstrapArg, error) {
+func newRandBootstrapArg(env *engine.Env, rb *randBootstrap, seed togo.RuntimeValue) (*randBootstrapArg, error) {
 	argFactory := &randBootstrapArg{
 		rb:   rb,
 		seed: seed,
 	}
-	env.Engine().Processor().RegisterInit(argFactory)
+	env.Registry().Processor.RegisterInit(argFactory)
 	return argFactory, nil
 }
 
@@ -91,11 +92,11 @@ func (arg *randBootstrapArg) next(env *engine.Env) (engine.NumericalElement, err
 }
 
 func (arg *randBootstrapArg) Init(ctx *hostio.FuncInputs) error {
-	value, err := arg.seed.ArrayFromContext(ctx)
+	value, err := togo.RtValueT[hostio.Array](ctx, arg.seed)
 	if err != nil {
 		return nil
 	}
-	hostValue, err := value.ToHost(kernels.Allocator())
+	hostValue, err := value.ToHost(kernels.DefaultAllocator())
 	if err != nil {
 		return err
 	}
@@ -112,18 +113,22 @@ func (arg *randBootstrapArg) Name() string {
 	return "randBootstrapArg.next()"
 }
 
-func (arg *randBootstrapArg) ValueFromContext(ctx *hostio.FuncInputs) (ir.Element, error) {
+func (arg *randBootstrapArg) Type() ir.Type {
+	return seedType
+}
+
+func (arg *randBootstrapArg) LastValue(in *hostio.FuncInputs) (any, error) {
 	val := arg.rb.rand.Uint64()
 	return hostio.AtomIntegerValue[uint64](seedType, val)
 }
 
-func (arg *randBootstrapArg) Evaluator() *grapheval.Evaluator {
+func (arg *randBootstrapArg) Ops() *grapheval.Ops {
 	return arg.rb.eval
 }
 
-func evalNewBootstrapGenerator(env *engine.Env, call *ir.FuncCallExpr, recv ir.Element, args []ir.Element) ([]ir.Element, error) {
+func evalNewBootstrapGenerator(env *engine.Env, call *ir.FuncCallExpr, recv ir.Element, genArgs, args []ir.Element) ([]ir.Element, error) {
 	bootstrap := &randBootstrap{
-		eval: env.Engine().(*grapheval.Evaluator),
+		eval: env.Engine().(*grapheval.Ops),
 		call: call,
 	}
 	var err error
@@ -135,7 +140,7 @@ func evalNewBootstrapGenerator(env *engine.Env, call *ir.FuncCallExpr, recv ir.E
 			return nil, err
 		}
 		bootstrap.initRand(seed)
-	case elements.ElementWithArrayFromContext:
+	case togo.RuntimeValue:
 		var argFactory *randBootstrapArg
 		argFactory, err = newRandBootstrapArg(env, bootstrap, seedNode)
 		if err != nil {
@@ -154,7 +159,7 @@ func evalNewBootstrapGenerator(env *engine.Env, call *ir.FuncCallExpr, recv ir.E
 	)}, nil
 }
 
-func evalBootstrapGeneratorNext(env *engine.Env, call *ir.FuncCallExpr, recv ir.Element, args []ir.Element) ([]ir.Element, error) {
+func evalBootstrapGeneratorNext(env *engine.Env, call *ir.FuncCallExpr, recv ir.Element, genArgs, args []ir.Element) ([]ir.Element, error) {
 	under, err := coreiface.Underlying(recv)
 	if err != nil {
 		return nil, err

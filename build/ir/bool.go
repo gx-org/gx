@@ -14,7 +14,7 @@
 
 package ir
 
-import "go/ast"
+import "github.com/gx-org/gx/src/gx/ast"
 
 // BoolValue represents a bool value literal.
 type BoolValue struct {

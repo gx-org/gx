@@ -16,15 +16,18 @@ package units_test
 import (
 	"testing"
 
+	"github.com/gomlx/compute/gobackend"
 	"github.com/gx-org/gx/api"
-	"github.com/gx-org/gx/golang/backend"
 	gxtesting "github.com/gx-org/gx/tests/testing"
 	"github.com/gx-org/gx/tests"
 )
 
 func newRuntime() (*api.Runtime, error) {
-	bld := tests.StdlibBuilder()
-	return backend.New(bld), nil
+	bck, err := gobackend.New("")
+	if err != nil {
+		return nil, err
+	}
+	return api.NewRuntime(bck, tests.NewBuilder()), nil
 }
 
 func TestNativeUnits(t *testing.T) {

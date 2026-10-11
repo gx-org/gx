@@ -16,9 +16,9 @@ package compeval
 
 import (
 	"github.com/pkg/errors"
-	"github.com/gx-org/backend/ops"
-	"github.com/gx-org/backend/shape"
+	"github.com/gomlx/compute"
 	"github.com/gx-org/gx/build/ir"
+	"github.com/gx-org/gx/internal/interp/compeval/cmp"
 	"github.com/gx-org/gx/internal/interp/compeval/srcstore"
 	"github.com/gx-org/gx/internal/interp/compeval/surrogates/storepath"
 	"github.com/gx-org/gx/internal/interp/compeval/surrogates"
@@ -28,15 +28,15 @@ import (
 
 type compArrayOps struct{}
 
-var hostArrayOps engine.ArrayOps = &compArrayOps{}
+var hostArrayOps engine.Engine = &compArrayOps{}
 
 // Graph returns the graph to which new nodes are being added.
-func (compArrayOps) Graph() ops.Graph {
+func (compArrayOps) Graph() compute.Function {
 	return nil
 }
 
 // SubGraph returns a new graph builder.
-func (compArrayOps) SubGraph(name string, args []*shape.Shape) (engine.ArrayOps, error) {
+func (compArrayOps) SubGraph(name string) (engine.Engine, error) {
 	return nil, errors.Errorf("not implemented")
 }
 
@@ -78,4 +78,13 @@ func (ao compArrayOps) ElementFromHostValue(ctx ir.Evaluator, el engine.Constant
 // DefineGlobalConst defines a global constant for the interpreter.
 func (ao compArrayOps) DefineGlobalConst(c ir.Storage, el ir.Element) (ir.Element, error) {
 	return srcstore.Link(c, el)
+}
+
+// EvalCond evaluates a condition, typically for an if statement.
+func (ao compArrayOps) EvalCond(ev ir.Evaluator, el ir.Element) (bool, error) {
+	condAlg, err := cmp.ToAlgExpr(ev, el)
+	if err != nil {
+		return false, err
+	}
+	return cmp.IsTrue(ev, condAlg)
 }

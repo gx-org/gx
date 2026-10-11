@@ -15,10 +15,10 @@
 package generics
 
 import (
-	"go/ast"
 	"math/big"
 
 	"github.com/gx-org/gx/build/ir"
+	"github.com/gx-org/gx/src/gx/ast"
 )
 
 func isZeroExpr(expr ir.Value) bool {

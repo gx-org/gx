@@ -15,7 +15,6 @@
 package interp
 
 import (
-	"go/ast"
 	"strings"
 
 	"github.com/pkg/errors"
@@ -24,6 +23,7 @@ import (
 	"github.com/gx-org/gx/interp/context"
 	"github.com/gx-org/gx/interp/elements"
 	"github.com/gx-org/gx/interp/engine"
+	"github.com/gx-org/gx/src/gx/ast"
 )
 
 func evalFuncBody(fitp *Interpreter, body *ir.BlockStmt) ([]ir.Element, error) {
@@ -56,16 +56,15 @@ func toConcreteType(ctx *context.Context, src ast.Node, frame *context.Frame, tp
 	return tp, nil
 }
 
-func assignTypeParameters(ctx *context.Context, callee ir.Callee, funcFrame *context.Frame, args []ir.Element) []ir.Element {
+func assignTypeParameters(ctx *context.Context, callee ir.Callee, funcFrame *context.Frame, genArgs []ir.Element) {
 	funRef, ok := callee.(*ir.FuncValExpr)
 	if !ok {
-		return args
+		return
 	}
 	genVals := funRef.FuncType().GenParams.Values
 	for i, genVal := range genVals {
-		funcFrame.Define(genVal.Generic().NameDef(), args[i])
+		funcFrame.Define(genVal.Generic().NameDef(), genArgs[i])
 	}
-	return args[len(genVals):]
 }
 
 func assignArgumentValues(ftype *ir.FuncType, funcFrame *context.Frame, args []ir.Element) error {
@@ -111,7 +110,7 @@ func (itp *Base) EvalFunc(fn *ir.FuncDecl, in *elements.InputElements) (outs []i
 		frame.Define(recv.Name, in.Receiver)
 	}
 	// Add the parameters to the Context.
-	paramFields := fn.FType.Params.Fields()
+	paramFields := fn.FType.AllParams()
 	for i, param := range paramFields {
 		if i >= len(in.Args) {
 			missingParams := paramFields[len(in.Args):]

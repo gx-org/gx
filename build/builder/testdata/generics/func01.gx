@@ -1,0 +1,15 @@
+package func01
+
+type ints interface {
+	int | int32 | int64
+}
+
+func F[T ints](x T) T {
+	return x
+}
+
+func Test() int {
+	return F[int](2)
+	// Want:
+	// int(2)
+}

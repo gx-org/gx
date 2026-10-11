@@ -16,10 +16,10 @@ package ir
 
 import (
 	"fmt"
-	"go/ast"
 	"strings"
 
 	"github.com/gx-org/gx/build/ir/irkind"
+	"github.com/gx-org/gx/src/gx/ast"
 )
 
 type (
@@ -30,6 +30,9 @@ type (
 		// Unroll indicates to the compiler to unroll the for-loop iterating over the function.
 		// This forces the function to be used only as an iterator.
 		Unroll bool
+		// Unknown indicates is not known at compile time.
+		// Disable compile checks for the function.
+		Unknown bool
 	}
 
 	// FuncType defines a function signature.
@@ -38,7 +41,7 @@ type (
 		Nature FuncNature
 		origin *FuncType
 
-		GenParams Generic
+		GenParams GenericParams
 		Receiver  *FieldList
 		Params    *FieldList
 		Results   *FieldList
@@ -47,7 +50,7 @@ type (
 	}
 )
 
-var _ Type = (*FuncType)(nil)
+var _ GenericType = (*FuncType)(nil)
 
 func (*FuncType) node() {}
 
@@ -59,8 +62,13 @@ func (s *FuncType) Refer(file *File) ast.Expr {
 	return s.Src
 }
 
+// Generics returns the generic values.
+func (s *FuncType) Generics() *GenericParams {
+	return &s.GenParams
+}
+
 // Equal returns true if other is the same type.
-func (s *FuncType) Equal(tpcmp TypeCmp, other Type) (bool, error) {
+func (s *FuncType) Equal(tpcmp TypeEval, other Type) (bool, error) {
 	otherT, ok := other.(*FuncType)
 	if !ok {
 		return false, nil
@@ -69,7 +77,7 @@ func (s *FuncType) Equal(tpcmp TypeCmp, other Type) (bool, error) {
 }
 
 // Equal returns true if other is the same type.
-func (s *FuncType) equal(tpcmp TypeCmp, other *FuncType) (bool, error) {
+func (s *FuncType) equal(tpcmp TypeEval, other *FuncType) (bool, error) {
 	if s == other {
 		return true, nil
 	}
@@ -80,7 +88,7 @@ func (s *FuncType) equal(tpcmp TypeCmp, other *FuncType) (bool, error) {
 	return s.equalParamsResults(tpcmp, other)
 }
 
-func (s *FuncType) equalParamsResults(tpcmp TypeCmp, other *FuncType) (bool, error) {
+func (s *FuncType) equalParamsResults(tpcmp TypeEval, other *FuncType) (bool, error) {
 	paramsOk, err := s.Params.Type().Equal(tpcmp, other.Params.Type())
 	if err != nil {
 		return false, err
@@ -105,7 +113,7 @@ func (s *FuncType) ReceiverField() *Field {
 }
 
 // AssignableTo reports if the type can be assigned to other.
-func (s *FuncType) AssignableTo(tpcmp TypeCmp, other Type) (bool, error) {
+func (s *FuncType) AssignableTo(tpcmp TypeEval, other Type) (bool, error) {
 	otherT, ok := other.(*FuncType)
 	if ok {
 		return s.equal(tpcmp, otherT)
@@ -119,18 +127,31 @@ func (s *FuncType) AssignableTo(tpcmp TypeCmp, other Type) (bool, error) {
 
 // ConvertibleTo reports whether a value of the type can be converted to another
 // (using static type casting).
-func (s *FuncType) ConvertibleTo(tpcmp TypeCmp, target Type) (bool, error) {
+func (s *FuncType) ConvertibleTo(tpcmp TypeEval, target Type) (bool, error) {
 	return s.Equal(tpcmp, target)
 }
 
 // Value returns a value pointing to the receiver.
 func (s *FuncType) Value(x Expr) Expr {
-	return TypeExpr(x, s)
+	return TypeExpr(x.Expr(), s)
 }
 
 // Specialise a type to a given target.
 func (s *FuncType) Specialise(spec Specialiser) (Type, bool) {
-	return s.SpecialiseFType(spec, false)
+	return s.SpecialiseFType(spec)
+}
+
+// AllParams returns a list of all the parameters of the function, including non-type generic parameters.
+func (s *FuncType) AllParams() []*Field {
+	all := s.Params.Fields()
+	// Fields already create a new slice. So we can reuse it.
+	return append(all, s.GenParams.Fields.Fields()...)
+}
+
+// NumAllParams returns the number of parameters of the function
+// including generic parameters.
+func (s *FuncType) NumAllParams() int {
+	return s.Params.Len() + s.GenParams.Fields.Len()
 }
 
 // String representation of the function type (only used for debugging).
@@ -159,13 +180,18 @@ func specialiseGroup(spec Specialiser, ok *bool) groupCloner {
 	}
 }
 
-// Origin returns the original function type from which this type was defined, typically through specialisation.
+// originFType returns the original function type from which this type was defined, typically through specialisation.
 // If origin is nil, then it return itself.
-func (s *FuncType) Origin() *FuncType {
+func (s *FuncType) originFType() *FuncType {
 	if s.origin == nil {
 		return s
 	}
 	return s.origin
+}
+
+// Origin generic type.
+func (s *FuncType) Origin() GenericType {
+	return s.originFType()
 }
 
 // Unroll the type.
@@ -192,9 +218,9 @@ func (s *FuncType) varArgs() *VarArgsType {
 }
 
 // SpecialiseFType specialises a function type.
-func (s *FuncType) SpecialiseFType(spec Specialiser, skipResult bool) (*FuncType, bool) {
+func (s *FuncType) SpecialiseFType(spec Specialiser) (*FuncType, bool) {
 	res := *s
-	res.origin = s.Origin()
+	res.origin = s.originFType()
 	res.GenParams.Fields = cloneFields(s.GenParams.Fields, &cloner{
 		group: cloneGroup,
 		field: skipIfDefined(spec),
@@ -205,9 +231,6 @@ func (s *FuncType) SpecialiseFType(spec Specialiser, skipResult bool) (*FuncType
 		group: specialiseGroup(spec, &paramsOk),
 		field: cloneField,
 	})
-	if skipResult {
-		return &res, paramsOk
-	}
 	var resultsOk bool
 	res.Results = cloneFields(s.Results, &cloner{
 		group: specialiseGroup(spec, &resultsOk),
@@ -219,6 +242,9 @@ func (s *FuncType) SpecialiseFType(spec Specialiser, skipResult bool) (*FuncType
 
 // ArgIndexToParamField returns the field corresponding to an argument index.
 func (s *FuncType) ArgIndexToParamField(i int) (*Field, bool) {
+	if s.Params == nil {
+		return nil, false
+	}
 	fields := s.Params.Fields()
 	if i >= len(fields) {
 		i = len(fields) - 1
@@ -232,30 +258,40 @@ func (s *FuncType) UnifyWith(unifier Unifier, typ Type) bool {
 }
 
 // Instantiate a function type.
-func (s *FuncType) Instantiate(fetcher Fetcher, spec Specialiser) (Type, bool) {
+func (s *FuncType) Instantiate(fetcher Fetcher, spec Instantiator) (Type, bool) {
 	return s.InstantiateFType(fetcher, spec)
 }
 
+func instantiateGroup(fetcher Fetcher, spec Instantiator, ok *bool) func(grp *FieldGroup) *FieldGroup {
+	return func(grp *FieldGroup) *FieldGroup {
+		grp = cloneGroup(grp)
+		var grpOk bool
+		grp.Type, grpOk = grp.Type.Instantiate(fetcher, spec)
+		*ok = *ok && grpOk
+		return grp
+	}
+}
+
 // InstantiateFType instantiate function type.
-func (s *FuncType) InstantiateFType(fetcher Fetcher, spec Specialiser) (*FuncType, bool) {
+func (s *FuncType) InstantiateFType(fetcher Fetcher, spec Instantiator) (*FuncType, bool) {
 	res := *s
-	res.origin = s.Origin()
+	res.origin = s.originFType()
 	var paramsOk bool
+	paramGroup := specialiseGroup(spec, &paramsOk)
+	if spec.InstantiantingResults() {
+		paramGroup = instantiateGroup(fetcher, spec, &paramsOk)
+	}
 	res.Params = cloneFields(s.Params, &cloner{
-		group: specialiseGroup(spec, &paramsOk),
+		group: paramGroup,
 		field: cloneField,
 	})
 	resultsOk := true
+	spec.StartResults(s)
 	res.Results = cloneFields(s.Results, &cloner{
-		group: func(grp *FieldGroup) *FieldGroup {
-			grp = cloneGroup(grp)
-			var grpOk bool
-			grp.Type, grpOk = grp.Type.Instantiate(fetcher, spec)
-			resultsOk = resultsOk && grpOk
-			return grp
-		},
+		group: instantiateGroup(fetcher, spec, &resultsOk),
 		field: cloneField,
 	})
+	spec.StopResults(s)
 	res.GenParams.Fields = cloneFields(s.GenParams.Fields, &cloner{
 		group: cloneGroup,
 		field: cloneField,
@@ -282,7 +318,7 @@ func (s *FuncType) DefineString(from *File) string {
 
 // ReferString returns a string representation of the signature of a function.
 func (s *FuncType) ReferString(from *File) string {
-	return s.SourceSignature(from, nil)
+	return s.sourceSignature(from, "", false, true)
 }
 
 // SourceSignature returns a string representation of a signature given a name.
@@ -292,11 +328,25 @@ func (s *FuncType) SourceSignature(from *File, name *ast.Ident) string {
 	if name != nil {
 		nameS = name.Name
 	}
-	return s.sourceSignature(from, nameS, false)
+	return s.sourceSignature(from, nameS, false, false)
 }
 
 func (s *FuncType) shortString(from *File) string {
 	return s.Params.ShortString(from)
+}
+
+func (s *FuncType) calleeString(from *File) string {
+	var b strings.Builder
+	vals := s.GenParams.Values
+	for i := range len(vals) {
+		gval := s.GenParams.Values[len(vals)-i-1]
+		if gval == nil {
+			continue
+		}
+		fmt.Fprintf(&b, "%s", gval.SourceString(from))
+		break
+	}
+	return b.String()
 }
 
 func (s *FuncType) specializeString(from *File) string {
@@ -315,7 +365,7 @@ func (s *FuncType) specializeString(from *File) string {
 
 // SourceSignature returns a string representation of a signature given a name.
 // The name can be empty.
-func (s *FuncType) sourceSignature(from *File, name string, skipRecv bool) string {
+func (s *FuncType) sourceSignature(from *File, name string, skipRecv, skipSpec bool) string {
 	var b strings.Builder
 	b.WriteString("func")
 	if s.Receiver != nil && !skipRecv {
@@ -324,7 +374,12 @@ func (s *FuncType) sourceSignature(from *File, name string, skipRecv bool) strin
 	if name != "" {
 		fmt.Fprintf(&b, " %s", name)
 	}
-	b.WriteString(s.specializeString(from))
+	if s.Params == nil || s.Results == nil {
+		return b.String()
+	}
+	if !skipSpec {
+		b.WriteString(s.specializeString(from))
+	}
 	b.WriteString("(" + s.Params.SourceString(from) + ")")
 	if s.Results.Len() == 0 {
 		return b.String()
@@ -343,4 +398,13 @@ func (s *FuncType) sourceSignature(from *File, name string, skipRecv bool) strin
 // SourceString returns GX code defining the function type.
 func (s *FuncType) SourceString(from *File) string {
 	return s.SourceSignature(from, nil)
+}
+
+// UnknownFType returns the function type for a function unknown at compile time.
+func UnknownFType() *FuncType {
+	return &FuncType{
+		Nature: FuncNature{
+			Unknown: true,
+		},
+	}
 }

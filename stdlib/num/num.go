@@ -16,11 +16,9 @@
 package num
 
 import (
-	"github.com/gx-org/backend/ops"
-	"github.com/gx-org/backend/shape"
+	"github.com/gomlx/compute"
 	"github.com/gx-org/gx/build/ir"
 	"github.com/gx-org/gx/build/ir/irkind"
-	"github.com/gx-org/gx/internal/interp/compeval/cmp"
 	"github.com/gx-org/gx/interp/elements"
 	"github.com/gx-org/gx/interp/engine"
 	"github.com/gx-org/gx/interp/materialise"
@@ -37,170 +35,91 @@ var Package = builtin.PackageBuilder{
 		builtin.ImplementBuiltin("IotaFull", evalIotaFull),
 		builtin.ImplementBuiltin("ReduceMax", evalReduceMax),
 		builtin.ImplementBuiltin("MatMul", evalMatMul),
+		builtin.ImplementBuiltin("MatVecMul", evalMatVecMul),
+		builtin.ImplementBuiltin("VecMatMul", evalVecMatMul),
+		builtin.ImplementBuiltin("VecMul", evalVecMul),
 		builtin.ImplementBuiltin("Sum", evalReduceSum),
-		builtin.ImplementBuiltin("MatMulAxes", evalMatMulAxes),
 		builtin.ImplementBuiltin("einsumAxes", evalEinsumAxes),
 		builtin.ImplementBuiltin("Einsum", evalEinsum),
 	},
 }
 
-func vecVecMatMul(env *engine.Env, left, right ir.Element) ([]ir.Element, error) {
-	eq, err := cmp.Equal(env.ExprEval(), left, right)
-	if err != nil {
-		return nil, err
-	}
-	if !eq {
-		from := env.File()
-		return nil, ir.CompileErrorF("incompatible axis lengths: %s!=%s", ir.ShortString(from, left), ir.ShortString(from, right))
-	}
-	return builtin.ToShapeResult()
+func evalVecMul(env *engine.Env, call *ir.FuncCallExpr, recv ir.Element, genArgs, args []ir.Element) ([]ir.Element, error) {
+	return evalDot(env, call, recv, args[0], args[1])
 }
 
-func vecMatMatMul(env *engine.Env, left ir.Element, right []ir.Element) ([]ir.Element, error) {
-	eq, err := cmp.Equal(env.ExprEval(), left, right[0])
-	if err != nil {
-		return nil, err
-	}
-	if !eq {
-		from := env.File()
-		return nil, ir.CompileErrorF("incompatible axis lengths: %s!=%s in %s,%s", ir.ShortString(from, left), ir.ShortString(from, right[0]), builtin.ToShapeString(from, []ir.Element{left}), builtin.ToShapeString(from, right))
-	}
-	return builtin.ToShapeResult(right[1])
+func evalVecMatMul(env *engine.Env, call *ir.FuncCallExpr, recv ir.Element, genArgs, args []ir.Element) ([]ir.Element, error) {
+	return evalDot(env, call, recv, args[0], args[1])
 }
 
-func matVecMatMul(env *engine.Env, left []ir.Element, right ir.Element) ([]ir.Element, error) {
-	eq, err := cmp.Equal(env.ExprEval(), left[1], right)
-	if err != nil {
-		return nil, err
-	}
-	if !eq {
-		from := env.File()
-		return nil, ir.CompileErrorF("incompatible axis lengths: %s!=%s in %s,%s", ir.ShortString(from, left[0]), ir.ShortString(from, right), builtin.ToShapeString(from, left), builtin.ToShapeString(from, []ir.Element{right}))
-	}
-	return builtin.ToShapeResult(left[0])
+func evalMatVecMul(env *engine.Env, call *ir.FuncCallExpr, recv ir.Element, genArgs, args []ir.Element) ([]ir.Element, error) {
+	return evalDot(env, call, recv, args[0], args[1])
 }
 
-func evalMatMulAxes(env *engine.Env, call *ir.FuncCallExpr, recv ir.Element, args []ir.Element) ([]ir.Element, error) {
-	leftSlice, err := elements.SliceFromElement(args[0])
-	if err != nil {
-		return nil, err
-	}
-	rightSlice, err := elements.SliceFromElement(args[1])
-	if err != nil {
-		return nil, err
-	}
-	left, right := leftSlice.Elements(), rightSlice.Elements()
-	if len(left) > 2 {
-		from := env.File()
-		return nil, ir.CompileErrorF("expects no more than 2 axes but got %d axes (%s)", len(left), builtin.ToShapeString(from, left))
-	}
-	if len(right) > 2 {
-		from := env.File()
-		return nil, ir.CompileErrorF("expects no more than 2 axes but got %d axes (%s)", len(right), builtin.ToShapeString(from, right))
-	}
-	if len(left) == 1 && len(right) == 1 {
-		return vecVecMatMul(env, left[0], right[0])
-	}
-	if len(left) == 1 {
-		return vecMatMatMul(env, left[0], right)
-	}
-	if len(right) == 1 {
-		return matVecMatMul(env, left, right[0])
-	}
-	eq, err := cmp.Equal(env.ExprEval(), left[1], right[0])
-	if err != nil {
-		return nil, err
-	}
-	if !eq {
-		from := env.File()
-		return nil, ir.CompileErrorF("invalid axis length: %s!=%s in %s,%s", ir.ShortString(from, left[1]), ir.ShortString(from, right[0]), builtin.ToShapeString(from, left), builtin.ToShapeString(from, right))
-		shape, err := elements.NewSlice(ir.IntSliceType(), []ir.Element{left[0], right[1]})
-		if err != nil {
-			return nil, err
-		}
-		return []ir.Element{shape}, nil
-	}
-	return builtin.ToShapeResult(left[0], right[1])
+func evalMatMul(env *engine.Env, call *ir.FuncCallExpr, recv ir.Element, genArgs, args []ir.Element) ([]ir.Element, error) {
+	return evalDot(env, call, recv, args[0], args[1])
 }
 
-func evalMatMul(env *engine.Env, call *ir.FuncCallExpr, recv ir.Element, args []ir.Element) ([]ir.Element, error) {
+func evalDot(env *engine.Env, call *ir.FuncCallExpr, recv ir.Element, x ir.Element, y ir.Element) ([]ir.Element, error) {
 	mat := builtin.Materialiser(env)
-	xNode, xShape, err := materialise.Element(mat, args[3])
+	xNode, xShape, err := materialise.Element(mat, x)
 	if err != nil {
 		return nil, err
 	}
-	yNode, _, err := materialise.Element(mat, args[4])
+	yNode, _, err := materialise.Element(mat, y)
 	if err != nil {
 		return nil, err
 	}
-	gr := env.Engine().ArrayOps().Graph()
-	op, err := gr.Num().Dot(xNode, yNode)
+	gr := env.Engine().Graph()
+	op, err := gr.DotGeneral(xNode, []int{len(xShape.Dimensions) - 1}, nil, yNode, []int{0}, nil, compute.DotGeneralConfig{})
 	if err != nil {
 		return nil, err
 	}
-	return materialise.ElementFromNode(env.File(), mat, &ops.OutputNode{
-		Node: op,
-		Shape: &shape.Shape{
-			DType:       xShape.DType,
-			AxisLengths: op.(interface{ PJRTDims() []int }).PJRTDims(),
-		},
-	}, call.Type())
+	return materialise.ElementFromNode(env.ExprEval(), mat, op, call.Type())
 }
 
-func evalArgMax(env *engine.Env, call *ir.FuncCallExpr, recv ir.Element, args []ir.Element) ([]ir.Element, error) {
+func evalArgMax(env *engine.Env, call *ir.FuncCallExpr, recv ir.Element, genArgs, args []ir.Element) ([]ir.Element, error) {
 	mat := builtin.Materialiser(env)
-	argNode, _, err := materialise.Element(mat, args[3])
+	argNode, _, err := materialise.Element(mat, args[0])
 	if err != nil {
 		return nil, err
 	}
-	axisIndex, err := elements.IntFromElement(args[0])
+	axisIndex, err := elements.IntFromElement(genArgs[0])
 	if err != nil {
 		return nil, err
 	}
-	gr := env.Engine().ArrayOps().Graph()
-	op, err := gr.Num().ArgMinMax(argNode, int(axisIndex), irkind.Int.DType(), false)
+	gr := env.Engine().Graph()
+	op, err := gr.ArgMinMax(argNode, int(axisIndex), irkind.Int.DType(), false)
 	if err != nil {
 		return nil, err
 	}
-	return materialise.ElementFromNode(env.File(), mat, &ops.OutputNode{
-		Node: op,
-		Shape: &shape.Shape{
-			DType:       irkind.Int.DType(),
-			AxisLengths: op.(interface{ PJRTDims() []int }).PJRTDims(),
-		},
-	}, call.Type())
+	return materialise.ElementFromNode(env.ExprEval(), mat, op, call.Type())
 }
 
-func evalReduce(env *engine.Env, call *ir.FuncCallExpr, recv ir.Element, args []ir.Element, reduce func(x ops.Node, axes []int) (ops.Node, error)) ([]ir.Element, error) {
-	axisIndices, err := elements.Map(elements.IntFromElement, args[0])
+func evalReduce(env *engine.Env, call *ir.FuncCallExpr, recv ir.Element, genArgs, args []ir.Element, reduce func(x compute.Value, axes ...int) (compute.Value, error)) ([]ir.Element, error) {
+	axisIndices, err := elements.Map(elements.IntFromElement, genArgs[0])
 	if err != nil {
 		return nil, err
 	}
 	if len(axisIndices) == 0 {
-		return []ir.Element{args[3]}, nil
+		return []ir.Element{args[0]}, nil
 	}
 	mat := builtin.Materialiser(env)
-	x, xShape, err := materialise.Element(mat, args[3])
+	x, _, err := materialise.Element(mat, args[0])
 	if err != nil {
 		return nil, err
 	}
-	op, err := reduce(x, axisIndices)
+	op, err := reduce(x, axisIndices...)
 	if err != nil {
 		return nil, err
 	}
-	return materialise.ElementFromNode(env.File(), mat, &ops.OutputNode{
-		Node: op,
-		Shape: &shape.Shape{
-			DType:       xShape.DType,
-			AxisLengths: op.(interface{ PJRTDims() []int }).PJRTDims(),
-		},
-	}, call.Type())
+	return materialise.ElementFromNode(env.ExprEval(), mat, op, call.Type())
 }
 
-func evalReduceSum(env *engine.Env, call *ir.FuncCallExpr, recv ir.Element, args []ir.Element) ([]ir.Element, error) {
-	return evalReduce(env, call, recv, args, env.Engine().ArrayOps().Graph().Num().ReduceSum)
+func evalReduceSum(env *engine.Env, call *ir.FuncCallExpr, recv ir.Element, genArgs, args []ir.Element) ([]ir.Element, error) {
+	return evalReduce(env, call, recv, genArgs, args, env.Engine().Graph().ReduceSum)
 }
 
-func evalReduceMax(env *engine.Env, call *ir.FuncCallExpr, recv ir.Element, args []ir.Element) ([]ir.Element, error) {
-	return evalReduce(env, call, recv, args, env.Engine().ArrayOps().Graph().Num().ReduceMax)
+func evalReduceMax(env *engine.Env, call *ir.FuncCallExpr, recv ir.Element, genArgs, args []ir.Element) ([]ir.Element, error) {
+	return evalReduce(env, call, recv, genArgs, args, env.Engine().Graph().ReduceMax)
 }

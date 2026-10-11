@@ -3,9 +3,9 @@ package matmul01
 import "num"
 
 func TestMatMulScalars() float64 {
-	x := [1]float64{1}
-	y := [1]float64{-1}
-	return num.MatMul(x, y)
+	x := [1]float64{2}
+	y := [1]float64{-3}
+	return num.VecMul(x, y)
 	// Want:
-	// float64(-1)
+	// float64(-6)
 }

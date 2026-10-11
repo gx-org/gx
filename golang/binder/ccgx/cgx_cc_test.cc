@@ -175,8 +175,7 @@ TEST_F(cgx, PackageListInterfaces) {
   CGX_ASSERT_OK(result.error);
   ASSERT_EQ(result.num_ifaces, std::size(wants));
   for (int i = 0; i < std::size(wants); i++) {
-    const std::string got =
-        FromHeapCString(cgx_interface_name(result.ifaces[i]));
+    const std::string got = FromHeapCString(cgx_type_name(result.ifaces[i]));
     EXPECT_EQ(got, wants[i]);
     cgx_release_reference(result.ifaces[i]);
   }
@@ -307,10 +306,6 @@ TEST_F(cgx, RunFunction_ReturnArrayFloat32) {
   ASSERT_EQ(rr.value_size, 1);
   ASSERT_EQ(cgx_value_kind_of(rr.values[0]), CGX_ARRAY);
 
-  // Check this is not an interface.
-  const auto iface = cgx_value_get_interface_type(device(), rr.values[0]);
-  EXPECT_EQ(iface, cgx_interface{});
-
   const cgx_shape shape = cgx_value_shape(rr.values[0]);
   ASSERT_NE(shape, cgx_shape{});
   EXPECT_EQ(cgx_shape_size(shape), 2);
@@ -376,14 +371,13 @@ TEST_F(cgx, RunMethod_AddPrivate) {
   ASSERT_EQ(cgx_value_kind_of(rnewr.values[0]), CGX_STRUCT);
 
   // Check we can call a method on the returned structure.
-  const auto iface = cgx_value_get_interface_type(pr.package, rnewr.values[0]);
-  ASSERT_NE(iface, cgx_interface{});
+  const auto iface = cgx_value_get_type(pr.package, rnewr.values[0]);
   const std::string package_name =
-      FromHeapCString(cgx_interface_package_name(iface));
+      FromHeapCString(cgx_type_package_name(iface));
   EXPECT_EQ(package_name, kBasicPackage);
-  const std::string type_name = FromHeapCString(cgx_interface_name(iface));
+  const std::string type_name = FromHeapCString(cgx_type_name(iface));
   EXPECT_EQ(type_name, "Basic");
-  const auto faddr = cgx_interface_method_find(iface, "AddPrivate");
+  const auto faddr = cgx_type_method_find(iface, "AddPrivate");
   CGX_ASSERT_OK(faddr.error);
   auto rsumr = cgx_function_run(faddr.function, rnewr.values[0], 0, nullptr);
   CGX_ASSERT_OK(rsumr.error);
@@ -402,13 +396,13 @@ TEST_F(cgx, RunMethod_AddPrivate) {
 TEST_F(cgx, RunMethod_PackageFindInterface) {
   struct build_result pr(BuildPackage(kBasicPackage));
   CGX_ASSERT_OK(pr.error);
-  const auto ifacer = cgx_interface_find(pr.package, "Basic");
+  const auto ifacer = cgx_type_find(pr.package, "Basic");
   CGX_ASSERT_OK(ifacer.error);
   const auto fnewr = cgx_function_find(pr.package, "New");
   CGX_ASSERT_OK(fnewr.error);
   auto rnewr = cgx_function_run(fnewr.function, cgx_value{}, 0, nullptr);
   CGX_ASSERT_OK(rnewr.error);
-  const auto faddr = cgx_interface_method_find(ifacer.iface, "AddPrivate");
+  const auto faddr = cgx_type_method_find(ifacer.iface, "AddPrivate");
   CGX_ASSERT_OK(faddr.error);
   auto rsumr = cgx_function_run(faddr.function, rnewr.values[0], 0, nullptr);
   CGX_ASSERT_OK(rsumr.error);
@@ -426,11 +420,11 @@ TEST_F(cgx, RunMethod_PackageFindInterface) {
 TEST_F(cgx, InterfaceListMethods) {
   struct build_result pr(BuildPackage(kBasicPackage));
   CGX_ASSERT_OK(pr.error);
-  const auto ifacer = cgx_interface_find(pr.package, "Basic");
+  const auto ifacer = cgx_type_find(pr.package, "Basic");
   CGX_ASSERT_OK(ifacer.error);
 
   const char* wants[] = {"Add", "AddPrivate", "SetFloat"};
-  auto result = cgx_interface_list_methods(ifacer.iface);
+  auto result = cgx_type_list_methods(ifacer.iface);
   CGX_ASSERT_OK(result.error);
   ASSERT_EQ(result.num_functions, std::size(wants));
   for (int i = 0; i < std::size(wants); i++) {
@@ -498,7 +492,7 @@ TEST_F(cgx, RunFunction_MissingParameters) {
 TEST_F(cgx, FindInterface_NotFound) {
   struct build_result pr(BuildPackage(kBasicPackage));
   CGX_ASSERT_OK(pr.error);
-  const auto ir = cgx_interface_find(pr.package, "Complicated");
+  const auto ir = cgx_type_find(pr.package, "Complicated");
   CGX_ASSERT_ERROR(ir.error,
                    "type \"Complicated\" not found in package \"basic\"");
   cgx_release_reference(pr.package);
@@ -594,15 +588,12 @@ TEST_F(cgx, StructGetField) {
   ASSERT_EQ(cgx_value_kind_of(rnewr.values[0]), CGX_STRUCT);
 
   // Read a field from the returned structure.
-  const auto gsr = cgx_value_get_struct(rnewr.values[0]);
-  ASSERT_NE(gsr.strct, cgx_interface{});
-  auto fgr = cgx_struct_field_get(gsr.strct, "Int");
+  auto fgr = cgx_value_field_get(rnewr.values[0], "Int");
   CGX_ASSERT_OK(fgr.error);
   ASSERT_EQ(cgx_value_kind_of(fgr.value), CGX_INT32);
   EXPECT_EQ(cgx_value_get_int32(fgr.value), 42);
 
   cgx_release_reference(fgr.value);
-  cgx_release_reference(gsr.strct);
   cgx_release_references(rnewr.values, rnewr.value_size);
   cgx_free_function_run_result(&rnewr);
   cgx_release_reference(fnewr.function);
@@ -621,21 +612,17 @@ TEST_F(cgx, StructSetField) {
   ASSERT_EQ(rnewr.value_size, 1);
   ASSERT_EQ(cgx_value_kind_of(rnewr.values[0]), CGX_STRUCT);
 
-  const auto gsr = cgx_value_get_struct(rnewr.values[0]);
-  ASSERT_NE(gsr.strct, cgx_interface{});
-
   auto new_value = cgx_value_new_int32(device(), 24);
   CGX_ASSERT_OK(new_value.error);
-  CGX_ASSERT_OK(cgx_struct_field_set(gsr.strct, "Int", new_value.value));
+  CGX_ASSERT_OK(cgx_value_field_set(rnewr.values[0], "Int", new_value.value));
 
-  const auto fgr = cgx_struct_field_get(gsr.strct, "Int");
+  const auto fgr = cgx_value_field_get(rnewr.values[0], "Int");
   CGX_ASSERT_OK(fgr.error);
   ASSERT_EQ(cgx_value_kind_of(fgr.value), CGX_INT32);
   EXPECT_EQ(cgx_value_get_int32(fgr.value), 24);
 
   cgx_release_reference(fgr.value);
   cgx_release_reference(new_value.value);
-  cgx_release_reference(gsr.strct);
   cgx_release_references(rnewr.values, rnewr.value_size);
   cgx_free_function_run_result(&rnewr);
   cgx_release_reference(fnewr.function);
@@ -654,22 +641,18 @@ TEST_F(cgx, StructListFields) {
   ASSERT_EQ(rnewr.value_size, 1);
   ASSERT_EQ(cgx_value_kind_of(rnewr.values[0]), CGX_STRUCT);
 
-  const auto gsr = cgx_value_get_struct(rnewr.values[0]);
-  ASSERT_NE(gsr.strct, cgx_interface{});
-
-  const char* wants[] = {"Int",      "Float",  "Array", "privateA",
-                         "privateB", "length", "index"};
-  auto fields = cgx_struct_field_list(gsr.strct);
-  CGX_ASSERT_OK(fields.error);
-  ASSERT_EQ(fields.field_size, std::size(wants));
+  const auto valtyp = cgx_value_get_type(pr.package, rnewr.values[0]);
+  const char* wants[] = {"Int", "Float", "Array"};
+  auto fields = cgx_type_list_fields(valtyp);
+  ASSERT_EQ(fields.num_fields, std::size(wants));
   for (int i = 0; i < std::size(wants); i++) {
-    EXPECT_STREQ(fields.field[i].name, wants[i]);
+    EXPECT_STREQ(fields.fields[i], wants[i]);
   }
 
-  cgx_free_struct_field_list_result(&fields);
-  cgx_release_reference(gsr.strct);
+  cgx_free_type_list_fields_result(&fields);
   cgx_release_references(rnewr.values, rnewr.value_size);
   cgx_free_function_run_result(&rnewr);
+  cgx_release_reference(valtyp);
   cgx_release_reference(fnewr.function);
   cgx_release_reference(pr.package);
 }

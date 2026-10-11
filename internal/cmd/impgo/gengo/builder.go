@@ -16,11 +16,11 @@ package gengo
 
 import (
 	"fmt"
-	"go/ast"
 	"go/token"
 	"go/types"
 
 	"github.com/gx-org/gx/internal/cmd/impgo/genast"
+	"github.com/gx-org/gx/src/gx/ast"
 )
 
 type directives struct {
@@ -33,22 +33,24 @@ func (g goGenerator) newDirectives(xs ...ast.Expr) *directives {
 }
 
 type funcBody struct {
-	dir  *directives
-	f    *types.Func
-	env  genast.IdentExpr
-	call genast.IdentExpr
-	recv genast.IdentExpr
-	args genast.IdentExpr
+	dir     *directives
+	f       *types.Func
+	env     genast.IdentExpr
+	call    genast.IdentExpr
+	recv    genast.IdentExpr
+	genArgs genast.IdentExpr
+	args    genast.IdentExpr
 }
 
 func (d *directives) newBody(f *types.Func) *funcBody {
 	return &funcBody{
-		dir:  d,
-		f:    f,
-		env:  genast.Ident("env"),
-		call: genast.Ident("call"),
-		recv: genast.Ident("recv"),
-		args: genast.Ident("args"),
+		dir:     d,
+		f:       f,
+		env:     genast.Ident("env"),
+		call:    genast.Ident("call"),
+		recv:    genast.Ident("recv"),
+		genArgs: genast.Ident("genArgs"),
+		args:    genast.Ident("args"),
 	}
 }
 
@@ -144,6 +146,9 @@ func (d *directives) buildFuncImpl(f *types.Func) (*ast.Ident, error) {
 				genast.Field(body.env, d.g.engine.Select("Env").Star().X),
 				genast.Field(body.call, d.g.ir.Select("FuncCallExpr").Star().X),
 				genast.Field(body.recv, d.g.ir.Select("Element").X),
+				genast.Field(body.genArgs, &ast.ArrayType{
+					Elt: d.g.ir.Select("Element").X,
+				}),
 				genast.Field(body.args, &ast.ArrayType{
 					Elt: d.g.ir.Select("Element").X,
 				}),

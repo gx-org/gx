@@ -39,8 +39,8 @@ func NewFuncLit(lit *ir.FuncLit, ctx *context.Context) engine.Func {
 	}
 }
 
-// IR returns the IR function represented by the graph.
-func (sg *funcLit) IR() ir.Func {
+// FuncIR returns the IR function represented by the graph.
+func (sg *funcLit) FuncIR() ir.Func {
 	return sg.lit
 }
 
@@ -51,7 +51,7 @@ func (sg *funcLit) Recv() *engine.Receiver {
 
 // Call the function literal given its set of arguments,
 // effectively inlining the function in the parent graph.
-func (sg *funcLit) Call(env *engine.Env, call *ir.FuncCallExpr, args []ir.Element) ([]ir.Element, error) {
+func (sg *funcLit) Call(env *engine.Env, call *ir.FuncCallExpr, genArgs, args []ir.Element) ([]ir.Element, error) {
 	return env.Runners().FuncLit(sg.lit, env, sg.ctx, call, args)
 }
 
@@ -66,7 +66,7 @@ func (runners) FuncLit(lit *ir.FuncLit, env *engine.Env, ctx *context.Context, c
 		funcFrame.Define(resultName, nil)
 	}
 	defer ctx.PopFrame()
-	fitp := toInterp(ctx, env.Engine(), env.Runners())
+	fitp := newInterp(env.Registry(), ctx, env.Engine())
 	return evalFuncBody(fitp, lit.Body)
 }
 

@@ -17,12 +17,12 @@ package astbuilder
 
 import (
 	"fmt"
-	"go/ast"
 	"reflect"
 
 	"github.com/pkg/errors"
 	"github.com/gx-org/gx/build/fmterr"
 	"github.com/gx-org/gx/build/ir"
+	"github.com/gx-org/gx/src/gx/ast"
 )
 
 // Transform an AST node.

@@ -30,15 +30,15 @@ type packageOption func(pkg *ir.Package, scope *scope.RWScope[ir.Element]) error
 
 // Options set for an evaluation.
 type Options struct {
-	eval           engine.Engine
+	env            *engine.Env
 	options        []options.PackageOption
 	packageOptions map[string][]packageOption
 }
 
 // New returns an option set.
-func New(eval engine.Engine, opts []options.PackageOption) (*Options, error) {
+func New(env *engine.Env, opts []options.PackageOption) (*Options, error) {
 	o := &Options{
-		eval:           eval,
+		env:            env,
 		options:        opts,
 		packageOptions: make(map[string][]packageOption),
 	}
@@ -66,6 +66,9 @@ func New(eval engine.Engine, opts []options.PackageOption) (*Options, error) {
 
 // Eval evaluates options for a given package.
 func (o *Options) Eval(pkg *ir.Package, scope *scope.RWScope[ir.Element]) error {
+	if o == nil {
+		return nil
+	}
 	options := o.packageOptions[pkg.Path()]
 	for _, option := range options {
 		if err := option(pkg, scope); err != nil {
@@ -101,8 +104,7 @@ func (o *Options) processPackageVarSetGXValue(opt options.PackageVarSetValue) (p
 		if err != nil {
 			return err
 		}
-		env := engine.ProxyEnv(o.eval, vrExpr.Decl.FFile)
-		el, err := numbers.NewElement(env, vrExpr.Type(), val)
+		el, err := numbers.NewElement(o.env, vrExpr.Type(), val)
 		if err != nil {
 			return err
 		}

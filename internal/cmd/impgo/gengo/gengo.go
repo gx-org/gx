@@ -16,11 +16,10 @@
 package gengo
 
 import (
-	"go/ast"
-
 	"github.com/gx-org/gx/internal/cmd/impgo/genast"
 	"github.com/gx-org/gx/internal/cmd/impgo/generator"
 	"github.com/gx-org/gx/internal/cmd/impgo/parser"
+	"github.com/gx-org/gx/src/gx/ast"
 )
 
 type goGenerator struct {

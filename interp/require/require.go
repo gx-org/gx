@@ -17,7 +17,6 @@ package require
 
 import (
 	"github.com/gx-org/gx/build/ir"
-	"github.com/gx-org/gx/internal/interp/constants"
 	"github.com/gx-org/gx/internal/interp/coreiface"
 	"github.com/gx-org/gx/internal/togo"
 	"github.com/gx-org/gx/interp/elements"
@@ -25,10 +24,10 @@ import (
 )
 
 // Impl is the implementation of the require builtin.
-func Impl(env *engine.Env, call *ir.FuncCallExpr, recv ir.Element, args []ir.Element) ([]ir.Element, error) {
-	condValue, isCondDefined := constants.ConvertOk(constants.CBool, args[0])
-	if condValue || !isCondDefined {
-		return nil, nil
+func Impl(env *engine.Env, call *ir.FuncCallExpr, recv ir.Element, genArgs, args []ir.Element) ([]ir.Element, error) {
+	val, err := env.Engine().EvalCond(env.ExprEval(), args[0])
+	if val || err != nil {
+		return nil, err
 	}
 	if len(args) == 1 {
 		from := env.File()
@@ -38,7 +37,7 @@ func Impl(env *engine.Env, call *ir.FuncCallExpr, recv ir.Element, args []ir.Ele
 	if err != nil {
 		return nil, err
 	}
-	goArgs, err := coreiface.Map(togo.Value, args[2])
+	goArgs, err := coreiface.Map(togo.CpValue, args[2])
 	if err != nil {
 		return nil, err
 	}

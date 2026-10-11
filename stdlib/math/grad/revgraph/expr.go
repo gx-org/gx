@@ -15,10 +15,11 @@
 package revgraph
 
 import (
-	"go/ast"
+	"fmt"
 	"go/token"
 
 	"github.com/gx-org/gx/build/ir"
+	"github.com/gx-org/gx/src/gx/ast"
 	"github.com/gx-org/gx/stdlib/math/grad/special"
 )
 
@@ -46,6 +47,8 @@ func (p *processor) processExpr(isrc ir.Expr) (expr, bool) {
 		return p.processUnaryExpr(isrcT)
 	case *ir.BinaryExpr:
 		return p.processBinaryExpr(isrcT)
+	case *ir.CastExpr:
+		return p.processCastExpr(isrcT)
 	case *ir.NumberCastExpr:
 		return p.processNumberCastExpr(isrcT)
 	case *ir.Ident:
@@ -73,7 +76,7 @@ func buildSingleForward(astmts *fwdStmts, node expr) (ast.Expr, bool) {
 }
 
 func buildBackward(bckstmts *astOutWRT, bck *special.Expr, x expr) (*special.Expr, bool) {
-	if !x.dependsOn(bckstmts) {
+	if !x.dependsOn(bckstmts) || bck.IsZero() {
 		return special.ZeroExpr(), true
 	}
 	return x.buildBackward(bckstmts, bck)
@@ -102,6 +105,22 @@ func (p *processor) processFuncCallExpr(isrc *ir.FuncCallExpr) (*funcCallExpr, b
 	}, true
 }
 
+// splitTypeArgs splits an expression referencing a function into
+// the expression referencing the generic function and
+// the type arguments explicitly used to specialise that function.
+// For example, given F[6][3] (or F[6, 3]), splitTypeArgs returns F and [6, 3].
+func splitTypeArgs(x ir.Expr) (ast.Expr, []ast.Expr) {
+	switch xT := x.(type) {
+	case *ir.FuncValExpr:
+		return splitTypeArgs(xT.X())
+	case *ir.SpecTypeExpr:
+		fn, typeArgs := splitTypeArgs(xT.X)
+		return fn, append(typeArgs, xT.Index.Expr())
+	default:
+		return x.Expr(), nil
+	}
+}
+
 func (n *funcCallExpr) vjpFunc(astmts *fwdStmts) (string, ast.Expr, bool) {
 	src, ok := n.irnode.Callee.(*ir.FuncValExpr)
 	if !ok {
@@ -112,13 +131,22 @@ func (n *funcCallExpr) vjpFunc(astmts *fwdStmts) (string, ast.Expr, bool) {
 		name = pkgFunc.Name()
 	}
 	macro := n.graph.macro.From()
-	return name, n.graph.funcNameWithTypeParamsExpr(&ast.CallExpr{
+	// The macro builds the VJP of the generic function: the type arguments of its argument are ignored.
+	// Explicit type arguments are applied to the function returned by the macro instead
+	// (e.g. F[6](x) becomes grad.Reverse(F)[6](x)) so that type parameters that cannot be
+	// inferred from the call arguments are still specified.
+	fn, typeArgs := splitTypeArgs(src)
+	var vjp ast.Expr = &ast.CallExpr{
 		Fun: &ast.SelectorExpr{
 			X:   &ast.Ident{Name: macro.File().Package.Name.Name},
 			Sel: &ast.Ident{Name: macro.Name()},
 		},
-		Args: []ast.Expr{src.Expr()},
-	}), true
+		Args: []ast.Expr{fn},
+	}
+	for _, typeArg := range typeArgs {
+		vjp = &ast.IndexExpr{X: vjp, Index: typeArg}
+	}
+	return name, vjp, true
 }
 
 func (n *funcCallExpr) buildForward(astmts *fwdStmts) ([]ast.Expr, bool) {
@@ -170,6 +198,13 @@ func (n *funcCallExpr) fieldPath() []*ir.Field {
 	return nil
 }
 
+func paramSuffix(n int, name *ast.Ident) string {
+	if name == nil {
+		return fmt.Sprintf("Arg%d", n)
+	}
+	return name.Name
+}
+
 func (n *funcCallExpr) buildBackward(bckstmts *astOutWRT, bck *special.Expr) (*special.Expr, bool) {
 	if !n.dependsOn(bckstmts) {
 		return special.ZeroExpr(), true
@@ -186,7 +221,7 @@ func (n *funcCallExpr) buildBackward(bckstmts *astOutWRT, bck *special.Expr) (*s
 		}
 		bckSuffix := ""
 		if len(calleeParams) > 1 {
-			bckSuffix = calleeParam.Name.Name
+			bckSuffix = paramSuffix(i, calleeParam.Name)
 		}
 		bckIdent := bckstmts.assignExprs(n.id, []ast.Expr{vjpCall}, 1, bckSuffix)
 		backwardIdents[i] = special.New(bckIdent[0])
@@ -336,6 +371,51 @@ func (n *binaryExpr) buildBackward(bckstmts *astOutWRT, bck *special.Expr) (*spe
 	}
 	xbck, xok := buildBackward(bckstmts, xres, n.x)
 	return special.Paren(special.Add(xbck, ybck)), xok && yok
+}
+
+type castExpr struct {
+	node[*ir.CastExpr]
+	x expr
+
+	fwd *ast.Ident
+}
+
+func (p *processor) processCastExpr(isrc *ir.CastExpr) (*castExpr, bool) {
+	x, ok := p.processExpr(isrc.X)
+	return &castExpr{
+		node: newNode[*ir.CastExpr](p, isrc),
+		x:    x,
+	}, ok
+}
+
+func (n *castExpr) dependsOn(bckstmts *astOutWRT) bool {
+	return n.x.dependsOn(bckstmts)
+}
+
+func (n *castExpr) fieldPath() []*ir.Field {
+	return nil
+}
+
+func (n *castExpr) buildForward(astmts *fwdStmts) ([]ast.Expr, bool) {
+	x, ok := buildSingleForward(astmts, n.x)
+	if !ok {
+		return nil, false
+	}
+	n.fwd = astmts.assignExpr(n.id, special.Cast(x, n.irnode.Typ))
+	return []ast.Expr{n.fwd}, true
+}
+
+func (n *castExpr) forwardValue() (*special.Expr, bool) {
+	return special.New(n.fwd), true
+}
+
+func (n *castExpr) buildBackward(bckstmts *astOutWRT, bck *special.Expr) (*special.Expr, bool) {
+	if !n.dependsOn(bckstmts) {
+		return special.ZeroExpr(), true
+	}
+	xbck := bck.Cast(n.irnode.X.Type())
+	xbck = bckstmts.assignSpecialExpr(n.id, xbck)
+	return buildBackward(bckstmts, xbck, n.x)
 }
 
 type numberCastExpr struct {

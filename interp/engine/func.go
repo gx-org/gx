@@ -15,11 +15,10 @@
 package engine
 
 import (
-	"go/ast"
-
 	"github.com/gx-org/gx/build/ir"
 	"github.com/gx-org/gx/internal/interp/coreiface"
 	"github.com/gx-org/gx/interp/context"
+	"github.com/gx-org/gx/src/gx/ast"
 )
 
 type (
@@ -38,10 +37,9 @@ type (
 
 	// Func is an element owning a callable function.
 	Func interface {
-		ir.Element
-		IR() ir.Func
+		ir.FuncElement
 		Recv() *Receiver
-		Call(env *Env, call *ir.FuncCallExpr, args []ir.Element) ([]ir.Element, error)
+		Call(env *Env, call *ir.FuncCallExpr, genArgs, args []ir.Element) ([]ir.Element, error)
 	}
 
 	// Selector selects a field given its index.
@@ -53,10 +51,12 @@ type (
 	// Runners provides implementations to run functions.
 	Runners interface {
 		// FuncDecl runs a function implemented in GX.
-		FuncDecl(fDecl *ir.FuncDecl, env *Env, call *ir.FuncCallExpr, recv Copier, args []ir.Element) ([]ir.Element, error)
+		FuncDecl(fDecl *ir.FuncDecl, env *Env, call *ir.FuncCallExpr, recv Copier, genArgs, args []ir.Element) ([]ir.Element, error)
 		// FuncLit runs a function literal.
 		FuncLit(lit *ir.FuncLit, env *Env, ctx *context.Context, call *ir.FuncCallExpr, args []ir.Element) ([]ir.Element, error)
-		// Builtin runs a function builtin in GX or provided by a backend.
-		Builtin(fn ir.Func, impl ir.FuncImpl, env *Env, call *ir.FuncCallExpr, recv Copier, args []ir.Element) ([]ir.Element, error)
+		// Builtin runs a function provided by a backend.
+		Builtin(fn *ir.FuncBuiltin, env *Env, call *ir.FuncCallExpr, recv Copier, genArgs, args []ir.Element) ([]ir.Element, error)
+		// Keyword runs a keyword in GX.
+		Keyword(fn *ir.FuncKeyword, env *Env, call *ir.FuncCallExpr, recv Copier, genArgs, args []ir.Element) ([]ir.Element, error)
 	}
 )

@@ -16,13 +16,13 @@
 package wrt
 
 import (
-	"go/ast"
 	"slices"
 	"strings"
 
 	"github.com/pkg/errors"
 	"github.com/gx-org/gx/build/ir"
 	"github.com/gx-org/gx/internal/astbuilder"
+	"github.com/gx-org/gx/src/gx/ast"
 )
 
 type core struct {

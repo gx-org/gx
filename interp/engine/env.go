@@ -22,87 +22,61 @@ import (
 	"github.com/gx-org/gx/interp/context"
 )
 
-type envContext interface {
-	context() *context.Context
-	file() *ir.File
-}
-
-type evalContext struct {
-	ctx *context.Context
-}
-
-func (ec evalContext) context() *context.Context {
-	return ec.ctx
-}
-
-func (ec evalContext) file() *ir.File {
-	return ec.ctx.File()
-}
-
-type proxyContext struct {
-	f *ir.File
-}
-
-func (proxyContext) context() *context.Context {
-	return nil
-}
-
-func (pc proxyContext) file() *ir.File {
-	return pc.f
-}
+// NewEval creates a new expression evaluator from an environment.
+type NewEval func(*Env) ir.Evaluator
 
 // Env is the environment of a function call.
 type Env struct {
-	ctx  envContext
-	expr ir.Evaluator
-	eng  Engine
-	run  Runners
-}
-
-// ProxyEnv returns a proxy implementation of the Env interface.
-func ProxyEnv(eng Engine, file *ir.File) *Env {
-	return &Env{ctx: proxyContext{f: file}, eng: eng}
+	reg   *Registry
+	ctx   *context.Context
+	newEv NewEval
+	eng   Engine
 }
 
 // NewEnv returns a new evaluation environment.
-func NewEnv(ctx *context.Context, exprEval ir.Evaluator, eng Engine, run Runners) *Env {
-	return &Env{ctx: evalContext{ctx: ctx}, expr: exprEval, eng: eng, run: run}
-}
-
-// WithRunners return a new function context for a given runners.
-func (env *Env) WithRunners(run Runners) *Env {
-	return NewEnv(env.ctx.context(), env.expr, env.eng, run)
+func NewEnv(reg *Registry, ctx *context.Context, newEv NewEval, eng Engine) *Env {
+	return &Env{reg: reg, ctx: ctx, newEv: newEv, eng: eng}
 }
 
 // File returns the current file where the code is being interpreted.
 func (env *Env) File() *ir.File {
-	return env.ctx.file()
+	return env.ctx.File()
 }
 
 // Context returns the context for the current interpreter.
 func (env *Env) Context() *context.Context {
-	return env.ctx.context()
+	return env.ctx
 }
 
 // ExprEval returns the expression evaluator of the environment.
 func (env *Env) ExprEval() ir.Evaluator {
-	return env.expr
+	return env.newEv(env)
 }
 
-// Engine returns the engine used for evaluations.
+// For returns an environment for a given function nature.
+func (env *Env) For(nature ir.FuncNature) *Env {
+	return NewEnv(env.reg, env.ctx, env.newEv, env.reg.Engine(nature))
+}
+
+// Engine returns the current engine used by the interpreter.
 func (env *Env) Engine() Engine {
 	return env.eng
 }
 
+// Registry returns the engine used for evaluations.
+func (env *Env) Registry() *Registry {
+	return env.reg
+}
+
 // Runners used to run functions.
 func (env *Env) Runners() Runners {
-	return env.run
+	return env.reg.Runners
 }
 
 func (env *Env) String() string {
 	var b strings.Builder
-	b.WriteString(fmt.Sprintf("Expression evaluator: %T\n", env.expr))
-	ctx := env.ctx.context()
+	b.WriteString(fmt.Sprintf("Expression evaluator: %T\n", env.newEv))
+	ctx := env.ctx
 	if ctx == nil {
 		return b.String()
 	}

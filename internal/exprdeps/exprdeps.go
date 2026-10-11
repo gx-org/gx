@@ -16,10 +16,10 @@
 package exprdeps
 
 import (
-	"go/ast"
 	"slices"
 
 	"github.com/gx-org/gx/base/ordered"
+	"github.com/gx-org/gx/src/gx/ast"
 )
 
 func idents(done *ordered.Map[string, *ast.Ident], expr ast.Expr) {

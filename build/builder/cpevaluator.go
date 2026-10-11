@@ -16,7 +16,6 @@ package builder
 
 import (
 	"fmt"
-	"go/ast"
 
 	gxfmt "github.com/gx-org/gx/base/fmt"
 	"github.com/gx-org/gx/build/fmterr"
@@ -24,6 +23,7 @@ import (
 	"github.com/gx-org/gx/internal/interp/compeval/cmp"
 	"github.com/gx-org/gx/interp/context"
 	"github.com/gx-org/gx/interp"
+	"github.com/gx-org/gx/src/gx/ast"
 )
 
 type compileEvaluator struct {
@@ -95,4 +95,8 @@ func (ev *compileEvaluator) Err() *fmterr.Appender {
 
 func (ev *compileEvaluator) String() string {
 	return gxfmt.String(ev.fitp)
+}
+
+func (ev *compileEvaluator) StringKeys() string {
+	return fmt.Sprint(ev.fitp.Context().CurrentFrame().Keys())
 }

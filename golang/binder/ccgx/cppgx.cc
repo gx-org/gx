@@ -19,7 +19,6 @@
 #include <cassert>
 #include <cstdint>
 #include <functional>
-#include <optional>
 #include <string>
 #include <utility>
 #include <vector>
@@ -148,18 +147,16 @@ absl::StatusOr<DeviceAtomic<uint64_t>> Device::Send(uint64_t val) {
 
 /* Package */
 
-absl::StatusOr<Interface> Package::FindInterface(
-    const std::string& name) const {
-  const auto result = cgx_interface_find(*package_, name.c_str());
+absl::StatusOr<Type> Package::FindInterface(const std::string& name) const {
+  const auto result = cgx_type_find(*package_, name.c_str());
   CPPGX_RETURN_IF_ERROR(result.error);
-  return Interface(result.iface);
+  return Type(result.iface);
 }
 
-absl::StatusOr<std::vector<Interface>> Package::ListInterfaces() const {
+absl::StatusOr<std::vector<Type>> Package::ListInterfaces() const {
   auto result = cgx_package_list_interfaces(*package_);
   CPPGX_RETURN_IF_ERROR(result.error);
-  std::vector<Interface> ifaces(result.ifaces,
-                                result.ifaces + result.num_ifaces);
+  std::vector<Type> ifaces(result.ifaces, result.ifaces + result.num_ifaces);
   cgx_free_list_interfaces_result(&result);
   return ifaces;
 }
@@ -297,6 +294,19 @@ std::vector<FunctionSignature::Field> FunctionSignature::ToFields(
 
 /* Value */
 
+absl::StatusOr<Value> Value::GetField(const std::string& name) const {
+  const auto result = cgx_value_field_get(raw(), name.c_str());
+  CPPGX_RETURN_IF_ERROR(result.error);
+  return Value(result.value);
+}
+
+absl::Status Value::SetField(const std::string& name,
+                             const Value& value) const {
+  const cgx_error err = cgx_value_field_set(raw(), name.c_str(), value.raw());
+  CPPGX_RETURN_IF_ERROR(err);
+  return absl::OkStatus();
+}
+
 absl::StatusOr<Value> Value::FromBool(const Device& device, bool value) {
   const cgx_value_new_result result = cgx_value_new_bool(device.raw(), value);
   CPPGX_RETURN_IF_ERROR(result.error);
@@ -368,18 +378,9 @@ std::string Value::string() const {
   return FromHeapCString(cgx_value_string(*value_));
 }
 
-absl::StatusOr<Struct> Value::as_struct() const {
-  const cgx_value_get_struct_result result = cgx_value_get_struct(*value_);
-  CPPGX_RETURN_IF_ERROR(result.error);
-  return Struct(result.strct);
-}
-
-std::optional<Interface> Value::interface_type(const Package& package) const {
-  cgx_interface iface = cgx_value_get_interface_type(package.raw(), *value_);
-  if (iface == cgx_interface{}) {
-    return std::nullopt;
-  }
-  return std::optional<Interface>(Interface(iface));
+Type Value::get_type(const Package& package) const {
+  cgx_type iface = cgx_value_get_type(package.raw(), *value_);
+  return Type(iface);
 }
 
 template <>
@@ -444,54 +445,40 @@ void* HostBuffer::Acquire() {
   return data_;
 }
 
-/* Struct */
+/* Type */
 
-absl::StatusOr<Value> Struct::GetField(const std::string& name) const {
-  const auto result = cgx_struct_field_get(raw(), name.c_str());
-  CPPGX_RETURN_IF_ERROR(result.error);
-  return Value(result.value);
-}
-
-absl::Status Struct::SetField(const std::string& name, const Value& value) {
-  const cgx_error err = cgx_struct_field_set(raw(), name.c_str(), value.raw());
-  CPPGX_RETURN_IF_ERROR(err);
-  return absl::OkStatus();
-}
-
-absl::StatusOr<std::vector<Struct::Field>> Struct::ListFields() const {
-  cgx_struct_field_list_result fields = cgx_struct_field_list(raw());
-  CPPGX_RETURN_IF_ERROR(fields.error);
-
-  std::vector<Struct::Field> result;
-  result.reserve(fields.field_size);
-  for (uint32_t i = 0; i < fields.field_size; ++i) {
-    result.push_back(
-        Field{std::string(fields.field[i].name), fields.field[i].kind});
-  }
-  cgx_free_struct_field_list_result(&fields);
-  return result;
-}
-
-/* Interface */
-
-absl::StatusOr<Function> Interface::FindMethod(const std::string& name) const {
-  const auto result = cgx_interface_method_find(*iface_, name.c_str());
+absl::StatusOr<Function> Type::FindMethod(const std::string& name) const {
+  const auto result = cgx_type_method_find(*typ_, name.c_str());
   CPPGX_RETURN_IF_ERROR(result.error);
   return Function(result.function);
 }
 
-std::string Interface::package_name() const {
-  return FromHeapCString(cgx_interface_package_name(*iface_));
+std::string Type::package_name() const {
+  return FromHeapCString(cgx_type_package_name(*typ_));
 }
 
-std::string Interface::name() const {
-  return FromHeapCString(cgx_interface_name(*iface_));
+std::string Type::string() const {
+  return FromHeapCString(cgx_type_string(*typ_));
 }
 
-absl::StatusOr<std::vector<Function>> Interface::ListMethods() const {
-  auto result = cgx_interface_list_methods(*iface_);
+std::string Type::name() const { return FromHeapCString(cgx_type_name(*typ_)); }
+
+absl::StatusOr<std::vector<Function>> Type::ListMethods() const {
+  auto result = cgx_type_list_methods(*typ_);
   CPPGX_RETURN_IF_ERROR(result.error);
   return make_function_vector(&result);
+}
+
+std::vector<std::string> Type::ListFields() const {
+  cgx_type_list_fields_result result = cgx_type_list_fields(raw());
+
+  std::vector<std::string> fields;
+  fields.reserve(result.num_fields);
+  for (uint32_t i = 0; i < result.num_fields; ++i) {
+    fields.push_back(std::string(result.fields[i]));
+  }
+  cgx_free_type_list_fields_result(&result);
+  return fields;
 }
 
 #undef CPPGX_RETURN_IF_ERROR

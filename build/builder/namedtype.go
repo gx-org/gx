@@ -15,13 +15,13 @@
 package builder
 
 import (
-	"go/ast"
 	"go/token"
 
 	"github.com/gx-org/gx/base/ordered"
 	"github.com/gx-org/gx/build/builder/irb"
 	"github.com/gx-org/gx/build/fmterr"
 	"github.com/gx-org/gx/build/ir"
+	"github.com/gx-org/gx/src/gx/ast"
 )
 
 // namedType is a node representing a named type declaration in GX source code.
@@ -88,13 +88,16 @@ func (n *namedType) buildUnderlying(pkgScope *pkgResolveScope, nType *ir.NamedTy
 	rscope, scopeOk := pkgScope.fileScope(n.file)
 	ephemeral, ephemeralOk := newEphemeralResolveScope(rscope, n.src)
 	typeParamsScope := newDefineScope(ephemeral, defineGenericParam)
-	var tParamsOk bool
-	nType.TypeParams, tParamsOk = n.typeParams.buildFieldList(typeParamsScope)
+	genParams, tParamsOk := n.typeParams.buildFieldList(typeParamsScope)
 	if !tParamsOk {
 		return false
 	}
+	nType.GenParams.SetFields(genParams)
 	var underOk bool
 	nType.Underlying, underOk = n.underlying.buildTypeExpr(ephemeral)
+	if structType, isStruct := ir.Underlying(nType.Underlying.Val()).(*ir.StructType); isStruct {
+		structType.GenParams = &nType.GenParams
+	}
 	return scopeOk && ephemeralOk && underOk
 }
 

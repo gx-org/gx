@@ -16,27 +16,28 @@ package grapheval
 
 import (
 	"fmt"
-	"go/ast"
 	"reflect"
 
 	"github.com/pkg/errors"
-	"github.com/gx-org/backend/ops"
-	"github.com/gx-org/backend/platform"
-	"github.com/gx-org/backend/shape"
+	"github.com/gomlx/compute"
+	"github.com/gomlx/compute/shapes"
 	"github.com/gx-org/gx/api/hostio"
 	"github.com/gx-org/gx/api/values"
 	"github.com/gx-org/gx/build/ir"
+	"github.com/gx-org/gx/build/ir/irkind"
 	"github.com/gx-org/gx/internal/base/cast"
 	"github.com/gx-org/gx/internal/interp/flatten"
+	"github.com/gx-org/gx/internal/togo"
 	"github.com/gx-org/gx/internal/tracer/processor"
 	"github.com/gx-org/gx/interp/elements"
 	"github.com/gx-org/gx/interp/engine"
 	"github.com/gx-org/gx/interp/materialise"
+	"github.com/gx-org/gx/src/gx/ast"
 )
 
 type (
 	argFetcher interface {
-		ValueFromContext(*hostio.FuncInputs) (ir.Element, error)
+		LastValue(*hostio.FuncInputs) (any, error)
 	}
 
 	parameterFetcher struct {
@@ -46,38 +47,38 @@ type (
 	receiverFetcher struct{}
 )
 
-func (f parameterFetcher) ValueFromContext(in *hostio.FuncInputs) (ir.Element, error) {
+func (f parameterFetcher) LastValue(in *hostio.FuncInputs) (any, error) {
 	return in.Args[f.paramIndex], nil
 }
 
-func (f receiverFetcher) ValueFromContext(in *hostio.FuncInputs) (ir.Element, error) {
+func (f receiverFetcher) LastValue(in *hostio.FuncInputs) (any, error) {
 	return in.Receiver, nil
 }
 
 type inputVisitor struct {
-	ev   *Evaluator
+	ao   *Ops
 	file *ir.File
 }
 
-func newInputVisitor(ev *Evaluator, file *ir.File) *inputVisitor {
-	return &inputVisitor{ev: ev, file: file}
+func newInputVisitor(ev *Ops, file *ir.File) *inputVisitor {
+	return &inputVisitor{ao: ev, file: file}
 }
 
 // ArgGX represents a GX argument.
-func (vis *inputVisitor) visitArg(field *ir.Field, index int, proxy ir.Element) (ir.Element, error) {
-	return vis.newRootArg(vis.ev, field, parameterFetcher{paramIndex: index}, proxy)
+func (vis *inputVisitor) visitArg(field *ir.Field, index int, proxy hostio.Value) (ir.Element, error) {
+	return vis.newRootArg(field, parameterFetcher{paramIndex: index}, proxy)
 }
 
 // Receiver represents a GX function call receiver.
 func (vis *inputVisitor) visitReceiver(field *ir.Field, proxy ir.Element) (ir.Element, error) {
-	return vis.newRootArg(vis.ev, field, receiverFetcher{}, proxy)
+	return vis.newRootArg(field, receiverFetcher{}, proxy)
 }
 
 type (
 	parentArgument interface {
+		togo.RuntimeValue
 		Name() string
-		ValueFromContext(*hostio.FuncInputs) (ir.Element, error)
-		Evaluator() *Evaluator
+		Ops() *Ops
 	}
 
 	// rootArgument is an argument passed to the GX interpreter from the host language.
@@ -91,7 +92,7 @@ type (
 
 var _ parentArgument = (*rootArgument)(nil)
 
-func (vis *inputVisitor) newRootArg(ev *Evaluator, field *ir.Field, fetcher argFetcher, proxy ir.Element) (ir.Element, error) {
+func (vis *inputVisitor) newRootArg(field *ir.Field, fetcher argFetcher, proxy ir.Element) (ir.Element, error) {
 	n := &rootArgument{
 		vis:        vis,
 		argFetcher: fetcher,
@@ -109,11 +110,14 @@ func (a *rootArgument) Type() ir.Type {
 	return a.typ
 }
 
-func (a *rootArgument) Evaluator() *Evaluator {
-	return a.vis.ev
+func (a *rootArgument) Ops() *Ops {
+	return a.vis.ao
 }
 
 func (vis *inputVisitor) newArg(parent parentArgument, typ ir.Type, proxy ir.Element) (ir.Element, error) {
+	if proxy.Type().Kind() == irkind.Unknown {
+		return proxy, nil
+	}
 	switch typT := typ.(type) {
 	case *ir.NamedType:
 		return vis.newNamedTypeArgument(parent, typT, proxy)
@@ -161,12 +165,16 @@ func (arg *namedTypeArgument) Name() string {
 	return arg.parent.Name() + "." + arg.typ.Name()
 }
 
-func (arg *namedTypeArgument) ValueFromContext(ctx *hostio.FuncInputs) (ir.Element, error) {
-	return arg.parent.ValueFromContext(ctx)
+func (arg *namedTypeArgument) Type() ir.Type {
+	return arg.typ
 }
 
-func (arg *namedTypeArgument) Evaluator() *Evaluator {
-	return arg.parent.Evaluator()
+func (arg *namedTypeArgument) LastValue(ctx *hostio.FuncInputs) (any, error) {
+	return arg.parent.LastValue(ctx)
+}
+
+func (arg *namedTypeArgument) Ops() *Ops {
+	return arg.parent.Ops()
 }
 
 type (
@@ -229,14 +237,10 @@ func (sel *fieldSelectorArgument) Name() string {
 	return sel.parent.Name() + "." + sel.fieldName
 }
 
-func (sel *fieldSelectorArgument) ValueFromContext(ctx *hostio.FuncInputs) (ir.Element, error) {
-	val, err := sel.parent.ValueFromContext(ctx)
+func (sel *fieldSelectorArgument) LastValue(ctx *hostio.FuncInputs) (any, error) {
+	structValue, err := togo.RtValueT[engine.Selector](ctx, sel.parent)
 	if err != nil {
 		return nil, err
-	}
-	structValue, err := cast.To[engine.Selector](val)
-	if err != nil {
-		return nil, errors.Errorf("%s is not a structure instance (type %s)", sel.parent.Name(), sel.parent.typ.ReferString(nil))
 	}
 	fieldVal, err := structValue.Select(nil, &ir.SelectorExpr{
 		Src: &ast.SelectorExpr{Sel: &ast.Ident{Name: sel.fieldName}},
@@ -250,8 +254,12 @@ func (sel *fieldSelectorArgument) ValueFromContext(ctx *hostio.FuncInputs) (ir.E
 	return fieldVal, nil
 }
 
-func (sel *fieldSelectorArgument) Evaluator() *Evaluator {
-	return sel.parent.Evaluator()
+func (sel *fieldSelectorArgument) Ops() *Ops {
+	return sel.parent.Ops()
+}
+
+func (sel *fieldSelectorArgument) Type() ir.Type {
+	return sel.field.Type()
 }
 
 type (
@@ -299,18 +307,19 @@ func (vis *inputVisitor) newSliceArgument(parent parentArgument, typ *ir.SliceTy
 	return elements.NewSlice(typ, args)
 }
 
+func (sel *indexSelectorArgument) Type() ir.Type {
+	tp, _ := sel.parent.typ.ElementType()
+	return tp
+}
+
 func (sel *indexSelectorArgument) Name() string {
 	return sel.parent.Name() + "." + fmt.Sprintf("[%d]", sel.index)
 }
 
-func (sel *indexSelectorArgument) ValueFromContext(ctx *hostio.FuncInputs) (ir.Element, error) {
-	el, err := sel.parent.ValueFromContext(ctx)
+func (sel *indexSelectorArgument) LastValue(ctx *hostio.FuncInputs) (any, error) {
+	sliceValue, err := togo.RtValueT[*values.Slice](ctx, sel.parent)
 	if err != nil {
 		return nil, err
-	}
-	sliceValue, ok := el.(*values.Slice)
-	if !ok {
-		return nil, errors.Errorf("%s is not a structure instance (type %s)", sel.parent.Name(), sel.parent.typ.ReferString(nil))
 	}
 	val := sliceValue.Element(sel.index)
 	if val == nil {
@@ -319,8 +328,8 @@ func (sel *indexSelectorArgument) ValueFromContext(ctx *hostio.FuncInputs) (ir.E
 	return val, nil
 }
 
-func (sel *indexSelectorArgument) Evaluator() *Evaluator {
-	return sel.parent.Evaluator()
+func (sel *indexSelectorArgument) Ops() *Ops {
+	return sel.parent.Ops()
 }
 
 var _ parentArgument = (*indexSelectorArgument)(nil)
@@ -329,10 +338,10 @@ type arrayArgument struct {
 	parentArgument
 	typ ir.ArrayType
 
-	file           *ir.File
-	shape          *shape.Shape
-	graphCallIndex int
-	node           *BackendNode
+	file  *ir.File
+	shape shapes.Shape
+	index int
+	node  *BackendNode
 }
 
 var (
@@ -345,33 +354,38 @@ var (
 	_ elements.WithAxes               = (*arrayArgument)(nil)
 	_ elements.EvalShaper             = (*arrayArgument)(nil)
 	_ graphNode                       = (*arrayArgument)(nil)
+	_ togo.RuntimeValue               = (*arrayArgument)(nil)
 )
 
 // NewArrayArgument creates a new argument element that the graph can also use as an argument.
-func (ev *Evaluator) NewArrayArgument(file *ir.File, parent parentArgument, typ ir.ArrayType, sh *shape.Shape) (elements.ElementWithArrayFromContext, error) {
-	vis := &inputVisitor{file: file, ev: ev}
+func (ao *Ops) NewArrayArgument(file *ir.File, parent parentArgument, typ ir.ArrayType, sh shapes.Shape) (engine.NumericalElement, error) {
+	vis := &inputVisitor{file: file, ao: ao}
 	return vis.newArrayArgument(parent, typ, sh)
 }
 
-func (n *arrayArgument) out() ops.Node {
+func (n *arrayArgument) out() compute.Value {
 	return n.node.out()
 }
 
 // NewArrayArgument creates a new argument element that the graph can also use as an argument.
-func (vis *inputVisitor) newArrayArgument(parent parentArgument, typ ir.ArrayType, sh *shape.Shape) (elements.ElementWithArrayFromContext, error) {
+func (vis *inputVisitor) newArrayArgument(parent parentArgument, typ ir.ArrayType, sh shapes.Shape) (engine.NumericalElement, error) {
 	n := &arrayArgument{
 		parentArgument: parent,
 		typ:            typ,
 		shape:          sh,
 		file:           vis.file,
 	}
-	n.graphCallIndex = vis.ev.process.RegisterArg(n)
+	n.index = vis.ao.process.RegisterArg(n)
 	return n, nil
+}
+
+func (n *arrayArgument) Name() string {
+	return fmt.Sprintf("%s.%d", n.parentArgument.Name(), n.index)
 }
 
 // UnaryOp applies a unary operator on x.
 func (n *arrayArgument) UnaryOp(env *engine.Env, expr *ir.UnaryExpr) (engine.NumericalElement, error) {
-	node, err := n.materialise(n.parentArgument.Evaluator().Materialiser())
+	node, err := n.materialise(n.parentArgument.Ops())
 	if err != nil {
 		return nil, err
 	}
@@ -381,7 +395,7 @@ func (n *arrayArgument) UnaryOp(env *engine.Env, expr *ir.UnaryExpr) (engine.Num
 // BinaryOp applies a binary operator to x and y.
 // Note that the receiver can be either the left or right argument.
 func (n *arrayArgument) BinaryOp(env *engine.Env, expr *ir.BinaryExpr, y engine.NumericalElement) (engine.NumericalElement, error) {
-	node, err := n.materialise(n.parentArgument.Evaluator().Materialiser())
+	node, err := n.materialise(n.parentArgument.Ops())
 	if err != nil {
 		return nil, err
 	}
@@ -390,7 +404,7 @@ func (n *arrayArgument) BinaryOp(env *engine.Env, expr *ir.BinaryExpr, y engine.
 
 // Cast an element into a given data type.
 func (n *arrayArgument) Cast(env *engine.Env, expr ir.Expr, target ir.Type) (engine.NumericalElement, error) {
-	node, err := n.materialise(n.parentArgument.Evaluator().Materialiser())
+	node, err := n.materialise(n.parentArgument.Ops())
 	if err != nil {
 		return nil, err
 	}
@@ -399,7 +413,7 @@ func (n *arrayArgument) Cast(env *engine.Env, expr ir.Expr, target ir.Type) (eng
 
 // Reshape an element.
 func (n *arrayArgument) Reshape(env *engine.Env, expr ir.Expr, axisLengths []engine.NumericalElement) (engine.NumericalElement, error) {
-	node, err := n.materialise(n.parentArgument.Evaluator().Materialiser())
+	node, err := n.materialise(n.parentArgument.Ops())
 	if err != nil {
 		return nil, err
 	}
@@ -410,14 +424,14 @@ func (n *arrayArgument) materialise(mat materialise.Materialiser) (*BackendNode,
 	if n.node != nil {
 		return n.node, nil
 	}
-	op, err := mat.Graph().Core().Argument(n.Name(), n.shape, n.graphCallIndex)
+	op, err := mat.Graph().Parameter(n.Name(), n.shape, nil)
 	if err != nil {
 		return nil, err
 	}
 	n.node, err = NewBackendNode(
-		mat.(*arrayOps).ev,
+		mat.(*Ops),
 		n.typ,
-		&ops.OutputNode{
+		&materialise.OutputNode{
 			Node:  op,
 			Shape: n.shape,
 		})
@@ -433,50 +447,42 @@ func (n *arrayArgument) Materialise(mat materialise.Materialiser) (materialise.N
 }
 
 // Shape returns the shape of the element.
-func (n *arrayArgument) Shape() *shape.Shape {
+func (n *arrayArgument) Shape() shapes.Shape {
 	return n.shape
 }
 
 // Shape returns the shape of the element.
-func (n *arrayArgument) EvalShape() (*shape.Shape, error) {
+func (n *arrayArgument) EvalShape() (shapes.Shape, error) {
 	return n.shape, nil
 }
 
 func (n *arrayArgument) Axes(ev ir.Evaluator) (*elements.Slice, error) {
-	return n.node.ev.axesFromShape(ev, n.shape.AxisLengths)
+	return n.node.ao.axesFromShape(ev, n.shape.Dimensions)
 }
 
 func (n *arrayArgument) Length(ev ir.Evaluator) (int, error) {
-	return n.shape.OuterAxisLength(), nil
+	return shapeLength(n.Shape())
 }
 
-func (n *arrayArgument) ToDeviceHandle(dev platform.Device, in *hostio.FuncInputs) (platform.DeviceHandle, error) {
-	array, err := n.ArrayFromContext(in)
+func (n *arrayArgument) ToDeviceHandle(plat compute.Backend, dev compute.DeviceNum, in *hostio.FuncInputs) (compute.Buffer, error) {
+	array, err := togo.RtValueT[hostio.Array](in, n)
 	if err != nil {
 		return nil, err
 	}
-	return toDevice(dev, array)
+	return toDevice(plat, dev, array)
 }
 
-func toDevice(dev platform.Device, arr hostio.Array) (platform.DeviceHandle, error) {
-	deviceArray, err := arr.ToDevice(dev)
+func toDevice(plat compute.Backend, dev compute.DeviceNum, arr hostio.Array) (compute.Buffer, error) {
+	deviceArray, err := arr.ToDevice(plat, dev)
 	if err != nil {
 		return nil, err
 	}
-	return deviceArray.DeviceHandle(), nil
+	return deviceArray.Buffer(), nil
 }
 
 // NumericalConstant returns the value of a constant represented by a node.
-func (n *arrayArgument) ArrayFromContext(in *hostio.FuncInputs) (hostio.Array, error) {
-	value, err := n.parentArgument.ValueFromContext(in)
-	if err != nil {
-		return nil, err
-	}
-	array, ok := value.(hostio.Array)
-	if !ok {
-		return nil, errors.Errorf("%s:%T is not an assigned numerical value", n.parentArgument.Name(), value)
-	}
-	return array, nil
+func (n *arrayArgument) LastValue(in *hostio.FuncInputs) (any, error) {
+	return n.parentArgument.LastValue(in)
 }
 
 func (n *arrayArgument) Copy() engine.Copier {
@@ -494,7 +500,7 @@ func (n *arrayArgument) Unflatten(handles *flatten.Parser) (hostio.Value, error)
 
 // SliceAt of the value on the first axis given an index.
 func (n *arrayArgument) SliceAt(env *engine.Env, expr *ir.IndexExpr, index engine.NumericalElement) (ir.Element, error) {
-	node, err := n.materialise(n.Evaluator().Materialiser())
+	node, err := n.materialise(n.Ops())
 	if err != nil {
 		return nil, err
 	}
@@ -508,7 +514,7 @@ func (n *arrayArgument) Slice(env *engine.Env, expr *ir.SliceExpr, low, high eng
 
 // SliceArray of the value on the first axis given an index.
 func (n *arrayArgument) SliceArray(expr ir.Expr, index engine.NumericalElement) (engine.NumericalElement, error) {
-	node, err := n.materialise(n.Evaluator().Materialiser())
+	node, err := n.materialise(n.Ops())
 	if err != nil {
 		return nil, err
 	}

@@ -15,11 +15,10 @@
 package builtins
 
 import (
-	"go/ast"
-
 	"github.com/pkg/errors"
 	"github.com/gx-org/gx/build/ir"
 	"github.com/gx-org/gx/build/ir/irkind"
+	"github.com/gx-org/gx/src/gx/ast"
 )
 
 type axlengthsFunc struct{}
@@ -37,11 +36,12 @@ func (*axlengthsFunc) Name() string {
 }
 
 // BuildFuncType builds the type of a function given how it is called.
-func (f *axlengthsFunc) BuildFuncType(tpcmp ir.TypeCmp, call *ir.FuncCallExpr) (*ir.FuncType, error) {
+func (f *axlengthsFunc) BuildFuncType(tpcmp ir.TypeEval, call *ir.FuncCallExpr) (*ir.FuncType, error) {
 	ext := &ir.FuncType{
 		BaseType: ir.BaseType[*ast.FuncType]{
 			Src: &ast.FuncType{Func: call.Src.Pos()},
 		},
+		Nature: ir.FuncNature{CompEval: true},
 	}
 	if len(call.Args) != 1 {
 		return ext, errors.Errorf("wrong number of arguments to axlengths: expected 1, found %d", len(call.Args))

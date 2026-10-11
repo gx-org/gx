@@ -16,12 +16,12 @@
 package builder_test
 
 import (
-	"go/ast"
 	"testing"
 
 	"github.com/gx-org/gx/build/builder/testbuild"
 	"github.com/gx-org/gx/build/ir"
 	"github.com/gx-org/gx/build/ir/irhelper"
+	"github.com/gx-org/gx/src/gx/ast"
 )
 
 var intTypeSet = irhelper.TypeSet(ir.Int32Type(), ir.Int64Type())
@@ -171,7 +171,7 @@ type (
 		int | int32 | int64 | uint32 | uint64
 	}
 
-	Num interface {
+	Nums interface {
 		Floats | Ints
 	}
 )
@@ -228,7 +228,7 @@ func f[T someInt]() T {
 			Src: `
 import "dtype"
 
-func f[S []int, T dtype.Num](a [unpack(S)]T) [unpack(S)]T {
+func f[S []int, T dtype.Nums](a [unpack(S)]T) [unpack(S)]T {
 	return a+2
 }
 `,
@@ -249,19 +249,19 @@ func g[T someInt, X []int](x [unpack(X)]T) T
 			Src: `
 import "dtype"
 
-func f[S []int, T dtype.Num](x [unpack(S)]T) [unpack(S)]T {
+func f[S []int, T dtype.Nums](x [unpack(S)]T) [unpack(S)]T {
 	y := g[S,T](x)
 	return x / y
 }
 
-func g[S []int, T dtype.Num](x [unpack(S)]T) T
+func g[S []int, T dtype.Nums](x [unpack(S)]T) T
 `,
 		},
 		testbuild.Decl{
 			Src: `
 import "dtype"
 
-func g[T dtype.Num](a T) T
+func g[T dtype.Nums](a T) T
 
 func f() int {
 	return g(10)
@@ -272,7 +272,7 @@ func f() int {
 			Src: `
 import "dtype"
 
-func g[T dtype.Num](a T) T
+func g[T dtype.Nums](a T) T
 
 func f() float64 {
 	return g(10.0)
@@ -283,7 +283,7 @@ func f() float64 {
 			Src: `
 import "dtype"
 
-func g[T dtype.Num](a, b T) T
+func g[T dtype.Nums](a, b T) T
 
 func f() float32 {
 	a := float32(1)
@@ -306,7 +306,7 @@ func f() [2][3]float32 {
 			Src: `
 import "dtype"
 
-func g[T dtype.Num, X []int](a T, x [unpack(X)]T) [unpack(X)]T
+func g[T dtype.Nums, X []int](a T, x [unpack(X)]T) [unpack(X)]T
 
 func f() [2][3]float32 {
 	return g(10, [2][3]float32{{1, 2, 3}, {4, 5, 6}})
@@ -345,7 +345,7 @@ func TestGenericCastWithGenericShape() [2][3]int64 {
 			Src: `
 import "dtype"
 
-func g[X, Y []int, T dtype.Num]([unpack(X)]T, [unpack(Y)]T) [unpack(X)]T
+func g[X, Y []int, T dtype.Nums]([unpack(X)]T, [unpack(Y)]T) [unpack(X)]T
 
 func f() [2]float32 {
 	return g([2]float32{}, 2)

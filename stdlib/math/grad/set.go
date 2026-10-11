@@ -15,12 +15,11 @@
 package grad
 
 import (
-	"go/ast"
-
 	"github.com/gx-org/gx/build/ir"
 	"github.com/gx-org/gx/interp/elements"
 	"github.com/gx-org/gx/interp"
-	"github.com/gx-org/gx/stdlib/math/grad/setann"
+	"github.com/gx-org/gx/src/gx/ast"
+	"github.com/gx-org/gx/stdlib/math/grad/gradann"
 )
 
 // SetGrad sets the gradient of a function.
@@ -58,9 +57,22 @@ func SetGradFor(fetcher ir.Fetcher, ann *ir.AnnotatorFunc, fn ir.PkgFunc, call *
 	return annotate(fetcher, ann, fn, call, paramName, paramPos, args[1])
 }
 
+// SetVJP sets the VJP of a function.
+func SetVJP(fetcher ir.Fetcher, ann *ir.AnnotatorFunc, fn ir.PkgFunc, call *ir.FuncCallExpr, args []ir.Element) bool {
+	gradAnn := gradann.GetDef(fn)
+	gradFn, err := interp.PkgFuncFromElement(args[0])
+	if err != nil {
+		return fetcher.Err().AppendAt(call.Node(), err)
+	}
+	if err := gradAnn.SetVJP(gradFn); err != nil {
+		return fetcher.Err().Appendf(call.Node(), "cannot set VJP: %s", err)
+	}
+	return true
+}
+
 func annotate(fetcher ir.Fetcher, ann *ir.AnnotatorFunc, fn ir.PkgFunc, call *ir.FuncCallExpr, paramName string, paramPos int, gradEl ir.Element) bool {
-	paramToFunc := setann.GetDef(fn)
-	prev := paramToFunc.Partials[paramPos]
+	paramToFunc := gradann.GetDef(fn)
+	prev := paramToFunc.Partial(paramPos)
 	if prev != nil {
 		return fetcher.Err().Appendf(call.Node(), "gradient for parameter %s has already been set", paramName)
 	}
@@ -68,7 +80,9 @@ func annotate(fetcher ir.Fetcher, ann *ir.AnnotatorFunc, fn ir.PkgFunc, call *ir
 	if err != nil {
 		return fetcher.Err().AppendAt(call.Node(), err)
 	}
-	paramToFunc.Partials[paramPos] = gradFn
+	if err := paramToFunc.SetPartial(paramPos, gradFn); err != nil {
+		return fetcher.Err().Appendf(call.Node(), "cannot set gradient: %s", err)
+	}
 	return true
 }
 
@@ -84,12 +98,12 @@ func findNameInFields(paramName string, fields *ir.FieldList) int {
 	return -1
 }
 
-func gradFromAnnotation(fetcher ir.Fetcher, src ir.Func, paramToFunc *setann.Annotation, wrt string) (*ast.Ident, bool) {
+func gradFromAnnotation(fetcher ir.Fetcher, src ir.Func, paramToFunc *gradann.Annotation, wrt string) (*ast.Ident, bool) {
 	paramPos := findNameInFields(wrt, src.FuncType().Params)
 	if paramPos < 0 {
 		return nil, fetcher.Err().Appendf(src.Node(), "function %s has no parameter %s", src.ShortString(), wrt)
 	}
-	pkgFunc := paramToFunc.Partials[paramPos]
+	pkgFunc := paramToFunc.Partial(paramPos)
 	if pkgFunc == nil {
 		return nil, fetcher.Err().Appendf(src.Node(), "no gradient defined for parameter %s of function %s", wrt, src.ShortString())
 	}

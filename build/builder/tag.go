@@ -15,12 +15,12 @@
 package builder
 
 import (
-	"go/ast"
 	"strconv"
 	"strings"
 
 	"github.com/gx-org/gx/base/ordered"
 	"github.com/gx-org/gx/build/ir"
+	"github.com/gx-org/gx/src/gx/ast"
 )
 
 type tag struct {

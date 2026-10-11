@@ -15,11 +15,11 @@
 package builder
 
 import (
-	"go/ast"
-
 	"github.com/gx-org/gx/build/fmterr"
 	"github.com/gx-org/gx/build/ir"
 	"github.com/gx-org/gx/build/ir/irkind"
+	"github.com/gx-org/gx/internal/undef"
+	"github.com/gx-org/gx/src/gx/ast"
 )
 
 type (
@@ -205,7 +205,11 @@ func convertTo(rscope resolveScope, src, dst ir.Type) (bool, error) {
 	if !compEvalOk {
 		return true, nil
 	}
-	return src.ConvertibleTo(compEval, dst)
+	ok, err := src.ConvertibleTo(compEval, dst)
+	if undef.Is(err) {
+		return true, nil
+	}
+	return ok, err
 }
 
 func equalToAt(rscope resolveScope, pos ast.Node, src, dst ir.Type) bool {
@@ -265,7 +269,7 @@ func invalidStore() ir.Storage {
 }
 
 var invalidTypeExprVal = ir.TypeExpr(
-	invalidExpr(),
+	invalidExpr().Expr(),
 	ir.InvalidType(),
 )
 
@@ -309,6 +313,14 @@ func castNilAndNumber(scope resolveScope, expr ir.Expr, target ir.Type) (ir.Expr
 		return castNil(scope, expr, target)
 	}
 	return expr, !isInvalidExpr(expr) && ir.IsValid(target)
+}
+
+func checkSingleValue(rscope resolveScope, pos ast.Node, expr ir.Expr) bool {
+	tpl, isTuple := expr.Type().(*ir.TupleType)
+	if !isTuple || len(tpl.Types) == 1 {
+		return true
+	}
+	return rscope.Err().Appendf(pos, "multiple-value (value of type %s) in single-value context", tpl.ReferString(rscope.fileScope().irFile()))
 }
 
 type fileWithError struct {

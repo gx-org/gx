@@ -15,8 +15,6 @@
 package grad
 
 import (
-	"go/ast"
-
 	"github.com/pkg/errors"
 	"github.com/gx-org/gx/api/hostio"
 	"github.com/gx-org/gx/api/values"
@@ -24,6 +22,7 @@ import (
 	"github.com/gx-org/gx/internal/interp/flatten"
 	"github.com/gx-org/gx/interp/elements"
 	"github.com/gx-org/gx/interp"
+	"github.com/gx-org/gx/src/gx/ast"
 	"github.com/gx-org/gx/stdlib/math/grad/revgraph"
 )
 

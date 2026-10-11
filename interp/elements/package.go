@@ -39,20 +39,42 @@ func (pkg *Package) Type() ir.Type {
 	return ir.PackageType()
 }
 
+// Find an element given its name.
+func (pkg *Package) Find(name string) (ir.Element, error) {
+	el, _ := pkg.defs.Find(name)
+	return el, nil
+}
+
 // Package encapsulated.
 func (pkg *Package) Package() *ir.Package {
 	return pkg.pkg
 }
 
-// String returns a string representation of the node.
-func (pkg *Package) String() string {
-	return "package"
+type runtimePackage struct {
+	pkg *ir.Package
+}
+
+// RuntimePackage creates a proxy runtime package used at compile time to disable the compiler checks.
+func RuntimePackage(pkg *ir.Package) (ir.PackageElement, error) {
+	return &runtimePackage{pkg: pkg}, nil
+}
+
+func (pkg *runtimePackage) Type() ir.Type {
+	return ir.PackageType()
+}
+
+func (pkg *runtimePackage) Find(name string) (ir.Element, error) {
+	return Unknown(), nil
+}
+
+func (pkg *runtimePackage) Package() *ir.Package {
+	return pkg.pkg
 }
 
 // Import is an element representing an import in a file.
 type Import struct {
-	imp *ir.ImportDecl
-	pkg *Package
+	pkg  ir.PackageElement
+	stor ir.Storage
 }
 
 var (
@@ -61,8 +83,8 @@ var (
 )
 
 // NewImport returns a new import element for a given package.
-func NewImport(imp *ir.ImportDecl, pkg ir.PackageElement) ir.Element {
-	return &Import{imp: imp, pkg: pkg.(*Package)}
+func NewImport(pkg ir.PackageElement, stor ir.Storage) ir.Element {
+	return &Import{pkg: pkg, stor: stor}
 }
 
 // Type of the element.
@@ -72,19 +94,22 @@ func (imp *Import) Type() ir.Type {
 
 // Store returns the IR storage.
 func (imp *Import) Store() ir.Storage {
-	return imp.imp
+	return imp.stor
 }
 
 // Select a member of the package.
 func (imp *Import) Select(env *engine.Env, expr *ir.SelectorExpr) (ir.Element, error) {
 	name := expr.Stor.NameDef().Name
-	el, ok := imp.pkg.defs.Find(name)
-	if !ok {
-		return nil, errors.Errorf("%s.%s undefined", imp.pkg.pkg.Name, name)
+	el, err := imp.pkg.Find(name)
+	if err != nil {
+		return nil, err
+	}
+	if el == nil {
+		pkgName := imp.pkg.Package().Path()
+		if imp.stor != nil {
+			pkgName = imp.stor.NameDef().Name
+		}
+		return nil, errors.Errorf("%s.%s undefined", pkgName, name)
 	}
 	return el, nil
-}
-
-func (imp *Import) String() string {
-	return imp.pkg.pkg.Path()
 }

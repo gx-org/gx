@@ -17,10 +17,11 @@ package genast
 
 import (
 	"fmt"
-	"go/ast"
 	"go/token"
 	"path"
 	"strconv"
+
+	"github.com/gx-org/gx/src/gx/ast"
 )
 
 // Nil returns the nil identifier.

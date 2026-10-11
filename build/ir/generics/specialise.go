@@ -16,41 +16,68 @@ package generics
 
 import (
 	"fmt"
-	"go/ast"
 	"strings"
 
+	"github.com/gx-org/gx/build/fmterr"
 	"github.com/gx-org/gx/build/ir"
+	"github.com/gx-org/gx/src/gx/ast"
 )
 
 type specialiser struct {
-	ir.Fetcher
-	fn           *ir.FuncValExpr
-	ftype        *ir.FuncType
+	from         *ir.File
+	x            ir.Expr
+	gtype        ir.GenericType
 	defined      []ir.GenericValue
 	tparamFields []*ir.Field
+	fetcher      ir.Fetcher
+
+	defaultInstErr func(*specialiser, ast.Node, error) bool
+
+	instantiatingResults *ir.FuncType
 }
 
-var _ ir.Specialiser = (*specialiser)(nil)
+var _ ir.Instantiator = (*specialiser)(nil)
 
-func checkTypeParams(ftype *ir.FuncType, defined []ir.GenericValue) {
-	if len(defined) != ftype.Origin().GenParams.Fields.Len() {
-		panic(fmt.Sprintf("defined: %d but TypeParams is %d", len(defined), ftype.Origin().GenParams.Fields.Len()))
-	}
-}
-
-func newSpecialiser(fetcher ir.Fetcher, fExpr *ir.FuncValExpr, ftype *ir.FuncType, defined []ir.GenericValue) *specialiser {
-	checkTypeParams(ftype, defined)
+func newSpecialiser(from *ir.File, x ir.Expr, fetcher ir.Fetcher, defaultInstErr func(*specialiser, ast.Node, error) bool, gtype ir.GenericType, defined []ir.GenericValue) *specialiser {
 	return &specialiser{
-		fn:           fExpr,
-		Fetcher:      fetcher,
-		ftype:        ftype,
-		defined:      defined,
-		tparamFields: ftype.Origin().GenParams.Fields.Fields(),
+		from:           from,
+		x:              x,
+		fetcher:        fetcher,
+		gtype:          gtype,
+		defined:        defined,
+		tparamFields:   gtype.Origin().Generics().Fields.Fields(),
+		defaultInstErr: defaultInstErr,
 	}
+}
+
+func (s *specialiser) StartResults(ftype *ir.FuncType) {
+	if s.instantiatingResults != nil {
+		return
+	}
+	s.instantiatingResults = ftype
+}
+
+func (s *specialiser) InstantiantingResults() bool {
+	return s.instantiatingResults != nil
+}
+
+func (s *specialiser) StopResults(ftype *ir.FuncType) {
+	if ftype != s.instantiatingResults {
+		return
+	}
+	s.instantiatingResults = nil
 }
 
 func (s *specialiser) IsDefined(pos int) bool {
 	return s.defined[pos] != nil
+}
+
+func (s *specialiser) Fetcher() ir.Fetcher {
+	return s.fetcher
+}
+
+func (s *specialiser) From() (*ir.File, ir.Expr) {
+	return s.from, s.x
 }
 
 func (s *specialiser) valueOf(genParam ir.GenericParam) ir.GenericValue {
@@ -94,31 +121,52 @@ func (s *specialiser) Values() []ir.GenericValue {
 }
 
 func (s *specialiser) Source() ast.Expr {
-	return s.fn.Expr()
+	return s.x.Expr()
 }
 
-func (s *specialiser) InstantiateError(sigSrc ast.Node, err error) bool {
+func (s *specialiser) File() *ir.File {
+	return s.fetcher.File()
+}
+
+func (s *specialiser) Err() *fmterr.Appender {
+	return s.fetcher.Err()
+}
+
+func (s *specialiser) InstantiateError(src ast.Node, err error) bool {
+	if s.defaultInstErr != nil {
+		return s.defaultInstErr(s, src, err)
+	}
+	return s.Err().AppendAt(src, err)
+}
+
+func funcTypeInstantiateError(s *specialiser, fn *ir.FuncValExpr, sigSrc ast.Node, err error) bool {
 	// sigSrc is the call from the function signature.
 	src := sigSrc
-	if s.fn != nil {
+	if fn != nil {
 		// set the location of the error to the call site of the function instead of its signature.
-		src = s.fn.Node()
+		src = fn.Node()
 	}
 	compileErr, isCompileErr := err.(*ir.CompileError)
 	if !isCompileErr {
 		return s.Err().AppendAt(src, err)
 	}
-	if s.fn == nil {
+	if fn == nil {
 		// The error is from the function signature.
 		return s.Err().AppendAt(src, err)
 	}
-	return s.Err().Appendf(src, "in call to %s: %v", s.fn.ShortString(s.File()), compileErr)
+	return s.Err().Appendf(src, "in call to %s: %v", fn.ShortString(s.File()), compileErr)
+}
+
+func fTypeError(fn *ir.FuncValExpr) func(*specialiser, ast.Node, error) bool {
+	return func(s *specialiser, src ast.Node, err error) bool {
+		return funcTypeInstantiateError(s, fn, src, err)
+	}
 }
 
 func (s *specialiser) String() string {
 	b := strings.Builder{}
 	fmt.Fprintln(&b, "Scope:")
-	fields := s.ftype.Origin().GenParams.Fields.Fields()
+	fields := s.gtype.Origin().Generics().Fields.Fields()
 	for i, v := range s.defined {
 		fmt.Fprintf(&b, "\t%d:%s %s->", i, fields[i].Name.Name, fields[i].Type().ReferString(nil))
 		s := "nil"
@@ -128,7 +176,7 @@ func (s *specialiser) String() string {
 		fmt.Fprintln(&b, s)
 	}
 	fmt.Fprintln(&b, "Fetcher:")
-	fmt.Fprint(&b, s.Fetcher)
+	fmt.Fprint(&b, s.Fetcher())
 	return b.String()
 }
 
@@ -149,21 +197,26 @@ func toTypeValue(fetcher ir.Fetcher, field *ir.Field, x ir.Expr) (ir.GenericValu
 	return ir.NewTypeExprGenericValue(genericIdentType, typeValExpr), true
 }
 
+// SpecialiseStruct specialises a structure given type values.
+func SpecialiseStruct(fetcher ir.Fetcher, expr ir.Expr, st *ir.StructType, typArgs []ir.GenericValue) (*ir.TypeValExpr, bool) {
+	spec := newSpecialiser(fetcher.File(), expr, fetcher, nil, st, typArgs)
+	specType, ok := st.SpecialiseStruct(spec)
+	return ir.TypeExpr(expr.Expr(), specType), ok
+}
+
 // SpecialiseParams a function signature for a given type.
 func SpecialiseParams(fetcher ir.Fetcher, expr ir.Expr, fun *ir.FuncValExpr, typArgs []ir.GenericValue) (*ir.FuncValExpr, bool) {
 	ftype := fun.FuncType()
-	spec := newSpecialiser(fetcher, fun, ftype, typArgs)
-	specType, ok := ftype.SpecialiseFType(spec, true)
-	checkTypeParams(specType, specType.GenParams.Values)
+	spec := newSpecialiser(fetcher.File(), fun, fetcher, fTypeError(fun), ftype, typArgs)
+	specType, ok := ftype.SpecialiseFType(spec)
 	return ir.NewFuncValExpr(expr, fun.Func()).NewFType(specType), ok
 }
 
 // Instantiate specialises the result of a function.
 // fun can be nil when the type is instantiated for its definition.
-func Instantiate(fetcher ir.Fetcher, fun *ir.FuncValExpr, ftype *ir.FuncType) (*ir.FuncType, bool) {
+func Instantiate(from *ir.File, fun *ir.FuncValExpr, fetcher ir.Fetcher, ftype *ir.FuncType) (*ir.FuncType, bool) {
 	typArgs := ftype.GenParams.Values
-	spec := newSpecialiser(fetcher, fun, ftype, typArgs)
+	spec := newSpecialiser(from, fun, fetcher, fTypeError(fun), ftype, typArgs)
 	instantiateFType, ok := ftype.InstantiateFType(fetcher, spec)
-	checkTypeParams(instantiateFType, instantiateFType.GenParams.Values)
 	return instantiateFType, ok
 }

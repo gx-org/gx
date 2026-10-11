@@ -16,17 +16,17 @@ package constants
 
 import (
 	"fmt"
-	"go/ast"
 	"math/big"
 
-	"github.com/gx-org/backend/ops"
+	"github.com/gomlx/compute"
+	"github.com/gx-org/gx/api/hostio"
 	"github.com/gx-org/gx/build/ir"
 	"github.com/gx-org/gx/build/ir/irkind"
 	"github.com/gx-org/gx/internal/interp/compeval/cmp"
 	"github.com/gx-org/gx/internal/interp/coreiface"
 	"github.com/gx-org/gx/internal/interp/csteager"
-	"github.com/gx-org/gx/internal/togo"
 	"github.com/gx-org/gx/interp/engine"
+	"github.com/gx-org/gx/src/gx/ast"
 )
 
 // Scalar is an integer or a float scalar number.
@@ -34,7 +34,7 @@ type Scalar interface {
 	Constant
 	engine.ScalarConstant
 	csteager.Eval
-	togo.WithGoValue
+	hostio.CompileValue
 }
 
 type scalar struct {
@@ -53,12 +53,16 @@ func (n *scalar) Type() ir.Type {
 }
 
 // Build the constant into a given graph.
-func (n *scalar) BuildNode(g ops.Graph, kind irkind.Kind) (ops.Node, error) {
-	val, err := n.Atom(kind)
+func (n *scalar) BuildNode(g compute.Function, kind irkind.Kind) (compute.Value, error) {
+	cvr, err := ConverterFromKind(toBackendKind(kind))
 	if err != nil {
 		return nil, err
 	}
-	return g.Core().NewAtomLiteral(val)
+	vals, err := cvr.convertSlice(1, []engine.AtomConstant{n})
+	if err != nil {
+		return nil, err
+	}
+	return g.Constant(vals)
 }
 
 // Number representing the constant scalar.

@@ -9,11 +9,11 @@ type (
 		int | int32 | int64 | uint32 | uint64
 	}
 
-	Num interface {
+	Nums interface {
 		Floats | Ints
 	}
 )
 
 // Source and target types must have the same size for now; different sizes requires calculating a
 // different result shape.
-func Reinterpret[T, S Num, M []int]([unpack(M)]S) [unpack(M)]T
+func Reinterpret[T, S Nums, M []int]([unpack(M)]S) [unpack(M)]T

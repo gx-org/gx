@@ -40,7 +40,7 @@ func (m *mul) Simplify(srcf ir.SourceFile) (cmp.Comparable, error) {
 		return nil, err
 	}
 	xs := unpackOp(m.op, x, y)
-	xs = evalValues(mulFloat, m.typ, xs)
+	xs = evalFloats(mulFloat, m.typ, xs)
 	one := numbers.One(m.typ)
 	xs = filterOut(xs, one)
 	switch len(xs) {

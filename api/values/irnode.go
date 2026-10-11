@@ -15,10 +15,10 @@
 package values
 
 import (
-	"github.com/gx-org/backend/platform"
 	"github.com/gx-org/gx/api/hostio"
 	"github.com/gx-org/gx/build/ir"
 	"github.com/gx-org/gx/build/ir/irkind"
+	"github.com/gx-org/gx/golang/backend/kernels"
 )
 
 var _ hostio.Value = (*IRNode)(nil)
@@ -44,7 +44,7 @@ func (s *IRNode) Type() ir.Type {
 }
 
 // ToHost transfers the value to host given an allocator.
-func (s *IRNode) ToHost(platform.Allocator) (hostio.Value, error) {
+func (s *IRNode) ToHost(kernels.Allocator) (hostio.Value, error) {
 	return s, nil
 }
 

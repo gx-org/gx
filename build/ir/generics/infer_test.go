@@ -36,7 +36,7 @@ type (
 		int32 | int64 | uint32 | uint64
 	}
 
-	Num interface {
+	Nums interface {
 		Floats | Ints
 	}
 )
@@ -71,11 +71,11 @@ func F[T dtype.Ints](T) T
 				},
 				testgenerics.Call{
 					Args: []string{"int32(2)"},
-					Want: "func[int32](int32) T",
+					Want: "func[int32](int32) int32",
 				},
 				testgenerics.Call{
 					Args: []string{"int64(2)"},
-					Want: "func[int64](int64) T",
+					Want: "func[int64](int64) int64",
 				},
 			},
 		},
@@ -91,7 +91,7 @@ func F[T dtype.Ints](x T, y T) T
 				},
 				testgenerics.Call{
 					Args: []string{"int32(2)", "int32(4)"},
-					Want: "func[int32](x int32, y int32) T",
+					Want: "func[int32](x int32, y int32) int32",
 				},
 			},
 		},

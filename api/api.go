@@ -16,8 +16,12 @@
 package api
 
 import (
-	"github.com/gx-org/backend"
-	"github.com/gx-org/backend/platform"
+	"unsafe"
+
+	"github.com/pkg/errors"
+	"github.com/gomlx/compute"
+	"github.com/gomlx/compute/dtypes"
+	"github.com/gomlx/compute/shapes"
 	"github.com/gx-org/gx/build/builder"
 )
 
@@ -25,27 +29,23 @@ import (
 // A backend is a platform managing one or more devices
 // and a graph builder.
 type Runtime struct {
-	bck     backend.Backend
+	bck     compute.Backend
 	builder *builder.Builder
 }
 
 // NewRuntime returns a new GX runtime.
-func NewRuntime(bck backend.Backend, bld *builder.Builder) *Runtime {
+func NewRuntime(bck compute.Backend, bld *builder.Builder) *Runtime {
 	return &Runtime{bck: bck, builder: bld}
 }
 
 // Backend used by the runtime.
-func (rtm *Runtime) Backend() backend.Backend {
+func (rtm *Runtime) Backend() compute.Backend {
 	return rtm.bck
 }
 
 // Device returns a new device on the platform.
 func (rtm *Runtime) Device(ord int) (*Device, error) {
-	dev, err := rtm.bck.Platform().Device(ord)
-	if err != nil {
-		return nil, err
-	}
-	return &Device{rtm: rtm, dev: dev}, nil
+	return &Device{rtm: rtm, dev: compute.DeviceNum(ord)}, nil
 }
 
 // Builder returns the builder used to build GX source code into a GX intermediate representation.
@@ -56,7 +56,7 @@ func (rtm *Runtime) Builder() *builder.Builder {
 // Device created by a runtime.
 type Device struct {
 	rtm *Runtime
-	dev platform.Device
+	dev compute.DeviceNum
 }
 
 // Runtime returns the device's parent runtime.
@@ -64,7 +64,24 @@ func (dev *Device) Runtime() *Runtime {
 	return dev.rtm
 }
 
-// PlatformDevice returns the device used on the platform.
-func (dev *Device) PlatformDevice() platform.Device {
+// PlatformDevice returns the device used on the backend.
+func (dev *Device) PlatformDevice() compute.DeviceNum {
 	return dev.dev
+}
+
+// Backend returns the backend of the runtime.
+func (dev *Device) Backend() compute.Backend {
+	return dev.rtm.bck
+}
+
+// Send sends a buffer of data to the device.
+func (dev *Device) Send(buf []byte, sh shapes.Shape) (compute.Buffer, error) {
+	if sh.DType == dtypes.InvalidDType {
+		return nil, errors.Errorf("GX invalid data type not supported")
+	}
+	if int64(len(buf)) != sh.ByteSize() {
+		return nil, errors.Errorf("buffer size is %d but shape specify a buffer size of %d", len(buf), sh.ByteSize())
+	}
+	flat := dtypes.UnsafeAnySliceFromBytes(unsafe.Pointer(unsafe.SliceData(buf)), sh.DType, sh.Size())
+	return dev.Backend().BufferFromFlatData(dev.dev, flat, sh)
 }

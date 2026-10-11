@@ -15,10 +15,10 @@
 package ir
 
 import (
-	"go/ast"
 	"strings"
 
 	"github.com/gx-org/gx/build/ir/irkind"
+	"github.com/gx-org/gx/src/gx/ast"
 )
 
 // BaseType is the base of all types.
@@ -74,15 +74,15 @@ type metaType struct {
 
 func (*metaType) node() {}
 
-func (*metaType) Equal(TypeCmp, Type) (bool, error) {
+func (*metaType) Equal(TypeEval, Type) (bool, error) {
 	return false, nil
 }
 
-func (*metaType) AssignableTo(TypeCmp, Type) (bool, error) {
+func (*metaType) AssignableTo(TypeEval, Type) (bool, error) {
 	return false, nil
 }
 
-func (*metaType) ConvertibleTo(TypeCmp, Type) (bool, error) {
+func (*metaType) ConvertibleTo(TypeEval, Type) (bool, error) {
 	return false, nil
 }
 
@@ -101,7 +101,7 @@ func (t *metaType) Specialise(spec Specialiser) (Type, bool) {
 	return t, true
 }
 
-func (t *metaType) Instantiate(Fetcher, Specialiser) (Type, bool) {
+func (t *metaType) Instantiate(Fetcher, Instantiator) (Type, bool) {
 	return t, true
 }
 
@@ -144,25 +144,25 @@ func (*invalidType) Same(Storage) bool {
 	return true
 }
 
-func (*invalidType) Equal(TypeCmp, Type) (bool, error) {
+func (*invalidType) Equal(TypeEval, Type) (bool, error) {
 	// If the type is invalid, an error has already been emitted.
 	// We disable any checks to avoid reporting unhelpful errors.
 	return false, nil
 }
 
-func (*invalidType) AssignableTo(TypeCmp, Type) (bool, error) {
+func (*invalidType) AssignableTo(TypeEval, Type) (bool, error) {
 	return (*invalidType).Equal(nil, nil, nil)
 }
 
-func (*invalidType) assignableFrom(TypeCmp, Type) (bool, error) {
+func (*invalidType) assignableFrom(TypeEval, Type) (bool, error) {
 	return (*invalidType).Equal(nil, nil, nil)
 }
 
-func (*invalidType) ConvertibleTo(TypeCmp, Type) (bool, error) {
+func (*invalidType) ConvertibleTo(TypeEval, Type) (bool, error) {
 	return (*invalidType).Equal(nil, nil, nil)
 }
 
-func (t *invalidType) Instantiate(Fetcher, Specialiser) (Type, bool) {
+func (t *invalidType) Instantiate(Fetcher, Instantiator) (Type, bool) {
 	return t, true
 }
 
@@ -223,11 +223,11 @@ func (t *distinctType) distinct() *distinctType {
 	return t
 }
 
-func (t *distinctType) Equal(_ TypeCmp, target Type) (bool, error) {
+func (t *distinctType) Equal(_ TypeEval, target Type) (bool, error) {
 	return t.tp == target, nil
 }
 
-func (t *distinctType) AssignableTo(tpcmp TypeCmp, target Type) (bool, error) {
+func (t *distinctType) AssignableTo(tpcmp TypeEval, target Type) (bool, error) {
 	ey, isAssigner := target.(assigner)
 	if isAssigner {
 		return ey.assignableFrom(tpcmp, t)
@@ -235,7 +235,7 @@ func (t *distinctType) AssignableTo(tpcmp TypeCmp, target Type) (bool, error) {
 	return t.Equal(tpcmp, target)
 }
 
-func (t *distinctType) ConvertibleTo(tpcmp TypeCmp, target Type) (bool, error) {
+func (t *distinctType) ConvertibleTo(tpcmp TypeEval, target Type) (bool, error) {
 	return t.Kind() == target.Kind(), nil
 }
 
@@ -253,7 +253,7 @@ func (t *distinctType) Specialise(Specialiser) (Type, bool) {
 	return t.tp, true
 }
 
-func (t *distinctType) Instantiate(Fetcher, Specialiser) (Type, bool) {
+func (t *distinctType) Instantiate(Fetcher, Instantiator) (Type, bool) {
 	return t.tp, true
 }
 
@@ -352,9 +352,9 @@ func PackageType() Type {
 }
 
 // TypeInclude returns if a typ is included in a type or not.
-func TypeInclude(tpcmp TypeCmp, set Type, typ Type) (bool, error) {
-	set = simplifyType(set)
-	typ = simplifyType(typ)
+func TypeInclude(tpcmp TypeEval, set Type, typ Type) (bool, error) {
+	set = simplifyType(set, false)
+	typ = simplifyType(typ, false)
 	_, isSetNamed := set.(*NamedType)
 	_, isTypeNamed := typ.(*NamedType)
 	if isSetNamed && isTypeNamed {
@@ -363,7 +363,7 @@ func TypeInclude(tpcmp TypeCmp, set Type, typ Type) (bool, error) {
 	return typeInclude(tpcmp, set, typ)
 }
 
-func typeInclude(tpcmp TypeCmp, set Type, typ Type) (bool, error) {
+func typeInclude(tpcmp TypeEval, set Type, typ Type) (bool, error) {
 	set = Underlying(set)
 	typeSet, typeSetOk := set.(*Interface)
 	if !typeSetOk {
@@ -412,7 +412,7 @@ func (s *Interface) ElementType() (Type, bool) {
 
 // Value returns a value pointing to the receiver.
 func (s *Interface) Value(x Expr) Expr {
-	return TypeExpr(x, s)
+	return TypeExpr(x.Expr(), s)
 }
 
 func (s *Interface) interfaceString(types []string) string {
@@ -438,10 +438,6 @@ func (s *Interface) DefineString(from *File) string {
 // ReferString returns the GX source to refer to the type.
 func (s *Interface) ReferString(from *File) string {
 	return s.DefineString(from)
-}
-
-func (s *Interface) equalArray(tpcmp TypeCmp, target ArrayType) (bool, error) {
-	return s.Equal(tpcmp, target)
 }
 
 // hasCapability returns true if and only if the capability applies to all types in the set.
@@ -500,11 +496,11 @@ func ToArrayType(typ Type) ArrayType {
 }
 
 type equaler interface {
-	equal(tpcmp TypeCmp, x Type) (bool, error)
+	equal(tpcmp TypeEval, x Type) (bool, error)
 }
 
 // Equal returns true if x and y are the same type.
-func Equal(tpcmp TypeCmp, x, y Type) (bool, error) {
+func Equal(tpcmp TypeEval, x, y Type) (bool, error) {
 	if x == y {
 		return true, nil
 	}
@@ -516,15 +512,19 @@ func Equal(tpcmp TypeCmp, x, y Type) (bool, error) {
 }
 
 type assigner interface {
-	assignableFrom(tpcmp TypeCmp, x Type) (bool, error)
+	assignableFrom(tpcmp TypeEval, x Type) (bool, error)
 }
 
-func simplifyType(t Type) Type {
-	typeParam, ok := t.(*GenericTypeParam)
-	if !ok {
-		return t
+func simplifyType(tp Type, atomic bool) Type {
+	switch tpT := tp.(type) {
+	case *GenericTypeParam:
+		return simplifyType(tpT.OrigField().Type(), false)
+	case ArrayType:
+		if !atomic && tpT.Rank().IsAtomic() {
+			return simplifyType(tpT.DataType(), true)
+		}
 	}
-	return typeParam.OrigField().Type()
+	return tp
 }
 
 // IsInvalidType returns true if a type is invalid.
@@ -536,7 +536,7 @@ func IsInvalidType(typ Type) bool {
 }
 
 // AssignableTo reports whether a value of the type can be assigned to another.
-func AssignableTo(tpcmp TypeCmp, x, y Type) (bool, error) {
+func AssignableTo(tpcmp TypeEval, x, y Type) (bool, error) {
 	if IsInvalidType(x) || IsInvalidType(y) {
 		// An error should have already been reported. We skip the check
 		// to prevent additional confusing errors.
@@ -545,8 +545,8 @@ func AssignableTo(tpcmp TypeCmp, x, y Type) (bool, error) {
 	if x.Kind() == irkind.Tuple || y.Kind() == irkind.Tuple {
 		return true, nil
 	}
-	x = simplifyType(x)
-	y = simplifyType(y)
+	x = simplifyType(x, false)
+	y = simplifyType(y, false)
 	if x == y {
 		return true, nil
 	}
@@ -573,7 +573,7 @@ func TypeFromStorage(x Expr, store Storage) *TypeValExpr {
 	}
 	tp, ok := store.(Type)
 	if ok {
-		return TypeExpr(x, tp)
+		return TypeExpr(x.Expr(), tp)
 	}
 	withValue, ok := store.(StorageWithValue)
 	if !ok {

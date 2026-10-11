@@ -17,7 +17,7 @@ package engine
 import (
 	"math/big"
 
-	"github.com/gx-org/backend/ops"
+	"github.com/gomlx/compute"
 	"github.com/gx-org/gx/build/ir"
 	"github.com/gx-org/gx/build/ir/irkind"
 )
@@ -59,7 +59,7 @@ type Constant interface {
 	ir.StringShorter
 
 	// BuildNode the constant into a given graph.
-	BuildNode(ops.Graph, irkind.Kind) (ops.Node, error)
+	BuildNode(compute.Function, irkind.Kind) (compute.Value, error)
 
 	// AxisLengths returns the lengths of the axes of the constant.
 	AxisLengths() ([]int, error)

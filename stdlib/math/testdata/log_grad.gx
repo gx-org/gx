@@ -1,0 +1,23 @@
+package log_grad
+
+import "math"
+import "math/grad"
+
+func TestLog() (float64, float64) {
+	vjp := grad.Reverse(math.Log)
+	trace(vjp)
+	y, bck := vjp(1.0)
+	return y, bck(1)
+	// Want:
+	// 0: float64(0)
+	// 1: float64(1)
+	// Trace:
+	// log_grad.gx:0
+	// 	func[T dtype.Nums, S []int](par [unpack(S)]T) ([unpack(S)]T, func(res [unpack(S)]T) [unpack(S)]T) {
+	// 		fwd0 := Log[T][S](par)
+	// 		selfVJPFunc := func(res [unpack(S)]T) [unpack(S)]T {
+	// 			return res*inverse[T][S](par)
+	// 		}
+	// 		return fwd0, selfVJPFunc
+	// 	}
+}

@@ -16,7 +16,6 @@ package elements
 
 import (
 	"fmt"
-	"go/ast"
 	"strings"
 
 	"github.com/pkg/errors"
@@ -25,6 +24,7 @@ import (
 	"github.com/gx-org/gx/build/ir"
 	"github.com/gx-org/gx/internal/interp/flatten"
 	"github.com/gx-org/gx/interp/engine"
+	"github.com/gx-org/gx/src/gx/ast"
 )
 
 // Struct is an instance of a structure.

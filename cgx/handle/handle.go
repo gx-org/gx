@@ -17,6 +17,7 @@ package handle
 
 import (
 	"fmt"
+	"reflect"
 	"runtime"
 	"strings"
 	"sync/atomic"
@@ -48,7 +49,6 @@ func Wrap[T comparable](v T) Handle {
 	if h == 0 {
 		panic("cgx: ran out of handle space")
 	}
-
 	handles.Store(h, v)
 	return Handle(h)
 }
@@ -61,7 +61,11 @@ func Unwrap[T any](h Handle) T {
 		var zero T
 		return zero
 	}
-	return handles.Load(h).(T)
+	v := handles.Load(h)
+	if v == nil {
+		panic(fmt.Sprintf("invalid handle %v for type %T", h, reflect.TypeFor[T]().String()))
+	}
+	return v.(T)
 }
 
 // Release deletes a cgx handle.

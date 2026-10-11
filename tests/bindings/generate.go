@@ -16,44 +16,56 @@
 package bindings
 
 //go:generate go run ../../golang/packager --gx_package=github.com/gx-org/gx/tests/bindings/basic
-//go:generate go run ../../golang/packager --gx_package=github.com/gx-org/gx/tests/bindings/arrays
-//go:generate go run ../../golang/packager --gx_package=github.com/gx-org/gx/tests/bindings/encoding
-//go:generate go run ../../golang/packager --gx_package=github.com/gx-org/gx/tests/bindings/imports
-//go:generate go run ../../golang/packager --gx_package=github.com/gx-org/gx/tests/bindings/math
-//go:generate go run ../../golang/packager --gx_package=github.com/gx-org/gx/tests/bindings/parameters
-//go:generate go run ../../golang/packager --gx_package=github.com/gx-org/gx/tests/bindings/pkgvars
-//go:generate go run ../../golang/packager --gx_package=github.com/gx-org/gx/tests/bindings/rand
-//go:generate go run ../../golang/packager --gx_package=github.com/gx-org/gx/tests/bindings/cartpole
-//go:generate go run ../../golang/packager --gx_package=github.com/gx-org/gx/tests/bindings/dtypes
-//go:generate go run ../../golang/packager --gx_package=github.com/gx-org/gx/tests/bindings/unexported
-//go:generate go run ../../golang/packager --gx_package=github.com/gx-org/gx/tests/bindings/generics
-
 //go:generate go run ../../golang/binder/genbind --gx_package=github.com/gx-org/gx/tests/bindings/basic
-//go:generate go run ../../golang/binder/genbind --gx_package=github.com/gx-org/gx/tests/bindings/arrays
-//go:generate go run ../../golang/binder/genbind --gx_package=github.com/gx-org/gx/tests/bindings/encoding
-//go:generate go run ../../golang/binder/genbind --gx_package=github.com/gx-org/gx/tests/bindings/imports
-//go:generate go run ../../golang/binder/genbind --gx_package=github.com/gx-org/gx/tests/bindings/math
-//go:generate go run ../../golang/binder/genbind --gx_package=github.com/gx-org/gx/tests/bindings/parameters
-//go:generate go run ../../golang/binder/genbind --gx_package=github.com/gx-org/gx/tests/bindings/pkgvars
-//go:generate go run ../../golang/binder/genbind --gx_package=github.com/gx-org/gx/tests/bindings/rand
-//go:generate go run ../../golang/binder/genbind --gx_package=github.com/gx-org/gx/tests/bindings/cartpole
-//go:generate go run ../../golang/binder/genbind --gx_package=github.com/gx-org/gx/tests/bindings/dtypes
-//go:generate go run ../../golang/binder/genbind --gx_package=github.com/gx-org/gx/tests/bindings/unexported
-//go:generate go run ../../golang/binder/genbind --gx_package=github.com/gx-org/gx/tests/bindings/generics
-
 //go:generate go run ../../golang/tools/testsmain/testsmain.go --gx_test_folder=../../golang/tests/basictest
+
+//go:generate go run ../../golang/packager --gx_package=github.com/gx-org/gx/tests/bindings/arrays
+//go:generate go run ../../golang/binder/genbind --gx_package=github.com/gx-org/gx/tests/bindings/arrays
 //go:generate go run ../../golang/tools/testsmain/testsmain.go --gx_test_folder=../../golang/tests/arraystest
+
+//go:generate go run ../../golang/binder/genbind --gx_package=github.com/gx-org/gx/tests/bindings/encoding
+//go:generate go run ../../golang/packager --gx_package=github.com/gx-org/gx/tests/bindings/encoding
+
+//go:generate go run ../../golang/binder/genbind --gx_package=github.com/gx-org/gx/tests/bindings/imports
+//go:generate go run ../../golang/packager --gx_package=github.com/gx-org/gx/tests/bindings/imports
 //go:generate go run ../../golang/tools/testsmain/testsmain.go --gx_test_folder=../../golang/tests/importtest
+
+//go:generate go run ../../golang/binder/genbind --gx_package=github.com/gx-org/gx/tests/bindings/math
+//go:generate go run ../../golang/packager --gx_package=github.com/gx-org/gx/tests/bindings/math
 //go:generate go run ../../golang/tools/testsmain/testsmain.go --gx_test_folder=../../golang/tests/mathtest
+
+//go:generate go run ../../golang/binder/genbind --gx_package=github.com/gx-org/gx/tests/bindings/parameters
+//go:generate go run ../../golang/packager --gx_package=github.com/gx-org/gx/tests/bindings/parameters
 //go:generate go run ../../golang/tools/testsmain/testsmain.go --gx_test_folder=../../golang/tests/parameterstest
+
+//go:generate go run ../../golang/binder/genbind --gx_package=github.com/gx-org/gx/tests/bindings/pkgvars
+//go:generate go run ../../golang/packager --gx_package=github.com/gx-org/gx/tests/bindings/pkgvars
 //go:generate go run ../../golang/tools/testsmain/testsmain.go --gx_test_folder=../../golang/tests/pkgvarstest
+
+//go:generate go run ../../golang/binder/genbind --gx_package=github.com/gx-org/gx/tests/bindings/rand
+//go:generate go run ../../golang/packager --gx_package=github.com/gx-org/gx/tests/bindings/rand
 //go:generate go run ../../golang/tools/testsmain/testsmain.go --gx_test_folder=../../golang/tests/randtest
-//go:generate go run ../../golang/tools/testsmain/testsmain.go --gx_test_folder=../../golang/tests/dtypestest
+
+//go:generate go run ../../golang/binder/genbind --gx_package=github.com/gx-org/gx/tests/bindings/cartpole
+//go:generate go run ../../golang/packager --gx_package=github.com/gx-org/gx/tests/bindings/cartpole
 //go:generate go run ../../golang/tools/testsmain/testsmain.go --gx_test_folder=../../golang/tests/cartpoletest
+
+//go:generate go run ../../golang/binder/genbind --gx_package=github.com/gx-org/gx/tests/bindings/dtypes
+//go:generate go run ../../golang/packager --gx_package=github.com/gx-org/gx/tests/bindings/dtypes
+//go:generate go run ../../golang/tools/testsmain/testsmain.go --gx_test_folder=../../golang/tests/dtypestest
+
+//go:generate go run ../../golang/binder/genbind --gx_package=github.com/gx-org/gx/tests/bindings/unexported
+//go:generate go run ../../golang/packager --gx_package=github.com/gx-org/gx/tests/bindings/unexported
 //go:generate go run ../../golang/tools/testsmain/testsmain.go --gx_test_folder=../../golang/tests/unexportedtest
+
+//go:generate go run ../../golang/binder/genbind --gx_package=github.com/gx-org/gx/tests/bindings/generics
+//go:generate go run ../../golang/packager --gx_package=github.com/gx-org/gx/tests/bindings/generics
 
 //go:generate go run ../../golang/packager --gx_package=github.com/gx-org/gx/examples/linearregression/linearregression
 //go:generate go run ../../golang/binder/genbind --gx_package=github.com/gx-org/gx/examples/linearregression/linearregression
 
 //go:generate go run ../../golang/packager --gx_package=github.com/gx-org/gx/golang/backend/tests/interperr
 //go:generate go run ../../golang/binder/genbind --gx_package=github.com/gx-org/gx/golang/backend/tests/interperr
+
+//go:generate go run ../../golang/packager --gx_package=github.com/gx-org/gx/tests/testfiles/imports/pkg1
+//go:generate go run ../../golang/binder/genbind --gx_package=github.com/gx-org/gx/tests/testfiles/imports/pkg1

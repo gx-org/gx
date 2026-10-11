@@ -17,13 +17,15 @@ package fmt
 
 import (
 	"fmt"
-	"go/ast"
 	"go/token"
 	"math"
 	"reflect"
 	"runtime"
 	"slices"
 	"strings"
+
+	"github.com/gx-org/gx/src/gx/ast"
+	"github.com/gx-org/gx/src/gx/format"
 )
 
 // Number adds a number prefix to all lines in a string.
@@ -76,11 +78,15 @@ func Func(f any) string {
 	return runtime.FuncForPC(reflect.ValueOf(f).Pointer()).Name()
 }
 
-// PrintAST prints an AST tree.
-func PrintAST(s string, node ast.Node) {
-	fmt.Println(s)
+// Format an AST node into a string.
+func Format(node ast.Node) string {
 	fset := token.NewFileSet()
-	ast.Print(fset, node)
+	var w strings.Builder
+	err := format.Node(&w, fset, node)
+	if err != nil {
+		return fmt.Sprintf("/* %s */", err)
+	}
+	return w.String()
 }
 
 // String returns a human-friendly debugging string representation of a GX object.

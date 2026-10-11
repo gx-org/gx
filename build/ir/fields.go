@@ -17,6 +17,8 @@ package ir
 import (
 	"fmt"
 	"strings"
+
+	"github.com/gx-org/gx/src/gx/ast"
 )
 
 type (
@@ -28,6 +30,27 @@ type (
 		field fieldCloner
 	}
 )
+
+// FieldAST builds the AST for a field group.
+func (l *FieldGroup) FieldAST(from *File) *ast.Field {
+	src := *l.Src
+	src.Type = l.Type.Expr()
+	src.Names = make([]*ast.Ident, len(l.Fields))
+	for i, field := range l.Fields {
+		src.Names[i] = field.Name
+	}
+	return &src
+}
+
+// FieldListAST returns the AST of a field list.
+func (l *FieldList) FieldListAST(from *File) *ast.FieldList {
+	src := *l.Src
+	src.List = make([]*ast.Field, len(src.List))
+	for i, grp := range l.List {
+		src.List[i] = grp.FieldAST(from)
+	}
+	return &src
+}
 
 // ShortString represents the field list for an error message.
 func (l *FieldList) ShortString(from *File) string {

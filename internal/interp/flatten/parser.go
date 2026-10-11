@@ -19,7 +19,7 @@ import (
 	"strings"
 
 	"github.com/pkg/errors"
-	"github.com/gx-org/backend/platform"
+	"github.com/gomlx/compute"
 	"github.com/gx-org/gx/api/hostio"
 	gxfmt "github.com/gx-org/gx/base/fmt"
 	"github.com/gx-org/gx/build/ir"
@@ -29,15 +29,15 @@ import (
 // into GX values.
 type Parser struct {
 	factory    hostio.Factory
-	dev        platform.Device
+	dev        compute.DeviceNum
 	callInputs *hostio.FuncInputs
 	// Handles to unflatten.
-	compOutput []platform.DeviceHandle
+	compOutput []compute.Buffer
 	nextPos    int
 }
 
 // NewParser returns a new parser given the output of a graph computation.
-func NewParser(dev platform.Device, callInputs *hostio.FuncInputs, factory hostio.Factory, handles []platform.DeviceHandle) *Parser {
+func NewParser(dev compute.DeviceNum, callInputs *hostio.FuncInputs, factory hostio.Factory, handles []compute.Buffer) *Parser {
 	return &Parser{
 		factory:    factory,
 		dev:        dev,
@@ -47,7 +47,7 @@ func NewParser(dev platform.Device, callInputs *hostio.FuncInputs, factory hosti
 }
 
 // Next returns a the next handle and moves the cursor to the succeeding handle.
-func (h *Parser) Next() platform.DeviceHandle {
+func (h *Parser) Next() compute.Buffer {
 	n := h.compOutput[h.nextPos]
 	h.nextPos++
 	return n
@@ -69,7 +69,7 @@ func (h *Parser) Factory() hostio.Factory {
 
 // Device returns to which transfers the host value to.
 // TODO(b/388207169): Always transfer the value to device because C++ bindings do not support HostValue.
-func (h *Parser) Device() platform.Device {
+func (h *Parser) Device() compute.DeviceNum {
 	return h.dev
 }
 

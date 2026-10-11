@@ -17,9 +17,9 @@ package storepath
 
 import (
 	"fmt"
-	"go/ast"
 
 	"github.com/gx-org/gx/build/ir"
+	"github.com/gx-org/gx/src/gx/ast"
 )
 
 // Path to a store.

@@ -35,6 +35,7 @@ type (
 
 	// Loader loads packages given their import path.
 	Loader interface {
+		Support(path string) bool
 		Load(bld Builder, path string) (Package, error)
 		Importers() []Importer
 	}

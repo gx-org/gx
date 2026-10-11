@@ -1,0 +1,16 @@
+package assign01
+
+// No runtime test function
+
+//gx:compeval
+func setOnes(axes []int, is ...int) []int {
+	for _, i := range is {
+		axes[i] = 1
+	}
+	return axes
+}
+
+func f[Shape, Axes []int](x [unpack(Shape)]float32) [unpack(setOnes(Shape, Axes...))]float32 {
+	shape := setOnes(Shape, Axes...)
+	return [unpack(shape)]float32{}
+}

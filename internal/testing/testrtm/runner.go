@@ -73,7 +73,7 @@ func (r *Runner) RunWithArgs(fn *ir.FuncDecl, recv hostio.Value, args []hostio.V
 	if err != nil {
 		return nil, "", err
 	}
-	flattenOuts, err := hostio.ToHost(kernels.Allocator(), flatten(outs))
+	flattenOuts, err := hostio.ToHost(kernels.DefaultAllocator(), flatten(outs))
 	if err != nil {
 		return outs, "", err
 	}
@@ -96,7 +96,7 @@ func (r *testTracer) Trace(file *ir.File, call *ir.FuncCallExpr, vals []hostio.V
 	if r.nTrace == 0 {
 		r.trace.WriteString("\nTrace:\n")
 	}
-	vals, err := hostio.ToHost(kernels.Allocator(), vals)
+	vals, err := hostio.ToHost(kernels.DefaultAllocator(), vals)
 	if err != nil {
 		return err
 	}

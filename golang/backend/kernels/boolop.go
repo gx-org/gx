@@ -22,7 +22,7 @@ func boolNotArray(xVal Array) (Array, error) {
 	for i, xi := range x.values {
 		z[i] = !xi
 	}
-	return ToBoolArray(z, x.shape.AxisLengths), nil
+	return ToBoolArray(z, x.shape.Dimensions), nil
 }
 
 func boolAndArray(xVal, yVal Array) (Array, error) {
@@ -31,7 +31,7 @@ func boolAndArray(xVal, yVal Array) (Array, error) {
 	for i, xi := range x.values {
 		z[i] = xi && y.values[i]
 	}
-	return ToBoolArray(z, x.shape.AxisLengths), nil
+	return ToBoolArray(z, x.shape.Dimensions), nil
 }
 
 func boolOrArray(xVal, yVal Array) (Array, error) {
@@ -40,5 +40,5 @@ func boolOrArray(xVal, yVal Array) (Array, error) {
 	for i, xi := range x.values {
 		z[i] = xi || y.values[i]
 	}
-	return ToBoolArray(z, x.shape.AxisLengths), nil
+	return ToBoolArray(z, x.shape.Dimensions), nil
 }

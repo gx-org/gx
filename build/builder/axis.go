@@ -16,11 +16,11 @@ package builder
 
 import (
 	"fmt"
-	"go/ast"
 	"math/big"
 
 	"github.com/gx-org/gx/build/ir"
 	"github.com/gx-org/gx/build/ir/irkind"
+	"github.com/gx-org/gx/src/gx/ast"
 )
 
 // axisLengthNode defines the dimension of an array.
@@ -101,9 +101,7 @@ func (dim *exprAxisLength) build(rscope *defineLocalScope) (ir.AxisLengths, bool
 	if xKind != irkind.Int && xKind != irkind.Invalid {
 		return ext, rscope.Err().Appendf(dim.src, "cannot use type %s as axis length: want type int or unpack([]int)", xType.ReferString(rscope.fileScope().irFile()))
 	}
-	var ok bool
-	ext.X, ok = rscope.evalAxisExpr(ext.X)
-	return ext, ok
+	return ext, true
 }
 
 const cannotInferAxisLength = "cannot infer array axis length"

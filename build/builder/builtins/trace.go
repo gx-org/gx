@@ -15,10 +15,9 @@
 package builtins
 
 import (
-	"go/ast"
-
 	"github.com/gx-org/gx/build/builtins"
 	"github.com/gx-org/gx/build/ir"
+	"github.com/gx-org/gx/src/gx/ast"
 )
 
 type traceFunc struct {
@@ -37,8 +36,9 @@ func (*traceFunc) Name() string {
 }
 
 // BuildFuncType builds the type of a function given how it is called.
-func (f *traceFunc) BuildFuncType(tpcmp ir.TypeCmp, call *ir.FuncCallExpr) (*ir.FuncType, error) {
+func (f *traceFunc) BuildFuncType(tpcmp ir.TypeEval, call *ir.FuncCallExpr) (*ir.FuncType, error) {
 	ftype := &ir.FuncType{
+		Nature: ir.FuncNature{CompEval: false},
 		BaseType: ir.BaseType[*ast.FuncType]{
 			Src: &ast.FuncType{Func: call.Src.Pos()},
 		},

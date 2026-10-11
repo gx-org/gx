@@ -19,3 +19,7 @@ func Label(s string) any
 // SetFor sets the gradient of a GX function with respect to a specific parameter, identified by its name.
 // gx:funcAnnotator
 func SetFor(parameter string, gradF any) any
+
+// SetVJP sets the VJP of a GX function.
+// gx:funcAnnotator
+func SetVJP(gradF any) any

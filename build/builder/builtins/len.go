@@ -15,11 +15,10 @@
 package builtins
 
 import (
-	"go/ast"
-
 	"github.com/pkg/errors"
 	"github.com/gx-org/gx/build/ir"
 	"github.com/gx-org/gx/build/ir/irkind"
+	"github.com/gx-org/gx/src/gx/ast"
 )
 
 type lenFunc struct{}
@@ -53,8 +52,9 @@ func init() {
 }
 
 // BuildFuncType builds the type of a function given how it is called.
-func (f *lenFunc) BuildFuncType(tpcmp ir.TypeCmp, call *ir.FuncCallExpr) (*ir.FuncType, error) {
+func (f *lenFunc) BuildFuncType(tpcmp ir.TypeEval, call *ir.FuncCallExpr) (*ir.FuncType, error) {
 	ext := &ir.FuncType{
+		Nature: ir.FuncNature{CompEval: true},
 		BaseType: ir.BaseType[*ast.FuncType]{
 			Src: &ast.FuncType{Func: call.Src.Pos()},
 		},

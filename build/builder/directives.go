@@ -15,13 +15,13 @@
 package builder
 
 import (
-	"go/ast"
-	"go/parser"
 	"go/scanner"
 	"strings"
 
 	"github.com/pkg/errors"
 	"github.com/gx-org/gx/build/fmterr"
+	"github.com/gx-org/gx/src/gx/ast"
+	"github.com/gx-org/gx/src/gx/parser"
 )
 
 type funcAttribute int
@@ -107,7 +107,7 @@ func (d directive) addPrefixLen(l int) directive {
 }
 
 func (d directive) process(pscope procScope, src ast.Node) (*callExpr, bool) {
-	astExpr, err := parser.ParseExprFrom(pscope.pkg().fset, pscope.file().name, d.code, parser.SkipObjectResolution)
+	astExpr, err := parser.ParseExprFrom(pscope.pkg().fset, pscope.file().name(), d.code, parser.SkipObjectResolution)
 	if err != nil {
 		return nil, processScannerError(pscope.Err(), src, err)
 	}

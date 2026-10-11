@@ -18,6 +18,7 @@ import (
 	"github.com/pkg/errors"
 	"github.com/gx-org/gx/build/fmterr"
 	"github.com/gx-org/gx/build/ir"
+	"github.com/gx-org/gx/internal/undef"
 	"github.com/gx-org/gx/interp/elements"
 	"github.com/gx-org/gx/interp/engine"
 )
@@ -32,7 +33,7 @@ func Runners() engine.Runners {
 	return run
 }
 
-func (runners) FuncDecl(fn *ir.FuncDecl, env *engine.Env, call *ir.FuncCallExpr, recv engine.Copier, args []ir.Element) ([]ir.Element, error) {
+func (runners) FuncDecl(fn *ir.FuncDecl, env *engine.Env, call *ir.FuncCallExpr, recv engine.Copier, genArgs, args []ir.Element) ([]ir.Element, error) {
 	if fn.Body == nil {
 		return nil, fmterr.Errorf(fn.File().FileSet(), fn.Node(), "missing function body")
 	}
@@ -57,18 +58,28 @@ func (runners) FuncDecl(fn *ir.FuncDecl, env *engine.Env, call *ir.FuncCallExpr,
 			funcFrame.Define(recvField.Name, recv)
 		}
 	}
-	args = assignTypeParameters(env.Context(), call.Callee, funcFrame, args)
+	assignTypeParameters(env.Context(), call.Callee, funcFrame, genArgs)
 	if err := assignArgumentValues(ftype, funcFrame, args); err != nil {
 		return nil, err
 	}
 	// Evaluate the function within the frame.
-	fitp := toInterp(env.Context(), env.Engine(), env.Runners())
+	fitp := newInterp(env.Registry(), env.Context(), env.Engine())
 	return evalFuncBody(fitp, fn.Body)
 }
 
-func (runners) Builtin(fn ir.Func, impl ir.FuncImpl, env *engine.Env, call *ir.FuncCallExpr, recv engine.Copier, args []ir.Element) (_ []ir.Element, err error) {
+// Builtin runs a function provided by a backend.
+func (r runners) Builtin(fn *ir.FuncBuiltin, env *engine.Env, call *ir.FuncCallExpr, recv engine.Copier, genArgs, args []ir.Element) ([]ir.Element, error) {
+	return r.call(fn, fn.Impl, env, call, recv, genArgs, args)
+}
+
+// Keyword runs a keyword in GX.
+func (r runners) Keyword(fn *ir.FuncKeyword, env *engine.Env, call *ir.FuncCallExpr, recv engine.Copier, genArgs, args []ir.Element) ([]ir.Element, error) {
+	return r.call(fn, fn.Impl, env, call, recv, genArgs, args)
+}
+
+func (runners) call(fn ir.Func, impl ir.FuncImpl, env *engine.Env, call *ir.FuncCallExpr, recv engine.Copier, genArgs, args []ir.Element) (_ []ir.Element, err error) {
 	defer func() {
-		if err == nil {
+		if err == nil || undef.Is(err) {
 			return
 		}
 		if _, isCompErr := err.(*ir.CompileError); isCompErr {
@@ -86,5 +97,5 @@ func (runners) Builtin(fn ir.Func, impl ir.FuncImpl, env *engine.Env, call *ir.F
 	if builtin == nil {
 		return nil, errors.Errorf("function %s has no implementation", fn.ShortString())
 	}
-	return builtin(env, call, recv, args)
+	return builtin(env, call, recv, genArgs, args)
 }

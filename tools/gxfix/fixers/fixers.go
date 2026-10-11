@@ -17,7 +17,6 @@ package fixers
 
 import (
 	"fmt"
-	"go/ast"
 	"io/fs"
 	"os"
 	"path/filepath"
@@ -27,6 +26,7 @@ import (
 	"github.com/gx-org/gx/build/builder/testbuild"
 	"github.com/gx-org/gx/build/ir"
 	"github.com/gx-org/gx/internal/testing/testrtm"
+	"github.com/gx-org/gx/src/gx/ast"
 )
 
 // Fixers list all the fixers.

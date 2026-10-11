@@ -1,0 +1,22 @@
+package generic01
+
+//gx:compeval
+func undef(a int) int {
+	if a%2 == 0 {
+		return a * 2
+	}
+	return a * 3
+}
+
+func f[A int]() func() [undef(A)]float32 {
+	return func() [undef(A)]float32 {
+		return [undef(A)]float32{}
+	}
+}
+
+func Test() [4]float32 {
+	a := f[2]()
+	return a()
+	// Want:
+	// [4]float32{0, 0, 0, 0}
+}

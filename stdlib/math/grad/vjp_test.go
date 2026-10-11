@@ -348,6 +348,65 @@ func vjpF(x float32) ([3][2]float32, func(res [3][2]float32) float32) {
 }
 `,
 		},
+		testgrad.Reverse{
+			Src: `
+func F(x float32) float64 {
+	return float64(x)
+}
+`,
+			Want: `
+func vjpF(x float32) (float64, func(res float64) float32) {
+	fwd0 := float64(x)
+	selfVJPFunc := func(res float64) float32 {
+		bck0 := float32(res)
+		return bck0
+	}
+	return fwd0, selfVJPFunc
+}
+`,
+		},
+		testgrad.Reverse{
+			Src: `
+func F(x, y float32) float64 {
+	return float64(x) * float64(y)
+}
+`,
+			Want: `
+func vjpF(x, y float32) (float64, func(res float64) float32, func(res float64) float32) {
+	fwd0 := float64(x)
+	fwd1 := float64(y)
+	fwd2 := fwd0*fwd1
+	selfVJPFuncWRTx := func(res float64) float32 {
+		bck2x := res*fwd1
+		bck0 := float32(bck2x)
+		return bck0
+	}
+	selfVJPFuncWRTy := func(res float64) float32 {
+		bck2y := fwd0*res
+		bck1 := float32(bck2y)
+		return bck1
+	}
+	return fwd2, selfVJPFuncWRTx, selfVJPFuncWRTy
+}
+`,
+		},
+		testgrad.Reverse{
+			Src: `
+func F(x float32) float64 {
+	return 0 * float64(x)
+}
+`,
+			Want: `
+func vjpF(x float32) (float64, func(res float64) float32) {
+	fwd0 := float64(x)
+	fwd1 := 0*fwd0
+	selfVJPFunc := func(res float64) float32 {
+		return 0
+	}
+	return fwd1, selfVJPFunc
+}
+`,
+		},
 	)
 }
 
@@ -690,7 +749,7 @@ func F(x float32) float32 {
 `,
 			Want: `
 func vjpF(x float32) (float32, func(res float32) float32) {
-	fwd0, SinVJP := grad.Reverse(math.Sin)[[]int{}](x)
+	fwd0, SinVJP := grad.Reverse(math.Sin)(x)
 	selfVJPFunc := func(res float32) float32 {
 		bck0 := SinVJP(res)
 		return bck0
@@ -743,7 +802,7 @@ func F[T floats](x T) T {
 `,
 			Want: `
 func vjpF[T floats](x T) (T, func(res T) T) {
-	fwd0, gVJP := grad.Reverse(g)[T](x)
+	fwd0, gVJP := grad.Reverse(g)(x)
 	selfVJPFunc := func(res T) T {
 		bck0 := gVJP(res)
 		return bck0
@@ -1181,6 +1240,26 @@ func vjpF(x, y float32) (float32, func(res float32) float32, func(res float32) f
 		return bck11
 	}
 	return fwd1, selfVJPFuncWRTx, selfVJPFuncWRTy
+}
+`,
+		},
+		testgrad.Reverse{
+			Src: `
+func F(x, y float32) float64 {
+	return float64(x)
+}
+`,
+			Want: `
+func vjpF(x, y float32) (float64, func(res float64) float32, func(res float64) float32) {
+	fwd0 := float64(x)
+	selfVJPFuncWRTx := func(res float64) float32 {
+		bck0 := float32(res)
+		return bck0
+	}
+	selfVJPFuncWRTy := func(res float64) float32 {
+		return 0
+	}
+	return fwd0, selfVJPFuncWRTx, selfVJPFuncWRTy
 }
 `,
 		},

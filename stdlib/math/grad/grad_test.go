@@ -20,7 +20,9 @@ import (
 	"github.com/gx-org/gx/build/builder/testbuild"
 	"github.com/gx-org/gx/build/ir"
 	"github.com/gx-org/gx/stdlib/math/grad"
+	"github.com/gx-org/gx/stdlib/math/grad/testdata"
 	"github.com/gx-org/gx/stdlib/math/grad/testgrad"
+	"github.com/gx-org/gx/tests"
 
 	_ "embed"
 )
@@ -43,6 +45,8 @@ var (
 			irSetFor.Annotate = ir.AnnotatorFuncImpl(grad.SetGradFor)
 			irLabel := pkg.FindFunc("Label").(*ir.AnnotatorField)
 			irLabel.Annotate = ir.AnnotatorFieldImpl(grad.Label)
+			irSetVJP := pkg.FindFunc("SetVJP").(*ir.AnnotatorFunc)
+			irSetVJP.Annotate = ir.AnnotatorFuncImpl(grad.SetVJP)
 		},
 	}
 
@@ -60,7 +64,7 @@ func Sin[M []int]([unpack(M)]float32) [unpack(M)]float32
 	}
 )
 
-func TestGrad(t *testing.T) {
+func TestGradMacro(t *testing.T) {
 	testbuild.Run(t,
 		declareGradPackage,
 		testgrad.Func{
@@ -92,4 +96,12 @@ func gradF(x float32) ([2]float32, float32) {
 `,
 		},
 	)
+}
+
+func TestGrad(t *testing.T) {
+	testbuild.RunFactory(t,
+		tests.Importers,
+		testbuild.CompEval(
+			testdata.Sources,
+		))
 }

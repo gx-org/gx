@@ -1,0 +1,11 @@
+package import01
+
+import "testgenerics"
+
+// The signature of testgenerics.Identity references testcpundef,
+// a package imported by testgenerics but not by this file.
+func Test() [4]float32 {
+	return testgenerics.Identity[2]([4]float32{1, 2, 3, 4})
+	// Want:
+	// [4]float32{1, 2, 3, 4}
+}

@@ -15,7 +15,7 @@
 package fmterr
 
 import (
-	"go/ast"
+	"github.com/gx-org/gx/src/gx/ast"
 )
 
 type (

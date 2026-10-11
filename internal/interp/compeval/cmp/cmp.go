@@ -20,6 +20,7 @@ import (
 
 	"github.com/gx-org/gx/build/ir"
 	"github.com/gx-org/gx/internal/base/cast"
+	"github.com/gx-org/gx/interp/engine"
 )
 
 // Expr is an algebraic expression that can be simplified into a comparable expression.
@@ -114,4 +115,18 @@ func SimplifyString(srcf ir.SourceFile, x Expr) (string, error) {
 		return "", err
 	}
 	return s.BuildIR().SourceString(srcf.File()), nil
+}
+
+// IsTrue tests if an expression can be simplified to true.
+// Returns an undefined error if the value of the expression is symbolic.
+func IsTrue(srcf ir.SourceFile, x Expr) (bool, error) {
+	sEl, err := x.Simplify(srcf)
+	if err != nil {
+		return false, err
+	}
+	cst, err := cast.ToIfDef[engine.BoolConstant](sEl)
+	if err != nil {
+		return false, err
+	}
+	return cst.Bool(), nil
 }

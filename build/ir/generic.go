@@ -16,32 +16,62 @@ package ir
 
 import (
 	"fmt"
-	"go/ast"
 
-	"github.com/gx-org/gx/build/fmterr"
 	"github.com/gx-org/gx/build/ir/irkind"
+	"github.com/gx-org/gx/src/gx/ast"
 )
 
+// GenericParams groups the generic type parameters and their values.
+type GenericParams struct {
+	Fields *FieldList
+	Values []GenericValue
+}
+
+// SetFields sets the generic fields.
+func (gp *GenericParams) SetFields(fields *FieldList) {
+	gp.Fields = fields
+	gp.Values = make([]GenericValue, fields.Len())
+}
+
 type (
-	// Generic groups the generic type parameters and their values.
-	Generic struct {
-		Fields *FieldList
-		Values []GenericValue
+	// GenericType is a generic type (structure or function).
+	GenericType interface {
+		Type
+		// Origin returns the original type before any specialisation.
+		Origin() GenericType
+		// Generics returns the current generic parameters and their values.
+		Generics() *GenericParams
 	}
 
 	// Specialiser provides methods to specialise a type.
 	Specialiser interface {
 		ErrSource
+		From() (*File, Expr)
 		IsDefined(int) bool
 		NonTypeFor(GenericParam) *NonTypeGenericValue
 		TypeFor(GenericParam) *TypeGenericValue
 		Values() []GenericValue
 		InstantiateError(ast.Node, error) bool
+		Fetcher() Fetcher
+	}
+
+	// Instantiator provides methods to instantiate a type.
+	Instantiator interface {
+		Specialiser
+
+		// StartResults starts instantiating function results.
+		StartResults(*FuncType)
+
+		// InstantiantingResults returns true if function results are being instantiating.
+		InstantiantingResults() bool
+
+		// StopResults stops instantiating function results.
+		StopResults(*FuncType)
 	}
 
 	// Unifier provides methods to unify types.
 	Unifier interface {
-		fmterr.ErrAppender
+		ErrSource
 		DefineType(genType *GenericTypeParam, typ Type) bool
 		DefineNonType(genAxis *GenericNonTypeParam, expr Expr) bool
 	}
@@ -142,7 +172,7 @@ func (s *GenericTypeParam) Kind() irkind.Kind {
 	return s.typ().Kind()
 }
 
-func (s *GenericTypeParam) equal(tpcmp TypeCmp, typ Type) (bool, error) {
+func (s *GenericTypeParam) equal(tpcmp TypeEval, typ Type) (bool, error) {
 	switch typT := typ.(type) {
 	case *GenericTypeParam:
 		if s.pos() == typT.pos() {
@@ -154,7 +184,7 @@ func (s *GenericTypeParam) equal(tpcmp TypeCmp, typ Type) (bool, error) {
 		if !typT.Rank().IsAtomic() {
 			return false, nil
 		}
-		return s.Equal(tpcmp, typT.DataType())
+		return typT.DataType().Equal(tpcmp, s)
 	}
 	return false, nil
 }
@@ -165,32 +195,32 @@ func (s *GenericTypeParam) Unroll(ev Fetcher, urlr Unroller) (ast.Expr, bool) {
 }
 
 // Equal returns true if other is the same type.
-func (s *GenericTypeParam) Equal(tpcmp TypeCmp, typ Type) (bool, error) {
+func (s *GenericTypeParam) Equal(tpcmp TypeEval, typ Type) (bool, error) {
 	return s.equal(tpcmp, typ)
 }
 
-func (s *GenericTypeParam) assignableFrom(tpcmp TypeCmp, other Type) (bool, error) {
+func (s *GenericTypeParam) assignableFrom(tpcmp TypeEval, other Type) (bool, error) {
 	return other.AssignableTo(tpcmp, s.typ())
 }
 
 // AssignableTo reports whether a value of the type can be assigned to another.
-func (s *GenericTypeParam) AssignableTo(tpcmp TypeCmp, typ Type) (bool, error) {
+func (s *GenericTypeParam) AssignableTo(tpcmp TypeEval, typ Type) (bool, error) {
 	return s.Equal(tpcmp, typ)
 }
 
 // ConvertibleTo reports whether a value of the type can be converted to another
 // (using static type casting).
-func (s *GenericTypeParam) ConvertibleTo(tpcmp TypeCmp, typ Type) (bool, error) {
+func (s *GenericTypeParam) ConvertibleTo(tpcmp TypeEval, typ Type) (bool, error) {
 	return s.typ().ConvertibleTo(tpcmp, typ)
 }
 
 // convertibleFrom reports whether a value of some type can be converted to the receiver.
-func (s *GenericTypeParam) convertibleFrom(tpcmp TypeCmp, from Type) (bool, error) {
+func (s *GenericTypeParam) convertibleFrom(tpcmp TypeEval, from Type) (bool, error) {
 	return from.ConvertibleTo(tpcmp, s.typ())
 }
 
 // Instantiate the generic type parameter.
-func (s *GenericTypeParam) Instantiate(_ Fetcher, spec Specialiser) (Type, bool) {
+func (s *GenericTypeParam) Instantiate(_ Fetcher, spec Instantiator) (Type, bool) {
 	return s.Specialise(spec)
 }
 
@@ -201,7 +231,7 @@ func (s *GenericTypeParam) Type() Type {
 
 // Value returns a value pointing to the receiver.
 func (s *GenericTypeParam) Value(x Expr) Expr {
-	return TypeExpr(x, s)
+	return TypeExpr(x.Expr(), s)
 }
 
 // DefineString returns the GX source code of the node.
@@ -356,7 +386,7 @@ func NewAxisGenericValue(tparam *GenericNonTypeParam, x Expr) *NonTypeGenericVal
 }
 
 // Equal returns true if the set of axes is the same than the already attached rank.
-func (v *NonTypeGenericValue) Equal(tpcmp TypeCmp, x Expr) (bool, error) {
+func (v *NonTypeGenericValue) Equal(tpcmp TypeEval, x Expr) (bool, error) {
 	return areEqual(tpcmp, v.x, x)
 }
 

@@ -15,11 +15,10 @@
 package builder
 
 import (
-	"go/ast"
-
 	"github.com/gx-org/gx/build/ir"
 	"github.com/gx-org/gx/build/ir/irkind"
 	"github.com/gx-org/gx/build/ir/unroll"
+	"github.com/gx-org/gx/src/gx/ast"
 )
 
 type rangeStmt struct {

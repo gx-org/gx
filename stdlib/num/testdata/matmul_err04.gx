@@ -1,0 +1,8 @@
+package matmul_err04
+
+import "num"
+
+func f[A, B int](x [A][B]float32, y [B]float32) [A]float32 {
+	return num.MatMul(x, y) // ERROR no axis left to define generic parameter LK
+
+}

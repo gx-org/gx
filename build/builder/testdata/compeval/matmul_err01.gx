@@ -1,0 +1,16 @@
+package matmul_err01
+
+//gx:compeval
+func matMulAxes(x, y []int) []int {
+	if len(x) == 1 && len(y) == 1 {
+		require(x[0] == y[0], "incompatible axis lengths: %v!=%v", x[0], y[0])
+		return x
+	}
+	return []int{x[0], y[1]}
+}
+
+func matMul[SX, SY []int](x [unpack(SX)]float64, y [unpack(SY)]float64) [unpack(matMulAxes(SX, SY))]float64
+
+func f[A, B int](x [A]float64, y [B]float64) [A]float64 {
+	return matMul(x, y) // ERROR in call to matMul([A]float64, [B]float64): incompatible axis lengths: A!=B
+}

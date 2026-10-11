@@ -16,13 +16,13 @@ package builder
 
 import (
 	"fmt"
-	"go/ast"
 
 	"github.com/gx-org/gx/build/builder/irb"
 	"github.com/gx-org/gx/build/ir"
 	"github.com/gx-org/gx/build/ir/irkind"
 	"github.com/gx-org/gx/internal/interp/compeval/srcstore"
 	"github.com/gx-org/gx/internal/interp/compeval/surrogates"
+	"github.com/gx-org/gx/src/gx/ast"
 )
 
 type funcType struct {
@@ -96,7 +96,7 @@ func defineFieldForStorage(s localScope, field *ir.Field, storage ir.Storage) bo
 	el, err := surrogates.FieldRoot(field, storage)
 	ok := true
 	if err != nil {
-		ok = s.Err().AppendAt(storage.Node(), err)
+		return s.Err().AppendAt(storage.Node(), err)
 	}
 	linkedEl, err := srcstore.Link(storage, el)
 	if err != nil {
@@ -129,16 +129,17 @@ func (n *funcType) buildFuncType(rscope resolveScope) (*ir.FuncType, *funcResolv
 		BaseType: ir.BaseType[*ast.FuncType]{Src: n.src},
 		Nature:   n.nature,
 	}
-	var tParamsOk, recvOk, paramsOk, resultsOk bool
+	var recvOk, paramsOk, resultsOk bool
 	sigscope, ephemeralOk := newEphemeralResolveScope(rscope, n.src)
 	if !ephemeralOk {
 		return ext, nil, false
 	}
 	typeParamsScope := newDefineScope(sigscope, defineGenericParam)
-	ext.GenParams.Fields, tParamsOk = n.typeParams.buildFieldList(typeParamsScope)
+	genParams, tParamsOk := n.typeParams.buildFieldList(typeParamsScope)
 	if !tParamsOk {
 		return ext, nil, false
 	}
+	ext.GenParams.SetFields(genParams)
 	ext.Receiver, recvOk = n.recv.buildFieldList(newDefineScope(sigscope, nil))
 	if recvOk && ext.Receiver != nil {
 		if field := ext.ReceiverField(); field.Name != nil {
@@ -155,7 +156,6 @@ func (n *funcType) buildFuncType(rscope resolveScope) (*ir.FuncType, *funcResolv
 			ext.VarArgs = varArgsType
 		}
 	}
-	ext.GenParams.Values = make([]ir.GenericValue, ext.GenParams.Fields.Len())
 	resultScope := newDefineScope(sigscope, nil)
 	ext.Results, resultsOk = n.results.buildFieldList(resultScope)
 	if !tParamsOk || !paramsOk || !resultsOk || !recvOk {
@@ -298,7 +298,15 @@ func (f *funcDecl) buildScopeBody(rscope resolveScope, extF *irFunc) (*funcResol
 		return nil, false
 	}
 	ftype := extF.irFunc.FuncType()
-	ftype, ok := instantiateFType(ce, nil, ftype, rscope.fileScope().irFile())
+	genVals, ok := evalGenericValues(ce, ftype)
+	if !ok {
+		return nil, false
+	}
+	ce, ok = ce.sub(nil, genVals)
+	if !ok {
+		return nil, false
+	}
+	ftype, ok = instantiateFType(ce, nil, ftype)
 	if !ok {
 		return nil, false
 	}

@@ -30,6 +30,7 @@ type (
 	PackageElement interface {
 		Element
 		Package() *Package
+		Find(name string) (Element, error)
 	}
 
 	// StorageElement represents an element able to store values.

@@ -15,10 +15,10 @@
 package builder
 
 import (
-	"go/ast"
 	"go/token"
 
 	"github.com/gx-org/gx/build/ir"
+	"github.com/gx-org/gx/src/gx/ast"
 )
 
 type macroProcScope struct {
@@ -41,7 +41,7 @@ func copyImportDecls(tgt *ast.File, src *ast.File) {
 }
 
 func ephemeralPkgScope(fscope *fileResolveScope, src ast.Node, pkgPath string) (*pkgResolveScope, bool) {
-	pkg, err := fscope.pkg().bld.importPath(pkgPath)
+	pkg, err := fscope.pkg().bld.loadPath(pkgPath)
 	if err != nil {
 		return nil, fscope.Err().AppendInternalf(src, "cannot import %s: %v", pkgPath, err)
 	}

@@ -15,8 +15,7 @@
 package elements
 
 import (
-	"github.com/gx-org/backend/shape"
-	"github.com/gx-org/gx/api/hostio"
+	"github.com/gomlx/compute/shapes"
 	"github.com/gx-org/gx/build/ir"
 	"github.com/gx-org/gx/internal/interp/compeval/surrogates/storepath"
 	"github.com/gx-org/gx/interp/engine"
@@ -26,7 +25,7 @@ type (
 	// EvalShaper is an (array) element from which the shape has been fully determined at evaluation time.
 	EvalShaper interface {
 		ir.Element
-		EvalShape() (*shape.Shape, error)
+		EvalShape() (shapes.Shape, error)
 	}
 
 	// Generic is an instance of a generic type.
@@ -38,15 +37,6 @@ type (
 	IString interface {
 		ir.Element
 		StrEl()
-	}
-
-	// ElementWithArrayFromContext is an element able to return a concrete value from the current context.
-	// For example, a value passed as an argument to the function.
-	ElementWithArrayFromContext interface {
-		engine.NumericalElement
-
-		// ArrayFromContext fetches an array from the argument.
-		ArrayFromContext(*hostio.FuncInputs) (hostio.Array, error)
 	}
 
 	// FieldPath indicates a path to a field in a structure.

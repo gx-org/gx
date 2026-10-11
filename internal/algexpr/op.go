@@ -16,11 +16,11 @@ package algexpr
 
 import (
 	"fmt"
-	"go/ast"
 	"go/token"
 
 	"github.com/gx-org/gx/build/ir"
 	"github.com/gx-org/gx/internal/interp/compeval/cmp"
+	"github.com/gx-org/gx/src/gx/ast"
 )
 
 type opCmp struct {

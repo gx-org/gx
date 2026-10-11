@@ -18,6 +18,7 @@ import (
 	"github.com/gx-org/gx/build/ir"
 	"github.com/gx-org/gx/internal/interp/compeval/cmp"
 	"github.com/gx-org/gx/internal/interp/constants"
+	"github.com/gx-org/gx/interp/engine"
 )
 
 type eql struct {
@@ -32,6 +33,11 @@ func (m *eql) Simplify(srcf ir.SourceFile) (cmp.Comparable, error) {
 	y, err := m.y.Simplify(srcf)
 	if err != nil {
 		return nil, err
+	}
+	_, xIsCst := x.(engine.Constant)
+	_, yIsCst := y.(engine.Constant)
+	if xIsCst != yIsCst {
+		return &opCmp{op: m.op, xs: []cmp.Comparable{x, y}}, nil
 	}
 	if x.Equal(y) {
 		return constants.True(), nil

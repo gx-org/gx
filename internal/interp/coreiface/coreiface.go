@@ -55,6 +55,17 @@ func Cast[T ir.Element](el ir.Element) (T, error) {
 	return cast.To[T](coreEl)
 }
 
+// CastIfDef casts an element to a given type.
+// Returns an undefined error if the cast is not possible.
+func CastIfDef[T ir.Element](el ir.Element) (T, error) {
+	coreEl, err := ToCore(el)
+	if err != nil {
+		var zero T
+		return zero, err
+	}
+	return cast.ToIfDef[T](coreEl)
+}
+
 // Underlying returns the underlying element.
 func Underlying(val ir.Element) (ir.Element, error) {
 	named, ok := val.(Under)

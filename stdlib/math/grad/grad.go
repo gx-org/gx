@@ -16,7 +16,6 @@
 package grad
 
 import (
-	"go/ast"
 	"go/token"
 
 	"github.com/pkg/errors"
@@ -25,6 +24,7 @@ import (
 	"github.com/gx-org/gx/build/ir"
 	"github.com/gx-org/gx/interp/elements"
 	"github.com/gx-org/gx/interp"
+	"github.com/gx-org/gx/src/gx/ast"
 	"github.com/gx-org/gx/stdlib/builtin"
 	"github.com/gx-org/gx/stdlib/math/grad/revgraph"
 	"github.com/gx-org/gx/stdlib/math/grad/special"
@@ -40,6 +40,7 @@ var Package = builtin.PackageBuilder{
 		builtin.RegisterMacro("Reverse", Reverse),
 		builtin.RegisterFuncAnnotator("Set", SetGrad),
 		builtin.RegisterFuncAnnotator("SetFor", SetGradFor),
+		builtin.RegisterFuncAnnotator("SetVJP", SetVJP),
 		builtin.RegisterFieldAnnotator("Label", Label),
 	},
 }

@@ -16,12 +16,12 @@ package builder
 
 import (
 	"fmt"
-	"go/ast"
 	"go/token"
 	"slices"
 
 	"github.com/gx-org/gx/build/ir"
 	"github.com/gx-org/gx/build/ir/irkind"
+	"github.com/gx-org/gx/src/gx/ast"
 )
 
 type axis struct {

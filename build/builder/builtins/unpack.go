@@ -37,7 +37,7 @@ func (unpackFunc) Impl() ir.MacroKeywordImpl {
 	return unpackImpl
 }
 
-func unpackImpl(tpcmp ir.TypeCmp, expr ir.Expr) (ir.Expr, error) {
+func unpackImpl(tpcmp ir.TypeEval, expr ir.Expr) (ir.Expr, error) {
 	sliceTyp, isSliceType := ir.Underlying(expr.Type()).(*ir.SliceType)
 	if !isSliceType {
 		from := tpcmp.File()

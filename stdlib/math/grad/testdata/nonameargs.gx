@@ -1,0 +1,18 @@
+package nonameargs
+
+import (
+	"math"
+	"math/grad"
+)
+
+func Max[S1, S2 []int]([unpack(S1)]float32, [unpack(S2)]float32) [unpack(S2)]float32
+
+func net(x [5]float32) [5]float32 {
+	return Max(0., x)
+}
+
+func revnet(x [5]float32) {
+	vjp := grad.Reverse(net) // ERROR: function nonameargs.Max requires a gradient specification
+	y, _ := vjp(w, x)
+	return y
+}

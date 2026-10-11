@@ -16,13 +16,16 @@
 package kernels
 
 import (
+	"fmt"
 	"go/token"
 	"math/big"
+	"reflect"
+	"unsafe"
 
 	"github.com/pkg/errors"
-	"github.com/gomlx/gopjrt/dtypes/bfloat16"
-	"github.com/gx-org/backend/dtypes"
-	"github.com/gx-org/backend/shape"
+	"github.com/gomlx/compute/dtypes/bfloat16"
+	"github.com/gomlx/compute/dtypes"
+	"github.com/gomlx/compute/shapes"
 )
 
 type (
@@ -38,7 +41,7 @@ type (
 		Factory() Factory
 
 		// Shape returns the shape of the value.
-		Shape() *shape.Shape
+		Shape() shapes.Shape
 
 		// Buffer returns the data of the array as a generic []uint8 buffer.
 		Buffer() []byte
@@ -76,52 +79,65 @@ type (
 
 	// Factory creates kernels for arrays for all supported types.
 	Factory interface {
-		Concat(dtypes.DType, int) (NAry, *shape.Shape, error)
+		Concat(dtypes.DType, int) (NAry, shapes.Shape, error)
 
-		Cast(target dtypes.DType, dims []int) (Unary, *shape.Shape, Factory, error)
+		Cast(target dtypes.DType, dims []int) (Unary, shapes.Shape, Factory, error)
 
-		Slice(*shape.Shape, int) (Unary, *shape.Shape, error)
+		Slice(shapes.Shape, int) (Unary, shapes.Shape, error)
 
-		Reshape(*shape.Shape, []int) (Unary, *shape.Shape, error)
+		Reshape(shapes.Shape, []int) (Unary, shapes.Shape, error)
 
-		BroadcastInDim(*shape.Shape, []int) (Unary, *shape.Shape, error)
+		BroadcastInDim(shapes.Shape, []int) (Unary, shapes.Shape, error)
 
-		UnaryOp(token.Token, *shape.Shape) (Unary, *shape.Shape, error)
+		UnaryOp(token.Token, shapes.Shape) (Unary, shapes.Shape, error)
 
-		BinaryOp(token.Token, *shape.Shape, *shape.Shape) (Binary, *shape.Shape, error)
+		BinaryOp(token.Token, shapes.Shape, shapes.Shape) (Binary, shapes.Shape, error)
 
 		Math() MathFactory
 	}
 )
 
-func isAtomic(shape *shape.Shape) bool {
-	return len(shape.AxisLengths) == 0
+func isAtomic(shape shapes.Shape) bool {
+	return shape.IsScalar()
+}
+
+// ToSlice converts a []byte buffer into a slice of a given Go type.
+func ToSlice[T any](data []byte) []T {
+	if len(data) == 0 {
+		return nil
+	}
+	var t T
+	size := int(unsafe.Sizeof(t))
+	if len(data)%size != 0 {
+		typeName := reflect.TypeFor[T]().String()
+		panic(fmt.Sprintf("data [%d]byte cannot be casted to []%s: %d %% sizeof(%s) != 0", len(data), typeName, len(data), typeName))
+	}
+	length := len(data) / size
+	return unsafe.Slice((*T)(unsafe.Pointer(&data[0])), length)
 }
 
 // NewArrayFromRaw returns a new array from raw data.
-func NewArrayFromRaw(data []byte, sh *shape.Shape) (Array, error) {
-	if len(data) != sh.ByteSize() {
+func NewArrayFromRaw(data []byte, sh shapes.Shape) (Array, error) {
+	if int64(len(data)) != sh.ByteSize() {
 		return nil, errors.Errorf("buffer size is %d but shape specify a buffer size of %d", len(data), sh.ByteSize())
 	}
 	switch sh.DType {
 	case dtypes.Bool:
-		return ToBoolArray(dtypes.ToSlice[bool](data), sh.AxisLengths), nil
+		return ToBoolArray(ToSlice[bool](data), sh.Dimensions), nil
 	case dtypes.BFloat16:
-		return ToBfloat16Array(dtypes.ToSlice[bfloat16.BFloat16](data), sh.AxisLengths), nil
+		return ToBfloat16Array(ToSlice[bfloat16.BFloat16](data), sh.Dimensions), nil
 	case dtypes.Float32:
-		return ToFloatArray(dtypes.ToSlice[float32](data), sh.AxisLengths), nil
+		return ToFloatArray(ToSlice[float32](data), sh.Dimensions), nil
 	case dtypes.Float64:
-		return ToFloatArray(dtypes.ToSlice[float64](data), sh.AxisLengths), nil
+		return ToFloatArray(ToSlice[float64](data), sh.Dimensions), nil
 	case dtypes.Uint32:
-		return ToIntegerArray(dtypes.ToSlice[uint32](data), sh.AxisLengths), nil
+		return ToIntegerArray(ToSlice[uint32](data), sh.Dimensions), nil
 	case dtypes.Uint64:
-		return ToIntegerArray(dtypes.ToSlice[uint64](data), sh.AxisLengths), nil
-	case dtypes.Int:
-		return ToIntegerArray(dtypes.ToSlice[int](data), sh.AxisLengths), nil
+		return ToIntegerArray(ToSlice[uint64](data), sh.Dimensions), nil
 	case dtypes.Int32:
-		return ToIntegerArray(dtypes.ToSlice[int32](data), sh.AxisLengths), nil
+		return ToIntegerArray(ToSlice[int32](data), sh.Dimensions), nil
 	case dtypes.Int64:
-		return ToIntegerArray(dtypes.ToSlice[int64](data), sh.AxisLengths), nil
+		return ToIntegerArray(ToSlice[int64](data), sh.Dimensions), nil
 	default:
 		return nil, errors.Errorf("cannot create an array from raw data: %s not supported", sh.DType.String())
 	}
@@ -135,19 +151,17 @@ func FactoryFor(dt dtypes.DType) (Factory, error) {
 	case dtypes.BFloat16:
 		return bfloat16Factory{}, nil
 	case dtypes.Float32:
-		return algebraicFactory[float32]{}, nil
+		return &algebraicFactory[float32]{}, nil
 	case dtypes.Float64:
-		return algebraicFactory[float64]{}, nil
+		return &algebraicFactory[float64]{}, nil
 	case dtypes.Uint32:
-		return integerFactory[uint32]{}, nil
+		return &integerFactory[uint32]{}, nil
 	case dtypes.Uint64:
-		return integerFactory[uint64]{}, nil
-	case dtypes.Int:
-		return integerFactory[int]{}, nil
+		return &integerFactory[uint64]{}, nil
 	case dtypes.Int32:
-		return integerFactory[int32]{}, nil
+		return &integerFactory[int32]{}, nil
 	case dtypes.Int64:
-		return integerFactory[int64]{}, nil
+		return &integerFactory[int64]{}, nil
 	default:
 		return nil, errors.Errorf("no factory for %s", dt.String())
 	}

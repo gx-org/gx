@@ -18,8 +18,8 @@ import (
 	"reflect"
 
 	"github.com/pkg/errors"
-	"github.com/gx-org/backend/ops"
-	"github.com/gx-org/backend/shape"
+	"github.com/gomlx/compute"
+	"github.com/gomlx/compute/shapes"
 	"github.com/gx-org/gx/golang/backend/kernels"
 	goplatform "github.com/gx-org/gx/golang/backend/platform"
 )
@@ -32,17 +32,19 @@ type argument struct {
 
 var _ execNode = (*argument)(nil)
 
-// Argument returns a node set by a caller when calling the function.
-func (g *Graph) Argument(name string, sh *shape.Shape, index int) (ops.Node, error) {
+// Parameter creates an input parameter for this function.
+func (g *Graph) Parameter(name string, sh shapes.Shape, sharding *compute.ShardingSpec) (compute.Value, error) {
 	factory, err := kernels.FactoryFor(sh.DType)
 	if err != nil {
 		return nil, err
 	}
-	return &argument{
+	arg := &argument{
 		node:  g.node(sh, factory),
 		name:  name,
-		index: index,
-	}, nil
+		index: len(g.args),
+	}
+	g.args = append(g.args, arg)
+	return arg, nil
 }
 
 func (n *argument) exec(exec *executor) (kernels.Array, error) {

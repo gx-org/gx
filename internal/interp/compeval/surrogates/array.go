@@ -15,9 +15,7 @@
 package surrogates
 
 import (
-	"go/ast"
-
-	"github.com/gx-org/backend/shape"
+	"github.com/gomlx/compute/shapes"
 	"github.com/gx-org/gx/build/ir"
 	"github.com/gx-org/gx/internal/algexpr"
 	"github.com/gx-org/gx/internal/base/cast"
@@ -26,6 +24,7 @@ import (
 	"github.com/gx-org/gx/internal/interp/compeval/surrogates/storepath"
 	"github.com/gx-org/gx/interp/elements"
 	"github.com/gx-org/gx/interp/engine"
+	"github.com/gx-org/gx/src/gx/ast"
 )
 
 // Array is a surrogate array.
@@ -61,22 +60,25 @@ func (a *array) Type() ir.Type {
 	return a.typ
 }
 
-func (a *array) EvalShape() (*shape.Shape, error) {
+func (a *array) EvalShape() (shapes.Shape, error) {
 	if a.typ.Rank().IsAtomic() {
-		return &shape.Shape{
+		return shapes.Shape{
 			DType: a.typ.DataType().Kind().DType(),
 		}, nil
 	}
-	return nil, nil
+	return shapes.Invalid(), nil
 }
 
 // Length returns the evaluation of the len built-in.
 func (a *array) Length(ev ir.Evaluator) (int, error) {
 	sh, err := a.EvalShape()
-	if sh == nil || err != nil {
+	if !sh.Ok() || err != nil {
 		return -1, err
 	}
-	return sh.OuterAxisLength(), nil
+	if len(sh.Dimensions) == 0 {
+		return 1, nil
+	}
+	return sh.Dimensions[0], nil
 }
 
 // UnaryOp applies a unary operator on x.
@@ -141,4 +143,12 @@ func (a *array) ShortString(from *ir.File) string {
 
 func (a *array) SourceString(from *ir.File) string {
 	return a.path.Expr().SourceString(from)
+}
+
+func (a *array) GoValue() (any, error) {
+	return a, nil
+}
+
+func (a *array) String() string {
+	return a.SourceString(nil)
 }

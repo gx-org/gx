@@ -15,11 +15,10 @@
 package builtins
 
 import (
-	"go/ast"
-
 	"github.com/gx-org/gx/build/builtins"
 	"github.com/gx-org/gx/build/fmterr"
 	"github.com/gx-org/gx/build/ir"
+	"github.com/gx-org/gx/src/gx/ast"
 )
 
 type appendFunc struct{}
@@ -37,8 +36,9 @@ func (*appendFunc) Name() string {
 }
 
 // BuildFuncType builds the type of a function given how it is called.
-func (f *appendFunc) BuildFuncType(tpcmp ir.TypeCmp, call *ir.FuncCallExpr) (*ir.FuncType, error) {
+func (f *appendFunc) BuildFuncType(tpcmp ir.TypeEval, call *ir.FuncCallExpr) (*ir.FuncType, error) {
 	ext := &ir.FuncType{
+		Nature: ir.FuncNature{CompEval: true},
 		BaseType: ir.BaseType[*ast.FuncType]{
 			Src: &ast.FuncType{Func: call.Src.Pos()},
 		},
@@ -59,7 +59,7 @@ func (f *appendFunc) BuildFuncType(tpcmp ir.TypeCmp, call *ir.FuncCallExpr) (*ir
 	container := ir.Underlying(params[0]).(*ir.SliceType)
 	containerGroup := &ir.FieldGroup{
 		Src:  &ast.Field{Type: call.Src},
-		Type: ir.TypeExpr(call, container),
+		Type: ir.TypeExpr(call.Expr(), container),
 	}
 	containerGroup.Fields = []*ir.Field{&ir.Field{Group: containerGroup}}
 	ext.VarArgs = &ir.VarArgsType{
@@ -71,7 +71,7 @@ func (f *appendFunc) BuildFuncType(tpcmp ir.TypeCmp, call *ir.FuncCallExpr) (*ir
 	}
 	elementsGroup := &ir.FieldGroup{
 		Src:  &ast.Field{Type: call.Src},
-		Type: ir.TypeExpr(call, ext.VarArgs),
+		Type: ir.TypeExpr(call.Expr(), ext.VarArgs),
 	}
 	srcFieldList := &ast.FieldList{Opening: call.Src.Lparen, Closing: call.Src.Rparen}
 	ext.Params = &ir.FieldList{

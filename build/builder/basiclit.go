@@ -15,11 +15,11 @@
 package builder
 
 import (
-	"go/ast"
 	"go/token"
 	"math/big"
 
 	"github.com/gx-org/gx/build/ir"
+	"github.com/gx-org/gx/src/gx/ast"
 )
 
 func processBasicLit(pscope procScope, expr *ast.BasicLit) (exprNode, bool) {

@@ -104,7 +104,7 @@ func TestTranspose3Axes() [4][3][2]float32 {
 func TestMatMulScalars() float64 {
 	x := [1]float64{1}
 	w := [1]float64{-1}
-	return num.MatMul(x, w)
+	return num.VecMul(x, w)
 	// Want:
 	// float64(-1)
 }
@@ -112,7 +112,7 @@ func TestMatMulScalars() float64 {
 func TestMatMul1Axis() float64 {
 	x := [3]float64{1, 2, 3}
 	w := [3]float64{-1, -2, -3}
-	return num.MatMul(x, w)
+	return num.VecMul(x, w)
 	// Want:
 	// float64(-14)
 }
@@ -124,7 +124,7 @@ func TestMatMul2Axis() [2]float64 {
 		{6, 7},
 		{8, 9},
 	}
-	return num.MatMul(x, w)
+	return num.VecMatMul(x, w)
 	// Want:
 	// [2]float64{40, 46}
 }
@@ -280,7 +280,7 @@ func TestMatmulVarsDimMatrixMatrix() [dim1][dim3]float32 {
 }
 
 func TestMatmulVarsDimVectorMatrix() [dim1]float32 {
-	return num.MatMul([dim1][dim2]float32{}, [dim2]float32{})
+	return num.MatVecMul([dim1][dim2]float32{}, [dim2]float32{})
 	// Want:
 	// [2]float32{0, 0}
 }

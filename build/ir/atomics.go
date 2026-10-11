@@ -15,9 +15,8 @@
 package ir
 
 import (
-	"go/ast"
-
 	"github.com/gx-org/gx/build/ir/irkind"
+	"github.com/gx-org/gx/src/gx/ast"
 )
 
 var (
@@ -104,20 +103,16 @@ func (s *atomicArrayType) DataType() Type {
 	return s.tp
 }
 
-func (s *atomicArrayType) equalArray(tpcmp TypeCmp, other ArrayType) (bool, error) {
-	if !other.Rank().IsAtomic() {
-		return false, nil
-	}
-	return other.DataType() == s.tp, nil
-}
-
 // Equal returns true if other is the same type.
-func (s *atomicArrayType) Equal(tpcmp TypeCmp, other Type) (bool, error) {
+func (s *atomicArrayType) Equal(tpcmp TypeEval, other Type) (bool, error) {
 	otherT, ok := other.(ArrayType)
 	if !ok {
 		return false, nil
 	}
-	return s.equalArray(tpcmp, otherT)
+	if !otherT.Rank().IsAtomic() {
+		return false, nil
+	}
+	return s.DataType() == otherT.DataType(), nil
 }
 
 // Rank of the array.
@@ -126,7 +121,7 @@ func (s *atomicArrayType) Rank() ArrayRank {
 }
 
 // AssignableTo reports if the type can be assigned to other.
-func (s *atomicArrayType) AssignableTo(tpcmp TypeCmp, target Type) (bool, error) {
+func (s *atomicArrayType) AssignableTo(tpcmp TypeEval, target Type) (bool, error) {
 	if assignFrom, ok := target.(assignsFrom); ok {
 		return assignFrom.assignableFrom(tpcmp, s.tp)
 	}
@@ -135,7 +130,7 @@ func (s *atomicArrayType) AssignableTo(tpcmp TypeCmp, target Type) (bool, error)
 
 // ConvertibleTo reports whether a value of the type can be converted to another
 // (using static type casting).
-func (s *atomicArrayType) ConvertibleTo(tpcmp TypeCmp, target Type) (bool, error) {
+func (s *atomicArrayType) ConvertibleTo(tpcmp TypeEval, target Type) (bool, error) {
 	if convertFrom, ok := target.(convertsFrom); ok {
 		return convertFrom.convertibleFrom(tpcmp, s.tp)
 	}
@@ -153,7 +148,7 @@ func (s *atomicArrayType) Specialise(Specialiser) (Type, bool) {
 }
 
 // Instantiate a function type.
-func (s *atomicArrayType) Instantiate(Fetcher, Specialiser) (Type, bool) {
+func (s *atomicArrayType) Instantiate(Fetcher, Instantiator) (Type, bool) {
 	return s.tp, true
 }
 

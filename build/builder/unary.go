@@ -15,10 +15,11 @@
 package builder
 
 import (
-	"go/ast"
 	"go/token"
 
 	"github.com/gx-org/gx/build/ir"
+	"github.com/gx-org/gx/build/ir/irkind"
+	"github.com/gx-org/gx/src/gx/ast"
 )
 
 type unaryExpr struct {
@@ -42,9 +43,30 @@ func (n *unaryExpr) source() ast.Node {
 	return n.src
 }
 
+func (n *unaryExpr) checkSub(scope resolveScope, x ir.Expr) bool {
+	xType := x.Type()
+	if ir.IsInvalidType(xType) || xType.Kind() == irkind.Unknown {
+		return true
+	}
+	if array, isArray := xType.(ir.ArrayType); isArray {
+		xType = array.DataType()
+	}
+	if !ir.IsSigned(xType) {
+		return scope.Err().Appendf(n.src, "operator %s not defined on %s (expect a signed type)", n.src.Op.String(), xType.ReferString(scope.fileScope().irFile()))
+	}
+	return true
+}
+
 func (n *unaryExpr) buildExpr(scope resolveScope) (ir.Expr, bool) {
 	x, ok := buildExpr(scope, n.x)
-	return &ir.UnaryExpr{Src: n.src, X: x}, ok
+	ext := &ir.UnaryExpr{Src: n.src, X: x}
+	if !ok {
+		return ext, false
+	}
+	if n.src.Op == token.SUB {
+		ok = n.checkSub(scope, x)
+	}
+	return ext, ok
 }
 
 func (n *unaryExpr) String() string {

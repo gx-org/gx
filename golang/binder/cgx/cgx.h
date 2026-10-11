@@ -87,15 +87,8 @@ typedef cgx_handle cgx_shape;
 // cgx_host_buffer is an opaque handle for a GX host buffer.
 typedef cgx_handle cgx_host_buffer;
 
-// cgx_struct is an opaque handle for a GX struct value,
-// that a structure with fields.
-typedef cgx_handle cgx_struct;
-
-// cgx_interface is an opaque handle for a GX interface value,
-// that is a named type with methods.
-// Note that a GX value that is a structure with methods
-// can be converted into a cgx_interface and a cgx_struct.
-typedef cgx_handle cgx_interface;
+// cgx_type is an opaque handle for a GX type.
+typedef cgx_handle cgx_type;
 
 // cgx_value_kind describes the kind of a GX value, which can range from simple
 // atomic data types to composite types.
@@ -111,11 +104,15 @@ enum cgx_value_kind {
   CGX_UINT32,
   CGX_UINT64,
 
+  CGX_STRING,
+
   // For the multi-dimensional or composite types below, you must further
   // inspect their fields, dimensions, and base data types.
   CGX_ARRAY,
   CGX_SLICE,
   CGX_STRUCT,
+  CGX_INTERFACE,
+  CGX_UNKNOWN,
 };
 
 // cgx_builder_new_result is the return value for cgx_builder_new_*().

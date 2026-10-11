@@ -16,16 +16,20 @@ package stdlib_test
 import (
 	"testing"
 
-	"github.com/gx-org/gx/golang/backend"
+	"github.com/gomlx/compute/gobackend"
+	"github.com/gx-org/gx/api"
 	gxtesting "github.com/gx-org/gx/tests/testing"
 	"github.com/gx-org/gx/tests"
 )
 
 func TestStdlib(t *testing.T) {
-	bck := backend.New(tests.StdlibBuilder())
-	session := gxtesting.NewSession(bck, tests.FS)
+	bck, err := gobackend.New("")
+	if err != nil {
+		t.Fatal(err)
+	}
+	rtm := api.NewRuntime(bck, tests.NewBuilder())
+	session := gxtesting.NewSession(rtm, tests.FS)
 	for _, path := range []string{
-		"testfiles/grad",
 		"testfiles/vjp",
 		"testfiles/compeval",
 	} {

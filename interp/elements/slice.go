@@ -15,8 +15,6 @@
 package elements
 
 import (
-	"go/ast"
-
 	"github.com/pkg/errors"
 	"github.com/gx-org/gx/api/hostio"
 	"github.com/gx-org/gx/api/values"
@@ -31,6 +29,7 @@ import (
 	"github.com/gx-org/gx/internal/interp/flatten"
 	"github.com/gx-org/gx/internal/togo"
 	"github.com/gx-org/gx/interp/engine"
+	"github.com/gx-org/gx/src/gx/ast"
 )
 
 type (
@@ -62,6 +61,8 @@ type (
 	ISlice interface {
 		ir.Element
 		ir.WithExpr
+		ir.WithLength
+		cmp.Canonical
 		Slicer
 		engine.Slice
 		Unpacker
@@ -87,10 +88,14 @@ func NewSlice(typ ir.Type, elements []ir.Element) (*Slice, error) {
 	if typ.Kind() != irkind.Slice {
 		err = fmterr.Internal(errors.Errorf("cannot create a slice of type %s", typ.ReferString(nil)))
 	}
-	return &Slice{
-		typ:    typ,
-		values: elements,
-	}, err
+	n := &Slice{typ: typ}
+	if err != nil {
+		return n, err
+	}
+	for _, el := range elements {
+		n.AppendInPlace(el)
+	}
+	return n, nil
 }
 
 // Flatten returns the elements of the slice.
@@ -157,13 +162,16 @@ func (*Slice) Kind() irkind.Kind {
 // Append elements to a copy of the slice.
 func (n *Slice) Append(_ *ir.FuncCallExpr, args []ir.Element) engine.Slice {
 	values := append([]ir.Element{}, n.values...)
-	values = append(values, args...)
-	return &Slice{typ: n.typ, values: values}
+	r := &Slice{typ: n.typ, values: values}
+	for _, el := range args {
+		r.AppendInPlace(el)
+	}
+	return r
 }
 
 // AppendInPlace appends an element to the slice without creating a copy of the slice.
 func (n *Slice) AppendInPlace(el ir.Element) {
-	n.values = append(n.values, el)
+	n.values = append(n.values, unpack(el)...)
 }
 
 // Unflatten consumes the next handles to return a GX value.
@@ -235,7 +243,19 @@ func (n *Slice) Set(index ir.Element, val ir.Element) error {
 
 // Length returns the value corresponding to calling the built-in len.
 func (n *Slice) Length(ev ir.Evaluator) (int, error) {
-	return n.Len(), nil
+	l := 0
+	for _, el := range n.Elements() {
+		if el.Type().Kind() != irkind.Tuple {
+			l++
+			continue
+		}
+		tuple, err := cast.ToIfDef[*Tuple](el)
+		if err != nil {
+			return -1, err
+		}
+		l += len(tuple.Elements())
+	}
+	return l, nil
 }
 
 // Len returns the number of elements in the slice.
@@ -245,7 +265,7 @@ func (n *Slice) Len() int {
 
 // GoValue of the underlying element.
 func (n *Slice) GoValue() (any, error) {
-	return coreiface.MapSlice(togo.Value, n.values)
+	return coreiface.MapSlice(togo.CpValue, n.values)
 }
 
 // ShortString returns a string representation of the slice.

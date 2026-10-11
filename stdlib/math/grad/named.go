@@ -15,9 +15,8 @@
 package grad
 
 import (
-	"go/ast"
-
 	"github.com/gx-org/gx/base/uname"
+	"github.com/gx-org/gx/src/gx/ast"
 )
 
 type namedFields struct {

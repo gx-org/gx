@@ -15,19 +15,16 @@
 package shape
 
 import (
-	"go/ast"
-
-	"github.com/gx-org/backend/ops"
-	"github.com/gx-org/backend/shape"
+	"github.com/gomlx/compute/shapes"
 	"github.com/gx-org/gx/build/builtins"
 	"github.com/gx-org/gx/build/fmterr"
 	"github.com/gx-org/gx/build/ir"
-	"github.com/gx-org/gx/internal/concrete"
 	"github.com/gx-org/gx/internal/interp/compeval/cmp"
 	"github.com/gx-org/gx/internal/interp/numbers"
 	"github.com/gx-org/gx/interp/elements"
 	"github.com/gx-org/gx/interp/engine"
 	"github.com/gx-org/gx/interp/materialise"
+	"github.com/gx-org/gx/src/gx/ast"
 	"github.com/gx-org/gx/stdlib/builtin"
 )
 
@@ -41,7 +38,7 @@ func (f broadcast) BuildFuncIR(pkg *ir.Package) (*ir.FuncBuiltin, error) {
 
 var oneAxisLength = numbers.OneInt()
 
-func checkBroadcastRanks(tpcmp ir.TypeCmp, call *ir.FuncCallExpr, src ir.ArrayRank, target ir.ArrayRank, targetElmts []cmp.Canonical) error {
+func checkBroadcastRanks(tpcmp ir.TypeEval, call *ir.FuncCallExpr, src ir.ArrayRank, target ir.ArrayRank, targetElmts []cmp.Canonical) error {
 	if src == nil || target == nil {
 		return nil
 	}
@@ -75,7 +72,7 @@ func checkBroadcastRanks(tpcmp ir.TypeCmp, call *ir.FuncCallExpr, src ir.ArrayRa
 	return nil
 }
 
-func (f broadcast) BuildFuncType(tpcmp ir.TypeCmp, call *ir.FuncCallExpr) (*ir.FuncType, error) {
+func (f broadcast) BuildFuncType(tpcmp ir.TypeEval, call *ir.FuncCallExpr) (*ir.FuncType, error) {
 	params, err := builtins.BuildFuncParams(tpcmp, call, f.Name(), []ir.Type{
 		builtins.GenericArrayType,
 		ir.IntSliceType(),
@@ -101,8 +98,8 @@ func (f broadcast) BuildFuncType(tpcmp ir.TypeCmp, call *ir.FuncCallExpr) (*ir.F
 	}, nil
 }
 
-func evalBroadcast(env *engine.Env, call *ir.FuncCallExpr, recv ir.Element, args []ir.Element) ([]ir.Element, error) {
-	targetAxes, err := elements.AxesFromElement(args[0])
+func evalBroadcast(env *engine.Env, call *ir.FuncCallExpr, recv ir.Element, genArgs, args []ir.Element) ([]ir.Element, error) {
+	targetAxes, err := elements.AxesFromElement(genArgs[0])
 	if err != nil {
 		return nil, err
 	}
@@ -111,24 +108,17 @@ func evalBroadcast(env *engine.Env, call *ir.FuncCallExpr, recv ir.Element, args
 		broadcastAxes[i] = i
 	}
 	mat := builtin.Materialiser(env)
-	x, xShape, err := materialise.Element(mat, args[3])
+	x, xShape, err := materialise.Element(mat, args[0])
 	if err != nil {
 		return nil, err
 	}
-	targetShape := &shape.Shape{
-		DType:       xShape.DType,
-		AxisLengths: targetAxes,
+	targetShape := shapes.Shape{
+		DType:      xShape.DType,
+		Dimensions: targetAxes,
 	}
-	op, err := env.Engine().ArrayOps().Graph().Core().BroadcastInDim(x, targetShape, broadcastAxes)
+	op, err := env.Engine().Graph().BroadcastInDim(x, targetShape, broadcastAxes)
 	if err != nil {
 		return nil, err
 	}
-	tp, err := concrete.Concrete(env.ExprEval(), call.Type())
-	if err != nil {
-		return nil, fmterr.Error(env.File().FileSet(), call.Src, err)
-	}
-	return materialise.ElementFromNode(env.File(), mat, &ops.OutputNode{
-		Node:  op,
-		Shape: targetShape,
-	}, tp)
+	return materialise.ElementFromNode(env.ExprEval(), mat, op, call.Type())
 }

@@ -16,10 +16,10 @@ package gengx
 
 import (
 	"fmt"
-	"go/ast"
 	"go/types"
 
 	"github.com/gx-org/gx/internal/cmd/impgo/genast"
+	"github.com/gx-org/gx/src/gx/ast"
 )
 
 func (g *gxGenerator) gxTypeFromBasic(t *types.Basic) ast.Expr {

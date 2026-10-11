@@ -15,35 +15,38 @@
 package compeval
 
 import (
-	"go/ast"
-
-	"github.com/gx-org/backend/shape"
+	"github.com/gomlx/compute/shapes"
+	"github.com/gx-org/gx/api/hostio"
 	"github.com/gx-org/gx/build/ir"
 	"github.com/gx-org/gx/internal/interp/compeval/cmp"
 	"github.com/gx-org/gx/internal/interp/compeval/cpevops"
 	"github.com/gx-org/gx/internal/interp/compeval/surrogates/storepath"
 	"github.com/gx-org/gx/internal/interp/compeval/surrogates"
 	"github.com/gx-org/gx/internal/interp/csteager"
+	"github.com/gx-org/gx/internal/interp/flatten"
 	"github.com/gx-org/gx/internal/togo"
 	"github.com/gx-org/gx/interp/elements"
 	"github.com/gx-org/gx/interp/engine"
+	"github.com/gx-org/gx/interp/materialise"
+	"github.com/gx-org/gx/src/gx/ast"
 )
 
 // constant checks the arguments of operators.
 // It returns a surrogate value if one of the argument is unknown.
 type constant struct {
-	ao  engine.ArrayOps
+	ao  engine.Engine
 	cst engine.Constant
 }
 
 var (
 	_ elements.EvalShaper = (*constant)(nil)
 	_ cmp.Canonical       = (*constant)(nil)
-	_ togo.WithGoValue    = (*constant)(nil)
+	_ hostio.CompileValue = (*constant)(nil)
 	_ cpevops.Element     = (*constant)(nil)
+	_ flatten.Unflattener = (*constant)(nil)
 )
 
-func newConstant(ao engine.ArrayOps, cst engine.Constant) engine.ConstantElement {
+func newConstant(ao engine.Engine, cst engine.Constant) engine.ConstantElement {
 	return &constant{ao: ao, cst: cst}
 }
 
@@ -118,7 +121,7 @@ func (c *constant) AlgExpr(eva ir.Evaluator) (cmp.Expr, error) {
 	return cmp.ToAlgExpr(eva, c.cst)
 }
 
-func (c *constant) EvalShape() (*shape.Shape, error) {
+func (c *constant) EvalShape() (shapes.Shape, error) {
 	return cpevops.EvalShape(c.Type())
 }
 
@@ -133,7 +136,29 @@ func (c *constant) Expr(ev ir.Evaluator, src ast.Expr) ([]ir.Expr, error) {
 
 // GoValue of the underlying element.
 func (c *constant) GoValue() (any, error) {
-	return togo.Value(c.cst)
+	return togo.CpValue(c.cst)
+}
+
+func (c *constant) toHostArray() (*hostio.HostArray, error) {
+	val, err := c.GoValue()
+	if err != nil {
+		return nil, err
+	}
+	return hostio.FromAtom(val, c.Type())
+}
+
+// Unflatten returns the same constant.
+func (c *constant) Unflatten(handles *flatten.Parser) (hostio.Value, error) {
+	return c.toHostArray()
+}
+
+// Materialise returns the element with all its values from the graph.
+func (c *constant) Materialise(mat materialise.Materialiser) (materialise.Node, error) {
+	hostArray, err := c.toHostArray()
+	if err != nil {
+		return nil, err
+	}
+	return mat.NodeFromArray(hostArray)
 }
 
 func (c *constant) ShortString(from *ir.File) string {

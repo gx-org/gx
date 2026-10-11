@@ -16,7 +16,6 @@
 package builtins
 
 import (
-	"go/ast"
 	"go/token"
 	"reflect"
 	"strings"
@@ -24,6 +23,7 @@ import (
 	"github.com/gx-org/gx/build/fmterr"
 	"github.com/gx-org/gx/build/ir"
 	"github.com/gx-org/gx/build/ir/irkind"
+	"github.com/gx-org/gx/src/gx/ast"
 )
 
 var (
@@ -69,7 +69,7 @@ func Fields(expr ir.Expr, types ...ir.Type) *ir.FieldList {
 	for i, tp := range types {
 		l.List[i] = &ir.FieldGroup{
 			Src:  &ast.Field{Type: expr.Expr()},
-			Type: ir.TypeExpr(expr, tp),
+			Type: ir.TypeExpr(expr.Expr(), tp),
 		}
 	}
 	return l
@@ -131,7 +131,7 @@ func fmtExprType(from *ir.File) func(ir.Expr) string {
 // and returns a list of parameters for the function.
 // Arguments with NumberKind are replaced by the target type.
 // It returns an error if a call's arguments don't match the given signature.
-func BuildFuncParams(tpcmp ir.TypeCmp, call *ir.FuncCallExpr, name string, sig []ir.Type) ([]ir.Type, error) {
+func BuildFuncParams(tpcmp ir.TypeEval, call *ir.FuncCallExpr, name string, sig []ir.Type) ([]ir.Type, error) {
 	if len(sig) != len(call.Args) {
 		actual := joinSignature[ir.Expr](call.Args, fmtExprType(tpcmp.File()))
 		wanted := joinSignature[ir.Type](sig, fmtType(tpcmp.File()))
@@ -179,7 +179,7 @@ func BuildFuncParams(tpcmp ir.TypeCmp, call *ir.FuncCallExpr, name string, sig [
 }
 
 // NarrowType converts an abstract type into more concrete type, typically *github.com/gx-org/gx/build/ir.ArrayType.
-func NarrowType[T ir.Type](tpcmp ir.TypeCmp, call *ir.FuncCallExpr, arg ir.Type) (t T, err error) {
+func NarrowType[T ir.Type](tpcmp ir.TypeEval, call *ir.FuncCallExpr, arg ir.Type) (t T, err error) {
 	var ok bool
 	t, ok = arg.(T)
 	if !ok {
@@ -189,7 +189,7 @@ func NarrowType[T ir.Type](tpcmp ir.TypeCmp, call *ir.FuncCallExpr, arg ir.Type)
 }
 
 // NarrowTypes converts abstract types into more concrete types, typically *ir.ArrayType.
-func NarrowTypes[T ir.Type](tpcmp ir.TypeCmp, call *ir.FuncCallExpr, args []ir.Type) ([]T, error) {
+func NarrowTypes[T ir.Type](tpcmp ir.TypeEval, call *ir.FuncCallExpr, args []ir.Type) ([]T, error) {
 	res := make([]T, len(args))
 	for i, arg := range args {
 		var err error

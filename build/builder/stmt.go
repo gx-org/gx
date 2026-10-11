@@ -15,7 +15,6 @@
 package builder
 
 import (
-	"go/ast"
 	"go/token"
 
 	"github.com/gx-org/gx/build/fmterr"
@@ -23,6 +22,7 @@ import (
 	"github.com/gx-org/gx/build/ir/irkind"
 	"github.com/gx-org/gx/internal/interp/compeval/surrogates/storepath"
 	"github.com/gx-org/gx/internal/interp/compeval/surrogates"
+	"github.com/gx-org/gx/src/gx/ast"
 )
 
 type blockStmt struct {
@@ -199,7 +199,8 @@ func (n *declStmt) buildStmt(scope stmtResolveScope) (ir.Stmt, bool, bool) {
 
 func (n *exprStmt) buildStmt(scope stmtResolveScope) (ir.Stmt, bool, bool) {
 	x, ok := n.x.buildExpr(scope)
-	if ok && x.Type().Kind() != irkind.Void {
+	kind := x.Type().Kind()
+	if ok && kind != irkind.Void && kind != irkind.Unknown {
 		ok = scope.Err().Appendf(n.src, "cannot use an expression returning a value as a statement")
 	}
 	return &ir.ExprStmt{Src: n.src, X: x}, false, ok

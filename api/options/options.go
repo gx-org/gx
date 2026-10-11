@@ -18,13 +18,13 @@ package options
 import (
 	"fmt"
 
-	"github.com/gx-org/backend/platform"
+	"github.com/gomlx/compute"
 	"github.com/gx-org/gx/api/hostio"
 )
 
 type (
 	// PackageOptionFactory creates options given a backend.
-	PackageOptionFactory func(platform.Platform) PackageOption
+	PackageOptionFactory func(compute.Backend) PackageOption
 
 	// PackageOption is an option specific to a package.
 	PackageOption interface {
@@ -54,11 +54,18 @@ func (p PackageVarSetValue) String() string {
 	return fmt.Sprintf("%s.%s=%T:%v", p.Pkg, p.Var, p.Value, p.Value)
 }
 
-// Process options for a given platform.
-func Process(plat platform.Platform, optionFactories []PackageOptionFactory) []PackageOption {
+// Factory returns a PackageOptionFactory that returns p.
+func (p PackageVarSetValue) Factory() PackageOptionFactory {
+	return func(compute.Backend) PackageOption {
+		return p
+	}
+}
+
+// Process options for a given backend.
+func Process(bck compute.Backend, optionFactories []PackageOptionFactory) []PackageOption {
 	opts := make([]PackageOption, len(optionFactories))
 	for i, optFactory := range optionFactories {
-		opts[i] = optFactory(plat)
+		opts[i] = optFactory(bck)
 	}
 	return opts
 }

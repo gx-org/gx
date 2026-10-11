@@ -17,8 +17,8 @@
 package processor
 
 import (
-	"github.com/gx-org/backend/platform"
-	"github.com/gx-org/backend/shape"
+	"github.com/gomlx/compute"
+	"github.com/gomlx/compute/shapes"
 	"github.com/gx-org/gx/api/hostio"
 	"github.com/gx-org/gx/build/ir"
 )
@@ -27,7 +27,7 @@ type (
 	// Shaper is an element with a concrete shape.
 	Shaper interface {
 		ir.Element
-		Shape() *shape.Shape
+		Shape() shapes.Shape
 	}
 
 	// Processor stores initializers and traces to process before and
@@ -37,6 +37,8 @@ type (
 		factory hostio.Factory
 		inits   []Initializer
 		args    []Argument
+
+		last *hostio.FuncInputs
 	}
 
 	// Initializer is called at the beginning of a run before
@@ -49,7 +51,7 @@ type (
 	Argument interface {
 		Shaper
 
-		ToDeviceHandle(platform.Device, *hostio.FuncInputs) (platform.DeviceHandle, error)
+		ToDeviceHandle(compute.Backend, compute.DeviceNum, *hostio.FuncInputs) (compute.Buffer, error)
 	}
 )
 
@@ -92,8 +94,14 @@ func (p *Processor) ElementArgs() []ir.Element {
 	return els
 }
 
+// LastInputs returns the inputs from the last call.
+func (p *Processor) LastInputs() *hostio.FuncInputs {
+	return p.last
+}
+
 // ProcessInits calls all the initializers callbacks.
 func (p *Processor) ProcessInits(fc *hostio.FuncInputs) error {
+	p.last = fc
 	for _, init := range p.inits {
 		if err := init.Init(fc); err != nil {
 			return err

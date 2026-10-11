@@ -15,11 +15,11 @@
 package ir
 
 import (
-	"go/ast"
 	"reflect"
 
 	"github.com/gx-org/gx/build/fmterr"
 	"github.com/gx-org/gx/build/ir/irkind"
+	"github.com/gx-org/gx/src/gx/ast"
 )
 
 var (
@@ -67,18 +67,11 @@ func (t *numberType) Zero() Expr {
 	return zero
 }
 
-func (t *numberType) equalArray(tpcmp TypeCmp, other ArrayType) (bool, error) {
-	if !other.Rank().IsAtomic() {
-		return false, nil
-	}
-	return other.DataType() == t.tp, nil
-}
-
-func (t *numberType) Equal(tpcmp TypeCmp, other Type) (bool, error) {
+func (t *numberType) Equal(tpcmp TypeEval, other Type) (bool, error) {
 	return t.tp == other, nil
 }
 
-func (t *numberType) ConvertibleTo(tpcmp TypeCmp, target Type) (bool, error) {
+func (t *numberType) ConvertibleTo(tpcmp TypeEval, target Type) (bool, error) {
 	return false, nil
 }
 
@@ -86,7 +79,7 @@ func (t *numberType) Specialise(Specialiser) (Type, bool) {
 	return t.tp, true
 }
 
-func (t *numberType) Instantiate(Fetcher, Specialiser) (Type, bool) {
+func (t *numberType) Instantiate(Fetcher, Instantiator) (Type, bool) {
 	return t.tp, true
 }
 
@@ -121,7 +114,7 @@ type numberFloatType struct {
 
 var _ ArrayType = (*numberFloatType)(nil)
 
-func (t *numberFloatType) AssignableTo(tpcmp TypeCmp, target Type) (bool, error) {
+func (t *numberFloatType) AssignableTo(tpcmp TypeEval, target Type) (bool, error) {
 	return IsFloat(target), nil
 }
 
@@ -137,7 +130,7 @@ type numberIntType struct {
 
 var _ ArrayType = (*numberIntType)(nil)
 
-func (t *numberIntType) AssignableTo(tpcmp TypeCmp, target Type) (bool, error) {
+func (t *numberIntType) AssignableTo(tpcmp TypeEval, target Type) (bool, error) {
 	return IsInteger(target) || IsFloat(target), nil
 }
 

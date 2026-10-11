@@ -16,12 +16,12 @@ package cpevops
 
 import (
 	"fmt"
-	"go/ast"
 
 	"github.com/gx-org/gx/build/ir"
 	"github.com/gx-org/gx/internal/algexpr"
 	"github.com/gx-org/gx/internal/interp/compeval/cmp"
 	"github.com/gx-org/gx/interp/engine"
+	"github.com/gx-org/gx/src/gx/ast"
 )
 
 type unary struct {

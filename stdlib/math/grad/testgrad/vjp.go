@@ -16,13 +16,13 @@ package testgrad
 
 import (
 	"fmt"
-	"go/ast"
 	"strconv"
 	"strings"
 
 	"github.com/pkg/errors"
 	"github.com/gx-org/gx/build/builder/testbuild"
 	"github.com/gx-org/gx/build/ir"
+	"github.com/gx-org/gx/src/gx/ast"
 )
 
 // Reverse tests the computation of the Vector-Jacobian product of a function.

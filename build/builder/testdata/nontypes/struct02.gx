@@ -1,0 +1,45 @@
+package struct02
+
+type Layer[in, out int] struct {
+	weights [in][out]float32
+	bias    [out]float32
+}
+
+const (
+	In       = 3
+	Features = 4
+	Out      = 2
+)
+
+type Network struct {
+	l1 Layer[In, Features]
+	l2 Layer[Features, Out]
+}
+
+func Test() ([3][4]float32, [4]float32, [4][2]float32, [2]float32) {
+	n := Network{
+		l1: Layer[In, Features]{
+			weights: [In][Features]float32(12),
+			bias:    [Features]float32(4),
+		},
+		l2: Layer[Features, Out]{
+			weights: [Features][Out]float32(8),
+			bias:    [Out]float32(2),
+		},
+	}
+	return n.l1.weights, n.l1.bias, n.l2.weights, n.l2.bias
+	// Want:
+	// 0: [3][4]float32{
+	// 	{12, 12, 12, 12},
+	// 	{12, 12, 12, 12},
+	// 	{12, 12, 12, 12},
+	// }
+	// 1: [4]float32{4, 4, 4, 4}
+	// 2: [4][2]float32{
+	// 	{8, 8},
+	// 	{8, 8},
+	// 	{8, 8},
+	// 	{8, 8},
+	// }
+	// 3: [2]float32{2, 2}
+}

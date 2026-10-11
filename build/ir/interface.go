@@ -16,10 +16,10 @@ package ir
 
 import (
 	"fmt"
-	"go/ast"
 
 	"github.com/gx-org/gx/build/ir/annotations"
 	"github.com/gx-org/gx/build/ir/irkind"
+	"github.com/gx-org/gx/src/gx/ast"
 )
 
 // IMethod is a method defined in an interface.
@@ -180,7 +180,7 @@ func (s *Interface) ArrayType() ast.Expr {
 func (s *Interface) Kind() irkind.Kind { return irkind.Interface }
 
 // Equal returns true if other is the exact same type set.
-func (s *Interface) Equal(tpcmp TypeCmp, target Type) (bool, error) {
+func (s *Interface) Equal(tpcmp TypeEval, target Type) (bool, error) {
 	targetSet, ok := target.(*Interface)
 	if !ok {
 		return false, nil
@@ -205,7 +205,7 @@ func (s *Interface) Equal(tpcmp TypeCmp, target Type) (bool, error) {
 }
 
 // AssignableTo reports whether a value of the type can be assigned to another.
-func (s *Interface) AssignableTo(tpcmp TypeCmp, target Type) (bool, error) {
+func (s *Interface) AssignableTo(tpcmp TypeEval, target Type) (bool, error) {
 	if targetSet, ok := target.(*Interface); ok {
 		return targetSet.assignableFrom(tpcmp, s)
 	}
@@ -229,7 +229,7 @@ func (s *Interface) buildTypeSet() []Type {
 	return set
 }
 
-func isContained(tpcmp TypeCmp, set []Type, tp Type) (bool, error) {
+func isContained(tpcmp TypeEval, set []Type, tp Type) (bool, error) {
 	for _, tpInSet := range set {
 		var isEq bool
 		var err error
@@ -248,7 +248,7 @@ func isContained(tpcmp TypeCmp, set []Type, tp Type) (bool, error) {
 	return false, nil
 }
 
-func (s *Interface) checkTypesAssignableFrom(tpcmp TypeCmp, source Type) (bool, error) {
+func (s *Interface) checkTypesAssignableFrom(tpcmp TypeEval, source Type) (bool, error) {
 	targetSet := s.buildTypeSet()
 	if len(s.types) == 0 {
 		return true, nil
@@ -265,13 +265,13 @@ func (s *Interface) checkTypesAssignableFrom(tpcmp TypeCmp, source Type) (bool, 
 }
 
 // Instantiate the interface.
-func (s *Interface) Instantiate(Fetcher, Specialiser) (Type, bool) {
+func (s *Interface) Instantiate(Fetcher, Instantiator) (Type, bool) {
 	return s, true
 }
 
 type toString func(file *File) string
 
-func checkHasMethod(tpcmp TypeCmp, ifaceName toString, source *NamedType, imeth *IMethod) (bool, error) {
+func checkHasMethod(tpcmp TypeEval, ifaceName toString, source *NamedType, imeth *IMethod) (bool, error) {
 	methName := imeth.Name()
 	meth := MethodByName(source, methName)
 	if meth == nil {
@@ -284,12 +284,12 @@ func checkHasMethod(tpcmp TypeCmp, ifaceName toString, source *NamedType, imeth 
 	}
 	if !eq {
 		from := tpcmp.File()
-		return false, CompileErrorF("%s does not implement %s (wrong type for method %s)\n\thave %s\n\twant %s", ifaceName(from), source.ReferString(from), methName, meth.FuncType().sourceSignature(from, imeth.NameDef().Name, true), imeth.SourceSignature(from))
+		return false, CompileErrorF("%s does not implement %s (wrong type for method %s)\n\thave %s\n\twant %s", ifaceName(from), source.ReferString(from), methName, meth.FuncType().sourceSignature(from, imeth.NameDef().Name, true, false), imeth.SourceSignature(from))
 	}
 	return true, nil
 }
 
-func (s *Interface) checkImplement(tpcmp TypeCmp, source Type, ifaceName toString) (bool, error) {
+func (s *Interface) checkImplement(tpcmp TypeEval, source Type, ifaceName toString) (bool, error) {
 	named, ok := source.(*NamedType)
 	if !ok {
 		return len(s.methods) == 0, nil
@@ -303,7 +303,7 @@ func (s *Interface) checkImplement(tpcmp TypeCmp, source Type, ifaceName toStrin
 	return true, nil
 }
 
-func (s *Interface) assignableFromWithName(tpcmp TypeCmp, source Type, name toString) (bool, error) {
+func (s *Interface) assignableFromWithName(tpcmp TypeEval, source Type, name toString) (bool, error) {
 	typeOk, err := s.checkTypesAssignableFrom(tpcmp, source)
 	if err != nil {
 		return false, err
@@ -315,13 +315,13 @@ func (s *Interface) assignableFromWithName(tpcmp TypeCmp, source Type, name toSt
 	return typeOk && methodOk, nil
 }
 
-func (s *Interface) assignableFrom(tpcmp TypeCmp, source Type) (bool, error) {
+func (s *Interface) assignableFrom(tpcmp TypeEval, source Type) (bool, error) {
 	return s.assignableFromWithName(tpcmp, source, s.ReferString)
 }
 
 // ConvertibleTo reports whether a value of the type can be converted to another
 // (using static type casting).
-func (s *Interface) ConvertibleTo(tpcmp TypeCmp, target Type) (bool, error) {
+func (s *Interface) ConvertibleTo(tpcmp TypeEval, target Type) (bool, error) {
 	if _, ok := target.(*Interface); ok {
 		return s.Equal(tpcmp, target)
 	}

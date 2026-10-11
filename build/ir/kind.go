@@ -17,7 +17,7 @@ package ir
 import "github.com/gx-org/gx/build/ir/irkind"
 
 func toInterface(typ Type) (*Interface, bool) {
-	typSet, ok := Underlying(simplifyType(typ)).(*Interface)
+	typSet, ok := Underlying(simplifyType(typ, false)).(*Interface)
 	return typSet, ok
 }
 
@@ -103,6 +103,17 @@ func IsFloat(typ Type) bool {
 		return false
 	}
 	return irkind.IsFloat(typ.Kind())
+}
+
+// IsSigned returns true if type is signed.
+func IsSigned(typ Type) bool {
+	if typ.Kind() == irkind.Interface {
+		if typSet, ok := toInterface(typ); ok {
+			return typSet.hasCapability(IsSigned)
+		}
+		return false
+	}
+	return irkind.IsSigned(typ.Kind())
 }
 
 // CanBeNumber returns true if the value of a kind can be a number.

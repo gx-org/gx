@@ -15,7 +15,6 @@
 package numbers
 
 import (
-	"go/ast"
 	"go/token"
 	"math/big"
 
@@ -24,6 +23,7 @@ import (
 	"github.com/gx-org/gx/internal/interp/constants"
 	"github.com/gx-org/gx/internal/interp/fmtexpr"
 	"github.com/gx-org/gx/interp/engine"
+	"github.com/gx-org/gx/src/gx/ast"
 )
 
 // elFloat is a GX number.

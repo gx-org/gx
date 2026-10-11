@@ -5,23 +5,106 @@ import (
 	"cperrors"
 	"dtype"
 	"fmt"
+	"math/grad"
 	"shape"
 )
 
-//gx:compeval
-func MatMulAxes(x, y []int) []int
+func vjpVecMul[LI int, T dtype.Nums](x [LI]T, y [LI]T) (T, func(res T) [LI]T, func(res T) [LI]T) {
+	fwd0 := VecMul(x, y)
+	selfVJPFuncWRTx := func(res T) [LI]T {
+		return y * res
+	}
+	selfVJPFuncWRTy := func(res T) [LI]T {
+		return x * res
+	}
+	return fwd0, selfVJPFuncWRTx, selfVJPFuncWRTy
+}
+
+// VecMul computes the dot product between two arrays.
+//
+// gx:@grad.SetVJP(vjpVecMul)
+func VecMul[LI int, T dtype.Nums](x [LI]T, y [LI]T) T
+
+func vjpVecMatMul[LI, LJ int, T dtype.Nums](x [LI]T, y [LI][LJ]T) ([LJ]T, func(res [LJ]T) [LI]T, func(res [LJ]T) [LI][LJ]T) {
+	fwd0 := VecMatMul(x, y)
+	selfVJPFuncWRTx := func(res [LJ]T) [LI]T {
+		gradX{i} := einsum(res{j} * y{i, j})
+		return gradX
+	}
+	selfVJPFuncWRTy := func(res [LJ]T) [LI][LJ]T {
+		gradY{j, i} := einsum(res{j} * x{i})
+		return shape.Transpose(gradY)
+	}
+	return fwd0, selfVJPFuncWRTx, selfVJPFuncWRTy
+}
+
+// VecMatMul computes a vector-matrix multiplication between two arrays.
+//
+// gx:@grad.SetVJP(vjpVecMatMul)
+func VecMatMul[LI, LJ int, T dtype.Nums](x [LI]T, y [LI][LJ]T) [LJ]T
+
+func vjpMatVecMul[LI, LJ int, T dtype.Nums](x [LI][LJ]T, y [LJ]T) ([LI]T, func(res [LI]T) [LI][LJ]T, func(res [LI]T) [LJ]T) {
+	fwd0 := MatVecMul(x, y)
+	selfVJPFuncWRTx := func(res [LI]T) [LI][LJ]T {
+		gradX{i, j} := einsum(res{i} * y{j})
+		return gradX
+	}
+	selfVJPFuncWRTy := func(res [LI]T) [LJ]T {
+		gradY{j} := einsum(res{i} * x{i, j})
+		return gradY
+	}
+	return fwd0, selfVJPFuncWRTx, selfVJPFuncWRTy
+}
+
+// MatVecMul computes a matrix-vector multiplication between two arrays.
+//
+// gx:@grad.SetVJP(vjpMatVecMul)
+func MatVecMul[LI, LJ int, T dtype.Nums](x [LI][LJ]T, y [LJ]T) [LI]T
+
+func vjpMatMul[LI, LJ, LK int, T dtype.Nums](x [LI][LJ]T, y [LJ][LK]T) ([LI][LK]T, func(res [LI][LK]T) [LI][LJ]T, func(res [LI][LK]T) [LJ][LK]T) {
+	fwd0 := MatMul(x, y)
+	selfVJPFuncWRTx := func(res [LI][LK]T) [LI][LJ]T {
+		gradX{i, j} := einsum(res{i, k} * y{j, k})
+		return gradX
+	}
+	selfVJPFuncWRTy := func(res [LI][LK]T) [LJ][LK]T {
+		gradY{j, k} := einsum(x{i, j} * res{i, k})
+		return gradY
+	}
+	return fwd0, selfVJPFuncWRTx, selfVJPFuncWRTy
+}
 
 // MatMul computes a matrix multiplication between two arrays.
-func MatMul[SX, SY []int, T dtype.Num](x [unpack(SX)]T, y [unpack(SY)]T) [unpack(MatMulAxes(SX, SY))]T
+//
+// gx:@grad.SetVJP(vjpMatMul)
+func MatMul[LI, LJ, LK int, T dtype.Nums](x [LI][LJ]T, y [LJ][LK]T) [LI][LK]T
 
 // ArgMax applies a max reduce operator over an axis.
-func ArgMax[Axis int, Shape []int, T dtype.Num](x [unpack(Shape)]T) [unpack(shape.ReduceAxes(Shape, Axis))]int
+func ArgMax[Axis int, Shape []int, T dtype.Nums](x [unpack(Shape)]T) [unpack(shape.ReduceAxes(Shape, Axis))]int
+
+func vjpReduceMax[Axis []int, Shape []int, nums dtype.Nums](x [unpack(Shape)]nums) (
+	[unpack(shape.ReduceAxes(Shape, Axis...))]nums,
+	func([unpack(shape.ReduceAxes(Shape, Axis...))]nums) [unpack(Shape)]nums,
+) {
+	fwd := ReduceMax[Axis](x)
+	vjp := func(res [unpack(shape.ReduceAxes(Shape, Axis...))]nums) [unpack(Shape)]nums {
+		// Location indicators: 1 where x is equal to its maximum along the reduced axes, 0 elsewhere.
+		fwdKeepAxes := [unpack(shape.AxesSetOnes(Shape, Axis...))]nums(fwd)
+		locations := [unpack(Shape)]nums(x == shape.Broadcast[Shape](fwdKeepAxes))
+		// Number of maximums along the reduced axes: the gradient is split evenly between ties.
+		counts := Sum[Axis](locations)
+		d := [unpack(shape.AxesSetOnes(Shape, Axis...))]nums(res / counts)
+		return locations * shape.Broadcast[Shape](d)
+	}
+	return fwd, vjp
+}
 
 // ReduceMax computes maximums along an axis.
-func ReduceMax[Axis []int, Shape []int, DType dtype.Num](x [unpack(Shape)]DType) [unpack(shape.ReduceAxes(Shape, Axis...))]DType
+// gx:@grad.SetVJP(vjpReduceMax)
+func ReduceMax[Axis []int, Shape []int, DType dtype.Nums](x [unpack(Shape)]DType) [unpack(shape.ReduceAxes(Shape, Axis...))]DType
 
 // Sum along axes.
-func Sum[Axis []int, Shape []int, DType dtype.Num](x [unpack(Shape)]DType) [unpack(shape.ReduceAxes(Shape, Axis...))]DType
+func Sum[Axis []int, Shape []int, DType dtype.Nums](x [unpack(Shape)]DType) [unpack(shape.ReduceAxes(Shape, Axis...))]DType
 
 // Iota generates an array given a shape where elements starts from 0 and are incremented by 1 along a given axis index.
 func Iota[S []int](ax int) [unpack(S)]int64
@@ -40,4 +123,4 @@ func OneHot[numClasses, axlen int, T dtype.Ints](x [axlen]T) [axlen][numClasses]
 func einsumAxes(xS, xContract, xBatch, yS, yContract, yBatch []int) []int
 
 // Einsum between two arrays.
-func Einsum[XContract, XBatch, YContract, YBatch, XShape, YShape []int, T dtype.Num](x [unpack(XShape)]T, y [unpack(YShape)]T) [unpack(einsumAxes(XShape, XContract, XBatch, YShape, YContract, YBatch))]T
+func Einsum[XContract, XBatch, YContract, YBatch, XShape, YShape []int, T dtype.Nums](x [unpack(XShape)]T, y [unpack(YShape)]T) [unpack(einsumAxes(XShape, XContract, XBatch, YShape, YContract, YBatch))]T

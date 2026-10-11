@@ -20,6 +20,7 @@ import (
 
 	"github.com/pkg/errors"
 	"github.com/gx-org/gx/build/fmterr"
+	"github.com/gx-org/gx/internal/undef"
 )
 
 // To casts an instance to a given type.
@@ -27,6 +28,16 @@ func To[T any](x any) (xT T, err error) {
 	xT, isT := x.(T)
 	if !isT {
 		err = fmterr.Internal(errors.Errorf("cannot convert %T to %s", x, reflect.TypeFor[T]().String()))
+	}
+	return
+}
+
+// ToIfDef casts an instance to a given type.
+// Return an undefined error if the cast is not possible.
+func ToIfDef[T any](x any) (xT T, err error) {
+	xT, isT := x.(T)
+	if !isT {
+		err = undef.Err()
 	}
 	return
 }

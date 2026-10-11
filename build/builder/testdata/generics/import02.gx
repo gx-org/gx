@@ -1,0 +1,11 @@
+package import02
+
+import "testgenerics"
+
+// The result type of testgenerics.Ones references testcpundef,
+// a package imported by testgenerics but not by this file.
+func Test() [4]float32 {
+	return testgenerics.Ones()
+	// Want:
+	// [4]float32{1, 1, 1, 1}
+}

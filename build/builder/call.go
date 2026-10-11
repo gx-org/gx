@@ -16,7 +16,6 @@ package builder
 
 import (
 	"fmt"
-	"go/ast"
 	"go/token"
 	"strings"
 
@@ -26,7 +25,9 @@ import (
 	"github.com/gx-org/gx/build/ir/irkind"
 	"github.com/gx-org/gx/internal/interp/compeval/srcstore"
 	"github.com/gx-org/gx/internal/interp/compeval/surrogates"
+	"github.com/gx-org/gx/internal/undef"
 	"github.com/gx-org/gx/interp/elements"
+	"github.com/gx-org/gx/src/gx/ast"
 )
 
 func unpackIndexedExpr(n ast.Node) (ast.Expr, []ast.Expr) {
@@ -84,6 +85,9 @@ func (n *callExpr) buildArgs(scope resolveScope) ([]ir.Expr, bool) {
 	for i, arg := range n.args {
 		var argOk bool
 		args[i], argOk = buildExpr(scope, arg)
+		if argOk {
+			argOk = checkSingleValue(scope, arg.source(), args[i])
+		}
 		ok = ok && argOk
 	}
 	return args, ok
@@ -162,6 +166,20 @@ func (n *callExpr) completeFuncType(rscope resolveScope, callee *ir.FuncValExpr,
 	return callee.NewFType(fType), true
 }
 
+func (n *callExpr) buildUnknownCallExpr(rscope resolveScope, callee ir.Expr) (*ir.FuncCallExpr, bool) {
+	ext := &ir.FuncCallExpr{
+		Src: n.src,
+		Callee: ir.NewFuncValExpr(callee, &ir.FuncBuiltin{
+			FType: &ir.FuncType{
+				Nature: ir.FuncNature{Unknown: true},
+			},
+		}),
+	}
+	var ok bool
+	ext.Args, ok = n.buildArgs(rscope)
+	return ext, ok
+}
+
 func (n *callExpr) buildFuncCallExpr(rscope resolveScope, expr *ir.FuncValExpr) (*ir.FuncCallExpr, bool) {
 	ext := &ir.FuncCallExpr{Src: n.src}
 	var ok bool
@@ -216,6 +234,9 @@ func (n *callExpr) buildMacroCall(rscope resolveScope, compEval *compileEvaluato
 }
 
 func (n *callExpr) buildCallExpr(rscope resolveScope, callee ir.Expr) (ir.Expr, bool) {
+	if callee.Type().Kind() == irkind.Unknown {
+		return n.buildUnknownCallExpr(rscope, callee)
+	}
 	switch calleeT := callee.(type) {
 	case *ir.FuncValExpr:
 		return n.buildFuncCallExpr(rscope, calleeT)
@@ -240,7 +261,7 @@ func (n *callExpr) buildCallExpr(rscope resolveScope, callee ir.Expr) (ir.Expr, 
 	case *ir.TypeValExpr:
 		return n.buildTypeCast(rscope, callee, elT.Store())
 	case ir.FuncElement:
-		return n.buildCallExpr(rscope, ir.NewFuncValExpr(callee, elT.IR()))
+		return n.buildCallExpr(rscope, ir.NewFuncValExpr(callee, elT.FuncIR()))
 	case *ir.MacroKeyword:
 		return n.callMacroKeyword(rscope, elT)
 	case ir.TupleElement:
@@ -327,10 +348,10 @@ func checkArgsForCall(rscope resolveScope, ce *compileEvaluator, fExpr *ir.FuncV
 	return out, ok
 }
 
-func evalGenericValues(ce *compileEvaluator, ftype *ir.FuncType) (map[string]ir.Element, bool) {
+func evalGenericValues(ce *compileEvaluator, gtype ir.GenericType) (map[string]ir.Element, bool) {
 	ok := true
 	out := make(map[string]ir.Element)
-	for _, tParam := range ftype.GenParams.Fields.Fields() {
+	for _, tParam := range gtype.Generics().Fields.Fields() {
 		if !ir.ValidIdent(tParam.Name) {
 			continue
 		}
@@ -352,7 +373,7 @@ func evalGenericValues(ce *compileEvaluator, ftype *ir.FuncType) (map[string]ir.
 		}
 		out[name] = el
 	}
-	for _, genVal := range ftype.GenParams.Values {
+	for _, genVal := range gtype.Generics().Values {
 		if genVal == nil {
 			continue
 		}
@@ -362,6 +383,9 @@ func evalGenericValues(ce *compileEvaluator, ftype *ir.FuncType) (map[string]ir.
 		}
 		var err error
 		out[field.Name.Name], err = ce.EvalExpr(genVal.Value())
+		if undef.Is(err) {
+			out[field.Name.Name], err = surrogates.FieldRoot(field, field.Storage())
+		}
 		if err != nil {
 			ok = ce.Err().AppendAt(genVal.Value().Node(), err)
 		}
@@ -369,16 +393,8 @@ func evalGenericValues(ce *compileEvaluator, ftype *ir.FuncType) (map[string]ir.
 	return out, ok
 }
 
-func instantiateFType(ce *compileEvaluator, fExpr *ir.FuncValExpr, ftype *ir.FuncType, funcFile *ir.File) (*ir.FuncType, bool) {
-	genVals, ok := evalGenericValues(ce, ftype)
-	if !ok {
-		return ftype, false
-	}
-	sigCE, ok := ce.sub(funcFile, genVals)
-	if !ok {
-		return ftype, false
-	}
-	return generics.Instantiate(sigCE, fExpr, ftype)
+func instantiateFType(ce *compileEvaluator, fExpr *ir.FuncValExpr, ftype *ir.FuncType) (*ir.FuncType, bool) {
+	return generics.Instantiate(ce.File(), fExpr, ce, ftype)
 }
 
 func buildFuncForCall(rscope resolveScope, fExpr *ir.FuncValExpr, args []ir.Expr) ([]ir.Expr, *ir.FuncValExpr, bool) {
@@ -402,7 +418,7 @@ func buildFuncForCall(rscope resolveScope, fExpr *ir.FuncValExpr, args []ir.Expr
 		}
 		return args, fExpr, rscope.Err().Appendf(fExpr.Node(), "in call to %s, cannot infer type %s", fExpr.Func().ShortString(), strings.Join(names, ","))
 	}
-	fTypeInst, instOk := instantiateFType(compEval, fExpr, fExpr.FuncType(), fExpr.Func().File())
+	fTypeInst, instOk := instantiateFType(compEval, fExpr, fExpr.FuncType())
 	fExprInst := fExpr.NewFType(fTypeInst)
 	var argsOk bool
 	args, argsOk = checkArgsForCall(rscope, compEval, fExprInst, args)

@@ -16,9 +16,9 @@ package ir
 
 import (
 	"fmt"
-	"go/ast"
 
 	"github.com/gx-org/gx/build/ir/annotations"
+	"github.com/gx-org/gx/src/gx/ast"
 )
 
 type (

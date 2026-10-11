@@ -16,126 +16,35 @@
 package grapheval
 
 import (
-	"strings"
-
 	"github.com/pkg/errors"
-	"github.com/gx-org/backend/ops"
-	"github.com/gx-org/backend/shape"
-	"github.com/gx-org/gx/api/hostio"
+	"github.com/gomlx/compute"
 	"github.com/gx-org/gx/build/fmterr"
 	"github.com/gx-org/gx/build/ir"
 	"github.com/gx-org/gx/internal/interp/compeval"
-	"github.com/gx-org/gx/internal/interp/numbers"
 	"github.com/gx-org/gx/internal/tracer/processor"
-	"github.com/gx-org/gx/interp/elements"
 	"github.com/gx-org/gx/interp/engine"
-	"github.com/gx-org/gx/interp/materialise"
+	"github.com/gx-org/gx/interp"
 )
 
 // SubGrapher is an element (e.g. a function) that can be represented by a sub-graph.
 type SubGrapher interface {
-	SubGraph(name string) (*ops.Subgraph, error)
+	SubGraph(name string) (compute.Function, error)
 }
-
-// Evaluator evaluates GX operations by adding the corresponding
-// node in the backend graph.
-type Evaluator struct {
-	process *processor.Processor
-	ao      *arrayOps
-
-	hostEval engine.Engine
-}
-
-var _ engine.Engine = (*Evaluator)(nil)
 
 // New returns a new evaluator given a elements.
-func New(importer ir.Importer, pr *processor.Processor, gr ops.Graph) *Evaluator {
-	ev := &Evaluator{
-		process:  pr,
-		hostEval: compeval.NewHostEvaluator(importer),
+func New(importer ir.Importer, pr *processor.Processor, gr compute.Function) (*engine.Registry, *Ops) {
+	ao := &Ops{
+		graph:   gr,
+		process: pr,
 	}
-	ev.ao = &arrayOps{graph: gr, ev: ev}
-	return ev
-}
-
-// Processor returns the processor where init and debug traces are registered.
-func (ev *Evaluator) Processor() *processor.Processor {
-	return ev.process
-}
-
-// Importer returns the importer used by the evaluator.
-func (ev *Evaluator) Importer() ir.Importer {
-	return ev.hostEval.Importer()
-}
-
-// Graph used by the evaluator.
-func (ev *Evaluator) Graph() ops.Graph {
-	return ev.ao.graph
-}
-
-// ArrayOps returns the array operators implementation.
-func (ev *Evaluator) ArrayOps() engine.ArrayOps {
-	return ev.ao
-}
-
-// Materialiser returns an array materialiser.
-func (ev *Evaluator) Materialiser() materialise.Materialiser {
-	return ev.ao
-}
-
-type processCallResults func(ops.Node) ([]ir.Element, error)
-
-func (ev *Evaluator) outputNodesFromElements(file *ir.File, fType *ir.FuncType, out []ir.Element) (processCallResults, *ops.OutputNode, error) {
-	if len(out) == 0 {
-		return nil, nil, errors.Errorf("literal has no output")
-	}
-	nodes, shapes, err := materialise.Flatten(ev.ao, out...)
-	if err != nil {
-		return nil, nil, err
-	}
-	results := fType.Results
-	if len(out) != results.Len() {
-		return nil, nil, errors.Errorf("got %d out elements but want %d from function type", len(out), results.Len())
-	}
-	if len(nodes) == 1 {
-		out := &ops.OutputNode{Node: nodes[0], Shape: shapes[0]}
-		return func(outputNode ops.Node) ([]ir.Element, error) {
-			field := results.Fields()[0]
-			return materialise.ElementFromNode(file, ev.ao, out, field.Type())
-		}, out, nil
-	}
-	tupleType := &ir.TupleType{
-		Types: make([]ir.Type, len(nodes)),
-	}
-	fields := results.Fields()
-	for i, field := range fields {
-		tupleType.Types[i] = field.Type()
-	}
-	tupleNode, err := ev.ao.Graph().Core().Tuple(nodes)
-	if err != nil {
-		return nil, nil, err
-	}
-	return func(outputNode ops.Node) ([]ir.Element, error) {
-		return ev.elementsFromTupleNode(file, tupleNode, tupleType, shapes)
-	}, &ops.OutputNode{Node: tupleNode}, nil
-}
-
-func (ev *Evaluator) elementsFromTupleNode(file *ir.File, tupleNode ops.Tuple, tupleType *ir.TupleType, shps []*shape.Shape) ([]ir.Element, error) {
-	elts := make([]ir.Element, tupleNode.Size())
-	for i := range tupleNode.Size() {
-		node, err := tupleNode.Element(i)
-		if err != nil {
-			return nil, err
-		}
-		elts[i], err = NewBackendNode(ev, tupleType.Types[i], &ops.OutputNode{
-			Node:  node,
-			Shape: shps[i],
-		})
-		if err != nil {
-			return nil, err
-		}
-	}
-	return elts, nil
+	return &engine.Registry{
+		Importer:       importer,
+		CompEvalEngine: compeval.Engine(),
+		HostEngine:     ao,
+		Processor:      pr,
+		Runners:        interp.Runners(),
+		Trace:          pr.RegisterTrace,
+	}, ao
 }
 
 func unpackTypes(file *ir.File, src ir.Node, tp ir.Type) (*ir.StructType, []*ir.NamedType, error) {
@@ -154,110 +63,11 @@ func unpackTypes(file *ir.File, src ir.Node, tp ir.Type) (*ir.StructType, []*ir.
 	}
 }
 
-// ElementFromTuple creates an interpreter element of a given type from a graph tuple.
-func (ev *Evaluator) ElementFromTuple(file *ir.File, expr ir.Expr, tpl ops.Tuple, shapes []*shape.Shape, targetType ir.Type) (ir.Element, error) {
-	structTyp, namedTypes, err := unpackTypes(file, expr, targetType)
-	if err != nil {
-		return nil, err
-	}
-	// Construct dummy expressions for all the fields of the structure to keep track of the value types.
-	structTuple := &ir.TupleType{Types: make([]ir.Type, structTyp.NumFields())}
-	for i, field := range structTyp.Fields.Fields() {
-		structTuple.Types[i] = field.Type()
-	}
-	els, err := ev.elementsFromTupleNode(file, tpl, structTuple, shapes)
-	if err != nil {
-		return nil, err
-	}
-	var el engine.Copier
-	el = elements.NewStructFromElements(structTyp, els)
-	for _, nType := range namedTypes {
-		el = elements.NewNamedType(nType, el)
-	}
-	return el, nil
-}
-
-func (ev *Evaluator) subEval(proc *processor.Processor, name string) (*Evaluator, error) {
-	args := proc.Args()
-	shapes := make([]*shape.Shape, len(args))
-	for i, arg := range args {
-		shapes[i] = arg.Shape()
-	}
-	subGraph, err := ev.ao.SubGraph(name, shapes)
-	if err != nil {
-		return nil, err
-	}
-	return New(ev.Importer(), proc, subGraph.Graph()), nil
-}
-
-// Trace a set of elements.
-func (ev *Evaluator) Trace(ctx ir.Evaluator, call *ir.FuncCallExpr, args []ir.Element) error {
-	return ev.process.RegisterTrace(ctx, call, args)
-}
-
-// FuncInputsToElements converts values to a function input.
-func (ev *Evaluator) FuncInputsToElements(fn ir.Func, receiver ir.Element, args []ir.Element) (*elements.InputElements, error) {
-	vis := newInputVisitor(ev, fn.File())
-	fType := fn.FuncType()
-	var recvEl ir.Element
-	if receiver != nil {
-		recvField := fType.ReceiverField()
-		var err error
-		if recvEl, err = vis.visitReceiver(recvField, receiver); err != nil {
-			return nil, err
-		}
-	}
-
-	paramFields := fType.Params.Fields()
-	argsEl := make([]ir.Element, len(args))
-	for i, param := range paramFields {
-		if i >= len(args) {
-			missingParams := paramFields[len(args):]
-			builder := strings.Builder{}
-			for n, param := range missingParams {
-				if n > 0 {
-					builder.WriteString(", ")
-				}
-				builder.WriteString(param.Name.String())
-			}
-			return nil, errors.Errorf("missing parameter(s): %s", builder.String())
-		}
-		argNode, err := vis.visitArg(param, i, args[i])
-		if err != nil {
-			return nil, err
-		}
-		argsEl[i] = argNode
-	}
-	return &elements.InputElements{
-		Values: hostio.FuncInputs{
-			Receiver: receiver,
-			Args:     args,
-		},
-		Receiver: recvEl,
-		Args:     argsEl,
-	}, nil
-}
-
 // GraphFromElement returns a graph given an element.
-func GraphFromElement(name string, el ir.Element) (*ops.Subgraph, error) {
+func GraphFromElement(name string, el ir.Element) (compute.Function, error) {
 	grapher, ok := el.(SubGrapher)
 	if !ok {
 		return nil, errors.Errorf("cannot get a graph from %T", el)
 	}
 	return grapher.SubGraph(name)
-}
-
-func (ev *Evaluator) axesFromShape(ctx ir.Evaluator, axlens []int) (*elements.Slice, error) {
-	axes := make([]ir.Element, len(axlens))
-	for i, axisSize := range axlens {
-		iEl, err := numbers.NewConstant(ir.IntType(), axisSize)
-		if err != nil {
-			return nil, err
-		}
-		axes[i], err = ev.ArrayOps().ElementFromHostValue(ctx, iEl)
-		if err != nil {
-			return nil, err
-		}
-	}
-	return elements.NewSlice(ir.IntSliceType(), axes)
 }

@@ -16,7 +16,6 @@ package builder
 
 import (
 	"fmt"
-	"go/ast"
 	"go/token"
 	"reflect"
 	"slices"
@@ -28,6 +27,7 @@ import (
 	"github.com/gx-org/gx/build/ir"
 	"github.com/gx-org/gx/internal/base/scope"
 	"github.com/gx-org/gx/internal/interp/compeval"
+	"github.com/gx-org/gx/src/gx/ast"
 )
 
 type decls struct {

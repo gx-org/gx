@@ -16,10 +16,10 @@ package fmterr
 
 import (
 	"fmt"
-	"go/ast"
 	"go/token"
 
 	"github.com/pkg/errors"
+	"github.com/gx-org/gx/src/gx/ast"
 )
 
 // FileSet builds errors formatted for a given file set.

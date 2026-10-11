@@ -15,11 +15,9 @@
 package surrogates
 
 import (
-	"go/ast"
-
 	"github.com/pkg/errors"
-	"github.com/gx-org/backend/dtypes"
-	"github.com/gx-org/backend/shape"
+	"github.com/gomlx/compute/dtypes"
+	"github.com/gomlx/compute/shapes"
 	"github.com/gx-org/gx/build/fmterr"
 	"github.com/gx-org/gx/build/ir"
 	"github.com/gx-org/gx/build/ir/irkind"
@@ -28,6 +26,7 @@ import (
 	"github.com/gx-org/gx/internal/interp/compeval/cpevops"
 	"github.com/gx-org/gx/interp/elements"
 	"github.com/gx-org/gx/interp/engine"
+	"github.com/gx-org/gx/src/gx/ast"
 )
 
 // tuple represents the element of a slice unpacked.
@@ -115,8 +114,8 @@ func (*tuple) Slice(env *engine.Env, expr *ir.SliceExpr, low, high engine.Numeri
 
 var (
 	atomAxes, _ = elements.NewSlice(ir.IntSliceType(), nil)
-	atomShape   = &shape.Shape{
-		DType: dtypes.Int,
+	atomShape   = shapes.Shape{
+		DType: dtypes.Int64,
 	}
 )
 
@@ -125,7 +124,7 @@ func (*tuple) Axes(ev ir.Evaluator) (*elements.Slice, error) {
 	return atomAxes, nil
 }
 
-func (*tuple) EvalShape() (*shape.Shape, error) {
+func (*tuple) EvalShape() (shapes.Shape, error) {
 	return atomShape, nil
 }
 

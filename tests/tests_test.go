@@ -24,7 +24,7 @@ import (
 
 func TestCompilerErrors(t *testing.T) {
 	t.SkipNow()
-	bld := tests.StdlibBuilder()
+	bld := tests.NewBuilder()
 	for _, path := range tests.Errors {
 		_, testName := filepath.Split(path)
 		t.Run(testName, func(t *testing.T) {

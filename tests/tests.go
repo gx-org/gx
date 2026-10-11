@@ -20,18 +20,23 @@ import (
 
 	"github.com/gx-org/gx/build/builder"
 	"github.com/gx-org/gx/build/builder/testbuild"
+	"github.com/gx-org/gx/build/importers/embedpkg"
 	"github.com/gx-org/gx/build/importers"
-	"github.com/gx-org/gx/build/importers/localfs"
 	"github.com/gx-org/gx/stdlib"
-	"github.com/gx-org/gx/tests/testmacros"
+	"github.com/gx-org/gx/tests/rtpackages/base"
+	"github.com/gx-org/gx/tests/testpkgs"
 
 	// Testdata
 	core "github.com/gx-org/gx/build/builder/testdata"
 
+	grad "github.com/gx-org/gx/stdlib/math/grad/testdata"
 	math "github.com/gx-org/gx/stdlib/math/testdata"
 	num "github.com/gx-org/gx/stdlib/num/testdata"
 	reflect "github.com/gx-org/gx/stdlib/reflect/testdata"
 	shape "github.com/gx-org/gx/stdlib/shape/testdata"
+
+	// Embedded GX packages.
+	_ "github.com/gx-org/gx/tests/testfiles/imports/pkg1/pkg1_go_gx"
 )
 
 // FS is the filesystem containing all GX test files.
@@ -65,7 +70,6 @@ var Language = []string{
 // Stdlib is a set of path testing the standard library or where a standard library implementation is required.
 var Stdlib = []string{
 	"testfiles/bfloat16",
-	"testfiles/grad",
 	"testfiles/stdlib",
 	"testfiles/nn",
 	"testfiles/ellipsis",
@@ -81,6 +85,7 @@ var CoreUnits = []testbuild.TestFactory{
 var StdlibUnits = []testbuild.TestFactory{
 	shape.Sources,
 	math.Sources,
+	grad.Sources,
 	num.Sources,
 	reflect.Sources,
 }
@@ -101,45 +106,23 @@ func appendAll(paths ...[]string) []string {
 	return r
 }
 
-type importer struct {
-	embedded map[string]testbuild.DeclarePackage
-	builder  *builder.Builder
-}
+// All includes all paths.
+var All = appendAll(Language, Stdlib)
 
-// Support checks if the importer supports the import path given its prefix.
-func (imp importer) Support(path string) bool { return true }
-
-// Import a path.
-func (imp importer) Import(bld importers.Builder, path string) (importers.Package, error) {
-	embedded, isEmbedded := imp.embedded[path]
-	if !isEmbedded {
-		return localfs.ImportAt(bld, FS, path, path)
-	}
-	return embedded.Build(imp.builder)
+// Importers used for testing.
+var Importers = []importers.Importer{
+	testpkgs.TestMacros,
+	testpkgs.TestMacroError,
+	testpkgs.TestCPUndef,
+	testpkgs.TestGenerics,
+	testpkgs.TestUnknow,
+	base.New(),
+	stdlib.Importer(),
+	embedpkg.New(),
 }
 
 // NewBuilder returns a new builder given some importers.
 // An additional importer to load test files is automatically added.
-func NewBuilder(impargs ...importers.Importer) *builder.Builder {
-	imp := &importer{
-		embedded: map[string]testbuild.DeclarePackage{
-			"testmacros": testmacros.DeclarePackage,
-		},
-	}
-	all := append(impargs, imp)
-	imp.builder = builder.New(all...)
-	return imp.builder
-}
-
-// All includes all paths.
-var All = appendAll(Language, Stdlib)
-
-// CoreBuilder returns the builder to run core tests.
-func CoreBuilder() *builder.Builder {
-	return NewBuilder()
-}
-
-// StdlibBuilder returns the builder to run tests with the standard library.
-func StdlibBuilder() *builder.Builder {
-	return NewBuilder(stdlib.Importer())
+func NewBuilder() *builder.Builder {
+	return builder.New(Importers...)
 }

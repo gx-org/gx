@@ -16,9 +16,8 @@ package graph
 
 import (
 	"github.com/pkg/errors"
-	"github.com/gx-org/backend/ops"
-	"github.com/gx-org/backend/platform"
-	"github.com/gx-org/backend/shape"
+	"github.com/gomlx/compute"
+	"github.com/gomlx/compute/shapes"
 	"github.com/gx-org/gx/golang/backend/kernels"
 	goplatform "github.com/gx-org/gx/golang/backend/platform"
 )
@@ -26,29 +25,29 @@ import (
 type (
 	nodeRunner struct {
 		graph  *Graph
-		device *goplatform.Device
+		device compute.DeviceNum
 		output []execNode
-		traced []execNode
 	}
 
 	execNode interface {
-		ops.Node
-		shape() *shape.Shape
+		shape() shapes.Shape
 		kernelFactory() kernels.Factory
 		exec(*executor) (kernels.Array, error)
 	}
 
 	executor struct {
 		runner *nodeRunner
-		args   []platform.Handle
+		args   []compute.Buffer
 	}
 )
 
-func toExecNodes(outs []*ops.OutputNode) ([]execNode, error) {
+var _ compute.Executable = (*nodeRunner)(nil)
+
+func toExecNodes(outs []compute.Value) ([]execNode, error) {
 	execs := make([]execNode, len(outs))
 	for i, out := range outs {
 		var ok bool
-		execs[i], ok = out.Node.(execNode)
+		execs[i], ok = out.(execNode)
 		if !ok {
 			return nil, errors.Errorf("node of type %T not supported by the backend", out)
 		}
@@ -58,47 +57,58 @@ func toExecNodes(outs []*ops.OutputNode) ([]execNode, error) {
 
 // Compile the graph for a given device.
 // The graph is not supposed to be modified once it has been compiled.
-func (g *Graph) Compile(dev platform.Device, output, traced []*ops.OutputNode, params []*shape.Shape) (ops.Runner, error) {
+func (g *Graph) Compile(dev compute.DeviceNum) (compute.Executable, error) {
+	if !g.returned {
+		return nil, errors.Errorf("Return() was not called for function %q before Compile()", g.funcName)
+	}
 	nr := &nodeRunner{
 		graph:  g,
-		device: dev.(*goplatform.Device),
+		device: dev,
 	}
 	var err error
-	nr.output, err = toExecNodes(output)
-	if err != nil {
-		return nil, err
-	}
-	nr.traced, err = toExecNodes(traced)
+	nr.output, err = toExecNodes(g.outputs)
 	if err != nil {
 		return nil, err
 	}
 	return nr, nil
 }
 
-func (r *nodeRunner) runAll(exec *executor, nodes []execNode) ([]platform.DeviceHandle, error) {
-	handles := make([]platform.DeviceHandle, len(nodes))
+func (r *nodeRunner) Finalize() {}
+
+func (r *nodeRunner) Inputs() (names []string, inputShapes []shapes.Shape) {
+	names = make([]string, len(r.graph.args))
+	inputShapes = make([]shapes.Shape, len(r.graph.args))
+	for i, arg := range r.graph.args {
+		names[i] = arg.name
+		inputShapes[i] = arg.shape()
+	}
+	return names, inputShapes
+}
+
+func (r *nodeRunner) Outputs() (outputShapes []shapes.Shape) {
+	outputShapes = make([]shapes.Shape, len(r.output))
+	for i, out := range r.output {
+		outputShapes[i] = out.shape()
+	}
+	return outputShapes
+}
+
+func (r *nodeRunner) runAll(exec *executor, nodes []execNode) ([]compute.Buffer, error) {
+	handles := make([]compute.Buffer, len(nodes))
 	for i, node := range nodes {
 		kVal, err := node.exec(exec)
 		if err != nil {
 			return nil, err
 		}
-		handles[i] = goplatform.FromValue(r.device, kVal)
+		handles[i] = goplatform.FromValue(r.graph.plat, r.device, kVal)
 	}
 	return handles, nil
 }
 
-func (r *nodeRunner) Run(args []platform.Handle) (out, traced []platform.DeviceHandle, err error) {
+func (r *nodeRunner) Execute(inputs []compute.Buffer, donate []bool, defaultDevice compute.DeviceNum) ([]compute.Buffer, error) {
 	exec := &executor{
 		runner: r,
-		args:   args,
+		args:   inputs,
 	}
-	out, err = r.runAll(exec, r.output)
-	if err != nil {
-		return nil, nil, err
-	}
-	traced, err = r.runAll(exec, r.traced)
-	if err != nil {
-		return nil, nil, err
-	}
-	return
+	return r.runAll(exec, r.output)
 }

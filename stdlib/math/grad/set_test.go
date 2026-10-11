@@ -281,9 +281,9 @@ func F[T floats, M []int](x [unpack(M)]T) [unpack(M)]T
 `,
 			Want: `
 func vjpF[T floats, M []int](x [unpack(M)]T) ([unpack(M)]T, func(res [unpack(M)]T) [unpack(M)]T) {
-	fwd0 := F[T][[]int{unpack(M)}](x)
+	fwd0 := F[T][M](x)
 	selfVJPFunc := func(res [unpack(M)]T) [unpack(M)]T {
-		return res*g[T][[]int{unpack(M)}](x)
+		return res*g[T][M](x)
 	}
 	return fwd0, selfVJPFunc
 }
@@ -354,6 +354,28 @@ func F(x float32) float32 {
 	return x
 }`,
 			Err: "gradient for parameter x has already been set",
+		},
+		testgrad.Reverse{
+			Src: `
+func g(float32) float32
+
+//gx:@grad.Set(g)
+//gx:@grad.SetVJP(g)
+func F(x float32) float32 {
+	return x
+}`,
+			Err: "cannot set VJP: gradient funtion already defined",
+		},
+		testgrad.Reverse{
+			Src: `
+func g(float32) float32
+
+//gx:@grad.SetVJP(g)
+//gx:@grad.Set(g)
+func F(x float32) float32 {
+	return x
+}`,
+			Err: "cannot set gradient: VJP already defined",
 		},
 	)
 }

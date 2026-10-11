@@ -16,7 +16,6 @@ package builder_test
 
 import (
 	"fmt"
-	"go/ast"
 	"go/token"
 	"strconv"
 	"testing"
@@ -27,6 +26,7 @@ import (
 	irh "github.com/gx-org/gx/build/ir/irhelper"
 	"github.com/gx-org/gx/interp/elements"
 	"github.com/gx-org/gx/interp/engine"
+	"github.com/gx-org/gx/src/gx/ast"
 )
 
 type tagStr struct {
@@ -56,7 +56,7 @@ func toTagString(arg ir.Element) string {
 	case *elements.String:
 		return argT.String()
 	case engine.Func:
-		return argT.IR().FuncType().ReferString(nil)
+		return argT.FuncIR().FuncType().ReferString(nil)
 	default:
 		return fmt.Sprintf("%T", argT)
 	}
@@ -105,7 +105,7 @@ var _ ir.FuncASTBuilder = (*macroBuildReturn)(nil)
 func newBuildReturn(file *ir.File, call *ir.FuncCallExpr, macro *ir.Macro, args []ir.Element) (ir.MacroElement, error) {
 	return &macroBuildReturn{
 		MacroCall: elements.NewMacroCall(macro, file, call),
-		tagFn:     args[0].(engine.Func).IR().(ir.PkgFunc),
+		tagFn:     args[0].(engine.Func).FuncIR().(ir.PkgFunc),
 	}, nil
 }
 

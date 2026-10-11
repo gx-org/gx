@@ -1,0 +1,40 @@
+package generic1
+
+import "math/grad"
+
+func vjpF[Out, In int](x [In]float32) ([Out]float32, func(res [Out]float32) [In]float32) {
+	fwd := F[Out](x)
+	vjp := func(res [Out]float32) [In]float32 {
+		return [In]float32{}
+	}
+	return fwd, vjp
+}
+
+// gx:@grad.SetVJP(vjpF)
+func F[Out, In int](x [In]float32) [Out]float32 {
+	return [Out]float32{}
+}
+
+func G(x [3]float32) [6]float32 {
+	return F[6](x)
+}
+
+func TestVJPF() ([6]float32, [3]float32) {
+	vjp := grad.Reverse(G)
+	trace(vjp)
+	y, bckFunc := vjp([3]float32{1, 2, 3})
+	return y, bckFunc([6]float32{1, 2, 3, 4, 5, 6})
+	// Want:
+	// 0: [6]float32{0, 0, 0, 0, 0, 0}
+	// 1: [3]float32{0, 0, 0}
+	// Trace:
+	// generic1.gx:0
+	// 	func(x [3]float32) ([6]float32, func(res [6]float32) [3]float32) {
+	// 		fwd0, FVJP := grad.Reverse(F)[6](x)
+	// 		selfVJPFunc := func(res [6]float32) [3]float32 {
+	// 			bck0 := FVJP(res)
+	// 			return bck0
+	// 		}
+	// 		return fwd0, selfVJPFunc
+	// 	}
+}

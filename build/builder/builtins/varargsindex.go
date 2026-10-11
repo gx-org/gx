@@ -37,7 +37,7 @@ func (varargsIndexFunc) Impl() ir.MacroKeywordImpl {
 	return varargsIndexImpl
 }
 
-func varargsIndexImpl(tpcmp ir.TypeCmp, expr ir.Expr) (ir.Expr, error) {
+func varargsIndexImpl(tpcmp ir.TypeEval, expr ir.Expr) (ir.Expr, error) {
 	sliceTyp, isSliceType := ir.Underlying(expr.Type()).(*ir.SliceType)
 	if !isSliceType {
 		from := tpcmp.File()

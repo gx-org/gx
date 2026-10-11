@@ -15,9 +15,8 @@
 package wrt
 
 import (
-	"go/ast"
-
 	"github.com/gx-org/gx/build/ir"
+	"github.com/gx-org/gx/src/gx/ast"
 )
 
 // Struct is a parameter in a function with the struct type.
