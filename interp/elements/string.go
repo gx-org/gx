@@ -24,6 +24,7 @@ import (
 	"github.com/gx-org/gx/internal/interp/compeval/cmp"
 	"github.com/gx-org/gx/internal/interp/coreiface"
 	"github.com/gx-org/gx/internal/interp/flatten"
+	"github.com/gx-org/gx/internal/togo"
 	"github.com/gx-org/gx/interp/engine"
 	"github.com/gx-org/gx/src/gx/ast"
 )
@@ -34,9 +35,9 @@ type String struct {
 }
 
 var (
-	_ IString             = (*String)(nil)
-	_ cmp.Canonical       = (*String)(nil)
-	_ hostio.CompileValue = (*String)(nil)
+	_ IString           = (*String)(nil)
+	_ cmp.Canonical     = (*String)(nil)
+	_ togo.CompileValue = (*String)(nil)
 )
 
 // NewStringFromLit returns a state element storing a string GX value.

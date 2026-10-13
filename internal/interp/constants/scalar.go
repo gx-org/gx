@@ -19,12 +19,12 @@ import (
 	"math/big"
 
 	"github.com/gomlx/compute"
-	"github.com/gx-org/gx/api/hostio"
 	"github.com/gx-org/gx/build/ir"
 	"github.com/gx-org/gx/build/ir/irkind"
 	"github.com/gx-org/gx/internal/interp/compeval/cmp"
 	"github.com/gx-org/gx/internal/interp/coreiface"
 	"github.com/gx-org/gx/internal/interp/csteager"
+	"github.com/gx-org/gx/internal/togo"
 	"github.com/gx-org/gx/interp/engine"
 	"github.com/gx-org/gx/src/gx/ast"
 )
@@ -34,7 +34,7 @@ type Scalar interface {
 	Constant
 	engine.ScalarConstant
 	csteager.Eval
-	hostio.CompileValue
+	togo.CompileValue
 }
 
 type scalar struct {

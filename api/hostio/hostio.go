@@ -26,23 +26,6 @@ import (
 	"github.com/gx-org/gx/golang/backend/kernels"
 )
 
-// FuncInputs are GX values passed to the function call.
-type FuncInputs struct {
-	// Receiver on which the function call was done.
-	// Can be nil.
-	Receiver ir.Element
-
-	// Args returns list of arguments passed to the interpreter at call time.
-	Args []Value
-}
-
-// CompileValue is an element able to convert its value into an equivalent Go value.
-type CompileValue interface {
-	ir.Element
-	// GoValue of the underlying element.
-	GoValue() (any, error)
-}
-
 type (
 	// Element used by a value.
 	Element interface {
@@ -229,6 +212,15 @@ func AtomNumberFloat(x *big.Float, typ ir.Type) (*HostArray, error) {
 		return AtomIntegerValue[uint64](typ, bigFloatCast[uint64](x))
 	}
 	return nil, errors.Errorf("cannot convert %T(%s) to %s: not implemented", x, x, typ.ReferString(nil))
+}
+
+// ToElements converts a slice of values into a slice of elements.
+func ToElements(vals []Value) []ir.Element {
+	els := make([]ir.Element, len(vals))
+	for i, arg := range vals {
+		els[i] = arg
+	}
+	return els
 }
 
 // ToKernel returns the kernel of an array.

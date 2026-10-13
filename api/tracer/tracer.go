@@ -26,6 +26,7 @@ import (
 	"github.com/gx-org/gx/api/values"
 	"github.com/gx-org/gx/build/fmterr"
 	"github.com/gx-org/gx/build/ir"
+	"github.com/gx-org/gx/internal/togo"
 	"github.com/gx-org/gx/internal/tracer/cfunc"
 	"github.com/gx-org/gx/internal/tracer/processor"
 	"github.com/gx-org/gx/interp/grapheval"
@@ -54,7 +55,7 @@ func Trace(dev *api.Device, fn *ir.FuncDecl, receiver hostio.Value, args []hosti
 	}()
 	// Create a new graph and evaluator for the interpreter.
 	proc := processor.New(values.Factory())
-	fc := &hostio.FuncInputs{Receiver: receiver, Args: args}
+	fc := &togo.FuncInputs{Receiver: receiver, Args: hostio.ToElements(args)}
 	proc.ProcessInits(fc)
 	builder := dev.Runtime().Backend().Builder(fn.FullyQualifiedName())
 	reg, mat := grapheval.New(dev.Runtime().Builder(), proc, builder.Main())

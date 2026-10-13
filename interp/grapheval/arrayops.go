@@ -385,27 +385,64 @@ func checkMissingParams(fn ir.Func, got []hostio.Value, want []*ir.Field) error 
 	return errors.Errorf("missing parameter(s): %s", builder.String())
 }
 
+func (ao *Ops) convertScalarToElement(ev ir.Evaluator, typ ir.Type, val kernels.Array) (ir.Element, error) {
+	atom, err := val.ToAtom()
+	if err != nil {
+		return nil, err
+	}
+	cst, err := numbers.NewConstant(typ, atom)
+	if err != nil {
+		return nil, err
+	}
+	return ao.ElementFromHostValue(ev, cst)
+}
+
+func (ao *Ops) convertSliceToElement(ev ir.Evaluator, field *ir.Field, typ ir.Type, val kernels.Array) (ir.Element, error) {
+	sliceType, isSlice := typ.(*ir.SliceType)
+	if !isSlice {
+		return nil, errors.Errorf("cannot convert array argument to %s for parameter %s", typ.ReferString(nil), field.Name.Name)
+	}
+	subType, ok := sliceType.ElementType()
+	if !ok {
+		return nil, errors.Errorf("cannot get element type of %s for parameter %s", typ.ReferString(nil), field.Name.Name)
+	}
+	sh := val.Shape()
+	numEls := sh.Dimensions[0]
+	els := make([]ir.Element, numEls)
+	for i := range numEls {
+		sliceKernel, _, err := val.Factory().Slice(sh, i)
+		if err != nil {
+			return nil, err
+		}
+		subVal, err := sliceKernel(val)
+		if err != nil {
+			return nil, err
+		}
+		els[i], err = ao.convertKernelArrayToElement(ev, field, subType, subVal)
+		if err != nil {
+			return nil, err
+		}
+	}
+	return elements.NewSlice(typ, els)
+}
+
+func (ao *Ops) convertKernelArrayToElement(ev ir.Evaluator, field *ir.Field, typ ir.Type, val kernels.Array) (ir.Element, error) {
+	if val.Shape().IsScalar() {
+		return ao.convertScalarToElement(ev, typ, val)
+	}
+	return ao.convertSliceToElement(ev, field, typ, val)
+}
+
 func (ao *Ops) convertToElement(ev ir.Evaluator, field *ir.Field, arg ir.Element) (ir.Element, error) {
 	array, isArray := arg.(hostio.Array)
 	if !isArray {
 		return arg, nil
 	}
-	if !array.Shape().IsScalar() {
-		return nil, errors.Errorf("array generic argument not supported for parameter %s", field.Name.Name)
-	}
 	val, err := togo.CpValueT[kernels.Array](array)
 	if err != nil {
 		return nil, err
 	}
-	atom, err := val.ToAtom()
-	if err != nil {
-		return nil, err
-	}
-	cst, err := numbers.NewConstant(field.Type(), atom)
-	if err != nil {
-		return nil, err
-	}
-	return ao.ElementFromHostValue(ev, cst)
+	return ao.convertKernelArrayToElement(ev, field, field.Type(), val)
 }
 
 // FuncInputsToElements converts values to a function input.
@@ -444,9 +481,9 @@ func (ao *Ops) FuncInputsToElements(ev ir.Evaluator, fn ir.Func, receiver ir.Ele
 		argsEl[numGenArgs+i] = argNode
 	}
 	return &elements.InputElements{
-		Values: hostio.FuncInputs{
+		Values: togo.FuncInputs{
 			Receiver: receiver,
-			Args:     args,
+			Args:     hostio.ToElements(args),
 		},
 		Receiver: recvEl,
 		Args:     argsEl,

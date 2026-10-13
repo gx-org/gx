@@ -37,7 +37,7 @@ import (
 
 type (
 	argFetcher interface {
-		LastValue(*hostio.FuncInputs) (any, error)
+		LastValue(*togo.FuncInputs) (any, error)
 	}
 
 	parameterFetcher struct {
@@ -47,11 +47,11 @@ type (
 	receiverFetcher struct{}
 )
 
-func (f parameterFetcher) LastValue(in *hostio.FuncInputs) (any, error) {
+func (f parameterFetcher) LastValue(in *togo.FuncInputs) (any, error) {
 	return in.Args[f.paramIndex], nil
 }
 
-func (f receiverFetcher) LastValue(in *hostio.FuncInputs) (any, error) {
+func (f receiverFetcher) LastValue(in *togo.FuncInputs) (any, error) {
 	return in.Receiver, nil
 }
 
@@ -169,7 +169,7 @@ func (arg *namedTypeArgument) Type() ir.Type {
 	return arg.typ
 }
 
-func (arg *namedTypeArgument) LastValue(ctx *hostio.FuncInputs) (any, error) {
+func (arg *namedTypeArgument) LastValue(ctx *togo.FuncInputs) (any, error) {
 	return arg.parent.LastValue(ctx)
 }
 
@@ -237,7 +237,7 @@ func (sel *fieldSelectorArgument) Name() string {
 	return sel.parent.Name() + "." + sel.fieldName
 }
 
-func (sel *fieldSelectorArgument) LastValue(ctx *hostio.FuncInputs) (any, error) {
+func (sel *fieldSelectorArgument) LastValue(ctx *togo.FuncInputs) (any, error) {
 	structValue, err := togo.RtValueT[engine.Selector](ctx, sel.parent)
 	if err != nil {
 		return nil, err
@@ -316,7 +316,7 @@ func (sel *indexSelectorArgument) Name() string {
 	return sel.parent.Name() + "." + fmt.Sprintf("[%d]", sel.index)
 }
 
-func (sel *indexSelectorArgument) LastValue(ctx *hostio.FuncInputs) (any, error) {
+func (sel *indexSelectorArgument) LastValue(ctx *togo.FuncInputs) (any, error) {
 	sliceValue, err := togo.RtValueT[*values.Slice](ctx, sel.parent)
 	if err != nil {
 		return nil, err
@@ -464,7 +464,7 @@ func (n *arrayArgument) Length(ev ir.Evaluator) (int, error) {
 	return shapeLength(n.Shape())
 }
 
-func (n *arrayArgument) ToDeviceHandle(plat compute.Backend, dev compute.DeviceNum, in *hostio.FuncInputs) (compute.Buffer, error) {
+func (n *arrayArgument) ToDeviceHandle(plat compute.Backend, dev compute.DeviceNum, in *togo.FuncInputs) (compute.Buffer, error) {
 	array, err := togo.RtValueT[hostio.Array](in, n)
 	if err != nil {
 		return nil, err
@@ -481,7 +481,7 @@ func toDevice(plat compute.Backend, dev compute.DeviceNum, arr hostio.Array) (co
 }
 
 // NumericalConstant returns the value of a constant represented by a node.
-func (n *arrayArgument) LastValue(in *hostio.FuncInputs) (any, error) {
+func (n *arrayArgument) LastValue(in *togo.FuncInputs) (any, error) {
 	return n.parentArgument.LastValue(in)
 }
 

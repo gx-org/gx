@@ -1,0 +1,28 @@
+package append01
+
+// No runtime test function
+
+//gx:compeval
+func Test01() []int {
+	return append([]int{1, 2}, 3)
+	// Want:
+	// []int{1, 2, 3}
+}
+
+//gx:compeval
+func Test02() []int {
+	a := []int{1, 2}
+	return append([]int{}, a...)
+	// Want:
+	// []int{1, 2}
+}
+
+//gx:compeval
+func Test03() ([]int, []int) {
+	a := []int{1, 2}
+	b := append([]int{}, a...)
+	return append(a, 3), append(b, 4)
+	// Want:
+	// 0: []int{1, 2, 3}
+	// 1: []int{1, 2, 4}
+}

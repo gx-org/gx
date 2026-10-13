@@ -22,7 +22,6 @@ import (
 
 	"github.com/pkg/errors"
 	"github.com/gomlx/compute/shapes"
-	"github.com/gx-org/gx/api/hostio"
 	gxfmt "github.com/gx-org/gx/base/fmt"
 	"github.com/gx-org/gx/build/fmterr"
 	"github.com/gx-org/gx/build/ir"
@@ -30,6 +29,7 @@ import (
 	"github.com/gx-org/gx/internal/interp/compeval/cmp"
 	"github.com/gx-org/gx/internal/interp/constants"
 	"github.com/gx-org/gx/internal/interp/coreiface"
+	"github.com/gx-org/gx/internal/togo"
 	"github.com/gx-org/gx/interp/engine"
 	"github.com/gx-org/gx/src/gx/ast"
 )
@@ -38,7 +38,7 @@ import (
 type InputElements struct {
 	// Values are the initial input GX values passed to the function call
 	// before they were encapsulated in elements for the interpreter.
-	Values hostio.FuncInputs
+	Values togo.FuncInputs
 
 	// Receiver on which the function call was done.
 	// Can be nil.

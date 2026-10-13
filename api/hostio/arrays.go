@@ -27,12 +27,13 @@ import (
 	"github.com/gomlx/compute/shapes"
 	"github.com/gx-org/gx/build/ir"
 	"github.com/gx-org/gx/golang/backend/kernels"
+	"github.com/gx-org/gx/internal/togo"
 )
 
 // Array is an array value (also includes atomic).
 type Array interface {
 	Value
-	CompileValue
+	togo.CompileValue
 
 	// Type returns the GX type of the array.
 	Type() ir.Type

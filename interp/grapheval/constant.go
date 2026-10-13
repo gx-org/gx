@@ -45,7 +45,7 @@ var (
 	_ engine.Copier                   = (*constant)(nil)
 	_ elements.WithAxes               = (*constant)(nil)
 	_ ir.WithLength                   = (*constant)(nil)
-	_ hostio.CompileValue             = (*constant)(nil)
+	_ togo.CompileValue               = (*constant)(nil)
 )
 
 func newConstant(ctx ir.Evaluator, ev *Ops, cst engine.Constant) (*constant, error) {

@@ -38,8 +38,8 @@ func newSliceType(path storepath.Path, typ *ir.SliceType) *slice {
 	}
 }
 
-func (*slice) Type() ir.Type {
-	return ir.StringType()
+func (f *slice) Type() ir.Type {
+	return f.typ
 }
 
 func (f *slice) Unpack(ev ir.Evaluator) (ir.Element, error) {

@@ -48,6 +48,8 @@ type (
 	Package uintptr
 	// Runtime is a C pointer to a runtime.
 	Runtime uintptr
+	// Shape is a C pointer to a shape.
+	Shape uintptr
 	// Value is a C pointer to a value.
 	Value uintptr
 )
@@ -152,6 +154,40 @@ func RunFunc(fn Function, args ...Value) ([]Value, error) {
 	}
 	C.cgx_free_function_run_result(&r)
 	return vals, nil
+}
+
+// NewShape creates a new shape via the CGX API.
+func NewShape(dtype uint32, axes ...int64) Shape {
+	var paxes *C.cint64_t
+	if len(axes) > 0 {
+		caxes := unsafe.SliceData(axes)
+		pinner := runtime.Pinner{}
+		pinner.Pin(caxes)
+		defer pinner.Unpin()
+		paxes = (*C.cint64_t)(caxes)
+	}
+	return Shape(C.cgx_shape_new(C.enum_cgx_value_kind(dtype), paxes, C.int(len(axes))))
+}
+
+// Send a slice of values to the device via the CGX API.
+func Send[T any](dev Device, dtype uint32, data []T, axes ...int64) (Value, error) {
+	shp := NewShape(dtype, axes...)
+	defer C.cgx_release_reference(C.cgx_handle(shp))
+	var pdata unsafe.Pointer
+	var byteSize int
+	if len(data) > 0 {
+		cdata := unsafe.SliceData(data)
+		pinner := runtime.Pinner{}
+		pinner.Pin(cdata)
+		defer pinner.Unpin()
+		pdata = unsafe.Pointer(cdata)
+		byteSize = len(data) * int(unsafe.Sizeof(data[0]))
+	}
+	vr := C.cgx_value_send(C.cgx_device(dev), C.cgx_shape(shp), pdata, C.uint64_t(byteSize))
+	if vr.error != Null {
+		return Null, GoError(Error(vr.error))
+	}
+	return Value(vr.value), nil
 }
 
 // ReleaseValues releases all the value handles.

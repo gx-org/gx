@@ -17,14 +17,30 @@ package togo
 
 import (
 	"github.com/pkg/errors"
-	"github.com/gx-org/gx/api/hostio"
 	"github.com/gx-org/gx/build/ir"
 	"github.com/gx-org/gx/internal/base/cast"
 )
 
+// FuncInputs are GX values passed to the function call.
+type FuncInputs struct {
+	// Receiver on which the function call was done.
+	// Can be nil.
+	Receiver ir.Element
+
+	// Args returns list of arguments passed to the interpreter at call time.
+	Args []ir.Element
+}
+
+// CompileValue is an element able to convert its value into an equivalent Go value.
+type CompileValue interface {
+	ir.Element
+	// GoValue of the underlying element.
+	GoValue() (any, error)
+}
+
 // CpValue converts an element to its Go value.
 func CpValue(el ir.Element) (any, error) {
-	togo, err := cast.To[hostio.CompileValue](ir.BareValue(el))
+	togo, err := cast.To[CompileValue](ir.BareValue(el))
 	if err != nil {
 		return nil, err
 	}
@@ -44,11 +60,11 @@ func CpValueT[T any](el ir.Element) (valT T, err error) {
 type RuntimeValue interface {
 	ir.Element
 	// LastValue of the underlying element for the last call to GX.
-	LastValue(*hostio.FuncInputs) (any, error)
+	LastValue(*FuncInputs) (any, error)
 }
 
 // RtValue converts an element to its Go value.
-func RtValue(fnin *hostio.FuncInputs, el ir.Element) (any, error) {
+func RtValue(fnin *FuncInputs, el ir.Element) (any, error) {
 	togo, err := cast.To[RuntimeValue](ir.BareValue(el))
 	if err != nil {
 		return nil, err
@@ -57,7 +73,7 @@ func RtValue(fnin *hostio.FuncInputs, el ir.Element) (any, error) {
 }
 
 // RtValueT converts an element to a specific Go value.
-func RtValueT[T any](fnin *hostio.FuncInputs, el ir.Element) (valT T, err error) {
+func RtValueT[T any](fnin *FuncInputs, el ir.Element) (valT T, err error) {
 	valAny, err := RtValue(fnin, el)
 	if err != nil {
 		return
@@ -66,9 +82,9 @@ func RtValueT[T any](fnin *hostio.FuncInputs, el ir.Element) (valT T, err error)
 }
 
 // Value converts an element to its Go value.
-func Value(fnin *hostio.FuncInputs, el ir.Element) (any, error) {
+func Value(fnin *FuncInputs, el ir.Element) (any, error) {
 	switch elT := el.(type) {
-	case hostio.CompileValue:
+	case CompileValue:
 		return elT.GoValue()
 	case RuntimeValue:
 		if fnin == nil {
@@ -80,7 +96,7 @@ func Value(fnin *hostio.FuncInputs, el ir.Element) (any, error) {
 }
 
 // ValueT converts an element to a specific Go value.
-func ValueT[T any](fnin *hostio.FuncInputs, el ir.Element) (valT T, err error) {
+func ValueT[T any](fnin *FuncInputs, el ir.Element) (valT T, err error) {
 	valAny, err := Value(fnin, el)
 	if err != nil {
 		return
