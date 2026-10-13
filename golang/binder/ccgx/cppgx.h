@@ -55,7 +55,10 @@ class Handle {
   explicit Handle(T value) : value_(value) {}
   Handle(Handle&& other) : value_(std::exchange(other.value_, T{})) {}
   Handle(const Handle& other) = delete;
-  ~Handle() {
+  ~Handle() { Release(); }
+
+  void Release() {
+    if (value_ == T{}) return;
     cgx_release_reference(value_);
     value_ = T{};
   }
@@ -252,7 +255,8 @@ template <typename T>
 class Array {
  public:
   Array(Value&& value) : value_(std::move(value)) {}
-  Array(Array&& other) : value_(std::move(other.value_)) {}
+  Array(Array&& other)
+      : value_(std::move(other.value_)), buffer_(std::move(other.buffer_)) {}
 
   const Value& get_value() const { return value_; }
 
@@ -341,6 +345,7 @@ class HostBuffer {
   HostBuffer(const HostBuffer&) = delete;
   ~HostBuffer() {
     if (data_) cgx_host_buffer_release_data(*host_buffer_, data_);
+    host_buffer_.Release();
   };
 
   cgx_host_buffer raw() const { return *host_buffer_; }
