@@ -1,0 +1,15 @@
+package mulval_err05
+
+type A struct {
+	a, b int
+}
+
+func F() (int, int) {
+	return 1, 2
+}
+
+func Main() A {
+	a := A{a: 1, b: 2}
+	a = F() // ERROR multiple-value (value of type (int, int)) in single-value context
+	return a
+}
