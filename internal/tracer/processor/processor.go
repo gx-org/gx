@@ -21,6 +21,7 @@ import (
 	"github.com/gomlx/compute/shapes"
 	"github.com/gx-org/gx/api/hostio"
 	"github.com/gx-org/gx/build/ir"
+	"github.com/gx-org/gx/internal/togo"
 )
 
 type (
@@ -38,20 +39,20 @@ type (
 		inits   []Initializer
 		args    []Argument
 
-		last *hostio.FuncInputs
+		last *togo.FuncInputs
 	}
 
 	// Initializer is called at the beginning of a run before
 	// arguments for the backend are computed.
 	Initializer interface {
-		Init(*hostio.FuncInputs) error
+		Init(*togo.FuncInputs) error
 	}
 
 	// Argument provides an argument to pass to the backend.
 	Argument interface {
 		Shaper
 
-		ToDeviceHandle(compute.Backend, compute.DeviceNum, *hostio.FuncInputs) (compute.Buffer, error)
+		ToDeviceHandle(compute.Backend, compute.DeviceNum, *togo.FuncInputs) (compute.Buffer, error)
 	}
 )
 
@@ -95,12 +96,12 @@ func (p *Processor) ElementArgs() []ir.Element {
 }
 
 // LastInputs returns the inputs from the last call.
-func (p *Processor) LastInputs() *hostio.FuncInputs {
+func (p *Processor) LastInputs() *togo.FuncInputs {
 	return p.last
 }
 
 // ProcessInits calls all the initializers callbacks.
-func (p *Processor) ProcessInits(fc *hostio.FuncInputs) error {
+func (p *Processor) ProcessInits(fc *togo.FuncInputs) error {
 	p.last = fc
 	for _, init := range p.inits {
 		if err := init.Init(fc); err != nil {

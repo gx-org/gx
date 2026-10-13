@@ -12,6 +12,7 @@
 // See the License for the specific language governing permissions and
 // limitations under the License.
 
+// Package gocgx_test tests CGX. Tests are not in this file because Go tests do not support CGo.
 package gocgx_test
 
 import (
@@ -20,8 +21,10 @@ import (
 	"github.com/gx-org/gx/golang/binder/cgx/tests/gocgx"
 )
 
-const genericsPackage = "github.com/gx-org/gx/tests/bindings/generics"
+func TestGenericScalar(t *testing.T) {
+	gocgx.TestGenericScalar(t)
+}
 
-func TestGeneric(t *testing.T) {
-	gocgx.TestGeneric(t)
+func TestGenericSlice(t *testing.T) {
+	gocgx.TestGenericSlice(t)
 }

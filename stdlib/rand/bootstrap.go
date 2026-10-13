@@ -91,7 +91,7 @@ func (arg *randBootstrapArg) next(env *engine.Env) (engine.NumericalElement, err
 	return arg.rb.eval.NewArrayArgument(env.File(), arg, seedType, seedShape)
 }
 
-func (arg *randBootstrapArg) Init(ctx *hostio.FuncInputs) error {
+func (arg *randBootstrapArg) Init(ctx *togo.FuncInputs) error {
 	value, err := togo.RtValueT[hostio.Array](ctx, arg.seed)
 	if err != nil {
 		return nil
@@ -117,7 +117,7 @@ func (arg *randBootstrapArg) Type() ir.Type {
 	return seedType
 }
 
-func (arg *randBootstrapArg) LastValue(in *hostio.FuncInputs) (any, error) {
+func (arg *randBootstrapArg) LastValue(in *togo.FuncInputs) (any, error) {
 	val := arg.rb.rand.Uint64()
 	return hostio.AtomIntegerValue[uint64](seedType, val)
 }

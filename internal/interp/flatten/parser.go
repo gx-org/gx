@@ -23,6 +23,7 @@ import (
 	"github.com/gx-org/gx/api/hostio"
 	gxfmt "github.com/gx-org/gx/base/fmt"
 	"github.com/gx-org/gx/build/ir"
+	"github.com/gx-org/gx/internal/togo"
 )
 
 // Parser unflattens the output of a graph computation
@@ -30,14 +31,14 @@ import (
 type Parser struct {
 	factory    hostio.Factory
 	dev        compute.DeviceNum
-	callInputs *hostio.FuncInputs
+	callInputs *togo.FuncInputs
 	// Handles to unflatten.
 	compOutput []compute.Buffer
 	nextPos    int
 }
 
 // NewParser returns a new parser given the output of a graph computation.
-func NewParser(dev compute.DeviceNum, callInputs *hostio.FuncInputs, factory hostio.Factory, handles []compute.Buffer) *Parser {
+func NewParser(dev compute.DeviceNum, callInputs *togo.FuncInputs, factory hostio.Factory, handles []compute.Buffer) *Parser {
 	return &Parser{
 		factory:    factory,
 		dev:        dev,
@@ -54,7 +55,7 @@ func (h *Parser) Next() compute.Buffer {
 }
 
 // CallInputs returns the inputs with which the function was called.
-func (h *Parser) CallInputs() *hostio.FuncInputs {
+func (h *Parser) CallInputs() *togo.FuncInputs {
 	return h.callInputs
 }
 

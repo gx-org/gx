@@ -1,0 +1,10 @@
+package range_err01
+
+// gx:compeval
+func setOnes(axes []int, i ...int) []int {
+	axes = append([]int{}, axes...)
+	for _, i := range axes { // ERROR cannot use int as []int value in assignment
+		axes[i] = 1
+	}
+	return axes
+}

@@ -41,7 +41,7 @@ type constant struct {
 var (
 	_ elements.EvalShaper = (*constant)(nil)
 	_ cmp.Canonical       = (*constant)(nil)
-	_ hostio.CompileValue = (*constant)(nil)
+	_ togo.CompileValue   = (*constant)(nil)
 	_ cpevops.Element     = (*constant)(nil)
 	_ flatten.Unflattener = (*constant)(nil)
 )

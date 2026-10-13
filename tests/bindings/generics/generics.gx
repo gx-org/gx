@@ -12,3 +12,8 @@ func Floats[T dtype.Floats]() [2]T {
 func VecF32[Size int]() [Size]float32 {
 	return [Size]float32{}
 }
+
+// ArrayF32 returns an array of float32 given a shape.
+func ArrayF32[Size []int]() [unpack(Size)]float32 {
+	return [unpack(Size)]float32{}
+}

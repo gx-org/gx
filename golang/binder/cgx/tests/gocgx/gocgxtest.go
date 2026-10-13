@@ -30,9 +30,9 @@ import (
 
 const genericsPackage = "github.com/gx-org/gx/tests/bindings/generics"
 
-// TestGeneric tests calling a generic GX function.
+// TestGenericScalar tests calling a generic GX function.
 // The test is not in a _test.go file because Go does not support CGo in test files.
-func TestGeneric(t *testing.T) {
+func TestGenericScalar(t *testing.T) {
 	const size = 3
 	const want = "DeviceArray{DeviceID: 0}: [3]float32{0, 0, 0}"
 
@@ -66,6 +66,55 @@ func TestGeneric(t *testing.T) {
 
 	// Run the function.
 	vals, err := RunFunc(fn, Value(vecSize.value))
+	if err != nil {
+		t.Fatal(err)
+	}
+	defer ReleaseValues(vals)
+
+	// Compare the result.
+	got := String(vals[0])
+	if got != want {
+		t.Errorf("got %s but want %s", got, want)
+	}
+}
+
+// TestGenericSlice tests calling a generic GX function.
+// The test is not in a _test.go file because Go does not support CGo in test files.
+func TestGenericSlice(t *testing.T) {
+	const want = `DeviceArray{DeviceID: 0}: [2][3]float32{
+	{0, 0, 0},
+	{0, 0, 0},
+}`
+
+	defer cgxtesting.CheckHandleCount(t, handle.Count())
+	rtm, dev, finalize, err := Setup(nil)
+	if err != nil {
+		t.Fatal(err)
+	}
+	defer finalize()
+
+	// Build the package.
+	genpkg, err := BuildPackage(rtm, dev, genericsPackage)
+	if err != nil {
+		t.Fatal(err)
+	}
+	defer C.cgx_release_reference(C.cgx_handle(genpkg))
+
+	// Create the argument value.
+	arraySize, err := Send(dev, C.CGX_INT64, []int64{2, 3}, 2)
+	if err != nil {
+		t.Fatal(err)
+	}
+	defer C.cgx_release_reference(C.cgx_handle(arraySize))
+
+	fn, err := FindFunction(genpkg, "ArrayF32")
+	if err != nil {
+		t.Fatal(err)
+	}
+	defer C.cgx_release_reference(C.cgx_handle(fn))
+
+	// Run the function.
+	vals, err := RunFunc(fn, arraySize)
 	if err != nil {
 		t.Fatal(err)
 	}

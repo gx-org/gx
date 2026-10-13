@@ -20,6 +20,7 @@ import (
 	"github.com/gx-org/gx/api/trace"
 	"github.com/gx-org/gx/build/ir"
 	"github.com/gx-org/gx/internal/interp/flatten"
+	"github.com/gx-org/gx/internal/togo"
 )
 
 type traceProcessor struct {
@@ -64,7 +65,7 @@ func (ts *traces) RegisterTrace(ctx ir.Evaluator, call *ir.FuncCallExpr, args []
 }
 
 // ProcessTraces processes the graph outputs related to traces.
-func (ts *traces) ProcessTraces(dev compute.DeviceNum, in *hostio.FuncInputs, tracer trace.Callback, aux []compute.Buffer) error {
+func (ts *traces) ProcessTraces(dev compute.DeviceNum, in *togo.FuncInputs, tracer trace.Callback, aux []compute.Buffer) error {
 	if tracer == nil || len(ts.traces) == 0 {
 		return nil
 	}
