@@ -333,10 +333,11 @@ func buildAssignExpr(rscope localScope, asgm *assignment) (*ir.AssignExpr, bool,
 	ext := &ir.AssignExpr{}
 	var exprOk bool
 	ext.X, exprOk = buildExpr(rscope, asgm.expr)
-	if tpl, isTuple := ext.X.Type().(*ir.TupleType); exprOk && isTuple {
-		if len(tpl.Types) != 1 {
-			exprOk = checkSingleValue(rscope, asgm.expr.source(), ext.X)
-		}
+	if exprOk {
+		exprOk = checkSingleValue(rscope, asgm.expr.source(), ext.X)
+	}
+	if !exprOk {
+		ext.X = invalidExpr()
 	}
 	var newAsgm, targetOk bool
 	ext.Storage, newAsgm, targetOk = asgm.target.buildStorage(rscope, ext.X.Type())
