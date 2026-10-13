@@ -43,13 +43,13 @@ func newUpdateReturn(file *ir.File, call *ir.FuncCallExpr, mac *ir.Macro, args [
 	}
 	return &updateReturn{
 		MacroCall: elements.NewMacroCall(mac, file, call),
-		fn:        fn,
+		fn:        fn.(*ir.FuncDecl),
 		str:       str,
 	}, nil
 }
 
-func (m *updateReturn) BuildDecl(ir.PkgFunc) (*ir.File, *ast.FuncDecl, bool) {
-	return m.fn.FFile, &ast.FuncDecl{Type: m.fn.FType.Src, Recv: m.fn.Src.Recv}, true
+func (m *updateReturn) BuildDecl(ir.PkgFunc) (*ir.File, ir.Expr, *ast.FuncDecl, bool) {
+	return m.fn.FFile, nil, &ast.FuncDecl{Type: m.fn.FType.Src, Recv: m.fn.Src.Recv}, true
 }
 
 func (m *updateReturn) body() *ast.BlockStmt {

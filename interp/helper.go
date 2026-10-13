@@ -22,35 +22,22 @@ import (
 
 // PkgFuncFromElement extracts a function declaration from an element.
 func PkgFuncFromElement(el ir.Element) (ir.PkgFunc, error) {
-	fn, err := FuncFromElement(el)
+	fIR, err := FuncDeclFromElement(el)
 	if err != nil {
 		return nil, err
 	}
-	pkgFn, ok := fn.(ir.PkgFunc)
-	if !ok {
-		return nil, errors.Errorf("cannot convert element %T to a package function", el)
-	}
-	return pkgFn, nil
+	return fIR, nil
 }
 
-// FuncFromElement extracts a function declaration from an element.
-func FuncFromElement(el ir.Element) (ir.Func, error) {
+// FuncDeclFromElement extracts a function declaration from an element.
+func FuncDeclFromElement(el ir.Element) (ir.PkgFunc, error) {
 	fEl, ok := el.(engine.Func)
 	if !ok {
 		return nil, errors.Errorf("%s is not a function", el.Type().ReferString(nil))
 	}
-	return fEl.FuncIR(), nil
-}
-
-// FuncDeclFromElement extracts a function declaration from an element.
-func FuncDeclFromElement(el ir.Element) (*ir.FuncDecl, error) {
-	fun, err := FuncFromElement(el)
-	if err != nil {
-		return nil, err
-	}
-	fDecl, ok := fun.(*ir.FuncDecl)
+	fIR, ok := fEl.FuncIR().(ir.PkgFunc)
 	if !ok {
-		return nil, errors.Errorf("%s is not a GX user function", fun.FuncType().ReferString(nil))
+		return nil, errors.Errorf("%s is not a package level function", fEl.FuncIR().ShortString())
 	}
-	return fDecl, nil
+	return fIR, nil
 }

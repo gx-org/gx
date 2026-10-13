@@ -364,6 +364,10 @@ func (pkg *IncrementalPackage) BuildExprFrom(src string, sub map[ir.Storage]ir.E
 	if !ok {
 		return nil, errs
 	}
+	ok = pkgRScope.runScheduled()
+	if !ok {
+		return nil, errs
+	}
 	return irExpr, nil
 }
 

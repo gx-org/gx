@@ -60,11 +60,11 @@ func newID(file *ir.File, call *ir.FuncCallExpr, mac *ir.Macro, args []ir.Elemen
 	if err != nil {
 		return nil, err
 	}
-	return &id{MacroCall: elements.NewMacroCall(mac, file, call), fn: fn}, nil
+	return &id{MacroCall: elements.NewMacroCall(mac, file, call), fn: fn.(*ir.FuncDecl)}, nil
 }
 
-func (m *id) BuildDecl(ir.PkgFunc) (*ir.File, *ast.FuncDecl, bool) {
-	return m.fn.FFile, &ast.FuncDecl{Type: m.fn.FType.Src, Recv: m.fn.Src.Recv}, true
+func (m *id) BuildDecl(ir.PkgFunc) (*ir.File, ir.Expr, *ast.FuncDecl, bool) {
+	return m.fn.FFile, nil, &ast.FuncDecl{Type: m.fn.FType.Src, Recv: m.fn.Src.Recv}, true
 }
 
 func (m *id) BuildBody(fetcher ir.Fetcher, _ ir.Func) (*ast.BlockStmt, bool) {
@@ -76,24 +76,24 @@ type idWithBool struct {
 	fn *ir.FuncDecl
 }
 
-var _ ir.FuncASTBuilder = (*id)(nil)
+var _ ir.FuncASTBuilder = (*idWithBool)(nil)
 
 func newIDWithBool(file *ir.File, call *ir.FuncCallExpr, mac *ir.Macro, args []ir.Element) (ir.MacroElement, error) {
 	fn, err := interp.FuncDeclFromElement(args[0])
 	if err != nil {
 		return nil, err
 	}
-	return &idWithBool{MacroCall: elements.NewMacroCall(mac, file, call), fn: fn}, nil
+	return &idWithBool{MacroCall: elements.NewMacroCall(mac, file, call), fn: fn.(*ir.FuncDecl)}, nil
 }
 
-func (m *idWithBool) BuildDecl(ir.PkgFunc) (*ir.File, *ast.FuncDecl, bool) {
+func (m *idWithBool) BuildDecl(ir.PkgFunc) (*ir.File, ir.Expr, *ast.FuncDecl, bool) {
 	results := *m.fn.FType.Src.Results
 	results.List = append(results.List, &ast.Field{
 		Type: &ast.Ident{Name: "bool"},
 	})
 	ftype := *m.fn.FType.Src
 	ftype.Results = &results
-	return m.fn.FFile, &ast.FuncDecl{Type: &ftype, Recv: m.fn.Src.Recv}, true
+	return m.fn.FFile, nil, &ast.FuncDecl{Type: &ftype, Recv: m.fn.Src.Recv}, true
 }
 
 func (m *idWithBool) BuildBody(fetcher ir.Fetcher, _ ir.Func) (*ast.BlockStmt, bool) {

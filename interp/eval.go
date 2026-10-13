@@ -613,7 +613,7 @@ func evalExpr(fitp *Interpreter, expr ir.Expr) (_ ir.Element, err error) {
 	case *ir.FuncLit:
 		return NewFuncLit(exprT, fitp.Context()), nil
 	case *ir.MacroCallExpr:
-		return elements.NewFunc(exprT.F, nil), nil
+		return evalMacroCallExpr(fitp, exprT)
 	case *ir.IndexExpr:
 		return evalIndexExpr(fitp, exprT)
 	case *ir.EinsumExpr:
@@ -633,6 +633,37 @@ func evalExpr(fitp *Interpreter, expr ir.Expr) (_ ir.Element, err error) {
 	default:
 		return nil, fmterr.Errorf(fitp.File().FileSet(), expr.Node(), "cannot evaluate GX expression: %T not supported", expr)
 	}
+}
+
+func evalMacroRecv(fitp *Interpreter, expr *ir.MacroCallExpr) (*engine.Receiver, error) {
+	ftype := expr.F.FuncType()
+	recvField := ftype.ReceiverField()
+	if recvField == nil {
+		return nil, nil
+	}
+	if expr.Recv == nil {
+		return nil, fmterr.InternalAt(fitp.File().FileSet(), expr.Node(), "macro-generated function %s has a receiver but no expression to evaluate that receiver", expr.F.ShortString())
+	}
+	recv, err := evalExpr(fitp, expr.Recv)
+	if err != nil {
+		return nil, err
+	}
+	named, err := cast.To[*elements.NamedType](ir.BareValue(recv))
+	if err != nil {
+		return nil, err
+	}
+	return &engine.Receiver{
+		Ident:   recvField.Name,
+		Element: named,
+	}, nil
+}
+
+func evalMacroCallExpr(fitp *Interpreter, expr *ir.MacroCallExpr) (ir.Element, error) {
+	recv, err := evalMacroRecv(fitp, expr)
+	if err != nil {
+		return nil, err
+	}
+	return elements.NewFunc(expr.F, recv), nil
 }
 
 func evalUnpackExpr(fitp *Interpreter, expr *ir.UnpackExpr) (ir.Element, error) {

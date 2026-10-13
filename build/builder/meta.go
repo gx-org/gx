@@ -175,10 +175,10 @@ type syntheticFunc struct {
 	fnBuilder ir.FuncASTBuilder
 }
 
-func (f *syntheticFunc) buildSignature(pkgScope *pkgResolveScope) (ir.Func, fnResolveScope, bool) {
+func (f *syntheticFunc) buildSignature(pkgScope *pkgResolveScope) (ir.Expr, ir.Func, fnResolveScope, bool) {
 	fScope, ok := pkgScope.fileScope(f.bFile)
 	if !ok {
-		return nil, nil, false
+		return nil, nil, nil, false
 	}
 	return f.buildSignatureFScope(fScope)
 }
@@ -201,34 +201,38 @@ func (f *syntheticFunc) checkSyntheticSignature(fScope *fileResolveScope, fInput
 	return true
 }
 
-func buildSyntheticFuncSig(parentScope *fileResolveScope, srcloc ast.Node, astBuilder ir.FuncASTBuilder, target ir.PkgFunc) (*ir.FuncDecl, *synthResolveScope, bool) {
-	macroFile, synDecl, ok := astBuilder.BuildDecl(target)
+func buildSyntheticFuncSig(parentScope *fileResolveScope, srcloc ast.Node, astBuilder ir.FuncASTBuilder, target ir.PkgFunc) (ir.Expr, *ir.FuncDecl, *synthResolveScope, bool) {
+	macroFile, recvExpr, synDecl, ok := astBuilder.BuildDecl(target)
 	if !ok {
-		return nil, nil, false
+		return nil, nil, nil, false
 	}
 	pMacroScope, ok := newMacroProcScope(parentScope, srcloc, macroFile)
 	if !ok {
-		return nil, nil, false
+		return nil, nil, nil, false
 	}
 	src, synDecl, err := formatFunction(pMacroScope.pkg().fset, astBuilder, parentScope.irFile(), synDecl)
 	if err != nil {
-		return nil, nil, parentScope.Err().Append(err)
+		return nil, nil, nil, parentScope.Err().Append(err)
 	}
 	pMacroScope.Err().Push(fmterr.PrefixWith("cannot compile synthetic signature:\n%s\n", src))
 	defer pMacroScope.Err().Pop()
+	if !ok {
+		return nil, nil, nil, false
+	}
 	ft, ok := processFuncType(pMacroScope.filePScope(), synDecl.Type, synDecl.Recv, ir.FuncNature{})
 	if !ok {
-		return nil, nil, false
+		return nil, nil, nil, false
 	}
 	fScope, ok := pMacroScope.newResolveScope()
 	if !ok {
-		return nil, nil, false
+		return nil, nil, nil, false
 	}
 	fType, fnScope, ok := ft.buildFuncType(fScope)
 	if !ok {
-		return nil, nil, false
+		return nil, nil, nil, false
 	}
-	return &ir.FuncDecl{
+	return recvExpr,
+		&ir.FuncDecl{
 			FFile: fScope.irFile(),
 			Src:   synDecl,
 			FType: fType,
@@ -239,14 +243,14 @@ func buildSyntheticFuncSig(parentScope *fileResolveScope, srcloc ast.Node, astBu
 		}, true
 }
 
-func (f *syntheticFunc) buildSignatureFScope(fScope *fileResolveScope) (ir.PkgFunc, *synthResolveScope, bool) {
-	synDecl, synScope, ok := buildSyntheticFuncSig(fScope, f.src, f.fnBuilder, f.underFun)
+func (f *syntheticFunc) buildSignatureFScope(fScope *fileResolveScope) (ir.Expr, ir.PkgFunc, *synthResolveScope, bool) {
+	recvExpr, synDecl, synScope, ok := buildSyntheticFuncSig(fScope, f.src, f.fnBuilder, f.underFun)
 	if !ok {
-		return nil, nil, false
+		return nil, nil, nil, false
 	}
 	synDecl.Src.Name = f.src.Name
 	if ok := f.checkSyntheticSignature(fScope, f.underFun.Name(), f.underFun.FuncType(), synDecl.Src.Name.Name, synDecl.FType); !ok {
-		return nil, nil, false
+		return nil, nil, nil, false
 	}
-	return synDecl, synScope, ok
+	return recvExpr, synDecl, synScope, ok
 }

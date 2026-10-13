@@ -79,7 +79,7 @@ func NewFunc(fn ir.Func, recv *engine.Receiver) engine.Func {
 		elfn.storage = fnT
 		elfn.call = funcKeywordCaller(fnT)
 	case *ir.Macro:
-		return NewMacro(fnT, nil)
+		return NewMacro(fnT)
 	}
 	return &elfn
 }
