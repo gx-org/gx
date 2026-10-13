@@ -301,6 +301,7 @@ func (d *decls) buildFunctionBodies(pkgScope *pkgResolveScope, funcs []*irFunc) 
 		fnOk := fn.bFunc.buildBody(fn.sigScope, fn)
 		ok = ok && fnOk
 	}
+	ok = ok && pkgScope.runScheduled()
 	return ok
 }
 

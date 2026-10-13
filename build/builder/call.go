@@ -214,22 +214,27 @@ func (n *callExpr) buildMacroCall(rscope resolveScope, compEval *compileEvaluato
 	if !ok {
 		return invalidExpr(), rscope.Err().Appendf(n.source(), "macro %s does not build functions", mac.ShortString())
 	}
-	rscope.Err().Push(fmterr.PosPrefixWith(rscope.fileScope().pkg().fset, callExpr.Src.Fun, func() string {
+	errPrefix := fmterr.PosPrefixWith(rscope.fileScope().pkg().fset, callExpr.Src.Fun, func() string {
 		return fmt.Sprintf("error while calling macro %s:\n", callExpr.SourceString(rscope.fileScope().irFile()))
-	}))
+	})
+	rscope.Err().Push(errPrefix)
 	defer rscope.Err().Pop()
 
-	synDecl, synScope, ok := buildSyntheticFuncSig(rscope.fileScope(), expr.Node(), fnBuilder, nil)
+	recvExpr, synDecl, synScope, ok := buildSyntheticFuncSig(rscope.fileScope(), expr.Node(), fnBuilder, nil)
 	if !ok {
 		return invalidExpr(), false
 	}
-	if ok = synScope.buildBody(synDecl, compEval); !ok {
-		return invalidExpr(), false
-	}
+	rscope.schedule(func() bool {
+		rscope.Err().Push(errPrefix)
+		defer rscope.Err().Pop()
+		ok := synScope.buildBody(synDecl, compEval)
+		return rscope.fileScope().runScheduled() && ok
+	})
 	return &ir.MacroCallExpr{
-		X: callExpr,
-		M: fnBuilder,
-		F: synDecl,
+		X:    callExpr,
+		M:    fnBuilder,
+		Recv: recvExpr,
+		F:    synDecl,
 	}, true
 }
 

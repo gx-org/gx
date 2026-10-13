@@ -18,6 +18,7 @@ import (
 	"go/token"
 	"math/big"
 	"reflect"
+	"slices"
 
 	"github.com/pkg/errors"
 	"github.com/gx-org/gx/api/options"
@@ -103,6 +104,9 @@ type (
 		methods *ordered.Map[*ir.NamedType, *ordered.Map[string, *irFunc]]
 		// fileScopes maps a builder file to its scope.
 		fileScopes map[*file]*fileResolveScope
+
+		// functions to run after function bodies have been built.
+		scheduled []func() bool
 	}
 )
 
@@ -142,6 +146,22 @@ func newPackageResolveScope(pscope *pkgProcScope) (*pkgResolveScope, bool) {
 		s.fileScopes[bFile] = fscope
 	}
 	return s, ok
+}
+
+func (s *pkgResolveScope) schedule(f func() bool) {
+	s.scheduled = append(s.scheduled, f)
+}
+
+func (s *pkgResolveScope) runScheduled() bool {
+	ok := true
+	for len(s.scheduled) > 0 {
+		todo := slices.Clone(s.scheduled)
+		s.scheduled = nil
+		for _, f := range todo {
+			ok = f() && ok
+		}
+	}
+	return ok
 }
 
 func (s *pkgResolveScope) buildFuncProcessNode(bFile *file, store ir.Storage) (processNode, bool) {
@@ -214,6 +234,7 @@ type (
 
 	resolveScope interface {
 		compEvalScope
+		schedule(func() bool)
 		nspace() *scope.RWScope[ir.Element]
 		fileScope() *fileResolveScope
 		toDefineScope() *defineLocalScope

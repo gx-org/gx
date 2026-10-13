@@ -23,12 +23,11 @@ import (
 // Macro is a macro function to build synthetic functions.
 type Macro struct {
 	macro *ir.Macro
-	recv  *engine.Receiver
 }
 
 // NewMacro creates a new macro given its definition and a receiver.
-func NewMacro(fn *ir.Macro, recv *engine.Receiver) engine.Func {
-	return &Macro{macro: fn, recv: recv}
+func NewMacro(fn *ir.Macro) engine.Func {
+	return &Macro{macro: fn}
 }
 
 // FuncIR returns the macro function.
@@ -38,7 +37,8 @@ func (f *Macro) FuncIR() ir.Func {
 
 // Recv returns the receiver of the macro function.
 func (f *Macro) Recv() *engine.Receiver {
-	return f.recv
+	// A macro cannot be a method.
+	return nil
 }
 
 // Call the macro to build the synthetic element.

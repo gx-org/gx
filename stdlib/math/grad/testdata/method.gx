@@ -1,0 +1,42 @@
+package method
+
+import "math/grad"
+
+type S struct {
+	a float32
+}
+
+func (s S) f(x float32) float32 {
+	return x * s.a
+}
+
+func TestMethod() (float32, S, float32) {
+	s := S{a: 3}
+	vjpF := grad.Reverse(s.f)
+	trace(vjpF)
+	y, bckS, bckX := vjpF(2)
+	res := float32(5)
+	return y, bckS(res), bckX(res)
+	// Want:
+	// 0: float32(6)
+	// 1: S{
+	// 	a: float32(10),
+	// }
+	// 2: float32(15)
+	// Trace:
+	// method.gx:0
+	// 	func (s S)(x float32) (float32, func(res float32) S, func(res float32) float32) {
+	// 		fwd0 := x*s.a
+	// 		selfVJPFuncWRTs := func(res float32) S {
+	// 			bck0y := x*res
+	// 			return S{
+	// 				a: bck0y,
+	// 			}
+	// 		}
+	// 		selfVJPFuncWRTx := func(res float32) float32 {
+	// 			bck0x := res*s.a
+	// 			return bck0x
+	// 		}
+	// 		return fwd0, selfVJPFuncWRTs, selfVJPFuncWRTx
+	// 	}
+}

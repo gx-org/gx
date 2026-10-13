@@ -111,7 +111,7 @@ func typeParamsOf(fields *ir.FieldList) *ast.FieldList {
 	return fields.Src
 }
 
-func (m *gradMacro) BuildDecl(fn ir.PkgFunc) (*ir.File, *ast.FuncDecl, bool) {
+func (m *gradMacro) BuildDecl(fn ir.PkgFunc) (*ir.File, ir.Expr, *ast.FuncDecl, bool) {
 	target := m.revgraph.Func()
 	fType := target.FuncType()
 	results := &ast.FieldList{List: []*ast.Field{
@@ -133,7 +133,7 @@ func (m *gradMacro) BuildDecl(fn ir.PkgFunc) (*ir.File, *ast.FuncDecl, bool) {
 	if recv != nil {
 		fDecl.Recv = recv.Src
 	}
-	return target.File(), fDecl, true
+	return target.File(), nil, fDecl, true
 }
 
 func (m *gradMacro) BuildBody(fetcher ir.Fetcher, fn ir.Func) (*ast.BlockStmt, bool) {

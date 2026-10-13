@@ -11,8 +11,8 @@ func net(x [5]float32) [5]float32 {
 	return Max(0., x)
 }
 
-func revnet(x [5]float32) {
+func revnet(x [5]float32) [5]float32 {
 	vjp := grad.Reverse(net) // ERROR: function nonameargs.Max requires a gradient specification
-	y, _ := vjp(w, x)
+	y, _ := vjp(x)
 	return y
 }

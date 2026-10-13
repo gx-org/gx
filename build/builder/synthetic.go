@@ -72,7 +72,7 @@ func (f *assignFuncFromMacro) buildSignature(fScope *fileResolveScope) (ir.Func,
 	if !ok {
 		return nil, nil, false
 	}
-	synthFunc, synthScope, ok := (&syntheticFunc{
+	_, synthFunc, synthScope, ok := (&syntheticFunc{
 		coreSyntheticFunc: f.coreSyntheticFunc,
 		fnBuilder:         fnBuilder,
 		underFun:          underPkgFun,

@@ -15,10 +15,10 @@
 package grad
 
 import (
-	"github.com/pkg/errors"
 	"github.com/gx-org/gx/api/hostio"
 	"github.com/gx-org/gx/api/values"
 	"github.com/gx-org/gx/build/ir"
+	"github.com/gx-org/gx/internal/base/cast"
 	"github.com/gx-org/gx/internal/interp/flatten"
 	"github.com/gx-org/gx/interp/elements"
 	"github.com/gx-org/gx/interp"
@@ -29,42 +29,56 @@ import (
 type vjpMacro struct {
 	elements.MacroCall
 	graph *revgraph.Graph
+	recv  ir.Expr
 }
 
 var _ ir.FuncASTBuilder = (*vjpMacro)(nil)
 
 // Reverse computes the vector-jacobian product of a function.
 func Reverse(file *ir.File, call *ir.FuncCallExpr, macro *ir.Macro, args []ir.Element) (ir.MacroElement, error) {
-	fn, err := interp.PkgFuncFromElement(args[0])
+	fnIR, err := interp.PkgFuncFromElement(args[0])
 	if err != nil {
 		return nil, err
 	}
-	fnT, ok := fn.(ir.PkgFunc)
-	if !ok {
-		return nil, errors.Errorf("cannot compute the gradient of function %T", fn)
+	recv, err := extractReceiverIR(fnIR, call.Args[0])
+	if err != nil {
+		return nil, err
 	}
 	return vjpMacro{
 		MacroCall: elements.NewMacroCall(macro, file, call),
-	}.newMacro(fnT)
+		recv:      recv,
+	}.newMacro(fnIR)
 }
 
-func (m vjpMacro) newMacro(fn ir.PkgFunc) (*vjpMacro, error) {
+func (m vjpMacro) newMacro(fnIR ir.PkgFunc) (*vjpMacro, error) {
 	var err error
-	m.graph, err = revgraph.New(&m.MacroCall, fn)
+	m.graph, err = revgraph.New(&m.MacroCall, fnIR)
 	if err != nil {
 		return nil, err
 	}
 	return &m, nil
 }
 
-func (m *vjpMacro) BuildDecl(ir.PkgFunc) (*ir.File, *ast.FuncDecl, bool) {
+func extractReceiverIR(fnIR ir.PkgFunc, x ir.Expr) (ir.Expr, error) {
+	recvField := fnIR.FuncType().ReceiverField()
+	if recvField == nil {
+		return nil, nil
+	}
+	sel, err := cast.To[*ir.SelectorExpr](x)
+	if err != nil {
+		return nil, err
+	}
+	return sel.X, nil
+}
+
+func (m *vjpMacro) BuildDecl(ir.PkgFunc) (*ir.File, ir.Expr, *ast.FuncDecl, bool) {
 	fDecl := &ast.FuncDecl{Type: m.graph.BuildType()}
 	fn := m.graph.Func()
-	recv := fn.FuncType().Receiver
-	if recv != nil {
-		fDecl.Recv = recv.Src
+	recvType := fn.FuncType().Receiver
+	if recvType != nil {
+		fDecl.Recv = recvType.Src
 	}
-	return fn.File(), fDecl, true
+	return fn.File(), m.recv, fDecl, true
 }
 
 func (m *vjpMacro) BuildBody(fetcher ir.Fetcher, _ ir.Func) (*ast.BlockStmt, bool) {

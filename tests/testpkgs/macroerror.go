@@ -49,8 +49,8 @@ func newMacroError(file *ir.File, call *ir.FuncCallExpr, mac *ir.Macro, args []i
 	}, nil
 }
 
-func (m *macroError) BuildDecl(ir.PkgFunc) (*ir.File, *ast.FuncDecl, bool) {
-	return m.file, &ast.FuncDecl{
+func (m *macroError) BuildDecl(ir.PkgFunc) (*ir.File, ir.Expr, *ast.FuncDecl, bool) {
+	return m.file, nil, &ast.FuncDecl{
 		Type: &ast.FuncType{
 			Params: &ast.FieldList{},
 			Results: &ast.FieldList{
