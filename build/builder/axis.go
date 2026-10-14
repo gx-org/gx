@@ -35,7 +35,10 @@ func processAxisLengthExpr(axScope procAxLenScope, array *ast.ArrayType) (axis a
 	}
 	switch lenT := array.Len.(type) {
 	case *ast.Ellipsis:
-		return nil, true
+		if lenT.Elt == nil {
+			return nil, true
+		}
+		return axScope.processAxisExpr(lenT)
 	case *ast.Ident:
 		return axScope.processAxisExpr(lenT)
 	case ast.Expr:
