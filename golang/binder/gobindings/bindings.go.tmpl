@@ -140,7 +140,7 @@ func Build(dev *core.DeviceSetup) (*PackageHandle, error) {
 func (pkg *Package) {{.Name}}({{.Parameters}}) ({{.Results}}, err error) {
 	var args []hostio.Value = {{.BackendArguments}}
 	var rn runner.CompiledFunc
-	rn, err = pkg.cache{{.Name}}.Runner(nil, args)
+	rn, err = pkg.cache{{.Name}}.Build(nil, args)
 	if err != nil {
 		return
 	}
@@ -224,7 +224,7 @@ func (h *handle{{.Named.Name}}) SetField(field *ir.Field, val types.Bridge) erro
 func (recv *{{.RecvTypeName}}) {{.Name}}({{.Parameters}}) ({{.Results}}, err error) {
 	var args []hostio.Value = {{.BackendArguments}}
 	var rn runner.CompiledFunc
-	rn, err = recv.handle.pkg.cache{{.RecvTypeName}}{{.Name}}.Runner(recv.value, args)
+	rn, err = recv.handle.pkg.cache{{.RecvTypeName}}{{.Name}}.Build(recv.value, args)
 	if err != nil {
 		return
 	}

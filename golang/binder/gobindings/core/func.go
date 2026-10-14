@@ -29,7 +29,7 @@ import (
 // Func wraps a GX function, sometimes in a cache to prevent unnecessary recompilation.
 type Func interface {
 	Device() *api.Device
-	Runner(recv hostio.Value, args []hostio.Value) (runner.CompiledFunc, error)
+	Build(recv hostio.Value, args []hostio.Value) (runner.CompiledFunc, error)
 	Func() *ir.FuncDecl
 	Tracer() trace.Callback
 }
@@ -87,7 +87,7 @@ func (c *funcCache) buildRunner(recv hostio.Value, args []hostio.Value) (_ runne
 
 // Runner compiles the function if it has not been done before.
 // Returns the function compiled or an error.
-func (c *funcCache) Runner(recv hostio.Value, args []hostio.Value) (runner.CompiledFunc, error) {
+func (c *funcCache) Build(recv hostio.Value, args []hostio.Value) (runner.CompiledFunc, error) {
 	c.initOnce.Do(func() {
 		c.runner, c.err = c.buildRunner(recv, args)
 	})
@@ -99,6 +99,6 @@ type funcNoCache struct {
 	coreFunc
 }
 
-func (c *funcNoCache) Runner(recv hostio.Value, args []hostio.Value) (runner.CompiledFunc, error) {
+func (c *funcNoCache) Build(recv hostio.Value, args []hostio.Value) (runner.CompiledFunc, error) {
 	return runner.Trace(c.pkg.devSetup.device, c.fn, recv, args, c.pkg.devSetup.opts)
 }
