@@ -26,10 +26,37 @@ import (
 	"github.com/gx-org/gx/build/ir"
 )
 
-// funcCache provides a compilation cache for a function.
-type funcCache struct {
+// Func wraps a GX function, sometimes in a cache to prevent unnecessary recompilation.
+type Func interface {
+	Device() *api.Device
+	Runner(recv hostio.Value, args []hostio.Value) (tracer.CompiledFunc, error)
+	Func() *ir.FuncDecl
+	Tracer() trace.Callback
+}
+
+type coreFunc struct {
 	pkg *PackageCompileSetup
 	fn  *ir.FuncDecl
+}
+
+// Func returns the function being cached.
+func (c coreFunc) Func() *ir.FuncDecl {
+	return c.fn
+}
+
+// Device on which the function is going to run.
+func (c coreFunc) Device() *api.Device {
+	return c.pkg.devSetup.Device()
+}
+
+// Tracer to use to run the function.
+func (c coreFunc) Tracer() trace.Callback {
+	return c.pkg.Tracer()
+}
+
+// funcCache provides a compilation cache for a function.
+type funcCache struct {
+	coreFunc
 
 	runner   tracer.CompiledFunc
 	err      error
@@ -38,7 +65,11 @@ type funcCache struct {
 
 // newFuncCache returns a runner cache given a function.
 func newFuncCache(pkg *PackageCompileSetup, fn *ir.FuncDecl) Func {
-	return &funcCache{pkg: pkg, fn: fn}
+	coreF := coreFunc{pkg: pkg, fn: fn}
+	if pkg.canCompileGraph() {
+		return &funcCache{coreFunc: coreF}
+	}
+	return &funcNoCache{coreFunc: coreF}
 }
 
 func (c *funcCache) buildRunner(recv hostio.Value, args []hostio.Value) (_ tracer.CompiledFunc, err error) {
@@ -63,17 +94,11 @@ func (c *funcCache) Runner(recv hostio.Value, args []hostio.Value) (tracer.Compi
 	return c.runner, c.err
 }
 
-// Func returns the function being cached.
-func (c *funcCache) Func() *ir.FuncDecl {
-	return c.fn
+// funcNoCache runs the function with no compile cache.
+type funcNoCache struct {
+	coreFunc
 }
 
-// Device on which the function is going to run.
-func (c *funcCache) Device() *api.Device {
-	return c.pkg.devSetup.Device()
-}
-
-// Tracer to use to run the function.
-func (c *funcCache) Tracer() trace.Callback {
-	return c.pkg.Tracer()
+func (c *funcNoCache) Runner(recv hostio.Value, args []hostio.Value) (tracer.CompiledFunc, error) {
+	return tracer.Trace(c.pkg.devSetup.device, c.fn, recv, args, c.pkg.devSetup.opts)
 }
