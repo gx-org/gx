@@ -285,7 +285,6 @@ def py_gx_library(name, lib, tags = [], visibility = None, testonly = False):
         testonly = testonly,
         deps = [
             ":" + rootname + "_regcgo",
-            "//third_party/gxlang/gx/golang/binder/cgx:cgx_core",
         ],
     )
     pytype_strict_library(
