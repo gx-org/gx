@@ -21,7 +21,6 @@ import (
 
 	"github.com/pkg/errors"
 	"github.com/gx-org/gx/api"
-	"github.com/gx-org/gx/api/hostio"
 	"github.com/gx-org/gx/api/options"
 	"github.com/gx-org/gx/api/trace"
 	"github.com/gx-org/gx/api/tracer"
@@ -77,6 +76,11 @@ type PackageCompileSetup struct {
 	pkg      importers.Package
 }
 
+func (s *PackageCompileSetup) canCompileGraph() bool {
+	_, ok := s.devSetup.Runtime().Backend().(tracer.EagerBackend)
+	return !ok
+}
+
 // Setup returns the device of the compile setup.
 func (s *PackageCompileSetup) Setup() *DeviceSetup {
 	return s.devSetup
@@ -126,14 +130,6 @@ func findMethod(pkg *ir.Package, recvName, fnName string) (*ir.FuncDecl, error) 
 		return nil, errors.Errorf("cannot compile method %s.%s in package %s: incorrect type %T", recvName, fnName, pkg.Name.Name, fn)
 	}
 	return fDecl, nil
-}
-
-// Func wraps a GX function, sometimes in a cache to prevent unnecessary recompilation.
-type Func interface {
-	Device() *api.Device
-	Runner(recv hostio.Value, args []hostio.Value) (tracer.CompiledFunc, error)
-	Func() *ir.FuncDecl
-	Tracer() trace.Callback
 }
 
 // NewFunc returns a new function cache given a package compilation setup.

@@ -41,6 +41,11 @@ type CompiledFunc interface {
 	Run(receiver hostio.Value, args []hostio.Value, tracer trace.Callback) ([]hostio.Value, error)
 }
 
+// EagerBackend is an interface implemented by backend only supporting eager mode.
+type EagerBackend interface {
+	Eager()
+}
+
 // Trace a function and returns a runner to run the function on the device.
 func Trace(dev *api.Device, fn *ir.FuncDecl, receiver hostio.Value, args []hostio.Value, options []options.PackageOption) (_ CompiledFunc, err error) {
 	defer func() {
