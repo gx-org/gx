@@ -92,19 +92,19 @@ type Package struct {
 	handle PackageHandle
 
 	// Functions and methods cache
-	cacheStructSetNotInSlice     *core.FuncCache
-	cacheNewStruct               *core.FuncCache
-	cacheAddToStruct             *core.FuncCache
-	cacheAddFloat32              *core.FuncCache
-	cacheAddInt                  *core.FuncCache
-	cacheAddFloat32s             *core.FuncCache
-	cacheAddInts                 *core.FuncCache
-	cacheLen                     *core.FuncCache
-	cacheIota                    *core.FuncCache
-	cacheSliceArrayArgConstIndex *core.FuncCache
-	cacheSliceArrayArg           *core.FuncCache
-	cacheSliceSliceArg           *core.FuncCache
-	cacheNewNotInSlice           *core.FuncCache
+	cacheStructSetNotInSlice     core.Func
+	cacheNewStruct               core.Func
+	cacheAddToStruct             core.Func
+	cacheAddFloat32              core.Func
+	cacheAddInt                  core.Func
+	cacheAddFloat32s             core.Func
+	cacheAddInts                 core.Func
+	cacheLen                     core.Func
+	cacheIota                    core.Func
+	cacheSliceArrayArgConstIndex core.Func
+	cacheSliceArrayArg           core.Func
+	cacheSliceSliceArg           core.Func
+	cacheNewNotInSlice           core.Func
 }
 
 // Build builds a package for a device once it has been loaded.
@@ -132,55 +132,55 @@ func Build(dev *core.DeviceSetup) (*PackageHandle, error) {
 	}
 
 	// Initialise function and method caches.
-	pkg.cacheStructSetNotInSlice, err = pkg.handle.NewCache("Struct", "SetNotInSlice")
+	pkg.cacheStructSetNotInSlice, err = pkg.handle.NewFunc("Struct", "SetNotInSlice")
 	if err != nil {
 		return nil, err
 	}
-	pkg.cacheNewStruct, err = pkg.handle.NewCache("", "NewStruct")
+	pkg.cacheNewStruct, err = pkg.handle.NewFunc("", "NewStruct")
 	if err != nil {
 		return nil, err
 	}
-	pkg.cacheAddToStruct, err = pkg.handle.NewCache("", "AddToStruct")
+	pkg.cacheAddToStruct, err = pkg.handle.NewFunc("", "AddToStruct")
 	if err != nil {
 		return nil, err
 	}
-	pkg.cacheAddFloat32, err = pkg.handle.NewCache("", "AddFloat32")
+	pkg.cacheAddFloat32, err = pkg.handle.NewFunc("", "AddFloat32")
 	if err != nil {
 		return nil, err
 	}
-	pkg.cacheAddInt, err = pkg.handle.NewCache("", "AddInt")
+	pkg.cacheAddInt, err = pkg.handle.NewFunc("", "AddInt")
 	if err != nil {
 		return nil, err
 	}
-	pkg.cacheAddFloat32s, err = pkg.handle.NewCache("", "AddFloat32s")
+	pkg.cacheAddFloat32s, err = pkg.handle.NewFunc("", "AddFloat32s")
 	if err != nil {
 		return nil, err
 	}
-	pkg.cacheAddInts, err = pkg.handle.NewCache("", "AddInts")
+	pkg.cacheAddInts, err = pkg.handle.NewFunc("", "AddInts")
 	if err != nil {
 		return nil, err
 	}
-	pkg.cacheLen, err = pkg.handle.NewCache("", "Len")
+	pkg.cacheLen, err = pkg.handle.NewFunc("", "Len")
 	if err != nil {
 		return nil, err
 	}
-	pkg.cacheIota, err = pkg.handle.NewCache("", "Iota")
+	pkg.cacheIota, err = pkg.handle.NewFunc("", "Iota")
 	if err != nil {
 		return nil, err
 	}
-	pkg.cacheSliceArrayArgConstIndex, err = pkg.handle.NewCache("", "SliceArrayArgConstIndex")
+	pkg.cacheSliceArrayArgConstIndex, err = pkg.handle.NewFunc("", "SliceArrayArgConstIndex")
 	if err != nil {
 		return nil, err
 	}
-	pkg.cacheSliceArrayArg, err = pkg.handle.NewCache("", "SliceArrayArg")
+	pkg.cacheSliceArrayArg, err = pkg.handle.NewFunc("", "SliceArrayArg")
 	if err != nil {
 		return nil, err
 	}
-	pkg.cacheSliceSliceArg, err = pkg.handle.NewCache("", "SliceSliceArg")
+	pkg.cacheSliceSliceArg, err = pkg.handle.NewFunc("", "SliceSliceArg")
 	if err != nil {
 		return nil, err
 	}
-	pkg.cacheNewNotInSlice, err = pkg.handle.NewCache("", "NewNotInSlice")
+	pkg.cacheNewNotInSlice, err = pkg.handle.NewFunc("", "NewNotInSlice")
 	if err != nil {
 		return nil, err
 	}

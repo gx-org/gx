@@ -88,7 +88,7 @@ type Package struct {
 	handle PackageHandle
 
 	// Functions and methods cache
-	cacheArgAsArrayIndex *core.FuncCache
+	cacheArgAsArrayIndex core.Func
 }
 
 // Build builds a package for a device once it has been loaded.
@@ -104,7 +104,7 @@ func Build(dev *core.DeviceSetup) (*PackageHandle, error) {
 	// Build dependencies.
 
 	// Initialise function and method caches.
-	pkg.cacheArgAsArrayIndex, err = pkg.handle.NewCache("", "ArgAsArrayIndex")
+	pkg.cacheArgAsArrayIndex, err = pkg.handle.NewFunc("", "ArgAsArrayIndex")
 	if err != nil {
 		return nil, err
 	}

@@ -90,8 +90,8 @@ type Package struct {
 	handle PackageHandle
 
 	// Functions and methods cache
-	cacheReturnMaxFloat32 *core.FuncCache
-	cacheReturnMaxFloat64 *core.FuncCache
+	cacheReturnMaxFloat32 core.Func
+	cacheReturnMaxFloat64 core.Func
 }
 
 // Build builds a package for a device once it has been loaded.
@@ -113,11 +113,11 @@ func Build(dev *core.DeviceSetup) (*PackageHandle, error) {
 	}
 
 	// Initialise function and method caches.
-	pkg.cacheReturnMaxFloat32, err = pkg.handle.NewCache("", "ReturnMaxFloat32")
+	pkg.cacheReturnMaxFloat32, err = pkg.handle.NewFunc("", "ReturnMaxFloat32")
 	if err != nil {
 		return nil, err
 	}
-	pkg.cacheReturnMaxFloat64, err = pkg.handle.NewCache("", "ReturnMaxFloat64")
+	pkg.cacheReturnMaxFloat64, err = pkg.handle.NewFunc("", "ReturnMaxFloat64")
 	if err != nil {
 		return nil, err
 	}
