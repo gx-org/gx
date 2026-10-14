@@ -97,6 +97,12 @@ func newArray[S []int]() [unpack(S)]float32
 		},
 		testbuild.Decl{
 			Src: `
+func newArray[S []int]() [S...]float32
+`,
+			Want: []ir.IR{newArrayFunc},
+		},
+		testbuild.Decl{
+			Src: `
 func newArray[S []int]() [unpack(S)]float32
 
 func f[dims []int]() [unpack(dims)]float32 {
