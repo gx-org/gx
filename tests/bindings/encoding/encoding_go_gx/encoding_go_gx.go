@@ -88,7 +88,7 @@ type Package struct {
 	handle PackageHandle
 
 	// Functions and methods cache
-	cacheScalarsGetTotal *core.FuncCache
+	cacheScalarsGetTotal core.Func
 }
 
 // Build builds a package for a device once it has been loaded.
@@ -104,7 +104,7 @@ func Build(dev *core.DeviceSetup) (*PackageHandle, error) {
 	// Build dependencies.
 
 	// Initialise function and method caches.
-	pkg.cacheScalarsGetTotal, err = pkg.handle.NewCache("Scalars", "GetTotal")
+	pkg.cacheScalarsGetTotal, err = pkg.handle.NewFunc("Scalars", "GetTotal")
 	if err != nil {
 		return nil, err
 	}

@@ -88,8 +88,8 @@ type Package struct {
 	handle PackageHandle
 
 	// Functions and methods cache
-	cacheConst42     *core.FuncCache
-	cacheCallConst42 *core.FuncCache
+	cacheConst42     core.Func
+	cacheCallConst42 core.Func
 }
 
 // Build builds a package for a device once it has been loaded.
@@ -105,11 +105,11 @@ func Build(dev *core.DeviceSetup) (*PackageHandle, error) {
 	// Build dependencies.
 
 	// Initialise function and method caches.
-	pkg.cacheConst42, err = pkg.handle.NewCache("", "Const42")
+	pkg.cacheConst42, err = pkg.handle.NewFunc("", "Const42")
 	if err != nil {
 		return nil, err
 	}
-	pkg.cacheCallConst42, err = pkg.handle.NewCache("", "CallConst42")
+	pkg.cacheCallConst42, err = pkg.handle.NewFunc("", "CallConst42")
 	if err != nil {
 		return nil, err
 	}

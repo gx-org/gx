@@ -88,8 +88,8 @@ type Package struct {
 	handle PackageHandle
 
 	// Functions and methods cache
-	cacheunexportedA *core.FuncCache
-	cacheNew         *core.FuncCache
+	cacheunexportedA core.Func
+	cacheNew         core.Func
 }
 
 // Build builds a package for a device once it has been loaded.
@@ -105,11 +105,11 @@ func Build(dev *core.DeviceSetup) (*PackageHandle, error) {
 	// Build dependencies.
 
 	// Initialise function and method caches.
-	pkg.cacheunexportedA, err = pkg.handle.NewCache("unexported", "A")
+	pkg.cacheunexportedA, err = pkg.handle.NewFunc("unexported", "A")
 	if err != nil {
 		return nil, err
 	}
-	pkg.cacheNew, err = pkg.handle.NewCache("", "New")
+	pkg.cacheNew, err = pkg.handle.NewFunc("", "New")
 	if err != nil {
 		return nil, err
 	}

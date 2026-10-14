@@ -92,9 +92,9 @@ type Package struct {
 	handle PackageHandle
 
 	// Functions and methods cache
-	cacheNewPhilox *core.FuncCache
-	cacheNew       *core.FuncCache
-	cacheNewSource *core.FuncCache
+	cacheNewPhilox core.Func
+	cacheNew       core.Func
+	cacheNewSource core.Func
 }
 
 // Build builds a package for a device once it has been loaded.
@@ -128,15 +128,15 @@ func Build(dev *core.DeviceSetup) (*PackageHandle, error) {
 	}
 
 	// Initialise function and method caches.
-	pkg.cacheNewPhilox, err = pkg.handle.NewCache("", "NewPhilox")
+	pkg.cacheNewPhilox, err = pkg.handle.NewFunc("", "NewPhilox")
 	if err != nil {
 		return nil, err
 	}
-	pkg.cacheNew, err = pkg.handle.NewCache("", "New")
+	pkg.cacheNew, err = pkg.handle.NewFunc("", "New")
 	if err != nil {
 		return nil, err
 	}
-	pkg.cacheNewSource, err = pkg.handle.NewCache("", "NewSource")
+	pkg.cacheNewSource, err = pkg.handle.NewFunc("", "NewSource")
 	if err != nil {
 		return nil, err
 	}

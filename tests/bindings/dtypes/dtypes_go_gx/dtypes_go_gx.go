@@ -88,22 +88,22 @@ type Package struct {
 	handle PackageHandle
 
 	// Functions and methods cache
-	cacheBool         *core.FuncCache
-	cacheFloat32      *core.FuncCache
-	cacheFloat64      *core.FuncCache
-	cacheInt          *core.FuncCache
-	cacheInt32        *core.FuncCache
-	cacheInt64        *core.FuncCache
-	cacheUint32       *core.FuncCache
-	cacheUint64       *core.FuncCache
-	cacheArrayBool    *core.FuncCache
-	cacheArrayFloat32 *core.FuncCache
-	cacheArrayFloat64 *core.FuncCache
-	cacheArrayInt     *core.FuncCache
-	cacheArrayInt32   *core.FuncCache
-	cacheArrayInt64   *core.FuncCache
-	cacheArrayUint32  *core.FuncCache
-	cacheArrayUint64  *core.FuncCache
+	cacheBool         core.Func
+	cacheFloat32      core.Func
+	cacheFloat64      core.Func
+	cacheInt          core.Func
+	cacheInt32        core.Func
+	cacheInt64        core.Func
+	cacheUint32       core.Func
+	cacheUint64       core.Func
+	cacheArrayBool    core.Func
+	cacheArrayFloat32 core.Func
+	cacheArrayFloat64 core.Func
+	cacheArrayInt     core.Func
+	cacheArrayInt32   core.Func
+	cacheArrayInt64   core.Func
+	cacheArrayUint32  core.Func
+	cacheArrayUint64  core.Func
 }
 
 // Build builds a package for a device once it has been loaded.
@@ -119,67 +119,67 @@ func Build(dev *core.DeviceSetup) (*PackageHandle, error) {
 	// Build dependencies.
 
 	// Initialise function and method caches.
-	pkg.cacheBool, err = pkg.handle.NewCache("", "Bool")
+	pkg.cacheBool, err = pkg.handle.NewFunc("", "Bool")
 	if err != nil {
 		return nil, err
 	}
-	pkg.cacheFloat32, err = pkg.handle.NewCache("", "Float32")
+	pkg.cacheFloat32, err = pkg.handle.NewFunc("", "Float32")
 	if err != nil {
 		return nil, err
 	}
-	pkg.cacheFloat64, err = pkg.handle.NewCache("", "Float64")
+	pkg.cacheFloat64, err = pkg.handle.NewFunc("", "Float64")
 	if err != nil {
 		return nil, err
 	}
-	pkg.cacheInt, err = pkg.handle.NewCache("", "Int")
+	pkg.cacheInt, err = pkg.handle.NewFunc("", "Int")
 	if err != nil {
 		return nil, err
 	}
-	pkg.cacheInt32, err = pkg.handle.NewCache("", "Int32")
+	pkg.cacheInt32, err = pkg.handle.NewFunc("", "Int32")
 	if err != nil {
 		return nil, err
 	}
-	pkg.cacheInt64, err = pkg.handle.NewCache("", "Int64")
+	pkg.cacheInt64, err = pkg.handle.NewFunc("", "Int64")
 	if err != nil {
 		return nil, err
 	}
-	pkg.cacheUint32, err = pkg.handle.NewCache("", "Uint32")
+	pkg.cacheUint32, err = pkg.handle.NewFunc("", "Uint32")
 	if err != nil {
 		return nil, err
 	}
-	pkg.cacheUint64, err = pkg.handle.NewCache("", "Uint64")
+	pkg.cacheUint64, err = pkg.handle.NewFunc("", "Uint64")
 	if err != nil {
 		return nil, err
 	}
-	pkg.cacheArrayBool, err = pkg.handle.NewCache("", "ArrayBool")
+	pkg.cacheArrayBool, err = pkg.handle.NewFunc("", "ArrayBool")
 	if err != nil {
 		return nil, err
 	}
-	pkg.cacheArrayFloat32, err = pkg.handle.NewCache("", "ArrayFloat32")
+	pkg.cacheArrayFloat32, err = pkg.handle.NewFunc("", "ArrayFloat32")
 	if err != nil {
 		return nil, err
 	}
-	pkg.cacheArrayFloat64, err = pkg.handle.NewCache("", "ArrayFloat64")
+	pkg.cacheArrayFloat64, err = pkg.handle.NewFunc("", "ArrayFloat64")
 	if err != nil {
 		return nil, err
 	}
-	pkg.cacheArrayInt, err = pkg.handle.NewCache("", "ArrayInt")
+	pkg.cacheArrayInt, err = pkg.handle.NewFunc("", "ArrayInt")
 	if err != nil {
 		return nil, err
 	}
-	pkg.cacheArrayInt32, err = pkg.handle.NewCache("", "ArrayInt32")
+	pkg.cacheArrayInt32, err = pkg.handle.NewFunc("", "ArrayInt32")
 	if err != nil {
 		return nil, err
 	}
-	pkg.cacheArrayInt64, err = pkg.handle.NewCache("", "ArrayInt64")
+	pkg.cacheArrayInt64, err = pkg.handle.NewFunc("", "ArrayInt64")
 	if err != nil {
 		return nil, err
 	}
-	pkg.cacheArrayUint32, err = pkg.handle.NewCache("", "ArrayUint32")
+	pkg.cacheArrayUint32, err = pkg.handle.NewFunc("", "ArrayUint32")
 	if err != nil {
 		return nil, err
 	}
-	pkg.cacheArrayUint64, err = pkg.handle.NewCache("", "ArrayUint64")
+	pkg.cacheArrayUint64, err = pkg.handle.NewFunc("", "ArrayUint64")
 	if err != nil {
 		return nil, err
 	}
