@@ -90,10 +90,10 @@ type Package struct {
 	handle PackageHandle
 
 	// Functions and methods cache
-	cacheImporterAdd     *core.FuncCache
-	cacheNewBasic        *core.FuncCache
-	cacheNewImporter     *core.FuncCache
-	cacheReturnFromBasic *core.FuncCache
+	cacheImporterAdd     core.Func
+	cacheNewBasic        core.Func
+	cacheNewImporter     core.Func
+	cacheReturnFromBasic core.Func
 }
 
 // Build builds a package for a device once it has been loaded.
@@ -115,19 +115,19 @@ func Build(dev *core.DeviceSetup) (*PackageHandle, error) {
 	}
 
 	// Initialise function and method caches.
-	pkg.cacheImporterAdd, err = pkg.handle.NewCache("Importer", "Add")
+	pkg.cacheImporterAdd, err = pkg.handle.NewFunc("Importer", "Add")
 	if err != nil {
 		return nil, err
 	}
-	pkg.cacheNewBasic, err = pkg.handle.NewCache("", "NewBasic")
+	pkg.cacheNewBasic, err = pkg.handle.NewFunc("", "NewBasic")
 	if err != nil {
 		return nil, err
 	}
-	pkg.cacheNewImporter, err = pkg.handle.NewCache("", "NewImporter")
+	pkg.cacheNewImporter, err = pkg.handle.NewFunc("", "NewImporter")
 	if err != nil {
 		return nil, err
 	}
-	pkg.cacheReturnFromBasic, err = pkg.handle.NewCache("", "ReturnFromBasic")
+	pkg.cacheReturnFromBasic, err = pkg.handle.NewFunc("", "ReturnFromBasic")
 	if err != nil {
 		return nil, err
 	}

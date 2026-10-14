@@ -90,7 +90,7 @@ type Package struct {
 	handle PackageHandle
 
 	// Functions and methods cache
-	cacheCheckBroadcast *core.FuncCache
+	cacheCheckBroadcast core.Func
 }
 
 // Build builds a package for a device once it has been loaded.
@@ -118,7 +118,7 @@ func Build(dev *core.DeviceSetup) (*PackageHandle, error) {
 	}
 
 	// Initialise function and method caches.
-	pkg.cacheCheckBroadcast, err = pkg.handle.NewCache("", "CheckBroadcast")
+	pkg.cacheCheckBroadcast, err = pkg.handle.NewFunc("", "CheckBroadcast")
 	if err != nil {
 		return nil, err
 	}
@@ -126,7 +126,7 @@ func Build(dev *core.DeviceSetup) (*PackageHandle, error) {
 	return &pkg.handle, err
 }
 
-//gx:compeval
+// gx:compeval
 func (pkg *Package) CheckBroadcast(arg0 *types.Slice[types.Atom[int]], arg1 *types.Slice[types.Atom[int]]) (_ *types.Slice[types.Atom[int]], err error) {
 	var args []hostio.Value = []hostio.Value{
 		arg0.Bridge().GXValue(), // s1 []int
