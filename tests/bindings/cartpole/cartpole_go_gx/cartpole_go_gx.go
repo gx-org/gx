@@ -26,7 +26,7 @@ import (
 	"github.com/gx-org/gx/api"
 	"github.com/gx-org/gx/api/hostio"
 	"github.com/gx-org/gx/api/options"
-	"github.com/gx-org/gx/api/tracer"
+	"github.com/gx-org/gx/api/runner"
 	"github.com/gx-org/gx/api/values"
 	"github.com/gx-org/gx/build/ir"
 	"github.com/gx-org/gx/golang/binder/gobindings/core"
@@ -48,7 +48,7 @@ var (
 	_ = errors.Errorf
 	_ = types.NewSlice[types.Bridger]
 	_ = ir.NamedType{}
-	_ = tracer.Trace
+	_ = runner.Trace
 )
 
 // BuildFor loads the GX package github.com/gx-org/gx/tests/bindings/cartpole
@@ -142,13 +142,13 @@ func Build(dev *core.DeviceSetup) (*PackageHandle, error) {
 
 func (pkg *Package) New() (_ *Cartpole, err error) {
 	var args []hostio.Value = nil
-	var runner tracer.CompiledFunc
-	runner, err = pkg.cacheNew.Runner(nil, args)
+	var rn runner.CompiledFunc
+	rn, err = pkg.cacheNew.Runner(nil, args)
 	if err != nil {
 		return
 	}
 	var outputs []hostio.Value
-	outputs, err = runner.Run(nil, args, pkg.handle.Tracer())
+	outputs, err = rn.Run(nil, args, pkg.handle.Tracer())
 	if err != nil {
 		return
 	}
@@ -616,13 +616,13 @@ func (h *handleCartpole) SetField(field *ir.Field, val types.Bridge) error {
 
 func (recv *Cartpole) Reset() (_ *Cartpole, err error) {
 	var args []hostio.Value = nil
-	var runner tracer.CompiledFunc
-	runner, err = recv.handle.pkg.cacheCartpoleReset.Runner(recv.value, args)
+	var rn runner.CompiledFunc
+	rn, err = recv.handle.pkg.cacheCartpoleReset.Runner(recv.value, args)
 	if err != nil {
 		return
 	}
 	var outputs []hostio.Value
-	outputs, err = runner.Run(recv.value, args, recv.handle.pkg.handle.Tracer())
+	outputs, err = rn.Run(recv.value, args, recv.handle.pkg.handle.Tracer())
 	if err != nil {
 		return
 	}
@@ -642,13 +642,13 @@ func (recv *Cartpole) Step(arg0 types.Atom[float32]) (_ *Cartpole, err error) {
 	var args []hostio.Value = []hostio.Value{
 		arg0.Bridge().GXValue(), // action float32
 	}
-	var runner tracer.CompiledFunc
-	runner, err = recv.handle.pkg.cacheCartpoleStep.Runner(recv.value, args)
+	var rn runner.CompiledFunc
+	rn, err = recv.handle.pkg.cacheCartpoleStep.Runner(recv.value, args)
 	if err != nil {
 		return
 	}
 	var outputs []hostio.Value
-	outputs, err = runner.Run(recv.value, args, recv.handle.pkg.handle.Tracer())
+	outputs, err = rn.Run(recv.value, args, recv.handle.pkg.handle.Tracer())
 	if err != nil {
 		return
 	}
@@ -666,13 +666,13 @@ func (recv *Cartpole) Step(arg0 types.Atom[float32]) (_ *Cartpole, err error) {
 
 func (recv *Cartpole) State() (_ types.Array[float32], err error) {
 	var args []hostio.Value = nil
-	var runner tracer.CompiledFunc
-	runner, err = recv.handle.pkg.cacheCartpoleState.Runner(recv.value, args)
+	var rn runner.CompiledFunc
+	rn, err = recv.handle.pkg.cacheCartpoleState.Runner(recv.value, args)
 	if err != nil {
 		return
 	}
 	var outputs []hostio.Value
-	outputs, err = runner.Run(recv.value, args, recv.handle.pkg.handle.Tracer())
+	outputs, err = rn.Run(recv.value, args, recv.handle.pkg.handle.Tracer())
 	if err != nil {
 		return
 	}
@@ -689,13 +689,13 @@ func (recv *Cartpole) State() (_ types.Array[float32], err error) {
 
 func (recv *Cartpole) FullState() (_ types.Array[float32], err error) {
 	var args []hostio.Value = nil
-	var runner tracer.CompiledFunc
-	runner, err = recv.handle.pkg.cacheCartpoleFullState.Runner(recv.value, args)
+	var rn runner.CompiledFunc
+	rn, err = recv.handle.pkg.cacheCartpoleFullState.Runner(recv.value, args)
 	if err != nil {
 		return
 	}
 	var outputs []hostio.Value
-	outputs, err = runner.Run(recv.value, args, recv.handle.pkg.handle.Tracer())
+	outputs, err = rn.Run(recv.value, args, recv.handle.pkg.handle.Tracer())
 	if err != nil {
 		return
 	}

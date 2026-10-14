@@ -26,7 +26,7 @@ import (
 	"github.com/gx-org/gx/api"
 	"github.com/gx-org/gx/api/hostio"
 	"github.com/gx-org/gx/api/options"
-	"github.com/gx-org/gx/api/tracer"
+	"github.com/gx-org/gx/api/runner"
 	"github.com/gx-org/gx/api/values"
 	"github.com/gx-org/gx/build/ir"
 	"github.com/gx-org/gx/golang/binder/gobindings/core"
@@ -48,7 +48,7 @@ var (
 	_ = errors.Errorf
 	_ = types.NewSlice[types.Bridger]
 	_ = ir.NamedType{}
-	_ = tracer.Trace
+	_ = runner.Trace
 )
 
 // BuildFor loads the GX package github.com/gx-org/gx/golang/backend/tests/interperr
@@ -142,13 +142,13 @@ func (UndefStatic) Set(value int) options.PackageOptionFactory {
 
 func (pkg *Package) CallSum() (_ types.Atom[float32], err error) {
 	var args []hostio.Value = nil
-	var runner tracer.CompiledFunc
-	runner, err = pkg.cacheCallSum.Runner(nil, args)
+	var rn runner.CompiledFunc
+	rn, err = pkg.cacheCallSum.Runner(nil, args)
 	if err != nil {
 		return
 	}
 	var outputs []hostio.Value
-	outputs, err = runner.Run(nil, args, pkg.handle.Tracer())
+	outputs, err = rn.Run(nil, args, pkg.handle.Tracer())
 	if err != nil {
 		return
 	}
@@ -165,13 +165,13 @@ func (pkg *Package) CallSum() (_ types.Atom[float32], err error) {
 
 func (pkg *Package) NewUndef() (_ types.Array[float32], err error) {
 	var args []hostio.Value = nil
-	var runner tracer.CompiledFunc
-	runner, err = pkg.cacheNewUndef.Runner(nil, args)
+	var rn runner.CompiledFunc
+	rn, err = pkg.cacheNewUndef.Runner(nil, args)
 	if err != nil {
 		return
 	}
 	var outputs []hostio.Value
-	outputs, err = runner.Run(nil, args, pkg.handle.Tracer())
+	outputs, err = rn.Run(nil, args, pkg.handle.Tracer())
 	if err != nil {
 		return
 	}

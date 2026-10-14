@@ -26,7 +26,7 @@ import (
 	"github.com/gx-org/gx/api"
 	"github.com/gx-org/gx/api/hostio"
 	"github.com/gx-org/gx/api/options"
-	"github.com/gx-org/gx/api/tracer"
+	"github.com/gx-org/gx/api/runner"
 	"github.com/gx-org/gx/api/values"
 	"github.com/gx-org/gx/build/ir"
 	"github.com/gx-org/gx/golang/binder/gobindings/core"
@@ -48,7 +48,7 @@ var (
 	_ = errors.Errorf
 	_ = types.NewSlice[types.Bridger]
 	_ = ir.NamedType{}
-	_ = tracer.Trace
+	_ = runner.Trace
 )
 
 // BuildFor loads the GX package github.com/gx-org/gx/tests/bindings/rand
@@ -140,13 +140,13 @@ func (pkg *Package) New(arg0 types.Atom[int64]) (_ *gxdep0.Rand, err error) {
 	var args []hostio.Value = []hostio.Value{
 		arg0.Bridge().GXValue(), // seed int64
 	}
-	var runner tracer.CompiledFunc
-	runner, err = pkg.cacheNew.Runner(nil, args)
+	var rn runner.CompiledFunc
+	rn, err = pkg.cacheNew.Runner(nil, args)
 	if err != nil {
 		return
 	}
 	var outputs []hostio.Value
-	outputs, err = runner.Run(nil, args, pkg.handle.Tracer())
+	outputs, err = rn.Run(nil, args, pkg.handle.Tracer())
 	if err != nil {
 		return
 	}
@@ -167,13 +167,13 @@ func (pkg *Package) Sample(arg0 types.Atom[int64]) (_ types.Array[float32], err 
 	var args []hostio.Value = []hostio.Value{
 		arg0.Bridge().GXValue(), // seed int64
 	}
-	var runner tracer.CompiledFunc
-	runner, err = pkg.cacheSample.Runner(nil, args)
+	var rn runner.CompiledFunc
+	rn, err = pkg.cacheSample.Runner(nil, args)
 	if err != nil {
 		return
 	}
 	var outputs []hostio.Value
-	outputs, err = runner.Run(nil, args, pkg.handle.Tracer())
+	outputs, err = rn.Run(nil, args, pkg.handle.Tracer())
 	if err != nil {
 		return
 	}
@@ -193,13 +193,13 @@ func (pkg *Package) SampleBool(arg0 types.Atom[int64]) (_ types.Array[bool], err
 	var args []hostio.Value = []hostio.Value{
 		arg0.Bridge().GXValue(), // seed int64
 	}
-	var runner tracer.CompiledFunc
-	runner, err = pkg.cacheSampleBool.Runner(nil, args)
+	var rn runner.CompiledFunc
+	rn, err = pkg.cacheSampleBool.Runner(nil, args)
 	if err != nil {
 		return
 	}
 	var outputs []hostio.Value
-	outputs, err = runner.Run(nil, args, pkg.handle.Tracer())
+	outputs, err = rn.Run(nil, args, pkg.handle.Tracer())
 	if err != nil {
 		return
 	}
@@ -219,13 +219,13 @@ func (pkg *Package) SampleUniformFloat64(arg0 types.Atom[int64]) (_ types.Array[
 	var args []hostio.Value = []hostio.Value{
 		arg0.Bridge().GXValue(), // seed int64
 	}
-	var runner tracer.CompiledFunc
-	runner, err = pkg.cacheSampleUniformFloat64.Runner(nil, args)
+	var rn runner.CompiledFunc
+	rn, err = pkg.cacheSampleUniformFloat64.Runner(nil, args)
 	if err != nil {
 		return
 	}
 	var outputs []hostio.Value
-	outputs, err = runner.Run(nil, args, pkg.handle.Tracer())
+	outputs, err = rn.Run(nil, args, pkg.handle.Tracer())
 	if err != nil {
 		return
 	}

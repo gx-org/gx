@@ -26,7 +26,7 @@ import (
 	"github.com/gx-org/gx/api"
 	"github.com/gx-org/gx/api/hostio"
 	"github.com/gx-org/gx/api/options"
-	"github.com/gx-org/gx/api/tracer"
+	"github.com/gx-org/gx/api/runner"
 	"github.com/gx-org/gx/api/values"
 	"github.com/gx-org/gx/build/ir"
 	"github.com/gx-org/gx/golang/binder/gobindings/core"
@@ -50,7 +50,7 @@ var (
 	_ = errors.Errorf
 	_ = types.NewSlice[types.Bridger]
 	_ = ir.NamedType{}
-	_ = tracer.Trace
+	_ = runner.Trace
 )
 
 // BuildFor loads the GX package github.com/gx-org/gx/examples/linearregression/linearregression
@@ -171,13 +171,13 @@ func (pkg *Package) NewLearner(arg0 types.Atom[float32]) (_ *Learner, err error)
 	var args []hostio.Value = []hostio.Value{
 		arg0.Bridge().GXValue(), // stepSize float32
 	}
-	var runner tracer.CompiledFunc
-	runner, err = pkg.cacheNewLearner.Runner(nil, args)
+	var rn runner.CompiledFunc
+	rn, err = pkg.cacheNewLearner.Runner(nil, args)
 	if err != nil {
 		return
 	}
 	var outputs []hostio.Value
-	outputs, err = runner.Run(nil, args, pkg.handle.Tracer())
+	outputs, err = rn.Run(nil, args, pkg.handle.Tracer())
 	if err != nil {
 		return
 	}
@@ -199,13 +199,13 @@ func (pkg *Package) NewTarget(arg0 types.Atom[int64], arg1 types.Atom[float32]) 
 		arg0.Bridge().GXValue(), // seed int64
 		arg1.Bridge().GXValue(), // bias float32
 	}
-	var runner tracer.CompiledFunc
-	runner, err = pkg.cacheNewTarget.Runner(nil, args)
+	var rn runner.CompiledFunc
+	rn, err = pkg.cacheNewTarget.Runner(nil, args)
 	if err != nil {
 		return
 	}
 	var outputs []hostio.Value
-	outputs, err = runner.Run(nil, args, pkg.handle.Tracer())
+	outputs, err = rn.Run(nil, args, pkg.handle.Tracer())
 	if err != nil {
 		return
 	}
@@ -401,13 +401,13 @@ func (recv *Learner) Update(arg0 types.Array[float32], arg1 types.Atom[float32])
 		arg0.Bridge().GXValue(), // features [Size]float32
 		arg1.Bridge().GXValue(), // target float32
 	}
-	var runner tracer.CompiledFunc
-	runner, err = recv.handle.pkg.cacheLearnerUpdate.Runner(recv.value, args)
+	var rn runner.CompiledFunc
+	rn, err = recv.handle.pkg.cacheLearnerUpdate.Runner(recv.value, args)
 	if err != nil {
 		return
 	}
 	var outputs []hostio.Value
-	outputs, err = runner.Run(recv.value, args, recv.handle.pkg.handle.Tracer())
+	outputs, err = rn.Run(recv.value, args, recv.handle.pkg.handle.Tracer())
 	if err != nil {
 		return
 	}
@@ -628,13 +628,13 @@ func (h *handleTarget) SetField(field *ir.Field, val types.Bridge) error {
 // Sample generates a new vector of features and the corresponding prediction.
 func (recv *Target) Sample() (_ *Target, _ types.Array[float32], _ types.Atom[float32], err error) {
 	var args []hostio.Value = nil
-	var runner tracer.CompiledFunc
-	runner, err = recv.handle.pkg.cacheTargetSample.Runner(recv.value, args)
+	var rn runner.CompiledFunc
+	rn, err = recv.handle.pkg.cacheTargetSample.Runner(recv.value, args)
 	if err != nil {
 		return
 	}
 	var outputs []hostio.Value
-	outputs, err = runner.Run(recv.value, args, recv.handle.pkg.handle.Tracer())
+	outputs, err = rn.Run(recv.value, args, recv.handle.pkg.handle.Tracer())
 	if err != nil {
 		return
 	}

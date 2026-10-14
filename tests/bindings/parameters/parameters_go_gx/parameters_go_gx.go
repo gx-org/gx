@@ -26,7 +26,7 @@ import (
 	"github.com/gx-org/gx/api"
 	"github.com/gx-org/gx/api/hostio"
 	"github.com/gx-org/gx/api/options"
-	"github.com/gx-org/gx/api/tracer"
+	"github.com/gx-org/gx/api/runner"
 	"github.com/gx-org/gx/api/values"
 	"github.com/gx-org/gx/build/ir"
 	"github.com/gx-org/gx/golang/binder/gobindings/core"
@@ -49,7 +49,7 @@ var (
 	_ = errors.Errorf
 	_ = types.NewSlice[types.Bridger]
 	_ = ir.NamedType{}
-	_ = tracer.Trace
+	_ = runner.Trace
 )
 
 // BuildFor loads the GX package github.com/gx-org/gx/tests/bindings/parameters
@@ -208,13 +208,13 @@ func (pkg *Package) NewStruct(arg0 types.Atom[float32]) (_ *Struct, err error) {
 	var args []hostio.Value = []hostio.Value{
 		arg0.Bridge().GXValue(), // offset float32
 	}
-	var runner tracer.CompiledFunc
-	runner, err = pkg.cacheNewStruct.Runner(nil, args)
+	var rn runner.CompiledFunc
+	rn, err = pkg.cacheNewStruct.Runner(nil, args)
 	if err != nil {
 		return
 	}
 	var outputs []hostio.Value
-	outputs, err = runner.Run(nil, args, pkg.handle.Tracer())
+	outputs, err = rn.Run(nil, args, pkg.handle.Tracer())
 	if err != nil {
 		return
 	}
@@ -235,13 +235,13 @@ func (pkg *Package) AddToStruct(arg0 *Struct) (_ *Struct, err error) {
 	var args []hostio.Value = []hostio.Value{
 		arg0.Bridge().GXValue(), // a parameters.Struct
 	}
-	var runner tracer.CompiledFunc
-	runner, err = pkg.cacheAddToStruct.Runner(nil, args)
+	var rn runner.CompiledFunc
+	rn, err = pkg.cacheAddToStruct.Runner(nil, args)
 	if err != nil {
 		return
 	}
 	var outputs []hostio.Value
-	outputs, err = runner.Run(nil, args, pkg.handle.Tracer())
+	outputs, err = rn.Run(nil, args, pkg.handle.Tracer())
 	if err != nil {
 		return
 	}
@@ -263,13 +263,13 @@ func (pkg *Package) AddFloat32(arg0 types.Atom[float32], arg1 types.Atom[float32
 		arg0.Bridge().GXValue(), // x float32
 		arg1.Bridge().GXValue(), // y float32
 	}
-	var runner tracer.CompiledFunc
-	runner, err = pkg.cacheAddFloat32.Runner(nil, args)
+	var rn runner.CompiledFunc
+	rn, err = pkg.cacheAddFloat32.Runner(nil, args)
 	if err != nil {
 		return
 	}
 	var outputs []hostio.Value
-	outputs, err = runner.Run(nil, args, pkg.handle.Tracer())
+	outputs, err = rn.Run(nil, args, pkg.handle.Tracer())
 	if err != nil {
 		return
 	}
@@ -290,13 +290,13 @@ func (pkg *Package) AddInt(arg0 types.Atom[int64], arg1 types.Atom[int64]) (_ ty
 		arg0.Bridge().GXValue(), // x int64
 		arg1.Bridge().GXValue(), // y int64
 	}
-	var runner tracer.CompiledFunc
-	runner, err = pkg.cacheAddInt.Runner(nil, args)
+	var rn runner.CompiledFunc
+	rn, err = pkg.cacheAddInt.Runner(nil, args)
 	if err != nil {
 		return
 	}
 	var outputs []hostio.Value
-	outputs, err = runner.Run(nil, args, pkg.handle.Tracer())
+	outputs, err = rn.Run(nil, args, pkg.handle.Tracer())
 	if err != nil {
 		return
 	}
@@ -317,13 +317,13 @@ func (pkg *Package) AddFloat32s(arg0 types.Array[float32], arg1 types.Array[floa
 		arg0.Bridge().GXValue(), // x [Size]float32
 		arg1.Bridge().GXValue(), // y [Size]float32
 	}
-	var runner tracer.CompiledFunc
-	runner, err = pkg.cacheAddFloat32s.Runner(nil, args)
+	var rn runner.CompiledFunc
+	rn, err = pkg.cacheAddFloat32s.Runner(nil, args)
 	if err != nil {
 		return
 	}
 	var outputs []hostio.Value
-	outputs, err = runner.Run(nil, args, pkg.handle.Tracer())
+	outputs, err = rn.Run(nil, args, pkg.handle.Tracer())
 	if err != nil {
 		return
 	}
@@ -344,13 +344,13 @@ func (pkg *Package) AddInts(arg0 types.Array[int64], arg1 types.Array[int64]) (_
 		arg0.Bridge().GXValue(), // x [Size]int64
 		arg1.Bridge().GXValue(), // y [Size]int64
 	}
-	var runner tracer.CompiledFunc
-	runner, err = pkg.cacheAddInts.Runner(nil, args)
+	var rn runner.CompiledFunc
+	rn, err = pkg.cacheAddInts.Runner(nil, args)
 	if err != nil {
 		return
 	}
 	var outputs []hostio.Value
-	outputs, err = runner.Run(nil, args, pkg.handle.Tracer())
+	outputs, err = rn.Run(nil, args, pkg.handle.Tracer())
 	if err != nil {
 		return
 	}
@@ -370,13 +370,13 @@ func (pkg *Package) Len(arg0 types.Array[float32]) (_ types.Atom[int], err error
 	var args []hostio.Value = []hostio.Value{
 		arg0.Bridge().GXValue(), // x [Size]float32
 	}
-	var runner tracer.CompiledFunc
-	runner, err = pkg.cacheLen.Runner(nil, args)
+	var rn runner.CompiledFunc
+	rn, err = pkg.cacheLen.Runner(nil, args)
 	if err != nil {
 		return
 	}
 	var outputs []hostio.Value
-	outputs, err = runner.Run(nil, args, pkg.handle.Tracer())
+	outputs, err = rn.Run(nil, args, pkg.handle.Tracer())
 	if err != nil {
 		return
 	}
@@ -394,13 +394,13 @@ func (pkg *Package) Len(arg0 types.Array[float32]) (_ types.Atom[int], err error
 // Iota returns an array filled with numbers.
 func (pkg *Package) Iota() (_ types.Array[int64], err error) {
 	var args []hostio.Value = nil
-	var runner tracer.CompiledFunc
-	runner, err = pkg.cacheIota.Runner(nil, args)
+	var rn runner.CompiledFunc
+	rn, err = pkg.cacheIota.Runner(nil, args)
 	if err != nil {
 		return
 	}
 	var outputs []hostio.Value
-	outputs, err = runner.Run(nil, args, pkg.handle.Tracer())
+	outputs, err = rn.Run(nil, args, pkg.handle.Tracer())
 	if err != nil {
 		return
 	}
@@ -420,13 +420,13 @@ func (pkg *Package) SliceArrayArgConstIndex(arg0 types.Array[float32]) (_ types.
 	var args []hostio.Value = []hostio.Value{
 		arg0.Bridge().GXValue(), // a [3][2]float32
 	}
-	var runner tracer.CompiledFunc
-	runner, err = pkg.cacheSliceArrayArgConstIndex.Runner(nil, args)
+	var rn runner.CompiledFunc
+	rn, err = pkg.cacheSliceArrayArgConstIndex.Runner(nil, args)
 	if err != nil {
 		return
 	}
 	var outputs []hostio.Value
-	outputs, err = runner.Run(nil, args, pkg.handle.Tracer())
+	outputs, err = rn.Run(nil, args, pkg.handle.Tracer())
 	if err != nil {
 		return
 	}
@@ -461,13 +461,13 @@ func (pkg *Package) SliceArrayArg(arg0 types.Array[float32], arg1 types.Atom[int
 		arg0.Bridge().GXValue(), // a [3][2]float32
 		arg1.Bridge().GXValue(), // i int32
 	}
-	var runner tracer.CompiledFunc
-	runner, err = pkg.cacheSliceArrayArg.Runner(nil, args)
+	var rn runner.CompiledFunc
+	rn, err = pkg.cacheSliceArrayArg.Runner(nil, args)
 	if err != nil {
 		return
 	}
 	var outputs []hostio.Value
-	outputs, err = runner.Run(nil, args, pkg.handle.Tracer())
+	outputs, err = rn.Run(nil, args, pkg.handle.Tracer())
 	if err != nil {
 		return
 	}
@@ -488,13 +488,13 @@ func (pkg *Package) SliceSliceArg(arg0 *types.Slice[types.Array[float32]], arg1 
 		arg0.Bridge().GXValue(), // a [][2]float32
 		arg1.Bridge().GXValue(), // i int32
 	}
-	var runner tracer.CompiledFunc
-	runner, err = pkg.cacheSliceSliceArg.Runner(nil, args)
+	var rn runner.CompiledFunc
+	rn, err = pkg.cacheSliceSliceArg.Runner(nil, args)
 	if err != nil {
 		return
 	}
 	var outputs []hostio.Value
-	outputs, err = runner.Run(nil, args, pkg.handle.Tracer())
+	outputs, err = rn.Run(nil, args, pkg.handle.Tracer())
 	if err != nil {
 		return
 	}
@@ -514,13 +514,13 @@ func (pkg *Package) NewNotInSlice(arg0 types.Atom[int32]) (_ *NotInSlice, err er
 	var args []hostio.Value = []hostio.Value{
 		arg0.Bridge().GXValue(), // val int32
 	}
-	var runner tracer.CompiledFunc
-	runner, err = pkg.cacheNewNotInSlice.Runner(nil, args)
+	var rn runner.CompiledFunc
+	rn, err = pkg.cacheNewNotInSlice.Runner(nil, args)
 	if err != nil {
 		return
 	}
 	var outputs []hostio.Value
-	outputs, err = runner.Run(nil, args, pkg.handle.Tracer())
+	outputs, err = rn.Run(nil, args, pkg.handle.Tracer())
 	if err != nil {
 		return
 	}
@@ -1153,13 +1153,13 @@ func (recv *Struct) SetNotInSlice(arg0 *NotInSlice) (_ *Struct, err error) {
 	var args []hostio.Value = []hostio.Value{
 		arg0.Bridge().GXValue(), // d parameters.NotInSlice
 	}
-	var runner tracer.CompiledFunc
-	runner, err = recv.handle.pkg.cacheStructSetNotInSlice.Runner(recv.value, args)
+	var rn runner.CompiledFunc
+	rn, err = recv.handle.pkg.cacheStructSetNotInSlice.Runner(recv.value, args)
 	if err != nil {
 		return
 	}
 	var outputs []hostio.Value
-	outputs, err = runner.Run(recv.value, args, recv.handle.pkg.handle.Tracer())
+	outputs, err = rn.Run(recv.value, args, recv.handle.pkg.handle.Tracer())
 	if err != nil {
 		return
 	}

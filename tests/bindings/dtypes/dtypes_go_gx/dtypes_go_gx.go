@@ -26,7 +26,7 @@ import (
 	"github.com/gx-org/gx/api"
 	"github.com/gx-org/gx/api/hostio"
 	"github.com/gx-org/gx/api/options"
-	"github.com/gx-org/gx/api/tracer"
+	"github.com/gx-org/gx/api/runner"
 	"github.com/gx-org/gx/api/values"
 	"github.com/gx-org/gx/build/ir"
 	"github.com/gx-org/gx/golang/binder/gobindings/core"
@@ -46,7 +46,7 @@ var (
 	_ = errors.Errorf
 	_ = types.NewSlice[types.Bridger]
 	_ = ir.NamedType{}
-	_ = tracer.Trace
+	_ = runner.Trace
 )
 
 // BuildFor loads the GX package github.com/gx-org/gx/tests/bindings/dtypes
@@ -191,13 +191,13 @@ func (pkg *Package) Bool(arg0 types.Atom[bool]) (_ types.Atom[bool], err error) 
 	var args []hostio.Value = []hostio.Value{
 		arg0.Bridge().GXValue(), // x bool
 	}
-	var runner tracer.CompiledFunc
-	runner, err = pkg.cacheBool.Runner(nil, args)
+	var rn runner.CompiledFunc
+	rn, err = pkg.cacheBool.Runner(nil, args)
 	if err != nil {
 		return
 	}
 	var outputs []hostio.Value
-	outputs, err = runner.Run(nil, args, pkg.handle.Tracer())
+	outputs, err = rn.Run(nil, args, pkg.handle.Tracer())
 	if err != nil {
 		return
 	}
@@ -216,13 +216,13 @@ func (pkg *Package) Float32(arg0 types.Atom[float32]) (_ types.Atom[float32], er
 	var args []hostio.Value = []hostio.Value{
 		arg0.Bridge().GXValue(), // x float32
 	}
-	var runner tracer.CompiledFunc
-	runner, err = pkg.cacheFloat32.Runner(nil, args)
+	var rn runner.CompiledFunc
+	rn, err = pkg.cacheFloat32.Runner(nil, args)
 	if err != nil {
 		return
 	}
 	var outputs []hostio.Value
-	outputs, err = runner.Run(nil, args, pkg.handle.Tracer())
+	outputs, err = rn.Run(nil, args, pkg.handle.Tracer())
 	if err != nil {
 		return
 	}
@@ -241,13 +241,13 @@ func (pkg *Package) Float64(arg0 types.Atom[float64]) (_ types.Atom[float64], er
 	var args []hostio.Value = []hostio.Value{
 		arg0.Bridge().GXValue(), // x float64
 	}
-	var runner tracer.CompiledFunc
-	runner, err = pkg.cacheFloat64.Runner(nil, args)
+	var rn runner.CompiledFunc
+	rn, err = pkg.cacheFloat64.Runner(nil, args)
 	if err != nil {
 		return
 	}
 	var outputs []hostio.Value
-	outputs, err = runner.Run(nil, args, pkg.handle.Tracer())
+	outputs, err = rn.Run(nil, args, pkg.handle.Tracer())
 	if err != nil {
 		return
 	}
@@ -266,13 +266,13 @@ func (pkg *Package) Int(arg0 types.Atom[int]) (_ types.Atom[int], err error) {
 	var args []hostio.Value = []hostio.Value{
 		arg0.Bridge().GXValue(), // x int
 	}
-	var runner tracer.CompiledFunc
-	runner, err = pkg.cacheInt.Runner(nil, args)
+	var rn runner.CompiledFunc
+	rn, err = pkg.cacheInt.Runner(nil, args)
 	if err != nil {
 		return
 	}
 	var outputs []hostio.Value
-	outputs, err = runner.Run(nil, args, pkg.handle.Tracer())
+	outputs, err = rn.Run(nil, args, pkg.handle.Tracer())
 	if err != nil {
 		return
 	}
@@ -291,13 +291,13 @@ func (pkg *Package) Int32(arg0 types.Atom[int32]) (_ types.Atom[int32], err erro
 	var args []hostio.Value = []hostio.Value{
 		arg0.Bridge().GXValue(), // x int32
 	}
-	var runner tracer.CompiledFunc
-	runner, err = pkg.cacheInt32.Runner(nil, args)
+	var rn runner.CompiledFunc
+	rn, err = pkg.cacheInt32.Runner(nil, args)
 	if err != nil {
 		return
 	}
 	var outputs []hostio.Value
-	outputs, err = runner.Run(nil, args, pkg.handle.Tracer())
+	outputs, err = rn.Run(nil, args, pkg.handle.Tracer())
 	if err != nil {
 		return
 	}
@@ -316,13 +316,13 @@ func (pkg *Package) Int64(arg0 types.Atom[int64]) (_ types.Atom[int64], err erro
 	var args []hostio.Value = []hostio.Value{
 		arg0.Bridge().GXValue(), // x int64
 	}
-	var runner tracer.CompiledFunc
-	runner, err = pkg.cacheInt64.Runner(nil, args)
+	var rn runner.CompiledFunc
+	rn, err = pkg.cacheInt64.Runner(nil, args)
 	if err != nil {
 		return
 	}
 	var outputs []hostio.Value
-	outputs, err = runner.Run(nil, args, pkg.handle.Tracer())
+	outputs, err = rn.Run(nil, args, pkg.handle.Tracer())
 	if err != nil {
 		return
 	}
@@ -341,13 +341,13 @@ func (pkg *Package) Uint32(arg0 types.Atom[uint32]) (_ types.Atom[uint32], err e
 	var args []hostio.Value = []hostio.Value{
 		arg0.Bridge().GXValue(), // x uint32
 	}
-	var runner tracer.CompiledFunc
-	runner, err = pkg.cacheUint32.Runner(nil, args)
+	var rn runner.CompiledFunc
+	rn, err = pkg.cacheUint32.Runner(nil, args)
 	if err != nil {
 		return
 	}
 	var outputs []hostio.Value
-	outputs, err = runner.Run(nil, args, pkg.handle.Tracer())
+	outputs, err = rn.Run(nil, args, pkg.handle.Tracer())
 	if err != nil {
 		return
 	}
@@ -366,13 +366,13 @@ func (pkg *Package) Uint64(arg0 types.Atom[uint64]) (_ types.Atom[uint64], err e
 	var args []hostio.Value = []hostio.Value{
 		arg0.Bridge().GXValue(), // x uint64
 	}
-	var runner tracer.CompiledFunc
-	runner, err = pkg.cacheUint64.Runner(nil, args)
+	var rn runner.CompiledFunc
+	rn, err = pkg.cacheUint64.Runner(nil, args)
 	if err != nil {
 		return
 	}
 	var outputs []hostio.Value
-	outputs, err = runner.Run(nil, args, pkg.handle.Tracer())
+	outputs, err = rn.Run(nil, args, pkg.handle.Tracer())
 	if err != nil {
 		return
 	}
@@ -391,13 +391,13 @@ func (pkg *Package) ArrayBool(arg0 types.Array[bool]) (_ types.Array[bool], err 
 	var args []hostio.Value = []hostio.Value{
 		arg0.Bridge().GXValue(), // x [2][3]bool
 	}
-	var runner tracer.CompiledFunc
-	runner, err = pkg.cacheArrayBool.Runner(nil, args)
+	var rn runner.CompiledFunc
+	rn, err = pkg.cacheArrayBool.Runner(nil, args)
 	if err != nil {
 		return
 	}
 	var outputs []hostio.Value
-	outputs, err = runner.Run(nil, args, pkg.handle.Tracer())
+	outputs, err = rn.Run(nil, args, pkg.handle.Tracer())
 	if err != nil {
 		return
 	}
@@ -416,13 +416,13 @@ func (pkg *Package) ArrayFloat32(arg0 types.Array[float32]) (_ types.Array[float
 	var args []hostio.Value = []hostio.Value{
 		arg0.Bridge().GXValue(), // x [2][3]float32
 	}
-	var runner tracer.CompiledFunc
-	runner, err = pkg.cacheArrayFloat32.Runner(nil, args)
+	var rn runner.CompiledFunc
+	rn, err = pkg.cacheArrayFloat32.Runner(nil, args)
 	if err != nil {
 		return
 	}
 	var outputs []hostio.Value
-	outputs, err = runner.Run(nil, args, pkg.handle.Tracer())
+	outputs, err = rn.Run(nil, args, pkg.handle.Tracer())
 	if err != nil {
 		return
 	}
@@ -441,13 +441,13 @@ func (pkg *Package) ArrayFloat64(arg0 types.Array[float64]) (_ types.Array[float
 	var args []hostio.Value = []hostio.Value{
 		arg0.Bridge().GXValue(), // x [2][3]float64
 	}
-	var runner tracer.CompiledFunc
-	runner, err = pkg.cacheArrayFloat64.Runner(nil, args)
+	var rn runner.CompiledFunc
+	rn, err = pkg.cacheArrayFloat64.Runner(nil, args)
 	if err != nil {
 		return
 	}
 	var outputs []hostio.Value
-	outputs, err = runner.Run(nil, args, pkg.handle.Tracer())
+	outputs, err = rn.Run(nil, args, pkg.handle.Tracer())
 	if err != nil {
 		return
 	}
@@ -466,13 +466,13 @@ func (pkg *Package) ArrayInt(arg0 types.Array[int]) (_ types.Array[int], err err
 	var args []hostio.Value = []hostio.Value{
 		arg0.Bridge().GXValue(), // x [2][3]int
 	}
-	var runner tracer.CompiledFunc
-	runner, err = pkg.cacheArrayInt.Runner(nil, args)
+	var rn runner.CompiledFunc
+	rn, err = pkg.cacheArrayInt.Runner(nil, args)
 	if err != nil {
 		return
 	}
 	var outputs []hostio.Value
-	outputs, err = runner.Run(nil, args, pkg.handle.Tracer())
+	outputs, err = rn.Run(nil, args, pkg.handle.Tracer())
 	if err != nil {
 		return
 	}
@@ -491,13 +491,13 @@ func (pkg *Package) ArrayInt32(arg0 types.Array[int32]) (_ types.Array[int32], e
 	var args []hostio.Value = []hostio.Value{
 		arg0.Bridge().GXValue(), // x [2][3]int32
 	}
-	var runner tracer.CompiledFunc
-	runner, err = pkg.cacheArrayInt32.Runner(nil, args)
+	var rn runner.CompiledFunc
+	rn, err = pkg.cacheArrayInt32.Runner(nil, args)
 	if err != nil {
 		return
 	}
 	var outputs []hostio.Value
-	outputs, err = runner.Run(nil, args, pkg.handle.Tracer())
+	outputs, err = rn.Run(nil, args, pkg.handle.Tracer())
 	if err != nil {
 		return
 	}
@@ -516,13 +516,13 @@ func (pkg *Package) ArrayInt64(arg0 types.Array[int64]) (_ types.Array[int64], e
 	var args []hostio.Value = []hostio.Value{
 		arg0.Bridge().GXValue(), // x [2][3]int64
 	}
-	var runner tracer.CompiledFunc
-	runner, err = pkg.cacheArrayInt64.Runner(nil, args)
+	var rn runner.CompiledFunc
+	rn, err = pkg.cacheArrayInt64.Runner(nil, args)
 	if err != nil {
 		return
 	}
 	var outputs []hostio.Value
-	outputs, err = runner.Run(nil, args, pkg.handle.Tracer())
+	outputs, err = rn.Run(nil, args, pkg.handle.Tracer())
 	if err != nil {
 		return
 	}
@@ -541,13 +541,13 @@ func (pkg *Package) ArrayUint32(arg0 types.Array[uint32]) (_ types.Array[uint32]
 	var args []hostio.Value = []hostio.Value{
 		arg0.Bridge().GXValue(), // x [2][3]uint32
 	}
-	var runner tracer.CompiledFunc
-	runner, err = pkg.cacheArrayUint32.Runner(nil, args)
+	var rn runner.CompiledFunc
+	rn, err = pkg.cacheArrayUint32.Runner(nil, args)
 	if err != nil {
 		return
 	}
 	var outputs []hostio.Value
-	outputs, err = runner.Run(nil, args, pkg.handle.Tracer())
+	outputs, err = rn.Run(nil, args, pkg.handle.Tracer())
 	if err != nil {
 		return
 	}
@@ -566,13 +566,13 @@ func (pkg *Package) ArrayUint64(arg0 types.Array[uint64]) (_ types.Array[uint64]
 	var args []hostio.Value = []hostio.Value{
 		arg0.Bridge().GXValue(), // x [2][3]uint64
 	}
-	var runner tracer.CompiledFunc
-	runner, err = pkg.cacheArrayUint64.Runner(nil, args)
+	var rn runner.CompiledFunc
+	rn, err = pkg.cacheArrayUint64.Runner(nil, args)
 	if err != nil {
 		return
 	}
 	var outputs []hostio.Value
-	outputs, err = runner.Run(nil, args, pkg.handle.Tracer())
+	outputs, err = rn.Run(nil, args, pkg.handle.Tracer())
 	if err != nil {
 		return
 	}

@@ -26,7 +26,7 @@ import (
 	"github.com/gx-org/gx/api"
 	"github.com/gx-org/gx/api/hostio"
 	"github.com/gx-org/gx/api/options"
-	"github.com/gx-org/gx/api/tracer"
+	"github.com/gx-org/gx/api/runner"
 	"github.com/gx-org/gx/api/values"
 	"github.com/gx-org/gx/build/ir"
 	"github.com/gx-org/gx/golang/binder/gobindings/core"
@@ -46,7 +46,7 @@ var (
 	_ = errors.Errorf
 	_ = types.NewSlice[types.Bridger]
 	_ = ir.NamedType{}
-	_ = tracer.Trace
+	_ = runner.Trace
 )
 
 // BuildFor loads the GX package github.com/gx-org/gx/tests/bindings/unexported
@@ -119,13 +119,13 @@ func Build(dev *core.DeviceSetup) (*PackageHandle, error) {
 
 func (pkg *Package) New() (_ *unexported, err error) {
 	var args []hostio.Value = nil
-	var runner tracer.CompiledFunc
-	runner, err = pkg.cacheNew.Runner(nil, args)
+	var rn runner.CompiledFunc
+	rn, err = pkg.cacheNew.Runner(nil, args)
 	if err != nil {
 		return
 	}
 	var outputs []hostio.Value
-	outputs, err = runner.Run(nil, args, pkg.handle.Tracer())
+	outputs, err = rn.Run(nil, args, pkg.handle.Tracer())
 	if err != nil {
 		return
 	}
@@ -294,13 +294,13 @@ func (h *handleunexported) SetField(field *ir.Field, val types.Bridge) error {
 
 func (recv *unexported) A() (_ types.Atom[float32], err error) {
 	var args []hostio.Value = nil
-	var runner tracer.CompiledFunc
-	runner, err = recv.handle.pkg.cacheunexportedA.Runner(recv.value, args)
+	var rn runner.CompiledFunc
+	rn, err = recv.handle.pkg.cacheunexportedA.Runner(recv.value, args)
 	if err != nil {
 		return
 	}
 	var outputs []hostio.Value
-	outputs, err = runner.Run(recv.value, args, recv.handle.pkg.handle.Tracer())
+	outputs, err = rn.Run(recv.value, args, recv.handle.pkg.handle.Tracer())
 	if err != nil {
 		return
 	}

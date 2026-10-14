@@ -26,7 +26,7 @@ import (
 	"github.com/gx-org/gx/api"
 	"github.com/gx-org/gx/api/hostio"
 	"github.com/gx-org/gx/api/options"
-	"github.com/gx-org/gx/api/tracer"
+	"github.com/gx-org/gx/api/runner"
 	"github.com/gx-org/gx/api/values"
 	"github.com/gx-org/gx/build/ir"
 	"github.com/gx-org/gx/golang/binder/gobindings/core"
@@ -47,7 +47,7 @@ var (
 	_ = errors.Errorf
 	_ = types.NewSlice[types.Bridger]
 	_ = ir.NamedType{}
-	_ = tracer.Trace
+	_ = runner.Trace
 )
 
 // BuildFor loads the GX package shape
@@ -132,13 +132,13 @@ func (pkg *Package) CheckBroadcast(arg0 *types.Slice[types.Atom[int]], arg1 *typ
 		arg0.Bridge().GXValue(), // s1 []int
 		arg1.Bridge().GXValue(), // s2 []int
 	}
-	var runner tracer.CompiledFunc
-	runner, err = pkg.cacheCheckBroadcast.Runner(nil, args)
+	var rn runner.CompiledFunc
+	rn, err = pkg.cacheCheckBroadcast.Runner(nil, args)
 	if err != nil {
 		return
 	}
 	var outputs []hostio.Value
-	outputs, err = runner.Run(nil, args, pkg.handle.Tracer())
+	outputs, err = rn.Run(nil, args, pkg.handle.Tracer())
 	if err != nil {
 		return
 	}

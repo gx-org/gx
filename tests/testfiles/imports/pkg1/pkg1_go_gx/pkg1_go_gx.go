@@ -26,7 +26,7 @@ import (
 	"github.com/gx-org/gx/api"
 	"github.com/gx-org/gx/api/hostio"
 	"github.com/gx-org/gx/api/options"
-	"github.com/gx-org/gx/api/tracer"
+	"github.com/gx-org/gx/api/runner"
 	"github.com/gx-org/gx/api/values"
 	"github.com/gx-org/gx/build/ir"
 	"github.com/gx-org/gx/golang/binder/gobindings/core"
@@ -46,7 +46,7 @@ var (
 	_ = errors.Errorf
 	_ = types.NewSlice[types.Bridger]
 	_ = ir.NamedType{}
-	_ = tracer.Trace
+	_ = runner.Trace
 )
 
 // BuildFor loads the GX package github.com/gx-org/gx/tests/testfiles/imports/pkg1
@@ -120,13 +120,13 @@ func Build(dev *core.DeviceSetup) (*PackageHandle, error) {
 // Const42 always returns 42.
 func (pkg *Package) Const42() (_ types.Atom[int32], err error) {
 	var args []hostio.Value = nil
-	var runner tracer.CompiledFunc
-	runner, err = pkg.cacheConst42.Runner(nil, args)
+	var rn runner.CompiledFunc
+	rn, err = pkg.cacheConst42.Runner(nil, args)
 	if err != nil {
 		return
 	}
 	var outputs []hostio.Value
-	outputs, err = runner.Run(nil, args, pkg.handle.Tracer())
+	outputs, err = rn.Run(nil, args, pkg.handle.Tracer())
 	if err != nil {
 		return
 	}
@@ -144,13 +144,13 @@ func (pkg *Package) Const42() (_ types.Atom[int32], err error) {
 // CallConst42 calls the Const42 functions.
 func (pkg *Package) CallConst42() (_ types.Atom[int32], err error) {
 	var args []hostio.Value = nil
-	var runner tracer.CompiledFunc
-	runner, err = pkg.cacheCallConst42.Runner(nil, args)
+	var rn runner.CompiledFunc
+	rn, err = pkg.cacheCallConst42.Runner(nil, args)
 	if err != nil {
 		return
 	}
 	var outputs []hostio.Value
-	outputs, err = runner.Run(nil, args, pkg.handle.Tracer())
+	outputs, err = rn.Run(nil, args, pkg.handle.Tracer())
 	if err != nil {
 		return
 	}

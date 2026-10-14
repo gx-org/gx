@@ -26,7 +26,7 @@ import (
 	"github.com/gx-org/gx/api"
 	"github.com/gx-org/gx/api/hostio"
 	"github.com/gx-org/gx/api/options"
-	"github.com/gx-org/gx/api/tracer"
+	"github.com/gx-org/gx/api/runner"
 	"github.com/gx-org/gx/api/values"
 	"github.com/gx-org/gx/build/ir"
 	"github.com/gx-org/gx/golang/binder/gobindings/core"
@@ -46,7 +46,7 @@ var (
 	_ = errors.Errorf
 	_ = types.NewSlice[types.Bridger]
 	_ = ir.NamedType{}
-	_ = tracer.Trace
+	_ = runner.Trace
 )
 
 // BuildFor loads the GX package github.com/gx-org/gx/tests/bindings/pkgvars
@@ -150,13 +150,13 @@ func (SizeStatic) Set(value int) options.PackageOptionFactory {
 // ReturnVar1 returns the value of the static variable Var1
 func (pkg *Package) ReturnVar1() (_ types.Atom[int32], err error) {
 	var args []hostio.Value = nil
-	var runner tracer.CompiledFunc
-	runner, err = pkg.cacheReturnVar1.Runner(nil, args)
+	var rn runner.CompiledFunc
+	rn, err = pkg.cacheReturnVar1.Runner(nil, args)
 	if err != nil {
 		return
 	}
 	var outputs []hostio.Value
-	outputs, err = runner.Run(nil, args, pkg.handle.Tracer())
+	outputs, err = rn.Run(nil, args, pkg.handle.Tracer())
 	if err != nil {
 		return
 	}
@@ -174,13 +174,13 @@ func (pkg *Package) ReturnVar1() (_ types.Atom[int32], err error) {
 // New 1-axis array of size Size.
 func (pkg *Package) NewTwiceSize() (_ types.Array[float32], err error) {
 	var args []hostio.Value = nil
-	var runner tracer.CompiledFunc
-	runner, err = pkg.cacheNewTwiceSize.Runner(nil, args)
+	var rn runner.CompiledFunc
+	rn, err = pkg.cacheNewTwiceSize.Runner(nil, args)
 	if err != nil {
 		return
 	}
 	var outputs []hostio.Value
-	outputs, err = runner.Run(nil, args, pkg.handle.Tracer())
+	outputs, err = rn.Run(nil, args, pkg.handle.Tracer())
 	if err != nil {
 		return
 	}
