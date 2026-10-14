@@ -88,8 +88,8 @@ type Package struct {
 	handle PackageHandle
 
 	// Functions and methods cache
-	cacheReturnVar1   *core.FuncCache
-	cacheNewTwiceSize *core.FuncCache
+	cacheReturnVar1   core.Func
+	cacheNewTwiceSize core.Func
 }
 
 // Build builds a package for a device once it has been loaded.
@@ -105,11 +105,11 @@ func Build(dev *core.DeviceSetup) (*PackageHandle, error) {
 	// Build dependencies.
 
 	// Initialise function and method caches.
-	pkg.cacheReturnVar1, err = pkg.handle.NewCache("", "ReturnVar1")
+	pkg.cacheReturnVar1, err = pkg.handle.NewFunc("", "ReturnVar1")
 	if err != nil {
 		return nil, err
 	}
-	pkg.cacheNewTwiceSize, err = pkg.handle.NewCache("", "NewTwiceSize")
+	pkg.cacheNewTwiceSize, err = pkg.handle.NewFunc("", "NewTwiceSize")
 	if err != nil {
 		return nil, err
 	}
