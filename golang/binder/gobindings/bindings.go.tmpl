@@ -95,7 +95,7 @@ type Package struct {
 
 	// Functions and methods cache
 {{ range $fn := .FunctionsAndMethods -}}
-	cache{{$fn.RecvTypeName}}{{$fn.Name}} *core.FuncCache
+	cache{{$fn.RecvTypeName}}{{$fn.Name}} core.Func
 {{end}}
 }
 
@@ -121,7 +121,7 @@ func Build(dev *core.DeviceSetup) (*PackageHandle, error) {
 
 	// Initialise function and method caches.
 {{ range $fn := .FunctionsAndMethods -}}
-	pkg.cache{{$fn.RecvTypeName}}{{$fn.Name}}, err = pkg.handle.NewCache("{{$fn.RecvTypeName}}", "{{$fn.Name}}")
+	pkg.cache{{$fn.RecvTypeName}}{{$fn.Name}}, err = pkg.handle.NewFunc("{{$fn.RecvTypeName}}", "{{$fn.Name}}")
 	if err != nil {
 		return nil, err
 	}

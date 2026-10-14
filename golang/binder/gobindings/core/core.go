@@ -17,10 +17,7 @@ package core
 
 import (
 	"fmt"
-	"log"
 	"strings"
-	"sync"
-	"time"
 
 	"github.com/pkg/errors"
 	"github.com/gx-org/gx/api"
@@ -103,16 +100,6 @@ func (s *PackageCompileSetup) Tracer() trace.Callback {
 	return DefaultTracer
 }
 
-// FuncCache provides a compilation cache for a function.
-type FuncCache struct {
-	pkg *PackageCompileSetup
-	fn  *ir.FuncDecl
-
-	runner   tracer.CompiledFunc
-	err      error
-	initOnce sync.Once
-}
-
 func findFunction(pkg *ir.Package, fnName string) (*ir.FuncDecl, error) {
 	fn := pkg.FindFunc(fnName)
 	if fn == nil {
@@ -141,8 +128,16 @@ func findMethod(pkg *ir.Package, recvName, fnName string) (*ir.FuncDecl, error) 
 	return fDecl, nil
 }
 
-// NewCache returns a new function cache given a package compilation setup.
-func (s *PackageCompileSetup) NewCache(recvName, fnName string) (*FuncCache, error) {
+// Func wraps a GX function, sometimes in a cache to prevent unnecessary recompilation.
+type Func interface {
+	Device() *api.Device
+	Runner(recv hostio.Value, args []hostio.Value) (tracer.CompiledFunc, error)
+	Func() *ir.FuncDecl
+	Tracer() trace.Callback
+}
+
+// NewFunc returns a new function cache given a package compilation setup.
+func (s *PackageCompileSetup) NewFunc(recvName, fnName string) (Func, error) {
 	var fn *ir.FuncDecl
 	var err error
 	if recvName != "" {
@@ -153,12 +148,12 @@ func (s *PackageCompileSetup) NewCache(recvName, fnName string) (*FuncCache, err
 	if err != nil {
 		return nil, err
 	}
-	return s.NewCacheFromFunc(fn), nil
+	return newFuncCache(s, fn), nil
 }
 
-// NewCacheFromFunc returns a runner cache given a function.
-func (s *PackageCompileSetup) NewCacheFromFunc(fn *ir.FuncDecl) *FuncCache {
-	return &FuncCache{pkg: s, fn: fn}
+// NewFuncFromDecl returns a new function given its IR definition.
+func (s *PackageCompileSetup) NewFuncFromDecl(decl *ir.FuncDecl) Func {
+	return newFuncCache(s, decl)
 }
 
 func optionsToString(opts []options.PackageOption) string {
@@ -167,41 +162,4 @@ func optionsToString(opts []options.PackageOption) string {
 		optsS[i] = opt.String()
 	}
 	return fmt.Sprintf("{%s}", strings.Join(optsS, ", "))
-}
-
-func (c *FuncCache) buildRunner(recv hostio.Value, args []hostio.Value) (_ tracer.CompiledFunc, err error) {
-	log.Printf("GX Tracing %s.%s with options %s", c.fn.FFile.Package.Name.Name, c.fn.Name(), optionsToString(c.pkg.devSetup.opts))
-	now := time.Now()
-	defer func() {
-		log.Printf("GX Tracing %s.%s: DONE. Time: %v.", c.fn.FFile.Package.Name.Name, c.fn.Name(), time.Since(now))
-	}()
-	runner, err := tracer.Trace(c.pkg.devSetup.device, c.fn, recv, args, c.pkg.devSetup.opts)
-	if err != nil {
-		return nil, err
-	}
-	return runner, nil
-}
-
-// Runner compiles the function if it has not been done before.
-// Returns the function compiled or an error.
-func (c *FuncCache) Runner(recv hostio.Value, args []hostio.Value) (tracer.CompiledFunc, error) {
-	c.initOnce.Do(func() {
-		c.runner, c.err = c.buildRunner(recv, args)
-	})
-	return c.runner, c.err
-}
-
-// Func returns the function being cached.
-func (c *FuncCache) Func() *ir.FuncDecl {
-	return c.fn
-}
-
-// Device on which the function is going to run.
-func (c *FuncCache) Device() *api.Device {
-	return c.pkg.devSetup.Device()
-}
-
-// Tracer to use to run the function.
-func (c *FuncCache) Tracer() trace.Callback {
-	return c.pkg.Tracer()
 }

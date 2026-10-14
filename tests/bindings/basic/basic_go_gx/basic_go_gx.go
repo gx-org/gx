@@ -88,14 +88,14 @@ type Package struct {
 	handle PackageHandle
 
 	// Functions and methods cache
-	cacheBasicAdd           *core.FuncCache
-	cacheBasicAddPrivate    *core.FuncCache
-	cacheBasicSetFloat      *core.FuncCache
-	cacheReturnFloat32      *core.FuncCache
-	cacheReturnArrayFloat32 *core.FuncCache
-	cacheReturnMultiple     *core.FuncCache
-	cacheNew                *core.FuncCache
-	cacheAddPrivate         *core.FuncCache
+	cacheBasicAdd           core.Func
+	cacheBasicAddPrivate    core.Func
+	cacheBasicSetFloat      core.Func
+	cacheReturnFloat32      core.Func
+	cacheReturnArrayFloat32 core.Func
+	cacheReturnMultiple     core.Func
+	cacheNew                core.Func
+	cacheAddPrivate         core.Func
 }
 
 // Build builds a package for a device once it has been loaded.
@@ -111,35 +111,35 @@ func Build(dev *core.DeviceSetup) (*PackageHandle, error) {
 	// Build dependencies.
 
 	// Initialise function and method caches.
-	pkg.cacheBasicAdd, err = pkg.handle.NewCache("Basic", "Add")
+	pkg.cacheBasicAdd, err = pkg.handle.NewFunc("Basic", "Add")
 	if err != nil {
 		return nil, err
 	}
-	pkg.cacheBasicAddPrivate, err = pkg.handle.NewCache("Basic", "AddPrivate")
+	pkg.cacheBasicAddPrivate, err = pkg.handle.NewFunc("Basic", "AddPrivate")
 	if err != nil {
 		return nil, err
 	}
-	pkg.cacheBasicSetFloat, err = pkg.handle.NewCache("Basic", "SetFloat")
+	pkg.cacheBasicSetFloat, err = pkg.handle.NewFunc("Basic", "SetFloat")
 	if err != nil {
 		return nil, err
 	}
-	pkg.cacheReturnFloat32, err = pkg.handle.NewCache("", "ReturnFloat32")
+	pkg.cacheReturnFloat32, err = pkg.handle.NewFunc("", "ReturnFloat32")
 	if err != nil {
 		return nil, err
 	}
-	pkg.cacheReturnArrayFloat32, err = pkg.handle.NewCache("", "ReturnArrayFloat32")
+	pkg.cacheReturnArrayFloat32, err = pkg.handle.NewFunc("", "ReturnArrayFloat32")
 	if err != nil {
 		return nil, err
 	}
-	pkg.cacheReturnMultiple, err = pkg.handle.NewCache("", "ReturnMultiple")
+	pkg.cacheReturnMultiple, err = pkg.handle.NewFunc("", "ReturnMultiple")
 	if err != nil {
 		return nil, err
 	}
-	pkg.cacheNew, err = pkg.handle.NewCache("", "New")
+	pkg.cacheNew, err = pkg.handle.NewFunc("", "New")
 	if err != nil {
 		return nil, err
 	}
-	pkg.cacheAddPrivate, err = pkg.handle.NewCache("", "AddPrivate")
+	pkg.cacheAddPrivate, err = pkg.handle.NewFunc("", "AddPrivate")
 	if err != nil {
 		return nil, err
 	}

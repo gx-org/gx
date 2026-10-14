@@ -90,8 +90,8 @@ type Package struct {
 	handle PackageHandle
 
 	// Functions and methods cache
-	cacheCallSum  *core.FuncCache
-	cacheNewUndef *core.FuncCache
+	cacheCallSum  core.Func
+	cacheNewUndef core.Func
 }
 
 // Build builds a package for a device once it has been loaded.
@@ -113,11 +113,11 @@ func Build(dev *core.DeviceSetup) (*PackageHandle, error) {
 	}
 
 	// Initialise function and method caches.
-	pkg.cacheCallSum, err = pkg.handle.NewCache("", "CallSum")
+	pkg.cacheCallSum, err = pkg.handle.NewFunc("", "CallSum")
 	if err != nil {
 		return nil, err
 	}
-	pkg.cacheNewUndef, err = pkg.handle.NewCache("", "NewUndef")
+	pkg.cacheNewUndef, err = pkg.handle.NewFunc("", "NewUndef")
 	if err != nil {
 		return nil, err
 	}

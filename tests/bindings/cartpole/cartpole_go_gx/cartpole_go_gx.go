@@ -90,11 +90,11 @@ type Package struct {
 	handle PackageHandle
 
 	// Functions and methods cache
-	cacheCartpoleReset     *core.FuncCache
-	cacheCartpoleStep      *core.FuncCache
-	cacheCartpoleState     *core.FuncCache
-	cacheCartpoleFullState *core.FuncCache
-	cacheNew               *core.FuncCache
+	cacheCartpoleReset     core.Func
+	cacheCartpoleStep      core.Func
+	cacheCartpoleState     core.Func
+	cacheCartpoleFullState core.Func
+	cacheNew               core.Func
 }
 
 // Build builds a package for a device once it has been loaded.
@@ -116,23 +116,23 @@ func Build(dev *core.DeviceSetup) (*PackageHandle, error) {
 	}
 
 	// Initialise function and method caches.
-	pkg.cacheCartpoleReset, err = pkg.handle.NewCache("Cartpole", "Reset")
+	pkg.cacheCartpoleReset, err = pkg.handle.NewFunc("Cartpole", "Reset")
 	if err != nil {
 		return nil, err
 	}
-	pkg.cacheCartpoleStep, err = pkg.handle.NewCache("Cartpole", "Step")
+	pkg.cacheCartpoleStep, err = pkg.handle.NewFunc("Cartpole", "Step")
 	if err != nil {
 		return nil, err
 	}
-	pkg.cacheCartpoleState, err = pkg.handle.NewCache("Cartpole", "State")
+	pkg.cacheCartpoleState, err = pkg.handle.NewFunc("Cartpole", "State")
 	if err != nil {
 		return nil, err
 	}
-	pkg.cacheCartpoleFullState, err = pkg.handle.NewCache("Cartpole", "FullState")
+	pkg.cacheCartpoleFullState, err = pkg.handle.NewFunc("Cartpole", "FullState")
 	if err != nil {
 		return nil, err
 	}
-	pkg.cacheNew, err = pkg.handle.NewCache("", "New")
+	pkg.cacheNew, err = pkg.handle.NewFunc("", "New")
 	if err != nil {
 		return nil, err
 	}

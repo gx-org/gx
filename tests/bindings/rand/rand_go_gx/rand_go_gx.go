@@ -90,10 +90,10 @@ type Package struct {
 	handle PackageHandle
 
 	// Functions and methods cache
-	cacheNew                  *core.FuncCache
-	cacheSample               *core.FuncCache
-	cacheSampleBool           *core.FuncCache
-	cacheSampleUniformFloat64 *core.FuncCache
+	cacheNew                  core.Func
+	cacheSample               core.Func
+	cacheSampleBool           core.Func
+	cacheSampleUniformFloat64 core.Func
 }
 
 // Build builds a package for a device once it has been loaded.
@@ -115,19 +115,19 @@ func Build(dev *core.DeviceSetup) (*PackageHandle, error) {
 	}
 
 	// Initialise function and method caches.
-	pkg.cacheNew, err = pkg.handle.NewCache("", "New")
+	pkg.cacheNew, err = pkg.handle.NewFunc("", "New")
 	if err != nil {
 		return nil, err
 	}
-	pkg.cacheSample, err = pkg.handle.NewCache("", "Sample")
+	pkg.cacheSample, err = pkg.handle.NewFunc("", "Sample")
 	if err != nil {
 		return nil, err
 	}
-	pkg.cacheSampleBool, err = pkg.handle.NewCache("", "SampleBool")
+	pkg.cacheSampleBool, err = pkg.handle.NewFunc("", "SampleBool")
 	if err != nil {
 		return nil, err
 	}
-	pkg.cacheSampleUniformFloat64, err = pkg.handle.NewCache("", "SampleUniformFloat64")
+	pkg.cacheSampleUniformFloat64, err = pkg.handle.NewFunc("", "SampleUniformFloat64")
 	if err != nil {
 		return nil, err
 	}
