@@ -151,7 +151,7 @@ func (SizeStatic) Set(value int) options.PackageOptionFactory {
 func (pkg *Package) ReturnVar1() (_ types.Atom[int32], err error) {
 	var args []hostio.Value = nil
 	var rn runner.CompiledFunc
-	rn, err = pkg.cacheReturnVar1.Runner(nil, args)
+	rn, err = pkg.cacheReturnVar1.Build(nil, args)
 	if err != nil {
 		return
 	}
@@ -175,7 +175,7 @@ func (pkg *Package) ReturnVar1() (_ types.Atom[int32], err error) {
 func (pkg *Package) NewTwiceSize() (_ types.Array[float32], err error) {
 	var args []hostio.Value = nil
 	var rn runner.CompiledFunc
-	rn, err = pkg.cacheNewTwiceSize.Runner(nil, args)
+	rn, err = pkg.cacheNewTwiceSize.Build(nil, args)
 	if err != nil {
 		return
 	}

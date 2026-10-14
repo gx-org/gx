@@ -209,7 +209,7 @@ func (pkg *Package) NewStruct(arg0 types.Atom[float32]) (_ *Struct, err error) {
 		arg0.Bridge().GXValue(), // offset float32
 	}
 	var rn runner.CompiledFunc
-	rn, err = pkg.cacheNewStruct.Runner(nil, args)
+	rn, err = pkg.cacheNewStruct.Build(nil, args)
 	if err != nil {
 		return
 	}
@@ -236,7 +236,7 @@ func (pkg *Package) AddToStruct(arg0 *Struct) (_ *Struct, err error) {
 		arg0.Bridge().GXValue(), // a parameters.Struct
 	}
 	var rn runner.CompiledFunc
-	rn, err = pkg.cacheAddToStruct.Runner(nil, args)
+	rn, err = pkg.cacheAddToStruct.Build(nil, args)
 	if err != nil {
 		return
 	}
@@ -264,7 +264,7 @@ func (pkg *Package) AddFloat32(arg0 types.Atom[float32], arg1 types.Atom[float32
 		arg1.Bridge().GXValue(), // y float32
 	}
 	var rn runner.CompiledFunc
-	rn, err = pkg.cacheAddFloat32.Runner(nil, args)
+	rn, err = pkg.cacheAddFloat32.Build(nil, args)
 	if err != nil {
 		return
 	}
@@ -291,7 +291,7 @@ func (pkg *Package) AddInt(arg0 types.Atom[int64], arg1 types.Atom[int64]) (_ ty
 		arg1.Bridge().GXValue(), // y int64
 	}
 	var rn runner.CompiledFunc
-	rn, err = pkg.cacheAddInt.Runner(nil, args)
+	rn, err = pkg.cacheAddInt.Build(nil, args)
 	if err != nil {
 		return
 	}
@@ -318,7 +318,7 @@ func (pkg *Package) AddFloat32s(arg0 types.Array[float32], arg1 types.Array[floa
 		arg1.Bridge().GXValue(), // y [Size]float32
 	}
 	var rn runner.CompiledFunc
-	rn, err = pkg.cacheAddFloat32s.Runner(nil, args)
+	rn, err = pkg.cacheAddFloat32s.Build(nil, args)
 	if err != nil {
 		return
 	}
@@ -345,7 +345,7 @@ func (pkg *Package) AddInts(arg0 types.Array[int64], arg1 types.Array[int64]) (_
 		arg1.Bridge().GXValue(), // y [Size]int64
 	}
 	var rn runner.CompiledFunc
-	rn, err = pkg.cacheAddInts.Runner(nil, args)
+	rn, err = pkg.cacheAddInts.Build(nil, args)
 	if err != nil {
 		return
 	}
@@ -371,7 +371,7 @@ func (pkg *Package) Len(arg0 types.Array[float32]) (_ types.Atom[int], err error
 		arg0.Bridge().GXValue(), // x [Size]float32
 	}
 	var rn runner.CompiledFunc
-	rn, err = pkg.cacheLen.Runner(nil, args)
+	rn, err = pkg.cacheLen.Build(nil, args)
 	if err != nil {
 		return
 	}
@@ -395,7 +395,7 @@ func (pkg *Package) Len(arg0 types.Array[float32]) (_ types.Atom[int], err error
 func (pkg *Package) Iota() (_ types.Array[int64], err error) {
 	var args []hostio.Value = nil
 	var rn runner.CompiledFunc
-	rn, err = pkg.cacheIota.Runner(nil, args)
+	rn, err = pkg.cacheIota.Build(nil, args)
 	if err != nil {
 		return
 	}
@@ -421,7 +421,7 @@ func (pkg *Package) SliceArrayArgConstIndex(arg0 types.Array[float32]) (_ types.
 		arg0.Bridge().GXValue(), // a [3][2]float32
 	}
 	var rn runner.CompiledFunc
-	rn, err = pkg.cacheSliceArrayArgConstIndex.Runner(nil, args)
+	rn, err = pkg.cacheSliceArrayArgConstIndex.Build(nil, args)
 	if err != nil {
 		return
 	}
@@ -462,7 +462,7 @@ func (pkg *Package) SliceArrayArg(arg0 types.Array[float32], arg1 types.Atom[int
 		arg1.Bridge().GXValue(), // i int32
 	}
 	var rn runner.CompiledFunc
-	rn, err = pkg.cacheSliceArrayArg.Runner(nil, args)
+	rn, err = pkg.cacheSliceArrayArg.Build(nil, args)
 	if err != nil {
 		return
 	}
@@ -489,7 +489,7 @@ func (pkg *Package) SliceSliceArg(arg0 *types.Slice[types.Array[float32]], arg1 
 		arg1.Bridge().GXValue(), // i int32
 	}
 	var rn runner.CompiledFunc
-	rn, err = pkg.cacheSliceSliceArg.Runner(nil, args)
+	rn, err = pkg.cacheSliceSliceArg.Build(nil, args)
 	if err != nil {
 		return
 	}
@@ -515,7 +515,7 @@ func (pkg *Package) NewNotInSlice(arg0 types.Atom[int32]) (_ *NotInSlice, err er
 		arg0.Bridge().GXValue(), // val int32
 	}
 	var rn runner.CompiledFunc
-	rn, err = pkg.cacheNewNotInSlice.Runner(nil, args)
+	rn, err = pkg.cacheNewNotInSlice.Build(nil, args)
 	if err != nil {
 		return
 	}
@@ -1154,7 +1154,7 @@ func (recv *Struct) SetNotInSlice(arg0 *NotInSlice) (_ *Struct, err error) {
 		arg0.Bridge().GXValue(), // d parameters.NotInSlice
 	}
 	var rn runner.CompiledFunc
-	rn, err = recv.handle.pkg.cacheStructSetNotInSlice.Runner(recv.value, args)
+	rn, err = recv.handle.pkg.cacheStructSetNotInSlice.Build(recv.value, args)
 	if err != nil {
 		return
 	}

@@ -133,7 +133,7 @@ func (pkg *Package) CheckBroadcast(arg0 *types.Slice[types.Atom[int]], arg1 *typ
 		arg1.Bridge().GXValue(), // s2 []int
 	}
 	var rn runner.CompiledFunc
-	rn, err = pkg.cacheCheckBroadcast.Runner(nil, args)
+	rn, err = pkg.cacheCheckBroadcast.Build(nil, args)
 	if err != nil {
 		return
 	}

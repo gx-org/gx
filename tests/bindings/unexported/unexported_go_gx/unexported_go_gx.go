@@ -120,7 +120,7 @@ func Build(dev *core.DeviceSetup) (*PackageHandle, error) {
 func (pkg *Package) New() (_ *unexported, err error) {
 	var args []hostio.Value = nil
 	var rn runner.CompiledFunc
-	rn, err = pkg.cacheNew.Runner(nil, args)
+	rn, err = pkg.cacheNew.Build(nil, args)
 	if err != nil {
 		return
 	}
@@ -295,7 +295,7 @@ func (h *handleunexported) SetField(field *ir.Field, val types.Bridge) error {
 func (recv *unexported) A() (_ types.Atom[float32], err error) {
 	var args []hostio.Value = nil
 	var rn runner.CompiledFunc
-	rn, err = recv.handle.pkg.cacheunexportedA.Runner(recv.value, args)
+	rn, err = recv.handle.pkg.cacheunexportedA.Build(recv.value, args)
 	if err != nil {
 		return
 	}

@@ -141,7 +141,7 @@ func (pkg *Package) New(arg0 types.Atom[int64]) (_ *gxdep0.Rand, err error) {
 		arg0.Bridge().GXValue(), // seed int64
 	}
 	var rn runner.CompiledFunc
-	rn, err = pkg.cacheNew.Runner(nil, args)
+	rn, err = pkg.cacheNew.Build(nil, args)
 	if err != nil {
 		return
 	}
@@ -168,7 +168,7 @@ func (pkg *Package) Sample(arg0 types.Atom[int64]) (_ types.Array[float32], err 
 		arg0.Bridge().GXValue(), // seed int64
 	}
 	var rn runner.CompiledFunc
-	rn, err = pkg.cacheSample.Runner(nil, args)
+	rn, err = pkg.cacheSample.Build(nil, args)
 	if err != nil {
 		return
 	}
@@ -194,7 +194,7 @@ func (pkg *Package) SampleBool(arg0 types.Atom[int64]) (_ types.Array[bool], err
 		arg0.Bridge().GXValue(), // seed int64
 	}
 	var rn runner.CompiledFunc
-	rn, err = pkg.cacheSampleBool.Runner(nil, args)
+	rn, err = pkg.cacheSampleBool.Build(nil, args)
 	if err != nil {
 		return
 	}
@@ -220,7 +220,7 @@ func (pkg *Package) SampleUniformFloat64(arg0 types.Atom[int64]) (_ types.Array[
 		arg0.Bridge().GXValue(), // seed int64
 	}
 	var rn runner.CompiledFunc
-	rn, err = pkg.cacheSampleUniformFloat64.Runner(nil, args)
+	rn, err = pkg.cacheSampleUniformFloat64.Build(nil, args)
 	if err != nil {
 		return
 	}

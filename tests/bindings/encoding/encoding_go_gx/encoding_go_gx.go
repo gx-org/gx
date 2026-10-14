@@ -313,7 +313,7 @@ func (h *handleScalars) SetField(field *ir.Field, val types.Bridge) error {
 func (recv *Scalars) GetTotal() (_ types.Atom[float32], err error) {
 	var args []hostio.Value = nil
 	var rn runner.CompiledFunc
-	rn, err = recv.handle.pkg.cacheScalarsGetTotal.Runner(recv.value, args)
+	rn, err = recv.handle.pkg.cacheScalarsGetTotal.Build(recv.value, args)
 	if err != nil {
 		return
 	}

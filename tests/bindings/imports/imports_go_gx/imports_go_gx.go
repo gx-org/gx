@@ -139,7 +139,7 @@ func Build(dev *core.DeviceSetup) (*PackageHandle, error) {
 func (pkg *Package) NewBasic() (_ *gxdep0.Basic, err error) {
 	var args []hostio.Value = nil
 	var rn runner.CompiledFunc
-	rn, err = pkg.cacheNewBasic.Runner(nil, args)
+	rn, err = pkg.cacheNewBasic.Build(nil, args)
 	if err != nil {
 		return
 	}
@@ -164,7 +164,7 @@ func (pkg *Package) NewBasic() (_ *gxdep0.Basic, err error) {
 func (pkg *Package) NewImporter() (_ *Importer, err error) {
 	var args []hostio.Value = nil
 	var rn runner.CompiledFunc
-	rn, err = pkg.cacheNewImporter.Runner(nil, args)
+	rn, err = pkg.cacheNewImporter.Build(nil, args)
 	if err != nil {
 		return
 	}
@@ -189,7 +189,7 @@ func (pkg *Package) NewImporter() (_ *Importer, err error) {
 func (pkg *Package) ReturnFromBasic() (_ types.Atom[float32], err error) {
 	var args []hostio.Value = nil
 	var rn runner.CompiledFunc
-	rn, err = pkg.cacheReturnFromBasic.Runner(nil, args)
+	rn, err = pkg.cacheReturnFromBasic.Build(nil, args)
 	if err != nil {
 		return
 	}
@@ -361,7 +361,7 @@ func (h *handleImporter) SetField(field *ir.Field, val types.Bridge) error {
 func (recv *Importer) Add() (_ types.Atom[int32], err error) {
 	var args []hostio.Value = nil
 	var rn runner.CompiledFunc
-	rn, err = recv.handle.pkg.cacheImporterAdd.Runner(recv.value, args)
+	rn, err = recv.handle.pkg.cacheImporterAdd.Build(recv.value, args)
 	if err != nil {
 		return
 	}

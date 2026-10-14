@@ -118,7 +118,7 @@ func (pkg *Package) ArgAsArrayIndex(arg0 types.Atom[int]) (_ types.Atom[float32]
 		arg0.Bridge().GXValue(), // i int
 	}
 	var rn runner.CompiledFunc
-	rn, err = pkg.cacheArgAsArrayIndex.Runner(nil, args)
+	rn, err = pkg.cacheArgAsArrayIndex.Build(nil, args)
 	if err != nil {
 		return
 	}

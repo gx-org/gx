@@ -143,7 +143,7 @@ func (UndefStatic) Set(value int) options.PackageOptionFactory {
 func (pkg *Package) CallSum() (_ types.Atom[float32], err error) {
 	var args []hostio.Value = nil
 	var rn runner.CompiledFunc
-	rn, err = pkg.cacheCallSum.Runner(nil, args)
+	rn, err = pkg.cacheCallSum.Build(nil, args)
 	if err != nil {
 		return
 	}
@@ -166,7 +166,7 @@ func (pkg *Package) CallSum() (_ types.Atom[float32], err error) {
 func (pkg *Package) NewUndef() (_ types.Array[float32], err error) {
 	var args []hostio.Value = nil
 	var rn runner.CompiledFunc
-	rn, err = pkg.cacheNewUndef.Runner(nil, args)
+	rn, err = pkg.cacheNewUndef.Build(nil, args)
 	if err != nil {
 		return
 	}

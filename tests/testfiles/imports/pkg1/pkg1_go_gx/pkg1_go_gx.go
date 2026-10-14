@@ -121,7 +121,7 @@ func Build(dev *core.DeviceSetup) (*PackageHandle, error) {
 func (pkg *Package) Const42() (_ types.Atom[int32], err error) {
 	var args []hostio.Value = nil
 	var rn runner.CompiledFunc
-	rn, err = pkg.cacheConst42.Runner(nil, args)
+	rn, err = pkg.cacheConst42.Build(nil, args)
 	if err != nil {
 		return
 	}
@@ -145,7 +145,7 @@ func (pkg *Package) Const42() (_ types.Atom[int32], err error) {
 func (pkg *Package) CallConst42() (_ types.Atom[int32], err error) {
 	var args []hostio.Value = nil
 	var rn runner.CompiledFunc
-	rn, err = pkg.cacheCallConst42.Runner(nil, args)
+	rn, err = pkg.cacheCallConst42.Build(nil, args)
 	if err != nil {
 		return
 	}

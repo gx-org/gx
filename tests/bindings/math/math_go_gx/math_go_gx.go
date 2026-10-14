@@ -129,7 +129,7 @@ func Build(dev *core.DeviceSetup) (*PackageHandle, error) {
 func (pkg *Package) ReturnMaxFloat32() (_ types.Atom[float32], err error) {
 	var args []hostio.Value = nil
 	var rn runner.CompiledFunc
-	rn, err = pkg.cacheReturnMaxFloat32.Runner(nil, args)
+	rn, err = pkg.cacheReturnMaxFloat32.Build(nil, args)
 	if err != nil {
 		return
 	}
@@ -153,7 +153,7 @@ func (pkg *Package) ReturnMaxFloat32() (_ types.Atom[float32], err error) {
 func (pkg *Package) ReturnMaxFloat64() (_ types.Atom[float64], err error) {
 	var args []hostio.Value = nil
 	var rn runner.CompiledFunc
-	rn, err = pkg.cacheReturnMaxFloat64.Runner(nil, args)
+	rn, err = pkg.cacheReturnMaxFloat64.Build(nil, args)
 	if err != nil {
 		return
 	}

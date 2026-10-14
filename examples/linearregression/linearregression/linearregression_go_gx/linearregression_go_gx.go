@@ -172,7 +172,7 @@ func (pkg *Package) NewLearner(arg0 types.Atom[float32]) (_ *Learner, err error)
 		arg0.Bridge().GXValue(), // stepSize float32
 	}
 	var rn runner.CompiledFunc
-	rn, err = pkg.cacheNewLearner.Runner(nil, args)
+	rn, err = pkg.cacheNewLearner.Build(nil, args)
 	if err != nil {
 		return
 	}
@@ -200,7 +200,7 @@ func (pkg *Package) NewTarget(arg0 types.Atom[int64], arg1 types.Atom[float32]) 
 		arg1.Bridge().GXValue(), // bias float32
 	}
 	var rn runner.CompiledFunc
-	rn, err = pkg.cacheNewTarget.Runner(nil, args)
+	rn, err = pkg.cacheNewTarget.Build(nil, args)
 	if err != nil {
 		return
 	}
@@ -402,7 +402,7 @@ func (recv *Learner) Update(arg0 types.Array[float32], arg1 types.Atom[float32])
 		arg1.Bridge().GXValue(), // target float32
 	}
 	var rn runner.CompiledFunc
-	rn, err = recv.handle.pkg.cacheLearnerUpdate.Runner(recv.value, args)
+	rn, err = recv.handle.pkg.cacheLearnerUpdate.Build(recv.value, args)
 	if err != nil {
 		return
 	}
@@ -629,7 +629,7 @@ func (h *handleTarget) SetField(field *ir.Field, val types.Bridge) error {
 func (recv *Target) Sample() (_ *Target, _ types.Array[float32], _ types.Atom[float32], err error) {
 	var args []hostio.Value = nil
 	var rn runner.CompiledFunc
-	rn, err = recv.handle.pkg.cacheTargetSample.Runner(recv.value, args)
+	rn, err = recv.handle.pkg.cacheTargetSample.Build(recv.value, args)
 	if err != nil {
 		return
 	}

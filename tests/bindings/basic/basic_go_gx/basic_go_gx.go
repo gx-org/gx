@@ -151,7 +151,7 @@ func Build(dev *core.DeviceSetup) (*PackageHandle, error) {
 func (pkg *Package) ReturnFloat32() (_ types.Atom[float32], err error) {
 	var args []hostio.Value = nil
 	var rn runner.CompiledFunc
-	rn, err = pkg.cacheReturnFloat32.Runner(nil, args)
+	rn, err = pkg.cacheReturnFloat32.Build(nil, args)
 	if err != nil {
 		return
 	}
@@ -175,7 +175,7 @@ func (pkg *Package) ReturnFloat32() (_ types.Atom[float32], err error) {
 func (pkg *Package) ReturnArrayFloat32() (_ types.Array[float32], err error) {
 	var args []hostio.Value = nil
 	var rn runner.CompiledFunc
-	rn, err = pkg.cacheReturnArrayFloat32.Runner(nil, args)
+	rn, err = pkg.cacheReturnArrayFloat32.Build(nil, args)
 	if err != nil {
 		return
 	}
@@ -199,7 +199,7 @@ func (pkg *Package) ReturnArrayFloat32() (_ types.Array[float32], err error) {
 func (pkg *Package) ReturnMultiple() (_ types.Atom[int32], _ types.Atom[float32], _ types.Atom[float64], err error) {
 	var args []hostio.Value = nil
 	var rn runner.CompiledFunc
-	rn, err = pkg.cacheReturnMultiple.Runner(nil, args)
+	rn, err = pkg.cacheReturnMultiple.Build(nil, args)
 	if err != nil {
 		return
 	}
@@ -237,7 +237,7 @@ func (pkg *Package) ReturnMultiple() (_ types.Atom[int32], _ types.Atom[float32]
 func (pkg *Package) New() (_ *Basic, err error) {
 	var args []hostio.Value = nil
 	var rn runner.CompiledFunc
-	rn, err = pkg.cacheNew.Runner(nil, args)
+	rn, err = pkg.cacheNew.Build(nil, args)
 	if err != nil {
 		return
 	}
@@ -264,7 +264,7 @@ func (pkg *Package) AddPrivate(arg0 *Basic) (_ types.Atom[int32], err error) {
 		arg0.Bridge().GXValue(), // b basic.Basic
 	}
 	var rn runner.CompiledFunc
-	rn, err = pkg.cacheAddPrivate.Runner(nil, args)
+	rn, err = pkg.cacheAddPrivate.Build(nil, args)
 	if err != nil {
 		return
 	}
@@ -697,7 +697,7 @@ func (recv *Basic) Add(arg0 *Basic) (_ types.Atom[int32], err error) {
 		arg0.Bridge().GXValue(), // a basic.Basic
 	}
 	var rn runner.CompiledFunc
-	rn, err = recv.handle.pkg.cacheBasicAdd.Runner(recv.value, args)
+	rn, err = recv.handle.pkg.cacheBasicAdd.Build(recv.value, args)
 	if err != nil {
 		return
 	}
@@ -721,7 +721,7 @@ func (recv *Basic) Add(arg0 *Basic) (_ types.Atom[int32], err error) {
 func (recv *Basic) AddPrivate() (_ types.Atom[int32], err error) {
 	var args []hostio.Value = nil
 	var rn runner.CompiledFunc
-	rn, err = recv.handle.pkg.cacheBasicAddPrivate.Runner(recv.value, args)
+	rn, err = recv.handle.pkg.cacheBasicAddPrivate.Build(recv.value, args)
 	if err != nil {
 		return
 	}
@@ -747,7 +747,7 @@ func (recv *Basic) SetFloat(arg0 types.Atom[float32]) (_ *Basic, err error) {
 		arg0.Bridge().GXValue(), // x float32
 	}
 	var rn runner.CompiledFunc
-	rn, err = recv.handle.pkg.cacheBasicSetFloat.Runner(recv.value, args)
+	rn, err = recv.handle.pkg.cacheBasicSetFloat.Build(recv.value, args)
 	if err != nil {
 		return
 	}

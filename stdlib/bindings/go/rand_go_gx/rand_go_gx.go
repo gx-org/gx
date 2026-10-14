@@ -150,7 +150,7 @@ func (pkg *Package) NewPhilox(arg0 types.Array[uint64]) (_ *Philox, err error) {
 		arg0.Bridge().GXValue(), // seed [3]uint64
 	}
 	var rn runner.CompiledFunc
-	rn, err = pkg.cacheNewPhilox.Runner(nil, args)
+	rn, err = pkg.cacheNewPhilox.Build(nil, args)
 	if err != nil {
 		return
 	}
@@ -177,7 +177,7 @@ func (pkg *Package) New(arg0 *Philox) (_ *Rand, err error) {
 		arg0.Bridge().GXValue(), // src rand.Philox
 	}
 	var rn runner.CompiledFunc
-	rn, err = pkg.cacheNew.Runner(nil, args)
+	rn, err = pkg.cacheNew.Build(nil, args)
 	if err != nil {
 		return
 	}
@@ -204,7 +204,7 @@ func (pkg *Package) NewSource(arg0 types.Atom[int64]) (_ *Philox, err error) {
 		arg0.Bridge().GXValue(), // seed int64
 	}
 	var rn runner.CompiledFunc
-	rn, err = pkg.cacheNewSource.Runner(nil, args)
+	rn, err = pkg.cacheNewSource.Build(nil, args)
 	if err != nil {
 		return
 	}
