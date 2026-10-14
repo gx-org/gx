@@ -19,6 +19,7 @@ import (
 	"sync"
 	"time"
 
+	"github.com/pkg/errors"
 	"github.com/gx-org/gx/api"
 	"github.com/gx-org/gx/api/hostio"
 	"github.com/gx-org/gx/api/runner"
@@ -30,6 +31,7 @@ import (
 type Func interface {
 	Device() *api.Device
 	Build(recv hostio.Value, args []hostio.Value) (runner.CompiledFunc, error)
+	Run(receiver hostio.Value, args []hostio.Value, tracer trace.Callback) ([]hostio.Value, error)
 	Func() *ir.FuncDecl
 	Tracer() trace.Callback
 }
@@ -94,11 +96,23 @@ func (c *funcCache) Build(recv hostio.Value, args []hostio.Value) (runner.Compil
 	return c.runner, c.err
 }
 
+func (c *funcCache) Run(recv hostio.Value, args []hostio.Value, tracer trace.Callback) ([]hostio.Value, error) {
+	runner, err := c.Build(recv, args)
+	if err != nil {
+		return nil, err
+	}
+	return runner.Run(recv, args, tracer)
+}
+
 // funcNoCache runs the function with no compile cache.
 type funcNoCache struct {
 	coreFunc
 }
 
 func (c *funcNoCache) Build(recv hostio.Value, args []hostio.Value) (runner.CompiledFunc, error) {
-	return runner.Trace(c.pkg.devSetup.device, c.fn, recv, args, c.pkg.devSetup.opts)
+	return nil, errors.Errorf("cannot build a function for backend %T: does not support graph compilation", c.coreFunc.Device().Backend())
+}
+
+func (c *funcNoCache) Run(recv hostio.Value, args []hostio.Value, tracer trace.Callback) ([]hostio.Value, error) {
+	return runner.Run(c.pkg.devSetup.device, c.fn, recv, args, c.pkg.devSetup.opts)
 }
