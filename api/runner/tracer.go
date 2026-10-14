@@ -12,9 +12,10 @@
 // See the License for the specific language governing permissions and
 // limitations under the License.
 
-// Package tracer implements a context and evaluator for the interpreter
-// which builds a graph by tracing operators being executed when GX code is interpreted.
-package tracer
+// Package runner runs GX function, mostly in two different mode.
+// First, as a trace mode where GX is executed to build a graph which will then be compiled a run.
+// Second, as a run mode where GX is executed like other interpreted language.
+package runner
 
 import (
 	"fmt"

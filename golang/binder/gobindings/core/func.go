@@ -21,15 +21,15 @@ import (
 
 	"github.com/gx-org/gx/api"
 	"github.com/gx-org/gx/api/hostio"
+	"github.com/gx-org/gx/api/runner"
 	"github.com/gx-org/gx/api/trace"
-	"github.com/gx-org/gx/api/tracer"
 	"github.com/gx-org/gx/build/ir"
 )
 
 // Func wraps a GX function, sometimes in a cache to prevent unnecessary recompilation.
 type Func interface {
 	Device() *api.Device
-	Runner(recv hostio.Value, args []hostio.Value) (tracer.CompiledFunc, error)
+	Runner(recv hostio.Value, args []hostio.Value) (runner.CompiledFunc, error)
 	Func() *ir.FuncDecl
 	Tracer() trace.Callback
 }
@@ -58,7 +58,7 @@ func (c coreFunc) Tracer() trace.Callback {
 type funcCache struct {
 	coreFunc
 
-	runner   tracer.CompiledFunc
+	runner   runner.CompiledFunc
 	err      error
 	initOnce sync.Once
 }
@@ -72,13 +72,13 @@ func newFuncCache(pkg *PackageCompileSetup, fn *ir.FuncDecl) Func {
 	return &funcNoCache{coreFunc: coreF}
 }
 
-func (c *funcCache) buildRunner(recv hostio.Value, args []hostio.Value) (_ tracer.CompiledFunc, err error) {
+func (c *funcCache) buildRunner(recv hostio.Value, args []hostio.Value) (_ runner.CompiledFunc, err error) {
 	log.Printf("GX Tracing %s.%s with options %s", c.fn.FFile.Package.Name.Name, c.fn.Name(), optionsToString(c.pkg.devSetup.opts))
 	now := time.Now()
 	defer func() {
 		log.Printf("GX Tracing %s.%s: DONE. Time: %v.", c.fn.FFile.Package.Name.Name, c.fn.Name(), time.Since(now))
 	}()
-	runner, err := tracer.Trace(c.pkg.devSetup.device, c.fn, recv, args, c.pkg.devSetup.opts)
+	runner, err := runner.Trace(c.pkg.devSetup.device, c.fn, recv, args, c.pkg.devSetup.opts)
 	if err != nil {
 		return nil, err
 	}
@@ -87,7 +87,7 @@ func (c *funcCache) buildRunner(recv hostio.Value, args []hostio.Value) (_ trace
 
 // Runner compiles the function if it has not been done before.
 // Returns the function compiled or an error.
-func (c *funcCache) Runner(recv hostio.Value, args []hostio.Value) (tracer.CompiledFunc, error) {
+func (c *funcCache) Runner(recv hostio.Value, args []hostio.Value) (runner.CompiledFunc, error) {
 	c.initOnce.Do(func() {
 		c.runner, c.err = c.buildRunner(recv, args)
 	})
@@ -99,6 +99,6 @@ type funcNoCache struct {
 	coreFunc
 }
 
-func (c *funcNoCache) Runner(recv hostio.Value, args []hostio.Value) (tracer.CompiledFunc, error) {
-	return tracer.Trace(c.pkg.devSetup.device, c.fn, recv, args, c.pkg.devSetup.opts)
+func (c *funcNoCache) Runner(recv hostio.Value, args []hostio.Value) (runner.CompiledFunc, error) {
+	return runner.Trace(c.pkg.devSetup.device, c.fn, recv, args, c.pkg.devSetup.opts)
 }

@@ -23,7 +23,7 @@ import (
 	"github.com/gx-org/gx/api"
 	"github.com/gx-org/gx/api/hostio"
 	"github.com/gx-org/gx/api/options"
-	"github.com/gx-org/gx/api/tracer"
+	"github.com/gx-org/gx/api/runner"
 	"github.com/gx-org/gx/api/values"
 	gxfmt "github.com/gx-org/gx/base/fmt"
 	"github.com/gx-org/gx/build/builder/testbuild"
@@ -64,12 +64,12 @@ func (r *Runner) Run(fn *ir.FuncDecl, options []options.PackageOption) ([]hostio
 
 // RunWithArgs compiles a function into a XLA graph, runs it, and returns the result.
 func (r *Runner) RunWithArgs(fn *ir.FuncDecl, recv hostio.Value, args []hostio.Value, options []options.PackageOption) ([]hostio.Value, string, error) {
-	runner, err := tracer.Trace(r.dev, fn, recv, args, options)
+	rn, err := runner.Trace(r.dev, fn, recv, args, options)
 	if err != nil {
 		return nil, "", err
 	}
 	tracer := testTracer{}
-	outs, err := runner.Run(nil, nil, &tracer)
+	outs, err := rn.Run(nil, nil, &tracer)
 	if err != nil {
 		return nil, "", err
 	}

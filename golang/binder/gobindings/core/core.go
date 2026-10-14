@@ -22,8 +22,8 @@ import (
 	"github.com/pkg/errors"
 	"github.com/gx-org/gx/api"
 	"github.com/gx-org/gx/api/options"
+	"github.com/gx-org/gx/api/runner"
 	"github.com/gx-org/gx/api/trace"
-	"github.com/gx-org/gx/api/tracer"
 	"github.com/gx-org/gx/build/importers"
 	"github.com/gx-org/gx/build/ir"
 )
@@ -77,7 +77,7 @@ type PackageCompileSetup struct {
 }
 
 func (s *PackageCompileSetup) canCompileGraph() bool {
-	_, ok := s.devSetup.Runtime().Backend().(tracer.EagerBackend)
+	_, ok := s.devSetup.Runtime().Backend().(runner.EagerBackend)
 	return !ok
 }
 
