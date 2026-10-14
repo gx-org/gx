@@ -143,9 +143,9 @@ func (s *FuncType) Specialise(spec Specialiser) (Type, bool) {
 
 // AllParams returns a list of all the parameters of the function, including non-type generic parameters.
 func (s *FuncType) AllParams() []*Field {
-	all := s.Params.Fields()
+	all := s.GenParams.Fields.Fields()
 	// Fields already create a new slice. So we can reuse it.
-	return append(all, s.GenParams.Fields.Fields()...)
+	return append(all, s.Params.Fields()...)
 }
 
 // NumAllParams returns the number of parameters of the function

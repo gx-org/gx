@@ -474,7 +474,7 @@ func (ao *Ops) FuncInputsToElements(ev ir.Evaluator, fn ir.Func, receiver ir.Ele
 	// Build backend nodes for the parameter of the function.
 	paramFields := fType.Params.Fields()
 	for i, param := range paramFields {
-		argNode, err := vis.visitArg(param, i, args[i])
+		argNode, err := vis.visitArg(param, i, args[i+numGenArgs])
 		if err != nil {
 			return nil, err
 		}
