@@ -26,7 +26,7 @@ import (
 	"github.com/gx-org/gx/api"
 	"github.com/gx-org/gx/api/hostio"
 	"github.com/gx-org/gx/api/options"
-	"github.com/gx-org/gx/api/tracer"
+	"github.com/gx-org/gx/api/runner"
 	"github.com/gx-org/gx/api/values"
 	"github.com/gx-org/gx/build/ir"
 	"github.com/gx-org/gx/golang/binder/gobindings/core"
@@ -46,7 +46,7 @@ var (
 	_ = errors.Errorf
 	_ = types.NewSlice[types.Bridger]
 	_ = ir.NamedType{}
-	_ = tracer.Trace
+	_ = runner.Trace
 )
 
 // BuildFor loads the GX package github.com/gx-org/gx/tests/bindings/arrays
@@ -88,7 +88,7 @@ type Package struct {
 	handle PackageHandle
 
 	// Functions and methods cache
-	cacheArgAsArrayIndex *core.FuncCache
+	cacheArgAsArrayIndex core.Func
 }
 
 // Build builds a package for a device once it has been loaded.
@@ -104,7 +104,7 @@ func Build(dev *core.DeviceSetup) (*PackageHandle, error) {
 	// Build dependencies.
 
 	// Initialise function and method caches.
-	pkg.cacheArgAsArrayIndex, err = pkg.handle.NewCache("", "ArgAsArrayIndex")
+	pkg.cacheArgAsArrayIndex, err = pkg.handle.NewFunc("", "ArgAsArrayIndex")
 	if err != nil {
 		return nil, err
 	}
@@ -117,13 +117,13 @@ func (pkg *Package) ArgAsArrayIndex(arg0 types.Atom[int]) (_ types.Atom[float32]
 	var args []hostio.Value = []hostio.Value{
 		arg0.Bridge().GXValue(), // i int
 	}
-	var runner tracer.CompiledFunc
-	runner, err = pkg.cacheArgAsArrayIndex.Runner(nil, args)
+	var rn runner.CompiledFunc
+	rn, err = pkg.cacheArgAsArrayIndex.Runner(nil, args)
 	if err != nil {
 		return
 	}
 	var outputs []hostio.Value
-	outputs, err = runner.Run(nil, args, pkg.handle.Tracer())
+	outputs, err = rn.Run(nil, args, pkg.handle.Tracer())
 	if err != nil {
 		return
 	}
