@@ -53,7 +53,7 @@ func extractGraphNodes(ao materialise.Materialiser, els []ir.Element) ([]compute
 		if err != nil {
 			return nil, err
 		}
-		nodes = append(nodes, node.OutNode().Node)
+		nodes = append(nodes, node.Value())
 	}
 	return nodes, nil
 }
