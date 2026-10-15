@@ -51,7 +51,7 @@ var Package = builtin.PackageBuilder{
 
 func evalTranspose(env *engine.Env, call *ir.FuncCallExpr, recv ir.Element, genArgs, args []ir.Element) ([]ir.Element, error) {
 	mat := builtin.Materialiser(env)
-	argNode, argShape, err := materialise.Element(mat, args[0])
+	argNode, argShape, err := materialise.ElementWithShape(mat, args[0])
 	if err != nil {
 		return nil, err
 	}

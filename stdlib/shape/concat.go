@@ -136,7 +136,7 @@ func evalConcat(env *engine.Env, call *ir.FuncCallExpr, recv ir.Element, genArgs
 		return nil, err
 	}
 	mat := builtin.Materialiser(env)
-	nodes, _, err := materialise.All(mat, arrays.Elements())
+	nodes, err := materialise.All(mat, arrays.Elements())
 	if err != nil {
 		return nil, err
 	}

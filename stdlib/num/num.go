@@ -62,11 +62,11 @@ func evalMatMul(env *engine.Env, call *ir.FuncCallExpr, recv ir.Element, genArgs
 
 func evalDot(env *engine.Env, call *ir.FuncCallExpr, recv ir.Element, x ir.Element, y ir.Element) ([]ir.Element, error) {
 	mat := builtin.Materialiser(env)
-	xNode, xShape, err := materialise.Element(mat, x)
+	xNode, xShape, err := materialise.ElementWithShape(mat, x)
 	if err != nil {
 		return nil, err
 	}
-	yNode, _, err := materialise.Element(mat, y)
+	yNode, err := materialise.Element(mat, y)
 	if err != nil {
 		return nil, err
 	}
@@ -80,7 +80,7 @@ func evalDot(env *engine.Env, call *ir.FuncCallExpr, recv ir.Element, x ir.Eleme
 
 func evalArgMax(env *engine.Env, call *ir.FuncCallExpr, recv ir.Element, genArgs, args []ir.Element) ([]ir.Element, error) {
 	mat := builtin.Materialiser(env)
-	argNode, _, err := materialise.Element(mat, args[0])
+	argNode, err := materialise.Element(mat, args[0])
 	if err != nil {
 		return nil, err
 	}
@@ -105,7 +105,7 @@ func evalReduce(env *engine.Env, call *ir.FuncCallExpr, recv ir.Element, genArgs
 		return []ir.Element{args[0]}, nil
 	}
 	mat := builtin.Materialiser(env)
-	x, _, err := materialise.Element(mat, args[0])
+	x, err := materialise.Element(mat, args[0])
 	if err != nil {
 		return nil, err
 	}

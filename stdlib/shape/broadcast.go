@@ -108,7 +108,7 @@ func evalBroadcast(env *engine.Env, call *ir.FuncCallExpr, recv ir.Element, genA
 		broadcastAxes[i] = i
 	}
 	mat := builtin.Materialiser(env)
-	x, xShape, err := materialise.Element(mat, args[0])
+	x, xShape, err := materialise.ElementWithShape(mat, args[0])
 	if err != nil {
 		return nil, err
 	}

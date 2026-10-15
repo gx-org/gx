@@ -81,7 +81,7 @@ func splitAxis(env *engine.Env, call *ir.FuncCallExpr, recv ir.Element, genArgs,
 
 func evalSplit(env *engine.Env, call *ir.FuncCallExpr, recv ir.Element, genArgs, args []ir.Element) ([]ir.Element, error) {
 	mat := builtin.Materialiser(env)
-	node, firstArgShape, err := materialise.Element(mat, args[0])
+	node, firstArgShape, err := materialise.ElementWithShape(mat, args[0])
 	if err != nil {
 		return nil, err
 	}

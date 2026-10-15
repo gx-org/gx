@@ -102,11 +102,11 @@ func evalGather(env *engine.Env, call *ir.FuncCallExpr, recv ir.Element, genArgs
 	}
 
 	mat := builtin.Materialiser(env)
-	x, _, err := materialise.Element(mat, args[0])
+	x, err := materialise.Element(mat, args[0])
 	if err != nil {
 		return nil, err
 	}
-	indicesNode, _, err := materialise.Element(mat, args[1])
+	indicesNode, err := materialise.Element(mat, args[1])
 	if err != nil {
 		return nil, err
 	}
