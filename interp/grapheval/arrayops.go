@@ -63,7 +63,7 @@ func (ao *Ops) SubGraph(name string) (engine.Engine, error) {
 
 // Einsum calls an einstein sum on x and y given the expression in ref.
 func (ao *Ops) Einsum(ev ir.Evaluator, ref *ir.EinsumExpr, x, y engine.NumericalElement) (engine.NumericalElement, error) {
-	xNode, xShape, err := materialise.Element(ao, x)
+	xNode, _, err := materialise.Element(ao, x)
 	if err != nil {
 		return nil, err
 	}
@@ -79,21 +79,7 @@ func (ao *Ops) Einsum(ev ir.Evaluator, ref *ir.EinsumExpr, x, y engine.Numerical
 	if err != nil {
 		return nil, fmterr.Error(ev.File().FileSet(), ref.Src, err)
 	}
-	sh, err := ao.graph.Shape(dotNode)
-	if err != nil {
-		return nil, err
-	}
-	targetShape := shapes.Shape{
-		DType:      xShape.DType,
-		Dimensions: sh.Dimensions,
-	}
-	return NewBackendNode(
-		ao,
-		typ,
-		&materialise.OutputNode{
-			Node:  dotNode,
-			Shape: targetShape,
-		})
+	return NewBackendNode(ao, typ, dotNode)
 }
 
 func elementsToInt(els []engine.NumericalElement) ([]int, error) {
@@ -133,28 +119,18 @@ func (ao *Ops) BroadcastInDim(ctx ir.Evaluator, expr ir.Expr, x engine.Numerical
 	if err != nil {
 		return nil, err
 	}
-	return NewBackendNode(
-		ao,
-		expr.Type(),
-		&materialise.OutputNode{
-			Node:  reshaped,
-			Shape: targetShape,
-		})
+	return NewBackendNode(ao, expr.Type(), reshaped)
 }
 
 // Concat concatenates elements into a 1D array.
 func (ao *Ops) Concat(ctx ir.Evaluator, expr ir.Expr, xs []engine.NumericalElement) (engine.NumericalElement, error) {
 	nodes := make([]compute.Value, len(xs))
-	var dtype dtypes.DType
-	var totalSize int
 	for i, x := range xs {
 		iNode, iShape, err := materialise.Element(ao, x)
 		if err != nil {
 			return nil, err
 		}
-		dtype = iShape.DType
 		size := iShape.Size()
-		totalSize += size
 		// Reshape elements to 1D arrays to work with Concat.
 		iNodeArray, err := ao.graph.Reshape(iNode, size)
 		if err != nil {
@@ -166,16 +142,7 @@ func (ao *Ops) Concat(ctx ir.Evaluator, expr ir.Expr, xs []engine.NumericalEleme
 	if err != nil {
 		return nil, err
 	}
-	return NewBackendNode(
-		ao,
-		expr.Type(),
-		&materialise.OutputNode{
-			Node: array1d,
-			Shape: shapes.Shape{
-				DType:      dtype,
-				Dimensions: []int{totalSize},
-			},
-		})
+	return NewBackendNode(ao, expr.Type(), array1d)
 }
 
 // Set a slice in an array.
@@ -221,23 +188,7 @@ func (ao *Ops) Set(ctx ir.Evaluator, expr *ir.FuncCallExpr, x, updates ir.Elemen
 	if err != nil {
 		return nil, err
 	}
-	return NewBackendNode(
-		ao,
-		expr.Type(),
-		&materialise.OutputNode{
-			Node:  setNode,
-			Shape: xShape,
-		})
-}
-
-func unpackOutputs(outputs []*materialise.OutputNode) ([]compute.Value, []shapes.Shape) {
-	nodes := make([]compute.Value, len(outputs))
-	shapesList := make([]shapes.Shape, len(outputs))
-	for i, output := range outputs {
-		nodes[i] = output.Node
-		shapesList[i] = output.Shape
-	}
-	return nodes, shapesList
+	return NewBackendNode(ao, expr.Type(), setNode)
 }
 
 func constantFromBytes(g compute.Function, data []byte, sh shapes.Shape) (compute.Value, error) {
@@ -277,14 +228,11 @@ func (ao *Ops) NodeFromArray(val *hostio.HostArray) (materialise.Node, error) {
 	if err != nil {
 		return nil, err
 	}
-	return NewBackendNode(ao, val.Type(), &materialise.OutputNode{
-		Node:  cstNode,
-		Shape: val.Shape(),
-	})
+	return NewBackendNode(ao, val.Type(), cstNode)
 }
 
 // ElementsFromNodes returns a slice of elements from nodes
-func (ao *Ops) ElementsFromNodes(ev ir.Evaluator, nodes []*materialise.OutputNode, types []ir.Type) ([]ir.Element, error) {
+func (ao *Ops) ElementsFromNodes(ev ir.Evaluator, nodes []compute.Value, types []ir.Type) ([]ir.Element, error) {
 	els := make([]ir.Element, len(nodes))
 	for i, node := range nodes {
 		tp, err := concrete.Concrete(ev, types[i])
@@ -314,14 +262,11 @@ func (ao *Ops) EvalCond(ev ir.Evaluator, el ir.Element) (bool, error) {
 	return constants.Convert(constants.CBool, el)
 }
 
-func (ao *Ops) elementsFromTupleNode(file *ir.File, tupleNodes []compute.Value, tupleType *ir.TupleType, shps []shapes.Shape) ([]ir.Element, error) {
+func (ao *Ops) elementsFromTupleNode(tupleNodes []compute.Value, tupleType *ir.TupleType) ([]ir.Element, error) {
 	elts := make([]ir.Element, len(tupleNodes))
 	for i, node := range tupleNodes {
 		var err error
-		elts[i], err = NewBackendNode(ao, tupleType.Types[i], &materialise.OutputNode{
-			Node:  node,
-			Shape: shps[i],
-		})
+		elts[i], err = NewBackendNode(ao, tupleType.Types[i], node)
 		if err != nil {
 			return nil, err
 		}
@@ -340,7 +285,7 @@ func (ao *Ops) ElementFromTuple(file *ir.File, expr ir.Expr, tpl []compute.Value
 	for i, field := range structTyp.Fields.Fields() {
 		structTuple.Types[i] = field.Type()
 	}
-	els, err := ao.elementsFromTupleNode(file, tpl, structTuple, shps)
+	els, err := ao.elementsFromTupleNode(tpl, structTuple)
 	if err != nil {
 		return nil, err
 	}

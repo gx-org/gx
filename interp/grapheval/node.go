@@ -20,7 +20,6 @@ import (
 
 	"github.com/pkg/errors"
 	"github.com/gomlx/compute"
-	"github.com/gomlx/compute/dtypes"
 	"github.com/gomlx/compute/shapes"
 	"github.com/gx-org/gx/api/hostio"
 	"github.com/gx-org/gx/build/fmterr"
@@ -40,9 +39,9 @@ type (
 
 	// BackendNode is a state element owning a node in the backend graph.
 	BackendNode struct {
-		ao  *Ops
-		nod *materialise.OutputNode
-		typ ir.Type
+		ao   *Ops
+		node compute.Value
+		typ  ir.Type
 	}
 )
 
@@ -50,6 +49,7 @@ var (
 	_ elements.Slicer                 = (*BackendNode)(nil)
 	_ engine.Copier                   = (*BackendNode)(nil)
 	_ materialise.ElementMaterialiser = (*BackendNode)(nil)
+	_ materialise.Node                = (*BackendNode)(nil)
 	_ engine.NumericalElement         = (*BackendNode)(nil)
 	_ ir.WithLength                   = (*BackendNode)(nil)
 	_ graphNode                       = (*BackendNode)(nil)
@@ -57,44 +57,15 @@ var (
 )
 
 // NewBackendNode returns an element representing a node in the backend graph.
-func NewBackendNode(ev *Ops, typ ir.Type, node *materialise.OutputNode) (*BackendNode, error) {
-	if err := checkShape(node); err != nil {
-		return nil, err
-	}
+func NewBackendNode(ev *Ops, typ ir.Type, node compute.Value) (*BackendNode, error) {
 	if err := checkIsConcrete(typ); err != nil {
 		return nil, err
 	}
-	if _, err := ir.ToArrayTypeGivenShape(nil, typ, node.Shape); err != nil {
-		return nil, errors.Errorf("cannot create a backend node: %v", err)
-	}
 	return &BackendNode{
-		ao:  ev,
-		typ: typ,
-		nod: node,
+		ao:   ev,
+		typ:  typ,
+		node: node,
 	}, nil
-}
-
-// hasShape is a node in the graph with a shape inferred by the backend.
-type hasShape interface {
-	// BackendShape returns the shape inferred by the backend.
-	BackendShape() shapes.Shape
-}
-
-func checkShape(node *materialise.OutputNode) error {
-	want := node.Shape
-	nodeWithShape, ok := node.Node.(hasShape)
-	if !ok {
-		return nil
-	}
-	got := nodeWithShape.BackendShape()
-	gotDType := got.DType
-	if gotDType != want.DType {
-		return errors.Errorf("backend returned a buffer with a %s data type but GX expects a %s data type", got.DType, want.DType)
-	}
-	if got.Size() != want.Size() {
-		return errors.Errorf("backend returned a buffer with axis lengths %v but GX expects %v", got.Dimensions, want.Dimensions)
-	}
-	return nil
 }
 
 func checkIsConcrete(typ ir.Type) error {
@@ -111,13 +82,16 @@ func checkIsConcrete(typ ir.Type) error {
 }
 
 func (n *BackendNode) out() compute.Value {
-	return n.nod.Node
+	return n.node
 }
 
 // BinaryOp applies a binary operator to x and y.
 func (n *BackendNode) BinaryOp(env *engine.Env, expr *ir.BinaryExpr, y engine.NumericalElement) (_ engine.NumericalElement, err error) {
-	xNode, xShape := n.nod.Node, n.nod.Shape
-	yNode, yShape, err := materialise.Element(n.ao, y)
+	xNode, xShape, err := materialise.Element(n.ao, n)
+	if err != nil {
+		return nil, fmt.Errorf("cannot materialise %s in %s: %w", expr.X.SourceString(nil), expr.SourceString(nil), err)
+	}
+	yNode, _, err := materialise.Element(n.ao, y)
 	if err != nil {
 		return nil, fmt.Errorf("cannot materialise %s in %s: %w", expr.Y.SourceString(nil), expr.SourceString(nil), err)
 	}
@@ -170,27 +144,11 @@ func (n *BackendNode) BinaryOp(env *engine.Env, expr *ir.BinaryExpr, y engine.Nu
 	if err != nil {
 		return nil, fmterr.Errorf(env.File().FileSet(), expr.Src, "cannot create binary operation for %v%s%v: %v", n, expr.Src.Op, y, err)
 	}
-	targetShape := shapes.Shape{
-		DType:      xShape.DType,
-		Dimensions: xShape.Dimensions,
-	}
-	if ir.IsBoolOp(expr.Src.Op) {
-		targetShape.DType = dtypes.Bool
-	}
-	if len(yShape.Dimensions) > 0 {
-		targetShape.Dimensions = yShape.Dimensions
-	}
 	typ, err := concrete.Concrete(env.ExprEval(), expr.Typ)
 	if err != nil {
 		return nil, fmterr.Error(env.File().FileSet(), expr.Src, err)
 	}
-	return NewBackendNode(
-		n.ao,
-		typ,
-		&materialise.OutputNode{
-			Node:  binaryNode,
-			Shape: targetShape,
-		})
+	return NewBackendNode(n.ao, typ, binaryNode)
 }
 
 // UnaryOp applies a unary operator on x.
@@ -202,9 +160,9 @@ func (n *BackendNode) UnaryOp(env *engine.Env, expr *ir.UnaryExpr) (engine.Numer
 	var err error
 	switch expr.Src.Op {
 	case token.SUB:
-		unaryNode, err = n.ao.Graph().Neg(n.nod.Node)
+		unaryNode, err = n.ao.Graph().Neg(n.node)
 	case token.NOT:
-		unaryNode, err = n.ao.Graph().LogicalNot(n.nod.Node)
+		unaryNode, err = n.ao.Graph().LogicalNot(n.node)
 	default:
 		return nil, fmterr.InternalAt(env.File().FileSet(), expr.Src, "unary operator %s for %T not implemented", expr.Src.Op, n)
 	}
@@ -215,19 +173,13 @@ func (n *BackendNode) UnaryOp(env *engine.Env, expr *ir.UnaryExpr) (engine.Numer
 	if err != nil {
 		return nil, fmterr.Error(env.File().FileSet(), expr.Src, err)
 	}
-	return NewBackendNode(
-		n.ao,
-		typ,
-		&materialise.OutputNode{
-			Node:  unaryNode,
-			Shape: n.nod.Shape,
-		})
+	return NewBackendNode(n.ao, typ, unaryNode)
 }
 
 // Cast an element into a given data type.
 func (n *BackendNode) Cast(env *engine.Env, expr ir.Expr, target ir.Type) (engine.NumericalElement, error) {
 	targetKind := target.Kind().DType()
-	casted, err := n.ao.Graph().ConvertDType(n.nod.Node, targetKind)
+	casted, err := n.ao.Graph().ConvertDType(n.node, targetKind)
 	if err != nil {
 		return nil, err
 	}
@@ -235,16 +187,7 @@ func (n *BackendNode) Cast(env *engine.Env, expr ir.Expr, target ir.Type) (engin
 	if err != nil {
 		return nil, fmterr.Error(env.File().FileSet(), expr.Node(), err)
 	}
-	return NewBackendNode(
-		n.ao,
-		typ,
-		&materialise.OutputNode{
-			Node: casted,
-			Shape: shapes.Shape{
-				DType:      targetKind,
-				Dimensions: n.nod.Shape.Dimensions,
-			},
-		})
+	return NewBackendNode(n.ao, typ, casted)
 }
 
 // Reshape an element into a given shape.
@@ -257,20 +200,11 @@ func (n *BackendNode) Reshape(env *engine.Env, expr ir.Expr, axisLengths []engin
 			return nil, err
 		}
 	}
-	reshaped, err := n.ao.Graph().Reshape(n.nod.Node, axes...)
+	reshaped, err := n.ao.Graph().Reshape(n.node, axes...)
 	if err != nil {
 		return nil, err
 	}
-	return NewBackendNode(
-		n.ao,
-		expr.Type(),
-		&materialise.OutputNode{
-			Node: reshaped,
-			Shape: shapes.Shape{
-				DType:      n.nod.Shape.DType,
-				Dimensions: axes,
-			},
-		})
+	return NewBackendNode(n.ao, expr.Type(), reshaped)
 }
 
 // SliceAt of the value on the first axis given an index.
@@ -287,7 +221,10 @@ func (n *BackendNode) sliceArrayFromConstant(expr ir.Expr, index engine.Constant
 	if err != nil {
 		return nil, err
 	}
-	shape := n.Shape()
+	shape, err := n.EvalShape()
+	if err != nil {
+		return nil, err
+	}
 	rank := len(shape.Dimensions)
 	starts := make([]int, rank)
 	limits := make([]int, rank)
@@ -299,7 +236,7 @@ func (n *BackendNode) sliceArrayFromConstant(expr ir.Expr, index engine.Constant
 	}
 	starts[0] = i
 	limits[0] = i + 1
-	sliced, err := n.ao.Graph().Slice(n.nod.Node, starts, limits, strides)
+	sliced, err := n.ao.Graph().Slice(n.node, starts, limits, strides)
 	if err != nil {
 		return nil, err
 	}
@@ -307,17 +244,15 @@ func (n *BackendNode) sliceArrayFromConstant(expr ir.Expr, index engine.Constant
 	if err != nil {
 		return nil, err
 	}
-	return NewBackendNode(n.ao, expr.Type(), &materialise.OutputNode{
-		Node: sliceNode,
-		Shape: shapes.Shape{
-			DType:      shape.DType,
-			Dimensions: shape.Dimensions[1:],
-		},
-	})
+	return NewBackendNode(n.ao, expr.Type(), sliceNode)
 }
 
 func (n *BackendNode) sliceArrayFromNode(expr ir.Expr, index graphNode) (engine.NumericalElement, error) {
-	remaining := n.Shape().Dimensions[1:]
+	shape, err := n.EvalShape()
+	if err != nil {
+		return nil, err
+	}
+	remaining := shape.Dimensions[1:]
 
 	indexNode := index.out()
 	// XLA Gather parameters for indexing axis 0 of the operand:
@@ -332,17 +267,11 @@ func (n *BackendNode) sliceArrayFromNode(expr ir.Expr, index graphNode) (engine.
 	for i := range offsetAxes {
 		offsetAxes[i] = i
 	}
-	sliceNode, err := n.ao.Graph().Gather(n.nod.Node, indexNode, 0, offsetAxes, []int{0}, []int{0}, sliceSizes, false)
+	sliceNode, err := n.ao.Graph().Gather(n.node, indexNode, 0, offsetAxes, []int{0}, []int{0}, sliceSizes, false)
 	if err != nil {
 		return nil, err
 	}
-	return NewBackendNode(n.ao, expr.Type(), &materialise.OutputNode{
-		Node: sliceNode,
-		Shape: shapes.Shape{
-			DType:      n.Shape().DType,
-			Dimensions: remaining,
-		},
-	})
+	return NewBackendNode(n.ao, expr.Type(), sliceNode)
 }
 
 // SliceArray of the value on the first axis given an index.
@@ -366,7 +295,11 @@ func shapeLength(sh shapes.Shape) (int, error) {
 
 // Length returns the evaluation of the len built-in.
 func (n *BackendNode) Length(ev ir.Evaluator) (int, error) {
-	return shapeLength(n.Shape())
+	sh, err := n.EvalShape()
+	if err != nil {
+		return 0, err
+	}
+	return shapeLength(sh)
 }
 
 // Unflatten consumes the next handles to return a GX value.
@@ -379,14 +312,9 @@ func (n *BackendNode) Copy() engine.Copier {
 	return n
 }
 
-// Shape returns the shape of the element.
-func (n *BackendNode) Shape() shapes.Shape {
-	return n.nod.Shape
-}
-
 // EvalShape returns the shape of the element.
 func (n *BackendNode) EvalShape() (shapes.Shape, error) {
-	return n.nod.Shape, nil
+	return n.ao.graph.Builder().OpShape(n.node)
 }
 
 // Type of the element.
@@ -399,12 +327,16 @@ func (n *BackendNode) Materialise(materialise.Materialiser) (materialise.Node, e
 	return n, nil
 }
 
-// OutNode returns the graph node.
-func (n *BackendNode) OutNode() *materialise.OutputNode {
-	return n.nod
+// Value returns the graph node.
+func (n *BackendNode) Value() compute.Value {
+	return n.node
 }
 
 // String representation of the backend node.
 func (n *BackendNode) String() string {
-	return n.nod.String()
+	sh, err := n.EvalShape()
+	if err != nil {
+		return fmt.Sprintf("invalid(%v): %v", err, n.node)
+	}
+	return fmt.Sprintf("%s: %v", sh.String(), n.node)
 }

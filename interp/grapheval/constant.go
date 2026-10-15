@@ -15,7 +15,6 @@
 package grapheval
 
 import (
-	"github.com/gomlx/compute/shapes"
 	"github.com/gx-org/gx/api/hostio"
 	"github.com/gx-org/gx/build/fmterr"
 	"github.com/gx-org/gx/build/ir"
@@ -62,18 +61,7 @@ func newConstant(ctx ir.Evaluator, ev *Ops, cst engine.Constant) (*constant, err
 	if err != nil {
 		return nil, err
 	}
-	axlens, err := cst.AxisLengths()
-	if err != nil {
-		return nil, err
-	}
-	shape := shapes.Shape{
-		DType:      kind.DType(),
-		Dimensions: axlens,
-	}
-	node, err := NewBackendNode(ev, ctyp, &materialise.OutputNode{
-		Node:  cstNode,
-		Shape: shape,
-	})
+	node, err := NewBackendNode(ev, ctyp, cstNode)
 	if err != nil {
 		return nil, err
 	}
@@ -144,7 +132,7 @@ func (n *constant) Cast(env *engine.Env, expr ir.Expr, target ir.Type) (engine.N
 
 // Length returns the value corresponding to calling the built-in len.
 func (n *constant) Length(ev ir.Evaluator) (int, error) {
-	return shapeLength(n.Shape())
+	return n.BackendNode.Length(ev)
 }
 
 func (n *constant) Type() ir.Type {

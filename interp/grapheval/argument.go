@@ -428,13 +428,7 @@ func (n *arrayArgument) materialise(mat materialise.Materialiser) (*BackendNode,
 	if err != nil {
 		return nil, err
 	}
-	n.node, err = NewBackendNode(
-		mat.(*Ops),
-		n.typ,
-		&materialise.OutputNode{
-			Node:  op,
-			Shape: n.shape,
-		})
+	n.node, err = NewBackendNode(mat.(*Ops), n.typ, op)
 	if err != nil {
 		return nil, err
 	}
