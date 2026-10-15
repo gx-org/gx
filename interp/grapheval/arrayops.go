@@ -63,11 +63,11 @@ func (ao *Ops) SubGraph(name string) (engine.Engine, error) {
 
 // Einsum calls an einstein sum on x and y given the expression in ref.
 func (ao *Ops) Einsum(ev ir.Evaluator, ref *ir.EinsumExpr, x, y engine.NumericalElement) (engine.NumericalElement, error) {
-	xNode, _, err := materialise.Element(ao, x)
+	xNode, err := materialise.Element(ao, x)
 	if err != nil {
 		return nil, err
 	}
-	yNode, _, err := materialise.Element(ao, y)
+	yNode, err := materialise.Element(ao, y)
 	if err != nil {
 		return nil, err
 	}
@@ -100,7 +100,7 @@ func (ao *Ops) BroadcastInDim(ctx ir.Evaluator, expr ir.Expr, x engine.Numerical
 	if err != nil {
 		return nil, err
 	}
-	xNode, xShape, err := materialise.Element(ao, x)
+	xNode, xShape, err := materialise.ElementWithShape(ao, x)
 	if err != nil {
 		return nil, err
 	}
@@ -126,7 +126,7 @@ func (ao *Ops) BroadcastInDim(ctx ir.Evaluator, expr ir.Expr, x engine.Numerical
 func (ao *Ops) Concat(ctx ir.Evaluator, expr ir.Expr, xs []engine.NumericalElement) (engine.NumericalElement, error) {
 	nodes := make([]compute.Value, len(xs))
 	for i, x := range xs {
-		iNode, iShape, err := materialise.Element(ao, x)
+		iNode, iShape, err := materialise.ElementWithShape(ao, x)
 		if err != nil {
 			return nil, err
 		}
@@ -147,15 +147,15 @@ func (ao *Ops) Concat(ctx ir.Evaluator, expr ir.Expr, xs []engine.NumericalEleme
 
 // Set a slice in an array.
 func (ao *Ops) Set(ctx ir.Evaluator, expr *ir.FuncCallExpr, x, updates ir.Element, position []ir.Element) (ir.Element, error) {
-	xNode, xShape, err := materialise.Element(ao, x)
+	xNode, xShape, err := materialise.ElementWithShape(ao, x)
 	if err != nil {
 		return nil, err
 	}
-	upNode, _, err := materialise.Element(ao, updates)
+	upNode, _, err := materialise.ElementWithShape(ao, updates)
 	if err != nil {
 		return nil, err
 	}
-	positionNodes, posShape, err := materialise.All(ao, position)
+	positionNodes, posShape, err := materialise.AllWithShapes(ao, position)
 	if err != nil {
 		return nil, err
 	}
@@ -163,7 +163,7 @@ func (ao *Ops) Set(ctx ir.Evaluator, expr *ir.FuncCallExpr, x, updates ir.Elemen
 	startIndices := make([]compute.Value, rank)
 	copy(startIndices, positionNodes)
 	if len(positionNodes) < rank {
-		zeroShape := shapes.Make(posShape.DType)
+		zeroShape := shapes.Make(posShape[0].DType)
 		zeroNode, err := constantFromBytes(ao.graph, make([]byte, zeroShape.ByteSize()), zeroShape)
 		if err != nil {
 			return nil, err

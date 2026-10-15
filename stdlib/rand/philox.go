@@ -40,7 +40,7 @@ func evalPhilox(env *engine.Env, call *ir.FuncCallExpr, recv ir.Element, genArgs
 		return nil, err
 	}
 	eng := env.Engine()
-	stateNode, _, err := materialise.Element(mat, field)
+	stateNode, err := materialise.Element(mat, field)
 	if err != nil {
 		return nil, err
 	}

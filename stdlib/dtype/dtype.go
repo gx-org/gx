@@ -35,7 +35,7 @@ var Package = builtin.PackageBuilder{
 
 func evalReinterpret(env *engine.Env, call *ir.FuncCallExpr, recv ir.Element, genArgs, args []ir.Element) ([]ir.Element, error) {
 	mat := builtin.Materialiser(env)
-	argNode, _, err := materialise.Element(mat, args[0])
+	argNode, err := materialise.Element(mat, args[0])
 	if err != nil {
 		return nil, err
 	}

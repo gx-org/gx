@@ -52,55 +52,71 @@ type (
 	}
 )
 
-// Element converts an element into a graph node.
-// Returns an error if the element is not a numerical element.
-func Element(am Materialiser, el ir.Element) (compute.Value, shapes.Shape, error) {
-	materialiser, err := cast.To[ElementMaterialiser](el)
+// ElementWithShape materialises an element and fetch its shape.
+func ElementWithShape(mat Materialiser, el ir.Element) (compute.Value, shapes.Shape, error) {
+	val, err := Element(mat, el)
 	if err != nil {
 		return nil, shapes.Invalid(), err
+	}
+	outShape, err := mat.Graph().Builder().OpShape(val)
+	if err != nil {
+		return nil, shapes.Invalid(), err
+	}
+	return val, outShape, nil
+}
+
+// Element converts an element into a graph node.
+// Returns an error if the element is not a numerical element.
+func Element(am Materialiser, el ir.Element) (compute.Value, error) {
+	materialiser, err := cast.To[ElementMaterialiser](el)
+	if err != nil {
+		return nil, err
 	}
 	outEl, err := materialiser.Materialise(am)
 	if err != nil {
-		return nil, shapes.Invalid(), err
+		return nil, err
 	}
-	outNode := outEl.Value()
-	outShape, err := am.Graph().Builder().OpShape(outNode)
-	if err != nil {
-		return nil, shapes.Invalid(), err
-	}
-	return outNode, outShape, nil
-}
-
-// AllWithShapes materialises a slice of elements into a slice of output graph nodes.
-func AllWithShapes(am Materialiser, els []ir.Element) ([]compute.Value, []shapes.Shape, error) {
-	nodes := make([]compute.Value, len(els))
-	shs := make([]shapes.Shape, len(els))
-	for i, el := range els {
-		var err error
-		nodes[i], shs[i], err = Element(am, el)
-		if err != nil {
-			return nil, nil, err
-		}
-	}
-	return nodes, shs, nil
+	return outEl.Value(), nil
 }
 
 // All materialises a slice of elements into a slice of graph nodes.
-func All(am Materialiser, els []ir.Element) ([]compute.Value, shapes.Shape, error) {
+func All(mat Materialiser, els []ir.Element) ([]compute.Value, error) {
 	nodes := make([]compute.Value, len(els))
-	var firstShape shapes.Shape
 	for i, el := range els {
-		var shapeI shapes.Shape
 		var err error
-		nodes[i], shapeI, err = Element(am, el)
+		nodes[i], err = Element(mat, el)
 		if err != nil {
-			return nil, shapes.Invalid(), err
-		}
-		if i == 0 {
-			firstShape = shapeI
+			return nil, err
 		}
 	}
-	return nodes, firstShape, nil
+	return nodes, nil
+}
+
+// Shapes of a slice of values.
+func Shapes(mat Materialiser, vals []compute.Value) ([]shapes.Shape, error) {
+	bld := mat.Graph().Builder()
+	shapes := make([]shapes.Shape, len(vals))
+	for i, val := range vals {
+		var err error
+		shapes[i], err = bld.OpShape(val)
+		if err != nil {
+			return nil, err
+		}
+	}
+	return shapes, nil
+}
+
+// AllWithShapes of a slice of values.
+func AllWithShapes(mat Materialiser, els []ir.Element) ([]compute.Value, []shapes.Shape, error) {
+	vals, err := All(mat, els)
+	if err != nil {
+		return nil, nil, err
+	}
+	shapes, err := Shapes(mat, vals)
+	if err != nil {
+		return nil, nil, err
+	}
+	return vals, shapes, nil
 }
 
 // Flatten first flatten all the elements, then materialise them all.
@@ -109,7 +125,15 @@ func Flatten(mat Materialiser, elts ...ir.Element) ([]compute.Value, []shapes.Sh
 	if err != nil {
 		return nil, nil, err
 	}
-	return AllWithShapes(mat, elts)
+	vals, err := All(mat, elts)
+	if err != nil {
+		return nil, nil, err
+	}
+	shapes, err := Shapes(mat, vals)
+	if err != nil {
+		return nil, nil, err
+	}
+	return vals, shapes, nil
 }
 
 // ElementFromNode converts a node and its type into an element.

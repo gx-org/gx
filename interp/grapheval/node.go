@@ -87,11 +87,11 @@ func (n *BackendNode) out() compute.Value {
 
 // BinaryOp applies a binary operator to x and y.
 func (n *BackendNode) BinaryOp(env *engine.Env, expr *ir.BinaryExpr, y engine.NumericalElement) (_ engine.NumericalElement, err error) {
-	xNode, xShape, err := materialise.Element(n.ao, n)
+	xNode, xShape, err := materialise.ElementWithShape(n.ao, n)
 	if err != nil {
 		return nil, fmt.Errorf("cannot materialise %s in %s: %w", expr.X.SourceString(nil), expr.SourceString(nil), err)
 	}
-	yNode, _, err := materialise.Element(n.ao, y)
+	yNode, err := materialise.Element(n.ao, y)
 	if err != nil {
 		return nil, fmt.Errorf("cannot materialise %s in %s: %w", expr.Y.SourceString(nil), expr.SourceString(nil), err)
 	}

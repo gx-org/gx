@@ -159,7 +159,7 @@ type unaryFunc = func(compute.Value) (compute.Value, error)
 func buildUnary(name string, f func(graph compute.Function) unaryFunc) builtin.Builder {
 	return builtin.ImplementBuiltin(name, func(env *engine.Env, call *ir.FuncCallExpr, recv ir.Element, genArgs, args []ir.Element) ([]ir.Element, error) {
 		mat := builtin.Materialiser(env)
-		x, _, err := materialise.Element(mat, args[0])
+		x, err := materialise.Element(mat, args[0])
 		if err != nil {
 			return nil, err
 		}
@@ -177,11 +177,11 @@ type binaryFunc = func(x, y compute.Value) (compute.Value, error)
 func buildBinary(name string, f func(graph compute.Function) binaryFunc) builtin.Builder {
 	return builtin.ImplementBuiltin(name, func(env *engine.Env, call *ir.FuncCallExpr, recv ir.Element, genArgs, args []ir.Element) ([]ir.Element, error) {
 		mat := builtin.Materialiser(env)
-		x, _, err := materialise.Element(mat, args[0])
+		x, err := materialise.Element(mat, args[0])
 		if err != nil {
 			return nil, err
 		}
-		y, _, err := materialise.Element(mat, args[1])
+		y, err := materialise.Element(mat, args[1])
 		if err != nil {
 			return nil, err
 		}
