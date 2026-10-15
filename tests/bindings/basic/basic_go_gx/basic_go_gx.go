@@ -26,7 +26,7 @@ import (
 	"github.com/gx-org/gx/api"
 	"github.com/gx-org/gx/api/hostio"
 	"github.com/gx-org/gx/api/options"
-	"github.com/gx-org/gx/api/tracer"
+	"github.com/gx-org/gx/api/runner"
 	"github.com/gx-org/gx/api/values"
 	"github.com/gx-org/gx/build/ir"
 	"github.com/gx-org/gx/golang/binder/gobindings/core"
@@ -46,7 +46,7 @@ var (
 	_ = errors.Errorf
 	_ = types.NewSlice[types.Bridger]
 	_ = ir.NamedType{}
-	_ = tracer.Trace
+	_ = runner.Trace
 )
 
 // BuildFor loads the GX package github.com/gx-org/gx/tests/bindings/basic
@@ -88,14 +88,14 @@ type Package struct {
 	handle PackageHandle
 
 	// Functions and methods cache
-	cacheBasicAdd           *core.FuncCache
-	cacheBasicAddPrivate    *core.FuncCache
-	cacheBasicSetFloat      *core.FuncCache
-	cacheReturnFloat32      *core.FuncCache
-	cacheReturnArrayFloat32 *core.FuncCache
-	cacheReturnMultiple     *core.FuncCache
-	cacheNew                *core.FuncCache
-	cacheAddPrivate         *core.FuncCache
+	cacheBasicAdd           core.Func
+	cacheBasicAddPrivate    core.Func
+	cacheBasicSetFloat      core.Func
+	cacheReturnFloat32      core.Func
+	cacheReturnArrayFloat32 core.Func
+	cacheReturnMultiple     core.Func
+	cacheNew                core.Func
+	cacheAddPrivate         core.Func
 }
 
 // Build builds a package for a device once it has been loaded.
@@ -111,35 +111,35 @@ func Build(dev *core.DeviceSetup) (*PackageHandle, error) {
 	// Build dependencies.
 
 	// Initialise function and method caches.
-	pkg.cacheBasicAdd, err = pkg.handle.NewCache("Basic", "Add")
+	pkg.cacheBasicAdd, err = pkg.handle.NewFunc("Basic", "Add")
 	if err != nil {
 		return nil, err
 	}
-	pkg.cacheBasicAddPrivate, err = pkg.handle.NewCache("Basic", "AddPrivate")
+	pkg.cacheBasicAddPrivate, err = pkg.handle.NewFunc("Basic", "AddPrivate")
 	if err != nil {
 		return nil, err
 	}
-	pkg.cacheBasicSetFloat, err = pkg.handle.NewCache("Basic", "SetFloat")
+	pkg.cacheBasicSetFloat, err = pkg.handle.NewFunc("Basic", "SetFloat")
 	if err != nil {
 		return nil, err
 	}
-	pkg.cacheReturnFloat32, err = pkg.handle.NewCache("", "ReturnFloat32")
+	pkg.cacheReturnFloat32, err = pkg.handle.NewFunc("", "ReturnFloat32")
 	if err != nil {
 		return nil, err
 	}
-	pkg.cacheReturnArrayFloat32, err = pkg.handle.NewCache("", "ReturnArrayFloat32")
+	pkg.cacheReturnArrayFloat32, err = pkg.handle.NewFunc("", "ReturnArrayFloat32")
 	if err != nil {
 		return nil, err
 	}
-	pkg.cacheReturnMultiple, err = pkg.handle.NewCache("", "ReturnMultiple")
+	pkg.cacheReturnMultiple, err = pkg.handle.NewFunc("", "ReturnMultiple")
 	if err != nil {
 		return nil, err
 	}
-	pkg.cacheNew, err = pkg.handle.NewCache("", "New")
+	pkg.cacheNew, err = pkg.handle.NewFunc("", "New")
 	if err != nil {
 		return nil, err
 	}
-	pkg.cacheAddPrivate, err = pkg.handle.NewCache("", "AddPrivate")
+	pkg.cacheAddPrivate, err = pkg.handle.NewFunc("", "AddPrivate")
 	if err != nil {
 		return nil, err
 	}
@@ -150,13 +150,13 @@ func Build(dev *core.DeviceSetup) (*PackageHandle, error) {
 // ReturnFloat32 returns a float32.
 func (pkg *Package) ReturnFloat32() (_ types.Atom[float32], err error) {
 	var args []hostio.Value = nil
-	var runner tracer.CompiledFunc
-	runner, err = pkg.cacheReturnFloat32.Runner(nil, args)
+	var rn runner.CompiledFunc
+	rn, err = pkg.cacheReturnFloat32.Build(nil, args)
 	if err != nil {
 		return
 	}
 	var outputs []hostio.Value
-	outputs, err = runner.Run(nil, args, pkg.handle.Tracer())
+	outputs, err = rn.Run(nil, args, pkg.handle.Tracer())
 	if err != nil {
 		return
 	}
@@ -174,13 +174,13 @@ func (pkg *Package) ReturnFloat32() (_ types.Atom[float32], err error) {
 // ReturnArrayFloat32 returns a float32 tensor.
 func (pkg *Package) ReturnArrayFloat32() (_ types.Array[float32], err error) {
 	var args []hostio.Value = nil
-	var runner tracer.CompiledFunc
-	runner, err = pkg.cacheReturnArrayFloat32.Runner(nil, args)
+	var rn runner.CompiledFunc
+	rn, err = pkg.cacheReturnArrayFloat32.Build(nil, args)
 	if err != nil {
 		return
 	}
 	var outputs []hostio.Value
-	outputs, err = runner.Run(nil, args, pkg.handle.Tracer())
+	outputs, err = rn.Run(nil, args, pkg.handle.Tracer())
 	if err != nil {
 		return
 	}
@@ -198,13 +198,13 @@ func (pkg *Package) ReturnArrayFloat32() (_ types.Array[float32], err error) {
 // ReturnMultiple returns multiple values.
 func (pkg *Package) ReturnMultiple() (_ types.Atom[int32], _ types.Atom[float32], _ types.Atom[float64], err error) {
 	var args []hostio.Value = nil
-	var runner tracer.CompiledFunc
-	runner, err = pkg.cacheReturnMultiple.Runner(nil, args)
+	var rn runner.CompiledFunc
+	rn, err = pkg.cacheReturnMultiple.Build(nil, args)
 	if err != nil {
 		return
 	}
 	var outputs []hostio.Value
-	outputs, err = runner.Run(nil, args, pkg.handle.Tracer())
+	outputs, err = rn.Run(nil, args, pkg.handle.Tracer())
 	if err != nil {
 		return
 	}
@@ -236,13 +236,13 @@ func (pkg *Package) ReturnMultiple() (_ types.Atom[int32], _ types.Atom[float32]
 // New returns a new instance of the basic structure.
 func (pkg *Package) New() (_ *Basic, err error) {
 	var args []hostio.Value = nil
-	var runner tracer.CompiledFunc
-	runner, err = pkg.cacheNew.Runner(nil, args)
+	var rn runner.CompiledFunc
+	rn, err = pkg.cacheNew.Build(nil, args)
 	if err != nil {
 		return
 	}
 	var outputs []hostio.Value
-	outputs, err = runner.Run(nil, args, pkg.handle.Tracer())
+	outputs, err = rn.Run(nil, args, pkg.handle.Tracer())
 	if err != nil {
 		return
 	}
@@ -263,13 +263,13 @@ func (pkg *Package) AddPrivate(arg0 *Basic) (_ types.Atom[int32], err error) {
 	var args []hostio.Value = []hostio.Value{
 		arg0.Bridge().GXValue(), // b basic.Basic
 	}
-	var runner tracer.CompiledFunc
-	runner, err = pkg.cacheAddPrivate.Runner(nil, args)
+	var rn runner.CompiledFunc
+	rn, err = pkg.cacheAddPrivate.Build(nil, args)
 	if err != nil {
 		return
 	}
 	var outputs []hostio.Value
-	outputs, err = runner.Run(nil, args, pkg.handle.Tracer())
+	outputs, err = rn.Run(nil, args, pkg.handle.Tracer())
 	if err != nil {
 		return
 	}
@@ -696,13 +696,13 @@ func (recv *Basic) Add(arg0 *Basic) (_ types.Atom[int32], err error) {
 	var args []hostio.Value = []hostio.Value{
 		arg0.Bridge().GXValue(), // a basic.Basic
 	}
-	var runner tracer.CompiledFunc
-	runner, err = recv.handle.pkg.cacheBasicAdd.Runner(recv.value, args)
+	var rn runner.CompiledFunc
+	rn, err = recv.handle.pkg.cacheBasicAdd.Build(recv.value, args)
 	if err != nil {
 		return
 	}
 	var outputs []hostio.Value
-	outputs, err = runner.Run(recv.value, args, recv.handle.pkg.handle.Tracer())
+	outputs, err = rn.Run(recv.value, args, recv.handle.pkg.handle.Tracer())
 	if err != nil {
 		return
 	}
@@ -720,13 +720,13 @@ func (recv *Basic) Add(arg0 *Basic) (_ types.Atom[int32], err error) {
 // AddPrivate returns the sum of two private fields.
 func (recv *Basic) AddPrivate() (_ types.Atom[int32], err error) {
 	var args []hostio.Value = nil
-	var runner tracer.CompiledFunc
-	runner, err = recv.handle.pkg.cacheBasicAddPrivate.Runner(recv.value, args)
+	var rn runner.CompiledFunc
+	rn, err = recv.handle.pkg.cacheBasicAddPrivate.Build(recv.value, args)
 	if err != nil {
 		return
 	}
 	var outputs []hostio.Value
-	outputs, err = runner.Run(recv.value, args, recv.handle.pkg.handle.Tracer())
+	outputs, err = rn.Run(recv.value, args, recv.handle.pkg.handle.Tracer())
 	if err != nil {
 		return
 	}
@@ -746,13 +746,13 @@ func (recv *Basic) SetFloat(arg0 types.Atom[float32]) (_ *Basic, err error) {
 	var args []hostio.Value = []hostio.Value{
 		arg0.Bridge().GXValue(), // x float32
 	}
-	var runner tracer.CompiledFunc
-	runner, err = recv.handle.pkg.cacheBasicSetFloat.Runner(recv.value, args)
+	var rn runner.CompiledFunc
+	rn, err = recv.handle.pkg.cacheBasicSetFloat.Build(recv.value, args)
 	if err != nil {
 		return
 	}
 	var outputs []hostio.Value
-	outputs, err = runner.Run(recv.value, args, recv.handle.pkg.handle.Tracer())
+	outputs, err = rn.Run(recv.value, args, recv.handle.pkg.handle.Tracer())
 	if err != nil {
 		return
 	}
