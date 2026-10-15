@@ -17,10 +17,9 @@ package core_test
 import (
 	"testing"
 
-	"github.com/gomlx/compute/gobackend"
-	"github.com/gx-org/gx/api"
 	"github.com/gx-org/gx/build/builder/testbuild"
 	core "github.com/gx-org/gx/build/builder/testdata"
+	"github.com/gx-org/gx/golang/backend"
 	"github.com/gx-org/gx/internal/testing/testrtm"
 	"github.com/gx-org/gx/tests"
 )
@@ -36,11 +35,10 @@ func TestCoreUnitGoBackend(t *testing.T) {
 	core.Sources.Filter = func(name string) bool {
 		return !skip[name]
 	}
-	bck, err := gobackend.New("")
+	rtm, err := backend.New(tests.NewBuilder())
 	if err != nil {
 		t.Fatal(err)
 	}
-	rtm := api.NewRuntime(bck, tests.NewBuilder())
 	testbuild.RunFactory(t,
 		rtm.Builder().Loader().Importers(),
 		testrtm.Factory(

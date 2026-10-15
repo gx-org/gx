@@ -26,11 +26,11 @@ import (
 	"runtime"
 	"unsafe"
 
-	"github.com/gomlx/compute/gobackend"
 	"github.com/gx-org/gx/api"
 	"github.com/gx-org/gx/build/builder"
 	"github.com/gx-org/gx/build/importers/embedpkg"
 	"github.com/gx-org/gx/cgx/handle"
+	"github.com/gx-org/gx/golang/backend"
 	"github.com/gx-org/gx/stdlib"
 
 	// Required for the C headers.
@@ -80,11 +80,11 @@ func Setup(rtm *api.Runtime) (Runtime, Device, func(), error) {
 	C.cgx_error_verbose(true)
 	ownRuntime := false
 	if rtm == nil {
-		bck, err := gobackend.New("")
+		var err error
+		rtm, err = backend.New(NewBuilder())
 		if err != nil {
 			return Null, Null, nil, err
 		}
-		rtm = api.NewRuntime(bck, NewBuilder())
 		ownRuntime = true
 	}
 	if C.cgx_handle_count() != 0 {

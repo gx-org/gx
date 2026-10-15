@@ -22,13 +22,12 @@ import (
 	"github.com/google/go-cmp/cmp"
 	"github.com/gomlx/compute/dtypes"
 	"github.com/gomlx/compute/dtypes/gotype"
-	"github.com/gomlx/compute/gobackend"
 	"github.com/gomlx/compute/shapes"
-	"github.com/gx-org/gx/api"
 	"github.com/gx-org/gx/build/builder"
 	"github.com/gx-org/gx/build/fmterr"
 	"github.com/gx-org/gx/build/importers/embedpkg"
 	"github.com/gx-org/gx/build/ir"
+	"github.com/gx-org/gx/golang/backend"
 	"github.com/gx-org/gx/golang/encoding/native"
 	"github.com/gx-org/gx/tests/bindings/encoding/encoding_go_gx"
 	gxtesting "github.com/gx-org/gx/tests/testing"
@@ -182,14 +181,13 @@ func TestRunUnmarshalledScalarsStruct(t *testing.T) {
 }
 
 func TestMain(m *testing.M) {
-	bck, err := gobackend.New("")
+	rtm, err := backend.New(builder.New(
+		embedpkg.New(),
+	))
 	if err != nil {
 		fmt.Fprintf(os.Stderr, "%+v", fmterr.ToStackTraceError(err))
 		return
 	}
-	rtm := api.NewRuntime(bck, builder.New(
-		embedpkg.New(),
-	))
 	dev, err := rtm.Device(0)
 	if err != nil {
 		fmt.Fprintf(os.Stderr, "%+v", fmterr.ToStackTraceError(err))

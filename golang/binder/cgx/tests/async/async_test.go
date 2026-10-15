@@ -17,18 +17,16 @@ package async_test
 import (
 	"testing"
 
-	"github.com/gomlx/compute/gobackend"
-	"github.com/gx-org/gx/api"
+	"github.com/gx-org/gx/golang/backend"
 	"github.com/gx-org/gx/golang/binder/cgx/tests/async"
 	"github.com/gx-org/gx/golang/binder/cgx/tests/gocgx"
 )
 
 func TestAsyncCGXGoBackend(t *testing.T) {
-	bck, err := gobackend.New("")
+	rtm, err := backend.New(gocgx.NewBuilder())
 	if err != nil {
 		t.Fatal(err)
 	}
-	rtm := api.NewRuntime(bck, gocgx.NewBuilder())
 	defer rtm.Backend().Finalize()
 	async.RunTestAsyncCGX(t, rtm, async.RunFunctionReturnFloat32)
 }
