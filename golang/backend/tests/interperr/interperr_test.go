@@ -19,23 +19,21 @@ import (
 	"strings"
 	"testing"
 
-	"github.com/gomlx/compute/gobackend"
-	"github.com/gx-org/gx/api"
 	"github.com/gx-org/gx/build/builder"
 	"github.com/gx-org/gx/build/importers/embedpkg"
+	"github.com/gx-org/gx/golang/backend"
 	"github.com/gx-org/gx/golang/backend/tests/interperr/interperr_go_gx"
 	"github.com/gx-org/gx/stdlib"
 )
 
 func buildInterperr() (*interperr_go_gx.Package, error) {
-	bck, err := gobackend.New("")
-	if err != nil {
-		return nil, err
-	}
-	rtm := api.NewRuntime(bck, builder.New(
+	rtm, err := backend.New(builder.New(
 		stdlib.Importer(),
 		embedpkg.New(),
 	))
+	if err != nil {
+		return nil, err
+	}
 	dev, err := rtm.Device(0)
 	if err != nil {
 		return nil, err

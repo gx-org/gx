@@ -12,15 +12,20 @@
 // See the License for the specific language governing permissions and
 // limitations under the License.
 
-package graph
+// Package backend implements a backend for GX in Go.
+package backend
 
 import (
-	"github.com/pkg/errors"
-	"github.com/gomlx/compute"
-	"github.com/gomlx/compute/shapes"
+	"github.com/gomlx/compute/gobackend"
+	"github.com/gx-org/gx/api"
+	"github.com/gx-org/gx/build/builder"
 )
 
-// RNGBitGenerator generates random values of the given shape using the provided RNG state.
-func (g *Graph) RNGBitGenerator(state compute.Value, shape shapes.Shape) (compute.Value, compute.Value, error) {
-	return nil, nil, errors.Errorf("not implemented in the Go backend")
+// New native Go runtime for GX.
+func New(builder *builder.Builder) (*api.Runtime, error) {
+	bck, err := gobackend.New("")
+	if err != nil {
+		return nil, err
+	}
+	return api.NewRuntime(bck, builder), nil
 }
