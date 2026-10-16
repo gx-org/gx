@@ -238,7 +238,7 @@ def cc_gx_library(name, lib, deps = [], tags = [], visibility = None, testonly =
         visibility = visibility,
     )
 
-def py_gx_library(name, lib, tags = [], visibility = None, testonly = False):
+def py_gx_library(name, lib, tags = [], visibility = None, testonly = False, backend = ""):
     """Generate the C++ Python extension for a GX library.
 
     Args:
@@ -247,6 +247,7 @@ def py_gx_library(name, lib, tags = [], visibility = None, testonly = False):
       tags: forwarded to generated targets
       visibility: standard Blaze attribute, passed through.
       testonly: standard Blaze attribute, passed through.
+      backend: default GX backend to use to load the library.
     """
     want_suffix = "_py_gx"
     if not name.endswith(want_suffix):
@@ -265,6 +266,7 @@ def py_gx_library(name, lib, tags = [], visibility = None, testonly = False):
         tools = [pygx_tool],
         cmd = (
             "$(location " + pygx_tool + ") pybind" +
+            " --default_backend=" + backend +
             " --target_folder=$(GENDIR) " +
             lib_path
         ),
@@ -287,14 +289,17 @@ def py_gx_library(name, lib, tags = [], visibility = None, testonly = False):
             ":" + rootname + "_regcgo",
         ],
     )
+    py_library_deps = [
+        ":" + rootname + "_pybind",
+        "//third_party/gxlang/pygx:gx",
+        "//third_party/gxlang/pygx:dyngx",
+    ]
+    if backend:
+        py_library_deps.append(backend)
     pytype_strict_library(
         name = name,
         srcs = [py_file],
-        deps = [
-            ":" + rootname + "_pybind",
-            "//third_party/gxlang/pygx:gx",
-            "//third_party/gxlang/pygx:dyngx",
-        ],
+        deps = py_library_deps,
         testonly = testonly,
         tags = tags,
         visibility = visibility,
