@@ -87,7 +87,7 @@ func (n *BackendNode) out() compute.Value {
 
 // BinaryOp applies a binary operator to x and y.
 func (n *BackendNode) BinaryOp(env *engine.Env, expr *ir.BinaryExpr, y engine.NumericalElement) (_ engine.NumericalElement, err error) {
-	xNode, xShape, err := materialise.ElementWithShape(n.ao, n)
+	xNode, err := materialise.Element(n.ao, n)
 	if err != nil {
 		return nil, fmt.Errorf("cannot materialise %s in %s: %w", expr.X.SourceString(nil), expr.SourceString(nil), err)
 	}
@@ -122,6 +122,10 @@ func (n *BackendNode) BinaryOp(env *engine.Env, expr *ir.BinaryExpr, y engine.Nu
 	case token.SHL:
 		binaryNode, err = n.ao.Graph().ShiftLeft(xNode, yNode)
 	case token.SHR:
+		xShape, err := n.ao.Graph().Builder().OpShape(xNode)
+		if err != nil {
+			return nil, err
+		}
 		// We copy Go's behavior: "shift operators implement arithmetic shifts if the left operand is a signed integer and logical shifts if it is an unsigned integer."
 		if xShape.DType.IsUnsigned() {
 			binaryNode, err = n.ao.Graph().ShiftRightLogical(xNode, yNode)

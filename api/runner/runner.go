@@ -78,7 +78,12 @@ func Run(dev *api.Device, fn *ir.FuncDecl, receiver hostio.Value, args []hostio.
 	}
 	outs := make([]hostio.Value, len(outEls))
 	for i, el := range outEls {
-		outs[i], err = cast.To[hostio.Value](el)
+		var val any = el
+		// TODO(degris): create an eagereval to replace grapheval to avoid the following if statement.
+		if backendNode, isBackendNode := el.(*grapheval.BackendNode); isBackendNode {
+			val = backendNode.Value()
+		}
+		outs[i], err = cast.To[hostio.Value](val)
 		if err != nil {
 			return nil, err
 		}
