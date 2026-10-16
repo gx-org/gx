@@ -10,7 +10,7 @@ func setOnes(axes []int, is ...int) []int {
 	return axes
 }
 
-func f[Shape, Axes []int](x [unpack(Shape)]float32) [unpack(setOnes(Shape, Axes...))]float32 {
+func f[Shape, Axes []int](x [Shape...]float32) [setOnes(Shape, Axes...)...]float32 {
 	shape := setOnes(Shape, Axes...)
-	return [unpack(shape)]float32{}
+	return [shape...]float32{}
 }

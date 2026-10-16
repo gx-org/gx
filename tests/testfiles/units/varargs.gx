@@ -3,7 +3,7 @@ package varargs
 
 import "num"
 
-func iota[lens []int]() [unpack(lens)]int64 {
+func iota[lens []int]() [lens...]int64 {
 	return num.IotaFull[lens]()
 }
 

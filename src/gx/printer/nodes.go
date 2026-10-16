@@ -371,7 +371,14 @@ func (p *printer) parameters(fields *ast.FieldList, mode paramMode) {
 				p.print(blank)
 			}
 			// parameter type
-			p.expr(stripParensAlways(par.Type))
+			if ell, ok := stripParensAlways(par.Type).(*ast.Ellipsis); ok {
+				p.print(token.ELLIPSIS)
+				if ell.Elt != nil {
+					p.expr(ell.Elt)
+				}
+			} else {
+				p.expr(stripParensAlways(par.Type))
+			}
 			prevLine = parLineEnd
 		}
 
@@ -1034,9 +1041,15 @@ func (p *printer) expr1(expr ast.Expr, prec1, depth int) {
 		p.level--
 
 	case *ast.Ellipsis:
-		p.print(token.ELLIPSIS)
-		if x.Elt != nil {
+		if x.Elt != nil && (!x.Ellipsis.IsValid() || (x.Elt.Pos().IsValid() && x.Elt.Pos() < x.Ellipsis)) {
 			p.expr(x.Elt)
+			p.setPos(x.Ellipsis)
+			p.print(token.ELLIPSIS)
+		} else {
+			p.print(token.ELLIPSIS)
+			if x.Elt != nil {
+				p.expr(x.Elt)
+			}
 		}
 
 	case *ast.ArrayType:

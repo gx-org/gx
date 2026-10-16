@@ -55,14 +55,14 @@ func CheckBroadcast(s1, s2 []int) []int {
 }
 
 // Broadcast a shape to another.
-func Broadcast[Dst []int, DT dtype.Nums, Src []int](x [unpack(Src)]DT) [unpack(CheckBroadcast(Src, Dst))]DT
+func Broadcast[Dst []int, DT dtype.Nums, Src []int](x [Src...]DT) [CheckBroadcast(Src, Dst)...]DT
 
 // gx:compeval
 // SplitAxis returns a shape after the ith axis has been split into n blocks.
 func SplitAxis(i int, n int, shape []int) []int
 
 // Split an array along an axis.
-func Split[Axis int, NumSplit int, Shape []int, DType dtype.Nums](x [unpack(Shape)]DType) [unpack(SplitAxis(Axis, NumSplit, Shape))]DType
+func Split[Axis int, NumSplit int, Shape []int, DType dtype.Nums](x [Shape...]DType) [SplitAxis(Axis, NumSplit, Shape)...]DType
 
 // ConcatAxis computes the shape of a concat operation.
 //
@@ -70,10 +70,10 @@ func Split[Axis int, NumSplit int, Shape []int, DType dtype.Nums](x [unpack(Shap
 func ConcatAxis(idx int, allAxes [][]int) []int
 
 // Concat multiple arrays into one.
-func Concat[Axis int, Shapes [][]int, DType dtype.Nums](x ...[unpack(varargsindex(Shapes))]DType) [unpack(ConcatAxis(Axis, Shapes))]DType
+func Concat[Axis int, Shapes [][]int, DType dtype.Nums](x ...[varargsindex(Shapes)...]DType) [ConcatAxis(Axis, Shapes)...]DType
 
 // Transpose an array.
-func Transpose[Shape []int, DType dtype.Nums](x [unpack(Shape)]DType) [unpack(ReverseAxes(Shape))]DType
+func Transpose[Shape []int, DType dtype.Nums](x [Shape...]DType) [ReverseAxes(Shape)...]DType
 
 // GatherAxis computes the shape of a gather operation.
 //
@@ -81,4 +81,4 @@ func Transpose[Shape []int, DType dtype.Nums](x [unpack(Shape)]DType) [unpack(Re
 func GatherAxis(input []int, indices []int) []int
 
 // Gather values from an array.
-func Gather[InputShape, SelectShape []int, DType dtype.Nums](x [unpack(InputShape)]DType, indices [unpack(SelectShape)]int) [unpack(GatherAxis(InputShape, SelectShape))]DType
+func Gather[InputShape, SelectShape []int, DType dtype.Nums](x [InputShape...]DType, indices [SelectShape...]int) [GatherAxis(InputShape, SelectShape)...]DType

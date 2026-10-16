@@ -14,8 +14,8 @@ func addOnes(axes []int) []int {
 	return ret
 }
 
-func expand[Shape []int](x [unpack(Shape)]float32) [unpack(addOnes(Shape))]float32 {
-	return [unpack(addOnes(Shape))]float32(x)
+func expand[Shape []int](x [Shape...]float32) [addOnes(Shape)...]float32 {
+	return [addOnes(Shape)...]float32(x)
 }
 
 func concrete() [1][2][3][1][4]float32 {

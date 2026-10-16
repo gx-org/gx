@@ -4,12 +4,12 @@ type floats interface {
 	bfloat16 | float32 | float64
 }
 
-func newFloat32[shape []int]() [unpack(shape)]float32 {
-	return [unpack(shape)]float32{}
+func newFloat32[shape []int]() [shape...]float32 {
+	return [shape...]float32{}
 }
 
-func genericNewFloat32[T floats, shape []int]() [unpack(shape)]T {
-	return [unpack(shape)]T(newFloat32[shape]())
+func genericNewFloat32[T floats, shape []int]() [shape...]T {
+	return [shape...]T(newFloat32[shape]())
 }
 
 func TestGenericCastWithGenericShape() [2][3]float64 {

@@ -10,10 +10,11 @@
 // [go/parser.ParseFile] function.
 //
 // GX diverges from standard Go syntax where needed for array programming:
-//   - Array length specifications allow a trailing ellipsis ([expr...]T, e.g.,
-//     [S...]float32 or [F()...]float32) to unpack an expression (such as a
-//     shape slice or function call) into multiple array dimensions, represented
-//     by an [Ellipsis] node in [ArrayType.Len] with [Ellipsis.Elt] set to expr.
+//   - Array length specifications and composite literal elements allow a
+//     trailing ellipsis ([expr...]T or []int{expr...}, e.g., [S...]float32,
+//     [F()...]float32, or []int{A...}) to unpack an expression (such as a
+//     shape slice or function call), represented by an [Ellipsis] node with
+//     [Ellipsis.Elt] set to expr.
 package ast
 
 import (

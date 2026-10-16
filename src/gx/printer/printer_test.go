@@ -939,3 +939,32 @@ func _() (T, *T) {
 		t.Fatalf("got:\n%s\nwant:\n%s\n", got, want)
 	}
 }
+
+func TestArrayTypeEllipsis(t *testing.T) {
+	const src = `package p
+
+func f(x [S...]float32) [F()...]float32 {
+	_ = []int{A...}
+}
+`
+	got, err := format([]byte(src), 0)
+	if err != nil {
+		t.Fatal(err)
+	}
+	if string(got) != src {
+		t.Fatalf("got:\n%s\nwant:\n%s\n", got, src)
+	}
+
+	var buf bytes.Buffer
+	unpositioned := &ast.ArrayType{
+		Len: &ast.Ellipsis{Elt: &ast.Ident{Name: "S"}},
+		Elt: &ast.Ident{Name: "float32"},
+	}
+	if err := Fprint(&buf, token.NewFileSet(), unpositioned); err != nil {
+		t.Fatal(err)
+	}
+	if got, want := buf.String(), "[S...]float32"; got != want {
+		t.Fatalf("Fprint(unpositioned) = %q, want %q", got, want)
+	}
+}
+

@@ -74,7 +74,6 @@ func initBuiltinsFor(fitp *Interpreter) error {
 	}
 	for _, mc := range []builtins.BuiltinMacro{
 		builtins.VarArgsIndex(),
-		builtins.Unpack(),
 	} {
 		scope.Define(mc.Name(), &ir.MacroKeyword{
 			MetaCore: ir.MetaCore{

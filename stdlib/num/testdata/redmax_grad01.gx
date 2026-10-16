@@ -23,7 +23,7 @@ func TestReduceMaxGrad() ([3]float64, [2][3]float64) {
 	// }
 	// Trace:
 	// redmax_grad01.gx:0
-	// 	func[Axis []int, Shape []int, DType dtype.Nums](x [unpack(Shape)]DType) ([unpack(shape.ReduceAxes(Shape, unpack(Axis)))]DType, func(res [unpack(shape.ReduceAxes(Shape, unpack(Axis)))]DType) [unpack(Shape)]DType) {
+	// 	func[Axis []int, Shape []int, DType dtype.Nums](x [Shape...]DType) ([shape.ReduceAxes(Shape, Axis...)...]DType, func(res [shape.ReduceAxes(Shape, Axis...)...]DType) [Shape...]DType) {
 	// 		return vjpReduceMax[Axis][Shape][DType](x)
 	// 	}
 }

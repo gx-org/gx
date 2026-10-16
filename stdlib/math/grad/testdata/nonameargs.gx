@@ -5,7 +5,7 @@ import (
 	"math/grad"
 )
 
-func Max[S1, S2 []int]([unpack(S1)]float32, [unpack(S2)]float32) [unpack(S2)]float32
+func Max[S1, S2 []int]([S1...]float32, [S2...]float32) [S2...]float32
 
 func net(x [5]float32) [5]float32 {
 	return Max(0., x)

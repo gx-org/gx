@@ -4,7 +4,7 @@ type ints interface {
 	int32 | int64
 }
 
-func addTwo[T ints, S []int](x [unpack(S)]T) [unpack(S)]T {
+func addTwo[T ints, S []int](x [S...]T) [S...]T {
 	return x + 2
 }
 

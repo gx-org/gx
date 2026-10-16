@@ -238,12 +238,12 @@ func TestFunctionLiteralGeneric(t *testing.T) {
 	testbuild.Run(t,
 		testbuild.Decl{
 			Src: `
-func f[M,N []int]([unpack(M)]float32) func ([unpack(N)]float32) [unpack(N)]float32
+func f[M,N []int]([M...]float32) func ([N...]float32) [N...]float32
 `,
 		},
 		testbuild.Decl{
 			Src: `
-func f[M []int]([unpack(M)]float32) func ([unpack(M)]float32) [unpack(M)]float32
+func f[M []int]([M...]float32) func ([M...]float32) [M...]float32
 
 func g(x [3]float32) [3]float32 {
 	fun := f(x)
@@ -253,7 +253,7 @@ func g(x [3]float32) [3]float32 {
 		},
 		testbuild.Decl{
 			Src: `
-func f[M []int]([unpack(M)]float32) func ([unpack(M)]float32) [unpack(M)]float32
+func f[M []int]([M...]float32) func ([M...]float32) [M...]float32
 `,
 		},
 	)

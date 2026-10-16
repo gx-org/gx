@@ -6,7 +6,7 @@ type num interface {
 	int
 }
 
-func g[X []int, T num]([unpack(X)]T) [unpack(X)]T
+func g[X []int, T num]([X...]T) [X...]T
 
 func f() int {
 	return g(2)

@@ -56,10 +56,10 @@ package math
 
 import "math/grad"
 
-func Cos[M []int]([unpack(M)]float32) [unpack(M)]float32
+func Cos[M []int]([M...]float32) [M...]float32
 
 //gx:@grad.Set(Cos)
-func Sin[M []int]([unpack(M)]float32) [unpack(M)]float32
+func Sin[M []int]([M...]float32) [M...]float32
 `,
 	}
 )

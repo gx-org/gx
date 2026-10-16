@@ -54,6 +54,15 @@ func (cl *cloner) clone(n ast.Node) ast.Node {
 			Elt: clone(cl, nT.Elt),
 			Len: clone(cl, nT.Len),
 		}
+	case *ast.Ellipsis:
+		var elt ast.Expr
+		if nT.Elt != nil {
+			elt = clone(cl, nT.Elt)
+		}
+		out = &ast.Ellipsis{
+			Ellipsis: nT.Ellipsis,
+			Elt:      elt,
+		}
 	case *ast.BasicLit:
 		o := *nT
 		out = &o
