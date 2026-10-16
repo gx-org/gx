@@ -39,8 +39,8 @@ import (
 //
 // Arguments:
 //
-//	0: x [unpack(XShape)]T
-//	1: y [unpack(YShape)]T
+//	0: x [XShape...]T
+//	1: y [YShape...]T
 func evalEinsum(env *engine.Env, call *ir.FuncCallExpr, recv ir.Element, genArgs, args []ir.Element) ([]ir.Element, error) {
 	mat := builtin.Materialiser(env)
 	left, leftShape, err := materialise.ElementWithShape(mat, args[0])

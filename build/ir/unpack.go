@@ -15,8 +15,6 @@
 package ir
 
 import (
-	"fmt"
-
 	"github.com/gx-org/gx/src/gx/ast"
 )
 
@@ -70,14 +68,11 @@ func (u *UnpackExpr) Specialise(spec Specialiser) (Expr, bool) {
 	return &r, ok
 }
 
-var unpackIdent = &ast.Ident{Name: "unpack"}
-
 // Unroll the expression.
 func (u *UnpackExpr) Unroll(ev Fetcher, urlr Unroller) (ast.Expr, bool) {
 	x, ok := u.X.Unroll(ev, urlr)
-	return &ast.CallExpr{
-		Fun:  unpackIdent,
-		Args: []ast.Expr{x},
+	return &ast.Ellipsis{
+		Elt: x,
 	}, ok
 }
 
@@ -100,5 +95,5 @@ func (u *UnpackExpr) IndexForVarArgs(errsrc ErrSource, i int) (Expr, bool) {
 
 // SourceString returns the GX source code of the expression.
 func (u *UnpackExpr) SourceString(from *File) string {
-	return fmt.Sprintf("unpack(%s)", u.X.SourceString(from))
+	return u.X.SourceString(from) + "..."
 }

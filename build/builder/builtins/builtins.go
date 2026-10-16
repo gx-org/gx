@@ -59,7 +59,6 @@ func init() {
 
 	// Builtin macros.
 	registerBuiltinMacro(VarArgsIndex())
-	registerBuiltinMacro(Unpack())
 }
 
 func registerBuiltinIR(tok token.Token, store ir.Storage) {

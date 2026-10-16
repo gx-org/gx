@@ -9,7 +9,7 @@ func matMulAxes(x, y []int) []int {
 	return []int{x[0], y[1]}
 }
 
-func matMul[SX, SY []int](x [unpack(SX)]float64, y [unpack(SY)]float64) [unpack(matMulAxes(SX, SY))]float64
+func matMul[SX, SY []int](x [SX...]float64, y [SY...]float64) [matMulAxes(SX, SY)...]float64
 
 func f[A, B int](x [A]float64, y [B]float64) [A]float64 {
 	return matMul(x, y) // ERROR in call to matMul([A]float64, [B]float64): incompatible axis lengths: A!=B

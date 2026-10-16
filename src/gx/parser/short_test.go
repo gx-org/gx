@@ -60,6 +60,7 @@ var valids = []string{
 	`package p; type _ [A+B]struct{}`,
 	`package p; type _ [S...]float32`,
 	`package p; type _ [F()...]float32`,
+	`package p; var _ = []int{A...}`,
 	`package p; func (R) _()`,
 	`package p; type _ struct{ f [n]E }`,
 	`package p; type _ struct{ f [a+b+c+d]E }`,

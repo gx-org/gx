@@ -9,6 +9,6 @@ func f[T ints]() T {
 	return 2
 }
 
-func TestF() [f[int32]()]float32 { // ERROR: cannot use type int32 as axis length: want type int or unpack([]int)
+func TestF() [f[int32]()]float32 { // ERROR: cannot use type int32 as axis length: want type int or []int...
 	return [2]float32{}
 }

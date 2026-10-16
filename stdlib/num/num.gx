@@ -80,20 +80,20 @@ func vjpMatMul[LI, LJ, LK int, T dtype.Nums](x [LI][LJ]T, y [LJ][LK]T) ([LI][LK]
 func MatMul[LI, LJ, LK int, T dtype.Nums](x [LI][LJ]T, y [LJ][LK]T) [LI][LK]T
 
 // ArgMax applies a max reduce operator over an axis.
-func ArgMax[Axis int, Shape []int, T dtype.Nums](x [unpack(Shape)]T) [unpack(shape.ReduceAxes(Shape, Axis))]int
+func ArgMax[Axis int, Shape []int, T dtype.Nums](x [Shape...]T) [shape.ReduceAxes(Shape, Axis)...]int
 
-func vjpReduceMax[Axis []int, Shape []int, nums dtype.Nums](x [unpack(Shape)]nums) (
-	[unpack(shape.ReduceAxes(Shape, Axis...))]nums,
-	func([unpack(shape.ReduceAxes(Shape, Axis...))]nums) [unpack(Shape)]nums,
+func vjpReduceMax[Axis []int, Shape []int, nums dtype.Nums](x [Shape...]nums) (
+	[shape.ReduceAxes(Shape, Axis...)...]nums,
+	func([shape.ReduceAxes(Shape, Axis...)...]nums) [Shape...]nums,
 ) {
 	fwd := ReduceMax[Axis](x)
-	vjp := func(res [unpack(shape.ReduceAxes(Shape, Axis...))]nums) [unpack(Shape)]nums {
+	vjp := func(res [shape.ReduceAxes(Shape, Axis...)...]nums) [Shape...]nums {
 		// Location indicators: 1 where x is equal to its maximum along the reduced axes, 0 elsewhere.
-		fwdKeepAxes := [unpack(shape.AxesSetOnes(Shape, Axis...))]nums(fwd)
-		locations := [unpack(Shape)]nums(x == shape.Broadcast[Shape](fwdKeepAxes))
+		fwdKeepAxes := [shape.AxesSetOnes(Shape, Axis...)...]nums(fwd)
+		locations := [Shape...]nums(x == shape.Broadcast[Shape](fwdKeepAxes))
 		// Number of maximums along the reduced axes: the gradient is split evenly between ties.
 		counts := Sum[Axis](locations)
-		d := [unpack(shape.AxesSetOnes(Shape, Axis...))]nums(res / counts)
+		d := [shape.AxesSetOnes(Shape, Axis...)...]nums(res / counts)
 		return locations * shape.Broadcast[Shape](d)
 	}
 	return fwd, vjp
@@ -101,16 +101,16 @@ func vjpReduceMax[Axis []int, Shape []int, nums dtype.Nums](x [unpack(Shape)]num
 
 // ReduceMax computes maximums along an axis.
 // gx:@grad.SetVJP(vjpReduceMax)
-func ReduceMax[Axis []int, Shape []int, DType dtype.Nums](x [unpack(Shape)]DType) [unpack(shape.ReduceAxes(Shape, Axis...))]DType
+func ReduceMax[Axis []int, Shape []int, DType dtype.Nums](x [Shape...]DType) [shape.ReduceAxes(Shape, Axis...)...]DType
 
 // Sum along axes.
-func Sum[Axis []int, Shape []int, DType dtype.Nums](x [unpack(Shape)]DType) [unpack(shape.ReduceAxes(Shape, Axis...))]DType
+func Sum[Axis []int, Shape []int, DType dtype.Nums](x [Shape...]DType) [shape.ReduceAxes(Shape, Axis...)...]DType
 
 // Iota generates an array given a shape where elements starts from 0 and are incremented by 1 along a given axis index.
-func Iota[S []int](ax int) [unpack(S)]int64
+func Iota[S []int](ax int) [S...]int64
 
 // IotaFull generates an array given a shape where elements starts from 0 and are incremented by 1.
-func IotaFull[S []int]() [unpack(S)]int64
+func IotaFull[S []int]() [S...]int64
 
 // OneHot returns a one-hot encoded array given a number of classes.
 func OneHot[numClasses, axlen int, T dtype.Ints](x [axlen]T) [axlen][numClasses]bool {
@@ -123,4 +123,4 @@ func OneHot[numClasses, axlen int, T dtype.Ints](x [axlen]T) [axlen][numClasses]
 func einsumAxes(xS, xContract, xBatch, yS, yContract, yBatch []int) []int
 
 // Einsum between two arrays.
-func Einsum[XContract, XBatch, YContract, YBatch, XShape, YShape []int, T dtype.Nums](x [unpack(XShape)]T, y [unpack(YShape)]T) [unpack(einsumAxes(XShape, XContract, XBatch, YShape, YContract, YBatch))]T
+func Einsum[XContract, XBatch, YContract, YBatch, XShape, YShape []int, T dtype.Nums](x [XShape...]T, y [YShape...]T) [einsumAxes(XShape, XContract, XBatch, YShape, YContract, YBatch)...]T

@@ -15,15 +15,15 @@ func reduceAxes(axes []int, is ...int) []int {
 	return axes[:len(is)]
 }
 
-func reduceMax[Axis []int, Shape []int](x [unpack(Shape)]float32) [unpack(reduceAxes(Shape, Axis...))]float32
+func reduceMax[Axis []int, Shape []int](x [Shape...]float32) [reduceAxes(Shape, Axis...)...]float32
 
-func broadcast[Dst []int, Src []int](x [unpack(Src)]float32) [unpack(Dst)]float32
+func broadcast[Dst []int, Src []int](x [Src...]float32) [Dst...]float32
 
-func vjpReduceMax[Axis []int, Shape []int](x [unpack(Shape)]float32) ([unpack(reduceAxes(Shape, Axis...))]float32, func([unpack(reduceAxes(Shape, Axis...))]float32) [unpack(Shape)]float32) {
+func vjpReduceMax[Axis []int, Shape []int](x [Shape...]float32) ([reduceAxes(Shape, Axis...)...]float32, func([reduceAxes(Shape, Axis...)...]float32) [Shape...]float32) {
 	fwd := reduceMax[Axis][Shape](x)
-	vjp := func(res [unpack(reduceAxes(Shape, Axis...))]float32) [unpack(Shape)]float32 {
+	vjp := func(res [reduceAxes(Shape, Axis...)...]float32) [Shape...]float32 {
 		targetShape := setOnes(Shape, Axis...)
-		d := [unpack(targetShape)]float32(res / fwd)
+		d := [targetShape...]float32(res / fwd)
 		return x * broadcast[Shape](d)
 	}
 	return fwd, vjp

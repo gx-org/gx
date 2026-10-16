@@ -121,9 +121,9 @@ func TestVJPLog() (float64, float64) {
 	// 1: float64(0.5)
 	// Trace:
 	// vjp_test.gx:0
-	// 	func[T dtype.Nums, S []int](par [unpack(S)]T) ([unpack(S)]T, func(res [unpack(S)]T) [unpack(S)]T) {
+	// 	func[T dtype.Nums, S []int](par [S...]T) ([S...]T, func(res [S...]T) [S...]T) {
 	// 		fwd0 := Log[T][S](par)
-	// 		selfVJPFunc := func(res [unpack(S)]T) [unpack(S)]T {
+	// 		selfVJPFunc := func(res [S...]T) [S...]T {
 	// 			return res*inverse[T][S](par)
 	// 		}
 	// 		return fwd0, selfVJPFunc

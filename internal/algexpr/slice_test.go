@@ -54,7 +54,7 @@ func TestSlice(t *testing.T) {
 				"A": ir.IntSliceType(),
 			},
 			X: "A",
-			Y: "[]int{unpack(A)}",
+			Y: "[]int{A...}",
 		},
 	)
 }

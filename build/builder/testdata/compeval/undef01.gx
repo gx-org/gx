@@ -7,7 +7,7 @@ func check(a []int) []int {
 	return a
 }
 
-func f[S []int](x [unpack(S)]float32) [unpack(check(S))]float32 {
+func f[S []int](x [S...]float32) [check(S)...]float32 {
 	return x
 }
 

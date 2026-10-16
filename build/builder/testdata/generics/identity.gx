@@ -1,6 +1,6 @@
 package identity
 
-func identity[X []int](a [unpack(X)]float32) [unpack(X)]float32 {
+func identity[X []int](a [X...]float32) [X...]float32 {
 	return a
 }
 

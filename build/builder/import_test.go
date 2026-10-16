@@ -145,7 +145,7 @@ package math
 
 import "dtype"
 
-func Exp[T dtype.Nums, M []int]([unpack(M)]T) [unpack(M)]T
+func Exp[T dtype.Nums, M []int]([M...]T) [M...]T
 `,
 		},
 		testbuild.Decl{

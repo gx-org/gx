@@ -1681,6 +1681,9 @@ func (p *parser) parseElement() ast.Expr {
 		colon := p.pos
 		p.next()
 		x = &ast.KeyValueExpr{Key: x, Colon: colon, Value: p.parseExpr()}
+	} else if p.tok == token.ELLIPSIS {
+		x = &ast.Ellipsis{Ellipsis: p.pos, Elt: x}
+		p.next()
 	}
 
 	return x

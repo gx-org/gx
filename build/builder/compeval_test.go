@@ -85,7 +85,7 @@ func same(shape []int) []int {
 	return shape
 }
 
-func f[S []int]([unpack(S)]float32) [unpack(same(S))]float32
+func f[S []int]([S...]float32) [same(S)...]float32
 `,
 		},
 		testbuild.Decl{
@@ -96,7 +96,7 @@ func CheckBroadcast(s1, s2 []int) []int {
 	return s2
 }
 
-func Broadcast[Dst []int, Src []int](x [unpack(Src)]int32) [unpack(CheckBroadcast(Src, Dst))]int32
+func Broadcast[Dst []int, Src []int](x [Src...]int32) [CheckBroadcast(Src, Dst)...]int32
 
 
 func OneHot[numClasses, axlen int](x [axlen]int32) [axlen][numClasses]int32 {
