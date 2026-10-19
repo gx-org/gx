@@ -15,10 +15,10 @@
 package elements
 
 import (
-	"github.com/pkg/errors"
 	"github.com/gx-org/gx/build/ir"
 	"github.com/gx-org/gx/internal/base/cast"
 	"github.com/gx-org/gx/internal/interp/compeval/surrogates/storepath"
+	"github.com/gx-org/gx/interp/engine"
 	"github.com/gx-org/gx/src/gx/ast"
 )
 
@@ -38,8 +38,28 @@ func (f *fieldPath) Root() (*storepath.Proxy, error) {
 	return cast.To[*storepath.Proxy](root)
 }
 
-func (f *fieldPath) FollowOn(ir.Element) (ir.Element, error) {
-	return nil, errors.Errorf("not implemented")
+func followOn(path storepath.Path, root ir.Element) (ir.Element, error) {
+	parent := path.Parent()
+	if parent == nil {
+		return root, nil
+	}
+	cur, err := followOn(parent, root)
+	if err != nil {
+		return nil, err
+	}
+	sel, err := cast.To[engine.Selector](cur)
+	if err != nil {
+		return nil, err
+	}
+	store := path.Store()
+	return sel.Select(nil, &ir.SelectorExpr{
+		Src:  &ast.SelectorExpr{Sel: store.NameDef()},
+		Stor: store,
+	})
+}
+
+func (f *fieldPath) FollowOn(el ir.Element) (ir.Element, error) {
+	return followOn(f.path, el)
 }
 
 func (f *fieldPath) Expr(ev ir.Evaluator, src ast.Expr) ([]ir.Expr, error) {

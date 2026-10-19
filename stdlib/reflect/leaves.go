@@ -22,14 +22,7 @@ import (
 	"github.com/gx-org/gx/internal/interp/compeval/surrogates/storepath"
 	"github.com/gx-org/gx/interp/elements"
 	"github.com/gx-org/gx/interp/engine"
-	"github.com/gx-org/gx/src/gx/ast"
 )
-
-var fieldPathSliceType = &ir.SliceType{
-	BaseType: ir.BaseType[ast.Expr]{Src: &ast.ArrayType{}},
-	DType:    ir.TypeExpr(nil, ir.FieldPathType()),
-	Rank:     1,
-}
 
 func evalLeaves(env *engine.Env, call *ir.FuncCallExpr, recv ir.Element, genArgs, args []ir.Element) ([]ir.Element, error) {
 	ftype := call.Callee.FuncType()
@@ -51,7 +44,7 @@ func evalLeaves(env *engine.Env, call *ir.FuncCallExpr, recv ir.Element, genArgs
 	if err != nil {
 		return nil, err
 	}
-	slice, err := elements.NewSlice(fieldPathSliceType, paths)
+	slice, err := elements.NewSlice(ir.FieldPathSliceType(), paths)
 	if err != nil {
 		return nil, err
 	}

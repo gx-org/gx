@@ -1,0 +1,27 @@
+package fpath02
+
+import "testfieldpaths"
+
+type S struct {
+	a float32
+}
+
+type floats interface {
+	float32 | float64
+}
+
+func f[S []int, T floats](x [S...]T) [S...]T {
+	return x
+}
+
+func Test() S {
+	s := S{a: 2}
+	for _, k := range testfieldpaths.Path[S]("a") {
+		s[k] = f(s[k])
+	}
+	return s
+	// Want:
+	// S{
+	// 	a: float32(2),
+	// }
+}

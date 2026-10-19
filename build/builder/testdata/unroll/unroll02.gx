@@ -1,0 +1,24 @@
+package unroll02
+
+// No runtime test function
+
+//gx:unroll
+func Indices() []int {
+	return []int{1, 2, 3}
+}
+
+type ints interface{ int | int32 }
+
+func f[T ints](x T) T {
+	return x + 1
+}
+
+func TestF() int {
+	sum := 0
+	for _, v := range Indices() {
+		sum += f(v)
+	}
+	return sum
+	// Want:
+	// int(9)
+}

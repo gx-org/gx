@@ -32,6 +32,17 @@ func FieldPathType() Type {
 	return fieldPathT
 }
 
+var fieldPathSliceType = &SliceType{
+	BaseType: BaseType[ast.Expr]{Src: &ast.ArrayType{}},
+	DType:    TypeExpr(nil, FieldPathType()),
+	Rank:     1,
+}
+
+// FieldPathSliceType returns the type for a slice of fieldpath.
+func FieldPathSliceType() *SliceType {
+	return fieldPathSliceType
+}
+
 func (*fieldPathType) node()         {}
 func (*fieldPathType) storage()      {}
 func (*fieldPathType) storageValue() {}
