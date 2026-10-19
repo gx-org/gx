@@ -262,7 +262,6 @@ func (t *distinctType) IndexForVarArgs(ErrSource, int) (Type, bool) {
 }
 
 var (
-	unknownT = &unknownType{}
 	keywordT = &keywordTyp{}
 	voidT    = &voidType{}
 	nilT     = &nilType{}
@@ -272,33 +271,12 @@ var (
 )
 
 func init() {
-	unknownT.distinctType = newDistinctType(irkind.Unknown, unknownT)
 	keywordT.distinctType = newDistinctType(irkind.Func, keywordT)
 	voidT.distinctType = newDistinctType(irkind.Void, voidT)
 	nilT.distinctType = newDistinctType(irkind.Nil, nilT)
 
 	stringT.distinctType = newDistinctType(irkind.String, stringT)
 	rankT.distinctType = newDistinctType(irkind.Rank, rankT)
-}
-
-// unknownType is the type returned by function with no results.
-type unknownType struct {
-	distinctType
-}
-
-// UnknownType returns the unknown type.
-func UnknownType() Type {
-	return unknownT
-}
-
-// IsUnknown returns true if one of the type is unknown.
-func IsUnknown(types ...Type) bool {
-	for _, tp := range types {
-		if tp == unknownT {
-			return true
-		}
-	}
-	return false
 }
 
 // keywordTyp is the type returned by function with no results.

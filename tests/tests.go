@@ -108,6 +108,7 @@ var Importers = []importers.Importer{
 	testpkgs.TestCPUndef,
 	testpkgs.TestGenerics,
 	testpkgs.TestUnknow,
+	testpkgs.TestFieldPaths,
 	base.New(),
 	stdlib.Importer(),
 	embedpkg.New(),

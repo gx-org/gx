@@ -1,0 +1,28 @@
+package fpath01
+
+import "testfieldpaths"
+
+type S struct {
+	t T
+}
+
+type T struct {
+	a int
+	b float32
+}
+
+func Test() S {
+	s := S{t: T{a: 1, b: 2}}
+	for _, k := range testfieldpaths.Path[S]("t", "a") {
+		s[k] += 10
+	}
+	return s
+	// Want:
+	// S{
+	// 	t: T{
+	// 		a: int(11),
+	// 		b: float32(2),
+	// 	},
+	// }
+}
+
