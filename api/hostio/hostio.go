@@ -39,6 +39,9 @@ type (
 
 		// ToHost transfers the value to host given an allocator.
 		ToHost(kernels.Allocator) (Value, error)
+
+		// Finalize releases the resources allocated for the value.
+		Finalize() error
 	}
 
 	// Valuer is an instance able to produce a GX value.
@@ -122,6 +125,16 @@ func ToHost(alloc kernels.Allocator, vals []Value) ([]Value, error) {
 		}
 	}
 	return out, nil
+}
+
+// Finalize releases the resources allocated for all values.
+func Finalize(vals ...Value) error {
+	for _, val := range vals {
+		if err := val.Finalize(); err != nil {
+			return err
+		}
+	}
+	return nil
 }
 
 func bigIntToInt[T gotype.Integer](x *big.Int) T {

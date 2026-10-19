@@ -92,6 +92,11 @@ func (a *DeviceArray) ToHost(alloc kernels.Allocator) (Value, error) {
 	return a.ToHostArray(alloc)
 }
 
+// Finalize releases the device buffer.
+func (a *DeviceArray) Finalize() error {
+	return a.handle.Finalize()
+}
+
 // GoValue of the underlying element.
 func (a *DeviceArray) GoValue() (any, error) {
 	hVal, err := a.ToHostArray(kernels.DefaultAllocator())
@@ -209,6 +214,11 @@ func (a *HostArray) Shape() shapes.Shape {
 // ToHost returns receiver. The allocator is ignored.
 func (a *HostArray) ToHost(kernels.Allocator) (Value, error) {
 	return a, nil
+}
+
+// Finalize is a no-op for arrays on the host.
+func (a *HostArray) Finalize() error {
+	return nil
 }
 
 // ToHostArray returns the receiver.

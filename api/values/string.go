@@ -48,6 +48,11 @@ func (s *String) ToHost(kernels.Allocator) (hostio.Value, error) {
 	return s, nil
 }
 
+// Finalize is a no-op for string values.
+func (s *String) Finalize() error {
+	return nil
+}
+
 // SourceString returns the GX source code of the implementation.
 func (s *String) SourceString(from *ir.File) string {
 	return s.StringValue()

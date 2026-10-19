@@ -73,6 +73,7 @@ func (r *Runner) RunWithArgs(fn *ir.FuncDecl, recv hostio.Value, args []hostio.V
 	if err != nil {
 		return nil, "", err
 	}
+	defer hostio.Finalize(outs...)
 	flattenOuts, err := hostio.ToHost(kernels.DefaultAllocator(), flatten(outs))
 	if err != nil {
 		return outs, "", err

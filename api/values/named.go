@@ -86,6 +86,11 @@ func (n *NamedType) ToHost(alloc kernels.Allocator) (hostio.Value, error) {
 	return NewNamedType(hostVal, n.typ), nil
 }
 
+// Finalize releases the resources allocated for the value.
+func (n *NamedType) Finalize() error {
+	return n.val.Finalize()
+}
+
 // SourceString returns the GX source code of the implementation.
 func (n *NamedType) SourceString(from *ir.File) string {
 	underStruct, ok := n.val.(*Struct)
