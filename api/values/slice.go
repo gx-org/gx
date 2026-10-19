@@ -61,6 +61,11 @@ func (s *Slice) ToHost(alloc kernels.Allocator) (hostio.Value, error) {
 	return NewSlice(s.Type(), vals)
 }
 
+// Finalize releases the resources allocated for the slice elements.
+func (s *Slice) Finalize() error {
+	return hostio.Finalize(s.vals...)
+}
+
 // Allocate a slice of GX values given a size.
 func (s *Slice) Allocate(size int) {
 	s.vals = make([]hostio.Value, size)

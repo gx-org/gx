@@ -48,6 +48,11 @@ func (s *IRNode) ToHost(kernels.Allocator) (hostio.Value, error) {
 	return s, nil
 }
 
+// Finalize is a no-op for IR node values.
+func (s *IRNode) Finalize() error {
+	return nil
+}
+
 // DefineString returns the GX source code to define the value.
 // If not possible, fall back to SourceString.
 func (s *IRNode) DefineString(from *ir.File) string {

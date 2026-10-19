@@ -77,6 +77,20 @@ func (vs *Struct) ToHost(alloc kernels.Allocator) (hostio.Value, error) {
 	return NewStruct(vs.Type(), vals)
 }
 
+// Finalize releases the resources allocated for the structure fields.
+func (vs *Struct) Finalize() error {
+	for _, field := range vs.structType.Fields.Fields() {
+		v := vs.FieldValue(field.Name.Name)
+		if v == nil {
+			continue
+		}
+		if err := v.Finalize(); err != nil {
+			return err
+		}
+	}
+	return nil
+}
+
 // Type of the structure.
 func (vs *Struct) Type() ir.Type {
 	return vs.typ

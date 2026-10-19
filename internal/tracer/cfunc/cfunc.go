@@ -123,6 +123,11 @@ func (g *CompiledFunc) Run(receiver hostio.Value, args []hostio.Value, tracer tr
 	if err != nil {
 		return nil, err
 	}
+	defer func() {
+		for _, b := range traced {
+			_ = b.Finalize()
+		}
+	}()
 	if err := g.process.ProcessTraces(g.device.PlatformDevice(), fc, tracer, traced); err != nil {
 		return nil, err
 	}
