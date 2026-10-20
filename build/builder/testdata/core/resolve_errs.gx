@@ -1,4 +1,4 @@
-package resolve
+package resolve_errs
 
 import (
 	"dtype"
@@ -60,7 +60,7 @@ func testTensorNumberAssignment() [1]int64 {
 
 func testTensorIncorrectType() [1]int64 {
 	a := -1.0
-	return [...]int64{a} // ERROR cannot use float64 as [...]int64 value in assignment
+	return [1]int64{a} // ERROR cannot use float64 as int64 value in assignment
 }
 
 func testTensorDeclarationCannotUseDataType() [4][4]float64 {
@@ -184,12 +184,12 @@ func testMultipleValueError() float32 {
 func testMultipleAssignmentsExpr() float32 {
 	a := 5
 	a := 4   // ERROR no new variables
-	return a // ERROR cannot use int64 as float32 value in return statement
+	return a // ERROR cannot use int as float32 value in return statement
 }
 
-func testMultipleAssignmentsCall() int64 {
+func testMultipleAssignmentsCall() int {
 	a := 4
-	a, b := funcWith2Args(4, 5) // ERROR cannot use float32 as int64
+	a, b := funcWith2Args(4, 5) // ERROR cannot use float32 as int
 	return a
 }
 
@@ -203,9 +203,9 @@ func testAssignBuiltin() bool {
 	return true
 }
 
-func testAddAssignOperandMismatch() int64 {
+func testAddAssignOperandMismatch() int {
 	x := 1
-	x += 2.5 // ERROR cannot use 2.5 (untyped FLOAT constant) as int64 value
+	x += 2.5 // ERROR cannot use 2.5 (untyped FLOAT constant) as int value
 	return x
 }
 
@@ -215,22 +215,17 @@ func testImportIsUndefined() float32 {
 
 type myfloat float64
 
-var (
-	varMyFloat myfloat
-	varFloat64 float64
-)
-
-func testExplicitCastMyFloatToFloat64() float64 {
+func testExplicitCastMyFloatToFloat64(varMyFloat myfloat) float64 {
 	return varMyFloat // ERROR cannot use myfloat as float64 value in return statement
 }
 
-func testExplicitCastFloat64ToMyFloat() myfloat {
+func testExplicitCastFloat64ToMyFloat(varFloat64 float64) myfloat {
 	return varFloat64 // ERROR cannot use float64 as myfloat value in return statement
 }
 
 func testExpIntTensor() [2]float32 {
 	a := shape.Shape{DType: 0, Dimensions: []int{}}
-	return math.Exp(a) // ERROR cannot infer type parameter T
+	return math.Exp(a) // ERROR in call to math.Exp, cannot infer type T,S
 }
 
 func testSliceIncorrectType() []int64 {
@@ -254,7 +249,7 @@ func testConcatInferredType() [2]float32 {
 
 func testConcatShapeError() [2]float32 {
 	a := shape.Concat[0]([2]float32{2, 3}, [2]float32{4, 5})
-	return a + [2]float32{6, 7} // ERROR mismatched types [2+2]float32 and [2]float32
+	return a + [2]float32{6, 7} // ERROR mismatched types [4]float32 and [2]float32
 }
 
 func testIncorrectTypeBinaryOperator() float64 {
@@ -270,7 +265,7 @@ func testIncorrectTypeBinaryOperator2() bool {
 
 func testMulScalarFloat64Tensor1DFlat32() [2]float32 {
 	a := 2
-	return a * [2]float32{1, 2} // ERROR mismatched types int64 and float32
+	return a * [2]float32{1, 2} // ERROR mismatched types int and float32
 }
 
 func testReshape() [2]float32 {
@@ -298,12 +293,12 @@ func testBoolOperator() bool {
 }
 
 func testIncorrectIndexTarget() float32 {
-	return 5[0] // ERROR cannot index 5 (type: int number)
+	return 5[0] // ERROR cannot index int number
 }
 
 func testIncorrectIndexTarget2() float32 {
 	v := someStruct{a: 1, someMethod: 1}
-	return v[0] // ERROR cannot index v (type: someStruct)
+	return v[0] // ERROR index 0 (of type int) must be fieldpath
 }
 
 func testIncorrectIndexType() float32 {
@@ -314,9 +309,9 @@ func testArrayAsScalarFloat32() float32 {
 	return [1]float32{1.0} // ERROR cannot use [1]float32 as float32
 }
 
-func testForLoop(n int32) int64 {
+func testForLoop(n float32) int {
 	r := 0
-	for i := range n { // ERROR cannot range over int32
+	for i := range n { // ERROR cannot range over float32
 		r = r + 1
 	}
 	return r
@@ -325,7 +320,7 @@ func testForLoop(n int32) int64 {
 func testLambda_DisallowVariableCapture() int32 {
 	x := 0
 	return func() int32 {
-		return 1 + x // ERROR cannot use int64 as int32 value in return statement
+		return 1 + x // ERROR cannot use int as int32 value in return statement
 	}()
 }
 
@@ -342,7 +337,7 @@ func returnZero[T int32, U int64]() int32 {
 }
 
 func testCallTypeParameters_InferenceFailed() int32 {
-	return returnZero[int32]() // ERROR cannot infer type parameter U
+	return returnZero[int32]() // ERROR cannot use metatype as int32 generic value T
 }
 
 func testCallTypeParameters_TooMany() int32 {
@@ -406,11 +401,11 @@ func repeatedShapeParameters2[X []int](a [X...]int32, b [X...]int32) int32 {
 }
 
 func testRepeatedShapeParameters() int32 {
-	return repeatedShapeParameters([10]int32{}, [20]int32{}) // ERROR axis length
+	return repeatedShapeParameters([10]int32{}, [20]int32{}) // ERROR []int{20} does not match inferred value []int{10} for X
 }
 
 func testRepeatedShapeParameters2() int32 {
-	return repeatedShapeParameters2([10]int32{}, [20]int32{}) // ERROR cannot use type [20]int32 as [10]int32 in argument to repeatedShapeParameters2
+	return repeatedShapeParameters2([10]int32{}, [20]int32{}) // ERROR []int{20} does not match inferred value []int{10} for X
 }
 
 func testReturnNumberAsString() string {
@@ -430,7 +425,7 @@ func testFunctionTypeConstraint() int32 {
 }
 
 func testFunctionTypeConstraint2() int32 {
-	return typeArgumentConstrained(int64(1)) // ERROR int64 does not satisfy interface { int32 } for T
+	return typeArgumentConstrained(int64(1)) // ERROR int64 does not satisfy interface { int32 }
 }
 
 func testInvalidShr[T dtype.Floats](a, b T) T {

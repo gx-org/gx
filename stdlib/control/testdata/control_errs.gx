@@ -1,0 +1,60 @@
+package control_errs
+
+import "control"
+
+type loopState struct{}
+
+func testControlWithMissingArg() int32 {
+	return control.While(func(x int32) bool { return x < 10 }, func(x int32) int32 { return x + 1 }) // ERROR not enough arguments in call to control.While
+}
+
+func testControlWithMismatchedState() loopState {
+	s := -0.5
+	return control.While(
+		s,
+		func(s loopState) bool { return false }, // ERROR cannot use type func(s loopState) bool as func(float64) bool in argument to control.While
+		func(s loopState) loopState { return loopState{} }, // ERROR cannot use type func(s loopState) loopState as func(float64) float64 in argument to control.While
+	)
+}
+
+func testControlWithInvalidCondType() loopState {
+	return control.While(
+		loopState{},
+		loopState{}, // ERROR type loopState as func(loopState) bool in argument to control.While
+		func(s loopState) loopState { return loopState{} })
+}
+
+func testControlWithInvalidCondParameter() loopState {
+	return control.While(
+		loopState{},
+		func(x int32) bool { return false }, // ERROR cannot use type func(x int32) bool as func(loopState) bool in argument to control.While
+		func(s loopState) loopState { return loopState{} })
+}
+
+func testControlWithInvalidCondResult() loopState {
+	return control.While(
+		loopState{},
+		func(x int32) int32 { return 1 }, // ERROR cannot use type func(x int32) int32 as func(loopState) bool in argument to control.While
+		func(s loopState) loopState { return loopState{} })
+}
+
+func testControlWithInvalidBodyType() loopState {
+	return control.While(
+		loopState{},
+		func(s loopState) bool { return false },
+		loopState{}) // ERROR cannot use type loopState as func(loopState) loopState in argument to control.While
+}
+
+func testControlWithInvalidBodyParameter() loopState {
+	return control.While(
+		loopState{},
+		func(x loopState) bool { return false },
+		func(s int32) loopState { return loopState{} }) // ERROR cannot use type func(s int32) loopState as func(loopState) loopState in argument to control.While
+}
+
+func testControlWithInvalidBodyResult() loopState {
+	return control.While(
+		loopState{},
+		func(x loopState) bool { return false },
+		func(s loopState) int32 { return 2 }) // ERROR cannot use type func(s loopState) int32 as func(loopState) loopState in argument to control.While
+}

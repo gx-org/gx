@@ -1,0 +1,15 @@
+package len_errs
+
+func testLenMissingArguments() int64 {
+	return len() // ERROR incorrect number of arguments for len() (expected 1, found 0)
+}
+
+func testLenExtraArguments() int64 {
+	return len([1]float32{0}, 100) // ERROR incorrect number of arguments for len([1]float32{0}, 100) (expected 1, found 2)
+}
+
+type noLength struct{}
+
+func testLenMismatchedType() int64 {
+	return len(noLength{}) // ERROR invalid argument: noLength{} (noLength) for built-in len
+}

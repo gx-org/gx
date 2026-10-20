@@ -96,7 +96,7 @@ func fixTestOutput(rtm *api.Runtime, path string, f *ast.File) (fixed bool, err 
 	if !strings.HasSuffix(path, "_test.gx") {
 		return
 	}
-	if strings.Contains(path, "tests/errors") || strings.Contains(path, "/testfiles/imports/") {
+	if strings.Contains(path, "/testfiles/imports/") {
 		return
 	}
 	fs, packageFiles, err := findPackageFiles(path, f)

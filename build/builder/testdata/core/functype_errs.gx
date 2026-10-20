@@ -1,4 +1,4 @@
-package functype
+package functype_errs
 
 func testUnknownKind() [2]whatIsThis { // ERROR undefined: whatIsThis
 	return [2]float64{1, 2}

@@ -1,4 +1,4 @@
-package beforefunc
+package beforefunc_errs
 
 
 var errorVar undefined // ERROR undefined

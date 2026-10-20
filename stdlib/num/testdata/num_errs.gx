@@ -1,0 +1,117 @@
+package num_errs
+
+import "num"
+
+func testMatmul1Axis() float32 {
+	a := [2]float32{}
+	b := [3]float32{}
+	return num.VecMul(a, b) // ERROR 3 does not match inferred value 2 for LI
+}
+
+func testMatmul2Axis() float32 {
+	a := [2][4]float32{}
+	b := [3]float32{}
+	return num.MatVecMul(a, b) // ERROR 3 does not match inferred value 4 for LJ
+}
+
+func testMatmulLeftMoreThan2Axis() float32 {
+	a := [3][2][4]float32{}
+	b := [4][3]float32{}
+	return num.MatMul(a, b) // ERROR 4 does not match inferred value 2 for LJ
+}
+
+func testMatmulRightMoreThan2Axis() float32 {
+	a := [4][3]float32{}
+	b := [3][2][4]float32{}
+	return num.MatMul(a, b) // ERROR cannot use type [3][2][4]float32 as [3][2]float32 in argument to num.MatMul
+}
+
+var TestDim int
+
+func testMatMulExprAxisMismatch(x [2][TestDim]float64, y [2][2]float64) [2][2]float64 {
+	return num.MatMul(x, y) // ERROR 2 does not match inferred value TestDim for LJ
+}
+
+func testEinsumMissingArguments() [4]float32 {
+	a := [4]float32{}
+	return num.Einsum[[]int{0}][[]int{}][[]int{0}][[]int{}](a) // ERROR not enough arguments in call to num.Einsum
+}
+
+func testEinsumInvalidArguments() [1]float32 {
+	a := float32(1.0)
+	return num.Einsum[[]int{}][[]int{}][[]int{}][[]int{}](a, a) // ERROR cannot use float32 as [1]float32 value in return statement
+}
+
+func testEinsumContractingDimRange() float32 {
+	a := [4]float32{}
+	b := [4]float32{}
+	return num.Einsum[[]int{1}][[]int{}][[]int{1}][[]int{}](a, b) // ERROR is out-of-range: must be in [0, 1)
+}
+
+func testEinsumContractingDimUnpaired() [2]float32 {
+	a := [4][2]float32{}
+	b := [4][2]float32{}
+	return num.Einsum[[]int{1}][[]int{}][[]int{}][[]int{}](a, b) // ERROR must specify the same number of lhs and rhs contracting dimensions (got 1 and 0)
+}
+
+func testEinsumContractingDimIncompatible() [2]float32 {
+	a := [4][3]float32{}
+	b := [4][2]float32{}
+	return num.Einsum[[]int{1}][[]int{0}][[]int{1}][[]int{0}](a, b) // ERROR cannot contract lhs dimension int(3) with rhs dimension int(2)
+}
+
+func testEinsumBatchingDimRange() float32 {
+	a := [4]float32{}
+	b := [4]float32{}
+	return num.Einsum[[]int{}][[]int{1}][[]int{}][[]int{0}](a, b) // ERROR is out-of-range: must be in [0, 1)
+}
+
+func testEinsumBatchingDimUnpaired() [2]float32 {
+	a := [4][2]float32{}
+	b := [4][2]float32{}
+	return num.Einsum[[]int{}][[]int{0}][[]int{}][[]int{}](a, b) // ERROR must specify the same number of lhs and rhs batching dimensions (got 1 and 0)
+}
+
+func testEinsumBatchingDimIncompatible() [2]float32 {
+	a := [4][2]float32{}
+	b := [5][2]float32{}
+	return num.Einsum[[]int{1}][[]int{0}][[]int{1}][[]int{0}](a, b) // ERROR cannot batch lhs dimension int(4) with rhs dimension int(5)
+}
+
+func testEinsumDimReused() [2]float32 {
+	a := [3][2]float32{}
+	b := [3][2]float32{}
+	return num.Einsum[[]int{0}][[]int{0}][[]int{0}][[]int{0}](a, b) // ERROR axes may only be contracted or batched once
+}
+
+func testIotaNumArgs() []int64 {
+	return num.Iota[[]int{2, 3}](4, 5) // ERROR too many arguments in call to num.Iota[[]int{2, 3}] (expected 1, found 2)
+}
+
+func testIotaArgType() []int64 {
+	return num.Iota[[]int{2, 3}]([2]int64{1, 2}) // ERROR cannot use type [2]int64 as int in argument to num.Iota
+}
+
+func testIotaFull() []int64 {
+	return num.IotaFull[[]int{2, 3}](4) // ERROR too many arguments in call to num.IotaFull
+}
+
+func testReduceMaxWithMissingAxes() float64 {
+	return num.ReduceMax([4]float64{-1, 0, 2, -4}) // ERROR in call to num.ReduceMax, cannot infer type Axis
+}
+
+func testReduceMaxWithInvalidAxis() float64 {
+	return num.ReduceMax[[]int{1}]([4]float64{-1, 0, 2, -4}) // ERROR reduce axis 1 out of bound for array with 1 axes
+}
+
+func testArgmaxWithMissingAxis() int32 {
+	return num.ArgMax([...]float32{1, 2, 3}) // ERROR in call to num.ArgMax, cannot infer type Axis
+}
+
+func testArgmaxWithInvalidAxis() int32 {
+	return num.ArgMax[1]([5]float32{-1, 2, -4, 8, -16}) // ERROR reduce axis 1 out of bound for array with 1 axes
+}
+
+func testSumWithBool() [1]float32 {
+	return num.Sum[[]int{0}]([2]bool{}) // ERROR bool does not satisfy dtype.Nums
+}

@@ -1,4 +1,4 @@
-package meta
+package meta_errs
 
 // gx:=foo bar // ERROR expected 'EOF', found bar
 func incorrectDirectiveAST()

@@ -1,0 +1,7 @@
+package math_errs
+
+import "math"
+
+func testMathCeilWithMismatchedShape() [1]float32 {
+	return math.Ceil[float32]([2]float32{1, 2}) // ERROR cannot use [2]float32 as [1]float32 value in return statement
+}

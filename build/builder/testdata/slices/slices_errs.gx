@@ -1,7 +1,7 @@
-package slices
+package slices_errs
 
 func testSliceFloatIndex() float32 {
-	return [2]float32{1, 2}[1.0] // ERROR cannot use 1.0 (untyped FLOAT constant) as int64 value
+	return [2]float32{1, 2}[1.0] // ERROR cannot use 1.0 (untyped FLOAT constant) as int value
 }
 
 func testAppendNotEnough() []float32 {
@@ -18,30 +18,30 @@ func testAppendCannotUse() []float32 {
 
 func testSetDTypeMismatch() [2][2]int32 {
 	a := [2][2]int32{}
-	a = set(a, [2]float32{1, 2}, [1]int32{0}) // ERROR cannot set a slice
+	a = set(a, [2]float32{1, 2}, 0) // ERROR cannot set a slice
 	return a
 }
 
 func testSetPositionsTooMany() [2][2]int32 {
 	a := [2][2]int32{}
-	a = set(a, [2][2]int32{}, [3]int32{0, 1, 2}) // ERROR position (length 3) exceeds operand rank (2)
+	a = set(a, [2][2]int32{}, 0, 1, 2) // ERROR position (length 3) exceeds operand rank (2)
 	return a
 }
 
 func testSetIncorrectRankNotEnough() [2][2][2]int32 {
 	a := [2][2][2]int32{}
-	a = set(a, [2]int32{}, [1]int32{0}) // ERROR cannot set array
+	a = set(a, [2]int32{}, 0) // ERROR cannot set array
 	return a
 }
 
 func testSetIncorrectRankTooMany() [2][2]int32 {
 	a := [2][2]int32{}
-	a = set(a, [2][2]int32{}, [1]int32{0}) // ERROR cannot set array
+	a = set(a, [2][2]int32{}, 0) // ERROR cannot set array
 	return a
 }
 
 func testSetIncorrectAxisSize() [2][2]int32 {
 	a := [2][2]int32{}
-	a = set(a, [3]int32{}, [1]int32{0}) // ERROR cannot set array
+	a = set(a, [3]int32{}, 0) // ERROR cannot set array
 	return a
 }
