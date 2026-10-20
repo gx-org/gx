@@ -19,10 +19,10 @@ import (
 	"github.com/gx-org/gx/build/ir"
 )
 
-// TestUnknow declares the macro package in a test.
-var TestUnknow = testbuild.DeclarePackage{
+// TestUnknown declares the macro package in a test.
+var TestUnknown = testbuild.DeclarePackage{
 	Src: `
-package testunknow
+package testunknown
 
 type U any
 `,
