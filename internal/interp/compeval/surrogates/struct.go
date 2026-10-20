@@ -25,6 +25,8 @@ type sStruct struct {
 	*elements.Struct
 }
 
+var _ elements.IStruct = (*sStruct)(nil)
+
 func newStruct(path storepath.Path, typ *ir.StructType) (Element, error) {
 	fields := make(map[string]ir.Element)
 	for _, field := range typ.Fields.Fields() {

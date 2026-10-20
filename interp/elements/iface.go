@@ -39,6 +39,12 @@ type (
 		StrEl()
 	}
 
+	// IStruct is an interface implemented by all structure elements.
+	IStruct interface {
+		engine.Selector
+		StructType() *ir.StructType
+	}
+
 	// FieldPath indicates a path to a field in a structure.
 	FieldPath interface {
 		ir.Element
