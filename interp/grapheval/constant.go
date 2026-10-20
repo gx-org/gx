@@ -15,6 +15,7 @@
 package grapheval
 
 import (
+	"github.com/gomlx/compute/shapes"
 	"github.com/gx-org/gx/api/hostio"
 	"github.com/gx-org/gx/build/fmterr"
 	"github.com/gx-org/gx/build/ir"
@@ -43,6 +44,7 @@ var (
 	_ materialise.Node                = (*constant)(nil)
 	_ engine.Copier                   = (*constant)(nil)
 	_ elements.WithAxes               = (*constant)(nil)
+	_ elements.EvalShaper             = (*constant)(nil)
 	_ ir.WithLength                   = (*constant)(nil)
 	_ togo.CompileValue               = (*constant)(nil)
 )
@@ -130,9 +132,23 @@ func (n *constant) Cast(env *engine.Env, expr ir.Expr, target ir.Type) (engine.N
 	return newConstant(env.ExprEval(), n.ao, res)
 }
 
+// EvalShape returns the shape of the constant.
+func (n *constant) EvalShape() (shapes.Shape, error) {
+	dims, err := n.cst.AxisLengths()
+	if err != nil {
+		return shapes.Invalid(), err
+	}
+	cArray := ir.ToArrayType(n.ctyp)
+	return shapes.Make(cArray.DataType().Kind().DType(), dims...), nil
+}
+
 // Length returns the value corresponding to calling the built-in len.
 func (n *constant) Length(ev ir.Evaluator) (int, error) {
-	return n.BackendNode.Length(ev)
+	sh, err := n.EvalShape()
+	if err != nil {
+		return 0, err
+	}
+	return shapeLength(sh)
 }
 
 func (n *constant) Type() ir.Type {
