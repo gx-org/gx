@@ -40,7 +40,7 @@ func TestBuilder(t *testing.T) {
 			testpkgs.TestMacroError,
 			testpkgs.TestCPUndef,
 			testpkgs.TestGenerics,
-			testpkgs.TestUnknow,
+			testpkgs.TestUnknown,
 			testpkgs.TestFieldPaths,
 			base.New(),
 			stdlib.Importer(),
