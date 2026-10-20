@@ -116,6 +116,13 @@ func (a *rootArgument) Ops() *Ops {
 
 func (vis *inputVisitor) newArg(parent parentArgument, typ ir.Type, proxy ir.Element) (ir.Element, error) {
 	if proxy.Type().Kind() == irkind.Unknown {
+		if checkIsConcrete(typ) == nil {
+			node, err := cast.To[materialise.Node](proxy)
+			if err != nil {
+				return nil, err
+			}
+			return NewBackendNode(vis.ao, typ, node.Value())
+		}
 		return proxy, nil
 	}
 	switch typT := typ.(type) {
