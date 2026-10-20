@@ -26,7 +26,7 @@ import (
 	"github.com/gx-org/gx/api"
 	"github.com/gx-org/gx/api/hostio"
 	"github.com/gx-org/gx/api/options"
-	"github.com/gx-org/gx/api/tracer"
+	"github.com/gx-org/gx/api/runner"
 	"github.com/gx-org/gx/api/values"
 	"github.com/gx-org/gx/build/ir"
 	"github.com/gx-org/gx/golang/binder/gobindings/core"
@@ -48,7 +48,7 @@ var (
 	_ = errors.Errorf
 	_ = types.NewSlice[types.Bridger]
 	_ = ir.NamedType{}
-	_ = tracer.Trace
+	_ = runner.Trace
 )
 
 // BuildFor loads the GX package rand
@@ -92,9 +92,9 @@ type Package struct {
 	handle PackageHandle
 
 	// Functions and methods cache
-	cacheNewPhilox *core.FuncCache
-	cacheNew       *core.FuncCache
-	cacheNewSource *core.FuncCache
+	cacheNewPhilox core.Func
+	cacheNew       core.Func
+	cacheNewSource core.Func
 }
 
 // Build builds a package for a device once it has been loaded.
@@ -128,15 +128,15 @@ func Build(dev *core.DeviceSetup) (*PackageHandle, error) {
 	}
 
 	// Initialise function and method caches.
-	pkg.cacheNewPhilox, err = pkg.handle.NewCache("", "NewPhilox")
+	pkg.cacheNewPhilox, err = pkg.handle.NewFunc("", "NewPhilox")
 	if err != nil {
 		return nil, err
 	}
-	pkg.cacheNew, err = pkg.handle.NewCache("", "New")
+	pkg.cacheNew, err = pkg.handle.NewFunc("", "New")
 	if err != nil {
 		return nil, err
 	}
-	pkg.cacheNewSource, err = pkg.handle.NewCache("", "NewSource")
+	pkg.cacheNewSource, err = pkg.handle.NewFunc("", "NewSource")
 	if err != nil {
 		return nil, err
 	}
@@ -149,13 +149,13 @@ func (pkg *Package) NewPhilox(arg0 types.Array[uint64]) (_ *Philox, err error) {
 	var args []hostio.Value = []hostio.Value{
 		arg0.Bridge().GXValue(), // seed [3]uint64
 	}
-	var runner tracer.CompiledFunc
-	runner, err = pkg.cacheNewPhilox.Runner(nil, args)
+	var rn runner.CompiledFunc
+	rn, err = pkg.cacheNewPhilox.Build(nil, args)
 	if err != nil {
 		return
 	}
 	var outputs []hostio.Value
-	outputs, err = runner.Run(nil, args, pkg.handle.Tracer())
+	outputs, err = rn.Run(nil, args, pkg.handle.Tracer())
 	if err != nil {
 		return
 	}
@@ -176,13 +176,13 @@ func (pkg *Package) New(arg0 *Philox) (_ *Rand, err error) {
 	var args []hostio.Value = []hostio.Value{
 		arg0.Bridge().GXValue(), // src rand.Philox
 	}
-	var runner tracer.CompiledFunc
-	runner, err = pkg.cacheNew.Runner(nil, args)
+	var rn runner.CompiledFunc
+	rn, err = pkg.cacheNew.Build(nil, args)
 	if err != nil {
 		return
 	}
 	var outputs []hostio.Value
-	outputs, err = runner.Run(nil, args, pkg.handle.Tracer())
+	outputs, err = rn.Run(nil, args, pkg.handle.Tracer())
 	if err != nil {
 		return
 	}
@@ -203,13 +203,13 @@ func (pkg *Package) NewSource(arg0 types.Atom[int64]) (_ *Philox, err error) {
 	var args []hostio.Value = []hostio.Value{
 		arg0.Bridge().GXValue(), // seed int64
 	}
-	var runner tracer.CompiledFunc
-	runner, err = pkg.cacheNewSource.Runner(nil, args)
+	var rn runner.CompiledFunc
+	rn, err = pkg.cacheNewSource.Build(nil, args)
 	if err != nil {
 		return
 	}
 	var outputs []hostio.Value
-	outputs, err = runner.Run(nil, args, pkg.handle.Tracer())
+	outputs, err = rn.Run(nil, args, pkg.handle.Tracer())
 	if err != nil {
 		return
 	}
