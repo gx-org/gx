@@ -27,6 +27,7 @@ import (
 	"github.com/gx-org/gx/build/fmterr"
 	"github.com/gx-org/gx/build/ir"
 	"github.com/gx-org/gx/internal/base/cast"
+	"github.com/gx-org/gx/internal/interp/flatten"
 	"github.com/gx-org/gx/internal/togo"
 	"github.com/gx-org/gx/internal/tracer/processor"
 	"github.com/gx-org/gx/interp/grapheval"
@@ -76,12 +77,16 @@ func Run(dev *api.Device, fn *ir.FuncDecl, receiver hostio.Value, args []hostio.
 	if err != nil {
 		return nil, err
 	}
+	outEls, err = flatten.Flatten(outEls...)
+	if err != nil {
+		return nil, err
+	}
 	outs := make([]hostio.Value, len(outEls))
 	for i, el := range outEls {
 		var val any = el
 		// TODO(degris): create an eagereval to replace grapheval to avoid the following if statement.
-		if backendNode, isBackendNode := el.(*grapheval.BackendNode); isBackendNode {
-			val = backendNode.Value()
+		if node, isNode := el.(materialise.Node); isNode {
+			val = node.Value()
 		}
 		outs[i], err = cast.To[hostio.Value](val)
 		if err != nil {
