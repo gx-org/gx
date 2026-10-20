@@ -77,6 +77,9 @@ func (a *arrayT[T]) String() string {
 
 // Buffer returns the data of the array as a generic []byte buffer.
 func (a *arrayT[T]) Buffer() []byte {
+	if len(a.values) == 0 {
+		return nil
+	}
 	ptr := unsafe.Pointer(&(a.values[0]))
 	return unsafe.Slice((*byte)(ptr), int(a.shape.ByteSize()))
 }
