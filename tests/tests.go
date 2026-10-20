@@ -29,9 +29,11 @@ import (
 	// Testdata
 	core "github.com/gx-org/gx/build/builder/testdata"
 
+	control "github.com/gx-org/gx/stdlib/control/testdata"
 	grad "github.com/gx-org/gx/stdlib/math/grad/testdata"
 	math "github.com/gx-org/gx/stdlib/math/testdata"
 	num "github.com/gx-org/gx/stdlib/num/testdata"
+	rand "github.com/gx-org/gx/stdlib/rand/testdata"
 	reflect "github.com/gx-org/gx/stdlib/reflect/testdata"
 	shape "github.com/gx-org/gx/stdlib/shape/testdata"
 
@@ -41,22 +43,8 @@ import (
 
 // FS is the filesystem containing all GX test files.
 //
-//go:embed testfiles errors
+//go:embed testfiles
 var FS embed.FS
-
-// Errors is the set of paths testing for compiler errors.
-var Errors = []string{
-	"errors/einsum",
-	"errors/ellipsis",
-	"errors/meta",
-	"errors/process",
-	"errors/functype",
-	"errors/beforefunc",
-	"errors/resolve",
-	"errors/redefined",
-	"errors/slices",
-	"errors/stdlib",
-}
 
 // Language is a set of paths testing the GX core language.
 var Language = []string{
@@ -83,10 +71,12 @@ var CoreUnits = []testbuild.TestFactory{
 
 // StdlibUnits groups all the test in the standard library.
 var StdlibUnits = []testbuild.TestFactory{
+	control.Sources,
 	shape.Sources,
 	math.Sources,
 	grad.Sources,
 	num.Sources,
+	rand.Sources,
 	reflect.Sources,
 }
 

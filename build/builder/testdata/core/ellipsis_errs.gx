@@ -1,4 +1,4 @@
-package ellipsis
+package ellipsis_errs
 
 import "shape"
 
