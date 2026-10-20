@@ -26,7 +26,7 @@ import (
 	"github.com/gx-org/gx/api"
 	"github.com/gx-org/gx/api/hostio"
 	"github.com/gx-org/gx/api/options"
-	"github.com/gx-org/gx/api/tracer"
+	"github.com/gx-org/gx/api/runner"
 	"github.com/gx-org/gx/api/values"
 	"github.com/gx-org/gx/build/ir"
 	"github.com/gx-org/gx/golang/binder/gobindings/core"
@@ -36,8 +36,8 @@ import (
 	_ "github.com/gx-org/gx/examples/linearregression/linearregression"
 
 	gxdep0 "github.com/gx-org/gx/stdlib/bindings/go/num_go_gx"
-	gxdep2 "github.com/gx-org/gx/stdlib/bindings/go/rand_go_gx"
-	gxdep1 "github.com/gx-org/gx/stdlib/bindings/go/shape_go_gx"
+	gxdep1 "github.com/gx-org/gx/stdlib/bindings/go/rand_go_gx"
+	gxdep2 "github.com/gx-org/gx/stdlib/bindings/go/shape_go_gx"
 )
 
 // Force some package dependencies.
@@ -50,7 +50,7 @@ var (
 	_ = errors.Errorf
 	_ = types.NewSlice[types.Bridger]
 	_ = ir.NamedType{}
-	_ = tracer.Trace
+	_ = runner.Trace
 )
 
 // BuildFor loads the GX package github.com/gx-org/gx/examples/linearregression/linearregression
@@ -84,8 +84,8 @@ type PackageHandle struct {
 
 	// Package dependencies
 	gxdep0 *gxdep0.PackageHandle
-	gxdep2 *gxdep2.PackageHandle
 	gxdep1 *gxdep1.PackageHandle
+	gxdep2 *gxdep2.PackageHandle
 }
 
 // Package is a GX package for a given device.
@@ -94,10 +94,10 @@ type Package struct {
 	handle PackageHandle
 
 	// Functions and methods cache
-	cacheLearnerUpdate *core.FuncCache
-	cacheTargetSample  *core.FuncCache
-	cacheNewLearner    *core.FuncCache
-	cacheNewTarget     *core.FuncCache
+	cacheLearnerUpdate core.Func
+	cacheTargetSample  core.Func
+	cacheNewLearner    core.Func
+	cacheNewTarget     core.Func
 }
 
 // Build builds a package for a device once it has been loaded.
@@ -117,13 +117,13 @@ func Build(dev *core.DeviceSetup) (*PackageHandle, error) {
 	if err != nil {
 		return nil, err
 	}
-	pkg.handle.gxdep2, err = gxdep2.Build(
+	pkg.handle.gxdep1, err = gxdep1.Build(
 		pkg.handle.PackageCompileSetup.Setup(),
 	)
 	if err != nil {
 		return nil, err
 	}
-	pkg.handle.gxdep1, err = gxdep1.Build(
+	pkg.handle.gxdep2, err = gxdep2.Build(
 		pkg.handle.PackageCompileSetup.Setup(),
 	)
 	if err != nil {
@@ -131,19 +131,19 @@ func Build(dev *core.DeviceSetup) (*PackageHandle, error) {
 	}
 
 	// Initialise function and method caches.
-	pkg.cacheLearnerUpdate, err = pkg.handle.NewCache("Learner", "Update")
+	pkg.cacheLearnerUpdate, err = pkg.handle.NewFunc("Learner", "Update")
 	if err != nil {
 		return nil, err
 	}
-	pkg.cacheTargetSample, err = pkg.handle.NewCache("Target", "Sample")
+	pkg.cacheTargetSample, err = pkg.handle.NewFunc("Target", "Sample")
 	if err != nil {
 		return nil, err
 	}
-	pkg.cacheNewLearner, err = pkg.handle.NewCache("", "NewLearner")
+	pkg.cacheNewLearner, err = pkg.handle.NewFunc("", "NewLearner")
 	if err != nil {
 		return nil, err
 	}
-	pkg.cacheNewTarget, err = pkg.handle.NewCache("", "NewTarget")
+	pkg.cacheNewTarget, err = pkg.handle.NewFunc("", "NewTarget")
 	if err != nil {
 		return nil, err
 	}
@@ -171,13 +171,13 @@ func (pkg *Package) NewLearner(arg0 types.Atom[float32]) (_ *Learner, err error)
 	var args []hostio.Value = []hostio.Value{
 		arg0.Bridge().GXValue(), // stepSize float32
 	}
-	var runner tracer.CompiledFunc
-	runner, err = pkg.cacheNewLearner.Runner(nil, args)
+	var rn runner.CompiledFunc
+	rn, err = pkg.cacheNewLearner.Build(nil, args)
 	if err != nil {
 		return
 	}
 	var outputs []hostio.Value
-	outputs, err = runner.Run(nil, args, pkg.handle.Tracer())
+	outputs, err = rn.Run(nil, args, pkg.handle.Tracer())
 	if err != nil {
 		return
 	}
@@ -199,13 +199,13 @@ func (pkg *Package) NewTarget(arg0 types.Atom[int64], arg1 types.Atom[float32]) 
 		arg0.Bridge().GXValue(), // seed int64
 		arg1.Bridge().GXValue(), // bias float32
 	}
-	var runner tracer.CompiledFunc
-	runner, err = pkg.cacheNewTarget.Runner(nil, args)
+	var rn runner.CompiledFunc
+	rn, err = pkg.cacheNewTarget.Build(nil, args)
 	if err != nil {
 		return
 	}
 	var outputs []hostio.Value
-	outputs, err = runner.Run(nil, args, pkg.handle.Tracer())
+	outputs, err = rn.Run(nil, args, pkg.handle.Tracer())
 	if err != nil {
 		return
 	}
@@ -401,13 +401,13 @@ func (recv *Learner) Update(arg0 types.Array[float32], arg1 types.Atom[float32])
 		arg0.Bridge().GXValue(), // features [Size]float32
 		arg1.Bridge().GXValue(), // target float32
 	}
-	var runner tracer.CompiledFunc
-	runner, err = recv.handle.pkg.cacheLearnerUpdate.Runner(recv.value, args)
+	var rn runner.CompiledFunc
+	rn, err = recv.handle.pkg.cacheLearnerUpdate.Build(recv.value, args)
 	if err != nil {
 		return
 	}
 	var outputs []hostio.Value
-	outputs, err = runner.Run(recv.value, args, recv.handle.pkg.handle.Tracer())
+	outputs, err = rn.Run(recv.value, args, recv.handle.pkg.handle.Tracer())
 	if err != nil {
 		return
 	}
@@ -477,7 +477,7 @@ type Target struct {
 	handle handleTarget
 	value  *values.NamedType
 
-	rnd     *gxdep2.Rand
+	rnd     *gxdep1.Rand
 	weights types.Array[float32]
 	bias    types.Atom[float32]
 }
@@ -510,8 +510,8 @@ func (fty *Factory) MarshalTarget(val hostio.Value) (s *Target, err error) {
 	for i, field := range structVal.StructType().Fields.Fields() {
 		fields[i] = structVal.FieldValue(field.Name.Name)
 	}
-	var field0 *gxdep2.Rand
-	field0, err = fty.Package.handle.gxdep2.Factory.MarshalRand(fields[0])
+	var field0 *gxdep1.Rand
+	field0, err = fty.Package.handle.gxdep1.Factory.MarshalRand(fields[0])
 	if err != nil {
 		return
 	}
@@ -568,7 +568,7 @@ func (h *handleTarget) NewFromField(field *ir.Field) (types.Bridge, error) {
 	name := field.Name.Name
 	switch name {
 	case "rnd":
-		return h.pkg.handle.gxdep2.Factory.NewRand().Bridge(), nil
+		return h.pkg.handle.gxdep1.Factory.NewRand().Bridge(), nil
 	case "weights":
 		return nil, errors.Errorf("cannot create a new instance for field weights: type types.Array[float32] not supported")
 	case "bias":
@@ -591,9 +591,9 @@ func (h *handleTarget) SetField(field *ir.Field, val types.Bridge) error {
 
 	case "rnd":
 		bridger := val.Bridger()
-		fieldValue, ok := bridger.(*gxdep2.Rand)
+		fieldValue, ok := bridger.(*gxdep1.Rand)
 		if !ok {
-			return errors.Errorf("cannot set field rnd: cannot cast %T to *gxdep2.Rand", bridger)
+			return errors.Errorf("cannot set field rnd: cannot cast %T to *gxdep1.Rand", bridger)
 		}
 		h.owner.rnd = fieldValue
 		structVal.SetField("rnd", val.GXValue())
@@ -628,13 +628,13 @@ func (h *handleTarget) SetField(field *ir.Field, val types.Bridge) error {
 // Sample generates a new vector of features and the corresponding prediction.
 func (recv *Target) Sample() (_ *Target, _ types.Array[float32], _ types.Atom[float32], err error) {
 	var args []hostio.Value = nil
-	var runner tracer.CompiledFunc
-	runner, err = recv.handle.pkg.cacheTargetSample.Runner(recv.value, args)
+	var rn runner.CompiledFunc
+	rn, err = recv.handle.pkg.cacheTargetSample.Build(recv.value, args)
 	if err != nil {
 		return
 	}
 	var outputs []hostio.Value
-	outputs, err = runner.Run(recv.value, args, recv.handle.pkg.handle.Tracer())
+	outputs, err = rn.Run(recv.value, args, recv.handle.pkg.handle.Tracer())
 	if err != nil {
 		return
 	}
