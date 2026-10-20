@@ -52,6 +52,7 @@ var (
 	_ materialise.Node                = (*BackendNode)(nil)
 	_ engine.NumericalElement         = (*BackendNode)(nil)
 	_ ir.WithLength                   = (*BackendNode)(nil)
+	_ elements.WithAxes               = (*BackendNode)(nil)
 	_ graphNode                       = (*BackendNode)(nil)
 	_ elements.EvalShaper             = (*BackendNode)(nil)
 )
@@ -131,6 +132,9 @@ func (n *BackendNode) BinaryOp(env *engine.Env, expr *ir.BinaryExpr, y engine.Nu
 			binaryNode, err = n.ao.Graph().ShiftRightLogical(xNode, yNode)
 		} else {
 			binaryNode, err = n.ao.Graph().ShiftRightArithmetic(xNode, yNode)
+		}
+		if err != nil {
+			return nil, err
 		}
 	case token.AND:
 		binaryNode, err = n.ao.Graph().BitwiseAnd(xNode, yNode)
@@ -295,6 +299,15 @@ func shapeLength(sh shapes.Shape) (int, error) {
 		return 1, nil
 	}
 	return sh.Dimensions[0], nil
+}
+
+// Axes returns the axes of the element as a slice of elements.
+func (n *BackendNode) Axes(ev ir.Evaluator) (*elements.Slice, error) {
+	sh, err := n.EvalShape()
+	if err != nil {
+		return nil, err
+	}
+	return n.ao.axesFromShape(ev, sh.Dimensions)
 }
 
 // Length returns the evaluation of the len built-in.
