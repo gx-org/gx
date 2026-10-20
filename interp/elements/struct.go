@@ -34,6 +34,7 @@ type Struct struct {
 }
 
 var (
+	_ IStruct         = (*Struct)(nil)
 	_ engine.Copier   = (*Struct)(nil)
 	_ engine.Selector = (*Struct)(nil)
 )

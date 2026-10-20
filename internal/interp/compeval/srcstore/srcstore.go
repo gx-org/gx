@@ -106,7 +106,7 @@ func (n *named) BareValue() ir.Element {
 }
 
 type structure struct {
-	structure *elements.Struct
+	structure elements.IStruct
 	store     ir.Storage
 }
 
@@ -215,7 +215,7 @@ func Link(store ir.Storage, el ir.Element) (ir.Element, error) {
 		linkEl = &generic{Generic: elT, store: store}
 	case elements.IString:
 		linkEl = &str{IString: elT, store: store}
-	case *elements.Struct:
+	case elements.IStruct:
 		linkEl = &structure{structure: elT, store: store}
 	default:
 		return el, fmterr.Internalf("cannot link %T to a storage", elT)

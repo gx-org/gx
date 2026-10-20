@@ -1,0 +1,22 @@
+package fpath03
+
+import "testfieldpaths"
+
+type S struct {
+	a float32
+}
+
+func (s S) inc() S {
+	for _, k := range testfieldpaths.Path[S]("a") {
+		s[k] += 1
+	}
+	return s
+}
+
+func Test() S {
+	return S{a: 2}.inc()
+	// Want:
+	// S{
+	// 	a: float32(3),
+	// }
+}
