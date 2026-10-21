@@ -1,0 +1,29 @@
+package fpath05
+
+import "reflect"
+
+type T struct {
+	a float32
+}
+
+type S struct {
+	t T
+}
+
+func scale(x float32) S {
+	s := S{t: T{a: 2}}
+	for _, k := range reflect.Leaves[S]() {
+		s[k] = x * s[k]
+	}
+	return s
+}
+
+func Test() S {
+	return scale(3)
+	// Want:
+	// S{
+	// 	t: T{
+	// 		a: float32(6),
+	// 	},
+	// }
+}
