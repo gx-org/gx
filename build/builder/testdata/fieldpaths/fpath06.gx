@@ -1,0 +1,23 @@
+package fpath06
+
+import "testfieldpaths"
+
+type S struct {
+	a float32
+}
+
+func f[T any](x T) T {
+	return x
+}
+
+func Test() S {
+	s := S{a: 2}
+	for _, k := range testfieldpaths.Path[S]("a") {
+		s[k] = 3 * f(s[k])
+	}
+	return s
+	// Want:
+	// S{
+	// 	a: float32(6),
+	// }
+}

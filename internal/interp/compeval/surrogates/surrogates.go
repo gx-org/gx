@@ -27,6 +27,7 @@ import (
 	"github.com/gx-org/gx/build/ir"
 	"github.com/gx-org/gx/build/ir/irkind"
 	"github.com/gx-org/gx/internal/interp/compeval/surrogates/storepath"
+	"github.com/gx-org/gx/interp/elements"
 	"github.com/gx-org/gx/src/gx/ast"
 )
 
@@ -69,26 +70,6 @@ func (*invalid) Expr(ir.Evaluator, ast.Expr) ([]ir.Expr, error) {
 	return nil, errors.Errorf("invalid element has no expression")
 }
 
-// unknown element.
-type unknown struct{}
-
-var unknownEl = &unknown{}
-
-// NewUnknow returns an unknown element.
-func NewUnknow() Element {
-	return unknownEl
-}
-
-// Type returns an unknown type.
-func (i *unknown) Type() ir.Type {
-	return ir.InvalidType()
-}
-
-// Expr of the unknown element.
-func (*unknown) Expr(ir.Evaluator, ast.Expr) ([]ir.Expr, error) {
-	return nil, errors.Errorf("unknown element has no expression")
-}
-
 // New surrogate value given a path and a type.
 func New(path storepath.Path, typ ir.Type) (Element, error) {
 	switch typ.Kind() {
@@ -97,7 +78,7 @@ func New(path storepath.Path, typ ir.Type) (Element, error) {
 	case irkind.Invalid:
 		return NewInvalid(), nil
 	case irkind.Unknown:
-		return NewUnknow(), nil
+		return elements.Unknown(), nil
 	case irkind.FieldPath:
 		return newFieldPath(path), nil
 	}
