@@ -1,0 +1,19 @@
+package zero07
+
+type myfloat float32
+
+type vec [3]int32
+
+type S struct {
+	f myfloat
+	v vec
+}
+
+func Test() S {
+	return S{}
+	// Want:
+	// S{
+	// 	f: myfloat(0),
+	// 	v: vec([3]int32{0, 0, 0}),
+	// }
+}

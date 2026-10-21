@@ -204,6 +204,28 @@ func (n *structLiteral) source() ast.Node {
 	return n.src
 }
 
+func (n *structLiteral) buildFieldValue(defScope *defineLocalScope, field *ir.Field) (ir.Expr, bool) {
+	name := field.Name.Name
+	valueFieldIndex, hasValue := n.nameToElt[name]
+	if !hasValue {
+		return nil, true
+	}
+	fieldNameExpr := n.fields[valueFieldIndex]
+	x, valueOk := buildExpr(defScope, fieldNameExpr.expr)
+	if valueOk {
+		valueOk = checkSingleValue(defScope, fieldNameExpr.expr.source(), x)
+	}
+	if !valueOk {
+		return x, false
+	}
+	x, valueOk = castNilAndNumber(defScope, x, field.Type())
+	if !valueOk {
+		return x, false
+	}
+	valueOk = assignableToAt(defScope, fieldNameExpr.ident, x.Type(), field.Type())
+	return x, valueOk
+}
+
 func (n *structLiteral) buildExpr(rscope resolveScope) (ir.Expr, bool) {
 	ext := &ir.StructLitExpr{Src: n.src, Typ: ir.InvalidType()}
 	typeExpr, typOk := n.typ.buildTypeExpr(rscope)
@@ -227,30 +249,11 @@ func (n *structLiteral) buildExpr(rscope resolveScope) (ir.Expr, bool) {
 		if !ir.ValidIdent(field.Name) {
 			continue
 		}
-		name := field.Name.Name
-		valueFieldIndex, valueOk := n.nameToElt[name]
-		if !valueOk {
-			fieldsOk = stScope.Err().Appendf(ext.Src, "field %s has not been assigned", name)
-			continue
-		}
 		fieldLit := &ir.FieldLit{FieldStorage: field.Storage()}
+		var valueOk bool
+		fieldLit.X, valueOk = n.buildFieldValue(defScope, field)
 		ext.Elts[i] = fieldLit
-		fieldNameExpr := n.fields[valueFieldIndex]
-		fieldLit.X, valueOk = buildExpr(defScope, fieldNameExpr.expr)
-		if valueOk {
-			valueOk = checkSingleValue(defScope, fieldNameExpr.expr.source(), fieldLit.X)
-		}
-		if !valueOk {
-			fieldsOk = false
-			continue
-		}
-		fieldLit.X, valueOk = castNilAndNumber(defScope, fieldLit.X, field.Type())
-		if !valueOk {
-			fieldsOk = false
-			continue
-		}
-		valueOk = assignableToAt(defScope, fieldNameExpr.ident, fieldLit.X.Type(), field.Type())
-		fieldsOk = valueOk && fieldsOk
+		fieldsOk = fieldsOk && valueOk
 	}
 	for _, fieldNameExpr := range n.fields {
 		if field := structType.Fields.FindField(fieldNameExpr.ident.Name); field == nil {

@@ -1,0 +1,25 @@
+package zero06
+
+type T struct {
+	a float32
+	b [2]int32
+}
+
+type S struct {
+	t T
+	c [3]float32
+	d int
+}
+
+func Test() S {
+	return S{d: 4}
+	// Want:
+	// S{
+	// 	t: T{
+	// 		a: float32(0),
+	// 		b: [2]int32{0, 0},
+	// 	},
+	// 	c: [3]float32{0, 0, 0},
+	// 	d: int(4),
+	// }
+}

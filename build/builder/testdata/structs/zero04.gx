@@ -1,0 +1,32 @@
+package zero04
+
+type U struct {
+	x [2]float32
+}
+
+type T struct {
+	u U
+	y [2][2]int64
+}
+
+type S struct {
+	a [3]int32
+	t T
+}
+
+func Test() S {
+	return S{}
+	// Want:
+	// S{
+	// 	a: [3]int32{0, 0, 0},
+	// 	t: T{
+	// 		u: U{
+	// 			x: [2]float32{0, 0},
+	// 		},
+	// 		y: [2][2]int64{
+	// 			{0, 0},
+	// 			{0, 0},
+	// 		},
+	// 	},
+	// }
+}
