@@ -54,7 +54,16 @@ func evalLeaves(env *engine.Env, call *ir.FuncCallExpr, recv ir.Element, genArgs
 func parseType(prefix storepath.Path, tp *ir.StructType) ([]ir.Element, error) {
 	var leaves []ir.Element
 	for _, field := range tp.Fields.Fields() {
-		leaves = append(leaves, elements.NewFieldPath(prefix, field))
+		subStruct, isStruct := ir.Underlying(field.Type()).(*ir.StructType)
+		if !isStruct {
+			leaves = append(leaves, elements.NewFieldPath(prefix, field))
+			continue
+		}
+		subLeaves, err := parseType(storepath.NewSelect(prefix, field), subStruct)
+		if err != nil {
+			return nil, err
+		}
+		leaves = append(leaves, subLeaves...)
 	}
 	return leaves, nil
 }
