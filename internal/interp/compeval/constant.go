@@ -25,7 +25,6 @@ import (
 	"github.com/gx-org/gx/internal/interp/csteager"
 	"github.com/gx-org/gx/internal/interp/flatten"
 	"github.com/gx-org/gx/internal/togo"
-	"github.com/gx-org/gx/interp/elements"
 	"github.com/gx-org/gx/interp/engine"
 	"github.com/gx-org/gx/interp/materialise"
 	"github.com/gx-org/gx/src/gx/ast"
@@ -39,10 +38,10 @@ type constant struct {
 }
 
 var (
-	_ elements.EvalShaper = (*constant)(nil)
+	_ engine.EvalShaper   = (*constant)(nil)
 	_ cmp.Canonical       = (*constant)(nil)
 	_ togo.CompileValue   = (*constant)(nil)
-	_ cpevops.Element     = (*constant)(nil)
+	_ engine.Element      = (*constant)(nil)
 	_ flatten.Unflattener = (*constant)(nil)
 )
 
@@ -126,7 +125,7 @@ func (c *constant) EvalShape() (shapes.Shape, error) {
 }
 
 // Axes returns the axes of the value as a slice element.
-func (c *constant) Axes(ev ir.Evaluator) (*elements.Slice, error) {
+func (c *constant) Axes(ev ir.Evaluator) (ir.FixedSlice, error) {
 	return cpevops.AxesFromType(ev, c.Type())
 }
 

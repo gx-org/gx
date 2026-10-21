@@ -257,7 +257,7 @@ func EvalRank(ev ir.Evaluator, expr ir.Expr) (ir.ArrayRank, []cmp.Canonical, err
 
 // ShapeFromElement returns the shape of a numerical element.
 func ShapeFromElement(el ir.Element) (shapes.Shape, error) {
-	shaper, err := coreiface.Cast[EvalShaper](el)
+	shaper, err := coreiface.Cast[engine.EvalShaper](el)
 	if err != nil {
 		return shapes.Invalid(), err
 	}

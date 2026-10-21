@@ -15,19 +15,12 @@
 package elements
 
 import (
-	"github.com/gomlx/compute/shapes"
 	"github.com/gx-org/gx/build/ir"
 	"github.com/gx-org/gx/internal/interp/compeval/surrogates/storepath"
 	"github.com/gx-org/gx/interp/engine"
 )
 
 type (
-	// EvalShaper is an (array) element from which the shape has been fully determined at evaluation time.
-	EvalShaper interface {
-		ir.Element
-		EvalShape() (shapes.Shape, error)
-	}
-
 	// Generic is an instance of a generic type.
 	Generic interface {
 		engine.NumericalElement

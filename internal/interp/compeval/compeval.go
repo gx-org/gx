@@ -21,7 +21,6 @@ import (
 	"github.com/pkg/errors"
 	"github.com/gx-org/gx/api/options"
 	"github.com/gx-org/gx/build/ir"
-	"github.com/gx-org/gx/internal/interp/compeval/cpevops"
 	"github.com/gx-org/gx/internal/interp/compeval/surrogates/storepath"
 	"github.com/gx-org/gx/internal/interp/compeval/surrogates"
 	"github.com/gx-org/gx/interp/elements"
@@ -29,14 +28,14 @@ import (
 )
 
 // EvalExpr evaluates a GX expression into an interpreter element.
-func EvalExpr(eval ir.Evaluator, expr ir.Expr) (cpevops.Element, error) {
+func EvalExpr(eval ir.Evaluator, expr ir.Expr) (engine.Element, error) {
 	val, err := eval.EvalExpr(expr)
 	if err != nil {
 		return nil, err
 	}
-	el, ok := val.(cpevops.Element)
+	el, ok := val.(engine.Element)
 	if !ok {
-		return nil, errors.Errorf("cannot cast %T to %s", val, reflect.TypeFor[cpevops.Element]().String())
+		return nil, errors.Errorf("cannot cast %T to %s", val, reflect.TypeFor[engine.Element]().String())
 	}
 	return el, nil
 }

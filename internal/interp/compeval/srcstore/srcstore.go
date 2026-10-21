@@ -22,7 +22,6 @@ import (
 	"github.com/gx-org/gx/build/ir"
 	"github.com/gx-org/gx/build/ir/irkind"
 	"github.com/gx-org/gx/internal/interp/compeval/cmp"
-	"github.com/gx-org/gx/internal/interp/compeval/cpevops"
 	"github.com/gx-org/gx/interp/elements"
 	"github.com/gx-org/gx/interp/engine"
 )
@@ -34,7 +33,7 @@ type Element interface {
 }
 
 type numEl struct {
-	cpevops.Element
+	engine.Element
 	store ir.Storage
 }
 
@@ -201,7 +200,7 @@ func Link(store ir.Storage, el ir.Element) (ir.Element, error) {
 	}
 	var linkEl Element
 	switch elT := el.(type) {
-	case cpevops.Element:
+	case engine.Element:
 		linkEl = &numEl{Element: elT, store: store}
 	case engine.ScalarNumber:
 		linkEl = &number{ScalarNumber: elT, store: store}

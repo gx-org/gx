@@ -33,7 +33,7 @@ type Tuple struct {
 }
 
 var (
-	_ Slicer          = (*Tuple)(nil)
+	_ engine.Slicer   = (*Tuple)(nil)
 	_ ir.Element      = (*Tuple)(nil)
 	_ ir.TupleElement = (*Tuple)(nil)
 )

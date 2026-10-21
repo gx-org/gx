@@ -28,11 +28,11 @@ import (
 type binary struct {
 	core
 	expr *ir.BinaryExpr
-	x, y Element
+	x, y engine.Element
 }
 
 // NewBinary returns a binary operation between two elements.
-func NewBinary(env *engine.Env, expr *ir.BinaryExpr, x, y Element) (_ Element, err error) {
+func NewBinary(env *engine.Env, expr *ir.BinaryExpr, x, y engine.Element) (_ engine.Element, err error) {
 	el := &binary{
 		expr: expr,
 		x:    x,
@@ -45,8 +45,8 @@ func NewBinary(env *engine.Env, expr *ir.BinaryExpr, x, y Element) (_ Element, e
 // NewBinaryFrom returns a new binary operator from a generic receiver.
 // This function is used when converting a constant into a proxy,
 // that is when a binary operator is used between constant and non-constant elements.
-func NewBinaryFrom(env *engine.Env, expr *ir.BinaryExpr, x Element, y ir.Element) (_ Element, err error) {
-	yEl, yOk := y.(Element)
+func NewBinaryFrom(env *engine.Env, expr *ir.BinaryExpr, x engine.Element, y ir.Element) (_ engine.Element, err error) {
+	yEl, yOk := y.(engine.Element)
 	if !yOk {
 		from := env.File()
 		return nil, fmterr.InternalAt(from.FileSet(), expr.Src, "operator (%T)%s(%T) not supported for %T in %s", x, expr.Src.Op, y, y, expr.SourceString(from))
