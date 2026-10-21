@@ -26,7 +26,7 @@ import (
 	"github.com/gx-org/gx/api"
 	"github.com/gx-org/gx/api/hostio"
 	"github.com/gx-org/gx/api/options"
-	"github.com/gx-org/gx/api/tracer"
+	"github.com/gx-org/gx/api/runner"
 	"github.com/gx-org/gx/api/values"
 	"github.com/gx-org/gx/build/ir"
 	"github.com/gx-org/gx/golang/binder/gobindings/core"
@@ -48,7 +48,7 @@ var (
 	_ = errors.Errorf
 	_ = types.NewSlice[types.Bridger]
 	_ = ir.NamedType{}
-	_ = tracer.Trace
+	_ = runner.Trace
 )
 
 // BuildFor loads the GX package github.com/gx-org/gx/tests/bindings/imports
@@ -90,10 +90,10 @@ type Package struct {
 	handle PackageHandle
 
 	// Functions and methods cache
-	cacheImporterAdd     *core.FuncCache
-	cacheNewBasic        *core.FuncCache
-	cacheNewImporter     *core.FuncCache
-	cacheReturnFromBasic *core.FuncCache
+	cacheImporterAdd     core.Func
+	cacheNewBasic        core.Func
+	cacheNewImporter     core.Func
+	cacheReturnFromBasic core.Func
 }
 
 // Build builds a package for a device once it has been loaded.
@@ -115,19 +115,19 @@ func Build(dev *core.DeviceSetup) (*PackageHandle, error) {
 	}
 
 	// Initialise function and method caches.
-	pkg.cacheImporterAdd, err = pkg.handle.NewCache("Importer", "Add")
+	pkg.cacheImporterAdd, err = pkg.handle.NewFunc("Importer", "Add")
 	if err != nil {
 		return nil, err
 	}
-	pkg.cacheNewBasic, err = pkg.handle.NewCache("", "NewBasic")
+	pkg.cacheNewBasic, err = pkg.handle.NewFunc("", "NewBasic")
 	if err != nil {
 		return nil, err
 	}
-	pkg.cacheNewImporter, err = pkg.handle.NewCache("", "NewImporter")
+	pkg.cacheNewImporter, err = pkg.handle.NewFunc("", "NewImporter")
 	if err != nil {
 		return nil, err
 	}
-	pkg.cacheReturnFromBasic, err = pkg.handle.NewCache("", "ReturnFromBasic")
+	pkg.cacheReturnFromBasic, err = pkg.handle.NewFunc("", "ReturnFromBasic")
 	if err != nil {
 		return nil, err
 	}
@@ -138,13 +138,13 @@ func Build(dev *core.DeviceSetup) (*PackageHandle, error) {
 // NewBasic returns a new basic structure.
 func (pkg *Package) NewBasic() (_ *gxdep0.Basic, err error) {
 	var args []hostio.Value = nil
-	var runner tracer.CompiledFunc
-	runner, err = pkg.cacheNewBasic.Runner(nil, args)
+	var rn runner.CompiledFunc
+	rn, err = pkg.cacheNewBasic.Build(nil, args)
 	if err != nil {
 		return
 	}
 	var outputs []hostio.Value
-	outputs, err = runner.Run(nil, args, pkg.handle.Tracer())
+	outputs, err = rn.Run(nil, args, pkg.handle.Tracer())
 	if err != nil {
 		return
 	}
@@ -163,13 +163,13 @@ func (pkg *Package) NewBasic() (_ *gxdep0.Basic, err error) {
 // NewImported returns a new Imported structure.
 func (pkg *Package) NewImporter() (_ *Importer, err error) {
 	var args []hostio.Value = nil
-	var runner tracer.CompiledFunc
-	runner, err = pkg.cacheNewImporter.Runner(nil, args)
+	var rn runner.CompiledFunc
+	rn, err = pkg.cacheNewImporter.Build(nil, args)
 	if err != nil {
 		return
 	}
 	var outputs []hostio.Value
-	outputs, err = runner.Run(nil, args, pkg.handle.Tracer())
+	outputs, err = rn.Run(nil, args, pkg.handle.Tracer())
 	if err != nil {
 		return
 	}
@@ -188,13 +188,13 @@ func (pkg *Package) NewImporter() (_ *Importer, err error) {
 // ReturnFromBasic returns a float from the basic package.
 func (pkg *Package) ReturnFromBasic() (_ types.Atom[float32], err error) {
 	var args []hostio.Value = nil
-	var runner tracer.CompiledFunc
-	runner, err = pkg.cacheReturnFromBasic.Runner(nil, args)
+	var rn runner.CompiledFunc
+	rn, err = pkg.cacheReturnFromBasic.Build(nil, args)
 	if err != nil {
 		return
 	}
 	var outputs []hostio.Value
-	outputs, err = runner.Run(nil, args, pkg.handle.Tracer())
+	outputs, err = rn.Run(nil, args, pkg.handle.Tracer())
 	if err != nil {
 		return
 	}
@@ -360,13 +360,13 @@ func (h *handleImporter) SetField(field *ir.Field, val types.Bridge) error {
 // Add returns the result from Basic.AddPrivate.
 func (recv *Importer) Add() (_ types.Atom[int32], err error) {
 	var args []hostio.Value = nil
-	var runner tracer.CompiledFunc
-	runner, err = recv.handle.pkg.cacheImporterAdd.Runner(recv.value, args)
+	var rn runner.CompiledFunc
+	rn, err = recv.handle.pkg.cacheImporterAdd.Build(recv.value, args)
 	if err != nil {
 		return
 	}
 	var outputs []hostio.Value
-	outputs, err = runner.Run(recv.value, args, recv.handle.pkg.handle.Tracer())
+	outputs, err = rn.Run(recv.value, args, recv.handle.pkg.handle.Tracer())
 	if err != nil {
 		return
 	}
