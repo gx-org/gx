@@ -1,0 +1,17 @@
+package func_nontype02
+
+type params struct {
+	a int32
+	b float32
+}
+
+func fromStruct[P params]() (int32, float32) {
+	return P.a, P.b
+}
+
+func TestStructNonType() (int32, float32) {
+	return fromStruct[params{a: 2, b: 3.5}]()
+	// Want:
+	// 0: int32(2)
+	// 1: float32(3.5)
+}
