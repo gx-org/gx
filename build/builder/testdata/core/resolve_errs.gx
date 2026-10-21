@@ -330,7 +330,15 @@ func returnZero[T int32, U int64]() int32 {
 }
 
 func testCallTypeParameters_InferenceFailed() int32 {
+	return returnZero[2]() // ERROR in call to returnZero, cannot infer type U
+}
+
+func testCallTypeParameters_MetatypeForNonType() int32 {
 	return returnZero[int32]() // ERROR cannot use metatype as int32 generic value T
+}
+
+func testCallTypeParameters_WrongNonTypeValue() int32 {
+	return returnZero[true]() // ERROR cannot use bool as int32 generic value T
 }
 
 func testCallTypeParameters_TooMany() int32 {
@@ -339,6 +347,42 @@ func testCallTypeParameters_TooMany() int32 {
 
 func testCallTypeParameters_Unknown() int32 {
 	return returnZero[int32, fakeType]() // ERROR undefined: fakeType
+}
+
+func returnZeroStruct[S someStruct, U int64]() int32 {
+	return 0
+}
+
+func testCallTypeParameters_StructInferenceFailed() int32 {
+	return returnZeroStruct[someStruct{a: 1, someMethod: 2.0}]() // ERROR in call to returnZeroStruct, cannot infer type U
+}
+
+func testCallTypeParameters_StructMetatype() int32 {
+	return returnZeroStruct[someStruct]() // ERROR cannot use metatype as someStruct generic value S
+}
+
+func returnZeroSlice[S []int32, U float32]() int32 {
+	return 0
+}
+
+func testCallTypeParameters_SliceInferenceFailed() int32 {
+	return returnZeroSlice[[]int32{1, 2}]() // ERROR in call to returnZeroSlice, cannot infer type U
+}
+
+func testCallTypeParameters_SliceMetatype() int32 {
+	return returnZeroSlice[int32]() // ERROR cannot use metatype as []int32 generic value S
+}
+
+func returnZeroInterface[T interface{ int32 }, U interface{ int64 }]() int32 {
+	return 0
+}
+
+func testCallTypeParameters_InterfaceInferenceFailed() int32 {
+	return returnZeroInterface[int32]() // ERROR in call to returnZeroInterface, cannot infer type U
+}
+
+func testCallTypeParameters_InterfaceNonType() int32 {
+	return returnZeroInterface[2]() // ERROR 2 is not a type
 }
 
 func moduloFloat() float32 {

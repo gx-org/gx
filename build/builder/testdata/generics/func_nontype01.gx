@@ -1,0 +1,71 @@
+package func_nontype01
+
+func scalarInt32[A int32]() int32 {
+	return A
+}
+
+func scalarFloat32[A float32]() float32 {
+	return A
+}
+
+func scalarBool[A bool]() bool {
+	return A
+}
+
+func multiScalar[A int32, B int64, C float32]() (int32, int64, float32) {
+	return A, B, C
+}
+
+func TestScalarInt32() int32 {
+	return scalarInt32[2]()
+	// Want:
+	// int32(2)
+}
+
+func TestScalarFloat32() float32 {
+	return scalarFloat32[2.5]()
+	// Want:
+	// float32(2.5)
+}
+
+func TestScalarBool() bool {
+	return scalarBool[true]()
+	// Want:
+	// bool(true)
+}
+
+const (
+	cA = 2
+	cB = 3
+	cC = 4.5
+)
+
+func TestMultiScalarChained() (int32, int64, float32) {
+	return multiScalar[2][3][4.5]()
+	// Want:
+	// 0: int32(2)
+	// 1: int64(3)
+	// 2: float32(4.5)
+}
+
+func TestMultiScalarConsts() (int32, int64, float32) {
+	return multiScalar[cA, cB, cC]()
+	// Want:
+	// 0: int32(2)
+	// 1: int64(3)
+	// 2: float32(4.5)
+}
+
+type ints interface {
+	int32 | int64
+}
+
+func addNonType[A int32, T ints](x T) T {
+	return x + T(A)
+}
+
+func TestAddNonType() int64 {
+	return addNonType[2](int64(5))
+	// Want:
+	// int64(7)
+}

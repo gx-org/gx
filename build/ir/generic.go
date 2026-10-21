@@ -487,5 +487,18 @@ func unifyExpr(uni Unifier, targets []AxisLengths, x Expr) ([]AxisLengths, bool)
 
 // IsNonTypeGeneric returns true if the type is a non-type generic.
 func IsNonTypeGeneric(tp Type) bool {
-	return tp.Kind() != irkind.Interface
+	if irkind.IsConcrete(tp.Kind()) {
+		return true
+	}
+	switch tp.Kind() {
+	case irkind.Struct:
+		return true
+	case irkind.Slice:
+		slice, isSlice := Underlying(tp).(*SliceType)
+		if !isSlice {
+			return false
+		}
+		return IsNonTypeGeneric(slice.DType.Val())
+	}
+	return false
 }

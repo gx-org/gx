@@ -219,15 +219,15 @@ func (n *indexExpr) buildExpr(rscope resolveScope) (ir.Expr, bool) {
 	if !xOk || !idxOk {
 		return nil, false
 	}
+	xType := x.Type()
+	if xType.Kind() == irkind.Func {
+		return specializeFunc(rscope, x, []ir.Expr{idx})
+	}
 	if irkind.IsNumber(idx.Type().Kind()) {
 		idx, idxOk = ir.CastNumber(toFileWithError(rscope), idx, ir.IntType())
 	}
 	if !idxOk {
 		return nil, false
-	}
-	xType := x.Type()
-	if xType.Kind() == irkind.Func {
-		return specializeFunc(rscope, x, []ir.Expr{idx})
 	}
 	ext := &ir.IndexExpr{Src: n.src, X: x, Index: idx, Typ: ir.InvalidType()}
 	if xType.Kind() == irkind.Invalid {

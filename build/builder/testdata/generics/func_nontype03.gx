@@ -1,0 +1,22 @@
+package func_nontype03
+
+func fromInt32Slice[S []int32]() (int32, int32) {
+	return S[0], S[1]
+}
+
+func fromFloat32Slice[S []float32]() float32 {
+	return S[0] + S[1]
+}
+
+func TestInt32SliceNonType() (int32, int32) {
+	return fromInt32Slice[[]int32{10, 20}]()
+	// Want:
+	// 0: int32(10)
+	// 1: int32(20)
+}
+
+func TestFloat32SliceNonType() float32 {
+	return fromFloat32Slice[[]float32{1.5, 2.5}]()
+	// Want:
+	// float32(4)
+}
