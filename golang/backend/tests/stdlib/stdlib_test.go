@@ -16,21 +16,29 @@ package stdlib_test
 import (
 	"testing"
 
+	"github.com/gx-org/gx/build/builder/testbuild"
 	"github.com/gx-org/gx/golang/backend"
-	gxtesting "github.com/gx-org/gx/tests/testing"
+	"github.com/gx-org/gx/internal/testing/testrtm"
+	rand "github.com/gx-org/gx/stdlib/rand/testdata"
 	"github.com/gx-org/gx/tests"
 )
 
 func TestStdlib(t *testing.T) {
+	// Skip rand tests because gobackend's RNGBitGenerator uses Go's PCG generator
+	// instead of XLA's Philox algorithm, producing different random values from
+	// the expected test outputs.
+	rand.Sources.Filter = func(string) bool {
+		return false
+	}
 	rtm, err := backend.New(tests.NewBuilder())
 	if err != nil {
 		t.Fatal(err)
 	}
-	session := gxtesting.NewSession(rtm, tests.FS)
-	for _, path := range []string{
-		"testfiles/vjp",
-		"testfiles/compeval",
-	} {
-		session.TestFolder(t, path)
-	}
+	testbuild.RunFactory(t,
+		rtm.Builder().Loader().Importers(),
+		testrtm.Factory(
+			rtm,
+			tests.StdlibUnits...,
+		),
+	)
 }

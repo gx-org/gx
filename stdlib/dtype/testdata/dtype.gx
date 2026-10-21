@@ -1,4 +1,4 @@
-package stdlib
+package dtype
 
 import (
 	"dtype"

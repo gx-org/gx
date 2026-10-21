@@ -1,7 +1,6 @@
-package stdlib
+package misc
 
 import (
-	"math"
 	"num"
 	"rand"
 )
@@ -12,10 +11,4 @@ func TestReduceShapeInferenceError() [3]int {
 	return num.ArgMax[1](([3][2]float32)(samples))
 	// Want:
 	// [3]int{1, 1, 0}
-}
-
-func TestLen() int {
-	return len(math.Exp([2][1]float32{{1}, {2}}))
-	// Want:
-	// int(2)
 }

@@ -1,4 +1,4 @@
-package stdlib
+package control
 
 import "control"
 
@@ -9,13 +9,13 @@ type countState struct {
 }
 
 func TestWhile() int32 {
-	s := control.While(
+	res := control.While(
 		countState{count: 0, limit: 10},
 		func(s countState) bool { return s.count != s.limit },
 		func(s countState) countState {
 			return countState{count: s.count + 1, limit: s.limit}
 		})
-	return s.count
+	return res.count
 	// Want:
 	// int32(10)
 }
@@ -32,10 +32,10 @@ func TestWhile2() powState {
 			return powState{count: s.count + 1, limit: s.limit, out: 2 * s.out}
 		})
 	// Want:
-	// stdlib.powState{
-	//	count: int32(10),
-	//	limit: int32(10),
-	//	out: int32(1024),
+	// control.powState{
+	// 	count: int32(10),
+	// 	limit: int32(10),
+	// 	out: int32(1024),
 	// }
 }
 

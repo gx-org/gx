@@ -1,4 +1,4 @@
-package arrayslices
+package structs
 
 type inSlice struct {
 	a [2]float32

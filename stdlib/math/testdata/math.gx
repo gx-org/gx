@@ -1,4 +1,4 @@
-package stdlib
+package math
 
 import "math"
 
@@ -147,4 +147,10 @@ func TestCeilArrayInferred() ([2]float32, [2]float64) {
 	// Want:
 	// 0: [2]float32{1, 2}
 	// 1: [2]float64{4, 8}
+}
+
+func TestLen() int {
+	return len(math.Exp([2][1]float32{{1}, {2}}))
+	// Want:
+	// int(2)
 }

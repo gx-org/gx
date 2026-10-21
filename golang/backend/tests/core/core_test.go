@@ -28,6 +28,9 @@ var skip = map[string]bool{
 	"set/set01.gx":       true,
 	"einsum/einsum.gx":   true,
 	"einsum/einsum02.gx": true,
+	// control.While requires function literals to implement grapheval.SubGrapher,
+	// which is not yet supported at runtime.
+	"control/control.gx": true,
 }
 
 func TestCoreUnitGoBackend(t *testing.T) {

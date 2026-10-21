@@ -262,7 +262,10 @@ func (n *BackendNode) sliceArrayFromNode(expr ir.Expr, index graphNode) (engine.
 	}
 	remaining := shape.Dimensions[1:]
 
-	indexNode := index.out()
+	indexNode, err := n.ao.Graph().Reshape(index.out(), 1)
+	if err != nil {
+		return nil, err
+	}
 	// XLA Gather parameters for indexing axis 0 of the operand:
 	//   indexVectorAxis=0: dimension 0 of startIndices is the index vector.
 	//   startIndexMap=[0]: the single index element maps to operand axis 0.

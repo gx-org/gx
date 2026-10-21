@@ -16,8 +16,6 @@
 package tests
 
 import (
-	"embed"
-
 	"github.com/gx-org/gx/build/builder"
 	"github.com/gx-org/gx/build/builder/testbuild"
 	"github.com/gx-org/gx/build/importers/embedpkg"
@@ -30,39 +28,14 @@ import (
 	core "github.com/gx-org/gx/build/builder/testdata"
 
 	control "github.com/gx-org/gx/stdlib/control/testdata"
+	dtype "github.com/gx-org/gx/stdlib/dtype/testdata"
 	grad "github.com/gx-org/gx/stdlib/math/grad/testdata"
 	math "github.com/gx-org/gx/stdlib/math/testdata"
 	num "github.com/gx-org/gx/stdlib/num/testdata"
 	rand "github.com/gx-org/gx/stdlib/rand/testdata"
 	reflect "github.com/gx-org/gx/stdlib/reflect/testdata"
 	shape "github.com/gx-org/gx/stdlib/shape/testdata"
-
-	// Embedded GX packages.
-	_ "github.com/gx-org/gx/tests/testfiles/imports/pkg1/pkg1_go_gx"
 )
-
-// FS is the filesystem containing all GX test files.
-//
-//go:embed testfiles
-var FS embed.FS
-
-// Language is a set of paths testing the GX core language.
-var Language = []string{
-	"testfiles/forloops",
-	"testfiles/ifstmts",
-	"testfiles/imports",
-	"testfiles/arrayslices",
-	"testfiles/slices",
-}
-
-// Stdlib is a set of path testing the standard library or where a standard library implementation is required.
-var Stdlib = []string{
-	"testfiles/bfloat16",
-	"testfiles/stdlib",
-	"testfiles/nn",
-	"testfiles/ellipsis",
-	"testfiles/compeval",
-}
 
 // CoreUnits tests core language features.
 var CoreUnits = []testbuild.TestFactory{
@@ -72,6 +45,7 @@ var CoreUnits = []testbuild.TestFactory{
 // StdlibUnits groups all the test in the standard library.
 var StdlibUnits = []testbuild.TestFactory{
 	control.Sources,
+	dtype.Sources,
 	shape.Sources,
 	math.Sources,
 	grad.Sources,
@@ -79,17 +53,6 @@ var StdlibUnits = []testbuild.TestFactory{
 	rand.Sources,
 	reflect.Sources,
 }
-
-func appendAll(paths ...[]string) []string {
-	var r []string
-	for _, ps := range paths {
-		r = append(r, ps...)
-	}
-	return r
-}
-
-// All includes all paths.
-var All = appendAll(Language, Stdlib)
 
 // Importers used for testing.
 var Importers = []importers.Importer{
@@ -99,6 +62,7 @@ var Importers = []importers.Importer{
 	testpkgs.TestGenerics,
 	testpkgs.TestUnknown,
 	testpkgs.TestFieldPaths,
+	testpkgs.TestPkg1,
 	base.New(),
 	stdlib.Importer(),
 	embedpkg.New(),

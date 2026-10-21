@@ -35,7 +35,7 @@ func TestVJPSoftMax() (float32, float32) {
 	// 0: float32(0.689974)
 	// 1: float32(0.21391)
 	// Trace:
-	// vjp_test.gx:0
+	// vjp.gx:0
 	// 	func(x float32) (float32, func(res float32) float32) {
 	// 		fwd0 := -x
 	// 		fwd1, ExpVJP := grad.Reverse(math.Exp)(fwd0)
@@ -120,7 +120,7 @@ func TestVJPLog() (float64, float64) {
 	// 0: float64(-0.2231435513)
 	// 1: float64(0.5)
 	// Trace:
-	// vjp_test.gx:0
+	// vjp.gx:0
 	// 	func[T dtype.Nums, S []int](par [S...]T) ([S...]T, func(res [S...]T) [S...]T) {
 	// 		fwd0 := Log[T][S](par)
 	// 		selfVJPFunc := func(res [S...]T) [S...]T {
