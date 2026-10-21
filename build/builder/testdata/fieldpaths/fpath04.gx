@@ -1,0 +1,23 @@
+package fpath04
+
+import "testfieldpaths"
+
+type S struct {
+	a float32
+}
+
+func scale(x float32) S {
+	s := S{a: 2}
+	for _, k := range testfieldpaths.Path[S]("a") {
+		s[k] = x * s[k]
+	}
+	return s
+}
+
+func Test() S {
+	return scale(3)
+	// Want:
+	// S{
+	// 	a: float32(6),
+	// }
+}

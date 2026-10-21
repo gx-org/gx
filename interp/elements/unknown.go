@@ -15,19 +15,21 @@
 package elements
 
 import (
+	"github.com/gomlx/compute/shapes"
 	"github.com/gx-org/gx/build/ir"
+	"github.com/gx-org/gx/build/ir/irkind"
+	"github.com/gx-org/gx/internal/undef"
 	"github.com/gx-org/gx/interp/engine"
+	"github.com/gx-org/gx/src/gx/ast"
 )
 
 type unknown struct{}
-
-var _ engine.NumericalElement = &unknown{}
 
 var unknownEl = &unknown{}
 
 // Unknown returns an element for which the type is unknown.
 // Used as a proxy when a field path is undetermined for example.
-func Unknown() ir.Element {
+func Unknown() engine.Element {
 	return unknownEl
 }
 
@@ -45,6 +47,34 @@ func (unknown) Cast(env *engine.Env, expr ir.Expr, target ir.Type) (engine.Numer
 
 func (unknown) Reshape(env *engine.Env, expr ir.Expr, axisLengths []engine.NumericalElement) (engine.NumericalElement, error) {
 	return unknownEl, nil
+}
+
+func (unknown) SliceAt(env *engine.Env, expr *ir.IndexExpr, index engine.NumericalElement) (ir.Element, error) {
+	return unknownEl, nil
+}
+
+func (unknown) Slice(env *engine.Env, expr *ir.SliceExpr, low, high engine.NumericalElement) (ir.Element, error) {
+	return unknownEl, nil
+}
+
+func (unknown) Axes(ev ir.Evaluator) (ir.FixedSlice, error) {
+	return nil, undef.Err()
+}
+
+func (unknown) EvalShape() (shapes.Shape, error) {
+	return shapes.Invalid(), nil
+}
+
+func (unknown) Expr(ir.Evaluator, ast.Expr) ([]ir.Expr, error) {
+	return nil, undef.Err()
+}
+
+func (u unknown) ShortString(from *ir.File) string {
+	return u.SourceString(from)
+}
+
+func (unknown) SourceString(*ir.File) string {
+	return irkind.Unknown.String()
 }
 
 func (unknown) Type() ir.Type {

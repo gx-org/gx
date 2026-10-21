@@ -19,8 +19,10 @@ import (
 
 	"github.com/gx-org/gx/build/fmterr"
 	"github.com/gx-org/gx/build/ir"
+	"github.com/gx-org/gx/build/ir/irkind"
 	"github.com/gx-org/gx/internal/algexpr"
 	"github.com/gx-org/gx/internal/interp/compeval/cmp"
+	"github.com/gx-org/gx/interp/elements"
 	"github.com/gx-org/gx/interp/engine"
 	"github.com/gx-org/gx/src/gx/ast"
 )
@@ -46,6 +48,9 @@ func NewBinary(env *engine.Env, expr *ir.BinaryExpr, x, y engine.Element) (_ eng
 // This function is used when converting a constant into a proxy,
 // that is when a binary operator is used between constant and non-constant elements.
 func NewBinaryFrom(env *engine.Env, expr *ir.BinaryExpr, x engine.Element, y ir.Element) (_ engine.Element, err error) {
+	if y.Type().Kind() == irkind.Unknown {
+		return elements.Unknown(), nil
+	}
 	yEl, yOk := y.(engine.Element)
 	if !yOk {
 		from := env.File()
