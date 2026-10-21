@@ -28,8 +28,9 @@ type SliceLitExpr struct {
 }
 
 var (
-	_ ExprUnpacker   = (*SliceLitExpr)(nil)
-	_ VarArgsIndexer = (*SliceLitExpr)(nil)
+	_ ExprUnpacker       = (*SliceLitExpr)(nil)
+	_ ExprWithSpecialise = (*SliceLitExpr)(nil)
+	_ VarArgsIndexer     = (*SliceLitExpr)(nil)
 )
 
 func (s *SliceLitExpr) node() {}
@@ -60,6 +61,19 @@ func (s *SliceLitExpr) Expr() ast.Expr { return s.Src }
 
 // Unpack the slice literal expressions.
 func (s *SliceLitExpr) Unpack() []Expr { return s.Elts }
+
+// Specialise the slice literal expression.
+func (s *SliceLitExpr) Specialise(spec Specialiser) (Expr, bool) {
+	elts := make([]Expr, len(s.Elts))
+	for i, elt := range s.Elts {
+		elts[i], _ = specialiseExpr(spec, elt)
+	}
+	return &SliceLitExpr{
+		Src:  s.Src,
+		Typ:  s.Typ,
+		Elts: elts,
+	}, true
+}
 
 // IndexForVarArgs returns the expression at the ith position.
 func (s *SliceLitExpr) IndexForVarArgs(errapp ErrSource, i int) (Expr, bool) {

@@ -1,0 +1,54 @@
+package undef03
+
+//gx:compeval
+func size(axes []int) int {
+	n := 1
+	for _, ax := range axes {
+		n = n * ax
+	}
+	return n
+}
+
+//gx:compeval
+func checkReshape(s1, s2 []int) []int {
+	require(len(s1) == len(s2), "cannot reshape array from %d to %d axes (expect the same number)", s1, s2)
+	return s2
+}
+
+func reshape[Dst []int, Src []int](x [Src...]float32) [checkReshape(Src, Dst)...]float32 {
+	return [checkReshape(Src, Dst)...]float32(x)
+}
+
+func f[N int, Shape []int](x [Shape...]float32) [checkReshape([]int{1, size(Shape), 1}, []int{N, size(Shape) / N, 1})...]float32 {
+	p := [1][size(Shape)][1]float32(x)
+	tiled := reshape[[]int{N, size(Shape) / N, 1}](p)
+	return tiled + tiled
+}
+
+func Test() ([1][6][1]float32, [2][3][1]float32) {
+	x := [2][3]float32{{1, 2, 3}, {4, 5, 6}}
+	return f[1](x), f[2](x)
+	// Want:
+	// 0: [1][6][1]float32{
+	// 	{
+	// 		{2},
+	// 		{4},
+	// 		{6},
+	// 		{8},
+	// 		{10},
+	// 		{12},
+	// 	},
+	// }
+	// 1: [2][3][1]float32{
+	// 	{
+	// 		{2},
+	// 		{4},
+	// 		{6},
+	// 	},
+	// 	{
+	// 		{8},
+	// 		{10},
+	// 		{12},
+	// 	},
+	// }
+}
