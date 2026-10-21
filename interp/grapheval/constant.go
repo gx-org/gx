@@ -21,12 +21,14 @@ import (
 	"github.com/gx-org/gx/build/ir"
 	"github.com/gx-org/gx/build/ir/irkind"
 	"github.com/gx-org/gx/internal/concrete"
+	"github.com/gx-org/gx/internal/interp/compeval/cmp"
 	"github.com/gx-org/gx/internal/interp/csteager"
 	"github.com/gx-org/gx/internal/interp/flatten"
 	"github.com/gx-org/gx/internal/togo"
 	"github.com/gx-org/gx/interp/elements"
 	"github.com/gx-org/gx/interp/engine"
 	"github.com/gx-org/gx/interp/materialise"
+	"github.com/gx-org/gx/src/gx/ast"
 )
 
 // constant is a GX value represented as a node in the graph.
@@ -37,7 +39,9 @@ type constant struct {
 }
 
 var (
+	_ cmp.Canonical                   = (*constant)(nil)
 	_ engine.ConstantElement          = (*constant)(nil)
+	_ engine.Element                  = (*constant)(nil)
 	_ elements.ArraySlicer            = (*constant)(nil)
 	_ engine.Slicer                   = (*constant)(nil)
 	_ materialise.ElementMaterialiser = (*constant)(nil)
@@ -166,6 +170,23 @@ func (n *constant) GoValue() (any, error) {
 // Materialise returns itself.
 func (n *constant) Materialise(materialise.Materialiser) (materialise.Node, error) {
 	return n, nil
+}
+
+// AlgExpr returns an algebraic expression.
+func (n *constant) AlgExpr(eva ir.Evaluator) (cmp.Expr, error) {
+	return cmp.ToAlgExpr(eva, n.cst)
+}
+
+func (n *constant) Expr(ev ir.Evaluator, src ast.Expr) ([]ir.Expr, error) {
+	return n.cst.Expr(ev, src)
+}
+
+func (n *constant) ShortString(from *ir.File) string {
+	return n.cst.ShortString(from)
+}
+
+func (n *constant) SourceString(from *ir.File) string {
+	return n.cst.SourceString(from)
 }
 
 func (n *constant) String() string {
