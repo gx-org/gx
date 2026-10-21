@@ -46,15 +46,15 @@ type (
 )
 
 var (
-	_ elements.Slicer                 = (*BackendNode)(nil)
+	_ engine.Slicer                   = (*BackendNode)(nil)
 	_ engine.Copier                   = (*BackendNode)(nil)
 	_ materialise.ElementMaterialiser = (*BackendNode)(nil)
 	_ materialise.Node                = (*BackendNode)(nil)
 	_ engine.NumericalElement         = (*BackendNode)(nil)
 	_ ir.WithLength                   = (*BackendNode)(nil)
-	_ elements.WithAxes               = (*BackendNode)(nil)
+	_ engine.WithAxes                 = (*BackendNode)(nil)
 	_ graphNode                       = (*BackendNode)(nil)
-	_ elements.EvalShaper             = (*BackendNode)(nil)
+	_ engine.EvalShaper               = (*BackendNode)(nil)
 )
 
 // NewBackendNode returns an element representing a node in the backend graph.
@@ -302,7 +302,7 @@ func shapeLength(sh shapes.Shape) (int, error) {
 }
 
 // Axes returns the axes of the element as a slice of elements.
-func (n *BackendNode) Axes(ev ir.Evaluator) (*elements.Slice, error) {
+func (n *BackendNode) Axes(ev ir.Evaluator) (ir.FixedSlice, error) {
 	sh, err := n.EvalShape()
 	if err != nil {
 		return nil, err

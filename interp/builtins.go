@@ -161,7 +161,7 @@ func appendImpl(env *engine.Env, call *ir.FuncCallExpr, recv ir.Element, genArgs
 }
 
 func axlengthsImpl(env *engine.Env, call *ir.FuncCallExpr, recv ir.Element, genArgs, args []ir.Element) ([]ir.Element, error) {
-	array, ok := args[0].(elements.WithAxes)
+	array, ok := args[0].(engine.WithAxes)
 	if !ok {
 		return nil, fmterr.InternalAt(env.File().FileSet(), call.Src, "cannot get the axis lengths of %T: not supported", args[0])
 	}
@@ -172,7 +172,7 @@ func axlengthsImpl(env *engine.Env, call *ir.FuncCallExpr, recv ir.Element, genA
 	return []ir.Element{axlens}, nil
 }
 
-func lenAxesImpl(env *engine.Env, cal *ir.FuncCallExpr, arg elements.WithAxes) ([]ir.Element, error) {
+func lenAxesImpl(env *engine.Env, cal *ir.FuncCallExpr, arg engine.WithAxes) ([]ir.Element, error) {
 	axlens, err := arg.Axes(env.ExprEval())
 	if err != nil {
 		return nil, err
@@ -195,7 +195,7 @@ func lenImpl(env *engine.Env, call *ir.FuncCallExpr, recv ir.Element, genArgs, a
 		nb := numbers.NewInt(l)
 		el, err := env.Engine().ElementFromHostValue(env.ExprEval(), nb)
 		return []ir.Element{el}, err
-	case elements.WithAxes:
+	case engine.WithAxes:
 		return lenAxesImpl(env, call, argsT)
 	default:
 		return nil, fmterr.InternalAt(env.File().FileSet(), call.Src, "cannot get the lengths of %T: not supported", args[0])

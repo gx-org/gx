@@ -23,17 +23,6 @@ import (
 	"github.com/gx-org/gx/interp/engine"
 )
 
-// Element returned after an evaluation at compeval.
-type Element interface {
-	engine.NumericalElement
-	ir.WithExpr
-	ir.StringShorter
-	ir.StringSourcer
-	elements.WithAxes
-	elements.EvalShaper
-	elements.Slicer
-}
-
 // AxesFromType returns a slice element of axis lengths from an array type.
 func AxesFromType(ev ir.Evaluator, typ ir.Type) (*elements.Slice, error) {
 	aTyp, ok := typ.(ir.ArrayType)
@@ -69,7 +58,7 @@ func EvalShape(typ ir.Type) (shapes.Shape, error) {
 }
 
 type core struct {
-	el Element
+	el engine.Element
 }
 
 func (c *core) UnaryOp(env *engine.Env, expr *ir.UnaryExpr) (engine.NumericalElement, error) {
@@ -88,7 +77,7 @@ func (c *core) Reshape(env *engine.Env, expr ir.Expr, axisLengths []engine.Numer
 	return NewReshape(env, expr, c.el, axisLengths)
 }
 
-func (c *core) Axes(ev ir.Evaluator) (*elements.Slice, error) {
+func (c *core) Axes(ev ir.Evaluator) (ir.FixedSlice, error) {
 	return AxesFromType(ev, c.el.Type())
 }
 

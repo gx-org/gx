@@ -39,12 +39,11 @@ type constant struct {
 var (
 	_ engine.ConstantElement          = (*constant)(nil)
 	_ elements.ArraySlicer            = (*constant)(nil)
-	_ elements.Slicer                 = (*constant)(nil)
+	_ engine.Slicer                   = (*constant)(nil)
 	_ materialise.ElementMaterialiser = (*constant)(nil)
 	_ materialise.Node                = (*constant)(nil)
 	_ engine.Copier                   = (*constant)(nil)
-	_ elements.WithAxes               = (*constant)(nil)
-	_ elements.EvalShaper             = (*constant)(nil)
+	_ engine.WithAxes                 = (*constant)(nil)
 	_ ir.WithLength                   = (*constant)(nil)
 	_ togo.CompileValue               = (*constant)(nil)
 )
@@ -88,7 +87,7 @@ func (n *constant) Copy() engine.Copier {
 	return n
 }
 
-func (n *constant) Axes(ev ir.Evaluator) (*elements.Slice, error) {
+func (n *constant) Axes(ev ir.Evaluator) (ir.FixedSlice, error) {
 	axlens, err := n.cst.AxisLengths()
 	if err != nil {
 		return nil, err

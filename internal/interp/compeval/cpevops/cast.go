@@ -25,11 +25,11 @@ import (
 type arrayCast struct {
 	core
 	expr ir.Expr
-	x    Element
+	x    engine.Element
 }
 
 // NewCast applies a cast operator to an element.
-func NewCast(env *engine.Env, expr ir.Expr, xEl Element, target ir.Type) Element {
+func NewCast(env *engine.Env, expr ir.Expr, xEl engine.Element, target ir.Type) engine.Element {
 	el := &arrayCast{
 		expr: expr,
 		x:    xEl,
@@ -39,7 +39,7 @@ func NewCast(env *engine.Env, expr ir.Expr, xEl Element, target ir.Type) Element
 }
 
 // NewReshape returns a reshape elements.
-func NewReshape(env *engine.Env, expr ir.Expr, xEl Element, axisLengths []engine.NumericalElement) (Element, error) {
+func NewReshape(env *engine.Env, expr ir.Expr, xEl engine.Element, axisLengths []engine.NumericalElement) (engine.Element, error) {
 	return NewCast(env, expr, xEl, expr.Type()), nil
 }
 

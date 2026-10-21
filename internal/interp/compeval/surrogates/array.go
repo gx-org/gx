@@ -22,14 +22,13 @@ import (
 	"github.com/gx-org/gx/internal/interp/compeval/cmp"
 	"github.com/gx-org/gx/internal/interp/compeval/cpevops"
 	"github.com/gx-org/gx/internal/interp/compeval/surrogates/storepath"
-	"github.com/gx-org/gx/interp/elements"
 	"github.com/gx-org/gx/interp/engine"
 	"github.com/gx-org/gx/src/gx/ast"
 )
 
 // Array is a surrogate array.
 type Array interface {
-	cpevops.Element
+	engine.Element
 	Element
 }
 
@@ -86,7 +85,7 @@ func (a *array) UnaryOp(env *engine.Env, expr *ir.UnaryExpr) (engine.NumericalEl
 	return cpevops.NewUnary(env, expr, a)
 }
 
-func (a *array) Axes(ev ir.Evaluator) (*elements.Slice, error) {
+func (a *array) Axes(ev ir.Evaluator) (ir.FixedSlice, error) {
 	return cpevops.AxesFromType(ev, a.typ)
 }
 

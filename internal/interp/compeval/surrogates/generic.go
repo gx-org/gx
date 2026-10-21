@@ -78,7 +78,7 @@ func (g *genericType) Reshape(env *engine.Env, expr ir.Expr, axisLengths []engin
 }
 
 // Axes of the result of the cast.
-func (g *genericType) Axes(ev ir.Evaluator) (*elements.Slice, error) {
+func (g *genericType) Axes(ev ir.Evaluator) (ir.FixedSlice, error) {
 	return cpevops.AxesFromType(ev, g.GenericTypeParam.Type())
 }
 

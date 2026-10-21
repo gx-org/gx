@@ -43,7 +43,7 @@ type tuple struct {
 // Need to support canonical to be able to compare axes using unpack.
 var _ cmp.Canonical = (*tuple)(nil)
 
-func newTuple(slice *slice) (cpevops.Element, error) {
+func newTuple(slice *slice) (engine.Element, error) {
 	var err error
 	knd := slice.typ.DType.Val().Kind()
 	if knd != irkind.Int {
@@ -120,7 +120,7 @@ var (
 )
 
 // Axes of the result of the cast.
-func (*tuple) Axes(ev ir.Evaluator) (*elements.Slice, error) {
+func (*tuple) Axes(ev ir.Evaluator) (ir.FixedSlice, error) {
 	return atomAxes, nil
 }
 

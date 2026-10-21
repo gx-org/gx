@@ -356,10 +356,10 @@ var (
 	_ engine.NumericalElement         = (*arrayArgument)(nil)
 	_ materialise.ElementMaterialiser = (*arrayArgument)(nil)
 	_ flatten.Unflattener             = (*arrayArgument)(nil)
-	_ elements.Slicer                 = (*arrayArgument)(nil)
+	_ engine.Slicer                   = (*arrayArgument)(nil)
 	_ ir.WithLength                   = (*arrayArgument)(nil)
-	_ elements.WithAxes               = (*arrayArgument)(nil)
-	_ elements.EvalShaper             = (*arrayArgument)(nil)
+	_ engine.WithAxes                 = (*arrayArgument)(nil)
+	_ engine.EvalShaper               = (*arrayArgument)(nil)
 	_ graphNode                       = (*arrayArgument)(nil)
 	_ togo.RuntimeValue               = (*arrayArgument)(nil)
 )
@@ -457,7 +457,7 @@ func (n *arrayArgument) EvalShape() (shapes.Shape, error) {
 	return n.shape, nil
 }
 
-func (n *arrayArgument) Axes(ev ir.Evaluator) (*elements.Slice, error) {
+func (n *arrayArgument) Axes(ev ir.Evaluator) (ir.FixedSlice, error) {
 	return n.node.ao.axesFromShape(ev, n.shape.Dimensions)
 }
 

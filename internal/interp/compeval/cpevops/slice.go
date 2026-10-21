@@ -26,17 +26,17 @@ import (
 type arraySlice struct {
 	core
 	expr      ir.Expr
-	x         Element
-	low, high Element
+	x         engine.Element
+	low, high engine.Element
 }
 
 // NewSlice returns a slice operation.
-func NewSlice(env *engine.Env, expr *ir.SliceExpr, x Element, low, high engine.NumericalElement) (_ Element, err error) {
-	lowEl, err := cast.To[Element](low)
+func NewSlice(env *engine.Env, expr *ir.SliceExpr, x engine.Element, low, high engine.NumericalElement) (_ engine.Element, err error) {
+	lowEl, err := cast.To[engine.Element](low)
 	if err != nil {
 		return nil, err
 	}
-	highEl, err := cast.To[Element](high)
+	highEl, err := cast.To[engine.Element](high)
 	if err != nil {
 		return nil, err
 	}

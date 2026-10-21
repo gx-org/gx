@@ -557,7 +557,7 @@ func evalSliceExpr(fitp *Interpreter, expr *ir.SliceExpr) (ir.Element, error) {
 			return nil, err
 		}
 	}
-	slice, isSlice := el.(elements.Slicer)
+	slice, isSlice := el.(engine.Slicer)
 	if !isSlice {
 		return nil, fmterr.InternalAt(fitp.File().FileSet(), expr.Node(), "index expression not supported for %s expression (element: %T)", expr.X.SourceString(nil), el)
 	}
@@ -749,7 +749,7 @@ func evalIndexExpr(fitp *Interpreter, ref *ir.IndexExpr) (ir.Element, error) {
 	}
 	switch indexT := index.(type) {
 	case engine.NumericalElement:
-		slicer, err := cast.To[elements.Slicer](x)
+		slicer, err := cast.To[engine.Slicer](x)
 		if err != nil {
 			return nil, err
 		}

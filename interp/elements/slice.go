@@ -33,23 +33,11 @@ import (
 )
 
 type (
-
-	// Slicer is a state element that can be sliced.
-	Slicer interface {
-		SliceAt(env *engine.Env, expr *ir.IndexExpr, index engine.NumericalElement) (ir.Element, error)
-		Slice(env *engine.Env, expr *ir.SliceExpr, low, high engine.NumericalElement) (ir.Element, error)
-	}
-
 	// ArraySlicer is a state element with an array that can be sliced.
 	ArraySlicer interface {
 		engine.NumericalElement
 		SliceArray(expr ir.Expr, index engine.NumericalElement) (engine.NumericalElement, error)
 		Type() ir.Type
-	}
-
-	// WithAxes is an element able to return its axes as a slice of element.
-	WithAxes interface {
-		Axes(ev ir.Evaluator) (*Slice, error)
 	}
 
 	// Unpacker unpacks the elements it contains into a tuple.
@@ -63,7 +51,7 @@ type (
 		ir.WithExpr
 		ir.WithLength
 		cmp.Canonical
-		Slicer
+		engine.Slicer
 		engine.Slice
 		Unpacker
 	}

@@ -26,13 +26,13 @@ import (
 type arrayIndex struct {
 	core
 	expr ir.Expr
-	x    Element
-	idx  Element
+	x    engine.Element
+	idx  engine.Element
 }
 
 // NewIndex returns a binary operation between two elements.
-func NewIndex(env *engine.Env, expr *ir.IndexExpr, x Element, idx engine.NumericalElement) (_ Element, err error) {
-	idxEl, err := cast.To[Element](idx)
+func NewIndex(env *engine.Env, expr *ir.IndexExpr, x engine.Element, idx engine.NumericalElement) (_ engine.Element, err error) {
+	idxEl, err := cast.To[engine.Element](idx)
 	el := &arrayIndex{
 		expr: expr,
 		x:    x,

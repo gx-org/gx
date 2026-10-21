@@ -52,24 +52,6 @@ type (
 		EvalCond(ctx ir.Evaluator, el ir.Element) (bool, error)
 	}
 
-	// NumericalElement is a node representing a numerical value manipulated by the interpreter.
-	NumericalElement interface {
-		ir.Element
-
-		// UnaryOp applies a unary operator on x.
-		UnaryOp(env *Env, expr *ir.UnaryExpr) (NumericalElement, error)
-
-		// BinaryOp applies a binary operator to x and y.
-		// Note that the receiver can be either the left or right argument.
-		BinaryOp(env *Env, expr *ir.BinaryExpr, y NumericalElement) (NumericalElement, error)
-
-		// Cast an element into a given data type.
-		Cast(env *Env, expr ir.Expr, target ir.Type) (NumericalElement, error)
-
-		// Reshape an element.
-		Reshape(env *Env, expr ir.Expr, axisLengths []NumericalElement) (NumericalElement, error)
-	}
-
 	// ConstantElement is an element (created by the ArrayOps)
 	// with an underlying HostValueElement.
 	ConstantElement interface {
