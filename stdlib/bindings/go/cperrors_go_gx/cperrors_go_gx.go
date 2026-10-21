@@ -26,7 +26,7 @@ import (
 	"github.com/gx-org/gx/api"
 	"github.com/gx-org/gx/api/hostio"
 	"github.com/gx-org/gx/api/options"
-	"github.com/gx-org/gx/api/tracer"
+	"github.com/gx-org/gx/api/runner"
 	"github.com/gx-org/gx/api/values"
 	"github.com/gx-org/gx/build/ir"
 	"github.com/gx-org/gx/golang/binder/gobindings/core"
@@ -46,7 +46,7 @@ var (
 	_ = errors.Errorf
 	_ = types.NewSlice[types.Bridger]
 	_ = ir.NamedType{}
-	_ = tracer.Trace
+	_ = runner.Trace
 )
 
 // BuildFor loads the GX package cperrors
