@@ -237,7 +237,7 @@ func (vis *inputVisitor) newStructArgument(parent parentArgument, typ *ir.Struct
 		}
 		fields[name] = field
 	}
-	return elements.NewStruct(typ, fields), nil
+	return elements.NewStruct(typ, fields)
 }
 
 func (sel *fieldSelectorArgument) Name() string {

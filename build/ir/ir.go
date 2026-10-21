@@ -250,6 +250,7 @@ var (
 	_ StorageWithValue = (*NamedType)(nil)
 	_ TypeMethods      = (*NamedType)(nil)
 	_ typeSet          = (*NamedType)(nil)
+	_ Zeroer           = (*NamedType)(nil)
 	_ Type             = (*InterfaceType)(nil)
 	_ SlicerType       = (*SliceType)(nil)
 	_ Type             = (*TupleType)(nil)
@@ -606,6 +607,36 @@ func (s *NamedType) Type() Type {
 // Value assigned to the constant.
 func (s *NamedType) Value(x Expr) Expr {
 	return TypeExpr(x.Expr(), s)
+}
+
+// Zero returns a zero value of the named type built from the zero value of its underlying type.
+// Returns nil if the underlying type does not support zero values.
+func (s *NamedType) Zero() Expr {
+	zeroer, ok := Underlying(s).(Zeroer)
+	if !ok {
+		return nil
+	}
+	x := zeroer.Zero()
+	// Literals and number casts take the named type directly
+	// (as built by the compiler when such expressions are assigned to a named type).
+	// Other expressions are casted to the named type.
+	switch xT := x.(type) {
+	case nil:
+		return nil
+	case *StructLitExpr:
+		lit := *xT
+		lit.Typ = s
+		return &lit
+	case *NumberCastExpr:
+		cst := *xT
+		cst.Typ = s
+		return &cst
+	}
+	return &CastExpr{
+		Src: &ast.CallExpr{},
+		Typ: s,
+		X:   x,
+	}
 }
 
 // Same returns true if the other storage is this storage.

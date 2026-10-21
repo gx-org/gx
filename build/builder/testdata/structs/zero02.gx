@@ -1,0 +1,20 @@
+package zero02
+
+type S struct {
+	a [3]float32
+	b [2][3]int32
+	c float64
+}
+
+func Test() S {
+	return S{}
+	// Want:
+	// S{
+	// 	a: [3]float32{0, 0, 0},
+	// 	b: [2][3]int32{
+	// 		{0, 0, 0},
+	// 		{0, 0, 0},
+	// 	},
+	// 	c: float64(0),
+	// }
+}

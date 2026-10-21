@@ -153,13 +153,6 @@ func testStructFieldUndefined() float32 {
 	return 0
 }
 
-func testStructFieldIncorrectType() float32 {
-	a := someStruct{ // ERROR field someMethod has not been assigned
-		a: [1]float64{1}, // ERROR cannot use [1]float64 as int32 value in assignment
-	}
-	return 0
-}
-
 func testStructNumberAssignment() int64 {
 	a := someStruct{
 		a:          123.42, // ERROR cannot use 123.42 (untyped FLOAT constant) as int32 value

@@ -290,11 +290,11 @@ func (ao *Ops) ElementFromTuple(file *ir.File, expr ir.Expr, tpl []compute.Value
 		return nil, err
 	}
 	var el engine.Copier
-	el = elements.NewStructFromElements(structTyp, els)
+	el, err = elements.NewStructFromElements(structTyp, els)
 	for _, nType := range namedTypes {
 		el = elements.NewNamedType(nType, el)
 	}
-	return el, nil
+	return el, err
 }
 
 func (ao *Ops) axesFromShape(ctx ir.Evaluator, axlens []int) (*elements.Slice, error) {

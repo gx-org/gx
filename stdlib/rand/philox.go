@@ -63,11 +63,15 @@ func evalPhilox(env *engine.Env, call *ir.FuncCallExpr, recv ir.Element, genArgs
 	if err != nil {
 		return nil, err
 	}
+	strt, err := elements.NewStruct(
+		philoxStruct,
+		map[string]ir.Element{"state": philoxStateElement[0]},
+	)
+	if err != nil {
+		return nil, err
+	}
 	return []ir.Element{
-		elements.NewNamedType(philox.TypeMethods(), elements.NewStruct(
-			philoxStruct,
-			map[string]ir.Element{"state": philoxStateElement[0]},
-		)),
+		elements.NewNamedType(philox.TypeMethods(), strt),
 		valuesElement[0],
 	}, nil
 }

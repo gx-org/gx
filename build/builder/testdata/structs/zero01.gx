@@ -1,0 +1,15 @@
+package zero01
+
+type S struct {
+	a float32
+	b int
+}
+
+func Test() S {
+	return S{}
+	// Want:
+	// S{
+	// 	a: float32(0),
+	// 	b: int(0),
+	// }
+}

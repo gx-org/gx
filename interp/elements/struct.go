@@ -40,7 +40,7 @@ var (
 )
 
 // NewStructFromElements returns a new node representing a structure instance given a slice of
-func NewStructFromElements(typ *ir.StructType, vals []ir.Element) *Struct {
+func NewStructFromElements(typ *ir.StructType, vals []ir.Element) (*Struct, error) {
 	fields := make(map[string]ir.Element, len(vals))
 	for i, field := range typ.Fields.Fields() {
 		fields[field.Name.Name] = vals[i]
@@ -49,11 +49,11 @@ func NewStructFromElements(typ *ir.StructType, vals []ir.Element) *Struct {
 }
 
 // NewStruct returns a new node representing a structure instance.
-func NewStruct(typ *ir.StructType, fields map[string]ir.Element) *Struct {
+func NewStruct(typ *ir.StructType, fields map[string]ir.Element) (*Struct, error) {
 	return &Struct{
 		fields: fields,
 		typ:    typ,
-	}
+	}, nil
 }
 
 // StructType returns the type of the structure.

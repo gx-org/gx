@@ -512,13 +512,26 @@ func evalStructLiteral(fitp *Interpreter, expr *ir.StructLitExpr) (ir.Element, e
 	}
 	fields := make(map[string]ir.Element, structType.NumFields())
 	for _, fieldLit := range expr.Elts {
-		node, err := evalExpr(fitp, fieldLit.X)
+		valX := fieldLit.X
+		if valX == nil {
+			// No expression for the field:
+			// build a zero expression, then evaluate it.
+			zeroer, err := cast.To[ir.Zeroer](fieldLit.Type())
+			if err != nil {
+				return nil, err
+			}
+			valX = zeroer.Zero()
+		}
+		node, err := evalExpr(fitp, valX)
 		if err != nil {
 			return nil, err
 		}
 		fields[fieldLit.Field.Name.Name] = node
 	}
-	strct := elements.NewStruct(structType, fields)
+	strct, err := elements.NewStruct(structType, fields)
+	if err != nil {
+		return nil, err
+	}
 	nType, ok := expr.Typ.(*ir.NamedType)
 	if !ok {
 		return strct, nil

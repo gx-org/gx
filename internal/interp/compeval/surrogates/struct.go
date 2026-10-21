@@ -40,8 +40,12 @@ func newStruct(path storepath.Path, typ *ir.StructType) (Element, error) {
 			return nil, err
 		}
 	}
+	strt, err := elements.NewStruct(typ, fields)
+	if err != nil {
+		return nil, err
+	}
 	return &sStruct{
 		core:   core{path: path},
-		Struct: elements.NewStruct(typ, fields),
+		Struct: strt,
 	}, nil
 }

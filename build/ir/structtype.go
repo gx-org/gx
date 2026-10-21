@@ -29,7 +29,10 @@ type StructType struct {
 	Fields *FieldList
 }
 
-var _ GenericType = (*StructType)(nil)
+var (
+	_ GenericType = (*StructType)(nil)
+	_ Zeroer      = (*StructType)(nil)
+)
 
 func (*StructType) node() {}
 
@@ -82,6 +85,25 @@ func (s *StructType) Node() ast.Node { return s.Src }
 // Value returns a value pointing to the receiver.
 func (s *StructType) Value(x Expr) Expr {
 	return TypeExpr(x.Expr(), s)
+}
+
+// Zero returns a zero literal of this type.
+// No expression is assigned to the fields of the literal:
+// the zero value of each field is computed when the literal is evaluated.
+func (s *StructType) Zero() Expr {
+	fields := s.Fields.Fields()
+	elts := make([]*FieldLit, 0, len(fields))
+	for _, field := range fields {
+		if !ValidIdent(field.Name) {
+			continue
+		}
+		elts = append(elts, &FieldLit{FieldStorage: field.Storage()})
+	}
+	return &StructLitExpr{
+		Src:  &ast.CompositeLit{},
+		Typ:  s,
+		Elts: elts,
+	}
 }
 
 // SpecialiseStruct specialises a structure.
