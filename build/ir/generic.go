@@ -18,6 +18,7 @@ import (
 	"fmt"
 
 	"github.com/gx-org/gx/build/ir/irkind"
+	"github.com/gx-org/gx/internal/undef"
 	"github.com/gx-org/gx/src/gx/ast"
 )
 
@@ -324,6 +325,9 @@ func (s *GenericNonTypeParam) Assign(fetcher Fetcher, x Expr) (GenericValue, boo
 		return s.invalidValue(), fetcher.Err().Appendf(x.Node(), "cannot use %s as %s generic value %s", src.ReferString(from), dst.ReferString(from), s.OrigField().Name.Name)
 	}
 	xEval, err := CompEvalExpr(fetcher, x)
+	if undef.Is(err) {
+		return NewAxisGenericValue(s, x), true
+	}
 	if err != nil {
 		return s.invalidValue(), fetcher.Err().AppendAt(x.Expr(), err)
 	}

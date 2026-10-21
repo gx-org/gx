@@ -23,11 +23,11 @@ type TupleElement interface {
 func areEqual(tpcmp TypeEval, x, y Expr) (bool, error) {
 	xExpr, err := tpcmp.EvalExpr(x)
 	if err != nil {
-		return false, err
+		return isUndef(err)
 	}
 	yExpr, err := tpcmp.EvalExpr(y)
 	if err != nil {
-		return false, err
+		return isUndef(err)
 	}
 	return tpcmp.Compare(xExpr, yExpr)
 }

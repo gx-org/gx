@@ -115,17 +115,7 @@ func buildGenericValues(rscope resolveScope, x ir.Expr, ce *compileEvaluator, ge
 		genValues[gParam.OrigField().Pos], assignOk = gParam.Assign(ce, indices[i])
 		ok = ok && assignOk && numberOk
 	}
-	if !ok {
-		return genValues, false
-	}
-	for i, indexExpr := range indices {
-		var err error
-		indices[i], err = ir.CompEvalExprSingle(ce, indexExpr)
-		if err != nil {
-			return genValues, rscope.Err().AppendAt(indexExpr.Expr(), err)
-		}
-	}
-	return genValues, true
+	return genValues, ok
 }
 
 func specializeFuncType(rscope resolveScope, x ir.Expr, indices []ir.Expr, fun *ir.FuncValExpr) (ir.Expr, bool) {

@@ -1,0 +1,18 @@
+package undef02
+
+import "testcpundef"
+
+func g[A int](x, y [A]float32) [A]float32 {
+	return x + y
+}
+
+func f[A int](x [A]float32) [testcpundef.Undef(A)]float32 {
+	y := [testcpundef.Undef(A)]float32(x)
+	return g[testcpundef.Undef(A)](y, g(y, y))
+}
+
+func Test() [3]float32 {
+	return f([3]float32{1, 2, 3})
+	// Want:
+	// [3]float32{3, 6, 9}
+}
