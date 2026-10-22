@@ -19,6 +19,7 @@ import (
 	"github.com/spf13/cobra"
 	"github.com/gx-org/gx/internal/cmd/debug"
 	"github.com/gx-org/gx/internal/cmd/gxfmt"
+	"github.com/gx-org/gx/internal/cmd/gxrun"
 	"github.com/gx-org/gx/internal/cmd/impgo"
 )
 
@@ -35,6 +36,7 @@ func newRootCmd() *cobra.Command {
 	rootCmd.SetErrPrefix("gx:")
 	rootCmd.PersistentFlags().BoolVarP(&debug.Debug, "debug", "d", false, "print debug information")
 	rootCmd.AddCommand(gxfmt.Cmd())
+	rootCmd.AddCommand(gxrun.Cmd())
 	rootCmd.AddCommand(impgo.Cmd())
 	return rootCmd
 }

@@ -72,7 +72,7 @@ func (runners) FuncLit(lit *ir.FuncLit, env *engine.Env, ctx *context.Context, c
 
 // Unflatten creates a GX value from the next handles available in the parser.
 func (sg *funcLit) Unflatten(handles *flatten.Parser) (hostio.Value, error) {
-	return values.NewIRNode(sg.lit)
+	return values.NewIRNode(sg.lit), nil
 }
 
 // Type of the function.

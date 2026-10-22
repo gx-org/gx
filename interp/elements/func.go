@@ -101,7 +101,7 @@ func (f *elFunc) Recv() *engine.Receiver {
 
 // Unflatten creates a GX value from the next handles available in the parser.
 func (f *elFunc) Unflatten(handles *flatten.Parser) (hostio.Value, error) {
-	return values.NewIRNode(f.fn)
+	return values.NewIRNode(f.fn), nil
 }
 
 // Kind of the element.

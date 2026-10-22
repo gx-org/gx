@@ -89,3 +89,50 @@ func TestFmtErrors(t *testing.T) {
 		})
 	}
 }
+
+func TestRunErrors(t *testing.T) {
+	dir := t.TempDir()
+	syntaxErrorPath := filepath.Join(dir, "syntax_error.gx")
+	if err := os.WriteFile(syntaxErrorPath, []byte("package test\n\nfunc Main( {\n"), 0644); err != nil {
+		t.Fatal(err)
+	}
+	missingPath := filepath.Join(dir, "missing.gx")
+	_, errMissing := os.Stat(missingPath)
+	if errMissing == nil {
+		t.Fatalf("%s exists", missingPath)
+	}
+	tests := []struct {
+		name       string
+		args       []string
+		wantStderr string
+	}{
+		{
+			name:       "syntax error",
+			args:       []string{"run", syntaxErrorPath},
+			wantStderr: "gx run: syntax_error.gx:3:12: expected ')', found '{'\n",
+		},
+		{
+			name:       "missing path",
+			args:       []string{"run", missingPath},
+			wantStderr: "gx run: " + errMissing.Error() + "\n",
+		},
+		{
+			name:       "no path",
+			args:       []string{"run"},
+			wantStderr: "gx: accepts 1 arg(s), received 0\n",
+		},
+	}
+	for _, test := range tests {
+		t.Run(test.name, func(t *testing.T) {
+			cmdLine := "gx " + strings.Join(test.args, " ")
+			stderr, err := execute(t, test.args...)
+			// An error makes the gx binary exit with a non-zero status.
+			if err == nil {
+				t.Errorf("%s: got no error, want an error", cmdLine)
+			}
+			if stderr != test.wantStderr {
+				t.Errorf("%s: got standard error:\n%q\nwant:\n%q", cmdLine, stderr, test.wantStderr)
+			}
+		})
+	}
+}
