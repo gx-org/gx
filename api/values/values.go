@@ -87,3 +87,21 @@ func Underlying(val hostio.Value) hostio.Value {
 	}
 	return Underlying(named.Underlying())
 }
+
+// Flatten replaces the slices in a list of values by their elements, recursively.
+func Flatten(vals []hostio.Value) []hostio.Value {
+	var flat []hostio.Value
+	for _, val := range vals {
+		slice, ok := val.(*Slice)
+		if !ok {
+			flat = append(flat, val)
+			continue
+		}
+		elements := make([]hostio.Value, slice.Len())
+		for i := range elements {
+			elements[i] = slice.Element(i)
+		}
+		flat = append(flat, Flatten(elements)...)
+	}
+	return flat
+}
