@@ -109,8 +109,8 @@ func (r *testTracer) Trace(file *ir.File, call *ir.FuncCallExpr, vals []hostio.V
 		valS := valueToString(file, val)
 		valS = gxfmt.Indent(valS)
 		r.trace.WriteString(valS)
+		r.trace.WriteString("\n")
 	}
-	r.trace.WriteString("\n")
 	return nil
 }
 
