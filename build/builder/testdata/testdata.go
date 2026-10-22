@@ -21,7 +21,7 @@ import (
 	"github.com/gx-org/gx/build/builder/testbuild"
 )
 
-//go:embed *.gx bools/*.gx builtins/*.gx cast/*.gx compeval/*.gx const/*.gx core/*.gx core/decoy.gx/decoy.md einsum/*.gx errors/*.gx fieldpaths/*.gx funclits/*.gx generics/*.gx infer/*.gx macros/*.gx namedtype/*.gx nontypes/*.gx numbers/*.gx range/*.gx require/*.gx rtpkg/*.gx slices/*.gx set/*.gx stmts/*.gx structs/*.gx traces/*.gx tuples/*.gx unary/*.gx unknown/*.gx unroll/*.gx
+//go:embed *.gx arrayslices/*.gx bfloat16/*.gx bools/*.gx builtins/*.gx cast/*.gx compeval/*.gx const/*.gx control/*.gx core/*.gx core/decoy.gx/decoy.md einsum/*.gx ellipsis/*.gx errors/*.gx fieldpaths/*.gx forloops/*.gx funclits/*.gx generics/*.gx ifstmts/*.gx imports/*.gx infer/*.gx macros/*.gx namedtype/*.gx nn/*.gx nontypes/*.gx numbers/*.gx range/*.gx require/*.gx rtpkg/*.gx scalars/*.gx slices/*.gx set/*.gx stmts/*.gx structs/*.gx traces/*.gx tuples/*.gx unary/*.gx unknown/*.gx unroll/*.gx vjp/*.gx
 var fs embed.FS
 
 // Sources contains all the tests to run.

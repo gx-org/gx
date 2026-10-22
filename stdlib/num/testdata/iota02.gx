@@ -1,0 +1,37 @@
+package iota02
+
+import (
+	"dtype"
+	"num"
+)
+
+func TestIotaFullInt32() [2][3]int32 {
+	return num.IotaFull[[]int{2, 3}, int32]()
+	// Want:
+	// [2][3]int32{
+	// 	{0, 1, 2},
+	// 	{3, 4, 5},
+	// }
+}
+
+func TestIotaFullFloat32() [2][3]float32 {
+	return num.IotaFull[[]int{2, 3}, float32]()
+	// Want:
+	// [2][3]float32{
+	// 	{0, 1, 2},
+	// 	{3, 4, 5},
+	// }
+}
+
+func iotaFullGeneric[T dtype.Nums]() [2][3]T {
+	return num.IotaFull[[]int{2, 3}, T]()
+}
+
+func TestIotaFullGenericFloat64() [2][3]float64 {
+	return iotaFullGeneric[float64]()
+	// Want:
+	// [2][3]float64{
+	// 	{0, 1, 2},
+	// 	{3, 4, 5},
+	// }
+}

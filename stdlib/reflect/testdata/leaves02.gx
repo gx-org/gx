@@ -1,0 +1,46 @@
+package leaves02
+
+import "reflect"
+
+type T struct {
+	b int32
+	c int32
+}
+
+type U struct {
+	t T
+	d int32
+}
+
+type S struct {
+	a int32
+	u U
+	t T
+}
+
+func Test() S {
+	s := S{
+		a: 1,
+		u: U{t: T{b: 2, c: 3}, d: 4},
+		t: T{b: 5, c: 6},
+	}
+	for _, k := range reflect.Leaves[S]() {
+		s[k] += 10
+	}
+	return s
+	// Want:
+	// S{
+	// 	a: int32(11),
+	// 	u: U{
+	// 		t: T{
+	// 			b: int32(12),
+	// 			c: int32(13),
+	// 		},
+	// 		d: int32(14),
+	// 	},
+	// 	t: T{
+	// 		b: int32(15),
+	// 		c: int32(16),
+	// 	},
+	// }
+}

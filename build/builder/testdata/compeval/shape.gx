@@ -1,0 +1,21 @@
+package shape
+
+import "shape"
+
+func TestSameSlice() bool {
+	return shape.SameSlice([]int{1, 2}, []int{1, 2})
+	// Want:
+	// bool(true)
+}
+
+func TestDiffSlice1() bool {
+	return shape.SameSlice([]int{1, 2}, []int{})
+	// Want:
+	// bool(false)
+}
+
+func TestDiffSlice2() bool {
+	return shape.SameSlice([]int{1, 2}, []int{1, 3})
+	// Want:
+	// bool(false)
+}

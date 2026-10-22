@@ -42,6 +42,7 @@ func TestBuilder(t *testing.T) {
 			testpkgs.TestGenerics,
 			testpkgs.TestUnknown,
 			testpkgs.TestFieldPaths,
+			testpkgs.TestPkg1,
 			base.New(),
 			stdlib.Importer(),
 		},

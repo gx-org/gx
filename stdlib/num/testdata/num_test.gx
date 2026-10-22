@@ -1,0 +1,298 @@
+package num_test
+
+import (
+	"num"
+	"shape"
+)
+
+// Test options:
+// setStatic dim1 int 2
+// setStatic dim2 int 3
+// setStatic dim3 int 4
+
+func TestSumVector() int64 {
+	return num.Sum[[]int{0}]([...]int64{
+		1, 2, 3,
+	})
+	// Want:
+	// int64(6)
+}
+
+func TestSumVectorWithoutAxes() [3]int64 {
+	return num.Sum[[]int{}]([...]int64{
+		1, 2, 3,
+	})
+	// Want:
+	// [3]int64{1, 2, 3}
+}
+
+func TestSumTensor3DFloat32() [2][2]float32 {
+	return num.Sum[[]int{0}]([...]float32{
+		{
+			{0, 1},
+			{10, 11},
+		},
+		{
+			{100, 101},
+			{110, 111},
+		},
+	})
+	// Want:
+	// [2][2]float32{
+	// 	{100, 102},
+	// 	{120, 122},
+	// }
+}
+
+func TestTranspose1Axis() [3]float32 {
+	return shape.Transpose([...]float32{1, 2, 3})
+	// Want:
+	// [3]float32{1, 2, 3}
+}
+
+func TestTranspose2Axes() [3][2]float32 {
+	return shape.Transpose([2][3]float32{
+		{1, 2, 3},
+		{4, 5, 6},
+	})
+	// Want:
+	// [3][2]float32{
+	// 	{1, 4},
+	// 	{2, 5},
+	// 	{3, 6},
+	// }
+}
+
+func TestTranspose3Axes() [4][3][2]float32 {
+	return shape.Transpose([2][3][4]float32{
+		{
+			{1, 2, 3, 4},
+			{5, 6, 7, 8},
+			{9, 10, 11, 12},
+		},
+		{
+			{13, 14, 15, 16},
+			{17, 18, 19, 20},
+			{21, 22, 23, 24},
+		},
+	})
+	// Want:
+	// [4][3][2]float32{
+	// 	{
+	// 		{1, 13},
+	// 		{5, 17},
+	// 		{9, 21},
+	// 	},
+	// 	{
+	// 		{2, 14},
+	// 		{6, 18},
+	// 		{10, 22},
+	// 	},
+	// 	{
+	// 		{3, 15},
+	// 		{7, 19},
+	// 		{11, 23},
+	// 	},
+	// 	{
+	// 		{4, 16},
+	// 		{8, 20},
+	// 		{12, 24},
+	// 	},
+	// }
+}
+
+func TestMatMulScalars() float64 {
+	x := [1]float64{1}
+	w := [1]float64{-1}
+	return num.VecMul(x, w)
+	// Want:
+	// float64(-1)
+}
+
+func TestMatMul1Axis() float64 {
+	x := [3]float64{1, 2, 3}
+	w := [3]float64{-1, -2, -3}
+	return num.VecMul(x, w)
+	// Want:
+	// float64(-14)
+}
+
+func TestMatMul2Axis() [2]float64 {
+	x := [3]float64{1., 2., 3.}
+	w := [3][2]float64{
+		{4, 5},
+		{6, 7},
+		{8, 9},
+	}
+	return num.VecMatMul(x, w)
+	// Want:
+	// [2]float64{40, 46}
+}
+
+func TestMatMul4Axis() [5][7]float64 {
+	x := [5][6]float64{}
+	y := [6][7]float64{}
+	return num.MatMul(x, y)
+	// Want:
+	// [5][7]float64{
+	// 	{0, 0, 0, 0, 0, 0, 0},
+	// 	{0, 0, 0, 0, 0, 0, 0},
+	// 	{0, 0, 0, 0, 0, 0, 0},
+	// 	{0, 0, 0, 0, 0, 0, 0},
+	// 	{0, 0, 0, 0, 0, 0, 0},
+	// }
+}
+
+func TestIotaAxis0() [4][3]int64 {
+	return num.Iota[[]int{4, 3}, int64](0)
+	// Want:
+	// [4][3]int64{
+	// 	{0, 0, 0},
+	// 	{1, 1, 1},
+	// 	{2, 2, 2},
+	// 	{3, 3, 3},
+	// }
+}
+
+func TestIotaAxis1() [4][3]int64 {
+	return num.Iota[[]int{4, 3}, int64](1)
+	// Want:
+	// [4][3]int64{
+	// 	{0, 1, 2},
+	// 	{0, 1, 2},
+	// 	{0, 1, 2},
+	// 	{0, 1, 2},
+	// }
+}
+
+func TestIotaFull() [4][3]int64 {
+	return num.IotaFull[[]int{4, 3}, int64]()
+	// Want:
+	// [4][3]int64{
+	// 	{0, 1, 2},
+	// 	{3, 4, 5},
+	// 	{6, 7, 8},
+	// 	{9, 10, 11},
+	// }
+}
+
+func TestIotaConstructAxes() [4][3]int64 {
+	oneAxis := []int{4}
+	twoAxis := append(oneAxis, 3)
+	return num.IotaFull[twoAxis, int64]()
+	// Want:
+	// [4][3]int64{
+	// 	{0, 1, 2},
+	// 	{3, 4, 5},
+	// 	{6, 7, 8},
+	// 	{9, 10, 11},
+	// }
+}
+
+func TestReduceMax1() [4]float64 {
+	return num.ReduceMax[[]int{}]([4]float64{-1, 0, 2, -4})
+	// Want:
+	// [4]float64{-1, 0, 2, -4}
+}
+
+func TestReduceMax1b() float64 {
+	return num.ReduceMax[[]int{0}]([4]float64{-1, 0, 2, -4})
+	// Want:
+	// float64(2)
+}
+
+func TestReduceMax2() [2][4]float64 {
+	return num.ReduceMax[[]int{}]([2][4]float64{{-1, 0, 2, -4}, {1, 0, 2, 4}})
+	// Want:
+	// [2][4]float64{
+	// 	{-1, 0, 2, -4},
+	// 	{1, 0, 2, 4},
+	// }
+}
+
+func TestReduceMax2b() [4]float64 {
+	return num.ReduceMax[[]int{0}]([2][4]float64{{-1, 0, 2, -4}, {1, 0, 2, 4}})
+	// Want:
+	// [4]float64{1, 0, 2, 4}
+}
+
+func TestReduceMax2c() [2]float64 {
+	return num.ReduceMax[[]int{1}]([2][4]float64{{-1, 0, 2, -4}, {1, 0, 2, 4}})
+	// Want:
+	// [2]float64{2, 4}
+}
+
+func TestReduceMax2d() float64 {
+	return num.ReduceMax[[]int{0, 1}]([2][4]float64{{-1, 0, 2, -4}, {1, 0, 2, 4}})
+	// Want:
+	// float64(4)
+}
+
+func TestReduceMax3() [2][2]float64 {
+	return num.ReduceMax[[]int{1}]([2][2][2]float64{{{1, 2}, {4, 8}}, {{8, 1}, {2, 4}}})
+	// Want:
+	// [2][2]float64{
+	// 	{4, 8},
+	// 	{8, 4},
+	// }
+}
+
+func TestReduceMax3b() [2][2]float64 {
+	return num.ReduceMax[[]int{0}]([2][2][2]float64{{{1, 2}, {4, 8}}, {{8, 1}, {2, 4}}})
+	// Want:
+	// [2][2]float64{
+	// 	{8, 2},
+	// 	{4, 8},
+	// }
+}
+
+func TestReduceMax3c() float64 {
+	return num.ReduceMax[[]int{0, 1, 2}]([2][2][2]float64{{{1, 2}, {4, 8}}, {{8, 1}, {2, 4}}})
+	// Want:
+	// float64(8)
+}
+
+func TestArgmax0() int {
+	return num.ArgMax[0]([...]float32{-1, 2, -4, 8, -16})
+	// Want:
+	// int(3)
+}
+
+func TestArgmax1() [2]int {
+	return num.ArgMax[0]([2][2]float32{{-1, 4}, {0, 2}})
+	// Want:
+	// [2]int{1, 0}
+}
+
+var (
+	dim1 int
+	dim2 int
+	dim3 int
+)
+
+func TestMatmulVarsDimMatrixMatrix() [dim1][dim3]float32 {
+	return num.MatMul([dim1][dim2]float32{}, [dim2][dim3]float32{})
+	// Want:
+	// [2][4]float32{
+	// 	{0, 0, 0, 0},
+	// 	{0, 0, 0, 0},
+	// }
+}
+
+func TestMatmulVarsDimVectorMatrix() [dim1]float32 {
+	return num.MatVecMul([dim1][dim2]float32{}, [dim2]float32{})
+	// Want:
+	// [2]float32{0, 0}
+}
+
+func TestOneHot() [5][3]bool {
+	return num.OneHot[3]([...]int32{3, 2, 1, 0, 2})
+	// Want:
+	// [5][3]bool{
+	// 	{false, false, false},
+	// 	{false, false, true},
+	// 	{false, true, false},
+	// 	{true, false, false},
+	// 	{false, false, true},
+	// }
+}

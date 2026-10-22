@@ -85,15 +85,15 @@ func testEinsumDimReused() [2]float32 {
 }
 
 func testIotaNumArgs() []int64 {
-	return num.Iota[[]int{2, 3}](4, 5) // ERROR too many arguments in call to num.Iota[[]int{2, 3}] (expected 1, found 2)
+	return num.Iota[[]int{2, 3}, int64](4, 5) // ERROR too many arguments in call to num.Iota[[]int{2, 3}][int64] (expected 1, found 2)
 }
 
 func testIotaArgType() []int64 {
-	return num.Iota[[]int{2, 3}]([2]int64{1, 2}) // ERROR cannot use type [2]int64 as int in argument to num.Iota
+	return num.Iota[[]int{2, 3}, int64]([2]int64{1, 2}) // ERROR cannot use type [2]int64 as int in argument to num.Iota
 }
 
 func testIotaFull() []int64 {
-	return num.IotaFull[[]int{2, 3}](4) // ERROR too many arguments in call to num.IotaFull
+	return num.IotaFull[[]int{2, 3}, int64](4) // ERROR too many arguments in call to num.IotaFull
 }
 
 func testReduceMaxWithMissingAxes() float64 {

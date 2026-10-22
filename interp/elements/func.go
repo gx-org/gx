@@ -37,7 +37,7 @@ func funcDeclCaller(f *ir.FuncDecl) caller {
 
 func funcBuiltinCaller(f *ir.FuncBuiltin) caller {
 	return func(env *engine.Env, call *ir.FuncCallExpr, recv engine.Copier, genArgs, args []ir.Element) (outs []ir.Element, err error) {
-		return env.Runners().Builtin(f, env.For(f.FType.Nature), call, recv, genArgs, args)
+		return env.Runners().Builtin(f, env.For(call.Callee.FuncType().Nature), call, recv, genArgs, args)
 	}
 }
 
@@ -101,7 +101,7 @@ func (f *elFunc) Recv() *engine.Receiver {
 
 // Unflatten creates a GX value from the next handles available in the parser.
 func (f *elFunc) Unflatten(handles *flatten.Parser) (hostio.Value, error) {
-	return values.NewIRNode(f.fn)
+	return values.NewIRNode(f.fn), nil
 }
 
 // Kind of the element.

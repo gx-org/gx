@@ -29,8 +29,8 @@ type IRNode struct {
 }
 
 // NewIRNode returns a GX string value from its type and its Go value.
-func NewIRNode(node ir.IR) (*IRNode, error) {
-	return &IRNode{node: node}, nil
+func NewIRNode(node ir.IR) *IRNode {
+	return &IRNode{node: node}
 }
 
 // Node stored in the value.

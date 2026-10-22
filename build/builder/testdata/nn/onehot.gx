@@ -1,0 +1,23 @@
+package onehot
+
+import (
+	"num"
+	"shape"
+)
+
+// oneHot returns a 2-axis array where the position of the elements in x are set to 1 and the rest is 0.
+func oneHot[numClasses int](x [3]int32) [3][numClasses]bool {
+	axes := append(axlengths(x), numClasses)
+	xx := shape.Broadcast[axes](([3][1]int32)(x))
+	return ([...]int32)(num.Iota[axes, int32](1)) == xx
+}
+
+func TestOneHot() [3][5]bool {
+	return oneHot[5]([3]int32{1, 2, 3})
+	// Want:
+	// [3][5]bool{
+	// 	{false, true, false, false, false},
+	// 	{false, false, true, false, false},
+	// 	{false, false, false, true, false},
+	// }
+}
