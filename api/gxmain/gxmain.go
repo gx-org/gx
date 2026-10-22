@@ -86,7 +86,7 @@ func runGraphMain(rtm *api.Runtime, fn *ir.FuncDecl) ([]hostio.Value, error) {
 	if err != nil {
 		return nil, err
 	}
-	hostOuts, err := hostio.ToHost(kernels.DefaultAllocator(), flatten(outs))
+	hostOuts, err := hostio.ToHost(kernels.DefaultAllocator(), values.Flatten(outs))
 	if err != nil {
 		return nil, err
 	}
@@ -107,24 +107,6 @@ func runCompEvalMain(bld *builder.Builder, fn *ir.FuncDecl) ([]hostio.Value, err
 		vals[i] = values.NewIRNode(out)
 	}
 	return vals, nil
-}
-
-// flatten replaces the slices in a list of values by their elements, recursively.
-func flatten(vals []hostio.Value) []hostio.Value {
-	var flat []hostio.Value
-	for _, val := range vals {
-		slice, ok := val.(*values.Slice)
-		if !ok {
-			flat = append(flat, val)
-			continue
-		}
-		elements := make([]hostio.Value, slice.Len())
-		for i := range elements {
-			elements[i] = slice.Element(i)
-		}
-		flat = append(flat, flatten(elements)...)
-	}
-	return flat
 }
 
 // Printf a string representation of the values.

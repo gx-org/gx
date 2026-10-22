@@ -74,7 +74,7 @@ func (r *Runner) RunWithArgs(fn *ir.FuncDecl, recv hostio.Value, args []hostio.V
 		return nil, "", err
 	}
 	defer hostio.Finalize(outs...)
-	flattenOuts, err := hostio.ToHost(kernels.DefaultAllocator(), flatten(outs))
+	flattenOuts, err := hostio.ToHost(kernels.DefaultAllocator(), values.Flatten(outs))
 	if err != nil {
 		return nil, "", err
 	}
@@ -105,23 +105,6 @@ func (r *testTracer) Trace(file *ir.File, call *ir.FuncCallExpr, vals []hostio.V
 		r.trace.WriteString("\n")
 	}
 	return nil
-}
-
-func flatten(out []hostio.Value) []hostio.Value {
-	var flat []hostio.Value
-	for _, v := range out {
-		slice, ok := v.(*values.Slice)
-		if !ok {
-			flat = append(flat, v)
-			continue
-		}
-		vals := make([]hostio.Value, slice.Len())
-		for i := 0; i < slice.Len(); i++ {
-			vals[i] = slice.Element(i)
-		}
-		flat = append(flat, flatten(vals)...)
-	}
-	return flat
 }
 
 // Test runs a GX test and returns an error if the test fails.
