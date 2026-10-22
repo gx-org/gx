@@ -68,6 +68,11 @@ func (n *elInt) CmpOp(env ir.SourceFile, expr *ir.BinaryExpr, y engine.ScalarNum
 // BinaryOp applies a binary operator to x and y.
 // Note that the receiver can be either the left or right argument.
 func (n *elInt) BinaryOp(env ir.SourceFile, expr *ir.BinaryExpr, yEl engine.ScalarNumber) (engine.ScalarNumber, error) {
+	if ir.IsFloat(expr.Type()) {
+		// The operation has a float type (e.g. float32(7)/2):
+		// use float arithmetic even if both operands are integer numbers.
+		return binaryFloat(env, expr, n.Float(), yEl.Float())
+	}
 	var y *big.Int
 	switch yT := yEl.(type) {
 	case *elFloat:
@@ -87,7 +92,9 @@ func (n *elInt) BinaryOp(env ir.SourceFile, expr *ir.BinaryExpr, yEl engine.Scal
 	case token.MUL:
 		val = new(big.Int).Mul(x, y)
 	case token.QUO:
-		val = new(big.Int).Div(x, y)
+		// Quo truncates towards zero (like Go and consistent with Rem below).
+		// Do not use Div: it implements a Euclidean division.
+		val = new(big.Int).Quo(x, y)
 	case token.REM:
 		val = new(big.Int).Rem(x, y)
 	case token.SHL:

@@ -21,6 +21,7 @@ import (
 	"github.com/gomlx/compute"
 	"github.com/gx-org/gx/build/ir"
 	"github.com/gx-org/gx/build/ir/irkind"
+	"github.com/gx-org/gx/internal/concrete"
 	"github.com/gx-org/gx/internal/interp/compeval/cmp"
 	"github.com/gx-org/gx/internal/interp/coreiface"
 	"github.com/gx-org/gx/internal/interp/csteager"
@@ -124,8 +125,23 @@ func (n *scalar) EvalBinary(env *engine.Env, expr *ir.BinaryExpr, y engine.Const
 	if cmpEl != nil {
 		return cmpEl, nil
 	}
-	nb, err := n.nb.BinaryOp(env, expr, yScl.nb)
+	nb, err := n.nb.BinaryOp(env, concreteBinaryExpr(env, expr), yScl.nb)
 	return NewScalar(expr.Type(), nb), err
+}
+
+// concreteBinaryExpr returns a binary expression with a concrete type
+// (e.g. a generic type parameter is replaced by its type argument),
+// so that numbers apply the arithmetic of that type (e.g. float or integer division).
+// The expression is returned unchanged if its type cannot be resolved.
+func concreteBinaryExpr(env *engine.Env, expr *ir.BinaryExpr) *ir.BinaryExpr {
+	if irkind.IsConcrete(expr.Type().Kind()) {
+		return expr
+	}
+	typ, err := concrete.Concrete(env.ExprEval(), expr.Type())
+	if err != nil {
+		return expr
+	}
+	return &ir.BinaryExpr{Src: expr.Src, X: expr.X, Y: expr.Y, Typ: typ}
 }
 
 // EvalCast greedily casts an expression.

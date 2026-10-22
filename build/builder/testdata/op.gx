@@ -417,3 +417,18 @@ func TestAnonymousVarArgs() int64 {
 	// Want:
 	//  int64(5)
 }
+
+func TestFloatByInt() float32 {
+	x := float32(7)
+	return x / 2
+	// Want:
+	//   float32(3.5)
+}
+
+func TestIntDivRemNegative() (int32, int32) {
+	x := int32(-7)
+	return x / 2, x % 2
+	// Want:
+	// 0: int32(-3)
+	// 1: int32(-1)
+}
