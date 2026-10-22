@@ -1,0 +1,41 @@
+package leaves04
+
+import "reflect"
+
+type Linear struct {
+	w [2][3]float32
+	b [4]float32
+}
+
+type Model struct {
+	l1 Linear
+	l2 Linear
+
+	s [3]float32
+}
+
+func TestOnes() Model {
+	m := Model{}
+	for _, k := range reflect.Leaves[Model]() {
+		m[k] += 1
+	}
+	return m
+	// Want:
+	// Model{
+	// 	l1: Linear{
+	// 		w: [2][3]float32{
+	// 			{1, 1, 1},
+	// 			{1, 1, 1},
+	// 		},
+	// 		b: [4]float32{1, 1, 1, 1},
+	// 	},
+	// 	l2: Linear{
+	// 		w: [2][3]float32{
+	// 			{1, 1, 1},
+	// 			{1, 1, 1},
+	// 		},
+	// 		b: [4]float32{1, 1, 1, 1},
+	// 	},
+	// 	s: [3]float32{1, 1, 1},
+	// }
+}

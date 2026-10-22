@@ -1,0 +1,92 @@
+package leaves03
+
+import "reflect"
+
+type S struct {
+	a [3]int32
+	b [2][2]float32
+	c float32
+}
+
+func TestArrays() S {
+	s := S{
+		a: [3]int32{1, 2, 3},
+		b: [2][2]float32{{1, 2}, {3, 4}},
+		c: 5,
+	}
+	for _, k := range reflect.Leaves[S]() {
+		s[k] += 10
+	}
+	return s
+	// Want:
+	// S{
+	// 	a: [3]int32{11, 12, 13},
+	// 	b: [2][2]float32{
+	// 		{11, 12},
+	// 		{13, 14},
+	// 	},
+	// 	c: float32(15),
+	// }
+}
+
+type Linear struct {
+	w [2][3]float32
+	b [3]float32
+}
+
+type Model struct {
+	l Linear
+	s [3]float32
+}
+
+func TestNestedArrays() Model {
+	m := Model{
+		l: Linear{
+			w: [2][3]float32{{1, 2, 3}, {4, 5, 6}},
+			b: [3]float32{7, 8, 9},
+		},
+		s: [3]float32{1, 1, 1},
+	}
+	for _, k := range reflect.Leaves[Model]() {
+		m[k] *= 2
+	}
+	return m
+	// Want:
+	// Model{
+	// 	l: Linear{
+	// 		w: [2][3]float32{
+	// 			{2, 4, 6},
+	// 			{8, 10, 12},
+	// 		},
+	// 		b: [3]float32{14, 16, 18},
+	// 	},
+	// 	s: [3]float32{2, 2, 2},
+	// }
+}
+
+func sgd(params, grads Linear, lr float32) Linear {
+	for _, k := range reflect.Leaves[Linear]() {
+		params[k] -= lr * grads[k]
+	}
+	return params
+}
+
+func TestSGD() Linear {
+	params := Linear{
+		w: [2][3]float32{{1, 2, 3}, {4, 5, 6}},
+		b: [3]float32{1, 2, 3},
+	}
+	grads := Linear{
+		w: [2][3]float32{{2, 2, 2}, {4, 4, 4}},
+		b: [3]float32{1, 1, 1},
+	}
+	return sgd(params, grads, 0.5)
+	// Want:
+	// Linear{
+	// 	w: [2][3]float32{
+	// 		{0, 1, 2},
+	// 		{2, 3, 4},
+	// 	},
+	// 	b: [3]float32{0.5, 1.5, 2.5},
+	// }
+}
