@@ -1,0 +1,134 @@
+package scalars
+
+func TestUnaryMinus() float64 {
+	return -1
+	// Want:
+	// float64(-1)
+}
+
+func TestUnaryPlus() float64 {
+	return +1
+	// Want:
+	// float64(1)
+}
+
+func TestAddScalars() float64 {
+	return 1 + 2
+	// Want:
+	// float64(3)
+}
+
+func TestSubScalars() float64 {
+	return 7 - 4
+	// Want:
+	// float64(3)
+}
+
+func TestMulScalars() float32 {
+	return 3 * 4
+	// Want:
+	// float32(12)
+}
+
+func TestDivScalars() float32 {
+	return 12 / 4
+	// Want:
+	// float32(3)
+}
+
+func TestBinaryOpNumberFloat32() float32 {
+	return 3 * TestDivScalars()
+	// Want:
+	// float32(9)
+}
+
+func TestBinaryOpFloat32Number() float32 {
+	return TestDivScalars() * 3
+	// Want:
+	// float32(9)
+}
+
+func TestBinaryAddSelf() int {
+	x := 1
+	return x + x
+	// Want:
+	// int(2)
+}
+
+func TestParenFloat32() float32 {
+	return 3 * (2 * 5)
+	// Want:
+	// float32(30)
+}
+
+func TestReAssignInt() int {
+	a := 2
+	a = 3
+	return a
+	// Want:
+	// int(3)
+}
+
+func TestEqualScalar() bool {
+	return 5 == 5
+	// Want:
+	// bool(true)
+}
+
+func TestEqualScalarVariables() bool {
+	a := 6
+	return 5 == a
+	// Want:
+	// bool(false)
+}
+
+func TestModuloAtomicAtomic() int32 {
+	return 8 % 3
+	// Want:
+	// int32(2)
+}
+
+func TestShiftLeftAtomicAtomic() int32 {
+	return 8 << 1
+	// Want:
+	// int32(16)
+}
+
+func TestShiftRightAtomicAtomic() int32 {
+	return 8 >> 1
+	// Want:
+	// int32(4)
+}
+
+func TestBitwiseAndAtomicAtomic() int32 {
+	return 15 & 3
+	// Want:
+	// int32(3)
+}
+
+func TestBitwiseOrAtomicAtomic() int32 {
+	return 112 | 7
+	// Want:
+	// int32(119)
+}
+
+func TestBitwiseXorAtomicAtomic() int32 {
+	return 6 ^ 3
+	// Want:
+	// int32(5)
+}
+
+func TestFloatByInt() float32 {
+	x := float32(7)
+	return x / 2
+	// Want:
+	//   float32(3.5)
+}
+
+func TestIntDivRemNegative() (int32, int32) {
+	x := int32(-7)
+	return x / 2, x % 2
+	// Want:
+	// 0: int32(-3)
+	// 1: int32(-1)
+}

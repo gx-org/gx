@@ -1,0 +1,16 @@
+package div01
+
+type numbers interface {
+	int32 | float32
+}
+
+func half[T numbers](x T) T {
+	return x / 2
+}
+
+func TestHalf() (float32, int32) {
+	return half[float32](7), half[int32](7)
+	// Want:
+	// 0: float32(3.5)
+	// 1: int32(3)
+}

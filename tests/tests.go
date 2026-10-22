@@ -37,13 +37,9 @@ import (
 	shape "github.com/gx-org/gx/stdlib/shape/testdata"
 )
 
-// CoreUnits tests core language features.
-var CoreUnits = []testbuild.TestFactory{
+// All includes all test units.
+var All = []testbuild.TestFactory{
 	core.Sources,
-}
-
-// StdlibUnits groups all the test in the standard library.
-var StdlibUnits = []testbuild.TestFactory{
 	control.Sources,
 	dtype.Sources,
 	shape.Sources,

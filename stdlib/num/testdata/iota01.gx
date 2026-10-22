@@ -1,0 +1,38 @@
+package iota01
+
+import (
+	"dtype"
+	"num"
+)
+
+func TestIotaInt32Axis0() [3][2]int32 {
+	return num.Iota[[]int{3, 2}, int32](0)
+	// Want:
+	// [3][2]int32{
+	// 	{0, 0},
+	// 	{1, 1},
+	// 	{2, 2},
+	// }
+}
+
+func TestIotaFloat32Axis1() [2][3]float32 {
+	return num.Iota[[]int{2, 3}, float32](1)
+	// Want:
+	// [2][3]float32{
+	// 	{0, 1, 2},
+	// 	{0, 1, 2},
+	// }
+}
+
+func iotaGeneric[T dtype.Nums]() [2][3]T {
+	return num.Iota[[]int{2, 3}, T](1)
+}
+
+func TestIotaGenericUint64() [2][3]uint64 {
+	return iotaGeneric[uint64]()
+	// Want:
+	// [2][3]uint64{
+	// 	{0, 1, 2},
+	// 	{0, 1, 2},
+	// }
+}
