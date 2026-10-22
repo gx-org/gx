@@ -275,3 +275,39 @@ func (s S) Add(b float32) float32 {
 		},
 	})
 }
+
+func TestRunWithArgs(t *testing.T) {
+	runner, pkg := testCells(t, []cellTest{
+		{
+			src: packagePrefix(`
+func Args() ([2]float32, [2]float32) {
+	return [2]float32{1, 2}, [2]float32{3, 4}
+}
+
+func Add(a, b [2]float32) [2]float32 {
+	return a + b
+}
+`),
+		},
+	})
+	fArgs := pkg.IR().FindFunc("Args").(*ir.FuncDecl)
+	if fArgs == nil {
+		t.Fatalf("cannot find function Args")
+	}
+	args, _, err := runner.Run(fArgs, nil)
+	if err != nil {
+		t.Fatal(err)
+	}
+	fAdd := pkg.IR().FindFunc("Add").(*ir.FuncDecl)
+	if fAdd == nil {
+		t.Fatalf("cannot find function Add")
+	}
+	_, got, err := runner.RunWithArgs(fAdd, nil, args, nil)
+	if err != nil {
+		t.Fatal(err)
+	}
+	want := "[2]float32{4, 6}"
+	if got != want {
+		t.Errorf("got %q but want %q", got, want)
+	}
+}

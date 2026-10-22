@@ -69,14 +69,14 @@ func (r *Runner) RunWithArgs(fn *ir.FuncDecl, recv hostio.Value, args []hostio.V
 		return nil, "", err
 	}
 	tracer := testTracer{}
-	outs, err := rn.Run(nil, nil, &tracer)
+	outs, err := rn.Run(recv, args, &tracer)
 	if err != nil {
 		return nil, "", err
 	}
 	defer hostio.Finalize(outs...)
 	flattenOuts, err := hostio.ToHost(kernels.DefaultAllocator(), flatten(outs))
 	if err != nil {
-		return outs, "", err
+		return nil, "", err
 	}
 	all := testbuild.BuildGot(flattenOuts, func(val hostio.Value) string {
 		return valueToString(fn.File(), val)
