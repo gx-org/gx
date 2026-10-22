@@ -1,0 +1,14 @@
+package assign_err02
+
+type floats interface {
+	float32 | float64
+}
+
+func assignGenericDataType[T floats](x [2]T) [2]T {
+	x = 1 // ERROR cannot broadcast 1 to [2]T: broadcasting to an array of type parameter T not supported
+	return x
+}
+
+func returnGenericDataType[T floats]() [2]T {
+	return 1 // ERROR cannot broadcast 1 to [2]T: broadcasting to an array of type parameter T not supported
+}

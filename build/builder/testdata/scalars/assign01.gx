@@ -1,0 +1,12 @@
+package assign01
+
+func Test() [2][3]float32 {
+	a := [2][3]float32{}
+	a = 1
+	return a
+	// Want:
+	// [2][3]float32{
+	// 	{1, 1, 1},
+	// 	{1, 1, 1},
+	// }
+}

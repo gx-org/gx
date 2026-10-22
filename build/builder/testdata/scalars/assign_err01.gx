@@ -1,0 +1,36 @@
+package assign_err01
+
+func floatToIntArray() [2]int32 {
+	a := [2]int32{}
+	a = 1.5 // ERROR cannot use float number as int32 value in assignment
+	return a
+}
+
+func numberToBoolArray() [2]bool {
+	a := [2]bool{}
+	a = 1 // ERROR cannot use int number as bool value in assignment
+	return a
+}
+
+func typedScalarToArray() [2]float32 {
+	a := [2]float32{}
+	a = float32(1) // ERROR cannot use float32 as [2]float32 value in assignment
+	return a
+}
+
+type sample struct {
+	x [2]int32
+	y int32
+}
+
+func floatToIntArrayField() sample {
+	s := sample{}
+	s.x = 1.5 // ERROR cannot use 1.5 (untyped FLOAT constant) as int32 value
+	return s
+}
+
+func typedScalarToArrayField() sample {
+	s := sample{}
+	s.x = s.y // ERROR cannot use int32 as [2]int32 value in assignment
+	return s
+}

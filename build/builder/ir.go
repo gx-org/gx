@@ -315,6 +315,64 @@ func castNilAndNumber(scope resolveScope, expr ir.Expr, target ir.Type) (ir.Expr
 	return expr, !isInvalidExpr(expr) && ir.IsValid(target)
 }
 
+// nonAtomicArray returns the underlying array type of a type
+// if that type is an array which is not an atomic.
+func nonAtomicArray(typ ir.Type) (ir.ArrayType, bool) {
+	if !ir.IsValid(typ) {
+		return nil, false
+	}
+	arrayType, isArray := ir.Underlying(typ).(ir.ArrayType)
+	if !isArray || arrayType.Rank().IsAtomic() {
+		return nil, false
+	}
+	return arrayType, true
+}
+
+// castNilAndBroadcastNumber casts nil and numbers to a target type like castNilAndNumber.
+// In addition, if the target type is an array which is not an atomic, a number is broadcast
+// to the shape of the array. For example:
+//
+//	a := [2][3]float32{}
+//	a = 1
+//
+// sets all the elements of a to 1.
+func castNilAndBroadcastNumber(rscope resolveScope, expr ir.Expr, target ir.Type) (ir.Expr, bool) {
+	cast, ok := castNilAndNumber(rscope, expr, target)
+	if !ok || !irkind.IsNumber(expr.Type().Kind()) {
+		return cast, ok
+	}
+	arrayTarget, isArray := nonAtomicArray(target)
+	if !isArray {
+		return cast, true
+	}
+	from := rscope.fileScope().irFile()
+	if dtype, isTypeParam := arrayTarget.DataType().(*ir.GenericTypeParam); isTypeParam {
+		// The interpreter does not support (yet) broadcasting a value
+		// of a type parameter to an array.
+		return cast, rscope.Err().Appendf(expr.Node(), "cannot broadcast %s to %s: broadcasting to an array of type parameter %s not supported", expr.SourceString(from), target.ReferString(from), dtype.ReferString(from))
+	}
+	var broadcast ir.Expr = &ir.CastExpr{
+		Src: &ast.CallExpr{
+			Fun:  arrayTarget.Refer(from),
+			Args: []ast.Expr{expr.Expr()},
+		},
+		X:   cast,
+		Typ: arrayTarget,
+	}
+	if _, isNamed := target.(*ir.NamedType); isNamed {
+		// Cast the array to the named type (so that methods of the named type can be called).
+		broadcast = &ir.CastExpr{
+			Src: &ast.CallExpr{
+				Fun:  target.Refer(from),
+				Args: []ast.Expr{expr.Expr()},
+			},
+			X:   broadcast,
+			Typ: target,
+		}
+	}
+	return broadcast, true
+}
+
 func checkSingleValue(rscope resolveScope, pos ast.Node, expr ir.Expr) bool {
 	tpl, isTuple := expr.Type().(*ir.TupleType)
 	if !isTuple || len(tpl.Types) == 1 {

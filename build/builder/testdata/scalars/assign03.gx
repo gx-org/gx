@@ -1,0 +1,34 @@
+package assign03
+
+type sample struct {
+	x [2]float32
+	y float32
+}
+
+func TestAssignStructField() ([2]float32, float32) {
+	s := sample{
+		x: [2]float32{1, 2},
+		y: 3,
+	}
+	s.x = 4
+	return s.x, s.y
+	// Want:
+	// 0: [2]float32{4, 4}
+	// 1: float32(3)
+}
+
+func (s sample) resetX() sample {
+	s.x = 0
+	return s
+}
+
+func TestAssignStructFieldInMethod() ([2]float32, [2]float32) {
+	s := sample{
+		x: [2]float32{1, 2},
+		y: 3,
+	}
+	return s.resetX().x, s.x
+	// Want:
+	// 0: [2]float32{0, 0}
+	// 1: [2]float32{1, 2}
+}

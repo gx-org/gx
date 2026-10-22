@@ -1,0 +1,28 @@
+package assign04
+
+func fillAxis[N int](x [N]float32) [N]float32 {
+	x = 2
+	return x
+}
+
+func TestAssignGenericAxis() ([3]float32, [1]float32) {
+	return fillAxis([3]float32{}), fillAxis([1]float32{})
+	// Want:
+	// 0: [3]float32{2, 2, 2}
+	// 1: [1]float32{2}
+}
+
+func fillShape[S []int](x [S...]int32) [S...]int32 {
+	x = 3
+	return x
+}
+
+func TestAssignGenericShape() ([2][3]int32, [2]int32) {
+	return fillShape([2][3]int32{}), fillShape([2]int32{})
+	// Want:
+	// 0: [2][3]int32{
+	// 	{3, 3, 3},
+	// 	{3, 3, 3},
+	// }
+	// 1: [2]int32{3, 3}
+}
