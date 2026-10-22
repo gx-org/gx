@@ -57,6 +57,15 @@ type StringDefiner interface {
 	DefineString(from *File) string
 }
 
+// DefineString returns the GX source code defining an element if it implements
+// StringDefiner. Otherwise, it returns the source string of the element.
+func DefineString(from *File, el Element) string {
+	if definer, ok := el.(StringDefiner); ok {
+		return definer.DefineString(from)
+	}
+	return SourceString(from, el)
+}
+
 // StringReferer returns the GX source to refer to the implementation.
 type StringReferer interface {
 	ReferString(from *File) string

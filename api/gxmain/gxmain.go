@@ -127,18 +127,10 @@ func flatten(vals []hostio.Value) []hostio.Value {
 	return flat
 }
 
-// valueString returns the GX source code of a value.
-func valueString(file *ir.File, val hostio.Value) string {
-	if definer, ok := val.(ir.StringDefiner); ok {
-		return definer.DefineString(file)
-	}
-	return val.SourceString(file)
-}
-
 // Printf a string representation of the values.
 func Printf(w io.Writer, fn ir.PkgFunc, outs []hostio.Value) error {
 	for _, out := range outs {
-		if _, err := fmt.Fprintln(w, valueString(fn.File(), out)); err != nil {
+		if _, err := fmt.Fprintln(w, ir.DefineString(fn.File(), out)); err != nil {
 			return err
 		}
 	}
