@@ -144,7 +144,7 @@ func TestMatMul4Axis() [5][7]float64 {
 }
 
 func TestIotaAxis0() [4][3]int64 {
-	return num.Iota[[]int{4, 3}](0)
+	return num.Iota[[]int{4, 3}, int64](0)
 	// Want:
 	// [4][3]int64{
 	// 	{0, 0, 0},
@@ -155,7 +155,7 @@ func TestIotaAxis0() [4][3]int64 {
 }
 
 func TestIotaAxis1() [4][3]int64 {
-	return num.Iota[[]int{4, 3}](1)
+	return num.Iota[[]int{4, 3}, int64](1)
 	// Want:
 	// [4][3]int64{
 	// 	{0, 1, 2},
@@ -166,7 +166,7 @@ func TestIotaAxis1() [4][3]int64 {
 }
 
 func TestIotaFull() [4][3]int64 {
-	return num.IotaFull[[]int{4, 3}]()
+	return num.IotaFull[[]int{4, 3}, int64]()
 	// Want:
 	// [4][3]int64{
 	// 	{0, 1, 2},
@@ -179,7 +179,7 @@ func TestIotaFull() [4][3]int64 {
 func TestIotaConstructAxes() [4][3]int64 {
 	oneAxis := []int{4}
 	twoAxis := append(oneAxis, 3)
-	return num.IotaFull[twoAxis]()
+	return num.IotaFull[twoAxis, int64]()
 	// Want:
 	// [4][3]int64{
 	// 	{0, 1, 2},

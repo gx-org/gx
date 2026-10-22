@@ -9,7 +9,7 @@ import (
 func oneHot[numClasses int](x [3]int32) [3][numClasses]bool {
 	axes := append(axlengths(x), numClasses)
 	xx := shape.Broadcast[axes](([3][1]int32)(x))
-	return ([...]int32)(num.Iota[axes](1)) == xx
+	return ([...]int32)(num.Iota[axes, int32](1)) == xx
 }
 
 func TestOneHot() [3][5]bool {

@@ -1,0 +1,19 @@
+package iota_err01
+
+import "num"
+
+func testIotaMissingType() [2][3]int64 {
+	return num.Iota[[]int{2, 3}](0) // ERROR in call to num.Iota, cannot infer type nums
+}
+
+func testIotaFullMissingType() [2][3]int64 {
+	return num.IotaFull[[]int{2, 3}]() // ERROR in call to num.IotaFull, cannot infer type nums
+}
+
+func testIotaInvalidType() [2][3]bool {
+	return num.Iota[[]int{2, 3}, bool](0) // ERROR bool does not satisfy dtype.Nums
+}
+
+func testIotaFullInvalidType() [2][3]bool {
+	return num.IotaFull[[]int{2, 3}, bool]() // ERROR bool does not satisfy dtype.Nums
+}

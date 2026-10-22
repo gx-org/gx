@@ -4,7 +4,7 @@ package varargs
 import "num"
 
 func iota[lens []int]() [lens...]int64 {
-	return num.IotaFull[lens]()
+	return num.IotaFull[lens, int64]()
 }
 
 func Test0() any {

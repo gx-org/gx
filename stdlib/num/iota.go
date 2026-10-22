@@ -17,25 +17,36 @@ package num
 import (
 	"github.com/gomlx/compute/shapes"
 	"github.com/gx-org/gx/build/ir"
-	"github.com/gx-org/gx/build/ir/irkind"
+	"github.com/gx-org/gx/internal/base/cast"
 	"github.com/gx-org/gx/interp/elements"
 	"github.com/gx-org/gx/interp/engine"
 	"github.com/gx-org/gx/interp/materialise"
 	"github.com/gx-org/gx/stdlib/builtin"
 )
 
-func evalIota(env *engine.Env, call *ir.FuncCallExpr, recv ir.Element, genArgs, args []ir.Element) ([]ir.Element, error) {
+func targetShape(genArgs []ir.Element) (shapes.Shape, error) {
 	axes, err := elements.AxesFromElement(genArgs[0])
+	if err != nil {
+		return shapes.Shape{}, err
+	}
+	tp, err := cast.To[ir.Type](ir.BareValue(genArgs[1]))
+	if err != nil {
+		return shapes.Shape{}, err
+	}
+	return shapes.Shape{
+		DType:      tp.Kind().DType(),
+		Dimensions: axes,
+	}, nil
+}
+
+func evalIota(env *engine.Env, call *ir.FuncCallExpr, recv ir.Element, genArgs, args []ir.Element) ([]ir.Element, error) {
+	targetShape, err := targetShape(genArgs)
 	if err != nil {
 		return nil, err
 	}
 	axisIndex, err := elements.IntFromElement(args[0])
 	if err != nil {
 		return nil, err
-	}
-	targetShape := shapes.Shape{
-		DType:      irkind.Int64.DType(),
-		Dimensions: axes,
 	}
 	gr := env.Engine().Graph()
 	op, err := gr.Iota(targetShape, axisIndex)
@@ -47,17 +58,13 @@ func evalIota(env *engine.Env, call *ir.FuncCallExpr, recv ir.Element, genArgs, 
 }
 
 func evalIotaFull(env *engine.Env, call *ir.FuncCallExpr, recv ir.Element, genArgs, args []ir.Element) ([]ir.Element, error) {
-	axes, err := elements.AxesFromElement(genArgs[0])
+	targetShape, err := targetShape(genArgs)
 	if err != nil {
 		return nil, err
 	}
-	targetShape := shapes.Shape{
-		DType:      irkind.Int64.DType(),
-		Dimensions: axes,
-	}
 	gr := env.Engine().Graph()
 	iotaOp, err := gr.Iota(shapes.Shape{
-		DType:      irkind.Int64.DType(),
+		DType:      targetShape.DType,
 		Dimensions: []int{targetShape.Size()},
 	}, 0)
 	if err != nil {

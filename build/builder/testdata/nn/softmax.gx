@@ -19,7 +19,7 @@ func TestSoftmax() ([3]float32, [3]float32) {
 }
 
 func TestSoftmaxIota() [3]float32 {
-	x := [3]float32(num.IotaFull[[]int{3}]())
+	x := num.IotaFull[[]int{3}, float32]()
 	return softmax(x)
 	// Want:
 	// [3]float32{0.090031, 0.244728, 0.665241}
