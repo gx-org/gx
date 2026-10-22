@@ -713,3 +713,77 @@ func TestTypeSetCapabilities(t *testing.T) {
 		})
 	}
 }
+
+type definerAndSourcer struct {
+	defined string
+	sourced string
+}
+
+func (d definerAndSourcer) Type() ir.Type                { return ir.IntType() }
+func (d definerAndSourcer) DefineString(*ir.File) string { return d.defined }
+func (d definerAndSourcer) SourceString(*ir.File) string { return d.sourced }
+
+func TestDefineString(t *testing.T) {
+	named := newNamedType("S", ir.Int32Type())
+	fn := &ir.FuncDecl{
+		FFile: testFile,
+		Src:   &ast.FuncDecl{Name: irhelper.IdentAST("f")},
+		FType: irhelper.FuncType(nil, nil, irhelper.Fields(), irhelper.Fields(ir.Int32Type())),
+		Body:  irhelper.SingleReturn(irhelper.IntNumberAs(42, ir.Int32Type())),
+	}
+	for _, tc := range []struct {
+		name string
+		from *ir.File
+		el   ir.Element
+		want string
+	}{
+		{
+			name: "StringDefiner/FuncDecl",
+			from: testFile,
+			el:   fn,
+			want: "func f() int32 {\n\treturn 42\n}",
+		},
+		{
+			name: "StringDefiner/NamedTypeFromOtherFile",
+			from: nil,
+			el:   named,
+			want: "ir_test.S",
+		},
+		{
+			name: "StringDefiner/NamedTypeFromSameFile",
+			from: testFile,
+			el:   named,
+			want: "S",
+		},
+		{
+			name: "StringDefinerAndSourcer",
+			from: testFile,
+			el:   definerAndSourcer{defined: "defined", sourced: "sourced"},
+			want: "defined",
+		},
+		{
+			name: "StringSourcer/Number",
+			from: testFile,
+			el:   irhelper.IntNumberAs(42, ir.Int32Type()),
+			want: "42",
+		},
+		{
+			name: "StringSourcer/TypeValExprFromOtherFile",
+			from: nil,
+			el:   ir.TypeExpr(nil, named),
+			want: "ir_test.S",
+		},
+		{
+			name: "StringSourcer/TypeValExprFromSameFile",
+			from: testFile,
+			el:   ir.TypeExpr(nil, named),
+			want: "S",
+		},
+	} {
+		t.Run(tc.name, func(t *testing.T) {
+			if got := ir.DefineString(tc.from, tc.el); got != tc.want {
+				t.Errorf("DefineString(%v, %T) = %q, want %q", tc.from, tc.el, got, tc.want)
+			}
+		})
+	}
+}

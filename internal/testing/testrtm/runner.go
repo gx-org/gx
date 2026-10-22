@@ -79,18 +79,11 @@ func (r *Runner) RunWithArgs(fn *ir.FuncDecl, recv hostio.Value, args []hostio.V
 		return nil, "", err
 	}
 	all := testbuild.BuildGot(flattenOuts, func(val hostio.Value) string {
-		return valueToString(fn.File(), val)
+		return ir.DefineString(fn.File(), val)
 	})
 	all += tracer.trace.String()
 	all = strings.TrimSpace(all)
 	return flattenOuts, all, nil
-}
-
-func valueToString(file *ir.File, val hostio.Value) string {
-	if src, isSrc := val.(ir.StringDefiner); isSrc {
-		return src.DefineString(file)
-	}
-	return val.SourceString(file)
 }
 
 func (r *testTracer) Trace(file *ir.File, call *ir.FuncCallExpr, vals []hostio.Value) error {
@@ -106,7 +99,7 @@ func (r *testTracer) Trace(file *ir.File, call *ir.FuncCallExpr, vals []hostio.V
 	r.nTrace++
 	r.trace.WriteString("\n")
 	for _, val := range vals {
-		valS := valueToString(file, val)
+		valS := ir.DefineString(file, val)
 		valS = gxfmt.Indent(valS)
 		r.trace.WriteString(valS)
 		r.trace.WriteString("\n")
