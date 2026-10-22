@@ -21,6 +21,25 @@ load("//tools/build_defs/go:go_library.bzl", "go_library")
 load("//tools/build_defs/go:go_test.bzl", "go_test")
 load("//tools/build_defs/label:def.bzl", "parse_label")
 
+# Go bindings of all the packages of the GX standard library
+# (see //third_party/gxlang/gx/stdlib/stdlib.go).
+# They are always added as dependencies of go_gx_library because the generated
+# Go bindings import the bindings of any standard library package imported by
+# the GX source code.
+_STDLIB_GO_DEPS = [
+    "//third_party/gxlang/gx/stdlib/bindings/go/control:control_go_gx",
+    "//third_party/gxlang/gx/stdlib/bindings/go/cperrors:cperrors_go_gx",
+    "//third_party/gxlang/gx/stdlib/bindings/go/dtype:dtype_go_gx",
+    "//third_party/gxlang/gx/stdlib/bindings/go/errors:errors_go_gx",
+    "//third_party/gxlang/gx/stdlib/bindings/go/fmt:fmt_go_gx",
+    "//third_party/gxlang/gx/stdlib/bindings/go/math:math_go_gx",
+    "//third_party/gxlang/gx/stdlib/bindings/go/math/grad:grad_go_gx",
+    "//third_party/gxlang/gx/stdlib/bindings/go/num:num_go_gx",
+    "//third_party/gxlang/gx/stdlib/bindings/go/rand:rand_go_gx",
+    "//third_party/gxlang/gx/stdlib/bindings/go/reflect:reflect_go_gx",
+    "//third_party/gxlang/gx/stdlib/bindings/go/shape:shape_go_gx",
+]
+
 def gx_library(name, srcs, deps = [], tags = [], visibility = None, testonly = False):
     """Build a Gx library.
 
@@ -135,7 +154,8 @@ def go_gx_library(name, lib, deps = [], tags = [], visibility = None, testonly =
     Args:
       name: name of the build rule.
       lib: GX library to write the bindings for.
-      deps: list of go_gx_library dependencies.
+      deps: list of go_gx_library dependencies. The Go bindings of the GX
+        standard library are always included and do not need to be listed.
       tags: forwarded to generated targets
       visibility: standard Blaze attribute, passed through.
       testonly: standard Blaze attribute, passed through.
@@ -180,12 +200,12 @@ def go_gx_library(name, lib, deps = [], tags = [], visibility = None, testonly =
             "//third_party/gxlang/gx/golang/binder/gobindings/types",
             "//third_party/gxlang/gx/golang/binder/gobindings/core",
             "//base/go:runfiles",
-            # GX standard library
-            "//third_party/gxlang/gx/stdlib/bindings/go/dtype:dtype_go_gx",
-            "//third_party/gxlang/gx/stdlib/bindings/go/math:math_go_gx",
-            "//third_party/gxlang/gx/stdlib/bindings/go/num:num_go_gx",
-            "//third_party/gxlang/gx/stdlib/bindings/go/shape:shape_go_gx",
-        ] + deps,
+        ] + _STDLIB_GO_DEPS + [
+            # Skip the standard library dependencies already included above.
+            dep
+            for dep in deps
+            if dep not in _STDLIB_GO_DEPS
+        ],
         visibility = visibility,
     )
 
