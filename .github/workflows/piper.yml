@@ -26,7 +26,10 @@ env:
   CGO_CPPFLAGS: -I${{ github.workspace }}/..
   CGO_CXXFLAGS: -I${{ github.workspace }}/..
   CGO_LDFLAGS: -labsl_status -labsl_statusor
-  GOTOOLCHAIN: go1.27rc1
+ 
+concurrency:
+  group: piper-to-main
+  cancel-in-progress: false
 
 jobs:
 
@@ -43,19 +46,22 @@ jobs:
     - name: Set up Go
       uses: actions/setup-go@v4
       with:
-        go-version: '1.24'
+        go-version: '1.27'
 
     - name: Setup an identity
       run: git config user.email "noreply@github.com" && git config user.name "Github Action"
 
     - name: Install C++ dependencies
-      run: sudo apt install -y libabsl-dev
+      run: sudo apt-get update && sudo apt-get install -y libabsl-dev
+
+    - name: Checkout the main branch
+      run: git checkout -B main origin/main
+
+    - name: Merge piper (the source of truth) into main
+      run: git merge -s ours --no-commit origin/piper && git read-tree -u --reset origin/piper
 
     - name: Remove unsupported code
       run: rm -rf golang/binder/cgx/cgx_test.cc golang/binder/ccgx/cppgx_test.cc golang/binder/pygx
-
-    - name: Update GX dependencies to the latest commit
-      run: go get github.com/gx-org/backend@main
 
     - name: Tidy (best effort)
       run: go mod tidy || true
@@ -72,20 +78,11 @@ jobs:
       run: |
         go build -v ./...
 
-    - name: Test the piper branch
+    - name: Test
       run: go test -v ./...
 
-    - name: Commit changes if required
+    - name: Commit the merge
       run: git diff --quiet && git diff --staged --quiet || git commit -am 'Update dependencies.'
-
-    - name: Checkout the main branch
-      run: git checkout --track origin/main
-
-    - name: Merge piper into main
-      run: git merge -Xtheirs --no-edit piper
-
-    - name: Test after piper merged into main
-      run: go test -v ./...
 
     - name: Push to main
       run: |
