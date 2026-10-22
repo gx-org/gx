@@ -22,6 +22,7 @@ import (
 
 	"github.com/spf13/cobra"
 	"github.com/gx-org/gx/api/gxmain"
+	"github.com/gx-org/gx/api/hostio"
 	"github.com/gx-org/gx/build/builder"
 	"github.com/gx-org/gx/golang/backend"
 	"github.com/gx-org/gx/stdlib"
@@ -70,5 +71,6 @@ func gxRun(cmd *cobra.Command, args []string) error {
 	if err != nil {
 		return err
 	}
+	defer hostio.Finalize(outs...)
 	return gxmain.Printf(cmd.OutOrStdout(), fn, outs)
 }
