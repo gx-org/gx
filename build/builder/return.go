@@ -91,28 +91,6 @@ func returnAs(rscope resolveScope, pos ast.Node, src, dst ir.Type) bool {
 	return true
 }
 
-func (n *returnStmt) castValue(scope fnResolveScope, expr ir.Expr, want ir.Type) (ir.Expr, bool) {
-	ret, ok := castNilAndNumber(scope, expr, want)
-	if !ok {
-		return expr, ok
-	}
-	if expr.Type().Kind() == irkind.Nil {
-		return ret, true
-	}
-	arrayWant, isArray := ir.Underlying(want).(ir.ArrayType)
-	if !isArray || arrayWant.Rank().IsAtomic() {
-		return ret, true
-	}
-	return &ir.CastExpr{
-		Src: &ast.CallExpr{
-			Fun:  want.Refer(scope.fileScope().irFile()),
-			Args: []ast.Expr{expr.Expr()},
-		},
-		X:   ret,
-		Typ: arrayWant,
-	}, true
-}
-
 func (n *returnStmt) buildStmt(scope stmtResolveScope) (ir.Stmt, bool, bool) {
 	ext := &ir.ReturnStmt{Src: n.src}
 	fType := scope.funcType()
@@ -163,7 +141,7 @@ func (n *returnStmt) buildStmt(scope stmtResolveScope) (ir.Stmt, bool, bool) {
 		retOk := true
 		kndI := rTypes[i].Kind()
 		if irkind.IsNumber(kndI) || kndI == irkind.Nil {
-			ext.Results[i], retOk = n.castValue(scope, ext.Results[i], wantI.Type())
+			ext.Results[i], retOk = castNilAndBroadcastNumber(scope, ext.Results[i], wantI.Type())
 			rTypes[i] = ext.Results[i].Type()
 		}
 		if !retOk {

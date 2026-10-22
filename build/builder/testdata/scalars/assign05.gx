@@ -1,0 +1,29 @@
+package assign05
+
+type vector [3]float32
+
+func (v vector) sum() float32 {
+	return v[0] + v[1] + v[2]
+}
+
+func TestAssignNamedArrayType() vector {
+	v := vector([3]float32{1, 2, 3})
+	v = 4
+	return v
+	// Want:
+	// vector([3]float32{4, 4, 4})
+}
+
+func TestAssignNamedArrayTypeThenCallMethod() float32 {
+	v := vector([3]float32{1, 2, 3})
+	v = 4
+	return v.sum()
+	// Want:
+	// float32(12)
+}
+
+func TestReturnNamedArrayType() vector {
+	return 5
+	// Want:
+	// vector([3]float32{5, 5, 5})
+}

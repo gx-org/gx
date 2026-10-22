@@ -52,7 +52,15 @@ func (asg *identStorage) assign(rscope resolveScope, typ ir.Type) (_ ir.Storage,
 	if ir.IsBuiltin(storage) {
 		return invalidExpr().Store(), false, rscope.Err().Appendf(asg.source(), "cannot assign to %s", name.Name)
 	}
-	return storage, false, assignableToAt(rscope, asg.source(), typ, storage.Type())
+	target := storage.Type()
+	if irkind.IsNumber(typ.Kind()) {
+		if arrayType, isArray := nonAtomicArray(target); isArray {
+			// A number assigned to an array is broadcast to all the elements of the array
+			// (see castNilAndBroadcastNumber). Check that the number can be assigned to an element.
+			target = arrayType.DataType()
+		}
+	}
+	return storage, false, assignableToAt(rscope, asg.source(), typ, target)
 }
 
 func (asg *identStorage) define(rscope resolveScope, typ ir.Type) (_ ir.Storage, newName, ok bool) {
@@ -344,8 +352,10 @@ func buildAssignExpr(rscope localScope, asgm *assignment) (*ir.AssignExpr, bool,
 	if !targetOk {
 		return ext, false, false
 	}
-	ext.X, exprOk = castNilAndNumber(rscope, ext.X, ext.Storage.Type())
-	assignOk := assignableToAt(rscope, asgm.expr.source(), ext.X.Type(), ext.Storage.Type())
+	ext.X, exprOk = castNilAndBroadcastNumber(rscope, ext.X, ext.Storage.Type())
+	// Only check if the value can be assigned to the storage if the cast succeeded
+	// (an error has already been reported otherwise).
+	assignOk := exprOk && assignableToAt(rscope, asgm.expr.source(), ext.X.Type(), ext.Storage.Type())
 	definedOk := defineStoreWithValue(rscope, ext, ext.X)
 	return ext, newAsgm, exprOk && targetOk && definedOk && assignOk
 }
