@@ -32,7 +32,7 @@ func TestWhile2() powState {
 			return powState{count: s.count + 1, limit: s.limit, out: 2 * s.out}
 		})
 	// Want:
-	// control.powState{
+	// powState{
 	// 	count: int32(10),
 	// 	limit: int32(10),
 	// 	out: int32(1024),
