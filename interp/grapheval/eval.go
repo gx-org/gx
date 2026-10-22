@@ -24,12 +24,8 @@ import (
 	"github.com/gx-org/gx/internal/tracer/processor"
 	"github.com/gx-org/gx/interp/engine"
 	"github.com/gx-org/gx/interp"
+	"github.com/gx-org/gx/interp/materialise"
 )
-
-// SubGrapher is an element (e.g. a function) that can be represented by a sub-graph.
-type SubGrapher interface {
-	SubGraph(name string) (compute.Function, error)
-}
 
 // New returns a new evaluator given a elements.
 func New(importer ir.Importer, pr *processor.Processor, gr compute.Function) (*engine.Registry, *Ops) {
@@ -64,10 +60,42 @@ func unpackTypes(file *ir.File, src ir.Node, tp ir.Type) (*ir.StructType, []*ir.
 }
 
 // GraphFromElement returns a graph given an element.
-func GraphFromElement(name string, el ir.Element) (compute.Function, error) {
-	grapher, ok := el.(SubGrapher)
+func GraphFromElement(env *engine.Env, call *ir.FuncCallExpr, el ir.Element, args []ir.Element) (compute.Function, error) {
+	fn, ok := el.(engine.Func)
 	if !ok {
 		return nil, errors.Errorf("cannot get a graph from %T", el)
 	}
-	return grapher.SubGraph(name)
+	subGraph, err := env.Engine().Graph().Closure()
+	if err != nil {
+		return nil, err
+	}
+	proc := processor.New(nil)
+	subReg, subOps := New(env.Registry().Importer, proc, subGraph)
+	fnIR := fn.FuncIR()
+	vis := newInputVisitor(subOps, fnIR.File())
+	paramFields := fnIR.FuncType().Params.Fields()
+	subArgs := make([]ir.Element, len(paramFields))
+	for i, param := range paramFields {
+		var err error
+		subArgs[i], err = vis.visitArg(param, i, args[i])
+		if err != nil {
+			return nil, err
+		}
+	}
+	if _, err := materialise.All(subOps, proc.ElementArgs()); err != nil {
+		return nil, err
+	}
+	subEnv := env.Sub(subReg, subOps)
+	outElts, err := fn.Call(subEnv, call, nil, subArgs)
+	if err != nil {
+		return nil, err
+	}
+	outNodes, _, err := materialise.Flatten(subOps, outElts...)
+	if err != nil {
+		return nil, err
+	}
+	if err := subGraph.Return(outNodes, nil); err != nil {
+		return nil, err
+	}
+	return subGraph, nil
 }

@@ -60,11 +60,11 @@ func (f while) BuildFuncType(tpcmp ir.TypeEval, call *ir.FuncCallExpr) (*ir.Func
 
 func evalWhile(env *engine.Env, call *ir.FuncCallExpr, recv ir.Element, genArgs, args []ir.Element) ([]ir.Element, error) {
 	g := env.Engine().Graph()
-	cond, err := grapheval.GraphFromElement("while.cond", args[1])
+	cond, err := grapheval.GraphFromElement(env, call, args[1], args[:1])
 	if err != nil {
 		return nil, err
 	}
-	body, err := grapheval.GraphFromElement("while.body", args[2])
+	body, err := grapheval.GraphFromElement(env, call, args[2], args[:1])
 	if err != nil {
 		return nil, err
 	}

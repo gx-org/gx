@@ -65,7 +65,7 @@ func newInputVisitor(ev *Ops, file *ir.File) *inputVisitor {
 }
 
 // ArgGX represents a GX argument.
-func (vis *inputVisitor) visitArg(field *ir.Field, index int, proxy hostio.Value) (ir.Element, error) {
+func (vis *inputVisitor) visitArg(field *ir.Field, index int, proxy ir.Element) (ir.Element, error) {
 	return vis.newRootArg(field, parameterFetcher{paramIndex: index}, proxy)
 }
 
@@ -133,13 +133,24 @@ func (vis *inputVisitor) newArg(parent parentArgument, typ ir.Type, proxy ir.Ele
 	case *ir.SliceType:
 		return vis.newSliceArgument(parent, typT, proxy)
 	case ir.ArrayType:
-		withShape, err := cast.To[processor.Shaper](proxy)
+		sh, err := shapeFromElement(proxy)
 		if err != nil {
 			return nil, err
 		}
-		return vis.newArrayArgument(parent, typT, withShape.Shape())
+		return vis.newArrayArgument(parent, typT, sh)
 	default:
 		return nil, errors.Errorf("argument type %T not supported", typT)
+	}
+}
+
+func shapeFromElement(el ir.Element) (shapes.Shape, error) {
+	switch elT := el.(type) {
+	case processor.Shaper:
+		return elT.Shape(), nil
+	case engine.EvalShaper:
+		return elT.EvalShape()
+	default:
+		return shapes.Invalid(), errors.Errorf("cannot get shape from %T", el)
 	}
 }
 

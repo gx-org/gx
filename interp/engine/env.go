@@ -58,6 +58,11 @@ func (env *Env) For(nature ir.FuncNature) *Env {
 	return NewEnv(env.reg, env.ctx, env.newEv, env.reg.Engine(nature))
 }
 
+// Sub returns an environment with a new registry and engine.
+func (env *Env) Sub(reg *Registry, eng Engine) *Env {
+	return NewEnv(reg, env.ctx, env.newEv, eng)
+}
+
 // Engine returns the current engine used by the interpreter.
 func (env *Env) Engine() Engine {
 	return env.eng

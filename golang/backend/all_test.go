@@ -29,9 +29,6 @@ var skip = map[string]bool{
 	"set/set01.gx":       true,
 	"einsum/einsum.gx":   true,
 	"einsum/einsum02.gx": true,
-	// control.While requires function literals to implement grapheval.SubGrapher,
-	// which is not yet supported at runtime.
-	"control/control.gx": true,
 	// gobackend's RNGBitGenerator uses Go's PCG generator instead of XLA's Philox
 	// algorithm, producing different random values from the expected test outputs.
 	"misc.gx":      true,
