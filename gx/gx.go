@@ -16,11 +16,16 @@
 package main
 
 import (
+	"os"
+
 	"flag"
 	"github.com/gx-org/gx/internal/cmd"
 )
 
 func main() {
 	flag.Parse()
-	cmd.Execute()
+	if err := cmd.Execute(); err != nil {
+		// The error has already been printed by cobra.
+		os.Exit(1)
+	}
 }

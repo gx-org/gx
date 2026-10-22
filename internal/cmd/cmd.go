@@ -18,23 +18,28 @@ package cmd
 import (
 	"github.com/spf13/cobra"
 	"github.com/gx-org/gx/internal/cmd/debug"
+	"github.com/gx-org/gx/internal/cmd/gxfmt"
 	"github.com/gx-org/gx/internal/cmd/impgo"
 )
 
-var rootCmd = &cobra.Command{
-	Use:           "gx",
-	Short:         "GX language command",
-	SilenceUsage:  true,
-	SilenceErrors: false,
-}
-
-func init() {
+// newRootCmd returns a new root command with all its subcommands.
+// A new command is created for every execution so that no state (e.g. flag
+// values) is shared between executions.
+func newRootCmd() *cobra.Command {
+	rootCmd := &cobra.Command{
+		Use:           "gx",
+		Short:         "GX language command",
+		SilenceUsage:  true,
+		SilenceErrors: false,
+	}
 	rootCmd.SetErrPrefix("gx:")
 	rootCmd.PersistentFlags().BoolVarP(&debug.Debug, "debug", "d", false, "print debug information")
+	rootCmd.AddCommand(gxfmt.Cmd())
 	rootCmd.AddCommand(impgo.Cmd())
+	return rootCmd
 }
 
 // Execute executes the root command.
 func Execute() error {
-	return rootCmd.Execute()
+	return newRootCmd().Execute()
 }
