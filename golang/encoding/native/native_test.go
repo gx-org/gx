@@ -29,8 +29,9 @@ import (
 	"github.com/gx-org/gx/build/ir"
 	"github.com/gx-org/gx/golang/backend"
 	"github.com/gx-org/gx/golang/encoding/native"
-	"github.com/gx-org/gx/tests/bindings/encoding/encoding_go_gx"
 	gxtesting "github.com/gx-org/gx/tests/testing"
+
+	"github.com/gx-org/gx/tests/bindings/encoding/encoding_go_gx"
 )
 
 var encodingGX *encoding_go_gx.PackageHandle
