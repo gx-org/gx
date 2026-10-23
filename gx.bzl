@@ -199,6 +199,7 @@ def go_gx_library(name, lib, deps = [], tags = [], visibility = None, testonly =
             "//third_party/gxlang/gx/build/ir",
             "//third_party/gxlang/gx/golang/binder/gobindings/types",
             "//third_party/gxlang/gx/golang/binder/gobindings/core",
+            "//third_party/gxlang/gx/interp/elements",
             "//base/go:runfiles",
         ] + _STDLIB_GO_DEPS + [
             # Skip the standard library dependencies already included above.

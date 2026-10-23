@@ -22,7 +22,6 @@ import (
 	"github.com/gomlx/compute"
 	"github.com/gomlx/compute/shapes"
 	"github.com/gx-org/gx/api/hostio"
-	"github.com/gx-org/gx/api/values"
 	"github.com/gx-org/gx/build/ir"
 	"github.com/gx-org/gx/build/ir/irkind"
 	"github.com/gx-org/gx/internal/base/cast"
@@ -335,15 +334,15 @@ func (sel *indexSelectorArgument) Name() string {
 }
 
 func (sel *indexSelectorArgument) LastValue(ctx *togo.FuncInputs) (any, error) {
-	sliceValue, err := togo.RtValueT[*values.Slice](ctx, sel.parent)
+	sliceValue, err := togo.RtValueT[*elements.Slice](ctx, sel.parent)
 	if err != nil {
 		return nil, err
 	}
-	val := sliceValue.Element(sel.index)
-	if val == nil {
+	vals := sliceValue.Elements()
+	if sel.index >= len(vals) || vals[sel.index] == nil {
 		return nil, errors.Errorf("no element at %d in slice instance passed as argument %s (type %s)", sel.index, sel.parent.Name(), sel.parent.typ.ReferString(nil))
 	}
-	return val, nil
+	return vals[sel.index], nil
 }
 
 func (sel *indexSelectorArgument) Ops() *Ops {

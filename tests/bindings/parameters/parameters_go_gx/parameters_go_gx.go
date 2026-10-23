@@ -31,6 +31,7 @@ import (
 	"github.com/gx-org/gx/build/ir"
 	"github.com/gx-org/gx/golang/binder/gobindings/core"
 	"github.com/gx-org/gx/golang/binder/gobindings/types"
+	"github.com/gx-org/gx/interp/elements"
 	"github.com/pkg/errors"
 
 	_ "github.com/gx-org/gx/tests/bindings/parameters"
@@ -45,6 +46,7 @@ var (
 	_ = strings.Compare
 	_ = reflect.TypeFor[int]
 	_ = values.Struct{}
+	_ = elements.Slice{}
 	_ hostio.Value
 	_ = errors.Errorf
 	_ = types.NewSlice[types.Bridger]
@@ -935,14 +937,18 @@ func (fty *Factory) MarshalStruct(val hostio.Value) (s *Struct, err error) {
 	}
 	field0 := types.NewArray[float32](field0Value)
 
-	field1Slice, ok := fields[1].(*values.Slice)
+	field1Slice, ok := fields[1].(*elements.Slice)
 	if !ok {
 		err = fmt.Errorf("cannot use value %T to set []<no value>: not a slice", fields[1])
 		return
 	}
 	field1Elements := make([]types.Atom[float32], field1Slice.Len())
-	for i := 0; i < field1Slice.Len(); i++ {
-		field1HandleI := field1Slice.Element(i)
+	for i, field1Element := range field1Slice.Elements() {
+		field1HandleI, ok := field1Element.(hostio.Value)
+		if !ok {
+			err = fmt.Errorf("cannot use element %d of type %T: not a GX value", i, field1Element)
+			return
+		}
 
 		field1ElmtIValue, ok := field1HandleI.(hostio.Array)
 		if !ok {
@@ -954,21 +960,25 @@ func (fty *Factory) MarshalStruct(val hostio.Value) (s *Struct, err error) {
 		field1Elements[i] = field1ElmtI
 	}
 	field1, err := types.NewSlice[types.Atom[float32]](
-		field1Slice.SliceType(),
+		field1Slice.Type(),
 		field1Elements,
 	)
 	if err != nil {
 		return nil, err
 	}
 
-	field2Slice, ok := fields[2].(*values.Slice)
+	field2Slice, ok := fields[2].(*elements.Slice)
 	if !ok {
 		err = fmt.Errorf("cannot use value %T to set []<no value>: not a slice", fields[2])
 		return
 	}
 	field2Elements := make([]*InSlice, field2Slice.Len())
-	for i := 0; i < field2Slice.Len(); i++ {
-		field2HandleI := field2Slice.Element(i)
+	for i, field2Element := range field2Slice.Elements() {
+		field2HandleI, ok := field2Element.(hostio.Value)
+		if !ok {
+			err = fmt.Errorf("cannot use element %d of type %T: not a GX value", i, field2Element)
+			return
+		}
 		var field2ElmtI *InSlice
 		field2ElmtI, err = fty.MarshalInSlice(field2HandleI)
 		if err != nil {
@@ -977,7 +987,7 @@ func (fty *Factory) MarshalStruct(val hostio.Value) (s *Struct, err error) {
 		field2Elements[i] = field2ElmtI
 	}
 	field2, err := types.NewSlice[*InSlice](
-		field2Slice.SliceType(),
+		field2Slice.Type(),
 		field2Elements,
 	)
 	if err != nil {

@@ -19,9 +19,9 @@ import (
 
 	"github.com/pkg/errors"
 	"github.com/gx-org/gx/api/hostio"
-	"github.com/gx-org/gx/api/values"
 	gxfmt "github.com/gx-org/gx/base/fmt"
 	"github.com/gx-org/gx/build/ir"
+	"github.com/gx-org/gx/interp/elements"
 )
 
 // Slice of Go instances.
@@ -35,11 +35,11 @@ var _ = (*Slice[Bridger])(nil)
 
 // NewSlice returns a new slice storing data on a device.
 func NewSlice[T Bridger](typ ir.Type, vals []T) (*Slice[T], error) {
-	gxVals := make([]hostio.Value, len(vals))
+	gxVals := make([]ir.Element, len(vals))
 	for i, val := range vals {
 		gxVals[i] = val.Bridge().GXValue()
 	}
-	gxSlice, err := values.NewSlice(typ, gxVals)
+	gxSlice, err := elements.NewSlice(typ, gxVals)
 	if err != nil {
 		return nil, err
 	}
@@ -56,7 +56,7 @@ func NewSlice[T Bridger](typ ir.Type, vals []T) (*Slice[T], error) {
 // NewEmptySlice creates an empty slice that will be allocated later.
 func NewEmptySlice[T Bridger](typ ir.Type, factory func() (Bridge, error)) (*Slice[T], error) {
 	s := &Slice[T]{factory: factory}
-	gxSlice, err := values.NewSlice(typ, nil)
+	gxSlice, err := elements.NewSlice(typ, nil)
 	if err != nil {
 		return nil, err
 	}
@@ -71,18 +71,22 @@ func (s *Slice[T]) allocate(size int) error {
 	if len(s.vals) != size {
 		s.vals = make([]T, size)
 	}
-	s.bridge.gxSlice.Allocate(size)
-	if s.factory == nil {
-		return nil
-	}
-	for i := range s.vals {
-		val, err := s.factory()
-		if err != nil {
-			return err
+	gxVals := make([]ir.Element, size)
+	if s.factory != nil {
+		for i := range s.vals {
+			val, err := s.factory()
+			if err != nil {
+				return err
+			}
+			s.set(i, val)
+			gxVals[i] = s.vals[i].Bridge().GXValue()
 		}
-		s.set(i, val)
-		s.bridge.gxSlice.Set(i, s.vals[i].Bridge().GXValue())
 	}
+	gxSlice, err := elements.NewSlice(s.bridge.gxSlice.Type(), gxVals)
+	if err != nil {
+		return err
+	}
+	s.bridge.gxSlice = gxSlice
 	return nil
 }
 
@@ -127,7 +131,7 @@ type SliceBridge struct {
 		get(i int) Bridge
 		set(i int, el Bridge) error
 	}
-	gxSlice *values.Slice
+	gxSlice *elements.Slice
 }
 
 // Allocate the slice to a given number of elements.
@@ -158,5 +162,5 @@ func (b *SliceBridge) GXValue() hostio.Value {
 
 // DType returns the data type of the slice.
 func (b *SliceBridge) DType() ir.Type {
-	return b.gxSlice.SliceType().DType.Val()
+	return ir.Underlying(b.gxSlice.Type()).(*ir.SliceType).DType.Val()
 }

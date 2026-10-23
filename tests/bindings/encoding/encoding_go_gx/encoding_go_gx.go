@@ -31,6 +31,7 @@ import (
 	"github.com/gx-org/gx/build/ir"
 	"github.com/gx-org/gx/golang/binder/gobindings/core"
 	"github.com/gx-org/gx/golang/binder/gobindings/types"
+	"github.com/gx-org/gx/interp/elements"
 	"github.com/pkg/errors"
 
 	_ "github.com/gx-org/gx/tests/bindings/encoding"
@@ -42,6 +43,7 @@ var (
 	_ = strings.Compare
 	_ = reflect.TypeFor[int]
 	_ = values.Struct{}
+	_ = elements.Slice{}
 	_ hostio.Value
 	_ = errors.Errorf
 	_ = types.NewSlice[types.Bridger]
@@ -757,14 +759,18 @@ func (fty *Factory) MarshalSlice(val hostio.Value) (s *Slice, err error) {
 		return
 	}
 
-	field1Slice, ok := fields[1].(*values.Slice)
+	field1Slice, ok := fields[1].(*elements.Slice)
 	if !ok {
 		err = fmt.Errorf("cannot use value %T to set []<no value>: not a slice", fields[1])
 		return
 	}
 	field1Elements := make([]*Encoding, field1Slice.Len())
-	for i := 0; i < field1Slice.Len(); i++ {
-		field1HandleI := field1Slice.Element(i)
+	for i, field1Element := range field1Slice.Elements() {
+		field1HandleI, ok := field1Element.(hostio.Value)
+		if !ok {
+			err = fmt.Errorf("cannot use element %d of type %T: not a GX value", i, field1Element)
+			return
+		}
 		var field1ElmtI *Encoding
 		field1ElmtI, err = fty.MarshalEncoding(field1HandleI)
 		if err != nil {
@@ -773,7 +779,7 @@ func (fty *Factory) MarshalSlice(val hostio.Value) (s *Slice, err error) {
 		field1Elements[i] = field1ElmtI
 	}
 	field1, err := types.NewSlice[*Encoding](
-		field1Slice.SliceType(),
+		field1Slice.Type(),
 		field1Elements,
 	)
 	if err != nil {

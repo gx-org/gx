@@ -109,19 +109,23 @@ func (b *binder) processNamedTypeOutput(target, src string, typ *ir.NamedType) (
 
 var setSliceTmpl = template.Must(template.New("setSliceOutputTMPL").Parse(
 	`
-	{{.Target}}Slice, ok :=  {{.Source}}.(*values.Slice)
+	{{.Target}}Slice, ok :=  {{.Source}}.(*elements.Slice)
 	if !ok {
 		err = fmt.Errorf("cannot use value %T to set []{{.SliceDType}}: not a slice", {{.Source}})
 		return
 	}
 	{{.Target}}Elements := make([]{{.SliceDataType}}, {{.Target}}Slice.Len())
-	for i := 0; i < {{.Target}}Slice.Len(); i++ {
-		{{.ElementSource}} := {{.Target}}Slice.Element(i)
+	for i, {{.Target}}Element := range {{.Target}}Slice.Elements() {
+		{{.ElementSource}}, ok := {{.Target}}Element.(hostio.Value)
+		if !ok {
+			err = fmt.Errorf("cannot use element %d of type %T: not a GX value", i, {{.Target}}Element)
+			return
+		}
 		{{.UnmarshalElement}}
 		{{.Target}}Elements[i] = {{.ElementTarget}}
 	}
 	{{.Target}}, err := types.NewSlice[{{.SliceDataType}}](
-		{{.Target}}Slice.SliceType(),
+		{{.Target}}Slice.Type(),
 		{{.Target}}Elements,
 	)
 	if err != nil {

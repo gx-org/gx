@@ -31,6 +31,7 @@ import (
 	"github.com/gx-org/gx/build/ir"
 	"github.com/gx-org/gx/golang/binder/gobindings/core"
 	"github.com/gx-org/gx/golang/binder/gobindings/types"
+	"github.com/gx-org/gx/interp/elements"
 	"github.com/pkg/errors"
 
 	gxdep0 "github.com/gx-org/gx/stdlib/bindings/go/cperrors_go_gx"
@@ -43,6 +44,7 @@ var (
 	_ = strings.Compare
 	_ = reflect.TypeFor[int]
 	_ = values.Struct{}
+	_ = elements.Slice{}
 	_ hostio.Value
 	_ = errors.Errorf
 	_ = types.NewSlice[types.Bridger]
@@ -143,14 +145,18 @@ func (pkg *Package) CheckBroadcast(arg0 *types.Slice[types.Atom[int]], arg1 *typ
 		return
 	}
 
-	out0Slice, ok := outputs[0].(*values.Slice)
+	out0Slice, ok := outputs[0].(*elements.Slice)
 	if !ok {
 		err = fmt.Errorf("cannot use value %T to set []<no value>: not a slice", outputs[0])
 		return
 	}
 	out0Elements := make([]types.Atom[int], out0Slice.Len())
-	for i := 0; i < out0Slice.Len(); i++ {
-		out0HandleI := out0Slice.Element(i)
+	for i, out0Element := range out0Slice.Elements() {
+		out0HandleI, ok := out0Element.(hostio.Value)
+		if !ok {
+			err = fmt.Errorf("cannot use element %d of type %T: not a GX value", i, out0Element)
+			return
+		}
 
 		out0ElmtIValue, ok := out0HandleI.(hostio.Array)
 		if !ok {
@@ -162,7 +168,7 @@ func (pkg *Package) CheckBroadcast(arg0 *types.Slice[types.Atom[int]], arg1 *typ
 		out0Elements[i] = out0ElmtI
 	}
 	out0, err := types.NewSlice[types.Atom[int]](
-		out0Slice.SliceType(),
+		out0Slice.Type(),
 		out0Elements,
 	)
 	if err != nil {
@@ -229,7 +235,7 @@ func (val *DType) Bridge() types.Bridge { return &val.handle }
 // MarshalDType populates the receiver fields with device handles.
 func (fty *Factory) MarshalDType(val hostio.Value) (s *DType, err error) {
 	s = fty.NewDType()
-	if _, ok := val.(*values.Slice); ok {
+	if _, ok := val.(*elements.Slice); ok {
 		err = fmt.Errorf("cannot use handle to set DType: got a tuple instead of a single value")
 		return
 	}
@@ -351,14 +357,18 @@ func (fty *Factory) MarshalShape(val hostio.Value) (s *Shape, err error) {
 		return
 	}
 
-	field1Slice, ok := fields[1].(*values.Slice)
+	field1Slice, ok := fields[1].(*elements.Slice)
 	if !ok {
 		err = fmt.Errorf("cannot use value %T to set []<no value>: not a slice", fields[1])
 		return
 	}
 	field1Elements := make([]types.Atom[int], field1Slice.Len())
-	for i := 0; i < field1Slice.Len(); i++ {
-		field1HandleI := field1Slice.Element(i)
+	for i, field1Element := range field1Slice.Elements() {
+		field1HandleI, ok := field1Element.(hostio.Value)
+		if !ok {
+			err = fmt.Errorf("cannot use element %d of type %T: not a GX value", i, field1Element)
+			return
+		}
 
 		field1ElmtIValue, ok := field1HandleI.(hostio.Array)
 		if !ok {
@@ -370,7 +380,7 @@ func (fty *Factory) MarshalShape(val hostio.Value) (s *Shape, err error) {
 		field1Elements[i] = field1ElmtI
 	}
 	field1, err := types.NewSlice[types.Atom[int]](
-		field1Slice.SliceType(),
+		field1Slice.Type(),
 		field1Elements,
 	)
 	if err != nil {

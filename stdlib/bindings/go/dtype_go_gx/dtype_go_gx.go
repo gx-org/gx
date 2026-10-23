@@ -31,6 +31,7 @@ import (
 	"github.com/gx-org/gx/build/ir"
 	"github.com/gx-org/gx/golang/binder/gobindings/core"
 	"github.com/gx-org/gx/golang/binder/gobindings/types"
+	"github.com/gx-org/gx/interp/elements"
 	"github.com/pkg/errors"
 )
 
@@ -40,6 +41,7 @@ var (
 	_ = strings.Compare
 	_ = reflect.TypeFor[int]
 	_ = values.Struct{}
+	_ = elements.Slice{}
 	_ hostio.Value
 	_ = errors.Errorf
 	_ = types.NewSlice[types.Bridger]
@@ -163,7 +165,7 @@ func (val *Floats) Bridge() types.Bridge { return &val.handle }
 // MarshalFloats populates the receiver fields with device handles.
 func (fty *Factory) MarshalFloats(val hostio.Value) (s *Floats, err error) {
 	s = fty.NewFloats()
-	if _, ok := val.(*values.Slice); ok {
+	if _, ok := val.(*elements.Slice); ok {
 		err = fmt.Errorf("cannot use handle to set Floats: got a tuple instead of a single value")
 		return
 	}
@@ -259,7 +261,7 @@ func (val *Ints) Bridge() types.Bridge { return &val.handle }
 // MarshalInts populates the receiver fields with device handles.
 func (fty *Factory) MarshalInts(val hostio.Value) (s *Ints, err error) {
 	s = fty.NewInts()
-	if _, ok := val.(*values.Slice); ok {
+	if _, ok := val.(*elements.Slice); ok {
 		err = fmt.Errorf("cannot use handle to set Ints: got a tuple instead of a single value")
 		return
 	}
@@ -355,7 +357,7 @@ func (val *Nums) Bridge() types.Bridge { return &val.handle }
 // MarshalNums populates the receiver fields with device handles.
 func (fty *Factory) MarshalNums(val hostio.Value) (s *Nums, err error) {
 	s = fty.NewNums()
-	if _, ok := val.(*values.Slice); ok {
+	if _, ok := val.(*elements.Slice); ok {
 		err = fmt.Errorf("cannot use handle to set Nums: got a tuple instead of a single value")
 		return
 	}

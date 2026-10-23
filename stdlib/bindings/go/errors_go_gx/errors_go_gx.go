@@ -31,6 +31,7 @@ import (
 	"github.com/gx-org/gx/build/ir"
 	"github.com/gx-org/gx/golang/binder/gobindings/core"
 	"github.com/gx-org/gx/golang/binder/gobindings/types"
+	"github.com/gx-org/gx/interp/elements"
 	"github.com/pkg/errors"
 )
 
@@ -40,6 +41,7 @@ var (
 	_ = strings.Compare
 	_ = reflect.TypeFor[int]
 	_ = values.Struct{}
+	_ = elements.Slice{}
 	_ hostio.Value
 	_ = errors.Errorf
 	_ = types.NewSlice[types.Bridger]

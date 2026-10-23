@@ -25,7 +25,6 @@ import (
 	"github.com/gx-org/gx/api"
 	"github.com/gx-org/gx/api/hostio"
 	"github.com/gx-org/gx/api/runner"
-	"github.com/gx-org/gx/api/values"
 	"github.com/gx-org/gx/build/builder"
 	"github.com/gx-org/gx/build/fmterr"
 	"github.com/gx-org/gx/build/ir"
@@ -82,8 +81,12 @@ func runGraphMain(rtm *api.Runtime, fn *ir.FuncDecl) ([]hostio.Value, error) {
 	if err != nil {
 		return nil, err
 	}
+	flat, err := elements.Flatten(outs)
+	if err != nil {
+		return nil, err
+	}
 	// Append the values passed to the trace builtin after the values returned by Main.
-	return append(values.Flatten(outs), tr.tracedOut...), nil
+	return append(flat, tr.tracedOut...), nil
 }
 
 // runCompEvalMain evaluates a compeval Main function at compile time and prints the values it returns.

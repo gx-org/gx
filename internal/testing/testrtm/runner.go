@@ -24,11 +24,11 @@ import (
 	"github.com/gx-org/gx/api/hostio"
 	"github.com/gx-org/gx/api/options"
 	"github.com/gx-org/gx/api/runner"
-	"github.com/gx-org/gx/api/values"
 	gxfmt "github.com/gx-org/gx/base/fmt"
 	"github.com/gx-org/gx/build/builder/testbuild"
 	"github.com/gx-org/gx/build/ir"
 	"github.com/gx-org/gx/golang/backend/kernels"
+	"github.com/gx-org/gx/interp/elements"
 )
 
 type (
@@ -69,7 +69,10 @@ func (r *Runner) RunWithArgs(fn *ir.FuncDecl, recv hostio.Value, args []hostio.V
 	if err != nil {
 		return nil, "", err
 	}
-	flattenOuts := values.Flatten(outs)
+	flattenOuts, err := elements.Flatten(outs)
+	if err != nil {
+		return nil, "", err
+	}
 	all := testbuild.BuildGot(flattenOuts, func(val hostio.Value) string {
 		return ir.DefineString(fn.File(), val)
 	})
