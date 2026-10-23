@@ -29,6 +29,7 @@ import (
 	"github.com/gx-org/gx/build/builder"
 	"github.com/gx-org/gx/build/fmterr"
 	"github.com/gx-org/gx/build/ir"
+	"github.com/gx-org/gx/interp/elements"
 )
 
 // FromFile runs a main function from a single file path.
@@ -95,7 +96,7 @@ func runCompEvalMain(bld *builder.Builder, fn *ir.FuncDecl) ([]hostio.Value, err
 	}
 	vals := make([]hostio.Value, len(outs))
 	for i, out := range outs {
-		vals[i] = values.NewIRNode(out)
+		vals[i] = elements.NewIRNode(out)
 	}
 	return vals, nil
 }
