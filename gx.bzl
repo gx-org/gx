@@ -330,7 +330,7 @@ platform_infos = {
         "args": ["--gx_platform=cpu"],
     },
     "cuda": {
-        "tags": ["requires-gpu-nvidia"],
+        "tags": ["requires-gpu-sm90"],
         "args": ["--gx_platform=cuda"],
     },
     "tpu": {
