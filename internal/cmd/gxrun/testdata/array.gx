@@ -1,0 +1,7 @@
+package main
+
+func Main() [3]float32 {
+	return [3]float32{1, 2, 3} * 2
+	// Want:
+	// [3]float32{2, 4, 6}
+}

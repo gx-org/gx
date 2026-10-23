@@ -1,0 +1,13 @@
+package main
+
+import "num"
+
+func Main() [2][2]float32 {
+	x := [2][2]float32{{1, 2}, {3, 4}}
+	return num.MatMul(x, x)
+	// Want:
+	// [2][2]float32{
+	// 	{7, 10},
+	// 	{15, 22},
+	// }
+}

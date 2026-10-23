@@ -1,0 +1,9 @@
+package main
+
+//gx:compeval
+func Main(a, b int) (int, int) {
+	return a + b, a * b
+	// Want:
+	// a+b
+	// a*b
+}
