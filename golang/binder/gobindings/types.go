@@ -85,7 +85,7 @@ func (b *binder) gxValueType(tp ir.Type) (string, error) {
 	case *ir.NamedType:
 		return b.packagePrefixNameOf(typT) + typT.Name(), nil
 	case *ir.SliceType:
-		return "*values.Slice", nil
+		return "*elements.Slice", nil
 	default:
 		return "", errors.Errorf("cannot write nameDeviceType bindings for type %T on device", typT)
 	}

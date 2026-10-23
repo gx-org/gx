@@ -15,13 +15,15 @@
 package elements
 
 import (
+	"strings"
+
 	"github.com/pkg/errors"
 	"github.com/gx-org/gx/api/hostio"
-	"github.com/gx-org/gx/api/values"
 	gxfmt "github.com/gx-org/gx/base/fmt"
 	"github.com/gx-org/gx/build/fmterr"
 	"github.com/gx-org/gx/build/ir"
 	"github.com/gx-org/gx/build/ir/irkind"
+	"github.com/gx-org/gx/golang/backend/kernels"
 	"github.com/gx-org/gx/internal/algexpr"
 	"github.com/gx-org/gx/internal/base/cast"
 	"github.com/gx-org/gx/internal/interp/compeval/cmp"
@@ -68,6 +70,7 @@ var (
 	_ ir.FixedSlice          = (*Slice)(nil)
 	_ coreiface.WithElements = (*Slice)(nil)
 	_ engine.Copier          = (*Slice)(nil)
+	_ hostio.Value           = (*Slice)(nil)
 )
 
 // NewSlice returns a slice from a slice of elements.
@@ -164,7 +167,47 @@ func (n *Slice) AppendInPlace(el ir.Element) {
 
 // Unflatten consumes the next handles to return a GX value.
 func (n *Slice) Unflatten(handles *flatten.Parser) (hostio.Value, error) {
-	return handles.ParseComposite(flatten.ParseCompositeOf(values.NewSlice), n.typ, n.values)
+	return handles.ParseComposite(flatten.ParseCompositeOf(newSliceFromValues), n.typ, n.values)
+}
+
+// newSliceFromValues returns a slice from a slice of GX values.
+func newSliceFromValues(typ ir.Type, vals []hostio.Value) (*Slice, error) {
+	return NewSlice(typ, hostio.ToElements(vals))
+}
+
+// gxValues returns the elements of the slice as GX values.
+// An error is returned if an element is not a GX value.
+func (n *Slice) gxValues() ([]hostio.Value, error) {
+	vals := make([]hostio.Value, len(n.values))
+	for i, el := range n.values {
+		var err error
+		if vals[i], err = cast.To[hostio.Value](el); err != nil {
+			return nil, err
+		}
+	}
+	return vals, nil
+}
+
+// ToHost transfers all the elements of the slice to the host.
+func (n *Slice) ToHost(alloc kernels.Allocator) (hostio.Value, error) {
+	vals, err := n.gxValues()
+	if err != nil {
+		return nil, err
+	}
+	hostVals, err := hostio.ToHost(alloc, vals)
+	if err != nil {
+		return nil, err
+	}
+	return &Slice{typ: n.typ, values: hostio.ToElements(hostVals)}, nil
+}
+
+// Finalize releases the resources allocated for the slice elements.
+func (n *Slice) Finalize() error {
+	vals, err := n.gxValues()
+	if err != nil {
+		return err
+	}
+	return hostio.Finalize(vals...)
 }
 
 // Expr returns the IR expression representing the slice.
@@ -261,6 +304,15 @@ func (n *Slice) ShortString(*ir.File) string {
 	return n.String()
 }
 
+// SourceString returns the GX source code of the implementation.
+func (n *Slice) SourceString(from *ir.File) string {
+	ss := make([]string, len(n.values))
+	for i, el := range n.values {
+		ss[i] = ir.SourceString(from, el)
+	}
+	return "[" + strings.Join(ss, ",") + "]"
+}
+
 // String returns a string representation of the slice.
 func (n *Slice) String() string {
 	return gxfmt.String(n.values)
@@ -273,4 +325,27 @@ func SliceFromElement(el ir.Element) (*Slice, error) {
 		return nil, err
 	}
 	return cast.To[*Slice](under)
+}
+
+// Flatten replaces the slices in a list of values by their elements, recursively.
+// An error is returned if an element of a slice is not a GX value.
+func Flatten(vals []hostio.Value) ([]hostio.Value, error) {
+	var flat []hostio.Value
+	for _, val := range vals {
+		slice, ok := val.(*Slice)
+		if !ok {
+			flat = append(flat, val)
+			continue
+		}
+		sliceVals, err := slice.gxValues()
+		if err != nil {
+			return nil, err
+		}
+		flatSlice, err := Flatten(sliceVals)
+		if err != nil {
+			return nil, err
+		}
+		flat = append(flat, flatSlice...)
+	}
+	return flat, nil
 }

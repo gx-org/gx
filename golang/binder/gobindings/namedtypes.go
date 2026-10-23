@@ -178,7 +178,7 @@ func (val *{{.Named.Name}}) Bridge() types.Bridge { return &val.handle }
 // Marshal{{.Named.Name}} populates the receiver fields with device handles.
 func (fty *Factory) Marshal{{.Named.Name}}(val hostio.Value) (s *{{.Named.Name}}, err error) {
 	s = fty.New{{.Named.Name}}()
-	if _, ok := val.(*values.Slice); ok {
+	if _, ok := val.(*elements.Slice); ok {
 		err = fmt.Errorf("cannot use handle to set {{.Named.Name}}: got a tuple instead of a single value")
 		return
 	}

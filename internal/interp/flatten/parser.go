@@ -76,13 +76,15 @@ func (h *Parser) Device() compute.DeviceNum {
 
 // Unflatten consumes the next available handles and returns a GX value matching the given element.
 func (h *Parser) Unflatten(el ir.Element) (hostio.Value, error) {
-	val, ok := el.(hostio.Value)
-	if ok {
-		return val, nil
-	}
+	// Check for an unflattener first: some GX values (for example, slices)
+	// can store elements which also need to be unflattened.
 	unf, ok := el.(Unflattener)
 	if !ok {
-		return nil, errors.Errorf("cannot unflatten element type %T", el)
+		val, ok := el.(hostio.Value)
+		if !ok {
+			return nil, errors.Errorf("cannot unflatten element type %T", el)
+		}
+		return val, nil
 	}
 	val, err := unf.Unflatten(h)
 	if err != nil {

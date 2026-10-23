@@ -39,10 +39,6 @@ func (factory) NewStruct(typ ir.Type, vals []hostio.Value) (hostio.Value, error)
 	return NewStruct(typ, vals)
 }
 
-func sliceZeroValue(typ ir.Type) (*Slice, error) {
-	return NewSlice(typ, nil)
-}
-
 func arrayZeroValue(typ ir.Type) (hostio.Array, error) {
 	// TODO(degris): not really implemented: should be enough for a workaround today.
 	return hostio.NewDeviceArray(typ, nil)
@@ -72,8 +68,6 @@ func Zero(typ ir.Type) (hostio.Value, error) {
 		return hostio.AtomIntegerValue[uint64](typ, 0)
 	case irkind.Array:
 		return arrayZeroValue(typ)
-	case irkind.Slice:
-		return sliceZeroValue(typ)
 	default:
 		return nil, errors.Errorf("cannot create a zero value of %s", kind.String())
 	}
@@ -86,22 +80,4 @@ func Underlying(val hostio.Value) hostio.Value {
 		return val
 	}
 	return Underlying(named.Underlying())
-}
-
-// Flatten replaces the slices in a list of values by their elements, recursively.
-func Flatten(vals []hostio.Value) []hostio.Value {
-	var flat []hostio.Value
-	for _, val := range vals {
-		slice, ok := val.(*Slice)
-		if !ok {
-			flat = append(flat, val)
-			continue
-		}
-		elements := make([]hostio.Value, slice.Len())
-		for i := range elements {
-			elements[i] = slice.Element(i)
-		}
-		flat = append(flat, Flatten(elements)...)
-	}
-	return flat
 }
