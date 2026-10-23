@@ -21,10 +21,24 @@ import (
 	"fmt"
 	"strings"
 
+	"github.com/gx-org/gx/api"
 	"github.com/gx-org/gx/api/hostio"
 	"github.com/gx-org/gx/api/trace"
+	"github.com/gx-org/gx/build/builder"
+	"github.com/gx-org/gx/build/importers/embedpkg"
 	"github.com/gx-org/gx/build/ir"
+	"github.com/gx-org/gx/golang/backend"
+	"github.com/gx-org/gx/stdlib"
 )
+
+// New runtime with a Go backend and a default builder.
+// Panic if something goes wrong.
+func New() (*api.Runtime, error) {
+	return backend.New(builder.New(
+		stdlib.Importer(),
+		embedpkg.New(),
+	))
+}
 
 // Tracer is a default tracer for GX code.
 type Tracer struct {

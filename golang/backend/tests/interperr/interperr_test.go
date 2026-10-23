@@ -22,8 +22,9 @@ import (
 	"github.com/gx-org/gx/build/builder"
 	"github.com/gx-org/gx/build/importers/embedpkg"
 	"github.com/gx-org/gx/golang/backend"
-	"github.com/gx-org/gx/golang/backend/tests/interperr/interperr_go_gx"
 	"github.com/gx-org/gx/stdlib"
+
+	"github.com/gx-org/gx/golang/backend/tests/interperr/interperr_go_gx"
 )
 
 func buildInterperr() (*interperr_go_gx.Package, error) {
