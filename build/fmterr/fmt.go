@@ -42,7 +42,7 @@ type Pos struct {
 func At(fset *token.FileSet, node ast.Node) Pos {
 	return Pos{
 		Begin: fset.Position(node.Pos()),
-		End:   fset.Position(node.Pos()),
+		End:   fset.Position(node.End()),
 	}
 }
 
