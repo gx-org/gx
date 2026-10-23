@@ -24,6 +24,7 @@ import (
 	"github.com/gx-org/gx/api/values"
 	"github.com/gx-org/gx/build/fmterr"
 	"github.com/gx-org/gx/build/ir"
+	"github.com/gx-org/gx/golang/backend/kernels"
 	"github.com/gx-org/gx/internal/togo"
 	"github.com/gx-org/gx/internal/tracer/cfunc"
 	"github.com/gx-org/gx/internal/tracer/processor"
@@ -88,4 +89,19 @@ func Trace(dev *api.Device, fn *ir.FuncDecl, receiver hostio.Value, args []hosti
 	}
 	// Compile the resulting graph given the output element.
 	return cfunc.Compile(dev, fn, proc, mat, builder, outs)
+}
+
+// TraceAndRun traces fn, runs it on dev, transfers its outputs to the host,
+// and releases the device buffers of the outputs.
+func TraceAndRun(dev *api.Device, fn *ir.FuncDecl, recv hostio.Value, args []hostio.Value, options []options.PackageOption, tracer trace.Callback) ([]hostio.Value, error) {
+	compiled, err := Trace(dev, fn, recv, args, options)
+	if err != nil {
+		return nil, err
+	}
+	outs, err := compiled.Run(recv, args, tracer)
+	if err != nil {
+		return nil, err
+	}
+	defer hostio.Finalize(outs...)
+	return hostio.ToHost(kernels.DefaultAllocator(), outs)
 }

@@ -64,20 +64,12 @@ func (r *Runner) Run(fn *ir.FuncDecl, options []options.PackageOption) ([]hostio
 
 // RunWithArgs compiles a function into a XLA graph, runs it, and returns the result.
 func (r *Runner) RunWithArgs(fn *ir.FuncDecl, recv hostio.Value, args []hostio.Value, options []options.PackageOption) ([]hostio.Value, string, error) {
-	rn, err := runner.Trace(r.dev, fn, recv, args, options)
-	if err != nil {
-		return nil, "", err
-	}
 	tracer := testTracer{}
-	outs, err := rn.Run(recv, args, &tracer)
+	outs, err := runner.TraceAndRun(r.dev, fn, recv, args, options, &tracer)
 	if err != nil {
 		return nil, "", err
 	}
-	defer hostio.Finalize(outs...)
-	flattenOuts, err := hostio.ToHost(kernels.DefaultAllocator(), values.Flatten(outs))
-	if err != nil {
-		return nil, "", err
-	}
+	flattenOuts := values.Flatten(outs)
 	all := testbuild.BuildGot(flattenOuts, func(val hostio.Value) string {
 		return ir.DefineString(fn.File(), val)
 	})
