@@ -1,0 +1,7 @@
+package main
+
+func Main() {
+	trace(int32(1))
+	// Want:
+	// int32(1)
+}

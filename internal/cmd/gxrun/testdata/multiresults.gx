@@ -1,0 +1,9 @@
+package main
+
+func Main() (int64, [2]bool, string) {
+	return 4, [2]bool{true, false}, "Hello, GX"
+	// Want:
+	// int64(4)
+	// [2]bool{true, false}
+	// Hello, GX
+}

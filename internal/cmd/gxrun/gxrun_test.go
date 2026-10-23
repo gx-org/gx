@@ -16,12 +16,16 @@ package gxrun_test
 
 import (
 	"bytes"
+	"embed"
+	"fmt"
+	"go/token"
 	"os"
 	"path/filepath"
 	"strings"
 	"testing"
 
 	"github.com/gx-org/gx/internal/cmd/gxrun"
+	"github.com/gx-org/gx/src/gx/parser"
 )
 
 // run executes the run command with some arguments.
@@ -50,134 +54,66 @@ func writeFile(t *testing.T, src string) string {
 	return path
 }
 
-func TestRun(t *testing.T) {
-	tests := []struct {
-		name string
-		src  string
-		want string
-	}{
-		{
-			name: "scalar",
-			src: `package main
+// wantPrefix starts the comment declaring the output expected from running a GX test file.
+const wantPrefix = "Want:"
 
-func Main() int32 {
-	return 2 + 3
-}
-`,
-			want: "int32(5)\n",
-		},
-		{
-			name: "array",
-			src: `package main
-
-func Main() [3]float32 {
-	return [3]float32{1, 2, 3} * 2
-}
-`,
-			want: "[3]float32{2, 4, 6}\n",
-		},
-		{
-			name: "multiple results",
-			src: `package main
-
-func Main() (int64, [2]bool, string) {
-	return 4, [2]bool{true, false}, "Hello, GX"
-}
-`,
-			want: "int64(4)\n[2]bool{true, false}\nHello, GX\n",
-		},
-		{
-			name: "struct",
-			src: `package main
-
-type Point struct {
-	X, Y float32
-}
-
-func Main() Point {
-	return Point{X: 1, Y: 2}
-}
-`,
-			want: "Point{\n\tX: float32(1),\n\tY: float32(2),\n}\n",
-		},
-		{
-			name: "slice",
-			src: `package main
-
-func Main() []int32 {
-	return []int32{int32(1), int32(2)}
-}
-`,
-			want: "int32(1)\nint32(2)\n",
-		},
-		{
-			name: "standard library",
-			src: `package main
-
-import "num"
-
-func Main() [2][2]float32 {
-	x := [2][2]float32{{1, 2}, {3, 4}}
-	return num.MatMul(x, x)
-}
-`,
-			want: "[2][2]float32{\n\t{7, 10},\n\t{15, 22},\n}\n",
-		},
-		{
-			name: "trace",
-			src: `package main
-
-func Main() int64 {
-	a := int64(2)
-	trace(a)
-	a = a + 1
-	trace(a, [2]int64{a, a})
-	return a
-}
-`,
-			want: "int64(3)\nint64(2)\nint64(3)\n[2]int64{3, 3}\n",
-		},
-		{
-			name: "no result",
-			src: `package main
-
-func Main() {
-	trace(int32(1))
-}
-`,
-			want: "int32(1)\n",
-		},
-		{
-			name: "compeval",
-			src: `package main
-
-//gx:compeval
-func Main() (int, string) {
-	return 2 + 3, "compeval"
-}
-`,
-			want: "5\n\"compeval\"\n",
-		},
-		{
-			name: "compeval with parameters",
-			src: `package main
-
-//gx:compeval
-func Main(a, b int) (int, int) {
-	return a + b, a * b
-}
-`,
-			want: "a+b\na*b\n",
-		},
+// wantOutput returns the output expected from running a GX test file.
+// The file declares it with a comment starting with wantPrefix followed
+// by the lines expected on the standard output.
+func wantOutput(path string) (string, error) {
+	file, err := parser.ParseFile(token.NewFileSet(), path, nil, parser.ParseComments)
+	if err != nil {
+		return "", err
 	}
-	for _, test := range tests {
-		t.Run(test.name, func(t *testing.T) {
-			got, err := run(t, writeFile(t, test.src))
+	var wants []string
+	for _, cmt := range file.Comments {
+		if want, ok := strings.CutPrefix(cmt.Text(), wantPrefix); ok {
+			wants = append(wants, want)
+		}
+	}
+	if len(wants) != 1 {
+		return "", fmt.Errorf("%s: found %d comments starting with %q, want 1", path, len(wants), wantPrefix)
+	}
+	want := strings.TrimSpace(wants[0])
+	if want == "" {
+		return "", nil
+	}
+	return want + "\n", nil
+}
+
+// testdata stores the GX test files run by TestRun.
+//
+//go:embed testdata/*.gx
+var testdata embed.FS
+
+// TestRun runs the Main function of each GX file in testdata and checks
+// the standard output against the output declared in the file.
+func TestRun(t *testing.T) {
+	// The run command reads its source file from the disk:
+	// copy the embedded GX test files into a temporary directory first.
+	dir := t.TempDir()
+	if err := os.CopyFS(dir, testdata); err != nil {
+		t.Fatal(err)
+	}
+	paths, err := filepath.Glob(filepath.Join(dir, "testdata", "*.gx"))
+	if err != nil {
+		t.Fatal(err)
+	}
+	if len(paths) == 0 {
+		t.Fatal("no GX test file found in testdata")
+	}
+	for _, path := range paths {
+		t.Run(strings.TrimSuffix(filepath.Base(path), ".gx"), func(t *testing.T) {
+			want, err := wantOutput(path)
 			if err != nil {
-				t.Fatalf("gx run: %v", err)
+				t.Fatal(err)
 			}
-			if got != test.want {
-				t.Errorf("gx run output:\ngot:\n%s\nwant:\n%s", got, test.want)
+			got, err := run(t, path)
+			if err != nil {
+				t.Fatalf("gx run %s: %v", path, err)
+			}
+			if got != want {
+				t.Errorf("gx run %s output:\ngot:\n%s\nwant:\n%s", path, got, want)
 			}
 		})
 	}
