@@ -29,7 +29,6 @@ import (
 	"github.com/gx-org/gx/build/builder"
 	"github.com/gx-org/gx/build/fmterr"
 	"github.com/gx-org/gx/build/ir"
-	"github.com/gx-org/gx/golang/backend/kernels"
 )
 
 // FromFile runs a main function from a single file path.
@@ -77,21 +76,13 @@ func runGraphMain(rtm *api.Runtime, fn *ir.FuncDecl) ([]hostio.Value, error) {
 	if err != nil {
 		return nil, fmt.Errorf("cannot create device: %w", err)
 	}
-	compiled, err := runner.Trace(dev, fn, nil, nil, nil)
-	if err != nil {
-		return nil, err
-	}
 	tr := &tracer{}
-	outs, err := compiled.Run(nil, nil, tr)
-	if err != nil {
-		return nil, err
-	}
-	hostOuts, err := hostio.ToHost(kernels.DefaultAllocator(), values.Flatten(outs))
+	outs, err := runner.TraceAndRun(dev, fn, nil, nil, nil, tr)
 	if err != nil {
 		return nil, err
 	}
 	// Append the values passed to the trace builtin after the values returned by Main.
-	return append(hostOuts, tr.tracedOut...), nil
+	return append(values.Flatten(outs), tr.tracedOut...), nil
 }
 
 // runCompEvalMain evaluates a compeval Main function at compile time and prints the values it returns.
