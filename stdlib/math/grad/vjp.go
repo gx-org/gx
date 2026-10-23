@@ -16,7 +16,6 @@ package grad
 
 import (
 	"github.com/gx-org/gx/api/hostio"
-	"github.com/gx-org/gx/api/values"
 	"github.com/gx-org/gx/build/ir"
 	"github.com/gx-org/gx/internal/base/cast"
 	"github.com/gx-org/gx/internal/interp/flatten"
@@ -87,5 +86,5 @@ func (m *vjpMacro) BuildBody(fetcher ir.Fetcher, _ ir.Func) (*ast.BlockStmt, boo
 
 // Unflatten creates a GX value from the next handles available in the parser.
 func (m *vjpMacro) Unflatten(handles *flatten.Parser) (hostio.Value, error) {
-	return values.NewIRNode(m.graph.Func()), nil
+	return elements.NewIRNode(m.graph.Func()), nil
 }

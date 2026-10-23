@@ -16,7 +16,6 @@ package elements
 
 import (
 	"github.com/gx-org/gx/api/hostio"
-	"github.com/gx-org/gx/api/values"
 	"github.com/gx-org/gx/build/fmterr"
 	"github.com/gx-org/gx/build/ir"
 	"github.com/gx-org/gx/build/ir/irkind"
@@ -101,7 +100,7 @@ func (f *elFunc) Recv() *engine.Receiver {
 
 // Unflatten creates a GX value from the next handles available in the parser.
 func (f *elFunc) Unflatten(handles *flatten.Parser) (hostio.Value, error) {
-	return values.NewIRNode(f.fn), nil
+	return NewIRNode(f.fn), nil
 }
 
 // Kind of the element.
