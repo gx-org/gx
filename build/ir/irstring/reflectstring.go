@@ -35,8 +35,6 @@ const (
 	// VerboseStringType is the type used for debugging.
 	// It helps the user to identify differences or what to build.
 	VerboseStringType
-	// SilentStringType is used to silent the diffs.
-	SilentStringType
 )
 
 // ReflectStringOutput sets the mode with which the string is built.
@@ -94,10 +92,6 @@ func constExpr(done map[any]bool, val reflect.Value, proc processor) string {
 func arrayType(done map[any]bool, val reflect.Value, proc processor) string {
 	array := val.Interface().(ir.ArrayType)
 	return fmt.Sprintf("%s%s", array.DataType().ReferString(nil), reflectString(done, reflect.ValueOf(array.Rank()), proc))
-}
-
-func skip(map[any]bool, reflect.Value, processor) string {
-	return ""
 }
 
 func rank(done map[any]bool, val reflect.Value, proc processor) string {

@@ -37,10 +37,6 @@ func (f *funcMeta) buildBody(fnResolveScope, *irFunc) bool {
 	return true
 }
 
-func (f *funcMeta) receiver() *fieldList {
-	return nil
-}
-
 func (f *funcMeta) compEval() bool {
 	return true
 }

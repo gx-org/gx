@@ -168,58 +168,6 @@ func (s *errorType) ReferString(from *File) string {
 	return s.DefineString(from)
 }
 
-type errorCallee struct {
-	fun Func
-}
-
-func (*errorCallee) node() {}
-
-func (ec *errorCallee) Node() ast.Node {
-	return ec.fun.Node()
-}
-
-func (*errorCallee) Func() Func {
-	return nil
-}
-
-func (ec *errorCallee) Specialise(Specialiser) (Callee, bool) {
-	return ec, true
-}
-
-func (ec *errorCallee) FuncType() *FuncType {
-	return ec.fun.FuncType()
-}
-
-func (*errorCallee) Type() Type {
-	return errorFType
-}
-
-// Unroll the expression.
-func (*errorCallee) Unroll(ev Fetcher, urlr Unroller) (ast.Expr, bool) {
-	return &ast.Ident{Name: "Error"}, true
-}
-
-func (ec *errorCallee) Expr() ast.Expr {
-	return &ast.Ident{Name: "Error"}
-}
-
-func (*errorCallee) SourceString(from *File) string {
-	return "<cperror>"
-}
-
-// ErrorCallee returns a proxy callee to call the Error method.
-func ErrorCallee(fun Func) Callee {
-	return &errorCallee{fun: fun}
-}
-
-// UnifyErr returns a system error if not nil, return the compile error otherwise.
-func UnifyErr(cpErr CompEvalError, err error) error {
-	if err != nil {
-		return err
-	}
-	return cpErr
-}
-
 // CompileError is a normal error to be reported to the user as a compile error of the source code.
 type CompileError struct {
 	error

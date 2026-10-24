@@ -25,12 +25,6 @@ import (
 // ----------------------------------------------------------------------------
 // Import statement processing.
 
-type importDecl struct {
-	ext ir.ImportDecl
-
-	pkg *basePackage
-}
-
 func processImportSpec(pscope procScope, spec *ast.ImportSpec) bool {
 	ext := &ir.ImportDecl{Src: spec}
 	var err error

@@ -356,17 +356,6 @@ func FuncType(types, recv, params, results *ir.FieldList, opts ...FTypeOption) *
 	return ftype
 }
 
-// FuncTypeFrom builds a function type from an existing type.
-func FuncTypeFrom(orig *ir.FuncType, opts ...FTypeOption) *ir.FuncType {
-	ret := *orig
-	ftype := &ret
-	ftype.GenParams.Values = make([]ir.GenericValue, ftype.GenParams.Fields.Len())
-	for _, opt := range opts {
-		ftype = opt(ftype)
-	}
-	return ftype
-}
-
 func cloneFType(ftype *ir.FuncType) *ir.FuncType {
 	res := *ftype
 	return &res

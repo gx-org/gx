@@ -38,7 +38,6 @@ type IMethod struct {
 var _ PkgFunc = (*IMethod)(nil)
 
 func (*IMethod) node()         {}
-func (*IMethod) staticValue()  {}
 func (*IMethod) storage()      {}
 func (*IMethod) storageValue() {}
 func (*IMethod) pkgFunc()      {}

@@ -413,11 +413,6 @@ func (v *NonTypeGenericValue) String() string {
 	return fmt.Sprintf("(%d:%s %s)", v.Generic().OrigField().Pos, v.Name(), v.DefinedType().ReferString(nil))
 }
 
-// AxisLengthsFromExpr converts an expression to an axis length.
-func AxisLengthsFromExpr(x Expr) []AxisLengths {
-	return []AxisLengths{&AxisExpr{X: x}}
-}
-
 // NewTypeGenericValue returns a generic type value directly from a type instead of a type expression.
 // Use when the type is inferred.
 func NewTypeGenericValue(tparam *GenericTypeParam, tp Type) *TypeGenericValue {

@@ -159,8 +159,3 @@ func (s *MacroCallExpr) Call() *ast.CallExpr { return s.X.Src }
 func (s *MacroCallExpr) SourceString(from *File) string {
 	return s.X.SourceString(from)
 }
-
-// ErrorString returns the string representation of the node in an error message.
-func (s *MacroCallExpr) ErrorString(from *File) string {
-	return s.SourceString(from)
-}

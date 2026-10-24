@@ -217,11 +217,6 @@ func IsSigned(kind Kind) bool {
 	return false
 }
 
-// IsAlgebra returns true if kind can be used in algebraic operations (+, -, *, /).
-func IsAlgebra(kind Kind) bool {
-	return IsFloat(kind) || IsInteger(kind)
-}
-
 // IsConcrete returns true if kind is a concrete kind that can be used in an array.
 func IsConcrete(kind Kind) bool {
 	if IsInteger(kind) {

@@ -273,10 +273,6 @@ var invalidTypeExprVal = ir.TypeExpr(
 	ir.InvalidType(),
 )
 
-var invalidGroup = &ir.FieldGroup{
-	Type: invalidTypeExprVal,
-}
-
 func buildCoreExpr(rscope resolveScope, expr exprNode) (ir.Expr, bool) {
 	ext, exprOk := expr.buildExpr(rscope)
 	if !exprOk {

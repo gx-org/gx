@@ -32,7 +32,6 @@ type ImportDecl struct {
 var _ StorageWithValue = (*ImportDecl)(nil)
 
 func (*ImportDecl) node()         {}
-func (*ImportDecl) staticValue()  {}
 func (*ImportDecl) storage()      {}
 func (*ImportDecl) storageValue() {}
 

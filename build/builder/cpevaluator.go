@@ -23,7 +23,6 @@ import (
 	"github.com/gx-org/gx/internal/interp/compeval/cmp"
 	"github.com/gx-org/gx/interp/context"
 	"github.com/gx-org/gx/interp"
-	"github.com/gx-org/gx/src/gx/ast"
 )
 
 type compileEvaluator struct {
@@ -71,18 +70,6 @@ func (ev *compileEvaluator) Compare(x, y ir.Element) (bool, error) {
 
 func (ev *compileEvaluator) File() *ir.File {
 	return ev.fitp.File()
-}
-
-// evalName returns a string representing the element stored for a given variable name.
-// Only used for debugging.
-func (ev *compileEvaluator) evalName(name string) string {
-	el, err := ev.EvalExpr(&ir.Ident{
-		Src: &ast.Ident{Name: name},
-	})
-	if err != nil {
-		return err.Error()
-	}
-	return fmt.Sprint(el)
 }
 
 func (ev *compileEvaluator) EvalExpr(expr ir.Expr) (ir.Element, error) {

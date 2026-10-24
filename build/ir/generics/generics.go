@@ -17,41 +17,7 @@ package generics
 
 import (
 	"github.com/gx-org/gx/build/ir"
-	"github.com/gx-org/gx/src/gx/ast"
 )
-
-func typeInclude(fetcher ir.Fetcher, set ir.Type, typ ir.Type) bool {
-	isIn, err := ir.TypeInclude(fetcher, set, typ)
-	if err != nil {
-		return fetcher.Err().Append(err)
-	}
-	if !isIn {
-		return fetcher.Err().Appendf(typ.Node(), "%s does not satisfy %s",
-			typ.ReferString(fetcher.File()),
-			set.ReferString(fetcher.File()))
-	}
-	return true
-}
-
-func dtypeElement(expr ast.Expr) ast.Expr {
-	aType, ok := expr.(*ast.ArrayType)
-	if !ok {
-		return expr
-	}
-	return dtypeElement(aType.Elt)
-}
-
-func instantiateExpr(fetcher ir.Fetcher, expr ir.Expr) (ir.Value, bool) {
-	val, err := fetcher.EvalExpr(expr)
-	if err != nil {
-		return expr, fetcher.Err().Append(err)
-	}
-	irExpr, err := ir.ToSingleExpr(fetcher, expr.Expr(), val)
-	if err != nil {
-		return expr, fetcher.Err().AppendAt(expr.Node(), err)
-	}
-	return irExpr, true
-}
 
 // AssignTo checks if an expression can be assigned to a generic non-type parameter.
 func AssignTo(fetcher ir.Fetcher, x ir.Expr, genAxis *ir.GenericNonTypeParam, tp ir.Type) bool {

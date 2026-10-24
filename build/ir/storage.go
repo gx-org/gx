@@ -26,8 +26,6 @@ type builtinStorage struct {
 	val  Expr
 }
 
-var builtinStore builtinStorage
-
 func (*builtinStorage) node()         {}
 func (*builtinStorage) storage()      {}
 func (*builtinStorage) storageValue() {}

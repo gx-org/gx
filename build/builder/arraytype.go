@@ -15,8 +15,6 @@
 package builder
 
 import (
-	"math/big"
-
 	"github.com/gx-org/gx/build/ir"
 	"github.com/gx-org/gx/src/gx/ast"
 )
@@ -106,22 +104,4 @@ func (n *arrayLitExpr) buildExpr(rscope resolveScope) (ir.Expr, bool) {
 
 func (n *arrayLitExpr) String() string {
 	return n.typ.String() + n.lit.String()
-}
-
-func checkNumExprAgainstAxis(rscope resolveScope, pos ast.Node, elts []ir.Expr, axis ir.AxisLengths) bool {
-	l := big.NewInt(int64(len(elts)))
-	got := &ir.AxisExpr{
-		X: &ir.NumberCastExpr{
-			X:   &ir.NumberInt{Src: &ast.BasicLit{ValuePos: pos.Pos()}, Val: l},
-			Typ: ir.IntType(),
-		}}
-	infer, inferOk := axis.(*ir.AxisInfer)
-	if inferOk {
-		infer.X = got
-		return true
-	}
-	if !axisEqual(rscope, pos, axis, got) {
-		return rscope.Err().Appendf(pos, "cannot use a literal of %d elements to define an axis length %s", len(elts), axis.SourceString(rscope.fileScope().irFile()))
-	}
-	return true
 }

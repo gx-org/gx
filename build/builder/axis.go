@@ -107,8 +107,6 @@ func (dim *exprAxisLength) build(rscope *defineLocalScope) (ir.AxisLengths, bool
 	return ext, true
 }
 
-const cannotInferAxisLength = "cannot infer array axis length"
-
 func (dim *exprAxisLength) String() string {
 	return dim.x.String()
 }

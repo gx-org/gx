@@ -1310,7 +1310,6 @@ func (f *File) FileSet() *token.FileSet {
 }
 
 func (*FuncDecl) node()         {}
-func (*FuncDecl) staticValue()  {}
 func (*FuncDecl) storage()      {}
 func (*FuncDecl) storageValue() {}
 func (*FuncDecl) pkgFunc()      {}
@@ -1409,7 +1408,6 @@ func (s *FuncDecl) ShortString() string {
 }
 
 func (*FuncBuiltin) node()         {}
-func (*FuncBuiltin) staticValue()  {}
 func (*FuncBuiltin) storage()      {}
 func (*FuncBuiltin) storageValue() {}
 func (*FuncBuiltin) pkgFunc()      {}
@@ -1555,7 +1553,6 @@ func (s *FuncKeyword) ShortString() string {
 }
 
 func (*FuncLit) node()         {}
-func (*FuncLit) staticValue()  {}
 func (*FuncLit) storage()      {}
 func (*FuncLit) storageValue() {}
 
@@ -2218,8 +2215,7 @@ func (s *NumberInt) SourceString(*File) string {
 	return s.Val.String()
 }
 
-func (s *NumberCastExpr) node()        {}
-func (s *NumberCastExpr) staticValue() {}
+func (s *NumberCastExpr) node() {}
 
 // Node returns the node in the AST tree.
 func (s *NumberCastExpr) Node() ast.Node { return s.X.Node() }
@@ -2248,8 +2244,7 @@ func (s *NumberCastExpr) Specialise(spec Specialiser) (Expr, bool) {
 	return &x, ok
 }
 
-func (s *StringLiteral) node()        {}
-func (s *StringLiteral) staticValue() {}
+func (s *StringLiteral) node() {}
 
 // Expr returns the AST expression.
 func (s *StringLiteral) Expr() ast.Expr { return s.Src }
@@ -2300,14 +2295,6 @@ func (s *ArrayLitExpr) Unroll(ev Fetcher, urlr Unroller) (ast.Expr, bool) {
 
 // Values returns the expressions defining the values of the array.
 func (s *ArrayLitExpr) Values() []Expr { return s.Elts }
-
-// NewFromValues returns a new literal of the same type from a slice of values.
-func (s *ArrayLitExpr) NewFromValues(elts []Expr) *ArrayLitExpr {
-	return &ArrayLitExpr{
-		Typ:  s.Typ,
-		Elts: elts,
-	}
-}
 
 // SourceString returns the GX source code of the node.
 func (s *ArrayLitExpr) SourceString(from *File) string {
@@ -2462,8 +2449,7 @@ func TypeExpr(src ast.Expr, t Type) *TypeValExpr {
 	return &TypeValExpr{src: src, val: t}
 }
 
-func (s *TypeValExpr) node()     {}
-func (s *TypeValExpr) typeExpr() {}
+func (s *TypeValExpr) node() {}
 
 // Node returns the node in the AST tree.
 func (s *TypeValExpr) Node() ast.Node { return s.Expr() }
@@ -3734,15 +3720,6 @@ func Shape(tp Type) (ArrayRank, Type) {
 	default:
 		return nil, InvalidType()
 	}
-}
-
-// IsBoolOp returns true if op is an operator returning a boolean.
-func IsBoolOp(op token.Token) bool {
-	switch op {
-	case token.EQL, token.NEQ, token.LEQ, token.GEQ, token.LSS, token.GTR:
-		return true
-	}
-	return false
 }
 
 // ToArrayTypeGivenShape converts a type to the underlying array type.
