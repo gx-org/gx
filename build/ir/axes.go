@@ -69,9 +69,6 @@ func (dm *AxisExpr) Node() ast.Node { return dm.Expr() }
 // Expr returns the AST of the expression.
 func (dm *AxisExpr) Expr() ast.Expr { return dm.X.Expr() }
 
-// NumAxes returns the number of axis represented by the group.
-func (dm *AxisExpr) NumAxes() int { return 1 }
-
 // Equal returns true if two axis are equal.
 func (dm *AxisExpr) Equal(tpcmp TypeEval, other AxisLengths) (bool, error) {
 	dmAx, err := tpcmp.EvalExpr(dm.X)

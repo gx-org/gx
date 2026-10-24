@@ -219,10 +219,6 @@ func newDistinctType(kind irkind.Kind, tp Type) distinctType {
 
 func (*distinctType) node() {}
 
-func (t *distinctType) distinct() *distinctType {
-	return t
-}
-
 func (t *distinctType) Equal(_ TypeEval, target Type) (bool, error) {
 	return t.tp == target, nil
 }
@@ -427,28 +423,6 @@ func (s *Interface) hasCapability(f func(Type) bool) bool {
 		}
 	}
 	return len(s.types) > 0
-}
-
-func fieldListAtomicIR() *FieldList {
-	group := &FieldGroup{
-		Type: TypeExpr(nil, TypeFromKind(irkind.IR)),
-	}
-	group.Fields = []*Field{&Field{
-		Group: group,
-	}}
-	return &FieldList{
-		List: []*FieldGroup{group},
-	}
-}
-
-var metaFuncType = &FuncType{
-	Params:  fieldListAtomicIR(),
-	Results: fieldListAtomicIR(),
-}
-
-// MetaFuncType returns the type of a meta function.
-func MetaFuncType() *FuncType {
-	return metaFuncType
 }
 
 // ToArrayType converts a type into an array type.

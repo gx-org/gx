@@ -30,16 +30,6 @@ import (
 	"github.com/gx-org/gx/src/gx/ast"
 )
 
-func unpackIndexedExpr(n ast.Node) (ast.Expr, []ast.Expr) {
-	switch e := n.(type) {
-	case *ast.IndexExpr:
-		return e.X, []ast.Expr{e.Index}
-	case *ast.IndexListExpr:
-		return e.X, e.Indices
-	}
-	return nil, nil
-}
-
 // callExpr represents a function call.
 type callExpr struct {
 	src *ast.CallExpr

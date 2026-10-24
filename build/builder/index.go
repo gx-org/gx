@@ -48,19 +48,6 @@ func (n *indexExpr) source() ast.Node {
 	return n.src
 }
 
-func (n *indexExpr) checkIndexType(scope *fileResolveScope, index ir.Expr) (ir.Expr, bool) {
-	var ok bool
-	// Coerce index type to a concrete integer type.
-	index, ok = castNilAndNumber(scope, index, ir.DefaultIntType)
-	if !ok {
-		return index, false
-	}
-	if !ir.IsIndexType(index.Type()) {
-		return index, scope.Err().Appendf(n.source(), "invalid argument: index %s must be integer", index.Type().ReferString(scope.irFile()))
-	}
-	return index, true
-}
-
 func (n *indexExpr) checkIndexBounds(rscope resolveScope, axLen ir.AxisLengths, index ir.Expr) bool {
 	compEval, compEvalOk := rscope.compEval()
 	if !compEvalOk {

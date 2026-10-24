@@ -46,7 +46,6 @@ type (
 )
 
 func (*MetaCore) node()         {}
-func (*MetaCore) staticValue()  {}
 func (*MetaCore) storage()      {}
 func (*MetaCore) storageValue() {}
 func (*MetaCore) pkgFunc()      {}

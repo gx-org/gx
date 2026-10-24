@@ -16,7 +16,6 @@
 package builtins
 
 import (
-	"go/token"
 	"reflect"
 	"strings"
 
@@ -38,28 +37,7 @@ var (
 		Typ: &ir.SliceType{
 			DType: ir.TypeExpr(nil, ir.InvalidType()),
 		}}
-
-	// PositionsType returns a type for a slice of indices.
-	PositionsType = ir.NewArrayType(
-		&ast.ArrayType{},
-		ir.DefaultIntType,
-		&ir.RankInfer{},
-	)
 )
-
-// ToBinaryExpr returns a binary expression from two expressions.
-func ToBinaryExpr(op token.Token, x, y ir.Expr) *ir.BinaryExpr {
-	return &ir.BinaryExpr{
-		Src: &ast.BinaryExpr{
-			X:  x.Expr(),
-			Y:  y.Expr(),
-			Op: op,
-		},
-		X:   x,
-		Y:   y,
-		Typ: ir.IntType(),
-	}
-}
 
 // Fields returns a list of fields to specify parameters or results.
 func Fields(expr ir.Expr, types ...ir.Type) *ir.FieldList {
@@ -186,17 +164,4 @@ func NarrowType[T ir.Type](tpcmp ir.TypeEval, call *ir.FuncCallExpr, arg ir.Type
 		err = fmterr.Errorf(tpcmp.File().FileSet(), call.Node(), "cannot convert %T to %s", arg, reflect.TypeFor[T]().String())
 	}
 	return
-}
-
-// NarrowTypes converts abstract types into more concrete types, typically *ir.ArrayType.
-func NarrowTypes[T ir.Type](tpcmp ir.TypeEval, call *ir.FuncCallExpr, args []ir.Type) ([]T, error) {
-	res := make([]T, len(args))
-	for i, arg := range args {
-		var err error
-		res[i], err = NarrowType[T](tpcmp, call, arg)
-		if err != nil {
-			return nil, err
-		}
-	}
-	return res, nil
 }

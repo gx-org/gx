@@ -180,23 +180,6 @@ func (s *specialiser) String() string {
 	return b.String()
 }
 
-func toTypeValue(fetcher ir.Fetcher, field *ir.Field, x ir.Expr) (ir.GenericValue, bool) {
-	typeValExpr := ir.TypeFromExpr(x)
-	genericIdentType := ir.NewGenericTypeParam(field)
-	if typeValExpr == nil {
-		return invalidGenericType(genericIdentType), fetcher.Err().Appendf(x.Node(), "%s is not a type", x.SourceString(fetcher.File()))
-	}
-	gotType, wantType := typeValExpr.Val(), field.Group.Type.Val()
-	assignedOk, err := gotType.AssignableTo(fetcher, wantType)
-	if err != nil {
-		return invalidGenericType(genericIdentType), fetcher.Err().AppendAt(x.Node(), err)
-	}
-	if !assignedOk {
-		return invalidGenericType(genericIdentType), fetcher.Err().Appendf(x.Node(), "%s does not satisfy %s", gotType.ReferString(fetcher.File()), wantType.ReferString(fetcher.File()))
-	}
-	return ir.NewTypeExprGenericValue(genericIdentType, typeValExpr), true
-}
-
 // SpecialiseStruct specialises a structure given type values.
 func SpecialiseStruct(fetcher ir.Fetcher, expr ir.Expr, st *ir.StructType, typArgs []ir.GenericValue) (*ir.TypeValExpr, bool) {
 	spec := newSpecialiser(fetcher.File(), expr, fetcher, nil, st, typArgs)

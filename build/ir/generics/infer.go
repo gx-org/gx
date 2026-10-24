@@ -200,17 +200,6 @@ func (uni *argUnifier) DefineNonType(genAxis *ir.GenericNonTypeParam, expr ir.Ex
 	return true
 }
 
-func typeParametersMap(tparams *ir.FieldList) map[string]*ir.Field {
-	fields := make(map[string]*ir.Field)
-	for _, field := range tparams.Fields() {
-		if !ir.ValidIdent(field.Name) {
-			continue
-		}
-		fields[field.Name.Name] = field
-	}
-	return fields
-}
-
 // Infer the type parameters of a function given a list of argument expressions.
 func Infer(fetcher ir.Fetcher, fExpr *ir.FuncValExpr, args []ir.Expr) (*ir.FuncValExpr, bool) {
 	ftype := fExpr.FuncType()

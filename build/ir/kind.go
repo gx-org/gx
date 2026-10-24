@@ -172,8 +172,3 @@ func DefaultNumberType(kind irkind.Kind) Type {
 		return InvalidType()
 	}
 }
-
-// AtomicFromString returns a scalar type singleton from a string.
-func AtomicFromString(ident string) Type {
-	return TypeFromKind(irkind.KindFromString(ident))
-}

@@ -214,10 +214,6 @@ func (s *pkgResolveScope) packageInterpreter() *interp.Base {
 	return itp
 }
 
-func (s *pkgResolveScope) namedTypeIR(nType *namedType) *ir.NamedType {
-	return s.namedTypes[nType]
-}
-
 func (s *pkgResolveScope) irBuilder() irBuilder {
 	return s.state.ibld
 }
@@ -284,12 +280,6 @@ func (s *pkgResolveScope) fileScope(f *file) (*fileResolveScope, bool) {
 	var evOk bool
 	fScope.ev, evOk = fScope.newCompEval()
 	return fScope, ok && evOk
-}
-
-func (s *pkgResolveScope) newFuncScope(f *file, ftype *ir.FuncType) (*funcResolveScope, bool) {
-	fScope, fOk := s.fileScope(f)
-	fnScope, fnOk := newFuncScope(fScope, ftype)
-	return fnScope, fOk && fnOk
 }
 
 func (s *fileResolveScope) procScope() procScope {
