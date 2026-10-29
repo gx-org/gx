@@ -130,7 +130,6 @@ def gx_extension_go(name, lib, **kwargs):
         embedsrcs = [":" + gx_srcs_name],
         deps = [
             lib,
-            "//third_party/gxlang/gx/api/values",
             "//third_party/gxlang/gx/api/hostio",
             "//third_party/gxlang/gx/build/importers/embedpkg",
             "//third_party/gxlang/gx/build/importers",
