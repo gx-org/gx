@@ -5,7 +5,6 @@ import (
 	"testing"
 
 	"github.com/gx-org/gx/api/hostio"
-	"github.com/gx-org/gx/api/values"
 	"github.com/gx-org/gx/build/ir"
 	"github.com/gx-org/gx/golang/backend/kernels"
 	"github.com/gx-org/gx/interp/elements"
@@ -31,7 +30,7 @@ func mustSlice(t *testing.T, els ...hostio.Value) *elements.Slice {
 
 func TestFlatten(t *testing.T) {
 	v1, v2, v3 := mustAtomInt(t, 1), mustAtomInt(t, 2), mustAtomInt(t, 3)
-	s1, err := values.NewString(ir.StringType(), "gx")
+	s1, err := elements.NewString("gx", ir.StringType())
 	if err != nil {
 		t.Fatal(err)
 	}
@@ -63,10 +62,7 @@ func TestFlatten(t *testing.T) {
 }
 
 func TestFlattenNotAValue(t *testing.T) {
-	notAValue, err := elements.NewString("gx", ir.StringType())
-	if err != nil {
-		t.Fatal(err)
-	}
+	notAValue := elements.Unknown()
 	slice, err := elements.NewSlice(ir.IntSliceType(), []ir.Element{notAValue})
 	if err != nil {
 		t.Fatal(err)
@@ -138,11 +134,11 @@ func TestSliceString(t *testing.T) {
 		t.Errorf("s2D.String() =\n%s\nwant:\n%s", got, want2D)
 	}
 
-	str1, err := values.NewString(ir.StringType(), "Hello")
+	str1, err := elements.NewString("Hello", ir.StringType())
 	if err != nil {
 		t.Fatal(err)
 	}
-	str2, err := values.NewString(ir.StringType(), "world")
+	str2, err := elements.NewString("world", ir.StringType())
 	if err != nil {
 		t.Fatal(err)
 	}

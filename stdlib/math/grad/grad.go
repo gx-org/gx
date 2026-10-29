@@ -66,7 +66,7 @@ func findParamStorage(file *ir.File, src ir.Node, fn ir.Func, name string) (wrt.
 	}
 	field := fn.FuncType().Params.FindField(name)
 	if field == nil {
-		return nil, fmterr.Errorf(file.FileSet(), src.Node(), "no parameter named %s in %s", name, fn.ReferString(file))
+		return nil, fmterr.Errorf(file.FileSet(), src.Node(), "no parameter named \"%s\" in %s", name, fn.ReferString(file))
 	}
 	return wrt.BuildFromField(nil, field)
 }
