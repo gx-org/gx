@@ -23,7 +23,6 @@ import (
 	"github.com/gx-org/gx/api"
 	"github.com/gx-org/gx/api/hostio"
 	"github.com/gx-org/gx/api/options"
-	"github.com/gx-org/gx/api/values"
 	"github.com/gx-org/gx/build/fmterr"
 	"github.com/gx-org/gx/build/ir"
 	"github.com/gx-org/gx/internal/base/cast"
@@ -48,7 +47,7 @@ func Run(dev *api.Device, fn *ir.FuncDecl, receiver hostio.Value, args []hostio.
 		err = fmterr.ToStackTraceError(err)
 	}()
 	// Create a new graph and evaluator for the interpreter.
-	proc := processor.New(values.Factory())
+	proc := processor.New()
 	fc := &togo.FuncInputs{Receiver: receiver, Args: hostio.ToElements(args)}
 	proc.ProcessInits(fc)
 	builder := dev.Runtime().Backend().Builder(fn.FullyQualifiedName())

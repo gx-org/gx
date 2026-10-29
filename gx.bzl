@@ -194,7 +194,6 @@ def go_gx_library(name, lib, deps = [], tags = [], visibility = None, testonly =
             "//third_party/gxlang/gx/api/options",
             "//third_party/gxlang/gx/api/trace",
             "//third_party/gxlang/gx/api/runner",
-            "//third_party/gxlang/gx/api/values",
             "//third_party/gxlang/gx/api/hostio",
             "//third_party/gxlang/gx/build/ir",
             "//third_party/gxlang/gx/golang/binder/gobindings/types",

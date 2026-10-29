@@ -20,7 +20,6 @@ import (
 	"github.com/gx-org/gx/api"
 	"github.com/gx-org/gx/api/hostio"
 	"github.com/gx-org/gx/api/trace"
-	"github.com/gx-org/gx/api/values"
 	"github.com/gx-org/gx/build/ir"
 	"github.com/gx-org/gx/internal/interp/flatten"
 	"github.com/gx-org/gx/internal/togo"
@@ -135,7 +134,7 @@ func (g *CompiledFunc) Run(receiver hostio.Value, args []hostio.Value, tracer tr
 }
 
 func (g *CompiledFunc) handlesToValues(in *togo.FuncInputs, handles []compute.Buffer) ([]hostio.Value, error) {
-	reader := flatten.NewParser(g.device.PlatformDevice(), in, values.Factory(), handles)
+	reader := flatten.NewParser(g.device.PlatformDevice(), in, handles)
 	values := make([]hostio.Value, len(g.outs))
 	for i, el := range g.outs {
 		val, err := reader.Unflatten(el)

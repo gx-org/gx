@@ -42,7 +42,6 @@ func (t *traceProcessor) parse(tracer trace.Callback, parser *flatten.Parser) er
 }
 
 type traces struct {
-	proc    *Processor
 	traces  []*traceProcessor
 	flatten []ir.Element
 }
@@ -69,7 +68,7 @@ func (ts *traces) ProcessTraces(dev compute.DeviceNum, in *togo.FuncInputs, trac
 	if tracer == nil || len(ts.traces) == 0 {
 		return nil
 	}
-	parser := flatten.NewParser(dev, in, ts.proc.factory, aux)
+	parser := flatten.NewParser(dev, in, aux)
 	for _, trace := range ts.traces {
 		if err := trace.parse(tracer, parser); err != nil {
 			return err

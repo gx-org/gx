@@ -329,7 +329,7 @@ var (
 // {{.Named.Name}} stores the handle of {{.Named.Name}} on a device.
 type {{.Named.Name}} struct {
 	handle handle{{.Named.Name}}
-	value *values.NamedType
+	value *elements.NamedType
 
 {{range $field := .Fields -}}
 	{{$field.Name}} {{$field.BridgerType}}
@@ -350,9 +350,9 @@ func (h *handle{{.Named.Name}}) StructValue() *elements.Struct {
 func (fty *Factory) Marshal{{.Named.Name}}(val hostio.Value) (s *{{.Named.Name}}, err error) {
 	s = fty.New{{.Named.Name}}()
 	var ok bool
-	s.value, ok = val.(*values.NamedType)
+	s.value, ok = val.(*elements.NamedType)
 	if !ok {
-		err = errors.Errorf("cannot use handle to set {{.Named.Name}}: %T is not a %s", val, reflect.TypeFor[*values.NamedType]())
+		err = errors.Errorf("cannot use handle to set {{.Named.Name}}: %T is not a %s", val, reflect.TypeFor[*elements.NamedType]())
 		return
 	}
 	structVal, ok := s.value.Underlying().(*elements.Struct)
@@ -468,7 +468,7 @@ var initStructGXValueTemplate = template.Must(template.New("initStructGXValueTMP
 	if err != nil {
 		panic(err)
 	}
-	s.value = values.NewNamedType(structVal, typ)
+	s.value = elements.NewNamedType(typ, structVal)
 `))
 
 func (s structType) InitGXValue() (string, error) {

@@ -19,7 +19,6 @@ package processor
 import (
 	"github.com/gomlx/compute"
 	"github.com/gomlx/compute/shapes"
-	"github.com/gx-org/gx/api/hostio"
 	"github.com/gx-org/gx/build/ir"
 	"github.com/gx-org/gx/internal/togo"
 )
@@ -35,9 +34,8 @@ type (
 	// after calling a compiled function.
 	Processor struct {
 		traces
-		factory hostio.Factory
-		inits   []Initializer
-		args    []Argument
+		inits []Initializer
+		args  []Argument
 
 		last *togo.FuncInputs
 	}
@@ -56,11 +54,9 @@ type (
 	}
 )
 
-// New returns a new processor given a host value factory.
-func New(factory hostio.Factory) *Processor {
-	p := &Processor{factory: factory}
-	p.traces.proc = p
-	return p
+// New returns a new processor.
+func New() *Processor {
+	return &Processor{}
 }
 
 // RegisterInit registers an Initializer to the graph.

@@ -69,7 +69,7 @@ func GraphFromElement(env *engine.Env, call *ir.FuncCallExpr, el ir.Element, arg
 	if err != nil {
 		return nil, err
 	}
-	proc := processor.New(nil)
+	proc := processor.New()
 	subReg, subOps := New(env.Registry().Importer, proc, subGraph)
 	fnIR := fn.FuncIR()
 	vis := newInputVisitor(subOps, fnIR.File())

@@ -22,19 +22,6 @@ import (
 	"github.com/gx-org/gx/build/ir/irkind"
 )
 
-type factory struct{}
-
-var f factory
-
-// Factory to create host elements.
-func Factory() hostio.Factory {
-	return f
-}
-
-func (factory) NewNamedType(val hostio.Value, typ ir.TypeMethods) hostio.Value {
-	return NewNamedType(val, typ)
-}
-
 func arrayZeroValue(typ ir.Type) (hostio.Array, error) {
 	// TODO(degris): not really implemented: should be enough for a workaround today.
 	return hostio.NewDeviceArray(typ, nil)
@@ -67,13 +54,4 @@ func Zero(typ ir.Type) (hostio.Value, error) {
 	default:
 		return nil, errors.Errorf("cannot create a zero value of %s", kind.String())
 	}
-}
-
-// Underlying returns the underlying element.
-func Underlying(val hostio.Value) hostio.Value {
-	named, ok := val.(*NamedType)
-	if !ok {
-		return val
-	}
-	return Underlying(named.Underlying())
 }

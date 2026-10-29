@@ -53,11 +53,6 @@ type (
 	Under interface {
 		Underlying() Value
 	}
-
-	// Factory to create value elements.
-	Factory interface {
-		NewNamedType(val Value, typ ir.TypeMethods) Value
-	}
 )
 
 // Underlying returns the underlying value of a value.
