@@ -42,7 +42,6 @@ type (
 	Element interface {
 		NumericalElement
 		ir.WithExpr
-		ir.StringShorter
 		ir.StringSourcer
 		WithAxes
 		EvalShaper

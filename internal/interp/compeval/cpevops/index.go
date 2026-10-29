@@ -56,10 +56,6 @@ func (a *arrayIndex) Expr(ev ir.Evaluator, src ast.Expr) ([]ir.Expr, error) {
 	}}, err
 }
 
-func (a *arrayIndex) ShortString(from *ir.File) string {
-	return fmt.Sprintf("%s[%s]", a.x.ShortString(from), a.idx.ShortString(from))
-}
-
 func (a *arrayIndex) SourceString(from *ir.File) string {
 	return fmt.Sprintf("%s[%s]", a.x.SourceString(from), a.idx.SourceString(from))
 }

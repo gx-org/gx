@@ -128,7 +128,7 @@ func funcValExpr(done map[any]bool, val reflect.Value, proc processor) string {
 	}
 	ftype := ref.FuncType()
 	if ftype == nil {
-		return ref.Func().ShortString()
+		return ref.Func().ReferString(nil)
 	}
 	sig := ftype.ReferString(nil)
 	if len(ftype.GenParams.Values) == 0 {

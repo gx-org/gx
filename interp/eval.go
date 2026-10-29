@@ -655,7 +655,7 @@ func evalMacroRecv(fitp *Interpreter, expr *ir.MacroCallExpr) (*engine.Receiver,
 		return nil, nil
 	}
 	if expr.Recv == nil {
-		return nil, fmterr.InternalAt(fitp.File().FileSet(), expr.Node(), "macro-generated function %s has a receiver but no expression to evaluate that receiver", expr.F.ShortString())
+		return nil, fmterr.InternalAt(fitp.File().FileSet(), expr.Node(), "macro-generated function %s has a receiver but no expression to evaluate that receiver", expr.F.ReferString(fitp.File()))
 	}
 	recv, err := evalExpr(fitp, expr.Recv)
 	if err != nil {

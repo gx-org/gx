@@ -88,14 +88,14 @@ func (runners) call(fn ir.Func, impl ir.FuncImpl, env *engine.Env, call *ir.Func
 		err = fmterr.Error(env.File().FileSet(), call.Expr(), err)
 	}()
 	if impl == nil {
-		return nil, errors.Errorf("function %s has no implementation", fn.ShortString())
+		return nil, errors.Errorf("function %s has no implementation", fn.ReferString(env.File()))
 	}
 	builtin, isBuiltin := impl.Implementation().(elements.FuncBuiltin)
 	if !isBuiltin {
 		return nil, errors.Errorf("type %T is not a function builtin implementation", impl)
 	}
 	if builtin == nil {
-		return nil, errors.Errorf("function %s has no implementation", fn.ShortString())
+		return nil, errors.Errorf("function %s has no implementation", fn.ReferString(env.File()))
 	}
 	return builtin(env, call, recv, genArgs, args)
 }

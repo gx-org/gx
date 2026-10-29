@@ -66,7 +66,7 @@ func (el *nilEl) Expr(ev ir.Evaluator, expr ast.Expr) ([]ir.Expr, error) {
 	return []ir.Expr{el.x}, nil
 }
 
-func (el *nilEl) ShortString(from *ir.File) string {
+func (el *nilEl) SourceString(from *ir.File) string {
 	return "nil"
 }
 

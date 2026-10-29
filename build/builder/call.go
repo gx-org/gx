@@ -202,7 +202,7 @@ func (n *callExpr) buildMacroCall(rscope resolveScope, compEval *compileEvaluato
 	}
 	fnBuilder, ok := macroEl.(ir.FuncASTBuilder)
 	if !ok {
-		return invalidExpr(), rscope.Err().Appendf(n.source(), "macro %s does not build functions", mac.ShortString())
+		return invalidExpr(), rscope.Err().Appendf(n.source(), "macro %s does not build functions", mac.ReferString(rscope.fileScope().irFile()))
 	}
 	errPrefix := fmterr.PosPrefixWith(rscope.fileScope().pkg().fset, callExpr.Src.Fun, func() string {
 		return fmt.Sprintf("error while calling macro %s:\n", callExpr.SourceString(rscope.fileScope().irFile()))
@@ -250,7 +250,7 @@ func (n *callExpr) buildCallExpr(rscope resolveScope, callee ir.Expr) (ir.Expr, 
 	case ir.Type:
 		return n.buildTypeCast(rscope, callee, elT)
 	case ir.FuncAnnotator:
-		return invalidExpr(), rscope.Err().Appendf(callee.Node(), "annotator gx:@%s only valid in a function annotation context", elT.ShortString())
+		return invalidExpr(), rscope.Err().Appendf(callee.Node(), "annotator gx:@%s only valid in a function annotation context", elT.ReferString(rscope.fileScope().irFile()))
 	case *elements.NamedType:
 		return n.buildTypeCast(rscope, callee, elT.Type())
 	case *ir.TypeValExpr:
@@ -394,7 +394,7 @@ func instantiateFType(ce *compileEvaluator, fExpr *ir.FuncValExpr, ftype *ir.Fun
 
 func buildFuncForCall(rscope resolveScope, fExpr *ir.FuncValExpr, args []ir.Expr) ([]ir.Expr, *ir.FuncValExpr, bool) {
 	if rscope.requireCompevalCall() && !fExpr.Func().FuncType().Nature.CompEval {
-		return args, fExpr, rscope.Err().Appendf(fExpr.Node(), "expect a compeval function, function %s is not", fExpr.Func().ShortString())
+		return args, fExpr, rscope.Err().Appendf(fExpr.Node(), "expect a compeval function, function %s is not", fExpr.Func().ReferString(rscope.fileScope().irFile()))
 	}
 	compEval, compEvalOk := rscope.compEval()
 	if !compEvalOk {
@@ -411,7 +411,7 @@ func buildFuncForCall(rscope resolveScope, fExpr *ir.FuncValExpr, args []ir.Expr
 		for i, field := range typeParams {
 			names[i] = field.Name.Name
 		}
-		return args, fExpr, rscope.Err().Appendf(fExpr.Node(), "in call to %s, cannot infer type %s", fExpr.Func().ShortString(), strings.Join(names, ","))
+		return args, fExpr, rscope.Err().Appendf(fExpr.Node(), "in call to %s, cannot infer type %s", fExpr.Func().ReferString(rscope.fileScope().irFile()), strings.Join(names, ","))
 	}
 	fTypeInst, instOk := instantiateFType(compEval, fExpr, fExpr.FuncType())
 	fExprInst := fExpr.NewFType(fTypeInst)

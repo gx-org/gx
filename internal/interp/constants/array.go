@@ -81,10 +81,6 @@ func (n *array) AxisLengths() ([]int, error) {
 	}, n.axLengths)
 }
 
-func (n *array) ShortString(from *ir.File) string {
-	return n.SourceString(from)
-}
-
 func (n *array) SourceString(from *ir.File) string {
 	return n.lit.SourceString(from)
 }

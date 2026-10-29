@@ -97,5 +97,5 @@ func (n *NamedType) SourceString(from *ir.File) string {
 	if ok {
 		return underStruct.toString(from, n.typ.ReferString(from))
 	}
-	return fmt.Sprintf("%s(%s)", n.typ.ReferString(from), n.val.SourceString(from))
+	return fmt.Sprintf("%s(%s)", n.typ.ReferString(from), ir.DefineString(from, n.val))
 }

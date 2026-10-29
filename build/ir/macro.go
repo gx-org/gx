@@ -67,8 +67,8 @@ type (
 
 	// FuncAnnotator annotates a function.
 	FuncAnnotator interface {
+		StringReferer
 		Annotate(Fetcher, PkgFunc, *FuncCallExpr, []Element) bool
-		ShortString() string
 	}
 
 	// AnnotatorFuncImpl annotates a function.

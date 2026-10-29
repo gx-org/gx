@@ -55,13 +55,13 @@ func (s *String) Finalize() error {
 	return nil
 }
 
-// ShortString returns the string value as a GX string literal.
-func (s *String) ShortString(from *ir.File) string {
+// SourceString returns the string value as a GX string literal.
+func (s *String) SourceString(from *ir.File) string {
 	return strconv.Quote(s.StringValue())
 }
 
-// SourceString returns the GX source code of the implementation.
-func (s *String) SourceString(from *ir.File) string {
+// DefineString returns the GX source code of the implementation.
+func (s *String) DefineString(from *ir.File) string {
 	return s.StringValue()
 }
 

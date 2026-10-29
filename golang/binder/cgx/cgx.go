@@ -824,7 +824,7 @@ func cgx_value_get_type(cgxPackage C.cgx_package, cgxValue C.cgx_value) C.cgx_ty
 //export cgx_value_string
 func cgx_value_string(cgxValue C.cgx_value) *C.cchar_t {
 	value := unwrap[hostio.Value](cgxValue)
-	return C.CString(value.SourceString(nil))
+	return C.CString(ir.DefineString(nil, value))
 }
 
 /* cgx_shape */

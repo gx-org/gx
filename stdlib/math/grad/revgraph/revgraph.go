@@ -179,7 +179,7 @@ func (g *Graph) Process(fetcher ir.Fetcher) (*ast.BlockStmt, bool) {
 func (p *processor) processFuncWithoutAnn() (stmt, bool) {
 	fnWithBody, ok := p.fn.(*ir.FuncDecl)
 	if !ok {
-		return nil, p.fetcher.Err().Appendf(p.fn.Node(), "function %s requires a gradient specification", p.fn.ShortString())
+		return nil, p.fetcher.Err().Appendf(p.fn.Node(), "function %s requires a gradient specification", p.fn.ReferString(p.fetcher.File()))
 	}
 	root, ok := p.processBlockStmt(fnWithBody.Body)
 	typeParams := p.fn.FuncType().GenParams.Fields.Fields()

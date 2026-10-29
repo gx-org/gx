@@ -56,7 +56,6 @@ type Constant interface {
 	ir.Element
 	ir.WithExpr
 	ir.StringSourcer
-	ir.StringShorter
 
 	// BuildNode the constant into a given graph.
 	BuildNode(compute.Function, irkind.Kind) (compute.Value, error)

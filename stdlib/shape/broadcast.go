@@ -66,7 +66,7 @@ func checkBroadcastRanks(tpcmp ir.TypeEval, call *ir.FuncCallExpr, src ir.ArrayR
 		}
 		if !tgOk && !oneAxisOk {
 			from := tpcmp.File()
-			return fmterr.Errorf(from.FileSet(), srcAxes[i].Node(), "cannot broadcast axis %d from length %s to %s (expect a source length of 1 or %s)", i, srcCan.ShortString(from), targetElt.ShortString(from), targetElt.ShortString(from))
+			return fmterr.Errorf(from.FileSet(), srcAxes[i].Node(), "cannot broadcast axis %d from length %s to %s (expect a source length of 1 or %s)", i, srcCan.SourceString(from), targetElt.SourceString(from), targetElt.SourceString(from))
 		}
 	}
 	return nil

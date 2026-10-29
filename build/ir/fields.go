@@ -52,8 +52,8 @@ func (l *FieldList) FieldListAST(from *File) *ast.FieldList {
 	return &src
 }
 
-// ShortString represents the field list for an error message.
-func (l *FieldList) ShortString(from *File) string {
+// ReferString represents the field list for an error message.
+func (l *FieldList) ReferString(from *File) string {
 	fields := l.Fields()
 	types := make([]string, len(fields))
 	for i, field := range fields {

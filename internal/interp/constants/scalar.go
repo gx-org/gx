@@ -163,10 +163,6 @@ func (n *scalar) Atom(kind irkind.Kind) (any, error) {
 	return cvr.Convert(n)
 }
 
-func (n *scalar) ShortString(from *ir.File) string {
-	return n.String()
-}
-
 func (n *scalar) SourceString(from *ir.File) string {
 	return fmt.Sprintf("%s(%s)", n.Type().ReferString(from), n.nb.Float().String())
 }

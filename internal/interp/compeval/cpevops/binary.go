@@ -15,8 +15,6 @@
 package cpevops
 
 import (
-	"fmt"
-
 	"github.com/gx-org/gx/build/fmterr"
 	"github.com/gx-org/gx/build/ir"
 	"github.com/gx-org/gx/build/ir/irkind"
@@ -100,12 +98,6 @@ func (a *binary) Expr(ev ir.Evaluator, src ast.Expr) ([]ir.Expr, error) {
 		Y:   y,
 		Typ: a.expr.Typ,
 	}}, nil
-}
-
-func (a *binary) ShortString(from *ir.File) string {
-	x := a.x.ShortString(from)
-	y := a.y.ShortString(from)
-	return fmt.Sprintf("%v%v%v", x, a.expr.Src.Op, y)
 }
 
 func (a *binary) SourceString(from *ir.File) string {
