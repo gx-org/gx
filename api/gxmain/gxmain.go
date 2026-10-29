@@ -25,6 +25,7 @@ import (
 	"github.com/gx-org/gx/api"
 	"github.com/gx-org/gx/api/hostio"
 	"github.com/gx-org/gx/api/runner"
+	"github.com/gx-org/gx/api/trace"
 	"github.com/gx-org/gx/build/builder"
 	"github.com/gx-org/gx/build/fmterr"
 	"github.com/gx-org/gx/build/ir"
@@ -76,13 +77,16 @@ func runGraphMain(rtm *api.Runtime, fn *ir.FuncDecl) ([]hostio.Value, error) {
 	if err != nil {
 		return nil, fmt.Errorf("cannot create device: %w", err)
 	}
-	tr := &tracer{}
-	outs, err := runner.TraceAndRun(dev, fn, nil, nil, nil, tr)
+	var rec trace.Recorder
+	outs, err := runner.TraceAndRun(dev, fn, nil, nil, nil, &rec)
 	if err != nil {
 		return nil, err
 	}
 	// Append the values passed to the trace builtin after the values returned by Main.
-	return append(outs, tr.tracedOut...), nil
+	for _, call := range rec.Calls {
+		outs = append(outs, call.Values...)
+	}
+	return outs, nil
 }
 
 // runCompEvalMain evaluates a compeval Main function at compile time and prints the values it returns.
