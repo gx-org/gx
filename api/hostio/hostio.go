@@ -57,7 +57,6 @@ type (
 	// Factory to create value elements.
 	Factory interface {
 		NewNamedType(val Value, typ ir.TypeMethods) Value
-		NewStruct(typ ir.Type, vals []Value) (Value, error)
 	}
 )
 

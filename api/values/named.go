@@ -30,6 +30,14 @@ type NamedType struct {
 	typ ir.TypeMethods
 }
 
+// NamedSourcer is implemented by values (for example, structures) for which
+// the GX source code depends on the name of their named type.
+type NamedSourcer interface {
+	// SourceStringWithName returns the GX source code of the value
+	// given the name of its type.
+	SourceStringWithName(from *ir.File, name string) string
+}
+
 var _ hostio.Value = (*NamedType)(nil)
 var _ engine.NamedType = (*NamedType)(nil)
 
@@ -93,9 +101,8 @@ func (n *NamedType) Finalize() error {
 
 // SourceString returns the GX source code of the implementation.
 func (n *NamedType) SourceString(from *ir.File) string {
-	underStruct, ok := n.val.(*Struct)
-	if ok {
-		return underStruct.toString(from, n.typ.ReferString(from))
+	if named, ok := n.val.(NamedSourcer); ok {
+		return named.SourceStringWithName(from, n.typ.ReferString(from))
 	}
 	return fmt.Sprintf("%s(%s)", n.typ.ReferString(from), ir.DefineString(from, n.val))
 }

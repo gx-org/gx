@@ -260,7 +260,8 @@ func (sel *fieldSelectorArgument) LastValue(ctx *togo.FuncInputs) (any, error) {
 		return nil, err
 	}
 	fieldVal, err := structValue.Select(nil, &ir.SelectorExpr{
-		Src: &ast.SelectorExpr{Sel: &ast.Ident{Name: sel.fieldName}},
+		Src:  &ast.SelectorExpr{Sel: &ast.Ident{Name: sel.fieldName}},
+		Stor: sel.field.Storage(),
 	})
 	if err != nil {
 		return nil, err

@@ -22,8 +22,8 @@ import (
 	"github.com/gomlx/compute/shapes"
 	"github.com/gx-org/gx/api"
 	"github.com/gx-org/gx/api/hostio"
-	"github.com/gx-org/gx/api/values"
 	"github.com/gx-org/gx/build/ir"
+	"github.com/gx-org/gx/interp/elements"
 )
 
 type (
@@ -63,7 +63,7 @@ type (
 		Bridge
 
 		// StructValue returns the GX value of the structure.
-		StructValue() *values.Struct
+		StructValue() *elements.Struct
 
 		// NewFromField returns a new instance of the type defined by the field of the structure.
 		// An error is returned if the field does not belong to the structure.

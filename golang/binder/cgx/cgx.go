@@ -28,7 +28,6 @@ import (
 	"github.com/gx-org/gx/api"
 	"github.com/gx-org/gx/api/hostio"
 	"github.com/gx-org/gx/api/options"
-	"github.com/gx-org/gx/api/values"
 	"github.com/gx-org/gx/build/importers"
 	"github.com/gx-org/gx/build/ir"
 	"github.com/gx-org/gx/build/ir/irkind"
@@ -36,6 +35,7 @@ import (
 	"github.com/gx-org/gx/golang/backend/kernels"
 	"github.com/gx-org/gx/golang/binder/gobindings/core"
 	"github.com/gx-org/gx/golang/binder/gobindings/types"
+	"github.com/gx-org/gx/interp/elements"
 )
 
 /*
@@ -777,9 +777,9 @@ func cgx_value_host_buffer(cgxValue C.cgx_value) C.struct_cgx_value_host_buffer_
 	}
 }
 
-func structFrom(cval C.cgx_value) (hostio.Value, *values.Struct) {
+func structFrom(cval C.cgx_value) (hostio.Value, *elements.Struct) {
 	val := unwrap[hostio.Value](cval)
-	strct, _ := hostio.Underlying(val).(*values.Struct)
+	strct, _ := hostio.Underlying(val).(*elements.Struct)
 	return val, strct
 }
 
@@ -805,9 +805,14 @@ func cgx_value_field_get(crecv C.cgx_value, fieldNamePtr *C.cchar_t) (res C.stru
 		res.error = Errorf("field %s is not exported", fieldName)
 		return
 	}
-	fieldVal := strct.FieldValue(fieldName)
-	if fieldVal == nil {
+	fieldElement := strct.FieldValue(fieldName)
+	if fieldElement == nil {
 		res.error = Errorf("type %s has no field %s", recv.Type().ReferString(nil), fieldName)
+		return
+	}
+	fieldVal, ok := fieldElement.(hostio.Value)
+	if !ok {
+		res.error = Errorf("cannot use field %s of type %T: not a GX value", fieldName, fieldElement)
 		return
 	}
 	res.value = wrap(fieldVal)

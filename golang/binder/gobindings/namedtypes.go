@@ -342,8 +342,8 @@ var (
 )
 
 // StructValue returns the GX value of the structure.
-func (h *handle{{.Named.Name}}) StructValue() *values.Struct {
-	return h.owner.value.Underlying().(*values.Struct)
+func (h *handle{{.Named.Name}}) StructValue() *elements.Struct {
+	return h.owner.value.Underlying().(*elements.Struct)
 }
 
 // Marshal{{.Named.Name}} populates the receiver fields with device handles.
@@ -355,14 +355,19 @@ func (fty *Factory) Marshal{{.Named.Name}}(val hostio.Value) (s *{{.Named.Name}}
 		err = errors.Errorf("cannot use handle to set {{.Named.Name}}: %T is not a %s", val, reflect.TypeFor[*values.NamedType]())
 		return
 	}
-	structVal, ok := s.value.Underlying().(*values.Struct)
+	structVal, ok := s.value.Underlying().(*elements.Struct)
 	if !ok {
-		err = errors.Errorf("incorrect underlying value for named type {{.Named.Name}}: %T is not a %s", val, reflect.TypeFor[*values.Struct]().Name())
+		err = errors.Errorf("incorrect underlying value for named type {{.Named.Name}}: %T is not a %s", val, reflect.TypeFor[*elements.Struct]().Name())
 		return
 	}
 	fields := make([]hostio.Value, structVal.StructType().NumFields())
 	for i, field := range structVal.StructType().Fields.Fields() {
-		fields[i] = structVal.FieldValue(field.Name.Name)
+		fieldElement := structVal.FieldValue(field.Name.Name)
+		fields[i], ok = fieldElement.(hostio.Value)
+		if !ok {
+			err = errors.Errorf("cannot use field %s of type %T: not a GX value", field.Name.Name, fieldElement)
+			return
+		}
 	}
 	{{.SetDeviceFieldsFromSliceValue}}
 	return
@@ -459,7 +464,7 @@ func (s structType) Fields() []structField {
 }
 
 var initStructGXValueTemplate = template.Must(template.New("initStructGXValueTMPL").Parse(`
-	structVal, err := values.NewStruct(typ, nil)
+	structVal, err := elements.NewStruct(ir.Underlying(typ).(*ir.StructType), nil)
 	if err != nil {
 		panic(err)
 	}
