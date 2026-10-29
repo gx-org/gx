@@ -43,7 +43,7 @@ var (
 	_ = fmt.Println
 	_ = strings.Compare
 	_ = reflect.TypeFor[int]
-	_ = values.Struct{}
+	_ = values.NamedType{}
 	_ = elements.Slice{}
 	_ hostio.Value
 	_ = errors.Errorf
@@ -329,8 +329,8 @@ var (
 )
 
 // StructValue returns the GX value of the structure.
-func (h *handleShape) StructValue() *values.Struct {
-	return h.owner.value.Underlying().(*values.Struct)
+func (h *handleShape) StructValue() *elements.Struct {
+	return h.owner.value.Underlying().(*elements.Struct)
 }
 
 // MarshalShape populates the receiver fields with device handles.
@@ -342,14 +342,19 @@ func (fty *Factory) MarshalShape(val hostio.Value) (s *Shape, err error) {
 		err = errors.Errorf("cannot use handle to set Shape: %T is not a %s", val, reflect.TypeFor[*values.NamedType]())
 		return
 	}
-	structVal, ok := s.value.Underlying().(*values.Struct)
+	structVal, ok := s.value.Underlying().(*elements.Struct)
 	if !ok {
-		err = errors.Errorf("incorrect underlying value for named type Shape: %T is not a %s", val, reflect.TypeFor[*values.Struct]().Name())
+		err = errors.Errorf("incorrect underlying value for named type Shape: %T is not a %s", val, reflect.TypeFor[*elements.Struct]().Name())
 		return
 	}
 	fields := make([]hostio.Value, structVal.StructType().NumFields())
 	for i, field := range structVal.StructType().Fields.Fields() {
-		fields[i] = structVal.FieldValue(field.Name.Name)
+		fieldElement := structVal.FieldValue(field.Name.Name)
+		fields[i], ok = fieldElement.(hostio.Value)
+		if !ok {
+			err = errors.Errorf("cannot use field %s of type %T: not a GX value", field.Name.Name, fieldElement)
+			return
+		}
 	}
 	var field0 *DType
 	field0, err = fty.MarshalDType(fields[0])
@@ -409,7 +414,7 @@ func (fac *Factory) NewShape() *Shape {
 		owner: s,
 	}
 
-	structVal, err := values.NewStruct(typ, nil)
+	structVal, err := elements.NewStruct(ir.Underlying(typ).(*ir.StructType), nil)
 	if err != nil {
 		panic(err)
 	}
@@ -441,9 +446,9 @@ func (h *handleShape) NewFromField(field *ir.Field) (types.Bridge, error) {
 func (h *handleShape) SetField(field *ir.Field, val types.Bridge) error {
 
 	name := field.Name.Name
-	structVal, ok := h.owner.value.Underlying().(*values.Struct)
+	structVal, ok := h.owner.value.Underlying().(*elements.Struct)
 	if !ok {
-		return fmt.Errorf("incorrect underlying value for named type Shape: %T is not a %s", val, reflect.TypeFor[*values.Struct]().Name())
+		return fmt.Errorf("incorrect underlying value for named type Shape: %T is not a %s", val, reflect.TypeFor[*elements.Struct]().Name())
 	}
 	switch name {
 

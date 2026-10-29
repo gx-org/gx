@@ -37,8 +37,8 @@ import (
 	_ "github.com/gx-org/gx/examples/linearregression/linearregression"
 
 	gxdep0 "github.com/gx-org/gx/stdlib/bindings/go/num_go_gx"
-	gxdep1 "github.com/gx-org/gx/stdlib/bindings/go/rand_go_gx"
-	gxdep2 "github.com/gx-org/gx/stdlib/bindings/go/shape_go_gx"
+	gxdep2 "github.com/gx-org/gx/stdlib/bindings/go/rand_go_gx"
+	gxdep1 "github.com/gx-org/gx/stdlib/bindings/go/shape_go_gx"
 )
 
 // Force some package dependencies.
@@ -46,7 +46,7 @@ var (
 	_ = fmt.Println
 	_ = strings.Compare
 	_ = reflect.TypeFor[int]
-	_ = values.Struct{}
+	_ = values.NamedType{}
 	_ = elements.Slice{}
 	_ hostio.Value
 	_ = errors.Errorf
@@ -86,8 +86,8 @@ type PackageHandle struct {
 
 	// Package dependencies
 	gxdep0 *gxdep0.PackageHandle
-	gxdep1 *gxdep1.PackageHandle
 	gxdep2 *gxdep2.PackageHandle
+	gxdep1 *gxdep1.PackageHandle
 }
 
 // Package is a GX package for a given device.
@@ -119,13 +119,13 @@ func Build(dev *core.DeviceSetup) (*PackageHandle, error) {
 	if err != nil {
 		return nil, err
 	}
-	pkg.handle.gxdep1, err = gxdep1.Build(
+	pkg.handle.gxdep2, err = gxdep2.Build(
 		pkg.handle.PackageCompileSetup.Setup(),
 	)
 	if err != nil {
 		return nil, err
 	}
-	pkg.handle.gxdep2, err = gxdep2.Build(
+	pkg.handle.gxdep1, err = gxdep1.Build(
 		pkg.handle.PackageCompileSetup.Setup(),
 	)
 	if err != nil {
@@ -278,8 +278,8 @@ var (
 )
 
 // StructValue returns the GX value of the structure.
-func (h *handleLearner) StructValue() *values.Struct {
-	return h.owner.value.Underlying().(*values.Struct)
+func (h *handleLearner) StructValue() *elements.Struct {
+	return h.owner.value.Underlying().(*elements.Struct)
 }
 
 // MarshalLearner populates the receiver fields with device handles.
@@ -291,14 +291,19 @@ func (fty *Factory) MarshalLearner(val hostio.Value) (s *Learner, err error) {
 		err = errors.Errorf("cannot use handle to set Learner: %T is not a %s", val, reflect.TypeFor[*values.NamedType]())
 		return
 	}
-	structVal, ok := s.value.Underlying().(*values.Struct)
+	structVal, ok := s.value.Underlying().(*elements.Struct)
 	if !ok {
-		err = errors.Errorf("incorrect underlying value for named type Learner: %T is not a %s", val, reflect.TypeFor[*values.Struct]().Name())
+		err = errors.Errorf("incorrect underlying value for named type Learner: %T is not a %s", val, reflect.TypeFor[*elements.Struct]().Name())
 		return
 	}
 	fields := make([]hostio.Value, structVal.StructType().NumFields())
 	for i, field := range structVal.StructType().Fields.Fields() {
-		fields[i] = structVal.FieldValue(field.Name.Name)
+		fieldElement := structVal.FieldValue(field.Name.Name)
+		fields[i], ok = fieldElement.(hostio.Value)
+		if !ok {
+			err = errors.Errorf("cannot use field %s of type %T: not a GX value", field.Name.Name, fieldElement)
+			return
+		}
 	}
 
 	field0Value, ok := fields[0].(hostio.Array)
@@ -337,7 +342,7 @@ func (fac *Factory) NewLearner() *Learner {
 		owner: s,
 	}
 
-	structVal, err := values.NewStruct(typ, nil)
+	structVal, err := elements.NewStruct(ir.Underlying(typ).(*ir.StructType), nil)
 	if err != nil {
 		panic(err)
 	}
@@ -365,9 +370,9 @@ func (h *handleLearner) NewFromField(field *ir.Field) (types.Bridge, error) {
 func (h *handleLearner) SetField(field *ir.Field, val types.Bridge) error {
 
 	name := field.Name.Name
-	structVal, ok := h.owner.value.Underlying().(*values.Struct)
+	structVal, ok := h.owner.value.Underlying().(*elements.Struct)
 	if !ok {
-		return fmt.Errorf("incorrect underlying value for named type Learner: %T is not a %s", val, reflect.TypeFor[*values.Struct]().Name())
+		return fmt.Errorf("incorrect underlying value for named type Learner: %T is not a %s", val, reflect.TypeFor[*elements.Struct]().Name())
 	}
 	switch name {
 
@@ -479,7 +484,7 @@ type Target struct {
 	handle handleTarget
 	value  *values.NamedType
 
-	rnd     *gxdep1.Rand
+	rnd     *gxdep2.Rand
 	weights types.Array[float32]
 	bias    types.Atom[float32]
 }
@@ -490,8 +495,8 @@ var (
 )
 
 // StructValue returns the GX value of the structure.
-func (h *handleTarget) StructValue() *values.Struct {
-	return h.owner.value.Underlying().(*values.Struct)
+func (h *handleTarget) StructValue() *elements.Struct {
+	return h.owner.value.Underlying().(*elements.Struct)
 }
 
 // MarshalTarget populates the receiver fields with device handles.
@@ -503,17 +508,22 @@ func (fty *Factory) MarshalTarget(val hostio.Value) (s *Target, err error) {
 		err = errors.Errorf("cannot use handle to set Target: %T is not a %s", val, reflect.TypeFor[*values.NamedType]())
 		return
 	}
-	structVal, ok := s.value.Underlying().(*values.Struct)
+	structVal, ok := s.value.Underlying().(*elements.Struct)
 	if !ok {
-		err = errors.Errorf("incorrect underlying value for named type Target: %T is not a %s", val, reflect.TypeFor[*values.Struct]().Name())
+		err = errors.Errorf("incorrect underlying value for named type Target: %T is not a %s", val, reflect.TypeFor[*elements.Struct]().Name())
 		return
 	}
 	fields := make([]hostio.Value, structVal.StructType().NumFields())
 	for i, field := range structVal.StructType().Fields.Fields() {
-		fields[i] = structVal.FieldValue(field.Name.Name)
+		fieldElement := structVal.FieldValue(field.Name.Name)
+		fields[i], ok = fieldElement.(hostio.Value)
+		if !ok {
+			err = errors.Errorf("cannot use field %s of type %T: not a GX value", field.Name.Name, fieldElement)
+			return
+		}
 	}
-	var field0 *gxdep1.Rand
-	field0, err = fty.Package.handle.gxdep1.Factory.MarshalRand(fields[0])
+	var field0 *gxdep2.Rand
+	field0, err = fty.Package.handle.gxdep2.Factory.MarshalRand(fields[0])
 	if err != nil {
 		return
 	}
@@ -555,7 +565,7 @@ func (fac *Factory) NewTarget() *Target {
 		owner: s,
 	}
 
-	structVal, err := values.NewStruct(typ, nil)
+	structVal, err := elements.NewStruct(ir.Underlying(typ).(*ir.StructType), nil)
 	if err != nil {
 		panic(err)
 	}
@@ -570,7 +580,7 @@ func (h *handleTarget) NewFromField(field *ir.Field) (types.Bridge, error) {
 	name := field.Name.Name
 	switch name {
 	case "rnd":
-		return h.pkg.handle.gxdep1.Factory.NewRand().Bridge(), nil
+		return h.pkg.handle.gxdep2.Factory.NewRand().Bridge(), nil
 	case "weights":
 		return nil, errors.Errorf("cannot create a new instance for field weights: type types.Array[float32] not supported")
 	case "bias":
@@ -585,17 +595,17 @@ func (h *handleTarget) NewFromField(field *ir.Field) (types.Bridge, error) {
 func (h *handleTarget) SetField(field *ir.Field, val types.Bridge) error {
 
 	name := field.Name.Name
-	structVal, ok := h.owner.value.Underlying().(*values.Struct)
+	structVal, ok := h.owner.value.Underlying().(*elements.Struct)
 	if !ok {
-		return fmt.Errorf("incorrect underlying value for named type Target: %T is not a %s", val, reflect.TypeFor[*values.Struct]().Name())
+		return fmt.Errorf("incorrect underlying value for named type Target: %T is not a %s", val, reflect.TypeFor[*elements.Struct]().Name())
 	}
 	switch name {
 
 	case "rnd":
 		bridger := val.Bridger()
-		fieldValue, ok := bridger.(*gxdep1.Rand)
+		fieldValue, ok := bridger.(*gxdep2.Rand)
 		if !ok {
-			return errors.Errorf("cannot set field rnd: cannot cast %T to *gxdep1.Rand", bridger)
+			return errors.Errorf("cannot set field rnd: cannot cast %T to *gxdep2.Rand", bridger)
 		}
 		h.owner.rnd = fieldValue
 		structVal.SetField("rnd", val.GXValue())

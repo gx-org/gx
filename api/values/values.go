@@ -35,10 +35,6 @@ func (factory) NewNamedType(val hostio.Value, typ ir.TypeMethods) hostio.Value {
 	return NewNamedType(val, typ)
 }
 
-func (factory) NewStruct(typ ir.Type, vals []hostio.Value) (hostio.Value, error) {
-	return NewStruct(typ, vals)
-}
-
 func arrayZeroValue(typ ir.Type) (hostio.Array, error) {
 	// TODO(degris): not really implemented: should be enough for a workaround today.
 	return hostio.NewDeviceArray(typ, nil)

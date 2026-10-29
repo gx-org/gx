@@ -46,7 +46,7 @@ var (
 	_ = fmt.Println
 	_ = strings.Compare
 	_ = reflect.TypeFor[int]
-	_ = values.Struct{}
+	_ = values.NamedType{}
 	_ = elements.Slice{}
 	_ hostio.Value
 	_ = errors.Errorf
@@ -196,9 +196,9 @@ func (h *handle{{.Named.Name}}) SetField(field *ir.Field, val types.Bridge) erro
 	return errors.Errorf("type {{.Named.Name}} has no field")
 {{else}}
 	name := field.Name.Name
-	structVal, ok := h.owner.value.Underlying().(*values.Struct)
+	structVal, ok := h.owner.value.Underlying().(*elements.Struct)
 	if !ok {
-		return fmt.Errorf("incorrect underlying value for named type {{.Named.Name}}: %T is not a %s", val, reflect.TypeFor[*values.Struct]().Name())
+		return fmt.Errorf("incorrect underlying value for named type {{.Named.Name}}: %T is not a %s", val, reflect.TypeFor[*elements.Struct]().Name())
 	}
 	switch name {
 {{range $field := .Fields}}

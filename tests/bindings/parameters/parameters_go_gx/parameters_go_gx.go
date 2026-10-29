@@ -45,7 +45,7 @@ var (
 	_ = fmt.Println
 	_ = strings.Compare
 	_ = reflect.TypeFor[int]
-	_ = values.Struct{}
+	_ = values.NamedType{}
 	_ = elements.Slice{}
 	_ hostio.Value
 	_ = errors.Errorf
@@ -590,8 +590,8 @@ var (
 )
 
 // StructValue returns the GX value of the structure.
-func (h *handleNotInSlice) StructValue() *values.Struct {
-	return h.owner.value.Underlying().(*values.Struct)
+func (h *handleNotInSlice) StructValue() *elements.Struct {
+	return h.owner.value.Underlying().(*elements.Struct)
 }
 
 // MarshalNotInSlice populates the receiver fields with device handles.
@@ -603,14 +603,19 @@ func (fty *Factory) MarshalNotInSlice(val hostio.Value) (s *NotInSlice, err erro
 		err = errors.Errorf("cannot use handle to set NotInSlice: %T is not a %s", val, reflect.TypeFor[*values.NamedType]())
 		return
 	}
-	structVal, ok := s.value.Underlying().(*values.Struct)
+	structVal, ok := s.value.Underlying().(*elements.Struct)
 	if !ok {
-		err = errors.Errorf("incorrect underlying value for named type NotInSlice: %T is not a %s", val, reflect.TypeFor[*values.Struct]().Name())
+		err = errors.Errorf("incorrect underlying value for named type NotInSlice: %T is not a %s", val, reflect.TypeFor[*elements.Struct]().Name())
 		return
 	}
 	fields := make([]hostio.Value, structVal.StructType().NumFields())
 	for i, field := range structVal.StructType().Fields.Fields() {
-		fields[i] = structVal.FieldValue(field.Name.Name)
+		fieldElement := structVal.FieldValue(field.Name.Name)
+		fields[i], ok = fieldElement.(hostio.Value)
+		if !ok {
+			err = errors.Errorf("cannot use field %s of type %T: not a GX value", field.Name.Name, fieldElement)
+			return
+		}
 	}
 
 	field0Value, ok := fields[0].(hostio.Array)
@@ -641,7 +646,7 @@ func (fac *Factory) NewNotInSlice() *NotInSlice {
 		owner: s,
 	}
 
-	structVal, err := values.NewStruct(typ, nil)
+	structVal, err := elements.NewStruct(ir.Underlying(typ).(*ir.StructType), nil)
 	if err != nil {
 		panic(err)
 	}
@@ -667,9 +672,9 @@ func (h *handleNotInSlice) NewFromField(field *ir.Field) (types.Bridge, error) {
 func (h *handleNotInSlice) SetField(field *ir.Field, val types.Bridge) error {
 
 	name := field.Name.Name
-	structVal, ok := h.owner.value.Underlying().(*values.Struct)
+	structVal, ok := h.owner.value.Underlying().(*elements.Struct)
 	if !ok {
-		return fmt.Errorf("incorrect underlying value for named type NotInSlice: %T is not a %s", val, reflect.TypeFor[*values.Struct]().Name())
+		return fmt.Errorf("incorrect underlying value for named type NotInSlice: %T is not a %s", val, reflect.TypeFor[*elements.Struct]().Name())
 	}
 	switch name {
 
@@ -741,8 +746,8 @@ var (
 )
 
 // StructValue returns the GX value of the structure.
-func (h *handleInSlice) StructValue() *values.Struct {
-	return h.owner.value.Underlying().(*values.Struct)
+func (h *handleInSlice) StructValue() *elements.Struct {
+	return h.owner.value.Underlying().(*elements.Struct)
 }
 
 // MarshalInSlice populates the receiver fields with device handles.
@@ -754,14 +759,19 @@ func (fty *Factory) MarshalInSlice(val hostio.Value) (s *InSlice, err error) {
 		err = errors.Errorf("cannot use handle to set InSlice: %T is not a %s", val, reflect.TypeFor[*values.NamedType]())
 		return
 	}
-	structVal, ok := s.value.Underlying().(*values.Struct)
+	structVal, ok := s.value.Underlying().(*elements.Struct)
 	if !ok {
-		err = errors.Errorf("incorrect underlying value for named type InSlice: %T is not a %s", val, reflect.TypeFor[*values.Struct]().Name())
+		err = errors.Errorf("incorrect underlying value for named type InSlice: %T is not a %s", val, reflect.TypeFor[*elements.Struct]().Name())
 		return
 	}
 	fields := make([]hostio.Value, structVal.StructType().NumFields())
 	for i, field := range structVal.StructType().Fields.Fields() {
-		fields[i] = structVal.FieldValue(field.Name.Name)
+		fieldElement := structVal.FieldValue(field.Name.Name)
+		fields[i], ok = fieldElement.(hostio.Value)
+		if !ok {
+			err = errors.Errorf("cannot use field %s of type %T: not a GX value", field.Name.Name, fieldElement)
+			return
+		}
 	}
 
 	field0Value, ok := fields[0].(hostio.Array)
@@ -792,7 +802,7 @@ func (fac *Factory) NewInSlice() *InSlice {
 		owner: s,
 	}
 
-	structVal, err := values.NewStruct(typ, nil)
+	structVal, err := elements.NewStruct(ir.Underlying(typ).(*ir.StructType), nil)
 	if err != nil {
 		panic(err)
 	}
@@ -818,9 +828,9 @@ func (h *handleInSlice) NewFromField(field *ir.Field) (types.Bridge, error) {
 func (h *handleInSlice) SetField(field *ir.Field, val types.Bridge) error {
 
 	name := field.Name.Name
-	structVal, ok := h.owner.value.Underlying().(*values.Struct)
+	structVal, ok := h.owner.value.Underlying().(*elements.Struct)
 	if !ok {
-		return fmt.Errorf("incorrect underlying value for named type InSlice: %T is not a %s", val, reflect.TypeFor[*values.Struct]().Name())
+		return fmt.Errorf("incorrect underlying value for named type InSlice: %T is not a %s", val, reflect.TypeFor[*elements.Struct]().Name())
 	}
 	switch name {
 
@@ -907,8 +917,8 @@ var (
 )
 
 // StructValue returns the GX value of the structure.
-func (h *handleStruct) StructValue() *values.Struct {
-	return h.owner.value.Underlying().(*values.Struct)
+func (h *handleStruct) StructValue() *elements.Struct {
+	return h.owner.value.Underlying().(*elements.Struct)
 }
 
 // MarshalStruct populates the receiver fields with device handles.
@@ -920,14 +930,19 @@ func (fty *Factory) MarshalStruct(val hostio.Value) (s *Struct, err error) {
 		err = errors.Errorf("cannot use handle to set Struct: %T is not a %s", val, reflect.TypeFor[*values.NamedType]())
 		return
 	}
-	structVal, ok := s.value.Underlying().(*values.Struct)
+	structVal, ok := s.value.Underlying().(*elements.Struct)
 	if !ok {
-		err = errors.Errorf("incorrect underlying value for named type Struct: %T is not a %s", val, reflect.TypeFor[*values.Struct]().Name())
+		err = errors.Errorf("incorrect underlying value for named type Struct: %T is not a %s", val, reflect.TypeFor[*elements.Struct]().Name())
 		return
 	}
 	fields := make([]hostio.Value, structVal.StructType().NumFields())
 	for i, field := range structVal.StructType().Fields.Fields() {
-		fields[i] = structVal.FieldValue(field.Name.Name)
+		fieldElement := structVal.FieldValue(field.Name.Name)
+		fields[i], ok = fieldElement.(hostio.Value)
+		if !ok {
+			err = errors.Errorf("cannot use field %s of type %T: not a GX value", field.Name.Name, fieldElement)
+			return
+		}
 	}
 
 	field0Value, ok := fields[0].(hostio.Array)
@@ -1040,7 +1055,7 @@ func (fac *Factory) NewStruct() *Struct {
 		owner: s,
 	}
 
-	structVal, err := values.NewStruct(typ, nil)
+	structVal, err := elements.NewStruct(ir.Underlying(typ).(*ir.StructType), nil)
 	if err != nil {
 		panic(err)
 	}
@@ -1086,9 +1101,9 @@ func (h *handleStruct) NewFromField(field *ir.Field) (types.Bridge, error) {
 func (h *handleStruct) SetField(field *ir.Field, val types.Bridge) error {
 
 	name := field.Name.Name
-	structVal, ok := h.owner.value.Underlying().(*values.Struct)
+	structVal, ok := h.owner.value.Underlying().(*elements.Struct)
 	if !ok {
-		return fmt.Errorf("incorrect underlying value for named type Struct: %T is not a %s", val, reflect.TypeFor[*values.Struct]().Name())
+		return fmt.Errorf("incorrect underlying value for named type Struct: %T is not a %s", val, reflect.TypeFor[*elements.Struct]().Name())
 	}
 	switch name {
 
