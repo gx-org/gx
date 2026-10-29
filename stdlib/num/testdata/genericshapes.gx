@@ -28,5 +28,5 @@ func TestTraceGenericShapes() [2][3]int64 {
 	// genericshapes.gx:1
 	// 	int(3)
 	// genericshapes.gx:2
-	// 	[int(4),int(5),int(6)]
+	// 	[]int{4, 5, 6}
 }

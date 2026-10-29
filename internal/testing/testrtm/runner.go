@@ -28,7 +28,6 @@ import (
 	"github.com/gx-org/gx/build/builder/testbuild"
 	"github.com/gx-org/gx/build/ir"
 	"github.com/gx-org/gx/golang/backend/kernels"
-	"github.com/gx-org/gx/interp/elements"
 )
 
 type (
@@ -69,16 +68,12 @@ func (r *Runner) RunWithArgs(fn *ir.FuncDecl, recv hostio.Value, args []hostio.V
 	if err != nil {
 		return nil, "", err
 	}
-	flattenOuts, err := elements.Flatten(outs)
-	if err != nil {
-		return nil, "", err
-	}
-	all := testbuild.BuildGot(flattenOuts, func(val hostio.Value) string {
+	all := testbuild.BuildGot(outs, func(val hostio.Value) string {
 		return ir.DefineString(fn.File(), val)
 	})
 	all += tracer.trace.String()
 	all = strings.TrimSpace(all)
-	return flattenOuts, all, nil
+	return outs, all, nil
 }
 
 func (r *testTracer) Trace(file *ir.File, call *ir.FuncCallExpr, vals []hostio.Value) error {

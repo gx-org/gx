@@ -5,7 +5,5 @@ func Test() []int {
 	a[1] += 55
 	return a
 	// Want:
-	// 0: int(1)
-	// 1: int(57)
-	// 2: int(3)
+	// []int{1, 57, 3}
 }

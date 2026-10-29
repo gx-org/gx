@@ -3,26 +3,21 @@ package slices
 func TestSliceInt32() []int32 {
 	return []int32{1, 2}
 	// Want:
-	// 0: int32(1)
-	// 1: int32(2)
+	// []int32{1, 2}
 }
 
 func TestSliceString() []string {
 	return []string{"Hello", "world"}
 	// Want:
-	// 0: Hello
-	// 1: world
+	// []string{"Hello", "world"}
 }
 
 func TestUnmutable01() ([]string, []string) {
 	s1 := []string{"Hello", "world"}
 	return s1, append(s1, "Bonjour")
 	// Want:
-	// 0: Hello
-	// 1: world
-	// 2: Hello
-	// 3: world
-	// 4: Bonjour
+	// 0: []string{"Hello", "world"}
+	// 1: []string{"Hello", "world", "Bonjour"}
 }
 
 func appendBonjour(s []string) []string {
@@ -35,11 +30,8 @@ func TestUnmutable02() ([]string, []string) {
 	s2 := appendBonjour(s1)
 	return s1, s2
 	// Want:
-	// 0: Hello
-	// 1: world
-	// 2: Hello
-	// 3: world
-	// 4: Bonjour
+	// 0: []string{"Hello", "world"}
+	// 1: []string{"Hello", "world", "Bonjour"}
 }
 
 func TestSliceRange01() (string, string, string) {
@@ -55,33 +47,124 @@ func TestSliceRange02() []string {
 	s := []string{"a", "b", "c", "d"}
 	return s[1:]
 	// Want:
-	// 0: b
-	// 1: c
-	// 2: d
+	// []string{"b", "c", "d"}
 }
 
 func TestSliceRange03() []string {
 	s := []string{"a", "b", "c", "d"}
 	return s[:2]
 	// Want:
-	// 0: a
-	// 1: b
+	// []string{"a", "b"}
 }
 
 func TestSliceRange04() []string {
 	s := []string{"a", "b", "c", "d"}
 	return s[1:2]
 	// Want:
-	// b
+	// []string{"b"}
 }
 
 func TestSliceRange05() []string {
 	s := []string{"a", "b", "c", "d", "e"}
 	return append(s[:2], s[3:]...)
 	// Want:
-	// 0: a
-	// 1: b
-	// 2: d
-	// 3: e
+	// []string{"a", "b", "d", "e"}
 }
+
+func TestSlice2D() [][]int64 {
+	return [][]int64{
+		{1, 2, 3},
+		{4},
+		{5, 6},
+	}
+	// Want:
+	// [][]int64{
+	// 	{1, 2, 3},
+	// 	{4},
+	// 	{5, 6},
+	// }
+}
+
+func TestSlice3D() [][][]int64 {
+	return [][][]int64{
+		{
+			{1, 2, 3},
+			{4},
+		},
+		{
+			{5, 6},
+		},
+	}
+	// Want:
+	// [][][]int64{
+	// 	{
+	// 		{1, 2, 3},
+	// 		{4},
+	// 	},
+	// 	{
+	// 		{5, 6},
+	// 	},
+	// }
+}
+
+func TestSliceOfArrays() [][2]int64 {
+	return [][2]int64{
+		{1, 2},
+		{3, 4},
+		{5, 6},
+	}
+	// Want:
+	// [][2]int64{
+	// 	{1, 2},
+	// 	{3, 4},
+	// 	{5, 6},
+	// }
+}
+
+func TestSlice2DOfArrays() [][][2]int64 {
+	return [][][2]int64{
+		{
+			{1, 2},
+			{3, 4},
+		},
+		{
+			{5, 6},
+		},
+	}
+	// Want:
+	// [][][2]int64{
+	// 	{
+	// 		{1, 2},
+	// 		{3, 4},
+	// 	},
+	// 	{
+	// 		{5, 6},
+	// 	},
+	// }
+}
+
+func TestSliceOf2DArrays() [][2][3]int64 {
+	return [][2][3]int64{
+		{
+			{1, 2, 3},
+			{4, 5, 6},
+		},
+		{
+			{7, 8, 9},
+			{10, 11, 12},
+		},
+	}
+	// Want:
+	// [][2][3]int64{
+	// 	{
+	// 		{1, 2, 3},
+	// 		{4, 5, 6},
+	// 	},
+	// 	{
+	// 		{7, 8, 9},
+	// 		{10, 11, 12},
+	// 	},
+	// }
+}
+
 

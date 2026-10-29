@@ -81,12 +81,8 @@ func runGraphMain(rtm *api.Runtime, fn *ir.FuncDecl) ([]hostio.Value, error) {
 	if err != nil {
 		return nil, err
 	}
-	flat, err := elements.Flatten(outs)
-	if err != nil {
-		return nil, err
-	}
 	// Append the values passed to the trace builtin after the values returned by Main.
-	return append(flat, tr.tracedOut...), nil
+	return append(outs, tr.tracedOut...), nil
 }
 
 // runCompEvalMain evaluates a compeval Main function at compile time and prints the values it returns.

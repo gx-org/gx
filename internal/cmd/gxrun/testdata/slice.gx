@@ -3,6 +3,5 @@ package main
 func Main() []int32 {
 	return []int32{int32(1), int32(2)}
 	// Want:
-	// int32(1)
-	// int32(2)
+	// []int32{1, 2}
 }

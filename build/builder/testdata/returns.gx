@@ -313,9 +313,7 @@ func TestNamedReturnX() (x int64) {
 func TestLens() []int {
 	return axlengths([3][4][5]float32{})
 	// Want:
-	// 0: int(3)
-	// 1: int(4)
-	// 2: int(5)
+	// []int{3, 4, 5}
 }
 
 func TestNoReturn() {

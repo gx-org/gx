@@ -9,7 +9,5 @@ func TestDyanmicIndex1Axis() []int64 {
 		a[indices[0]], a[indices[1]], a[indices[2]],
 	}
 	// Want:
-	// 0: int64(10)
-	// 1: int64(11)
-	// 2: int64(12)
+	// []int64{10, 11, 12}
 }
