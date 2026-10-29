@@ -16,7 +16,12 @@
 package trace
 
 import (
+	"fmt"
+	"path/filepath"
+	"strings"
+
 	"github.com/gx-org/gx/api/hostio"
+	gxfmt "github.com/gx-org/gx/base/fmt"
 	"github.com/gx-org/gx/build/ir"
 	"github.com/gx-org/gx/golang/backend/kernels"
 )
@@ -53,4 +58,25 @@ func (r *Recorder) Trace(file *ir.File, call *ir.FuncCallExpr, vals []hostio.Val
 		Values: hostVals,
 	})
 	return nil
+}
+
+// Format returns a string representation of the calls to the trace builtin,
+// or an empty string if calls is empty.
+func Format(calls []Call) string {
+	if len(calls) == 0 {
+		return ""
+	}
+	var b strings.Builder
+	b.WriteString("Trace:\n")
+	for i, call := range calls {
+		pos := call.File.FileSet().Position(call.Expr.Src.Pos())
+		fmt.Fprintf(&b, "%s:%d\n", filepath.Base(pos.Filename), i)
+		for _, val := range call.Values {
+			valS := ir.DefineString(call.File, val)
+			valS = gxfmt.Indent(valS)
+			b.WriteString(valS)
+			b.WriteString("\n")
+		}
+	}
+	return b.String()
 }

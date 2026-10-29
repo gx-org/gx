@@ -39,8 +39,9 @@ func Cmd() *cobra.Command {
 
 The file is built as a package which can import the GX standard library.
 Its Main function, which must have no parameters, is then traced and run
-with the native Go backend. The values returned by Main, followed by the
-values passed to the trace builtin, are printed on the standard output.
+with the native Go backend. The values returned by Main, followed by a
+"Trace:" section with the values passed to the trace builtin, are printed
+on the standard output.
 
 If Main is a compeval function (i.e. marked with //gx:compeval), it is
 evaluated at compile time instead. Its parameters, if any, are symbolic:
@@ -67,10 +68,10 @@ func gxRun(cmd *cobra.Command, args []string) error {
 	if err != nil {
 		return fmt.Errorf("cannot create the native Go backend: %w", err)
 	}
-	fn, outs, err := gxmain.FromFile(rtm, vfs, srcs)
+	fn, outs, traces, err := gxmain.FromFile(rtm, vfs, srcs)
 	if err != nil {
 		return err
 	}
 	defer hostio.Finalize(outs...)
-	return gxmain.Printf(cmd.OutOrStdout(), fn, outs)
+	return gxmain.Printf(cmd.OutOrStdout(), fn, outs, traces)
 }
