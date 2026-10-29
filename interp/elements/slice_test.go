@@ -79,7 +79,7 @@ func TestFlattenNotAValue(t *testing.T) {
 func TestSliceValue(t *testing.T) {
 	v1, v2 := mustAtomInt(t, 1), mustAtomInt(t, 2)
 	slice := mustSlice(t, v1, mustSlice(t, v2))
-	if got, want := slice.SourceString(nil), "[int32(1),[int32(2)]]"; got != want {
+	if got, want := slice.SourceString(nil), "[]int{1, {2}}"; got != want {
 		t.Errorf("slice.SourceString(nil) = %q, want %q", got, want)
 	}
 	host, err := slice.ToHost(kernels.DefaultAllocator())
@@ -91,5 +91,67 @@ func TestSliceValue(t *testing.T) {
 	}
 	if err := slice.Finalize(); err != nil {
 		t.Errorf("slice.Finalize() returned an error: %v", err)
+	}
+}
+
+func TestSliceString(t *testing.T) {
+	v1, v2, v3 := mustAtomInt(t, 1), mustAtomInt(t, 2), mustAtomInt(t, 3)
+	v4, v5, v6 := mustAtomInt(t, 4), mustAtomInt(t, 5), mustAtomInt(t, 6)
+
+	slice1DType := &ir.SliceType{DType: ir.TypeExpr(nil, ir.Int32Type()), Rank: 1}
+	slice2DType := &ir.SliceType{DType: ir.TypeExpr(nil, ir.Int32Type()), Rank: 2}
+
+	s1D, err := elements.NewSlice(slice1DType, []ir.Element{v1, v2, v3})
+	if err != nil {
+		t.Fatal(err)
+	}
+	if got, want := s1D.String(), "[]int32{1, 2, 3}"; got != want {
+		t.Errorf("s1D.String() = %q, want %q", got, want)
+	}
+
+	sEmpty, err := elements.NewSlice(slice1DType, nil)
+	if err != nil {
+		t.Fatal(err)
+	}
+	if got, want := sEmpty.String(), "[]int32{}"; got != want {
+		t.Errorf("sEmpty.String() = %q, want %q", got, want)
+	}
+
+	sub1, err := elements.NewSlice(slice1DType, []ir.Element{v1, v2, v3})
+	if err != nil {
+		t.Fatal(err)
+	}
+	sub2, err := elements.NewSlice(slice1DType, []ir.Element{v4})
+	if err != nil {
+		t.Fatal(err)
+	}
+	sub3, err := elements.NewSlice(slice1DType, []ir.Element{v5, v6})
+	if err != nil {
+		t.Fatal(err)
+	}
+	s2D, err := elements.NewSlice(slice2DType, []ir.Element{sub1, sub2, sub3})
+	if err != nil {
+		t.Fatal(err)
+	}
+	want2D := "[][]int32{\n\t{1, 2, 3},\n\t{4},\n\t{5, 6},\n}"
+	if got := s2D.String(); got != want2D {
+		t.Errorf("s2D.String() =\n%s\nwant:\n%s", got, want2D)
+	}
+
+	str1, err := values.NewString(ir.StringType(), "Hello")
+	if err != nil {
+		t.Fatal(err)
+	}
+	str2, err := values.NewString(ir.StringType(), "world")
+	if err != nil {
+		t.Fatal(err)
+	}
+	sliceStrType := &ir.SliceType{DType: ir.TypeExpr(nil, ir.StringType()), Rank: 1}
+	sStr, err := elements.NewSlice(sliceStrType, []ir.Element{str1, str2})
+	if err != nil {
+		t.Fatal(err)
+	}
+	if got, want := sStr.String(), `[]string{"Hello", "world"}`; got != want {
+		t.Errorf("sStr.String() = %q, want %q", got, want)
 	}
 }

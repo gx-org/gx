@@ -299,23 +299,53 @@ func (n *Slice) GoValue() (any, error) {
 	return coreiface.MapSlice(togo.CpValue, n.values)
 }
 
-// ShortString returns a string representation of the slice.
-func (n *Slice) ShortString(*ir.File) string {
-	return n.String()
+func (n *Slice) hasCompositeElements() bool {
+	sliceType, ok := ir.Underlying(n.typ).(*ir.SliceType)
+	if !ok {
+		return false
+	}
+	elt, ok := sliceType.ElementType()
+	if !ok {
+		return false
+	}
+	switch elt.Kind() {
+	case irkind.Array, irkind.Slice, irkind.Struct:
+		return true
+	default:
+		return false
+	}
+}
+
+// ShortString returns the values of the slice as a string without the type.
+func (n *Slice) ShortString(from *ir.File) string {
+	if len(n.values) == 0 {
+		return "{}"
+	}
+	if n.hasCompositeElements() {
+		var bld strings.Builder
+		bld.WriteString("{\n")
+		for _, el := range n.values {
+			bld.WriteString(gxfmt.Indent(ir.ShortString(from, el)))
+			bld.WriteString(",\n")
+		}
+		bld.WriteString("}")
+		return bld.String()
+	}
+	ss := make([]string, len(n.values))
+	for i, el := range n.values {
+		ss[i] = ir.ShortString(from, el)
+	}
+	return "{" + strings.Join(ss, ", ") + "}"
 }
 
 // SourceString returns the GX source code of the implementation.
 func (n *Slice) SourceString(from *ir.File) string {
-	ss := make([]string, len(n.values))
-	for i, el := range n.values {
-		ss[i] = ir.SourceString(from, el)
-	}
-	return "[" + strings.Join(ss, ",") + "]"
+	return n.typ.ReferString(from) + n.ShortString(from)
 }
 
 // String returns a string representation of the slice.
 func (n *Slice) String() string {
-	return gxfmt.String(n.values)
+	return n.SourceString(nil)
 }
 
 // SliceFromElement returns a slice if the element is one, an error otherwise.

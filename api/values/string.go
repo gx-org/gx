@@ -15,6 +15,8 @@
 package values
 
 import (
+	"strconv"
+
 	"github.com/pkg/errors"
 	"github.com/gx-org/gx/api/hostio"
 	"github.com/gx-org/gx/build/ir"
@@ -51,6 +53,11 @@ func (s *String) ToHost(kernels.Allocator) (hostio.Value, error) {
 // Finalize is a no-op for string values.
 func (s *String) Finalize() error {
 	return nil
+}
+
+// ShortString returns the string value as a GX string literal.
+func (s *String) ShortString(from *ir.File) string {
+	return strconv.Quote(s.StringValue())
 }
 
 // SourceString returns the GX source code of the implementation.

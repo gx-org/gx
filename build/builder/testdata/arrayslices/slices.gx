@@ -33,9 +33,7 @@ func TestBuildSlice() []int {
 	}
 	return a
 	// Want:
-	// 0: int(0)
-	// 1: int(1)
-	// 2: int(2)
+	// []int{0, 1, 2}
 }
 
 func TestBuildSliceOfArray() [][2]int32 {
@@ -46,9 +44,11 @@ func TestBuildSliceOfArray() [][2]int32 {
 	}
 	return a
 	// Want:
-	// 0: [2]int32{0, 0}
-	// 1: [2]int32{1, 2}
-	// 2: [2]int32{2, 4}
+	// [][2]int32{
+	// 	{0, 0},
+	// 	{1, 2},
+	// 	{2, 4},
+	// }
 }
 
 func TestSetArraySilentlyClamped() [1][2]int32 {

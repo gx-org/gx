@@ -28,6 +28,7 @@ import (
 	"github.com/gx-org/gx/build/builder/irb"
 	"github.com/gx-org/gx/build/fmterr"
 	"github.com/gx-org/gx/build/ir"
+	"github.com/gx-org/gx/build/ir/irkind"
 	"github.com/gx-org/gx/internal/base/scope"
 	"github.com/gx-org/gx/internal/interp/compeval"
 	"github.com/gx-org/gx/internal/interp/compeval/srcstore"
@@ -707,6 +708,9 @@ func (s *sliceResolveScope) sub(src ast.Node) (compositeLitResolveScope, bool) {
 	elt, ok := slicer.ElementType()
 	if !ok {
 		return s, s.Err().AppendInternalf(src, "unexpected literal for type %s ", slicer.ReferString(s.fileScope().irFile()))
+	}
+	if elt.Kind() == irkind.Array {
+		return toArrayLitScope(s.resolveScope, ir.ToArrayType(elt)), true
 	}
 	return &sliceResolveScope{
 		resolveScope: s,
