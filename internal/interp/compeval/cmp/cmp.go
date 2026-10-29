@@ -41,7 +41,7 @@ type Comparable interface {
 type Canonical interface {
 	ir.Element
 	ir.WithExpr
-	ir.StringShorter
+	ir.StringSourcer
 	// AlgExpr converts the element into an algebra expression.
 	AlgExpr(ir.Evaluator) (Expr, error)
 }

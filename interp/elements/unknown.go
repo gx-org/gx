@@ -69,10 +69,6 @@ func (unknown) Expr(ir.Evaluator, ast.Expr) ([]ir.Expr, error) {
 	return nil, undef.Err()
 }
 
-func (u unknown) ShortString(from *ir.File) string {
-	return u.SourceString(from)
-}
-
 func (unknown) SourceString(*ir.File) string {
 	return irkind.Unknown.String()
 }

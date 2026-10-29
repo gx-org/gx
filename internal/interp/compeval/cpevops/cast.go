@@ -57,10 +57,6 @@ func (a *arrayCast) Expr(ev ir.Evaluator, src ast.Expr) ([]ir.Expr, error) {
 	}}, err
 }
 
-func (a *arrayCast) ShortString(from *ir.File) string {
-	return fmt.Sprintf("%s(%s)", a.Type().ReferString(from), a.x.ShortString(from))
-}
-
 func (a *arrayCast) SourceString(from *ir.File) string {
 	return fmt.Sprintf("%s(%s)", a.Type().ReferString(from), a.x.SourceString(from))
 }

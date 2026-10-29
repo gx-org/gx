@@ -125,10 +125,6 @@ func (b *boolEl) SourceString(from *ir.File) string {
 	return b.String()
 }
 
-func (b *boolEl) ShortString(from *ir.File) string {
-	return b.String()
-}
-
 func (b *boolEl) String() string {
 	return fmt.Sprint(b.val)
 }

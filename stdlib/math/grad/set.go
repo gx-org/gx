@@ -101,11 +101,11 @@ func findNameInFields(paramName string, fields *ir.FieldList) int {
 func gradFromAnnotation(fetcher ir.Fetcher, src ir.Func, paramToFunc *gradann.Annotation, wrt string) (*ast.Ident, bool) {
 	paramPos := findNameInFields(wrt, src.FuncType().Params)
 	if paramPos < 0 {
-		return nil, fetcher.Err().Appendf(src.Node(), "function %s has no parameter %s", src.ShortString(), wrt)
+		return nil, fetcher.Err().Appendf(src.Node(), "function %s has no parameter %s", src.ReferString(fetcher.File()), wrt)
 	}
 	pkgFunc := paramToFunc.Partial(paramPos)
 	if pkgFunc == nil {
-		return nil, fetcher.Err().Appendf(src.Node(), "no gradient defined for parameter %s of function %s", wrt, src.ShortString())
+		return nil, fetcher.Err().Appendf(src.Node(), "no gradient defined for parameter %s of function %s", wrt, src.ReferString(fetcher.File()))
 	}
 	return &ast.Ident{Name: pkgFunc.Name()}, true
 }

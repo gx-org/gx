@@ -86,10 +86,6 @@ func (g *genericType) EvalShape() (shapes.Shape, error) {
 	return cpevops.EvalShape(g.GenericTypeParam.Type())
 }
 
-func (g *genericType) ShortString(from *ir.File) string {
-	return g.SourceString(from)
-}
-
 func (g *genericType) SourceString(from *ir.File) string {
 	return g.path.Expr().SourceString(from)
 }

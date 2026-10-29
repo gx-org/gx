@@ -160,10 +160,6 @@ func (c *constant) Materialise(mat materialise.Materialiser) (materialise.Node, 
 	return mat.NodeFromArray(hostArray)
 }
 
-func (c *constant) ShortString(from *ir.File) string {
-	return c.cst.ShortString(from)
-}
-
 func (c *constant) SourceString(from *ir.File) string {
 	return c.cst.SourceString(from)
 }

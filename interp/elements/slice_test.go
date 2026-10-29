@@ -79,15 +79,15 @@ func TestFlattenNotAValue(t *testing.T) {
 func TestSliceValue(t *testing.T) {
 	v1, v2 := mustAtomInt(t, 1), mustAtomInt(t, 2)
 	slice := mustSlice(t, v1, mustSlice(t, v2))
-	if got, want := slice.SourceString(nil), "[]int{1, {2}}"; got != want {
-		t.Errorf("slice.SourceString(nil) = %q, want %q", got, want)
+	if got, want := slice.DefineString(nil), "[]int{1, {2}}"; got != want {
+		t.Errorf("slice.DefineString(nil) = %q, want %q", got, want)
 	}
 	host, err := slice.ToHost(kernels.DefaultAllocator())
 	if err != nil {
 		t.Fatalf("slice.ToHost() returned an error: %v", err)
 	}
-	if got, want := host.SourceString(nil), slice.SourceString(nil); got != want {
-		t.Errorf("slice.ToHost().SourceString(nil) = %q, want %q", got, want)
+	if got, want := ir.DefineString(nil, host), slice.DefineString(nil); got != want {
+		t.Errorf("slice.ToHost().DefineString(nil) = %q, want %q", got, want)
 	}
 	if err := slice.Finalize(); err != nil {
 		t.Errorf("slice.Finalize() returned an error: %v", err)

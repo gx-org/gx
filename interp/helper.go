@@ -37,7 +37,7 @@ func FuncDeclFromElement(el ir.Element) (ir.PkgFunc, error) {
 	}
 	fIR, ok := fEl.FuncIR().(ir.PkgFunc)
 	if !ok {
-		return nil, errors.Errorf("%s is not a package level function", fEl.FuncIR().ShortString())
+		return nil, errors.Errorf("%s is not a package level function", fEl.FuncIR().ReferString(nil))
 	}
 	return fIR, nil
 }

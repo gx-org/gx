@@ -68,7 +68,6 @@ type (
 
 	// Annotated owns a set of annotations.
 	Annotated interface {
-		ShortString() string
 		Annotations() *Annotations
 	}
 )
@@ -122,7 +121,7 @@ func Set[T any](rcv Annotated, key Key, val T) error {
 		value: val,
 	})
 	if !ok {
-		return errors.Errorf("annotation %s has already been defined on %s", key.FullName(), rcv.ShortString())
+		return errors.Errorf("annotation %s has already been defined", key.FullName())
 	}
 	return nil
 }

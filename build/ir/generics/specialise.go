@@ -154,7 +154,7 @@ func funcTypeInstantiateError(s *specialiser, fn *ir.FuncValExpr, sigSrc ast.Nod
 		// The error is from the function signature.
 		return s.Err().AppendAt(src, err)
 	}
-	return s.Err().Appendf(src, "in call to %s: %v", fn.ShortString(s.File()), compileErr)
+	return s.Err().Appendf(src, "in call to %s: %v", fn.ReferString(s.File()), compileErr)
 }
 
 func fTypeError(fn *ir.FuncValExpr) func(*specialiser, ast.Node, error) bool {

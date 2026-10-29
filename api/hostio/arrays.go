@@ -178,7 +178,7 @@ func (a *DeviceArray) SourceString(from *ir.File) string {
 	if err != nil {
 		hostS = err.Error()
 	} else {
-		hostS = host.SourceString(from)
+		hostS = ir.DefineString(from, host)
 	}
 	devNum, _ := a.handle.DeviceNum()
 	return fmt.Sprintf("DeviceArray{DeviceID: %d}: %s", devNum, hostS)
@@ -278,24 +278,24 @@ func (a *HostArray) ToFloatNumber() (*big.Float, error) {
 	return array.ToFloatNumber()
 }
 
-// ShortString returns the values of the array as a string without the type.
-func (a *HostArray) ShortString(from *ir.File) string {
-	return a.sourceString(from, true)
-}
-
-// SourceString returns the GX source code of the implementation.
+// SourceString returns the values of the array as a string without the type.
 func (a *HostArray) SourceString(from *ir.File) string {
 	return a.sourceString(from, false)
 }
 
-func (a *HostArray) sourceString(from *ir.File, short bool) string {
+// DefineString returns the GX source code of the implementation.
+func (a *HostArray) DefineString(from *ir.File) string {
+	return a.sourceString(from, true)
+}
+
+func (a *HostArray) sourceString(from *ir.File, withType bool) string {
 	data := a.Buffer().Acquire()
 	defer a.Buffer().Release()
 	array, err := kernels.NewArrayFromRaw(data, a.Shape())
 	if err != nil {
 		return fmt.Sprintf("\nError parsing raw data:\n%+v\n", err)
 	}
-	if short {
+	if !withType {
 		return array.DataString()
 	}
 	shape := a.buffer.Shape().Dimensions
@@ -316,7 +316,7 @@ func (a *HostArray) sourceString(from *ir.File, short bool) string {
 
 // String representation of the array and its type.
 func (a *HostArray) String() string {
-	return a.SourceString(nil)
+	return a.DefineString(nil)
 }
 
 // ToAtom converts an array on the host into a Go atom value.

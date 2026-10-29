@@ -37,7 +37,7 @@ func (f *coreAnnotator) Recv() *engine.Receiver {
 
 // Call the macro to build the synthetic element.
 func (f *coreAnnotator) Call(fctx *engine.Env, call *ir.FuncCallExpr, genArgs, args []ir.Element) ([]ir.Element, error) {
-	return nil, errors.Errorf("annotator gx:@%s only valid in a function annotation context", f.ann.ShortString())
+	return nil, errors.Errorf("annotator gx:@%s only valid in a function annotation context", f.ann.ReferString(fctx.File()))
 }
 
 // FuncIR of the macro function.
@@ -45,9 +45,9 @@ func (f *coreAnnotator) FuncIR() ir.Func {
 	return f.ann
 }
 
-// ShortString returns the name of the annotator.
-func (f *coreAnnotator) ShortString() string {
-	return f.ann.ShortString()
+// ReferString returns the name of the annotator.
+func (f *coreAnnotator) ReferString(from *ir.File) string {
+	return f.ann.ReferString(from)
 }
 
 // Type returns the type of the function.

@@ -116,7 +116,7 @@ func (m *macroBuildReturn) BuildDecl(origFn ir.PkgFunc) (*ir.File, ir.Expr, *ast
 func (m *macroBuildReturn) BuildBody(fetcher ir.Fetcher, fn ir.Func) (*ast.BlockStmt, bool) {
 	ann := annotations.Get[*tagStr](m.tagFn, tagKey)
 	if ann == nil {
-		return nil, fetcher.Err().Appendf(m.Source(), "cannot find tag value on function %s", m.tagFn.ShortString())
+		return nil, fetcher.Err().Appendf(m.Source(), "cannot find tag value on function %s", m.tagFn.ReferString(fetcher.File()))
 	}
 	return &ast.BlockStmt{List: []ast.Stmt{
 		&ast.ReturnStmt{Results: []ast.Expr{

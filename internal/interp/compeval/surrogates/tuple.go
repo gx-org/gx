@@ -128,10 +128,6 @@ func (*tuple) EvalShape() (shapes.Shape, error) {
 	return atomShape, nil
 }
 
-func (t *tuple) ShortString(from *ir.File) string {
-	return t.SourceString(from)
-}
-
 func (t *tuple) SourceString(from *ir.File) string {
 	return t.expr().SourceString(from)
 }

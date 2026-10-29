@@ -241,7 +241,7 @@ func (fr *blockFrame) String() string {
 	if fr.owner.function == nil {
 		return fr.owner.parent.String()
 	}
-	return fr.owner.function.ShortString()
+	return fr.owner.function.ReferString(nil)
 }
 
 // PushBlockFrame pushes an empty new frame on the stack.

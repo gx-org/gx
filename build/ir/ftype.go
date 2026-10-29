@@ -331,10 +331,6 @@ func (s *FuncType) SourceSignature(from *File, name *ast.Ident) string {
 	return s.sourceSignature(from, nameS, false, false)
 }
 
-func (s *FuncType) shortString(from *File) string {
-	return s.Params.ShortString(from)
-}
-
 func (s *FuncType) calleeString(from *File) string {
 	var b strings.Builder
 	vals := s.GenParams.Values

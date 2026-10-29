@@ -131,7 +131,7 @@ func (vs *Struct) toString(from *ir.File, prefix string) string {
 	fields := vs.structType.Fields.Fields()
 	fieldStrs := make([]string, len(fields))
 	for i, field := range fields {
-		childS := vs.FieldValue(field.Name.Name).SourceString(from)
+		childS := ir.DefineString(from, vs.FieldValue(field.Name.Name))
 		if strings.Index(childS, "\n") > 0 {
 			childS = indent(childS)
 		}

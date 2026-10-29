@@ -101,11 +101,6 @@ func (m *IMethod) DefineString(from *File) string {
 	return m.FType.SourceSignature(from, m.NameDef())
 }
 
-// ShortString returns a short string for error messages related to annotations.
-func (m *IMethod) ShortString() string {
-	return m.ReferString(nil)
-}
-
 // ReferString returns the string representation of the node in an error message.
 func (m *IMethod) ReferString(from *File) string {
 	name := m.Name()

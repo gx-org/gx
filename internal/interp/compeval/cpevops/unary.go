@@ -63,10 +63,6 @@ func (a *unary) Expr(ev ir.Evaluator, src ast.Expr) ([]ir.Expr, error) {
 	}}, err
 }
 
-func (a *unary) ShortString(from *ir.File) string {
-	return fmt.Sprintf("%v%v", a.expr.Src.Op, a.x.ShortString(from))
-}
-
 func (a *unary) SourceString(from *ir.File) string {
 	return fmt.Sprintf("%v%v", a.expr.Src.Op, a.x.SourceString(from))
 }

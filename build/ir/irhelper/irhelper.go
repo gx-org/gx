@@ -46,9 +46,6 @@ type testAnnotations struct {
 	anns annotations.Annotations
 }
 
-func (ta *testAnnotations) ShortString() string {
-	return "irhelper.annotations"
-}
 func (ta *testAnnotations) Annotations() *annotations.Annotations {
 	return &ta.anns
 }

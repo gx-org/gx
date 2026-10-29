@@ -114,8 +114,8 @@ func (n *String) GoValue() (any, error) {
 	return n.String(), nil
 }
 
-// ShortString returns the string value as a GX value.
-func (n *String) ShortString(*ir.File) string {
+// SourceString returns the string value as a GX value.
+func (n *String) SourceString(*ir.File) string {
 	return n.String()
 }
 

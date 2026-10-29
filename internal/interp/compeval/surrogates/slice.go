@@ -62,7 +62,7 @@ func (f *slice) Append(call *ir.FuncCallExpr, el []ir.Element) engine.Slice {
 	return newSliceType(storepath.NewUniqueIR(call), f.typ)
 }
 
-func (f *slice) ShortString(from *ir.File) string {
+func (f *slice) SourceString(from *ir.File) string {
 	return f.path.SourceString(from)
 }
 

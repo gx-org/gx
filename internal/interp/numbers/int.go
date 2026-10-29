@@ -144,14 +144,9 @@ func (n *elInt) Type() ir.Type {
 	return ir.NumberIntType()
 }
 
-// ShortString returns a short string representation for the integer.
-func (n *elInt) ShortString(from *ir.File) string {
-	return n.val.String()
-}
-
-// SourceString returns the GX source code to represent the float.
+// SourceString returns the GX source code to represent the integer.
 func (n *elInt) SourceString(from *ir.File) string {
-	return n.ShortString(from)
+	return n.val.String()
 }
 
 func (n *elInt) String() string {

@@ -121,7 +121,7 @@ func (s *MetaCore) DefineString(from *File) string {
 	return fmt.Sprintf("%s.%s", s.File().Package.Name, s.Name())
 }
 
-// ShortString returns a string representation of the expression calling the macro.
-func (s *MetaCore) ShortString() string {
-	return s.DefineString(nil)
+// ReferString returns a string representation of the expression calling the macro.
+func (s *MetaCore) ReferString(from *File) string {
+	return s.DefineString(from)
 }

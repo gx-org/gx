@@ -1046,6 +1046,7 @@ type (
 		Node
 		annotations.Annotated
 		StringDefiner
+		StringReferer
 
 		// File owning the function.
 		File() *File
@@ -1402,11 +1403,6 @@ func (s *FuncDecl) DefineString(from *File) string {
 	return fmt.Sprintf("%s {\n%s}", sig, body)
 }
 
-// ShortString returns a short string for error messages related to annotations.
-func (s *FuncDecl) ShortString() string {
-	return s.ReferString(nil)
-}
-
 func (*FuncBuiltin) node()         {}
 func (*FuncBuiltin) storage()      {}
 func (*FuncBuiltin) storageValue() {}
@@ -1438,11 +1434,6 @@ func (s *FuncBuiltin) DefineString(from *File) string {
 // ReferString returns the string representing the function in an error message.
 func (s *FuncBuiltin) ReferString(from *File) string {
 	return s.File().Package.Name.Name + "." + s.Name()
-}
-
-// ShortString returns a short string for error messages related to annotations.
-func (s *FuncBuiltin) ShortString() string {
-	return s.ReferString(nil)
 }
 
 // Value returns a reference to the function.
@@ -1547,11 +1538,6 @@ func (s *FuncKeyword) ReferString(from *File) string {
 	return s.DefineString(from)
 }
 
-// ShortString returns a short string for error messages related to annotations.
-func (s *FuncKeyword) ShortString() string {
-	return s.ReferString(nil)
-}
-
 func (*FuncLit) node()         {}
 func (*FuncLit) storage()      {}
 func (*FuncLit) storageValue() {}
@@ -1595,11 +1581,6 @@ func (s *FuncLit) DefineString(from *File) string {
 // ReferString returns the string representation of the node in an error message.
 func (s *FuncLit) ReferString(from *File) string {
 	return s.FType.ReferString(from)
-}
-
-// ShortString returns a short string for error messages related to annotations.
-func (s *FuncLit) ShortString() string {
-	return s.ReferString(nil)
 }
 
 // SourceString returns the GX source code of the expression.
@@ -1862,11 +1843,6 @@ func (s *FieldGroup) SourceString(from *File) string {
 		names = strings.Join(fNames, ", ") + " "
 	}
 	return names + typ
-}
-
-// ShortString representation of the group.
-func (s *FieldGroup) ShortString() string {
-	return s.SourceString(nil)
 }
 
 func (s *Field) node() {}
@@ -2563,14 +2539,14 @@ func (s *FuncValExpr) SourceString(from *File) string {
 	return s.x.SourceString(from)
 }
 
-// ShortString representation.
-func (s *FuncValExpr) ShortString(from *File) string {
+// ReferString representation.
+func (s *FuncValExpr) ReferString(from *File) string {
 	callee := s.x.SourceString(from)
 	fType := s.t
 	if fType == nil {
 		return callee
 	}
-	return fmt.Sprintf("%s(%s)", callee, fType.shortString(from))
+	return fmt.Sprintf("%s(%s)", callee, fType.Params.ReferString(from))
 }
 
 func (s *FuncCallExpr) node() {}

@@ -136,10 +136,6 @@ func (a *array) Store() ir.Storage {
 	return a.path.Store()
 }
 
-func (a *array) ShortString(from *ir.File) string {
-	return a.SourceString(from)
-}
-
 func (a *array) SourceString(from *ir.File) string {
 	return a.path.Expr().SourceString(from)
 }

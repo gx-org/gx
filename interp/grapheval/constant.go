@@ -181,10 +181,6 @@ func (n *constant) Expr(ev ir.Evaluator, src ast.Expr) ([]ir.Expr, error) {
 	return n.cst.Expr(ev, src)
 }
 
-func (n *constant) ShortString(from *ir.File) string {
-	return n.cst.ShortString(from)
-}
-
 func (n *constant) SourceString(from *ir.File) string {
 	return n.cst.SourceString(from)
 }

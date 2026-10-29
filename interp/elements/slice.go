@@ -316,8 +316,8 @@ func (n *Slice) hasCompositeElements() bool {
 	}
 }
 
-// ShortString returns the values of the slice as a string without the type.
-func (n *Slice) ShortString(from *ir.File) string {
+// SourceString returns the values of the slice as a string without the type.
+func (n *Slice) SourceString(from *ir.File) string {
 	if len(n.values) == 0 {
 		return "{}"
 	}
@@ -325,7 +325,7 @@ func (n *Slice) ShortString(from *ir.File) string {
 		var bld strings.Builder
 		bld.WriteString("{\n")
 		for _, el := range n.values {
-			bld.WriteString(gxfmt.Indent(ir.ShortString(from, el)))
+			bld.WriteString(gxfmt.Indent(ir.SourceString(from, el)))
 			bld.WriteString(",\n")
 		}
 		bld.WriteString("}")
@@ -333,19 +333,19 @@ func (n *Slice) ShortString(from *ir.File) string {
 	}
 	ss := make([]string, len(n.values))
 	for i, el := range n.values {
-		ss[i] = ir.ShortString(from, el)
+		ss[i] = ir.SourceString(from, el)
 	}
 	return "{" + strings.Join(ss, ", ") + "}"
 }
 
-// SourceString returns the GX source code of the implementation.
-func (n *Slice) SourceString(from *ir.File) string {
-	return n.typ.ReferString(from) + n.ShortString(from)
+// DefineString returns the GX source code of the implementation.
+func (n *Slice) DefineString(from *ir.File) string {
+	return n.typ.ReferString(from) + n.SourceString(from)
 }
 
 // String returns a string representation of the slice.
 func (n *Slice) String() string {
-	return n.SourceString(nil)
+	return n.DefineString(nil)
 }
 
 // SliceFromElement returns a slice if the element is one, an error otherwise.

@@ -66,7 +66,7 @@ func findParamStorage(file *ir.File, src ir.Node, fn ir.Func, name string) (wrt.
 	}
 	field := fn.FuncType().Params.FindField(name)
 	if field == nil {
-		return nil, fmterr.Errorf(file.FileSet(), src.Node(), "no parameter named %s in %s", name, fn.ShortString())
+		return nil, fmterr.Errorf(file.FileSet(), src.Node(), "no parameter named %s in %s", name, fn.ReferString(file))
 	}
 	return wrt.BuildFromField(nil, field)
 }
@@ -79,7 +79,7 @@ func FuncGrad(file *ir.File, call *ir.FuncCallExpr, mac *ir.Macro, args []ir.Ele
 	}
 	fType := fn.FuncType()
 	if fType.Results.Len() != 1 {
-		return nil, errors.Errorf("%s expects 1 result but %s returns %d results", mac.ShortString(), fn.ShortString(), fn.FuncType().Results.Len())
+		return nil, errors.Errorf("%s expects 1 result but %s returns %d results", mac.ReferString(file), fn.ReferString(file), fn.FuncType().Results.Len())
 	}
 	wrtS, err := elements.StringFromElement(args[1])
 	if err != nil {

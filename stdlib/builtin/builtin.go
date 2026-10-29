@@ -60,7 +60,7 @@ var NilShape = elements.NilFromType(ir.IntSliceType())
 func ToShapeString(from *ir.File, els []ir.Element) string {
 	ss := make([]string, len(els))
 	for i, el := range els {
-		ss[i] = fmt.Sprintf("[%s]", ir.ShortString(from, el))
+		ss[i] = fmt.Sprintf("[%s]", ir.SourceString(from, el))
 	}
 	return strings.Join(ss, "")
 }

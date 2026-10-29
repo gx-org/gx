@@ -133,14 +133,9 @@ func (n *elFloat) Expr(ir.Evaluator, ast.Expr) ([]ir.Expr, error) {
 	return []ir.Expr{n.BuildIR()}, nil
 }
 
-// ShortString returns a short string representation of the value.
-func (n *elFloat) ShortString(from *ir.File) string {
-	return n.Float().String()
-}
-
 // SourceString returns the GX source code to represent the float.
 func (n *elFloat) SourceString(from *ir.File) string {
-	return n.ShortString(from)
+	return n.Float().String()
 }
 
 func (n *elFloat) String() string {
