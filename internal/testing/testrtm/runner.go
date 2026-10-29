@@ -16,7 +16,6 @@ package testrtm
 
 import (
 	"fmt"
-	"path/filepath"
 	"strings"
 	"testing"
 
@@ -25,7 +24,6 @@ import (
 	"github.com/gx-org/gx/api/options"
 	"github.com/gx-org/gx/api/runner"
 	"github.com/gx-org/gx/api/trace"
-	gxfmt "github.com/gx-org/gx/base/fmt"
 	"github.com/gx-org/gx/build/builder/testbuild"
 	"github.com/gx-org/gx/build/ir"
 )
@@ -64,28 +62,9 @@ func (r *Runner) RunWithArgs(fn *ir.FuncDecl, recv hostio.Value, args []hostio.V
 	all := testbuild.BuildGot(outs, func(val hostio.Value) string {
 		return ir.DefineString(fn.File(), val)
 	})
-	all += formatTraces(rec.Calls)
+	all += "\n" + trace.Format(rec.Calls)
 	all = strings.TrimSpace(all)
 	return outs, all, nil
-}
-
-func formatTraces(calls []trace.Call) string {
-	if len(calls) == 0 {
-		return ""
-	}
-	var b strings.Builder
-	b.WriteString("\nTrace:\n")
-	for i, call := range calls {
-		pos := call.File.FileSet().Position(call.Expr.Src.Pos())
-		fmt.Fprintf(&b, "%s:%d\n", filepath.Base(pos.Filename), i)
-		for _, val := range call.Values {
-			valS := ir.DefineString(call.File, val)
-			valS = gxfmt.Indent(valS)
-			b.WriteString(valS)
-			b.WriteString("\n")
-		}
-	}
-	return b.String()
 }
 
 // Test runs a GX test and returns an error if the test fails.

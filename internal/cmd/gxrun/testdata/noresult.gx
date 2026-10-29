@@ -3,5 +3,7 @@ package main
 func Main() {
 	trace(int32(1))
 	// Want:
-	// int32(1)
+	// Trace:
+	// noresult.gx:0
+	// 	int32(1)
 }
