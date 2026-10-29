@@ -24,23 +24,16 @@ import (
 	"github.com/gx-org/gx/api/hostio"
 	"github.com/gx-org/gx/api/options"
 	"github.com/gx-org/gx/api/runner"
+	"github.com/gx-org/gx/api/trace"
 	gxfmt "github.com/gx-org/gx/base/fmt"
 	"github.com/gx-org/gx/build/builder/testbuild"
 	"github.com/gx-org/gx/build/ir"
-	"github.com/gx-org/gx/golang/backend/kernels"
 )
 
-type (
-	// Runner runs test functions.
-	Runner struct {
-		dev *api.Device
-	}
-
-	testTracer struct {
-		nTrace int
-		trace  strings.Builder
-	}
-)
+// Runner runs test functions.
+type Runner struct {
+	dev *api.Device
+}
 
 // NewRunner returns a test runner given a device.
 func NewRunner(rtm *api.Runtime, devID int) (*Runner, error) {
@@ -63,38 +56,36 @@ func (r *Runner) Run(fn *ir.FuncDecl, options []options.PackageOption) ([]hostio
 
 // RunWithArgs compiles a function into a XLA graph, runs it, and returns the result.
 func (r *Runner) RunWithArgs(fn *ir.FuncDecl, recv hostio.Value, args []hostio.Value, options []options.PackageOption) ([]hostio.Value, string, error) {
-	tracer := testTracer{}
-	outs, err := runner.TraceAndRun(r.dev, fn, recv, args, options, &tracer)
+	var rec trace.Recorder
+	outs, err := runner.TraceAndRun(r.dev, fn, recv, args, options, &rec)
 	if err != nil {
 		return nil, "", err
 	}
 	all := testbuild.BuildGot(outs, func(val hostio.Value) string {
 		return ir.DefineString(fn.File(), val)
 	})
-	all += tracer.trace.String()
+	all += formatTraces(rec.Calls)
 	all = strings.TrimSpace(all)
 	return outs, all, nil
 }
 
-func (r *testTracer) Trace(file *ir.File, call *ir.FuncCallExpr, vals []hostio.Value) error {
-	if r.nTrace == 0 {
-		r.trace.WriteString("\nTrace:\n")
+func formatTraces(calls []trace.Call) string {
+	if len(calls) == 0 {
+		return ""
 	}
-	vals, err := hostio.ToHost(kernels.DefaultAllocator(), vals)
-	if err != nil {
-		return err
+	var b strings.Builder
+	b.WriteString("\nTrace:\n")
+	for i, call := range calls {
+		pos := call.File.FileSet().Position(call.Expr.Src.Pos())
+		fmt.Fprintf(&b, "%s:%d\n", filepath.Base(pos.Filename), i)
+		for _, val := range call.Values {
+			valS := ir.DefineString(call.File, val)
+			valS = gxfmt.Indent(valS)
+			b.WriteString(valS)
+			b.WriteString("\n")
+		}
 	}
-	pos := file.FileSet().Position(call.Src.Pos())
-	fmt.Fprintf(&r.trace, "%s:%d", filepath.Base(pos.Filename), r.nTrace)
-	r.nTrace++
-	r.trace.WriteString("\n")
-	for _, val := range vals {
-		valS := ir.DefineString(file, val)
-		valS = gxfmt.Indent(valS)
-		r.trace.WriteString(valS)
-		r.trace.WriteString("\n")
-	}
-	return nil
+	return b.String()
 }
 
 // Test runs a GX test and returns an error if the test fails.

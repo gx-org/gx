@@ -18,10 +18,39 @@ package trace
 import (
 	"github.com/gx-org/gx/api/hostio"
 	"github.com/gx-org/gx/build/ir"
+	"github.com/gx-org/gx/golang/backend/kernels"
 )
 
 // Callback is called when the trace builtin is invoked
 // in GX source code.
 type Callback interface {
 	Trace(file *ir.File, call *ir.FuncCallExpr, values []hostio.Value) error
+}
+
+// Call is a call to the trace builtin. Its values have been transferred to the host.
+type Call struct {
+	File   *ir.File
+	Expr   *ir.FuncCallExpr
+	Values []hostio.Value
+}
+
+// Recorder is a Callback recording the calls to the trace builtin.
+type Recorder struct {
+	Calls []Call
+}
+
+var _ Callback = (*Recorder)(nil)
+
+// Trace transfers the values to the host and records the call.
+func (r *Recorder) Trace(file *ir.File, call *ir.FuncCallExpr, vals []hostio.Value) error {
+	hostVals, err := hostio.ToHost(kernels.DefaultAllocator(), vals)
+	if err != nil {
+		return err
+	}
+	r.Calls = append(r.Calls, Call{
+		File:   file,
+		Expr:   call,
+		Values: hostVals,
+	})
+	return nil
 }
