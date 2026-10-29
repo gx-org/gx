@@ -17,9 +17,11 @@ package elements
 import (
 	"strconv"
 
+	"github.com/pkg/errors"
 	"github.com/gx-org/gx/api/hostio"
-	"github.com/gx-org/gx/api/values"
 	"github.com/gx-org/gx/build/ir"
+	"github.com/gx-org/gx/build/ir/irkind"
+	"github.com/gx-org/gx/golang/backend/kernels"
 	"github.com/gx-org/gx/internal/base/cast"
 	"github.com/gx-org/gx/internal/interp/compeval/cmp"
 	"github.com/gx-org/gx/internal/interp/coreiface"
@@ -31,13 +33,15 @@ import (
 
 // String is a GX string.
 type String struct {
-	val *values.String
+	typ ir.Type
+	str string
 }
 
 var (
 	_ IString           = (*String)(nil)
 	_ cmp.Canonical     = (*String)(nil)
 	_ togo.CompileValue = (*String)(nil)
+	_ hostio.Value      = (*String)(nil)
 )
 
 // NewStringFromLit returns a state element storing a string GX value.
@@ -51,13 +55,10 @@ func NewStringFromLit(str *ir.StringLiteral) (*String, error) {
 
 // NewString returns a new element containing a string.
 func NewString(val string, typ ir.Type) (*String, error) {
-	gxVal, err := values.NewString(typ, val)
-	if err != nil {
-		return nil, err
+	if typ.Kind() != irkind.String {
+		return nil, errors.Errorf("%s is an invalid kind for a string value", typ.Kind().String())
 	}
-	return &String{
-		val: gxVal,
-	}, nil
+	return &String{typ: typ, str: val}, nil
 }
 
 // StrEl is only useful to implement the IString interface and has no other purpose.
@@ -65,7 +66,17 @@ func (*String) StrEl() {}
 
 // Unflatten consumes the next handles to return a GX value.
 func (n *String) Unflatten(handles *flatten.Parser) (hostio.Value, error) {
-	return n.val, nil
+	return n, nil
+}
+
+// ToHost transfers the value to host given an allocator.
+func (n *String) ToHost(kernels.Allocator) (hostio.Value, error) {
+	return n, nil
+}
+
+// Finalize is a no-op for string values.
+func (n *String) Finalize() error {
+	return nil
 }
 
 // Copy returns the receiver.
@@ -84,7 +95,7 @@ func (n *String) Equal(other cmp.Comparable) bool {
 	if !isString {
 		return false
 	}
-	return n.val == otherT.val
+	return n.str == otherT.str
 }
 
 // AlgExpr converts the element into an algebra expression.
@@ -94,13 +105,13 @@ func (n *String) AlgExpr(ir.Evaluator) (cmp.Expr, error) {
 
 // Type of the element.
 func (n *String) Type() ir.Type {
-	return n.val.Type()
+	return n.typ
 }
 
 // BuildIR returns a string literal.
 func (n *String) BuildIR() ir.Expr {
 	return &ir.StringLiteral{
-		Src: &ast.BasicLit{Value: strconv.Quote(n.val.StringValue())},
+		Src: &ast.BasicLit{Value: strconv.Quote(n.str)},
 	}
 }
 
@@ -114,14 +125,19 @@ func (n *String) GoValue() (any, error) {
 	return n.String(), nil
 }
 
-// SourceString returns the string value as a GX value.
+// SourceString returns the string value as a GX string literal.
 func (n *String) SourceString(*ir.File) string {
+	return strconv.Quote(n.str)
+}
+
+// DefineString returns the GX source code of the implementation.
+func (n *String) DefineString(*ir.File) string {
 	return n.String()
 }
 
 // String returns the string value as a GX value.
 func (n *String) String() string {
-	return n.val.StringValue()
+	return n.str
 }
 
 // StringFromElement returns the string value stored in a element.
