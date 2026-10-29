@@ -102,6 +102,7 @@ func (n *namedType) buildUnderlying(pkgScope *pkgResolveScope, nType *ir.NamedTy
 }
 
 func assignMethod(scope *fileResolveScope, ext *ir.NamedType, fn *irFunc) bool {
+	ext = ext.OriginNamed()
 	underlying := ir.Underlying(ext)
 	// Check if a field with the same name has already been defined.
 	structType, ok := underlying.(*ir.StructType)

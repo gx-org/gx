@@ -1,0 +1,21 @@
+package struct_err01
+
+type S[T any] struct {
+	a T
+}
+
+type Other[T any] struct {
+	a T
+}
+
+func mismatchConcrete(s S[int32]) S[int64] {
+	return s // ERROR cannot use S[int32] as S[int64] value in return statement
+}
+
+func mismatchGeneric[T1, T2 any](s S[T1]) S[T2] {
+	return s // ERROR cannot use S[T1] as S[T2] value in return statement
+}
+
+func mismatchOrigin(s S[int32]) Other[int32] {
+	return s // ERROR cannot use S[int32] as Other[int32] value in return statement
+}

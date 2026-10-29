@@ -1,0 +1,13 @@
+package struct02
+
+type S[T any] struct {
+	a T
+}
+
+func Test() S[int] {
+	return S[int]{a: 2}
+	// Want:
+	// S[int]{
+	// 	a: int(2),
+	// }
+}

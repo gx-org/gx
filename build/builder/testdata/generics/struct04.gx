@@ -1,0 +1,16 @@
+package struct04
+
+type S[T any] struct {
+	a T
+}
+
+func (s S[T]) get() T {
+	return s.a
+}
+
+func Test() int {
+	s := S[int]{a: 2}
+	return s.get()
+	// Want:
+	// int(2)
+}

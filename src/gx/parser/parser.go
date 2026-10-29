@@ -1367,7 +1367,8 @@ func (p *parser) parseTypeInstance(typ ast.Expr) ast.Expr {
 	p.exprLev++
 	var list []ast.Expr
 	for p.tok != token.RBRACK && p.tok != token.EOF {
-		list = append(list, p.parseType())
+		// GX syntax divergence from Go: type arguments may be non-type expressions.
+		list = append(list, p.parseRhs())
 		if !p.atComma("type argument list", token.RBRACK) {
 			break
 		}

@@ -112,18 +112,18 @@ func (s *StructType) SpecialiseStruct(spec Specialiser) (*StructType, bool) {
 	res.origin = s.originSType()
 	// res.GenParams is originally a pointer to GenParams from the named type.
 	// Make sure to decouple it.
-	res.GenParams = &GenericParams{}
-	res.GenParams.Fields = cloneFields(s.GenParams.Fields, &cloner{
-		group: cloneGroup,
-		field: skipIfDefined(spec),
-	})
-	res.GenParams.Values = spec.Values()
+	genericsOk := true
+	if s.GenParams != nil {
+		var genericParams GenericParams
+		genericParams, genericsOk = s.GenParams.Specialise(spec, spec.Target() == s)
+		res.GenParams = &genericParams
+	}
 	var paramsOk bool
 	res.Fields = cloneFields(s.Fields, &cloner{
 		group: specialiseGroup(spec, &paramsOk),
 		field: cloneField,
 	})
-	return &res, paramsOk
+	return &res, genericsOk && paramsOk
 }
 
 // Specialise a type to a given target.

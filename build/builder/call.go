@@ -256,7 +256,11 @@ func (n *callExpr) buildCallExpr(rscope resolveScope, callee ir.Expr) (ir.Expr, 
 	case *ir.TypeValExpr:
 		return n.buildTypeCast(rscope, callee, elT.Store())
 	case ir.FuncElement:
-		return n.buildCallExpr(rscope, ir.NewFuncValExpr(callee, elT.FuncIR()))
+		funcExpr, ok := specializeReceiverFunc(rscope, callee, ir.NewFuncValExpr(callee, elT.FuncIR()))
+		if !ok {
+			return invalidExpr(), false
+		}
+		return n.buildCallExpr(rscope, funcExpr)
 	case *ir.MacroKeyword:
 		return n.callMacroKeyword(rscope, elT)
 	case ir.TupleElement:

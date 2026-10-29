@@ -34,6 +34,51 @@ func (gp *GenericParams) SetFields(fields *FieldList) {
 	gp.Values = make([]GenericValue, fields.Len())
 }
 
+// Specialise specialises the generic parameters and values.
+func (gp *GenericParams) Specialise(spec Specialiser, isTarget bool) (GenericParams, bool) {
+	if isTarget {
+		return GenericParams{
+			Fields: cloneFields(gp.Fields, &cloner{group: cloneGroup, field: skipIfDefined(spec)}),
+			Values: spec.Values(),
+		}, true
+	}
+	result := GenericParams{
+		Fields: cloneFields(gp.Fields, &cloner{group: cloneGroup, field: cloneField}),
+		Values: make([]GenericValue, len(gp.Values)),
+	}
+	allOk := true
+	for i, value := range gp.Values {
+		if value == nil {
+			continue
+		}
+		var ok bool
+		result.Values[i], ok = value.Specialise(spec)
+		allOk = allOk && ok
+	}
+	return result, allOk
+}
+
+// Equal returns true if two sets of generic parameters have equal values.
+func (gp *GenericParams) Equal(tpcmp TypeEval, other *GenericParams) (bool, error) {
+	if len(gp.Values) != len(other.Values) {
+		return false, nil
+	}
+	for i, value := range gp.Values {
+		otherValue := other.Values[i]
+		if value == nil || otherValue == nil {
+			if value != otherValue {
+				return false, nil
+			}
+			continue
+		}
+		equal, err := value.EqualValue(tpcmp, otherValue)
+		if !equal || err != nil {
+			return equal, err
+		}
+	}
+	return true, nil
+}
+
 type (
 	// GenericType is a generic type (structure or function).
 	GenericType interface {
@@ -48,6 +93,7 @@ type (
 	Specialiser interface {
 		ErrSource
 		From() (*File, Expr)
+		Target() GenericType
 		IsDefined(int) bool
 		NonTypeFor(GenericParam) *NonTypeGenericValue
 		TypeFor(GenericParam) *TypeGenericValue
@@ -179,7 +225,7 @@ func (s *GenericTypeParam) equal(tpcmp TypeEval, typ Type) (bool, error) {
 		if s.pos() == typT.pos() {
 			return true, nil
 		}
-	case *NamedType:
+	case *NamedType, *Interface:
 		return s.typ().Equal(tpcmp, typ)
 	case ArrayType:
 		if !typT.Rank().IsAtomic() {
@@ -348,6 +394,8 @@ type (
 		Generic() GenericParam
 		DefinedType() Type
 		Value() Expr
+		Specialise(Specialiser) (GenericValue, bool)
+		EqualValue(TypeEval, GenericValue) (bool, error)
 	}
 
 	coreGenericValue struct {
@@ -392,6 +440,33 @@ func NewAxisGenericValue(tparam *GenericNonTypeParam, x Expr) *NonTypeGenericVal
 // Equal returns true if the set of axes is the same than the already attached rank.
 func (v *NonTypeGenericValue) Equal(tpcmp TypeEval, x Expr) (bool, error) {
 	return areEqual(tpcmp, v.x, x)
+}
+
+// EqualValue returns true if other is an equal generic value.
+func (v *NonTypeGenericValue) EqualValue(tpcmp TypeEval, other GenericValue) (bool, error) {
+	otherT, ok := other.(*NonTypeGenericValue)
+	if !ok {
+		return false, nil
+	}
+	return v.Equal(tpcmp, otherT.x)
+}
+
+// Specialise specialises the non-type generic value.
+func (v *NonTypeGenericValue) Specialise(spec Specialiser) (GenericValue, bool) {
+	expr, ok := specialiseExpr(spec, v.x)
+	if !ok {
+		return v, false
+	}
+	if expr != v.x && spec.Fetcher() != nil {
+		evaluated, err := CompEvalExpr(spec.Fetcher(), expr)
+		if err != nil && !undef.Is(err) {
+			return v, spec.Fetcher().Err().AppendAt(expr.Expr(), err)
+		}
+		if err == nil {
+			expr = evaluated[0]
+		}
+	}
+	return NewAxisGenericValue(v.tparam.(*GenericNonTypeParam), expr), true
 }
 
 // DefinedType returns the type of the type param.
@@ -447,6 +522,21 @@ func (v *TypeGenericValue) DefinedType() Type {
 // Value returns type assigned to the generic.
 func (v *TypeGenericValue) Value() Expr {
 	return v.tp
+}
+
+// EqualValue returns true if other is an equal generic value.
+func (v *TypeGenericValue) EqualValue(tpcmp TypeEval, other GenericValue) (bool, error) {
+	otherT, ok := other.(*TypeGenericValue)
+	if !ok {
+		return false, nil
+	}
+	return v.tp.Val().Equal(tpcmp, otherT.tp.Val())
+}
+
+// Specialise specialises the type generic value.
+func (v *TypeGenericValue) Specialise(spec Specialiser) (GenericValue, bool) {
+	tp, ok := v.tp.Specialise(spec)
+	return NewTypeExprGenericValue(v.tparam.(*GenericTypeParam), tp), ok
 }
 
 // ExprWithSpecialise is an expression that can be specialise itself.

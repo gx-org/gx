@@ -1,0 +1,17 @@
+package struct03
+
+type S[T any] struct {
+	a T
+}
+
+func id[T any](s S[T]) S[T] {
+	return s
+}
+
+func Test() S[int] {
+	return id[int](S[int]{a: 2})
+	// Want:
+	// S[int]{
+	// 	a: int(2),
+	// }
+}

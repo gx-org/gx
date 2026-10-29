@@ -42,6 +42,16 @@ type funcType struct {
 	namedResults bool
 }
 
+func indexedExprIndices(node ast.Node) []ast.Expr {
+	switch expr := node.(type) {
+	case *ast.IndexExpr:
+		return []ast.Expr{expr.Index}
+	case *ast.IndexListExpr:
+		return expr.Indices
+	}
+	return nil
+}
+
 func processFuncType(pscope procScope, src *ast.FuncType, recv *ast.FieldList, nature ir.FuncNature) (*funcType, bool) {
 	n := &funcType{
 		src:    src,
@@ -56,6 +66,13 @@ func processFuncType(pscope procScope, src *ast.FuncType, recv *ast.FieldList, n
 	)
 	if n.recv != nil && n.recv.numFields() > 1 {
 		recvOk = pscope.Err().Appendf(recv, "method has multiple receivers")
+	}
+	if recv != nil && len(recv.List) > 0 {
+		for _, indexExpr := range indexedExprIndices(recv.List[0].Type) {
+			if ident, ok := indexExpr.(*ast.Ident); ok && ir.ValidIdent(ident) {
+				recvOk = fieldNS.assignTypeField(pscope, &field{src: ident}) && recvOk
+			}
+		}
 	}
 	n.typeParams, typesOk = processFieldList(
 		defaultTypeProcScope(pscope),
@@ -124,6 +141,50 @@ func checkUnrollResultTypes(rscope resolveScope, ftype *ir.FuncType) bool {
 	return true
 }
 
+func (n *funcType) buildReceiverTypeParams(typeParamsScope *defineLocalScope) ([]*ir.FieldGroup, bool) {
+	if n.recv == nil || len(n.recv.list) == 0 {
+		return nil, true
+	}
+	var baseType typeExprNode
+	switch receiverType := n.recv.list[0].typ.(type) {
+	case *indexExprType:
+		baseType = receiverType.x
+	case *indexExprListType:
+		baseType = receiverType.x
+	default:
+		return nil, true
+	}
+	typeExpr, ok := baseType.buildTypeExpr(typeParamsScope)
+	if !ok {
+		return nil, false
+	}
+	named, ok := typeExpr.Val().(*ir.NamedType)
+	if !ok {
+		return nil, true
+	}
+	originFields := named.OriginNamed().GenParams.Fields.Fields()
+	indices := indexedExprIndices(n.recv.list[0].src.Type)
+	if len(indices) > len(originFields) {
+		return nil, typeParamsScope.Err().Appendf(baseType.source(), "got %d type arguments but want %d", len(indices), len(originFields))
+	}
+	var groups []*ir.FieldGroup
+	for i, indexExpr := range indices {
+		ident, ok := indexExpr.(*ast.Ident)
+		if !ok {
+			continue
+		}
+		originField := originFields[i]
+		group := &ir.FieldGroup{Src: originField.Group.Src, Type: originField.Group.Type}
+		field := &ir.Field{Group: group, Name: ident}
+		group.Fields = []*ir.Field{field}
+		if ir.ValidIdent(ident) {
+			typeParamsScope.define(field.Storage())
+		}
+		groups = append(groups, group)
+	}
+	return groups, true
+}
+
 func (n *funcType) buildFuncType(rscope resolveScope) (*ir.FuncType, *funcResolveScope, bool) {
 	ext := &ir.FuncType{
 		BaseType: ir.BaseType[*ast.FuncType]{Src: n.src},
@@ -135,9 +196,19 @@ func (n *funcType) buildFuncType(rscope resolveScope) (*ir.FuncType, *funcResolv
 		return ext, nil, false
 	}
 	typeParamsScope := newDefineScope(sigscope, defineGenericParam)
+	receiverTypeParamGroups, receiverTypeParamsOk := n.buildReceiverTypeParams(typeParamsScope)
 	genParams, tParamsOk := n.typeParams.buildFieldList(typeParamsScope)
-	if !tParamsOk {
+	if !receiverTypeParamsOk || !tParamsOk {
 		return ext, nil, false
+	}
+	if len(receiverTypeParamGroups) > 0 {
+		if genParams == nil {
+			genParams = &ir.FieldList{}
+		}
+		genParams.List = append(receiverTypeParamGroups, genParams.List...)
+		for i, field := range genParams.Fields() {
+			field.Pos = i
+		}
 	}
 	ext.GenParams.SetFields(genParams)
 	ext.Receiver, recvOk = n.recv.buildFieldList(newDefineScope(sigscope, nil))

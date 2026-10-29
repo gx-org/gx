@@ -105,6 +105,35 @@ func buildGenericValues(rscope resolveScope, x ir.Expr, ce *compileEvaluator, ge
 	return genValues, ok
 }
 
+func specializeReceiverFunc(rscope resolveScope, callee ir.Expr, fun *ir.FuncValExpr) (*ir.FuncValExpr, bool) {
+	selector, ok := callee.(*ir.SelectorExpr)
+	if !ok {
+		return fun, true
+	}
+	receiverNamed, ok := selector.X.Type().(*ir.NamedType)
+	if !ok {
+		return fun, true
+	}
+	var receiverArgs []ir.Expr
+	for _, genericValue := range receiverNamed.GenParams.Values {
+		if genericValue != nil {
+			receiverArgs = append(receiverArgs, genericValue.Value())
+		}
+	}
+	if len(receiverArgs) == 0 {
+		return fun, true
+	}
+	compEval, _, ok := compEvalForFuncType(rscope, callee.Node(), fun.FuncType())
+	if !ok {
+		return fun, false
+	}
+	genericValues, ok := buildGenericValues(rscope, callee, compEval, &fun.FuncType().GenParams, receiverArgs)
+	if !ok {
+		return fun, false
+	}
+	return generics.SpecialiseParams(compEval, callee, fun, genericValues)
+}
+
 func specializeFuncType(rscope resolveScope, x ir.Expr, indices []ir.Expr, fun *ir.FuncValExpr) (ir.Expr, bool) {
 	ftype := fun.FuncType()
 	if ftype == nil {
@@ -167,6 +196,11 @@ func specializeFunc(rscope resolveScope, x ir.Expr, indices []ir.Expr) (ir.Expr,
 		fun = xT
 	default:
 		return invalidExpr(), rscope.Err().AppendInternalf(x.Node(), "cannot specialise function call %T: not supported", x)
+	}
+	var ok bool
+	fun, ok = specializeReceiverFunc(rscope, x, fun)
+	if !ok {
+		return fun, false
 	}
 	return specializeFuncType(rscope, x, indices, fun)
 }
@@ -330,11 +364,7 @@ func specializeType(rscope resolveScope, x *ir.TypeValExpr, indices []ir.Expr) (
 	if !ok {
 		return invalidTypeExprVal, false
 	}
-	structType, err := cast.To[*ir.StructType](ir.Underlying(named))
-	if err != nil {
-		return invalidTypeExprVal, rscope.Err().AppendAt(x.Node(), err)
-	}
-	return generics.SpecialiseStruct(ce, x, structType, genValues)
+	return generics.SpecialiseNamed(ce, x, named, genValues)
 }
 
 func (n *indexExprType) buildTypeExpr(rscope resolveScope) (*ir.TypeValExpr, bool) {
