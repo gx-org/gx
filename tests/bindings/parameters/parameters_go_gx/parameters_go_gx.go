@@ -27,7 +27,6 @@ import (
 	"github.com/gx-org/gx/api/hostio"
 	"github.com/gx-org/gx/api/options"
 	"github.com/gx-org/gx/api/runner"
-	"github.com/gx-org/gx/api/values"
 	"github.com/gx-org/gx/build/ir"
 	"github.com/gx-org/gx/golang/binder/gobindings/core"
 	"github.com/gx-org/gx/golang/binder/gobindings/types"
@@ -45,7 +44,6 @@ var (
 	_ = fmt.Println
 	_ = strings.Compare
 	_ = reflect.TypeFor[int]
-	_ = values.NamedType{}
 	_ = elements.Slice{}
 	_ hostio.Value
 	_ = errors.Errorf
@@ -579,7 +577,7 @@ func (h *handleNotInSlice) String() string {
 // NotInSlice stores the handle of NotInSlice on a device.
 type NotInSlice struct {
 	handle handleNotInSlice
-	value  *values.NamedType
+	value  *elements.NamedType
 
 	Val types.Atom[int32]
 }
@@ -598,9 +596,9 @@ func (h *handleNotInSlice) StructValue() *elements.Struct {
 func (fty *Factory) MarshalNotInSlice(val hostio.Value) (s *NotInSlice, err error) {
 	s = fty.NewNotInSlice()
 	var ok bool
-	s.value, ok = val.(*values.NamedType)
+	s.value, ok = val.(*elements.NamedType)
 	if !ok {
-		err = errors.Errorf("cannot use handle to set NotInSlice: %T is not a %s", val, reflect.TypeFor[*values.NamedType]())
+		err = errors.Errorf("cannot use handle to set NotInSlice: %T is not a %s", val, reflect.TypeFor[*elements.NamedType]())
 		return
 	}
 	structVal, ok := s.value.Underlying().(*elements.Struct)
@@ -650,7 +648,7 @@ func (fac *Factory) NewNotInSlice() *NotInSlice {
 	if err != nil {
 		panic(err)
 	}
-	s.value = values.NewNamedType(structVal, typ)
+	s.value = elements.NewNamedType(typ, structVal)
 
 	return s
 }
@@ -735,7 +733,7 @@ func (h *handleInSlice) String() string {
 // InSlice stores the handle of InSlice on a device.
 type InSlice struct {
 	handle handleInSlice
-	value  *values.NamedType
+	value  *elements.NamedType
 
 	Val types.Atom[int32]
 }
@@ -754,9 +752,9 @@ func (h *handleInSlice) StructValue() *elements.Struct {
 func (fty *Factory) MarshalInSlice(val hostio.Value) (s *InSlice, err error) {
 	s = fty.NewInSlice()
 	var ok bool
-	s.value, ok = val.(*values.NamedType)
+	s.value, ok = val.(*elements.NamedType)
 	if !ok {
-		err = errors.Errorf("cannot use handle to set InSlice: %T is not a %s", val, reflect.TypeFor[*values.NamedType]())
+		err = errors.Errorf("cannot use handle to set InSlice: %T is not a %s", val, reflect.TypeFor[*elements.NamedType]())
 		return
 	}
 	structVal, ok := s.value.Underlying().(*elements.Struct)
@@ -806,7 +804,7 @@ func (fac *Factory) NewInSlice() *InSlice {
 	if err != nil {
 		panic(err)
 	}
-	s.value = values.NewNamedType(structVal, typ)
+	s.value = elements.NewNamedType(typ, structVal)
 
 	return s
 }
@@ -901,7 +899,7 @@ func (h *handleStruct) String() string {
 // Struct stores the handle of Struct on a device.
 type Struct struct {
 	handle handleStruct
-	value  *values.NamedType
+	value  *elements.NamedType
 
 	A            types.Array[float32]
 	B            *types.Slice[types.Atom[float32]]
@@ -925,9 +923,9 @@ func (h *handleStruct) StructValue() *elements.Struct {
 func (fty *Factory) MarshalStruct(val hostio.Value) (s *Struct, err error) {
 	s = fty.NewStruct()
 	var ok bool
-	s.value, ok = val.(*values.NamedType)
+	s.value, ok = val.(*elements.NamedType)
 	if !ok {
-		err = errors.Errorf("cannot use handle to set Struct: %T is not a %s", val, reflect.TypeFor[*values.NamedType]())
+		err = errors.Errorf("cannot use handle to set Struct: %T is not a %s", val, reflect.TypeFor[*elements.NamedType]())
 		return
 	}
 	structVal, ok := s.value.Underlying().(*elements.Struct)
@@ -1059,7 +1057,7 @@ func (fac *Factory) NewStruct() *Struct {
 	if err != nil {
 		panic(err)
 	}
-	s.value = values.NewNamedType(structVal, typ)
+	s.value = elements.NewNamedType(typ, structVal)
 
 	return s
 }

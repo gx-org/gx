@@ -27,7 +27,6 @@ import (
 	"github.com/gx-org/gx/api/hostio"
 	"github.com/gx-org/gx/api/options"
 	"github.com/gx-org/gx/api/runner"
-	"github.com/gx-org/gx/api/values"
 	"github.com/gx-org/gx/build/ir"
 	"github.com/gx-org/gx/golang/binder/gobindings/core"
 	"github.com/gx-org/gx/golang/binder/gobindings/types"
@@ -42,7 +41,6 @@ var (
 	_ = fmt.Println
 	_ = strings.Compare
 	_ = reflect.TypeFor[int]
-	_ = values.NamedType{}
 	_ = elements.Slice{}
 	_ hostio.Value
 	_ = errors.Errorf
@@ -325,7 +323,7 @@ func (h *handleEmpty) String() string {
 // Empty stores the handle of Empty on a device.
 type Empty struct {
 	handle handleEmpty
-	value  *values.NamedType
+	value  *elements.NamedType
 }
 
 var (
@@ -342,9 +340,9 @@ func (h *handleEmpty) StructValue() *elements.Struct {
 func (fty *Factory) MarshalEmpty(val hostio.Value) (s *Empty, err error) {
 	s = fty.NewEmpty()
 	var ok bool
-	s.value, ok = val.(*values.NamedType)
+	s.value, ok = val.(*elements.NamedType)
 	if !ok {
-		err = errors.Errorf("cannot use handle to set Empty: %T is not a %s", val, reflect.TypeFor[*values.NamedType]())
+		err = errors.Errorf("cannot use handle to set Empty: %T is not a %s", val, reflect.TypeFor[*elements.NamedType]())
 		return
 	}
 	structVal, ok := s.value.Underlying().(*elements.Struct)
@@ -386,7 +384,7 @@ func (fac *Factory) NewEmpty() *Empty {
 	if err != nil {
 		panic(err)
 	}
-	s.value = values.NewNamedType(structVal, typ)
+	s.value = elements.NewNamedType(typ, structVal)
 
 	return s
 }
@@ -462,7 +460,7 @@ func (h *handleBasic) String() string {
 // Basic stores the handle of Basic on a device.
 type Basic struct {
 	handle handleBasic
-	value  *values.NamedType
+	value  *elements.NamedType
 
 	Int      types.Atom[int32]
 	Float    types.Atom[float32]
@@ -487,9 +485,9 @@ func (h *handleBasic) StructValue() *elements.Struct {
 func (fty *Factory) MarshalBasic(val hostio.Value) (s *Basic, err error) {
 	s = fty.NewBasic()
 	var ok bool
-	s.value, ok = val.(*values.NamedType)
+	s.value, ok = val.(*elements.NamedType)
 	if !ok {
-		err = errors.Errorf("cannot use handle to set Basic: %T is not a %s", val, reflect.TypeFor[*values.NamedType]())
+		err = errors.Errorf("cannot use handle to set Basic: %T is not a %s", val, reflect.TypeFor[*elements.NamedType]())
 		return
 	}
 	structVal, ok := s.value.Underlying().(*elements.Struct)
@@ -587,7 +585,7 @@ func (fac *Factory) NewBasic() *Basic {
 	if err != nil {
 		panic(err)
 	}
-	s.value = values.NewNamedType(structVal, typ)
+	s.value = elements.NewNamedType(typ, structVal)
 
 	return s
 }

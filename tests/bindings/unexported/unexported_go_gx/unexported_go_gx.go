@@ -27,7 +27,6 @@ import (
 	"github.com/gx-org/gx/api/hostio"
 	"github.com/gx-org/gx/api/options"
 	"github.com/gx-org/gx/api/runner"
-	"github.com/gx-org/gx/api/values"
 	"github.com/gx-org/gx/build/ir"
 	"github.com/gx-org/gx/golang/binder/gobindings/core"
 	"github.com/gx-org/gx/golang/binder/gobindings/types"
@@ -42,7 +41,6 @@ var (
 	_ = fmt.Println
 	_ = strings.Compare
 	_ = reflect.TypeFor[int]
-	_ = values.NamedType{}
 	_ = elements.Slice{}
 	_ hostio.Value
 	_ = errors.Errorf
@@ -184,7 +182,7 @@ func (h *handleunexported) String() string {
 // unexported stores the handle of unexported on a device.
 type unexported struct {
 	handle handleunexported
-	value  *values.NamedType
+	value  *elements.NamedType
 
 	a types.Atom[float32]
 }
@@ -203,9 +201,9 @@ func (h *handleunexported) StructValue() *elements.Struct {
 func (fty *Factory) Marshalunexported(val hostio.Value) (s *unexported, err error) {
 	s = fty.Newunexported()
 	var ok bool
-	s.value, ok = val.(*values.NamedType)
+	s.value, ok = val.(*elements.NamedType)
 	if !ok {
-		err = errors.Errorf("cannot use handle to set unexported: %T is not a %s", val, reflect.TypeFor[*values.NamedType]())
+		err = errors.Errorf("cannot use handle to set unexported: %T is not a %s", val, reflect.TypeFor[*elements.NamedType]())
 		return
 	}
 	structVal, ok := s.value.Underlying().(*elements.Struct)
@@ -255,7 +253,7 @@ func (fac *Factory) Newunexported() *unexported {
 	if err != nil {
 		panic(err)
 	}
-	s.value = values.NewNamedType(structVal, typ)
+	s.value = elements.NewNamedType(typ, structVal)
 
 	return s
 }

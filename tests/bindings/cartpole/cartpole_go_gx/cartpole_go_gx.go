@@ -27,7 +27,6 @@ import (
 	"github.com/gx-org/gx/api/hostio"
 	"github.com/gx-org/gx/api/options"
 	"github.com/gx-org/gx/api/runner"
-	"github.com/gx-org/gx/api/values"
 	"github.com/gx-org/gx/build/ir"
 	"github.com/gx-org/gx/golang/binder/gobindings/core"
 	"github.com/gx-org/gx/golang/binder/gobindings/types"
@@ -44,7 +43,6 @@ var (
 	_ = fmt.Println
 	_ = strings.Compare
 	_ = reflect.TypeFor[int]
-	_ = values.NamedType{}
 	_ = elements.Slice{}
 	_ hostio.Value
 	_ = errors.Errorf
@@ -233,7 +231,7 @@ func (h *handleCartpole) String() string {
 // Cartpole stores the handle of Cartpole on a device.
 type Cartpole struct {
 	handle handleCartpole
-	value  *values.NamedType
+	value  *elements.NamedType
 
 	gravity               types.Atom[float32]
 	massCart              types.Atom[float32]
@@ -265,9 +263,9 @@ func (h *handleCartpole) StructValue() *elements.Struct {
 func (fty *Factory) MarshalCartpole(val hostio.Value) (s *Cartpole, err error) {
 	s = fty.NewCartpole()
 	var ok bool
-	s.value, ok = val.(*values.NamedType)
+	s.value, ok = val.(*elements.NamedType)
 	if !ok {
-		err = errors.Errorf("cannot use handle to set Cartpole: %T is not a %s", val, reflect.TypeFor[*values.NamedType]())
+		err = errors.Errorf("cannot use handle to set Cartpole: %T is not a %s", val, reflect.TypeFor[*elements.NamedType]())
 		return
 	}
 	structVal, ok := s.value.Underlying().(*elements.Struct)
@@ -421,7 +419,7 @@ func (fac *Factory) NewCartpole() *Cartpole {
 	if err != nil {
 		panic(err)
 	}
-	s.value = values.NewNamedType(structVal, typ)
+	s.value = elements.NewNamedType(typ, structVal)
 
 	return s
 }

@@ -20,7 +20,6 @@ import (
 
 	"github.com/pkg/errors"
 	"github.com/gx-org/gx/api/hostio"
-	"github.com/gx-org/gx/api/values"
 	gxfmt "github.com/gx-org/gx/base/fmt"
 	"github.com/gx-org/gx/build/ir"
 	"github.com/gx-org/gx/golang/backend/kernels"
@@ -37,11 +36,10 @@ type Struct struct {
 }
 
 var (
-	_ IStruct             = (*Struct)(nil)
-	_ engine.Copier       = (*Struct)(nil)
-	_ engine.Selector     = (*Struct)(nil)
-	_ hostio.Value        = (*Struct)(nil)
-	_ values.NamedSourcer = (*Struct)(nil)
+	_ IStruct         = (*Struct)(nil)
+	_ engine.Copier   = (*Struct)(nil)
+	_ engine.Selector = (*Struct)(nil)
+	_ hostio.Value    = (*Struct)(nil)
 )
 
 // NewStructFromElements returns a new node representing a structure instance given a slice of

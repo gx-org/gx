@@ -29,7 +29,6 @@ import (
 // Parser unflattens the output of a graph computation
 // into GX values.
 type Parser struct {
-	factory    hostio.Factory
 	dev        compute.DeviceNum
 	callInputs *togo.FuncInputs
 	// Handles to unflatten.
@@ -38,9 +37,8 @@ type Parser struct {
 }
 
 // NewParser returns a new parser given the output of a graph computation.
-func NewParser(dev compute.DeviceNum, callInputs *togo.FuncInputs, factory hostio.Factory, handles []compute.Buffer) *Parser {
+func NewParser(dev compute.DeviceNum, callInputs *togo.FuncInputs, handles []compute.Buffer) *Parser {
 	return &Parser{
-		factory:    factory,
 		dev:        dev,
 		callInputs: callInputs,
 		compOutput: handles,
@@ -61,11 +59,6 @@ func (h *Parser) CallInputs() *togo.FuncInputs {
 
 func (h *Parser) size() int {
 	return len(h.compOutput)
-}
-
-// Factory to create value elements.
-func (h *Parser) Factory() hostio.Factory {
-	return h.factory
 }
 
 // Device returns to which transfers the host value to.

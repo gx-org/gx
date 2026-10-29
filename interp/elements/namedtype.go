@@ -15,11 +15,13 @@
 package elements
 
 import (
+	"fmt"
 	"reflect"
 
 	"github.com/pkg/errors"
 	"github.com/gx-org/gx/api/hostio"
 	"github.com/gx-org/gx/build/ir"
+	"github.com/gx-org/gx/golang/backend/kernels"
 	"github.com/gx-org/gx/internal/base/cast"
 	"github.com/gx-org/gx/internal/interp/flatten"
 	"github.com/gx-org/gx/interp/engine"
@@ -37,6 +39,8 @@ var (
 	_ ir.StorageElement = (*NamedType)(nil)
 	_ ir.WithExpr       = (*NamedType)(nil)
 	_ engine.NamedType  = (*NamedType)(nil)
+	_ hostio.Value      = (*NamedType)(nil)
+	_ hostio.Under      = (*NamedType)(nil)
 )
 
 // NewNamedType returns a new node representing an exported type.
@@ -81,6 +85,13 @@ func (n *NamedType) Under() (ir.Element, error) {
 	return n.under, nil
 }
 
+// Underlying returns the underlying GX value of the named type.
+// Returns nil if the underlying element is not a GX value.
+func (n *NamedType) Underlying() hostio.Value {
+	val, _ := n.under.(hostio.Value)
+	return val
+}
+
 // Flatten returns the named type in a slice of elements.
 func (n *NamedType) Flatten() ([]ir.Element, error) {
 	return flatten.Flatten(n.under)
@@ -97,7 +108,29 @@ func (n *NamedType) Unflatten(parser *flatten.Parser) (hostio.Value, error) {
 	if err != nil {
 		return nil, err
 	}
-	return parser.Factory().NewNamedType(val, n.typ), nil
+	return NewNamedType(n.typ, val), nil
+}
+
+// ToHost transfers the underlying value to the host.
+func (n *NamedType) ToHost(alloc kernels.Allocator) (hostio.Value, error) {
+	val, err := cast.To[hostio.Value](n.under)
+	if err != nil {
+		return nil, err
+	}
+	hostVal, err := val.ToHost(alloc)
+	if err != nil {
+		return nil, err
+	}
+	return NewNamedType(n.typ, hostVal), nil
+}
+
+// Finalize releases the resources allocated for the underlying value.
+func (n *NamedType) Finalize() error {
+	val, err := cast.To[hostio.Value](n.under)
+	if err != nil {
+		return err
+	}
+	return val.Finalize()
 }
 
 // Type of the element.
@@ -123,6 +156,14 @@ func (n *NamedType) Expr(ev ir.Evaluator, src ast.Expr) ([]ir.Expr, error) {
 // String returns a string representation of the node.
 func (n *NamedType) String() string {
 	return n.typ.ReferString(nil)
+}
+
+// SourceString returns the GX source code of the implementation.
+func (n *NamedType) SourceString(from *ir.File) string {
+	if underStruct, ok := n.under.(*Struct); ok {
+		return underStruct.SourceStringWithName(from, n.typ.ReferString(from))
+	}
+	return fmt.Sprintf("%s(%s)", n.typ.ReferString(from), ir.DefineString(from, n.under))
 }
 
 // NewReceiver returns a new receiver given a function definition and the element representing the receiver.

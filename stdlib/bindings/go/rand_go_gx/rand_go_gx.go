@@ -27,7 +27,6 @@ import (
 	"github.com/gx-org/gx/api/hostio"
 	"github.com/gx-org/gx/api/options"
 	"github.com/gx-org/gx/api/runner"
-	"github.com/gx-org/gx/api/values"
 	"github.com/gx-org/gx/build/ir"
 	"github.com/gx-org/gx/golang/binder/gobindings/core"
 	"github.com/gx-org/gx/golang/binder/gobindings/types"
@@ -44,7 +43,6 @@ var (
 	_ = fmt.Println
 	_ = strings.Compare
 	_ = reflect.TypeFor[int]
-	_ = values.NamedType{}
 	_ = elements.Slice{}
 	_ hostio.Value
 	_ = errors.Errorf
@@ -268,7 +266,7 @@ func (h *handlePhilox) String() string {
 // Philox stores the handle of Philox on a device.
 type Philox struct {
 	handle handlePhilox
-	value  *values.NamedType
+	value  *elements.NamedType
 
 	state types.Array[uint64]
 }
@@ -287,9 +285,9 @@ func (h *handlePhilox) StructValue() *elements.Struct {
 func (fty *Factory) MarshalPhilox(val hostio.Value) (s *Philox, err error) {
 	s = fty.NewPhilox()
 	var ok bool
-	s.value, ok = val.(*values.NamedType)
+	s.value, ok = val.(*elements.NamedType)
 	if !ok {
-		err = errors.Errorf("cannot use handle to set Philox: %T is not a %s", val, reflect.TypeFor[*values.NamedType]())
+		err = errors.Errorf("cannot use handle to set Philox: %T is not a %s", val, reflect.TypeFor[*elements.NamedType]())
 		return
 	}
 	structVal, ok := s.value.Underlying().(*elements.Struct)
@@ -339,7 +337,7 @@ func (fac *Factory) NewPhilox() *Philox {
 	if err != nil {
 		panic(err)
 	}
-	s.value = values.NewNamedType(structVal, typ)
+	s.value = elements.NewNamedType(typ, structVal)
 
 	return s
 }
@@ -422,7 +420,7 @@ func (h *handlebootstrapGenerator) String() string {
 // bootstrapGenerator stores the handle of bootstrapGenerator on a device.
 type bootstrapGenerator struct {
 	handle handlebootstrapGenerator
-	value  *values.NamedType
+	value  *elements.NamedType
 }
 
 var (
@@ -439,9 +437,9 @@ func (h *handlebootstrapGenerator) StructValue() *elements.Struct {
 func (fty *Factory) MarshalbootstrapGenerator(val hostio.Value) (s *bootstrapGenerator, err error) {
 	s = fty.NewbootstrapGenerator()
 	var ok bool
-	s.value, ok = val.(*values.NamedType)
+	s.value, ok = val.(*elements.NamedType)
 	if !ok {
-		err = errors.Errorf("cannot use handle to set bootstrapGenerator: %T is not a %s", val, reflect.TypeFor[*values.NamedType]())
+		err = errors.Errorf("cannot use handle to set bootstrapGenerator: %T is not a %s", val, reflect.TypeFor[*elements.NamedType]())
 		return
 	}
 	structVal, ok := s.value.Underlying().(*elements.Struct)
@@ -483,7 +481,7 @@ func (fac *Factory) NewbootstrapGenerator() *bootstrapGenerator {
 	if err != nil {
 		panic(err)
 	}
-	s.value = values.NewNamedType(structVal, typ)
+	s.value = elements.NewNamedType(typ, structVal)
 
 	return s
 }
@@ -547,7 +545,7 @@ func (h *handleRand) String() string {
 // Rand stores the handle of Rand on a device.
 type Rand struct {
 	handle handleRand
-	value  *values.NamedType
+	value  *elements.NamedType
 
 	src *Philox
 }
@@ -566,9 +564,9 @@ func (h *handleRand) StructValue() *elements.Struct {
 func (fty *Factory) MarshalRand(val hostio.Value) (s *Rand, err error) {
 	s = fty.NewRand()
 	var ok bool
-	s.value, ok = val.(*values.NamedType)
+	s.value, ok = val.(*elements.NamedType)
 	if !ok {
-		err = errors.Errorf("cannot use handle to set Rand: %T is not a %s", val, reflect.TypeFor[*values.NamedType]())
+		err = errors.Errorf("cannot use handle to set Rand: %T is not a %s", val, reflect.TypeFor[*elements.NamedType]())
 		return
 	}
 	structVal, ok := s.value.Underlying().(*elements.Struct)
@@ -615,7 +613,7 @@ func (fac *Factory) NewRand() *Rand {
 	if err != nil {
 		panic(err)
 	}
-	s.value = values.NewNamedType(structVal, typ)
+	s.value = elements.NewNamedType(typ, structVal)
 
 	return s
 }

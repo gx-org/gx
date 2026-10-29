@@ -27,7 +27,6 @@ import (
 	"github.com/gx-org/gx/api/hostio"
 	"github.com/gx-org/gx/api/options"
 	"github.com/gx-org/gx/api/runner"
-	"github.com/gx-org/gx/api/values"
 	"github.com/gx-org/gx/build/ir"
 	"github.com/gx-org/gx/golang/binder/gobindings/core"
 	"github.com/gx-org/gx/golang/binder/gobindings/types"
@@ -46,7 +45,6 @@ var (
 	_ = fmt.Println
 	_ = strings.Compare
 	_ = reflect.TypeFor[int]
-	_ = values.NamedType{}
 	_ = elements.Slice{}
 	_ hostio.Value
 	_ = errors.Errorf
@@ -266,7 +264,7 @@ func (h *handleLearner) String() string {
 // Learner stores the handle of Learner on a device.
 type Learner struct {
 	handle handleLearner
-	value  *values.NamedType
+	value  *elements.NamedType
 
 	stepSize types.Atom[float32]
 	Weights  types.Array[float32]
@@ -286,9 +284,9 @@ func (h *handleLearner) StructValue() *elements.Struct {
 func (fty *Factory) MarshalLearner(val hostio.Value) (s *Learner, err error) {
 	s = fty.NewLearner()
 	var ok bool
-	s.value, ok = val.(*values.NamedType)
+	s.value, ok = val.(*elements.NamedType)
 	if !ok {
-		err = errors.Errorf("cannot use handle to set Learner: %T is not a %s", val, reflect.TypeFor[*values.NamedType]())
+		err = errors.Errorf("cannot use handle to set Learner: %T is not a %s", val, reflect.TypeFor[*elements.NamedType]())
 		return
 	}
 	structVal, ok := s.value.Underlying().(*elements.Struct)
@@ -346,7 +344,7 @@ func (fac *Factory) NewLearner() *Learner {
 	if err != nil {
 		panic(err)
 	}
-	s.value = values.NewNamedType(structVal, typ)
+	s.value = elements.NewNamedType(typ, structVal)
 
 	return s
 }
@@ -482,7 +480,7 @@ func (h *handleTarget) String() string {
 // Target stores the handle of Target on a device.
 type Target struct {
 	handle handleTarget
-	value  *values.NamedType
+	value  *elements.NamedType
 
 	rnd     *gxdep2.Rand
 	weights types.Array[float32]
@@ -503,9 +501,9 @@ func (h *handleTarget) StructValue() *elements.Struct {
 func (fty *Factory) MarshalTarget(val hostio.Value) (s *Target, err error) {
 	s = fty.NewTarget()
 	var ok bool
-	s.value, ok = val.(*values.NamedType)
+	s.value, ok = val.(*elements.NamedType)
 	if !ok {
-		err = errors.Errorf("cannot use handle to set Target: %T is not a %s", val, reflect.TypeFor[*values.NamedType]())
+		err = errors.Errorf("cannot use handle to set Target: %T is not a %s", val, reflect.TypeFor[*elements.NamedType]())
 		return
 	}
 	structVal, ok := s.value.Underlying().(*elements.Struct)
@@ -569,7 +567,7 @@ func (fac *Factory) NewTarget() *Target {
 	if err != nil {
 		panic(err)
 	}
-	s.value = values.NewNamedType(structVal, typ)
+	s.value = elements.NewNamedType(typ, structVal)
 
 	return s
 }

@@ -27,7 +27,6 @@ import (
 	"github.com/gx-org/gx/api/hostio"
 	"github.com/gx-org/gx/api/options"
 	"github.com/gx-org/gx/api/runner"
-	"github.com/gx-org/gx/api/values"
 	"github.com/gx-org/gx/build/ir"
 	"github.com/gx-org/gx/golang/binder/gobindings/core"
 	"github.com/gx-org/gx/golang/binder/gobindings/types"
@@ -43,7 +42,6 @@ var (
 	_ = fmt.Println
 	_ = strings.Compare
 	_ = reflect.TypeFor[int]
-	_ = values.NamedType{}
 	_ = elements.Slice{}
 	_ hostio.Value
 	_ = errors.Errorf
@@ -317,7 +315,7 @@ func (h *handleShape) String() string {
 // Shape stores the handle of Shape on a device.
 type Shape struct {
 	handle handleShape
-	value  *values.NamedType
+	value  *elements.NamedType
 
 	DType      *DType
 	Dimensions *types.Slice[types.Atom[int]]
@@ -337,9 +335,9 @@ func (h *handleShape) StructValue() *elements.Struct {
 func (fty *Factory) MarshalShape(val hostio.Value) (s *Shape, err error) {
 	s = fty.NewShape()
 	var ok bool
-	s.value, ok = val.(*values.NamedType)
+	s.value, ok = val.(*elements.NamedType)
 	if !ok {
-		err = errors.Errorf("cannot use handle to set Shape: %T is not a %s", val, reflect.TypeFor[*values.NamedType]())
+		err = errors.Errorf("cannot use handle to set Shape: %T is not a %s", val, reflect.TypeFor[*elements.NamedType]())
 		return
 	}
 	structVal, ok := s.value.Underlying().(*elements.Struct)
@@ -418,7 +416,7 @@ func (fac *Factory) NewShape() *Shape {
 	if err != nil {
 		panic(err)
 	}
-	s.value = values.NewNamedType(structVal, typ)
+	s.value = elements.NewNamedType(typ, structVal)
 
 	return s
 }
