@@ -80,6 +80,10 @@ func (s *specialiser) From() (*ir.File, ir.Expr) {
 	return s.from, s.x
 }
 
+func (s *specialiser) Target() ir.GenericType {
+	return s.gtype
+}
+
 func (s *specialiser) valueOf(genParam ir.GenericParam) ir.GenericValue {
 	paramField := genParam.OrigField()
 	if paramField.Pos >= len(s.tparamFields) {
@@ -180,10 +184,10 @@ func (s *specialiser) String() string {
 	return b.String()
 }
 
-// SpecialiseStruct specialises a structure given type values.
-func SpecialiseStruct(fetcher ir.Fetcher, expr ir.Expr, st *ir.StructType, typArgs []ir.GenericValue) (*ir.TypeValExpr, bool) {
-	spec := newSpecialiser(fetcher.File(), expr, fetcher, nil, st, typArgs)
-	specType, ok := st.SpecialiseStruct(spec)
+// SpecialiseNamed specialises a named type given type values.
+func SpecialiseNamed(fetcher ir.Fetcher, expr ir.Expr, nt *ir.NamedType, typArgs []ir.GenericValue) (*ir.TypeValExpr, bool) {
+	spec := newSpecialiser(fetcher.File(), expr, fetcher, nil, nt, typArgs)
+	specType, ok := nt.SpecialiseNamed(spec)
 	return ir.TypeExpr(expr.Expr(), specType), ok
 }
 

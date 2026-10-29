@@ -1,0 +1,17 @@
+package struct_nontype04
+
+type S[Size int] struct {
+	a [Size]float32
+}
+
+func id(s S[1+2]) S[3] {
+	return s
+}
+
+func Test() S[3] {
+	return id(S[3]{a: [3]float32{1, 2, 3}})
+	// Want:
+	// S[3]{
+	// 	a: [3]float32{1, 2, 3},
+	// }
+}

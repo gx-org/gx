@@ -1,0 +1,22 @@
+package struct_nontype06
+
+type S[Shape []int] struct {
+	a [Shape...]float32
+}
+
+func id[Shape []int](s S[Shape]) S[Shape] {
+	return s
+}
+
+func Test() S[[]int{2, 3}] {
+	return id[[]int{2, 3}](S[[]int{2, 3}]{
+		a: [2][3]float32{{1, 2, 3}, {4, 5, 6}},
+	})
+	// Want:
+	// S[[]int{2, 3}]{
+	// 	a: [2][3]float32{
+	// 		{1, 2, 3},
+	// 		{4, 5, 6},
+	// 	},
+	// }
+}

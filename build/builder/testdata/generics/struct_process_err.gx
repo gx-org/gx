@@ -1,0 +1,17 @@
+package struct_process_err
+
+type S[T any] struct {
+	a T
+}
+
+func (s S[T]) get[T any]() T { // ERROR type parameter T redeclared
+	return s.a
+}
+
+type SShape[Shape []int] struct {
+	a [Shape...]float32
+}
+
+func (s SShape[Shape]) get[Shape []int]() [Shape...]float32 { // ERROR type parameter Shape redeclared
+	return s.a
+}

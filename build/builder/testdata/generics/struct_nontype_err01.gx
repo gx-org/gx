@@ -1,0 +1,21 @@
+package struct_nontype_err01
+
+type S[Shape []int] struct {
+	a [Shape...]float32
+}
+
+type Other[Shape []int] struct {
+	a [Shape...]float32
+}
+
+func mismatchConcrete(s S[[]int{2, 3}]) S[[]int{2, 4}] {
+	return s // ERROR cannot use S[[]int{2, 3}] as S[[]int{2, 4}] value in return statement
+}
+
+func mismatchGeneric[S1, S2 []int](s S[S1]) S[S2] {
+	return s // ERROR cannot use S[S1] as S[S2] value in return statement
+}
+
+func mismatchOrigin(s S[[]int{2, 3}]) Other[[]int{2, 3}] {
+	return s // ERROR cannot use S[[]int{2, 3}] as Other[[]int{2, 3}] value in return statement
+}

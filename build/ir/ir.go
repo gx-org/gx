@@ -200,8 +200,9 @@ type (
 	NamedType struct {
 		BaseType[ast.Expr]
 
-		Src  *ast.TypeSpec
-		File *File
+		Src    *ast.TypeSpec
+		File   *File
+		origin *NamedType
 
 		GenParams  GenericParams
 		Underlying *TypeValExpr
@@ -249,6 +250,7 @@ type (
 var (
 	_ StorageWithValue = (*NamedType)(nil)
 	_ TypeMethods      = (*NamedType)(nil)
+	_ GenericType      = (*NamedType)(nil)
 	_ typeSet          = (*NamedType)(nil)
 	_ Zeroer           = (*NamedType)(nil)
 	_ Type             = (*InterfaceType)(nil)
@@ -502,10 +504,28 @@ func (s *NamedType) Equal(tpcmp TypeEval, other Type) (bool, error) {
 	if s == otherT {
 		return true, nil
 	}
-	if s.FullName() != otherT.FullName() {
+	if s.OriginNamed() != otherT.OriginNamed() {
 		return false, nil
 	}
-	return s.Underlying.Val().Equal(tpcmp, otherT.Underlying.Val())
+	return s.GenParams.Equal(tpcmp, &otherT.GenParams)
+}
+
+// OriginNamed returns the original named type before any specialisation.
+func (s *NamedType) OriginNamed() *NamedType {
+	if s.origin == nil {
+		return s
+	}
+	return s.origin
+}
+
+// Origin generic type.
+func (s *NamedType) Origin() GenericType {
+	return s.OriginNamed()
+}
+
+// Generics returns the generic values.
+func (s *NamedType) Generics() *GenericParams {
+	return &s.GenParams
 }
 
 // AssignableTo reports if the type can be assigned to other.
@@ -555,8 +575,8 @@ func (s *NamedType) convertibleFrom(tpcmp TypeEval, source Type) (bool, error) {
 }
 
 // Instantiate the named type.
-func (s *NamedType) Instantiate(Fetcher, Instantiator) (Type, bool) {
-	return s, true
+func (s *NamedType) Instantiate(_ Fetcher, spec Instantiator) (Type, bool) {
+	return s.Specialise(spec)
 }
 
 // FullName returns the full name of the type, that is the full package path and the type name.
@@ -574,9 +594,10 @@ func (s *NamedType) Name() string {
 
 // Methods returns the list of methods provided by the named type.
 func (s *NamedType) Methods() []PkgFunc {
-	if len(s.Meths) > 0 {
+	origin := s.OriginNamed()
+	if len(origin.Meths) > 0 {
 		// Methods attached to the type using the func notation.
-		return s.Meths
+		return origin.Meths
 	}
 	if s.Underlying != nil {
 		iface, ok := Underlying(s).(*Interface)
@@ -651,15 +672,42 @@ func (s *NamedType) DefineString(from *File) string {
 
 // ReferString returns a reference to the type given a file context.
 func (s *NamedType) ReferString(from *File) string {
-	if from != nil && s.File != nil && s.File.Package == from.Package {
-		return s.Name()
+	name := s.Name()
+	if s.File != nil && s.File.Package != nil && (from == nil || s.File.Package != from.Package) {
+		name = s.File.Package.Name.Name + "." + name
 	}
-	return s.File.Package.Name.Name + "." + s.Name()
+	var args []string
+	for _, genericValue := range s.GenParams.Values {
+		if genericValue != nil {
+			args = append(args, genericValue.Value().SourceString(from))
+		}
+	}
+	if len(args) > 0 {
+		name += "[" + strings.Join(args, ", ") + "]"
+	}
+	return name
+}
+
+// SpecialiseNamed specialises a named type.
+func (s *NamedType) SpecialiseNamed(spec Specialiser) (*NamedType, bool) {
+	origin := s.OriginNamed()
+	if origin.GenParams.Fields.Len() == 0 {
+		return s, true
+	}
+	result := *s
+	result.origin = origin
+	var genericsOk, underlyingOk bool
+	result.GenParams, genericsOk = s.GenParams.Specialise(spec, spec.Target() == s)
+	result.Underlying, underlyingOk = s.Underlying.Specialise(spec)
+	if structType, isStruct := Underlying(result.Underlying.Val()).(*StructType); isStruct {
+		structType.GenParams = &result.GenParams
+	}
+	return &result, genericsOk && underlyingOk
 }
 
 // Specialise a type to a given target.
 func (s *NamedType) Specialise(spec Specialiser) (Type, bool) {
-	return s, true
+	return s.SpecialiseNamed(spec)
 }
 
 // Package returns the package to which the type belongs to.

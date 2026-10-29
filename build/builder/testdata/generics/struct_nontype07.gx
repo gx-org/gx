@@ -1,0 +1,21 @@
+package struct_nontype07
+
+type S[Shape []int] struct {
+	a [Shape...]float32
+}
+
+func (s S[Shape]) get() [Shape...]float32 {
+	return s.a
+}
+
+func Test() [2][3]float32 {
+	s := S[[]int{2, 3}]{
+		a: [2][3]float32{{1, 2, 3}, {4, 5, 6}},
+	}
+	return s.get()
+	// Want:
+	// [2][3]float32{
+	// 	{1, 2, 3},
+	// 	{4, 5, 6},
+	// }
+}
