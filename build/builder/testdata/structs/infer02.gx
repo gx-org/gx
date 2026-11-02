@@ -1,0 +1,15 @@
+package infer02
+
+type S[N int] struct {
+	a [N]int32
+}
+
+func f[N int](s S[N]) [N]int32 {
+	return s.a + 2
+}
+
+func Test() [3]int32 {
+	return f(S[3]{a: [3]int32{10, 20, 30}})
+	// Want:
+	// [3]int32{12, 22, 32}
+}

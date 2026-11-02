@@ -710,6 +710,11 @@ func (s *NamedType) Specialise(spec Specialiser) (Type, bool) {
 	return s.SpecialiseNamed(spec)
 }
 
+// UnifyWith recursively unifies a type parameters with types.
+func (s *NamedType) UnifyWith(uni Unifier, typ Type) bool {
+	return s.Underlying.Val().UnifyWith(uni, Underlying(typ))
+}
+
 // Package returns the package to which the type belongs to.
 func (s *NamedType) Package() *Package {
 	return s.File.Package

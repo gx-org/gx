@@ -1,0 +1,22 @@
+package infer08
+
+import "dtype"
+
+type S[T dtype.Ints] struct {
+	a T
+}
+
+type U[N int] struct {
+	b [N]int32
+}
+
+func (s S[T]) f[N int](u U[N]) [N]T {
+	return ([N]T)(u.b) + s.a
+}
+
+func Test() [3]int64 {
+	s := S[int64]{a: 10}
+	return s.f(U[3]{b: [3]int32{1, 2, 3}})
+	// Want:
+	// [3]int64{11, 12, 13}
+}

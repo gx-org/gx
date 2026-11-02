@@ -1,0 +1,18 @@
+package infer01
+
+import "dtype"
+
+type S[T dtype.Nums] struct {
+	a T
+}
+
+func f[T dtype.Nums](s S[T]) T {
+	return s.a
+}
+
+func Test() (int32, float32) {
+	return f(S[int32]{a: 42}), f(S[float32]{a: 3.5})
+	// Want:
+	// 0: int32(42)
+	// 1: float32(3.5)
+}

@@ -1,0 +1,29 @@
+package infer04
+
+import "dtype"
+
+type U[T dtype.Ints, S []int] struct {
+	a [S...]T
+}
+
+type V[T dtype.Ints, S []int] struct {
+	u U[T, S]
+	b T
+}
+
+func f[T dtype.Ints, S []int](v V[T, S]) [S...]T {
+	return v.u.a * v.b
+}
+
+func g[T dtype.Ints, S []int](a [S...]T, b T) [S...]T {
+	return f(V[T, S]{
+		u: U[T, S]{a: a},
+		b: b,
+	})
+}
+
+func Test() [2]int32 {
+	return g([2]int32{3, 4}, int32(5))
+	// Want:
+	// [2]int32{15, 20}
+}

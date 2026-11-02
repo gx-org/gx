@@ -131,6 +131,37 @@ func (s *StructType) Specialise(spec Specialiser) (Type, bool) {
 	return s.SpecialiseStruct(spec)
 }
 
+func sameFieldNames(a, b []*Field) bool {
+	if len(a) != len(b) {
+		return false
+	}
+	for i, aField := range a {
+		if aField.Name.Name != b[i].Name.Name {
+			return false
+		}
+	}
+	return true
+}
+
+// UnifyWith recursively unifies a type parameters with types.
+func (s *StructType) UnifyWith(uni Unifier, typ Type) bool {
+	other, ok := Underlying(typ).(*StructType)
+	if !ok {
+		return true
+	}
+	sFields := s.Fields.Fields()
+	oFields := other.Fields.Fields()
+	if !sameFieldNames(sFields, oFields) {
+		return true
+	}
+	for i, sField := range sFields {
+		if !sField.Type().UnifyWith(uni, oFields[i].Type()) {
+			ok = false
+		}
+	}
+	return ok
+}
+
 // originSType returns the original structure type from which this type was defined, typically through specialisation.
 // If origin is nil, then it return itself.
 func (s *StructType) originSType() *StructType {

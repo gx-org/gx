@@ -1,0 +1,25 @@
+package infer07
+
+type T[S []int] struct {
+	a [S...]float32
+}
+
+func (t T[S]) g(x [S...]float32) [S...]float32 {
+	return t.a + x
+}
+
+func f[S []int](t T[S], x [S...]float32) [S...]float32 {
+	return t.g(x)
+}
+
+func Test() [2][3]float32 {
+	t := T[[]int{2, 3}]{
+		a: [2][3]float32{{1, 2, 3}, {4, 5, 6}},
+	}
+	return f(t, [2][3]float32{{10, 20, 30}, {40, 50, 60}})
+	// Want:
+	// [2][3]float32{
+	// 	{11, 22, 33},
+	// 	{44, 55, 66},
+	// }
+}
