@@ -41,14 +41,6 @@ func NilStorage() *ir.Nil {
 	return nilStorage
 }
 
-// NilFromType returns a nil element for a given type.
-func NilFromType(tp ir.Type) ir.Element {
-	return NewNil(&ir.NilCastExpr{
-		X:   nilExpr,
-		Typ: tp,
-	})
-}
-
 // NewNil returns a new nil element.
 func NewNil(x *ir.NilCastExpr) ir.Element {
 	return &nilEl{x: x}

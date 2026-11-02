@@ -325,36 +325,6 @@ func PackageType() Type {
 	return packageT
 }
 
-// TypeInclude returns if a typ is included in a type or not.
-func TypeInclude(tpcmp TypeEval, set Type, typ Type) (bool, error) {
-	set = simplifyType(set, false)
-	typ = simplifyType(typ, false)
-	_, isSetNamed := set.(*NamedType)
-	_, isTypeNamed := typ.(*NamedType)
-	if isSetNamed && isTypeNamed {
-		return set.Equal(tpcmp, typ)
-	}
-	return typeInclude(tpcmp, set, typ)
-}
-
-func typeInclude(tpcmp TypeEval, set Type, typ Type) (bool, error) {
-	set = Underlying(set)
-	typeSet, typeSetOk := set.(*Interface)
-	if !typeSetOk {
-		return set.Equal(tpcmp, typ)
-	}
-	for _, sub := range typeSet.types {
-		in, err := typeInclude(tpcmp, sub, typ)
-		if err != nil {
-			return false, err
-		}
-		if in {
-			return true, nil
-		}
-	}
-	return false, nil
-}
-
 // Source returns the source code defining the type.
 // Always returns nil.
 func (s *Interface) Source() ast.Node { return s.ArrayType() }

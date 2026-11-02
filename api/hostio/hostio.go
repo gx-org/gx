@@ -17,7 +17,6 @@ package hostio
 
 import (
 	"github.com/pkg/errors"
-	"github.com/gomlx/compute/dtypes/bfloat16"
 	"github.com/gomlx/compute/dtypes/gotype"
 	"github.com/gx-org/gx/build/ir"
 	"github.com/gx-org/gx/golang/backend/kernels"
@@ -68,11 +67,6 @@ func toHostArray(typ ir.Type, h kernels.Array) (*HostArray, error) {
 // AtomFloatValue returns an array GX value given a Go value.
 func AtomFloatValue[T gotype.Float](typ ir.Type, val T) (*HostArray, error) {
 	return toHostArray(typ, kernels.ToFloatAtom[T](val))
-}
-
-// AtomBfloat16Value returns an array GX value given a Go value.
-func AtomBfloat16Value(typ ir.Type, val bfloat16.BFloat16) (*HostArray, error) {
-	return toHostArray(typ, kernels.ToBfloat16Atom(val))
 }
 
 // AtomBoolValue returns an array GX value given a boolean value.
