@@ -49,10 +49,6 @@ func (b *binder) FunctionsAndMethods() []*function {
 	return append(b.Methods(), b.Funcs...)
 }
 
-func (f function) RunnerType() string {
-	return f.FuncType().ReceiverField().Type().(*ir.NamedType).Name()
-}
-
 func (f function) RecvTypeName() string {
 	recv := f.FuncType().ReceiverField()
 	if recv == nil {
@@ -75,13 +71,6 @@ func outputN(i int) string {
 
 func argN(i int) string {
 	return fmt.Sprintf("arg%d", i)
-}
-
-func toKindSuffix(typ ir.Type) string {
-	kind := typ.Kind()
-	kindS := kind.String()
-	kindS = strings.ToUpper(kindS[:1]) + kindS[1:]
-	return kindS
 }
 
 func hasStructIn(fields *ir.FieldList) bool {

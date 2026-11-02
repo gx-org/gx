@@ -104,28 +104,6 @@ func (a *arrayT[T]) ToAtom() (any, error) {
 	return a.toAtom()
 }
 
-// ScalarToArray fills an array with a scalar value.
-func (a *arrayT[T]) ScalarToArray(dims []int) *arrayT[T] {
-	shape := shapes.Make(a.shape.DType, dims...)
-	values := make([]T, shape.Size())
-	for i := range values {
-		values[i] = a.values[0]
-	}
-	return &arrayT[T]{
-		shape:   shape,
-		values:  values,
-		factory: a.factory,
-	}
-}
-
-func (a *arrayT[T]) reshapeArray(dims []int) arrayT[T] {
-	return arrayT[T]{
-		factory: a.factory,
-		shape:   shapes.Make(dtypes.FromGenericsType[T](), dims...),
-		values:  append([]T{}, a.values...),
-	}
-}
-
 func (f arrayFactory[T]) Slice(x shapes.Shape, index int) (Unary, shapes.Shape, error) {
 	shapeOut := shapes.Make(x.DType, x.Dimensions[1:]...)
 	stride := shapeOut.Size()

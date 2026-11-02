@@ -207,10 +207,6 @@ func (s scalarType) BuildDeclaration() (string, error) {
 	return w.String(), nil
 }
 
-func (s scalarType) BackendType() (string, error) {
-	return s.binder.bridgerType(s.typ)
-}
-
 func (s scalarType) GXValueType() (string, error) {
 	return s.binder.gxValueType(s.typ)
 }
@@ -439,24 +435,6 @@ func (s structType) NamedTypeFieldsToString() (string, error) {
 		}
 		return bld.String(), nil
 	})
-}
-
-var setFieldTemplate = template.Must(template.New("allocStructFieldTMPL").Parse(`
-	case "{{.FieldName}}":
-		fieldValue, err := h.pkg.handle.factory.New(field.Type().(*ir.NamedType))
-		if err != nil {
-			return nil, err
-		}
-		goFieldValue, ok := fieldValue.Bridger().({{.FieldType}})
-		if !ok {
-			return nil, errors.Errorf("cannot convert %T to %s", fieldValue, reflect.TypeFor[{{.FieldType}}]())
-		}
-		h.owner.{{.FieldName}} = goFieldValue
-		return fieldValue, nil
-`))
-
-func (s structType) AllocFields() (string, error) {
-	return tmpl.IterateTmpl(s.typ.Fields.Fields(), setFieldTemplate)
 }
 
 func (s structType) Fields() []structField {
