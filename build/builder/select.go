@@ -18,6 +18,7 @@ import (
 	"fmt"
 	"reflect"
 
+	"github.com/gx-org/gx/build/ir/generics"
 	"github.com/gx-org/gx/build/ir"
 	"github.com/gx-org/gx/build/ir/irkind"
 	"github.com/gx-org/gx/src/gx/ast"
@@ -121,7 +122,41 @@ func (n *selectorExpr) buildSelectorExpr(scope resolveScope) (ext *ir.SelectorEx
 }
 
 func (n *selectorExpr) buildExpr(scope resolveScope) (ir.Expr, bool) {
-	return n.buildSelectorExpr(scope)
+	sel, ok := n.buildSelectorExpr(scope)
+	if !ok {
+		return sel, false
+	}
+	return specializeReceiverFunc(scope, sel)
+}
+
+func specializeReceiverFunc(scope resolveScope, sel *ir.SelectorExpr) (ir.Expr, bool) {
+	method, ok := sel.Stor.(ir.PkgFunc)
+	if !ok {
+		return sel, true
+	}
+	receiverNamed, ok := sel.X.Type().(*ir.NamedType)
+	if !ok {
+		return sel, true
+	}
+	var receiverArgs []ir.Expr
+	for _, genericValue := range receiverNamed.GenParams.Values {
+		if genericValue != nil {
+			receiverArgs = append(receiverArgs, genericValue.Value())
+		}
+	}
+	if len(receiverArgs) == 0 {
+		return sel, true
+	}
+	compEval, ok := scope.compEval()
+	if !ok {
+		return sel, false
+	}
+	fun := ir.NewFuncValExpr(sel, method)
+	genericValues, ok := buildGenericValues(scope, sel, compEval, &fun.FuncType().GenParams, receiverArgs)
+	if !ok {
+		return fun, false
+	}
+	return generics.SpecialiseParams(compEval, sel, fun, genericValues)
 }
 
 func (n *selectorExpr) buildTypeExpr(rscope resolveScope) (*ir.TypeValExpr, bool) {

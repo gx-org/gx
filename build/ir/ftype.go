@@ -226,18 +226,16 @@ func (s *FuncType) SpecialiseFType(spec Specialiser) (*FuncType, bool) {
 		field: skipIfDefined(spec),
 	})
 	res.GenParams.Values = spec.Values()
-	var paramsOk bool
-	res.Params = cloneFields(s.Params, &cloner{
-		group: specialiseGroup(spec, &paramsOk),
+	var ok bool
+	cl := &cloner{
+		group: specialiseGroup(spec, &ok),
 		field: cloneField,
-	})
-	var resultsOk bool
-	res.Results = cloneFields(s.Results, &cloner{
-		group: specialiseGroup(spec, &resultsOk),
-		field: cloneField,
-	})
+	}
+	res.Receiver = cloneFields(s.Receiver, cl)
+	res.Params = cloneFields(s.Params, cl)
+	res.Results = cloneFields(s.Results, cl)
 	res.VarArgs = res.varArgs()
-	return &res, paramsOk && resultsOk
+	return &res, ok
 }
 
 // ArgIndexToParamField returns the field corresponding to an argument index.

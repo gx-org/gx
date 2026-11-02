@@ -685,7 +685,7 @@ func evalFuncValExpr(fitp *Interpreter, expr *ir.FuncValExpr) (ir.Element, error
 	if isLit {
 		return NewFuncLit(lit, fitp.Context()), nil
 	}
-	return elements.NewFunc(expr.Func(), nil), nil
+	return evalExpr(fitp, expr.X())
 }
 
 func evalIdent(fitp *Interpreter, ref *ir.Ident) (ir.Element, error) {
