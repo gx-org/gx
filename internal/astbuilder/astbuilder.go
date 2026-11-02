@@ -21,7 +21,6 @@ import (
 
 	"github.com/pkg/errors"
 	"github.com/gx-org/gx/build/fmterr"
-	"github.com/gx-org/gx/build/ir"
 	"github.com/gx-org/gx/src/gx/ast"
 )
 
@@ -103,46 +102,4 @@ func Clone[T ast.Node](n T, transform Transform) (outT T, err error) {
 	}
 	err = fmt.Errorf("cannot clone AST for synthetic code:\n%+v", cl.errs.ToError())
 	return
-}
-
-func toTransform[T ast.Node](f func(T) error) Transform {
-	return func(n ast.Node) error {
-		nT, ok := n.(T)
-		if !ok {
-			return nil
-		}
-		return f(nT)
-	}
-}
-
-type paramNamer struct {
-	pos int
-}
-
-// NameParams names parameters that have no names.
-func NameParams() Transform {
-	return toTransform((&paramNamer{}).transform)
-}
-
-func (pn *paramNamer) name() string {
-	return fmt.Sprintf("p%d", pn.pos)
-}
-
-func (pn *paramNamer) transform(n *ast.Field) error {
-	defer func() {
-		pn.pos++
-	}()
-	if len(n.Names) == 0 {
-		n.Names = []*ast.Ident{&ast.Ident{
-			Name: pn.name(),
-		}}
-		return nil
-	}
-	for _, name := range n.Names {
-		if ir.ValidName(name.Name) {
-			continue
-		}
-		name.Name = pn.name()
-	}
-	return nil
 }

@@ -25,8 +25,6 @@ import (
 
 	"github.com/pkg/errors"
 	"github.com/gomlx/compute"
-	"github.com/gx-org/gx/build/builtins"
-	"github.com/gx-org/gx/build/fmterr"
 	"github.com/gx-org/gx/build/ir"
 	"github.com/gx-org/gx/build/ir/irkind"
 	"github.com/gx-org/gx/internal/interp/compeval/cmp"
@@ -95,42 +93,6 @@ func checkSameOrScalar(env *engine.Env, call *ir.FuncCallExpr, recv ir.Element, 
 		return []ir.Element{args[0]}, ir.CompileErrorF("cannot use array of shape %s as scalar or array of shape %s (expect same shape)", ax1S, ax2S)
 	}
 	return []ir.Element{ax1}, err
-}
-
-// mainAuxArgsToTypes computes the signature of a function with two arguments.
-// The result of the function is computed from the first argument.
-// The second argument is either a scalar which needs to be of the same numerical type than the first argument
-// or an array which needs to be of the same shape than the first argument.
-func mainAuxArgsToTypes(funcName string, fetcher ir.Fetcher, call *ir.FuncCallExpr) (main, aux ir.Type, result ir.Type, err error) {
-	if len(call.Args) != 2 {
-		return nil, nil, nil, fmterr.Errorf(fetcher.File().FileSet(), call.Node(), "wrong number of arguments in call to %s: got %d but want 2", funcName, len(call.Args))
-	}
-	baseType, baseNumType, err := builtins.InferFromNumericalType(fetcher, call, 0, nil)
-	if err != nil {
-		return nil, nil, nil, err
-	}
-	auxType, auxNumTyp, err := builtins.InferFromNumericalType(fetcher, call, 1, baseNumType)
-	if err != nil {
-		return nil, nil, nil, err
-	}
-	kindEq, err := baseNumType.Equal(fetcher, auxNumTyp)
-	if err != nil {
-		return nil, nil, nil, fmterr.InternalAt(fetcher.File().FileSet(), call.Node(), "cannot compare arguments type: %v", err)
-	}
-	if !kindEq {
-		return nil, nil, nil, fmterr.Errorf(fetcher.File().FileSet(), call.Node(), "mismatch types %s and %s", baseType.ReferString(fetcher.File()), auxType.ReferString(fetcher.File()))
-	}
-	if auxType.(ir.ArrayType).Rank().IsAtomic() {
-		return baseType, auxType, baseType, nil
-	}
-	shapeEq, err := baseType.Equal(fetcher, auxType)
-	if err != nil {
-		return nil, nil, nil, fmterr.InternalAt(fetcher.File().FileSet(), call.Node(), "cannot compare arguments type: %v", err)
-	}
-	if !shapeEq {
-		return nil, nil, nil, fmterr.Errorf(fetcher.File().FileSet(), call.Node(), "mismatch types %s and %s", baseType.ReferString(fetcher.File()), auxType.ReferString(fetcher.File()))
-	}
-	return baseType, auxType, baseType, nil
 }
 
 type goFloats interface {

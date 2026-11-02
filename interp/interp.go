@@ -30,7 +30,6 @@ import (
 	"github.com/gx-org/gx/interp/elements"
 	"github.com/gx-org/gx/interp/engine"
 	"github.com/gx-org/gx/interp/procoptions"
-	"github.com/gx-org/gx/src/gx/ast"
 )
 
 // Base provides everything required to create new interpreters.
@@ -83,14 +82,6 @@ func newInterp(reg *engine.Registry, ctx *context.Context, eng engine.Engine) *I
 	fitp.env = engine.NewEnv(reg, ctx, newIREval, eng)
 	return fitp
 }
-
-var (
-	errorIdent  = &ast.Ident{Name: "Error"}
-	selectError = &ir.SelectorExpr{
-		Src:  &ast.SelectorExpr{Sel: errorIdent},
-		Stor: &ir.LocalVarStorage{Src: errorIdent},
-	}
-)
 
 var compEvalNature = ir.FuncNature{CompEval: true}
 

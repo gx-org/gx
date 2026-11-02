@@ -41,12 +41,6 @@ func (p *processor) processFuncWithAnn(ann *gradann.Annotation) (stmt, bool) {
 	}, true
 }
 
-type annFuncReturnStmt struct {
-	*annFunc
-	grad ir.PkgFunc
-	args []ast.Expr
-}
-
 func (n *annFunc) buildVJPFunction(outCore *astOutCore, gradParam wrt.WRT, grad ir.PkgFunc, args []ast.Expr) (*ast.FuncLit, bool) {
 	// For each result of the function, builds a VJP for all parameters.
 	// Return the forward results, and all the VJPs.

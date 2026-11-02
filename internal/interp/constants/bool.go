@@ -64,11 +64,6 @@ func NewBool(val bool) Bool {
 	return False()
 }
 
-// NewBoolWithType returns a boolean value for a given type.
-func NewBoolWithType(tp ir.Type, val bool) engine.Constant {
-	return newBool(tp, val)
-}
-
 // AlgExpr returns an algebraic expression.
 func (b *boolEl) AlgExpr(eva ir.Evaluator) (cmp.Expr, error) {
 	return b, nil

@@ -98,11 +98,6 @@ func (r *Expr) IsAny() bool {
 	return r.value == anyV
 }
 
-// IsOne returns true if the value is one.
-func (r *Expr) IsOne() bool {
-	return r.value == oneV
-}
-
 // IsZero returns true if the value is zero.
 func (r *Expr) IsZero() bool {
 	return r.value == zeroV

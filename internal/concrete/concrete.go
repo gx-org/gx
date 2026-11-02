@@ -22,7 +22,6 @@ import (
 	"github.com/gx-org/gx/build/ir"
 	"github.com/gx-org/gx/build/ir/irkind"
 	"github.com/gx-org/gx/internal/interp/compeval/cmp"
-	"github.com/gx-org/gx/src/gx/ast"
 )
 
 func concreteTypeParam(fr ir.Evaluator, tp *ir.GenericTypeParam) (ir.Type, error) {
@@ -152,9 +151,4 @@ func Concrete(fr ir.Evaluator, tp ir.Type) (_ ir.Type, err error) {
 		return concrete(fr, arrayType.DataType())
 	}
 	return concreteArrayType(fr, arrayType)
-}
-
-// Frame storing key,value pairs.
-type Frame interface {
-	Define(id *ast.Ident, el ir.Element)
 }

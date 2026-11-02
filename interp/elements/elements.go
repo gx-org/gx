@@ -92,11 +92,6 @@ func NewNodeAt[T ir.IR](file *ir.File, expr T) NodeFile[T] {
 	return NodeFile[T]{file: file, node: expr}
 }
 
-// NewValueAt returns a new expression at a given position.
-func NewValueAt(file *ir.File, expr ir.Value) ValueAt {
-	return NewNodeAt(file, expr)
-}
-
 // NewExprAt returns a new expression at a given position.
 func NewExprAt(file *ir.File, expr ir.Expr) ExprAt {
 	return NewNodeAt(file, expr)
@@ -118,32 +113,10 @@ func (ea NodeFile[T]) Source() ast.Node {
 	return node.(ir.Node).Node()
 }
 
-// ExprSrc returns the source expression.
-func (ea NodeFile[T]) ExprSrc() ast.Expr {
-	var node any = ea.node
-	return node.(ir.Expr).Expr()
-}
-
-// NodeFile returns a general node.
-func (ea NodeFile[T]) NodeFile() NodeFile[ir.IR] {
-	return NodeFile[ir.IR]{file: ea.file, node: ea.node}
-}
-
-// ToNodeAt converts a type position into a generic node position.
-func (ea NodeFile[T]) ToNodeAt() NodeAt {
-	return NewNodeAt[ir.IR](ea.file, ea.node)
-}
-
 // ToExprAt converts a type position into a generic node position.
 func (ea NodeFile[T]) ToExprAt() ExprAt {
 	node := any(ea.node)
 	return NewNodeAt(ea.file, node.(ir.Expr))
-}
-
-// ToValueAt converts a type position into a generic node position.
-func (ea NodeFile[T]) ToValueAt() ValueAt {
-	node := any(ea.node)
-	return NewNodeAt[ir.Value](ea.file, node.(ir.Value))
 }
 
 // File returns the file in which the expression is declared.
@@ -158,11 +131,6 @@ func (ea NodeFile[T]) String() string {
 		fmterr.At(ea.file.FileSet(), node.(ir.Node).Node()).String(),
 		gxfmt.String(ea.node),
 	)
-}
-
-// BoolFromElement converts an element to a bool.
-func BoolFromElement(el ir.Element) (bool, error) {
-	return constants.Convert(constants.CBool, el)
 }
 
 // IntFromElement converts an element to an int.
@@ -267,13 +235,4 @@ func ShapeFromElement(el ir.Element) (shapes.Shape, error) {
 // ToNumericalElement converts an element into a numerical element.
 func ToNumericalElement(el ir.Element) (engine.NumericalElement, error) {
 	return coreiface.Cast[engine.NumericalElement](el)
-}
-
-// StringFrom converts an element into fmt.Stringer.
-func StringFrom(el ir.Element) (string, error) {
-	stringer, err := cast.To[fmt.Stringer](el)
-	if err != nil {
-		return "", err
-	}
-	return stringer.String(), nil
 }

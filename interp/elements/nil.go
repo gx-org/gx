@@ -69,9 +69,3 @@ func (el *nilEl) Expr(ev ir.Evaluator, expr ast.Expr) ([]ir.Expr, error) {
 func (el *nilEl) SourceString(from *ir.File) string {
 	return "nil"
 }
-
-// IsNil returns true if the element is a nil element (whatever the type).
-func IsNil(el ir.Element) bool {
-	_, ok := el.(*nilEl)
-	return ok
-}

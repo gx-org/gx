@@ -94,12 +94,3 @@ func Value(fnin *FuncInputs, el ir.Element) (any, error) {
 	}
 	return nil, errors.Errorf("%T has no Go value", el)
 }
-
-// ValueT converts an element to a specific Go value.
-func ValueT[T any](fnin *FuncInputs, el ir.Element) (valT T, err error) {
-	valAny, err := Value(fnin, el)
-	if err != nil {
-		return
-	}
-	return cast.To[T](valAny)
-}

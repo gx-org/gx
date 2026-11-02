@@ -16,16 +16,12 @@
 package rand
 
 import (
-	"embed"
 	"math"
 
 	"github.com/gx-org/gx/build/ir"
 	"github.com/gx-org/gx/internal/interp/numbers"
 	"github.com/gx-org/gx/stdlib/builtin"
 )
-
-//go:embed *.gx
-var fs embed.FS
 
 // Package description of the GX rand package.
 var Package = builtin.PackageBuilder{
