@@ -256,9 +256,9 @@ func (n *callExpr) buildCallExpr(rscope resolveScope, callee ir.Expr) (ir.Expr, 
 	case *ir.TypeValExpr:
 		return n.buildTypeCast(rscope, callee, elT.Store())
 	case ir.FuncElement:
-		funcExpr, ok := specializeReceiverFunc(rscope, callee, ir.NewFuncValExpr(callee, elT.FuncIR()))
-		if !ok {
-			return invalidExpr(), false
+		funcExpr := ir.NewFuncValExpr(callee, elT.FuncIR())
+		if fType, ok := callee.Type().(*ir.FuncType); ok {
+			funcExpr = funcExpr.NewFType(fType)
 		}
 		return n.buildCallExpr(rscope, funcExpr)
 	case *ir.MacroKeyword:

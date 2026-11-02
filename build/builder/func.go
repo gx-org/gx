@@ -175,7 +175,7 @@ func (n *funcType) buildReceiverTypeParams(typeParamsScope *defineLocalScope) ([
 		}
 		originField := originFields[i]
 		group := &ir.FieldGroup{Src: originField.Group.Src, Type: originField.Group.Type}
-		field := &ir.Field{Group: group, Name: ident}
+		field := &ir.Field{Group: group, Name: ident, Pos: i}
 		group.Fields = []*ir.Field{field}
 		if ir.ValidIdent(ident) {
 			typeParamsScope.define(field.Storage())

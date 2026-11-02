@@ -1,0 +1,70 @@
+package method01
+
+type S[T any] struct {
+	a T
+}
+
+func (s S[T]) get(x T) (T, T) {
+	return s.a, x
+}
+
+func (s S[T]) val() T {
+	return s.a
+}
+
+func callMethodVal[T any](s S[T], x T) (T, T) {
+	f := s.get
+	return f(x)
+}
+
+func TestTypeAndMethodVal() (int, int, int, float32, float32) {
+	s1 := S[int]{a: 2}
+	f := s1.get
+	a, b := f(3)
+	v := s1.val
+	c, d := callMethodVal[float32](S[float32]{a: 4}, 5)
+	return a, b, v(), c, d
+	// Want:
+	// 0: int(2)
+	// 1: int(3)
+	// 2: int(2)
+	// 3: float32(4)
+	// 4: float32(5)
+}
+
+type SSize[Size int] struct {
+	a [Size]int32
+}
+
+func (s SSize[Size]) add(x [Size]int32) [Size]int32 {
+	return s.a + x
+}
+
+func TestNonTypeInt() [3]int32 {
+	s := SSize[3]{a: [3]int32{1, 2, 3}}
+	return s.add([3]int32{10, 20, 30})
+	// Want:
+	// [3]int32{11, 22, 33}
+}
+
+type SShape[Shape []int] struct {
+	a [Shape...]float32
+}
+
+func (s SShape[Shape]) add(x [Shape...]float32) [Shape...]float32 {
+	return s.a + x
+}
+
+func (s SShape[Shape]) double() [Shape...]float32 {
+	return s.add(s.a)
+}
+
+func TestNonTypeShapeAndSiblingCall() [2][3]float32 {
+	s := SShape[[]int{2, 3}]{a: [2][3]float32{{1, 2, 3}, {4, 5, 6}}}
+	return s.double()
+	// Want:
+	// [2][3]float32{
+	// 	{2, 4, 6},
+	// 	{8, 10, 12},
+	// }
+}
