@@ -20,8 +20,8 @@ import (
 	"flag"
 	"fmt"
 	"go/token"
-	"io/ioutil"
 	"maps"
+	"os"
 	"path/filepath"
 	"slices"
 	"strings"
@@ -113,16 +113,12 @@ func (inf PkgInfo) GXPackage() string {
 	return inf.gxPackage
 }
 
-func (inf PkgInfo) osPackagePath() string {
-	return inf.mod.OSPath(inf.gxPackage)
-}
-
 // SourceFiles returns the list of all the GX source files.
 func (inf PkgInfo) buildSourceFiles(osPath string) ([]string, error) {
 	if len(inf.srcs) > 0 {
 		return inf.srcs, nil
 	}
-	files, err := ioutil.ReadDir(osPath)
+	files, err := os.ReadDir(osPath)
 	if err != nil {
 		return nil, fmt.Errorf("cannot list GX package source files: %v", err)
 	}

@@ -16,16 +16,10 @@ package gobindings
 
 import (
 	"fmt"
-	"strings"
 
 	"github.com/pkg/errors"
 	"github.com/gx-org/gx/build/ir"
 )
-
-type pkgTypes struct {
-	*binder
-	ir.StructType
-}
 
 func (b *binder) packagePrefixNameOf(tp *ir.NamedType) string {
 	pkg := tp.Package()
@@ -33,14 +27,6 @@ func (b *binder) packagePrefixNameOf(tp *ir.NamedType) string {
 		return ""
 	}
 	return b.namePackage(pkg) + "."
-}
-
-func (b *binder) nameSlice(tp *ir.SliceType) (string, error) {
-	hostType, err := b.bridgerType(tp.DType.Val())
-	if err != nil {
-		return "", err
-	}
-	return strings.Repeat("[]", tp.Rank) + hostType, nil
 }
 
 func (b *binder) bridgerType(tp ir.Type) (string, error) {
@@ -102,19 +88,5 @@ func (b *binder) nameGoType(tp ir.Type) (string, error) {
 		return b.nameGoType(typT.Underlying.Val())
 	default:
 		return "", errors.Errorf("cannot write nameGoType bindings for type %T on device", typT)
-	}
-}
-
-func (b *binder) nameHostFuncType(tp ir.Type) (string, error) {
-	switch typT := tp.(type) {
-	case ir.ArrayType:
-		if !typT.Rank().IsAtomic() {
-			return "", errors.Errorf("no host function for %T", typT)
-		}
-		return toKindSuffix(typT), nil
-	case *ir.NamedType:
-		return b.nameHostFuncType(typT.Underlying.Val())
-	default:
-		return "", errors.Errorf("cannot write nameHostFuncType bindings for type %T on device", typT)
 	}
 }

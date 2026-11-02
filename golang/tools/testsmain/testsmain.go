@@ -19,7 +19,6 @@ import (
 	"flag"
 	"fmt"
 	"go/token"
-	"io/ioutil"
 	"os"
 	"path/filepath"
 	"strings"
@@ -92,10 +91,6 @@ type testmain struct {
 	Tests         string
 }
 
-func processDecl(file *ast.File) ([]string, error) {
-	return nil, nil
-}
-
 func processSrcFile(fset *token.FileSet, name string) ([]string, error) {
 	src, err := os.ReadFile(name)
 	if err != nil {
@@ -156,7 +151,7 @@ func listGXSourceFiles(path string) ([]string, error) {
 	if err != nil {
 		return nil, fmt.Errorf("cannot build the absolute path for path %s: %v", path, err)
 	}
-	files, err := ioutil.ReadDir(path)
+	files, err := os.ReadDir(path)
 	if err != nil {
 		return nil, fmt.Errorf("cannot read directory %q: %v", path, err)
 	}

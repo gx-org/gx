@@ -58,13 +58,6 @@ func (b *binder) Dependencies() []dependency {
 	return deps
 }
 
-func (b *binder) NumDeps() int {
-	return len(b.dependencies)
-}
-
-func (b *binder) registerImport(path string) {
-}
-
 func (b *binder) packageToPath(pkg *ir.Package) string {
 	packagePath := pkg.Path()
 	if b.stdlib.Support(packagePath) {

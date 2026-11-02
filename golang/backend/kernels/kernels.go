@@ -142,27 +142,3 @@ func NewArrayFromRaw(data []byte, sh shapes.Shape) (Array, error) {
 		return nil, errors.Errorf("cannot create an array from raw data: %s not supported", sh.DType.String())
 	}
 }
-
-// FactoryFor returns a factory given a data type.
-func FactoryFor(dt dtypes.DType) (Factory, error) {
-	switch dt {
-	case dtypes.Bool:
-		return boolFactory{}, nil
-	case dtypes.BFloat16:
-		return bfloat16Factory{}, nil
-	case dtypes.Float32:
-		return &algebraicFactory[float32]{}, nil
-	case dtypes.Float64:
-		return &algebraicFactory[float64]{}, nil
-	case dtypes.Uint32:
-		return &integerFactory[uint32]{}, nil
-	case dtypes.Uint64:
-		return &integerFactory[uint64]{}, nil
-	case dtypes.Int32:
-		return &integerFactory[int32]{}, nil
-	case dtypes.Int64:
-		return &integerFactory[int64]{}, nil
-	default:
-		return nil, errors.Errorf("no factory for %s", dt.String())
-	}
-}

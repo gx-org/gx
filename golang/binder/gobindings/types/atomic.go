@@ -191,8 +191,3 @@ func Uint32(val uint32) *HostAtom[uint32] {
 func Uint64(val uint64) *HostAtom[uint64] {
 	return newAtom[uint64](irkind.Uint64, kernels.ToIntegerAtom(val))
 }
-
-// AtomFromHost returns an atom from a value stored on the host.
-func AtomFromHost[T gotype.Supported](hostValue *hostio.HostArray) T {
-	return NewHostAtom[T](hostValue).Value()
-}

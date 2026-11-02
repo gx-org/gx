@@ -22,63 +22,8 @@ import (
 	"testing"
 
 	"github.com/gomlx/compute/dtypes/gotype"
-	"github.com/gx-org/gx/api"
-	"github.com/gx-org/gx/build/builder/testbuild"
-	"github.com/gx-org/gx/build/fmterr"
-	"github.com/gx-org/gx/build/ir"
 	"github.com/gx-org/gx/golang/binder/gobindings/types"
-	"github.com/gx-org/gx/internal/testing/cmperr"
-	"github.com/gx-org/gx/internal/testing/testrtm"
 )
-
-// RunAll compiles and runs all the test at a specified path.
-// Returns the number of tests that have been run.
-func RunAll(t *testing.T, rtm *api.Runtime, pkg *ir.Package, err error) (numTests int) {
-	var errs *fmterr.Errors
-	if err != nil {
-		var ok bool
-		errs, ok = err.(*fmterr.Errors)
-		if !ok {
-			t.Errorf("%+v", err)
-			return
-		}
-	}
-	numExpectedErrors, err := cmperr.Compare(pkg, errs)
-	if err != nil {
-		t.Errorf("\n%+v", err)
-		return
-	}
-	if numExpectedErrors > 0 {
-		return numExpectedErrors
-	}
-	fns, err := testbuild.MustFindTests(pkg, false)
-	if err != nil {
-		t.Errorf("\n%+v", err)
-		return
-	}
-
-	options, err := testrtm.BuildCompileOptions(rtm, pkg)
-	if err != nil {
-		t.Errorf("\n%+v", err)
-		return
-	}
-
-	tRunner, err := testrtm.NewRunner(rtm, 0)
-	if err != nil {
-		t.Error(err)
-		return
-	}
-	for _, fn := range fns {
-		name := fn.File().Package.Name.Name + "." + fn.Name()
-		t.Run(name, func(t *testing.T) {
-			numTests++
-			if err := tRunner.Test(fn, options); err != nil {
-				t.Error(err)
-			}
-		})
-	}
-	return
-}
 
 // NumberLines returns a string where lines are prefixed by their number.
 func NumberLines(s string) string {

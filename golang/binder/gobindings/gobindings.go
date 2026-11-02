@@ -133,11 +133,6 @@ var setSliceTmpl = template.Must(template.New("setSliceOutputTMPL").Parse(
 	}
 `))
 
-func isNamedStruct(typ ir.Type) bool {
-	_, ok := typ.(*ir.NamedType)
-	return ok
-}
-
 func (b *binder) processSliceOutput(target, src string, typ *ir.SliceType) ([]string, error) {
 	sliceDataType, err := b.bridgerType(typ.DType.Val())
 	if err != nil {

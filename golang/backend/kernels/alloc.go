@@ -15,14 +15,9 @@
 package kernels
 
 import (
-	"fmt"
-	"reflect"
 	"sync"
 
 	"github.com/pkg/errors"
-	"github.com/gomlx/compute/dtypes/bfloat16"
-	"github.com/gomlx/compute/dtypes"
-	"github.com/gomlx/compute/dtypes/gotype"
 	"github.com/gomlx/compute/shapes"
 )
 
@@ -70,11 +65,6 @@ var (
 
 var goAllocator = &allocator{}
 
-// GoAllocator returns an allocator allocating memory using Go.
-func GoAllocator() Allocator {
-	return goAllocator
-}
-
 // DefaultAllocator returns the default allocator allocating memory using Go.
 func DefaultAllocator() Allocator {
 	return goAllocator
@@ -87,19 +77,6 @@ func (allocator) Allocate(sh shapes.Shape) (HostBuffer, error) {
 		return nil, err
 	}
 	return &Buffer{array: array}, nil
-}
-
-// HostTransfer transfers data from a source host buffer to another.
-func HostTransfer(dstB, srcB HostBuffer) error {
-	src := srcB.Acquire()
-	defer srcB.Release()
-	dst := dstB.Acquire()
-	defer dstB.Release()
-	if len(src) != len(dst) {
-		return errors.Errorf("cannot transfer data from a buffer of size %d to a buffer of size %d", len(src), len(dst))
-	}
-	copy(dst, src)
-	return nil
 }
 
 // NewBuffer returns a Go backend array as a generic buffer to use for GX values.
@@ -146,30 +123,4 @@ func (buf *Buffer) Release() {
 // Free the memory occupied by the buffer. The handle is invalid after calling this function.
 func (buf *Buffer) Free() {
 	buf.array = nil
-}
-
-// ToBuffer converts Go values into a GX array.
-func ToBuffer[T gotype.Supported](vals []T, sh shapes.Shape) *Buffer {
-	var array Array
-	switch sh.DType {
-	case dtypes.Bool:
-		array = ToBoolArray(any(vals).([]bool), sh.Dimensions)
-	case dtypes.BFloat16:
-		array = ToBfloat16Array(any(vals).([]bfloat16.BFloat16), sh.Dimensions)
-	case dtypes.Float32:
-		array = ToFloatArray[float32](any(vals).([]float32), sh.Dimensions)
-	case dtypes.Float64:
-		array = ToFloatArray[float64](any(vals).([]float64), sh.Dimensions)
-	case dtypes.Int32:
-		array = ToIntegerArray[int32](any(vals).([]int32), sh.Dimensions)
-	case dtypes.Int64:
-		array = ToIntegerArray[int64](any(vals).([]int64), sh.Dimensions)
-	case dtypes.Uint32:
-		array = ToIntegerArray[uint32](any(vals).([]uint32), sh.Dimensions)
-	case dtypes.Uint64:
-		array = ToIntegerArray[uint64](any(vals).([]uint64), sh.Dimensions)
-	default:
-		panic(fmt.Sprintf("cannot convert data type %s to a %s %s", sh.DType.String(), reflect.TypeFor[[]T]().String(), reflect.TypeFor[*Buffer]()))
-	}
-	return NewBuffer(array)
 }
