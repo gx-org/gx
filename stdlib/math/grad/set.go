@@ -18,7 +18,6 @@ import (
 	"github.com/gx-org/gx/build/ir"
 	"github.com/gx-org/gx/interp/elements"
 	"github.com/gx-org/gx/interp"
-	"github.com/gx-org/gx/src/gx/ast"
 	"github.com/gx-org/gx/stdlib/math/grad/gradann"
 )
 
@@ -96,16 +95,4 @@ func findNameInFields(paramName string, fields *ir.FieldList) int {
 		}
 	}
 	return -1
-}
-
-func gradFromAnnotation(fetcher ir.Fetcher, src ir.Func, paramToFunc *gradann.Annotation, wrt string) (*ast.Ident, bool) {
-	paramPos := findNameInFields(wrt, src.FuncType().Params)
-	if paramPos < 0 {
-		return nil, fetcher.Err().Appendf(src.Node(), "function %s has no parameter %s", src.ReferString(fetcher.File()), wrt)
-	}
-	pkgFunc := paramToFunc.Partial(paramPos)
-	if pkgFunc == nil {
-		return nil, fetcher.Err().Appendf(src.Node(), "no gradient defined for parameter %s of function %s", wrt, src.ReferString(fetcher.File()))
-	}
-	return &ast.Ident{Name: pkgFunc.Name()}, true
 }

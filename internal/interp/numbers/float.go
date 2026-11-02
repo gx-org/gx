@@ -48,11 +48,6 @@ func NewFloatIR(val float64, typ ir.Type) (*ir.NumberFloat, *ir.NumberCastExpr) 
 	return irF, &ir.NumberCastExpr{X: irF, Typ: typ}
 }
 
-func newFloatFrom(val float64, typ ir.Type) engine.Constant {
-	nb, x := NewFloatIR(val, typ)
-	return NewFloatNumber(nb).Cast(x)
-}
-
 // CmpOp compares x to y.
 // Returns a nil element if the operator is not a comparison operator.
 func (n *elFloat) CmpOp(env ir.SourceFile, expr *ir.BinaryExpr, y engine.ScalarNumber) engine.BoolConstant {

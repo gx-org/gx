@@ -41,12 +41,6 @@ func NewIntNumber(x *ir.NumberInt) engine.ScalarNumber {
 	return newInt(x.Val)
 }
 
-func newIntFrom(val int64, typ ir.Type) engine.Constant {
-	elI := newInt(big.NewInt(val))
-	irI := elI.BuildIR()
-	return elI.Cast(&ir.NumberCastExpr{X: irI, Typ: typ})
-}
-
 // UnaryOp applies a unary operator on x.
 func (n *elInt) UnaryOp(env ir.SourceFile, expr *ir.UnaryExpr) (engine.ScalarNumber, error) {
 	switch expr.Src.Op {

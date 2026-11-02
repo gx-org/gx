@@ -17,7 +17,6 @@ package scope
 
 import (
 	"fmt"
-	"iter"
 	"strings"
 
 	"github.com/pkg/errors"
@@ -98,11 +97,6 @@ func (s *localScope[V]) Find(key string) (value V, ok bool) {
 	return s.data.Load(key)
 }
 
-func (s *localScope[V]) Has(key string) bool {
-	_, ok := s.data.Load(key)
-	return ok
-}
-
 func (s *localScope[V]) Items() *ordered.Map[string, V] {
 	return s.data.Clone()
 }
@@ -144,17 +138,6 @@ func (s *RWScope[V]) Define(k string, v V) {
 	s.local.data.Store(k, v)
 }
 
-// LocalKeys returns the keys of the local scope without the parent.
-func (s *RWScope[V]) LocalKeys() iter.Seq[string] {
-	return s.local.data.Keys()
-}
-
-// IsLocal returns true if the key is defined in the local scope.
-func (s *RWScope[V]) IsLocal(key string) bool {
-	_, ok := s.local.data.Load(key)
-	return ok
-}
-
 // Find a key in the scope and its parent.
 func (s *RWScope[V]) Find(key string) (value V, ok bool) {
 	return find[V](key, s.local, s.parent)
@@ -191,15 +174,6 @@ func (s *RWScope[V]) Collect() Scope[V] {
 			data: s.Items(),
 		},
 	}
-}
-
-// ReadOnly returns a scope to which values cannot be assigned or defined.
-func (s *RWScope[V]) ReadOnly() Scope[V] {
-	return &roScope[V]{parent: s.parent, local: s.local}
-}
-
-func (s *RWScope[V]) localString() string {
-	return s.local.String()
 }
 
 func scopeString[V any](local any, parent Scope[V]) string {

@@ -52,15 +52,6 @@ func (h *Parser) Next() compute.Buffer {
 	return n
 }
 
-// CallInputs returns the inputs with which the function was called.
-func (h *Parser) CallInputs() *togo.FuncInputs {
-	return h.callInputs
-}
-
-func (h *Parser) size() int {
-	return len(h.compOutput)
-}
-
 // Device returns to which transfers the host value to.
 // TODO(b/388207169): Always transfer the value to device because C++ bindings do not support HostValue.
 func (h *Parser) Device() compute.DeviceNum {

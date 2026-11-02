@@ -94,11 +94,6 @@ func (n *Tuple) Expr(ev ir.Evaluator, src ast.Expr) ([]ir.Expr, error) {
 	return exprs, nil
 }
 
-// TupleElements returns the elements stored in the tuple.
-func (n *Tuple) TupleElements() []ir.Element {
-	return n.elements
-}
-
 // SliceAt of the tuple.
 func (n *Tuple) SliceAt(_ *engine.Env, expr *ir.IndexExpr, index engine.NumericalElement) (ir.Element, error) {
 	return SliceVals(expr, index, n.elements)

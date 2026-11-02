@@ -72,11 +72,6 @@ func (p *Processor) RegisterArg(arg Argument) int {
 	return index
 }
 
-// Inits returns all the initializers.
-func (p *Processor) Inits() []Initializer {
-	return p.inits
-}
-
 // Args returns the graph arguments.
 func (p *Processor) Args() []Argument {
 	return p.args
