@@ -1,0 +1,26 @@
+package infer03
+
+type T[S []int] struct {
+	a [S...]float32
+}
+
+func newT[S []int](a [S...]float32) T[S] {
+	return T[S]{a: a}
+}
+
+func f[S []int](t T[S]) [S...]float32 {
+	return t.a * 2
+}
+
+func g[S []int](a [S...]float32) [S...]float32 {
+	return f(newT[S](a))
+}
+
+func Test() [2][3]float32 {
+	return g([2][3]float32{{1, 2, 3}, {4, 5, 6}})
+	// Want:
+	// [2][3]float32{
+	// 	{2, 4, 6},
+	// 	{8, 10, 12},
+	// }
+}

@@ -1,0 +1,21 @@
+package infer_err01
+
+type T[S []int] struct {
+	a [S...]float32
+}
+
+func f[S []int](t T[S], x [S...]float32) [S...]float32 {
+	return t.a + x
+}
+
+func g(a [2][3]float32, x [4][5]float32) [2][3]float32 {
+	return f(T[[]int{2, 3}]{a: a}, x) // ERROR []int{4, 5} does not match inferred value []int{2, 3} for S
+}
+
+func h[S []int](x [S...]float32, t T[S]) [S...]float32 {
+	return x + t.a
+}
+
+func k(x [4][5]float32, a [2][3]float32) [4][5]float32 {
+	return h(x, T[[]int{2, 3}]{a: a}) // ERROR []int{2, 3} does not match inferred value []int{4, 5} for S
+}
