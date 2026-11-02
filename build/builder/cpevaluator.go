@@ -15,8 +15,6 @@
 package builder
 
 import (
-	"fmt"
-
 	gxfmt "github.com/gx-org/gx/base/fmt"
 	"github.com/gx-org/gx/build/fmterr"
 	"github.com/gx-org/gx/build/ir"
@@ -82,8 +80,4 @@ func (ev *compileEvaluator) Err() *fmterr.Appender {
 
 func (ev *compileEvaluator) String() string {
 	return gxfmt.String(ev.fitp)
-}
-
-func (ev *compileEvaluator) StringKeys() string {
-	return fmt.Sprint(ev.fitp.Context().CurrentFrame().Keys())
 }

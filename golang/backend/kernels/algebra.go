@@ -293,11 +293,6 @@ func castFromBfloat16Array[U gotype.NumericNotComplex](xVal Array) (Array, error
 	return ToAlgebraicArray[U](z, x.shape.Dimensions), nil
 }
 
-// ToBfloat16Atom converts a value into an atom owned by a backend.
-func ToBfloat16Atom(val bfloat16.BFloat16) Array {
-	return ToBfloat16Array([]bfloat16.BFloat16{val}, nil)
-}
-
 // ToFloatAtom converts a value into an atom owned by a backend.
 func ToFloatAtom[T gotype.Float](val T) Array {
 	return ToFloatArray([]T{val}, nil)

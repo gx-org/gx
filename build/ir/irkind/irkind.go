@@ -136,40 +136,6 @@ func (k Kind) DType() dtypes.DType {
 	return dtypes.DType(k)
 }
 
-// KindFromString returns a kind given an identifier.
-// It only works for the basic types that don't take other parameters -- so it doesn't
-// work for tensors, tuples or functions.
-//
-// The "unknown" string returns an invalid kind because it is invalid to write:
-//
-//	var name unknown
-func KindFromString(ident string) Kind {
-	switch ident {
-	case "bool":
-		return Bool
-	case "bfloat16":
-		return Bfloat16
-	case "float32":
-		return Float32
-	case "float64":
-		return Float64
-	case "int":
-		return Int
-	case "int32":
-		return Int32
-	case "int64":
-		return Int64
-	case "string":
-		return String
-	case "uint32":
-		return Uint32
-	case "uint64":
-		return Uint64
-	default:
-		return Invalid
-	}
-}
-
 // KindGeneric returns the kind of a variable from its generic type.
 // If the type is not supported, an invalid type is returned.
 func KindGeneric[T gotype.Supported]() Kind {

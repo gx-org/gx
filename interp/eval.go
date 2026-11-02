@@ -576,17 +576,6 @@ func evalSliceLiteral(fitp *Interpreter, expr *ir.SliceLitExpr) (ir.Element, err
 	return elements.NewSlice(expr.Type(), els)
 }
 
-func evalAxis(fitp *Interpreter, ax ir.AxisLengths) (_ ir.Element, err error) {
-	switch axT := ax.(type) {
-	case *ir.AxisExpr:
-		return evalExpr(fitp, axT.X)
-	case *ir.AxisInfer:
-		return evalExpr(fitp, axT.X.AsExpr())
-	default:
-		return nil, fmterr.Errorf(fitp.File().FileSet(), ax.Node(), "cannot evaluate GX axis expression: %T not supported", ax)
-	}
-}
-
 // evalExpr evaluates an expression within the Context.
 func evalExpr(fitp *Interpreter, expr ir.Expr) (_ ir.Element, err error) {
 	if expr == nil {
@@ -865,18 +854,6 @@ func evalCall(fitp *Interpreter, expr *ir.FuncCallExpr) ([]ir.Element, error) {
 		args = append(args, varargsSlice)
 	}
 	return callee.Call(fitp.env, expr, genArgs, args)
-}
-
-func evalFuncCall(fitp *Interpreter, fn engine.Func, expr *ir.FuncCallExpr) ([]ir.Element, error) {
-	args := make([]ir.Element, len(expr.Args))
-	for i, arg := range expr.Args {
-		el, err := evalExpr(fitp, arg)
-		if err != nil {
-			return nil, err
-		}
-		args[i] = el
-	}
-	return fn.Call(fitp.env, expr, nil, args)
 }
 
 func set(fitp *Interpreter, tok token.Token, dest ir.Storage, value ir.Element) error {

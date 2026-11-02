@@ -53,29 +53,6 @@ func Fields(expr ir.Expr, types ...ir.Type) *ir.FieldList {
 	return l
 }
 
-// InferFromNumericalType returns an argument type if that argument
-// is numerical.
-func InferFromNumericalType(fetcher ir.Fetcher, call *ir.FuncCallExpr, argNum int, numberTarget ir.Type) (ir.Type, ir.Type, error) {
-	arg := call.Args[argNum]
-	argType := arg.Type()
-	argKind := argType.Kind()
-	if irkind.IsNumber(argKind) {
-		target := numberTarget
-		if target == nil {
-			target = ir.DefaultNumberType(argKind)
-		}
-		return target, target, nil
-	}
-	if ir.IsDataType(argType) {
-		return argType, argType, nil
-	}
-	arrayType, arrayOk := argType.(ir.ArrayType)
-	if !arrayOk {
-		return nil, nil, fmterr.Errorf(fetcher.File().FileSet(), call.Args[argNum].Node(), "argument type %s not supported", arg.Type().ReferString(fetcher.File()))
-	}
-	return arrayType, arrayType.DataType(), nil
-}
-
 func joinSignature[T any](sig []T, f func(T) string) string {
 	w := strings.Builder{}
 	w.WriteString("(")
