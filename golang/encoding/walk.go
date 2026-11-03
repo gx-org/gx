@@ -85,6 +85,12 @@ func unmarshal(ld *loader, target types.Bridge, data Data) error {
 	return err
 }
 
+func (ld *loader) setStructField(structTarget types.StructBridge, field *ir.Field, val types.Bridge) error {
+	ld.mut.Lock()
+	defer ld.mut.Unlock()
+	return structTarget.SetField(field, val)
+}
+
 func unmarshalStruct(ld *loader, target types.Bridge, data Data) error {
 	dataStruct, err := data.ToDataStruct()
 	if err != nil {
@@ -107,7 +113,7 @@ func unmarshalStruct(ld *loader, target types.Bridge, data Data) error {
 		}
 		if IsValue(field.Type()) {
 			if err := ld.setNumerical(fieldData, func(val types.Bridge) error {
-				return structTarget.SetField(field, val)
+				return ld.setStructField(structTarget, field, val)
 			}); err != nil {
 				return err
 			}
@@ -120,7 +126,7 @@ func unmarshalStruct(ld *loader, target types.Bridge, data Data) error {
 		if err = unmarshal(ld, fieldBridge, fieldData); err != nil {
 			return err
 		}
-		if err := structTarget.SetField(field, fieldBridge); err != nil {
+		if err := ld.setStructField(structTarget, field, fieldBridge); err != nil {
 			return fmt.Errorf("cannot set field %s: %w", fieldName, err)
 		}
 	}

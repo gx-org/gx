@@ -53,6 +53,7 @@ type (
 
 	// loader loads leaf values asynchronously in Go routines.
 	loader struct {
+		mut      sync.Mutex
 		wg       sync.WaitGroup
 		errs     asyncErrors
 		toWorker chan leafToFieldInfo
