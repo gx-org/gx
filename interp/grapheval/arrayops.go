@@ -426,10 +426,6 @@ func (ao *Ops) FuncInputsToElements(ev ir.Evaluator, fn ir.Func, receiver ir.Ele
 		argsEl[numGenArgs+i] = argNode
 	}
 	return &elements.InputElements{
-		Values: togo.FuncInputs{
-			Receiver: receiver,
-			Args:     hostio.ToElements(args),
-		},
 		Receiver: recvEl,
 		Args:     argsEl,
 	}, nil
