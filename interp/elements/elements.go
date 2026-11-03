@@ -29,17 +29,12 @@ import (
 	"github.com/gx-org/gx/internal/interp/compeval/cmp"
 	"github.com/gx-org/gx/internal/interp/constants"
 	"github.com/gx-org/gx/internal/interp/coreiface"
-	"github.com/gx-org/gx/internal/togo"
 	"github.com/gx-org/gx/interp/engine"
 	"github.com/gx-org/gx/src/gx/ast"
 )
 
 // InputElements is the receiver and arguments with which the function was called.
 type InputElements struct {
-	// Values are the initial input GX values passed to the function call
-	// before they were encapsulated in elements for the interpreter.
-	Values togo.FuncInputs
-
 	// Receiver on which the function call was done.
 	// Can be nil.
 	Receiver ir.Element
