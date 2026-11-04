@@ -68,6 +68,13 @@ func Unwrap[T any](h Handle) T {
 	return v.(T)
 }
 
+// TryUnwrap is like Unwrap but, instead of panicking, returns false if h is not a valid handle to a
+// value of type T. The zero handle is reported as not valid.
+func TryUnwrap[T any](h Handle) (T, bool) {
+	v, ok := handles.Load(h).(T)
+	return v, ok
+}
+
 // Release deletes a cgx handle.
 //
 // The handle must not be used (either through Unwrap or Release) after deletion.

@@ -238,6 +238,19 @@ func cgx_error_message(cgxError C.cgx_error) *C.cchar_t {
 
 /* cgx_runtime */
 
+// cgx_runtime_check returns an error if cgxRuntime is not a valid handle to a GX runtime.
+//
+// Other cgx functions panic, which aborts the process, when given an invalid handle. Use
+// cgx_runtime_check to validate a handle before using it.
+//
+//export cgx_runtime_check
+func cgx_runtime_check(cgxRuntime C.cgx_runtime) C.cgx_error {
+	if _, ok := handle.TryUnwrap[*api.Runtime](handle.Handle(cgxRuntime)); !ok {
+		return Errorf("invalid GX runtime handle: %d", cgxRuntime)
+	}
+	return 0
+}
+
 //export cgx_runtime_release
 func cgx_runtime_release(cgxRuntime C.cgx_runtime) C.cgx_error {
 	rtm := unwrap[*api.Runtime](cgxRuntime)
