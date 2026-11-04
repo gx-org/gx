@@ -1,0 +1,19 @@
+package fpath07
+
+import "testfieldpaths"
+
+type S struct {
+	a float32
+}
+
+func Test() S {
+	s := S{}
+	for _, k := range testfieldpaths.Path[S]("a") {
+		s[k] = 1.0
+	}
+	return s
+	// Want:
+	// S{
+	// 	a: float32(1),
+	// }
+}

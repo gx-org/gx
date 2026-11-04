@@ -354,8 +354,12 @@ func buildAssignExpr(rscope localScope, asgm *assignment) (*ir.AssignExpr, bool,
 	}
 	ext.X, exprOk = castNilAndBroadcastNumber(rscope, ext.X, ext.Storage.Type())
 	// Only check if the value can be assigned to the storage if the cast succeeded
-	// (an error has already been reported otherwise).
-	assignOk := exprOk && assignableToAt(rscope, asgm.expr.source(), ext.X.Type(), ext.Storage.Type())
+	// (an error has already been reported otherwise) and if the type of the storage
+	// is known (e.g. a structure indexed by a field path has an unknown type).
+	assignOk := exprOk
+	if exprOk && ext.Storage.Type().Kind() != irkind.Unknown {
+		assignOk = assignableToAt(rscope, asgm.expr.source(), ext.X.Type(), ext.Storage.Type())
+	}
 	definedOk := defineStoreWithValue(rscope, ext, ext.X)
 	return ext, newAsgm, exprOk && targetOk && definedOk && assignOk
 }
