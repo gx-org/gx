@@ -26,11 +26,11 @@ import (
 	"github.com/gx-org/gx/api"
 	"github.com/gx-org/gx/api/hostio"
 	"github.com/gx-org/gx/api/options"
-	"github.com/gx-org/gx/api/runner"
 	"github.com/gx-org/gx/build/ir"
 	"github.com/gx-org/gx/golang/binder/gobindings/core"
 	"github.com/gx-org/gx/golang/binder/gobindings/types"
 	"github.com/gx-org/gx/interp/elements"
+	"github.com/gx-org/gx/interp/grapheval"
 	"github.com/pkg/errors"
 
 	_ "github.com/gx-org/gx/tests/bindings/parameters"
@@ -49,7 +49,7 @@ var (
 	_ = errors.Errorf
 	_ = types.NewSlice[types.Bridger]
 	_ = ir.NamedType{}
-	_ = runner.Trace
+	_ = grapheval.Trace
 )
 
 // BuildFor loads the GX package github.com/gx-org/gx/tests/bindings/parameters
@@ -208,7 +208,7 @@ func (pkg *Package) NewStruct(arg0 types.Atom[float32]) (_ *Struct, err error) {
 	var args []hostio.Value = []hostio.Value{
 		arg0.Bridge().GXValue(), // offset float32
 	}
-	var rn runner.CompiledFunc
+	var rn grapheval.CompiledFunc
 	rn, err = pkg.cacheNewStruct.Build(nil, args)
 	if err != nil {
 		return
@@ -235,7 +235,7 @@ func (pkg *Package) AddToStruct(arg0 *Struct) (_ *Struct, err error) {
 	var args []hostio.Value = []hostio.Value{
 		arg0.Bridge().GXValue(), // a parameters.Struct
 	}
-	var rn runner.CompiledFunc
+	var rn grapheval.CompiledFunc
 	rn, err = pkg.cacheAddToStruct.Build(nil, args)
 	if err != nil {
 		return
@@ -263,7 +263,7 @@ func (pkg *Package) AddFloat32(arg0 types.Atom[float32], arg1 types.Atom[float32
 		arg0.Bridge().GXValue(), // x float32
 		arg1.Bridge().GXValue(), // y float32
 	}
-	var rn runner.CompiledFunc
+	var rn grapheval.CompiledFunc
 	rn, err = pkg.cacheAddFloat32.Build(nil, args)
 	if err != nil {
 		return
@@ -290,7 +290,7 @@ func (pkg *Package) AddInt(arg0 types.Atom[int64], arg1 types.Atom[int64]) (_ ty
 		arg0.Bridge().GXValue(), // x int64
 		arg1.Bridge().GXValue(), // y int64
 	}
-	var rn runner.CompiledFunc
+	var rn grapheval.CompiledFunc
 	rn, err = pkg.cacheAddInt.Build(nil, args)
 	if err != nil {
 		return
@@ -317,7 +317,7 @@ func (pkg *Package) AddFloat32s(arg0 types.Array[float32], arg1 types.Array[floa
 		arg0.Bridge().GXValue(), // x [Size]float32
 		arg1.Bridge().GXValue(), // y [Size]float32
 	}
-	var rn runner.CompiledFunc
+	var rn grapheval.CompiledFunc
 	rn, err = pkg.cacheAddFloat32s.Build(nil, args)
 	if err != nil {
 		return
@@ -344,7 +344,7 @@ func (pkg *Package) AddInts(arg0 types.Array[int64], arg1 types.Array[int64]) (_
 		arg0.Bridge().GXValue(), // x [Size]int64
 		arg1.Bridge().GXValue(), // y [Size]int64
 	}
-	var rn runner.CompiledFunc
+	var rn grapheval.CompiledFunc
 	rn, err = pkg.cacheAddInts.Build(nil, args)
 	if err != nil {
 		return
@@ -370,7 +370,7 @@ func (pkg *Package) Len(arg0 types.Array[float32]) (_ types.Atom[int], err error
 	var args []hostio.Value = []hostio.Value{
 		arg0.Bridge().GXValue(), // x [Size]float32
 	}
-	var rn runner.CompiledFunc
+	var rn grapheval.CompiledFunc
 	rn, err = pkg.cacheLen.Build(nil, args)
 	if err != nil {
 		return
@@ -394,7 +394,7 @@ func (pkg *Package) Len(arg0 types.Array[float32]) (_ types.Atom[int], err error
 // Iota returns an array filled with numbers.
 func (pkg *Package) Iota() (_ types.Array[int64], err error) {
 	var args []hostio.Value = nil
-	var rn runner.CompiledFunc
+	var rn grapheval.CompiledFunc
 	rn, err = pkg.cacheIota.Build(nil, args)
 	if err != nil {
 		return
@@ -420,7 +420,7 @@ func (pkg *Package) SliceArrayArgConstIndex(arg0 types.Array[float32]) (_ types.
 	var args []hostio.Value = []hostio.Value{
 		arg0.Bridge().GXValue(), // a [3][2]float32
 	}
-	var rn runner.CompiledFunc
+	var rn grapheval.CompiledFunc
 	rn, err = pkg.cacheSliceArrayArgConstIndex.Build(nil, args)
 	if err != nil {
 		return
@@ -461,7 +461,7 @@ func (pkg *Package) SliceArrayArg(arg0 types.Array[float32], arg1 types.Atom[int
 		arg0.Bridge().GXValue(), // a [3][2]float32
 		arg1.Bridge().GXValue(), // i int32
 	}
-	var rn runner.CompiledFunc
+	var rn grapheval.CompiledFunc
 	rn, err = pkg.cacheSliceArrayArg.Build(nil, args)
 	if err != nil {
 		return
@@ -488,7 +488,7 @@ func (pkg *Package) SliceSliceArg(arg0 *types.Slice[types.Array[float32]], arg1 
 		arg0.Bridge().GXValue(), // a [][2]float32
 		arg1.Bridge().GXValue(), // i int32
 	}
-	var rn runner.CompiledFunc
+	var rn grapheval.CompiledFunc
 	rn, err = pkg.cacheSliceSliceArg.Build(nil, args)
 	if err != nil {
 		return
@@ -514,7 +514,7 @@ func (pkg *Package) NewNotInSlice(arg0 types.Atom[int32]) (_ *NotInSlice, err er
 	var args []hostio.Value = []hostio.Value{
 		arg0.Bridge().GXValue(), // val int32
 	}
-	var rn runner.CompiledFunc
+	var rn grapheval.CompiledFunc
 	rn, err = pkg.cacheNewNotInSlice.Build(nil, args)
 	if err != nil {
 		return
@@ -1176,7 +1176,7 @@ func (recv *Struct) SetNotInSlice(arg0 *NotInSlice) (_ *Struct, err error) {
 	var args []hostio.Value = []hostio.Value{
 		arg0.Bridge().GXValue(), // d parameters.NotInSlice
 	}
-	var rn runner.CompiledFunc
+	var rn grapheval.CompiledFunc
 	rn, err = recv.handle.pkg.cacheStructSetNotInSlice.Build(recv.value, args)
 	if err != nil {
 		return

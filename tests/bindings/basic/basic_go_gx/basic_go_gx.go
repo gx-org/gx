@@ -26,11 +26,11 @@ import (
 	"github.com/gx-org/gx/api"
 	"github.com/gx-org/gx/api/hostio"
 	"github.com/gx-org/gx/api/options"
-	"github.com/gx-org/gx/api/runner"
 	"github.com/gx-org/gx/build/ir"
 	"github.com/gx-org/gx/golang/binder/gobindings/core"
 	"github.com/gx-org/gx/golang/binder/gobindings/types"
 	"github.com/gx-org/gx/interp/elements"
+	"github.com/gx-org/gx/interp/grapheval"
 	"github.com/pkg/errors"
 
 	_ "github.com/gx-org/gx/tests/bindings/basic"
@@ -46,7 +46,7 @@ var (
 	_ = errors.Errorf
 	_ = types.NewSlice[types.Bridger]
 	_ = ir.NamedType{}
-	_ = runner.Trace
+	_ = grapheval.Trace
 )
 
 // BuildFor loads the GX package github.com/gx-org/gx/tests/bindings/basic
@@ -150,7 +150,7 @@ func Build(dev *core.DeviceSetup) (*PackageHandle, error) {
 // ReturnFloat32 returns a float32.
 func (pkg *Package) ReturnFloat32() (_ types.Atom[float32], err error) {
 	var args []hostio.Value = nil
-	var rn runner.CompiledFunc
+	var rn grapheval.CompiledFunc
 	rn, err = pkg.cacheReturnFloat32.Build(nil, args)
 	if err != nil {
 		return
@@ -174,7 +174,7 @@ func (pkg *Package) ReturnFloat32() (_ types.Atom[float32], err error) {
 // ReturnArrayFloat32 returns a float32 tensor.
 func (pkg *Package) ReturnArrayFloat32() (_ types.Array[float32], err error) {
 	var args []hostio.Value = nil
-	var rn runner.CompiledFunc
+	var rn grapheval.CompiledFunc
 	rn, err = pkg.cacheReturnArrayFloat32.Build(nil, args)
 	if err != nil {
 		return
@@ -198,7 +198,7 @@ func (pkg *Package) ReturnArrayFloat32() (_ types.Array[float32], err error) {
 // ReturnMultiple returns multiple values.
 func (pkg *Package) ReturnMultiple() (_ types.Atom[int32], _ types.Atom[float32], _ types.Atom[float64], err error) {
 	var args []hostio.Value = nil
-	var rn runner.CompiledFunc
+	var rn grapheval.CompiledFunc
 	rn, err = pkg.cacheReturnMultiple.Build(nil, args)
 	if err != nil {
 		return
@@ -236,7 +236,7 @@ func (pkg *Package) ReturnMultiple() (_ types.Atom[int32], _ types.Atom[float32]
 // New returns a new instance of the basic structure.
 func (pkg *Package) New() (_ *Basic, err error) {
 	var args []hostio.Value = nil
-	var rn runner.CompiledFunc
+	var rn grapheval.CompiledFunc
 	rn, err = pkg.cacheNew.Build(nil, args)
 	if err != nil {
 		return
@@ -263,7 +263,7 @@ func (pkg *Package) AddPrivate(arg0 *Basic) (_ types.Atom[int32], err error) {
 	var args []hostio.Value = []hostio.Value{
 		arg0.Bridge().GXValue(), // b basic.Basic
 	}
-	var rn runner.CompiledFunc
+	var rn grapheval.CompiledFunc
 	rn, err = pkg.cacheAddPrivate.Build(nil, args)
 	if err != nil {
 		return
@@ -706,7 +706,7 @@ func (recv *Basic) Add(arg0 *Basic) (_ types.Atom[int32], err error) {
 	var args []hostio.Value = []hostio.Value{
 		arg0.Bridge().GXValue(), // a basic.Basic
 	}
-	var rn runner.CompiledFunc
+	var rn grapheval.CompiledFunc
 	rn, err = recv.handle.pkg.cacheBasicAdd.Build(recv.value, args)
 	if err != nil {
 		return
@@ -730,7 +730,7 @@ func (recv *Basic) Add(arg0 *Basic) (_ types.Atom[int32], err error) {
 // AddPrivate returns the sum of two private fields.
 func (recv *Basic) AddPrivate() (_ types.Atom[int32], err error) {
 	var args []hostio.Value = nil
-	var rn runner.CompiledFunc
+	var rn grapheval.CompiledFunc
 	rn, err = recv.handle.pkg.cacheBasicAddPrivate.Build(recv.value, args)
 	if err != nil {
 		return
@@ -756,7 +756,7 @@ func (recv *Basic) SetFloat(arg0 types.Atom[float32]) (_ *Basic, err error) {
 	var args []hostio.Value = []hostio.Value{
 		arg0.Bridge().GXValue(), // x float32
 	}
-	var rn runner.CompiledFunc
+	var rn grapheval.CompiledFunc
 	rn, err = recv.handle.pkg.cacheBasicSetFloat.Build(recv.value, args)
 	if err != nil {
 		return

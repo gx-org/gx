@@ -26,11 +26,11 @@ import (
 	"github.com/gx-org/gx/api"
 	"github.com/gx-org/gx/api/hostio"
 	"github.com/gx-org/gx/api/options"
-	"github.com/gx-org/gx/api/runner"
 	"github.com/gx-org/gx/build/ir"
 	"github.com/gx-org/gx/golang/binder/gobindings/core"
 	"github.com/gx-org/gx/golang/binder/gobindings/types"
 	"github.com/gx-org/gx/interp/elements"
+	"github.com/gx-org/gx/interp/grapheval"
 	"github.com/pkg/errors"
 
 	_ "github.com/gx-org/gx/tests/bindings/dtypes"
@@ -46,7 +46,7 @@ var (
 	_ = errors.Errorf
 	_ = types.NewSlice[types.Bridger]
 	_ = ir.NamedType{}
-	_ = runner.Trace
+	_ = grapheval.Trace
 )
 
 // BuildFor loads the GX package github.com/gx-org/gx/tests/bindings/dtypes
@@ -191,7 +191,7 @@ func (pkg *Package) Bool(arg0 types.Atom[bool]) (_ types.Atom[bool], err error) 
 	var args []hostio.Value = []hostio.Value{
 		arg0.Bridge().GXValue(), // x bool
 	}
-	var rn runner.CompiledFunc
+	var rn grapheval.CompiledFunc
 	rn, err = pkg.cacheBool.Build(nil, args)
 	if err != nil {
 		return
@@ -216,7 +216,7 @@ func (pkg *Package) Float32(arg0 types.Atom[float32]) (_ types.Atom[float32], er
 	var args []hostio.Value = []hostio.Value{
 		arg0.Bridge().GXValue(), // x float32
 	}
-	var rn runner.CompiledFunc
+	var rn grapheval.CompiledFunc
 	rn, err = pkg.cacheFloat32.Build(nil, args)
 	if err != nil {
 		return
@@ -241,7 +241,7 @@ func (pkg *Package) Float64(arg0 types.Atom[float64]) (_ types.Atom[float64], er
 	var args []hostio.Value = []hostio.Value{
 		arg0.Bridge().GXValue(), // x float64
 	}
-	var rn runner.CompiledFunc
+	var rn grapheval.CompiledFunc
 	rn, err = pkg.cacheFloat64.Build(nil, args)
 	if err != nil {
 		return
@@ -266,7 +266,7 @@ func (pkg *Package) Int(arg0 types.Atom[int]) (_ types.Atom[int], err error) {
 	var args []hostio.Value = []hostio.Value{
 		arg0.Bridge().GXValue(), // x int
 	}
-	var rn runner.CompiledFunc
+	var rn grapheval.CompiledFunc
 	rn, err = pkg.cacheInt.Build(nil, args)
 	if err != nil {
 		return
@@ -291,7 +291,7 @@ func (pkg *Package) Int32(arg0 types.Atom[int32]) (_ types.Atom[int32], err erro
 	var args []hostio.Value = []hostio.Value{
 		arg0.Bridge().GXValue(), // x int32
 	}
-	var rn runner.CompiledFunc
+	var rn grapheval.CompiledFunc
 	rn, err = pkg.cacheInt32.Build(nil, args)
 	if err != nil {
 		return
@@ -316,7 +316,7 @@ func (pkg *Package) Int64(arg0 types.Atom[int64]) (_ types.Atom[int64], err erro
 	var args []hostio.Value = []hostio.Value{
 		arg0.Bridge().GXValue(), // x int64
 	}
-	var rn runner.CompiledFunc
+	var rn grapheval.CompiledFunc
 	rn, err = pkg.cacheInt64.Build(nil, args)
 	if err != nil {
 		return
@@ -341,7 +341,7 @@ func (pkg *Package) Uint32(arg0 types.Atom[uint32]) (_ types.Atom[uint32], err e
 	var args []hostio.Value = []hostio.Value{
 		arg0.Bridge().GXValue(), // x uint32
 	}
-	var rn runner.CompiledFunc
+	var rn grapheval.CompiledFunc
 	rn, err = pkg.cacheUint32.Build(nil, args)
 	if err != nil {
 		return
@@ -366,7 +366,7 @@ func (pkg *Package) Uint64(arg0 types.Atom[uint64]) (_ types.Atom[uint64], err e
 	var args []hostio.Value = []hostio.Value{
 		arg0.Bridge().GXValue(), // x uint64
 	}
-	var rn runner.CompiledFunc
+	var rn grapheval.CompiledFunc
 	rn, err = pkg.cacheUint64.Build(nil, args)
 	if err != nil {
 		return
@@ -391,7 +391,7 @@ func (pkg *Package) ArrayBool(arg0 types.Array[bool]) (_ types.Array[bool], err 
 	var args []hostio.Value = []hostio.Value{
 		arg0.Bridge().GXValue(), // x [2][3]bool
 	}
-	var rn runner.CompiledFunc
+	var rn grapheval.CompiledFunc
 	rn, err = pkg.cacheArrayBool.Build(nil, args)
 	if err != nil {
 		return
@@ -416,7 +416,7 @@ func (pkg *Package) ArrayFloat32(arg0 types.Array[float32]) (_ types.Array[float
 	var args []hostio.Value = []hostio.Value{
 		arg0.Bridge().GXValue(), // x [2][3]float32
 	}
-	var rn runner.CompiledFunc
+	var rn grapheval.CompiledFunc
 	rn, err = pkg.cacheArrayFloat32.Build(nil, args)
 	if err != nil {
 		return
@@ -441,7 +441,7 @@ func (pkg *Package) ArrayFloat64(arg0 types.Array[float64]) (_ types.Array[float
 	var args []hostio.Value = []hostio.Value{
 		arg0.Bridge().GXValue(), // x [2][3]float64
 	}
-	var rn runner.CompiledFunc
+	var rn grapheval.CompiledFunc
 	rn, err = pkg.cacheArrayFloat64.Build(nil, args)
 	if err != nil {
 		return
@@ -466,7 +466,7 @@ func (pkg *Package) ArrayInt(arg0 types.Array[int]) (_ types.Array[int], err err
 	var args []hostio.Value = []hostio.Value{
 		arg0.Bridge().GXValue(), // x [2][3]int
 	}
-	var rn runner.CompiledFunc
+	var rn grapheval.CompiledFunc
 	rn, err = pkg.cacheArrayInt.Build(nil, args)
 	if err != nil {
 		return
@@ -491,7 +491,7 @@ func (pkg *Package) ArrayInt32(arg0 types.Array[int32]) (_ types.Array[int32], e
 	var args []hostio.Value = []hostio.Value{
 		arg0.Bridge().GXValue(), // x [2][3]int32
 	}
-	var rn runner.CompiledFunc
+	var rn grapheval.CompiledFunc
 	rn, err = pkg.cacheArrayInt32.Build(nil, args)
 	if err != nil {
 		return
@@ -516,7 +516,7 @@ func (pkg *Package) ArrayInt64(arg0 types.Array[int64]) (_ types.Array[int64], e
 	var args []hostio.Value = []hostio.Value{
 		arg0.Bridge().GXValue(), // x [2][3]int64
 	}
-	var rn runner.CompiledFunc
+	var rn grapheval.CompiledFunc
 	rn, err = pkg.cacheArrayInt64.Build(nil, args)
 	if err != nil {
 		return
@@ -541,7 +541,7 @@ func (pkg *Package) ArrayUint32(arg0 types.Array[uint32]) (_ types.Array[uint32]
 	var args []hostio.Value = []hostio.Value{
 		arg0.Bridge().GXValue(), // x [2][3]uint32
 	}
-	var rn runner.CompiledFunc
+	var rn grapheval.CompiledFunc
 	rn, err = pkg.cacheArrayUint32.Build(nil, args)
 	if err != nil {
 		return
@@ -566,7 +566,7 @@ func (pkg *Package) ArrayUint64(arg0 types.Array[uint64]) (_ types.Array[uint64]
 	var args []hostio.Value = []hostio.Value{
 		arg0.Bridge().GXValue(), // x [2][3]uint64
 	}
-	var rn runner.CompiledFunc
+	var rn grapheval.CompiledFunc
 	rn, err = pkg.cacheArrayUint64.Build(nil, args)
 	if err != nil {
 		return

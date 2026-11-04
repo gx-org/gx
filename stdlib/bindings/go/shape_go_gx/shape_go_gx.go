@@ -26,11 +26,11 @@ import (
 	"github.com/gx-org/gx/api"
 	"github.com/gx-org/gx/api/hostio"
 	"github.com/gx-org/gx/api/options"
-	"github.com/gx-org/gx/api/runner"
 	"github.com/gx-org/gx/build/ir"
 	"github.com/gx-org/gx/golang/binder/gobindings/core"
 	"github.com/gx-org/gx/golang/binder/gobindings/types"
 	"github.com/gx-org/gx/interp/elements"
+	"github.com/gx-org/gx/interp/grapheval"
 	"github.com/pkg/errors"
 
 	gxdep0 "github.com/gx-org/gx/stdlib/bindings/go/cperrors_go_gx"
@@ -47,7 +47,7 @@ var (
 	_ = errors.Errorf
 	_ = types.NewSlice[types.Bridger]
 	_ = ir.NamedType{}
-	_ = runner.Trace
+	_ = grapheval.Trace
 )
 
 // BuildFor loads the GX package shape
@@ -132,7 +132,7 @@ func (pkg *Package) CheckBroadcast(arg0 *types.Slice[types.Atom[int]], arg1 *typ
 		arg0.Bridge().GXValue(), // s1 []int
 		arg1.Bridge().GXValue(), // s2 []int
 	}
-	var rn runner.CompiledFunc
+	var rn grapheval.CompiledFunc
 	rn, err = pkg.cacheCheckBroadcast.Build(nil, args)
 	if err != nil {
 		return

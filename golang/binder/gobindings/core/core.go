@@ -22,10 +22,10 @@ import (
 	"github.com/pkg/errors"
 	"github.com/gx-org/gx/api"
 	"github.com/gx-org/gx/api/options"
-	"github.com/gx-org/gx/api/runner"
 	"github.com/gx-org/gx/api/trace"
 	"github.com/gx-org/gx/build/importers"
 	"github.com/gx-org/gx/build/ir"
+	"github.com/gx-org/gx/interp/eagereval"
 )
 
 // DefaultTracer is the tracer used if the device does not define a tracer.
@@ -77,7 +77,7 @@ type PackageCompileSetup struct {
 }
 
 func (s *PackageCompileSetup) canCompileGraph() bool {
-	_, ok := s.devSetup.Runtime().Backend().(runner.EagerBackend)
+	_, ok := s.devSetup.Runtime().Backend().(eagereval.EagerBackend)
 	return !ok
 }
 

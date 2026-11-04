@@ -12,10 +12,7 @@
 // See the License for the specific language governing permissions and
 // limitations under the License.
 
-// Package runner runs GX function, mostly in two different mode.
-// First, as a trace mode where GX is executed to build a graph which will then be compiled a run.
-// Second, as a run mode where GX is executed like other interpreted language.
-package runner
+package eagereval
 
 import (
 	"fmt"
@@ -26,12 +23,7 @@ import (
 	"github.com/gx-org/gx/build/fmterr"
 	"github.com/gx-org/gx/build/ir"
 	"github.com/gx-org/gx/internal/base/cast"
-	"github.com/gx-org/gx/internal/interp/flatten"
-	"github.com/gx-org/gx/internal/togo"
-	"github.com/gx-org/gx/internal/tracer/processor"
-	"github.com/gx-org/gx/interp/grapheval"
 	"github.com/gx-org/gx/interp"
-	"github.com/gx-org/gx/interp/materialise"
 )
 
 // Run a function on the device.
@@ -46,12 +38,13 @@ func Run(dev *api.Device, fn *ir.FuncDecl, receiver hostio.Value, args []hostio.
 		}
 		err = fmterr.ToStackTraceError(err)
 	}()
-	// Create a new graph and evaluator for the interpreter.
-	proc := processor.New()
-	fc := &togo.FuncInputs{Receiver: receiver, Args: hostio.ToElements(args)}
-	proc.ProcessInits(fc)
+	bck, err := cast.To[EagerBackend](dev.Backend())
+	if err != nil {
+		return nil, err
+	}
+	// Create an evaluator for the interpreter executing operations eagerly on the backend.
 	builder := dev.Runtime().Backend().Builder(fn.FullyQualifiedName())
-	reg, mat := grapheval.New(dev.Runtime().Builder(), proc, builder.Main())
+	reg, ops := newRegistry(bck, dev.Runtime().Builder(), builder.Main())
 	// Create the interpreter.
 	itp, err := interp.New(reg, options)
 	if err != nil {
@@ -61,36 +54,15 @@ func Run(dev *api.Device, fn *ir.FuncDecl, receiver hostio.Value, args []hostio.
 	if err != nil {
 		return nil, err
 	}
-	// Visit the receiver and arguments values to create elements for the interpreter.
-	in, err := mat.FuncInputsToElements(fitp, fn, receiver, args)
+	// Convert the receiver and arguments values into elements for the interpreter.
+	in, err := ops.funcInputsToElements(fitp, fn, receiver, args)
 	if err != nil {
 		return nil, err
 	}
-	// Add all the arguments to the graph.
-	if _, err := materialise.All(mat, proc.ElementArgs()); err != nil {
-		return nil, err
-	}
-	// Interpret the function with the evaluator to build the graph.
-	// The evaluation returns a single output element.
-	outEls, err := itp.EvalFunc(fn, in)
+	// Interpret the function: the backend computes all the operations eagerly.
+	outs, err := itp.EvalFunc(fn, in)
 	if err != nil {
 		return nil, err
 	}
-	outEls, err = flatten.Flatten(outEls...)
-	if err != nil {
-		return nil, err
-	}
-	outs := make([]hostio.Value, len(outEls))
-	for i, el := range outEls {
-		var val any = el
-		// TODO(degris): create an eagereval to replace grapheval to avoid the following if statement.
-		if node, isNode := el.(materialise.Node); isNode {
-			val = node.Value()
-		}
-		outs[i], err = cast.To[hostio.Value](val)
-		if err != nil {
-			return nil, err
-		}
-	}
-	return outs, nil
+	return ops.Values(outs)
 }

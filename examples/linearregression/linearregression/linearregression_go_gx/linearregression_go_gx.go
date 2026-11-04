@@ -26,11 +26,11 @@ import (
 	"github.com/gx-org/gx/api"
 	"github.com/gx-org/gx/api/hostio"
 	"github.com/gx-org/gx/api/options"
-	"github.com/gx-org/gx/api/runner"
 	"github.com/gx-org/gx/build/ir"
 	"github.com/gx-org/gx/golang/binder/gobindings/core"
 	"github.com/gx-org/gx/golang/binder/gobindings/types"
 	"github.com/gx-org/gx/interp/elements"
+	"github.com/gx-org/gx/interp/grapheval"
 	"github.com/pkg/errors"
 
 	_ "github.com/gx-org/gx/examples/linearregression/linearregression"
@@ -50,7 +50,7 @@ var (
 	_ = errors.Errorf
 	_ = types.NewSlice[types.Bridger]
 	_ = ir.NamedType{}
-	_ = runner.Trace
+	_ = grapheval.Trace
 )
 
 // BuildFor loads the GX package github.com/gx-org/gx/examples/linearregression/linearregression
@@ -171,7 +171,7 @@ func (pkg *Package) NewLearner(arg0 types.Atom[float32]) (_ *Learner, err error)
 	var args []hostio.Value = []hostio.Value{
 		arg0.Bridge().GXValue(), // stepSize float32
 	}
-	var rn runner.CompiledFunc
+	var rn grapheval.CompiledFunc
 	rn, err = pkg.cacheNewLearner.Build(nil, args)
 	if err != nil {
 		return
@@ -199,7 +199,7 @@ func (pkg *Package) NewTarget(arg0 types.Atom[int64], arg1 types.Atom[float32]) 
 		arg0.Bridge().GXValue(), // seed int64
 		arg1.Bridge().GXValue(), // bias float32
 	}
-	var rn runner.CompiledFunc
+	var rn grapheval.CompiledFunc
 	rn, err = pkg.cacheNewTarget.Build(nil, args)
 	if err != nil {
 		return
@@ -406,7 +406,7 @@ func (recv *Learner) Update(arg0 types.Array[float32], arg1 types.Atom[float32])
 		arg0.Bridge().GXValue(), // features [Size]float32
 		arg1.Bridge().GXValue(), // target float32
 	}
-	var rn runner.CompiledFunc
+	var rn grapheval.CompiledFunc
 	rn, err = recv.handle.pkg.cacheLearnerUpdate.Build(recv.value, args)
 	if err != nil {
 		return
@@ -638,7 +638,7 @@ func (h *handleTarget) SetField(field *ir.Field, val types.Bridge) error {
 // Sample generates a new vector of features and the corresponding prediction.
 func (recv *Target) Sample() (_ *Target, _ types.Array[float32], _ types.Atom[float32], err error) {
 	var args []hostio.Value = nil
-	var rn runner.CompiledFunc
+	var rn grapheval.CompiledFunc
 	rn, err = recv.handle.pkg.cacheTargetSample.Build(recv.value, args)
 	if err != nil {
 		return

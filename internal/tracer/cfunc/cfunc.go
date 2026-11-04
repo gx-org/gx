@@ -44,6 +44,11 @@ func extractGraphNodes(ao materialise.Materialiser, els []ir.Element) ([]compute
 	}
 	var nodes []compute.Value
 	for _, el := range flatten {
+		if _, isValue := el.(hostio.Value); isValue {
+			// GX values (e.g. Python objects) are not computed by the graph:
+			// they are returned as is when the outputs are unflattened (see flatten.Parser.Unflatten).
+			continue
+		}
 		mat, ok := el.(materialise.ElementMaterialiser)
 		if !ok {
 			continue

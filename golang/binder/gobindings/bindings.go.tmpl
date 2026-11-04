@@ -28,10 +28,10 @@ import (
 	"github.com/gx-org/gx/api/options"
 	"github.com/gx-org/gx/api/hostio"
 	"github.com/gx-org/gx/build/ir"
-	"github.com/gx-org/gx/api/runner"
 	"github.com/gx-org/gx/golang/binder/gobindings/core"
 	"github.com/gx-org/gx/golang/binder/gobindings/types"
 	"github.com/gx-org/gx/interp/elements"
+	"github.com/gx-org/gx/interp/grapheval"
 
 	{{.GXImportBindedLibrary}}
 
@@ -50,7 +50,7 @@ var (
 	_ = errors.Errorf
 	_ = types.NewSlice[types.Bridger]
 	_ = ir.NamedType{}
-	_ = runner.Trace
+	_ = grapheval.Trace
 )
 
 // BuildFor loads the GX package {{.Package.Path}}
@@ -139,7 +139,7 @@ func Build(dev *core.DeviceSetup) (*PackageHandle, error) {
 {{end}}{{end -}}
 func (pkg *Package) {{.Name}}({{.Parameters}}) ({{.Results}}, err error) {
 	var args []hostio.Value = {{.BackendArguments}}
-	var rn runner.CompiledFunc
+	var rn grapheval.CompiledFunc
 	rn, err = pkg.cache{{.Name}}.Build(nil, args)
 	if err != nil {
 		return
@@ -223,7 +223,7 @@ func (h *handle{{.Named.Name}}) SetField(field *ir.Field, val types.Bridge) erro
 {{end}}{{end -}}
 func (recv *{{.RecvTypeName}}) {{.Name}}({{.Parameters}}) ({{.Results}}, err error) {
 	var args []hostio.Value = {{.BackendArguments}}
-	var rn runner.CompiledFunc
+	var rn grapheval.CompiledFunc
 	rn, err = recv.handle.pkg.cache{{.RecvTypeName}}{{.Name}}.Build(recv.value, args)
 	if err != nil {
 		return

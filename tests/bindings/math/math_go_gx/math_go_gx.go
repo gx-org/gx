@@ -26,11 +26,11 @@ import (
 	"github.com/gx-org/gx/api"
 	"github.com/gx-org/gx/api/hostio"
 	"github.com/gx-org/gx/api/options"
-	"github.com/gx-org/gx/api/runner"
 	"github.com/gx-org/gx/build/ir"
 	"github.com/gx-org/gx/golang/binder/gobindings/core"
 	"github.com/gx-org/gx/golang/binder/gobindings/types"
 	"github.com/gx-org/gx/interp/elements"
+	"github.com/gx-org/gx/interp/grapheval"
 	"github.com/pkg/errors"
 
 	_ "github.com/gx-org/gx/tests/bindings/math"
@@ -48,7 +48,7 @@ var (
 	_ = errors.Errorf
 	_ = types.NewSlice[types.Bridger]
 	_ = ir.NamedType{}
-	_ = runner.Trace
+	_ = grapheval.Trace
 )
 
 // BuildFor loads the GX package github.com/gx-org/gx/tests/bindings/math
@@ -128,7 +128,7 @@ func Build(dev *core.DeviceSetup) (*PackageHandle, error) {
 // ReturnMaxFloat32 returns the maximum float32.
 func (pkg *Package) ReturnMaxFloat32() (_ types.Atom[float32], err error) {
 	var args []hostio.Value = nil
-	var rn runner.CompiledFunc
+	var rn grapheval.CompiledFunc
 	rn, err = pkg.cacheReturnMaxFloat32.Build(nil, args)
 	if err != nil {
 		return
@@ -152,7 +152,7 @@ func (pkg *Package) ReturnMaxFloat32() (_ types.Atom[float32], err error) {
 // ReturnMaxFloat64 returns the maximum float64.
 func (pkg *Package) ReturnMaxFloat64() (_ types.Atom[float64], err error) {
 	var args []hostio.Value = nil
-	var rn runner.CompiledFunc
+	var rn grapheval.CompiledFunc
 	rn, err = pkg.cacheReturnMaxFloat64.Build(nil, args)
 	if err != nil {
 		return

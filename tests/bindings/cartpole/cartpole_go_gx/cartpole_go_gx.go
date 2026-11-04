@@ -26,11 +26,11 @@ import (
 	"github.com/gx-org/gx/api"
 	"github.com/gx-org/gx/api/hostio"
 	"github.com/gx-org/gx/api/options"
-	"github.com/gx-org/gx/api/runner"
 	"github.com/gx-org/gx/build/ir"
 	"github.com/gx-org/gx/golang/binder/gobindings/core"
 	"github.com/gx-org/gx/golang/binder/gobindings/types"
 	"github.com/gx-org/gx/interp/elements"
+	"github.com/gx-org/gx/interp/grapheval"
 	"github.com/pkg/errors"
 
 	_ "github.com/gx-org/gx/tests/bindings/cartpole"
@@ -48,7 +48,7 @@ var (
 	_ = errors.Errorf
 	_ = types.NewSlice[types.Bridger]
 	_ = ir.NamedType{}
-	_ = runner.Trace
+	_ = grapheval.Trace
 )
 
 // BuildFor loads the GX package github.com/gx-org/gx/tests/bindings/cartpole
@@ -142,7 +142,7 @@ func Build(dev *core.DeviceSetup) (*PackageHandle, error) {
 
 func (pkg *Package) New() (_ *Cartpole, err error) {
 	var args []hostio.Value = nil
-	var rn runner.CompiledFunc
+	var rn grapheval.CompiledFunc
 	rn, err = pkg.cacheNew.Build(nil, args)
 	if err != nil {
 		return
@@ -621,7 +621,7 @@ func (h *handleCartpole) SetField(field *ir.Field, val types.Bridge) error {
 
 func (recv *Cartpole) Reset() (_ *Cartpole, err error) {
 	var args []hostio.Value = nil
-	var rn runner.CompiledFunc
+	var rn grapheval.CompiledFunc
 	rn, err = recv.handle.pkg.cacheCartpoleReset.Build(recv.value, args)
 	if err != nil {
 		return
@@ -647,7 +647,7 @@ func (recv *Cartpole) Step(arg0 types.Atom[float32]) (_ *Cartpole, err error) {
 	var args []hostio.Value = []hostio.Value{
 		arg0.Bridge().GXValue(), // action float32
 	}
-	var rn runner.CompiledFunc
+	var rn grapheval.CompiledFunc
 	rn, err = recv.handle.pkg.cacheCartpoleStep.Build(recv.value, args)
 	if err != nil {
 		return
@@ -671,7 +671,7 @@ func (recv *Cartpole) Step(arg0 types.Atom[float32]) (_ *Cartpole, err error) {
 
 func (recv *Cartpole) State() (_ types.Array[float32], err error) {
 	var args []hostio.Value = nil
-	var rn runner.CompiledFunc
+	var rn grapheval.CompiledFunc
 	rn, err = recv.handle.pkg.cacheCartpoleState.Build(recv.value, args)
 	if err != nil {
 		return
@@ -694,7 +694,7 @@ func (recv *Cartpole) State() (_ types.Array[float32], err error) {
 
 func (recv *Cartpole) FullState() (_ types.Array[float32], err error) {
 	var args []hostio.Value = nil
-	var rn runner.CompiledFunc
+	var rn grapheval.CompiledFunc
 	rn, err = recv.handle.pkg.cacheCartpoleFullState.Build(recv.value, args)
 	if err != nil {
 		return

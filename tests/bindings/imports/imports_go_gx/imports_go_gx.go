@@ -26,11 +26,11 @@ import (
 	"github.com/gx-org/gx/api"
 	"github.com/gx-org/gx/api/hostio"
 	"github.com/gx-org/gx/api/options"
-	"github.com/gx-org/gx/api/runner"
 	"github.com/gx-org/gx/build/ir"
 	"github.com/gx-org/gx/golang/binder/gobindings/core"
 	"github.com/gx-org/gx/golang/binder/gobindings/types"
 	"github.com/gx-org/gx/interp/elements"
+	"github.com/gx-org/gx/interp/grapheval"
 	"github.com/pkg/errors"
 
 	_ "github.com/gx-org/gx/tests/bindings/imports"
@@ -48,7 +48,7 @@ var (
 	_ = errors.Errorf
 	_ = types.NewSlice[types.Bridger]
 	_ = ir.NamedType{}
-	_ = runner.Trace
+	_ = grapheval.Trace
 )
 
 // BuildFor loads the GX package github.com/gx-org/gx/tests/bindings/imports
@@ -138,7 +138,7 @@ func Build(dev *core.DeviceSetup) (*PackageHandle, error) {
 // NewBasic returns a new basic structure.
 func (pkg *Package) NewBasic() (_ *gxdep0.Basic, err error) {
 	var args []hostio.Value = nil
-	var rn runner.CompiledFunc
+	var rn grapheval.CompiledFunc
 	rn, err = pkg.cacheNewBasic.Build(nil, args)
 	if err != nil {
 		return
@@ -163,7 +163,7 @@ func (pkg *Package) NewBasic() (_ *gxdep0.Basic, err error) {
 // NewImported returns a new Imported structure.
 func (pkg *Package) NewImporter() (_ *Importer, err error) {
 	var args []hostio.Value = nil
-	var rn runner.CompiledFunc
+	var rn grapheval.CompiledFunc
 	rn, err = pkg.cacheNewImporter.Build(nil, args)
 	if err != nil {
 		return
@@ -188,7 +188,7 @@ func (pkg *Package) NewImporter() (_ *Importer, err error) {
 // ReturnFromBasic returns a float from the basic package.
 func (pkg *Package) ReturnFromBasic() (_ types.Atom[float32], err error) {
 	var args []hostio.Value = nil
-	var rn runner.CompiledFunc
+	var rn grapheval.CompiledFunc
 	rn, err = pkg.cacheReturnFromBasic.Build(nil, args)
 	if err != nil {
 		return
@@ -365,7 +365,7 @@ func (h *handleImporter) SetField(field *ir.Field, val types.Bridge) error {
 // Add returns the result from Basic.AddPrivate.
 func (recv *Importer) Add() (_ types.Atom[int32], err error) {
 	var args []hostio.Value = nil
-	var rn runner.CompiledFunc
+	var rn grapheval.CompiledFunc
 	rn, err = recv.handle.pkg.cacheImporterAdd.Build(recv.value, args)
 	if err != nil {
 		return

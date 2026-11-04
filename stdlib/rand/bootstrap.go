@@ -127,10 +127,7 @@ func (arg *randBootstrapArg) Ops() *grapheval.Ops {
 }
 
 func evalNewBootstrapGenerator(env *engine.Env, call *ir.FuncCallExpr, recv ir.Element, genArgs, args []ir.Element) ([]ir.Element, error) {
-	bootstrap := &randBootstrap{
-		eval: env.Engine().(*grapheval.Ops),
-		call: call,
-	}
+	bootstrap := &randBootstrap{call: call}
 	var err error
 	switch seedNode := args[0].(type) {
 	case engine.ConstantElement:
@@ -141,6 +138,11 @@ func evalNewBootstrapGenerator(env *engine.Env, call *ir.FuncCallExpr, recv ir.E
 		}
 		bootstrap.initRand(seed)
 	case togo.RuntimeValue:
+		eval, ok := env.Engine().(*grapheval.Ops)
+		if !ok {
+			return nil, errors.Errorf("cannot process seed node %T with engine %T: not supported", seedNode, env.Engine())
+		}
+		bootstrap.eval = eval
 		var argFactory *randBootstrapArg
 		argFactory, err = newRandBootstrapArg(env, bootstrap, seedNode)
 		if err != nil {
