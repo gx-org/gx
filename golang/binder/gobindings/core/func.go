@@ -22,15 +22,16 @@ import (
 	"github.com/pkg/errors"
 	"github.com/gx-org/gx/api"
 	"github.com/gx-org/gx/api/hostio"
-	"github.com/gx-org/gx/api/runner"
 	"github.com/gx-org/gx/api/trace"
 	"github.com/gx-org/gx/build/ir"
+	"github.com/gx-org/gx/interp/eagereval"
+	"github.com/gx-org/gx/interp/grapheval"
 )
 
 // Func wraps a GX function, sometimes in a cache to prevent unnecessary recompilation.
 type Func interface {
 	Device() *api.Device
-	Build(recv hostio.Value, args []hostio.Value) (runner.CompiledFunc, error)
+	Build(recv hostio.Value, args []hostio.Value) (grapheval.CompiledFunc, error)
 	Run(receiver hostio.Value, args []hostio.Value, tracer trace.Callback) ([]hostio.Value, error)
 	Func() *ir.FuncDecl
 	Tracer() trace.Callback
@@ -60,7 +61,7 @@ func (c coreFunc) Tracer() trace.Callback {
 type funcCache struct {
 	coreFunc
 
-	runner   runner.CompiledFunc
+	runner   grapheval.CompiledFunc
 	err      error
 	initOnce sync.Once
 }
@@ -74,13 +75,13 @@ func newFuncCache(pkg *PackageCompileSetup, fn *ir.FuncDecl) Func {
 	return &funcNoCache{coreFunc: coreF}
 }
 
-func (c *funcCache) buildRunner(recv hostio.Value, args []hostio.Value) (_ runner.CompiledFunc, err error) {
+func (c *funcCache) buildRunner(recv hostio.Value, args []hostio.Value) (_ grapheval.CompiledFunc, err error) {
 	log.Printf("GX Tracing %s.%s with options %s", c.fn.FFile.Package.Name.Name, c.fn.Name(), optionsToString(c.pkg.devSetup.opts))
 	now := time.Now()
 	defer func() {
 		log.Printf("GX Tracing %s.%s: DONE. Time: %v.", c.fn.FFile.Package.Name.Name, c.fn.Name(), time.Since(now))
 	}()
-	runner, err := runner.Trace(c.pkg.devSetup.device, c.fn, recv, args, c.pkg.devSetup.opts)
+	runner, err := grapheval.Trace(c.pkg.devSetup.device, c.fn, recv, args, c.pkg.devSetup.opts)
 	if err != nil {
 		return nil, err
 	}
@@ -89,7 +90,7 @@ func (c *funcCache) buildRunner(recv hostio.Value, args []hostio.Value) (_ runne
 
 // Runner compiles the function if it has not been done before.
 // Returns the function compiled or an error.
-func (c *funcCache) Build(recv hostio.Value, args []hostio.Value) (runner.CompiledFunc, error) {
+func (c *funcCache) Build(recv hostio.Value, args []hostio.Value) (grapheval.CompiledFunc, error) {
 	c.initOnce.Do(func() {
 		c.runner, c.err = c.buildRunner(recv, args)
 	})
@@ -109,10 +110,10 @@ type funcNoCache struct {
 	coreFunc
 }
 
-func (c *funcNoCache) Build(recv hostio.Value, args []hostio.Value) (runner.CompiledFunc, error) {
+func (c *funcNoCache) Build(recv hostio.Value, args []hostio.Value) (grapheval.CompiledFunc, error) {
 	return nil, errors.Errorf("cannot build a function for backend %T: does not support graph compilation", c.coreFunc.Device().Backend())
 }
 
 func (c *funcNoCache) Run(recv hostio.Value, args []hostio.Value, tracer trace.Callback) ([]hostio.Value, error) {
-	return runner.Run(c.pkg.devSetup.device, c.fn, recv, args, c.pkg.devSetup.opts)
+	return eagereval.Run(c.pkg.devSetup.device, c.fn, recv, args, c.pkg.devSetup.opts)
 }

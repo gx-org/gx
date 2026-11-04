@@ -24,12 +24,12 @@ import (
 
 	"github.com/gx-org/gx/api"
 	"github.com/gx-org/gx/api/hostio"
-	"github.com/gx-org/gx/api/runner"
 	"github.com/gx-org/gx/api/trace"
 	"github.com/gx-org/gx/build/builder"
 	"github.com/gx-org/gx/build/fmterr"
 	"github.com/gx-org/gx/build/ir"
 	"github.com/gx-org/gx/interp/elements"
+	"github.com/gx-org/gx/interp/grapheval"
 )
 
 // FromFile runs a main function from a single file path.
@@ -79,7 +79,7 @@ func runGraphMain(rtm *api.Runtime, fn *ir.FuncDecl) ([]hostio.Value, []trace.Ca
 		return nil, nil, fmt.Errorf("cannot create device: %w", err)
 	}
 	var rec trace.Recorder
-	outs, err := runner.TraceAndRun(dev, fn, nil, nil, nil, &rec)
+	outs, err := grapheval.TraceAndRun(dev, fn, nil, nil, nil, &rec)
 	if err != nil {
 		return nil, nil, err
 	}

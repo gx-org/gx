@@ -390,8 +390,8 @@ func (ao *Ops) convertToElement(ev ir.Evaluator, field *ir.Field, arg ir.Element
 	return ao.convertKernelArrayToElement(ev, field, field.Type(), val)
 }
 
-// FuncInputsToElements converts values to a function input.
-func (ao *Ops) FuncInputsToElements(ev ir.Evaluator, fn ir.Func, receiver ir.Element, args []hostio.Value) (*elements.InputElements, error) {
+// funcInputsToElements converts values to a function input.
+func (ao *Ops) funcInputsToElements(ev ir.Evaluator, fn ir.Func, receiver ir.Element, args []hostio.Value) (*elements.InputElements, error) {
 	vis := newInputVisitor(ao, fn.File())
 	fType := fn.FuncType()
 	var recvEl ir.Element

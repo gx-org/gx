@@ -22,10 +22,10 @@ import (
 	"github.com/gx-org/gx/api"
 	"github.com/gx-org/gx/api/hostio"
 	"github.com/gx-org/gx/api/options"
-	"github.com/gx-org/gx/api/runner"
 	"github.com/gx-org/gx/api/trace"
 	"github.com/gx-org/gx/build/builder/testbuild"
 	"github.com/gx-org/gx/build/ir"
+	"github.com/gx-org/gx/interp/grapheval"
 )
 
 // Runner runs test functions.
@@ -55,7 +55,7 @@ func (r *Runner) Run(fn *ir.FuncDecl, options []options.PackageOption) ([]hostio
 // RunWithArgs compiles a function into a XLA graph, runs it, and returns the result.
 func (r *Runner) RunWithArgs(fn *ir.FuncDecl, recv hostio.Value, args []hostio.Value, options []options.PackageOption) ([]hostio.Value, string, error) {
 	var rec trace.Recorder
-	outs, err := runner.TraceAndRun(r.dev, fn, recv, args, options, &rec)
+	outs, err := grapheval.TraceAndRun(r.dev, fn, recv, args, options, &rec)
 	if err != nil {
 		return nil, "", err
 	}
