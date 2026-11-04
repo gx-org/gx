@@ -15,7 +15,6 @@
 
 load("//devtools/python/blaze:pytype.bzl", "pytype_strict_library")
 load("//third_party/bazel_rules/rules_cc/cc:cc_library.bzl", "cc_library")
-load("//third_party/pybind11/google3_utils:build_defs.bzl", "pybind_extension")
 load("//tools/build_defs/go:go_binary.bzl", "go_binary")
 load("//tools/build_defs/go:go_library.bzl", "go_library")
 load("//tools/build_defs/go:go_test.bzl", "go_test")
@@ -259,7 +258,7 @@ def cc_gx_library(name, lib, deps = [], tags = [], visibility = None, testonly =
     )
 
 def py_gx_library(name, lib, tags = [], visibility = None, testonly = False, backend = ""):
-    """Generate the C++ Python extension for a GX library.
+    """Generate the Python bindings for a GX library.
 
     Args:
       name: name of the build rule.
@@ -273,8 +272,6 @@ def py_gx_library(name, lib, tags = [], visibility = None, testonly = False, bac
     if not name.endswith(want_suffix):
         fail("target %s does not end with %s" % (name, want_suffix))
     rootname = name[:-len(want_suffix)]
-    cgo_file = rootname + "_regcgo.go"
-    pybind_cc_file = rootname + "_pybind.cc"
     py_file = rootname + ".py"
     pygx_tool = "//third_party/gxlang/pygx/pygx"
     lib_pkg, lib_target = parse_label(lib)
@@ -282,7 +279,7 @@ def py_gx_library(name, lib, tags = [], visibility = None, testonly = False, bac
     native.genrule(
         name = rootname + "_genrule",
         message = "Generating Python bindings for " + lib,
-        outs = [cgo_file, pybind_cc_file, py_file],
+        outs = [py_file],
         tools = [pygx_tool],
         cmd = (
             "$(location " + pygx_tool + ") pybind" +
@@ -291,27 +288,9 @@ def py_gx_library(name, lib, tags = [], visibility = None, testonly = False, bac
             lib_path
         ),
     )
-    go_library(
-        name = rootname + "_regcgo",
-        srcs = [cgo_file],
-        cgo = 1,
-        testonly = testonly,
-        deps = [
-            lib + "_gx",
-            "//third_party/golang/errors",
-        ],
-    )
-    pybind_extension(
-        name = rootname + "_pybind",
-        srcs = [pybind_cc_file],
-        testonly = testonly,
-        deps = [
-            ":" + rootname + "_regcgo",
-        ],
-    )
     py_library_deps = [
-        ":" + rootname + "_pybind",
-        "//third_party/gxlang/pygx:gx",
+        # Links the GX library loaded by the Python bindings.
+        lib + "_gx",
         "//third_party/gxlang/pygx:dyngx",
     ]
     if backend:
