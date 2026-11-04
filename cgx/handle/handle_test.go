@@ -105,6 +105,36 @@ func TestWrapInterfacesSlice(t *testing.T) {
 	}
 }
 
+func TestTryUnwrap(t *testing.T) {
+	defer checkHandleCount(t, handle.Count())
+	want := &item{A: 42, B: "more data"}
+	h := handle.Wrap[*item](want)
+	defer handle.Release(h)
+	if got, ok := handle.TryUnwrap[*item](h); !ok || got != want {
+		t.Errorf("TryUnwrap[*item](%v) = %v, %t, want %v, true", h, got, ok, want)
+	}
+	if got, ok := handle.TryUnwrap[*float32](h); ok {
+		t.Errorf("TryUnwrap[*float32](%v) = %v, true, want false for a handle to a *item", h, got)
+	}
+
+	released := handle.Wrap[*item](&item{})
+	handle.Release(released)
+	for _, tc := range []struct {
+		desc string
+		h    handle.Handle
+	}{
+		{desc: "zero", h: 0},
+		{desc: "released", h: released},
+		{desc: "unknown", h: ^handle.Handle(0)},
+	} {
+		t.Run(tc.desc, func(t *testing.T) {
+			if got, ok := handle.TryUnwrap[*item](tc.h); ok {
+				t.Errorf("TryUnwrap[*item](%v) = %v, true, want false", tc.h, got)
+			}
+		})
+	}
+}
+
 type fake struct{}
 
 func BenchmarkWrap(b *testing.B) {
