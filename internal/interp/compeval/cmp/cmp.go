@@ -48,7 +48,7 @@ type Canonical interface {
 
 // ToAlgExpr converts an element to an algebra expression.
 func ToAlgExpr(eva ir.Evaluator, el ir.Element) (Expr, error) {
-	elCan, err := cast.To[Canonical](el)
+	elCan, err := cast.To[Canonical](ir.BareValue(el))
 	if err != nil {
 		return nil, err
 	}

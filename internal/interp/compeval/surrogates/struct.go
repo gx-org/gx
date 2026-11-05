@@ -18,6 +18,7 @@ import (
 	"github.com/gx-org/gx/build/ir"
 	"github.com/gx-org/gx/internal/interp/compeval/surrogates/storepath"
 	"github.com/gx-org/gx/interp/elements"
+	"github.com/gx-org/gx/src/gx/ast"
 )
 
 type sStruct struct {
@@ -26,6 +27,10 @@ type sStruct struct {
 }
 
 var _ elements.IStruct = (*sStruct)(nil)
+
+func (s *sStruct) Expr(evaluator ir.Evaluator, source ast.Expr) ([]ir.Expr, error) {
+	return s.core.Expr(evaluator, source)
+}
 
 func newStruct(path storepath.Path, typ *ir.StructType) (Element, error) {
 	fields := make(map[string]ir.Element)

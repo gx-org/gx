@@ -1,0 +1,29 @@
+package struct_nontype08
+
+type Size struct {
+	A, B int
+}
+
+type T[S Size] struct {
+	a [S.A]float32
+	b [S.B]float32
+}
+
+func id[S Size](t T[S]) T[S] {
+	return t
+}
+
+func Test() T[Size{A: 2, B: 3}] {
+	return id[Size{A: 2, B: 3}](T[Size{A: 1 + 1, B: 3}]{
+		a: [2]float32{1, 2},
+		b: [3]float32{3, 4, 5},
+	})
+	// Want:
+	// T[Size{
+	// 	A: 2,
+	// 	B: 3,
+	// }]{
+	// 	a: [2]float32{1, 2},
+	// 	b: [3]float32{3, 4, 5},
+	// }
+}

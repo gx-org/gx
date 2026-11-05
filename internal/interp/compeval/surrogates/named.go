@@ -16,6 +16,7 @@ package surrogates
 
 import (
 	"github.com/gx-org/gx/build/ir"
+	"github.com/gx-org/gx/internal/interp/compeval/cmp"
 	"github.com/gx-org/gx/internal/interp/compeval/surrogates/storepath"
 	"github.com/gx-org/gx/interp/elements"
 	"github.com/gx-org/gx/interp/engine"
@@ -27,7 +28,10 @@ type named struct {
 	ntype *elements.NamedType
 }
 
-var _ engine.NamedType = (*named)(nil)
+var (
+	_ engine.NamedType = (*named)(nil)
+	_ cmp.Canonical    = (*named)(nil)
+)
 
 var emptyStruct = &ir.StructType{
 	Fields: &ir.FieldList{},
@@ -66,6 +70,14 @@ func (n *named) Copy() engine.Copier {
 
 func (n *named) Expr(ir.Evaluator, ast.Expr) ([]ir.Expr, error) {
 	return []ir.Expr{n.path.Expr()}, nil
+}
+
+func (n *named) AlgExpr(evaluator ir.Evaluator) (cmp.Expr, error) {
+	return n.ntype.AlgExpr(evaluator)
+}
+
+func (n *named) SourceString(from *ir.File) string {
+	return n.path.SourceString(from)
 }
 
 func (n *named) Type() ir.Type {

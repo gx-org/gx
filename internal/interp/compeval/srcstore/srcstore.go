@@ -105,8 +105,8 @@ func (n *named) BareValue() ir.Element {
 }
 
 type structure struct {
-	structure elements.IStruct
-	store     ir.Storage
+	elements.IStruct
+	store ir.Storage
 }
 
 func (n *structure) Store() ir.Storage {
@@ -118,15 +118,11 @@ func (n *structure) Copy() engine.Copier {
 }
 
 func (n *structure) Select(env *engine.Env, expr *ir.SelectorExpr) (ir.Element, error) {
-	field, err := n.structure.Select(env, expr)
+	field, err := n.IStruct.Select(env, expr)
 	if err != nil {
 		return field, err
 	}
 	return Link(expr.Stor, field)
-}
-
-func (n *structure) Type() ir.Type {
-	return n.structure.Type()
 }
 
 type slice struct {
@@ -215,7 +211,7 @@ func Link(store ir.Storage, el ir.Element) (ir.Element, error) {
 	case elements.IString:
 		linkEl = &str{IString: elT, store: store}
 	case elements.IStruct:
-		linkEl = &structure{structure: elT, store: store}
+		linkEl = &structure{IStruct: elT, store: store}
 	default:
 		return el, fmterr.Internalf("cannot link %T to a storage", elT)
 	}

@@ -1,0 +1,75 @@
+// Copyright 2026 Google LLC
+//
+// Licensed under the Apache License, Version 2.0 (the "License");
+// you may not use this file except in compliance with the License.
+// You may obtain a copy of the License at
+//
+//     http://www.apache.org/licenses/LICENSE-2.0
+//
+// Unless required by applicable law or agreed to in writing, software
+// distributed under the License is distributed on an "AS IS" BASIS,
+// WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
+// See the License for the specific language governing permissions and
+// limitations under the License.
+
+package algexpr_test
+
+import (
+	"testing"
+
+	"github.com/gx-org/gx/build/builder/testbuild"
+	"github.com/gx-org/gx/build/ir"
+	"github.com/gx-org/gx/build/ir/irhelper"
+	"github.com/gx-org/gx/internal/algexpr/testalgexpr"
+)
+
+const structDecl = `
+type S struct {
+	a int
+	b int
+}
+`
+
+func TestStruct(t *testing.T) {
+	structType := irhelper.StructType(
+		irhelper.Field("a", ir.IntType(), nil),
+		irhelper.Field("b", ir.IntType(), nil),
+	)
+	testbuild.Run(t,
+		testalgexpr.Compare{
+			PkgDecl: structDecl,
+			X:       "S{a: 3, b: 2}",
+			Y:       "S{a: 3, b: 2}",
+		},
+		testalgexpr.Compare{
+			PkgDecl:  structDecl,
+			X:        "S{a: 3, b: 2}",
+			Y:        "S{a: 2, b: 3}",
+			NotEqual: true,
+		},
+		testalgexpr.Compare{
+			Vars: map[string]ir.Type{
+				"A": structType,
+			},
+			X: "A",
+			Y: "A",
+		},
+		testalgexpr.Compare{
+			Vars: map[string]ir.Type{
+				"A": structType,
+				"B": structType,
+			},
+			X:        "A",
+			Y:        "B",
+			NotEqual: true,
+		},
+		testalgexpr.Compare{
+			PkgDecl: structDecl,
+			Vars: map[string]ir.Type{
+				"A": structType,
+			},
+			X: "A",
+			Y: "S{a: A.a, b: A.b}",
+		},
+	)
+}
