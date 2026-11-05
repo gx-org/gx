@@ -1,0 +1,137 @@
+package method02
+
+type ints interface {
+	int32 | int64
+}
+
+type S[T ints] struct {
+	a T
+}
+
+func (s S[T]) cast[U ints]() U {
+	return U(s.a)
+}
+
+func (s S[T]) pair[U ints](x U) (T, U) {
+	return s.a, x
+}
+
+func (s S[T]) castViaMethod[U ints]() U {
+	return s.cast[U]()
+}
+
+func TestTypeGenericMethod() (int64, int32, int64, int64, int64) {
+	s := S[int32]{a: 7}
+	a := s.cast[int64]()
+	b, c := s.pair(int64(9))
+	d := s.castViaMethod[int64]()
+	f := s.cast[int64]
+	return a, b, c, d, f()
+	// Want:
+	// 0: int64(7)
+	// 1: int32(7)
+	// 2: int64(9)
+	// 3: int64(7)
+	// 4: int64(7)
+}
+
+type SShape[Shape []int] struct {
+	a [Shape...]float32
+}
+
+func fill[Dims []int](v float32) [Dims...]float32 {
+	return [Dims...]float32(v)
+}
+
+func (s SShape[Shape]) fill[N int]() [N][Shape...]float32 {
+	fillShape := append([]int{N}, Shape...)
+	return fill[fillShape](float32(N))
+}
+
+func (s SShape[Shape]) reshapeFill[N int](x [N][Shape...]float32) [N][Shape...]float32 {
+	fillShape := append([]int{N}, Shape...)
+	return [fillShape...]float32(x)
+}
+
+func TestExplicitMethodTypeArgAndCompEval() ([2][2][3]float32, [2][2][3]float32) {
+	s := SShape[[]int{2, 3}]{a: [2][3]float32{{1, 2, 3}, {4, 5, 6}}}
+	filled := s.fill[2]()
+	reshaped := s.reshapeFill[2](filled)
+	return filled, reshaped
+	// Want:
+	// 0: [2][2][3]float32{
+	// 	{
+	// 		{2, 2, 2},
+	// 		{2, 2, 2},
+	// 	},
+	// 	{
+	// 		{2, 2, 2},
+	// 		{2, 2, 2},
+	// 	},
+	// }
+	// 1: [2][2][3]float32{
+	// 	{
+	// 		{2, 2, 2},
+	// 		{2, 2, 2},
+	// 	},
+	// 	{
+	// 		{2, 2, 2},
+	// 		{2, 2, 2},
+	// 	},
+	// }
+}
+
+func (s SShape[Shape]) eval[ObsShape []int, N, D int](obs [ObsShape...]float32, indices [N][D]int) [ObsShape...]float32 {
+	return obs + float32(indices[0][0]) + float32(len(Shape))
+}
+
+func (s SShape[Shape]) evalWithBatch[ObsShape []int, N, D int](obs [ObsShape...]float32, indices [N][D]int) [ObsShape...]float32 {
+	return s.eval(obs, indices)
+}
+
+func (s SShape[Shape]) evalWithBatchExplicit[ObsShape []int, N, D int](obs [ObsShape...]float32, indices [N][D]int) [ObsShape...]float32 {
+	return s.eval[ObsShape, N, D](obs, indices)
+}
+
+func (s SShape[Shape]) evalNextDim[ObsShape []int, N, D int](obs [ObsShape...]float32, indices [N][D]int) [ObsShape...]float32 {
+	nextIndices := [N][D + 1]int{}
+	return s.eval(obs, nextIndices) + s.eval[ObsShape, N, D](obs, indices)
+}
+
+func TestInferredAndChainedGenericMethods() ([2]float32, [2]float32, [2]float32, [2]float32) {
+	s := SShape[[]int{2, 3}]{a: [2][3]float32{{1, 2, 3}, {4, 5, 6}}}
+	obs := [2]float32{10, 20}
+	indices := [2][2]int{{1, 2}, {3, 4}}
+	a := s.eval(obs, indices)
+	b := s.evalWithBatch(obs, indices)
+	c := s.evalWithBatchExplicit(obs, indices)
+	d := s.evalNextDim(obs, indices)
+	return a, b, c, d
+	// Want:
+	// 0: [2]float32{13, 23}
+	// 1: [2]float32{13, 23}
+	// 2: [2]float32{13, 23}
+	// 3: [2]float32{25, 45}
+}
+
+func (s SShape[Shape]) grid[A, B int]() [A][B][Shape...]float32 {
+	return [A][B][Shape...]float32{} + float32(A*10+B)
+}
+
+func (s SShape[Shape]) swappedGrid[A, B int]() [B][A][Shape...]float32 {
+	return s.grid[B, A]()
+}
+
+func TestSwappedMethodTypeArgs() [2][1][2]float32 {
+	s := SShape[[]int{2}]{a: [2]float32{1, 2}}
+	return s.swappedGrid[1][2]()
+	// Want:
+	// [2][1][2]float32{
+	// 	{
+	// 		{21, 21},
+	// 	},
+	// 	{
+	// 		{21, 21},
+	// 	},
+	// }
+}

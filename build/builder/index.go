@@ -112,7 +112,7 @@ func specializeFuncType(rscope resolveScope, x ir.Expr, indices []ir.Expr, fun *
 		// That should not be specialised by the user.
 		return x, rscope.Err().Appendf(x.Node(), "builtin function does not support type arguments")
 	}
-	compEval, _, compEvalOk := compEvalForFuncType(rscope, x.Node(), ftype)
+	compEval, compEvalOk := rscope.compEval()
 	if !compEvalOk {
 		return x, false
 	}
