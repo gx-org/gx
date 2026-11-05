@@ -149,6 +149,9 @@ type (
 )
 
 func newGenericParamCore(field *Field, typeParam bool) genericParamCore {
+	if field != nil {
+		field = field.Origin()
+	}
 	return genericParamCore{
 		typeParam: typeParam,
 		field:     field,

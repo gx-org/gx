@@ -63,10 +63,17 @@ func (c *constant) UnaryOp(env *engine.Env, expr *ir.UnaryExpr) (engine.Numerica
 	if err != nil {
 		return nil, err
 	}
-	if res == nil {
-		return cpevops.NewUnary(env, expr, c)
+	if res != nil {
+		return newConstant(c.ao, res), nil
 	}
-	return newConstant(c.ao, res), err
+	if env.Engine() != hostArrayOps {
+		el, err := env.Engine().ElementFromHostValue(env.ExprEval(), c.cst)
+		if err != nil {
+			return nil, err
+		}
+		return el.UnaryOp(env, expr)
+	}
+	return cpevops.NewUnary(env, expr, c)
 }
 
 // BinaryOp applies a binary operator to x and y.
@@ -76,10 +83,17 @@ func (c *constant) BinaryOp(env *engine.Env, expr *ir.BinaryExpr, y engine.Numer
 	if err != nil {
 		return nil, err
 	}
-	if res == nil {
-		return cpevops.NewBinaryFrom(env, expr, c, y)
+	if res != nil {
+		return newConstant(c.ao, res), nil
 	}
-	return newConstant(c.ao, res), err
+	if env.Engine() != hostArrayOps {
+		el, err := env.Engine().ElementFromHostValue(env.ExprEval(), c.cst)
+		if err != nil {
+			return nil, err
+		}
+		return el.BinaryOp(env, expr, y)
+	}
+	return cpevops.NewBinaryFrom(env, expr, c, y)
 }
 
 // Cast an element into a given data type.
@@ -88,10 +102,17 @@ func (c *constant) Cast(env *engine.Env, expr ir.Expr, target ir.Type) (engine.N
 	if err != nil {
 		return nil, err
 	}
-	if res == nil {
-		return cpevops.NewCast(env, expr, c, target), nil
+	if res != nil {
+		return newConstant(c.ao, res), nil
 	}
-	return newConstant(c.ao, res), err
+	if env.Engine() != hostArrayOps {
+		el, err := env.Engine().ElementFromHostValue(env.ExprEval(), c.cst)
+		if err != nil {
+			return nil, err
+		}
+		return el.Cast(env, expr, target)
+	}
+	return cpevops.NewCast(env, expr, c, target), nil
 }
 
 func (c *constant) toArraySurrogate(expr ir.Expr) (engine.NumericalElement, error) {
@@ -104,6 +125,13 @@ func (c *constant) toArraySurrogate(expr ir.Expr) (engine.NumericalElement, erro
 
 // Reshape an element.
 func (c *constant) Reshape(env *engine.Env, expr ir.Expr, axisLengths []engine.NumericalElement) (engine.NumericalElement, error) {
+	if env.Engine() != hostArrayOps {
+		el, err := env.Engine().ElementFromHostValue(env.ExprEval(), c.cst)
+		if err != nil {
+			return nil, err
+		}
+		return el.Reshape(env, expr, axisLengths)
+	}
 	return c.toArraySurrogate(expr)
 }
 

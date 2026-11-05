@@ -196,8 +196,14 @@ func (r *Rank) AssignableTo(tpcmp TypeEval, dst ArrayRank) (bool, error) {
 
 // ConvertibleTo returns true if this rank can be converted to the destination rank.
 func (r *Rank) ConvertibleTo(tpcmp TypeEval, dst ArrayRank) (bool, error) {
-	thisSize := RankSize(r)
-	otherSize := RankSize(dst)
+	thisSize, err := rankSize(tpcmp, r)
+	if err != nil {
+		return isUndef(err)
+	}
+	otherSize, err := rankSize(tpcmp, dst)
+	if err != nil {
+		return isUndef(err)
+	}
 	return areEqual(tpcmp, thisSize, otherSize)
 }
 
@@ -277,6 +283,31 @@ func RankSize(r ArrayRank) Expr {
 		}
 	}
 	return expr
+}
+
+func rankSize(tpcmp TypeEval, r ArrayRank) (Expr, error) {
+	axes, err := evalAxes(tpcmp, r)
+	if err != nil {
+		return nil, err
+	}
+	var expr Expr = oneSize
+	for _, el := range axes {
+		axExpr, err := ToSingleExpr(tpcmp, nil, el)
+		if err != nil {
+			return nil, err
+		}
+		expr = &BinaryExpr{
+			Src: &ast.BinaryExpr{
+				Op: token.MUL,
+				X:  expr.Expr(),
+				Y:  axExpr.Expr(),
+			},
+			X:   expr,
+			Y:   axExpr,
+			Typ: IntType(),
+		}
+	}
+	return expr, nil
 }
 
 // IsAtomic returns true if the rank is equals to zero
