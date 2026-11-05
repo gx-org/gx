@@ -16,8 +16,10 @@ package elements
 
 import (
 	"github.com/gx-org/gx/build/ir"
+	"github.com/gx-org/gx/internal/interp/compeval/cmp"
 	"github.com/gx-org/gx/internal/interp/compeval/surrogates/storepath"
 	"github.com/gx-org/gx/interp/engine"
+	"github.com/gx-org/gx/src/gx/ast"
 )
 
 type (
@@ -34,8 +36,11 @@ type (
 
 	// IStruct is an interface implemented by all structure elements.
 	IStruct interface {
+		cmp.Canonical
 		engine.Selector
 		StructType() *ir.StructType
+		ExprWithName(evaluator ir.Evaluator, source ast.Expr, targetType ir.Type) ([]ir.Expr, error)
+		AlgExprWithName(evaluator ir.Evaluator, targetType ir.Type) (cmp.Expr, error)
 	}
 
 	// FieldPath indicates a path to a field in a structure.

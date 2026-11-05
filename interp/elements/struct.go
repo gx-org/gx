@@ -23,7 +23,9 @@ import (
 	gxfmt "github.com/gx-org/gx/base/fmt"
 	"github.com/gx-org/gx/build/ir"
 	"github.com/gx-org/gx/golang/backend/kernels"
+	"github.com/gx-org/gx/internal/algexpr"
 	"github.com/gx-org/gx/internal/base/cast"
+	"github.com/gx-org/gx/internal/interp/compeval/cmp"
 	"github.com/gx-org/gx/internal/interp/flatten"
 	"github.com/gx-org/gx/interp/engine"
 	"github.com/gx-org/gx/src/gx/ast"
@@ -157,6 +159,11 @@ func (n *Struct) Type() ir.Type {
 	return n.typ
 }
 
+// Expr returns a structure literal.
+func (n *Struct) Expr(evaluator ir.Evaluator, source ast.Expr) ([]ir.Expr, error) {
+	return n.ExprWithName(evaluator, source, n.typ)
+}
+
 // ExprWithName returns a structure literal.
 func (n *Struct) ExprWithName(ev ir.Evaluator, src ast.Expr, tp ir.Type) ([]ir.Expr, error) {
 	fields := n.typ.Fields.Fields()
@@ -176,6 +183,25 @@ func (n *Struct) ExprWithName(ev ir.Evaluator, src ast.Expr, tp ir.Type) ([]ir.E
 		})
 	}
 	return []ir.Expr{lit}, nil
+}
+
+// AlgExpr converts the structure into an algebraic expression.
+func (n *Struct) AlgExpr(evaluator ir.Evaluator) (cmp.Expr, error) {
+	return n.AlgExprWithName(evaluator, n.typ)
+}
+
+// AlgExprWithName converts the structure into an algebraic expression with the given type.
+func (n *Struct) AlgExprWithName(evaluator ir.Evaluator, targetType ir.Type) (cmp.Expr, error) {
+	fields := n.typ.Fields.Fields()
+	elements := make([]cmp.Expr, len(fields))
+	for i, field := range fields {
+		var err error
+		elements[i], err = cmp.ToAlgExpr(evaluator, n.fields[field.Name.Name])
+		if err != nil {
+			return nil, err
+		}
+	}
+	return algexpr.NewStruct(targetType, elements), nil
 }
 
 // Copy the structure to a new node.

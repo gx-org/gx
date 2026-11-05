@@ -23,6 +23,7 @@ import (
 	"github.com/gx-org/gx/build/ir"
 	"github.com/gx-org/gx/golang/backend/kernels"
 	"github.com/gx-org/gx/internal/base/cast"
+	"github.com/gx-org/gx/internal/interp/compeval/cmp"
 	"github.com/gx-org/gx/internal/interp/flatten"
 	"github.com/gx-org/gx/interp/engine"
 	"github.com/gx-org/gx/src/gx/ast"
@@ -41,6 +42,7 @@ var (
 	_ engine.NamedType  = (*NamedType)(nil)
 	_ hostio.Value      = (*NamedType)(nil)
 	_ hostio.Under      = (*NamedType)(nil)
+	_ cmp.Canonical     = (*NamedType)(nil)
 )
 
 // NewNamedType returns a new node representing an exported type.
@@ -146,10 +148,20 @@ func (n *NamedType) Store() ir.Storage {
 // Expr returns an expression representing the named expression.
 func (n *NamedType) Expr(ev ir.Evaluator, src ast.Expr) ([]ir.Expr, error) {
 	switch underT := n.under.(type) {
-	case *Struct:
+	case IStruct:
 		return underT.ExprWithName(ev, src, n.typ)
 	default:
 		return ir.ToExpr(ev, src, n.under)
+	}
+}
+
+// AlgExpr converts the element into an algebraic expression.
+func (n *NamedType) AlgExpr(evaluator ir.Evaluator) (cmp.Expr, error) {
+	switch underlying := n.under.(type) {
+	case IStruct:
+		return underlying.AlgExprWithName(evaluator, n.typ)
+	default:
+		return cmp.ToAlgExpr(evaluator, n.under)
 	}
 }
 

@@ -19,3 +19,20 @@ func mismatchGeneric[S1, S2 []int](s S[S1]) S[S2] {
 func mismatchOrigin(s S[[]int{2, 3}]) Other[[]int{2, 3}] {
 	return s // ERROR cannot use S[[]int{2, 3}] as Other[[]int{2, 3}] value in return statement
 }
+
+type Size struct {
+	A, B int
+}
+
+type T[D Size] struct {
+	a [D.A]float32
+	b [D.B]float32
+}
+
+func mismatchStructConcrete(t T[Size{A: 2, B: 3}]) T[Size{A: 2, B: 4}] {
+	return t // ERROR cannot use T[Size{
+}
+
+func mismatchStructGeneric[D1, D2 Size](t T[D1]) T[D2] {
+	return t // ERROR cannot use T[D1] as T[D2] value in return statement
+}
