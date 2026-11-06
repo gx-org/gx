@@ -18,7 +18,6 @@ import (
 	"github.com/gx-org/gx/api/hostio"
 	"github.com/gx-org/gx/build/ir"
 	"github.com/gx-org/gx/build/ir/irkind"
-	"github.com/gx-org/gx/golang/backend/kernels"
 )
 
 var _ hostio.Value = (*IRNode)(nil)
@@ -43,8 +42,8 @@ func (s *IRNode) Type() ir.Type {
 	return ir.TypeFromKind(irkind.IR)
 }
 
-// ToHost transfers the value to host given an allocator.
-func (s *IRNode) ToHost(kernels.Allocator) (hostio.Value, error) {
+// ToHost transfers the value to the host.
+func (s *IRNode) ToHost() (hostio.Value, error) {
 	return s, nil
 }
 

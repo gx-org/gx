@@ -21,7 +21,6 @@ import (
 	"github.com/gx-org/gx/api/hostio"
 	"github.com/gx-org/gx/build/ir"
 	"github.com/gx-org/gx/build/ir/irkind"
-	"github.com/gx-org/gx/golang/backend/kernels"
 	"github.com/gx-org/gx/internal/base/cast"
 	"github.com/gx-org/gx/internal/interp/compeval/cmp"
 	"github.com/gx-org/gx/internal/interp/coreiface"
@@ -69,8 +68,8 @@ func (n *String) Unflatten(handles *flatten.Parser) (hostio.Value, error) {
 	return n, nil
 }
 
-// ToHost transfers the value to host given an allocator.
-func (n *String) ToHost(kernels.Allocator) (hostio.Value, error) {
+// ToHost transfers the value to the host.
+func (n *String) ToHost() (hostio.Value, error) {
 	return n, nil
 }
 

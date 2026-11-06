@@ -21,7 +21,6 @@ import (
 	"github.com/pkg/errors"
 	"github.com/gx-org/gx/api/hostio"
 	"github.com/gx-org/gx/build/ir"
-	"github.com/gx-org/gx/golang/backend/kernels"
 	"github.com/gx-org/gx/internal/base/cast"
 	"github.com/gx-org/gx/internal/interp/compeval/cmp"
 	"github.com/gx-org/gx/internal/interp/flatten"
@@ -114,12 +113,12 @@ func (n *NamedType) Unflatten(parser *flatten.Parser) (hostio.Value, error) {
 }
 
 // ToHost transfers the underlying value to the host.
-func (n *NamedType) ToHost(alloc kernels.Allocator) (hostio.Value, error) {
+func (n *NamedType) ToHost() (hostio.Value, error) {
 	val, err := cast.To[hostio.Value](n.under)
 	if err != nil {
 		return nil, err
 	}
-	hostVal, err := val.ToHost(alloc)
+	hostVal, err := val.ToHost()
 	if err != nil {
 		return nil, err
 	}

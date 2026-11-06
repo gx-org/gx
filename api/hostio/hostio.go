@@ -33,8 +33,8 @@ type (
 	Value interface {
 		Element
 
-		// ToHost transfers the value to host given an allocator.
-		ToHost(kernels.Allocator) (Value, error)
+		// ToHost transfers the value to the host.
+		ToHost() (Value, error)
 
 		// Finalize releases the resources allocated for the value.
 		Finalize() error
@@ -80,11 +80,11 @@ func AtomIntegerValue[T gotype.Integer](typ ir.Type, val T) (*HostArray, error) 
 }
 
 // ToHost transfers all values recursively to the host.
-func ToHost(alloc kernels.Allocator, vals []Value) ([]Value, error) {
+func ToHost(vals []Value) ([]Value, error) {
 	out := make([]Value, len(vals))
 	for i, val := range vals {
 		var err error
-		out[i], err = val.ToHost(alloc)
+		out[i], err = val.ToHost()
 		if err != nil {
 			return nil, err
 		}

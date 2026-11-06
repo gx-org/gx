@@ -23,7 +23,6 @@ import (
 	"github.com/gx-org/gx/api/hostio"
 	"github.com/gx-org/gx/build/ir"
 	"github.com/gx-org/gx/build/ir/irkind"
-	"github.com/gx-org/gx/golang/backend/kernels"
 	"github.com/gx-org/gx/internal/base/cast"
 	"github.com/gx-org/gx/internal/interp/coreiface"
 	"github.com/gx-org/gx/internal/interp/numbers"
@@ -96,7 +95,7 @@ func (arg *randBootstrapArg) Init(ctx *togo.FuncInputs) error {
 	if err != nil {
 		return nil
 	}
-	hostValue, err := value.ToHost(kernels.DefaultAllocator())
+	hostValue, err := value.ToHost()
 	if err != nil {
 		return err
 	}

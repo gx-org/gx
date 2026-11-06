@@ -26,7 +26,6 @@ import (
 	"github.com/gx-org/gx/api/trace"
 	"github.com/gx-org/gx/build/fmterr"
 	"github.com/gx-org/gx/build/ir"
-	"github.com/gx-org/gx/golang/backend/kernels"
 	"github.com/gx-org/gx/internal/interp/compeval"
 	"github.com/gx-org/gx/internal/togo"
 	"github.com/gx-org/gx/internal/tracer/cfunc"
@@ -174,5 +173,5 @@ func TraceAndRun(dev *api.Device, fn *ir.FuncDecl, recv hostio.Value, args []hos
 		return nil, err
 	}
 	defer hostio.Finalize(outs...)
-	return hostio.ToHost(kernels.DefaultAllocator(), outs)
+	return hostio.ToHost(outs)
 }
