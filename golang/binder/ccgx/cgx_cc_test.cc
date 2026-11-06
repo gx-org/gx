@@ -18,6 +18,7 @@
 #include <iterator>
 #include <string>
 
+#include <gmock/gmock.h>
 #include <gtest/gtest.h>
 #include <golang/binder/cgx/cgx.cgo.h>
 #include <golang/binder/cgx/cgx.h>
@@ -653,6 +654,33 @@ TEST_F(cgx, StructListFields) {
   cgx_release_references(rnewr.values, rnewr.value_size);
   cgx_free_function_run_result(&rnewr);
   cgx_release_reference(valtyp);
+  cgx_release_reference(fnewr.function);
+  cgx_release_reference(pr.package);
+}
+
+TEST_F(cgx, ValueHostBuffer_NotDeviceArray) {
+  struct build_result pr(BuildPackage(kBasicPackage));
+  CGX_ASSERT_OK(pr.error);
+
+  const auto fnewr = cgx_function_find(pr.package, "New");
+  CGX_ASSERT_OK(fnewr.error);
+
+  auto rnewr = cgx_function_run(fnewr.function, cgx_value{}, 0, nullptr);
+  CGX_ASSERT_OK(rnewr.error);
+  ASSERT_EQ(rnewr.value_size, 1);
+  ASSERT_EQ(cgx_value_kind_of(rnewr.values[0]), CGX_STRUCT);
+
+  const cgx_value_host_buffer_result host_buffer_result =
+      cgx_value_host_buffer(rnewr.values[0]);
+  EXPECT_EQ(host_buffer_result.buffer, cgx_host_buffer{});
+  ASSERT_NE(host_buffer_result.error, cgx_error{});
+  EXPECT_THAT(ErrorMessage(host_buffer_result.error),
+              ::testing::HasSubstr(
+                  "cannot convert *elements.NamedType to *hostio.DeviceArray"));
+  cgx_release_reference(host_buffer_result.error);
+
+  cgx_release_references(rnewr.values, rnewr.value_size);
+  cgx_free_function_run_result(&rnewr);
   cgx_release_reference(fnewr.function);
   cgx_release_reference(pr.package);
 }

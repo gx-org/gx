@@ -513,6 +513,24 @@ TEST_F(cppgx, Struct_ListFields) {
   EXPECT_EQ(fields[0], "Int");
 }
 
+TEST_F(cppgx, ValueHostBuffer_NotDeviceArray) {
+  ASSERT_OK_AND_ASSIGN(Runtime runtime, TestRuntime());
+  ASSERT_OK_AND_ASSIGN(Device device, runtime.GetDevice(0));
+  ASSERT_OK_AND_ASSIGN(Package package, device.BuildPackage(kBasicPackage));
+  ASSERT_OK_AND_ASSIGN(Function function, package.FindFunction("New"));
+  ASSERT_OK_AND_ASSIGN(FunctionResult result, function.Run({}));
+
+  const auto& return_values = result.return_values();
+  ASSERT_EQ(return_values.size(), 1);
+  ASSERT_EQ(return_values[0].kind(), CGX_STRUCT);
+
+  absl::StatusOr<HostBuffer> host_buffer = return_values[0].host_buffer();
+  ASSERT_FALSE(host_buffer.ok());
+  EXPECT_THAT(host_buffer.status().message(),
+              ::testing::HasSubstr(
+                  "cannot convert *elements.NamedType to *hostio.DeviceArray"));
+}
+
 // DTypes tests.
 
 TEST_F(cppgx, DTypes_Bool) {

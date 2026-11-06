@@ -35,6 +35,7 @@ import (
 	"github.com/gx-org/gx/golang/backend/kernels"
 	"github.com/gx-org/gx/golang/binder/gobindings/core"
 	"github.com/gx-org/gx/golang/binder/gobindings/types"
+	"github.com/gx-org/gx/internal/base/cast"
 	"github.com/gx-org/gx/interp/elements"
 )
 
@@ -780,10 +781,14 @@ func cgx_value_get_uint64(cgxValue C.cgx_value) C.uint64_t {
 //export cgx_value_host_buffer
 func cgx_value_host_buffer(cgxValue C.cgx_value) C.struct_cgx_value_host_buffer_result {
 	value := unwrap[hostio.Value](cgxValue)
-	deviceArray := value.(*hostio.DeviceArray)
+	deviceArray, err := cast.To[*hostio.DeviceArray](value)
+	if err != nil {
+		return C.struct_cgx_value_host_buffer_result{error: (C.cgx_error)(wrap[error](err))}
+	}
 	hostArray, err := deviceArray.ToHostArray()
 	if err != nil {
-		return C.struct_cgx_value_host_buffer_result{}
+		err = errors.Errorf("cgx_value_host_buffer: value of handle %d (type %s): %v", cgxValue, value.Type().ReferString(nil), err)
+		return C.struct_cgx_value_host_buffer_result{error: (C.cgx_error)(wrap[error](err))}
 	}
 	return C.struct_cgx_value_host_buffer_result{
 		buffer: (C.cgx_host_buffer)(wrap[kernels.HostBuffer](hostArray.Buffer())),

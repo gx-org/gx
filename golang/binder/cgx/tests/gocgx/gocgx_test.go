@@ -28,3 +28,7 @@ func TestGenericScalar(t *testing.T) {
 func TestGenericSlice(t *testing.T) {
 	gocgx.TestGenericSlice(t)
 }
+
+func TestValueHostBufferToHostError(t *testing.T) {
+	gocgx.TestValueHostBufferToHostError(t)
+}

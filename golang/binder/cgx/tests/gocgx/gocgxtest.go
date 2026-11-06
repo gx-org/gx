@@ -19,8 +19,11 @@ package gocgx
 import "C"
 
 import (
+	"fmt"
+	"strings"
 	"testing"
 
+	"github.com/gx-org/gx/api/hostio"
 	"github.com/gx-org/gx/cgx/handle"
 	cgxtesting "github.com/gx-org/gx/golang/binder/cgx/testing"
 
@@ -124,5 +127,48 @@ func TestGenericSlice(t *testing.T) {
 	got := String(vals[0])
 	if got != want {
 		t.Errorf("got %s but want %s", got, want)
+	}
+}
+
+// TestValueHostBufferToHostError tests that cgx_value_host_buffer returns a contextualized error
+// when DeviceArray.ToHostArray fails.
+// The test is not in a _test.go file because Go does not support CGo in test files.
+func TestValueHostBufferToHostError(t *testing.T) {
+	defer cgxtesting.CheckHandleCount(t, handle.Count())
+	_, dev, finalize, err := Setup(nil)
+	if err != nil {
+		t.Fatal(err)
+	}
+	defer finalize()
+
+	val := C.cgx_value_new_int64(C.cgx_device(dev), 42)
+	if val.error != Null {
+		t.Fatal(GoError(Error(val.error)))
+	}
+	defer C.cgx_release_reference(val.value)
+
+	if err := handle.Unwrap[hostio.Value](handle.Handle(val.value)).Finalize(); err != nil {
+		t.Fatalf("Finalize() unexpected error: %v", err)
+	}
+
+	res := C.cgx_value_host_buffer(val.value)
+	if res.buffer != Null {
+		C.cgx_release_reference(C.cgx_handle(res.buffer))
+		t.Fatalf("cgx_value_host_buffer(%v) buffer = %v, want %v", val.value, res.buffer, Null)
+	}
+	if res.error == Null {
+		t.Fatalf("cgx_value_host_buffer(%v) error = %v, want non-zero handle", val.value, Null)
+	}
+	defer C.cgx_release_reference(C.cgx_handle(res.error))
+
+	got := GoError(Error(res.error)).Error()
+	wantSubstrings := []string{
+		fmt.Sprintf("cgx_value_host_buffer: value of handle %d (type int64):", val.value),
+		"not supported",
+	}
+	for _, want := range wantSubstrings {
+		if !strings.Contains(got, want) {
+			t.Errorf("cgx_value_host_buffer(%v) error = %q, want substring %q", val.value, got, want)
+		}
 	}
 }
