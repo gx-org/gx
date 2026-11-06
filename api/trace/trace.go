@@ -23,7 +23,6 @@ import (
 	"github.com/gx-org/gx/api/hostio"
 	gxfmt "github.com/gx-org/gx/base/fmt"
 	"github.com/gx-org/gx/build/ir"
-	"github.com/gx-org/gx/golang/backend/kernels"
 )
 
 // Callback is called when the trace builtin is invoked
@@ -48,7 +47,7 @@ var _ Callback = (*Recorder)(nil)
 
 // Trace transfers the values to the host and records the call.
 func (r *Recorder) Trace(file *ir.File, call *ir.FuncCallExpr, vals []hostio.Value) error {
-	hostVals, err := hostio.ToHost(kernels.DefaultAllocator(), vals)
+	hostVals, err := hostio.ToHost(vals)
 	if err != nil {
 		return err
 	}

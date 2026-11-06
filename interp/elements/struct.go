@@ -22,7 +22,6 @@ import (
 	"github.com/gx-org/gx/api/hostio"
 	gxfmt "github.com/gx-org/gx/base/fmt"
 	"github.com/gx-org/gx/build/ir"
-	"github.com/gx-org/gx/golang/backend/kernels"
 	"github.com/gx-org/gx/internal/algexpr"
 	"github.com/gx-org/gx/internal/base/cast"
 	"github.com/gx-org/gx/internal/interp/compeval/cmp"
@@ -114,12 +113,12 @@ func (n *Struct) gxValues() ([]hostio.Value, error) {
 }
 
 // ToHost transfers all the field values of the structure to the host.
-func (n *Struct) ToHost(alloc kernels.Allocator) (hostio.Value, error) {
+func (n *Struct) ToHost() (hostio.Value, error) {
 	vals, err := n.gxValues()
 	if err != nil {
 		return nil, err
 	}
-	hostVals, err := hostio.ToHost(alloc, vals)
+	hostVals, err := hostio.ToHost(vals)
 	if err != nil {
 		return nil, err
 	}

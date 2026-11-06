@@ -46,8 +46,7 @@ type Array interface {
 	ToDevice(bck compute.Backend, dev compute.DeviceNum) (*DeviceArray, error)
 
 	// ToHostArray transfers the array on the host if it is not already.
-	// Use the Go allocator.
-	ToHostArray(alloc kernels.Allocator) (*HostArray, error)
+	ToHostArray() (*HostArray, error)
 }
 
 type baseArray struct {
@@ -88,8 +87,8 @@ func NewDeviceArray(typ ir.Type, handle compute.Buffer) (*DeviceArray, error) {
 }
 
 // ToHost transfers the value to the host.
-func (a *DeviceArray) ToHost(alloc kernels.Allocator) (Value, error) {
-	return a.ToHostArray(alloc)
+func (a *DeviceArray) ToHost() (Value, error) {
+	return a.ToHostArray()
 }
 
 // Finalize releases the device buffer.
@@ -99,7 +98,7 @@ func (a *DeviceArray) Finalize() error {
 
 // GoValue of the underlying element.
 func (a *DeviceArray) GoValue() (any, error) {
-	hVal, err := a.ToHostArray(kernels.DefaultAllocator())
+	hVal, err := a.ToHostArray()
 	if err != nil {
 		return nil, err
 	}
@@ -107,9 +106,9 @@ func (a *DeviceArray) GoValue() (any, error) {
 }
 
 // ToHostArray transfers the array to the host using the Go allocator.
-func (a *DeviceArray) ToHostArray(alloc kernels.Allocator) (*HostArray, error) {
+func (a *DeviceArray) ToHostArray() (*HostArray, error) {
 	sh := a.Shape()
-	hostBuffer, err := alloc.Allocate(sh)
+	hostBuffer, err := kernels.DefaultAllocator().Allocate(sh)
 	if err != nil {
 		return nil, err
 	}
@@ -173,7 +172,7 @@ func (a *DeviceArray) ToDevice(bck compute.Backend, dev compute.DeviceNum) (*Dev
 
 // SourceString returns the GX source code of the implementation.
 func (a *DeviceArray) SourceString(from *ir.File) string {
-	host, err := a.ToHost(kernels.DefaultAllocator())
+	host, err := a.ToHost()
 	var hostS string
 	if err != nil {
 		hostS = err.Error()
@@ -211,8 +210,8 @@ func (a *HostArray) Shape() shapes.Shape {
 	return a.buffer.Shape()
 }
 
-// ToHost returns receiver. The allocator is ignored.
-func (a *HostArray) ToHost(kernels.Allocator) (Value, error) {
+// ToHost returns receiver.
+func (a *HostArray) ToHost() (Value, error) {
 	return a, nil
 }
 
@@ -222,7 +221,7 @@ func (a *HostArray) Finalize() error {
 }
 
 // ToHostArray returns the receiver.
-func (a *HostArray) ToHostArray(kernels.Allocator) (*HostArray, error) {
+func (a *HostArray) ToHostArray() (*HostArray, error) {
 	return a, nil
 }
 

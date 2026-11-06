@@ -57,21 +57,16 @@ func NewDeviceArray[T gotype.Supported](val *hostio.DeviceArray) *DeviceArray[T]
 
 // Fetch the value from the device.
 func (array *DeviceArray[T]) Fetch() (*HostArray[T], error) {
-	return array.FetchWithAlloc(kernels.DefaultAllocator())
+	val, err := array.value.ToHostArray()
+	if err != nil {
+		return nil, err
+	}
+	return NewHostArray[T](val), nil
 }
 
 // Shape of the array.
 func (array *DeviceArray[T]) Shape() shapes.Shape {
 	return array.value.Shape()
-}
-
-// FetchWithAlloc the value from the device given a specific allocator.
-func (array *DeviceArray[T]) FetchWithAlloc(alloc kernels.Allocator) (*HostArray[T], error) {
-	val, err := array.value.ToHostArray(alloc)
-	if err != nil {
-		return nil, err
-	}
-	return NewHostArray[T](val), nil
 }
 
 func (array *DeviceArray[T]) toDeviceBridger(val *hostio.DeviceArray) ArrayBridge {

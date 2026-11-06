@@ -59,12 +59,7 @@ func NewDeviceAtom[T gotype.Supported](val *hostio.DeviceArray) *DeviceAtom[T] {
 
 // Fetch the value from the device.
 func (atom *DeviceAtom[T]) Fetch() (*HostAtom[T], error) {
-	return atom.FetchWithAlloc(kernels.DefaultAllocator())
-}
-
-// FetchWithAlloc the value from the device given a specific allocator.
-func (atom *DeviceAtom[T]) FetchWithAlloc(alloc kernels.Allocator) (*HostAtom[T], error) {
-	val, err := atom.value.ToHostArray(alloc)
+	val, err := atom.value.ToHostArray()
 	if err != nil {
 		return nil, err
 	}

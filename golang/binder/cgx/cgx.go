@@ -781,7 +781,7 @@ func cgx_value_get_uint64(cgxValue C.cgx_value) C.uint64_t {
 func cgx_value_host_buffer(cgxValue C.cgx_value) C.struct_cgx_value_host_buffer_result {
 	value := unwrap[hostio.Value](cgxValue)
 	deviceArray := value.(*hostio.DeviceArray)
-	hostArray, err := deviceArray.ToHostArray(kernels.DefaultAllocator())
+	hostArray, err := deviceArray.ToHostArray()
 	if err != nil {
 		return C.struct_cgx_value_host_buffer_result{}
 	}

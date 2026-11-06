@@ -6,7 +6,6 @@ import (
 
 	"github.com/gx-org/gx/api/hostio"
 	"github.com/gx-org/gx/build/ir"
-	"github.com/gx-org/gx/golang/backend/kernels"
 	"github.com/gx-org/gx/interp/elements"
 )
 
@@ -78,7 +77,7 @@ func TestSliceValue(t *testing.T) {
 	if got, want := slice.DefineString(nil), "[]int{1, {2}}"; got != want {
 		t.Errorf("slice.DefineString(nil) = %q, want %q", got, want)
 	}
-	host, err := slice.ToHost(kernels.DefaultAllocator())
+	host, err := slice.ToHost()
 	if err != nil {
 		t.Fatalf("slice.ToHost() returned an error: %v", err)
 	}
