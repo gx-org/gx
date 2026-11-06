@@ -267,24 +267,7 @@ var oneSize = &NumberCastExpr{
 	Typ: IntType(),
 }
 
-// RankSize is the total number of elements across all axes.
-func RankSize(r ArrayRank) Expr {
-	var expr Expr = oneSize
-	for _, axis := range r.Axes() {
-		expr = &BinaryExpr{
-			Src: &ast.BinaryExpr{
-				Op: token.MUL,
-				X:  expr.Expr(),
-				Y:  axis.AsExpr().Expr(),
-			},
-			X:   expr,
-			Y:   axis.AsExpr(),
-			Typ: IntType(),
-		}
-	}
-	return expr
-}
-
+// rankSize is the total number of elements across all axes.
 func rankSize(tpcmp TypeEval, r ArrayRank) (Expr, error) {
 	axes, err := evalAxes(tpcmp, r)
 	if err != nil {
