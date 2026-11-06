@@ -12,6 +12,7 @@
 // See the License for the specific language governing permissions and
 // limitations under the License.
 
+// Package eagereval implements the eager evaluation of GX functions.
 package eagereval
 
 import (
@@ -28,9 +29,7 @@ import (
 	"github.com/gx-org/gx/golang/backend/kernels"
 	"github.com/gx-org/gx/internal/base/cast"
 	"github.com/gx-org/gx/internal/concrete"
-	"github.com/gx-org/gx/internal/interp/compeval"
 	"github.com/gx-org/gx/internal/interp/constants"
-	"github.com/gx-org/gx/internal/interp/flatten"
 	"github.com/gx-org/gx/internal/interp/numbers"
 	"github.com/gx-org/gx/internal/togo"
 	"github.com/gx-org/gx/internal/tracer/processor"
@@ -70,7 +69,7 @@ func newRegistry(bck EagerBackend, importer ir.Importer, fn compute.Function) (*
 	proc := processor.New()
 	return &engine.Registry{
 		Importer:       importer,
-		CompEvalEngine: compeval.Engine(),
+		CompEvalEngine: ao,
 		HostEngine:     ao,
 		Processor:      proc,
 		Runners:        interp.Runners(),
@@ -452,20 +451,24 @@ func (ao *Ops) funcInputsToElements(ev ir.Evaluator, fn ir.Func, receiver hostio
 }
 
 // Values returns the GX values computed by the backend for elements.
-// Composite elements are flattened.
+// Slice elements are flattened.
 func (ao *Ops) Values(els []ir.Element) ([]hostio.Value, error) {
-	els, err := flatten.Flatten(els...)
-	if err != nil {
-		return nil, err
-	}
-	nodes, err := materialise.All(ao, els)
-	if err != nil {
-		return nil, err
-	}
-	vals := make([]hostio.Value, len(nodes))
-	for i, node := range nodes {
-		if vals[i], err = cast.To[hostio.Value](node); err != nil {
+	vals := make([]hostio.Value, len(els))
+	for i, el := range els {
+		var err error
+		if vals[i], err = cast.To[hostio.Value](el); err != nil {
 			return nil, err
+		}
+	}
+	vals, err := elements.Flatten(vals)
+	if err != nil {
+		return nil, err
+	}
+	for i, val := range vals {
+		if _, ok := val.(engine.ConstantElement); ok {
+			if vals[i], err = togo.CpValueT[hostio.Value](val); err != nil {
+				return nil, err
+			}
 		}
 	}
 	return vals, nil
