@@ -98,6 +98,17 @@ func typeError(rscope resolveScope, x ir.Expr) (*ir.TypeValExpr, bool) {
 	return invalidTypeExprVal, rscope.Err().Appendf(x.Node(), "%s is not a type", x.SourceString(rscope.fileScope().irFile()))
 }
 
+func checkTypeInstantiated(rscope resolveScope, pos ast.Node, typExpr *ir.TypeValExpr) (*ir.TypeValExpr, bool) {
+	if rscope.canBeGeneric() {
+		return typExpr, true
+	}
+	named, ok := typExpr.Val().(*ir.NamedType)
+	if !ok || named.GenParams.Fields.Len() == 0 {
+		return typExpr, true
+	}
+	return invalidTypeExprVal, rscope.Err().Appendf(pos, "cannot use generic type %s without instantiation", named.ReferString(rscope.fileScope().irFile()))
+}
+
 func funcError(rscope resolveScope, x ir.Expr) (ir.Expr, bool) {
 	return invalidExpr(), rscope.Err().Appendf(x.Node(), "%s is not a function", x.SourceString(rscope.fileScope().irFile()))
 }

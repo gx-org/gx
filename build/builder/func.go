@@ -154,7 +154,7 @@ func (n *funcType) buildReceiverTypeParams(typeParamsScope *defineLocalScope) ([
 	default:
 		return nil, true
 	}
-	typeExpr, ok := baseType.buildTypeExpr(typeParamsScope)
+	typeExpr, ok := baseType.buildTypeExpr(newGenericTypeScope(typeParamsScope))
 	if !ok {
 		return nil, false
 	}

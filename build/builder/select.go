@@ -168,7 +168,7 @@ func (n *selectorExpr) buildTypeExpr(rscope resolveScope) (*ir.TypeValExpr, bool
 	if typeVal == nil {
 		return typeError(rscope, sel)
 	}
-	return typeVal, true
+	return checkTypeInstantiated(rscope, n.source(), typeVal)
 }
 
 func (n *selectorExpr) String() string {

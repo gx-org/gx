@@ -1,0 +1,13 @@
+package struct_err03
+
+type S[T any] struct {
+	t T
+}
+
+func StructLiteral() S[int32] {
+	return S{t: 1} // ERROR cannot use generic type S[T any] without instantiation
+}
+
+func TypeCast(x int32) S[int32] {
+	return S(x) // ERROR cannot use generic type S[T any] without instantiation
+}
