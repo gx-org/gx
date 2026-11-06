@@ -100,49 +100,49 @@ template <>
 absl::StatusOr<DeviceAtomic<bool>> Device::Send(bool val) {
   auto value = Value::FromBool(*this, val);
   if (!value.ok()) return value.status();
-  return DeviceAtomic<bool>(*this, *std::move(value));
+  return DeviceAtomic<bool>(*std::move(value));
 }
 
 template <>
 absl::StatusOr<DeviceAtomic<float>> Device::Send(float val) {
   auto value = Value::FromFloat32(*this, val);
   if (!value.ok()) return value.status();
-  return DeviceAtomic<float>(*this, *std::move(value));
+  return DeviceAtomic<float>(*std::move(value));
 }
 
 template <>
 absl::StatusOr<DeviceAtomic<double>> Device::Send(double val) {
   auto value = Value::FromFloat64(*this, val);
   if (!value.ok()) return value.status();
-  return DeviceAtomic<double>(*this, *std::move(value));
+  return DeviceAtomic<double>(*std::move(value));
 }
 
 template <>
 absl::StatusOr<DeviceAtomic<int32_t>> Device::Send(int32_t val) {
   auto value = Value::FromInt32(*this, val);
   if (!value.ok()) return value.status();
-  return DeviceAtomic<int32_t>(*this, *std::move(value));
+  return DeviceAtomic<int32_t>(*std::move(value));
 }
 
 template <>
 absl::StatusOr<DeviceAtomic<int64_t>> Device::Send(int64_t val) {
   auto value = Value::FromInt64(*this, val);
   if (!value.ok()) return value.status();
-  return DeviceAtomic<int64_t>(*this, *std::move(value));
+  return DeviceAtomic<int64_t>(*std::move(value));
 }
 
 template <>
 absl::StatusOr<DeviceAtomic<uint32_t>> Device::Send(uint32_t val) {
   auto value = Value::FromUint32(*this, val);
   if (!value.ok()) return value.status();
-  return DeviceAtomic<uint32_t>(*this, *std::move(value));
+  return DeviceAtomic<uint32_t>(*std::move(value));
 }
 
 template <>
 absl::StatusOr<DeviceAtomic<uint64_t>> Device::Send(uint64_t val) {
   auto value = Value::FromUint64(*this, val);
   if (!value.ok()) return value.status();
-  return DeviceAtomic<uint64_t>(*this, *std::move(value));
+  return DeviceAtomic<uint64_t>(*std::move(value));
 }
 
 /* Package */

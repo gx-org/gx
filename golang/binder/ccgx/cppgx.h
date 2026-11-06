@@ -90,6 +90,10 @@ class Runtime {
 
   absl::StatusOr<PackageIR> Load(const std::string& path) const;
 
+  // Finalizes the backend of the runtime. Must not be called while Device,
+  // Package, Function, Value, DeviceArray, DeviceAtomic, or HostBuffer objects
+  // obtained from this runtime are still in use (Device does not keep its
+  // Runtime alive, and destroying a Runtime does not finalize the backend).
   absl::Status Release();
 
  private:
@@ -284,18 +288,14 @@ class Atomic {
 template <typename T>
 class DeviceArray : public Array<T> {
  private:
-  DeviceArray<T>(const Device& dev, Value&& value)
-      : device_(dev), Array<T>(std::move(value)) {}
-  const Device& device_;
+  explicit DeviceArray(Value&& value) : Array<T>(std::move(value)) {}
   friend class Device;
 };
 
 template <typename T>
 class DeviceAtomic : public Atomic<T> {
  private:
-  DeviceAtomic<T>(const Device& dev, Value&& value)
-      : device_(dev), Atomic<T>(std::move(value)) {}
-  const Device& device_;
+  explicit DeviceAtomic(Value&& value) : Atomic<T>(std::move(value)) {}
   friend class Device;
 };
 
@@ -313,7 +313,7 @@ class Device {
   absl::StatusOr<DeviceArray<T>> Send(absl::Span<T> val, const Shape& shape) {
     auto value = Value::Send(*this, shape, val);
     if (!value.ok()) return value.status();
-    return DeviceArray<T>(*this, *std::move(value));
+    return DeviceArray<T>(*std::move(value));
   }
 
  private:
