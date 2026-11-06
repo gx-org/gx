@@ -65,7 +65,7 @@ func (n *ident) buildTypeExpr(rscope resolveScope) (*ir.TypeValExpr, bool) {
 	if typExpr == nil {
 		return typeError(rscope, idt)
 	}
-	return typExpr, true
+	return checkTypeInstantiated(rscope, n.source(), typExpr)
 }
 
 func (n *ident) String() string {

@@ -685,6 +685,9 @@ func (s *NamedType) ReferString(from *File) string {
 	if len(args) > 0 {
 		name += "[" + strings.Join(args, ", ") + "]"
 	}
+	if s.GenParams.Fields != nil && s.GenParams.Fields.Len() > 0 {
+		name += "[" + s.GenParams.Fields.SourceString(from) + "]"
+	}
 	return name
 }
 

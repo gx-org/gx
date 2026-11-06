@@ -334,12 +334,16 @@ func specializeType(rscope resolveScope, x *ir.TypeValExpr, indices []ir.Expr) (
 }
 
 func (n *indexExprType) buildTypeExpr(rscope resolveScope) (*ir.TypeValExpr, bool) {
-	xIR, xOk := n.x.buildTypeExpr(rscope)
+	xIR, xOk := n.x.buildTypeExpr(newGenericTypeScope(rscope))
 	idxIR, idxOk := n.index.buildExpr(rscope)
 	if !xOk || !idxOk {
 		return invalidTypeExprVal, false
 	}
-	return specializeType(rscope, xIR, []ir.Expr{idxIR})
+	typExpr, ok := specializeType(rscope, xIR, []ir.Expr{idxIR})
+	if !ok {
+		return invalidTypeExprVal, false
+	}
+	return checkTypeInstantiated(rscope, n.source(), typExpr)
 }
 
 func (n *indexExprType) String() string {
@@ -375,7 +379,7 @@ func (n *indexExprListType) source() ast.Node {
 }
 
 func (n *indexExprListType) buildTypeExpr(rscope resolveScope) (*ir.TypeValExpr, bool) {
-	xIR, ok := n.x.buildTypeExpr(rscope)
+	xIR, ok := n.x.buildTypeExpr(newGenericTypeScope(rscope))
 	if !ok {
 		return invalidTypeExprVal, false
 	}
@@ -386,7 +390,11 @@ func (n *indexExprListType) buildTypeExpr(rscope resolveScope) (*ir.TypeValExpr,
 			return invalidTypeExprVal, false
 		}
 	}
-	return specializeType(rscope, xIR, indices)
+	typExpr, ok := specializeType(rscope, xIR, indices)
+	if !ok {
+		return invalidTypeExprVal, false
+	}
+	return checkTypeInstantiated(rscope, n.source(), typExpr)
 }
 
 func (n *indexExprListType) String() string {

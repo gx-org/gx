@@ -1,0 +1,36 @@
+package struct_err02
+
+type S[T any] struct {
+	t T
+}
+
+func (s S[T]) F() S { // ERROR cannot use generic type S[T any] without instantiation
+	return s
+}
+
+func (s S) Receiver() S[int32] { // ERROR cannot use generic type S[T any] without instantiation
+	return s
+}
+
+func Parameter(s S) { // ERROR cannot use generic type S[T any] without instantiation
+}
+
+type Pair[T1, T2 any] struct {
+	a T1
+	b T2
+}
+
+func PartialSpecialization(s Pair[int32]) { // ERROR cannot use generic type Pair[int32][T2 any] without instantiation
+}
+
+func UninstantiatedTypeArgument(s Pair[[2]S, int32]) { // ERROR cannot use generic type S[T any] without instantiation
+}
+
+type Triple[T1, T2, T3 any] struct {
+	a T1
+	b T2
+	c T3
+}
+
+func PartialSpecializationList(s Triple[int32, float32]) { // ERROR cannot use generic type Triple[int32, float32][T3 any] without instantiation
+}

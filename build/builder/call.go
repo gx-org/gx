@@ -88,6 +88,9 @@ func (n *callExpr) buildTypeCast(rscope resolveScope, callee ir.Expr, store ir.S
 	if typRef == nil {
 		return typeError(rscope, callee)
 	}
+	if _, ok := checkTypeInstantiated(rscope, callee.Node(), typRef); !ok {
+		return invalidExpr(), false
+	}
 	ext := &ir.CastExpr{Src: n.src, Typ: typRef.Val()}
 	args, argsOk := n.buildArgs(rscope)
 	if !argsOk {

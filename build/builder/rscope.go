@@ -236,6 +236,7 @@ type (
 		fileScope() *fileResolveScope
 		toDefineScope() *defineLocalScope
 		requireCompevalCall() bool
+		canBeGeneric() bool
 		irBuilder() irBuilder
 		String() string
 	}
@@ -293,6 +294,10 @@ func (s *fileResolveScope) newCompEval() (*compileEvaluator, bool) {
 }
 
 func (s *fileResolveScope) requireCompevalCall() bool {
+	return false
+}
+
+func (s *fileResolveScope) canBeGeneric() bool {
 	return false
 }
 
@@ -521,6 +526,18 @@ func newRequireCompEvalScope(parent resolveScope) *requireCompEval {
 }
 
 func (s *requireCompEval) requireCompevalCall() bool {
+	return true
+}
+
+type genericTypeScope struct {
+	resolveScope
+}
+
+func newGenericTypeScope(parent resolveScope) *genericTypeScope {
+	return &genericTypeScope{resolveScope: parent}
+}
+
+func (s *genericTypeScope) canBeGeneric() bool {
 	return true
 }
 
