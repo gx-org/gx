@@ -15,21 +15,20 @@
 package grapheval
 
 import (
+	"reflect"
 	"strings"
+	"unsafe"
 
 	"github.com/pkg/errors"
 	"github.com/gomlx/compute"
-	"github.com/gomlx/compute/dtypes/bfloat16"
 	"github.com/gomlx/compute/dtypes"
 	"github.com/gomlx/compute/shapes"
 	"github.com/gx-org/gx/api/hostio"
 	"github.com/gx-org/gx/build/fmterr"
 	"github.com/gx-org/gx/build/ir"
-	"github.com/gx-org/gx/golang/backend/kernels"
 	"github.com/gx-org/gx/internal/concrete"
 	"github.com/gx-org/gx/internal/interp/constants"
 	"github.com/gx-org/gx/internal/interp/numbers"
-	"github.com/gx-org/gx/internal/togo"
 	"github.com/gx-org/gx/internal/tracer/processor"
 	"github.com/gx-org/gx/interp/elements"
 	"github.com/gx-org/gx/interp/engine"
@@ -192,30 +191,13 @@ func (ao *Ops) Set(ctx ir.Evaluator, expr *ir.FuncCallExpr, x, updates ir.Elemen
 }
 
 func constantFromBytes(g compute.Function, data []byte, sh shapes.Shape) (compute.Value, error) {
+	if !sh.DType.IsSupported() || sh.DType.IsPacked() {
+		return nil, errors.Errorf("cannot create constant: data type %v not supported", sh.DType)
+	}
 	if int64(len(data)) != sh.ByteSize() {
 		return nil, errors.Errorf("buffer size is %d but shape specifies a buffer size of %d", len(data), sh.ByteSize())
 	}
-	var flat any
-	switch sh.DType {
-	case dtypes.Bool:
-		flat = kernels.ToSlice[bool](data)
-	case dtypes.BFloat16:
-		flat = kernels.ToSlice[bfloat16.BFloat16](data)
-	case dtypes.Float32:
-		flat = kernels.ToSlice[float32](data)
-	case dtypes.Float64:
-		flat = kernels.ToSlice[float64](data)
-	case dtypes.Int32:
-		flat = kernels.ToSlice[int32](data)
-	case dtypes.Int64:
-		flat = kernels.ToSlice[int64](data)
-	case dtypes.Uint32:
-		flat = kernels.ToSlice[uint32](data)
-	case dtypes.Uint64:
-		flat = kernels.ToSlice[uint64](data)
-	default:
-		return nil, errors.Errorf("cannot create constant: data type %v not supported", sh.DType)
-	}
+	flat := dtypes.UnsafeAnySliceFromBytes(unsafe.Pointer(unsafe.SliceData(data)), sh.DType, sh.Size())
 	return g.Constant(flat, sh.Dimensions...)
 }
 
@@ -330,11 +312,7 @@ func checkMissingParams(fn ir.Func, got []hostio.Value, want []*ir.Field) error 
 	return errors.Errorf("missing parameter(s): %s", builder.String())
 }
 
-func (ao *Ops) convertScalarToElement(ev ir.Evaluator, typ ir.Type, val kernels.Array) (ir.Element, error) {
-	atom, err := val.ToAtom()
-	if err != nil {
-		return nil, err
-	}
+func (ao *Ops) convertScalarToElement(ev ir.Evaluator, typ ir.Type, atom any) (ir.Element, error) {
 	cst, err := numbers.NewConstant(typ, atom)
 	if err != nil {
 		return nil, err
@@ -342,7 +320,7 @@ func (ao *Ops) convertScalarToElement(ev ir.Evaluator, typ ir.Type, val kernels.
 	return ao.ElementFromHostValue(ev, cst)
 }
 
-func (ao *Ops) convertSliceToElement(ev ir.Evaluator, field *ir.Field, typ ir.Type, val kernels.Array) (ir.Element, error) {
+func (ao *Ops) convertSliceToElement(ev ir.Evaluator, field *ir.Field, typ ir.Type, dims []int, flat reflect.Value) (ir.Element, error) {
 	sliceType, isSlice := typ.(*ir.SliceType)
 	if !isSlice {
 		return nil, errors.Errorf("cannot convert array argument to %s for parameter %s", typ.ReferString(nil), field.Name.Name)
@@ -351,19 +329,16 @@ func (ao *Ops) convertSliceToElement(ev ir.Evaluator, field *ir.Field, typ ir.Ty
 	if !ok {
 		return nil, errors.Errorf("cannot get element type of %s for parameter %s", typ.ReferString(nil), field.Name.Name)
 	}
-	sh := val.Shape()
-	numEls := sh.Dimensions[0]
+	numEls := dims[0]
+	subDims := dims[1:]
+	stride := 1
+	for _, dim := range subDims {
+		stride *= dim
+	}
 	els := make([]ir.Element, numEls)
 	for i := range numEls {
-		sliceKernel, _, err := val.Factory().Slice(sh, i)
-		if err != nil {
-			return nil, err
-		}
-		subVal, err := sliceKernel(val)
-		if err != nil {
-			return nil, err
-		}
-		els[i], err = ao.convertKernelArrayToElement(ev, field, subType, subVal)
+		var err error
+		els[i], err = ao.convertFlatToElement(ev, field, subType, subDims, flat.Slice(i*stride, (i+1)*stride))
 		if err != nil {
 			return nil, err
 		}
@@ -371,11 +346,11 @@ func (ao *Ops) convertSliceToElement(ev ir.Evaluator, field *ir.Field, typ ir.Ty
 	return elements.NewSlice(typ, els)
 }
 
-func (ao *Ops) convertKernelArrayToElement(ev ir.Evaluator, field *ir.Field, typ ir.Type, val kernels.Array) (ir.Element, error) {
-	if val.Shape().IsScalar() {
-		return ao.convertScalarToElement(ev, typ, val)
+func (ao *Ops) convertFlatToElement(ev ir.Evaluator, field *ir.Field, typ ir.Type, dims []int, flat reflect.Value) (ir.Element, error) {
+	if len(dims) == 0 {
+		return ao.convertScalarToElement(ev, typ, flat.Index(0).Interface())
 	}
-	return ao.convertSliceToElement(ev, field, typ, val)
+	return ao.convertSliceToElement(ev, field, typ, dims, flat)
 }
 
 func (ao *Ops) convertToElement(ev ir.Evaluator, field *ir.Field, arg ir.Element) (ir.Element, error) {
@@ -383,11 +358,22 @@ func (ao *Ops) convertToElement(ev ir.Evaluator, field *ir.Field, arg ir.Element
 	if !isArray {
 		return arg, nil
 	}
-	val, err := togo.CpValueT[kernels.Array](array)
+	hostArray, err := array.ToHostArray()
 	if err != nil {
 		return nil, err
 	}
-	return ao.convertKernelArrayToElement(ev, field, field.Type(), val)
+	buf := hostArray.Buffer()
+	data := buf.Acquire()
+	defer buf.Release()
+	sh := hostArray.Shape()
+	if !sh.DType.IsSupported() || sh.DType.IsPacked() {
+		return nil, errors.Errorf("cannot convert array argument: data type %v not supported", sh.DType)
+	}
+	if int64(len(data)) != sh.ByteSize() {
+		return nil, errors.Errorf("buffer size is %d but shape specify a buffer size of %d", len(data), sh.ByteSize())
+	}
+	flat := dtypes.UnsafeAnySliceFromBytes(unsafe.Pointer(unsafe.SliceData(data)), sh.DType, sh.Size())
+	return ao.convertFlatToElement(ev, field, field.Type(), sh.Dimensions, reflect.ValueOf(flat))
 }
 
 // funcInputsToElements converts values to a function input.
