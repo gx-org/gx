@@ -667,7 +667,11 @@ func (s *NamedType) Same(o Storage) bool {
 
 // DefineString returns the GX code source of the receiver.
 func (s *NamedType) DefineString(from *File) string {
-	return s.ReferString(from)
+	name := s.ReferString(from)
+	if s.GenParams.Fields != nil && s.GenParams.Fields.Len() > 0 {
+		name += "[" + s.GenParams.Fields.SourceString(from) + "]"
+	}
+	return name
 }
 
 // ReferString returns a reference to the type given a file context.
@@ -684,9 +688,6 @@ func (s *NamedType) ReferString(from *File) string {
 	}
 	if len(args) > 0 {
 		name += "[" + strings.Join(args, ", ") + "]"
-	}
-	if s.GenParams.Fields != nil && s.GenParams.Fields.Len() > 0 {
-		name += "[" + s.GenParams.Fields.SourceString(from) + "]"
 	}
 	return name
 }

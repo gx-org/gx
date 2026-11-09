@@ -20,7 +20,7 @@ type Pair[T1, T2 any] struct {
 	b T2
 }
 
-func PartialSpecialization(s Pair[int32]) { // ERROR cannot use generic type Pair[int32][T2 any] without instantiation
+func PartialSpecialization(s Pair[int32]) { // ERROR not enough type arguments for type Pair: have 1, want 2
 }
 
 func UninstantiatedTypeArgument(s Pair[[2]S, int32]) { // ERROR cannot use generic type S[T any] without instantiation
@@ -32,5 +32,8 @@ type Triple[T1, T2, T3 any] struct {
 	c T3
 }
 
-func PartialSpecializationList(s Triple[int32, float32]) { // ERROR cannot use generic type Triple[int32, float32][T3 any] without instantiation
+func PartialSpecializationList(s Triple[int32, float32]) { // ERROR not enough type arguments for type Triple: have 2, want 3
+}
+
+func (p Pair[T1]) PartialReceiver() { // ERROR not enough type arguments for type Pair: have 1, want 2
 }

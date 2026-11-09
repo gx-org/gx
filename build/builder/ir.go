@@ -106,7 +106,7 @@ func checkTypeInstantiated(rscope resolveScope, pos ast.Node, typExpr *ir.TypeVa
 	if !ok || named.GenParams.Fields.Len() == 0 {
 		return typExpr, true
 	}
-	return invalidTypeExprVal, rscope.Err().Appendf(pos, "cannot use generic type %s without instantiation", named.ReferString(rscope.fileScope().irFile()))
+	return invalidTypeExprVal, rscope.Err().Appendf(pos, "cannot use generic type %s without instantiation", named.DefineString(rscope.fileScope().irFile()))
 }
 
 func funcError(rscope resolveScope, x ir.Expr) (ir.Expr, bool) {

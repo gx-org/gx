@@ -725,6 +725,8 @@ func (d definerAndSourcer) SourceString(*ir.File) string { return d.sourced }
 
 func TestDefineString(t *testing.T) {
 	named := newNamedType("S", ir.Int32Type())
+	genericNamed := newNamedType("GenS", ir.Int32Type())
+	genericNamed.GenParams.SetFields(irhelper.Fields("T", ir.AnyType()))
 	fn := &ir.FuncDecl{
 		FFile: testFile,
 		Src:   &ast.FuncDecl{Name: irhelper.IdentAST("f")},
@@ -756,6 +758,18 @@ func TestDefineString(t *testing.T) {
 			want: "S",
 		},
 		{
+			name: "StringDefiner/GenericNamedTypeFromOtherFile",
+			from: nil,
+			el:   genericNamed,
+			want: "ir_test.GenS[T any]",
+		},
+		{
+			name: "StringDefiner/GenericNamedTypeFromSameFile",
+			from: testFile,
+			el:   genericNamed,
+			want: "GenS[T any]",
+		},
+		{
 			name: "StringDefinerAndSourcer",
 			from: testFile,
 			el:   definerAndSourcer{defined: "defined", sourced: "sourced"},
@@ -778,6 +792,18 @@ func TestDefineString(t *testing.T) {
 			from: testFile,
 			el:   ir.TypeExpr(nil, named),
 			want: "S",
+		},
+		{
+			name: "StringSourcer/GenericTypeValExprFromOtherFile",
+			from: nil,
+			el:   ir.TypeExpr(nil, genericNamed),
+			want: "ir_test.GenS",
+		},
+		{
+			name: "StringSourcer/GenericTypeValExprFromSameFile",
+			from: testFile,
+			el:   ir.TypeExpr(nil, genericNamed),
+			want: "GenS",
 		},
 	} {
 		t.Run(tc.name, func(t *testing.T) {
