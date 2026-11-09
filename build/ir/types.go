@@ -335,9 +335,10 @@ func (s *Interface) Zero() Expr {
 }
 
 // ElementType returns the type of an element.
+// Returns false if the type set is empty.
 func (s *Interface) ElementType() (Type, bool) {
 	sub := &Interface{}
-	ok := true
+	ok := len(s.types) > 0
 	for _, typ := range s.types {
 		aType, eltOk := typ.(SlicerType)
 		if !eltOk {

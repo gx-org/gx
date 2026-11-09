@@ -179,7 +179,7 @@ func (n *indexExpr) buildSlicerIndex(rscope resolveScope, ext *ir.IndexExpr, xTy
 	}
 	aType, isArray := xType.(ir.ArrayType)
 	boundOk := true
-	if isArray {
+	if isArray && len(aType.Rank().Axes()) > 0 {
 		boundOk = n.checkIndexBounds(rscope, aType.Rank().Axes()[0], ext.Index)
 	}
 	var numberOk bool

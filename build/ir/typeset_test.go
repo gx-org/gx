@@ -44,6 +44,11 @@ func TestTypeSetSlice(t *testing.T) {
 			want:    irhelper.TypeSet(),
 			ok:      false,
 		},
+		{
+			typeSet: irhelper.TypeSet(),
+			want:    irhelper.TypeSet(),
+			ok:      false,
+		},
 	}
 	fetcher, err := newFetcherTesting()
 	if err != nil {

@@ -1,0 +1,19 @@
+package generic01
+
+import "testfieldpaths"
+
+type Params struct {
+	W float32
+	B float32
+}
+
+func f[T any](p T) T {
+	for _, k := range testfieldpaths.Path[T]("W") {
+		p[k] += 10 // ERROR: cannot index any
+	}
+	return p
+}
+
+func Test() Params {
+	return f[Params](Params{W: 3, B: 5})
+}
