@@ -942,6 +942,9 @@ func (s *arrayType) assignableFrom(tpcmp TypeEval, x Type) (bool, error) {
 
 // AssignableTo reports if the type can be assigned to other.
 func (s *arrayType) AssignableTo(tpcmp TypeEval, target Type) (bool, error) {
+	if targetSet, ok := target.(*Interface); ok {
+		return targetSet.assignableFrom(tpcmp, s)
+	}
 	targetT, ok := target.(ArrayType)
 	if !ok {
 		return false, nil
