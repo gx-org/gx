@@ -322,6 +322,9 @@ func specializeType(rscope resolveScope, x *ir.TypeValExpr, indices []ir.Expr) (
 	if err != nil {
 		return invalidTypeExprVal, rscope.Err().AppendAt(x.Node(), err)
 	}
+	if gotN, wantN := len(indices), named.GenParams.Fields.Len(); gotN < wantN {
+		return invalidTypeExprVal, rscope.Err().Appendf(x.Node(), "not enough type arguments for type %s: have %d, want %d", x.SourceString(rscope.fileScope().irFile()), gotN, wantN)
+	}
 	ce, ok := rscope.compEval()
 	if !ok {
 		return invalidTypeExprVal, false
@@ -339,11 +342,7 @@ func (n *indexExprType) buildTypeExpr(rscope resolveScope) (*ir.TypeValExpr, boo
 	if !xOk || !idxOk {
 		return invalidTypeExprVal, false
 	}
-	typExpr, ok := specializeType(rscope, xIR, []ir.Expr{idxIR})
-	if !ok {
-		return invalidTypeExprVal, false
-	}
-	return checkTypeInstantiated(rscope, n.source(), typExpr)
+	return specializeType(rscope, xIR, []ir.Expr{idxIR})
 }
 
 func (n *indexExprType) String() string {
@@ -390,11 +389,7 @@ func (n *indexExprListType) buildTypeExpr(rscope resolveScope) (*ir.TypeValExpr,
 			return invalidTypeExprVal, false
 		}
 	}
-	typExpr, ok := specializeType(rscope, xIR, indices)
-	if !ok {
-		return invalidTypeExprVal, false
-	}
-	return checkTypeInstantiated(rscope, n.source(), typExpr)
+	return specializeType(rscope, xIR, indices)
 }
 
 func (n *indexExprListType) String() string {

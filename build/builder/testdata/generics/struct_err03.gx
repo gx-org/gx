@@ -11,3 +11,12 @@ func StructLiteral() S[int32] {
 func TypeCast(x int32) S[int32] {
 	return S(x) // ERROR cannot use generic type S[T any] without instantiation
 }
+
+type Pair[T1, T2 any] struct {
+	a T1
+	b T2
+}
+
+func PartialStructLiteral() Pair[int32, int32] {
+	return Pair[int32]{a: 1, b: 2} // ERROR not enough type arguments for type Pair: have 1, want 2
+}
