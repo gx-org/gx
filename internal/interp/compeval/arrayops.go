@@ -72,7 +72,7 @@ func (compArrayOps) Set(ctx ir.Evaluator, expr *ir.FuncCallExpr, x, updates ir.E
 
 // ElementFromHostValue returns transforms an atomic literal element into an element specific to the ArrayOps implementation.
 func (ao compArrayOps) ElementFromHostValue(ctx ir.Evaluator, el engine.Constant) (engine.ConstantElement, error) {
-	return newConstant(ao, el), nil
+	return newConstant(el), nil
 }
 
 // DefineGlobalConst defines a global constant for the interpreter.

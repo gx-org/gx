@@ -1,0 +1,22 @@
+package value04
+
+//gx:compeval
+func constArray() [2]float32 {
+	return [2]float32{3, 4}
+}
+
+func TestReshapeScalar() [1][2]float32 {
+	return [1][2]float32([2]float32(float32(len(2))))
+	// Want:
+	// [1][2]float32{
+	// 	{1, 1},
+	// }
+}
+
+func TestReshapeArray() [1][2]float32 {
+	return [1][2]float32(constArray())
+	// Want:
+	// [1][2]float32{
+	// 	{3, 4},
+	// }
+}

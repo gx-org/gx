@@ -1,0 +1,12 @@
+package value01
+
+//gx:compeval
+func constArray() [2]float32 {
+	return [2]float32{3, 4}
+}
+
+func TestUnaryOp() [2]float32 {
+	return -constArray()
+	// Want:
+	// [2]float32{-3, -4}
+}

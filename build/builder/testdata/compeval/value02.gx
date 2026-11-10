@@ -1,0 +1,11 @@
+package value02
+
+func addWithArg(x [2]float32) [2]float32 {
+	return float32(len(2)) + x
+}
+
+func TestBinaryOp() [2]float32 {
+	return addWithArg([2]float32{10, 20})
+	// Want:
+	// [2]float32{11, 21}
+}
