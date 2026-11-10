@@ -22,10 +22,12 @@ import (
 
 	"github.com/pkg/errors"
 	"github.com/gomlx/compute"
+	"github.com/gomlx/compute/dtypes/bfloat16"
 	"github.com/gomlx/compute/dtypes"
 	"github.com/gomlx/compute/dtypes/gotype"
 	"github.com/gomlx/compute/shapes"
 	"github.com/gx-org/gx/build/ir"
+	"github.com/gx-org/gx/fmt/fmtarray"
 	"github.com/gx-org/gx/golang/backend/kernels"
 	"github.com/gx-org/gx/internal/togo"
 )
@@ -244,37 +246,126 @@ func (a *HostArray) ToDevice(bck compute.Backend, dev compute.DeviceNum) (*Devic
 	return NewDeviceArray(a.typ, handle)
 }
 
+func (a *HostArray) flatData() (any, error) {
+	sh := a.Shape()
+	switch sh.DType {
+	case dtypes.Bool, dtypes.BFloat16, dtypes.Float32, dtypes.Float64, dtypes.Int32, dtypes.Int64, dtypes.Uint32, dtypes.Uint64:
+	default:
+		return nil, errors.Errorf("cannot create an array from raw data: %s not supported", sh.DType.String())
+	}
+	data := a.Buffer().Acquire()
+	defer a.Buffer().Release()
+	if int64(len(data)) != sh.ByteSize() {
+		return nil, errors.Errorf("buffer size is %d but shape specify a buffer size of %d", len(data), sh.ByteSize())
+	}
+	flat := dtypes.MakeAnySlice(sh.DType, sh.Size())
+	dtypes.CopyAnySlice(flat, dtypes.UnsafeAnySliceFromBytes(unsafe.Pointer(unsafe.SliceData(data)), sh.DType, sh.Size()))
+	return flat, nil
+}
+
+func atomFromFlat(flat any) (any, error) {
+	switch flat := flat.(type) {
+	case []bool:
+		return flat[0], nil
+	case []bfloat16.BFloat16:
+		return flat[0], nil
+	case []float32:
+		return flat[0], nil
+	case []float64:
+		return flat[0], nil
+	case []int32:
+		return flat[0], nil
+	case []int64:
+		return flat[0], nil
+	case []uint32:
+		return flat[0], nil
+	case []uint64:
+		return flat[0], nil
+	default:
+		return nil, errors.Errorf("cannot get atom from slice of type %T", flat)
+	}
+}
+
 // ToAtom returns the value as an atomic value.
 // An error is returned if the array contains more than one value.
 func (a *HostArray) ToAtom() (any, error) {
-	array, err := a.goValue()
+	flat, err := a.flatData()
 	if err != nil {
 		return nil, err
 	}
-	return array.ToAtom()
+	sh := a.Shape()
+	if !sh.IsScalar() {
+		return nil, errors.Errorf("%s not atomic", sh.String())
+	}
+	return atomFromFlat(flat)
 }
 
-func (a *HostArray) goValue() (kernels.Array, error) {
-	data := a.Buffer().Acquire()
-	defer a.Buffer().Release()
-	return kernels.NewArrayFromRaw(data, a.Shape())
+type goArray struct {
+	flat any
+	dims []int
+}
+
+func (a goArray) String() string {
+	switch flat := a.flat.(type) {
+	case []bool:
+		return fmtarray.Sprint(flat, a.dims)
+	case []bfloat16.BFloat16:
+		return fmtarray.Sprint(flat, a.dims)
+	case []float32:
+		return fmtarray.Sprint(flat, a.dims)
+	case []float64:
+		return fmtarray.Sprint(flat, a.dims)
+	case []int32:
+		return fmtarray.Sprint(flat, a.dims)
+	case []int64:
+		return fmtarray.Sprint(flat, a.dims)
+	case []uint32:
+		return fmtarray.Sprint(flat, a.dims)
+	case []uint64:
+		return fmtarray.Sprint(flat, a.dims)
+	default:
+		return fmt.Sprintf("unsupported slice type %T", a.flat)
+	}
 }
 
 // GoValue of the underlying element.
 func (a *HostArray) GoValue() (any, error) {
-	return a.goValue()
+	flat, err := a.flatData()
+	if err != nil {
+		return nil, err
+	}
+	sh := a.Shape()
+	if sh.IsScalar() {
+		return atomFromFlat(flat)
+	}
+	return goArray{flat: flat, dims: sh.Dimensions}, nil
 }
 
 // ToFloatNumber returns the value as a float number.
 // An error is returned if the array contains more than one value.
 func (a *HostArray) ToFloatNumber() (*big.Float, error) {
-	data := a.Buffer().Acquire()
-	defer a.Buffer().Release()
-	array, err := kernels.NewArrayFromRaw(data, a.Shape())
+	atom, err := a.ToAtom()
 	if err != nil {
 		return nil, err
 	}
-	return array.ToFloatNumber()
+	switch v := atom.(type) {
+	case bfloat16.BFloat16:
+		return big.NewFloat(float64(v.Float32())), nil
+	case float32:
+		return big.NewFloat(float64(v)), nil
+	case float64:
+		return big.NewFloat(v), nil
+	case int32:
+		return big.NewFloat(float64(v)), nil
+	case int64:
+		return new(big.Float).SetInt64(v), nil
+	case uint32:
+		return big.NewFloat(float64(v)), nil
+	case uint64:
+		return new(big.Float).SetUint64(v), nil
+	default:
+		return nil, errors.Errorf("cannot convert non-algebra type %s to big.Float", a.Shape().DType)
+	}
 }
 
 // SourceString returns the values of the array as a string without the type.
@@ -287,22 +378,43 @@ func (a *HostArray) DefineString(from *ir.File) string {
 	return a.sourceString(from, true)
 }
 
+func sDataPrint(flat any, dims []int) string {
+	switch flat := flat.(type) {
+	case []bool:
+		return fmtarray.SDataPrint(flat, dims)
+	case []bfloat16.BFloat16:
+		return fmtarray.SDataPrint(flat, dims)
+	case []float32:
+		return fmtarray.SDataPrint(flat, dims)
+	case []float64:
+		return fmtarray.SDataPrint(flat, dims)
+	case []int32:
+		return fmtarray.SDataPrint(flat, dims)
+	case []int64:
+		return fmtarray.SDataPrint(flat, dims)
+	case []uint32:
+		return fmtarray.SDataPrint(flat, dims)
+	case []uint64:
+		return fmtarray.SDataPrint(flat, dims)
+	default:
+		return fmt.Sprintf("unsupported slice type %T", flat)
+	}
+}
+
 func (a *HostArray) sourceString(from *ir.File, withType bool) string {
-	data := a.Buffer().Acquire()
-	defer a.Buffer().Release()
-	array, err := kernels.NewArrayFromRaw(data, a.Shape())
+	flat, err := a.flatData()
 	if err != nil {
 		return fmt.Sprintf("\nError parsing raw data:\n%+v\n", err)
 	}
+	shape := a.Shape().Dimensions
+	dataS := sDataPrint(flat, shape)
 	if !withType {
-		return array.DataString()
+		return dataS
 	}
-	shape := a.buffer.Shape().Dimensions
 	dims := make([]string, len(shape))
 	for i, axLen := range shape {
 		dims[i] = fmt.Sprintf("[%d]", axLen)
 	}
-	dataS := array.DataString()
 	if len(shape) == 0 {
 		dataS = fmt.Sprintf("(%s)", dataS)
 	}
@@ -320,11 +432,22 @@ func (a *HostArray) String() string {
 
 // ToAtom converts an array on the host into a Go atom value.
 func ToAtom[T gotype.Supported](a *HostArray) (T, error) {
+	var zero T
+	sh := a.Shape()
+	if !sh.IsScalar() {
+		return zero, errors.Errorf("array %s (length=%d) is not an atom", sh.String(), sh.Size())
+	}
+	if wantDType := dtypes.FromGenericsType[T](); sh.DType != wantDType {
+		return zero, errors.Errorf("array data type is %s, want %s", sh.DType, wantDType)
+	}
 	data := a.Buffer().Acquire()
 	defer a.Buffer().Release()
-	slice := kernels.ToSlice[T](data)
+	size := int(unsafe.Sizeof(zero))
+	if len(data)%size != 0 {
+		return zero, errors.Errorf("buffer size %d is not a multiple of %T size %d", len(data), zero, size)
+	}
+	slice := dtypes.UnsafeSliceFromBytes[T](unsafe.Pointer(unsafe.SliceData(data)), len(data)/size)
 	if len(slice) != 1 {
-		var zero T
 		return zero, errors.Errorf("array (length=%d) is not an atom", len(slice))
 	}
 	return slice[0], nil
