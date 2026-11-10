@@ -1,0 +1,12 @@
+package value05
+
+//gx:compeval
+func constArray() [2]float32 {
+	return [2]float32{3, 4}
+}
+
+func TestSliceAt() float32 {
+	return constArray()[1]
+	// Want:
+	// float32(4)
+}

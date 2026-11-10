@@ -59,6 +59,13 @@ type (
 		Constant() Constant
 	}
 
+	// NonConstant is a ConstantElement that provides a fallback NumericalElement
+	// for non-constant operations to avoid recursion in NumericalFromHostValue.
+	NonConstant interface {
+		ConstantElement
+		NonConstant() NumericalElement
+	}
+
 	// Copier is an element that needs to be copied when passed to a function.
 	Copier interface {
 		ir.Element
@@ -71,6 +78,20 @@ type (
 		Append(*ir.FuncCallExpr, []ir.Element) Slice
 	}
 )
+
+// NumericalFromHostValue transforms a constant into a NumericalElement,
+// unwrapping NonConstant if supported.
+func NumericalFromHostValue(env *Env, el Constant) (NumericalElement, error) {
+	constantElement, err := env.Engine().ElementFromHostValue(env.ExprEval(), el)
+	if err != nil {
+		return nil, err
+	}
+	nonConstant, isNonConstant := constantElement.(NonConstant)
+	if !isNonConstant {
+		return constantElement, nil
+	}
+	return nonConstant.NonConstant(), nil
+}
 
 // Copy an element if the element supports it.
 // Returns the same element otherwise.

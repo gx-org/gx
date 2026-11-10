@@ -1,0 +1,12 @@
+package value03
+
+//gx:compeval
+func constArray() [2]float32 {
+	return [2]float32{3, 4}
+}
+
+func TestCast() [2]int32 {
+	return [2]int32(constArray())
+	// Want:
+	// [2]int32{3, 4}
+}

@@ -18,10 +18,9 @@ import (
 	"github.com/gomlx/compute/shapes"
 	"github.com/gx-org/gx/api/hostio"
 	"github.com/gx-org/gx/build/ir"
+	"github.com/gx-org/gx/internal/base/cast"
 	"github.com/gx-org/gx/internal/interp/compeval/cmp"
 	"github.com/gx-org/gx/internal/interp/compeval/cpevops"
-	"github.com/gx-org/gx/internal/interp/compeval/surrogates/storepath"
-	"github.com/gx-org/gx/internal/interp/compeval/surrogates"
 	"github.com/gx-org/gx/internal/interp/csteager"
 	"github.com/gx-org/gx/internal/interp/flatten"
 	"github.com/gx-org/gx/internal/togo"
@@ -33,11 +32,11 @@ import (
 // constant checks the arguments of operators.
 // It returns a surrogate value if one of the argument is unknown.
 type constant struct {
-	ao  engine.Engine
 	cst engine.Constant
 }
 
 var (
+	_ engine.NonConstant  = (*constant)(nil)
 	_ engine.EvalShaper   = (*constant)(nil)
 	_ cmp.Canonical       = (*constant)(nil)
 	_ togo.CompileValue   = (*constant)(nil)
@@ -45,12 +44,16 @@ var (
 	_ flatten.Unflattener = (*constant)(nil)
 )
 
-func newConstant(ao engine.Engine, cst engine.Constant) engine.ConstantElement {
-	return &constant{ao: ao, cst: cst}
+func newConstant(cst engine.Constant) *constant {
+	return &constant{cst: cst}
 }
 
 func (c *constant) Constant() engine.Constant {
 	return c.cst
+}
+
+func (c *constant) NonConstant() engine.NumericalElement {
+	return &atomicOps{cst: c}
 }
 
 func (c *constant) Type() ir.Type {
@@ -64,16 +67,13 @@ func (c *constant) UnaryOp(env *engine.Env, expr *ir.UnaryExpr) (engine.Numerica
 		return nil, err
 	}
 	if res != nil {
-		return newConstant(c.ao, res), nil
+		return newConstant(res), nil
 	}
-	if env.Engine() != hostArrayOps {
-		el, err := env.Engine().ElementFromHostValue(env.ExprEval(), c.cst)
-		if err != nil {
-			return nil, err
-		}
-		return el.UnaryOp(env, expr)
+	el, err := engine.NumericalFromHostValue(env, c.cst)
+	if err != nil {
+		return nil, err
 	}
-	return cpevops.NewUnary(env, expr, c)
+	return el.UnaryOp(env, expr)
 }
 
 // BinaryOp applies a binary operator to x and y.
@@ -84,16 +84,13 @@ func (c *constant) BinaryOp(env *engine.Env, expr *ir.BinaryExpr, y engine.Numer
 		return nil, err
 	}
 	if res != nil {
-		return newConstant(c.ao, res), nil
+		return newConstant(res), nil
 	}
-	if env.Engine() != hostArrayOps {
-		el, err := env.Engine().ElementFromHostValue(env.ExprEval(), c.cst)
-		if err != nil {
-			return nil, err
-		}
-		return el.BinaryOp(env, expr, y)
+	el, err := engine.NumericalFromHostValue(env, c.cst)
+	if err != nil {
+		return nil, err
 	}
-	return cpevops.NewBinaryFrom(env, expr, c, y)
+	return el.BinaryOp(env, expr, y)
 }
 
 // Cast an element into a given data type.
@@ -103,44 +100,46 @@ func (c *constant) Cast(env *engine.Env, expr ir.Expr, target ir.Type) (engine.N
 		return nil, err
 	}
 	if res != nil {
-		return newConstant(c.ao, res), nil
+		return newConstant(res), nil
 	}
-	if env.Engine() != hostArrayOps {
-		el, err := env.Engine().ElementFromHostValue(env.ExprEval(), c.cst)
-		if err != nil {
-			return nil, err
-		}
-		return el.Cast(env, expr, target)
-	}
-	return cpevops.NewCast(env, expr, c, target), nil
-}
-
-func (c *constant) toArraySurrogate(expr ir.Expr) (engine.NumericalElement, error) {
-	path, err := storepath.NewUnique(c)
+	el, err := engine.NumericalFromHostValue(env, c.cst)
 	if err != nil {
 		return nil, err
 	}
-	return surrogates.NewArrayFrom(path, expr.Type())
+	return el.Cast(env, expr, target)
 }
 
 // Reshape an element.
 func (c *constant) Reshape(env *engine.Env, expr ir.Expr, axisLengths []engine.NumericalElement) (engine.NumericalElement, error) {
-	if env.Engine() != hostArrayOps {
-		el, err := env.Engine().ElementFromHostValue(env.ExprEval(), c.cst)
-		if err != nil {
-			return nil, err
-		}
-		return el.Reshape(env, expr, axisLengths)
+	el, err := engine.NumericalFromHostValue(env, c.cst)
+	if err != nil {
+		return nil, err
 	}
-	return c.toArraySurrogate(expr)
+	return el.Reshape(env, expr, axisLengths)
 }
 
-func (c *constant) SliceAt(env *engine.Env, expr *ir.IndexExpr, index engine.NumericalElement) (_ ir.Element, err error) {
-	return c.toArraySurrogate(expr)
+func (c *constant) toSlicer(env *engine.Env) (engine.Slicer, error) {
+	el, err := engine.NumericalFromHostValue(env, c.cst)
+	if err != nil {
+		return nil, err
+	}
+	return cast.To[engine.Slicer](el)
+}
+
+func (c *constant) SliceAt(env *engine.Env, expr *ir.IndexExpr, index engine.NumericalElement) (ir.Element, error) {
+	slicer, err := c.toSlicer(env)
+	if err != nil {
+		return nil, err
+	}
+	return slicer.SliceAt(env, expr, index)
 }
 
 func (c *constant) Slice(env *engine.Env, expr *ir.SliceExpr, low, high engine.NumericalElement) (ir.Element, error) {
-	return c.toArraySurrogate(expr)
+	slicer, err := c.toSlicer(env)
+	if err != nil {
+		return nil, err
+	}
+	return slicer.Slice(env, expr, low, high)
 }
 
 // AlgExpr returns an algebraic expression.
