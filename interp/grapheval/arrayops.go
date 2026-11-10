@@ -377,7 +377,7 @@ func (ao *Ops) convertToElement(ev ir.Evaluator, field *ir.Field, arg ir.Element
 }
 
 // funcInputsToElements converts values to a function input.
-func (ao *Ops) funcInputsToElements(ev ir.Evaluator, fn ir.Func, receiver ir.Element, args []hostio.Value) (*elements.InputElements, error) {
+func (ao *Ops) funcInputsToElements(ev ir.Evaluator, fn ir.Func, receiver ir.Element, args []hostio.Value) (*hostio.InputElements, error) {
 	vis := newInputVisitor(ao, fn.File())
 	fType := fn.FuncType()
 	var recvEl ir.Element
@@ -411,7 +411,7 @@ func (ao *Ops) funcInputsToElements(ev ir.Evaluator, fn ir.Func, receiver ir.Ele
 		}
 		argsEl[numGenArgs+i] = argNode
 	}
-	return &elements.InputElements{
+	return &hostio.InputElements{
 		Receiver: recvEl,
 		Args:     argsEl,
 	}, nil

@@ -349,13 +349,13 @@ func checkMissingParams(fn ir.Func, got []hostio.Value, want []*ir.Field) error 
 }
 
 // funcInputsToElements converts the receiver and the arguments of a function call to elements.
-func (ao *Ops) funcInputsToElements(ev ir.Evaluator, fn ir.Func, receiver hostio.Value, args []hostio.Value) (*elements.InputElements, error) {
+func (ao *Ops) funcInputsToElements(ev ir.Evaluator, fn ir.Func, receiver hostio.Value, args []hostio.Value) (*hostio.InputElements, error) {
 	fType := fn.FuncType()
 	params := fType.AllParams()
 	if err := checkMissingParams(fn, args, params); err != nil {
 		return nil, err
 	}
-	in := &elements.InputElements{
+	in := &hostio.InputElements{
 		Receiver: receiver,
 		Args:     make([]ir.Element, len(args)),
 	}

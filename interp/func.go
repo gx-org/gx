@@ -18,10 +18,10 @@ import (
 	"strings"
 
 	"github.com/pkg/errors"
+	"github.com/gx-org/gx/api/hostio"
 	"github.com/gx-org/gx/build/fmterr"
 	"github.com/gx-org/gx/build/ir"
 	"github.com/gx-org/gx/interp/context"
-	"github.com/gx-org/gx/interp/elements"
 	"github.com/gx-org/gx/interp/engine"
 	"github.com/gx-org/gx/src/gx/ast"
 )
@@ -81,7 +81,7 @@ func assignArgumentValues(ftype *ir.FuncType, funcFrame *context.Frame, args []i
 }
 
 // EvalFunc evaluates a function.
-func (itp *Base) EvalFunc(fn *ir.FuncDecl, in *elements.InputElements) (outs []ir.Element, err error) {
+func (itp *Base) EvalFunc(fn *ir.FuncDecl, in *hostio.InputElements) (outs []ir.Element, err error) {
 	if fn.Body == nil {
 		return nil, errors.Errorf("%s: missing function body", fn.Name())
 	}
