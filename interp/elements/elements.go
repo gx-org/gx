@@ -33,16 +33,6 @@ import (
 	"github.com/gx-org/gx/src/gx/ast"
 )
 
-// InputElements is the receiver and arguments with which the function was called.
-type InputElements struct {
-	// Receiver on which the function call was done.
-	// Can be nil.
-	Receiver ir.Element
-
-	// Args returns list of arguments passed to the interpreter at call time.
-	Args []ir.Element
-}
-
 type (
 	// NodeFile is an expression with the file in which it is declared.
 	NodeFile[T ir.IR] struct {
