@@ -127,6 +127,48 @@ struct cgx_value_new_result {
 	cgx_error error;
 };
 
+// cgx_value_get_bool_result is the return value for cgx_value_get_bool().
+struct cgx_value_get_bool_result {
+	bool value;
+	cgx_error error;
+};
+
+// cgx_value_get_float32_result is the return value for cgx_value_get_float32().
+struct cgx_value_get_float32_result {
+	float value;
+	cgx_error error;
+};
+
+// cgx_value_get_float64_result is the return value for cgx_value_get_float64().
+struct cgx_value_get_float64_result {
+	double value;
+	cgx_error error;
+};
+
+// cgx_value_get_int32_result is the return value for cgx_value_get_int32().
+struct cgx_value_get_int32_result {
+	int32_t value;
+	cgx_error error;
+};
+
+// cgx_value_get_int64_result is the return value for cgx_value_get_int64().
+struct cgx_value_get_int64_result {
+	int64_t value;
+	cgx_error error;
+};
+
+// cgx_value_get_uint32_result is the return value for cgx_value_get_uint32().
+struct cgx_value_get_uint32_result {
+	uint32_t value;
+	cgx_error error;
+};
+
+// cgx_value_get_uint64_result is the return value for cgx_value_get_uint64().
+struct cgx_value_get_uint64_result {
+	uint64_t value;
+	cgx_error error;
+};
+
 // cgx_value_host_buffer_result is the return value for cgx_value_host_buffer().
 struct cgx_value_host_buffer_result {
 	cgx_host_buffer buffer;
@@ -733,49 +775,70 @@ func cgx_value_shape(cgxValue C.cgx_value) C.cgx_shape {
 	return 0
 }
 
-func atomFromDeviceArray[T gotype.Supported](cgxValue C.cgx_value) T {
+func atomFromDeviceArray[T gotype.Supported](getter string, cgxValue C.cgx_value) (zero T, _ C.cgx_error) {
 	value := unwrap[hostio.Value](cgxValue)
-	atomDevice := types.NewDeviceAtom[T](value.(*hostio.DeviceArray))
-	atomHost, err := atomDevice.Fetch()
+	deviceArray, err := cast.To[*hostio.DeviceArray](value)
 	if err != nil {
-		panic(err)
+		return zero, (C.cgx_error)(wrap[error](err))
 	}
-	return atomHost.Value()
+	shapeGot, err := deviceArray.Buffer().Shape()
+	if err != nil {
+		err = errors.Errorf("%s: value of handle %d (type %s): %v", getter, cgxValue, value.Type().ReferString(nil), err)
+		return zero, (C.cgx_error)(wrap[error](err))
+	}
+	dtypeWant := dtypes.FromGenericsType[T]()
+	if shapeGot.DType != dtypeWant || !shapeGot.IsScalar() {
+		err = errors.Errorf("%s: value of handle %d (type %s) has shape %s, want scalar of type %s", getter, cgxValue, value.Type().ReferString(nil), shapeGot.String(), dtypeWant.String())
+		return zero, (C.cgx_error)(wrap[error](err))
+	}
+	var flat [1]T
+	if err := deviceArray.Buffer().ToFlatData(flat[:]); err != nil {
+		err = errors.Errorf("%s: value of handle %d (type %s): %v", getter, cgxValue, value.Type().ReferString(nil), err)
+		return zero, (C.cgx_error)(wrap[error](err))
+	}
+	return flat[0], 0
 }
 
 //export cgx_value_get_bool
-func cgx_value_get_bool(cgxValue C.cgx_value) C.bool {
-	return C.bool(atomFromDeviceArray[bool](cgxValue))
+func cgx_value_get_bool(cgxValue C.cgx_value) C.struct_cgx_value_get_bool_result {
+	val, err := atomFromDeviceArray[bool]("cgx_value_get_bool", cgxValue)
+	return C.struct_cgx_value_get_bool_result{value: C.bool(val), error: err}
 }
 
 //export cgx_value_get_float32
-func cgx_value_get_float32(cgxValue C.cgx_value) C.float {
-	return C.float(atomFromDeviceArray[float32](cgxValue))
+func cgx_value_get_float32(cgxValue C.cgx_value) C.struct_cgx_value_get_float32_result {
+	val, err := atomFromDeviceArray[float32]("cgx_value_get_float32", cgxValue)
+	return C.struct_cgx_value_get_float32_result{value: C.float(val), error: err}
 }
 
 //export cgx_value_get_float64
-func cgx_value_get_float64(cgxValue C.cgx_value) C.double {
-	return C.double(atomFromDeviceArray[float64](cgxValue))
+func cgx_value_get_float64(cgxValue C.cgx_value) C.struct_cgx_value_get_float64_result {
+	val, err := atomFromDeviceArray[float64]("cgx_value_get_float64", cgxValue)
+	return C.struct_cgx_value_get_float64_result{value: C.double(val), error: err}
 }
 
 //export cgx_value_get_int32
-func cgx_value_get_int32(cgxValue C.cgx_value) C.int32_t {
-	return C.int32_t(atomFromDeviceArray[int32](cgxValue))
+func cgx_value_get_int32(cgxValue C.cgx_value) C.struct_cgx_value_get_int32_result {
+	val, err := atomFromDeviceArray[int32]("cgx_value_get_int32", cgxValue)
+	return C.struct_cgx_value_get_int32_result{value: C.int32_t(val), error: err}
 }
 
 //export cgx_value_get_int64
-func cgx_value_get_int64(cgxValue C.cgx_value) C.int64_t {
-	return C.int64_t(atomFromDeviceArray[int64](cgxValue))
+func cgx_value_get_int64(cgxValue C.cgx_value) C.struct_cgx_value_get_int64_result {
+	val, err := atomFromDeviceArray[int64]("cgx_value_get_int64", cgxValue)
+	return C.struct_cgx_value_get_int64_result{value: C.int64_t(val), error: err}
 }
 
 //export cgx_value_get_uint32
-func cgx_value_get_uint32(cgxValue C.cgx_value) C.uint32_t {
-	return C.uint32_t(atomFromDeviceArray[uint32](cgxValue))
+func cgx_value_get_uint32(cgxValue C.cgx_value) C.struct_cgx_value_get_uint32_result {
+	val, err := atomFromDeviceArray[uint32]("cgx_value_get_uint32", cgxValue)
+	return C.struct_cgx_value_get_uint32_result{value: C.uint32_t(val), error: err}
 }
 
 //export cgx_value_get_uint64
-func cgx_value_get_uint64(cgxValue C.cgx_value) C.uint64_t {
-	return C.uint64_t(atomFromDeviceArray[uint64](cgxValue))
+func cgx_value_get_uint64(cgxValue C.cgx_value) C.struct_cgx_value_get_uint64_result {
+	val, err := atomFromDeviceArray[uint64]("cgx_value_get_uint64", cgxValue)
+	return C.struct_cgx_value_get_uint64_result{value: C.uint64_t(val), error: err}
 }
 
 //export cgx_value_host_buffer

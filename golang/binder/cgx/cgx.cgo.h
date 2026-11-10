@@ -110,6 +110,48 @@ struct cgx_value_new_result {
 	cgx_error error;
 };
 
+// cgx_value_get_bool_result is the return value for cgx_value_get_bool().
+struct cgx_value_get_bool_result {
+	bool value;
+	cgx_error error;
+};
+
+// cgx_value_get_float32_result is the return value for cgx_value_get_float32().
+struct cgx_value_get_float32_result {
+	float value;
+	cgx_error error;
+};
+
+// cgx_value_get_float64_result is the return value for cgx_value_get_float64().
+struct cgx_value_get_float64_result {
+	double value;
+	cgx_error error;
+};
+
+// cgx_value_get_int32_result is the return value for cgx_value_get_int32().
+struct cgx_value_get_int32_result {
+	int32_t value;
+	cgx_error error;
+};
+
+// cgx_value_get_int64_result is the return value for cgx_value_get_int64().
+struct cgx_value_get_int64_result {
+	int64_t value;
+	cgx_error error;
+};
+
+// cgx_value_get_uint32_result is the return value for cgx_value_get_uint32().
+struct cgx_value_get_uint32_result {
+	uint32_t value;
+	cgx_error error;
+};
+
+// cgx_value_get_uint64_result is the return value for cgx_value_get_uint64().
+struct cgx_value_get_uint64_result {
+	uint64_t value;
+	cgx_error error;
+};
+
 // cgx_value_host_buffer_result is the return value for cgx_value_host_buffer().
 struct cgx_value_host_buffer_result {
 	cgx_host_buffer buffer;
@@ -239,13 +281,13 @@ extern struct cgx_value_new_result cgx_value_new_uint64(cgx_device cgxDevice, ui
 extern struct cgx_value_new_result cgx_value_send(cgx_device cgxDevice, cgx_shape cgxShape, cvoid_t* data, uint64_t dataSize);
 extern enum cgx_value_kind cgx_value_kind_of(cgx_value cgxValue);
 extern cgx_shape cgx_value_shape(cgx_value cgxValue);
-extern _Bool cgx_value_get_bool(cgx_value cgxValue);
-extern float cgx_value_get_float32(cgx_value cgxValue);
-extern double cgx_value_get_float64(cgx_value cgxValue);
-extern int32_t cgx_value_get_int32(cgx_value cgxValue);
-extern int64_t cgx_value_get_int64(cgx_value cgxValue);
-extern uint32_t cgx_value_get_uint32(cgx_value cgxValue);
-extern uint64_t cgx_value_get_uint64(cgx_value cgxValue);
+extern struct cgx_value_get_bool_result cgx_value_get_bool(cgx_value cgxValue);
+extern struct cgx_value_get_float32_result cgx_value_get_float32(cgx_value cgxValue);
+extern struct cgx_value_get_float64_result cgx_value_get_float64(cgx_value cgxValue);
+extern struct cgx_value_get_int32_result cgx_value_get_int32(cgx_value cgxValue);
+extern struct cgx_value_get_int64_result cgx_value_get_int64(cgx_value cgxValue);
+extern struct cgx_value_get_uint32_result cgx_value_get_uint32(cgx_value cgxValue);
+extern struct cgx_value_get_uint64_result cgx_value_get_uint64(cgx_value cgxValue);
 extern struct cgx_value_host_buffer_result cgx_value_host_buffer(cgx_value cgxValue);
 extern cgx_error cgx_value_field_set(cgx_value crecv, cchar_t* fieldNamePtr, cgx_value cval);
 extern struct cgx_value_field_get_result cgx_value_field_get(cgx_value crecv, cchar_t* fieldNamePtr);

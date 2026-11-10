@@ -383,38 +383,80 @@ Type Value::get_type(const Package& package) const {
   return Type(iface);
 }
 
+absl::StatusOr<bool> Value::bool_value() const {
+  const cgx_value_get_bool_result result = cgx_value_get_bool(raw());
+  CPPGX_RETURN_IF_ERROR(result.error);
+  return result.value;
+}
+
+absl::StatusOr<float> Value::float32_value() const {
+  const cgx_value_get_float32_result result = cgx_value_get_float32(raw());
+  CPPGX_RETURN_IF_ERROR(result.error);
+  return result.value;
+}
+
+absl::StatusOr<double> Value::float64_value() const {
+  const cgx_value_get_float64_result result = cgx_value_get_float64(raw());
+  CPPGX_RETURN_IF_ERROR(result.error);
+  return result.value;
+}
+
+absl::StatusOr<int32_t> Value::int32_value() const {
+  const cgx_value_get_int32_result result = cgx_value_get_int32(raw());
+  CPPGX_RETURN_IF_ERROR(result.error);
+  return result.value;
+}
+
+absl::StatusOr<int64_t> Value::int64_value() const {
+  const cgx_value_get_int64_result result = cgx_value_get_int64(raw());
+  CPPGX_RETURN_IF_ERROR(result.error);
+  return result.value;
+}
+
+absl::StatusOr<uint32_t> Value::uint32_value() const {
+  const cgx_value_get_uint32_result result = cgx_value_get_uint32(raw());
+  CPPGX_RETURN_IF_ERROR(result.error);
+  return result.value;
+}
+
+absl::StatusOr<uint64_t> Value::uint64_value() const {
+  const cgx_value_get_uint64_result result = cgx_value_get_uint64(raw());
+  CPPGX_RETURN_IF_ERROR(result.error);
+  return result.value;
+}
+
 template <>
-bool Value::get<bool>() const {
+absl::StatusOr<bool> Value::get<bool>() const {
   return bool_value();
 }
 
 template <>
-float Value::get<float>() const {
+absl::StatusOr<float> Value::get<float>() const {
   return float32_value();
 }
 
 template <>
-double Value::get<double>() const {
+absl::StatusOr<double> Value::get<double>() const {
   return float64_value();
 }
 
 template <>
-int32_t Value::get<int32_t>() const {
+absl::StatusOr<int32_t> Value::get<int32_t>() const {
   return int32_value();
 }
 
 template <>
-int64_t Value::get<int64_t>() const {
+absl::StatusOr<int64_t> Value::get<int64_t>() const {
   return int64_value();
 }
 
 template <>
-uint32_t Value::get<uint32_t>() const {
+absl::StatusOr<uint32_t> Value::get<uint32_t>() const {
   return uint32_value();
 }
 
 template <>
-uint64_t Value::get<uint64_t>() const {
+absl::StatusOr<uint64_t> Value::get<uint64_t>() const {
   return uint64_value();
 }
 
