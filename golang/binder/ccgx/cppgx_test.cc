@@ -161,7 +161,8 @@ TEST_F(cppgx, SetStaticVar) {
   auto& return_values = result.return_values();
   ASSERT_EQ(return_values.size(), 1);
   ASSERT_EQ(return_values[0].kind(), CGX_INT32);
-  ASSERT_EQ(return_values[0].int32_value(), 24);
+  ASSERT_OK_AND_ASSIGN(int32_t got, return_values[0].int32_value());
+  ASSERT_EQ(got, 24);
 }
 
 TEST_F(cppgx, ListFunctions) {
@@ -241,7 +242,8 @@ TEST_F(cppgx, RunFunction) {
   auto& return_values = result.return_values();
   ASSERT_EQ(return_values.size(), 1);
   ASSERT_EQ(return_values[0].kind(), CGX_FLOAT32);
-  EXPECT_NEAR(return_values[0].float32_value(), 4.2, 0.000001);
+  ASSERT_OK_AND_ASSIGN(float got, return_values[0].float32_value());
+  EXPECT_NEAR(got, 4.2, 0.000001);
 }
 
 TEST_F(cppgx, RunFunction_ReturnArrayFloat32) {
@@ -279,13 +281,16 @@ TEST_F(cppgx, RunFunction_ReturnMultiple) {
   const auto& return_values = result.return_values();
   ASSERT_EQ(return_values.size(), 3);
   ASSERT_EQ(return_values[0].kind(), CGX_INT32);
-  EXPECT_EQ(return_values[0].int32_value(), 0);
+  ASSERT_OK_AND_ASSIGN(int32_t got0, return_values[0].int32_value());
+  EXPECT_EQ(got0, 0);
 
   ASSERT_EQ(return_values[1].kind(), CGX_FLOAT32);
-  EXPECT_NEAR(return_values[1].float32_value(), 1, 0.000001);
+  ASSERT_OK_AND_ASSIGN(float got1, return_values[1].float32_value());
+  EXPECT_NEAR(got1, 1, 0.000001);
 
   ASSERT_EQ(return_values[2].kind(), CGX_FLOAT64);
-  EXPECT_NEAR(return_values[2].float64_value(), 2.71828, 0.000001);
+  ASSERT_OK_AND_ASSIGN(double got2, return_values[2].float64_value());
+  EXPECT_NEAR(got2, 2.71828, 0.000001);
 }
 
 TEST_F(cppgx, RunMethod_AddPrivate) {
@@ -305,7 +310,8 @@ TEST_F(cppgx, RunMethod_AddPrivate) {
   ASSERT_OK_AND_ASSIGN(Function addFunc, basic.FindMethod("AddPrivate"));
   ASSERT_OK_AND_ASSIGN(FunctionResult addResult,
                        addFunc.RunMethod(return_values[0], {}));
-  EXPECT_EQ(addResult.return_values()[0].int32_value(), 6);
+  ASSERT_OK_AND_ASSIGN(int32_t got, addResult.return_values()[0].int32_value());
+  EXPECT_EQ(got, 6);
 }
 
 TEST_F(cppgx, RunMethod_FindInterface) {
@@ -319,7 +325,8 @@ TEST_F(cppgx, RunMethod_FindInterface) {
   ASSERT_OK_AND_ASSIGN(Function addFunc, basic.FindMethod("AddPrivate"));
   ASSERT_OK_AND_ASSIGN(FunctionResult addResult,
                        addFunc.RunMethod(return_values[0], {}));
-  EXPECT_EQ(addResult.return_values()[0].int32_value(), 6);
+  ASSERT_OK_AND_ASSIGN(int32_t got, addResult.return_values()[0].int32_value());
+  EXPECT_EQ(got, 6);
 }
 
 TEST_F(cppgx, Interface_ListMethods) {
@@ -361,7 +368,8 @@ TEST_F(cppgx, RunFunction_AddInt) {
   const auto& return_values = result.return_values();
   ASSERT_EQ(return_values.size(), 1);
   ASSERT_EQ(return_values[0].kind(), CGX_INT64);
-  EXPECT_EQ(return_values[0].int64_value(), 66);
+  ASSERT_OK_AND_ASSIGN(int64_t got, return_values[0].int64_value());
+  EXPECT_EQ(got, 66);
 }
 
 TEST_F(cppgx, RunFunction_MissingParameters) {
@@ -481,7 +489,8 @@ TEST_F(cppgx, Struct_GetField) {
   const auto& return_values = result.return_values();
   ASSERT_OK_AND_ASSIGN(Value value, return_values[0].GetField("Int"));
   ASSERT_EQ(value.kind(), CGX_INT32);
-  EXPECT_EQ(value.int32_value(), 42);
+  ASSERT_OK_AND_ASSIGN(int32_t got, value.int32_value());
+  EXPECT_EQ(got, 42);
 }
 
 TEST_F(cppgx, Struct_SetField) {
@@ -496,7 +505,8 @@ TEST_F(cppgx, Struct_SetField) {
   ASSERT_OK(return_values[0].SetField("Int", new_value));
   ASSERT_OK_AND_ASSIGN(Value value, return_values[0].GetField("Int"));
   ASSERT_EQ(value.kind(), CGX_INT32);
-  EXPECT_EQ(value.int32_value(), 42);
+  ASSERT_OK_AND_ASSIGN(int32_t got, value.int32_value());
+  EXPECT_EQ(got, 42);
 }
 
 TEST_F(cppgx, Struct_ListFields) {
@@ -531,6 +541,44 @@ TEST_F(cppgx, ValueHostBuffer_NotDeviceArray) {
                   "cannot convert *elements.NamedType to *hostio.DeviceArray"));
 }
 
+TEST_F(cppgx, ValueGet_NotDeviceArray) {
+  ASSERT_OK_AND_ASSIGN(Runtime runtime, TestRuntime());
+  ASSERT_OK_AND_ASSIGN(Device device, runtime.GetDevice(0));
+  ASSERT_OK_AND_ASSIGN(Package package, device.BuildPackage(kBasicPackage));
+  ASSERT_OK_AND_ASSIGN(Function function, package.FindFunction("New"));
+  ASSERT_OK_AND_ASSIGN(FunctionResult result, function.Run({}));
+
+  const auto& return_values = result.return_values();
+  ASSERT_EQ(return_values.size(), 1);
+  ASSERT_EQ(return_values[0].kind(), CGX_STRUCT);
+
+  absl::StatusOr<int32_t> int_val = return_values[0].int32_value();
+  ASSERT_FALSE(int_val.ok());
+  EXPECT_THAT(int_val.status().message(),
+              ::testing::HasSubstr(
+                  "cannot convert *elements.NamedType to *hostio.DeviceArray"));
+}
+
+TEST_F(cppgx, ValueGet_NonMatchingScalarShape) {
+  ASSERT_OK_AND_ASSIGN(Runtime runtime, TestRuntime());
+  ASSERT_OK_AND_ASSIGN(Device device, runtime.GetDevice(0));
+
+  ASSERT_OK_AND_ASSIGN(Value f32, Value::FromFloat32(device, 4.2));
+  absl::StatusOr<int32_t> wrong_dtype = f32.int32_value();
+  ASSERT_FALSE(wrong_dtype.ok());
+  EXPECT_THAT(wrong_dtype.status().message(),
+              ::testing::HasSubstr("want scalar of type Int32"));
+
+  const float data[] = {4, 2, 4.2};
+  ASSERT_OK_AND_ASSIGN(Shape shape, Shape::New(CGX_FLOAT32, {3}));
+  ASSERT_OK_AND_ASSIGN(Value arr,
+                       Value::Send(device, shape, absl::MakeSpan(data)));
+  absl::StatusOr<float> wrong_rank = arr.float32_value();
+  ASSERT_FALSE(wrong_rank.ok());
+  EXPECT_THAT(wrong_rank.status().message(),
+              ::testing::HasSubstr("want scalar of type Float32"));
+}
+
 // DTypes tests.
 
 TEST_F(cppgx, DTypes_Bool) {
@@ -541,7 +589,8 @@ TEST_F(cppgx, DTypes_Bool) {
   ASSERT_OK_AND_ASSIGN(Value v0, Value::FromBool(device, true));
   ASSERT_OK_AND_ASSIGN(FunctionResult result, function.Run({v0}));
   const auto& return_values = result.return_values();
-  EXPECT_FALSE(return_values[0].bool_value());
+  ASSERT_OK_AND_ASSIGN(bool got, return_values[0].bool_value());
+  EXPECT_FALSE(got);
 }
 
 #define MINFLOAT32 std::numeric_limits<float>::min()
@@ -555,7 +604,8 @@ TEST_F(cppgx, DTypes_Float32) {
   ASSERT_OK_AND_ASSIGN(Value v0, Value::FromFloat32(device, MAXFLOAT32));
   ASSERT_OK_AND_ASSIGN(FunctionResult result, function.Run({v0}));
   const auto& return_values = result.return_values();
-  EXPECT_EQ(return_values[0].float32_value(), -MAXFLOAT32);
+  ASSERT_OK_AND_ASSIGN(float got, return_values[0].float32_value());
+  EXPECT_EQ(got, -MAXFLOAT32);
 }
 
 TEST_F(cppgx, DTypes_ArrayFloat32) {
@@ -583,7 +633,8 @@ TEST_F(cppgx, DTypes_Float64) {
   ASSERT_OK_AND_ASSIGN(Value v0, Value::FromFloat64(device, MAXFLOAT64));
   ASSERT_OK_AND_ASSIGN(FunctionResult result, function.Run({v0}));
   const auto& return_values = result.return_values();
-  EXPECT_EQ(return_values[0].float64_value(), -MAXFLOAT64);
+  ASSERT_OK_AND_ASSIGN(double got, return_values[0].float64_value());
+  EXPECT_EQ(got, -MAXFLOAT64);
 }
 
 TEST_F(cppgx, DTypes_ArrayFloat64) {
@@ -611,7 +662,8 @@ TEST_F(cppgx, DTypes_Int32) {
   ASSERT_OK_AND_ASSIGN(Value v0, Value::FromInt32(device, MAXINT32));
   ASSERT_OK_AND_ASSIGN(FunctionResult result, function.Run({v0}));
   const auto& return_values = result.return_values();
-  EXPECT_EQ(return_values[0].int32_value(), -MAXINT32);
+  ASSERT_OK_AND_ASSIGN(int32_t got, return_values[0].int32_value());
+  EXPECT_EQ(got, -MAXINT32);
 }
 
 TEST_F(cppgx, DTypes_ArrayInt32) {
@@ -639,7 +691,8 @@ TEST_F(cppgx, DTypes_Int64) {
   ASSERT_OK_AND_ASSIGN(Value v0, Value::FromInt64(device, MAXINT64));
   ASSERT_OK_AND_ASSIGN(FunctionResult result, function.Run({v0}));
   const auto& return_values = result.return_values();
-  EXPECT_EQ(return_values[0].int64_value(), -MAXINT64);
+  ASSERT_OK_AND_ASSIGN(int64_t got, return_values[0].int64_value());
+  EXPECT_EQ(got, -MAXINT64);
 }
 
 TEST_F(cppgx, DTypes_ArrayInt64) {
@@ -666,7 +719,8 @@ TEST_F(cppgx, DTypes_Uint32) {
   ASSERT_OK_AND_ASSIGN(Value v0, Value::FromUint32(device, MAXUINT32));
   ASSERT_OK_AND_ASSIGN(FunctionResult result, function.Run({v0}));
   const auto& return_values = result.return_values();
-  EXPECT_EQ(return_values[0].uint32_value(), -MAXUINT32);
+  ASSERT_OK_AND_ASSIGN(uint32_t got, return_values[0].uint32_value());
+  EXPECT_EQ(got, -MAXUINT32);
 }
 
 TEST_F(cppgx, DTypes_ArrayUint32) {
@@ -693,7 +747,8 @@ TEST_F(cppgx, DTypes_Uint64) {
   ASSERT_OK_AND_ASSIGN(Value v0, Value::FromUint64(device, MAXUINT64));
   ASSERT_OK_AND_ASSIGN(FunctionResult result, function.Run({v0}));
   const auto& return_values = result.return_values();
-  EXPECT_EQ(return_values[0].uint64_value(), -MAXUINT64);
+  ASSERT_OK_AND_ASSIGN(uint64_t got, return_values[0].uint64_value());
+  EXPECT_EQ(got, -MAXUINT64);
 }
 
 TEST_F(cppgx, DTypes_ArrayUint64) {

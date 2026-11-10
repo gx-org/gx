@@ -19,10 +19,13 @@ package gocgx
 import "C"
 
 import (
+	"errors"
 	"fmt"
 	"strings"
 	"testing"
 
+	"github.com/gomlx/compute"
+	"github.com/gomlx/compute/shapes"
 	"github.com/gx-org/gx/api/hostio"
 	"github.com/gx-org/gx/cgx/handle"
 	cgxtesting "github.com/gx-org/gx/golang/binder/cgx/testing"
@@ -170,5 +173,81 @@ func TestValueHostBufferToHostError(t *testing.T) {
 		if !strings.Contains(got, want) {
 			t.Errorf("cgx_value_host_buffer(%v) error = %q, want substring %q", val.value, got, want)
 		}
+	}
+}
+
+type failingTransferBuffer struct {
+	compute.Buffer
+	shapeErr    error
+	transferErr error
+}
+
+func (b *failingTransferBuffer) Shape() (shapes.Shape, error) {
+	if b.shapeErr != nil {
+		return shapes.Shape{}, b.shapeErr
+	}
+	return b.Buffer.Shape()
+}
+
+func (b *failingTransferBuffer) ToFlatData(any) error {
+	return b.transferErr
+}
+
+// TestValueGetFetchError tests that calling a scalar getter returns a contextualized error when
+// querying the shape or fetching the value from the device fails.
+// The test is not in a _test.go file because Go does not support CGo in test files.
+func TestValueGetFetchError(t *testing.T) {
+	defer cgxtesting.CheckHandleCount(t, handle.Count())
+	_, dev, finalize, err := Setup(nil)
+	if err != nil {
+		t.Fatal(err)
+	}
+	defer finalize()
+
+	val := C.cgx_value_new_int64(C.cgx_device(dev), 42)
+	if val.error != Null {
+		t.Fatal(GoError(Error(val.error)))
+	}
+	defer C.cgx_release_reference(val.value)
+
+	orig := handle.Unwrap[hostio.Value](handle.Handle(val.value)).(*hostio.DeviceArray)
+	failingBuf := &failingTransferBuffer{Buffer: orig.Buffer()}
+	failingArray, err := hostio.NewDeviceArray(orig.Type(), failingBuf)
+	if err != nil {
+		t.Fatalf("NewDeviceArray() unexpected error: %v", err)
+	}
+	failingHandle := C.cgx_value(handle.Wrap[hostio.Value](failingArray))
+	defer C.cgx_release_reference(failingHandle)
+
+	wantShapeErr := errors.New("device shape failed")
+	failingBuf.shapeErr = wantShapeErr
+	shapeRes := C.cgx_value_get_int64(failingHandle)
+	if shapeRes.value != 0 {
+		t.Errorf("cgx_value_get_int64(%v) value = %v, want 0", failingHandle, shapeRes.value)
+	}
+	if shapeRes.error == Null {
+		t.Fatalf("cgx_value_get_int64(%v) error = %v, want non-zero handle", failingHandle, Null)
+	}
+	defer C.cgx_release_reference(C.cgx_handle(shapeRes.error))
+	if got, want := GoError(Error(shapeRes.error)).Error(), fmt.Sprintf("cgx_value_get_int64: value of handle %d (type int64): %s", failingHandle, wantShapeErr); !strings.Contains(got, want) {
+		t.Errorf("cgx_value_get_int64(%v) error = %q, want substring %q", failingHandle, got, want)
+	}
+
+	failingBuf.shapeErr = nil
+	wantTransferErr := errors.New("device transfer failed")
+	failingBuf.transferErr = wantTransferErr
+	res := C.cgx_value_get_int64(failingHandle)
+	if res.value != 0 {
+		t.Errorf("cgx_value_get_int64(%v) value = %v, want 0", failingHandle, res.value)
+	}
+	if res.error == Null {
+		t.Fatalf("cgx_value_get_int64(%v) error = %v, want non-zero handle", failingHandle, Null)
+	}
+	defer C.cgx_release_reference(C.cgx_handle(res.error))
+
+	got := GoError(Error(res.error)).Error()
+	want := fmt.Sprintf("cgx_value_get_int64: value of handle %d (type int64): %s", failingHandle, wantTransferErr)
+	if !strings.Contains(got, want) {
+		t.Errorf("cgx_value_get_int64(%v) error = %q, want substring %q", failingHandle, got, want)
 	}
 }

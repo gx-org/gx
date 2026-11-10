@@ -236,18 +236,18 @@ class Value {
   enum cgx_value_kind kind() const { return cgx_value_kind_of(*value_); }
 
   template <typename T>
-  T get() const;
+  absl::StatusOr<T> get() const;
 
   absl::StatusOr<Value> GetField(const std::string& name) const;
   absl::Status SetField(const std::string& name, const Value& value) const;
 
-  bool bool_value() const { return cgx_value_get_bool(*value_); }
-  float float32_value() const { return cgx_value_get_float32(*value_); }
-  double float64_value() const { return cgx_value_get_float64(*value_); }
-  int32_t int32_value() const { return cgx_value_get_int32(*value_); }
-  int64_t int64_value() const { return cgx_value_get_int64(*value_); }
-  uint32_t uint32_value() const { return cgx_value_get_uint32(*value_); }
-  uint64_t uint64_value() const { return cgx_value_get_uint64(*value_); }
+  absl::StatusOr<bool> bool_value() const;
+  absl::StatusOr<float> float32_value() const;
+  absl::StatusOr<double> float64_value() const;
+  absl::StatusOr<int32_t> int32_value() const;
+  absl::StatusOr<int64_t> int64_value() const;
+  absl::StatusOr<uint32_t> uint32_value() const;
+  absl::StatusOr<uint64_t> uint64_value() const;
   Type get_type(const Package& package) const;
   std::string string() const;
 

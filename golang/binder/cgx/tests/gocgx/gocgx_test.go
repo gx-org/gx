@@ -32,3 +32,7 @@ func TestGenericSlice(t *testing.T) {
 func TestValueHostBufferToHostError(t *testing.T) {
 	gocgx.TestValueHostBufferToHostError(t)
 }
+
+func TestValueGetFetchError(t *testing.T) {
+	gocgx.TestValueGetFetchError(t)
+}

@@ -231,7 +231,9 @@ TEST_F(cgx, PackageSetStaticVar) {
   CGX_ASSERT_OK(rr.error);
   ASSERT_EQ(rr.value_size, 1);
   ASSERT_EQ(cgx_value_kind_of(rr.values[0]), CGX_INT32);
-  EXPECT_EQ(cgx_value_get_int32(rr.values[0]), 42);
+  const auto got = cgx_value_get_int32(rr.values[0]);
+  CGX_ASSERT_OK(got.error);
+  EXPECT_EQ(got.value, 42);
 
   cgx_release_references(rr.values, rr.value_size);
   cgx_free_function_run_result(&rr);
@@ -277,7 +279,9 @@ TEST_F(cgx, RunFunction_ReturnFloat32) {
 
   ASSERT_EQ(rr.value_size, 1);
   ASSERT_EQ(cgx_value_kind_of(rr.values[0]), CGX_FLOAT32);
-  EXPECT_NEAR(cgx_value_get_float32(rr.values[0]), 4.2, 0.000001);
+  const auto got = cgx_value_get_float32(rr.values[0]);
+  CGX_ASSERT_OK(got.error);
+  EXPECT_NEAR(got.value, 4.2, 0.000001);
   const std::string value_str = FromHeapCString(cgx_value_string(rr.values[0]));
   EXPECT_EQ(value_str, "DeviceArray{DeviceID: 0}: float32(4.2)");
 
@@ -345,13 +349,19 @@ TEST_F(cgx, RunFunction_ReturnMultiple) {
   ASSERT_EQ(rr.value_size, 3);
 
   ASSERT_EQ(cgx_value_kind_of(rr.values[0]), CGX_INT32);
-  EXPECT_EQ(cgx_value_get_int32(rr.values[0]), 0);
+  const auto got0 = cgx_value_get_int32(rr.values[0]);
+  CGX_ASSERT_OK(got0.error);
+  EXPECT_EQ(got0.value, 0);
 
   ASSERT_EQ(cgx_value_kind_of(rr.values[1]), CGX_FLOAT32);
-  EXPECT_NEAR(cgx_value_get_float32(rr.values[1]), 1, 0.000001);
+  const auto got1 = cgx_value_get_float32(rr.values[1]);
+  CGX_ASSERT_OK(got1.error);
+  EXPECT_NEAR(got1.value, 1, 0.000001);
 
   ASSERT_EQ(cgx_value_kind_of(rr.values[2]), CGX_FLOAT64);
-  EXPECT_NEAR(cgx_value_get_float64(rr.values[2]), 2.71828, 0.000001);
+  const auto got2 = cgx_value_get_float64(rr.values[2]);
+  CGX_ASSERT_OK(got2.error);
+  EXPECT_NEAR(got2.value, 2.71828, 0.000001);
 
   cgx_release_references(rr.values, rr.value_size);
   cgx_free_function_run_result(&rr);
@@ -382,7 +392,9 @@ TEST_F(cgx, RunMethod_AddPrivate) {
   CGX_ASSERT_OK(faddr.error);
   auto rsumr = cgx_function_run(faddr.function, rnewr.values[0], 0, nullptr);
   CGX_ASSERT_OK(rsumr.error);
-  EXPECT_EQ(cgx_value_get_int32(rsumr.values[0]), 6);
+  const auto sum = cgx_value_get_int32(rsumr.values[0]);
+  CGX_ASSERT_OK(sum.error);
+  EXPECT_EQ(sum.value, 6);
 
   cgx_release_references(rsumr.values, rsumr.value_size);
   cgx_free_function_run_result(&rsumr);
@@ -407,7 +419,9 @@ TEST_F(cgx, RunMethod_PackageFindInterface) {
   CGX_ASSERT_OK(faddr.error);
   auto rsumr = cgx_function_run(faddr.function, rnewr.values[0], 0, nullptr);
   CGX_ASSERT_OK(rsumr.error);
-  EXPECT_EQ(cgx_value_get_int32(rsumr.values[0]), 6);
+  const auto sum = cgx_value_get_int32(rsumr.values[0]);
+  CGX_ASSERT_OK(sum.error);
+  EXPECT_EQ(sum.value, 6);
   cgx_release_references(rsumr.values, rsumr.value_size);
   cgx_free_function_run_result(&rsumr);
   cgx_release_reference(faddr.function);
@@ -462,7 +476,9 @@ TEST_F(cgx, RunFunction_AddInt) {
   CGX_ASSERT_OK(rr.error);
   ASSERT_EQ(rr.value_size, 1);
   ASSERT_EQ(cgx_value_kind_of(rr.values[0]), CGX_INT64);
-  EXPECT_EQ(cgx_value_get_int64(rr.values[0]), 6);
+  const auto got = cgx_value_get_int64(rr.values[0]);
+  CGX_ASSERT_OK(got.error);
+  EXPECT_EQ(got.value, 6);
 
   cgx_release_reference(vr_0.value);
   cgx_release_reference(vr_1.value);
@@ -524,7 +540,9 @@ TEST_F(cgx, NewValue_Float32) {
   const auto vr = cgx_value_new_float32(device(), 4.2);
   CGX_ASSERT_OK(vr.error);
   ASSERT_EQ(cgx_value_kind_of(vr.value), CGX_FLOAT32);
-  EXPECT_NEAR(cgx_value_get_float32(vr.value), 4.2, 0.000001);
+  const auto got = cgx_value_get_float32(vr.value);
+  CGX_ASSERT_OK(got.error);
+  EXPECT_NEAR(got.value, 4.2, 0.000001);
 
   cgx_release_reference(vr.value);
 }
@@ -592,7 +610,9 @@ TEST_F(cgx, StructGetField) {
   auto fgr = cgx_value_field_get(rnewr.values[0], "Int");
   CGX_ASSERT_OK(fgr.error);
   ASSERT_EQ(cgx_value_kind_of(fgr.value), CGX_INT32);
-  EXPECT_EQ(cgx_value_get_int32(fgr.value), 42);
+  const auto got = cgx_value_get_int32(fgr.value);
+  CGX_ASSERT_OK(got.error);
+  EXPECT_EQ(got.value, 42);
 
   cgx_release_reference(fgr.value);
   cgx_release_references(rnewr.values, rnewr.value_size);
@@ -620,7 +640,9 @@ TEST_F(cgx, StructSetField) {
   const auto fgr = cgx_value_field_get(rnewr.values[0], "Int");
   CGX_ASSERT_OK(fgr.error);
   ASSERT_EQ(cgx_value_kind_of(fgr.value), CGX_INT32);
-  EXPECT_EQ(cgx_value_get_int32(fgr.value), 24);
+  const auto got = cgx_value_get_int32(fgr.value);
+  CGX_ASSERT_OK(got.error);
+  EXPECT_EQ(got.value, 24);
 
   cgx_release_reference(fgr.value);
   cgx_release_reference(new_value.value);
@@ -683,6 +705,60 @@ TEST_F(cgx, ValueHostBuffer_NotDeviceArray) {
   cgx_free_function_run_result(&rnewr);
   cgx_release_reference(fnewr.function);
   cgx_release_reference(pr.package);
+}
+
+TEST_F(cgx, ValueGet_NotDeviceArray) {
+  struct build_result pr(BuildPackage(kBasicPackage));
+  CGX_ASSERT_OK(pr.error);
+
+  const auto fnewr = cgx_function_find(pr.package, "New");
+  CGX_ASSERT_OK(fnewr.error);
+
+  auto rnewr = cgx_function_run(fnewr.function, cgx_value{}, 0, nullptr);
+  CGX_ASSERT_OK(rnewr.error);
+  ASSERT_EQ(rnewr.value_size, 1);
+  ASSERT_EQ(cgx_value_kind_of(rnewr.values[0]), CGX_STRUCT);
+
+  const cgx_value_get_int32_result get_result =
+      cgx_value_get_int32(rnewr.values[0]);
+  EXPECT_EQ(get_result.value, 0);
+  ASSERT_NE(get_result.error, cgx_error{});
+  EXPECT_THAT(ErrorMessage(get_result.error),
+              ::testing::HasSubstr(
+                  "cannot convert *elements.NamedType to *hostio.DeviceArray"));
+  cgx_release_reference(get_result.error);
+
+  cgx_release_references(rnewr.values, rnewr.value_size);
+  cgx_free_function_run_result(&rnewr);
+  cgx_release_reference(fnewr.function);
+  cgx_release_reference(pr.package);
+}
+
+TEST_F(cgx, ValueGet_NonMatchingScalarShape) {
+  const auto f32 = cgx_value_new_float32(device(), 4.2);
+  CGX_ASSERT_OK(f32.error);
+  const cgx_value_get_int32_result wrong_dtype = cgx_value_get_int32(f32.value);
+  EXPECT_EQ(wrong_dtype.value, 0);
+  ASSERT_NE(wrong_dtype.error, cgx_error{});
+  EXPECT_THAT(ErrorMessage(wrong_dtype.error),
+              ::testing::HasSubstr("want scalar of type Int32"));
+  cgx_release_reference(wrong_dtype.error);
+  cgx_release_reference(f32.value);
+
+  const float data[] = {4, 2, 4.2};
+  const int64_t axes[] = {3};
+  const cgx_shape shape = cgx_shape_new(CGX_FLOAT32, axes, std::size(axes));
+  const auto arr = cgx_value_send(device(), shape, data, sizeof(data));
+  CGX_ASSERT_OK(arr.error);
+  const cgx_value_get_float32_result wrong_rank =
+      cgx_value_get_float32(arr.value);
+  EXPECT_EQ(wrong_rank.value, 0);
+  ASSERT_NE(wrong_rank.error, cgx_error{});
+  EXPECT_THAT(ErrorMessage(wrong_rank.error),
+              ::testing::HasSubstr("want scalar of type Float32"));
+  cgx_release_reference(wrong_rank.error);
+  cgx_release_reference(arr.value);
+  cgx_release_reference(shape);
 }
 
 #undef CGX_ASSERT_OK
