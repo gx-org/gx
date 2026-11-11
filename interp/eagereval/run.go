@@ -55,7 +55,7 @@ func Run(dev *api.Device, fn *ir.FuncDecl, receiver hostio.Value, args []hostio.
 		return nil, err
 	}
 	// Convert the receiver and arguments values into elements for the interpreter.
-	in, err := ops.funcInputsToElements(fitp, fn, receiver, args)
+	in, err := hostio.FuncInputsToElements(ops, fitp, fn, receiver, args)
 	if err != nil {
 		return nil, err
 	}

@@ -80,7 +80,7 @@ func GraphFromElement(env *engine.Env, call *ir.FuncCallExpr, el ir.Element, arg
 	proc := processor.New()
 	subReg, subOps := New(env.Registry().Importer, proc, subGraph)
 	fnIR := fn.FuncIR()
-	vis := newInputVisitor(subOps, fnIR.File())
+	vis := newInputVisitor(subOps, fnIR)
 	paramFields := fnIR.FuncType().Params.Fields()
 	subArgs := make([]ir.Element, len(paramFields))
 	for i, param := range paramFields {
@@ -143,7 +143,7 @@ func Trace(dev *api.Device, fn *ir.FuncDecl, receiver hostio.Value, args []hosti
 		return nil, err
 	}
 	// Visit the receiver and arguments values to create elements for the interpreter.
-	in, err := mat.funcInputsToElements(fitp, fn, receiver, args)
+	in, err := hostio.FuncInputsToElements(newInputVisitor(mat, fn), fitp, fn, receiver, args)
 	if err != nil {
 		return nil, err
 	}

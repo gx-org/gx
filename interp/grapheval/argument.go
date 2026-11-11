@@ -17,6 +17,7 @@ package grapheval
 import (
 	"fmt"
 	"reflect"
+	"slices"
 
 	"github.com/pkg/errors"
 	"github.com/gomlx/compute"
@@ -55,12 +56,28 @@ func (f receiverFetcher) LastValue(in *togo.FuncInputs) (any, error) {
 }
 
 type inputVisitor struct {
-	ao   *Ops
-	file *ir.File
+	ao    *Ops
+	fType *ir.FuncType
+	file  *ir.File
 }
 
-func newInputVisitor(ev *Ops, file *ir.File) *inputVisitor {
-	return &inputVisitor{ao: ev, file: file}
+var _ hostio.InputConverter = (*inputVisitor)(nil)
+
+func newInputVisitor(ev *Ops, fn ir.Func) *inputVisitor {
+	return &inputVisitor{ao: ev, fType: fn.FuncType(), file: fn.File()}
+}
+
+// ElementFromReceiverValue converts a function receiver value into an element.
+func (vis *inputVisitor) ElementFromReceiverValue(_ ir.Evaluator, field *ir.Field, val hostio.Value) (ir.Element, error) {
+	return vis.visitReceiver(field, val)
+}
+
+// ElementFromArgValue converts a function argument value into an element.
+func (vis *inputVisitor) ElementFromArgValue(ev ir.Evaluator, field *ir.Field, index int, val hostio.Value) (ir.Element, error) {
+	if slices.Contains(vis.fType.GenParams.Fields.Fields(), field) {
+		return vis.ao.convertToElement(ev, field, val)
+	}
+	return vis.visitArg(field, index, val)
 }
 
 // ArgGX represents a GX argument.
