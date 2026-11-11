@@ -62,6 +62,7 @@ const (
 	IR
 	Package
 	FieldPath
+	FieldIndex
 	MetaType
 
 	// Max value for a Kind constant.
@@ -117,6 +118,8 @@ func (k Kind) String() string {
 		return "builtin"
 	case FieldPath:
 		return "fieldpath"
+	case FieldIndex:
+		return "fieldindex"
 	case MetaType:
 		return "metatype"
 	case Package:

@@ -31,6 +31,9 @@ package testfieldpaths
 
 //gx:unroll
 func Path[T any](path ...string) []fieldpath
+
+//gx:compeval
+func PathFieldIndex[T any](path ...string) []fieldindex
 `,
 	Post: func(pkg *ir.Package) {
 		path := pkg.FindFunc("Path").(*ir.FuncBuiltin)

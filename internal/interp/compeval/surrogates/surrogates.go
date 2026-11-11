@@ -81,6 +81,8 @@ func New(path storepath.Path, typ ir.Type) (Element, error) {
 		return elements.Unknown(), nil
 	case irkind.FieldPath:
 		return newFieldPath(path), nil
+	case irkind.FieldIndex:
+		return newFieldIndex(path), nil
 	}
 	switch typT := typ.(type) {
 	case ir.ArrayType:
