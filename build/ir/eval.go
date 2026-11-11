@@ -91,7 +91,7 @@ var InvalidIdent = &Ident{
 // CompEvalExpr evaluates an expression at compile time and returns
 // the result of the evaluation as an IR expression.
 func CompEvalExpr(ev Fetcher, x Expr) (_ []Expr, err error) {
-	if x.Type().Kind() == irkind.MetaType {
+	if kind := x.Type().Kind(); kind == irkind.MetaType || kind == irkind.Func {
 		return []Expr{x}, nil
 	}
 	el, err := ev.EvalExpr(x)

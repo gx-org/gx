@@ -36,3 +36,7 @@ func TestValueHostBufferToHostError(t *testing.T) {
 func TestValueGetFetchError(t *testing.T) {
 	gocgx.TestValueGetFetchError(t)
 }
+
+func TestInvalidHandlePanic(t *testing.T) {
+	gocgx.TestInvalidHandlePanic(t)
+}

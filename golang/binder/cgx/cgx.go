@@ -224,8 +224,20 @@ func wrap[T comparable](v T) C.cgx_handle {
 	return C.cgx_handle(handle.Wrap[T](v))
 }
 
-func unwrap[T any](h C.cgx_handle) T {
-	return handle.Unwrap[T](handle.Handle(h))
+func unwrap[T any](caller string, h C.cgx_handle) (T, C.cgx_error) {
+	v, err := handle.Unwrap[T](handle.Handle(h))
+	if err != nil {
+		return v, Errorf("%s: %v", caller, err)
+	}
+	return v, 0
+}
+
+func mustUnwrap[T any](caller string, h C.cgx_handle) T {
+	v, err := handle.Unwrap[T](handle.Handle(h))
+	if err != nil {
+		panic(fmt.Sprintf("%s: %v", caller, err))
+	}
+	return v
 }
 
 // copyPrimitiveSlice returns a copy of the slice described by `data` and `size`.
@@ -269,7 +281,7 @@ func cgx_error_verbose(enable C.bool) {
 
 //export cgx_error_message
 func cgx_error_message(cgxError C.cgx_error) *C.cchar_t {
-	err := unwrap[error](cgxError)
+	err := mustUnwrap[error]("cgx_error_message", cgxError)
 	var errS string
 	if verboseError {
 		errS = fmt.Sprintf("%+v\n", err)
@@ -283,8 +295,8 @@ func cgx_error_message(cgxError C.cgx_error) *C.cchar_t {
 
 // cgx_runtime_check returns an error if cgxRuntime is not a valid handle to a GX runtime.
 //
-// Other cgx functions panic, which aborts the process, when given an invalid handle. Use
-// cgx_runtime_check to validate a handle before using it.
+// cgx functions without an error result panic, which aborts the process, when given an invalid
+// handle. Use cgx_runtime_check to validate a runtime handle before taking ownership of it.
 //
 //export cgx_runtime_check
 func cgx_runtime_check(cgxRuntime C.cgx_runtime) C.cgx_error {
@@ -296,7 +308,10 @@ func cgx_runtime_check(cgxRuntime C.cgx_runtime) C.cgx_error {
 
 //export cgx_runtime_release
 func cgx_runtime_release(cgxRuntime C.cgx_runtime) C.cgx_error {
-	rtm := unwrap[*api.Runtime](cgxRuntime)
+	rtm, cErr := unwrap[*api.Runtime]("cgx_runtime_release", cgxRuntime)
+	if cErr != 0 {
+		return cErr
+	}
 	rtm.Backend().Finalize()
 	return 0
 }
@@ -305,7 +320,10 @@ func cgx_runtime_release(cgxRuntime C.cgx_runtime) C.cgx_error {
 
 //export cgx_device_get
 func cgx_device_get(cgxRuntime C.cgx_runtime, deviceIdx int) C.struct_cgx_device_get_result {
-	rtm := unwrap[*api.Runtime](cgxRuntime)
+	rtm, cErr := unwrap[*api.Runtime]("cgx_device_get", cgxRuntime)
+	if cErr != 0 {
+		return C.struct_cgx_device_get_result{error: cErr}
+	}
 	dev, err := rtm.Device(deviceIdx)
 	if err != nil {
 		return C.struct_cgx_device_get_result{
@@ -320,7 +338,7 @@ func cgx_device_get(cgxRuntime C.cgx_runtime, deviceIdx int) C.struct_cgx_device
 
 //export cgx_device_get_runtime
 func cgx_device_get_runtime(cgxDevice C.cgx_device) C.cgx_runtime {
-	dev := unwrap[*core.DeviceSetup](cgxDevice)
+	dev := mustUnwrap[*core.DeviceSetup]("cgx_device_get_runtime", cgxDevice)
 	return (C.cgx_runtime)(wrap[*api.Runtime](dev.Runtime()))
 }
 
@@ -328,7 +346,10 @@ func cgx_device_get_runtime(cgxDevice C.cgx_device) C.cgx_runtime {
 
 //export cgx_package_ir_load
 func cgx_package_ir_load(cgxRuntime C.cgx_runtime, pathPtr *C.cchar_t) C.struct_cgx_package_ir_load_result {
-	rtm := unwrap[*api.Runtime](cgxRuntime)
+	rtm, cErr := unwrap[*api.Runtime]("cgx_package_ir_load", cgxRuntime)
+	if cErr != 0 {
+		return C.struct_cgx_package_ir_load_result{error: cErr}
+	}
 	pkg, err := rtm.Builder().Build(C.GoString(pathPtr))
 	if err != nil {
 		pkg = nil
@@ -343,20 +364,20 @@ func cgx_package_ir_load(cgxRuntime C.cgx_runtime, pathPtr *C.cchar_t) C.struct_
 
 //export cgx_package_ir_build_for
 func cgx_package_ir_build_for(cgxPackageIR C.cgx_package_ir, cgxDevice C.cgx_device) C.cgx_package {
-	dev := unwrap[*core.DeviceSetup](cgxDevice)
-	pkg := unwrap[importers.Package](cgxPackageIR)
+	dev := mustUnwrap[*core.DeviceSetup]("cgx_package_ir_build_for: device", cgxDevice)
+	pkg := mustUnwrap[importers.Package]("cgx_package_ir_build_for: package", cgxPackageIR)
 	return C.cgx_package(wrap[*core.PackageCompileSetup](dev.PackageSetup(pkg)))
 }
 
 //export cgx_package_ir_name
 func cgx_package_ir_name(cgxPackageIR C.cgx_package_ir) *C.cchar_t {
-	pkg := unwrap[importers.Package](cgxPackageIR)
+	pkg := mustUnwrap[importers.Package]("cgx_package_ir_name", cgxPackageIR)
 	return C.CString(pkg.IR().Name.Name)
 }
 
 //export cgx_package_ir_fullname
 func cgx_package_ir_fullname(cgxPackageIR C.cgx_package_ir) *C.cchar_t {
-	pkg := unwrap[importers.Package](cgxPackageIR)
+	pkg := mustUnwrap[importers.Package]("cgx_package_ir_fullname", cgxPackageIR)
 	return C.CString(pkg.IR().Path())
 }
 
@@ -367,7 +388,10 @@ type staticVariable struct {
 
 //export cgx_package_list_statics
 func cgx_package_list_statics(cgxPackage C.cgx_package) C.struct_cgx_list_statics_result {
-	cpkg := unwrap[*core.PackageCompileSetup](cgxPackage)
+	cpkg, cErr := unwrap[*core.PackageCompileSetup]("cgx_package_list_statics", cgxPackage)
+	if cErr != 0 {
+		return C.struct_cgx_list_statics_result{error: cErr}
+	}
 	var statics []*staticVariable
 	for _, vr := range cpkg.IR().ExportedStatics() {
 		statics = append(statics, &staticVariable{pkg: cpkg, vr: vr})
@@ -380,7 +404,7 @@ func cgx_package_list_statics(cgxPackage C.cgx_package) C.struct_cgx_list_static
 
 //export cgx_static_has
 func cgx_static_has(cgxPackage C.cgx_package, staticNamePtr *C.cchar_t) bool {
-	cpkg := unwrap[*core.PackageCompileSetup](cgxPackage)
+	cpkg := mustUnwrap[*core.PackageCompileSetup]("cgx_static_has", cgxPackage)
 	name := C.GoString(staticNamePtr)
 	vr := cpkg.IR().FindStatic(name)
 	return vr != nil
@@ -388,7 +412,11 @@ func cgx_static_has(cgxPackage C.cgx_package, staticNamePtr *C.cchar_t) bool {
 
 //export cgx_static_find
 func cgx_static_find(cgxPackage C.cgx_package, staticNamePtr *C.cchar_t) (res C.struct_cgx_static_find_result) {
-	cpkg := unwrap[*core.PackageCompileSetup](cgxPackage)
+	cpkg, cErr := unwrap[*core.PackageCompileSetup]("cgx_static_find", cgxPackage)
+	if cErr != 0 {
+		res.error = cErr
+		return
+	}
 	name := C.GoString(staticNamePtr)
 	vr := cpkg.IR().FindStatic(name)
 	if vr == nil {
@@ -405,13 +433,16 @@ func cgx_static_find(cgxPackage C.cgx_package, staticNamePtr *C.cchar_t) (res C.
 
 //export cgx_static_name
 func cgx_static_name(cgxStatic C.cgx_static) *C.cchar_t {
-	cvr := unwrap[*staticVariable](cgxStatic)
+	cvr := mustUnwrap[*staticVariable]("cgx_static_name", cgxStatic)
 	return C.CString(cvr.vr.VName.Name)
 }
 
 //export cgx_static_set
 func cgx_static_set(cgxStatic C.cgx_static, val int64) C.cgx_error {
-	cvr := unwrap[*staticVariable](cgxStatic)
+	cvr, cErr := unwrap[*staticVariable]("cgx_static_set", cgxStatic)
+	if cErr != 0 {
+		return cErr
+	}
 	var gxValue hostio.Value
 	var err error
 	tp := cvr.vr.Type()
@@ -447,7 +478,10 @@ func cgx_free_list_statics_result(res *C.struct_cgx_list_statics_result) {
 
 //export cgx_package_list_functions
 func cgx_package_list_functions(cgxPackage C.cgx_package) C.struct_cgx_list_functions_result {
-	cpkg := unwrap[*core.PackageCompileSetup](cgxPackage)
+	cpkg, cErr := unwrap[*core.PackageCompileSetup]("cgx_package_list_functions", cgxPackage)
+	if cErr != 0 {
+		return C.struct_cgx_list_functions_result{error: cErr}
+	}
 	var funcs []core.Func
 	for fn := range cpkg.IR().ExportedFuncs() {
 		fnDecl, isDecl := fn.(*ir.FuncDecl)
@@ -481,13 +515,16 @@ func cgx_free_list_functions_result(res *C.struct_cgx_list_functions_result) {
 
 //export cgx_package_get_ir
 func cgx_package_get_ir(cgxPackage C.cgx_package) C.cgx_package_ir {
-	cpkg := unwrap[*core.PackageCompileSetup](cgxPackage)
+	cpkg := mustUnwrap[*core.PackageCompileSetup]("cgx_package_get_ir", cgxPackage)
 	return (C.cgx_package_ir)(wrap[importers.Package](cpkg.Package()))
 }
 
 //export cgx_package_list_interfaces
 func cgx_package_list_interfaces(cgxPackage C.cgx_package) C.struct_cgx_list_interfaces_result {
-	cpkg := unwrap[*core.PackageCompileSetup](cgxPackage)
+	cpkg, cErr := unwrap[*core.PackageCompileSetup]("cgx_package_list_interfaces", cgxPackage)
+	if cErr != 0 {
+		return C.struct_cgx_list_interfaces_result{error: cErr}
+	}
 	var ifaces []*typeHandle
 	for _, iface := range cpkg.IR().ExportedTypes() {
 		ifaces = append(ifaces, newTypeHandle(cpkg, iface))
@@ -507,7 +544,11 @@ func cgx_free_list_interfaces_result(res *C.struct_cgx_list_interfaces_result) {
 
 //export cgx_type_find
 func cgx_type_find(cgxPackage C.cgx_package, cname *C.cchar_t) (res C.struct_cgx_type_find_result) {
-	cpkg := unwrap[*core.PackageCompileSetup](cgxPackage)
+	cpkg, cErr := unwrap[*core.PackageCompileSetup]("cgx_type_find", cgxPackage)
+	if cErr != 0 {
+		res.error = cErr
+		return
+	}
 	name := C.GoString(cname)
 	irPkg := cpkg.IR()
 	for _, typ := range irPkg.ExportedTypes() {
@@ -524,14 +565,18 @@ func cgx_type_find(cgxPackage C.cgx_package, cname *C.cchar_t) (res C.struct_cgx
 
 //export cgx_function_has
 func cgx_function_has(cgxPackage C.cgx_package, funcNamePtr *C.cchar_t) bool {
-	cpkg := unwrap[*core.PackageCompileSetup](cgxPackage)
+	cpkg := mustUnwrap[*core.PackageCompileSetup]("cgx_function_has", cgxPackage)
 	name := C.GoString(funcNamePtr)
 	return cpkg.IR().FindFunc(name) != nil
 }
 
 //export cgx_function_find
 func cgx_function_find(cgxPackage C.cgx_package, funcNamePtr *C.cchar_t) (res C.struct_cgx_function_find_result) {
-	cpkg := unwrap[*core.PackageCompileSetup](cgxPackage)
+	cpkg, cErr := unwrap[*core.PackageCompileSetup]("cgx_function_find", cgxPackage)
+	if cErr != 0 {
+		res.error = cErr
+		return
+	}
 	name := C.GoString(funcNamePtr)
 	if !ir.IsExported(name) {
 		res.error = Errorf("function %q not exported", name)
@@ -548,12 +593,24 @@ func cgx_function_find(cgxPackage C.cgx_package, funcNamePtr *C.cchar_t) (res C.
 
 //export cgx_function_run
 func cgx_function_run(cgxFunction C.cgx_function, cgxReceiver C.cgx_value, argCount C.int, args *C.cgx_value) C.struct_cgx_function_run_result {
-	function := unwrap[core.Func](cgxFunction)
-	recvValue := unwrap[hostio.Value](cgxReceiver)
+	function, cErr := unwrap[core.Func]("cgx_function_run: function", cgxFunction)
+	if cErr != 0 {
+		return C.struct_cgx_function_run_result{error: cErr}
+	}
+	var recvValue hostio.Value
+	if cgxReceiver != 0 {
+		recvValue, cErr = unwrap[hostio.Value]("cgx_function_run: receiver", cgxReceiver)
+		if cErr != 0 {
+			return C.struct_cgx_function_run_result{error: cErr}
+		}
+	}
 	cgxValues := unsafe.Slice(args, argCount)
 	argValues := make([]hostio.Value, int(argCount))
 	for i, cgxValue := range cgxValues {
-		argValues[i] = unwrap[hostio.Value](cgxValue)
+		argValues[i], cErr = unwrap[hostio.Value](fmt.Sprintf("cgx_function_run: args[%d]", i), cgxValue)
+		if cErr != 0 {
+			return C.struct_cgx_function_run_result{error: cErr}
+		}
 	}
 	results, err := function.Run(recvValue, argValues, function.Tracer())
 	if err != nil {
@@ -567,19 +624,19 @@ func cgx_function_run(cgxFunction C.cgx_function, cgxReceiver C.cgx_value, argCo
 
 //export cgx_function_name
 func cgx_function_name(cgxFunction C.cgx_function) *C.cchar_t {
-	function := unwrap[core.Func](cgxFunction)
+	function := mustUnwrap[core.Func]("cgx_function_name", cgxFunction)
 	return C.CString(function.Func().Name())
 }
 
 //export cgx_function_string
 func cgx_function_string(cgxFunction C.cgx_function) *C.cchar_t {
-	function := unwrap[core.Func](cgxFunction)
+	function := mustUnwrap[core.Func]("cgx_function_string", cgxFunction)
 	return C.CString(function.Func().DefineString(nil))
 }
 
 //export cgx_function_doc
 func cgx_function_doc(cgxFunction C.cgx_function) *C.cchar_t {
-	function := unwrap[core.Func](cgxFunction)
+	function := mustUnwrap[core.Func]("cgx_function_doc", cgxFunction)
 	return C.CString(function.Func().Doc().Text())
 }
 
@@ -598,7 +655,10 @@ func copySignatureElements(fields *ir.FieldList) *C.struct_cgx_function_signatur
 
 //export cgx_function_signature
 func cgx_function_signature(cgxFunction C.cgx_function) C.struct_cgx_function_signature_result {
-	function := unwrap[core.Func](cgxFunction)
+	function, cErr := unwrap[core.Func]("cgx_function_signature", cgxFunction)
+	if cErr != 0 {
+		return C.struct_cgx_function_signature_result{error: cErr}
+	}
 	fn := function.Func()
 	result := C.struct_cgx_function_signature_result{
 		parameter:      copySignatureElements(fn.FuncType().Params),
@@ -627,13 +687,13 @@ func cgx_free_function_signature_result(cgxSignature *C.struct_cgx_function_sign
 
 //export cgx_function_num_params
 func cgx_function_num_params(cgxFunction C.cgx_function) int {
-	function := unwrap[core.Func](cgxFunction)
+	function := mustUnwrap[core.Func]("cgx_function_num_params", cgxFunction)
 	return function.Func().FuncType().NumAllParams()
 }
 
 //export cgx_function_param_dtype
 func cgx_function_param_dtype(cgxFunction C.cgx_function, arg int) C.enum_cgx_value_kind {
-	function := unwrap[core.Func](cgxFunction)
+	function := mustUnwrap[core.Func]("cgx_function_param_dtype", cgxFunction)
 	params := function.Func().FuncType().AllParams()
 	if arg < 0 || arg >= len(params) {
 		return C.CGX_INVALID
@@ -661,50 +721,77 @@ func toValueResult[T gotype.Supported](devAtom *types.DeviceAtom[T], err error) 
 
 //export cgx_value_new_bool
 func cgx_value_new_bool(cgxDevice C.cgx_device, value C.bool) C.struct_cgx_value_new_result {
-	dev := unwrap[*core.DeviceSetup](cgxDevice)
+	dev, cErr := unwrap[*core.DeviceSetup]("cgx_value_new_bool", cgxDevice)
+	if cErr != 0 {
+		return C.struct_cgx_value_new_result{error: cErr}
+	}
 	return toValueResult(types.Bool(bool(value)).SendTo(dev.Device()))
 }
 
 //export cgx_value_new_float32
 func cgx_value_new_float32(cgxDevice C.cgx_device, value C.float) C.struct_cgx_value_new_result {
-	dev := unwrap[*core.DeviceSetup](cgxDevice)
+	dev, cErr := unwrap[*core.DeviceSetup]("cgx_value_new_float32", cgxDevice)
+	if cErr != 0 {
+		return C.struct_cgx_value_new_result{error: cErr}
+	}
 	return toValueResult(types.Float32(float32(value)).SendTo(dev.Device()))
 }
 
 //export cgx_value_new_float64
 func cgx_value_new_float64(cgxDevice C.cgx_device, value C.double) C.struct_cgx_value_new_result {
-	dev := unwrap[*core.DeviceSetup](cgxDevice)
+	dev, cErr := unwrap[*core.DeviceSetup]("cgx_value_new_float64", cgxDevice)
+	if cErr != 0 {
+		return C.struct_cgx_value_new_result{error: cErr}
+	}
 	return toValueResult(types.Float64(float64(value)).SendTo(dev.Device()))
 }
 
 //export cgx_value_new_int32
 func cgx_value_new_int32(cgxDevice C.cgx_device, value C.int32_t) C.struct_cgx_value_new_result {
-	dev := unwrap[*core.DeviceSetup](cgxDevice)
+	dev, cErr := unwrap[*core.DeviceSetup]("cgx_value_new_int32", cgxDevice)
+	if cErr != 0 {
+		return C.struct_cgx_value_new_result{error: cErr}
+	}
 	return toValueResult(types.Int32(int32(value)).SendTo(dev.Device()))
 }
 
 //export cgx_value_new_int64
 func cgx_value_new_int64(cgxDevice C.cgx_device, value C.int64_t) C.struct_cgx_value_new_result {
-	dev := unwrap[*core.DeviceSetup](cgxDevice)
+	dev, cErr := unwrap[*core.DeviceSetup]("cgx_value_new_int64", cgxDevice)
+	if cErr != 0 {
+		return C.struct_cgx_value_new_result{error: cErr}
+	}
 	return toValueResult(types.Int64(int64(value)).SendTo(dev.Device()))
 }
 
 //export cgx_value_new_uint32
 func cgx_value_new_uint32(cgxDevice C.cgx_device, value C.uint32_t) C.struct_cgx_value_new_result {
-	dev := unwrap[*core.DeviceSetup](cgxDevice)
+	dev, cErr := unwrap[*core.DeviceSetup]("cgx_value_new_uint32", cgxDevice)
+	if cErr != 0 {
+		return C.struct_cgx_value_new_result{error: cErr}
+	}
 	return toValueResult(types.Uint32(uint32(value)).SendTo(dev.Device()))
 }
 
 //export cgx_value_new_uint64
 func cgx_value_new_uint64(cgxDevice C.cgx_device, value C.uint64_t) C.struct_cgx_value_new_result {
-	dev := unwrap[*core.DeviceSetup](cgxDevice)
+	dev, cErr := unwrap[*core.DeviceSetup]("cgx_value_new_uint64", cgxDevice)
+	if cErr != 0 {
+		return C.struct_cgx_value_new_result{error: cErr}
+	}
 	return toValueResult(types.Uint64(uint64(value)).SendTo(dev.Device()))
 }
 
 //export cgx_value_send
 func cgx_value_send(cgxDevice C.cgx_device, cgxShape C.cgx_shape, data *C.cvoid_t, dataSize C.uint64_t) C.struct_cgx_value_new_result {
-	dev := unwrap[*core.DeviceSetup](cgxDevice)
-	shape := unwrap[*shapes.Shape](cgxShape)
+	dev, cErr := unwrap[*core.DeviceSetup]("cgx_value_send: device", cgxDevice)
+	if cErr != 0 {
+		return C.struct_cgx_value_new_result{error: cErr}
+	}
+	shape, cErr := unwrap[*shapes.Shape]("cgx_value_send: shape", cgxShape)
+	if cErr != 0 {
+		return C.struct_cgx_value_new_result{error: cErr}
+	}
 	byteData := (*byte)(unsafe.Pointer(data))
 
 	h, err := dev.Device().Send(unsafe.Slice(byteData, dataSize), *shape)
@@ -761,13 +848,13 @@ func toCGXValueKind(kind irkind.Kind) C.enum_cgx_value_kind {
 
 //export cgx_value_kind_of
 func cgx_value_kind_of(cgxValue C.cgx_value) C.enum_cgx_value_kind {
-	value := unwrap[hostio.Value](cgxValue)
+	value := mustUnwrap[hostio.Value]("cgx_value_kind_of", cgxValue)
 	return toCGXValueKind(value.Type().Kind())
 }
 
 //export cgx_value_shape
 func cgx_value_shape(cgxValue C.cgx_value) C.cgx_shape {
-	value := unwrap[hostio.Value](cgxValue)
+	value := mustUnwrap[hostio.Value]("cgx_value_shape", cgxValue)
 	if array, ok := value.(hostio.Array); ok {
 		sh := array.Shape()
 		return (C.cgx_shape)(wrap[*shapes.Shape](&sh))
@@ -776,7 +863,10 @@ func cgx_value_shape(cgxValue C.cgx_value) C.cgx_shape {
 }
 
 func atomFromDeviceArray[T gotype.Supported](getter string, cgxValue C.cgx_value) (zero T, _ C.cgx_error) {
-	value := unwrap[hostio.Value](cgxValue)
+	value, cErr := unwrap[hostio.Value](getter, cgxValue)
+	if cErr != 0 {
+		return zero, cErr
+	}
 	deviceArray, err := cast.To[*hostio.DeviceArray](value)
 	if err != nil {
 		return zero, (C.cgx_error)(wrap[error](err))
@@ -843,7 +933,10 @@ func cgx_value_get_uint64(cgxValue C.cgx_value) C.struct_cgx_value_get_uint64_re
 
 //export cgx_value_host_buffer
 func cgx_value_host_buffer(cgxValue C.cgx_value) C.struct_cgx_value_host_buffer_result {
-	value := unwrap[hostio.Value](cgxValue)
+	value, cErr := unwrap[hostio.Value]("cgx_value_host_buffer", cgxValue)
+	if cErr != 0 {
+		return C.struct_cgx_value_host_buffer_result{error: cErr}
+	}
 	deviceArray, err := cast.To[*hostio.DeviceArray](value)
 	if err != nil {
 		return C.struct_cgx_value_host_buffer_result{error: (C.cgx_error)(wrap[error](err))}
@@ -858,27 +951,37 @@ func cgx_value_host_buffer(cgxValue C.cgx_value) C.struct_cgx_value_host_buffer_
 	}
 }
 
-func structFrom(cval C.cgx_value) (hostio.Value, *elements.Struct) {
-	val := unwrap[hostio.Value](cval)
+func structFrom(caller string, cval C.cgx_value) (hostio.Value, *elements.Struct, C.cgx_error) {
+	val, cErr := unwrap[hostio.Value](caller, cval)
+	if cErr != 0 {
+		return nil, nil, cErr
+	}
 	strct, _ := hostio.Underlying(val).(*elements.Struct)
-	return val, strct
+	if strct == nil {
+		return nil, nil, Errorf("type %s has no fields", val.Type().ReferString(nil))
+	}
+	return val, strct, 0
 }
 
 //export cgx_value_field_set
 func cgx_value_field_set(crecv C.cgx_value, fieldNamePtr *C.cchar_t, cval C.cgx_value) C.cgx_error {
-	recv, strct := structFrom(crecv)
-	if strct == nil {
-		return Errorf("type %s has no fields", recv.Type().ReferString(nil))
+	_, strct, cErr := structFrom("cgx_value_field_set: receiver", crecv)
+	if cErr != 0 {
+		return cErr
 	}
-	strct.SetField(C.GoString(fieldNamePtr), unwrap[hostio.Value](cval))
+	val, cErr := unwrap[hostio.Value]("cgx_value_field_set: value", cval)
+	if cErr != 0 {
+		return cErr
+	}
+	strct.SetField(C.GoString(fieldNamePtr), val)
 	return (C.cgx_error)(wrap[error](nil))
 }
 
 //export cgx_value_field_get
 func cgx_value_field_get(crecv C.cgx_value, fieldNamePtr *C.cchar_t) (res C.struct_cgx_value_field_get_result) {
-	recv, strct := structFrom(crecv)
-	if strct == nil {
-		res.error = Errorf("type %s has no fields", recv.Type().ReferString(nil))
+	recv, strct, cErr := structFrom("cgx_value_field_get", crecv)
+	if cErr != 0 {
+		res.error = cErr
 		return
 	}
 	fieldName := C.GoString(fieldNamePtr)
@@ -902,14 +1005,14 @@ func cgx_value_field_get(crecv C.cgx_value, fieldNamePtr *C.cchar_t) (res C.stru
 
 //export cgx_value_get_type
 func cgx_value_get_type(cgxPackage C.cgx_package, cgxValue C.cgx_value) C.cgx_type {
-	value := unwrap[hostio.Value](cgxValue)
-	cpkg := unwrap[*core.PackageCompileSetup](cgxPackage)
+	value := mustUnwrap[hostio.Value]("cgx_value_get_type: value", cgxValue)
+	cpkg := mustUnwrap[*core.PackageCompileSetup]("cgx_value_get_type: package", cgxPackage)
 	return (C.cgx_type)(wrap[*typeHandle](newTypeHandle(cpkg, value.Type())))
 }
 
 //export cgx_value_string
 func cgx_value_string(cgxValue C.cgx_value) *C.cchar_t {
-	value := unwrap[hostio.Value](cgxValue)
+	value := mustUnwrap[hostio.Value]("cgx_value_string", cgxValue)
 	return C.CString(ir.DefineString(nil, value))
 }
 
@@ -948,7 +1051,10 @@ func cgx_shape_new(dtype C.enum_cgx_value_kind, axisLengths *C.cint64_t, axisLen
 
 //export cgx_shape_axes
 func cgx_shape_axes(cgxShape C.cgx_shape) C.struct_cgx_shape_axes_result {
-	shape := unwrap[*shapes.Shape](cgxShape)
+	shape, cErr := unwrap[*shapes.Shape]("cgx_shape_axes", cgxShape)
+	if cErr != 0 {
+		return C.struct_cgx_shape_axes_result{error: cErr}
+	}
 	return C.struct_cgx_shape_axes_result{
 		axis_lengths: (*C.cint64_t)(handle.PinSliceData[int](shape.Dimensions)),
 		num_axes:     C.uint32_t(len(shape.Dimensions)),
@@ -964,13 +1070,13 @@ func cgx_free_shape_axes_result(cgxShapeResult *C.struct_cgx_shape_axes_result) 
 
 //export cgx_shape_size
 func cgx_shape_size(cgxShape C.cgx_shape) C.int {
-	shape := unwrap[*shapes.Shape](cgxShape)
+	shape := mustUnwrap[*shapes.Shape]("cgx_shape_size", cgxShape)
 	return C.int(shape.Size())
 }
 
 //export cgx_shape_element_kind
 func cgx_shape_element_kind(cgxShape C.cgx_shape) C.enum_cgx_value_kind {
-	shape := unwrap[*shapes.Shape](cgxShape)
+	shape := mustUnwrap[*shapes.Shape]("cgx_shape_element_kind", cgxShape)
 	return toCGXValueKind(irkind.Kind(shape.DType))
 }
 
@@ -978,14 +1084,14 @@ func cgx_shape_element_kind(cgxShape C.cgx_shape) C.enum_cgx_value_kind {
 
 //export cgx_host_buffer_acquire_data
 func cgx_host_buffer_acquire_data(cgxHostBuffer C.cgx_host_buffer) *C.char {
-	hostBuffer := unwrap[kernels.HostBuffer](cgxHostBuffer)
+	hostBuffer := mustUnwrap[kernels.HostBuffer]("cgx_host_buffer_acquire_data", cgxHostBuffer)
 	data := hostBuffer.Acquire()
 	return (*C.char)(handle.PinSliceData[byte](data))
 }
 
 //export cgx_host_buffer_release_data
 func cgx_host_buffer_release_data(cgxHostBuffer C.cgx_host_buffer, data *C.char) {
-	hostBuffer := unwrap[kernels.HostBuffer](cgxHostBuffer)
+	hostBuffer := mustUnwrap[kernels.HostBuffer]("cgx_host_buffer_release_data", cgxHostBuffer)
 	handle.UnpinSliceData(unsafe.Pointer(data))
 	hostBuffer.Release()
 }
@@ -1003,7 +1109,11 @@ func newTypeHandle(pkg *core.PackageCompileSetup, typ ir.Type) *typeHandle {
 
 //export cgx_type_method_find
 func cgx_type_method_find(cgxIFace C.cgx_type, methodNamePtr *C.cchar_t) (res C.struct_cgx_function_find_result) {
-	iface := unwrap[*typeHandle](cgxIFace)
+	iface, cErr := unwrap[*typeHandle]("cgx_type_method_find", cgxIFace)
+	if cErr != 0 {
+		res.error = cErr
+		return
+	}
 	methodName := C.GoString(methodNamePtr)
 	if !ir.IsExported(methodName) {
 		res.error = Errorf("method %s is not exported", methodName)
@@ -1028,7 +1138,7 @@ func cgx_type_method_find(cgxIFace C.cgx_type, methodNamePtr *C.cchar_t) (res C.
 
 //export cgx_type_name
 func cgx_type_name(ctype C.cgx_type) *C.cchar_t {
-	htyp := unwrap[*typeHandle](ctype)
+	htyp := mustUnwrap[*typeHandle]("cgx_type_name", ctype)
 	var name string
 	if named, _ := htyp.typ.(*ir.NamedType); named != nil {
 		name = named.Name()
@@ -1038,13 +1148,13 @@ func cgx_type_name(ctype C.cgx_type) *C.cchar_t {
 
 //export cgx_type_string
 func cgx_type_string(ctype C.cgx_type) *C.cchar_t {
-	htyp := unwrap[*typeHandle](ctype)
+	htyp := mustUnwrap[*typeHandle]("cgx_type_string", ctype)
 	return C.CString(htyp.typ.ReferString(nil))
 }
 
 //export cgx_type_package_name
 func cgx_type_package_name(cgxIFace C.cgx_type) *C.cchar_t {
-	iface := unwrap[*typeHandle](cgxIFace)
+	iface := mustUnwrap[*typeHandle]("cgx_type_package_name", cgxIFace)
 	var pkgPath string
 	if named, _ := iface.typ.(*ir.NamedType); named != nil {
 		pkgPath = named.File.Package.Path()
@@ -1066,7 +1176,7 @@ func listFieldsOf(pkg *core.PackageCompileSetup, strct *ir.StructType) []*C.ccha
 
 //export cgx_type_list_fields
 func cgx_type_list_fields(cgxIFace C.cgx_type) C.struct_cgx_type_list_fields_result {
-	iface := unwrap[*typeHandle](cgxIFace)
+	iface := mustUnwrap[*typeHandle]("cgx_type_list_fields", cgxIFace)
 	strct, isStruct := ir.Underlying(iface.typ).(*ir.StructType)
 	var fields []*C.cchar_t
 	if isStruct {
@@ -1095,7 +1205,10 @@ func listMethodsOf(pkg *core.PackageCompileSetup, named *ir.NamedType) []core.Fu
 
 //export cgx_type_list_methods
 func cgx_type_list_methods(cgxIFace C.cgx_type) C.struct_cgx_list_functions_result {
-	iface := unwrap[*typeHandle](cgxIFace)
+	iface, cErr := unwrap[*typeHandle]("cgx_type_list_methods", cgxIFace)
+	if cErr != 0 {
+		return C.struct_cgx_list_functions_result{error: cErr}
+	}
 	var funcs []core.Func
 	if named, _ := iface.typ.(*ir.NamedType); named != nil {
 		funcs = listMethodsOf(iface.pkg, named)

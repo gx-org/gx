@@ -16,6 +16,7 @@ package handle_test
 
 import (
 	"bytes"
+	"fmt"
 	"io"
 	"strings"
 	"testing"
@@ -42,7 +43,10 @@ func TestWrapIntrinsicPointer(t *testing.T) {
 	defer checkHandleCount(t, handle.Count())
 	var want float32 = 0.42
 	w := handle.Wrap[*float32](&want)
-	v := handle.Unwrap[*float32](w)
+	v, err := handle.Unwrap[*float32](w)
+	if err != nil {
+		t.Fatal(err)
+	}
 	if *v != want {
 		t.Errorf("wrong value: got %v, want %v", *v, want)
 	}
@@ -57,7 +61,10 @@ func TestWrapStructPointer(t *testing.T) {
 	}
 	want := &test{A: 42, B: "more data"}
 	w := handle.Wrap[*test](want)
-	v := handle.Unwrap[*test](w)
+	v, err := handle.Unwrap[*test](w)
+	if err != nil {
+		t.Fatal(err)
+	}
 	if !cmp.Equal(*v, *want) {
 		t.Errorf("wrong value: got %v, want %v", *v, *want)
 	}
@@ -69,7 +76,10 @@ func TestWrapInterface(t *testing.T) {
 	buffer := bytes.NewBufferString("the quick brown fox")
 	want := buffer.Bytes()
 	w := handle.Wrap[io.Reader](buffer)
-	v := handle.Unwrap[io.Reader](w)
+	v, err := handle.Unwrap[io.Reader](w)
+	if err != nil {
+		t.Fatal(err)
+	}
 	if got, err := io.ReadAll(v); err != nil {
 		t.Error(err)
 	} else if !cmp.Equal(got, want) {
@@ -89,7 +99,11 @@ func TestWrapInterfacesSlice(t *testing.T) {
 	w := handle.WrapSlice[io.Reader](readers)
 	var gotText []string
 	for _, rw := range w {
-		reader := handle.Unwrap[io.Reader](rw)
+		reader, err := handle.Unwrap[io.Reader](rw)
+		if err != nil {
+			t.Error(err)
+			continue
+		}
 		got, err := io.ReadAll(reader)
 		if err != nil {
 			t.Error(err)
@@ -135,6 +149,114 @@ func TestTryUnwrap(t *testing.T) {
 	}
 }
 
+func catchPanic(t *testing.T, fn func()) (msg string) {
+	t.Helper()
+	defer func() {
+		r := recover()
+		if r == nil {
+			t.Fatal("expected a panic, got none")
+		}
+		msg = fmt.Sprint(r)
+	}()
+	fn()
+	return ""
+}
+
+func TestUnwrap(t *testing.T) {
+	defer checkHandleCount(t, handle.Count())
+	want := &item{A: 42, B: "more data"}
+	h := handle.Wrap[*item](want)
+	defer handle.Release(h)
+
+	if got, err := handle.Unwrap[*item](h); err != nil || got != want {
+		t.Errorf("Unwrap[*item](%v) = %v, %v, want %v, nil", h, got, err, want)
+	}
+
+	released := handle.Wrap[*item](&item{})
+	handle.Release(released)
+	const unknown = ^handle.Handle(0)
+
+	for _, tc := range []struct {
+		desc        string
+		unwrap      func() error
+		wantSubstrs []string
+	}{
+		{
+			desc: "zero",
+			unwrap: func() error {
+				_, err := handle.Unwrap[*item](0)
+				return err
+			},
+			wantSubstrs: []string{"invalid handle 0 (zero handle), want a handle to a *handle_test.item"},
+		},
+		{
+			desc: "released",
+			unwrap: func() error {
+				_, err := handle.Unwrap[*item](released)
+				return err
+			},
+			wantSubstrs: []string{fmt.Sprintf("invalid handle %v (released or never created), want a handle to a *handle_test.item", released)},
+		},
+		{
+			desc: "unknown",
+			unwrap: func() error {
+				_, err := handle.Unwrap[*item](unknown)
+				return err
+			},
+			wantSubstrs: []string{fmt.Sprintf("invalid handle %v (released or never created), want a handle to a *handle_test.item", unknown)},
+		},
+		{
+			desc: "wrong_type",
+			unwrap: func() error {
+				_, err := handle.Unwrap[*float32](h)
+				return err
+			},
+			wantSubstrs: []string{
+				fmt.Sprintf("invalid handle %v:", h),
+				"cannot convert *handle_test.item to *float32",
+			},
+		},
+	} {
+		t.Run(tc.desc, func(t *testing.T) {
+			err := tc.unwrap()
+			if err == nil {
+				t.Fatal("Unwrap succeeded, want an error")
+			}
+			got := err.Error()
+			for _, want := range tc.wantSubstrs {
+				if !strings.Contains(got, want) {
+					t.Errorf("Unwrap error = %q, want substring %q", got, want)
+				}
+			}
+		})
+	}
+}
+
+func TestReleasePanics(t *testing.T) {
+	defer checkHandleCount(t, handle.Count())
+	handle.Release(0)
+
+	released := handle.Wrap[*item](&item{})
+	handle.Release(released)
+	const unknown = ^handle.Handle(0)
+
+	for _, tc := range []struct {
+		desc string
+		h    handle.Handle
+	}{
+		{desc: "released", h: released},
+		{desc: "unknown", h: unknown},
+	} {
+		t.Run(tc.desc, func(t *testing.T) {
+			got := catchPanic(t, func() { handle.Release(tc.h) })
+			want := fmt.Sprintf("cgx: deleting unknown handle %v (already released or never created)", tc.h)
+			if got != want {
+				t.Errorf("Release(%v) panic = %q, want %q", tc.h, got, want)
+			}
+		})
+	}
+}
+
 type fake struct{}
 
 func BenchmarkWrap(b *testing.B) {
@@ -149,6 +271,6 @@ func BenchmarkUnwrap(b *testing.B) {
 	h := handle.Wrap(&fake{})
 	b.ReportAllocs()
 	for range b.N {
-		_ = handle.Unwrap[*fake](h)
+		_, _ = handle.Unwrap[*fake](h)
 	}
 }

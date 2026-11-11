@@ -16,8 +16,10 @@ package builder
 
 import (
 	"fmt"
+	"slices"
 	"strings"
 
+	"github.com/gx-org/gx/build/fmterr"
 	"github.com/gx-org/gx/build/ir/generics"
 	"github.com/gx-org/gx/build/ir"
 	"github.com/gx-org/gx/build/ir/irkind"
@@ -91,7 +93,7 @@ func buildGenericValues(rscope resolveScope, x ir.Expr, ce *compileEvaluator, ge
 		return nil, rscope.Err().Appendf(x.Node(), "got %d type arguments but want %d", gotN, wantN)
 	}
 	genParams := buildGenericParams(gen.Fields.Fields(), len(indices))
-	genValues := append([]ir.GenericValue{}, gen.Values...)
+	genValues := slices.Clone(gen.Values)
 	ok := true
 	for i, gParam := range genParams {
 		numberOk := true
@@ -314,26 +316,45 @@ func (n *indexExprType) source() ast.Node {
 	return n.src
 }
 
+func specializeFieldIndex(rscope resolveScope, x *ir.TypeValExpr, gtype ir.SpecialisableType, targetFuncType ir.Expr) (*ir.TypeValExpr, ir.SpecialisableType, bool) {
+	idxfield, err := cast.To[*ir.FieldIndexType](x.Val())
+	if err != nil {
+		return x, gtype, rscope.Err().AppendAt(x.Node(), fmterr.Internal(err))
+	}
+	specIdxField, err := idxfield.SpecialiseForFunc(targetFuncType)
+	if err != nil {
+		return x, gtype, rscope.Err().AppendAt(x.Node(), err)
+	}
+	return ir.TypeExpr(x.Expr(), specIdxField), specIdxField, true
+}
+
 func specializeType(rscope resolveScope, x *ir.TypeValExpr, indices []ir.Expr) (*ir.TypeValExpr, bool) {
-	if x.Val().Kind() != irkind.Struct {
+	kind := x.Val().Kind()
+	if kind != irkind.Struct && kind != irkind.FieldIndex {
 		return invalidTypeExprVal, rscope.Err().Appendf(x.Node(), "%s is not a generic type", x.SourceString(rscope.fileScope().irFile()))
 	}
-	named, err := cast.To[*ir.NamedType](x.Val())
+	gtype, err := cast.To[ir.SpecialisableType](x.Val())
 	if err != nil {
 		return invalidTypeExprVal, rscope.Err().AppendAt(x.Node(), err)
 	}
-	if gotN, wantN := len(indices), named.GenParams.Fields.Len(); gotN < wantN {
+	if gotN, wantN := len(indices), gtype.Generics().Fields.Len(); gotN < wantN {
 		return invalidTypeExprVal, rscope.Err().Appendf(x.Node(), "not enough type arguments for type %s: have %d, want %d", x.SourceString(rscope.fileScope().irFile()), gotN, wantN)
 	}
 	ce, ok := rscope.compEval()
 	if !ok {
 		return invalidTypeExprVal, false
 	}
-	genValues, ok := buildGenericValues(rscope, x, ce, &named.GenParams, indices)
+	if kind == irkind.FieldIndex {
+		// Specialise the second argument of fieldindex to the specific function passed as generic arguments.
+		if x, gtype, ok = specializeFieldIndex(rscope, x, gtype, indices[1]); !ok {
+			return invalidTypeExprVal, false
+		}
+	}
+	genValues, ok := buildGenericValues(rscope, x, ce, gtype.Generics(), indices)
 	if !ok {
 		return invalidTypeExprVal, false
 	}
-	return generics.SpecialiseNamed(ce, x, named, genValues)
+	return generics.SpecialiseType(ce, x, gtype, genValues)
 }
 
 func (n *indexExprType) buildTypeExpr(rscope resolveScope) (*ir.TypeValExpr, bool) {

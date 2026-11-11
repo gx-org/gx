@@ -761,6 +761,175 @@ TEST_F(cgx, ValueGet_NonMatchingScalarShape) {
   cgx_release_reference(shape);
 }
 
+TEST_F(cgx, InvalidHandle_Zero) {
+  const auto dr = cgx_device_get(cgx_runtime{}, 0);
+  EXPECT_EQ(dr.device, cgx_device{});
+  CGX_ASSERT_ERROR(dr.error,
+                   "cgx_device_get: invalid handle 0 (zero handle), want a "
+                   "handle to a *api.Runtime");
+
+  const auto fr = cgx_function_find(cgx_package{}, "AddInt");
+  EXPECT_EQ(fr.function, cgx_function{});
+  CGX_ASSERT_ERROR(fr.error,
+                   "cgx_function_find: invalid handle 0 (zero handle), want a "
+                   "handle to a *core.PackageCompileSetup");
+
+  struct build_result pr(BuildPackage(kParametersPackage));
+  CGX_ASSERT_OK(pr.error);
+  const auto add_int = cgx_function_find(pr.package, "AddInt");
+  CGX_ASSERT_OK(add_int.error);
+
+  cgx_value args[2] = {cgx_value{}, cgx_value{}};
+  const auto rr = cgx_function_run(add_int.function, cgx_value{}, 2, args);
+  CGX_ASSERT_ERROR(rr.error,
+                   "cgx_function_run: args[0]: invalid handle 0 (zero handle), "
+                   "want a handle to a hostio.Value");
+
+  cgx_release_reference(add_int.function);
+  cgx_release_reference(pr.package);
+}
+
+TEST_F(cgx, InvalidHandle_Released) {
+  const auto tmp_dev = cgx_device_get(runtime(), 0);
+  CGX_ASSERT_OK(tmp_dev.error);
+  const cgx_handle released = tmp_dev.device;
+  cgx_release_reference(released);
+
+  const auto dr = cgx_device_get(static_cast<cgx_runtime>(released), 0);
+  EXPECT_EQ(dr.device, cgx_device{});
+  ASSERT_NE(dr.error, cgx_error{});
+  EXPECT_THAT(
+      ErrorMessage(dr.error),
+      ::testing::AllOf(::testing::HasSubstr("cgx_device_get: invalid handle"),
+                       ::testing::HasSubstr(
+                           "(released or never created), want a handle to a "
+                           "*api.Runtime")));
+  cgx_release_reference(dr.error);
+
+  const auto fr =
+      cgx_function_find(static_cast<cgx_package>(released), "AddInt");
+  EXPECT_EQ(fr.function, cgx_function{});
+  ASSERT_NE(fr.error, cgx_error{});
+  EXPECT_THAT(ErrorMessage(fr.error),
+              ::testing::AllOf(
+                  ::testing::HasSubstr("cgx_function_find: invalid handle"),
+                  ::testing::HasSubstr(
+                      "(released or never created), want a handle to a "
+                      "*core.PackageCompileSetup")));
+  cgx_release_reference(fr.error);
+
+  const auto rr_fn = cgx_function_run(static_cast<cgx_function>(released),
+                                      cgx_value{}, 0, nullptr);
+  ASSERT_NE(rr_fn.error, cgx_error{});
+  EXPECT_THAT(
+      ErrorMessage(rr_fn.error),
+      ::testing::AllOf(
+          ::testing::HasSubstr("cgx_function_run: function: invalid handle"),
+          ::testing::HasSubstr("(released or never created), want a handle to "
+                               "a core.Func")));
+  cgx_release_reference(rr_fn.error);
+
+  struct build_result pr(BuildPackage(kParametersPackage));
+  CGX_ASSERT_OK(pr.error);
+  const auto add_int = cgx_function_find(pr.package, "AddInt");
+  CGX_ASSERT_OK(add_int.error);
+
+  const auto rr_recv = cgx_function_run(
+      add_int.function, static_cast<cgx_value>(released), 0, nullptr);
+  ASSERT_NE(rr_recv.error, cgx_error{});
+  EXPECT_THAT(
+      ErrorMessage(rr_recv.error),
+      ::testing::AllOf(
+          ::testing::HasSubstr("cgx_function_run: receiver: invalid handle"),
+          ::testing::HasSubstr("(released or never created), want a handle to "
+                               "a hostio.Value")));
+  cgx_release_reference(rr_recv.error);
+
+  const auto vr_0 = cgx_value_new_int64(device(), 4);
+  CGX_ASSERT_OK(vr_0.error);
+  cgx_value args[2] = {vr_0.value, static_cast<cgx_value>(released)};
+  const auto rr_arg = cgx_function_run(add_int.function, cgx_value{}, 2, args);
+  ASSERT_NE(rr_arg.error, cgx_error{});
+  EXPECT_THAT(
+      ErrorMessage(rr_arg.error),
+      ::testing::AllOf(
+          ::testing::HasSubstr("cgx_function_run: args[1]: invalid handle"),
+          ::testing::HasSubstr("(released or never created), want a handle to "
+                               "a hostio.Value")));
+  cgx_release_reference(rr_arg.error);
+
+  cgx_release_reference(vr_0.value);
+  cgx_release_reference(add_int.function);
+  cgx_release_reference(pr.package);
+}
+
+TEST_F(cgx, InvalidHandle_WrongType) {
+  const auto dr = cgx_device_get(static_cast<cgx_runtime>(device()), 0);
+  EXPECT_EQ(dr.device, cgx_device{});
+  ASSERT_NE(dr.error, cgx_error{});
+  EXPECT_THAT(ErrorMessage(dr.error),
+              ::testing::AllOf(
+                  ::testing::HasSubstr("cgx_device_get: invalid handle"),
+                  ::testing::HasSubstr("cannot convert *core.DeviceSetup to "
+                                       "*api.Runtime")));
+  cgx_release_reference(dr.error);
+
+  const auto fr =
+      cgx_function_find(static_cast<cgx_package>(device()), "AddInt");
+  EXPECT_EQ(fr.function, cgx_function{});
+  ASSERT_NE(fr.error, cgx_error{});
+  EXPECT_THAT(ErrorMessage(fr.error),
+              ::testing::AllOf(
+                  ::testing::HasSubstr("cgx_function_find: invalid handle"),
+                  ::testing::HasSubstr("cannot convert *core.DeviceSetup to "
+                                       "*core.PackageCompileSetup")));
+  cgx_release_reference(fr.error);
+
+  const auto rr_fn = cgx_function_run(static_cast<cgx_function>(device()),
+                                      cgx_value{}, 0, nullptr);
+  ASSERT_NE(rr_fn.error, cgx_error{});
+  EXPECT_THAT(
+      ErrorMessage(rr_fn.error),
+      ::testing::AllOf(
+          ::testing::HasSubstr("cgx_function_run: function: invalid handle"),
+          ::testing::HasSubstr(
+              "cannot convert *core.DeviceSetup to core.Func")));
+  cgx_release_reference(rr_fn.error);
+
+  struct build_result pr(BuildPackage(kParametersPackage));
+  CGX_ASSERT_OK(pr.error);
+  const auto add_int = cgx_function_find(pr.package, "AddInt");
+  CGX_ASSERT_OK(add_int.error);
+
+  const auto rr_recv = cgx_function_run(
+      add_int.function, static_cast<cgx_value>(device()), 0, nullptr);
+  ASSERT_NE(rr_recv.error, cgx_error{});
+  EXPECT_THAT(
+      ErrorMessage(rr_recv.error),
+      ::testing::AllOf(
+          ::testing::HasSubstr("cgx_function_run: receiver: invalid handle"),
+          ::testing::HasSubstr(
+              "cannot convert *core.DeviceSetup to hostio.Value")));
+  cgx_release_reference(rr_recv.error);
+
+  const auto vr_0 = cgx_value_new_int64(device(), 4);
+  CGX_ASSERT_OK(vr_0.error);
+  cgx_value args[2] = {vr_0.value, static_cast<cgx_value>(device())};
+  const auto rr_arg = cgx_function_run(add_int.function, cgx_value{}, 2, args);
+  ASSERT_NE(rr_arg.error, cgx_error{});
+  EXPECT_THAT(
+      ErrorMessage(rr_arg.error),
+      ::testing::AllOf(
+          ::testing::HasSubstr("cgx_function_run: args[1]: invalid handle"),
+          ::testing::HasSubstr(
+              "cannot convert *core.DeviceSetup to hostio.Value")));
+  cgx_release_reference(rr_arg.error);
+
+  cgx_release_reference(vr_0.value);
+  cgx_release_reference(add_int.function);
+  cgx_release_reference(pr.package);
+}
+
 #undef CGX_ASSERT_OK
 #undef CGX_ASSERT_ERROR
 

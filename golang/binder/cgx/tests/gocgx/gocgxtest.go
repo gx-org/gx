@@ -150,7 +150,11 @@ func TestValueHostBufferToHostError(t *testing.T) {
 	}
 	defer C.cgx_release_reference(val.value)
 
-	if err := handle.Unwrap[hostio.Value](handle.Handle(val.value)).Finalize(); err != nil {
+	valGo, err := handle.Unwrap[hostio.Value](handle.Handle(val.value))
+	if err != nil {
+		t.Fatalf("Unwrap() unexpected error: %v", err)
+	}
+	if err := valGo.Finalize(); err != nil {
 		t.Fatalf("Finalize() unexpected error: %v", err)
 	}
 
@@ -210,7 +214,11 @@ func TestValueGetFetchError(t *testing.T) {
 	}
 	defer C.cgx_release_reference(val.value)
 
-	orig := handle.Unwrap[hostio.Value](handle.Handle(val.value)).(*hostio.DeviceArray)
+	valGo, err := handle.Unwrap[hostio.Value](handle.Handle(val.value))
+	if err != nil {
+		t.Fatalf("Unwrap() unexpected error: %v", err)
+	}
+	orig := valGo.(*hostio.DeviceArray)
 	failingBuf := &failingTransferBuffer{Buffer: orig.Buffer()}
 	failingArray, err := hostio.NewDeviceArray(orig.Type(), failingBuf)
 	if err != nil {
@@ -249,5 +257,75 @@ func TestValueGetFetchError(t *testing.T) {
 	want := fmt.Sprintf("cgx_value_get_int64: value of handle %d (type int64): %s", failingHandle, wantTransferErr)
 	if !strings.Contains(got, want) {
 		t.Errorf("cgx_value_get_int64(%v) error = %q, want substring %q", failingHandle, got, want)
+	}
+}
+
+func catchPanic(t *testing.T, fn func()) (msg string) {
+	t.Helper()
+	defer func() {
+		r := recover()
+		if r == nil {
+			t.Fatal("expected a panic, got none")
+		}
+		msg = fmt.Sprint(r)
+	}()
+	fn()
+	return ""
+}
+
+// TestInvalidHandlePanic tests that exports without an error result panic with a clear message when
+// given a zero, released, or wrong-type handle.
+// The test is not in a _test.go file because Go does not support CGo in test files.
+func TestInvalidHandlePanic(t *testing.T) {
+	defer cgxtesting.CheckHandleCount(t, handle.Count())
+	_, dev, finalize, err := Setup(nil)
+	if err != nil {
+		t.Fatal(err)
+	}
+	defer finalize()
+
+	val := C.cgx_value_new_int64(C.cgx_device(dev), 42)
+	if val.error != Null {
+		t.Fatal(GoError(Error(val.error)))
+	}
+	released := val.value
+	C.cgx_release_reference(released)
+
+	for _, tc := range []struct {
+		desc        string
+		fn          func()
+		wantSubstrs []string
+	}{
+		{
+			desc: "zero_handle",
+			fn:   func() { C.cgx_value_kind_of(0) },
+			wantSubstrs: []string{
+				"cgx_value_kind_of: invalid handle 0 (zero handle), want a handle to a hostio.Value",
+			},
+		},
+		{
+			desc: "released_handle",
+			fn:   func() { C.cgx_package_ir_build_for(0, C.cgx_device(released)) },
+			wantSubstrs: []string{
+				fmt.Sprintf("cgx_package_ir_build_for: device: invalid handle %v (released or never created), want a handle to a *core.DeviceSetup", released),
+			},
+		},
+		{
+			desc: "wrong_type_handle",
+			fn:   func() { C.cgx_value_kind_of(C.cgx_value(dev)) },
+			wantSubstrs: []string{
+				fmt.Sprintf("cgx_value_kind_of: invalid handle %v:", dev),
+				"cannot convert *core.DeviceSetup to hostio.Value",
+			},
+		},
+	} {
+		t.Run(tc.desc, func(t *testing.T) {
+			got := catchPanic(t, tc.fn)
+			for _, want := range tc.wantSubstrs {
+				if !strings.Contains(got, want) {
+					t.Errorf("panic = %q, want substring %q", got, want)
+				}
+			}
+		})
 	}
 }
