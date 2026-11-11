@@ -163,6 +163,14 @@ func (dm *AxisExpr) SourceString(from *File) string {
 	return fmt.Sprintf("[%s]", dm.axExprString(from))
 }
 
+// Visit traverses the axis length expression.
+func (dm *AxisExpr) Visit(f Finder) {
+	if !considerNode(f, dm, dm.Node()) {
+		return
+	}
+	dm.X.Visit(f)
+}
+
 // AxisInfer is an array axis specified as "_" and inferred by the compiler.
 type AxisInfer struct {
 	Src *ast.Ident
@@ -231,4 +239,9 @@ func (dm *AxisInfer) SourceString(from *File) string {
 		return "[_]"
 	}
 	return fmt.Sprintf("[%s]", dm.axExprString(from))
+}
+
+// Visit considers the inferred axis length identifier.
+func (dm *AxisInfer) Visit(f Finder) {
+	considerPtr(f, dm, dm.Src)
 }

@@ -168,6 +168,8 @@ func (s *errorType) ReferString(from *File) string {
 	return s.DefineString(from)
 }
 
+func (*errorType) Visit(Finder) {}
+
 // CompileError is a normal error to be reported to the user as a compile error of the source code.
 type CompileError struct {
 	error

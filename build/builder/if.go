@@ -87,6 +87,7 @@ func (n *ifStmt) buildStmt(rscope stmtResolveScope) (ir.Stmt, bool, bool) {
 		els, elseStop, elseOk = n.elseStmt.buildStmt(bScope)
 	}
 	return &ir.IfStmt{
+		Src:  n.ext.Src,
 		Init: init,
 		Cond: cond,
 		Body: body,

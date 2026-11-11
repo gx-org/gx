@@ -338,6 +338,11 @@ func (s *GenericTypeParam) Assign(fetcher Fetcher, x Expr) (GenericValue, bool) 
 	return NewTypeExprGenericValue(s, typeValExpr), true
 }
 
+// Visit considers the generic type parameter identifier.
+func (s *GenericTypeParam) Visit(f Finder) {
+	considerNode(f, s, s.Node())
+}
+
 // GenericNonTypeParam is a reference to a non-type type parameter.
 type GenericNonTypeParam struct {
 	genericParamCore
@@ -386,6 +391,11 @@ func (s *GenericNonTypeParam) Assign(fetcher Fetcher, x Expr) (GenericValue, boo
 // Unroll the type.
 func (s *GenericNonTypeParam) Unroll(ev Fetcher, urlr Unroller) (ast.Expr, bool) {
 	return nil, ev.Err().AppendInternalf(s.NameDef(), "%T does not support unrolling", s)
+}
+
+// Visit considers the generic non-type parameter identifier.
+func (s *GenericNonTypeParam) Visit(f Finder) {
+	considerNode(f, s, s.Node())
 }
 
 type (

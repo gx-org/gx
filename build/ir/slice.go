@@ -88,6 +88,18 @@ func (s *SliceLitExpr) SourceString(from *File) string {
 	return fmt.Sprintf("%s%s", s.Typ.ReferString(from), sourceStringLiteral(from, s.Elts))
 }
 
+// Visit traverses the slice literal expression, its type, and its elements.
+func (s *SliceLitExpr) Visit(f Finder) {
+	comp, ok := s.Src.(*ast.CompositeLit)
+	if !ok || !considerPtr(f, s, comp) {
+		return
+	}
+	visitTypeRef(f, s.Typ, comp.Type)
+	for _, elt := range s.Elts {
+		elt.Visit(f)
+	}
+}
+
 // SliceExpr is a slice expression to select elements in a sliceable elements.
 type SliceExpr struct {
 	Src  *ast.SliceExpr
@@ -141,5 +153,19 @@ func (s *SliceExpr) SourceString(from *File) string {
 func (s *SliceExpr) Store() Storage {
 	return &AnonymousStorage{
 		Typ: s.Type(),
+	}
+}
+
+// Visit traverses the slice expression, its base, and its bounds.
+func (s *SliceExpr) Visit(f Finder) {
+	if !considerPtr(f, s, s.Src) {
+		return
+	}
+	s.X.Visit(f)
+	if s.Low != nil {
+		s.Low.Visit(f)
+	}
+	if s.High != nil {
+		s.High.Visit(f)
 	}
 }

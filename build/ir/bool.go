@@ -51,6 +51,11 @@ func (b *BoolValue) SourceString(from *File) string {
 	return b.Src.Name
 }
 
+// Visit considers the boolean literal.
+func (b *BoolValue) Visit(f Finder) {
+	considerPtr(f, b, b.Src)
+}
+
 var falseValue = BoolValue{
 	Src: &ast.Ident{Name: "false"},
 	Val: false,

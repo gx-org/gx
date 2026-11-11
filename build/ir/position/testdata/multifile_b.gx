@@ -1,0 +1,5 @@
+package test
+
+func (c Counter) Next() int32 {
+	return c.N + HelperA()
+}

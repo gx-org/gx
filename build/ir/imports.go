@@ -90,6 +90,11 @@ func (s *ImportDecl) Same(o Storage) bool {
 	return Storage(s) == o
 }
 
+// Visit considers the import declaration.
+func (s *ImportDecl) Visit(f Finder) {
+	considerPtr(f, s, s.Src)
+}
+
 // FindImport returns an import declaration given a package full path.
 // Returns nil if the path cannot be found.
 func (f *File) FindImport(path string) *ImportDecl {
@@ -134,4 +139,9 @@ func (ie *ImportEmbedded) Expr() ast.Expr {
 // Type of the import expression.
 func (ie *ImportEmbedded) Type() Type {
 	return PackageType()
+}
+
+// Visit considers the embedded import expression.
+func (ie *ImportEmbedded) Visit(f Finder) {
+	considerNode(f, ie, ie.Src)
 }

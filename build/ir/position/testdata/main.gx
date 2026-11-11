@@ -1,0 +1,131 @@
+package test
+
+import "math"
+
+const UntypedConst = 7
+const TypedConst float32 = 3.5
+
+const ( // multi-spec
+	GroupedA = 10
+	GroupedB = 20
+)
+
+const ( // single-spec
+	SingleParenConst = 30
+)
+
+var StaticScalar int32
+var StaticStr string
+
+type Vec2 [2]float32
+
+type Pair struct {
+	A, B float32
+}
+
+func (b Box[V]) Early() V {
+	return b.Val
+}
+
+type Box[T any] struct {
+	Val T
+}
+
+type Stringer interface {
+	Format(x int32) string
+}
+
+func (b Box[U]) Get() U {
+	return b.Val
+}
+
+func unboxInt(b Box[int32]) int32 {
+	return b.Val
+}
+
+func pair(x float32) (float32, float32) {
+	return x, x
+}
+
+func variadic(vals ...int32) []int32
+
+func varWithPrefix(prefix int32, vals ...int32) []int32
+
+func applyFn(fn func(y int32) float32, x int32) float32 {
+	return fn(x)
+}
+
+func noop() {}
+
+func id[T any](v T) T {
+	return v
+}
+
+func firstOfTwo[T any, U any](v T, _ U) T {
+	return v
+}
+
+func unpackShape[S []int](x [2][S...]float32) [2][S...]float32 {
+	return x
+}
+
+//gx:unroll
+func unrollIndices() []int {
+	return []int{0, 1}
+}
+
+func Exercise(p Pair, arr [2][3]float32) float32 {
+	noop()
+	var localVar int32
+	localVar = 1
+	a, b := pair(p.A)
+	a += float32(localVar)
+	lit := Pair{B: b, A: (a + -1.25)}
+	lit.A, lit.B = pair(p.A)
+	lit.A = arr[0][0]
+	inferred := [...]float32{1.0, 2.0}
+	inferred[1] = math.Abs(lit.A)
+	inferred = 0
+	sl := []int32{10, 20, 30}
+	sl2d := [][]int32{{1}, {2}}
+	_ = sl2d
+	slArr := [][2]float32{{1, 2}}
+	_ = slArr
+	sub := sl[1:2]
+	subHead := sl[:2]
+	_ = subHead
+	_ = variadic(sub...)
+	_ = varWithPrefix(localVar, sub...)
+	specVal := id[float32](a)
+	specTwo := firstOfTwo[float32, int32](specVal, localVar)
+	boxed := Box[float32]{Val: specTwo}
+	asserted := arr.([2][3]float32)
+	fnLit := func(v float32) float32 {
+		return v // fnLit
+	}
+	if initV := fnLit(boxed.Get()); initV > 0 {
+		a = asserted[0][0]
+	} else if a < 0 {
+		a = 0
+	} else {
+		a = 1
+	}
+	for idx := range StaticScalar {
+		localVar += int32(idx)
+	}
+	for idx, elem := range sl {
+		localVar += int32(idx) + elem
+	}
+	for u := range unrollIndices() {
+		localVar += int32(u)
+	}
+	m1 := [2][3]float32{{1, 2, 3}, {4, 5, 6}}
+	m2 := [3][2]float32{{1, 2}, {3, 4}, {5, 6}}
+	prod{i, k} := einsum(m1{i, j} * m2{j, k})
+	_ = prod
+	return a
+}
+
+func Greetings() string {
+	return "hello"
+}

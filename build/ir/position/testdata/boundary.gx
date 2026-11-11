@@ -1,0 +1,4 @@
+// header comment
+package test
+
+const K = 42

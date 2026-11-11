@@ -394,6 +394,24 @@ func (s *FuncType) SourceString(from *File) string {
 	return s.SourceSignature(from, nil)
 }
 
+// Visit traverses the function type and its signature fields.
+func (s *FuncType) Visit(f Finder) {
+	if !considerPtr(f, s, s.Src) {
+		return
+	}
+	s.visitSignatureFields(f)
+}
+
+func (s *FuncType) visitSignatureFields(f Finder) {
+	if s == nil {
+		return
+	}
+	s.Receiver.Visit(f)
+	s.GenParams.Fields.Visit(f)
+	s.Params.Visit(f)
+	s.Results.Visit(f)
+}
+
 // UnknownFType returns the function type for a function unknown at compile time.
 func UnknownFType() *FuncType {
 	return &FuncType{
