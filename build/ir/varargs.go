@@ -122,6 +122,14 @@ func (tp *VarArgsType) ReferString(from *File) string {
 	return tp.DefineString(from)
 }
 
+// Visit traverses the varargs type and its element type.
+func (tp *VarArgsType) Visit(f Finder) {
+	if !considerPtr(f, tp, tp.Src) {
+		return
+	}
+	tp.Typ.DType.visitWithAST(f, tp.Src.Elt)
+}
+
 // VarArgsExpr represents a type expression to represent a varargs type.
 type VarArgsExpr struct {
 	Elt *VarArgsType
@@ -154,6 +162,11 @@ func (expr *VarArgsExpr) Type() Type {
 // SourceString returns the GX source code of the expression.
 func (expr *VarArgsExpr) SourceString(from *File) string {
 	return "..." + expr.Elt.Typ.DType.SourceString(from)
+}
+
+// Visit traverses the varargs type expression.
+func (expr *VarArgsExpr) Visit(f Finder) {
+	expr.Elt.Visit(f)
 }
 
 // VarArgsIndexer is an expression able to add an index to access a generic varargs non-type parameter.
@@ -224,4 +237,9 @@ func (s *VarArgsIndex) Expr() ast.Expr {
 // Type of the expression.
 func (s *VarArgsIndex) Type() Type {
 	return s.EltTyp
+}
+
+// Visit traverses the indexed varargs expression.
+func (s *VarArgsIndex) Visit(f Finder) {
+	s.X.Visit(f)
 }

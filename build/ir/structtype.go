@@ -217,3 +217,11 @@ func (s *StructType) DefineString(from *File) string {
 func (s *StructType) ReferString(from *File) string {
 	return s.DefineString(from)
 }
+
+// Visit traverses the structure type and its fields.
+func (s *StructType) Visit(f Finder) {
+	if !considerPtr(f, s, s.Src) {
+		return
+	}
+	s.Fields.Visit(f)
+}

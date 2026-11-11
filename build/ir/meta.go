@@ -125,3 +125,25 @@ func (s *MetaCore) DefineString(from *File) string {
 func (s *MetaCore) ReferString(from *File) string {
 	return s.DefineString(from)
 }
+
+func (s *MetaCore) visit(f Finder, node IR) {
+	if !considerPtr(f, node, s.Src) {
+		return
+	}
+	s.FType.visitSignatureFields(f)
+}
+
+// Visit traverses the meta function declaration and its signature.
+func (s *MetaCore) Visit(f Finder) {
+	s.visit(f, s)
+}
+
+// Visit traverses the function annotator declaration and its signature.
+func (s *AnnotatorFunc) Visit(f Finder) {
+	s.visit(f, s)
+}
+
+// Visit traverses the field annotator declaration and its signature.
+func (s *AnnotatorField) Visit(f Finder) {
+	s.visit(f, s)
+}

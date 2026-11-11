@@ -97,3 +97,8 @@ func (u *UnpackExpr) IndexForVarArgs(errsrc ErrSource, i int) (Expr, bool) {
 func (u *UnpackExpr) SourceString(from *File) string {
 	return u.X.SourceString(from) + "..."
 }
+
+// Visit traverses the unpacked expression.
+func (u *UnpackExpr) Visit(f Finder) {
+	u.X.Visit(f)
+}

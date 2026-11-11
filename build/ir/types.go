@@ -68,6 +68,9 @@ func (*BaseType[T]) UnifyWith(unifier Unifier, typ Type) bool {
 	return true
 }
 
+// Visit is a no-op by default for types without child AST nodes.
+func (*BaseType[T]) Visit(Finder) {}
+
 type metaType struct {
 	BaseType[*ast.Ident]
 }
@@ -200,6 +203,8 @@ func (t *invalidType) Unroll(ev Fetcher, urlr Unroller) (ast.Expr, bool) {
 func (t *invalidType) IndexForVarArgs(ErrSource, int) (Type, bool) {
 	return t, true
 }
+
+func (*invalidType) Visit(Finder) {}
 
 type distinctType struct {
 	BaseType[ast.Expr]

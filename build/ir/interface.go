@@ -120,6 +120,14 @@ func (m *IMethod) Value(x Expr) Expr {
 	return NewFuncValExpr(x, m)
 }
 
+// Visit traverses the interface method declaration and its signature.
+func (m *IMethod) Visit(f Finder) {
+	if !considerPtr(f, m, m.Src) {
+		return
+	}
+	m.FType.visitSignatureFields(f)
+}
+
 // Interface represents a set of types.
 type Interface struct {
 	BaseType[*ast.InterfaceType]
@@ -363,6 +371,16 @@ func (*Interface) UnifyWith(unifier Unifier, typ Type) bool {
 // IndexForVarArgs returns a type specific to a given index in varargs.
 func (s *Interface) IndexForVarArgs(ErrSource, int) (Type, bool) {
 	return s, true
+}
+
+// Visit traverses the interface type and its methods.
+func (s *Interface) Visit(f Finder) {
+	if !considerPtr(f, s, s.Src) {
+		return
+	}
+	for _, meth := range s.methods {
+		meth.Visit(f)
+	}
 }
 
 var anyType = &Interface{}

@@ -1,0 +1,9 @@
+package test
+
+type Counter struct {
+	N int32
+}
+
+func HelperA() int32 {
+	return 1
+}

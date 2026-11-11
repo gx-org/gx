@@ -53,10 +53,17 @@ type (
 		node()
 	}
 
+	// Finder inspects IR objects and their half-open source spans [start, end).
+	// If Consider returns true, Visit traverses child nodes within that span.
+	Finder interface {
+		Consider(node IR, start, end token.Pos) bool
+	}
+
 	// Node is a node with a position in GX source code.
 	Node interface {
 		IR
 		Node() ast.Node
+		Visit(Finder)
 	}
 
 	// Storage is a node that can store a value.
@@ -361,6 +368,11 @@ func (s *TupleType) IndexForVarArgs(ErrSource, int) (Type, bool) {
 	return s, true
 }
 
+// Visit considers the tuple type AST node.
+func (s *TupleType) Visit(f Finder) {
+	considerNode(f, s, s.Src)
+}
+
 func (*InterfaceType) node() {}
 
 // Refer to the function type.
@@ -415,6 +427,11 @@ func (s *InterfaceType) Specialise(Specialiser) (Type, bool) {
 // IndexForVarArgs returns a type specific to a given index in varargs.
 func (s *InterfaceType) IndexForVarArgs(ErrSource, int) (Type, bool) {
 	return s, true
+}
+
+// Visit considers the interface type AST node.
+func (s *InterfaceType) Visit(f Finder) {
+	considerNode(f, s, s.Src)
 }
 
 // IsValid returns true if the type is valid.
@@ -480,6 +497,11 @@ func (s *BuiltinType) Specialise(Specialiser) (Type, bool) {
 // IndexForVarArgs returns a type specific to a given index in varargs.
 func (s *BuiltinType) IndexForVarArgs(ErrSource, int) (Type, bool) {
 	return s, true
+}
+
+// Visit considers the builtin type AST node.
+func (s *BuiltinType) Visit(f Finder) {
+	considerNode(f, s, s.Src)
 }
 
 var (
@@ -733,6 +755,25 @@ func (s *NamedType) buildTypeSet() []Type {
 	return buildTypeSet(s.Underlying.val)
 }
 
+// Visit traverses the named type's generic parameter values.
+func (s *NamedType) Visit(f Finder) {
+	for _, gv := range s.GenParams.Values {
+		if gv != nil {
+			gv.Value().Visit(f)
+		}
+	}
+}
+
+func (s *NamedType) visitDecl(f Finder, start, end token.Pos) {
+	if f.Consider(s, start, end) {
+		s.GenParams.Fields.Visit(f)
+		s.Underlying.visitWithAST(f, s.Src.Type)
+	}
+	for _, meth := range s.Meths {
+		meth.Visit(f)
+	}
+}
+
 // Underlying returns the underlying type of a type.
 func Underlying(typ Type) Type {
 	typ = simplifyType(typ, false)
@@ -849,6 +890,14 @@ func (s *SliceType) UnifyWith(uni Unifier, typ Type) bool {
 // IndexForVarArgs returns a type specific to a given index in varargs.
 func (s *SliceType) IndexForVarArgs(ErrSource, int) (Type, bool) {
 	return s, true
+}
+
+// Visit traverses the slice type and its element type.
+func (s *SliceType) Visit(f Finder) {
+	if !considerNode(f, s, s.Src) {
+		return
+	}
+	s.DType.Visit(f)
 }
 
 func (*arrayType) node()      {}
@@ -1050,6 +1099,14 @@ func (s *arrayType) ReferString(from *File) string {
 // DefineString returns the GX source code of the node.
 func (s *arrayType) DefineString(from *File) string {
 	return s.rankString(from, s.DTypeF.ReferString(from))
+}
+
+func (s *arrayType) Visit(f Finder) {
+	if s.Src == nil {
+		return
+	}
+	s.RankF.Visit(f)
+	visitTypeRef(f, s.DTypeF, arrayElementAST(s.Src))
 }
 
 // ----------------------------------------------------------------------------
@@ -1370,6 +1427,50 @@ func (f *File) FileSet() *token.FileSet {
 	return f.Package.FSet
 }
 
+// Visit traverses the IR declarations, statements, types, and expressions in file.
+func (f *File) Visit(finder Finder) {
+	src := f.Src
+	if src.Name != nil {
+		finder.Consider(f.Package, src.Package, src.Name.End())
+	}
+
+	singleSpecDecls := make(map[ast.Spec]*ast.GenDecl)
+	for _, decl := range src.Decls {
+		if gen, ok := decl.(*ast.GenDecl); ok && !gen.Lparen.IsValid() && len(gen.Specs) == 1 {
+			singleSpecDecls[gen.Specs[0]] = gen
+		}
+	}
+
+	for _, imp := range f.Imports {
+		start, end := specBounds(imp.Src, singleSpecDecls)
+		finder.Consider(imp, start, end)
+	}
+
+	decls := f.Package.Decls
+	if decls == nil {
+		return
+	}
+
+	for _, cst := range decls.Consts {
+		start, end := specBounds(cst.Src, singleSpecDecls)
+		cst.visitSpec(finder, start, end)
+	}
+
+	for _, vr := range decls.Vars {
+		start, end := specBounds(vr.Src, singleSpecDecls)
+		vr.visitSpec(finder, start, end)
+	}
+
+	for _, typ := range decls.Types {
+		start, end := specBounds(typ.Src, singleSpecDecls)
+		typ.visitDecl(finder, start, end)
+	}
+
+	for _, fn := range decls.Funcs {
+		fn.Visit(finder)
+	}
+}
+
 func (*FuncDecl) node()         {}
 func (*FuncDecl) storage()      {}
 func (*FuncDecl) storageValue() {}
@@ -1463,6 +1564,17 @@ func (s *FuncDecl) DefineString(from *File) string {
 	return fmt.Sprintf("%s {\n%s}", sig, body)
 }
 
+// Visit traverses the function declaration, its signature, and its body.
+func (s *FuncDecl) Visit(f Finder) {
+	if !considerPtr(f, s, s.Src) {
+		return
+	}
+	s.FType.visitSignatureFields(f)
+	if s.Body != nil {
+		s.Body.Visit(f)
+	}
+}
+
 func (*FuncBuiltin) node()         {}
 func (*FuncBuiltin) storage()      {}
 func (*FuncBuiltin) storageValue() {}
@@ -1537,6 +1649,14 @@ func (s *FuncBuiltin) New() PkgFunc {
 	return &n
 }
 
+// Visit traverses the builtin function declaration and its signature.
+func (s *FuncBuiltin) Visit(f Finder) {
+	if !considerPtr(f, s, s.Src) {
+		return
+	}
+	s.FType.visitSignatureFields(f)
+}
+
 func (*FuncKeyword) node()    {}
 func (*FuncKeyword) storage() {}
 
@@ -1596,6 +1716,11 @@ func (s *FuncKeyword) DefineString(*File) string {
 // ReferString returns the string representing the function in an error message.
 func (s *FuncKeyword) ReferString(from *File) string {
 	return s.DefineString(from)
+}
+
+// Visit considers the keyword function identifier.
+func (s *FuncKeyword) Visit(f Finder) {
+	considerPtr(f, s, s.ID)
 }
 
 func (*FuncLit) node()         {}
@@ -1684,7 +1809,33 @@ func (s *FuncLit) Annotations() *annotations.Annotations {
 	return &s.Anns
 }
 
+// Visit traverses the function literal, its signature, and its body.
+func (s *FuncLit) Visit(f Finder) {
+	if !considerPtr(f, s, s.Src) {
+		return
+	}
+	s.FType.visitSignatureFields(f)
+	if s.Body != nil {
+		s.Body.Visit(f)
+	}
+}
+
 func (*ConstSpec) node() {}
+
+// Visit traverses the constant specification and its expressions.
+func (s *ConstSpec) Visit(f Finder) {
+	s.visitSpec(f, s.Src.Pos(), s.Src.End())
+}
+
+func (s *ConstSpec) visitSpec(f Finder, start, end token.Pos) {
+	if !f.Consider(s, start, end) {
+		return
+	}
+	s.Type.visitWithAST(f, s.Src.Type)
+	for _, ce := range s.Exprs {
+		ce.Visit(f)
+	}
+}
 
 func (*ConstExpr) node()         {}
 func (*ConstExpr) storage()      {}
@@ -1732,7 +1883,31 @@ func (cst *ConstExpr) Value(Expr) Expr {
 func (cst *ConstExpr) SourceString() string {
 	return fmt.Sprintf("const %s", cst.VName.Name)
 }
+
+// Visit traverses the constant identifier and its assigned expression.
+func (cst *ConstExpr) Visit(f Finder) {
+	considerPtr(f, cst, cst.VName)
+	if cst.Val != nil {
+		cst.Val.Visit(f)
+	}
+}
+
 func (*VarSpec) node() {}
+
+// Visit traverses the variable specification, its names, and its declared type.
+func (s *VarSpec) Visit(f Finder) {
+	s.visitSpec(f, s.Src.Pos(), s.Src.End())
+}
+
+func (s *VarSpec) visitSpec(f Finder, start, end token.Pos) {
+	if !f.Consider(s, start, end) {
+		return
+	}
+	for _, ve := range s.Exprs {
+		ve.Visit(f)
+	}
+	visitTypeRef(f, s.TypeV, s.Src.Type)
+}
 
 func (*VarExpr) node()    {}
 func (*VarExpr) storage() {}
@@ -1760,6 +1935,11 @@ func (vr *VarExpr) Type() Type {
 // NameDef returns the identifier for the static variable.
 func (vr *VarExpr) NameDef() *ast.Ident {
 	return vr.VName
+}
+
+// Visit considers the variable identifier.
+func (vr *VarExpr) Visit(f Finder) {
+	considerPtr(f, vr, vr.VName)
 }
 
 // ----------------------------------------------------------------------------
@@ -1871,6 +2051,17 @@ func (s *FieldList) TupleType() *TupleType {
 	}
 }
 
+// Visit traverses the field list and its groups.
+func (s *FieldList) Visit(f Finder) {
+	if s == nil {
+		return
+	}
+	considerPtr(f, s, s.Src)
+	for _, grp := range s.List {
+		grp.Visit(f)
+	}
+}
+
 func (*FieldGroup) node() {}
 
 // Node returns the node in the AST tree.
@@ -1905,6 +2096,19 @@ func (s *FieldGroup) SourceString(from *File) string {
 	return names + typ
 }
 
+// Visit traverses the field group, its type, and its named fields.
+func (s *FieldGroup) Visit(f Finder) {
+	considerPtr(f, s, s.Src)
+	var srcType ast.Expr
+	if s.Src != nil {
+		srcType = s.Src.Type
+	}
+	s.Type.visitWithAST(f, srcType)
+	for _, field := range s.Fields {
+		field.Visit(f)
+	}
+}
+
 func (s *Field) node() {}
 
 // Expr returns
@@ -1936,6 +2140,11 @@ func (s *Field) Origin() *Field {
 // Type returns the type of the field.
 func (s *Field) Type() Type {
 	return s.Group.Type.Val()
+}
+
+// Visit considers the field identifier.
+func (s *Field) Visit(f Finder) {
+	considerPtr(f, s, s.Name)
 }
 
 // ----------------------------------------------------------------------------
@@ -2218,6 +2427,11 @@ func (s *NumberFloat) SourceString(*File) string {
 	return s.Val.String()
 }
 
+// Visit considers the floating-point literal.
+func (s *NumberFloat) Visit(f Finder) {
+	considerPtr(f, s, s.Src)
+}
+
 func (s *NumberInt) node()       {}
 func (s *NumberInt) numberExpr() {}
 
@@ -2251,6 +2465,11 @@ func (s *NumberInt) SourceString(*File) string {
 	return s.Val.String()
 }
 
+// Visit considers the integer literal.
+func (s *NumberInt) Visit(f Finder) {
+	considerPtr(f, s, s.Src)
+}
+
 func (s *NumberCastExpr) node() {}
 
 // Node returns the node in the AST tree.
@@ -2280,6 +2499,11 @@ func (s *NumberCastExpr) Specialise(spec Specialiser) (Expr, bool) {
 	return &x, ok
 }
 
+// Visit traverses the underlying expression of a number cast.
+func (s *NumberCastExpr) Visit(f Finder) {
+	s.X.Visit(f)
+}
+
 func (s *StringLiteral) node() {}
 
 // Expr returns the AST expression.
@@ -2299,6 +2523,11 @@ func (s *StringLiteral) Type() Type { return StringType() }
 // SourceString representation of the number.
 func (s *StringLiteral) SourceString(*File) string {
 	return s.Src.Value
+}
+
+// Visit considers the string literal.
+func (s *StringLiteral) Visit(f Finder) {
+	considerPtr(f, s, s.Src)
 }
 
 func (s *ArrayLitExpr) node() {}
@@ -2335,6 +2564,17 @@ func (s *ArrayLitExpr) Values() []Expr { return s.Elts }
 // SourceString returns the GX source code of the node.
 func (s *ArrayLitExpr) SourceString(from *File) string {
 	return fmt.Sprintf("%s%s", s.Typ.DefineString(from), sourceStringLiteral(from, s.Elts))
+}
+
+// Visit traverses the array literal expression, its type, and its elements.
+func (s *ArrayLitExpr) Visit(f Finder) {
+	if !considerPtr(f, s, s.Src) {
+		return
+	}
+	visitTypeRef(f, s.Typ, s.Src.Type)
+	for _, elt := range s.Elts {
+		elt.Visit(f)
+	}
 }
 
 func (s *StructLitExpr) node() {}
@@ -2378,6 +2618,22 @@ func (s *StructLitExpr) SourceString(from *File) string {
 	return fmt.Sprintf("%s{\n%s\n}", s.Type().ReferString(from), strings.Join(elts, "\n"))
 }
 
+// Visit traverses the struct literal expression, its type, and its keyed fields.
+func (s *StructLitExpr) Visit(f Finder) {
+	if !considerPtr(f, s, s.Src) {
+		return
+	}
+	visitTypeRef(f, s.Typ, s.Src.Type)
+	byName := make(map[string]*FieldLit, len(s.Elts))
+	for _, fl := range s.Elts {
+		byName[fl.Field.Name.Name] = fl
+	}
+	for _, astElt := range s.Src.Elts {
+		kv := astElt.(*ast.KeyValueExpr)
+		byName[kv.Key.(*ast.Ident).Name].visitWithAST(f, kv)
+	}
+}
+
 func (s *UnaryExpr) node() {}
 
 // Node returns the node in the AST tree.
@@ -2398,6 +2654,14 @@ func (s *UnaryExpr) Expr() ast.Expr { return s.Src }
 // SourceString returns the GX source code of the expression.
 func (s *UnaryExpr) SourceString(from *File) string {
 	return s.Src.Op.String() + s.X.SourceString(from)
+}
+
+// Visit traverses the unary expression and its operand.
+func (s *UnaryExpr) Visit(f Finder) {
+	if !considerPtr(f, s, s.Src) {
+		return
+	}
+	s.X.Visit(f)
 }
 
 func (s *ParenExpr) node() {}
@@ -2429,6 +2693,14 @@ func (s *ParenExpr) Store() Storage {
 // SourceString returns the GX source code of the node.
 func (s *ParenExpr) SourceString(from *File) string {
 	return "(" + s.X.SourceString(from) + ")"
+}
+
+// Visit traverses the parenthesized expression and its inner expression.
+func (s *ParenExpr) Visit(f Finder) {
+	if !considerPtr(f, s, s.Src) {
+		return
+	}
+	s.X.Visit(f)
 }
 
 func (s *BinaryExpr) node() {}
@@ -2475,6 +2747,15 @@ func (s *BinaryExpr) SourceString(from *File) string {
 	return (s.binaryElementString(from, s.X) +
 		s.Src.Op.String() +
 		s.binaryElementString(from, s.Y))
+}
+
+// Visit traverses the binary expression and its operands.
+func (s *BinaryExpr) Visit(f Finder) {
+	if !considerPtr(f, s, s.Src) {
+		return
+	}
+	s.X.Visit(f)
+	s.Y.Visit(f)
 }
 
 // TypeExpr builds an expression given a type.
@@ -2542,6 +2823,25 @@ func (s *TypeValExpr) SourceString(from *File) string {
 	return s.val.ReferString(from)
 }
 
+// Visit traverses the type-value expression and its referenced type.
+func (s *TypeValExpr) Visit(f Finder) {
+	s.visitWithAST(f, nil)
+}
+
+func (s *TypeValExpr) visitWithAST(f Finder, outerAST ast.Expr) {
+	if s == nil {
+		return
+	}
+	src := outerAST
+	if src == nil {
+		src = s.Expr()
+	}
+	if !considerNode(f, s, src) {
+		return
+	}
+	s.Val().Visit(f)
+}
+
 // NewFuncValExpr returns a new expression referencing a function.
 func NewFuncValExpr(x Expr, fn Func) *FuncValExpr {
 	return &FuncValExpr{x: x, f: fn, t: fn.FuncType()}
@@ -2607,6 +2907,11 @@ func (s *FuncValExpr) ReferString(from *File) string {
 		return callee
 	}
 	return fmt.Sprintf("%s(%s)", callee, fType.Params.ReferString(from))
+}
+
+// Visit traverses the expression referencing the function value.
+func (s *FuncValExpr) Visit(f Finder) {
+	s.x.Visit(f)
 }
 
 func (s *FuncCallExpr) node() {}
@@ -2691,6 +2996,24 @@ func (s *FuncCallExpr) SourceString(from *File) string {
 	return b.String()
 }
 
+// Visit traverses the function call expression, its callee, and its arguments.
+func (s *FuncCallExpr) Visit(f Finder) {
+	if !considerPtr(f, s, s.Src) {
+		return
+	}
+	s.Callee.Visit(f)
+	for i, arg := range s.Args {
+		if i == len(s.Args)-1 && s.Src.Ellipsis.IsValid() {
+			if unpack, ok := arg.(*UnpackExpr); ok {
+				if !f.Consider(unpack, unpack.X.Node().Pos(), s.Src.Ellipsis+3) {
+					continue
+				}
+			}
+		}
+		arg.Visit(f)
+	}
+}
+
 func (s *CallResultExpr) node() {}
 
 // Node returns the node in the AST tree.
@@ -2713,6 +3036,11 @@ func (s *CallResultExpr) Unroll(ev Fetcher, urlr Unroller) (ast.Expr, bool) {
 // SourceString returns the GX source code of the node.
 func (s *CallResultExpr) SourceString(*File) string {
 	return fmt.Sprintf("%T", s)
+}
+
+// Visit traverses the underlying function call of a call-result expression.
+func (s *CallResultExpr) Visit(f Finder) {
+	s.Call.Visit(f)
 }
 
 func (s *CastExpr) node() {}
@@ -2750,6 +3078,17 @@ func (s *CastExpr) SourceString(from *File) string {
 	}
 }
 
+// Visit traverses the type cast expression, its target type, and its operand.
+func (s *CastExpr) Visit(f Finder) {
+	if call, ok := s.Src.(*ast.CallExpr); ok && call.Lparen.IsValid() {
+		if !considerPtr(f, s, call) {
+			return
+		}
+		visitTypeRef(f, s.Typ, call.Fun)
+	}
+	s.X.Visit(f)
+}
+
 func (s *TypeAssertExpr) node() {}
 
 // Node returns the node in the AST tree.
@@ -2776,6 +3115,15 @@ func (s *TypeAssertExpr) Orig() Expr { return s.X }
 // SourceString returns the GX source code of the node.
 func (s *TypeAssertExpr) SourceString(from *File) string {
 	return fmt.Sprintf("%s.(%s)", s.X.SourceString(from), s.Typ.ReferString(from))
+}
+
+// Visit traverses the type assertion expression, its operand, and its target type.
+func (s *TypeAssertExpr) Visit(f Finder) {
+	if !considerPtr(f, s, s.Src) {
+		return
+	}
+	s.X.Visit(f)
+	visitTypeRef(f, s.Typ, s.Src.Type)
 }
 
 func (s *Ident) node() {}
@@ -2875,6 +3223,11 @@ func (s *Ident) UnifyWith(uni Unifier, targets []AxisLengths) ([]AxisLengths, bo
 	return s.defineShape(uni, targets, genericAxis)
 }
 
+// Visit considers the identifier expression.
+func (s *Ident) Visit(f Finder) {
+	considerPtr(f, s, s.Src)
+}
+
 func (s *PackageRef) node() {}
 
 // Node returns the node in the AST tree.
@@ -2894,6 +3247,11 @@ func (s *PackageRef) Type() Type { return PackageType() }
 // SourceString returns the GX source code of the expression.
 func (s *PackageRef) SourceString(from *File) string {
 	return s.X.SourceString(from)
+}
+
+// Visit traverses the identifier referencing the imported package.
+func (s *PackageRef) Visit(f Finder) {
+	s.X.Visit(f)
 }
 
 func (*FieldLit) node()         {}
@@ -2916,6 +3274,20 @@ func (lit *FieldLit) Unroll(ev Fetcher, urlr Unroller) (ast.Expr, bool) {
 		Key:   lit.NameDef(),
 		Value: x,
 	}, ok
+}
+
+// Visit traverses the struct literal field and its assigned value.
+func (lit *FieldLit) Visit(f Finder) {
+	lit.visitWithAST(f, lit.Node())
+}
+
+func (lit *FieldLit) visitWithAST(f Finder, src ast.Node) {
+	if !considerNode(f, lit, src) {
+		return
+	}
+	if lit.X != nil {
+		lit.X.Visit(f)
+	}
 }
 
 func (s *SelectorExpr) node() {}
@@ -3016,6 +3388,14 @@ func (s *SelectorExpr) SourceString(from *File) string {
 	return fmt.Sprintf("%s.%s", s.X.SourceString(from), s.Stor.NameDef().Name)
 }
 
+// Visit traverses the selector expression and its base expression.
+func (s *SelectorExpr) Visit(f Finder) {
+	if !considerPtr(f, s, s.Src) {
+		return
+	}
+	s.X.Visit(f)
+}
+
 func (s *IndexExpr) node() {}
 
 // Node returns the node in the AST tree.
@@ -3053,6 +3433,15 @@ func (s *IndexExpr) SourceString(from *File) string {
 	return fmt.Sprintf("%s[%s]", s.X.SourceString(from), s.Index.SourceString(from))
 }
 
+// Visit traverses the index expression, its base expression, and its index.
+func (s *IndexExpr) Visit(f Finder) {
+	if !considerPtr(f, s, s.Src) {
+		return
+	}
+	s.X.Visit(f)
+	s.Index.Visit(f)
+}
+
 func (s *SpecTypeExpr) node() {}
 
 // Node returns the node in the AST tree.
@@ -3081,6 +3470,15 @@ func (s *SpecTypeExpr) SourceString(from *File) string {
 	return fmt.Sprintf("%s[%s]", s.X.SourceString(from), s.Index.SourceString(from))
 }
 
+// Visit traverses the generic specialization expression, its base, and its type argument.
+func (s *SpecTypeExpr) Visit(f Finder) {
+	if !f.Consider(s, s.Src.Pos(), s.Index.Node().End()+1) {
+		return
+	}
+	s.X.Visit(f)
+	s.Index.Visit(f)
+}
+
 func (s *IndexListExpr) node() {}
 
 // Node returns the node in the AST tree.
@@ -3107,6 +3505,15 @@ func (s *IndexListExpr) SourceString(*File) string {
 	return fmt.Sprintf("%T", s)
 }
 
+// Visit traverses the index-list expression, its base expression, and its indices.
+func (s *IndexListExpr) Visit(f Finder) {
+	if !considerPtr(f, s, s.Src) {
+		return
+	}
+	s.X.Visit(f)
+	s.Indices.Visit(f)
+}
+
 func (s *EinsumExpr) node() {}
 
 // Node returns the node in the AST tree.
@@ -3126,6 +3533,15 @@ func (s *EinsumExpr) Unroll(ev Fetcher, urlr Unroller) (ast.Expr, bool) {
 // SourceString returns the GX source code of the expression.
 func (s *EinsumExpr) SourceString(*File) string {
 	return fmt.Sprintf("%T", s)
+}
+
+// Visit traverses the einsum expression and its operands.
+func (s *EinsumExpr) Visit(f Finder) {
+	if !considerNode(f, s, s.Src) {
+		return
+	}
+	s.X.Visit(f)
+	s.Y.Visit(f)
 }
 
 func (s *Tuple) node() {}
@@ -3152,6 +3568,13 @@ func (s *Tuple) Node() ast.Node {
 		return nil
 	}
 	return s.Exprs[0].Node()
+}
+
+// Visit traverses the expressions in the tuple.
+func (s *Tuple) Visit(f Finder) {
+	for _, expr := range s.Exprs {
+		expr.Visit(f)
+	}
 }
 
 // ----------------------------------------------------------------------------
@@ -3222,6 +3645,11 @@ func (s *AnonymousStorage) Unroll(ev Fetcher, urlr Unroller) (ast.Expr, bool) {
 	return s.Src, true
 }
 
+// Visit considers the anonymous storage identifier.
+func (s *AnonymousStorage) Visit(f Finder) {
+	considerPtr(f, s, s.Src)
+}
+
 func (*LocalVarStorage) node()    {}
 func (*LocalVarStorage) storage() {}
 
@@ -3245,6 +3673,11 @@ func (s *LocalVarStorage) Same(o Storage) bool {
 // Unroll returns the identifier of the local variable storage.
 func (s *LocalVarStorage) Unroll(ev Fetcher, urlr Unroller) (ast.Expr, bool) {
 	return s.Src, true
+}
+
+// Visit considers the local variable storage identifier.
+func (s *LocalVarStorage) Visit(f Finder) {
+	considerPtr(f, s, s.Src)
 }
 
 func (*StructFieldStorage) node()    {}
@@ -3272,6 +3705,14 @@ func (s *StructFieldStorage) Unroll(ev Fetcher, urlr Unroller) (ast.Expr, bool) 
 	return s.Sel.Unroll(ev, urlr)
 }
 
+// Visit traverses the struct field assignment storage and its base expression.
+func (s *StructFieldStorage) Visit(f Finder) {
+	if !considerPtr(f, s, s.Sel.Src) {
+		return
+	}
+	s.Sel.X.Visit(f)
+}
+
 func (*IndexStorage) node()    {}
 func (*IndexStorage) storage() {}
 
@@ -3297,6 +3738,15 @@ func (s *IndexStorage) Same(o Storage) bool {
 // Unroll delegates to the underlying IndexExpr.
 func (s *IndexStorage) Unroll(ev Fetcher, urlr Unroller) (ast.Expr, bool) {
 	return s.Index.Unroll(ev, urlr)
+}
+
+// Visit traverses the index assignment storage, its base expression, and its index.
+func (s *IndexStorage) Visit(f Finder) {
+	if !considerPtr(f, s, s.Index.Src) {
+		return
+	}
+	s.Index.X.Visit(f)
+	s.Index.Index.Visit(f)
 }
 
 func (*FieldStorage) node()    {}
@@ -3330,6 +3780,11 @@ func (s *FieldStorage) Unroll(ev Fetcher, urlr Unroller) (ast.Expr, bool) {
 // String representing the receiver for debugging.
 func (s *FieldStorage) String() string {
 	return fmt.Sprintf("%T: %s %s", s, s.Field.Name.Name, s.Type().ReferString(nil))
+}
+
+// Visit considers the field storage node.
+func (s *FieldStorage) Visit(f Finder) {
+	considerNode(f, s, s.Node())
 }
 
 // ----------------------------------------------------------------------------
@@ -3477,6 +3932,16 @@ func (s *BlockStmt) SourceString(from *File) string {
 	return strings.Join(stmts, "\n") + "\n"
 }
 
+// Visit traverses the block statement and its child statements.
+func (s *BlockStmt) Visit(f Finder) {
+	if !considerPtr(f, s, s.Src) {
+		return
+	}
+	for _, child := range s.List {
+		child.Visit(f)
+	}
+}
+
 func (*ReturnStmt) stmtNode() {}
 func (*ReturnStmt) node()     {}
 
@@ -3516,6 +3981,16 @@ func (s *ReturnStmt) SourceString(from *File) string {
 	return "return " + strings.Join(vals, ", ")
 }
 
+// Visit traverses the return statement and its result expressions.
+func (s *ReturnStmt) Visit(f Finder) {
+	if !considerPtr(f, s, s.Src) {
+		return
+	}
+	for _, res := range s.Results {
+		res.Visit(f)
+	}
+}
+
 func (*AssignCallStmt) stmtNode() {}
 func (*AssignCallStmt) node()     {}
 
@@ -3543,6 +4018,17 @@ func (s *AssignCallStmt) Unroll(ev Fetcher, urlr Unroller) (ast.Stmt, bool) {
 		Tok: s.Src.Tok,
 		Rhs: []ast.Expr{rhs},
 	}, ok
+}
+
+// Visit traverses the multi-value call assignment statement.
+func (s *AssignCallStmt) Visit(f Finder) {
+	if !considerPtr(f, s, s.Src) {
+		return
+	}
+	for i, res := range s.List {
+		res.visitWithAST(f, s.Src.Lhs[i])
+	}
+	s.Call.Visit(f)
 }
 
 func (*AssignExprStmt) stmtNode() {}
@@ -3588,6 +4074,17 @@ func (s *AssignExprStmt) SourceString(from *File) string {
 	return fmt.Sprintf("%s %s %s", strings.Join(assigned, ", "), s.Src.Tok, strings.Join(exprs, ", "))
 }
 
+// Visit traverses the expression assignment statement.
+func (s *AssignExprStmt) Visit(f Finder) {
+	if !considerPtr(f, s, s.Src) {
+		return
+	}
+	isOpAssign := s.Src.Tok != token.ASSIGN && s.Src.Tok != token.DEFINE
+	for i, assign := range s.List {
+		assign.visitWithAST(f, s.Src.Lhs[i], s.Src.Rhs[i], isOpAssign)
+	}
+}
+
 func (*RangeStmt) stmtNode() {}
 func (*RangeStmt) node()     {}
 
@@ -3612,6 +4109,25 @@ func (s *RangeStmt) Unroll(ev Fetcher, urlr Unroller) (ast.Stmt, bool) {
 	}, xOk && bodyOk
 }
 
+// Visit traverses the range statement, its loop variables, target, and body.
+func (s *RangeStmt) Visit(f Finder) {
+	if !considerPtr(f, s, s.Src) {
+		return
+	}
+	s.visitRangeParts(f)
+}
+
+func (s *RangeStmt) visitRangeParts(f Finder) {
+	if s.Key != nil {
+		considerNode(f, s.Key, s.Src.Key)
+	}
+	if s.Value != nil {
+		considerNode(f, s.Value, s.Src.Value)
+	}
+	s.X.Visit(f)
+	s.Body.Visit(f)
+}
+
 func (*UnrollStmt) stmtNode() {}
 func (*UnrollStmt) node()     {}
 
@@ -3626,6 +4142,14 @@ func (s *UnrollStmt) Node() ast.Node { return s.Range.Src }
 // Unroll the statement.
 func (s *UnrollStmt) Unroll(ev Fetcher, urlr Unroller) (ast.Stmt, bool) {
 	return s.Range.Unroll(ev, urlr)
+}
+
+// Visit traverses the unrolled range statement using its source range definition.
+func (s *UnrollStmt) Visit(f Finder) {
+	if !considerPtr(f, s, s.Range.Src) {
+		return
+	}
+	s.Range.visitRangeParts(f)
 }
 
 func (*IfStmt) stmtNode() {}
@@ -3667,6 +4191,21 @@ func (s *IfStmt) SourceString(from *File) string {
 	return fmt.Sprintf("if %s%s {\n%s}%s\n", initS, condS, bodyS, elseS)
 }
 
+// Visit traverses the if statement, its init, condition, body, and else branch.
+func (s *IfStmt) Visit(f Finder) {
+	if !considerPtr(f, s, s.Src) {
+		return
+	}
+	if s.Init != nil {
+		s.Init.Visit(f)
+	}
+	s.Cond.Visit(f)
+	s.Body.Visit(f)
+	if s.Else != nil {
+		s.Else.Visit(f)
+	}
+}
+
 func (*ExprStmt) stmtNode() {}
 func (*ExprStmt) node()     {}
 
@@ -3682,6 +4221,11 @@ func (s *ExprStmt) Unroll(ev Fetcher, urlr Unroller) (ast.Stmt, bool) {
 // SourceString returns the GX source code of the expression.
 func (s *ExprStmt) SourceString(from *File) string {
 	return s.X.SourceString(from)
+}
+
+// Visit traverses the expression inside the expression statement.
+func (s *ExprStmt) Visit(f Finder) {
+	s.X.Visit(f)
 }
 
 func (*DeclStmt) node() {}
@@ -3701,11 +4245,40 @@ func (s *DeclStmt) Unroll(ev Fetcher, urlr Unroller) (ast.Stmt, bool) {
 	return nil, ev.Err().Appendf(s.Src, "cannot unroll declaration statement: not supported")
 }
 
+// Visit traverses the local variable declaration statement.
+func (s *DeclStmt) Visit(f Finder) {
+	if !considerNode(f, s, s.Src) {
+		return
+	}
+	for _, vr := range s.Decls {
+		vr.Visit(f)
+	}
+}
+
 func (*AssignExpr) storageValue() {}
 
 // Value returns the expression stored in the storage.
 func (a *AssignExpr) Value(Expr) Expr {
 	return a.X
+}
+
+// Visit traverses the assignment target and assigned expression.
+func (a *AssignExpr) Visit(f Finder) {
+	a.visitWithAST(f, a.Node(), nil, false)
+}
+
+func (a *AssignExpr) visitWithAST(f Finder, lhs ast.Node, rhs ast.Expr, isOpAssign bool) {
+	considerNode(f, a, lhs)
+	visitAssignTargetStorage(f, a.Storage)
+	if a.X == nil {
+		return
+	}
+	if isOpAssign {
+		a.X.(*BinaryExpr).Y.Visit(f)
+		return
+	}
+	considerNode(f, a.X, rhs)
+	a.X.Visit(f)
 }
 
 func (*AssignCallResult) storageValue() {}
@@ -3724,6 +4297,16 @@ func (a *AssignCallResult) Value(Expr) Expr {
 			Typ: IntType(),
 		},
 	}
+}
+
+// Visit traverses the call result assignment target.
+func (a *AssignCallResult) Visit(f Finder) {
+	a.visitWithAST(f, a.Node())
+}
+
+func (a *AssignCallResult) visitWithAST(f Finder, lhs ast.Node) {
+	considerNode(f, a, lhs)
+	visitAssignTargetStorage(f, a.Storage)
 }
 
 // Blank characters when an identifier is not needed.

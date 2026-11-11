@@ -325,6 +325,17 @@ func (r *Rank) SourceString(from *File) string {
 	return bld.String()
 }
 
+// Visit traverses the array rank and its axis length expressions.
+func (r *Rank) Visit(f Finder) {
+	eltAST := arrayElementAST(r.Src)
+	if !f.Consider(r, r.Src.Pos(), eltAST.Pos()) {
+		return
+	}
+	for _, ax := range r.Ax {
+		ax.Visit(f)
+	}
+}
+
 // RankInfer is a rank determined at compile time
 // (specified using ...).
 type RankInfer struct {
@@ -365,4 +376,10 @@ func (r *RankInfer) SourceString(from *File) string {
 		return "..."
 	}
 	return r.ArrayRank.SourceString(from)
+}
+
+// Visit considers the inferred array rank span.
+func (r *RankInfer) Visit(f Finder) {
+	eltAST := arrayElementAST(r.Src)
+	f.Consider(r, r.Src.Pos(), eltAST.Pos())
 }

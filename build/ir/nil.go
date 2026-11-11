@@ -64,6 +64,11 @@ func (*Nil) Type() Type {
 	return NilType()
 }
 
+// Visit considers the nil storage identifier.
+func (n *Nil) Visit(f Finder) {
+	considerPtr(f, n, n.Src)
+}
+
 // NilCastExpr casts nil to a given type.
 type NilCastExpr struct {
 	X   Expr
@@ -101,4 +106,9 @@ func (n *NilCastExpr) Unroll(ev Fetcher, urlr Unroller) (ast.Expr, bool) {
 		Fun:  n.Typ.Refer(ev.File()),
 		Args: []ast.Expr{x},
 	}, ok
+}
+
+// Visit traverses the underlying expression of a nil cast.
+func (n *NilCastExpr) Visit(f Finder) {
+	n.X.Visit(f)
 }

@@ -115,3 +115,5 @@ func (t *fieldPathType) Unroll(ev Fetcher, urlr Unroller) (ast.Expr, bool) {
 func (t *fieldPathType) IndexForVarArgs(ErrSource, int) (Type, bool) {
 	return t, true
 }
+
+func (*fieldPathType) Visit(Finder) {}
