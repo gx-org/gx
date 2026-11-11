@@ -89,6 +89,13 @@ type (
 		Generics() *GenericParams
 	}
 
+	// SpecialisableType is a generic type that can be specialised
+	// with type arguments (e.g. a generic named type or fieldindex).
+	SpecialisableType interface {
+		GenericType
+		specialisableType()
+	}
+
 	// Specialiser provides methods to specialise a type.
 	Specialiser interface {
 		ErrSource
@@ -363,7 +370,7 @@ func (s *GenericNonTypeParam) Type() Type {
 }
 
 func (s *GenericNonTypeParam) invalidValue() GenericValue {
-	return NewAxisGenericValue(s, TypeExpr(nil, InvalidType()))
+	return NewNonTypeGenericValue(s, TypeExpr(nil, InvalidType()))
 }
 
 // Assign an expression to the generic non-type parameter.
@@ -380,12 +387,12 @@ func (s *GenericNonTypeParam) Assign(fetcher Fetcher, x Expr) (GenericValue, boo
 	}
 	xEval, err := CompEvalExpr(fetcher, x)
 	if undef.Is(err) {
-		return NewAxisGenericValue(s, x), true
+		return NewNonTypeGenericValue(s, x), true
 	}
 	if err != nil {
 		return s.invalidValue(), fetcher.Err().AppendAt(x.Expr(), err)
 	}
-	return NewAxisGenericValue(s, xEval[0]), true
+	return NewNonTypeGenericValue(s, xEval[0]), true
 }
 
 // Unroll the type.
@@ -440,8 +447,8 @@ func (v *coreGenericValue) Name() string {
 	return v.tparam.NameDef().Name
 }
 
-// NewAxisGenericValue returns a new axis value from IR expressions and an interpreter element.
-func NewAxisGenericValue(tparam *GenericNonTypeParam, x Expr) *NonTypeGenericValue {
+// NewNonTypeGenericValue returns a new axis value from IR expressions and an interpreter element.
+func NewNonTypeGenericValue(tparam *GenericNonTypeParam, x Expr) *NonTypeGenericValue {
 	return &NonTypeGenericValue{
 		coreGenericValue: coreGenericValue{
 			tparam: tparam,
@@ -479,7 +486,7 @@ func (v *NonTypeGenericValue) Specialise(spec Specialiser) (GenericValue, bool) 
 			expr = evaluated[0]
 		}
 	}
-	return NewAxisGenericValue(v.tparam.(*GenericNonTypeParam), expr), true
+	return NewNonTypeGenericValue(v.tparam.(*GenericNonTypeParam), expr), true
 }
 
 // DefinedType returns the type of the type param.
@@ -589,6 +596,8 @@ func IsNonTypeGeneric(tp Type) bool {
 		return true
 	}
 	switch tp.Kind() {
+	case irkind.Func:
+		return true
 	case irkind.Struct:
 		return true
 	case irkind.Slice:

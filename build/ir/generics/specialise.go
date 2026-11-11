@@ -184,10 +184,10 @@ func (s *specialiser) String() string {
 	return b.String()
 }
 
-// SpecialiseNamed specialises a named type given type values.
-func SpecialiseNamed(fetcher ir.Fetcher, expr ir.Expr, nt *ir.NamedType, typArgs []ir.GenericValue) (*ir.TypeValExpr, bool) {
+// SpecialiseType specialises a named type given type values.
+func SpecialiseType(fetcher ir.Fetcher, expr ir.Expr, nt ir.SpecialisableType, typArgs []ir.GenericValue) (*ir.TypeValExpr, bool) {
 	spec := newSpecialiser(fetcher.File(), expr, fetcher, nil, nt, typArgs)
-	specType, ok := nt.SpecialiseNamed(spec)
+	specType, ok := nt.Specialise(spec)
 	return ir.TypeExpr(expr.Expr(), specType), ok
 }
 

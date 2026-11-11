@@ -392,15 +392,15 @@ func setAxisLengthSlice(genAxis *ir.GenericNonTypeParam, vals []int) ir.GenericV
 	for i, val := range vals {
 		slice.Elts[i] = IntNumberAs(int64(val), ir.IntType())
 	}
-	return ir.NewAxisGenericValue(genAxis, slice)
+	return ir.NewNonTypeGenericValue(genAxis, slice)
 }
 
 func setAxisLength(genAxis *ir.GenericNonTypeParam, val int) ir.GenericValue {
-	return ir.NewAxisGenericValue(genAxis, IntNumberAs(int64(val), ir.IntType()))
+	return ir.NewNonTypeGenericValue(genAxis, IntNumberAs(int64(val), ir.IntType()))
 }
 
 func setAxisLengthFromField(genAxis *ir.GenericNonTypeParam, val ir.Storage) ir.GenericValue {
-	return ir.NewAxisGenericValue(genAxis, &ir.Ident{
+	return ir.NewNonTypeGenericValue(genAxis, &ir.Ident{
 		Src:  val.NameDef(),
 		Stor: val,
 	})
@@ -418,7 +418,7 @@ func setNonTypeParam(field *ir.Field, val any) ir.GenericValue {
 	case ir.Storage:
 		return setAxisLengthFromField(genAxis, valT)
 	case *ir.UnpackExpr:
-		return ir.NewAxisGenericValue(genAxis, valT)
+		return ir.NewNonTypeGenericValue(genAxis, valT)
 	default:
 		panic(fmt.Sprintf("cannot build a function type option: type %T not supported", valT))
 	}

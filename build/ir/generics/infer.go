@@ -159,7 +159,7 @@ func (uni *argUnifier) defineVarArgsNonType(genAxis *ir.GenericNonTypeParam, exp
 			Typ:  genAxis.Type(),
 			Elts: []ir.Expr{},
 		}
-		uni.defined[pos] = ir.NewAxisGenericValue(genAxis, sliceLit)
+		uni.defined[pos] = ir.NewNonTypeGenericValue(genAxis, sliceLit)
 	} else {
 		var sliceLitOk bool
 		sliceLit, sliceLitOk = defined.Value().(*ir.SliceLitExpr)
@@ -181,7 +181,7 @@ func (uni *argUnifier) DefineNonType(genAxis *ir.GenericNonTypeParam, expr ir.Ex
 	pos := genAxis.OrigField().Pos
 	defined := uni.defined[pos]
 	if defined == nil {
-		uni.defined[pos] = ir.NewAxisGenericValue(genAxis, expr)
+		uni.defined[pos] = ir.NewNonTypeGenericValue(genAxis, expr)
 		return true
 	}
 	nonType, isNonType := defined.(*ir.NonTypeGenericValue)

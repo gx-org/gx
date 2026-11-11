@@ -33,7 +33,10 @@ package testfieldpaths
 func Path[T any](path ...string) []fieldpath
 
 //gx:compeval
-func PathFieldIndex[T any](path ...string) []fieldindex
+func ArrayFromPath[T any, S []int](T, fieldpath) [S...]float32
+
+//gx:compeval
+func PathFieldIndex[T any](path ...string) []fieldindex[T, ArrayFromPath]
 `,
 	Post: func(pkg *ir.Package) {
 		path := pkg.FindFunc("Path").(*ir.FuncBuiltin)

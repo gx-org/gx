@@ -550,6 +550,10 @@ func (s *NamedType) Generics() *GenericParams {
 	return &s.GenParams
 }
 
+var _ SpecialisableType = (*NamedType)(nil)
+
+func (*NamedType) specialisableType() {}
+
 // AssignableTo reports if the type can be assigned to other.
 func (s *NamedType) AssignableTo(tpcmp TypeEval, target Type) (bool, error) {
 	if s.Same(target) {

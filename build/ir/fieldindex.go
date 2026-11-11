@@ -19,101 +19,150 @@ import (
 	"github.com/gx-org/gx/src/gx/ast"
 )
 
-type fieldIndexType struct {
+// FieldIndexType is the builtin fieldindex type returned by functions traversing structures.
+type FieldIndexType struct {
+	genParams GenericParams
 }
 
-var (
-	fieldIndexIdent = &ast.Ident{Name: "fieldindex"}
-	fieldIndexT     = &fieldIndexType{}
-)
+var fieldIndexIdent = &ast.Ident{Name: "fieldindex"}
 
-// FieldIndexType returns the builtin fieldindex type.
-func FieldIndexType() Type {
-	return fieldIndexT
+var _ SpecialisableType = (*FieldIndexType)(nil)
+
+var origin = newFieldIndexType(TypeExpr(nil, &FuncType{}))
+
+func newFieldIndexType(keyToValueFunc Expr) *FieldIndexType {
+	rootGroup := &FieldGroup{Type: TypeExpr(nil, AnyType())}
+	rootGroup.Fields = []*Field{
+		{Group: rootGroup, Pos: 0, Name: &ast.Ident{Name: "root"}},
+	}
+	keyValueGroup := &FieldGroup{Type: TypeExpr(keyToValueFunc.Expr(), keyToValueFunc.Type())}
+	keyValueGroup.Fields = []*Field{
+		{Group: keyValueGroup, Pos: 1, Name: &ast.Ident{Name: "keyToValue"}},
+	}
+	tp := &FieldIndexType{}
+	tp.genParams.SetFields(&FieldList{List: []*FieldGroup{rootGroup, keyValueGroup}})
+	genFuncParam := NewGenericNonTypeParam(keyValueGroup.Fields[0])
+	genFuncValue := NewNonTypeGenericValue(genFuncParam, keyToValueFunc)
+	tp.genParams.Values = []GenericValue{nil, genFuncValue}
+	return tp
 }
 
-var fieldIndexSliceType = &SliceType{
-	BaseType: BaseType[ast.Expr]{Src: &ast.ArrayType{}},
-	DType:    TypeExpr(nil, FieldIndexType()),
-	Rank:     1,
+// SpecialiseForFunc returns a fieldindex type with the type of the
+// keyToValue generic parameter set to the type of the function fn.
+// Returns an error if fn is not a function.
+func (*FieldIndexType) SpecialiseForFunc(fn Expr) (*FieldIndexType, error) {
+	if fn.Type().Kind() != irkind.Func {
+		return nil, CompileErrorF("%s is not a function", fn.SourceString(nil))
+	}
+	return newFieldIndexType(fn), nil
 }
 
-// FieldIndexSliceType returns the type for a slice of fieldindex.
-func FieldIndexSliceType() *SliceType {
-	return fieldIndexSliceType
+// GenericFieldIndexType returns the builtin fieldindex type.
+func GenericFieldIndexType() Type {
+	return origin
 }
 
-func (*fieldIndexType) node()         {}
-func (*fieldIndexType) storage()      {}
-func (*fieldIndexType) storageValue() {}
+func (*FieldIndexType) node()         {}
+func (*FieldIndexType) storage()      {}
+func (*FieldIndexType) storageValue() {}
 
-func (*fieldIndexType) Node() ast.Node { return fieldIndexIdent }
+func (*FieldIndexType) Node() ast.Node { return fieldIndexIdent }
 
-func (*fieldIndexType) Refer(file *File) ast.Expr {
-	return fieldIndexIdent
+// root returns the type argument of the fieldindex type
+// or nil if the type has not been specialised.
+func (t *FieldIndexType) root() *TypeValExpr {
+	typeVal, ok := t.genParams.Values[0].(*TypeGenericValue)
+	if !ok {
+		return nil
+	}
+	return typeVal.tp
 }
 
-func (*fieldIndexType) Same(Storage) bool {
+func (t *FieldIndexType) Refer(file *File) ast.Expr {
+	root := t.root()
+	if root == nil {
+		return fieldIndexIdent
+	}
+	return &ast.IndexExpr{X: fieldIndexIdent, Index: root.Val().Refer(file)}
+}
+
+func (*FieldIndexType) Same(Storage) bool {
 	return true
 }
 
-func (t *fieldIndexType) Equal(_ TypeEval, other Type) (bool, error) {
-	otherT, ok := other.(*fieldIndexType)
+func (t *FieldIndexType) Equal(tpcmp TypeEval, other Type) (bool, error) {
+	otherT, ok := other.(*FieldIndexType)
 	if !ok {
 		return false, nil
 	}
-	return t == otherT, nil
+	return t.genParams.Equal(tpcmp, &otherT.genParams)
 }
 
-func (t *fieldIndexType) AssignableTo(tpcmp TypeEval, other Type) (bool, error) {
+func (t *FieldIndexType) AssignableTo(tpcmp TypeEval, other Type) (bool, error) {
 	return t.Equal(tpcmp, other)
 }
 
-func (t *fieldIndexType) assignableFrom(tpcmp TypeEval, other Type) (bool, error) {
+func (t *FieldIndexType) assignableFrom(tpcmp TypeEval, other Type) (bool, error) {
 	return t.Equal(tpcmp, other)
 }
 
-func (t *fieldIndexType) ConvertibleTo(tpcmp TypeEval, other Type) (bool, error) {
+func (t *FieldIndexType) ConvertibleTo(tpcmp TypeEval, other Type) (bool, error) {
 	return t.Equal(tpcmp, other)
 }
 
-func (t *fieldIndexType) Instantiate(Fetcher, Instantiator) (Type, bool) {
-	return t, true
+func (t *FieldIndexType) Instantiate(_ Fetcher, spec Instantiator) (Type, bool) {
+	return t.Specialise(spec)
 }
 
-func (*fieldIndexType) Kind() irkind.Kind { return irkind.FieldIndex }
+func (*FieldIndexType) Kind() irkind.Kind { return irkind.FieldIndex }
 
-func (*fieldIndexType) NameDef() *ast.Ident { return fieldIndexIdent }
+// Origin returns the builtin fieldindex type.
+func (*FieldIndexType) Origin() GenericType { return origin }
 
-func (*fieldIndexType) Type() Type { return MetaType() }
+// Generics returns the generic parameters and their values.
+func (t *FieldIndexType) Generics() *GenericParams { return &t.genParams }
 
-func (*fieldIndexType) Value(Expr) Expr { return nil }
+func (*FieldIndexType) specialisableType() {}
 
-func (*fieldIndexType) DefineString(*File) string {
-	return irkind.FieldIndex.String()
+func (*FieldIndexType) NameDef() *ast.Ident { return fieldIndexIdent }
+
+func (*FieldIndexType) Type() Type { return MetaType() }
+
+func (*FieldIndexType) Value(Expr) Expr { return nil }
+
+func (t *FieldIndexType) DefineString(from *File) string {
+	root := t.root()
+	if root == nil {
+		return irkind.FieldIndex.String()
+	}
+	return irkind.FieldIndex.String() + "[" + root.SourceString(from) + "]"
 }
 
-func (t *fieldIndexType) ReferString(from *File) string {
+func (t *FieldIndexType) ReferString(from *File) string {
 	return t.DefineString(from)
 }
 
 // Specialise a type to a given target.
-func (t *fieldIndexType) Specialise(spec Specialiser) (Type, bool) {
-	return t, true
+func (t *FieldIndexType) Specialise(spec Specialiser) (Type, bool) {
+	genParams, ok := t.genParams.Specialise(spec, spec.Target() == t)
+	return &FieldIndexType{genParams: genParams}, ok
 }
 
 // UnifyWith recursively unifies a type parameters with types.
-func (*fieldIndexType) UnifyWith(unifier Unifier, typ Type) bool {
+func (*FieldIndexType) UnifyWith(unifier Unifier, typ Type) bool {
 	return true
 }
 
 // Unroll returns an error because fieldindex types do not support unrolling.
-func (t *fieldIndexType) Unroll(ev Fetcher, urlr Unroller) (ast.Expr, bool) {
+func (t *FieldIndexType) Unroll(ev Fetcher, urlr Unroller) (ast.Expr, bool) {
 	return nil, ev.Err().AppendInternalf(fieldIndexIdent, "%T does not support unrolling", t)
 }
 
-func (t *fieldIndexType) IndexForVarArgs(ErrSource, int) (Type, bool) {
+func (t *FieldIndexType) IndexForVarArgs(ErrSource, int) (Type, bool) {
 	return t, true
 }
 
-func (*fieldIndexType) Visit(Finder) {}
+// Visit traverses the type argument of the fieldindex type.
+func (t *FieldIndexType) Visit(f Finder) {
+	t.root().Visit(f)
+}

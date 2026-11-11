@@ -58,7 +58,7 @@ func initBuiltinsFor(fitp *Interpreter) error {
 		ir.AnyType(),
 		ir.ErrorType(),
 		ir.FieldPathType(),
-		ir.FieldIndexType(),
+		ir.GenericFieldIndexType(),
 		ir.StringType(),
 
 		ir.BoolType(),

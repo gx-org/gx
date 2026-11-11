@@ -23,15 +23,16 @@ import (
 
 type fieldIndex struct {
 	core
+	typ ir.Type
 }
 
-func newFieldIndex(path storepath.Path) Element {
-	return &fieldIndex{core: core{path: path}}
+func newFieldIndex(path storepath.Path, typ ir.Type) Element {
+	return &fieldIndex{core: core{path: path}, typ: typ}
 }
 
-// Type returns an invalid type.
-func (*fieldIndex) Type() ir.Type {
-	return ir.FieldIndexType()
+// Type returns the fieldindex type of the element.
+func (f *fieldIndex) Type() ir.Type {
+	return f.typ
 }
 
 func (*fieldIndex) FollowOn(ir.Element) (ir.Element, error) {
