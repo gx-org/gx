@@ -23,6 +23,7 @@ import (
 	"sync/atomic"
 
 	"github.com/gx-org/gx/base/sync"
+	"github.com/gx-org/gx/internal/base/cast"
 )
 
 // Handle to a Go object.
@@ -53,19 +54,23 @@ func Wrap[T comparable](v T) Handle {
 	return Handle(h)
 }
 
-// Unwrap converts a handle returned by Wrap() into the original Go value.
+// Unwrap converts a handle returned by Wrap() into the original Go value, or returns an error
+// if h is zero, unknown (released or never created), or refers to a value not of type T.
 //
 // Unwrap() must be called with the same type T used in the original Wrap() call.
-func Unwrap[T any](h Handle) T {
+func Unwrap[T any](h Handle) (zero T, _ error) {
 	if h == 0 {
-		var zero T
-		return zero
+		return zero, fmt.Errorf("invalid handle 0 (zero handle), want a handle to a %s", reflect.TypeFor[T]().String())
 	}
 	v := handles.Load(h)
 	if v == nil {
-		panic(fmt.Sprintf("invalid handle %v for type %T", h, reflect.TypeFor[T]().String()))
+		return zero, fmt.Errorf("invalid handle %v (released or never created), want a handle to a %s", h, reflect.TypeFor[T]().String())
 	}
-	return v.(T)
+	val, err := cast.To[T](v)
+	if err != nil {
+		return zero, fmt.Errorf("invalid handle %v: %w", h, err)
+	}
+	return val, nil
 }
 
 // TryUnwrap is like Unwrap but, instead of panicking, returns false if h is not a valid handle to a
@@ -82,7 +87,7 @@ func Release(h Handle) {
 	if h != 0 {
 		_, ok := handles.LoadAndDelete(h)
 		if !ok {
-			panic(fmt.Sprintf("cgx: deleting invalid handle %v", h))
+			panic(fmt.Sprintf("cgx: deleting unknown handle %v (already released or never created)", h))
 		}
 	}
 	if handles.Empty() {

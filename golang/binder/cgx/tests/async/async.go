@@ -52,7 +52,10 @@ const (
 )
 
 func clearLoaderCache(cdev gocgx.Device) {
-	dev := handle.Unwrap[*core.DeviceSetup](handle.Handle(cdev))
+	dev, err := handle.Unwrap[*core.DeviceSetup](handle.Handle(cdev))
+	if err != nil {
+		panic(err)
+	}
 	loader := dev.Runtime().Builder().Loader()
 	cache, ok := loader.(*importers.CacheLoader)
 	if !ok {
