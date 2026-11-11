@@ -16,7 +16,6 @@
 package eagereval
 
 import (
-	"strings"
 	"unsafe"
 
 	"github.com/pkg/errors"
@@ -61,6 +60,7 @@ type Ops struct {
 var (
 	_ engine.Engine            = (*Ops)(nil)
 	_ materialise.Materialiser = (*Ops)(nil)
+	_ hostio.InputConverter    = (*Ops)(nil)
 )
 
 func newRegistry(bck EagerBackend, importer ir.Importer, fn compute.Function) (*engine.Registry, *Ops) {
@@ -330,46 +330,21 @@ func (ao *Ops) axesFromShape(ctx ir.Evaluator, axlens []int) (*elements.Slice, e
 	return elements.NewSlice(ir.IntSliceType(), axes)
 }
 
-func checkMissingParams(fn ir.Func, got []hostio.Value, want []*ir.Field) error {
-	if len(got) == len(want) {
-		return nil
+func (ao *Ops) elementFromValue(ev ir.Evaluator, val hostio.Value) (ir.Element, error) {
+	if devArray, ok := val.(*hostio.DeviceArray); ok {
+		return ao.toElement(ev, devArray.Buffer(), val.Type())
 	}
-	if len(got) > len(want) {
-		return errors.Errorf("too many arguments in call to %s: have %d but want %d", fn.FuncType().ReferString(nil), len(got), len(want))
-	}
-	missingParams := want[len(got):]
-	builder := strings.Builder{}
-	for n, param := range missingParams {
-		if n > 0 {
-			builder.WriteString(", ")
-		}
-		builder.WriteString(param.Name.String())
-	}
-	return errors.Errorf("missing parameter(s): %s", builder.String())
+	return val, nil
 }
 
-// funcInputsToElements converts the receiver and the arguments of a function call to elements.
-func (ao *Ops) funcInputsToElements(ev ir.Evaluator, fn ir.Func, receiver hostio.Value, args []hostio.Value) (*hostio.InputElements, error) {
-	fType := fn.FuncType()
-	params := fType.AllParams()
-	if err := checkMissingParams(fn, args, params); err != nil {
-		return nil, err
-	}
-	in := &hostio.InputElements{
-		Receiver: receiver,
-		Args:     make([]ir.Element, len(args)),
-	}
-	for i, arg := range args {
-		if devArray, ok := arg.(*hostio.DeviceArray); ok {
-			var err error
-			arg, err = ao.toElement(ev, devArray.Buffer(), arg.Type())
-			if err != nil {
-				return nil, err
-			}
-		}
-		in.Args[i] = arg
-	}
-	return in, nil
+// ElementFromReceiverValue converts a function receiver value into an element.
+func (ao *Ops) ElementFromReceiverValue(ev ir.Evaluator, _ *ir.Field, val hostio.Value) (ir.Element, error) {
+	return ao.elementFromValue(ev, val)
+}
+
+// ElementFromArgValue converts a function argument value into an element.
+func (ao *Ops) ElementFromArgValue(ev ir.Evaluator, _ *ir.Field, _ int, val hostio.Value) (ir.Element, error) {
+	return ao.elementFromValue(ev, val)
 }
 
 // Values returns the GX values computed by the backend for elements.

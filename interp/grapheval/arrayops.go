@@ -16,7 +16,6 @@ package grapheval
 
 import (
 	"reflect"
-	"strings"
 	"unsafe"
 
 	"github.com/pkg/errors"
@@ -294,24 +293,6 @@ func (ao *Ops) axesFromShape(ctx ir.Evaluator, axlens []int) (*elements.Slice, e
 	return elements.NewSlice(ir.IntSliceType(), axes)
 }
 
-func checkMissingParams(fn ir.Func, got []hostio.Value, want []*ir.Field) error {
-	if len(got) == len(want) {
-		return nil
-	}
-	if len(got) > len(want) {
-		return errors.Errorf("too many arguments in call to %s: have %d but want %d", fn.FuncType().ReferString(nil), len(got), len(want))
-	}
-	missingParams := want[len(got):]
-	builder := strings.Builder{}
-	for n, param := range missingParams {
-		if n > 0 {
-			builder.WriteString(", ")
-		}
-		builder.WriteString(param.Name.String())
-	}
-	return errors.Errorf("missing parameter(s): %s", builder.String())
-}
-
 func (ao *Ops) convertScalarToElement(ev ir.Evaluator, typ ir.Type, atom any) (ir.Element, error) {
 	cst, err := numbers.NewConstant(typ, atom)
 	if err != nil {
@@ -353,7 +334,7 @@ func (ao *Ops) convertFlatToElement(ev ir.Evaluator, field *ir.Field, typ ir.Typ
 	return ao.convertSliceToElement(ev, field, typ, dims, flat)
 }
 
-func (ao *Ops) convertToElement(ev ir.Evaluator, field *ir.Field, arg ir.Element) (ir.Element, error) {
+func (ao *Ops) convertToElement(ev ir.Evaluator, field *ir.Field, arg hostio.Value) (ir.Element, error) {
 	array, isArray := arg.(hostio.Array)
 	if !isArray {
 		return arg, nil
@@ -374,45 +355,4 @@ func (ao *Ops) convertToElement(ev ir.Evaluator, field *ir.Field, arg ir.Element
 	}
 	flat := dtypes.UnsafeAnySliceFromBytes(unsafe.Pointer(unsafe.SliceData(data)), sh.DType, sh.Size())
 	return ao.convertFlatToElement(ev, field, field.Type(), sh.Dimensions, reflect.ValueOf(flat))
-}
-
-// funcInputsToElements converts values to a function input.
-func (ao *Ops) funcInputsToElements(ev ir.Evaluator, fn ir.Func, receiver ir.Element, args []hostio.Value) (*hostio.InputElements, error) {
-	vis := newInputVisitor(ao, fn.File())
-	fType := fn.FuncType()
-	var recvEl ir.Element
-	if receiver != nil {
-		recvField := fType.ReceiverField()
-		var err error
-		if recvEl, err = vis.visitReceiver(recvField, receiver); err != nil {
-			return nil, err
-		}
-	}
-	if err := checkMissingParams(fn, args, fType.AllParams()); err != nil {
-		return nil, err
-	}
-	argsEl := make([]ir.Element, fType.NumAllParams())
-	// Pass the values as such for the generic parameters.
-	genParamFields := fType.GenParams.Fields.Fields()
-	for i, genParam := range genParamFields {
-		var err error
-		argsEl[i], err = ao.convertToElement(ev, genParam, args[i])
-		if err != nil {
-			return nil, err
-		}
-	}
-	numGenArgs := len(genParamFields)
-	// Build backend nodes for the parameter of the function.
-	paramFields := fType.Params.Fields()
-	for i, param := range paramFields {
-		argNode, err := vis.visitArg(param, i, args[i+numGenArgs])
-		if err != nil {
-			return nil, err
-		}
-		argsEl[numGenArgs+i] = argNode
-	}
-	return &hostio.InputElements{
-		Receiver: recvEl,
-		Args:     argsEl,
-	}, nil
 }

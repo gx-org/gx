@@ -51,16 +51,6 @@ type (
 	}
 )
 
-// InputElements is the receiver and arguments with which the function was called.
-type InputElements struct {
-	// Receiver on which the function call was done.
-	// Can be nil.
-	Receiver ir.Element
-
-	// Args returns list of arguments passed to the interpreter at call time.
-	Args []ir.Element
-}
-
 // Underlying returns the underlying value of a value.
 func Underlying(v Value) Value {
 	under, hasUnder := v.(Under)
