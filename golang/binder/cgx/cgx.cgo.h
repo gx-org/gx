@@ -21,7 +21,7 @@ extern const char *_GoStringPtr(_GoString_ s);
 /* Start of preamble from import "C" comments.  */
 
 
-#line 42 "cgx.go"
+#line 41 "cgx.go"
 
 
 

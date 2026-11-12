@@ -28,8 +28,15 @@ import (
 	"github.com/gomlx/compute/shapes"
 	"github.com/gx-org/gx/build/ir"
 	"github.com/gx-org/gx/fmt/fmtarray"
-	"github.com/gx-org/gx/golang/backend/kernels"
 	"github.com/gx-org/gx/internal/togo"
+)
+
+// Since uintptr cannot be negative, each of these statements will trigger a compile-time error iff
+// the first type is smaller than the second type.
+const (
+	// Ensure int64 and Go int are the same size.
+	_ = unsafe.Sizeof(int64(0)) - unsafe.Sizeof(int(0))
+	_ = unsafe.Sizeof(int(0)) - unsafe.Sizeof(int64(0))
 )
 
 // Array is an array value (also includes atomic).
@@ -107,20 +114,21 @@ func (a *DeviceArray) GoValue() (any, error) {
 	return hVal.GoValue()
 }
 
-// ToHostArray transfers the array to the host using the Go allocator.
+// ToHostArray transfers the array to the host.
 func (a *DeviceArray) ToHostArray() (*HostArray, error) {
 	sh := a.Shape()
-	hostBuffer, err := kernels.DefaultAllocator().Allocate(sh)
+	data, err := allocateHostData(sh)
 	if err != nil {
 		return nil, err
 	}
-	data := hostBuffer.Acquire()
-	defer hostBuffer.Release()
-	flat := dtypes.UnsafeAnySliceFromBytes(unsafe.Pointer(unsafe.SliceData(data)), sh.DType, sh.Size())
-	if err := a.handle.ToFlatData(flat); err != nil {
+	if err := a.handle.ToFlatData(data.flatData()); err != nil {
 		return nil, err
 	}
-	return NewHostArray(a.typ, hostBuffer)
+	base, err := newBaseArray(a.typ, sh)
+	if err != nil {
+		return nil, err
+	}
+	return &HostArray{baseArray: base, data: data}, nil
 }
 
 // Type of the array.
@@ -159,17 +167,11 @@ func (a *DeviceArray) ToDevice(bck compute.Backend, dev compute.DeviceNum) (*Dev
 		}
 		return NewDeviceArray(a.typ, handle)
 	}
-	sh := a.Shape()
-	raw := make([]byte, sh.ByteSize())
-	flat := dtypes.UnsafeAnySliceFromBytes(unsafe.Pointer(unsafe.SliceData(raw)), sh.DType, sh.Size())
-	if err := a.handle.ToFlatData(flat); err != nil {
-		return nil, err
-	}
-	handle, err := bck.BufferFromFlatData(dev, flat, sh)
+	host, err := a.ToHostArray()
 	if err != nil {
 		return nil, err
 	}
-	return NewDeviceArray(a.typ, handle)
+	return host.ToDevice(bck, dev)
 }
 
 // SourceString returns the GX source code of the implementation.
@@ -185,21 +187,125 @@ func (a *DeviceArray) SourceString(from *ir.File) string {
 	return fmt.Sprintf("DeviceArray{DeviceID: %d}: %s", devNum, hostS)
 }
 
-// HostArray managed by GX where the data is on a device.
+// HostData stores the data of an array on the host.
+type HostData[T gotype.Supported] struct {
+	Shape shapes.Shape
+	Flat  []T
+}
+
+type hostData interface {
+	shape() shapes.Shape
+	flatData() any
+	bytes() []byte
+}
+
+func (d *HostData[T]) shape() shapes.Shape { return d.Shape }
+func (d *HostData[T]) flatData() any       { return d.Flat }
+func (d *HostData[T]) bytes() []byte       { return dtypes.UnsafeByteSlice(d.Flat) }
+
+func allocateHostData(sh shapes.Shape) (hostData, error) {
+	switch sh.DType {
+	case dtypes.Bool:
+		return &HostData[bool]{Shape: sh, Flat: make([]bool, sh.Size())}, nil
+	case dtypes.BFloat16:
+		return &HostData[bfloat16.BFloat16]{Shape: sh, Flat: make([]bfloat16.BFloat16, sh.Size())}, nil
+	case dtypes.Float32:
+		return &HostData[float32]{Shape: sh, Flat: make([]float32, sh.Size())}, nil
+	case dtypes.Float64:
+		return &HostData[float64]{Shape: sh, Flat: make([]float64, sh.Size())}, nil
+	case dtypes.Int32:
+		return &HostData[int32]{Shape: sh, Flat: make([]int32, sh.Size())}, nil
+	case dtypes.Int64:
+		return &HostData[int64]{Shape: sh, Flat: make([]int64, sh.Size())}, nil
+	case dtypes.Uint32:
+		return &HostData[uint32]{Shape: sh, Flat: make([]uint32, sh.Size())}, nil
+	case dtypes.Uint64:
+		return &HostData[uint64]{Shape: sh, Flat: make([]uint64, sh.Size())}, nil
+	default:
+		return nil, errors.Errorf("cannot create an array of data type %s: not supported", sh.DType)
+	}
+}
+
+// HostBuffer is a transitional interface for raw byte buffers on the host.
+type HostBuffer interface {
+	Shape() shapes.Shape
+	Acquire() []byte
+	Release()
+}
+
+type hostBufferView struct {
+	data hostData
+}
+
+func (v hostBufferView) Shape() shapes.Shape { return v.data.shape() }
+func (v hostBufferView) Acquire() []byte     { return v.data.bytes() }
+func (v hostBufferView) Release()            {}
+
+// HostArray managed by GX where the data is on the host.
 type HostArray struct {
 	*baseArray
-	buffer kernels.HostBuffer
+	data hostData
 }
 
 var _ Array = (*HostArray)(nil)
 
-// NewHostArray returns a new array managed by GX.
-func NewHostArray(typ ir.Type, buffer kernels.HostBuffer) (*HostArray, error) {
-	base, err := newBaseArray(typ, buffer.Shape())
+// NewHostArrayFromData returns a new host array from a HostData structure.
+func NewHostArrayFromData[T gotype.Supported](typ ir.Type, data *HostData[T]) (*HostArray, error) {
+	if data == nil {
+		return nil, errors.Errorf("host data is nil")
+	}
+	sh := data.Shape
+	switch sh.DType {
+	case dtypes.Bool, dtypes.BFloat16, dtypes.Float32, dtypes.Float64, dtypes.Int32, dtypes.Int64, dtypes.Uint32, dtypes.Uint64:
+	default:
+		return nil, errors.Errorf("cannot create an array of data type %s: not supported", sh.DType)
+	}
+	wantDType := dtypes.FromGenericsType[T]()
+	if sh.DType != wantDType {
+		return nil, errors.Errorf("host data shape DType is %s, want %s for %T", sh.DType, wantDType, *new(T))
+	}
+	if len(data.Flat) != sh.Size() {
+		return nil, errors.Errorf("flat slice length is %d but shape %s specifies %d elements", len(data.Flat), sh, sh.Size())
+	}
+	base, err := newBaseArray(typ, sh)
 	if err != nil {
 		return nil, err
 	}
-	return &HostArray{baseArray: base, buffer: buffer}, nil
+	var hData hostData = data
+	if intFlat, ok := any(data.Flat).([]int); ok {
+		var int64Flat []int64
+		if len(intFlat) > 0 {
+			int64Flat = unsafe.Slice((*int64)(unsafe.Pointer(unsafe.SliceData(intFlat))), len(intFlat))
+		}
+		hData = &HostData[int64]{Shape: sh, Flat: int64Flat}
+	}
+	return &HostArray{baseArray: base, data: hData}, nil
+}
+
+// NewHostArrayFromFlat returns a new host array from a flat Go slice and axis lengths.
+func NewHostArrayFromFlat[T gotype.Supported](typ ir.Type, flat []T, dims ...int) (*HostArray, error) {
+	sh := shapes.Make(dtypes.FromGenericsType[T](), dims...)
+	return NewHostArrayFromData(typ, &HostData[T]{Shape: sh, Flat: flat})
+}
+
+// NewHostArray copies the data of a buffer into a new host array.
+func NewHostArray(typ ir.Type, buffer HostBuffer) (*HostArray, error) {
+	sh := buffer.Shape()
+	base, err := newBaseArray(typ, sh)
+	if err != nil {
+		return nil, err
+	}
+	raw := buffer.Acquire()
+	defer buffer.Release()
+	data, err := allocateHostData(sh)
+	if err != nil {
+		return nil, err
+	}
+	if int64(len(raw)) != sh.ByteSize() {
+		return nil, errors.Errorf("buffer size is %d but shape specify a buffer size of %d", len(raw), sh.ByteSize())
+	}
+	copy(data.bytes(), raw)
+	return &HostArray{baseArray: base, data: data}, nil
 }
 
 // Type of the array.
@@ -209,7 +315,17 @@ func (a *HostArray) Type() ir.Type {
 
 // Shape of the array.
 func (a *HostArray) Shape() shapes.Shape {
-	return a.buffer.Shape()
+	return a.data.shape()
+}
+
+// FlatData returns the untyped slice storing the array data.
+func (a *HostArray) FlatData() any {
+	return a.data.flatData()
+}
+
+// Bytes returns the raw byte slice of the array data.
+func (a *HostArray) Bytes() []byte {
+	return a.data.bytes()
 }
 
 // ToHost returns receiver.
@@ -227,40 +343,41 @@ func (a *HostArray) ToHostArray() (*HostArray, error) {
 	return a, nil
 }
 
-// Buffer returns the buffer holding the array data.
-func (a *HostArray) Buffer() kernels.HostBuffer {
-	return a.buffer
+// Buffer returns a transitional view on the bytes of the array slice.
+func (a *HostArray) Buffer() HostBuffer {
+	return hostBufferView{data: a.data}
 }
 
 // ToDevice transfers the data to a device.
 // It is a no-op if the data is already on the device.
 func (a *HostArray) ToDevice(bck compute.Backend, dev compute.DeviceNum) (*DeviceArray, error) {
-	data := a.buffer.Acquire()
-	defer a.buffer.Release()
-	sh := a.buffer.Shape()
-	flat := dtypes.UnsafeAnySliceFromBytes(unsafe.Pointer(unsafe.SliceData(data)), sh.DType, sh.Size())
-	handle, err := bck.BufferFromFlatData(dev, flat, sh)
+	handle, err := bck.BufferFromFlatData(dev, a.FlatData(), a.Shape())
 	if err != nil {
 		return nil, err
 	}
 	return NewDeviceArray(a.typ, handle)
 }
 
-func (a *HostArray) flatData() (any, error) {
+// Flat returns the typed slice of a host array.
+func Flat[T gotype.Supported](a *HostArray) ([]T, error) {
+	var zero T
 	sh := a.Shape()
-	switch sh.DType {
-	case dtypes.Bool, dtypes.BFloat16, dtypes.Float32, dtypes.Float64, dtypes.Int32, dtypes.Int64, dtypes.Uint32, dtypes.Uint64:
-	default:
-		return nil, errors.Errorf("cannot create an array from raw data: %s not supported", sh.DType.String())
+	if wantDType := dtypes.FromGenericsType[T](); sh.DType != wantDType {
+		return nil, errors.Errorf("array data type is %s, want %s", sh.DType, wantDType)
 	}
-	data := a.Buffer().Acquire()
-	defer a.Buffer().Release()
-	if int64(len(data)) != sh.ByteSize() {
-		return nil, errors.Errorf("buffer size is %d but shape specify a buffer size of %d", len(data), sh.ByteSize())
+	if d, ok := a.data.(*HostData[T]); ok {
+		return d.Flat, nil
 	}
-	flat := dtypes.MakeAnySlice(sh.DType, sh.Size())
-	dtypes.CopyAnySlice(flat, dtypes.UnsafeAnySliceFromBytes(unsafe.Pointer(unsafe.SliceData(data)), sh.DType, sh.Size()))
-	return flat, nil
+	if _, isInt := any(zero).(int); isInt {
+		if d64, ok := a.data.(*HostData[int64]); ok {
+			if len(d64.Flat) == 0 {
+				return nil, nil
+			}
+			s := unsafe.Slice((*int)(unsafe.Pointer(unsafe.SliceData(d64.Flat))), len(d64.Flat))
+			return any(s).([]T), nil
+		}
+	}
+	return nil, errors.Errorf("unexpected host data type %T for %T", a.data, zero)
 }
 
 func atomFromFlat(flat any) (any, error) {
@@ -289,15 +406,11 @@ func atomFromFlat(flat any) (any, error) {
 // ToAtom returns the value as an atomic value.
 // An error is returned if the array contains more than one value.
 func (a *HostArray) ToAtom() (any, error) {
-	flat, err := a.flatData()
-	if err != nil {
-		return nil, err
-	}
 	sh := a.Shape()
 	if !sh.IsScalar() {
 		return nil, errors.Errorf("%s not atomic", sh.String())
 	}
-	return atomFromFlat(flat)
+	return atomFromFlat(a.FlatData())
 }
 
 type goArray struct {
@@ -330,10 +443,7 @@ func (a goArray) String() string {
 
 // GoValue of the underlying element.
 func (a *HostArray) GoValue() (any, error) {
-	flat, err := a.flatData()
-	if err != nil {
-		return nil, err
-	}
+	flat := a.FlatData()
 	sh := a.Shape()
 	if sh.IsScalar() {
 		return atomFromFlat(flat)
@@ -402,12 +512,8 @@ func sDataPrint(flat any, dims []int) string {
 }
 
 func (a *HostArray) sourceString(from *ir.File, withType bool) string {
-	flat, err := a.flatData()
-	if err != nil {
-		return fmt.Sprintf("\nError parsing raw data:\n%+v\n", err)
-	}
 	shape := a.Shape().Dimensions
-	dataS := sDataPrint(flat, shape)
+	dataS := sDataPrint(a.FlatData(), shape)
 	if !withType {
 		return dataS
 	}
@@ -437,16 +543,10 @@ func ToAtom[T gotype.Supported](a *HostArray) (T, error) {
 	if !sh.IsScalar() {
 		return zero, errors.Errorf("array %s (length=%d) is not an atom", sh.String(), sh.Size())
 	}
-	if wantDType := dtypes.FromGenericsType[T](); sh.DType != wantDType {
-		return zero, errors.Errorf("array data type is %s, want %s", sh.DType, wantDType)
+	slice, err := Flat[T](a)
+	if err != nil {
+		return zero, err
 	}
-	data := a.Buffer().Acquire()
-	defer a.Buffer().Release()
-	size := int(unsafe.Sizeof(zero))
-	if len(data)%size != 0 {
-		return zero, errors.Errorf("buffer size %d is not a multiple of %T size %d", len(data), zero, size)
-	}
-	slice := dtypes.UnsafeSliceFromBytes[T](unsafe.Pointer(unsafe.SliceData(data)), len(data)/size)
 	if len(slice) != 1 {
 		return zero, errors.Errorf("array (length=%d) is not an atom", len(slice))
 	}

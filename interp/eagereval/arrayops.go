@@ -232,10 +232,7 @@ func constantFromBytes(g compute.Function, data []byte, sh shapes.Shape) (comput
 }
 
 func (ao *Ops) nodeFromArray(val *hostio.HostArray, typ ir.Type) (NumericalNode, error) {
-	buf := val.Buffer()
-	data := buf.Acquire()
-	defer buf.Release()
-	cstNode, err := constantFromBytes(ao.graph, data, val.Shape())
+	cstNode, err := ao.graph.Constant(val.FlatData(), val.Shape().Dimensions...)
 	if err != nil {
 		return nil, err
 	}

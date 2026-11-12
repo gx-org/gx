@@ -19,7 +19,6 @@ import (
 	"github.com/pkg/errors"
 	"github.com/gomlx/compute/dtypes/gotype"
 	"github.com/gx-org/gx/build/ir"
-	"github.com/gx-org/gx/golang/backend/kernels"
 )
 
 type (
@@ -60,23 +59,19 @@ func Underlying(v Value) Value {
 	return Underlying(under.Underlying())
 }
 
-func toHostArray(typ ir.Type, h kernels.Array) (*HostArray, error) {
-	return NewHostArray(typ, kernels.NewBuffer(h))
-}
-
 // AtomFloatValue returns an array GX value given a Go value.
 func AtomFloatValue[T gotype.Float](typ ir.Type, val T) (*HostArray, error) {
-	return toHostArray(typ, kernels.ToFloatAtom[T](val))
+	return NewHostArrayFromFlat(typ, []T{val})
 }
 
 // AtomBoolValue returns an array GX value given a boolean value.
 func AtomBoolValue(typ ir.Type, val bool) (*HostArray, error) {
-	return toHostArray(typ, kernels.ToBoolAtom(val))
+	return NewHostArrayFromFlat(typ, []bool{val})
 }
 
 // AtomIntegerValue returns an array GX value given a Go value.
 func AtomIntegerValue[T gotype.Integer](typ ir.Type, val T) (*HostArray, error) {
-	return toHostArray(typ, kernels.ToIntegerAtom[T](val))
+	return NewHostArrayFromFlat(typ, []T{val})
 }
 
 // ToHost transfers all values recursively to the host.

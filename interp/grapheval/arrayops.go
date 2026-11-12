@@ -202,10 +202,7 @@ func constantFromBytes(g compute.Function, data []byte, sh shapes.Shape) (comput
 
 // NodeFromArray returns a node from an array GX value.
 func (ao *Ops) NodeFromArray(val *hostio.HostArray) (materialise.Node, error) {
-	buf := val.Buffer()
-	data := buf.Acquire()
-	defer buf.Release()
-	cstNode, err := constantFromBytes(ao.graph, data, val.Shape())
+	cstNode, err := ao.graph.Constant(val.FlatData(), val.Shape().Dimensions...)
 	if err != nil {
 		return nil, err
 	}
@@ -343,16 +340,6 @@ func (ao *Ops) convertToElement(ev ir.Evaluator, field *ir.Field, arg hostio.Val
 	if err != nil {
 		return nil, err
 	}
-	buf := hostArray.Buffer()
-	data := buf.Acquire()
-	defer buf.Release()
 	sh := hostArray.Shape()
-	if !sh.DType.IsSupported() || sh.DType.IsPacked() {
-		return nil, errors.Errorf("cannot convert array argument: data type %v not supported", sh.DType)
-	}
-	if int64(len(data)) != sh.ByteSize() {
-		return nil, errors.Errorf("buffer size is %d but shape specify a buffer size of %d", len(data), sh.ByteSize())
-	}
-	flat := dtypes.UnsafeAnySliceFromBytes(unsafe.Pointer(unsafe.SliceData(data)), sh.DType, sh.Size())
-	return ao.convertFlatToElement(ev, field, field.Type(), sh.Dimensions, reflect.ValueOf(flat))
+	return ao.convertFlatToElement(ev, field, field.Type(), sh.Dimensions, reflect.ValueOf(hostArray.FlatData()))
 }
