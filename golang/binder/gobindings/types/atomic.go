@@ -16,7 +16,6 @@ package types
 
 import (
 	"fmt"
-	"unsafe"
 
 	"github.com/gomlx/compute/dtypes"
 	"github.com/gomlx/compute/dtypes/gotype"
@@ -24,7 +23,6 @@ import (
 	"github.com/gx-org/gx/api/hostio"
 	"github.com/gx-org/gx/build/ir"
 	"github.com/gx-org/gx/build/ir/irkind"
-	"github.com/gx-org/gx/golang/backend/kernels"
 )
 
 // Atom managed by GX.
@@ -106,10 +104,11 @@ func (atom *HostAtom[T]) Fetch() (*HostAtom[T], error) {
 
 // Value of the atom.
 func (atom *HostAtom[T]) Value() T {
-	buf := atom.value.Buffer()
-	data := buf.Acquire()
-	defer buf.Release()
-	return *((*T)(unsafe.Pointer(&data[0])))
+	val, err := hostio.ToAtom[T](atom.value)
+	if err != nil {
+		panic(err)
+	}
+	return val
 }
 
 // FetchValue returns the atom value from the device.
@@ -134,10 +133,9 @@ func (atom *HostAtom[T]) String() string {
 	return atom.GXValue().SourceString(nil)
 }
 
-func newAtom[T gotype.Supported](dt irkind.Kind, array kernels.Array) *HostAtom[T] {
+func newAtom[T gotype.Supported](dt irkind.Kind, val T) *HostAtom[T] {
 	typ := ir.TypeFromKind(dt)
-	buffer := kernels.NewBuffer(array)
-	hostArray, err := hostio.NewHostArray(typ, buffer)
+	hostArray, err := hostio.NewHostArrayFromFlat(typ, []T{val})
 	if err != nil {
 		// Should never happen.
 		// The only possible error is when an array is created with type
@@ -149,40 +147,40 @@ func newAtom[T gotype.Supported](dt irkind.Kind, array kernels.Array) *HostAtom[
 
 // Bool returns a new Go host atom of bool.
 func Bool(val bool) *HostAtom[bool] {
-	return newAtom[bool](irkind.Bool, kernels.ToBoolAtom(val))
+	return newAtom[bool](irkind.Bool, val)
 }
 
 // Float32 returns a new Go host atom of float32.
 func Float32(val float32) *HostAtom[float32] {
-	return newAtom[float32](irkind.Float32, kernels.ToFloatAtom(val))
+	return newAtom[float32](irkind.Float32, val)
 }
 
 // Float64 returns a new Go host atom of float64.
 func Float64(val float64) *HostAtom[float64] {
-	return newAtom[float64](irkind.Float64, kernels.ToFloatAtom(val))
+	return newAtom[float64](irkind.Float64, val)
 }
 
 // Int returns a new Go host atom of int.
 func Int(val ir.Int) *HostAtom[ir.Int] {
-	return newAtom[ir.Int](irkind.Int, kernels.ToIntegerAtom(val))
+	return newAtom[ir.Int](irkind.Int, val)
 }
 
 // Int32 returns a new Go host atom of int32.
 func Int32(val int32) *HostAtom[int32] {
-	return newAtom[int32](irkind.Int32, kernels.ToIntegerAtom(val))
+	return newAtom[int32](irkind.Int32, val)
 }
 
 // Int64 returns a new Go host atom of int64.
 func Int64(val int64) *HostAtom[int64] {
-	return newAtom[int64](irkind.Int64, kernels.ToIntegerAtom(val))
+	return newAtom[int64](irkind.Int64, val)
 }
 
 // Uint32 returns a new Go host atom of uint32.
 func Uint32(val uint32) *HostAtom[uint32] {
-	return newAtom[uint32](irkind.Uint32, kernels.ToIntegerAtom(val))
+	return newAtom[uint32](irkind.Uint32, val)
 }
 
 // Uint64 returns a new Go host atom of uint64.
 func Uint64(val uint64) *HostAtom[uint64] {
-	return newAtom[uint64](irkind.Uint64, kernels.ToIntegerAtom(val))
+	return newAtom[uint64](irkind.Uint64, val)
 }

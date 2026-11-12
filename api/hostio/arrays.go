@@ -226,21 +226,6 @@ func allocateHostData(sh shapes.Shape) (hostData, error) {
 	}
 }
 
-// HostBuffer is a transitional interface for raw byte buffers on the host.
-type HostBuffer interface {
-	Shape() shapes.Shape
-	Acquire() []byte
-	Release()
-}
-
-type hostBufferView struct {
-	data hostData
-}
-
-func (v hostBufferView) Shape() shapes.Shape { return v.data.shape() }
-func (v hostBufferView) Acquire() []byte     { return v.data.bytes() }
-func (v hostBufferView) Release()            {}
-
 // HostArray managed by GX where the data is on the host.
 type HostArray struct {
 	*baseArray
@@ -288,26 +273,6 @@ func NewHostArrayFromFlat[T gotype.Supported](typ ir.Type, flat []T, dims ...int
 	return NewHostArrayFromData(typ, &HostData[T]{Shape: sh, Flat: flat})
 }
 
-// NewHostArray copies the data of a buffer into a new host array.
-func NewHostArray(typ ir.Type, buffer HostBuffer) (*HostArray, error) {
-	sh := buffer.Shape()
-	base, err := newBaseArray(typ, sh)
-	if err != nil {
-		return nil, err
-	}
-	raw := buffer.Acquire()
-	defer buffer.Release()
-	data, err := allocateHostData(sh)
-	if err != nil {
-		return nil, err
-	}
-	if int64(len(raw)) != sh.ByteSize() {
-		return nil, errors.Errorf("buffer size is %d but shape specify a buffer size of %d", len(raw), sh.ByteSize())
-	}
-	copy(data.bytes(), raw)
-	return &HostArray{baseArray: base, data: data}, nil
-}
-
 // Type of the array.
 func (a *HostArray) Type() ir.Type {
 	return a.typ
@@ -341,11 +306,6 @@ func (a *HostArray) Finalize() error {
 // ToHostArray returns the receiver.
 func (a *HostArray) ToHostArray() (*HostArray, error) {
 	return a, nil
-}
-
-// Buffer returns a transitional view on the bytes of the array slice.
-func (a *HostArray) Buffer() HostBuffer {
-	return hostBufferView{data: a.data}
 }
 
 // ToDevice transfers the data to a device.
