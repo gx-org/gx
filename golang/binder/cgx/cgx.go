@@ -32,7 +32,6 @@ import (
 	"github.com/gx-org/gx/build/ir"
 	"github.com/gx-org/gx/build/ir/irkind"
 	"github.com/gx-org/gx/cgx/handle"
-	"github.com/gx-org/gx/golang/backend/kernels"
 	"github.com/gx-org/gx/golang/binder/gobindings/core"
 	"github.com/gx-org/gx/golang/binder/gobindings/types"
 	"github.com/gx-org/gx/internal/base/cast"
@@ -947,7 +946,7 @@ func cgx_value_host_buffer(cgxValue C.cgx_value) C.struct_cgx_value_host_buffer_
 		return C.struct_cgx_value_host_buffer_result{error: (C.cgx_error)(wrap[error](err))}
 	}
 	return C.struct_cgx_value_host_buffer_result{
-		buffer: (C.cgx_host_buffer)(wrap[kernels.HostBuffer](hostArray.Buffer())),
+		buffer: (C.cgx_host_buffer)(wrap[*hostio.HostArray](hostArray)),
 	}
 }
 
@@ -1084,16 +1083,14 @@ func cgx_shape_element_kind(cgxShape C.cgx_shape) C.enum_cgx_value_kind {
 
 //export cgx_host_buffer_acquire_data
 func cgx_host_buffer_acquire_data(cgxHostBuffer C.cgx_host_buffer) *C.char {
-	hostBuffer := mustUnwrap[kernels.HostBuffer]("cgx_host_buffer_acquire_data", cgxHostBuffer)
-	data := hostBuffer.Acquire()
-	return (*C.char)(handle.PinSliceData[byte](data))
+	hostArray := mustUnwrap[*hostio.HostArray]("cgx_host_buffer_acquire_data", cgxHostBuffer)
+	return (*C.char)(handle.PinSliceData[byte](hostArray.Bytes()))
 }
 
 //export cgx_host_buffer_release_data
 func cgx_host_buffer_release_data(cgxHostBuffer C.cgx_host_buffer, data *C.char) {
-	hostBuffer := mustUnwrap[kernels.HostBuffer]("cgx_host_buffer_release_data", cgxHostBuffer)
+	_ = mustUnwrap[*hostio.HostArray]("cgx_host_buffer_release_data", cgxHostBuffer)
 	handle.UnpinSliceData(unsafe.Pointer(data))
-	hostBuffer.Release()
 }
 
 /* cgx_type */
