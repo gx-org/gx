@@ -19,15 +19,6 @@ import (
 	"github.com/gx-org/gx/src/gx/ast"
 )
 
-type rawBuffer struct {
-	shape shapes.Shape
-	data  []byte
-}
-
-func (b *rawBuffer) Shape() shapes.Shape { return b.shape }
-func (b *rawBuffer) Acquire() []byte     { return b.data }
-func (b *rawBuffer) Release()            {}
-
 func mustHostArray[T gotype.Supported](t *testing.T, dtype ir.Type, flat []T, dims ...int) *hostio.HostArray {
 	t.Helper()
 	var typ ir.Type = dtype
@@ -331,36 +322,6 @@ func TestHostArrayNamedTypeDefineString(t *testing.T) {
 	}
 }
 
-func TestTransitionalHostBufferAPI(t *testing.T) {
-	src := []int32{10, 20, 30}
-	raw := append([]byte(nil), dtypes.UnsafeByteSlice(src)...)
-	arr, err := hostio.NewHostArray(irhelper.ArrayType(ir.Int32Type(), 3), &rawBuffer{
-		shape: shapes.Make(dtypes.Int32, 3),
-		data:  raw,
-	})
-	if err != nil {
-		t.Fatalf("NewHostArray failed: %v", err)
-	}
-	// Mutating raw after NewHostArray must not affect arr since NewHostArray copies the data.
-	raw[0] = 99
-	flat, err := hostio.Flat[int32](arr)
-	if err != nil {
-		t.Fatalf("hostio.Flat[int32](arr) failed: %v", err)
-	}
-	if !slices.Equal(flat, []int32{10, 20, 30}) {
-		t.Errorf("hostio.Flat[int32](arr) = %v, want [10 20 30]", flat)
-	}
-	bufView := arr.Buffer()
-	if got, want := bufView.Shape(), shapes.Make(dtypes.Int32, 3); !got.Equal(want) {
-		t.Errorf("bufView.Shape() = %v, want %v", got, want)
-	}
-	viewBytes := bufView.Acquire()
-	defer bufView.Release()
-	if !slices.Equal(viewBytes, dtypes.UnsafeByteSlice(src)) {
-		t.Errorf("bufView.Acquire() = %v, want %v", viewBytes, dtypes.UnsafeByteSlice(src))
-	}
-}
-
 func TestHostArrayInvalidSizeAndUnsupportedDType(t *testing.T) {
 	if _, err := hostio.NewHostArrayFromFlat(irhelper.ArrayType(ir.Int32Type(), 3), []int32{1, 2}, 3); err == nil {
 		t.Errorf("NewHostArrayFromFlat succeeded on mismatched slice length, want error")
@@ -374,18 +335,12 @@ func TestHostArrayInvalidSizeAndUnsupportedDType(t *testing.T) {
 	}); err == nil {
 		t.Errorf("NewHostArrayFromData succeeded on mismatched shape DType, want error")
 	}
-	if _, err := hostio.NewHostArray(ir.Int32Type(), &rawBuffer{
-		shape: shapes.Make(dtypes.Int32),
-		data:  []byte{1, 2},
-	}); err == nil {
-		t.Errorf("NewHostArray succeeded on invalid buffer size, want error")
-	}
 	for _, unsupported := range []dtypes.DType{dtypes.Int8, dtypes.F8E4M3FN, dtypes.InvalidDType} {
-		if _, err := hostio.NewHostArray(ir.Int32Type(), &rawBuffer{
-			shape: shapes.Shape{DType: unsupported},
-			data:  []byte{1},
+		if _, err := hostio.NewHostArrayFromData(ir.Int32Type(), &hostio.HostData[int32]{
+			Shape: shapes.Shape{DType: unsupported},
+			Flat:  []int32{1},
 		}); err == nil {
-			t.Errorf("NewHostArray for %s succeeded, want error", unsupported)
+			t.Errorf("NewHostArrayFromData for %s succeeded, want error", unsupported)
 		}
 	}
 }

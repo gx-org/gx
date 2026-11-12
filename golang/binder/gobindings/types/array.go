@@ -16,6 +16,7 @@ package types
 
 import (
 	"fmt"
+	"slices"
 
 	"github.com/gomlx/compute/dtypes"
 	"github.com/gomlx/compute/dtypes/gotype"
@@ -23,7 +24,6 @@ import (
 	"github.com/gx-org/gx/api/hostio"
 	"github.com/gx-org/gx/build/ir"
 	"github.com/gx-org/gx/build/ir/irkind"
-	"github.com/gx-org/gx/golang/backend/kernels"
 	"github.com/gx-org/gx/src/gx/ast"
 )
 
@@ -98,11 +98,11 @@ func (array *HostArray[T]) Fetch() (*HostArray[T], error) {
 
 // CopyFlat makes a copy of the data and returns it as a flat representation of an array.
 func (array *HostArray[T]) CopyFlat() []T {
-	buffer := array.value.Buffer()
-	src := buffer.Acquire()
-	defer buffer.Release()
-	dst := append([]uint8{}, src...)
-	return kernels.ToSlice[T](dst)
+	flat, err := hostio.Flat[T](array.value)
+	if err != nil {
+		panic(err)
+	}
+	return slices.Clone(flat)
 }
 
 // Shape of the array.
@@ -118,24 +118,6 @@ func (array *HostArray[T]) String() string {
 	return array.GXValue().SourceString(nil)
 }
 
-// ArrayBool returns a new Go host array of bool.
-func ArrayBool(vals []bool, dims ...int) *HostArray[bool] {
-	if dims == nil {
-		dims = []int{len(vals)}
-	}
-	typ := ir.NewArrayType(&ast.ArrayType{}, ir.TypeFromKind(irkind.Bool), ir.NewRank(dims))
-	array := kernels.ToBoolArray(vals, dims)
-	buffer := kernels.NewBuffer(array)
-	hostArray, err := hostio.NewHostArray(typ, buffer)
-	if err != nil {
-		// Should never happen.
-		// The only possible error is when an array is created with type
-		// not matching its shape. We construct both in these functions.
-		panic(err)
-	}
-	return NewHostArray[bool](hostArray)
-}
-
 func inferDims[T gotype.Supported](vals []T, dims []int) []int {
 	if dims != nil {
 		return dims
@@ -143,11 +125,10 @@ func inferDims[T gotype.Supported](vals []T, dims []int) []int {
 	return []int{len(vals)}
 }
 
-func newArray[T gotype.Supported](dtypeKind irkind.Kind, array kernels.Array) *HostArray[T] {
-	dims := array.Shape().Dimensions
+func newArray[T gotype.Supported](dtypeKind irkind.Kind, vals []T, dims []int) *HostArray[T] {
+	dims = inferDims(vals, dims)
 	typ := ir.NewArrayType(&ast.ArrayType{}, ir.TypeFromKind(dtypeKind), ir.NewRank(dims))
-	buffer := kernels.NewBuffer(array)
-	hostArray, err := hostio.NewHostArray(typ, buffer)
+	hostArray, err := hostio.NewHostArrayFromFlat(typ, vals, dims...)
 	if err != nil {
 		// Should never happen.
 		// The only possible error is when an array is created with type
@@ -157,44 +138,42 @@ func newArray[T gotype.Supported](dtypeKind irkind.Kind, array kernels.Array) *H
 	return NewHostArray[T](hostArray)
 }
 
+// ArrayBool returns a new Go host array of bool.
+func ArrayBool(vals []bool, dims ...int) *HostArray[bool] {
+	return newArray[bool](irkind.Bool, vals, dims)
+}
+
 // ArrayFloat32 returns a new Go host array of float32.
 func ArrayFloat32(vals []float32, dims ...int) *HostArray[float32] {
-	dims = inferDims(vals, dims)
-	return newArray[float32](irkind.Float32, kernels.ToFloatArray(vals, dims))
+	return newArray[float32](irkind.Float32, vals, dims)
 }
 
 // ArrayFloat64 returns a new Go host array of float64.
 func ArrayFloat64(vals []float64, dims ...int) *HostArray[float64] {
-	dims = inferDims(vals, dims)
-	return newArray[float64](irkind.Float64, kernels.ToFloatArray(vals, dims))
+	return newArray[float64](irkind.Float64, vals, dims)
 }
 
 // ArrayInt returns a new Go host array of int32.
 func ArrayInt(vals []int, dims ...int) *HostArray[int] {
-	dims = inferDims(vals, dims)
-	return newArray[int](irkind.Int, kernels.ToIntegerArray(vals, dims))
+	return newArray[int](irkind.Int, vals, dims)
 }
 
 // ArrayInt32 returns a new Go host array of int32.
 func ArrayInt32(vals []int32, dims ...int) *HostArray[int32] {
-	dims = inferDims(vals, dims)
-	return newArray[int32](irkind.Int32, kernels.ToIntegerArray(vals, dims))
+	return newArray[int32](irkind.Int32, vals, dims)
 }
 
 // ArrayInt64 returns a new Go host array of int64.
 func ArrayInt64(vals []int64, dims ...int) *HostArray[int64] {
-	dims = inferDims(vals, dims)
-	return newArray[int64](irkind.Int64, kernels.ToIntegerArray(vals, dims))
+	return newArray[int64](irkind.Int64, vals, dims)
 }
 
 // ArrayUint32 returns a new Go host array of uint32.
 func ArrayUint32(vals []uint32, dims ...int) *HostArray[uint32] {
-	dims = inferDims(vals, dims)
-	return newArray[uint32](irkind.Uint32, kernels.ToIntegerArray(vals, dims))
+	return newArray[uint32](irkind.Uint32, vals, dims)
 }
 
 // ArrayUint64 returns a new Go host array of uint64.
 func ArrayUint64(vals []uint64, dims ...int) *HostArray[uint64] {
-	dims = inferDims(vals, dims)
-	return newArray[uint64](irkind.Uint64, kernels.ToIntegerArray(vals, dims))
+	return newArray[uint64](irkind.Uint64, vals, dims)
 }
