@@ -81,11 +81,15 @@ func assignArgumentValues(ftype *ir.FuncType, funcFrame *context.Frame, args []i
 }
 
 // EvalFunc evaluates a function.
-func (itp *Base) EvalFunc(fn *ir.FuncDecl, in *hostio.InputElements) (outs []ir.Element, err error) {
+func (itp *Base) EvalFunc(conv hostio.InputConverter, fn *ir.FuncDecl, receiver hostio.Value, args []hostio.Value) (outs []ir.Element, err error) {
 	if fn.Body == nil {
 		return nil, errors.Errorf("%s: missing function body", fn.Name())
 	}
 	fitp, err := itp.ForFile(fn.File())
+	if err != nil {
+		return nil, err
+	}
+	in, err := hostio.FuncInputsToElements(conv, fitp, fn, receiver, args)
 	if err != nil {
 		return nil, err
 	}

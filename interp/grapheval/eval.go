@@ -135,18 +135,9 @@ func Trace(dev *api.Device, fn *ir.FuncDecl, receiver hostio.Value, args []hosti
 	if err != nil {
 		return nil, err
 	}
-	fitp, err := itp.ForFile(fn.File())
-	if err != nil {
-		return nil, err
-	}
-	// Visit the receiver and arguments values to create elements for the interpreter.
-	in, err := hostio.FuncInputsToElements(newInputVisitor(mat, fn), fitp, fn, receiver, args)
-	if err != nil {
-		return nil, err
-	}
 	// Interpret the function with the evaluator to build the graph.
 	// The evaluation returns a single output element.
-	outs, err := itp.EvalFunc(fn, in)
+	outs, err := itp.EvalFunc(newInputVisitor(mat, fn), fn, receiver, args)
 	if err != nil {
 		return nil, err
 	}

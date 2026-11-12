@@ -50,17 +50,8 @@ func Run(dev *api.Device, fn *ir.FuncDecl, receiver hostio.Value, args []hostio.
 	if err != nil {
 		return nil, err
 	}
-	fitp, err := itp.ForFile(fn.File())
-	if err != nil {
-		return nil, err
-	}
-	// Convert the receiver and arguments values into elements for the interpreter.
-	in, err := hostio.FuncInputsToElements(ops, fitp, fn, receiver, args)
-	if err != nil {
-		return nil, err
-	}
 	// Interpret the function: the backend computes all the operations eagerly.
-	outs, err := itp.EvalFunc(fn, in)
+	outs, err := itp.EvalFunc(ops, fn, receiver, args)
 	if err != nil {
 		return nil, err
 	}
