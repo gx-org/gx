@@ -411,6 +411,14 @@ func (vis *inputVisitor) newArrayArgument(parent parentArgument, typ ir.ArrayTyp
 		file:           vis.file,
 	}
 	n.index = vis.ao.process.RegisterArg(n)
+	op, err := vis.ao.Graph().Parameter(n.Name(), n.shape, nil)
+	if err != nil {
+		return nil, err
+	}
+	n.node, err = NewBackendNode(vis.ao, n.typ, op)
+	if err != nil {
+		return nil, err
+	}
 	return n, nil
 }
 
@@ -420,59 +428,28 @@ func (n *arrayArgument) Name() string {
 
 // UnaryOp applies a unary operator on x.
 func (n *arrayArgument) UnaryOp(env *engine.Env, expr *ir.UnaryExpr) (engine.NumericalElement, error) {
-	node, err := n.materialise(n.parentArgument.Ops())
-	if err != nil {
-		return nil, err
-	}
-	return node.UnaryOp(env, expr)
+	return n.node.UnaryOp(env, expr)
 }
 
 // BinaryOp applies a binary operator to x and y.
 // Note that the receiver can be either the left or right argument.
 func (n *arrayArgument) BinaryOp(env *engine.Env, expr *ir.BinaryExpr, y engine.NumericalElement) (engine.NumericalElement, error) {
-	node, err := n.materialise(n.parentArgument.Ops())
-	if err != nil {
-		return nil, err
-	}
-	return node.BinaryOp(env, expr, y)
+	return n.node.BinaryOp(env, expr, y)
 }
 
 // Cast an element into a given data type.
 func (n *arrayArgument) Cast(env *engine.Env, expr ir.Expr, target ir.Type) (engine.NumericalElement, error) {
-	node, err := n.materialise(n.parentArgument.Ops())
-	if err != nil {
-		return nil, err
-	}
-	return node.Cast(env, expr, target)
+	return n.node.Cast(env, expr, target)
 }
 
 // Reshape an element.
 func (n *arrayArgument) Reshape(env *engine.Env, expr ir.Expr, axisLengths []engine.NumericalElement) (engine.NumericalElement, error) {
-	node, err := n.materialise(n.parentArgument.Ops())
-	if err != nil {
-		return nil, err
-	}
-	return node.Reshape(env, expr, axisLengths)
-}
-
-func (n *arrayArgument) materialise(mat materialise.Materialiser) (*BackendNode, error) {
-	if n.node != nil {
-		return n.node, nil
-	}
-	op, err := mat.Graph().Parameter(n.Name(), n.shape, nil)
-	if err != nil {
-		return nil, err
-	}
-	n.node, err = NewBackendNode(mat.(*Ops), n.typ, op)
-	if err != nil {
-		return nil, err
-	}
-	return n.node, nil
+	return n.node.Reshape(env, expr, axisLengths)
 }
 
 // Materialise returns the element with all its values from the graph.
 func (n *arrayArgument) Materialise(mat materialise.Materialiser) (materialise.Node, error) {
-	return n.materialise(mat)
+	return n.node, nil
 }
 
 // Shape returns the shape of the element.
@@ -529,11 +506,7 @@ func (n *arrayArgument) Unflatten(handles *flatten.Parser) (hostio.Value, error)
 
 // SliceAt of the value on the first axis given an index.
 func (n *arrayArgument) SliceAt(env *engine.Env, expr *ir.IndexExpr, index engine.NumericalElement) (ir.Element, error) {
-	node, err := n.materialise(n.Ops())
-	if err != nil {
-		return nil, err
-	}
-	return node.SliceAt(env, expr, index)
+	return n.node.SliceAt(env, expr, index)
 }
 
 // Slice the argument.
@@ -543,9 +516,5 @@ func (n *arrayArgument) Slice(env *engine.Env, expr *ir.SliceExpr, low, high eng
 
 // SliceArray of the value on the first axis given an index.
 func (n *arrayArgument) SliceArray(expr ir.Expr, index engine.NumericalElement) (engine.NumericalElement, error) {
-	node, err := n.materialise(n.Ops())
-	if err != nil {
-		return nil, err
-	}
-	return node.SliceArray(expr, index)
+	return n.node.SliceArray(expr, index)
 }

@@ -90,9 +90,6 @@ func GraphFromElement(env *engine.Env, call *ir.FuncCallExpr, el ir.Element, arg
 			return nil, err
 		}
 	}
-	if _, err := materialise.All(subOps, proc.ElementArgs()); err != nil {
-		return nil, err
-	}
 	subEnv := env.Sub(subReg, subOps)
 	outElts, err := fn.Call(subEnv, call, nil, subArgs)
 	if err != nil {
@@ -145,10 +142,6 @@ func Trace(dev *api.Device, fn *ir.FuncDecl, receiver hostio.Value, args []hosti
 	// Visit the receiver and arguments values to create elements for the interpreter.
 	in, err := hostio.FuncInputsToElements(newInputVisitor(mat, fn), fitp, fn, receiver, args)
 	if err != nil {
-		return nil, err
-	}
-	// Add all the arguments to the graph.
-	if _, err := materialise.All(mat, proc.ElementArgs()); err != nil {
 		return nil, err
 	}
 	// Interpret the function with the evaluator to build the graph.
