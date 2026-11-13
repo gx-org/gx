@@ -328,10 +328,7 @@ func (ao *Ops) axesFromShape(ctx ir.Evaluator, axlens []int) (*elements.Slice, e
 }
 
 func (ao *Ops) elementFromValue(ev ir.Evaluator, val hostio.Value) (ir.Element, error) {
-	if devArray, ok := val.(*hostio.DeviceArray); ok {
-		return ao.toElement(ev, devArray.Buffer(), val.Type())
-	}
-	return val, nil
+	return ao.toElement(ev, val, val.Type())
 }
 
 // ElementFromReceiverValue converts a function receiver value into an element.
