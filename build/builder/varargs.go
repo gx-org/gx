@@ -93,7 +93,7 @@ func (n *unpackExpr) buildExpr(rscope resolveScope) (ir.Expr, bool) {
 	}
 	xType := ext.X.Type()
 	if xType.Kind() != irkind.Slice {
-		return ext, rscope.Err().Appendf(n.source(), "cannot unpack type %s", xType.ReferString(rscope.fileScope().irFile()))
+		return ext, rscope.Err().Appendf(n.source(), "cannot unpack type %s", xType.ReferString(rscope.fileScope().File()))
 	}
 	slType, ok := xType.(ir.SlicerType)
 	if !ok {
@@ -101,7 +101,7 @@ func (n *unpackExpr) buildExpr(rscope resolveScope) (ir.Expr, bool) {
 	}
 	ext.EltTyp, ok = slType.ElementType()
 	if !ok {
-		return ext, rscope.Err().AppendInternalf(n.source(), "cannot access element type of %s (implementation: %T)", slType.ReferString(rscope.fileScope().irFile()), slType)
+		return ext, rscope.Err().AppendInternalf(n.source(), "cannot access element type of %s (implementation: %T)", slType.ReferString(rscope.fileScope().File()), slType)
 	}
 	return ext, ok
 }

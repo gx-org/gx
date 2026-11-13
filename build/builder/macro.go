@@ -49,7 +49,7 @@ func (f *funcMeta) resolveOrder() int {
 func (f *funcMeta) buildSignature(fScope *fileResolveScope) (ir.MetaCore, fnResolveScope, bool) {
 	ext := ir.MetaCore{
 		Src:   f.src,
-		FFile: fScope.irFile(),
+		FFile: fScope.File(),
 	}
 	var ok bool
 	var fnScope *funcResolveScope
@@ -142,7 +142,7 @@ func evalMetaCallee[T engine.Func](rscope resolveScope, compEval *compileEvaluat
 	}
 	elT, ok := el.(T)
 	if !ok {
-		return nil, zero, rscope.Err().Appendf(callee.Node(), "cannot use %s %s", callee.SourceString(rscope.fileScope().irFile()), target)
+		return nil, zero, rscope.Err().Appendf(callee.Node(), "cannot use %s %s", callee.SourceString(rscope.fileScope().File()), target)
 	}
 	call, ok := macroCall.buildFuncCallExpr(rscope, ir.NewFuncValExpr(
 		callee,

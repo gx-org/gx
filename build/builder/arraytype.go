@@ -44,7 +44,7 @@ func (n *arrayType) source() ast.Node {
 func (n *arrayType) buildTypeExpr(rscope resolveScope) (*ir.TypeValExpr, bool) {
 	dtyp, dtypeOk := n.dtyp.buildTypeExpr(rscope)
 	if dtypeOk && !ir.IsDataType(dtyp.Val()) {
-		rscope.Err().Appendf(n.source(), "array of %s not supported", dtyp.SourceString(rscope.fileScope().irFile()))
+		rscope.Err().Appendf(n.source(), "array of %s not supported", dtyp.SourceString(rscope.fileScope().File()))
 		dtypeOk = false
 	}
 	lscope, ok := rscope.(localScope)

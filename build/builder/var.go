@@ -135,7 +135,7 @@ func (spec *varSpec) buildDecl(scope fnResolveScope) (*ir.VarSpec, bool) {
 	}
 
 	irSpec := &ir.VarSpec{
-		FFile: scope.fileScope().irFile(),
+		FFile: scope.fileScope().File(),
 		Src:   spec.src,
 	}
 	typeExpr, ok := spec.typ.buildTypeExpr(scope)

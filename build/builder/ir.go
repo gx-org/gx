@@ -95,7 +95,7 @@ func findStorage(scope resolveScope, name *ast.Ident) (ir.Storage, bool) {
 }
 
 func typeError(rscope resolveScope, x ir.Expr) (*ir.TypeValExpr, bool) {
-	return invalidTypeExprVal, rscope.Err().Appendf(x.Node(), "%s is not a type", x.SourceString(rscope.fileScope().irFile()))
+	return invalidTypeExprVal, rscope.Err().Appendf(x.Node(), "%s is not a type", x.SourceString(rscope.fileScope().File()))
 }
 
 func checkTypeInstantiated(rscope resolveScope, pos ast.Node, typExpr *ir.TypeValExpr) (*ir.TypeValExpr, bool) {
@@ -106,11 +106,11 @@ func checkTypeInstantiated(rscope resolveScope, pos ast.Node, typExpr *ir.TypeVa
 	if !ok || named.GenParams.Fields.Len() == 0 {
 		return typExpr, true
 	}
-	return invalidTypeExprVal, rscope.Err().Appendf(pos, "cannot use generic type %s without instantiation", named.DefineString(rscope.fileScope().irFile()))
+	return invalidTypeExprVal, rscope.Err().Appendf(pos, "cannot use generic type %s without instantiation", named.DefineString(rscope.fileScope().File()))
 }
 
 func funcError(rscope resolveScope, x ir.Expr) (ir.Expr, bool) {
-	return invalidExpr(), rscope.Err().Appendf(x.Node(), "%s is not a function", x.SourceString(rscope.fileScope().irFile()))
+	return invalidExpr(), rscope.Err().Appendf(x.Node(), "%s is not a function", x.SourceString(rscope.fileScope().File()))
 }
 
 var invalidArrayType = ir.NewArrayType(&ast.ArrayType{}, ir.InvalidType(), nil)
@@ -122,7 +122,7 @@ func buildArrayType(rscope resolveScope, eNode typeExprNode) (ir.ArrayType, bool
 	}
 	arrayType, ok := typeExpr.Val().(ir.ArrayType)
 	if !ok {
-		return invalidArrayType, rscope.Err().AppendInternalf(eNode.source(), "%s is not an array type", typeExpr.SourceString(rscope.fileScope().irFile()))
+		return invalidArrayType, rscope.Err().AppendInternalf(eNode.source(), "%s is not an array type", typeExpr.SourceString(rscope.fileScope().File()))
 	}
 	return arrayType, true
 }
@@ -139,7 +139,7 @@ func buildSliceType(rscope resolveScope, eNode typeExprNode) (*ir.SliceType, boo
 	}
 	sliceType, ok := typeExpr.Val().(*ir.SliceType)
 	if !ok {
-		return invalidSliceType, rscope.Err().AppendInternalf(eNode.source(), "%s is not a slice type", typeExpr.SourceString(rscope.fileScope().irFile()))
+		return invalidSliceType, rscope.Err().AppendInternalf(eNode.source(), "%s is not a slice type", typeExpr.SourceString(rscope.fileScope().File()))
 	}
 	return sliceType, true
 }
@@ -151,7 +151,7 @@ func buildCall(rscope resolveScope, eNode exprNode) (ir.CallExpr, bool) {
 	}
 	call, ok := expr.(ir.CallExpr)
 	if !ok {
-		from := rscope.fileScope().irFile()
+		from := rscope.fileScope().File()
 		return nil, rscope.Err().AppendInternalf(eNode.source(), "cannot call non-function %s (variable of type %s)", expr.SourceString(from), expr.Type().ReferString(from))
 	}
 	return call, true
@@ -186,7 +186,7 @@ func convertToAt(rscope resolveScope, pos ast.Node, src, dst ir.Type) bool {
 		return rscope.Err().AppendAt(pos, err)
 	}
 	if !convertOk {
-		from := rscope.fileScope().irFile()
+		from := rscope.fileScope().File()
 		return rscope.Err().Appendf(pos, "cannot convert %s to %s", src.ReferString(from), dst.ReferString(from))
 	}
 	return true
@@ -291,7 +291,7 @@ func buildCoreExpr(rscope resolveScope, expr exprNode) (ir.Expr, bool) {
 	}
 	asExt, aexprOk := ext.(ir.Expr)
 	if !aexprOk {
-		return invalidExpr(), rscope.Err().Appendf(expr.source(), "%s %s is not assignable", ext.SourceString(rscope.fileScope().irFile()), ext.Type().Kind().String())
+		return invalidExpr(), rscope.Err().Appendf(expr.source(), "%s %s is not assignable", ext.SourceString(rscope.fileScope().File()), ext.Type().Kind().String())
 	}
 	return asExt, exprOk && !isInvalidExpr(ext)
 }
@@ -303,7 +303,7 @@ func buildExpr(rscope resolveScope, expr exprNode) (ir.Expr, bool) {
 	}
 	knd := ext.Type().Kind()
 	if knd != irkind.Invalid && knd == irkind.MetaType {
-		return ext, rscope.Err().Appendf(expr.source(), "%s (type) is not an expression", ext.SourceString(rscope.fileScope().irFile()))
+		return ext, rscope.Err().Appendf(expr.source(), "%s (type) is not an expression", ext.SourceString(rscope.fileScope().File()))
 	}
 	return ext, true
 }
@@ -352,7 +352,7 @@ func castNilAndBroadcastNumber(rscope resolveScope, expr ir.Expr, target ir.Type
 	if !isArray {
 		return cast, true
 	}
-	from := rscope.fileScope().irFile()
+	from := rscope.fileScope().File()
 	if dtype, isTypeParam := arrayTarget.DataType().(*ir.GenericTypeParam); isTypeParam {
 		// The interpreter does not support (yet) broadcasting a value
 		// of a type parameter to an array.
@@ -385,7 +385,7 @@ func checkSingleValue(rscope resolveScope, pos ast.Node, expr ir.Expr) bool {
 	if !isTuple || len(tpl.Types) == 1 {
 		return true
 	}
-	return rscope.Err().Appendf(pos, "multiple-value (value of type %s) in single-value context", tpl.ReferString(rscope.fileScope().irFile()))
+	return rscope.Err().Appendf(pos, "multiple-value (value of type %s) in single-value context", tpl.ReferString(rscope.fileScope().File()))
 }
 
 type fileWithError struct {
@@ -396,5 +396,5 @@ func toFileWithError(rscope resolveScope) ir.FileWithError {
 	return &fileWithError{resolveScope: rscope}
 }
 func (fwe *fileWithError) File() *ir.File {
-	return fwe.resolveScope.fileScope().irFile()
+	return fwe.resolveScope.fileScope().File()
 }

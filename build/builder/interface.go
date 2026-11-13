@@ -116,7 +116,7 @@ func (s *iface) buildTypeExpr(rscope resolveScope) (*ir.TypeValExpr, bool) {
 		if prev, exists := rtypeNames[s.typs[i].String()]; exists {
 			ok = rscope.Err().Appendf(s.source(), "overlapping terms %s and %s", prev, typeExpr)
 		}
-		from := rscope.fileScope().irFile()
+		from := rscope.fileScope().File()
 		rtypeNames[typeExpr.SourceString(from)] = typeExpr.Val()
 	}
 	var imeths []*ir.IMethod

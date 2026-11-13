@@ -161,7 +161,7 @@ func (m *synthResolveScope) buildBody(fn *ir.FuncDecl, compEval *compileEvaluato
 	var src string
 	var err error
 	fScope := m.fileScope()
-	src, fn.Src, err = formatFunction(fScope.pkg().fset, m.fnBuilder, fScope.irFile(), fn.Src)
+	src, fn.Src, err = formatFunction(fScope.pkg().fset, m.fnBuilder, fScope.File(), fn.Src)
 	if err != nil {
 		return m.Err().Append(err)
 	}
@@ -190,7 +190,7 @@ func (f *syntheticFunc) checkSyntheticSignature(fScope *fileResolveScope, fInput
 		return true
 	}
 	if fInputRecv == nil && fOutputRecv != nil {
-		return fScope.Err().Appendf(f.src, "%s requires a %s type receiver", f.src.Name.Name, fOutputRecv.Type().ReferString(fScope.irFile()))
+		return fScope.Err().Appendf(f.src, "%s requires a %s type receiver", f.src.Name.Name, fOutputRecv.Type().ReferString(fScope.File()))
 	}
 	if fInputRecv != nil && fOutputRecv == nil {
 		return fScope.Err().Appendf(f.src, "%s requires no receiver", f.src.Name.Name)
@@ -210,7 +210,7 @@ func buildSyntheticFuncSig(parentScope *fileResolveScope, srcloc ast.Node, astBu
 	if !ok {
 		return nil, nil, nil, false
 	}
-	src, synDecl, err := formatFunction(pMacroScope.pkg().fset, astBuilder, parentScope.irFile(), synDecl)
+	src, synDecl, err := formatFunction(pMacroScope.pkg().fset, astBuilder, parentScope.File(), synDecl)
 	if err != nil {
 		return nil, nil, nil, parentScope.Err().Append(err)
 	}
@@ -233,7 +233,7 @@ func buildSyntheticFuncSig(parentScope *fileResolveScope, srcloc ast.Node, astBu
 	}
 	return recvExpr,
 		&ir.FuncDecl{
-			FFile: fScope.irFile(),
+			FFile: fScope.File(),
 			Src:   synDecl,
 			FType: fType,
 		},
