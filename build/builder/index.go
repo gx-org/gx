@@ -177,7 +177,7 @@ func (n *indexExpr) buildSlicerIndex(rscope resolveScope, ext *ir.IndexExpr, xTy
 	var ok bool
 	ext.Typ, ok = xType.ElementType()
 	if !ok {
-		return rscope.Err().Appendf(n.source(), "cannot index %s", xType.ReferString(rscope.fileScope().irFile()))
+		return rscope.Err().Appendf(n.source(), "cannot index %s", xType.ReferString(rscope.fileScope().File()))
 	}
 	aType, isArray := xType.(ir.ArrayType)
 	boundOk := true
@@ -188,7 +188,7 @@ func (n *indexExpr) buildSlicerIndex(rscope resolveScope, ext *ir.IndexExpr, xTy
 	ext.Index, numberOk = castNilAndNumber(rscope, ext.Index, ir.Int64Type())
 	indexTypeOk := ir.IsIndexType(ext.Index.Type())
 	if !indexTypeOk {
-		return rscope.Err().Appendf(n.source(), "index %s (of type %s) must be integer", ext.Index.SourceString(rscope.fileScope().irFile()), ext.Index.Type().ReferString(rscope.fileScope().irFile()))
+		return rscope.Err().Appendf(n.source(), "index %s (of type %s) must be integer", ext.Index.SourceString(rscope.fileScope().File()), ext.Index.Type().ReferString(rscope.fileScope().File()))
 	}
 	return boundOk && numberOk && indexTypeOk
 }
@@ -196,7 +196,7 @@ func (n *indexExpr) buildSlicerIndex(rscope resolveScope, ext *ir.IndexExpr, xTy
 func (n *indexExpr) buildStructIndex(rscope resolveScope, ext *ir.IndexExpr, xType *ir.StructType) bool {
 	indexKind := ext.Index.Type().Kind()
 	if indexKind != irkind.Invalid && indexKind != irkind.FieldPath {
-		return rscope.Err().Appendf(n.source(), "index %s (of type %s) must be fieldpath", ext.Index.SourceString(rscope.fileScope().irFile()), ext.Index.Type().ReferString(rscope.fileScope().irFile()))
+		return rscope.Err().Appendf(n.source(), "index %s (of type %s) must be fieldpath", ext.Index.SourceString(rscope.fileScope().File()), ext.Index.Type().ReferString(rscope.fileScope().File()))
 	}
 	ext.Typ = ir.UnknownType()
 	return true
@@ -231,7 +231,7 @@ func (n *indexExpr) buildExpr(rscope resolveScope) (ir.Expr, bool) {
 	case *ir.StructType:
 		ok = n.buildStructIndex(rscope, ext, xTypeT)
 	default:
-		from := rscope.fileScope().irFile()
+		from := rscope.fileScope().File()
 		ok = rscope.Err().Appendf(x.Node(), "cannot index %s (type: %s)", ext.X.SourceString(from), xType.ReferString(from))
 	}
 	return ext, ok
@@ -331,14 +331,14 @@ func specializeFieldIndex(rscope resolveScope, x *ir.TypeValExpr, gtype ir.Speci
 func specializeType(rscope resolveScope, x *ir.TypeValExpr, indices []ir.Expr) (*ir.TypeValExpr, bool) {
 	kind := x.Val().Kind()
 	if kind != irkind.Struct && kind != irkind.FieldIndex {
-		return invalidTypeExprVal, rscope.Err().Appendf(x.Node(), "%s is not a generic type", x.SourceString(rscope.fileScope().irFile()))
+		return invalidTypeExprVal, rscope.Err().Appendf(x.Node(), "%s is not a generic type", x.SourceString(rscope.fileScope().File()))
 	}
 	gtype, err := cast.To[ir.SpecialisableType](x.Val())
 	if err != nil {
 		return invalidTypeExprVal, rscope.Err().AppendAt(x.Node(), err)
 	}
 	if gotN, wantN := len(indices), gtype.Generics().Fields.Len(); gotN < wantN {
-		return invalidTypeExprVal, rscope.Err().Appendf(x.Node(), "not enough type arguments for type %s: have %d, want %d", x.SourceString(rscope.fileScope().irFile()), gotN, wantN)
+		return invalidTypeExprVal, rscope.Err().Appendf(x.Node(), "not enough type arguments for type %s: have %d, want %d", x.SourceString(rscope.fileScope().File()), gotN, wantN)
 	}
 	ce, ok := rscope.compEval()
 	if !ok {

@@ -136,7 +136,7 @@ func checkUnrollResultTypes(rscope resolveScope, ftype *ir.FuncType) bool {
 	}
 	tp := fields[0].Type()
 	if tp.Kind() != irkind.Slice {
-		return rscope.Err().Appendf(ftype.Results.Node(), "function returns %s (kind %s) for unroll but expect slice", tp.ReferString(rscope.fileScope().irFile()), tp.Kind().String())
+		return rscope.Err().Appendf(ftype.Results.Node(), "function returns %s (kind %s) for unroll but expect slice", tp.ReferString(rscope.fileScope().File()), tp.Kind().String())
 	}
 	return true
 }
@@ -356,7 +356,7 @@ func (f *funcDecl) resolveOrder() int {
 }
 
 func (f *funcDecl) buildSignature(fScope *fileResolveScope) (ir.Func, fnResolveScope, bool) {
-	ext := &ir.FuncDecl{Src: f.src, FFile: fScope.irFile()}
+	ext := &ir.FuncDecl{Src: f.src, FFile: fScope.File()}
 	var fnscope *funcResolveScope
 	var ok bool
 	ext.FType, fnscope, ok = f.fType.buildFuncType(fScope)
@@ -426,7 +426,7 @@ func (bFile *file) processBuiltinFunc(scope procScope, src *ast.FuncDecl, nature
 }
 
 func (f *funcBuiltin) buildSignature(fScope *fileResolveScope) (ir.Func, fnResolveScope, bool) {
-	ext := &ir.FuncBuiltin{Src: f.src, FFile: fScope.irFile()}
+	ext := &ir.FuncBuiltin{Src: f.src, FFile: fScope.File()}
 	var fnScope *funcResolveScope
 	var ok bool
 	ext.FType, fnScope, ok = f.fType.buildFuncType(fScope)
@@ -464,7 +464,7 @@ func processFuncLit(pscope procScope, src *ast.FuncLit) (*funcLiteral, bool) {
 func (fn *funcLiteral) buildFuncLit(rscope resolveScope) (*ir.FuncLit, bool) {
 	lit := &ir.FuncLit{
 		Src:   fn.src,
-		FFile: rscope.fileScope().irFile(),
+		FFile: rscope.fileScope().File(),
 	}
 	var ok bool
 	var fnscope *funcResolveScope

@@ -417,7 +417,7 @@ func (n *assignCallStmt) buildStmt(rscope stmtResolveScope) (ir.Stmt, bool, bool
 	}
 	lenCallResults := funType.Results.Len()
 	if lenTargets != funType.Results.Len() {
-		return ext, false, rscope.Err().Appendf(n.source(), "assignment mismatch: %d variable(s) but %s returns %d values", lenTargets, ext.Call.SourceString(rscope.fileScope().irFile()), lenCallResults)
+		return ext, false, rscope.Err().Appendf(n.source(), "assignment mismatch: %d variable(s) but %s returns %d values", lenTargets, ext.Call.SourceString(rscope.fileScope().File()), lenCallResults)
 	}
 	ext.List = make([]*ir.AssignCallResult, lenCallResults)
 	total := min(lenTargets, lenCallResults)

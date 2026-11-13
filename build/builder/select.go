@@ -51,9 +51,9 @@ func (n *selectorExpr) returnUndefined(scope resolveScope, x ir.Expr) (ir.Storag
 		return invalidStore(), false
 	}
 	if x.Type().Kind() == irkind.Package {
-		return invalidStore(), scope.Err().Appendf(n.src.Sel, "undefined: %s.%s", x.SourceString(scope.fileScope().irFile()), n.src.Sel.Name)
+		return invalidStore(), scope.Err().Appendf(n.src.Sel, "undefined: %s.%s", x.SourceString(scope.fileScope().File()), n.src.Sel.Name)
 	}
-	return invalidStore(), scope.Err().Appendf(n.src.Sel, "%s.%s undefined (type %s has no field or method %s)", x.SourceString(scope.fileScope().irFile()), n.src.Sel.Name, x.Type().ReferString(scope.fileScope().irFile()), n.src.Sel.Name)
+	return invalidStore(), scope.Err().Appendf(n.src.Sel, "%s.%s undefined (type %s has no field or method %s)", x.SourceString(scope.fileScope().File()), n.src.Sel.Name, x.Type().ReferString(scope.fileScope().File()), n.src.Sel.Name)
 }
 
 func (n *selectorExpr) selectFromPackage(scope resolveScope, sel *ir.SelectorExpr) (ir.Storage, bool) {

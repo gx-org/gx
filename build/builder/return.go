@@ -85,7 +85,7 @@ func returnAs(rscope resolveScope, pos ast.Node, src, dst ir.Type) bool {
 		errFormat = fmt.Sprintf("%s: %s", errFormat, cpErr.Error())
 	}
 	if !assignable {
-		from := rscope.fileScope().irFile()
+		from := rscope.fileScope().File()
 		return rscope.Err().Appendf(pos, errFormat, src.ReferString(from), dst.ReferString(from))
 	}
 	return true

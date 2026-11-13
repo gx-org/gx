@@ -74,11 +74,11 @@ func (n *rangeStmt) buildBodyOverSlicer(rscope resolveScope, x ir.Expr) (ir.Stor
 	xUnder := ir.Underlying(x.Type())
 	slicerType, ok := xUnder.(ir.SlicerType)
 	if !ok {
-		return key, nil, rscope.Err().AppendInternalf(n.x.source(), "%s is not an array type", x.Type().ReferString(rscope.fileScope().irFile()))
+		return key, nil, rscope.Err().AppendInternalf(n.x.source(), "%s is not an array type", x.Type().ReferString(rscope.fileScope().File()))
 	}
 	valueType, ok := slicerType.ElementType()
 	if !ok {
-		return key, nil, rscope.Err().Appendf(n.x.source(), "cannot range over %s", x.Type().ReferString(rscope.fileScope().irFile()))
+		return key, nil, rscope.Err().Appendf(n.x.source(), "cannot range over %s", x.Type().ReferString(rscope.fileScope().File()))
 	}
 	value, _, valueOk := n.value.buildStorage(rscope, valueType)
 	return key, value, keyOk && valueOk
@@ -142,7 +142,7 @@ func (n *rangeStmt) buildRangeStmt(parent stmtResolveScope) (*ir.RangeStmt, bool
 			ext.Key, ext.Value, ok = n.buildBodyOverScalar(rscope, ext.X)
 			break
 		}
-		return ext, false, rscope.Err().Appendf(n.src, "cannot range over %s", ext.X.Type().ReferString(parent.fileScope().irFile()))
+		return ext, false, rscope.Err().Appendf(n.src, "cannot range over %s", ext.X.Type().ReferString(parent.fileScope().File()))
 	}
 	if !ok {
 		return ext, false, false

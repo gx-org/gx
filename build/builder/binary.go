@@ -55,7 +55,7 @@ func (n *binaryExpr) checkKind(scope resolveScope, x exprNode, typ ir.Type, appe
 	isUnknown := typ.Kind() == irkind.Unknown
 	if !isScalar && !isArray && !isUnknown {
 		if appendErr {
-			scope.Err().Appendf(x.source(), "invalid operation: operator %s not defined on type %s", n.src.Op.String(), typ.ReferString(scope.fileScope().irFile()))
+			scope.Err().Appendf(x.source(), "invalid operation: operator %s not defined on type %s", n.src.Op.String(), typ.ReferString(scope.fileScope().File()))
 		}
 		ok = false
 		return
@@ -96,7 +96,7 @@ func (n *binaryExpr) determineOutputType(scope resolveScope, ops ir.Type) (resul
 		return ir.InvalidType(), false, false
 	}
 	if !ok {
-		scope.Err().Appendf(n.src, "operator %s not defined on %s", op.String(), ops.ReferString(scope.fileScope().irFile()))
+		scope.Err().Appendf(n.src, "operator %s not defined on %s", op.String(), ops.ReferString(scope.fileScope().File()))
 		return ir.InvalidType(), false, false
 	}
 	return
@@ -159,7 +159,7 @@ func (n *binaryExpr) buildOperands(scope resolveScope) (ir.Expr, ir.Expr, ir.Typ
 			return xExpr, yExpr, ir.InvalidType()
 		}
 		if !eq {
-			from := scope.fileScope().irFile()
+			from := scope.fileScope().File()
 			scope.Err().Appendf(n.source(), "mismatched types %s and %s", scalarType.ReferString(from), dtype.ReferString(from))
 			return xExpr, yExpr, ir.InvalidType()
 		}
@@ -175,7 +175,7 @@ func (n *binaryExpr) buildOperands(scope resolveScope) (ir.Expr, ir.Expr, ir.Typ
 		return xExpr, yExpr, ir.InvalidType()
 	}
 	if !eq {
-		from := scope.fileScope().irFile()
+		from := scope.fileScope().File()
 		scope.Err().Appendf(n.source(), "mismatched types %s and %s", xType.ReferString(from), yType.ReferString(from))
 		return xExpr, yExpr, ir.InvalidType()
 	}

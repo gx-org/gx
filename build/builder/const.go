@@ -77,7 +77,7 @@ func (spec *constSpec) Build(irb irBuilder) (ir.IR, bool) {
 	if !ok {
 		return nil, false
 	}
-	ext := &ir.ConstSpec{Src: spec.src, FFile: fScope.irFile()}
+	ext := &ir.ConstSpec{Src: spec.src, FFile: fScope.File()}
 	typeOk := true
 	if spec.declaredType != nil {
 		ext.Type, typeOk = spec.declaredType.buildTypeExpr(fScope)

@@ -21,7 +21,7 @@ import (
 
 func castNil(scope resolveScope, expr ir.Expr, target ir.Type) (ir.Expr, bool) {
 	if target != ir.ErrorType() && target.Kind() != irkind.Slice {
-		return expr, scope.Err().Appendf(expr.Node(), "cannot cast nil to %s", target.ReferString(scope.fileScope().irFile()))
+		return expr, scope.Err().Appendf(expr.Node(), "cannot cast nil to %s", target.ReferString(scope.fileScope().File()))
 	}
 	return &ir.NilCastExpr{
 		X:   expr,

@@ -52,7 +52,7 @@ func (n *unaryExpr) checkSub(scope resolveScope, x ir.Expr) bool {
 		xType = array.DataType()
 	}
 	if !ir.IsSigned(xType) {
-		return scope.Err().Appendf(n.src, "operator %s not defined on %s (expect a signed type)", n.src.Op.String(), xType.ReferString(scope.fileScope().irFile()))
+		return scope.Err().Appendf(n.src, "operator %s not defined on %s (expect a signed type)", n.src.Op.String(), xType.ReferString(scope.fileScope().File()))
 	}
 	return true
 }
