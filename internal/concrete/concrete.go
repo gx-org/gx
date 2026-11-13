@@ -110,7 +110,7 @@ func concreteNamedType(fr ir.Evaluator, ntp *ir.NamedType) (ir.Type, error) {
 }
 
 func concrete(fr ir.Evaluator, tp ir.Type) (ir.Type, error) {
-	if irkind.IsConcrete(tp.Kind()) {
+	if irkind.IsConcrete(tp.Kind()) || ir.IsUnknown(tp) {
 		return tp, nil
 	}
 	switch tpT := tp.(type) {
