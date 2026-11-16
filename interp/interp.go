@@ -25,6 +25,7 @@ import (
 	"github.com/gomlx/compute/dtypes/gotype"
 	"github.com/gx-org/gx/api/options"
 	"github.com/gx-org/gx/build/ir"
+	"github.com/gx-org/gx/internal/interp/compeval/cmp"
 	"github.com/gx-org/gx/internal/interp/numbers"
 	"github.com/gx-org/gx/interp/context"
 	"github.com/gx-org/gx/interp/elements"
@@ -71,7 +72,12 @@ type Interpreter struct {
 	env *engine.Env
 }
 
-var _ ir.Evaluator = (*Interpreter)(nil)
+var _ ir.TypeEval = (*Interpreter)(nil)
+
+// Compare two elements.
+func (fitp *Interpreter) Compare(x, y ir.Element) (bool, error) {
+	return cmp.Equal(fitp.Env().ExprEval(), x, y)
+}
 
 func newIREval(env *engine.Env) ir.Evaluator {
 	return newInterp(env.Registry(), env.Context(), env.Engine())
