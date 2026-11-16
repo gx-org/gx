@@ -8,7 +8,7 @@ import (
 
 	"github.com/gx-org/gx/build/builder"
 	"github.com/gx-org/gx/build/ir"
-	"github.com/gx-org/gx/build/ir/position"
+	"github.com/gx-org/gx/lsp/position"
 	"github.com/gx-org/gx/stdlib"
 )
 
