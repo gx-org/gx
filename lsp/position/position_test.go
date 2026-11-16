@@ -1,7 +1,6 @@
 package position_test
 
 import (
-	"embed"
 	"fmt"
 	"strings"
 	"testing"
@@ -9,16 +8,14 @@ import (
 	"github.com/gx-org/gx/build/builder"
 	"github.com/gx-org/gx/build/ir"
 	"github.com/gx-org/gx/lsp/position"
+	"github.com/gx-org/gx/lsp/position/testdata"
 	"github.com/gx-org/gx/stdlib"
 )
-
-//go:embed testdata/*.gx
-var testdata embed.FS
 
 func buildPackage(t *testing.T, filenames ...string) *ir.Package {
 	t.Helper()
 	bld := builder.New(stdlib.Importer())
-	pkg, err := bld.BuildFiles("test", "test", testdata, filenames)
+	pkg, err := bld.BuildFiles("test", "test", testdata.FS, filenames)
 	if err != nil {
 		t.Fatalf("BuildFiles failed: %v", err)
 	}
@@ -27,7 +24,7 @@ func buildPackage(t *testing.T, filenames ...string) *ir.Package {
 
 func cursorAt(t *testing.T, file *ir.File, lineSubstr, targetSubstr string) (int, int) {
 	t.Helper()
-	src, err := testdata.ReadFile(file.Name())
+	src, err := testdata.FS.ReadFile(file.Name())
 	if err != nil {
 		t.Fatalf("ReadFile(%q) failed: %v", file.Name(), err)
 	}
@@ -53,10 +50,10 @@ func cursorAt(t *testing.T, file *ir.File, lineSubstr, targetSubstr string) (int
 }
 
 func TestAtInvalidAndBoundaryPositions(t *testing.T) {
-	pkg := buildPackage(t, "testdata/boundary.gx")
-	file := pkg.File("testdata/boundary.gx")
+	pkg := buildPackage(t, "boundary.gx")
+	file := pkg.File("boundary.gx")
 	if file == nil {
-		t.Fatal("missing testdata/boundary.gx")
+		t.Fatal("missing boundary.gx")
 	}
 
 	if got := position.At(nil, 1, 1); got != nil {
@@ -100,10 +97,10 @@ func TestAtInvalidAndBoundaryPositions(t *testing.T) {
 }
 
 func TestAtDeclarationsTypesAndExpressions(t *testing.T) {
-	pkg := buildPackage(t, "testdata/main.gx")
-	file := pkg.File("testdata/main.gx")
+	pkg := buildPackage(t, "main.gx")
+	file := pkg.File("main.gx")
 	if file == nil {
-		t.Fatal("missing testdata/main.gx")
+		t.Fatal("missing main.gx")
 	}
 	if got := position.At(file, 1, 0); got != nil {
 		t.Errorf("At(file, 1, 0) = %T, want nil", got)
@@ -965,14 +962,14 @@ func TestAtDeclarationsTypesAndExpressions(t *testing.T) {
 }
 
 func TestAtMultiFileMethodsAndIsolation(t *testing.T) {
-	pkg := buildPackage(t, "testdata/multifile_a.gx", "testdata/multifile_b.gx")
-	irA := pkg.File("testdata/multifile_a.gx")
+	pkg := buildPackage(t, "multifile_a.gx", "multifile_b.gx")
+	irA := pkg.File("multifile_a.gx")
 	if irA == nil {
-		t.Fatal("missing testdata/multifile_a.gx")
+		t.Fatal("missing multifile_a.gx")
 	}
-	irB := pkg.File("testdata/multifile_b.gx")
+	irB := pkg.File("multifile_b.gx")
 	if irB == nil {
-		t.Fatal("missing testdata/multifile_b.gx")
+		t.Fatal("missing multifile_b.gx")
 	}
 
 	mLine, mCol := cursorAt(t, irB, "func (c Counter) Next() int32 {", "Next")
