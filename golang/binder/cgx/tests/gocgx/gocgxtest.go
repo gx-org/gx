@@ -21,6 +21,8 @@ import "C"
 import (
 	"errors"
 	"fmt"
+	"os"
+	"os/exec"
 	"strings"
 	"testing"
 
@@ -260,70 +262,157 @@ func TestValueGetFetchError(t *testing.T) {
 	}
 }
 
-func catchPanic(t *testing.T, fn func()) (msg string) {
-	t.Helper()
-	defer func() {
-		r := recover()
-		if r == nil {
-			t.Fatal("expected a panic, got none")
+const (
+	invalidHandlePanicCaseEnv = "GOCGX_INVALID_HANDLE_PANIC_CASE"
+	invalidHandlePrefix       = "GOCGX_TEST_HANDLE="
+)
+
+func runInvalidHandlePanicCase(t *testing.T, panicCase string) {
+	switch panicCase {
+	case "zero_handle":
+		C.cgx_value_kind_of(0)
+	case "released_handle":
+		_, dev, _, err := Setup(nil)
+		if err != nil {
+			t.Fatal(err)
 		}
-		msg = fmt.Sprint(r)
-	}()
-	fn()
-	return ""
+		val := C.cgx_value_new_int64(C.cgx_device(dev), 42)
+		if val.error != Null {
+			t.Fatal(GoError(Error(val.error)))
+		}
+		released := val.value
+		C.cgx_release_reference(released)
+		fmt.Printf("\n%s%d\n", invalidHandlePrefix, released)
+		C.cgx_package_ir_build_for(0, C.cgx_device(released))
+	case "wrong_type_handle":
+		_, dev, _, err := Setup(nil)
+		if err != nil {
+			t.Fatal(err)
+		}
+		fmt.Printf("\n%s%d\n", invalidHandlePrefix, dev)
+		C.cgx_value_kind_of(C.cgx_value(dev))
+	default:
+		t.Fatalf("unknown panic case %q", panicCase)
+	}
+	t.Fatalf("expected panic for %q, got none", panicCase)
+}
+
+func invalidHandleSubprocessEnv(panicCase string) []string {
+	stripPrefixes := []string{
+		"TEST_PREMATURE_EXIT_FILE=",
+		"XML_OUTPUT_FILE=",
+		"XML_EXTRA_PROPERTIES_FILE=",
+		"GUNIT_OUTPUT=",
+		"GO_TEST_CHATTY_OUTPUT=",
+		"TESTBRIDGE_TEST_ONLY=",
+		"TEST_SHARD_INDEX=",
+		"TEST_TOTAL_SHARDS=",
+		"TEST_SHARD_STATUS_FILE=",
+		invalidHandlePanicCaseEnv + "=",
+	}
+	var env []string
+	for _, entry := range os.Environ() {
+		strip := false
+		for _, prefix := range stripPrefixes {
+			if strings.HasPrefix(entry, prefix) {
+				strip = true
+				break
+			}
+		}
+		if !strip {
+			env = append(env, entry)
+		}
+	}
+	return append(env, invalidHandlePanicCaseEnv+"="+panicCase)
+}
+
+func extractTestHandleID(output string) (string, bool) {
+	for _, line := range strings.Split(output, "\n") {
+		if id, ok := strings.CutPrefix(line, invalidHandlePrefix); ok {
+			return strings.TrimSpace(id), true
+		}
+	}
+	return "", false
 }
 
 // TestInvalidHandlePanic tests that exports without an error result panic with a clear message when
 // given a zero, released, or wrong-type handle.
+// Each case runs in a subprocess so the unrecovered Go panic aborts the child process as in
+// production instead of unwinding across a CGo frame into recover(), which skips CGo traceback
+// context release.
 // The test is not in a _test.go file because Go does not support CGo in test files.
 func TestInvalidHandlePanic(t *testing.T) {
-	defer cgxtesting.CheckHandleCount(t, handle.Count())
-	_, dev, finalize, err := Setup(nil)
-	if err != nil {
-		t.Fatal(err)
+	if panicCase := os.Getenv(invalidHandlePanicCaseEnv); panicCase != "" {
+		runInvalidHandlePanicCase(t, panicCase)
+		return
 	}
-	defer finalize()
 
-	val := C.cgx_value_new_int64(C.cgx_device(dev), 42)
-	if val.error != Null {
-		t.Fatal(GoError(Error(val.error)))
+	exe, err := os.Executable()
+	if err != nil {
+		t.Fatalf("os.Executable() failed: %v", err)
 	}
-	released := val.value
-	C.cgx_release_reference(released)
+	testName := t.Name()
 
 	for _, tc := range []struct {
 		desc        string
-		fn          func()
-		wantSubstrs []string
+		needHandle  bool
+		wantSubstrs func(handleID string) []string
 	}{
 		{
 			desc: "zero_handle",
-			fn:   func() { C.cgx_value_kind_of(0) },
-			wantSubstrs: []string{
-				"cgx_value_kind_of: invalid handle 0 (zero handle), want a handle to a hostio.Value",
+			wantSubstrs: func(string) []string {
+				return []string{
+					"cgx_value_kind_of: invalid handle 0 (zero handle), want a handle to a hostio.Value",
+				}
 			},
 		},
 		{
-			desc: "released_handle",
-			fn:   func() { C.cgx_package_ir_build_for(0, C.cgx_device(released)) },
-			wantSubstrs: []string{
-				fmt.Sprintf("cgx_package_ir_build_for: device: invalid handle %v (released or never created), want a handle to a *core.DeviceSetup", released),
+			desc:       "released_handle",
+			needHandle: true,
+			wantSubstrs: func(handleID string) []string {
+				return []string{
+					fmt.Sprintf("cgx_package_ir_build_for: device: invalid handle %s (released or never created), want a handle to a *core.DeviceSetup", handleID),
+				}
 			},
 		},
 		{
-			desc: "wrong_type_handle",
-			fn:   func() { C.cgx_value_kind_of(C.cgx_value(dev)) },
-			wantSubstrs: []string{
-				fmt.Sprintf("cgx_value_kind_of: invalid handle %v:", dev),
-				"cannot convert *core.DeviceSetup to hostio.Value",
+			desc:       "wrong_type_handle",
+			needHandle: true,
+			wantSubstrs: func(handleID string) []string {
+				return []string{
+					fmt.Sprintf("cgx_value_kind_of: invalid handle %s:", handleID),
+					"cannot convert *core.DeviceSetup to hostio.Value",
+				}
 			},
 		},
 	} {
 		t.Run(tc.desc, func(t *testing.T) {
-			got := catchPanic(t, tc.fn)
-			for _, want := range tc.wantSubstrs {
+			cmd := exec.Command(exe, fmt.Sprintf("-test.run=^%s$", testName))
+			cmd.Env = invalidHandleSubprocessEnv(tc.desc)
+			out, err := cmd.CombinedOutput()
+			if err == nil {
+				t.Fatalf("subprocess exited with status 0, want panic exit status 2\noutput:\n%s", out)
+			}
+			var exitErr *exec.ExitError
+			if !errors.As(err, &exitErr) {
+				t.Fatalf("subprocess failed with unexpected error %v\noutput:\n%s", err, out)
+			}
+			if got := exitErr.ExitCode(); got != 2 {
+				t.Fatalf("subprocess exit code = %d, want 2 (Go unrecovered panic)\noutput:\n%s", got, out)
+			}
+
+			got := string(out)
+			var handleID string
+			if tc.needHandle {
+				var ok bool
+				handleID, ok = extractTestHandleID(got)
+				if !ok || handleID == "" {
+					t.Fatalf("missing %q line in subprocess output:\n%s", invalidHandlePrefix, got)
+				}
+			}
+			for _, want := range tc.wantSubstrs(handleID) {
 				if !strings.Contains(got, want) {
-					t.Errorf("panic = %q, want substring %q", got, want)
+					t.Errorf("subprocess output missing substring %q\noutput:\n%s", want, got)
 				}
 			}
 		})
