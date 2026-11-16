@@ -37,6 +37,10 @@ func (t *unknownType) Equal(_ TypeEval, target Type) (bool, error) {
 	return true, nil
 }
 
+func (t *unknownType) assignableFrom(_ TypeEval, _ Type) (bool, error) {
+	return true, nil
+}
+
 func (t *unknownType) AssignableTo(tpcmp TypeEval, target Type) (bool, error) {
 	return true, nil
 }

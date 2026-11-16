@@ -813,3 +813,69 @@ func TestDefineString(t *testing.T) {
 		})
 	}
 }
+
+func TestUnknownAndNamedTypeAssignableTo(t *testing.T) {
+	arr := irhelper.ArrayType(ir.Float32Type(), 2)
+	namedA, namedACopy, namedB := newNamedType("A", ir.Int32Type()), newNamedType("A", ir.Int32Type()), newNamedType("B", ir.Int32Type())
+	for _, tc := range []struct {
+		from, to ir.Type
+		want     bool
+	}{
+		{ir.UnknownType(), arr, true},
+		{arr, ir.UnknownType(), true},
+		{ir.UnknownType(), ir.UnknownType(), true},
+		{ir.UnknownType(), namedA, false},
+		{namedA, namedACopy, true},
+		{namedA, namedB, false},
+	} {
+		t.Run(fmt.Sprintf("%s_to_%s", tc.from.ReferString(nil), tc.to.ReferString(nil)), func(t *testing.T) {
+			got, err := ir.AssignableTo(nil, tc.from, tc.to)
+			if err != nil || got != tc.want {
+				t.Errorf("AssignableTo(%s, %s) = (%v, %v), want (%v, nil)", tc.from.ReferString(nil), tc.to.ReferString(nil), got, err, tc.want)
+			}
+		})
+	}
+}
+
+type unknownElement struct{}
+
+func (unknownElement) Type() ir.Type { return ir.UnknownType() }
+
+func TestInterpreterCompare(t *testing.T) {
+	itp, err := interp.New(compeval.NewRegistry(nil, interp.Runners()), nil)
+	if err != nil {
+		t.Fatalf("interp.New failed: %v", err)
+	}
+	fitp, err := itp.ForFile(testFile)
+	if err != nil {
+		t.Fatalf("itp.ForFile failed: %v", err)
+	}
+	two, err := fitp.EvalExpr(irhelper.IntNumberAs(2, ir.IntType()))
+	if err != nil {
+		t.Fatalf("EvalExpr(2) failed: %v", err)
+	}
+	three, err := fitp.EvalExpr(irhelper.IntNumberAs(3, ir.IntType()))
+	if err != nil {
+		t.Fatalf("EvalExpr(3) failed: %v", err)
+	}
+	for _, tc := range []struct {
+		name string
+		x, y ir.Element
+		want bool
+	}{
+		{"equal_ints", two, two, true},
+		{"unequal_ints", two, three, false},
+		{"rhs_unknown", two, unknownElement{}, true},
+		{"lhs_unknown", unknownElement{}, two, true},
+	} {
+		t.Run(tc.name, func(t *testing.T) {
+			got, err := fitp.Compare(tc.x, tc.y)
+			if err != nil || got != tc.want {
+				t.Errorf("Compare(%v, %v) = (%v, %v), want (%v, nil)", tc.x, tc.y, got, err, tc.want)
+			}
+		})
+	}
+	if ok, err := ir.AssignableTo(fitp, irhelper.ArrayType(ir.Float32Type(), 2), irhelper.ArrayType(ir.Float32Type(), 3)); err != nil || ok {
+		t.Errorf("AssignableTo([2]float32, [3]float32) = (%v, %v), want (false, nil)", ok, err)
+	}
+}

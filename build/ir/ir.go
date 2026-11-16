@@ -526,7 +526,7 @@ func (s *NamedType) Equal(tpcmp TypeEval, other Type) (bool, error) {
 	if s == otherT {
 		return true, nil
 	}
-	if s.OriginNamed() != otherT.OriginNamed() {
+	if s.FullName() != otherT.FullName() {
 		return false, nil
 	}
 	return s.GenParams.Equal(tpcmp, &otherT.GenParams)
@@ -983,6 +983,9 @@ func (s *arrayType) Equal(tpcmp TypeEval, other Type) (bool, error) {
 }
 
 func (s *arrayType) assignableFrom(tpcmp TypeEval, x Type) (bool, error) {
+	if IsUnknown(x) {
+		return true, nil
+	}
 	arrayType, isArrayType := x.(ArrayType)
 	if isArrayType {
 		return s.assignableToArray(tpcmp, arrayType)

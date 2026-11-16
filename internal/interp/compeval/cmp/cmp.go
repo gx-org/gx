@@ -57,6 +57,9 @@ func ToAlgExpr(eva ir.Evaluator, el ir.Element) (Expr, error) {
 
 // Equal compares if elements are equal.
 func Equal(eva ir.Evaluator, x, y ir.Element) (bool, error) {
+	if ir.IsUnknown(x.Type(), y.Type()) {
+		return true, nil
+	}
 	xAlg, err := ToAlgExpr(eva, x)
 	if err != nil {
 		return false, err
