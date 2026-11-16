@@ -15,8 +15,6 @@
 package interp
 
 import (
-	"strings"
-
 	"github.com/pkg/errors"
 	"github.com/gx-org/gx/api/hostio"
 	"github.com/gx-org/gx/build/fmterr"
@@ -80,16 +78,35 @@ func assignArgumentValues(ftype *ir.FuncType, funcFrame *context.Frame, args []i
 	return nil
 }
 
+type defineFuncInputsInFrame struct {
+	conv  hostio.InputConverter
+	frame *context.Frame
+}
+
+func (d *defineFuncInputsInFrame) ElementFromReceiverValue(ev ir.Evaluator, field *ir.Field, val hostio.Value) (ir.Element, error) {
+	el, err := d.conv.ElementFromReceiverValue(ev, field, val)
+	if err != nil {
+		return nil, err
+	}
+	d.frame.Define(field.Name, engine.Copy(el))
+	return el, nil
+}
+
+func (d *defineFuncInputsInFrame) ElementFromArgValue(ev ir.Evaluator, field *ir.Field, index int, val hostio.Value) (ir.Element, error) {
+	el, err := d.conv.ElementFromArgValue(ev, field, index, val)
+	if err != nil {
+		return nil, err
+	}
+	d.frame.Define(field.Name, engine.Copy(el))
+	return el, nil
+}
+
 // EvalFunc evaluates a function.
 func (itp *Base) EvalFunc(conv hostio.InputConverter, fn *ir.FuncDecl, receiver hostio.Value, args []hostio.Value) (outs []ir.Element, err error) {
 	if fn.Body == nil {
 		return nil, errors.Errorf("%s: missing function body", fn.Name())
 	}
 	fitp, err := itp.ForFile(fn.File())
-	if err != nil {
-		return nil, err
-	}
-	in, err := hostio.FuncInputsToElements(conv, fitp, fn, receiver, args)
 	if err != nil {
 		return nil, err
 	}
@@ -105,29 +122,11 @@ func (itp *Base) EvalFunc(conv hostio.InputConverter, fn *ir.FuncDecl, receiver 
 			frame.Define(resultName, nil)
 		}
 	}
-	// Add the receiver to the Context.
-	recv := fn.FType.ReceiverField()
-	if recv != nil {
-		if in.Receiver == nil {
-			return nil, errors.Errorf("function has a receiver but a nil value has been passed as a receiver value")
-		}
-		frame.Define(recv.Name, in.Receiver)
+	if fn.FType.ReceiverField() != nil && receiver == nil {
+		return nil, errors.Errorf("function has a receiver but a nil value has been passed as a receiver value")
 	}
-	// Add the parameters to the Context.
-	paramFields := fn.FType.AllParams()
-	for i, param := range paramFields {
-		if i >= len(in.Args) {
-			missingParams := paramFields[len(in.Args):]
-			builder := strings.Builder{}
-			for n, param := range missingParams {
-				if n > 0 {
-					builder.WriteString(", ")
-				}
-				builder.WriteString(param.Name.String())
-			}
-			return nil, errors.Errorf("missing parameter(s): %s", builder.String())
-		}
-		frame.Define(param.Name, in.Args[i])
+	if _, err := hostio.FuncInputsToElements(&defineFuncInputsInFrame{conv: conv, frame: frame}, fitp, fn, receiver, args); err != nil {
+		return nil, err
 	}
 	// Evaluate the function body.
 	outs, err = evalFuncBody(fitp, fn.Body)
