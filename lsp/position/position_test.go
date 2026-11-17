@@ -2,55 +2,16 @@ package position_test
 
 import (
 	"fmt"
-	"strings"
 	"testing"
 
-	"github.com/gx-org/gx/build/builder"
 	"github.com/gx-org/gx/build/ir"
 	"github.com/gx-org/gx/lsp/position"
 	"github.com/gx-org/gx/lsp/position/testdata"
-	"github.com/gx-org/gx/stdlib"
+	lsptesting "github.com/gx-org/gx/lsp/testing"
 )
 
-func buildPackage(t *testing.T, filenames ...string) *ir.Package {
-	t.Helper()
-	bld := builder.New(stdlib.Importer())
-	pkg, err := bld.BuildFiles("test", "test", testdata.FS, filenames)
-	if err != nil {
-		t.Fatalf("BuildFiles failed: %v", err)
-	}
-	return pkg.IR()
-}
-
-func cursorAt(t *testing.T, file *ir.File, lineSubstr, targetSubstr string) (int, int) {
-	t.Helper()
-	src, err := testdata.FS.ReadFile(file.Name())
-	if err != nil {
-		t.Fatalf("ReadFile(%q) failed: %v", file.Name(), err)
-	}
-	lines := strings.Split(string(src), "\n")
-	matchedLine := -1
-	for i, line := range lines {
-		if strings.Contains(line, lineSubstr) {
-			if matchedLine != -1 {
-				t.Fatalf("ambiguous line substring %q matched both line %d and %d", lineSubstr, matchedLine, i+1)
-			}
-			matchedLine = i + 1
-		}
-	}
-	if matchedLine == -1 {
-		t.Fatalf("line substring %q not found", lineSubstr)
-	}
-	lineText := lines[matchedLine-1]
-	idx := strings.Index(lineText, targetSubstr)
-	if idx < 0 {
-		t.Fatalf("target substring %q not found in line %d (%q)", targetSubstr, matchedLine, lineText)
-	}
-	return matchedLine, idx + 1
-}
-
 func TestAtInvalidAndBoundaryPositions(t *testing.T) {
-	pkg := buildPackage(t, "boundary.gx")
+	pkg := lsptesting.BuildPackage(t, testdata.FS, "boundary.gx")
 	file := pkg.File("boundary.gx")
 	if file == nil {
 		t.Fatal("missing boundary.gx")
@@ -97,7 +58,7 @@ func TestAtInvalidAndBoundaryPositions(t *testing.T) {
 }
 
 func TestAtDeclarationsTypesAndExpressions(t *testing.T) {
-	pkg := buildPackage(t, "main.gx")
+	pkg := lsptesting.BuildPackage(t, testdata.FS, "main.gx")
 	file := pkg.File("main.gx")
 	if file == nil {
 		t.Fatal("missing main.gx")
@@ -952,7 +913,7 @@ func TestAtDeclarationsTypesAndExpressions(t *testing.T) {
 
 	for _, tc := range tests {
 		t.Run(fmt.Sprintf("%s@%s", tc.line, tc.token), func(t *testing.T) {
-			line, col := cursorAt(t, file, tc.line, tc.token)
+			line, col := lsptesting.CursorAt(t, testdata.FS, file, tc.line, tc.token)
 			got := position.At(file, line, col)
 			if err := tc.check(got); err != nil {
 				t.Errorf("At(%d, %d) [%q in %q]: %v", line, col, tc.token, tc.line, err)
@@ -962,7 +923,7 @@ func TestAtDeclarationsTypesAndExpressions(t *testing.T) {
 }
 
 func TestAtMultiFileMethodsAndIsolation(t *testing.T) {
-	pkg := buildPackage(t, "multifile_a.gx", "multifile_b.gx")
+	pkg := lsptesting.BuildPackage(t, testdata.FS, "multifile_a.gx", "multifile_b.gx")
 	irA := pkg.File("multifile_a.gx")
 	if irA == nil {
 		t.Fatal("missing multifile_a.gx")
@@ -972,27 +933,27 @@ func TestAtMultiFileMethodsAndIsolation(t *testing.T) {
 		t.Fatal("missing multifile_b.gx")
 	}
 
-	mLine, mCol := cursorAt(t, irB, "func (c Counter) Next() int32 {", "Next")
+	mLine, mCol := lsptesting.CursorAt(t, testdata.FS, irB, "func (c Counter) Next() int32 {", "Next")
 	gotMeth := position.At(irB, mLine, mCol)
 	fn, ok := gotMeth.(*ir.FuncDecl)
 	if !ok || fn.Name() != "Next" {
 		t.Fatalf("At(multifile_b.gx, Next) = %T (%v), want *ir.FuncDecl(Next)", gotMeth, gotMeth)
 	}
 
-	recvLine, recvCol := cursorAt(t, irB, "func (c Counter) Next() int32 {", "Counter")
+	recvLine, recvCol := lsptesting.CursorAt(t, testdata.FS, irB, "func (c Counter) Next() int32 {", "Counter")
 	gotRecvType := position.At(irB, recvLine, recvCol)
 	if te, ok := gotRecvType.(*ir.TypeValExpr); !ok || te.Val().(*ir.NamedType).Name() != "Counter" {
 		t.Fatalf("At(multifile_b.gx, Counter) = %T (%v), want *ir.TypeValExpr(Counter)", gotRecvType, gotRecvType)
 	}
 
-	callLine, callCol := cursorAt(t, irB, "return c.N + HelperA()", "HelperA")
+	callLine, callCol := lsptesting.CursorAt(t, testdata.FS, irB, "return c.N + HelperA()", "HelperA")
 	gotIdent := position.At(irB, callLine, callCol)
 	id, ok := gotIdent.(*ir.Ident)
 	if !ok || id.Src.Name != "HelperA" {
 		t.Fatalf("At(multifile_b.gx, HelperA) = %T (%v), want *ir.Ident(HelperA)", gotIdent, gotIdent)
 	}
 
-	typeLine, typeCol := cursorAt(t, irA, "type Counter struct {", "Counter")
+	typeLine, typeCol := lsptesting.CursorAt(t, testdata.FS, irA, "type Counter struct {", "Counter")
 	gotType := position.At(irA, typeLine, typeCol)
 	if nt, ok := gotType.(*ir.NamedType); !ok || nt.Name() != "Counter" {
 		t.Fatalf("At(multifile_a.gx, Counter) = %T (%v), want *ir.NamedType(Counter)", gotType, gotType)
