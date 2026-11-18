@@ -218,7 +218,7 @@ func (n *structLiteral) buildFieldValue(defScope *defineLocalScope, field *ir.Fi
 	if !valueOk {
 		return x, false
 	}
-	x, valueOk = castNilAndNumber(defScope, x, field.Type())
+	x, valueOk = castNilAndBroadcastNumber(defScope, x, field.Type())
 	if !valueOk {
 		return x, false
 	}

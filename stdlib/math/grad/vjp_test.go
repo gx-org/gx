@@ -1299,6 +1299,29 @@ func vjpF(s S, x float32) (float32, func(res float32) S, func(res float32) float
 		testgrad.Reverse{
 			Src: `
 type S struct {
+	w [2]float32
+	b float32
+}
+
+func F(s S) float32 {
+	return s.b
+}
+`,
+			Want: `
+func vjpF(s S) (float32, func(res float32) S) {
+	selfVJPFunc := func(res float32) S {
+		return S{
+			w: [2]float32(0),
+			b: res,
+		}
+	}
+	return s.b, selfVJPFunc
+}
+`,
+		},
+		testgrad.Reverse{
+			Src: `
+type S struct {
 	a float32
 }
 

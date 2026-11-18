@@ -12,3 +12,11 @@ func assignGenericDataType[T floats](x [2]T) [2]T {
 func returnGenericDataType[T floats]() [2]T {
 	return 1 // ERROR cannot broadcast 1 to [2]T: broadcasting to an array of type parameter T not supported
 }
+
+type holder[T floats] struct {
+	x [2]T
+}
+
+func structLitGenericDataType[T floats]() holder[T] {
+	return holder[T]{x: 1} // ERROR cannot broadcast 1 to [2]T: broadcasting to an array of type parameter T not supported
+}
