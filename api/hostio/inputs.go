@@ -15,6 +15,7 @@
 package hostio
 
 import (
+	"fmt"
 	"strings"
 
 	"github.com/pkg/errors"
@@ -55,25 +56,92 @@ func checkMissingParams(fn ir.Func, got []Value, want []*ir.Field) error {
 	return errors.Errorf("missing parameter(s): %s", builder.String())
 }
 
+func isStructType(typ ir.Type) bool {
+	_, ok := ir.Underlying(typ).(*ir.StructType)
+	return ok
+}
+
+// InputTypeError returns an error when an input value does not match the expected type.
+func InputTypeError(name string, want ir.Type, got ir.Element) error {
+	gotDesc := fmt.Sprintf("%T", got)
+	if got != nil && got.Type() != nil && !ir.IsUnknown(got.Type()) {
+		gotDesc = got.Type().ReferString(nil)
+	}
+	if name == "" {
+		return errors.Errorf("cannot use %s as %s", gotDesc, want.ReferString(nil))
+	}
+	return errors.Errorf("cannot use %s as %s for argument %s", gotDesc, want.ReferString(nil), name)
+}
+
+func fieldName(field *ir.Field) string {
+	if field == nil || field.Name == nil {
+		return ""
+	}
+	return field.Name.Name
+}
+
+func checkType(ev ir.TypeEval, field *ir.Field, el ir.Element) error {
+	typ := field.Type()
+	if el == nil || el.Type() == nil || (ir.IsUnknown(el.Type()) && isStructType(typ)) {
+		return InputTypeError(fieldName(field), typ, el)
+	}
+	ok, err := ir.AssignableTo(ev, el.Type(), typ)
+	if err != nil || ok {
+		return err
+	}
+	return InputTypeError(fieldName(field), typ, el)
+}
+
+func convertArgument(conv InputConverter, ev ir.TypeEval, field *ir.Field, index int, val Value) (ir.Element, error) {
+	if val == nil {
+		return nil, InputTypeError(fieldName(field), field.Type(), nil)
+	}
+	el, err := conv.ElementFromArgValue(ev, field, index, val)
+	if err != nil {
+		return nil, err
+	}
+	if err := checkType(ev, field, el); err != nil {
+		return nil, err
+	}
+	return el, nil
+}
+
 // FuncInputsToElements converts the receiver and the arguments of a function call to elements.
-func FuncInputsToElements(conv InputConverter, ev ir.Evaluator, fn ir.Func, receiver Value, args []Value) (*InputElements, error) {
+func FuncInputsToElements(conv InputConverter, ev ir.TypeEval, fn ir.Func, receiver Value, args []Value) (*InputElements, error) {
 	fType := fn.FuncType()
-	var recvEl ir.Element
-	if receiver != nil {
-		recvField := fType.ReceiverField()
-		var err error
-		if recvEl, err = conv.ElementFromReceiverValue(ev, recvField, receiver); err != nil {
-			return nil, err
-		}
+	recvField := fType.ReceiverField()
+	if recvField != nil && receiver == nil {
+		return nil, errors.Errorf("function has a receiver but a nil value has been passed as a receiver value")
+	}
+	if recvField == nil && receiver != nil {
+		return nil, errors.Errorf("function %s has no receiver but a receiver value was passed", fType.ReferString(nil))
 	}
 	params := fType.AllParams()
 	if err := checkMissingParams(fn, args, params); err != nil {
 		return nil, err
 	}
+	numGen := fType.GenParams.Fields.Len()
 	argsEl := make([]ir.Element, len(params))
-	for i, param := range params {
+	for i := range numGen {
 		var err error
-		argsEl[i], err = conv.ElementFromArgValue(ev, param, i, args[i])
+		argsEl[i], err = convertArgument(conv, ev, params[i], i, args[i])
+		if err != nil {
+			return nil, err
+		}
+	}
+	var recvEl ir.Element
+	if recvField != nil {
+		var err error
+		if recvEl, err = conv.ElementFromReceiverValue(ev, recvField, receiver); err != nil {
+			return nil, err
+		}
+		if err := checkType(ev, recvField, recvEl); err != nil {
+			return nil, err
+		}
+	}
+	for i := numGen; i < len(params); i++ {
+		var err error
+		argsEl[i], err = convertArgument(conv, ev, params[i], i, args[i])
 		if err != nil {
 			return nil, err
 		}
