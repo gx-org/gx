@@ -18,3 +18,22 @@ func TestZeroBck() ([2]float32, [2]float32) {
 	// 0: [2]float32{0, 0}
 	// 1: [2]float32{0, 0}
 }
+
+type S struct {
+	W [2]float32
+	B float32
+}
+
+func onlyB(s S) float32 {
+	return s.B
+}
+
+func TestZeroStructArrayField() S {
+	_, bck := grad.Reverse(onlyB)(S{})
+	return bck(1)
+	// Want:
+	// S{
+	// 	W: [2]float32{0, 0},
+	// 	B: float32(1),
+	// }
+}

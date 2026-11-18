@@ -34,3 +34,12 @@ func typedScalarToArrayField() sample {
 	s.x = s.y // ERROR cannot use int32 as [2]int32 value in assignment
 	return s
 }
+
+func floatToIntArrayStructLit() sample {
+	return sample{x: 1.5} // ERROR cannot use 1.5 (untyped FLOAT constant) as int32 value
+}
+
+func typedScalarToArrayStructLit() sample {
+	s := sample{}
+	return sample{x: s.y} // ERROR cannot use int32 as [2]int32 value in assignment
+}

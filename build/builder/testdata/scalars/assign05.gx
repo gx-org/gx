@@ -27,3 +27,15 @@ func TestReturnNamedArrayType() vector {
 	// Want:
 	// vector([3]float32{5, 5, 5})
 }
+
+type holder struct {
+	v vector
+}
+
+func TestStructLiteralNamedArrayType() holder {
+	return holder{v: 6}
+	// Want:
+	// holder{
+	// 	v: vector([3]float32{6, 6, 6}),
+	// }
+}

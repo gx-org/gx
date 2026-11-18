@@ -32,3 +32,15 @@ func TestAssignStructFieldInMethod() ([2]float32, [2]float32) {
 	// 0: [2]float32{0, 0}
 	// 1: [2]float32{1, 2}
 }
+
+func TestStructLiteralArrayField() sample {
+	return sample{
+		x: 4,
+		y: 3,
+	}
+	// Want:
+	// sample{
+	// 	x: [2]float32{4, 4},
+	// 	y: float32(3),
+	// }
+}
