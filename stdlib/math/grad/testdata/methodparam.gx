@@ -1,0 +1,44 @@
+package methodparam
+
+import "math/grad"
+
+type S struct {
+	a float32
+}
+
+func (s S) f(x float32) float32 {
+	return s.a * x
+}
+
+func g(s S, x float32) (float32, S, float32) {
+	y, bckS, bckX := grad.Reverse(s.f)(x)
+	res := float32(5)
+	return y, bckS(res), bckX(res)
+}
+
+func TestMethodParamDirectCall() (float32, S, float32) {
+	return g(S{a: 2}, 3)
+	// Want:
+	// 0: float32(6)
+	// 1: S{
+	// 	a: float32(15),
+	// }
+	// 2: float32(10)
+}
+
+func gVar(s S, x float32) (float32, S, float32) {
+	vjpF := grad.Reverse(s.f)
+	y, bckS, bckX := vjpF(x)
+	res := float32(5)
+	return y, bckS(res), bckX(res)
+}
+
+func TestMethodParamVarCall() (float32, S, float32) {
+	return gVar(S{a: 2}, 3)
+	// Want:
+	// 0: float32(6)
+	// 1: S{
+	// 	a: float32(15),
+	// }
+	// 2: float32(10)
+}
