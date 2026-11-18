@@ -122,9 +122,6 @@ func (itp *Base) EvalFunc(conv hostio.InputConverter, fn *ir.FuncDecl, receiver 
 			frame.Define(resultName, nil)
 		}
 	}
-	if fn.FType.ReceiverField() != nil && receiver == nil {
-		return nil, errors.Errorf("function has a receiver but a nil value has been passed as a receiver value")
-	}
 	if _, err := hostio.FuncInputsToElements(&defineFuncInputsInFrame{conv: conv, frame: frame}, fitp, fn, receiver, args); err != nil {
 		return nil, err
 	}

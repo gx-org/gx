@@ -344,3 +344,353 @@ func TestHostArrayInvalidSizeAndUnsupportedDType(t *testing.T) {
 		}
 	}
 }
+
+type stubValue struct {
+	typ ir.Type
+	val int
+}
+
+func (v stubValue) Type() ir.Type                 { return v.typ }
+func (v stubValue) SourceString(*ir.File) string  { return v.typ.ReferString(nil) }
+func (v stubValue) ToHost() (hostio.Value, error) { return v, nil }
+func (v stubValue) Finalize() error               { return nil }
+
+type stubTypeEval struct {
+	file *ir.File
+	env  map[string]ir.Element
+}
+
+func (e *stubTypeEval) File() *ir.File { return e.file }
+
+func (e *stubTypeEval) EvalExpr(expr ir.Expr) (ir.Element, error) {
+	switch x := expr.(type) {
+	case *ir.Ident:
+		if el, ok := e.env[x.Src.Name]; ok {
+			return el, nil
+		}
+		return nil, fmt.Errorf("undefined identifier %s", x.Src.Name)
+	case *ir.NumberCastExpr:
+		return e.EvalExpr(x.X)
+	case *ir.NumberInt:
+		return stubValue{typ: ir.IntType(), val: int(x.Val.Int64())}, nil
+	default:
+		return nil, fmt.Errorf("unsupported expr %T", expr)
+	}
+}
+
+func (e *stubTypeEval) Sub(*ir.File, map[string]ir.Element) (ir.Evaluator, error) {
+	return e, nil
+}
+
+func (e *stubTypeEval) Compare(x, y ir.Element) (bool, error) {
+	if ir.IsUnknown(x.Type(), y.Type()) {
+		return true, nil
+	}
+	return x.(stubValue).val == y.(stubValue).val, nil
+}
+
+type recordingConverter struct {
+	ev      *stubTypeEval
+	order   []string
+	convert func(*ir.Field, hostio.Value) ir.Element
+}
+
+func (c *recordingConverter) ElementFromReceiverValue(_ ir.Evaluator, field *ir.Field, val hostio.Value) (ir.Element, error) {
+	c.order = append(c.order, "recv:"+field.Name.Name)
+	if c.convert != nil {
+		return c.convert(field, val), nil
+	}
+	return val, nil
+}
+
+func (c *recordingConverter) ElementFromArgValue(_ ir.Evaluator, field *ir.Field, _ int, val hostio.Value) (ir.Element, error) {
+	c.order = append(c.order, "arg:"+field.Name.Name)
+	var el ir.Element = val
+	if c.convert != nil {
+		el = c.convert(field, val)
+	}
+	c.ev.env[field.Name.Name] = el
+	return el, nil
+}
+
+func newNamedStruct(file *ir.File, name string, genExprs ...ir.Expr) *ir.NamedType {
+	nt := &ir.NamedType{
+		Src:        &ast.TypeSpec{Name: irhelper.IdentAST(name)},
+		File:       file,
+		Underlying: ir.TypeExpr(nil, &ir.StructType{}),
+	}
+	for _, expr := range genExprs {
+		nt.GenParams.Values = append(nt.GenParams.Values, ir.NewNonTypeGenericValue(nil, expr))
+	}
+	return nt
+}
+
+func newAnonymousStruct(name string, typ ir.Type) *ir.StructType {
+	grp := &ir.FieldGroup{
+		Src:  &ast.Field{},
+		Type: ir.TypeExpr(typ.Refer(nil), typ),
+	}
+	st := irhelper.StructType(irhelper.Field(name, typ, grp))
+	st.Fields.Src.List = []*ast.Field{grp.Src}
+	return st
+}
+
+func TestInputTypeError(t *testing.T) {
+	file := &ir.File{Package: &ir.Package{Name: &ast.Ident{Name: "pkg"}}}
+	sa := newNamedStruct(file, "SA")
+	sb := newNamedStruct(file, "SB")
+	anonymousStruct := newAnonymousStruct("v", ir.Float32Type())
+
+	for _, tc := range []struct {
+		name string
+		arg  string
+		want ir.Type
+		got  ir.Element
+		msg  string
+	}{
+		{"named_with_arg", "x", sa, stubValue{typ: sb}, "cannot use pkg.SB as pkg.SA for argument x"},
+		{"named_unnamed", "", sa, stubValue{typ: sb}, "cannot use pkg.SB as pkg.SA"},
+		{"unknown_struct", "b", sa, stubValue{typ: ir.UnknownType()}, "cannot use hostio_test.stubValue as pkg.SA for argument b"},
+		{"unknown_anonymous_struct", "b", anonymousStruct, stubValue{typ: ir.UnknownType()}, "cannot use hostio_test.stubValue as " + anonymousStruct.ReferString(nil) + " for argument b"},
+		{"nil_non_struct", "n", ir.Int32Type(), nil, "cannot use <nil> as int32 for argument n"},
+	} {
+		t.Run(tc.name, func(t *testing.T) {
+			err := hostio.InputTypeError(tc.arg, tc.want, tc.got)
+			if err == nil || err.Error() != tc.msg {
+				t.Errorf("InputTypeError(%q, %s, %v) = %v, want %q", tc.arg, tc.want.ReferString(nil), tc.got, err, tc.msg)
+			}
+		})
+	}
+}
+
+func TestFuncInputsToElements(t *testing.T) {
+	file := &ir.File{Package: &ir.Package{Name: &ast.Ident{Name: "pkg"}}}
+	sa := newNamedStruct(file, "SA")
+	sb := newNamedStruct(file, "SB")
+	nField := irhelper.Field("N", ir.IntType(), nil)
+	nIdent := &ir.Ident{Src: irhelper.IdentAST("N"), Stor: nField.Storage()}
+	boxN := newNamedStruct(file, "Box", nIdent)
+	box2 := newNamedStruct(file, "Box", irhelper.IntNumberAs(2, ir.IntType()))
+	box3 := newNamedStruct(file, "Box", irhelper.IntNumberAs(3, ir.IntType()))
+	arrN := irhelper.ArrayType(ir.Float32Type(), &ir.AxisExpr{X: nIdent})
+	arr2 := irhelper.ArrayType(ir.Float32Type(), 2)
+	arr3 := irhelper.ArrayType(ir.Float32Type(), 3)
+
+	// func (b Box[N]) Method[N int](x [N]float32, s SA)
+	method := &ir.FuncDecl{
+		Src: &ast.FuncDecl{Name: irhelper.IdentAST("Method")},
+		FType: &ir.FuncType{
+			GenParams: ir.GenericParams{
+				Fields: irhelper.Fields(nField),
+			},
+			Receiver: irhelper.Fields(irhelper.Field("b", boxN, nil)),
+			Params: irhelper.Fields(
+				irhelper.Field("x", arrN, nil),
+				irhelper.Field("s", sa, nil),
+			),
+		},
+	}
+	// func Plain(s SA)
+	plain := &ir.FuncDecl{
+		Src: &ast.FuncDecl{Name: irhelper.IdentAST("Plain")},
+		FType: &ir.FuncType{
+			Params: irhelper.Fields(irhelper.Field("s", sa, nil)),
+		},
+	}
+	anonymousStruct := newAnonymousStruct("v", ir.Float32Type())
+	// func PlainAnonymousStruct(s struct{ v float32 })
+	plainAnonymousStruct := &ir.FuncDecl{
+		Src: &ast.FuncDecl{Name: irhelper.IdentAST("PlainAnonymousStruct")},
+		FType: &ir.FuncType{
+			Params: irhelper.Fields(irhelper.Field("s", anonymousStruct, nil)),
+		},
+	}
+	// func GenericSliceFunc[S []int]()
+	genericSliceFunc := &ir.FuncDecl{
+		Src: &ast.FuncDecl{Name: irhelper.IdentAST("GenericSliceFunc")},
+		FType: &ir.FuncType{
+			GenParams: ir.GenericParams{
+				Fields: irhelper.Fields(irhelper.Field("S", ir.IntSliceType(), nil)),
+			},
+		},
+	}
+
+	t.Run("generic_before_receiver_and_params", func(t *testing.T) {
+		ev := &stubTypeEval{file: file, env: map[string]ir.Element{}}
+		conv := &recordingConverter{ev: ev}
+		in, err := hostio.FuncInputsToElements(conv, ev, method, stubValue{typ: box2}, []hostio.Value{
+			stubValue{typ: ir.IntType(), val: 2},
+			stubValue{typ: arr2},
+			stubValue{typ: sa},
+		})
+		if err != nil {
+			t.Fatalf("FuncInputsToElements() unexpected error: %v", err)
+		}
+		if in.Receiver == nil || len(in.Args) != 3 {
+			t.Fatalf("FuncInputsToElements() = %+v, want non-nil receiver and 3 args", in)
+		}
+		wantOrder := []string{"arg:N", "recv:b", "arg:x", "arg:s"}
+		if !slices.Equal(conv.order, wantOrder) {
+			t.Errorf("conversion order = %v, want %v", conv.order, wantOrder)
+		}
+	})
+
+	t.Run("unknown_allowed_for_array", func(t *testing.T) {
+		ev := &stubTypeEval{file: file, env: map[string]ir.Element{}}
+		conv := &recordingConverter{ev: ev}
+		_, err := hostio.FuncInputsToElements(conv, ev, method, stubValue{typ: box2}, []hostio.Value{
+			stubValue{typ: ir.IntType(), val: 2},
+			stubValue{typ: ir.UnknownType()},
+			stubValue{typ: sa},
+		})
+		if err != nil {
+			t.Fatalf("FuncInputsToElements() unexpected error for unknown array arg: %v", err)
+		}
+	})
+
+	t.Run("unknown_allowed_for_slice_generic_param", func(t *testing.T) {
+		ev := &stubTypeEval{file: file, env: map[string]ir.Element{}}
+		conv := &recordingConverter{ev: ev}
+		if _, err := hostio.FuncInputsToElements(conv, ev, genericSliceFunc, nil, []hostio.Value{
+			stubValue{typ: ir.UnknownType()},
+		}); err != nil {
+			t.Fatalf("FuncInputsToElements() unexpected error for unknown slice generic arg: %v", err)
+		}
+	})
+
+	t.Run("anonymous_struct_arg_valid", func(t *testing.T) {
+		ev := &stubTypeEval{file: file, env: map[string]ir.Element{}}
+		conv := &recordingConverter{ev: ev}
+		if _, err := hostio.FuncInputsToElements(conv, ev, plainAnonymousStruct, nil, []hostio.Value{
+			stubValue{typ: anonymousStruct},
+		}); err != nil {
+			t.Fatalf("FuncInputsToElements() unexpected error for anonymous struct arg: %v", err)
+		}
+	})
+
+	t.Run("validates_converted_element", func(t *testing.T) {
+		ev := &stubTypeEval{file: file, env: map[string]ir.Element{}}
+		conv := &recordingConverter{
+			ev: ev,
+			convert: func(field *ir.Field, val hostio.Value) ir.Element {
+				if field.Type() == ir.IntType() && val.Type() == ir.Int64Type() {
+					return stubValue{typ: ir.IntType(), val: val.(stubValue).val}
+				}
+				if field.Name.Name == "x" {
+					return stubValue{typ: arr2}
+				}
+				return val
+			},
+		}
+		_, err := hostio.FuncInputsToElements(conv, ev, method, stubValue{typ: box2}, []hostio.Value{
+			stubValue{typ: ir.Int64Type(), val: 2},
+			stubValue{typ: arr3},
+			stubValue{typ: sa},
+		})
+		if err != nil {
+			t.Fatalf("FuncInputsToElements() unexpected error after converter adaptation: %v", err)
+		}
+	})
+
+	for _, tc := range []struct {
+		name    string
+		fn      ir.Func
+		recv    hostio.Value
+		args    []hostio.Value
+		wantErr string
+	}{
+		{
+			name:    "missing_receiver",
+			fn:      method,
+			args:    []hostio.Value{stubValue{typ: ir.IntType(), val: 2}, stubValue{typ: arr2}, stubValue{typ: sa}},
+			wantErr: "nil value has been passed as a receiver",
+		},
+		{
+			name:    "unexpected_receiver",
+			fn:      plain,
+			recv:    stubValue{typ: sa},
+			args:    []hostio.Value{stubValue{typ: sa}},
+			wantErr: "has no receiver",
+		},
+		{
+			name:    "missing_param",
+			fn:      plain,
+			args:    nil,
+			wantErr: "missing parameter(s): s",
+		},
+		{
+			name:    "too_many_args",
+			fn:      plain,
+			args:    []hostio.Value{stubValue{typ: sa}, stubValue{typ: sa}},
+			wantErr: "too many arguments",
+		},
+		{
+			name:    "wrong_receiver_generic_dim",
+			fn:      method,
+			recv:    stubValue{typ: box3},
+			args:    []hostio.Value{stubValue{typ: ir.IntType(), val: 2}, stubValue{typ: arr2}, stubValue{typ: sa}},
+			wantErr: "cannot use pkg.Box[3] as pkg.Box[N] for argument b",
+		},
+		{
+			name:    "wrong_array_generic_dim",
+			fn:      method,
+			recv:    stubValue{typ: box2},
+			args:    []hostio.Value{stubValue{typ: ir.IntType(), val: 2}, stubValue{typ: arr3}, stubValue{typ: sa}},
+			wantErr: "cannot use [3]float32 as [N]float32 for argument x",
+		},
+		{
+			name:    "wrong_struct_arg",
+			fn:      plain,
+			args:    []hostio.Value{stubValue{typ: sb}},
+			wantErr: "cannot use pkg.SB as pkg.SA for argument s",
+		},
+		{
+			name:    "unknown_for_struct_arg",
+			fn:      plain,
+			args:    []hostio.Value{stubValue{typ: ir.UnknownType()}},
+			wantErr: "cannot use hostio_test.stubValue as pkg.SA for argument s",
+		},
+		{
+			name:    "unknown_for_anonymous_struct_arg",
+			fn:      plainAnonymousStruct,
+			args:    []hostio.Value{stubValue{typ: ir.UnknownType()}},
+			wantErr: "cannot use hostio_test.stubValue as struct",
+		},
+		{
+			name:    "wrong_generic_arg",
+			fn:      method,
+			recv:    stubValue{typ: box2},
+			args:    []hostio.Value{stubValue{typ: ir.Float32Type()}, stubValue{typ: arr2}, stubValue{typ: sa}},
+			wantErr: "cannot use float32 as int for argument N",
+		},
+		{
+			name:    "unknown_for_struct_receiver",
+			fn:      method,
+			recv:    stubValue{typ: ir.UnknownType()},
+			args:    []hostio.Value{stubValue{typ: ir.IntType(), val: 2}, stubValue{typ: arr2}, stubValue{typ: sa}},
+			wantErr: "cannot use hostio_test.stubValue as pkg.Box[N] for argument b",
+		},
+		{
+			name:    "nil_generic_arg",
+			fn:      method,
+			recv:    stubValue{typ: box2},
+			args:    []hostio.Value{nil, stubValue{typ: arr2}, stubValue{typ: sa}},
+			wantErr: "cannot use <nil> as int for argument N",
+		},
+		{
+			name:    "nil_regular_arg",
+			fn:      plain,
+			args:    []hostio.Value{nil},
+			wantErr: "cannot use <nil> as pkg.SA for argument s",
+		},
+	} {
+		t.Run(tc.name, func(t *testing.T) {
+			ev := &stubTypeEval{file: file, env: map[string]ir.Element{}}
+			conv := &recordingConverter{ev: ev}
+			_, err := hostio.FuncInputsToElements(conv, ev, tc.fn, tc.recv, tc.args)
+			if err == nil || !strings.Contains(err.Error(), tc.wantErr) {
+				t.Errorf("FuncInputsToElements() error = %v, want substring %q", err, tc.wantErr)
+			}
+		})
+	}
+}
