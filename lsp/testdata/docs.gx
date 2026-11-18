@@ -1,0 +1,9 @@
+// Math import doc.
+package test
+
+// Aliased math doc.
+import m "math"
+
+func Use(x float32) float32 {
+	return m.Abs(x)
+}
