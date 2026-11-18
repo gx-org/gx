@@ -43,6 +43,8 @@ func (p *processor) processExpr(isrc ir.Expr) (expr, bool) {
 	switch isrcT := isrc.(type) {
 	case *ir.ArrayLitExpr:
 		return p.processArrayLitExpr(isrcT)
+	case *ir.StructLitExpr:
+		return p.processStructLitExpr(isrcT)
 	case *ir.UnaryExpr:
 		return p.processUnaryExpr(isrcT)
 	case *ir.BinaryExpr:
@@ -630,6 +632,80 @@ func (n *arrayLitExpr) buildBackward(bckstmts *astOutWRT, bck *special.Expr) (*s
 	bcks := make([]*special.Expr, len(n.xs))
 	for i, x := range n.xs {
 		xBack, xOk := buildBackward(bckstmts, bck.Index(i), x)
+		if !xOk {
+			return nil, false
+		}
+		bcks[i] = xBack
+	}
+	return special.Add(bcks...), true
+}
+
+type structLitExpr struct {
+	node[*ir.StructLitExpr]
+	fields []*ir.Field
+	xs     []expr
+	fwd    ast.Expr
+}
+
+func (p *processor) processStructLitExpr(isrc *ir.StructLitExpr) (*structLitExpr, bool) {
+	var fields []*ir.Field
+	var xs []expr
+	ok := true
+	for _, el := range isrc.Elts {
+		if el.X == nil {
+			continue
+		}
+		x, elOk := p.processExpr(el.X)
+		ok = ok && elOk
+		fields = append(fields, el.Field)
+		xs = append(xs, x)
+	}
+	return &structLitExpr{
+		node:   newNodeNoID[*ir.StructLitExpr](p, isrc),
+		fields: fields,
+		xs:     xs,
+	}, ok
+}
+
+func (n *structLitExpr) dependsOn(bckstmts *astOutWRT) bool {
+	for _, x := range n.xs {
+		if x.dependsOn(bckstmts) {
+			return true
+		}
+	}
+	return false
+}
+
+func (n *structLitExpr) fieldPath() []*ir.Field {
+	return nil
+}
+
+func (n *structLitExpr) buildForward(astmts *fwdStmts) ([]ast.Expr, bool) {
+	ok := true
+	elts := make([]ast.Expr, len(n.xs))
+	for i, x := range n.xs {
+		val, fwdOk := buildSingleForward(astmts, x)
+		ok = ok && fwdOk
+		elts[i] = &ast.KeyValueExpr{Key: n.fields[i].Name, Value: val}
+	}
+	n.fwd = &ast.CompositeLit{
+		Type: n.irnode.Src.Type,
+		Elts: elts,
+	}
+	return []ast.Expr{n.fwd}, ok
+}
+
+func (n *structLitExpr) forwardValue() (*special.Expr, bool) {
+	return special.New(n.fwd), true
+}
+
+func (n *structLitExpr) buildBackward(bckstmts *astOutWRT, bck *special.Expr) (*special.Expr, bool) {
+	if len(n.xs) == 0 {
+		return special.ZeroExpr(), true
+	}
+	bcks := make([]*special.Expr, len(n.xs))
+	for i, x := range n.xs {
+		xBack, xOk := buildBackward(bckstmts, bck.Select(n.fields[i].Name), x)
 		if !xOk {
 			return nil, false
 		}
