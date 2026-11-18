@@ -6,7 +6,7 @@ import (
 
 	"github.com/gx-org/gx/build/ir"
 	"github.com/gx-org/gx/lsp/position"
-	"github.com/gx-org/gx/lsp/position/testdata"
+	"github.com/gx-org/gx/lsp/testdata"
 	lsptesting "github.com/gx-org/gx/lsp/testing"
 )
 
