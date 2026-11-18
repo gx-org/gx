@@ -61,3 +61,22 @@ func TestOverShadowGrad() (float32, float32) {
 	// 0: float32(27)
 	// 1: float32(18)
 }
+
+type structLit struct {
+	a, b, c, d float32
+}
+
+func buildStructLit(a, x float32) (structLit, structLit) {
+	s := structLit{a: 2 * a, b: 3*a + x, c: 5}
+	return s, structLit{}
+}
+
+func TestStructLitGrad() (float32, float32, float32) {
+	s, _, bckA, bckX := grad.Reverse(buildStructLit)(3, 2)
+	cot := structLit{a: 4, b: 1, c: 7, d: 9}
+	return s.a + s.b + s.c + s.d, bckA(cot, cot), bckX(cot, cot)
+	// Want:
+	// 0: float32(22)
+	// 1: float32(11)
+	// 2: float32(1)
+}
