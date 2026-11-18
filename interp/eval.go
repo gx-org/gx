@@ -650,7 +650,7 @@ func evalMacroRecv(fitp *Interpreter, expr *ir.MacroCallExpr) (*engine.Receiver,
 	if err != nil {
 		return nil, err
 	}
-	named, err := cast.To[*elements.NamedType](ir.BareValue(recv))
+	named, err := cast.To[engine.NamedType](ir.BareValue(recv))
 	if err != nil {
 		return nil, err
 	}
