@@ -16,6 +16,7 @@
 package cfunc
 
 import (
+	"github.com/pkg/errors"
 	"github.com/gomlx/compute"
 	"github.com/gx-org/gx/api"
 	"github.com/gx-org/gx/api/hostio"
@@ -119,6 +120,23 @@ func (g *CompiledFunc) run(ctx *togo.FuncInputs) (out, traces []compute.Buffer, 
 
 // Run the graph.
 func (g *CompiledFunc) Run(receiver hostio.Value, args []hostio.Value, tracer trace.Callback) ([]hostio.Value, error) {
+	fType := g.fn.FuncType()
+	if recv := fType.ReceiverField(); recv != nil {
+		if err := hostio.CheckType(recv, receiver); err != nil {
+			return nil, err
+		}
+	} else if receiver != nil {
+		return nil, errors.Errorf("function %s has no receiver but a receiver value was passed", fType.ReferString(nil))
+	}
+	params := fType.AllParams()
+	if len(args) != len(params) {
+		return nil, errors.Errorf("wrong number of arguments in call to %s: have %d but want %d", fType.ReferString(nil), len(args), len(params))
+	}
+	for i, param := range params {
+		if err := hostio.CheckType(param, args[i]); err != nil {
+			return nil, err
+		}
+	}
 	fc := &togo.FuncInputs{Receiver: receiver, Args: hostio.ToElements(args)}
 	if err := g.process.ProcessInits(fc); err != nil {
 		return nil, err

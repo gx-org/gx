@@ -109,10 +109,14 @@ type (
 var _ parentArgument = (*rootArgument)(nil)
 
 func (vis *inputVisitor) newRootArg(field *ir.Field, fetcher argFetcher, proxy ir.Element) (ir.Element, error) {
+	var name string
+	if field.Name != nil {
+		name = field.Name.Name
+	}
 	n := &rootArgument{
 		vis:        vis,
 		argFetcher: fetcher,
-		name:       field.Name.Name,
+		name:       name,
 		typ:        field.Type(),
 	}
 	return vis.newArg(n, field.Type(), proxy)
@@ -176,19 +180,27 @@ type namedTypeArgument struct {
 }
 
 func (vis *inputVisitor) newNamedTypeArgument(parent parentArgument, typ *ir.NamedType, el ir.Element) (*elements.NamedType, error) {
+	named, ok := el.(engine.NamedType)
+	elTyp, typeOK := el.Type().(*ir.NamedType)
+	if !ok || !typeOK {
+		return nil, hostio.InputTypeError(parent.Name(), typ, el)
+	}
 	arg := &namedTypeArgument{
 		parent: parent,
-		typ:    typ,
-	}
-	named, ok := el.(engine.NamedType)
-	if !ok {
-		return nil, errors.Errorf("element %T is not a named type element", el)
+		typ:    elTyp,
 	}
 	under, err := named.Under()
 	if err != nil {
 		return nil, err
 	}
-	recv, err := vis.newArg(arg, typ.Underlying.Val(), under)
+	underType := typ.Underlying.Val()
+	if elTyp.FullName() != typ.FullName() {
+		if typ.Kind() != irkind.Interface {
+			return nil, hostio.InputTypeError(parent.Name(), typ, el)
+		}
+		underType = elTyp.Underlying.Val()
+	}
+	recv, err := vis.newArg(arg, underType, under)
 	if err != nil {
 		return nil, err
 	}
@@ -230,7 +242,7 @@ var _ parentArgument = (*fieldSelectorArgument)(nil)
 func (vis *inputVisitor) newStructArgument(parent parentArgument, typ *ir.StructType, proxy ir.Element) (*elements.Struct, error) {
 	sel, err := cast.To[engine.Selector](proxy)
 	if err != nil {
-		return nil, errors.Errorf("%T does not support %s", proxy, reflect.TypeFor[engine.Selector]().Name())
+		return nil, hostio.InputTypeError(parent.Name(), typ, proxy)
 	}
 	structArg := &structArgument{
 		parentArgument: parent,
@@ -474,6 +486,9 @@ func (n *arrayArgument) ToDeviceHandle(plat compute.Backend, dev compute.DeviceN
 	array, err := togo.RtValueT[hostio.Array](in, n)
 	if err != nil {
 		return nil, err
+	}
+	if !array.Shape().Equal(n.shape) {
+		return nil, hostio.InputTypeError(n.parentArgument.Name(), n.typ, array)
 	}
 	return toDevice(plat, dev, array)
 }

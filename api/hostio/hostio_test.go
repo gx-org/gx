@@ -355,6 +355,20 @@ func (v stubValue) SourceString(*ir.File) string  { return v.typ.ReferString(nil
 func (v stubValue) ToHost() (hostio.Value, error) { return v, nil }
 func (v stubValue) Finalize() error               { return nil }
 
+type stubNamedValue struct {
+	stubValue
+	under hostio.Value
+}
+
+func (v stubNamedValue) Underlying() hostio.Value { return v.under }
+
+type stubStructValue struct {
+	stubValue
+	fields map[string]ir.Element
+}
+
+func (v stubStructValue) FieldValue(name string) ir.Element { return v.fields[name] }
+
 type stubTypeEval struct {
 	file *ir.File
 	env  map[string]ir.Element
@@ -458,6 +472,82 @@ func TestInputTypeError(t *testing.T) {
 			err := hostio.InputTypeError(tc.arg, tc.want, tc.got)
 			if err == nil || err.Error() != tc.msg {
 				t.Errorf("InputTypeError(%q, %s, %v) = %v, want %q", tc.arg, tc.want.ReferString(nil), tc.got, err, tc.msg)
+			}
+		})
+	}
+}
+
+func TestCheckType(t *testing.T) {
+	file := &ir.File{Package: &ir.Package{Name: &ast.Ident{Name: "pkg"}}}
+	sa := newNamedStruct(file, "SA")
+	sb := newNamedStruct(file, "SB")
+	nField := irhelper.Field("N", ir.IntType(), nil)
+	boxN := newNamedStruct(file, "Box", &ir.Ident{Src: irhelper.IdentAST("N"), Stor: nField.Storage()})
+	box2 := newNamedStruct(file, "Box", irhelper.IntNumberAs(2, ir.IntType()))
+	box3 := newNamedStruct(file, "Box", irhelper.IntNumberAs(3, ir.IntType()))
+	boxSlice := func(a, b int64) *ir.NamedType {
+		return newNamedStruct(file, "Box", &ir.SliceLitExpr{
+			Typ:  ir.IntSliceType(),
+			Elts: []ir.Expr{irhelper.IntNumberAs(a, ir.IntType()), irhelper.IntNumberAs(b, ir.IntType())},
+		})
+	}
+	tParam := ir.NewGenericTypeParam(irhelper.Field("T", ir.AnyType(), nil))
+	tagF32 := newNamedStruct(file, "Tag")
+	tagF32.GenParams.Values = []ir.GenericValue{ir.NewTypeGenericValue(tParam, ir.Float32Type())}
+	tagI32 := newNamedStruct(file, "Tag")
+	tagI32.GenParams.Values = []ir.GenericValue{ir.NewTypeGenericValue(tParam, ir.Int32Type())}
+	anonymousStruct := newAnonymousStruct("v", ir.Float32Type())
+	holder := &ir.NamedType{
+		Src:        &ast.TypeSpec{Name: irhelper.IdentAST("Holder")},
+		File:       file,
+		Underlying: ir.TypeExpr(nil, newAnonymousStruct("B", sb)),
+	}
+	pyObj := &ir.NamedType{
+		Src:        &ast.TypeSpec{Name: irhelper.IdentAST("Obj")},
+		File:       file,
+		Underlying: ir.TypeExpr(nil, ir.UnknownType()),
+	}
+
+	for _, tc := range []struct {
+		name    string
+		field   *ir.Field
+		got     hostio.Value
+		wantErr string
+	}{
+		{"matching_named_struct", irhelper.Field("b", boxN, nil), stubValue{typ: box2}, ""},
+		{"matching_concrete_gen_param", irhelper.Field("b", box2, nil), stubValue{typ: box2}, ""},
+		{"mismatched_concrete_gen_param", irhelper.Field("b", box2, nil), stubValue{typ: box3}, "cannot use pkg.Box[3] as pkg.Box[2] for argument b"},
+		{"mismatched_slice_gen_param", irhelper.Field("b", boxSlice(2, 3), nil), stubValue{typ: boxSlice(2, 4)}, "cannot use pkg.Box"},
+		{"mismatched_concrete_type_gen_param", irhelper.Field("t", tagF32, nil), stubValue{typ: tagI32}, "cannot use pkg.Tag[int32] as pkg.Tag[float32] for argument t"},
+		{"matching_anonymous_struct", irhelper.Field("s", anonymousStruct, nil), stubValue{typ: anonymousStruct}, ""},
+		{"anonymous_struct_any_field", irhelper.Field("s", newAnonymousStruct("x", ir.AnyType()), nil), stubValue{typ: newAnonymousStruct("x", ir.Float32Type())}, ""},
+		{"runtime_struct_field_valid", irhelper.Field("h", holder, nil), stubNamedValue{stubValue: stubValue{typ: holder}, under: stubStructValue{fields: map[string]ir.Element{"B": stubValue{typ: sb}}}}, ""},
+		{"runtime_struct_field_mismatch", irhelper.Field("h", holder, nil), stubNamedValue{stubValue: stubValue{typ: holder}, under: stubStructValue{fields: map[string]ir.Element{"B": stubValue{typ: box2}}}}, "cannot use pkg.Box[2] as pkg.SB for argument h.B"},
+		{"runtime_struct_field_missing", irhelper.Field("h", holder, nil), stubNamedValue{stubValue: stubValue{typ: holder}, under: stubStructValue{}}, "cannot use <nil> as pkg.SB for argument h.B"},
+		{"unknown_for_pyobj", irhelper.Field("x", pyObj, nil), stubValue{typ: ir.UnknownType()}, ""},
+		{"unknown_for_array", irhelper.Field("x", irhelper.ArrayType(ir.Float32Type(), 2), nil), stubValue{typ: ir.UnknownType()}, ""},
+		{"wrong_named_struct", irhelper.Field("b", boxN, nil), stubValue{typ: sb}, "cannot use pkg.SB as pkg.Box[N] for argument b"},
+		{"unknown_for_named_struct", irhelper.Field("b", boxN, nil), stubValue{typ: ir.UnknownType()}, "cannot use hostio_test.stubValue as pkg.Box[N] for argument b"},
+		{"array_for_named_struct", irhelper.Field("b", sa, nil), stubValue{typ: irhelper.ArrayType(ir.Int32Type(), 2)}, "cannot use [2]int32 as pkg.SA for argument b"},
+		{"unknown_for_anonymous_struct", irhelper.Field("s", anonymousStruct, nil), stubValue{typ: ir.UnknownType()}, "cannot use hostio_test.stubValue as struct"},
+		{"named_for_anonymous_struct", irhelper.Field("s", anonymousStruct, nil), stubValue{typ: sa}, "cannot use pkg.SA as struct"},
+		{"anonymous_struct_wrong_field_name", irhelper.Field("s", anonymousStruct, nil), stubValue{typ: newAnonymousStruct("w", ir.Float32Type())}, "cannot use struct {\n\tw float32\n} as struct"},
+		{"anonymous_struct_wrong_field_type", irhelper.Field("s", anonymousStruct, nil), stubValue{typ: newAnonymousStruct("v", ir.Int32Type())}, "cannot use struct {\n\tv int32\n} as struct"},
+		{"anonymous_struct_wrong_field_count", irhelper.Field("s", anonymousStruct, nil), stubValue{typ: irhelper.StructType()}, "cannot use struct {\n} as struct"},
+		{"anonymous_struct_nested_mismatch", irhelper.Field("s", newAnonymousStruct("inner", sa), nil), stubValue{typ: newAnonymousStruct("inner", sb)}, "cannot use struct"},
+		{"nil_value", irhelper.Field("b", sa, nil), nil, "cannot use <nil> as pkg.SA for argument b"},
+		{"nil_unnamed_receiver", &ir.Field{Group: &ir.FieldGroup{Type: ir.TypeExpr(nil, sa)}}, nil, "cannot use <nil> as pkg.SA"},
+	} {
+		t.Run(tc.name, func(t *testing.T) {
+			err := hostio.CheckType(tc.field, tc.got)
+			if tc.wantErr == "" {
+				if err != nil {
+					t.Fatalf("CheckType() unexpected error: %v", err)
+				}
+				return
+			}
+			if err == nil || !strings.Contains(err.Error(), tc.wantErr) {
+				t.Errorf("CheckType() error = %v, want substring %q", err, tc.wantErr)
 			}
 		})
 	}
