@@ -280,7 +280,7 @@ func (n *funcCallExpr) buildBackward(bckstmts *astOutWRT, bck *special.Expr) (*s
 	if len(argsGrad) == 1 {
 		return argsGrad[0], true
 	}
-	return special.Add(argsGrad...), true
+	return bckstmts.add(argsGrad...), true
 }
 
 type unaryExpr struct {
@@ -412,7 +412,7 @@ func (n *binaryExpr) buildBackward(bckstmts *astOutWRT, bck *special.Expr) (*spe
 		xres = bckstmts.assignSpecialExprSuffix(n.id, xres, "x")
 	}
 	xbck, xok := buildBackward(bckstmts, xres, n.x)
-	return special.Paren(special.Add(xbck, ybck)), xok && yok
+	return special.Paren(bckstmts.add(xbck, ybck)), xok && yok
 }
 
 type castExpr struct {
@@ -677,7 +677,7 @@ func (n *arrayLitExpr) buildBackward(bckstmts *astOutWRT, bck *special.Expr) (*s
 		}
 		bcks[i] = xBack
 	}
-	return special.Add(bcks...), true
+	return bckstmts.add(bcks...), true
 }
 
 type structLitExpr struct {
@@ -751,7 +751,7 @@ func (n *structLitExpr) buildBackward(bckstmts *astOutWRT, bck *special.Expr) (*
 		}
 		bcks[i] = xBack
 	}
-	return special.Add(bcks...), true
+	return bckstmts.add(bcks...), true
 }
 
 type selectorExpr struct {

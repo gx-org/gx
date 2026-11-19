@@ -143,13 +143,17 @@ func (n *returnStmt) buildVJPBodyWRTStruct(outWRT *astOutWRTStruct) (*special.Ex
 	if !ok {
 		return nil, false
 	}
+	allWhole := make([]*special.Expr, 0, len(wholeStructAddToFields)+1)
+	allWhole = append(allWhole, outWRT.whole)
+	allWhole = append(allWhole, wholeStructAddToFields...)
+	whole := outWRT.add(allWhole...)
 	fields := outWRT.wrtStruct.Fields()
 	ext := &ast.CompositeLit{
 		Type: outWRT.wrtStruct.Type().NameDef(),
 		Elts: make([]ast.Expr, len(fields)),
 	}
 	for i, field := range fields {
-		outField, err := outWRT.newASTOutFromField(wholeStructAddToFields, field)
+		outField, err := outWRT.newASTOutFromField(whole, field)
 		if err != nil {
 			return nil, n.err().AppendAt(n.source(), err)
 		}
@@ -159,7 +163,7 @@ func (n *returnStmt) buildVJPBodyWRTStruct(outWRT *astOutWRTStruct) (*special.Ex
 		}
 		ext.Elts[i] = &ast.KeyValueExpr{
 			Key:   field.Storage().NameDef(),
-			Value: outField.addToRets(field, val).AST(),
+			Value: val.AST(),
 		}
 	}
 	return special.New(ext), true
@@ -176,7 +180,8 @@ func (n *returnStmt) buildVJPBodyWRTArray(outWRT *astOutWRTArray) (*special.Expr
 			return nil, false
 		}
 	}
-	return special.Add(rets...).RemoveParen(), true
+	val := special.Add(rets...).RemoveParen()
+	return outWRT.add(outWRT.whole, val), true
 }
 
 func (n *returnStmt) build(out *astOut) bool {

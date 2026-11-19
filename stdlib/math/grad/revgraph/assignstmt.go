@@ -193,8 +193,8 @@ func (a *astOut) newStmt() *fwdStmts {
 
 type astOutWRT struct {
 	*astOut
-	wrt  wrt.WRT
-	rets []*special.Expr
+	wrt   wrt.WRT
+	whole *special.Expr
 }
 
 func (a *astOutCore) newASTOutWRT(w wrt.WRT) *astOutWRT {
@@ -206,7 +206,8 @@ func (a *astOutCore) newASTOutWRT(w wrt.WRT) *astOutWRT {
 				uroot:   "bck",
 			},
 		},
-		wrt: w,
+		wrt:   w,
+		whole: special.ZeroExpr(),
 	}
 }
 
@@ -221,13 +222,8 @@ func (a *astOutWRT) assignSpecialExprSuffix(id nodeID, expr *special.Expr, suffi
 	return special.New(a.assignExprs(id, []ast.Expr{expr.AST()}, 1, suffix)[0])
 }
 
-func (a *astOutWRT) addToRets(field *ir.Field, x *special.Expr) *special.Expr {
-	all := make([]*special.Expr, len(a.rets))
-	for i, ret := range a.rets {
-		all[i] = ret.Select(field.Name)
-	}
-	all = append(all, x)
-	return special.Add(all...)
+func (a *astOutWRT) add(xs ...*special.Expr) *special.Expr {
+	return special.AddForType(a.wrt.Type(), xs...)
 }
 
 type astOutWRTArray struct {
@@ -254,18 +250,14 @@ func (a *astOutWRT) newASTOutWRTStruct(param *wrt.Struct) *astOutWRTStruct {
 	}
 }
 
-func (a *astOutWRTStruct) newASTOutFromField(rets []*special.Expr, field *ir.Field) (*astOutWRT, error) {
+func (a *astOutWRTStruct) newASTOutFromField(whole *special.Expr, field *ir.Field) (*astOutWRT, error) {
 	wrtField, err := a.wrtStruct.NewFromField(field)
 	if err != nil {
 		return nil, err
 	}
-	retsWithField := make([]*special.Expr, len(rets))
-	for i, ret := range rets {
-		retsWithField[i] = ret.Select(field.Name)
-	}
 	return &astOutWRT{
 		astOut: a.astOut,
 		wrt:    wrtField,
-		rets:   rets,
+		whole:  whole.Select(field.Name),
 	}, nil
 }

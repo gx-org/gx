@@ -1,0 +1,46 @@
+package structaccum06
+
+import (
+	"math/grad"
+	"num"
+)
+
+type Inner struct {
+	W [2]float32
+	B float32
+}
+
+type Outer struct {
+	In Inner
+	C  float32
+}
+
+func (in Inner) eval(x [2]float32) float32 {
+	return num.VecMul(in.W, x) + in.B
+}
+
+func (o Outer) eval(x [2]float32) float32 {
+	return o.In.eval(x) + o.C
+}
+
+func nestedLoss(o Outer, x [2]float32) float32 {
+	err := o.eval(x) + 2*o.In.eval(x) + 3*o.In.B
+	z := err * err
+	return z
+}
+
+func TestNestedStructMultiPathIntermediate() (float32, Outer) {
+	o := Outer{In: Inner{W: [2]float32{1, 2}, B: 0.5}, C: 1}
+	x := [2]float32{2, -1}
+	v, bckO, _ := grad.Reverse(nestedLoss)(o, x)
+	return v, bckO(1)
+	// Want:
+	// 0: float32(16)
+	// 1: Outer{
+	// 	In: Inner{
+	// 		W: [2]float32{48, -24},
+	// 		B: float32(48),
+	// 	},
+	// 	C: float32(8),
+	// }
+}

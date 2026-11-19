@@ -1594,6 +1594,381 @@ func vjpF(a, x float32) (float32, func(res float32) float32, func(res float32) f
 	)
 }
 
+func TestVJPStructAccumulation(t *testing.T) {
+	testbuild.Run(t,
+		declareGradPackage,
+		testgrad.Reverse{
+			Src: `
+type S struct {
+	w float32
+	b float32
+}
+
+func (s S) forward(x float32) float32 {
+	return s.w*x + s.b
+}
+
+func F(s S, x, y float32) float32 {
+	err := s.forward(x) - y
+	return err * err
+}
+`,
+			Want: `
+func vjpF(s S, x, y float32) (float32, func(res float32) S, func(res float32) float32, func(res float32) float32) {
+	fwd0, forwardVJPs, forwardVJPx := grad.Reverse(s.forward)(x)
+	fwd1 := fwd0-y
+	err := fwd1
+	fwd2 := err*err
+	selfVJPFuncWRTs := func(res float32) S {
+		bck2y := err*res
+		bck0s := forwardVJPs(bck2y)
+		bckerr := bck0s
+		bck2x := res*err
+		bck0s1 := forwardVJPs(bck2x)
+		bckerr1 := bck0s1
+		return S{
+			w: bckerr1.w+bckerr.w,
+			b: bckerr1.b+bckerr.b,
+		}
+	}
+	selfVJPFuncWRTx := func(res float32) float32 {
+		bck2y1 := err*res
+		bck0x := forwardVJPx(bck2y1)
+		bckerr2 := bck0x
+		bck2x1 := res*err
+		bck0x1 := forwardVJPx(bck2x1)
+		bckerr3 := bck0x1
+		return bckerr3+bckerr2
+	}
+	selfVJPFuncWRTy := func(res float32) float32 {
+		bck2y2 := err*res
+		bck1y := -bck2y2
+		bckerr4 := bck1y
+		bck2x2 := res*err
+		bck1y1 := -bck2x2
+		bckerr5 := bck1y1
+		return bckerr5+bckerr4
+	}
+	return fwd2, selfVJPFuncWRTs, selfVJPFuncWRTx, selfVJPFuncWRTy
+}
+`,
+		},
+		testgrad.Reverse{
+			Src: `
+type S struct {
+	w float32
+	b float32
+}
+
+func (s S) forward(x float32) float32 {
+	return s.w*x + s.b
+}
+
+func F(s S, x float32) float32 {
+	err := s.forward(x)
+	z := err * err
+	return z
+}
+`,
+			Want: `
+func vjpF(s S, x float32) (float32, func(res float32) S, func(res float32) float32) {
+	fwd0, forwardVJPs, forwardVJPx := grad.Reverse(s.forward)(x)
+	err := fwd0
+	fwd1 := err*err
+	z := fwd1
+	selfVJPFuncWRTs := func(res float32) S {
+		bck1y := err*res
+		bck0s := forwardVJPs(bck1y)
+		bckerr := bck0s
+		bck1x := res*err
+		bck0s1 := forwardVJPs(bck1x)
+		bckerr1 := bck0s1
+		bckz := S{
+			w: bckerr1.w+bckerr.w,
+			b: bckerr1.b+bckerr.b,
+		}
+		return S{
+			w: bckz.w,
+			b: bckz.b,
+		}
+	}
+	selfVJPFuncWRTx := func(res float32) float32 {
+		bck1y1 := err*res
+		bck0x := forwardVJPx(bck1y1)
+		bckerr2 := bck0x
+		bck1x1 := res*err
+		bck0x1 := forwardVJPx(bck1x1)
+		bckerr3 := bck0x1
+		bckz1 := (bckerr3+bckerr2)
+		return bckz1
+	}
+	return z, selfVJPFuncWRTs, selfVJPFuncWRTx
+}
+`,
+		},
+		testgrad.Reverse{
+			Src: `
+type S struct {
+	w float32
+	b float32
+}
+
+func h(a, b S) float32 {
+	return a.w + b.b
+}
+
+func F(s S) float32 {
+	return h(s, s)
+}
+`,
+			Want: `
+func vjpF(s S) (float32, func(res float32) S) {
+	fwd0, hVJPa, hVJPb := grad.Reverse(h)(s, s)
+	selfVJPFunc := func(res float32) S {
+		bck0a := hVJPa(res)
+		bck0b := hVJPb(res)
+		return S{
+			w: bck0a.w+bck0b.w,
+			b: bck0a.b+bck0b.b,
+		}
+	}
+	return fwd0, selfVJPFunc
+}
+`,
+		},
+		testgrad.Reverse{
+			Src: `
+type S struct {
+	a float32
+}
+
+type Pair struct {
+	x float32
+	y float32
+}
+
+func (s S) f(x float32) float32 {
+	return s.a * x
+}
+
+func F(s S, x float32) ([2]float32, Pair) {
+	return [2]float32{s.f(x), s.f(x)}, Pair{x: s.f(x), y: s.f(x)}
+}
+`,
+			Want: `
+func vjpF(s S, x float32) ([2]float32, Pair, func(res [2]float32, res1 Pair) S, func(res [2]float32, res1 Pair) float32) {
+	fwd0, fVJPs, fVJPx := grad.Reverse(s.f)(x)
+	fwd1, fVJPs1, fVJPx1 := grad.Reverse(s.f)(x)
+	fwd2, fVJPs2, fVJPx2 := grad.Reverse(s.f)(x)
+	fwd3, fVJPs3, fVJPx3 := grad.Reverse(s.f)(x)
+	selfVJPFuncWRTs := func(res [2]float32, res1 Pair) S {
+		bck0s := fVJPs(res[0])
+		bck1s := fVJPs1(res[1])
+		bck2s := fVJPs2(res1.x)
+		bck3s := fVJPs3(res1.y)
+		return S{
+			a: bck0s.a+(bck1s.a+(bck2s.a+bck3s.a)),
+		}
+	}
+	selfVJPFuncWRTx := func(res [2]float32, res1 Pair) float32 {
+		bck0x := fVJPx(res[0])
+		bck1x := fVJPx1(res[1])
+		bck2x := fVJPx2(res1.x)
+		bck3x := fVJPx3(res1.y)
+		return (bck0x+bck1x)+(bck2x+bck3x)
+	}
+	return [2]float32{fwd0, fwd1}, Pair{
+		x: fwd2,
+		y: fwd3,
+	}, selfVJPFuncWRTs, selfVJPFuncWRTx
+}
+`,
+		},
+		testgrad.Reverse{
+			Src: `
+type Inner struct {
+	w float32
+	b float32
+}
+
+type Outer struct {
+	in Inner
+	c  float32
+}
+
+func fOuter(o Outer, x float32) float32 {
+	return o.in.w*x + o.in.b + o.c
+}
+
+func fInner(in Inner, x float32) float32 {
+	return in.w*x + in.b
+}
+
+func F(o Outer, x float32) float32 {
+	return fOuter(o, x) + fInner(o.in, x) + o.in.w*x
+}
+`,
+			Want: `
+func vjpF(o Outer, x float32) (float32, func(res float32) Outer, func(res float32) float32) {
+	fwd0, fOuterVJPo, fOuterVJPx := grad.Reverse(fOuter)(o, x)
+	fwd1, fInnerVJPin, fInnerVJPx := grad.Reverse(fInner)(o.in, x)
+	fwd2 := fwd0+fwd1
+	fwd3 := o.in.w*x
+	fwd4 := fwd2+fwd3
+	selfVJPFuncWRTo := func(res float32) Outer {
+		bck0o := fOuterVJPo(res)
+		bck1in := fInnerVJPin(res)
+		bck3x := res*x
+		return Outer{
+			in: Inner{
+				w: (bck0o.in.w+bck1in.w)+bck3x,
+				b: bck0o.in.b+bck1in.b,
+			},
+			c: bck0o.c,
+		}
+	}
+	selfVJPFuncWRTx := func(res float32) float32 {
+		bck3y := o.in.w*res
+		bck1x := fInnerVJPx(res)
+		bck0x := fOuterVJPx(res)
+		return (bck0x+bck1x)+bck3y
+	}
+	return fwd4, selfVJPFuncWRTo, selfVJPFuncWRTx
+}
+`,
+		},
+		testgrad.Reverse{
+			Src: `
+type Inner struct {
+	w float32
+	b float32
+}
+
+type Outer struct {
+	in Inner
+	c  float32
+}
+
+func fOuter(o Outer, x float32) float32 {
+	return o.in.w*x + o.in.b + o.c
+}
+
+func fInner(in Inner, x float32) float32 {
+	return in.w*x + in.b
+}
+
+func F(o Outer, x float32) float32 {
+	err := fOuter(o, x) + fInner(o.in, x)
+	z := err * err
+	return z
+}
+`,
+			Want: `
+func vjpF(o Outer, x float32) (float32, func(res float32) Outer, func(res float32) float32) {
+	fwd0, fOuterVJPo, fOuterVJPx := grad.Reverse(fOuter)(o, x)
+	fwd1, fInnerVJPin, fInnerVJPx := grad.Reverse(fInner)(o.in, x)
+	fwd2 := fwd0+fwd1
+	err := fwd2
+	fwd3 := err*err
+	z := fwd3
+	selfVJPFuncWRTo := func(res float32) Outer {
+		bck3y := err*res
+		bck0o := fOuterVJPo(bck3y)
+		bckerr := bck0o
+		bck3x := res*err
+		bck0o1 := fOuterVJPo(bck3x)
+		bckerr1 := bck0o1
+		bckz := Outer{
+			in: Inner{
+				w: bckerr1.in.w+bckerr.in.w,
+				b: bckerr1.in.b+bckerr.in.b,
+			},
+			c: bckerr1.c+bckerr.c,
+		}
+		bck3y1 := err*res
+		bck1in := fInnerVJPin(bck3y1)
+		bckerr2 := bck1in
+		bck3x1 := res*err
+		bck1in1 := fInnerVJPin(bck3x1)
+		bckerr3 := bck1in1
+		bckz1 := Inner{
+			w: bckerr3.w+bckerr2.w,
+			b: bckerr3.b+bckerr2.b,
+		}
+		return Outer{
+			in: Inner{
+				w: bckz.in.w+bckz1.w,
+				b: bckz.in.b+bckz1.b,
+			},
+			c: bckz.c,
+		}
+	}
+	selfVJPFuncWRTx := func(res float32) float32 {
+		bck3y2 := err*res
+		bck1x := fInnerVJPx(bck3y2)
+		bck0x := fOuterVJPx(bck3y2)
+		bckerr4 := (bck0x+bck1x)
+		bck3x2 := res*err
+		bck1x1 := fInnerVJPx(bck3x2)
+		bck0x1 := fOuterVJPx(bck3x2)
+		bckerr5 := (bck0x1+bck1x1)
+		bckz2 := (bckerr5+bckerr4)
+		return bckz2
+	}
+	return z, selfVJPFuncWRTo, selfVJPFuncWRTx
+}
+`,
+		},
+		testgrad.Reverse{
+			GradOf: "S.F",
+			Src: `
+type S struct {
+	w float32
+	b float32
+}
+
+func (s S) g(x float32) float32 {
+	return s.w*x + s.b
+}
+
+func (s S) F(x float32) float32 {
+	err := s.g(x)
+	return err * err
+}
+`,
+			Want: `
+func (s S) vjpF(x float32) (float32, func(res float32) S, func(res float32) float32) {
+	fwd0, gVJPs, gVJPx := grad.Reverse(s.g)(x)
+	err := fwd0
+	fwd1 := err*err
+	selfVJPFuncWRTs := func(res float32) S {
+		bck1y := err*res
+		bck0s := gVJPs(bck1y)
+		bckerr := bck0s
+		bck1x := res*err
+		bck0s1 := gVJPs(bck1x)
+		bckerr1 := bck0s1
+		return S{
+			w: bckerr1.w+bckerr.w,
+			b: bckerr1.b+bckerr.b,
+		}
+	}
+	selfVJPFuncWRTx := func(res float32) float32 {
+		bck1y1 := err*res
+		bck0x := gVJPx(bck1y1)
+		bckerr2 := bck0x
+		bck1x1 := res*err
+		bck0x1 := gVJPx(bck1x1)
+		bckerr3 := bck0x1
+		return bckerr3+bckerr2
+	}
+	return fwd1, selfVJPFuncWRTs, selfVJPFuncWRTx
+}
+`,
+		},
+	)
+}
+
 func TestVJPErrors(t *testing.T) {
 	testbuild.Run(t,
 		declareGradPackage,

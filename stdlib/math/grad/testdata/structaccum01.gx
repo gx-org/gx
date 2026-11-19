@@ -1,0 +1,36 @@
+package structaccum01
+
+import (
+	"math/grad"
+	"num"
+)
+
+type Linear struct {
+	W [3]float32
+	B float32
+}
+
+func (l Linear) forward(x [3]float32) float32 {
+	return num.VecMul(l.W, x) + l.B
+}
+
+func squareLoss(l Linear, x [3]float32, y float32) float32 {
+	err := l.forward(x) - y
+	return err * err
+}
+
+func TestMethodReceiverMultiPath() (float32, Linear, [3]float32, float32) {
+	l := Linear{W: [3]float32{1, 2, 3}, B: 0.5}
+	x := [3]float32{2, -1, 4}
+	y := float32(10)
+	v, bckL, bckX, bckY := grad.Reverse(squareLoss)(l, x, y)
+	return v, bckL(1), bckX(1), bckY(1)
+	// Want:
+	// 0: float32(6.25)
+	// 1: Linear{
+	// 	W: [3]float32{10, -5, 20},
+	// 	B: float32(5),
+	// }
+	// 2: [3]float32{5, 10, 15}
+	// 3: float32(-5)
+}

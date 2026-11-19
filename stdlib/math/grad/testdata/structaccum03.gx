@@ -1,0 +1,36 @@
+package structaccum03
+
+import (
+	"math/grad"
+	"num"
+)
+
+type Linear struct {
+	W [3]float32
+	B float32
+}
+
+func (l Linear) forward(x [3]float32) float32 {
+	return num.VecMul(l.W, x) + l.B
+}
+
+func combineTwo(a, b Linear, x [3]float32) float32 {
+	return a.forward(x) + 2*b.forward(x)
+}
+
+func callSameStructTwice(l Linear, x [3]float32) float32 {
+	return combineTwo(l, l, x)
+}
+
+func TestFuncCallMultiArgStruct() (float32, Linear) {
+	l := Linear{W: [3]float32{1, 2, 3}, B: 4}
+	x := [3]float32{2, 3, 5}
+	v, bckL, _ := grad.Reverse(callSameStructTwice)(l, x)
+	return v, bckL(1)
+	// Want:
+	// 0: float32(81)
+	// 1: Linear{
+	// 	W: [3]float32{6, 9, 15},
+	// 	B: float32(3),
+	// }
+}
