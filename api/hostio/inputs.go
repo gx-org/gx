@@ -80,6 +80,155 @@ func fieldName(field *ir.Field) string {
 	return field.Name.Name
 }
 
+func staticInt(x ir.Expr) *ir.NumberInt {
+	if cast, ok := x.(*ir.NumberCastExpr); ok {
+		x = cast.X
+	}
+	n, _ := x.(*ir.NumberInt)
+	return n
+}
+
+func matchStaticExpr(want, got ir.Expr) bool {
+	if w := staticInt(want); w != nil {
+		g := staticInt(got)
+		return g == nil || w.Val.Cmp(g.Val) == 0
+	}
+	wSlice, ok := want.(*ir.SliceLitExpr)
+	if !ok {
+		return true
+	}
+	gSlice, ok := got.(*ir.SliceLitExpr)
+	if !ok {
+		return true
+	}
+	if len(wSlice.Elts) != len(gSlice.Elts) {
+		return false
+	}
+	for i := range wSlice.Elts {
+		if !matchStaticExpr(wSlice.Elts[i], gSlice.Elts[i]) {
+			return false
+		}
+	}
+	return true
+}
+
+func matchStaticGenParams(want, got []ir.GenericValue) bool {
+	if len(want) != len(got) {
+		return len(want) == 0
+	}
+	for i, wv := range want {
+		gv := got[i]
+		if wv == nil || gv == nil {
+			continue
+		}
+		switch w := wv.(type) {
+		case *ir.TypeGenericValue:
+			g, ok := gv.(*ir.TypeGenericValue)
+			if !ok || !matchStaticType(w.Type(), g.Type()) {
+				return false
+			}
+		case *ir.NonTypeGenericValue:
+			g, ok := gv.(*ir.NonTypeGenericValue)
+			if !ok || !matchStaticExpr(w.Value(), g.Value()) {
+				return false
+			}
+		}
+	}
+	return true
+}
+
+func matchStaticType(want, got ir.Type) bool {
+	if got == nil {
+		return false
+	}
+	if ir.IsUnknown(got) {
+		return !isStructType(want)
+	}
+	switch want := want.(type) {
+	case *ir.Interface:
+		return true
+	case *ir.NamedType:
+		if _, ok := ir.Underlying(want).(*ir.Interface); ok {
+			return true
+		}
+		gt, ok := got.(*ir.NamedType)
+		return ok && gt.FullName() == want.FullName() && matchStaticGenParams(want.GenParams.Values, gt.GenParams.Values)
+	case *ir.StructType:
+		gt, ok := got.(*ir.StructType)
+		if !ok || want.NumFields() != gt.NumFields() {
+			return false
+		}
+		wFields := want.Fields.Fields()
+		gFields := gt.Fields.Fields()
+		for i, wf := range wFields {
+			if fieldName(wf) != fieldName(gFields[i]) || !matchStaticType(wf.Type(), gFields[i].Type()) {
+				return false
+			}
+		}
+		return true
+	case *ir.SliceType:
+		gt, ok := got.(*ir.SliceType)
+		if !ok {
+			return false
+		}
+		wEl, wOK := want.ElementType()
+		gEl, gOK := gt.ElementType()
+		return wOK == gOK && (!wOK || matchStaticType(wEl, gEl))
+	case ir.ArrayType:
+		gt, ok := got.(ir.ArrayType)
+		if !ok {
+			return false
+		}
+		if _, isParam := want.DataType().(*ir.GenericTypeParam); isParam {
+			return true
+		}
+		return want.DataType().Kind() == gt.DataType().Kind()
+	default:
+		return true
+	}
+}
+
+func checkStaticValue(name string, want ir.Type, got ir.Element) error {
+	if got == nil || got.Type() == nil || !matchStaticType(want, got.Type()) {
+		return InputTypeError(name, want, got)
+	}
+	wantStruct, ok := ir.Underlying(want).(*ir.StructType)
+	if !ok {
+		return nil
+	}
+	under := got
+	if v, ok := got.(Value); ok {
+		under = Underlying(v)
+	}
+	fields, ok := under.(interface{ FieldValue(string) ir.Element })
+	if !ok {
+		return nil
+	}
+	for _, f := range wantStruct.Fields.Fields() {
+		fName := fieldName(f)
+		childName := fName
+		if name != "" {
+			childName = name + "." + fName
+		}
+		if err := checkStaticValue(childName, f.Type(), fields.FieldValue(fName)); err != nil {
+			return err
+		}
+	}
+	return nil
+}
+
+// CheckType validates that got matches field for types that do not require evaluating generic parameters.
+func CheckType(field *ir.Field, got Value) error {
+	typ := field.Type()
+	if !isStructType(typ) {
+		if got == nil || got.Type() == nil {
+			return InputTypeError(fieldName(field), typ, got)
+		}
+		return nil
+	}
+	return checkStaticValue(fieldName(field), typ, got)
+}
+
 func checkType(ev ir.TypeEval, field *ir.Field, el ir.Element) error {
 	typ := field.Type()
 	if el == nil || el.Type() == nil || (ir.IsUnknown(el.Type()) && isStructType(typ)) {
