@@ -42,6 +42,11 @@ const (
 type Expr struct {
 	value Value
 	expr  ast.Expr
+
+	// structType and terms represent a symbolic sum of struct-typed expressions
+	// accumulated field-by-field instead of with the '+' binary operator.
+	structType ir.Type
+	terms      []*Expr
 }
 
 // New returns a new expression from its AST.
@@ -79,7 +84,26 @@ func NewFromIR(irexpr ir.Expr) *Expr {
 
 // AST of the expression.
 func (r *Expr) AST() ast.Expr {
+	if r.structType != nil {
+		return r.structCompositeLit()
+	}
 	return r.expr
+}
+
+func (r *Expr) structCompositeLit() *ast.CompositeLit {
+	structTyp := ir.Underlying(r.structType).(*ir.StructType)
+	fields := structTyp.Fields.Fields()
+	elts := make([]ast.Expr, len(fields))
+	for i, field := range fields {
+		elts[i] = &ast.KeyValueExpr{
+			Key:   field.Storage().NameDef(),
+			Value: r.Select(field.Name).AST(),
+		}
+	}
+	return &ast.CompositeLit{
+		Type: r.structType.NameDef(),
+		Elts: elts,
+	}
 }
 
 // Index returns an index expression given a index number.
@@ -156,6 +180,9 @@ func (r *Expr) Select(sel *ast.Ident) *Expr {
 	if r.IsZero() {
 		return ZeroExpr()
 	}
+	if r.structType != nil {
+		return r.selectStructField(sel)
+	}
 	return &Expr{
 		expr: &ast.SelectorExpr{
 			X:   r.AST(),
@@ -164,13 +191,58 @@ func (r *Expr) Select(sel *ast.Ident) *Expr {
 	}
 }
 
+func (r *Expr) selectStructField(sel *ast.Ident) *Expr {
+	structTyp := ir.Underlying(r.structType).(*ir.StructType)
+	field := structTyp.Fields.FindField(sel.Name)
+	selected := make([]*Expr, len(r.terms))
+	for i, term := range r.terms {
+		selected[i] = term.Select(sel)
+	}
+	return AddForType(field.Type(), selected...)
+}
+
 // String returns the expression as a string
 func (r *Expr) String() string {
 	var s strings.Builder
-	if err := format.Node(&s, token.NewFileSet(), r.expr); err != nil {
+	if err := format.Node(&s, token.NewFileSet(), r.AST()); err != nil {
 		s.WriteString(err.Error())
 	}
 	return s.String()
+}
+
+// AddForType builds an add expression for values of typ, simplifying if possible.
+// For struct types, terms are combined symbolically so fields can be selected
+// and accumulated without emitting the '+' binary operator on struct values.
+func AddForType(typ ir.Type, xs ...*Expr) *Expr {
+	if _, isStruct := ir.Underlying(typ).(*ir.StructType); isStruct {
+		return addStruct(typ, xs...)
+	}
+	return Add(xs...)
+}
+
+func addStruct(typ ir.Type, xs ...*Expr) *Expr {
+	var terms []*Expr
+	for _, x := range xs {
+		if x.IsZero() {
+			continue
+		}
+		if len(x.terms) > 0 {
+			terms = append(terms, x.terms...)
+		} else {
+			terms = append(terms, x)
+		}
+	}
+	switch len(terms) {
+	case 0:
+		return ZeroExpr()
+	case 1:
+		return terms[0]
+	default:
+		return &Expr{
+			structType: typ,
+			terms:      terms,
+		}
+	}
 }
 
 // Add builds an add expression, simplifying if possible.
@@ -294,7 +366,7 @@ func OneExpr() *Expr {
 
 // Paren returns an expression inside parenthesis if necessary.
 func Paren(x *Expr) *Expr {
-	if x.value != anyV {
+	if x.value != anyV || x.structType != nil {
 		return x
 	}
 	switch x.expr.(type) {

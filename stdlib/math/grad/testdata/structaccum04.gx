@@ -1,0 +1,37 @@
+package structaccum04
+
+import (
+	"math/grad"
+	"num"
+)
+
+type Linear struct {
+	W [3]float32
+	B float32
+}
+
+func (l Linear) forward(x [3]float32) float32 {
+	return num.VecMul(l.W, x) + l.B
+}
+
+type Pair struct {
+	a float32
+	b float32
+}
+
+func arrayAndStructLit(l Linear, x, y [3]float32) ([2]float32, Pair) {
+	return [2]float32{l.forward(x), l.forward(y)}, Pair{a: l.forward(x), b: l.forward(y)}
+}
+
+func TestArrayAndStructLitAccum() Linear {
+	l := Linear{W: [3]float32{1, 2, 3}, B: 4}
+	x := [3]float32{1, 2, 3}
+	y := [3]float32{4, 5, 6}
+	_, _, bckL, _, _ := grad.Reverse(arrayAndStructLit)(l, x, y)
+	return bckL([2]float32{2, 3}, Pair{a: 5, b: 7})
+	// Want:
+	// Linear{
+	// 	W: [3]float32{47, 64, 81},
+	// 	B: float32(17),
+	// }
+}

@@ -1,0 +1,35 @@
+package structaccum02
+
+import (
+	"math/grad"
+	"num"
+)
+
+type Linear struct {
+	W [3]float32
+	B float32
+}
+
+func (l Linear) forward(x [3]float32) float32 {
+	return num.VecMul(l.W, x) + l.B
+}
+
+func squareLossWithIntermediate(l Linear, x [3]float32, y float32) float32 {
+	err := l.forward(x) - y
+	z := err * err
+	return z
+}
+
+func TestMethodReceiverIntermediateBinding() (float32, Linear) {
+	l := Linear{W: [3]float32{1, 2, 3}, B: 0.5}
+	x := [3]float32{2, -1, 4}
+	y := float32(10)
+	v, bckL, _, _ := grad.Reverse(squareLossWithIntermediate)(l, x, y)
+	return v, bckL(1)
+	// Want:
+	// 0: float32(6.25)
+	// 1: Linear{
+	// 	W: [3]float32{10, -5, 20},
+	// 	B: float32(5),
+	// }
+}
