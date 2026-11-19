@@ -1,0 +1,26 @@
+package methodcall02
+
+import "math/grad"
+
+type S struct {
+	a float32
+}
+
+func (s S) f(x float32) float32 {
+	return s.a * x
+}
+
+func g(s S, x float32) float32 {
+	return s.f(x)
+}
+
+func TestMethodCallParameterReceiver() (float32, S, float32) {
+	y, bckS, bckX := grad.Reverse(g)(S{a: 2}, 3)
+	return y, bckS(1), bckX(1)
+	// Want:
+	// 0: float32(6)
+	// 1: S{
+	// 	a: float32(3),
+	// }
+	// 2: float32(2)
+}

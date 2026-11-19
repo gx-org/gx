@@ -86,44 +86,71 @@ func buildBackward(bckstmts *astOutWRT, bck *special.Expr, x expr) (*special.Exp
 
 type funcCallExpr struct {
 	node[*ir.FuncCallExpr]
-	args []expr
+	method *ast.Ident
+	args   []expr
 
 	fwds []*ast.Ident
 	vjps []string
 }
 
 func (p *processor) processFuncCallExpr(isrc *ir.FuncCallExpr) (*funcCallExpr, bool) {
-	args := make([]expr, len(isrc.Args))
-	for i, arg := range isrc.Args {
-		var ok bool
-		args[i], ok = p.processExpr(arg)
+	recv, method, ok := p.processReceiver(isrc)
+	if !ok {
+		return nil, false
+	}
+	var args []expr
+	if recv != nil {
+		args = append(args, recv)
+	}
+	for _, arg := range isrc.Args {
+		argExpr, ok := p.processExpr(arg)
 		if !ok {
 			return nil, false
 		}
+		args = append(args, argExpr)
 	}
 	return &funcCallExpr{
-		node: newNode[*ir.FuncCallExpr](p, isrc),
-		args: args,
+		node:   newNode[*ir.FuncCallExpr](p, isrc),
+		method: method,
+		args:   args,
 	}, true
+}
+
+func (p *processor) processReceiver(isrc *ir.FuncCallExpr) (expr, *ast.Ident, bool) {
+	if isrc.Callee.FuncType().ReceiverField() == nil {
+		return nil, nil, true
+	}
+	fn, _ := splitTypeArgs(isrc.Callee)
+	sel, ok := fn.(*ir.SelectorExpr)
+	if !ok {
+		return nil, nil, p.fetcher.Err().AppendInternalf(isrc.Node(), "callee %T is a method without selector", fn)
+	}
+	recv, ok := p.processExpr(sel.X)
+	if !ok {
+		return nil, nil, false
+	}
+	return recv, sel.Src.Sel, true
 }
 
 // splitTypeArgs splits an expression referencing a function into
 // the expression referencing the generic function and
 // the type arguments explicitly used to specialise that function.
 // For example, given F[6][3] (or F[6, 3]), splitTypeArgs returns F and [6, 3].
-func splitTypeArgs(x ir.Expr) (ast.Expr, []ast.Expr) {
+func splitTypeArgs(x ir.Expr) (ir.Expr, []ast.Expr) {
 	switch xT := x.(type) {
 	case *ir.FuncValExpr:
 		return splitTypeArgs(xT.X())
 	case *ir.SpecTypeExpr:
 		fn, typeArgs := splitTypeArgs(xT.X)
 		return fn, append(typeArgs, xT.Index.Expr())
+	case *ir.ParenExpr:
+		return splitTypeArgs(xT.X)
 	default:
-		return x.Expr(), nil
+		return x, nil
 	}
 }
 
-func (n *funcCallExpr) vjpFunc(astmts *fwdStmts) (string, ast.Expr, bool) {
+func (n *funcCallExpr) vjpFunc(astmts *fwdStmts, recvFwd ast.Expr) (string, ast.Expr, bool) {
 	src, ok := n.irnode.Callee.(*ir.FuncValExpr)
 	if !ok {
 		return "", nil, astmts.err().AppendInternalf(n.irnode.Node(), "callee type %T not supported", n.irnode.Callee)
@@ -138,12 +165,19 @@ func (n *funcCallExpr) vjpFunc(astmts *fwdStmts) (string, ast.Expr, bool) {
 	// (e.g. F[6](x) becomes grad.Reverse(F)[6](x)) so that type parameters that cannot be
 	// inferred from the call arguments are still specified.
 	fn, typeArgs := splitTypeArgs(src)
+	fnAST := fn.Expr()
+	if recvFwd != nil {
+		fnAST = &ast.SelectorExpr{
+			X:   recvFwd,
+			Sel: n.method,
+		}
+	}
 	var vjp ast.Expr = &ast.CallExpr{
 		Fun: &ast.SelectorExpr{
 			X:   &ast.Ident{Name: macro.File().Package.Name.Name},
 			Sel: &ast.Ident{Name: macro.Name()},
 		},
-		Args: []ast.Expr{fn},
+		Args: []ast.Expr{fnAST},
 	}
 	for _, typeArg := range typeArgs {
 		vjp = &ast.IndexExpr{X: vjp, Index: typeArg}
@@ -153,7 +187,7 @@ func (n *funcCallExpr) vjpFunc(astmts *fwdStmts) (string, ast.Expr, bool) {
 
 func (n *funcCallExpr) buildForward(astmts *fwdStmts) ([]ast.Expr, bool) {
 	ftype := n.irnode.Callee.FuncType()
-	if len(n.irnode.Args) == 0 {
+	if len(n.args) == 0 {
 		n.fwds = astmts.assignExprs(n.id, []ast.Expr{n.irnode.Src}, ftype.Results.Len(), "")
 		return toExprs(n.fwds), true
 	}
@@ -165,7 +199,12 @@ func (n *funcCallExpr) buildForward(astmts *fwdStmts) ([]ast.Expr, bool) {
 			return nil, false
 		}
 	}
-	fnName, buildVJPCall, ok := n.vjpFunc(astmts)
+	var recvFwd ast.Expr
+	if n.method != nil {
+		recvFwd = args[0]
+		args = args[1:]
+	}
+	fnName, buildVJPCall, ok := n.vjpFunc(astmts, recvFwd)
 	if !ok {
 		return nil, false
 	}
@@ -211,7 +250,8 @@ func (n *funcCallExpr) buildBackward(bckstmts *astOutWRT, bck *special.Expr) (*s
 	if !n.dependsOn(bckstmts) {
 		return special.ZeroExpr(), true
 	}
-	calleeParams := n.irnode.Callee.FuncType().Params.Fields()
+	ftype := n.irnode.Callee.FuncType()
+	calleeParams := append(ftype.Receiver.Fields(), ftype.Params.Fields()...)
 	backwardIdents := make([]*special.Expr, len(calleeParams))
 	for i, calleeParam := range calleeParams {
 		if !n.args[i].dependsOn(bckstmts) {

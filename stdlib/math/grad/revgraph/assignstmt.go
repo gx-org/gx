@@ -152,7 +152,7 @@ func (a *astOut) assignFuncCall(id nodeID, ftype *ir.FuncType, calleeName string
 	}
 	a.stmts = append(a.stmts, stmt)
 	root := fmt.Sprintf("%sVJP", calleeName)
-	calleeParams := ftype.Params.Fields()
+	calleeParams := append(ftype.Receiver.Fields(), ftype.Params.Fields()...)
 	vjps := make([]string, len(calleeParams))
 	for i, calleeParam := range calleeParams {
 		vjpFuncName := root
