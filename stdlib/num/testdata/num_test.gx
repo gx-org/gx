@@ -104,7 +104,7 @@ func TestTranspose3Axes() [4][3][2]float32 {
 func TestMatMulScalars() float64 {
 	x := [1]float64{1}
 	w := [1]float64{-1}
-	return num.VecMul(x, w)
+	return num.Dot(x, w)
 	// Want:
 	// float64(-1)
 }
@@ -112,7 +112,7 @@ func TestMatMulScalars() float64 {
 func TestMatMul1Axis() float64 {
 	x := [3]float64{1, 2, 3}
 	w := [3]float64{-1, -2, -3}
-	return num.VecMul(x, w)
+	return num.Dot(x, w)
 	// Want:
 	// float64(-14)
 }

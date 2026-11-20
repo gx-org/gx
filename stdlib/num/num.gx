@@ -9,8 +9,8 @@ import (
 	"shape"
 )
 
-func vjpVecMul[LI int, T dtype.Nums](x [LI]T, y [LI]T) (T, func(res T) [LI]T, func(res T) [LI]T) {
-	fwd0 := VecMul(x, y)
+func vjpDot[LI int, T dtype.Nums](x [LI]T, y [LI]T) (T, func(res T) [LI]T, func(res T) [LI]T) {
+	fwd0 := Dot(x, y)
 	selfVJPFuncWRTx := func(res T) [LI]T {
 		return y * res
 	}
@@ -20,10 +20,10 @@ func vjpVecMul[LI int, T dtype.Nums](x [LI]T, y [LI]T) (T, func(res T) [LI]T, fu
 	return fwd0, selfVJPFuncWRTx, selfVJPFuncWRTy
 }
 
-// VecMul computes the dot product between two arrays.
+// Dot computes the dot product between two arrays.
 //
-// gx:@grad.SetVJP(vjpVecMul)
-func VecMul[LI int, T dtype.Nums](x [LI]T, y [LI]T) T
+// gx:@grad.SetVJP(vjpDot)
+func Dot[LI int, T dtype.Nums](x [LI]T, y [LI]T) T
 
 func vjpVecMatMul[LI, LJ int, T dtype.Nums](x [LI]T, y [LI][LJ]T) ([LJ]T, func(res [LJ]T) [LI]T, func(res [LJ]T) [LI][LJ]T) {
 	fwd0 := VecMatMul(x, y)
