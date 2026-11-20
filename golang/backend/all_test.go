@@ -21,6 +21,7 @@ import (
 	core "github.com/gx-org/gx/build/builder/testdata"
 	"github.com/gx-org/gx/golang/backend"
 	"github.com/gx-org/gx/internal/testing/testrtm"
+	grad "github.com/gx-org/gx/stdlib/math/grad/testdata"
 	rand "github.com/gx-org/gx/stdlib/rand/testdata"
 	"github.com/gx-org/gx/tests"
 )
@@ -29,11 +30,13 @@ var skip = map[string]bool{
 	"set/set01.gx":       true,
 	"einsum/einsum.gx":   true,
 	"einsum/einsum02.gx": true,
-	// gobackend's RNGBitGenerator uses Go's PCG generator instead of XLA's Philox
-	// algorithm, producing different random values from the expected test outputs.
-	"misc.gx":      true,
-	"rand_test.gx": true,
-	"structs.gx":   true,
+	// The following tests use rand. gobackend's RNGBitGenerator uses Go's PCG
+	// generator instead of XLA's Philox algorithm, producing different random
+	// values from the expected test outputs.
+	"misc.gx":      true, // stdlib/rand/testdata
+	"rand_test.gx": true, // stdlib/rand/testdata
+	"structs.gx":   true, // stdlib/rand/testdata
+	"linear.gx":    true, // stdlib/math/grad/testdata
 }
 
 func TestGoBackend(t *testing.T) {
@@ -42,6 +45,7 @@ func TestGoBackend(t *testing.T) {
 		return !skip[name]
 	}
 	core.Sources.Filter = filter
+	grad.Sources.Filter = filter
 	rand.Sources.Filter = filter
 	rtm, err := backend.New(tests.NewBuilder())
 	if err != nil {
