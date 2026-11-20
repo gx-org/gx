@@ -73,3 +73,44 @@ func TestAtAliasedImportAndDocComment(t *testing.T) {
 		}
 	}
 }
+
+func TestAtConstsAndVars(t *testing.T) {
+	mainFile := lsptesting.BuildPackage(t, testdata.FS, "main.gx").File("main.gx")
+	docsFile := lsptesting.BuildPackage(t, testdata.FS, "docs.gx").File("docs.gx")
+	tests := []struct {
+		file                                     *ir.File
+		line, token, wantInfo, wantDecl, wantDoc string
+	}{
+		{mainFile, "const UntypedConst = 7", "UntypedConst", "const UntypedConst = 7", "test/test", ""},
+		{mainFile, "const TypedConst float32 = 3.5", "TypedConst", "const TypedConst float32 = 3.5", "test/test", ""},
+		{mainFile, "GroupedA = 10", "GroupedA", "const GroupedA = 10", "test/test", ""},
+		{mainFile, "SingleParenConst = 30", "SingleParenConst", "const SingleParenConst = 30", "test/test", ""},
+		{mainFile, "var StaticScalar int32", "StaticScalar", "var StaticScalar int32", "test/test", ""},
+		{mainFile, "var StaticStr string", "StaticStr", "var StaticStr string", "test/test", ""},
+		{mainFile, "var localVar int32", "localVar", "var localVar int32", "", ""},
+		{docsFile, "Scale float32 = 2.0", "Scale", "const Scale float32 = 2.0", "test/test", "Scale factor doc."},
+		{docsFile, "Uncommented = 1", "Uncommented", "const Uncommented = 1", "test/test", ""},
+		{docsFile, "var GlobalCount int32", "GlobalCount", "var GlobalCount int32", "test/test", "Global counter doc."},
+		{docsFile, "var offset float32", "offset", "var offset float32", "", "Local offset doc."},
+	}
+	for _, tc := range tests {
+		got := hoverAtToken(t, tc.file, tc.line, tc.token)
+		want := hover.Info{IR: got.IR, SymbolInfo: tc.wantInfo, DeclaredBy: tc.wantDecl, Documentation: tc.wantDoc, Definition: got.IR}
+		if got != want {
+			t.Errorf("At(%q in %q) = %+v, want %+v", tc.token, tc.line, got, want)
+		}
+	}
+	for _, tc := range []struct {
+		file                               *ir.File
+		declLine, declTok, refLine, refTok string
+	}{
+		{mainFile, "var StaticScalar int32", "StaticScalar", "for idx := range StaticScalar {", "StaticScalar"},
+		{docsFile, "Scale float32 = 2.0", "Scale", "_ = Scale + offset", "Scale"},
+		{docsFile, "var offset float32", "offset", "_ = Scale + offset", "offset"},
+	} {
+		decl, ref := hoverAtToken(t, tc.file, tc.declLine, tc.declTok), hoverAtToken(t, tc.file, tc.refLine, tc.refTok)
+		if ref.Definition != decl.IR || ref.SymbolInfo != decl.SymbolInfo || ref.Documentation != decl.Documentation {
+			t.Errorf("ref %q = %+v, want definition matching %+v", tc.refTok, ref, decl)
+		}
+	}
+}
