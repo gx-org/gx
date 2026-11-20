@@ -4,6 +4,18 @@ package test
 // Aliased math doc.
 import m "math"
 
+const (
+	// Scale factor doc.
+	Scale float32 = 2.0
+	Uncommented = 1
+)
+
+// Global counter doc.
+var GlobalCount int32
+
 func Use(x float32) float32 {
+	// Local offset doc.
+	var offset float32
+	_ = Scale + offset
 	return m.Abs(x)
 }
