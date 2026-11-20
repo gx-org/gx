@@ -15,10 +15,57 @@
 package interp
 
 import (
+	"reflect"
+
 	"github.com/pkg/errors"
+	"github.com/gx-org/gx/api/hostio"
 	"github.com/gx-org/gx/build/ir"
+	"github.com/gx-org/gx/internal/interp/numbers"
+	"github.com/gx-org/gx/interp/elements"
 	"github.com/gx-org/gx/interp/engine"
 )
+
+// HostArrayToElement converts a host array argument into a scalar or nested slice of constant elements.
+func HostArrayToElement(eng engine.Engine, ev ir.Evaluator, field *ir.Field, array hostio.Array) (ir.Element, error) {
+	hostArray, err := array.ToHostArray()
+	if err != nil {
+		return nil, err
+	}
+	return convertFlatToElement(eng, ev, field, field.Type(), hostArray.Shape().Dimensions, reflect.ValueOf(hostArray.FlatData()))
+}
+
+func convertFlatToElement(eng engine.Engine, ev ir.Evaluator, field *ir.Field, typ ir.Type, dims []int, flat reflect.Value) (ir.Element, error) {
+	if len(dims) == 0 {
+		cst, err := numbers.NewConstant(typ, flat.Index(0).Interface())
+		if err != nil {
+			return nil, err
+		}
+		return eng.ElementFromHostValue(ev, cst)
+	}
+	sliceType, isSlice := typ.(*ir.SliceType)
+	if !isSlice {
+		return nil, errors.Errorf("cannot convert array argument to %s for parameter %s", typ.ReferString(nil), field.Name.Name)
+	}
+	subType, ok := sliceType.ElementType()
+	if !ok {
+		return nil, errors.Errorf("cannot get element type of %s for parameter %s", typ.ReferString(nil), field.Name.Name)
+	}
+	numEls := dims[0]
+	subDims := dims[1:]
+	stride := 1
+	for _, dim := range subDims {
+		stride *= dim
+	}
+	els := make([]ir.Element, numEls)
+	for i := range numEls {
+		var err error
+		els[i], err = convertFlatToElement(eng, ev, field, subType, subDims, flat.Slice(i*stride, (i+1)*stride))
+		if err != nil {
+			return nil, err
+		}
+	}
+	return elements.NewSlice(typ, els)
+}
 
 // PkgFuncFromElement extracts a function declaration from an element.
 func PkgFuncFromElement(el ir.Element) (ir.PkgFunc, error) {
