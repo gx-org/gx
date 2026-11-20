@@ -15,7 +15,6 @@
 package grapheval
 
 import (
-	"reflect"
 	"unsafe"
 
 	"github.com/pkg/errors"
@@ -31,6 +30,7 @@ import (
 	"github.com/gx-org/gx/internal/tracer/processor"
 	"github.com/gx-org/gx/interp/elements"
 	"github.com/gx-org/gx/interp/engine"
+	"github.com/gx-org/gx/interp"
 	"github.com/gx-org/gx/interp/materialise"
 )
 
@@ -290,56 +290,10 @@ func (ao *Ops) axesFromShape(ctx ir.Evaluator, axlens []int) (*elements.Slice, e
 	return elements.NewSlice(ir.IntSliceType(), axes)
 }
 
-func (ao *Ops) convertScalarToElement(ev ir.Evaluator, typ ir.Type, atom any) (ir.Element, error) {
-	cst, err := numbers.NewConstant(typ, atom)
-	if err != nil {
-		return nil, err
-	}
-	return ao.ElementFromHostValue(ev, cst)
-}
-
-func (ao *Ops) convertSliceToElement(ev ir.Evaluator, field *ir.Field, typ ir.Type, dims []int, flat reflect.Value) (ir.Element, error) {
-	sliceType, isSlice := typ.(*ir.SliceType)
-	if !isSlice {
-		return nil, errors.Errorf("cannot convert array argument to %s for parameter %s", typ.ReferString(nil), field.Name.Name)
-	}
-	subType, ok := sliceType.ElementType()
-	if !ok {
-		return nil, errors.Errorf("cannot get element type of %s for parameter %s", typ.ReferString(nil), field.Name.Name)
-	}
-	numEls := dims[0]
-	subDims := dims[1:]
-	stride := 1
-	for _, dim := range subDims {
-		stride *= dim
-	}
-	els := make([]ir.Element, numEls)
-	for i := range numEls {
-		var err error
-		els[i], err = ao.convertFlatToElement(ev, field, subType, subDims, flat.Slice(i*stride, (i+1)*stride))
-		if err != nil {
-			return nil, err
-		}
-	}
-	return elements.NewSlice(typ, els)
-}
-
-func (ao *Ops) convertFlatToElement(ev ir.Evaluator, field *ir.Field, typ ir.Type, dims []int, flat reflect.Value) (ir.Element, error) {
-	if len(dims) == 0 {
-		return ao.convertScalarToElement(ev, typ, flat.Index(0).Interface())
-	}
-	return ao.convertSliceToElement(ev, field, typ, dims, flat)
-}
-
 func (ao *Ops) convertToElement(ev ir.Evaluator, field *ir.Field, arg hostio.Value) (ir.Element, error) {
 	array, isArray := arg.(hostio.Array)
 	if !isArray {
 		return arg, nil
 	}
-	hostArray, err := array.ToHostArray()
-	if err != nil {
-		return nil, err
-	}
-	sh := hostArray.Shape()
-	return ao.convertFlatToElement(ev, field, field.Type(), sh.Dimensions, reflect.ValueOf(hostArray.FlatData()))
+	return interp.HostArrayToElement(ao, ev, field, array)
 }
