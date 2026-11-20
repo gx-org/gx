@@ -1,0 +1,44 @@
+package linear
+
+import (
+	"math/grad"
+	"num"
+	"rand"
+	"reflect"
+)
+
+type Linear struct {
+	W [3]float32
+	B float32
+}
+
+func (l Linear) forward(x [3]float32) float32 {
+	return num.Dot(l.W, x) + l.B
+}
+
+func loss(l Linear, x [3]float32, y float32) float32 {
+	err := l.forward(x) - y
+	return err * err
+}
+
+func sgd(params, grads Linear, lr float32) Linear {
+	for _, k := range reflect.Leaves[Linear]() {
+		params[k] -= lr * grads[k]
+	}
+	return params
+}
+
+func Test() Linear {
+	target := Linear{W: [3]float32{2, 3, 4}, B: 2}
+	learner := Linear{}
+	_, x := rand.New(rand.NewSource(0)).Float32[[]int{3}]()
+	want := target.forward(x)
+	_, backward, _, _ := grad.Reverse(loss)(learner, x, want)
+	g := backward(1)
+	return sgd(learner, g, 0.01)
+	// Want:
+	// Linear{
+	// 	W: [3]float32{0.027525, 0.032956, 0.054817},
+	// 	B: float32(0.108677),
+	// }
+}
