@@ -5,7 +5,7 @@ import "num"
 func TestMatMul1Axis() float64 {
 	x := [3]float64{2, 3, 5}
 	y := [3]float64{-7, -11, -13}
-	return num.VecMul(x, y)
+	return num.Dot(x, y)
 	// Want:
 	// float64(-112)
 }

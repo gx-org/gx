@@ -16,7 +16,7 @@ type Outer struct {
 }
 
 func (in Inner) eval(x [2]float32) float32 {
-	return num.VecMul(in.W, x) + in.B
+	return num.Dot(in.W, x) + in.B
 }
 
 func (o Outer) eval(x [2]float32) float32 {

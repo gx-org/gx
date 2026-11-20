@@ -3,7 +3,7 @@ package typing
 import "num"
 
 func l2Squared[a int](x [a]float32) float32 {
-	return num.VecMul(x, x)
+	return num.Dot(x, x)
 }
 
 func TestL2Squared() float32 {

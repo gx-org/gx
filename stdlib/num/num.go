@@ -34,39 +34,23 @@ var Package = builtin.PackageBuilder{
 		builtin.ImplementBuiltin("Iota", evalIota),
 		builtin.ImplementBuiltin("IotaFull", evalIotaFull),
 		builtin.ImplementBuiltin("ReduceMax", evalReduceMax),
-		builtin.ImplementBuiltin("MatMul", evalMatMul),
-		builtin.ImplementBuiltin("MatVecMul", evalMatVecMul),
-		builtin.ImplementBuiltin("VecMatMul", evalVecMatMul),
-		builtin.ImplementBuiltin("VecMul", evalVecMul),
+		builtin.ImplementBuiltin("MatMul", evalDotGeneral),
+		builtin.ImplementBuiltin("MatVecMul", evalDotGeneral),
+		builtin.ImplementBuiltin("VecMatMul", evalDotGeneral),
+		builtin.ImplementBuiltin("Dot", evalDotGeneral),
 		builtin.ImplementBuiltin("Sum", evalReduceSum),
 		builtin.ImplementBuiltin("einsumAxes", evalEinsumAxes),
 		builtin.ImplementBuiltin("Einsum", evalEinsum),
 	},
 }
 
-func evalVecMul(env *engine.Env, call *ir.FuncCallExpr, recv ir.Element, genArgs, args []ir.Element) ([]ir.Element, error) {
-	return evalDot(env, call, recv, args[0], args[1])
-}
-
-func evalVecMatMul(env *engine.Env, call *ir.FuncCallExpr, recv ir.Element, genArgs, args []ir.Element) ([]ir.Element, error) {
-	return evalDot(env, call, recv, args[0], args[1])
-}
-
-func evalMatVecMul(env *engine.Env, call *ir.FuncCallExpr, recv ir.Element, genArgs, args []ir.Element) ([]ir.Element, error) {
-	return evalDot(env, call, recv, args[0], args[1])
-}
-
-func evalMatMul(env *engine.Env, call *ir.FuncCallExpr, recv ir.Element, genArgs, args []ir.Element) ([]ir.Element, error) {
-	return evalDot(env, call, recv, args[0], args[1])
-}
-
-func evalDot(env *engine.Env, call *ir.FuncCallExpr, recv ir.Element, x ir.Element, y ir.Element) ([]ir.Element, error) {
+func evalDotGeneral(env *engine.Env, call *ir.FuncCallExpr, recv ir.Element, genArgs, args []ir.Element) ([]ir.Element, error) {
 	mat := builtin.Materialiser(env)
-	xNode, xShape, err := materialise.ElementWithShape(mat, x)
+	xNode, xShape, err := materialise.ElementWithShape(mat, args[0])
 	if err != nil {
 		return nil, err
 	}
-	yNode, err := materialise.Element(mat, y)
+	yNode, err := materialise.Element(mat, args[1])
 	if err != nil {
 		return nil, err
 	}

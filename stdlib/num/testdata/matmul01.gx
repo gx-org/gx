@@ -5,7 +5,7 @@ import "num"
 func TestMatMulScalars() float64 {
 	x := [1]float64{2}
 	y := [1]float64{-3}
-	return num.VecMul(x, y)
+	return num.Dot(x, y)
 	// Want:
 	// float64(-6)
 }

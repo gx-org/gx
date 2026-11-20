@@ -11,7 +11,7 @@ type Linear struct {
 }
 
 func (l Linear) forward(x [3]float32) float32 {
-	return num.VecMul(l.W, x) + l.B
+	return num.Dot(l.W, x) + l.B
 }
 
 func squareLoss(l Linear, x [3]float32, y float32) float32 {
