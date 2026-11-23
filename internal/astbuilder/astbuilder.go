@@ -36,11 +36,7 @@ func (cl *cloner) clone(n ast.Node) ast.Node {
 	var out ast.Node
 	switch nT := n.(type) {
 	case *ast.FieldList:
-		o := ast.FieldList{List: make([]*ast.Field, len(nT.List))}
-		for i, field := range nT.List {
-			o.List[i] = clone(cl, field)
-		}
-		out = &o
+		out = &ast.FieldList{List: cloneSlice(cl, nT.List)}
 	case *ast.Field:
 		o := *nT
 		o.Type = clone(cl, nT.Type)
@@ -49,10 +45,12 @@ func (cl *cloner) clone(n ast.Node) ast.Node {
 		o := *nT
 		out = &o
 	case *ast.ArrayType:
-		out = &ast.ArrayType{
-			Elt: clone(cl, nT.Elt),
-			Len: clone(cl, nT.Len),
+		o := *nT
+		o.Elt = clone(cl, nT.Elt)
+		if nT.Len != nil {
+			o.Len = clone(cl, nT.Len)
 		}
+		out = &o
 	case *ast.Ellipsis:
 		var elt ast.Expr
 		if nT.Elt != nil {
@@ -68,14 +66,66 @@ func (cl *cloner) clone(n ast.Node) ast.Node {
 	case *ast.CallExpr:
 		o := *nT
 		out = &o
+	case *ast.IndexExpr:
+		o := *nT
+		o.X = clone(cl, nT.X)
+		o.Index = clone(cl, nT.Index)
+		out = &o
+	case *ast.IndexListExpr:
+		o := *nT
+		o.X = clone(cl, nT.X)
+		o.Indices = cloneSlice(cl, nT.Indices)
+		out = &o
+	case *ast.SelectorExpr:
+		o := *nT
+		o.X = clone(cl, nT.X)
+		o.Sel = clone(cl, nT.Sel)
+		out = &o
+	case *ast.BinaryExpr:
+		o := *nT
+		o.X = clone(cl, nT.X)
+		o.Y = clone(cl, nT.Y)
+		out = &o
+	case *ast.UnaryExpr:
+		o := *nT
+		o.X = clone(cl, nT.X)
+		out = &o
+	case *ast.ParenExpr:
+		o := *nT
+		o.X = clone(cl, nT.X)
+		out = &o
+	case *ast.CompositeLit:
+		o := *nT
+		if nT.Type != nil {
+			o.Type = clone(cl, nT.Type)
+		}
+		o.Elts = cloneSlice(cl, nT.Elts)
+		out = &o
+	case *ast.KeyValueExpr:
+		o := *nT
+		o.Key = clone(cl, nT.Key)
+		o.Value = clone(cl, nT.Value)
+		out = &o
 	default:
 		cl.errs.Append(errors.Errorf("%T not supported", nT))
+		return nil
 	}
 	if cl.transform == nil {
 		return out
 	}
 	if err := cl.transform(out); err != nil {
 		cl.errs.Append(err)
+	}
+	return out
+}
+
+func cloneSlice[T ast.Node](cl *cloner, nodes []T) []T {
+	if nodes == nil {
+		return nil
+	}
+	out := make([]T, len(nodes))
+	for i, node := range nodes {
+		out[i] = clone(cl, node)
 	}
 	return out
 }
