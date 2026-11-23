@@ -18,6 +18,8 @@ import (
 	"strings"
 
 	"github.com/gx-org/gx/build/ir"
+	"github.com/gx-org/gx/internal/interp/compeval/srcstore"
+	"github.com/gx-org/gx/interp/elements"
 	"github.com/gx-org/gx/src/gx/ast"
 )
 
@@ -217,8 +219,13 @@ func (ns *fieldNamespace) assignResultField(pscope procScope, fld *field) bool {
 
 func defineGenericParam(s localScope, storage *ir.FieldStorage) bool {
 	if !ir.IsNonTypeGeneric(storage.Type()) {
-		generic := ir.NewGenericTypeParam(storage.Field)
-		return s.update(storage, generic)
+		tp := ir.NewGenericTypeParam(storage.Field)
+		el, err := srcstore.Link(tp, elements.NewGenType(tp))
+		ok := true
+		if err != nil {
+			ok = s.Err().AppendAt(storage.Node(), err)
+		}
+		return s.update(storage, el) && ok
 	}
 	generic := ir.NewGenericNonTypeParam(storage.Field)
 	return defineFieldForStorage(s, storage.Field, generic)

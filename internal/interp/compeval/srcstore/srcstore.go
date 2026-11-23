@@ -156,6 +156,21 @@ func (f *generic) Store() ir.Storage {
 	return f.store
 }
 
+type genType struct {
+	*elements.GenericType
+	store ir.Storage
+}
+
+var _ ir.WithBareValue = (*genType)(nil)
+
+func (g *genType) Store() ir.Storage {
+	return g.store
+}
+
+func (g *genType) BareValue() ir.Element {
+	return g.GenericType
+}
+
 type invalid struct {
 	el    ir.Element
 	store ir.Storage
@@ -208,6 +223,8 @@ func Link(store ir.Storage, el ir.Element) (ir.Element, error) {
 		linkEl = &function{Func: elT, store: store}
 	case elements.Generic:
 		linkEl = &generic{Generic: elT, store: store}
+	case *elements.GenericType:
+		linkEl = &genType{GenericType: elT, store: store}
 	case elements.IString:
 		linkEl = &str{IString: elT, store: store}
 	case elements.IStruct:

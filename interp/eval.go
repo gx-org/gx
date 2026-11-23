@@ -407,7 +407,7 @@ func evalCastAtomToArrayExpr(fitp *Interpreter, expr ir.TypeCastExpr, x engine.N
 func evalCastToArrayExpr(fitp *Interpreter, expr ir.TypeCastExpr, x engine.NumericalElement, targetType ir.ArrayType) (ir.Element, error) {
 	origType := expr.Orig().Type()
 	origRank, xDType := ir.Shape(origType)
-	targetDType, err := toConcreteType(fitp.Context(), expr.Node(), fitp.Context().CurrentFrame(), targetType.DataType())
+	targetDType, err := findConcreteType(fitp.Context(), expr.Node(), fitp.Context().CurrentFrame(), targetType.DataType())
 	if err != nil {
 		return nil, err
 	}
@@ -451,12 +451,8 @@ func evalCastExprTo(fitp *Interpreter, expr ir.TypeCastExpr, target ir.Type, x i
 	case *ir.NamedType:
 		return elements.NewNamedType(targetT, x), nil
 	case *ir.GenericTypeParam:
-		name := targetT.NameDef()
-		el, err := fitp.Context().CurrentFrame().Find(name)
-		if err != nil {
-			return nil, err
-		}
-		target, err = cast.To[ir.Type](el)
+		var err error
+		target, err = findConcreteType(fitp.Context(), expr.Node(), fitp.Context().CurrentFrame(), targetT)
 		if err != nil {
 			return nil, err
 		}
@@ -812,7 +808,7 @@ func evalTypeArgumentExprs(fitp *Interpreter, callee *ir.FuncValExpr) ([]ir.Elem
 		if !isType {
 			continue
 		}
-		tpArgs[i], err = toConcreteType(fitp.Context(), callee.Node(), fitp.Context().CurrentFrame(), tp)
+		tpArgs[i], err = findConcreteTypeElement(fitp.Context(), callee.Node(), fitp.Context().CurrentFrame(), tp)
 		if err != nil {
 			return nil, err
 		}

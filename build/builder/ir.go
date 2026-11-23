@@ -74,12 +74,27 @@ func fnName(f function) string {
 	return f.fnSource().Name.Name
 }
 
+// findStorage returns the storage of the element bound to name in the namespace
+// of the scope.
 func findStorage(scope resolveScope, name *ast.Ident) (ir.Storage, bool) {
-	ns := scope.nspace()
-	el, ok := ns.Find(name.Name)
+	el, ok := findElement(scope, name)
+	if !ok {
+		return nil, false
+	}
+	return storageFromElement(scope, name, el)
+}
+
+// findElement returns the element bound to name in the namespace of the scope.
+func findElement(scope resolveScope, name *ast.Ident) (ir.Element, bool) {
+	el, ok := scope.nspace().Find(name.Name)
 	if !ok {
 		return nil, scope.Err().Appendf(name, "undefined: %s", name.Name)
 	}
+	return el, true
+}
+
+// storageFromElement returns the storage of el, the element bound to name.
+func storageFromElement(scope resolveScope, name *ast.Ident, el ir.Element) (ir.Storage, bool) {
 	switch elT := el.(type) {
 	case ir.WithStore:
 		store := elT.Store()
