@@ -12,7 +12,7 @@ func f[T any](x T) T {
 
 func Test() S {
 	s := S{a: 2}
-	for _, k := range testfieldpaths.Path[S]("a") {
+	for _, k := range testfieldpaths.Path[S, float32]("a") {
 		s[k] = 3 * f(s[k])
 	}
 	return s

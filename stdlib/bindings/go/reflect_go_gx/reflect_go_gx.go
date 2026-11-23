@@ -32,6 +32,8 @@ import (
 	"github.com/gx-org/gx/interp/elements"
 	"github.com/gx-org/gx/interp/grapheval"
 	"github.com/pkg/errors"
+
+	gxdep0 "github.com/gx-org/gx/stdlib/bindings/go/dtype_go_gx"
 )
 
 // Force some package dependencies.
@@ -77,7 +79,7 @@ type PackageHandle struct {
 	Factory *Factory
 
 	// Package dependencies
-
+	gxdep0 *gxdep0.PackageHandle
 }
 
 // Package is a GX package for a given device.
@@ -100,6 +102,12 @@ func Build(dev *core.DeviceSetup) (*PackageHandle, error) {
 	pkg.handle.PackageCompileSetup = dev.PackageSetup(bpkg)
 
 	// Build dependencies.
+	pkg.handle.gxdep0, err = gxdep0.Build(
+		pkg.handle.PackageCompileSetup.Setup(),
+	)
+	if err != nil {
+		return nil, err
+	}
 
 	// Initialise function and method caches.
 

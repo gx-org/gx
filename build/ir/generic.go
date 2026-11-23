@@ -102,6 +102,8 @@ type (
 		From() (*File, Expr)
 		Target() GenericType
 		IsDefined(int) bool
+		ProxyFor(Type) (Expr, bool)
+		AxisExprFromFieldPath() *AxisExpr
 		NonTypeFor(GenericParam) *NonTypeGenericValue
 		TypeFor(GenericParam) *TypeGenericValue
 		Values() []GenericValue

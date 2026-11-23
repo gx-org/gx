@@ -42,8 +42,7 @@ func init() {
 	registerBuiltinType("string", ir.StringType())
 	registerBuiltinType("uint32", ir.Uint32Type())
 	registerBuiltinType("uint64", ir.Uint64Type())
-	registerBuiltinType("fieldpath", ir.FieldPathType())
-	registerBuiltinType("fieldindex", ir.GenericFieldIndexType())
+	registerBuiltinType("fieldpath", ir.GenericFieldPathType())
 
 	// Builtin values.
 	registerBuiltinIR(token.CONST, ir.FalseStorage())

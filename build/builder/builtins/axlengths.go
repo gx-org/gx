@@ -47,8 +47,9 @@ func (f *axlengthsFunc) BuildFuncType(tpcmp ir.TypeEval, call *ir.FuncCallExpr) 
 		return ext, errors.Errorf("wrong number of arguments to axlengths: expected 1, found %d", len(call.Args))
 	}
 	arg := call.Args[0]
-	if arg.Type().Kind() != irkind.Array {
-		return ext, errors.Errorf("axlengths(%s) not supported", arg.Type().Kind())
+	knd := arg.Type().Kind()
+	if knd != irkind.Array && knd != irkind.Interface {
+		return ext, errors.Errorf("axlengths(%s) not supported", knd)
 	}
 
 	srcFieldList := &ast.FieldList{Opening: call.Src.Lparen, Closing: call.Src.Rparen}
@@ -79,4 +80,26 @@ func (f *axlengthsFunc) BuildFuncType(tpcmp ir.TypeEval, call *ir.FuncCallExpr) 
 // BuildFuncType builds the type of a function given how it is called.
 func (f *axlengthsFunc) Implementation() any {
 	return nil
+}
+
+// axLengthsBuiltin is the axlengths builtin function.
+var axLengthsBuiltin = &ir.FuncBuiltin{
+	Src:  &ast.FuncDecl{Name: &ast.Ident{Name: axLengthsF.Name()}},
+	Impl: axLengthsF,
+}
+
+// CallAxLengths returns the expression axlengths(x).
+func CallAxLengths(x ir.Expr) (*ir.FuncCallExpr, error) {
+	callee := ir.NewFuncValExpr(ir.NewIdent(axLengthsBuiltin), axLengthsBuiltin)
+	axLengths := &ir.FuncCallExpr{
+		Src:    &ast.CallExpr{Fun: callee.Expr(), Args: []ast.Expr{x.Expr()}},
+		Callee: callee,
+		Args:   []ir.Expr{x},
+	}
+	ftype, err := axLengthsBuiltin.Impl.BuildFuncType(nil, axLengths)
+	if err != nil {
+		return nil, err
+	}
+	axLengths.Callee = callee.NewFType(ftype)
+	return axLengths, nil
 }

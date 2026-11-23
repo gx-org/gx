@@ -291,7 +291,7 @@ func testIncorrectIndexTarget() float32 {
 
 func testIncorrectIndexTarget2() float32 {
 	v := someStruct{a: 1, someMethod: 1}
-	return v[0] // ERROR index 0 (of type int) must be fieldpath
+	return v[0] // ERROR index 0 (of type int) must be of type fieldindex
 }
 
 func testIncorrectIndexType() float32 {

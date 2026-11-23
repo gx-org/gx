@@ -3156,8 +3156,12 @@ func (s *Ident) specialiseNonGeneric(spec Specialiser) (Expr, bool) {
 	if !ok {
 		return s, true
 	}
+	storFile := stor.File()
+	if storFile == nil {
+		return s, true
+	}
 	from, x := spec.From()
-	if from == stor.File() {
+	if from == storFile {
 		return s, true
 	}
 	return &SelectorExpr{
@@ -3167,7 +3171,7 @@ func (s *Ident) specialiseNonGeneric(spec Specialiser) (Expr, bool) {
 		},
 		X: &ImportEmbedded{
 			Src:     x.Expr(),
-			Package: stor.File().Package,
+			Package: storFile.Package,
 		},
 		Stor: stor,
 	}, true

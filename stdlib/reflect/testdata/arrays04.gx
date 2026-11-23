@@ -1,4 +1,4 @@
-package leaves04
+package arrays04
 
 import "reflect"
 
@@ -16,7 +16,7 @@ type Model struct {
 
 func TestOnes() Model {
 	m := Model{}
-	for _, k := range reflect.Leaves[Model]() {
+	for _, k := range reflect.Arrays[Model, float32]() {
 		m[k] += 1
 	}
 	return m

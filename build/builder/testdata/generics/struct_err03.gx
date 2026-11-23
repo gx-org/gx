@@ -18,5 +18,5 @@ type Pair[T1, T2 any] struct {
 }
 
 func PartialStructLiteral() Pair[int32, int32] {
-	return Pair[int32]{a: 1, b: 2} // ERROR not enough type arguments for type Pair: have 1, want 2
+	return Pair[int32]{a: 1, b: 2} // ERROR type Pair got 1 type arguments but want 2
 }

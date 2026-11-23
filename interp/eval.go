@@ -625,7 +625,7 @@ func evalExpr(fitp *Interpreter, expr ir.Expr) (_ ir.Element, err error) {
 	case *ir.FuncValExpr:
 		return evalFuncValExpr(fitp, exprT)
 	case *ir.TypeValExpr:
-		return exprT.Val(), nil
+		return evalTypeValExpr(fitp, exprT)
 	case *ir.ImportEmbedded:
 		return fitp.Context().Core().ImportPackage(exprT.Package.Path(), nil)
 	default:
@@ -684,6 +684,15 @@ func evalFuncValExpr(fitp *Interpreter, expr *ir.FuncValExpr) (ir.Element, error
 	return evalExpr(fitp, expr.X())
 }
 
+// evalTypeValExpr returns an element encapsulating the concrete type referenced by expr.
+func evalTypeValExpr(fitp *Interpreter, expr *ir.TypeValExpr) (ir.Element, error) {
+	typeEl, err := findConcreteTypeElement(fitp.Context(), expr.Node(), fitp.Context().CurrentFrame(), expr.Val())
+	if err != nil {
+		return nil, err
+	}
+	return typeEl, nil
+}
+
 func evalIdent(fitp *Interpreter, ref *ir.Ident) (ir.Element, error) {
 	if ref.Src == nil {
 		return ref.Stor, nil
@@ -719,30 +728,30 @@ func evalSelectorExpr(fitp *Interpreter, ref *ir.SelectorExpr) (ir.Element, erro
 	return slt.Select(fitp.env, ref)
 }
 
-func evalIndexExpr(fitp *Interpreter, ref *ir.IndexExpr) (ir.Element, error) {
-	x, err := evalExpr(fitp, ref.X)
+func evalIndexExpr(fitp *Interpreter, indexExpr *ir.IndexExpr) (ir.Element, error) {
+	x, err := evalExpr(fitp, indexExpr.X)
 	if err != nil {
 		return nil, err
 	}
-	x, err = coreiface.Underlying(x)
+	xUnder, err := coreiface.Underlying(x)
 	if err != nil {
 		return nil, err
 	}
-	index, err := evalExpr(fitp, ref.Index)
+	index, err := evalExpr(fitp, indexExpr.Index)
 	if err != nil {
 		return nil, err
 	}
 	switch indexT := index.(type) {
 	case engine.NumericalElement:
-		slicer, err := cast.To[engine.Slicer](x)
+		slicer, err := cast.To[engine.Slicer](xUnder)
 		if err != nil {
 			return nil, err
 		}
-		return slicer.SliceAt(fitp.env, ref, indexT)
+		return slicer.SliceAt(fitp.env, indexExpr, indexT)
 	case elements.FieldPath:
-		return indexT.FollowOn(x)
+		return indexT.FollowOn(indexExpr, xUnder)
 	default:
-		return nil, fmterr.Errorf(fitp.File().FileSet(), ref.Node(), "index %T not supported", indexT)
+		return nil, fmterr.Errorf(fitp.File().FileSet(), indexExpr.Node(), "index %T not supported", indexT)
 	}
 }
 
@@ -893,7 +902,7 @@ func set(fitp *Interpreter, tok token.Token, dest ir.Storage, value ir.Element) 
 		if err != nil {
 			return err
 		}
-		slice, err := coreiface.CastIfDef[*elements.Slice](receiver)
+		slice, err := coreiface.CastIfDef[coreiface.IndexSetter](receiver)
 		if err != nil {
 			return err
 		}
@@ -901,7 +910,7 @@ func set(fitp *Interpreter, tok token.Token, dest ir.Storage, value ir.Element) 
 		if err != nil {
 			return err
 		}
-		return slice.Set(index, value)
+		return slice.SetAt(index, value)
 	default:
 		return fmterr.Errorf(fitp.File().FileSet(), dest.Node(), "cannot assign %v to %T: not supported", value, destT)
 	}

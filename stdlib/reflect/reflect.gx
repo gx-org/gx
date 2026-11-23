@@ -15,7 +15,7 @@
 // Package reflect implements compeval and run-time reflection.
 package reflect
 
-// Leaves returns the path to all the leaves of a structure.
-//
-//gx:unroll
-func Leaves[T any]() []fieldpath
+import "dtype"
+
+// Arrays returns the path to all arrays of a structure.
+func Arrays[T any, nums dtype.Nums]() []fieldpath[T, [...]nums]

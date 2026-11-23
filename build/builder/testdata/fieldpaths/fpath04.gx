@@ -8,7 +8,7 @@ type S struct {
 
 func scale(x float32) S {
 	s := S{a: 2}
-	for _, k := range testfieldpaths.Path[S]("a") {
+	for _, k := range testfieldpaths.Path[S, float32]("a") {
 		s[k] = x * s[k]
 	}
 	return s

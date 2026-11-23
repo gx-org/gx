@@ -18,10 +18,17 @@ import (
 	"fmt"
 	"strings"
 
+	"github.com/gx-org/gx/build/builder/builtins"
 	"github.com/gx-org/gx/build/fmterr"
 	"github.com/gx-org/gx/build/ir"
 	"github.com/gx-org/gx/src/gx/ast"
 )
+
+// FieldPathKey provides info when specialising a fieldpath type.
+type FieldPathKey struct {
+	fieldIndex *ir.IndexExpr
+	fieldPath  *ir.FieldPathType
+}
 
 type specialiser struct {
 	from         *ir.File
@@ -30,6 +37,7 @@ type specialiser struct {
 	defined      []ir.GenericValue
 	tparamFields []*ir.Field
 	fetcher      ir.Fetcher
+	fieldPathKey *FieldPathKey
 
 	defaultInstErr func(*specialiser, ast.Node, error) bool
 
@@ -48,6 +56,33 @@ func newSpecialiser(from *ir.File, x ir.Expr, fetcher ir.Fetcher, defaultInstErr
 		tparamFields:   gtype.Origin().Generics().Fields.Fields(),
 		defaultInstErr: defaultInstErr,
 	}
+}
+
+func (s *specialiser) ProxyFor(typ ir.Type) (ir.Expr, bool) {
+	return nil, s.fetcher.Err().AppendInternalf(s.Source(), "not implemented")
+}
+
+// AxisExprFromFieldPath returns the axes of the value indexed by a field path,
+// that is axlengths(R[k]) where R is the type being indexed and k the field path,
+// or nil if the specialiser has no field path key (see SpecialiseFieldIndex).
+func (s *specialiser) AxisExprFromFieldPath() *ir.AxisExpr {
+	key := s.fieldPathKey
+	if key == nil {
+		return nil
+	}
+	values := key.fieldPath.Generics().Values
+	idxExpr := &ir.IndexExpr{
+		Src:   key.fieldIndex.Src,      // Source of the index expression, e.g. s[k].
+		X:     values[0].Value(),       // Type being indexed, e.g. S.
+		Index: key.fieldIndex.Index,    // Field path, e.g. k.
+		Typ:   values[1].DefinedType(), // Type of the indexed value, e.g. [...]float32.
+	}
+	shape, err := builtins.CallAxLengths(idxExpr)
+	if err != nil {
+		s.Err().AppendInternalf(s.Source(), "%v", err)
+		return nil
+	}
+	return &ir.AxisExpr{X: &ir.UnpackExpr{X: shape, EltTyp: ir.IntType()}}
 }
 
 func (s *specialiser) StartResults(ftype *ir.FuncType) {
@@ -189,6 +224,14 @@ func SpecialiseType(fetcher ir.Fetcher, expr ir.Expr, nt ir.SpecialisableType, t
 	spec := newSpecialiser(fetcher.File(), expr, fetcher, nil, nt, typArgs)
 	specType, ok := nt.Specialise(spec)
 	return ir.TypeExpr(expr.Expr(), specType), ok
+}
+
+// SpecialiseFieldIndex specialises the type of a field path indexing a structure.
+func SpecialiseFieldIndex(fetcher ir.Fetcher, index *ir.IndexExpr, fp *ir.FieldPathType) (*ir.TypeValExpr, bool) {
+	spec := newSpecialiser(fetcher.File(), index.Index, fetcher, nil, fp, fp.Generics().Values)
+	spec.fieldPathKey = &FieldPathKey{fieldIndex: index, fieldPath: fp}
+	specType, ok := fp.Specialise(spec)
+	return ir.TypeExpr(index.Index.Expr(), specType), ok
 }
 
 // SpecialiseParams a function signature for a given type.

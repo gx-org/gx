@@ -217,7 +217,7 @@ func reconcile(src, dst ir.Type) {
 	if !ok {
 		return
 	}
-	dstInfer.ArrayRank = srcArray.Rank()
+	dstInfer.SetRank(srcArray.Rank())
 }
 
 func convertTo(rscope resolveScope, src, dst ir.Type) (bool, error) {

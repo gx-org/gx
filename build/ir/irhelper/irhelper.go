@@ -249,9 +249,7 @@ func InferArrayType(dtype ir.Type, axes ...any) ir.ArrayType {
 			X: Axis(ax),
 		})
 	}
-	return ir.NewArrayType(&ast.ArrayType{}, dtype, &ir.RankInfer{
-		ArrayRank: rank,
-	})
+	return ir.NewArrayType(&ast.ArrayType{}, dtype, ir.NewRankInfer(nil, rank))
 }
 
 // FloatNumberAs returns a integer number casted to a target type.

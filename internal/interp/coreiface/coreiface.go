@@ -27,6 +27,12 @@ type Under interface {
 	Under() (ir.Element, error)
 }
 
+// IndexSetter sets a value at an index.
+type IndexSetter interface {
+	ir.Element
+	SetAt(index ir.Element, value ir.Element) error
+}
+
 // ToCore removes all wrapper around an element.
 func ToCore(el ir.Element) (ir.Element, error) {
 	el = ir.BareValue(el)

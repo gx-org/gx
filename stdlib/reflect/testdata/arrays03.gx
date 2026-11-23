@@ -1,4 +1,4 @@
-package leaves03
+package arrays03
 
 import "reflect"
 
@@ -14,7 +14,7 @@ func TestArrays() S {
 		b: [2][2]float32{{1, 2}, {3, 4}},
 		c: 5,
 	}
-	for _, k := range reflect.Leaves[S]() {
+	for _, k := range reflect.Arrays[S, int32]() {
 		s[k] += 10
 	}
 	return s
@@ -22,10 +22,10 @@ func TestArrays() S {
 	// S{
 	// 	a: [3]int32{11, 12, 13},
 	// 	b: [2][2]float32{
-	// 		{11, 12},
-	// 		{13, 14},
+	// 		{1, 2},
+	// 		{3, 4},
 	// 	},
-	// 	c: float32(15),
+	// 	c: float32(5),
 	// }
 }
 
@@ -47,7 +47,7 @@ func TestNestedArrays() Model {
 		},
 		s: [3]float32{1, 1, 1},
 	}
-	for _, k := range reflect.Leaves[Model]() {
+	for _, k := range reflect.Arrays[Model, float32]() {
 		m[k] *= 2
 	}
 	return m
@@ -65,7 +65,7 @@ func TestNestedArrays() Model {
 }
 
 func sgd(params, grads Linear, lr float32) Linear {
-	for _, k := range reflect.Leaves[Linear]() {
+	for _, k := range reflect.Arrays[Linear, float32]() {
 		params[k] -= lr * grads[k]
 	}
 	return params

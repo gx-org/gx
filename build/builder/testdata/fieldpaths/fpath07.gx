@@ -8,7 +8,7 @@ type S struct {
 
 func Test() S {
 	s := S{}
-	for _, k := range testfieldpaths.Path[S]("a") {
+	for _, k := range testfieldpaths.Path[S, float32]("a") {
 		s[k] = 1.0
 	}
 	return s

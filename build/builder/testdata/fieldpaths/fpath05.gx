@@ -12,7 +12,7 @@ type S struct {
 
 func scale(x float32) S {
 	s := S{t: T{a: 2}}
-	for _, k := range reflect.Leaves[S]() {
+	for _, k := range reflect.Arrays[S, float32]() {
 		s[k] = x * s[k]
 	}
 	return s

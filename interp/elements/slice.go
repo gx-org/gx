@@ -70,6 +70,7 @@ var (
 	_ coreiface.WithElements = (*Slice)(nil)
 	_ engine.Copier          = (*Slice)(nil)
 	_ hostio.Value           = (*Slice)(nil)
+	_ coreiface.IndexSetter  = (*Slice)(nil)
 )
 
 // NewSlice returns a slice from a slice of elements.
@@ -257,9 +258,9 @@ func (n *Slice) Copy() engine.Copier {
 	return &Slice{typ: n.typ, values: values}
 }
 
-// Set an element at a given index.
+// SetAt an element at a given index.
 // Returns an error if the index is out of bounds.
-func (n *Slice) Set(index ir.Element, val ir.Element) error {
+func (n *Slice) SetAt(index ir.Element, val ir.Element) error {
 	i, err := IntFromElement(index)
 	if err != nil {
 		return err

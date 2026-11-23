@@ -622,10 +622,10 @@ func (s *arrayResolveScope) sub(src ast.Node) (compositeLitResolveScope, bool) {
 	}
 	currentRank := s.currentRank + 1
 	if infer := toInferRank(s.current.Rank()); infer != nil {
-		if infer.ArrayRank == nil {
-			infer.ArrayRank = &ir.Rank{
+		if infer.Rank() == nil {
+			infer.SetRank(&ir.Rank{
 				Ax: []ir.AxisLengths{&ir.AxisInfer{}},
-			}
+			})
 		}
 	}
 	return &arrayResolveScope{
@@ -641,10 +641,10 @@ func underlyingRank(r ir.ArrayRank) *ir.Rank {
 	case *ir.Rank:
 		return rT
 	case *ir.RankInfer:
-		if rT.ArrayRank == nil {
-			rT.ArrayRank = &ir.Rank{}
+		if rT.Rank() == nil {
+			rT.SetRank(&ir.Rank{})
 		}
-		return underlyingRank(rT.ArrayRank)
+		return underlyingRank(rT.Rank())
 	}
 	return nil
 }

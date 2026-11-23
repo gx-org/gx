@@ -126,7 +126,7 @@ func (r *Rank) Axes() []AxisLengths { return r.Ax }
 func (r *Rank) Equal(tpcmp TypeEval, other ArrayRank) (bool, error) {
 	switch otherT := other.(type) {
 	case *RankInfer:
-		return r.Equal(tpcmp, otherT.ArrayRank)
+		return r.Equal(tpcmp, otherT.rnk)
 	case *Rank:
 		return r.equalRank(tpcmp, otherT)
 	default:
@@ -186,7 +186,7 @@ func (r *Rank) assignableTo(tpcmp TypeEval, dst ArrayRank) (bool, error) {
 func (r *Rank) AssignableTo(tpcmp TypeEval, dst ArrayRank) (bool, error) {
 	switch dstT := dst.(type) {
 	case *RankInfer:
-		return r.AssignableTo(tpcmp, dstT.ArrayRank)
+		return r.AssignableTo(tpcmp, dstT.rnk)
 	case *Rank:
 		return r.assignableTo(tpcmp, dstT)
 	default:
@@ -339,14 +339,26 @@ func (r *Rank) Visit(f Finder) {
 // RankInfer is a rank determined at compile time
 // (specified using ...).
 type RankInfer struct {
-	ArrayRank
+	rnk ArrayRank
 	Src *ast.ArrayType
 }
 
 var _ ArrayRank = (*RankInfer)(nil)
 
+// NewRankInfer returns a rank specified using ... in the source code
+// and inferred as rnk (nil if the rank has not been inferred yet).
+func NewRankInfer(src *ast.ArrayType, rnk ArrayRank) *RankInfer {
+	return &RankInfer{Src: src, rnk: rnk}
+}
+
 func (*RankInfer) node()     {}
 func (*RankInfer) nodeRank() {}
+
+// Rank returns the inferred rank or nil if the rank has not been inferred yet.
+func (r *RankInfer) Rank() ArrayRank { return r.rnk }
+
+// SetRank sets the inferred rank.
+func (r *RankInfer) SetRank(rnk ArrayRank) { r.rnk = rnk }
 
 // Node returns the node defining the rank.
 func (r *RankInfer) Node() ast.Node { return r.Expr() }
@@ -357,25 +369,118 @@ func (r *RankInfer) Expr() ast.Expr { return r.Src.Len }
 // Type returns the rank type.
 func (r *RankInfer) Type() Type { return RankType() }
 
+// Unroll the inferred rank.
+func (r *RankInfer) Unroll(ev Fetcher, urlr Unroller) (ast.Expr, bool) {
+	if r.rnk == nil {
+		return nil, ev.Err().AppendInternalf(r.Src, "cannot unroll rank %s: rank has not been inferred", r.SourceString(ev.File()))
+	}
+	return r.rnk.Unroll(ev, urlr)
+}
+
 // IsAtomic returns true if the rank has no axes.
 func (r *RankInfer) IsAtomic() bool {
 	return false
 }
 
+// Axes returns all axis in the inferred rank
+// or nil if the rank has not been inferred yet.
+func (r *RankInfer) Axes() []AxisLengths {
+	if r.rnk == nil {
+		return nil
+	}
+	return r.rnk.Axes()
+}
+
+// Equal returns true if the inferred rank is equal to other.
+// Returns false if the rank has not been inferred yet.
+func (r *RankInfer) Equal(tpcmp TypeEval, other ArrayRank) (bool, error) {
+	if r.rnk == nil {
+		return false, nil
+	}
+	return r.rnk.Equal(tpcmp, other)
+}
+
+// AssignableTo returns true if the inferred rank can be assigned to the destination rank.
+// Returns false if the rank has not been inferred yet.
+func (r *RankInfer) AssignableTo(tpcmp TypeEval, dst ArrayRank) (bool, error) {
+	if r.rnk == nil {
+		return false, nil
+	}
+	return r.rnk.AssignableTo(tpcmp, dst)
+}
+
+// ConvertibleTo returns true if the inferred rank can be converted to the destination rank.
+// Returns false if the rank has not been inferred yet.
+func (r *RankInfer) ConvertibleTo(tpcmp TypeEval, dst ArrayRank) (bool, error) {
+	if r.rnk == nil {
+		return false, nil
+	}
+	return r.rnk.ConvertibleTo(tpcmp, dst)
+}
+
+// Specialise a type to a given target.
+func (r *RankInfer) Specialise(spec Specialiser) (ArrayRank, bool) {
+	if r.rnk != nil {
+		rnk, ok := r.rnk.Specialise(spec)
+		return &RankInfer{
+			Src: r.Src,
+			rnk: rnk,
+		}, ok
+	}
+	axisExpr := spec.AxisExprFromFieldPath()
+	if axisExpr == nil {
+		return r, true
+	}
+	return &RankInfer{
+		Src: r.Src,
+		rnk: &Rank{
+			Src: r.Src,
+			Ax:  []AxisLengths{axisExpr},
+		},
+	}, true
+}
+
+// UnifyWith unifies the inferred rank with a given target.
+// There is nothing to unify if the rank has not been inferred yet.
+func (r *RankInfer) UnifyWith(uni Unifier, arg ArrayRank) bool {
+	if r.rnk == nil {
+		return true
+	}
+	return r.rnk.UnifyWith(uni, arg)
+}
+
+// Instantiate the inferred rank into another rank.
+// Returns the receiver if the rank has not been inferred yet.
+func (r *RankInfer) Instantiate(ev Fetcher, spec Specialiser) (ArrayRank, bool) {
+	if r.rnk == nil {
+		return r, true
+	}
+	return r.rnk.Instantiate(ev, spec)
+}
+
+// IndexForVarArgs returns a rank specific to a given index in varargs.
+// Returns the receiver if the rank has not been inferred yet.
+func (r *RankInfer) IndexForVarArgs(errsrc ErrSource, i int) (ArrayRank, bool) {
+	if r.rnk == nil {
+		return r, true
+	}
+	return r.rnk.IndexForVarArgs(errsrc, i)
+}
+
 // SubRank returns the rank with the top-axis removed.
 func (r *RankInfer) SubRank() (ArrayRank, bool) {
-	if r.ArrayRank == nil {
+	if r.rnk == nil {
 		return &RankInfer{}, true
 	}
-	return r.ArrayRank.SubRank()
+	return r.rnk.SubRank()
 }
 
 // SourceString returns the GX source code of the rank.
 func (r *RankInfer) SourceString(from *File) string {
-	if r.ArrayRank == nil {
-		return "..."
+	if r.rnk == nil {
+		return "[...]"
 	}
-	return r.ArrayRank.SourceString(from)
+	return r.rnk.SourceString(from)
 }
 
 // Visit considers the inferred array rank span.
