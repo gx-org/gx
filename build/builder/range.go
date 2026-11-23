@@ -133,9 +133,7 @@ func (n *rangeStmt) buildRangeStmt(parent stmtResolveScope) (*ir.RangeStmt, bool
 	}
 	kind := ext.X.Type().Kind()
 	switch kind {
-	case irkind.Array:
-		ext.Key, ext.Value, ok = n.buildBodyOverSlicer(rscope, ext.X)
-	case irkind.Slice:
+	case irkind.Array, irkind.Slice:
 		ext.Key, ext.Value, ok = n.buildBodyOverSlicer(rscope, ext.X)
 	default:
 		if irkind.IsInteger(kind) {

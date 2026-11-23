@@ -57,8 +57,7 @@ func initBuiltinsFor(fitp *Interpreter) error {
 	for _, tp := range []ir.Type{
 		ir.AnyType(),
 		ir.ErrorType(),
-		ir.FieldPathType(),
-		ir.GenericFieldIndexType(),
+		ir.GenericFieldPathType(),
 		ir.StringType(),
 
 		ir.BoolType(),

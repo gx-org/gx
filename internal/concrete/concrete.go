@@ -100,7 +100,7 @@ func concreteRank(fr ir.Evaluator, rnk ir.ArrayRank) (ir.ArrayRank, error) {
 		axes, err := concreteAxisLengths(fr, rnkT.Ax)
 		return &ir.Rank{Src: rnkT.Src, Ax: axes}, err
 	case *ir.RankInfer:
-		return concreteRank(fr, rnkT.ArrayRank)
+		return concreteRank(fr, rnkT.Rank())
 	default:
 		return rnk, fmterr.Internalf("cannot convert rank %s:%T to a concrete rank", rnk.SourceString(fr.File()), rnkT)
 	}
@@ -142,7 +142,7 @@ func concreteArrayType(fr ir.Evaluator, tp ir.ArrayType) (ir.ArrayType, error) {
 	return ir.NewArrayType(tp.ArrayType(), dtype, rank), nil
 }
 
-// Concrete converts a type to its concrete type given the context.
+// Concrete computes the concrete type.
 func Concrete(fr ir.Evaluator, tp ir.Type) (_ ir.Type, err error) {
 	defer func() {
 		if err != nil {

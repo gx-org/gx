@@ -20,6 +20,7 @@ import (
 	"strconv"
 
 	"github.com/gx-org/gx/build/ir"
+	"github.com/gx-org/gx/build/ir/irkind"
 	"github.com/gx-org/gx/internal/base/cast"
 	"github.com/gx-org/gx/interp/elements"
 	"github.com/gx-org/gx/src/gx/ast"
@@ -85,7 +86,7 @@ func (urlr *unroller) SubstituteIndex(ev ir.Fetcher, indexExpr *ir.IndexExpr) (a
 	if urlr.path == nil || urlr.stmt.Value == nil || !urlr.stmt.Value.Same(id.Store()) {
 		return &src, true
 	}
-	if !ir.FieldPathType().Same(urlr.stmt.Value.Type()) {
+	if urlr.stmt.Value.Type().Kind() != irkind.FieldPath {
 		return &src, true
 	}
 	root, err := urlr.path.Root()

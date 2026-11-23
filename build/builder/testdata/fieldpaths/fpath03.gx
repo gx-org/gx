@@ -7,7 +7,7 @@ type S struct {
 }
 
 func (s S) inc() S {
-	for _, k := range testfieldpaths.Path[S]("a") {
+	for _, k := range testfieldpaths.Path[S, float32]("a") {
 		s[k] += 1
 	}
 	return s

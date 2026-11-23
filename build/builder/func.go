@@ -165,7 +165,8 @@ func (n *funcType) buildReceiverTypeParams(typeParamsScope *defineLocalScope) ([
 	originFields := named.OriginNamed().GenParams.Fields.Fields()
 	indices := indexedExprIndices(n.recv.list[0].src.Type)
 	if len(indices) > len(originFields) {
-		return nil, typeParamsScope.Err().Appendf(baseType.source(), "got %d type arguments but want %d", len(indices), len(originFields))
+		from := typeParamsScope.fileScope().File()
+		return nil, typeParamsScope.Err().Appendf(baseType.source(), "type %s got %d type arguments but want %d", named.Refer(from), len(indices), len(originFields))
 	}
 	var groups []*ir.FieldGroup
 	for i, indexExpr := range indices {

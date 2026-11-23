@@ -19,101 +19,167 @@ import (
 	"github.com/gx-org/gx/src/gx/ast"
 )
 
-type fieldPathType struct {
+// FieldPathType is the builtin fieldindex type returned by functions traversing structures.
+type FieldPathType struct {
+	genParams GenericParams
 }
 
-var (
-	fieldPathIdent = &ast.Ident{Name: "fieldpath"}
-	fieldPathT     = &fieldPathType{}
-)
+var fieldPathIdent = &ast.Ident{Name: "fieldpath"}
 
-// FieldPathType returns the builtin fieldpath type.
-func FieldPathType() Type {
-	return fieldPathT
+var _ SpecialisableType = (*FieldPathType)(nil)
+
+var origin = newFieldPathType(TypeExpr(nil, &FuncType{}))
+
+func newFieldPathType(keyToValueFunc Expr) *FieldPathType {
+	group := &FieldGroup{Type: TypeExpr(nil, AnyType())}
+	group.Fields = []*Field{
+		{Group: group, Pos: 0, Name: &ast.Ident{Name: "root"}},
+		{Group: group, Pos: 1, Name: &ast.Ident{Name: "value"}},
+	}
+	tp := &FieldPathType{}
+	tp.genParams.SetFields(&FieldList{List: []*FieldGroup{group}})
+	return tp
 }
 
-var fieldPathSliceType = &SliceType{
-	BaseType: BaseType[ast.Expr]{Src: &ast.ArrayType{}},
-	DType:    TypeExpr(nil, FieldPathType()),
-	Rank:     1,
+// GenericFieldPathType returns the builtin fieldindex type.
+func GenericFieldPathType() Type {
+	return origin
 }
 
-// FieldPathSliceType returns the type for a slice of fieldpath.
-func FieldPathSliceType() *SliceType {
-	return fieldPathSliceType
+func (*FieldPathType) node()         {}
+func (*FieldPathType) storage()      {}
+func (*FieldPathType) storageValue() {}
+
+// Node returns the node in the AST tree.
+func (*FieldPathType) Node() ast.Node { return fieldPathIdent }
+
+func (t *FieldPathType) root() *TypeValExpr {
+	if len(t.genParams.Values) < 1 {
+		return nil
+	}
+	typeVal, ok := t.genParams.Values[0].(*TypeGenericValue)
+	if !ok {
+		return nil
+	}
+	return typeVal.tp
 }
 
-func (*fieldPathType) node()         {}
-func (*fieldPathType) storage()      {}
-func (*fieldPathType) storageValue() {}
-
-func (*fieldPathType) Node() ast.Node { return fieldPathIdent }
-
-func (*fieldPathType) Refer(file *File) ast.Expr {
-	return fieldPathIdent
+// Root returns the type indexed by the fieldindex, or nil if not set.
+func (t *FieldPathType) Root() Type {
+	if len(t.genParams.Values) < 1 {
+		return nil
+	}
+	typeVal, ok := t.genParams.Values[0].(*TypeGenericValue)
+	if !ok {
+		return nil
+	}
+	return typeVal.tp.Val()
 }
 
-func (*fieldPathType) Same(Storage) bool {
-	return true
+// Refer returns a source expression to refer to the type.
+func (t *FieldPathType) Refer(file *File) ast.Expr {
+	root := t.Root()
+	if root == nil {
+		return fieldPathIdent
+	}
+	return &ast.IndexExpr{X: fieldPathIdent, Index: root.Refer(file)}
 }
 
-func (t *fieldPathType) Equal(_ TypeEval, other Type) (bool, error) {
-	otherT, ok := other.(*fieldPathType)
+// Same always returns true.
+func (t *FieldPathType) Same(s Storage) bool {
+	return t == s
+}
+
+// Equal returns true if other is the same type.
+func (t *FieldPathType) Equal(tpcmp TypeEval, other Type) (bool, error) {
+	otherT, ok := other.(*FieldPathType)
 	if !ok {
 		return false, nil
 	}
-	return t == otherT, nil
+	return t.genParams.Equal(tpcmp, &otherT.genParams)
 }
 
-func (t *fieldPathType) AssignableTo(tpcmp TypeEval, other Type) (bool, error) {
+// AssignableTo returns true if other is the same type.
+func (t *FieldPathType) AssignableTo(tpcmp TypeEval, other Type) (bool, error) {
 	return t.Equal(tpcmp, other)
 }
 
-func (t *fieldPathType) assignableFrom(tpcmp TypeEval, other Type) (bool, error) {
+func (t *FieldPathType) assignableFrom(tpcmp TypeEval, other Type) (bool, error) {
 	return t.Equal(tpcmp, other)
 }
 
-func (t *fieldPathType) ConvertibleTo(tpcmp TypeEval, other Type) (bool, error) {
+// ConvertibleTo returns true if other is the same type.
+func (t *FieldPathType) ConvertibleTo(tpcmp TypeEval, other Type) (bool, error) {
 	return t.Equal(tpcmp, other)
 }
 
-func (t *fieldPathType) Instantiate(Fetcher, Instantiator) (Type, bool) {
-	return t, true
+// Instantiate specialises the type to a given target.
+func (t *FieldPathType) Instantiate(_ Fetcher, spec Instantiator) (Type, bool) {
+	return t.Specialise(spec)
 }
 
-func (*fieldPathType) Kind() irkind.Kind { return irkind.FieldPath }
+// Kind returns the fieldpath kind.
+func (*FieldPathType) Kind() irkind.Kind { return irkind.FieldPath }
 
-func (*fieldPathType) NameDef() *ast.Ident { return fieldPathIdent }
+// Origin returns the builtin fieldpath type.
+func (*FieldPathType) Origin() GenericType { return origin }
 
-func (*fieldPathType) Type() Type { return MetaType() }
+// Generics returns the generic parameters and their values.
+func (t *FieldPathType) Generics() *GenericParams { return &t.genParams }
 
-func (*fieldPathType) Value(Expr) Expr { return nil }
+func (*FieldPathType) specialisableType() {}
 
-func (*fieldPathType) DefineString(*File) string {
-	return irkind.FieldPath.String()
+// NameDef returns the fieldindex identifier.
+func (*FieldPathType) NameDef() *ast.Ident { return fieldPathIdent }
+
+// Type of a type: always return metatype.
+func (*FieldPathType) Type() Type { return MetaType() }
+
+// Value returns nil.
+func (*FieldPathType) Value(Expr) Expr { return nil }
+
+// DefineString returns the GX source code to define the type.
+func (t *FieldPathType) DefineString(from *File) string {
+	root := t.root()
+	if root == nil {
+		return irkind.FieldPath.String()
+	}
+	return irkind.FieldPath.String() + "[" + root.SourceString(from) + "]"
 }
 
-func (t *fieldPathType) ReferString(from *File) string {
+// ReferString returns the GX source to refer to the type.
+func (t *FieldPathType) ReferString(from *File) string {
 	return t.DefineString(from)
 }
 
 // Specialise a type to a given target.
-func (t *fieldPathType) Specialise(spec Specialiser) (Type, bool) {
-	return t, true
+func (t *FieldPathType) Specialise(spec Specialiser) (Type, bool) {
+	isTarget := spec.Target() == t
+	genParams, ok := t.genParams.Specialise(spec, isTarget)
+	if isTarget {
+		// The values are now the type arguments of the specialiser:
+		// specialise them as well (e.g. to compute [...] ranks from the field path).
+		genParams, ok = genParams.Specialise(spec, false)
+	}
+	return &FieldPathType{genParams: genParams}, ok
 }
 
 // UnifyWith recursively unifies a type parameters with types.
-func (*fieldPathType) UnifyWith(unifier Unifier, typ Type) bool {
+func (*FieldPathType) UnifyWith(unifier Unifier, typ Type) bool {
 	return true
 }
 
-// Unroll returns an error because fieldpath types do not support unrolling.
-func (t *fieldPathType) Unroll(ev Fetcher, urlr Unroller) (ast.Expr, bool) {
+// Unroll returns an error because fieldindex types do not support unrolling.
+func (t *FieldPathType) Unroll(ev Fetcher, urlr Unroller) (ast.Expr, bool) {
 	return nil, ev.Err().AppendInternalf(fieldPathIdent, "%T does not support unrolling", t)
 }
 
-func (t *fieldPathType) IndexForVarArgs(ErrSource, int) (Type, bool) {
+// IndexForVarArgs returns the type itself.
+func (t *FieldPathType) IndexForVarArgs(ErrSource, int) (Type, bool) {
 	return t, true
 }
 
-func (*fieldPathType) Visit(Finder) {}
+// Visit traverses the type argument of the fieldindex type.
+func (t *FieldPathType) Visit(f Finder) {
+	t.root().Visit(f)
+}

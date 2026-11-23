@@ -423,6 +423,11 @@ func ToArrayType(typ Type) ArrayType {
 	return nil
 }
 
+// IsArray returns true if the type is an array.
+func IsArray(typ Type) bool {
+	return ToArrayType(typ) != nil
+}
+
 type equaler interface {
 	equal(tpcmp TypeEval, x Type) (bool, error)
 }

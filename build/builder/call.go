@@ -410,11 +410,11 @@ func evalGenericValue(ce *compileEvaluator, genVal ir.GenericValue) (ir.Element,
 	if err != nil || !genVal.Generic().IsTypeParam() {
 		return el, err
 	}
-	tp, err := cast.To[ir.Type](el)
+	typeEl, err := cast.To[*elements.GenericType](ir.BareValue(el))
 	if err != nil {
 		return el, err
 	}
-	return srcstore.Link(tp, elements.NewGenType(tp))
+	return srcstore.Link(typeEl.Value(), typeEl)
 }
 
 func instantiateFType(ce *compileEvaluator, fExpr *ir.FuncValExpr, ftype *ir.FuncType) (*ir.FuncType, bool) {

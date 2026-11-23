@@ -85,7 +85,7 @@ var (
 		})
 	}
 	genericRankFunc = func() ir.ArrayRank {
-		return &ir.RankInfer{ArrayRank: newRank(newSymbol("a"))}
+		return ir.NewRankInfer(nil, newRank(newSymbol("a")))
 	}
 	axisGroupRankFunc = func() ir.ArrayRank {
 		symbolicAxisNames["M"] = true

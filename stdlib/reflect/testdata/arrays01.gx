@@ -1,4 +1,4 @@
-package leaves01
+package arrays01
 
 import "reflect"
 
@@ -9,7 +9,7 @@ type S struct {
 
 func Test() S {
 	s := S{a: 5, b: 10}
-	for _, k := range reflect.Leaves[S]() {
+	for _, k := range reflect.Arrays[S, int32]() {
 		s[k] += 2
 	}
 	return s

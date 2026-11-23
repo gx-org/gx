@@ -29,14 +29,9 @@ var TestFieldPaths = testbuild.DeclarePackage{
 	Src: `
 package testfieldpaths
 
-//gx:unroll
-func Path[T any](path ...string) []fieldpath
+import "dtype"
 
-//gx:compeval
-func ArrayFromPath[T any, S []int](T, fieldpath) [S...]float32
-
-//gx:compeval
-func PathFieldIndex[T any](path ...string) []fieldindex[T, ArrayFromPath]
+func Path[T any, nums dtype.Nums](path ...string) []fieldpath[T, [...]nums]
 `,
 	Post: func(pkg *ir.Package) {
 		path := pkg.FindFunc("Path").(*ir.FuncBuiltin)
@@ -67,6 +62,10 @@ func evalPath(env *engine.Env, call *ir.FuncCallExpr, recv ir.Element, genArgs, 
 	if err != nil {
 		return nil, err
 	}
+	nums, err := cast.To[*ir.TypeGenericValue](ftype.GenParams.Values[1])
+	if err != nil {
+		return nil, err
+	}
 	pathNames, err := elements.Map(elements.StringFromElement, args[0])
 	if err != nil {
 		return nil, err
@@ -76,8 +75,8 @@ func evalPath(env *engine.Env, call *ir.FuncCallExpr, recv ir.Element, genArgs, 
 	}
 	curType := genType.DefinedType()
 	curPath := storepath.NewProxy()
-	var fpath elements.FieldPath
-	for _, name := range pathNames {
+	var paths []ir.Element
+	for i, name := range pathNames {
 		under := ir.Underlying(curType)
 		structType, ok := under.(*ir.StructType)
 		if !ok {
@@ -87,13 +86,34 @@ func evalPath(env *engine.Env, call *ir.FuncCallExpr, recv ir.Element, genArgs, 
 		if field == nil {
 			return nil, errors.Errorf("type %s has no field %s", curType.ReferString(env.File()), name)
 		}
-		fpath = elements.NewFieldPath(curPath, field)
+		if i == len(pathNames)-1 {
+			// If type does not satisfy the value assigned to [...]nums, then skip.
+			if !checkFieldType(env, field, nums.DefinedType()) {
+				continue
+			}
+			paths = append(paths, elements.NewFieldPath(curPath, field))
+		}
 		curPath = storepath.NewSelect(curPath, field)
 		curType = field.Type()
 	}
-	slice, err := elements.NewSlice(ir.FieldPathSliceType(), []ir.Element{fpath})
+	slice, err := elements.NewSlice(call.Type(), paths)
 	if err != nil {
 		return nil, err
 	}
 	return []ir.Element{slice}, nil
+}
+
+func checkFieldType(env *engine.Env, field *ir.Field, nums ir.Type) bool {
+	fieldType := field.Type()
+	satisfied := false
+	arrayType := ir.ToArrayType(fieldType)
+	if arrayType == nil {
+		return false
+	}
+	tpcmp, isTypeEval := env.ExprEval().(ir.TypeEval)
+	if !isTypeEval {
+		return false
+	}
+	satisfied, err := ir.AssignableTo(tpcmp, arrayType.DataType(), nums)
+	return satisfied && err == nil
 }

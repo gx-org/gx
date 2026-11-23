@@ -1,4 +1,4 @@
-package leaves02
+package arrays02
 
 import "reflect"
 
@@ -24,7 +24,7 @@ func Test() S {
 		u: U{t: T{b: 2, c: 3}, d: 4},
 		t: T{b: 5, c: 6},
 	}
-	for _, k := range reflect.Leaves[S]() {
+	for _, k := range reflect.Arrays[S, int32]() {
 		s[k] += 10
 	}
 	return s

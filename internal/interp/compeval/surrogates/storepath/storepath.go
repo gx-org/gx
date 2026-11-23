@@ -17,6 +17,7 @@ package storepath
 
 import (
 	"fmt"
+	"slices"
 
 	"github.com/gx-org/gx/build/ir"
 	"github.com/gx-org/gx/src/gx/ast"
@@ -71,6 +72,41 @@ func (p *unique) Store() ir.Storage {
 }
 
 func (p *unique) SourceString(from *ir.File) string {
+	return p.x.SourceString(from)
+}
+
+// typeIndex is a type indexed by a field index (e.g. S[k]).
+type typeIndex struct {
+	x     *ir.IndexExpr
+	index Path
+}
+
+// NewTypeIndex returns a path indexing a type with a field index given its path.
+func NewTypeIndex(x *ir.IndexExpr, index Path) Path {
+	return &typeIndex{x: x, index: index}
+}
+
+func (p *typeIndex) Same(other Path) bool {
+	otherT, ok := other.(*typeIndex)
+	if !ok {
+		return false
+	}
+	return p.index.Same(otherT.index)
+}
+
+func (p *typeIndex) Expr() ir.Expr {
+	return p.x
+}
+
+func (*typeIndex) Parent() Path {
+	return nil
+}
+
+func (*typeIndex) Store() ir.Storage {
+	return nil
+}
+
+func (p *typeIndex) SourceString(from *ir.File) string {
 	return p.x.SourceString(from)
 }
 
@@ -282,4 +318,18 @@ func Root(path Path) Path {
 		}
 		current = up
 	}
+}
+
+// Split returns a slice of path from the root to the given path.
+func Split(path Path) []Path {
+	paths := []Path{path}
+	for true {
+		parent := paths[len(paths)-1].Parent()
+		if parent == nil {
+			break
+		}
+		paths = append(paths, parent)
+	}
+	slices.Reverse(paths)
+	return paths
 }

@@ -8,7 +8,7 @@ type Params struct {
 }
 
 func f[T any](p T) T {
-	for _, k := range testfieldpaths.Path[T]("W") {
+	for _, k := range testfieldpaths.Path[T, float32]("W") {
 		p[k] += 10 // ERROR: cannot index any
 	}
 	return p

@@ -135,8 +135,8 @@ func (v *validator) validate(node ir.IR) {
 			v.validate(axis)
 		}
 	case *ir.RankInfer:
-		if nodeT.ArrayRank != nil {
-			v.validate(nodeT.ArrayRank)
+		if rnk := nodeT.Rank(); rnk != nil {
+			v.validate(rnk)
 		}
 	case *ir.AxisExpr:
 		v.validate(nodeT.X)

@@ -49,6 +49,6 @@ type (
 		// Root of the field path.
 		Root() (*storepath.Proxy, error)
 		// FollowOn follow the path on a given element.
-		FollowOn(ir.Element) (ir.Element, error)
+		FollowOn(*ir.IndexExpr, ir.Element) (ir.Element, error)
 	}
 )

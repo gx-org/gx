@@ -24,6 +24,6 @@ var Package = builtin.PackageBuilder{
 	FullPath: "reflect",
 	Builders: []builtin.Builder{
 		builtin.ParseSource(),
-		builtin.ImplementBuiltin("Leaves", evalLeaves),
+		builtin.ImplementBuiltin("Arrays", evalArrays),
 	},
 }

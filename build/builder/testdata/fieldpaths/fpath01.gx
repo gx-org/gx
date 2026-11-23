@@ -13,7 +13,7 @@ type T struct {
 
 func Test() S {
 	s := S{t: T{a: 1, b: 2}}
-	for _, k := range testfieldpaths.Path[S]("t", "a") {
+	for _, k := range testfieldpaths.Path[S, int]("t", "a") {
 		s[k] += 10
 	}
 	return s
@@ -25,4 +25,3 @@ func Test() S {
 	// 	},
 	// }
 }
-

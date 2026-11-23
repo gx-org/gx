@@ -38,34 +38,41 @@ func (f *fieldPath) Root() (*storepath.Proxy, error) {
 	return cast.To[*storepath.Proxy](root)
 }
 
-func followOn(path storepath.Path, root ir.Element) (ir.Element, error) {
-	parent := path.Parent()
-	if parent == nil {
-		return root, nil
-	}
-	cur, err := followOn(parent, root)
-	if err != nil {
-		return nil, err
-	}
-	sel, err := cast.To[engine.Selector](cur)
-	if err != nil {
-		return nil, err
-	}
-	store := path.Store()
-	return sel.Select(nil, &ir.SelectorExpr{
-		Src:  &ast.SelectorExpr{Sel: store.NameDef()},
-		Stor: store,
-	})
+func (f *fieldPath) FollowOn(fieldIndex *ir.IndexExpr, el ir.Element) (ir.Element, error) {
+	return followOn(f.path, el)
 }
 
-func (f *fieldPath) FollowOn(el ir.Element) (ir.Element, error) {
-	return followOn(f.path, el)
+// followOn follows a path on an element and returns the element at the end of the path.
+func followOn(target storepath.Path, el ir.Element) (ir.Element, error) {
+	paths := storepath.Split(target)[1:] // Skip the first element because it matches el.
+	for _, path := range paths {
+		sel, err := cast.To[engine.Selector](el)
+		if err != nil {
+			return nil, err
+		}
+		store := path.Store()
+		if store == nil {
+			continue
+		}
+		el, err = sel.Select(nil, &ir.SelectorExpr{
+			Src:  &ast.SelectorExpr{Sel: store.NameDef()},
+			Stor: store,
+		})
+		if err != nil {
+			return nil, err
+		}
+	}
+	return el, nil
 }
 
 func (f *fieldPath) Expr(ev ir.Evaluator, src ast.Expr) ([]ir.Expr, error) {
 	return []ir.Expr{f.path.Expr()}, nil
 }
 
-func (*fieldPath) Type() ir.Type {
-	return ir.FieldPathType()
+func (f *fieldPath) Type() ir.Type {
+	return ir.GenericFieldPathType()
+}
+
+func (f *fieldPath) String() string {
+	return f.path.SourceString(nil)
 }

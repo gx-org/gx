@@ -22,6 +22,7 @@ import (
 	"github.com/gx-org/gx/internal/interp/compeval/cmp"
 	"github.com/gx-org/gx/internal/interp/compeval/cpevops"
 	"github.com/gx-org/gx/internal/interp/compeval/surrogates/storepath"
+	"github.com/gx-org/gx/interp/elements"
 	"github.com/gx-org/gx/interp/engine"
 	"github.com/gx-org/gx/src/gx/ast"
 )
@@ -32,10 +33,13 @@ type Array interface {
 	Element
 }
 
+type evalAxesFunc func(ir.Evaluator, ir.Type) (*elements.Slice, error)
+
 // array element storing a GX value array.
 type array struct {
-	path storepath.Path
-	typ  ir.ArrayType
+	path     storepath.Path
+	typ      ir.ArrayType
+	evalAxes evalAxesFunc
 }
 
 // Need to support canonical to be able to compare axes using unpack.
@@ -52,7 +56,14 @@ func NewArrayFrom(p storepath.Path, typ ir.Type) (Array, error) {
 
 // NewArray returns a new array from a generic type.
 func NewArray(p storepath.Path, typ ir.ArrayType) Array {
-	return &array{path: p, typ: typ}
+	return newArray(p, typ, nil)
+}
+
+func newArray(p storepath.Path, typ ir.ArrayType, evalAxes evalAxesFunc) Array {
+	if evalAxes == nil {
+		evalAxes = cpevops.AxesFromType
+	}
+	return &array{path: p, typ: typ, evalAxes: evalAxes}
 }
 
 func (a *array) Type() ir.Type {
@@ -86,7 +97,7 @@ func (a *array) UnaryOp(env *engine.Env, expr *ir.UnaryExpr) (engine.NumericalEl
 }
 
 func (a *array) Axes(ev ir.Evaluator) (ir.FixedSlice, error) {
-	return cpevops.AxesFromType(ev, a.typ)
+	return a.evalAxes(ev, a.typ)
 }
 
 // BinaryOp applies a binary operator to x and y.

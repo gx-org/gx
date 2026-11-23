@@ -25,6 +25,7 @@ import (
 	"github.com/gx-org/gx/internal/algexpr"
 	"github.com/gx-org/gx/internal/base/cast"
 	"github.com/gx-org/gx/internal/interp/compeval/cmp"
+	"github.com/gx-org/gx/internal/interp/coreiface"
 	"github.com/gx-org/gx/internal/interp/flatten"
 	"github.com/gx-org/gx/interp/engine"
 	"github.com/gx-org/gx/src/gx/ast"
@@ -37,10 +38,11 @@ type Struct struct {
 }
 
 var (
-	_ IStruct         = (*Struct)(nil)
-	_ engine.Copier   = (*Struct)(nil)
-	_ engine.Selector = (*Struct)(nil)
-	_ hostio.Value    = (*Struct)(nil)
+	_ IStruct               = (*Struct)(nil)
+	_ engine.Copier         = (*Struct)(nil)
+	_ engine.Selector       = (*Struct)(nil)
+	_ hostio.Value          = (*Struct)(nil)
+	_ coreiface.IndexSetter = (*Struct)(nil)
 )
 
 // NewStructFromElements returns a new node representing a structure instance given a slice of
@@ -216,6 +218,24 @@ func (n *Struct) Copy() engine.Copier {
 // SetField sets the field in the structure.
 func (n *Struct) SetField(name string, value ir.Element) {
 	n.fields[name] = value
+}
+
+// SetAt sets the value of the field referenced by a field path index.
+func (n *Struct) SetAt(index ir.Element, value ir.Element) error {
+	fpath, err := cast.To[*fieldPath](index)
+	if err != nil {
+		return err
+	}
+	parent, err := followOn(fpath.path.Parent(), n)
+	if err != nil {
+		return err
+	}
+	strt, err := coreiface.Cast[*Struct](parent)
+	if err != nil {
+		return err
+	}
+	strt.SetField(fpath.path.Store().NameDef().Name, value)
+	return nil
 }
 
 // FieldValue returns the value of a field given its name.

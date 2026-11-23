@@ -51,16 +51,22 @@ func (runner) Keyword(fn *ir.FuncKeyword, env *engine.Env, call *ir.FuncCallExpr
 	return Call(call)
 }
 
-// Call returns surrogate values for all results of a function simulating a function call.
-func Call(call *ir.FuncCallExpr) ([]ir.Element, error) {
+// CallFrom returns surrogate values for all results of a function simulating a function call.
+// Root is used as the parent of the surrogate values returned in the result.
+func CallFrom(root storepath.Path, call *ir.FuncCallExpr) ([]ir.Element, error) {
 	res := call.Callee.FuncType().Results.Fields()
 	els := make([]ir.Element, len(res))
 	for i, ri := range res {
 		var err error
-		els[i], err = New(storepath.NewUniqueIR(call), ri.Type())
+		els[i], err = New(root, ri.Type())
 		if err != nil {
 			return nil, err
 		}
 	}
 	return els, nil
+}
+
+// Call returns surrogate values for all results of a function simulating a function call.
+func Call(call *ir.FuncCallExpr) ([]ir.Element, error) {
+	return CallFrom(storepath.NewUniqueIR(call), call)
 }

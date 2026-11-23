@@ -19,7 +19,6 @@ import (
 	"slices"
 	"strings"
 
-	"github.com/gx-org/gx/build/fmterr"
 	"github.com/gx-org/gx/build/ir/generics"
 	"github.com/gx-org/gx/build/ir"
 	"github.com/gx-org/gx/build/ir/irkind"
@@ -193,12 +192,37 @@ func (n *indexExpr) buildSlicerIndex(rscope resolveScope, ext *ir.IndexExpr, xTy
 	return boundOk && numberOk && indexTypeOk
 }
 
-func (n *indexExpr) buildStructIndex(rscope resolveScope, ext *ir.IndexExpr, xType *ir.StructType) bool {
-	indexKind := ext.Index.Type().Kind()
-	if indexKind != irkind.Invalid && indexKind != irkind.FieldPath {
-		return rscope.Err().Appendf(n.source(), "index %s (of type %s) must be fieldpath", ext.Index.SourceString(rscope.fileScope().File()), ext.Index.Type().ReferString(rscope.fileScope().File()))
+func (n *indexExpr) buildFieldIndex(rscope resolveScope, ext *ir.IndexExpr, xType ir.Type) bool {
+	ext.Typ = ir.InvalidType()
+	indexType := ext.Index.Type()
+	indexKind := indexType.Kind()
+	if indexKind == irkind.Invalid {
+		return true
 	}
-	ext.Typ = ir.UnknownType()
+	if indexKind != irkind.FieldPath {
+		return rscope.Err().Appendf(n.source(), "index %s (of type %s) must be of type fieldindex", ext.Index.SourceString(rscope.fileScope().File()), ext.Index.Type().ReferString(rscope.fileScope().File()))
+	}
+	fieldPathType, err := cast.To[*ir.FieldPathType](indexType)
+	if err != nil {
+		return rscope.Err().AppendInternalf(n.source(), "%s", err.Error())
+	}
+	if root := fieldPathType.Root(); root == nil || !equalToAt(rscope, n.source(), xType, root) {
+		from := rscope.fileScope().File()
+		return rscope.Err().Appendf(n.source(), "cannot index %s (of type %s) with %s (of type %s)", ext.X.SourceString(from), xType.ReferString(from), ext.Index.SourceString(from), indexType.ReferString(from))
+	}
+	ce, ok := rscope.compEval()
+	if !ok {
+		return false
+	}
+	specType, ok := generics.SpecialiseFieldIndex(ce, ext, fieldPathType)
+	if !ok {
+		return false
+	}
+	fieldPathType, err = cast.To[*ir.FieldPathType](specType.Val())
+	if err != nil {
+		return rscope.Err().AppendInternalf(n.source(), "%s", err.Error())
+	}
+	ext.Typ = fieldPathType.Generics().Values[1].DefinedType()
 	return true
 }
 
@@ -229,7 +253,7 @@ func (n *indexExpr) buildExpr(rscope resolveScope) (ir.Expr, bool) {
 	case ir.ArrayType:
 		ok = n.buildSlicerIndex(rscope, ext, xTypeT)
 	case *ir.StructType:
-		ok = n.buildStructIndex(rscope, ext, xTypeT)
+		ok = n.buildFieldIndex(rscope, ext, xType)
 	default:
 		from := rscope.fileScope().File()
 		ok = rscope.Err().Appendf(x.Node(), "cannot index %s (type: %s)", ext.X.SourceString(from), xType.ReferString(from))
@@ -316,39 +340,23 @@ func (n *indexExprType) source() ast.Node {
 	return n.src
 }
 
-func specializeFieldIndex(rscope resolveScope, x *ir.TypeValExpr, gtype ir.SpecialisableType, targetFuncType ir.Expr) (*ir.TypeValExpr, ir.SpecialisableType, bool) {
-	idxfield, err := cast.To[*ir.FieldIndexType](x.Val())
-	if err != nil {
-		return x, gtype, rscope.Err().AppendAt(x.Node(), fmterr.Internal(err))
-	}
-	specIdxField, err := idxfield.SpecialiseForFunc(targetFuncType)
-	if err != nil {
-		return x, gtype, rscope.Err().AppendAt(x.Node(), err)
-	}
-	return ir.TypeExpr(x.Expr(), specIdxField), specIdxField, true
-}
-
 func specializeType(rscope resolveScope, x *ir.TypeValExpr, indices []ir.Expr) (*ir.TypeValExpr, bool) {
 	kind := x.Val().Kind()
-	if kind != irkind.Struct && kind != irkind.FieldIndex {
+	if kind != irkind.Struct && kind != irkind.FieldPath {
 		return invalidTypeExprVal, rscope.Err().Appendf(x.Node(), "%s is not a generic type", x.SourceString(rscope.fileScope().File()))
 	}
 	gtype, err := cast.To[ir.SpecialisableType](x.Val())
 	if err != nil {
 		return invalidTypeExprVal, rscope.Err().AppendAt(x.Node(), err)
 	}
-	if gotN, wantN := len(indices), gtype.Generics().Fields.Len(); gotN < wantN {
-		return invalidTypeExprVal, rscope.Err().Appendf(x.Node(), "not enough type arguments for type %s: have %d, want %d", x.SourceString(rscope.fileScope().File()), gotN, wantN)
+	gotN, wantN := len(indices), gtype.Generics().Fields.Len()
+	if gotN != wantN {
+		from := rscope.fileScope().File()
+		return invalidTypeExprVal, rscope.Err().Appendf(x.Node(), "type %s got %d type arguments but want %d", x.SourceString(from), gotN, wantN)
 	}
 	ce, ok := rscope.compEval()
 	if !ok {
 		return invalidTypeExprVal, false
-	}
-	if kind == irkind.FieldIndex {
-		// Specialise the second argument of fieldindex to the specific function passed as generic arguments.
-		if x, gtype, ok = specializeFieldIndex(rscope, x, gtype, indices[1]); !ok {
-			return invalidTypeExprVal, false
-		}
 	}
 	genValues, ok := buildGenericValues(rscope, x, ce, gtype.Generics(), indices)
 	if !ok {

@@ -64,4 +64,10 @@ type (
 		SliceAt(env *Env, expr *ir.IndexExpr, index NumericalElement) (ir.Element, error)
 		Slice(env *Env, expr *ir.SliceExpr, low, high NumericalElement) (ir.Element, error)
 	}
+
+	// FieldIndex is an element representing a field index.
+	FieldIndex interface {
+		// ArrayCast casts the field index into an array.
+		ArrayCast(call *ir.FuncCallExpr, dtype ir.Type) (NumericalElement, error)
+	}
 )
