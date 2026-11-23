@@ -34,18 +34,31 @@ GxExtensionGoInfo = provider(
     },
 )
 
+def _find_export_file(files, label):
+    for extension in ("x", "a"):
+        for file in files:
+            if file.extension == extension:
+                return file
+    fail("no .x or .a export file found in {}: {}".format(
+        label,
+        [file.path for file in files],
+    ))
+
 def _generate_all(ctx):
     lib_name = ctx.label.name[:-4]
     out_go_file = ctx.actions.declare_file("importgo_" + lib_name + ".go")
     out_gx_file = ctx.actions.declare_file("importgo_" + lib_name + ".gx")
-    lib_files = ctx.attr.lib[DefaultInfo].files.to_list()
+    export_file = _find_export_file(
+        ctx.attr.lib[DefaultInfo].files.to_list(),
+        ctx.attr.lib.label,
+    )
     args = ctx.actions.args()
     args.add("importgo")
     args.add("--filenamesuffix=" + "_" + lib_name)
-    args.add(lib_files[1])
+    args.add(export_file)
     ctx.actions.run(
         outputs = [out_gx_file, out_go_file],
-        inputs = [lib_files[1]],
+        inputs = [export_file],
         executable = ctx.executable._tool,
         arguments = [args],
         mnemonic = "gximportgo",
