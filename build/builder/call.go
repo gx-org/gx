@@ -23,6 +23,7 @@ import (
 	"github.com/gx-org/gx/build/ir/generics"
 	"github.com/gx-org/gx/build/ir"
 	"github.com/gx-org/gx/build/ir/irkind"
+	"github.com/gx-org/gx/internal/base/cast"
 	"github.com/gx-org/gx/internal/interp/compeval/srcstore"
 	"github.com/gx-org/gx/internal/interp/compeval/surrogates"
 	"github.com/gx-org/gx/internal/undef"
@@ -252,6 +253,8 @@ func (n *callExpr) buildCallExpr(rscope resolveScope, callee ir.Expr) (ir.Expr, 
 		return n.buildMacroCall(rscope, compEval, callee, elT.MacroIR())
 	case ir.Type:
 		return n.buildTypeCast(rscope, callee, elT)
+	case *elements.GenericType:
+		return n.buildTypeCast(rscope, callee, elT.Value())
 	case ir.FuncAnnotator:
 		return invalidExpr(), rscope.Err().Appendf(callee.Node(), "annotator gx:@%s only valid in a function annotation context", elT.ReferString(rscope.fileScope().File()))
 	case *elements.NamedType:
@@ -371,7 +374,12 @@ func evalGenericValues(ce *compileEvaluator, gtype ir.GenericType) (map[string]i
 				ok = ce.Err().AppendAt(tParam.Node(), err)
 			}
 		} else {
-			el = ir.NewGenericTypeParam(storage.Field)
+			var err error
+			tp := ir.NewGenericTypeParam(storage.Field)
+			el, err = srcstore.Link(tp, elements.NewGenType(tp))
+			if err != nil {
+				ok = ce.Err().AppendAt(tParam.Node(), err)
+			}
 		}
 		out[name] = el
 	}
@@ -384,15 +392,29 @@ func evalGenericValues(ce *compileEvaluator, gtype ir.GenericType) (map[string]i
 			continue
 		}
 		var err error
-		out[field.Name.Name], err = ce.EvalExpr(genVal.Value())
-		if undef.Is(err) {
-			out[field.Name.Name], err = surrogates.FieldRoot(field, field.Storage())
-		}
+		out[field.Name.Name], err = evalGenericValue(ce, genVal)
 		if err != nil {
 			ok = ce.Err().AppendAt(genVal.Value().Node(), err)
 		}
 	}
 	return out, ok
+}
+
+// evalGenericValue evaluates the value assigned to a generic parameter.
+func evalGenericValue(ce *compileEvaluator, genVal ir.GenericValue) (ir.Element, error) {
+	el, err := ce.EvalExpr(genVal.Value())
+	if undef.Is(err) {
+		field := genVal.Generic().OrigField()
+		return surrogates.FieldRoot(field, field.Storage())
+	}
+	if err != nil || !genVal.Generic().IsTypeParam() {
+		return el, err
+	}
+	tp, err := cast.To[ir.Type](el)
+	if err != nil {
+		return el, err
+	}
+	return srcstore.Link(tp, elements.NewGenType(tp))
 }
 
 func instantiateFType(ce *compileEvaluator, fExpr *ir.FuncValExpr, ftype *ir.FuncType) (*ir.FuncType, bool) {

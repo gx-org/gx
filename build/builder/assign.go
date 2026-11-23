@@ -35,19 +35,30 @@ type (
 
 var _ assignable = (*identStorage)(nil)
 
-func (asg *identStorage) checkTypeParam(rscope resolveScope, storage ir.Element) bool {
-	val := ir.BareValue(storage)
-	if _, isTypeParam := val.(*ir.GenericTypeParam); isTypeParam {
-		return rscope.Err().Appendf(asg.source(), "cannot assign to %s", asg.target.src.Name)
+// findIdentStorage returns the storage of el, the element bound to the target
+// name. It reports an error if that storage is a type, for example a generic
+// type parameter: a value cannot be assigned to a type.
+func (asg *identStorage) findIdentStorage(rscope resolveScope, el ir.Element) (ir.Storage, bool) {
+	name := asg.target.src
+	storage, ok := storageFromElement(rscope, name, el)
+	if !ok {
+		return invalidExpr().Store(), false
 	}
-	return true
+	if _, isType := storage.(ir.Type); isType {
+		return invalidExpr().Store(), rscope.Err().Appendf(name, "cannot assign to %s", name.Name)
+	}
+	return storage, true
 }
 
 func (asg *identStorage) assign(rscope resolveScope, typ ir.Type) (_ ir.Storage, newName, ok bool) {
 	name := asg.target.src
-	storage, ok := findStorage(rscope, name)
-	if !ok || !asg.checkTypeParam(rscope, storage) {
+	el, ok := findElement(rscope, name)
+	if !ok {
 		return invalidExpr().Store(), false, false
+	}
+	storage, ok := asg.findIdentStorage(rscope, el)
+	if !ok {
+		return storage, false, false
 	}
 	if ir.IsBuiltin(storage) {
 		return invalidExpr().Store(), false, rscope.Err().Appendf(asg.source(), "cannot assign to %s", name.Name)
@@ -65,13 +76,14 @@ func (asg *identStorage) assign(rscope resolveScope, typ ir.Type) (_ ir.Storage,
 
 func (asg *identStorage) define(rscope resolveScope, typ ir.Type) (_ ir.Storage, newName, ok bool) {
 	name := asg.target.src.Name
-	storage, isDefined := rscope.nspace().Find(name)
-	if isDefined && !asg.checkTypeParam(rscope, storage) {
-		return invalidExpr().Store(), false, false
-	}
+	el, isDefined := rscope.nspace().Find(name)
 	isBuiltin := false
-	if storer, isStorage := storage.(ir.WithStore); isStorage {
-		isBuiltin = ir.IsBuiltin(storer.Store())
+	if isDefined {
+		storage, storageOk := asg.findIdentStorage(rscope, el)
+		if !storageOk {
+			return storage, false, false
+		}
+		isBuiltin = ir.IsBuiltin(storage)
 	}
 	if isBuiltin {
 		// Defining a builtin: although the name is already defined,
@@ -82,9 +94,9 @@ func (asg *identStorage) define(rscope resolveScope, typ ir.Type) (_ ir.Storage,
 		typ = ir.DefaultNumberType(typ.Kind())
 	}
 	assignOk := true
-	if storage != nil && !isBuiltin {
+	if el != nil && !isBuiltin {
 		// Check the type if the variable has already been defined, except if that is a builtin.
-		assignOk = assignableToAt(rscope, asg.source(), typ, storage.Type())
+		assignOk = assignableToAt(rscope, asg.source(), typ, el.Type())
 	}
 	ext := &ir.LocalVarStorage{Src: asg.target.src, Typ: typ}
 	if !ir.ValidName(name) {

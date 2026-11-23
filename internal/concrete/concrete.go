@@ -24,6 +24,13 @@ import (
 	"github.com/gx-org/gx/internal/interp/compeval/cmp"
 )
 
+// TypeElement is an element encapsulating a type.
+// For example, the value of a generic type parameter in a frame (elements.GenericType).
+type TypeElement interface {
+	ir.Element
+	Value() ir.Type
+}
+
 func concreteTypeParam(fr ir.Evaluator, tp *ir.GenericTypeParam) (ir.Type, error) {
 	typeExpr := &ir.Ident{
 		Src:  tp.OrigField().Name,
@@ -33,11 +40,11 @@ func concreteTypeParam(fr ir.Evaluator, tp *ir.GenericTypeParam) (ir.Type, error
 	if err != nil {
 		return nil, fmterr.Internalf("cannot cast to %s: %v", tp.ReferString(fr.File()), err)
 	}
-	elType, isType := ir.BareValue(el).(ir.Type)
+	typeEl, isType := ir.BareValue(el).(TypeElement)
 	if !isType {
 		return nil, fmterr.Internalf("element %T is not a type", el)
 	}
-	return elType, nil
+	return typeEl.Value(), nil
 }
 
 func evalAxisExpr(fr ir.Evaluator, axis ir.AxisLengths, x ir.Expr) ([]ir.AxisLengths, error) {

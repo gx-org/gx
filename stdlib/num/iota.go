@@ -29,12 +29,12 @@ func targetShape(genArgs []ir.Element) (shapes.Shape, error) {
 	if err != nil {
 		return shapes.Shape{}, err
 	}
-	tp, err := cast.To[ir.Type](ir.BareValue(genArgs[1]))
+	genType, err := cast.To[*elements.GenericType](ir.BareValue(genArgs[1]))
 	if err != nil {
 		return shapes.Shape{}, err
 	}
 	return shapes.Shape{
-		DType:      tp.Kind().DType(),
+		DType:      genType.Value().Kind().DType(),
 		Dimensions: axes,
 	}, nil
 }

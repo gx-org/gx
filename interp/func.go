@@ -19,7 +19,9 @@ import (
 	"github.com/gx-org/gx/api/hostio"
 	"github.com/gx-org/gx/build/fmterr"
 	"github.com/gx-org/gx/build/ir"
+	"github.com/gx-org/gx/internal/base/cast"
 	"github.com/gx-org/gx/interp/context"
+	"github.com/gx-org/gx/interp/elements"
 	"github.com/gx-org/gx/interp/engine"
 	"github.com/gx-org/gx/src/gx/ast"
 )
@@ -38,20 +40,27 @@ func fieldNames(fields []*ir.FieldGroup) (r []*ast.Ident) {
 	return
 }
 
-func toConcreteType(ctx *context.Context, src ast.Node, frame *context.Frame, tp ir.Type) (ir.Type, error) {
+// findConcreteTypeElement returns an element encapsulating the concrete type of tp.
+// If tp is a generic type parameter, the element is the value of that parameter in the frame.
+func findConcreteTypeElement(ctx *context.Context, src ast.Node, frame *context.Frame, tp ir.Type) (*elements.GenericType, error) {
 	typeParam, isTypeParam := tp.(*ir.GenericTypeParam)
 	if !isTypeParam {
-		return tp, nil
+		return elements.NewGenType(tp), nil
 	}
 	el, err := frame.Find(typeParam.OrigField().Name)
 	if err != nil {
-		return nil, fmterr.InternalAt(ctx.File().FileSet(), src, "cannot cast to %s: %v", tp.ReferString(ctx.File()), err)
+		return nil, fmterr.InternalAt(ctx.File().FileSet(), src, "cannot find a value for generic type %s: %v", tp.ReferString(ctx.File()), err)
 	}
-	tp, isType := ir.BareValue(el).(ir.Type)
-	if !isType {
-		return nil, fmterr.InternalAt(ctx.File().FileSet(), src, "element %T is not a type", el)
+	return cast.To[*elements.GenericType](ir.BareValue(el))
+}
+
+// findConcreteType returns the concrete type of tp.
+func findConcreteType(ctx *context.Context, src ast.Node, frame *context.Frame, tp ir.Type) (ir.Type, error) {
+	typeEl, err := findConcreteTypeElement(ctx, src, frame, tp)
+	if err != nil {
+		return nil, err
 	}
-	return tp, nil
+	return typeEl.Value(), nil
 }
 
 func assignTypeParameters(ctx *context.Context, callee ir.Callee, funcFrame *context.Frame, genArgs []ir.Element) {
