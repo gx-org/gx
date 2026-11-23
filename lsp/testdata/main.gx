@@ -79,6 +79,7 @@ func Exercise(p Pair, arr [2][3]float32) float32 {
 	var localVar int32
 	localVar = 1
 	a, b := pair(p.A)
+	a, b = pair(b)
 	a += float32(localVar)
 	lit := Pair{B: b, A: (a + -1.25)}
 	lit.A, lit.B = pair(p.A)
@@ -111,10 +112,15 @@ func Exercise(p Pair, arr [2][3]float32) float32 {
 		a = 1
 	}
 	for idx := range StaticScalar {
-		localVar += int32(idx)
+		idx = idx + 1
+		localVar += idx
 	}
 	for idx, elem := range sl {
 		localVar += int32(idx) + elem
+	}
+	for _, rv := range inferred {
+		a, rv = pair(rv)
+		a += rv
 	}
 	for u := range unrollIndices() {
 		localVar += int32(u)

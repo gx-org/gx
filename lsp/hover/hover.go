@@ -46,10 +46,20 @@ func populate(info *Info, file *ir.File, node ir.IR) {
 		populateConst(info, file, n)
 	case *ir.VarExpr:
 		populateVar(info, file, n)
+	case *ir.AssignExpr:
+		populateAssign(info, file, n)
+	case *ir.AssignCallResult:
+		if lvs, ok := n.Storage.(*ir.LocalVarStorage); !ok || isRangeVar(file, lvs.NameDef()) {
+			populate(info, file, n.Storage)
+			return
+		}
+		populateLocal(info, file, n)
+	case *ir.LocalVarStorage:
+		populateLocal(info, file, n)
 	case *ir.Ident:
 		populate(info, file, n.Stor)
 	}
-	// TODO(b/586481357): Populate local assignment, range storage, and builtin type nodes.
+	// TODO(b/586481357): Populate builtin scalar and slice type nodes.
 }
 
 func populateImport(info *Info, file *ir.File, imp *ir.ImportDecl) {
@@ -80,6 +90,40 @@ func populateVar(info *Info, file *ir.File, ve *ir.VarExpr) {
 		info.DeclaredBy = ve.Decl.FFile.Package.Path()
 	}
 	info.Documentation = specDoc(ve.Decl.FFile, ve.Decl.Src, ve.Decl.Src.Doc)
+}
+
+func populateAssign(info *Info, file *ir.File, ae *ir.AssignExpr) {
+	lvs, ok := ae.Storage.(*ir.LocalVarStorage)
+	if !ok || isRangeVar(file, lvs.NameDef()) {
+		populate(info, file, ae.Storage)
+		return
+	}
+	if bin, ok := ae.X.(*ir.BinaryExpr); ok {
+		if id, ok := bin.X.(*ir.Ident); ok && id.Src == lvs.NameDef() {
+			populate(info, file, id.Stor)
+			return
+		}
+	}
+	populateLocal(info, file, ae)
+	if fv, ok := ae.X.(*ir.FuncValExpr); ok {
+		if fnLit, ok := fv.Func().(*ir.FuncLit); ok {
+			info.Snippet = fmt.Sprintf("%s := %s", ae.NameDef().Name, fnLit.DefineString(file))
+		}
+	}
+}
+
+func isRangeVar(file *ir.File, ident *ast.Ident) bool {
+	for n := range ast.Preorder(file.Src) {
+		if rs, ok := n.(*ast.RangeStmt); ok && (rs.Key == ident || rs.Value == ident) {
+			return true
+		}
+	}
+	return false
+}
+
+func populateLocal(info *Info, file *ir.File, stor ir.Storage) {
+	info.Definition = stor
+	info.SymbolInfo = fmt.Sprintf("var %s %s", stor.NameDef().Name, stor.Type().ReferString(file))
 }
 
 func specDoc(file *ir.File, spec ast.Spec, doc *ast.CommentGroup) string {
