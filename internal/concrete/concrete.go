@@ -112,7 +112,7 @@ func concreteNamedType(fr ir.Evaluator, ntp *ir.NamedType) (ir.Type, error) {
 		return nil, err
 	}
 	cNamed := *ntp
-	cNamed.Underlying = ir.TypeExpr(nil, under)
+	cNamed.Underlying = ir.TypeExpr(ntp.Underlying.Expr(), under)
 	return &cNamed, nil
 }
 
@@ -139,7 +139,7 @@ func concreteArrayType(fr ir.Evaluator, tp ir.ArrayType) (ir.ArrayType, error) {
 	if err != nil {
 		return tp, err
 	}
-	return ir.NewArrayType(nil, dtype, rank), nil
+	return ir.NewArrayType(tp.ArrayType(), dtype, rank), nil
 }
 
 // Concrete converts a type to its concrete type given the context.
