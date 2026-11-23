@@ -1,0 +1,123 @@
+package where01
+
+import (
+	"dtype"
+	"math"
+	"num"
+)
+
+// Test options:
+// setStatic dim int 3
+
+var dim int
+
+func TestWhereScalars() (float32, int32) {
+	return num.Where(true, float32(1.5), float32(-2.5)), num.Where(false, int32(10), int32(20))
+	// Want:
+	// 0: float32(1.5)
+	// 1: int32(20)
+}
+
+func TestWhere1DFloat32() [4]float32 {
+	cond := [4]bool{true, false, false, true}
+	onTrue := [4]float32{1, 2, 3, 4}
+	onFalse := [4]float32{-1, -2, -3, -4}
+	return num.Where(cond, onTrue, onFalse)
+	// Want:
+	// [4]float32{1, -2, -3, 4}
+}
+
+func TestWhere2DInt64() [2][3]int64 {
+	cond := [2][3]bool{
+		{true, false, true},
+		{false, true, false},
+	}
+	onTrue := [2][3]int64{
+		{1, 2, 3},
+		{4, 5, 6},
+	}
+	onFalse := [2][3]int64{
+		{10, 20, 30},
+		{40, 50, 60},
+	}
+	return num.Where(cond, onTrue, onFalse)
+	// Want:
+	// [2][3]int64{
+	// 	{1, 20, 3},
+	// 	{40, 5, 60},
+	// }
+}
+
+func TestWhereScalarOnFalse() [4]float32 {
+	x := [4]float32{-2, 0, 3, -1}
+	return num.Where(x > 0, x, 0)
+	// Want:
+	// [4]float32{0, 0, 3, 0}
+}
+
+func TestWhereScalarOnTrue() [4]float32 {
+	cond := [4]bool{true, false, true, false}
+	return num.Where(cond, float32(9), [4]float32{1, 2, 3, 4})
+	// Want:
+	// [4]float32{9, 2, 9, 4}
+}
+
+func TestWhereBothScalars() ([3]float64, [3]float32) {
+	cond := [3]bool{true, false, true}
+	return num.Where(cond, 1.0, -1.0), num.Where[float32](cond, 1, -1)
+	// Want:
+	// 0: [3]float64{1, -1, 1}
+	// 1: [3]float32{1, -1, 1}
+}
+
+func TestWhereScalarCond() ([2][2]int32, [2][2]int32, [3]uint32) {
+	a := [2][2]int32{{1, 2}, {3, 4}}
+	b := [2][2]int32{{5, 6}, {7, 8}}
+	return num.Where(true, a, b), num.Where(false, a, b), num.Where(false, [3]uint32{1, 2, 3}, 9)
+	// Want:
+	// 0: [2][2]int32{
+	// 	{1, 2},
+	// 	{3, 4},
+	// }
+	// 1: [2][2]int32{
+	// 	{5, 6},
+	// 	{7, 8},
+	// }
+	// 2: [3]uint32{9, 9, 9}
+}
+
+func relu[S []int, T dtype.Floats](x [S...]T) [S...]T {
+	return num.Where(x > 0, x, 0)
+}
+
+func selectWithScalarCond[S []int, T dtype.Nums](cond bool, a, b [S...]T) [S...]T {
+	return num.Where(cond, a, b)
+}
+
+func TestWhereGenericShape() (float32, [3]float32, [2][2]float64, [2]int32) {
+	return relu(float32(-3)),
+		relu([3]float32{-1, 2, -3}),
+		relu([2][2]float64{{-1, 2}, {3, -4}}),
+		selectWithScalarCond(false, [2]int32{1, 2}, [2]int32{3, 4})
+	// Want:
+	// 0: float32(0)
+	// 1: [3]float32{0, 2, 0}
+	// 2: [2][2]float64{
+	// 	{0, 2},
+	// 	{3, 0},
+	// }
+	// 3: [2]int32{3, 4}
+}
+
+func TestWhereUnselectedInf() [2]float32 {
+	return num.Where([2]bool{true, false}, [2]float32{1, math.InfFloat32}, [2]float32{math.InfFloat32, 2})
+	// Want:
+	// [2]float32{1, 2}
+}
+
+func TestWhereStaticDim() [dim]int32 {
+	vals := num.Iota[[]int{dim}, int32](0)
+	return num.Where(vals > 0, vals, -1)
+	// Want:
+	// [3]int32{-1, 1, 2}
+}

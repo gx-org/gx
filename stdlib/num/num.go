@@ -41,6 +41,8 @@ var Package = builtin.PackageBuilder{
 		builtin.ImplementBuiltin("Sum", evalReduceSum),
 		builtin.ImplementBuiltin("einsumAxes", evalEinsumAxes),
 		builtin.ImplementBuiltin("Einsum", evalEinsum),
+		builtin.ImplementBuiltin("whereShape", evalWhereShape),
+		builtin.ImplementBuiltin("Where", evalWhere),
 	},
 }
 

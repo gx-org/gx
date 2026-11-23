@@ -1,0 +1,48 @@
+package where_err01
+
+import "num"
+
+func testWhereNonBoolCond() [2]float32 {
+	return num.Where([2]int32{1, 0}, [2]float32{1, 2}, [2]float32{3, 4}) // ERROR cannot use type [2]int32 as [2]bool in argument to num.Where
+}
+
+func testWhereMismatchedDType() [2]float32 {
+	return num.Where([2]bool{true, false}, [2]float32{1, 2}, [2]int32{3, 4}) // ERROR type int32 does not match type float32 for T
+}
+
+func testWhereBoolValues() [2]bool {
+	return num.Where(
+		[2]bool{true, false},
+		[2]bool{true, true},   // ERROR bool does not satisfy dtype.Nums
+		[2]bool{false, false}, // ERROR bool does not satisfy dtype.Nums
+	)
+}
+
+func testWhereCondOnTrueShapeMismatch() [2]float32 {
+	return num.Where([2]bool{true, false}, [3]float32{1, 2, 3}, [2]float32{4, 5}) // ERROR cannot use array of shape []int{3} as scalar or array of shape []int{2} (expect same shape)
+}
+
+func testWhereCondOnFalseShapeMismatch() [2]float32 {
+	return num.Where([2]bool{true, false}, [2]float32{1, 2}, [3]float32{3, 4, 5}) // ERROR cannot use array of shape []int{3} as scalar or array of shape []int{2} (expect same shape)
+}
+
+func testWhereOnTrueOnFalseShapeMismatch() [2]float32 {
+	return num.Where(true, [2]float32{1, 2}, [3]float32{3, 4, 5}) // ERROR cannot use array of shape []int{3} as scalar or array of shape []int{2} (expect same shape)
+}
+
+func testWhereRankMismatch() [2]float32 {
+	return num.Where([2]bool{true, false}, [2][1]float32{{1}, {2}}, 0) // ERROR cannot use array of shape []int{2, 1} as scalar or array of shape []int{2} (expect same shape)
+}
+
+func testWhereTooFewArgs() [2]float32 {
+	return num.Where([2]bool{true, false}, [2]float32{1, 2}) // ERROR not enough arguments in call to num.Where
+}
+
+var (
+	dimA int
+	dimB int
+)
+
+func testWhereStaticDimMismatch(cond [dimA]bool, x [dimB]float32) [dimA]float32 {
+	return num.Where(cond, x, 0) // ERROR cannot use array of shape []int{dimB} as scalar or array of shape []int{dimA} (expect same shape)
+}

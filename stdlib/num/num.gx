@@ -124,3 +124,10 @@ func einsumAxes(xS, xContract, xBatch, yS, yContract, yBatch []int) []int
 
 // Einsum between two arrays.
 func Einsum[XContract, XBatch, YContract, YBatch, XShape, YShape []int, T dtype.Nums](x [XShape...]T, y [YShape...]T) [einsumAxes(XShape, XContract, XBatch, YShape, YContract, YBatch)...]T
+
+//gx:compeval
+func whereShape(sc, st, sf []int) []int
+
+// Where returns elements chosen from onTrue or onFalse depending on cond.
+// Each operand may be a scalar or an array; all non-scalar operands must have the same shape.
+func Where[T dtype.Nums, SC, ST, SF []int](cond [SC...]bool, onTrue [ST...]T, onFalse [SF...]T) [whereShape(SC, ST, SF)...]T
