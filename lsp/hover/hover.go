@@ -62,11 +62,25 @@ func populate(info *Info, file *ir.File, node ir.IR) {
 		populateNamedType(info, file, n)
 	case *ir.TypeValExpr:
 		populate(info, file, n.Val())
+	case *ir.FuncValExpr:
+		populate(info, file, n.Func())
+	case *ir.FuncDecl:
+		populateFuncDecl(info, file, n)
+	case *ir.SpecTypeExpr:
+		populate(info, file, n.X)
+		if ft, ok := n.Typ.(*ir.FuncType); ok {
+			if fn, ok := info.Definition.(*ir.FuncDecl); ok {
+				info.SymbolInfo = ft.SourceSignature(file, fn.NameDef())
+			}
+		}
+	case *ir.SelectorExpr:
+		populate(info, file, n.Stor)
 	case *ir.Ident:
 		populate(info, file, n.Stor)
 	}
 	// TODO(b/586481357): Populate builtin scalar and slice type nodes.
 	// TODO(b/586481108): Populate struct field and generic parameter nodes.
+	// TODO(b/586481415): Populate builtin, function literal, and interface method nodes.
 }
 
 func populateImport(info *Info, file *ir.File, imp *ir.ImportDecl) {
@@ -203,6 +217,52 @@ func namedTypeHeader(file *ir.File, nt *ir.NamedType) string {
 		return fmt.Sprintf("type %s[%s]", name, nt.GenParams.Fields.SourceString(file))
 	}
 	return "type " + name
+}
+
+func populateFuncDecl(info *Info, file *ir.File, decl *ir.FuncDecl) {
+	info.Definition = decl
+	info.SymbolInfo = decl.FType.SourceSignature(file, decl.NameDef())
+	info.Documentation = funcDoc(decl.Src.Doc)
+	if recv := receiverNamedType(decl); recv != nil {
+		info.DeclaredBy = recv.FullName()
+	} else {
+		info.DeclaredBy = decl.FFile.Package.Path()
+	}
+	if decl.Body != nil {
+		info.Snippet = funcSnippet(decl)
+	}
+}
+
+func receiverNamedType(fn *ir.FuncDecl) *ir.NamedType {
+	recv := fn.FuncType().ReceiverField()
+	if recv == nil {
+		return nil
+	}
+	nt, ok := recv.Type().(*ir.NamedType)
+	if !ok {
+		return nil
+	}
+	return nt.OriginNamed()
+}
+
+func funcDoc(doc *ast.CommentGroup) string {
+	var lines []string
+	for line := range strings.SplitSeq(doc.Text(), "\n") {
+		if !strings.HasPrefix(strings.TrimSpace(line), "gx:") {
+			lines = append(lines, line)
+		}
+	}
+	return strings.TrimSpace(strings.Join(lines, "\n"))
+}
+
+func funcSnippet(fn *ir.FuncDecl) string {
+	decl := *fn.Src
+	decl.Doc = nil
+	var b strings.Builder
+	if err := format.Node(&b, fn.FFile.FileSet(), &decl); err != nil {
+		return ""
+	}
+	return b.String()
 }
 
 func typeSnippet(origin *ir.NamedType) string {

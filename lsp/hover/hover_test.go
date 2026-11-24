@@ -1,6 +1,7 @@
 package hover_test
 
 import (
+	"strings"
 	"testing"
 
 	"github.com/gx-org/gx/build/ir"
@@ -229,5 +230,65 @@ func TestAtNamedTypes(t *testing.T) {
 		if !tc.wantIRType(got.IR) || got != want {
 			t.Errorf("At(%q in %q) = %+v (IR %T), want %+v", tc.token, tc.line, got, got.IR, want)
 		}
+	}
+}
+
+func TestAtFunctionsAndMethods(t *testing.T) {
+	mainFile := lsptesting.BuildPackage(t, testdata.FS, "main.gx").File("main.gx")
+	docsFile := lsptesting.BuildPackage(t, testdata.FS, "docs.gx").File("docs.gx")
+	multiPkg := lsptesting.BuildPackage(t, testdata.FS, "multifile_a.gx", "multifile_b.gx")
+	multiA, multiB := multiPkg.File("multifile_a.gx"), multiPkg.File("multifile_b.gx")
+	stdlibFile := lsptesting.BuildPackage(t, testdata.FS, "stdlib.gx").File("stdlib.gx")
+
+	decls := []struct {
+		file                                         *ir.File
+		line, token, wantInfo, wantDecl, wantSnippet string
+	}{
+		{mainFile, "func noop() {}", "noop", "func noop", "test/test", "func noop() {}"},
+		{mainFile, "func pair(x float32) (float32, float32) {", "pair", "func pair(x float32) (float32, float32)", "test/test", "func pair(x float32) (float32, float32) {\n\treturn x, x\n}"},
+		{mainFile, "func id[T any](v T) T {", "id", "func id[T any](v T) T", "test/test", "func id[T any](v T) T {\n\treturn v\n}"},
+		{mainFile, "func unrollIndices() []int {", "unrollIndices", "func unrollIndices() []int", "test/test", "func unrollIndices() []int {\n\treturn []int{0, 1}\n}"},
+		{mainFile, "func (b Box[U]) Get() U {", "Get", "func (b Box[U]) Get[U any]() U", "test/test.Box", "func (b Box[U]) Get() U {\n\treturn b.Val\n}"},
+		{docsFile, "func (EmptyWithMethod) Ping() int32 {", "Ping", "func (EmptyWithMethod) Ping() int32", "test/test.EmptyWithMethod", "func (EmptyWithMethod) Ping() int32 {\n\treturn 1\n}"},
+		{multiA, "func HelperA() int32 {", "HelperA", "func HelperA() int32", "test/test", "func HelperA() int32 {\n\treturn 1\n}"},
+		{multiB, "func (c Counter) Next() int32 {", "Next", "func (c Counter) Next() int32", "test/test.Counter", "func (c Counter) Next() int32 {\n\treturn c.N + HelperA()\n}"},
+	}
+	for _, tc := range decls {
+		got := hoverAtToken(t, tc.file, tc.line, tc.token)
+		want := hover.Info{IR: got.IR, SymbolInfo: tc.wantInfo, DeclaredBy: tc.wantDecl, Definition: got.IR, Snippet: tc.wantSnippet}
+		if !isType[*ir.FuncDecl](got.IR) || got != want {
+			t.Errorf("At(%q in %q) = %+v (IR %T), want %+v", tc.token, tc.line, got, got.IR, want)
+		}
+	}
+
+	pairDecl := hoverAtToken(t, mainFile, "func pair(x float32) (float32, float32) {", "pair")
+	idDecl := hoverAtToken(t, mainFile, "func id[T any](v T) T {", "id")
+	firstDecl := hoverAtToken(t, mainFile, "func firstOfTwo[T any, U any](v T, _ U) T {", "firstOfTwo")
+	boxGetDecl := hoverAtToken(t, mainFile, "func (b Box[U]) Get() U {", "Get")
+	helperADecl := hoverAtToken(t, multiA, "func HelperA() int32 {", "HelperA")
+	refs := []struct {
+		file                  *ir.File
+		line, token, wantInfo string
+		decl                  hover.Info
+		wantIRType            func(ir.IR) bool
+	}{
+		{mainFile, "a, b := pair(p.A)", "pair", pairDecl.SymbolInfo, pairDecl, isType[*ir.Ident]},
+		{mainFile, "specVal := id[float32](a)", "id[", idDecl.SymbolInfo, idDecl, isType[*ir.Ident]},
+		{mainFile, "specVal := id[float32](a)", "[float32]", "func id[float32](v float32) float32", idDecl, isType[*ir.SpecTypeExpr]},
+		{mainFile, "specTwo := firstOfTwo[float32, int32](specVal, localVar)", "](specVal", "func firstOfTwo[float32][int32](v float32, _ int32) float32", firstDecl, isType[*ir.SpecTypeExpr]},
+		{mainFile, "if initV := fnLit(boxed.Get()); initV > 0 {", "Get", boxGetDecl.SymbolInfo, boxGetDecl, isType[*ir.SelectorExpr]},
+		{multiB, "return c.N + HelperA()", "HelperA", helperADecl.SymbolInfo, helperADecl, isType[*ir.Ident]},
+	}
+	for _, tc := range refs {
+		got := hoverAtToken(t, tc.file, tc.line, tc.token)
+		want := hover.Info{IR: got.IR, SymbolInfo: tc.wantInfo, DeclaredBy: tc.decl.DeclaredBy, Documentation: tc.decl.Documentation, Definition: tc.decl.IR, Snippet: tc.decl.Snippet}
+		if !tc.wantIRType(got.IR) || got != want {
+			t.Errorf("At(%q in %q) = %+v (IR %T), want %+v", tc.token, tc.line, got, got.IR, want)
+		}
+	}
+
+	gotStd := hoverAtToken(t, stdlibFile, "src := rand.NewSource(42)", "NewSource")
+	if !isType[*ir.FuncDecl](gotStd.Definition) || gotStd.SymbolInfo != "func NewSource(seed int64) rand.Philox" || gotStd.DeclaredBy != "rand" || gotStd.Documentation != "NewSource returns a new source for a random generator using a seed." || !strings.HasPrefix(gotStd.Snippet, "func NewSource(seed int64) Philox {") {
+		t.Errorf("At(rand.NewSource) = %+v (Def %T)", gotStd, gotStd.Definition)
 	}
 }
