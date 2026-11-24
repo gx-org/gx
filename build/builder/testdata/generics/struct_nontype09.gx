@@ -1,0 +1,19 @@
+package struct_nontype09
+
+type Linear[Size int] struct {
+	Weights [Size]float32
+	Bias    float32
+}
+
+func makeLinear[Size int](w [Size]float32, b float32) Linear[Size] {
+	return Linear[Size]{Weights: w, Bias: b}
+}
+
+func Test() Linear[3] {
+	return makeLinear([3]float32{1, 2, 3}, 0.5)
+	// Want:
+	// Linear[3]{
+	// 	Weights: [3]float32{1, 2, 3},
+	// 	Bias: float32(0.5),
+	// }
+}
