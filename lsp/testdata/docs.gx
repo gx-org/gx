@@ -13,6 +13,44 @@ const (
 // Global counter doc.
 var GlobalCount int32
 
+// Point doc.
+type Point struct {
+	X, Y float32
+}
+
+type (
+	// Scalar alias doc.
+	Scalar = float32
+	// Floats doc.
+	Floats interface {
+		float32 | float64
+	}
+	EmptyStruct struct{}
+	EmptyIface  interface{}
+	MyAny       any
+)
+
+type EmptyWithMethod struct{}
+
+func (EmptyWithMethod) Ping() int32 {
+	return 1
+}
+
+type Meter float32
+
+func (m Meter) Scale[T Floats](k T) (out Meter) {
+	return m
+}
+
+type TagBox[A, B any] struct {
+	First  A
+	Second B
+}
+
+func (b TagBox[X, Y]) With[T Floats](k T) (X, T) {
+	return b.First, k
+}
+
 func Use(x float32) float32 {
 	// Local offset doc.
 	var offset float32

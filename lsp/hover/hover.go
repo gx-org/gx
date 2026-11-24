@@ -3,6 +3,7 @@ package hover
 
 import (
 	"fmt"
+	"go/token"
 	"path"
 	"slices"
 	"strings"
@@ -10,6 +11,7 @@ import (
 	"github.com/gx-org/gx/build/ir"
 	"github.com/gx-org/gx/lsp/position"
 	"github.com/gx-org/gx/src/gx/ast"
+	"github.com/gx-org/gx/src/gx/format"
 )
 
 // Info holds hover information for an IR node at a source position.
@@ -56,10 +58,15 @@ func populate(info *Info, file *ir.File, node ir.IR) {
 		populateLocal(info, file, n)
 	case *ir.LocalVarStorage:
 		populateLocal(info, file, n)
+	case *ir.NamedType:
+		populateNamedType(info, file, n)
+	case *ir.TypeValExpr:
+		populate(info, file, n.Val())
 	case *ir.Ident:
 		populate(info, file, n.Stor)
 	}
 	// TODO(b/586481357): Populate builtin scalar and slice type nodes.
+	// TODO(b/586481108): Populate struct field and generic parameter nodes.
 }
 
 func populateImport(info *Info, file *ir.File, imp *ir.ImportDecl) {
@@ -124,6 +131,89 @@ func isRangeVar(file *ir.File, ident *ast.Ident) bool {
 func populateLocal(info *Info, file *ir.File, stor ir.Storage) {
 	info.Definition = stor
 	info.SymbolInfo = fmt.Sprintf("var %s %s", stor.NameDef().Name, stor.Type().ReferString(file))
+}
+
+func populateNamedType(info *Info, file *ir.File, nt *ir.NamedType) {
+	origin := nt.OriginNamed()
+	info.Definition = origin
+	info.DeclaredBy = origin.File.Package.Path()
+	info.Documentation = specDoc(origin.File, origin.Src, origin.Src.Doc)
+
+	sep := " "
+	if origin.Src.Assign.IsValid() {
+		sep = " = "
+	}
+	summary, hasBody := namedTypeUnderlying(file, nt)
+	info.SymbolInfo = namedTypeHeader(file, nt) + sep + summary
+
+	var parts []string
+	if hasBody {
+		if decl := typeSnippet(origin); decl != "" {
+			parts = append(parts, decl)
+		}
+	}
+	if meths := methodSnippets(origin); meths != "" {
+		parts = append(parts, meths)
+	}
+	info.Snippet = strings.Join(parts, "\n\n")
+}
+
+func namedTypeUnderlying(file *ir.File, nt *ir.NamedType) (string, bool) {
+	var hasBody bool
+	switch u := nt.Underlying.Val().(type) {
+	case *ir.StructType:
+		hasBody = u.Fields.Len() > 0
+	case *ir.Interface:
+		if u == ir.AnyType() {
+			return u.ReferString(file), false
+		}
+		hasBody = len(u.Methods()) > 0 || u.ReferString(file) != "any"
+	default:
+		return u.ReferString(file), false
+	}
+	if !hasBody {
+		return nt.Kind().String() + "{}", false
+	}
+	return nt.Kind().String(), true
+}
+
+func methodSnippets(origin *ir.NamedType) string {
+	if len(origin.Meths) == 0 {
+		return ""
+	}
+	lines := make([]string, 0, len(origin.Meths))
+	for _, meth := range origin.Meths {
+		lines = append(lines, meth.FuncType().SourceSignature(origin.File, meth.NameDef()))
+	}
+	return strings.Join(lines, "\n")
+}
+
+func namedTypeHeader(file *ir.File, nt *ir.NamedType) string {
+	name := nt.Name()
+	var args []string
+	for _, gv := range nt.GenParams.Values {
+		if gv != nil {
+			args = append(args, gv.Value().SourceString(file))
+		}
+	}
+	if len(args) > 0 {
+		return fmt.Sprintf("type %s[%s]", name, strings.Join(args, ", "))
+	}
+	if nt.GenParams.Fields.Len() > 0 {
+		return fmt.Sprintf("type %s[%s]", name, nt.GenParams.Fields.SourceString(file))
+	}
+	return "type " + name
+}
+
+func typeSnippet(origin *ir.NamedType) string {
+	spec := *origin.Src
+	spec.Doc = nil
+	spec.Comment = nil
+	var b strings.Builder
+	if err := format.Node(&b, origin.File.FileSet(), &ast.GenDecl{TokPos: spec.Pos(), Tok: token.TYPE, Specs: []ast.Spec{&spec}}); err != nil {
+		return ""
+	}
+	return b.String()
 }
 
 func specDoc(file *ir.File, spec ast.Spec, doc *ast.CommentGroup) string {
