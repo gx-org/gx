@@ -21,7 +21,7 @@ import (
 	"github.com/gx-org/gx/build/fmterr"
 	"github.com/gx-org/gx/build/ir"
 	"github.com/gx-org/gx/build/ir/irkind"
-	"github.com/gx-org/gx/internal/interp/compeval/cmp"
+	"github.com/gx-org/gx/internal/interp/coreiface"
 	"github.com/gx-org/gx/internal/undef"
 )
 
@@ -32,6 +32,32 @@ type TypeElement interface {
 	Value() ir.Type
 }
 
+func isConcreteIntLiteral(expr ir.Expr) bool {
+	switch exprT := expr.(type) {
+	case *ir.NumberInt:
+		return true
+	case *ir.NumberCastExpr:
+		_, isInt := exprT.X.(*ir.NumberInt)
+		return isInt && irkind.IsConcrete(exprT.Typ.Kind())
+	}
+	return false
+}
+
+func canConvertToExpr(element ir.Element) bool {
+	bare := ir.BareValue(element)
+	if _, ok := bare.(ir.WithExpr); !ok {
+		return false
+	}
+	if container, ok := bare.(coreiface.WithElements); ok {
+		for _, child := range container.Elements() {
+			if !canConvertToExpr(child) {
+				return false
+			}
+		}
+	}
+	return true
+}
+
 func concreteTypeParam(fr ir.Evaluator, tp *ir.GenericTypeParam) (ir.Type, error) {
 	typeExpr := &ir.Ident{
 		Src:  tp.OrigField().Name,
@@ -39,6 +65,9 @@ func concreteTypeParam(fr ir.Evaluator, tp *ir.GenericTypeParam) (ir.Type, error
 	}
 	el, err := fr.EvalExpr(typeExpr)
 	if err != nil {
+		if undef.Is(err) {
+			return tp, nil
+		}
 		return nil, fmterr.Internalf("cannot cast to %s: %v", tp.ReferString(fr.File()), err)
 	}
 	typeEl, isType := ir.BareValue(el).(TypeElement)
@@ -49,15 +78,20 @@ func concreteTypeParam(fr ir.Evaluator, tp *ir.GenericTypeParam) (ir.Type, error
 }
 
 func evalAxisExpr(fr ir.Evaluator, axis ir.AxisLengths, x ir.Expr) ([]ir.AxisLengths, error) {
+	if isConcreteIntLiteral(x) {
+		return []ir.AxisLengths{axis}, nil
+	}
 	el, err := fr.EvalExpr(x)
 	if err != nil {
+		if undef.Is(err) {
+			return []ir.AxisLengths{axis}, nil
+		}
 		return []ir.AxisLengths{axis}, err
 	}
-	elCan, isCan := el.(cmp.Canonical)
-	if !isCan {
-		return []ir.AxisLengths{axis}, err
+	if !canConvertToExpr(el) {
+		return []ir.AxisLengths{axis}, nil
 	}
-	xs, err := ir.ToExpr(fr, nil, elCan)
+	xs, err := ir.ToExpr(fr, nil, el)
 	var axlens []ir.AxisLengths
 	for _, x := range xs {
 		sliceLit, isSliceLit := x.(*ir.SliceLitExpr)
@@ -77,6 +111,9 @@ func concreteAxisLength(fr ir.Evaluator, axis ir.AxisLengths) ([]ir.AxisLengths,
 	case *ir.AxisExpr:
 		return evalAxisExpr(fr, axis, axisT.X)
 	case *ir.AxisInfer:
+		if axisT.X == nil {
+			return []ir.AxisLengths{axisT}, nil
+		}
 		return concreteAxisLength(fr, axisT.X)
 	default:
 		return []ir.AxisLengths{axis}, fmterr.Internalf("cannot convert axis %s:%T to a concrete axis", axisT.SourceString(fr.File()), axisT)
@@ -101,6 +138,9 @@ func concreteRank(fr ir.Evaluator, rnk ir.ArrayRank) (ir.ArrayRank, error) {
 		axes, err := concreteAxisLengths(fr, rnkT.Ax)
 		return &ir.Rank{Src: rnkT.Src, Ax: axes}, err
 	case *ir.RankInfer:
+		if rnkT.Rank() == nil {
+			return rnkT, nil
+		}
 		return concreteRank(fr, rnkT.Rank())
 	default:
 		return rnk, fmterr.Internalf("cannot convert rank %s:%T to a concrete rank", rnk.SourceString(fr.File()), rnkT)
@@ -180,12 +220,13 @@ func concreteNamedType(fr ir.Evaluator, ntp *ir.NamedType) (ir.Type, error) {
 }
 
 func concrete(fr ir.Evaluator, tp ir.Type) (ir.Type, error) {
+	if typeParam, isParam := tp.(*ir.GenericTypeParam); isParam {
+		return concreteTypeParam(fr, typeParam)
+	}
 	if irkind.IsConcrete(tp.Kind()) || ir.IsUnknown(tp) {
 		return tp, nil
 	}
 	switch tpT := tp.(type) {
-	case *ir.GenericTypeParam:
-		return concreteTypeParam(fr, tpT)
 	case *ir.NamedType:
 		return concreteNamedType(fr, tpT)
 	default:
@@ -218,7 +259,14 @@ func Concrete(fr ir.Evaluator, tp ir.Type) (_ ir.Type, err error) {
 	}
 	if arrayType.Rank().IsAtomic() {
 		// Avoid a infinite loop on the data type of an array.
-		return concrete(fr, arrayType.DataType())
+		dtype, err := concrete(fr, arrayType.DataType())
+		if err != nil {
+			return tp, err
+		}
+		if _, isParam := dtype.(*ir.GenericTypeParam); isParam {
+			return ir.NewArrayType(arrayType.ArrayType(), dtype, arrayType.Rank()), nil
+		}
+		return dtype, nil
 	}
 	return concreteArrayType(fr, arrayType)
 }

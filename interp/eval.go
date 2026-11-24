@@ -33,6 +33,14 @@ import (
 	"github.com/gx-org/gx/interp/engine"
 )
 
+func concretizeType(fitp *Interpreter, node ir.Node, tp ir.Type) (ir.Type, error) {
+	cType, err := concrete.Concrete(fitp.compEval(), tp)
+	if err != nil {
+		return nil, fmterr.Error(fitp.File().FileSet(), node.Node(), err)
+	}
+	return cType, nil
+}
+
 func evalBlockStmt(ctx *Interpreter, body *ir.BlockStmt) ([]ir.Element, bool, error) {
 	var outs []ir.Element
 	var stop bool
@@ -498,7 +506,13 @@ func evalBinaryExpression(fitp *Interpreter, expr *ir.BinaryExpr) (ir.Element, e
 	if err != nil {
 		return nil, err
 	}
-	return x.BinaryOp(fitp.env, expr, y)
+	cType, err := concretizeType(fitp, expr, expr.Typ)
+	if err != nil {
+		return nil, err
+	}
+	cExpr := *expr
+	cExpr.Typ = cType
+	return x.BinaryOp(fitp.env, &cExpr, y)
 }
 
 func evalStructLiteral(fitp *Interpreter, expr *ir.StructLitExpr) (ir.Element, error) {

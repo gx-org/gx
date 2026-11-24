@@ -1,0 +1,16 @@
+package concrete01
+
+import (
+	"dtype"
+	"testcpundef"
+)
+
+func addOneUndefAxis[A int, T dtype.Floats](x [testcpundef.Undef(A)]T) [testcpundef.Undef(A)]T {
+	return x + 1
+}
+
+func TestUndefAxisBinaryOp() [4]float64 {
+	return addOneUndefAxis[2]([4]float64{1, 2, 3, 4})
+	// Want:
+	// [4]float64{2, 3, 4, 5}
+}
