@@ -91,8 +91,12 @@ func newInterp(reg *engine.Registry, ctx *context.Context, eng engine.Engine) *I
 
 var compEvalNature = ir.FuncNature{CompEval: true}
 
+func (fitp *Interpreter) compEval() ir.Evaluator {
+	return fitp.env.For(compEvalNature).ExprEval()
+}
+
 func (fitp *Interpreter) compEvalExpr(expr ir.Expr) (ir.Element, error) {
-	return fitp.env.For(compEvalNature).ExprEval().EvalExpr(expr)
+	return fitp.compEval().EvalExpr(expr)
 }
 
 // EvalExpr evaluates an expression for a given context.
