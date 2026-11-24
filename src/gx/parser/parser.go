@@ -1610,7 +1610,8 @@ func (p *parser) parseIndexOrSliceOrInstance(x ast.Expr) ast.Expr {
 		for p.tok == token.COMMA {
 			p.next()
 			if p.tok != token.RBRACK && p.tok != token.EOF {
-				args = append(args, p.parseType())
+				// GX syntax divergence from Go: type arguments may be non-type expressions.
+				args = append(args, p.parseRhs())
 			}
 		}
 	}

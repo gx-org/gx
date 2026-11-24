@@ -1,0 +1,42 @@
+package struct_expr_err01
+
+type Plain struct {
+	a int32
+}
+
+type S[Size int] struct {
+	W [Size]float32
+}
+
+type Layer[In, Out int] struct {
+	W [In][Out]float32
+	B [Out]float32
+}
+
+type Triple[A, B, C int] struct {
+	a [A][B][C]float32
+}
+
+func f[T any]() int32 {
+	return 0
+}
+
+func nonGenericSingle() int32 { return f[int32[3]]() }               // ERROR int32 is not a generic type
+func nonGenericMulti() int32  { return f[int32[2, 3]]() }            // ERROR int32 is not a generic type
+func nonGenericStruct() int32 { return f[Plain[3]]() }               // ERROR type Plain got 1 type arguments but want 0
+func parenArray() int32       { return f[([2]float32)[3]]() }        // ERROR [2]float32 is not a generic type
+func alreadySpec() int32      { return f[S[3][4]]() }                // ERROR type S[3] got 1 type arguments but want 0
+func tooFewSingle() int32     { return f[Layer[2]]() }               // ERROR type Layer got 1 type arguments but want 2
+func tooFewMulti() int32      { return f[Triple[1, 2]]() }           // ERROR type Triple got 2 type arguments but want 3
+func tooManySingle() int32    { return f[S[2, 3]]() }                // ERROR type S got 2 type arguments but want 1
+func tooManyMulti() int32     { return f[Layer[1, 2, 3]]() }         // ERROR type Layer got 3 type arguments but want 2
+func typeAsValue() S[3]       { return S[3] }                        // ERROR S[3] (type) is not an expression
+func nonGenericIndexList(a [2][3]float32) float32 { return a[0, 1] } // ERROR list of indices only supported for generic functions and types
+
+func id[T any](x T) T {
+	return x
+}
+
+func wrongGenericArg[Size, Out int](l Layer[Out, Size]) Layer[Size, Out] {
+	return id[Layer[Size, Out]](l) // ERROR cannot use type Layer[Out, Size] as Layer[Size, Out] in argument to id[Layer[Size, Out]]
+}

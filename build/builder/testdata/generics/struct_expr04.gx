@@ -1,0 +1,23 @@
+package struct_expr04
+
+type Layer[In, Out int] struct {
+	a [In]float32
+	b [Out]float32
+}
+
+func id[T any](x T) T {
+	return x
+}
+
+func forward[In, Out int](l Layer[In, Out]) Layer[In, Out] {
+	return id[Layer[In, Out]](l)
+}
+
+func Test() Layer[2, 3] {
+	return forward[2, 3](Layer[2, 3]{a: [2]float32{1, 2}, b: [3]float32{3, 4, 5}})
+	// Want:
+	// Layer[2, 3]{
+	// 	a: [2]float32{1, 2},
+	// 	b: [3]float32{3, 4, 5},
+	// }
+}

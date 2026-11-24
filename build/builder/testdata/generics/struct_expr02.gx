@@ -1,0 +1,20 @@
+package struct_expr02
+
+type Layer[In, Out int] struct {
+	a [In]float32
+	b [Out]float32
+}
+
+func id[T any](x T) T {
+	return x
+}
+
+func Test() Layer[2, 3] {
+	l := Layer[2, 3]{a: [2]float32{1, 2}, b: [3]float32{3, 4, 5}}
+	return id[Layer[2, 3]](l)
+	// Want:
+	// Layer[2, 3]{
+	// 	a: [2]float32{1, 2},
+	// 	b: [3]float32{3, 4, 5},
+	// }
+}

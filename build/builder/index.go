@@ -233,8 +233,11 @@ func (n *indexExpr) buildExpr(rscope resolveScope) (ir.Expr, bool) {
 		return nil, false
 	}
 	xType := x.Type()
-	if xType.Kind() == irkind.Func {
+	switch xType.Kind() {
+	case irkind.Func:
 		return specializeFunc(rscope, x, []ir.Expr{idx})
+	case irkind.MetaType:
+		return specializeTypeExpr(rscope, x, []ir.Expr{idx})
 	}
 	if irkind.IsNumber(idx.Type().Kind()) {
 		idx, idxOk = ir.CastNumber(toFileWithError(rscope), idx, ir.IntType())
@@ -300,10 +303,14 @@ func (n *indexListExpr) buildExpr(rscope resolveScope) (ir.Expr, bool) {
 	if !xOk || !indicesOk {
 		return x, false
 	}
-	if x.Type().Kind() != irkind.Func {
-		return x, rscope.Err().Appendf(n.source(), "list of indices only supported for generic functions")
+	switch x.Type().Kind() {
+	case irkind.Func:
+		return specializeFunc(rscope, x, indices)
+	case irkind.MetaType:
+		return specializeTypeExpr(rscope, x, indices)
+	default:
+		return x, rscope.Err().Appendf(n.source(), "list of indices only supported for generic functions and types")
 	}
-	return specializeFunc(rscope, x, indices)
 }
 
 func (n *indexListExpr) source() ast.Node {
@@ -363,6 +370,14 @@ func specializeType(rscope resolveScope, x *ir.TypeValExpr, indices []ir.Expr) (
 		return invalidTypeExprVal, false
 	}
 	return generics.SpecialiseType(ce, x, gtype, genValues)
+}
+
+func specializeTypeExpr(rscope resolveScope, x ir.Expr, indices []ir.Expr) (ir.Expr, bool) {
+	typExpr := ir.TypeFromExpr(x)
+	if typExpr == nil {
+		return typeError(rscope, x)
+	}
+	return specializeType(rscope, typExpr, indices)
 }
 
 func (n *indexExprType) buildTypeExpr(rscope resolveScope) (*ir.TypeValExpr, bool) {

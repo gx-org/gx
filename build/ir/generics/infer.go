@@ -26,8 +26,9 @@ import (
 
 type (
 	unifier struct {
-		fetcher ir.Fetcher
-		defined []ir.GenericValue
+		fetcher      ir.Fetcher
+		defined      []ir.GenericValue
+		tparamFields []*ir.Field
 	}
 
 	argUnifier struct {
@@ -39,6 +40,18 @@ type (
 )
 
 var _ = (ir.Unifier)(&argUnifier{})
+
+func (uni *unifier) paramPos(genParam ir.GenericParam) (int, bool) {
+	paramField := genParam.OrigField()
+	if paramField == nil {
+		return -1, false
+	}
+	pos := paramField.Pos
+	if pos < 0 || pos >= len(uni.tparamFields) || uni.tparamFields[pos] != paramField {
+		return -1, false
+	}
+	return pos, true
+}
 
 func (uni *unifier) specialiseRemainingNumbers() bool {
 	for i, v := range uni.defined {
@@ -112,6 +125,9 @@ func (uni *argUnifier) assignableTo(genType *ir.GenericTypeParam, typ ir.Type) (
 }
 
 func (uni *argUnifier) DefineType(genType *ir.GenericTypeParam, typ ir.Type) bool {
+	if _, ok := uni.paramPos(genType); !ok {
+		return true
+	}
 	pos, ok := uni.assignableTo(genType, typ)
 	if !ok {
 		return false
@@ -136,7 +152,7 @@ func (uni *argUnifier) DefineType(genType *ir.GenericTypeParam, typ ir.Type) boo
 	return true
 }
 
-func (uni *argUnifier) defineVarArgsNonType(genAxis *ir.GenericNonTypeParam, expr ir.Expr) bool {
+func (uni *argUnifier) defineVarArgsNonType(pos int, genAxis *ir.GenericNonTypeParam, expr ir.Expr) bool {
 	nonTypeSlice, isSlice := ir.Underlying(genAxis.Type()).(*ir.SliceType)
 	if !isSlice {
 		from := uni.fetcher.File()
@@ -150,7 +166,6 @@ func (uni *argUnifier) defineVarArgsNonType(genAxis *ir.GenericNonTypeParam, exp
 	if !AssignTo(uni.fetcher, expr, genAxis, sliceElement) {
 		return false
 	}
-	pos := genAxis.OrigField().Pos
 	defined := uni.defined[pos]
 	var sliceLit *ir.SliceLitExpr
 	if defined == nil {
@@ -172,13 +187,16 @@ func (uni *argUnifier) defineVarArgsNonType(genAxis *ir.GenericNonTypeParam, exp
 }
 
 func (uni *argUnifier) DefineNonType(genAxis *ir.GenericNonTypeParam, expr ir.Expr) bool {
+	pos, ok := uni.paramPos(genAxis)
+	if !ok {
+		return true
+	}
 	if uni.isVarArgs {
-		return uni.defineVarArgsNonType(genAxis, expr)
+		return uni.defineVarArgsNonType(pos, genAxis, expr)
 	}
 	if !AssignTo(uni.fetcher, expr, genAxis, genAxis.Type()) {
 		return false
 	}
-	pos := genAxis.OrigField().Pos
 	defined := uni.defined[pos]
 	if defined == nil {
 		uni.defined[pos] = ir.NewNonTypeGenericValue(genAxis, expr)
@@ -204,8 +222,9 @@ func (uni *argUnifier) DefineNonType(genAxis *ir.GenericNonTypeParam, expr ir.Ex
 func Infer(fetcher ir.Fetcher, fExpr *ir.FuncValExpr, args []ir.Expr) (*ir.FuncValExpr, bool) {
 	ftype := fExpr.FuncType()
 	uni := &unifier{
-		fetcher: fetcher,
-		defined: append([]ir.GenericValue{}, ftype.GenParams.Values...),
+		fetcher:      fetcher,
+		defined:      append([]ir.GenericValue{}, ftype.GenParams.Values...),
+		tparamFields: ftype.Origin().Generics().Fields.Fields(),
 	}
 	ok := true
 	params := ftype.Params.Fields()
