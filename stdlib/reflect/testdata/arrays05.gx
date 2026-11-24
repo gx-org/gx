@@ -1,0 +1,68 @@
+package arrays05
+
+import "reflect"
+
+type Linear[Size int] struct {
+	Weights [Size]float32
+	Bias    float32
+}
+
+func sgd(params, grads Linear[3], lr float32) Linear[3] {
+	for _, k := range reflect.Arrays[Linear[3], float32]() {
+		params[k] -= lr * grads[k]
+	}
+	return params
+}
+
+func sgdGeneric[Size int](params, grads Linear[Size], lr float32) Linear[Size] {
+	for _, k := range reflect.Arrays[Linear[Size], float32]() {
+		params[k] -= lr * grads[k]
+	}
+	return params
+}
+
+func TestGenericLinear() (Linear[3], Linear[3]) {
+	params := Linear[3]{Weights: [3]float32{1, 2, 3}, Bias: 4}
+	grads := Linear[3]{Weights: [3]float32{2, 4, 6}, Bias: 2}
+	return sgd(params, grads, 0.5), sgdGeneric[3](params, grads, 0.5)
+	// Want:
+	// 0: Linear[3]{
+	// 	Weights: [3]float32{0, 0, 0},
+	// 	Bias: float32(3),
+	// }
+	// 1: Linear[3]{
+	// 	Weights: [3]float32{0, 0, 0},
+	// 	Bias: float32(3),
+	// }
+}
+
+type Layer[In, Out int] struct {
+	W [In][Out]float32
+	B [Out]float32
+}
+
+func scaleLayer[In, Out int](l Layer[In, Out], s float32) Layer[In, Out] {
+	for _, k := range reflect.Arrays[Layer[In, Out], float32]() {
+		l[k] *= s
+	}
+	return l
+}
+
+func TestMultiArgGeneric() Layer[2, 3] {
+	l := Layer[2, 3]{
+		W: [2][3]float32{{1, 2, 3}, {4, 5, 6}},
+		B: [3]float32{1, 2, 3},
+	}
+	for _, k := range reflect.Arrays[Layer[2, 3], float32]() {
+		l[k] += 1
+	}
+	return scaleLayer[2, 3](l, 2)
+	// Want:
+	// Layer[2, 3]{
+	// 	W: [2][3]float32{
+	// 		{4, 6, 8},
+	// 		{10, 12, 14},
+	// 	},
+	// 	B: [3]float32{4, 6, 8},
+	// }
+}

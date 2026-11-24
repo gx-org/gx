@@ -1,0 +1,21 @@
+package struct_expr05
+
+type S[Size int] struct {
+	a [Size]float32
+}
+
+func first[T, U any](x T, y U) T {
+	return x
+}
+
+func forward[Size int](s S[Size]) S[Size] {
+	return first[S[Size]](s, int32(1))
+}
+
+func Test() S[3] {
+	return forward[3](S[3]{a: [3]float32{1, 2, 3}})
+	// Want:
+	// S[3]{
+	// 	a: [3]float32{1, 2, 3},
+	// }
+}

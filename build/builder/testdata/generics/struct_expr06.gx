@@ -1,0 +1,23 @@
+package struct_expr06
+
+type Pair[A, B any] struct {
+	a A
+	b B
+}
+
+func id[T any](x T) T {
+	return x
+}
+
+func forward[A, B any](p Pair[A, B]) Pair[A, B] {
+	return id[Pair[A, B]](p)
+}
+
+func Test() Pair[int32, float32] {
+	return forward[int32, float32](Pair[int32, float32]{a: 1, b: 2.5})
+	// Want:
+	// Pair[int32, float32]{
+	// 	a: int32(1),
+	// 	b: float32(2.5),
+	// }
+}
