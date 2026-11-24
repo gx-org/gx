@@ -1,0 +1,23 @@
+package test
+
+import (
+	"control"
+	"math"
+	"rand"
+)
+
+type counter struct {
+	n int32
+}
+
+func UseStdlib(x float32) float32 {
+	src := rand.NewSource(42)
+	_ = src
+	final := control.While(
+		counter{n: 0},
+		func(s counter) bool { return s.n < 10 },
+		func(s counter) counter { return counter{n: s.n + 1} },
+	)
+	_ = final
+	return math.Abs(x)
+}
