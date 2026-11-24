@@ -15,6 +15,7 @@
 package rand
 
 import (
+	"github.com/gomlx/compute"
 	"github.com/gomlx/compute/dtypes"
 	"github.com/gomlx/compute/shapes"
 	"github.com/gx-org/gx/build/ir"
@@ -50,7 +51,7 @@ func evalPhilox(env *engine.Env, call *ir.FuncCallExpr, recv ir.Element, genArgs
 	}
 	bckGraph := eng.Graph()
 	targetShape := shapes.Shape{DType: dtyp, Dimensions: dimensions}
-	newState, values, err := bckGraph.RNGBitGenerator(stateNode, targetShape)
+	newState, values, err := bckGraph.RNGBitGenerator(stateNode, targetShape, compute.RNGPhilox)
 	if err != nil {
 		return nil, err
 	}

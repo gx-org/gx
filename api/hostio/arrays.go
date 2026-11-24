@@ -116,7 +116,10 @@ func (a *DeviceArray) GoValue() (any, error) {
 
 // ToHostArray transfers the array to the host.
 func (a *DeviceArray) ToHostArray() (*HostArray, error) {
-	sh := a.Shape()
+	sh, err := a.handle.Shape()
+	if err != nil {
+		return nil, err
+	}
 	data, err := allocateHostData(sh)
 	if err != nil {
 		return nil, err
