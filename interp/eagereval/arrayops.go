@@ -27,6 +27,7 @@ import (
 	"github.com/gx-org/gx/build/ir"
 	"github.com/gx-org/gx/internal/base/cast"
 	"github.com/gx-org/gx/internal/concrete"
+	"github.com/gx-org/gx/internal/interp/compeval/cmp"
 	"github.com/gx-org/gx/internal/interp/constants"
 	"github.com/gx-org/gx/internal/interp/numbers"
 	"github.com/gx-org/gx/internal/togo"
@@ -35,6 +36,7 @@ import (
 	"github.com/gx-org/gx/interp/engine"
 	"github.com/gx-org/gx/interp"
 	"github.com/gx-org/gx/interp/materialise"
+	"github.com/gx-org/gx/src/gx/ast"
 )
 
 type (
@@ -262,8 +264,12 @@ type constant struct {
 	cst engine.Constant
 }
 
-var _ togo.CompileValue = (*constant)(nil)
-var _ materialise.ElementMaterialiser = (*constant)(nil)
+var (
+	_ cmp.Canonical                   = (*constant)(nil)
+	_ engine.ConstantElement          = (*constant)(nil)
+	_ togo.CompileValue               = (*constant)(nil)
+	_ materialise.ElementMaterialiser = (*constant)(nil)
+)
 
 // GoValue of the underlying element.
 func (c *constant) GoValue() (any, error) {
@@ -277,6 +283,18 @@ func (c *constant) Constant() engine.Constant {
 // Materialise returns the element with all its values from the graph.
 func (c *constant) Materialise(materialise.Materialiser) (materialise.Node, error) {
 	return c, nil
+}
+
+func (c *constant) AlgExpr(eva ir.Evaluator) (cmp.Expr, error) {
+	return cmp.ToAlgExpr(eva, c.cst)
+}
+
+func (c *constant) Expr(ev ir.Evaluator, src ast.Expr) ([]ir.Expr, error) {
+	return c.cst.Expr(ev, src)
+}
+
+func (c *constant) SourceString(from *ir.File) string {
+	return c.cst.SourceString(from)
 }
 
 // ElementFromHostValue returns transforms an atomic literal element into an element specific to the ArrayOps implementation.
