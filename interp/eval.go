@@ -25,6 +25,7 @@ import (
 	"github.com/gx-org/gx/build/ir"
 	"github.com/gx-org/gx/build/ir/irkind"
 	"github.com/gx-org/gx/internal/base/cast"
+	"github.com/gx-org/gx/internal/concrete"
 	"github.com/gx-org/gx/internal/interp/constants"
 	"github.com/gx-org/gx/internal/interp/coreiface"
 	"github.com/gx-org/gx/internal/interp/numbers"
@@ -531,6 +532,10 @@ func evalStructLiteral(fitp *Interpreter, expr *ir.StructLitExpr) (ir.Element, e
 	nType, ok := expr.Typ.(*ir.NamedType)
 	if !ok {
 		return strct, nil
+	}
+	nType, err = concrete.NamedType(fitp.env.For(compEvalNature).ExprEval(), nType)
+	if err != nil {
+		return nil, err
 	}
 	return elements.NewNamedType(nType, strct), nil
 }

@@ -1,0 +1,17 @@
+package struct05
+
+type Box[T any] struct {
+	a T
+}
+
+func makeBox[T any](x T) Box[T] {
+	return Box[T]{a: x}
+}
+
+func Test() Box[float32] {
+	return makeBox[float32](3.5)
+	// Want:
+	// Box[float32]{
+	// 	a: float32(3.5),
+	// }
+}

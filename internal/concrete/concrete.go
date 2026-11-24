@@ -22,6 +22,7 @@ import (
 	"github.com/gx-org/gx/build/ir"
 	"github.com/gx-org/gx/build/ir/irkind"
 	"github.com/gx-org/gx/internal/interp/compeval/cmp"
+	"github.com/gx-org/gx/internal/undef"
 )
 
 // TypeElement is an element encapsulating a type.
@@ -106,14 +107,76 @@ func concreteRank(fr ir.Evaluator, rnk ir.ArrayRank) (ir.ArrayRank, error) {
 	}
 }
 
+func concreteTypeArg(fr ir.Evaluator, tp ir.Type) (ir.Type, error) {
+	switch tpT := tp.(type) {
+	case *ir.NamedType:
+		return NamedType(fr, tpT)
+	case *ir.GenericTypeParam:
+		cType, err := concreteTypeParam(fr, tpT)
+		if err != nil {
+			return nil, err
+		}
+		if ntp, ok := cType.(*ir.NamedType); ok {
+			return NamedType(fr, ntp)
+		}
+		return cType, nil
+	default:
+		return Concrete(fr, tp)
+	}
+}
+
+// NamedType resolves generic parameter values on a named type given the context.
+func NamedType(fr ir.Evaluator, ntp *ir.NamedType) (*ir.NamedType, error) {
+	if len(ntp.GenParams.Values) == 0 {
+		return ntp, nil
+	}
+	values := make([]ir.GenericValue, len(ntp.GenParams.Values))
+	for i, gv := range ntp.GenParams.Values {
+		if gv == nil {
+			continue
+		}
+		switch gvT := gv.(type) {
+		case *ir.TypeGenericValue:
+			cType, err := concreteTypeArg(fr, gvT.DefinedType())
+			if err != nil {
+				return nil, err
+			}
+			values[i] = ir.NewTypeExprGenericValue(gvT.Generic().(*ir.GenericTypeParam), ir.TypeExpr(gvT.Value().Expr(), cType))
+		case *ir.NonTypeGenericValue:
+			val := gvT.Value()
+			el, err := fr.EvalExpr(val)
+			if err == nil {
+				var expr ir.Expr
+				if expr, err = ir.ToSingleExpr(fr, val.Expr(), el); err == nil {
+					values[i] = ir.NewNonTypeGenericValue(gvT.Generic().(*ir.GenericNonTypeParam), expr)
+					continue
+				}
+			}
+			if !undef.Is(err) {
+				return nil, err
+			}
+			values[i] = gv
+		default:
+			return nil, fmterr.Internalf("cannot compute concrete generic value of %s:%T: not supported", gv.SourceString(fr.File()), gv)
+		}
+	}
+	cNamed := *ntp
+	cNamed.GenParams.Values = values
+	return &cNamed, nil
+}
+
 func concreteNamedType(fr ir.Evaluator, ntp *ir.NamedType) (ir.Type, error) {
 	under, err := Concrete(fr, ntp.Underlying.Val())
 	if err != nil {
 		return nil, err
 	}
-	cNamed := *ntp
-	cNamed.Underlying = ir.TypeExpr(ntp.Underlying.Expr(), under)
-	return &cNamed, nil
+	cNamed, err := NamedType(fr, ntp)
+	if err != nil {
+		return nil, err
+	}
+	res := *cNamed
+	res.Underlying = ir.TypeExpr(ntp.Underlying.Expr(), under)
+	return &res, nil
 }
 
 func concrete(fr ir.Evaluator, tp ir.Type) (ir.Type, error) {
