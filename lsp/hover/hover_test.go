@@ -174,3 +174,60 @@ func isType[T any](v ir.IR) bool {
 	_, ok := v.(T)
 	return ok
 }
+
+func TestAtNamedTypes(t *testing.T) {
+	mainFile := lsptesting.BuildPackage(t, testdata.FS, "main.gx").File("main.gx")
+	docsFile := lsptesting.BuildPackage(t, testdata.FS, "docs.gx").File("docs.gx")
+	multiPkg := lsptesting.BuildPackage(t, testdata.FS, "multifile_a.gx", "multifile_b.gx")
+	multiA, multiB := multiPkg.File("multifile_a.gx"), multiPkg.File("multifile_b.gx")
+	decls := []struct {
+		file                                        *ir.File
+		line, token, wantInfo, wantDoc, wantSnippet string
+	}{
+		{mainFile, "type Vec2 [2]float32", "Vec2", "type Vec2 [2]float32", "", ""},
+		{mainFile, "type Pair struct {", "Pair", "type Pair struct", "", "type Pair struct {\n\tA, B float32\n}"},
+		{mainFile, "type Box[T any] struct {", "Box", "type Box[T any] struct", "", "type Box[T any] struct {\n\tVal T\n}\n\nfunc (b Box[V]) Early[V any]() V\nfunc (b Box[U]) Get[U any]() U"},
+		{mainFile, "type Stringer interface {", "Stringer", "type Stringer interface", "", "type Stringer interface {\n\tFormat(x int32) string\n}"},
+		{docsFile, "type Point struct {", "Point", "type Point struct", "Point doc.", "type Point struct {\n\tX, Y float32\n}"},
+		{docsFile, "Scalar = float32", "Scalar", "type Scalar = float32", "Scalar alias doc.", ""},
+		{docsFile, "Floats interface {", "Floats", "type Floats interface", "Floats doc.", "type Floats interface {\n\tfloat32 | float64\n}"},
+		{docsFile, "EmptyStruct struct{}", "EmptyStruct", "type EmptyStruct struct{}", "", ""},
+		{docsFile, "EmptyIface  interface{}", "EmptyIface", "type EmptyIface interface{}", "", ""},
+		{docsFile, "MyAny       any", "MyAny", "type MyAny any", "", ""},
+		{docsFile, "type EmptyWithMethod struct{}", "EmptyWithMethod", "type EmptyWithMethod struct{}", "", "func (EmptyWithMethod) Ping() int32"},
+		{docsFile, "type Meter float32", "Meter", "type Meter float32", "", "func (m Meter) Scale[T Floats](k T) out Meter"},
+		{docsFile, "type TagBox[A, B any] struct {", "TagBox", "type TagBox[A, B any] struct", "", "type TagBox[A, B any] struct {\n\tFirst  A\n\tSecond B\n}\n\nfunc (b TagBox[X, Y]) With[X any, Y any, T Floats](k T) (X, T)"},
+		{multiA, "type Counter struct {", "Counter", "type Counter struct", "", "type Counter struct {\n\tN int32\n}\n\nfunc (c Counter) Next() int32"},
+	}
+	for _, tc := range decls {
+		got := hoverAtToken(t, tc.file, tc.line, tc.token)
+		want := hover.Info{IR: got.IR, SymbolInfo: tc.wantInfo, DeclaredBy: "test/test", Documentation: tc.wantDoc, Definition: got.IR, Snippet: tc.wantSnippet}
+		if !isType[*ir.NamedType](got.IR) || got != want {
+			t.Errorf("At(%q in %q) = %+v (IR %T), want %+v", tc.token, tc.line, got, got.IR, want)
+		}
+	}
+	pairDecl := hoverAtToken(t, mainFile, "type Pair struct {", "Pair")
+	boxDecl := hoverAtToken(t, mainFile, "type Box[T any] struct {", "Box")
+	counterDecl := hoverAtToken(t, multiA, "type Counter struct {", "Counter")
+	refs := []struct {
+		file                  *ir.File
+		line, token, wantInfo string
+		decl                  hover.Info
+		wantIRType            func(ir.IR) bool
+	}{
+		{mainFile, "func Exercise(p Pair, arr [2][3]float32) float32 {", "Pair", "type Pair struct", pairDecl, isType[*ir.TypeValExpr]},
+		{mainFile, "lit := Pair{B: b, A: (a + -1.25)}", "Pair{", "type Pair struct", pairDecl, isType[*ir.NamedType]},
+		{mainFile, "func (b Box[V]) Early() V {", "Box", "type Box[V] struct", boxDecl, isType[*ir.TypeValExpr]},
+		{mainFile, "func (b Box[U]) Get() U {", "Box", "type Box[U] struct", boxDecl, isType[*ir.TypeValExpr]},
+		{mainFile, "func unboxInt(b Box[int32]) int32 {", "Box", "type Box[int32] struct", boxDecl, isType[*ir.TypeValExpr]},
+		{mainFile, "boxed := Box[float32]{Val: specTwo}", "Box", "type Box[float32] struct", boxDecl, isType[*ir.NamedType]},
+		{multiB, "func (c Counter) Next() int32 {", "Counter", "type Counter struct", counterDecl, isType[*ir.TypeValExpr]},
+	}
+	for _, tc := range refs {
+		got := hoverAtToken(t, tc.file, tc.line, tc.token)
+		want := hover.Info{IR: got.IR, SymbolInfo: tc.wantInfo, DeclaredBy: tc.decl.DeclaredBy, Definition: tc.decl.IR, Snippet: tc.decl.Snippet}
+		if !tc.wantIRType(got.IR) || got != want {
+			t.Errorf("At(%q in %q) = %+v (IR %T), want %+v", tc.token, tc.line, got, got.IR, want)
+		}
+	}
+}
