@@ -226,6 +226,18 @@ func (n *indexExpr) buildFieldIndex(rscope resolveScope, ext *ir.IndexExpr, xTyp
 	return true
 }
 
+func (n *indexExpr) buildFieldPathIndexExpr(rscope resolveScope, ext *ir.IndexExpr) (ir.Expr, bool) {
+	xType := ext.X.Type()
+	if _, isTypeParam := xType.(*ir.GenericTypeParam); isTypeParam {
+		return ext, n.buildFieldIndex(rscope, ext, xType)
+	}
+	if _, isStructType := ir.Underlying(xType).(*ir.StructType); isStructType {
+		return ext, n.buildFieldIndex(rscope, ext, xType)
+	}
+	from := rscope.fileScope().File()
+	return ext, rscope.Err().Appendf(ext.Src, "cannot index %s (type: %s) with a fieldpath key", ext.X.SourceString(from), xType.ReferString(from))
+}
+
 func (n *indexExpr) buildExpr(rscope resolveScope) (ir.Expr, bool) {
 	x, xOk := n.x.buildExpr(rscope)
 	idx, idxOk := buildCoreExpr(rscope, n.index)
@@ -249,6 +261,9 @@ func (n *indexExpr) buildExpr(rscope resolveScope) (ir.Expr, bool) {
 	if xType.Kind() == irkind.Invalid {
 		return ext, false
 	}
+	if idx.Type().Kind() == irkind.FieldPath {
+		return n.buildFieldPathIndexExpr(rscope, ext)
+	}
 	var ok bool
 	switch xTypeT := ir.Underlying(xType).(type) {
 	case *ir.SliceType:
@@ -256,7 +271,8 @@ func (n *indexExpr) buildExpr(rscope resolveScope) (ir.Expr, bool) {
 	case ir.ArrayType:
 		ok = n.buildSlicerIndex(rscope, ext, xTypeT)
 	case *ir.StructType:
-		ok = n.buildFieldIndex(rscope, ext, xType)
+		from := rscope.fileScope().File()
+		ok = rscope.Err().Appendf(x.Node(), "cannot use key %s (type: %s) to index %s (type: %s), expect a key of type %s", ext.Index.SourceString(from), idx.Type().ReferString(from), ext.X.SourceString(from), xType.ReferString(from), ir.GenericFieldPathType().ReferString(from))
 	default:
 		from := rscope.fileScope().File()
 		ok = rscope.Err().Appendf(x.Node(), "cannot index %s (type: %s)", ext.X.SourceString(from), xType.ReferString(from))

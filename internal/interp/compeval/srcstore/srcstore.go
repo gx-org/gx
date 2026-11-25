@@ -193,6 +193,21 @@ func (f *str) Store() ir.Storage {
 	return f.store
 }
 
+type zero struct {
+	*elements.Zero
+	store ir.Storage
+}
+
+var _ ir.WithBareValue = (*zero)(nil)
+
+func (z *zero) Store() ir.Storage {
+	return z.store
+}
+
+func (z *zero) BareValue() ir.Element {
+	return z.Zero
+}
+
 // Link an element with a storage.
 // Let's say we have the following code:
 //
@@ -229,6 +244,8 @@ func Link(store ir.Storage, el ir.Element) (ir.Element, error) {
 		linkEl = &str{IString: elT, store: store}
 	case elements.IStruct:
 		linkEl = &structure{IStruct: elT, store: store}
+	case *elements.Zero:
+		linkEl = &zero{Zero: elT, store: store}
 	default:
 		return el, fmterr.Internalf("cannot link %T to a storage", elT)
 	}

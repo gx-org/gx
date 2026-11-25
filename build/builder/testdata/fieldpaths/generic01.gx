@@ -9,11 +9,16 @@ type Params struct {
 
 func f[T any](p T) T {
 	for _, k := range testfieldpaths.Path[T, float32]("W") {
-		p[k] += 10 // ERROR: cannot index any
+		p[k] += 10
 	}
 	return p
 }
 
 func Test() Params {
 	return f[Params](Params{W: 3, B: 5})
+	// Want:
+	// Params{
+	// 	W: float32(13),
+	// 	B: float32(5),
+	// }
 }
