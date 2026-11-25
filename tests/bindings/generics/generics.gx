@@ -3,6 +3,15 @@ package generics
 
 import "dtype"
 
+// S is a generic structure.
+type S[T any] struct {
+	a T
+}
+
+type UseS struct {
+	s S[float32]
+}
+
 // Floats returns an array of generic floats.
 func Floats[T dtype.Floats]() [2]T {
 	return [2]T{2, 3}
