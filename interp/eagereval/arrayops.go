@@ -97,7 +97,7 @@ func (ao *Ops) toElement(ev ir.Evaluator, val compute.Value, tp ir.Type) (Numeri
 }
 
 // Einsum calls an einstein sum on x and y given the expression in ref.
-func (ao *Ops) Einsum(ev ir.Evaluator, ref *ir.EinsumExpr, x, y engine.NumericalElement) (engine.NumericalElement, error) {
+func (ao *Ops) Einsum(ev ir.Evaluator, ref *ir.EinsumExpr, x, y engine.NumericalElement, typ ir.Type) (engine.NumericalElement, error) {
 	xNode, err := materialise.Element(ao, x)
 	if err != nil {
 		return nil, err
@@ -110,7 +110,7 @@ func (ao *Ops) Einsum(ev ir.Evaluator, ref *ir.EinsumExpr, x, y engine.Numerical
 	if err != nil {
 		return nil, err
 	}
-	return ao.toElement(ev, dotNode, ref.Typ)
+	return ao.toElement(ev, dotNode, typ)
 }
 
 func elementsToInt(els []engine.NumericalElement) ([]int, error) {

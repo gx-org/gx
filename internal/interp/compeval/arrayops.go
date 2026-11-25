@@ -41,9 +41,9 @@ func (compArrayOps) SubGraph(name string) (engine.Engine, error) {
 }
 
 // Einsum calls an einstein sum on x and y given the expression in ref.
-func (compArrayOps) Einsum(ctx ir.Evaluator, expr *ir.EinsumExpr, x, y engine.NumericalElement) (engine.NumericalElement, error) {
+func (compArrayOps) Einsum(ctx ir.Evaluator, expr *ir.EinsumExpr, x, y engine.NumericalElement, typ ir.Type) (engine.NumericalElement, error) {
 	path := storepath.NewUniqueIR(expr)
-	return surrogates.NewArrayFrom(path, expr.Typ)
+	return surrogates.NewArrayFrom(path, typ)
 }
 
 // BroadcastInDim the data of an array across dimensions.

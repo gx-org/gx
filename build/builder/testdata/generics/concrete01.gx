@@ -14,3 +14,30 @@ func TestUndefAxisBinaryOp() [4]float64 {
 	// Want:
 	// [4]float64{2, 3, 4, 5}
 }
+
+func genericLiteral[T dtype.Floats]() T {
+	return 2.5
+}
+
+func TestGenericNumberCast() (float32, float64) {
+	return genericLiteral[float32](), genericLiteral[float64]()
+	// Want:
+	// 0: float32(2.5)
+	// 1: float64(2.5)
+}
+
+func matmulGeneric[M, K, N int, T dtype.Floats](x [M][K]T, y [K][N]T) [M][N]T {
+	z{i, j} := einsum(x{i, k} * y{k, j})
+	return z
+}
+
+func TestGenericEinsum() [2][2]float32 {
+	a := [2][2]float32{{1, 2}, {3, 4}}
+	b := [2][2]float32{{5, 6}, {7, 8}}
+	return matmulGeneric(a, b)
+	// Want:
+	// [2][2]float32{
+	// 	{19, 22},
+	// 	{43, 50},
+	// }
+}

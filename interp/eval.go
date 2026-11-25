@@ -761,7 +761,11 @@ func evalNumberCastExpr(fitp *Interpreter, expr *ir.NumberCastExpr) (ir.Element,
 	if err != nil {
 		return nil, err
 	}
-	return fitp.engine().ElementFromHostValue(fitp.env.ExprEval(), n.Cast(expr))
+	cType, err := concretizeType(fitp, expr, expr.Typ)
+	if err != nil {
+		return nil, err
+	}
+	return fitp.engine().ElementFromHostValue(fitp.env.ExprEval(), n.Cast(cType))
 }
 
 func evalSelectorExpr(fitp *Interpreter, ref *ir.SelectorExpr) (ir.Element, error) {
@@ -812,7 +816,11 @@ func evalEinsumExpr(fitp *Interpreter, ref *ir.EinsumExpr) (ir.Element, error) {
 	if err != nil {
 		return nil, err
 	}
-	return fitp.engine().Einsum(fitp, ref, x, y)
+	cType, err := concretizeType(fitp, ref, ref.Typ)
+	if err != nil {
+		return nil, err
+	}
+	return fitp.engine().Einsum(fitp, ref, x, y, cType)
 }
 
 func evalCallee(fitp *Interpreter, callee ir.Callee) (engine.Func, []ir.Element, error) {

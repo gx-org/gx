@@ -113,8 +113,8 @@ func (n *elInt) Float() *big.Float {
 }
 
 // Cast an element into a given data type.
-func (n *elInt) Cast(expr *ir.NumberCastExpr) engine.Constant {
-	return constants.NewScalar(expr.Type(), n)
+func (n *elInt) Cast(target ir.Type) engine.Constant {
+	return constants.NewScalar(target, n)
 }
 
 // Expr returns the expression representing the integer.

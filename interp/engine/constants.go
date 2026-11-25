@@ -41,7 +41,7 @@ type ScalarNumber interface {
 	CmpOp(env ir.SourceFile, expr *ir.BinaryExpr, y ScalarNumber) BoolConstant
 
 	// Cast an element into a given data type.
-	Cast(expr *ir.NumberCastExpr) Constant
+	Cast(target ir.Type) Constant
 
 	// BuildIR returns the IR expression of the element.
 	BuildIR() ir.Expr

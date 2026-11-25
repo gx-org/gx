@@ -30,7 +30,7 @@ type (
 		SubGraph(name string) (Engine, error)
 
 		// Einsum calls an einstein sum on x and y given the expression in ref.
-		Einsum(ctx ir.Evaluator, expr *ir.EinsumExpr, x, y NumericalElement) (NumericalElement, error)
+		Einsum(ctx ir.Evaluator, expr *ir.EinsumExpr, x, y NumericalElement, typ ir.Type) (NumericalElement, error)
 
 		// BroadcastInDim the data of an array across dimensions.
 		BroadcastInDim(ctx ir.Evaluator, expr ir.Expr, x NumericalElement, axisLengths []NumericalElement) (NumericalElement, error)

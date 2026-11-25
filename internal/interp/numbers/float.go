@@ -94,8 +94,8 @@ func binaryFloat(env ir.SourceFile, expr *ir.BinaryExpr, x *big.Float, y *big.Fl
 }
 
 // Cast an element into a given data type.
-func (n *elFloat) Cast(expr *ir.NumberCastExpr) engine.Constant {
-	return constants.NewScalar(expr.Type(), n)
+func (n *elFloat) Cast(target ir.Type) engine.Constant {
+	return constants.NewScalar(target, n)
 }
 
 // Type of the element.
