@@ -42,6 +42,12 @@ func (m Meter) Scale[T Floats](k T) (out Meter) {
 	return m
 }
 
+type DocStruct struct {
+	// Dim doc.
+	Width, Height float32
+	Depth         float32
+}
+
 type TagBox[A, B any] struct {
 	First  A
 	Second B

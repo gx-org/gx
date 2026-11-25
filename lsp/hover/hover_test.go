@@ -3,6 +3,7 @@ package hover_test
 import (
 	"strings"
 	"testing"
+	"testing/fstest"
 
 	"github.com/gx-org/gx/build/ir"
 	"github.com/gx-org/gx/lsp/hover"
@@ -363,5 +364,82 @@ func TestAtBuiltinScalarAndSliceTypes(t *testing.T) {
 		if got != want {
 			t.Errorf("At(%T) = %+v, want %+v", tc.typ, got, want)
 		}
+	}
+}
+
+func TestAtStructFields(t *testing.T) {
+	mainFile := lsptesting.BuildPackage(t, testdata.FS, "main.gx").File("main.gx")
+	docsFile := lsptesting.BuildPackage(t, testdata.FS, "docs.gx").File("docs.gx")
+	multiPkg := lsptesting.BuildPackage(t, testdata.FS, "multifile_a.gx", "multifile_b.gx")
+	multiA, multiB := multiPkg.File("multifile_a.gx"), multiPkg.File("multifile_b.gx")
+	const docSnippet = "type DocStruct struct {\n\t// Dim doc.\n\tWidth, Height float32\n\tDepth         float32\n}"
+	decls := []struct {
+		file                                                  *ir.File
+		line, token, wantInfo, wantDecl, wantDoc, wantSnippet string
+	}{
+		{mainFile, "A, B float32", "A", "A float32", "test/test.Pair", "", "type Pair struct {\n\tA, B float32\n}"},
+		{mainFile, "A, B float32", "B", "B float32", "test/test.Pair", "", "type Pair struct {\n\tA, B float32\n}"},
+		{mainFile, "Val T", "Val", "Val T", "test/test.Box", "", "type Box[T any] struct {\n\tVal T\n}"},
+		{docsFile, "Width, Height float32", "Width", "Width float32", "test/test.DocStruct", "Dim doc.", docSnippet},
+		{docsFile, "Width, Height float32", "Height", "Height float32", "test/test.DocStruct", "Dim doc.", docSnippet},
+		{docsFile, "Depth         float32", "Depth", "Depth float32", "test/test.DocStruct", "", docSnippet},
+		{multiA, "N int32", "N", "N int32", "test/test.Counter", "", "type Counter struct {\n\tN int32\n}"},
+	}
+	for _, tc := range decls {
+		got := hoverAtToken(t, tc.file, tc.line, tc.token)
+		want := hover.Info{IR: got.IR, SymbolInfo: tc.wantInfo, DeclaredBy: tc.wantDecl, Documentation: tc.wantDoc, Definition: got.IR, Snippet: tc.wantSnippet}
+		if !isType[*ir.Field](got.IR) || got != want {
+			t.Errorf("At(%q in %q) = %+v (IR %T), want %+v", tc.token, tc.line, got, got.IR, want)
+		}
+	}
+	pairA, pairB := hoverAtToken(t, mainFile, "A, B float32", "A"), hoverAtToken(t, mainFile, "A, B float32", "B")
+	boxVal, counterN := hoverAtToken(t, mainFile, "Val T", "Val"), hoverAtToken(t, multiA, "N int32", "N")
+	refs := []struct {
+		file                  *ir.File
+		line, token, wantInfo string
+		decl                  hover.Info
+		wantIRType            func(ir.IR) bool
+	}{
+		{mainFile, "a, b := pair(p.A)", ".A", "A float32", pairA, isType[*ir.SelectorExpr]},
+		{mainFile, "lit := Pair{B: b, A: (a + -1.25)}", "B:", "B float32", pairB, isType[*ir.FieldLit]},
+		{mainFile, "lit := Pair{B: b, A: (a + -1.25)}", "A:", "A float32", pairA, isType[*ir.FieldLit]},
+		{mainFile, "lit.A, lit.B = pair(p.A)", ".A,", "A float32", pairA, isType[*ir.StructFieldStorage]},
+		{mainFile, "lit.A, lit.B = pair(p.A)", ".B", "B float32", pairB, isType[*ir.StructFieldStorage]},
+		{mainFile, "lit.A = arr[0][0]", ".A", "A float32", pairA, isType[*ir.StructFieldStorage]},
+		{mainFile, "boxed := Box[float32]{Val: specTwo}", "Val:", "Val float32", boxVal, isType[*ir.FieldLit]},
+		{multiB, "return c.N + HelperA()", ".N", "N int32", counterN, isType[*ir.SelectorExpr]},
+	}
+	for _, tc := range refs {
+		got := hoverAtToken(t, tc.file, tc.line, tc.token)
+		want := hover.Info{IR: got.IR, SymbolInfo: tc.wantInfo, DeclaredBy: tc.decl.DeclaredBy, Definition: tc.decl.IR, Snippet: tc.decl.Snippet}
+		if !tc.wantIRType(got.IR) || got != want {
+			t.Errorf("At(%q in %q) = %+v (IR %T), want %+v", tc.token, tc.line, got, got.IR, want)
+		}
+	}
+	getLine, _ := lsptesting.CursorAt(t, testdata.FS, mainFile, "func (b Box[U]) Get() U {", "Get")
+	unboxLine, _ := lsptesting.CursorAt(t, testdata.FS, mainFile, "func unboxInt(b Box[int32]) int32 {", "unboxInt")
+	for _, tc := range []struct {
+		line     int
+		wantInfo string
+	}{{getLine + 1, "Val U"}, {unboxLine + 1, "Val int32"}} {
+		got := hover.At(mainFile, tc.line, len("\treturn b.")+1)
+		want := hover.Info{IR: got.IR, SymbolInfo: tc.wantInfo, DeclaredBy: boxVal.DeclaredBy, Definition: boxVal.IR, Snippet: boxVal.Snippet}
+		if !isType[*ir.SelectorExpr](got.IR) || got != want {
+			t.Errorf("At(b.Val line %d) = %+v (IR %T), want %+v", tc.line, got, got.IR, want)
+		}
+	}
+	importedFS := fstest.MapFS{
+		"imported.gx": {Data: []byte("package test\n\nimport (\n\t\"runtime:ext\"\n\t\"shape\"\n)\n\nfunc ReadDType(s shape.Shape) shape.DType {\n\treturn s.DType\n}\n")},
+	}
+	importedFile := lsptesting.BuildPackage(t, importedFS, "imported.gx").File("imported.gx")
+	impLine, impCol := lsptesting.CursorAt(t, importedFS, importedFile, "return s.DType", ".DType")
+	gotImp := hover.At(importedFile, impLine, impCol)
+	const shapeSnippet = "type Shape struct {\n\tDType      DType\n\tDimensions []int\n}"
+	if !isType[*ir.SelectorExpr](gotImp.IR) || !isType[*ir.Field](gotImp.Definition) || gotImp.SymbolInfo != "DType shape.DType" || gotImp.DeclaredBy != "shape.Shape" || gotImp.Documentation != "" || gotImp.Snippet != shapeSnippet {
+		t.Errorf("At(.DType) = %+v (IR %T, Def %T), want shape.Shape.DType", gotImp, gotImp.IR, gotImp.Definition)
+	}
+	gotTypeParam := hoverAtToken(t, mainFile, "type Box[T any] struct {", "T any")
+	if !isType[*ir.Field](gotTypeParam.IR) || gotTypeParam.SymbolInfo != "" || gotTypeParam.Definition != nil {
+		t.Errorf("At(Box type param T) = %+v (IR %T), want *ir.Field with empty hover metadata", gotTypeParam, gotTypeParam.IR)
 	}
 }

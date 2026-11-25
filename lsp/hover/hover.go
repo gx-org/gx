@@ -75,6 +75,14 @@ func populate(info *Info, file *ir.File, node ir.IR) {
 		}
 	case *ir.SelectorExpr:
 		populate(info, file, n.Stor)
+	case *ir.StructFieldStorage:
+		populate(info, file, n.Sel)
+	case *ir.FieldLit:
+		populate(info, file, n.FieldStorage)
+	case *ir.FieldStorage:
+		populate(info, file, n.Field)
+	case *ir.Field:
+		populateField(info, file, n)
 	case *ir.Ident:
 		populate(info, file, n.Stor)
 	default:
@@ -82,7 +90,8 @@ func populate(info *Info, file *ir.File, node ir.IR) {
 			info.SymbolInfo = "type " + t.ReferString(file)
 		}
 	}
-	// TODO(b/586481108): Populate struct field and generic parameter nodes.
+	// TODO(b/590237756): Populate function and method parameter fields.
+	// TODO(b/590238154): Populate generic parameter nodes.
 	// TODO(b/586481415): Populate builtin, function literal, and interface method nodes.
 }
 
@@ -170,6 +179,38 @@ func isRangeVar(file *ir.File, ident *ast.Ident) bool {
 func populateLocal(info *Info, file *ir.File, stor ir.Storage) {
 	info.Definition = stor
 	info.SymbolInfo = fmt.Sprintf("var %s %s", stor.NameDef().Name, stor.Type().ReferString(file))
+}
+
+func populateField(info *Info, file *ir.File, field *ir.Field) {
+	origin := field.Origin()
+	nt := enclosingStruct(file, origin)
+	if nt == nil {
+		return
+	}
+	info.Definition = origin
+	info.SymbolInfo = fmt.Sprintf("%s %s", field.Name.Name, field.Type().ReferString(file))
+	info.DeclaredBy = nt.FullName()
+	info.Documentation = strings.TrimSpace(origin.Group.Src.Doc.Text())
+	info.Snippet = typeSnippet(nt)
+}
+
+func enclosingStruct(file *ir.File, origin *ir.Field) *ir.NamedType {
+	packages := make([]*ir.Package, 0, 1+len(file.Imports))
+	packages = append(packages, file.Package)
+	for _, imp := range file.Imports {
+		packages = append(packages, imp.Package)
+	}
+	for _, pkg := range packages {
+		if pkg == nil || pkg.Decls == nil {
+			continue
+		}
+		for _, nt := range pkg.Decls.Types {
+			if st, ok := nt.Underlying.Val().(*ir.StructType); ok && slices.Contains(st.Fields.Fields(), origin) {
+				return nt
+			}
+		}
+	}
+	return nil
 }
 
 func populateNamedType(info *Info, file *ir.File, nt *ir.NamedType) {
