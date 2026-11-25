@@ -20,6 +20,7 @@ import (
 	"github.com/gx-org/gx/build/fmterr"
 	"github.com/gx-org/gx/build/ir"
 	"github.com/gx-org/gx/internal/base/cast"
+	"github.com/gx-org/gx/internal/concrete"
 	"github.com/gx-org/gx/interp/context"
 	"github.com/gx-org/gx/interp/elements"
 	"github.com/gx-org/gx/interp/engine"
@@ -40,23 +41,29 @@ func fieldNames(fields []*ir.FieldGroup) (r []*ast.Ident) {
 	return
 }
 
-// findConcreteTypeElement returns an element encapsulating the concrete type of tp.
-// If tp is a generic type parameter, the element is the value of that parameter in the frame.
-func findConcreteTypeElement(ctx *context.Context, src ast.Node, frame *context.Frame, tp ir.Type) (*elements.GenericType, error) {
+// findConcreteTypeElement returns an element encapsulating the concrete type of
+// tp. If tp is a generic type parameter, the element is the value of that
+// parameter in the current frame. Otherwise, the generic type parameters
+// referenced by tp are replaced by their values in the current frame.
+func findConcreteTypeElement(fitp *Interpreter, src ast.Node, tp ir.Type) (*elements.GenericType, error) {
 	typeParam, isTypeParam := tp.(*ir.GenericTypeParam)
 	if !isTypeParam {
-		return elements.NewGenType(tp), nil
+		cType, err := concrete.Concrete(fitp.compEval(), tp)
+		if err != nil {
+			return nil, fmterr.Error(fitp.File().FileSet(), src, err)
+		}
+		return elements.NewGenType(cType), nil
 	}
-	el, err := frame.Find(typeParam.OrigField().Name)
+	el, err := fitp.Context().CurrentFrame().Find(typeParam.OrigField().Name)
 	if err != nil {
-		return nil, fmterr.InternalAt(ctx.File().FileSet(), src, "cannot find a value for generic type %s: %v", tp.ReferString(ctx.File()), err)
+		return nil, fmterr.InternalAt(fitp.File().FileSet(), src, "cannot find a value for generic type %s: %v", tp.ReferString(fitp.File()), err)
 	}
 	return cast.To[*elements.GenericType](ir.BareValue(el))
 }
 
 // findConcreteType returns the concrete type of tp.
-func findConcreteType(ctx *context.Context, src ast.Node, frame *context.Frame, tp ir.Type) (ir.Type, error) {
-	typeEl, err := findConcreteTypeElement(ctx, src, frame, tp)
+func findConcreteType(fitp *Interpreter, src ast.Node, tp ir.Type) (ir.Type, error) {
+	typeEl, err := findConcreteTypeElement(fitp, src, tp)
 	if err != nil {
 		return nil, err
 	}

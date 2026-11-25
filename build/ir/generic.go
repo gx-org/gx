@@ -206,6 +206,7 @@ type GenericTypeParam struct {
 var (
 	_ Type         = (*GenericTypeParam)(nil)
 	_ GenericParam = (*GenericTypeParam)(nil)
+	_ Zeroer       = (*GenericTypeParam)(nil)
 )
 
 func (*GenericTypeParam) storageValue() {}
@@ -229,6 +230,14 @@ func (s *GenericTypeParam) typ() Type {
 // Kind of the type.
 func (s *GenericTypeParam) Kind() irkind.Kind {
 	return s.typ().Kind()
+}
+
+// Zero returns an empty composite literal of the type parameter.
+func (s *GenericTypeParam) Zero() Expr {
+	return &StructLitExpr{
+		Src: &ast.CompositeLit{},
+		Typ: s,
+	}
 }
 
 func (s *GenericTypeParam) equal(tpcmp TypeEval, typ Type) (bool, error) {

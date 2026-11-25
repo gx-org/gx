@@ -1,0 +1,25 @@
+package zeros02
+
+type S[T any] struct {
+	s T
+}
+
+type AB struct {
+	a float32
+	b float32
+}
+
+func New[T any]() S[T] {
+	return S[T]{}
+}
+
+func Test() S[AB] {
+	return New[AB]()
+	// Want:
+	// S[AB]{
+	// 	s: AB{
+	// 		a: float32(0),
+	// 		b: float32(0),
+	// 	},
+	// }
+}
