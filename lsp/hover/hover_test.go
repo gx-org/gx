@@ -292,3 +292,76 @@ func TestAtFunctionsAndMethods(t *testing.T) {
 		t.Errorf("At(rand.NewSource) = %+v (Def %T)", gotStd, gotStd.Definition)
 	}
 }
+
+func TestAtBuiltinScalarAndSliceTypes(t *testing.T) {
+	mainFile := lsptesting.BuildPackage(t, testdata.FS, "main.gx").File("main.gx")
+	docsFile := lsptesting.BuildPackage(t, testdata.FS, "docs.gx").File("docs.gx")
+	stdlibFile := lsptesting.BuildPackage(t, testdata.FS, "stdlib.gx").File("stdlib.gx")
+
+	tests := []struct {
+		file                  *ir.File
+		line, token, wantInfo string
+		wantIR                func(ir.IR) bool
+	}{
+		{mainFile, "var StaticScalar int32", "int32", "type int32", func(v ir.IR) bool { return v == ir.Int32Type() }},
+		{mainFile, "var StaticStr string", "string", "type string", func(v ir.IR) bool { return v == ir.StringType() }},
+		{mainFile, "type Vec2 [2]float32", "float32", "type float32", func(v ir.IR) bool { return v == ir.Float32Type() }},
+		{mainFile, "a += float32(localVar)", "float32(", "type float32", func(v ir.IR) bool { return v == ir.Float32Type() }},
+		{mainFile, "inferred := [...]float32{1.0, 2.0}", "float32{", "type float32", func(v ir.IR) bool { return v == ir.Float32Type() }},
+		{mainFile, "const TypedConst float32 = 3.5", "float32", "type float32", isType[*ir.TypeValExpr]},
+		{mainFile, "func unboxInt(b Box[int32]) int32 {", "int32]", "type int32", isType[*ir.TypeValExpr]},
+		{mainFile, "func variadic(vals ...int32) []int32", "int32)", "type int32", isType[*ir.TypeValExpr]},
+		{mainFile, "sl2d := [][]int32{{1}, {2}}", "int32{{", "type int32", isType[*ir.TypeValExpr]},
+		{mainFile, "func unrollIndices() []int {", "int {", "type int", isType[*ir.TypeValExpr]},
+		{docsFile, "MyAny       any", "any", "type any", isType[*ir.TypeValExpr]},
+		{stdlibFile, "func(s counter) bool { return s.n < 10 },", "bool", "type bool", isType[*ir.TypeValExpr]},
+		{mainFile, "specVal := id[float32](a)", "float32", "type float32", isType[*ir.Ident]},
+		{mainFile, "specTwo := firstOfTwo[float32, int32](specVal, localVar)", "float32", "type float32", isType[*ir.Ident]},
+		{mainFile, "specTwo := firstOfTwo[float32, int32](specVal, localVar)", "int32", "type int32", isType[*ir.Ident]},
+		{mainFile, "func variadic(vals ...int32) []int32", "[]int32", "type []int32", isType[*ir.SliceType]},
+		{mainFile, "func unrollIndices() []int {", "[]int", "type []int", isType[*ir.SliceType]},
+		{mainFile, "sl := []int32{10, 20, 30}", "[]int32", "type []int32", isType[*ir.SliceType]},
+		{mainFile, "sl2d := [][]int32{{1}, {2}}", "[][]int32", "type [][]int32", isType[*ir.SliceType]},
+		{mainFile, "slArr := [][2]float32{{1, 2}}", "[][2]", "type [][2]float32", isType[*ir.SliceType]},
+		{mainFile, "type Pair struct {", "struct", "", isType[*ir.StructType]},
+		{mainFile, "type Stringer interface {", "interface", "", isType[*ir.Interface]},
+		{docsFile, "EmptyIface  interface{}", "interface", "", isType[*ir.Interface]},
+		{mainFile, "func applyFn(fn func(y int32) float32, x int32) float32 {", "func(y", "", isType[*ir.FuncType]},
+		{mainFile, "func variadic(vals ...int32) []int32", "...", "", isType[*ir.VarArgsType]},
+	}
+	for _, tc := range tests {
+		got := hoverAtToken(t, tc.file, tc.line, tc.token)
+		want := hover.Info{IR: got.IR, SymbolInfo: tc.wantInfo}
+		if !tc.wantIR(got.IR) || got != want {
+			t.Errorf("At(%q in %q) = %+v (IR %T), want %+v", tc.token, tc.line, got, got.IR, want)
+		}
+	}
+
+	varPkg := lsptesting.BuildPackage(t, testdata.FS, "main.gx")
+	varFile := varPkg.File("main.gx")
+	varSpec := varPkg.Decls.Vars[0]
+	for _, tc := range []struct {
+		typ      ir.Type
+		wantInfo string
+	}{
+		{ir.BoolType(), "type bool"},
+		{ir.Bfloat16Type(), "type bfloat16"},
+		{ir.Float32Type(), "type float32"},
+		{ir.Float64Type(), "type float64"},
+		{ir.IntType(), "type int"},
+		{ir.Int32Type(), "type int32"},
+		{ir.Int64Type(), "type int64"},
+		{ir.Uint32Type(), "type uint32"},
+		{ir.Uint64Type(), "type uint64"},
+		{ir.StringType(), "type string"},
+		{ir.AnyType(), "type any"},
+		{&ir.BuiltinType{Impl: "opaque"}, "type opaque"},
+	} {
+		varSpec.TypeV = tc.typ
+		got := hoverAtToken(t, varFile, "var StaticScalar int32", "int32")
+		want := hover.Info{IR: tc.typ, SymbolInfo: tc.wantInfo}
+		if got != want {
+			t.Errorf("At(%T) = %+v, want %+v", tc.typ, got, want)
+		}
+	}
+}

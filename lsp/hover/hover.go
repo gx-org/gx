@@ -77,10 +77,35 @@ func populate(info *Info, file *ir.File, node ir.IR) {
 		populate(info, file, n.Stor)
 	case *ir.Ident:
 		populate(info, file, n.Stor)
+	default:
+		if t, ok := node.(ir.Type); ok && isBuiltinOrSliceType(t) {
+			info.SymbolInfo = "type " + t.ReferString(file)
+		}
 	}
-	// TODO(b/586481357): Populate builtin scalar and slice type nodes.
 	// TODO(b/586481108): Populate struct field and generic parameter nodes.
 	// TODO(b/586481415): Populate builtin, function literal, and interface method nodes.
+}
+
+func isBuiltinOrSliceType(t ir.Type) bool {
+	switch t.(type) {
+	case *ir.BuiltinType, *ir.SliceType:
+		return true
+	}
+	switch t {
+	case ir.BoolType(),
+		ir.Bfloat16Type(),
+		ir.Float32Type(),
+		ir.Float64Type(),
+		ir.IntType(),
+		ir.Int32Type(),
+		ir.Int64Type(),
+		ir.Uint32Type(),
+		ir.Uint64Type(),
+		ir.StringType(),
+		ir.AnyType():
+		return true
+	}
+	return false
 }
 
 func populateImport(info *Info, file *ir.File, imp *ir.ImportDecl) {
