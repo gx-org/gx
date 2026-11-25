@@ -154,3 +154,25 @@ func TestLen() int {
 	// Want:
 	// int(2)
 }
+
+func TestLogisticScalar() (float32, float64, float64, float32) {
+	return math.Logistic(float32(0.0)), math.Logistic(float64(0.0)), math.Logistic(0.0), math.Logistic[float32](0)
+	// Want:
+	// 0: float32(0.5)
+	// 1: float64(0.5)
+	// 2: float64(0.5)
+	// 3: float32(0.5)
+}
+
+func TestLogisticArrays() ([3]float32, [2][2]float64, [2]bfloat16) {
+	return math.Logistic([3]float32{-1, 0, 1}),
+		math.Logistic[float64]([2][2]float64{{-1, 0}, {1, 2}}),
+		math.Logistic([2]bfloat16{0, 0})
+	// Want:
+	// 0: [3]float32{0.268941, 0.5, 0.731059}
+	// 1: [2][2]float64{
+	// 	{0.2689414214, 0.5},
+	// 	{0.7310585786, 0.880797078},
+	// }
+	// 2: [2]bfloat16{0.5, 0.5}
+}

@@ -1,0 +1,42 @@
+package logistic_grad
+
+import (
+	"dtype"
+	"math"
+	"math/grad"
+)
+
+func logisticScalar(x float32) float32 {
+	return math.Logistic(x)
+}
+
+// gx:=grad.Func(logisticScalar, "x")
+func logisticScalarGrad()
+
+func logisticGeneric[T dtype.Floats, S []int](x [S...]T) [S...]T {
+	return math.Logistic(x)
+}
+
+func TestLogisticGradFunc() (float32, float32) {
+	return logisticScalarGrad(0.0)
+	// Want:
+	// 0: float32(0.5)
+	// 1: float32(0.25)
+}
+
+func TestLogisticReverse() ([3]float32, [3]float32) {
+	y, bck := grad.Reverse(math.Logistic)([3]float32{-0.5, 0.0, 0.5})
+	return y, bck([3]float32{1.0, 2.0, 1.0})
+	// Want:
+	// 0: [3]float32{0.377541, 0.5, 0.622459}
+	// 1: [3]float32{0.235004, 0.5, 0.235004}
+}
+
+func TestLogisticExtremeAndGeneric() ([2]float32, [2]float32, [2]float32) {
+	y, bck := grad.Reverse(math.Logistic)([2]float32{-100.0, 100.0})
+	return y, bck([2]float32{1.0, 1.0}), logisticGeneric([2]float32{0.0, 0.0})
+	// Want:
+	// 0: [2]float32{0, 1}
+	// 1: [2]float32{0, 0}
+	// 2: [2]float32{0.5, 0.5}
+}

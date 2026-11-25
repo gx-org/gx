@@ -5,3 +5,11 @@ import "math"
 func testMathCeilWithMismatchedShape() [1]float32 {
 	return math.Ceil[float32]([2]float32{1, 2}) // ERROR cannot use [2]float32 as [1]float32 value in return statement
 }
+
+func testLogisticWithInt() [2]int32 {
+	return math.Logistic([2]int32{1, 2}) // ERROR int32 does not satisfy dtype.Floats
+}
+
+func testLogisticWithMismatchedShape() [1]float32 {
+	return math.Logistic([2]float32{1, 2}) // ERROR cannot use [2]float32 as [1]float32 value in return statement
+}
