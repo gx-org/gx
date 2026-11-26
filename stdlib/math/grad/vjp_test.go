@@ -1969,6 +1969,189 @@ func (s S) vjpF(x float32) (float32, func(res float32) S, func(res float32) floa
 	)
 }
 
+func TestVJPGenericStructs(t *testing.T) {
+	declareLayersPackage := testbuild.DeclarePackage{
+		Src: `
+package layers
+
+type Linear[Size int] struct {
+	W [Size]float32
+	B [Size]float32
+}
+
+func (l Linear[Size]) Forward(x [Size]float32) [Size]float32 {
+	return l.W*x + l.B
+}
+`,
+	}
+	testbuild.Run(t,
+		declareGradPackage,
+		declareLayersPackage,
+		testgrad.Reverse{
+			Src: `
+type Linear[Size int] struct {
+	w [Size]float32
+	b [Size]float32
+}
+
+func F(l Linear[3], x [3]float32) [3]float32 {
+	return l.w*x + l.b
+}
+`,
+			Want: `
+func vjpF(l Linear[3], x [3]float32) ([3]float32, func(res [3]float32) Linear[3], func(res [3]float32) [3]float32) {
+	fwd0 := l.w*x
+	fwd1 := fwd0+l.b
+	selfVJPFuncWRTl := func(res [3]float32) Linear[3] {
+		bck0x := res*x
+		return Linear[3]{
+			w: bck0x,
+			b: res,
+		}
+	}
+	selfVJPFuncWRTx := func(res [3]float32) [3]float32 {
+		bck0y := l.w*res
+		return bck0y
+	}
+	return fwd1, selfVJPFuncWRTl, selfVJPFuncWRTx
+}
+`,
+		},
+		testgrad.Reverse{
+			Src: `
+type Linear[Size int] struct {
+	w [Size]float32
+	b [Size]float32
+}
+
+func (l Linear[Size]) forward(x [Size]float32) [Size]float32 {
+	return l.w*x + l.b
+}
+
+func F[Size int](l Linear[Size], x [Size]float32) [Size]float32 {
+	err := l.forward(x)
+	z := err * err
+	return z
+}
+`,
+			Want: `
+func vjpF[Size int](l Linear[Size], x [Size]float32) ([Size]float32, func(res [Size]float32) Linear[Size], func(res [Size]float32) [Size]float32) {
+	fwd0, forwardVJPl, forwardVJPx := grad.Reverse(l.forward)(x)
+	err := fwd0
+	fwd1 := err*err
+	z := fwd1
+	selfVJPFuncWRTl := func(res [Size]float32) Linear[Size] {
+		bck1y := err*res
+		bck0l := forwardVJPl(bck1y)
+		bckerr := bck0l
+		bck1x := res*err
+		bck0l1 := forwardVJPl(bck1x)
+		bckerr1 := bck0l1
+		bckz := Linear[Size]{
+			w: bckerr1.w+bckerr.w,
+			b: bckerr1.b+bckerr.b,
+		}
+		return Linear[Size]{
+			w: bckz.w,
+			b: bckz.b,
+		}
+	}
+	selfVJPFuncWRTx := func(res [Size]float32) [Size]float32 {
+		bck1y1 := err*res
+		bck0x := forwardVJPx(bck1y1)
+		bckerr2 := bck0x
+		bck1x1 := res*err
+		bck0x1 := forwardVJPx(bck1x1)
+		bckerr3 := bck0x1
+		bckz1 := (bckerr3+bckerr2)
+		return bckz1
+	}
+	return z, selfVJPFuncWRTl, selfVJPFuncWRTx
+}
+`,
+		},
+		testgrad.Reverse{
+			Src: `
+type floats interface {
+	float32 | float64
+}
+
+type Layer[T floats, Size int] struct {
+	w [Size]T
+	b [Size]T
+}
+
+func F[T floats, Size int](l Layer[T, Size], x [Size]T) [Size]T {
+	return l.w*x + l.b
+}
+`,
+			Want: `
+func vjpF[T floats, Size int](l Layer[T, Size], x [Size]T) ([Size]T, func(res [Size]T) Layer[T, Size], func(res [Size]T) [Size]T) {
+	fwd0 := l.w*x
+	fwd1 := fwd0+l.b
+	selfVJPFuncWRTl := func(res [Size]T) Layer[T, Size] {
+		bck0x := res*x
+		return Layer[T, Size]{
+			w: bck0x,
+			b: res,
+		}
+	}
+	selfVJPFuncWRTx := func(res [Size]T) [Size]T {
+		bck0y := l.w*res
+		return bck0y
+	}
+	return fwd1, selfVJPFuncWRTl, selfVJPFuncWRTx
+}
+`,
+		},
+		testgrad.Reverse{
+			Imports: []string{"layers"},
+			Src: `
+func F[Size int](l layers.Linear[Size], x [Size]float32) [Size]float32 {
+	err := l.Forward(x)
+	z := err * err
+	return z
+}
+`,
+			Want: `
+func vjpF[Size int](l layers.Linear[Size], x [Size]float32) ([Size]float32, func(res [Size]float32) layers.Linear[Size], func(res [Size]float32) [Size]float32) {
+	fwd0, ForwardVJPl, ForwardVJPx := grad.Reverse(l.Forward)(x)
+	err := fwd0
+	fwd1 := err*err
+	z := fwd1
+	selfVJPFuncWRTl := func(res [Size]float32) layers.Linear[Size] {
+		bck1y := err*res
+		bck0l := ForwardVJPl(bck1y)
+		bckerr := bck0l
+		bck1x := res*err
+		bck0l1 := ForwardVJPl(bck1x)
+		bckerr1 := bck0l1
+		bckz := layers.Linear[Size]{
+			W: bckerr1.W+bckerr.W,
+			B: bckerr1.B+bckerr.B,
+		}
+		return layers.Linear[Size]{
+			W: bckz.W,
+			B: bckz.B,
+		}
+	}
+	selfVJPFuncWRTx := func(res [Size]float32) [Size]float32 {
+		bck1y1 := err*res
+		bck0x := ForwardVJPx(bck1y1)
+		bckerr2 := bck0x
+		bck1x1 := res*err
+		bck0x1 := ForwardVJPx(bck1x1)
+		bckerr3 := bck0x1
+		bckz1 := (bckerr3+bckerr2)
+		return bckz1
+	}
+	return z, selfVJPFuncWRTl, selfVJPFuncWRTx
+}
+`,
+		},
+	)
+}
+
 func TestVJPErrors(t *testing.T) {
 	testbuild.Run(t,
 		declareGradPackage,

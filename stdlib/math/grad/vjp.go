@@ -17,6 +17,7 @@ package grad
 import (
 	"github.com/gx-org/gx/api/hostio"
 	"github.com/gx-org/gx/build/ir"
+	"github.com/gx-org/gx/build/ir/irkind"
 	"github.com/gx-org/gx/internal/base/cast"
 	"github.com/gx-org/gx/internal/interp/flatten"
 	"github.com/gx-org/gx/interp/elements"
@@ -58,14 +59,29 @@ func (m vjpMacro) newMacro(fnIR ir.PkgFunc) (*vjpMacro, error) {
 	return &m, nil
 }
 
+func unwrapExpr(x ir.Expr) ir.Expr {
+	switch xT := x.(type) {
+	case *ir.FuncValExpr:
+		return unwrapExpr(xT.X())
+	case *ir.SpecTypeExpr:
+		return unwrapExpr(xT.X)
+	case *ir.ParenExpr:
+		return unwrapExpr(xT.X)
+	default:
+		return x
+	}
+}
+
 func extractReceiverIR(fnIR ir.PkgFunc, x ir.Expr) (ir.Expr, error) {
-	recvField := fnIR.FuncType().ReceiverField()
-	if recvField == nil {
+	if fnIR.FuncType().ReceiverField() == nil {
 		return nil, nil
 	}
-	sel, err := cast.To[*ir.SelectorExpr](x)
+	sel, err := cast.To[*ir.SelectorExpr](unwrapExpr(x))
 	if err != nil {
 		return nil, err
+	}
+	if sel.X.Type().Kind() == irkind.MetaType {
+		return nil, nil
 	}
 	return sel.X, nil
 }

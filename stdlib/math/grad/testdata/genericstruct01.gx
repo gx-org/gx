@@ -1,0 +1,110 @@
+package genericstruct01
+
+import (
+	"math/grad"
+	"num"
+)
+
+type floats interface {
+	float32 | float64
+}
+
+type Linear[Size int] struct {
+	Weights [Size]float32
+	Bias    float32
+}
+
+func evalConcrete(l Linear[3], x [3]float32) float32 {
+	return num.Dot(l.Weights, x) + l.Bias
+}
+
+func TestConcreteGenericStruct() (float32, Linear[3], [3]float32) {
+	l := Linear[3]{Weights: [3]float32{1, 2, 3}, Bias: 0.5}
+	x := [3]float32{2, -1, 4}
+	v, bckL, bckX := grad.Reverse(evalConcrete)(l, x)
+	return v, bckL(1), bckX(1)
+	// Want:
+	// 0: float32(12.5)
+	// 1: Linear[3]{
+	// 	Weights: [3]float32{2, -1, 4},
+	// 	Bias: float32(1),
+	// }
+	// 2: [3]float32{1, 2, 3}
+}
+
+func evalGeneric[Size int](l Linear[Size], x [Size]float32) float32 {
+	return num.Dot(l.Weights, x) + l.Bias
+}
+
+func lossGeneric[Size int](l Linear[Size], x [Size]float32, y float32) float32 {
+	err := evalGeneric(l, x) - y
+	z := err * err
+	return z
+}
+
+func TestGenericStructMultiPath() (float32, Linear[3]) {
+	l := Linear[3]{Weights: [3]float32{1, 2, 3}, Bias: 0.5}
+	x := [3]float32{2, -1, 4}
+	v, bckL, _, _ := grad.Reverse(lossGeneric)(l, x, 10)
+	return v, bckL(1)
+	// Want:
+	// 0: float32(6.25)
+	// 1: Linear[3]{
+	// 	Weights: [3]float32{10, -5, 20},
+	// 	Bias: float32(5),
+	// }
+}
+
+type Layer[T floats, Size int] struct {
+	Weights [Size]T
+	Bias    T
+}
+
+func layerEval[T floats, Size int](l Layer[T, Size], x [Size]T) T {
+	return num.Dot(l.Weights, x) + l.Bias
+}
+
+func layerLoss[T floats, Size int](l Layer[T, Size], x [Size]T, y T) T {
+	err := layerEval(l, x) - y
+	return err * err
+}
+
+func TestMultiParamGenericStruct() (float64, Layer[float64, 2]) {
+	l := Layer[float64, 2]{Weights: [2]float64{1, 3}, Bias: 2}
+	x := [2]float64{2, 4}
+	v, bckL, _, _ := grad.Reverse(layerLoss)(l, x, 10)
+	return v, bckL(1)
+	// Want:
+	// 0: float64(36)
+	// 1: Layer[float64, 2]{
+	// 	Weights: [2]float64{24, 48},
+	// 	Bias: float64(12),
+	// }
+}
+
+type Outer[Size int] struct {
+	In Linear[Size]
+	C  float32
+}
+
+func nestedGenericLoss[Size int](o Outer[Size], x [Size]float32) float32 {
+	err := evalGeneric(o.In, x) + o.C
+	z := err * err
+	return z
+}
+
+func TestNestedGenericStruct() (float32, Outer[2]) {
+	o := Outer[2]{In: Linear[2]{Weights: [2]float32{1, 2}, Bias: 0.5}, C: 1.5}
+	x := [2]float32{3, -1}
+	v, bckO, _ := grad.Reverse(nestedGenericLoss)(o, x)
+	return v, bckO(1)
+	// Want:
+	// 0: float32(9)
+	// 1: Outer[2]{
+	// 	In: Linear[2]{
+	// 		Weights: [2]float32{18, -6},
+	// 		Bias: float32(6),
+	// 	},
+	// 	C: float32(6),
+	// }
+}

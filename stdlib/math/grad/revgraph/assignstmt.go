@@ -223,7 +223,7 @@ func (a *astOutWRT) assignSpecialExprSuffix(id nodeID, expr *special.Expr, suffi
 }
 
 func (a *astOutWRT) add(xs ...*special.Expr) *special.Expr {
-	return special.AddForType(a.wrt.Type(), xs...)
+	return special.AddForType(a.graph.fn.File(), a.wrt.Type(), xs...)
 }
 
 type astOutWRTArray struct {
