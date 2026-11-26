@@ -19,6 +19,8 @@ package testpkgs
 import (
 	"github.com/gx-org/gx/build/builder/testbuild"
 	"github.com/gx-org/gx/build/ir"
+	"github.com/gx-org/gx/build/ir/irkind"
+	"github.com/gx-org/gx/internal/base/cast"
 	"github.com/gx-org/gx/interp/elements"
 	"github.com/gx-org/gx/interp"
 	"github.com/gx-org/gx/src/gx/ast"
@@ -50,21 +52,55 @@ func UpdateReturn(any, string) any
 
 type id struct {
 	elements.MacroCall
-	fn *ir.FuncDecl
+	fn   *ir.FuncDecl
+	recv ir.Expr
 }
 
 var _ ir.FuncASTBuilder = (*id)(nil)
+
+func extractReceiverIR(fn ir.PkgFunc, x ir.Expr) (ir.Expr, error) {
+	if fn.FuncType().ReceiverField() == nil {
+		return nil, nil
+	}
+	for {
+		switch xT := x.(type) {
+		case *ir.FuncValExpr:
+			x = xT.X()
+		case *ir.SpecTypeExpr:
+			x = xT.X
+		case *ir.ParenExpr:
+			x = xT.X
+		default:
+			sel, err := cast.To[*ir.SelectorExpr](x)
+			if err != nil {
+				return nil, err
+			}
+			if sel.X.Type().Kind() == irkind.MetaType {
+				return nil, nil
+			}
+			return sel.X, nil
+		}
+	}
+}
 
 func newID(file *ir.File, call *ir.FuncCallExpr, mac *ir.Macro, args []ir.Element) (ir.MacroElement, error) {
 	fn, err := interp.FuncDeclFromElement(args[0])
 	if err != nil {
 		return nil, err
 	}
-	return &id{MacroCall: elements.NewMacroCall(mac, file, call), fn: fn.(*ir.FuncDecl)}, nil
+	recv, err := extractReceiverIR(fn, call.Args[0])
+	if err != nil {
+		return nil, err
+	}
+	return &id{
+		MacroCall: elements.NewMacroCall(mac, file, call),
+		fn:        fn.(*ir.FuncDecl),
+		recv:      recv,
+	}, nil
 }
 
 func (m *id) BuildDecl(ir.PkgFunc) (*ir.File, ir.Expr, *ast.FuncDecl, bool) {
-	return m.fn.FFile, nil, &ast.FuncDecl{Type: m.fn.FType.Src, Recv: m.fn.Src.Recv}, true
+	return m.fn.FFile, m.recv, &ast.FuncDecl{Type: m.fn.FType.Src, Recv: m.fn.Src.Recv}, true
 }
 
 func (m *id) BuildBody(fetcher ir.Fetcher, _ ir.Func) (*ast.BlockStmt, bool) {

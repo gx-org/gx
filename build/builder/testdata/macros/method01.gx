@@ -1,0 +1,22 @@
+package method01
+
+import "testmacros"
+
+type S[N int] struct {
+	X [N]float32
+	Y float32
+}
+
+func (s S[N]) y() float32 {
+	return s.Y
+}
+
+func concrete(s S[3]) float32 {
+	return testmacros.ID(s.y)()
+}
+
+func Test() float32 {
+	return concrete(S[3]{X: [3]float32{1, 2, 3}, Y: 0.5})
+	// Want:
+	// float32(0.5)
+}

@@ -224,12 +224,13 @@ func (n *callExpr) buildMacroCall(rscope resolveScope, compEval *compileEvaluato
 		ok := synScope.buildBody(synDecl, compEval)
 		return rscope.fileScope().runScheduled() && ok
 	})
-	return &ir.MacroCallExpr{
+	macCall := &ir.MacroCallExpr{
 		X:    callExpr,
 		M:    fnBuilder,
 		Recv: recvExpr,
 		F:    synDecl,
-	}, true
+	}
+	return specializeFuncFromReceiver(rscope, macCall, recvExpr, synDecl)
 }
 
 func (n *callExpr) buildCallExpr(rscope resolveScope, callee ir.Expr) (ir.Expr, bool) {
