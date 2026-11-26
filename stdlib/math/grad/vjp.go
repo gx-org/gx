@@ -19,7 +19,6 @@ import (
 	"github.com/gx-org/gx/build/ir"
 	"github.com/gx-org/gx/build/ir/irkind"
 	"github.com/gx-org/gx/internal/base/cast"
-	"github.com/gx-org/gx/internal/interp/flatten"
 	"github.com/gx-org/gx/interp/elements"
 	"github.com/gx-org/gx/interp"
 	"github.com/gx-org/gx/src/gx/ast"
@@ -101,6 +100,6 @@ func (m *vjpMacro) BuildBody(fetcher ir.Fetcher, _ ir.Func) (*ast.BlockStmt, boo
 }
 
 // Unflatten creates a GX value from the next handles available in the parser.
-func (m *vjpMacro) Unflatten(handles *flatten.Parser) (hostio.Value, error) {
+func (m *vjpMacro) Unflatten(handles hostio.Parser) (hostio.Value, error) {
 	return elements.NewIRNode(m.graph.Func()), nil
 }

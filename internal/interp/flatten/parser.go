@@ -20,87 +20,70 @@ import (
 
 	"github.com/pkg/errors"
 	"github.com/gomlx/compute"
-	"github.com/gx-org/gx/api/hostio"
 	gxfmt "github.com/gx-org/gx/base/fmt"
 	"github.com/gx-org/gx/build/ir"
-	"github.com/gx-org/gx/internal/togo"
 )
 
 // Parser unflattens the output of a graph computation
-// into GX values.
-type Parser struct {
-	dev        compute.DeviceNum
-	callInputs *togo.FuncInputs
+// into values.
+type Parser[T any] struct {
 	// Handles to unflatten.
 	compOutput []compute.Buffer
 	nextPos    int
 }
 
 // NewParser returns a new parser given the output of a graph computation.
-func NewParser(dev compute.DeviceNum, callInputs *togo.FuncInputs, handles []compute.Buffer) *Parser {
-	return &Parser{
-		dev:        dev,
-		callInputs: callInputs,
+func NewParser[T any](handles []compute.Buffer) *Parser[T] {
+	return &Parser[T]{
 		compOutput: handles,
 	}
 }
 
-// Next returns a the next handle and moves the cursor to the succeeding handle.
-func (h *Parser) Next() compute.Buffer {
+// Next returns the next handle and moves the cursor to the succeeding handle.
+func (h *Parser[T]) Next() compute.Buffer {
 	n := h.compOutput[h.nextPos]
 	h.nextPos++
 	return n
 }
 
-// Device returns to which transfers the host value to.
-// TODO(b/388207169): Always transfer the value to device because C++ bindings do not support HostValue.
-func (h *Parser) Device() compute.DeviceNum {
-	return h.dev
-}
-
-// Unflatten consumes the next available handles and returns a GX value matching the given element.
-func (h *Parser) Unflatten(el ir.Element) (hostio.Value, error) {
-	// Check for an unflattener first: some GX values (for example, slices)
+// Unflatten consumes the next available handles and returns a value matching the given element.
+func (h *Parser[T]) Unflatten(el ir.Element) (T, error) {
+	var zero T
+	// Check for an unflattener first: some values (for example, slices)
 	// can store elements which also need to be unflattened.
-	unf, ok := el.(Unflattener)
+	unf, ok := el.(Unflattener[T])
 	if !ok {
-		val, ok := el.(hostio.Value)
+		val, ok := el.(T)
 		if !ok {
-			return nil, errors.Errorf("cannot unflatten element type %T", el)
+			return zero, errors.Errorf("cannot unflatten element type %T", el)
 		}
 		return val, nil
 	}
 	val, err := unf.Unflatten(h)
 	if err != nil {
-		return nil, err
+		return zero, err
 	}
-	if val == nil {
-		return nil, errors.Errorf("state element %T returned a nil value", el)
+	if any(val) == nil {
+		return zero, errors.Errorf("state element %T returned a nil value", el)
 	}
 	return val, nil
 }
 
-type newCompValue func(ir.Type, []hostio.Value) (hostio.Value, error)
-
-// ParseArray the next value as an array.
-func (h *Parser) ParseArray(typ ir.Type) (hostio.Array, error) {
-	return hostio.NewDeviceArray(typ, h.Next())
-}
-
-// ParseComposite unflatten a slice of elements into a single GX value.
-func (h *Parser) ParseComposite(ncv newCompValue, typ ir.Type, els []ir.Element) (hostio.Value, error) {
-	vals := make([]hostio.Value, len(els))
+// ParseComposite unflattens a slice of elements into a single value.
+func (h *Parser[T]) ParseComposite(ncv func(ir.Type, []T) (T, error), typ ir.Type, els []ir.Element) (T, error) {
+	var zero T
+	vals := make([]T, len(els))
 	for i, el := range els {
 		var err error
 		vals[i], err = h.Unflatten(el)
 		if err != nil {
-			return nil, err
+			return zero, err
 		}
 	}
 	return ncv(typ, vals)
 }
 
-func (h *Parser) String() string {
+func (h *Parser[T]) String() string {
 	var s strings.Builder
 	fmt.Fprintf(&s, "%T{", h)
 	for i, hdl := range h.compOutput {
@@ -112,13 +95,4 @@ func (h *Parser) String() string {
 	}
 	s.WriteString("}")
 	return s.String()
-}
-
-// ParseCompositeOf returns a function to unflatten a composite value.
-func ParseCompositeOf[T hostio.Value](
-	f func(ir.Type, []hostio.Value) (T, error),
-) func(ir.Type, []hostio.Value) (hostio.Value, error) {
-	return func(typ ir.Type, vals []hostio.Value) (hostio.Value, error) {
-		return f(typ, vals)
-	}
 }

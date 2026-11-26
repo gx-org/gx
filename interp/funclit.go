@@ -17,7 +17,6 @@ package interp
 import (
 	"github.com/gx-org/gx/api/hostio"
 	"github.com/gx-org/gx/build/ir"
-	"github.com/gx-org/gx/internal/interp/flatten"
 	"github.com/gx-org/gx/interp/context"
 	"github.com/gx-org/gx/interp/elements"
 	"github.com/gx-org/gx/interp/engine"
@@ -71,7 +70,7 @@ func (runners) FuncLit(lit *ir.FuncLit, env *engine.Env, ctx *context.Context, c
 }
 
 // Unflatten creates a GX value from the next handles available in the parser.
-func (sg *funcLit) Unflatten(handles *flatten.Parser) (hostio.Value, error) {
+func (sg *funcLit) Unflatten(handles hostio.Parser) (hostio.Value, error) {
 	return elements.NewIRNode(sg.lit), nil
 }
 

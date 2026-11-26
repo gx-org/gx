@@ -86,13 +86,13 @@ func (n *Struct) Flatten() ([]ir.Element, error) {
 }
 
 // Unflatten consumes the next handles to return a GX value.
-func (n *Struct) Unflatten(parser *flatten.Parser) (hostio.Value, error) {
+func (n *Struct) Unflatten(parser hostio.Parser) (hostio.Value, error) {
 	elts := n.orderedFieldValues()
-	return parser.ParseComposite(flatten.ParseCompositeOf(newStructFromValues), n.typ, elts)
+	return parser.ParseComposite(newStructFromValues, n.typ, elts)
 }
 
 // newStructFromValues returns a structure from the GX values of its fields.
-func newStructFromValues(typ ir.Type, vals []hostio.Value) (*Struct, error) {
+func newStructFromValues(typ ir.Type, vals []hostio.Value) (hostio.Value, error) {
 	structType, err := cast.To[*ir.StructType](typ)
 	if err != nil {
 		return nil, err

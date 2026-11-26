@@ -26,7 +26,6 @@ import (
 	"github.com/gx-org/gx/build/ir"
 	"github.com/gx-org/gx/build/ir/irkind"
 	"github.com/gx-org/gx/internal/concrete"
-	"github.com/gx-org/gx/internal/interp/flatten"
 	"github.com/gx-org/gx/interp/elements"
 	"github.com/gx-org/gx/interp/engine"
 	"github.com/gx-org/gx/interp/materialise"
@@ -315,8 +314,8 @@ func (n *BackendNode) Length(ev ir.Evaluator) (int, error) {
 }
 
 // Unflatten consumes the next handles to return a GX value.
-func (n *BackendNode) Unflatten(handles *flatten.Parser) (hostio.Value, error) {
-	return handles.ParseArray(n.typ)
+func (n *BackendNode) Unflatten(handles hostio.Parser) (hostio.Value, error) {
+	return hostio.NewDeviceArray(n.typ, handles.Next())
 }
 
 // Copy the node by returning itself.

@@ -395,16 +395,16 @@ type arrayArgument struct {
 }
 
 var (
-	_ processor.Argument              = (*arrayArgument)(nil)
-	_ engine.NumericalElement         = (*arrayArgument)(nil)
-	_ materialise.ElementMaterialiser = (*arrayArgument)(nil)
-	_ flatten.Unflattener             = (*arrayArgument)(nil)
-	_ engine.Slicer                   = (*arrayArgument)(nil)
-	_ ir.WithLength                   = (*arrayArgument)(nil)
-	_ engine.WithAxes                 = (*arrayArgument)(nil)
-	_ engine.EvalShaper               = (*arrayArgument)(nil)
-	_ graphNode                       = (*arrayArgument)(nil)
-	_ togo.RuntimeValue               = (*arrayArgument)(nil)
+	_ processor.Argument                = (*arrayArgument)(nil)
+	_ engine.NumericalElement           = (*arrayArgument)(nil)
+	_ materialise.ElementMaterialiser   = (*arrayArgument)(nil)
+	_ flatten.Unflattener[hostio.Value] = (*arrayArgument)(nil)
+	_ engine.Slicer                     = (*arrayArgument)(nil)
+	_ ir.WithLength                     = (*arrayArgument)(nil)
+	_ engine.WithAxes                   = (*arrayArgument)(nil)
+	_ engine.EvalShaper                 = (*arrayArgument)(nil)
+	_ graphNode                         = (*arrayArgument)(nil)
+	_ togo.RuntimeValue                 = (*arrayArgument)(nil)
 )
 
 // NewArrayArgument creates a new argument element that the graph can also use as an argument.
@@ -518,8 +518,8 @@ func (n *arrayArgument) Type() ir.Type {
 }
 
 // Unflatten consumes the next handles to return a GX value.
-func (n *arrayArgument) Unflatten(handles *flatten.Parser) (hostio.Value, error) {
-	return handles.ParseArray(n.typ)
+func (n *arrayArgument) Unflatten(handles hostio.Parser) (hostio.Value, error) {
+	return hostio.NewDeviceArray(n.typ, handles.Next())
 }
 
 // SliceAt of the value on the first axis given an index.

@@ -23,7 +23,6 @@ import (
 	"github.com/gx-org/gx/internal/concrete"
 	"github.com/gx-org/gx/internal/interp/compeval/cmp"
 	"github.com/gx-org/gx/internal/interp/csteager"
-	"github.com/gx-org/gx/internal/interp/flatten"
 	"github.com/gx-org/gx/internal/togo"
 	"github.com/gx-org/gx/interp/elements"
 	"github.com/gx-org/gx/interp/engine"
@@ -82,7 +81,7 @@ func (n *constant) Constant() engine.Constant {
 }
 
 // Unflatten creates a GX value from the next handles available in the parser.
-func (n *constant) Unflatten(handles *flatten.Parser) (hostio.Value, error) {
+func (n *constant) Unflatten(handles hostio.Parser) (hostio.Value, error) {
 	return hostio.NewDeviceArray(n.ctyp, handles.Next())
 }
 

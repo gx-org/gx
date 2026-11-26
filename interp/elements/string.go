@@ -24,7 +24,6 @@ import (
 	"github.com/gx-org/gx/internal/base/cast"
 	"github.com/gx-org/gx/internal/interp/compeval/cmp"
 	"github.com/gx-org/gx/internal/interp/coreiface"
-	"github.com/gx-org/gx/internal/interp/flatten"
 	"github.com/gx-org/gx/internal/togo"
 	"github.com/gx-org/gx/interp/engine"
 	"github.com/gx-org/gx/src/gx/ast"
@@ -64,7 +63,7 @@ func NewString(val string, typ ir.Type) (*String, error) {
 func (*String) StrEl() {}
 
 // Unflatten consumes the next handles to return a GX value.
-func (n *String) Unflatten(handles *flatten.Parser) (hostio.Value, error) {
+func (n *String) Unflatten(handles hostio.Parser) (hostio.Value, error) {
 	return n, nil
 }
 

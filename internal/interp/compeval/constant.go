@@ -36,12 +36,12 @@ type constant struct {
 }
 
 var (
-	_ engine.NonConstant  = (*constant)(nil)
-	_ engine.EvalShaper   = (*constant)(nil)
-	_ cmp.Canonical       = (*constant)(nil)
-	_ togo.CompileValue   = (*constant)(nil)
-	_ engine.Element      = (*constant)(nil)
-	_ flatten.Unflattener = (*constant)(nil)
+	_ engine.NonConstant                = (*constant)(nil)
+	_ engine.EvalShaper                 = (*constant)(nil)
+	_ cmp.Canonical                     = (*constant)(nil)
+	_ togo.CompileValue                 = (*constant)(nil)
+	_ engine.Element                    = (*constant)(nil)
+	_ flatten.Unflattener[hostio.Value] = (*constant)(nil)
 )
 
 func newConstant(cst engine.Constant) *constant {
@@ -174,7 +174,7 @@ func (c *constant) toHostArray() (*hostio.HostArray, error) {
 }
 
 // Unflatten returns the same constant.
-func (c *constant) Unflatten(handles *flatten.Parser) (hostio.Value, error) {
+func (c *constant) Unflatten(handles hostio.Parser) (hostio.Value, error) {
 	return c.toHostArray()
 }
 

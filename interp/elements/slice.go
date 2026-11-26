@@ -166,12 +166,12 @@ func (n *Slice) AppendInPlace(el ir.Element) {
 }
 
 // Unflatten consumes the next handles to return a GX value.
-func (n *Slice) Unflatten(handles *flatten.Parser) (hostio.Value, error) {
-	return handles.ParseComposite(flatten.ParseCompositeOf(newSliceFromValues), n.typ, n.values)
+func (n *Slice) Unflatten(handles hostio.Parser) (hostio.Value, error) {
+	return handles.ParseComposite(newSliceFromValues, n.typ, n.values)
 }
 
 // newSliceFromValues returns a slice from a slice of GX values.
-func newSliceFromValues(typ ir.Type, vals []hostio.Value) (*Slice, error) {
+func newSliceFromValues(typ ir.Type, vals []hostio.Value) (hostio.Value, error) {
 	return NewSlice(typ, hostio.ToElements(vals))
 }
 

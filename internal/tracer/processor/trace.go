@@ -20,7 +20,6 @@ import (
 	"github.com/gx-org/gx/api/trace"
 	"github.com/gx-org/gx/build/ir"
 	"github.com/gx-org/gx/internal/interp/flatten"
-	"github.com/gx-org/gx/internal/togo"
 )
 
 type traceProcessor struct {
@@ -29,7 +28,7 @@ type traceProcessor struct {
 	traced []ir.Element
 }
 
-func (t *traceProcessor) parse(tracer trace.Callback, parser *flatten.Parser) error {
+func (t *traceProcessor) parse(tracer trace.Callback, parser hostio.Parser) error {
 	vals := make([]hostio.Value, len(t.traced))
 	for i, tr := range t.traced {
 		var err error
@@ -64,11 +63,11 @@ func (ts *traces) RegisterTrace(ctx ir.Evaluator, call *ir.FuncCallExpr, args []
 }
 
 // ProcessTraces processes the graph outputs related to traces.
-func (ts *traces) ProcessTraces(dev compute.DeviceNum, in *togo.FuncInputs, tracer trace.Callback, aux []compute.Buffer) error {
+func (ts *traces) ProcessTraces(tracer trace.Callback, aux []compute.Buffer) error {
 	if tracer == nil || len(ts.traces) == 0 {
 		return nil
 	}
-	parser := flatten.NewParser(dev, in, aux)
+	parser := flatten.NewParser[hostio.Value](aux)
 	for _, trace := range ts.traces {
 		if err := trace.parse(tracer, parser); err != nil {
 			return err

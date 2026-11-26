@@ -116,7 +116,7 @@ func (n *NamedType) TypeMethods() ir.TypeMethods {
 }
 
 // Unflatten consumes the next handles to return a GX value.
-func (n *NamedType) Unflatten(parser *flatten.Parser) (hostio.Value, error) {
+func (n *NamedType) Unflatten(parser hostio.Parser) (hostio.Value, error) {
 	val, err := parser.Unflatten(n.under)
 	if err != nil {
 		return nil, err
