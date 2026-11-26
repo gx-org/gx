@@ -90,7 +90,6 @@ func populate(info *Info, file *ir.File, node ir.IR) {
 			info.SymbolInfo = "type " + t.ReferString(file)
 		}
 	}
-	// TODO(b/590237756): Populate function and method parameter fields.
 	// TODO(b/590238154): Populate generic parameter nodes.
 	// TODO(b/586481415): Populate builtin, function literal, and interface method nodes.
 }
@@ -183,15 +182,32 @@ func populateLocal(info *Info, file *ir.File, stor ir.Storage) {
 
 func populateField(info *Info, file *ir.File, field *ir.Field) {
 	origin := field.Origin()
-	nt := enclosingStruct(file, origin)
-	if nt == nil {
+	if nt := enclosingStruct(file, origin); nt != nil {
+		info.Definition = origin
+		info.SymbolInfo = fmt.Sprintf("%s %s", field.Name.Name, field.Type().ReferString(file))
+		info.DeclaredBy = nt.FullName()
+		info.Documentation = strings.TrimSpace(origin.Group.Src.Doc.Text())
+		info.Snippet = typeSnippet(nt)
+		return
+	}
+	if isGenericParamField(file, origin) {
 		return
 	}
 	info.Definition = origin
-	info.SymbolInfo = fmt.Sprintf("%s %s", field.Name.Name, field.Type().ReferString(file))
-	info.DeclaredBy = nt.FullName()
-	info.Documentation = strings.TrimSpace(origin.Group.Src.Doc.Text())
-	info.Snippet = typeSnippet(nt)
+	info.SymbolInfo = fmt.Sprintf("var %s %s", field.Name.Name, field.Type().ReferString(file))
+}
+
+func isGenericParamField(file *ir.File, origin *ir.Field) bool {
+	hasGenParam := func(fn ir.PkgFunc) bool {
+		ft := fn.FuncType()
+		return ft != nil && slices.Contains(ft.GenParams.Fields.Fields(), origin)
+	}
+	for _, nt := range file.Package.Decls.Types {
+		if slices.Contains(nt.GenParams.Fields.Fields(), origin) || slices.ContainsFunc(nt.Meths, hasGenParam) {
+			return true
+		}
+	}
+	return slices.ContainsFunc(file.Package.Decls.Funcs, hasGenParam)
 }
 
 func enclosingStruct(file *ir.File, origin *ir.Field) *ir.NamedType {

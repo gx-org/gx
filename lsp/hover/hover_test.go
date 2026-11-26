@@ -443,3 +443,99 @@ func TestAtStructFields(t *testing.T) {
 		t.Errorf("At(Box type param T) = %+v (IR %T), want *ir.Field with empty hover metadata", gotTypeParam, gotTypeParam.IR)
 	}
 }
+
+func TestAtFunctionParameters(t *testing.T) {
+	mainFile := lsptesting.BuildPackage(t, testdata.FS, "main.gx").File("main.gx")
+	docsFile := lsptesting.BuildPackage(t, testdata.FS, "docs.gx").File("docs.gx")
+	multiB := lsptesting.BuildPackage(t, testdata.FS, "multifile_a.gx", "multifile_b.gx").File("multifile_b.gx")
+	stdlibFile := lsptesting.BuildPackage(t, testdata.FS, "stdlib.gx").File("stdlib.gx")
+
+	tests := []struct {
+		file                                         *ir.File
+		declLine, declTok, wantInfo, refLine, refTok string
+		refNextLine                                  bool
+	}{
+		{mainFile, "func Exercise(p Pair, arr [2][3]float32) float32 {", "p Pair", "var p Pair", "a, b := pair(p.A)", "p.", false},
+		{mainFile, "func Exercise(p Pair, arr [2][3]float32) float32 {", "arr [2]", "var arr [2][3]float32", "lit.A = arr[0][0]", "arr[", false},
+		{mainFile, "func pair(x float32) (float32, float32) {", "x float32", "var x float32", "return x, x", "x,", false},
+		{mainFile, "func unboxInt(b Box[int32]) int32 {", "b Box", "var b Box[int32]", "", "", true},
+		{mainFile, "func id[T any](v T) T {", "v T", "var v T", "", "", true},
+		{mainFile, "func unpackShape[S []int](x [2][S...]float32) [2][S...]float32 {", "x [2]", "var x [2][S...]float32", "", "", true},
+		{mainFile, "func variadic(vals ...int32) []int32", "vals", "var vals ...int32", "", "", false},
+		{mainFile, "func applyFn(fn func(y int32) float32, x int32) float32 {", "fn func", "var fn func(y int32) float32", "return fn(x)", "fn(", false},
+		{mainFile, "func applyFn(fn func(y int32) float32, x int32) float32 {", "y int32", "var y int32", "", "", false},
+		{mainFile, "func applyFn(fn func(y int32) float32, x int32) float32 {", "x int32", "var x int32", "return fn(x)", "x)", false},
+		{mainFile, "func (b Box[U]) Get() U {", "b Box", "var b Box[U]", "", "", true},
+		{mainFile, "Format(x int32) string", "x int32", "var x int32", "", "", false},
+		{mainFile, "fnLit := func(v float32) float32 {", "v float32", "var v float32", "return v // fnLit", "v //", false},
+		{docsFile, "func (m Meter) Scale[T Floats](k T) (out Meter) {", "m Meter", "var m Meter", "", "", true},
+		{docsFile, "func (m Meter) Scale[T Floats](k T) (out Meter) {", "k T", "var k T", "", "", false},
+		{docsFile, "func (m Meter) Scale[T Floats](k T) (out Meter) {", "out Meter", "var out Meter", "", "", false},
+		{docsFile, "func (b TagBox[X, Y]) With[T Floats](k T) (X, T) {", "b TagBox", "var b TagBox[X, Y]", "return b.First, k", "b.", false},
+		{docsFile, "func (b TagBox[X, Y]) With[T Floats](k T) (X, T) {", "k T", "var k T", "return b.First, k", "k", false},
+		{multiB, "func (c Counter) Next() int32 {", "c Counter", "var c Counter", "return c.N + HelperA()", "c.", false},
+		{stdlibFile, "func(s counter) bool { return s.n < 10 },", "s counter", "var s counter", "func(s counter) bool { return s.n < 10 },", "s.n", false},
+	}
+	for _, tc := range tests {
+		declLine, declCol := lsptesting.CursorAt(t, testdata.FS, tc.file, tc.declLine, tc.declTok)
+		decl := hover.At(tc.file, declLine, declCol)
+		wantDecl := hover.Info{IR: decl.IR, SymbolInfo: tc.wantInfo, Definition: decl.IR}
+		if !isType[*ir.Field](decl.IR) || decl != wantDecl {
+			t.Errorf("At(%q in %q) = %+v (IR %T), want %+v", tc.declTok, tc.declLine, decl, decl.IR, wantDecl)
+		}
+		if tc.refLine == "" && !tc.refNextLine {
+			continue
+		}
+		var ref hover.Info
+		if tc.refNextLine {
+			ref = hover.At(tc.file, declLine+1, len("\treturn ")+1)
+		} else {
+			ref = hoverAtToken(t, tc.file, tc.refLine, tc.refTok)
+		}
+		wantRef := hover.Info{IR: ref.IR, SymbolInfo: tc.wantInfo, Definition: decl.IR}
+		if !isType[*ir.Ident](ref.IR) || ref != wantRef {
+			t.Errorf("At(ref %q for %q) = %+v (IR %T), want %+v", tc.refTok, tc.declTok, ref, ref.IR, wantRef)
+		}
+	}
+
+	assignFS := fstest.MapFS{
+		"assign.gx": {Data: []byte("package test\n\nfunc Bump(x float32) (out float32) {\n\tx = x + 1\n\tout = x\n\treturn out\n}\n")},
+	}
+	assignFile := lsptesting.BuildPackage(t, assignFS, "assign.gx").File("assign.gx")
+	assignAt := func(lineSubstr, tok string) hover.Info {
+		line, col := lsptesting.CursorAt(t, assignFS, assignFile, lineSubstr, tok)
+		return hover.At(assignFile, line, col)
+	}
+	xDecl := assignAt("func Bump(x float32) (out float32) {", "x float32")
+	outDecl := assignAt("func Bump(x float32) (out float32) {", "out float32")
+	for _, tc := range []struct {
+		line, tok  string
+		decl       hover.Info
+		wantIRType func(ir.IR) bool
+	}{
+		{"x = x + 1", "x =", xDecl, isType[*ir.AssignExpr]},
+		{"out = x", "out =", outDecl, isType[*ir.AssignExpr]},
+		{"return out", "out", outDecl, isType[*ir.Ident]},
+	} {
+		got := assignAt(tc.line, tc.tok)
+		want := hover.Info{IR: got.IR, SymbolInfo: tc.decl.SymbolInfo, Definition: tc.decl.IR}
+		if !tc.wantIRType(got.IR) || got != want {
+			t.Errorf("At(%q in %q) = %+v (IR %T), want %+v", tc.tok, tc.line, got, got.IR, want)
+		}
+	}
+
+	for _, tc := range []struct {
+		file        *ir.File
+		line, token string
+	}{
+		{mainFile, "func (b Box[U]) Get() U {", "U]"},
+		{mainFile, "func id[T any](v T) T {", "T any"},
+		{mainFile, "func unpackShape[S []int](x [2][S...]float32) [2][S...]float32 {", "S []int"},
+		{docsFile, "func (m Meter) Scale[T Floats](k T) (out Meter) {", "T Floats"},
+	} {
+		got := hoverAtToken(t, tc.file, tc.line, tc.token)
+		if !isType[*ir.Field](got.IR) || got.SymbolInfo != "" || got.Definition != nil {
+			t.Errorf("At(generic param %q in %q) = %+v (IR %T), want *ir.Field with empty hover metadata", tc.token, tc.line, got, got.IR)
+		}
+	}
+}
