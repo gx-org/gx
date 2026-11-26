@@ -99,8 +99,9 @@ type (
 
 		state *pkgState
 
-		// namedTypes maps build named types to IR named types.
-		namedTypes map[*namedType]*ir.NamedType
+		// unresolvedTypes maps named types declared in the package to their builder node
+		// until their underlying type has been built. A nil value marks a type being resolved.
+		unresolvedTypes map[*ir.NamedType]*namedType
 		// methods is a mapping from type name to method name to method
 		methods *ordered.Map[*ir.NamedType, *ordered.Map[string, *irFunc]]
 		// fileScopes maps a builder file to its scope.

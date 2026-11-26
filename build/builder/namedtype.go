@@ -101,6 +101,25 @@ func (n *namedType) buildUnderlying(pkgScope *pkgResolveScope, nType *ir.NamedTy
 	return scopeOk && ephemeralOk && underOk
 }
 
+// resolveNamedType builds the type parameters and the underlying type of a named type
+// declared in the package if they have not been built yet.
+//
+// Named types are resolved in declaration order. Specialising a generic type requires its
+// underlying type, so a generic type specialised before being resolved (for example by a
+// field of a structure declared before it, or by a package variable) is resolved on demand.
+func (s *pkgResolveScope) resolveNamedType(src ast.Node, nType *ir.NamedType) bool {
+	bType, unresolved := s.unresolvedTypes[nType]
+	if !unresolved {
+		return true
+	}
+	if bType == nil {
+		return s.Err().Appendf(src, "invalid recursive type %s", nType.Name())
+	}
+	s.unresolvedTypes[nType] = nil
+	defer delete(s.unresolvedTypes, nType)
+	return bType.buildUnderlying(s, nType)
+}
+
 func assignMethod(scope *fileResolveScope, ext *ir.NamedType, fn *irFunc) bool {
 	ext = ext.OriginNamed()
 	underlying := ir.Underlying(ext)

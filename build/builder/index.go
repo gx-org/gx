@@ -364,6 +364,11 @@ func (n *indexExprType) source() ast.Node {
 }
 
 func specializeType(rscope resolveScope, x *ir.TypeValExpr, indices []ir.Expr) (*ir.TypeValExpr, bool) {
+	if nType, isNamed := x.Val().(*ir.NamedType); isNamed {
+		if !rscope.fileScope().resolveNamedType(x.Node(), nType) || nType.Underlying == nil {
+			return invalidTypeExprVal, false
+		}
+	}
 	kind := x.Val().Kind()
 	if kind != irkind.Struct && kind != irkind.FieldPath {
 		return invalidTypeExprVal, rscope.Err().Appendf(x.Node(), "%s is not a generic type", x.SourceString(rscope.fileScope().File()))

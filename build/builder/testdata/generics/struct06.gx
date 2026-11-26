@@ -1,0 +1,17 @@
+package struct06
+
+// S is declared before the generic type Box it uses.
+type S struct {
+	box Box[int]
+}
+
+type Box[T any] struct {
+	a T
+}
+
+func Test() int {
+	s := S{box: Box[int]{a: 2}}
+	return s.box.a
+	// Want:
+	// int(2)
+}
