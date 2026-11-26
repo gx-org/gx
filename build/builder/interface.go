@@ -131,7 +131,9 @@ func (s *iface) buildTypeExpr(rscope resolveScope) (*ir.TypeValExpr, bool) {
 			FType: methType,
 		})
 	}
-	return ir.TypeExpr(nil, ir.NewInterface(s.src, types, imeths)), ok
+	ext := ir.NewInterface(s.src, types, imeths)
+	ext.FFile = rscope.fileScope().File()
+	return ir.TypeExpr(nil, ext), ok
 }
 
 func (s *iface) source() ast.Node {

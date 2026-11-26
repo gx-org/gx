@@ -66,10 +66,21 @@ func populate(info *Info, file *ir.File, node ir.IR) {
 		populate(info, file, n.Func())
 	case *ir.FuncDecl:
 		populateFuncDecl(info, file, n)
+	case *ir.FuncBuiltin:
+		populateFuncBuiltin(info, file, n)
+	case *ir.FuncKeyword:
+		info.Definition = n
+		info.SymbolInfo = "func " + n.Name()
+	case *ir.FuncLit:
+		info.Definition = n
+		info.SymbolInfo = n.FType.SourceSignature(file, nil)
+		info.Snippet = formatNode(n.FFile, n.Src)
+	case *ir.IMethod:
+		populateIMethod(info, file, n)
 	case *ir.SpecTypeExpr:
 		populate(info, file, n.X)
 		if ft, ok := n.Typ.(*ir.FuncType); ok {
-			if fn, ok := info.Definition.(*ir.FuncDecl); ok {
+			if fn, ok := info.Definition.(ir.PkgFunc); ok {
 				info.SymbolInfo = ft.SourceSignature(file, fn.NameDef())
 			}
 		}
@@ -92,7 +103,6 @@ func populate(info *Info, file *ir.File, node ir.IR) {
 			info.SymbolInfo = "type " + t.ReferString(file)
 		}
 	}
-	// TODO(b/586481415): Populate builtin, function literal, and interface method nodes.
 }
 
 func isBuiltinOrSliceType(t ir.Type) bool {
@@ -326,6 +336,42 @@ func populateFuncDecl(info *Info, file *ir.File, decl *ir.FuncDecl) {
 	}
 }
 
+func populateFuncBuiltin(info *Info, file *ir.File, fn *ir.FuncBuiltin) {
+	info.Definition = fn
+	info.Documentation = funcDoc(fn.Src.Doc)
+	if fn.FType != nil {
+		info.SymbolInfo = fn.FType.SourceSignature(file, fn.NameDef())
+	} else {
+		info.SymbolInfo = "func " + fn.Name()
+	}
+	info.DeclaredBy = fn.FFile.Package.Path()
+}
+
+func populateIMethod(info *Info, file *ir.File, m *ir.IMethod) {
+	info.Definition = m
+	info.SymbolInfo = m.SourceSignature(file)
+	info.Documentation = funcDoc(m.Doc())
+	mFile := m.File()
+	if mFile == nil || mFile.Package == nil {
+		return
+	}
+	if nt := enclosingNamedInterface(mFile.Package, m.IFace); nt != nil {
+		info.DeclaredBy = nt.FullName()
+		info.Snippet = typeSnippet(nt)
+		return
+	}
+	info.DeclaredBy = mFile.Package.Path()
+}
+
+func enclosingNamedInterface(pkg *ir.Package, iface *ir.Interface) *ir.NamedType {
+	for _, nt := range pkg.Decls.Types {
+		if nt.Underlying.Val() == iface {
+			return nt.OriginNamed()
+		}
+	}
+	return nil
+}
+
 func receiverNamedType(fn *ir.FuncDecl) *ir.NamedType {
 	recv := fn.FuncType().ReceiverField()
 	if recv == nil {
@@ -351,8 +397,12 @@ func funcDoc(doc *ast.CommentGroup) string {
 func funcSnippet(fn *ir.FuncDecl) string {
 	decl := *fn.Src
 	decl.Doc = nil
+	return formatNode(fn.FFile, &decl)
+}
+
+func formatNode(file *ir.File, node ast.Node) string {
 	var b strings.Builder
-	if err := format.Node(&b, fn.FFile.FileSet(), &decl); err != nil {
+	if err := format.Node(&b, file.FileSet(), node); err != nil {
 		return ""
 	}
 	return b.String()
