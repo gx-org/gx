@@ -160,7 +160,7 @@ func (n *BackendNode) BinaryOp(env *engine.Env, expr *ir.BinaryExpr, y engine.Nu
 }
 
 // UnaryOp applies a unary operator on x.
-func (n *BackendNode) UnaryOp(env *engine.Env, expr *ir.UnaryExpr) (engine.NumericalElement, error) {
+func (n *BackendNode) UnaryOp(env *engine.Env, expr *ir.UnaryExpr, typ ir.Type) (engine.NumericalElement, error) {
 	if expr.Src.Op == token.ADD {
 		return n, nil
 	}
@@ -176,10 +176,6 @@ func (n *BackendNode) UnaryOp(env *engine.Env, expr *ir.UnaryExpr) (engine.Numer
 	}
 	if err != nil {
 		return nil, err
-	}
-	typ, err := concrete.Concrete(env.ExprEval(), expr.Type())
-	if err != nil {
-		return nil, fmterr.Error(env.File().FileSet(), expr.Src, err)
 	}
 	return NewBackendNode(n.ao, typ, unaryNode)
 }

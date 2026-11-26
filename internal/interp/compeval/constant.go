@@ -61,8 +61,8 @@ func (c *constant) Type() ir.Type {
 }
 
 // UnaryOp applies a unary operator on x.
-func (c *constant) UnaryOp(env *engine.Env, expr *ir.UnaryExpr) (engine.NumericalElement, error) {
-	res, err := csteager.Unary(env, expr, c.cst)
+func (c *constant) UnaryOp(env *engine.Env, expr *ir.UnaryExpr, typ ir.Type) (engine.NumericalElement, error) {
+	res, err := csteager.Unary(env, expr, typ, c.cst)
 	if err != nil {
 		return nil, err
 	}
@@ -73,7 +73,7 @@ func (c *constant) UnaryOp(env *engine.Env, expr *ir.UnaryExpr) (engine.Numerica
 	if err != nil {
 		return nil, err
 	}
-	return el.UnaryOp(env, expr)
+	return el.UnaryOp(env, expr, typ)
 }
 
 // BinaryOp applies a binary operator to x and y.

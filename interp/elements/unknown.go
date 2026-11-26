@@ -33,7 +33,7 @@ func Unknown() engine.Element {
 	return unknownEl
 }
 
-func (unknown) UnaryOp(env *engine.Env, expr *ir.UnaryExpr) (engine.NumericalElement, error) {
+func (unknown) UnaryOp(env *engine.Env, expr *ir.UnaryExpr, typ ir.Type) (engine.NumericalElement, error) {
 	return unknownEl, nil
 }
 

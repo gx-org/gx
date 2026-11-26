@@ -28,13 +28,15 @@ type unary struct {
 	core
 	expr *ir.UnaryExpr
 	x    engine.Element
+	typ  ir.Type
 }
 
 // NewUnary applies an unary operator to an element.
-func NewUnary(env *engine.Env, expr *ir.UnaryExpr, xEl engine.Element) (_ engine.Element, err error) {
+func NewUnary(env *engine.Env, expr *ir.UnaryExpr, xEl engine.Element, typ ir.Type) (_ engine.Element, err error) {
 	el := &unary{
 		expr: expr,
 		x:    xEl,
+		typ:  typ,
 	}
 	el.core = core{el: el}
 	return el, err
@@ -43,7 +45,7 @@ func NewUnary(env *engine.Env, expr *ir.UnaryExpr, xEl engine.Element) (_ engine
 
 // Type of the element.
 func (a *unary) Type() ir.Type {
-	return a.expr.Type()
+	return a.typ
 }
 
 func (a *unary) AlgExpr(eva ir.Evaluator) (cmp.Expr, error) {

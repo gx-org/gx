@@ -98,9 +98,9 @@ func (n *scalar) AlgExpr(eva ir.Evaluator) (cmp.Expr, error) {
 }
 
 // EvalUnary greedily evaluates an unary expression.
-func (n *scalar) EvalUnary(env *engine.Env, expr *ir.UnaryExpr) (engine.Constant, error) {
+func (n *scalar) EvalUnary(env *engine.Env, expr *ir.UnaryExpr, typ ir.Type) (engine.Constant, error) {
 	nb, err := n.nb.UnaryOp(env, expr)
-	return NewScalar(expr.Type(), nb), err
+	return NewScalar(typ, nb), err
 }
 
 func (n *scalar) BuildIR() ir.Expr {

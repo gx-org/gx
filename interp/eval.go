@@ -494,7 +494,11 @@ func evalUnaryExpression(fitp *Interpreter, expr *ir.UnaryExpr) (ir.Element, err
 	if err != nil {
 		return nil, err
 	}
-	return x.UnaryOp(fitp.env, expr)
+	cType, err := concretizeType(fitp, expr, expr.Type())
+	if err != nil {
+		return nil, err
+	}
+	return x.UnaryOp(fitp.env, expr, cType)
 }
 
 func evalBinaryExpression(fitp *Interpreter, expr *ir.BinaryExpr) (ir.Element, error) {

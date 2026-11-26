@@ -26,7 +26,7 @@ type (
 	Eval interface {
 		engine.Constant
 		// EvalUnary greedily evaluates an unary expression.
-		EvalUnary(env *engine.Env, expr *ir.UnaryExpr) (engine.Constant, error)
+		EvalUnary(env *engine.Env, expr *ir.UnaryExpr, typ ir.Type) (engine.Constant, error)
 		// EvalBinary greedily evaluates a binary expression.
 		// A nil constant needs to be returned if the expression cannot be evaluated.
 		EvalBinary(env *engine.Env, expr *ir.BinaryExpr, y engine.Constant) (engine.Constant, error)
@@ -52,12 +52,12 @@ func Cast(env *engine.Env, expr ir.Expr, target ir.Type, x engine.Constant) (eng
 
 // Unary evaluates an eager unary expression on a given constant.
 // Returns a nil element (and no error) if the expression could not be evaluated eagerly.
-func Unary(env *engine.Env, expr *ir.UnaryExpr, x engine.Constant) (engine.Constant, error) {
+func Unary(env *engine.Env, expr *ir.UnaryExpr, typ ir.Type, x engine.Constant) (engine.Constant, error) {
 	xE, xIsEager := x.(Eval)
 	if !xIsEager {
 		return nil, nil
 	}
-	return xE.EvalUnary(env, expr)
+	return xE.EvalUnary(env, expr, typ)
 }
 
 // Binary evaluates an eager binary expression on given constants.

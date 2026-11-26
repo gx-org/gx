@@ -71,8 +71,8 @@ func (t *tuple) Type() ir.Type {
 }
 
 // UnaryOp applies a unary operator on x.
-func (t *tuple) UnaryOp(env *engine.Env, expr *ir.UnaryExpr) (engine.NumericalElement, error) {
-	return cpevops.NewUnary(env, expr, t)
+func (t *tuple) UnaryOp(env *engine.Env, expr *ir.UnaryExpr, typ ir.Type) (engine.NumericalElement, error) {
+	return cpevops.NewUnary(env, expr, t, typ)
 }
 
 // BinaryOp applies a binary operator to x and y.

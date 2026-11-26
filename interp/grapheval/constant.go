@@ -100,13 +100,13 @@ func (n *constant) Axes(ev ir.Evaluator) (ir.FixedSlice, error) {
 }
 
 // UnaryOp applies an unary operator to x.
-func (n *constant) UnaryOp(env *engine.Env, expr *ir.UnaryExpr) (engine.NumericalElement, error) {
-	res, err := csteager.Unary(env, expr, n.cst)
+func (n *constant) UnaryOp(env *engine.Env, expr *ir.UnaryExpr, typ ir.Type) (engine.NumericalElement, error) {
+	res, err := csteager.Unary(env, expr, typ, n.cst)
 	if err != nil {
 		return nil, err
 	}
 	if res == nil {
-		return n.BackendNode.UnaryOp(env, expr)
+		return n.BackendNode.UnaryOp(env, expr, typ)
 	}
 	return newConstant(env.ExprEval(), n.ao, res)
 }

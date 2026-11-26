@@ -442,8 +442,8 @@ func (n *arrayArgument) Name() string {
 }
 
 // UnaryOp applies a unary operator on x.
-func (n *arrayArgument) UnaryOp(env *engine.Env, expr *ir.UnaryExpr) (engine.NumericalElement, error) {
-	return n.node.UnaryOp(env, expr)
+func (n *arrayArgument) UnaryOp(env *engine.Env, expr *ir.UnaryExpr, typ ir.Type) (engine.NumericalElement, error) {
+	return n.node.UnaryOp(env, expr, typ)
 }
 
 // BinaryOp applies a binary operator to x and y.
