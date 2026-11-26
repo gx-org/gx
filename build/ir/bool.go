@@ -36,6 +36,9 @@ func (b *BoolValue) Expr() ast.Expr {
 	return b.Src
 }
 
+// Refer returns an AST expression referencing the boolean literal.
+func (b *BoolValue) Refer(*File) ast.Expr { return b.Src }
+
 // Unroll the expression.
 func (b *BoolValue) Unroll(Fetcher, Unroller) (ast.Expr, bool) {
 	return b.Src, true

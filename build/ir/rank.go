@@ -97,6 +97,18 @@ func (r *Rank) Node() ast.Node { return r.Src }
 // Expr returns the AST expression.
 func (r *Rank) Expr() ast.Expr { return r.Src.Len }
 
+// Refer returns an AST expression referencing the rank from file.
+func (r *Rank) Refer(file *File) ast.Expr {
+	var top ast.Expr
+	for i := len(r.Ax) - 1; i >= 0; i-- {
+		top = &ast.ArrayType{
+			Len: r.Ax[i].Refer(file),
+			Elt: top,
+		}
+	}
+	return top
+}
+
 // UnrollRank unrolls the expressions in the rank.
 func (r *Rank) UnrollRank(ev Fetcher, urlr Unroller) (*ast.ArrayType, bool) {
 	if len(r.Ax) == 0 {
@@ -365,6 +377,14 @@ func (r *RankInfer) Node() ast.Node { return r.Expr() }
 
 // Expr returns the AST expression.
 func (r *RankInfer) Expr() ast.Expr { return r.Src.Len }
+
+// Refer returns an AST expression referencing the inferred rank from file.
+func (r *RankInfer) Refer(file *File) ast.Expr {
+	if r.rnk != nil {
+		return r.rnk.Refer(file)
+	}
+	return r.Src.Len
+}
 
 // Type returns the rank type.
 func (r *RankInfer) Type() Type { return RankType() }

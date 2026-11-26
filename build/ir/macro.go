@@ -118,6 +118,9 @@ func (s *MacroCallExpr) node() {}
 // Expr returns the expression AST.
 func (s *MacroCallExpr) Expr() ast.Expr { return s.X.Expr() }
 
+// Refer returns an AST expression referencing the macro call from file.
+func (s *MacroCallExpr) Refer(file *File) ast.Expr { return s.X.Refer(file) }
+
 // Type returns the type of the function.
 func (s *MacroCallExpr) Type() Type {
 	return s.F.Type()

@@ -32,6 +32,9 @@ type (
 		// Type of the axis.
 		Type() Type
 
+		// Refer returns an AST expression referencing the axis length from file.
+		Refer(file *File) ast.Expr
+
 		// AsExpr returns the axis value as an expression.
 		// Can return nil if the axis has not been resolved.
 		AsExpr() Expr
@@ -68,6 +71,9 @@ func (dm *AxisExpr) Node() ast.Node { return dm.Expr() }
 
 // Expr returns the AST of the expression.
 func (dm *AxisExpr) Expr() ast.Expr { return dm.X.Expr() }
+
+// Refer returns an AST expression referencing the axis length from file.
+func (dm *AxisExpr) Refer(file *File) ast.Expr { return dm.X.Refer(file) }
 
 // Equal returns true if two axis are equal.
 func (dm *AxisExpr) Equal(tpcmp TypeEval, other AxisLengths) (bool, error) {
@@ -189,6 +195,14 @@ func (dm *AxisInfer) Type() Type { return IntType() }
 
 // Expr returns how to compute the expression defining the axis length.
 func (dm *AxisInfer) Expr() ast.Expr { return dm.Src }
+
+// Refer returns an AST expression referencing the inferred axis length from file.
+func (dm *AxisInfer) Refer(file *File) ast.Expr {
+	if dm.X == nil {
+		return dm.Src
+	}
+	return dm.X.Refer(file)
+}
 
 // AsExpr returns the axis value as an expression.
 func (dm *AxisInfer) AsExpr() Expr {

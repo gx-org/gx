@@ -94,6 +94,11 @@ func (n *NilCastExpr) Expr() ast.Expr {
 	return n.X.Expr()
 }
 
+// Refer returns an AST expression referencing the cast nil expression from file.
+func (n *NilCastExpr) Refer(file *File) ast.Expr {
+	return n.X.Refer(file)
+}
+
 // Type of the expression.
 func (n *NilCastExpr) Type() Type {
 	return n.Typ

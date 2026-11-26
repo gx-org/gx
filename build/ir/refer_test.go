@@ -1,0 +1,269 @@
+// Copyright 2026 Google LLC
+//
+// Licensed under the Apache License, Version 2.0 (the "License");
+// you may not use this file except in compliance with the License.
+// You may obtain a copy of the License at
+//
+//     http://www.apache.org/licenses/LICENSE-2.0
+//
+// Unless required by applicable law or agreed to in writing, software
+// distributed under the License is distributed on an "AS IS" BASIS,
+// WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
+// See the License for the specific language governing permissions and
+// limitations under the License.
+
+package ir_test
+
+import (
+	"fmt"
+	"go/token"
+	"math/big"
+	"testing"
+
+	gxfmt "github.com/gx-org/gx/base/fmt"
+	"github.com/gx-org/gx/build/ir"
+	"github.com/gx-org/gx/build/ir/irhelper"
+	"github.com/gx-org/gx/src/gx/ast"
+)
+
+func referTestFiles() (otherFile, aliasFile *ir.File) {
+	otherFile = &ir.File{
+		Package: &ir.Package{Name: &ast.Ident{Name: "other"}, Decls: &ir.Declarations{}},
+	}
+	aliasFile = &ir.File{
+		Package: &ir.Package{Name: &ast.Ident{Name: "consumer"}, Decls: &ir.Declarations{}},
+		Imports: []*ir.ImportDecl{{
+			Src:     &ast.ImportSpec{Name: &ast.Ident{Name: "myir"}, Path: &ast.BasicLit{Kind: token.STRING, Value: `"ir_test"`}},
+			Path:    "ir_test",
+			Package: testFile.Package,
+		}},
+	}
+	return otherFile, aliasFile
+}
+
+func intLit(val int64) *ir.NumberInt {
+	return &ir.NumberInt{
+		Src: &ast.BasicLit{Kind: token.INT, Value: fmt.Sprint(val)},
+		Val: big.NewInt(val),
+	}
+}
+
+func intLitAs(val int64, typ ir.Type) ir.Expr {
+	return &ir.NumberCastExpr{X: intLit(val), Typ: typ}
+}
+
+func floatLit(val float64) *ir.NumberFloat {
+	return &ir.NumberFloat{
+		Src: &ast.BasicLit{Kind: token.FLOAT, Value: fmt.Sprint(val)},
+		Val: big.NewFloat(val),
+	}
+}
+
+func newGenericNamedType(name string, fields *ir.FieldList, values ...ir.GenericValue) *ir.NamedType {
+	nt := newNamedType(name, ir.Float32Type())
+	nt.GenParams.SetFields(fields)
+	if len(values) > 0 {
+		nt.GenParams.Values = values
+	}
+	return nt
+}
+
+func TestNamedTypeRefer(t *testing.T) {
+	otherFile, aliasFile := referTestFiles()
+	plain := newNamedType("Plain", ir.Int32Type())
+
+	sizeFields := irhelper.Fields("Size", ir.IntType())
+	sizeParam := ir.NewGenericNonTypeParam(sizeFields.Fields()[0])
+	mParam := ir.NewGenericNonTypeParam(irhelper.Fields("M", ir.IntType()).Fields()[0])
+
+	uninstantiated := newGenericNamedType("Linear", sizeFields)
+	singleLit := newGenericNamedType("Linear", sizeFields, ir.NewNonTypeGenericValue(sizeParam, intLitAs(3, ir.IntType())))
+	singleIdent := newGenericNamedType("Linear", sizeFields, ir.NewNonTypeGenericValue(sizeParam, ir.NewIdent(sizeParam)))
+	singleBinary := newGenericNamedType("Linear", sizeFields, ir.NewNonTypeGenericValue(sizeParam, &ir.BinaryExpr{
+		Src: &ast.BinaryExpr{Op: token.ADD, X: &ast.Ident{Name: "StaleSize"}, Y: &ast.BasicLit{Kind: token.INT, Value: "1"}},
+		X:   ir.NewIdent(mParam),
+		Y:   intLitAs(1, ir.IntType()),
+		Typ: ir.IntType(),
+	}))
+
+	shapeFields := irhelper.Fields("Shape", ir.IntSliceType())
+	sliceShape := newGenericNamedType("Tensor", shapeFields, ir.NewNonTypeGenericValue(
+		ir.NewGenericNonTypeParam(shapeFields.Fields()[0]),
+		&ir.SliceLitExpr{Src: &ast.ArrayType{}, Typ: ir.IntSliceType(), Elts: []ir.Expr{intLitAs(2, ir.IntType()), intLitAs(3, ir.IntType())}},
+	))
+
+	multiFields := irhelper.Fields("Rows", ir.IntType(), "Cols", ir.IntType())
+	multiArg := newGenericNamedType("Matrix", multiFields,
+		ir.NewNonTypeGenericValue(ir.NewGenericNonTypeParam(multiFields.Fields()[0]), intLitAs(2, ir.IntType())),
+		ir.NewNonTypeGenericValue(ir.NewGenericNonTypeParam(multiFields.Fields()[1]), intLitAs(4, ir.IntType())),
+	)
+
+	boxFields := irhelper.Fields("T", ir.AnyType())
+	boxParam := ir.NewGenericTypeParam(boxFields.Fields()[0])
+	// Simulate (*TypeValExpr).Specialise, where val is updated to float64 while src stays U.
+	typeParamConcrete := newGenericNamedType("Box", boxFields, ir.NewTypeExprGenericValue(boxParam, ir.TypeExpr(&ast.Ident{Name: "U"}, ir.Float64Type())))
+	typeParamGeneric := newGenericNamedType("Box", boxFields, ir.NewTypeGenericValue(boxParam, boxParam))
+
+	outerFields := irhelper.Fields("T", ir.AnyType(), "N", ir.IntType())
+	nestedGeneric := newGenericNamedType("Outer", outerFields,
+		ir.NewTypeGenericValue(ir.NewGenericTypeParam(outerFields.Fields()[0]), singleLit),
+		ir.NewNonTypeGenericValue(ir.NewGenericNonTypeParam(outerFields.Fields()[1]), intLitAs(5, ir.IntType())),
+	)
+
+	for _, tc := range []struct {
+		name     string
+		named    *ir.NamedType
+		file     *ir.File
+		want     string
+		wantType string
+	}{
+		{"NonGenericSameFile", plain, testFile, "Plain", "*ast.Ident"},
+		{"NonGenericNilFile", plain, nil, "Plain", "*ast.Ident"},
+		{"NonGenericCrossPackage", plain, otherFile, "ir_test.Plain", "*ast.SelectorExpr"},
+		{"NonGenericCrossPackageAlias", plain, aliasFile, "myir.Plain", "*ast.SelectorExpr"},
+		{"GenericUninstantiated", uninstantiated, testFile, "Linear", "*ast.Ident"},
+		{"SingleArgLiteralSameFile", singleLit, testFile, "Linear[3]", "*ast.IndexExpr"},
+		{"SingleArgLiteralNilFile", singleLit, nil, "Linear[3]", "*ast.IndexExpr"},
+		{"SingleArgIdent", singleIdent, testFile, "Linear[Size]", "*ast.IndexExpr"},
+		{"SingleArgSpecializedBinaryExpr", singleBinary, testFile, "Linear[M+1]", "*ast.IndexExpr"},
+		{"SingleArgSliceShape", sliceShape, testFile, "Tensor[[]int{2, 3}]", "*ast.IndexExpr"},
+		{"MultiArg", multiArg, testFile, "Matrix[2, 4]", "*ast.IndexListExpr"},
+		{"TypeParamSpecializedPrefersDefinedType", typeParamConcrete, testFile, "Box[float64]", "*ast.IndexExpr"},
+		{"TypeParamGeneric", typeParamGeneric, testFile, "Box[T]", "*ast.IndexExpr"},
+		{"NestedGenericSameFile", nestedGeneric, testFile, "Outer[Linear[3], 5]", "*ast.IndexListExpr"},
+		{"CrossPackageSingleArg", singleLit, otherFile, "ir_test.Linear[3]", "*ast.IndexExpr"},
+		{"CrossPackageAliasSingleArg", singleLit, aliasFile, "myir.Linear[3]", "*ast.IndexExpr"},
+		{"CrossPackageNestedMultiArg", nestedGeneric, otherFile, "ir_test.Outer[ir_test.Linear[3], 5]", "*ast.IndexListExpr"},
+	} {
+		t.Run(tc.name, func(t *testing.T) {
+			got := tc.named.Refer(tc.file)
+			if gotType := fmt.Sprintf("%T", got); gotType != tc.wantType {
+				t.Errorf("NamedType.Refer(%v) returned %s, want %s", tc.file, gotType, tc.wantType)
+			}
+			if gotStr := gxfmt.Format(got); gotStr != tc.want {
+				t.Errorf("gxfmt.Format(NamedType.Refer(%v)) = %q, want %q", tc.file, gotStr, tc.want)
+			}
+		})
+	}
+}
+
+func TestExprRefer(t *testing.T) {
+	otherFile, aliasFile := referTestFiles()
+	plain := newNamedType("Plain", ir.Int32Type())
+	mParam := ir.NewGenericNonTypeParam(irhelper.Fields("M", ir.IntType()).Fields()[0])
+	sParam := ir.NewGenericNonTypeParam(irhelper.Fields("S", ir.IntSliceType()).Fields()[0])
+	pkgConst := &ir.ConstExpr{Decl: &ir.ConstSpec{FFile: testFile}, VName: &ast.Ident{Name: "N"}}
+	pkgFunc := &ir.FuncDecl{
+		FFile: testFile,
+		Src:   &ast.FuncDecl{Name: &ast.Ident{Name: "F"}},
+		FType: irhelper.FuncType(nil, nil, irhelper.Fields("x", ir.IntType()), irhelper.Fields(ir.IntType())),
+	}
+	embeddedSel := &ir.SelectorExpr{
+		Src:  &ast.SelectorExpr{X: &ast.Ident{Name: "ir_test"}, Sel: &ast.Ident{Name: "N"}},
+		X:    &ir.ImportEmbedded{Src: &ast.Ident{Name: "ir_test"}, Package: testFile.Package},
+		Stor: pkgConst,
+	}
+	cfgFields := irhelper.Fields("N", ir.IntType(), "Zero", ir.IntType())
+	cfgNamed := newNamedType("Cfg", &ir.StructType{Fields: cfgFields})
+	arrType := ir.NewArrayType(
+		&ast.ArrayType{Len: &ast.BasicLit{Kind: token.INT, Value: "2"}, Elt: &ast.Ident{Name: "int"}},
+		ir.IntType(),
+		&ir.Rank{Ax: []ir.AxisLengths{&ir.AxisExpr{X: intLitAs(2, ir.IntType())}}},
+	)
+
+	for _, tc := range []struct {
+		name string
+		expr ir.Expr
+		file *ir.File
+		want string
+	}{
+		{"NumberInt", intLit(42), testFile, "42"},
+		{"NumberFloat", floatLit(1.5), testFile, "1.5"},
+		{"NumberCast", intLitAs(9, ir.IntType()), testFile, "9"},
+		{"BoolValueTrue", ir.True(), testFile, "true"},
+		{"BoolValueFalse", ir.False(), testFile, "false"},
+		{"StringLiteral", &ir.StringLiteral{Src: &ast.BasicLit{Kind: token.STRING, Value: `"hi"`}}, testFile, `"hi"`},
+		{"ArrayLitExpr", &ir.ArrayLitExpr{Typ: arrType, Elts: []ir.Expr{intLit(1), intLit(2)}}, testFile, "[2]int{1, 2}"},
+		{"TypeValExprCrossPackage", ir.TypeExpr(&ast.Ident{Name: "Stale"}, plain), otherFile, "ir_test.Plain"},
+		{"IdentConstSamePackage", ir.NewIdent(pkgConst), testFile, "N"},
+		{"IdentConstCrossPackage", ir.NewIdent(pkgConst), otherFile, "ir_test.N"},
+		{"IdentConstCrossPackageAlias", ir.NewIdent(pkgConst), aliasFile, "myir.N"},
+		{"SelectorImportEmbeddedSamePackage", embeddedSel, testFile, "N"},
+		{"SelectorImportEmbeddedCrossPackage", embeddedSel, otherFile, "ir_test.N"},
+		{"SelectorImportEmbeddedCrossPackageAlias", embeddedSel, aliasFile, "myir.N"},
+		{"UnaryExprSynthetic", &ir.UnaryExpr{Src: &ast.UnaryExpr{Op: token.SUB}, X: ir.NewIdent(mParam)}, testFile, "-M"},
+		{"ParenAndBinaryExprSynthetic", &ir.ParenExpr{Src: &ast.ParenExpr{}, X: &ir.BinaryExpr{Src: &ast.BinaryExpr{Op: token.ADD}, X: ir.NewIdent(mParam), Y: intLit(1), Typ: ir.IntType()}}, testFile, "(M + 1)"},
+		{"StructLitExprSyntheticCrossPackage", &ir.StructLitExpr{Typ: cfgNamed, Elts: []*ir.FieldLit{{FieldStorage: cfgFields.Fields()[0].Storage(), X: intLit(4)}, {FieldStorage: cfgFields.Fields()[1].Storage()}}}, otherFile, "ir_test.Cfg{N: 4}"},
+		{"SliceExprLowerBoundOnly", &ir.SliceExpr{Src: &ast.SliceExpr{}, X: ir.NewIdent(sParam), Low: intLit(1)}, testFile, "S[1:]"},
+		{"IndexExprSpecialized", &ir.IndexExpr{Src: &ast.IndexExpr{}, X: ir.NewIdent(sParam), Index: intLit(0), Typ: ir.IntType()}, testFile, "S[0]"},
+		{"CastExprSyntheticCrossPackage", &ir.CastExpr{Typ: plain, X: intLit(3)}, otherFile, "ir_test.Plain(3)"},
+		{"FuncCallExprSpecializedCrossPackage", &ir.FuncCallExpr{Src: &ast.CallExpr{}, Callee: ir.NewFuncValExpr(ir.NewIdent(pkgFunc), pkgFunc), Args: []ir.Expr{ir.NewIdent(mParam)}}, otherFile, "ir_test.F(M)"},
+		{"UnpackExpr", &ir.UnpackExpr{X: ir.NewIdent(sParam), EltTyp: ir.IntType()}, testFile, "S..."},
+	} {
+		t.Run(tc.name, func(t *testing.T) {
+			got := tc.expr.Refer(tc.file)
+			if gotStr := gxfmt.Format(got); gotStr != tc.want {
+				t.Errorf("gxfmt.Format(%T.Refer(%v)) = %q, want %q", tc.expr, tc.file, gotStr, tc.want)
+			}
+		})
+	}
+}
+
+func formatRankAST(expr ast.Expr) string {
+	if expr == nil {
+		return ""
+	}
+	arr, ok := expr.(*ast.ArrayType)
+	if !ok {
+		return gxfmt.Format(expr)
+	}
+	cur := arr
+	for cur.Elt != nil {
+		cur = cur.Elt.(*ast.ArrayType)
+	}
+	cur.Elt = &ast.Ident{Name: "T"}
+	return gxfmt.Format(arr)
+}
+
+func TestRankRefer(t *testing.T) {
+	otherFile, aliasFile := referTestFiles()
+	mParam := ir.NewGenericNonTypeParam(irhelper.Fields("M", ir.IntType()).Fields()[0])
+	pkgConst := &ir.ConstExpr{Decl: &ir.ConstSpec{FFile: testFile}, VName: &ast.Ident{Name: "N"}}
+	multiRank := &ir.Rank{
+		Ax: []ir.AxisLengths{
+			&ir.AxisExpr{X: ir.NewIdent(mParam)},
+			&ir.AxisExpr{X: ir.NewIdent(pkgConst)},
+		},
+	}
+	inferUnresolved := ir.NewRankInfer(&ast.ArrayType{Len: &ast.Ellipsis{}}, nil)
+	inferResolved := ir.NewRankInfer(&ast.ArrayType{Len: &ast.Ellipsis{}}, multiRank)
+	axisInferRank := &ir.Rank{
+		Ax: []ir.AxisLengths{
+			&ir.AxisInfer{Src: &ast.Ident{Name: "_"}},
+			&ir.AxisInfer{Src: &ast.Ident{Name: "_"}, X: &ir.AxisExpr{X: intLit(4)}},
+		},
+	}
+
+	for _, tc := range []struct {
+		name string
+		rank ir.ArrayRank
+		file *ir.File
+		want string
+	}{
+		{"ScalarRank", &ir.Rank{}, testFile, ""},
+		{"SingleAxis", &ir.Rank{Ax: []ir.AxisLengths{&ir.AxisExpr{X: intLit(3)}}}, testFile, "[3]T"},
+		{"MultiAxisSamePackage", multiRank, testFile, "[M][N]T"},
+		{"MultiAxisCrossPackage", multiRank, otherFile, "[M][ir_test.N]T"},
+		{"MultiAxisCrossPackageAlias", multiRank, aliasFile, "[M][myir.N]T"},
+		{"AxisInferMixed", axisInferRank, testFile, "[_][4]T"},
+		{"RankInferUnresolved", inferUnresolved, testFile, "..."},
+		{"RankInferResolved", inferResolved, otherFile, "[M][ir_test.N]T"},
+	} {
+		t.Run(tc.name, func(t *testing.T) {
+			got := tc.rank.Refer(tc.file)
+			if gotStr := formatRankAST(got); gotStr != tc.want {
+				t.Errorf("formatRankAST(%T.Refer(%v)) = %q, want %q", tc.rank, tc.file, gotStr, tc.want)
+			}
+		})
+	}
+}

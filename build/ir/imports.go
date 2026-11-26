@@ -136,6 +136,17 @@ func (ie *ImportEmbedded) Expr() ast.Expr {
 	return ie.Src
 }
 
+// Refer returns an AST expression referencing the embedded import from file.
+func (ie *ImportEmbedded) Refer(file *File) ast.Expr {
+	if file == nil {
+		return ie.Src
+	}
+	if imp := file.FindImport(ie.Package.Path()); imp != nil {
+		return imp.NameDef()
+	}
+	return ie.Package.Name
+}
+
 // Type of the import expression.
 func (ie *ImportEmbedded) Type() Type {
 	return PackageType()
