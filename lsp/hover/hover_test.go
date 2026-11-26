@@ -438,10 +438,6 @@ func TestAtStructFields(t *testing.T) {
 	if !isType[*ir.SelectorExpr](gotImp.IR) || !isType[*ir.Field](gotImp.Definition) || gotImp.SymbolInfo != "DType shape.DType" || gotImp.DeclaredBy != "shape.Shape" || gotImp.Documentation != "" || gotImp.Snippet != shapeSnippet {
 		t.Errorf("At(.DType) = %+v (IR %T, Def %T), want shape.Shape.DType", gotImp, gotImp.IR, gotImp.Definition)
 	}
-	gotTypeParam := hoverAtToken(t, mainFile, "type Box[T any] struct {", "T any")
-	if !isType[*ir.Field](gotTypeParam.IR) || gotTypeParam.SymbolInfo != "" || gotTypeParam.Definition != nil {
-		t.Errorf("At(Box type param T) = %+v (IR %T), want *ir.Field with empty hover metadata", gotTypeParam, gotTypeParam.IR)
-	}
 }
 
 func TestAtFunctionParameters(t *testing.T) {
@@ -523,19 +519,158 @@ func TestAtFunctionParameters(t *testing.T) {
 			t.Errorf("At(%q in %q) = %+v (IR %T), want %+v", tc.tok, tc.line, got, got.IR, want)
 		}
 	}
+}
 
-	for _, tc := range []struct {
-		file        *ir.File
+func TestAtGenericParameters(t *testing.T) {
+	mainFile := lsptesting.BuildPackage(t, testdata.FS, "main.gx").File("main.gx")
+	docsFile := lsptesting.BuildPackage(t, testdata.FS, "docs.gx").File("docs.gx")
+
+	type refCase struct {
 		line, token string
+		wantIRType  func(ir.IR) bool
+	}
+	tests := []struct {
+		file                        *ir.File
+		declLine, declTok, wantInfo string
+		refs                        []refCase
 	}{
-		{mainFile, "func (b Box[U]) Get() U {", "U]"},
-		{mainFile, "func id[T any](v T) T {", "T any"},
-		{mainFile, "func unpackShape[S []int](x [2][S...]float32) [2][S...]float32 {", "S []int"},
-		{docsFile, "func (m Meter) Scale[T Floats](k T) (out Meter) {", "T Floats"},
-	} {
-		got := hoverAtToken(t, tc.file, tc.line, tc.token)
-		if !isType[*ir.Field](got.IR) || got.SymbolInfo != "" || got.Definition != nil {
-			t.Errorf("At(generic param %q in %q) = %+v (IR %T), want *ir.Field with empty hover metadata", tc.token, tc.line, got, got.IR)
+		{
+			file: mainFile, declLine: "type Box[T any] struct {", declTok: "T any", wantInfo: "type T any",
+			refs: []refCase{
+				{"Val T", "T", isType[*ir.TypeValExpr]},
+			},
+		},
+		{
+			file: mainFile, declLine: "func id[T any](v T) T {", declTok: "T any", wantInfo: "type T any",
+			refs: []refCase{
+				{"func id[T any](v T) T {", "T)", isType[*ir.TypeValExpr]},
+				{"func id[T any](v T) T {", "T {", isType[*ir.TypeValExpr]},
+			},
+		},
+		{
+			file: mainFile, declLine: "func firstOfTwo[T any, U any](v T, _ U) T {", declTok: "T any", wantInfo: "type T any",
+			refs: []refCase{
+				{"func firstOfTwo[T any, U any](v T, _ U) T {", "T, _", isType[*ir.TypeValExpr]},
+				{"func firstOfTwo[T any, U any](v T, _ U) T {", "T {", isType[*ir.TypeValExpr]},
+			},
+		},
+		{
+			file: mainFile, declLine: "func firstOfTwo[T any, U any](v T, _ U) T {", declTok: "U any", wantInfo: "type U any",
+			refs: []refCase{
+				{"func firstOfTwo[T any, U any](v T, _ U) T {", "U)", isType[*ir.TypeValExpr]},
+			},
+		},
+		{
+			file: mainFile, declLine: "func (b Box[V]) Early() V {", declTok: "V]", wantInfo: "type V any",
+			refs: []refCase{
+				{"func (b Box[V]) Early() V {", "V {", isType[*ir.TypeValExpr]},
+			},
+		},
+		{
+			file: mainFile, declLine: "func (b Box[U]) Get() U {", declTok: "U]", wantInfo: "type U any",
+			refs: []refCase{
+				{"func (b Box[U]) Get() U {", "U {", isType[*ir.TypeValExpr]},
+			},
+		},
+		{
+			file: mainFile, declLine: "func unpackShape[S []int](x [2][S...]float32) [2][S...]float32 {", declTok: "S []int", wantInfo: "var S []int",
+			refs: []refCase{
+				{"func unpackShape[S []int](x [2][S...]float32) [2][S...]float32 {", "S...]float32)", isType[*ir.Ident]},
+				{"func unpackShape[S []int](x [2][S...]float32) [2][S...]float32 {", "S...]float32 {", isType[*ir.Ident]},
+			},
+		},
+		{
+			file: docsFile, declLine: "func (m Meter) Scale[T Floats](k T) (out Meter) {", declTok: "T Floats", wantInfo: "type T Floats",
+			refs: []refCase{
+				{"func (m Meter) Scale[T Floats](k T) (out Meter) {", "T)", isType[*ir.TypeValExpr]},
+			},
+		},
+		{
+			file: docsFile, declLine: "type TagBox[A, B any] struct {", declTok: "A,", wantInfo: "type A any",
+			refs: []refCase{
+				{"First  A", "A", isType[*ir.TypeValExpr]},
+			},
+		},
+		{
+			file: docsFile, declLine: "type TagBox[A, B any] struct {", declTok: "B any", wantInfo: "type B any",
+			refs: []refCase{
+				{"Second B", "B", isType[*ir.TypeValExpr]},
+			},
+		},
+		{
+			file: docsFile, declLine: "func (b TagBox[X, Y]) With[T Floats](k T) (X, T) {", declTok: "X, Y", wantInfo: "type X any",
+			refs: []refCase{
+				{"func (b TagBox[X, Y]) With[T Floats](k T) (X, T) {", "X, T)", isType[*ir.TypeValExpr]},
+			},
+		},
+		{
+			file: docsFile, declLine: "func (b TagBox[X, Y]) With[T Floats](k T) (X, T) {", declTok: "Y]", wantInfo: "type Y any",
+		},
+		{
+			file: docsFile, declLine: "func (b TagBox[X, Y]) With[T Floats](k T) (X, T) {", declTok: "T Floats", wantInfo: "type T Floats",
+			refs: []refCase{
+				{"func (b TagBox[X, Y]) With[T Floats](k T) (X, T) {", "T) (", isType[*ir.TypeValExpr]},
+				{"func (b TagBox[X, Y]) With[T Floats](k T) (X, T) {", "T) {", isType[*ir.TypeValExpr]},
+			},
+		},
+	}
+	for _, tc := range tests {
+		decl := hoverAtToken(t, tc.file, tc.declLine, tc.declTok)
+		wantDecl := hover.Info{IR: decl.IR, SymbolInfo: tc.wantInfo, Definition: decl.IR}
+		if !isType[*ir.Field](decl.IR) || decl != wantDecl {
+			t.Errorf("At(%q in %q) = %+v (IR %T), want %+v", tc.declTok, tc.declLine, decl, decl.IR, wantDecl)
+			continue
 		}
+		for _, r := range tc.refs {
+			ref := hoverAtToken(t, tc.file, r.line, r.token)
+			wantRef := hover.Info{IR: ref.IR, SymbolInfo: decl.SymbolInfo, Definition: decl.Definition}
+			if !r.wantIRType(ref.IR) || ref != wantRef {
+				t.Errorf("At(ref %q in %q) = %+v (IR %T), want %+v", r.token, r.line, ref, ref.IR, wantRef)
+			}
+		}
+	}
+
+	extraFS := fstest.MapFS{
+		"generics.gx": {Data: []byte(
+			"package test\n\n" +
+				"type Floats interface {\n\tfloat32 | float64\n}\n\n" +
+				"func pass[T Floats](v T) T {\n\treturn v\n}\n\n" +
+				"func forward[T Floats, N int](x [N]T, v T) ([N]T, T) {\n\treturn x, pass[T](v)\n}\n\n" +
+				"func keepInterface(v any) any {\n\treturn v\n}\n",
+		)},
+	}
+	extraFile := lsptesting.BuildPackage(t, extraFS, "generics.gx").File("generics.gx")
+	extraAt := func(lineSubstr, tok string) hover.Info {
+		line, col := lsptesting.CursorAt(t, extraFS, extraFile, lineSubstr, tok)
+		return hover.At(extraFile, line, col)
+	}
+	tDecl := extraAt("func forward[T Floats, N int](x [N]T, v T) ([N]T, T) {", "T Floats")
+	if want := (hover.Info{IR: tDecl.IR, SymbolInfo: "type T Floats", Definition: tDecl.IR}); !isType[*ir.Field](tDecl.IR) || tDecl != want {
+		t.Errorf("At(T Floats) = %+v (IR %T), want %+v", tDecl, tDecl.IR, want)
+	}
+	nDecl := extraAt("func forward[T Floats, N int](x [N]T, v T) ([N]T, T) {", "N int")
+	if want := (hover.Info{IR: nDecl.IR, SymbolInfo: "var N int", Definition: nDecl.IR}); !isType[*ir.Field](nDecl.IR) || nDecl != want {
+		t.Errorf("At(N int) = %+v (IR %T), want %+v", nDecl, nDecl.IR, want)
+	}
+	for _, tc := range []struct {
+		line, tok  string
+		decl       hover.Info
+		wantIRType func(ir.IR) bool
+	}{
+		{"func forward[T Floats, N int](x [N]T, v T) ([N]T, T) {", "T, v", tDecl, isType[*ir.GenericTypeParam]},
+		{"func forward[T Floats, N int](x [N]T, v T) ([N]T, T) {", "T, T)", tDecl, isType[*ir.GenericTypeParam]},
+		{"return x, pass[T](v)", "T]", tDecl, isType[*ir.Ident]},
+		{"func forward[T Floats, N int](x [N]T, v T) ([N]T, T) {", "N]T, v", nDecl, isType[*ir.Ident]},
+		{"func forward[T Floats, N int](x [N]T, v T) ([N]T, T) {", "N]T, T)", nDecl, isType[*ir.Ident]},
+	} {
+		got := extraAt(tc.line, tc.tok)
+		want := hover.Info{IR: got.IR, SymbolInfo: tc.decl.SymbolInfo, Definition: tc.decl.Definition}
+		if !tc.wantIRType(got.IR) || got != want {
+			t.Errorf("At(%q in %q) = %+v (IR %T), want %+v", tc.tok, tc.line, got, got.IR, want)
+		}
+	}
+	keepV := extraAt("func keepInterface(v any) any {", "v any")
+	if want := (hover.Info{IR: keepV.IR, SymbolInfo: "var v any", Definition: keepV.IR}); !isType[*ir.Field](keepV.IR) || keepV != want {
+		t.Errorf("At(v any) = %+v (IR %T), want %+v", keepV, keepV.IR, want)
 	}
 }

@@ -83,6 +83,8 @@ func populate(info *Info, file *ir.File, node ir.IR) {
 		populate(info, file, n.Field)
 	case *ir.Field:
 		populateField(info, file, n)
+	case ir.GenericParam:
+		populateGenericParam(info, file, n)
 	case *ir.Ident:
 		populate(info, file, n.Stor)
 	default:
@@ -90,7 +92,6 @@ func populate(info *Info, file *ir.File, node ir.IR) {
 			info.SymbolInfo = "type " + t.ReferString(file)
 		}
 	}
-	// TODO(b/590238154): Populate generic parameter nodes.
 	// TODO(b/586481415): Populate builtin, function literal, and interface method nodes.
 }
 
@@ -182,19 +183,29 @@ func populateLocal(info *Info, file *ir.File, stor ir.Storage) {
 
 func populateField(info *Info, file *ir.File, field *ir.Field) {
 	origin := field.Origin()
+	info.Definition = origin
 	if nt := enclosingStruct(file, origin); nt != nil {
-		info.Definition = origin
 		info.SymbolInfo = fmt.Sprintf("%s %s", field.Name.Name, field.Type().ReferString(file))
 		info.DeclaredBy = nt.FullName()
 		info.Documentation = strings.TrimSpace(origin.Group.Src.Doc.Text())
 		info.Snippet = typeSnippet(nt)
 		return
 	}
-	if isGenericParamField(file, origin) {
+	if isGenericParamField(file, origin) && !ir.IsNonTypeGeneric(field.Type()) {
+		info.SymbolInfo = fmt.Sprintf("type %s %s", field.Name.Name, field.Type().ReferString(file))
 		return
 	}
-	info.Definition = origin
 	info.SymbolInfo = fmt.Sprintf("var %s %s", field.Name.Name, field.Type().ReferString(file))
+}
+
+func populateGenericParam(info *Info, file *ir.File, gp ir.GenericParam) {
+	origin := gp.OrigField()
+	info.Definition = origin
+	if gp.IsTypeParam() {
+		info.SymbolInfo = fmt.Sprintf("type %s %s", gp.NameDef().Name, origin.Type().ReferString(file))
+		return
+	}
+	info.SymbolInfo = fmt.Sprintf("var %s %s", gp.NameDef().Name, gp.Type().ReferString(file))
 }
 
 func isGenericParamField(file *ir.File, origin *ir.Field) bool {
