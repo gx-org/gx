@@ -112,13 +112,13 @@ func (n *constant) UnaryOp(env *engine.Env, expr *ir.UnaryExpr, typ ir.Type) (en
 }
 
 // BinaryOp applies a binary operator to x and y.
-func (n *constant) BinaryOp(env *engine.Env, expr *ir.BinaryExpr, y engine.NumericalElement) (engine.NumericalElement, error) {
-	res, err := csteager.Binary(env, expr, n.cst, y)
+func (n *constant) BinaryOp(env *engine.Env, expr *ir.BinaryExpr, y engine.NumericalElement, typ ir.Type) (engine.NumericalElement, error) {
+	res, err := csteager.Binary(env, expr, typ, n.cst, y)
 	if err != nil {
 		return nil, err
 	}
 	if res == nil {
-		return n.BackendNode.BinaryOp(env, expr, y)
+		return n.BackendNode.BinaryOp(env, expr, y, typ)
 	}
 	return newConstant(env.ExprEval(), n.ao, res)
 }

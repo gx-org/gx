@@ -37,7 +37,7 @@ func (unknown) UnaryOp(env *engine.Env, expr *ir.UnaryExpr, typ ir.Type) (engine
 	return unknownEl, nil
 }
 
-func (unknown) BinaryOp(env *engine.Env, expr *ir.BinaryExpr, y engine.NumericalElement) (engine.NumericalElement, error) {
+func (unknown) BinaryOp(env *engine.Env, expr *ir.BinaryExpr, y engine.NumericalElement, typ ir.Type) (engine.NumericalElement, error) {
 	return unknownEl, nil
 }
 

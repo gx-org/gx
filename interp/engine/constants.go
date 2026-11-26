@@ -34,7 +34,7 @@ type ScalarNumber interface {
 	UnaryOp(env ir.SourceFile, expr *ir.UnaryExpr) (ScalarNumber, error)
 
 	// BinaryOp applies a binary operator to x and y.
-	BinaryOp(env ir.SourceFile, expr *ir.BinaryExpr, y ScalarNumber) (ScalarNumber, error)
+	BinaryOp(env ir.SourceFile, expr *ir.BinaryExpr, y ScalarNumber, typ ir.Type) (ScalarNumber, error)
 
 	// CmpOp compares x to y.
 	// Returns a nil element if the expression is not a comparison expression.

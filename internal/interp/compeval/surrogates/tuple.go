@@ -77,8 +77,8 @@ func (t *tuple) UnaryOp(env *engine.Env, expr *ir.UnaryExpr, typ ir.Type) (engin
 
 // BinaryOp applies a binary operator to x and y.
 // Note that the receiver can be either the left or right argument.
-func (t *tuple) BinaryOp(env *engine.Env, expr *ir.BinaryExpr, y engine.NumericalElement) (engine.NumericalElement, error) {
-	return cpevops.NewBinaryFrom(env, expr, t, y)
+func (t *tuple) BinaryOp(env *engine.Env, expr *ir.BinaryExpr, y engine.NumericalElement, typ ir.Type) (engine.NumericalElement, error) {
+	return cpevops.NewBinaryFrom(env, expr, t, y, typ)
 }
 
 // Cast an element into a given data type.

@@ -101,8 +101,8 @@ func (a *array) Axes(ev ir.Evaluator) (ir.FixedSlice, error) {
 }
 
 // BinaryOp applies a binary operator to x and y.
-func (a *array) BinaryOp(env *engine.Env, expr *ir.BinaryExpr, y engine.NumericalElement) (engine.NumericalElement, error) {
-	return cpevops.NewBinaryFrom(env, expr, a, y)
+func (a *array) BinaryOp(env *engine.Env, expr *ir.BinaryExpr, y engine.NumericalElement, typ ir.Type) (engine.NumericalElement, error) {
+	return cpevops.NewBinaryFrom(env, expr, a, y, typ)
 }
 
 // Cast an element into a given data type.

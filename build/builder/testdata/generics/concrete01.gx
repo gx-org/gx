@@ -64,3 +64,20 @@ func TestGenericConstUnaryOp() (float32, float64) {
 	// 0: float32(-2.5)
 	// 1: float64(-2.5)
 }
+
+func constSeven[T dtype.Nums]() T {
+	return 7
+}
+
+func divConstGeneric[T dtype.Nums]() T {
+	x := constSeven[T]()
+	return x / 2
+}
+
+func TestGenericConstBinaryOp() (int32, float32, float64) {
+	return divConstGeneric[int32](), divConstGeneric[float32](), divConstGeneric[float64]()
+	// Want:
+	// 0: int32(3)
+	// 1: float32(3.5)
+	// 2: float64(3.5)
+}

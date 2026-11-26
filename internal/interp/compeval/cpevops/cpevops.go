@@ -65,8 +65,8 @@ func (c *core) UnaryOp(env *engine.Env, expr *ir.UnaryExpr, typ ir.Type) (engine
 	return NewUnary(env, expr, c.el, typ)
 }
 
-func (c *core) BinaryOp(env *engine.Env, expr *ir.BinaryExpr, y engine.NumericalElement) (engine.NumericalElement, error) {
-	return NewBinaryFrom(env, expr, c.el, y)
+func (c *core) BinaryOp(env *engine.Env, expr *ir.BinaryExpr, y engine.NumericalElement, typ ir.Type) (engine.NumericalElement, error) {
+	return NewBinaryFrom(env, expr, c.el, y, typ)
 }
 
 func (c *core) Cast(env *engine.Env, expr ir.Expr, target ir.Type) (engine.NumericalElement, error) {

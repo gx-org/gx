@@ -48,8 +48,8 @@ func (a *atomicOps) UnaryOp(env *engine.Env, expr *ir.UnaryExpr, typ ir.Type) (e
 	return cpevops.NewUnary(env, expr, a.cst, typ)
 }
 
-func (a *atomicOps) BinaryOp(env *engine.Env, expr *ir.BinaryExpr, y engine.NumericalElement) (engine.NumericalElement, error) {
-	return cpevops.NewBinaryFrom(env, expr, a.cst, y)
+func (a *atomicOps) BinaryOp(env *engine.Env, expr *ir.BinaryExpr, y engine.NumericalElement, typ ir.Type) (engine.NumericalElement, error) {
+	return cpevops.NewBinaryFrom(env, expr, a.cst, y, typ)
 }
 
 func (a *atomicOps) Cast(env *engine.Env, expr ir.Expr, target ir.Type) (engine.NumericalElement, error) {

@@ -87,7 +87,7 @@ func (n *BackendNode) out() compute.Value {
 }
 
 // BinaryOp applies a binary operator to x and y.
-func (n *BackendNode) BinaryOp(env *engine.Env, expr *ir.BinaryExpr, y engine.NumericalElement) (_ engine.NumericalElement, err error) {
+func (n *BackendNode) BinaryOp(env *engine.Env, expr *ir.BinaryExpr, y engine.NumericalElement, typ ir.Type) (_ engine.NumericalElement, err error) {
 	xNode, err := materialise.Element(n.ao, n)
 	if err != nil {
 		return nil, fmt.Errorf("cannot materialise %s in %s: %w", expr.X.SourceString(nil), expr.SourceString(nil), err)
@@ -151,10 +151,6 @@ func (n *BackendNode) BinaryOp(env *engine.Env, expr *ir.BinaryExpr, y engine.Nu
 	}
 	if err != nil {
 		return nil, fmterr.Errorf(env.File().FileSet(), expr.Src, "cannot create binary operation for %v%s%v: %v", n, expr.Src.Op, y, err)
-	}
-	typ, err := concrete.Concrete(env.ExprEval(), expr.Typ)
-	if err != nil {
-		return nil, fmterr.Error(env.File().FileSet(), expr.Src, err)
 	}
 	return NewBackendNode(n.ao, typ, binaryNode)
 }

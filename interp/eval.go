@@ -514,9 +514,7 @@ func evalBinaryExpression(fitp *Interpreter, expr *ir.BinaryExpr) (ir.Element, e
 	if err != nil {
 		return nil, err
 	}
-	cExpr := *expr
-	cExpr.Typ = cType
-	return x.BinaryOp(fitp.env, &cExpr, y)
+	return x.BinaryOp(fitp.env, expr, y, cType)
 }
 
 func evalCompositeLiteral(fitp *Interpreter, expr *ir.StructLitExpr) (ir.Element, error) {

@@ -72,7 +72,7 @@ func notSupported(env ir.SourceFile, expr *ir.BinaryExpr, x, y engine.ScalarNumb
 
 // BinaryOp applies a binary operator to x and y.
 // Note that the receiver can be either the left or right argument.
-func (n *elFloat) BinaryOp(env ir.SourceFile, expr *ir.BinaryExpr, y engine.ScalarNumber) (engine.ScalarNumber, error) {
+func (n *elFloat) BinaryOp(env ir.SourceFile, expr *ir.BinaryExpr, y engine.ScalarNumber, typ ir.Type) (engine.ScalarNumber, error) {
 	return binaryFloat(env, expr, n.val, y.Float())
 }
 

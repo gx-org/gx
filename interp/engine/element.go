@@ -29,7 +29,7 @@ type (
 
 		// BinaryOp applies a binary operator to x and y.
 		// Note that the receiver can be either the left or right argument.
-		BinaryOp(env *Env, expr *ir.BinaryExpr, y NumericalElement) (NumericalElement, error)
+		BinaryOp(env *Env, expr *ir.BinaryExpr, y NumericalElement, typ ir.Type) (NumericalElement, error)
 
 		// Cast an element into a given data type.
 		Cast(env *Env, expr ir.Expr, target ir.Type) (NumericalElement, error)

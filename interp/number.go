@@ -72,7 +72,11 @@ func evalNumberBinaryExpr(fitp *Interpreter, expr *ir.BinaryExpr) (engine.Scalar
 	if err != nil {
 		return nil, err
 	}
-	return x.BinaryOp(fitp.env, expr, y)
+	cType, err := concretizeType(fitp, expr, expr.Typ)
+	if err != nil {
+		return nil, err
+	}
+	return x.BinaryOp(fitp.env, expr, y, cType)
 }
 
 func evalNumberSelectorExpr(fitp *Interpreter, expr *ir.SelectorExpr) (engine.ScalarNumber, error) {
