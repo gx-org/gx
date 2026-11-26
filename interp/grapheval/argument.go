@@ -141,6 +141,9 @@ func (vis *inputVisitor) newArg(parent parentArgument, typ ir.Type, proxy ir.Ele
 			if err != nil {
 				return nil, err
 			}
+			if _, err := vis.ao.graph.Builder().OpShape(node.Value()); err != nil {
+				return nil, err
+			}
 			return NewBackendNode(vis.ao, typ, node.Value())
 		}
 		return proxy, nil
