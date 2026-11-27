@@ -150,7 +150,7 @@ func (g *CompiledFunc) Run(receiver hostio.Value, args []hostio.Value, tracer tr
 			_ = b.Finalize()
 		}
 	}()
-	if err := g.process.ProcessTraces(tracer, traced); err != nil {
+	if err := processor.ProcessTraces(g.process, tracer, traced); err != nil {
 		return nil, err
 	}
 	return g.handlesToValues(out)

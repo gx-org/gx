@@ -16,11 +16,15 @@ package processor
 
 import (
 	"github.com/gomlx/compute"
-	"github.com/gx-org/gx/api/hostio"
-	"github.com/gx-org/gx/api/trace"
 	"github.com/gx-org/gx/build/ir"
 	"github.com/gx-org/gx/internal/interp/flatten"
 )
+
+// TraceCallback is called when the trace builtin is invoked
+// in GX source code.
+type TraceCallback[T any] interface {
+	Trace(file *ir.File, call *ir.FuncCallExpr, values []T) error
+}
 
 type traceProcessor struct {
 	file   *ir.File
@@ -28,8 +32,8 @@ type traceProcessor struct {
 	traced []ir.Element
 }
 
-func (t *traceProcessor) parse(tracer trace.Callback, parser hostio.Parser) error {
-	vals := make([]hostio.Value, len(t.traced))
+func parseTrace[T any](t *traceProcessor, tracer TraceCallback[T], parser *flatten.Parser[T]) error {
+	vals := make([]T, len(t.traced))
 	for i, tr := range t.traced {
 		var err error
 		vals[i], err = parser.Unflatten(tr)
@@ -63,13 +67,13 @@ func (ts *traces) RegisterTrace(ctx ir.Evaluator, call *ir.FuncCallExpr, args []
 }
 
 // ProcessTraces processes the graph outputs related to traces.
-func (ts *traces) ProcessTraces(tracer trace.Callback, aux []compute.Buffer) error {
-	if tracer == nil || len(ts.traces) == 0 {
+func ProcessTraces[T any](p *Processor, tracer TraceCallback[T], aux []compute.Buffer) error {
+	if tracer == nil || len(p.traces.traces) == 0 {
 		return nil
 	}
-	parser := flatten.NewParser[hostio.Value](aux)
-	for _, trace := range ts.traces {
-		if err := trace.parse(tracer, parser); err != nil {
+	parser := flatten.NewParser[T](aux)
+	for _, trace := range p.traces.traces {
+		if err := parseTrace(trace, tracer, parser); err != nil {
 			return err
 		}
 	}
