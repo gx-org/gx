@@ -73,8 +73,8 @@ func (c *core) Cast(env *engine.Env, expr ir.Expr, target ir.Type) (engine.Numer
 	return NewCast(env, expr, c.el, target), nil
 }
 
-func (c *core) Reshape(env *engine.Env, expr ir.Expr, axisLengths []engine.NumericalElement) (engine.NumericalElement, error) {
-	return NewReshape(env, expr, c.el, axisLengths)
+func (c *core) Reshape(env *engine.Env, expr ir.Expr, axisLengths []engine.NumericalElement, typ ir.Type) (engine.NumericalElement, error) {
+	return NewReshape(env, expr, c.el, axisLengths, typ)
 }
 
 func (c *core) Axes(ev ir.Evaluator) (ir.FixedSlice, error) {

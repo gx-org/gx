@@ -73,8 +73,8 @@ func (g *genericType) Slice(env *engine.Env, expr *ir.SliceExpr, low, high engin
 }
 
 // Reshape an element.
-func (g *genericType) Reshape(env *engine.Env, expr ir.Expr, axisLengths []engine.NumericalElement) (engine.NumericalElement, error) {
-	return cpevops.NewReshape(env, expr, g, axisLengths)
+func (g *genericType) Reshape(env *engine.Env, expr ir.Expr, axisLengths []engine.NumericalElement, typ ir.Type) (engine.NumericalElement, error) {
+	return cpevops.NewReshape(env, expr, g, axisLengths, typ)
 }
 
 // Axes of the result of the cast.

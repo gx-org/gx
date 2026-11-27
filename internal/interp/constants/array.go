@@ -25,14 +25,16 @@ import (
 
 type array struct {
 	lit       *ir.ArrayLitExpr
+	typ       ir.Type
 	vals      []engine.AtomConstant
 	axLengths []engine.NumericalElement
 }
 
 // NewArray returns a new constant array.
-func NewArray(lit *ir.ArrayLitExpr, vals []engine.AtomConstant, axLengths []engine.NumericalElement) engine.Constant {
+func NewArray(lit *ir.ArrayLitExpr, typ ir.Type, vals []engine.AtomConstant, axLengths []engine.NumericalElement) engine.Constant {
 	return &array{
 		lit:       lit,
+		typ:       typ,
 		vals:      vals,
 		axLengths: axLengths,
 	}
@@ -63,7 +65,7 @@ func (n *array) BuildNode(g compute.Function, kind irkind.Kind) (compute.Value, 
 }
 
 func (n *array) Type() ir.Type {
-	return n.lit.Typ
+	return n.typ
 }
 
 func (n *array) Number() engine.ScalarNumber {

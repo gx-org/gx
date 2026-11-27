@@ -151,7 +151,7 @@ func evalRangeStmtForLoopOverArray[T gotype.ScalarNotComplex](fitp *Interpreter,
 			if err != nil {
 				return nil, false, err
 			}
-			reshapedElement, err := elementI.Reshape(fitp.env, valueExpr, dims)
+			reshapedElement, err := elementI.Reshape(fitp.env, valueExpr, dims, valueExpr.Type())
 			if err != nil {
 				return nil, false, err
 			}
@@ -357,7 +357,7 @@ func evalCastToScalarExpr(fitp *Interpreter, expr ir.TypeCastExpr, x engine.Nume
 		return nil, fmterr.Error(fitp.File().FileSet(), expr.Node(), err)
 	}
 	if len(xShape.Dimensions) > 0 {
-		return x.Reshape(fitp.env, expr, nil)
+		return x.Reshape(fitp.env, expr, nil, targetType)
 	}
 	return x.Cast(fitp.env, expr, targetType)
 }
@@ -405,7 +405,7 @@ func evalCastAtomToArrayExpr(fitp *Interpreter, expr ir.TypeCastExpr, x engine.N
 			return nil, err
 		}
 	}
-	reshaped, err := x.Reshape(fitp.env, expr, shapeOfOnes)
+	reshaped, err := x.Reshape(fitp.env, expr, shapeOfOnes, expr.Type())
 	if err != nil {
 		return nil, err
 	}
@@ -440,7 +440,7 @@ func evalCastToArrayExpr(fitp *Interpreter, expr ir.TypeCastExpr, x engine.Numer
 	if origRank.IsAtomic() {
 		return evalCastAtomToArrayExpr(fitp, expr, x, axes)
 	}
-	reshape, err := x.Reshape(fitp.env, expr, axes)
+	reshape, err := x.Reshape(fitp.env, expr, axes, expr.Type())
 	if err != nil {
 		return nil, fmterr.Error(fitp.File().FileSet(), expr.Node(), err)
 	}

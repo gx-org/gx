@@ -36,7 +36,7 @@ type (
 		BroadcastInDim(ctx ir.Evaluator, expr ir.Expr, x NumericalElement, axisLengths []NumericalElement) (NumericalElement, error)
 
 		// Concat concatenates scalars elements into an array with one axis.
-		Concat(ctx ir.Evaluator, expr ir.Expr, xs []NumericalElement) (NumericalElement, error)
+		Concat(ctx ir.Evaluator, expr ir.Expr, xs []NumericalElement, typ ir.Type) (NumericalElement, error)
 
 		// Set a slice in an array.
 		Set(ctx ir.Evaluator, expr *ir.FuncCallExpr, x, updates ir.Element, position []ir.Element) (ir.Element, error)

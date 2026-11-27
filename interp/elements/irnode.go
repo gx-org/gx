@@ -108,7 +108,7 @@ func (s *IRNode) Cast(env *engine.Env, expr ir.Expr, target ir.Type) (engine.Num
 }
 
 // Reshape is not supported for IR nodes and returns an error.
-func (s *IRNode) Reshape(env *engine.Env, expr ir.Expr, axisLengths []engine.NumericalElement) (engine.NumericalElement, error) {
+func (s *IRNode) Reshape(env *engine.Env, expr ir.Expr, axisLengths []engine.NumericalElement, typ ir.Type) (engine.NumericalElement, error) {
 	return nil, fmterr.Internalf("Reshape not supported on IR node %s", s.SourceString(nil))
 }
 

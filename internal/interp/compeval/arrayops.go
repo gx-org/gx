@@ -52,9 +52,9 @@ func (compArrayOps) BroadcastInDim(ctx ir.Evaluator, expr ir.Expr, x engine.Nume
 }
 
 // Concat concatenates scalars elements into an array with one axis.
-func (compArrayOps) Concat(ctx ir.Evaluator, expr ir.Expr, xs []engine.NumericalElement) (engine.NumericalElement, error) {
+func (compArrayOps) Concat(ctx ir.Evaluator, expr ir.Expr, xs []engine.NumericalElement, typ ir.Type) (engine.NumericalElement, error) {
 	path := storepath.NewUniqueIR(expr)
-	return surrogates.NewArrayFrom(path, expr.Type())
+	return surrogates.NewArrayFrom(path, typ)
 }
 
 // Set a slice in an array.

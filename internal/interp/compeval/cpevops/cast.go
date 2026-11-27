@@ -24,28 +24,32 @@ import (
 
 type arrayCast struct {
 	core
-	expr ir.Expr
-	x    engine.Element
+	x   engine.Element
+	typ ir.Type
 }
 
-// NewCast applies a cast operator to an element.
-func NewCast(env *engine.Env, expr ir.Expr, xEl engine.Element, target ir.Type) engine.Element {
+func newArrayCast(xEl engine.Element, typ ir.Type) engine.Element {
 	el := &arrayCast{
-		expr: expr,
-		x:    xEl,
+		x:   xEl,
+		typ: typ,
 	}
 	el.core = core{el: el}
 	return el
 }
 
+// NewCast applies a cast operator to an element.
+func NewCast(env *engine.Env, expr ir.Expr, xEl engine.Element, target ir.Type) engine.Element {
+	return newArrayCast(xEl, expr.Type())
+}
+
 // NewReshape returns a reshape elements.
-func NewReshape(env *engine.Env, expr ir.Expr, xEl engine.Element, axisLengths []engine.NumericalElement) (engine.Element, error) {
-	return NewCast(env, expr, xEl, expr.Type()), nil
+func NewReshape(env *engine.Env, expr ir.Expr, xEl engine.Element, axisLengths []engine.NumericalElement, typ ir.Type) (engine.Element, error) {
+	return newArrayCast(xEl, typ), nil
 }
 
 // Type of the element.
 func (a *arrayCast) Type() ir.Type {
-	return a.expr.Type()
+	return a.typ
 }
 
 // Expr returns the IR expression represented by the variable.

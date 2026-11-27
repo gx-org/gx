@@ -458,8 +458,8 @@ func (n *arrayArgument) Cast(env *engine.Env, expr ir.Expr, target ir.Type) (eng
 }
 
 // Reshape an element.
-func (n *arrayArgument) Reshape(env *engine.Env, expr ir.Expr, axisLengths []engine.NumericalElement) (engine.NumericalElement, error) {
-	return n.node.Reshape(env, expr, axisLengths)
+func (n *arrayArgument) Reshape(env *engine.Env, expr ir.Expr, axisLengths []engine.NumericalElement, typ ir.Type) (engine.NumericalElement, error) {
+	return n.node.Reshape(env, expr, axisLengths, typ)
 }
 
 // Materialise returns the element with all its values from the graph.

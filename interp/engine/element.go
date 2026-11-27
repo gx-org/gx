@@ -35,7 +35,7 @@ type (
 		Cast(env *Env, expr ir.Expr, target ir.Type) (NumericalElement, error)
 
 		// Reshape an element.
-		Reshape(env *Env, expr ir.Expr, axisLengths []NumericalElement) (NumericalElement, error)
+		Reshape(env *Env, expr ir.Expr, axisLengths []NumericalElement, typ ir.Type) (NumericalElement, error)
 	}
 
 	// Element returned after an evaluation at compeval.

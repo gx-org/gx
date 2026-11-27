@@ -110,12 +110,12 @@ func (c *constant) Cast(env *engine.Env, expr ir.Expr, target ir.Type) (engine.N
 }
 
 // Reshape an element.
-func (c *constant) Reshape(env *engine.Env, expr ir.Expr, axisLengths []engine.NumericalElement) (engine.NumericalElement, error) {
+func (c *constant) Reshape(env *engine.Env, expr ir.Expr, axisLengths []engine.NumericalElement, typ ir.Type) (engine.NumericalElement, error) {
 	el, err := engine.NumericalFromHostValue(env, c.cst)
 	if err != nil {
 		return nil, err
 	}
-	return el.Reshape(env, expr, axisLengths)
+	return el.Reshape(env, expr, axisLengths, typ)
 }
 
 func (c *constant) toSlicer(env *engine.Env) (engine.Slicer, error) {

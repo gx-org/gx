@@ -45,7 +45,7 @@ func (unknown) Cast(env *engine.Env, expr ir.Expr, target ir.Type) (engine.Numer
 	return unknownEl, nil
 }
 
-func (unknown) Reshape(env *engine.Env, expr ir.Expr, axisLengths []engine.NumericalElement) (engine.NumericalElement, error) {
+func (unknown) Reshape(env *engine.Env, expr ir.Expr, axisLengths []engine.NumericalElement, typ ir.Type) (engine.NumericalElement, error) {
 	return unknownEl, nil
 }
 

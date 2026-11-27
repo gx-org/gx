@@ -56,22 +56,22 @@ func (a *atomicOps) Cast(env *engine.Env, expr ir.Expr, target ir.Type) (engine.
 	return cpevops.NewCast(env, expr, a.cst, target), nil
 }
 
-func (a *atomicOps) toArraySurrogate(expr ir.Expr) (engine.NumericalElement, error) {
+func (a *atomicOps) toArraySurrogate(typ ir.Type) (engine.NumericalElement, error) {
 	path, err := storepath.NewUnique(a.cst)
 	if err != nil {
 		return nil, err
 	}
-	return surrogates.NewArrayFrom(path, expr.Type())
+	return surrogates.NewArrayFrom(path, typ)
 }
 
-func (a *atomicOps) Reshape(env *engine.Env, expr ir.Expr, axisLengths []engine.NumericalElement) (engine.NumericalElement, error) {
-	return a.toArraySurrogate(expr)
+func (a *atomicOps) Reshape(env *engine.Env, expr ir.Expr, axisLengths []engine.NumericalElement, typ ir.Type) (engine.NumericalElement, error) {
+	return a.toArraySurrogate(typ)
 }
 
 func (a *atomicOps) SliceAt(env *engine.Env, expr *ir.IndexExpr, index engine.NumericalElement) (ir.Element, error) {
-	return a.toArraySurrogate(expr)
+	return a.toArraySurrogate(expr.Type())
 }
 
 func (a *atomicOps) Slice(env *engine.Env, expr *ir.SliceExpr, low, high engine.NumericalElement) (ir.Element, error) {
-	return a.toArraySurrogate(expr)
+	return a.toArraySurrogate(expr.Type())
 }
