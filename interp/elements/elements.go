@@ -221,3 +221,16 @@ func ShapeFromElement(el ir.Element) (shapes.Shape, error) {
 func ToNumericalElement(el ir.Element) (engine.NumericalElement, error) {
 	return coreiface.Cast[engine.NumericalElement](el)
 }
+
+// Finalize the element.
+// Named types, structures, and slices are walked to finalize their content.
+// Other elements are finalized if they implement Finalizer.
+func Finalize(el ir.Element) error {
+	return Walk(func(el ir.Element) error {
+		f, ok := el.(coreiface.Finalizer)
+		if !ok {
+			return nil
+		}
+		return f.Finalize()
+	}, el)
+}

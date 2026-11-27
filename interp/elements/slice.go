@@ -71,6 +71,7 @@ var (
 	_ engine.Copier          = (*Slice)(nil)
 	_ hostio.Value           = (*Slice)(nil)
 	_ coreiface.IndexSetter  = (*Slice)(nil)
+	_ walkable               = (*Slice)(nil)
 )
 
 // NewSlice returns a slice from a slice of elements.
@@ -256,6 +257,11 @@ func (n *Slice) Copy() engine.Copier {
 		values[i] = engine.Copy(val)
 	}
 	return &Slice{typ: n.typ, values: values}
+}
+
+// Walk the slice with a walker.
+func (n *Slice) Walk(w walker) (ir.Element, error) {
+	return w.Slice(n)
 }
 
 // SetAt an element at a given index.

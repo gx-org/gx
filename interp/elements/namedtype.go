@@ -44,6 +44,7 @@ var (
 	_ hostio.Under          = (*NamedType)(nil)
 	_ cmp.Canonical         = (*NamedType)(nil)
 	_ coreiface.IndexSetter = (*NamedType)(nil)
+	_ walkable              = (*NamedType)(nil)
 )
 
 // NewNamedType returns a new node representing an exported type.
@@ -91,6 +92,11 @@ func (n *NamedType) Copy() engine.Copier {
 // RecvCopy copies the underlying element and returns the element encapsulated in this named type.
 func (n *NamedType) RecvCopy() engine.NamedType {
 	return NewNamedType(n.typ, engine.Copy(n.under))
+}
+
+// Walk the named type with a walker.
+func (n *NamedType) Walk(w walker) (ir.Element, error) {
+	return w.NamedType(n)
 }
 
 // Under returns the underlying element of the named type.

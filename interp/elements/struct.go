@@ -43,6 +43,7 @@ var (
 	_ engine.Selector       = (*Struct)(nil)
 	_ hostio.Value          = (*Struct)(nil)
 	_ coreiface.IndexSetter = (*Struct)(nil)
+	_ walkable              = (*Struct)(nil)
 )
 
 // NewStructFromElements returns a new node representing a structure instance given a slice of
@@ -213,6 +214,11 @@ func (n *Struct) Copy() engine.Copier {
 		cp.fields[name] = engine.Copy(field)
 	}
 	return cp
+}
+
+// Walk the structure with a walker.
+func (n *Struct) Walk(w walker) (ir.Element, error) {
+	return w.Struct(n)
 }
 
 // SetField sets the field in the structure.
