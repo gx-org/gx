@@ -18,7 +18,6 @@ import (
 	"github.com/pkg/errors"
 	"github.com/gx-org/gx/build/fmterr"
 	"github.com/gx-org/gx/build/ir"
-	"github.com/gx-org/gx/internal/concrete"
 	"github.com/gx-org/gx/internal/undef"
 	"github.com/gx-org/gx/interp/elements"
 	"github.com/gx-org/gx/interp/engine"
@@ -98,42 +97,5 @@ func (runners) call(fn ir.Func, impl ir.FuncImpl, env *engine.Env, call *ir.Func
 	if builtin == nil {
 		return nil, errors.Errorf("function %s has no implementation", fn.ReferString(env.File()))
 	}
-	cCall, err := concreteCall(env, call)
-	if err != nil {
-		return nil, err
-	}
-	return builtin(env, cCall, recv, genArgs, args)
-}
-
-// concreteCall returns a copy of a function call where the type arguments of
-// the callee are concrete, that is the generic type parameters they reference
-// are replaced by their values in the current frame.
-func concreteCall(env *engine.Env, call *ir.FuncCallExpr) (*ir.FuncCallExpr, error) {
-	callee, isFuncVal := call.Callee.(*ir.FuncValExpr)
-	if !isFuncVal {
-		return call, nil
-	}
-	ftype := callee.FuncType()
-	if len(ftype.GenParams.Values) == 0 {
-		return call, nil
-	}
-	ev := env.For(compEvalNature).ExprEval()
-	values := make([]ir.GenericValue, len(ftype.GenParams.Values))
-	for i, value := range ftype.GenParams.Values {
-		typeValue, isTypeValue := value.(*ir.TypeGenericValue)
-		if !isTypeValue {
-			values[i] = value
-			continue
-		}
-		cType, err := concrete.Concrete(ev, typeValue.DefinedType())
-		if err != nil {
-			return nil, err
-		}
-		values[i] = ir.NewTypeExprGenericValue(typeValue.Generic().(*ir.GenericTypeParam), ir.TypeExpr(typeValue.Value().Expr(), cType))
-	}
-	cFType := *ftype
-	cFType.GenParams.Values = values
-	cCall := *call
-	cCall.Callee = callee.NewFType(&cFType)
-	return &cCall, nil
+	return builtin(env, call, recv, genArgs, args)
 }

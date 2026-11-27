@@ -57,12 +57,14 @@ func (s *pathImpl) Implementation() any {
 }
 
 func evalPath(env *engine.Env, call *ir.FuncCallExpr, recv ir.Element, genArgs, args []ir.Element) ([]ir.Element, error) {
-	ftype := call.Callee.FuncType()
-	genType, err := cast.To[*ir.TypeGenericValue](ftype.GenParams.Values[0])
+	if len(genArgs) != 2 {
+		return nil, errors.Errorf("incorrect number of generic arguments: got %d but want 2", len(genArgs))
+	}
+	genType, err := cast.To[*elements.GenericType](ir.BareValue(genArgs[0]))
 	if err != nil {
 		return nil, err
 	}
-	nums, err := cast.To[*ir.TypeGenericValue](ftype.GenParams.Values[1])
+	nums, err := cast.To[*elements.GenericType](ir.BareValue(genArgs[1]))
 	if err != nil {
 		return nil, err
 	}
@@ -73,7 +75,7 @@ func evalPath(env *engine.Env, call *ir.FuncCallExpr, recv ir.Element, genArgs, 
 	if len(pathNames) == 0 {
 		return nil, errors.Errorf("empty field path")
 	}
-	curType := genType.DefinedType()
+	curType := genType.Value()
 	curPath := storepath.NewProxy()
 	var paths []ir.Element
 	for i, name := range pathNames {
@@ -88,7 +90,7 @@ func evalPath(env *engine.Env, call *ir.FuncCallExpr, recv ir.Element, genArgs, 
 		}
 		if i == len(pathNames)-1 {
 			// If type does not satisfy the value assigned to [...]nums, then skip.
-			if !checkFieldType(env, field, nums.DefinedType()) {
+			if !checkFieldType(env, field, nums.Value()) {
 				continue
 			}
 			paths = append(paths, elements.NewFieldPath(curPath, field))
