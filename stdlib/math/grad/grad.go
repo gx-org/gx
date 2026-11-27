@@ -47,7 +47,6 @@ var Package = builtin.PackageBuilder{
 
 type gradMacro struct {
 	elements.MacroCall
-	call   elements.CallAt
 	unames *uname.Unique
 
 	wrt      wrt.WRT
@@ -91,7 +90,6 @@ func FuncGrad(file *ir.File, call *ir.FuncCallExpr, mac *ir.Macro, args []ir.Ele
 	}
 	m := &gradMacro{
 		MacroCall: elements.NewMacroCall(mac, file, call),
-		call:      elements.NewNodeAt(file, call),
 		unames:    uname.New(),
 		wrt:       wrtF,
 	}
@@ -138,7 +136,7 @@ func (m *gradMacro) BuildDecl(fn ir.PkgFunc) (*ir.File, ir.Expr, *ast.FuncDecl, 
 
 func (m *gradMacro) BuildBody(fetcher ir.Fetcher, fn ir.Func) (*ast.BlockStmt, bool) {
 	gradPkgFullName := m.MacroCall.From().File().Package.Path()
-	imp := m.call.File().FindImport(gradPkgFullName)
+	imp := m.CallFile().FindImport(gradPkgFullName)
 	y := &ast.Ident{Name: m.unames.Name("y")}
 	resIdent := &ast.Ident{Name: m.unames.Name("res")}
 	outType := m.revgraph.Func().FuncType().Results.Fields()[0].Type()
@@ -163,7 +161,7 @@ func (m *gradMacro) BuildBody(fetcher ir.Fetcher, fn ir.Func) (*ast.BlockStmt, b
 							X:   imp.NameDef(),
 							Sel: &ast.Ident{Name: "Reverse"},
 						},
-						Args: []ast.Expr{m.call.Node().Args[0].Expr()},
+						Args: []ast.Expr{m.Call().Args[0].Expr()},
 					},
 					Args: []ast.Expr{fn.FuncType().Params.Fields()[0].Name},
 				},
