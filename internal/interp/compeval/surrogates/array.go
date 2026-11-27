@@ -111,8 +111,8 @@ func (a *array) Cast(env *engine.Env, expr ir.Expr, target ir.Type) (engine.Nume
 }
 
 // Reshape an element.
-func (a *array) Reshape(env *engine.Env, expr ir.Expr, axisLengths []engine.NumericalElement) (engine.NumericalElement, error) {
-	return cpevops.NewReshape(env, expr, a, axisLengths)
+func (a *array) Reshape(env *engine.Env, expr ir.Expr, axisLengths []engine.NumericalElement, typ ir.Type) (engine.NumericalElement, error) {
+	return cpevops.NewReshape(env, expr, a, axisLengths, typ)
 }
 
 // SliceAt returns an element of the array given an index.

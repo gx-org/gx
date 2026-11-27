@@ -39,7 +39,7 @@ func mergeSubs(els []engine.NumericalElement) ([]engine.AtomConstant, bool) {
 	return all, true
 }
 
-func buildStaticNonZeroArray(fitp *Interpreter, lit *ir.ArrayLitExpr, axes, vals []engine.NumericalElement) (engine.Constant, bool, error) {
+func buildStaticNonZeroArray(fitp *Interpreter, lit *ir.ArrayLitExpr, typ ir.Type, axes, vals []engine.NumericalElement) (engine.Constant, bool, error) {
 	var valsT []engine.AtomConstant
 	var err error
 	var ok bool
@@ -75,18 +75,18 @@ func buildStaticNonZeroArray(fitp *Interpreter, lit *ir.ArrayLitExpr, axes, vals
 	if len(vals) > 0 && len(valsT) != size {
 		return nil, false, errors.Errorf("array has dimensions %v (size=%d) but has %d elements", axes, size, len(vals))
 	}
-	return constants.NewArray(lit, valsT, axes), true, nil
+	return constants.NewArray(lit, typ, valsT, axes), true, nil
 
 }
 
-func buildStaticArray(fitp *Interpreter, lit *ir.ArrayLitExpr, axes, vals []engine.NumericalElement) (ir.Element, bool, error) {
+func buildStaticArray(fitp *Interpreter, lit *ir.ArrayLitExpr, typ ir.Type, axes, vals []engine.NumericalElement) (ir.Element, bool, error) {
 	var array engine.Constant
 	static := true
 	var err error
 	if len(vals) > 0 {
-		array, static, err = buildStaticNonZeroArray(fitp, lit, axes, vals)
+		array, static, err = buildStaticNonZeroArray(fitp, lit, typ, axes, vals)
 	} else {
-		array = constants.NewArray(lit, nil, axes)
+		array = constants.NewArray(lit, typ, nil, axes)
 	}
 	if err != nil {
 		return nil, false, err
@@ -100,6 +100,10 @@ func buildStaticArray(fitp *Interpreter, lit *ir.ArrayLitExpr, axes, vals []engi
 }
 
 func evalArrayLiteral(fitp *Interpreter, lit *ir.ArrayLitExpr) (ir.Element, error) {
+	cType, err := concretizeType(fitp, lit, lit.Typ)
+	if err != nil {
+		return nil, err
+	}
 	axes, err := evalArrayAxes(fitp, lit, lit.Typ)
 	if err != nil {
 		return nil, err
@@ -112,18 +116,18 @@ func evalArrayLiteral(fitp *Interpreter, lit *ir.ArrayLitExpr) (ir.Element, erro
 			return nil, err
 		}
 	}
-	staticArray, staticOk, err := buildStaticArray(fitp, lit, axes, elVals)
+	staticArray, staticOk, err := buildStaticArray(fitp, lit, cType, axes, elVals)
 	if staticOk || err != nil {
 		return staticArray, err
 	}
 	// Some values will be known at runtime. We create one node for each element
 	// and concatenates everything into an array.
-	array1d, err := fitp.engine().Concat(fitp, lit, elVals)
+	array1d, err := fitp.engine().Concat(fitp, lit, elVals, cType)
 	if err != nil {
 		return nil, err
 	}
 	if len(axes) == 1 {
 		return array1d, nil
 	}
-	return array1d.Reshape(fitp.env, lit, axes)
+	return array1d.Reshape(fitp.env, lit, axes, cType)
 }

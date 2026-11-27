@@ -116,7 +116,7 @@ func (ao *Ops) BroadcastInDim(ctx ir.Evaluator, expr ir.Expr, x engine.Numerical
 }
 
 // Concat concatenates elements into a 1D array.
-func (ao *Ops) Concat(ctx ir.Evaluator, expr ir.Expr, xs []engine.NumericalElement) (engine.NumericalElement, error) {
+func (ao *Ops) Concat(ctx ir.Evaluator, expr ir.Expr, xs []engine.NumericalElement, typ ir.Type) (engine.NumericalElement, error) {
 	nodes := make([]compute.Value, len(xs))
 	for i, x := range xs {
 		iNode, iShape, err := materialise.ElementWithShape(ao, x)
@@ -135,7 +135,7 @@ func (ao *Ops) Concat(ctx ir.Evaluator, expr ir.Expr, xs []engine.NumericalEleme
 	if err != nil {
 		return nil, err
 	}
-	return NewBackendNode(ao, expr.Type(), array1d)
+	return NewBackendNode(ao, typ, array1d)
 }
 
 // Set a slice in an array.

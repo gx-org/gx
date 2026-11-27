@@ -81,3 +81,37 @@ func TestGenericConstBinaryOp() (int32, float32, float64) {
 	// 1: float32(3.5)
 	// 2: float64(3.5)
 }
+
+func scalarFromArray[T dtype.Floats](x [1]T) T {
+	return T(x)
+}
+
+func makeArray1D[T dtype.Floats](x T) [2]T {
+	return [2]T{x, x + 1}
+}
+
+func makeMatrix[T dtype.Floats](x T) [2][2]T {
+	return [2][2]T{{x, x + 1}, {x + 2, x + 3}}
+}
+
+func TestGenericArrayLiteral() ([2]float32, [2][2]float64) {
+	return makeArray1D(scalarFromArray([1]float32{1})), makeMatrix(scalarFromArray([1]float64{1}))
+	// Want:
+	// 0: [2]float32{1, 2}
+	// 1: [2][2]float64{
+	// 	{1, 2},
+	// 	{3, 4},
+	// }
+}
+
+func constGenericArrays[N int, T dtype.Floats]() ([N]T, [2]T) {
+	n := N
+	return [n]T{}, [2]T{1, 2}
+}
+
+func TestLocalAxisArrayLiteral() ([3]float32, [2]float32) {
+	return constGenericArrays[3, float32]()
+	// Want:
+	// 0: [3]float32{0, 0, 0}
+	// 1: [2]float32{1, 2}
+}

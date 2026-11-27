@@ -190,7 +190,7 @@ func (n *BackendNode) Cast(env *engine.Env, expr ir.Expr, target ir.Type) (engin
 }
 
 // Reshape an element into a given shape.
-func (n *BackendNode) Reshape(env *engine.Env, expr ir.Expr, axisLengths []engine.NumericalElement) (engine.NumericalElement, error) {
+func (n *BackendNode) Reshape(env *engine.Env, expr ir.Expr, axisLengths []engine.NumericalElement, typ ir.Type) (engine.NumericalElement, error) {
 	axes := make([]int, len(axisLengths))
 	for i, el := range axisLengths {
 		var err error
@@ -203,7 +203,7 @@ func (n *BackendNode) Reshape(env *engine.Env, expr ir.Expr, axisLengths []engin
 	if err != nil {
 		return nil, err
 	}
-	return NewBackendNode(n.ao, expr.Type(), reshaped)
+	return NewBackendNode(n.ao, typ, reshaped)
 }
 
 // SliceAt of the value on the first axis given an index.

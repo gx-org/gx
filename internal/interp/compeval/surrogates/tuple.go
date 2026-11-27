@@ -87,8 +87,8 @@ func (t *tuple) Cast(env *engine.Env, expr ir.Expr, target ir.Type) (engine.Nume
 }
 
 // Reshape an element.
-func (t *tuple) Reshape(env *engine.Env, expr ir.Expr, axisLengths []engine.NumericalElement) (engine.NumericalElement, error) {
-	return cpevops.NewReshape(env, expr, t, axisLengths)
+func (t *tuple) Reshape(env *engine.Env, expr ir.Expr, axisLengths []engine.NumericalElement, typ ir.Type) (engine.NumericalElement, error) {
+	return cpevops.NewReshape(env, expr, t, axisLengths, typ)
 }
 
 // AlgExpr returns an algebraic expression.
