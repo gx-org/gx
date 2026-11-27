@@ -158,13 +158,43 @@ func TestExprRefer(t *testing.T) {
 		Src:   &ast.FuncDecl{Name: &ast.Ident{Name: "F"}},
 		FType: irhelper.FuncType(nil, nil, irhelper.Fields("x", ir.IntType()), irhelper.Fields(ir.IntType())),
 	}
+	lenKeyword := &ir.FuncKeyword{ID: &ast.Ident{Name: "len"}}
+	origImport := &ir.ImportDecl{
+		Src:     &ast.ImportSpec{Name: &ast.Ident{Name: "orig"}, Path: &ast.BasicLit{Kind: token.STRING, Value: `"ir_test"`}},
+		Path:    "ir_test",
+		Package: testFile.Package,
+	}
+	importIdent := &ir.Ident{Src: &ast.Ident{Name: "orig"}, Stor: origImport}
+	nilPkgImport := &ir.ImportDecl{
+		Src:  &ast.ImportSpec{Name: &ast.Ident{Name: "unresolved"}, Path: &ast.BasicLit{Kind: token.STRING, Value: `"unresolved"`}},
+		Path: "unresolved",
+	}
+	nilPkgIdent := &ir.Ident{Src: &ast.Ident{Name: "unresolved"}, Stor: nilPkgImport}
+	pkgRef := &ir.PackageRef{X: importIdent, Decl: origImport}
+	embeddedImport := &ir.ImportEmbedded{Src: &ast.Ident{Name: "orig"}, Package: testFile.Package}
 	embeddedSel := &ir.SelectorExpr{
-		Src:  &ast.SelectorExpr{X: &ast.Ident{Name: "ir_test"}, Sel: &ast.Ident{Name: "N"}},
-		X:    &ir.ImportEmbedded{Src: &ast.Ident{Name: "ir_test"}, Package: testFile.Package},
+		Src:  &ast.SelectorExpr{X: &ast.Ident{Name: "orig"}, Sel: &ast.Ident{Name: "N"}},
+		X:    embeddedImport,
+		Stor: pkgConst,
+	}
+	pkgRefSel := &ir.SelectorExpr{
+		Src:  &ast.SelectorExpr{X: &ast.Ident{Name: "orig"}, Sel: &ast.Ident{Name: "N"}},
+		X:    pkgRef,
+		Stor: pkgConst,
+	}
+	importIdentSel := &ir.SelectorExpr{
+		Src:  &ast.SelectorExpr{X: &ast.Ident{Name: "orig"}, Sel: &ast.Ident{Name: "N"}},
+		X:    importIdent,
 		Stor: pkgConst,
 	}
 	cfgFields := irhelper.Fields("N", ir.IntType(), "Zero", ir.IntType())
 	cfgNamed := newNamedType("Cfg", &ir.StructType{Fields: cfgFields})
+	fieldSel := &ir.SelectorExpr{
+		Src:  &ast.SelectorExpr{X: &ast.Ident{Name: "cfg"}, Sel: &ast.Ident{Name: "N"}},
+		X:    ir.NewIdent(irhelper.LocalVar("cfg", cfgNamed)),
+		Stor: cfgFields.Fields()[0].Storage(),
+	}
+	nilPkgFile := &ir.File{}
 	arrType := ir.NewArrayType(
 		&ast.ArrayType{Len: &ast.BasicLit{Kind: token.INT, Value: "2"}, Elt: &ast.Ident{Name: "int"}},
 		ir.IntType(),
@@ -188,9 +218,32 @@ func TestExprRefer(t *testing.T) {
 		{"IdentConstSamePackage", ir.NewIdent(pkgConst), testFile, "N"},
 		{"IdentConstCrossPackage", ir.NewIdent(pkgConst), otherFile, "ir_test.N"},
 		{"IdentConstCrossPackageAlias", ir.NewIdent(pkgConst), aliasFile, "myir.N"},
+		{"IdentFuncKeywordSamePackage", ir.NewIdent(lenKeyword), testFile, "len"},
+		{"IdentFuncKeywordCrossPackage", ir.NewIdent(lenKeyword), otherFile, "len"},
+		{"IdentImportDeclNilFile", importIdent, nil, "orig"},
+		{"IdentImportDeclNilPackage", nilPkgIdent, otherFile, "unresolved"},
+		{"IdentImportDeclOtherPackage", importIdent, otherFile, "ir_test"},
+		{"IdentImportDeclAliasPackage", importIdent, aliasFile, "myir"},
+		{"PackageRefNilFile", pkgRef, nil, "orig"},
+		{"PackageRefOtherPackage", pkgRef, otherFile, "ir_test"},
+		{"PackageRefAliasPackage", pkgRef, aliasFile, "myir"},
+		{"ImportEmbeddedNilFile", embeddedImport, nil, "orig"},
+		{"ImportEmbeddedOtherPackage", embeddedImport, otherFile, "ir_test"},
+		{"ImportEmbeddedAliasPackage", embeddedImport, aliasFile, "myir"},
+		{"SelectorImportEmbeddedNilFile", embeddedSel, nil, "orig.N"},
 		{"SelectorImportEmbeddedSamePackage", embeddedSel, testFile, "N"},
 		{"SelectorImportEmbeddedCrossPackage", embeddedSel, otherFile, "ir_test.N"},
 		{"SelectorImportEmbeddedCrossPackageAlias", embeddedSel, aliasFile, "myir.N"},
+		{"SelectorPackageRefNilFile", pkgRefSel, nil, "orig.N"},
+		{"SelectorPackageRefSamePackage", pkgRefSel, testFile, "N"},
+		{"SelectorPackageRefCrossPackage", pkgRefSel, otherFile, "ir_test.N"},
+		{"SelectorPackageRefCrossPackageAlias", pkgRefSel, aliasFile, "myir.N"},
+		{"SelectorImportIdentNilFile", importIdentSel, nil, "orig.N"},
+		{"SelectorImportIdentSamePackage", importIdentSel, testFile, "N"},
+		{"SelectorImportIdentCrossPackage", importIdentSel, otherFile, "ir_test.N"},
+		{"SelectorImportIdentCrossPackageAlias", importIdentSel, aliasFile, "myir.N"},
+		{"SelectorFieldSamePackage", fieldSel, testFile, "cfg.N"},
+		{"SelectorFieldNilPackageFile", fieldSel, nilPkgFile, "cfg.N"},
 		{"UnaryExprSynthetic", &ir.UnaryExpr{Src: &ast.UnaryExpr{Op: token.SUB}, X: ir.NewIdent(mParam)}, testFile, "-M"},
 		{"ParenAndBinaryExprSynthetic", &ir.ParenExpr{Src: &ast.ParenExpr{}, X: &ir.BinaryExpr{Src: &ast.BinaryExpr{Op: token.ADD}, X: ir.NewIdent(mParam), Y: intLit(1), Typ: ir.IntType()}}, testFile, "(M + 1)"},
 		{"StructLitExprSyntheticCrossPackage", &ir.StructLitExpr{Typ: cfgNamed, Elts: []*ir.FieldLit{{FieldStorage: cfgFields.Fields()[0].Storage(), X: intLit(4)}, {FieldStorage: cfgFields.Fields()[1].Storage()}}}, otherFile, "ir_test.Cfg{N: 4}"},

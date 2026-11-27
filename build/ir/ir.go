@@ -513,15 +513,11 @@ var (
 func (s *NamedType) Kind() irkind.Kind { return s.Underlying.Val().Kind() }
 
 func referInFile(from, defFile *File, name *ast.Ident) ast.Expr {
-	if from == nil || defFile.Package == from.Package {
+	if from == nil || defFile == nil || defFile.Package == from.Package {
 		return name
 	}
-	pkgIdent := defFile.Package.Name
-	if imp := from.FindImport(defFile.Package.Path()); imp != nil {
-		pkgIdent = imp.NameDef()
-	}
 	return &ast.SelectorExpr{
-		X:   pkgIdent,
+		X:   referPackage(from, defFile.Package, defFile.Package.Name),
 		Sel: name,
 	}
 }
@@ -3351,8 +3347,11 @@ func (s *Ident) Expr() ast.Expr { return s.Src }
 
 // Refer returns an AST expression referencing the identifier from file.
 func (s *Ident) Refer(file *File) ast.Expr {
-	if stor, ok := s.Stor.(StorageWithFile); ok {
+	switch stor := s.Stor.(type) {
+	case StorageWithFile:
 		return referInFile(file, stor.File(), s.Src)
+	case *ImportDecl:
+		return referPackage(file, stor.Package, s.Src)
 	}
 	return s.Src
 }
@@ -3409,13 +3408,7 @@ func (s *PackageRef) Expr() ast.Expr { return s.X.Expr() }
 
 // Refer returns an AST expression referencing the package from file.
 func (s *PackageRef) Refer(file *File) ast.Expr {
-	if file == nil {
-		return s.X.Refer(file)
-	}
-	if imp := file.FindImport(s.Decl.Package.Path()); imp != nil {
-		return imp.NameDef()
-	}
-	return s.X.Refer(file)
+	return referPackage(file, s.Decl.Package, s.X.Src)
 }
 
 // Unroll the expression.
@@ -3492,9 +3485,23 @@ func (s *SelectorExpr) Type() Type { return s.Stor.Type() }
 // Expr returns the AST expression.
 func (s *SelectorExpr) Expr() ast.Expr { return s.Src }
 
+func referredPackage(x Expr) *Package {
+	switch x := x.(type) {
+	case *ImportEmbedded:
+		return x.Package
+	case *PackageRef:
+		return x.Decl.Package
+	case *Ident:
+		if imp, ok := x.Stor.(*ImportDecl); ok {
+			return imp.Package
+		}
+	}
+	return nil
+}
+
 // Refer returns an AST expression referencing the selector expression from file.
 func (s *SelectorExpr) Refer(file *File) ast.Expr {
-	if imp, ok := s.X.(*ImportEmbedded); ok && file != nil && imp.Package == file.Package {
+	if pkg := referredPackage(s.X); file != nil && pkg != nil && pkg == file.Package {
 		return s.Src.Sel
 	}
 	return &ast.SelectorExpr{

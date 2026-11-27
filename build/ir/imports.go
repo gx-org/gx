@@ -106,6 +106,16 @@ func (f *File) FindImport(path string) *ImportDecl {
 	return nil
 }
 
+func referPackage(file *File, pkg *Package, fallback ast.Expr) ast.Expr {
+	if file == nil || pkg == nil {
+		return fallback
+	}
+	if imp := file.FindImport(pkg.Path()); imp != nil {
+		return imp.NameDef()
+	}
+	return pkg.Name
+}
+
 // ImportEmbedded imports a package.
 type ImportEmbedded struct {
 	Src     ast.Expr
@@ -138,13 +148,7 @@ func (ie *ImportEmbedded) Expr() ast.Expr {
 
 // Refer returns an AST expression referencing the embedded import from file.
 func (ie *ImportEmbedded) Refer(file *File) ast.Expr {
-	if file == nil {
-		return ie.Src
-	}
-	if imp := file.FindImport(ie.Package.Path()); imp != nil {
-		return imp.NameDef()
-	}
-	return ie.Package.Name
+	return referPackage(file, ie.Package, ie.Src)
 }
 
 // Type of the import expression.
