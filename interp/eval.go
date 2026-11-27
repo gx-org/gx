@@ -396,7 +396,6 @@ func evalArrayAxes(fitp *Interpreter, src ir.Node, typ ir.ArrayType) ([]engine.N
 }
 
 func evalCastAtomToArrayExpr(fitp *Interpreter, expr ir.TypeCastExpr, x engine.NumericalElement, axes []engine.NumericalElement) (ir.Element, error) {
-	srcExpr := elements.NewExprAt(fitp.File(), expr)
 	arrayOps := fitp.engine()
 	shapeOfOnes := make([]engine.NumericalElement, len(axes))
 	for i := range axes {
@@ -406,7 +405,7 @@ func evalCastAtomToArrayExpr(fitp *Interpreter, expr ir.TypeCastExpr, x engine.N
 			return nil, err
 		}
 	}
-	reshaped, err := x.Reshape(fitp.env, srcExpr.ToExprAt().Node(), shapeOfOnes)
+	reshaped, err := x.Reshape(fitp.env, expr, shapeOfOnes)
 	if err != nil {
 		return nil, err
 	}

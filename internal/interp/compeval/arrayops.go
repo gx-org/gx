@@ -22,7 +22,6 @@ import (
 	"github.com/gx-org/gx/internal/interp/compeval/srcstore"
 	"github.com/gx-org/gx/internal/interp/compeval/surrogates/storepath"
 	"github.com/gx-org/gx/internal/interp/compeval/surrogates"
-	"github.com/gx-org/gx/interp/elements"
 	"github.com/gx-org/gx/interp/engine"
 )
 
@@ -50,12 +49,6 @@ func (compArrayOps) Einsum(ctx ir.Evaluator, expr *ir.EinsumExpr, x, y engine.Nu
 func (compArrayOps) BroadcastInDim(ctx ir.Evaluator, expr ir.Expr, x engine.NumericalElement, axisLengths []engine.NumericalElement) (engine.NumericalElement, error) {
 	path := storepath.NewUniqueIR(expr)
 	return surrogates.NewArrayFrom(path, expr.Type())
-}
-
-// Reshape an element into a given shape.
-func (compArrayOps) Reshape(expr elements.ExprAt, x engine.NumericalElement, axisLengths []engine.NumericalElement) (engine.NumericalElement, error) {
-	path := storepath.NewUniqueIR(expr.Node())
-	return surrogates.NewArrayFrom(path, expr.Node().Type())
 }
 
 // Concat concatenates scalars elements into an array with one axis.
