@@ -16,6 +16,7 @@ package ir
 
 import (
 	"fmt"
+	"go/token"
 
 	"github.com/gx-org/gx/build/ir/annotations"
 	"github.com/gx-org/gx/build/ir/irkind"
@@ -180,6 +181,39 @@ func (s *Interface) ArrayType() ast.Expr {
 
 // Kind returns the scalar kind.
 func (s *Interface) Kind() irkind.Kind { return irkind.Interface }
+
+// Refer returns an AST expression referencing the interface type from file.
+func (s *Interface) Refer(file *File) ast.Expr {
+	if len(s.types) == 0 && len(s.methods) == 0 {
+		if s.Src != nil {
+			return &ast.InterfaceType{
+				Methods: &ast.FieldList{Opening: 1, Closing: 1},
+			}
+		}
+		return &ast.Ident{Name: "any"}
+	}
+	var fields []*ast.Field
+	if len(s.types) > 0 {
+		union := s.types[0].Refer(file)
+		for _, typ := range s.types[1:] {
+			union = &ast.BinaryExpr{
+				X:  union,
+				Op: token.OR,
+				Y:  typ.Refer(file),
+			}
+		}
+		fields = append(fields, &ast.Field{Type: union})
+	}
+	for _, meth := range s.methods {
+		fields = append(fields, &ast.Field{
+			Names: []*ast.Ident{meth.NameDef()},
+			Type:  meth.FType.Refer(file),
+		})
+	}
+	return &ast.InterfaceType{
+		Methods: &ast.FieldList{List: fields},
+	}
+}
 
 // Equal returns true if other is the exact same type set.
 func (s *Interface) Equal(tpcmp TypeEval, target Type) (bool, error) {

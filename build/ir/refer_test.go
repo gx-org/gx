@@ -446,3 +446,59 @@ func TestFieldStructAndVarArgsRefer(t *testing.T) {
 		})
 	}
 }
+
+func TestInterfaceRefer(t *testing.T) {
+	otherFile, aliasFile := referTestFiles()
+	plain := newNamedType("Plain", ir.Int32Type())
+
+	emptyWithSrc := ir.NewInterface(&ast.InterfaceType{}, nil, nil)
+	singleType := ir.NewInterface(&ast.InterfaceType{}, []ir.Type{ir.Int32Type()}, nil)
+	unionTypes := ir.NewInterface(&ast.InterfaceType{}, []ir.Type{ir.Int32Type(), ir.Int64Type(), plain}, nil)
+
+	evalMeth := &ir.IMethod{
+		Src: &ast.Field{Names: []*ast.Ident{{Name: "Eval"}}},
+		FType: &ir.FuncType{
+			BaseType: ir.BaseType[*ast.FuncType]{
+				Src: &ast.FuncType{
+					Params:  &ast.FieldList{List: []*ast.Field{{Names: []*ast.Ident{{Name: "x"}}, Type: &ast.Ident{Name: "Plain"}}}},
+					Results: &ast.FieldList{List: []*ast.Field{{Type: &ast.Ident{Name: "Plain"}}}},
+				},
+			},
+			Params:  irhelper.Fields("x", plain),
+			Results: irhelper.Fields(plain),
+		},
+	}
+	resetMeth := &ir.IMethod{
+		Src:   &ast.Field{Names: []*ast.Ident{{Name: "Reset"}}},
+		FType: irhelper.FuncType(nil, nil, nil, nil),
+	}
+	methodsOnly := ir.NewInterface(&ast.InterfaceType{}, nil, []*ir.IMethod{evalMeth, resetMeth})
+	combined := ir.NewInterface(&ast.InterfaceType{}, []ir.Type{ir.Int32Type(), plain}, []*ir.IMethod{resetMeth})
+
+	for _, tc := range []struct {
+		name     string
+		typ      ir.Type
+		file     *ir.File
+		want     string
+		wantType string
+	}{
+		{"AnyType", ir.AnyType(), testFile, "any", "*ast.Ident"},
+		{"EmptyInterfaceWithSrc", emptyWithSrc, testFile, "interface{}", "*ast.InterfaceType"},
+		{"SingleType", singleType, testFile, "interface {\n\tint32\n}", "*ast.InterfaceType"},
+		{"TypeUnionSamePackage", unionTypes, testFile, "interface {\n\tint32 | int64 | Plain\n}", "*ast.InterfaceType"},
+		{"TypeUnionCrossPackage", unionTypes, otherFile, "interface {\n\tint32 | int64 | ir_test.Plain\n}", "*ast.InterfaceType"},
+		{"TypeUnionCrossPackageAlias", unionTypes, aliasFile, "interface {\n\tint32 | int64 | myir.Plain\n}", "*ast.InterfaceType"},
+		{"MethodsSamePackage", methodsOnly, testFile, "interface {\n\tEval(x Plain) Plain\n\tReset()\n}", "*ast.InterfaceType"},
+		{"TypesAndMethodsCrossPackage", combined, otherFile, "interface {\n\tint32 | ir_test.Plain\n\tReset()\n}", "*ast.InterfaceType"},
+	} {
+		t.Run(tc.name, func(t *testing.T) {
+			got := tc.typ.Refer(tc.file)
+			if gotType := fmt.Sprintf("%T", got); gotType != tc.wantType {
+				t.Errorf("Interface.Refer(%v) returned %s, want %s", tc.file, gotType, tc.wantType)
+			}
+			if gotStr := gxfmt.Format(got); gotStr != tc.want {
+				t.Errorf("gxfmt.Format(Interface.Refer(%v)) = %q, want %q", tc.file, gotStr, tc.want)
+			}
+		})
+	}
+}
