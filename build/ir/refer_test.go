@@ -262,6 +262,79 @@ func TestExprRefer(t *testing.T) {
 	}
 }
 
+func TestArrayTypeRefer(t *testing.T) {
+	otherFile, aliasFile := referTestFiles()
+	plain := newNamedType("Plain", ir.Int32Type())
+	mParam := ir.NewGenericNonTypeParam(irhelper.Fields("M", ir.IntType()).Fields()[0])
+	sParam := ir.NewGenericNonTypeParam(irhelper.Fields("S", ir.IntSliceType()).Fields()[0])
+	tParam := ir.NewGenericTypeParam(irhelper.Fields("T", ir.AnyType()).Fields()[0])
+	pkgConst := &ir.ConstExpr{Decl: &ir.ConstSpec{FFile: testFile}, VName: &ast.Ident{Name: "N"}}
+	staleSrc := &ast.ArrayType{Len: &ast.BasicLit{Kind: token.INT, Value: "9"}, Elt: &ast.Ident{Name: "Stale"}}
+	multiRank := &ir.Rank{
+		Ax: []ir.AxisLengths{
+			&ir.AxisExpr{X: ir.NewIdent(mParam)},
+			&ir.AxisExpr{X: ir.NewIdent(pkgConst)},
+		},
+	}
+	multiArray := ir.NewArrayType(staleSrc, plain, multiRank)
+	lenKeyword := &ir.FuncKeyword{ID: &ast.Ident{Name: "len"}}
+	lenCallRank := &ir.Rank{
+		Ax: []ir.AxisLengths{
+			&ir.AxisExpr{X: &ir.FuncCallExpr{
+				Src:    &ast.CallExpr{},
+				Callee: ir.NewFuncValExpr(ir.NewIdent(lenKeyword), lenKeyword),
+				Args:   []ir.Expr{ir.NewIdent(sParam)},
+			}},
+		},
+	}
+	unpackRank := &ir.Rank{
+		Ax: []ir.AxisLengths{
+			&ir.AxisExpr{X: &ir.UnpackExpr{X: ir.NewIdent(sParam), EltTyp: ir.IntType()}},
+			&ir.AxisExpr{X: ir.NewIdent(pkgConst)},
+		},
+	}
+	axisInferRank := &ir.Rank{
+		Ax: []ir.AxisLengths{
+			&ir.AxisInfer{Src: &ast.Ident{Name: "_"}},
+			&ir.AxisInfer{Src: &ast.Ident{Name: "_"}, X: &ir.AxisExpr{X: intLit(4)}},
+		},
+	}
+	singleArray := ir.NewArrayType(staleSrc, plain, &ir.Rank{Ax: []ir.AxisLengths{&ir.AxisExpr{X: intLit(2)}}})
+	sliceOfArray := &ir.SliceType{
+		BaseType: ir.BaseType[ast.Expr]{Src: staleSrc},
+		DType:    ir.TypeExpr(staleSrc, singleArray),
+		Rank:     1,
+	}
+
+	for _, tc := range []struct {
+		name string
+		typ  ir.Type
+		file *ir.File
+		want string
+	}{
+		{"ScalarRankBuiltin", ir.NewArrayType(staleSrc, ir.Float32Type(), &ir.Rank{}), testFile, "float32"},
+		{"ScalarRankCrossPackage", ir.NewArrayType(staleSrc, plain, &ir.Rank{}), otherFile, "ir_test.Plain"},
+		{"SingleAxisLiteral", ir.NewArrayType(staleSrc, ir.Float32Type(), &ir.Rank{Ax: []ir.AxisLengths{&ir.AxisExpr{X: intLit(2)}}}), testFile, "[2]float32"},
+		{"MultiAxisSamePackage", multiArray, testFile, "[M][N]Plain"},
+		{"MultiAxisCrossPackage", multiArray, otherFile, "[M][ir_test.N]ir_test.Plain"},
+		{"MultiAxisCrossPackageAlias", multiArray, aliasFile, "[M][myir.N]myir.Plain"},
+		{"AxisGroupUnpack", ir.NewArrayType(staleSrc, ir.Float32Type(), unpackRank), otherFile, "[S...][ir_test.N]float32"},
+		{"AxisInferMixed", ir.NewArrayType(staleSrc, ir.Float32Type(), axisInferRank), testFile, "[_][4]float32"},
+		{"AxisFuncKeyword", ir.NewArrayType(staleSrc, ir.Float32Type(), lenCallRank), otherFile, "[len(S)]float32"},
+		{"RankInferUnresolved", ir.NewArrayType(staleSrc, plain, ir.NewRankInfer(&ast.ArrayType{Len: &ast.Ellipsis{}}, nil)), otherFile, "[...]ir_test.Plain"},
+		{"RankInferResolved", ir.NewArrayType(staleSrc, plain, ir.NewRankInfer(&ast.ArrayType{Len: &ast.Ellipsis{}}, multiRank)), otherFile, "[M][ir_test.N]ir_test.Plain"},
+		{"RankInferResolvedScalar", ir.NewArrayType(staleSrc, ir.Float32Type(), ir.NewRankInfer(&ast.ArrayType{Len: &ast.Ellipsis{}}, &ir.Rank{})), testFile, "float32"},
+		{"GenericTypeParamDType", ir.NewArrayType(staleSrc, tParam, &ir.Rank{Ax: []ir.AxisLengths{&ir.AxisExpr{X: ir.NewIdent(mParam)}}}), testFile, "[M]T"},
+		{"SliceOfArrayCrossPackage", sliceOfArray, otherFile, "[][2]ir_test.Plain"},
+	} {
+		t.Run(tc.name, func(t *testing.T) {
+			if got := gxfmt.Format(tc.typ.Refer(tc.file)); got != tc.want {
+				t.Errorf("gxfmt.Format(%T.Refer(%v)) = %q, want %q", tc.typ, tc.file, got, tc.want)
+			}
+		})
+	}
+}
+
 func formatRankAST(expr ast.Expr) string {
 	if expr == nil {
 		return ""
