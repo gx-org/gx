@@ -59,7 +59,7 @@ func (n *arrayType) buildTypeExpr(rscope resolveScope) (*ir.TypeValExpr, bool) {
 		return invalidTypeExprVal, false
 	}
 	arrayType := ir.NewArrayType(n.src, dtyp.Val(), rank)
-	return ir.TypeExpr(nil, arrayType), dtypeOk
+	return ir.TypeExpr(n.src, arrayType), dtypeOk
 }
 
 func (n *arrayType) buildExpr(rscope resolveScope) (ir.Expr, bool) {

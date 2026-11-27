@@ -133,7 +133,7 @@ func (s *iface) buildTypeExpr(rscope resolveScope) (*ir.TypeValExpr, bool) {
 	}
 	ext := ir.NewInterface(s.src, types, imeths)
 	ext.FFile = rscope.fileScope().File()
-	return ir.TypeExpr(nil, ext), ok
+	return ir.TypeExpr(s.src, ext), ok
 }
 
 func (s *iface) source() ast.Node {
